@@ -1,0 +1,30 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../../layouts/Base.astro';
+import AgendaCard from '../../../components/AgendaCard.astro';
+
+export async function getStaticPaths() {
+  const langs = ['ko', 'en', 'ja', 'zh', 'es'];
+  return langs.map((lang) => ({ params: { lang } }));
+}
+
+const { lang } = Astro.params;
+
+const agendaEntries = await getCollection('agenda');
+const sorted = agendaEntries.sort((a, b) => a.data.id - b.data.id);
+---
+<Base title="의제 목록" lang={lang}>
+  <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">의제 목록</h1>
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {sorted.map((entry) => (
+      <AgendaCard
+        id={entry.data.id}
+        title={entry.data.title}
+        category={entry.data.category}
+        status={entry.data.status}
+        slug={entry.data.slug}
+        lang={lang}
+      />
+    ))}
+  </div>
+</Base>

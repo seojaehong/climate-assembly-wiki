@@ -1,0 +1,18 @@
+---
+interface Props {
+  href: string;
+  label: string;
+  size?: string;
+}
+
+const { href, label, size } = Astro.props;
+---
+<a
+  href={href}
+  download
+  class="inline-flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-white text-sm font-medium rounded transition"
+>
+  <span>⬇</span>
+  <span>{label}</span>
+  {size && <span class="text-xs opacity-75">({size})</span>}
+</a>

@@ -1,0 +1,49 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../../../layouts/Base.astro';
+import TranslationStatusBadge from '../../../components/TranslationStatusBadge.astro';
+
+export async function getStaticPaths() {
+  const langs = ['ko', 'en', 'ja', 'zh', 'es'];
+  const docEntries = await getCollection('doc');
+
+  return langs.flatMap((lang) =>
+    docEntries.map((entry) => ({
+      params: { lang, slug: entry.data.slug },
+      props: { entry },
+    }))
+  );
+}
+
+const { lang } = Astro.params;
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+
+const transStatus = lang !== 'ko' && entry.data.translations
+  ? (entry.data.translations as Record<string, { status: 'machine' | 'reviewed' | 'native' } | undefined>)[lang]?.status
+  : undefined;
+---
+<Base title={entry.data.title} lang={lang}>
+  <article>
+    <header class="mb-6">
+      <div class="flex items-center gap-2 mb-2 text-xs text-gray-500">
+        <span class="capitalize">{entry.data.doc_type}</span>
+        {transStatus && (
+          <>
+            <span>·</span>
+            <TranslationStatusBadge status={transStatus} />
+          </>
+        )}
+      </div>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{entry.data.title}</h1>
+    </header>
+
+    <div class="prose dark:prose-invert max-w-none">
+      <Content />
+    </div>
+
+    <p class="mt-4 text-xs text-gray-400">
+      최종 업데이트: {entry.data.last_updated} · {entry.data.license}
+    </p>
+  </article>
+</Base>

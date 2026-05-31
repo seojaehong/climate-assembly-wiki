@@ -1,0 +1,16 @@
+---
+import Base from '../../layouts/Base.astro';
+// astro-pagefind injects the search UI via the Search component
+import Search from 'astro-pagefind/components/Search';
+
+export async function getStaticPaths() {
+  const langs = ['ko', 'en', 'ja', 'zh', 'es'];
+  return langs.map((lang) => ({ params: { lang } }));
+}
+
+const { lang } = Astro.params;
+---
+<Base title="검색" lang={lang}>
+  <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">검색</h1>
+  <Search id="search" className="pagefind-ui" uiOptions={{ showImages: false, excerptLength: 15 }} />
+</Base>
