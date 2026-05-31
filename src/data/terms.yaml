@@ -1,0 +1,27 @@
+- key: NDC
+  ko: 국가 온실가스 감축 목표(NDC)
+  en: Nationally Determined Contribution (NDC)
+  ja: 国家自主貢献(NDC)
+  zh: 国家自主贡献(NDC)
+  es: Contribución Determinada a Nivel Nacional (NDC)
+
+- key: CCUS
+  ko: 탄소 포집·활용·저장(CCUS)
+  en: Carbon Capture, Utilization and Storage (CCUS)
+  ja: 二酸化炭素回収・利用・貯留(CCUS)
+  zh: 碳捕集、利用与封存(CCUS)
+  es: Captura, Utilización y Almacenamiento de Carbono (CCUS)
+
+- key: SSP
+  ko: 공통 사회경제 경로(SSP)
+  en: Shared Socioeconomic Pathway (SSP)
+  ja: 共通社会経済経路(SSP)
+  zh: 共享社会经济路径(SSP)
+  es: Vía Socioeconómica Compartida (SSP)
+
+- key: RE100
+  ko: 재생에너지 100%(RE100)
+  en: Renewable Energy 100% (RE100)
+  ja: 再生可能エネルギー100%(RE100)
+  zh: 可再生能源100%(RE100)
+  es: Energía Renovable 100% (RE100)

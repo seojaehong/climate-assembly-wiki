@@ -1,0 +1,33 @@
+---
+interface SessionItem {
+  date: string;
+  slug: string;
+  title: string;
+  session_type: string;
+}
+
+interface Props {
+  sessions: SessionItem[];
+  lang: string;
+  limit?: number;
+}
+
+const { sessions, lang, limit = 5 } = Astro.props;
+
+const recent = [...sessions]
+  .sort((a, b) => b.date.localeCompare(a.date))
+  .slice(0, limit);
+---
+<ul class="space-y-2">
+  {recent.map((s) => (
+    <li class="flex items-center gap-3 text-sm">
+      <time class="text-xs text-gray-400 whitespace-nowrap">{s.date}</time>
+      <a
+        href={`/${lang}/session/${s.date}`}
+        class="hover:text-green-700 dark:hover:text-green-400 line-clamp-1"
+      >
+        {s.title}
+      </a>
+    </li>
+  ))}
+</ul>

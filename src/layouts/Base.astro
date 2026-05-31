@@ -1,0 +1,64 @@
+---
+import '../styles/global.css';
+import LanguageSwitcher from '../components/LanguageSwitcher.astro';
+
+interface Props {
+  title: string;
+  lang: string;
+  description?: string;
+}
+
+const { title, lang, description = '2026 기후시민회의 모더레이터 아카이브' } = Astro.props;
+---
+<!doctype html>
+<html lang={lang} class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <title>{title} | 기후시민회의 Wiki</title>
+    <link rel="sitemap" href="/sitemap-index.xml" />
+  </head>
+  <body class="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors">
+    <header class="border-b border-gray-200 dark:border-gray-800 py-4 px-6">
+      <div class="max-w-5xl mx-auto flex items-center justify-between">
+        <a href={`/${lang}`} class="font-bold text-lg text-green-800 dark:text-green-400">
+          기후시민회의 Wiki
+        </a>
+        <nav class="flex items-center gap-4 text-sm">
+          <a href={`/${lang}/agenda`} class="hover:text-green-700 dark:hover:text-green-400">의제</a>
+          <a href={`/${lang}/session`} class="hover:text-green-700 dark:hover:text-green-400">회차</a>
+          <a href={`/${lang}/downloads`} class="hover:text-green-700 dark:hover:text-green-400">다운로드</a>
+          <a href={`/${lang}/search`} class="hover:text-green-700 dark:hover:text-green-400">검색</a>
+          <a href={`/${lang}/about`} class="hover:text-green-700 dark:hover:text-green-400">소개</a>
+          <LanguageSwitcher currentLang={lang} />
+          <button
+            id="dark-mode-toggle"
+            class="p-1 rounded border border-gray-300 dark:border-gray-600 text-xs"
+            aria-label="다크모드 토글"
+          >
+            🌙
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-6 py-8">
+      <slot />
+    </main>
+
+    <footer class="border-t border-gray-200 dark:border-gray-800 py-6 px-6 text-center text-sm text-gray-500">
+      <p>CC BY-SA 4.0 · 2026 기후시민회의 모더레이터 아카이브</p>
+    </footer>
+
+    <script>
+      const toggle = document.getElementById('dark-mode-toggle');
+      const html = document.documentElement;
+      if (localStorage.getItem('dark') === '1') html.classList.add('dark');
+      toggle?.addEventListener('click', () => {
+        html.classList.toggle('dark');
+        localStorage.setItem('dark', html.classList.contains('dark') ? '1' : '0');
+      });
+    </script>
+  </body>
+</html>

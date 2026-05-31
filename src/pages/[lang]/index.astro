@@ -1,0 +1,80 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import AgendaCard from '../../components/AgendaCard.astro';
+import RecentSessions from '../../components/RecentSessions.astro';
+
+export async function getStaticPaths() {
+  const langs = ['ko', 'en', 'ja', 'zh', 'es'];
+  return langs.map((lang) => ({ params: { lang } }));
+}
+
+const { lang } = Astro.params;
+
+const agendaEntries = await getCollection('agenda');
+const sessionEntries = await getCollection('session');
+
+const recentAgendas = agendaEntries
+  .sort((a, b) => a.data.id - b.data.id)
+  .slice(0, 6);
+
+const sessionItems = sessionEntries.map((s) => ({
+  date: s.data.date,
+  slug: s.data.slug,
+  title: s.data.title,
+  session_type: s.data.session_type,
+}));
+---
+<Base title="홈" lang={lang}>
+  <section class="mb-10">
+    <h1 class="text-3xl font-bold text-green-800 dark:text-green-400 mb-2">
+      2026 기후시민회의
+    </h1>
+    <p class="text-gray-600 dark:text-gray-400">
+      모더레이터 활동 아카이브 + 다국어 위키
+    </p>
+  </section>
+
+  <div class="grid gap-8 lg:grid-cols-3">
+    <section class="lg:col-span-2">
+      <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">최신 의제</h2>
+      <div class="grid gap-3 sm:grid-cols-2">
+        {recentAgendas.map((entry) => (
+          <AgendaCard
+            id={entry.data.id}
+            title={entry.data.title}
+            category={entry.data.category}
+            status={entry.data.status}
+            slug={entry.data.slug}
+            lang={lang}
+          />
+        ))}
+      </div>
+      <div class="mt-4">
+        <a href={`/${lang}/agenda`} class="text-sm text-green-700 dark:text-green-400 hover:underline">
+          전체 의제 보기 →
+        </a>
+      </div>
+    </section>
+
+    <aside>
+      <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">최근 회차</h2>
+      <RecentSessions sessions={sessionItems} lang={lang} />
+      <div class="mt-4">
+        <a href={`/${lang}/session`} class="text-sm text-green-700 dark:text-green-400 hover:underline">
+          전체 회차 보기 →
+        </a>
+      </div>
+
+      <div class="mt-8">
+        <h2 class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-200">자료 다운로드</h2>
+        <a
+          href={`/${lang}/downloads`}
+          class="inline-block px-4 py-2 bg-green-700 hover:bg-green-800 text-white text-sm rounded transition"
+        >
+          다운로드 센터 →
+        </a>
+      </div>
+    </aside>
+  </div>
+</Base>
