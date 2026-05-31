@@ -62,3 +62,6 @@ venv/
 # Translation cache
 .translation-cache/
 scripts/.cache/
+
+# Internal subagent memory (not public)
+.claude/
