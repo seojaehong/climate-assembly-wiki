@@ -9,8 +9,9 @@ const dateString = z.union([
 ]);
 
 // Translation entry schema (shared across all collections)
+// 2026-05-31: added 'author-verified' for the Author-time Multilingual pivot (see SCHEMA.md §1.1)
 const translationEntrySchema = z.object({
-  status: z.enum(['machine', 'reviewed', 'native']),
+  status: z.enum(['machine', 'reviewed', 'native', 'author-verified']),
   translator: z.string(),
   translated_at: dateString,
 });

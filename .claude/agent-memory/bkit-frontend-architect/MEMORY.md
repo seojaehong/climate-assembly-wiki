@@ -1,0 +1,1 @@
+- [Climate Wiki Project](project_climate_wiki.md) — Astro 5 scaffold완료, SCHEMA.md 1:1 zod미러, date파싱 coerce처리

@@ -6,24 +6,66 @@ order: 1
 license: CC-BY-SA-4.0
 last_updated: 2026-05-31
 translations:
-  en:
-    status: machine
-    translator: Claude-sonnet-4-6
-    translated_at: 2026-05-31
-  ja:
-    status: machine
-    translator: Claude-sonnet-4-6
-    translated_at: 2026-05-31
-  zh:
-    status: machine
-    translator: Claude-sonnet-4-6
-    translated_at: 2026-05-31
-  es:
-    status: machine
-    translator: Claude-sonnet-4-6
-    translated_at: 2026-05-31
+  en: { status: author-verified, translator: "author+Claude-opus-4-7", translated_at: 2026-05-31 }
+  ja: { status: machine, translator: "Claude-sonnet-4-6", translated_at: 2026-05-31 }
+  zh: { status: machine, translator: "Claude-sonnet-4-6", translated_at: 2026-05-31 }
+  es: { status: machine, translator: "Claude-sonnet-4-6", translated_at: 2026-05-31 }
 ---
 
-[B 서브에이전트가 곧 교체]
+## 이 사이트는 무엇인가요
 
-이 사이트는 2026 기후시민회의 모더레이터 활동 아카이브 및 다국어 LLM 위키입니다.
+본 사이트는 **2026년 한국 기후시민회의(Climate Citizens' Assembly)** 의 분임 모더레이터로 활동한 한 개인의 ‘작업 기록과 학습 자료’를 **누구나 자유롭게 인용·재사용할 수 있도록** 공개한 아카이브입니다.
+
+기후시민회의는 2026년 5월 16일 발대한 **세계 최초의 상설 국가 기후공론 기구**로, 무작위 추출된 220명의 시민이 학습·토론·권고 4단계를 거쳐 정부에 정책 권고안을 제출합니다. 그 근거는 「기후위기 대응을 위한 탄소중립·녹색성장 기본법」 제19조의2입니다.
+
+## 왜 만들었나요
+
+세 가지 문제의식 때문입니다.
+
+1. **‘일회성 공론장’의 한계** — 시민이 어렵게 만든 권고안이 정부에 전달된 뒤 어떻게 처리되는지, 다음 회기 시민이 무엇을 참조해야 하는지가 잘 보이지 않습니다.
+2. **국제 가시성 부재** — 영국·아일랜드·프랑스 사례는 영문 자료로 풍부하지만, **한국 모델은 영문 1차 자료가 거의 없습니다.** OECD·UNFCCC·해외 연구자 누구도 한국 사례를 인용할 수 없는 상태입니다.
+3. **모더레이터 노하우의 사적화** — 분임 진행 노하우, 시민 질문 응대 패턴, 의제 정리 방식이 모더레이터 개인 머릿속에 머무릅니다.
+
+이 아카이브는 위 세 문제를 동시에 해결하려는 **개인의 시도**입니다.
+
+## 무엇을 담고 있나요
+
+- **의제 위키 15개** — 시민회의에서 토론 중인 의제별 한국 맥락·국제 비교·핵심 질문
+- **회차 타임라인** — 강의·토론·권고 도출 과정의 시간순 기록
+- **모더레이터 가이드** — 분임 운영·시민 응대·체크리스트
+- **부처별 역할 매트릭스** — 12개 부처의 감축·적응 책임 분배
+- **선례 분석** — 경기도 기후도민총회·신고리 공론화·UK·아일랜드·프랑스 비교
+- **다국어 (5개국어)** — 한국어 원본 + 영어 + 일본어 + 중국어 + 스페인어
+
+## 누가 만들었나요
+
+한국 기후시민회의에서 분임 모더레이터로 활동 중인 **개인 모더레이터**(개인 활동, 정부·기관 소속 아님)입니다. 본 사이트는 어떤 정부 기관·정당·기업의 공식 입장도 대표하지 않습니다.
+
+## 다국어 정책 — Author-time Multilingual
+
+이 사이트의 모든 영문·일문·중문·스페인문 페이지는 **모더레이터가 작성 시점에 직접 검토·승인한 결과물**입니다. 빌드 후 자동 기계 번역이 아닙니다. 페이지 상단의 라벨로 신뢰도를 표시합니다:
+
+- 🟢 `author-verified` — 모더레이터 본인이 직접 검토 (한국어·영어)
+- 🔵 `reviewed` — LLM 보조 + 모더레이터 일반 검토 (일본어·중국어·스페인어 초기)
+- 🟢 `native-verified` — 원어민 자원봉사 검수자가 승인한 페이지 (점진적 확보 예정)
+
+## 어떻게 인용하시나요
+
+이 사이트의 모든 콘텐츠는 **CC BY-SA 4.0** 라이선스로 자유롭게 인용·재사용·번역·재배포 가능합니다. 인용 시 권장 형식:
+
+> Korea Climate Assembly Wiki. (2026). [페이지 제목]. https://climate-assembly.org/[lang]/[path]
+
+## 기술 스택
+
+- **사이트**: [Astro 5](https://astro.build) (정적 사이트 생성)
+- **호스팅**: [Cloudflare Pages](https://pages.cloudflare.com) (무료, CDN)
+- **저장소**: [GitHub Open Source](https://github.com/seojaehong/climate-assembly-wiki)
+- **라이선스**: CC BY-SA 4.0
+
+운영비는 도메인 비용(연 약 1.4만원)을 제외하고 사실상 0원이며, 향후 20년 이상 운영을 목표로 합니다.
+
+## 면책
+
+- 본 사이트는 **모더레이터 개인의 작업 기록**이며, 한국 정부 또는 국가기후위기대응위원회의 공식 발표가 아닙니다.
+- 기후시민회의의 권고안은 자문적 성격으로, 정부에 제안된다는 것이지 정부 정책으로 확정되었다는 의미가 아닙니다.
+- 모든 사실관계는 1차 출처로 다시 확인하시기를 권합니다. 사실 오류 발견 시 GitHub Issues로 알려주세요.
