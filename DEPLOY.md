@@ -105,3 +105,29 @@ GitHub 리포 → **Actions** 탭 → **Deploy to Cloudflare Pages (Backup / Man
 - [ ] 응답 헤더에 `X-Frame-Options: DENY` 포함 (DevTools → Network)
 - [ ] `/assets/*` 응답에 `Cache-Control: max-age=31536000` 포함
 - [ ] Pagefind 검색이 동작 (사이트 내 검색창)
+
+---
+
+## ✅ 인프라 보유 상황 (2026-05-31 기준)
+
+- **GitHub 레포**: https://github.com/seojaehong/climate-assembly-wiki
+- **Cloudflare Pages**: https://climate-assembly-wiki.pages.dev (활성·robots Disallow)
+- **본도메인**: ★ **`climate-assembly.org`** — Cloudflare Registrar 등록 완료 (2026-05-31)
+
+## 🎯 M3(2026.8) 출시 시점 도메인 연결 절차
+
+도메인은 등록되어 있지만 ★ DNS는 아직 사이트에 연결되지 않음. M3 출시 시점에 다음 작업을 수행:
+
+```
+1. Cloudflare 대시보드 → Workers & Pages → climate-assembly-wiki
+2. "Custom domains" 탭 → "Set up a custom domain"
+3. climate-assembly.org 입력 → "Continue"
+4. DNS는 Cloudflare에 이미 있으므로 자동 연결 (CNAME 생성)
+5. Activate domain 클릭 → 약 1~5분 후 활성
+6. 본 사이트는 https://climate-assembly.org 로 접근 가능
+```
+
+### 함께 진행할 작업
+- `wiki/astro.config.mjs`의 `site`를 `https://climate-assembly.org`로 변경
+- `wiki/public/robots.txt`에서 `Disallow: /` 제거 → 정상 인덱싱 허용
+- (선택) `www.climate-assembly.org` 추가 → 루트로 301 리다이렉트
