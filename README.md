@@ -8,6 +8,8 @@ Korea Climate Citizens' Assembly — Moderator Archive & Multilingual LLM Wiki
 
 License: **CC BY-SA 4.0** — 자유롭게 공유·변형 가능, 출처 표시 및 동일 라이선스 적용 필수.
 
+배포: Cloudflare Pages (M3 출시 전까지 비공개 프리뷰). 절차는 [DEPLOY.md](./DEPLOY.md) 참고.
+
 ---
 
 ## 한국어
