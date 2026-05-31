@@ -33,7 +33,8 @@ translations:
 ---
 ```
 
-- `translations.{lang}.status` enum: `machine` | `reviewed` | `native`
+- `translations.{lang}.status` enum: `machine` | `reviewed` | `native` | `author-verified`
+- **Project policy (2026-05-31 update)**: This project uses **author-time multilingual generation** (not build-time machine translation). The author writes Korean and generates the 5 languages together with an LLM assistant in the same session, reviewing before commit. Default status is therefore `author-verified` (🟢) for ko/en and `reviewed` (🔵) for ja/zh/es (author-assisted but not native).
 - Translated files (under `translations/{lang}/agenda/...`) MUST keep the **same** frontmatter, with `title` translated.
 
 ### 1.2 Session — `content/ko/session/{YYYY-MM-DD}-{slug}.md`
