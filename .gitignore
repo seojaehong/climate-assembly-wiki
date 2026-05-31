@@ -1,0 +1,64 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.yarn/
+package-lock.json.bak
+
+# Astro
+dist/
+.astro/
+.output/
+
+# Build / cache
+.cache/
+.tmp/
+.turbo/
+.vercel/
+.wrangler/
+
+# Pagefind
+public/pagefind/
+pagefind/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Secrets / keys
+*.pem
+*.key
+*.crt
+secrets.json
+.anthropic_key
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+ehthumbs.db
+
+# Python (translation scripts may use python helpers)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Translation cache
+.translation-cache/
+scripts/.cache/
