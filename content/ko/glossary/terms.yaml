@@ -1,0 +1,83 @@
+- key: NDC
+  ko: 국가 온실가스 감축 목표(NDC)
+  en: Nationally Determined Contribution (NDC)
+  ja: 国家自主貢献(NDC)
+  zh: 国家自主贡献(NDC)
+  es: Contribución Determinada a Nivel Nacional (NDC)
+
+- key: CCUS
+  ko: 탄소 포집·활용·저장(CCUS)
+  en: Carbon Capture, Utilization and Storage (CCUS)
+  ja: 二酸化炭素回収・利用・貯留(CCUS)
+  zh: 碳捕集、利用与封存(CCUS)
+  es: Captura, Utilización y Almacenamiento de Carbono (CCUS)
+
+- key: SSP
+  ko: 공통 사회경제 경로(SSP)
+  en: Shared Socioeconomic Pathways (SSP)
+  ja: 共有社会経済経路(SSP)
+  zh: 共享社会经济路径(SSP)
+  es: Trayectorias Socioeconómicas Compartidas (SSP)
+
+- key: RE100
+  ko: 재생에너지 100% (RE100)
+  en: 100% Renewable Electricity (RE100)
+  ja: 100%再生可能エネルギー(RE100)
+  zh: 100%可再生能源(RE100)
+  es: 100% Energía Renovable (RE100)
+
+- key: IPCC
+  ko: 기후변화에 관한 정부간 협의체(IPCC)
+  en: Intergovernmental Panel on Climate Change (IPCC)
+  ja: 気候変動に関する政府間パネル(IPCC)
+  zh: 政府间气候变化专门委员会(IPCC)
+  es: Grupo Intergubernamental de Expertos sobre el Cambio Climático (IPCC)
+
+- key: GW
+  ko: 기가와트(GW) — 전력 용량 단위, 1 GW = 1,000 MW
+  en: Gigawatt (GW) — unit of power, 1 GW = 1,000 MW
+  ja: ギガワット(GW) — 電力容量の単位、1 GW = 1,000 MW
+  zh: 吉瓦(GW) — 电力容量单位,1 GW = 1,000 MW
+  es: Gigavatio (GW) — unidad de potencia, 1 GW = 1.000 MW
+
+- key: TWh
+  ko: 테라와트시(TWh) — 전력량 단위, 1 TWh = 10억 kWh
+  en: Terawatt-hour (TWh) — unit of energy, 1 TWh = 1 billion kWh
+  ja: テラワット時(TWh) — 電力量の単位、1 TWh = 10億 kWh
+  zh: 太瓦时(TWh) — 电量单位,1 TWh = 10亿 kWh
+  es: Teravatio-hora (TWh) — unidad de energía, 1 TWh = mil millones kWh
+
+- key: AR6
+  ko: IPCC 제6차 평가보고서(AR6, 2021~2023)
+  en: IPCC Sixth Assessment Report (AR6, 2021–2023)
+  ja: IPCC第6次評価報告書(AR6, 2021~2023)
+  zh: IPCC第六次评估报告(AR6, 2021–2023)
+  es: Sexto Informe de Evaluación del IPCC (AR6, 2021–2023)
+
+- key: AR7
+  ko: IPCC 제7차 평가보고서(AR7, 2027~2030 예정)
+  en: IPCC Seventh Assessment Report (AR7, expected 2027–2030)
+  ja: IPCC第7次評価報告書(AR7, 2027~2030予定)
+  zh: IPCC第七次评估报告(AR7, 预计 2027–2030)
+  es: Séptimo Informe de Evaluación del IPCC (AR7, previsto 2027–2030)
+
+- key: 기후배당
+  ko: 시민 환급형 기후배당(Climate Dividend)
+  en: Climate Dividend (carbon-tax citizen rebate)
+  ja: 気候配当(Climate Dividend) — 炭素税の市民還付
+  zh: 气候红利(Climate Dividend) — 碳税返还公民
+  es: Dividendo Climático (devolución ciudadana del impuesto al carbono)
+
+- key: 복합 취약성
+  ko: 복합 취약성(Compound Vulnerability) — 주거·건강·이동·고립 4축 결합
+  en: Compound Vulnerability — combined housing, health, mobility, and social-isolation risks
+  ja: 複合脆弱性(Compound Vulnerability)
+  zh: 复合脆弱性(Compound Vulnerability)
+  es: Vulnerabilidad Compuesta (Compound Vulnerability)
+
+- key: 풍선효과
+  ko: 풍선효과(balloon effect) — 한 부문의 배출 감축이 다른 부문 증가로 이전되는 현상
+  en: Balloon effect — emission reductions in one sector shifting to increases in another
+  ja: 風船効果(balloon effect) — 一部門の排出削減が他部門の増加に転嫁される現象
+  zh: 气球效应(balloon effect) — 一个部门的减排转移到另一部门的增加
+  es: Efecto globo (balloon effect) — reducciones de emisiones en un sector que se trasladan a aumentos en otro
