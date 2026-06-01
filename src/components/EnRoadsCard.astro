@@ -1,0 +1,75 @@
+---
+/**
+ * EnRoadsCard.astro — B7
+ * Screenshot + external link card for En-ROADS scenarios (Design §3.7).
+ *
+ * En-ROADS iframe embeds are not available from external sites.
+ * This component shows a static screenshot and a prominent "Open in En-ROADS" link.
+ * No external scripts are loaded.
+ */
+
+interface Props {
+  scenarioUrl: string;
+  screenshotPath: string;
+  captionKo: string;
+  captionEn: string;
+  /** Temperature outcome string from the scenario, e.g. "+2.4°C" */
+  tempOutcome: string;
+  lang: string;
+}
+
+const { scenarioUrl, screenshotPath, captionKo, captionEn, tempOutcome, lang } = Astro.props;
+
+const isKo = lang === 'ko';
+const caption = isKo ? captionKo : captionEn;
+const btnLabel = isKo ? 'En-ROADS에서 열기 →' : 'Open in En-ROADS →';
+const outcomeLabel = isKo ? `예상 온도 상승: ${tempOutcome}` : `Projected warming: ${tempOutcome}`;
+const externalLabel = isKo ? '(외부 사이트, 새 탭)' : '(external site, new tab)';
+---
+
+<figure class="enroads-card border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm">
+  <!-- Screenshot -->
+  <a
+    href={scenarioUrl}
+    target="_blank"
+    rel="noopener noreferrer"
+    aria-label={`${caption} ${externalLabel}`}
+    class="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+  >
+    <img
+      src={screenshotPath}
+      alt={caption}
+      class="w-full object-cover max-h-64"
+      loading="lazy"
+      decoding="async"
+    />
+  </a>
+
+  <!-- Caption + outcome chip + CTA -->
+  <figcaption class="p-4 bg-white dark:bg-gray-900">
+    <!-- Temperature outcome badge -->
+    <div class="mb-2">
+      <span class="inline-block bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 text-sm font-semibold px-2 py-0.5 rounded border border-red-300 dark:border-red-600">
+        {tempOutcome}
+      </span>
+      <span class="sr-only">{outcomeLabel}</span>
+    </div>
+
+    <p class="text-sm text-gray-700 dark:text-gray-300 mb-3">{caption}</p>
+
+    <a
+      href={scenarioUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="inline-flex items-center gap-1 text-sm font-medium text-green-700 dark:text-green-400 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+      aria-label={`${btnLabel} ${externalLabel}`}
+    >
+      {btnLabel}
+      <svg aria-hidden="true" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+        <polyline points="15 3 21 3 21 9"/>
+        <line x1="10" y1="14" x2="21" y2="3"/>
+      </svg>
+    </a>
+  </figcaption>
+</figure>

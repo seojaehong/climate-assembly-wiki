@@ -1,0 +1,175 @@
+---
+/**
+ * AgendaLayout.astro — Layout for individual agenda pages.
+ * Design §4 Group C (C1): Header + Sidebar + TrustBadge + LicenseBadge.
+ *
+ * Used by: src/pages/[lang]/agenda/[slug].astro
+ *
+ * Group B components (parallel development):
+ *   SiteSidebar, TrustBadge, LicenseBadge, TranslationFallbackBanner
+ */
+
+import BaseLayout from './BaseLayout.astro';
+import SiteSidebar from '../components/SiteSidebar.astro';
+import TrustBadge from '../components/TrustBadge.astro';
+import LicenseBadge from '../components/LicenseBadge.astro';
+import TranslationFallbackBanner from '../components/TranslationFallbackBanner.astro';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+/** Trust label values — Design §3.1, §1.4 */
+type TrustStatus = 'machine' | 'reviewed' | 'native' | 'author-verified';
+
+/** License values — Design §3.2, §1.5 */
+type LicenseValue = 'CC-BY-SA-4.0' | 'CC-BY-4.0' | 'CC-BY-NC-SA-3.0-IGO' | 'all-rights-reserved';
+
+// ---------------------------------------------------------------------------
+// Props
+// ---------------------------------------------------------------------------
+export interface Props {
+  /** Page title */
+  title: string;
+  /** Current page language */
+  lang: string;
+  /** Meta description (optional; auto-generated from first paragraph in pages) */
+  description?: string;
+  /** Trust/translation status for TrustBadge (Design §3.1) */
+  trustLabel?: TrustStatus;
+  /** License for LicenseBadge (Design §3.2) */
+  license?: LicenseValue;
+  /**
+   * Alternate languages that have real (non-fallback) translations.
+   * Used for hreflang emission. Defaults to ['ko'] if no EN translation.
+   */
+  alternateLangs?: string[];
+  /**
+   * Canonical path override (e.g. '/ko/agenda/climate-dividend/').
+   * Inferred from URL if omitted.
+   */
+  canonicalPath?: string;
+  /**
+   * Source Korean page URL (for TranslationFallbackBanner).
+   * Set when rendering an EN page that falls back to KO content.
+   */
+  sourceKorean?: string;
+  /**
+   * True when this page is displaying fallback content (EN URL → KO content).
+   * Triggers TranslationFallbackBanner (Design §1.3, §3.9).
+   */
+  isFallback?: boolean;
+  /**
+   * Frontmatter data from the agenda collection entry.
+   * Used to build JSON-LD Article schema (Design §5.2).
+   */
+  frontmatter?: {
+    id?: number;
+    last_updated?: string;
+    ministries?: string[];
+    international_cases?: string[];
+  };
+  /** For 'all-rights-reserved' license badge — organisation name */
+  orgName?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Resolve props
+// ---------------------------------------------------------------------------
+const {
+  title,
+  lang,
+  description,
+  trustLabel = 'author-verified',
+  license = 'CC-BY-SA-4.0',
+  alternateLangs = ['ko'],
+  canonicalPath,
+  sourceKorean,
+  isFallback = false,
+  frontmatter,
+  orgName,
+} = Astro.props;
+
+// ---------------------------------------------------------------------------
+// JSON-LD Article schema (Design §5.2)
+// ---------------------------------------------------------------------------
+const articleSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  name: title,
+  ...(description && { description }),
+  inLanguage: lang,
+  author: {
+    '@type': 'Person',
+    name: 'Jaehong Seo',
+  },
+  publisher: {
+    '@type': 'Organization',
+    name: 'Korea Climate Assembly Wiki',
+  },
+  ...(frontmatter?.last_updated && { dateModified: frontmatter.last_updated }),
+  ...(canonicalPath && {
+    url: `https://climate-assembly-wiki.pages.dev${canonicalPath}`,
+  }),
+};
+
+const ldJson = JSON.stringify(articleSchema);
+---
+<BaseLayout
+  title={title}
+  lang={lang}
+  description={description}
+  alternateLangs={alternateLangs}
+  canonicalPath={canonicalPath}
+  ogType="article"
+  ldJson={ldJson}
+>
+  <!-- Translation fallback banner (Design §1.3, §3.9) -->
+  {isFallback && (
+    <TranslationFallbackBanner targetLang={lang} />
+  )}
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex gap-8">
+
+      <!-- Left sidebar (Design §3.5) -->
+      <aside class="hidden lg:block w-64 flex-shrink-0">
+        <SiteSidebar lang={lang} currentPath={Astro.url.pathname} />
+      </aside>
+
+      <!-- Main content area -->
+      <article class="flex-1 min-w-0">
+
+        <!-- Trust badge (Design §3.1) — placed directly below <h1> in the page, but
+             layout renders it here as page-level chrome above the slot. -->
+        {trustLabel && (
+          <div class="mb-3">
+            <TrustBadge status={trustLabel} lang={lang} />
+          </div>
+        )}
+
+        <!-- Page body slot -->
+        <div class="prose prose-green dark:prose-invert max-w-none">
+          <slot />
+        </div>
+
+        <!-- License badge (Design §3.2, §1.5) — placed in page footer area -->
+        <footer class="mt-10 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <div class="flex flex-wrap items-center gap-4">
+            <LicenseBadge license={license} orgName={orgName} />
+            {sourceKorean && lang !== 'ko' && (
+              <a
+                href={sourceKorean}
+                class="text-sm text-gray-500 dark:text-gray-400 hover:text-green-700 dark:hover:text-green-400 hover:underline"
+              >
+                {lang === 'en' ? '← Korean source' : '← 한국어 원문'}
+              </a>
+            )}
+          </div>
+        </footer>
+
+      </article>
+
+    </div>
+  </div>
+</BaseLayout>

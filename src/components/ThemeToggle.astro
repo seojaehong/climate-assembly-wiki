@@ -1,0 +1,83 @@
+---
+/**
+ * ThemeToggle.astro — B10
+ * Light/dark mode toggle (Design §3.10).
+ *
+ * Reads localStorage.theme; defaults to system prefers-color-scheme.
+ * Sets <html class="dark"> when dark mode is active.
+ *
+ * client:idle note: this is a pure .astro component with an inline <script>.
+ * Astro hoists and defers inline scripts automatically — equivalent to "idle" behavior.
+ * No framework island is needed.
+ *
+ * The inline script is ~20 lines and has no external dependency.
+ */
+---
+
+<button
+  id="theme-toggle"
+  type="button"
+  aria-label="Toggle dark mode / 다크모드 전환"
+  class="theme-toggle p-1.5 rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-green-500 hover:text-green-700 dark:hover:border-green-400 dark:hover:text-green-300 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+  aria-pressed="false"
+>
+  <!-- Sun icon (shown in dark mode) -->
+  <svg id="theme-icon-sun" class="hidden w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="5"/>
+    <line x1="12" y1="1" x2="12" y2="3"/>
+    <line x1="12" y1="21" x2="12" y2="23"/>
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+    <line x1="1" y1="12" x2="3" y2="12"/>
+    <line x1="21" y1="12" x2="23" y2="12"/>
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+  </svg>
+  <!-- Moon icon (shown in light mode) -->
+  <svg id="theme-icon-moon" class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+</button>
+
+<script>
+  (function () {
+    const html = document.documentElement;
+    const btn = document.getElementById('theme-toggle') as HTMLButtonElement | null;
+    const iconSun = document.getElementById('theme-icon-sun');
+    const iconMoon = document.getElementById('theme-icon-moon');
+
+    function isDark(): boolean {
+      return html.classList.contains('dark');
+    }
+
+    function applyTheme(dark: boolean): void {
+      if (dark) {
+        html.classList.add('dark');
+      } else {
+        html.classList.remove('dark');
+      }
+      // Update button state
+      if (btn) btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+      if (iconSun) iconSun.classList.toggle('hidden', !dark);
+      if (iconMoon) iconMoon.classList.toggle('hidden', dark);
+    }
+
+    // Initialize from localStorage or system preference
+    const stored = localStorage.getItem('theme');
+    if (stored === 'dark') {
+      applyTheme(true);
+    } else if (stored === 'light') {
+      applyTheme(false);
+    } else {
+      // No preference stored — use system
+      applyTheme(window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+
+    // Toggle on click
+    btn?.addEventListener('click', () => {
+      const next = !isDark();
+      applyTheme(next);
+      localStorage.setItem('theme', next ? 'dark' : 'light');
+    });
+  })();
+</script>

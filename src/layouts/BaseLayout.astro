@@ -1,0 +1,184 @@
+---
+/**
+ * BaseLayout.astro — HTML shell; parent for all other layouts.
+ * Design §3.4, §3.8, §5.2 (SEO), §5.3 (A11y)
+ *
+ * Renders:
+ *   skip-link → SiteHeader → <main id="main-content"> → SiteFooter
+ *
+ * Group B components imported here (parallel development — see README note):
+ *   SiteHeader, SiteFooter, ThemeToggle, LanguageToggle
+ * These files are created by Group B; this layout is syntactically valid
+ * before Group B is complete.
+ */
+
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import '../styles/global.css';
+
+// ---------------------------------------------------------------------------
+// Site base URL (Design §6.3 — changes to climate-assembly.org at DNS switch)
+// ---------------------------------------------------------------------------
+const SITE_URL = import.meta.env.SITE ?? 'https://climate-assembly-wiki.pages.dev';
+
+// ---------------------------------------------------------------------------
+// Props
+// ---------------------------------------------------------------------------
+export interface Props {
+  /** Page <title> — appended with site name */
+  title: string;
+  /** Current page language ('ko' | 'en'). Used for <html lang>, OG, hreflang. */
+  lang: string;
+  /** Meta description. Defaults to generic site tagline. */
+  description?: string;
+  /**
+   * Languages for which alternate versions exist.
+   * Used to emit hreflang <link> tags (Design §5.2).
+   * If page has no EN translation, pass ['ko'] only (hreflang for ko + x-default).
+   * Defaults to ['ko'] (safe default — emits minimal hreflang set).
+   */
+  alternateLangs?: string[];
+  /**
+   * Canonical URL path (e.g. '/ko/agenda/climate-dividend/').
+   * If omitted, falls back to Astro.url.pathname.
+   */
+  canonicalPath?: string;
+  /**
+   * Actual content language when fallback rewrite is active.
+   * If contentLang differs from lang, the TranslationFallbackBanner
+   * should be rendered by the child layout (not BaseLayout — child has context).
+   * Stored here so BaseLayout can adjust hreflang emission.
+   */
+  contentLang?: string;
+  /**
+   * Open Graph type. 'article' for agenda/session/doc; 'website' for home/index.
+   * Defaults to 'website'.
+   */
+  ogType?: 'website' | 'article';
+  /**
+   * Structured data JSON-LD string (Article schema for agenda/session).
+   * Emitted verbatim in <script type="application/ld+json"> if provided.
+   * Child layouts construct and pass this; BaseLayout does not generate it.
+   */
+  ldJson?: string;
+}
+
+const {
+  title,
+  lang,
+  description: descriptionProp,
+  alternateLangs = ['ko'] as string[],
+  canonicalPath: canonicalPathProp,
+  contentLang: _contentLang,
+  ogType = 'website' as 'website' | 'article',
+  ldJson,
+} = Astro.props;
+
+// Resolve description default after destructuring to avoid TS scope issues
+const description: string = descriptionProp ?? (
+  lang === 'ko'
+    ? '2026 기후시민회의 모더레이터 아카이브 및 다국어 위키'
+    : "2026 Korea Climate Citizens’ Assembly — Moderator Archive & Multilingual Wiki"
+);
+
+// Resolve canonicalPath alias
+const canonicalPath: string | undefined = canonicalPathProp;
+
+// ---------------------------------------------------------------------------
+// Derived values
+// ---------------------------------------------------------------------------
+const pathname: string = canonicalPath ?? Astro.url.pathname;
+// Ensure trailing slash (Astro static site convention)
+const canonicalUrl = `${SITE_URL}${pathname.endsWith('/') ? pathname : pathname + '/'}`;
+
+// hreflang links: emit for each alternate language that exists for this page.
+// Design §5.2: also emit x-default pointing to ko version.
+const hreflangLinks = alternateLangs.map((altLang: string) => {
+  const altPath = canonicalPath
+    ? canonicalPath.replace(/^\/(ko|en)\//, `/${altLang}/`)
+    : Astro.url.pathname.replace(/^\/(ko|en)\//, `/${altLang}/`);
+  const altUrl = `${SITE_URL}${altPath.endsWith('/') ? altPath : altPath + '/'}`;
+  return { lang: altLang, url: altUrl };
+});
+
+// x-default points to ko
+const defaultUrl = hreflangLinks.find((l: { lang: string; url: string }) => l.lang === 'ko')?.url ?? canonicalUrl;
+
+const siteTitleSuffix = lang === 'ko' ? '기후시민회의 Wiki' : 'Korea Climate Assembly Wiki';
+const fullTitle = `${title} | ${siteTitleSuffix}`;
+---
+<!doctype html>
+<html lang={lang} dir="ltr" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Primary meta -->
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+
+    <!-- Canonical -->
+    <link rel="canonical" href={canonicalUrl} />
+
+    <!-- hreflang (Design §5.2) -->
+    {hreflangLinks.length > 1 && hreflangLinks.map((l) => (
+      <link rel="alternate" hreflang={l.lang} href={l.url} />
+    ))}
+    {hreflangLinks.length > 1 && (
+      <link rel="alternate" hreflang="x-default" href={defaultUrl} />
+    )}
+
+    <!-- Open Graph -->
+    <meta property="og:type" content={ogType} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:locale" content={lang === 'ko' ? 'ko_KR' : 'en_US'} />
+    <meta property="og:site_name" content={siteTitleSuffix} />
+
+    <!-- Sitemap -->
+    <link rel="sitemap" href="/sitemap-index.xml" />
+
+    <!-- Pagefind search (loaded async on demand via search overlay) -->
+    <!-- Pagefind UI script is injected by the search page; no bundle here. -->
+
+    <!-- Structured data (Article schema — passed by child layouts) -->
+    {ldJson && (
+      <script type="application/ld+json" set:html={ldJson} />
+    )}
+
+    <!-- Theme: apply dark class before paint to avoid flash -->
+    <script is:inline>
+      (function () {
+        const stored = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (stored === 'dark' || (!stored && prefersDark)) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+  </head>
+
+  <body class="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-200">
+
+    <!-- A11y skip link (Design §5.3, §3.4) -->
+    <a
+      href="#main-content"
+      class="skip-link sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:dark:bg-gray-900 focus:border-2 focus:border-green-600 focus:rounded focus:text-green-800 focus:dark:text-green-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+    >
+      {lang === 'ko' ? '본문으로 건너뛰기' : 'Skip to main content'}
+    </a>
+
+    <!-- Site header (Group B — SiteHeader.astro) -->
+    <SiteHeader lang={lang} />
+
+    <!-- Main landmark -->
+    <main id="main-content" tabindex="-1">
+      <slot />
+    </main>
+
+    <!-- Site footer (Group B — SiteFooter.astro) -->
+    <SiteFooter lang={lang} />
+
+  </body>
+</html>

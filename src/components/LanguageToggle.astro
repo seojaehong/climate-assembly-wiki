@@ -1,0 +1,58 @@
+---
+/**
+ * LanguageToggle.astro — B3
+ * Switches between ko and en using <a> tags (no-JS fallback, Design §3.3).
+ *
+ * M3: renders exactly two options — 한국어 / English.
+ * The active language is highlighted with aria-current="true".
+ *
+ * NOTE — M4 expansion:
+ * When ja/zh/es are added to astro.config.mjs locales, uncomment the M4 block below
+ * and add the corresponding <a> elements.
+ * <!-- M4: add ja/zh/es here -->
+ *
+ * client:load note: this is a pure .astro component using <a> tags.
+ * No framework island is needed; the links resolve with zero JS.
+ */
+
+// Detect the current lang from the URL path segment
+const currentUrl = Astro.url.pathname;
+const segments = currentUrl.split('/').filter(Boolean);
+const currentLang = (['ko', 'en'].includes(segments[0])) ? segments[0] : 'ko';
+
+function buildUrl(targetLang: string): string {
+  const segs = currentUrl.split('/').filter(Boolean);
+  if (segs[0] && ['ko', 'en'].includes(segs[0])) {
+    segs[0] = targetLang;
+  } else {
+    segs.unshift(targetLang);
+  }
+  return '/' + segs.join('/');
+}
+
+const langs = [
+  { code: 'ko', label: '한국어' },
+  { code: 'en', label: 'English' },
+  // M4: add { code: 'ja', label: '日本語' },
+  // M4: add { code: 'zh', label: '中文' },
+  // M4: add { code: 'es', label: 'Español' },
+];
+---
+
+<nav aria-label="Language / 언어" class="language-toggle flex items-center gap-1">
+  {langs.map((l) => (
+    <a
+      href={buildUrl(l.code)}
+      hreflang={l.code}
+      aria-current={l.code === currentLang ? 'true' : undefined}
+      class={[
+        'text-xs px-2 py-1 rounded border transition-colors',
+        l.code === currentLang
+          ? 'border-green-600 bg-green-600 text-white dark:border-green-400 dark:bg-green-700 dark:text-white font-semibold'
+          : 'border-gray-300 text-gray-700 hover:border-green-500 hover:text-green-700 dark:border-gray-600 dark:text-gray-300 dark:hover:border-green-400 dark:hover:text-green-300',
+      ].join(' ')}
+    >
+      {l.label}
+    </a>
+  ))}
+</nav>

@@ -1,0 +1,89 @@
+---
+/**
+ * SiteSidebar.astro — B5
+ * Section navigation sidebar (Design §3.5).
+ *
+ * Rendered on: agenda, session, doc page layouts.
+ * NOT shown on: home, glossary, downloads, search.
+ *
+ * Items are built from SIDEBAR_SECTIONS static array (not getCollection calls).
+ * Active item is detected via URL pathname match.
+ */
+
+import { SIDEBAR_SECTIONS } from '../data/navigation';
+
+// Detect current lang and path for active-item highlighting
+const currentUrl = Astro.url.pathname;
+const segments = currentUrl.split('/').filter(Boolean);
+const currentLang = (['ko', 'en'].includes(segments[0])) ? segments[0] : 'ko';
+
+// e.g. "/ko/agenda/01-nuclear-vs-renewable" → "agenda/01-nuclear-vs-renewable"
+const currentPath = segments.slice(1).join('/');
+
+function isActive(itemPath: string): boolean {
+  return currentPath === itemPath || currentPath.startsWith(itemPath + '/');
+}
+---
+
+<nav
+  aria-label={currentLang === 'ko' ? '섹션 탐색' : 'Section navigation'}
+  class="site-sidebar w-64 shrink-0 text-sm"
+>
+  {SIDEBAR_SECTIONS.map((section) => (
+    <div class="sidebar-section mb-6">
+      <!-- Section heading links to the section index -->
+      <a
+        href={`/${currentLang}/${section.id}/`}
+        class="sidebar-section-heading block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 hover:text-green-700 dark:hover:text-green-400 mb-2 px-2"
+      >
+        {currentLang === 'ko' ? section.labelKo : section.labelEn}
+      </a>
+
+      <ul class="space-y-0.5">
+        {/* Group by 'group' field if present (agenda items) */}
+        {(() => {
+          const groups: string[] = [];
+          section.items.forEach((item) => {
+            const g = item.group ?? '';
+            if (!groups.includes(g)) groups.push(g);
+          });
+
+          return groups.map((group) => {
+            const groupItems = section.items.filter((i) => (i.group ?? '') === group);
+            return (
+              <>
+                {group && (
+                  <li
+                    class="text-xs font-semibold text-gray-400 dark:text-gray-500 px-2 pt-2 pb-0.5 uppercase tracking-wide"
+                    aria-label={group}
+                  >
+                    [{group}]
+                  </li>
+                )}
+                {groupItems.map((item) => {
+                  const active = isActive(item.path);
+                  return (
+                    <li>
+                      <a
+                        href={`/${currentLang}/${item.path}/`}
+                        aria-current={active ? 'page' : undefined}
+                        class={[
+                          'block px-2 py-1 rounded transition-colors',
+                          active
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 font-medium'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-green-700 dark:hover:text-green-400',
+                        ].join(' ')}
+                      >
+                        {currentLang === 'ko' ? item.labelKo : item.labelEn}
+                      </a>
+                    </li>
+                  );
+                })}
+              </>
+            );
+          });
+        })()}
+      </ul>
+    </div>
+  ))}
+</nav>

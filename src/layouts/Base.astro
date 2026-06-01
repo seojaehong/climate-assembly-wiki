@@ -1,4 +1,13 @@
 ---
+/**
+ * @deprecated GAP-3 (site-composition.analysis.md, 2026-05-31)
+ * Transitional layout — superseded by BaseLayout.astro (Group C, Design §3.4).
+ * sessions/[n].astro has migrated to BaseLayout. The remaining 9 pages
+ * (about, [lang]/index, agenda/[slug], agenda/index, downloads, glossary,
+ * doc/[slug], search, tools/en-roads/[...slug]) will migrate in a follow-up
+ * pass; this file is preserved until that migration completes.
+ * Do NOT add new imports of Base.astro — use BaseLayout.astro.
+ */
 import '../styles/global.css';
 import LanguageSwitcher from '../components/LanguageSwitcher.astro';
 

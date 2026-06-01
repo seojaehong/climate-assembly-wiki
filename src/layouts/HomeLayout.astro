@@ -1,0 +1,41 @@
+---
+/**
+ * HomeLayout.astro — Home page layout: no sidebar, hero + card grids.
+ * Design §4 Group C (C4). Composes BaseLayout.
+ *
+ * Used by: src/pages/[lang]/index.astro
+ * Does NOT render SiteSidebar (home page is full-width, Design §3.5).
+ */
+
+import BaseLayout from './BaseLayout.astro';
+
+// ---------------------------------------------------------------------------
+// Props
+// ---------------------------------------------------------------------------
+export interface Props {
+  /** Page title passed through to BaseLayout <title> */
+  title: string;
+  /** Current page language */
+  lang: string;
+  /** Optional meta description override */
+  description?: string;
+}
+
+const { title, lang, description } = Astro.props;
+
+// Home page has both ko and en versions
+const alternateLangs = ['ko', 'en'];
+---
+<BaseLayout
+  title={title}
+  lang={lang}
+  description={description}
+  alternateLangs={alternateLangs}
+  canonicalPath={`/${lang}/`}
+  ogType="website"
+>
+  <!-- Full-width container for hero and card grid sections -->
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <slot />
+  </div>
+</BaseLayout>

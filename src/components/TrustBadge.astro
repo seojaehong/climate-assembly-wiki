@@ -1,0 +1,70 @@
+---
+/**
+ * TrustBadge.astro — B1
+ * Renders a trust/translation-status badge (Design §3.1 + D5).
+ *
+ * 4-tier visual system:
+ *   machine        → Amber  ⚠  "Machine draft"
+ *   reviewed       → Blue   ◉  "LLM-reviewed"
+ *   native         → Emerald ✓  "Native-verified"
+ *   author-verified → Green  ✓✓ "Author-verified"
+ */
+
+interface Props {
+  status: 'machine' | 'reviewed' | 'native' | 'author-verified';
+  /** Display language for label text. Defaults to Astro's current locale. */
+  lang?: string;
+}
+
+const { status, lang = 'ko' } = Astro.props;
+
+// Tailwind classes MUST be complete literal strings (Tailwind v4 JIT cannot see interpolations)
+const CONFIG = {
+  machine: {
+    classes: 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-600',
+    icon: '⚠',
+    labelKo: 'Machine draft',
+    labelEn: 'Machine draft',
+    ariaKo: '기계 번역 초안',
+    ariaEn: 'Machine-generated draft, unreviewed',
+  },
+  reviewed: {
+    classes: 'bg-blue-100 text-blue-800 border border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-600',
+    icon: '◉',
+    labelKo: 'LLM-reviewed',
+    labelEn: 'LLM-reviewed',
+    ariaKo: 'LLM 검토 완료',
+    ariaEn: 'LLM-assisted, moderator reviewed',
+  },
+  native: {
+    classes: 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-600',
+    icon: '✓',
+    labelKo: 'Native-verified',
+    labelEn: 'Native-verified',
+    ariaKo: '원어민 검증',
+    ariaEn: 'Reviewed by native speaker',
+  },
+  'author-verified': {
+    classes: 'bg-green-100 text-green-900 border-2 border-green-500 font-semibold dark:bg-green-900/30 dark:text-green-200 dark:border-green-400',
+    icon: '✓✓',
+    labelKo: 'Author-verified',
+    labelEn: 'Author-verified',
+    ariaKo: '저자 직접 검증',
+    ariaEn: 'Author-verified — highest grade',
+  },
+} as const;
+
+const cfg = CONFIG[status];
+const isKo = lang === 'ko';
+const label = isKo ? cfg.labelKo : cfg.labelEn;
+const ariaLabel = isKo ? cfg.ariaKo : cfg.ariaEn;
+---
+
+<span
+  class={`trust-badge trust-badge--${status} inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded ${cfg.classes}`}
+  role="img"
+  aria-label={ariaLabel}
+>
+  <span aria-hidden="true">{cfg.icon}</span>
+  {label}
+</span>

@@ -1,0 +1,36 @@
+---
+/**
+ * TranslationFallbackBanner.astro — B9
+ * Shown when an EN page falls back to KO content via Astro i18n fallbackType:'rewrite'.
+ * The URL remains at /en/... (not redirected), so this banner fires correctly (Design §1.3, §3.9).
+ *
+ * Placement: above main content in page layouts, rendered only when targetLang !== 'ko'.
+ */
+
+interface Props {
+  /** The language that was requested but has no translation (e.g. 'en') */
+  targetLang: string;
+}
+
+const { targetLang } = Astro.props;
+
+// Derive the home URL for the requested language
+const homeUrl = `/${targetLang}/`;
+---
+
+<div
+  role="alert"
+  class="fallback-banner flex items-center gap-3 bg-amber-50 border border-amber-300 text-amber-900 rounded px-4 py-3 text-sm dark:bg-amber-900/20 dark:border-amber-600 dark:text-amber-200"
+>
+  <span aria-hidden="true" class="text-base">⚠</span>
+  <span>
+    This page is not yet available in English. You are viewing the Korean original.
+    {' '}
+    <a
+      href={homeUrl}
+      class="underline hover:text-amber-700 dark:hover:text-amber-100 font-medium"
+    >
+      Return to English home
+    </a>
+  </span>
+</div>

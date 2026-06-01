@@ -1,0 +1,78 @@
+---
+/**
+ * LicenseBadge.astro — B2
+ * Renders a license badge with link to the canonical license text (Design §3.2 + §1.5).
+ *
+ * Variants:
+ *   CC-BY-SA-4.0         → default wiki pages
+ *   CC-BY-4.0            → En-ROADS originals (Climate Interactive)
+ *   CC-BY-NC-SA-3.0-IGO  → OECD evaluation summaries (non-commercial only)
+ *   all-rights-reserved  → official documents (link-only, no download)
+ */
+
+interface Props {
+  license: 'CC-BY-SA-4.0' | 'CC-BY-4.0' | 'CC-BY-NC-SA-3.0-IGO' | 'all-rights-reserved';
+  /** Required only for all-rights-reserved variant */
+  orgName?: string;
+}
+
+const { license, orgName } = Astro.props;
+
+const CONFIG = {
+  'CC-BY-SA-4.0': {
+    text: 'CC BY-SA 4.0',
+    href: 'https://creativecommons.org/licenses/by-sa/4.0/',
+    classes: 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600',
+    notice: null as string | null,
+  },
+  'CC-BY-4.0': {
+    text: 'CC BY 4.0',
+    href: 'https://creativecommons.org/licenses/by/4.0/',
+    classes: 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600',
+    notice: null as string | null,
+  },
+  'CC-BY-NC-SA-3.0-IGO': {
+    text: '© OECD / CC BY-NC-SA 3.0 IGO',
+    href: 'https://www.oecd.org/termsandconditions/',
+    classes: 'bg-orange-50 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-600',
+    notice: 'This summary is derived from OECD materials under CC BY-NC-SA 3.0 IGO. Non-commercial use only.' as string | null,
+  },
+  'all-rights-reserved': {
+    text: '',  // computed below
+    href: null as string | null,
+    classes: 'bg-red-50 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-600',
+    notice: null as string | null,
+  },
+} as const;
+
+const cfg = CONFIG[license];
+const displayText = license === 'all-rights-reserved'
+  ? `© ${orgName ?? 'All rights reserved'}`
+  : cfg.text;
+---
+
+<span class="license-badge inline-flex flex-col gap-1">
+  {cfg.href ? (
+    <a
+      href={cfg.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      class={`inline-flex items-center text-xs px-2 py-0.5 rounded border ${cfg.classes} hover:underline`}
+      aria-label={`License: ${displayText} (opens in new tab)`}
+    >
+      {displayText}
+    </a>
+  ) : (
+    <span
+      class={`inline-flex items-center text-xs px-2 py-0.5 rounded border ${cfg.classes}`}
+      aria-label={`License: ${displayText}`}
+    >
+      {displayText}
+    </span>
+  )}
+  {cfg.notice && (
+    <p class="license-notice text-xs text-orange-700 dark:text-orange-300 mt-1">
+      {cfg.notice}
+    </p>
+  )}
+</span>

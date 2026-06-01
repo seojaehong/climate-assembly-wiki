@@ -1,0 +1,198 @@
+---
+/**
+ * DocLayout.astro — Layout for doc collection pages.
+ * Design §4 Group C (C3): Same structure as AgendaLayout.
+ *
+ * Covers all doc_type values (brief, reference, guide, report, analysis,
+ * tool, method, case, matrix, download-index — Design §2.2 D3 extension).
+ *
+ * Used by: src/pages/[lang]/doc/[slug].astro
+ *
+ * Group B components (parallel development):
+ *   SiteSidebar, TrustBadge, LicenseBadge, TranslationFallbackBanner
+ */
+
+import BaseLayout from './BaseLayout.astro';
+import SiteSidebar from '../components/SiteSidebar.astro';
+import TrustBadge from '../components/TrustBadge.astro';
+import LicenseBadge from '../components/LicenseBadge.astro';
+import TranslationFallbackBanner from '../components/TranslationFallbackBanner.astro';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+type TrustStatus = 'machine' | 'reviewed' | 'native' | 'author-verified';
+type LicenseValue = 'CC-BY-SA-4.0' | 'CC-BY-4.0' | 'CC-BY-NC-SA-3.0-IGO' | 'all-rights-reserved';
+
+/** Doc types — mirrors config.ts doc_type enum (D3 extension) */
+type DocType =
+  | 'brief'
+  | 'reference'
+  | 'guide'
+  | 'report'
+  | 'analysis'
+  | 'tool'
+  | 'method'
+  | 'case'
+  | 'matrix'
+  | 'download-index';
+
+// ---------------------------------------------------------------------------
+// Props
+// ---------------------------------------------------------------------------
+export interface Props {
+  /** Page title */
+  title: string;
+  /** Current page language */
+  lang: string;
+  /** Meta description */
+  description?: string;
+  /** Trust/translation status for TrustBadge */
+  trustLabel?: TrustStatus;
+  /**
+   * License for LicenseBadge.
+   * Note: OECD report pages use 'CC-BY-NC-SA-3.0-IGO' (Design §1.5, §3.2).
+   * Download-index pages typically use 'CC-BY-SA-4.0'.
+   */
+  license?: LicenseValue;
+  /** Alternate languages with real translations */
+  alternateLangs?: string[];
+  /** Canonical path override */
+  canonicalPath?: string;
+  /** Source Korean page URL (fallback display) */
+  sourceKorean?: string;
+  /** True when displaying fallback content */
+  isFallback?: boolean;
+  /** Organisation name for 'all-rights-reserved' license */
+  orgName?: string;
+  /**
+   * Doc type — used to render a contextual type label and to apply
+   * OECD-specific licensing notice (Design §3.2, §1.5).
+   */
+  docType?: DocType;
+  /**
+   * Frontmatter data for JSON-LD schema construction.
+   */
+  frontmatter?: {
+    last_updated?: string;
+    doc_type?: DocType;
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Resolve props
+// ---------------------------------------------------------------------------
+const {
+  title,
+  lang,
+  description,
+  trustLabel = 'author-verified',
+  license = 'CC-BY-SA-4.0',
+  alternateLangs = ['ko'],
+  canonicalPath,
+  sourceKorean,
+  isFallback = false,
+  orgName,
+  docType,
+  frontmatter,
+} = Astro.props;
+
+// Effective doc type (prop takes priority over frontmatter)
+// Used for future conditional rendering (e.g. download-index specific UI).
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _effectiveDocType = docType ?? frontmatter?.doc_type;
+
+// OECD-specific notice: shown when license is CC-BY-NC-SA-3.0-IGO (Design §3.2)
+const showOecdNotice = license === 'CC-BY-NC-SA-3.0-IGO';
+
+// ---------------------------------------------------------------------------
+// JSON-LD Article schema (Design §5.2)
+// ---------------------------------------------------------------------------
+const articleSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  name: title,
+  ...(description && { description }),
+  inLanguage: lang,
+  author: {
+    '@type': 'Person',
+    name: 'Jaehong Seo',
+  },
+  publisher: {
+    '@type': 'Organization',
+    name: 'Korea Climate Assembly Wiki',
+  },
+  ...(frontmatter?.last_updated && { dateModified: frontmatter.last_updated }),
+  ...(canonicalPath && {
+    url: `https://climate-assembly-wiki.pages.dev${canonicalPath}`,
+  }),
+};
+
+const ldJson = JSON.stringify(articleSchema);
+---
+<BaseLayout
+  title={title}
+  lang={lang}
+  description={description}
+  alternateLangs={alternateLangs}
+  canonicalPath={canonicalPath}
+  ogType="article"
+  ldJson={ldJson}
+>
+  <!-- Translation fallback banner (Design §1.3, §3.9) -->
+  {isFallback && (
+    <TranslationFallbackBanner targetLang={lang} />
+  )}
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex gap-8">
+
+      <!-- Left sidebar -->
+      <aside class="hidden lg:block w-64 flex-shrink-0">
+        <SiteSidebar lang={lang} currentPath={Astro.url.pathname} />
+      </aside>
+
+      <!-- Main content area -->
+      <article class="flex-1 min-w-0">
+
+        <!-- Trust badge -->
+        {trustLabel && (
+          <div class="mb-3">
+            <TrustBadge status={trustLabel} lang={lang} />
+          </div>
+        )}
+
+        <!-- Page body slot -->
+        <div class="prose prose-green dark:prose-invert max-w-none">
+          <slot />
+        </div>
+
+        <!-- OECD license notice (Design §3.2) -->
+        {showOecdNotice && (
+          <p class="license-notice mt-6 text-sm text-gray-600 dark:text-gray-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded px-4 py-3">
+            {lang === 'ko'
+              ? 'CC BY-NC-SA 3.0 IGO 하에 OECD 자료를 요약한 페이지입니다. 비상업적 용도에 한해 사용 가능합니다.'
+              : 'This summary is derived from OECD materials under CC BY-NC-SA 3.0 IGO. Non-commercial use only.'}
+          </p>
+        )}
+
+        <!-- License badge footer -->
+        <footer class="mt-10 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <div class="flex flex-wrap items-center gap-4">
+            <LicenseBadge license={license} orgName={orgName} />
+            {sourceKorean && lang !== 'ko' && (
+              <a
+                href={sourceKorean}
+                class="text-sm text-gray-500 dark:text-gray-400 hover:text-green-700 dark:hover:text-green-400 hover:underline"
+              >
+                {lang === 'en' ? '← Korean source' : '← 한국어 원문'}
+              </a>
+            )}
+          </div>
+        </footer>
+
+      </article>
+    </div>
+  </div>
+</BaseLayout>

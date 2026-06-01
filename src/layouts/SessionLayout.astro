@@ -1,0 +1,242 @@
+---
+/**
+ * SessionLayout.astro — Layout for individual session pages.
+ * Design §4 Group C (C2): Same structure as AgendaLayout + session metadata (order, date).
+ *
+ * Used by: src/pages/[lang]/sessions/[n].astro
+ *
+ * Group B components (parallel development):
+ *   SiteSidebar, TrustBadge, LicenseBadge, TranslationFallbackBanner
+ */
+
+import BaseLayout from './BaseLayout.astro';
+import SiteSidebar from '../components/SiteSidebar.astro';
+import TrustBadge from '../components/TrustBadge.astro';
+import LicenseBadge from '../components/LicenseBadge.astro';
+import TranslationFallbackBanner from '../components/TranslationFallbackBanner.astro';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+type TrustStatus = 'machine' | 'reviewed' | 'native' | 'author-verified';
+type LicenseValue = 'CC-BY-SA-4.0' | 'CC-BY-4.0' | 'CC-BY-NC-SA-3.0-IGO' | 'all-rights-reserved';
+
+/** Session type labels — mirrors config.ts session_type enum */
+type SessionType = 'kickoff' | 'lecture' | 'discussion' | 'recommendation' | 'event' | 'closing';
+
+// ---------------------------------------------------------------------------
+// Props
+// ---------------------------------------------------------------------------
+export interface Props {
+  /** Page title */
+  title: string;
+  /** Current page language */
+  lang: string;
+  /** Meta description */
+  description?: string;
+  /** Trust/translation status for TrustBadge */
+  trustLabel?: TrustStatus;
+  /** License for LicenseBadge */
+  license?: LicenseValue;
+  /** Alternate languages with real translations */
+  alternateLangs?: string[];
+  /** Canonical path override */
+  canonicalPath?: string;
+  /** Source Korean page URL (fallback display) */
+  sourceKorean?: string;
+  /** True when displaying fallback content */
+  isFallback?: boolean;
+  /** Organisation name for 'all-rights-reserved' license */
+  orgName?: string;
+
+  // ── Session-specific metadata (Design §4 C2) ──────────────────────────
+  /**
+   * Ordinal session number (1–9).
+   * Displayed in the session metadata strip above the main content.
+   * From session frontmatter `order` field (Blocker 1 fix, Design §2.2).
+   */
+  sessionOrder?: number;
+  /** ISO date string of the session (YYYY-MM-DD) */
+  sessionDate?: string;
+  /** Session type (controls label text in metadata strip) */
+  sessionType?: SessionType;
+  /** Speaker name (optional — for lecture sessions) */
+  speaker?: string;
+  /** Speaker affiliation (optional) */
+  affiliation?: string;
+  /**
+   * Frontmatter data for JSON-LD schema construction.
+   */
+  frontmatter?: {
+    last_updated?: string;
+    agendas_discussed?: number[];
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Resolve props
+// ---------------------------------------------------------------------------
+const {
+  title,
+  lang,
+  description,
+  trustLabel = 'author-verified',
+  license = 'CC-BY-SA-4.0',
+  alternateLangs = ['ko'],
+  canonicalPath,
+  sourceKorean,
+  isFallback = false,
+  orgName,
+  sessionOrder,
+  sessionDate,
+  sessionType,
+  speaker,
+  affiliation,
+  frontmatter,
+} = Astro.props;
+
+// ---------------------------------------------------------------------------
+// Session type label localisation
+// ---------------------------------------------------------------------------
+const SESSION_TYPE_LABELS: Record<SessionType, { ko: string; en: string }> = {
+  kickoff:        { ko: '발대식',     en: 'Kickoff' },
+  lecture:        { ko: '강의',       en: 'Lecture' },
+  discussion:     { ko: '토론',       en: 'Discussion' },
+  recommendation: { ko: '권고안 수립', en: 'Recommendations' },
+  event:          { ko: '행사',       en: 'Event' },
+  closing:        { ko: '폐막식',     en: 'Closing' },
+};
+
+const sessionTypeLabel = sessionType
+  ? SESSION_TYPE_LABELS[sessionType]?.[lang as 'ko' | 'en'] ?? sessionType
+  : undefined;
+
+// Format date for display
+const formattedDate = sessionDate
+  ? new Date(sessionDate).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  : undefined;
+
+// ---------------------------------------------------------------------------
+// JSON-LD Article schema (Design §5.2)
+// ---------------------------------------------------------------------------
+const articleSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  name: title,
+  ...(description && { description }),
+  inLanguage: lang,
+  author: {
+    '@type': 'Person',
+    name: 'Jaehong Seo',
+  },
+  publisher: {
+    '@type': 'Organization',
+    name: 'Korea Climate Assembly Wiki',
+  },
+  ...(frontmatter?.last_updated && { dateModified: frontmatter.last_updated }),
+  ...(sessionDate && { datePublished: sessionDate }),
+  ...(canonicalPath && {
+    url: `https://climate-assembly-wiki.pages.dev${canonicalPath}`,
+  }),
+};
+
+const ldJson = JSON.stringify(articleSchema);
+---
+<BaseLayout
+  title={title}
+  lang={lang}
+  description={description}
+  alternateLangs={alternateLangs}
+  canonicalPath={canonicalPath}
+  ogType="article"
+  ldJson={ldJson}
+>
+  <!-- Translation fallback banner (Design §1.3, §3.9) -->
+  {isFallback && (
+    <TranslationFallbackBanner targetLang={lang} />
+  )}
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex gap-8">
+
+      <!-- Left sidebar -->
+      <aside class="hidden lg:block w-64 flex-shrink-0">
+        <SiteSidebar lang={lang} currentPath={Astro.url.pathname} />
+      </aside>
+
+      <!-- Main content area -->
+      <article class="flex-1 min-w-0">
+
+        <!-- Session metadata strip (Design §4 C2 — session-specific metadata) -->
+        {(sessionOrder !== undefined || sessionDate || sessionType) && (
+          <div
+            class="mb-4 flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg px-4 py-3 border border-gray-200 dark:border-gray-700"
+            aria-label={lang === 'ko' ? '회차 정보' : 'Session information'}
+          >
+            {sessionOrder !== undefined && (
+              <span class="font-semibold text-green-800 dark:text-green-400">
+                {lang === 'ko' ? `${sessionOrder}차` : `Session ${sessionOrder}`}
+              </span>
+            )}
+            {sessionDate && (
+              <>
+                <span class="text-gray-300 dark:text-gray-600" aria-hidden="true">·</span>
+                <time datetime={sessionDate}>{formattedDate}</time>
+              </>
+            )}
+            {sessionTypeLabel && (
+              <>
+                <span class="text-gray-300 dark:text-gray-600" aria-hidden="true">·</span>
+                <span>{sessionTypeLabel}</span>
+              </>
+            )}
+            {speaker && (
+              <>
+                <span class="text-gray-300 dark:text-gray-600" aria-hidden="true">·</span>
+                <span>
+                  {speaker}
+                  {affiliation && (
+                    <span class="text-gray-400 dark:text-gray-500"> ({affiliation})</span>
+                  )}
+                </span>
+              </>
+            )}
+          </div>
+        )}
+
+        <!-- Trust badge -->
+        {trustLabel && (
+          <div class="mb-3">
+            <TrustBadge status={trustLabel} lang={lang} />
+          </div>
+        )}
+
+        <!-- Page body slot -->
+        <div class="prose prose-green dark:prose-invert max-w-none">
+          <slot />
+        </div>
+
+        <!-- License badge footer -->
+        <footer class="mt-10 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <div class="flex flex-wrap items-center gap-4">
+            <LicenseBadge license={license} orgName={orgName} />
+            {sourceKorean && lang !== 'ko' && (
+              <a
+                href={sourceKorean}
+                class="text-sm text-gray-500 dark:text-gray-400 hover:text-green-700 dark:hover:text-green-400 hover:underline"
+              >
+                {lang === 'en' ? '← Korean source' : '← 한국어 원문'}
+              </a>
+            )}
+          </div>
+        </footer>
+
+      </article>
+    </div>
+  </div>
+</BaseLayout>
