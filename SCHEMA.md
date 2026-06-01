@@ -142,4 +142,22 @@ Before any subagent's PR is merged, PM verifies:
 `kickoff` | `lecture` | `discussion` | `recommendation` | `event` | `closing`
 
 ### 5.4 Doc Types
-`brief` | `reference` | `guide` | `report` | `analysis`
+
+Original (M0): `brief` | `reference` | `guide` | `report` | `analysis`
+
+D3 additions (Design §2.2, 2026-05-31):
+
+| Value | Purpose |
+|---|---|
+| `brief` | Moderator-brief and similar short advisory docs |
+| `reference` | Moderator-sources, reference libraries |
+| `guide` | Moderator guide, how-to documents |
+| `report` | OECD evaluation summary and similar reports |
+| `analysis` | Gyeonggi-case, ssp-beyond, deep-dive analyses |
+| `tool` [D3] | En-ROADS comprehensive guide wiki page |
+| `method` [D3] | Ministry-matrix, OECD evaluation methodology |
+| `case` [D3] | Gyeonggi case, international precedent cases |
+| `matrix` [D3] | Agenda-matrix, ministry-matrix structured tables |
+| `download-index` [D3] | Downloads hub page (`content/ko/doc/downloads.md`) |
+
+Note: `gyeonggi-case.md` currently uses `analysis`. It may be re-tagged to `case` when Group H content migration occurs (H4 task). Both values are now valid.

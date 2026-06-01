@@ -4,18 +4,25 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "astro dev",
+    "prebuild": "npm run wiki:reindex && npm run wiki:log",
     "build": "astro build",
     "preview": "astro preview",
-    "check": "astro check"
+    "check": "astro check",
+    "wiki:reindex": "node scripts/build-index.mjs",
+    "wiki:log": "node scripts/append-log.mjs"
   },
   "dependencies": {
-    "astro": "^5.8.1",
+    "@astrojs/check": "^0.9.9",
     "@astrojs/sitemap": "^3.2.1",
+    "@tailwindcss/vite": "^4.1.6",
+    "astro": "^5.8.1",
     "astro-pagefind": "^1.7.0",
-    "tailwindcss": "^4.1.6",
-    "@tailwindcss/vite": "^4.1.6"
+    "gray-matter": "^4.0.3",
+    "marked": "^18.0.4",
+    "tailwindcss": "^4.1.6"
   },
   "devDependencies": {
-    "typescript": "^5.7.0"
+    "@rollup/plugin-yaml": "^5.0.0",
+    "typescript": "^5.9.3"
   }
 }

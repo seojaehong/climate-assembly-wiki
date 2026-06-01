@@ -53,6 +53,13 @@ const session = defineCollection({
     speaker: z.string().optional(),
     affiliation: z.string().optional(),
     agendas_discussed: z.array(z.number().int()).default([]),
+    // Blocker 1 fix (Design §2.2): ordinal session number for /sessions/{n}/ URL resolution.
+    // Used by src/pages/[lang]/sessions/[n].astro via getCollection('session').find(e => e.data.order === Number(n)).
+    order: z.number().int().min(1).optional(),
+    // GAP-1 fix (2026-05-31): supplementary/lecture sessions that don't take an `order` slot.
+    // `lecture_for` records which formal session date this lecture supports.
+    // Routing layers should ignore these entries (no order ⇒ not emitted by [n].astro getStaticPaths).
+    lecture_for: dateString.optional(),
     license: z.literal('CC-BY-SA-4.0'),
     last_updated: dateString,
     translations: translationsSchema,
@@ -65,7 +72,20 @@ const doc = defineCollection({
   schema: z.object({
     slug: z.string(),
     title: z.string(),
-    doc_type: z.enum(['brief', 'reference', 'guide', 'report', 'analysis']),
+    // D3 extension (Design §2.2): 5 new values added for tools/methods/cases collections
+    // that ride on the existing doc collection rather than adding new Astro collections.
+    doc_type: z.enum([
+      'brief',          // moderator-brief, etc.
+      'reference',      // moderator-sources
+      'guide',          // moderator-guide
+      'report',         // OECD evaluation summary
+      'analysis',       // gyeonggi-case, ssp-beyond
+      'tool',           // en-roads comprehensive guide (wiki page)
+      'method',         // ministry-matrix
+      'case',           // gyeonggi-case (re-tag from analysis)
+      'matrix',         // agenda-matrix
+      'download-index', // downloads hub page
+    ]),
     order: z.number().int(),
     license: z.literal('CC-BY-SA-4.0'),
     last_updated: dateString,
