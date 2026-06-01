@@ -72,7 +72,7 @@ const {
   title,
   lang,
   description: descriptionProp,
-  alternateLangs = ['ko'] as string[],
+  alternateLangs = ['ko', 'en', 'ja', 'zh', 'es'] as string[],
   canonicalPath: canonicalPathProp,
   contentLang: _contentLang,
   ogType = 'website' as 'website' | 'article',
@@ -100,8 +100,8 @@ const canonicalUrl = `${SITE_URL}${pathname.endsWith('/') ? pathname : pathname 
 // Design §5.2: also emit x-default pointing to ko version.
 const hreflangLinks = alternateLangs.map((altLang: string) => {
   const altPath = canonicalPath
-    ? canonicalPath.replace(/^\/(ko|en)\//, `/${altLang}/`)
-    : Astro.url.pathname.replace(/^\/(ko|en)\//, `/${altLang}/`);
+    ? canonicalPath.replace(/^\/(ko|en|ja|zh|es)\//, `/${altLang}/`)
+    : Astro.url.pathname.replace(/^\/(ko|en|ja|zh|es)\//, `/${altLang}/`);
   const altUrl = `${SITE_URL}${altPath.endsWith('/') ? altPath : altPath + '/'}`;
   return { lang: altLang, url: altUrl };
 });

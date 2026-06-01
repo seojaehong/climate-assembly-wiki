@@ -2,6 +2,9 @@
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
+2026-06-01 22:32 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 22:31 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 22:30 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-01 21:51 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-01 21:51 | update | content/ko/doc/realtime-tools-for-moderators.md | 모더레이팅 실시간 도구 가이드 (16종 + 권장 조합) (last_updated: 2026-06-01)
 2026-06-01 21:50 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run

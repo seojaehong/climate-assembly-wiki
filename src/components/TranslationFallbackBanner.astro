@@ -27,7 +27,53 @@ const { targetLang, currentPath } = Astro.props;
 const koPath = currentPath
   ? currentPath.replace(/^\/[a-z]{2}(\/|$)/, '/ko$1')
   : '/ko/';
+// EN equivalent of the current page (used for ja/zh/es structural banner)
+const enPath = currentPath
+  ? currentPath.replace(/^\/[a-z]{2}(\/|$)/, '/en$1')
+  : '/en/';
+
+// M4 (2026-06-01): ja/zh/es are structural-only locales.
+// They serve EN/KO content but exist for SEO/hreflang/shared-link discoverability.
+// Render a distinct promotional banner instead of the EN translation-fallback copy.
+const isStructuralLocale = ['ja', 'zh', 'es'].includes(targetLang);
 ---
+
+{isStructuralLocale ? (
+  <div
+    role="alert"
+    class="fallback-banner structural-locale-banner rounded-lg px-4 py-4 text-sm mb-6 flex items-start gap-3"
+    style="background: var(--color-info-bg); border: 1px solid var(--color-info); color: var(--color-fg);"
+    data-dismissable
+  >
+    <span aria-hidden="true" class="text-base shrink-0 mt-0.5">🌐</span>
+    <div class="space-y-2 flex-1 min-w-0">
+      <p>
+        <strong>This language version is structural only.</strong>
+        {' '}Full translation into {targetLang === 'ja' ? '日本語 (Japanese)' : targetLang === 'zh' ? '中文 (Chinese)' : 'Español (Spanish)'} is in progress.
+        {' '}The body text below is shown in English (or Korean) as a fallback.
+      </p>
+      <p class="text-xs" style="color: var(--color-fg-muted);">
+        View this page in
+        {' '}<a href={koPath} class="font-semibold underline hover:opacity-80" style="color: var(--color-accent);" lang="ko">한국어 (Korean)</a>
+        {' '} · {' '}
+        <a href={enPath} class="font-semibold underline hover:opacity-80" style="color: var(--color-accent);" lang="en">English</a>
+      </p>
+      <p class="text-xs" style="color: var(--color-fg-muted);">
+        Want to help translate?
+        {' '}
+        <a href={`${REPO}/issues/new?labels=translation,${targetLang}`} target="_blank" rel="noopener noreferrer" class="underline hover:opacity-80" style="color: var(--color-accent);">
+          Open a GitHub issue →
+        </a>
+      </p>
+    </div>
+    <button
+      type="button"
+      aria-label="Dismiss"
+      class="shrink-0 text-base opacity-60 hover:opacity-100 transition-opacity"
+      onclick="this.parentElement?.remove()"
+    >✕</button>
+  </div>
+) : (
 
 <div
   role="alert"
@@ -75,3 +121,4 @@ const koPath = currentPath
     </div>
   </div>
 </div>
+)}

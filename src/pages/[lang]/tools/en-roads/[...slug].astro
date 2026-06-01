@@ -85,6 +85,22 @@ export async function getStaticPaths() {
     });
   }
 
+  // M4 (2026-06-01): structural ja/zh/es paths.
+  // Body content is the EN source (fallback). LanguageToggle + hreflang
+  // ensure these URLs exist and are discoverable for SEO. Translation lands later.
+  for (const structuralLang of ['ja', 'zh', 'es'] as const) {
+    for (const [key, rawContent] of Object.entries(enFiles)) {
+      if (key.includes('/originals/')) continue;
+      // fileKeyToSlug expects the prefix to match the lang used to build the path.
+      // Since enFiles keys carry the 'en' prefix, strip with 'en' here.
+      const slug = fileKeyToSlug(key, 'en');
+      paths.push({
+        params: { lang: structuralLang, slug: slug ?? undefined },
+        props: { rawContent: rawContent as string, lang: structuralLang, slug },
+      });
+    }
+  }
+
   return paths;
 }
 

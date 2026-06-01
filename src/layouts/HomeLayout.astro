@@ -29,8 +29,9 @@ export interface Props {
 
 const { title, lang, description, ldJson } = Astro.props;
 
-// Home page has both ko and en versions
-const alternateLangs = ['ko', 'en'];
+// Home page exists for all 5 locales (M4 2026-06-01).
+// ja/zh/es are structural-only — they render EN body content with a promotional banner.
+const alternateLangs = ['ko', 'en', 'ja', 'zh', 'es'];
 ---
 <BaseLayout
   title={title}

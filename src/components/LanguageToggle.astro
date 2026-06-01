@@ -18,11 +18,12 @@
 // Detect the current lang from the URL path segment
 const currentUrl = Astro.url.pathname;
 const segments = currentUrl.split('/').filter(Boolean);
-const currentLang = (['ko', 'en'].includes(segments[0])) ? segments[0] : 'ko';
+const SUPPORTED = ['ko', 'en', 'ja', 'zh', 'es'];
+const currentLang = (SUPPORTED.includes(segments[0])) ? segments[0] : 'ko';
 
 function buildUrl(targetLang: string): string {
   const segs = currentUrl.split('/').filter(Boolean);
-  if (segs[0] && ['ko', 'en'].includes(segs[0])) {
+  if (segs[0] && SUPPORTED.includes(segs[0])) {
     segs[0] = targetLang;
   } else {
     segs.unshift(targetLang);
@@ -35,9 +36,9 @@ function buildUrl(targetLang: string): string {
 const langs = [
   { code: 'ko', label: '한국어' },
   { code: 'en', label: 'English' },
-  // M4: add { code: 'ja', label: '日本語' },
-  // M4: add { code: 'zh', label: '中文' },
-  // M4: add { code: 'es', label: 'Español' },
+  { code: 'ja', label: '日本語' },
+  { code: 'zh', label: '中文' },
+  { code: 'es', label: 'Español' },
 ];
 ---
 

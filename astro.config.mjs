@@ -13,15 +13,14 @@ export default defineConfig({
     sitemap({
       i18n: {
         defaultLocale: 'ko',
-        // GAP-4 (2026-05-31): sync with i18n.locales below (ko/en only for M1–M3).
-        // M4 복귀 시 ja/zh/es를 아래 주석에서 복사해 재추가.
+        // M4 (2026-06-01): ja/zh/es restored as structural-only locales.
+        // Body content remains KO/EN until translation lands; URLs ship for SEO + hreflang.
         locales: {
           ko: 'ko-KR',
           en: 'en-US',
-          // M4 restore:
-          // ja: 'ja-JP',
-          // zh: 'zh-CN',
-          // es: 'es-ES',
+          ja: 'ja-JP',
+          zh: 'zh-CN',
+          es: 'es-ES',
         },
       },
     }),
@@ -31,13 +30,14 @@ export default defineConfig({
     plugins: [tailwindcss(), yaml()],
   },
   i18n: {
-    // M1–M3: ko and en only. ja/zh/es excluded per Decision ② (Design §1.1).
-    // M4: restore by adding 'ja', 'zh', 'es' to the array below and updating LanguageToggle.astro.
-    locales: ['ko', 'en'],
+    // M4 (2026-06-01): ja/zh/es restored. Structural-only — body content remains KO/EN.
+    // Each page's getStaticPaths emits routes for all 5 locales explicitly, so the
+    // built-in `fallback` config is not needed (would chain to defaultLocale=ko anyway).
+    locales: ['ko', 'en', 'ja', 'zh', 'es'],
     defaultLocale: 'ko',
     routing: {
       prefixDefaultLocale: true,      // /ko/ prefix always present
-      fallbackType: 'rewrite',        // Blocker 2 fix: missing EN page serves KO content at /en/ URL (no redirect)
+      fallbackType: 'rewrite',        // serves fallback content at requested URL (no redirect)
     },
   },
 });

@@ -1,0 +1,27 @@
+{
+  "_meta": {
+    "lang": "es",
+    "machine_draft": false,
+    "needs_native_review": true,
+    "notes": "M4 scaffold (2026-06-01). Empty values intentional — translation work owned by downstream agent. Do NOT machine-fill before native reviewer assignment."
+  },
+  "nav.home": "",
+  "nav.agendas": "",
+  "nav.sessions": "",
+  "nav.docs": "",
+  "nav.tools": "",
+  "nav.glossary": "",
+  "nav.downloads": "",
+  "nav.search": "",
+  "nav.about": "",
+  "common.skip_to_main": "",
+  "common.cite_this_page": "",
+  "common.last_updated": "",
+  "common.related_agendas": "",
+  "common.korean_source": "",
+  "trust.machine": "",
+  "trust.reviewed": "",
+  "trust.native": "",
+  "trust.author_verified": "",
+  "language_switcher.label": ""
+}

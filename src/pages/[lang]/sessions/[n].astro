@@ -24,7 +24,7 @@ import SessionLayout from '../../../layouts/SessionLayout.astro';
 // getStaticPaths — Blocker 1 fix
 // ---------------------------------------------------------------------------
 export async function getStaticPaths() {
-  const langs = ['ko', 'en'] as const; // M1–M3 only
+  const langs = ['ko', 'en', 'ja', 'zh', 'es'] as const; // M4 done 2026-06-01 (ja/zh/es structural)
   const sessionEntries = await getCollection('session');
 
   // Only emit paths for sessions that have an explicit `order` field.
@@ -56,7 +56,9 @@ const hasEnTranslation =
   entry.data.translations &&
   typeof (entry.data.translations as Record<string, unknown>)['en'] !== 'undefined';
 
-const showFallbackBanner = lang === 'en' && !hasEnTranslation;
+const showFallbackBanner =
+  (lang === 'en' && !hasEnTranslation) ||
+  (['ja', 'zh', 'es'].includes(lang));
 
 const translationStatus =
   lang !== 'ko' && entry.data.translations
@@ -70,7 +72,7 @@ const sessionLabel = lang === 'ko' ? `${n}차` : `Session ${n}`;
   lang={lang}
   trustLabel={translationStatus ?? 'author-verified'}
   license={entry.data.license as 'CC-BY-SA-4.0' | 'CC-BY-4.0' | 'CC-BY-NC-SA-3.0-IGO' | 'all-rights-reserved'}
-  alternateLangs={hasEnTranslation ? ['ko', 'en'] : ['ko']}
+  alternateLangs={['ko', 'en', 'ja', 'zh', 'es']}
   canonicalPath={`/${lang}/sessions/${n}/`}
   isFallback={showFallbackBanner}
   sourceKorean={`/ko/sessions/${n}/`}

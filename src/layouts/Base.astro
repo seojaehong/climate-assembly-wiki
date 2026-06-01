@@ -16,6 +16,20 @@ interface Props {
 }
 
 const { title, lang, description = '2026 기후시민회의 모더레이터 아카이브' } = Astro.props;
+
+// M4 (2026-06-01): emit hreflang for all 5 locales on Base-using pages too.
+// Base.astro is deprecated, but 9 pages still import it; SEO requires alternates
+// to ja/zh/es to ship even before migration to BaseLayout completes.
+const SITE_URL = (Astro.site?.toString() ?? 'https://climate-assembly-wiki.pages.dev').replace(/\/$/, '');
+const M4_LOCALES = ['ko', 'en', 'ja', 'zh', 'es'];
+const _path = Astro.url.pathname;
+const hreflangLinks = M4_LOCALES.map((altLang) => {
+  const altPath = _path.replace(/^\/(ko|en|ja|zh|es)\//, `/${altLang}/`);
+  const ensured = altPath.endsWith('/') ? altPath : altPath + '/';
+  return { lang: altLang, url: `${SITE_URL}${ensured}` };
+});
+const canonicalUrl = `${SITE_URL}${_path.endsWith('/') ? _path : _path + '/'}`;
+const xDefaultUrl = hreflangLinks.find((l) => l.lang === 'ko')?.url ?? canonicalUrl;
 ---
 <!doctype html>
 <html lang={lang} class="scroll-smooth">
@@ -24,6 +38,11 @@ const { title, lang, description = '2026 기후시민회의 모더레이터 아�
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
     <title>{title} | 기후시민회의 Wiki</title>
+    <link rel="canonical" href={canonicalUrl} />
+    {hreflangLinks.map((l) => (
+      <link rel="alternate" hreflang={l.lang} href={l.url} />
+    ))}
+    <link rel="alternate" hreflang="x-default" href={xDefaultUrl} />
     <link rel="sitemap" href="/sitemap-index.xml" />
     <!-- Theme: apply dark class AND data-theme before paint to avoid flash -->
     <script is:inline>

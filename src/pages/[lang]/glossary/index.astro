@@ -34,7 +34,9 @@ export async function getStaticPaths() {
   return [
     { params: { lang: 'ko' } },
     { params: { lang: 'en' } },
-    // M4: add ja, zh, es
+    { params: { lang: 'ja' } },
+    { params: { lang: 'zh' } },
+    { params: { lang: 'es' } },
   ];
 }
 
@@ -44,6 +46,9 @@ const terms = termsRaw as GlossaryTerm[];
 // Get display label for each term based on current lang
 function termLabel(t: GlossaryTerm): string {
   if (lang === 'en') return t.en ?? t.ko;
+  if (lang === 'ja') return t.ja ?? t.en ?? t.ko;
+  if (lang === 'zh') return t.zh ?? t.en ?? t.ko;
+  if (lang === 'es') return t.es ?? t.en ?? t.ko;
   return t.ko;
 }
 

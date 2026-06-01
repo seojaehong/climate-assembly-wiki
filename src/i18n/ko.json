@@ -1,0 +1,27 @@
+{
+  "_meta": {
+    "lang": "ko",
+    "machine_draft": false,
+    "needs_native_review": false,
+    "notes": "Source language. UI strings are currently inlined in .astro files via `lang === 'ko'` ternaries. This file is a forward-looking skeleton; key extraction pass is a downstream task."
+  },
+  "nav.home": "홈",
+  "nav.agendas": "의제",
+  "nav.sessions": "회차",
+  "nav.docs": "자료",
+  "nav.tools": "도구",
+  "nav.glossary": "용어집",
+  "nav.downloads": "다운로드",
+  "nav.search": "검색",
+  "nav.about": "소개",
+  "common.skip_to_main": "본문으로 건너뛰기",
+  "common.cite_this_page": "이 페이지 인용하기",
+  "common.last_updated": "마지막 갱신:",
+  "common.related_agendas": "관련 의제",
+  "common.korean_source": "← 한국어 원문",
+  "trust.machine": "기계 초안",
+  "trust.reviewed": "LLM 검토",
+  "trust.native": "원어민 검증",
+  "trust.author_verified": "저자 검증",
+  "language_switcher.label": "언어"
+}

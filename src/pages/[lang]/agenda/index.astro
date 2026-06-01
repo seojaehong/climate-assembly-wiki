@@ -4,7 +4,7 @@ import Base from '../../../layouts/Base.astro';
 import AgendaCard from '../../../components/AgendaCard.astro';
 
 export async function getStaticPaths() {
-  const langs = ['ko', 'en']; // M4: restore ja, zh, es
+  const langs = ['ko', 'en', 'ja', 'zh', 'es']; // M4 done 2026-06-01 (structural)
   return langs.map((lang) => ({ params: { lang } }));
 }
 

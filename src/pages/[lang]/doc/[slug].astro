@@ -26,7 +26,7 @@ import DocLayout from '../../../layouts/DocLayout.astro';
 // getStaticPaths
 // ---------------------------------------------------------------------------
 export async function getStaticPaths() {
-  const langs = ['ko', 'en'] as const; // M1–M3 only
+  const langs = ['ko', 'en', 'ja', 'zh', 'es'] as const; // M4 done 2026-06-01 (ja/zh/es structural)
   const docEntries = await getCollection('doc');
 
   return langs.flatMap((lang) =>
@@ -48,7 +48,10 @@ const { entry, lang } = Astro.props as { entry: CollectionEntry<'doc'>; lang: st
 const translationsRoot = path.resolve(process.cwd(), 'translations');
 const enFilePath = path.join(translationsRoot, 'en', 'doc', `${entry.data.slug}.md`);
 const hasEnTranslation = lang === 'en' && fs.existsSync(enFilePath);
-const showFallbackBanner = lang === 'en' && !hasEnTranslation;
+// Structural-only locales (ja/zh/es): always show fallback banner.
+const showFallbackBanner =
+  (lang === 'en' && !hasEnTranslation) ||
+  (['ja', 'zh', 'es'].includes(lang));
 
 let enTitle = entry.data.title;
 let enBodyHtml = '';
@@ -93,7 +96,7 @@ const docTypeLabel: Record<string, string> = {
   lang={lang}
   trustLabel={translationStatus ?? 'author-verified'}
   license={entry.data.license as 'CC-BY-SA-4.0' | 'CC-BY-4.0' | 'CC-BY-NC-SA-3.0-IGO' | 'all-rights-reserved'}
-  alternateLangs={hasEnTranslation ? ['ko', 'en'] : ['ko']}
+  alternateLangs={['ko', 'en', 'ja', 'zh', 'es']}
   canonicalPath={`/${lang}/doc/${entry.data.slug}/`}
   isFallback={showFallbackBanner}
   sourceKorean={`/ko/doc/${entry.data.slug}/`}

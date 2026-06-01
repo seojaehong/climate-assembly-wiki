@@ -2,7 +2,7 @@
 import Base from '../../layouts/Base.astro';
 
 export async function getStaticPaths() {
-  const langs = ['ko', 'en']; // M4: restore ja, zh, es
+  const langs = ['ko', 'en', 'ja', 'zh', 'es']; // M4 done 2026-06-01 (structural; ja/zh/es serve EN body)
   return langs.map((lang) => ({ params: { lang } }));
 }
 

@@ -14,7 +14,9 @@ export async function getStaticPaths() {
   return [
     { params: { lang: 'ko' } },
     { params: { lang: 'en' } },
-    // M4: add ja, zh, es
+    { params: { lang: 'ja' } },
+    { params: { lang: 'zh' } },
+    { params: { lang: 'es' } },
   ];
 }
 

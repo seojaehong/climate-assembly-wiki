@@ -1,0 +1,27 @@
+{
+  "_meta": {
+    "lang": "en",
+    "machine_draft": false,
+    "needs_native_review": false,
+    "notes": "EN strings currently inlined in .astro files. Skeleton mirrors ko.json for future extraction."
+  },
+  "nav.home": "Home",
+  "nav.agendas": "Agendas",
+  "nav.sessions": "Sessions",
+  "nav.docs": "Resources",
+  "nav.tools": "Tools",
+  "nav.glossary": "Glossary",
+  "nav.downloads": "Downloads",
+  "nav.search": "Search",
+  "nav.about": "About",
+  "common.skip_to_main": "Skip to main content",
+  "common.cite_this_page": "Cite this page",
+  "common.last_updated": "Last updated:",
+  "common.related_agendas": "Related agendas",
+  "common.korean_source": "← Korean source",
+  "trust.machine": "Machine draft",
+  "trust.reviewed": "LLM-reviewed",
+  "trust.native": "Native-verified",
+  "trust.author_verified": "Author-verified",
+  "language_switcher.label": "Language"
+}
