@@ -15,7 +15,7 @@ License: **CC BY-SA 4.0** — 자유롭게 공유·변형 가능, 출처 표시 
 ## 한국어
 
 ### 프로젝트 개요
-2026년 5월 16일 발대한 한국 기후시민회의(시민참여단 220명)의 분임 모더레이터 활동을, 1년 이상 누적되는 자료(의제·회차·교안·정책 브리프)와 함께 **5개국어 정적 위키 사이트**로 영구 보존하는 오픈소스 프로젝트입니다.
+2026년 5월 16일 발대한 한국 기후시민회의(시민참여단 200명, 기획 20 + 숙의 180)의 분임 모더레이터 활동을, 1년 이상 누적되는 자료(의제·회차·교안·정책 브리프)와 함께 **5개국어 정적 위키 사이트**로 영구 보존하는 오픈소스 프로젝트입니다.
 
 ### MVP 9개 기능
 1. 의제 위키 페이지(한·영 우선) — 15개
@@ -70,7 +70,7 @@ SSOT 마크다운, hash-diff 캐시 번역, GitHub Actions CI, Pagefind 다국�
 ## English
 
 ### Project Overview
-A personal moderator's archive of the **2026 Korea Climate Citizens' Assembly** (220 citizen participants, launched 16 May 2026), accumulating one year of materials (agendas, sessions, lecture notes, policy briefs) into a **multilingual static wiki in five languages**, preserved as open source.
+A personal moderator's archive of the **2026 Korea Climate Citizens' Assembly** (200 members — 20 planning + 180 deliberating, launched 16 May 2026), accumulating one year of materials (agendas, sessions, lecture notes, policy briefs) into a **multilingual static wiki in five languages**, preserved as open source.
 
 ### MVP — 9 Features
 1. Agenda wiki pages (Korean and English first) — 15 items

@@ -5,6 +5,9 @@ title: 1교시 — 박찬 교수 (서울시립대) 정부의 기후위기 대응
 session_type: lecture
 speaker: 박찬
 affiliation: 서울시립대학교
+# 비공식 보강 강의 — 정식 회차 ordinal을 차지하지 않는다. order 부여 대신
+# lecture_for 메타로 5.16 발대식(order:1)을 지원하는 1교시 강의임을 명시.
+lecture_for: 2026-05-16
 agendas_discussed: [14, 15]
 license: CC-BY-SA-4.0
 last_updated: 2026-05-31

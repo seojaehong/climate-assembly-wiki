@@ -5,9 +5,9 @@
 ## 5 Principles (binding for all translated agenda·session·doc pages)
 
 ### 1. Lede = Korean Locator
-The opening paragraph MUST tell the reader, in one sentence, that this is from Korea's 2026 Climate Citizens' Assembly (220 members, established under Article 19-2 of the Carbon Neutrality Framework Act).
+The opening paragraph MUST tell the reader, in one sentence, that this is from Korea's 2026 Climate Citizens' Assembly (200 deliberating citizens — 20 planning + 180 deliberating-only — established under Article 19-2 of the Carbon Neutrality Framework Act).
 
-> ✅ "Korea's first national Climate Citizens' Assembly (2026, 220 members) is exploring..."
+> ✅ "Korea's first national Climate Citizens' Assembly (2026, 200 deliberating citizens) is exploring..."
 > ❌ "Climate vulnerability is a complex concept that..."
 
 ### 2. Korea-Specific Anchors
