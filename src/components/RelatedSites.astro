@@ -1,0 +1,300 @@
+---
+/**
+ * RelatedSites.astro
+ * Renders a curated list of external reference sites as cards or inline lists.
+ *
+ * Props
+ *   sites    – override the default RELATED_SITES list
+ *   category – filter to a single category
+ *   filter   – array of site IDs to show (for agenda sidebar compact usage)
+ *   variant  – 'card' (default) | 'inline' | 'compact'
+ *   title    – section heading; pass "" to suppress
+ */
+
+import { RELATED_SITES } from '../data/related-sites';
+import type { SiteEntry } from '../data/related-sites';
+
+interface Props {
+  sites?: SiteEntry[];
+  category?: 'tool' | 'official' | 'methodology' | 'academic' | 'media' | 'precedent';
+  filter?: string[];
+  variant?: 'card' | 'inline' | 'compact';
+  title?: string;
+}
+
+const {
+  sites,
+  category,
+  filter,
+  variant = 'card',
+  title,
+} = Astro.props;
+
+// Resolve which entries to display
+let entries: SiteEntry[] = sites ?? RELATED_SITES;
+if (category) {
+  entries = entries.filter((s) => s.category === category);
+}
+if (filter && filter.length > 0) {
+  entries = entries.filter((s) => filter.includes(s.id));
+}
+
+// Section heading: default by category if no title prop
+const defaultTitles: Record<string, string> = {
+  tool:        '시뮬레이터·도구',
+  official:    '공식 기관·정부',
+  methodology: '방법론·표준',
+  academic:    '학술·과학',
+  media:       '미디어·매체',
+  precedent:   '선례 사이트',
+};
+
+const headingText =
+  title !== undefined
+    ? title
+    : category
+      ? defaultTitles[category] ?? '관련 사이트'
+      : '관련 사이트';
+
+// Category badge colours — using inline style vars so tokens.css values propagate
+const categoryStyle: Record<string, string> = {
+  tool:        'var(--related-tool)',
+  official:    'var(--related-official)',
+  methodology: 'var(--related-methodology)',
+  academic:    'var(--related-academic)',
+  media:       'var(--related-media)',
+  precedent:   'var(--related-precedent)',
+};
+
+const categoryLabel: Record<string, string> = {
+  tool:        '도구',
+  official:    '공식',
+  methodology: '방법론',
+  academic:    '학술',
+  media:       '미디어',
+  precedent:   '선례',
+};
+---
+
+<style>
+  /* Category colour tokens — defined here so they survive Tailwind purging */
+  :root {
+    --related-tool:        #2563eb;   /* blue-600 */
+    --related-official:    #16a34a;   /* green-600 */
+    --related-methodology: #7c3aed;   /* violet-600 */
+    --related-academic:    #059669;   /* emerald-600 */
+    --related-media:       #d97706;   /* amber-600 */
+    --related-precedent:   #6b7280;   /* gray-500 */
+  }
+  [data-theme="dark"],
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --related-tool:        #60a5fa;
+      --related-official:    #4ade80;
+      --related-methodology: #a78bfa;
+      --related-academic:    #34d399;
+      --related-media:       #fbbf24;
+      --related-precedent:   #9ca3af;
+    }
+  }
+
+  .rs-card {
+    background: var(--color-card-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+    transition: box-shadow var(--transition-base), transform var(--transition-base);
+  }
+  .rs-card:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-2px);
+  }
+  .rs-badge {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    background: color-mix(in srgb, var(--badge-color) 12%, transparent);
+    color: var(--badge-color);
+    border: 1px solid color-mix(in srgb, var(--badge-color) 30%, transparent);
+  }
+  .rs-lang-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: var(--radius-xs);
+    background: var(--color-bg-subtle);
+    color: var(--color-fg-muted);
+    border: 1px solid var(--color-border);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+  }
+  .rs-ext-icon {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    opacity: 0.5;
+  }
+</style>
+
+{entries.length > 0 && (
+  <section class="rs-section" aria-label={headingText}>
+    {headingText && (
+      <h3 class="text-base font-semibold mb-4" style="color: var(--color-fg);">
+        {headingText}
+      </h3>
+    )}
+
+    {/* ── CARD variant ── */}
+    {variant === 'card' && (
+      <ul
+        class="grid gap-4 list-none p-0 m-0"
+        style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));"
+        role="list"
+      >
+        {entries.map((site) => (
+          <li>
+            <a
+              href={site.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="rs-card block p-4 no-underline hover:no-underline group"
+              aria-label={`${site.name_ko ?? site.name} — 새 탭에서 열림`}
+            >
+              <div class="flex items-start justify-between gap-2 mb-2">
+                <span
+                  class="rs-badge"
+                  style={`--badge-color: ${categoryStyle[site.category]};`}
+                >
+                  {categoryLabel[site.category]}
+                </span>
+                <svg
+                  class="rs-ext-icon mt-0.5"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.94a.75.75 0 0 0 1.5 0V3.75A.75.75 0 0 0 13.25 3H10.5a.75.75 0 0 0 0 1.5h1.94L6.22 8.72Z"/>
+                  <path d="M3.5 6.75a.75.75 0 0 0-.75.75v5c0 .414.336.75.75.75h5a.75.75 0 0 0 .75-.75v-2.5a.75.75 0 0 0-1.5 0v1.75H4V8.25h1.75a.75.75 0 0 0 0-1.5H3.5Z"/>
+                </svg>
+              </div>
+
+              <p
+                class="text-sm font-semibold mb-1 leading-snug"
+                style="color: var(--color-link);"
+              >
+                {site.name_ko ? (
+                  <>
+                    <span>{site.name_ko}</span>
+                    <span class="block text-xs font-normal mt-0.5" style="color: var(--color-fg-muted);">{site.name}</span>
+                  </>
+                ) : (
+                  site.name
+                )}
+              </p>
+
+              <p
+                class="text-xs leading-relaxed mb-3"
+                style="color: var(--color-fg-muted);"
+              >
+                {site.description}
+              </p>
+
+              <div class="flex flex-wrap items-center gap-1.5">
+                {site.language?.map((lang) => (
+                  <span class="rs-lang-badge">{lang}</span>
+                ))}
+                {site.license && (
+                  <span
+                    class="text-xs"
+                    style="color: var(--color-fg-subtle);"
+                    title={`라이선스: ${site.license}`}
+                  >
+                    {site.license}
+                  </span>
+                )}
+              </div>
+            </a>
+          </li>
+        ))}
+      </ul>
+    )}
+
+    {/* ── INLINE variant ── */}
+    {variant === 'inline' && (
+      <ul class="list-none p-0 m-0 divide-y" style="border-color: var(--color-border);" role="list">
+        {entries.map((site) => (
+          <li class="py-3">
+            <a
+              href={site.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex items-start gap-3 no-underline hover:no-underline group"
+              aria-label={`${site.name_ko ?? site.name} — 새 탭에서 열림`}
+            >
+              <span
+                class="rs-badge mt-0.5 flex-shrink-0"
+                style={`--badge-color: ${categoryStyle[site.category]};`}
+              >
+                {categoryLabel[site.category]}
+              </span>
+              <div class="flex-1 min-w-0">
+                <span
+                  class="text-sm font-medium group-hover:underline"
+                  style="color: var(--color-link);"
+                >
+                  {site.name_ko ?? site.name}
+                </span>
+                <p class="text-xs mt-0.5" style="color: var(--color-fg-muted);">
+                  {site.description}
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-1 flex-shrink-0 mt-0.5">
+                {site.language?.map((lang) => (
+                  <span class="rs-lang-badge">{lang}</span>
+                ))}
+              </div>
+            </a>
+          </li>
+        ))}
+      </ul>
+    )}
+
+    {/* ── COMPACT variant (sidebar) ── */}
+    {variant === 'compact' && (
+      <ul class="list-none p-0 m-0 space-y-2" role="list">
+        {entries.map((site) => (
+          <li>
+            <a
+              href={site.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex items-center gap-2 text-sm no-underline hover:underline group"
+              style="color: var(--color-link);"
+              aria-label={`${site.name_ko ?? site.name} — 새 탭에서 열림`}
+            >
+              <span
+                class="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                style={`background: ${categoryStyle[site.category]};`}
+                aria-hidden="true"
+              ></span>
+              <span class="truncate">{site.name_ko ?? site.name}</span>
+              <svg
+                class="rs-ext-icon flex-shrink-0 ml-auto"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.94a.75.75 0 0 0 1.5 0V3.75A.75.75 0 0 0 13.25 3H10.5a.75.75 0 0 0 0 1.5h1.94L6.22 8.72Z"/>
+                <path d="M3.5 6.75a.75.75 0 0 0-.75.75v5c0 .414.336.75.75.75h5a.75.75 0 0 0 .75-.75v-2.5a.75.75 0 0 0-1.5 0v1.75H4V8.25h1.75a.75.75 0 0 0 0-1.5H3.5Z"/>
+              </svg>
+            </a>
+          </li>
+        ))}
+      </ul>
+    )}
+  </section>
+)}

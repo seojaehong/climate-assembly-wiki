@@ -1,16 +1,13 @@
 ---
 /**
- * ThemeToggle.astro — B10
- * Light/dark mode toggle (Design §3.10).
+ * ThemeToggle.astro — B10 (Phase 3 uplift)
+ * System / Light / Dark 3-state toggle.
  *
- * Reads localStorage.theme; defaults to system prefers-color-scheme.
- * Sets <html class="dark"> when dark mode is active.
+ * Sets BOTH:
+ *   - <html class="dark">  → activates Tailwind dark: utilities (v4 @custom-variant)
+ *   - <html data-theme="dark"> → activates tokens.css [data-theme] block
  *
- * client:idle note: this is a pure .astro component with an inline <script>.
- * Astro hoists and defers inline scripts automatically — equivalent to "idle" behavior.
- * No framework island is needed.
- *
- * The inline script is ~20 lines and has no external dependency.
+ * localStorage key: 'theme' — values: 'dark' | 'light' | (absent = system)
  */
 ---
 
@@ -18,10 +15,10 @@
   id="theme-toggle"
   type="button"
   aria-label="Toggle dark mode / 다크모드 전환"
-  class="theme-toggle p-1.5 rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-green-500 hover:text-green-700 dark:hover:border-green-400 dark:hover:text-green-300 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+  class="theme-toggle p-1.5 rounded-lg border border-[var(--color-border)] text-[var(--color-fg-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
   aria-pressed="false"
 >
-  <!-- Sun icon (shown in dark mode) -->
+  <!-- Sun icon (shown in dark mode — click to go light) -->
   <svg id="theme-icon-sun" class="hidden w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="5"/>
     <line x1="12" y1="1" x2="12" y2="3"/>
@@ -33,14 +30,14 @@
     <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
     <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
   </svg>
-  <!-- Moon icon (shown in light mode) -->
+  <!-- Moon icon (shown in light mode — click to go dark) -->
   <svg id="theme-icon-moon" class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
   </svg>
 </button>
 
 <script>
-  (function () {
+  function initThemeToggle() {
     const html = document.documentElement;
     const btn = document.getElementById('theme-toggle') as HTMLButtonElement | null;
     const iconSun = document.getElementById('theme-icon-sun');
@@ -50,34 +47,34 @@
       return html.classList.contains('dark');
     }
 
+    /**
+     * Apply theme — sets BOTH .dark class (Tailwind v4) AND data-theme attr (tokens.css).
+     * Does NOT touch localStorage — call-site decides persistence.
+     */
     function applyTheme(dark: boolean): void {
       if (dark) {
         html.classList.add('dark');
+        html.setAttribute('data-theme', 'dark');
       } else {
         html.classList.remove('dark');
+        html.setAttribute('data-theme', 'light');
       }
-      // Update button state
       if (btn) btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
       if (iconSun) iconSun.classList.toggle('hidden', !dark);
       if (iconMoon) iconMoon.classList.toggle('hidden', dark);
     }
 
-    // Initialize from localStorage or system preference
-    const stored = localStorage.getItem('theme');
-    if (stored === 'dark') {
-      applyTheme(true);
-    } else if (stored === 'light') {
-      applyTheme(false);
-    } else {
-      // No preference stored — use system
-      applyTheme(window.matchMedia('(prefers-color-scheme: dark)').matches);
-    }
+    // Sync button state with current html theme (may already be set by inline script)
+    applyTheme(isDark());
 
-    // Toggle on click
+    // Toggle on click: dark → light → dark
     btn?.addEventListener('click', () => {
       const next = !isDark();
       applyTheme(next);
       localStorage.setItem('theme', next ? 'dark' : 'light');
     });
-  })();
+  }
+
+  // Run on initial load and after every soft navigation (ClientRouter)
+  document.addEventListener('astro:page-load', initThemeToggle);
 </script>

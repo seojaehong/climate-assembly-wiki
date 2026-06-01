@@ -1,27 +1,22 @@
 ---
 /**
- * D8-p — /[lang]/ (Home)
+ * /[lang]/ — Home page (Phase 3 BigTech design uplift)
  *
- * Hero section + agenda card grid + session timeline sidebar.
- * Layout: HomeLayout (Group C). Falls back to Base until C ships.
+ * Migrated: Base.astro → HomeLayout.astro
+ * Hero: slogan + stats + countdown to next session
+ * Sections: agenda grid (6), En-ROADS CTA, sessions list, downloads CTA
  *
- * Design §4, D8-p: HomeLayout, no sidebar, hero + card grids.
- * Sections: hero, agenda grid (first 6), tools CTA, sessions list, downloads CTA.
- *
- * Languages: ko, en only (M1–M3). M4: restore ja, zh, es.
- * Sessions link: /[lang]/sessions/1/ (plural, ordinal — D2/D3 fix).
+ * Languages: ko, en (M1–M3). M4: restore ja, zh, es.
  */
 import { getCollection } from 'astro:content';
 import type { CollectionEntry } from 'astro:content';
-import Base from '../../layouts/Base.astro';
-// import HomeLayout from '@/layouts/HomeLayout.astro'; // Group C — not yet available
+import HomeLayout from '../../layouts/HomeLayout.astro';
 import AgendaCard from '../../components/AgendaCard.astro';
 
 export async function getStaticPaths() {
   return [
     { params: { lang: 'ko' } },
     { params: { lang: 'en' } },
-    // M4: add ja, zh, es
   ];
 }
 
@@ -35,70 +30,196 @@ const heroAgendas = [...agendaEntries]
   .sort((a, b) => a.data.id - b.data.id)
   .slice(0, 6);
 
-// Sort sessions by order field (Blocker 1 fix — use ordinal, not date)
+// Sort sessions by order field
 const orderedSessions = [...sessionEntries]
   .filter((s) => typeof s.data.order === 'number')
   .sort((a, b) => (a.data.order ?? 0) - (b.data.order ?? 0));
 
+// Find next upcoming session for countdown
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+const nextSession = orderedSessions.find((s) => {
+  if (!s.data.date) return false;
+  const d = new Date(s.data.date);
+  d.setHours(0, 0, 0, 0);
+  return d >= today;
+});
+
+// Days until next session
+let daysUntil: number | null = null;
+if (nextSession?.data.date) {
+  const d = new Date(nextSession.data.date);
+  d.setHours(0, 0, 0, 0);
+  daysUntil = Math.round((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+const isKo = lang === 'ko';
+
 const t = {
-  hero_title: lang === 'ko' ? '2026 기후시민회의' : "2026 Korea Climate Citizens' Assembly",
-  hero_subtitle: lang === 'ko'
-    ? '모더레이터 활동 아카이브 · En-ROADS 도구 · 다국어 위키'
-    : 'Moderator archive · En-ROADS tools · Multilingual wiki',
-  hero_desc: lang === 'ko'
-    ? '「탄소중립·녹색성장 기본법」 제19조의2에 따라 구성된 200명 시민참여단(기획 20+숙의 180)의 기후 숙의 과정을 기록합니다.'
-    : "Documents the climate deliberation of 200 citizen participants (20 planning + 180 deliberation) constituted under Article 19-2 of Korea's Carbon Neutrality Framework Act.",
-  agenda_heading: lang === 'ko' ? '의제' : 'Agendas',
-  agenda_link: lang === 'ko' ? '전체 의제 보기 →' : 'View all agendas →',
-  tools_link: lang === 'ko' ? 'En-ROADS 허브 →' : 'En-ROADS Hub →',
-  sessions_heading: lang === 'ko' ? '회차' : 'Sessions',
-  sessions_link: lang === 'ko' ? '전체 회차 보기 →' : 'View all sessions →',
-  downloads_heading: lang === 'ko' ? '자료 다운로드' : 'Downloads',
-  downloads_link: lang === 'ko' ? '다운로드 센터 →' : 'Downloads →',
+  slogan: isKo
+    ? '국민이 대한민국의 기후정책을 바꿉니다'
+    : "Citizens are changing Korea's climate policy",
+  hero_desc: isKo
+    ? '「탄소중립·녹색성장 기본법」 제19조의2에 따라 구성된 200명 시민참여단의 기후 숙의 과정을 기록합니다.'
+    : "Documents the climate deliberation of 200 citizen participants constituted under Article 19-2 of Korea's Carbon Neutrality Framework Act.",
+  stat_citizens: isKo ? '시민참여단' : 'Citizens',
+  stat_sessions: isKo ? '전체 회차' : 'Total Sessions',
+  stat_period: isKo ? '숙의 기간' : 'Duration',
+  stat_period_val: isKo ? '6개월' : '6 Months',
+  next_session: isKo ? '다음 회차' : 'Next Session',
+  days_label: isKo ? '일 후' : 'days',
+  today_label: isKo ? '오늘' : 'Today',
+  cta_agenda: isKo ? '의제 전체 보기' : 'View All Agendas',
+  cta_enroads: isKo ? 'En-ROADS 체험' : 'Try En-ROADS',
+  agenda_heading: isKo ? '주요 의제' : 'Key Agendas',
+  agenda_link: isKo ? '전체 의제 보기 →' : 'View all agendas →',
+  enroads_heading: isKo ? 'En-ROADS 기후 시뮬레이터' : 'En-ROADS Climate Simulator',
+  enroads_desc: isKo
+    ? '18개 정책 슬라이더로 2100년 지구 온도를 시뮬레이션합니다. 기후 숙의에서 직접 사용된 도구입니다.'
+    : 'Simulate global temperatures to 2100 with 18 policy levers. The tool used directly in deliberation.',
+  enroads_link: isKo ? 'En-ROADS 허브 →' : 'En-ROADS Hub →',
+  sessions_heading: isKo ? '회차 일정' : 'Sessions',
+  sessions_link: isKo ? '전체 회차 보기 →' : 'View all sessions →',
+  downloads_heading: isKo ? '자료 다운로드' : 'Downloads',
+  downloads_link: isKo ? '다운로드 센터 →' : 'Downloads →',
 };
 ---
-<Base
-  title={lang === 'ko' ? '홈' : 'Home'}
+
+<HomeLayout
+  title={isKo ? '홈' : 'Home'}
   lang={lang}
-  description={lang === 'ko'
+  description={isKo
     ? '2026 기후시민회의 모더레이터 아카이브, En-ROADS 도구, 다국어 위키'
-    : '2026 Korea Climate Citizens\' Assembly moderator archive, En-ROADS tools, multilingual wiki'}
+    : "2026 Korea Climate Citizens' Assembly moderator archive, En-ROADS tools, multilingual wiki"}
 >
-  {/* Hero */}
-  <section aria-label={lang === 'ko' ? '소개' : 'Introduction'} class="mb-10">
-    <h1 class="text-3xl font-bold text-green-800 dark:text-green-400 mb-2">
-      {t.hero_title}
-    </h1>
-    <p class="text-lg text-gray-600 dark:text-gray-400 mb-2">
-      {t.hero_subtitle}
-    </p>
-    <p class="text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
-      {t.hero_desc}
-    </p>
-    <div class="mt-4 flex flex-wrap gap-3">
-      <a
-        href={`/${lang}/agenda/`}
-        class="inline-flex items-center px-4 py-2 bg-green-700 hover:bg-green-800 text-white text-sm font-medium rounded transition-colors"
+  <!-- ============================================================
+       HERO
+       ============================================================ -->
+  <section
+    aria-label={isKo ? '소개' : 'Introduction'}
+    class="relative mb-16 pt-10 pb-12 px-0 rounded-2xl overflow-hidden"
+    style="background: var(--gradient-hero);"
+  >
+    <!-- Decorative blobs (pure CSS, no JS) -->
+    <div
+      aria-hidden="true"
+      class="absolute -top-16 -right-16 w-64 h-64 rounded-full opacity-20 dark:opacity-10 blur-3xl"
+      style="background: var(--gradient-accent);"
+    ></div>
+    <div
+      aria-hidden="true"
+      class="absolute -bottom-12 -left-12 w-48 h-48 rounded-full opacity-15 dark:opacity-10 blur-3xl"
+      style="background: var(--gradient-highlight);"
+    ></div>
+
+    <div class="relative px-6 sm:px-10">
+      <!-- Badge -->
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-6 bg-[var(--color-accent-muted)] text-[var(--color-accent-hover)] dark:bg-[var(--color-accent-subtle)] dark:text-[var(--color-accent)]">
+        <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] animate-pulse"></span>
+        {isKo ? '2026 기후시민회의 아카이브' : "2026 Korea Climate Citizens' Assembly Archive"}
+      </div>
+
+      <!-- Slogan -->
+      <h1
+        class="text-3xl sm:text-4xl lg:text-5xl font-bold text-[var(--color-fg)] mb-4 max-w-2xl"
+        style="letter-spacing: var(--tracking-tight); line-height: var(--leading-tight);"
       >
-        {t.agenda_link}
-      </a>
-      <a
-        href={`/${lang}/tools/en-roads/`}
-        class="inline-flex items-center px-4 py-2 border border-green-700 text-green-700 dark:text-green-400 dark:border-green-600 hover:bg-green-50 dark:hover:bg-green-950 text-sm font-medium rounded transition-colors"
+        {t.slogan}
+      </h1>
+
+      <!-- Description -->
+      <p
+        class="text-base sm:text-lg text-[var(--color-fg-muted)] mb-8 max-w-xl"
+        style="line-height: var(--leading-relaxed);"
       >
-        {t.tools_link}
-      </a>
+        {t.hero_desc}
+      </p>
+
+      <!-- CTAs -->
+      <div class="flex flex-wrap gap-3 mb-10">
+        <a
+          href={`/${lang}/agenda/`}
+          class="btn btn-primary text-sm"
+        >
+          {t.cta_agenda}
+        </a>
+        <a
+          href={`/${lang}/tools/en-roads/`}
+          class="btn btn-outline text-sm"
+        >
+          {t.cta_enroads}
+        </a>
+      </div>
+
+      <!-- Stats row -->
+      <div class="flex flex-wrap gap-6 sm:gap-10">
+        <!-- Citizens -->
+        <div class="flex flex-col">
+          <span
+            class="text-3xl font-bold text-[var(--color-accent)]"
+            style="letter-spacing: var(--tracking-tight);"
+          >200</span>
+          <span class="text-xs text-[var(--color-fg-muted)] mt-0.5">{t.stat_citizens}</span>
+        </div>
+        <!-- Sessions count -->
+        <div class="flex flex-col">
+          <span
+            class="text-3xl font-bold text-[var(--color-accent)]"
+            style="letter-spacing: var(--tracking-tight);"
+          >{orderedSessions.length}</span>
+          <span class="text-xs text-[var(--color-fg-muted)] mt-0.5">{t.stat_sessions}</span>
+        </div>
+        <!-- Duration -->
+        <div class="flex flex-col">
+          <span
+            class="text-3xl font-bold text-[var(--color-accent)]"
+            style="letter-spacing: var(--tracking-tight);"
+          >{t.stat_period_val}</span>
+          <span class="text-xs text-[var(--color-fg-muted)] mt-0.5">{t.stat_period}</span>
+        </div>
+        <!-- Countdown -->
+        {nextSession && daysUntil !== null && (
+          <div class="flex flex-col">
+            <span
+              class="text-3xl font-bold text-[var(--color-highlight)]"
+              style="letter-spacing: var(--tracking-tight);"
+            >
+              {daysUntil === 0 ? t.today_label : `D-${daysUntil}`}
+            </span>
+            <span class="text-xs text-[var(--color-fg-muted)] mt-0.5">{t.next_session}</span>
+          </div>
+        )}
+      </div>
     </div>
   </section>
 
-  <div class="grid gap-8 lg:grid-cols-3">
-    {/* Main column */}
-    <div class="lg:col-span-2 space-y-10">
-      {/* Agenda grid */}
+  <!-- ============================================================
+       MAIN CONTENT GRID
+       ============================================================ -->
+  <div class="grid gap-10 lg:grid-cols-3">
+
+    <!-- Main column (2/3) -->
+    <div class="lg:col-span-2 space-y-12">
+
+      <!-- Agenda grid -->
       <section aria-labelledby="agenda-heading">
-        <h2 id="agenda-heading" class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
-          {t.agenda_heading}
-        </h2>
+        <div class="flex items-center justify-between mb-5">
+          <h2
+            id="agenda-heading"
+            class="text-xl font-bold text-[var(--color-fg)]"
+            style="letter-spacing: var(--tracking-tight);"
+          >
+            {t.agenda_heading}
+          </h2>
+          <a
+            href={`/${lang}/agenda/`}
+            class="text-sm text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] font-medium transition-colors"
+          >
+            {t.agenda_link}
+          </a>
+        </div>
+
         {heroAgendas.length > 0 ? (
           <div class="grid gap-3 sm:grid-cols-2">
             {heroAgendas.map((entry) => (
@@ -115,86 +236,154 @@ const t = {
             ))}
           </div>
         ) : (
-          <p class="text-sm text-gray-400 dark:text-gray-500">
-            {lang === 'ko' ? '의제가 준비 중입니다.' : 'Agendas coming soon.'}
+          <p class="text-sm text-[var(--color-fg-subtle)]">
+            {isKo ? '의제가 준비 중입니다.' : 'Agendas coming soon.'}
           </p>
         )}
-        <div class="mt-4">
-          <a href={`/${lang}/agenda/`} class="text-sm text-green-700 dark:text-green-400 hover:underline">
-            {t.agenda_link}
-          </a>
-        </div>
       </section>
 
-      {/* En-ROADS CTA */}
+      <!-- En-ROADS CTA card -->
       <section
-        aria-labelledby="tools-heading"
-        class="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 p-5"
+        aria-labelledby="enroads-heading"
+        class="relative rounded-2xl border border-[var(--color-info-bg)] overflow-hidden p-6"
+        style="background: var(--color-info-bg);"
       >
-        <h2 id="tools-heading" class="text-base font-semibold text-blue-800 dark:text-blue-300 mb-1">
-          {lang === 'ko' ? '도구: En-ROADS' : 'Tool: En-ROADS'}
-        </h2>
-        <p class="text-sm text-blue-700 dark:text-blue-400 mb-3">
-          {lang === 'ko'
-            ? '18개 슬라이더로 2100년 기온을 시뮬레이션하는 기후 정책 도구'
-            : 'Climate policy simulator with 18 levers projecting temperatures to 2100'}
-        </p>
-        <a
-          href={`/${lang}/tools/en-roads/`}
-          class="inline-flex items-center text-sm font-medium text-blue-700 dark:text-blue-400 hover:underline"
-        >
-          {t.tools_link}
-        </a>
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex-1">
+            <!-- En-ROADS icon badge -->
+            <div class="inline-flex items-center gap-2 mb-3">
+              <div class="w-8 h-8 rounded-lg bg-[var(--color-info)] flex items-center justify-center shrink-0">
+                <svg aria-hidden="true" class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M2 12C2 12 5 5 12 5s10 7 10 7-3 7-10 7S2 12 2 12z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </div>
+              <h2
+                id="enroads-heading"
+                class="text-base font-bold text-[var(--color-info)] dark:text-blue-300"
+                style="letter-spacing: var(--tracking-snug);"
+              >
+                {t.enroads_heading}
+              </h2>
+            </div>
+            <p class="text-sm text-[var(--color-info)] dark:text-blue-400 mb-4 max-w-sm" style="line-height: var(--leading-relaxed);">
+              {t.enroads_desc}
+            </p>
+            <a
+              href={`/${lang}/tools/en-roads/`}
+              class="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-info)] dark:text-blue-300 hover:opacity-80 transition-opacity"
+            >
+              {t.enroads_link}
+              <svg aria-hidden="true" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </a>
+          </div>
+
+          <!-- Temperature badge -->
+          <div class="shrink-0 text-center p-3 rounded-xl bg-white dark:bg-[var(--color-bg-subtle)] shadow-[var(--shadow-sm)]">
+            <div class="text-2xl font-bold text-orange-500" style="letter-spacing: var(--tracking-tight);">+2.4°C</div>
+            <div class="text-xs text-[var(--color-fg-muted)] mt-0.5">{isKo ? '기준 시나리오' : 'Baseline'}</div>
+          </div>
+        </div>
       </section>
     </div>
 
-    {/* Sidebar */}
-    <aside class="space-y-6">
-      {/* Sessions list */}
+    <!-- Sidebar (1/3) -->
+    <aside class="space-y-8">
+
+      <!-- Sessions list -->
       <section aria-labelledby="sessions-heading">
-        <h2 id="sessions-heading" class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-200">
-          {t.sessions_heading}
-        </h2>
-        {orderedSessions.length > 0 ? (
-          <ol class="space-y-2">
-            {orderedSessions.map((entry) => (
-              <li>
-                <a
-                  href={`/${lang}/sessions/${entry.data.order}/`}
-                  class="flex items-start gap-2 text-sm hover:text-green-700 dark:hover:text-green-400 transition-colors"
-                >
-                  <span class="shrink-0 w-5 h-5 rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-400 text-xs flex items-center justify-center font-mono">
-                    {entry.data.order}
-                  </span>
-                  <span class="text-gray-700 dark:text-gray-300">{entry.data.title}</span>
-                </a>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p class="text-sm text-gray-400">
-            {lang === 'ko' ? '회차가 준비 중입니다.' : 'Sessions coming soon.'}
-          </p>
-        )}
-        <div class="mt-3">
-          <a href={`/${lang}/sessions/1/`} class="text-sm text-green-700 dark:text-green-400 hover:underline">
+        <div class="flex items-center justify-between mb-4">
+          <h2
+            id="sessions-heading"
+            class="text-base font-bold text-[var(--color-fg)]"
+            style="letter-spacing: var(--tracking-snug);"
+          >
+            {t.sessions_heading}
+          </h2>
+          <a
+            href={`/${lang}/sessions/1/`}
+            class="text-xs text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] font-medium"
+          >
             {t.sessions_link}
           </a>
         </div>
+
+        {orderedSessions.length > 0 ? (
+          <ol class="space-y-1.5">
+            {orderedSessions.map((entry) => {
+              const sessionDate = entry.data.date ? new Date(entry.data.date) : null;
+              const isUpcoming = sessionDate ? sessionDate >= today : false;
+              const isNext = nextSession && entry.data.order === nextSession.data.order;
+              return (
+                <li>
+                  <a
+                    href={`/${lang}/sessions/${entry.data.order}/`}
+                    class={[
+                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
+                      isNext
+                        ? 'bg-[var(--color-accent-subtle)] dark:bg-[var(--color-accent-muted)] border border-[var(--color-accent-muted)] dark:border-[var(--color-accent-subtle)]'
+                        : 'hover:bg-[var(--color-bg-subtle)]',
+                    ].join(' ')}
+                  >
+                    <span class={[
+                      'shrink-0 w-6 h-6 rounded-full text-xs flex items-center justify-center font-mono font-bold',
+                      isUpcoming
+                        ? 'bg-[var(--color-accent)] text-[var(--color-accent-fg)]'
+                        : 'bg-[var(--color-bg-subtle)] text-[var(--color-fg-muted)] dark:bg-[var(--color-code-bg)]',
+                    ].join(' ')}>
+                      {entry.data.order}
+                    </span>
+                    <div class="flex-1 min-w-0">
+                      <div class="truncate text-[var(--color-fg)] font-medium text-xs">{entry.data.title}</div>
+                      {sessionDate && (
+                        <div class="text-[10px] text-[var(--color-fg-subtle)] mt-0.5">
+                          {sessionDate.toLocaleDateString(isKo ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' })}
+                          {isNext && (
+                            <span class="ml-1.5 px-1.5 py-0.5 rounded-full bg-[var(--color-highlight-bg)] text-[var(--color-highlight-fg)] text-[9px] font-semibold">
+                              {isKo ? '다음' : 'Next'}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </a>
+                </li>
+              );
+            })}
+          </ol>
+        ) : (
+          <p class="text-sm text-[var(--color-fg-subtle)]">
+            {isKo ? '회차가 준비 중입니다.' : 'Sessions coming soon.'}
+          </p>
+        )}
       </section>
 
-      {/* Downloads CTA */}
-      <section aria-labelledby="downloads-heading">
-        <h2 id="downloads-heading" class="text-base font-semibold mb-2 text-gray-800 dark:text-gray-200">
+      <!-- Downloads CTA -->
+      <section
+        aria-labelledby="downloads-heading"
+        class="rounded-xl border border-[var(--color-border)] p-5 bg-[var(--color-bg-subtle)]"
+      >
+        <h2
+          id="downloads-heading"
+          class="text-sm font-bold text-[var(--color-fg)] mb-2"
+        >
           {t.downloads_heading}
         </h2>
+        <p class="text-xs text-[var(--color-fg-muted)] mb-3" style="line-height: var(--leading-relaxed);">
+          {isKo
+            ? '교안, 시나리오 보고서, 의제 초안을 다운로드하세요.'
+            : 'Download curriculum materials, scenario reports, and agenda drafts.'}
+        </p>
         <a
           href={`/${lang}/downloads/`}
-          class="inline-block px-4 py-2 bg-green-700 hover:bg-green-800 text-white text-sm rounded transition-colors"
+          class="btn btn-primary text-xs py-2 px-4"
         >
           {t.downloads_link}
         </a>
       </section>
+
     </aside>
   </div>
-</Base>
+</HomeLayout>

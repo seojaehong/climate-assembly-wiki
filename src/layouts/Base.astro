@@ -2,14 +2,12 @@
 /**
  * @deprecated GAP-3 (site-composition.analysis.md, 2026-05-31)
  * Transitional layout — superseded by BaseLayout.astro (Group C, Design §3.4).
- * sessions/[n].astro has migrated to BaseLayout. The remaining 9 pages
- * (about, [lang]/index, agenda/[slug], agenda/index, downloads, glossary,
- * doc/[slug], search, tools/en-roads/[...slug]) will migrate in a follow-up
- * pass; this file is preserved until that migration completes.
+ * Phase 3 fix: now renders SiteHeader + SiteFooter for visual parity.
  * Do NOT add new imports of Base.astro — use BaseLayout.astro.
  */
 import '../styles/global.css';
-import LanguageSwitcher from '../components/LanguageSwitcher.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
 
 interface Props {
   title: string;
@@ -27,47 +25,30 @@ const { title, lang, description = '2026 기후시민회의 모더레이터 아�
     <meta name="description" content={description} />
     <title>{title} | 기후시민회의 Wiki</title>
     <link rel="sitemap" href="/sitemap-index.xml" />
+    <!-- Theme: apply dark class AND data-theme before paint to avoid flash -->
+    <script is:inline>
+      (function () {
+        var stored = localStorage.getItem('theme');
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var isDark = stored === 'dark' || (!stored && prefersDark);
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+          document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
   </head>
-  <body class="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors">
-    <header class="border-b border-gray-200 dark:border-gray-800 py-4 px-6">
-      <div class="max-w-5xl mx-auto flex items-center justify-between">
-        <a href={`/${lang}`} class="font-bold text-lg text-green-800 dark:text-green-400">
-          기후시민회의 Wiki
-        </a>
-        <nav class="flex items-center gap-4 text-sm">
-          <a href={`/${lang}/agenda`} class="hover:text-green-700 dark:hover:text-green-400">의제</a>
-          <a href={`/${lang}/session`} class="hover:text-green-700 dark:hover:text-green-400">회차</a>
-          <a href={`/${lang}/downloads`} class="hover:text-green-700 dark:hover:text-green-400">다운로드</a>
-          <a href={`/${lang}/search`} class="hover:text-green-700 dark:hover:text-green-400">검색</a>
-          <a href={`/${lang}/about`} class="hover:text-green-700 dark:hover:text-green-400">소개</a>
-          <LanguageSwitcher currentLang={lang} />
-          <button
-            id="dark-mode-toggle"
-            class="p-1 rounded border border-gray-300 dark:border-gray-600 text-xs"
-            aria-label="다크모드 토글"
-          >
-            🌙
-          </button>
-        </nav>
-      </div>
-    </header>
+  <body class="min-h-screen bg-[var(--color-bg)] text-[var(--color-fg)] transition-colors duration-200">
 
-    <main class="max-w-5xl mx-auto px-6 py-8">
+    <SiteHeader lang={lang} />
+
+    <main id="main-content" tabindex="-1" class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <slot />
     </main>
 
-    <footer class="border-t border-gray-200 dark:border-gray-800 py-6 px-6 text-center text-sm text-gray-500">
-      <p>CC BY-SA 4.0 · 2026 기후시민회의 모더레이터 아카이브</p>
-    </footer>
+    <SiteFooter lang={lang} />
 
-    <script>
-      const toggle = document.getElementById('dark-mode-toggle');
-      const html = document.documentElement;
-      if (localStorage.getItem('dark') === '1') html.classList.add('dark');
-      toggle?.addEventListener('click', () => {
-        html.classList.toggle('dark');
-        localStorage.setItem('dark', html.classList.contains('dark') ? '1' : '0');
-      });
-    </script>
   </body>
 </html>

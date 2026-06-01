@@ -29,9 +29,9 @@ last_updated: 2026-05-31
 | 모더레이터 준비 브리프 v2 | .docx | 31 KB | CC BY-SA 4.0 | [다운로드](/assets/downloads/moderator-brief-v2.docx) |
 | 경기도 기후도민총회 심층분석 | .docx | 31 KB | CC BY-SA 4.0 | [다운로드](/assets/downloads/gyeonggi-case.docx) |
 | 부처별 탄소중립·기후적응 역할 매트릭스 | .docx | 44 KB | CC BY-SA 4.0 | [다운로드](/assets/downloads/ministry-matrix.docx) |
-| 1교시 박찬 교수 강의안 정리 | .docx | 43 KB | CC BY-SA 4.0 (원강의 인용 포함) | [다운로드](/assets/downloads/park-chan-lecture-1.docx) |
-| 2교시 김상규 강의안 정리 | .md | 13 KB | CC BY-SA 4.0 (원강의 인용 포함) | [다운로드](/assets/downloads/kim-sang-gyu-lecture-2.md) |
-| 3교시 이진우 강의안 정리 | .md | 13 KB | CC BY-SA 4.0 (원강의 인용 포함) | [다운로드](/assets/downloads/lee-jin-woo-lecture-3.md) |
+| 1교시 박찬 교수 강의안 정리 | .docx | 43 KB | CC BY-SA 4.0 (원강의 인용 포함) | [위키 페이지](/ko/doc/lecture-1-park-chan/) · [원본 .docx](/assets/downloads/park-chan-lecture-1.docx) |
+| 2교시 김상규 강의안 정리 | .md | 13 KB | CC BY-SA 4.0 (원강의 인용 포함) | [위키 페이지](/ko/doc/lecture-2-kim-sang-gyu/) · [원본 .md](/assets/downloads/kim-sang-gyu-lecture-2.md) |
+| 3교시 이진우 강의안 정리 | .md | 13 KB | CC BY-SA 4.0 (원강의 인용 포함) | [위키 페이지](/ko/doc/lecture-3-lee-jin-woo/) · [원본 .md](/assets/downloads/lee-jin-woo-lecture-3.md) |
 
 > 강의안 정리본의 라이선스는 **우리 정리·재서술 부분**에만 적용됩니다. 원강의의 슬라이드·인용·도표는 각 강사의 저작권이 유지되며, 재사용 시 원강사 표기를 함께 해 주세요.
 
@@ -91,8 +91,8 @@ last_updated: 2026-05-31
 
 | 자료 | 형식 | 크기 | 라이선스 | 출처 |
 |---|---|---|---|---|
-| 김상규, 「기후시민회의 운영 지원 과업의 이해」 (17p, 2026) | PDF | 4.5 MB | All Rights Reserved (추정 — 강의 자료) | 본 사이트의 [3교시 강의안 정리(한국어 요약)](/assets/downloads/kim-sang-gyu-lecture-2.md) 페이지 참조. **원본 PDF는 한국갈등해결센터·갤럽 등 운영 주체에 별도 요청 필요.** |
-| 이진우, 「기후시민회의 모더레이터 교육 자료집」 (35p, 2026) | PDF | 357 KB | All Rights Reserved (추정 — 강의 자료) | 본 사이트의 [3교시 강의안 정리(한국어 요약)](/assets/downloads/lee-jin-woo-lecture-3.md) 페이지 참조. **원본 PDF는 한국갈등해결센터에 별도 요청 필요.** |
+| 김상규, 「기후시민회의 운영 지원 과업의 이해」 (17p, 2026) | PDF | 4.5 MB | All Rights Reserved (추정 — 강의 자료) | 본 사이트의 [2교시 강의안 정리 위키 페이지](/ko/doc/lecture-2-kim-sang-gyu/) 참조. **원본 PDF는 한국갈등해결센터·갤럽 등 운영 주체에 별도 요청 필요.** |
+| 이진우, 「기후시민회의 모더레이터 교육 자료집」 (35p, 2026) | PDF | 357 KB | All Rights Reserved (추정 — 강의 자료) | 본 사이트의 [3교시 강의안 정리 위키 페이지](/ko/doc/lecture-3-lee-jin-woo/) 참조. **원본 PDF는 한국갈등해결센터에 별도 요청 필요.** |
 
 ### 3.2 모더레이터 교육 자료 — 라이선스 확인 필요 또는 대용량
 
@@ -116,6 +116,17 @@ last_updated: 2026-05-31
 | **라이선스 확인 필요** | 라이선스 미명시 | 원문 링크만, 인용 시 사용자가 직접 확인 권장. |
 
 > 본 사이트는 **오류·누락 가능성**을 인정합니다. 라이선스 표기에 오류가 있거나 원저작권자의 이의가 있을 경우 [GitHub 이슈](https://github.com/seojaehong/climate-assembly-wiki/issues) 또는 [About 페이지](/doc/about)의 연락처로 알려 주세요. 즉시 수정·삭제 조치하겠습니다.
+
+---
+
+## 라이브 데이터
+
+매주 자동 갱신되는 외부 데이터 소스입니다. 다운로드가 아닌 **실시간 조회** 자료입니다.
+
+- **시민 발의 의제 트래커 (매주 월 08:00 자동 갱신)** → [/ko/doc/citizen-proposals-tracker/](/ko/doc/citizen-proposals-tracker/)
+- **구글 시트 직접 보기** → [Google Sheets](https://docs.google.com/spreadsheets/d/1cEA11mDIKGb_UCZP1iaMmtDYUMJuKoZqEhFKwo7u2HE/edit)
+
+원자료는 [climatevoice.kr](https://climatevoice.kr/opinion/list.do) (국가기후위기대응위원회 공식 포털). 가공·태깅은 본 사이트(CC BY-SA 4.0).
 
 ---
 

@@ -1,15 +1,10 @@
 ---
 /**
- * SiteHeader.astro — B4
- * Site header with skip link, main nav, search trigger, language toggle, theme toggle.
- * (Design §3.4)
+ * SiteHeader.astro — B4 (Phase 3 uplift)
+ * Site header: sticky, backdrop-blur on scroll, max-width 1280px.
  *
- * Skip link contract: <a href="#main-content"> requires whoever renders <main>
- * to set id="main-content" on the <main> element.
- * Group C layouts (AgendaLayout, SessionLayout, etc.) MUST include id="main-content".
- *
- * Mobile: <details>/<summary> CSS-only hamburger — no JS required.
- * Breakpoint: nav collapses at <768px (md: prefix).
+ * Dark mode: .dark class (Tailwind) + [data-theme="dark"] (tokens.css) — both set by ThemeToggle.
+ * Mobile: <details>/<summary> CSS-only hamburger.
  */
 
 import LanguageToggle from './LanguageToggle.astro';
@@ -20,8 +15,6 @@ const currentUrl = Astro.url.pathname;
 const segments = currentUrl.split('/').filter(Boolean);
 const currentLang = (['ko', 'en'].includes(segments[0])) ? segments[0] : 'ko';
 const isKo = currentLang === 'ko';
-
-// Detect active nav section for aria-current
 const currentSection = segments[1] ?? '';
 
 function navHref(section: string): string {
@@ -29,21 +22,17 @@ function navHref(section: string): string {
 }
 ---
 
-<!-- Skip link (must be first child of <body>; placed here as first rendered element) -->
-<a
-  href="#main-content"
-  class="skip-link sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:text-green-800 focus:border focus:border-green-600 focus:rounded focus:shadow"
+<header
+  id="site-header"
+  class="site-header sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-bg)] py-0 transition-[background-color,border-color,backdrop-filter] duration-200"
 >
-  {isKo ? '본문으로 건너뛰기' : 'Skip to main content'}
-</a>
-
-<header class="site-header sticky top-0 z-40 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 py-3 px-4">
-  <div class="max-w-5xl mx-auto flex items-center justify-between gap-4">
+  <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-4">
 
     <!-- Site logo / wordmark -->
     <a
       href={`/${currentLang}/`}
-      class="site-logo font-bold text-base text-green-800 dark:text-green-400 shrink-0 hover:text-green-600 dark:hover:text-green-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+      class="site-logo font-bold text-sm text-[var(--color-accent)] shrink-0 tracking-tight hover:opacity-80 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+      transition:name="site-logo"
     >
       {isKo ? '기후시민회의 Wiki' : 'Korea Climate Assembly Wiki'}
     </a>
@@ -51,7 +40,7 @@ function navHref(section: string): string {
     <!-- Desktop nav (md+) -->
     <nav
       aria-label={isKo ? '주요 탐색' : 'Main navigation'}
-      class="hidden md:flex items-center gap-1 text-sm"
+      class="hidden md:flex items-center gap-0.5 text-sm"
     >
       {TOP_NAV_ITEMS.map((item) => {
         const active = currentSection === item.section;
@@ -60,10 +49,10 @@ function navHref(section: string): string {
             href={navHref(item.section)}
             aria-current={active ? 'page' : undefined}
             class={[
-              'px-3 py-1.5 rounded transition-colors',
+              'px-3 py-1.5 rounded-md font-medium transition-colors',
               active
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 font-medium'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-green-700 dark:hover:text-green-400',
+                ? 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)] dark:bg-[var(--color-accent-muted)] dark:text-[var(--color-accent)]'
+                : 'text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-fg)]',
             ].join(' ')}
           >
             {isKo ? item.labelKo : item.labelEn}
@@ -73,14 +62,14 @@ function navHref(section: string): string {
     </nav>
 
     <!-- Controls: search + language + theme -->
-    <div class="header-controls flex items-center gap-2 shrink-0">
+    <div class="header-controls flex items-center gap-1.5 shrink-0">
 
-      <!-- Search trigger button (opens Pagefind UI) -->
+      <!-- Search trigger -->
       <button
         data-search-trigger
         type="button"
-        aria-label={isKo ? '검색 열기' : 'Open search'}
-        class="p-1.5 rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-green-500 hover:text-green-700 dark:hover:border-green-400 dark:hover:text-green-300 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+        aria-label={isKo ? '검색 열기 (/)' : 'Open search (/)'}
+        class="p-1.5 rounded-md border border-[var(--color-border)] text-[var(--color-fg-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
       >
         <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <circle cx="11" cy="11" r="8"/>
@@ -94,7 +83,7 @@ function navHref(section: string): string {
       <!-- Mobile hamburger (md-: visible) -->
       <details class="relative md:hidden">
         <summary
-          class="list-none p-1.5 rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 cursor-pointer hover:border-green-500 hover:text-green-700 dark:hover:border-green-400 dark:hover:text-green-300 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+          class="list-none p-1.5 rounded-md border border-[var(--color-border)] text-[var(--color-fg-muted)] cursor-pointer hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           aria-label={isKo ? '메뉴 열기' : 'Open menu'}
         >
           <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -104,10 +93,9 @@ function navHref(section: string): string {
           </svg>
         </summary>
 
-        <!-- Mobile dropdown nav -->
         <nav
           aria-label={isKo ? '모바일 탐색' : 'Mobile navigation'}
-          class="absolute right-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded shadow-lg z-50 min-w-[160px] py-1"
+          class="absolute right-0 top-full mt-1 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl shadow-[var(--shadow-lg)] z-50 min-w-[180px] py-1.5 overflow-hidden"
         >
           {TOP_NAV_ITEMS.map((item) => {
             const active = currentSection === item.section;
@@ -116,10 +104,10 @@ function navHref(section: string): string {
                 href={navHref(item.section)}
                 aria-current={active ? 'page' : undefined}
                 class={[
-                  'block px-4 py-2 text-sm transition-colors',
+                  'block px-4 py-2.5 text-sm font-medium transition-colors',
                   active
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 font-medium'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800',
+                    ? 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)]'
+                    : 'text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-fg)]',
                 ].join(' ')}
               >
                 {isKo ? item.labelKo : item.labelEn}
@@ -131,3 +119,28 @@ function navHref(section: string): string {
     </div>
   </div>
 </header>
+
+<script>
+  // Scroll-based header blur — re-attaches after every ClientRouter soft navigation
+  function initHeaderScroll() {
+    const header = document.getElementById('site-header');
+
+    function updateHeader() {
+      const scrolled = window.scrollY > 8;
+      if (header) {
+        if (scrolled) {
+          header.classList.add('header-scrolled');
+          header.style.borderBottomColor = 'transparent';
+        } else {
+          header.classList.remove('header-scrolled');
+          header.style.borderBottomColor = '';
+        }
+      }
+    }
+
+    window.addEventListener('scroll', updateHeader, { passive: true });
+    updateHeader();
+  }
+
+  document.addEventListener('astro:page-load', initHeaderScroll);
+</script>

@@ -2,6 +2,51 @@
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
+2026-06-01 18:12 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 18:12 | update | content/ko/agenda/05-climate-injustice.md | 기후재난의 사회적 불평등 (last_updated: 2026-06-01)
+2026-06-01 18:12 | update | content/ko/agenda/09-implementation-monitoring.md | [메타-의제] 권고안 사후 이행 점검권 (last_updated: 2026-06-01)
+2026-06-01 18:12 | update | content/ko/agenda/10-national-to-local.md | [메타-의제] 국가 권고를 17개 광역으로 어떻게 내려보낼 것인가 (last_updated: 2026-06-01)
+2026-06-01 18:12 | update | content/ko/agenda/14-climate-dividend.md | 시민 환급형 기후배당(Climate Dividend) 도입 (last_updated: 2026-06-01)
+2026-06-01 18:12 | update | content/ko/agenda/15-compound-vulnerability.md | 복합 취약성(Compound Vulnerability) 정의·보호 (last_updated: 2026-05-31)
+2026-06-01 18:12 | update | content/ko/doc/downloads.md | 다운로드 센터 (last_updated: 2026-05-31)
+2026-06-01 18:08 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 18:08 | update | content/ko/agenda/05-climate-injustice.md | 기후재난의 사회적 불평등 (last_updated: 2026-06-01)
+2026-06-01 18:08 | update | content/ko/agenda/09-implementation-monitoring.md | [메타-의제] 권고안 사후 이행 점검권 (last_updated: 2026-06-01)
+2026-06-01 18:08 | update | content/ko/agenda/10-national-to-local.md | [메타-의제] 국가 권고를 17개 광역으로 어떻게 내려보낼 것인가 (last_updated: 2026-06-01)
+2026-06-01 18:08 | update | content/ko/agenda/14-climate-dividend.md | 시민 환급형 기후배당(Climate Dividend) 도입 (last_updated: 2026-06-01)
+2026-06-01 18:08 | update | content/ko/agenda/15-compound-vulnerability.md | 복합 취약성(Compound Vulnerability) 정의·보호 (last_updated: 2026-05-31)
+2026-06-01 18:08 | update | content/ko/doc/downloads.md | 다운로드 센터 (last_updated: 2026-05-31)
+!-- APPEND-ONLY. Newest entries at top. -->
+<!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
+<!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
+
+2026-06-01 18:07 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 18:07 | update | content/ko/agenda/05-climate-injustice.md | 기후재난의 사회적 불평등 (last_updated: 2026-06-01)
+2026-06-01 18:07 | update | content/ko/agenda/09-implementation-monitoring.md | [메타-의제] 권고안 사후 이행 점검권 (last_updated: 2026-06-01)
+2026-06-01 18:07 | update | content/ko/agenda/10-national-to-local.md | [메타-의제] 국가 권고를 17개 광역으로 어떻게 내려보낼 것인가 (last_updated: 2026-06-01)
+2026-06-01 18:07 | update | content/ko/agenda/14-climate-dividend.md | 시민 환급형 기후배당(Climate Dividend) 도입 (last_updated: 2026-06-01)
+2026-06-01 18:07 | update | content/ko/agenda/15-compound-vulnerability.md | 복합 취약성(Compound Vulnerability) 정의·보호 (last_updated: 2026-05-31)
+2026-06-01 18:07 | update | content/ko/doc/downloads.md | 다운로드 센터 (last_updated: 2026-05-31)
+2026-06-01 18:06 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 18:06 | update | content/ko/agenda/05-climate-injustice.md | 기후재난의 사회적 불평등 (last_updated: 2026-06-01)
+2026-06-01 18:06 | update | content/ko/agenda/09-implementation-monitoring.md | [메타-의제] 권고안 사후 이행 점검권 (last_updated: 2026-06-01)
+2026-06-01 18:06 | update | content/ko/agenda/10-national-to-local.md | [메타-의제] 국가 권고를 17개 광역으로 어떻게 내려보낼 것인가 (last_updated: 2026-06-01)
+2026-06-01 18:06 | update | content/ko/agenda/14-climate-dividend.md | 시민 환급형 기후배당(Climate Dividend) 도입 (last_updated: 2026-06-01)
+2026-06-01 18:06 | update | content/ko/agenda/15-compound-vulnerability.md | 복합 취약성(Compound Vulnerability) 정의·보호 (last_updated: 2026-05-31)
+2026-06-01 18:06 | update | content/ko/doc/downloads.md | 다운로드 센터 (last_updated: 2026-05-31)
+2026-06-01 18:05 | update | content/ko/agenda/10-national-to-local.md | [메타-의제] 국가 권고를 17개 광역으로 어떻게 내려보낼 것인가 (last_updated: 2026-06-01)
+2026-06-01 18:05 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 18:05 | update | content/ko/agenda/05-climate-injustice.md | 기후재난의 사회적 불평등 (last_updated: 2026-06-01)
+2026-06-01 18:05 | update | content/ko/agenda/09-implementation-monitoring.md | [메타-의제] 권고안 사후 이행 점검권 (last_updated: 2026-06-01)
+2026-06-01 18:05 | update | content/ko/doc/downloads.md | 다운로드 센터 (last_updated: 2026-05-31)
+2026-06-01 18:04 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 18:04 | update | content/ko/doc/downloads.md | 다운로드 센터 (last_updated: 2026-05-31)
+2026-06-01 18:03 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 18:03 | update | content/ko/doc/downloads.md | 다운로드 센터 (last_updated: 2026-05-31)
+2026-06-01 18:01 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 18:01 | update | content/ko/doc/downloads.md | 다운로드 센터 (last_updated: 2026-05-31)
+2026-06-01 18:00 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 18:00 | update | content/ko/doc/downloads.md | 다운로드 센터 (last_updated: 2026-05-31)
 2026-06-01 17:00 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-01 17:00 | update | content/ko/agenda/01-nuclear-vs-renewable.md | 전력믹스 — 원전인가, 재생에너지인가? (last_updated: 2026-06-01)
 2026-06-01 17:00 | update | content/ko/agenda/02-electricity-price.md | 전기요금 인상 — 받아들일 수 있는가? (last_updated: 2026-06-01)

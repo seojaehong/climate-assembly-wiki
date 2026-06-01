@@ -1,10 +1,11 @@
 ---
 /**
- * AgendaCard.astro — B6
- * Card for the agenda grid on the home page and agenda/ index (Design §3.6).
- *
- * Breaking change from the seed AgendaCard: adds translationStatus and hasEnglish props.
- * Call-site updates in pages/[lang]/agenda/ are handled by Group C/D agents.
+ * AgendaCard.astro — B6 (Phase 3 uplift)
+ * Card for agenda grid — hover micro-interaction + category color coding.
+ * Category mapping (기존 3종 → 색상):
+ *   일반-의제 → 파랑 (감축/general)
+ *   메타-의제 → 회색 (메타/governance)
+ *   실행-의제 → 초록 (적응/action)
  */
 
 import TrustBadge from './TrustBadge.astro';
@@ -22,20 +23,23 @@ interface Props {
 
 const { id, slug, title, category, status, translationStatus, hasEnglish, lang } = Astro.props;
 
-// Category colors — full literal strings required for Tailwind v4 JIT
+// Category color config — full literal Tailwind classes for JIT
 const categoryConfig = {
   '일반-의제': {
-    classes: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+    pill: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+    bar: 'bg-blue-500',
     labelKo: '일반',
     labelEn: 'General',
   },
   '메타-의제': {
-    classes: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
+    pill: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+    bar: 'bg-slate-400',
     labelKo: '메타',
     labelEn: 'Meta',
   },
   '실행-의제': {
-    classes: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',
+    pill: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+    bar: 'bg-emerald-500',
     labelKo: '실행',
     labelEn: 'Action',
   },
@@ -44,22 +48,22 @@ const categoryConfig = {
 // Status pills
 const statusConfig = {
   proposed: {
-    classes: 'border border-gray-400 text-gray-600 dark:border-gray-500 dark:text-gray-400',
+    classes: 'border border-[var(--color-border-strong)] text-[var(--color-fg-muted)]',
     labelKo: '제안',
     labelEn: 'Proposed',
   },
   discussed: {
-    classes: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+    classes: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
     labelKo: '논의됨',
     labelEn: 'Discussed',
   },
   recommended: {
-    classes: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+    classes: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
     labelKo: '권고',
     labelEn: 'Recommended',
   },
   final: {
-    classes: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+    classes: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
     labelKo: '최종',
     labelEn: 'Final',
   },
@@ -71,29 +75,32 @@ const stsCfg = statusConfig[status];
 const catLabel = isKo ? catCfg.labelKo : catCfg.labelEn;
 const stsLabel = isKo ? stsCfg.labelKo : stsCfg.labelEn;
 const idPadded = id.toString().padStart(2, '0');
-const enLabel = isKo ? 'EN' : 'EN';
 ---
 
 <a
   href={`/${lang}/agenda/${slug}`}
-  class="agenda-card block border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-green-500 dark:hover:border-green-400 hover:shadow-md transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+  class="agenda-card card-interactive group block p-4 no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+  transition:name={`agenda-card-${id}`}
 >
+  <!-- Category accent bar -->
+  <div class={`h-0.5 w-8 rounded-full mb-3 transition-all duration-300 group-hover:w-12 ${catCfg.bar}`}></div>
+
   <!-- Top row: ID + status pill -->
-  <div class="flex items-center justify-between gap-2 mb-2">
-    <span class="text-xs font-mono text-gray-400 dark:text-gray-500">#{idPadded}</span>
-    <span class={`text-xs px-2 py-0.5 rounded font-medium ${stsCfg.classes}`}>
+  <div class="flex items-center justify-between gap-2 mb-2.5">
+    <span class="text-xs font-mono text-[var(--color-fg-subtle)]">#{idPadded}</span>
+    <span class={`text-xs px-2 py-0.5 rounded-full font-medium ${stsCfg.classes}`}>
       {stsLabel}
     </span>
   </div>
 
   <!-- Title -->
-  <h3 class="font-semibold text-gray-900 dark:text-gray-100 text-sm leading-snug mb-2">
+  <h3 class="font-semibold text-[var(--color-fg)] text-sm leading-snug mb-3 group-hover:text-[var(--color-accent)] transition-colors">
     {title}
   </h3>
 
-  <!-- Bottom row: category tag + trust badge (small) + EN indicator -->
+  <!-- Bottom row: category tag + trust badge + EN indicator -->
   <div class="flex items-center flex-wrap gap-1.5 mt-auto">
-    <span class={`text-xs px-2 py-0.5 rounded font-medium ${catCfg.classes}`}>
+    <span class={`text-xs px-2 py-0.5 rounded-full font-medium ${catCfg.pill}`}>
       {catLabel}
     </span>
 
@@ -101,11 +108,11 @@ const enLabel = isKo ? 'EN' : 'EN';
 
     {hasEnglish && (
       <span
-        class="text-xs px-1.5 py-0.5 rounded border border-blue-300 text-blue-700 dark:border-blue-600 dark:text-blue-300"
+        class="text-xs px-1.5 py-0.5 rounded-md border border-[var(--color-info)] text-[var(--color-info)] dark:border-blue-600 dark:text-blue-300 font-medium"
         title={isKo ? '영문 번역 있음' : 'English available'}
         aria-label={isKo ? '영문 번역 있음' : 'English translation available'}
       >
-        {enLabel}
+        EN
       </span>
     )}
   </div>

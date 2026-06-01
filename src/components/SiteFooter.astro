@@ -1,75 +1,84 @@
 ---
 /**
- * SiteFooter.astro — B8
- * Site footer with CC notice, links, and language toggle (Design §3.8).
+ * SiteFooter.astro — B8 (Phase 3 uplift)
+ * Site footer with CC notice, links, and language toggle.
  */
 
 import LanguageToggle from './LanguageToggle.astro';
 import LicenseBadge from './LicenseBadge.astro';
 
-// Detect current lang for conditional labels
 const currentUrl = Astro.url.pathname;
 const segments = currentUrl.split('/').filter(Boolean);
 const currentLang = (['ko', 'en'].includes(segments[0])) ? segments[0] : 'ko';
 const isKo = currentLang === 'ko';
 ---
 
-<footer class="site-footer border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 mt-12">
-  <div class="max-w-5xl mx-auto px-6 py-8">
+<footer class="site-footer border-t border-[var(--color-border)] bg-[var(--color-bg-subtle)] mt-16">
+  <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-    <!-- CC notice -->
-    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
-      <LicenseBadge license="CC-BY-SA-4.0" />
-      <p class="text-sm text-gray-600 dark:text-gray-400">
-        Korea Climate Assembly Wiki, 2026.
-        {isKo ? ' 모더레이터: 서재홍.' : ' Moderator: Jaehong Seo.'}
-      </p>
+    <!-- Top row: logo + CC notice -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-6">
+      <div>
+        <p class="text-sm font-bold text-[var(--color-fg)] mb-1" style="letter-spacing: var(--tracking-snug);">
+          {isKo ? '기후시민회의 Wiki' : 'Korea Climate Assembly Wiki'}
+        </p>
+        <div class="flex items-center gap-3">
+          <LicenseBadge license="CC-BY-SA-4.0" />
+          <p class="text-xs text-[var(--color-fg-muted)]">
+            Korea Climate Assembly Wiki, 2026.
+            {isKo ? ' 모더레이터: 서재홍.' : ' Moderator: Jaehong Seo.'}
+          </p>
+        </div>
+      </div>
+      <LanguageToggle />
     </div>
 
     <!-- Disclaimer -->
-    <p class="text-xs text-gray-500 dark:text-gray-500 mb-6">
+    <p class="text-xs text-[var(--color-fg-subtle)] mb-6" style="line-height: var(--leading-relaxed);">
       {isKo
         ? '이 사이트는 독립 아카이브로 정부 공식 발간물이 아닙니다.'
         : 'This is an independent archive, not an official government publication.'}
     </p>
 
-    <!-- Footer nav + language toggle -->
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-      <nav aria-label={isKo ? '푸터 링크' : 'Footer links'} class="flex flex-wrap gap-x-4 gap-y-1">
-        <a
-          href="https://github.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="text-xs text-gray-500 hover:text-green-700 dark:text-gray-400 dark:hover:text-green-400"
-          aria-label={isKo ? 'GitHub (새 탭)' : 'GitHub (new tab)'}
-        >
-          GitHub
-        </a>
-        <a
-          href={`/${currentLang}/doc/about/`}
-          class="text-xs text-gray-500 hover:text-green-700 dark:text-gray-400 dark:hover:text-green-400"
-        >
-          {isKo ? '소개' : 'About'}
-        </a>
-        <a
-          href="https://creativecommons.org/licenses/by-sa/4.0/"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="text-xs text-gray-500 hover:text-green-700 dark:text-gray-400 dark:hover:text-green-400"
-          aria-label={isKo ? 'CC BY-SA 4.0 라이선스 (새 탭)' : 'CC BY-SA 4.0 License (new tab)'}
-        >
-          {isKo ? '라이선스' : 'License'}
-        </a>
-        <a
-          href="mailto:iceamericano9@gmail.com"
-          class="text-xs text-gray-500 hover:text-green-700 dark:text-gray-400 dark:hover:text-green-400"
-        >
-          {isKo ? '문의' : 'Contact'}
-        </a>
-      </nav>
-
-      <!-- Language toggle duplicated for mobile UX (Design §3.8) -->
-      <LanguageToggle />
+    <!-- Footer nav -->
+    <div class="flex flex-wrap gap-x-5 gap-y-2">
+      <a
+        href="https://github.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="text-xs text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] transition-colors"
+        aria-label={isKo ? 'GitHub (새 탭)' : 'GitHub (new tab)'}
+      >
+        GitHub
+      </a>
+      <a
+        href={`/${currentLang}/doc/about/`}
+        class="text-xs text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] transition-colors"
+      >
+        {isKo ? '소개' : 'About'}
+      </a>
+      <a
+        href="https://creativecommons.org/licenses/by-sa/4.0/"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="text-xs text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] transition-colors"
+        aria-label={isKo ? 'CC BY-SA 4.0 라이선스 (새 탭)' : 'CC BY-SA 4.0 License (new tab)'}
+      >
+        {isKo ? '라이선스' : 'License'}
+      </a>
+      <a
+        href={`/${currentLang}/doc/related-sites/`}
+        class="text-xs text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] transition-colors"
+      >
+        {isKo ? '관련 사이트' : 'Related Sites'}
+      </a>
+      <a
+        href="mailto:iceamericano9@gmail.com"
+        class="text-xs text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] transition-colors"
+      >
+        {isKo ? '문의' : 'Contact'}
+      </a>
     </div>
+
   </div>
 </footer>
