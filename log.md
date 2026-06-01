@@ -2,6 +2,21 @@
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
+2026-06-01 21:51 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 21:51 | update | content/ko/doc/realtime-tools-for-moderators.md | 모더레이팅 실시간 도구 가이드 (16종 + 권장 조합) (last_updated: 2026-06-01)
+2026-06-01 21:50 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 21:50 | update | content/ko/doc/realtime-tools-for-moderators.md | 모더레이팅 실시간 도구 가이드 (16종 + 권장 조합) (last_updated: 2026-06-01)
+2026-06-01 21:50 | update | content/ko/doc/realtime-tools-implementation-guide.md | 실시간 도구 구현 가이드 (오픈소스 vs 유료, 우리 사이트 도입 한계) (last_updated: 2026-06-01)
+2026-06-01 21:48 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 21:48 | update | content/ko/doc/realtime-tools-for-moderators.md | 모더레이팅 실시간 도구 가이드 (16종 + 권장 조합) (last_updated: 2026-06-01)
+2026-06-01 21:48 | update | content/ko/doc/realtime-tools-implementation-guide.md | 실시간 도구 구현 가이드 (오픈소스 vs 유료, 우리 사이트 도입 한계) (last_updated: 2026-06-01)
+2026-06-01 21:47 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 21:47 | update | content/ko/doc/realtime-tools-for-moderators.md | 모더레이팅 실시간 도구 가이드 (16종 + 권장 조합) (last_updated: 2026-06-01)
+2026-06-01 21:47 | update | content/ko/doc/realtime-tools-implementation-guide.md | 실시간 도구 구현 가이드 (오픈소스 vs 유료, 우리 사이트 도입 한계) (last_updated: 2026-06-01)
+2026-06-01 21:46 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 21:46 | update | content/ko/doc/realtime-tools-implementation-guide.md | 실시간 도구 구현 가이드 (오픈소스 vs 유료, 우리 사이트 도입 한계) (last_updated: 2026-06-01)
+2026-06-01 21:45 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 21:45 | update | content/ko/doc/realtime-tools-implementation-guide.md | 실시간 도구 구현 가이드 (오픈소스 vs 유료, 우리 사이트 도입 한계) (last_updated: 2026-06-01)
 2026-06-01 21:42 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-01 21:40 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-01 21:39 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
