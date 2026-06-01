@@ -11,7 +11,7 @@ translation_status: author-verified
 
 ## What This Site Is
 
-This site is the **open archive of an individual moderator** working with **Korea's first national Climate Citizens' Assembly (2026)** — a body of 220 randomly-selected citizens convened to learn, deliberate, and recommend national climate policy.
+This site is the **open archive of an individual moderator** working with **Korea's first national Climate Citizens' Assembly (2026)** — a body of 200 members (20 planning + 180 deliberating) convened to learn, deliberate, and recommend national climate policy.
 
 The Assembly is the **world's first permanent national-level climate deliberative body**, established under **Article 19-2 of Korea's Framework Act on Carbon Neutrality and Green Growth in Response to the Climate Crisis** (Carbon Neutrality Framework Act). It launched on 16 May 2026.
 
