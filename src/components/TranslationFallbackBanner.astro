@@ -36,6 +36,52 @@ const enPath = currentPath
 // They serve EN/KO content but exist for SEO/hreflang/shared-link discoverability.
 // Render a distinct promotional banner instead of the EN translation-fallback copy.
 const isStructuralLocale = ['ja', 'zh', 'es'].includes(targetLang);
+
+// Localized banner copy for structural locales (ja/zh/es).
+// LLM 2-pass draft (2026-06-01). Native review pending.
+type StructuralCopy = {
+  title: string;
+  body: string;
+  viewIn: string;
+  koLabel: string;
+  enLabel: string;
+  contribute: string;
+  cta: string;
+  dismiss: string;
+};
+const structuralCopy: Record<string, StructuralCopy> = {
+  ja: {
+    title: 'この言語版は構造のみの提供です。',
+    body: '日本語への本文翻訳は進行中です。以下の本文は英語(または韓国語)でフォールバック表示されます。',
+    viewIn: 'このページを次の言語で表示:',
+    koLabel: '韓国語 (한국어)',
+    enLabel: '英語 (English)',
+    contribute: '翻訳にご協力いただけますか?',
+    cta: 'GitHub Issue を作成 →',
+    dismiss: '閉じる',
+  },
+  zh: {
+    title: '本语言版本仅提供结构框架。',
+    body: '中文正文翻译正在进行中。下方正文将以英文(或韩文)作为回退显示。',
+    viewIn: '以其他语言查看本页:',
+    koLabel: '韩文 (한국어)',
+    enLabel: '英文 (English)',
+    contribute: '希望协助翻译?',
+    cta: '在 GitHub 上提交 Issue →',
+    dismiss: '关闭',
+  },
+  es: {
+    title: 'Esta versión de idioma es solo estructural.',
+    body: 'La traducción completa al español está en curso. El texto del cuerpo se muestra a continuación en inglés (o coreano) como alternativa.',
+    viewIn: 'Ver esta página en:',
+    koLabel: 'coreano (한국어)',
+    enLabel: 'inglés (English)',
+    contribute: '¿Quiere ayudar con la traducción?',
+    cta: 'Abrir un issue en GitHub →',
+    dismiss: 'Cerrar',
+  },
+};
+const copy: StructuralCopy = structuralCopy[targetLang] ?? structuralCopy.es;
 ---
 
 {isStructuralLocale ? (
@@ -48,27 +94,26 @@ const isStructuralLocale = ['ja', 'zh', 'es'].includes(targetLang);
     <span aria-hidden="true" class="text-base shrink-0 mt-0.5">🌐</span>
     <div class="space-y-2 flex-1 min-w-0">
       <p>
-        <strong>This language version is structural only.</strong>
-        {' '}Full translation into {targetLang === 'ja' ? '日本語 (Japanese)' : targetLang === 'zh' ? '中文 (Chinese)' : 'Español (Spanish)'} is in progress.
-        {' '}The body text below is shown in English (or Korean) as a fallback.
+        <strong>{copy.title}</strong>
+        {' '}{copy.body}
       </p>
       <p class="text-xs" style="color: var(--color-fg-muted);">
-        View this page in
-        {' '}<a href={koPath} class="font-semibold underline hover:opacity-80" style="color: var(--color-accent);" lang="ko">한국어 (Korean)</a>
+        {copy.viewIn}
+        {' '}<a href={koPath} class="font-semibold underline hover:opacity-80" style="color: var(--color-accent);" lang="ko">{copy.koLabel}</a>
         {' '} · {' '}
-        <a href={enPath} class="font-semibold underline hover:opacity-80" style="color: var(--color-accent);" lang="en">English</a>
+        <a href={enPath} class="font-semibold underline hover:opacity-80" style="color: var(--color-accent);" lang="en">{copy.enLabel}</a>
       </p>
       <p class="text-xs" style="color: var(--color-fg-muted);">
-        Want to help translate?
+        {copy.contribute}
         {' '}
         <a href={`${REPO}/issues/new?labels=translation,${targetLang}`} target="_blank" rel="noopener noreferrer" class="underline hover:opacity-80" style="color: var(--color-accent);">
-          Open a GitHub issue →
+          {copy.cta}
         </a>
       </p>
     </div>
     <button
       type="button"
-      aria-label="Dismiss"
+      aria-label={copy.dismiss}
       class="shrink-0 text-base opacity-60 hover:opacity-100 transition-opacity"
       onclick="this.parentElement?.remove()"
     >✕</button>
