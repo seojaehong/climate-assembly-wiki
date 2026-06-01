@@ -74,6 +74,10 @@ const doc = defineCollection({
     title: z.string(),
     // D3 extension (Design §2.2): 5 new values added for tools/methods/cases collections
     // that ride on the existing doc collection rather than adding new Astro collections.
+    // Unpublish flag (2026-06-02): when true, the doc is excluded from
+    // getStaticPaths, listing pages, sitemap, and pagefind. Source file is
+    // preserved so the page can be republished by flipping this back to false.
+    draft: z.boolean().default(false).optional(),
     doc_type: z.enum([
       'brief',          // moderator-brief, etc.
       'reference',      // moderator-sources

@@ -28,9 +28,11 @@ import DocLayout from '../../../layouts/DocLayout.astro';
 export async function getStaticPaths() {
   const langs = ['ko', 'en', 'ja', 'zh', 'es'] as const; // M4 done 2026-06-01 (ja/zh/es structural)
   const docEntries = await getCollection('doc');
+  // 2026-06-02: skip draft docs so unpublished pages never get static routes.
+  const publishedEntries = docEntries.filter((entry) => entry.data.draft !== true);
 
   return langs.flatMap((lang) =>
-    docEntries.map((entry) => ({
+    publishedEntries.map((entry) => ({
       params: { lang, slug: entry.data.slug },
       props: { entry, lang },
     }))

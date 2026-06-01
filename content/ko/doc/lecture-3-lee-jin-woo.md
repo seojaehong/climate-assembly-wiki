@@ -1,6 +1,7 @@
 ---
 slug: lecture-3-lee-jin-woo
 title: "3교시 이진우 강의안 정리 — 기후시민회의 모더레이션의 실전 윤리와 기법"
+draft: true  # unpublished 2026-06-02 — source preserved for future republishing
 doc_type: guide
 order: 23
 license: CC-BY-SA-4.0

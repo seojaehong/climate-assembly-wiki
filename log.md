@@ -2,6 +2,16 @@
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
+2026-06-02 08:44 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-02 08:44 | update | content/ko/doc/downloads.md | 다운로드 센터 (last_updated: 2026-05-31)
+2026-06-02 08:44 | update | content/ko/doc/lecture-1-park-chan.md | 1교시 박찬 강의안 정리 — 정부의 기후위기 대응정책 (last_updated: 2026-06-01)
+2026-06-02 08:44 | update | content/ko/doc/lecture-2-kim-sang-gyu.md | 2교시 김상규 강의안 정리 — 2026 기후시민회의 운영 지원 과업의 이해 (last_updated: 2026-06-01)
+2026-06-02 08:44 | update | content/ko/doc/lecture-3-lee-jin-woo.md | 3교시 이진우 강의안 정리 — 기후시민회의 모더레이션의 실전 윤리와 기법 (last_updated: 2026-06-01)
+2026-06-02 08:43 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-02 08:43 | update | content/ko/doc/downloads.md | 다운로드 센터 (last_updated: 2026-05-31)
+2026-06-02 08:43 | update | content/ko/doc/lecture-1-park-chan.md | 1교시 박찬 강의안 정리 — 정부의 기후위기 대응정책 (last_updated: 2026-06-01)
+2026-06-02 08:43 | update | content/ko/doc/lecture-2-kim-sang-gyu.md | 2교시 김상규 강의안 정리 — 2026 기후시민회의 운영 지원 과업의 이해 (last_updated: 2026-06-01)
+2026-06-02 08:43 | update | content/ko/doc/lecture-3-lee-jin-woo.md | 3교시 이진우 강의안 정리 — 기후시민회의 모더레이션의 실전 윤리와 기법 (last_updated: 2026-06-01)
 2026-06-02 00:13 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-02 00:13 | update | content/ko/doc/mentimeter-setup-cookbook.md | content/ko/doc/mentimeter-setup-cookbook.md updated
 2026-06-02 00:13 | update | content/ko/doc/realtime-tools-for-moderators.md | 모더레이팅 실시간 도구 가이드 (16종 + 권장 조합) (last_updated: 2026-06-02)
