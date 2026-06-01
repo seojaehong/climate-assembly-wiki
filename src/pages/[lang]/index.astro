@@ -27,6 +27,9 @@ export async function getStaticPaths() {
   return [
     { params: { lang: 'ko' } },
     { params: { lang: 'en' } },
+    { params: { lang: 'ja' } },
+    { params: { lang: 'zh' } },
+    { params: { lang: 'es' } },
   ];
 }
 
@@ -35,11 +38,20 @@ const { lang } = Astro.params;
 const agendaEntries: CollectionEntry<'agenda'>[] = await getCollection('agenda');
 const sessionEntries: CollectionEntry<'session'>[] = await getCollection('session');
 
-// R-01: Filter out dummy agenda (#00) before sorting
-const heroAgendas = [...agendaEntries]
-  .filter((entry) => entry.data.id > 0)
-  .sort((a, b) => a.data.id - b.data.id)
-  .slice(0, 6);
+// R-20: Featured-first selection — if any agendas have data.featured=true, prefer those.
+// Falls back to id-sorted (excluding dummy #00) when featured field is absent or empty.
+// NOTE: 'featured' is not yet in the Zod schema. When added, mark key agendas
+// (e.g. ⑤⑧⑩⑭⑮) with `featured: true` in their frontmatter to activate.
+const _featuredAgendas = agendaEntries.filter(
+  (e) => e.data.id > 0 && (e.data as Record<string, unknown>).featured === true
+);
+const heroAgendas =
+  _featuredAgendas.length >= 6
+    ? _featuredAgendas.slice(0, 6)
+    : [...agendaEntries]
+        .filter((entry) => entry.data.id > 0)
+        .sort((a, b) => a.data.id - b.data.id)
+        .slice(0, 6);
 
 // Sort sessions by order field
 const orderedSessions = [...sessionEntries]
@@ -150,9 +162,10 @@ const ldJson = JSON.stringify([
       </div>
 
       <!-- Slogan -->
+      <!-- R-18: Korean display headlines use --tracking-korean (-0.01em) not --tracking-tight (-0.03em) -->
       <h1
         class="font-bold text-[var(--color-fg)] mb-5 max-w-3xl"
-        style="font-size: var(--size-display-1); letter-spacing: var(--tracking-tight); line-height: var(--leading-tight);"
+        style={`font-size: var(--size-display-1); letter-spacing: ${isKo ? 'var(--tracking-korean)' : 'var(--tracking-snug)'}; line-height: var(--leading-tight);`}
       >
         {isKo
           ? '국민이 대한민국의 기후정책을 바꿉니다'
@@ -243,7 +256,7 @@ const ldJson = JSON.stringify([
       <div class="max-w-3xl">
         <!-- Eyebrow -->
         <p class="text-xs font-bold tracking-widest uppercase text-[var(--color-accent)] mb-4">
-          {isKo ? 'WHY THIS MATTERS' : 'WHY THIS MATTERS'}
+          WHY THIS MATTERS
         </p>
 
         <!-- Big statement -->
@@ -298,7 +311,7 @@ const ldJson = JSON.stringify([
   >
     <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8">
       <p class="text-xs font-bold tracking-widest uppercase text-[var(--color-accent)] mb-3">
-        {isKo ? 'PROCESS' : 'PROCESS'}
+        PROCESS
       </p>
       <h2
         id="flow-heading"
@@ -386,7 +399,7 @@ const ldJson = JSON.stringify([
       <div class="flex items-end justify-between mb-10 gap-4 flex-wrap">
         <div>
           <p class="text-xs font-bold tracking-widest uppercase text-[var(--color-accent)] mb-3">
-            {isKo ? 'AGENDA' : 'AGENDA'}
+            AGENDA
           </p>
           <h2
             id="agenda-heading"
@@ -405,6 +418,23 @@ const ldJson = JSON.stringify([
             <path d="M5 12h14M12 5l7 7-7 7"/>
           </svg>
         </a>
+      </div>
+
+      {/* R-16: Category colour legend — one compact row above the grid */}
+      <div class="flex flex-wrap items-center gap-4 mb-6" aria-label={isKo ? '의제 분류 범례' : 'Agenda category legend'}>
+        <span class="text-xs text-[var(--color-fg-muted)] font-semibold">{isKo ? '분류:' : 'Category:'}</span>
+        <span class="flex items-center gap-1.5 text-xs">
+          <span class="inline-block w-3 h-3 rounded-full" style="background:var(--color-cat-general-bar)" aria-hidden="true"></span>
+          <span style="color:var(--color-cat-general-fg)">{isKo ? '일반 의제' : 'General'}</span>
+        </span>
+        <span class="flex items-center gap-1.5 text-xs">
+          <span class="inline-block w-3 h-3 rounded-full" style="background:var(--color-cat-meta-bar)" aria-hidden="true"></span>
+          <span style="color:var(--color-cat-meta-fg)">{isKo ? '메타 의제' : 'Meta'}</span>
+        </span>
+        <span class="flex items-center gap-1.5 text-xs">
+          <span class="inline-block w-3 h-3 rounded-full" style="background:var(--color-cat-action-bar)" aria-hidden="true"></span>
+          <span style="color:var(--color-cat-action-fg)">{isKo ? '실행 의제' : 'Action'}</span>
+        </span>
       </div>
 
       {heroAgendas.length > 0 ? (
@@ -450,7 +480,7 @@ const ldJson = JSON.stringify([
         <!-- Text side -->
         <div>
           <p class="text-xs font-bold tracking-widest uppercase text-[var(--color-accent)] mb-3">
-            {isKo ? 'SIMULATION TOOL' : 'SIMULATION TOOL'}
+            SIMULATION TOOL
           </p>
           <h2
             id="tools-heading"
@@ -501,9 +531,13 @@ const ldJson = JSON.stringify([
             style="background: var(--color-info-bg);"
           >
             <!-- Temperature display -->
+            <!-- R-21: Label as illustrative scenario — not actual measured data -->
             <div class="text-center mb-6">
               <div class="text-6xl font-bold text-orange-500 mb-1" style="letter-spacing: var(--tracking-tight);">+2.4°C</div>
-              <div class="text-sm text-[var(--color-fg-muted)]">{isKo ? '기준 시나리오 (2100년)' : 'Baseline scenario (2100)'}</div>
+              <div class="text-sm text-[var(--color-fg-muted)]">{isKo ? '예시 시나리오 (2100년)' : 'Illustrative scenario (2100)'}</div>
+              <div class="text-xs text-[var(--color-fg-muted)] mt-1 opacity-70">
+                {isKo ? '실제 슬라이더 조작 결과는 다릅니다' : 'Actual slider results will vary'}
+              </div>
             </div>
             <!-- Lever preview -->
             <div class="space-y-3">
@@ -530,8 +564,14 @@ const ldJson = JSON.stringify([
                 </div>
               ))}
             </div>
+            <!-- R-21: Source attribution for tool card data -->
             <p class="text-xs text-center text-[var(--color-fg-muted)] mt-5">
               {isKo ? '시민이 직접 슬라이더를 조작합니다' : 'Citizens manipulate sliders directly'}
+            </p>
+            <p class="text-[10px] text-center text-[var(--color-fg-muted)] mt-1 opacity-60">
+              {isKo
+                ? '출처: MIT Climate Interactive En-ROADS (예시 값)'
+                : 'Source: MIT Climate Interactive En-ROADS (illustrative values)'}
             </p>
           </div>
         </div>
@@ -551,7 +591,7 @@ const ldJson = JSON.stringify([
       <div class="flex items-end justify-between mb-8 gap-4 flex-wrap">
         <div>
           <p class="text-xs font-bold tracking-widest uppercase text-[var(--color-accent)] mb-3">
-            {isKo ? 'LATEST ACTIVITY' : 'LATEST ACTIVITY'}
+            LATEST ACTIVITY
           </p>
           <h2
             id="activity-heading"
@@ -600,7 +640,7 @@ const ldJson = JSON.stringify([
   >
     <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8">
       <p class="text-xs font-bold tracking-widest uppercase text-[var(--color-accent)] mb-3">
-        {isKo ? 'TRUST & METHODOLOGY' : 'TRUST & METHODOLOGY'}
+        TRUST & METHODOLOGY
       </p>
       <h2
         id="trust-heading"

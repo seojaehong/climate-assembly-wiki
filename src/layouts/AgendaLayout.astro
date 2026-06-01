@@ -223,6 +223,16 @@ const ldJson = JSON.stringify(articleSchema);
                   {siteBase}{canonicalPath ?? ''}.
                 </p>
               </div>
+              {/* R-21: APA 7th edition + accessed date */}
+              <div>
+                <p class="text-xs font-bold text-[var(--color-fg-muted)] uppercase tracking-wide mb-1.5">APA 7</p>
+                <p class="text-xs text-[var(--color-fg-muted)] bg-[var(--color-code-bg)] rounded-lg p-3 leading-relaxed">
+                  Seo, J. ({(frontmatter?.last_updated ?? '2026').slice(0, 4)}). <em>{title}</em>.
+                  Korea Climate Assembly Wiki.
+                  Retrieved {new Date().toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'})},
+                  from {siteBase}{canonicalPath ?? ''}
+                </p>
+              </div>
             </div>
           </details>
 

@@ -56,6 +56,25 @@
   --color-code-bg: #f3f4f6;
   --color-quote-bg: #fef9c3;
 
+  /* ============================================================
+     CATEGORY COLORS — R-16: tokenised agenda category palette
+     Replaces raw Tailwind (bg-blue-500, bg-emerald-500 etc.) in AgendaCard.
+     Each category has: bar (accent strip), bg (pill bg), fg (pill text).
+     Dark overrides below in the dark-mode block.
+     ============================================================ */
+  /* 일반-의제 (General — blue) */
+  --color-cat-general-bar: #3b82f6;
+  --color-cat-general-bg: #eff6ff;
+  --color-cat-general-fg: #1d4ed8;
+  /* 메타-의제 (Meta — slate) */
+  --color-cat-meta-bar: #94a3b8;
+  --color-cat-meta-bg: #f1f5f9;
+  --color-cat-meta-fg: #475569;
+  /* 실행-의제 (Action — emerald) */
+  --color-cat-action-bar: #10b981;
+  --color-cat-action-bg: #ecfdf5;
+  --color-cat-action-fg: #047857;
+
   /* Brand — deep green + amber accent */
   --color-accent: #0a6b4e;
   --color-accent-hover: #065f46;
@@ -141,9 +160,8 @@
   --radius-2xl: 28px;
   --radius-full: 9999px;
 
-  /* Legacy aliases kept for compatibility */
-  --radius-sm-legacy: 4px;
-  --radius-md-legacy: 8px;
+  /* R-19: Legacy radius aliases removed — no consumers found in src/.
+     If any component breaks, migrate to --radius-sm (6px) or --radius-xs (4px). */
 
   /* ============================================================
      SHADOWS — Light mode
@@ -159,7 +177,10 @@
   /* ============================================================
      GRADIENTS
      ============================================================ */
-  --gradient-hero: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 40%, #f0f9ff 100%);
+  /* R-17: Strengthened from near-white (#f0fdf4/#ecfdf5) to deeper green-to-sky tones
+     for visible contrast against the white body below the hero section.
+     Darkest point #d1fae5 (green-100) still allows dark text to pass AA at 4.5:1+. */
+  --gradient-hero: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 30%, #bae6fd 100%);
   --gradient-card: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
   --gradient-accent: linear-gradient(135deg, #0a6b4e 0%, #0d9488 100%);
   --gradient-highlight: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
@@ -220,6 +241,17 @@
   --color-highlight-fg: #fef3c7;
   --color-highlight-bg: #1c1400;
 
+  /* R-16 dark overrides — category color tokens */
+  --color-cat-general-bar: #60a5fa;
+  --color-cat-general-bg: #0c1a2e;
+  --color-cat-general-fg: #93c5fd;
+  --color-cat-meta-bar: #94a3b8;
+  --color-cat-meta-bg: #1e293b;
+  --color-cat-meta-fg: #cbd5e1;
+  --color-cat-action-bar: #34d399;
+  --color-cat-action-bg: #022c22;
+  --color-cat-action-fg: #6ee7b7;
+
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3);
@@ -277,6 +309,17 @@
     --color-highlight: #fbbf24;
     --color-highlight-fg: #fef3c7;
     --color-highlight-bg: #1c1400;
+
+    /* R-16 dark overrides — category color tokens */
+    --color-cat-general-bar: #60a5fa;
+    --color-cat-general-bg: #0c1a2e;
+    --color-cat-general-fg: #93c5fd;
+    --color-cat-meta-bar: #94a3b8;
+    --color-cat-meta-bg: #1e293b;
+    --color-cat-meta-fg: #cbd5e1;
+    --color-cat-action-bar: #34d399;
+    --color-cat-action-bg: #022c22;
+    --color-cat-action-fg: #6ee7b7;
 
     --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -339,10 +382,26 @@
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-card-hover: 0 6px 16px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.06);
 
-  --gradient-hero: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 40%, #f0f9ff 100%);
+  --gradient-hero: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 30%, #bae6fd 100%);
   --gradient-card: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
   --gradient-accent: linear-gradient(135deg, #0a6b4e 0%, #0d9488 100%);
   --gradient-highlight: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
   --gradient-why: linear-gradient(160deg, #022c22 0%, #0a1410 50%, #0c1a2e 100%);
   --gradient-trust: linear-gradient(135deg, #f8fafc 0%, #f0fdf4 100%);
 }
+
+/* ============================================================
+   R-22 FONT STACK DECISION (confirmed, do not reopen)
+   ============================================================
+   English body font = Pretendard Variable (same as Korean).
+
+   Rationale:
+   - Pretendard Variable covers Han, Latin, and punctuation in one stack.
+   - Adding Inter/SF Pro would require loading a second variable font (+80–120 KB)
+     and managing FOUT for two stacks — cost exceeds any visual gain.
+   - Pretendard Latin glyphs are near-SF-Pro quality at display sizes.
+
+   Future consideration (M5+):
+   - If Noto Serif KR is added for pull-quotes/citations, scope it to
+     `blockquote` or `.citation` only — do not change the base stack.
+   ============================================================ */

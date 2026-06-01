@@ -25,10 +25,10 @@
 /* ============================================================
    Base styles
    ============================================================ */
-:root {
-  --color-primary: #0a6b4e;
-  --color-secondary: #2563eb;
-}
+/* R-19: --color-primary (#0a6b4e) and --color-secondary (#2563eb) removed.
+   These were legacy "climate blue" tokens from a prior palette and are not
+   consumed anywhere in src/ — verified by grep 2026-06-01.
+   Use --color-accent (#0a6b4e) and --color-info (#2563eb) from tokens.css instead. */
 
 *,
 *::before,
@@ -91,6 +91,16 @@ h1, h2, h3, h4, h5, h6 {
   line-height: var(--leading-tight);
   font-weight: 700;
   color: var(--color-fg);
+}
+
+/* R-18: Korean display headlines use -0.01em (--tracking-korean) instead of
+   -0.03em (--tracking-tight) — Latin-tuned tight tracking is too aggressive
+   on Korean glyphs. Inline style="" overrides on hero h1 in index.astro
+   are handled via conditional prop per the same R-18 fix. */
+:lang(ko) h1,
+:lang(ko) h2,
+:lang(ko) h3 {
+  letter-spacing: var(--tracking-korean);
 }
 
 p {

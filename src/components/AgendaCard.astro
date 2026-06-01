@@ -32,23 +32,24 @@ interface Props {
 
 const { id, slug, title, category, status, contentStatus, enAvailable, lang } = Astro.props;
 
-// Category color config — full literal Tailwind classes for JIT
+// R-16: Category color config now uses CSS custom properties (tokens.css)
+// instead of raw Tailwind color classes. Enables dark-mode + theming control.
 const categoryConfig = {
   '일반-의제': {
-    pill: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-    bar: 'bg-blue-500',
+    pillStyle: 'background:var(--color-cat-general-bg);color:var(--color-cat-general-fg)',
+    barStyle: 'background:var(--color-cat-general-bar)',
     labelKo: '일반',
     labelEn: 'General',
   },
   '메타-의제': {
-    pill: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
-    bar: 'bg-slate-400',
+    pillStyle: 'background:var(--color-cat-meta-bg);color:var(--color-cat-meta-fg)',
+    barStyle: 'background:var(--color-cat-meta-bar)',
     labelKo: '메타',
     labelEn: 'Meta',
   },
   '실행-의제': {
-    pill: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-    bar: 'bg-emerald-500',
+    pillStyle: 'background:var(--color-cat-action-bg);color:var(--color-cat-action-fg)',
+    barStyle: 'background:var(--color-cat-action-bar)',
     labelKo: '실행',
     labelEn: 'Action',
   },
@@ -91,8 +92,11 @@ const idPadded = id.toString().padStart(2, '0');
   class="agenda-card card-interactive group block p-4 no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
   transition:name={`agenda-card-${id}`}
 >
-  <!-- Category accent bar -->
-  <div class={`h-0.5 w-8 rounded-full mb-3 transition-all duration-300 group-hover:w-12 ${catCfg.bar}`}></div>
+  <!-- R-16: Category accent bar — h-1 w-10 (4px×40px) for better visibility vs prior h-0.5 w-8 (2px×32px) -->
+  <div
+    class="h-1 w-10 rounded-full mb-3 transition-all duration-300 group-hover:w-14"
+    style={catCfg.barStyle}
+  ></div>
 
   <!-- Top row: ID + status pill -->
   <div class="flex items-center justify-between gap-2 mb-2.5">
@@ -109,7 +113,8 @@ const idPadded = id.toString().padStart(2, '0');
 
   <!-- Bottom row: category tag + content trust badge + EN indicator -->
   <div class="flex items-center flex-wrap gap-1.5 mt-auto">
-    <span class={`text-xs px-2 py-0.5 rounded-full font-medium ${catCfg.pill}`}>
+    <!-- R-16: pill uses CSS token vars instead of raw Tailwind color classes -->
+    <span class="text-xs px-2 py-0.5 rounded-full font-medium" style={catCfg.pillStyle}>
       {catLabel}
     </span>
 
