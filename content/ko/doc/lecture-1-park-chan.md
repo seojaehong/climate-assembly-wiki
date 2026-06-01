@@ -73,5 +73,4 @@ translations:
 - 강사: 박찬 (서울시립대학교)
 - 일자: 2026-05-28 (1교시)
 - 기반 문서: 박찬_기후대책_0528.pdf (53쪽)
-- 원본 강의안 다운로드: [park-chan-lecture-1.docx](/assets/downloads/park-chan-lecture-1.docx)
 - 라이선스: 본 정리본 CC BY-SA 4.0 (원강의 인용 포함, 원저작권 박찬 교수에 귀속)

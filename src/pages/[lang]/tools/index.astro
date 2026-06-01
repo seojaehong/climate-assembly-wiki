@@ -1,0 +1,22 @@
+---
+/**
+ * /[lang]/tools/ — Tools index page
+ *
+ * Currently En-ROADS is the only tool (M1–M3).
+ * Redirects to En-ROADS hub for now; future tools will be listed here.
+ *
+ * Languages: ko, en (M1–M3). M4: restore ja, zh, es.
+ */
+
+export async function getStaticPaths() {
+  return [
+    { params: { lang: 'ko' } },
+    { params: { lang: 'en' } },
+    // M4: add ja, zh, es
+  ];
+}
+
+const { lang } = Astro.params;
+
+return Astro.redirect(`/${lang}/tools/en-roads/`, 302);
+---

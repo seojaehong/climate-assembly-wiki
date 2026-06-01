@@ -63,7 +63,7 @@ translations:
 ## 관련 자료
 
 - [의제 매트릭스 v5 §1.1 — L1·L4·L5](/ko/doc/agenda-matrix-v5/)
-- [En-ROADS 18레버 — L5 원자력](/ko/doc/en-roads-comprehensive/)
+- [En-ROADS 18레버 — L5 원자력](/ko/tools/en-roads/comprehensive-guide/)
 - KPX 2024 전력시장 실적: https://epsis.kpx.or.kr
 - 산업통상자원부 “원자력, 2024년 최대 발전원 등극”(2025.5): https://www.korea.kr/news/policyNewsView.do?newsId=148943045
 - 11차 전력수급기본계획(산업통상자원부, 2025)
@@ -71,3 +71,8 @@ translations:
 ## 관련 세션
 
 본회의 **감축1 분과 종합라운드 메인 의제(★1)**. 의제 ③(수도권), ⑬(재생E 배분), N1(LNG), N2(SMR)와 묶음 진행 권장.
+
+
+## 시민 발의 보기
+
+이 의제와 관련된 시민 발의(공식 climatevoice.kr 31건+)는 [시민 발의 의제 트래커](/ko/doc/citizen-proposals-tracker/)에서 매주 월요일 08:00 KST 자동 갱신됩니다.

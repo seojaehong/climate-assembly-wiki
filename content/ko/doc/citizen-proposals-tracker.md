@@ -66,9 +66,32 @@ last_updated: 2026-06-01
 - **컬럼 구조**: 의제ID / 제목 / 등록일 / 작성자(마스킹) / 카테고리 / 본문 / 좋아요 / En-ROADS 레버(자동 태깅) / 모더레이터_레버보정(수동) / 분과(매트릭스 v5) / 모더레이터메모(수동) 등.
 - **수동 컬럼 보존**: 모더레이터 보정 컬럼(O, P)은 자동 갱신 시 **절대 덮어쓰지 않습니다**. 모더레이터가 한 번 입력한 보정·메모는 영구 보존됩니다.
 
+## 모더레이터·연구 의제(master)와의 관계
+
+본 트래커는 **공식 시민 발의 input 풀**이고, [위키 의제(/ko/agenda/)](/ko/agenda/)는 모더레이터·운영진이 정리한 **master 의제 15건**입니다. 두 트랙은 명확히 분리되어 운영됩니다 (**A안**).
+
+```
+공식 시민 발의 (이 트래커, climatevoice.kr 시트, 31건+)
+    │
+    ↓ 6.13~14 기획참여단 워크숍에서 선정·통합
+    ↓
+위키 의제 master (/ko/agenda/, 15건)
+    │
+    ↓ 본회의 6회차에서 분과별 종합라운드 진행
+```
+
+### 위키 의제 master 15건 빠른 링크
+
+| 분과 | 의제 |
+|---|---|
+| 감축1 | [01 핵발전 vs 재생E](/ko/agenda/01-nuclear-vs-renewable/) · [02 전기요금](/ko/agenda/02-electricity-price/) · [03 지자체 GHG](/ko/agenda/03-seoul-metro-gap/) · [04 내연기관 퇴출](/ko/agenda/04-ice-vehicle-phaseout/) |
+| 감축2 | [11 AI 데이터센터](/ko/agenda/11-ai-datacenter/) · [12 개도국 9변수](/ko/agenda/12-developing-9vars/) · [13 재생E 제로섬](/ko/agenda/13-renewable-zerosum/) |
+| 적응 | [05 기후불평등](/ko/agenda/05-climate-injustice/) · [06 생활규제](/ko/agenda/06-lifestyle-regulation/) · [07 개도국 지원](/ko/agenda/07-developing-country-support/) · [08 ESG/RE100](/ko/agenda/08-esg-re100/) |
+| 메타 | [09 이행 점검권](/ko/agenda/09-implementation-monitoring/) · [10 광역→기초 다층 확산](/ko/agenda/10-national-to-local/) · [14 기후배당](/ko/agenda/14-climate-dividend/) · [15 복합취약성](/ko/agenda/15-compound-vulnerability/) |
+
 ## 의제 매트릭스 v5와의 연결
 
-[의제 매트릭스 v5](/ko/doc/agenda-matrix/) — 18개 En-ROADS 레버 × 3분과 격자.
+[의제 매트릭스 v5](/ko/doc/agenda-matrix-v5/) — 18개 En-ROADS 레버 × 3분과 격자.
 
 시민 발의 의제는 매트릭스 v5에서 ⚪ 빈칸으로 표시된 영역 — **가스·신기술·바이오·건물효율·인구·폐기물** 등 — 을 채우는 후보 풀로 운영됩니다. 트래커는 단순 집계가 아니라 매트릭스 보완을 위한 **콘텐츠 파이프라인**입니다.
 

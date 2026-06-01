@@ -143,5 +143,4 @@ translations:
 - 일자: 2026-05-31
 - 행사: 2026 기후시민회의 모더레이터 양성 교육 2교시
 - 기반 문서: 「2026년 기후시민회의 운영 지원 과업의 이해」 17쪽 PDF
-- 원본 정리본 다운로드: [kim-sang-gyu-lecture-2.md](/assets/downloads/kim-sang-gyu-lecture-2.md)
 - 라이선스: 본 정리본 CC BY-SA 4.0 (원강의 인용 포함, 원저작권 강사에 귀속)

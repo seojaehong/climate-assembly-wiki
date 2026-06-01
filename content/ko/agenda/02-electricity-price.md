@@ -61,10 +61,15 @@ translations:
 
 - [의제 매트릭스 v5 §1.2 — L8](/ko/doc/agenda-matrix-v5/)
 - [의제 ⑭ 시민 환급형 기후배당](/ko/agenda/climate-dividend/)
-- [En-ROADS 18레버 — L8 탄소가격](/ko/doc/en-roads-comprehensive/)
+- [En-ROADS 18레버 — L8 탄소가격](/ko/tools/en-roads/comprehensive-guide/)
 - 탄소중립의 이해1_2차시 (전기요금 국제 비교)
 - 한전·가스공사 부채 자료(공기업 경영공시)
 
 ## 관련 세션
 
 본회의 **감축2 분과 종합라운드 메인(★1)** — 의제 ⑭ 기후배당과 **묶어서** 진행. 시민 ‘부담론’ 발언이 나오는 즉시 의제 ⑭를 카드로 제시할 수 있도록 모더레이터 준비.
+
+
+## 시민 발의 보기
+
+이 의제와 관련된 시민 발의(공식 climatevoice.kr 31건+)는 [시민 발의 의제 트래커](/ko/doc/citizen-proposals-tracker/)에서 매주 월요일 08:00 KST 자동 갱신됩니다.

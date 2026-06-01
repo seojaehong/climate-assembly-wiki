@@ -1,0 +1,93 @@
+---
+/**
+ * /[lang]/sessions/ — Sessions index page
+ *
+ * Lists all 9 sessions with dates and status.
+ * Required for header nav link /{lang}/sessions/ to resolve.
+ *
+ * Languages: ko, en (M1–M3). M4: restore ja, zh, es.
+ */
+import { getCollection } from 'astro:content';
+import Base from '../../../layouts/Base.astro';
+
+export async function getStaticPaths() {
+  return [
+    { params: { lang: 'ko' } },
+    { params: { lang: 'en' } },
+    // M4: add ja, zh, es
+  ];
+}
+
+const { lang } = Astro.params;
+const isKo = lang === 'ko';
+
+const sessionEntries = await getCollection('session');
+const orderedSessions = [...sessionEntries]
+  .filter((e) => typeof e.data.order === 'number')
+  .sort((a, b) => (a.data.order ?? 0) - (b.data.order ?? 0));
+
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+const pageTitle = isKo ? '회차 일정' : 'Sessions';
+---
+<Base title={pageTitle} lang={lang}>
+  <article id="main-content">
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">{pageTitle}</h1>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mb-8">
+      {isKo
+        ? '2026 기후시민회의 전체 회차 일정입니다.'
+        : 'Full schedule of the 2026 Korea Climate Citizens\' Assembly sessions.'}
+    </p>
+
+    {orderedSessions.length > 0 ? (
+      <ol class="space-y-3">
+        {orderedSessions.map((entry) => {
+          const sessionDate = entry.data.date ? new Date(entry.data.date) : null;
+          const isUpcoming = sessionDate ? sessionDate >= today : false;
+          const sessionLabel = isKo ? `${entry.data.order}차` : `Session ${entry.data.order}`;
+          return (
+            <li>
+              <a
+                href={`/${lang}/sessions/${entry.data.order}/`}
+                class="flex items-start gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-700 transition-colors"
+              >
+                <span class={[
+                  'shrink-0 w-8 h-8 rounded-full text-sm flex items-center justify-center font-mono font-bold',
+                  isUpcoming
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
+                ].join(' ')}>
+                  {entry.data.order}
+                </span>
+                <div class="flex-1 min-w-0">
+                  <div class="font-medium text-gray-900 dark:text-gray-100 text-sm">{entry.data.title}</div>
+                  <div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    <span class="font-semibold text-green-700 dark:text-green-400">{sessionLabel}</span>
+                    {sessionDate && (
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <time datetime={entry.data.date}>
+                          {sessionDate.toLocaleDateString(isKo ? 'ko-KR' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                        </time>
+                      </>
+                    )}
+                    {isUpcoming && (
+                      <span class="px-1.5 py-0.5 rounded-full bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 text-[10px] font-semibold">
+                        {isKo ? '예정' : 'Upcoming'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </a>
+            </li>
+          );
+        })}
+      </ol>
+    ) : (
+      <div class="border border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-8 text-center text-gray-400">
+        {isKo ? '회차 정보가 준비 중입니다.' : 'Session information coming soon.'}
+      </div>
+    )}
+  </article>
+</Base>

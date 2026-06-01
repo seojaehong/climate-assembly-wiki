@@ -73,3 +73,8 @@ translations:
 
 - [1교시 박찬 교수 — 정부의 기후위기 대응정책](/ko/doc/lecture-1-park-chan/) (의제군 E '기후취약계층 정의·보호' 기반)
 - [3교시 이진우 — 모더레이션 실전 윤리·기법](/ko/doc/lecture-3-lee-jin-woo/) (모더레이션 공통 가이드)
+
+
+## 시민 발의 보기
+
+이 의제와 관련된 시민 발의(공식 climatevoice.kr 31건+)는 [시민 발의 의제 트래커](/ko/doc/citizen-proposals-tracker/)에서 매주 월요일 08:00 KST 자동 갱신됩니다.

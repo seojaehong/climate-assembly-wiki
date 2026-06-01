@@ -75,3 +75,8 @@ translations:
 
 - [2교시 김상규 — 2026 기후시민회의 운영 지원 과업의 이해](/ko/doc/lecture-2-kim-sang-gyu/) (운영·이행 거버넌스 직접 기반)
 - [3교시 이진우 — 모더레이션 실전 윤리·기법](/ko/doc/lecture-3-lee-jin-woo/) (모더레이션 공통 가이드)
+
+
+## 시민 발의 보기
+
+이 의제와 관련된 시민 발의(공식 climatevoice.kr 31건+)는 [시민 발의 의제 트래커](/ko/doc/citizen-proposals-tracker/)에서 매주 월요일 08:00 KST 자동 갱신됩니다.

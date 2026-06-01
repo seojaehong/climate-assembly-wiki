@@ -1,0 +1,83 @@
+---
+/**
+ * /[lang]/doc/ — Resources index page
+ *
+ * Lists all documents from the `doc` content collection.
+ *
+ * Languages: ko, en (M1–M3). M4: restore ja, zh, es.
+ */
+import { getCollection } from 'astro:content';
+import Base from '../../../layouts/Base.astro';
+
+export async function getStaticPaths() {
+  return [
+    { params: { lang: 'ko' } },
+    { params: { lang: 'en' } },
+    // M4: add ja, zh, es
+  ];
+}
+
+const { lang } = Astro.params;
+const isKo = lang === 'ko';
+
+const docEntries = await getCollection('doc');
+const sorted = [...docEntries].sort((a, b) => a.data.title.localeCompare(b.data.title));
+
+const docTypeLabel: Record<string, { ko: string; en: string }> = {
+  brief: { ko: '브리프', en: 'Brief' },
+  reference: { ko: '참조', en: 'Reference' },
+  guide: { ko: '가이드', en: 'Guide' },
+  report: { ko: '보고서', en: 'Report' },
+  analysis: { ko: '분석', en: 'Analysis' },
+  tool: { ko: '도구', en: 'Tool' },
+  method: { ko: '방법론', en: 'Method' },
+  case: { ko: '사례', en: 'Case Study' },
+  matrix: { ko: '매트릭스', en: 'Matrix' },
+  'download-index': { ko: '다운로드', en: 'Downloads' },
+};
+
+const pageTitle = isKo ? '자료' : 'Resources';
+---
+<Base title={pageTitle} lang={lang}>
+  <article id="main-content">
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">{pageTitle}</h1>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mb-8">
+      {isKo
+        ? '기후시민회의 관련 자료, 가이드, 보고서 모음입니다.'
+        : 'Guides, reports, and reference materials related to the Climate Citizens\' Assembly.'}
+    </p>
+
+    {sorted.length > 0 ? (
+      <ul class="space-y-2">
+        {sorted.map((entry) => {
+          const typeInfo = docTypeLabel[entry.data.doc_type] ?? { ko: entry.data.doc_type, en: entry.data.doc_type };
+          const hasEnTranslation = !!entry.data.translations?.en;
+          return (
+            <li>
+              <a
+                href={`/${lang}/doc/${entry.data.slug}/`}
+                class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-700 transition-colors"
+              >
+                <span class="shrink-0 mt-0.5 text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded">
+                  {isKo ? typeInfo.ko : typeInfo.en}
+                </span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{entry.data.title}</div>
+                  {lang === 'en' && !hasEnTranslation && (
+                    <div class="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                      {isKo ? '영문 번역 준비 중' : 'Korean original — English translation pending'}
+                    </div>
+                  )}
+                </div>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    ) : (
+      <div class="border border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-8 text-center text-gray-400">
+        {isKo ? '자료가 준비 중입니다.' : 'Resources coming soon.'}
+      </div>
+    )}
+  </article>
+</Base>

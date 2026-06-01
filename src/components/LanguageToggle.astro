@@ -27,7 +27,9 @@ function buildUrl(targetLang: string): string {
   } else {
     segs.unshift(targetLang);
   }
-  return '/' + segs.join('/');
+  // Always append trailing slash — Astro static output places pages at
+  // /lang/section/index.html; without the slash Cloudflare Pages 404s.
+  return '/' + segs.join('/') + '/';
 }
 
 const langs = [

@@ -67,3 +67,5 @@ scripts/.cache/
 .claude/
 build_output.txt
 package-lock.json
+dist_backup_tmp
+dist_backup2

@@ -4,17 +4,18 @@ import Base from '../../../layouts/Base.astro';
 import AgendaCard from '../../../components/AgendaCard.astro';
 
 export async function getStaticPaths() {
-  const langs = ['ko', 'en', 'ja', 'zh', 'es'];
+  const langs = ['ko', 'en']; // M4: restore ja, zh, es
   return langs.map((lang) => ({ params: { lang } }));
 }
 
 const { lang } = Astro.params;
+const isKo = lang === 'ko';
 
 const agendaEntries = await getCollection('agenda');
 const sorted = agendaEntries.sort((a, b) => a.data.id - b.data.id);
 ---
-<Base title="의제 목록" lang={lang}>
-  <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">의제 목록</h1>
+<Base title={isKo ? '의제 목록' : 'Agendas'} lang={lang}>
+  <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">{isKo ? '의제 목록' : 'Agendas'}</h1>
   <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     {sorted.map((entry) => (
       <AgendaCard

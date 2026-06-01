@@ -145,6 +145,7 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
       { labelKo: '부처별 역할 매트릭스',     labelEn: 'Ministry Matrix',           path: 'doc/ministry-matrix' },
       { labelKo: 'OECD 평가 요약',           labelEn: 'OECD Evaluation',           path: 'doc/oecd-evaluation' },
       { labelKo: '경기도 기후도민총회 사례', labelEn: 'Gyeonggi Case Study',       path: 'doc/gyeonggi-case' },
+      { labelKo: '시민 발의 트래커',         labelEn: 'Citizen Proposals Tracker', path: 'doc/citizen-proposals-tracker' },
     ],
   },
 ];
