@@ -5,6 +5,7 @@ doc_type: guide
 license: CC-BY-SA-4.0
 last_updated: 2026-06-02
 order: 87
+draft: true
 ---
 
 ## 실시간 도구 종합 세팅 쿡북 — 10종 비교 + 13의제 질문 풀 + 현장 운영 매뉴얼

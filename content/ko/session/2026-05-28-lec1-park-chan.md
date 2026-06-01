@@ -16,6 +16,7 @@ translations:
   ja: { status: machine, translator: "Claude-sonnet-4-6", translated_at: 2026-05-31 }
   zh: { status: machine, translator: "Claude-sonnet-4-6", translated_at: 2026-05-31 }
   es: { status: machine, translator: "Claude-sonnet-4-6", translated_at: 2026-05-31 }
+draft: true
 ---
 
 ## 1교시 강의안 정리 — 정부의 기후위기 대응정책: 감축과 적응

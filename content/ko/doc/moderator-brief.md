@@ -10,6 +10,7 @@ translations:
   ja: { status: machine, translator: "Claude-sonnet-4-6", translated_at: 2026-05-31 }
   zh: { status: machine, translator: "Claude-sonnet-4-6", translated_at: 2026-05-31 }
   es: { status: machine, translator: "Claude-sonnet-4-6", translated_at: 2026-05-31 }
+draft: true
 ---
 
 ## 2026 기후시민회의 — 모더레이터 준비 브리프

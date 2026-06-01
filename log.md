@@ -2,6 +2,33 @@
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
+2026-06-02 08:54 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-02 08:54 | update | content/ko/doc/about.md | 2026 기후시민회의 모더레이터 아카이브 소개 (last_updated: 2026-05-31)
+2026-06-02 08:54 | update | content/ko/doc/agenda-matrix-v5.md | 의제 매트릭스 v5 — En-ROADS × 의제 v4 교차매핑 (last_updated: 2026-06-01)
+2026-06-02 08:54 | update | content/ko/doc/citizen-proposals-tracker.md | 시민 발의 의제 트래커 (climatevoice.kr 실시간 연동) (last_updated: 2026-06-01)
+2026-06-02 08:54 | update | content/ko/doc/downloads.md | 다운로드 센터 (last_updated: 2026-05-31)
+2026-06-02 08:54 | update | content/ko/doc/gyeonggi-case.md | 경기도 기후도민총회 심층분석 (last_updated: 2026-05-31)
+2026-06-02 08:54 | update | content/ko/doc/lecture-1-park-chan.md | 1교시 박찬 강의안 정리 — 정부의 기후위기 대응정책 (last_updated: 2026-06-01)
+2026-06-02 08:54 | update | content/ko/doc/lecture-2-kim-sang-gyu.md | 2교시 김상규 강의안 정리 — 2026 기후시민회의 운영 지원 과업의 이해 (last_updated: 2026-06-01)
+2026-06-02 08:54 | update | content/ko/doc/lecture-3-lee-jin-woo.md | 3교시 이진우 강의안 정리 — 기후시민회의 모더레이션의 실전 윤리와 기법 (last_updated: 2026-06-01)
+2026-06-02 08:54 | update | content/ko/doc/ministry-roles.md | 부처별 탄소중립·기후적응 역할 (last_updated: 2026-05-31)
+2026-06-02 08:54 | update | content/ko/doc/moderator-brief.md | 모더레이터 준비 브리프 (last_updated: 2026-05-31)
+2026-06-02 08:54 | update | content/ko/doc/multilingual-roadmap.md | 다국어 로드맵 (last_updated: 2026-06-01)
+2026-06-02 08:54 | update | content/ko/doc/realtime-tools-for-moderators.md | 모더레이팅 실시간 도구 가이드 (16종 + 권장 조합) (last_updated: 2026-06-02)
+2026-06-02 08:54 | update | content/ko/doc/realtime-tools-implementation-guide.md | 실시간 도구 구현 가이드 (오픈소스 vs 유료, 우리 사이트 도입 한계) (last_updated: 2026-06-02)
+2026-06-02 08:54 | update | content/ko/doc/realtime-tools-setup-cookbook.md | 실시간 도구 종합 세팅 쿡북 — 10종 비교 + 의제 13건 × 질문 풀 + 현장 운영 (last_updated: 2026-06-02)
+2026-06-02 08:54 | update | content/ko/doc/ssp-beyond.md | SSP 너머 — 프레임의 한계 (last_updated: 2026-05-31)
+2026-06-02 08:54 | update | content/ko/doc/textbook-errata.md | 기후시민회의 교안 오탈자 정리 v4 (last_updated: 2026-05-31)
+2026-06-02 08:54 | session | content/ko/session/2026-05-16-kickoff.md | 1차 발대식 (2026-05-16) (last_updated: 2026-05-31)
+2026-06-02 08:54 | session | content/ko/session/2026-05-28-lec1-park-chan.md | 1교시 — 박찬 교수 (서울시립대) 정부의 기후위기 대응정책 (last_updated: 2026-05-31)
+2026-06-02 08:54 | session | content/ko/session/2026-06-13-agenda-workshop-1a.md | 2차 1차 의제 워크숍 (Day 1) (2026-06-13) (last_updated: 2026-05-31)
+2026-06-02 08:54 | session | content/ko/session/2026-06-14-agenda-workshop-1b.md | 3차 1차 의제 워크숍 (Day 2) (2026-06-14) (last_updated: 2026-05-31)
+2026-06-02 08:54 | session | content/ko/session/2026-07-04-plenary-1.md | 4차 전체회의 (2026-07-04) (last_updated: 2026-05-31)
+2026-06-02 08:54 | session | content/ko/session/2026-08-29-agenda-workshop-2.md | 5차 2차 의제 워크숍 + 숙의참여단 토론 (2026-08-29) (last_updated: 2026-05-31)
+2026-06-02 08:54 | session | content/ko/session/2026-09-12-deliberation-workshop-a.md | 6차 숙의참여단 워크숍 (Day 1) (2026-09-12) (last_updated: 2026-05-31)
+2026-06-02 08:54 | session | content/ko/session/2026-09-13-deliberation-workshop-b.md | 7차 숙의참여단 워크숍 (Day 2) (2026-09-13) (last_updated: 2026-05-31)
+2026-06-02 08:54 | session | content/ko/session/2026-10-17-plenary-2.md | 8차 전체회의 (2026-10-17) (last_updated: 2026-05-31)
+2026-06-02 08:54 | session | content/ko/session/2026-11-14-final-report.md | 9차 최종보고회 (2026-11-14) (last_updated: 2026-05-31)
 2026-06-02 08:44 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-02 08:44 | update | content/ko/doc/downloads.md | 다운로드 센터 (last_updated: 2026-05-31)
 2026-06-02 08:44 | update | content/ko/doc/lecture-1-park-chan.md | 1교시 박찬 강의안 정리 — 정부의 기후위기 대응정책 (last_updated: 2026-06-01)

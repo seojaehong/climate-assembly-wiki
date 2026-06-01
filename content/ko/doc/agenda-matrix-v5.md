@@ -5,6 +5,7 @@ doc_type: matrix
 order: 7
 license: CC-BY-SA-4.0
 last_updated: 2026-06-01
+draft: true
 ---
 
 # 의제 매트릭스 v5 — En-ROADS × 기후시민회의 의제 v4 교차매핑

@@ -53,11 +53,12 @@ export interface SidebarSection {
 
 export const TOP_NAV_ITEMS: NavItem[] = [
   { section: 'agenda',    labelKo: '의제',    labelEn: 'Agenda' },
-  { section: 'tools',     labelKo: '도구',    labelEn: 'Tools' },
-  { section: 'sessions',  labelKo: '회차',    labelEn: 'Sessions' },
-  { section: 'doc',       labelKo: '자료',    labelEn: 'Resources' },
-  { section: 'glossary',  labelKo: '용어집',  labelEn: 'Glossary' },
-  { section: 'downloads', labelKo: '다운로드', labelEn: 'Downloads' },
+  // <!-- temporarily hidden, content private as of 2026-06-02 -->
+  // { section: 'tools',     labelKo: '도구',    labelEn: 'Tools' },
+  // { section: 'sessions',  labelKo: '회차',    labelEn: 'Sessions' },
+  // { section: 'doc',       labelKo: '자료',    labelEn: 'Resources' },
+  // { section: 'glossary',  labelKo: '용어집',  labelEn: 'Glossary' },
+  // { section: 'downloads', labelKo: '다운로드', labelEn: 'Downloads' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -95,58 +96,8 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
     ],
   },
 
-  // ─── Section 2: Tools ─────────────────────────────────────────────────────
-  // En-ROADS is the only tool in M1–M3. Future tools added here (Design §1.2).
-  {
-    id: 'tools',
-    labelKo: '도구',
-    labelEn: 'Tools',
-    items: [
-      // En-ROADS sub-pages — static routes per Design D4 (not getCollection)
-      // EnRoadsNavItem component hard-codes known sub-pages (Design §3.4)
-      { labelKo: 'En-ROADS 허브',           labelEn: 'En-ROADS Hub',              path: 'tools/en-roads' },
-      { labelKo: '종합 가이드 (v1.1)',      labelEn: 'Comprehensive Guide',       path: 'tools/en-roads/comprehensive-guide' },
-      { labelKo: '18개 레버',               labelEn: '18 Levers',                 path: 'tools/en-roads/18-levers' },
-      { labelKo: '시나리오',                labelEn: 'Scenarios',                 path: 'tools/en-roads/scenarios' },
-      { labelKo: '용어 해설',               labelEn: 'Glossary',                  path: 'tools/en-roads/glossary' },
-      { labelKo: '모더레이터 활용법',       labelEn: 'For Moderators',            path: 'tools/en-roads/for-moderators' },
-    ],
-  },
-
-  // ─── Section 3: Sessions ──────────────────────────────────────────────────
-  // Sessions 1–9 per Design §7 schedule. Paths use numeric ordinal per D2/§1.1.
-  {
-    id: 'sessions',
-    labelKo: '회차',
-    labelEn: 'Sessions',
-    items: [
-      { labelKo: '1차 (2026-05-16) 발대식',         labelEn: 'Session 1 — Kickoff',           path: 'sessions/1' },
-      { labelKo: '2차 (2026-05-28) 박찬 교수',      labelEn: 'Session 2 — Lec. Park Chan',    path: 'sessions/2' },
-      { labelKo: '3차',                             labelEn: 'Session 3',                     path: 'sessions/3' },
-      { labelKo: '4차',                             labelEn: 'Session 4',                     path: 'sessions/4' },
-      { labelKo: '5차 (2026-08-29)',                labelEn: 'Session 5',                     path: 'sessions/5' },
-      { labelKo: '6차',                             labelEn: 'Session 6',                     path: 'sessions/6' },
-      { labelKo: '7차',                             labelEn: 'Session 7',                     path: 'sessions/7' },
-      { labelKo: '8차',                             labelEn: 'Session 8',                     path: 'sessions/8' },
-      { labelKo: '9차 (2026-11-14)',                labelEn: 'Session 9',                     path: 'sessions/9' },
-    ],
-  },
-
-  // ─── Section 4: Resources (doc) ───────────────────────────────────────────
-  // Covers all doc_type values. Items added as content migration occurs (Groups H/J).
-  {
-    id: 'doc',
-    labelKo: '자료',
-    labelEn: 'Resources',
-    items: [
-      { labelKo: '사이트 소개',              labelEn: 'About',                     path: 'doc/about' },
-      { labelKo: '모더레이터 가이드',        labelEn: 'Moderator Guide',           path: 'doc/moderator-brief' },
-      { labelKo: '의제 매트릭스',            labelEn: 'Agenda Matrix',             path: 'doc/agenda-matrix' },
-      { labelKo: '부처별 역할 매트릭스',     labelEn: 'Ministry Matrix',           path: 'doc/ministry-matrix' },
-      { labelKo: 'OECD 평가 요약',           labelEn: 'OECD Evaluation',           path: 'doc/oecd-evaluation' },
-      { labelKo: '경기도 기후도민총회 사례', labelEn: 'Gyeonggi Case Study',       path: 'doc/gyeonggi-case' },
-      { labelKo: '시민 발의 트래커',         labelEn: 'Citizen Proposals Tracker', path: 'doc/citizen-proposals-tracker' },
-      { labelKo: '다국어 로드맵',            labelEn: 'Multilingual Roadmap',      path: 'doc/multilingual-roadmap' },
-    ],
-  },
+  // 2026-06-02: temporarily hidden, content private as of 2026-06-02
+  // Tools / Sessions / Resources sidebar sections suppressed while public
+  // surface is restricted to homepage + agenda pages. Restore from git history
+  // when content is republished.
 ];

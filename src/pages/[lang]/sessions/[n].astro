@@ -28,8 +28,9 @@ export async function getStaticPaths() {
   const sessionEntries = await getCollection('session');
 
   // Only emit paths for sessions that have an explicit `order` field.
+  // 2026-06-02 privacy: also skip draft sessions so unpublished pages get no routes.
   const orderedSessions = sessionEntries.filter(
-    (e) => typeof e.data.order === 'number'
+    (e) => typeof e.data.order === 'number' && e.data.draft !== true
   );
 
   return langs.flatMap((lang) =>

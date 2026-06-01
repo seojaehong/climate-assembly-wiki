@@ -5,6 +5,7 @@ doc_type: reference
 license: CC-BY-SA-4.0
 last_updated: 2026-06-02
 order: 85
+draft: true
 ---
 
 ## 모더레이팅 실시간 도구 가이드 — 16종 + 권장 조합

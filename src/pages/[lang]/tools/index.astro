@@ -1,24 +1,11 @@
 ---
 /**
- * /[lang]/tools/ — Tools index page
+ * /[lang]/tools/ — DISABLED (2026-06-02 privacy)
  *
- * Currently En-ROADS is the only tool (M1–M3).
- * Redirects to En-ROADS hub for now; future tools will be listed here.
- *
- * Languages: ko, en (M1–M3). M4: restore ja, zh, es.
+ * Public surface restricted to homepage + agenda pages only.
+ * Route emission suppressed.
  */
-
 export async function getStaticPaths() {
-  return [
-    { params: { lang: 'ko' } },
-    { params: { lang: 'en' } },
-    { params: { lang: 'ja' } },
-    { params: { lang: 'zh' } },
-    { params: { lang: 'es' } },
-  ];
+  return [];
 }
-
-const { lang } = Astro.params;
-
-return Astro.redirect(`/${lang}/tools/en-roads/`, 302);
 ---

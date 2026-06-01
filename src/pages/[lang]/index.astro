@@ -79,17 +79,17 @@ if (nextSession?.data.date) {
 
 const isKo = lang === 'ko';
 
-// Latest activity — hardcoded from log.md top 5 unique entries (2026-06-01)
+// Latest activity — agenda-only entries (2026-06-02 privacy: doc/session links removed)
 const latestActivity = isKo ? [
   { date: '2026-06-01', label: '의제 ⑤ 기후불평등 — 한국어 전면 갱신', href: `/${lang}/agenda/05-climate-injustice/` },
-  { date: '2026-06-01', label: '시민 발의 트래커 실시간 업데이트', href: `/${lang}/doc/citizen-proposals-tracker/` },
   { date: '2026-06-01', label: '의제 ⑭ 기후배당 영문 번역 진행 중', href: `/${lang}/agenda/14-climate-dividend/` },
   { date: '2026-05-31', label: '의제 ⑮ 복합취약성 초안 등록', href: `/${lang}/agenda/15-compound-vulnerability/` },
+  { date: '2026-05-31', label: '의제 ⑧ ESG·RE100 갱신', href: `/${lang}/agenda/08-esg-re100/` },
 ] : [
   { date: '2026-06-01', label: 'Agenda ⑤ Climate Injustice — full KO refresh', href: `/${lang}/agenda/05-climate-injustice/` },
-  { date: '2026-06-01', label: 'Citizen Proposals Tracker live update', href: `/${lang}/doc/citizen-proposals-tracker/` },
   { date: '2026-06-01', label: 'Agenda ⑭ Climate Dividend — EN translation in progress', href: `/${lang}/agenda/14-climate-dividend/` },
   { date: '2026-05-31', label: 'Agenda ⑮ Compound Vulnerability — draft registered', href: `/${lang}/agenda/15-compound-vulnerability/` },
+  { date: '2026-05-31', label: 'Agenda ⑧ ESG · RE100 refreshed', href: `/${lang}/agenda/08-esg-re100/` },
 ];
 
 // Organization + WebSite JSON-LD
@@ -189,12 +189,7 @@ const ldJson = JSON.stringify([
         >
           {isKo ? '의제 전체 보기' : 'View All Agendas'}
         </a>
-        <a
-          href={`/${lang}/doc/about/`}
-          class="btn btn-outline"
-        >
-          {isKo ? '이 사이트 소개' : 'About This Site'}
-        </a>
+        {/* 2026-06-02 privacy: About link removed (doc routes privatized). */}
       </div>
 
       <!-- Stats row -->
@@ -512,14 +507,7 @@ const ldJson = JSON.stringify([
               </li>
             ))}
           </ul>
-          <div class="flex flex-wrap gap-3">
-            <a href={`/${lang}/tools/en-roads/`} class="btn btn-primary">
-              {isKo ? 'En-ROADS 허브 →' : 'En-ROADS Hub →'}
-            </a>
-            <a href={`/${lang}/tools/en-roads/comprehensive-guide/`} class="btn btn-outline">
-              {isKo ? '한국어 자료집 v1.1' : 'Korean Guide v1.1'}
-            </a>
-          </div>
+          {/* 2026-06-02 privacy: En-ROADS hub + guide links removed (tools routes privatized). */}
         </div>
 
         <!-- Visual side — temperature badge card -->

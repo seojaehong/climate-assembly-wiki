@@ -1,7 +1,7 @@
 ---
 slug: lecture-2-kim-sang-gyu
 title: "2교시 김상규 강의안 정리 — 2026 기후시민회의 운영 지원 과업의 이해"
-draft: true  # unpublished 2026-06-02 — source preserved for future republishing
+draft: true
 doc_type: reference
 order: 22
 license: CC-BY-SA-4.0

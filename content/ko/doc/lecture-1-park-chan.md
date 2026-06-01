@@ -1,7 +1,7 @@
 ---
 slug: lecture-1-park-chan
 title: "1교시 박찬 강의안 정리 — 정부의 기후위기 대응정책"
-draft: true  # unpublished 2026-06-02 — source preserved for future republishing
+draft: true
 doc_type: reference
 order: 21
 license: CC-BY-SA-4.0

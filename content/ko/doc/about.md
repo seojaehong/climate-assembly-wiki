@@ -10,6 +10,7 @@ translations:
   ja: { status: machine, translator: "Claude-sonnet-4-6", translated_at: 2026-05-31 }
   zh: { status: machine, translator: "Claude-sonnet-4-6", translated_at: 2026-05-31 }
   es: { status: machine, translator: "Claude-sonnet-4-6", translated_at: 2026-05-31 }
+draft: true
 ---
 
 ## 이 사이트는 무엇인가요

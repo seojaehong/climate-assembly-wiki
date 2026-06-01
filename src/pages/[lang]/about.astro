@@ -1,57 +1,11 @@
 ---
-import Base from '../../layouts/Base.astro';
-
+/**
+ * /[lang]/about/ — DISABLED (2026-06-02 privacy)
+ *
+ * Public surface restricted to homepage + agenda pages only.
+ * Source preserved in git history; route emission suppressed.
+ */
 export async function getStaticPaths() {
-  const langs = ['ko', 'en', 'ja', 'zh', 'es']; // M4 done 2026-06-01 (structural; ja/zh/es serve EN body)
-  return langs.map((lang) => ({ params: { lang } }));
+  return [];
 }
-
-const { lang } = Astro.params;
 ---
-<Base title="소개" lang={lang}>
-  <article class="prose dark:prose-invert max-w-2xl">
-    <h1>2026 기후시민회의 모더레이터 아카이브</h1>
-
-    <p>
-      이 사이트는 2026년 대한민국 국가 기후시민회의(Korea Climate Citizens' Assembly)의
-      모더레이터 활동을 아카이빙하고, 5개 언어(한·영·일·중·서)로 공개하는 오픈소스 위키입니다.
-    </p>
-
-    <h2>목적</h2>
-    <ul>
-      <li>한국형 기후 거버넌스 모델을 국제 사회에 전달</li>
-      <li>시민·연구자·정책 입안자의 자유로운 참조·인용 지원</li>
-      <li>20년 이상 영구 보존 가능한 정적 아카이브 구축</li>
-    </ul>
-
-    <h2>라이선스</h2>
-    <p>
-      모든 콘텐츠는 <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">
-        CC BY-SA 4.0
-      </a>로 배포됩니다.
-    </p>
-
-    <h2>기술 스택</h2>
-    <ul>
-      <li>Astro 5.x (정적 사이트 생성기)</li>
-      <li>Tailwind CSS 4</li>
-      <li>Pagefind (다국어 정적 검색)</li>
-      <li>Cloudflare Pages (무료 CDN 호스팅)</li>
-      <li>Claude API (빌드타임 자동 번역)</li>
-    </ul>
-
-    <h2>번역 신뢰도</h2>
-    <ul>
-      <li>⚠️ Machine translation — Claude API 자동 번역, 미검수</li>
-      <li>🔵 Human-reviewed — 인간 검수 완료</li>
-      <li>🟢 Native-verified — 원어민 검수 완료</li>
-    </ul>
-
-    <h2>GitHub</h2>
-    <p>
-      <a href="https://github.com/seojaehong/climate-assembly-wiki" target="_blank" rel="noopener noreferrer">
-        github.com/seojaehong/climate-assembly-wiki
-      </a>
-    </p>
-  </article>
-</Base>

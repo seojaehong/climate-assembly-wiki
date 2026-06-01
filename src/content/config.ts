@@ -49,6 +49,10 @@ const session = defineCollection({
     date: dateString,
     slug: z.string(),
     title: z.string(),
+    // Unpublish flag (2026-06-02): when true, the session is excluded from
+    // getStaticPaths, listing pages, sitemap, and pagefind. Source file is
+    // preserved so the page can be republished by flipping this back to false.
+    draft: z.boolean().default(false).optional(),
     session_type: z.enum(['kickoff', 'lecture', 'discussion', 'recommendation', 'event', 'closing']),
     speaker: z.string().optional(),
     affiliation: z.string().optional(),

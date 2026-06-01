@@ -11,10 +11,13 @@ export default defineConfig({
   site: process.env.PUBLIC_SITE_URL ?? 'https://climate-assembly-wiki.pages.dev',
   integrations: [
     sitemap({
-      // 2026-06-02: exclude unpublished lecture pages from sitemap.
-      // Routes are already removed via getStaticPaths filter, but this is a
-      // defence-in-depth against any stray /doc/lecture-* paths leaking in.
-      filter: (page) => !/\/doc\/lecture-/.test(page),
+      // 2026-06-02: public surface restricted to homepage + agenda pages only.
+      // Whitelist filter — only emit locale home and /{lang}/agenda/... URLs.
+      // Defence in depth: pages already absent from dist won't appear anyway,
+      // but this guards against stray paths being added later.
+      filter: (page) =>
+        /\/(ko|en|ja|zh|es)\/(agenda(\/|$))/.test(page) ||
+        /\/(ko|en|ja|zh|es)\/?$/.test(page),
       i18n: {
         defaultLocale: 'ko',
         // M4 (2026-06-01): ja/zh/es restored as structural-only locales.

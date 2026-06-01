@@ -5,6 +5,7 @@ doc_type: case
 order: 6
 license: CC-BY-SA-4.0
 last_updated: 2026-06-01
+draft: true
 ---
 
 # 시민 발의 의제 트래커

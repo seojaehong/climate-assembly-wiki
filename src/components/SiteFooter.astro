@@ -53,12 +53,8 @@ const isKo = currentLang === 'ko';
       >
         GitHub
       </a>
-      <a
-        href={`/${currentLang}/doc/about/`}
-        class="text-xs text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] transition-colors"
-      >
-        {isKo ? '소개' : 'About'}
-      </a>
+      {/* 2026-06-02: temporarily hidden, content private as of 2026-06-02 */}
+      {/* <a href={`/${currentLang}/doc/about/`} class="text-xs text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] transition-colors">{isKo ? '소개' : 'About'}</a> */}
       <a
         href="https://creativecommons.org/licenses/by-sa/4.0/"
         target="_blank"
@@ -68,12 +64,8 @@ const isKo = currentLang === 'ko';
       >
         {isKo ? '라이선스' : 'License'}
       </a>
-      <a
-        href={`/${currentLang}/doc/related-sites/`}
-        class="text-xs text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] transition-colors"
-      >
-        {isKo ? '관련 사이트' : 'Related Sites'}
-      </a>
+      {/* 2026-06-02: temporarily hidden, content private as of 2026-06-02 */}
+      {/* <a href={`/${currentLang}/doc/related-sites/`} class="text-xs text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] transition-colors">{isKo ? '관련 사이트' : 'Related Sites'}</a> */}
       <a
         href={`${REPO}/issues/new`}
         target="_blank"

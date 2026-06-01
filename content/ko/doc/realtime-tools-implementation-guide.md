@@ -5,6 +5,7 @@ doc_type: reference
 license: CC-BY-SA-4.0
 last_updated: 2026-06-02
 order: 86
+draft: true
 ---
 
 ## 실시간 도구 구현 가이드 — 오픈소스 vs 유료, 우리 사이트 도입 한계

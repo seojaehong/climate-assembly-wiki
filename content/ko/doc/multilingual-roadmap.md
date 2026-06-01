@@ -5,6 +5,7 @@ doc_type: reference
 order: 80
 license: CC-BY-SA-4.0
 last_updated: 2026-06-01
+draft: true
 ---
 
 # climate-assembly.org 다국어 로드맵

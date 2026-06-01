@@ -5,6 +5,7 @@ doc_type: download-index
 order: 99
 license: CC-BY-SA-4.0
 last_updated: 2026-05-31
+draft: true
 ---
 
 # 다운로드 센터

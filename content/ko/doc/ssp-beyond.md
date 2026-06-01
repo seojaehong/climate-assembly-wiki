@@ -10,6 +10,7 @@ translations:
   ja: { status: machine, translator: "Claude-sonnet-4-6", translated_at: 2026-05-31 }
   zh: { status: machine, translator: "Claude-sonnet-4-6", translated_at: 2026-05-31 }
   es: { status: machine, translator: "Claude-sonnet-4-6", translated_at: 2026-05-31 }
+draft: true
 ---
 
 ## Part 3. SSP 너머 — 시민회의 토론 시 인지해야 할 ‘프레임의 한계’
