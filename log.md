@@ -2,6 +2,21 @@
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
+2026-06-01 20:30 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 20:30 | update | content/ko/doc/about.md | 2026 기후시민회의 모더레이터 아카이브 소개 (last_updated: 2026-05-31)
+2026-06-01 20:29 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 20:29 | update | content/ko/doc/about.md | 2026 기후시민회의 모더레이터 아카이브 소개 (last_updated: 2026-05-31)
+2026-06-01 20:25 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 20:25 | update | content/ko/doc/about.md | 2026 기후시민회의 모더레이터 아카이브 소개 (last_updated: 2026-05-31)
+!-- APPEND-ONLY. Newest entries at top. -->
+<!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
+<!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
+
+2026-06-01 20:24 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 20:24 | update | content/ko/doc/about.md | 2026 기후시민회의 모더레이터 아카이브 소개 (last_updated: 2026-05-31)
+2026-06-01 20:23 | update | content/ko/doc/about.md | 2026 기후시민회의 모더레이터 아카이브 소개 (last_updated: 2026-05-31)
+2026-06-01 20:23 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 20:22 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-01 20:15 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-01 20:15 | update | content/ko/agenda/01-nuclear-vs-renewable.md | 전력믹스 — 원전인가, 재생에너지인가? (last_updated: 2026-06-01)
 2026-06-01 20:15 | update | content/ko/agenda/02-electricity-price.md | 전기요금 인상 — 받아들일 수 있는가? (last_updated: 2026-06-01)

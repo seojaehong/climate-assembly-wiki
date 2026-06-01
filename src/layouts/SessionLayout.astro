@@ -216,8 +216,24 @@ const ldJson = JSON.stringify(articleSchema);
         <!-- Mobile TOC (M2-2) -->
         <Toc headings={headings} lang={lang} variant="mobile" />
 
-        <!-- Trust badge -->
-        {trustLabel && (
+        <!-- Wiki meta line: last updated · trust · license -->
+        {frontmatter?.last_updated && (
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-4 text-xs text-[var(--color-fg-muted)]">
+            <span>
+              {lang === 'ko' ? '마지막 갱신:' : 'Last updated:'}
+              <time class="ml-1 font-mono text-[var(--color-fg-subtle)]">{frontmatter.last_updated}</time>
+            </span>
+            <span aria-hidden="true" class="text-[var(--color-border-strong)]">·</span>
+            {trustLabel && (
+              <TrustBadge status={trustLabel} lang={lang} />
+            )}
+            <span aria-hidden="true" class="text-[var(--color-border-strong)]">·</span>
+            <LicenseBadge license={license} orgName={orgName} />
+          </div>
+        )}
+
+        {/* Fallback: trust badge without meta line */}
+        {!frontmatter?.last_updated && trustLabel && (
           <div class="mb-3">
             <TrustBadge status={trustLabel} lang={lang} />
           </div>
@@ -228,14 +244,52 @@ const ldJson = JSON.stringify(articleSchema);
           <slot />
         </div>
 
-        <!-- License badge footer -->
-        <footer class="mt-10 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <!-- Page footer: citation toggle + source link + license -->
+        <footer class="mt-10 pt-6 border-t border-[var(--color-border)]">
+
+          <!-- Citation toggle -->
+          <details class="mb-5 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-subtle)] overflow-hidden">
+            <summary class="flex items-center gap-2 px-4 py-3 cursor-pointer select-none text-sm font-semibold text-[var(--color-fg)] hover:bg-[var(--color-card-hover)] transition-colors">
+              <svg aria-hidden="true" class="w-4 h-4 text-[var(--color-accent)] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+              </svg>
+              {lang === 'ko' ? '이 페이지 인용하기' : 'Cite this page'}
+            </summary>
+            <div class="px-4 pb-4 pt-2 space-y-4">
+              <div>
+                <p class="text-xs font-bold text-[var(--color-fg-muted)] uppercase tracking-wide mb-1.5">BibTeX</p>
+                <pre class="text-[11px] leading-relaxed bg-[var(--color-code-bg)] rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all"><code>{`@misc{climatewiki_${(frontmatter?.last_updated ?? sessionDate ?? '2026').replace(/-/g, '')},
+  title  = {${title}},
+  author = {Seo, Jaehong},
+  year   = {${(frontmatter?.last_updated ?? sessionDate ?? '2026').slice(0, 4)}},
+  url    = {https://climate-assembly-wiki.pages.dev${canonicalPath ?? ''}},
+  note   = {Korea Climate Assembly Wiki, CC BY-SA 4.0}
+}`}</code></pre>
+              </div>
+              <div>
+                <p class="text-xs font-bold text-[var(--color-fg-muted)] uppercase tracking-wide mb-1.5">MLA</p>
+                <p class="text-xs text-[var(--color-fg-muted)] bg-[var(--color-code-bg)] rounded-lg p-3 leading-relaxed">
+                  Seo, Jaehong. "{title}." <em>Korea Climate Assembly Wiki</em>, {frontmatter?.last_updated ?? sessionDate ?? '2026'}.
+                  &lt;https://climate-assembly-wiki.pages.dev{canonicalPath ?? ''}&gt;.
+                </p>
+              </div>
+              <div>
+                <p class="text-xs font-bold text-[var(--color-fg-muted)] uppercase tracking-wide mb-1.5">Chicago</p>
+                <p class="text-xs text-[var(--color-fg-muted)] bg-[var(--color-code-bg)] rounded-lg p-3 leading-relaxed">
+                  Seo, Jaehong. "{title}." Korea Climate Assembly Wiki. Last modified {frontmatter?.last_updated ?? sessionDate ?? '2026'}.
+                  https://climate-assembly-wiki.pages.dev{canonicalPath ?? ''}.
+                </p>
+              </div>
+            </div>
+          </details>
+
+          <!-- License + source link row -->
           <div class="flex flex-wrap items-center gap-4">
-            <LicenseBadge license={license} orgName={orgName} />
+            {!frontmatter?.last_updated && <LicenseBadge license={license} orgName={orgName} />}
             {sourceKorean && lang !== 'ko' && (
               <a
                 href={sourceKorean}
-                class="text-sm text-gray-500 dark:text-gray-400 hover:text-green-700 dark:hover:text-green-400 hover:underline"
+                class="text-sm text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] hover:underline transition-colors"
               >
                 {lang === 'en' ? '← Korean source' : '← 한국어 원문'}
               </a>

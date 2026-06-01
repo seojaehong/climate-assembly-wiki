@@ -89,23 +89,8 @@ const downloads: DownloadEntry[] = [
   },
 ];
 
-// External-link-only (Decision ④)
-const externalLinks = [
-  {
-    labelKo: '이진우 자료집',
-    labelEn: 'Lee Jin-woo Materials',
-    href: 'https://climatevoice.kr',
-    noteKo: '저작권 제한 — 링크만 제공 (원본 사이트 방문)',
-    noteEn: 'Copyright restrictions — link only (visit original site)',
-  },
-  {
-    labelKo: '김상규 자료집',
-    labelEn: 'Kim Sang-gyu Materials',
-    href: 'https://climatevoice.kr',
-    noteKo: '저작권 제한 — 링크만 제공 (원본 사이트 방문)',
-    noteEn: 'Copyright restrictions — link only (visit original site)',
-  },
-];
+// External-link-only section removed — lecture sources now consolidated into
+// in-wiki pages (/ko/doc/lecture-1-park-chan/ etc.) per sub44/sub45 decision.
 
 const pageTitle = lang === 'ko' ? '다운로드 센터' : 'Downloads';
 ---
@@ -156,33 +141,6 @@ const pageTitle = lang === 'ko' ? '다운로드 센터' : 'Downloads';
         {lang === 'ko' ? '준비 중 — 자료가 곧 등록됩니다.' : 'Coming soon — files will be added shortly.'}
       </div>
     )}
-
-    {/* External links section */}
-    <section aria-label={lang === 'ko' ? '외부 링크 (저작권 제한)' : 'External links (copyright restricted)'} class="mb-6">
-      <h2 class="text-base font-semibold text-gray-700 dark:text-gray-300 mb-3">
-        {lang === 'ko' ? '외부 자료 링크' : 'External Resource Links'}
-      </h2>
-      <ul class="space-y-2">
-        {externalLinks.map((item) => (
-          <li class="flex flex-col sm:flex-row sm:items-start gap-1 p-3 rounded border border-gray-100 dark:border-gray-800">
-            <div class="flex-1">
-              <a
-                href={item.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="text-sm text-gray-700 dark:text-gray-300 hover:underline"
-              >
-                {lang === 'ko' ? item.labelKo : item.labelEn}
-                <span class="ml-1 text-xs text-gray-400" aria-label="external link">↗</span>
-              </a>
-              <p class="text-xs text-gray-400 mt-0.5">
-                {lang === 'ko' ? item.noteKo : item.noteEn}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </section>
 
     {/* OECD license notice */}
     <p class="mt-6 text-xs text-gray-400 border-t border-gray-100 dark:border-gray-800 pt-4">

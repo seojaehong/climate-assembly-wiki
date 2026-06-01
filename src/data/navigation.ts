@@ -146,6 +146,7 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
       { labelKo: 'OECD 평가 요약',           labelEn: 'OECD Evaluation',           path: 'doc/oecd-evaluation' },
       { labelKo: '경기도 기후도민총회 사례', labelEn: 'Gyeonggi Case Study',       path: 'doc/gyeonggi-case' },
       { labelKo: '시민 발의 트래커',         labelEn: 'Citizen Proposals Tracker', path: 'doc/citizen-proposals-tracker' },
+      { labelKo: '다국어 로드맵',            labelEn: 'Multilingual Roadmap',      path: 'doc/multilingual-roadmap' },
     ],
   },
 ];

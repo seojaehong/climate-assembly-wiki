@@ -100,6 +100,19 @@
   --tracking-wide: 0.02em;
 
   /* ============================================================
+     DISPLAY TYPOGRAPHY — hero/section headings (homepage landing)
+     ============================================================ */
+  --size-display-1: clamp(2.5rem, 6vw, 5rem);    /* 40–80px: hero headline */
+  --size-display-2: clamp(1.75rem, 4vw, 3rem);   /* 28–48px: section heading */
+  --size-display-3: clamp(1.25rem, 2.5vw, 1.75rem); /* 20–28px: sub-heading */
+
+  /* ============================================================
+     SECTION PADDING — full-bleed landing sections
+     ============================================================ */
+  --section-py: clamp(4rem, 8vw, 8rem);          /* 64–128px vertical padding */
+  --section-py-sm: clamp(3rem, 6vw, 6rem);       /* 48–96px for tighter sections */
+
+  /* ============================================================
      MEASURE
      ============================================================ */
   --size-narrow: 65ch;
@@ -140,6 +153,8 @@
   --gradient-card: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
   --gradient-accent: linear-gradient(135deg, #0a6b4e 0%, #0d9488 100%);
   --gradient-highlight: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  --gradient-why: linear-gradient(160deg, #022c22 0%, #0a1410 50%, #0c1a2e 100%);
+  --gradient-trust: linear-gradient(135deg, #f8fafc 0%, #f0fdf4 100%);
 
   /* ============================================================
      TRANSITIONS
@@ -200,6 +215,8 @@
     --gradient-hero: linear-gradient(135deg, #0a1a12 0%, #0a1410 40%, #0a0f1a 100%);
     --gradient-card: linear-gradient(135deg, #141414 0%, #1a1a1a 100%);
     --gradient-accent: linear-gradient(135deg, #065f46 0%, #0d9488 100%);
+    --gradient-why: linear-gradient(160deg, #010f08 0%, #060d0a 50%, #04080f 100%);
+    --gradient-trust: linear-gradient(135deg, #141414 0%, #0a1a12 100%);
   }
 }
 
@@ -253,6 +270,8 @@
   --gradient-hero: linear-gradient(135deg, #0a1a12 0%, #0a1410 40%, #0a0f1a 100%);
   --gradient-card: linear-gradient(135deg, #141414 0%, #1a1a1a 100%);
   --gradient-accent: linear-gradient(135deg, #065f46 0%, #0d9488 100%);
+  --gradient-why: linear-gradient(160deg, #010f08 0%, #060d0a 50%, #04080f 100%);
+  --gradient-trust: linear-gradient(135deg, #141414 0%, #0a1a12 100%);
 }
 
 [data-theme="light"] {
@@ -303,4 +322,6 @@
   --gradient-card: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
   --gradient-accent: linear-gradient(135deg, #0a6b4e 0%, #0d9488 100%);
   --gradient-highlight: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  --gradient-why: linear-gradient(160deg, #022c22 0%, #0a1410 50%, #0c1a2e 100%);
+  --gradient-trust: linear-gradient(135deg, #f8fafc 0%, #f0fdf4 100%);
 }

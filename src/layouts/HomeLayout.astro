@@ -1,7 +1,11 @@
 ---
 /**
- * HomeLayout.astro — Home page layout: no sidebar, hero + card grids.
+ * HomeLayout.astro — Home page layout: no sidebar, full-bleed sections.
  * Design §4 Group C (C4). Composes BaseLayout.
+ *
+ * Phase 3 uplift: removed outer container wrapper so each section in the
+ * slot can be truly full-bleed (w-full) or self-constrained.
+ * Inner content uses max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8.
  *
  * Used by: src/pages/[lang]/index.astro
  * Does NOT render SiteSidebar (home page is full-width, Design §3.5).
@@ -19,9 +23,11 @@ export interface Props {
   lang: string;
   /** Optional meta description override */
   description?: string;
+  /** Optional JSON-LD structured data (passed through to BaseLayout) */
+  ldJson?: string;
 }
 
-const { title, lang, description } = Astro.props;
+const { title, lang, description, ldJson } = Astro.props;
 
 // Home page has both ko and en versions
 const alternateLangs = ['ko', 'en'];
@@ -33,9 +39,8 @@ const alternateLangs = ['ko', 'en'];
   alternateLangs={alternateLangs}
   canonicalPath={`/${lang}/`}
   ogType="website"
+  ldJson={ldJson}
 >
-  <!-- Full-width container for hero and card grid sections -->
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <slot />
-  </div>
+  <!-- Full-bleed slot — each section manages its own width constraint -->
+  <slot />
 </BaseLayout>
