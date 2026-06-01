@@ -66,3 +66,4 @@ scripts/.cache/
 # Internal subagent memory (not public)
 .claude/
 build_output.txt
+package-lock.json
