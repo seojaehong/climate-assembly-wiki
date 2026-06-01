@@ -2,6 +2,11 @@
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
+2026-06-01 20:41 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 20:39 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 20:38 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 20:37 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 20:33 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-01 20:30 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-01 20:30 | update | content/ko/doc/about.md | 2026 기후시민회의 모더레이터 아카이브 소개 (last_updated: 2026-05-31)
 2026-06-01 20:29 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run

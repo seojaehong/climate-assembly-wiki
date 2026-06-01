@@ -18,9 +18,7 @@ import type { CollectionEntry } from 'astro:content';
 import fs from 'node:fs';
 import path from 'node:path';
 import { marked } from 'marked';
-// Group C layout — will exist when C ships. Build fails gracefully until then.
-// import AgendaLayout from '@/layouts/AgendaLayout.astro';
-import Base from '../../../layouts/Base.astro';
+import AgendaLayout from '../../../layouts/AgendaLayout.astro';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -126,91 +124,59 @@ const translationStatus: 'machine' | 'reviewed' | 'native' | 'author-verified' |
     ? (entry.data.translations as Record<string, { status: 'machine' | 'reviewed' | 'native' | 'author-verified' } | undefined>)[lang]?.status
     : undefined);
 ---
-<Base title={pageTitle} lang={lang}>
-  {showFallbackBanner && (
-    <div role="alert" class="mb-6 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950 dark:border-amber-700 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-      ⚠ This page is not yet available in English. You are viewing the Korean original.
-      <a href={`/en/`} class="ml-2 underline hover:no-underline">Return to English home</a>
+<AgendaLayout
+  title={pageTitle}
+  lang={lang}
+  trustLabel={translationStatus ?? 'author-verified'}
+  license={entry.data.license as 'CC-BY-SA-4.0' | 'CC-BY-4.0' | 'CC-BY-NC-SA-3.0-IGO' | 'all-rights-reserved'}
+  alternateLangs={hasEnTranslation ? ['ko', 'en'] : ['ko']}
+  canonicalPath={`/${lang}/agenda/${entry.data.slug}/`}
+  isFallback={showFallbackBanner}
+  sourceKorean={`/ko/agenda/${entry.data.slug}/`}
+  frontmatter={{
+    id: entry.data.id,
+    last_updated: entry.data.last_updated,
+    ministries: entry.data.ministries,
+    international_cases: entry.data.international_cases ?? [],
+  }}
+>
+  <!-- Agenda header: ID badge + category + ministry tags -->
+  <div class="flex flex-wrap items-center gap-2 mb-4 text-xs text-[var(--color-fg-muted)] not-prose">
+    <span class="font-mono font-semibold text-[var(--color-accent)]">#{entry.data.id.toString().padStart(2, '0')}</span>
+    <span aria-hidden="true">·</span>
+    <span>{entry.data.category}</span>
+    <span aria-hidden="true">·</span>
+    <span class="capitalize">{entry.data.status}</span>
+  </div>
+
+  <h1 class="text-2xl font-bold text-[var(--color-fg)] mb-4 not-prose">{pageTitle}</h1>
+
+  {entry.data.ministries.length > 0 && (
+    <div class="flex flex-wrap gap-1 mb-6 not-prose" aria-label="Related ministries">
+      {entry.data.ministries.map((m: string) => (
+        <span class="text-xs px-2 py-0.5 bg-[var(--color-bg-subtle)] text-[var(--color-fg-muted)] rounded border border-[var(--color-border)]">{m}</span>
+      ))}
     </div>
   )}
 
-  <article id="main-content">
-    <header class="mb-6">
-      <div class="flex flex-wrap items-center gap-2 mb-2 text-xs text-gray-500 dark:text-gray-400">
-        <span class="font-mono">#{entry.data.id.toString().padStart(2, '0')}</span>
-        <span aria-hidden="true">·</span>
-        <span>{entry.data.category}</span>
-        <span aria-hidden="true">·</span>
-        <span class="capitalize">{entry.data.status}</span>
-        {translationStatus && (
-          <>
-            <span aria-hidden="true">·</span>
-            <span
-              class:list={[
-                'inline-flex items-center gap-1 rounded border px-2 py-0.5',
-                translationStatus === 'machine' && 'bg-amber-100 text-amber-800 border-amber-300',
-                translationStatus === 'reviewed' && 'bg-blue-100 text-blue-800 border-blue-300',
-                translationStatus === 'native' && 'bg-emerald-100 text-emerald-800 border-emerald-300',
-                translationStatus === 'author-verified' && 'bg-green-100 text-green-900 border-2 border-green-500 font-semibold',
-              ]}
-              role="img"
-              aria-label={`Translation status: ${translationStatus}`}
-            >
-              {translationStatus === 'machine' && <span aria-hidden="true">⚠</span>}
-              {translationStatus === 'reviewed' && <span aria-hidden="true">◉</span>}
-              {translationStatus === 'native' && <span aria-hidden="true">✓</span>}
-              {translationStatus === 'author-verified' && <span aria-hidden="true">✓✓</span>}
-              {translationStatus}
-            </span>
-          </>
-        )}
-      </div>
+  {lang === 'en' && hasEnTranslation
+    ? <div set:html={enBodyHtml} />
+    : <Content />
+  }
 
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{pageTitle}</h1>
-
-      {entry.data.ministries.length > 0 && (
-        <div class="mt-2 flex flex-wrap gap-1" aria-label="Related ministries">
-          {entry.data.ministries.map((m: string) => (
-            <span class="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">{m}</span>
-          ))}
-        </div>
-      )}
-    </header>
-
-    <div class="prose dark:prose-invert max-w-none">
-      {lang === 'en' && hasEnTranslation
-        ? <div set:html={enBodyHtml} />
-        : <Content />
-      }
+  {entry.data.related_agendas.length > 0 && (
+    <div class="mt-6 pt-4 border-t border-[var(--color-border)] not-prose">
+      <p class="text-sm text-[var(--color-fg-muted)]">
+        {lang === 'ko' ? '관련 의제' : 'Related agendas'}:{' '}
+        {entry.data.related_agendas.map((id: number) => (
+          <a
+            href={`/${lang}/agenda/`}
+            class="mr-1 text-[var(--color-accent)] hover:underline"
+          >
+            #{id}
+          </a>
+        ))}
+      </p>
     </div>
-
-    {entry.data.related_agendas.length > 0 && (
-      <footer class="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <p class="text-sm text-gray-500">
-          {lang === 'ko' ? '관련 의제' : 'Related agendas'}:{' '}
-          {entry.data.related_agendas.map((id: number) => (
-            <a
-              href={`/${lang}/agenda/`}
-              class="mr-1 text-green-700 dark:text-green-400 hover:underline"
-            >
-              #{id}
-            </a>
-          ))}
-        </p>
-      </footer>
-    )}
-
-    <p class="mt-4 text-xs text-gray-400">
-      {lang === 'ko' ? '최종 업데이트' : 'Last updated'}: {entry.data.last_updated}
-      {' · '}
-      <a
-        href="https://creativecommons.org/licenses/by-sa/4.0/"
-        class="hover:underline"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        {entry.data.license}
-      </a>
-    </p>
-  </article>
-</Base>
+  )}
+</AgendaLayout>
