@@ -6,6 +6,13 @@
  *   일반-의제 → 파랑 (감축/general)
  *   메타-의제 → 회색 (메타/governance)
  *   실행-의제 → 초록 (적응/action)
+ *
+ * R-05: translationStatus prop removed. Now accepts:
+ *   contentStatus — trust level of the CURRENT LANGUAGE content (the KO original)
+ *   enAvailable   — boolean: whether an EN translation exists
+ *
+ * This fixes the bug where KO cards displayed the EN translation status,
+ * causing author-written Korean content to be labelled "Machine draft".
  */
 
 import TrustBadge from './TrustBadge.astro';
@@ -16,12 +23,14 @@ interface Props {
   title: string;
   category: '일반-의제' | '메타-의제' | '실행-의제';
   status: 'proposed' | 'discussed' | 'recommended' | 'final';
-  translationStatus: 'machine' | 'reviewed' | 'native' | 'author-verified';
-  hasEnglish: boolean;
+  /** Trust level of the current-language content (KO original = native/author-verified). */
+  contentStatus: 'machine' | 'reviewed' | 'native' | 'author-verified';
+  /** Whether an English translation is available. */
+  enAvailable: boolean;
   lang: string;
 }
 
-const { id, slug, title, category, status, translationStatus, hasEnglish, lang } = Astro.props;
+const { id, slug, title, category, status, contentStatus, enAvailable, lang } = Astro.props;
 
 // Category color config — full literal Tailwind classes for JIT
 const categoryConfig = {
@@ -87,7 +96,7 @@ const idPadded = id.toString().padStart(2, '0');
 
   <!-- Top row: ID + status pill -->
   <div class="flex items-center justify-between gap-2 mb-2.5">
-    <span class="text-xs font-mono text-[var(--color-fg-subtle)]">#{idPadded}</span>
+    <span class="text-xs font-mono text-[var(--color-fg-muted)]">#{idPadded}</span>
     <span class={`text-xs px-2 py-0.5 rounded-full font-medium ${stsCfg.classes}`}>
       {stsLabel}
     </span>
@@ -98,15 +107,16 @@ const idPadded = id.toString().padStart(2, '0');
     {title}
   </h3>
 
-  <!-- Bottom row: category tag + trust badge + EN indicator -->
+  <!-- Bottom row: category tag + content trust badge + EN indicator -->
   <div class="flex items-center flex-wrap gap-1.5 mt-auto">
     <span class={`text-xs px-2 py-0.5 rounded-full font-medium ${catCfg.pill}`}>
       {catLabel}
     </span>
 
-    <TrustBadge status={translationStatus} lang={lang} />
+    <!-- R-05: contentStatus = trust of the current-language original content -->
+    <TrustBadge status={contentStatus} lang={lang} />
 
-    {hasEnglish && (
+    {enAvailable && (
       <span
         class="text-xs px-1.5 py-0.5 rounded-md border border-[var(--color-info)] text-[var(--color-info)] dark:border-blue-600 dark:text-blue-300 font-medium"
         title={isKo ? '영문 번역 있음' : 'English available'}

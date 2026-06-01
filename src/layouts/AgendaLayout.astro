@@ -98,6 +98,12 @@ const {
 } = Astro.props;
 
 // ---------------------------------------------------------------------------
+// Canonical site base URL — use Astro.site (set in astro.config.mjs via PUBLIC_SITE_URL env)
+// Falls back to pages.dev until DNS switch to climate-assembly.org is confirmed.
+// ---------------------------------------------------------------------------
+const siteBase = (Astro.site?.toString() ?? 'https://climate-assembly-wiki.pages.dev').replace(/\/$/, '');
+
+// ---------------------------------------------------------------------------
 // JSON-LD Article schema (Design §5.2)
 // ---------------------------------------------------------------------------
 const articleSchema = {
@@ -116,7 +122,7 @@ const articleSchema = {
   },
   ...(frontmatter?.last_updated && { dateModified: frontmatter.last_updated }),
   ...(canonicalPath && {
-    url: `https://climate-assembly-wiki.pages.dev${canonicalPath}`,
+    url: `${siteBase}${canonicalPath}`,
   }),
 };
 
@@ -155,7 +161,7 @@ const ldJson = JSON.stringify(articleSchema);
           <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-4 text-xs text-[var(--color-fg-muted)]">
             <span>
               {lang === 'ko' ? '마지막 갱신:' : 'Last updated:'}
-              <time class="ml-1 font-mono text-[var(--color-fg-subtle)]">{frontmatter.last_updated}</time>
+              <time class="ml-1 font-mono text-[var(--color-fg-muted)]">{frontmatter.last_updated}</time>
             </span>
             <span aria-hidden="true" class="text-[var(--color-border-strong)]">·</span>
             {trustLabel && (
@@ -197,7 +203,7 @@ const ldJson = JSON.stringify(articleSchema);
   title  = {${title}},
   author = {Seo, Jaehong},
   year   = {${(frontmatter?.last_updated ?? '2026').slice(0, 4)}},
-  url    = {https://climate-assembly-wiki.pages.dev${canonicalPath ?? ''}},
+  url    = {${siteBase}${canonicalPath ?? ''}},
   note   = {Korea Climate Assembly Wiki, CC BY-SA 4.0}
 }`}</code></pre>
               </div>
@@ -206,7 +212,7 @@ const ldJson = JSON.stringify(articleSchema);
                 <p class="text-xs font-bold text-[var(--color-fg-muted)] uppercase tracking-wide mb-1.5">MLA</p>
                 <p class="text-xs text-[var(--color-fg-muted)] bg-[var(--color-code-bg)] rounded-lg p-3 leading-relaxed">
                   Seo, Jaehong. "{title}." <em>Korea Climate Assembly Wiki</em>, {frontmatter?.last_updated ?? '2026'}.
-                  &lt;https://climate-assembly-wiki.pages.dev{canonicalPath ?? ''}&gt;.
+                  &lt;{siteBase}{canonicalPath ?? ''}&gt;.
                 </p>
               </div>
               {/* Chicago */}
@@ -214,7 +220,7 @@ const ldJson = JSON.stringify(articleSchema);
                 <p class="text-xs font-bold text-[var(--color-fg-muted)] uppercase tracking-wide mb-1.5">Chicago</p>
                 <p class="text-xs text-[var(--color-fg-muted)] bg-[var(--color-code-bg)] rounded-lg p-3 leading-relaxed">
                   Seo, Jaehong. "{title}." Korea Climate Assembly Wiki. Last modified {frontmatter?.last_updated ?? '2026'}.
-                  https://climate-assembly-wiki.pages.dev{canonicalPath ?? ''}.
+                  {siteBase}{canonicalPath ?? ''}.
                 </p>
               </div>
             </div>

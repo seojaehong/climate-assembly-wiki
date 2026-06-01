@@ -205,7 +205,7 @@ const ldJson = JSON.stringify(articleSchema);
                 <span>
                   {speaker}
                   {affiliation && (
-                    <span class="text-gray-400 dark:text-gray-500"> ({affiliation})</span>
+                    <span class="text-gray-500 dark:text-gray-400"> ({affiliation})</span>
                   )}
                 </span>
               </>
@@ -221,7 +221,7 @@ const ldJson = JSON.stringify(articleSchema);
           <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-4 text-xs text-[var(--color-fg-muted)]">
             <span>
               {lang === 'ko' ? '마지막 갱신:' : 'Last updated:'}
-              <time class="ml-1 font-mono text-[var(--color-fg-subtle)]">{frontmatter.last_updated}</time>
+              <time class="ml-1 font-mono text-[var(--color-fg-muted)]">{frontmatter.last_updated}</time>
             </span>
             <span aria-hidden="true" class="text-[var(--color-border-strong)]">·</span>
             {trustLabel && (

@@ -5,7 +5,10 @@ import tailwindcss from '@tailwindcss/vite';
 import yaml from '@rollup/plugin-yaml';
 
 export default defineConfig({
-  site: 'https://climate-assembly-wiki.pages.dev',
+  // MAJOR 6 fix: set to canonical domain so Astro.site is used in citation URLs.
+  // Switch to https://climate-assembly.org once DNS is confirmed.
+  // Until then, keep pages.dev so canonical/OG/sitemap remain consistent.
+  site: process.env.PUBLIC_SITE_URL ?? 'https://climate-assembly-wiki.pages.dev',
   integrations: [
     sitemap({
       i18n: {

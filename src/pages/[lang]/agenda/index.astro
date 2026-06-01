@@ -11,8 +11,11 @@ export async function getStaticPaths() {
 const { lang } = Astro.params;
 const isKo = lang === 'ko';
 
+// R-01: Filter out dummy agenda (#00, id = 0)
 const agendaEntries = await getCollection('agenda');
-const sorted = agendaEntries.sort((a, b) => a.data.id - b.data.id);
+const sorted = agendaEntries
+  .filter((entry) => entry.data.id > 0)
+  .sort((a, b) => a.data.id - b.data.id);
 ---
 <Base title={isKo ? '의제 목록' : 'Agendas'} lang={lang}>
   <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">{isKo ? '의제 목록' : 'Agendas'}</h1>
@@ -25,8 +28,8 @@ const sorted = agendaEntries.sort((a, b) => a.data.id - b.data.id);
         status={entry.data.status}
         slug={entry.data.slug}
         lang={lang}
-        translationStatus={entry.data.translations?.en?.status ?? 'machine'}
-        hasEnglish={!!entry.data.translations?.en}
+        contentStatus={lang === 'ko' ? 'native' : (entry.data.translations?.en?.status ?? 'machine')}
+        enAvailable={!!entry.data.translations?.en}
       />
     ))}
   </div>

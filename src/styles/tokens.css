@@ -2,10 +2,17 @@
  * tokens.css — Design tokens for climate-assembly-wiki
  * K3 (llmwiki-uplift): Light + dark mode CSS custom properties.
  * Updated: 2026-06-01 — Phase 3 BigTech design uplift.
+ * Hotfix: R-03 (fg contrast AA), R-08 (dark elevation)
+ * Fix: dark selector structure — .dark class + data-theme attr + OS fallback
  *
  * Usage: consumed via @import in global.css.
- * Dark mode: system prefers-color-scheme OR [data-theme="dark"] OR .dark class.
- * ThemeToggle sets both [data-theme="dark"] and .dark class simultaneously.
+ * Dark mode priority (highest → lowest):
+ *   1. Manual toggle: .dark class OR [data-theme="dark"]  (ThemeToggle sets both)
+ *   2. OS preference fallback: @media (prefers-color-scheme: dark)
+ *      — skipped if user explicitly chose light ([data-theme="light"] or .light)
+ *
+ * ThemeToggle sets both [data-theme] attribute and .dark/.light class on <html>.
+ * BaseLayout inline script also applies both before first paint.
  */
 
 /* ============================================================
@@ -20,12 +27,14 @@
 
   /* ============================================================
      COLORS — Light mode
+     R-03: fg-muted #4b5563 (≈7:1 on white), fg-subtle #6b7280 (≈4.8:1 on white — text OK)
+     Rule: --color-fg-subtle must NOT be used on text. Text must use --color-fg-muted or above.
      ============================================================ */
   --color-bg: #ffffff;
   --color-bg-subtle: #f9fafb;
   --color-fg: #111827;
-  --color-fg-muted: #6b7280;
-  --color-fg-subtle: #9ca3af;
+  --color-fg-muted: #4b5563;
+  --color-fg-subtle: #6b7280;
 
   --color-link: #0a6b4e;
   --color-link-hover: #065f46;
@@ -33,7 +42,8 @@
   --color-border-strong: #d1d5db;
 
   --color-warn: #f59e0b;
-  --color-warn-bg: #fffbeb;
+  --color-warn-bg: #fef3c7;
+  --color-warn-fg: #92400e;        /* badge fg — on #fef3c7 bg, 7.5:1 */
   --color-info: #2563eb;
   --color-info-bg: #eff6ff;
   --color-success: #16a34a;
@@ -165,78 +175,29 @@
 }
 
 /* ============================================================
-   DARK MODE — system preference
+   DARK MODE — manual toggle (highest priority)
+   Covers: .dark class (Tailwind v4) AND [data-theme="dark"] attr (tokens).
+   ThemeToggle + BaseLayout inline script set BOTH simultaneously.
+   R-08: #0d1117 base + 3-step elevation (GitHub-scale)
+   fg-subtle upgraded to #8b95a3 for dark text readability
    ============================================================ */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: #0a0a0a;
-    --color-bg-subtle: #141414;
-    --color-fg: #f3f4f6;
-    --color-fg-muted: #9ca3af;
-    --color-fg-subtle: #6b7280;
-
-    --color-link: #34d399;
-    --color-link-hover: #6ee7b7;
-    --color-border: #262626;
-    --color-border-strong: #404040;
-
-    --color-warn: #fbbf24;
-    --color-warn-bg: #1c1400;
-    --color-info: #60a5fa;
-    --color-info-bg: #0c1a2e;
-    --color-success: #4ade80;
-    --color-success-bg: #0a1a10;
-    --color-error: #f87171;
-    --color-error-bg: #1a0a0a;
-
-    --color-card-bg: #141414;
-    --color-card-hover: #1a1a1a;
-    --color-code-bg: #1a1a1a;
-    --color-quote-bg: #1c1600;
-
-    --color-accent: #34d399;
-    --color-accent-hover: #6ee7b7;
-    --color-accent-fg: #064e3b;
-    --color-accent-muted: #064e3b;
-    --color-accent-subtle: #022c22;
-
-    --color-highlight: #fbbf24;
-    --color-highlight-fg: #fef3c7;
-    --color-highlight-bg: #1c1400;
-
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.3);
-    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.7), 0 8px 16px rgba(0, 0, 0, 0.3);
-    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-card-hover: 0 6px 16px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
-
-    --gradient-hero: linear-gradient(135deg, #0a1a12 0%, #0a1410 40%, #0a0f1a 100%);
-    --gradient-card: linear-gradient(135deg, #141414 0%, #1a1a1a 100%);
-    --gradient-accent: linear-gradient(135deg, #065f46 0%, #0d9488 100%);
-    --gradient-why: linear-gradient(160deg, #010f08 0%, #060d0a 50%, #04080f 100%);
-    --gradient-trust: linear-gradient(135deg, #141414 0%, #0a1a12 100%);
-  }
-}
-
-/* ============================================================
-   DARK MODE — localStorage override (data-theme attribute)
-   ============================================================ */
+:root.dark,
+:root[data-theme="dark"],
 [data-theme="dark"] {
-  --color-bg: #0a0a0a;
-  --color-bg-subtle: #141414;
+  --color-bg: #0d1117;
+  --color-bg-subtle: #161b22;
   --color-fg: #f3f4f6;
   --color-fg-muted: #9ca3af;
-  --color-fg-subtle: #6b7280;
+  --color-fg-subtle: #8b95a3;
 
   --color-link: #34d399;
   --color-link-hover: #6ee7b7;
-  --color-border: #262626;
-  --color-border-strong: #404040;
+  --color-border: #30363d;
+  --color-border-strong: #444c56;
 
   --color-warn: #fbbf24;
   --color-warn-bg: #1c1400;
+  --color-warn-fg: #fbbf24;       /* badge fg — on #1c1400 bg, 7.3:1 */
   --color-info: #60a5fa;
   --color-info-bg: #0c1a2e;
   --color-success: #4ade80;
@@ -244,9 +205,9 @@
   --color-error: #f87171;
   --color-error-bg: #1a0a0a;
 
-  --color-card-bg: #141414;
-  --color-card-hover: #1a1a1a;
-  --color-code-bg: #1a1a1a;
+  --color-card-bg: #161b22;
+  --color-card-hover: #1c2230;
+  --color-code-bg: #161b22;
   --color-quote-bg: #1c1600;
 
   --color-accent: #34d399;
@@ -268,18 +229,77 @@
   --shadow-card-hover: 0 6px 16px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
 
   --gradient-hero: linear-gradient(135deg, #0a1a12 0%, #0a1410 40%, #0a0f1a 100%);
-  --gradient-card: linear-gradient(135deg, #141414 0%, #1a1a1a 100%);
+  --gradient-card: linear-gradient(135deg, #161b22 0%, #1c2230 100%);
   --gradient-accent: linear-gradient(135deg, #065f46 0%, #0d9488 100%);
   --gradient-why: linear-gradient(160deg, #010f08 0%, #060d0a 50%, #04080f 100%);
-  --gradient-trust: linear-gradient(135deg, #141414 0%, #0a1a12 100%);
+  --gradient-trust: linear-gradient(135deg, #161b22 0%, #0a1a12 100%);
+}
+
+/* ============================================================
+   DARK MODE — OS preference fallback
+   Only activates when user has NOT manually chosen a theme.
+   Skipped if user explicitly set .light or [data-theme="light"].
+   ============================================================ */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not([data-theme="light"]) {
+    --color-bg: #0d1117;
+    --color-bg-subtle: #161b22;
+    --color-fg: #f3f4f6;
+    --color-fg-muted: #9ca3af;
+    --color-fg-subtle: #8b95a3;
+
+    --color-link: #34d399;
+    --color-link-hover: #6ee7b7;
+    --color-border: #30363d;
+    --color-border-strong: #444c56;
+
+    --color-warn: #fbbf24;
+    --color-warn-bg: #1c1400;
+    --color-warn-fg: #fbbf24;
+    --color-info: #60a5fa;
+    --color-info-bg: #0c1a2e;
+    --color-success: #4ade80;
+    --color-success-bg: #0a1a10;
+    --color-error: #f87171;
+    --color-error-bg: #1a0a0a;
+
+    --color-card-bg: #161b22;
+    --color-card-hover: #1c2230;
+    --color-code-bg: #161b22;
+    --color-quote-bg: #1c1600;
+
+    --color-accent: #34d399;
+    --color-accent-hover: #6ee7b7;
+    --color-accent-fg: #064e3b;
+    --color-accent-muted: #064e3b;
+    --color-accent-subtle: #022c22;
+
+    --color-highlight: #fbbf24;
+    --color-highlight-fg: #fef3c7;
+    --color-highlight-bg: #1c1400;
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.3);
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.7), 0 8px 16px rgba(0, 0, 0, 0.3);
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-card-hover: 0 6px 16px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
+
+    --gradient-hero: linear-gradient(135deg, #0a1a12 0%, #0a1410 40%, #0a0f1a 100%);
+    --gradient-card: linear-gradient(135deg, #161b22 0%, #1c2230 100%);
+    --gradient-accent: linear-gradient(135deg, #065f46 0%, #0d9488 100%);
+    --gradient-why: linear-gradient(160deg, #010f08 0%, #060d0a 50%, #04080f 100%);
+    --gradient-trust: linear-gradient(135deg, #161b22 0%, #0a1a12 100%);
+  }
 }
 
 [data-theme="light"] {
   --color-bg: #ffffff;
   --color-bg-subtle: #f9fafb;
   --color-fg: #111827;
-  --color-fg-muted: #6b7280;
-  --color-fg-subtle: #9ca3af;
+  --color-fg-muted: #4b5563;
+  --color-fg-subtle: #6b7280;
 
   --color-link: #0a6b4e;
   --color-link-hover: #065f46;
@@ -287,7 +307,8 @@
   --color-border-strong: #d1d5db;
 
   --color-warn: #f59e0b;
-  --color-warn-bg: #fffbeb;
+  --color-warn-bg: #fef3c7;
+  --color-warn-fg: #92400e;        /* badge fg — on #fef3c7 bg, 7.5:1 */
   --color-info: #2563eb;
   --color-info-bg: #eff6ff;
   --color-success: #16a34a;

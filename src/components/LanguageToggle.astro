@@ -48,7 +48,7 @@ const langs = [
       hreflang={l.code}
       aria-current={l.code === currentLang ? 'true' : undefined}
       class={[
-        'text-xs px-2 py-1 rounded border transition-colors',
+        'text-xs px-3 py-2.5 min-h-11 rounded border transition-colors inline-flex items-center',
         l.code === currentLang
           ? 'border-green-600 bg-green-600 text-white dark:border-green-400 dark:bg-green-700 dark:text-white font-semibold'
           : 'border-gray-300 text-gray-700 hover:border-green-500 hover:text-green-700 dark:border-gray-600 dark:text-gray-300 dark:hover:border-green-400 dark:hover:text-green-300',

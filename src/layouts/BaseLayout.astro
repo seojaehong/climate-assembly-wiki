@@ -21,7 +21,10 @@ import '../styles/global.css';
 // ---------------------------------------------------------------------------
 // Site base URL (Design §6.3 — changes to climate-assembly.org at DNS switch)
 // ---------------------------------------------------------------------------
-const SITE_URL = import.meta.env.SITE ?? 'https://climate-assembly-wiki.pages.dev';
+// MAJOR 6: use Astro.site (set from PUBLIC_SITE_URL env or astro.config.mjs site field)
+// Switch to https://climate-assembly.org once DNS is confirmed by setting PUBLIC_SITE_URL env var
+// in Cloudflare Pages dashboard.
+const SITE_URL = (Astro.site?.toString() ?? import.meta.env.SITE ?? 'https://climate-assembly-wiki.pages.dev').replace(/\/$/, '');
 
 // ---------------------------------------------------------------------------
 // Props
@@ -205,8 +208,8 @@ const fullTitle = `${title} | ${siteTitleSuffix}`;
     <!-- Search modal (M2-1) — wires to [data-search-trigger] in SiteHeader + `/` shortcut -->
     <SearchModal lang={lang} />
 
-    <!-- Main landmark -->
-    <main id="main-content" tabindex="-1">
+    <!-- Main landmark (data-pagefind-body: Pagefind indexes content inside this element) -->
+    <main id="main-content" tabindex="-1" data-pagefind-body>
       <slot />
     </main>
 

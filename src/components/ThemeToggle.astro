@@ -15,7 +15,7 @@
   id="theme-toggle"
   type="button"
   aria-label="Toggle dark mode / 다크모드 전환"
-  class="theme-toggle p-1.5 rounded-lg border border-[var(--color-border)] text-[var(--color-fg-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+  class="theme-toggle min-w-11 min-h-11 p-2.5 rounded-lg border border-[var(--color-border)] text-[var(--color-fg-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] inline-flex items-center justify-center"
   aria-pressed="false"
 >
   <!-- Sun icon (shown in dark mode — click to go light) -->
@@ -43,6 +43,20 @@
     const iconSun = document.getElementById('theme-icon-sun');
     const iconMoon = document.getElementById('theme-icon-moon');
 
+    if (!btn) return;
+
+    // Guard: prevent duplicate click listeners when initThemeToggle is called
+    // multiple times (e.g. astro:page-load after View Transitions on same page)
+    if ((btn as any).__themeToggleInit) {
+      // Still sync icon/aria state in case theme changed externally
+      const dark = html.classList.contains('dark');
+      btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+      if (iconSun) iconSun.classList.toggle('hidden', !dark);
+      if (iconMoon) iconMoon.classList.toggle('hidden', dark);
+      return;
+    }
+    (btn as any).__themeToggleInit = true;
+
     function isDark(): boolean {
       return html.classList.contains('dark');
     }
@@ -59,7 +73,7 @@
         html.classList.remove('dark');
         html.setAttribute('data-theme', 'light');
       }
-      if (btn) btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+      btn!.setAttribute('aria-pressed', dark ? 'true' : 'false');
       if (iconSun) iconSun.classList.toggle('hidden', !dark);
       if (iconMoon) iconMoon.classList.toggle('hidden', dark);
     }
@@ -68,13 +82,14 @@
     applyTheme(isDark());
 
     // Toggle on click: dark → light → dark
-    btn?.addEventListener('click', () => {
+    btn.addEventListener('click', () => {
       const next = !isDark();
       applyTheme(next);
       localStorage.setItem('theme', next ? 'dark' : 'light');
     });
   }
 
-  // Run on initial load and after every soft navigation (ClientRouter)
+  // astro:page-load fires on both first page load AND after every View Transition.
+  // This is the correct event for Astro 5 ClientRouter.
   document.addEventListener('astro:page-load', initThemeToggle);
 </script>

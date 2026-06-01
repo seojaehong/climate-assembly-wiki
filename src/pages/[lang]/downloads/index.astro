@@ -46,7 +46,7 @@ const downloads: DownloadEntry[] = [
   {
     labelKo: 'En-ROADS 자료집 v1.1',
     labelEn: 'En-ROADS Handbook v1.1',
-    href: '/assets/downloads/en-roads-handbook-v1.1.md',
+    href: '/downloads/en-roads-handbook-v1.1.md',
     size: '40KB',
     host: 'pages',
     license: 'CC BY 4.0',
@@ -54,15 +54,18 @@ const downloads: DownloadEntry[] = [
   {
     labelKo: '교안 오탈자 정리 v4',
     labelEn: 'Textbook Errata v4',
-    href: '/assets/downloads/textbook-errata-v4.docx',
+    // BLOCKER-2 fix: docx not yet uploaded; link to wiki page instead
+    href: `/${lang}/doc/textbook-errata/`,
     size: '~200KB',
     host: 'pages',
     license: 'CC BY-SA 4.0',
+    noteKo: '위키 페이지로 연결됩니다 (docx 파일 준비 중)',
+    noteEn: 'Links to wiki page (docx file pending upload)',
   },
   {
     labelKo: '모더레이터 준비 브리프 v2',
     labelEn: 'Moderator Preparation Brief v2',
-    href: '/assets/downloads/moderator-brief-v2.docx',
+    href: '/downloads/moderator-brief-v2.docx',
     size: '~300KB',
     host: 'pages',
     license: 'CC BY-SA 4.0',

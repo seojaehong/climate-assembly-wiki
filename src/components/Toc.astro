@@ -67,7 +67,7 @@ const showDesktop = variant === 'desktop' || variant === undefined;
           <span>{expandLabel}</span>
           <svg
             aria-hidden="true"
-            class="toc-chevron w-4 h-4 text-[var(--color-muted)] transition-transform duration-200"
+            class="toc-chevron w-4 h-4 text-[var(--color-fg-muted)] transition-transform duration-200"
             fill="none"
             stroke="currentColor"
             stroke-width="2"
@@ -102,7 +102,7 @@ const showDesktop = variant === 'desktop' || variant === undefined;
         aria-label={tocLabel}
       >
         <nav>
-          <p class="text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)] mb-3 px-1">
+          <p class="text-xs font-semibold uppercase tracking-wider text-[var(--color-fg-muted)] mb-3 px-1">
             {tocLabel}
           </p>
           <ol class="space-y-0.5 border-l border-[var(--color-border)]">
@@ -111,7 +111,7 @@ const showDesktop = variant === 'desktop' || variant === undefined;
                 <a
                   href={`#${h.slug}`}
                   data-toc-link={h.slug}
-                  class="toc-link block text-xs leading-snug py-1 text-[var(--color-muted)] hover:text-gray-900 dark:hover:text-gray-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+                  class="toc-link block text-xs leading-snug py-1 text-[var(--color-fg-muted)] hover:text-gray-900 dark:hover:text-gray-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
                 >
                   {h.text}
                 </a>

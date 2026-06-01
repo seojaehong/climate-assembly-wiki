@@ -18,6 +18,10 @@ import { getCollection } from 'astro:content';
 import type { CollectionEntry } from 'astro:content';
 import HomeLayout from '../../layouts/HomeLayout.astro';
 import AgendaCard from '../../components/AgendaCard.astro';
+import TrustBadge from '../../components/TrustBadge.astro';
+
+// R-02: repo URL constant — replace all placeholder https://github.com links
+const REPO = 'https://github.com/seojaehong/climate-assembly-wiki';
 
 export async function getStaticPaths() {
   return [
@@ -31,8 +35,9 @@ const { lang } = Astro.params;
 const agendaEntries: CollectionEntry<'agenda'>[] = await getCollection('agenda');
 const sessionEntries: CollectionEntry<'session'>[] = await getCollection('session');
 
-// Sort agenda by ID, take first 6 for hero grid
+// R-01: Filter out dummy agenda (#00) before sorting
 const heroAgendas = [...agendaEntries]
+  .filter((entry) => entry.data.id > 0)
   .sort((a, b) => a.data.id - b.data.id)
   .slice(0, 6);
 
@@ -101,7 +106,7 @@ const ldJson = JSON.stringify([
     url: 'https://climate-assembly-wiki.pages.dev',
     contactPoint: {
       '@type': 'ContactPoint',
-      email: 'iceamericano9@gmail.com',
+      url: `${REPO}/issues`,
       contactType: 'customer service',
     },
   },
@@ -149,11 +154,10 @@ const ldJson = JSON.stringify([
         class="font-bold text-[var(--color-fg)] mb-5 max-w-3xl"
         style="font-size: var(--size-display-1); letter-spacing: var(--tracking-tight); line-height: var(--leading-tight);"
       >
-        {isKo ? (
-          <><span class="block">국민이 대한민국의</span><span class="block">기후정책을 바꿉니다</span></>
-        ) : (
-          <><span class="block">Citizens are changing</span><span class="block">Korea's climate policy</span></>
-        )}
+        {isKo
+          ? '국민이 대한민국의 기후정책을 바꿉니다'
+          : "Citizens are changing Korea's climate policy"
+        }
       </h1>
 
       <!-- Description -->
@@ -215,7 +219,7 @@ const ldJson = JSON.stringify([
         {nextSession && daysUntil !== null && (
           <div class="flex flex-col">
             <span
-              class="font-bold text-[var(--color-highlight)]"
+              class="font-bold text-[var(--color-accent)]"
               style="font-size: var(--size-display-2); letter-spacing: var(--tracking-tight);"
             >
               {daysUntil === 0 ? (isKo ? '오늘' : 'Today') : `D-${daysUntil}`}
@@ -405,18 +409,25 @@ const ldJson = JSON.stringify([
 
       {heroAgendas.length > 0 ? (
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {heroAgendas.map((entry) => (
-            <AgendaCard
-              id={entry.data.id}
-              title={entry.data.title}
-              category={entry.data.category}
-              status={entry.data.status}
-              slug={entry.data.slug}
-              lang={lang}
-              translationStatus={entry.data.translations?.en?.status ?? 'machine'}
-              hasEnglish={!!entry.data.translations?.en}
-            />
-          ))}
+          {heroAgendas.map((entry) => {
+            // R-05: KO original is always 'native' trust. EN shows the translation status.
+            const contentStatus =
+              lang === 'ko'
+                ? 'native'
+                : (entry.data.translations?.en?.status ?? 'machine');
+            return (
+              <AgendaCard
+                id={entry.data.id}
+                title={entry.data.title}
+                category={entry.data.category}
+                status={entry.data.status}
+                slug={entry.data.slug}
+                lang={lang}
+                contentStatus={contentStatus}
+                enAvailable={!!entry.data.translations?.en}
+              />
+            );
+          })}
         </div>
       ) : (
         <p class="text-sm text-[var(--color-fg-subtle)]">
@@ -519,7 +530,7 @@ const ldJson = JSON.stringify([
                 </div>
               ))}
             </div>
-            <p class="text-[10px] text-center text-[var(--color-fg-subtle)] mt-5">
+            <p class="text-xs text-center text-[var(--color-fg-muted)] mt-5">
               {isKo ? '시민이 직접 슬라이더를 조작합니다' : 'Citizens manipulate sliders directly'}
             </p>
           </div>
@@ -571,7 +582,7 @@ const ldJson = JSON.stringify([
                   {item.label}
                 </span>
               </div>
-              <span class="shrink-0 text-xs text-[var(--color-fg-subtle)] font-mono">{item.date}</span>
+              <span class="shrink-0 text-xs text-[var(--color-fg-muted)] font-mono">{item.date}</span>
             </a>
           </li>
         ))}
@@ -604,12 +615,12 @@ const ldJson = JSON.stringify([
           : 'Every page clearly displays trust labels, license information, and citation formats. We aim for academic reliability on par with Wikipedia, MDN, and Anthropic Docs.'}
       </p>
 
+      <!-- R-07: Use actual TrustBadge components instead of emoji — single visual language -->
       <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-12">
         <!-- machine -->
         <div class="p-5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-bg)]">
           <div class="flex items-center gap-2 mb-3">
-            <span class="text-lg">⚠️</span>
-            <span class="text-xs font-bold text-[var(--color-warn)] uppercase tracking-wide">Machine</span>
+            <TrustBadge status="machine" lang={lang} />
           </div>
           <p class="text-xs text-[var(--color-fg-muted)]" style="line-height: var(--leading-relaxed);">
             {isKo ? 'LLM 자동 번역·초안. 사실 오류 가능성 있음.' : 'LLM auto-translated or drafted. May contain factual errors.'}
@@ -618,8 +629,7 @@ const ldJson = JSON.stringify([
         <!-- reviewed -->
         <div class="p-5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-bg)]">
           <div class="flex items-center gap-2 mb-3">
-            <span class="text-lg">🔵</span>
-            <span class="text-xs font-bold text-[var(--color-info)] uppercase tracking-wide">Reviewed</span>
+            <TrustBadge status="reviewed" lang={lang} />
           </div>
           <p class="text-xs text-[var(--color-fg-muted)]" style="line-height: var(--leading-relaxed);">
             {isKo ? '전문가 검토 완료. 인용 가능.' : 'Expert-reviewed. Safe to cite.'}
@@ -628,8 +638,7 @@ const ldJson = JSON.stringify([
         <!-- native -->
         <div class="p-5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-bg)]">
           <div class="flex items-center gap-2 mb-3">
-            <span class="text-lg">🟢</span>
-            <span class="text-xs font-bold text-[var(--color-success)] uppercase tracking-wide">Native</span>
+            <TrustBadge status="native" lang={lang} />
           </div>
           <p class="text-xs text-[var(--color-fg-muted)]" style="line-height: var(--leading-relaxed);">
             {isKo ? '원어 작성. 번역본 기준 원문.' : 'Written in source language. Authoritative original.'}
@@ -638,8 +647,7 @@ const ldJson = JSON.stringify([
         <!-- author-verified -->
         <div class="p-5 rounded-xl border border-[var(--color-accent-muted)] bg-[var(--color-accent-subtle)]">
           <div class="flex items-center gap-2 mb-3">
-            <span class="text-lg">🟢</span>
-            <span class="text-xs font-bold text-[var(--color-accent)] uppercase tracking-wide">Author-Verified</span>
+            <TrustBadge status="author-verified" lang={lang} />
           </div>
           <p class="text-xs text-[var(--color-fg-muted)]" style="line-height: var(--leading-relaxed);">
             {isKo ? '저자 직접 검증. 가장 높은 신뢰도.' : 'Directly verified by the author. Highest trust level.'}
@@ -660,7 +668,7 @@ const ldJson = JSON.stringify([
         <div>
           <p class="text-xs font-semibold text-[var(--color-fg)] mb-1">{isKo ? '오픈소스' : 'Open Source'}</p>
           <a
-            href="https://github.com"
+            href={REPO}
             target="_blank"
             rel="noopener noreferrer"
             class="text-sm text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors"
@@ -735,7 +743,7 @@ const ldJson = JSON.stringify([
             {isKo ? 'EN·JA·ZH·ES 번역 기여자 모집 중. GitHub 이슈로 연락하세요.' : 'Seeking EN · JA · ZH · ES translators. Contact via GitHub issues.'}
           </p>
           <a
-            href="https://github.com"
+            href={`${REPO}/issues/new`}
             target="_blank"
             rel="noopener noreferrer"
             class="mt-4 inline-flex items-center gap-1 text-xs text-[var(--color-accent)] hover:gap-2 transition-all"
@@ -758,10 +766,12 @@ const ldJson = JSON.stringify([
             {isKo ? '오류 신고, 콘텐츠 개선 제안, 새 의제 아이디어를 환영합니다.' : 'Bug reports, content improvement suggestions, and new agenda ideas welcome.'}
           </p>
           <a
-            href="mailto:iceamericano9@gmail.com"
+            href={`${REPO}/issues/new`}
+            target="_blank"
+            rel="noopener noreferrer"
             class="mt-4 inline-flex items-center gap-1 text-xs text-[var(--color-accent)] hover:gap-2 transition-all"
           >
-            {isKo ? '이메일 보내기' : 'Send email'} <span aria-hidden="true">→</span>
+            {isKo ? 'GitHub 이슈 열기' : 'Open GitHub issue'} <span aria-hidden="true">→</span>
           </a>
         </div>
       </div>

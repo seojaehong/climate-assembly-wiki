@@ -7,6 +7,8 @@
 import LanguageToggle from './LanguageToggle.astro';
 import LicenseBadge from './LicenseBadge.astro';
 
+const REPO = 'https://github.com/seojaehong/climate-assembly-wiki';
+
 const currentUrl = Astro.url.pathname;
 const segments = currentUrl.split('/').filter(Boolean);
 const currentLang = (['ko', 'en'].includes(segments[0])) ? segments[0] : 'ko';
@@ -43,7 +45,7 @@ const isKo = currentLang === 'ko';
     <!-- Footer nav -->
     <div class="flex flex-wrap gap-x-5 gap-y-2">
       <a
-        href="https://github.com"
+        href={REPO}
         target="_blank"
         rel="noopener noreferrer"
         class="text-xs text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] transition-colors"
@@ -73,8 +75,11 @@ const isKo = currentLang === 'ko';
         {isKo ? '관련 사이트' : 'Related Sites'}
       </a>
       <a
-        href="mailto:iceamericano9@gmail.com"
+        href={`${REPO}/issues/new`}
+        target="_blank"
+        rel="noopener noreferrer"
         class="text-xs text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] transition-colors"
+        aria-label={isKo ? '문의 (GitHub 이슈, 새 탭)' : 'Contact via GitHub issue (new tab)'}
       >
         {isKo ? '문의' : 'Contact'}
       </a>
