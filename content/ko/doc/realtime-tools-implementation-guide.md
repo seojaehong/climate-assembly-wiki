@@ -3,7 +3,7 @@ title: "실시간 도구 구현 가이드 (오픈소스 vs 유료, 우리 사이
 slug: realtime-tools-implementation-guide
 doc_type: reference
 license: CC-BY-SA-4.0
-last_updated: 2026-06-01
+last_updated: 2026-06-02
 order: 86
 ---
 
@@ -11,7 +11,7 @@ order: 86
 
 ### 0. 목적
 
-앞 페이지 [`/ko/doc/realtime-tools-for-moderators/`](/ko/doc/realtime-tools-for-moderators/) 가 도구 목록과 권장 조합을 다룬다면, 본 페이지는 **실제 구현 방법·매뉴얼·우리 사이트(climate-assembly.org) 도입 한계**를 정리한다. 1인 운영·연간 5만원 예산이라는 현실 제약 위에서 어떤 도구를 어디까지 끌어올 수 있는지 판단하는 기준 문서다.
+앞 페이지 [`/ko/doc/realtime-tools-for-moderators/`](/ko/doc/realtime-tools-for-moderators/) 가 도구 목록과 권장 조합을 다룬다면, 본 페이지는 **실제 구현 방법·매뉴얼·우리 사이트(climate-assembly.org) 도입 한계**를 정리한다. 1인 운영·연간 5만원 예산이라는 현실 제약 위에서 어떤 도구를 어디까지 끌어올 수 있는지 판단하는 기준 문서다. 결정이 끝난 뒤 **모더레이터가 곧바로 실행할 계정 생성·질문 풀·현장 운영**은 → [`/ko/doc/realtime-tools-setup-cookbook/`](/ko/doc/realtime-tools-setup-cookbook/) (세팅 쿡북).
 
 ---
 

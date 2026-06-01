@@ -2,6 +2,21 @@
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
+2026-06-02 00:13 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-02 00:13 | update | content/ko/doc/mentimeter-setup-cookbook.md | content/ko/doc/mentimeter-setup-cookbook.md updated
+2026-06-02 00:13 | update | content/ko/doc/realtime-tools-for-moderators.md | 모더레이팅 실시간 도구 가이드 (16종 + 권장 조합) (last_updated: 2026-06-02)
+2026-06-02 00:13 | update | content/ko/doc/realtime-tools-implementation-guide.md | 실시간 도구 구현 가이드 (오픈소스 vs 유료, 우리 사이트 도입 한계) (last_updated: 2026-06-02)
+2026-06-02 00:13 | update | content/ko/doc/realtime-tools-setup-cookbook.md | 실시간 도구 종합 세팅 쿡북 — 10종 비교 + 의제 13건 × 질문 풀 + 현장 운영 (last_updated: 2026-06-02)
+2026-06-02 00:12 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-02 00:12 | update | content/ko/doc/mentimeter-setup-cookbook.md | content/ko/doc/mentimeter-setup-cookbook.md updated
+2026-06-02 00:12 | update | content/ko/doc/realtime-tools-for-moderators.md | 모더레이팅 실시간 도구 가이드 (16종 + 권장 조합) (last_updated: 2026-06-02)
+2026-06-02 00:12 | update | content/ko/doc/realtime-tools-implementation-guide.md | 실시간 도구 구현 가이드 (오픈소스 vs 유료, 우리 사이트 도입 한계) (last_updated: 2026-06-02)
+2026-06-02 00:12 | update | content/ko/doc/realtime-tools-setup-cookbook.md | 실시간 도구 종합 세팅 쿡북 — 10종 비교 + 의제 14건 × 질문 풀 + 현장 운영 (last_updated: 2026-06-02)
+2026-06-02 00:11 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-02 00:11 | update | content/ko/doc/mentimeter-setup-cookbook.md | content/ko/doc/mentimeter-setup-cookbook.md updated
+2026-06-02 00:11 | update | content/ko/doc/realtime-tools-for-moderators.md | 모더레이팅 실시간 도구 가이드 (16종 + 권장 조합) (last_updated: 2026-06-02)
+2026-06-02 00:11 | update | content/ko/doc/realtime-tools-implementation-guide.md | 실시간 도구 구현 가이드 (오픈소스 vs 유료, 우리 사이트 도입 한계) (last_updated: 2026-06-02)
+2026-06-02 00:11 | update | content/ko/doc/realtime-tools-setup-cookbook.md | 실시간 도구 종합 세팅 쿡북 — 10종 비교 + 의제 14건 × 질문 풀 + 현장 운영 (last_updated: 2026-06-02)
 2026-06-01 22:48 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-01 22:48 | update | content/ko/doc/mentimeter-setup-cookbook.md | Mentimeter 실전 셋업 쿡북 — 의제 14건 × 질문 풀 + 현장 운영 (last_updated: 2026-06-01)
 2026-06-01 22:47 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run

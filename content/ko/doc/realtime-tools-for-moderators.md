@@ -3,7 +3,7 @@ title: "모더레이팅 실시간 도구 가이드 (16종 + 권장 조합)"
 slug: realtime-tools-for-moderators
 doc_type: reference
 license: CC-BY-SA-4.0
-last_updated: 2026-06-01
+last_updated: 2026-06-02
 order: 85
 ---
 
@@ -15,7 +15,7 @@ order: 85
 
 > "180명이 자기 핸드폰에서 날리면 그게 주르륵 올라와 가지고 중앙 화면에 이게 막 올라가는 거. 어떻게 하면 좋을지 비주얼하게 만드는 거… 경험 있는 분 팁 주시면 좋겠다."
 
-운영진의 공식 도구 선정은 아직 미정(2026-06-01 기준)이다. 본 페이지는 **모더레이터가 자기 분임 12명을 운영하는 데 즉시 활용할 수 있는 도구 16종**을 4개 카테고리로 정리하고, 회기별 권장 조합을 제시한다. 우리 사이트 자체 구현 한계는 후속 페이지 [`/ko/doc/realtime-tools-implementation-guide/`](/ko/doc/realtime-tools-implementation-guide/) 에서 다룬다.
+운영진의 공식 도구 선정은 아직 미정(2026-06-01 기준)이다. 본 페이지는 **모더레이터가 자기 분임 12명을 운영하는 데 즉시 활용할 수 있는 도구 16종**을 4개 카테고리로 정리하고, 회기별 권장 조합을 제시한다. 우리 사이트 자체 구현 한계는 후속 페이지 [`/ko/doc/realtime-tools-implementation-guide/`](/ko/doc/realtime-tools-implementation-guide/) 에서, **실제 계정 생성·요금제 결정·질문 풀·현장 운영 매뉴얼은** → [`/ko/doc/realtime-tools-setup-cookbook/`](/ko/doc/realtime-tools-setup-cookbook/) (세팅 쿡북) 에서 다룬다.
 
 ---
 
