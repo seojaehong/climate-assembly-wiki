@@ -2,6 +2,10 @@
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
+2026-06-01 22:48 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 22:48 | update | content/ko/doc/mentimeter-setup-cookbook.md | Mentimeter 실전 셋업 쿡북 — 의제 14건 × 질문 풀 + 현장 운영 (last_updated: 2026-06-01)
+2026-06-01 22:47 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-01 22:47 | update | content/ko/doc/mentimeter-setup-cookbook.md | Mentimeter 실전 셋업 쿡북 — 의제 14건 × 질문 풀 + 현장 운영 (last_updated: 2026-06-01)
 2026-06-01 22:43 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-01 22:32 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-01 22:31 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
