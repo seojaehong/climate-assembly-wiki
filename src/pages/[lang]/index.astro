@@ -1,80 +1,200 @@
 ---
+/**
+ * D8-p — /[lang]/ (Home)
+ *
+ * Hero section + agenda card grid + session timeline sidebar.
+ * Layout: HomeLayout (Group C). Falls back to Base until C ships.
+ *
+ * Design §4, D8-p: HomeLayout, no sidebar, hero + card grids.
+ * Sections: hero, agenda grid (first 6), tools CTA, sessions list, downloads CTA.
+ *
+ * Languages: ko, en only (M1–M3). M4: restore ja, zh, es.
+ * Sessions link: /[lang]/sessions/1/ (plural, ordinal — D2/D3 fix).
+ */
 import { getCollection } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
 import Base from '../../layouts/Base.astro';
+// import HomeLayout from '@/layouts/HomeLayout.astro'; // Group C — not yet available
 import AgendaCard from '../../components/AgendaCard.astro';
-import RecentSessions from '../../components/RecentSessions.astro';
 
 export async function getStaticPaths() {
-  const langs = ['ko', 'en', 'ja', 'zh', 'es'];
-  return langs.map((lang) => ({ params: { lang } }));
+  return [
+    { params: { lang: 'ko' } },
+    { params: { lang: 'en' } },
+    // M4: add ja, zh, es
+  ];
 }
 
 const { lang } = Astro.params;
 
-const agendaEntries = await getCollection('agenda');
-const sessionEntries = await getCollection('session');
+const agendaEntries: CollectionEntry<'agenda'>[] = await getCollection('agenda');
+const sessionEntries: CollectionEntry<'session'>[] = await getCollection('session');
 
-const recentAgendas = agendaEntries
+// Sort agenda by ID, take first 6 for hero grid
+const heroAgendas = [...agendaEntries]
   .sort((a, b) => a.data.id - b.data.id)
   .slice(0, 6);
 
-const sessionItems = sessionEntries.map((s) => ({
-  date: s.data.date,
-  slug: s.data.slug,
-  title: s.data.title,
-  session_type: s.data.session_type,
-}));
+// Sort sessions by order field (Blocker 1 fix — use ordinal, not date)
+const orderedSessions = [...sessionEntries]
+  .filter((s) => typeof s.data.order === 'number')
+  .sort((a, b) => (a.data.order ?? 0) - (b.data.order ?? 0));
+
+const t = {
+  hero_title: lang === 'ko' ? '2026 기후시민회의' : "2026 Korea Climate Citizens' Assembly",
+  hero_subtitle: lang === 'ko'
+    ? '모더레이터 활동 아카이브 · En-ROADS 도구 · 다국어 위키'
+    : 'Moderator archive · En-ROADS tools · Multilingual wiki',
+  hero_desc: lang === 'ko'
+    ? '「탄소중립·녹색성장 기본법」 제19조의2에 따라 구성된 200명 시민참여단(기획 20+숙의 180)의 기후 숙의 과정을 기록합니다.'
+    : "Documents the climate deliberation of 200 citizen participants (20 planning + 180 deliberation) constituted under Article 19-2 of Korea's Carbon Neutrality Framework Act.",
+  agenda_heading: lang === 'ko' ? '의제' : 'Agendas',
+  agenda_link: lang === 'ko' ? '전체 의제 보기 →' : 'View all agendas →',
+  tools_link: lang === 'ko' ? 'En-ROADS 허브 →' : 'En-ROADS Hub →',
+  sessions_heading: lang === 'ko' ? '회차' : 'Sessions',
+  sessions_link: lang === 'ko' ? '전체 회차 보기 →' : 'View all sessions →',
+  downloads_heading: lang === 'ko' ? '자료 다운로드' : 'Downloads',
+  downloads_link: lang === 'ko' ? '다운로드 센터 →' : 'Downloads →',
+};
 ---
-<Base title="홈" lang={lang}>
-  <section class="mb-10">
+<Base
+  title={lang === 'ko' ? '홈' : 'Home'}
+  lang={lang}
+  description={lang === 'ko'
+    ? '2026 기후시민회의 모더레이터 아카이브, En-ROADS 도구, 다국어 위키'
+    : '2026 Korea Climate Citizens\' Assembly moderator archive, En-ROADS tools, multilingual wiki'}
+>
+  {/* Hero */}
+  <section aria-label={lang === 'ko' ? '소개' : 'Introduction'} class="mb-10">
     <h1 class="text-3xl font-bold text-green-800 dark:text-green-400 mb-2">
-      2026 기후시민회의
+      {t.hero_title}
     </h1>
-    <p class="text-gray-600 dark:text-gray-400">
-      모더레이터 활동 아카이브 + 다국어 위키
+    <p class="text-lg text-gray-600 dark:text-gray-400 mb-2">
+      {t.hero_subtitle}
     </p>
+    <p class="text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
+      {t.hero_desc}
+    </p>
+    <div class="mt-4 flex flex-wrap gap-3">
+      <a
+        href={`/${lang}/agenda/`}
+        class="inline-flex items-center px-4 py-2 bg-green-700 hover:bg-green-800 text-white text-sm font-medium rounded transition-colors"
+      >
+        {t.agenda_link}
+      </a>
+      <a
+        href={`/${lang}/tools/en-roads/`}
+        class="inline-flex items-center px-4 py-2 border border-green-700 text-green-700 dark:text-green-400 dark:border-green-600 hover:bg-green-50 dark:hover:bg-green-950 text-sm font-medium rounded transition-colors"
+      >
+        {t.tools_link}
+      </a>
+    </div>
   </section>
 
   <div class="grid gap-8 lg:grid-cols-3">
-    <section class="lg:col-span-2">
-      <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">최신 의제</h2>
-      <div class="grid gap-3 sm:grid-cols-2">
-        {recentAgendas.map((entry) => (
-          <AgendaCard
-            id={entry.data.id}
-            title={entry.data.title}
-            category={entry.data.category}
-            status={entry.data.status}
-            slug={entry.data.slug}
-            lang={lang}
-          />
-        ))}
-      </div>
-      <div class="mt-4">
-        <a href={`/${lang}/agenda`} class="text-sm text-green-700 dark:text-green-400 hover:underline">
-          전체 의제 보기 →
-        </a>
-      </div>
-    </section>
+    {/* Main column */}
+    <div class="lg:col-span-2 space-y-10">
+      {/* Agenda grid */}
+      <section aria-labelledby="agenda-heading">
+        <h2 id="agenda-heading" class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
+          {t.agenda_heading}
+        </h2>
+        {heroAgendas.length > 0 ? (
+          <div class="grid gap-3 sm:grid-cols-2">
+            {heroAgendas.map((entry) => (
+              <AgendaCard
+                id={entry.data.id}
+                title={entry.data.title}
+                category={entry.data.category}
+                status={entry.data.status}
+                slug={entry.data.slug}
+                lang={lang}
+                translationStatus={entry.data.translations?.en?.status ?? 'machine'}
+                hasEnglish={!!entry.data.translations?.en}
+              />
+            ))}
+          </div>
+        ) : (
+          <p class="text-sm text-gray-400 dark:text-gray-500">
+            {lang === 'ko' ? '의제가 준비 중입니다.' : 'Agendas coming soon.'}
+          </p>
+        )}
+        <div class="mt-4">
+          <a href={`/${lang}/agenda/`} class="text-sm text-green-700 dark:text-green-400 hover:underline">
+            {t.agenda_link}
+          </a>
+        </div>
+      </section>
 
-    <aside>
-      <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">최근 회차</h2>
-      <RecentSessions sessions={sessionItems} lang={lang} />
-      <div class="mt-4">
-        <a href={`/${lang}/session`} class="text-sm text-green-700 dark:text-green-400 hover:underline">
-          전체 회차 보기 →
-        </a>
-      </div>
-
-      <div class="mt-8">
-        <h2 class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-200">자료 다운로드</h2>
+      {/* En-ROADS CTA */}
+      <section
+        aria-labelledby="tools-heading"
+        class="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 p-5"
+      >
+        <h2 id="tools-heading" class="text-base font-semibold text-blue-800 dark:text-blue-300 mb-1">
+          {lang === 'ko' ? '도구: En-ROADS' : 'Tool: En-ROADS'}
+        </h2>
+        <p class="text-sm text-blue-700 dark:text-blue-400 mb-3">
+          {lang === 'ko'
+            ? '18개 슬라이더로 2100년 기온을 시뮬레이션하는 기후 정책 도구'
+            : 'Climate policy simulator with 18 levers projecting temperatures to 2100'}
+        </p>
         <a
-          href={`/${lang}/downloads`}
-          class="inline-block px-4 py-2 bg-green-700 hover:bg-green-800 text-white text-sm rounded transition"
+          href={`/${lang}/tools/en-roads/`}
+          class="inline-flex items-center text-sm font-medium text-blue-700 dark:text-blue-400 hover:underline"
         >
-          다운로드 센터 →
+          {t.tools_link}
         </a>
-      </div>
+      </section>
+    </div>
+
+    {/* Sidebar */}
+    <aside class="space-y-6">
+      {/* Sessions list */}
+      <section aria-labelledby="sessions-heading">
+        <h2 id="sessions-heading" class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-200">
+          {t.sessions_heading}
+        </h2>
+        {orderedSessions.length > 0 ? (
+          <ol class="space-y-2">
+            {orderedSessions.map((entry) => (
+              <li>
+                <a
+                  href={`/${lang}/sessions/${entry.data.order}/`}
+                  class="flex items-start gap-2 text-sm hover:text-green-700 dark:hover:text-green-400 transition-colors"
+                >
+                  <span class="shrink-0 w-5 h-5 rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-400 text-xs flex items-center justify-center font-mono">
+                    {entry.data.order}
+                  </span>
+                  <span class="text-gray-700 dark:text-gray-300">{entry.data.title}</span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p class="text-sm text-gray-400">
+            {lang === 'ko' ? '회차가 준비 중입니다.' : 'Sessions coming soon.'}
+          </p>
+        )}
+        <div class="mt-3">
+          <a href={`/${lang}/sessions/1/`} class="text-sm text-green-700 dark:text-green-400 hover:underline">
+            {t.sessions_link}
+          </a>
+        </div>
+      </section>
+
+      {/* Downloads CTA */}
+      <section aria-labelledby="downloads-heading">
+        <h2 id="downloads-heading" class="text-base font-semibold mb-2 text-gray-800 dark:text-gray-200">
+          {t.downloads_heading}
+        </h2>
+        <a
+          href={`/${lang}/downloads/`}
+          class="inline-block px-4 py-2 bg-green-700 hover:bg-green-800 text-white text-sm rounded transition-colors"
+        >
+          {t.downloads_link}
+        </a>
+      </section>
     </aside>
   </div>
 </Base>

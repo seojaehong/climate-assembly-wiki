@@ -1,0 +1,149 @@
+---
+/**
+ * D3-p — /[lang]/sessions/[n]/
+ *
+ * Blocker 1 resolution (Design §2.2):
+ *   getCollection('session').find(e => e.data.order === Number(n))
+ *
+ * Session files are named {YYYY-MM-DD}-{slug}.md (D2: singular directory).
+ * The `order` field in frontmatter maps numeric URL ordinal → file.
+ * Sessions without an `order` field are not routable via this URL pattern
+ * and will not be emitted in getStaticPaths.
+ *
+ * i18n fallback: 'en' paths are always emitted (for fallbackType:'rewrite').
+ * If no EN translation exists, Astro serves the KO collection content at /en/
+ * and the banner is shown.
+ *
+ * Layout: imports SessionLayout (Group C). Falls back to Base until C ships.
+ */
+import { getCollection, render } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+// import SessionLayout from '@/layouts/SessionLayout.astro'; // Group C
+
+// ---------------------------------------------------------------------------
+// getStaticPaths — Blocker 1 fix
+// ---------------------------------------------------------------------------
+export async function getStaticPaths() {
+  const langs = ['ko', 'en'] as const; // M1–M3 only
+  const sessionEntries = await getCollection('session');
+
+  // Only emit paths for sessions that have an explicit `order` field.
+  const orderedSessions = sessionEntries.filter(
+    (e) => typeof e.data.order === 'number'
+  );
+
+  return langs.flatMap((lang) =>
+    orderedSessions.map((entry) => ({
+      params: { lang, n: String(entry.data.order) },
+      props: { entry, lang },
+    }))
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Page props
+// ---------------------------------------------------------------------------
+const { entry, lang } = Astro.props as { entry: CollectionEntry<'session'>; lang: string };
+const { n } = Astro.params;
+
+const { Content } = await render(entry);
+
+// Determine whether to show fallback banner.
+// Since session translations/ tree doesn't exist yet in M1,
+// show banner for any EN page (safe default; remove when en translations ship).
+const hasEnTranslation =
+  lang === 'en' &&
+  entry.data.translations &&
+  typeof (entry.data.translations as Record<string, unknown>)['en'] !== 'undefined';
+
+const showFallbackBanner = lang === 'en' && !hasEnTranslation;
+
+const translationStatus =
+  lang !== 'ko' && entry.data.translations
+    ? (entry.data.translations as Record<string, { status: 'machine' | 'reviewed' | 'native' | 'author-verified' } | undefined>)[lang]?.status
+    : undefined;
+
+const sessionLabel = lang === 'ko' ? `${n}차` : `Session ${n}`;
+---
+<BaseLayout title={`${sessionLabel} — ${entry.data.title}`} lang={lang} ogType="article">
+  {showFallbackBanner && (
+    <div role="alert" class="mb-6 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950 dark:border-amber-700 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+      ⚠ This page is not yet available in English. You are viewing the Korean original.
+      <a href={`/en/`} class="ml-2 underline hover:no-underline">Return to English home</a>
+    </div>
+  )}
+
+  <article id="main-content">
+    <header class="mb-6">
+      <div class="flex flex-wrap items-center gap-2 mb-2 text-xs text-gray-500 dark:text-gray-400">
+        <span class="font-semibold text-green-700 dark:text-green-400">{sessionLabel}</span>
+        <span aria-hidden="true">·</span>
+        <time datetime={entry.data.date}>{entry.data.date}</time>
+        <span aria-hidden="true">·</span>
+        <span class="capitalize">{entry.data.session_type}</span>
+        {translationStatus && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span
+              class:list={[
+                'inline-flex items-center gap-1 rounded border px-2 py-0.5',
+                translationStatus === 'machine' && 'bg-amber-100 text-amber-800 border-amber-300',
+                translationStatus === 'reviewed' && 'bg-blue-100 text-blue-800 border-blue-300',
+                translationStatus === 'native' && 'bg-emerald-100 text-emerald-800 border-emerald-300',
+                translationStatus === 'author-verified' && 'bg-green-100 text-green-900 border-2 border-green-500 font-semibold',
+              ]}
+              role="img"
+              aria-label={`Translation status: ${translationStatus}`}
+            >
+              {translationStatus === 'machine' && <span aria-hidden="true">⚠</span>}
+              {translationStatus === 'reviewed' && <span aria-hidden="true">◉</span>}
+              {translationStatus === 'native' && <span aria-hidden="true">✓</span>}
+              {translationStatus === 'author-verified' && <span aria-hidden="true">✓✓</span>}
+              {translationStatus}
+            </span>
+          </>
+        )}
+      </div>
+
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{entry.data.title}</h1>
+
+      {entry.data.speaker && (
+        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          {entry.data.speaker}
+          {entry.data.affiliation ? ` · ${entry.data.affiliation}` : ''}
+        </p>
+      )}
+
+      {entry.data.agendas_discussed.length > 0 && (
+        <div class="mt-2 flex flex-wrap gap-1" aria-label={lang === 'ko' ? '논의된 의제' : 'Agendas discussed'}>
+          {entry.data.agendas_discussed.map((id: number) => (
+            <a
+              href={`/${lang}/agenda/`}
+              class="text-xs px-2 py-0.5 bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 rounded border border-green-200 dark:border-green-800 hover:underline"
+            >
+              #{id}
+            </a>
+          ))}
+        </div>
+      )}
+    </header>
+
+    <div class="prose dark:prose-invert max-w-none">
+      <Content />
+    </div>
+
+    <p class="mt-6 text-xs text-gray-400">
+      {lang === 'ko' ? '최종 업데이트' : 'Last updated'}: {entry.data.last_updated}
+      {' · '}
+      <a
+        href="https://creativecommons.org/licenses/by-sa/4.0/"
+        class="hover:underline"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {entry.data.license}
+      </a>
+    </p>
+  </article>
+</BaseLayout>

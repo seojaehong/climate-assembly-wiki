@@ -1,5 +1,16 @@
 ---
-// Root redirects to /ko
+/**
+ * D9-p — / (root redirect)
+ *
+ * Redirects bare `/` to `/ko/` using Astro.redirect() for a proper HTTP 302.
+ * This generates a static redirect file in dist/ (Astro static output mode).
+ *
+ * Design §1.1: "Redirect rule: `/` → `/ko/` (HTTP 302 via public/_redirects)"
+ * Using Astro.redirect() is preferred over meta-refresh for static builds
+ * as it emits a proper redirect response.
+ *
+ * Note: public/_redirects may also carry this rule for Cloudflare Pages;
+ * this file is the Astro-side implementation.
+ */
+return Astro.redirect('/ko/', 302);
 ---
-<meta http-equiv="refresh" content="0; url=/ko" />
-<script>window.location.replace('/ko');</script>

@@ -1,49 +1,167 @@
 ---
+/**
+ * D4-p — /[lang]/doc/[slug]/
+ *
+ * Reads from the `doc` Astro content collection (content/ko/doc/).
+ * Supports all doc_type values extended in D3 (Design §2.2).
+ *
+ * doc_type-based layout switch (Design §4, Group C):
+ *   brief | guide | reference | report | analysis → DocLayout
+ *   tool | method | case | matrix            → DocLayout (same, different visual)
+ *   download-index                           → DocLayout (redirect hint to /downloads/)
+ *
+ * Until Group C ships, all types fall back to Base layout.
+ *
+ * i18n fallback: checks translations/en/doc/{slug}.md.
+ * Banner shown when lang=en and no EN translation exists.
+ */
 import { getCollection, render } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+import fs from 'node:fs';
+import path from 'node:path';
+import { marked } from 'marked';
 import Base from '../../../layouts/Base.astro';
-import TranslationStatusBadge from '../../../components/TranslationStatusBadge.astro';
+// import DocLayout from '@/layouts/DocLayout.astro'; // Group C
 
+// ---------------------------------------------------------------------------
+// getStaticPaths
+// ---------------------------------------------------------------------------
 export async function getStaticPaths() {
-  const langs = ['ko', 'en', 'ja', 'zh', 'es'];
+  const langs = ['ko', 'en'] as const; // M1–M3 only
   const docEntries = await getCollection('doc');
 
   return langs.flatMap((lang) =>
     docEntries.map((entry) => ({
       params: { lang, slug: entry.data.slug },
-      props: { entry },
+      props: { entry, lang },
     }))
   );
 }
 
-const { lang } = Astro.params;
-const { entry } = Astro.props;
+// ---------------------------------------------------------------------------
+// Page props
+// ---------------------------------------------------------------------------
+const { entry, lang } = Astro.props as { entry: CollectionEntry<'doc'>; lang: string };
+
+// ---------------------------------------------------------------------------
+// Translation fallback — translations/en/doc/{slug}.md
+// ---------------------------------------------------------------------------
+const translationsRoot = path.resolve(process.cwd(), 'translations');
+const enFilePath = path.join(translationsRoot, 'en', 'doc', `${entry.data.slug}.md`);
+const hasEnTranslation = lang === 'en' && fs.existsSync(enFilePath);
+const showFallbackBanner = lang === 'en' && !hasEnTranslation;
+
+let enTitle = entry.data.title;
+let enBodyHtml = '';
+
+if (hasEnTranslation) {
+  const rawFile = fs.readFileSync(enFilePath, 'utf-8');
+  const fmMatch = rawFile.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  if (fmMatch) {
+    const fmLines = fmMatch[1];
+    const body = fmMatch[2];
+    const titleMatch = fmLines.match(/^title:\s*["']?(.+?)["']?\s*$/m);
+    if (titleMatch) enTitle = titleMatch[1];
+    enBodyHtml = await marked.parse(body);
+  }
+}
+
 const { Content } = await render(entry);
 
-const transStatus = lang !== 'ko' && entry.data.translations
-  ? (entry.data.translations as Record<string, { status: 'machine' | 'reviewed' | 'native' } | undefined>)[lang]?.status
-  : undefined;
+const pageTitle = lang === 'en' && hasEnTranslation ? enTitle : entry.data.title;
+
+const translationStatus =
+  lang !== 'ko' && entry.data.translations
+    ? (entry.data.translations as Record<string, { status: 'machine' | 'reviewed' | 'native' | 'author-verified' } | undefined>)[lang]?.status
+    : undefined;
+
+// doc_type label map for display
+const docTypeLabel: Record<string, string> = {
+  brief: 'Brief',
+  reference: 'Reference',
+  guide: 'Guide',
+  report: 'Report',
+  analysis: 'Analysis',
+  tool: 'Tool',
+  method: 'Method',
+  case: 'Case Study',
+  matrix: 'Matrix',
+  'download-index': 'Downloads',
+};
 ---
-<Base title={entry.data.title} lang={lang}>
-  <article>
+<Base title={pageTitle} lang={lang}>
+  {showFallbackBanner && (
+    <div role="alert" class="mb-6 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950 dark:border-amber-700 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+      ⚠ This page is not yet available in English. You are viewing the Korean original.
+      <a href={`/en/`} class="ml-2 underline hover:no-underline">Return to English home</a>
+    </div>
+  )}
+
+  <article id="main-content">
     <header class="mb-6">
-      <div class="flex items-center gap-2 mb-2 text-xs text-gray-500">
-        <span class="capitalize">{entry.data.doc_type}</span>
-        {transStatus && (
+      <div class="flex flex-wrap items-center gap-2 mb-2 text-xs text-gray-500 dark:text-gray-400">
+        <span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">
+          {docTypeLabel[entry.data.doc_type] ?? entry.data.doc_type}
+        </span>
+        {translationStatus && (
           <>
-            <span>·</span>
-            <TranslationStatusBadge status={transStatus} />
+            <span aria-hidden="true">·</span>
+            <span
+              class:list={[
+                'inline-flex items-center gap-1 rounded border px-2 py-0.5',
+                translationStatus === 'machine' && 'bg-amber-100 text-amber-800 border-amber-300',
+                translationStatus === 'reviewed' && 'bg-blue-100 text-blue-800 border-blue-300',
+                translationStatus === 'native' && 'bg-emerald-100 text-emerald-800 border-emerald-300',
+                translationStatus === 'author-verified' && 'bg-green-100 text-green-900 border-2 border-green-500 font-semibold',
+              ]}
+              role="img"
+              aria-label={`Translation status: ${translationStatus}`}
+            >
+              {translationStatus === 'machine' && <span aria-hidden="true">⚠</span>}
+              {translationStatus === 'reviewed' && <span aria-hidden="true">◉</span>}
+              {translationStatus === 'native' && <span aria-hidden="true">✓</span>}
+              {translationStatus === 'author-verified' && <span aria-hidden="true">✓✓</span>}
+              {translationStatus}
+            </span>
           </>
         )}
       </div>
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{entry.data.title}</h1>
+
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{pageTitle}</h1>
     </header>
 
     <div class="prose dark:prose-invert max-w-none">
-      <Content />
+      {lang === 'en' && hasEnTranslation
+        ? <div set:html={enBodyHtml} />
+        : <Content />
+      }
     </div>
 
-    <p class="mt-4 text-xs text-gray-400">
-      최종 업데이트: {entry.data.last_updated} · {entry.data.license}
+    {entry.data.doc_type === 'download-index' && (
+      <div class="mt-8 p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
+        <p class="text-sm text-green-800 dark:text-green-200">
+          {lang === 'ko'
+            ? '모든 다운로드 파일은 다운로드 센터에서 확인하세요.'
+            : 'View all downloadable files in the Downloads Center.'}
+          {' '}
+          <a href={`/${lang}/downloads/`} class="font-semibold underline hover:no-underline">
+            {lang === 'ko' ? '다운로드 센터 →' : 'Downloads →'}
+          </a>
+        </p>
+      </div>
+    )}
+
+    <p class="mt-6 text-xs text-gray-400">
+      {lang === 'ko' ? '최종 업데이트' : 'Last updated'}: {entry.data.last_updated}
+      {' · '}
+      <a
+        href="https://creativecommons.org/licenses/by-sa/4.0/"
+        class="hover:underline"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {entry.data.license}
+      </a>
     </p>
   </article>
 </Base>

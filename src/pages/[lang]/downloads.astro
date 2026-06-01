@@ -1,41 +1,14 @@
 ---
-import Base from '../../layouts/Base.astro';
-import DownloadButton from '../../components/DownloadButton.astro';
-
+/**
+ * DEPRECATED — superseded by downloads/index.astro (D6-p).
+ * This stub redirects /[lang]/downloads to /[lang]/downloads/ to avoid
+ * Astro duplicate-route conflicts during the transition.
+ *
+ * TODO: Delete this file once confirmed downloads/index.astro is the sole route.
+ */
 export async function getStaticPaths() {
-  const langs = ['ko', 'en', 'ja', 'zh', 'es'];
-  return langs.map((lang) => ({ params: { lang } }));
+  // Return empty: no routes generated from this file.
+  // downloads/index.astro owns /[lang]/downloads/.
+  return [];
 }
-
-const { lang } = Astro.params;
-
-// Download files will be placed in assets/downloads/ by subagent B
-// This page lists known file names; update when B subagent delivers files.
-const downloads: Array<{ label: string; filename: string }> = [];
 ---
-<Base title="다운로드 센터" lang={lang}>
-  <h1 class="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">다운로드 센터</h1>
-  <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
-    공식 자료는 B 서브에이전트가 <code>assets/downloads/</code> 폴더에 추가할 예정입니다.
-  </p>
-
-  {downloads.length === 0
-    ? (
-      <div class="border border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-8 text-center text-gray-400">
-        준비 중 — 자료가 곧 등록됩니다.
-      </div>
-    )
-    : (
-      <ul class="space-y-3">
-        {downloads.map(({ label, filename }) => (
-          <li>
-            <DownloadButton
-              href={`/assets/downloads/${filename}`}
-              label={label}
-            />
-          </li>
-        ))}
-      </ul>
-    )
-  }
-</Base>

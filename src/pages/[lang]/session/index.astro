@@ -1,29 +1,10 @@
 ---
-import { getCollection } from 'astro:content';
-import Base from '../../../layouts/Base.astro';
-import SessionTimeline from '../../../components/SessionTimeline.astro';
-
+/**
+ * DEPRECATED — superseded by sessions/[n].astro (D3-p, plural+ordinal).
+ * Return empty to suppress route generation.
+ * TODO: Delete this file when PowerShell -LiteralPath deletion is confirmed.
+ */
 export async function getStaticPaths() {
-  const langs = ['ko', 'en', 'ja', 'zh', 'es'];
-  return langs.map((lang) => ({ params: { lang } }));
+  return [];
 }
-
-const { lang } = Astro.params;
-
-const sessionEntries = await getCollection('session');
-const sessionItems = sessionEntries.map((s) => ({
-  date: s.data.date,
-  slug: s.data.slug,
-  title: s.data.title,
-  session_type: s.data.session_type,
-  speaker: s.data.speaker,
-  affiliation: s.data.affiliation,
-}));
 ---
-<Base title="회차 타임라인" lang={lang}>
-  <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">회차 타임라인</h1>
-  {sessionItems.length === 0
-    ? <p class="text-gray-500">아직 회차 데이터가 없습니다.</p>
-    : <SessionTimeline sessions={sessionItems} lang={lang} />
-  }
-</Base>

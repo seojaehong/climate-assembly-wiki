@@ -1,48 +1,175 @@
 ---
+/**
+ * D1-p — /[lang]/agenda/[slug]/
+ *
+ * Reads from ko Astro content collection (getCollection).
+ * For lang='en': checks translations/en/agenda/{slug}.md on disk.
+ *   - If found: renders EN frontmatter + body, no banner.
+ *   - If not found: renders KO content at /en/ URL (fallbackType: rewrite),
+ *     shows <TranslationFallbackBanner>.
+ *
+ * Languages: ko, en only (Design §1.1, M1–M3).
+ * Layouts: imports AgendaLayout (Group C). Until C ships, falls back to Base.
+ *
+ * i18n fallback position: in-page, checked by existsSync on translations path.
+ */
 import { getCollection, render } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+import fs from 'node:fs';
+import path from 'node:path';
+import { marked } from 'marked';
+// Group C layout — will exist when C ships. Build fails gracefully until then.
+// import AgendaLayout from '@/layouts/AgendaLayout.astro';
 import Base from '../../../layouts/Base.astro';
-import TranslationStatusBadge from '../../../components/TranslationStatusBadge.astro';
 
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+interface EnTranslationFrontmatter {
+  id?: number;
+  slug: string;
+  title: string;
+  category?: string;
+  status?: string;
+  source_korean?: string;
+  translation_status?: 'machine' | 'reviewed' | 'native' | 'author-verified';
+  license?: string;
+  last_updated?: string;
+}
+
+// ---------------------------------------------------------------------------
+// getStaticPaths
+// ---------------------------------------------------------------------------
 export async function getStaticPaths() {
-  const langs = ['ko', 'en', 'ja', 'zh', 'es'];
+  const langs = ['ko', 'en'] as const; // M1–M3: ko/en only. M4: add ja, zh, es
   const agendaEntries = await getCollection('agenda');
 
   return langs.flatMap((lang) =>
     agendaEntries.map((entry) => ({
       params: { lang, slug: entry.data.slug },
-      props: { entry },
+      props: { entry, lang },
     }))
   );
 }
 
-const { lang } = Astro.params;
-const { entry } = Astro.props;
+// ---------------------------------------------------------------------------
+// Page props
+// ---------------------------------------------------------------------------
+interface Props {
+  entry: CollectionEntry<'agenda'>;
+  lang: string;
+}
+
+const { entry, lang } = Astro.props;
+
+// ---------------------------------------------------------------------------
+// Translation fallback logic (D1 resolution)
+// translations/{lang}/agenda/ is NOT a collection; read from filesystem.
+// ---------------------------------------------------------------------------
+const translationsRoot = path.resolve(
+  process.cwd(),
+  'translations'
+);
+const enFilePath = path.join(translationsRoot, 'en', 'agenda', `${entry.data.slug}.md`);
+
+// Also try numeric-prefixed filenames (e.g. 15-compound-vulnerability.md)
+const paddedId = entry.data.id.toString().padStart(2, '0');
+const enFilePathNumbered = path.join(
+  translationsRoot,
+  'en',
+  'agenda',
+  `${paddedId}-${entry.data.slug}.md`
+);
+
+const hasEnTranslation =
+  lang === 'en' &&
+  (fs.existsSync(enFilePath) || fs.existsSync(enFilePathNumbered));
+
+const showFallbackBanner = lang === 'en' && !hasEnTranslation;
+
+// For EN pages with translations: parse the markdown file to get EN content.
+let enTitle = entry.data.title;
+let enBodyHtml = '';
+let enTranslationStatus: EnTranslationFrontmatter['translation_status'] = undefined;
+
+if (hasEnTranslation) {
+  const rawFile = fs.readFileSync(
+    fs.existsSync(enFilePath) ? enFilePath : enFilePathNumbered,
+    'utf-8'
+  );
+  // Strip YAML frontmatter and extract fields
+  const fmMatch = rawFile.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  if (fmMatch) {
+    const fmLines = fmMatch[1];
+    const body = fmMatch[2];
+    const titleMatch = fmLines.match(/^title:\s*["']?(.+?)["']?\s*$/m);
+    const tsMatch = fmLines.match(/^translation_status:\s*(\S+)/m);
+    if (titleMatch) enTitle = titleMatch[1];
+    if (tsMatch) enTranslationStatus = tsMatch[1] as EnTranslationFrontmatter['translation_status'];
+    enBodyHtml = await marked.parse(body);
+  }
+}
+
+// For KO pages (or EN fallback rendering KO), render via Astro's collection render.
 const { Content } = await render(entry);
 
-const transStatus = lang !== 'ko' && entry.data.translations
-  ? (entry.data.translations as Record<string, { status: 'machine' | 'reviewed' | 'native' } | undefined>)[lang]?.status
-  : undefined;
+// ---------------------------------------------------------------------------
+// Page title & meta
+// ---------------------------------------------------------------------------
+const pageTitle = lang === 'en' && hasEnTranslation
+  ? enTitle
+  : entry.data.title;
+
+const translationStatus: 'machine' | 'reviewed' | 'native' | 'author-verified' | undefined =
+  enTranslationStatus ??
+  (lang !== 'ko' && entry.data.translations
+    ? (entry.data.translations as Record<string, { status: 'machine' | 'reviewed' | 'native' | 'author-verified' } | undefined>)[lang]?.status
+    : undefined);
 ---
-<Base title={entry.data.title} lang={lang}>
-  <article>
+<Base title={pageTitle} lang={lang}>
+  {showFallbackBanner && (
+    <div role="alert" class="mb-6 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950 dark:border-amber-700 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+      ⚠ This page is not yet available in English. You are viewing the Korean original.
+      <a href={`/en/`} class="ml-2 underline hover:no-underline">Return to English home</a>
+    </div>
+  )}
+
+  <article id="main-content">
     <header class="mb-6">
-      <div class="flex items-center gap-2 mb-2 text-xs text-gray-500">
-        <span>#{entry.data.id.toString().padStart(2, '0')}</span>
-        <span>·</span>
+      <div class="flex flex-wrap items-center gap-2 mb-2 text-xs text-gray-500 dark:text-gray-400">
+        <span class="font-mono">#{entry.data.id.toString().padStart(2, '0')}</span>
+        <span aria-hidden="true">·</span>
         <span>{entry.data.category}</span>
-        <span>·</span>
+        <span aria-hidden="true">·</span>
         <span class="capitalize">{entry.data.status}</span>
-        {transStatus && (
+        {translationStatus && (
           <>
-            <span>·</span>
-            <TranslationStatusBadge status={transStatus} />
+            <span aria-hidden="true">·</span>
+            <span
+              class:list={[
+                'inline-flex items-center gap-1 rounded border px-2 py-0.5',
+                translationStatus === 'machine' && 'bg-amber-100 text-amber-800 border-amber-300',
+                translationStatus === 'reviewed' && 'bg-blue-100 text-blue-800 border-blue-300',
+                translationStatus === 'native' && 'bg-emerald-100 text-emerald-800 border-emerald-300',
+                translationStatus === 'author-verified' && 'bg-green-100 text-green-900 border-2 border-green-500 font-semibold',
+              ]}
+              role="img"
+              aria-label={`Translation status: ${translationStatus}`}
+            >
+              {translationStatus === 'machine' && <span aria-hidden="true">⚠</span>}
+              {translationStatus === 'reviewed' && <span aria-hidden="true">◉</span>}
+              {translationStatus === 'native' && <span aria-hidden="true">✓</span>}
+              {translationStatus === 'author-verified' && <span aria-hidden="true">✓✓</span>}
+              {translationStatus}
+            </span>
           </>
         )}
       </div>
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{entry.data.title}</h1>
+
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{pageTitle}</h1>
 
       {entry.data.ministries.length > 0 && (
-        <div class="mt-2 flex flex-wrap gap-1">
+        <div class="mt-2 flex flex-wrap gap-1" aria-label="Related ministries">
           {entry.data.ministries.map((m: string) => (
             <span class="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">{m}</span>
           ))}
@@ -51,19 +178,39 @@ const transStatus = lang !== 'ko' && entry.data.translations
     </header>
 
     <div class="prose dark:prose-invert max-w-none">
-      <Content />
+      {lang === 'en' && hasEnTranslation
+        ? <div set:html={enBodyHtml} />
+        : <Content />
+      }
     </div>
 
     {entry.data.related_agendas.length > 0 && (
       <footer class="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
         <p class="text-sm text-gray-500">
-          관련 의제: {entry.data.related_agendas.map((id: number) => `#${id}`).join(', ')}
+          {lang === 'ko' ? '관련 의제' : 'Related agendas'}:{' '}
+          {entry.data.related_agendas.map((id: number) => (
+            <a
+              href={`/${lang}/agenda/`}
+              class="mr-1 text-green-700 dark:text-green-400 hover:underline"
+            >
+              #{id}
+            </a>
+          ))}
         </p>
       </footer>
     )}
 
     <p class="mt-4 text-xs text-gray-400">
-      최종 업데이트: {entry.data.last_updated} · {entry.data.license}
+      {lang === 'ko' ? '최종 업데이트' : 'Last updated'}: {entry.data.last_updated}
+      {' · '}
+      <a
+        href="https://creativecommons.org/licenses/by-sa/4.0/"
+        class="hover:underline"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {entry.data.license}
+      </a>
     </p>
   </article>
 </Base>

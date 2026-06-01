@@ -24,6 +24,8 @@ const sorted = agendaEntries.sort((a, b) => a.data.id - b.data.id);
         status={entry.data.status}
         slug={entry.data.slug}
         lang={lang}
+        translationStatus={entry.data.translations?.en?.status ?? 'machine'}
+        hasEnglish={!!entry.data.translations?.en}
       />
     ))}
   </div>

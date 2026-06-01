@@ -1,57 +1,11 @@
 ---
-import { getCollection, render } from 'astro:content';
-import Base from '../../../layouts/Base.astro';
-import TranslationStatusBadge from '../../../components/TranslationStatusBadge.astro';
-
+/**
+ * DEPRECATED — superseded by sessions/[n].astro (D3-p, plural+ordinal).
+ * URL pattern was /[lang]/session/{date}; new pattern is /[lang]/sessions/{n}.
+ * Return empty to suppress route generation.
+ * TODO: Delete this file when PowerShell -LiteralPath deletion is confirmed.
+ */
 export async function getStaticPaths() {
-  const langs = ['ko', 'en', 'ja', 'zh', 'es'];
-  const sessionEntries = await getCollection('session');
-
-  return langs.flatMap((lang) =>
-    sessionEntries.map((entry) => ({
-      params: { lang, date: entry.data.date },
-      props: { entry },
-    }))
-  );
+  return [];
 }
-
-const { lang } = Astro.params;
-const { entry } = Astro.props;
-const { Content } = await render(entry);
-
-const transStatus = lang !== 'ko' && entry.data.translations
-  ? (entry.data.translations as Record<string, { status: 'machine' | 'reviewed' | 'native' } | undefined>)[lang]?.status
-  : undefined;
 ---
-<Base title={entry.data.title} lang={lang}>
-  <article>
-    <header class="mb-6">
-      <div class="flex items-center gap-2 mb-2 text-xs text-gray-500">
-        <time>{entry.data.date}</time>
-        <span>·</span>
-        <span class="capitalize">{entry.data.session_type}</span>
-        {transStatus && (
-          <>
-            <span>·</span>
-            <TranslationStatusBadge status={transStatus} />
-          </>
-        )}
-      </div>
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{entry.data.title}</h1>
-      {entry.data.speaker && (
-        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          {entry.data.speaker}
-          {entry.data.affiliation ? ` · ${entry.data.affiliation}` : ''}
-        </p>
-      )}
-    </header>
-
-    <div class="prose dark:prose-invert max-w-none">
-      <Content />
-    </div>
-
-    <p class="mt-4 text-xs text-gray-400">
-      최종 업데이트: {entry.data.last_updated} · {entry.data.license}
-    </p>
-  </article>
-</Base>
