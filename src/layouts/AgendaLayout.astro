@@ -14,6 +14,7 @@ import SiteSidebar from '../components/SiteSidebar.astro';
 import TrustBadge from '../components/TrustBadge.astro';
 import LicenseBadge from '../components/LicenseBadge.astro';
 import TranslationFallbackBanner from '../components/TranslationFallbackBanner.astro';
+import Toc from '../components/Toc.astro';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,6 +72,11 @@ export interface Props {
   };
   /** For 'all-rights-reserved' license badge — organisation name */
   orgName?: string;
+  /**
+   * Headings from entry.render() — used by Toc (M2-2).
+   * Passed as { depth, slug, text }[]. Only h2/h3 are shown.
+   */
+  headings?: Array<{ depth: number; slug: string; text: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -88,6 +94,7 @@ const {
   isFallback = false,
   frontmatter,
   orgName,
+  headings = [],
 } = Astro.props;
 
 // ---------------------------------------------------------------------------
@@ -140,6 +147,9 @@ const ldJson = JSON.stringify(articleSchema);
       <!-- Main content area -->
       <article class="flex-1 min-w-0">
 
+        <!-- Mobile TOC (M2-2) — <details> toggle, hidden on xl+ -->
+        <Toc headings={headings} lang={lang} variant="mobile" />
+
         <!-- Trust badge (Design §3.1) — placed directly below <h1> in the page, but
              layout renders it here as page-level chrome above the slot. -->
         {trustLabel && (
@@ -169,6 +179,9 @@ const ldJson = JSON.stringify(articleSchema);
         </footer>
 
       </article>
+
+      <!-- Right sticky TOC (M2-2) — desktop xl+ only -->
+      <Toc headings={headings} lang={lang} variant="desktop" />
 
     </div>
   </div>

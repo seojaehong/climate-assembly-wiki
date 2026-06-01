@@ -1,0 +1,150 @@
+---
+/**
+ * CitationToggle.astro — M2-5
+ * Inline footnote/citation expansion for GFM footnotes.
+ *
+ * Astro uses remark-gfm which renders footnotes as:
+ *   <sup><a id="user-content-fnref-N" href="#user-content-fn-N" ...>N</a></sup>
+ *   ...
+ *   <li id="user-content-fn-N">...</li>  (in the footnotes section at bottom)
+ *
+ * This component mounts a client script that intercepts footnote reference
+ * clicks and toggles an inline <aside> showing the footnote content
+ * rather than jumping to the bottom of the page.
+ *
+ * Keyboard accessibility: Tab navigates to the <sup><a> element,
+ * Enter/Space triggers the toggle (native link behavior is overridden).
+ *
+ * Props: none (client-side only, auto-discovers .footnote-ref or GFM pattern)
+ *
+ * Usage: include once per page in the layout that renders markdown prose.
+ * Place AFTER the prose slot so the footnotes section is already in DOM.
+ */
+---
+
+<script>
+  (function () {
+    // GFM footnote selectors
+    // Astro / remark-gfm produces: sup > a[href^="#user-content-fn-"]
+    const FOOTNOTE_REF_SELECTOR = 'sup > a[href^="#user-content-fn-"]';
+    const FOOTNOTE_DEF_SELECTOR = '[id^="user-content-fn-"]';
+
+    // Track open panels: footnoteId → panel element
+    const openPanels = new Map<string, HTMLElement>();
+
+    function getFootnoteId(href: string): string {
+      // href = "#user-content-fn-1"  →  "user-content-fn-1"
+      return href.replace(/^#/, '');
+    }
+
+    function getDefinitionContent(fnId: string): string | null {
+      const li = document.getElementById(fnId);
+      if (!li) return null;
+
+      // Clone the content but remove the back-reference link (↩)
+      const clone = li.cloneNode(true) as HTMLElement;
+      const backref = clone.querySelector('a[data-footnote-backref]');
+      if (backref) backref.remove();
+
+      return clone.innerHTML.trim();
+    }
+
+    function createPanel(content: string, fnId: string): HTMLElement {
+      const aside = document.createElement('aside');
+      aside.id = `citation-panel-${fnId}`;
+      aside.setAttribute('role', 'note');
+      aside.setAttribute('aria-live', 'polite');
+      aside.className =
+        'citation-panel inline-block mt-1 mb-1 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-card-bg)] px-3 py-2 text-sm text-[var(--color-fg)] shadow-[var(--shadow-sm)]';
+      aside.innerHTML = content;
+      return aside;
+    }
+
+    function toggleCitation(anchor: HTMLAnchorElement) {
+      const href = anchor.getAttribute('href');
+      if (!href) return;
+
+      const fnId = getFootnoteId(href);
+      const sup = anchor.parentElement;
+      if (!sup) return;
+
+      if (openPanels.has(fnId)) {
+        // Close: remove panel, restore aria
+        openPanels.get(fnId)?.remove();
+        openPanels.delete(fnId);
+        anchor.setAttribute('aria-expanded', 'false');
+        return;
+      }
+
+      const content = getDefinitionContent(fnId);
+      if (!content) return;
+
+      const panel = createPanel(content, fnId);
+      // Insert the panel immediately after the <sup>
+      sup.insertAdjacentElement('afterend', panel);
+      openPanels.set(fnId, panel);
+      anchor.setAttribute('aria-expanded', 'true');
+    }
+
+    function init() {
+      document.querySelectorAll<HTMLAnchorElement>(FOOTNOTE_REF_SELECTOR).forEach((anchor) => {
+        // Set initial ARIA state
+        anchor.setAttribute('role', 'button');
+        anchor.setAttribute('aria-expanded', 'false');
+        const fnId = getFootnoteId(anchor.getAttribute('href') ?? '');
+        anchor.setAttribute('aria-controls', `citation-panel-${fnId}`);
+
+        // Override click to toggle inline panel
+        anchor.addEventListener('click', (e) => {
+          e.preventDefault();
+          toggleCitation(anchor);
+        });
+
+        // Keyboard: Enter and Space trigger toggle (anchor is already focusable)
+        anchor.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleCitation(anchor);
+          }
+        });
+      });
+
+      // Hide the bottom footnotes section visually when all refs have been toggled inline.
+      // We keep it in DOM for accessibility (screen reader list still accessible).
+      const footnoteSection = document.querySelector<HTMLElement>(
+        'section[data-footnotes], .footnotes'
+      );
+      if (footnoteSection) {
+        footnoteSection.setAttribute(
+          'aria-label',
+          document.documentElement.lang === 'ko'
+            ? '각주 목록 (인라인 토글로도 읽을 수 있음)'
+            : 'Footnotes list (also available as inline toggles)'
+        );
+      }
+    }
+
+    // Run after DOM is fully parsed
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  })();
+</script>
+
+<style is:global>
+  /* Highlight active footnote reference */
+  sup > a[href^="#user-content-fn-"][aria-expanded="true"] {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  /* Citation panel link styling */
+  .citation-panel a {
+    color: var(--color-link);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+</style>

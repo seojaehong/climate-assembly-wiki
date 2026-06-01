@@ -17,6 +17,7 @@ import SiteSidebar from '../components/SiteSidebar.astro';
 import TrustBadge from '../components/TrustBadge.astro';
 import LicenseBadge from '../components/LicenseBadge.astro';
 import TranslationFallbackBanner from '../components/TranslationFallbackBanner.astro';
+import Toc from '../components/Toc.astro';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -78,6 +79,8 @@ export interface Props {
     last_updated?: string;
     doc_type?: DocType;
   };
+  /** Headings from entry.render() — used by Toc (M2-2). */
+  headings?: Array<{ depth: number; slug: string; text: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -96,6 +99,7 @@ const {
   orgName,
   docType,
   frontmatter,
+  headings = [],
 } = Astro.props;
 
 // Effective doc type (prop takes priority over frontmatter)
@@ -156,6 +160,9 @@ const ldJson = JSON.stringify(articleSchema);
       <!-- Main content area -->
       <article class="flex-1 min-w-0">
 
+        <!-- Mobile TOC (M2-2) -->
+        <Toc headings={headings} lang={lang} variant="mobile" />
+
         <!-- Trust badge -->
         {trustLabel && (
           <div class="mb-3">
@@ -193,6 +200,10 @@ const ldJson = JSON.stringify(articleSchema);
         </footer>
 
       </article>
+
+      <!-- Right sticky TOC (M2-2) — desktop xl+ -->
+      <Toc headings={headings} lang={lang} variant="desktop" />
+
     </div>
   </div>
 </BaseLayout>

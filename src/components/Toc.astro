@@ -1,0 +1,203 @@
+---
+/**
+ * Toc.astro — M2-2
+ * Sticky Table of Contents (h2 + h3 depth).
+ *
+ * Two render variants controlled by the `variant` prop:
+ *   "mobile"  — <details> toggle panel, shown inside <article>, hidden on xl+
+ *   "desktop" — sticky aside panel, shown outside <article>, hidden below xl
+ *   (default) — renders BOTH (for layouts that include only one Toc call)
+ *
+ * Usage in a 3-column layout (AgendaLayout, DocLayout, SessionLayout):
+ *
+ *   <!-- inside <article> -->
+ *   <Toc headings={headings} lang={lang} variant="mobile" />
+ *
+ *   <!-- after </article>, inside the flex row -->
+ *   <Toc headings={headings} lang={lang} variant="desktop" />
+ *
+ * Props:
+ *   headings — MarkdownHeading[] from Astro's render() — depth, slug, text
+ *   lang     — page language for i18n labels
+ *   variant  — "mobile" | "desktop" | undefined (both)
+ *
+ * The IntersectionObserver script is only emitted once (with variant="desktop"
+ * or default) to avoid duplicate observers.
+ */
+
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  headings: Heading[];
+  lang?: string;
+  variant?: 'mobile' | 'desktop';
+}
+
+const { headings, lang = 'ko', variant } = Astro.props;
+
+// Filter to h2 (depth 2) and h3 (depth 3) only
+const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
+
+// Don't render if fewer than 2 headings
+const shouldRender = tocHeadings.length >= 2;
+
+const tocLabel = lang === 'ko' ? '목차' : 'On this page';
+const expandLabel = lang === 'ko' ? '목차' : 'On this page';
+
+// Emit script only for desktop or default (avoids duplication)
+const emitScript = variant !== 'mobile';
+
+const showMobile = variant === 'mobile' || variant === undefined;
+const showDesktop = variant === 'desktop' || variant === undefined;
+---
+
+{shouldRender && (
+  <>
+    {/* Mobile TOC: <details> toggle */}
+    {showMobile && (
+      <details class="toc-mobile xl:hidden mb-6 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-bg)] overflow-hidden">
+        <summary
+          class="flex items-center justify-between gap-2 cursor-pointer px-4 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 select-none list-none"
+          aria-label={expandLabel}
+        >
+          <span>{expandLabel}</span>
+          <svg
+            aria-hidden="true"
+            class="toc-chevron w-4 h-4 text-[var(--color-muted)] transition-transform duration-200"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+          >
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </summary>
+
+        <nav aria-label={tocLabel} class="px-4 pb-4 pt-2">
+          <ol class="space-y-1">
+            {tocHeadings.map((h) => (
+              <li class={h.depth === 3 ? 'ml-4' : ''}>
+                <a
+                  href={`#${h.slug}`}
+                  class="text-sm text-[var(--color-link)] hover:underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 leading-snug block py-0.5"
+                >
+                  {h.text}
+                </a>
+              </li>
+            ))}
+          </ol>
+        </nav>
+      </details>
+    )}
+
+    {/* Desktop TOC: sticky right panel */}
+    {showDesktop && (
+      <aside
+        id="toc-desktop"
+        class="toc-desktop hidden xl:block w-56 flex-shrink-0 self-start sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto"
+        aria-label={tocLabel}
+      >
+        <nav>
+          <p class="text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)] mb-3 px-1">
+            {tocLabel}
+          </p>
+          <ol class="space-y-0.5 border-l border-[var(--color-border)]">
+            {tocHeadings.map((h) => (
+              <li class={h.depth === 3 ? 'pl-6' : 'pl-3'}>
+                <a
+                  href={`#${h.slug}`}
+                  data-toc-link={h.slug}
+                  class="toc-link block text-xs leading-snug py-1 text-[var(--color-muted)] hover:text-gray-900 dark:hover:text-gray-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+                >
+                  {h.text}
+                </a>
+              </li>
+            ))}
+          </ol>
+        </nav>
+      </aside>
+    )}
+  </>
+)}
+
+{emitScript && shouldRender && (
+  <script>
+    (function () {
+      const tocLinks = document.querySelectorAll<HTMLAnchorElement>('.toc-link[data-toc-link]');
+      if (!tocLinks.length) return;
+
+      const headingIds = Array.from(tocLinks).map((a) => a.dataset.tocLink!);
+      const headingEls = headingIds
+        .map((id) => document.getElementById(id))
+        .filter((el): el is HTMLElement => !!el);
+
+      if (!headingEls.length) return;
+
+      let activeId = '';
+
+      function setActive(id: string) {
+        if (id === activeId) return;
+        activeId = id;
+
+        tocLinks.forEach((a) => {
+          const isCurrent = a.dataset.tocLink === id;
+          if (isCurrent) {
+            a.classList.add('toc-link--active');
+            a.setAttribute('aria-current', 'true');
+          } else {
+            a.classList.remove('toc-link--active');
+            a.removeAttribute('aria-current');
+          }
+        });
+      }
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const visible = entries
+            .filter((e) => e.isIntersecting)
+            .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+          if (visible.length > 0) {
+            setActive(visible[0].target.id);
+          }
+        },
+        {
+          rootMargin: '-80px 0px -60% 0px',
+          threshold: 0,
+        }
+      );
+
+      headingEls.forEach((el) => observer.observe(el));
+
+      let scrollTimer: ReturnType<typeof setTimeout>;
+      document.addEventListener('scroll', () => {
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => {
+          const mid = window.innerHeight / 2;
+          let best: HTMLElement | null = null;
+          for (const el of headingEls) {
+            if (el.getBoundingClientRect().top <= mid + 80) best = el;
+          }
+          if (best) setActive(best.id);
+        }, 50);
+      }, { passive: true });
+    })();
+  </script>
+)}
+
+<style is:global>
+  .toc-link--active {
+    color: var(--color-success) !important;
+    font-weight: 500;
+    border-left: 2px solid var(--color-success);
+    margin-left: -1px;
+    padding-left: calc(0.75rem - 1px);
+  }
+
+  .toc-mobile[open] .toc-chevron {
+    transform: rotate(180deg);
+  }
+</style>

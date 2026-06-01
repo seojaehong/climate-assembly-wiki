@@ -1,0 +1,41 @@
+---
+/**
+ * ShowcaseBanner.astro — M2-4
+ * Shown on English pages that showcase Korean citizens' assembly activities.
+ * NOT rendered on Korean pages.
+ *
+ * Props:
+ *   lang           — current page language
+ *   koreanSourceUrl — absolute or root-relative path to the Korean source page
+ */
+
+interface Props {
+  lang: string;
+  koreanSourceUrl: string;
+}
+
+const { lang, koreanSourceUrl } = Astro.props;
+
+// Only render for non-Korean pages
+if (lang === 'ko') return;
+---
+
+<div
+  role="note"
+  class="showcase-banner mb-6 flex flex-wrap items-center gap-2 rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 px-4 py-3 text-sm text-blue-800 dark:text-blue-200"
+>
+  <!-- Flag icon -->
+  <span aria-hidden="true" class="text-base">🇰🇷</span>
+
+  <span class="flex-1">
+    This page is an English showcase of Korea's Climate Citizens' Assembly activities.
+  </span>
+
+  <a
+    href={koreanSourceUrl}
+    hreflang="ko"
+    class="shrink-0 font-medium underline underline-offset-2 hover:text-blue-600 dark:hover:text-blue-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+  >
+    한국어 원본 보기 →
+  </a>
+</div>

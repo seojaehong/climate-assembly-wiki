@@ -1,0 +1,178 @@
+---
+/**
+ * RelatedContent.astro — M2-6
+ * Auto-recommended related agenda/doc cards shown at page bottom.
+ *
+ * Matching logic (agenda pages):
+ *   1. Agenda IDs listed in `related_agendas` — score +2 each
+ *   2. Same `category`                         — score +1
+ *   3. Shared `ministries`                     — score +1 per overlap
+ * Exclude: the current page itself.
+ * Sort: descending score, take top 3–6.
+ *
+ * Usage (in a page file, not a layout — layouts can't async-fetch):
+ *
+ *   import RelatedContent from '../../../components/RelatedContent.astro';
+ *   import { getCollection } from 'astro:content';
+ *   const agendaEntries = await getCollection('agenda');
+ *   ---
+ *   <RelatedContent
+ *     currentSlug={entry.data.slug}
+ *     currentCategory={entry.data.category}
+ *     relatedAgendaIds={entry.data.related_agendas}
+ *     currentMinistries={entry.data.ministries}
+ *     allAgendas={agendaEntries}
+ *     lang={lang}
+ *   />
+ */
+
+import type { CollectionEntry } from 'astro:content';
+
+interface AgendaData {
+  id: number;
+  slug: string;
+  title: string;
+  category: string;
+  status: string;
+  related_agendas: number[];
+  ministries: string[];
+}
+
+interface Props {
+  /** Slug of the current page (excluded from recommendations) */
+  currentSlug: string;
+  /** Category of the current agenda entry (for same-category boost) */
+  currentCategory?: string;
+  /** IDs listed in frontmatter related_agendas (score +2 each) */
+  relatedAgendaIds?: number[];
+  /** Ministries of current entry (overlap score +1 each) */
+  currentMinistries?: string[];
+  /** Full agenda collection entries passed from page */
+  allAgendas: CollectionEntry<'agenda'>[];
+  /** Current page language */
+  lang: string;
+  /** Maximum number of cards to show (default 6, min 3) */
+  maxCards?: number;
+}
+
+const {
+  currentSlug,
+  currentCategory,
+  relatedAgendaIds = [],
+  currentMinistries = [],
+  allAgendas,
+  lang,
+  maxCards = 6,
+} = Astro.props;
+
+// Score and sort candidates
+type Candidate = { entry: CollectionEntry<'agenda'>; score: number };
+
+const candidates: Candidate[] = allAgendas
+  .filter((e) => e.data.slug !== currentSlug)
+  .map((e) => {
+    let score = 0;
+    const d = e.data as AgendaData;
+
+    // +2 for each explicitly listed related agenda
+    if (relatedAgendaIds.includes(d.id)) score += 2;
+
+    // +1 for same category
+    if (currentCategory && d.category === currentCategory) score += 1;
+
+    // +1 for each shared ministry
+    const shared = currentMinistries.filter((m) => d.ministries.includes(m));
+    score += shared.length;
+
+    return { entry: e, score };
+  })
+  .filter((c) => c.score > 0)
+  .sort((a, b) => b.score - a.score)
+  .slice(0, maxCards);
+
+// Only render if we have at least one recommendation
+if (candidates.length === 0) return;
+
+const headingText = lang === 'ko' ? '관련 의제' : 'Related Agendas';
+
+const statusColors: Record<string, string> = {
+  proposed:    'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+  discussed:   'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  recommended: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  final:       'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+};
+
+const categoryLabel: Record<string, { ko: string; en: string }> = {
+  '일반-의제':  { ko: '일반', en: 'General' },
+  '메타-의제':  { ko: '메타', en: 'Meta' },
+  '실행-의제':  { ko: '실행', en: 'Action' },
+};
+---
+
+<section
+  class="related-content mt-12 pt-8 border-t border-[var(--color-border)]"
+  aria-labelledby="related-content-heading"
+>
+  <h2
+    id="related-content-heading"
+    class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4"
+  >
+    {headingText}
+  </h2>
+
+  <ul
+    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+    role="list"
+  >
+    {candidates.map(({ entry }) => {
+      const d = entry.data as AgendaData;
+      const catKey = d.category;
+      const catLang = categoryLabel[catKey];
+      const catDisplay = catLang ? (lang === 'ko' ? catLang.ko : catLang.en) : catKey;
+      const statusClass = statusColors[d.status] ?? statusColors.proposed;
+      const href = `/${lang}/agenda/${d.slug}/`;
+
+      return (
+        <li>
+          <a
+            href={href}
+            class="group flex flex-col h-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-bg)] p-4 gap-2 shadow-[var(--shadow-sm)] hover:border-green-400 dark:hover:border-green-600 hover:shadow-[var(--shadow-md)] transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+          >
+            <!-- ID + category row -->
+            <div class="flex items-center gap-2 text-xs text-[var(--color-muted)]">
+              <span class="font-mono">#{d.id.toString().padStart(2, '0')}</span>
+              <span aria-hidden="true">·</span>
+              <span>{catDisplay}</span>
+              <span
+                class={`ml-auto inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${statusClass}`}
+              >
+                {d.status}
+              </span>
+            </div>
+
+            <!-- Title -->
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100 group-hover:text-green-700 dark:group-hover:text-green-400 leading-snug flex-1">
+              {d.title}
+            </p>
+
+            <!-- Ministry tags (first 2) -->
+            {d.ministries.length > 0 && (
+              <div class="flex flex-wrap gap-1">
+                {d.ministries.slice(0, 2).map((m) => (
+                  <span class="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-[var(--color-muted)] rounded">
+                    {m}
+                  </span>
+                ))}
+                {d.ministries.length > 2 && (
+                  <span class="text-[10px] px-1.5 py-0.5 text-[var(--color-muted)]">
+                    +{d.ministries.length - 2}
+                  </span>
+                )}
+              </div>
+            )}
+          </a>
+        </li>
+      );
+    })}
+  </ul>
+</section>

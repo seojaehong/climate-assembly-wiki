@@ -1,0 +1,134 @@
+---
+/**
+ * EnRoadsScenarioCard.astro — M2-3
+ * Enhanced En-ROADS scenario card with title, key levers, and expected temperature.
+ * Extends the existing EnRoadsCard pattern (Design §3.7) with structured props.
+ *
+ * Props:
+ *   title            — Card heading (scenario name)
+ *   scenario_url     — En-ROADS shareable scenario link
+ *   screenshot_url   — Path to screenshot image (static asset)
+ *   expected_temp_2100 — Projected warming string e.g. "+2.4°C by 2100"
+ *   key_levers       — Array of lever names applied in this scenario
+ *   lang             — Page language for i18n labels
+ *   captionKo        — Korean caption / description
+ *   captionEn        — English caption / description
+ */
+
+interface Props {
+  title: string;
+  scenario_url: string;
+  screenshot_url: string;
+  expected_temp_2100: string;
+  key_levers?: string[];
+  lang: string;
+  captionKo?: string;
+  captionEn?: string;
+}
+
+const {
+  title,
+  scenario_url,
+  screenshot_url,
+  expected_temp_2100,
+  key_levers = [],
+  lang,
+  captionKo,
+  captionEn,
+} = Astro.props;
+
+const isKo = lang === 'ko';
+const caption = isKo ? (captionKo ?? '') : (captionEn ?? '');
+const btnLabel = isKo ? 'En-ROADS에서 열기 →' : 'Open in En-ROADS →';
+const externalLabel = isKo ? '(외부 사이트, 새 탭)' : '(external site, new tab)';
+const tempLabel = isKo ? '2100년 예상 온도 상승' : 'Projected warming by 2100';
+const leversLabel = isKo ? '적용 레버' : 'Key levers applied';
+
+// Temperature badge colour: green < 1.5°C, amber 1.5–2°C, red > 2°C
+const tempValue = parseFloat(expected_temp_2100.replace(/[^0-9.]/g, ''));
+const tempColor =
+  tempValue <= 1.5
+    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-300 dark:border-green-600'
+    : tempValue <= 2.0
+    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-amber-300 dark:border-amber-600'
+    : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-300 dark:border-red-600';
+---
+
+<figure
+  class="enroads-scenario-card rounded-lg border border-[var(--color-border)] overflow-hidden shadow-[var(--shadow-sm)] bg-[var(--color-card-bg)]"
+>
+  <!-- Title bar -->
+  <div class="px-4 pt-4 pb-2">
+    <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 leading-snug">
+      {title}
+    </h3>
+  </div>
+
+  <!-- Screenshot -->
+  <a
+    href={scenario_url}
+    target="_blank"
+    rel="noopener noreferrer"
+    aria-label={`${title} — ${externalLabel}`}
+    class="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+  >
+    <img
+      src={screenshot_url}
+      alt={caption || title}
+      class="w-full object-cover max-h-56"
+      loading="lazy"
+      decoding="async"
+    />
+  </a>
+
+  <!-- Metadata & CTA -->
+  <figcaption class="p-4 space-y-3">
+    <!-- Temperature badge -->
+    <div class="flex items-center gap-2 flex-wrap">
+      <span class="text-xs text-[var(--color-muted)]">{tempLabel}:</span>
+      <span
+        class={`inline-block text-sm font-bold px-2.5 py-0.5 rounded border ${tempColor}`}
+        aria-label={`${tempLabel}: ${expected_temp_2100}`}
+      >
+        {expected_temp_2100}
+      </span>
+    </div>
+
+    <!-- Key levers list -->
+    {key_levers.length > 0 && (
+      <div>
+        <p class="text-xs text-[var(--color-muted)] mb-1.5">{leversLabel}:</p>
+        <ul class="flex flex-wrap gap-1.5" aria-label={leversLabel}>
+          {key_levers.map((lever) => (
+            <li>
+              <span class="inline-block text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+                {lever}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+
+    <!-- Caption -->
+    {caption && (
+      <p class="text-sm text-gray-700 dark:text-gray-300">{caption}</p>
+    )}
+
+    <!-- CTA -->
+    <a
+      href={scenario_url}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="inline-flex items-center gap-1 text-sm font-medium text-green-700 dark:text-green-400 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+      aria-label={`${btnLabel} ${externalLabel}`}
+    >
+      {btnLabel}
+      <svg aria-hidden="true" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+        <polyline points="15 3 21 3 21 9"/>
+        <line x1="10" y1="14" x2="21" y2="3"/>
+      </svg>
+    </a>
+  </figcaption>
+</figure>
