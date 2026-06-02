@@ -1,0 +1,968 @@
+---
+/**
+ * /ko/moderator/live/ — 모더레이터 라이브 대시보드 (시뮬레이션)
+ *
+ * PRIVACY:
+ *   - KO-only route (getStaticPaths emits only 'ko')
+ *   - robots noindex,nofollow
+ *   - NOT in sitemap (sitemap filter is whitelist: only /agenda + locale home)
+ *   - NOT in pagefind (no data-pagefind-body)
+ *   - No nav links to this page anywhere
+ *
+ * DATA:
+ *   - Reads sim-questions.json at build time, ships as inlined JS data
+ *   - TODO(production): swap JSON import for Google Sheets CSV fetch
+ *
+ * SIMULATION ENGINE:
+ *   - Play/pause/next/prev controls
+ *   - Day+channel selector
+ *   - Speed: 1x (10s), 2x (5s), 5x (2s)
+ *   - State persisted in sessionStorage
+ */
+
+import simQuestions from '../../../data/sim-questions.json';
+import '../../../styles/global.css';
+
+export async function getStaticPaths() {
+  // KO-only: this is a Korean workshop tool; one consumer; minimises leakage surface.
+  // Delta from build: +1 page.
+  return [{ params: { lang: 'ko' } }];
+}
+
+// Compute unique experts for tally
+const experts = [...new Set(
+  (simQuestions as Array<{expert: string}>)
+    .map(q => q.expert)
+    .filter(e => e && e !== '' && e !== '공통')
+)];
+---
+<!doctype html>
+<html lang="ko" dir="ltr" data-theme="dark" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>모더레이터 라이브 대시보드 [SIM]</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="description" content="모더레이터 운영 전용 페이지 — 시뮬레이션 데이터" />
+  <!-- No canonical, no hreflang, no OG — private page -->
+  <style>
+    /* ============================================================
+       MODERATOR LIVE DASHBOARD — dark-first, projector-optimised
+       Uses design tokens from global.css (imported above).
+       ============================================================ */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--color-bg, #0d1117);
+      color: var(--color-fg, #f3f4f6);
+      font-family: var(--font-body, 'Pretendard Variable', sans-serif);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* ---- Privacy banner ---- */
+    .privacy-banner {
+      background: #7c2d12;
+      color: #fed7aa;
+      text-align: center;
+      padding: var(--space-2) var(--space-4);
+      font-size: var(--text-sm);
+      font-weight: 600;
+      letter-spacing: var(--tracking-wide);
+      border-bottom: 2px solid #ea580c;
+      flex-shrink: 0;
+    }
+
+    /* ---- Layout grid ---- */
+    .dashboard {
+      display: grid;
+      grid-template-columns: 220px 1fr 220px;
+      grid-template-rows: auto 1fr auto;
+      gap: 0;
+      flex: 1;
+      min-height: 0;
+    }
+
+    @media (max-width: 900px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+      }
+      .sidebar { display: none; }
+    }
+
+    /* ---- Controls bar ---- */
+    .controls-bar {
+      grid-column: 1 / -1;
+      background: var(--color-bg-subtle, #161b22);
+      border-bottom: 1px solid var(--color-border, #30363d);
+      padding: var(--space-3) var(--space-4);
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      flex-wrap: wrap;
+    }
+
+    .sim-badge {
+      background: var(--color-warn, #fbbf24);
+      color: #000;
+      font-size: var(--text-xs);
+      font-weight: 700;
+      padding: 2px var(--space-2);
+      border-radius: var(--radius-full);
+      letter-spacing: var(--tracking-wide);
+      flex-shrink: 0;
+    }
+
+    .controls-group {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .ctrl-btn {
+      background: var(--color-card-bg, #161b22);
+      border: 1px solid var(--color-border, #30363d);
+      color: var(--color-fg, #f3f4f6);
+      border-radius: var(--radius-sm);
+      padding: var(--space-2) var(--space-3);
+      cursor: pointer;
+      font-size: var(--text-lg);
+      line-height: 1;
+      transition: background var(--transition-fast);
+    }
+    .ctrl-btn:hover { background: var(--color-card-hover, #1c2230); }
+    .ctrl-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .ctrl-btn.active {
+      background: var(--color-accent, #34d399);
+      color: var(--color-accent-fg, #064e3b);
+      border-color: var(--color-accent, #34d399);
+    }
+
+    select.ctrl-select {
+      background: var(--color-card-bg, #161b22);
+      border: 1px solid var(--color-border, #30363d);
+      color: var(--color-fg, #f3f4f6);
+      border-radius: var(--radius-sm);
+      padding: var(--space-2) var(--space-3);
+      font-size: var(--text-sm);
+      cursor: pointer;
+    }
+
+    .ctrl-label {
+      font-size: var(--text-sm);
+      color: var(--color-fg-muted, #9ca3af);
+    }
+
+    .pos-counter {
+      font-size: var(--text-sm);
+      color: var(--color-fg-muted, #9ca3af);
+      margin-left: auto;
+      white-space: nowrap;
+    }
+
+    /* ---- Sidebar (process flow) ---- */
+    .sidebar {
+      background: var(--color-bg-subtle, #161b22);
+      border-right: 1px solid var(--color-border, #30363d);
+      padding: var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+    .sidebar-right {
+      border-right: none;
+      border-left: 1px solid var(--color-border, #30363d);
+    }
+
+    .sidebar-title {
+      font-size: var(--text-xs);
+      color: var(--color-fg-muted, #9ca3af);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: var(--tracking-wide);
+      margin-bottom: var(--space-1);
+    }
+
+    /* Process flow SVG step */
+    .flow-steps {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-2);
+      font-size: var(--text-xs);
+      color: var(--color-fg-muted, #9ca3af);
+      line-height: 1.4;
+    }
+    .flow-step.active {
+      color: var(--color-accent, #34d399);
+      font-weight: 600;
+    }
+    .flow-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-border, #30363d);
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+    .flow-step.active .flow-dot {
+      background: var(--color-accent, #34d399);
+      box-shadow: 0 0 6px var(--color-accent, #34d399);
+    }
+    .flow-connector {
+      width: 1px;
+      height: 12px;
+      background: var(--color-border, #30363d);
+      margin-left: 3px;
+    }
+
+    /* ---- Main content ---- */
+    .main-content {
+      padding: var(--space-6) var(--space-8);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-6);
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    /* ---- Current card ---- */
+    .current-card {
+      border: 2px solid var(--color-accent, #34d399);
+      border-radius: var(--radius-lg);
+      padding: var(--space-6);
+      background: var(--color-card-bg, #161b22);
+      position: relative;
+      overflow: hidden;
+    }
+
+    @keyframes pulse-border {
+      0%, 100% { border-color: var(--color-accent, #34d399); opacity: 1; }
+      50% { border-color: var(--color-accent-hover, #6ee7b7); opacity: 0.7; }
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .current-card.playing {
+        animation: pulse-border 2.5s ease-in-out infinite;
+      }
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      margin-bottom: var(--space-4);
+      flex-wrap: wrap;
+    }
+
+    .card-label {
+      font-size: var(--text-xs);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: var(--tracking-wide);
+      color: var(--color-accent, #34d399);
+    }
+
+    .meta-pill {
+      background: var(--color-accent-subtle, #022c22);
+      color: var(--color-accent, #34d399);
+      font-size: var(--text-xs);
+      padding: 2px var(--space-2);
+      border-radius: var(--radius-full);
+      font-weight: 600;
+    }
+
+    .meta-pill.expert {
+      background: var(--color-info-bg, #0c1a2e);
+      color: var(--color-info, #60a5fa);
+    }
+
+    .meta-pill.time {
+      background: var(--color-bg, #0d1117);
+      color: var(--color-fg-muted, #9ca3af);
+    }
+
+    .content-text {
+      font-size: clamp(1.25rem, 2.5vw, 1.875rem);
+      line-height: var(--leading-relaxed);
+      letter-spacing: var(--tracking-korean);
+      color: var(--color-fg, #f3f4f6);
+      word-break: keep-all;
+    }
+
+    .speaker-line {
+      margin-top: var(--space-4);
+      font-size: var(--text-sm);
+      color: var(--color-fg-muted, #9ca3af);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: var(--space-12) 0;
+      color: var(--color-fg-muted, #9ca3af);
+      font-size: var(--text-xl);
+    }
+
+    /* ---- Next queue ---- */
+    .next-section-title {
+      font-size: var(--text-sm);
+      font-weight: 600;
+      color: var(--color-fg-muted, #9ca3af);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .next-queue {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .next-item {
+      border: 1px solid var(--color-border, #30363d);
+      border-radius: var(--radius-md);
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-card-bg, #161b22);
+      display: flex;
+      gap: var(--space-3);
+      align-items: flex-start;
+      transition: opacity var(--transition-fast);
+    }
+    .next-item:nth-child(2) { opacity: 0.7; }
+    .next-item:nth-child(3) { opacity: 0.45; }
+
+    .next-item-meta {
+      display: flex;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+
+    .next-item-content {
+      font-size: var(--text-sm);
+      color: var(--color-fg-muted, #9ca3af);
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* ---- Progress bar ---- */
+    .progress-bar-section {
+      border-top: 1px solid var(--color-border, #30363d);
+      padding-top: var(--space-4);
+    }
+
+    .progress-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      margin-bottom: var(--space-3);
+    }
+
+    .progress-label {
+      font-size: var(--text-sm);
+      color: var(--color-fg-muted, #9ca3af);
+      white-space: nowrap;
+    }
+
+    .progress-track {
+      flex: 1;
+      height: 8px;
+      background: var(--color-border, #30363d);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--color-accent, #34d399);
+      border-radius: var(--radius-full);
+      transition: width var(--transition-slow);
+    }
+
+    .progress-pct {
+      font-size: var(--text-sm);
+      font-weight: 600;
+      color: var(--color-accent, #34d399);
+      white-space: nowrap;
+    }
+
+    /* Expert tally */
+    .tally-section {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .tally-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .tally-name {
+      font-size: var(--text-sm);
+      color: var(--color-fg-muted, #9ca3af);
+      width: 80px;
+      flex-shrink: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tally-bar-track {
+      flex: 1;
+      height: 6px;
+      background: var(--color-border, #30363d);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+
+    .tally-bar-fill {
+      height: 100%;
+      background: var(--color-info, #60a5fa);
+      border-radius: var(--radius-full);
+      transition: width var(--transition-slow);
+    }
+
+    .tally-bar-fill.common {
+      background: var(--color-fg-muted, #9ca3af);
+    }
+
+    .tally-count {
+      font-size: var(--text-sm);
+      font-weight: 600;
+      color: var(--color-fg, #f3f4f6);
+      width: 24px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    /* ---- Right sidebar: timer + eta ---- */
+    .timer-display {
+      font-size: var(--text-4xl);
+      font-variant-numeric: tabular-nums;
+      color: var(--color-accent, #34d399);
+      font-weight: 700;
+      letter-spacing: var(--tracking-tight);
+    }
+
+    .eta-info {
+      font-size: var(--text-xs);
+      color: var(--color-fg-muted, #9ca3af);
+      line-height: 1.6;
+    }
+
+    .status-dots {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: var(--space-2);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-border, #30363d);
+    }
+    .status-dot.done { background: var(--color-accent, #34d399); }
+    .status-dot.current { background: var(--color-warn, #fbbf24); }
+  </style>
+</head>
+<body>
+  <!-- Privacy banner -->
+  <div class="privacy-banner">
+    🔒 모더레이터 운영 페이지 · 외부 공개 금지 · 시뮬레이션 데이터
+  </div>
+
+  <div class="dashboard">
+    <!-- Controls bar (spans full width) -->
+    <div class="controls-bar" role="toolbar" aria-label="시뮬레이션 컨트롤">
+      <span class="sim-badge">SIM</span>
+
+      <div class="controls-group">
+        <button class="ctrl-btn" id="btn-prev" title="이전" aria-label="이전">⏮</button>
+        <button class="ctrl-btn" id="btn-play" title="재생/일시정지" aria-label="재생/일시정지">▶</button>
+        <button class="ctrl-btn" id="btn-next" title="다음" aria-label="다음">⏭</button>
+      </div>
+
+      <div class="controls-group">
+        <span class="ctrl-label">속도:</span>
+        <button class="ctrl-btn speed-btn active" data-speed="1">1x</button>
+        <button class="ctrl-btn speed-btn" data-speed="2">2x</button>
+        <button class="ctrl-btn speed-btn" data-speed="5">5x</button>
+      </div>
+
+      <div class="controls-group">
+        <span class="ctrl-label">일차:</span>
+        <select class="ctrl-select" id="sel-day" aria-label="일차 선택">
+          <option value="all">전체</option>
+          <option value="2">2일차</option>
+          <option value="3">3일차</option>
+          <option value="4">4일차</option>
+        </select>
+        <span class="ctrl-label">채널:</span>
+        <select class="ctrl-select" id="sel-channel" aria-label="채널 선택">
+          <option value="all">전체</option>
+          <option value="유튜브">유튜브</option>
+          <option value="생방송">생방송</option>
+        </select>
+      </div>
+
+      <span class="pos-counter" id="pos-counter">행 0 / 0</span>
+    </div>
+
+    <!-- Left sidebar: process flow -->
+    <aside class="sidebar" aria-label="진행 흐름">
+      <div class="sidebar-title">진행 흐름</div>
+      <div class="flow-steps" id="flow-steps">
+        <div class="flow-step" data-stage="0">
+          <div class="flow-dot"></div>
+          <span>조별 토론</span>
+        </div>
+        <div class="flow-connector"></div>
+        <div class="flow-step" data-stage="1">
+          <div class="flow-dot"></div>
+          <span>조내 질문 선정 (~10)</span>
+        </div>
+        <div class="flow-connector"></div>
+        <div class="flow-step" data-stage="2">
+          <div class="flow-dot"></div>
+          <span>조 대표 질문 (1~2)</span>
+        </div>
+        <div class="flow-connector"></div>
+        <div class="flow-step" data-stage="3">
+          <div class="flow-dot"></div>
+          <span>모더레이터 선정</span>
+        </div>
+        <div class="flow-connector"></div>
+        <div class="flow-step active" data-stage="4">
+          <div class="flow-dot"></div>
+          <span>스텝 마이크 이동</span>
+        </div>
+        <div class="flow-connector"></div>
+        <div class="flow-step" data-stage="5">
+          <div class="flow-dot"></div>
+          <span>시민 발언</span>
+        </div>
+        <div class="flow-connector"></div>
+        <div class="flow-step" data-stage="6">
+          <div class="flow-dot"></div>
+          <span>전문가 응답</span>
+        </div>
+        <div class="flow-connector"></div>
+        <div class="flow-step" data-stage="7">
+          <div class="flow-dot"></div>
+          <span>다음 질문 준비</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main-content" id="main-content" role="main">
+      <!-- Current card -->
+      <div class="current-card" id="current-card">
+        <div class="empty-state" id="empty-state">
+          ▶ 재생 버튼을 눌러 시뮬레이션을 시작하세요
+        </div>
+        <div id="current-content" style="display:none">
+          <div class="card-meta" id="card-meta"></div>
+          <div class="content-text" id="content-text"></div>
+          <div class="speaker-line" id="speaker-line"></div>
+        </div>
+      </div>
+
+      <!-- Next queue -->
+      <div>
+        <div class="next-section-title" id="next-title" style="display:none">
+          ⬇ 다음 (<span id="next-count">0</span>건)
+        </div>
+        <div class="next-queue" id="next-queue" style="margin-top: 0.75rem;"></div>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress-bar-section">
+        <div class="progress-row">
+          <span class="progress-label" id="progress-label">진행 0 / 0</span>
+          <div class="progress-track">
+            <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+          </div>
+          <span class="progress-pct" id="progress-pct">0%</span>
+        </div>
+
+        <!-- Expert tally SVG bars -->
+        <div class="tally-section" id="tally-section"></div>
+
+        <!-- Status dots -->
+        <div class="status-dots" id="status-dots"></div>
+      </div>
+    </main>
+
+    <!-- Right sidebar: timer, ETA -->
+    <aside class="sidebar sidebar-right" aria-label="타이머 및 예상 시간">
+      <div class="sidebar-title">현재 시각</div>
+      <div class="timer-display" id="clock">--:--:--</div>
+
+      <div class="sidebar-title" style="margin-top: var(--space-4);">예상 소요</div>
+      <div class="eta-info" id="eta-info">
+        전체: —<br>
+        현재 위치: —<br>
+        잔여: —
+      </div>
+
+      <div class="sidebar-title" style="margin-top: var(--space-4);">진행 상태</div>
+      <div class="eta-info" id="sim-status">대기 중</div>
+    </aside>
+  </div>
+
+  <!-- Embedded simulation data — avoids Vite define:vars serialisation issues -->
+  <script id="sim-data" type="application/json" set:html={JSON.stringify(simQuestions)}></script>
+  <script id="sim-experts" type="application/json" set:html={JSON.stringify(experts)}></script>
+
+  <script is:inline>
+    // ========================================================================
+    // TODO(production): replace JSON import with Google Sheets CSV fetch
+    // const SHEET_CSV_URL = import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL;
+    // const data = await fetch(SHEET_CSV_URL).then(r => r.text()).then(parseCSV);
+    const simQuestions = JSON.parse(document.getElementById('sim-data').textContent);
+    const experts = JSON.parse(document.getElementById('sim-experts').textContent);
+    const data = simQuestions; // current: shipped JSON
+    // ========================================================================
+
+    const SPEEDS = { 1: 10000, 2: 5000, 5: 2000 };
+
+    // ── State ────────────────────────────────────────────────────────────────
+    let state = {
+      playing: false,
+      speed: 1,
+      currentIndex: -1,      // index into filtered list (-1 = not started)
+      filterDay: 'all',
+      filterChannel: 'all',
+      statuses: {},           // id → 'pending' | 'current' | 'done'
+    };
+
+    function saveState() {
+      try {
+        sessionStorage.setItem('mod-sim-state', JSON.stringify(state));
+      } catch (_) {}
+    }
+
+    function loadState() {
+      try {
+        const s = sessionStorage.getItem('mod-sim-state');
+        if (s) state = { ...state, ...JSON.parse(s) };
+      } catch (_) {}
+    }
+
+    // ── Filtered list ─────────────────────────────────────────────────────────
+    function getFiltered() {
+      return data.filter(q => {
+        if (state.filterDay !== 'all' && String(q.day) !== state.filterDay) return false;
+        if (state.filterChannel !== 'all' && q.channel !== state.filterChannel) return false;
+        return true;
+      });
+    }
+
+    // ── DOM refs ──────────────────────────────────────────────────────────────
+    const btnPlay    = document.getElementById('btn-play');
+    const btnPrev    = document.getElementById('btn-prev');
+    const btnNext    = document.getElementById('btn-next');
+    const selDay     = document.getElementById('sel-day');
+    const selChannel = document.getElementById('sel-channel');
+    const posCounter = document.getElementById('pos-counter');
+    const currentCard   = document.getElementById('current-card');
+    const emptyState    = document.getElementById('empty-state');
+    const currentContent= document.getElementById('current-content');
+    const cardMeta      = document.getElementById('card-meta');
+    const contentText   = document.getElementById('content-text');
+    const speakerLine   = document.getElementById('speaker-line');
+    const nextTitle     = document.getElementById('next-title');
+    const nextCount     = document.getElementById('next-count');
+    const nextQueue     = document.getElementById('next-queue');
+    const progressLabel = document.getElementById('progress-label');
+    const progressFill  = document.getElementById('progress-fill');
+    const progressPct   = document.getElementById('progress-pct');
+    const tallySection  = document.getElementById('tally-section');
+    const statusDots    = document.getElementById('status-dots');
+    const clock         = document.getElementById('clock');
+    const etaInfo       = document.getElementById('eta-info');
+    const simStatus     = document.getElementById('sim-status');
+    const flowSteps     = document.querySelectorAll('.flow-step');
+
+    // ── Render ─────────────────────────────────────────────────────────────────
+    function render() {
+      const filtered = getFiltered();
+      const idx = state.currentIndex;
+      const total = filtered.length;
+
+      // Controls
+      posCounter.textContent = `행 ${Math.max(idx + 1, 0)} / ${total}`;
+      btnPrev.disabled = idx <= 0;
+      btnNext.disabled = idx >= total - 1;
+      btnPlay.textContent = state.playing ? '⏸' : '▶';
+      btnPlay.classList.toggle('active', state.playing);
+
+      // Speed buttons
+      document.querySelectorAll('.speed-btn').forEach(btn => {
+        btn.classList.toggle('active', Number(btn.dataset.speed) === state.speed);
+      });
+
+      // Current card
+      if (idx < 0 || total === 0) {
+        emptyState.style.display = '';
+        currentContent.style.display = 'none';
+        nextTitle.style.display = 'none';
+        currentCard.classList.remove('playing');
+      } else {
+        const q = filtered[idx];
+        emptyState.style.display = 'none';
+        currentContent.style.display = '';
+        currentCard.classList.toggle('playing', state.playing);
+        nextTitle.style.display = '';
+
+        cardMeta.innerHTML = `
+          <span class="card-label">지금 발언</span>
+          <span class="meta-pill">${q.region || '—'} ${q.group ? q.group + '조' : ''}</span>
+          ${q.expert ? `<span class="meta-pill expert">답변: ${q.expert}</span>` : ''}
+          ${q.scheduled_time ? `<span class="meta-pill time">⏰ ${formatTime(q.scheduled_time)}</span>` : ''}
+          <span class="meta-pill">${q.channel}</span>
+        `;
+        contentText.textContent = q.content;
+        speakerLine.textContent = `Day ${q.day} · ${q.channel}`;
+      }
+
+      // Next queue (up to 3)
+      nextQueue.innerHTML = '';
+      const upcoming = filtered.slice(Math.max(idx + 1, 0), Math.max(idx + 1, 0) + 3);
+      nextCount.textContent = Math.min(filtered.length - Math.max(idx + 1, 0), filtered.length - Math.max(idx + 1, 0)).toString();
+      nextCount.textContent = String(Math.max(0, total - idx - 1));
+
+      upcoming.forEach((q, i) => {
+        const div = document.createElement('div');
+        div.className = 'next-item';
+        div.innerHTML = `
+          <div class="next-item-meta">
+            <span class="meta-pill">${q.region || '—'}</span>
+            ${q.expert ? `<span class="meta-pill expert">${q.expert}</span>` : ''}
+          </div>
+          <div class="next-item-content">${q.content}</div>
+        `;
+        nextQueue.appendChild(div);
+      });
+
+      // Progress
+      const done = filtered.filter(q => state.statuses[q.id] === 'done').length;
+      const pct = total ? Math.round((done / total) * 100) : 0;
+      progressLabel.textContent = `진행 ${done} / ${total} · ${pct}%`;
+      progressFill.style.width = `${pct}%`;
+      progressPct.textContent = `${pct}%`;
+
+      // Expert tally
+      const expertCounts = {};
+      filtered.forEach(q => {
+        if (state.statuses[q.id] === 'done' && q.expert) {
+          expertCounts[q.expert] = (expertCounts[q.expert] || 0) + 1;
+        }
+      });
+      const maxCount = Math.max(...Object.values(expertCounts), 1);
+      tallySection.innerHTML = '';
+      const tallyExperts = [...experts, '공통'].filter(e => e);
+      tallyExperts.forEach(name => {
+        const count = expertCounts[name] || 0;
+        if (count === 0 && !experts.includes(name)) return;
+        const row = document.createElement('div');
+        row.className = 'tally-row';
+        const isCommon = name === '공통';
+        row.innerHTML = `
+          <span class="tally-name" title="${name}">${name}</span>
+          <div class="tally-bar-track">
+            <div class="tally-bar-fill ${isCommon ? 'common' : ''}" style="width:${count ? Math.round((count/maxCount)*100) : 0}%"></div>
+          </div>
+          <span class="tally-count">${count}</span>
+        `;
+        tallySection.appendChild(row);
+      });
+
+      // Status dots
+      statusDots.innerHTML = '';
+      filtered.forEach(q => {
+        const dot = document.createElement('div');
+        dot.className = 'status-dot';
+        const st = state.statuses[q.id];
+        if (st === 'done') dot.classList.add('done');
+        if (st === 'current') dot.classList.add('current');
+        statusDots.appendChild(dot);
+      });
+
+      // Flow step highlight: cycle through stages based on position
+      const stageIndex = total > 0 ? Math.floor(((idx + 1) / total) * 6) % 8 : 4;
+      flowSteps.forEach((step, i) => {
+        step.classList.toggle('active', i === stageIndex);
+      });
+
+      // ETA
+      const speedMs = SPEEDS[state.speed];
+      const remaining = total - done;
+      const etaMs = remaining * speedMs;
+      etaInfo.innerHTML = `
+        전체: ${formatDuration(total * speedMs)}<br>
+        현재: ${idx + 1} / ${total}<br>
+        잔여: ${formatDuration(etaMs)}
+      `;
+
+      simStatus.textContent = state.playing ? '▶ 진행 중' : (idx >= 0 ? '⏸ 일시정지' : '대기 중');
+    }
+
+    function formatTime(t) {
+      if (!t || t === 'None') return '';
+      // Handle HH:MM:SS or HH:MM:SS.000000
+      return t.split('.')[0].slice(0, 5);
+    }
+
+    function formatDuration(ms) {
+      const s = Math.floor(ms / 1000);
+      const m = Math.floor(s / 60);
+      const h = Math.floor(m / 60);
+      if (h > 0) return `${h}h ${m % 60}m`;
+      return `${m}분 ${s % 60}초`;
+    }
+
+    // ── Sim engine ────────────────────────────────────────────────────────────
+    let timer = null;
+
+    function advance() {
+      const filtered = getFiltered();
+      const total = filtered.length;
+      if (state.currentIndex >= total - 1) {
+        pause();
+        return;
+      }
+      // Mark previous as done
+      if (state.currentIndex >= 0) {
+        const prev = filtered[state.currentIndex];
+        state.statuses[prev.id] = 'done';
+      }
+      state.currentIndex++;
+      const curr = filtered[state.currentIndex];
+      state.statuses[curr.id] = 'current';
+      saveState();
+      render();
+    }
+
+    function play() {
+      if (state.playing) return;
+      state.playing = true;
+      // If not started yet, advance once immediately
+      const filtered = getFiltered();
+      if (state.currentIndex < 0 && filtered.length > 0) {
+        advance();
+      }
+      timer = setInterval(() => advance(), SPEEDS[state.speed]);
+      saveState();
+      render();
+    }
+
+    function pause() {
+      state.playing = false;
+      if (timer) { clearInterval(timer); timer = null; }
+      saveState();
+      render();
+    }
+
+    function resetTimer() {
+      if (timer) { clearInterval(timer); timer = null; }
+      if (state.playing) {
+        timer = setInterval(() => advance(), SPEEDS[state.speed]);
+      }
+    }
+
+    // ── Controls ──────────────────────────────────────────────────────────────
+    btnPlay.addEventListener('click', () => {
+      state.playing ? pause() : play();
+    });
+
+    btnNext.addEventListener('click', () => {
+      advance();
+      resetTimer();
+    });
+
+    btnPrev.addEventListener('click', () => {
+      const filtered = getFiltered();
+      if (state.currentIndex <= 0) return;
+      // Unmark current
+      if (state.currentIndex >= 0) {
+        const curr = filtered[state.currentIndex];
+        state.statuses[curr.id] = 'pending';
+      }
+      state.currentIndex--;
+      if (state.currentIndex >= 0) {
+        const prev = filtered[state.currentIndex];
+        state.statuses[prev.id] = 'current';
+      }
+      resetTimer();
+      saveState();
+      render();
+    });
+
+    document.querySelectorAll('.speed-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.speed = Number(btn.dataset.speed);
+        resetTimer();
+        saveState();
+        render();
+      });
+    });
+
+    selDay.addEventListener('change', () => {
+      pause();
+      state.filterDay = selDay.value;
+      state.currentIndex = -1;
+      saveState();
+      render();
+    });
+
+    selChannel.addEventListener('change', () => {
+      pause();
+      state.filterChannel = selChannel.value;
+      state.currentIndex = -1;
+      saveState();
+      render();
+    });
+
+    // ── Clock ─────────────────────────────────────────────────────────────────
+    function updateClock() {
+      const now = new Date();
+      clock.textContent = now.toLocaleTimeString('ko-KR', { hour12: false });
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // ── Keyboard shortcuts ────────────────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+      if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
+      if (e.key === ' ' || e.key === 'k') { e.preventDefault(); state.playing ? pause() : play(); }
+      if (e.key === 'ArrowRight' || e.key === 'l') { e.preventDefault(); advance(); resetTimer(); }
+      if (e.key === 'ArrowLeft' || e.key === 'h') { btnPrev.click(); }
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    loadState();
+    // Sync selects to restored state
+    selDay.value = state.filterDay;
+    selChannel.value = state.filterChannel;
+    // Don't auto-play after page reload — user should explicitly press play
+    state.playing = false;
+    render();
+  </script>
+</body>
+</html>

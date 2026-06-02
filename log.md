@@ -2,6 +2,11 @@
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
+2026-06-02 09:18 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-02 09:18 | update | content/ko/doc/moderator-live-setup.md | 모더레이터 라이브 대시보드 운영 가이드 (last_updated: 2026-06-02)
+2026-06-02 09:14 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-02 09:14 | update | content/ko/doc/moderator-live-setup.md | 모더레이터 라이브 대시보드 운영 가이드 (last_updated: 2026-06-02)
+2026-06-02 09:10 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-02 08:54 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-02 08:54 | update | content/ko/doc/about.md | 2026 기후시민회의 모더레이터 아카이브 소개 (last_updated: 2026-05-31)
 2026-06-02 08:54 | update | content/ko/doc/agenda-matrix-v5.md | 의제 매트릭스 v5 — En-ROADS × 의제 v4 교차매핑 (last_updated: 2026-06-01)
