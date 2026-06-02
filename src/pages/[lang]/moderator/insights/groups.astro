@@ -1,0 +1,413 @@
+---
+/**
+ * /ko/moderator/insights/groups — 15 분임조별 의제 배분/대표질문/도메인 분포 (모더레이터 전용)
+ *
+ * PRIVACY:
+ *   - KO-only route
+ *   - robots noindex,nofollow
+ *   - NOT in sitemap, NOT in pagefind
+ *
+ * DATA:
+ *   - agendas-65.json (65 expert agendas)
+ *   - network/group-assignment.json (15 groups × members + reps, built by scripts/build-group-assignment.py)
+ *   - sample-agenda-15groups.json (30 rows = 15 groups × 2 reps, used for 답변자 lookup)
+ *
+ * VIEWS (3 tabs):
+ *   A. 전체 — sortable table of all 65 agendas with 분임 / 도메인 / big_category / rep ★
+ *   B. 조별 — 15 cards (3×5 grid), each showing 배정 의제 수, 대표질문 2건, 답변자, 도메인 chip
+ *   C. 시각화 — stacked bar (조별 big_category 분포) + 15 mini donuts (조별 domain 분포)
+ *
+ * RENDER:
+ *   - Pure Astro + inline SVG. No D3.
+ *   - Minimal JS for tab switching + table sort.
+ */
+
+import agendasRaw from '../../../../data/agendas-65.json';
+import groupAssignRaw from '../../../../data/network/group-assignment.json';
+import sampleRowsRaw from '../../../../data/sample-agenda-15groups.json';
+import '../../../../styles/global.css';
+
+export async function getStaticPaths() {
+  return [{ params: { lang: 'ko' } }];
+}
+
+interface Agenda {
+  id: number; big_category: string; domain: string; agenda_name: string;
+  current_situation: string; proposed_policy: string; expected_effect: string;
+}
+interface GroupAssign {
+  id: number; members: number[]; representatives: number[];
+  domains: string[]; categories: Record<string, number>; expert_default: string;
+}
+interface SampleRow {
+  id: number; group: string; expert: string; agenda_id: number;
+  agenda_title: string; big_category: string; content: string;
+}
+
+const agendas = agendasRaw as unknown as Agenda[];
+const groupAssign = (groupAssignRaw as unknown as { groups: GroupAssign[] }).groups;
+const sampleRows = sampleRowsRaw as unknown as SampleRow[];
+
+// agenda lookup
+const agendaById = new Map<number, Agenda>();
+for (const a of agendas) agendaById.set(a.id, a);
+
+// agenda → group lookup
+const groupOfAgenda = new Map<number, number>();
+for (const g of groupAssign) {
+  for (const aid of g.members) groupOfAgenda.set(aid, g.id);
+}
+
+// rep agendas (set)
+const repSet = new Set<string>();
+for (const g of groupAssign) {
+  for (const rid of g.representatives) repSet.add(`${g.id}:${rid}`);
+}
+
+// Per-group expert (from sample rows — picks 1st row of group as default; fallback to assign)
+const expertByGroup = new Map<number, string[]>();
+for (const r of sampleRows) {
+  const gn = parseInt(r.group, 10);
+  if (!expertByGroup.has(gn)) expertByGroup.set(gn, []);
+  expertByGroup.get(gn)!.push(r.expert);
+}
+
+// Big-category color palette (matches existing pages)
+const CAT_COLOR: Record<string, string> = {
+  '감축': '#3fb950',
+  '적응': '#58a6ff',
+  '혼합': '#d2a8ff',
+};
+
+// ── Table rows (View A) ──────────────────────────────────────────────────────
+const tableRows = agendas
+  .map((a) => ({
+    id: a.id,
+    group: groupOfAgenda.get(a.id) ?? 0,
+    domain: a.domain,
+    big: a.big_category,
+    title: a.agenda_name,
+    isRep: repSet.has(`${groupOfAgenda.get(a.id)}:${a.id}`),
+  }))
+  .sort((x, y) => x.group - y.group || x.id - y.id);
+
+// ── View C data ──────────────────────────────────────────────────────────────
+// Stacked bar: per-group counts by big_category
+const CATS = ['감축', '적응', '혼합'];
+const stackData = groupAssign.map((g) => ({
+  id: g.id,
+  counts: CATS.map((c) => g.categories[c] ?? 0),
+  total: g.members.length,
+}));
+const maxStackTotal = Math.max(...stackData.map((d) => d.total));
+
+// Stacked bar SVG
+const BAR_W = 38, BAR_GAP = 10, BAR_H = 220, BAR_TOP = 30, BAR_BOTTOM = 36, BAR_LEFT = 36;
+const stackSvgW = BAR_LEFT + (BAR_W + BAR_GAP) * 15 + 20;
+const stackSvgH = BAR_TOP + BAR_H + BAR_BOTTOM;
+
+const stackBars: string[] = [];
+// y-axis gridline
+for (let v = 0; v <= maxStackTotal; v++) {
+  const y = BAR_TOP + BAR_H - (v / maxStackTotal) * BAR_H;
+  stackBars.push(
+    `<line x1="${BAR_LEFT}" y1="${y}" x2="${stackSvgW - 10}" y2="${y}" stroke="#30363d" stroke-width="0.5"/>`
+  );
+  stackBars.push(`<text x="${BAR_LEFT - 6}" y="${y + 3}" text-anchor="end" font-size="9" fill="#8b949e">${v}</text>`);
+}
+stackData.forEach((d, i) => {
+  const x = BAR_LEFT + i * (BAR_W + BAR_GAP);
+  let yCursor = BAR_TOP + BAR_H;
+  d.counts.forEach((cnt, ci) => {
+    if (!cnt) return;
+    const h = (cnt / maxStackTotal) * BAR_H;
+    yCursor -= h;
+    stackBars.push(
+      `<rect x="${x}" y="${yCursor}" width="${BAR_W}" height="${h}" fill="${CAT_COLOR[CATS[ci]]}" opacity="0.85"><title>${d.id}조 · ${CATS[ci]} ${cnt}건</title></rect>`
+    );
+    if (h > 14) {
+      stackBars.push(
+        `<text x="${x + BAR_W / 2}" y="${yCursor + h / 2 + 3}" text-anchor="middle" font-size="9" fill="#0d1117" font-weight="700">${cnt}</text>`
+      );
+    }
+  });
+  // x label
+  stackBars.push(
+    `<text x="${x + BAR_W / 2}" y="${BAR_TOP + BAR_H + 14}" text-anchor="middle" font-size="10" fill="#f0f6fc">${d.id}조</text>`
+  );
+  stackBars.push(
+    `<text x="${x + BAR_W / 2}" y="${BAR_TOP + BAR_H + 26}" text-anchor="middle" font-size="9" fill="#8b949e">${d.total}건</text>`
+  );
+});
+const stackedSvg = stackBars.join('\n');
+
+// ── Mini donuts (View C right) ──────────────────────────────────────────────
+// Per group, domain distribution → polar arcs
+const DONUT_R = 30, DONUT_INNER = 14, DONUT_BOX = 84;
+
+function donutSvg(g: GroupAssign): string {
+  const cx = DONUT_BOX / 2, cy = DONUT_BOX / 2 + 6;
+  const domainCounts: Record<string, number> = {};
+  for (const aid of g.members) {
+    const a = agendaById.get(aid);
+    if (!a) continue;
+    domainCounts[a.domain] = (domainCounts[a.domain] ?? 0) + 1;
+  }
+  const entries = Object.entries(domainCounts).sort((a, b) => b[1] - a[1]);
+  const total = g.members.length;
+  // Use big_category color of the dominant agenda's category for each slice (categorical hash)
+  const SLICE_PALETTE = ['#58a6ff', '#3fb950', '#d2a8ff', '#FDE725', '#f78166', '#7ee787', '#a371f7'];
+  let start = -Math.PI / 2;
+  const arcs: string[] = [];
+  entries.forEach(([dom, cnt], i) => {
+    const frac = cnt / total;
+    const end = start + frac * Math.PI * 2;
+    const x1 = cx + DONUT_R * Math.cos(start);
+    const y1 = cy + DONUT_R * Math.sin(start);
+    const x2 = cx + DONUT_R * Math.cos(end);
+    const y2 = cy + DONUT_R * Math.sin(end);
+    const xi1 = cx + DONUT_INNER * Math.cos(end);
+    const yi1 = cy + DONUT_INNER * Math.sin(end);
+    const xi2 = cx + DONUT_INNER * Math.cos(start);
+    const yi2 = cy + DONUT_INNER * Math.sin(start);
+    const large = frac > 0.5 ? 1 : 0;
+    const color = SLICE_PALETTE[i % SLICE_PALETTE.length];
+    arcs.push(
+      `<path d="M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${DONUT_R} ${DONUT_R} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} L ${xi1.toFixed(2)} ${yi1.toFixed(2)} A ${DONUT_INNER} ${DONUT_INNER} 0 ${large} 0 ${xi2.toFixed(2)} ${yi2.toFixed(2)} Z" fill="${color}" opacity="0.85"><title>${dom} ${cnt}건</title></path>`
+    );
+    start = end;
+  });
+  // centre label
+  arcs.push(`<text x="${cx}" y="${cy + 3}" text-anchor="middle" font-size="11" font-weight="700" fill="#f0f6fc">${g.id}조</text>`);
+  // header label (above)
+  arcs.push(`<text x="${cx}" y="14" text-anchor="middle" font-size="10" fill="#8b949e">${total}건 · ${entries.length}도메인</text>`);
+  return `<svg viewBox="0 0 ${DONUT_BOX} ${DONUT_BOX}" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">${arcs.join('')}</svg>`;
+}
+---
+<!doctype html>
+<html lang="ko" dir="ltr" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>분임조별 의제 분포 [모더레이터 인사이트]</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117; --bg-subtle: #161b22; --border: #30363d;
+      --fg: #f0f6fc; --fg-muted: #8b949e; --accent: #58a6ff;
+      --font: 'Pretendard Variable', 'Noto Sans KR', system-ui, sans-serif;
+      --radius: 6px;
+    }
+    body { background: var(--bg); color: var(--fg); font-family: var(--font); min-height: 100vh; }
+    .privacy-banner { background: #6e2020; color: #ffdcd7; text-align: center; padding: 6px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; border-bottom: 2px solid #b22a2a; }
+    .subnav { background: var(--bg-subtle); border-bottom: 1px solid var(--border); padding: 8px 20px; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg-muted); }
+    .subnav-label { font-weight: 700; margin-right: 4px; }
+    .subnav a { color: var(--fg-muted); text-decoration: none; padding: 3px 8px; border-radius: var(--radius); border: 1px solid transparent; }
+    .subnav a:hover { color: var(--fg); border-color: var(--border); }
+    .subnav a.current { color: var(--accent); border-color: var(--accent); font-weight: 600; }
+    .subnav-sep { color: var(--border); }
+    .page-header { padding: 16px 24px 10px; border-bottom: 1px solid var(--border); background: var(--bg-subtle); }
+    .page-header h1 { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+    .page-header .meta { font-size: 11px; color: var(--fg-muted); display: flex; gap: 14px; flex-wrap: wrap; }
+
+    .tabs { display: flex; gap: 4px; padding: 10px 20px 0; background: var(--bg-subtle); border-bottom: 1px solid var(--border); }
+    .tab-btn { background: transparent; border: 1px solid var(--border); border-bottom: none; color: var(--fg-muted); padding: 7px 14px; font-size: 12px; cursor: pointer; border-radius: var(--radius) var(--radius) 0 0; font-family: inherit; }
+    .tab-btn.active { background: var(--bg); color: var(--fg); border-color: var(--accent); }
+
+    .tab-panel { display: none; padding: 18px 24px; }
+    .tab-panel.active { display: block; }
+
+    /* View A — table */
+    .ag-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .ag-table th, .ag-table td { text-align: left; padding: 6px 9px; border-bottom: 1px solid var(--border); }
+    .ag-table th { color: var(--fg-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; user-select: none; }
+    .ag-table th:hover { color: var(--accent); }
+    .ag-table tbody tr:hover { background: var(--bg-subtle); }
+    .ag-table td.col-id { color: var(--fg-muted); font-variant-numeric: tabular-nums; width: 44px; }
+    .ag-table td.col-group { font-weight: 600; width: 56px; }
+    .ag-table td.col-rep { width: 28px; text-align: center; color: #FDE725; }
+    .ag-table td.col-domain { color: var(--fg-muted); font-size: 11px; width: 200px; }
+    .cat-b { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 99px; }
+    .cat-b-감축 { background: #1a3a1a; color: #3fb950; border: 1px solid #238636; }
+    .cat-b-적응 { background: #1a2d3a; color: #58a6ff; border: 1px solid #1f6feb; }
+    .cat-b-혼합 { background: #2d1a3a; color: #d2a8ff; border: 1px solid #6e40c9; }
+
+    /* View B — group cards */
+    .group-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    @media (max-width: 1000px) { .group-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 640px)  { .group-grid { grid-template-columns: 1fr; } }
+    .group-card { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius); padding: 11px 13px; }
+    .gc-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+    .gc-num { font-size: 15px; font-weight: 700; }
+    .gc-expert { font-size: 11px; color: var(--accent); }
+    .gc-meta { font-size: 10px; color: var(--fg-muted); margin-bottom: 8px; }
+    .gc-rep { font-size: 11px; line-height: 1.45; margin-bottom: 6px; padding: 6px 8px; background: var(--bg); border-left: 2px solid #FDE725; border-radius: 0 var(--radius) var(--radius) 0; }
+    .gc-rep-id { color: var(--fg-muted); font-size: 9px; margin-right: 4px; font-variant-numeric: tabular-nums; }
+    .gc-chips { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 8px; }
+    .gc-chip { font-size: 9px; padding: 1px 6px; border-radius: 99px; background: var(--bg); color: var(--fg-muted); border: 1px solid var(--border); }
+
+    /* View C — viz */
+    .viz-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @media (max-width: 1100px) { .viz-wrap { grid-template-columns: 1fr; } }
+    .viz-panel { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+    .viz-title { font-size: 12px; font-weight: 700; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+    .donut-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+    .donut-cell { aspect-ratio: 1 / 1; }
+    .legend { display: flex; gap: 12px; font-size: 11px; margin-top: 10px; color: var(--fg-muted); }
+    .lg-sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+  </style>
+</head>
+<body>
+
+  <div class="privacy-banner">
+    모더레이터 인사이트 · 분임조 배분 자체 분석 · 외부 공개 금지
+  </div>
+
+  <nav class="subnav" aria-label="모더레이터 도구 네비게이션">
+    <span class="subnav-label">[모더레이터 도구]</span>
+    <a href="/ko/moderator/live">라이브</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/heatmap">히트맵</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/clusters">클러스터</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/agenda-network">의제연결</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/groups" class="current">조별</a>
+  </nav>
+
+  <header class="page-header">
+    <h1>분임조별 의제 배분 · 대표질문 · 도메인 분포</h1>
+    <div class="meta">
+      <span>65 의제 · 15 조</span>
+      <span>대표 30건 (조당 2건)</span>
+      <span>알고리즘: round-robin by (domain, id) → top-2 by keyword diversity</span>
+      <span>출처: build-group-assignment.py</span>
+    </div>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button class="tab-btn active" data-tab="all" role="tab">A · 전체 65 의제</button>
+    <button class="tab-btn" data-tab="bygroup" role="tab">B · 조별 대표 (15×2)</button>
+    <button class="tab-btn" data-tab="viz" role="tab">C · 시각화</button>
+  </div>
+
+  <!-- ===== Tab A : 전체 ===== -->
+  <section id="tab-all" class="tab-panel active" role="tabpanel">
+    <table class="ag-table" id="agTable">
+      <thead>
+        <tr>
+          <th data-sort="id">ID</th>
+          <th data-sort="group">분임</th>
+          <th data-sort="rep">★</th>
+          <th data-sort="big">구분</th>
+          <th data-sort="domain">도메인</th>
+          <th data-sort="title">의제명</th>
+        </tr>
+      </thead>
+      <tbody>
+        {tableRows.map((r) => (
+          <tr data-id={r.id} data-group={r.group} data-rep={r.isRep ? 1 : 0} data-big={r.big} data-domain={r.domain} data-title={r.title}>
+            <td class="col-id">{r.id}</td>
+            <td class="col-group">{r.group}조</td>
+            <td class="col-rep">{r.isRep ? '★' : ''}</td>
+            <td><span class={`cat-b cat-b-${r.big}`}>{r.big}</span></td>
+            <td class="col-domain">{r.domain}</td>
+            <td>{r.title}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ===== Tab B : 조별 ===== -->
+  <section id="tab-bygroup" class="tab-panel" role="tabpanel">
+    <div class="group-grid">
+      {groupAssign.map((g) => {
+        const reps = g.representatives.map((rid) => agendaById.get(rid)).filter(Boolean) as Agenda[];
+        const expertList = expertByGroup.get(g.id) ?? [g.expert_default];
+        const expertLabel = [...new Set(expertList)].join(' / ');
+        return (
+          <article class="group-card">
+            <div class="gc-head">
+              <span class="gc-num">{g.id}조</span>
+              <span class="gc-expert">답변자 {expertLabel}</span>
+            </div>
+            <div class="gc-meta">배정 {g.members.length}건 · 대표 {reps.length}건 · 도메인 {g.domains.length}개</div>
+            {reps.map((a) => (
+              <div class="gc-rep">
+                <span class="gc-rep-id">#{a.id}</span>
+                <span class={`cat-b cat-b-${a.big_category}`}>{a.big_category}</span>
+                <span style="margin-left:4px">{a.agenda_name}</span>
+              </div>
+            ))}
+            <div class="gc-chips">
+              {g.domains.map((d) => <span class="gc-chip">{d}</span>)}
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  </section>
+
+  <!-- ===== Tab C : 시각화 ===== -->
+  <section id="tab-viz" class="tab-panel" role="tabpanel">
+    <div class="viz-wrap">
+      <div class="viz-panel">
+        <div class="viz-title">조별 big_category 분포 (stacked bar)</div>
+        <svg viewBox={`0 0 ${stackSvgW} ${stackSvgH}`} xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block" set:html={stackedSvg} />
+        <div class="legend">
+          <span><span class="lg-sw" style="background:#3fb950"></span>감축</span>
+          <span><span class="lg-sw" style="background:#58a6ff"></span>적응</span>
+          <span><span class="lg-sw" style="background:#d2a8ff"></span>혼합</span>
+        </div>
+      </div>
+      <div class="viz-panel">
+        <div class="viz-title">조별 도메인 분포 (mini donuts)</div>
+        <div class="donut-grid">
+          {groupAssign.map((g) => (
+            <div class="donut-cell" set:html={donutSvg(g)} />
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script is:inline>
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const tab = btn.getAttribute('data-tab');
+        document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('.tab-panel').forEach((p) => p.classList.toggle('active', p.id === 'tab-' + tab));
+      });
+    });
+
+    // Table sort (View A)
+    (function () {
+      const table = document.getElementById('agTable');
+      if (!table) return;
+      const tbody = table.querySelector('tbody');
+      let lastKey = null, asc = true;
+      table.querySelectorAll('th[data-sort]').forEach((th) => {
+        th.addEventListener('click', () => {
+          const key = th.getAttribute('data-sort');
+          asc = (lastKey === key) ? !asc : true;
+          lastKey = key;
+          const rows = Array.from(tbody.querySelectorAll('tr'));
+          rows.sort((a, b) => {
+            let va = a.getAttribute('data-' + key);
+            let vb = b.getAttribute('data-' + key);
+            const na = parseFloat(va), nb = parseFloat(vb);
+            if (!isNaN(na) && !isNaN(nb)) { return asc ? na - nb : nb - na; }
+            return asc ? String(va).localeCompare(String(vb), 'ko') : String(vb).localeCompare(String(va), 'ko');
+          });
+          rows.forEach((r) => tbody.appendChild(r));
+        });
+      });
+    })();
+  </script>
+
+</body>
+</html>
