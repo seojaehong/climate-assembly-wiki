@@ -12,14 +12,21 @@
  * DATA:
  *   - src/data/network/agenda-similarity.json
  *     Built by scripts/build-agenda-similarity.py
- *     Jaccard similarity on 63 heatmap keywords, threshold=0.35, ~213 edges
- *     Force layout pre-computed (Fruchterman-Reingold, 200 iter, 800×600)
+ *     Jaccard similarity on 63 heatmap keywords, threshold=0.35, 213 edges
+ *     Disparity backbone (alpha=0.35, 균등분포 보정): 44 edges
+ *     Force layouts pre-computed (Fruchterman-Reingold, 200 iter, 800×600)
+ *       nodes[].x/y = full graph, nodes[].x_bb/y_bb = backbone
+ *     Similarity matrix: all non-zero Jaccard pairs
+ *     nodes_by_domain: domain-sorted id order for heatmap diagonal bands
  *
- * RENDER:
- *   - Static SVG pre-computed at build time (no D3, no client-side force layout)
- *   - Hover: highlight neighbors + tooltip with full title
- *   - Click: pin side panel with agenda detail + connected agendas
- *   - Filter: big_category checkboxes + domain dropdown + similarity threshold slider
+ * TABS:
+ *   1. heatmap  — 65×65 Jaccard matrix sorted by (category, domain)
+ *   2. backbone — disparity-filtered force graph (44 edges)
+ *   3. ego      — one focal agenda + its direct neighbors
+ *   4. full     — all 213 edges as low-opacity hairball
+ *
+ * Tab state synced to URL hash for shareable deep-links.
+ * Node coloring: big_category only (감축/적응/혼합) — no community colors.
  */
 
 import networkRaw from '../../../../data/network/agenda-similarity.json';
@@ -36,9 +43,11 @@ interface NetworkNode {
   domain: string;
   big_category: string;
   degree: number;
-  community: number;
+  bb_degree: number;
   x: number;
   y: number;
+  x_bb: number;
+  y_bb: number;
 }
 interface NetworkEdge {
   source: number;
@@ -52,9 +61,13 @@ interface CommunityRecord {
 }
 interface NetworkData {
   threshold: number;
+  disparity_alpha: number;
   nodes: NetworkNode[];
   edges: NetworkEdge[];
+  edges_backbone: NetworkEdge[];
   communities: CommunityRecord[];
+  nodes_by_domain: number[];
+  similarity_matrix: Record<string, number>;
 }
 interface Agenda {
   id: number;
@@ -68,13 +81,12 @@ interface Agenda {
 
 const network = networkRaw as NetworkData;
 const agendas = agendasRaw as Agenda[];
-const agendaById = Object.fromEntries(agendas.map(a => [a.id, a]));
 
-// SVG canvas dimensions (must match Fruchterman-Reingold in build script)
+// SVG canvas dimensions
 const SVG_W = 800;
 const SVG_H = 600;
 
-// Color by big_category
+// Color by big_category only (no community colors — honest about dense clustering)
 const CAT_COLORS: Record<string, string> = {
   '감축': '#34d399',   // green
   '적응': '#60a5fa',   // blue
@@ -86,25 +98,37 @@ const CAT_STROKE: Record<string, string> = {
   '혼합': '#4c1d95',
 };
 
-// Node radius: base + degree scale
 function nodeRadius(degree: number): number {
   return Math.max(5, Math.min(16, 5 + degree * 0.6));
 }
 
-// Unique domains for filter dropdown
+// Build unique domains for ego dropdown
 const allDomains = [...new Set(network.nodes.map(n => n.domain))].sort();
 
-// Pre-build edge index: node id → set of neighbor ids (for JS hover)
-const edgeIndex: Record<number, number[]> = {};
-network.nodes.forEach(n => { edgeIndex[n.id] = []; });
+// Pre-build edge index for full graph (node id -> neighbor ids)
+const edgeIndexFull: Record<number, number[]> = {};
+network.nodes.forEach(n => { edgeIndexFull[n.id] = []; });
 network.edges.forEach(e => {
-  edgeIndex[e.source].push(e.target);
-  edgeIndex[e.target].push(e.source);
+  edgeIndexFull[e.source].push(e.target);
+  edgeIndexFull[e.target].push(e.source);
 });
 
-// Pre-build: edge list as JSON for JS filtering
-const edgesJson = JSON.stringify(network.edges);
+// Pre-build edge index for backbone
+const edgeIndexBB: Record<number, number[]> = {};
+network.nodes.forEach(n => { edgeIndexBB[n.id] = []; });
+network.edges_backbone.forEach(e => {
+  edgeIndexBB[e.source].push(e.target);
+  edgeIndexBB[e.target].push(e.source);
+});
+
+// JSON blobs for JS
 const nodesJson = JSON.stringify(network.nodes);
+const edgesFullJson = JSON.stringify(network.edges);
+const edgesBBJson = JSON.stringify(network.edges_backbone);
+const edgeIndexFullJson = JSON.stringify(edgeIndexFull);
+const edgeIndexBBJson = JSON.stringify(edgeIndexBB);
+const nodesByDomainJson = JSON.stringify(network.nodes_by_domain);
+const simMatrixJson = JSON.stringify(network.similarity_matrix);
 const agendaMapJson = JSON.stringify(
   Object.fromEntries(agendas.map(a => [a.id, {
     id: a.id,
@@ -116,7 +140,43 @@ const agendaMapJson = JSON.stringify(
     expected_effect: a.expected_effect.slice(0, 200),
   }]))
 );
-const edgeIndexJson = JSON.stringify(edgeIndex);
+
+// Heatmap: 65×65 grid rendered as SVG rects
+// Cell size chosen so 65 cells fit in a reasonable canvas
+const HM_CELL = 9;       // px per cell
+const HM_SIZE = 65 * HM_CELL; // 585px
+
+// Pre-sort nodes by domain for heatmap labels
+const nodesByDomain = network.nodes_by_domain;
+const nodeById = Object.fromEntries(network.nodes.map(n => [n.id, n]));
+
+// Heatmap: build SVG rect list (only non-zero off-diagonal cells)
+const hmNodes = nodesByDomain.map(id => nodeById[id]);
+
+// Heatmap: category band metadata (computed in frontmatter, no TS generics in template)
+type HmBand = { cat: string; start: number; len: number; color: string };
+const hmRowBands: HmBand[] = [];
+const hmDividers: number[] = [];
+{
+  let cur = '';
+  let start = 0;
+  hmNodes.forEach((n, i) => {
+    if (n.big_category !== cur) {
+      if (cur) hmRowBands.push({ cat: cur, start, len: i - start, color: CAT_COLORS[cur] || '#8b949e' });
+      if (cur && i > 0) hmDividers.push(i);
+      cur = n.big_category;
+      start = i;
+    }
+  });
+  if (cur) hmRowBands.push({ cat: cur, start, len: hmNodes.length - start, color: CAT_COLORS[cur] || '#8b949e' });
+}
+
+// Build backbone SVG (static pre-computed)
+const bbNodeSet = new Set<number>();
+network.edges_backbone.forEach(e => {
+  bbNodeSet.add(e.source);
+  bbNodeSet.add(e.target);
+});
 ---
 <!doctype html>
 <html lang="ko" dir="ltr" data-theme="dark" class="dark">
@@ -125,7 +185,6 @@ const edgeIndexJson = JSON.stringify(edgeIndex);
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>의제연결 네트워크 [모더레이터 전용]</title>
   <meta name="robots" content="noindex,nofollow" />
-  <!-- No canonical, no hreflang, no OG — private page -->
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -176,66 +235,53 @@ const edgeIndexJson = JSON.stringify(edgeIndex);
     .subnav a.current { color: #58a6ff; border-color: #58a6ff; font-weight: 600; }
     .subnav-sep { color: #30363d; }
 
-    /* ---- Filter bar ---- */
-    .filter-bar {
+    /* ---- Tab bar ---- */
+    .tab-bar {
       background: #161b22;
       border-bottom: 1px solid #30363d;
-      padding: 8px 16px;
       display: flex;
-      align-items: center;
-      gap: 16px;
-      flex-wrap: wrap;
-      font-size: 12px;
+      align-items: stretch;
+      gap: 0;
       flex-shrink: 0;
     }
-    .filter-group {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .filter-label {
+    .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
       color: #8b949e;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-    .filter-check { accent-color: #58a6ff; cursor: pointer; }
-    .filter-check-label {
-      cursor: pointer;
-      padding: 2px 6px;
-      border-radius: 3px;
-      border: 1px solid transparent;
-      user-select: none;
-    }
-    .filter-check-label.cat-감축 { color: #34d399; }
-    .filter-check-label.cat-적응 { color: #60a5fa; }
-    .filter-check-label.cat-혼합 { color: #d2a8ff; }
-    .filter-check-label.active { border-color: currentColor; }
-
-    select.filter-select {
-      background: #0d1117;
-      border: 1px solid #30363d;
-      color: #f3f4f6;
-      border-radius: 4px;
-      padding: 3px 8px;
+      padding: 8px 16px;
       font-size: 12px;
-    }
-
-    .threshold-slider { width: 100px; accent-color: #58a6ff; }
-    .threshold-val { color: #60a5fa; font-weight: 600; min-width: 32px; }
-
-    .stats-info {
-      margin-left: auto;
-      color: #8b949e;
-      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: color 0.1s, border-color 0.1s;
       white-space: nowrap;
     }
+    .tab-btn:hover { color: #f3f4f6; }
+    .tab-btn.active { color: #58a6ff; border-bottom-color: #58a6ff; }
 
-    /* ---- Main layout ---- */
-    .page-body {
+    /* ---- Explainer box ---- */
+    .explainer {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 6px 16px;
+      font-size: 11px;
+      color: #8b949e;
+      line-height: 1.5;
+      flex-shrink: 0;
+    }
+    .explainer strong { color: #c9d1d9; }
+
+    /* ---- Tab panels ---- */
+    .tab-panel { display: none; flex: 1; min-height: 0; overflow: hidden; }
+    .tab-panel.active { display: flex; }
+
+    /* ---- Shared: page body layout ---- */
+    .panel-layout {
       display: flex;
       flex: 1;
       min-height: 0;
       overflow: hidden;
+      width: 100%;
     }
 
     /* ---- SVG pane ---- */
@@ -243,50 +289,13 @@ const edgeIndexJson = JSON.stringify(edgeIndex);
       flex: 1;
       min-width: 0;
       position: relative;
-      overflow: hidden;
+      overflow: auto;
       display: flex;
-      align-items: center;
-      justify-content: center;
+      align-items: flex-start;
+      justify-content: flex-start;
       background: #0d1117;
+      padding: 8px;
     }
-
-    #network-svg {
-      width: 100%;
-      height: 100%;
-      max-width: 100%;
-      max-height: calc(100vh - 160px);
-    }
-
-    /* SVG element styles (applied via JS for interactive hover) */
-    .net-edge {
-      stroke: #30363d;
-      stroke-opacity: 0.5;
-      fill: none;
-      transition: stroke-opacity 0.15s;
-    }
-    .net-edge.highlight { stroke: #58a6ff; stroke-opacity: 0.9; }
-    .net-edge.dimmed { stroke-opacity: 0.05; }
-    .net-edge.hidden { display: none; }
-
-    .net-node {
-      cursor: pointer;
-      transition: opacity 0.15s;
-    }
-    .net-node circle {
-      transition: r 0.1s;
-    }
-    .net-node.dimmed { opacity: 0.15; }
-    .net-node.highlighted circle { stroke-width: 3; filter: drop-shadow(0 0 4px currentColor); }
-    .net-node.selected circle { stroke-width: 3; filter: drop-shadow(0 0 6px currentColor); }
-
-    .net-label {
-      font-size: 8px;
-      fill: #8b949e;
-      pointer-events: none;
-      text-anchor: middle;
-      dominant-baseline: auto;
-    }
-    .net-label.highlight { fill: #f3f4f6; font-weight: 600; }
 
     /* ---- Tooltip ---- */
     #net-tooltip {
@@ -298,17 +307,17 @@ const edgeIndexJson = JSON.stringify(edgeIndex);
       font-size: 12px;
       color: #f3f4f6;
       pointer-events: none;
-      z-index: 100;
-      max-width: 300px;
+      z-index: 200;
+      max-width: 320px;
       display: none;
       line-height: 1.5;
     }
     .tip-title { font-weight: 600; margin-bottom: 4px; }
     .tip-meta { color: #8b949e; font-size: 11px; }
 
-    /* ---- Side panel ---- */
+    /* ---- Side panel (shared) ---- */
     .side-panel {
-      width: 340px;
+      width: 320px;
       background: #161b22;
       border-left: 1px solid #30363d;
       display: flex;
@@ -316,81 +325,37 @@ const edgeIndexJson = JSON.stringify(edgeIndex);
       flex-shrink: 0;
       overflow-y: auto;
     }
-
     .panel-header {
-      padding: 12px 16px 8px;
+      padding: 10px 14px 8px;
       border-bottom: 1px solid #30363d;
       font-size: 12px;
       color: #8b949e;
       flex-shrink: 0;
     }
     .panel-header strong { color: #f3f4f6; font-size: 13px; }
-
-    .panel-body {
-      padding: 12px 16px;
-      font-size: 12px;
-      color: #c9d1d9;
-      line-height: 1.6;
-      flex: 1;
-    }
-
-    .panel-empty {
-      padding: 48px 16px;
-      text-align: center;
-      color: #8b949e;
-      font-size: 12px;
-    }
-
+    .panel-body { padding: 10px 14px; font-size: 12px; color: #c9d1d9; line-height: 1.6; flex: 1; }
+    .panel-empty { padding: 40px 14px; text-align: center; color: #8b949e; font-size: 12px; }
     .panel-agenda-card {
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      padding: 10px 12px;
-      margin-bottom: 10px;
-      background: #0d1117;
+      border: 1px solid #30363d; border-radius: 6px; padding: 10px 12px;
+      margin-bottom: 10px; background: #0d1117;
     }
-    .panel-agenda-name {
-      font-weight: 600;
-      color: #f3f4f6;
-      margin-bottom: 4px;
-      font-size: 13px;
-      line-height: 1.4;
-    }
-    .panel-agenda-meta {
-      font-size: 11px;
-      color: #8b949e;
-      margin-bottom: 6px;
-    }
-    .panel-agenda-text {
-      font-size: 11px;
-      color: #8b949e;
-      line-height: 1.5;
-    }
+    .panel-agenda-name { font-weight: 600; color: #f3f4f6; margin-bottom: 4px; font-size: 13px; line-height: 1.4; }
+    .panel-agenda-meta { font-size: 11px; color: #8b949e; margin-bottom: 6px; }
+    .panel-agenda-text { font-size: 11px; color: #8b949e; line-height: 1.5; }
     .cat-pill {
-      display: inline-block;
-      font-size: 10px;
-      padding: 1px 6px;
-      border-radius: 3px;
-      font-weight: 600;
+      display: inline-block; font-size: 10px; padding: 1px 6px;
+      border-radius: 3px; font-weight: 600;
     }
     .cat-pill.감축 { background: #022c22; color: #34d399; border: 1px solid #064e3b; }
     .cat-pill.적응 { background: #0c1a2e; color: #60a5fa; border: 1px solid #1e3a5f; }
     .cat-pill.혼합 { background: #1a0a2e; color: #d2a8ff; border: 1px solid #4c1d95; }
-
     .conn-list-title {
-      font-size: 11px;
-      font-weight: 600;
-      color: #8b949e;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin: 12px 0 6px;
+      font-size: 11px; font-weight: 600; color: #8b949e;
+      text-transform: uppercase; letter-spacing: 0.05em; margin: 10px 0 5px;
     }
     .conn-item {
-      display: flex;
-      gap: 8px;
-      align-items: flex-start;
-      padding: 5px 0;
-      border-bottom: 1px solid #21262d;
-      cursor: pointer;
+      display: flex; gap: 8px; align-items: flex-start;
+      padding: 5px 0; border-bottom: 1px solid #21262d; cursor: pointer;
     }
     .conn-item:hover .conn-name { color: #58a6ff; }
     .conn-name { font-size: 11px; color: #c9d1d9; flex: 1; line-height: 1.4; }
@@ -398,16 +363,91 @@ const edgeIndexJson = JSON.stringify(edgeIndex);
 
     /* ---- Legend ---- */
     .legend {
-      padding: 10px 16px;
+      padding: 8px 14px;
       border-top: 1px solid #30363d;
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      font-size: 11px;
-      flex-shrink: 0;
+      display: flex; gap: 10px; flex-wrap: wrap;
+      font-size: 11px; flex-shrink: 0;
     }
     .legend-item { display: flex; align-items: center; gap: 4px; color: #8b949e; }
     .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ---- Heatmap tab specific ---- */
+    #tab-heatmap.active { display: block; overflow: auto; }
+    .hm-wrap { padding: 12px; display: inline-block; }
+    .hm-axis-label {
+      font-size: 8px; fill: #8b949e; text-anchor: end; dominant-baseline: middle;
+    }
+    .hm-axis-top {
+      font-size: 8px; fill: #8b949e; text-anchor: start;
+    }
+    .hm-cat-band { fill-opacity: 0.15; }
+    .hm-cell { cursor: pointer; }
+    .hm-cell:hover { stroke: #f3f4f6; stroke-width: 1; }
+
+    /* ---- Network SVG shared ---- */
+    .net-edge { stroke: #30363d; stroke-opacity: 0.5; fill: none; }
+    .net-edge.highlight { stroke: #58a6ff; stroke-opacity: 0.9; }
+    .net-edge.dimmed { stroke-opacity: 0.04; }
+    .net-edge.hidden { display: none; }
+    .net-node { cursor: pointer; }
+    .net-node circle { transition: r 0.1s; }
+    .net-node.dimmed { opacity: 0.12; }
+    .net-node.highlighted circle { stroke-width: 3; filter: drop-shadow(0 0 4px currentColor); }
+    .net-node.selected circle { stroke-width: 3; filter: drop-shadow(0 0 6px currentColor); }
+    .net-label { font-size: 8px; fill: #8b949e; pointer-events: none; text-anchor: middle; }
+    .net-label.highlight { fill: #f3f4f6; font-weight: 600; }
+
+    /* ---- Backbone tab banner ---- */
+    .bb-info-bar {
+      background: #0f2d1a;
+      border-bottom: 1px solid #1a4a2a;
+      padding: 5px 14px;
+      font-size: 11px;
+      color: #6ee7b7;
+      flex-shrink: 0;
+    }
+
+    /* ---- Full tab banner ---- */
+    .full-info-banner {
+      background: #1c1a2e;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 11px;
+      color: #8b949e;
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+    .full-info-banner strong { color: #d2a8ff; }
+
+    /* ---- Ego tab ---- */
+    .ego-controls {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 7px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    select.filter-select {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      color: #f3f4f6;
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 12px;
+      max-width: 340px;
+    }
+
+    /* ---- Stats pill ---- */
+    .stats-pill {
+      margin-left: auto;
+      color: #8b949e;
+      font-size: 11px;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -426,421 +466,771 @@ const edgeIndexJson = JSON.stringify(edgeIndex);
     <a href="/ko/moderator/insights/agenda-network" class="current">의제연결</a>
   </nav>
 
-  <!-- Filter bar -->
-  <div class="filter-bar" role="toolbar" aria-label="필터 설정">
-    <div class="filter-group">
-      <span class="filter-label">유형:</span>
-      {['감축', '적응', '혼합'].map(cat => (
-        <label class="filter-group">
-          <input type="checkbox" class="filter-check cat-check" data-cat={cat} checked aria-label={cat} />
-          <span class={`filter-check-label cat-${cat} active`} data-cat-label={cat}>{cat}</span>
-        </label>
-      ))}
-    </div>
-
-    <div class="filter-group">
-      <span class="filter-label">영역:</span>
-      <select class="filter-select" id="sel-domain" aria-label="의제 영역 선택">
-        <option value="all">전체</option>
-        {allDomains.map(d => <option value={d}>{d}</option>)}
-      </select>
-    </div>
-
-    <div class="filter-group">
-      <span class="filter-label">유사도:</span>
-      <input type="range" class="threshold-slider" id="threshold-slider"
-        min="0.1" max="0.6" step="0.05" value="0.35"
-        aria-label="최소 유사도 임계값" />
-      <span class="threshold-val" id="threshold-val">0.35</span>
-    </div>
-
-    <span class="stats-info" id="stats-info">
-      노드 65 · 엣지 213
-    </span>
+  <!-- Explainer -->
+  <div class="explainer">
+    <strong>왜 4가지로 보여주나?</strong>
+    65개 의제가 기후·정책 키워드를 공유해 단일 force-directed로는 hairball이 됩니다.
+    4 시각화는 같은 데이터의 4가지 정직한 관점입니다.
+    커뮤니티 컬러는 사용하지 않습니다 — 5개 커뮤니티 중 1개가 61개 의제를 포함해 의미가 없기 때문입니다.
   </div>
 
-  <div class="page-body">
-    <!-- Network SVG pane -->
-    <div class="svg-pane">
-      <svg id="network-svg" viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-           role="img" aria-label="의제 의미연결 네트워크 그래프"
-           style="display:block;">
+  <!-- Tab bar -->
+  <div class="tab-bar" role="tablist" aria-label="시각화 탭">
+    <button class="tab-btn active" role="tab" data-tab="heatmap" aria-selected="true">
+      유사도 매트릭스
+    </button>
+    <button class="tab-btn" role="tab" data-tab="backbone" aria-selected="false">
+      백본 네트워크
+    </button>
+    <button class="tab-btn" role="tab" data-tab="ego" aria-selected="false">
+      에고 네트워크
+    </button>
+    <button class="tab-btn" role="tab" data-tab="full" aria-selected="false">
+      밀도 인정 (전체)
+    </button>
+  </div>
 
-        <!-- Edges layer -->
-        <g id="edges-layer">
-          {network.edges.map(e => {
-            const src = network.nodes.find(n => n.id === e.source)!;
-            const tgt = network.nodes.find(n => n.id === e.target)!;
-            return (
-              <line
-                class="net-edge"
-                data-src={e.source}
-                data-tgt={e.target}
-                data-w={e.weight}
-                x1={src.x} y1={src.y}
-                x2={tgt.x} y2={tgt.y}
-                stroke-opacity={0.15 + e.weight * 0.5}
-              />
-            );
-          })}
-        </g>
+  <!-- =================== TAB 1: HEATMAP =================== -->
+  <div id="tab-heatmap" class="tab-panel active" role="tabpanel" aria-label="유사도 매트릭스">
+    <div class="hm-wrap">
+      <!-- SVG heatmap: 65x65 grid + row/col labels, sorted by (category, domain) -->
+      <svg
+        id="hm-svg"
+        width={HM_SIZE + 120}
+        height={HM_SIZE + 120}
+        role="img"
+        aria-label="65×65 의제 유사도 히트맵"
+        style="display:block;">
 
-        <!-- Nodes layer -->
-        <g id="nodes-layer">
-          {network.nodes.map(n => {
-            const r = nodeRadius(n.degree);
-            const fill = CAT_COLORS[n.big_category] || '#8b949e';
-            const stroke = CAT_STROKE[n.big_category] || '#30363d';
-            const shortName = n.name.slice(0, 12);
-            return (
-              <g class="net-node"
-                 data-id={n.id}
-                 data-cat={n.big_category}
-                 data-domain={n.domain}
-                 transform={`translate(${n.x},${n.y})`}>
-                <circle r={r} fill={fill} stroke={stroke} stroke-width="1.5" fill-opacity="0.85" />
-                <text class="net-label" dy={r + 9}>{shortName}</text>
-              </g>
-            );
-          })}
-        </g>
+        <!-- Category band backgrounds on rows -->
+        {hmRowBands.map(b => (
+          <rect
+            class="hm-cat-band"
+            x={80}
+            y={80 + b.start * HM_CELL}
+            width={HM_SIZE}
+            height={b.len * HM_CELL}
+            fill={b.color}
+          />
+        ))}
+
+        <!-- Column band backgrounds -->
+        {hmRowBands.map(b => (
+          <rect
+            class="hm-cat-band"
+            x={80 + b.start * HM_CELL}
+            y={80}
+            width={b.len * HM_CELL}
+            height={HM_SIZE}
+            fill={b.color}
+          />
+        ))}
+
+        <!-- Row labels (every 5th) -->
+        {hmNodes.map((n, i) => {
+          if (i % 5 !== 0) return null;
+          return (
+            <text
+              class="hm-axis-label"
+              x={76}
+              y={80 + i * HM_CELL + HM_CELL / 2}
+            >{n.id}</text>
+          );
+        })}
+
+        <!-- Col labels (every 5th) -->
+        {hmNodes.map((n, i) => {
+          if (i % 5 !== 0) return null;
+          return (
+            <text
+              class="hm-axis-top"
+              x={80 + i * HM_CELL + HM_CELL / 2}
+              y={76}
+              transform={`rotate(-45, ${80 + i * HM_CELL + HM_CELL / 2}, 76)`}
+            >{n.id}</text>
+          );
+        })}
+
+        <!-- Heatmap cells — rendered via JS for performance (data is injected) -->
+        <g id="hm-cells"></g>
+
+        <!-- Category band dividers (vertical) -->
+        {hmDividers.map(i => (
+          <line x1={80 + i * HM_CELL} y1={80} x2={80 + i * HM_CELL} y2={80 + HM_SIZE} stroke="#58a6ff" stroke-width="1" stroke-opacity="0.4" />
+        ))}
+        <!-- Category band dividers (horizontal) -->
+        {hmDividers.map(i => (
+          <line x1={80} y1={80 + i * HM_CELL} x2={80 + HM_SIZE} y2={80 + i * HM_CELL} stroke="#58a6ff" stroke-width="1" stroke-opacity="0.4" />
+        ))}
+
+        <!-- Category legend at top-right -->
+        {Object.entries(CAT_COLORS).map(([cat, color], idx) => (
+          <g transform={`translate(${80 + HM_SIZE + 10}, ${80 + idx * 16})`}>
+            <rect width={12} height={12} fill={color} fill-opacity="0.7" rx="2" />
+            <text x={16} y={10} font-size="10" fill="#c9d1d9">{cat}</text>
+          </g>
+        ))}
+        <text x={80 + HM_SIZE + 10} y={80 + 3 * 16 + 14} font-size="9" fill="#8b949e">색상 = 유형</text>
+        <text x={80 + HM_SIZE + 10} y={80 + 3 * 16 + 26} font-size="9" fill="#8b949e">밝기 = 유사도</text>
       </svg>
     </div>
-
-    <!-- Side panel -->
-    <aside class="side-panel" id="side-panel" aria-label="의제 상세 패널">
-      <div class="panel-header">
-        <strong>의제 상세</strong>
-      </div>
-      <div class="panel-body" id="panel-body">
-        <div class="panel-empty" id="panel-empty">
-          노드를 클릭하면<br>의제 상세가 표시됩니다
-        </div>
-        <div id="panel-content" style="display:none;"></div>
-      </div>
-      <!-- Legend -->
-      <div class="legend">
-        {Object.entries(CAT_COLORS).map(([cat, color]) => (
-          <div class="legend-item">
-            <div class="legend-dot" style={`background:${color};`}></div>
-            <span>{cat}</span>
-          </div>
-        ))}
-        <div class="legend-item" style="margin-left:8px;">
-          <svg width="16" height="10"><circle cx="5" cy="5" r="3" fill="#8b949e"/><circle cx="11" cy="5" r="6" fill="#8b949e" opacity="0.5"/></svg>
-          <span>크기 = 연결도</span>
-        </div>
-      </div>
-    </aside>
   </div>
 
-  <!-- Tooltip -->
+  <!-- =================== TAB 2: BACKBONE =================== -->
+  <div id="tab-backbone" class="tab-panel" role="tabpanel" aria-label="백본 네트워크"
+       style="flex-direction:column;">
+    <div class="bb-info-bar">
+      백본 (disparity α=0.35, 균등분포 보정) · 통계적 유의 엣지 44개
+      — 표준 α=0.05는 균등 가중치 분포로 3개 엣지만 남음. α=0.35가 의미있는 구조적 축소의 마지막 지점.
+    </div>
+    <div class="panel-layout">
+      <div class="svg-pane">
+        <svg id="bb-svg" viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+             width={SVG_W} height={SVG_H}
+             role="img" aria-label="백본 의제 네트워크">
+
+          <!-- Backbone edges -->
+          <g id="bb-edges-layer">
+            {network.edges_backbone.map(e => {
+              const src = network.nodes.find(n => n.id === e.source)!;
+              const tgt = network.nodes.find(n => n.id === e.target)!;
+              return (
+                <line
+                  class="net-edge"
+                  data-src={e.source}
+                  data-tgt={e.target}
+                  data-w={e.weight}
+                  x1={src.x_bb} y1={src.y_bb}
+                  x2={tgt.x_bb} y2={tgt.y_bb}
+                  stroke-width={1 + e.weight * 2}
+                  stroke-opacity={0.3 + e.weight * 0.5}
+                />
+              );
+            })}
+          </g>
+
+          <!-- Backbone nodes (only nodes with bb_degree > 0 get full opacity; others dim) -->
+          <g id="bb-nodes-layer">
+            {network.nodes.map(n => {
+              const r = Math.max(4, Math.min(14, 4 + n.bb_degree * 0.8));
+              const fill = CAT_COLORS[n.big_category] || '#8b949e';
+              const stroke = CAT_STROKE[n.big_category] || '#30363d';
+              const isolated = n.bb_degree === 0;
+              return (
+                <g class="net-node"
+                   data-id={n.id}
+                   data-cat={n.big_category}
+                   data-isolated={isolated ? 'true' : 'false'}
+                   transform={`translate(${n.x_bb},${n.y_bb})`}
+                   opacity={isolated ? 0.2 : 1}>
+                  <circle r={isolated ? 3 : r} fill={fill} stroke={stroke} stroke-width="1.5" fill-opacity="0.85" />
+                  {!isolated && <text class="net-label" dy={r + 9}>{n.name.slice(0, 12)}</text>}
+                </g>
+              );
+            })}
+          </g>
+        </svg>
+      </div>
+
+      <!-- Side panel (backbone) -->
+      <aside class="side-panel" aria-label="의제 상세 패널">
+        <div class="panel-header"><strong>의제 상세 (백본)</strong></div>
+        <div class="panel-body">
+          <div class="panel-empty" id="bb-panel-empty">
+            노드를 클릭하면<br>의제 상세가 표시됩니다
+          </div>
+          <div id="bb-panel-content" style="display:none;"></div>
+        </div>
+        <div class="legend">
+          {Object.entries(CAT_COLORS).map(([cat, color]) => (
+            <div class="legend-item">
+              <div class="legend-dot" style={`background:${color};`}></div>
+              <span>{cat}</span>
+            </div>
+          ))}
+          <div class="legend-item" style="margin-left:4px;color:#6ee7b7;">
+            <span>흐릿 = 백본 미포함</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- =================== TAB 3: EGO NETWORK =================== -->
+  <div id="tab-ego" class="tab-panel" role="tabpanel" aria-label="에고 네트워크"
+       style="flex-direction:column;">
+    <div class="ego-controls">
+      <label for="ego-select" style="color:#8b949e;font-size:12px;white-space:nowrap;">
+        중심 의제:
+      </label>
+      <select id="ego-select" class="filter-select">
+        <option value="">-- 의제를 선택하세요 --</option>
+        {network.nodes.map(n => (
+          <option value={n.id}>{n.id}. {n.name.slice(0, 40)}{n.name.length > 40 ? '…' : ''}</option>
+        ))}
+      </select>
+      <span class="stats-pill" id="ego-stats"></span>
+    </div>
+    <div class="panel-layout">
+      <div class="svg-pane" style="justify-content:center;align-items:center;">
+        <svg id="ego-svg" viewBox="0 0 600 600" width="600" height="600"
+             role="img" aria-label="에고 네트워크">
+          <text id="ego-empty-text" x="300" y="300"
+                font-size="14" fill="#8b949e" text-anchor="middle">
+            위에서 의제를 선택하면<br/>에고 네트워크가 표시됩니다
+          </text>
+          <g id="ego-edges-layer"></g>
+          <g id="ego-nodes-layer"></g>
+        </svg>
+      </div>
+      <aside class="side-panel" aria-label="에고 네트워크 상세">
+        <div class="panel-header"><strong>의제 상세 (에고)</strong></div>
+        <div class="panel-body">
+          <div class="panel-empty" id="ego-panel-empty">의제를 선택하세요</div>
+          <div id="ego-panel-content" style="display:none;"></div>
+        </div>
+        <div class="legend">
+          {Object.entries(CAT_COLORS).map(([cat, color]) => (
+            <div class="legend-item">
+              <div class="legend-dot" style={`background:${color};`}></div>
+              <span>{cat}</span>
+            </div>
+          ))}
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- =================== TAB 4: FULL HAIRBALL =================== -->
+  <div id="tab-full" class="tab-panel" role="tabpanel" aria-label="전체 그래프 (밀도 인정)"
+       style="flex-direction:column;">
+    <div style="background:#1c1a2e;border-bottom:1px solid #30363d;padding:6px 14px;font-size:11px;color:#a78bfa;flex-shrink:0;">
+      이 그래프는 213개 엣지 모두 표시 · 의제 간 키워드 공유가 매우 조밀함 = 통합적 정책 영역임을 시각적으로 인정.
+      분리를 보고 싶다면 백본 탭 사용. 노드 색상 = 유형(감축/적응/혼합), 커뮤니티 색상 미사용.
+    </div>
+    <div class="panel-layout">
+      <div class="svg-pane">
+        <svg id="full-svg" viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+             width={SVG_W} height={SVG_H}
+             role="img" aria-label="전체 의제 네트워크 (hairball)">
+
+          <!-- All 213 edges as low-opacity hairs -->
+          <g id="full-edges-layer">
+            {network.edges.map(e => {
+              const src = network.nodes.find(n => n.id === e.source)!;
+              const tgt = network.nodes.find(n => n.id === e.target)!;
+              return (
+                <line
+                  class="net-edge"
+                  data-src={e.source}
+                  data-tgt={e.target}
+                  data-w={e.weight}
+                  x1={src.x} y1={src.y}
+                  x2={tgt.x} y2={tgt.y}
+                  stroke="#58a6ff"
+                  stroke-opacity={0.04 + e.weight * 0.08}
+                />
+              );
+            })}
+          </g>
+
+          <!-- Nodes colored by big_category only -->
+          <g id="full-nodes-layer">
+            {network.nodes.map(n => {
+              const r = nodeRadius(n.degree);
+              const fill = CAT_COLORS[n.big_category] || '#8b949e';
+              const stroke = CAT_STROKE[n.big_category] || '#30363d';
+              return (
+                <g class="net-node"
+                   data-id={n.id}
+                   data-cat={n.big_category}
+                   transform={`translate(${n.x},${n.y})`}>
+                  <circle r={r} fill={fill} stroke={stroke} stroke-width="1.5" fill-opacity="0.85" />
+                  <text class="net-label" dy={r + 9}>{n.name.slice(0, 12)}</text>
+                </g>
+              );
+            })}
+          </g>
+        </svg>
+      </div>
+
+      <!-- Side panel (full) -->
+      <aside class="side-panel" aria-label="의제 상세 패널 (전체)">
+        <div class="panel-header"><strong>의제 상세 (전체)</strong></div>
+        <div class="panel-body">
+          <div class="panel-empty" id="full-panel-empty">
+            노드를 클릭하면<br>의제 상세가 표시됩니다
+          </div>
+          <div id="full-panel-content" style="display:none;"></div>
+        </div>
+        <div class="legend">
+          {Object.entries(CAT_COLORS).map(([cat, color]) => (
+            <div class="legend-item">
+              <div class="legend-dot" style={`background:${color};`}></div>
+              <span>{cat}</span>
+            </div>
+          ))}
+          <div class="legend-item" style="margin-left:4px;color:#8b949e;">
+            <span>크기 = 연결도</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Tooltip (shared) -->
   <div id="net-tooltip" role="tooltip"></div>
 
-  <!-- Embedded data for JS -->
+  <!-- Embedded data -->
   <script id="net-nodes" type="application/json" set:html={nodesJson}></script>
-  <script id="net-edges" type="application/json" set:html={edgesJson}></script>
-  <script id="net-edge-index" type="application/json" set:html={edgeIndexJson}></script>
+  <script id="net-edges-full" type="application/json" set:html={edgesFullJson}></script>
+  <script id="net-edges-bb" type="application/json" set:html={edgesBBJson}></script>
+  <script id="net-edge-index-full" type="application/json" set:html={edgeIndexFullJson}></script>
+  <script id="net-edge-index-bb" type="application/json" set:html={edgeIndexBBJson}></script>
+  <script id="net-nodes-by-domain" type="application/json" set:html={nodesByDomainJson}></script>
+  <script id="net-sim-matrix" type="application/json" set:html={simMatrixJson}></script>
   <script id="net-agenda-map" type="application/json" set:html={agendaMapJson}></script>
 
   <script is:inline>
     /* ==========================================================================
-       Agenda Network — Interactive SVG controller
-       - Hover: dim non-neighbors, show tooltip
-       - Click: pin side panel with agenda detail + connected agendas
-       - Filter: category checkboxes, domain dropdown, threshold slider
+       Agenda Network — 4-tab interactive controller
+       Tab 1: Heatmap (65x65 Jaccard matrix)
+       Tab 2: Backbone (disparity-filtered force graph)
+       Tab 3: Ego (focal agenda + neighbors)
+       Tab 4: Full (hairball, all 213 edges)
        ========================================================================== */
 
-    const NODES      = JSON.parse(document.getElementById('net-nodes').textContent);
-    const EDGES      = JSON.parse(document.getElementById('net-edges').textContent);
-    const EDGE_INDEX = JSON.parse(document.getElementById('net-edge-index').textContent);
-    const AGENDA_MAP = JSON.parse(document.getElementById('net-agenda-map').textContent);
+    // ── Parse embedded data ───────────────────────────────────────────────────
+    const NODES        = JSON.parse(document.getElementById('net-nodes').textContent);
+    const EDGES_FULL   = JSON.parse(document.getElementById('net-edges-full').textContent);
+    const EDGES_BB     = JSON.parse(document.getElementById('net-edges-bb').textContent);
+    const IDX_FULL     = JSON.parse(document.getElementById('net-edge-index-full').textContent);
+    const IDX_BB       = JSON.parse(document.getElementById('net-edge-index-bb').textContent);
+    const DOMAIN_ORDER = JSON.parse(document.getElementById('net-nodes-by-domain').textContent);
+    const SIM_MATRIX   = JSON.parse(document.getElementById('net-sim-matrix').textContent);
+    const AGENDA_MAP   = JSON.parse(document.getElementById('net-agenda-map').textContent);
 
-    // ── DOM refs ──────────────────────────────────────────────────────────────
-    const svgEl       = document.getElementById('network-svg');
-    const edgesLayer  = document.getElementById('edges-layer');
-    const nodesLayer  = document.getElementById('nodes-layer');
-    const tooltip     = document.getElementById('net-tooltip');
-    const panelEmpty  = document.getElementById('panel-empty');
-    const panelContent= document.getElementById('panel-content');
-    const statsInfo   = document.getElementById('stats-info');
-    const selDomain   = document.getElementById('sel-domain');
-    const threshSlider= document.getElementById('threshold-slider');
-    const threshVal   = document.getElementById('threshold-val');
+    const NODE_BY_ID   = {};
+    NODES.forEach(n => { NODE_BY_ID[n.id] = n; });
 
-    // ── Filter state ──────────────────────────────────────────────────────────
-    let activeCats    = new Set(['감축', '적응', '혼합']);
-    let activeDomain  = 'all';
-    let minThreshold  = 0.35;
-    let pinnedId      = null;   // currently selected node id
-
-    // ── Build element maps ────────────────────────────────────────────────────
-    const nodeEls  = {};   // id → <g>
-    const edgeEls  = [];   // [{el, src, tgt, w}]
-
-    document.querySelectorAll('.net-node').forEach(el => {
-      nodeEls[parseInt(el.dataset.id)] = el;
-    });
-
-    document.querySelectorAll('.net-edge').forEach(el => {
-      edgeEls.push({
-        el,
-        src: parseInt(el.dataset.src),
-        tgt: parseInt(el.dataset.tgt),
-        w:   parseFloat(el.dataset.w),
-      });
-    });
-
-    // ── Visibility filter ─────────────────────────────────────────────────────
-    function isNodeVisible(node) {
-      if (!activeCats.has(node.big_category)) return false;
-      if (activeDomain !== 'all' && node.domain !== activeDomain) return false;
-      return true;
-    }
-
-    function applyFilter() {
-      let visibleNodes = 0, visibleEdges = 0;
-
-      NODES.forEach(n => {
-        const el = nodeEls[n.id];
-        const vis = isNodeVisible(n);
-        el.style.display = vis ? '' : 'none';
-        if (vis) visibleNodes++;
-      });
-
-      edgeEls.forEach(({ el, src, tgt, w }) => {
-        const srcNode = NODES.find(n => n.id === src);
-        const tgtNode = NODES.find(n => n.id === tgt);
-        const vis = w >= minThreshold &&
-                    srcNode && isNodeVisible(srcNode) &&
-                    tgtNode && isNodeVisible(tgtNode);
-        el.classList.toggle('hidden', !vis);
-        if (vis) visibleEdges++;
-      });
-
-      statsInfo.textContent = `노드 ${visibleNodes} · 엣지 ${visibleEdges}`;
-
-      // Re-apply hover/selection state
-      if (pinnedId !== null && nodeEls[pinnedId] && nodeEls[pinnedId].style.display !== 'none') {
-        applyHover(pinnedId, true);
-      } else {
-        clearHover();
-      }
-    }
-
-    // ── Hover / selection ─────────────────────────────────────────────────────
-    function applyHover(nodeId, pin) {
-      const neighbors = new Set(EDGE_INDEX[nodeId] || []);
-      neighbors.add(nodeId);
-
-      NODES.forEach(n => {
-        const el = nodeEls[n.id];
-        if (el.style.display === 'none') return;
-        const isNeighbor = neighbors.has(n.id);
-        el.classList.toggle('dimmed', !isNeighbor);
-        el.classList.toggle('highlighted', isNeighbor && n.id !== nodeId);
-        el.classList.toggle('selected', n.id === nodeId);
-        el.querySelector('text').classList.toggle('highlight', isNeighbor);
-      });
-
-      edgeEls.forEach(({ el, src, tgt, w }) => {
-        if (el.classList.contains('hidden')) return;
-        const connected = (src === nodeId || tgt === nodeId) && w >= minThreshold;
-        el.classList.toggle('highlight', connected);
-        el.classList.toggle('dimmed', !connected);
-      });
-    }
-
-    function clearHover() {
-      document.querySelectorAll('.net-node').forEach(el => {
-        el.classList.remove('dimmed', 'highlighted', 'selected');
-        el.querySelector('text').classList.remove('highlight');
-      });
-      edgeEls.forEach(({ el }) => {
-        el.classList.remove('highlight', 'dimmed');
-      });
-    }
+    const CAT_COLORS_JS = { '감축': '#34d399', '적응': '#60a5fa', '혼합': '#d2a8ff' };
 
     // ── Tooltip ───────────────────────────────────────────────────────────────
-    function showTooltip(e, node) {
-      const ag = AGENDA_MAP[node.id] || {};
-      tooltip.innerHTML = `
-        <div class="tip-title">${node.name}</div>
-        <div class="tip-meta">${node.big_category} · ${node.domain}</div>
-        <div class="tip-meta" style="margin-top:3px;">연결 ${node.degree}개</div>
-      `;
+    const tooltip = document.getElementById('net-tooltip');
+
+    function showTooltip(e, content) {
+      tooltip.innerHTML = content;
       tooltip.style.display = 'block';
       positionTooltip(e);
     }
-
     function positionTooltip(e) {
-      const x = e.clientX + 14;
-      const y = e.clientY - 10;
-      const tw = tooltip.offsetWidth;
-      const th = tooltip.offsetHeight;
+      const x = e.clientX + 14, y = e.clientY - 10;
+      const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
       tooltip.style.left = (x + tw > window.innerWidth ? x - tw - 28 : x) + 'px';
       tooltip.style.top  = (y + th > window.innerHeight ? y - th : y) + 'px';
     }
+    function hideTooltip() { tooltip.style.display = 'none'; }
 
-    function hideTooltip() {
-      tooltip.style.display = 'none';
-    }
-
-    // ── Side panel ────────────────────────────────────────────────────────────
-    function showPanel(nodeId) {
-      const node = NODES.find(n => n.id === nodeId);
-      const ag   = AGENDA_MAP[nodeId] || {};
-      if (!node) return;
-
-      // Find connected nodes sorted by weight
-      const conns = edgeEls
-        .filter(e => !e.el.classList.contains('hidden') && (e.src === nodeId || e.tgt === nodeId))
-        .map(e => {
-          const otherId = e.src === nodeId ? e.tgt : e.src;
-          return { id: otherId, w: e.w };
-        })
+    // ── Panel helpers ─────────────────────────────────────────────────────────
+    function buildAgendaCard(nodeId, connEdges) {
+      const node = NODE_BY_ID[nodeId];
+      const ag = AGENDA_MAP[nodeId] || {};
+      const conns = connEdges
+        .map(e => { const otherId = e.source === nodeId ? e.target : e.source; return { id: otherId, w: e.weight }; })
         .sort((a, b) => b.w - a.w);
 
       const catClass = node.big_category;
-
-      panelContent.innerHTML = `
+      return `
         <div class="panel-agenda-card">
           <div style="margin-bottom:6px;">
             <span class="cat-pill ${catClass}">${node.big_category}</span>
             <span style="font-size:11px;color:#8b949e;margin-left:6px;">${node.domain}</span>
           </div>
           <div class="panel-agenda-name">${ag.agenda_name || node.name}</div>
-          ${ag.current_situation ? `
-            <div class="panel-agenda-text" style="margin-top:8px;">
-              <strong style="color:#8b949e;font-size:10px;">현황</strong><br>
-              ${ag.current_situation}
-            </div>` : ''}
-          ${ag.proposed_policy ? `
-            <div class="panel-agenda-text" style="margin-top:6px;">
-              <strong style="color:#8b949e;font-size:10px;">제안정책</strong><br>
-              ${ag.proposed_policy}
-            </div>` : ''}
+          ${ag.current_situation ? `<div class="panel-agenda-text" style="margin-top:8px;"><strong style="color:#8b949e;font-size:10px;">현황</strong><br>${ag.current_situation}</div>` : ''}
+          ${ag.proposed_policy ? `<div class="panel-agenda-text" style="margin-top:6px;"><strong style="color:#8b949e;font-size:10px;">제안정책</strong><br>${ag.proposed_policy}</div>` : ''}
         </div>
-
         ${conns.length > 0 ? `
           <div class="conn-list-title">연결된 의제 (${conns.length}건)</div>
           ${conns.map(c => {
-            const cn = NODES.find(n => n.id === c.id);
+            const cn = NODE_BY_ID[c.id];
             if (!cn) return '';
-            return `
-              <div class="conn-item" data-node-id="${c.id}">
-                <div class="conn-name">${cn.name.slice(0, 50)}</div>
-                <div class="conn-sim">${(c.w * 100).toFixed(0)}%</div>
-              </div>
-            `;
+            return `<div class="conn-item" data-node-id="${c.id}"><div class="conn-name">${cn.name.slice(0,50)}</div><div class="conn-sim">${(c.w*100).toFixed(0)}%</div></div>`;
           }).join('')}
-        ` : '<div style="color:#8b949e;font-size:11px;margin-top:8px;">이 유사도 임계값에서 연결 없음</div>'}
+        ` : '<div style="color:#8b949e;font-size:11px;margin-top:8px;">연결 없음</div>'}
       `;
+    }
 
-      // Click on connected agenda → navigate to that node
-      panelContent.querySelectorAll('.conn-item[data-node-id]').forEach(el => {
-        el.addEventListener('click', () => {
-          const nid = parseInt(el.dataset.nodeId);
-          selectNode(nid);
-        });
+    function setupPanelConnClicks(panelContentEl, onNodeSelect) {
+      panelContentEl.querySelectorAll('.conn-item[data-node-id]').forEach(el => {
+        el.addEventListener('click', () => onNodeSelect(parseInt(el.dataset.nodeId)));
+      });
+    }
+
+    // ── Tab management ────────────────────────────────────────────────────────
+    const TABS = ['heatmap', 'backbone', 'ego', 'full'];
+    const VALID_TABS = new Set(TABS);
+
+    function getActiveTab() {
+      const hash = location.hash.replace('#', '');
+      return VALID_TABS.has(hash) ? hash : 'heatmap';
+    }
+
+    function switchTab(tabName) {
+      if (!VALID_TABS.has(tabName)) tabName = 'heatmap';
+      history.replaceState(null, '', '#' + tabName);
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        const isActive = btn.dataset.tab === tabName;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+      document.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === 'tab-' + tabName);
       });
 
-      panelEmpty.style.display = 'none';
-      panelContent.style.display = '';
+      // Lazy-render heatmap on first show
+      if (tabName === 'heatmap' && !hmRendered) renderHeatmap();
     }
 
-    function hidePanel() {
-      panelEmpty.style.display = '';
-      panelContent.style.display = 'none';
-    }
-
-    // ── Node select ───────────────────────────────────────────────────────────
-    function selectNode(nodeId) {
-      if (pinnedId === nodeId) {
-        // Deselect
-        pinnedId = null;
-        clearHover();
-        hidePanel();
-      } else {
-        pinnedId = nodeId;
-        applyHover(nodeId, true);
-        showPanel(nodeId);
-      }
-    }
-
-    // ── SVG event handlers ────────────────────────────────────────────────────
-    nodesLayer.addEventListener('mouseover', e => {
-      const nodeEl = e.target.closest('.net-node');
-      if (!nodeEl || pinnedId !== null) return;
-      const nid = parseInt(nodeEl.dataset.id);
-      const node = NODES.find(n => n.id === nid);
-      applyHover(nid, false);
-      showTooltip(e, node);
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
 
-    nodesLayer.addEventListener('mousemove', e => {
-      if (tooltip.style.display !== 'none') positionTooltip(e);
-    });
+    // Init to hash
+    switchTab(getActiveTab());
 
-    nodesLayer.addEventListener('mouseout', e => {
-      const nodeEl = e.target.closest('.net-node');
-      if (!nodeEl || pinnedId !== null) return;
-      clearHover();
-      hideTooltip();
-    });
+    // ========================================================================
+    //  TAB 1: HEATMAP
+    // ========================================================================
+    let hmRendered = false;
+    const HM_CELL = 9;
 
-    nodesLayer.addEventListener('click', e => {
-      const nodeEl = e.target.closest('.net-node');
-      if (!nodeEl) return;
-      const nid = parseInt(nodeEl.dataset.id);
-      hideTooltip();
-      selectNode(nid);
-    });
+    function simKey(a, b) { return a < b ? `${a}-${b}` : `${b}-${a}`; }
 
-    // Click on SVG background → deselect
-    svgEl.addEventListener('click', e => {
-      if (e.target === svgEl || e.target.closest('#edges-layer')) {
-        pinnedId = null;
-        clearHover();
-        hidePanel();
-      }
-    });
-
-    // ── Filter handlers ───────────────────────────────────────────────────────
-    document.querySelectorAll('.cat-check').forEach(cb => {
-      cb.addEventListener('change', () => {
-        const cat = cb.dataset.cat;
-        const labelEl = document.querySelector(`[data-cat-label="${cat}"]`);
-        if (cb.checked) {
-          activeCats.add(cat);
-          labelEl && labelEl.classList.add('active');
-        } else {
-          activeCats.delete(cat);
-          labelEl && labelEl.classList.remove('active');
+    function simToColor(sim) {
+      // 0 = transparent, 1 = max viridis-like (yellow-green)
+      // Using a blue -> cyan -> green -> yellow palette
+      if (sim <= 0) return 'none';
+      const t = Math.min(1, (sim - 0.35) / 0.28); // 0.35=min, 0.63=max in dataset
+      // Blue (#1e3a5f) -> teal (#0d9488) -> green (#34d399) -> yellow (#fbbf24)
+      const stops = [
+        [0,   [30, 58, 95]],
+        [0.33,[13,148,136]],
+        [0.66,[52,211,153]],
+        [1.0, [251,191,36]],
+      ];
+      let r=30, g=58, b=95;
+      for (let i=0;i<stops.length-1;i++) {
+        const [t0, c0] = stops[i];
+        const [t1, c1] = stops[i+1];
+        if (t >= t0 && t <= t1) {
+          const u = (t - t0) / (t1 - t0);
+          r = Math.round(c0[0] + u*(c1[0]-c0[0]));
+          g = Math.round(c0[1] + u*(c1[1]-c0[1]));
+          b = Math.round(c0[2] + u*(c1[2]-c0[2]));
+          break;
         }
-        pinnedId = null;
-        hidePanel();
-        applyFilter();
+      }
+      const alpha = 0.4 + t * 0.6;
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+
+    function renderHeatmap() {
+      hmRendered = true;
+      const cellsG = document.getElementById('hm-cells');
+      const frag = document.createDocumentFragment();
+
+      for (let row = 0; row < DOMAIN_ORDER.length; row++) {
+        const rowId = DOMAIN_ORDER[row];
+        for (let col = 0; col < DOMAIN_ORDER.length; col++) {
+          if (row === col) continue; // diagonal
+          const colId = DOMAIN_ORDER[col];
+          const key = simKey(rowId, colId);
+          const sim = SIM_MATRIX[key];
+          if (!sim || sim <= 0) continue;
+
+          const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          rect.setAttribute('x', 80 + col * HM_CELL);
+          rect.setAttribute('y', 80 + row * HM_CELL);
+          rect.setAttribute('width', HM_CELL);
+          rect.setAttribute('height', HM_CELL);
+          rect.setAttribute('fill', simToColor(sim));
+          rect.classList.add('hm-cell');
+          rect.dataset.row = rowId;
+          rect.dataset.col = colId;
+          rect.dataset.sim = sim;
+          frag.appendChild(rect);
+        }
+      }
+      cellsG.appendChild(frag);
+
+      // Hover: tooltip
+      const hmSvg = document.getElementById('hm-svg');
+      hmSvg.addEventListener('mousemove', e => {
+        const rect = e.target;
+        if (!rect.classList.contains('hm-cell')) { hideTooltip(); return; }
+        const rowNode = NODE_BY_ID[rect.dataset.row];
+        const colNode = NODE_BY_ID[rect.dataset.col];
+        const sim = parseFloat(rect.dataset.sim);
+        showTooltip(e, `
+          <div class="tip-title">${rowNode.name.slice(0,40)}</div>
+          <div class="tip-meta">× ${colNode.name.slice(0,40)}</div>
+          <div class="tip-meta" style="margin-top:4px;">유사도: <strong style="color:#fbbf24">${(sim*100).toFixed(1)}%</strong></div>
+        `);
       });
-    });
+      hmSvg.addEventListener('mouseleave', hideTooltip);
+    }
 
-    selDomain.addEventListener('change', () => {
-      activeDomain = selDomain.value;
-      pinnedId = null;
-      hidePanel();
-      applyFilter();
-    });
+    // ========================================================================
+    //  SHARED: Network node interactions (backbone + full)
+    // ========================================================================
+    function makeNetworkController(svgId, nodesLayerId, edgesLayerId, edges, edgeIndex, panelEmptyId, panelContentId, posKey) {
+      const svg       = document.getElementById(svgId);
+      const nodesL    = document.getElementById(nodesLayerId);
+      const edgesL    = document.getElementById(edgesLayerId);
+      const panelEmpty= document.getElementById(panelEmptyId);
+      const panelCont = document.getElementById(panelContentId);
+      if (!svg || !nodesL) return;
 
-    threshSlider.addEventListener('input', () => {
-      minThreshold = parseFloat(threshSlider.value);
-      threshVal.textContent = minThreshold.toFixed(2);
-      pinnedId = null;
-      hidePanel();
-      applyFilter();
-    });
+      let pinnedId = null;
 
-    // ── Init ──────────────────────────────────────────────────────────────────
-    applyFilter();
+      const nodeEls = {};
+      nodesL.querySelectorAll('.net-node').forEach(el => {
+        nodeEls[parseInt(el.dataset.id)] = el;
+      });
+
+      const edgeEls = [];
+      edgesL.querySelectorAll('.net-edge').forEach(el => {
+        edgeEls.push({ el, src: parseInt(el.dataset.src), tgt: parseInt(el.dataset.tgt), w: parseFloat(el.dataset.w) });
+      });
+
+      function applyHover(nodeId) {
+        const neighbors = new Set(edgeIndex[nodeId] || []);
+        neighbors.add(nodeId);
+        NODES.forEach(n => {
+          const el = nodeEls[n.id];
+          if (!el) return;
+          el.classList.toggle('dimmed', !neighbors.has(n.id));
+          el.classList.toggle('highlighted', neighbors.has(n.id) && n.id !== nodeId);
+          el.classList.toggle('selected', n.id === nodeId);
+          const txt = el.querySelector('text');
+          if (txt) txt.classList.toggle('highlight', neighbors.has(n.id));
+        });
+        edgeEls.forEach(({ el, src, tgt }) => {
+          const connected = src === nodeId || tgt === nodeId;
+          el.classList.toggle('highlight', connected);
+          el.classList.toggle('dimmed', !connected);
+        });
+      }
+
+      function clearHover() {
+        nodesL.querySelectorAll('.net-node').forEach(el => {
+          el.classList.remove('dimmed', 'highlighted', 'selected');
+          const txt = el.querySelector('text');
+          if (txt) txt.classList.remove('highlight');
+        });
+        edgeEls.forEach(({ el }) => el.classList.remove('highlight', 'dimmed'));
+      }
+
+      function showPanel(nodeId) {
+        const connEdges = edges.filter(e => e.source === nodeId || e.target === nodeId);
+        panelCont.innerHTML = buildAgendaCard(nodeId, connEdges);
+        setupPanelConnClicks(panelCont, selectNode);
+        panelEmpty.style.display = 'none';
+        panelCont.style.display = '';
+      }
+
+      function hidePanel() {
+        panelEmpty.style.display = '';
+        panelCont.style.display = 'none';
+      }
+
+      function selectNode(nodeId) {
+        if (pinnedId === nodeId) {
+          pinnedId = null; clearHover(); hidePanel();
+        } else {
+          pinnedId = nodeId; applyHover(nodeId); showPanel(nodeId);
+        }
+      }
+
+      nodesL.addEventListener('mouseover', e => {
+        const el = e.target.closest('.net-node');
+        if (!el || pinnedId !== null) return;
+        const nid = parseInt(el.dataset.id);
+        const node = NODE_BY_ID[nid];
+        applyHover(nid);
+        showTooltip(e, `
+          <div class="tip-title">${node.name}</div>
+          <div class="tip-meta">${node.big_category} · ${node.domain}</div>
+          <div class="tip-meta" style="margin-top:3px;">연결 ${posKey === 'bb' ? node.bb_degree : node.degree}개</div>
+        `);
+      });
+      nodesL.addEventListener('mousemove', e => { if (tooltip.style.display !== 'none') positionTooltip(e); });
+      nodesL.addEventListener('mouseout', e => {
+        if (!e.target.closest('.net-node') || pinnedId !== null) return;
+        clearHover(); hideTooltip();
+      });
+      nodesL.addEventListener('click', e => {
+        const el = e.target.closest('.net-node');
+        if (!el) return;
+        hideTooltip();
+        selectNode(parseInt(el.dataset.id));
+      });
+      svg.addEventListener('click', e => {
+        if (e.target === svg || e.target.closest(`#${edgesLayerId}`)) {
+          pinnedId = null; clearHover(); hidePanel();
+        }
+      });
+    }
+
+    // Init backbone controller
+    makeNetworkController(
+      'bb-svg', 'bb-nodes-layer', 'bb-edges-layer',
+      EDGES_BB, IDX_BB,
+      'bb-panel-empty', 'bb-panel-content', 'bb'
+    );
+
+    // Init full graph controller
+    makeNetworkController(
+      'full-svg', 'full-nodes-layer', 'full-edges-layer',
+      EDGES_FULL, IDX_FULL,
+      'full-panel-empty', 'full-panel-content', 'full'
+    );
+
+    // ========================================================================
+    //  TAB 3: EGO NETWORK
+    // ========================================================================
+    const egoSelect  = document.getElementById('ego-select');
+    const egoSvg     = document.getElementById('ego-svg');
+    const egoEdgesL  = document.getElementById('ego-edges-layer');
+    const egoNodesL  = document.getElementById('ego-nodes-layer');
+    const egoEmpty   = document.getElementById('ego-empty-text');
+    const egoPanelEmpty = document.getElementById('ego-panel-empty');
+    const egoPanelCont  = document.getElementById('ego-panel-content');
+    const egoStats   = document.getElementById('ego-stats');
+    let egoPinnedId = null;
+
+    function renderEgo(focalId) {
+      egoEdgesL.innerHTML = '';
+      egoNodesL.innerHTML = '';
+      egoPinnedId = null;
+
+      if (!focalId) {
+        egoEmpty.style.display = '';
+        egoStats.textContent = '';
+        egoPanelEmpty.style.display = '';
+        egoPanelCont.style.display = 'none';
+        return;
+      }
+      egoEmpty.style.display = 'none';
+
+      const fid = parseInt(focalId);
+      const focalNode = NODE_BY_ID[fid];
+      const neighborIds = IDX_FULL[fid] || [];
+      const allIds = [fid, ...neighborIds];
+      const egoEdges = EDGES_FULL.filter(e =>
+        allIds.includes(e.source) && allIds.includes(e.target)
+      );
+
+      egoStats.textContent = `이웃 ${neighborIds.length}개 · 에지 ${egoEdges.length}개`;
+
+      // Layout: focal at center (300,300), neighbors on concentric circles
+      const svgCx = 300, svgCy = 300;
+      const rInner = 120 + Math.min(neighborIds.length * 3, 100);
+      const pos = {};
+      pos[fid] = [svgCx, svgCy];
+
+      // Place neighbors in a circle
+      neighborIds.forEach((nid, idx) => {
+        const angle = (2 * Math.PI * idx / Math.max(neighborIds.length, 1)) - Math.PI / 2;
+        pos[nid] = [svgCx + rInner * Math.cos(angle), svgCy + rInner * Math.sin(angle)];
+      });
+
+      // Draw edges
+      const svgNS = 'http://www.w3.org/2000/svg';
+      egoEdges.forEach(e => {
+        if (!pos[e.source] || !pos[e.target]) return;
+        const line = document.createElementNS(svgNS, 'line');
+        line.setAttribute('x1', pos[e.source][0]);
+        line.setAttribute('y1', pos[e.source][1]);
+        line.setAttribute('x2', pos[e.target][0]);
+        line.setAttribute('y2', pos[e.target][1]);
+        line.setAttribute('stroke', e.source === fid || e.target === fid ? '#58a6ff' : '#30363d');
+        line.setAttribute('stroke-opacity', e.source === fid || e.target === fid ? 0.5 : 0.3);
+        line.setAttribute('stroke-width', e.source === fid || e.target === fid ? 1.5 : 1);
+        line.dataset.src = e.source;
+        line.dataset.tgt = e.target;
+        line.dataset.w = e.weight;
+        egoEdgesL.appendChild(line);
+      });
+
+      // Draw nodes
+      allIds.forEach(nid => {
+        if (!pos[nid]) return;
+        const node = NODE_BY_ID[nid];
+        const isFocal = nid === fid;
+        const fill = CAT_COLORS_JS[node.big_category] || '#8b949e';
+        const r = isFocal ? 14 : Math.max(5, Math.min(12, 5 + (IDX_FULL[nid] || []).length * 0.4));
+
+        const g = document.createElementNS(svgNS, 'g');
+        g.classList.add('net-node');
+        g.dataset.id = nid;
+        g.setAttribute('transform', `translate(${pos[nid][0]},${pos[nid][1]})`);
+
+        const circle = document.createElementNS(svgNS, 'circle');
+        circle.setAttribute('r', r);
+        circle.setAttribute('fill', fill);
+        circle.setAttribute('stroke', isFocal ? '#f3f4f6' : fill);
+        circle.setAttribute('stroke-width', isFocal ? 2.5 : 1.5);
+        circle.setAttribute('fill-opacity', '0.9');
+        g.appendChild(circle);
+
+        const label = document.createElementNS(svgNS, 'text');
+        label.classList.add('net-label');
+        label.setAttribute('dy', r + 9);
+        label.textContent = node.name.slice(0, isFocal ? 16 : 12);
+        if (isFocal) { label.setAttribute('fill', '#f3f4f6'); label.setAttribute('font-weight', '600'); }
+        g.appendChild(label);
+
+        egoNodesL.appendChild(g);
+      });
+
+      // Show focal in panel
+      const focalEdges = EDGES_FULL.filter(e => e.source === fid || e.target === fid);
+      egoPanelCont.innerHTML = buildAgendaCard(fid, focalEdges);
+      setupPanelConnClicks(egoPanelCont, nid => {
+        egoSelect.value = nid;
+        renderEgo(nid);
+      });
+      egoPanelEmpty.style.display = 'none';
+      egoPanelCont.style.display = '';
+
+      // Hover on ego nodes
+      egoNodesL.addEventListener('mouseover', e => {
+        const el = e.target.closest('.net-node');
+        if (!el) return;
+        const nid = parseInt(el.dataset.id);
+        const node = NODE_BY_ID[nid];
+        const simVal = nid === fid ? null : SIM_MATRIX[simKey(fid, nid)];
+        showTooltip(e, `
+          <div class="tip-title">${node.name}</div>
+          <div class="tip-meta">${node.big_category} · ${node.domain}</div>
+          ${simVal ? `<div class="tip-meta" style="margin-top:3px;">중심과 유사도: <strong style="color:#fbbf24">${(simVal*100).toFixed(1)}%</strong></div>` : ''}
+        `);
+      });
+      egoNodesL.addEventListener('mousemove', e => { if (tooltip.style.display !== 'none') positionTooltip(e); });
+      egoNodesL.addEventListener('mouseout', e => {
+        if (!e.target.closest('.net-node')) hideTooltip();
+      });
+    }
+
+    egoSelect.addEventListener('change', () => renderEgo(egoSelect.value));
+
+    // ========================================================================
+    //  Initial render
+    // ========================================================================
+    // Heatmap renders lazily on first tab switch; network SVGs are pre-rendered in HTML
   </script>
 </body>
 </html>
