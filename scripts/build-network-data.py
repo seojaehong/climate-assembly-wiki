@@ -1,12 +1,14 @@
 """
 build-network-data.py
-Extracts domain×keyword matrix from:
+Extracts domain×keyword matrix and cluster data from:
   - 2._기후시민회의_전문가_의제_제안.docx (65 expert agendas)
-  - 30_추출데이터/network_pypdf.txt (keyword universe from PDF network analysis)
+  - 30_추출데이터/network_pypdf.txt (keyword universe + cluster definitions)
 
 Outputs:
-  - src/data/domain-keyword-matrix.json
-  - src/data/agendas-65.json
+  - src/data/domain-keyword-matrix.json   (18 domains × 63 keywords)
+  - src/data/agendas-65.json              (65 agenda records)
+  - src/data/network/clusters.json        (6 networks × clusters × top keywords)
+  - src/data/network/cluster-to-agendas.json  (cluster → agenda id list)
 
 Usage: python3 scripts/build-network-data.py
 Run from the wiki/ directory.
@@ -29,6 +31,9 @@ PDF_TEXT_PATH = os.path.join(
 )
 OUT_MATRIX = os.path.join(WIKI_DIR, 'src', 'data', 'domain-keyword-matrix.json')
 OUT_AGENDAS = os.path.join(WIKI_DIR, 'src', 'data', 'agendas-65.json')
+OUT_NETWORK_DIR = os.path.join(WIKI_DIR, 'src', 'data', 'network')
+OUT_CLUSTERS = os.path.join(OUT_NETWORK_DIR, 'clusters.json')
+OUT_CLUSTER_AGENDAS = os.path.join(OUT_NETWORK_DIR, 'cluster-to-agendas.json')
 
 # ── Step 1: Extract keyword universe from PDF text ────────────────────────────
 
@@ -109,67 +114,89 @@ import docx as docx_lib
 def parse_agendas(docx_path: str):
     """
     Walk docx paragraphs (domain headers) and tables (one per agenda).
-    Returns list of agenda dicts and ordered domain list.
+
+    Two-pass approach:
+      Pass 1: Collect ALL 20 domain headers in order (some may have 0 agendas).
+      Pass 2: Assign each agenda table to the most-recently-seen domain header.
+
+    Domain identity is (big_category, domain_name) — NOT domain_name alone.
+    Two domains share the name '기후정책 통합·조정' but differ in big_category
+    (감축 vs 혼합). They must remain as distinct rows.
     """
     doc = docx_lib.Document(docx_path)
 
-    # Domain header pattern: "감축 영역 N. 이름" / "적응 영역 N. 이름"
-    #                        / "감축·적응 영역 N. 이름"
     domain_re = re.compile(
         r'^(감축(?:·적응)?|적응)\s+영역\s+\d+[.\s]\s*(.+?)$'
     )
 
-    # Walk all body XML children in document order to get paragraphs + tables
-    # python-docx exposes doc.element.body children
     from docx.oxml.ns import qn
 
-    agendas = []
-    current_domain = None
-    current_big_cat = None
-
     body = doc.element.body
+
+    # ── Pass 1: collect ordered domain headers ────────────────────────────────
+    # Each entry: (big_category, domain_name)
+    domain_order: list[tuple[str, str]] = []
+    seen_domain_keys: set[tuple[str, str]] = set()
+
+    for child in body:
+        tag = child.tag.split('}')[-1] if '}' in child.tag else child.tag
+        if tag != 'p':
+            continue
+        text = ''.join(r.text or '' for r in child.iter(qn('w:t'))).strip()
+        m = domain_re.match(text)
+        if not m:
+            continue
+        raw_cat = m.group(1)
+        domain_name = m.group(2).strip()
+        if '적응' in raw_cat and '감축' in raw_cat:
+            big_cat = '혼합'
+        elif raw_cat == '감축':
+            big_cat = '감축'
+        else:
+            big_cat = '적응'
+        key = (big_cat, domain_name)
+        if key not in seen_domain_keys:
+            domain_order.append(key)
+            seen_domain_keys.add(key)
+            print(f"  [domain] {big_cat} / {domain_name}")
+
+    print(f"  Total domain headers found: {len(domain_order)}")
+
+    # ── Pass 2: assign tables to domains ─────────────────────────────────────
+    agendas: list[dict] = []
+    current_key: tuple[str, str] | None = None
+
+    def row_text(row_elem, col_idx: int = 1) -> str:
+        cells = row_elem.findall('.//' + qn('w:tc'))
+        if col_idx < len(cells):
+            return ''.join(
+                t.text or '' for t in cells[col_idx].iter(qn('w:t'))
+            ).strip()
+        return ''
 
     for child in body:
         tag = child.tag.split('}')[-1] if '}' in child.tag else child.tag
 
         if tag == 'p':
-            # It's a paragraph
             text = ''.join(r.text or '' for r in child.iter(qn('w:t'))).strip()
             m = domain_re.match(text)
             if m:
-                raw_cat = m.group(1)  # 감축 / 적응 / 감축·적응
+                raw_cat = m.group(1)
                 domain_name = m.group(2).strip()
                 if '적응' in raw_cat and '감축' in raw_cat:
-                    current_big_cat = '혼합'
+                    big_cat = '혼합'
                 elif raw_cat == '감축':
-                    current_big_cat = '감축'
+                    big_cat = '감축'
                 else:
-                    current_big_cat = '적응'
-                current_domain = domain_name
-                print(f"  [domain] {current_big_cat} / {current_domain}")
+                    big_cat = '적응'
+                current_key = (big_cat, domain_name)
 
         elif tag == 'tbl':
-            if current_domain is None:
+            if current_key is None:
                 continue
-            # Parse table: 5 rows × 4 cols
-            # Row 0: 의제명 | title | title | title  (merged cols)
-            # Row 1: 감축/적응 | cat | 영역 | domain
-            # Row 2: 관련 현황 및 의제 필요성 | text...
-            # Row 3: 의제 관련 제안 정책 | text...
-            # Row 4: 기대효과 | text...
             rows = child.findall('.//' + qn('w:tr'))
-            def row_text(row_elem, col_idx=1):
-                cells = row_elem.findall('.//' + qn('w:tc'))
-                if col_idx < len(cells):
-                    return ''.join(
-                        t.text or '' for t in cells[col_idx].iter(qn('w:t'))
-                    ).strip()
-                return ''
-
             try:
-                title_row = rows[0]
-                title = row_text(title_row, 1)
-
+                title = row_text(rows[0], 1)
                 situation = row_text(rows[2], 1) if len(rows) > 2 else ''
                 policy = row_text(rows[3], 1) if len(rows) > 3 else ''
                 effect = row_text(rows[4], 1) if len(rows) > 4 else ''
@@ -177,10 +204,11 @@ def parse_agendas(docx_path: str):
                 print(f"  [warn] table parse error: {e}")
                 continue
 
+            big_cat, domain_name = current_key
             agenda = {
                 'id': len(agendas) + 1,
-                'big_category': current_big_cat,
-                'domain': current_domain,
+                'big_category': big_cat,
+                'domain': domain_name,
                 'agenda_name': title,
                 'current_situation': situation,
                 'proposed_policy': policy,
@@ -188,7 +216,7 @@ def parse_agendas(docx_path: str):
             }
             agendas.append(agenda)
 
-    return agendas
+    return agendas, domain_order
 
 # ── Step 3: Build domain×keyword frequency matrix ─────────────────────────────
 
@@ -266,6 +294,180 @@ def build_matrix(agendas: list[dict], keywords: list[str]):
         'matrix': sorted_matrix,
     }
 
+# ── Step 4: Parse clusters from PDF text ─────────────────────────────────────
+#
+# Network layout in network_pypdf.txt:
+#   감축·현황       → keyword scatter p3, cluster names p4, narratives p5
+#   감축·정책       → keyword scatter p6, cluster names p7, narratives p8
+#   감축·기대효과   → keyword scatter p9, cluster names p10, narratives p11
+#   적응·현황       → keyword scatter p13, cluster names p14, narratives p15
+#   적응·정책       → keyword scatter p16, cluster names p17, narratives p18
+#   적응·기대효과   → keyword scatter p19, cluster names p20, narratives p21
+#
+# Rule: PDF Row N = docx agenda id N (1-indexed), i.e. agendas[N-1]
+#
+
+NETWORKS = [
+    {'id': '감축-현황',   'label': '감축 · 현황',   'name_page': 4,  'narr_page': 5},
+    {'id': '감축-정책',   'label': '감축 · 제안정책', 'name_page': 7,  'narr_page': 8},
+    {'id': '감축-효과',   'label': '감축 · 기대효과', 'name_page': 10, 'narr_page': 11},
+    {'id': '적응-현황',   'label': '적응 · 현황',   'name_page': 14, 'narr_page': 15},
+    {'id': '적응-정책',   'label': '적응 · 제안정책', 'name_page': 17, 'narr_page': 18},
+    {'id': '적응-효과',   'label': '적응 · 기대효과', 'name_page': 20, 'narr_page': 21},
+]
+
+# Color palette for clusters (up to 4 per network)
+CLUSTER_COLORS = ['#58a6ff', '#3fb950', '#e3b341', '#f85149']
+
+
+def parse_clusters(pdf_text_path: str) -> tuple[list, dict]:
+    """
+    Returns:
+      clusters: list of network records, each with cluster list.
+      cluster_rows: dict mapping (network_id, cluster_idx) -> set of Row numbers
+    """
+    # Parse pages into a dict
+    pages: dict[int, list[str]] = {}
+    current_page = None
+
+    with open(pdf_text_path, encoding='utf-8') as f:
+        for line in f:
+            line = line.rstrip()
+            page_match = re.match(r'=== PAGE (\d+) ===', line)
+            if page_match:
+                current_page = int(page_match.group(1))
+                pages[current_page] = []
+                continue
+            if current_page is not None:
+                pages[current_page].append(line)
+
+    # Extract cluster names from name pages (numbered list "1. ...\n2. ...\n...")
+    # Also handle inline concatenation like "2. A 3. B" on the same line.
+    name_pattern = re.compile(r'^\d+\.\s+(.+)$')
+
+    # Extract Row references from narrative pages
+    row_pattern = re.compile(r'\(Row\s+(\d+)\)')
+
+    # Extract quoted text (using Korean curly quotes)
+    # quote_pattern = re.compile(r'["“](.*?)["”]', re.DOTALL)
+
+    clusters_out = []
+    cluster_to_rows: dict[str, list[int]] = {}  # "network_id:cluster_idx" -> row ids
+
+    for net in NETWORKS:
+        name_lines = pages.get(net['name_page'], [])
+        narr_lines = pages.get(net['narr_page'], [])
+
+        # --- Extract cluster names ---
+        # First, join all lines from the name page and split on "N. " patterns
+        # This handles PDF artifacts where multiple items appear on one line.
+        raw_name_text = ' '.join(name_lines)
+        # Split on numbered pattern like "1. " "2. " etc.
+        inline_split = re.split(r'\d+\.\s+', raw_name_text)
+        inline_split = [s.strip() for s in inline_split if s.strip()]
+        # Filter out items that are purely page footers (start with "감축:" or "적응:")
+        footer_pat = re.compile(r'^(감축|적응)[:\s·]')
+        # Strip trailing footer fragments — only if the pattern looks like a page header
+        # Footer pattern: "감축: 관련 현황..." or "적응: 의제관련..." at word boundary
+        trailing_footer = re.compile(r'\s+(감축|적응):\s+(관련|의제관련|제안\s*정책\s*시행).+$')
+        cleaned = []
+        for s in inline_split:
+            if footer_pat.match(s):
+                continue
+            if len(s) <= 2:
+                continue
+            # Strip trailing footer text
+            s = trailing_footer.sub('', s).strip()
+            if s:
+                cleaned.append(s)
+        cluster_names = cleaned
+
+        if not cluster_names:
+            print(f"  [warn] No cluster names found for {net['id']} (page {net['name_page']})")
+            cluster_names = ['클러스터 1', '클러스터 2', '클러스터 3']
+
+        # --- Extract Row references from narrative page ---
+        narr_text = '\n'.join(narr_lines)
+        all_rows = [int(r) for r in row_pattern.findall(narr_text)]
+
+        # --- Split narrative by cluster name occurrences ---
+        # Strategy: find each cluster name occurrence in narr_text, split there
+        cluster_segments: list[str] = []
+        split_positions: list[int] = [0]
+        for cname in cluster_names:
+            # Find first occurrence of the cluster name in narrative
+            pos = narr_text.find(cname)
+            if pos > 0:
+                split_positions.append(pos)
+        split_positions.sort()
+        split_positions.append(len(narr_text))
+
+        for i in range(len(split_positions) - 1):
+            seg = narr_text[split_positions[i]:split_positions[i + 1]].strip()
+            cluster_segments.append(seg)
+
+        # Align segments to cluster count
+        while len(cluster_segments) < len(cluster_names):
+            cluster_segments.append('')
+        cluster_segments = cluster_segments[:len(cluster_names)]
+
+        # --- Build cluster records ---
+        net_clusters = []
+        for ci, (cname, seg) in enumerate(zip(cluster_names, cluster_segments)):
+            # Row references in this segment
+            rows_in_seg = [int(r) for r in row_pattern.findall(seg)]
+            # If we couldn't segment well, distribute all rows evenly
+            if not rows_in_seg and all_rows:
+                chunk_size = max(1, len(all_rows) // len(cluster_names))
+                chunk_start = ci * chunk_size
+                rows_in_seg = all_rows[chunk_start:chunk_start + chunk_size]
+
+            # Extract a brief narrative (first 120 chars after cluster name)
+            brief = ''
+            cname_pos = seg.find(cname)
+            if cname_pos >= 0:
+                after = seg[cname_pos + len(cname):].strip()
+                brief = after[:200].replace('\n', ' ')
+            elif seg:
+                brief = seg[:200].replace('\n', ' ')
+
+            key = f"{net['id']}:{ci}"
+            cluster_to_rows[key] = sorted(set(rows_in_seg))
+
+            net_clusters.append({
+                'idx': ci,
+                'name': cname,
+                'color': CLUSTER_COLORS[ci % len(CLUSTER_COLORS)],
+                'row_refs': sorted(set(rows_in_seg)),
+                'narrative': brief,
+            })
+
+        clusters_out.append({
+            'id': net['id'],
+            'label': net['label'],
+            'clusters': net_clusters,
+        })
+
+        total_rows = sum(len(c['row_refs']) for c in net_clusters)
+        print(f"  [{net['id']}] {len(net_clusters)} clusters, {total_rows} Row refs")
+
+    return clusters_out, cluster_to_rows
+
+
+def build_cluster_to_agendas(cluster_to_rows: dict, total_agendas: int) -> dict:
+    """
+    Maps cluster key -> list of agenda ids using PDF Row N = agenda id N.
+    cluster_to_rows: { "network_id:cluster_idx": [row_nums, ...] }
+    Returns: same shape but with agenda_ids list instead of row_refs.
+    """
+    result = {}
+    for key, rows in cluster_to_rows.items():
+        # Row N = agenda id N (1-indexed). Clamp to valid range.
+        agenda_ids = [r for r in rows if 1 <= r <= total_agendas]
+        result[key] = agenda_ids
+    return result
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
@@ -275,14 +477,25 @@ def main():
     keywords = extract_keywords(PDF_TEXT_PATH)
 
     print("\n[2] Parsing 65 agendas from docx...")
-    agendas = parse_agendas(DOCX_PATH)
+    agendas, _domain_order = parse_agendas(DOCX_PATH)
     print(f"  Total agendas parsed: {len(agendas)}")
 
     print("\n[3] Building domain×keyword matrix...")
     matrix_data = build_matrix(agendas, keywords)
 
-    print("\n[4] Writing output files...")
+    print("\n[4] Parsing cluster definitions from PDF text...")
+    clusters, cluster_to_rows = parse_clusters(PDF_TEXT_PATH)
+    total_clusters = sum(len(n['clusters']) for n in clusters)
+    print(f"  Total clusters: {total_clusters} across {len(clusters)} networks")
+
+    print("\n[5] Building cluster→agenda mapping...")
+    cluster_agenda_map = build_cluster_to_agendas(cluster_to_rows, len(agendas))
+    total_mappings = sum(len(v) for v in cluster_agenda_map.values())
+    print(f"  Total cluster→agenda mappings: {total_mappings}")
+
+    print("\n[6] Writing output files...")
     os.makedirs(os.path.dirname(OUT_MATRIX), exist_ok=True)
+    os.makedirs(OUT_NETWORK_DIR, exist_ok=True)
 
     with open(OUT_MATRIX, 'w', encoding='utf-8') as f:
         json.dump(matrix_data, f, ensure_ascii=False, indent=2)
@@ -292,6 +505,20 @@ def main():
         json.dump(agendas, f, ensure_ascii=False, indent=2)
     print(f"  Wrote: {OUT_AGENDAS}")
 
+    with open(OUT_CLUSTERS, 'w', encoding='utf-8') as f:
+        json.dump(clusters, f, ensure_ascii=False, indent=2)
+    print(f"  Wrote: {OUT_CLUSTERS}")
+
+    with open(OUT_CLUSTER_AGENDAS, 'w', encoding='utf-8') as f:
+        json.dump(cluster_agenda_map, f, ensure_ascii=False, indent=2)
+    print(f"  Wrote: {OUT_CLUSTER_AGENDAS}")
+
+    # Summary
+    print("\n=== Row counts ===")
+    print(f"  agendas-65.json: {len(agendas)} agendas")
+    print(f"  domain-keyword-matrix.json: {len(matrix_data['domains'])} domains × {len(matrix_data['keywords'])} keywords ({len(matrix_data['domains']) * len(matrix_data['keywords'])} cells)")
+    print(f"  clusters.json: {len(clusters)} networks, {total_clusters} clusters")
+    print(f"  cluster-to-agendas.json: {len(cluster_agenda_map)} cluster keys, {total_mappings} total mappings")
     print("\n=== Done ===")
 
 if __name__ == '__main__':

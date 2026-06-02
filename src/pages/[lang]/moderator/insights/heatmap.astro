@@ -395,6 +395,30 @@ const matrixJson = JSON.stringify({ domains, keywords, matrix, domainCats });
     .cat-b-적응 { background: #1a2d3a; color: #58a6ff; border: 1px solid #1f6feb; }
     .cat-b-혼합 { background: #2d1a3a; color: #d2a8ff; border: 1px solid #6e40c9; }
 
+    /* ---- Sub-nav ---- */
+    .subnav {
+      background: var(--bg-subtle);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--fg-muted);
+    }
+    .subnav-label { font-weight: 700; color: var(--fg-muted); margin-right: 4px; }
+    .subnav a {
+      color: var(--fg-muted);
+      text-decoration: none;
+      padding: 3px 8px;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .subnav a:hover { color: var(--fg); border-color: var(--border); }
+    .subnav a.current { color: var(--accent); border-color: var(--accent); font-weight: 600; }
+    .subnav-sep { color: var(--border); }
+
     .glued-notice {
       margin-top: 20px;
       padding: 8px 10px;
@@ -411,8 +435,18 @@ const matrixJson = JSON.stringify({ domains, keywords, matrix, domainCats });
 <body>
 
   <div class="privacy-banner">
-    🔒 모더레이터 인사이트 · 전문가 의제 자체 분석 · 외부 공개 금지
+    모더레이터 인사이트 · 전문가 의제 자체 분석 · 외부 공개 금지
   </div>
+
+  <!-- Sub-nav: [모더레이터 도구] 라이브 · 히트맵 · 클러스터 -->
+  <nav class="subnav" aria-label="모더레이터 도구 네비게이션">
+    <span class="subnav-label">[모더레이터 도구]</span>
+    <a href="/ko/moderator/live">라이브</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/heatmap" class="current">히트맵</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/clusters">클러스터</a>
+  </nav>
 
   <header class="page-header">
     <h1>의제 영역 × 키워드 히트맵</h1>

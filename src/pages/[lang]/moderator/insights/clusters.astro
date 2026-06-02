@@ -1,0 +1,494 @@
+---
+/**
+ * /ko/moderator/insights/clusters — 6-network cluster 분석 (모더레이터 전용)
+ *
+ * PRIVACY:
+ *   - KO-only route (getStaticPaths emits only 'ko')
+ *   - robots noindex,nofollow
+ *   - NOT in sitemap (whitelist filter covers only /agenda + locale home)
+ *   - NOT in pagefind (no data-pagefind-body)
+ *   - No nav links from public pages
+ *
+ * DATA:
+ *   - src/data/network/clusters.json (21 clusters, 6 networks)
+ *   - src/data/network/cluster-to-agendas.json (cluster→agenda id mapping)
+ *   - src/data/agendas-65.json (65 agenda full records)
+ *
+ * RENDER:
+ *   - 6 network tabs (hash routing), cluster cards, agenda drill-down
+ *   - All rendering is client-side JS from embedded JSON data
+ *   - URL hash: #network=감축-현황&cluster=0
+ */
+
+import clustersRaw from '../../../../data/network/clusters.json';
+import clusterAgendasRaw from '../../../../data/network/cluster-to-agendas.json';
+import agendasRaw from '../../../../data/agendas-65.json';
+import '../../../../styles/global.css';
+
+export async function getStaticPaths() {
+  return [{ params: { lang: 'ko' } }];
+}
+
+interface ClusterRecord {
+  idx: number;
+  name: string;
+  color: string;
+  row_refs: number[];
+  narrative: string;
+}
+interface Network {
+  id: string;
+  label: string;
+  clusters: ClusterRecord[];
+}
+interface Agenda {
+  id: number;
+  big_category: string;
+  domain: string;
+  agenda_name: string;
+  current_situation: string;
+  proposed_policy: string;
+  expected_effect: string;
+}
+
+const networks = clustersRaw as unknown as Network[];
+const clusterAgendas = clusterAgendasRaw as unknown as Record<string, number[]>;
+const agendas = agendasRaw as unknown as Agenda[];
+
+const totalClusters = networks.reduce((s, n) => s + n.clusters.length, 0);
+const totalMappings = Object.values(clusterAgendas).reduce((s: number, ids) => s + (ids as number[]).length, 0);
+
+// Serialize for inline JS
+const networksJson = JSON.stringify(networks);
+const clusterAgendasJson = JSON.stringify(clusterAgendas);
+const agendasJson = JSON.stringify(agendas);
+const totalClustersStr = String(totalClusters);
+const totalMappingsStr = String(totalMappings);
+---
+<!doctype html>
+<html lang="ko" dir="ltr" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>의제 클러스터 분석 [모더레이터 인사이트]</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <!-- No canonical, no hreflang, no OG — private moderator page -->
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --bg-subtle: #161b22;
+      --border: #30363d;
+      --fg: #f0f6fc;
+      --fg-muted: #8b949e;
+      --accent: #58a6ff;
+      --font: 'Pretendard Variable', 'Noto Sans KR', system-ui, sans-serif;
+      --radius: 6px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .privacy-banner {
+      background: #6e2020;
+      color: #ffdcd7;
+      text-align: center;
+      padding: 6px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      border-bottom: 2px solid #b22a2a;
+      flex-shrink: 0;
+    }
+
+    .subnav {
+      background: var(--bg-subtle);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--fg-muted);
+      flex-shrink: 0;
+    }
+    .subnav-label { font-weight: 700; color: var(--fg-muted); margin-right: 4px; }
+    .subnav a {
+      color: var(--fg-muted);
+      text-decoration: none;
+      padding: 3px 8px;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+    }
+    .subnav a:hover { color: var(--fg); border-color: var(--border); }
+    .subnav a.current { color: var(--accent); border-color: var(--accent); font-weight: 600; }
+    .subnav-sep { color: var(--border); }
+
+    .page-header {
+      padding: 14px 24px 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-subtle);
+      flex-shrink: 0;
+    }
+    .page-header h1 { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+    .page-header .meta { font-size: 11px; color: var(--fg-muted); display: flex; gap: 14px; flex-wrap: wrap; }
+
+    .net-tabs {
+      display: flex;
+      border-bottom: 2px solid var(--border);
+      background: var(--bg-subtle);
+      overflow-x: auto;
+      flex-shrink: 0;
+    }
+    .net-tab {
+      padding: 10px 18px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--fg-muted);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      white-space: nowrap;
+      font-family: var(--font);
+    }
+    .net-tab:hover { color: var(--fg); }
+    .net-tab[data-cat="감축"].active { color: #3fb950; border-bottom-color: #3fb950; }
+    .net-tab[data-cat="적응"].active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .main-content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+    .net-panel { display: none; }
+    .net-panel.active { display: block; }
+
+    .net-panel-header { margin-bottom: 16px; }
+    .net-panel-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .net-panel-desc { font-size: 12px; color: var(--fg-muted); }
+
+    .cluster-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .cluster-card {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .cluster-card.expanded { border-color: var(--accent); }
+
+    .cluster-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .cluster-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+    .cluster-name { font-size: 13px; font-weight: 700; flex: 1; line-height: 1.4; }
+    .cluster-idx-badge {
+      font-size: 10px; color: var(--fg-muted);
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 99px; padding: 1px 6px; flex-shrink: 0;
+    }
+
+    .cluster-narrative { font-size: 11px; color: var(--fg-muted); line-height: 1.6; margin-bottom: 10px; }
+
+    .row-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+    .row-chip {
+      font-size: 10px; padding: 2px 7px; border-radius: 99px;
+      background: rgba(88,166,255,0.1); color: #58a6ff;
+      border: 1px solid rgba(88,166,255,0.2); font-weight: 600;
+    }
+
+    .btn-expand {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--bg); border: 1px solid var(--border);
+      color: var(--fg-muted); border-radius: var(--radius);
+      padding: 5px 10px; font-size: 11px; cursor: pointer;
+      font-family: var(--font);
+    }
+    .btn-expand:hover { color: var(--fg); border-color: #484e57; }
+    .cluster-card.expanded .btn-expand { color: var(--accent); border-color: var(--accent); }
+    .btn-count {
+      background: rgba(88,166,255,0.15); color: var(--accent);
+      border-radius: 99px; padding: 1px 6px; font-weight: 700; font-size: 10px;
+    }
+    .btn-arrow { font-size: 10px; transition: transform 0.15s; }
+    .cluster-card.expanded .btn-arrow { transform: rotate(90deg); }
+
+    .agenda-expand { display: none; margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px; }
+    .cluster-card.expanded .agenda-expand { display: block; }
+
+    .ag-item {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 9px 11px; margin-bottom: 7px;
+    }
+    .ag-title { font-size: 12px; font-weight: 600; margin-bottom: 3px; line-height: 1.4; }
+    .ag-meta { font-size: 10px; color: var(--fg-muted); margin-bottom: 4px; }
+    .ag-cat-badge {
+      display: inline-block; font-size: 9px; padding: 1px 5px;
+      border-radius: 99px; margin-right: 4px; font-weight: 700;
+    }
+    .cat-감축 { background: #1a3a1a; color: #3fb950; border: 1px solid #238636; }
+    .cat-적응 { background: #1a2d3a; color: #58a6ff; border: 1px solid #1f6feb; }
+    .cat-혼합 { background: #2d1a3a; color: #d2a8ff; border: 1px solid #6e40c9; }
+
+    .no-agendas { font-size: 11px; color: var(--fg-muted); font-style: italic; padding: 6px 0; }
+
+    .blocker-notice {
+      margin-top: 20px; padding: 10px 14px;
+      background: #1c1a00; border: 1px solid #4a4000;
+      border-radius: var(--radius); font-size: 11px; color: #d29922; line-height: 1.6;
+    }
+    .blocker-notice strong { display: block; margin-bottom: 4px; font-size: 12px; }
+
+    .loading-msg { padding: 40px 24px; text-align: center; color: var(--fg-muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+
+  <div class="privacy-banner">
+    모더레이터 인사이트 · 의제 키워드 네트워크 클러스터 분석 · 외부 공개 금지
+  </div>
+
+  <nav class="subnav" aria-label="모더레이터 도구 네비게이션">
+    <span class="subnav-label">[모더레이터 도구]</span>
+    <a href="/ko/moderator/live">라이브</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/heatmap">히트맵</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/clusters" class="current">클러스터</a>
+  </nav>
+
+  <header class="page-header">
+    <h1>의제 키워드 네트워크 클러스터 분석</h1>
+    <div class="meta">
+      <span>전문가 제안 65건</span>
+      <span>6개 네트워크</span>
+      <span id="stat-clusters">{totalClustersStr}개 클러스터</span>
+      <span>Row 참조 {totalMappingsStr}건</span>
+      <span>출처: 전배석 2026-05-29 · 6월 13일 워크숍용</span>
+    </div>
+  </header>
+
+  <!-- Network tabs: rendered by JS -->
+  <div class="net-tabs" id="net-tabs" role="tablist" aria-label="네트워크 선택"></div>
+
+  <!-- Main content: rendered by JS -->
+  <div class="main-content" id="main-content">
+    <p class="loading-msg">로딩 중...</p>
+  </div>
+
+  <!-- Embedded data -->
+  <script id="cl-networks" type="application/json" set:html={networksJson}></script>
+  <script id="cl-cluster-agendas" type="application/json" set:html={clusterAgendasJson}></script>
+  <script id="cl-agendas" type="application/json" set:html={agendasJson}></script>
+
+  <script is:inline>
+    /* ====================================================================
+       Clusters page — full client-side rendering from embedded JSON
+       ==================================================================== */
+    const networks     = JSON.parse(document.getElementById('cl-networks').textContent);
+    const clusterMap   = JSON.parse(document.getElementById('cl-cluster-agendas').textContent);
+    const agendas      = JSON.parse(document.getElementById('cl-agendas').textContent);
+
+    // Agenda lookup
+    const agendaById = {};
+    agendas.forEach(ag => { agendaById[ag.id] = ag; });
+
+    const tabsEl    = document.getElementById('net-tabs');
+    const mainEl    = document.getElementById('main-content');
+
+    // ── State ────────────────────────────────────────────────────────────
+    let activeNet = networks[0] ? networks[0].id : '';
+    let expandedKey = null;  // "netId:clusterIdx" or null
+
+    // ── Render tabs ───────────────────────────────────────────────────────
+    function renderTabs() {
+      tabsEl.innerHTML = '';
+      networks.forEach(net => {
+        const cat = net.id.startsWith('감축') ? '감축' : '적응';
+        const btn = document.createElement('button');
+        btn.className = 'net-tab' + (net.id === activeNet ? ' active' : '');
+        btn.dataset.net = net.id;
+        btn.dataset.cat = cat;
+        btn.setAttribute('role', 'tab');
+        btn.setAttribute('aria-selected', net.id === activeNet ? 'true' : 'false');
+        btn.textContent = net.label;
+        btn.addEventListener('click', () => {
+          activeNet = net.id;
+          expandedKey = null;
+          renderTabs();
+          renderPanels();
+          updateHash();
+        });
+        tabsEl.appendChild(btn);
+      });
+    }
+
+    // ── Render panels ─────────────────────────────────────────────────────
+    function renderPanels() {
+      mainEl.innerHTML = '';
+      const net = networks.find(n => n.id === activeNet);
+      if (!net) return;
+
+      const panelDiv = document.createElement('div');
+      panelDiv.className = 'net-panel active';
+
+      // Header
+      const header = document.createElement('div');
+      header.className = 'net-panel-header';
+      header.innerHTML =
+        `<div class="net-panel-title">${net.label}</div>` +
+        `<div class="net-panel-desc">${net.clusters.length}개 클러스터 · 카드를 클릭하면 관련 의제가 확장됩니다.</div>`;
+      panelDiv.appendChild(header);
+
+      // Cluster grid
+      const grid = document.createElement('div');
+      grid.className = 'cluster-grid';
+
+      net.clusters.forEach(cluster => {
+        const key = `${net.id}:${cluster.idx}`;
+        const agendaIds = clusterMap[key] || [];
+        const clusterAgendas = agendaIds.map(id => agendaById[id]).filter(Boolean);
+        const isExpanded = (expandedKey === key);
+
+        const card = document.createElement('div');
+        card.className = 'cluster-card' + (isExpanded ? ' expanded' : '');
+        card.dataset.key = key;
+
+        // Header
+        let cardHtml = `<div class="cluster-header">`;
+        cardHtml += `<div class="cluster-dot" style="background:${cluster.color}"></div>`;
+        cardHtml += `<div class="cluster-name">${cluster.name}</div>`;
+        cardHtml += `<div class="cluster-idx-badge">클러스터 ${cluster.idx + 1}</div>`;
+        cardHtml += `</div>`;
+
+        // Narrative
+        if (cluster.narrative) {
+          cardHtml += `<div class="cluster-narrative">${cluster.narrative}</div>`;
+        }
+
+        // Row chips
+        cardHtml += `<div class="row-chips">`;
+        if (cluster.row_refs && cluster.row_refs.length > 0) {
+          cluster.row_refs.forEach(row => {
+            cardHtml += `<span class="row-chip">Row ${row}</span>`;
+          });
+        } else {
+          cardHtml += `<span style="font-size:10px;color:var(--fg-muted)">Row 참조 없음</span>`;
+        }
+        cardHtml += `</div>`;
+
+        // Expand button
+        cardHtml += `<button class="btn-expand" data-key="${key}" aria-expanded="${isExpanded}">`;
+        cardHtml += `관련 의제 <span class="btn-count">${clusterAgendas.length}건</span>`;
+        cardHtml += `<span class="btn-arrow">▶</span></button>`;
+
+        // Agenda expand panel
+        cardHtml += `<div class="agenda-expand">`;
+        if (clusterAgendas.length === 0) {
+          cardHtml += `<p class="no-agendas">이 클러스터에 매핑된 의제가 없습니다.</p>`;
+        } else {
+          clusterAgendas.forEach(ag => {
+            const cat = ag.big_category || '감축';
+            cardHtml += `<div class="ag-item">`;
+            cardHtml += `<div class="ag-meta">`;
+            cardHtml += `<span class="ag-cat-badge cat-${cat}">${cat}</span>`;
+            cardHtml += `#${ag.id} · ${ag.domain}`;
+            cardHtml += `</div>`;
+            cardHtml += `<div class="ag-title">${ag.agenda_name || '(제목 없음)'}</div>`;
+            cardHtml += `</div>`;
+          });
+        }
+        cardHtml += `</div>`;
+
+        card.innerHTML = cardHtml;
+        grid.appendChild(card);
+      });
+
+      panelDiv.appendChild(grid);
+
+      // Blocker notice
+      const notice = document.createElement('div');
+      notice.className = 'blocker-notice';
+      notice.innerHTML =
+        `<strong>미해결 블로커: force-directed 네트워크 시각화</strong>` +
+        `현재 이 페이지는 전배석 분석의 클러스터명·Row 참조·서술을 정적으로 표시합니다. ` +
+        `실제 노드-엣지 기반 force-directed 그래프를 구현하려면 키워드 간 엣지 데이터(공동출현 행렬)가 필요합니다. ` +
+        `해당 데이터는 현재 미보유 상태입니다.`;
+      panelDiv.appendChild(notice);
+
+      mainEl.appendChild(panelDiv);
+
+      // Attach expand listeners
+      mainEl.querySelectorAll('.btn-expand').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const k = btn.dataset.key;
+          if (expandedKey === k) {
+            expandedKey = null;
+          } else {
+            expandedKey = k;
+          }
+          renderPanels();
+          updateHash();
+        });
+      });
+    }
+
+    // ── Hash routing ─────────────────────────────────────────────────────
+    function updateHash() {
+      const parts = [`network=${activeNet}`];
+      if (expandedKey !== null) {
+        const ci = expandedKey.split(':')[1];
+        parts.push(`cluster=${ci}`);
+      }
+      history.replaceState(null, '', '#' + parts.join('&'));
+    }
+
+    function parseHash() {
+      const hash = location.hash.slice(1);
+      if (!hash) return;
+      const params = {};
+      hash.split('&').forEach(part => {
+        const [k, v] = part.split('=');
+        if (k && v !== undefined) params[k] = v;
+      });
+      if (params['network']) {
+        const netExists = networks.find(n => n.id === params['network']);
+        if (netExists) activeNet = params['network'];
+      }
+      if (params['cluster'] !== undefined && activeNet) {
+        expandedKey = `${activeNet}:${params['cluster']}`;
+      }
+    }
+
+    window.addEventListener('hashchange', () => {
+      expandedKey = null;
+      parseHash();
+      renderTabs();
+      renderPanels();
+    });
+
+    // ── Init ─────────────────────────────────────────────────────────────
+    (function init() {
+      if (location.hash && location.hash.includes('network=')) {
+        parseHash();
+      }
+      renderTabs();
+      renderPanels();
+    })();
+  </script>
+</body>
+</html>

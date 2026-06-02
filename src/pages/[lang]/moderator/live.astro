@@ -75,6 +75,31 @@ const experts = [...new Set(
       flex-shrink: 0;
     }
 
+    /* ---- Sub-nav ---- */
+    .subnav {
+      background: var(--color-bg-subtle, #161b22);
+      border-bottom: 1px solid var(--color-border, #30363d);
+      padding: 6px 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--color-fg-muted, #8b949e);
+      flex-shrink: 0;
+    }
+    .subnav-label { font-weight: 700; margin-right: 4px; }
+    .subnav a {
+      color: var(--color-fg-muted, #8b949e);
+      text-decoration: none;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .subnav a:hover { color: var(--color-fg, #f3f4f6); border-color: var(--color-border, #30363d); }
+    .subnav a.current { color: #58a6ff; border-color: #58a6ff; font-weight: 600; }
+    .subnav-sep { color: var(--color-border, #30363d); }
+
     /* ---- Layout grid ---- */
     .dashboard {
       display: grid;
@@ -482,8 +507,18 @@ const experts = [...new Set(
 <body>
   <!-- Privacy banner -->
   <div class="privacy-banner">
-    🔒 모더레이터 운영 페이지 · 외부 공개 금지 · 시뮬레이션 데이터
+    모더레이터 운영 페이지 · 외부 공개 금지 · 시뮬레이션 데이터
   </div>
+
+  <!-- Sub-nav: [모더레이터 도구] 라이브 · 히트맵 · 클러스터 -->
+  <nav class="subnav" aria-label="모더레이터 도구 네비게이션">
+    <span class="subnav-label">[모더레이터 도구]</span>
+    <a href="/ko/moderator/live" class="current">라이브</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/heatmap">히트맵</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/clusters">클러스터</a>
+  </nav>
 
   <div class="dashboard">
     <!-- Controls bar (spans full width) -->

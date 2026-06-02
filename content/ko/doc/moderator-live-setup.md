@@ -99,6 +99,72 @@ last_updated: "2026-06-02"
 
 ---
 
+## 인사이트 도구 사용법
+
+### 도구 1 — 의제×키워드 히트맵 (`/ko/moderator/insights/heatmap`)
+
+18개 의제 영역(행)과 63개 키워드(열)의 빈도 교차표를 SVG 히트맵으로 표시합니다.
+
+- **셀 호버**: 해당 영역×키워드 빈도 수치 툴팁
+- **셀 클릭**: 우측 패널에 해당 의제 목록 + 문맥 발췌
+- **영역 필터**: 상단 셀렉트에서 감축/적응/혼합 선택
+- **선택 해제**: "선택 해제" 버튼 또는 같은 셀 재클릭
+- 키워드 색상 범례: 좌하단 비리디스 그라디언트 바 (0회~최대 회)
+- 워크숍 현장에서는 특정 주제(예: "재생")가 몇 개 영역에 걸쳐 있는지 빠르게 확인하는 용도
+
+### 도구 2 — 네트워크 클러스터 분석 (`/ko/moderator/insights/clusters`)
+
+6개 네트워크(감축·현황 / 감축·정책 / 감축·기대효과 / 적응·현황 / 적응·정책 / 적응·기대효과)를 탭으로 전환합니다.
+
+- **탭 클릭**: 해당 네트워크 클러스터 카드 전환
+- **카드 "관련 의제 N건" 클릭**: 해당 클러스터 Row 참조에 매핑된 의제 카드 확장
+- **Row 칩**: 전배석 분석 PDF의 Row 번호 (Row N = 의제 id N)
+- **URL 해시**: `#network=감축-현황&cluster=0` 형태로 딥링크 가능
+
+### 데이터 파이프라인 재생성
+
+의제나 PDF 분석 결과가 업데이트된 경우 스크립트를 재실행:
+
+```bash
+cd wiki
+python3 scripts/build-network-data.py
+```
+
+출력 파일:
+- `src/data/agendas-65.json` — 65건 의제
+- `src/data/domain-keyword-matrix.json` — 18×63 행렬
+- `src/data/network/clusters.json` — 21개 클러스터
+- `src/data/network/cluster-to-agendas.json` — Row 참조 매핑
+
+---
+
+## 미해결: 진짜 force-directed 네트워크
+
+### 블로커
+
+현재 클러스터 페이지는 전배석 분석의 **클러스터명·Row 참조·서술**만 정적으로 표시합니다.
+D3.js force-directed 그래프(키워드 노드 + 공동출현 엣지)를 구현하려면 **엣지 데이터**가 필요합니다:
+
+- 키워드 간 공동출현 행렬 (edge list: keyword_A, keyword_B, weight)
+- 또는 원본 Gephi 파일 (.gexf)
+- 또는 R/Python igraph 객체 export
+
+### 요청 템플릿 (전배석에게 전달)
+
+> 안녕하세요, 전배석 선생님.
+>
+> 기후시민회의 모더레이터 시각화 도구를 구현하고 있습니다.
+> 5월 29일 분석 결과(네트워크 기반 의미분석)를 바탕으로 인터랙티브 네트워크 그래프를 추가하고 싶습니다.
+>
+> 다음 중 하나를 공유해 주실 수 있을까요?
+> 1. Gephi 원본 파일 (.gexf) — 6개 네트워크 각각
+> 2. 엣지 리스트 CSV (keyword_A, keyword_B, cooccurrence_weight)
+> 3. R igraph 또는 Python networkx 객체 (pickle/RDS)
+>
+> 파일이 크거나 공유가 어려운 경우, 각 네트워크별 Top 50 엣지만 추출한 CSV도 충분합니다.
+
+---
+
 ## 5. 향후 프로덕션 전환 포인트
 
 `live.astro` 상단 `is:inline` 스크립트의 TODO 블록을 찾아 교체:
