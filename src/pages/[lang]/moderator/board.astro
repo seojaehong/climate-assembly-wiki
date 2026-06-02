@@ -1,0 +1,662 @@
+---
+// @ts-nocheck
+/**
+ * /ko/moderator/board/ — 의제 보드 (선정 단계 · 프로젝터용)
+ *
+ * PRIVACY:
+ *   - KO-only route (getStaticPaths emits only 'ko')
+ *   - robots noindex,nofollow
+ *   - NOT in sitemap (whitelist filter excludes /moderator/*)
+ *   - NOT in pagefind (no data-pagefind-body)
+ *   - No nav links to this page from public pages
+ *
+ * DATA SOURCE:
+ *   - PUBLIC_LIVE_SHEET_CSV_URL → Google Sheet master (IMPORTRANGE 15 groups)
+ *   - Schema: 순번|일자|조|발언자|안건|상태|도메인|타임스탬프|키워드
+ *   - Client-side fetch, poll every 10s
+ */
+
+import '../../../styles/global.css';
+
+export async function getStaticPaths() {
+  return [{ params: { lang: 'ko' } }];
+}
+
+const sheetCsvUrl = import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '';
+const GROUP_LABELS = Array.from({ length: 15 }, (_, i) => i + 1);
+---
+<!doctype html>
+<html lang="ko" dir="ltr" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>기후시민회의 의제 보드 [보드]</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <!-- No canonical, no hreflang, no OG — private page -->
+  <style>
+    /* ============================================================
+       MODERATOR BOARD — light sticky-note canvas, projector-ready
+       ============================================================ */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --board-bg: #f0ece4;
+      --frame-bg: #ffffff;
+      --frame-border: #d1c9bb;
+      --frame-header-bg: #e8e0d4;
+      --card-yellow: #fef3c7;
+      --card-text: #1c1917;
+      --card-footer: #78716c;
+      --text-sm: 0.75rem;
+      --text-xs: 0.6875rem;
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    body {
+      background: var(--board-bg);
+      color: var(--card-text);
+      font-family: 'Pretendard Variable', 'Pretendard', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Privacy banner ---- */
+    .privacy-banner {
+      background: #7c2d12;
+      color: #fed7aa;
+      text-align: center;
+      padding: 6px 16px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      border-bottom: 2px solid #ea580c;
+      flex-shrink: 0;
+    }
+
+    /* ---- Sub-nav ---- */
+    .subnav {
+      background: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 6px 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #6b7280;
+      flex-shrink: 0;
+    }
+    .subnav-label { font-weight: 700; margin-right: 4px; color: #374151; }
+    .subnav a {
+      color: #6b7280;
+      text-decoration: none;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .subnav a:hover { color: #111827; border-color: #d1d5db; }
+    .subnav a.current { color: #d97706; border-color: #d97706; font-weight: 600; }
+    .subnav-sep { color: #d1d5db; }
+
+    /* ---- Page header ---- */
+    .page-header {
+      background: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+    .page-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #111827;
+      white-space: nowrap;
+    }
+    .page-meta {
+      font-size: 0.75rem;
+      color: #6b7280;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .progress-pill {
+      background: #d1fae5;
+      color: #065f46;
+      border-radius: 9999px;
+      padding: 2px 10px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .sheet-status-badge {
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+    .sheet-status-badge.live { color: #059669; }
+    .sheet-status-badge.error { color: #dc2626; }
+
+    .toggle-btn {
+      margin-left: auto;
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      color: #374151;
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.1s;
+    }
+    .toggle-btn:hover { background: #e5e7eb; }
+    .toggle-btn.paused { color: #dc2626; border-color: #fca5a5; background: #fef2f2; }
+
+    /* ---- Sheet guide ---- */
+    .sheet-guide {
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+      margin: 12px 20px;
+      padding: 12px 16px;
+      font-size: 0.75rem;
+      color: #92400e;
+      line-height: 1.7;
+      display: none;
+    }
+    .sheet-guide.visible { display: block; }
+    .sheet-guide code {
+      background: #fef3c7;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-family: monospace;
+    }
+
+    /* ---- Board grid ---- */
+    .board-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      padding: 16px 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 1200px) and (min-width: 900px) {
+      .board-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 900px) {
+      .board-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ---- Group frame ---- */
+    .group-frame {
+      background: var(--frame-bg);
+      border: 1.5px solid var(--frame-border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      min-width: 280px;
+    }
+
+    .group-header {
+      background: var(--frame-header-bg);
+      border-bottom: 1px solid var(--frame-border);
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .group-number {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #292524;
+      line-height: 1;
+    }
+
+    .group-count-badge {
+      margin-left: auto;
+      font-size: 0.6875rem;
+      color: #78716c;
+      background: #e7e5e4;
+      border-radius: 9999px;
+      padding: 1px 8px;
+    }
+
+    .group-body {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 80px;
+    }
+
+    /* ---- Empty placeholder ---- */
+    .group-placeholder {
+      text-align: center;
+      color: #a8a29e;
+      font-size: 0.75rem;
+      padding: 20px 8px;
+      width: 100%;
+    }
+
+    /* ---- Sticky card ---- */
+    .agenda-card {
+      background: var(--card-yellow);
+      border-radius: 3px;
+      padding: 8px 10px;
+      box-shadow: 2px 4px 8px rgba(0,0,0,0.15);
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.3s ease, box-shadow 0.3s ease, opacity 0.4s ease, filter 0.4s ease;
+      word-break: keep-all;
+      overflow-wrap: break-word;
+    }
+
+    .card-content-text {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--card-text);
+      line-height: 1.45;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .agenda-card.expanded .card-content-text {
+      display: block;
+      -webkit-line-clamp: unset;
+      overflow: visible;
+    }
+
+    .card-footer {
+      margin-top: 5px;
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .card-chip {
+      font-size: 0.625rem;
+      font-weight: 600;
+      background: rgba(0,0,0,0.07);
+      color: var(--card-footer);
+      border-radius: 3px;
+      padding: 1px 5px;
+    }
+
+    /* ---- Status effects ---- */
+    /* 선정 */
+    .agenda-card[data-status="선정"] {
+      background: #d1fae5;
+      box-shadow: 0 0 0 2px #10b981, 2px 4px 14px rgba(16,185,129,0.35);
+      transform: scale(1.03);
+    }
+    .agenda-card[data-status="선정"] .card-content-text::before {
+      content: "★ ";
+      color: #059669;
+      font-weight: 700;
+    }
+
+    @keyframes pulse-selected {
+      0%, 100% { box-shadow: 0 0 0 2px #10b981, 2px 4px 14px rgba(16,185,129,0.35); }
+      50% { box-shadow: 0 0 0 3px #10b981, 2px 4px 22px rgba(16,185,129,0.55); }
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .agenda-card[data-status="선정"] {
+        animation: pulse-selected 2.5s ease-in-out infinite;
+      }
+    }
+
+    /* 발표완료 */
+    .agenda-card[data-status="발표완료"] {
+      opacity: 0.35;
+      filter: grayscale(1);
+    }
+    .agenda-card[data-status="발표완료"] .card-content-text {
+      text-decoration: line-through;
+    }
+
+    /* 발표중 */
+    .agenda-card[data-status="발표중"] {
+      background: #d1fae5;
+      box-shadow: 0 0 0 3px #059669, 3px 5px 24px rgba(5,150,105,0.6);
+      transform: scale(1.03);
+    }
+    .agenda-card[data-status="발표중"] .card-content-text::before {
+      content: "★ ";
+      color: #059669;
+      font-weight: 700;
+    }
+
+    @keyframes bounce-announcing {
+      0%, 100% { transform: scale(1.03) translateY(0); }
+      50% { transform: scale(1.03) translateY(-3px); }
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .agenda-card[data-status="발표중"] {
+        animation: bounce-announcing 1.5s ease-in-out infinite;
+      }
+    }
+
+    /* 대기 — explicit reset */
+    .agenda-card[data-status="대기"] {
+      opacity: 1;
+      filter: none;
+      animation: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Privacy banner -->
+  <div class="privacy-banner">
+    🔒 모더레이터 운영 페이지 · 외부 공개 금지
+  </div>
+
+  <!-- Sub-nav -->
+  <nav class="subnav" aria-label="모더레이터 도구 네비게이션">
+    <span class="subnav-label">[모더레이터 도구]</span>
+    <a href="/ko/moderator/live">라이브</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/board" class="current">보드</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/heatmap">히트맵</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/clusters">클러스터</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/agenda-network">의제연결</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/groups">조별</a>
+  </nav>
+
+  <!-- Page header -->
+  <div class="page-header">
+    <span class="page-title">기후시민회의 의제 보드 · 2026-06-13</span>
+    <div class="page-meta">
+      <span class="progress-pill" id="progress-pill">선정 0 / 0</span>
+      <span class="sheet-status-badge" id="sheet-status-badge">연결 중…</span>
+      <span id="last-updated"></span>
+    </div>
+    <button class="toggle-btn" id="toggle-btn" aria-pressed="true">자동 갱신 ON</button>
+  </div>
+
+  <!-- Sheet guide (shown when env not set) -->
+  <div class="sheet-guide" id="sheet-guide">
+    <strong>PUBLIC_LIVE_SHEET_CSV_URL 환경 변수가 설정되지 않았습니다.</strong><br>
+    Cloudflare Pages 환경 변수에 <code>PUBLIC_LIVE_SHEET_CSV_URL</code>을 추가하고 재배포하세요.
+  </div>
+
+  <!-- Board grid — 15 group frames (static HTML, cards injected by JS) -->
+  <main class="board-grid" id="board-grid" aria-label="15조 의제 보드">
+    {GROUP_LABELS.map(n => (
+      <section class="group-frame" data-group={String(n)} aria-label={`${n}조`}>
+        <header class="group-header">
+          <span class="group-number">{n}조</span>
+          <span class="group-count-badge" id={`count-${n}`}>0건</span>
+        </header>
+        <div class="group-body" id={`group-body-${n}`}>
+          <div class="group-placeholder">안건 입력 대기 중...</div>
+        </div>
+      </section>
+    ))}
+  </main>
+
+  <!-- Build-time data island -->
+  <script id="sheet-csv-url-data" type="application/json" set:html={JSON.stringify(sheetCsvUrl)}></script>
+
+  <script is:inline>
+    // ============================================================
+    // BOARD PAGE — client-side data engine
+    // Schema: 순번|일자|조|발언자|안건|상태|도메인|타임스탬프|키워드
+    // Poll: every 10s
+    // ============================================================
+
+    const SHEET_CSV_URL = JSON.parse(document.getElementById('sheet-csv-url-data').textContent);
+    const POLL_MS = 10000;
+
+    // ── CSV parser (same state-machine as live.astro) ────────────
+    function parseCSV(text) {
+      const rows = [];
+      let col = '', row = [], inQuote = false;
+      const flush = () => { row.push(col); col = ''; };
+      const pushRow = () => { if (row.length > 0) rows.push(row); row = []; };
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i], next = text[i + 1];
+        if (inQuote) {
+          if (ch === '"' && next === '"') { col += '"'; i++; }
+          else if (ch === '"') { inQuote = false; }
+          else { col += ch; }
+        } else {
+          if (ch === '"') { inQuote = true; }
+          else if (ch === ',') { flush(); }
+          else if (ch === '\r' && next === '\n') { flush(); pushRow(); i++; }
+          else if (ch === '\n' || ch === '\r') { flush(); pushRow(); }
+          else { col += ch; }
+        }
+      }
+      if (col || row.length > 0) { flush(); pushRow(); }
+      return rows;
+    }
+
+    // Board-specific column map
+    const COL_MAP = {
+      '순번':     'id',
+      '일자':     'date',
+      '조':       'group',
+      '발언자':   'speaker',
+      '안건':     'content',
+      '상태':     'status',
+      '도메인':   'domain',
+      '타임스탬프':'ts',
+      '키워드':   'keywords',
+    };
+
+    function csvToRows(text) {
+      const parsed = parseCSV(text.trim());
+      if (parsed.length < 2) return [];
+      const headers = parsed[0].map(h => h.trim());
+      const result = [];
+      for (let r = 1; r < parsed.length; r++) {
+        const cells = parsed[r];
+        if (cells.every(c => !c.trim())) continue;
+        const obj = {};
+        headers.forEach((h, i) => {
+          const key = COL_MAP[h] || h;
+          obj[key] = (cells[i] || '').trim();
+        });
+        obj.id = parseInt(obj.id, 10) || r;
+        // Normalise group: strip "조" suffix, keep as string number
+        if (obj.group) obj.group = obj.group.replace(/조$/u, '').trim();
+        result.push(obj);
+      }
+      return result;
+    }
+
+    // ── Deterministic rotation: ±1.5° from row id ─────────────────
+    function cardRotation(id) {
+      // Knuth multiplicative hash → deterministic ±1.5°
+      const hash = ((id * 2654435761) >>> 0) % 1000;
+      return ((hash / 1000) * 3 - 1.5).toFixed(2);
+    }
+
+    // ── Deterministic card hue tint per group (cycle 15 pastels) ──
+    const GROUP_TINTS = [
+      '#fef3c7','#fde68a','#fef9c3','#ecfccb','#d1fae5',
+      '#e0f2fe','#dbeafe','#ede9fe','#fce7f3','#fff1f2',
+      '#ffedd5','#fef3c7','#ecfccb','#d1fae5','#e0f2fe',
+    ];
+    function groupTint(groupNum) {
+      const idx = (parseInt(groupNum, 10) - 1) % GROUP_TINTS.length;
+      return GROUP_TINTS[idx] || '#fef3c7';
+    }
+
+    // ── DOM refs ──────────────────────────────────────────────────
+    const sheetGuide    = document.getElementById('sheet-guide');
+    const statusBadge   = document.getElementById('sheet-status-badge');
+    const lastUpdated   = document.getElementById('last-updated');
+    const progressPill  = document.getElementById('progress-pill');
+    const toggleBtn     = document.getElementById('toggle-btn');
+
+    // ── State ─────────────────────────────────────────────────────
+    let rows = [];
+    let pollTimer = null;
+    let autoRefresh = true;
+
+    // ── Toggle auto-refresh ───────────────────────────────────────
+    toggleBtn.addEventListener('click', () => {
+      autoRefresh = !autoRefresh;
+      if (autoRefresh) {
+        toggleBtn.textContent = '자동 갱신 ON';
+        toggleBtn.classList.remove('paused');
+        toggleBtn.setAttribute('aria-pressed', 'true');
+        startPoll();
+      } else {
+        toggleBtn.textContent = '자동 갱신 OFF';
+        toggleBtn.classList.add('paused');
+        toggleBtn.setAttribute('aria-pressed', 'false');
+        stopPoll();
+      }
+    });
+
+    // ── Fetch & render ────────────────────────────────────────────
+    async function fetchAndRender() {
+      if (!SHEET_CSV_URL) {
+        sheetGuide.classList.add('visible');
+        statusBadge.textContent = '⚠ URL 미설정';
+        statusBadge.className = 'sheet-status-badge error';
+        renderBoard([]);
+        return;
+      }
+      try {
+        const text = await fetch(SHEET_CSV_URL).then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.text();
+        });
+        rows = csvToRows(text);
+        const now = new Date();
+        statusBadge.textContent = `LIVE · ${now.toLocaleTimeString('ko-KR', { hour12: false })}`;
+        statusBadge.className = 'sheet-status-badge live';
+        lastUpdated.textContent = '';
+        renderBoard(rows);
+      } catch (err) {
+        statusBadge.textContent = `오류: ${err.message}`;
+        statusBadge.className = 'sheet-status-badge error';
+      }
+    }
+
+    function startPoll() {
+      stopPoll();
+      pollTimer = setInterval(() => fetchAndRender(), POLL_MS);
+    }
+
+    function stopPoll() {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+
+    // ── Render board ──────────────────────────────────────────────
+    function renderBoard(data) {
+      // Group data by 조
+      const grouped = {};
+      for (let g = 1; g <= 15; g++) grouped[String(g)] = [];
+      data.forEach(row => {
+        const g = row.group;
+        if (g && grouped[g] !== undefined) grouped[g].push(row);
+      });
+
+      // Update progress counter
+      const selected = data.filter(r => r.status === '선정' || r.status === '발표중').length;
+      progressPill.textContent = `선정 ${selected} / ${data.length}`;
+
+      // Render each group frame
+      for (let g = 1; g <= 15; g++) {
+        const gStr = String(g);
+        const body = document.getElementById(`group-body-${g}`);
+        const countBadge = document.getElementById(`count-${g}`);
+        const cards = grouped[gStr];
+
+        if (!body) continue;
+        countBadge.textContent = `${cards.length}건`;
+
+        if (cards.length === 0) {
+          body.innerHTML = '<div class="group-placeholder">안건 입력 대기 중...</div>';
+          continue;
+        }
+
+        const tint = groupTint(g);
+        body.innerHTML = '';
+        cards.forEach(row => {
+          const rot = cardRotation(row.id);
+          const st = row.status || '대기';
+          const shortContent = row.content.length > 80
+            ? row.content.slice(0, 80) + '…'
+            : row.content;
+
+          const card = document.createElement('div');
+          card.className = 'agenda-card';
+          card.setAttribute('data-status', st);
+          card.setAttribute('data-id', String(row.id));
+          card.setAttribute('data-full', row.content);
+          card.setAttribute('role', 'button');
+          card.setAttribute('tabindex', '0');
+          card.setAttribute('aria-expanded', 'false');
+          card.style.cssText = `transform: rotate(${rot}deg); background: ${tint};`;
+          // Override background for status effects (let CSS handle selected/done)
+          if (st === '선정' || st === '발표중' || st === '발표완료') {
+            card.style.background = '';
+          }
+
+          const chipHtml = [
+            row.speaker ? `<span class="card-chip">${row.speaker}</span>` : '',
+            row.domain  ? `<span class="card-chip">${row.domain}</span>`  : '',
+          ].join('');
+
+          card.innerHTML = `
+            <div class="card-content-text">${escHtml(shortContent)}</div>
+            <div class="card-footer">${chipHtml}</div>
+          `;
+
+          // Click / keyboard toggle full text
+          function toggleExpand() {
+            const expanded = card.classList.toggle('expanded');
+            card.setAttribute('aria-expanded', String(expanded));
+            if (expanded) {
+              card.querySelector('.card-content-text').textContent = row.content;
+            } else {
+              card.querySelector('.card-content-text').textContent = shortContent;
+            }
+          }
+          card.addEventListener('click', toggleExpand);
+          card.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(); }
+          });
+
+          body.appendChild(card);
+        });
+      }
+    }
+
+    function escHtml(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // ── Init ──────────────────────────────────────────────────────
+    if (!SHEET_CSV_URL) {
+      sheetGuide.classList.add('visible');
+      statusBadge.textContent = '⚠ URL 미설정';
+      statusBadge.className = 'sheet-status-badge error';
+      renderBoard([]);
+    } else {
+      fetchAndRender().then(() => startPoll());
+    }
+  </script>
+</body>
+</html>
