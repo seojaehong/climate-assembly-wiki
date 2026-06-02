@@ -580,6 +580,132 @@ const sheetCsvUrl = import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '';
     }
     .status-dot.done { background: var(--color-accent, #34d399); }
     .status-dot.current { background: var(--color-warn, #fbbf24); }
+
+    /* ============================================================
+       STATUS TRANSITIONS — 선정 / 발표완료 / 발표중
+       Applied via data-status="…" on .question-card, .next-item,
+       and .current-card. Computed from effectiveStatus() which
+       bridges sim state (current/done) ↔ sheet 한국어 values.
+       ============================================================ */
+
+    /* ── 선정 (highlighted — the "남기는 효과") ─────────────────── */
+    .current-card[data-status="선정"],
+    .next-item[data-status="선정"] {
+      background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--color-accent, #34d399) 8%, var(--color-card-bg, #161b22)) 0%,
+        var(--color-card-bg, #161b22) 100%
+      );
+      border-left: 4px solid var(--color-accent, #34d399);
+      box-shadow:
+        0 0 20px color-mix(in srgb, var(--color-accent, #34d399) 30%, transparent),
+        inset 0 0 0 1px color-mix(in srgb, var(--color-accent, #34d399) 15%, transparent);
+      transform: scale(1.02);
+      transition: transform 0.4s ease-out, box-shadow 0.4s ease-out, background 0.4s ease-out;
+    }
+
+    .current-card[data-status="선정"] .content-text,
+    .next-item[data-status="선정"] .next-item-content {
+      text-shadow: 0 0 12px color-mix(in srgb, var(--color-accent, #34d399) 25%, transparent);
+    }
+
+    @keyframes pulse-selected {
+      0%, 100% {
+        background: linear-gradient(
+          135deg,
+          color-mix(in srgb, var(--color-accent, #34d399) 8%, var(--color-card-bg, #161b22)) 0%,
+          var(--color-card-bg, #161b22) 100%
+        );
+      }
+      50% {
+        background: linear-gradient(
+          135deg,
+          color-mix(in srgb, var(--color-accent, #34d399) 14%, var(--color-card-bg, #161b22)) 0%,
+          color-mix(in srgb, var(--color-accent, #34d399) 4%, var(--color-card-bg, #161b22)) 100%
+        );
+      }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .current-card[data-status="선정"],
+      .next-item[data-status="선정"] {
+        animation: pulse-selected 2.5s ease-in-out infinite;
+      }
+    }
+
+    /* ── 발표완료 (done — fades away) ───────────────────────────── */
+    .current-card[data-status="발표완료"],
+    .next-item[data-status="발표완료"] {
+      opacity: 0.35;
+      filter: grayscale(0.5);
+      transform: scale(0.97);
+      transition: opacity 0.6s ease-in, filter 0.6s ease-in, transform 0.6s ease-in;
+      box-shadow: none;
+    }
+
+    .current-card[data-status="발표완료"] .content-text,
+    .next-item[data-status="발표완료"] .next-item-content {
+      text-decoration: line-through;
+      text-decoration-color: color-mix(in srgb, var(--color-fg-muted, #9ca3af) 50%, transparent);
+    }
+
+    /* ── 발표중 (선정 + extra emphasis) ─────────────────────────── */
+    .current-card[data-status="발표중"],
+    .next-item[data-status="발표중"] {
+      background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--color-accent, #34d399) 12%, var(--color-card-bg, #161b22)) 0%,
+        var(--color-card-bg, #161b22) 100%
+      );
+      border-left: 4px solid var(--color-accent, #34d399);
+      box-shadow:
+        0 0 32px color-mix(in srgb, var(--color-accent, #34d399) 60%, transparent),
+        inset 0 0 0 1px color-mix(in srgb, var(--color-accent, #34d399) 20%, transparent);
+      transform: scale(1.02);
+      transition: transform 0.4s ease-out, box-shadow 0.4s ease-out;
+    }
+
+    .current-card[data-status="발표중"] .content-text {
+      font-size: 1.15em;
+    }
+
+    @keyframes bounce-announcing {
+      0%, 100% { transform: scale(1.02) translateY(0); }
+      50% { transform: scale(1.02) translateY(-2px); }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .current-card[data-status="발표중"],
+      .next-item[data-status="발표중"] {
+        animation: bounce-announcing 1.5s ease-in-out infinite;
+      }
+    }
+
+    /* ── 대기 (default — explicit reset) ────────────────────────── */
+    .current-card[data-status="대기"],
+    .next-item[data-status="대기"] {
+      opacity: 1;
+      filter: none;
+      transform: scale(1);
+      box-shadow: none;
+      background: var(--color-card-bg, #161b22);
+      border-left: none;
+      animation: none;
+      transition: transform 0.4s ease-out, opacity 0.4s ease-out;
+    }
+
+    /* ── Next-up flash: green flash on queue cards when 선정 advances ── */
+    @keyframes next-up-flash {
+      0%   { box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent, #34d399) 80%, transparent); }
+      60%  { box-shadow: 0 0 12px 4px color-mix(in srgb, var(--color-accent, #34d399) 50%, transparent); }
+      100% { box-shadow: none; }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .next-item.next-up-flash {
+        animation: next-up-flash 1.5s ease-out forwards;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1057,6 +1183,22 @@ const sheetCsvUrl = import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '';
       btn.addEventListener('click', () => switchSource(btn.dataset.source));
     });
 
+    // ── Effective status bridge ───────────────────────────────────────────────
+    // Merges sim internal state (current/done) with sheet 한국어 status column.
+    // Sim mode never mutates q.status — so we derive display state from
+    // state.statuses[q.id] first, falling back to the raw sheet value.
+    function effectiveStatus(q) {
+      const simSt = state.statuses[q.id];
+      if (simSt === 'current') return '선정';
+      if (simSt === 'done') return '발표완료';
+      // Sheet mode: use raw status if present, else default
+      if (q.status && q.status !== '') return q.status;
+      return '대기';
+    }
+
+    // Track previous index for next-up flash
+    let prevRenderIndex = -1;
+
     // ── Render ─────────────────────────────────────────────────────────────────
     function render() {
       const filtered = getFiltered();
@@ -1078,12 +1220,14 @@ const sheetCsvUrl = import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '';
         currentContent.style.display = 'none';
         nextTitle.style.display = 'none';
         currentCard.classList.remove('playing');
+        currentCard.removeAttribute('data-status');
       } else {
         const q = filtered[idx];
         emptyState.style.display = 'none';
         currentContent.style.display = '';
         currentCard.classList.toggle('playing', state.playing);
         nextTitle.style.display = '';
+        currentCard.setAttribute('data-status', effectiveStatus(q));
 
         cardMeta.innerHTML = `
           <span class="card-label">지금 발언</span>
@@ -1096,13 +1240,18 @@ const sheetCsvUrl = import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '';
         speakerLine.textContent = `Day ${q.day} · ${q.channel || ''}`;
       }
 
+      // Next-up flash: fire when index advances forward
+      const didAdvance = idx > prevRenderIndex && prevRenderIndex >= 0;
+      prevRenderIndex = idx;
+
       nextQueue.innerHTML = '';
       const upcoming = filtered.slice(Math.max(idx + 1, 0), Math.max(idx + 1, 0) + 3);
       nextCount.textContent = String(Math.max(0, total - idx - 1));
 
-      upcoming.forEach(q => {
+      upcoming.forEach((q, queuePos) => {
         const div = document.createElement('div');
         div.className = 'next-item';
+        div.setAttribute('data-status', effectiveStatus(q));
         div.innerHTML = `
           <div class="next-item-meta">
             <span class="meta-pill">${q.region || '—'}</span>
@@ -1110,6 +1259,14 @@ const sheetCsvUrl = import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '';
           </div>
           <div class="next-item-content">${q.content}</div>
         `;
+        // Stagger the next-up flash by queue position
+        if (didAdvance) {
+          setTimeout(() => {
+            div.classList.add('next-up-flash');
+            // Remove class after animation completes so it can re-trigger
+            div.addEventListener('animationend', () => div.classList.remove('next-up-flash'), { once: true });
+          }, queuePos * 120);
+        }
         nextQueue.appendChild(div);
       });
 
@@ -1151,6 +1308,7 @@ const sheetCsvUrl = import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '';
         const st = state.statuses[q.id];
         if (st === 'done') dot.classList.add('done');
         if (st === 'current') dot.classList.add('current');
+        dot.setAttribute('data-status', effectiveStatus(q));
         statusDots.appendChild(dot);
       });
 
