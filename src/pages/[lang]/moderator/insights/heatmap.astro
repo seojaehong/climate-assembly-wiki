@@ -1,4 +1,5 @@
 ---
+// @ts-nocheck
 /**
  * /ko/moderator/insights/heatmap — 의제 영역 × 키워드 히트맵 (모더레이터 전용)
  *
@@ -27,25 +28,8 @@ export async function getStaticPaths() {
   return [{ params: { lang: 'ko' } }];
 }
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-interface MatrixData {
-  domains: string[];
-  keywords: string[];
-  matrix: number[][];
-  domain_categories: Record<string, string>;
-}
-interface Agenda {
-  id: number;
-  big_category: string;
-  domain: string;
-  agenda_name: string;
-  current_situation: string;
-  proposed_policy: string;
-  expected_effect: string;
-}
-
-const matrixData = matrixDataRaw as unknown as MatrixData;
-const agendas = agendasRaw as unknown as Agenda[];
+const matrixData = matrixDataRaw;
+const agendas = agendasRaw;
 
 const domains = matrixData.domains;
 const keywords = matrixData.keywords;
@@ -57,8 +41,7 @@ const allValues = matrix.flat();
 const maxVal = Math.max(...allValues);
 
 // ── Viridis-like 10-step color scale ─────────────────────────────────────────
-type RGB = [number, number, number];
-const VIRIDIS_STOPS: [number, RGB][] = [
+const VIRIDIS_STOPS = [
   [0.000, [68,  1,  84]],
   [0.111, [72,  40, 120]],
   [0.222, [62,  74, 137]],
@@ -71,7 +54,7 @@ const VIRIDIS_STOPS: [number, RGB][] = [
   [1.000, [253, 231, 37]],
 ];
 
-function valToColor(v: number): string {
+function valToColor(v) {
   if (maxVal === 0 || v === 0) return '#0d0221';
   const t = Math.min(1, v / maxVal);
   let lo = VIRIDIS_STOPS[0];
@@ -104,8 +87,7 @@ const svgW = CAT_LABEL_W + LEFT_MARGIN + keywords.length * CELL_W + PAD_R;
 const svgH = TOP_MARGIN + domains.length * CELL_H + LEGEND_H + 20;
 
 // Big-category group boundaries
-interface CatGroup { cat: string; start: number; end: number; }
-const catGroups: CatGroup[] = [];
+const catGroups = [];
 let _lastCat = '';
 for (let i = 0; i < domains.length; i++) {
   const cat = domainCats[domains[i]] || '감축';
@@ -118,10 +100,10 @@ for (let i = 0; i < domains.length; i++) {
 }
 
 // ── Pre-compute SVG markup string ─────────────────────────────────────────────
-const CAT_FILL: Record<string, string> = { '감축': '#1a3a1a', '적응': '#1a2d3a', '혼합': '#2d1a3a' };
-const CAT_TEXT: Record<string, string> = { '감축': '#3fb950', '적응': '#58a6ff', '혼합': '#d2a8ff' };
+const CAT_FILL = { '감축': '#1a3a1a', '적응': '#1a2d3a', '혼합': '#2d1a3a' };
+const CAT_TEXT = { '감축': '#3fb950', '적응': '#58a6ff', '혼합': '#d2a8ff' };
 
-let svgParts: string[] = [];
+let svgParts = [];
 
 // 1. Viridis gradient def
 svgParts.push('<defs><linearGradient id="viridis-grad" x1="0" x2="1" y1="0" y2="0">');

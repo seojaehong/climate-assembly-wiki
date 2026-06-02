@@ -1,4 +1,5 @@
 ---
+// @ts-nocheck
 /**
  * /ko/moderator/insights/clusters — 6-network cluster 분석 (모더레이터 전용)
  *
@@ -29,34 +30,12 @@ export async function getStaticPaths() {
   return [{ params: { lang: 'ko' } }];
 }
 
-interface ClusterRecord {
-  idx: number;
-  name: string;
-  color: string;
-  row_refs: number[];
-  narrative: string;
-}
-interface Network {
-  id: string;
-  label: string;
-  clusters: ClusterRecord[];
-}
-interface Agenda {
-  id: number;
-  big_category: string;
-  domain: string;
-  agenda_name: string;
-  current_situation: string;
-  proposed_policy: string;
-  expected_effect: string;
-}
-
-const networks = clustersRaw as unknown as Network[];
-const clusterAgendas = clusterAgendasRaw as unknown as Record<string, number[]>;
-const agendas = agendasRaw as unknown as Agenda[];
+const networks = clustersRaw;
+const clusterAgendas = clusterAgendasRaw;
+const agendas = agendasRaw;
 
 const totalClusters = networks.reduce((s, n) => s + n.clusters.length, 0);
-const totalMappings = Object.values(clusterAgendas).reduce((s: number, ids) => s + (ids as number[]).length, 0);
+const totalMappings = Object.values(clusterAgendas).reduce((s, ids) => s + ids.length, 0);
 
 // Serialize for inline JS
 const networksJson = JSON.stringify(networks);

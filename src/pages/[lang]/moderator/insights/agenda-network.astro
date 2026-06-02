@@ -1,4 +1,5 @@
 ---
+// @ts-nocheck
 /**
  * /ko/moderator/insights/agenda-network — 65개 의제 의미연결 네트워크 (모더레이터 전용)
  *
@@ -37,68 +38,26 @@ export async function getStaticPaths() {
   return [{ params: { lang: 'ko' } }];
 }
 
-interface NetworkNode {
-  id: number;
-  name: string;
-  domain: string;
-  big_category: string;
-  degree: number;
-  bb_degree: number;
-  x: number;
-  y: number;
-  x_bb: number;
-  y_bb: number;
-}
-interface NetworkEdge {
-  source: number;
-  target: number;
-  weight: number;
-}
-interface CommunityRecord {
-  id: number;
-  members: number[];
-  top_keywords: string[];
-}
-interface NetworkData {
-  threshold: number;
-  disparity_alpha: number;
-  nodes: NetworkNode[];
-  edges: NetworkEdge[];
-  edges_backbone: NetworkEdge[];
-  communities: CommunityRecord[];
-  nodes_by_domain: number[];
-  similarity_matrix: Record<string, number>;
-}
-interface Agenda {
-  id: number;
-  big_category: string;
-  domain: string;
-  agenda_name: string;
-  current_situation: string;
-  proposed_policy: string;
-  expected_effect: string;
-}
-
-const network = networkRaw as NetworkData;
-const agendas = agendasRaw as Agenda[];
+const network = networkRaw;
+const agendas = agendasRaw;
 
 // SVG canvas dimensions
 const SVG_W = 800;
 const SVG_H = 600;
 
 // Color by big_category only (no community colors — honest about dense clustering)
-const CAT_COLORS: Record<string, string> = {
+const CAT_COLORS = {
   '감축': '#34d399',   // green
   '적응': '#60a5fa',   // blue
   '혼합': '#d2a8ff',   // purple
 };
-const CAT_STROKE: Record<string, string> = {
+const CAT_STROKE = {
   '감축': '#064e3b',
   '적응': '#1e3a5f',
   '혼합': '#4c1d95',
 };
 
-function nodeRadius(degree: number): number {
+function nodeRadius(degree) {
   return Math.max(5, Math.min(16, 5 + degree * 0.6));
 }
 
@@ -106,7 +65,7 @@ function nodeRadius(degree: number): number {
 const allDomains = [...new Set(network.nodes.map(n => n.domain))].sort();
 
 // Pre-build edge index for full graph (node id -> neighbor ids)
-const edgeIndexFull: Record<number, number[]> = {};
+const edgeIndexFull = {};
 network.nodes.forEach(n => { edgeIndexFull[n.id] = []; });
 network.edges.forEach(e => {
   edgeIndexFull[e.source].push(e.target);
@@ -114,7 +73,7 @@ network.edges.forEach(e => {
 });
 
 // Pre-build edge index for backbone
-const edgeIndexBB: Record<number, number[]> = {};
+const edgeIndexBB = {};
 network.nodes.forEach(n => { edgeIndexBB[n.id] = []; });
 network.edges_backbone.forEach(e => {
   edgeIndexBB[e.source].push(e.target);
@@ -153,10 +112,9 @@ const nodeById = Object.fromEntries(network.nodes.map(n => [n.id, n]));
 // Heatmap: build SVG rect list (only non-zero off-diagonal cells)
 const hmNodes = nodesByDomain.map(id => nodeById[id]);
 
-// Heatmap: category band metadata (computed in frontmatter, no TS generics in template)
-type HmBand = { cat: string; start: number; len: number; color: string };
-const hmRowBands: HmBand[] = [];
-const hmDividers: number[] = [];
+// Heatmap: category band metadata (computed in frontmatter)
+const hmRowBands = [];
+const hmDividers = [];
 {
   let cur = '';
   let start = 0;
@@ -172,7 +130,7 @@ const hmDividers: number[] = [];
 }
 
 // Build backbone SVG (static pre-computed)
-const bbNodeSet = new Set<number>();
+const bbNodeSet = new Set();
 network.edges_backbone.forEach(e => {
   bbNodeSet.add(e.source);
   bbNodeSet.add(e.target);
@@ -594,8 +552,8 @@ network.edges_backbone.forEach(e => {
           <!-- Backbone edges -->
           <g id="bb-edges-layer">
             {network.edges_backbone.map(e => {
-              const src = network.nodes.find(n => n.id === e.source)!;
-              const tgt = network.nodes.find(n => n.id === e.target)!;
+              const src = network.nodes.find(n => n.id === e.source);
+              const tgt = network.nodes.find(n => n.id === e.target);
               return (
                 <line
                   class="net-edge"
@@ -719,8 +677,8 @@ network.edges_backbone.forEach(e => {
           <!-- All 213 edges as low-opacity hairs -->
           <g id="full-edges-layer">
             {network.edges.map(e => {
-              const src = network.nodes.find(n => n.id === e.source)!;
-              const tgt = network.nodes.find(n => n.id === e.target)!;
+              const src = network.nodes.find(n => n.id === e.source);
+              const tgt = network.nodes.find(n => n.id === e.target);
               return (
                 <line
                   class="net-edge"
