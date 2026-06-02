@@ -23,6 +23,7 @@
 
 import simQuestions from '../../../data/sim-questions.json';
 import sampleQuestions from '../../../data/sample-agenda-questions.json';
+import sample15Groups from '../../../data/sample-agenda-15groups.json';
 import '../../../styles/global.css';
 
 export async function getStaticPaths() {
@@ -601,11 +602,14 @@ const sheetCsvUrl = import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '';
   <!-- Data source selector -->
   <div class="source-bar" role="toolbar" aria-label="데이터 소스 선택">
     <span class="source-label">데이터 소스:</span>
-    <button class="source-btn active" data-source="sim" aria-pressed="true">
+    <button class="source-btn" data-source="sim" aria-pressed="false">
       📊 더미 데이터 (104행)
     </button>
     <button class="source-btn" data-source="sample" aria-pressed="false">
       🌱 의제 샘플 (5행)
+    </button>
+    <button class="source-btn active" data-source="sample-15" aria-pressed="true">
+      🌳 의제 샘플 15조 (30행)
     </button>
     <button class="source-btn" data-source="sheet" aria-pressed="false">
       🔗 Google Sheet
@@ -785,6 +789,7 @@ const sheetCsvUrl = import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '';
   <!-- Embedded build-time data — avoids Vite define:vars serialisation issues -->
   <script id="sim-data" type="application/json" set:html={JSON.stringify(simQuestions)}></script>
   <script id="sample-data" type="application/json" set:html={JSON.stringify(sampleQuestions)}></script>
+  <script id="sample-15-data" type="application/json" set:html={JSON.stringify(sample15Groups)}></script>
   <script id="sim-experts" type="application/json" set:html={JSON.stringify(experts)}></script>
   <script id="sheet-csv-url" type="application/json" set:html={JSON.stringify(sheetCsvUrl)}></script>
 
@@ -808,10 +813,16 @@ const sheetCsvUrl = import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '';
     //   day is synthesised as 1 for sample/sheet rows (day filter shows "1일차")
     // ============================================================================
 
-    const SIM_DATA    = JSON.parse(document.getElementById('sim-data').textContent);
-    const SAMPLE_DATA = JSON.parse(document.getElementById('sample-data').textContent);
-    const SIM_EXPERTS = JSON.parse(document.getElementById('sim-experts').textContent);
-    const SHEET_CSV_URL = JSON.parse(document.getElementById('sheet-csv-url').textContent);
+    const SIM_DATA       = JSON.parse(document.getElementById('sim-data').textContent);
+    const SAMPLE_DATA    = JSON.parse(document.getElementById('sample-data').textContent);
+    const SAMPLE_15_DATA = JSON.parse(document.getElementById('sample-15-data').textContent);
+    const SIM_EXPERTS    = JSON.parse(document.getElementById('sim-experts').textContent);
+    const SHEET_CSV_URL  = JSON.parse(document.getElementById('sheet-csv-url').textContent);
+
+    // Compute expert list for 15-group sample (유종민·김민경·은재호, excluding 공통)
+    const SAMPLE_15_EXPERTS = [...new Set(
+      SAMPLE_15_DATA.map(q => q.expert).filter(e => e && e !== '공통')
+    )];
 
     // ── CSV parser (state-machine, handles quoted fields with embedded commas/newlines) ──
     function parseCSV(text) {
@@ -882,9 +893,9 @@ const sheetCsvUrl = import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '';
     }
 
     // ── App data state ────────────────────────────────────────────────────────
-    let currentSource = 'sim';
-    let data = SIM_DATA;
-    let experts = SIM_EXPERTS;
+    let currentSource = 'sample-15';
+    let data = SAMPLE_15_DATA;
+    let experts = SAMPLE_15_EXPERTS;
     let sheetPollTimer = null;
 
     const SPEEDS = { 1: 10000, 2: 5000, 5: 2000 };
@@ -898,7 +909,7 @@ const sheetCsvUrl = import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '';
       filterDay: 'all',
       filterChannel: 'all',
       statuses: {},
-      dataSource: 'sim',
+      dataSource: 'sample-15',
     };
 
     function saveState() {
@@ -978,6 +989,13 @@ const sheetCsvUrl = import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '';
         data = SAMPLE_DATA;
         experts = [];
         simBadge.textContent = 'SAMPLE';
+        simBadge.classList.remove('sheet-live');
+        sheetStatus.textContent = '';
+        sheetStatus.classList.remove('live');
+      } else if (src === 'sample-15') {
+        data = SAMPLE_15_DATA;
+        experts = SAMPLE_15_EXPERTS;
+        simBadge.textContent = 'SIM-15';
         simBadge.classList.remove('sheet-live');
         sheetStatus.textContent = '';
         sheetStatus.classList.remove('live');
@@ -1260,8 +1278,8 @@ const sheetCsvUrl = import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '';
     loadState();
 
     // Restore source from sessionStorage
-    const restoredSource = state.dataSource || 'sim';
-    currentSource = 'sim'; // force re-initialise even if same
+    const restoredSource = state.dataSource || 'sample-15';
+    currentSource = 'sample-15'; // force re-initialise even if same
     switchSource(restoredSource);
 
     selDay.value = state.filterDay;
