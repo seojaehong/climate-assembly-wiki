@@ -1,0 +1,619 @@
+---
+/**
+ * /ko/moderator/insights/heatmap — 의제 영역 × 키워드 히트맵 (모더레이터 전용)
+ *
+ * PRIVACY:
+ *   - KO-only route (getStaticPaths emits only 'ko')
+ *   - robots noindex,nofollow
+ *   - NOT in sitemap (whitelist filter covers only /agenda + locale home)
+ *   - NOT in pagefind (no data-pagefind-body)
+ *   - No nav links to this page anywhere
+ *
+ * DATA:
+ *   - domain-keyword-matrix.json (built by scripts/build-network-data.py)
+ *   - agendas-65.json (65 expert agenda full text)
+ *
+ * RENDER:
+ *   - Pure Astro + pre-computed SVG string (set:html). No D3/Chart.js.
+ *   - Viridis-like 10-step color scale (#440154 → #21908C → #FDE725)
+ *   - Minimal JS for tooltip + click-to-highlight
+ */
+
+import matrixDataRaw from '../../../../data/domain-keyword-matrix.json';
+import agendasRaw from '../../../../data/agendas-65.json';
+import '../../../../styles/global.css';
+
+export async function getStaticPaths() {
+  return [{ params: { lang: 'ko' } }];
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface MatrixData {
+  domains: string[];
+  keywords: string[];
+  matrix: number[][];
+  domain_categories: Record<string, string>;
+}
+interface Agenda {
+  id: number;
+  big_category: string;
+  domain: string;
+  agenda_name: string;
+  current_situation: string;
+  proposed_policy: string;
+  expected_effect: string;
+}
+
+const matrixData = matrixDataRaw as unknown as MatrixData;
+const agendas = agendasRaw as unknown as Agenda[];
+
+const domains = matrixData.domains;
+const keywords = matrixData.keywords;
+const matrix = matrixData.matrix;
+const domainCats = matrixData.domain_categories;
+
+// Max value for color scale
+const allValues = matrix.flat();
+const maxVal = Math.max(...allValues);
+
+// ── Viridis-like 10-step color scale ─────────────────────────────────────────
+type RGB = [number, number, number];
+const VIRIDIS_STOPS: [number, RGB][] = [
+  [0.000, [68,  1,  84]],
+  [0.111, [72,  40, 120]],
+  [0.222, [62,  74, 137]],
+  [0.333, [49, 104, 142]],
+  [0.444, [38, 130, 142]],
+  [0.555, [31, 158, 137]],
+  [0.667, [53, 183, 120]],
+  [0.778, [109, 205, 89]],
+  [0.889, [180, 222, 44]],
+  [1.000, [253, 231, 37]],
+];
+
+function valToColor(v: number): string {
+  if (maxVal === 0 || v === 0) return '#0d0221';
+  const t = Math.min(1, v / maxVal);
+  let lo = VIRIDIS_STOPS[0];
+  let hi = VIRIDIS_STOPS[VIRIDIS_STOPS.length - 1];
+  for (let i = 0; i < VIRIDIS_STOPS.length - 1; i++) {
+    if (t >= VIRIDIS_STOPS[i][0] && t <= VIRIDIS_STOPS[i + 1][0]) {
+      lo = VIRIDIS_STOPS[i];
+      hi = VIRIDIS_STOPS[i + 1];
+      break;
+    }
+  }
+  const range = (hi[0] - lo[0]) || 1;
+  const frac = (t - lo[0]) / range;
+  const r = Math.round(lo[1][0] + frac * (hi[1][0] - lo[1][0]));
+  const g = Math.round(lo[1][1] + frac * (hi[1][1] - lo[1][1]));
+  const b = Math.round(lo[1][2] + frac * (hi[1][2] - lo[1][2]));
+  return `rgb(${r},${g},${b})`;
+}
+
+// ── SVG layout constants ──────────────────────────────────────────────────────
+const CELL_W = 22;
+const CELL_H = 28;
+const LEFT_MARGIN = 220;
+const CAT_LABEL_W = 18;
+const TOP_MARGIN = 115;
+const LEGEND_H = 52;
+const PAD_R = 20;
+
+const svgW = CAT_LABEL_W + LEFT_MARGIN + keywords.length * CELL_W + PAD_R;
+const svgH = TOP_MARGIN + domains.length * CELL_H + LEGEND_H + 20;
+
+// Big-category group boundaries
+interface CatGroup { cat: string; start: number; end: number; }
+const catGroups: CatGroup[] = [];
+let _lastCat = '';
+for (let i = 0; i < domains.length; i++) {
+  const cat = domainCats[domains[i]] || '감축';
+  if (cat !== _lastCat) {
+    catGroups.push({ cat, start: i, end: i });
+    _lastCat = cat;
+  } else {
+    catGroups[catGroups.length - 1].end = i;
+  }
+}
+
+// ── Pre-compute SVG markup string ─────────────────────────────────────────────
+const CAT_FILL: Record<string, string> = { '감축': '#1a3a1a', '적응': '#1a2d3a', '혼합': '#2d1a3a' };
+const CAT_TEXT: Record<string, string> = { '감축': '#3fb950', '적응': '#58a6ff', '혼합': '#d2a8ff' };
+
+let svgParts: string[] = [];
+
+// 1. Viridis gradient def
+svgParts.push('<defs><linearGradient id="viridis-grad" x1="0" x2="1" y1="0" y2="0">');
+for (const [t, [r, g, b]] of VIRIDIS_STOPS) {
+  svgParts.push(`<stop offset="${Math.round(t * 100)}%" stop-color="rgb(${r},${g},${b})"/>`);
+}
+svgParts.push('</linearGradient></defs>');
+
+// 2. Big-category strips
+for (const g of catGroups) {
+  const y0 = TOP_MARGIN + g.start * CELL_H;
+  const y1 = TOP_MARGIN + (g.end + 1) * CELL_H;
+  const midY = (y0 + y1) / 2;
+  const fill = CAT_FILL[g.cat] || '#1a1a2a';
+  const textFill = CAT_TEXT[g.cat] || '#aaa';
+  svgParts.push(
+    `<rect x="0" y="${y0}" width="${CAT_LABEL_W}" height="${y1 - y0 - 1}" fill="${fill}" rx="2"/>`,
+    `<text x="${CAT_LABEL_W / 2}" y="${midY}" fill="${textFill}" font-size="10" font-weight="700" text-anchor="middle" dominant-baseline="middle" writing-mode="tb" letter-spacing="1">${g.cat}</text>`
+  );
+}
+
+// 3. Domain labels
+for (let ri = 0; ri < domains.length; ri++) {
+  const domain = domains[ri];
+  const y = TOP_MARGIN + ri * CELL_H + CELL_H / 2;
+  const cat = domainCats[domain] || '감축';
+  const textFill = CAT_TEXT[cat] || '#f0f6fc';
+  const label = domain.length > 16 ? domain.slice(0, 15) + '…' : domain;
+  svgParts.push(
+    `<text x="${CAT_LABEL_W + LEFT_MARGIN - 6}" y="${y}" fill="${textFill}" font-size="10" text-anchor="end" dominant-baseline="middle">${label}</text>`
+  );
+}
+
+// 4. Separator lines between big-cat groups
+for (let gi = 1; gi < catGroups.length; gi++) {
+  const y = TOP_MARGIN + catGroups[gi].start * CELL_H - 1;
+  svgParts.push(
+    `<line x1="${CAT_LABEL_W}" x2="${svgW - PAD_R}" y1="${y}" y2="${y}" stroke="#4a4a6a" stroke-width="1.5" stroke-dasharray="4 3"/>`
+  );
+}
+
+// 5. Keyword column headers (rotated)
+for (let ci = 0; ci < keywords.length; ci++) {
+  const x = CAT_LABEL_W + LEFT_MARGIN + ci * CELL_W + CELL_W / 2;
+  const y = TOP_MARGIN - 6;
+  svgParts.push(
+    `<text x="${x}" y="${y}" fill="#8b949e" font-size="9" text-anchor="start" transform="rotate(-55,${x},${y})">${keywords[ci]}</text>`
+  );
+}
+
+// 6. Heatmap cells
+for (let ri = 0; ri < domains.length; ri++) {
+  for (let ci = 0; ci < keywords.length; ci++) {
+    const val = matrix[ri][ci];
+    const fill = valToColor(val);
+    const x = CAT_LABEL_W + LEFT_MARGIN + ci * CELL_W;
+    const y = TOP_MARGIN + ri * CELL_H;
+    const dn = domains[ri].replace(/"/g, '&quot;');
+    const kn = keywords[ci].replace(/"/g, '&quot;');
+    svgParts.push(
+      `<rect class="hmap-cell" x="${x}" y="${y}" width="${CELL_W - 1}" height="${CELL_H - 1}" fill="${fill}" rx="1" data-di="${ri}" data-ki="${ci}" data-val="${val}" data-dn="${dn}" data-kn="${kn}"/>`
+    );
+  }
+}
+
+// 7. Legend
+const legendY = TOP_MARGIN + domains.length * CELL_H + 12;
+const legendW = Math.min(300, keywords.length * CELL_W);
+svgParts.push(
+  `<rect x="${CAT_LABEL_W + LEFT_MARGIN}" y="${legendY}" width="${legendW}" height="12" fill="url(#viridis-grad)" rx="3"/>`,
+  `<text x="${CAT_LABEL_W + LEFT_MARGIN}" y="${legendY + 24}" fill="#8b949e" font-size="10">0</text>`,
+  `<text x="${CAT_LABEL_W + LEFT_MARGIN + legendW}" y="${legendY + 24}" fill="#8b949e" font-size="10" text-anchor="end">최대 ${maxVal}회</text>`,
+  `<text x="${CAT_LABEL_W + LEFT_MARGIN + legendW / 2}" y="${legendY + 24}" fill="#8b949e" font-size="10" text-anchor="middle">키워드 빈도 (셀 클릭 → 의제 목록)</text>`
+);
+
+const svgInner = svgParts.join('\n');
+
+// Serialize data for inline JS
+const agendasJson = JSON.stringify(agendas);
+const matrixJson = JSON.stringify({ domains, keywords, matrix, domainCats });
+---
+<!doctype html>
+<html lang="ko" dir="ltr" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>의제×키워드 히트맵 [모더레이터 인사이트]</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <!-- No canonical, no hreflang, no OG — private moderator page -->
+  <style>
+    /* ================================================================
+       HEATMAP PAGE — moderator insight, dark-themed
+       ================================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --bg-subtle: #161b22;
+      --border: #30363d;
+      --fg: #f0f6fc;
+      --fg-muted: #8b949e;
+      --accent: #58a6ff;
+      --font: 'Pretendard Variable', 'Noto Sans KR', system-ui, sans-serif;
+      --radius: 6px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .privacy-banner {
+      background: #6e2020;
+      color: #ffdcd7;
+      text-align: center;
+      padding: 6px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      border-bottom: 2px solid #b22a2a;
+      flex-shrink: 0;
+    }
+
+    .page-header {
+      padding: 16px 24px 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-subtle);
+    }
+    .page-header h1 {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .page-header .meta {
+      font-size: 11px;
+      color: var(--fg-muted);
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .controls-row {
+      padding: 8px 24px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 12px;
+    }
+    .controls-row label { color: var(--fg-muted); }
+    select.ctrl-sel {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      border-radius: var(--radius);
+      padding: 3px 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .btn-reset {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--fg-muted);
+      border-radius: var(--radius);
+      padding: 3px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .btn-reset:hover { border-color: var(--accent); color: var(--accent); }
+
+    .main-wrap {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .heatmap-panel {
+      flex: 1;
+      overflow: auto;
+      padding: 12px 16px;
+    }
+
+    .heatmap-svg {
+      display: block;
+      cursor: crosshair;
+      font-family: var(--font);
+    }
+
+    /* Cell styles applied via JS class manipulation */
+    .hmap-cell {
+      stroke: transparent;
+      stroke-width: 1;
+      cursor: pointer;
+      transition: stroke 0.08s;
+    }
+    .hmap-cell:hover { stroke: rgba(255,255,255,0.7); stroke-width: 1.5; }
+    .hmap-cell.sel { stroke: #fff; stroke-width: 2; }
+    .hmap-cell.dim { opacity: 0.1; }
+
+    .tooltip {
+      position: fixed;
+      background: rgba(22, 27, 34, 0.95);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      font-size: 12px;
+      color: var(--fg);
+      pointer-events: none;
+      z-index: 100;
+      max-width: 260px;
+      display: none;
+      line-height: 1.5;
+      backdrop-filter: blur(4px);
+    }
+    .tip-kw { color: var(--accent); font-weight: 600; display: block; }
+    .tip-count { font-size: 20px; font-weight: 700; color: #FDE725; }
+    .tip-muted { font-size: 11px; color: var(--fg-muted); }
+
+    .agenda-panel {
+      width: 360px;
+      min-width: 280px;
+      background: var(--bg-subtle);
+      border-left: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 14px;
+      flex-shrink: 0;
+    }
+    @media (max-width: 900px) { .agenda-panel { display: none; } }
+
+    .panel-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--fg-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-empty {
+      color: var(--fg-muted);
+      font-size: 13px;
+      text-align: center;
+      margin-top: 40px;
+      line-height: 1.8;
+    }
+
+    .ag-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 9px 11px;
+      margin-bottom: 7px;
+    }
+    .ag-title { font-size: 12px; font-weight: 600; color: var(--fg); margin-bottom: 3px; line-height: 1.4; }
+    .ag-meta { font-size: 10px; color: var(--fg-muted); margin-bottom: 5px; }
+    .ag-excerpt { font-size: 11px; color: var(--fg-muted); line-height: 1.6; }
+    .ag-excerpt mark { background: rgba(253,231,37,0.2); color: #FDE725; border-radius: 2px; padding: 0 2px; }
+
+    .cat-b {
+      display: inline-block; font-size: 9px; font-weight: 700;
+      padding: 1px 5px; border-radius: 99px; margin-right: 3px;
+    }
+    .cat-b-감축 { background: #1a3a1a; color: #3fb950; border: 1px solid #238636; }
+    .cat-b-적응 { background: #1a2d3a; color: #58a6ff; border: 1px solid #1f6feb; }
+    .cat-b-혼합 { background: #2d1a3a; color: #d2a8ff; border: 1px solid #6e40c9; }
+
+    .glued-notice {
+      margin-top: 20px;
+      padding: 8px 10px;
+      background: #1c1a00;
+      border: 1px solid #4a4000;
+      border-radius: var(--radius);
+      font-size: 10px;
+      color: #d29922;
+      line-height: 1.5;
+    }
+    .glued-notice strong { display: block; margin-bottom: 3px; font-size: 11px; }
+  </style>
+</head>
+<body>
+
+  <div class="privacy-banner">
+    🔒 모더레이터 인사이트 · 전문가 의제 자체 분석 · 외부 공개 금지
+  </div>
+
+  <header class="page-header">
+    <h1>의제 영역 × 키워드 히트맵</h1>
+    <div class="meta">
+      <span>전문가 제안 65건</span>
+      <span>도메인 {domains.length}개</span>
+      <span>키워드 {keywords.length}개 (비zero)</span>
+      <span>출처: 전배석 2026-05-29 네트워크 분석 + docx 본문 토큰화</span>
+      <span>6월 13일 워크숍용 · 모더레이터 전용</span>
+    </div>
+  </header>
+
+  <div class="controls-row">
+    <label for="sel-cat">영역:</label>
+    <select id="sel-cat" class="ctrl-sel">
+      <option value="all">전체</option>
+      <option value="감축">감축</option>
+      <option value="적응">적응</option>
+      <option value="혼합">혼합</option>
+    </select>
+    <button class="btn-reset" id="btn-reset">선택 해제</button>
+    <span style="color: var(--fg-muted); font-size: 11px; margin-left: auto;">
+      셀 호버 → 빈도 확인 · 셀 클릭 → 우측 의제 목록
+    </span>
+  </div>
+
+  <div class="main-wrap">
+    <div class="heatmap-panel">
+      <svg
+        class="heatmap-svg"
+        id="heatmap-svg"
+        width={svgW}
+        height={svgH}
+        viewBox={`0 0 ${svgW} ${svgH}`}
+        role="img"
+        aria-label="의제 영역 × 키워드 빈도 히트맵"
+        set:html={svgInner}
+      />
+    </div>
+
+    <aside class="agenda-panel" id="agenda-panel" aria-label="선택 의제 목록">
+      <div class="panel-title">의제 목록</div>
+      <div id="panel-content">
+        <p class="panel-empty">히트맵 셀을 클릭하면<br>해당 키워드가 포함된<br>의제 목록이 표시됩니다.</p>
+      </div>
+      <div class="glued-notice">
+        <strong>알림: 키워드 결합 토큰 8개</strong>
+        PDF 레이아웃 추출 과정에서 인접 단어가 붙어 추출된 토큰이 있습니다:
+        발전온실가스, 탄소정책의무, 마을발전활용사업저탄소,
+        지역정책기후, 사회발생식량, 안전위험시민보험,
+        기준안전변화, 운영도시위험.
+        이 토큰들은 히트맵에서 0빈도이며 결과에 영향 없습니다.
+      </div>
+    </aside>
+  </div>
+
+  <div class="tooltip" id="tooltip" role="tooltip"></div>
+
+  <!-- Embedded data (is:inline prevents Vite processing, matches live.astro pattern) -->
+  <script id="hm-agendas" type="application/json" set:html={agendasJson}></script>
+  <script id="hm-matrix" type="application/json" set:html={matrixJson}></script>
+
+  <script is:inline>
+    /* ====================================================================
+       Heatmap interactions — ~200 lines vanilla JS
+       ==================================================================== */
+    const agendas = JSON.parse(document.getElementById('hm-agendas').textContent);
+    const md = JSON.parse(document.getElementById('hm-matrix').textContent);
+    const domains = md.domains;
+    const keywords = md.keywords;
+    const matrix = md.matrix;
+    const domainCats = md.domainCats;
+
+    const tip   = document.getElementById('tooltip');
+    const panel = document.getElementById('panel-content');
+    const selCat = document.getElementById('sel-cat');
+    const btnReset = document.getElementById('btn-reset');
+    const svg   = document.getElementById('heatmap-svg');
+
+    // Build domain→cat map from agenda data (fallback to matrixData domainCats)
+    const domainCatMap = {};
+    agendas.forEach(ag => { domainCatMap[ag.domain] = ag.big_category; });
+
+    let sel = null; // { di, ki }
+
+    // ── Tooltip ─────────────────────────────────────────────────────────
+    function showTip(e, dn, kn, val) {
+      tip.innerHTML =
+        `<span class="tip-kw">${kn}</span>` +
+        `<div class="tip-muted" style="margin-bottom:3px;">${dn}</div>` +
+        `<span class="tip-count">${val}</span><span class="tip-muted"> 회 출현</span>` +
+        `<div class="tip-muted" style="margin-top:3px;">클릭 → 의제 목록</div>`;
+      tip.style.display = 'block';
+      moveTip(e);
+    }
+    function moveTip(e) {
+      const x = e.clientX + 14, y = e.clientY - 10;
+      const w = tip.offsetWidth, h = tip.offsetHeight;
+      tip.style.left = (x + w > window.innerWidth  ? e.clientX - w - 14 : x) + 'px';
+      tip.style.top  = (y + h > window.innerHeight ? e.clientY - h - 10 : y) + 'px';
+    }
+    function hideTip() { tip.style.display = 'none'; }
+
+    // ── Highlight keyword in text ────────────────────────────────────────
+    function hl(text, kw) {
+      if (!text) return '';
+      return text.split(kw).join(`<mark>${kw}</mark>`);
+    }
+
+    // ── Render agenda panel ──────────────────────────────────────────────
+    function renderPanel(dn, kn, val) {
+      const matching = agendas.filter(ag => {
+        if (ag.domain !== dn) return false;
+        return [ag.current_situation, ag.proposed_policy, ag.expected_effect]
+          .join(' ').includes(kn);
+      });
+
+      if (matching.length === 0) {
+        panel.innerHTML = `<p class="panel-empty"><strong style="color:#FDE725;">${kn}</strong><br>${dn}<br><br>해당 의제에서 직접 출현하지 않습니다.</p>`;
+        return;
+      }
+
+      let html = `<div style="margin-bottom:10px;font-size:11px;color:var(--fg-muted);">` +
+        `<strong style="color:#FDE725;">${kn}</strong> · ${dn}<br>` +
+        `총 ${val}회 · ${matching.length}건 의제</div>`;
+
+      for (const ag of matching) {
+        const full = [ag.current_situation, ag.proposed_policy, ag.expected_effect].filter(Boolean).join(' ');
+        const idx = full.indexOf(kn);
+        let excerpt = '';
+        if (idx >= 0) {
+          const s = Math.max(0, idx - 35);
+          const e2 = Math.min(full.length, idx + kn.length + 70);
+          excerpt = (s > 0 ? '…' : '') + hl(full.slice(s, e2), kn) + (e2 < full.length ? '…' : '');
+        }
+        const cat = ag.big_category || '감축';
+        html += `<div class="ag-item">` +
+          `<div class="ag-meta"><span class="cat-b cat-b-${cat}">${cat}</span>#${ag.id}</div>` +
+          `<div class="ag-title">${ag.agenda_name || '(제목 없음)'}</div>` +
+          (excerpt ? `<div class="ag-excerpt">${excerpt}</div>` : '') +
+          `</div>`;
+      }
+      panel.innerHTML = html;
+    }
+
+    // ── Category filter ──────────────────────────────────────────────────
+    function applyFilter() {
+      const cat = selCat.value;
+      document.querySelectorAll('.hmap-cell').forEach(cell => {
+        const di = parseInt(cell.dataset.di);
+        const dn = domains[di];
+        const cellCat = domainCatMap[dn] || (domainCats && domainCats[dn]) || '감축';
+        if (cat === 'all' || cat === cellCat) {
+          cell.classList.remove('dim');
+        } else {
+          cell.classList.add('dim');
+        }
+      });
+    }
+
+    // ── SVG event delegation ─────────────────────────────────────────────
+    svg.addEventListener('mousemove', e => {
+      const cell = e.target.closest('.hmap-cell');
+      if (cell) showTip(e, cell.dataset.dn, cell.dataset.kn, cell.dataset.val);
+      else hideTip();
+    });
+    svg.addEventListener('mouseleave', hideTip);
+
+    svg.addEventListener('click', e => {
+      const cell = e.target.closest('.hmap-cell');
+      if (!cell) return;
+
+      const di = parseInt(cell.dataset.di);
+      const ki = parseInt(cell.dataset.ki);
+      const val = parseInt(cell.dataset.val);
+
+      // Deselect all
+      document.querySelectorAll('.hmap-cell.sel').forEach(c => c.classList.remove('sel'));
+
+      if (sel && sel.di === di && sel.ki === ki) {
+        // Toggle off
+        sel = null;
+        panel.innerHTML = '<p class="panel-empty">히트맵 셀을 클릭하면<br>해당 키워드가 포함된<br>의제 목록이 표시됩니다.</p>';
+        return;
+      }
+      sel = { di, ki };
+      cell.classList.add('sel');
+      renderPanel(cell.dataset.dn, cell.dataset.kn, val);
+    });
+
+    // ── Controls ─────────────────────────────────────────────────────────
+    selCat.addEventListener('change', applyFilter);
+    btnReset.addEventListener('click', () => {
+      sel = null;
+      document.querySelectorAll('.hmap-cell.sel').forEach(c => c.classList.remove('sel'));
+      selCat.value = 'all';
+      applyFilter();
+      panel.innerHTML = '<p class="panel-empty">히트맵 셀을 클릭하면<br>해당 키워드가 포함된<br>의제 목록이 표시됩니다.</p>';
+    });
+
+    applyFilter();
+  </script>
+</body>
+</html>
