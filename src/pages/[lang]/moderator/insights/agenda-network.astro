@@ -1,0 +1,846 @@
+---
+/**
+ * /ko/moderator/insights/agenda-network — 65개 의제 의미연결 네트워크 (모더레이터 전용)
+ *
+ * PRIVACY:
+ *   - KO-only route (getStaticPaths emits only 'ko')
+ *   - robots noindex,nofollow
+ *   - NOT in sitemap (whitelist filter: only /agenda + locale home)
+ *   - NOT in pagefind (no data-pagefind-body)
+ *   - No nav links from public pages
+ *
+ * DATA:
+ *   - src/data/network/agenda-similarity.json
+ *     Built by scripts/build-agenda-similarity.py
+ *     Jaccard similarity on 63 heatmap keywords, threshold=0.35, ~213 edges
+ *     Force layout pre-computed (Fruchterman-Reingold, 200 iter, 800×600)
+ *
+ * RENDER:
+ *   - Static SVG pre-computed at build time (no D3, no client-side force layout)
+ *   - Hover: highlight neighbors + tooltip with full title
+ *   - Click: pin side panel with agenda detail + connected agendas
+ *   - Filter: big_category checkboxes + domain dropdown + similarity threshold slider
+ */
+
+import networkRaw from '../../../../data/network/agenda-similarity.json';
+import agendasRaw from '../../../../data/agendas-65.json';
+import '../../../../styles/global.css';
+
+export async function getStaticPaths() {
+  return [{ params: { lang: 'ko' } }];
+}
+
+interface NetworkNode {
+  id: number;
+  name: string;
+  domain: string;
+  big_category: string;
+  degree: number;
+  community: number;
+  x: number;
+  y: number;
+}
+interface NetworkEdge {
+  source: number;
+  target: number;
+  weight: number;
+}
+interface CommunityRecord {
+  id: number;
+  members: number[];
+  top_keywords: string[];
+}
+interface NetworkData {
+  threshold: number;
+  nodes: NetworkNode[];
+  edges: NetworkEdge[];
+  communities: CommunityRecord[];
+}
+interface Agenda {
+  id: number;
+  big_category: string;
+  domain: string;
+  agenda_name: string;
+  current_situation: string;
+  proposed_policy: string;
+  expected_effect: string;
+}
+
+const network = networkRaw as NetworkData;
+const agendas = agendasRaw as Agenda[];
+const agendaById = Object.fromEntries(agendas.map(a => [a.id, a]));
+
+// SVG canvas dimensions (must match Fruchterman-Reingold in build script)
+const SVG_W = 800;
+const SVG_H = 600;
+
+// Color by big_category
+const CAT_COLORS: Record<string, string> = {
+  '감축': '#34d399',   // green
+  '적응': '#60a5fa',   // blue
+  '혼합': '#d2a8ff',   // purple
+};
+const CAT_STROKE: Record<string, string> = {
+  '감축': '#064e3b',
+  '적응': '#1e3a5f',
+  '혼합': '#4c1d95',
+};
+
+// Node radius: base + degree scale
+function nodeRadius(degree: number): number {
+  return Math.max(5, Math.min(16, 5 + degree * 0.6));
+}
+
+// Unique domains for filter dropdown
+const allDomains = [...new Set(network.nodes.map(n => n.domain))].sort();
+
+// Pre-build edge index: node id → set of neighbor ids (for JS hover)
+const edgeIndex: Record<number, number[]> = {};
+network.nodes.forEach(n => { edgeIndex[n.id] = []; });
+network.edges.forEach(e => {
+  edgeIndex[e.source].push(e.target);
+  edgeIndex[e.target].push(e.source);
+});
+
+// Pre-build: edge list as JSON for JS filtering
+const edgesJson = JSON.stringify(network.edges);
+const nodesJson = JSON.stringify(network.nodes);
+const agendaMapJson = JSON.stringify(
+  Object.fromEntries(agendas.map(a => [a.id, {
+    id: a.id,
+    big_category: a.big_category,
+    domain: a.domain,
+    agenda_name: a.agenda_name,
+    current_situation: a.current_situation.slice(0, 300),
+    proposed_policy: a.proposed_policy.slice(0, 300),
+    expected_effect: a.expected_effect.slice(0, 200),
+  }]))
+);
+const edgeIndexJson = JSON.stringify(edgeIndex);
+---
+<!doctype html>
+<html lang="ko" dir="ltr" data-theme="dark" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>의제연결 네트워크 [모더레이터 전용]</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <!-- No canonical, no hreflang, no OG — private page -->
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d1117;
+      color: #f3f4f6;
+      font-family: var(--font-body, 'Pretendard Variable', sans-serif);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Privacy banner ---- */
+    .privacy-banner {
+      background: #7c2d12;
+      color: #fed7aa;
+      text-align: center;
+      padding: 6px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      border-bottom: 2px solid #ea580c;
+      flex-shrink: 0;
+    }
+
+    /* ---- Sub-nav ---- */
+    .subnav {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 6px 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #8b949e;
+      flex-shrink: 0;
+    }
+    .subnav-label { font-weight: 700; margin-right: 4px; }
+    .subnav a {
+      color: #8b949e;
+      text-decoration: none;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .subnav a:hover { color: #f3f4f6; border-color: #30363d; }
+    .subnav a.current { color: #58a6ff; border-color: #58a6ff; font-weight: 600; }
+    .subnav-sep { color: #30363d; }
+
+    /* ---- Filter bar ---- */
+    .filter-bar {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .filter-label {
+      color: #8b949e;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .filter-check { accent-color: #58a6ff; cursor: pointer; }
+    .filter-check-label {
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 3px;
+      border: 1px solid transparent;
+      user-select: none;
+    }
+    .filter-check-label.cat-감축 { color: #34d399; }
+    .filter-check-label.cat-적응 { color: #60a5fa; }
+    .filter-check-label.cat-혼합 { color: #d2a8ff; }
+    .filter-check-label.active { border-color: currentColor; }
+
+    select.filter-select {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      color: #f3f4f6;
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 12px;
+    }
+
+    .threshold-slider { width: 100px; accent-color: #58a6ff; }
+    .threshold-val { color: #60a5fa; font-weight: 600; min-width: 32px; }
+
+    .stats-info {
+      margin-left: auto;
+      color: #8b949e;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    /* ---- Main layout ---- */
+    .page-body {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* ---- SVG pane ---- */
+    .svg-pane {
+      flex: 1;
+      min-width: 0;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0d1117;
+    }
+
+    #network-svg {
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: calc(100vh - 160px);
+    }
+
+    /* SVG element styles (applied via JS for interactive hover) */
+    .net-edge {
+      stroke: #30363d;
+      stroke-opacity: 0.5;
+      fill: none;
+      transition: stroke-opacity 0.15s;
+    }
+    .net-edge.highlight { stroke: #58a6ff; stroke-opacity: 0.9; }
+    .net-edge.dimmed { stroke-opacity: 0.05; }
+    .net-edge.hidden { display: none; }
+
+    .net-node {
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .net-node circle {
+      transition: r 0.1s;
+    }
+    .net-node.dimmed { opacity: 0.15; }
+    .net-node.highlighted circle { stroke-width: 3; filter: drop-shadow(0 0 4px currentColor); }
+    .net-node.selected circle { stroke-width: 3; filter: drop-shadow(0 0 6px currentColor); }
+
+    .net-label {
+      font-size: 8px;
+      fill: #8b949e;
+      pointer-events: none;
+      text-anchor: middle;
+      dominant-baseline: auto;
+    }
+    .net-label.highlight { fill: #f3f4f6; font-weight: 600; }
+
+    /* ---- Tooltip ---- */
+    #net-tooltip {
+      position: fixed;
+      background: #1c2230;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: #f3f4f6;
+      pointer-events: none;
+      z-index: 100;
+      max-width: 300px;
+      display: none;
+      line-height: 1.5;
+    }
+    .tip-title { font-weight: 600; margin-bottom: 4px; }
+    .tip-meta { color: #8b949e; font-size: 11px; }
+
+    /* ---- Side panel ---- */
+    .side-panel {
+      width: 340px;
+      background: #161b22;
+      border-left: 1px solid #30363d;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+
+    .panel-header {
+      padding: 12px 16px 8px;
+      border-bottom: 1px solid #30363d;
+      font-size: 12px;
+      color: #8b949e;
+      flex-shrink: 0;
+    }
+    .panel-header strong { color: #f3f4f6; font-size: 13px; }
+
+    .panel-body {
+      padding: 12px 16px;
+      font-size: 12px;
+      color: #c9d1d9;
+      line-height: 1.6;
+      flex: 1;
+    }
+
+    .panel-empty {
+      padding: 48px 16px;
+      text-align: center;
+      color: #8b949e;
+      font-size: 12px;
+    }
+
+    .panel-agenda-card {
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      background: #0d1117;
+    }
+    .panel-agenda-name {
+      font-weight: 600;
+      color: #f3f4f6;
+      margin-bottom: 4px;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .panel-agenda-meta {
+      font-size: 11px;
+      color: #8b949e;
+      margin-bottom: 6px;
+    }
+    .panel-agenda-text {
+      font-size: 11px;
+      color: #8b949e;
+      line-height: 1.5;
+    }
+    .cat-pill {
+      display: inline-block;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+    .cat-pill.감축 { background: #022c22; color: #34d399; border: 1px solid #064e3b; }
+    .cat-pill.적응 { background: #0c1a2e; color: #60a5fa; border: 1px solid #1e3a5f; }
+    .cat-pill.혼합 { background: #1a0a2e; color: #d2a8ff; border: 1px solid #4c1d95; }
+
+    .conn-list-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 12px 0 6px;
+    }
+    .conn-item {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      padding: 5px 0;
+      border-bottom: 1px solid #21262d;
+      cursor: pointer;
+    }
+    .conn-item:hover .conn-name { color: #58a6ff; }
+    .conn-name { font-size: 11px; color: #c9d1d9; flex: 1; line-height: 1.4; }
+    .conn-sim { font-size: 10px; color: #58a6ff; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+    /* ---- Legend ---- */
+    .legend {
+      padding: 10px 16px;
+      border-top: 1px solid #30363d;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+    .legend-item { display: flex; align-items: center; gap: 4px; color: #8b949e; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+  <div class="privacy-banner">
+    모더레이터 인사이트 · 의제 의미연결 네트워크 · 외부 공개 금지
+  </div>
+
+  <nav class="subnav" aria-label="모더레이터 도구 네비게이션">
+    <span class="subnav-label">[모더레이터 도구]</span>
+    <a href="/ko/moderator/live">라이브</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/heatmap">히트맵</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/clusters">클러스터</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/agenda-network" class="current">의제연결</a>
+  </nav>
+
+  <!-- Filter bar -->
+  <div class="filter-bar" role="toolbar" aria-label="필터 설정">
+    <div class="filter-group">
+      <span class="filter-label">유형:</span>
+      {['감축', '적응', '혼합'].map(cat => (
+        <label class="filter-group">
+          <input type="checkbox" class="filter-check cat-check" data-cat={cat} checked aria-label={cat} />
+          <span class={`filter-check-label cat-${cat} active`} data-cat-label={cat}>{cat}</span>
+        </label>
+      ))}
+    </div>
+
+    <div class="filter-group">
+      <span class="filter-label">영역:</span>
+      <select class="filter-select" id="sel-domain" aria-label="의제 영역 선택">
+        <option value="all">전체</option>
+        {allDomains.map(d => <option value={d}>{d}</option>)}
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <span class="filter-label">유사도:</span>
+      <input type="range" class="threshold-slider" id="threshold-slider"
+        min="0.1" max="0.6" step="0.05" value="0.35"
+        aria-label="최소 유사도 임계값" />
+      <span class="threshold-val" id="threshold-val">0.35</span>
+    </div>
+
+    <span class="stats-info" id="stats-info">
+      노드 65 · 엣지 213
+    </span>
+  </div>
+
+  <div class="page-body">
+    <!-- Network SVG pane -->
+    <div class="svg-pane">
+      <svg id="network-svg" viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+           role="img" aria-label="의제 의미연결 네트워크 그래프"
+           style="display:block;">
+
+        <!-- Edges layer -->
+        <g id="edges-layer">
+          {network.edges.map(e => {
+            const src = network.nodes.find(n => n.id === e.source)!;
+            const tgt = network.nodes.find(n => n.id === e.target)!;
+            return (
+              <line
+                class="net-edge"
+                data-src={e.source}
+                data-tgt={e.target}
+                data-w={e.weight}
+                x1={src.x} y1={src.y}
+                x2={tgt.x} y2={tgt.y}
+                stroke-opacity={0.15 + e.weight * 0.5}
+              />
+            );
+          })}
+        </g>
+
+        <!-- Nodes layer -->
+        <g id="nodes-layer">
+          {network.nodes.map(n => {
+            const r = nodeRadius(n.degree);
+            const fill = CAT_COLORS[n.big_category] || '#8b949e';
+            const stroke = CAT_STROKE[n.big_category] || '#30363d';
+            const shortName = n.name.slice(0, 12);
+            return (
+              <g class="net-node"
+                 data-id={n.id}
+                 data-cat={n.big_category}
+                 data-domain={n.domain}
+                 transform={`translate(${n.x},${n.y})`}>
+                <circle r={r} fill={fill} stroke={stroke} stroke-width="1.5" fill-opacity="0.85" />
+                <text class="net-label" dy={r + 9}>{shortName}</text>
+              </g>
+            );
+          })}
+        </g>
+      </svg>
+    </div>
+
+    <!-- Side panel -->
+    <aside class="side-panel" id="side-panel" aria-label="의제 상세 패널">
+      <div class="panel-header">
+        <strong>의제 상세</strong>
+      </div>
+      <div class="panel-body" id="panel-body">
+        <div class="panel-empty" id="panel-empty">
+          노드를 클릭하면<br>의제 상세가 표시됩니다
+        </div>
+        <div id="panel-content" style="display:none;"></div>
+      </div>
+      <!-- Legend -->
+      <div class="legend">
+        {Object.entries(CAT_COLORS).map(([cat, color]) => (
+          <div class="legend-item">
+            <div class="legend-dot" style={`background:${color};`}></div>
+            <span>{cat}</span>
+          </div>
+        ))}
+        <div class="legend-item" style="margin-left:8px;">
+          <svg width="16" height="10"><circle cx="5" cy="5" r="3" fill="#8b949e"/><circle cx="11" cy="5" r="6" fill="#8b949e" opacity="0.5"/></svg>
+          <span>크기 = 연결도</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Tooltip -->
+  <div id="net-tooltip" role="tooltip"></div>
+
+  <!-- Embedded data for JS -->
+  <script id="net-nodes" type="application/json" set:html={nodesJson}></script>
+  <script id="net-edges" type="application/json" set:html={edgesJson}></script>
+  <script id="net-edge-index" type="application/json" set:html={edgeIndexJson}></script>
+  <script id="net-agenda-map" type="application/json" set:html={agendaMapJson}></script>
+
+  <script is:inline>
+    /* ==========================================================================
+       Agenda Network — Interactive SVG controller
+       - Hover: dim non-neighbors, show tooltip
+       - Click: pin side panel with agenda detail + connected agendas
+       - Filter: category checkboxes, domain dropdown, threshold slider
+       ========================================================================== */
+
+    const NODES      = JSON.parse(document.getElementById('net-nodes').textContent);
+    const EDGES      = JSON.parse(document.getElementById('net-edges').textContent);
+    const EDGE_INDEX = JSON.parse(document.getElementById('net-edge-index').textContent);
+    const AGENDA_MAP = JSON.parse(document.getElementById('net-agenda-map').textContent);
+
+    // ── DOM refs ──────────────────────────────────────────────────────────────
+    const svgEl       = document.getElementById('network-svg');
+    const edgesLayer  = document.getElementById('edges-layer');
+    const nodesLayer  = document.getElementById('nodes-layer');
+    const tooltip     = document.getElementById('net-tooltip');
+    const panelEmpty  = document.getElementById('panel-empty');
+    const panelContent= document.getElementById('panel-content');
+    const statsInfo   = document.getElementById('stats-info');
+    const selDomain   = document.getElementById('sel-domain');
+    const threshSlider= document.getElementById('threshold-slider');
+    const threshVal   = document.getElementById('threshold-val');
+
+    // ── Filter state ──────────────────────────────────────────────────────────
+    let activeCats    = new Set(['감축', '적응', '혼합']);
+    let activeDomain  = 'all';
+    let minThreshold  = 0.35;
+    let pinnedId      = null;   // currently selected node id
+
+    // ── Build element maps ────────────────────────────────────────────────────
+    const nodeEls  = {};   // id → <g>
+    const edgeEls  = [];   // [{el, src, tgt, w}]
+
+    document.querySelectorAll('.net-node').forEach(el => {
+      nodeEls[parseInt(el.dataset.id)] = el;
+    });
+
+    document.querySelectorAll('.net-edge').forEach(el => {
+      edgeEls.push({
+        el,
+        src: parseInt(el.dataset.src),
+        tgt: parseInt(el.dataset.tgt),
+        w:   parseFloat(el.dataset.w),
+      });
+    });
+
+    // ── Visibility filter ─────────────────────────────────────────────────────
+    function isNodeVisible(node) {
+      if (!activeCats.has(node.big_category)) return false;
+      if (activeDomain !== 'all' && node.domain !== activeDomain) return false;
+      return true;
+    }
+
+    function applyFilter() {
+      let visibleNodes = 0, visibleEdges = 0;
+
+      NODES.forEach(n => {
+        const el = nodeEls[n.id];
+        const vis = isNodeVisible(n);
+        el.style.display = vis ? '' : 'none';
+        if (vis) visibleNodes++;
+      });
+
+      edgeEls.forEach(({ el, src, tgt, w }) => {
+        const srcNode = NODES.find(n => n.id === src);
+        const tgtNode = NODES.find(n => n.id === tgt);
+        const vis = w >= minThreshold &&
+                    srcNode && isNodeVisible(srcNode) &&
+                    tgtNode && isNodeVisible(tgtNode);
+        el.classList.toggle('hidden', !vis);
+        if (vis) visibleEdges++;
+      });
+
+      statsInfo.textContent = `노드 ${visibleNodes} · 엣지 ${visibleEdges}`;
+
+      // Re-apply hover/selection state
+      if (pinnedId !== null && nodeEls[pinnedId] && nodeEls[pinnedId].style.display !== 'none') {
+        applyHover(pinnedId, true);
+      } else {
+        clearHover();
+      }
+    }
+
+    // ── Hover / selection ─────────────────────────────────────────────────────
+    function applyHover(nodeId, pin) {
+      const neighbors = new Set(EDGE_INDEX[nodeId] || []);
+      neighbors.add(nodeId);
+
+      NODES.forEach(n => {
+        const el = nodeEls[n.id];
+        if (el.style.display === 'none') return;
+        const isNeighbor = neighbors.has(n.id);
+        el.classList.toggle('dimmed', !isNeighbor);
+        el.classList.toggle('highlighted', isNeighbor && n.id !== nodeId);
+        el.classList.toggle('selected', n.id === nodeId);
+        el.querySelector('text').classList.toggle('highlight', isNeighbor);
+      });
+
+      edgeEls.forEach(({ el, src, tgt, w }) => {
+        if (el.classList.contains('hidden')) return;
+        const connected = (src === nodeId || tgt === nodeId) && w >= minThreshold;
+        el.classList.toggle('highlight', connected);
+        el.classList.toggle('dimmed', !connected);
+      });
+    }
+
+    function clearHover() {
+      document.querySelectorAll('.net-node').forEach(el => {
+        el.classList.remove('dimmed', 'highlighted', 'selected');
+        el.querySelector('text').classList.remove('highlight');
+      });
+      edgeEls.forEach(({ el }) => {
+        el.classList.remove('highlight', 'dimmed');
+      });
+    }
+
+    // ── Tooltip ───────────────────────────────────────────────────────────────
+    function showTooltip(e, node) {
+      const ag = AGENDA_MAP[node.id] || {};
+      tooltip.innerHTML = `
+        <div class="tip-title">${node.name}</div>
+        <div class="tip-meta">${node.big_category} · ${node.domain}</div>
+        <div class="tip-meta" style="margin-top:3px;">연결 ${node.degree}개</div>
+      `;
+      tooltip.style.display = 'block';
+      positionTooltip(e);
+    }
+
+    function positionTooltip(e) {
+      const x = e.clientX + 14;
+      const y = e.clientY - 10;
+      const tw = tooltip.offsetWidth;
+      const th = tooltip.offsetHeight;
+      tooltip.style.left = (x + tw > window.innerWidth ? x - tw - 28 : x) + 'px';
+      tooltip.style.top  = (y + th > window.innerHeight ? y - th : y) + 'px';
+    }
+
+    function hideTooltip() {
+      tooltip.style.display = 'none';
+    }
+
+    // ── Side panel ────────────────────────────────────────────────────────────
+    function showPanel(nodeId) {
+      const node = NODES.find(n => n.id === nodeId);
+      const ag   = AGENDA_MAP[nodeId] || {};
+      if (!node) return;
+
+      // Find connected nodes sorted by weight
+      const conns = edgeEls
+        .filter(e => !e.el.classList.contains('hidden') && (e.src === nodeId || e.tgt === nodeId))
+        .map(e => {
+          const otherId = e.src === nodeId ? e.tgt : e.src;
+          return { id: otherId, w: e.w };
+        })
+        .sort((a, b) => b.w - a.w);
+
+      const catClass = node.big_category;
+
+      panelContent.innerHTML = `
+        <div class="panel-agenda-card">
+          <div style="margin-bottom:6px;">
+            <span class="cat-pill ${catClass}">${node.big_category}</span>
+            <span style="font-size:11px;color:#8b949e;margin-left:6px;">${node.domain}</span>
+          </div>
+          <div class="panel-agenda-name">${ag.agenda_name || node.name}</div>
+          ${ag.current_situation ? `
+            <div class="panel-agenda-text" style="margin-top:8px;">
+              <strong style="color:#8b949e;font-size:10px;">현황</strong><br>
+              ${ag.current_situation}
+            </div>` : ''}
+          ${ag.proposed_policy ? `
+            <div class="panel-agenda-text" style="margin-top:6px;">
+              <strong style="color:#8b949e;font-size:10px;">제안정책</strong><br>
+              ${ag.proposed_policy}
+            </div>` : ''}
+        </div>
+
+        ${conns.length > 0 ? `
+          <div class="conn-list-title">연결된 의제 (${conns.length}건)</div>
+          ${conns.map(c => {
+            const cn = NODES.find(n => n.id === c.id);
+            if (!cn) return '';
+            return `
+              <div class="conn-item" data-node-id="${c.id}">
+                <div class="conn-name">${cn.name.slice(0, 50)}</div>
+                <div class="conn-sim">${(c.w * 100).toFixed(0)}%</div>
+              </div>
+            `;
+          }).join('')}
+        ` : '<div style="color:#8b949e;font-size:11px;margin-top:8px;">이 유사도 임계값에서 연결 없음</div>'}
+      `;
+
+      // Click on connected agenda → navigate to that node
+      panelContent.querySelectorAll('.conn-item[data-node-id]').forEach(el => {
+        el.addEventListener('click', () => {
+          const nid = parseInt(el.dataset.nodeId);
+          selectNode(nid);
+        });
+      });
+
+      panelEmpty.style.display = 'none';
+      panelContent.style.display = '';
+    }
+
+    function hidePanel() {
+      panelEmpty.style.display = '';
+      panelContent.style.display = 'none';
+    }
+
+    // ── Node select ───────────────────────────────────────────────────────────
+    function selectNode(nodeId) {
+      if (pinnedId === nodeId) {
+        // Deselect
+        pinnedId = null;
+        clearHover();
+        hidePanel();
+      } else {
+        pinnedId = nodeId;
+        applyHover(nodeId, true);
+        showPanel(nodeId);
+      }
+    }
+
+    // ── SVG event handlers ────────────────────────────────────────────────────
+    nodesLayer.addEventListener('mouseover', e => {
+      const nodeEl = e.target.closest('.net-node');
+      if (!nodeEl || pinnedId !== null) return;
+      const nid = parseInt(nodeEl.dataset.id);
+      const node = NODES.find(n => n.id === nid);
+      applyHover(nid, false);
+      showTooltip(e, node);
+    });
+
+    nodesLayer.addEventListener('mousemove', e => {
+      if (tooltip.style.display !== 'none') positionTooltip(e);
+    });
+
+    nodesLayer.addEventListener('mouseout', e => {
+      const nodeEl = e.target.closest('.net-node');
+      if (!nodeEl || pinnedId !== null) return;
+      clearHover();
+      hideTooltip();
+    });
+
+    nodesLayer.addEventListener('click', e => {
+      const nodeEl = e.target.closest('.net-node');
+      if (!nodeEl) return;
+      const nid = parseInt(nodeEl.dataset.id);
+      hideTooltip();
+      selectNode(nid);
+    });
+
+    // Click on SVG background → deselect
+    svgEl.addEventListener('click', e => {
+      if (e.target === svgEl || e.target.closest('#edges-layer')) {
+        pinnedId = null;
+        clearHover();
+        hidePanel();
+      }
+    });
+
+    // ── Filter handlers ───────────────────────────────────────────────────────
+    document.querySelectorAll('.cat-check').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const cat = cb.dataset.cat;
+        const labelEl = document.querySelector(`[data-cat-label="${cat}"]`);
+        if (cb.checked) {
+          activeCats.add(cat);
+          labelEl && labelEl.classList.add('active');
+        } else {
+          activeCats.delete(cat);
+          labelEl && labelEl.classList.remove('active');
+        }
+        pinnedId = null;
+        hidePanel();
+        applyFilter();
+      });
+    });
+
+    selDomain.addEventListener('change', () => {
+      activeDomain = selDomain.value;
+      pinnedId = null;
+      hidePanel();
+      applyFilter();
+    });
+
+    threshSlider.addEventListener('input', () => {
+      minThreshold = parseFloat(threshSlider.value);
+      threshVal.textContent = minThreshold.toFixed(2);
+      pinnedId = null;
+      hidePanel();
+      applyFilter();
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    applyFilter();
+  </script>
+</body>
+</html>

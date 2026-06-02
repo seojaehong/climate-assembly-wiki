@@ -1,6 +1,6 @@
 ---
 /**
- * /ko/moderator/live/ — 모더레이터 라이브 대시보드 (시뮬레이션)
+ * /ko/moderator/live/ — 모더레이터 라이브 대시보드 (시뮬레이션 + Google Sheet)
  *
  * PRIVACY:
  *   - KO-only route (getStaticPaths emits only 'ko')
@@ -9,9 +9,10 @@
  *   - NOT in pagefind (no data-pagefind-body)
  *   - No nav links to this page anywhere
  *
- * DATA:
- *   - Reads sim-questions.json at build time, ships as inlined JS data
- *   - TODO(production): swap JSON import for Google Sheets CSV fetch
+ * DATA SOURCES (user-selectable):
+ *   - "더미 데이터 (104행)" → sim-questions.json (shipped at build time)
+ *   - "의제 샘플 (5행)"  → sample-agenda-questions.json (5 agenda-derived rows)
+ *   - "Google Sheet"     → fetch(PUBLIC_LIVE_SHEET_CSV_URL), poll every 30s
  *
  * SIMULATION ENGINE:
  *   - Play/pause/next/prev controls
@@ -21,6 +22,7 @@
  */
 
 import simQuestions from '../../../data/sim-questions.json';
+import sampleQuestions from '../../../data/sample-agenda-questions.json';
 import '../../../styles/global.css';
 
 export async function getStaticPaths() {
@@ -29,12 +31,15 @@ export async function getStaticPaths() {
   return [{ params: { lang: 'ko' } }];
 }
 
-// Compute unique experts for tally
+// Compute unique experts for tally (sim dataset)
 const experts = [...new Set(
   (simQuestions as Array<{expert: string}>)
     .map(q => q.expert)
     .filter(e => e && e !== '' && e !== '공통')
 )];
+
+// Google Sheet CSV URL from build-time env (may be undefined → shows guide)
+const sheetCsvUrl = import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '';
 ---
 <!doctype html>
 <html lang="ko" dir="ltr" data-theme="dark" class="dark">
@@ -100,6 +105,73 @@ const experts = [...new Set(
     .subnav a.current { color: #58a6ff; border-color: #58a6ff; font-weight: 600; }
     .subnav-sep { color: var(--color-border, #30363d); }
 
+    /* ---- Data source selector bar ---- */
+    .source-bar {
+      background: var(--color-bg, #0d1117);
+      border-bottom: 1px solid var(--color-border, #30363d);
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+    .source-label {
+      font-size: var(--text-xs);
+      color: var(--color-fg-muted, #9ca3af);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .source-btn {
+      background: var(--color-card-bg, #161b22);
+      border: 1px solid var(--color-border, #30363d);
+      color: var(--color-fg-muted, #9ca3af);
+      border-radius: var(--radius-sm);
+      padding: 4px 10px;
+      cursor: pointer;
+      font-size: var(--text-xs);
+      transition: background 0.1s, color 0.1s, border-color 0.1s;
+    }
+    .source-btn:hover { color: var(--color-fg, #f3f4f6); border-color: var(--color-fg-muted, #9ca3af); }
+    .source-btn.active {
+      background: #1e3a5f;
+      color: #60a5fa;
+      border-color: #60a5fa;
+      font-weight: 600;
+    }
+    .source-btn.active.sheet {
+      background: #1a3028;
+      color: #34d399;
+      border-color: #34d399;
+    }
+    .sheet-status {
+      font-size: var(--text-xs);
+      color: var(--color-fg-muted, #9ca3af);
+      margin-left: 4px;
+    }
+    .sheet-status.live { color: #34d399; }
+
+    /* ---- Sheet guide panel ---- */
+    .sheet-guide {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      font-size: var(--text-xs);
+      color: var(--color-fg-muted, #9ca3af);
+      line-height: 1.7;
+      display: none;
+      margin: var(--space-3) var(--space-4);
+    }
+    .sheet-guide.visible { display: block; }
+    .sheet-guide code {
+      background: #0d1117;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: monospace;
+      color: #e6edf3;
+    }
+
     /* ---- Layout grid ---- */
     .dashboard {
       display: grid;
@@ -139,6 +211,10 @@ const experts = [...new Set(
       border-radius: var(--radius-full);
       letter-spacing: var(--tracking-wide);
       flex-shrink: 0;
+    }
+    .sim-badge.sheet-live {
+      background: #34d399;
+      color: #064e3b;
     }
 
     .controls-group {
@@ -510,7 +586,7 @@ const experts = [...new Set(
     모더레이터 운영 페이지 · 외부 공개 금지 · 시뮬레이션 데이터
   </div>
 
-  <!-- Sub-nav: [모더레이터 도구] 라이브 · 히트맵 · 클러스터 -->
+  <!-- Sub-nav: [모더레이터 도구] 라이브 · 히트맵 · 클러스터 · 의제연결 -->
   <nav class="subnav" aria-label="모더레이터 도구 네비게이션">
     <span class="subnav-label">[모더레이터 도구]</span>
     <a href="/ko/moderator/live" class="current">라이브</a>
@@ -518,12 +594,43 @@ const experts = [...new Set(
     <a href="/ko/moderator/insights/heatmap">히트맵</a>
     <span class="subnav-sep">·</span>
     <a href="/ko/moderator/insights/clusters">클러스터</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/agenda-network">의제연결</a>
   </nav>
+
+  <!-- Data source selector -->
+  <div class="source-bar" role="toolbar" aria-label="데이터 소스 선택">
+    <span class="source-label">데이터 소스:</span>
+    <button class="source-btn active" data-source="sim" aria-pressed="true">
+      📊 더미 데이터 (104행)
+    </button>
+    <button class="source-btn" data-source="sample" aria-pressed="false">
+      🌱 의제 샘플 (5행)
+    </button>
+    <button class="source-btn" data-source="sheet" aria-pressed="false">
+      🔗 Google Sheet
+    </button>
+    <span class="sheet-status" id="sheet-status"></span>
+  </div>
+
+  <!-- Google Sheet guide (shown when Sheet source selected but no URL configured) -->
+  <div class="sheet-guide" id="sheet-guide" role="region" aria-label="Google Sheet 연동 안내">
+    <strong style="color:#f3f4f6;">Google Sheet 연동이 설정되지 않았습니다.</strong><br>
+    <br>
+    1. <code>public/sample/sample-agenda-questions.csv</code>를 Google Sheets에서 열기 (파일 → 가져오기)<br>
+    2. 파일 → 공유 → 웹에 게시 → CSV → 전체 문서 → 게시<br>
+    3. 생성된 URL 복사<br>
+    4. Cloudflare Pages 환경 변수에 추가: <code>PUBLIC_LIVE_SHEET_CSV_URL = &lt;URL&gt;</code><br>
+    5. 재배포 후 이 페이지에서 "Google Sheet" 소스 선택<br>
+    6. 시트 셀 수정 → 30초 후 대시보드에 반영<br>
+    <br>
+    <em>로컬 테스트 시: <code>PUBLIC_LIVE_SHEET_CSV_URL</code>를 <code>.env</code>에 추가 후 dev 서버 재시작</em>
+  </div>
 
   <div class="dashboard">
     <!-- Controls bar (spans full width) -->
     <div class="controls-bar" role="toolbar" aria-label="시뮬레이션 컨트롤">
-      <span class="sim-badge">SIM</span>
+      <span class="sim-badge" id="sim-badge">SIM</span>
 
       <div class="controls-group">
         <button class="ctrl-btn" id="btn-prev" title="이전" aria-label="이전">⏮</button>
@@ -542,6 +649,7 @@ const experts = [...new Set(
         <span class="ctrl-label">일차:</span>
         <select class="ctrl-select" id="sel-day" aria-label="일차 선택">
           <option value="all">전체</option>
+          <option value="1">1일차</option>
           <option value="2">2일차</option>
           <option value="3">3일차</option>
           <option value="4">4일차</option>
@@ -664,41 +772,137 @@ const experts = [...new Set(
           href="/ko/moderator/insights/heatmap"
           style="color: #34d399; text-decoration: none; font-size: var(--text-xs); font-weight: 600;"
           title="의제 영역 × 키워드 히트맵 (전문가 65건)"
-        >의제×키워드 히트맵 →</a>
+        >의제×키워드 히트맵 →</a><br>
+        <a
+          href="/ko/moderator/insights/agenda-network"
+          style="color: #34d399; text-decoration: none; font-size: var(--text-xs); font-weight: 600;"
+          title="65개 의제 간 의미 연결 네트워크"
+        >의제연결 네트워크 →</a>
       </div>
     </aside>
   </div>
 
-  <!-- Embedded simulation data — avoids Vite define:vars serialisation issues -->
+  <!-- Embedded build-time data — avoids Vite define:vars serialisation issues -->
   <script id="sim-data" type="application/json" set:html={JSON.stringify(simQuestions)}></script>
+  <script id="sample-data" type="application/json" set:html={JSON.stringify(sampleQuestions)}></script>
   <script id="sim-experts" type="application/json" set:html={JSON.stringify(experts)}></script>
+  <script id="sheet-csv-url" type="application/json" set:html={JSON.stringify(sheetCsvUrl)}></script>
 
   <script is:inline>
-    // ========================================================================
-    // TODO(production): replace JSON import with Google Sheets CSV fetch
-    // const SHEET_CSV_URL = import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL;
-    // const data = await fetch(SHEET_CSV_URL).then(r => r.text()).then(parseCSV);
-    const simQuestions = JSON.parse(document.getElementById('sim-data').textContent);
-    const experts = JSON.parse(document.getElementById('sim-experts').textContent);
-    const data = simQuestions; // current: shipped JSON
-    // ========================================================================
+    // ============================================================================
+    // DATA SOURCES
+    // 'sim'    → 104-row dummy dataset (shipped JSON)
+    // 'sample' → 5-row agenda-derived sample (shipped JSON)
+    // 'sheet'  → Google Sheets CSV (client-side fetch, poll every 30s)
+    //
+    // Column mapping (CSV Korean → JS engine keys):
+    //   순번     → id       (integer, used as sessionStorage key)
+    //   일자     → date
+    //   채널     → channel
+    //   지역     → region
+    //   분임     → group    (strip "조" suffix)
+    //   답변자   → expert
+    //   내용     → content
+    //   예정시간 → scheduled_time (appended ":00" for HH:MM:SS)
+    //   상태     → status
+    //   day is synthesised as 1 for sample/sheet rows (day filter shows "1일차")
+    // ============================================================================
+
+    const SIM_DATA    = JSON.parse(document.getElementById('sim-data').textContent);
+    const SAMPLE_DATA = JSON.parse(document.getElementById('sample-data').textContent);
+    const SIM_EXPERTS = JSON.parse(document.getElementById('sim-experts').textContent);
+    const SHEET_CSV_URL = JSON.parse(document.getElementById('sheet-csv-url').textContent);
+
+    // ── CSV parser (state-machine, handles quoted fields with embedded commas/newlines) ──
+    function parseCSV(text) {
+      const rows = [];
+      let col = '', row = [], inQuote = false;
+
+      const flush = () => { row.push(col); col = ''; };
+      const pushRow = () => { if (row.length > 0) rows.push(row); row = []; };
+
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        const next = text[i + 1];
+
+        if (inQuote) {
+          if (ch === '"' && next === '"') { col += '"'; i++; }         // escaped quote
+          else if (ch === '"') { inQuote = false; }                    // close quote
+          else { col += ch; }
+        } else {
+          if (ch === '"') { inQuote = true; }
+          else if (ch === ',') { flush(); }
+          else if (ch === '\r' && next === '\n') { flush(); pushRow(); i++; }
+          else if (ch === '\n' || ch === '\r') { flush(); pushRow(); }
+          else { col += ch; }
+        }
+      }
+      if (col || row.length > 0) { flush(); pushRow(); }
+      return rows;
+    }
+
+    // Map CSV Korean headers → JS engine shape
+    const COL_MAP = {
+      '순번':     'id',
+      '일자':     'date',
+      '채널':     'channel',
+      '지역':     'region',
+      '분임':     'group',
+      '답변자':   'expert',
+      '내용':     'content',
+      '예정시간': 'scheduled_time',
+      '상태':     'status',
+    };
+
+    function csvToRows(text) {
+      const parsed = parseCSV(text.trim());
+      if (parsed.length < 2) return [];
+
+      const headers = parsed[0].map(h => h.trim());
+      const result = [];
+
+      for (let r = 1; r < parsed.length; r++) {
+        const cells = parsed[r];
+        if (cells.every(c => !c.trim())) continue;    // skip empty rows
+        const obj = {};
+        headers.forEach((h, i) => {
+          const key = COL_MAP[h] || h;
+          obj[key] = (cells[i] || '').trim();
+        });
+        // Normalise types
+        obj.id = parseInt(obj.id, 10) || r;
+        obj.day = 1;                                   // synthetic workshop day for filter
+        if (obj.group) obj.group = obj.group.replace('조', '');
+        if (obj.scheduled_time && !obj.scheduled_time.includes(':00', 4)) {
+          obj.scheduled_time = obj.scheduled_time + ':00';
+        }
+        result.push(obj);
+      }
+      return result;
+    }
+
+    // ── App data state ────────────────────────────────────────────────────────
+    let currentSource = 'sim';
+    let data = SIM_DATA;
+    let experts = SIM_EXPERTS;
+    let sheetPollTimer = null;
 
     const SPEEDS = { 1: 10000, 2: 5000, 5: 2000 };
+    const POLL_INTERVAL_MS = 30000;
 
-    // ── State ────────────────────────────────────────────────────────────────
+    // ── Sim state ─────────────────────────────────────────────────────────────
     let state = {
       playing: false,
       speed: 1,
-      currentIndex: -1,      // index into filtered list (-1 = not started)
+      currentIndex: -1,
       filterDay: 'all',
       filterChannel: 'all',
-      statuses: {},           // id → 'pending' | 'current' | 'done'
+      statuses: {},
+      dataSource: 'sim',
     };
 
     function saveState() {
-      try {
-        sessionStorage.setItem('mod-sim-state', JSON.stringify(state));
-      } catch (_) {}
+      try { sessionStorage.setItem('mod-sim-state', JSON.stringify(state)); } catch (_) {}
     }
 
     function loadState() {
@@ -708,7 +912,6 @@ const experts = [...new Set(
       } catch (_) {}
     }
 
-    // ── Filtered list ─────────────────────────────────────────────────────────
     function getFiltered() {
       return data.filter(q => {
         if (state.filterDay !== 'all' && String(q.day) !== state.filterDay) return false;
@@ -724,24 +927,114 @@ const experts = [...new Set(
     const selDay     = document.getElementById('sel-day');
     const selChannel = document.getElementById('sel-channel');
     const posCounter = document.getElementById('pos-counter');
-    const currentCard   = document.getElementById('current-card');
-    const emptyState    = document.getElementById('empty-state');
-    const currentContent= document.getElementById('current-content');
-    const cardMeta      = document.getElementById('card-meta');
-    const contentText   = document.getElementById('content-text');
-    const speakerLine   = document.getElementById('speaker-line');
-    const nextTitle     = document.getElementById('next-title');
-    const nextCount     = document.getElementById('next-count');
-    const nextQueue     = document.getElementById('next-queue');
-    const progressLabel = document.getElementById('progress-label');
-    const progressFill  = document.getElementById('progress-fill');
-    const progressPct   = document.getElementById('progress-pct');
-    const tallySection  = document.getElementById('tally-section');
-    const statusDots    = document.getElementById('status-dots');
-    const clock         = document.getElementById('clock');
-    const etaInfo       = document.getElementById('eta-info');
-    const simStatus     = document.getElementById('sim-status');
-    const flowSteps     = document.querySelectorAll('.flow-step');
+    const currentCard    = document.getElementById('current-card');
+    const emptyState     = document.getElementById('empty-state');
+    const currentContent = document.getElementById('current-content');
+    const cardMeta       = document.getElementById('card-meta');
+    const contentText    = document.getElementById('content-text');
+    const speakerLine    = document.getElementById('speaker-line');
+    const nextTitle      = document.getElementById('next-title');
+    const nextCount      = document.getElementById('next-count');
+    const nextQueue      = document.getElementById('next-queue');
+    const progressLabel  = document.getElementById('progress-label');
+    const progressFill   = document.getElementById('progress-fill');
+    const progressPct    = document.getElementById('progress-pct');
+    const tallySection   = document.getElementById('tally-section');
+    const statusDots     = document.getElementById('status-dots');
+    const clock          = document.getElementById('clock');
+    const etaInfo        = document.getElementById('eta-info');
+    const simStatus      = document.getElementById('sim-status');
+    const flowSteps      = document.querySelectorAll('.flow-step');
+    const simBadge       = document.getElementById('sim-badge');
+    const sheetStatus    = document.getElementById('sheet-status');
+    const sheetGuide     = document.getElementById('sheet-guide');
+
+    // ── Source selector ───────────────────────────────────────────────────────
+    function switchSource(src) {
+      if (currentSource === src) return;
+      pause();
+      currentSource = src;
+      state.dataSource = src;
+      state.currentIndex = -1;
+      state.statuses = {};
+
+      document.querySelectorAll('.source-btn').forEach(btn => {
+        const active = btn.dataset.source === src;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-pressed', String(active));
+      });
+
+      sheetGuide.classList.remove('visible');
+      stopSheetPoll();
+
+      if (src === 'sim') {
+        data = SIM_DATA;
+        experts = SIM_EXPERTS;
+        simBadge.textContent = 'SIM';
+        simBadge.classList.remove('sheet-live');
+        sheetStatus.textContent = '';
+        sheetStatus.classList.remove('live');
+      } else if (src === 'sample') {
+        data = SAMPLE_DATA;
+        experts = [];
+        simBadge.textContent = 'SAMPLE';
+        simBadge.classList.remove('sheet-live');
+        sheetStatus.textContent = '';
+        sheetStatus.classList.remove('live');
+      } else if (src === 'sheet') {
+        simBadge.textContent = 'LIVE';
+        simBadge.classList.add('sheet-live');
+        if (!SHEET_CSV_URL) {
+          sheetGuide.classList.add('visible');
+          sheetStatus.textContent = '⚠ URL 미설정';
+          sheetStatus.classList.remove('live');
+          data = [];
+          experts = [];
+        } else {
+          sheetStatus.textContent = '연결 중…';
+          sheetStatus.classList.remove('live');
+          fetchSheet().then(() => startSheetPoll());
+        }
+      }
+
+      saveState();
+      render();
+    }
+
+    async function fetchSheet() {
+      if (!SHEET_CSV_URL) return;
+      try {
+        const text = await fetch(SHEET_CSV_URL).then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.text();
+        });
+        const rows = csvToRows(text);
+        if (rows.length > 0) {
+          data = rows;
+          experts = [...new Set(rows.map(r => r.expert).filter(e => e && e !== '공통'))];
+          const now = new Date();
+          sheetStatus.textContent = `마지막 갱신: ${now.toLocaleTimeString('ko-KR', {hour12: false})}`;
+          sheetStatus.classList.add('live');
+          render();
+        }
+      } catch (err) {
+        sheetStatus.textContent = `오류: ${err.message}`;
+        sheetStatus.classList.remove('live');
+      }
+    }
+
+    function startSheetPoll() {
+      stopSheetPoll();
+      sheetPollTimer = setInterval(() => fetchSheet(), POLL_INTERVAL_MS);
+    }
+
+    function stopSheetPoll() {
+      if (sheetPollTimer) { clearInterval(sheetPollTimer); sheetPollTimer = null; }
+    }
+
+    document.querySelectorAll('.source-btn').forEach(btn => {
+      btn.addEventListener('click', () => switchSource(btn.dataset.source));
+    });
 
     // ── Render ─────────────────────────────────────────────────────────────────
     function render() {
@@ -749,19 +1042,16 @@ const experts = [...new Set(
       const idx = state.currentIndex;
       const total = filtered.length;
 
-      // Controls
       posCounter.textContent = `행 ${Math.max(idx + 1, 0)} / ${total}`;
       btnPrev.disabled = idx <= 0;
       btnNext.disabled = idx >= total - 1;
       btnPlay.textContent = state.playing ? '⏸' : '▶';
       btnPlay.classList.toggle('active', state.playing);
 
-      // Speed buttons
       document.querySelectorAll('.speed-btn').forEach(btn => {
         btn.classList.toggle('active', Number(btn.dataset.speed) === state.speed);
       });
 
-      // Current card
       if (idx < 0 || total === 0) {
         emptyState.style.display = '';
         currentContent.style.display = 'none';
@@ -779,19 +1069,17 @@ const experts = [...new Set(
           <span class="meta-pill">${q.region || '—'} ${q.group ? q.group + '조' : ''}</span>
           ${q.expert ? `<span class="meta-pill expert">답변: ${q.expert}</span>` : ''}
           ${q.scheduled_time ? `<span class="meta-pill time">⏰ ${formatTime(q.scheduled_time)}</span>` : ''}
-          <span class="meta-pill">${q.channel}</span>
+          <span class="meta-pill">${q.channel || ''}</span>
         `;
         contentText.textContent = q.content;
-        speakerLine.textContent = `Day ${q.day} · ${q.channel}`;
+        speakerLine.textContent = `Day ${q.day} · ${q.channel || ''}`;
       }
 
-      // Next queue (up to 3)
       nextQueue.innerHTML = '';
       const upcoming = filtered.slice(Math.max(idx + 1, 0), Math.max(idx + 1, 0) + 3);
-      nextCount.textContent = Math.min(filtered.length - Math.max(idx + 1, 0), filtered.length - Math.max(idx + 1, 0)).toString();
       nextCount.textContent = String(Math.max(0, total - idx - 1));
 
-      upcoming.forEach((q, i) => {
+      upcoming.forEach(q => {
         const div = document.createElement('div');
         div.className = 'next-item';
         div.innerHTML = `
@@ -804,14 +1092,12 @@ const experts = [...new Set(
         nextQueue.appendChild(div);
       });
 
-      // Progress
       const done = filtered.filter(q => state.statuses[q.id] === 'done').length;
       const pct = total ? Math.round((done / total) * 100) : 0;
       progressLabel.textContent = `진행 ${done} / ${total} · ${pct}%`;
       progressFill.style.width = `${pct}%`;
       progressPct.textContent = `${pct}%`;
 
-      // Expert tally
       const expertCounts = {};
       filtered.forEach(q => {
         if (state.statuses[q.id] === 'done' && q.expert) {
@@ -837,7 +1123,6 @@ const experts = [...new Set(
         tallySection.appendChild(row);
       });
 
-      // Status dots
       statusDots.innerHTML = '';
       filtered.forEach(q => {
         const dot = document.createElement('div');
@@ -848,20 +1133,17 @@ const experts = [...new Set(
         statusDots.appendChild(dot);
       });
 
-      // Flow step highlight: cycle through stages based on position
       const stageIndex = total > 0 ? Math.floor(((idx + 1) / total) * 6) % 8 : 4;
       flowSteps.forEach((step, i) => {
         step.classList.toggle('active', i === stageIndex);
       });
 
-      // ETA
       const speedMs = SPEEDS[state.speed];
       const remaining = total - done;
-      const etaMs = remaining * speedMs;
       etaInfo.innerHTML = `
         전체: ${formatDuration(total * speedMs)}<br>
         현재: ${idx + 1} / ${total}<br>
-        잔여: ${formatDuration(etaMs)}
+        잔여: ${formatDuration(remaining * speedMs)}
       `;
 
       simStatus.textContent = state.playing ? '▶ 진행 중' : (idx >= 0 ? '⏸ 일시정지' : '대기 중');
@@ -869,7 +1151,6 @@ const experts = [...new Set(
 
     function formatTime(t) {
       if (!t || t === 'None') return '';
-      // Handle HH:MM:SS or HH:MM:SS.000000
       return t.split('.')[0].slice(0, 5);
     }
 
@@ -887,18 +1168,12 @@ const experts = [...new Set(
     function advance() {
       const filtered = getFiltered();
       const total = filtered.length;
-      if (state.currentIndex >= total - 1) {
-        pause();
-        return;
-      }
-      // Mark previous as done
+      if (state.currentIndex >= total - 1) { pause(); return; }
       if (state.currentIndex >= 0) {
-        const prev = filtered[state.currentIndex];
-        state.statuses[prev.id] = 'done';
+        state.statuses[filtered[state.currentIndex].id] = 'done';
       }
       state.currentIndex++;
-      const curr = filtered[state.currentIndex];
-      state.statuses[curr.id] = 'current';
+      state.statuses[filtered[state.currentIndex].id] = 'current';
       saveState();
       render();
     }
@@ -906,11 +1181,8 @@ const experts = [...new Set(
     function play() {
       if (state.playing) return;
       state.playing = true;
-      // If not started yet, advance once immediately
       const filtered = getFiltered();
-      if (state.currentIndex < 0 && filtered.length > 0) {
-        advance();
-      }
+      if (state.currentIndex < 0 && filtered.length > 0) advance();
       timer = setInterval(() => advance(), SPEEDS[state.speed]);
       saveState();
       render();
@@ -925,34 +1197,20 @@ const experts = [...new Set(
 
     function resetTimer() {
       if (timer) { clearInterval(timer); timer = null; }
-      if (state.playing) {
-        timer = setInterval(() => advance(), SPEEDS[state.speed]);
-      }
+      if (state.playing) timer = setInterval(() => advance(), SPEEDS[state.speed]);
     }
 
     // ── Controls ──────────────────────────────────────────────────────────────
-    btnPlay.addEventListener('click', () => {
-      state.playing ? pause() : play();
-    });
+    btnPlay.addEventListener('click', () => { state.playing ? pause() : play(); });
 
-    btnNext.addEventListener('click', () => {
-      advance();
-      resetTimer();
-    });
+    btnNext.addEventListener('click', () => { advance(); resetTimer(); });
 
     btnPrev.addEventListener('click', () => {
       const filtered = getFiltered();
       if (state.currentIndex <= 0) return;
-      // Unmark current
-      if (state.currentIndex >= 0) {
-        const curr = filtered[state.currentIndex];
-        state.statuses[curr.id] = 'pending';
-      }
+      state.statuses[filtered[state.currentIndex].id] = 'pending';
       state.currentIndex--;
-      if (state.currentIndex >= 0) {
-        const prev = filtered[state.currentIndex];
-        state.statuses[prev.id] = 'current';
-      }
+      if (state.currentIndex >= 0) state.statuses[filtered[state.currentIndex].id] = 'current';
       resetTimer();
       saveState();
       render();
@@ -985,8 +1243,7 @@ const experts = [...new Set(
 
     // ── Clock ─────────────────────────────────────────────────────────────────
     function updateClock() {
-      const now = new Date();
-      clock.textContent = now.toLocaleTimeString('ko-KR', { hour12: false });
+      clock.textContent = new Date().toLocaleTimeString('ko-KR', { hour12: false });
     }
     setInterval(updateClock, 1000);
     updateClock();
@@ -1001,10 +1258,14 @@ const experts = [...new Set(
 
     // ── Init ──────────────────────────────────────────────────────────────────
     loadState();
-    // Sync selects to restored state
+
+    // Restore source from sessionStorage
+    const restoredSource = state.dataSource || 'sim';
+    currentSource = 'sim'; // force re-initialise even if same
+    switchSource(restoredSource);
+
     selDay.value = state.filterDay;
     selChannel.value = state.filterChannel;
-    // Don't auto-play after page reload — user should explicitly press play
     state.playing = false;
     render();
   </script>

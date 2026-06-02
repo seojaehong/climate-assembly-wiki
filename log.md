@@ -2,6 +2,12 @@
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
+2026-06-02 10:41 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
+2026-06-02 10:41 | update | content/ko/doc/moderator-live-setup.md | 모더레이터 라이브 대시보드 운영 가이드 (last_updated: 2026-06-02)
+!-- APPEND-ONLY. Newest entries at top. -->
+<!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
+<!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
+
 2026-06-02 09:18 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-02 09:18 | update | content/ko/doc/moderator-live-setup.md | 모더레이터 라이브 대시보드 운영 가이드 (last_updated: 2026-06-02)
 2026-06-02 09:14 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run

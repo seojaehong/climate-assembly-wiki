@@ -36,6 +36,29 @@ last_updated: "2026-06-02"
 
 ---
 
+## Google Sheet 샘플 연동 절차
+
+샘플 데이터(`sample-agenda-questions.csv`)를 Google Sheets에 올려 end-to-end 연동을 테스트하는 절차입니다.
+
+1. `public/sample/sample-agenda-questions.csv` 파일을 Google Sheets에서 열기
+   - Google Sheets → 파일 → 가져오기 → 업로드
+2. 파일 → 공유 → 웹에 게시 선택
+   - 시트: "시트1 (또는 전체 문서)"
+   - 형식: "쉼표로 구분된 값(.csv)"
+   - "게시" 클릭
+3. 생성된 URL 복사 (예: `https://docs.google.com/spreadsheets/d/…/pub?gid=0&single=true&output=csv`)
+4. Cloudflare Pages 환경 변수에 추가:
+   ```
+   PUBLIC_LIVE_SHEET_CSV_URL = <복사한 URL>
+   ```
+5. 재배포 후 `/ko/moderator/live/` 접속 → "🔗 Google Sheet" 소스 선택
+6. Google Sheet 임의 셀 수정 → 30초 후 대시보드에 자동 반영 확인
+   - "마지막 갱신: HH:MM:SS" 상태 표시로 확인
+
+**참고**: 환경 변수 미설정 시 "Google Sheet" 선택 시 안내 패널이 표시됩니다.
+
+---
+
 ## 2. Google Sheets → CSV 공개 절차
 
 1. Google Sheets 열기 → 파일 → 공유 → 웹에 게시
