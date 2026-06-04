@@ -7,9 +7,15 @@
  *
  * RENDER: Frontmatter-thin pattern (heatmap POC efd18a6 + groups build-trigger fix).
  *   - Tab A (table) and Tab B (group cards): Astro template (no SVG, builds fine)
- *   - Tab C (stacked bar + 15 donuts): SVG generation moved to client <script>
- *   - Frontmatter template-literal SVG strings tripped esbuild ("Unexpected export"
+ *   - Tab C (Coverage Heatmap): SVG generation in client <script>
+ *   - Frontmatter template-literal SVG strings trip esbuild ("Unexpected export"
  *     at groups.astro:62:0). Confirmed by isolating discriminating experiment.
+ *
+ * VIEW C: Coverage Heatmap (15조 × 18 domains) replacing old stacked bar + donuts.
+ *   - viridis color scale (same as heatmap.astro)
+ *   - big_category left strip + column headers 45° rotated
+ *   - cell hover tooltip + click → right panel agenda list
+ * SEARCH/SORT/STICKY: shared control row above tabs, all three views react.
  */
 
 import agendasRaw from '../../../../data/agendas-65.json';
@@ -61,22 +67,75 @@ const tableRows = agendas
   }))
   .sort((x, y) => x.group - y.group || x.id - y.id);
 
-// View C data — passed to client for SVG generation
+// Derive sorted domain list: 감축 → 적응 → 혼합, then alpha within each
+const domainCatMap = {};
+for (const a of agendas) {
+  if (!domainCatMap[a.domain]) domainCatMap[a.domain] = a.big_category;
+}
+const CAT_ORDER = ['감축', '적응', '혼합'];
+const allDomains = [...new Set(agendas.map((a) => a.domain))].sort((a, b) => {
+  const ca = CAT_ORDER.indexOf(domainCatMap[a]);
+  const cb = CAT_ORDER.indexOf(domainCatMap[b]);
+  if (ca !== cb) return ca - cb;
+  return a.localeCompare(b, 'ko');
+});
+
+// Build cell matrix: groups × domains → agenda count
+const cellMatrix = groupAssign.map((g) => {
+  const counts = {};
+  for (const aid of g.members) {
+    const a = agendaById.get(aid);
+    if (!a) continue;
+    counts[a.domain] = (counts[a.domain] ?? 0) + 1;
+  }
+  return allDomains.map((d) => counts[d] ?? 0);
+});
+
+// Hero insight stats (View A top KPI cards)
+const groupStats = groupAssign.map((g) => {
+  const counts = {};
+  let total = 0;
+  for (const aid of g.members) {
+    const a = agendaById.get(aid);
+    if (!a) continue;
+    total++;
+    counts[a.domain] = (counts[a.domain] ?? 0) + 1;
+    // cat counts
+  }
+  const catCounts = {};
+  for (const c of CAT_ORDER) catCounts[c] = g.categories[c] ?? 0;
+  return {
+    id: g.id,
+    total,
+    distinctDomains: Object.keys(counts).length,
+    감축: catCounts['감축'],
+    적응: catCounts['적응'],
+    혼합: catCounts['혼합'],
+  };
+});
+
+const mostDiverse = groupStats.reduce((a, b) => (a.distinctDomains >= b.distinctDomains ? a : b));
+const mostGamchuk = groupStats.reduce((a, b) => ((a.감축 / a.total) >= (b.감축 / b.total) ? a : b));
+const mostJeok = groupStats.reduce((a, b) => ((a.적응 / a.total) >= (b.적응 / b.total) ? a : b));
+// most balanced: minimize max ratio across cats
+const balanceScore = (g) => {
+  const max = Math.max(g.감축 / g.total, g.적응 / g.total, g.혼합 > 0 ? g.혼합 / g.total : 0);
+  return max;
+};
+const mostBalanced = groupStats.reduce((a, b) => (balanceScore(a) <= balanceScore(b) ? a : b));
+
+// View C data island
 const vizData = {
-  groups: groupAssign.map((g) => {
-    const domainCounts = {};
-    for (const aid of g.members) {
-      const a = agendaById.get(aid);
-      if (!a) continue;
-      domainCounts[a.domain] = (domainCounts[a.domain] ?? 0) + 1;
-    }
-    return {
-      id: g.id,
-      counts_by_cat: [g.categories['감축'] ?? 0, g.categories['적응'] ?? 0, g.categories['혼합'] ?? 0],
-      total: g.members.length,
-      domainCounts,
-    };
-  }),
+  groups: groupAssign.map((g, gi) => ({
+    id: g.id,
+    cells: cellMatrix[gi],
+    total: g.members.length,
+    members: g.members,
+    categories: g.categories,
+    domains: g.domains,
+  })),
+  domains: allDomains,
+  domainCatMap,
 };
 ---
 <!doctype html>
@@ -106,31 +165,77 @@ const vizData = {
     .page-header h1 { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
     .page-header .meta { font-size: 11px; color: var(--fg-muted); display: flex; gap: 14px; flex-wrap: wrap; }
 
+    /* ── Controls row (shared across all tabs) ───────────────────────────── */
+    .controls-row {
+      padding: 8px 20px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      font-size: 12px;
+    }
+    .controls-row label { color: var(--fg-muted); }
+    .search-input {
+      background: var(--bg-subtle); border: 1px solid var(--border);
+      color: var(--fg); border-radius: var(--radius); padding: 4px 10px;
+      font-size: 12px; font-family: inherit; width: 220px;
+    }
+    .search-input:focus { outline: none; border-color: var(--accent); }
+    .ctrl-sel {
+      background: var(--bg-subtle); border: 1px solid var(--border);
+      color: var(--fg); border-radius: var(--radius); padding: 3px 8px;
+      font-size: 12px; cursor: pointer; font-family: inherit;
+    }
+    .sticky-group-wrap { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    .sticky-label { color: var(--fg-muted); font-size: 11px; }
+    .btn-clear-sticky {
+      background: transparent; border: 1px solid var(--border);
+      color: var(--fg-muted); border-radius: var(--radius);
+      padding: 3px 8px; font-size: 11px; cursor: pointer; font-family: inherit;
+    }
+    .btn-clear-sticky:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Hero Insight Cards ──────────────────────────────────────────────── */
+    .hero-cards { display: flex; gap: 10px; padding: 14px 20px 0; flex-wrap: wrap; }
+    .hero-card {
+      background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 10px 14px; cursor: pointer; flex: 1; min-width: 160px; max-width: 240px;
+      transition: border-color 0.15s;
+    }
+    .hero-card:hover { border-color: var(--accent); }
+    .hero-card.active { border-color: #FDE725; }
+    .hc-label { font-size: 10px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+    .hc-val { font-size: 18px; font-weight: 700; color: #FDE725; margin-bottom: 2px; }
+    .hc-sub { font-size: 11px; color: var(--fg-muted); }
+
+    /* ── Tabs ────────────────────────────────────────────────────────────── */
     .tabs { display: flex; gap: 4px; padding: 10px 20px 0; background: var(--bg-subtle); border-bottom: 1px solid var(--border); }
     .tab-btn { background: transparent; border: 1px solid var(--border); border-bottom: none; color: var(--fg-muted); padding: 7px 14px; font-size: 12px; cursor: pointer; border-radius: var(--radius) var(--radius) 0 0; font-family: inherit; }
     .tab-btn.active { background: var(--bg); color: var(--fg); border-color: var(--accent); }
-
-    .tab-panel { display: none; padding: 18px 24px; }
+    .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
+    /* ── View A — Table ──────────────────────────────────────────────────── */
+    .tab-panel-table { padding: 18px 24px; }
     .ag-table { width: 100%; border-collapse: collapse; font-size: 12px; }
     .ag-table th, .ag-table td { text-align: left; padding: 6px 9px; border-bottom: 1px solid var(--border); }
     .ag-table th { color: var(--fg-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; user-select: none; }
     .ag-table th:hover { color: var(--accent); }
     .ag-table tbody tr:hover { background: var(--bg-subtle); }
+    .ag-table tbody tr.dim { opacity: 0.2; }
+    .ag-table tbody tr.sticky-hl { outline: 2px solid #FDE725; outline-offset: -1px; }
     .ag-table td.col-id { color: var(--fg-muted); font-variant-numeric: tabular-nums; width: 44px; }
     .ag-table td.col-group { font-weight: 600; width: 56px; }
     .ag-table td.col-rep { width: 28px; text-align: center; color: #FDE725; }
     .ag-table td.col-domain { color: var(--fg-muted); font-size: 11px; width: 200px; }
-    .cat-b { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 99px; }
-    .cat-b-감축 { background: #1a3a1a; color: #3fb950; border: 1px solid #238636; }
-    .cat-b-적응 { background: #1a2d3a; color: #58a6ff; border: 1px solid #1f6feb; }
-    .cat-b-혼합 { background: #2d1a3a; color: #d2a8ff; border: 1px solid #6e40c9; }
 
+    /* ── View B — Cards ──────────────────────────────────────────────────── */
+    .tab-panel-cards { padding: 18px 24px; }
     .group-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
     @media (max-width: 1000px) { .group-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 640px)  { .group-grid { grid-template-columns: 1fr; } }
-    .group-card { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius); padding: 11px 13px; }
+    .group-card { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius); padding: 11px 13px; transition: opacity 0.2s; }
+    .group-card.dim { opacity: 0.25; }
+    .group-card.sticky-hl { border-color: #FDE725; box-shadow: 0 0 0 1px #FDE725; }
     .gc-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
     .gc-num { font-size: 15px; font-weight: 700; }
     .gc-expert { font-size: 11px; color: var(--accent); }
@@ -140,15 +245,48 @@ const vizData = {
     .gc-chips { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 8px; }
     .gc-chip { font-size: 9px; padding: 1px 6px; border-radius: 99px; background: var(--bg); color: var(--fg-muted); border: 1px solid var(--border); }
 
-    .viz-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-    @media (max-width: 1100px) { .viz-wrap { grid-template-columns: 1fr; } }
-    .viz-panel { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
-    .viz-title { font-size: 12px; font-weight: 700; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
-    .donut-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-    .donut-cell { aspect-ratio: 1 / 1; }
-    .legend { display: flex; gap: 12px; font-size: 11px; margin-top: 10px; color: var(--fg-muted); }
-    .lg-sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
-    .stacked-bar-svg { width: 100%; height: auto; display: block; }
+    /* ── View C — Coverage Heatmap ───────────────────────────────────────── */
+    .tab-panel-viz { display: none; }
+    .tab-panel-viz.active { display: flex; height: calc(100vh - 220px); min-height: 400px; }
+    .heatmap-panel { flex: 1; overflow: auto; padding: 12px 16px; }
+    .heatmap-svg { display: block; cursor: crosshair; font-family: var(--font); }
+    .hmap-cell { stroke: transparent; stroke-width: 1; cursor: pointer; transition: stroke 0.08s; }
+    .hmap-cell:hover { stroke: rgba(255,255,255,0.7); stroke-width: 1.5; }
+    .hmap-cell.sel { stroke: #fff; stroke-width: 2; }
+    .hmap-row-hl { opacity: 1 !important; }
+    .hmap-row-dim { opacity: 0.15; }
+    .hmap-row-sticky { /* yellow outline applied via rect in JS */ }
+
+    .agenda-panel {
+      width: 340px; min-width: 260px;
+      background: var(--bg-subtle); border-left: 1px solid var(--border);
+      overflow-y: auto; padding: 14px; flex-shrink: 0;
+    }
+    @media (max-width: 900px) { .agenda-panel { display: none; } }
+    .panel-title { font-size: 11px; font-weight: 700; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+    .panel-empty { color: var(--fg-muted); font-size: 13px; text-align: center; margin-top: 40px; line-height: 1.8; }
+    .ag-item { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 11px; margin-bottom: 7px; }
+    .ag-title { font-size: 12px; font-weight: 600; color: var(--fg); margin-bottom: 3px; line-height: 1.4; }
+    .ag-meta { font-size: 10px; color: var(--fg-muted); margin-bottom: 4px; }
+
+    /* ── Shared ──────────────────────────────────────────────────────────── */
+    .cat-b { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 99px; }
+    .cat-b-감축 { background: #1a3a1a; color: #3fb950; border: 1px solid #238636; }
+    .cat-b-적응 { background: #1a2d3a; color: #58a6ff; border: 1px solid #1f6feb; }
+    .cat-b-혼합 { background: #2d1a3a; color: #d2a8ff; border: 1px solid #6e40c9; }
+
+    .tooltip {
+      position: fixed; background: rgba(22,27,34,0.95); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 8px 12px; font-size: 12px; color: var(--fg);
+      pointer-events: none; z-index: 100; max-width: 260px; display: none;
+      line-height: 1.5; backdrop-filter: blur(4px);
+    }
+    .tip-kw { color: var(--accent); font-weight: 600; display: block; }
+    .tip-count { font-size: 18px; font-weight: 700; color: #FDE725; }
+    .tip-muted { font-size: 11px; color: var(--fg-muted); }
+
+    /* ── Sort transition ─────────────────────────────────────────────────── */
+    .group-card { transition: opacity 0.3s; }
   </style>
 </head>
 <body>
@@ -177,21 +315,68 @@ const vizData = {
   <header class="page-header">
     <h1>분임조별 의제 배분 · 대표질문 · 도메인 분포</h1>
     <div class="meta">
-      <span>65 의제 · 15 조</span>
+      <span>65 의제 · 15 조 · 18 도메인</span>
       <span>대표 30건 (조당 2건)</span>
       <span>알고리즘: round-robin by (domain, id) → top-2 by keyword diversity</span>
-      <span>출처: build-group-assignment.py</span>
     </div>
   </header>
+
+  <!-- ===== Hero Insight Cards ===== -->
+  <div class="hero-cards" id="hero-cards">
+    <div class="hero-card" data-hero-group={mostDiverse.id} title="클릭 → 해당 조 고정">
+      <div class="hc-label">가장 다양한 조</div>
+      <div class="hc-val">{mostDiverse.id}조</div>
+      <div class="hc-sub">도메인 {mostDiverse.distinctDomains}개</div>
+    </div>
+    <div class="hero-card" data-hero-group={mostGamchuk.id} title="클릭 → 해당 조 고정">
+      <div class="hc-label">감축 집중 조</div>
+      <div class="hc-val">{mostGamchuk.id}조</div>
+      <div class="hc-sub">감축 {mostGamchuk.감축}/{mostGamchuk.total}건</div>
+    </div>
+    <div class="hero-card" data-hero-group={mostJeok.id} title="클릭 → 해당 조 고정">
+      <div class="hc-label">적응 집중 조</div>
+      <div class="hc-val">{mostJeok.id}조</div>
+      <div class="hc-sub">적응 {mostJeok.적응}/{mostJeok.total}건</div>
+    </div>
+    <div class="hero-card" data-hero-group={mostBalanced.id} title="클릭 → 해당 조 고정">
+      <div class="hc-label">혼합 균형 조</div>
+      <div class="hc-val">{mostBalanced.id}조</div>
+      <div class="hc-sub">감축 {mostBalanced.감축} · 적응 {mostBalanced.적응} · 혼합 {mostBalanced.혼합}</div>
+    </div>
+  </div>
+
+  <!-- ===== Shared Controls (all tabs) ===== -->
+  <div class="controls-row" id="controls-row">
+    <label for="search-input">검색</label>
+    <input type="search" id="search-input" class="search-input" placeholder="조 번호 / 도메인 / 의제 키워드" autocomplete="off" />
+    <label for="sort-sel">정렬</label>
+    <select id="sort-sel" class="ctrl-sel">
+      <option value="default">기본 (조 번호)</option>
+      <option value="diversity">도메인 다양성 ↓</option>
+      <option value="gamchuk">감축 집중</option>
+      <option value="jeok">적응 집중</option>
+      <option value="mixed">혼합 집중</option>
+    </select>
+    <div class="sticky-group-wrap">
+      <span class="sticky-label">내 조:</span>
+      <select id="sticky-sel" class="ctrl-sel">
+        <option value="">—</option>
+        {Array.from({ length: 15 }, (_, i) => i + 1).map((n) => (
+          <option value={n}>{n}조</option>
+        ))}
+      </select>
+      <button class="btn-clear-sticky" id="btn-clear-sticky">해제</button>
+    </div>
+  </div>
 
   <div class="tabs" role="tablist">
     <button class="tab-btn active" data-tab="all" role="tab">A · 전체 65 의제</button>
     <button class="tab-btn" data-tab="bygroup" role="tab">B · 조별 대표 (15×2)</button>
-    <button class="tab-btn" data-tab="viz" role="tab">C · 시각화</button>
+    <button class="tab-btn" data-tab="viz" role="tab">C · Coverage Heatmap</button>
   </div>
 
   <!-- ===== Tab A : 전체 ===== -->
-  <section id="tab-all" class="tab-panel active" role="tabpanel">
+  <section id="tab-all" class="tab-panel tab-panel-table active" role="tabpanel">
     <table class="ag-table" id="agTable">
       <thead>
         <tr>
@@ -219,14 +404,14 @@ const vizData = {
   </section>
 
   <!-- ===== Tab B : 조별 ===== -->
-  <section id="tab-bygroup" class="tab-panel" role="tabpanel">
-    <div class="group-grid">
+  <section id="tab-bygroup" class="tab-panel tab-panel-cards" role="tabpanel">
+    <div class="group-grid" id="group-grid">
       {groupAssign.map((g) => {
         const reps = g.representatives.map((rid) => agendaById.get(rid)).filter(Boolean);
         const expertList = expertByGroup.get(g.id) ?? [g.expert_default];
         const expertLabel = [...new Set(expertList)].join(' / ');
         return (
-          <article class="group-card">
+          <article class="group-card" data-group-id={g.id} data-domains={g.domains.join('|')}>
             <div class="gc-head">
               <span class="gc-num">{g.id}조</span>
               <span class="gc-expert">답변자 {expertLabel}</span>
@@ -248,38 +433,104 @@ const vizData = {
     </div>
   </section>
 
-  <!-- ===== Tab C : 시각화 (client-rendered SVG) ===== -->
-  <section id="tab-viz" class="tab-panel" role="tabpanel">
-    <div class="viz-wrap">
-      <div class="viz-panel">
-        <div class="viz-title">조별 big_category 분포 (stacked bar)</div>
-        <div id="stacked-bar-container"></div>
-        <div class="legend">
-          <span><span class="lg-sw" style="background:#3fb950"></span>감축</span>
-          <span><span class="lg-sw" style="background:#58a6ff"></span>적응</span>
-          <span><span class="lg-sw" style="background:#d2a8ff"></span>혼합</span>
-        </div>
-      </div>
-      <div class="viz-panel">
-        <div class="viz-title">조별 도메인 분포 (mini donuts)</div>
-        <div class="donut-grid" id="donut-grid"></div>
-      </div>
+  <!-- ===== Tab C : Coverage Heatmap (client-rendered SVG) ===== -->
+  <section id="tab-viz" class="tab-panel tab-panel-viz" role="tabpanel">
+    <div class="heatmap-panel" id="hm-panel">
+      <div id="coverage-heatmap-container"></div>
     </div>
+    <aside class="agenda-panel" id="coverage-agenda-panel" aria-label="선택 의제 목록">
+      <div class="panel-title" id="coverage-panel-title">의제 목록</div>
+      <div id="coverage-panel-content">
+        <p class="panel-empty">셀 클릭 시<br>해당 조×도메인 의제가<br>표시됩니다.</p>
+      </div>
+    </aside>
   </section>
 
+  <div class="tooltip" id="tooltip" role="tooltip"></div>
+
+  <!-- Data islands -->
   <script id="groups-viz-data" type="application/json" set:html={JSON.stringify(vizData)}></script>
+  <script id="groups-agendas-data" type="application/json" set:html={JSON.stringify(agendas)}></script>
 
   <script is:inline>
-    // ── Tab switching ─────────────────────────────────────────────────────
+    /* ======================================================================
+       groups.astro — unified client script
+       Sections:
+         1. Data parse + memberGroupLookup
+         2. State
+         3. Tab switching
+         4. View A: table sort + filter
+         5. View B: card sort + filter
+         6. View C: Coverage Heatmap SVG + interactions (single click handler)
+         7. Apply state helpers
+         8. Controls: search / sort / sticky
+         9. Hero cards
+       ====================================================================== */
+
+    // ── 1. Data ──────────────────────────────────────────────────────────
+    const vizData = JSON.parse(document.getElementById('groups-viz-data').textContent);
+    const agendas = JSON.parse(document.getElementById('groups-agendas-data').textContent);
+    const { groups, domains, domainCatMap } = vizData;
+
+    // agendaId → groupId (built from vizData.groups[].members — the single source of truth)
+    const memberGroupLookup = {};
+    groups.forEach((g) => {
+      (g.members || []).forEach((aid) => { memberGroupLookup[aid] = g.id; });
+    });
+
+    // ── 2. State ─────────────────────────────────────────────────────────
+    const STICKY_KEY = 'moderator.groups.stickyGroup';
+    const state = {
+      search: '',
+      sort: 'default',
+      sticky: parseInt(localStorage.getItem(STICKY_KEY) || '0', 10) || 0,
+    };
+
+    // Restore sticky dropdown
+    if (state.sticky) {
+      const sel = document.getElementById('sticky-sel');
+      if (sel) sel.value = state.sticky;
+    }
+
+    // Group stats for sort
+    const groupStats = groups.map((g) => {
+      const total = g.total;
+      const distinct = g.cells.filter((c) => c > 0).length;
+      const cats = g.categories || {};
+      return {
+        id: g.id,
+        total,
+        distinct,
+        감축: cats['감축'] || 0,
+        적응: cats['적응'] || 0,
+        혼합: cats['혼합'] || 0,
+      };
+    });
+
+    function getSortedGroupOrder() {
+      const sorted = [...groupStats];
+      const s = state.sort;
+      if (s === 'diversity') sorted.sort((a, b) => b.distinct - a.distinct || a.id - b.id);
+      else if (s === 'gamchuk') sorted.sort((a, b) => (b.감축 / b.total) - (a.감축 / a.total) || a.id - b.id);
+      else if (s === 'jeok') sorted.sort((a, b) => (b.적응 / b.total) - (a.적응 / a.total) || a.id - b.id);
+      else if (s === 'mixed') sorted.sort((a, b) => (b.혼합 / b.total) - (a.혼합 / a.total) || a.id - b.id);
+      else sorted.sort((a, b) => a.id - b.id);
+      return sorted.map((g) => g.id);
+    }
+
+    // ── 3. Tab switching ─────────────────────────────────────────────────
     document.querySelectorAll('.tab-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const tab = btn.getAttribute('data-tab');
         document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b === btn));
         document.querySelectorAll('.tab-panel').forEach((p) => p.classList.toggle('active', p.id === 'tab-' + tab));
+        // Re-apply state to newly visible tab
+        applyToAll();
+        if (tab === 'viz' && !svgBuilt) buildCoverageHeatmap();
       });
     });
 
-    // ── Table sort (View A) ───────────────────────────────────────────────
+    // ── 4. View A: table sort + filter ───────────────────────────────────
     (function () {
       const table = document.getElementById('agTable');
       if (!table) return;
@@ -295,7 +546,7 @@ const vizData = {
             let va = a.getAttribute('data-' + key);
             let vb = b.getAttribute('data-' + key);
             const na = parseFloat(va), nb = parseFloat(vb);
-            if (!isNaN(na) && !isNaN(nb)) { return asc ? na - nb : nb - na; }
+            if (!isNaN(na) && !isNaN(nb)) return asc ? na - nb : nb - na;
             return asc ? String(va).localeCompare(String(vb), 'ko') : String(vb).localeCompare(String(va), 'ko');
           });
           rows.forEach((r) => tbody.appendChild(r));
@@ -303,80 +554,449 @@ const vizData = {
       });
     })();
 
-    // ── View C : SVG generation (moved from frontmatter — esbuild trigger fix) ─
-    (function renderViz() {
-      const dataEl = document.getElementById('groups-viz-data');
-      if (!dataEl) return;
-      const { groups } = JSON.parse(dataEl.textContent);
-
-      const CAT_COLOR = { '감축': '#3fb950', '적응': '#58a6ff', '혼합': '#d2a8ff' };
-      const CATS = ['감축', '적응', '혼합'];
-
-      // --- Stacked bar ---
-      const BAR_W = 38, BAR_GAP = 10, BAR_H = 220, BAR_TOP = 30, BAR_BOTTOM = 36, BAR_LEFT = 36;
-      const stackSvgW = BAR_LEFT + (BAR_W + BAR_GAP) * 15 + 20;
-      const stackSvgH = BAR_TOP + BAR_H + BAR_BOTTOM;
-      const maxStackTotal = Math.max(...groups.map((d) => d.total));
-
-      const stackBars = [];
-      for (let v = 0; v <= maxStackTotal; v++) {
-        const y = BAR_TOP + BAR_H - (v / maxStackTotal) * BAR_H;
-        stackBars.push('<line x1="' + BAR_LEFT + '" y1="' + y + '" x2="' + (stackSvgW - 10) + '" y2="' + y + '" stroke="#30363d" stroke-width="0.5"/>');
-        stackBars.push('<text x="' + (BAR_LEFT - 6) + '" y="' + (y + 3) + '" text-anchor="end" font-size="9" fill="#8b949e">' + v + '</text>');
-      }
-      groups.forEach((d, i) => {
-        const x = BAR_LEFT + i * (BAR_W + BAR_GAP);
-        let yCursor = BAR_TOP + BAR_H;
-        d.counts_by_cat.forEach((cnt, ci) => {
-          if (cnt > 0) {
-            const h = (cnt / maxStackTotal) * BAR_H;
-            yCursor -= h;
-            stackBars.push('<rect x="' + x + '" y="' + yCursor + '" width="' + BAR_W + '" height="' + h + '" fill="' + CAT_COLOR[CATS[ci]] + '" opacity="0.85"><title>' + d.id + '조 · ' + CATS[ci] + ' ' + cnt + '건</title></rect>');
-            if (h > 14) {
-              stackBars.push('<text x="' + (x + BAR_W / 2) + '" y="' + (yCursor + h / 2 + 3) + '" text-anchor="middle" font-size="9" fill="#0d1117" font-weight="700">' + cnt + '</text>');
-            }
-          }
-        });
-        stackBars.push('<text x="' + (x + BAR_W / 2) + '" y="' + (BAR_TOP + BAR_H + 14) + '" text-anchor="middle" font-size="10" fill="#f0f6fc">' + d.id + '조</text>');
-        stackBars.push('<text x="' + (x + BAR_W / 2) + '" y="' + (BAR_TOP + BAR_H + 26) + '" text-anchor="middle" font-size="9" fill="#8b949e">' + d.total + '건</text>');
+    function applyToTableA() {
+      const q = state.search.toLowerCase().trim();
+      const sticky = state.sticky;
+      const tbody = document.querySelector('#agTable tbody');
+      if (!tbody) return;
+      tbody.querySelectorAll('tr').forEach((tr) => {
+        const group = parseInt(tr.getAttribute('data-group'), 10);
+        const domain = (tr.getAttribute('data-domain') || '').toLowerCase();
+        const title = (tr.getAttribute('data-title') || '').toLowerCase();
+        let match = !q || String(group).includes(q) || domain.includes(q) || title.includes(q);
+        tr.classList.toggle('dim', !match);
+        tr.classList.toggle('sticky-hl', sticky > 0 && group === sticky);
       });
-      const stackedSvg = '<svg viewBox="0 0 ' + stackSvgW + ' ' + stackSvgH + '" xmlns="http://www.w3.org/2000/svg" class="stacked-bar-svg">' + stackBars.join('') + '</svg>';
-      document.getElementById('stacked-bar-container').innerHTML = stackedSvg;
+    }
 
-      // --- Mini donuts ---
-      const DONUT_R = 30, DONUT_INNER = 14, DONUT_BOX = 84;
-      const SLICE_PALETTE = ['#58a6ff', '#3fb950', '#d2a8ff', '#FDE725', '#f78166', '#7ee787', '#a371f7'];
+    // ── 5. View B: card sort + filter ────────────────────────────────────
+    function applyToCardsB() {
+      const q = state.search.toLowerCase().trim();
+      const sticky = state.sticky;
+      const grid = document.getElementById('group-grid');
+      if (!grid) return;
+      const cards = Array.from(grid.querySelectorAll('.group-card'));
 
-      function donutSvg(g) {
-        const cx = DONUT_BOX / 2, cy = DONUT_BOX / 2 + 6;
-        const entries = Object.entries(g.domainCounts).sort((a, b) => b[1] - a[1]);
-        let start = -Math.PI / 2;
-        const arcs = [];
-        entries.forEach(([dom, cnt], i) => {
-          const frac = cnt / g.total;
-          const end = start + frac * Math.PI * 2;
-          const x1 = cx + DONUT_R * Math.cos(start);
-          const y1 = cy + DONUT_R * Math.sin(start);
-          const x2 = cx + DONUT_R * Math.cos(end);
-          const y2 = cy + DONUT_R * Math.sin(end);
-          const xi1 = cx + DONUT_INNER * Math.cos(end);
-          const yi1 = cy + DONUT_INNER * Math.sin(end);
-          const xi2 = cx + DONUT_INNER * Math.cos(start);
-          const yi2 = cy + DONUT_INNER * Math.sin(start);
-          const large = frac > 0.5 ? 1 : 0;
-          const color = SLICE_PALETTE[i % SLICE_PALETTE.length];
-          arcs.push('<path d="M ' + x1.toFixed(2) + ' ' + y1.toFixed(2) + ' A ' + DONUT_R + ' ' + DONUT_R + ' 0 ' + large + ' 1 ' + x2.toFixed(2) + ' ' + y2.toFixed(2) + ' L ' + xi1.toFixed(2) + ' ' + yi1.toFixed(2) + ' A ' + DONUT_INNER + ' ' + DONUT_INNER + ' 0 ' + large + ' 0 ' + xi2.toFixed(2) + ' ' + yi2.toFixed(2) + ' Z" fill="' + color + '" opacity="0.85"><title>' + dom + ' ' + cnt + '건</title></path>');
-          start = end;
-        });
-        arcs.push('<text x="' + cx + '" y="' + (cy + 3) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#f0f6fc">' + g.id + '조</text>');
-        arcs.push('<text x="' + cx + '" y="14" text-anchor="middle" font-size="10" fill="#8b949e">' + g.total + '건 · ' + entries.length + '도메인</text>');
-        return '<svg viewBox="0 0 ' + DONUT_BOX + ' ' + DONUT_BOX + '" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">' + arcs.join('') + '</svg>';
+      // Sort
+      const order = getSortedGroupOrder();
+      cards.forEach((card) => {
+        const gid = parseInt(card.getAttribute('data-group-id'), 10);
+        card.style.order = order.indexOf(gid);
+      });
+      grid.style.display = 'grid'; // force reflow
+
+      // Filter / dim
+      cards.forEach((card) => {
+        const gid = parseInt(card.getAttribute('data-group-id'), 10);
+        const domStr = (card.getAttribute('data-domains') || '').toLowerCase();
+        const cardText = card.textContent.toLowerCase();
+        let match = !q || String(gid).includes(q) || domStr.includes(q) || cardText.includes(q);
+        card.classList.toggle('dim', !match);
+        card.classList.toggle('sticky-hl', sticky > 0 && gid === sticky);
+      });
+    }
+
+    // ── 6. View C: Coverage Heatmap SVG ──────────────────────────────────
+    const NS = 'http://www.w3.org/2000/svg';
+    let svgBuilt = false;
+    let hmSvg = null;
+    let hmSel = null;
+
+    // Viridis-like 10-stop color scale (from heatmap.astro)
+    const VIRIDIS_STOPS = [
+      [0.000, [68,  1,  84]],
+      [0.111, [72,  40, 120]],
+      [0.222, [62,  74, 137]],
+      [0.333, [49, 104, 142]],
+      [0.444, [38, 130, 142]],
+      [0.555, [31, 158, 137]],
+      [0.667, [53, 183, 120]],
+      [0.778, [109, 205, 89]],
+      [0.889, [180, 222, 44]],
+      [1.000, [253, 231, 37]],
+    ];
+
+    const maxCellVal = Math.max(...groups.map((g) => Math.max(...g.cells)));
+
+    function valToColor(v) {
+      if (maxCellVal === 0 || v === 0) return '#0d0221';
+      const t = Math.min(1, v / maxCellVal);
+      let lo = VIRIDIS_STOPS[0];
+      let hi = VIRIDIS_STOPS[VIRIDIS_STOPS.length - 1];
+      for (let i = 0; i < VIRIDIS_STOPS.length - 1; i++) {
+        if (t >= VIRIDIS_STOPS[i][0] && t <= VIRIDIS_STOPS[i + 1][0]) {
+          lo = VIRIDIS_STOPS[i]; hi = VIRIDIS_STOPS[i + 1]; break;
+        }
+      }
+      const range = (hi[0] - lo[0]) || 1;
+      const frac = (t - lo[0]) / range;
+      const r = Math.round(lo[1][0] + frac * (hi[1][0] - lo[1][0]));
+      const g2 = Math.round(lo[1][1] + frac * (hi[1][1] - lo[1][1]));
+      const b = Math.round(lo[1][2] + frac * (hi[1][2] - lo[1][2]));
+      return 'rgb(' + r + ',' + g2 + ',' + b + ')';
+    }
+
+    const CAT_FILL = { '감축': '#1a3a1a', '적응': '#1a2d3a', '혼합': '#2d1a3a' };
+    const CAT_TEXT = { '감축': '#3fb950', '적응': '#58a6ff', '혼합': '#d2a8ff' };
+    const CAT_LINE = { '감축': '#3fb950', '적응': '#58a6ff', '혼합': '#d2a8ff' };
+
+    // Layout
+    const CELL_W = 32;
+    const CELL_H = 28;
+    const TOP_MARGIN = 120; // for rotated domain column headers
+    const LEFT_MARGIN = 44; // for row labels (조 번호)
+    const CAT_BAR_W = 12;   // left category strip per row
+    const PAD_R = 20;
+    const LEGEND_H = 48;
+
+    const svgW = CAT_BAR_W + LEFT_MARGIN + domains.length * CELL_W + PAD_R;
+    const svgH = TOP_MARGIN + groups.length * CELL_H + LEGEND_H + 20;
+
+    function svgEl(tag, attrs) {
+      const e = document.createElementNS(NS, tag);
+      for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+      return e;
+    }
+
+    // Big-category column groups (for top strips and separator lines)
+    function buildCatColGroups() {
+      const cg = [];
+      let lastCat = '';
+      for (let ci = 0; ci < domains.length; ci++) {
+        const cat = domainCatMap[domains[ci]] || '감축';
+        if (cat !== lastCat) { cg.push({ cat, start: ci, end: ci }); lastCat = cat; }
+        else cg[cg.length - 1].end = ci;
+      }
+      return cg;
+    }
+
+    function buildCoverageHeatmap() {
+      if (svgBuilt) return;
+      svgBuilt = true;
+
+      const container = document.getElementById('coverage-heatmap-container');
+      if (!container) return;
+
+      const catColGroups = buildCatColGroups();
+
+      const svg = document.createElementNS(NS, 'svg');
+      svg.setAttribute('class', 'heatmap-svg');
+      svg.setAttribute('id', 'coverage-heatmap-svg');
+      svg.setAttribute('width', svgW);
+      svg.setAttribute('height', svgH);
+      svg.setAttribute('viewBox', '0 0 ' + svgW + ' ' + svgH);
+      svg.setAttribute('role', 'img');
+      svg.setAttribute('aria-label', '분임조 × 도메인 커버리지 히트맵');
+
+      // 1. Viridis gradient def (for legend)
+      const defs = document.createElementNS(NS, 'defs');
+      const grad = svgEl('linearGradient', { id: 'viridis-grad-cov', x1: '0', x2: '1', y1: '0', y2: '0' });
+      for (const [t, [rv, gv, bv]] of VIRIDIS_STOPS) {
+        grad.appendChild(svgEl('stop', { offset: Math.round(t * 100) + '%', 'stop-color': 'rgb(' + rv + ',' + gv + ',' + bv + ')' }));
+      }
+      defs.appendChild(grad);
+      svg.appendChild(defs);
+
+      // 2. Category column header strips (top)
+      for (const cg of catColGroups) {
+        const x0 = CAT_BAR_W + LEFT_MARGIN + cg.start * CELL_W;
+        const w = (cg.end - cg.start + 1) * CELL_W - 2;
+        const fill = CAT_FILL[cg.cat] || '#1a1a2a';
+        svg.appendChild(svgEl('rect', { x: x0, y: 4, width: w, height: 14, fill, rx: '2' }));
+        const tx = x0 + w / 2;
+        const t = document.createElementNS(NS, 'text');
+        t.setAttribute('x', tx); t.setAttribute('y', 14);
+        t.setAttribute('fill', CAT_TEXT[cg.cat] || '#aaa');
+        t.setAttribute('font-size', '9'); t.setAttribute('font-weight', '700');
+        t.setAttribute('text-anchor', 'middle'); t.setAttribute('dominant-baseline', 'middle');
+        t.textContent = cg.cat;
+        svg.appendChild(t);
       }
 
-      const donutGrid = document.getElementById('donut-grid');
-      const donutHtml = groups.map((g) => '<div class="donut-cell">' + donutSvg(g) + '</div>').join('');
-      donutGrid.innerHTML = donutHtml;
-    })();
+      // 3. Domain column headers (rotated 45°)
+      for (let ci = 0; ci < domains.length; ci++) {
+        const x = CAT_BAR_W + LEFT_MARGIN + ci * CELL_W + CELL_W / 2;
+        const y = TOP_MARGIN - 6;
+        const t = document.createElementNS(NS, 'text');
+        t.setAttribute('x', x); t.setAttribute('y', y);
+        t.setAttribute('fill', '#8b949e');
+        t.setAttribute('font-size', '9');
+        t.setAttribute('text-anchor', 'start');
+        t.setAttribute('transform', 'rotate(-45,' + x + ',' + y + ')');
+        const label = domains[ci].length > 14 ? domains[ci].slice(0, 13) + '…' : domains[ci];
+        t.textContent = label;
+        svg.appendChild(t);
+      }
+
+      // 4. Category separator vertical lines between domain groups
+      for (let gi = 1; gi < catColGroups.length; gi++) {
+        const x = CAT_BAR_W + LEFT_MARGIN + catColGroups[gi].start * CELL_W - 1;
+        svg.appendChild(svgEl('line', {
+          x1: x, x2: x, y1: TOP_MARGIN, y2: TOP_MARGIN + groups.length * CELL_H,
+          stroke: '#4a4a6a', 'stroke-width': '1.5', 'stroke-dasharray': '4 3'
+        }));
+      }
+
+      // 5. Rows: group label + left cat strip + cells
+      // Store row groups for highlight manipulation
+      const rowGroups = [];
+      for (let ri = 0; ri < groups.length; ri++) {
+        const g = groups[ri];
+        const y = TOP_MARGIN + ri * CELL_H;
+        const rowG = document.createElementNS(NS, 'g');
+        rowG.setAttribute('class', 'hmap-row');
+        rowG.setAttribute('data-gid', g.id);
+        rowGroups.push(rowG);
+
+        // Left cat bar — use dominant category
+        const cats = g.categories || {};
+        const domCat = Object.entries(cats).reduce((a, b) => (b[1] > a[1] ? b : a), ['감축', 0])[0];
+        const barColor = CAT_LINE[domCat] || '#3fb950';
+        rowG.appendChild(svgEl('rect', { x: 0, y: y + 1, width: CAT_BAR_W - 2, height: CELL_H - 3, fill: barColor, rx: '2', opacity: '0.6' }));
+
+        // Row label
+        const lbl = document.createElementNS(NS, 'text');
+        lbl.setAttribute('x', CAT_BAR_W + LEFT_MARGIN - 6);
+        lbl.setAttribute('y', y + CELL_H / 2);
+        lbl.setAttribute('fill', '#f0f6fc');
+        lbl.setAttribute('font-size', '11');
+        lbl.setAttribute('font-weight', '700');
+        lbl.setAttribute('text-anchor', 'end');
+        lbl.setAttribute('dominant-baseline', 'middle');
+        lbl.textContent = g.id + '조';
+        rowG.appendChild(lbl);
+
+        // Cells
+        for (let ci = 0; ci < domains.length; ci++) {
+          const val = g.cells[ci];
+          const fill = valToColor(val);
+          const cx = CAT_BAR_W + LEFT_MARGIN + ci * CELL_W;
+          const cell = svgEl('rect', {
+            class: 'hmap-cell',
+            x: cx, y: y + 1,
+            width: CELL_W - 1, height: CELL_H - 2,
+            fill, rx: '2',
+            'data-gi': ri,
+            'data-ci': ci,
+            'data-val': val,
+            'data-gid': g.id,
+            'data-dn': domains[ci],
+          });
+          rowG.appendChild(cell);
+        }
+
+        svg.appendChild(rowG);
+      }
+
+      // 6. Legend
+      const legendY = TOP_MARGIN + groups.length * CELL_H + 12;
+      const legendW = Math.min(300, domains.length * CELL_W);
+      const lx = CAT_BAR_W + LEFT_MARGIN;
+      svg.appendChild(svgEl('rect', { x: lx, y: legendY, width: legendW, height: '10', fill: 'url(#viridis-grad-cov)', rx: '3' }));
+      function legendTxt(x, anchor, txt) {
+        const t = document.createElementNS(NS, 'text');
+        t.setAttribute('x', x); t.setAttribute('y', legendY + 22);
+        t.setAttribute('fill', '#8b949e'); t.setAttribute('font-size', '9');
+        t.setAttribute('text-anchor', anchor);
+        t.textContent = txt;
+        svg.appendChild(t);
+      }
+      legendTxt(lx, 'start', '0 건');
+      legendTxt(lx + legendW, 'end', '최대 ' + maxCellVal + '건');
+      legendTxt(lx + legendW / 2, 'middle', '의제 수 (셀 클릭 → 의제 목록)');
+
+      container.appendChild(svg);
+      hmSvg = svg;
+
+      // ── Tooltip & interactions ─────────────────────────────────────────
+      const tip = document.getElementById('tooltip');
+      const panelContent = document.getElementById('coverage-panel-content');
+
+      function showTip(e, gid, dn, val) {
+        tip.innerHTML =
+          '<span class="tip-kw">' + dn + '</span>' +
+          '<div class="tip-muted" style="margin-bottom:2px;">' + gid + '조</div>' +
+          '<span class="tip-count">' + val + '</span>' +
+          '<span class="tip-muted"> 건</span>' +
+          '<div class="tip-muted" style="margin-top:3px;">클릭 → 의제 목록</div>';
+        tip.style.display = 'block';
+        moveTip(e);
+      }
+      function moveTip(e) {
+        const x = e.clientX + 14, y = e.clientY - 10;
+        const w = tip.offsetWidth, h = tip.offsetHeight;
+        tip.style.left = (x + w > window.innerWidth ? e.clientX - w - 14 : x) + 'px';
+        tip.style.top = (y + h > window.innerHeight ? e.clientY - h - 10 : y) + 'px';
+      }
+      function hideTip() { tip.style.display = 'none'; }
+
+      // renderCoveragePanel uses the outer-scope memberGroupLookup (from vizData.groups[].members)
+      function renderCoveragePanel(gid, dn) {
+        const matching = agendas.filter((a) => memberGroupLookup[a.id] === gid && a.domain === dn);
+        const title = document.getElementById('coverage-panel-title');
+        if (title) title.textContent = gid + '조 × ' + dn;
+        if (matching.length === 0) {
+          panelContent.innerHTML = '<p class="panel-empty">해당 조에<br>' + dn + '<br>배정 의제 없음</p>';
+          return;
+        }
+        let html = '<div style="margin-bottom:8px;font-size:11px;color:var(--fg-muted);">' + matching.length + '건</div>';
+        for (const ag of matching) {
+          const cat = ag.big_category || '감축';
+          html += '<div class="ag-item">' +
+            '<div class="ag-meta"><span class="cat-b cat-b-' + cat + '">' + cat + '</span> #' + ag.id + '</div>' +
+            '<div class="ag-title">' + (ag.agenda_name || '(제목 없음)') + '</div>' +
+            '</div>';
+        }
+        panelContent.innerHTML = html;
+      }
+
+      svg.addEventListener('mousemove', (e) => {
+        const cell = e.target.closest('.hmap-cell');
+        if (cell) showTip(e, parseInt(cell.dataset.gid), cell.dataset.dn, cell.dataset.val);
+        else hideTip();
+      });
+      svg.addEventListener('mouseleave', hideTip);
+
+      svg.addEventListener('click', (e) => {
+        const cell = e.target.closest('.hmap-cell');
+        if (!cell) return;
+        const gid = parseInt(cell.dataset.gid, 10);
+        const dn = cell.dataset.dn;
+        const val = parseInt(cell.dataset.val, 10);
+        document.querySelectorAll('.hmap-cell.sel').forEach((c) => c.classList.remove('sel'));
+        if (hmSel && hmSel.gid === gid && hmSel.dn === dn) {
+          hmSel = null;
+          const title = document.getElementById('coverage-panel-title');
+          if (title) title.textContent = '의제 목록';
+          document.getElementById('coverage-panel-content').innerHTML =
+            '<p class="panel-empty">셀 클릭 시<br>해당 조×도메인 의제가<br>표시됩니다.</p>';
+          return;
+        }
+        hmSel = { gid, dn };
+        cell.classList.add('sel');
+        renderCoveragePanel(gid, dn);
+      });
+
+      // Store rowGroups ref for highlight
+      hmSvg._rowGroups = rowGroups;
+      applyToHeatmapC();
+    }
+
+    // ── 7. Apply state to all views ───────────────────────────────────────
+    function applyToHeatmapC() {
+      if (!hmSvg) return;
+      const q = state.search.toLowerCase().trim();
+      const sticky = state.sticky;
+      const rowGroups = hmSvg._rowGroups || [];
+
+      // Sort order for rows
+      const order = getSortedGroupOrder();
+
+      rowGroups.forEach((rowG) => {
+        const gid = parseInt(rowG.getAttribute('data-gid'), 10);
+        const gi = groups.findIndex((g) => g.id === gid);
+        const g = groups[gi];
+
+        // Search match: group number, any domain name, any matching agenda title
+        let match = true;
+        if (q) {
+          const domainMatch = g.domains ? g.domains.some((d) => d.toLowerCase().includes(q)) : false;
+          const groupMatch = String(gid).includes(q);
+          const agendaMatch = agendas.some((a) => {
+            const ag = memberGroupLookup[a.id];
+            return ag === gid && (a.domain.toLowerCase().includes(q) || a.agenda_name.toLowerCase().includes(q));
+          });
+          match = groupMatch || domainMatch || agendaMatch;
+        }
+
+        // Row position (translateY for sort visual)
+        const sortPos = order.indexOf(gid);
+        rowG.setAttribute('transform', 'translate(0,' + (sortPos - gi) * CELL_H + ')');
+
+        // Dim / highlight
+        if (!match) {
+          rowG.setAttribute('opacity', '0.12');
+        } else if (sticky > 0 && gid === sticky) {
+          rowG.setAttribute('opacity', '1');
+          // yellow row highlight
+          let stickyRect = rowG.querySelector('.sticky-row-bg');
+          if (!stickyRect) {
+            stickyRect = svgEl('rect', {
+              class: 'sticky-row-bg',
+              x: 0, y: 1,
+              width: svgW - PAD_R, height: CELL_H - 2,
+              fill: 'none', stroke: '#FDE725', 'stroke-width': '1.5', rx: '2'
+            });
+            rowG.insertBefore(stickyRect, rowG.firstChild);
+          }
+        } else {
+          rowG.setAttribute('opacity', '1');
+          const existing = rowG.querySelector('.sticky-row-bg');
+          if (existing) existing.remove();
+        }
+      });
+    }
+
+    function applyToAll() {
+      applyToTableA();
+      applyToCardsB();
+      applyToHeatmapC();
+    }
+
+    // ── 8. Controls ───────────────────────────────────────────────────────
+    document.getElementById('search-input').addEventListener('input', (e) => {
+      state.search = e.target.value;
+      applyToAll();
+    });
+
+    document.getElementById('sort-sel').addEventListener('change', (e) => {
+      state.sort = e.target.value;
+      applyToAll();
+    });
+
+    document.getElementById('sticky-sel').addEventListener('change', (e) => {
+      state.sticky = parseInt(e.target.value, 10) || 0;
+      localStorage.setItem(STICKY_KEY, state.sticky || '');
+      updateHeroCardHighlight();
+      applyToAll();
+    });
+
+    document.getElementById('btn-clear-sticky').addEventListener('click', () => {
+      state.sticky = 0;
+      document.getElementById('sticky-sel').value = '';
+      localStorage.removeItem(STICKY_KEY);
+      updateHeroCardHighlight();
+      applyToAll();
+    });
+
+    // ── 9. Hero cards ─────────────────────────────────────────────────────
+    function updateHeroCardHighlight() {
+      document.querySelectorAll('.hero-card').forEach((card) => {
+        const gid = parseInt(card.getAttribute('data-hero-group'), 10);
+        card.classList.toggle('active', gid === state.sticky);
+      });
+    }
+
+    document.getElementById('hero-cards').addEventListener('click', (e) => {
+      const card = e.target.closest('.hero-card');
+      if (!card) return;
+      const gid = parseInt(card.getAttribute('data-hero-group'), 10);
+      if (state.sticky === gid) {
+        state.sticky = 0;
+        document.getElementById('sticky-sel').value = '';
+        localStorage.removeItem(STICKY_KEY);
+      } else {
+        state.sticky = gid;
+        document.getElementById('sticky-sel').value = gid;
+        localStorage.setItem(STICKY_KEY, gid);
+      }
+      updateHeroCardHighlight();
+      applyToAll();
+    });
+
+    // Initial apply
+    updateHeroCardHighlight();
+    applyToAll();
   </script>
 
 </body>
