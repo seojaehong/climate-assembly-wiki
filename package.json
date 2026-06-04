@@ -26,6 +26,7 @@
     "@types/react-dom": "^19.2.3",
     "astro": "^5.8.1",
     "astro-pagefind": "^1.7.0",
+    "canvas-confetti": "^1.9.4",
     "gray-matter": "^4.0.3",
     "marked": "^18.0.4",
     "react": "^19.2.7",
@@ -34,6 +35,7 @@
   },
   "devDependencies": {
     "@rollup/plugin-yaml": "^5.0.0",
+    "@types/canvas-confetti": "^1.9.0",
     "typescript": "^5.9.3"
   },
   "overrides": {
