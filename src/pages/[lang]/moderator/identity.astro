@@ -22,9 +22,16 @@
  *   - groupsMeta computed in frontmatter, passed to client via JSON island
  *   - 15 .slide containers mapped via Astro template (Astro compiler handles — OK)
  *
+ * FX PRESETS (feat/identity-fx-presets):
+ *   - minimal  : cross-fade + ken-burns + num-rise + carousel + progress (default)
+ *   - cinema   : minimal + slide-in-right + letterbox + blur-focus + glow-pulse
+ *   - festival : minimal + pop-in + elastic + confetti + particle-drift + rollup
+ *   Toggle: URL ?fx= param or keys [ ] \
+ *
  * REFERENCES:
  *   - Plan:   docs/01-plan/features/group-identity-board.plan.md
  *   - Design: docs/02-design/features/group-identity-board.design.md
+ *   - Catalog: 10_작업산출물/조정체성_운영패키지/05_효과_카탈로그.md §3-5
  *   - Pattern: board.astro (CSV 10s polling), heatmap.astro (frontmatter-thin)
  */
 
@@ -437,8 +444,22 @@ const groupsMeta = groupAssign.groups.map((g) => {
     .poll-status.live { color: #3fb950; }
     .poll-status.error { color: #f85149; }
 
+    /* ---- FX preset indicator ---- */
+    .fx-indicator {
+      white-space: nowrap;
+      font-size: 11px;
+      color: var(--fg-muted);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      font-family: monospace;
+    }
+    body.fx-cinema  .fx-indicator { color: #58a6ff; border-color: #58a6ff; }
+    body.fx-festival .fx-indicator { color: #fde725; border-color: #fde725; }
+
     /* ================================================================
-       ANIMATIONS — Design §6
+       ANIMATIONS — Design §6: Base (minimal)
        ================================================================ */
     @keyframes ken-burns {
       from { transform: scale(1.0) translate(0, 0); }
@@ -457,7 +478,97 @@ const groupsMeta = groupAssign.groups.map((g) => {
     .slide.active .chip-row   { animation: num-rise 800ms cubic-bezier(.16, 1, .3, 1) 400ms both; }
 
     /* ================================================================
-       REDUCED MOTION — Design §5
+       CINEMA PRESET — body.fx-cinema scoped rules
+       ================================================================ */
+
+    /* Slide-in from right: new active slide enters from translateX(50%) */
+    body.fx-cinema .slide.active {
+      animation: cinema-slide-in 800ms cubic-bezier(.16, 1, .3, 1) both;
+    }
+    @keyframes cinema-slide-in {
+      from { transform: translateX(50%); opacity: 0; }
+      to   { transform: translateX(0);   opacity: 1; }
+    }
+
+    /* Letterbox: pseudo-elements on body — toggled via JS class .letterbox-active */
+    body.fx-cinema::before,
+    body.fx-cinema::after {
+      content: '';
+      position: fixed;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: #000;
+      height: 0;
+      transition: height 600ms ease-out;
+      pointer-events: none;
+    }
+    body.fx-cinema::before { top: 0; }
+    body.fx-cinema::after  { bottom: 0; }
+    body.fx-cinema.letterbox-active::before,
+    body.fx-cinema.letterbox-active::after {
+      height: 8vh;
+    }
+
+    /* Blur-to-focus photo: overrides ken-burns — both run simultaneously */
+    body.fx-cinema .photo-frame.active img {
+      animation: ken-burns 1.5s ease-out forwards, blur-focus 1.2s ease-out forwards;
+    }
+    @keyframes blur-focus {
+      from { filter: blur(8px); }
+      to   { filter: blur(0); }
+    }
+
+    /* Glow pulse on group number */
+    body.fx-cinema .slide.active .group-num {
+      animation: num-rise 800ms cubic-bezier(.16, 1, .3, 1) 100ms both,
+                 glow-pulse 2s ease-in-out 1s infinite;
+    }
+    @keyframes glow-pulse {
+      0%, 100% { text-shadow: 0 0 20px rgba(253,231,37,0.6); }
+      50%       { text-shadow: 0 0 40px rgba(253,231,37,1), 0 0 60px rgba(253,231,37,0.4); }
+    }
+
+    /* ================================================================
+       FESTIVAL PRESET — body.fx-festival scoped rules
+       ================================================================ */
+
+    /* POP-IN 거대화: replaces num-rise for group-num */
+    body.fx-festival .slide.active .group-num {
+      animation: pop-in 700ms cubic-bezier(.34, 1.56, .64, 1) both;
+    }
+    @keyframes pop-in {
+      from { transform: scale(2.8); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    /* Elastic bounce for group-name */
+    body.fx-festival .slide.active .group-name {
+      animation: elastic-bounce 900ms cubic-bezier(.68, -0.55, .27, 1.55) 200ms both;
+    }
+    @keyframes elastic-bounce {
+      0%   { transform: translateY(60px); opacity: 0; }
+      60%  { transform: translateY(-8px); opacity: 1; }
+      100% { transform: translateY(0);    opacity: 1; }
+    }
+
+    /* chip-row still uses num-rise in festival */
+    body.fx-festival .slide.active .chip-row {
+      animation: num-rise 800ms cubic-bezier(.16, 1, .3, 1) 400ms both;
+    }
+
+    /* Particle canvas — behind everything */
+    #fx-particles {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      display: none;
+    }
+    body.fx-festival #fx-particles { display: block; }
+
+    /* ================================================================
+       REDUCED MOTION — Design §5: all presets weakened
        ================================================================ */
     @media (prefers-reduced-motion: reduce) {
       .slide { transition: opacity 200ms linear; }
@@ -466,6 +577,16 @@ const groupsMeta = groupAssign.groups.map((g) => {
       .slide.active .group-name,
       .slide.active .chip-row { animation: none; }
       .empty-spinner { animation: none; border-top-color: var(--accent); }
+      /* cinema */
+      body.fx-cinema .slide.active { animation: none; }
+      body.fx-cinema .photo-frame.active img { animation: none; filter: none; }
+      body.fx-cinema .slide.active .group-num { animation: none; text-shadow: none; }
+      body.fx-cinema::before,
+      body.fx-cinema::after { display: none; }
+      /* festival */
+      body.fx-festival .slide.active .group-num  { animation: none; }
+      body.fx-festival .slide.active .group-name { animation: none; }
+      #fx-particles { display: none !important; }
     }
 
     /* ================================================================
@@ -478,6 +599,9 @@ const groupsMeta = groupAssign.groups.map((g) => {
   </style>
 </head>
 <body>
+  <!-- Particle canvas for festival preset (z-index 0, behind slides) -->
+  <canvas id="fx-particles" aria-hidden="true"></canvas>
+
   <!-- Privacy banner -->
   <div class="privacy-banner">
     모더레이터 전용 · 조 정체성 슬라이드쇼 · 외부 공개 금지
@@ -555,7 +679,7 @@ const groupsMeta = groupAssign.groups.map((g) => {
     ))}
   </main>
 
-  <!-- Footer: progress bar + index + status -->
+  <!-- Footer: progress bar + index + status + fx indicator -->
   <footer class="footer" id="footer">
     <span class="footer-index" id="footer-index">— / 15</span>
     <div class="progress-track" aria-hidden="true">
@@ -563,7 +687,8 @@ const groupsMeta = groupAssign.groups.map((g) => {
     </div>
     <span class="footer-status" id="footer-status">자동 · 5.0s</span>
     <span class="poll-status" id="poll-status">연결 중…</span>
-    <span class="footer-hint">←→Space·1-0qwert·f·r</span>
+    <span class="fx-indicator" id="fx-indicator">minimal</span>
+    <span class="footer-hint">←→Space·1-0qwert·f·r·[]\</span>
   </footer>
 
   <!-- Build-time data island: groupsMeta passed to client -->
@@ -576,6 +701,7 @@ const groupsMeta = groupAssign.groups.map((g) => {
     // IDENTITY SLIDESHOW — client-side engine
     // Design: docs/02-design/features/group-identity-board.design.md §4-5
     // Pattern: board.astro CSV polling (10s), frontmatter-thin island
+    // FX: 3-preset system (minimal/cinema/festival) — feat/identity-fx-presets
     // ================================================================
 
     const GROUPS_META = JSON.parse(document.getElementById('groups-meta').textContent);
@@ -584,6 +710,55 @@ const groupsMeta = groupAssign.groups.map((g) => {
     const SLIDE_MS      = 5000;
     const PHOTO_MS      = 1500;
     const TOTAL_SLIDES  = 15;
+
+    // ── FX Preset system ────────────────────────────────────────────
+    const VALID_PRESETS = ['minimal', 'cinema', 'festival'];
+
+    function getPresetFromUrl() {
+      try {
+        const p = new URLSearchParams(window.location.search).get('fx');
+        return VALID_PRESETS.includes(p) ? p : 'minimal';
+      } catch(_) { return 'minimal'; }
+    }
+
+    // Apply preset BEFORE first slide activation (no flash)
+    let currentPreset = getPresetFromUrl();
+    applyPreset(currentPreset, false);
+
+    function applyPreset(preset, updateUrl) {
+      currentPreset = preset;
+      // Remove old preset classes
+      VALID_PRESETS.forEach(function(p) {
+        document.body.classList.remove('fx-' + p);
+      });
+      document.body.classList.add('fx-' + preset);
+
+      // Update indicator in footer
+      const indicator = document.getElementById('fx-indicator');
+      if (indicator) indicator.textContent = preset;
+
+      // Particle management
+      if (preset === 'festival') {
+        if (!reducedMotion) {
+          initParticles(document.getElementById('fx-particles'));
+        }
+      } else {
+        stopParticles();
+      }
+
+      // Update URL without reload
+      if (updateUrl) {
+        try {
+          const url = new URL(window.location.href);
+          if (preset === 'minimal') {
+            url.searchParams.delete('fx');
+          } else {
+            url.searchParams.set('fx', preset);
+          }
+          window.history.replaceState(null, '', url.toString());
+        } catch(_) {}
+      }
+    }
 
     // ── Design §4: Drive URL → lh3 thumbnail ────────────────────────
     function driveToImg(url) {
@@ -670,6 +845,9 @@ const groupsMeta = groupAssign.groups.map((g) => {
 
     // reduced-motion preference
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Confetti debounce: track last slot that fired confetti
+    let lastConfettiSlot = -1;
 
     // ── DOM refs ─────────────────────────────────────────────────────
     const emptyState      = document.getElementById('empty-state');
@@ -819,12 +997,151 @@ const groupsMeta = groupAssign.groups.map((g) => {
       if (newDot)   newDot.classList.add('active');
     }
 
+    // ── Cinema: Letterbox hook ───────────────────────────────────────
+    function letterboxTransition() {
+      if (currentPreset !== 'cinema') return;
+      if (reducedMotion) return;
+      // fade out (height → 0 handled by removing class), then restore
+      document.body.classList.remove('letterbox-active');
+      setTimeout(function() {
+        document.body.classList.add('letterbox-active');
+      }, 400);
+    }
+
+    // ── Festival: Counter rollup ─────────────────────────────────────
+    function counterRollup(numEl, targetNum) {
+      if (reducedMotion || currentPreset !== 'festival') return;
+      const start = performance.now();
+      const duration = 600;
+      function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+      function tick(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        const value = Math.round(easeOutCubic(progress) * targetNum);
+        numEl.textContent = value;
+        if (progress < 1) requestAnimationFrame(tick);
+        else numEl.textContent = targetNum;
+      }
+      requestAnimationFrame(tick);
+    }
+
+    // ── Confetti burst ───────────────────────────────────────────────
+    // confetti.browser.js is a UMD bundle that attaches window.confetti
+    let confettiLoaded = false;
+
+    async function fireConfetti(accentColor) {
+      if (reducedMotion) return;
+      try {
+        if (!confettiLoaded) {
+          await new Promise(function(resolve, reject) {
+            const s = document.createElement('script');
+            s.src = '/confetti.browser.js';
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
+          confettiLoaded = true;
+        }
+        if (typeof window.confetti === 'function') {
+          window.confetti({
+            particleCount: 80,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: [accentColor || '#58a6ff', '#fde725', '#ffffff'],
+          });
+        }
+      } catch(e) {
+        // confetti is optional — fail silently
+      }
+    }
+
+    // ── Particle drift ───────────────────────────────────────────────
+    let particleRaf = null;
+    let particleCtx = null;
+    let particleList = [];
+
+    function initParticles(canvas) {
+      if (!canvas || reducedMotion) return;
+      stopParticles();
+
+      function resize() {
+        canvas.width  = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+      canvas._resizeHandler = resize;
+
+      particleCtx = canvas.getContext('2d');
+      // Create 50 particles with random positions/velocities
+      particleList = [];
+      const colors = ['#3fb950', '#58a6ff', '#d2a8ff', '#fde725'];
+      for (let i = 0; i < 50; i++) {
+        particleList.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vx: (Math.random() - 0.5) * 1.5,
+          vy: -(Math.random() * 1.0 + 0.5),
+          r: Math.random() * 3 + 1,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          alpha: Math.random() * 0.3 + 0.1,
+        });
+      }
+
+      function draw() {
+        if (!particleCtx) return;
+        const w = canvas.width, h = canvas.height;
+        particleCtx.clearRect(0, 0, w, h);
+        particleList.forEach(function(p) {
+          p.x += p.vx;
+          p.y += p.vy;
+          // Wrap around
+          if (p.y < -10) p.y = h + 10;
+          if (p.x < -10) p.x = w + 10;
+          if (p.x > w + 10) p.x = -10;
+
+          particleCtx.beginPath();
+          particleCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          particleCtx.fillStyle = p.color;
+          particleCtx.globalAlpha = p.alpha;
+          particleCtx.fill();
+        });
+        particleCtx.globalAlpha = 1;
+        particleRaf = requestAnimationFrame(draw);
+      }
+      draw();
+
+      // Pause on tab hide
+      document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+          if (particleRaf) { cancelAnimationFrame(particleRaf); particleRaf = null; }
+        } else if (currentPreset === 'festival' && !reducedMotion) {
+          draw();
+        }
+      });
+    }
+
+    function stopParticles() {
+      if (particleRaf) { cancelAnimationFrame(particleRaf); particleRaf = null; }
+      const canvas = document.getElementById('fx-particles');
+      if (canvas) {
+        if (canvas._resizeHandler) window.removeEventListener('resize', canvas._resizeHandler);
+        const ctx = canvas.getContext('2d');
+        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      particleCtx = null;
+      particleList = [];
+    }
+
     // ── Slide activation ─────────────────────────────────────────────
     function activateSlide(slotIdx) {
       if (activeSlides.length === 0) return;
       slotIdx = ((slotIdx % activeSlides.length) + activeSlides.length) % activeSlides.length;
       currentIdx = slotIdx;
       const groupId = activeSlides[currentIdx];
+
+      // Cinema: letterbox transition hook
+      letterboxTransition();
 
       // Stop old photo carousels
       document.querySelectorAll('.slide.active').forEach(function(el) {
@@ -846,6 +1163,26 @@ const groupsMeta = groupAssign.groups.map((g) => {
       setPhotoIdx(groupId, 0);
       if (!reducedMotion) {
         startPhotoCarousel(groupId);
+      }
+
+      // Festival: counter rollup (after slight delay so pop-in starts)
+      if (currentPreset === 'festival' && !reducedMotion) {
+        const numEl = document.getElementById('group-num-' + groupId);
+        if (numEl) {
+          const targetNum = groupId;
+          numEl.textContent = '0';
+          setTimeout(function() { counterRollup(numEl, targetNum); }, 100);
+        }
+      }
+
+      // Festival: confetti burst (debounced per slot)
+      if (currentPreset === 'festival' && slotIdx !== lastConfettiSlot && !reducedMotion) {
+        lastConfettiSlot = slotIdx;
+        // Find accent color from slide element
+        const accentColor = slideEl
+          ? getComputedStyle(slideEl).getPropertyValue('--slide-accent-color').trim()
+          : '#58a6ff';
+        setTimeout(function() { fireConfetti(accentColor); }, 200);
       }
 
       // Update footer
@@ -887,7 +1224,7 @@ const groupsMeta = groupAssign.groups.map((g) => {
       if (slideTimer) { clearInterval(slideTimer); slideTimer = null; }
     }
 
-    // ── Keyboard handler — Design §5 ─────────────────────────────────
+    // ── Keyboard handler — Design §5 + FX presets ────────────────────
     const KEY_GROUP_MAP = {
       '1': 1,  '2': 2,  '3': 3,  '4': 4,  '5': 5,
       '6': 6,  '7': 7,  '8': 8,  '9': 9,  '0': 10,
@@ -897,9 +1234,31 @@ const groupsMeta = groupAssign.groups.map((g) => {
     window.addEventListener('keydown', function(e) {
       // Ignore if typing in input
       if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
-      if (activeSlides.length === 0) return;
 
       const key = e.key;
+
+      // FX preset toggle keys: [ ] \
+      if (key === '[') {
+        e.preventDefault();
+        applyPreset('minimal', true);
+        return;
+      } else if (key === ']') {
+        e.preventDefault();
+        applyPreset('cinema', true);
+        // Activate letterbox immediately if slides are showing
+        if (activeSlides.length > 0) {
+          document.body.classList.add('letterbox-active');
+        }
+        return;
+      } else if (key === '\\') {
+        e.preventDefault();
+        applyPreset('festival', true);
+        // Reset confetti debounce on preset switch
+        lastConfettiSlot = -1;
+        return;
+      }
+
+      if (activeSlides.length === 0) return;
 
       if (key === 'ArrowRight' || key === 'n') {
         e.preventDefault();
