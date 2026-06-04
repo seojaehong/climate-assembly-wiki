@@ -3,9 +3,13 @@
   "type": "module",
   "version": "0.1.0",
   "packageManager": "npm@10.9.2",
+  "engines": {
+    "node": ">=20.18.0"
+  },
   "scripts": {
     "dev": "astro dev",
-    "prebuild": "npm run wiki:reindex && npm run wiki:log",
+    "build:scene": "node scripts/build-agenda-network-scene.mjs",
+    "prebuild": "npm run build:scene && npm run wiki:reindex && npm run wiki:log",
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
@@ -14,16 +18,25 @@
   },
   "dependencies": {
     "@astrojs/check": "^0.9.9",
+    "@astrojs/react": "^5.0.7",
     "@astrojs/sitemap": "^3.2.1",
+    "@excalidraw/excalidraw": "^0.18.1",
     "@tailwindcss/vite": "^4.1.6",
+    "@types/react": "^19.2.16",
+    "@types/react-dom": "^19.2.3",
     "astro": "^5.8.1",
     "astro-pagefind": "^1.7.0",
     "gray-matter": "^4.0.3",
     "marked": "^18.0.4",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "tailwindcss": "^4.1.6"
   },
   "devDependencies": {
     "@rollup/plugin-yaml": "^5.0.0",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "clsx": "^2.1.1"
   }
 }

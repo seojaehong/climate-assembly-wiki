@@ -1,0 +1,3466 @@
+{
+  "elements": [
+    {
+      "type": "rectangle",
+      "id": "rect-1",
+      "x": 1748.3452631578948,
+      "y": 30,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#1 재생에너지 한계를 보완",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 1,
+        "domain": "에너지전환",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-2",
+      "x": 1280.922105263158,
+      "y": 722.2946428571429,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#2 주민이 이익을 공유하는",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 2,
+        "domain": "에너지전환",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-3",
+      "x": 1594.0505263157895,
+      "y": 350.38928571428573,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#3 전력수요와 재생에너지 ",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 3,
+        "domain": "에너지전환",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-4",
+      "x": 1881.9789473684211,
+      "y": 457.39821428571423,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#4 햇빛/바람소득마을의 적",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 4,
+        "domain": "에너지전환",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-5",
+      "x": 891.3978947368421,
+      "y": 361.9857142857143,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#5 지역별 재생에너지 전력",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 5,
+        "domain": "에너지전환",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-6",
+      "x": 1482.8463157894735,
+      "y": 30,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#6 에너지믹스의 전기요금에",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 6,
+        "domain": "에너지전환",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-7",
+      "x": 1284.9010526315788,
+      "y": 30,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#7 탄소중립 선도도시 조성",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 7,
+        "domain": "에너지전환",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-8",
+      "x": 1731.1621052631576,
+      "y": 414.35178571428577,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#8 지역 기반 재생에너지 ",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 8,
+        "domain": "에너지전환",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-9",
+      "x": 1354.1936842105263,
+      "y": 386.63571428571424,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#9 2035 국가 온실가스",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 9,
+        "domain": "에너지전환",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-10",
+      "x": 1861.1115789473683,
+      "y": 775.8142857142857,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#10 지역혁신형 햇빛소득마을",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 10,
+        "domain": "에너지전환",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-11",
+      "x": 2270,
+      "y": 93.44642857142856,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#11 재생에너지 주력전원화 ",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 11,
+        "domain": "에너지전환",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-12",
+      "x": 1554.1726315789474,
+      "y": 893.8428571428572,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#12 농촌 기후위기대응인프라",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 12,
+        "domain": "에너지전환",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-13",
+      "x": 1319.0315789473684,
+      "y": 780.9142857142857,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#13 산업 저탄소기술 상용화",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 13,
+        "domain": "에너지전환",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-14",
+      "x": 922.6105263157896,
+      "y": 996.2982142857144,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#14 탈내연차 및 친환경차 ",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 14,
+        "domain": "교통·이동",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-15",
+      "x": 718.1515789473683,
+      "y": 594.7339285714286,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#15 수송부문 전기화와 대중",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 15,
+        "domain": "교통·이동",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-16",
+      "x": 618.9726315789475,
+      "y": 799.4017857142857,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#16 수송 부문 탄소중립을 ",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 16,
+        "domain": "교통·이동",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-17",
+      "x": 30,
+      "y": 1730,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#17 자전거 동행차로제",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 17,
+        "domain": "교통·이동",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-18",
+      "x": 994.9978947368422,
+      "y": 75.53571428571428,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#18 민간건축물 그린리모델링",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 18,
+        "domain": "건물·주거",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-19",
+      "x": 982.3242105263157,
+      "y": 783.2821428571427,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#19 건물부문 에너지절약과 ",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 19,
+        "domain": "건물·주거",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-20",
+      "x": 1176.4673684210527,
+      "y": 30,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#20 탄소흡수원 확충을 위한",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 20,
+        "domain": "농축산임업 및 토지관리",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-21",
+      "x": 603.7936842105264,
+      "y": 98.54642857142856,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#21 저메탄 사료·가축분뇨 ",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 21,
+        "domain": "농축산임업 및 토지관리",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-22",
+      "x": 30,
+      "y": 30,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#22 저탄소 농법과 바이오차",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 22,
+        "domain": "농축산임업 및 토지관리",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-23",
+      "x": 30,
+      "y": 30,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#23 농업과 에너지의 만남 ",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 23,
+        "domain": "농축산임업 및 토지관리",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-24",
+      "x": 322.29052631578946,
+      "y": 1188.4589285714285,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#24 산불 등 기후재난 회복",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 24,
+        "domain": "농축산임업 및 토지관리",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-25",
+      "x": 540.9852631578947,
+      "y": 942.8696428571428,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#25 (카페, 배달 음식점,",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 25,
+        "domain": "소비(생활양식, 식생활) 및 폐기물 관리",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-26",
+      "x": 2270,
+      "y": 30,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#26 지속가능한 식생활을 통",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 26,
+        "domain": "소비(생활양식, 식생활) 및 폐기물 관리",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-27",
+      "x": 1182.2736842105264,
+      "y": 1326.7964285714286,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#27 정의로운 전환 과정에서",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 27,
+        "domain": "소비(생활양식, 식생활) 및 폐기물 관리",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-28",
+      "x": 1162.8505263157895,
+      "y": 811.7267857142856,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#28 탄소중립 전환 비용을 ",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 28,
+        "domain": "정의로운 전환·일자리",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-29",
+      "x": 1303.6757894736843,
+      "y": 472.0607142857143,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#29 산업 온실가스 감축 과",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 29,
+        "domain": "정의로운 전환·일자리",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-30",
+      "x": 848.16,
+      "y": 1078.9607142857144,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#30 청소년 주도 기후정의 ",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 30,
+        "domain": "정의로운 전환·일자리",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-31",
+      "x": 2270,
+      "y": 316.1767857142857,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#31 폐지발전소 인프라 활용",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 31,
+        "domain": "정의로운 전환·일자리",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-32",
+      "x": 1637.818947368421,
+      "y": 171.85892857142858,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#32 체계적이고 질서있는 전",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 32,
+        "domain": "정의로운 전환·일자리",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-33",
+      "x": 733.4778947368421,
+      "y": 30,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#33 탄소 감축량에 관한 계",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 33,
+        "domain": "기후정책 통합·조정",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-34",
+      "x": 1913.7810526315789,
+      "y": 30,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#34 정책 수립-집행-평가-",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 34,
+        "domain": "기후정책 통합·조정",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-35",
+      "x": 1432.9473684210525,
+      "y": 1270.6660714285715,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d2b12",
+      "strokeColor": "#3fb950",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#35 기후재난(폭염·홍수) ",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#3fb950"
+      },
+      "customData": {
+        "agendaId": 35,
+        "domain": "기후정책 통합·조정",
+        "big_category": "감축"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-36",
+      "x": 1574.5684210526313,
+      "y": 1276.0089285714284,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#36 기후재난 취약계층을 어",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 36,
+        "domain": "폭염·한파 대응과 에너지 정의",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-37",
+      "x": 1729.3052631578946,
+      "y": 1365.0160714285714,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#37 도심열섬대응 녹색인프라",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 37,
+        "domain": "폭염·한파 대응과 에너지 정의",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-38",
+      "x": 1615.7431578947367,
+      "y": 1093.0767857142857,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#38 폭염, 홍수, 가뭄에 ",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 38,
+        "domain": "폭염·한파 대응과 에너지 정의",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-39",
+      "x": 1449.983157894737,
+      "y": 1565.798214285714,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#39 이주민 기후취약성 해소",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 39,
+        "domain": "폭염·한파 대응과 에너지 정의",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-40",
+      "x": 1779.4105263157894,
+      "y": 1188.1857142857143,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#40 폭염·홍수 등 기후재난",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 40,
+        "domain": "집중호우·침수 대응과 도시 인프라",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-41",
+      "x": 1421.0989473684212,
+      "y": 1085.244642857143,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#41 자연기반 인프라(EbA",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 41,
+        "domain": "집중호우·침수 대응과 도시 인프라",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-42",
+      "x": 30,
+      "y": 799.2196428571428,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#42 기후위기에 취약한 소나",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 42,
+        "domain": "산불·산림 관리",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-43",
+      "x": 1916.197894736842,
+      "y": 1385.7196428571428,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#43 기후위기 대응 꿀벌생태",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 43,
+        "domain": "생태계·생물다양성 보호",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-44",
+      "x": 2032.2947368421055,
+      "y": 1730,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#44 내 식탁의 사과·배추가",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 44,
+        "domain": "농수산업 적응과 식량안보",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-45",
+      "x": 922.2568421052632,
+      "y": 1230.0785714285714,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#45 기후 식량위기 대응을 ",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 45,
+        "domain": "농수산업 적응과 식량안보",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-46",
+      "x": 1840.7157894736843,
+      "y": 1485.9892857142856,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#46 농식품시스템 기후인플레",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 46,
+        "domain": "농수산업 적응과 식량안보",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-47",
+      "x": 2142.290526315789,
+      "y": 1730,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#47 기후변화로 우리 먹거리",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 47,
+        "domain": "농수산업 적응과 식량안보",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-48",
+      "x": 2270,
+      "y": 1730,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#48 가축도 폭염에 쓰러집니",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 48,
+        "domain": "농수산업 적응과 식량안보",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-49",
+      "x": 2270,
+      "y": 1730,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#49 기후변화로 낯선 병해충",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 49,
+        "domain": "농수산업 적응과 식량안보",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-50",
+      "x": 1124.3284210526317,
+      "y": 1730,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#50 기후위기 시대 옥외노동",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 50,
+        "domain": "건강영향과 보건",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-51",
+      "x": 1235.738947368421,
+      "y": 1102.1535714285715,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#51 탄소감축과 건강한 주거",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 51,
+        "domain": "건강영향과 보건",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-52",
+      "x": 1236.6526315789474,
+      "y": 1730,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#52 보이지 않는/입증할 수",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 52,
+        "domain": "건강영향과 보건",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-53",
+      "x": 1789.5494736842106,
+      "y": 1713.1517857142858,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#53 기후 위기의 최전선, ",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 53,
+        "domain": "기후재난 손실과 보험·재정",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-54",
+      "x": 1610.821052631579,
+      "y": 1659.1767857142856,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#54 기후변화 위험 취약 지",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 54,
+        "domain": "기후재난 손실과 보험·재정",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-55",
+      "x": 991.3726315789472,
+      "y": 1572.1125000000002,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#55 기후적응에 대한 언론의",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 55,
+        "domain": "교육",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-56",
+      "x": 30,
+      "y": 1682.4303571428572,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#56 현장 교육과 전시 및 ",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 56,
+        "domain": "교육",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-57",
+      "x": 1416.4126315789474,
+      "y": 1730,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#57 국가기후위기 적응 정책",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 57,
+        "domain": "교육",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-58",
+      "x": 1245.9663157894738,
+      "y": 971.0107142857144,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#58 지역사회 중심 기후위기",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 58,
+        "domain": "교육",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-59",
+      "x": 1675.2210526315791,
+      "y": 814.5196428571429,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#59 기후에너지 일자리 재교",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 59,
+        "domain": "교육",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-60",
+      "x": 1659.9536842105263,
+      "y": 1730,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#60 기후불안에 대한 올바른",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 60,
+        "domain": "교육",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-61",
+      "x": 1078.1431578947368,
+      "y": 938.4071428571428,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#61 장바구니 물가를 흔드는",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 61,
+        "domain": "민생경제·관광",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-62",
+      "x": 1048.463157894737,
+      "y": 1264.625,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#0d1f2b",
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#62 지역 단위 기후적응 거",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#58a6ff"
+      },
+      "customData": {
+        "agendaId": 62,
+        "domain": "기후회복사회·민관협력",
+        "big_category": "적응"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-63",
+      "x": 30,
+      "y": 30,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#1e0d2b",
+      "strokeColor": "#d2a8ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#63 시민 참여형 기후금융 ",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#d2a8ff"
+      },
+      "customData": {
+        "agendaId": 63,
+        "domain": "기후금융",
+        "big_category": "혼합"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-64",
+      "x": 926.7957894736842,
+      "y": 619.4446428571428,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#1e0d2b",
+      "strokeColor": "#d2a8ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#64 시민이 함께하는 기후위",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#d2a8ff"
+      },
+      "customData": {
+        "agendaId": 64,
+        "domain": "기후정책 통합·조정",
+        "big_category": "혼합"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "rect-65",
+      "x": 711.4905263157895,
+      "y": 956.3785714285714,
+      "width": 100,
+      "height": 40,
+      "backgroundColor": "#1e0d2b",
+      "strokeColor": "#d2a8ff",
+      "strokeWidth": 1.5,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "roundness": {
+        "type": 3,
+        "value": 4
+      },
+      "label": {
+        "text": "#65 정책과 정책의 충돌, ",
+        "fontSize": 10,
+        "fontFamily": 1,
+        "textAlign": "center",
+        "verticalAlign": "middle",
+        "strokeColor": "#d2a8ff"
+      },
+      "customData": {
+        "agendaId": 65,
+        "domain": "기후정책 통합·조정",
+        "big_category": "혼합"
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-2-3",
+      "x": 1330.922105263158,
+      "y": 742.2946428571429,
+      "width": 313.12842105263144,
+      "height": -371.90535714285716,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          313.12842105263144,
+          -371.90535714285716
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 44,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-2"
+      },
+      "end": {
+        "id": "rect-3"
+      },
+      "customData": {
+        "weight": 0.4286
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-2-12",
+      "x": 1330.922105263158,
+      "y": 742.2946428571429,
+      "width": 273.25052631578933,
+      "height": 171.54821428571427,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          273.25052631578933,
+          171.54821428571427
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 47,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-2"
+      },
+      "end": {
+        "id": "rect-12"
+      },
+      "customData": {
+        "weight": 0.4444
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-2-28",
+      "x": 1330.922105263158,
+      "y": 742.2946428571429,
+      "width": -118.07157894736861,
+      "height": 89.43214285714271,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -118.07157894736861,
+          89.43214285714271
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 46,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-2"
+      },
+      "end": {
+        "id": "rect-28"
+      },
+      "customData": {
+        "weight": 0.4412
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-3-8",
+      "x": 1644.0505263157895,
+      "y": 370.38928571428573,
+      "width": 137.11157894736812,
+      "height": 63.962500000000034,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          137.11157894736812,
+          63.962500000000034
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 57,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-3"
+      },
+      "end": {
+        "id": "rect-8"
+      },
+      "customData": {
+        "weight": 0.5
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-3-32",
+      "x": 1644.0505263157895,
+      "y": 370.38928571428573,
+      "width": 43.76842105263154,
+      "height": -178.53035714285716,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          43.76842105263154,
+          -178.53035714285716
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 54,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-3"
+      },
+      "end": {
+        "id": "rect-32"
+      },
+      "customData": {
+        "weight": 0.4848
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-4-59",
+      "x": 1931.9789473684211,
+      "y": 477.39821428571423,
+      "width": -206.757894736842,
+      "height": 357.1214285714287,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -206.757894736842,
+          357.1214285714287
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 50,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-4"
+      },
+      "end": {
+        "id": "rect-59"
+      },
+      "customData": {
+        "weight": 0.4615
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-5-32",
+      "x": 941.3978947368421,
+      "y": 381.9857142857143,
+      "width": 746.421052631579,
+      "height": -190.12678571428575,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          746.421052631579,
+          -190.12678571428575
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 50,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-5"
+      },
+      "end": {
+        "id": "rect-32"
+      },
+      "customData": {
+        "weight": 0.4643
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-6-13",
+      "x": 1532.8463157894735,
+      "y": 50,
+      "width": -163.81473684210505,
+      "height": 750.9142857142857,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -163.81473684210505,
+          750.9142857142857
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 60,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-6"
+      },
+      "end": {
+        "id": "rect-13"
+      },
+      "customData": {
+        "weight": 0.5152
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-8-10",
+      "x": 1781.1621052631576,
+      "y": 434.35178571428577,
+      "width": 129.94947368421072,
+      "height": 361.4624999999999,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          129.94947368421072,
+          361.4624999999999
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 69,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-8"
+      },
+      "end": {
+        "id": "rect-10"
+      },
+      "customData": {
+        "weight": 0.5667
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-8-11",
+      "x": 1781.1621052631576,
+      "y": 434.35178571428577,
+      "width": 538.8378947368424,
+      "height": -320.9053571428572,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          538.8378947368424,
+          -320.9053571428572
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 33,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-8"
+      },
+      "end": {
+        "id": "rect-11"
+      },
+      "customData": {
+        "weight": 0.3667
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-9-19",
+      "x": 1404.1936842105263,
+      "y": 406.63571428571424,
+      "width": -371.86947368421056,
+      "height": 396.6464285714285,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -371.86947368421056,
+          396.6464285714285
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 62,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-9"
+      },
+      "end": {
+        "id": "rect-19"
+      },
+      "customData": {
+        "weight": 0.5294
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-9-29",
+      "x": 1404.1936842105263,
+      "y": 406.63571428571424,
+      "width": -50.51789473684198,
+      "height": 85.42500000000007,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -50.51789473684198,
+          85.42500000000007
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 55,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-9"
+      },
+      "end": {
+        "id": "rect-29"
+      },
+      "customData": {
+        "weight": 0.4872
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-12-35",
+      "x": 1604.1726315789474,
+      "y": 913.8428571428572,
+      "width": -121.22526315789491,
+      "height": 376.82321428571436,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -121.22526315789491,
+          376.82321428571436
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 52,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-12"
+      },
+      "end": {
+        "id": "rect-35"
+      },
+      "customData": {
+        "weight": 0.4722
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-12-51",
+      "x": 1604.1726315789474,
+      "y": 913.8428571428572,
+      "width": -318.4336842105265,
+      "height": 208.3107142857143,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -318.4336842105265,
+          208.3107142857143
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 75,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-12"
+      },
+      "end": {
+        "id": "rect-51"
+      },
+      "customData": {
+        "weight": 0.6
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-13-28",
+      "x": 1369.0315789473684,
+      "y": 800.9142857142857,
+      "width": -156.18105263157895,
+      "height": 30.812499999999886,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -156.18105263157895,
+          30.812499999999886
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 57,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-13"
+      },
+      "end": {
+        "id": "rect-28"
+      },
+      "customData": {
+        "weight": 0.5
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-13-51",
+      "x": 1369.0315789473684,
+      "y": 800.9142857142857,
+      "width": -83.29263157894752,
+      "height": 321.23928571428576,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -83.29263157894752,
+          321.23928571428576
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 51,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-13"
+      },
+      "end": {
+        "id": "rect-51"
+      },
+      "customData": {
+        "weight": 0.4651
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-14-45",
+      "x": 972.6105263157896,
+      "y": 1016.2982142857144,
+      "width": -0.3536842105263531,
+      "height": 233.78035714285704,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -0.3536842105263531,
+          233.78035714285704
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 44,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-14"
+      },
+      "end": {
+        "id": "rect-45"
+      },
+      "customData": {
+        "weight": 0.4286
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-14-58",
+      "x": 972.6105263157896,
+      "y": 1016.2982142857144,
+      "width": 323.35578947368424,
+      "height": -25.287500000000023,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          323.35578947368424,
+          -25.287500000000023
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 71,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-14"
+      },
+      "end": {
+        "id": "rect-58"
+      },
+      "customData": {
+        "weight": 0.5806
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-19-28",
+      "x": 1032.3242105263157,
+      "y": 803.2821428571427,
+      "width": 180.52631578947376,
+      "height": 28.444642857142867,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          180.52631578947376,
+          28.444642857142867
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 49,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-19"
+      },
+      "end": {
+        "id": "rect-28"
+      },
+      "customData": {
+        "weight": 0.4571
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-20-34",
+      "x": 1226.4673684210527,
+      "y": 50,
+      "width": 737.3136842105262,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          737.3136842105262,
+          0
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 39,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-20"
+      },
+      "end": {
+        "id": "rect-34"
+      },
+      "customData": {
+        "weight": 0.4
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-24-42",
+      "x": 372.29052631578946,
+      "y": 1208.4589285714285,
+      "width": -292.29052631578946,
+      "height": -389.23928571428564,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -292.29052631578946,
+          -389.23928571428564
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 75,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-24"
+      },
+      "end": {
+        "id": "rect-42"
+      },
+      "customData": {
+        "weight": 0.6
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-27-28",
+      "x": 1232.2736842105264,
+      "y": 1346.7964285714286,
+      "width": -19.42315789473696,
+      "height": -515.069642857143,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -19.42315789473696,
+          -515.069642857143
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 49,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-27"
+      },
+      "end": {
+        "id": "rect-28"
+      },
+      "customData": {
+        "weight": 0.4545
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-27-50",
+      "x": 1232.2736842105264,
+      "y": 1346.7964285714286,
+      "width": -57.945263157894715,
+      "height": 403.2035714285714,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -57.945263157894715,
+          403.2035714285714
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 54,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-27"
+      },
+      "end": {
+        "id": "rect-50"
+      },
+      "customData": {
+        "weight": 0.4828
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-28-51",
+      "x": 1212.8505263157895,
+      "y": 831.7267857142856,
+      "width": 72.88842105263143,
+      "height": 290.42678571428587,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          72.88842105263143,
+          290.42678571428587
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 48,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-28"
+      },
+      "end": {
+        "id": "rect-51"
+      },
+      "customData": {
+        "weight": 0.4524
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-28-58",
+      "x": 1212.8505263157895,
+      "y": 831.7267857142856,
+      "width": 83.11578947368434,
+      "height": 159.28392857142876,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          83.11578947368434,
+          159.28392857142876
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 54,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-28"
+      },
+      "end": {
+        "id": "rect-58"
+      },
+      "customData": {
+        "weight": 0.4857
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-28-61",
+      "x": 1212.8505263157895,
+      "y": 831.7267857142856,
+      "width": -84.7073684210527,
+      "height": 126.68035714285725,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -84.7073684210527,
+          126.68035714285725
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 50,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-28"
+      },
+      "end": {
+        "id": "rect-61"
+      },
+      "customData": {
+        "weight": 0.4615
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-30-58",
+      "x": 898.16,
+      "y": 1098.9607142857144,
+      "width": 397.80631578947384,
+      "height": -107.95000000000005,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          397.80631578947384,
+          -107.95000000000005
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 57,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-30"
+      },
+      "end": {
+        "id": "rect-58"
+      },
+      "customData": {
+        "weight": 0.5
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-35-36",
+      "x": 1482.9473684210525,
+      "y": 1290.6660714285715,
+      "width": 141.62105263157878,
+      "height": 5.3428571428569285,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          141.62105263157878,
+          5.3428571428569285
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 82,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-35"
+      },
+      "end": {
+        "id": "rect-36"
+      },
+      "customData": {
+        "weight": 0.6429
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-35-40",
+      "x": 1482.9473684210525,
+      "y": 1290.6660714285715,
+      "width": 346.4631578947369,
+      "height": -82.4803571428572,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          346.4631578947369,
+          -82.4803571428572
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 57,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-35"
+      },
+      "end": {
+        "id": "rect-40"
+      },
+      "customData": {
+        "weight": 0.5
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-35-51",
+      "x": 1482.9473684210525,
+      "y": 1290.6660714285715,
+      "width": -197.2084210526316,
+      "height": -168.51250000000005,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -197.2084210526316,
+          -168.51250000000005
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 82,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-35"
+      },
+      "end": {
+        "id": "rect-51"
+      },
+      "customData": {
+        "weight": 0.6389
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-36-40",
+      "x": 1624.5684210526313,
+      "y": 1296.0089285714284,
+      "width": 204.84210526315815,
+      "height": -87.82321428571413,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          204.84210526315815,
+          -87.82321428571413
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 62,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-36"
+      },
+      "end": {
+        "id": "rect-40"
+      },
+      "customData": {
+        "weight": 0.5312
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-36-51",
+      "x": 1624.5684210526313,
+      "y": 1296.0089285714284,
+      "width": -338.82947368421037,
+      "height": -173.85535714285697,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -338.82947368421037,
+          -173.85535714285697
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 57,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-36"
+      },
+      "end": {
+        "id": "rect-51"
+      },
+      "customData": {
+        "weight": 0.5
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-37-38",
+      "x": 1779.3052631578946,
+      "y": 1385.0160714285714,
+      "width": -113.56210526315795,
+      "height": -271.9392857142857,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -113.56210526315795,
+          -271.9392857142857
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 57,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-37"
+      },
+      "end": {
+        "id": "rect-38"
+      },
+      "customData": {
+        "weight": 0.5
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-37-40",
+      "x": 1779.3052631578946,
+      "y": 1385.0160714285714,
+      "width": 50.1052631578948,
+      "height": -176.8303571428571,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          50.1052631578948,
+          -176.8303571428571
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 68,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-37"
+      },
+      "end": {
+        "id": "rect-40"
+      },
+      "customData": {
+        "weight": 0.5625
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-38-40",
+      "x": 1665.7431578947367,
+      "y": 1113.0767857142857,
+      "width": 163.66736842105274,
+      "height": 95.10892857142858,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          163.66736842105274,
+          95.10892857142858
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 69,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-38"
+      },
+      "end": {
+        "id": "rect-40"
+      },
+      "customData": {
+        "weight": 0.5676
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-39-52",
+      "x": 1499.983157894737,
+      "y": 1585.798214285714,
+      "width": -213.33052631578948,
+      "height": 164.20178571428596,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -213.33052631578948,
+          164.20178571428596
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 50,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-39"
+      },
+      "end": {
+        "id": "rect-52"
+      },
+      "customData": {
+        "weight": 0.4615
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-40-51",
+      "x": 1829.4105263157894,
+      "y": 1208.1857142857143,
+      "width": -543.6715789473685,
+      "height": -86.03214285714284,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -543.6715789473685,
+          -86.03214285714284
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 53,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-40"
+      },
+      "end": {
+        "id": "rect-51"
+      },
+      "customData": {
+        "weight": 0.4762
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-43-54",
+      "x": 1966.197894736842,
+      "y": 1405.7196428571428,
+      "width": -305.376842105263,
+      "height": 273.4571428571428,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -305.376842105263,
+          273.4571428571428
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 47,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-43"
+      },
+      "end": {
+        "id": "rect-54"
+      },
+      "customData": {
+        "weight": 0.4444
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-47-53",
+      "x": 2192.290526315789,
+      "y": 1750,
+      "width": -352.74105263157844,
+      "height": -16.84821428571422,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -352.74105263157844,
+          -16.84821428571422
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 53,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-47"
+      },
+      "end": {
+        "id": "rect-53"
+      },
+      "customData": {
+        "weight": 0.4815
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-51-58",
+      "x": 1285.738947368421,
+      "y": 1122.1535714285715,
+      "width": 10.227368421052915,
+      "height": -131.1428571428571,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          10.227368421052915,
+          -131.1428571428571
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 55,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-51"
+      },
+      "end": {
+        "id": "rect-58"
+      },
+      "customData": {
+        "weight": 0.4878
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-51-64",
+      "x": 1285.738947368421,
+      "y": 1122.1535714285715,
+      "width": -308.9431578947367,
+      "height": -482.7089285714287,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -308.9431578947367,
+          -482.7089285714287
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 52,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-51"
+      },
+      "end": {
+        "id": "rect-64"
+      },
+      "customData": {
+        "weight": 0.475
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-52-60",
+      "x": 1286.6526315789474,
+      "y": 1750,
+      "width": 423.30105263157884,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          423.30105263157884,
+          0
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 61,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-52"
+      },
+      "end": {
+        "id": "rect-60"
+      },
+      "customData": {
+        "weight": 0.5238
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-55-62",
+      "x": 1041.3726315789472,
+      "y": 1592.1125000000002,
+      "width": 57.0905263157897,
+      "height": -307.4875000000002,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          57.0905263157897,
+          -307.4875000000002
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 49,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-55"
+      },
+      "end": {
+        "id": "rect-62"
+      },
+      "customData": {
+        "weight": 0.4583
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "arrow-58-64",
+      "x": 1295.9663157894738,
+      "y": 991.0107142857144,
+      "width": -319.17052631578963,
+      "height": -351.5660714285716,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -319.17052631578963,
+          -351.5660714285716
+        ]
+      ],
+      "strokeColor": "#58a6ff",
+      "strokeWidth": 1,
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 60,
+      "startArrowhead": null,
+      "endArrowhead": null,
+      "start": {
+        "id": "rect-58"
+      },
+      "end": {
+        "id": "rect-64"
+      },
+      "customData": {
+        "weight": 0.5152
+      }
+    }
+  ],
+  "appState": {
+    "viewBackgroundColor": "#0d1117",
+    "theme": "dark",
+    "currentItemFontFamily": 1,
+    "zoom": {
+      "value": 0.5
+    }
+  },
+  "files": {},
+  "_meta": {
+    "nodeCount": 65,
+    "edgeCount": 44,
+    "generatedAt": "2026-06-04",
+    "source": "src/data/network/agenda-similarity.json",
+    "skeletonFormat": "convertToExcalidrawElements-compatible"
+  }
+}
