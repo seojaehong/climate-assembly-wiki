@@ -2,27 +2,20 @@
  * scripts/build-agenda-network-scene.mjs
  *
  * Builds src/data/agenda-network-scene.json from agenda-similarity.json.
- * Output is a "skeleton" scene — elements without Excalidraw runtime fields
- * (seed, version, etc.). The React island calls convertToExcalidrawElements()
- * on mount to hydrate them into valid Excalidraw elements.
+ * Output is a "skeleton" scene compatible with convertToExcalidrawElements().
+ *
+ * Skeleton format (required by convertToExcalidrawElements):
+ *   - Rectangle: { type, id, x, y, width, height, label: { text, strokeColor }, ... }
+ *     No separate text elements — label is embedded in the rectangle.
+ *   - Arrow: { type, id, ..., start: { id: rectId }, end: { id: rectId } }
+ *     No startBinding/endBinding objects — use start/end with element id.
  *
  * Deterministic: same input → same output (no Math.random, stable sort).
- *
- * Coordinate system: pre-computed force layout from agenda-similarity.json
- *   nodes[].x, nodes[].y  — scaled to fit 800×600 canvas
- *   edges_backbone[].source / .target — 44 statistically significant edges
  *
  * Category colors (big_category):
  *   감축 → #3fb950  (green)
  *   적응 → #58a6ff  (blue)
  *   혼합 → #d2a8ff  (purple)
- *
- * Node layout:
- *   rectangle (background + border) + text (id + label truncated)
- *   The text element uses containerId to bind to its rectangle.
- *
- * Edge layout:
- *   arrow type, startBinding + endBinding on rectangle ids
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -77,9 +70,7 @@ const CAT_TEXT = {
 };
 
 // ── ID generation (stable, deterministic) ─────────────────────────────────────
-// Use "rect-{id}" and "text-{id}" as element IDs.
 function rectId(nodeId)  { return `rect-${nodeId}`; }
-function textId(nodeId)  { return `text-${nodeId}`; }
 function arrowId(s, t)   { return `arrow-${s}-${t}`; }
 
 // ── Build elements ─────────────────────────────────────────────────────────────
@@ -94,15 +85,15 @@ for (const node of nodes) {
   };
 }
 
-// 1. Rectangle elements (one per node)
+// 1. Rectangle elements with embedded label (convertToExcalidrawElements format)
+//    No separate text elements — label.text is bound inside the rect.
 for (const node of nodes) {
   const { cx, cy } = nodePos[node.id];
   const cat = node.big_category || '감축';
 
   // Short label: ID + first 12 chars of name
-  const label = `#${node.id} ${node.name.slice(0, 12)}`;
+  const labelText = `#${node.id} ${node.name.slice(0, 12)}`;
 
-  // Rectangle (skeleton — Excalidraw will fill required fields via convertToExcalidrawElements)
   elements.push({
     type: 'rectangle',
     id: rectId(node.id),
@@ -116,7 +107,15 @@ for (const node of nodes) {
     fillStyle: 'solid',
     roughness: 0,
     roundness: { type: 3, value: 4 },
-    boundElements: [{ type: 'text', id: textId(node.id) }],
+    // Embedded label — convertToExcalidrawElements creates the text element internally
+    label: {
+      text: labelText,
+      fontSize: 10,
+      fontFamily: 1,
+      textAlign: 'center',
+      verticalAlign: 'middle',
+      strokeColor: CAT_TEXT[cat] || '#f0f6fc',
+    },
     // Custom metadata (stored in customData for reference)
     customData: {
       agendaId: node.id,
@@ -124,34 +123,16 @@ for (const node of nodes) {
       big_category: cat,
     },
   });
-
-  // Text element bound to rectangle
-  elements.push({
-    type: 'text',
-    id: textId(node.id),
-    x: cx - NODE_W / 2,
-    y: cy - NODE_H / 2,
-    width: NODE_W,
-    height: NODE_H,
-    text: label,
-    fontSize: 10,
-    fontFamily: 1,   // 1 = Virgil (Excalidraw default)
-    textAlign: 'center',
-    verticalAlign: 'middle',
-    strokeColor: CAT_TEXT[cat] || '#f0f6fc',
-    containerId: rectId(node.id),
-    lineHeight: 1.25,
-  });
 }
 
 // 2. Arrow elements for backbone edges (44 edges)
+//    Use start/end with element id — convertToExcalidrawElements resolves bindings.
 for (const edge of edges_backbone) {
   const src = nodePos[edge.source];
   const tgt = nodePos[edge.target];
   if (!src || !tgt) continue;
 
-  // Arrow stroke opacity proportional to weight (0.35–0.63 range in dataset)
-  // Map to [0.3, 0.8]
+  // Arrow opacity proportional to weight (0.35–0.63 range in dataset → 30–80)
   const opacity = Math.round(30 + ((edge.weight - 0.35) / 0.28) * 50);
 
   elements.push({
@@ -172,16 +153,9 @@ for (const edge of edges_backbone) {
     opacity,
     startArrowhead: null,
     endArrowhead: null,   // no arrowheads — undirected graph
-    startBinding: {
-      elementId: rectId(edge.source),
-      focus: 0,
-      gap: 4,
-    },
-    endBinding: {
-      elementId: rectId(edge.target),
-      focus: 0,
-      gap: 4,
-    },
+    // start/end format for convertToExcalidrawElements
+    start: { id: rectId(edge.source) },
+    end:   { id: rectId(edge.target) },
     customData: {
       weight: edge.weight,
     },
@@ -190,7 +164,6 @@ for (const edge of edges_backbone) {
 
 // ── Output ────────────────────────────────────────────────────────────────────
 const scene = {
-  // Skeleton — convertToExcalidrawElements() in island hydrates these
   elements,
   appState: {
     viewBackgroundColor: '#0d1117',
@@ -199,12 +172,12 @@ const scene = {
     zoom: { value: 0.5 },
   },
   files: {},
-  // Metadata (not part of Excalidraw spec — for island reference)
   _meta: {
     nodeCount: nodes.length,
     edgeCount: edges_backbone.length,
     generatedAt: new Date().toISOString().slice(0, 10),
     source: 'src/data/network/agenda-similarity.json',
+    skeletonFormat: 'convertToExcalidrawElements-compatible',
   },
 };
 
@@ -212,3 +185,4 @@ const outPath = join(ROOT, 'src/data/agenda-network-scene.json');
 writeFileSync(outPath, JSON.stringify(scene, null, 2), 'utf-8');
 console.log(`[build:scene] wrote ${elements.length} elements → ${outPath}`);
 console.log(`  nodes: ${nodes.length}  backbone edges: ${edges_backbone.length}`);
+console.log(`  format: label-embedded rects + start/end arrows`);

@@ -17,6 +17,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import '@excalidraw/excalidraw/index.css';
 
 interface SceneData {
   elements: object[];
