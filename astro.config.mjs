@@ -4,35 +4,34 @@ import pagefind from 'astro-pagefind';
 import tailwindcss from '@tailwindcss/vite';
 import yaml from '@rollup/plugin-yaml';
 
+import react from '@astrojs/react';
+
 export default defineConfig({
   // MAJOR 6 fix: set to canonical domain so Astro.site is used in citation URLs.
   // Switch to https://climate-assembly.org once DNS is confirmed.
   // Until then, keep pages.dev so canonical/OG/sitemap remain consistent.
   site: process.env.PUBLIC_SITE_URL ?? 'https://climate-assembly-wiki.pages.dev',
-  integrations: [
-    sitemap({
-      // 2026-06-02: public surface restricted to homepage + agenda pages only.
-      // Whitelist filter — only emit locale home and /{lang}/agenda/... URLs.
-      // Defence in depth: pages already absent from dist won't appear anyway,
-      // but this guards against stray paths being added later.
-      filter: (page) =>
-        /\/(ko|en|ja|zh|es)\/(agenda(\/|$))/.test(page) ||
-        /\/(ko|en|ja|zh|es)\/?$/.test(page),
-      i18n: {
-        defaultLocale: 'ko',
-        // M4 (2026-06-01): ja/zh/es restored as structural-only locales.
-        // Body content remains KO/EN until translation lands; URLs ship for SEO + hreflang.
-        locales: {
-          ko: 'ko-KR',
-          en: 'en-US',
-          ja: 'ja-JP',
-          zh: 'zh-CN',
-          es: 'es-ES',
-        },
+  integrations: [sitemap({
+    // 2026-06-02: public surface restricted to homepage + agenda pages only.
+    // Whitelist filter — only emit locale home and /{lang}/agenda/... URLs.
+    // Defence in depth: pages already absent from dist won't appear anyway,
+    // but this guards against stray paths being added later.
+    filter: (page) =>
+      /\/(ko|en|ja|zh|es)\/(agenda(\/|$))/.test(page) ||
+      /\/(ko|en|ja|zh|es)\/?$/.test(page),
+    i18n: {
+      defaultLocale: 'ko',
+      // M4 (2026-06-01): ja/zh/es restored as structural-only locales.
+      // Body content remains KO/EN until translation lands; URLs ship for SEO + hreflang.
+      locales: {
+        ko: 'ko-KR',
+        en: 'en-US',
+        ja: 'ja-JP',
+        zh: 'zh-CN',
+        es: 'es-ES',
       },
-    }),
-    pagefind(),
-  ],
+    },
+  }), pagefind(), react()],
   vite: {
     plugins: [tailwindcss(), yaml()],
   },

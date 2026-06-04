@@ -1,0 +1,176 @@
+---
+// @ts-nocheck
+/**
+ * /ko/moderator/insights/agenda-network-canvas — Excalidraw 인터랙티브 캔버스 (모더레이터 전용)
+ *
+ * PRIVACY: KO-only, noindex, not in sitemap, not in pagefind, no nav links.
+ * RENDER:  Frontmatter-thin pattern — scene JSON imported, island client:only="react".
+ *          NOT a replacement for agenda-network.astro (that page stays intact).
+ *
+ * PURPOSE: 6월 13일 워크숍에서 모더레이터들이 의제를 자유롭게 이동/주석할 수 있는
+ *          인터랙티브 캔버스. view 모드 기본 — 노드 이동 불가 (읽기 전용 탐색).
+ *          필요 시 URL 파라미터 ?edit=1 또는 island props 변경으로 edit 전환 가능.
+ *
+ * BUNDLE:  @excalidraw/excalidraw ~3–4MB raw (lazy loaded on mount).
+ *          This is expected and reported to user for decision.
+ */
+
+import sceneRaw from '../../../../data/agenda-network-scene.json';
+import AgendaNetworkExcalidraw from '../../../../islands/AgendaNetworkExcalidraw';
+
+export async function getStaticPaths() {
+  return [{ params: { lang: 'ko' } }];
+}
+
+const scene = sceneRaw;
+---
+<!doctype html>
+<html lang="ko" dir="ltr" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>의제연결 캔버스 [모더레이터 인사이트]</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <!-- No canonical, no hreflang, no OG — private moderator page -->
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --bg-subtle: #161b22;
+      --border: #30363d;
+      --fg: #f0f6fc;
+      --fg-muted: #8b949e;
+      --accent: #58a6ff;
+      --radius: 6px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'Pretendard Variable', 'Noto Sans KR', system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    .page-shell {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .privacy-banner {
+      background: #6e2020;
+      color: #ffdcd7;
+      text-align: center;
+      padding: 5px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      border-bottom: 2px solid #b22a2a;
+      flex-shrink: 0;
+    }
+
+    /* Sub-nav */
+    .subnav {
+      background: var(--bg-subtle);
+      border-bottom: 1px solid var(--border);
+      padding: 6px 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--fg-muted);
+      flex-shrink: 0;
+    }
+    .subnav-label { font-weight: 700; margin-right: 4px; }
+    .subnav a {
+      color: var(--fg-muted);
+      text-decoration: none;
+      padding: 2px 7px;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .subnav a:hover { color: var(--fg); border-color: var(--border); }
+    .subnav a.current { color: var(--accent); border-color: var(--accent); font-weight: 600; }
+    .subnav-sep { color: var(--border); }
+
+    /* Info bar */
+    .info-bar {
+      background: var(--bg-subtle);
+      border-bottom: 1px solid var(--border);
+      padding: 5px 20px;
+      font-size: 11px;
+      color: var(--fg-muted);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    .info-bar strong { color: var(--fg); }
+    .info-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 1px 8px;
+      background: #1c2230;
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      font-size: 10px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+    /* Canvas container — fills remaining height */
+    .canvas-wrap {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+
+    <div class="privacy-banner">
+      모더레이터 인사이트 · 의제연결 인터랙티브 캔버스 · 외부 공개 금지
+    </div>
+
+    <nav class="subnav" aria-label="모더레이터 도구 네비게이션">
+      <span class="subnav-label">[모더레이터 도구]</span>
+      <a href="/ko/moderator/live">라이브</a>
+      <span class="subnav-sep">·</span>
+      <a href="/ko/moderator/insights/heatmap">히트맵</a>
+      <span class="subnav-sep">·</span>
+      <a href="/ko/moderator/insights/clusters">클러스터</a>
+      <span class="subnav-sep">·</span>
+      <a href="/ko/moderator/insights/agenda-network">의제연결</a>
+      <span class="subnav-sep">·</span>
+      <a href="/ko/moderator/insights/agenda-network-canvas" class="current">캔버스</a>
+      <span class="subnav-sep">·</span>
+      <a href="/ko/moderator/insights/groups">조별</a>
+    </nav>
+
+    <div class="info-bar">
+      <span><strong>65개 의제</strong> 의미연결 백본 네트워크</span>
+      <span>
+        <span class="info-badge"><span class="dot" style="background:#3fb950;"></span>감축</span>
+        <span class="info-badge"><span class="dot" style="background:#58a6ff;"></span>적응</span>
+        <span class="info-badge"><span class="dot" style="background:#d2a8ff;"></span>혼합</span>
+      </span>
+      <span>백본 엣지 44개 · Jaccard α=0.35</span>
+      <span style="margin-left:auto;font-size:10px;">
+        Ctrl+스크롤: 줌 · 마우스 드래그: 패닝 · 우상단 📷: PNG 저장
+      </span>
+    </div>
+
+    <div class="canvas-wrap">
+      <AgendaNetworkExcalidraw
+        client:only="react"
+        initialData={scene}
+        mode="view"
+      />
+    </div>
+
+  </div>
+</body>
+</html>
