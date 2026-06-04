@@ -66,6 +66,5 @@ scripts/.cache/
 # Internal subagent memory (not public)
 .claude/
 build_output.txt
-package-lock.json
 dist_backup_tmp
 dist_backup2
