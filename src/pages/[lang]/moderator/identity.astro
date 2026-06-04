@@ -1,0 +1,1039 @@
+---
+// @ts-nocheck
+/**
+ * /ko/moderator/identity — 조 정체성 라이브 슬라이드쇼 (6.13 D-day용)
+ *
+ * PRIVACY:
+ *   - KO-only route (getStaticPaths emits only 'ko')
+ *   - robots noindex,nofollow
+ *   - NOT in sitemap (whitelist filter excludes /moderator/*)
+ *   - NOT in pagefind (no data-pagefind-body)
+ *   - No nav links to this page from public pages
+ *   - Photos stored in Drive; only thumbnail URLs referenced — no assets in dist
+ *
+ * DATA SOURCE:
+ *   - PUBLIC_IDENTITY_SHEET_CSV_URL → Google Sheet "조 정체성 시트"
+ *   - Schema: group_id | group_name | photo_urls | caption | updated_at
+ *   - Client-side fetch, poll every 10s (board.astro 검증된 패턴)
+ *
+ * RENDER PATTERN:
+ *   - Frontmatter-thin (project_astro_frontmatter_thin_pattern)
+ *   - No SVG/HTML template-literal strings in frontmatter — esbuild regression safe
+ *   - groupsMeta computed in frontmatter, passed to client via JSON island
+ *   - 15 .slide containers mapped via Astro template (Astro compiler handles — OK)
+ *
+ * REFERENCES:
+ *   - Plan:   docs/01-plan/features/group-identity-board.plan.md
+ *   - Design: docs/02-design/features/group-identity-board.design.md
+ *   - Pattern: board.astro (CSV 10s polling), heatmap.astro (frontmatter-thin)
+ */
+
+import groupAssign from '../../../data/network/group-assignment.json';
+import '../../../styles/global.css';
+
+export async function getStaticPaths() {
+  return [{ params: { lang: 'ko' } }];
+}
+
+const sheetCsvUrl = import.meta.env.PUBLIC_IDENTITY_SHEET_CSV_URL ?? '';
+
+// Design §8: dominant big_category → accent color
+const CAT_COLORS = {
+  '감축': '#3fb950',
+  '적응': '#58a6ff',
+  '혼합': '#d2a8ff',
+};
+
+// Compute per-group meta for chip display
+// dominantCat: max entry in categories (tie → first encountered, deterministic)
+const groupsMeta = groupAssign.groups.map((g) => {
+  const entries = Object.entries(g.categories);
+  const dominantEntry = entries.reduce((a, b) => (a[1] >= b[1] ? a : b));
+  const dominantCat = dominantEntry[0];
+  const accentColor = CAT_COLORS[dominantCat] ?? '#58a6ff';
+  return {
+    id: g.id,
+    members: g.members.length,
+    domains: g.domains.slice(0, 3),
+    dominantCat,
+    accentColor,
+  };
+});
+---
+<!doctype html>
+<html lang="ko" dir="ltr" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>조 정체성 보드 [모더레이터 슬라이드쇼]</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <!-- No canonical, no hreflang, no OG — private moderator page -->
+  <!-- Pretendard Variable — already loaded via global.css; reiterate for standalone use -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <style>
+    /* ================================================================
+       IDENTITY SLIDESHOW — full-screen dark canvas, projector-ready
+       Design: docs/02-design/features/group-identity-board.design.md §6-8
+       ================================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --bg-subtle: #161b22;
+      --border: #30363d;
+      --fg: #f0f6fc;
+      --fg-muted: #8b949e;
+      --accent: #58a6ff;
+      --font: 'Pretendard Variable', 'Noto Sans KR', system-ui, sans-serif;
+      --radius: 6px;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Privacy banner ---- */
+    .privacy-banner {
+      background: #6e2020;
+      color: #ffdcd7;
+      text-align: center;
+      padding: 6px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      border-bottom: 2px solid #b22a2a;
+      flex-shrink: 0;
+    }
+
+    /* ---- Sub-nav ---- */
+    .subnav {
+      background: var(--bg-subtle);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--fg-muted);
+      flex-shrink: 0;
+    }
+    .subnav-label { font-weight: 700; color: var(--fg-muted); margin-right: 4px; }
+    .subnav a {
+      color: var(--fg-muted);
+      text-decoration: none;
+      padding: 3px 8px;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .subnav a:hover { color: var(--fg); border-color: var(--border); }
+    .subnav a.current { color: var(--accent); border-color: var(--accent); font-weight: 600; }
+    .subnav-sep { color: var(--border); }
+
+    /* ---- Stage (full-screen slide area) ---- */
+    .stage {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+    }
+
+    /* ---- Empty / loading state ---- */
+    .empty-state {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: var(--fg-muted);
+      font-size: clamp(18px, 2vw, 28px);
+      text-align: center;
+      padding: 40px;
+    }
+    .empty-state.hidden { display: none; }
+    .empty-spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---- Env-not-set banner ---- */
+    .env-missing-notice {
+      display: none;
+      position: absolute;
+      inset: 0;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+      color: var(--fg);
+      text-align: center;
+      padding: 40px;
+    }
+    .env-missing-notice.visible { display: flex; }
+    .env-missing-title {
+      font-size: clamp(24px, 3vw, 48px);
+      font-weight: 700;
+      color: #fde725;
+    }
+    .env-missing-body {
+      font-size: clamp(14px, 1.5vw, 22px);
+      color: var(--fg-muted);
+      max-width: 700px;
+      line-height: 1.7;
+    }
+    .env-missing-code {
+      font-family: monospace;
+      background: #2d1a00;
+      color: #fde725;
+      border: 1px solid #b88600;
+      border-radius: 6px;
+      padding: 10px 20px;
+      font-size: clamp(12px, 1.2vw, 18px);
+      white-space: nowrap;
+    }
+
+    /* ================================================================
+       SLIDE — Design §6: Cross-fade (PPT dissolve)
+       ================================================================ */
+    .slide {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 600ms cubic-bezier(.4, 0, .2, 1);
+      pointer-events: none;
+      display: flex;
+      align-items: stretch;
+    }
+    .slide.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Left accent line — big_category color */
+    .slide-accent {
+      width: 6px;
+      flex-shrink: 0;
+      background: var(--slide-accent-color, #58a6ff);
+    }
+
+    /* Left content panel */
+    .slide-left {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: clamp(32px, 5vw, 80px) clamp(24px, 4vw, 64px);
+      min-width: 0;
+    }
+
+    /* Right photo panel */
+    .slide-right {
+      flex: 0 0 clamp(320px, 40vw, 720px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(24px, 3vw, 48px);
+      position: relative;
+    }
+    .slide-right.no-photos {
+      display: none;
+    }
+    .slide-left.full-width {
+      padding-right: clamp(48px, 8vw, 120px);
+    }
+
+    /* ---- Group number — Design §7 ---- */
+    .group-num {
+      font-size: clamp(160px, 12vw, 320px);
+      font-weight: 900;
+      color: #f0f6fc;
+      line-height: 0.85;
+      letter-spacing: -0.02em;
+      animation: none;
+    }
+
+    /* ---- Group name — Design §7 ---- */
+    .group-name {
+      font-size: clamp(56px, 5vw, 120px);
+      font-weight: 600;
+      color: #fde725;
+      line-height: 1.1;
+      margin-top: clamp(12px, 1.5vw, 28px);
+      word-break: keep-all;
+      overflow-wrap: break-word;
+      animation: none;
+    }
+    .group-name.placeholder {
+      color: var(--fg-muted);
+      font-size: clamp(32px, 3vw, 64px);
+      font-style: italic;
+    }
+
+    /* ---- Chip row — Design §7 ---- */
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: clamp(16px, 2vw, 36px);
+      animation: none;
+    }
+    .chip {
+      font-size: clamp(13px, 1.2vw, 18px);
+      font-weight: 500;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+    .chip-members {
+      background: rgba(88, 166, 255, 0.12);
+      color: #58a6ff;
+      border-color: rgba(88, 166, 255, 0.3);
+    }
+    .chip-domain {
+      background: rgba(255,255,255,0.06);
+      color: var(--fg-muted);
+      border-color: var(--border);
+    }
+
+    /* ---- Caption ---- */
+    .slide-caption {
+      margin-top: clamp(12px, 1.5vw, 24px);
+      font-size: clamp(14px, 1.2vw, 20px);
+      color: var(--fg-muted);
+      font-style: italic;
+    }
+
+    /* ================================================================
+       PHOTO CAROUSEL — Design §6: Ken-burns
+       ================================================================ */
+    .photo-carousel {
+      position: relative;
+      width: 100%;
+      max-width: 1200px;
+      aspect-ratio: 4/3;
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--bg-subtle);
+    }
+
+    .photo-frame {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 400ms ease;
+    }
+    .photo-frame.active { opacity: 1; }
+
+    .photo-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* ---- Photo placeholder (no image loaded) ---- */
+    .photo-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--fg-muted);
+      font-size: 14px;
+      background: var(--bg-subtle);
+    }
+
+    /* ---- Photo indicator dots ---- */
+    .photo-dots {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      justify-content: center;
+    }
+    .photo-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--border);
+      transition: background 0.2s;
+    }
+    .photo-dot.active { background: var(--accent); }
+
+    /* ================================================================
+       FOOTER — Design §2: progress bar + index counter
+       ================================================================ */
+    .footer {
+      flex-shrink: 0;
+      background: var(--bg-subtle);
+      border-top: 1px solid var(--border);
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 14px;
+      color: var(--fg-muted);
+    }
+
+    .footer-index {
+      font-weight: 700;
+      color: var(--fg);
+      white-space: nowrap;
+      min-width: 60px;
+    }
+
+    .progress-track {
+      flex: 1;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width 5s linear;
+      border-radius: 2px;
+    }
+    .progress-fill.paused { transition: none; }
+    .progress-fill.instant { transition: none; }
+
+    .footer-status {
+      white-space: nowrap;
+      font-size: 12px;
+    }
+    .footer-status.paused { color: #fde725; }
+
+    .footer-hint {
+      white-space: nowrap;
+      font-size: 11px;
+      color: var(--border);
+    }
+
+    .poll-status {
+      white-space: nowrap;
+      font-size: 11px;
+    }
+    .poll-status.live { color: #3fb950; }
+    .poll-status.error { color: #f85149; }
+
+    /* ================================================================
+       ANIMATIONS — Design §6
+       ================================================================ */
+    @keyframes ken-burns {
+      from { transform: scale(1.0) translate(0, 0); }
+      to   { transform: scale(1.08) translate(-2%, -1%); }
+    }
+    .photo-frame.active img {
+      animation: ken-burns 1.5s ease-out forwards;
+    }
+
+    @keyframes num-rise {
+      from { transform: translateY(40px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    .slide.active .group-num  { animation: num-rise 800ms cubic-bezier(.16, 1, .3, 1) 100ms both; }
+    .slide.active .group-name { animation: num-rise 800ms cubic-bezier(.16, 1, .3, 1) 250ms both; }
+    .slide.active .chip-row   { animation: num-rise 800ms cubic-bezier(.16, 1, .3, 1) 400ms both; }
+
+    /* ================================================================
+       REDUCED MOTION — Design §5
+       ================================================================ */
+    @media (prefers-reduced-motion: reduce) {
+      .slide { transition: opacity 200ms linear; }
+      .photo-frame.active img,
+      .slide.active .group-num,
+      .slide.active .group-name,
+      .slide.active .chip-row { animation: none; }
+      .empty-spinner { animation: none; border-top-color: var(--accent); }
+    }
+
+    /* ================================================================
+       4K scaling
+       ================================================================ */
+    @media (min-width: 3000px) {
+      .footer { font-size: 20px; padding: 12px 32px; }
+      .chip { font-size: 22px; padding: 6px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Privacy banner -->
+  <div class="privacy-banner">
+    모더레이터 전용 · 조 정체성 슬라이드쇼 · 외부 공개 금지
+  </div>
+
+  <!-- Sub-nav (insights 패턴 + 정체성 current) -->
+  <nav class="subnav" aria-label="모더레이터 도구 네비게이션">
+    <span class="subnav-label">[모더레이터 도구]</span>
+    <a href="/ko/moderator/live">라이브</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/heatmap">히트맵</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/clusters">클러스터</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/agenda-network">의제연결</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/groups">조별</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/identity" class="current">정체성</a>
+  </nav>
+
+  <!-- Stage: full-screen slide area -->
+  <main class="stage" id="stage" aria-label="조 정체성 슬라이드쇼">
+
+    <!-- Env-not-set notice -->
+    <div class="env-missing-notice" id="env-missing-notice">
+      <div class="env-missing-title">PUBLIC_IDENTITY_SHEET_CSV_URL 미설정</div>
+      <div class="env-missing-body">
+        Cloudflare Pages 환경 변수에 아래 키를 등록한 후 재배포하세요.<br>
+        Google Sheets → 파일 → 공유 → 웹에 게시 → CSV → URL 복사
+      </div>
+      <div class="env-missing-code">PUBLIC_IDENTITY_SHEET_CSV_URL=https://docs.google.com/spreadsheets/d/e/.../pub?gid=0&amp;single=true&amp;output=csv</div>
+    </div>
+
+    <!-- Loading / empty state -->
+    <div class="empty-state" id="empty-state">
+      <div class="empty-spinner"></div>
+      <div>조 정보 대기 중… (10초 후 재시도)</div>
+    </div>
+
+    <!-- 15 slide containers (Astro template — OK, no SVG literals) -->
+    {groupsMeta.map((g) => (
+      <div
+        class="slide"
+        data-idx={g.id - 1}
+        data-group-id={g.id}
+        style={`--slide-accent-color: ${g.accentColor};`}
+        aria-label={`${g.id}조 슬라이드`}
+        aria-hidden="true"
+      >
+        <!-- Left accent line -->
+        <div class="slide-accent"></div>
+
+        <!-- Left content panel -->
+        <div class="slide-left" id={`slide-left-${g.id}`}>
+          <div class="group-num" id={`group-num-${g.id}`}>{g.id}</div>
+          <div class="group-name placeholder" id={`group-name-${g.id}`}>조 이름 입력 대기 중…</div>
+          <div class="chip-row" id={`chip-row-${g.id}`}>
+            <span class="chip chip-members">{g.members}명</span>
+            {g.domains.map((d) => (
+              <span class="chip chip-domain">{d}</span>
+            ))}
+          </div>
+          <div class="slide-caption" id={`caption-${g.id}`}></div>
+        </div>
+
+        <!-- Right photo panel (JS fills .photo-frame elements) -->
+        <div class="slide-right" id={`slide-right-${g.id}`}>
+          <div class="photo-carousel" id={`carousel-${g.id}`}>
+            <div class="photo-placeholder">사진 대기 중</div>
+          </div>
+          <div class="photo-dots" id={`dots-${g.id}`}></div>
+        </div>
+      </div>
+    ))}
+  </main>
+
+  <!-- Footer: progress bar + index + status -->
+  <footer class="footer" id="footer">
+    <span class="footer-index" id="footer-index">— / 15</span>
+    <div class="progress-track" aria-hidden="true">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+    <span class="footer-status" id="footer-status">자동 · 5.0s</span>
+    <span class="poll-status" id="poll-status">연결 중…</span>
+    <span class="footer-hint">←→Space·1-0qwert·f·r</span>
+  </footer>
+
+  <!-- Build-time data island: groupsMeta passed to client -->
+  <script id="groups-meta" type="application/json" set:html={JSON.stringify(groupsMeta)}></script>
+  <!-- Build-time data island: sheet CSV URL -->
+  <script id="sheet-csv-url" type="application/json" set:html={JSON.stringify(sheetCsvUrl)}></script>
+
+  <script is:inline>
+    // ================================================================
+    // IDENTITY SLIDESHOW — client-side engine
+    // Design: docs/02-design/features/group-identity-board.design.md §4-5
+    // Pattern: board.astro CSV polling (10s), frontmatter-thin island
+    // ================================================================
+
+    const GROUPS_META = JSON.parse(document.getElementById('groups-meta').textContent);
+    const SHEET_CSV_URL = JSON.parse(document.getElementById('sheet-csv-url').textContent);
+    const POLL_MS       = 10000;
+    const SLIDE_MS      = 5000;
+    const PHOTO_MS      = 1500;
+    const TOTAL_SLIDES  = 15;
+
+    // ── Design §4: Drive URL → lh3 thumbnail ────────────────────────
+    function driveToImg(url) {
+      if (!url) return '';
+      url = url.trim();
+      const m1 = url.match(/\/file\/d\/([^/]+)/);
+      const m2 = url.match(/[?&]id=([^&]+)/);
+      const id = (m1 && m1[1]) || (m2 && m2[1]);
+      return id ? ('https://lh3.googleusercontent.com/d/' + id + '=w1200') : url;
+    }
+
+    // ── CSV parser (board.astro state-machine, identical) ────────────
+    function parseCSV(text) {
+      const rows = [];
+      let col = '', row = [], inQuote = false;
+      const flush = () => { row.push(col); col = ''; };
+      const pushRow = () => { if (row.length > 0) rows.push(row); row = []; };
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i], next = text[i + 1];
+        if (inQuote) {
+          if (ch === '"' && next === '"') { col += '"'; i++; }
+          else if (ch === '"') { inQuote = false; }
+          else { col += ch; }
+        } else {
+          if (ch === '"') { inQuote = true; }
+          else if (ch === ',') { flush(); }
+          else if (ch === '\r' && next === '\n') { flush(); pushRow(); i++; }
+          else if (ch === '\n' || ch === '\r') { flush(); pushRow(); }
+          else { col += ch; }
+        }
+      }
+      if (col || row.length > 0) { flush(); pushRow(); }
+      return rows;
+    }
+
+    // Identity-specific column map
+    const IDENTITY_COL = {
+      'group_id':    'group_id',
+      'group_name':  'group_name',
+      'photo_urls':  'photo_urls',
+      'caption':     'caption',
+      'updated_at':  'updated_at',
+    };
+
+    function csvToIdentityRows(text) {
+      const parsed = parseCSV(text.trim());
+      if (parsed.length < 2) return [];
+      const headers = parsed[0].map(h => h.trim());
+      const result = [];
+      for (let r = 1; r < parsed.length; r++) {
+        const cells = parsed[r];
+        if (cells.every(function(c) { return !c.trim(); })) continue;
+        const obj = {};
+        headers.forEach(function(h, i) {
+          const key = IDENTITY_COL[h] || h;
+          obj[key] = (cells[i] || '').trim();
+        });
+        const gid = parseInt(obj.group_id, 10);
+        if (!gid || gid < 1 || gid > 15) continue;
+        obj.group_id = gid;
+        // Parse photo_urls: comma-separated, convert to array of img URLs
+        obj.photo_urls = obj.photo_urls
+          ? obj.photo_urls.split(',')
+              .map(function(u) { return driveToImg(u.trim()); })
+              .filter(function(u) { return u.length > 0; })
+          : [];
+        result.push(obj);
+      }
+      return result;
+    }
+
+    // ── State ────────────────────────────────────────────────────────
+    let slides = [];          // parsed slide data (by group_id)
+    let activeSlides = [];    // indices (0-based) of groups present in CSV
+    let currentIdx = 0;       // index into activeSlides[]
+    let paused = false;
+    let slideTimer = null;
+    let progressTimer = null;
+    let pollTimer = null;
+    let lastUpdatedAt = '';
+
+    // Per-group photo carousel state
+    const photoState = {};   // group_id → { idx: number, timer: number|null }
+
+    // reduced-motion preference
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // ── DOM refs ─────────────────────────────────────────────────────
+    const emptyState      = document.getElementById('empty-state');
+    const envNotice       = document.getElementById('env-missing-notice');
+    const footerIndex     = document.getElementById('footer-index');
+    const footerStatus    = document.getElementById('footer-status');
+    const pollStatus      = document.getElementById('poll-status');
+    const progressFill    = document.getElementById('progress-fill');
+
+    function getSlideEl(groupId) {
+      return document.querySelector('[data-group-id="' + groupId + '"]');
+    }
+
+    // ── Show / hide states ───────────────────────────────────────────
+    function showEmpty(msg) {
+      emptyState.textContent = msg || '조 정보 대기 중… (10초 후 재시도)';
+      emptyState.classList.remove('hidden');
+      // Hide all slides
+      document.querySelectorAll('.slide').forEach(function(el) {
+        el.classList.remove('active');
+        el.setAttribute('aria-hidden', 'true');
+      });
+      footerIndex.textContent = '— / 15';
+      footerStatus.textContent = '대기 중';
+    }
+
+    function hideEmpty() {
+      emptyState.classList.add('hidden');
+    }
+
+    // ── Build / update slide DOM from CSV row ────────────────────────
+    function updateSlideDOM(row) {
+      const gid = row.group_id;
+      const nameEl = document.getElementById('group-name-' + gid);
+      const captionEl = document.getElementById('caption-' + gid);
+      const rightEl = document.getElementById('slide-right-' + gid);
+      const leftEl = document.getElementById('slide-left-' + gid);
+      const carouselEl = document.getElementById('carousel-' + gid);
+      const dotsEl = document.getElementById('dots-' + gid);
+
+      if (!nameEl) return;
+
+      // Update name
+      if (row.group_name) {
+        nameEl.textContent = row.group_name;
+        nameEl.classList.remove('placeholder');
+      } else {
+        nameEl.textContent = gid + '조';
+        nameEl.classList.add('placeholder');
+      }
+
+      // Update caption
+      if (captionEl) {
+        captionEl.textContent = row.caption || '';
+      }
+
+      // Update photo carousel
+      const photos = row.photo_urls || [];
+      if (photos.length === 0) {
+        rightEl.classList.add('no-photos');
+        leftEl.classList.add('full-width');
+        carouselEl.innerHTML = '<div class="photo-placeholder">사진 없음</div>';
+        dotsEl.innerHTML = '';
+        photoState[gid] = { idx: 0, timer: null, count: 0 };
+      } else {
+        rightEl.classList.remove('no-photos');
+        leftEl.classList.remove('full-width');
+
+        // Build photo frames
+        carouselEl.innerHTML = '';
+        photos.forEach(function(url, i) {
+          const frame = document.createElement('div');
+          frame.className = 'photo-frame' + (i === 0 ? ' active' : '');
+          frame.id = 'photo-frame-' + gid + '-' + i;
+          const img = document.createElement('img');
+          img.src = url;
+          img.alt = gid + '조 사진 ' + (i + 1);
+          img.loading = 'lazy';
+          img.onerror = function() { skipPhoto(gid, i); };
+          frame.appendChild(img);
+          carouselEl.appendChild(frame);
+        });
+
+        // Build dots
+        dotsEl.innerHTML = '';
+        photos.forEach(function(_, i) {
+          const dot = document.createElement('div');
+          dot.className = 'photo-dot' + (i === 0 ? ' active' : '');
+          dot.id = 'photo-dot-' + gid + '-' + i;
+          dotsEl.appendChild(dot);
+        });
+
+        if (!photoState[gid]) {
+          photoState[gid] = { idx: 0, timer: null, count: photos.length };
+        } else {
+          photoState[gid].count = photos.length;
+        }
+      }
+    }
+
+    // ── Photo carousel skip on error ─────────────────────────────────
+    function skipPhoto(gid, failedIdx) {
+      const frame = document.getElementById('photo-frame-' + gid + '-' + failedIdx);
+      if (frame) frame.style.display = 'none';
+    }
+
+    // ── Photo carousel rotation ──────────────────────────────────────
+    function startPhotoCarousel(gid) {
+      const state = photoState[gid];
+      if (!state || state.count <= 1) return;
+      if (state.timer) clearInterval(state.timer);
+      state.timer = setInterval(function() {
+        advancePhoto(gid);
+      }, PHOTO_MS);
+    }
+
+    function stopPhotoCarousel(gid) {
+      const state = photoState[gid];
+      if (state && state.timer) {
+        clearInterval(state.timer);
+        state.timer = null;
+      }
+    }
+
+    function advancePhoto(gid) {
+      const state = photoState[gid];
+      if (!state || state.count === 0) return;
+      const next = (state.idx + 1) % state.count;
+      setPhotoIdx(gid, next);
+    }
+
+    function setPhotoIdx(gid, idx) {
+      const state = photoState[gid];
+      if (!state) return;
+
+      // Deactivate old
+      const oldFrame = document.getElementById('photo-frame-' + gid + '-' + state.idx);
+      const oldDot   = document.getElementById('photo-dot-' + gid + '-' + state.idx);
+      if (oldFrame) oldFrame.classList.remove('active');
+      if (oldDot)   oldDot.classList.remove('active');
+
+      // Activate new
+      state.idx = idx;
+      const newFrame = document.getElementById('photo-frame-' + gid + '-' + idx);
+      const newDot   = document.getElementById('photo-dot-' + gid + '-' + idx);
+      if (newFrame) newFrame.classList.add('active');
+      if (newDot)   newDot.classList.add('active');
+    }
+
+    // ── Slide activation ─────────────────────────────────────────────
+    function activateSlide(slotIdx) {
+      if (activeSlides.length === 0) return;
+      slotIdx = ((slotIdx % activeSlides.length) + activeSlides.length) % activeSlides.length;
+      currentIdx = slotIdx;
+      const groupId = activeSlides[currentIdx];
+
+      // Stop old photo carousels
+      document.querySelectorAll('.slide.active').forEach(function(el) {
+        const oldGid = parseInt(el.dataset.groupId, 10);
+        stopPhotoCarousel(oldGid);
+        el.classList.remove('active');
+        el.setAttribute('aria-hidden', 'true');
+      });
+
+      // Activate new
+      const slideEl = getSlideEl(groupId);
+      if (slideEl) {
+        slideEl.classList.add('active');
+        slideEl.removeAttribute('aria-hidden');
+      }
+
+      // Start photo carousel for this group
+      photoState[groupId] = photoState[groupId] || { idx: 0, timer: null, count: 0 };
+      setPhotoIdx(groupId, 0);
+      if (!reducedMotion) {
+        startPhotoCarousel(groupId);
+      }
+
+      // Update footer
+      footerIndex.textContent = (currentIdx + 1) + ' / ' + activeSlides.length;
+      updateProgressBar();
+    }
+
+    // ── Progress bar ─────────────────────────────────────────────────
+    function updateProgressBar() {
+      if (paused) {
+        progressFill.classList.add('paused');
+        progressFill.style.width = progressFill.style.width; // hold
+        footerStatus.textContent = '⏸ 일시정지';
+        footerStatus.classList.add('paused');
+      } else {
+        progressFill.classList.add('instant');
+        progressFill.style.width = '0%';
+        // Force reflow to reset transition
+        void progressFill.offsetWidth;
+        progressFill.classList.remove('instant', 'paused');
+        progressFill.style.width = '100%';
+        footerStatus.textContent = '▶ 자동 · 5.0s';
+        footerStatus.classList.remove('paused');
+      }
+    }
+
+    // ── Auto-rotation ─────────────────────────────────────────────────
+    function startAutoRotate() {
+      stopAutoRotate();
+      if (reducedMotion) return;
+      slideTimer = setInterval(function() {
+        if (!paused && activeSlides.length > 0) {
+          activateSlide(currentIdx + 1);
+        }
+      }, SLIDE_MS);
+    }
+
+    function stopAutoRotate() {
+      if (slideTimer) { clearInterval(slideTimer); slideTimer = null; }
+    }
+
+    // ── Keyboard handler — Design §5 ─────────────────────────────────
+    const KEY_GROUP_MAP = {
+      '1': 1,  '2': 2,  '3': 3,  '4': 4,  '5': 5,
+      '6': 6,  '7': 7,  '8': 8,  '9': 9,  '0': 10,
+      'q': 11, 'w': 12, 'e': 13, 'r': 14, 't': 15,
+    };
+
+    window.addEventListener('keydown', function(e) {
+      // Ignore if typing in input
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+      if (activeSlides.length === 0) return;
+
+      const key = e.key;
+
+      if (key === 'ArrowRight' || key === 'n') {
+        e.preventDefault();
+        activateSlide(currentIdx + 1);
+        if (!paused) startAutoRotate();
+      } else if (key === 'ArrowLeft' || key === 'p') {
+        e.preventDefault();
+        activateSlide(currentIdx - 1);
+        if (!paused) startAutoRotate();
+      } else if (key === ' ') {
+        e.preventDefault();
+        paused = !paused;
+        updateProgressBar();
+        if (!paused) startAutoRotate();
+        else stopAutoRotate();
+      } else if (key === 'f') {
+        e.preventDefault();
+        toggleFullscreen();
+      } else if (key === 'r') {
+        e.preventDefault();
+        fetchAndRender();
+      } else if (KEY_GROUP_MAP[key] !== undefined) {
+        e.preventDefault();
+        const targetGroup = KEY_GROUP_MAP[key];
+        // Find slot index for this group
+        const slot = activeSlides.indexOf(targetGroup);
+        if (slot >= 0) {
+          activateSlide(slot);
+          if (!paused) startAutoRotate();
+        }
+      }
+    });
+
+    // ── Fullscreen ───────────────────────────────────────────────────
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(function() {});
+      } else {
+        document.exitFullscreen().catch(function() {});
+      }
+    }
+
+    // ── Fetch & render ────────────────────────────────────────────────
+    async function fetchAndRender() {
+      if (!SHEET_CSV_URL) {
+        envNotice.classList.add('visible');
+        emptyState.classList.add('hidden');
+        pollStatus.textContent = '⚠ URL 미설정';
+        pollStatus.className = 'poll-status error';
+        return;
+      }
+
+      try {
+        const text = await fetch(SHEET_CSV_URL).then(function(r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.text();
+        });
+
+        const rows = csvToIdentityRows(text);
+
+        // Check if anything changed (updated_at comparison)
+        const combinedUpdated = rows.map(function(r) { return r.updated_at; }).join('|');
+        if (combinedUpdated === lastUpdatedAt && lastUpdatedAt !== '') {
+          // No changes — skip DOM update
+          pollStatus.textContent = 'LIVE · ' + new Date().toLocaleTimeString('ko-KR', { hour12: false });
+          pollStatus.className = 'poll-status live';
+          return;
+        }
+        lastUpdatedAt = combinedUpdated;
+
+        // Build slides map by group_id
+        const rowMap = {};
+        rows.forEach(function(r) { rowMap[r.group_id] = r; });
+
+        // Update DOM for all rows present
+        rows.forEach(function(r) { updateSlideDOM(r); });
+
+        // Build activeSlides (sorted 1-15, only groups with data)
+        const prevActive = activeSlides.slice();
+        activeSlides = [];
+        for (let g = 1; g <= 15; g++) {
+          if (rowMap[g]) activeSlides.push(g);
+        }
+
+        const now = new Date();
+        pollStatus.textContent = 'LIVE · ' + now.toLocaleTimeString('ko-KR', { hour12: false });
+        pollStatus.className = 'poll-status live';
+
+        if (activeSlides.length === 0) {
+          showEmpty('조 정보 대기 중… (운영 본부 입력 후 자동 갱신)');
+          stopAutoRotate();
+          return;
+        }
+
+        hideEmpty();
+
+        // If was empty before, start from slot 0
+        const wasEmpty = prevActive.length === 0;
+        if (wasEmpty) {
+          activateSlide(0);
+          if (!paused) startAutoRotate();
+        } else {
+          // Keep current group if still in activeSlides
+          const currentGroup = activeSlides[currentIdx] || activeSlides[0];
+          const newSlot = activeSlides.indexOf(currentGroup);
+          if (newSlot >= 0) {
+            currentIdx = newSlot;
+          } else {
+            activateSlide(0);
+          }
+          updateProgressBar();
+        }
+
+      } catch (err) {
+        pollStatus.textContent = '오류: ' + err.message;
+        pollStatus.className = 'poll-status error';
+      }
+    }
+
+    function startPoll() {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(fetchAndRender, POLL_MS);
+    }
+
+    // ── Init ─────────────────────────────────────────────────────────
+    if (!SHEET_CSV_URL) {
+      envNotice.classList.add('visible');
+      emptyState.classList.add('hidden');
+      pollStatus.textContent = '⚠ URL 미설정';
+      pollStatus.className = 'poll-status error';
+    } else {
+      showEmpty('조 정보 대기 중… (10초 후 재시도)');
+      fetchAndRender().then(function() { startPoll(); });
+    }
+  </script>
+</body>
+</html>
