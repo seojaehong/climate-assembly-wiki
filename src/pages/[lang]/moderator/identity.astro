@@ -819,9 +819,10 @@ const groupsMeta = groupAssign.groups.map((g) => {
         const gid = parseInt(obj.group_id, 10);
         if (!gid || gid < 1 || gid > 15) continue;
         obj.group_id = gid;
-        // Parse photo_urls: comma-separated, convert to array of img URLs
+        // Parse photo_urls: split on comma OR newline (Google Form auto-fills
+        // multi-file Drive upload URLs with newline separator).
         obj.photo_urls = obj.photo_urls
-          ? obj.photo_urls.split(',')
+          ? obj.photo_urls.split(/[,\n\r]+/)
               .map(function(u) { return driveToImg(u.trim()); })
               .filter(function(u) { return u.length > 0; })
           : [];
