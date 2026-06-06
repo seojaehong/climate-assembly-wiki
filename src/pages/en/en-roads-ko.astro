@@ -1,0 +1,539 @@
+---
+/**
+ * /en/en-roads-ko/ — En-ROADS Korean Edition Volunteer Translation Project (English)
+ *
+ * Audience: CI Partnerships Manager, international media, collaborating organizations
+ * Purpose: Professional landing for pre-call review by Climate Interactive team
+ * Tone: Calm, evidence-based, "We propose / We commit to" framing
+ *
+ * Created: 2026-06-06 (Phase 3 mockup)
+ * Reference: src/pages/[lang]/index.astro layout patterns
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="En-ROADS Korean Edition — Volunteer Translation Initiative"
+  lang="en"
+  description="A volunteer-led initiative to create the first Korean localization of the En-ROADS climate simulator, in collaboration with Climate Interactive's public Weblate platform. Supporting Korea's 2026 Climate Citizens' Assembly."
+  alternateLangs={['ko', 'en']}
+  canonicalPath="/en/en-roads-ko"
+>
+
+  <!-- ================================================================
+       1. HERO
+       ================================================================ -->
+  <section
+    aria-label="Introduction"
+    class="w-full relative overflow-hidden"
+    style="background: var(--gradient-hero); padding-block: var(--section-py);"
+  >
+    <div
+      aria-hidden="true"
+      class="absolute -top-20 -right-20 w-80 h-80 rounded-full opacity-25 dark:opacity-15 blur-3xl pointer-events-none"
+      style="background: var(--gradient-accent);"
+    ></div>
+    <div
+      aria-hidden="true"
+      class="absolute -bottom-16 -left-16 w-64 h-64 rounded-full opacity-20 dark:opacity-10 blur-3xl pointer-events-none"
+      style="background: var(--gradient-highlight);"
+    ></div>
+
+    <div class="relative max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Status badge -->
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-6"
+        style="background: var(--color-accent-muted); color: var(--color-accent-hover);">
+        <span class="w-1.5 h-1.5 rounded-full animate-pulse" style="background: var(--color-accent);"></span>
+        Volunteer Translation Initiative &middot; Phase 1 Active
+      </div>
+
+      <!-- Title -->
+      <h1
+        class="font-semibold mb-4 max-w-3xl"
+        style="font-size: var(--size-display-1); letter-spacing: var(--tracking-snug); line-height: var(--leading-tight); color: var(--color-fg);"
+      >
+        En-ROADS Korean Edition<br>
+        <span style="color: var(--color-accent);">한국어판 (Korean Edition)</span>
+      </h1>
+
+      <!-- Subtitle -->
+      <p
+        class="mb-3 max-w-xl"
+        style="font-size: var(--size-display-3); line-height: var(--leading-relaxed); color: var(--color-fg-muted);"
+      >
+        2026 Korea Climate Citizens' Assembly — Volunteer Translation Project
+      </p>
+
+      <!-- Partnership note -->
+      <p class="mb-8 text-sm" style="color: var(--color-fg-muted);">
+        in partnership with{' '}
+        <a
+          href="https://www.climateinteractive.org"
+          target="_blank"
+          rel="noopener"
+          class="font-semibold"
+          style="color: var(--color-accent);"
+        >Climate Interactive</a>
+        &mdash; partnership discussions ongoing via official channels
+      </p>
+
+      <!-- CTAs -->
+      <div class="flex flex-wrap gap-3">
+        <a
+          href="https://www.climateinteractive.org/en-roads/"
+          target="_blank"
+          rel="noopener"
+          class="btn btn-primary"
+        >
+          Visit En-ROADS Official Site &rarr;
+        </a>
+        <a href="#contact" class="btn btn-outline">
+          Get in Touch
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================
+       2. WHY — 3 Cards
+       ================================================================ -->
+  <section
+    aria-label="Why this project"
+    style="padding-block: var(--section-py-sm); background: var(--color-bg-subtle);"
+  >
+    <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8">
+      <h2
+        class="font-semibold mb-2 text-center"
+        style="font-size: var(--size-display-2); letter-spacing: var(--tracking-snug); color: var(--color-fg);"
+      >
+        Why Korean, Why Now
+      </h2>
+      <p class="text-center mb-12 mx-auto" style="color: var(--color-fg-muted); max-width: 60ch;">
+        En-ROADS is used by governments and civil society in over 130 countries —
+        yet no Korean-language interface exists. We propose to change that.
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Card A -->
+        <article class="card-interactive p-6">
+          <div
+            class="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold mb-4"
+            style="background: var(--color-accent-subtle); color: var(--color-accent);"
+          >
+            01
+          </div>
+          <h3 class="font-semibold mb-2" style="font-size: var(--text-lg); color: var(--color-fg);">
+            World's First Korean En-ROADS
+          </h3>
+          <p style="color: var(--color-fg-muted); font-size: var(--text-sm); line-height: var(--leading-relaxed);">
+            We propose to deliver the first complete Korean localization of En-ROADS
+            through Climate Interactive's official Weblate platform,
+            opening the simulator to approximately 80 million Korean speakers globally.
+          </p>
+        </article>
+
+        <!-- Card B -->
+        <article class="card-interactive p-6">
+          <div
+            class="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold mb-4"
+            style="background: var(--color-accent-subtle); color: var(--color-accent);"
+          >
+            02
+          </div>
+          <h3 class="font-semibold mb-2" style="font-size: var(--text-lg); color: var(--color-fg);">
+            18 Levers &harr; 3 Assembly Tracks
+          </h3>
+          <p style="color: var(--color-fg-muted); font-size: var(--text-sm); line-height: var(--leading-relaxed);">
+            En-ROADS' 18 policy levers map directly to the three deliberation tracks
+            of Korea's 2026 Climate Citizens' Assembly: Energy, Transport, and Industry.
+            A Korean translation enables real-time policy simulation during plenary sessions.
+          </p>
+        </article>
+
+        <!-- Card C -->
+        <article class="card-interactive p-6">
+          <div
+            class="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold mb-4"
+            style="background: var(--color-accent-subtle); color: var(--color-accent);"
+          >
+            03
+          </div>
+          <h3 class="font-semibold mb-2" style="font-size: var(--text-lg); color: var(--color-fg);">
+            Native-Language Access for Citizens
+          </h3>
+          <p style="color: var(--color-fg-muted); font-size: var(--text-sm); line-height: var(--leading-relaxed);">
+            We commit to ensuring that 200 citizen participants can interact with
+            the simulator directly in Korean, removing the language barrier
+            that currently limits meaningful engagement with En-ROADS in Korea.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================
+       3. TIMELINE — 3-Phase Stepper
+       ================================================================ -->
+  <section
+    aria-label="Translation roadmap"
+    style="padding-block: var(--section-py-sm); background: var(--color-bg);"
+  >
+    <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8">
+      <h2
+        class="font-semibold mb-2 text-center"
+        style="font-size: var(--size-display-2); letter-spacing: var(--tracking-snug); color: var(--color-fg);"
+      >
+        Three-Phase Translation Roadmap
+      </h2>
+      <p class="text-center mb-12 mx-auto" style="color: var(--color-fg-muted); max-width: 60ch;">
+        Our timeline is aligned with the Citizens' Assembly session schedule
+        to ensure the Korean interface is available when it matters most.
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Phase 1 -->
+        <div class="card-interactive p-6 relative" style="border-color: var(--color-accent);">
+          <div class="flex items-center gap-3 mb-3">
+            <span
+              class="px-2 py-0.5 rounded text-xs font-bold"
+              style="background: var(--color-accent); color: var(--color-accent-fg);"
+            >PHASE 1 &middot; NOW</span>
+          </div>
+          <h3 class="font-semibold mb-1" style="font-size: var(--text-lg); color: var(--color-fg);">
+            Moderator Core Team
+          </h3>
+          <p class="text-xs mb-4" style="color: var(--color-fg-muted);">June &ndash; August 2026</p>
+          <p class="text-sm mb-4" style="color: var(--color-fg-muted); line-height: var(--leading-relaxed);">
+            A core team of 5&ndash;8 expert moderators produces the first-draft translation,
+            aligned with Ministry of Environment standard terminology and IPCC AR6 Korean glossary.
+          </p>
+          <div class="w-full rounded-full h-1.5" style="background: var(--color-border);">
+            <div class="h-1.5 rounded-full" style="width: 5%; background: var(--color-accent);"></div>
+          </div>
+          <p class="text-xs mt-1 text-right" style="color: var(--color-fg-muted);">5% complete</p>
+        </div>
+
+        <!-- Phase 2 -->
+        <div class="card-interactive p-6">
+          <div class="flex items-center gap-3 mb-3">
+            <span
+              class="px-2 py-0.5 rounded text-xs font-bold"
+              style="background: var(--color-border); color: var(--color-fg-muted);"
+            >PHASE 2</span>
+          </div>
+          <h3 class="font-semibold mb-1" style="font-size: var(--text-lg); color: var(--color-fg);">
+            Citizen Review Panel
+          </h3>
+          <p class="text-xs mb-4" style="color: var(--color-fg-muted);">September &ndash; October 2026</p>
+          <p class="text-sm mb-4" style="color: var(--color-fg-muted); line-height: var(--leading-relaxed);">
+            A subset of Citizens' Assembly participants reviews terminology
+            in the live simulator environment. Field feedback is incorporated
+            to finalize all 18 lever labels.
+          </p>
+          <div class="w-full rounded-full h-1.5" style="background: var(--color-border);">
+            <div class="h-1.5 rounded-full" style="width: 0%; background: var(--color-accent);"></div>
+          </div>
+          <p class="text-xs mt-1 text-right" style="color: var(--color-fg-muted);">0% complete</p>
+        </div>
+
+        <!-- Phase 3 -->
+        <div class="card-interactive p-6">
+          <div class="flex items-center gap-3 mb-3">
+            <span
+              class="px-2 py-0.5 rounded text-xs font-bold"
+              style="background: var(--color-border); color: var(--color-fg-muted);"
+            >PHASE 3</span>
+          </div>
+          <h3 class="font-semibold mb-1" style="font-size: var(--text-lg); color: var(--color-fg);">
+            Official Launch &middot; JTBC
+          </h3>
+          <p class="text-xs mb-4" style="color: var(--color-fg-muted);">November 2026</p>
+          <p class="text-sm mb-4" style="color: var(--color-fg-muted); line-height: var(--leading-relaxed);">
+            Korean-language En-ROADS goes live on the official Climate Interactive platform.
+            Public launch via JTBC broadcast partnership and press distribution.
+          </p>
+          <div class="w-full rounded-full h-1.5" style="background: var(--color-border);">
+            <div class="h-1.5 rounded-full" style="width: 0%; background: var(--color-accent);"></div>
+          </div>
+          <p class="text-xs mt-1 text-right" style="color: var(--color-fg-muted);">0% complete</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================
+       4. TEAM
+       ================================================================ -->
+  <section
+    aria-label="Translation team"
+    style="padding-block: var(--section-py-sm); background: var(--color-bg-subtle);"
+  >
+    <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8">
+      <h2
+        class="font-semibold mb-2 text-center"
+        style="font-size: var(--size-display-2); letter-spacing: var(--tracking-snug); color: var(--color-fg);"
+      >
+        Moderator Core Team
+      </h2>
+      <p class="text-center mb-12 mx-auto" style="color: var(--color-fg-muted); max-width: 60ch;">
+        Recruiting 5&ndash;8 team members. We welcome contributors with backgrounds
+        in climate policy, energy, linguistics, or translation.
+      </p>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+
+        <!-- Lead card -->
+        <div class="card-interactive p-5 flex flex-col items-center text-center" style="border-color: var(--color-accent);">
+          <div
+            class="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold mb-3"
+            style="background: var(--color-accent); color: var(--color-accent-fg);"
+          >
+            JS
+          </div>
+          <p class="font-semibold text-sm" style="color: var(--color-fg);">Jaehong Seo</p>
+          <p class="text-xs mt-0.5" style="color: var(--color-accent);">Lead &middot; Moderator</p>
+        </div>
+
+        <!-- Open slots -->
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div class="card-interactive p-5 flex flex-col items-center text-center">
+            <div
+              class="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold mb-3"
+              style="background: var(--color-border); color: var(--color-fg-muted);"
+            >
+              ?
+            </div>
+            <p class="font-semibold text-sm" style="color: var(--color-fg-muted);">Open Seat</p>
+            <p class="text-xs mt-0.5" style="color: var(--color-fg-subtle);">Slot {i + 2} of 8</p>
+          </div>
+        ))}
+      </div>
+
+      <div class="text-center mt-8">
+        <a href="#contact" class="btn btn-outline">Apply to Join the Team</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================
+       5. GLOSSARY PREVIEW — 18 Levers
+       ================================================================ -->
+  <section
+    aria-label="Glossary preview"
+    style="padding-block: var(--section-py-sm); background: var(--color-bg);"
+  >
+    <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8">
+      <h2
+        class="font-semibold mb-2"
+        style="font-size: var(--size-display-2); letter-spacing: var(--tracking-snug); color: var(--color-fg);"
+      >
+        Glossary Preview
+      </h2>
+      <p class="mb-8" style="color: var(--color-fg-muted); max-width: 65ch;">
+        English-to-Korean terminology for En-ROADS' 18 policy levers.
+        All translations are aligned with Ministry of Environment standard terminology
+        and IPCC AR6 Korean glossary, as specified in our translation methodology.
+      </p>
+
+      <div style="border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden;">
+        <table class="w-full text-sm" style="border-collapse: collapse;">
+          <thead>
+            <tr style="background: var(--color-bg-subtle);">
+              <th class="text-left px-5 py-3 font-semibold" style="color: var(--color-fg); border-bottom: 1px solid var(--color-border);">
+                En-ROADS (English)
+              </th>
+              <th class="text-left px-5 py-3 font-semibold" style="color: var(--color-fg); border-bottom: 1px solid var(--color-border);">
+                Korean Translation (한국어)
+              </th>
+              <th class="text-left px-5 py-3 font-semibold hidden sm:table-cell" style="color: var(--color-fg-muted); border-bottom: 1px solid var(--color-border);">
+                Reference Standard
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              { en: 'Renewables', ko: '재생에너지', src: 'Ministry of Environment / MOTIE' },
+              { en: 'Electrification', ko: '전기화', src: 'IPCC AR6 KR Glossary' },
+              { en: 'Methane', ko: '메탄', src: 'KMA / Ministry of Environment' },
+              { en: 'Carbon Price', ko: '탄소가격', src: 'Ministry of Environment Carbon Neutrality Glossary' },
+              { en: 'Nuclear', ko: '원자력', src: 'Ministry of Trade, Industry and Energy' },
+              { en: 'Energy Efficiency', ko: '에너지 효율', src: 'IPCC AR6 KR Glossary' },
+              { en: 'Forests', ko: '산림', src: 'Korea Forest Service' },
+              { en: 'Carbon Removal', ko: '탄소 제거', src: 'IPCC AR6 KR Glossary' },
+            ].map((row, i) => (
+              <tr style={`background: ${i % 2 === 0 ? 'var(--color-bg)' : 'var(--color-bg-subtle)'};`}>
+                <td class="px-5 py-3" style="color: var(--color-fg); font-weight: 500; border-bottom: 1px solid var(--color-border);">
+                  {row.en}
+                </td>
+                <td class="px-5 py-3" style="color: var(--color-accent); font-weight: 600; border-bottom: 1px solid var(--color-border);">
+                  {row.ko}
+                </td>
+                <td class="px-5 py-3 hidden sm:table-cell" style="color: var(--color-fg-muted); font-size: var(--text-xs); border-bottom: 1px solid var(--color-border);">
+                  {row.src}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-3 text-xs" style="color: var(--color-fg-muted);">
+        Full glossary v0.1 in progress &mdash; all 18 lever labels under translation
+      </p>
+    </div>
+  </section>
+
+  <!-- ================================================================
+       6. CI PARTNERSHIP STATUS — Milestone Timeline
+       ================================================================ -->
+  <section
+    aria-label="CI Partnership status"
+    style="padding-block: var(--section-py-sm); background: var(--color-bg-subtle);"
+  >
+    <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8">
+      <h2
+        class="font-semibold mb-2"
+        style="font-size: var(--size-display-2); letter-spacing: var(--tracking-snug); color: var(--color-fg);"
+      >
+        Climate Interactive Partnership Status
+      </h2>
+      <p class="mb-10" style="color: var(--color-fg-muted); max-width: 65ch;">
+        We are committed to full transparency in our partnership outreach.
+        All activities are conducted through official Climate Interactive channels.
+      </p>
+
+      <div class="flex flex-col gap-4 max-w-2xl">
+        {[
+          { date: '2026-05-31', label: 'Outreach Sent', desc: 'Initial partnership proposal submitted to CI Partnerships team', status: 'Complete', icon: '✅' },
+          { date: '2026-06-06', label: 'CI Reply Received', desc: 'First response received from Climate Interactive team', status: 'Complete', icon: '✅' },
+          { date: 'TBD', label: 'Partnerships Call', desc: 'Video call with CI Partnerships Manager to align on collaboration model', status: 'Pending', icon: '⏳' },
+          { date: 'November 2026', label: 'Korean Launch', desc: 'Official Korean-language release on Climate Interactive platform', status: 'Target', icon: '🎯' },
+        ].map((item) => (
+          <div class="flex items-start gap-4">
+            <div class="text-xl w-8 flex-shrink-0 mt-0.5" aria-hidden="true">{item.icon}</div>
+            <div class="flex-1 card-interactive p-4">
+              <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
+                <h3 class="font-semibold text-sm" style="color: var(--color-fg);">{item.label}</h3>
+                <span
+                  class="text-xs px-2 py-0.5 rounded-full font-medium"
+                  style={`background: ${item.status === 'Complete' ? 'var(--color-success-bg)' : item.status === 'Pending' ? 'var(--color-warn-bg)' : 'var(--color-info-bg)'}; color: ${item.status === 'Complete' ? 'var(--color-success)' : item.status === 'Pending' ? 'var(--color-warn-fg)' : 'var(--color-info)'};`}
+                >
+                  {item.status}
+                </span>
+              </div>
+              <p class="text-xs mb-1" style="color: var(--color-fg-muted);">{item.date}</p>
+              <p class="text-sm" style="color: var(--color-fg-muted);">{item.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================
+       7. PRESS KIT
+       ================================================================ -->
+  <section
+    aria-label="Press kit"
+    style="padding-block: var(--section-py-sm); background: var(--color-bg);"
+  >
+    <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8">
+      <h2
+        class="font-semibold mb-2"
+        style="font-size: var(--size-display-2); letter-spacing: var(--tracking-snug); color: var(--color-fg);"
+      >
+        Press Kit
+      </h2>
+      <p class="mb-8" style="color: var(--color-fg-muted); max-width: 65ch;">
+        Resources for media and partner organizations. Files are in preparation
+        and will be available for direct download from this page upon release.
+      </p>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        {[
+          { title: 'Korean Fact Sheet', desc: 'One-page summary: project scope, translation methodology, and expected impact (Korean)', lang: 'KO', ready: false },
+          { title: 'English Brief', desc: 'Project overview, partnership model, timeline, and team credentials for CI and media', lang: 'EN', ready: false },
+          { title: '9th Session Timeline', desc: 'Official schedule for the 9th Citizens\' Assembly session and En-ROADS integration plan', lang: 'KO/EN', ready: false },
+        ].map((item) => (
+          <div class="card-interactive p-6 flex flex-col">
+            <div class="flex items-center justify-between mb-3">
+              <span
+                class="text-xs font-bold px-2 py-0.5 rounded"
+                style="background: var(--color-accent-subtle); color: var(--color-accent);"
+              >{item.lang}</span>
+              <span class="text-xs" style="color: var(--color-fg-muted);">In preparation</span>
+            </div>
+            <h3 class="font-semibold mb-2 text-sm" style="color: var(--color-fg);">{item.title}</h3>
+            <p class="text-xs mb-4 flex-1" style="color: var(--color-fg-muted); line-height: var(--leading-relaxed);">{item.desc}</p>
+            <a
+              href="#"
+              class="btn btn-outline text-xs opacity-50 cursor-not-allowed pointer-events-none"
+              aria-disabled="true"
+              tabindex="-1"
+            >
+              Download (Coming soon)
+            </a>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================
+       8. CONTACT
+       ================================================================ -->
+  <section
+    id="contact"
+    aria-label="Contact"
+    style="padding-block: var(--section-py-sm); background: var(--gradient-accent);"
+  >
+    <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <h2
+        class="font-semibold mb-4"
+        style="font-size: var(--size-display-2); letter-spacing: var(--tracking-snug); color: #ffffff;"
+      >
+        Get in Touch
+      </h2>
+      <p class="mb-6 mx-auto" style="color: rgba(255,255,255,0.85); max-width: 55ch; line-height: var(--leading-relaxed);">
+        We welcome inquiries from Climate Interactive partners, media,
+        and anyone interested in joining the translation team.
+      </p>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <a
+          href="mailto:iceamericano9@gmail.com"
+          class="btn"
+          style="background: rgba(255,255,255,0.15); color: #ffffff; border: 1.5px solid rgba(255,255,255,0.4); backdrop-filter: blur(4px);"
+        >
+          iceamericano9@gmail.com
+        </a>
+        <div class="text-sm" style="color: rgba(255,255,255,0.7);">
+          Permanent URL:
+          <a
+            href="https://climate-assembly.org/en/en-roads-ko"
+            target="_blank"
+            rel="noopener"
+            style="color: #ffffff; text-decoration: underline; text-underline-offset: 3px;"
+          >
+            climate-assembly.org/en/en-roads-ko
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================
+       9. Legal disclaimer
+       ================================================================ -->
+  <div
+    style="padding-block: var(--space-6); background: var(--color-bg-subtle); border-top: 1px solid var(--color-border);"
+  >
+    <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8">
+      <p class="text-xs text-center" style="color: var(--color-fg-muted); max-width: 80ch; margin-inline: auto; line-height: var(--leading-relaxed);">
+        This volunteer initiative is not officially endorsed by Climate Interactive.
+        Translation work is conducted through Climate Interactive's public Weblate platform.
+      </p>
+    </div>
+  </div>
+
+</BaseLayout>

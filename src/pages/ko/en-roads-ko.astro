@@ -1,0 +1,531 @@
+---
+/**
+ * /ko/en-roads-ko/ — En-ROADS 한국어판 자원봉사 번역 프로젝트 랜딩 페이지 (한국어)
+ *
+ * 대상: 모더레이터, 시민참여단, 언론, 협력기관
+ * 목적: 번역 프로젝트 참여 동기·투명성·진행 현황 공개
+ * CI 파트너십 현황 및 팀 모집 안내 포함
+ *
+ * 생성: 2026-06-06 (Phase 3 mockup)
+ * 참고: src/pages/[lang]/index.astro 레이아웃 패턴
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="En-ROADS 한국어판 — 자원봉사 번역 프로젝트"
+  lang="ko"
+  description="En-ROADS 기후 시뮬레이터 최초 한국어 번역 프로젝트. Climate Interactive와 협력하여 2026 기후시민회의 모더레이터·시민을 위한 모국어 접근 환경을 구축합니다."
+  alternateLangs={['ko', 'en']}
+  canonicalPath="/ko/en-roads-ko"
+>
+
+  <!-- ================================================================
+       1. HERO
+       ================================================================ -->
+  <section
+    aria-label="소개"
+    class="w-full relative overflow-hidden"
+    style="background: var(--gradient-hero); padding-block: var(--section-py);"
+  >
+    <div
+      aria-hidden="true"
+      class="absolute -top-20 -right-20 w-80 h-80 rounded-full opacity-25 dark:opacity-15 blur-3xl pointer-events-none"
+      style="background: var(--gradient-accent);"
+    ></div>
+    <div
+      aria-hidden="true"
+      class="absolute -bottom-16 -left-16 w-64 h-64 rounded-full opacity-20 dark:opacity-10 blur-3xl pointer-events-none"
+      style="background: var(--gradient-highlight);"
+    ></div>
+
+    <div class="relative max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- 상태 배지 -->
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-6"
+        style="background: var(--color-accent-muted); color: var(--color-accent-hover);">
+        <span class="w-1.5 h-1.5 rounded-full animate-pulse" style="background: var(--color-accent);"></span>
+        자원봉사 번역 프로젝트 · Phase 1 진행 중
+      </div>
+
+      <!-- 제목 -->
+      <h1
+        class="font-semibold mb-4 max-w-3xl"
+        style="font-size: var(--size-display-1); letter-spacing: var(--tracking-korean); line-height: var(--leading-tight); color: var(--color-fg);"
+      >
+        En-ROADS 한국어판<br>
+        <span style="color: var(--color-accent);">Korean Edition</span>
+      </h1>
+
+      <!-- 부제 -->
+      <p
+        class="mb-3 max-w-xl"
+        style="font-size: var(--size-display-3); line-height: var(--leading-relaxed); color: var(--color-fg-muted);"
+      >
+        2026 기후시민회의 자원봉사 번역 프로젝트
+      </p>
+
+      <!-- CI 파트너십 문구 -->
+      <p class="mb-8 text-sm" style="color: var(--color-fg-muted);">
+        in partnership with
+        <a
+          href="https://www.climateinteractive.org"
+          target="_blank"
+          rel="noopener"
+          class="font-semibold"
+          style="color: var(--color-accent);"
+        >Climate Interactive</a>
+        (CI Partnerships 채널 통해 협의 중)
+      </p>
+
+      <!-- CTA 버튼 -->
+      <div class="flex flex-wrap gap-3">
+        <a
+          href="https://www.climateinteractive.org/en-roads/"
+          target="_blank"
+          rel="noopener"
+          class="btn btn-primary"
+        >
+          En-ROADS 공식 사이트 방문 &rarr;
+        </a>
+        <a href="#contact" class="btn btn-outline">
+          번역팀 합류 문의
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================
+       2. WHY — 3 카드
+       ================================================================ -->
+  <section
+    aria-label="왜 이 프로젝트인가"
+    style="padding-block: var(--section-py-sm); background: var(--color-bg-subtle);"
+  >
+    <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8">
+      <h2
+        class="font-semibold mb-2 text-center"
+        style="font-size: var(--size-display-2); letter-spacing: var(--tracking-korean); color: var(--color-fg);"
+      >
+        왜 지금, 왜 한국어인가
+      </h2>
+      <p class="text-center mb-12 mx-auto" style="color: var(--color-fg-muted); max-width: 60ch;">
+        세계 130여 개국 정부·시민사회가 사용하는 En-ROADS — 아직 한국어 인터페이스가 없습니다.
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- 카드 A: 최초 한국어 -->
+        <article class="card-interactive p-6">
+          <div
+            class="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold mb-4"
+            style="background: var(--color-accent-subtle); color: var(--color-accent);"
+          >
+            01
+          </div>
+          <h3 class="font-semibold mb-2" style="font-size: var(--text-lg); color: var(--color-fg);">
+            글로벌 최초 한국어 En-ROADS
+          </h3>
+          <p style="color: var(--color-fg-muted); font-size: var(--text-sm); line-height: var(--leading-relaxed);">
+            Climate Interactive의 공식 Weblate 플랫폼을 통해 진행하는 첫 번째 한국어 로컬라이제이션입니다.
+            번역 완료 시 전 세계 한국어 사용자 약 8,000만 명에게 기후 시뮬레이션 도구가 열립니다.
+          </p>
+        </article>
+
+        <!-- 카드 B: 3 트랙 정합 -->
+        <article class="card-interactive p-6">
+          <div
+            class="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold mb-4"
+            style="background: var(--color-accent-subtle); color: var(--color-accent);"
+          >
+            02
+          </div>
+          <h3 class="font-semibold mb-2" style="font-size: var(--text-lg); color: var(--color-fg);">
+            18개 레버 ↔ 기후시민회의 3개 트랙 정합
+          </h3>
+          <p style="color: var(--color-fg-muted); font-size: var(--text-sm); line-height: var(--leading-relaxed);">
+            En-ROADS의 18개 정책 레버는 2026 기후시민회의 에너지·교통·산업 3개 트랙과 직접 대응합니다.
+            한국어 번역은 숙의 현장에서 즉시 활용 가능한 정책 언어를 제공합니다.
+          </p>
+        </article>
+
+        <!-- 카드 C: 모국어 진입 -->
+        <article class="card-interactive p-6">
+          <div
+            class="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold mb-4"
+            style="background: var(--color-accent-subtle); color: var(--color-accent);"
+          >
+            03
+          </div>
+          <h3 class="font-semibold mb-2" style="font-size: var(--text-lg); color: var(--color-fg);">
+            시민·모더레이터 모국어 접근
+          </h3>
+          <p style="color: var(--color-fg-muted); font-size: var(--text-sm); line-height: var(--leading-relaxed);">
+            200명 시민참여단이 영문 인터페이스 장벽 없이 시뮬레이터를 직접 조작하고
+            정책 결과를 이해할 수 있도록 합니다. 모더레이터도 한국어로 시나리오를 안내할 수 있습니다.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================
+       3. TIMELINE — 3-Phase Stepper
+       ================================================================ -->
+  <section
+    aria-label="번역 로드맵"
+    style="padding-block: var(--section-py-sm); background: var(--color-bg);"
+  >
+    <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8">
+      <h2
+        class="font-semibold mb-2 text-center"
+        style="font-size: var(--size-display-2); letter-spacing: var(--tracking-korean); color: var(--color-fg);"
+      >
+        3단계 번역 로드맵
+      </h2>
+      <p class="text-center mb-12 mx-auto" style="color: var(--color-fg-muted); max-width: 60ch;">
+        기후시민회의 일정에 맞추어 단계적으로 번역을 완성합니다.
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Phase 1 -->
+        <div class="card-interactive p-6 relative" style="border-color: var(--color-accent);">
+          <div class="flex items-center gap-3 mb-3">
+            <span
+              class="px-2 py-0.5 rounded text-xs font-bold"
+              style="background: var(--color-accent); color: var(--color-accent-fg);"
+            >PHASE 1 · 현재</span>
+          </div>
+          <h3 class="font-semibold mb-1" style="font-size: var(--text-lg); color: var(--color-fg);">
+            모더레이터 코어팀
+          </h3>
+          <p class="text-xs mb-4" style="color: var(--color-fg-muted);">2026년 6–8월</p>
+          <p class="text-sm mb-4" style="color: var(--color-fg-muted); line-height: var(--leading-relaxed);">
+            5~8명 코어팀이 1차 번역 초안을 작성하고 환경부 표준 용어와 정합성을 검토합니다.
+          </p>
+          <!-- Progress bar -->
+          <div class="w-full rounded-full h-1.5" style="background: var(--color-border);">
+            <div class="h-1.5 rounded-full" style="width: 5%; background: var(--color-accent);"></div>
+          </div>
+          <p class="text-xs mt-1 text-right" style="color: var(--color-fg-muted);">5%</p>
+        </div>
+
+        <!-- Phase 2 -->
+        <div class="card-interactive p-6">
+          <div class="flex items-center gap-3 mb-3">
+            <span
+              class="px-2 py-0.5 rounded text-xs font-bold"
+              style="background: var(--color-border); color: var(--color-fg-muted);"
+            >PHASE 2</span>
+          </div>
+          <h3 class="font-semibold mb-1" style="font-size: var(--text-lg); color: var(--color-fg);">
+            시민 검수단 참여
+          </h3>
+          <p class="text-xs mb-4" style="color: var(--color-fg-muted);">2026년 9–10월</p>
+          <p class="text-sm mb-4" style="color: var(--color-fg-muted); line-height: var(--leading-relaxed);">
+            기후시민회의 참여단 일부가 실제 시뮬레이터 환경에서 번역 용어를 검수합니다.
+            현장 피드백을 반영하여 용어를 최종 확정합니다.
+          </p>
+          <div class="w-full rounded-full h-1.5" style="background: var(--color-border);">
+            <div class="h-1.5 rounded-full" style="width: 0%; background: var(--color-accent);"></div>
+          </div>
+          <p class="text-xs mt-1 text-right" style="color: var(--color-fg-muted);">0%</p>
+        </div>
+
+        <!-- Phase 3 -->
+        <div class="card-interactive p-6">
+          <div class="flex items-center gap-3 mb-3">
+            <span
+              class="px-2 py-0.5 rounded text-xs font-bold"
+              style="background: var(--color-border); color: var(--color-fg-muted);"
+            >PHASE 3</span>
+          </div>
+          <h3 class="font-semibold mb-1" style="font-size: var(--text-lg); color: var(--color-fg);">
+            정식 출시 · JTBC
+          </h3>
+          <p class="text-xs mb-4" style="color: var(--color-fg-muted);">2026년 11월</p>
+          <p class="text-sm mb-4" style="color: var(--color-fg-muted); line-height: var(--leading-relaxed);">
+            Climate Interactive 공식 플랫폼에 한국어판 출시.
+            JTBC 연계 방송을 통한 대중 공개 및 언론 배포.
+          </p>
+          <div class="w-full rounded-full h-1.5" style="background: var(--color-border);">
+            <div class="h-1.5 rounded-full" style="width: 0%; background: var(--color-accent);"></div>
+          </div>
+          <p class="text-xs mt-1 text-right" style="color: var(--color-fg-muted);">0%</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================
+       4. TEAM
+       ================================================================ -->
+  <section
+    aria-label="번역팀"
+    style="padding-block: var(--section-py-sm); background: var(--color-bg-subtle);"
+  >
+    <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8">
+      <h2
+        class="font-semibold mb-2 text-center"
+        style="font-size: var(--size-display-2); letter-spacing: var(--tracking-korean); color: var(--color-fg);"
+      >
+        모더레이터 코어팀
+      </h2>
+      <p class="text-center mb-12 mx-auto" style="color: var(--color-fg-muted); max-width: 60ch;">
+        모더레이터 코어팀 모집 중 (5~8명 목표). 기후·에너지·번역 경험자 환영합니다.
+      </p>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+
+        <!-- 첫 번째 카드: 리드 -->
+        <div class="card-interactive p-5 flex flex-col items-center text-center" style="border-color: var(--color-accent);">
+          <div
+            class="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold mb-3"
+            style="background: var(--color-accent); color: var(--color-accent-fg);"
+          >
+            JS
+          </div>
+          <p class="font-semibold text-sm" style="color: var(--color-fg);">Jaehong Seo</p>
+          <p class="text-xs mt-0.5" style="color: var(--color-accent);">Lead · 모더레이터</p>
+        </div>
+
+        <!-- 익명 카드 7개 -->
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div class="card-interactive p-5 flex flex-col items-center text-center">
+            <div
+              class="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold mb-3"
+              style="background: var(--color-border); color: var(--color-fg-muted);"
+            >
+              ?
+            </div>
+            <p class="font-semibold text-sm" style="color: var(--color-fg-muted);">모집 중</p>
+            <p class="text-xs mt-0.5" style="color: var(--color-fg-subtle);">자리 {i + 2}/8</p>
+          </div>
+        ))}
+      </div>
+
+      <div class="text-center mt-8">
+        <a href="#contact" class="btn btn-outline">팀 합류 신청하기</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================
+       5. GLOSSARY PREVIEW — 18 Levers 용어 표
+       ================================================================ -->
+  <section
+    aria-label="용어집 미리보기"
+    style="padding-block: var(--section-py-sm); background: var(--color-bg);"
+  >
+    <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8">
+      <h2
+        class="font-semibold mb-2"
+        style="font-size: var(--size-display-2); letter-spacing: var(--tracking-korean); color: var(--color-fg);"
+      >
+        용어집 미리보기
+      </h2>
+      <p class="mb-8" style="color: var(--color-fg-muted); max-width: 65ch;">
+        En-ROADS 18개 레버의 영문→한국어 번역어입니다.
+        환경부 표준 용어 및 기후변화에 관한 정부간 협의체(IPCC) AR6 번역어를 기준으로 정렬합니다.
+      </p>
+
+      <div style="border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden;">
+        <table class="w-full text-sm" style="border-collapse: collapse;">
+          <thead>
+            <tr style="background: var(--color-bg-subtle);">
+              <th class="text-left px-5 py-3 font-semibold" style="color: var(--color-fg); border-bottom: 1px solid var(--color-border);">
+                En-ROADS (영문)
+              </th>
+              <th class="text-left px-5 py-3 font-semibold" style="color: var(--color-fg); border-bottom: 1px solid var(--color-border);">
+                한국어 번역어
+              </th>
+              <th class="text-left px-5 py-3 font-semibold hidden sm:table-cell" style="color: var(--color-fg-muted); border-bottom: 1px solid var(--color-border);">
+                출처 기준
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              { en: 'Renewables', ko: '재생에너지', src: '환경부·산업부 표준어' },
+              { en: 'Electrification', ko: '전기화', src: 'IPCC AR6 번역어' },
+              { en: 'Methane', ko: '메탄', src: '기상청·환경부 표준어' },
+              { en: 'Carbon Price', ko: '탄소가격', src: '환경부 탄소중립 용어집' },
+              { en: 'Nuclear', ko: '원자력', src: '산업통상자원부 표준어' },
+              { en: 'Energy Efficiency', ko: '에너지 효율', src: 'IPCC AR6 번역어' },
+              { en: 'Forests', ko: '산림', src: '산림청 표준어' },
+              { en: 'Carbon Removal', ko: '탄소 제거', src: 'IPCC AR6 번역어' },
+            ].map((row, i) => (
+              <tr style={`background: ${i % 2 === 0 ? 'var(--color-bg)' : 'var(--color-bg-subtle)'};`}>
+                <td class="px-5 py-3" style="color: var(--color-fg); font-weight: 500; border-bottom: 1px solid var(--color-border);">
+                  {row.en}
+                </td>
+                <td class="px-5 py-3" style="color: var(--color-accent); font-weight: 600; border-bottom: 1px solid var(--color-border);">
+                  {row.ko}
+                </td>
+                <td class="px-5 py-3 hidden sm:table-cell" style="color: var(--color-fg-muted); font-size: var(--text-xs); border-bottom: 1px solid var(--color-border);">
+                  {row.src}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-3 text-xs" style="color: var(--color-fg-muted);">
+        Full glossary v0.1 in progress — 18개 전체 레버 용어집 작성 중
+      </p>
+    </div>
+  </section>
+
+  <!-- ================================================================
+       6. CI PARTNERSHIP STATUS — 마일스톤 타임라인
+       ================================================================ -->
+  <section
+    aria-label="CI 파트너십 현황"
+    style="padding-block: var(--section-py-sm); background: var(--color-bg-subtle);"
+  >
+    <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8">
+      <h2
+        class="font-semibold mb-2"
+        style="font-size: var(--size-display-2); letter-spacing: var(--tracking-korean); color: var(--color-fg);"
+      >
+        Climate Interactive 파트너십 현황
+      </h2>
+      <p class="mb-10" style="color: var(--color-fg-muted); max-width: 65ch;">
+        이 번역 프로젝트는 Climate Interactive의 공식 채널을 통해 투명하게 협의됩니다.
+        현재 진행 상황을 실시간으로 공개합니다.
+      </p>
+
+      <div class="flex flex-col gap-4 max-w-2xl">
+        {[
+          { date: '2026-05-31', label: 'Outreach Sent', desc: 'CI Partnerships 팀에 첫 협력 제안서 발송', status: '완료', icon: '✅' },
+          { date: '2026-06-06', label: 'CI Reply Received', desc: 'Climate Interactive 팀의 첫 회신 수령', status: '완료', icon: '✅' },
+          { date: '미정', label: 'Partnerships Call', desc: 'CI Partnerships Manager와 화상 미팅', status: '대기', icon: '⏳' },
+          { date: '2026-11', label: 'Korean Launch', desc: '공식 플랫폼 한국어판 출시', status: '목표', icon: '🎯' },
+        ].map((item) => (
+          <div class="flex items-start gap-4">
+            <div class="text-xl w-8 flex-shrink-0 mt-0.5" aria-hidden="true">{item.icon}</div>
+            <div class="flex-1 card-interactive p-4">
+              <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
+                <h3 class="font-semibold text-sm" style="color: var(--color-fg);">{item.label}</h3>
+                <span
+                  class="text-xs px-2 py-0.5 rounded-full font-medium"
+                  style={`background: ${item.status === '완료' ? 'var(--color-success-bg)' : item.status === '대기' ? 'var(--color-warn-bg)' : 'var(--color-info-bg)'}; color: ${item.status === '완료' ? 'var(--color-success)' : item.status === '대기' ? 'var(--color-warn-fg)' : 'var(--color-info)'};`}
+                >
+                  {item.status}
+                </span>
+              </div>
+              <p class="text-xs mb-1" style="color: var(--color-fg-muted);">{item.date}</p>
+              <p class="text-sm" style="color: var(--color-fg-muted);">{item.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================
+       7. PRESS KIT
+       ================================================================ -->
+  <section
+    aria-label="프레스 킷"
+    style="padding-block: var(--section-py-sm); background: var(--color-bg);"
+  >
+    <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8">
+      <h2
+        class="font-semibold mb-2"
+        style="font-size: var(--size-display-2); letter-spacing: var(--tracking-korean); color: var(--color-fg);"
+      >
+        프레스 킷
+      </h2>
+      <p class="mb-8" style="color: var(--color-fg-muted); max-width: 65ch;">
+        언론 및 협력기관을 위한 자료입니다. 파일 준비 중 — 출시 시 이 페이지에서 바로 다운로드 가능합니다.
+      </p>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        {[
+          { title: '한국어 팩트시트', desc: '프로젝트 개요·번역 범위·기대 효과 1페이지 요약', lang: 'KO', ready: false },
+          { title: 'English Brief', desc: 'Project overview, partnership model, and timeline for CI and media', lang: 'EN', ready: false },
+          { title: '9차 기후시민회의 일정', desc: '2026년 9차 시민회의 공식 일정 및 En-ROADS 활용 계획', lang: 'KO', ready: false },
+        ].map((item) => (
+          <div class="card-interactive p-6 flex flex-col">
+            <div class="flex items-center justify-between mb-3">
+              <span
+                class="text-xs font-bold px-2 py-0.5 rounded"
+                style="background: var(--color-accent-subtle); color: var(--color-accent);"
+              >{item.lang}</span>
+              <span class="text-xs" style="color: var(--color-fg-muted);">준비 중</span>
+            </div>
+            <h3 class="font-semibold mb-2 text-sm" style="color: var(--color-fg);">{item.title}</h3>
+            <p class="text-xs mb-4 flex-1" style="color: var(--color-fg-muted); line-height: var(--leading-relaxed);">{item.desc}</p>
+            <a
+              href="#"
+              class="btn btn-outline text-xs opacity-50 cursor-not-allowed pointer-events-none"
+              aria-disabled="true"
+              tabindex="-1"
+            >
+              다운로드 (준비 중)
+            </a>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================
+       8. CONTACT
+       ================================================================ -->
+  <section
+    id="contact"
+    aria-label="연락처"
+    style="padding-block: var(--section-py-sm); background: var(--gradient-accent);"
+  >
+    <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <h2
+        class="font-semibold mb-4"
+        style="font-size: var(--size-display-2); letter-spacing: var(--tracking-korean); color: #ffffff;"
+      >
+        참여 및 문의
+      </h2>
+      <p class="mb-6 mx-auto" style="color: rgba(255,255,255,0.85); max-width: 55ch; line-height: var(--leading-relaxed);">
+        번역팀 합류, 언론 취재, 협력 제안 등 모든 문의를 환영합니다.
+      </p>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <a
+          href="mailto:iceamericano9@gmail.com"
+          class="btn"
+          style="background: rgba(255,255,255,0.15); color: #ffffff; border: 1.5px solid rgba(255,255,255,0.4); backdrop-filter: blur(4px);"
+        >
+          iceamericano9@gmail.com
+        </a>
+        <div class="text-sm" style="color: rgba(255,255,255,0.7);">
+          영구 URL:
+          <a
+            href="https://climate-assembly.org/ko/en-roads-ko"
+            target="_blank"
+            rel="noopener"
+            style="color: #ffffff; text-decoration: underline; text-underline-offset: 3px;"
+          >
+            climate-assembly.org/ko/en-roads-ko
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================
+       9. 법적 고지 (푸터 카피)
+       ================================================================ -->
+  <div
+    style="padding-block: var(--space-6); background: var(--color-bg-subtle); border-top: 1px solid var(--color-border);"
+  >
+    <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8">
+      <p class="text-xs text-center" style="color: var(--color-fg-muted); max-width: 80ch; margin-inline: auto; line-height: var(--leading-relaxed);">
+        This volunteer initiative is not officially endorsed by Climate Interactive.
+        Translation work is conducted through Climate Interactive's public Weblate platform.
+        이 자원봉사 프로젝트는 Climate Interactive의 공식 보증을 받은 것이 아닙니다.
+        번역 작업은 Climate Interactive의 공개 Weblate 플랫폼을 통해 진행됩니다.
+      </p>
+    </div>
+  </div>
+
+</BaseLayout>
