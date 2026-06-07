@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>조 정체성 슬라이드쇼 (시뮬) — 2026 기후시민회의</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a0e14;
+    --ink: #ffffff;
+    --muted: rgba(255,255,255,0.65);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg); color: var(--ink);
+    font-family: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    height: 100vh; overflow: hidden;
+  }
+
+  .stage {
+    position: relative;
+    width: 100vw; height: 100vh;
+    overflow: hidden;
+  }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: grid; grid-template-columns: 1fr 1fr;
+    align-items: center;
+    opacity: 0; transition: opacity 1.2s ease;
+    padding: 80px 100px;
+    background: linear-gradient(135deg, var(--c1, #1a3a52) 0%, var(--c2, #0a1620) 100%);
+  }
+  .slide.active { opacity: 1; }
+
+  .left { position: relative; }
+  .group-num {
+    font-size: 320px; font-weight: 900;
+    line-height: 0.85; letter-spacing: -0.06em;
+    color: var(--accent, #56C2E4);
+    text-shadow: 0 0 60px rgba(86,194,228,0.4);
+    animation: numRise 1s 0.3s both ease;
+  }
+  .group-num small {
+    font-size: 90px;
+    color: rgba(255,255,255,0.7);
+    margin-left: 16px;
+    font-weight: 800;
+  }
+  @keyframes numRise {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .group-name {
+    font-size: 72px; font-weight: 900;
+    margin-top: 24px;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    animation: rise 1s 0.6s both ease;
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .group-caption {
+    font-size: 24px;
+    margin-top: 18px;
+    color: var(--muted);
+    font-weight: 500;
+    animation: rise 1s 0.85s both ease;
+  }
+  .group-meta {
+    margin-top: 36px;
+    display: flex; gap: 12px; flex-wrap: wrap;
+    animation: rise 1s 1.1s both ease;
+  }
+  .chip {
+    padding: 10px 20px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 999px;
+    font-size: 15px; font-weight: 700;
+    color: var(--ink);
+    backdrop-filter: blur(8px);
+  }
+  .chip.accent { background: var(--accent, #56C2E4); color: #06141a; border-color: transparent; }
+
+  .right { position: relative; height: 100%; padding-left: 40px; display: flex; align-items: center; justify-content: center; }
+  .photo-card {
+    width: 100%; max-width: 580px; aspect-ratio: 4/5;
+    border-radius: 32px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+    border: 1px solid rgba(255,255,255,0.08);
+    overflow: hidden; position: relative;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04) inset;
+    animation: kenBurns 6s ease-out infinite alternate, photoIn 1s 0.4s both;
+  }
+  @keyframes photoIn {
+    from { opacity: 0; transform: scale(0.94) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes kenBurns {
+    from { transform: scale(1) translate(0, 0); }
+    to { transform: scale(1.08) translate(-2%, -1%); }
+  }
+  .photo-placeholder {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 200px;
+    background: var(--photo-bg, linear-gradient(135deg, rgba(86,194,228,0.2), rgba(52,211,153,0.15)));
+  }
+
+  /* Top bar */
+  .topbar {
+    position: absolute; top: 40px; left: 100px; right: 100px;
+    display: flex; justify-content: space-between; align-items: center;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .brand {
+    font-size: 14px; font-weight: 800; letter-spacing: 0.2em;
+    color: rgba(255,255,255,0.55); text-transform: uppercase;
+  }
+  .progress-ring {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 14px; color: rgba(255,255,255,0.55);
+    font-weight: 700; letter-spacing: 0.06em;
+  }
+  .progress-dots {
+    display: flex; gap: 6px;
+  }
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    transition: background 0.4s;
+  }
+  .dot.on { background: #56C2E4; }
+  .dot.passed { background: rgba(86,194,228,0.45); }
+
+  /* Bottom progress bar */
+  .progress {
+    position: absolute; bottom: 40px; left: 100px; right: 100px;
+    height: 3px; background: rgba(255,255,255,0.08);
+    border-radius: 999px; overflow: hidden;
+    z-index: 10;
+  }
+  .progress-fill {
+    height: 100%; background: #56C2E4;
+    border-radius: 999px;
+    transition: width 0.5s linear;
+  }
+
+  /* Controls */
+  .controls {
+    position: absolute; bottom: 60px; right: 100px; z-index: 20;
+    display: flex; gap: 12px; align-items: center;
+  }
+  button {
+    background: rgba(255,255,255,0.08);
+    color: white; border: 1px solid rgba(255,255,255,0.15);
+    padding: 12px 24px; border-radius: 999px;
+    font-weight: 800; cursor: pointer; font-family: inherit;
+    backdrop-filter: blur(12px);
+  }
+  button:hover { background: rgba(255,255,255,0.15); }
+  audio { filter: invert(1) hue-rotate(180deg) brightness(0.9); }
+
+  /* Cover slide (slide 0) */
+  .cover {
+    grid-template-columns: 1fr !important;
+    text-align: center;
+    background: radial-gradient(ellipse at top, #1e3a52 0%, #0a0e14 70%) !important;
+  }
+  .cover .center {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 32px;
+  }
+  .cover h1 {
+    font-size: 92px; font-weight: 900; letter-spacing: -0.04em;
+    background: linear-gradient(135deg, #56C2E4, #34d399);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    line-height: 1.05;
+  }
+  .cover .kicker { font-size: 18px; font-weight: 800; letter-spacing: 0.25em; color: #56C2E4; text-transform: uppercase; }
+  .cover .sub { font-size: 26px; color: rgba(255,255,255,0.75); font-weight: 500; max-width: 800px; line-height: 1.5; }
+  .cover .meta { font-size: 16px; color: rgba(255,255,255,0.45); }
+
+  /* Closing slide */
+  .closing {
+    grid-template-columns: 1fr !important;
+    text-align: center;
+    background: radial-gradient(ellipse at bottom, #1e3a52 0%, #0a0e14 60%) !important;
+  }
+  .closing .center {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+  }
+  .closing h2 {
+    font-size: 80px; font-weight: 900; letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+  .closing .em { color: #56C2E4; }
+  .closing .stats { display: flex; gap: 60px; margin-top: 20px; }
+  .closing .stat .v { font-size: 72px; font-weight: 900; color: #56C2E4; line-height: 1; }
+  .closing .stat .l { font-size: 14px; color: rgba(255,255,255,0.55); margin-top: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage"></div>
+
+<audio id="audio" loop>
+  <source src="bgm.mp3" type="audio/mpeg" />
+</audio>
+
+<div class="controls">
+  <button id="play">▶ 재생</button>
+  <button id="prev">⟨</button>
+  <button id="next">⟩</button>
+</div>
+
+<script>
+const GROUPS = [
+  {id:1, name:'탄소중립 별들', emoji:'🌿', accent:'#56C2E4', c1:'#1a3a52', c2:'#0a1620', cap:'에너지전환 + 적응 균형', domains:['건강영향과 보건','기후금융','농축산임업','에너지전환','집중호우 대응']},
+  {id:2, name:'재생의 푸른 봄', emoji:'☀️', accent:'#34d399', c1:'#1a4233', c2:'#0a1a14', cap:'재생에너지 + 시민의식', domains:['재생에너지','시민참여','산업전환','에너지효율','정의로운 전환']},
+  {id:3, name:'자전거 페달 동맹', emoji:'🚴', accent:'#fbbf24', c1:'#3d2e1a', c2:'#1a1408', cap:'수송·이동 전환 집중', domains:['수송 전기화','대중교통','자전거 도로','내연차 종료','도시 공원']},
+  {id:4, name:'순환의 다섯', emoji:'♻️', accent:'#a78bfa', c1:'#2a1f3d', c2:'#10081a', cap:'폐기물·자원 순환', domains:['플라스틱 감축','분리수거','재활용','일회용품','순환경제']},
+  {id:5, name:'바닷빛 마을', emoji:'🌊', accent:'#60a5fa', c1:'#1a2a52', c2:'#0a0f24', cap:'해양·연안 적응', domains:['해수면 상승','어업 적응','해양 보전','수산 자원','연안 침수']},
+  {id:6, name:'숲의 호흡', emoji:'🌳', accent:'#22c55e', c1:'#1a3d28', c2:'#0a1812', cap:'산림·생태 카본', domains:['산림','조림','목재 펠릿','생태계 서비스','토양 탄소']},
+  {id:7, name:'전기의 손', emoji:'⚡', accent:'#fb923c', c1:'#3d2614', c2:'#1a0f08', cap:'에너지 시스템 전환', domains:['전력망','송전 인프라','에너지저장','전기요금','계통 보강']},
+  {id:8, name:'어린 손 큰 미래', emoji:'🌱', accent:'#84cc16', c1:'#2a3d10', c2:'#101808', cap:'교육·세대간 정의', domains:['기후 교육','어린이','세대간 정의','학교','미래세대']},
+  {id:9, name:'시민이 만든 정책', emoji:'📋', accent:'#f472b6', c1:'#3d1a30', c2:'#180814', cap:'시민 주도 정책', domains:['시민의회','참여민주','정책설계','거버넌스','권고안 이행']},
+  {id:10, name:'녹지의 도시', emoji:'🏙️', accent:'#10b981', c1:'#1a3d3a', c2:'#081a18', cap:'도시 녹지·완충', domains:['도시 공원','옥상 녹화','도시숲','보도','녹지축']},
+  {id:11, name:'채식 한 끼', emoji:'🥗', accent:'#ef4444', c1:'#3d1a1a', c2:'#180808', cap:'식생활·농업 전환', domains:['채식·비건','육류세','지역 농산물','음식물 쓰레기','농업 메탄']},
+  {id:12, name:'수소의 약속', emoji:'💧', accent:'#c084fc', c1:'#2a1a3d', c2:'#10081a', cap:'수소 경제 신중론', domains:['그린 수소','수소 인프라','산업 탈탄소','블루 수소','CCUS']},
+  {id:13, name:'촛불 같은 약자', emoji:'🤝', accent:'#fb7185', c1:'#3d1a26', c2:'#180810', cap:'기후 정의·취약계층', domains:['기후 취약','폭염 보호','노인','저소득','복합 취약']},
+  {id:14, name:'바람의 풍력', emoji:'🌬️', accent:'#56C2E4', c1:'#1a324d', c2:'#0a1424', cap:'해상·육상 풍력 확대', domains:['해상 풍력','육상 풍력','계통 보강','수용성','지역 상생']},
+  {id:15, name:'태양 아래 모두', emoji:'🔆', accent:'#fbbf24', c1:'#3d2814', c2:'#181008', cap:'태양광 + 시민 햇빛', domains:['태양광','지역 햇빛','RPS','분산형 발전','에너지 자립 마을']},
+];
+
+const SLIDES = [
+  {type:'cover'},
+  ...GROUPS.map(g => ({type:'group', ...g})),
+  {type:'closing'},
+];
+
+const stage = document.getElementById('stage');
+let current = 0;
+let timer = null;
+const AUTO_MS = 5000;
+
+function renderSlide(slide, idx) {
+  const el = document.createElement('section');
+  el.className = 'slide';
+  if (slide.type === 'cover') {
+    el.classList.add('cover');
+    el.innerHTML = `
+      <div class="center">
+        <div class="kicker">2026 기후시민회의 · 6.13 워크숍</div>
+        <h1>오늘, 우리 15조<br />함께 만드는 출발점</h1>
+        <p class="sub">214명의 시민이 15개 분임조로 모여 1박 2일 동안 운영규범과 1차 의제를 만듭니다.</p>
+        <p class="meta">국립생태원 · 2026. 6. 13 (토) ~ 14 (일)</p>
+      </div>`;
+  } else if (slide.type === 'closing') {
+    el.classList.add('closing');
+    el.innerHTML = `
+      <div class="center">
+        <div class="kicker" style="color:#34d399;font-weight:800;letter-spacing:.25em;font-size:18px;text-transform:uppercase;">우리의 15개 정체성</div>
+        <h2>오늘, <span class="em">우리</span>가<br />함께 만드는 출발점</h2>
+        <div class="stats">
+          <div class="stat"><div class="v">15</div><div class="l">분임조</div></div>
+          <div class="stat"><div class="v">214</div><div class="l">시민</div></div>
+          <div class="stat"><div class="v">2일</div><div class="l">함께</div></div>
+        </div>
+      </div>`;
+  } else {
+    el.style.setProperty('--c1', slide.c1);
+    el.style.setProperty('--c2', slide.c2);
+    el.style.setProperty('--accent', slide.accent);
+    el.innerHTML = `
+      <div class="left">
+        <div class="group-num">${String(slide.id).padStart(2,'0')}<small>/15</small></div>
+        <div class="group-name">${slide.name}</div>
+        <div class="group-caption">${slide.cap}</div>
+        <div class="group-meta">
+          ${slide.domains.map((d,i)=>`<span class="chip${i===0?' accent':''}">${d}</span>`).join('')}
+        </div>
+      </div>
+      <div class="right">
+        <div class="photo-card" style="--photo-bg: linear-gradient(135deg, ${slide.accent}33, ${slide.c1});">
+          <div class="photo-placeholder">${slide.emoji}</div>
+        </div>
+      </div>`;
+  }
+  return el;
+}
+
+// Pre-render all slides
+SLIDES.forEach((s, i) => stage.appendChild(renderSlide(s, i)));
+
+// Top bar (created after slides so it's on top)
+const top = document.createElement('div');
+top.className = 'topbar';
+top.innerHTML = `
+  <div class="brand">2026 기후시민회의 · 분임조 정체성</div>
+  <div class="progress-ring">
+    <span id="phase-text">시작</span>
+    <div class="progress-dots" id="dots"></div>
+  </div>`;
+document.body.appendChild(top);
+
+const prog = document.createElement('div');
+prog.className = 'progress';
+prog.innerHTML = '<div class="progress-fill" id="progFill" style="width:0%"></div>';
+document.body.appendChild(prog);
+
+// Dots (one per slide, simplified)
+const dotsEl = document.getElementById('dots');
+SLIDES.forEach((s, i) => {
+  const d = document.createElement('div');
+  d.className = 'dot';
+  dotsEl.appendChild(d);
+});
+function updateDots(idx) {
+  document.querySelectorAll('.dot').forEach((d, i) => {
+    d.classList.toggle('on', i === idx);
+    d.classList.toggle('passed', i < idx);
+  });
+}
+
+function show(idx) {
+  document.querySelectorAll('.slide').forEach((s, i) => {
+    s.classList.toggle('active', i === idx);
+  });
+  current = idx;
+  updateDots(idx);
+  const slide = SLIDES[idx];
+  let phaseText = idx === 0 ? '시작' : idx === SLIDES.length - 1 ? '마무리' : `${idx} / 15`;
+  document.getElementById('phase-text').textContent = phaseText;
+  document.getElementById('progFill').style.width = (idx / (SLIDES.length - 1) * 100) + '%';
+}
+
+function play() {
+  const audio = document.getElementById('audio');
+  audio.play().catch(() => {});
+  if (timer) return;
+  timer = setInterval(() => {
+    let next = current + 1;
+    if (next >= SLIDES.length) { next = 0; audio.currentTime = 0; }
+    show(next);
+  }, AUTO_MS);
+  document.getElementById('play').textContent = '⏸';
+}
+function pause() {
+  if (timer) { clearInterval(timer); timer = null; }
+  document.getElementById('play').textContent = '▶';
+}
+document.getElementById('play').addEventListener('click', () => timer ? pause() : play());
+document.getElementById('prev').addEventListener('click', () => { show((current - 1 + SLIDES.length) % SLIDES.length); });
+document.getElementById('next').addEventListener('click', () => { show((current + 1) % SLIDES.length); });
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') show((current + 1) % SLIDES.length);
+  else if (e.key === 'ArrowLeft') show((current - 1 + SLIDES.length) % SLIDES.length);
+  else if (e.key === ' ') { e.preventDefault(); timer ? pause() : play(); }
+});
+
+show(0);
+</script>
+
+</body>
+</html>

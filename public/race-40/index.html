@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>의제선정 매트릭스 시뮬 — 2026 기후시민회의</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<style>
+  :root {
+    --bg:        #08151c;
+    --bg-2:      #0c1e28;
+    --header:    #2E75B6;
+    --header-2:  #1F4E79;
+    --sky:       #56C2E4;
+    --teal:      #23B2C3;
+    --green:     #70AD47;
+    --amber:     #F5A623;
+    --coral:     #F49489;
+    --ink:       #ffffff;
+    --muted:     #7a8a90;
+    --pale:      #EFF8FA;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    perspective: 2000px;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background:
+      radial-gradient(70% 70% at 18% 8%, rgba(46,117,182,0.25), transparent 60%),
+      radial-gradient(50% 50% at 100% 100%, rgba(35,178,195,0.15), transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ============ 상단 헤더 컬러박스 (200명 가시성 기준) ============ */
+  .header-band {
+    background: linear-gradient(180deg, var(--header), #28679F);
+    color: #fff;
+    padding: 28px 56px 32px;
+    box-shadow: 0 8px 36px rgba(46,117,182,0.5);
+    position: relative; z-index: 5;
+  }
+  .header-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 36px; }
+  .num-box {
+    background: var(--sky);
+    color: var(--header-2);
+    padding: 18px 28px;
+    border-radius: 16px;
+    font-weight: 900;
+    font-size: 36px;
+    line-height: 1;
+    box-shadow: 0 6px 24px rgba(86,194,228,0.4);
+    min-width: 120px;
+    text-align: center;
+  }
+  .num-box small { display: block; font-size: 16px; margin-top: 6px; opacity: 0.8; font-weight: 800; }
+  .h-title { font-size: 58px; font-weight: 900; line-height: 1.05; letter-spacing: -0.02em; }
+  .h-title .amber { color: var(--amber); }
+  .h-sub { font-size: 24px; opacity: 0.92; margin-top: 8px; font-weight: 600; }
+  .phase-pill {
+    background: rgba(255,255,255,0.2);
+    padding: 18px 32px;
+    border-radius: 999px;
+    font-weight: 900;
+    font-size: 26px;
+    backdrop-filter: blur(8px);
+    border: 2px solid rgba(255,255,255,0.32);
+  }
+
+  /* ============ MAIN STAGE ============ */
+  .stage {
+    position: relative;
+    padding: 30px 56px 30px;
+    min-height: calc(100vh - 220px);
+  }
+
+  /* 5단계 진행 표시 — 200명 시청 기준 큰 글씨 */
+  .phase-track {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .phase-step {
+    background: rgba(46,117,182,0.2);
+    border: 2px solid rgba(46,117,182,0.4);
+    border-radius: 16px;
+    padding: 18px 22px;
+    color: rgba(255,255,255,0.65);
+    font-weight: 800;
+    font-size: 20px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 14px;
+    align-items: center;
+    transition: all 0.5s ease;
+  }
+  .phase-step .step-num {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+    display: grid; place-items: center;
+    font-weight: 900;
+    font-size: 26px;
+    color: rgba(255,255,255,0.7);
+    transition: all 0.5s ease;
+  }
+  .phase-step.active {
+    background: linear-gradient(135deg, var(--header), var(--header-2));
+    color: #fff;
+    border-color: var(--sky);
+    transform: scale(1.05);
+    box-shadow: 0 10px 40px rgba(46,117,182,0.5);
+  }
+  .phase-step.active .step-num {
+    background: var(--amber);
+    color: var(--header-2);
+  }
+  .phase-step.done {
+    background: rgba(112,173,71,0.18);
+    border-color: rgba(112,173,71,0.45);
+    color: rgba(255,255,255,0.78);
+  }
+  .phase-step.done .step-num { background: var(--green); color: #fff; }
+  .phase-step .step-w { font-size: 14px; color: rgba(255,255,255,0.55); display: block; font-weight: 800; margin-top: 4px; }
+
+  /* ============ CRITERION TITLE — 200명 시청 ============ */
+  .criterion-banner {
+    background: linear-gradient(90deg, rgba(46,117,182,0.22), rgba(35,178,195,0.14) 100%);
+    border-left: 8px solid var(--amber);
+    padding: 28px 36px;
+    border-radius: 16px;
+    margin-bottom: 28px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 24px;
+  }
+  .criterion-banner .c-label { font-size: 22px; font-weight: 900; color: var(--sky); letter-spacing: 0.16em; text-transform: uppercase; }
+  .criterion-banner .c-name { font-size: 46px; font-weight: 900; margin-top: 8px; line-height: 1.1; letter-spacing: -0.02em; }
+  .criterion-banner .c-desc { font-size: 22px; color: rgba(255,255,255,0.85); margin-top: 8px; font-weight: 500; }
+  .criterion-banner .c-weight {
+    background: var(--amber); color: var(--header-2);
+    padding: 18px 28px; border-radius: 16px;
+    font-weight: 900; font-size: 48px;
+    box-shadow: 0 8px 28px rgba(245,166,35,0.45);
+    line-height: 1;
+  }
+  .criterion-banner .c-weight small { font-size: 20px; opacity: 0.85; display: block; margin-top: 6px; font-weight: 800;}
+
+  /* ============ AGENDA GRID — 200명 시청 기준 ============ */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: auto auto;
+    gap: 22px;
+    transform-style: preserve-3d;
+  }
+  .agenda-card {
+    background: linear-gradient(155deg, var(--bg-2) 0%, #061018 100%);
+    border-radius: 24px;
+    padding: 28px 26px 26px;
+    position: relative;
+    overflow: hidden;
+    border: 2.5px solid rgba(255,255,255,0.08);
+    box-shadow: 0 16px 50px rgba(0,0,0,0.55),
+                0 3px 0 0 rgba(255,255,255,0.05) inset,
+                0 -3px 0 0 rgba(0,0,0,0.5) inset;
+    transform-style: preserve-3d;
+    transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.6s ease,
+                border-color 0.6s ease;
+    min-height: 290px;
+    display: flex; flex-direction: column;
+  }
+  .agenda-card .slot {
+    font-size: 22px; font-weight: 900;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--sky);
+    padding: 6px 14px;
+    background: rgba(86,194,228,0.12);
+    border-radius: 8px;
+    display: inline-block;
+    width: max-content;
+  }
+  .agenda-card .name {
+    font-size: 26px; font-weight: 900; line-height: 1.22;
+    margin-top: 14px;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+  }
+  .agenda-card .meter {
+    margin-top: auto; padding-top: 20px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .agenda-card .score-display {
+    display: flex; align-items: baseline; gap: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  .agenda-card .score-display .v {
+    font-size: 92px; font-weight: 900;
+    color: var(--accent, var(--sky));
+    line-height: 1;
+    letter-spacing: -0.04em;
+    transition: color 0.6s ease;
+    text-shadow: 0 4px 24px rgba(0,0,0,0.35);
+  }
+  .agenda-card .score-display .max { font-size: 26px; color: var(--muted); font-weight: 800; }
+  .agenda-card .score-display .delta {
+    margin-left: auto;
+    font-size: 20px; font-weight: 900; color: var(--header-2);
+    padding: 8px 16px; background: var(--amber); border-radius: 12px;
+    opacity: 0; transition: opacity 0.4s;
+    box-shadow: 0 4px 16px rgba(245,166,35,0.4);
+  }
+  .agenda-card .score-display .delta.show { opacity: 1; }
+  .agenda-card .bar-track {
+    height: 14px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .agenda-card .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent, var(--sky)), var(--amber));
+    border-radius: 999px;
+    width: 0%;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 16px rgba(86,194,228,0.45);
+  }
+  .agenda-card .rank-badge {
+    position: absolute; top: 18px; right: 22px;
+    font-weight: 900; font-size: 30px;
+    color: rgba(255,255,255,0.4);
+    font-variant-numeric: tabular-nums;
+    transition: color 0.5s, transform 0.5s;
+  }
+  .agenda-card.top-3 .rank-badge {
+    color: var(--amber); transform: scale(1.6); font-size: 36px;
+  }
+  .agenda-card.top-3 {
+    border-color: var(--amber);
+    border-width: 3px;
+    box-shadow: 0 20px 72px rgba(245,166,35,0.4),
+                0 0 0 2px var(--amber) inset;
+    transform: translateY(-10px) translateZ(48px);
+  }
+  .agenda-card.top-1 {
+    background: linear-gradient(155deg, #3a2a07 0%, #1f1408 100%);
+    box-shadow: 0 32px 100px rgba(245,166,35,0.58),
+                0 0 0 4px var(--amber) inset;
+    transform: translateY(-16px) translateZ(96px);
+  }
+  .agenda-card.top-1 .name { color: var(--amber); font-size: 30px; }
+  .agenda-card.top-1 .rank-badge { font-size: 44px; }
+
+  /* Vote tally chips floating */
+  .vote-fly {
+    position: absolute;
+    pointer-events: none;
+    font-size: 14px;
+    font-weight: 900;
+    color: var(--amber);
+    text-shadow: 0 2px 8px rgba(245,166,35,0.55);
+    animation: fly 1.2s ease-out forwards;
+  }
+  @keyframes fly {
+    from { opacity: 0; transform: translate(0, 12px) scale(0.85); }
+    20%  { opacity: 1; }
+    to   { opacity: 0; transform: translate(0, -56px) scale(1.15); }
+  }
+
+  /* ============ Controls ============ */
+  .control-bar {
+    background: var(--header-2);
+    color: #fff;
+    padding: 16px 56px;
+    display: flex; align-items: center; gap: 20px;
+    border-top: 2px solid var(--sky);
+    position: sticky; bottom: 0; z-index: 10;
+    box-shadow: 0 -6px 24px rgba(0,0,0,0.4);
+  }
+  button {
+    background: var(--amber); color: var(--header-2);
+    border: 0; padding: 12px 22px; border-radius: 999px;
+    font-weight: 900; font-size: 16px; cursor: pointer; font-family: inherit;
+    transition: all 0.2s;
+  }
+  button:hover { transform: translateY(-1px); filter: brightness(1.1); }
+  button.secondary {
+    background: rgba(255,255,255,0.14); color: #fff;
+    border: 1.5px solid rgba(255,255,255,0.25);
+  }
+  .speed-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; }
+  audio { filter: invert(1) hue-rotate(180deg) brightness(0.85); margin-left: auto; }
+
+  /* Closing screen for total */
+  .final-overlay {
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse at center, rgba(46,117,182,0.85) 0%, rgba(8,21,28,0.95) 70%);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 50;
+    backdrop-filter: blur(6px);
+    flex-direction: column;
+    gap: 40px;
+    padding: 40px;
+  }
+  .final-overlay.show { display: flex; animation: overlayIn 1.2s ease both; }
+  @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+  .final-overlay h1 {
+    font-size: 80px; font-weight: 900;
+    text-align: center; letter-spacing: -0.025em;
+    background: linear-gradient(135deg, #fff, var(--amber));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    line-height: 1;
+  }
+  .final-overlay .stat-row { display: flex; gap: 60px; }
+  .final-overlay .stat { text-align: center; }
+  .final-overlay .stat .v {
+    font-size: 64px; font-weight: 900;
+    color: var(--amber); line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .final-overlay .stat .l {
+    font-size: 16px; font-weight: 700;
+    color: rgba(255,255,255,0.7);
+    letter-spacing: 0.15em; text-transform: uppercase;
+    margin-top: 8px;
+  }
+  .final-overlay .close-btn {
+    margin-top: 20px;
+    background: var(--amber);
+  }
+
+  @media (max-width: 1280px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+    .header-row { grid-template-columns: 1fr; gap: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER (안내 톤) -->
+<div class="header-band">
+  <div class="header-row">
+    <div class="num-box">▶<small>RACE</small></div>
+    <div>
+      <div class="h-title">2026 기후시민회의  <span class="amber">의제선정 매트릭스</span></div>
+      <div class="h-sub">10 의제 슬롯 × 4 선정기준 × 22명 시민 평가 (1~3점) → 종합 가중평균</div>
+    </div>
+    <div class="phase-pill" id="phasePill">PHASE 1 / 5</div>
+  </div>
+</div>
+
+<!-- STAGE -->
+<div class="stage">
+
+  <!-- 5단계 진행 표시 -->
+  <div class="phase-track" id="phaseTrack"></div>
+
+  <!-- 현재 기준 배너 -->
+  <div class="criterion-banner" id="banner">
+    <div>
+      <div class="c-label">평가 전</div>
+      <div class="c-name">10 의제 — 시민 평가 시작 전</div>
+      <div class="c-desc">▶ 재생 버튼을 누르면 시민이 점수를 부여합니다.</div>
+    </div>
+    <div class="c-weight" id="weightBox" style="display:none">40<small>% 가중</small></div>
+  </div>
+
+  <!-- 10 의제 그리드 -->
+  <div class="grid" id="grid"></div>
+
+</div>
+
+<!-- CONTROLS -->
+<div class="control-bar">
+  <button id="play">▶  시뮬레이션 재생</button>
+  <button class="secondary" id="reset">↺ 처음으로</button>
+  <span class="speed-toggle">
+    속도 <input type="range" id="speed" min="800" max="4000" step="100" value="2000" />
+    <span id="speedLabel" style="font-weight:800;color:var(--amber)">2.0초/페이즈</span>
+  </span>
+  <audio id="audio" controls preload="auto">
+    <source src="bgm.mp3" type="audio/mpeg" />
+  </audio>
+</div>
+
+<!-- FINAL OVERLAY -->
+<div class="final-overlay" id="finalOverlay">
+  <h1 id="finalTitle">시민이 선정한 우선순위 의제</h1>
+  <div class="stat-row" id="finalStats"></div>
+  <button class="close-btn" id="closeFinal">▶ 다시 보기</button>
+</div>
+
+<script>
+const PHASE_KEYS = ['pre', 'c1', 'c2', 'c3', 'c4', 'total'];
+let DATA = null;
+let phaseIdx = 0;
+let timer = null;
+let inAnim = false;
+let speedMs = 2000;
+
+async function load() {
+  DATA = await fetch('data.json').then(r => r.json());
+  buildPhaseTrack();
+  buildGrid();
+  renderPhase(0);
+}
+
+function buildPhaseTrack() {
+  const wrap = document.getElementById('phaseTrack');
+  // Skip "pre" → show 4 criteria + total
+  const showPhases = DATA.meta.phases.slice(1);  // c1, c2, c3, c4, total
+  showPhases.forEach((ph, i) => {
+    const el = document.createElement('div');
+    el.className = 'phase-step';
+    el.dataset.idx = String(i + 1);
+    const label = ph.id === 'total' ? '종합' : ph.label.split('  ')[1] || ph.label;
+    const w = ph.weight ? `${ph.weight}%` : '가중평균';
+    el.innerHTML = `<div class="step-num">${i + 1}</div><div><div>${label}</div><span class="step-w">${w}</span></div>`;
+    wrap.appendChild(el);
+  });
+}
+
+function buildGrid() {
+  const grid = document.getElementById('grid');
+  DATA.agendas.forEach((a, i) => {
+    const card = document.createElement('div');
+    card.className = 'agenda-card';
+    card.id = `card-${i}`;
+    card.style.setProperty('--accent', a.color);
+    card.innerHTML = `
+      <div class="rank-badge">${i + 1}위</div>
+      <div class="slot">${a.slot}</div>
+      <div class="name">${a.name}</div>
+      <div class="meter">
+        <div class="score-display">
+          <span class="v" data-score="0">0.00</span>
+          <span class="max">/ 3.00</span>
+          <span class="delta">+0.00</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill" style="width:0%"></div></div>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+function setPhasePill(idx) {
+  const ph = DATA.meta.phases[idx];
+  const displayIdx = Math.max(idx, 1);  // pre shows as 1
+  document.getElementById('phasePill').textContent = idx === 0 ? `시작` : `PHASE ${displayIdx} / 5`;
+
+  // Banner
+  const banner = document.getElementById('banner');
+  const cLabel = banner.querySelector('.c-label');
+  const cName = banner.querySelector('.c-name');
+  const cDesc = banner.querySelector('.c-desc');
+  const wBox = document.getElementById('weightBox');
+
+  if (idx === 0) {
+    cLabel.textContent = '평가 전';
+    cName.textContent = '10 의제 — 시민 평가 시작 전';
+    cDesc.textContent = '▶ 재생 버튼을 누르면 시민이 점수를 부여합니다.';
+    wBox.style.display = 'none';
+  } else {
+    cLabel.textContent = ph.label.split('  ')[0] || ph.label;
+    cName.textContent = ph.label.split('  ').slice(1).join(' ') || ph.label;
+    cDesc.textContent = ph.description || '';
+    if (ph.weight) {
+      wBox.style.display = 'block';
+      wBox.innerHTML = `${ph.weight}<small>% 가중</small>`;
+    } else if (ph.id === 'total') {
+      wBox.style.display = 'block';
+      wBox.innerHTML = `종합<small>가중평균</small>`;
+    } else {
+      wBox.style.display = 'none';
+    }
+  }
+
+  // phase-step track
+  const steps = document.querySelectorAll('.phase-step');
+  steps.forEach((s, i) => {
+    s.classList.toggle('active', i + 1 === idx);
+    s.classList.toggle('done', i + 1 < idx);
+  });
+}
+
+function getScoreForPhase(agenda, key) {
+  if (key === 'pre') return 0;
+  if (key === 'total') {
+    const w = DATA.meta.weights;
+    const s = agenda.scores;
+    return s.c1 * w.c1 + s.c2 * w.c2 + s.c3 * w.c3 + s.c4 * w.c4;
+  }
+  return agenda.scores[key];
+}
+
+function animateVote(targetEl, finalScore, durMs = 1400) {
+  return new Promise(resolve => {
+    const valEl = targetEl.querySelector('.score-display .v');
+    const barEl = targetEl.querySelector('.bar-fill');
+    const deltaEl = targetEl.querySelector('.score-display .delta');
+    const cardRect = targetEl.getBoundingClientRect();
+    const startScore = +valEl.dataset.score;
+    const delta = finalScore - startScore;
+
+    deltaEl.textContent = (delta >= 0 ? '+' : '') + delta.toFixed(2);
+    deltaEl.classList.add('show');
+    setTimeout(() => deltaEl.classList.remove('show'), durMs + 600);
+
+    // Fire small flying chips during animation for vote effect
+    const ticks = Math.min(Math.floor(Math.abs(delta) * 6) + 2, 14);
+    for (let i = 0; i < ticks; i++) {
+      setTimeout(() => {
+        const chip = document.createElement('div');
+        chip.className = 'vote-fly';
+        chip.textContent = '+1';
+        chip.style.left = (40 + Math.random() * 50) + '%';
+        chip.style.bottom = '90px';
+        targetEl.appendChild(chip);
+        setTimeout(() => chip.remove(), 1300);
+      }, (i / ticks) * durMs * 0.6);
+    }
+
+    // Smooth interpolation
+    const t0 = performance.now();
+    function frame(t) {
+      const k = Math.min((t - t0) / durMs, 1);
+      const eased = 1 - Math.pow(1 - k, 3);  // easeOutCubic
+      const cur = startScore + delta * eased;
+      valEl.textContent = cur.toFixed(2);
+      barEl.style.width = (cur / 3 * 100) + '%';
+      if (k < 1) requestAnimationFrame(frame);
+      else {
+        valEl.dataset.score = String(finalScore);
+        resolve();
+      }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+async function renderPhase(idx) {
+  inAnim = true;
+  phaseIdx = idx;
+  const phase = DATA.meta.phases[idx];
+  setPhasePill(idx);
+
+  if (idx === 0) {
+    // Reset all to 0
+    DATA.agendas.forEach((_, i) => {
+      const c = document.getElementById(`card-${i}`);
+      c.querySelector('.v').textContent = '0.00';
+      c.querySelector('.v').dataset.score = '0';
+      c.querySelector('.bar-fill').style.width = '0%';
+      c.querySelector('.rank-badge').textContent = `${i + 1}위`;
+      c.classList.remove('top-3', 'top-1');
+      c.style.order = String(i);
+    });
+    inAnim = false;
+    return;
+  }
+
+  // Animate vote tallies for all agendas in parallel
+  const voteDur = Math.max(speedMs * 0.65, 900);
+  const promises = DATA.agendas.map((a, i) => {
+    const card = document.getElementById(`card-${i}`);
+    const target = getScoreForPhase(a, phase.id);
+    return animateVote(card, target, voteDur);
+  });
+  await Promise.all(promises);
+
+  // After scores settle: re-rank and reorder via grid order property
+  const ranked = DATA.agendas.map((a, i) => ({a, i, s: getScoreForPhase(a, phase.id)}))
+    .sort((x, y) => y.s - x.s);
+  ranked.forEach((r, rank) => {
+    const card = document.getElementById(`card-${r.i}`);
+    card.style.order = String(rank);
+    card.querySelector('.rank-badge').textContent = `${rank + 1}위`;
+    card.classList.toggle('top-3', rank < 3);
+    card.classList.toggle('top-1', rank === 0);
+  });
+
+  // If total phase, show overlay
+  if (phase.id === 'total') {
+    setTimeout(() => showFinal(ranked), Math.max(speedMs * 0.4, 600));
+  }
+  inAnim = false;
+}
+
+function showFinal(ranked) {
+  const overlay = document.getElementById('finalOverlay');
+  const stats = document.getElementById('finalStats');
+  stats.innerHTML = `
+    <div class="stat"><div class="v">${ranked.filter(r => r.s >= 2.5).length}</div><div class="l">★ 우선순위 의제</div></div>
+    <div class="stat"><div class="v">${ranked[0].s.toFixed(2)}</div><div class="l">1위 점수</div></div>
+    <div class="stat"><div class="v">${ranked[0].a.short}</div><div class="l">시민 1위 의제</div></div>
+  `;
+  overlay.classList.add('show');
+}
+
+document.getElementById('closeFinal').addEventListener('click', () => {
+  document.getElementById('finalOverlay').classList.remove('show');
+});
+
+async function play() {
+  if (timer || inAnim) return;
+  document.getElementById('audio').play().catch(() => {});
+  document.getElementById('play').textContent = '⏸  일시정지';
+  const advance = async () => {
+    if (phaseIdx >= PHASE_KEYS.length - 1) {
+      pause();
+      document.getElementById('play').textContent = '▶  다시 재생';
+      return;
+    }
+    phaseIdx++;
+    await renderPhase(phaseIdx);
+    timer = setTimeout(advance, speedMs);
+  };
+  await advance();
+}
+function pause() {
+  if (timer) { clearTimeout(timer); timer = null; }
+  document.getElementById('play').textContent = '▶  재생';
+}
+function reset() {
+  pause();
+  phaseIdx = 0;
+  renderPhase(0);
+  document.getElementById('audio').pause();
+  document.getElementById('audio').currentTime = 0;
+  document.getElementById('finalOverlay').classList.remove('show');
+}
+
+document.getElementById('play').addEventListener('click', () => {
+  if (timer || inAnim) pause();
+  else if (phaseIdx >= PHASE_KEYS.length - 1) { reset(); setTimeout(play, 400); }
+  else play();
+});
+document.getElementById('reset').addEventListener('click', reset);
+document.getElementById('speed').addEventListener('input', e => {
+  speedMs = +e.target.value;
+  document.getElementById('speedLabel').textContent = (speedMs/1000).toFixed(1) + '초/페이즈';
+});
+
+load();
+</script>
+
+</body>
+</html>

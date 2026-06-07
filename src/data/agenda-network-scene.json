@@ -3459,7 +3459,7 @@
   "_meta": {
     "nodeCount": 65,
     "edgeCount": 44,
-    "generatedAt": "2026-06-04",
+    "generatedAt": "2026-06-06",
     "source": "src/data/network/agenda-similarity.json",
     "skeletonFormat": "convertToExcalidrawElements-compatible"
   }

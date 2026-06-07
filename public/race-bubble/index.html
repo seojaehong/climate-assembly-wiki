@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>시민 의제 버블맵 — 2026 기후시민회의</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<style>
+  :root {
+    --bg: #06121a;
+    --bg-2: #0a1a24;
+    --ink: #e8f4f6;
+    --muted: #8da4ad;
+    --accent: #56C2E4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink); font-family: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background:
+      radial-gradient(60% 60% at 15% 8%, rgba(86,194,228,0.18), transparent 65%),
+      radial-gradient(50% 50% at 100% 100%, rgba(52,211,153,0.12), transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+  .stage { position: relative; z-index: 1; max-width: 1920px; margin: 0 auto; padding: 30px 48px 30px; display: grid; gap: 24px; min-height: 100vh; }
+
+  .head { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 20px; padding-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .kicker { font-size: 18px; font-weight: 800; letter-spacing: 0.22em; color: var(--accent); text-transform: uppercase; margin-bottom: 12px; }
+  .title { font-size: 62px; font-weight: 900; letter-spacing: -0.025em; line-height: 1.0; }
+  .title .em { color: var(--accent); }
+  .subtitle { font-size: 24px; font-weight: 500; color: var(--muted); margin-top: 14px; line-height: 1.45; }
+  .meta { text-align: right; font-size: 16px; color: var(--muted); line-height: 1.7; }
+  .meta b { color: var(--ink); }
+
+  .controls { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  button {
+    background: var(--accent); color: #06141a; border: 0; padding: 14px 28px; border-radius: 999px;
+    font-weight: 800; font-size: 18px; cursor: pointer; font-family: inherit;
+    transition: transform 0.15s, background 0.15s;
+  }
+  button:hover { transform: translateY(-1px); background: #6fd0ed; }
+  button.secondary { background: transparent; color: var(--ink); border: 1.5px solid rgba(255,255,255,0.2); }
+  .speed-toggle { display: inline-flex; gap: 8px; align-items: center; font-size: 15px; color: var(--muted); }
+  .speed-toggle input[type=range] { width: 140px; accent-color: var(--accent); }
+
+  .card {
+    background: linear-gradient(180deg, var(--bg-2), #08141a);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 24px;
+    padding: 28px 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .bubble-stage { position: relative; padding: 18px 0 0; }
+  svg.bubble { width: 100%; height: 780px; display: block; }
+  .phase-big {
+    position: absolute; right: 56px; bottom: 28px;
+    font-size: 280px; font-weight: 900;
+    color: rgba(255,255,255,0.04); letter-spacing: -0.04em; line-height: 1;
+    pointer-events: none; user-select: none; font-variant-numeric: tabular-nums;
+  }
+  .phase-cap {
+    position: absolute; right: 64px; bottom: 22px;
+    font-size: 20px; font-weight: 800; color: var(--accent); letter-spacing: 0.06em; text-transform: uppercase;
+    z-index: 2;
+  }
+
+  /* Bubble labels */
+  .b-label { fill: var(--ink); font-weight: 900; pointer-events: none; text-anchor: middle; paint-order: stroke; stroke: rgba(8,16,22,0.9); stroke-width: 5px; stroke-linejoin: round; }
+  .b-value { fill: rgba(255,255,255,0.95); font-weight: 800; pointer-events: none; text-anchor: middle; paint-order: stroke; stroke: rgba(8,16,22,0.8); stroke-width: 4px; stroke-linejoin: round; }
+  .b-emoji { pointer-events: none; text-anchor: middle; dominant-baseline: middle; }
+
+  /* Axis */
+  .axis-line { stroke: rgba(255,255,255,0.10); stroke-width: 1.5; }
+  .axis-label {
+    fill: var(--muted); font-size: 18px; font-weight: 800;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .axis-pole { fill: var(--ink); font-size: 18px; font-weight: 800; }
+  .quad-label {
+    fill: rgba(255,255,255,0.4); font-size: 16px; font-weight: 800;
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .quad-label.win { fill: rgba(86,194,228,0.7); }
+
+  /* Floating particles in background */
+  .particles {
+    position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+  }
+  .particle {
+    position: absolute; border-radius: 50%; background: rgba(86,194,228,0.15);
+    animation: drift 20s linear infinite;
+  }
+  @keyframes drift {
+    0%   { transform: translate(0, 0); opacity: 0; }
+    10%  { opacity: 0.6; }
+    90%  { opacity: 0.6; }
+    100% { transform: translate(60px, -120px); opacity: 0; }
+  }
+
+  /* Insight strip */
+  .insight {
+    background: linear-gradient(135deg, rgba(86,194,228,0.12), rgba(52,211,153,0.08));
+    border: 1px solid rgba(86,194,228,0.25);
+    border-radius: 18px;
+    padding: 22px 32px;
+    display: grid; grid-template-columns: auto 1fr; gap: 22px; align-items: center;
+  }
+  .insight .icon { font-size: 44px; }
+  .insight .text { font-size: 22px; line-height: 1.5; color: var(--ink); font-weight: 600; }
+  .insight .text b { color: var(--accent); font-weight: 900; }
+
+  .foot { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 15px; color: var(--muted); }
+  .foot .badge { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; background: rgba(86,194,228,0.14); border-radius: 999px; color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <header class="head">
+    <div>
+      <div class="kicker">2026 기후시민회의 · 시민 의제 버블맵 (200명용 대형 스크린)</div>
+      <h1 class="title">시민이 떠올린 의제는 <span class="em">어디로</span> 자라나</h1>
+      <div class="subtitle">기후 직접성 × 일상 실천성 — 자주 언급될수록 우상단으로 자라나, 적게 언급될수록 좌하단에 남는다</div>
+    </div>
+    <div class="meta">
+      <div>출처 · <b>발대식 포스트잇 198건</b></div>
+      <div>버블 · <b>크기·위치 = 누적 언급 수</b></div>
+      <div>BGM · <b>Future Climate Motion</b></div>
+    </div>
+  </header>
+
+  <div class="controls">
+    <button id="play">▶ 재생</button>
+    <button class="secondary" id="reset">↺ 처음으로</button>
+    <span class="speed-toggle">
+      속도 <input type="range" id="speed" min="800" max="3500" step="100" value="2000" />
+      <span id="speedLabel">2.0초/포스터</span>
+    </span>
+    <audio id="audio" controls preload="auto" style="margin-left: auto;">
+      <source src="bgm.mp3" type="audio/mpeg" />
+    </audio>
+  </div>
+
+  <section class="card bubble-stage">
+    <div class="particles" id="particles"></div>
+    <svg class="bubble" id="bubbleSvg"></svg>
+    <div class="phase-big" id="phaseBig">01</div>
+    <div class="phase-cap" id="phaseCap">포스터 1 / 20</div>
+  </section>
+
+  <div class="insight">
+    <div class="icon">💡</div>
+    <div class="text" id="insightText">
+      재생 버튼을 눌러주세요. 시민이 자주 떠올린 의제는 <b>우상단(기후 직접 + 일상)</b>으로 자라나고, 적게 떠올린 의제는 <b>좌하단</b>에 남습니다.
+    </div>
+  </div>
+
+  <footer class="foot">
+    <div>
+      <span class="badge">▶ 약 40초 자동 재생</span>
+    </div>
+    <div>2026 기후시민회의 · 버블맵 v0.2 (대형 스크린 + 동적 드리프트)</div>
+  </footer>
+
+</div>
+
+<script>
+// Base intrinsic position per category (0~10 scale)
+// X: 일상 실천성, Y: 기후 직접성
+const META = {
+  '분리수거·재활용':   {bx: 8.5, by: 4.0, color: '#34d399', emoji: '♻️'},
+  '일회용품·플라스틱':  {bx: 8.0, by: 4.5, color: '#fbbf24', emoji: '🥤'},
+  '대중교통·자전거':   {bx: 7.5, by: 6.5, color: '#60a5fa', emoji: '🚲'},
+  '규제·정책·법':     {bx: 3.0, by: 7.0, color: '#fb7185', emoji: '⚖️'},
+  '수자원·기타자원':   {bx: 5.5, by: 4.0, color: '#2dd4bf', emoji: '💧'},
+  '재생에너지':       {bx: 4.0, by: 9.0, color: '#fb923c', emoji: '☀️'},
+  '음식·식생활':      {bx: 6.5, by: 5.0, color: '#84cc16', emoji: '🥗'},
+  '기업·산업·ESG':    {bx: 2.5, by: 7.0, color: '#a78bfa', emoji: '🏭'},
+  '교육·시민의식':    {bx: 5.5, by: 5.0, color: '#f472b6', emoji: '📚'},
+  '탄소가격·포인트':  {bx: 5.0, by: 8.5, color: '#22d3ee', emoji: '💸'},
+  '전기차·교통전환':  {bx: 6.0, by: 8.0, color: '#56C2E4', emoji: '🔋'},
+  '에너지절약·효율':  {bx: 7.5, by: 6.0, color: '#f59e0b', emoji: '💡'},
+  '도시·녹지·공원':   {bx: 7.0, by: 5.0, color: '#10b981', emoji: '🌳'},
+  '기후취약·적응':    {bx: 4.0, by: 9.0, color: '#ef4444', emoji: '🛡️'},
+  '원자력':           {bx: 3.0, by: 8.5, color: '#94a3b8', emoji: '⚛️'},
+  '수소·신기술':      {bx: 2.5, by: 8.0, color: '#c084fc', emoji: '⚡'},
+  '기타·종합':        {bx: 5.0, by: 5.0, color: '#475569', emoji: '✨'},
+};
+
+// Get dynamic position: drift toward upper-right if count high, toward lower-left if low
+function getPos(cat, value, maxVal) {
+  const m = META[cat];
+  if (!m) return null;
+  const t = Math.min(value / Math.max(maxVal, 1), 1);   // 0..1 normalized
+  const drift = Math.pow(t, 0.6);                       // nonlinear so growth visible early
+  const PULL = 0.65;                                    // pull strength toward corner
+
+  // High value: pull TOWARD (10, 10). Low value (t≈0): pull TOWARD (0, 0).
+  // base * (1-2*drift_offset) + corner * (2*drift_offset)
+  // Use t to interpolate between (0, 0) and (10, 10), weighted with base.
+  const targetX = drift * 10;     // 0 → 10
+  const targetY = drift * 10;
+  const x = m.bx * (1 - PULL) + targetX * PULL;
+  const y = m.by * (1 - PULL) + targetY * PULL;
+  return { x, y, color: m.color, emoji: m.emoji };
+}
+
+let DATA = null;
+let phase = 0;
+let timer = null;
+let speed = 2000;
+
+const svg = d3.select('#bubbleSvg');
+const width = () => svg.node().clientWidth;
+const height = () => 780;
+const margin = { top: 70, right: 70, bottom: 80, left: 110 };
+
+let xScale, yScale, rScale;
+
+async function load() {
+  DATA = await fetch('data.json').then(r => r.json());
+  // Find max cumulative value across all phases
+  let maxR = 0;
+  for (const ph of DATA.race) for (const t of ph.cum_top10) maxR = Math.max(maxR, t.value);
+
+  xScale = d3.scaleLinear().domain([0, 10]).range([margin.left, width() - margin.right]);
+  yScale = d3.scaleLinear().domain([0, 10]).range([height() - margin.bottom, margin.top]);
+  rScale = d3.scaleSqrt().domain([0, maxR]).range([18, 160]);  // BIG bubbles for 200 viewers
+
+  buildParticles();
+  drawAxes();
+  render(0);
+}
+
+function buildParticles() {
+  const wrap = document.getElementById('particles');
+  for (let i = 0; i < 14; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const s = 4 + Math.random() * 12;
+    p.style.width = p.style.height = s + 'px';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.top = Math.random() * 100 + '%';
+    p.style.animationDelay = -Math.random() * 20 + 's';
+    p.style.animationDuration = (15 + Math.random() * 12) + 's';
+    p.style.background = `rgba(86,194,228,${0.06 + Math.random()*0.10})`;
+    wrap.appendChild(p);
+  }
+}
+
+function drawAxes() {
+  const cx = xScale(5), cy = yScale(5);
+  svg.append('line').attr('class', 'axis-line').attr('x1', margin.left).attr('x2', width() - margin.right).attr('y1', cy).attr('y2', cy).attr('stroke-dasharray', '5 7');
+  svg.append('line').attr('class', 'axis-line').attr('x1', cx).attr('x2', cx).attr('y1', margin.top).attr('y2', height() - margin.bottom).attr('stroke-dasharray', '5 7');
+
+  // X axis
+  svg.append('text').attr('class', 'axis-label').attr('x', width() - margin.right - 24).attr('y', height() - 24).attr('text-anchor', 'end').text('일상 실천성 →');
+  svg.append('text').attr('class', 'axis-pole').attr('x', margin.left + 14).attr('y', height() - margin.bottom + 32).text('낮음 (구조 의제)');
+  svg.append('text').attr('class', 'axis-pole').attr('x', width() - margin.right - 14).attr('y', height() - margin.bottom + 32).attr('text-anchor', 'end').text('높음 (일상 실천)');
+
+  // Y axis
+  svg.append('text').attr('class', 'axis-label').attr('x', 32).attr('y', margin.top + 28).attr('transform', `rotate(-90, 32, ${margin.top + 28})`).text('기후 직접성 →');
+  svg.append('text').attr('class', 'axis-pole').attr('x', margin.left - 18).attr('y', height() - margin.bottom + 6).attr('text-anchor', 'end').text('낮음');
+  svg.append('text').attr('class', 'axis-pole').attr('x', margin.left - 18).attr('y', margin.top + 6).attr('text-anchor', 'end').text('높음');
+
+  // Quadrant labels
+  svg.append('text').attr('class', 'quad-label win').attr('x', width() - margin.right - 18).attr('y', margin.top + 22).attr('text-anchor', 'end').text('★ 우상단 · 기후 직접 + 일상 = 시민 핵심');
+  svg.append('text').attr('class', 'quad-label').attr('x', margin.left + 18).attr('y', margin.top + 22).text('좌상단 · 기후 직접 · 구조 의제');
+  svg.append('text').attr('class', 'quad-label').attr('x', width() - margin.right - 18).attr('y', height() - margin.bottom - 14).attr('text-anchor', 'end').text('우하단 · 일상 · 기후 간접');
+  svg.append('text').attr('class', 'quad-label').attr('x', margin.left + 18).attr('y', height() - margin.bottom - 14).text('좌하단 · 구조 · 간접');
+}
+
+function render(p) {
+  const data = DATA.race[p];
+  const items = data.cum_top10
+    .filter(t => META[t.cat])
+    .map(t => ({ ...t, ...getPos(t.cat, t.value, rScale.domain()[1]) }));
+
+  const T = Math.max(speed * 0.95, 700);
+  const ease = d3.easeQuadInOut;
+
+  // Bubbles
+  const bubbles = svg.selectAll('circle.bubble').data(items, d => d.cat);
+  const bubblesEnter = bubbles.enter().append('circle')
+    .attr('class', 'bubble')
+    .attr('cx', d => xScale(d.x))
+    .attr('cy', d => yScale(d.y))
+    .attr('r', 12)
+    .attr('fill', d => d.color)
+    .attr('fill-opacity', 0.75)
+    .attr('stroke', d => d.color)
+    .attr('stroke-width', 3)
+    .attr('stroke-opacity', 0.95);
+  bubbles.merge(bubblesEnter)
+    .transition().duration(T).ease(ease)
+    .attr('cx', d => xScale(d.x))
+    .attr('cy', d => yScale(d.y))
+    .attr('r', d => Math.max(rScale(d.value), 18))
+    .attr('fill', d => d.color);
+  bubbles.exit().transition().duration(T * 0.5).attr('r', 0).attr('opacity', 0).remove();
+
+  // Emoji center
+  const emojis = svg.selectAll('text.b-emoji').data(items, d => d.cat);
+  emojis.enter().append('text')
+    .attr('class', 'b-emoji')
+    .attr('x', d => xScale(d.x))
+    .attr('y', d => yScale(d.y))
+    .attr('font-size', '22px')
+    .text(d => d.emoji)
+    .merge(emojis)
+    .transition().duration(T).ease(ease)
+    .attr('x', d => xScale(d.x))
+    .attr('y', d => yScale(d.y))
+    .attr('font-size', d => Math.max(rScale(d.value) * 0.55, 22) + 'px')
+    .text(d => d.emoji);
+  emojis.exit().remove();
+
+  // Category label (above bubble)
+  const labels = svg.selectAll('text.b-label').data(items, d => d.cat);
+  labels.enter().append('text')
+    .attr('class', 'b-label')
+    .attr('x', d => xScale(d.x))
+    .attr('y', d => yScale(d.y) - rScale(d.value) - 10)
+    .attr('font-size', '20px')
+    .attr('opacity', 0)
+    .text(d => d.cat)
+    .merge(labels)
+    .transition().duration(T).ease(ease)
+    .attr('x', d => xScale(d.x))
+    .attr('y', d => yScale(d.y) - Math.max(rScale(d.value), 18) - 10)
+    .attr('font-size', d => Math.min(Math.max(rScale(d.value) * 0.28, 16), 26) + 'px')
+    .attr('opacity', d => d.value >= 3 ? 1 : 0.55)
+    .text(d => d.cat);
+  labels.exit().remove();
+
+  // Value (below bubble)
+  const vals = svg.selectAll('text.b-value').data(items, d => d.cat);
+  vals.enter().append('text')
+    .attr('class', 'b-value')
+    .attr('x', d => xScale(d.x))
+    .attr('y', d => yScale(d.y) + rScale(d.value) + 30)
+    .attr('font-size', '18px')
+    .attr('opacity', 0)
+    .text(d => d.value + '건')
+    .merge(vals)
+    .transition().duration(T).ease(ease)
+    .attr('x', d => xScale(d.x))
+    .attr('y', d => yScale(d.y) + Math.max(rScale(d.value), 18) + 28)
+    .attr('font-size', d => Math.min(Math.max(rScale(d.value) * 0.24, 16), 24) + 'px')
+    .attr('opacity', d => d.value >= 3 ? 1 : 0.75)
+    .tween('text', function(d) {
+      const node = this;
+      const prev = parseInt(node.textContent) || 0;
+      const interp = d3.interpolateRound(prev, d.value);
+      return t => node.textContent = interp(t) + '건';
+    });
+  vals.exit().remove();
+
+  document.getElementById('phaseBig').textContent = String(data.phase).padStart(2, '0');
+  document.getElementById('phaseCap').textContent = `포스터 ${data.phase} / 20 · 누적 ${data.total_items}건`;
+
+  updateInsight(data.phase, items);
+}
+
+function updateInsight(p, items) {
+  const sorted = [...items].sort((a, b) => b.value - a.value);
+  const top = sorted[0];
+  const txt = {
+    1: `포스터 1 — 첫 시민 의제가 자라나기 시작했습니다.`,
+    5: `5번째 — <b>${top?.cat}</b>이 우상향으로 빠르게 자랍니다. 시민 우선순위가 보이기 시작합니다.`,
+    10: `절반 (10/20) — 1위 <b>${top?.cat}</b> (${top?.value}건). 우하단에 큰 버블이 몰리고 있나요?`,
+    15: `15번째 — 큰 버블은 우상단으로 자라났습니다. 작은 버블은 좌하단에 머뭅니다.`,
+    20: `최종 — 시민 의제의 무게중심: <b>${top?.cat}</b> (${top?.value}건). 우상단 = 시민이 가장 중요하게 떠올린 의제, 좌하단 = 거의 다루지 않은 의제. 워크숍의 과제는 좌하단의 의제도 함께 다루는 것입니다.`,
+  };
+  document.getElementById('insightText').innerHTML = txt[p] || `${p}번째 — 1위 <b>${top?.cat}</b> (${top?.value}건)`;
+}
+
+function play() {
+  if (timer) return;
+  document.getElementById('audio').play().catch(() => {});
+  timer = setInterval(() => {
+    if (phase >= DATA.race.length - 1) {
+      clearInterval(timer); timer = null;
+      document.getElementById('play').textContent = '▶ 다시 재생';
+      return;
+    }
+    phase++;
+    render(phase);
+  }, speed);
+  document.getElementById('play').textContent = '⏸ 일시정지';
+}
+function pause() { if (timer) { clearInterval(timer); timer = null; } document.getElementById('play').textContent = '▶ 재생'; }
+function reset() { pause(); phase = 0; render(0); document.getElementById('audio').pause(); document.getElementById('audio').currentTime = 0; }
+
+document.getElementById('play').addEventListener('click', () => timer ? pause() : (phase >= DATA.race.length - 1 ? (phase = 0, render(0), play()) : play()));
+document.getElementById('reset').addEventListener('click', reset);
+document.getElementById('speed').addEventListener('input', e => { speed = +e.target.value; document.getElementById('speedLabel').textContent = (speed/1000).toFixed(1)+'초/포스터'; if (timer) { pause(); play(); } });
+
+load();
+window.addEventListener('resize', () => { svg.selectAll('*').remove(); xScale.range([margin.left, width() - margin.right]); drawAxes(); render(phase); });
+</script>
+
+</body>
+</html>

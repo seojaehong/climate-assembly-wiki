@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>의제선정 라이브 (막대) — 2026 기후시민회의</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:        #ffffff;
+    --header:    #2E75B6;
+    --header-2:  #1F4E79;
+    --sky:       #56C2E4;
+    --amber:     #F5A623;
+    --ink:       #14202b;
+    --ink-2:     #5a6a7a;
+    --rail:      #eef2f6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    height: 100vh; width: 100vw;
+    overflow: hidden;
+  }
+
+  .header-band {
+    background: linear-gradient(180deg, var(--header), #28679F);
+    color: #fff;
+    padding: 14px 56px 16px;
+    box-shadow: 0 6px 28px rgba(46,117,182,0.25);
+  }
+  .h-title { font-size: 60px; font-weight: 900; letter-spacing: -0.02em; line-height: 1; }
+  .h-title .amber { color: var(--amber); }
+
+  .stage {
+    position: relative;
+    height: calc(100vh - 96px);
+    padding: 40px 64px 24px;
+    overflow: hidden;
+  }
+
+  /* PHASE TITLE — top right */
+  .phase-title {
+    position: absolute; right: 64px; top: 32px;
+    text-align: right;
+  }
+  .pt-kicker { font-size: 36px; font-weight: 800; color: var(--ink-2); letter-spacing: 0.04em; }
+  .pt-name { font-size: 64px; font-weight: 900; color: var(--ink); margin-top: 6px; }
+  .pt-name .amber { color: #C77800; }
+  .pt-weight { font-size: 44px; font-weight: 900; color: #C77800; margin-top: 4px; }
+
+  /* Phase track */
+  .phase-track {
+    position: absolute; left: 64px; top: 56px;
+    display: flex; gap: 14px;
+  }
+  .phase-dot {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #d8e0e8; transition: all .35s;
+  }
+  .phase-dot.active { background: var(--amber); transform: scale(1.5); }
+  .phase-dot.done   { background: var(--sky); }
+
+  /* BAR LIST */
+  .bars {
+    position: absolute; left: 64px; right: 64px; top: 220px; bottom: 120px;
+    transition: none;
+  }
+  .row {
+    position: absolute; left: 0; right: 0;
+    display: flex; align-items: center;
+    transition: top 800ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    will-change: top;
+  }
+  .row .rank {
+    width: 88px; flex: 0 0 88px;
+    font-size: 64px; font-weight: 900; color: var(--ink-2);
+    text-align: center; font-variant-numeric: tabular-nums;
+  }
+  .row .name {
+    width: 360px; flex: 0 0 360px;
+    font-size: 44px; font-weight: 900; color: var(--ink);
+    padding-right: 24px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .row .bar-wrap {
+    flex: 1; position: relative;
+    height: 88px; background: var(--rail);
+    border-radius: 14px; overflow: visible;
+  }
+  .row .bar {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 0%;
+    border-radius: 14px;
+    transition: width 1100ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .row .score {
+    position: absolute; right: -8px; top: 50%;
+    transform: translate(100%, -50%);
+    font-size: 52px; font-weight: 900;
+    color: #C77800; font-variant-numeric: tabular-nums;
+    padding-left: 16px;
+    white-space: nowrap;
+  }
+  .row.top1 .rank { color: #C77800; font-size: 80px; }
+  .row.top1 .bar { box-shadow: 0 6px 18px rgba(199,120,0,0.22); }
+
+  /* CONTROL DRAWER */
+  .control-drawer {
+    position: fixed; left: 50%; bottom: 16px;
+    transform: translateX(-50%);
+    display: flex; gap: 12px; align-items: center;
+    background: rgba(20,32,43,0.92); color: #fff;
+    padding: 12px 18px; border-radius: 16px;
+    z-index: 50;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.25);
+  }
+  .control-drawer button {
+    font-family: inherit;
+    background: var(--amber); color: var(--header-2);
+    border: none; padding: 12px 22px; border-radius: 12px;
+    font-size: 22px; font-weight: 900; cursor: pointer;
+  }
+  .control-drawer button.secondary { background: rgba(255,255,255,0.14); color: #fff; }
+  .control-drawer audio { height: 40px; }
+
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(255,255,255,0.92);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 60;
+    color: var(--ink);
+    font-size: 64px; font-weight: 900;
+    cursor: pointer;
+    transition: opacity .4s;
+  }
+  .overlay.hide { opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+
+<div class="header-band">
+  <div class="h-title">2026 기후시민회의 — <span class="amber">의제선정 라이브</span> (막대)</div>
+</div>
+
+<div class="stage">
+  <div class="phase-track" id="phaseTrack"></div>
+  <div class="phase-title" id="phaseTitle">
+    <div class="pt-kicker">평가 전</div>
+    <div class="pt-name">10 의제 — <span class="amber">평가 시작</span></div>
+  </div>
+  <div class="bars" id="bars"></div>
+</div>
+
+<div class="overlay" id="overlay">▶  클릭해서 시작</div>
+
+<div class="control-drawer">
+  <button id="play">▶  다음 페이즈</button>
+  <button class="secondary" id="prev">⟨ 이전</button>
+  <button class="secondary" id="next">다음 ⟩</button>
+  <button class="secondary" id="reset">↺ 처음</button>
+  <audio id="audio" controls preload="auto">
+    <source src="../event/bgm.mp3" type="audio/mpeg" />
+  </audio>
+</div>
+
+<script>
+const PHASE_ORDER = ['pre', 'c1', 'c2', 'c3', 'c4', 'total'];
+let DATA = null;
+let phaseIdx = 0;
+let rows = [];
+
+function toPastel(hex, mix = 0.55) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0,2), 16);
+  const g = parseInt(h.substring(2,4), 16);
+  const b = parseInt(h.substring(4,6), 16);
+  return `rgb(${Math.round(r*(1-mix)+255*mix)},${Math.round(g*(1-mix)+255*mix)},${Math.round(b*(1-mix)+255*mix)})`;
+}
+
+function getScoreForPhase(a, key) {
+  if (key === 'pre') return 0;
+  if (key === 'total') {
+    const w = DATA.meta.weights, s = a.scores;
+    return s.c1*w.c1 + s.c2*w.c2 + s.c3*w.c3 + s.c4*w.c4;
+  }
+  return a.scores[key];
+}
+
+function buildRows() {
+  const wrap = document.getElementById('bars');
+  wrap.innerHTML = '';
+  rows = DATA.agendas.map((a, i) => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `
+      <div class="rank">—</div>
+      <div class="name" style="color:${a.color}">${a.short}</div>
+      <div class="bar-wrap">
+        <div class="bar" style="background:${toPastel(a.color, 0.45)}; border: 3px solid ${a.color};"></div>
+        <div class="score">—</div>
+      </div>
+    `;
+    wrap.appendChild(row);
+    return { i, el: row, color: a.color };
+  });
+  layoutRows();   // 초기 배치
+}
+
+function layoutRows() {
+  // 점수 desc 정렬, 동점은 index 안정
+  const scoreKey = PHASE_ORDER[phaseIdx];
+  const arr = DATA.agendas.map((a, i) => ({ i, score: getScoreForPhase(a, scoreKey) }));
+  arr.sort((a, b) => b.score - a.score || a.i - b.i);
+
+  const wrap = document.getElementById('bars');
+  const total = wrap.clientHeight || (window.innerHeight - 96 - 220 - 120);
+  const ROW_H = Math.min(110, Math.floor(total / DATA.agendas.length));
+  const GAP = Math.max(8, Math.floor(ROW_H * 0.08));
+
+  // 점수 max for bar 비율 (pre = 0이면 max=3, 평소 max=3)
+  const maxScore = 3.0;
+
+  arr.forEach((entry, rank) => {
+    const r = rows[entry.i];
+    r.el.style.height = `${ROW_H}px`;
+    r.el.style.top = `${rank * (ROW_H + GAP)}px`;
+    r.el.classList.toggle('top1', rank === 0 && entry.score > 0);
+
+    const rankT = r.el.querySelector('.rank');
+    const bar = r.el.querySelector('.bar');
+    const scoreT = r.el.querySelector('.score');
+
+    rankT.textContent = entry.score > 0 ? String(rank + 1) : '';
+    const pct = entry.score > 0 ? Math.max(0, Math.min(100, (entry.score / maxScore) * 100)) : 0;
+    bar.style.width = `${pct}%`;
+    scoreT.textContent = entry.score > 0 ? entry.score.toFixed(2) : '';
+  });
+}
+
+function setPhaseLabel(idx) {
+  const ph = DATA.meta.phases[idx];
+  const el = document.getElementById('phaseTitle');
+  if (idx === 0) {
+    el.innerHTML = `<div class="pt-kicker">평가 전</div><div class="pt-name">10 의제 — <span class="amber">평가 시작</span></div>`;
+    return;
+  }
+  if (idx === 5) {
+    el.innerHTML = `<div class="pt-kicker">종합 결과</div><div class="pt-name">4 기준 <span class="amber">가중평균</span></div><div class="pt-weight">시민 우선순위 의제</div>`;
+    return;
+  }
+  const parts = ph.label.split('  ');
+  const name = (parts.slice(1).join(' ') || '').replace(
+    /(시민 삶|일상 실천|기후위기|사회적 합의|다양한 대안)/g, '<span class="amber">$1</span>'
+  );
+  el.innerHTML = `
+    <div class="pt-kicker">${parts[0]}</div>
+    <div class="pt-name">${name}</div>
+    <div class="pt-weight">${ph.weight}% <span style="font-size:24px;color:#7a8a9a;font-weight:800">가중</span></div>
+  `;
+}
+
+function buildPhaseTrack() {
+  const wrap = document.getElementById('phaseTrack');
+  wrap.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const d = document.createElement('div');
+    d.className = 'phase-dot';
+    wrap.appendChild(d);
+  }
+  updatePhaseDots();
+}
+function updatePhaseDots() {
+  document.querySelectorAll('.phase-dot').forEach((d, i) => {
+    d.classList.toggle('active', i + 1 === phaseIdx);
+    d.classList.toggle('done', i + 1 < phaseIdx);
+  });
+}
+
+function nextPhase() {
+  if (phaseIdx >= PHASE_ORDER.length - 1) return;
+  phaseIdx++;
+  setPhaseLabel(phaseIdx);
+  updatePhaseDots();
+  layoutRows();
+  document.getElementById('play').textContent =
+    phaseIdx >= PHASE_ORDER.length - 1 ? '↺ 처음' : '▶  다음 페이즈';
+}
+function prevPhase() {
+  if (phaseIdx <= 0) return;
+  phaseIdx--;
+  setPhaseLabel(phaseIdx);
+  updatePhaseDots();
+  layoutRows();
+}
+function resetAll() {
+  phaseIdx = 0;
+  setPhaseLabel(0);
+  updatePhaseDots();
+  layoutRows();
+  document.getElementById('audio').pause();
+  document.getElementById('audio').currentTime = 0;
+  document.getElementById('play').textContent = '▶  다음 페이즈';
+  document.getElementById('overlay').classList.remove('hide');
+}
+
+async function init() {
+  const res = await fetch('../event/data.json');
+  DATA = await res.json();
+  buildPhaseTrack();
+  setPhaseLabel(0);
+  buildRows();
+
+  document.getElementById('play').addEventListener('click', () => {
+    document.getElementById('audio').play().catch(() => {});
+    document.getElementById('overlay').classList.add('hide');
+    if (phaseIdx >= PHASE_ORDER.length - 1) { resetAll(); return; }
+    nextPhase();
+  });
+  document.getElementById('next').addEventListener('click', nextPhase);
+  document.getElementById('prev').addEventListener('click', prevPhase);
+  document.getElementById('reset').addEventListener('click', resetAll);
+  document.getElementById('overlay').addEventListener('click', () => {
+    document.getElementById('audio').play().catch(() => {});
+    document.getElementById('overlay').classList.add('hide');
+    if (phaseIdx === 0) nextPhase();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space' || e.code === 'ArrowRight') { e.preventDefault(); nextPhase(); }
+    else if (e.code === 'ArrowLeft') { e.preventDefault(); prevPhase(); }
+    else if (e.key === 'r' || e.key === 'R') { resetAll(); }
+    else if (e.key >= '1' && e.key <= '5') {
+      const idx = parseInt(e.key);
+      phaseIdx = idx;
+      setPhaseLabel(idx);
+      updatePhaseDots();
+      layoutRows();
+    }
+  });
+
+  window.addEventListener('resize', layoutRows);
+}
+
+init();
+</script>
+</body>
+</html>
