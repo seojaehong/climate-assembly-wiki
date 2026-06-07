@@ -1,22 +1,21 @@
 {
   "meta": {
-    "title": "2026 기후시민회의 — 의제 보드 (속장/주의제)",
+    "title": "2026 기후시민회의 — 의제 분류 보드 (감축 vs 적응)",
     "updated": "2026-06-07",
     "sheet_name": "Board",
-    "schema": "5×2 슬롯 (감축 5 + 적응 5) — 카테고리 토글",
-    "interpretation_note": "이 해석으로 진행 — 좌우 교차 토글(탭) 방식, 한 화면 5슬롯 큰 포스트잇. 다른 해석 원하면 알려달라.",
-    "note": "Sheets에 동일 컬럼명으로 입력하면 5초 내 화면 반영. 미연결 시 본 data.json placeholder 사용."
+    "schema": "slot | name | category | note  (category 빈 값 = 미분류)",
+    "note": "워크숍에서 모더레이터가 드래그/키보드로 분류. Sheets 연결 시 5초 폴링, 첫 드래그 후 잠금."
   },
   "slots": [
-    { "slot": "감축1", "category": "감축", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" },
-    { "slot": "감축2", "category": "감축", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" },
-    { "slot": "감축3", "category": "감축", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" },
-    { "slot": "감축4", "category": "감축", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" },
-    { "slot": "감축5", "category": "감축", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" },
-    { "slot": "적응1", "category": "적응", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" },
-    { "slot": "적응2", "category": "적응", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" },
-    { "slot": "적응3", "category": "적응", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" },
-    { "slot": "적응4", "category": "적응", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" },
-    { "slot": "적응5", "category": "적응", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" }
+    { "slot": "A1",  "name": "전력믹스 — 원전 vs 재생E",   "category": "", "note": "" },
+    { "slot": "A2",  "name": "탄소가격제 + 시민배당",       "category": "", "note": "" },
+    { "slot": "A3",  "name": "전기차 Well-to-Wheel",      "category": "", "note": "" },
+    { "slot": "A4",  "name": "노후주택 단열 의무화",        "category": "", "note": "" },
+    { "slot": "A5",  "name": "RE100 · 산업 탈탄소 속도",  "category": "", "note": "" },
+    { "slot": "A6",  "name": "폭염 취약계층 보호",          "category": "", "note": "" },
+    { "slot": "A7",  "name": "홍수 · 침수 도시 인프라",    "category": "", "note": "" },
+    { "slot": "A8",  "name": "농업 적응 · 식량 안보",      "category": "", "note": "" },
+    { "slot": "A9",  "name": "기후재난 사회 불평등",        "category": "", "note": "" },
+    { "slot": "A10", "name": "정의로운 전환",               "category": "", "note": "" }
   ]
 }

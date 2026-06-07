@@ -4,254 +4,306 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="robots" content="noindex,nofollow" />
-<title>의제 보드 (속장/주의제) — 2026 기후시민회의</title>
+<title>의제 분류 보드 — 감축 vs 적응 · 2026 기후시민회의</title>
 <!--
-  /public/board/  —  의제 보드 (속장/주의제)
+  /public/board/  —  의제 분류 보드 (드래그앤드롭)
   -------------------------------------------------------
-  스펙 변경(2026-06-07): 슬롯 20→10 (감축 5 + 적응 5)
-  레이아웃: 좌우 교차 토글(탭) — 한 화면에 5개 큰 포스트잇만
-  이 해석으로 진행 (탭/토글) — 다른 해석(좌우 5+5 동시) 원하면 알려달라.
+  스펙(2026-06-07 개편):
+    - 3-zone: 미분류(상단 가로 스크롤) + 감축(좌) + 적응(우)
+    - HTML5 native drag-and-drop + pointer events (터치) + 키보드(←/→/↑)
+    - 분류 변경은 LOCAL only. Sheets write-back 없음.
+    - 첫 드래그 후 5초 폴링 잠금 (🔒 LOCAL EDIT). R 키로 강제 재로드.
+    - C 키 = 결과 TSV 클립보드 복사
 
-  데이터 소스 (우선순위):
-    1) ?sheet=<CSV URL> 쿼리스트링 또는 window.SHEET_CSV → LIVE (5초 폴)
-    2) ./data.json → LOCAL
-    3) 둘 다 실패 → ERROR
-
-  Sheets 컬럼 (1행 헤더):
-    slot | category | citizen | moderator_num | moderator_priority | moderator_note
-
-  단축키:
-    Tab / 1 / 2  카테고리 전환 (감축↔적응)
-    M            모더레이터 포스트잇 강조 토글
-    C            시민 포스트잇 강조 토글
-    R            새로고침
+  Sheets 컬럼 (단순화):
+    slot | name | category | note
+    (category "" = 미분류)
 -->
 <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg:         #f0ece4;
-    --ink:        #14202b;
-    --citizen:    #fef3c7;
-    --citizen-2:  #fde68a;
-    --moderator:  #d1fae5;
-    --moderator-2:#a7f3d0;
-    --reduce:     #2E75B6;
-    --adapt:      #F5A623;
-    --line:       #44403c;
+    --bg:        #f0ece4;
+    --ink:       #14202b;
+    --reduce:    #2E75B6;
+    --reduce-bg: #cfe1f3;
+    --reduce-bg2:#e5eff8;
+    --adapt:     #F5A623;
+    --adapt-bg:  #fbe1bd;
+    --adapt-bg2: #fdf0dc;
+    --pool:      #57534e;
+    --pool-bg:   #e7e5e0;
+    --pool-bg2:  #f1efeb;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body {
     background: var(--bg);
     color: var(--ink);
     font-family: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
-    min-height: 100vh; width: 100vw; overflow-x: hidden;
+    width: 100vw; height: 100vh; overflow: hidden;
   }
 
-  .privacy {
-    background: #7c2d12; color: #fed7aa;
-    padding: 6px 18px; font-size: 14px; font-weight: 700;
-    letter-spacing: 0.06em; text-align: center;
-  }
-
+  /* ── HEADER 60px ─────────────────────────────── */
   .topbar {
+    height: 60px;
     background: linear-gradient(180deg, #1F4E79, #28679F);
     color: #fff;
-    padding: 16px 48px 18px;
-    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
-    box-shadow: 0 6px 28px rgba(31,78,121,0.45);
+    padding: 0 28px;
+    display: flex; align-items: center; gap: 20px;
+    box-shadow: 0 4px 18px rgba(31,78,121,0.4);
+    flex-shrink: 0;
   }
-  .h-title {
-    font-size: 40px; font-weight: 900;
-    letter-spacing: -0.02em; line-height: 1;
-  }
-  .h-sub {
-    margin-top: 8px; font-size: 17px; font-weight: 600;
-    opacity: 0.9;
-  }
-  .status-row {
-    margin-left: auto;
-    display: flex; align-items: center; gap: 14px;
-  }
+  .h-title { font-size: 24px; font-weight: 900; letter-spacing: -0.02em; }
+  .h-title .sub { font-weight: 700; opacity: 0.75; margin-left: 8px; font-size: 18px; }
+  .spacer { flex: 1; }
   .status-pill {
-    padding: 8px 18px; border-radius: 9999px;
-    font-size: 18px; font-weight: 800;
+    padding: 6px 14px; border-radius: 9999px;
+    font-size: 15px; font-weight: 800;
     background: #6b7280; color: #fff;
   }
   .status-pill.live  { background: #059669; }
   .status-pill.local { background: #d97706; }
   .status-pill.error { background: #b91c1c; }
-  .updated { font-size: 16px; opacity: 0.85; font-weight: 500; }
+  .status-pill.lock  { background: #b91c1c; }
+  .updated { font-size: 14px; opacity: 0.85; font-weight: 600; }
+  .btn {
+    background: rgba(255,255,255,0.15);
+    border: 2px solid rgba(255,255,255,0.4);
+    color: #fff; font-weight: 800; font-size: 15px;
+    padding: 7px 14px; border-radius: 8px;
+    cursor: pointer; transition: background 0.15s;
+    font-family: inherit;
+  }
+  .btn:hover { background: rgba(255,255,255,0.3); }
+  .btn.copy { background: #fbbf24; color: #1c1917; border-color: #fbbf24; }
+  .btn.copy:hover { background: #f59e0b; }
 
-  /* TABS — 좌우 교차 토글 */
-  .tabs {
-    display: flex; gap: 16px;
-    padding: 20px 48px 6px;
-    align-items: stretch;
-  }
-  .tab {
-    flex: 1;
-    border: 4px solid transparent;
-    background: #fff;
-    color: var(--ink);
-    padding: 20px 28px;
-    font-size: 34px; font-weight: 900;
-    letter-spacing: -0.02em;
-    border-radius: 18px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 14px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
-  }
-  .tab .icon { font-size: 42px; line-height: 1; }
-  .tab .key  {
-    font-size: 16px; font-weight: 700; opacity: 0.55;
-    border: 2px solid currentColor; border-radius: 8px;
-    padding: 2px 10px; margin-left: 8px;
-  }
-  .tab[data-cat="감축"].active { border-color: var(--reduce); color: var(--reduce); transform: translateY(-3px); box-shadow: 0 10px 28px rgba(46,117,182,0.32); }
-  .tab[data-cat="적응"].active { border-color: var(--adapt);  color: #b45309;       transform: translateY(-3px); box-shadow: 0 10px 28px rgba(245,166,35,0.32); }
-  .tab:not(.active) { opacity: 0.55; }
-
-  .hint {
-    padding: 6px 48px 0;
-    font-size: 15px; color: #57534e;
-    display: flex; gap: 22px; flex-wrap: wrap;
-  }
-  .hint kbd {
-    background: #fff; border: 1.5px solid #a8a29e;
-    border-bottom-width: 3px; border-radius: 6px;
-    padding: 2px 8px; font-family: inherit; font-weight: 700;
-    font-size: 13px;
-  }
-
-  .stage { padding: 20px 48px 48px; }
-  .slots { display: flex; flex-direction: column; gap: 20px; }
-
-  .slot {
+  /* ── STAGE ───────────────────────────────────── */
+  .stage {
+    height: calc(100vh - 60px);
     display: grid;
-    grid-template-columns: 110px 1fr 80px 1fr;
-    gap: 22px;
-    align-items: stretch;
-    animation: slot-in 0.4s ease both;
-  }
-  @keyframes slot-in {
-    from { opacity: 0; transform: translateY(12px); }
-    to   { opacity: 1; transform: translateY(0); }
+    grid-template-rows: minmax(220px, 28%) 1fr;
+    padding: 14px;
+    gap: 14px;
   }
 
-  .slot-num {
-    display: flex; align-items: center; justify-content: center;
-    font-size: 96px; font-weight: 900; line-height: 1;
-    color: #d6d3d1;
-    font-variant-numeric: tabular-nums;
-  }
-  .slot.active-cat-감축 .slot-num { color: rgba(46,117,182,0.30); }
-  .slot.active-cat-적응 .slot-num { color: rgba(245,166,35,0.35); }
-
-  .postit {
-    border-radius: 6px;
-    padding: 22px 26px;
-    min-height: 168px;
-    box-shadow: 3px 6px 18px rgba(0,0,0,0.18);
+  /* 미분류 (상단 가로 스크롤) */
+  .pool {
+    background: var(--pool-bg2);
+    border: 5px dashed #a8a29e;
+    border-radius: 16px;
+    padding: 12px 16px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
     position: relative;
+  }
+  .pool.drag-over { background: var(--pool-bg); border-color: var(--pool); border-style: solid; }
+  .zone-head {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+  }
+  .zone-title {
+    font-size: 22px; font-weight: 900;
+    color: var(--pool); letter-spacing: -0.02em;
+  }
+  .zone-count {
+    font-size: 18px; font-weight: 800;
+    background: rgba(0,0,0,0.08); color: var(--pool);
+    padding: 2px 10px; border-radius: 9999px;
+  }
+  .zone-hint { font-size: 13px; color: #78716c; margin-left: auto; }
+  .pool-scroll {
+    flex: 1;
+    overflow-x: auto; overflow-y: hidden;
+    display: flex; gap: 14px; align-items: stretch;
+    padding: 4px 2px 14px;
+    scrollbar-width: thin;
+  }
+  .pool-scroll::-webkit-scrollbar { height: 12px; }
+  .pool-scroll::-webkit-scrollbar-thumb { background: #a8a29e; border-radius: 6px; }
+  .pool-scroll:empty::before {
+    content: '모두 분류되었습니다 ✓';
+    color: #a8a29e; font-size: 22px; font-weight: 700;
+    align-self: center; margin: 0 auto;
+  }
+
+  /* 하단 2분할 */
+  .bottom {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    min-height: 0;
+  }
+  .zone {
+    border-radius: 16px;
+    padding: 14px 18px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    border: 6px solid;
+    transition: background 0.18s, border-color 0.18s;
+  }
+  .zone.reduce { background: var(--reduce-bg2); border-color: var(--reduce); }
+  .zone.adapt  { background: var(--adapt-bg2);  border-color: var(--adapt);  }
+  .zone.drag-over.reduce { background: var(--reduce-bg); }
+  .zone.drag-over.adapt  { background: var(--adapt-bg);  }
+  .zone.reduce .zone-title { color: var(--reduce); }
+  .zone.adapt  .zone-title { color: #b45309; }
+  .zone.reduce .zone-count { background: rgba(46,117,182,0.18); color: var(--reduce); }
+  .zone.adapt  .zone-count { background: rgba(245,166,35,0.22); color: #b45309; }
+
+  .zone-grid {
+    flex: 1;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+    padding: 6px 2px 8px;
+    align-content: start;
+  }
+
+  /* ── CARDS ───────────────────────────────────── */
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 18px 20px;
+    min-height: 220px;
+    box-shadow: 4px 6px 16px rgba(0,0,0,0.18);
+    border: 6px solid;
+    cursor: grab;
+    user-select: none;
     display: flex; flex-direction: column; gap: 10px;
-    transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease;
+    position: relative;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    touch-action: none;
   }
-  .postit.citizen   { background: var(--citizen);   transform: rotate(-0.7deg); }
-  .postit.moderator { background: var(--moderator); transform: rotate( 0.6deg); }
-  .postit-label {
-    font-size: 15px; font-weight: 800; letter-spacing: 0.04em;
-    color: #57534e; text-transform: uppercase;
+  .card:active { cursor: grabbing; }
+  .card.in-pool {
+    min-height: 180px; width: 260px; flex-shrink: 0;
+    border-color: #a8a29e; background: #fafaf9;
   }
-  .postit.moderator .postit-label { color: #065f46; }
-  .postit-body {
-    font-size: 30px; font-weight: 700; line-height: 1.35;
+  .card.in-reduce { border-color: var(--reduce); }
+  .card.in-adapt  { border-color: var(--adapt);  }
+
+  .card.dragging {
+    transform: rotate(2.5deg) scale(1.05);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.35);
+    opacity: 0.92;
+    z-index: 9999;
+  }
+  .card.focused {
+    outline: 5px solid #fbbf24;
+    outline-offset: 4px;
+  }
+  .card-slot {
+    font-size: 18px; font-weight: 800; letter-spacing: 0.04em;
+    color: #78716c; text-transform: uppercase;
+  }
+  .card.in-reduce .card-slot { color: var(--reduce); }
+  .card.in-adapt  .card-slot { color: #b45309; }
+  .card-name {
+    font-size: 38px; font-weight: 900; line-height: 1.25;
     color: var(--ink); word-break: keep-all;
   }
-  .postit.empty .postit-body {
-    color: #a8a29e; font-weight: 600; font-style: italic;
-    font-size: 24px;
-  }
-  .postit-meta {
+  .card.in-pool .card-name { font-size: 28px; }
+  .card-note {
     margin-top: auto;
-    display: flex; gap: 10px; flex-wrap: wrap;
-    font-size: 16px; font-weight: 700; color: #44403c;
+    font-size: 17px; font-weight: 600; color: #44403c;
+    line-height: 1.4; word-break: keep-all;
+    opacity: 0.85;
   }
-  .chip {
-    background: rgba(0,0,0,0.08); color: #1c1917;
-    padding: 4px 12px; border-radius: 9999px;
-  }
-  .chip.priority { background: #fbbf24; color: #1c1917; }
-  .chip.num      { background: #1c1917; color: #fff; }
+  .card.in-pool .card-note { font-size: 14px; }
 
-  body.emph-mod .postit.moderator { transform: rotate(0.6deg) scale(1.035); box-shadow: 0 0 0 3px #059669, 4px 8px 24px rgba(5,150,105,0.35); }
-  body.emph-mod .postit.citizen   { filter: saturate(0.7) brightness(0.95); }
-  body.emph-cit .postit.citizen   { transform: rotate(-0.7deg) scale(1.035); box-shadow: 0 0 0 3px #d97706, 4px 8px 24px rgba(217,119,6,0.35); }
-  body.emph-cit .postit.moderator { filter: saturate(0.7) brightness(0.95); }
+  /* 키보드 hint bar */
+  .keys-bar {
+    position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%);
+    background: rgba(20,32,43,0.88); color: #fef3c7;
+    padding: 6px 18px; border-radius: 9999px;
+    font-size: 13px; font-weight: 600;
+    display: flex; gap: 14px; pointer-events: none;
+    z-index: 100;
+  }
+  .keys-bar kbd {
+    background: #fbbf24; color: #1c1917;
+    padding: 1px 7px; border-radius: 5px; font-weight: 800;
+    font-family: inherit; font-size: 12px;
+  }
 
-  .link {
-    position: relative;
-    display: flex; align-items: center; justify-content: center;
+  /* toast */
+  .toast {
+    position: fixed; top: 76px; right: 20px;
+    background: #059669; color: #fff;
+    padding: 12px 22px; border-radius: 10px;
+    font-size: 16px; font-weight: 800;
+    box-shadow: 0 8px 24px rgba(5,150,105,0.4);
+    opacity: 0; transform: translateY(-10px);
+    transition: opacity 0.25s, transform 0.25s;
+    pointer-events: none; z-index: 200;
   }
-  .link::before {
-    content: '';
-    position: absolute; left: 0; right: 0; top: 50%;
-    height: 4px; background: var(--line); opacity: 0.45;
-    transform: translateY(-50%);
-  }
-  .link .arrow {
-    position: relative; z-index: 2;
-    background: var(--bg);
-    padding: 0 12px;
-    font-size: 32px; font-weight: 900; color: var(--line);
-    line-height: 1;
-  }
-  .slot.active-cat-감축 .link::before { background: var(--reduce); opacity: 0.5; }
-  .slot.active-cat-적응 .link::before { background: var(--adapt);  opacity: 0.55; }
-
-  .stage.switching .slots { opacity: 0; transform: translateY(-10px); transition: opacity 0.18s, transform 0.18s; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.err { background: #b91c1c; box-shadow: 0 8px 24px rgba(185,28,28,0.4); }
 
   @media (max-width: 1100px) {
-    .slot { grid-template-columns: 70px 1fr 50px 1fr; gap: 12px; }
-    .slot-num { font-size: 64px; }
-    .postit-body { font-size: 24px; }
-    .topbar, .tabs, .hint, .stage { padding-left: 24px; padding-right: 24px; }
+    .h-title { font-size: 18px; }
+    .h-title .sub { font-size: 14px; }
+    .card-name { font-size: 28px; }
+    .zone-grid { grid-template-columns: 1fr; }
   }
 </style>
 </head>
 <body>
-  <div class="privacy">모더레이터 운영 페이지 · 외부 공개 금지</div>
-
   <header class="topbar">
-    <div>
-      <div class="h-title">의제 보드 <span style="opacity:0.7;font-weight:700">· 속장/주의제</span></div>
-      <div class="h-sub">5×2 슬롯 (감축 5 + 적응 5) — 카테고리 토글</div>
-    </div>
-    <div class="status-row">
-      <span class="status-pill" id="status">연결 중…</span>
-      <span class="updated" id="updated"></span>
-    </div>
+    <div class="h-title">의제 분류 보드 <span class="sub">감축 vs 적응</span></div>
+    <span class="spacer"></span>
+    <button class="btn" id="reloadBtn" type="button" title="Sheets에서 다시 로드 (R)">🔄 다시 로드</button>
+    <button class="btn copy" id="copyBtn" type="button" title="결과 TSV 복사 (C)">📋 결과 복사</button>
+    <button class="btn" id="soundBtn" type="button" title="사운드 토글 (S)">🔊</button>
+    <span class="status-pill" id="status">연결 중…</span>
+    <span class="updated" id="updated"></span>
   </header>
 
-  <nav class="tabs" id="tabs" aria-label="카테고리 전환">
-    <button class="tab active" data-cat="감축" type="button" aria-pressed="true">
-      <span class="icon">🌱</span><span>감축</span><span class="key">1</span>
-    </button>
-    <button class="tab" data-cat="적응" type="button" aria-pressed="false">
-      <span class="icon">🌧️</span><span>적응</span><span class="key">2</span>
-    </button>
-  </nav>
+  <main class="stage">
+    <!-- 미분류 풀 -->
+    <section class="pool" id="pool" data-zone="">
+      <div class="zone-head">
+        <span class="zone-title">🗂️ 미분류 (대기)</span>
+        <span class="zone-count" id="poolCount">0</span>
+        <span class="zone-hint">드래그하거나 ← → 키로 분류</span>
+      </div>
+      <div class="pool-scroll" id="poolScroll"></div>
+    </section>
 
-  <div class="hint">
-    <span><kbd>Tab</kbd> / <kbd>1</kbd> <kbd>2</kbd> 카테고리 전환</span>
-    <span><kbd>M</kbd> 모더레이터 강조</span>
-    <span><kbd>C</kbd> 시민 강조</span>
-    <span><kbd>R</kbd> 새로고침</span>
+    <!-- 하단 2분할 -->
+    <div class="bottom">
+      <section class="zone reduce" id="reduceZone" data-zone="감축">
+        <div class="zone-head">
+          <span class="zone-title">🌱 감축 분야</span>
+          <span class="zone-count" id="reduceCount">0</span>
+          <span class="zone-hint"><kbd>←</kbd></span>
+        </div>
+        <div class="zone-grid" id="reduceGrid"></div>
+      </section>
+      <section class="zone adapt" id="adaptZone" data-zone="적응">
+        <div class="zone-head">
+          <span class="zone-title">🌧️ 적응 분야</span>
+          <span class="zone-count" id="adaptCount">0</span>
+          <span class="zone-hint"><kbd>→</kbd></span>
+        </div>
+        <div class="zone-grid" id="adaptGrid"></div>
+      </section>
+    </div>
+  </main>
+
+  <div class="keys-bar">
+    <span><kbd>Tab</kbd> 다음</span>
+    <span><kbd>←</kbd> 감축</span>
+    <span><kbd>→</kbd> 적응</span>
+    <span><kbd>↑</kbd> 미분류</span>
+    <span><kbd>C</kbd> 복사</span>
+    <span><kbd>R</kbd> 다시로드</span>
+    <span><kbd>S</kbd> 사운드</span>
   </div>
 
-  <main class="stage" id="stage">
-    <div class="slots" id="slots" aria-live="polite"></div>
-  </main>
+  <div class="toast" id="toast"></div>
 
 <script>
 (() => {
@@ -259,63 +311,88 @@
 
   const POLL_MS = 5000;
   const params = new URLSearchParams(location.search);
-  const SHEET_CSV =
-    params.get('sheet') ||
-    window.SHEET_CSV ||
-    '';
+  const SHEET_CSV = params.get('sheet') || window.SHEET_CSV || '';
 
   const statusEl  = document.getElementById('status');
   const updatedEl = document.getElementById('updated');
-  const tabsEl    = document.getElementById('tabs');
-  const stageEl   = document.getElementById('stage');
-  const slotsEl   = document.getElementById('slots');
+  const poolEl    = document.getElementById('pool');
+  const poolScrollEl = document.getElementById('poolScroll');
+  const reduceZone = document.getElementById('reduceZone');
+  const adaptZone  = document.getElementById('adaptZone');
+  const reduceGrid = document.getElementById('reduceGrid');
+  const adaptGrid  = document.getElementById('adaptGrid');
+  const poolCount  = document.getElementById('poolCount');
+  const reduceCount= document.getElementById('reduceCount');
+  const adaptCount = document.getElementById('adaptCount');
+  const reloadBtn  = document.getElementById('reloadBtn');
+  const copyBtn    = document.getElementById('copyBtn');
+  const soundBtn   = document.getElementById('soundBtn');
+  const toastEl    = document.getElementById('toast');
 
-  let activeCat = '감축';
-  let data = { meta: {}, slots: [] };
+  let items = [];       // [{slot, name, category, note}]
+  let locked = false;   // 로컬 편집 시작 시 true
+  let pollTimer = null;
+  let focusedSlot = null;
+  let soundOn = true;
 
-  // ── CSV parser ──────────────────────────────────────────
+  // ── CSV / fetch ──────────────────────────────
   function parseCSV(text) {
-    const rows = [];
-    let col = '', row = [], inQuote = false;
+    const rows = []; let col = '', row = [], q = false;
     const flush = () => { row.push(col); col = ''; };
     const pushRow = () => { if (row.length) rows.push(row); row = []; };
     for (let i = 0; i < text.length; i++) {
-      const ch = text[i], next = text[i + 1];
-      if (inQuote) {
-        if (ch === '"' && next === '"') { col += '"'; i++; }
-        else if (ch === '"') { inQuote = false; }
-        else { col += ch; }
+      const ch = text[i], nx = text[i+1];
+      if (q) {
+        if (ch === '"' && nx === '"') { col += '"'; i++; }
+        else if (ch === '"') q = false;
+        else col += ch;
       } else {
-        if (ch === '"') { inQuote = true; }
-        else if (ch === ',') { flush(); }
-        else if (ch === '\r' && next === '\n') { flush(); pushRow(); i++; }
+        if (ch === '"') q = true;
+        else if (ch === ',') flush();
+        else if (ch === '\r' && nx === '\n') { flush(); pushRow(); i++; }
         else if (ch === '\n' || ch === '\r') { flush(); pushRow(); }
-        else { col += ch; }
+        else col += ch;
       }
     }
     if (col || row.length) { flush(); pushRow(); }
     return rows;
   }
-  function csvToSlots(text) {
+  function csvToItems(text) {
     const parsed = parseCSV(text.trim());
     if (parsed.length < 2) return [];
-    const headers = parsed[0].map(h => h.trim());
+    const headers = parsed[0].map(h => h.trim().toLowerCase());
     const out = [];
     for (let r = 1; r < parsed.length; r++) {
       const cells = parsed[r];
       if (cells.every(c => !c.trim())) continue;
-      const obj = {};
-      headers.forEach((h, i) => { obj[h] = (cells[i] || '').trim(); });
+      const o = {};
+      headers.forEach((h, i) => o[h] = (cells[i] || '').trim());
       out.push({
-        slot: obj.slot || '',
-        category: obj.category || '',
-        citizen: obj.citizen || '',
-        moderator_num: obj.moderator_num || '',
-        moderator_priority: obj.moderator_priority || '',
-        moderator_note: obj.moderator_note || '',
+        slot: o.slot || ('S' + r),
+        name: o.name || o.citizen || '',
+        category: (o.category === '감축' || o.category === '적응') ? o.category : '',
+        note: o.note || o.moderator_note || '',
       });
     }
     return out;
+  }
+
+  async function fetchLive() {
+    const res = await fetch(SHEET_CSV, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return { items: csvToItems(await res.text()), source: 'sheets' };
+  }
+  async function fetchLocal() {
+    const res = await fetch('./data.json?_=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const j = await res.json();
+    const arr = (j.slots || j.items || []).map(s => ({
+      slot: s.slot || '',
+      name: s.name || s.citizen || '',
+      category: (s.category === '감축' || s.category === '적응') ? s.category : '',
+      note: s.note || s.moderator_note || '',
+    }));
+    return { items: arr, source: 'local' };
   }
 
   function setStatus(kind, msg) {
@@ -323,140 +400,268 @@
     statusEl.textContent = msg;
   }
   function setUpdated() {
-    const now = new Date();
-    updatedEl.textContent = '갱신 ' + now.toLocaleTimeString('ko-KR', { hour12: false });
+    updatedEl.textContent = '갱신 ' + new Date().toLocaleTimeString('ko-KR', { hour12: false });
+  }
+  function toast(msg, isErr) {
+    toastEl.textContent = msg;
+    toastEl.className = 'toast show' + (isErr ? ' err' : '');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => toastEl.className = 'toast' + (isErr ? ' err' : ''), 1800);
   }
 
-  async function fetchLive() {
-    const res = await fetch(SHEET_CSV, { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    return { slots: csvToSlots(await res.text()), meta: { source: 'sheets' } };
-  }
-  async function fetchLocal() {
-    const res = await fetch('./data.json?_=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    return await res.json();
-  }
-  async function loadOnce() {
+  async function loadOnce(force) {
+    if (locked && !force) return; // 폴링 잠금
     try {
+      let r;
       if (SHEET_CSV) {
-        data = await fetchLive();
-        setStatus('live', '● LIVE');
+        try { r = await fetchLive(); } catch (e) { r = await fetchLocal(); r.source = 'local-fallback'; }
       } else {
-        data = await fetchLocal();
-        setStatus('local', '● LOCAL');
+        r = await fetchLocal();
       }
+      items = r.items;
+      if (r.source === 'sheets') setStatus('live', '● LIVE');
+      else if (r.source === 'local-fallback') setStatus('local', '● LOCAL (live 실패)');
+      else setStatus('local', '● LOCAL');
       setUpdated();
       render();
-    } catch (err) {
-      console.warn('[board] primary failed, falling back', err);
-      try {
-        data = await fetchLocal();
-        setStatus('local', '● LOCAL (live 실패)');
-        setUpdated();
-        render();
-      } catch (e2) {
-        setStatus('error', '● ERROR');
-        console.error('[board] both sources failed', e2);
+    } catch (e) {
+      console.error('[board] load failed', e);
+      setStatus('error', '● ERROR');
+    }
+  }
+
+  // ── render ───────────────────────────────────
+  function escapeHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function makeCard(item, zoneClass) {
+    const c = document.createElement('div');
+    c.className = 'card ' + zoneClass;
+    if (focusedSlot === item.slot) c.classList.add('focused');
+    c.draggable = true;
+    c.dataset.slot = item.slot;
+    c.tabIndex = 0;
+    c.innerHTML =
+      '<div class="card-slot">' + escapeHtml(item.slot) + '</div>' +
+      '<div class="card-name">' + escapeHtml(item.name || '(이름 없음)') + '</div>' +
+      (item.note ? '<div class="card-note">' + escapeHtml(item.note) + '</div>' : '');
+    bindCardEvents(c);
+    return c;
+  }
+  function render() {
+    poolScrollEl.innerHTML = '';
+    reduceGrid.innerHTML = '';
+    adaptGrid.innerHTML = '';
+    let p = 0, r = 0, a = 0;
+    items.forEach(it => {
+      if (it.category === '감축')      { reduceGrid.appendChild(makeCard(it, 'in-reduce')); r++; }
+      else if (it.category === '적응') { adaptGrid.appendChild(makeCard(it, 'in-adapt'));   a++; }
+      else                             { poolScrollEl.appendChild(makeCard(it, 'in-pool')); p++; }
+    });
+    poolCount.textContent = p;
+    reduceCount.textContent = r;
+    adaptCount.textContent = a;
+  }
+
+  // ── move ─────────────────────────────────────
+  function moveSlot(slot, newCat) {
+    const it = items.find(x => x.slot === slot);
+    if (!it) return;
+    if (it.category === newCat) return;
+    it.category = newCat;
+    if (!locked) {
+      locked = true;
+      setStatus('lock', '🔒 LOCAL EDIT');
+      toast('로컬 편집 시작 — 폴링 일시정지');
+    }
+    playClick();
+    render();
+  }
+
+  // ── sound ────────────────────────────────────
+  let audioCtx = null;
+  function playClick() {
+    if (!soundOn) return;
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = 'sine'; o.frequency.value = 660;
+      g.gain.value = 0.05;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1);
+      o.stop(audioCtx.currentTime + 0.12);
+    } catch (e) {}
+  }
+
+  // ── HTML5 Drag & Drop ───────────────────────
+  let dragSlot = null;
+  function bindCardEvents(c) {
+    c.addEventListener('dragstart', e => {
+      dragSlot = c.dataset.slot;
+      c.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', dragSlot); } catch (err) {}
+    });
+    c.addEventListener('dragend', () => {
+      c.classList.remove('dragging');
+      dragSlot = null;
+      document.querySelectorAll('.drag-over').forEach(z => z.classList.remove('drag-over'));
+    });
+    c.addEventListener('click', () => {
+      focusedSlot = c.dataset.slot;
+      document.querySelectorAll('.card.focused').forEach(x => x.classList.remove('focused'));
+      c.classList.add('focused');
+    });
+  }
+  function bindZone(zoneEl, cat) {
+    zoneEl.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      zoneEl.classList.add('drag-over');
+    });
+    zoneEl.addEventListener('dragleave', e => {
+      if (e.target === zoneEl) zoneEl.classList.remove('drag-over');
+    });
+    zoneEl.addEventListener('drop', e => {
+      e.preventDefault();
+      zoneEl.classList.remove('drag-over');
+      const slot = dragSlot || e.dataTransfer.getData('text/plain');
+      if (slot) moveSlot(slot, cat);
+    });
+  }
+  bindZone(poolEl, '');
+  bindZone(reduceZone, '감축');
+  bindZone(adaptZone, '적응');
+
+  // ── Pointer / Touch polyfill ────────────────
+  // For devices where HTML5 drag is unreliable (touch/pen), use pointer events
+  let ptr = null;
+  document.addEventListener('pointerdown', e => {
+    const c = e.target.closest('.card');
+    if (!c || e.pointerType === 'mouse') return; // mouse uses native DnD
+    ptr = { slot: c.dataset.slot, el: c, x: e.clientX, y: e.clientY, moved: false };
+  });
+  document.addEventListener('pointermove', e => {
+    if (!ptr) return;
+    const dx = e.clientX - ptr.x, dy = e.clientY - ptr.y;
+    if (!ptr.moved && Math.hypot(dx, dy) > 12) {
+      ptr.moved = true;
+      ptr.el.classList.add('dragging');
+    }
+    if (ptr.moved) {
+      ptr.el.style.transform = 'translate(' + dx + 'px,' + dy + 'px) rotate(2.5deg) scale(1.05)';
+      document.querySelectorAll('.drag-over').forEach(z => z.classList.remove('drag-over'));
+      const target = document.elementFromPoint(e.clientX, e.clientY);
+      const zone = target && target.closest('[data-zone]');
+      if (zone) zone.classList.add('drag-over');
+    }
+  });
+  document.addEventListener('pointerup', e => {
+    if (!ptr) return;
+    if (ptr.moved) {
+      ptr.el.style.transform = '';
+      ptr.el.classList.remove('dragging');
+      const target = document.elementFromPoint(e.clientX, e.clientY);
+      const zone = target && target.closest('[data-zone]');
+      document.querySelectorAll('.drag-over').forEach(z => z.classList.remove('drag-over'));
+      if (zone) {
+        const cat = zone.dataset.zone;
+        moveSlot(ptr.slot, cat);
       }
     }
-  }
-
-  function render() {
-    const list = (data.slots || []).filter(s => s.category === activeCat).slice(0, 5);
-    while (list.length < 5) {
-      list.push({
-        slot: activeCat + (list.length + 1),
-        category: activeCat,
-        citizen: '', moderator_num: '', moderator_priority: '', moderator_note: '',
-      });
-    }
-    slotsEl.innerHTML = '';
-    list.forEach((s, idx) => {
-      const row = document.createElement('div');
-      row.className = 'slot active-cat-' + activeCat;
-
-      const num = document.createElement('div');
-      num.className = 'slot-num';
-      num.textContent = String(idx + 1);
-      row.appendChild(num);
-
-      const cit = document.createElement('div');
-      const citEmpty = !s.citizen || /^\(.*\)$/.test(s.citizen);
-      cit.className = 'postit citizen' + (citEmpty ? ' empty' : '');
-      cit.innerHTML =
-        '<div class="postit-label">시민 의견</div>' +
-        '<div class="postit-body">' + escapeHtml(s.citizen || '(시민 입력 대기)') + '</div>';
-      row.appendChild(cit);
-
-      const link = document.createElement('div');
-      link.className = 'link';
-      link.innerHTML = '<span class="arrow">→</span>';
-      row.appendChild(link);
-
-      const hasMod = s.moderator_num || s.moderator_priority || s.moderator_note;
-      const mod = document.createElement('div');
-      mod.className = 'postit moderator' + (hasMod ? '' : ' empty');
-      const chips = [];
-      if (s.moderator_num)      chips.push('<span class="chip num">#' + escapeHtml(s.moderator_num) + '</span>');
-      if (s.moderator_priority) chips.push('<span class="chip priority">' + escapeHtml(s.moderator_priority) + '</span>');
-      mod.innerHTML =
-        '<div class="postit-label">모더레이터</div>' +
-        '<div class="postit-body">' + escapeHtml(s.moderator_note || '(모더레이터 메모 대기)') + '</div>' +
-        '<div class="postit-meta">' + chips.join('') + '</div>';
-      row.appendChild(mod);
-
-      slotsEl.appendChild(row);
-    });
-  }
-
-  function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-
-  function setCategory(cat) {
-    if (cat === activeCat) return;
-    activeCat = cat;
-    tabsEl.querySelectorAll('.tab').forEach(t => {
-      const on = t.dataset.cat === cat;
-      t.classList.toggle('active', on);
-      t.setAttribute('aria-pressed', String(on));
-    });
-    stageEl.classList.add('switching');
-    setTimeout(() => {
-      render();
-      stageEl.classList.remove('switching');
-    }, 180);
-  }
-  tabsEl.addEventListener('click', e => {
-    const btn = e.target.closest('.tab');
-    if (btn) setCategory(btn.dataset.cat);
+    ptr = null;
   });
+  document.addEventListener('pointercancel', () => {
+    if (ptr) { ptr.el.style.transform = ''; ptr.el.classList.remove('dragging'); }
+    ptr = null;
+  });
+
+  // ── Keyboard ────────────────────────────────
+  function getOrderedSlots() {
+    // Pool first, then reduce, then adapt — visible order
+    const ordered = [];
+    items.forEach(i => { if (!i.category) ordered.push(i.slot); });
+    items.forEach(i => { if (i.category === '감축') ordered.push(i.slot); });
+    items.forEach(i => { if (i.category === '적응') ordered.push(i.slot); });
+    return ordered;
+  }
+  function focusNext(dir) {
+    const o = getOrderedSlots();
+    if (!o.length) return;
+    let i = o.indexOf(focusedSlot);
+    if (i < 0) i = dir > 0 ? -1 : 0;
+    i = (i + dir + o.length) % o.length;
+    focusedSlot = o[i];
+    render();
+    // Scroll into view
+    const el = document.querySelector('.card[data-slot="' + CSS.escape(focusedSlot) + '"]');
+    if (el) el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+  }
 
   document.addEventListener('keydown', e => {
     if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
     if (e.key === 'Tab') {
       e.preventDefault();
-      setCategory(activeCat === '감축' ? '적응' : '감축');
-    } else if (e.key === '1') {
-      setCategory('감축');
-    } else if (e.key === '2') {
-      setCategory('적응');
-    } else if (e.key === 'm' || e.key === 'M') {
-      document.body.classList.toggle('emph-mod');
-      document.body.classList.remove('emph-cit');
+      focusNext(e.shiftKey ? -1 : 1);
+    } else if (e.key === 'ArrowLeft') {
+      if (focusedSlot) { e.preventDefault(); moveSlot(focusedSlot, '감축'); }
+    } else if (e.key === 'ArrowRight') {
+      if (focusedSlot) { e.preventDefault(); moveSlot(focusedSlot, '적응'); }
+    } else if (e.key === 'ArrowUp') {
+      if (focusedSlot) { e.preventDefault(); moveSlot(focusedSlot, ''); }
     } else if (e.key === 'c' || e.key === 'C') {
-      document.body.classList.toggle('emph-cit');
-      document.body.classList.remove('emph-mod');
+      copyTSV();
     } else if (e.key === 'r' || e.key === 'R') {
-      loadOnce();
+      reload();
+    } else if (e.key === 's' || e.key === 'S') {
+      toggleSound();
     }
   });
 
-  loadOnce();
-  setInterval(loadOnce, POLL_MS);
+  // ── Buttons ─────────────────────────────────
+  function copyTSV() {
+    const lines = ['slot\tname\tcategory\tnote'];
+    items.forEach(it => {
+      const cells = [it.slot, it.name, it.category, it.note].map(v =>
+        String(v || '').replace(/\t/g, ' ').replace(/\r?\n/g, ' '));
+      lines.push(cells.join('\t'));
+    });
+    const tsv = lines.join('\n');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(tsv).then(
+        () => toast('TSV ' + items.length + '행 클립보드 복사 완료'),
+        () => fallbackCopy(tsv)
+      );
+    } else fallbackCopy(tsv);
+  }
+  function fallbackCopy(text) {
+    const t = document.createElement('textarea');
+    t.value = text; t.style.position = 'fixed'; t.style.opacity = '0';
+    document.body.appendChild(t); t.select();
+    try { document.execCommand('copy'); toast('복사 완료'); }
+    catch (e) { toast('복사 실패', true); }
+    document.body.removeChild(t);
+  }
+  function reload() {
+    if (locked && !confirm('로컬 변경이 있습니다. Sheets에서 다시 불러오면 덮어쓰여집니다. 계속?')) return;
+    locked = false;
+    loadOnce(true);
+    toast('Sheets에서 다시 로드');
+  }
+  function toggleSound() {
+    soundOn = !soundOn;
+    soundBtn.textContent = soundOn ? '🔊' : '🔇';
+    toast(soundOn ? '사운드 ON' : '사운드 OFF');
+  }
+  copyBtn.addEventListener('click', copyTSV);
+  reloadBtn.addEventListener('click', reload);
+  soundBtn.addEventListener('click', toggleSound);
+
+  // ── Init ────────────────────────────────────
+  loadOnce(true);
+  pollTimer = setInterval(loadOnce, POLL_MS);
 })();
 </script>
 </body>
