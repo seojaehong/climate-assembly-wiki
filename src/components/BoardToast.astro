@@ -1,0 +1,98 @@
+---
+/**
+ * BoardToast.astro — Live activity indicator toast
+ * Slides up from bottom when cards move zones.
+ * Content injected by BoardCanvas.tsx via DOM id="board-toast"
+ *
+ * spec §3.1 (toast 28px), §3.4 (300ms in / 3s hold / 500ms out)
+ */
+---
+
+<div
+  id="board-toast"
+  class="board-toast"
+  role="status"
+  aria-live="polite"
+  aria-atomic="true"
+  aria-hidden="true"
+>
+  <span id="board-toast-text"></span>
+</div>
+
+<style>
+  .board-toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(120%);
+    background: #1c1917;
+    color: #fef3c7;
+    font-size: 28px;
+    font-weight: 600;
+    padding: 14px 28px;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    z-index: 9999;
+    white-space: nowrap;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+    font-family: 'Pretendard Variable', 'Pretendard', sans-serif;
+  }
+
+  .board-toast.toast-visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .board-toast.toast-error {
+    background: #dc2626;
+    color: #fff;
+  }
+
+  /* Present mode */
+  :global(body.present-mode) .board-toast {
+    font-size: 39px;
+    padding: 20px 40px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .board-toast {
+      transition: opacity 50ms ease !important;
+    }
+  }
+</style>
+
+<script>
+  /**
+   * Toast API — called by BoardCanvas.tsx
+   * Exposes window.__boardToast({ text, isError })
+   */
+  (function () {
+    const toast = document.getElementById('board-toast');
+    const toastText = document.getElementById('board-toast-text');
+    let hideTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function showToast({ text, isError = false }: { text: string; isError?: boolean }) {
+      if (!toast || !toastText) return;
+      if (hideTimer) clearTimeout(hideTimer);
+
+      toastText.textContent = text;
+      toast.classList.toggle('toast-error', isError);
+      toast.classList.add('toast-visible');
+      toast.setAttribute('aria-hidden', 'false');
+
+      // Hold 3s then fade out
+      hideTimer = setTimeout(() => {
+        toast.classList.remove('toast-visible');
+        setTimeout(() => {
+          toast.setAttribute('aria-hidden', 'true');
+        }, 500);
+      }, 3000);
+    }
+
+    // Expose globally for BoardCanvas island
+    (window as any).__boardToast = showToast;
+  })();
+</script>
