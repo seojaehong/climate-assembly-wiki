@@ -298,8 +298,8 @@ const W = () => svg.clientWidth;
 const H = () => svg.clientHeight;
 const margin = { top: 130, right: 120, bottom: 100, left: 120 };
 
-const RADIUS_MIN = 32;     // 직전 24→32
-const RADIUS_MAX = 320;    // 직전 240→320 (1.33×) — 화면 임팩트↑
+const RADIUS_MIN = 40;     // 직전 32→40
+const RADIUS_MAX = 380;    // 직전 320→380 — 화면 임팩트↑
 const SIZE_POW   = 1.6;    // >1 = 점수 차이가 크기 차이로 더 극명
 
 // 10 후보 base — 캔버스 전체 fully spread (zig-zag로 겹침 최소)
@@ -408,7 +408,7 @@ function drawBubbles() {
     halo.classList.add('halo');
     circlesLayer.appendChild(halo);
     const pastel = toPastel(a.color, 0.62);
-    const circle = svgEl('circle', { cx:0, cy:0, r:25, fill:pastel, 'fill-opacity':1, stroke:a.color, 'stroke-width':3, 'stroke-opacity':0.95 });
+    const circle = svgEl('circle', { cx:0, cy:0, r:25, fill:pastel, 'fill-opacity':1, stroke:a.color, 'stroke-width':7, 'stroke-opacity':1 });
     circle.classList.add('main');
     circlesLayer.appendChild(circle);
     const spec = svgEl('ellipse', { cx:0, cy:0, rx:0, ry:0, fill:'none', opacity:0 });
@@ -584,14 +584,14 @@ function applyBubble(i) {
     rankT.textContent = String(s.rank);
     rankT.setAttribute('opacity', 1);
     crown.setAttribute('opacity', 0);
-    if (s.rank === 1)      main.setAttribute('stroke-width', 8);
-    else if (s.rank === 2) main.setAttribute('stroke-width', 6);
-    else                   main.setAttribute('stroke-width', 5);
+    if (s.rank === 1)      main.setAttribute('stroke-width', 14);
+    else if (s.rank === 2) main.setAttribute('stroke-width', 11);
+    else                   main.setAttribute('stroke-width', 9);
   } else {
     rankBg.setAttribute('opacity', 0);
     rankT.setAttribute('opacity', 0);
     crown.setAttribute('opacity', 0);
-    main.setAttribute('stroke-width', 3);
+    main.setAttribute('stroke-width', 7);
   }
   // 2D 플랫 — drop-shadow / specular highlight 제거
   main.removeAttribute('filter');
@@ -599,14 +599,14 @@ function applyBubble(i) {
   // 점수 글자
   scoreT.textContent = s.scoreNow > 0 ? s.scoreNow.toFixed(2) : '';
   scoreT.setAttribute('x', cx);
-  scoreT.setAttribute('y', cy + r + 64);
-  scoreT.setAttribute('font-size', '54px');
+  scoreT.setAttribute('y', cy + r + 76);
+  scoreT.setAttribute('font-size', '68px');
 
   // 안건 이름: placeLabels()가 미리 정한 위치·폰트 사용 (못 찾으면 축소)
   const labelGap = 30;
   const px = (s.labelX !== undefined) ? s.labelX : cx;
   const py = (s.labelY !== undefined) ? s.labelY : (cy - r - labelGap);
-  const labelFont = s.labelFont || 80;
+  const labelFont = s.labelFont || 96;
   nameT.setAttribute('x', px);
   nameT.setAttribute('y', py);
   nameT.setAttribute('font-size', `${labelFont}px`);
@@ -634,9 +634,9 @@ function fitBox(boxEl, textEl, padX, padY, visible) {
 // 라벨 충돌 해소 — 원 안 겹치지만 글자 겹치는 문제 해결
 // 큰 원(중요 의제) 우선, 16개 후보 순회 + 안 되면 폰트 축소 (fallback)
 function placeLabels() {
-  const LABEL_FONT_MAX = 80;
-  const LABEL_FONT_MIN = 48;       // 못 찾으면 여기까지 축소
-  const SCORE_FONT = 54;
+  const LABEL_FONT_MAX = 96;
+  const LABEL_FONT_MIN = 56;       // 못 찾으면 여기까지 축소
+  const SCORE_FONT = 68;
   const GAP = 24;
   const placed = [];
 
