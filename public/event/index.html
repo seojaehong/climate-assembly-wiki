@@ -459,13 +459,14 @@ function setAxisTitles(idx) {
   const yT = document.getElementById('yAxisTitle');
   if (!xT || !yT) return;
   const phKey = PHASE_ORDER[idx];
+  // 통일 규칙: 점수 높을수록 오른쪽 + 위쪽
   const phaseNames = {
-    pre:   ['→ 평가 시작 전',          '↑ 평가 시작 전'],
-    c1:    ['→ 기후위기 직접 관련 점수', '↑ 다른 기준 평균'],
-    c2:    ['→ 시민 삶·일상 실천 점수',  '↑ 다른 기준 평균'],
-    c3:    ['→ 사회적 합의 필요 점수',   '↑ 다른 기준 평균'],
-    c4:    ['→ 다양한 대안 비교 점수',   '↑ 다른 기준 평균'],
-    total: ['→ 종합 가중평균 점수',      '↑ 순위 (위쪽 = 1위)'],
+    pre:   ['→ 평가 시작 전',           '↑ 평가 시작 전'],
+    c1:    ['→ 기후위기 직접 관련 (점수↑)', '↑ 점수 높을수록 위'],
+    c2:    ['→ 시민 삶·일상 실천 (점수↑)',  '↑ 점수 높을수록 위'],
+    c3:    ['→ 사회적 합의 필요 (점수↑)',   '↑ 점수 높을수록 위'],
+    c4:    ['→ 다양한 대안 비교 (점수↑)',   '↑ 점수 높을수록 위'],
+    total: ['→ 종합 가중평균 점수',         '↑ 순위 (위쪽 = 1위)'],
   };
   const [xLbl, yLbl] = phaseNames[phKey] || ['→ 점수', '↑ 점수'];
   xT.textContent = xLbl;
@@ -577,19 +578,15 @@ function getYMetric(agenda, phKey) {
 }
 
 function getTarget(i, score) {
-  // X = 현재 페이즈 점수 (오실레이션 따라 흔들림)
-  const tNormX = score <= 0 ? 0 : Math.max(0, Math.min(1, (score - 1) / 2));
-  const tx = 0.08 + tNormX * 0.82;       // 0.08 ~ 0.90
+  // 단순·명확 규칙 — 200명 가시성: 점수 높을수록 오른쪽 + 위쪽 (대각선 상승)
+  // X = Y = 현재 페이즈 점수
+  const tNorm = score <= 0 ? 0 : Math.max(0, Math.min(1, (score - 1) / 2));
+  const tx = 0.08 + tNorm * 0.82;       // 0.08 ~ 0.90
+  const ty = 0.10 + tNorm * 0.80;       // 0.10 ~ 0.90
 
-  // Y = 다른 기준들의 평균 (이 페이즈에서는 안정 — 페이즈 전환 시에만 변화)
-  const phKey = PHASE_ORDER[phaseIdx];
-  const yScore = getYMetric(DATA.agendas[i], phKey);
-  const tNormY = yScore <= 0 ? 0 : Math.max(0, Math.min(1, (yScore - 1) / 2));
-  const ty = 0.10 + tNormY * 0.80;       // 0.10 ~ 0.90
-
-  // 미세 stack 방지 jitter
+  // 미세 jitter — 같은 점수끼리 stack 방지 (충돌 회피가 추가 분산)
   const jitX = Math.sin(i * 1.7) * 0.025;
-  const jitY = Math.cos(i * 2.3) * 0.030;
+  const jitY = Math.cos(i * 2.3) * 0.025;
 
   return {
     tx: Math.max(0.05, Math.min(0.95, tx + jitX)),
