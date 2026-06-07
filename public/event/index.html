@@ -584,9 +584,10 @@ function getTarget(i, score) {
   const tx = 0.08 + tNorm * 0.82;       // 0.08 ~ 0.90
   const ty = 0.10 + tNorm * 0.80;       // 0.10 ~ 0.90
 
-  // 미세 jitter — 같은 점수끼리 stack 방지 (충돌 회피가 추가 분산)
-  const jitX = Math.sin(i * 1.7) * 0.025;
-  const jitY = Math.cos(i * 2.3) * 0.025;
+  // 동점 처리 — X는 점수 그대로 고정, Y만 인덱스로 약간 흩뿌려
+  // → 같은 점수면 X 같고 Y만 다름 → 충돌 회피가 위·아래로만 펼침
+  const jitX = 0;
+  const jitY = ((i % 5) - 2) * 0.02;     // -0.04 ~ +0.04, 5단계
 
   return {
     tx: Math.max(0.05, Math.min(0.95, tx + jitX)),
