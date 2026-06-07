@@ -247,6 +247,24 @@
   .mute-btn:hover { background: #1F4E79; }
   .mute-btn.muted { background: #8a98a8; }
   .mute-btn.muted:hover { background: #5a6a7a; }
+
+  /* LIVE/LOCAL/ERROR indicator — mute 버튼 옆 */
+  .live-indicator {
+    position: absolute;
+    right: 32px; top: 82px;
+    z-index: 20;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 14px; font-weight: 900;
+    font-family: inherit;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    letter-spacing: 0.5px;
+    user-select: none;
+  }
+  .live-indicator.live  { background: #16a34a; }
+  .live-indicator.local { background: #ca8a04; }
+  .live-indicator.error { background: #dc2626; }
 </style>
 </head>
 <body>
@@ -292,6 +310,7 @@
 
   <!-- MUTE 버튼 — 항상 보이는 우상단 -->
   <button id="muteBtn" class="mute-btn" title="사운드 ON/OFF (단축키: S)">🔊 사운드 ON</button>
+  <div id="liveIndicator" class="live-indicator local" title="데이터 소스 상태">🟡 LOCAL</div>
 </div>
 
 <!-- CONTROL DRAWER -->
@@ -393,8 +412,114 @@ function svgEl(name, attrs = {}) {
   return e;
 }
 
+// ─── Google Sheets live integration ─────────────────────────────────
+const SHEET_ID = new URLSearchParams(location.search).get('sheet');
+const SHEET_NAME = 'Scores';
+const POLL_MS = 5000;
+let pollTimer = null;
+
+function setLiveStatus(kind) {
+  // kind: 'live' | 'local' | 'error'
+  const el = document.getElementById('liveIndicator');
+  if (!el) return;
+  el.classList.remove('live', 'local', 'error');
+  el.classList.add(kind);
+  el.textContent = kind === 'live'  ? '🟢 LIVE'
+                 : kind === 'local' ? '🟡 LOCAL'
+                 : '🔴 ERROR';
+}
+
+// CSV 파서 — 따옴표 안 콤마/이중따옴표 처리
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i+1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (c === '\r') { /* skip */ }
+      else field += c;
+    }
+  }
+  if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+  return rows.filter(r => r.length > 0 && r.some(v => v !== ''));
+}
+
+function csvToAgendas(csvText) {
+  const rows = parseCSV(csvText);
+  if (rows.length < 2) throw new Error('CSV empty');
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const need = ['slot','name','short','color','c1','c2','c3','c4'];
+  for (const k of need) if (!header.includes(k)) throw new Error('missing header: ' + k);
+  const idx = Object.fromEntries(need.map(k => [k, header.indexOf(k)]));
+  return rows.slice(1).map(r => ({
+    slot:  r[idx.slot]?.trim(),
+    name:  r[idx.name]?.trim(),
+    short: r[idx.short]?.trim(),
+    color: r[idx.color]?.trim(),
+    scores: {
+      c1: parseFloat(r[idx.c1]),
+      c2: parseFloat(r[idx.c2]),
+      c3: parseFloat(r[idx.c3]),
+      c4: parseFloat(r[idx.c4]),
+    },
+  })).filter(a => a.slot && a.name);
+}
+
+async function fetchSheetAgendas() {
+  if (!SHEET_ID) return null;
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const text = await res.text();
+  return csvToAgendas(text);
+}
+
+async function refetchSheet() {
+  if (!SHEET_ID) return;
+  // 페이즈 애니메이션 중에는 데이터 교체 안 함 (시각적 점프 방지)
+  if (phaseAnimating) return;
+  try {
+    const agendas = await fetchSheetAgendas();
+    if (agendas && agendas.length === DATA.agendas.length) {
+      DATA.agendas = agendas;
+      setLiveStatus('live');
+    }
+  } catch (e) {
+    console.warn('[sheet] poll failed:', e);
+    setLiveStatus('error');
+  }
+}
+
 async function load() {
-  DATA = await fetch('data.json').then(r => r.json());
+  // 1) data.json 항상 로드 — meta + fallback agendas
+  DATA = await fetch('data.json', { cache: 'no-store' }).then(r => r.json());
+  setLiveStatus('local');
+
+  // 2) ?sheet=ID 있으면 Sheets에서 agendas 교체 시도
+  if (SHEET_ID) {
+    try {
+      const agendas = await fetchSheetAgendas();
+      if (agendas && agendas.length > 0) {
+        DATA.agendas = agendas;
+        setLiveStatus('live');
+        console.info('[sheet] live data loaded:', agendas.length, 'rows');
+      }
+    } catch (e) {
+      console.warn('[sheet] initial load failed, using data.json fallback:', e);
+      setLiveStatus('error');
+    }
+    // 5초 폴링 시작
+    pollTimer = setInterval(refetchSheet, POLL_MS);
+  }
+
   generateSeeds(DATA.agendas.length);
   drawDefs();
   drawAxes();
