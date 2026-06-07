@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "title": "2026 기후시민회의 — 의제 보드 (속장/주의제)",
+    "updated": "2026-06-07",
+    "sheet_name": "Board",
+    "schema": "5×2 슬롯 (감축 5 + 적응 5) — 카테고리 토글",
+    "interpretation_note": "이 해석으로 진행 — 좌우 교차 토글(탭) 방식, 한 화면 5슬롯 큰 포스트잇. 다른 해석 원하면 알려달라.",
+    "note": "Sheets에 동일 컬럼명으로 입력하면 5초 내 화면 반영. 미연결 시 본 data.json placeholder 사용."
+  },
+  "slots": [
+    { "slot": "감축1", "category": "감축", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" },
+    { "slot": "감축2", "category": "감축", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" },
+    { "slot": "감축3", "category": "감축", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" },
+    { "slot": "감축4", "category": "감축", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" },
+    { "slot": "감축5", "category": "감축", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" },
+    { "slot": "적응1", "category": "적응", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" },
+    { "slot": "적응2", "category": "적응", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" },
+    { "slot": "적응3", "category": "적응", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" },
+    { "slot": "적응4", "category": "적응", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" },
+    { "slot": "적응5", "category": "적응", "citizen": "(시민 입력 대기)", "moderator_num": "", "moderator_priority": "", "moderator_note": "" }
+  ]
+}

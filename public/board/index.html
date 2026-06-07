@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>의제 보드 (속장/주의제) — 2026 기후시민회의</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700;800;900&family=Gaegu:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:           #fafaf6;
+    --ink:          #14202b;
+    --muted:        #6b7785;
+    --header:       #2E75B6;
+    --header-2:     #1F4E79;
+    --amber:        #F5A623;
+    --reduce:       #6FBFC9;   /* 감축 baseline (teal) */
+    --reduce-pastel:#A8D8DD;
+    --adapt:        #F39B6B;   /* 적응 baseline (orange) */
+    --adapt-pastel: #FFCDA8;
+    --moderator:    #E8B547;
+    --moderator-pastel:#FFE8A8;
+    --divider:      #c8d0d8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    height: 100vh; width: 100vw;
+    overflow: hidden;
+  }
+  /* subtle paper grid */
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image:
+      radial-gradient(rgba(20,32,43,0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+    pointer-events: none; z-index: 0;
+  }
+
+  /* HEADER */
+  .header-band {
+    background: linear-gradient(180deg, var(--header), #28679F);
+    color: #fff;
+    padding: 12px 40px;
+    box-shadow: 0 4px 20px rgba(46,117,182,0.35);
+    position: relative; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 80px;
+  }
+  .h-title {
+    font-size: 36px; font-weight: 900;
+    letter-spacing: -0.02em; line-height: 1;
+  }
+  .h-title .amber { color: var(--amber); }
+  .h-sub {
+    font-size: 16px; font-weight: 700; opacity: 0.85;
+    margin-top: 6px; letter-spacing: 0.04em;
+  }
+  .h-right {
+    display: flex; gap: 12px; align-items: center;
+  }
+  .live-indicator {
+    padding: 8px 16px; border-radius: 10px;
+    font-size: 15px; font-weight: 900;
+    color: #fff; letter-spacing: 0.5px;
+    user-select: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  }
+  .live-indicator.live  { background: #16a34a; }
+  .live-indicator.local { background: #ca8a04; }
+  .live-indicator.error { background: #dc2626; }
+
+  /* STAGE */
+  .stage {
+    position: relative;
+    height: calc(100vh - 80px);
+    display: flex;
+    z-index: 2;
+  }
+  .stage::after {
+    /* center vertical divider */
+    content: '';
+    position: absolute;
+    left: 50%; top: 64px; bottom: 24px;
+    width: 0; border-left: 3px dashed var(--divider);
+    transform: translateX(-1.5px);
+    z-index: 1;
+  }
+  .half {
+    flex: 1;
+    padding: 16px 28px 24px;
+    position: relative;
+    display: flex; flex-direction: column;
+    min-width: 0;
+  }
+  .half-label {
+    font-size: 44px; font-weight: 900;
+    line-height: 1; margin-bottom: 14px;
+    letter-spacing: -0.01em;
+    display: flex; align-items: baseline; gap: 14px;
+  }
+  .half-label .var-tag {
+    font-size: 18px; font-weight: 800;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .half.reduce .half-label { color: #2A8993; }
+  .half.adapt  .half-label { color: #C56B36; }
+
+  .grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(var(--cols, 2), 1fr);
+    grid-auto-rows: 1fr;
+    gap: 16px 18px;
+    min-height: 0;
+  }
+  /* 5 slots/side → 1열 5행 (큰 카드), 10 slots/side → 2열 5행 */
+  .grid.slots-5  { --cols: 1; }
+  .grid.slots-10 { --cols: 2; }
+  .grid.slots-6  { --cols: 2; }
+  .grid.slots-8  { --cols: 2; }
+
+  /* SLOT — relative container for two stickies + svg line */
+  .slot {
+    position: relative;
+    min-height: 0;
+    transition: filter 0.25s, transform 0.25s;
+  }
+  .slot.dim { opacity: 0.25; filter: grayscale(0.4); }
+  .slot.highlight .sticky-citizen { box-shadow: 0 0 0 4px #2E75B6, 0 12px 28px rgba(0,0,0,0.18); }
+  .slot.highlight .sticky-mod     { box-shadow: 0 0 0 4px #2E75B6, 0 10px 22px rgba(0,0,0,0.16); }
+
+  .slot-link {
+    position: absolute; inset: 0;
+    pointer-events: none; z-index: 1;
+  }
+
+  /* STICKIES — shared */
+  .sticky {
+    position: absolute;
+    background: #fff;
+    padding: 12px 14px 12px 14px;
+    border-radius: 6px;
+    box-shadow:
+      0 1px 0 rgba(0,0,0,0.08),
+      0 6px 14px rgba(0,0,0,0.15),
+      0 18px 30px rgba(0,0,0,0.08);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    transition: transform 0.4s ease, box-shadow 0.25s;
+    z-index: 2;
+  }
+  .sticky::after {
+    /* curled corner */
+    content: ''; position: absolute;
+    right: 0; bottom: 0;
+    width: 22px; height: 22px;
+    background: linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.10) 50%);
+    border-bottom-right-radius: 6px;
+  }
+  .sticky-citizen {
+    left: 4%; top: 4%;
+    width: 64%; height: 74%;
+    z-index: 3;
+  }
+  .sticky-mod {
+    right: 4%; bottom: 4%;
+    width: 46%; height: 56%;
+    z-index: 4;
+  }
+
+  /* color variants */
+  .reduce .sticky-citizen { background: var(--reduce-pastel); }
+  .adapt  .sticky-citizen { background: var(--adapt-pastel); }
+  .sticky-mod { background: var(--moderator-pastel); }
+
+  .sticky-citizen .slot-name {
+    font-size: 13px; font-weight: 800;
+    color: rgba(20,32,43,0.55);
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+  .sticky-citizen .citizen-text {
+    flex: 1;
+    font-family: 'Gaegu', 'Pretendard', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.18;
+    color: #14202b;
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: keep-all;
+    transition: opacity 0.45s;
+  }
+  .sticky-citizen .citizen-text.placeholder {
+    color: rgba(20,32,43,0.35);
+    font-style: italic;
+  }
+
+  .sticky-mod .mod-head {
+    display: flex; align-items: baseline; gap: 8px;
+    margin-bottom: 4px;
+  }
+  .sticky-mod .mod-num {
+    font-size: 40px; font-weight: 900;
+    line-height: 0.9;
+    color: var(--header-2);
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+  .sticky-mod .mod-num.empty { color: rgba(20,32,43,0.25); font-size: 32px; }
+  .sticky-mod .mod-pri {
+    font-size: 14px; font-weight: 900;
+    padding: 3px 9px; border-radius: 999px;
+    background: #fff; color: var(--header-2);
+    letter-spacing: 0.06em;
+    border: 1.5px solid rgba(31,78,121,0.35);
+    white-space: nowrap;
+  }
+  .sticky-mod .mod-pri.H { background: #DC2626; color: #fff; border-color: #DC2626; }
+  .sticky-mod .mod-pri.M { background: #F5A623; color: #fff; border-color: #F5A623; }
+  .sticky-mod .mod-pri.L { background: #94A3B8; color: #fff; border-color: #94A3B8; }
+  .sticky-mod .mod-note {
+    flex: 1;
+    font-family: 'Pretendard', sans-serif;
+    font-size: 13px; font-weight: 600;
+    line-height: 1.3;
+    color: rgba(20,32,43,0.78);
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: keep-all;
+    transition: opacity 0.45s;
+  }
+
+  /* hide toggles */
+  .stage.hide-mod     .sticky-mod    { display: none; }
+  .stage.hide-mod     .slot-link     { display: none; }
+  .stage.hide-citizen .sticky-citizen{ display: none; }
+  .stage.hide-citizen .slot-link     { display: none; }
+
+  /* HUD bottom hint */
+  .hud-hint {
+    position: fixed;
+    left: 24px; bottom: 12px;
+    font-size: 13px; color: var(--muted);
+    font-weight: 700; letter-spacing: 0.02em;
+    z-index: 8;
+    background: rgba(255,255,255,0.92);
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(46,117,182,0.18);
+    backdrop-filter: blur(4px);
+  }
+  .hud-hint .key {
+    display: inline-block; padding: 2px 8px;
+    background: var(--header);
+    border-radius: 5px;
+    color: #fff; margin: 0 3px;
+    font-weight: 900;
+    font-size: 12px;
+    box-shadow: 0 2px 0 var(--header-2);
+  }
+  .hud-hint .sep { color: #c5cdd6; margin: 0 5px; }
+
+  /* fade-in update */
+  @keyframes pulse {
+    0%   { background-color: rgba(245,166,35,0.0); }
+    20%  { background-color: rgba(245,166,35,0.35); }
+    100% { background-color: rgba(245,166,35,0.0); }
+  }
+  .updated { animation: pulse 1.2s ease-out; }
+</style>
+</head>
+<body>
+
+<div class="header-band">
+  <div>
+    <div class="h-title">2026 기후시민회의 <span class="amber">— 의제 보드</span></div>
+    <div class="h-sub">속장 · 주의제 회의 진행용 · 시민 + 모더레이터 동시 기록</div>
+  </div>
+  <div class="h-right">
+    <div id="liveIndicator" class="live-indicator local" title="데이터 소스 상태">🟡 LOCAL</div>
+  </div>
+</div>
+
+<div class="stage" id="stage">
+  <div class="half reduce">
+    <div class="half-label">🌱 감축 <span class="var-tag">Variable 1 · Mitigation</span></div>
+    <div class="grid" id="grid-reduce"></div>
+  </div>
+  <div class="half adapt">
+    <div class="half-label">🌧️ 적응 <span class="var-tag">Variable 2 · Adaptation</span></div>
+    <div class="grid" id="grid-adapt"></div>
+  </div>
+</div>
+
+<div class="hud-hint">
+  <span class="key">M</span> 모더레이터 토글
+  <span class="sep">·</span>
+  <span class="key">C</span> 시민 토글
+  <span class="sep">·</span>
+  <span class="key">1-9</span> 슬롯 강조
+  <span class="sep">·</span>
+  <span class="key">0</span> 10번
+  <span class="sep">·</span>
+  <span class="key">Esc</span> 해제
+  <span class="sep">·</span>
+  <span class="key">R</span> 새로고침
+</div>
+
+<script>
+const SHEET_ID = new URLSearchParams(location.search).get('sheet');
+const SHEET_NAME = 'Board';
+const POLL_MS = 5000;
+
+let DATA = null;
+let pollTimer = null;
+
+function setLiveStatus(kind) {
+  const el = document.getElementById('liveIndicator');
+  if (!el) return;
+  el.classList.remove('live', 'local', 'error');
+  el.classList.add(kind);
+  el.textContent = kind === 'live'  ? '🟢 LIVE'
+                 : kind === 'local' ? '🟡 LOCAL'
+                 : '🔴 ERROR';
+}
+
+// CSV parser (event/index.html과 동일 패턴)
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i+1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (c === '\r') { /* skip */ }
+      else field += c;
+    }
+  }
+  if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+  return rows.filter(r => r.length > 0 && r.some(v => v !== ''));
+}
+
+function csvToSlots(csvText) {
+  const rows = parseCSV(csvText);
+  if (rows.length < 2) throw new Error('CSV empty');
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const need = ['slot','category','citizen','moderator_num','moderator_priority','moderator_note'];
+  for (const k of need) if (!header.includes(k)) throw new Error('missing header: ' + k);
+  const idx = Object.fromEntries(need.map(k => [k, header.indexOf(k)]));
+  return rows.slice(1).map(r => ({
+    slot:               (r[idx.slot]               || '').trim(),
+    category:           (r[idx.category]           || '').trim(),
+    citizen:            (r[idx.citizen]            || '').trim(),
+    moderator_num:      (r[idx.moderator_num]      || '').trim(),
+    moderator_priority: (r[idx.moderator_priority] || '').trim(),
+    moderator_note:     (r[idx.moderator_note]     || '').trim(),
+  })).filter(s => s.slot);
+}
+
+async function fetchSheetSlots() {
+  if (!SHEET_ID) return null;
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const text = await res.text();
+  return csvToSlots(text);
+}
+
+// Deterministic rotation per slot index (-1.6°, +1.4°, -0.8° 등)
+function rotForCitizen(i) {
+  const seq = [-1.6, 1.2, -0.8, 1.5, -1.3, 0.9, -1.1, 1.7, -0.6, 1.0];
+  return seq[i % seq.length];
+}
+function rotForMod(i) {
+  // 반대 방향
+  const seq = [1.4, -1.0, 1.6, -0.7, 1.1, -1.3, 0.8, -1.5, 1.2, -0.9];
+  return seq[i % seq.length];
+}
+
+function priorityClass(p) {
+  const v = (p || '').toString().trim().toUpperCase();
+  if (v === 'H' || v === 'HIGH' || v === '상') return 'H';
+  if (v === 'M' || v === 'MID' || v === 'MEDIUM' || v === '중') return 'M';
+  if (v === 'L' || v === 'LOW' || v === '하') return 'L';
+  return '';
+}
+
+function priorityDisplay(p) {
+  const v = (p || '').toString().trim().toUpperCase();
+  if (v === 'H' || v === 'HIGH' || v === '상') return '★★★ H';
+  if (v === 'M' || v === 'MID' || v === 'MEDIUM' || v === '중') return '★★ M';
+  if (v === 'L' || v === 'LOW' || v === '하') return '★ L';
+  return p || '';
+}
+
+// 슬롯 1개를 DOM으로 생성
+function buildSlot(slotData, globalIdx) {
+  const cat = slotData.category === '적응' ? 'adapt' : 'reduce';
+  const wrap = document.createElement('div');
+  wrap.className = 'slot ' + cat;
+  wrap.dataset.slot = slotData.slot;
+  wrap.dataset.idx = globalIdx;
+
+  // SVG connecting line
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('class', 'slot-link');
+  svg.setAttribute('viewBox', '0 0 100 100');
+  svg.setAttribute('preserveAspectRatio', 'none');
+  const line = document.createElementNS(svgNS, 'line');
+  line.setAttribute('x1', '36');   // 시민 sticky 중심 ≈ left 4% + 64%/2 = 36%
+  line.setAttribute('y1', '41');   //                 top 4% + 74%/2 = 41%
+  line.setAttribute('x2', '77');   // 모더 sticky 중심 ≈ right 4% + 46%/2 = 100-4-23 = 73%
+  line.setAttribute('y2', '68');   //                 bottom 4% + 56%/2 = 100-4-28 = 68%
+  const lineColor = cat === 'reduce' ? '#2A8993' : '#C56B36';
+  line.setAttribute('stroke', lineColor);
+  line.setAttribute('stroke-width', '0.6');
+  line.setAttribute('stroke-dasharray', '1.6 1.2');
+  line.setAttribute('stroke-linecap', 'round');
+  line.setAttribute('opacity', '0.7');
+  svg.appendChild(line);
+  wrap.appendChild(svg);
+
+  // 시민 sticky
+  const citizen = document.createElement('div');
+  citizen.className = 'sticky sticky-citizen';
+  citizen.style.transform = `rotate(${rotForCitizen(globalIdx)}deg)`;
+  const isPlaceholder = !slotData.citizen || /^\(.*\)$/.test(slotData.citizen);
+  citizen.innerHTML = `
+    <div class="slot-name">${slotData.slot}</div>
+    <div class="citizen-text ${isPlaceholder ? 'placeholder' : ''}" data-field="citizen">${escapeHtml(slotData.citizen || '(미작성)')}</div>
+  `;
+  wrap.appendChild(citizen);
+
+  // 모더레이터 sticky
+  const mod = document.createElement('div');
+  mod.className = 'sticky sticky-mod';
+  mod.style.transform = `rotate(${rotForMod(globalIdx)}deg)`;
+  const num = slotData.moderator_num || '';
+  const pri = slotData.moderator_priority || '';
+  const priCls = priorityClass(pri);
+  const priDisp = priorityDisplay(pri);
+  mod.innerHTML = `
+    <div class="mod-head">
+      <div class="mod-num ${num ? '' : 'empty'}" data-field="moderator_num">${num ? '#' + escapeHtml(num) : '#--'}</div>
+      ${priDisp ? `<div class="mod-pri ${priCls}" data-field="moderator_priority">${escapeHtml(priDisp)}</div>` : ''}
+    </div>
+    <div class="mod-note" data-field="moderator_note">${escapeHtml(slotData.moderator_note || '')}</div>
+  `;
+  wrap.appendChild(mod);
+
+  return wrap;
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function renderAll() {
+  const gReduce = document.getElementById('grid-reduce');
+  const gAdapt  = document.getElementById('grid-adapt');
+  gReduce.innerHTML = '';
+  gAdapt.innerHTML = '';
+
+  // 카테고리별로 분리 + 정렬 (slot명 자연 정렬)
+  const reduceSlots = DATA.slots.filter(s => s.category !== '적응');
+  const adaptSlots  = DATA.slots.filter(s => s.category === '적응');
+
+  // Grid class — 슬롯 수에 따라 컬럼 자동 조정
+  gReduce.className = 'grid slots-' + reduceSlots.length;
+  gAdapt.className  = 'grid slots-' + adaptSlots.length;
+
+  reduceSlots.forEach((s, i) => gReduce.appendChild(buildSlot(s, i)));
+  adaptSlots.forEach((s, i) => gAdapt.appendChild(buildSlot(s, reduceSlots.length + i)));
+}
+
+// 부드러운 갱신 — DOM 전체 재생성 대신 필드별 patch
+function patchAll(newSlots) {
+  const map = new Map();
+  newSlots.forEach(s => map.set(s.slot, s));
+  document.querySelectorAll('.slot').forEach(node => {
+    const slotName = node.dataset.slot;
+    const ns = map.get(slotName);
+    if (!ns) return;
+    let changed = false;
+
+    const citizenEl = node.querySelector('[data-field="citizen"]');
+    const newCitizen = ns.citizen || '(미작성)';
+    if (citizenEl.textContent !== newCitizen) {
+      citizenEl.textContent = newCitizen;
+      const isPlace = !ns.citizen || /^\(.*\)$/.test(ns.citizen);
+      citizenEl.classList.toggle('placeholder', isPlace);
+      changed = true;
+    }
+
+    const numEl = node.querySelector('[data-field="moderator_num"]');
+    const newNumDisp = ns.moderator_num ? '#' + ns.moderator_num : '#--';
+    if (numEl.textContent !== newNumDisp) {
+      numEl.textContent = newNumDisp;
+      numEl.classList.toggle('empty', !ns.moderator_num);
+      changed = true;
+    }
+
+    const noteEl = node.querySelector('[data-field="moderator_note"]');
+    if (noteEl.textContent !== (ns.moderator_note || '')) {
+      noteEl.textContent = ns.moderator_note || '';
+      changed = true;
+    }
+
+    // priority: 클래스가 바뀔 수 있으므로 더 단순한 처리 — 전체 헤드 다시 그림
+    const priEl = node.querySelector('[data-field="moderator_priority"]');
+    const newPri = priorityDisplay(ns.moderator_priority);
+    const newPriCls = priorityClass(ns.moderator_priority);
+    if ((priEl?.textContent || '') !== newPri) {
+      // head 영역 통째로 다시
+      const head = node.querySelector('.mod-head');
+      const numHTML = `<div class="mod-num ${ns.moderator_num ? '' : 'empty'}" data-field="moderator_num">${ns.moderator_num ? '#' + escapeHtml(ns.moderator_num) : '#--'}</div>`;
+      const priHTML = newPri ? `<div class="mod-pri ${newPriCls}" data-field="moderator_priority">${escapeHtml(newPri)}</div>` : '';
+      head.innerHTML = numHTML + priHTML;
+      changed = true;
+    }
+
+    if (changed) {
+      node.classList.remove('updated');
+      void node.offsetWidth;   // restart animation
+      node.classList.add('updated');
+    }
+  });
+}
+
+async function refetchSheet() {
+  if (!SHEET_ID) return;
+  try {
+    const slots = await fetchSheetSlots();
+    if (slots && slots.length > 0) {
+      DATA.slots = slots;
+      patchAll(slots);
+      setLiveStatus('live');
+    }
+  } catch (e) {
+    console.warn('[sheet] poll failed:', e);
+    setLiveStatus('error');
+  }
+}
+
+async function load() {
+  // 1) data.json fallback 먼저
+  DATA = await fetch('data.json', { cache: 'no-store' }).then(r => r.json());
+  setLiveStatus('local');
+  renderAll();
+
+  // 2) Sheets 시도
+  if (SHEET_ID) {
+    try {
+      const slots = await fetchSheetSlots();
+      if (slots && slots.length > 0) {
+        DATA.slots = slots;
+        renderAll();
+        setLiveStatus('live');
+        console.info('[sheet] live data loaded:', slots.length, 'rows');
+      }
+    } catch (e) {
+      console.warn('[sheet] initial load failed, using data.json fallback:', e);
+      setLiveStatus('error');
+    }
+    pollTimer = setInterval(refetchSheet, POLL_MS);
+  }
+}
+
+// ============ Keyboard ============
+function highlightSlot(n) {
+  // n: 1~9 = global idx 0~8, 0 = global idx 9
+  const all = document.querySelectorAll('.slot');
+  const target = (n === 0) ? 9 : n - 1;
+  let hit = false;
+  all.forEach(el => { el.classList.remove('highlight', 'dim'); });
+  all.forEach(el => {
+    const idx = parseInt(el.dataset.idx, 10);
+    if (idx === target) { el.classList.add('highlight'); hit = true; }
+    else el.classList.add('dim');
+  });
+  if (!hit) clearHighlight();   // 해당 인덱스 없으면 강조 해제
+}
+
+function clearHighlight() {
+  document.querySelectorAll('.slot').forEach(el => {
+    el.classList.remove('highlight', 'dim');
+  });
+}
+
+document.addEventListener('keydown', e => {
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+  if (e.code === 'KeyM') {
+    document.getElementById('stage').classList.toggle('hide-mod');
+  } else if (e.code === 'KeyC') {
+    document.getElementById('stage').classList.toggle('hide-citizen');
+  } else if (e.code === 'KeyR') {
+    location.reload();
+  } else if (e.code === 'Escape') {
+    clearHighlight();
+  } else if (/^Digit[0-9]$/.test(e.code)) {
+    const n = parseInt(e.code.replace('Digit', ''), 10);
+    highlightSlot(n);
+  } else if (e.code === 'KeyF') {
+    // 전체화면 (옵션)
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+    else document.exitFullscreen?.();
+  }
+});
+
+window.addEventListener('resize', () => {
+  // SVG는 viewBox 기반이라 알아서 따라옴 — 따로 처리 없음
+});
+
+load();
+</script>
+
+</body>
+</html>
