@@ -101,13 +101,18 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* AXIS HINT (subtle) */
-  .axis-hint {
-    fill: rgba(255,255,255,0.32);
-    font-size: 22px; font-weight: 800;
-    letter-spacing: 0.08em; text-transform: uppercase;
+  /* AXIS — 흰 배경용 정식 축 */
+  .axis-line { stroke: #5a6a7a; stroke-width: 3; }
+  .axis-tick { stroke: #8a98a8; stroke-width: 2; }
+  .axis-tick-label {
+    fill: #5a6a7a; font-size: 22px; font-weight: 800;
+    font-variant-numeric: tabular-nums;
   }
-  .axis-hint.amber { fill: var(--amber); fill-opacity: 0.55; }
+  .axis-title {
+    fill: #2E75B6; font-size: 30px; font-weight: 900;
+    letter-spacing: 0.02em;
+  }
+  .axis-title.amber { fill: #C77800; }
 
   /* PLAY OVERLAY (initial big play button) */
   .play-overlay {
@@ -202,22 +207,46 @@
   }
   .speed-control .v { color: var(--amber); min-width: 38px; text-align: right; font-variant-numeric: tabular-nums;}
 
-  /* HUD bottom-left (controls hint) */
+  /* HUD bottom-left (controls hint) — 흰 배경용 */
   .hud-hint {
     position: absolute;
     left: 56px; bottom: 18px;
-    font-size: 14px; color: rgba(255,255,255,0.45);
-    font-weight: 800; letter-spacing: 0.04em;
+    font-size: 22px; color: #5a6a7a;
+    font-weight: 800; letter-spacing: 0.02em;
     z-index: 5; pointer-events: none;
+    background: rgba(255,255,255,0.85);
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: 1px solid rgba(46,117,182,0.18);
   }
   .hud-hint .key {
-    display: inline-block; padding: 3px 9px;
-    background: rgba(86,194,228,0.15);
-    border: 1px solid rgba(86,194,228,0.3);
-    border-radius: 6px;
-    color: var(--sky); margin: 0 4px;
+    display: inline-block; padding: 4px 12px;
+    background: #2E75B6;
+    border-radius: 7px;
+    color: #fff; margin: 0 6px;
     font-weight: 900;
+    font-size: 20px;
+    box-shadow: 0 2px 0 #1F4E79;
   }
+  .hud-hint .sep { color: #c5cdd6; margin: 0 8px; }
+
+  /* MUTE 버튼 — 우상단 항상 표시 */
+  .mute-btn {
+    position: absolute;
+    right: 32px; top: 28px;
+    z-index: 20;
+    background: #2E75B6; color: #fff;
+    border: none; padding: 14px 22px;
+    border-radius: 12px;
+    font-size: 20px; font-weight: 900;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 4px 14px rgba(46,117,182,0.25);
+    transition: background .2s;
+  }
+  .mute-btn:hover { background: #1F4E79; }
+  .mute-btn.muted { background: #8a98a8; }
+  .mute-btn.muted:hover { background: #5a6a7a; }
 </style>
 </head>
 <body>
@@ -253,18 +282,21 @@
   </div>
 
   <div class="hud-hint">
-    <span class="key">SPACE</span> 진행
-    <span class="key">ENTER</span> 현재 결과
-    <span class="key">←</span><span class="key">→</span> 페이즈 이동
-    <span class="key">1-5</span> 직접
-    <span class="key">P</span> 정지
-    <span class="key">R</span> 처음
+    <span class="key">SPACE</span> 다음 페이즈 <span class="sep">·</span>
+    <span class="key">P</span> 일시정지 <span class="sep">·</span>
+    <span class="key">←</span><span class="key">→</span> 페이즈 이동 <span class="sep">·</span>
+    <span class="key">1-5</span> 직접 점프 <span class="sep">·</span>
+    <span class="key">S</span> 사운드 ON/OFF <span class="sep">·</span>
+    <span class="key">R</span> 처음부터
   </div>
+
+  <!-- MUTE 버튼 — 항상 보이는 우상단 -->
+  <button id="muteBtn" class="mute-btn" title="사운드 ON/OFF (단축키: S)">🔊 사운드 ON</button>
 </div>
 
 <!-- CONTROL DRAWER -->
 <div class="control-drawer" id="drawer">
-  <button id="play">⏸  일시정지</button>
+  <button id="play">▶  시작 / 다음 페이즈</button>
   <button class="secondary" id="prev">⟨ 이전</button>
   <button class="secondary" id="next">다음 ⟩</button>
   <button class="secondary" id="reset">↺ 처음</button>
@@ -383,16 +415,61 @@ function drawAxes() {
   const yMin = yCoord(0), yMax = yCoord(1);
   const xMin = xCoord(0), xMax = xCoord(1);
 
-  // X axis hint
-  const xH = svgEl('text', { class:'axis-hint amber', x: xMax - 6, y: yMin + 38, 'text-anchor':'end' });
-  xH.textContent = '★ 점수 ↑';
-  svg.appendChild(xH);
+  // X 축 본선
+  const xLine = svgEl('line', { class:'axis-line', x1: xMin, y1: yMin, x2: xMax, y2: yMin });
+  svg.appendChild(xLine);
+  // Y 축 본선
+  const yLine = svgEl('line', { class:'axis-line', x1: xMin, y1: yMin, x2: xMin, y2: yMax });
+  svg.appendChild(yLine);
 
-  // Y axis hint
-  const yH = svgEl('text', { class:'axis-hint amber', x: 56, y: yMax + 6, 'text-anchor':'start' });
-  yH.textContent = '★ 점수 ↑';
-  yH.setAttribute('transform', `rotate(-90, 56, ${yMax + 6})`);
-  svg.appendChild(yH);
+  // 눈금 + 라벨 — 점수 1.0 / 2.0 / 3.0 (정규화 0 / 0.5 / 1)
+  // X 축: 점수 1 → t≈0.08, 점수 3 → t≈0.90 (getTarget의 tx 매핑과 일치)
+  [[0.08, '1.0'], [0.49, '2.0'], [0.90, '3.0']].forEach(([t, lbl]) => {
+    const x = xCoord(t);
+    const tick = svgEl('line', { class:'axis-tick', x1:x, y1:yMin, x2:x, y2:yMin + 12 });
+    svg.appendChild(tick);
+    const txt = svgEl('text', { class:'axis-tick-label', x:x, y:yMin + 42, 'text-anchor':'middle' });
+    txt.textContent = lbl;
+    svg.appendChild(txt);
+  });
+  // Y 축 (yCoord 거꾸로 — 0 = 하단, 1 = 상단; getTarget의 ty 매핑 0.10~0.90)
+  [[0.10, '1.0'], [0.50, '2.0'], [0.90, '3.0']].forEach(([t, lbl]) => {
+    const y = yCoord(t);
+    const tick = svgEl('line', { class:'axis-tick', x1:xMin - 12, y1:y, x2:xMin, y2:y });
+    svg.appendChild(tick);
+    const txt = svgEl('text', { class:'axis-tick-label', x:xMin - 20, y:y + 8, 'text-anchor':'end' });
+    txt.textContent = lbl;
+    svg.appendChild(txt);
+  });
+
+  // 축 제목 — 페이즈별로 갱신 (setAxisTitles)
+  const xT = svgEl('text', { id:'xAxisTitle', class:'axis-title amber', x: xMax, y: yMin + 80, 'text-anchor':'end' });
+  xT.textContent = '평가 기준 점수 →';
+  svg.appendChild(xT);
+
+  const yT = svgEl('text', { id:'yAxisTitle', class:'axis-title', x: 0, y: 0, 'text-anchor':'end' });
+  yT.textContent = '↑ 다른 기준 평균';
+  yT.setAttribute('transform', `translate(${xMin - 60}, ${yMax + 10}) rotate(-90)`);
+  svg.appendChild(yT);
+}
+
+// 페이즈마다 축 제목 갱신
+function setAxisTitles(idx) {
+  const xT = document.getElementById('xAxisTitle');
+  const yT = document.getElementById('yAxisTitle');
+  if (!xT || !yT) return;
+  const phKey = PHASE_ORDER[idx];
+  const phaseNames = {
+    pre:   ['→ 평가 시작 전',          '↑ 평가 시작 전'],
+    c1:    ['→ 기후위기 직접 관련 점수', '↑ 다른 기준 평균'],
+    c2:    ['→ 시민 삶·일상 실천 점수',  '↑ 다른 기준 평균'],
+    c3:    ['→ 사회적 합의 필요 점수',   '↑ 다른 기준 평균'],
+    c4:    ['→ 다양한 대안 비교 점수',   '↑ 다른 기준 평균'],
+    total: ['→ 종합 가중평균 점수',      '↑ 순위 (위쪽 = 1위)'],
+  };
+  const [xLbl, yLbl] = phaseNames[phKey] || ['→ 점수', '↑ 점수'];
+  xT.textContent = xLbl;
+  yT.textContent = yLbl;
 }
 
 function drawBubbles() {
@@ -711,6 +788,7 @@ function placeLabels() {
 }
 
 function setPhaseLabel(idx) {
+  setAxisTitles(idx);
   const ph = DATA.meta.phases[idx];
   const bg = document.getElementById('phaseBg');
   const t = document.getElementById('phaseTitle');
@@ -1025,7 +1103,23 @@ document.addEventListener('keydown', e => {
   else if (e.code === 'Enter')  { jumpToPhase(Math.max(1, phaseIdx)); }
   else if (e.code === 'KeyM')   { document.getElementById('drawer').classList.toggle('show'); }
   else if (e.code === 'KeyR')   { reset(); }
+  else if (e.code === 'KeyS')   { toggleMute(); }
 });
+
+// 사운드 ON/OFF
+function toggleMute() {
+  const a = document.getElementById('audio');
+  const btn = document.getElementById('muteBtn');
+  a.muted = !a.muted;
+  if (a.muted) {
+    btn.textContent = '🔇 사운드 OFF';
+    btn.classList.add('muted');
+  } else {
+    btn.textContent = '🔊 사운드 ON';
+    btn.classList.remove('muted');
+  }
+}
+document.getElementById('muteBtn').addEventListener('click', toggleMute);
 
 // 클릭 시 input/button focus 자동 해제 (5ms 후) — 키 인식 보장
 document.addEventListener('mouseup', () => {
