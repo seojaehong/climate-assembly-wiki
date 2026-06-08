@@ -1,0 +1,257 @@
+---
+/**
+ * BoardAgendaCard.astro — Sticky note card for the moderator board
+ * Used inside BoardZone / BoardCanvas to display a single agenda item.
+ *
+ * NOTE: Different from src/components/AgendaCard.astro (wiki content card).
+ * This card is for the live board canvas only.
+ *
+ * spec §3.2 (colors/strip), §3.3 (typography), §3.4 (animation)
+ */
+
+interface Props {
+  id: number;
+  /** Row number in the Sheet (1-indexed, header = row 1, data from row 2) */
+  row: number;
+  content: string;
+  group: string;
+  speaker?: string;
+  domain?: string;
+  status?: string;
+  zone?: '감축' | '미분류' | '적응';
+  /** rotation degrees (deterministic per card id) */
+  rotation?: number;
+  /** stagger delay in ms for load animation */
+  staggerDelay?: number;
+  isControlMode?: boolean;
+}
+
+const {
+  id,
+  row,
+  content,
+  group,
+  speaker,
+  domain,
+  status = '대기',
+  zone = '미분류',
+  rotation = 0,
+  staggerDelay = 0,
+  isControlMode = false,
+} = Astro.props;
+
+// Left strip color per zone
+const stripColor = {
+  '감축': '#d97706',
+  '미분류': 'transparent',
+  '적응': '#059669',
+}[zone] ?? 'transparent';
+
+const shortContent = content.length > 80 ? content.slice(0, 80) + '…' : content;
+---
+
+<div
+  class={`board-card board-card--${status}`}
+  data-id={String(id)}
+  data-row={String(row)}
+  data-zone={zone}
+  data-status={status}
+  data-full={content}
+  data-domain={domain ?? ''}
+  role="listitem"
+  tabindex="0"
+  aria-label={`${group}조 의제: ${shortContent}`}
+  style={`transform:rotate(${rotation}deg); animation-delay:${staggerDelay}ms; --strip-color:${stripColor};`}
+>
+  {isControlMode && (
+    <div class="drag-handle" aria-hidden="true" title="드래그로 이동">&#9776;</div>
+  )}
+  <div class="card-strip" style={`background:${stripColor};`} aria-hidden="true"></div>
+  <div class="card-inner">
+    <div class="card-text">{shortContent}</div>
+    <div class="card-footer">
+      <span class="card-chip chip-group">{group}조</span>
+      {speaker && <span class="card-chip chip-speaker">{speaker}</span>}
+      {domain && <span class="card-chip chip-domain">{domain}</span>}
+    </div>
+  </div>
+</div>
+
+<style>
+  .board-card {
+    background: #fef3c7;
+    border-radius: 4px;
+    box-shadow: 2px 4px 10px rgba(0,0,0,0.18);
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    /* Load animation */
+    opacity: 0;
+    animation: card-slide-in 1.2s ease-out forwards;
+    user-select: none;
+  }
+
+  @keyframes card-slide-in {
+    from { opacity: 0; transform: translateY(20px) rotate(var(--rot, 0deg)); }
+    to   { opacity: 1; transform: translateY(0)    rotate(var(--rot, 0deg)); }
+  }
+
+  /* Ambient idle wobble — only for 대기 status cards, not during drag/active states */
+  @media (prefers-reduced-motion: no-preference) {
+    .board-card--대기 {
+      animation: card-slide-in 1.2s ease-out forwards, card-wobble 4s ease-in-out infinite;
+      animation-delay: var(--stagger, 0ms), calc(var(--stagger, 0ms) + 1.2s);
+    }
+
+    @keyframes card-wobble {
+      0%,  100% { translate: 0 0; }
+      25%        { translate: 0 -2px; }
+      75%        { translate: 0  2px; }
+    }
+  }
+
+  /* Domain color strip — left 4px */
+  .card-strip {
+    width: 4px;
+    flex-shrink: 0;
+    border-radius: 4px 0 0 4px;
+  }
+
+  .card-inner {
+    padding: 10px 12px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .card-text {
+    font-size: 24px;
+    font-weight: 500;
+    color: #1c1917;
+    line-height: 1.45;
+    font-family: 'Pretendard Variable', 'Pretendard', sans-serif;
+    margin-bottom: 8px;
+  }
+
+  .card-footer {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .card-chip {
+    font-size: 16px;
+    font-weight: 700;
+    background: rgba(0,0,0,0.08);
+    color: #57534e;
+    border-radius: 3px;
+    padding: 2px 7px;
+    font-family: 'Pretendard Variable', 'Pretendard', sans-serif;
+  }
+
+  .chip-group {
+    background: rgba(217, 119, 6, 0.15);
+    color: #92400e;
+  }
+
+  /* Drag handle — visible in control mode */
+  .drag-handle {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    font-size: 28px;
+    color: #a8a29e;
+    cursor: grab;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: color 0.15s, background 0.15s;
+  }
+  .drag-handle:hover {
+    color: #57534e;
+    background: rgba(0,0,0,0.06);
+  }
+
+  /* Drag active state */
+  .board-card.dragging {
+    transform: scale(1.05) rotate(-2deg) !important;
+    box-shadow: 4px 8px 24px rgba(0,0,0,0.35);
+    cursor: grabbing;
+    z-index: 1000;
+    opacity: 0.95;
+  }
+
+  /* Status: 선정 */
+  .board-card--선정 {
+    background: #d1fae5;
+    box-shadow: 0 0 0 2px #10b981, 2px 4px 14px rgba(16,185,129,0.35);
+    transform: scale(1.03) !important;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .board-card--선정 {
+      animation: card-slide-in 1.2s ease-out forwards, pulse-selected 2.5s ease-in-out infinite;
+      animation-delay: var(--stagger, 0ms), calc(var(--stagger, 0ms) + 1.2s);
+    }
+    @keyframes pulse-selected {
+      0%, 100% { box-shadow: 0 0 0 2px #10b981, 2px 4px 14px rgba(16,185,129,0.35); }
+      50%       { box-shadow: 0 0 0 3px #10b981, 2px 4px 22px rgba(16,185,129,0.55); }
+    }
+  }
+
+  /* Status: 발표중 */
+  .board-card--발표중 {
+    background: #d1fae5;
+    box-shadow: 0 0 0 3px #059669, 3px 5px 24px rgba(5,150,105,0.6);
+    transform: scale(1.03) !important;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .board-card--발표중 {
+      animation: card-slide-in 1.2s ease-out forwards, bounce-announcing 1.5s ease-in-out infinite;
+      animation-delay: var(--stagger, 0ms), calc(var(--stagger, 0ms) + 1.2s);
+    }
+    @keyframes bounce-announcing {
+      0%, 100% { transform: scale(1.03) translateY(0); }
+      50%       { transform: scale(1.03) translateY(-3px); }
+    }
+  }
+
+  /* Status: 발표완료 */
+  .board-card--발표완료 {
+    opacity: 0.35;
+    filter: grayscale(1);
+  }
+  .board-card--발표완료 .card-text {
+    text-decoration: line-through;
+  }
+
+  /* Status icon prefixes on text (visual only) */
+  .board-card--선정 .card-text::before,
+  .board-card--발표중 .card-text::before {
+    content: "★ ";
+    color: #059669;
+    font-weight: 700;
+  }
+
+  /* Present mode — 1.4x */
+  :global(body.present-mode) .card-text { font-size: 34px; }
+  :global(body.present-mode) .card-chip { font-size: 22px; }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .board-card,
+    .board-card--대기,
+    .board-card--선정,
+    .board-card--발표중 {
+      animation: card-fade-in 50ms ease-out forwards !important;
+    }
+    @keyframes card-fade-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+  }
+</style>

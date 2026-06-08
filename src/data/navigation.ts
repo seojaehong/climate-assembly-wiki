@@ -53,6 +53,7 @@ export interface SidebarSection {
 
 export const TOP_NAV_ITEMS: NavItem[] = [
   { section: 'agenda',    labelKo: '의제',    labelEn: 'Agenda' },
+  { section: 'research',  labelKo: '리서치',  labelEn: 'Research' },
   // <!-- temporarily hidden, content private as of 2026-06-02 -->
   // { section: 'tools',     labelKo: '도구',    labelEn: 'Tools' },
   // { section: 'sessions',  labelKo: '회차',    labelEn: 'Sessions' },

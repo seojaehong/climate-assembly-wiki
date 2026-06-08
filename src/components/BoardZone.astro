@@ -1,0 +1,158 @@
+---
+/**
+ * BoardZone.astro — wrapper for a single zone column in the moderator board
+ * Rendered 3 times: 감축 (left) · 미분류 (center) · 적응 (right)
+ * Cards are injected by BoardCanvas.tsx island — this provides the shell only.
+ *
+ * spec §3.2 colors, §3.3 typography
+ */
+
+interface Props {
+  zone: '감축' | '미분류' | '적응';
+  /** Internal slot id used by BoardCanvas to inject cards */
+  slotId: string;
+}
+
+const { zone, slotId } = Astro.props;
+
+const zoneConfig = {
+  '감축': {
+    emoji: '⚙️',
+    subtitle: 'Mitigation',
+    bgColor: '#fffbeb',
+    headerColor: '#f59e0b',
+    borderStyle: '3px solid #f59e0b',
+  },
+  '미분류': {
+    emoji: '⚪',
+    subtitle: 'Unassigned',
+    bgColor: '#f5f5f4',
+    headerColor: '#a8a29e',
+    borderStyle: '3px dashed #a8a29e',
+  },
+  '적응': {
+    emoji: '🌱',
+    subtitle: 'Adaptation',
+    bgColor: '#ecfdf5',
+    headerColor: '#10b981',
+    borderStyle: '3px solid #10b981',
+  },
+} as const;
+
+const cfg = zoneConfig[zone];
+---
+
+<section
+  class="board-zone"
+  data-zone={zone}
+  style={`background:${cfg.bgColor}; border:${cfg.borderStyle};`}
+  aria-label={`${zone} 영역`}
+>
+  <header class="zone-header" style={`border-bottom: 3px solid ${cfg.headerColor};`}>
+    <div class="zone-title">
+      <span class="zone-emoji" aria-hidden="true">{cfg.emoji}</span>
+      <span class="zone-name">{zone}</span>
+    </div>
+    <div class="zone-subtitle">{cfg.subtitle}</div>
+    <div class="zone-count" id={`count-${zone}`} aria-live="polite">0</div>
+  </header>
+  <div
+    class="zone-body"
+    id={slotId}
+    data-zone-drop={zone}
+    role="list"
+    aria-label={`${zone} 의제 목록`}
+  >
+    <!-- Cards injected by BoardCanvas.tsx -->
+    <div class="zone-placeholder" aria-hidden="true">의제 없음</div>
+  </div>
+</section>
+
+<style>
+  .board-zone {
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
+    overflow: hidden;
+    flex: 1;
+    min-width: 300px;
+    transition: background 0.3s ease;
+  }
+
+  .board-zone.drag-over {
+    filter: brightness(0.95);
+  }
+
+  .zone-header {
+    padding: 20px 24px 16px;
+    background: inherit;
+  }
+
+  .zone-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+
+  .zone-emoji {
+    font-size: 32px;
+    line-height: 1;
+  }
+
+  .zone-name {
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1;
+    color: #1c1917;
+    font-family: 'Pretendard Variable', 'Pretendard', sans-serif;
+  }
+
+  .zone-subtitle {
+    font-size: 18px;
+    font-weight: 500;
+    color: #78716c;
+    margin-left: 42px;
+    margin-bottom: 12px;
+    font-family: 'Pretendard Variable', 'Pretendard', sans-serif;
+  }
+
+  .zone-count {
+    font-size: 64px;
+    font-weight: 900;
+    color: #1c1917;
+    line-height: 1;
+    margin-left: 42px;
+    font-family: 'Pretendard Variable', 'Pretendard', sans-serif;
+  }
+
+  .zone-body {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+    min-height: 200px;
+  }
+
+  .zone-placeholder {
+    text-align: center;
+    color: #a8a29e;
+    font-size: 18px;
+    padding: 40px 16px;
+    width: 100%;
+    font-family: 'Pretendard Variable', 'Pretendard', sans-serif;
+  }
+
+  /* Present mode — 1.4x font scaling applied via .present-mode on body */
+  :global(body.present-mode) .zone-name { font-size: 67px; }
+  :global(body.present-mode) .zone-count { font-size: 90px; }
+  :global(body.present-mode) .zone-subtitle { font-size: 25px; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .board-zone {
+      transition: background 0.3s ease, filter 0.2s ease;
+    }
+  }
+</style>
