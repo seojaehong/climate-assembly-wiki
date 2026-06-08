@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>의제 보드 데모 [시뮬] v3-가로풀스크린</title>
+<title>의제 보드 데모 [시뮬] v4-세로3행적층-자유떠돌이</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -44,15 +44,19 @@
 
   html, body { height: 100%; overflow: hidden; }
   body { display: flex; flex-direction: column; }
+  /* 세로 적층: 가로 풀폭 strip 3개를 위→아래로 */
   .zone-columns {
-    flex: 1; display: grid; grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px; padding: 10px; align-items: stretch;
-    min-height: 0; /* allow children to scroll */
+    flex: 1; display: grid;
+    grid-template-rows: 1fr 1fr 1fr;
+    grid-template-columns: 1fr;
+    gap: 8px; padding: 8px;
+    min-height: 0;
   }
   .zone {
     border-radius: 14px; padding: 0;
     transition: background 0.2s, box-shadow 0.2s;
-    display: flex; flex-direction: column;
+    display: grid; grid-template-columns: 280px 1fr;
+    align-items: stretch;
     min-height: 0;
     overflow: hidden;
   }
@@ -62,25 +66,29 @@
   .zone-mit.drag-over { background: #fde68a; box-shadow: 0 0 0 4px #f59e0b; }
   .zone-ada.drag-over { background: #a7f3d0; box-shadow: 0 0 0 4px #10b981; }
   .zone-unc.drag-over { background: #e7e5e4; box-shadow: 0 0 0 4px #78716c; }
+  /* 좌측 라벨 박스 (가로 strip에서 왼쪽 고정) */
   .zone-head {
-    padding: 18px 22px; border-bottom: 3px solid;
-    background: rgba(255,255,255,0.5);
+    padding: 16px 22px; border-right: 3px solid;
+    background: rgba(255,255,255,0.55);
+    display: flex; flex-direction: column; justify-content: center;
+    gap: 4px;
   }
   .zone-mit .zone-head { border-color: #f59e0b; }
   .zone-ada .zone-head { border-color: #10b981; }
   .zone-unc .zone-head { border-color: #a8a29e; }
-  .zone-name-row { display: flex; align-items: baseline; gap: 12px; }
-  .zone-emoji { font-size: 2.5rem; }
-  .zone-name { font-size: 3rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
-  .zone-en { font-size: 1.125rem; color: #6b7280; margin-top: 4px; }
-  .zone-count { font-size: 4rem; font-weight: 900; line-height: 1; margin-top: 8px; }
+  .zone-name-row { display: flex; align-items: baseline; gap: 10px; }
+  .zone-emoji { font-size: 2rem; }
+  .zone-name { font-size: 2.4rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+  .zone-en { font-size: 0.95rem; color: #6b7280; }
+  .zone-count { font-size: 3rem; font-weight: 900; line-height: 1; margin-top: 4px; }
+  /* 카드 가로 흐름 */
   .zone-body {
-    padding: 10px 12px; flex: 1;
-    overflow-y: auto; overflow-x: hidden;
-    display: flex; flex-direction: column; gap: 8px;
+    padding: 10px 14px;
+    overflow-x: auto; overflow-y: hidden;
+    display: flex; flex-direction: row; align-items: center; gap: 10px;
     scrollbar-width: thin;
   }
-  .zone-body::-webkit-scrollbar { width: 6px; }
+  .zone-body::-webkit-scrollbar { height: 6px; }
   .zone-body::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
   .zone-placeholder { text-align: center; color: #a8a29e; font-size: 0.9rem; padding: 40px 8px; }
 
@@ -94,6 +102,7 @@
     animation: wobble 4s ease-in-out infinite;
     will-change: transform;
     flex-shrink: 0;
+    width: 200px; min-height: 76px;
   }
   .card.mit { border-left-color: #d97706; }
   .card.ada { border-left-color: #059669; }
@@ -117,26 +126,31 @@
     50% { transform: translateY(-2px) rotate(calc(var(--rot, 0deg) + 0.5deg)); }
   }
 
-  /* 🎬 초기 진입 시네마틱: 스캐터 → 왔다갔다 → 정착 */
+  /* 🎬 초기 시네마틱: 카드가 화면 전체(3 zone)를 자유롭게 떠돌다 자기 zone에 픽스
+     -- 7 단계 키프레임으로 zone 간 visual wandering 표현 (viewport 단위 사용) */
   .card.entering {
-    animation: scatter-settle 2.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: wander-settle 4.2s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
-  @keyframes scatter-settle {
+  @keyframes wander-settle {
     0% {
-      transform: translate(var(--scatter-x, 0px), var(--scatter-y, 0px)) rotate(var(--scatter-rot, 0deg)) scale(0.85);
+      transform: translate(var(--w0x), var(--w0y)) rotate(var(--w0rot)) scale(0.7);
       opacity: 0;
     }
-    18% {
-      opacity: 1;
+    8% { opacity: 1; }
+    20% {
+      transform: translate(var(--w1x), var(--w1y)) rotate(var(--w1rot)) scale(1.05);
     }
-    35% {
-      transform: translate(calc(var(--scatter-x, 0px) * 0.55), calc(var(--scatter-y, 0px) * 0.55)) rotate(calc(var(--scatter-rot, 0deg) * 0.6)) scale(1.05);
+    40% {
+      transform: translate(var(--w2x), var(--w2y)) rotate(var(--w2rot)) scale(0.95);
     }
-    55% {
-      transform: translate(calc(var(--scatter-x, 0px) * -0.18), calc(var(--scatter-y, 0px) * -0.18)) rotate(calc(var(--scatter-rot, 0deg) * -0.25)) scale(0.98);
+    58% {
+      transform: translate(var(--w3x), var(--w3y)) rotate(var(--w3rot)) scale(1.04);
     }
-    72% {
-      transform: translate(calc(var(--scatter-x, 0px) * 0.08), calc(var(--scatter-y, 0px) * 0.08)) rotate(calc(var(--scatter-rot, 0deg) * 0.12)) scale(1.02);
+    74% {
+      transform: translate(var(--w4x), var(--w4y)) rotate(var(--w4rot)) scale(0.99);
+    }
+    88% {
+      transform: translate(var(--w5x), var(--w5y)) rotate(var(--w5rot)) scale(1.01);
     }
     100% {
       transform: translateY(0px) rotate(var(--rot, 0deg)) scale(1);
@@ -206,7 +220,7 @@
 </head>
 <body>
   <div class="banner-demo">
-    🧪 데모 v3 [가로 풀스크린 + 시네마틱] — 로컬 시뮬, localStorage 저장.
+    🧪 데모 v4 [세로 3행 적층 + 자유 떠돌이 시네마틱] — 로컬 시뮬, localStorage 저장.
     <a href="javascript:resetDemo()">🔄 초기화</a>
     <a href="javascript:toggleControl()" id="controlLink">🎮 본부 모드</a>
     <a href="javascript:togglePresent()">🎬 Present (f)</a>
@@ -362,14 +376,21 @@ function render() {
     cardEl.dataset.status = c.status;
     cardEl.style.setProperty('--rot', rotation(c.id) + 'deg');
     if (isFirstRender) {
-      // 스캐터 시작점: 화면 임의 위치에서 출발하는 시네마틱
-      const sx = (Math.random() - 0.5) * 700;
-      const sy = (Math.random() - 0.5) * 500;
-      const srot = (Math.random() - 0.5) * 28;
-      const delay = (cardIdx * 0.04 + Math.random() * 0.1).toFixed(2);
-      cardEl.style.setProperty('--scatter-x', sx.toFixed(0) + 'px');
-      cardEl.style.setProperty('--scatter-y', sy.toFixed(0) + 'px');
-      cardEl.style.setProperty('--scatter-rot', srot.toFixed(1) + 'deg');
+      // 7 keyframe wander — 카드가 viewport 전 영역(3 zone)을 자유롭게 떠돌다 정착
+      // 각 카드마다 6 waypoint 무작위 (vw/vh 단위로 zone 경계 넘나듦)
+      const randVw = (max) => ((Math.random() - 0.5) * max).toFixed(0) + 'vw';
+      const randVh = (max) => ((Math.random() - 0.5) * max).toFixed(0) + 'vh';
+      const randRot = (max) => ((Math.random() - 0.5) * max).toFixed(1) + 'deg';
+      for (let i = 0; i <= 5; i++) {
+        // 진폭은 i가 클수록 감소 (정착으로 수렴)
+        const xScale = [60, 55, 45, 30, 18, 8][i];
+        const yScale = [50, 45, 35, 25, 15, 6][i];
+        const rotScale = [25, 22, 18, 12, 7, 3][i];
+        cardEl.style.setProperty('--w' + i + 'x', randVw(xScale));
+        cardEl.style.setProperty('--w' + i + 'y', randVh(yScale));
+        cardEl.style.setProperty('--w' + i + 'rot', randRot(rotScale));
+      }
+      const delay = (cardIdx * 0.05 + Math.random() * 0.15).toFixed(2);
       cardEl.style.setProperty('--enter-delay', delay + 's');
       cardIdx++;
     }
