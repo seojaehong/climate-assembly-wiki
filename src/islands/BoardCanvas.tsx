@@ -7,11 +7,14 @@
  *   - Apps Script writeback
  *   - Present mode (f key)
  *   - Toast notifications
+ *   - Demo mode (?demo=1) — static JSON, localStorage mock writeback
  *
  * spec §2, §3.4, §4, §6, §7
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+// NOTE: demoData fetched at runtime (rolldown JSON import rejects with "Missing field moduleType")
+// JSON file is in public/ via vite static asset hosting — see fetch in demo init effect.
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -36,6 +39,22 @@ interface DragState {
   originalZone: Zone;
   startX: number;
   startY: number;
+}
+
+// ── Demo row type (matches board-demo-data.json schema) ───────────────────
+
+interface DemoRawRow {
+  id: number;
+  date: string;
+  group: string;
+  speaker: string;
+  content: string;
+  status: string;
+  domain: string;
+  ts: string;
+  keywords: string;
+  override_yangdan?: string;
+  'override_양단'?: string;
 }
 
 // ── Props ──────────────────────────────────────────────────────────────────
@@ -121,6 +140,36 @@ function csvToRows(text: string, domainMap: Record<string, Zone>): AgendaRow[] {
   return result;
 }
 
+// ── Demo JSON → AgendaRow[] (no CSV round-trip) ───────────────────────────
+
+function demoToRows(
+  rawRows: DemoRawRow[],
+  domainMap: Record<string, Zone>,
+  savedOverrides: Record<number, Zone>,
+): AgendaRow[] {
+  return rawRows.map((raw, idx) => {
+    const group = raw.group.replace(/조$/u, '').trim();
+    const rawOverride = raw['override_양단'] || raw.override_yangdan || '';
+    // localStorage wins over JSON default
+    const finalOverride: Zone | '' = savedOverrides[raw.id]
+      ? savedOverrides[raw.id]
+      : (rawOverride as Zone | '');
+    const displayZone: Zone = finalOverride || domainMap[raw.domain] || '미분류';
+    return {
+      id: raw.id,
+      row: idx + 2, // simulate sheet row numbers
+      group,
+      speaker: raw.speaker,
+      content: raw.content,
+      status: (raw.status as Status) || '대기',
+      domain: raw.domain,
+      keywords: raw.keywords,
+      override_yangdan: finalOverride,
+      displayZone,
+    };
+  });
+}
+
 // ── Deterministic rotation ±1.5° ──────────────────────────────────────────
 
 function cardRotation(id: number): number {
@@ -156,6 +205,29 @@ function showToast(text: string, isError = false) {
   }
 }
 
+// ── Demo localStorage helpers ─────────────────────────────────────────────
+
+const DEMO_LS_KEY = 'board-demo-state';
+
+function loadDemoOverrides(): Record<number, Zone> {
+  try {
+    const raw = localStorage.getItem(DEMO_LS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveDemoOverride(cardId: number, zone: Zone): void {
+  try {
+    const current = loadDemoOverrides();
+    current[cardId] = zone;
+    localStorage.setItem(DEMO_LS_KEY, JSON.stringify(current));
+  } catch {
+    // ignore
+  }
+}
+
 // ── Main Component ────────────────────────────────────────────────────────
 
 export default function BoardCanvas({
@@ -164,6 +236,11 @@ export default function BoardCanvas({
   domainMap,
   isControlMode,
 }: BoardCanvasProps) {
+  // ── Demo mode detection (URL ?demo=1) ────────────────────────────────
+  // NOTE: must be state, not derived const. SSR produces false; hydration
+  // then sets true via effect. Derived const would never re-trigger effects.
+  const [isDemoMode, setIsDemoMode] = useState(false);
+
   const [cards, setCards] = useState<AgendaRow[]>([]);
   const [zoneCounts, setZoneCounts] = useState<Record<Zone, number>>({ '감축': 0, '미분류': 0, '적응': 0 });
   const [selectedCount, setSelectedCount] = useState(0);
@@ -179,6 +256,9 @@ export default function BoardCanvas({
   // Runtime control mode (overridden by URL ?mode=control on client)
   const [runtimeControlMode, setRuntimeControlMode] = useState(isControlMode);
 
+  // Demo guide toggle
+  const [showDemoGuide, setShowDemoGuide] = useState(false);
+
   // Modal: zone picker for card click in control mode
   const [modalCard, setModalCard] = useState<AgendaRow | null>(null);
 
@@ -186,10 +266,50 @@ export default function BoardCanvas({
   const autoRefreshRef = useRef(autoRefresh);
   autoRefreshRef.current = autoRefresh;
 
-  // ── Detect runtime control mode from URL params ───────────────────
+  // ── Helper: recompute counts from card list ───────────────────────────
+  const recomputeCounts = useCallback((parsed: AgendaRow[]) => {
+    const counts: Record<Zone, number> = { '감축': 0, '미분류': 0, '적응': 0 };
+    parsed.forEach(c => { counts[c.displayZone] = (counts[c.displayZone] || 0) + 1; });
+    setZoneCounts(counts);
+    const sel = parsed.filter(c => c.status === '선정' || c.status === '발표중').length;
+    setSelectedCount(sel);
+    setTotalCount(parsed.length);
+  }, []);
+
+  // ── Demo mode init (fetch JSON at runtime) ────────────────────────────
+  useEffect(() => {
+    if (!isDemoMode) return;
+    let cancelled = false;
+    setStatusText('DEMO · 로딩 중…');
+    fetch('/data/board-demo-data.json')
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data: { rows: DemoRawRow[] }) => {
+        if (cancelled) return;
+        const overrides = loadDemoOverrides();
+        const parsed = demoToRows(data.rows || [], domainMap, overrides);
+        setCards(parsed);
+        recomputeCounts(parsed);
+        setSheetStatus('live');
+        setStatusText('DEMO · 로컬 데이터');
+      })
+      .catch(err => {
+        if (cancelled) return;
+        setSheetStatus('error');
+        setStatusText(`DEMO 로드 실패: ${(err as Error).message}`);
+      });
+    return () => { cancelled = true; };
+  }, [isDemoMode, domainMap, recomputeCounts]);
+
+  // ── Detect runtime URL params (demo + control mode) ──────────────────
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
+    if (params.get('demo') === '1') {
+      setIsDemoMode(true);
+    }
     if (params.get('mode') === 'control') {
       setRuntimeControlMode(true);
     }
@@ -202,9 +322,10 @@ export default function BoardCanvas({
     return () => window.removeEventListener('board:set-control-mode', handler);
   }, []);
 
-  // ── Hub token init (control mode) ────────────────────────────────────
+  // ── Hub token init (control mode, non-demo only) ─────────────────────
   useEffect(() => {
     if (!runtimeControlMode) return;
+    if (isDemoMode) return; // demo: no token prompt needed
     const stored = localStorage.getItem('hub-token');
     if (stored) {
       setHubToken(stored);
@@ -215,10 +336,11 @@ export default function BoardCanvas({
         setHubToken(entered);
       }
     }
-  }, [runtimeControlMode]);
+  }, [runtimeControlMode, isDemoMode]);
 
   // ── CSV fetch & parse ─────────────────────────────────────────────────
   const fetchAndUpdate = useCallback(async () => {
+    if (isDemoMode) return; // demo: no network fetch
     if (!sheetCsvUrl) {
       setSheetStatus('error');
       setStatusText('⚠ URL 미설정');
@@ -231,14 +353,7 @@ export default function BoardCanvas({
       });
       const parsed = csvToRows(text, domainMap);
       setCards(parsed);
-
-      const counts: Record<Zone, number> = { '감축': 0, '미분류': 0, '적응': 0 };
-      parsed.forEach(c => { counts[c.displayZone] = (counts[c.displayZone] || 0) + 1; });
-      setZoneCounts(counts);
-
-      const sel = parsed.filter(c => c.status === '선정' || c.status === '발표중').length;
-      setSelectedCount(sel);
-      setTotalCount(parsed.length);
+      recomputeCounts(parsed);
 
       const now = new Date();
       setSheetStatus('live');
@@ -247,20 +362,22 @@ export default function BoardCanvas({
       setSheetStatus('error');
       setStatusText(`오류: ${(err as Error).message}`);
     }
-  }, [sheetCsvUrl, domainMap]);
+  }, [isDemoMode, sheetCsvUrl, domainMap, recomputeCounts]);
 
   // ── Polling ───────────────────────────────────────────────────────────
   const startPoll = useCallback(() => {
+    if (isDemoMode) return; // demo: no polling
     if (pollTimer.current) clearInterval(pollTimer.current);
     pollTimer.current = setInterval(() => {
       if (autoRefreshRef.current) fetchAndUpdate();
     }, 10000);
-  }, [fetchAndUpdate]);
+  }, [isDemoMode, fetchAndUpdate]);
 
   useEffect(() => {
+    if (isDemoMode) return;
     fetchAndUpdate().then(() => startPoll());
     return () => { if (pollTimer.current) clearInterval(pollTimer.current); };
-  }, [fetchAndUpdate, startPoll]);
+  }, [isDemoMode, fetchAndUpdate, startPoll]);
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────
   useEffect(() => {
@@ -281,14 +398,14 @@ export default function BoardCanvas({
         setModalCard(null);
       }
       if (e.key === 'r' || e.key === 'R') {
-        fetchAndUpdate();
+        if (!isDemoMode) fetchAndUpdate();
       }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [fetchAndUpdate]);
+  }, [isDemoMode, fetchAndUpdate]);
 
-  // ── Writeback to Apps Script ──────────────────────────────────────────
+  // ── Writeback to Apps Script (or demo mock) ───────────────────────────
   const doWriteback = useCallback(async (
     cardRow: number,
     cardId: number,
@@ -296,6 +413,17 @@ export default function BoardCanvas({
     group: string,
     previousZone: Zone,
   ) => {
+    // ── DEMO mock path ────────────────────────────────────────────────
+    if (isDemoMode) {
+      setIsWriting(true);
+      await new Promise(res => setTimeout(res, 200)); // simulate network
+      saveDemoOverride(cardId, newZone);
+      setIsWriting(false);
+      showToast(`[데모] ${group}조 의제 #${cardId} → ${newZone}`);
+      return true;
+    }
+
+    // ── Real path ─────────────────────────────────────────────────────
     if (!writebackUrl) {
       showToast('환경변수 PUBLIC_BOARD_WRITEBACK_URL 미설정 — 드래그 불가', true);
       return false;
@@ -352,7 +480,7 @@ export default function BoardCanvas({
       return false;
     }
     return true;
-  }, [writebackUrl, hubToken]);
+  }, [isDemoMode, writebackUrl, hubToken]);
 
   // ── Drag handlers ─────────────────────────────────────────────────────
   const handleDragStart = useCallback((e: React.DragEvent, card: AgendaRow) => {
@@ -428,6 +556,12 @@ export default function BoardCanvas({
     setModalCard(null);
   }, [modalCard, doWriteback]);
 
+  // ── Demo reset ────────────────────────────────────────────────────────
+  const handleDemoReset = useCallback(() => {
+    localStorage.removeItem(DEMO_LS_KEY);
+    window.location.reload();
+  }, []);
+
   // ── Zone card lists ───────────────────────────────────────────────────
   const zones: Zone[] = ['감축', '미분류', '적응'];
   const cardsByZone: Record<Zone, AgendaRow[]> = { '감축': [], '미분류': [], '적응': [] };
@@ -439,6 +573,40 @@ export default function BoardCanvas({
 
   return (
     <div className={`board-canvas-root${isPresentMode ? ' present-mode-canvas' : ''}`}>
+      {/* ── Demo banner ──────────────────────────────────────────────── */}
+      {isDemoMode && (
+        <div className="demo-banner" role="status" aria-label="데모 모드 안내">
+          <span className="demo-banner-text">
+            DEMO 모드 — Sheet 미연결, 변경은 localStorage에만 저장
+          </span>
+          <button
+            className="demo-guide-toggle"
+            onClick={() => setShowDemoGuide(v => !v)}
+            aria-expanded={showDemoGuide}
+            aria-controls="demo-guide-box"
+          >
+            {showDemoGuide ? '닫기 ▲' : '사용법 ▼'}
+          </button>
+          <button
+            className="demo-reset-btn"
+            onClick={handleDemoReset}
+            title="localStorage 초기화 후 새로고침"
+          >
+            초기화
+          </button>
+          {showDemoGuide && (
+            <div id="demo-guide-box" className="demo-guide-box" role="complementary">
+              <ul className="demo-guide-list">
+                <li><kbd>f</kbd> 키: Present 풀스크린</li>
+                <li>URL에 <code>&amp;mode=control</code> 추가: 본부 드래그 활성</li>
+                <li>초기화 버튼: localStorage 비우고 새로고침</li>
+                <li>ambient wobble: 카드 등장 후 대기 카드 자동 흔들림</li>
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Header controls ──────────────────────────────────────────── */}
       <div className="canvas-header" aria-label="보드 컨트롤">
         <span className="canvas-title">
@@ -454,15 +622,17 @@ export default function BoardCanvas({
           {isWriting && <span className="writing-indicator" aria-live="polite">저장 중…</span>}
         </div>
         <div className="canvas-actions">
-          <button
-            className={`toggle-btn${!autoRefresh ? ' paused' : ''}`}
-            onClick={() => {
-              setAutoRefresh(v => !v);
-            }}
-            aria-pressed={autoRefresh}
-          >
-            자동 갱신 {autoRefresh ? 'ON' : 'OFF'}
-          </button>
+          {!isDemoMode && (
+            <button
+              className={`toggle-btn${!autoRefresh ? ' paused' : ''}`}
+              onClick={() => {
+                setAutoRefresh(v => !v);
+              }}
+              aria-pressed={autoRefresh}
+            >
+              자동 갱신 {autoRefresh ? 'ON' : 'OFF'}
+            </button>
+          )}
           <button
             className="present-btn"
             onClick={() => {
@@ -475,7 +645,7 @@ export default function BoardCanvas({
             aria-label={isPresentMode ? '풀스크린 해제 (f)' : '풀스크린 (f)'}
             title="f 키로 토글"
           >
-            {isPresentMode ? '⬛ 복귀' : '⬜ Present'}
+            {isPresentMode ? '복귀' : 'Present'}
           </button>
         </div>
       </div>
@@ -612,6 +782,86 @@ export default function BoardCanvas({
           flex-direction: column;
           flex: 1;
           min-height: 0;
+        }
+
+        /* Demo banner */
+        .demo-banner {
+          background: #fef08a;
+          border-bottom: 2px solid #ca8a04;
+          padding: 8px 20px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+          flex-shrink: 0;
+          font-family: 'Pretendard Variable', 'Pretendard', sans-serif;
+        }
+        .demo-banner-text {
+          font-size: 0.8rem;
+          font-weight: 700;
+          color: #713f12;
+          flex: 1;
+          min-width: 0;
+        }
+        .demo-guide-toggle {
+          background: #ca8a04;
+          border: none;
+          color: #fff;
+          border-radius: 5px;
+          padding: 3px 10px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          cursor: pointer;
+          white-space: nowrap;
+          font-family: 'Pretendard Variable', 'Pretendard', sans-serif;
+        }
+        .demo-reset-btn {
+          background: #dc2626;
+          border: none;
+          color: #fff;
+          border-radius: 5px;
+          padding: 3px 10px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          cursor: pointer;
+          white-space: nowrap;
+          font-family: 'Pretendard Variable', 'Pretendard', sans-serif;
+        }
+        .demo-guide-box {
+          width: 100%;
+          background: #fffde7;
+          border: 1px solid #ca8a04;
+          border-radius: 6px;
+          padding: 10px 16px;
+          margin-top: 4px;
+        }
+        .demo-guide-list {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .demo-guide-list li {
+          font-size: 0.8rem;
+          color: #713f12;
+        }
+        .demo-guide-list kbd {
+          background: #e5e7eb;
+          border: 1px solid #9ca3af;
+          border-radius: 3px;
+          padding: 1px 5px;
+          font-size: 0.75rem;
+          font-family: monospace;
+        }
+        .demo-guide-list code {
+          background: rgba(0,0,0,0.08);
+          border-radius: 3px;
+          padding: 1px 4px;
+          font-size: 0.75rem;
+          font-family: monospace;
+          color: #1e3a5f;
         }
 
         /* Header */
