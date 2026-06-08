@@ -66,6 +66,11 @@ export interface Props {
    * Child layouts construct and pass this; BaseLayout does not generate it.
    */
   ldJson?: string;
+  /**
+   * When true, emits <meta name="robots" content="noindex,nofollow">.
+   * Use for draft/internal pages that should not be crawled.
+   */
+  noindex?: boolean;
 }
 
 const {
@@ -77,6 +82,7 @@ const {
   contentLang: _contentLang,
   ogType = 'website' as 'website' | 'article',
   ldJson,
+  noindex = false,
 } = Astro.props;
 
 // Resolve description default after destructuring to avoid TS scope issues
@@ -121,6 +127,7 @@ const fullTitle = `${title} | ${siteTitleSuffix}`;
     <!-- Primary meta -->
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex,nofollow" />}
 
     <!-- Canonical -->
     <link rel="canonical" href={canonicalUrl} />

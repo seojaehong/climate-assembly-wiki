@@ -1,0 +1,44 @@
+---
+/**
+ * /[lang]/research/agenda-criteria/
+ * Placeholder for non-ko languages — shows Korean original with fallback banner.
+ * ko is served from src/pages/ko/research/agenda-criteria.astro (more specific route).
+ */
+
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import TranslationFallbackBanner from '../../../components/TranslationFallbackBanner.astro';
+
+export function getStaticPaths() {
+  return [
+    { params: { lang: 'en' } },
+    { params: { lang: 'ja' } },
+    { params: { lang: 'zh' } },
+    { params: { lang: 'es' } },
+  ];
+}
+
+const { lang } = Astro.params as { lang: string };
+
+const title = 'Agenda Criteria Research Report (DRAFT v1.0)';
+const description = 'Evidence-based research on agenda selection criteria for the 2026 Korea Climate Citizens Assembly.';
+---
+
+<BaseLayout title={title} lang={lang} description={description} alternateLangs={['ko']} canonicalPath={`/${lang}/research/agenda-criteria/`} noindex={true}>
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <TranslationFallbackBanner targetLang={lang} currentPath={`/${lang}/research/agenda-criteria/`} />
+
+    <h1 style="font-size: 2rem; font-weight: 800; margin-bottom: 1rem; color: var(--color-fg);">
+      Agenda Criteria Research (DRAFT v1.0)
+    </h1>
+    <p style="font-size: 1.1rem; color: var(--color-fg-muted); margin-bottom: 2rem;">
+      This research report is currently available in Korean only. Please view the Korean version below.
+    </p>
+
+    <a
+      href="/ko/research/agenda-criteria/"
+      style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.875rem 1.5rem; background: var(--color-accent); color: #fff; border-radius: var(--radius-md); font-weight: 700; font-size: 1.05rem; text-decoration: none;"
+    >
+      → 의제선정 기준 리서치 (한국어 원문)
+    </a>
+  </div>
+</BaseLayout>

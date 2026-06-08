@@ -1,0 +1,60 @@
+---
+/**
+ * /[lang]/research/
+ * Research section index.
+ * ko: shows intro + link to the report
+ * en/ja/zh/es: placeholder with fallback banner
+ */
+
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import TranslationFallbackBanner from '../../../components/TranslationFallbackBanner.astro';
+
+export function getStaticPaths() {
+  return [
+    { params: { lang: 'ko' } },
+    { params: { lang: 'en' } },
+    { params: { lang: 'ja' } },
+    { params: { lang: 'zh' } },
+    { params: { lang: 'es' } },
+  ];
+}
+
+const { lang } = Astro.params as { lang: string };
+
+const isKo = lang === 'ko';
+const title = isKo ? '리서치 — 기후시민회의 Wiki' : 'Research — Korea Climate Assembly Wiki';
+const description = isKo
+  ? '2026 기후시민회의 의제선정 기준 리서치 보고서 및 운영규정 초안'
+  : 'Research tracks and reports for the 2026 Korea Climate Citizens Assembly.';
+---
+
+<BaseLayout title={title} lang={lang} description={description} alternateLangs={['ko']} canonicalPath={`/${lang}/research/`} noindex={true}>
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+
+    {!isKo && (
+      <TranslationFallbackBanner targetLang={lang} currentPath={`/${lang}/research/`} />
+    )}
+
+    <h1 style="font-size: 2rem; font-weight: 800; margin-bottom: 1rem; color: var(--color-fg);">
+      {isKo ? '리서치 보고서' : 'Research Reports'}
+    </h1>
+
+    {isKo ? (
+      <p style="font-size: 1.1rem; color: var(--color-fg-muted); margin-bottom: 2rem;">
+        기후시민회의 운영 근거·의제선정·법령 분석 리서치 자료입니다.
+      </p>
+    ) : (
+      <p style="font-size: 1.1rem; color: var(--color-fg-muted); margin-bottom: 2rem;">
+        Research reports on agenda criteria, legal basis, and operation design for the 2026 Korea Climate Assembly.
+        Currently available in Korean only.
+      </p>
+    )}
+
+    <a
+      href="/ko/research/agenda-criteria/"
+      style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.875rem 1.5rem; background: var(--color-accent); color: #fff; border-radius: var(--radius-md); font-weight: 700; font-size: 1.05rem; text-decoration: none;"
+    >
+      {isKo ? '→ 의제선정 기준 리서치 보고서 (DRAFT v1.0)' : '→ Agenda Criteria Research (DRAFT v1.0, Korean)'}
+    </a>
+  </div>
+</BaseLayout>
