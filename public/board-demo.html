@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>의제 보드 데모 [시뮬]</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #f0ece4;
+    color: #1c1917;
+    font-family: 'Pretendard Variable', 'Pretendard', -apple-system, sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+  .banner-demo {
+    background: #fef08a; color: #713f12; padding: 8px 16px;
+    font-size: 0.875rem; font-weight: 600; text-align: center;
+    border-bottom: 2px solid #facc15;
+  }
+  .banner-demo a { color: #713f12; text-decoration: underline; margin-left: 8px; }
+  .header {
+    background: #fff; padding: 14px 24px; display: flex;
+    align-items: center; gap: 18px; flex-wrap: wrap;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .title { font-size: 1.15rem; font-weight: 800; color: #111827; }
+  .meta { font-size: 0.875rem; color: #6b7280; display: flex; gap: 14px; flex-wrap: wrap; }
+  .pill { background: #d1fae5; color: #065f46; border-radius: 9999px; padding: 3px 12px; font-weight: 600; }
+  .zone-summary span { font-weight: 700; color: #111827; }
+  .actions { margin-left: auto; display: flex; gap: 8px; }
+  .btn {
+    background: #f3f4f6; border: 1px solid #d1d5db; color: #374151;
+    border-radius: 6px; padding: 6px 14px; font-size: 0.875rem;
+    cursor: pointer; font-weight: 600;
+  }
+  .btn:hover { background: #e5e7eb; }
+  .btn-reset { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+  .btn-control { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+  .btn-control.active { background: #1e40af; color: #fff; }
+
+  .zone-columns {
+    flex: 1; display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px; padding: 16px 20px; align-items: start; min-height: calc(100vh - 130px);
+  }
+  .zone {
+    border-radius: 14px; padding: 0; overflow: hidden;
+    transition: background 0.2s, box-shadow 0.2s;
+    min-height: 70vh;
+    display: flex; flex-direction: column;
+  }
+  .zone-mit { background: #fffbeb; border: 3px solid #f59e0b; }
+  .zone-unc { background: #f5f5f4; border: 3px dashed #a8a29e; }
+  .zone-ada { background: #ecfdf5; border: 3px solid #10b981; }
+  .zone-mit.drag-over { background: #fde68a; box-shadow: 0 0 0 4px #f59e0b; }
+  .zone-ada.drag-over { background: #a7f3d0; box-shadow: 0 0 0 4px #10b981; }
+  .zone-unc.drag-over { background: #e7e5e4; box-shadow: 0 0 0 4px #78716c; }
+  .zone-head {
+    padding: 18px 22px; border-bottom: 3px solid;
+    background: rgba(255,255,255,0.5);
+  }
+  .zone-mit .zone-head { border-color: #f59e0b; }
+  .zone-ada .zone-head { border-color: #10b981; }
+  .zone-unc .zone-head { border-color: #a8a29e; }
+  .zone-name-row { display: flex; align-items: baseline; gap: 12px; }
+  .zone-emoji { font-size: 2.5rem; }
+  .zone-name { font-size: 3rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+  .zone-en { font-size: 1.125rem; color: #6b7280; margin-top: 4px; }
+  .zone-count { font-size: 4rem; font-weight: 900; line-height: 1; margin-top: 8px; }
+  .zone-body { padding: 14px; flex: 1; display: flex; flex-direction: column; gap: 12px; }
+  .zone-placeholder { text-align: center; color: #a8a29e; font-size: 0.9rem; padding: 40px 8px; }
+
+  .card {
+    background: #fef3c7; border-radius: 4px; padding: 14px 16px 12px 18px;
+    box-shadow: 3px 5px 12px rgba(0,0,0,0.18); cursor: grab; position: relative;
+    transition: transform 1.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.2s, opacity 0.3s, filter 0.3s, top 1.2s, left 1.2s;
+    word-break: keep-all; overflow-wrap: break-word;
+    border-left: 5px solid transparent;
+    animation: wobble 4s ease-in-out infinite;
+    will-change: transform;
+  }
+  .card.mit { border-left-color: #d97706; }
+  .card.ada { border-left-color: #059669; }
+  .card.dragging { cursor: grabbing; opacity: 0.85; z-index: 100;
+    transform: scale(1.05) rotate(-2deg); box-shadow: 6px 10px 24px rgba(0,0,0,0.35);
+    animation: none;
+  }
+  .card-content { font-size: 1.05rem; font-weight: 500; line-height: 1.45; color: #1c1917; }
+  .card-meta { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; font-size: 0.7rem; }
+  .chip { background: rgba(0,0,0,0.08); color: #44403c; border-radius: 3px; padding: 2px 7px; font-weight: 600; }
+  .chip-status-선정 { background: #d1fae5; color: #065f46; }
+  .chip-status-발표중 { background: #d1fae5; color: #065f46; font-weight: 700; }
+  .chip-status-발표완료 { background: #e5e7eb; color: #6b7280; }
+  .card[data-status="발표완료"] { opacity: 0.4; filter: grayscale(1); }
+  .card[data-status="발표완료"] .card-content { text-decoration: line-through; }
+  .card[data-status="선정"] { box-shadow: 0 0 0 2px #10b981, 3px 5px 14px rgba(16,185,129,0.35); }
+  .card[data-status="발표중"] { box-shadow: 0 0 0 3px #059669, 4px 6px 20px rgba(5,150,105,0.55); }
+
+  @keyframes wobble {
+    0%, 100% { transform: translateY(0px) rotate(var(--rot, 0deg)); }
+    50% { transform: translateY(-2px) rotate(calc(var(--rot, 0deg) + 0.5deg)); }
+  }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(120%);
+    background: #1f2937; color: #fff; padding: 12px 28px;
+    border-radius: 999px; font-size: 1rem; font-weight: 600;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    transition: transform 0.3s ease, background 0.2s;
+    pointer-events: none; z-index: 1000;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.err { background: #991b1b; }
+
+  /* Present mode */
+  body.present .banner-demo, body.present .header { display: none; }
+  body.present .zone-columns { padding: 24px; min-height: 100vh; }
+  body.present .zone-name { font-size: 4rem; }
+  body.present .zone-count { font-size: 5.5rem; }
+  body.present .card-content { font-size: 1.4rem; }
+  body.present .zone { min-height: 92vh; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card { animation: none; transition: opacity 0.2s; }
+  }
+</style>
+</head>
+<body>
+  <div class="banner-demo">
+    🧪 데모 모드 — 로컬 시뮬레이션 (Sheet 미연결). 변경은 localStorage에 저장됩니다.
+    <a href="javascript:resetDemo()">🔄 초기화</a>
+    <a href="javascript:toggleControl()" id="controlLink">🎮 본부 모드</a>
+    <a href="javascript:togglePresent()">🎬 Present (f)</a>
+  </div>
+
+  <div class="header">
+    <span class="title">기후시민회의 의제 보드 · 2026-06-13 [DEMO]</span>
+    <div class="meta">
+      <span class="pill" id="progress">선정 0 / 0</span>
+      <span class="zone-summary">감축 <span id="cnt-mit">0</span> · 미분류 <span id="cnt-unc">0</span> · 적응 <span id="cnt-ada">0</span></span>
+      <span id="status" style="color:#059669;font-weight:600">DEMO · 로컬</span>
+    </div>
+    <div class="actions">
+      <button class="btn btn-control" id="btnControl" onclick="toggleControl()">본부 모드 OFF</button>
+      <button class="btn" onclick="togglePresent()">Present (f)</button>
+      <button class="btn btn-reset" onclick="resetDemo()">🔄 초기화</button>
+    </div>
+  </div>
+
+  <div class="zone-columns">
+    <section class="zone zone-mit" data-zone="감축" id="zone-mit">
+      <header class="zone-head">
+        <div class="zone-name-row">
+          <span class="zone-emoji">⚙️</span>
+          <span class="zone-name">감축</span>
+        </div>
+        <div class="zone-en">Mitigation</div>
+        <div class="zone-count" id="z-mit-count">0</div>
+      </header>
+      <div class="zone-body" id="body-mit"></div>
+    </section>
+    <section class="zone zone-unc" data-zone="미분류" id="zone-unc">
+      <header class="zone-head">
+        <div class="zone-name-row">
+          <span class="zone-emoji">⚪</span>
+          <span class="zone-name">미분류</span>
+        </div>
+        <div class="zone-en">Unassigned</div>
+        <div class="zone-count" id="z-unc-count">0</div>
+      </header>
+      <div class="zone-body" id="body-unc"></div>
+    </section>
+    <section class="zone zone-ada" data-zone="적응" id="zone-ada">
+      <header class="zone-head">
+        <div class="zone-name-row">
+          <span class="zone-emoji">🌱</span>
+          <span class="zone-name">적응</span>
+        </div>
+        <div class="zone-en">Adaptation</div>
+        <div class="zone-count" id="z-ada-count">0</div>
+      </header>
+      <div class="zone-body" id="body-ada"></div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+const DOMAIN_MAP = {
+  "에너지전환":"감축","산업탈탄소":"감축","교통이동":"감축","건물주거":"감축",
+  "농축산임업":"감축","소비순환":"감축","정의로운전환":"감축",
+  "폭염한파":"적응","집중호우침수":"적응","산불산림":"적응","생태계생물다양성":"적응",
+  "농수산식량안보":"적응","건강보건":"적응","기후재난손실":"적응",
+  "교육":"적응","민생경제":"적응","기후회복사회":"적응"
+};
+
+let cards = [];
+// Demo defaults to control mode ON so user can drag immediately.
+// (?mode=view explicit opt-out, ?mode=control redundant but explicit)
+const _q = new URLSearchParams(location.search);
+let isControl = _q.get('mode') !== 'view';
+let isPresent = false;
+const LS_KEY = 'board-demo-state';
+
+function loadOverrides() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; }
+}
+function saveOverride(id, zone) {
+  const cur = loadOverrides();
+  cur[id] = zone;
+  localStorage.setItem(LS_KEY, JSON.stringify(cur));
+}
+
+function getZone(card) {
+  return card.override || DOMAIN_MAP[card.domain] || '미분류';
+}
+
+function showToast(text, isErr) {
+  const t = document.getElementById('toast');
+  t.textContent = text;
+  t.className = 'toast show' + (isErr ? ' err' : '');
+  clearTimeout(showToast._tid);
+  showToast._tid = setTimeout(() => { t.className = 'toast' + (isErr ? ' err' : ''); }, 2500);
+}
+
+async function loadDemo() {
+  try {
+    const r = await fetch('/data/board-demo-data.json');
+    const data = await r.json();
+    const overrides = loadOverrides();
+    cards = (data.rows || []).map(raw => ({
+      id: raw.id, group: (raw.group || '').replace(/조$/, ''),
+      speaker: raw.speaker, content: raw.content, status: raw.status,
+      domain: raw.domain, keywords: raw.keywords,
+      override: overrides[raw.id] || raw['override_양단'] || raw.override_yangdan || ''
+    }));
+    render();
+  } catch (e) {
+    showToast('데모 데이터 로드 실패: ' + e.message, true);
+  }
+}
+
+function rotation(id) {
+  const h = ((id * 2654435761) >>> 0) % 1000;
+  return ((h / 1000) * 3 - 1.5).toFixed(2);
+}
+
+function render() {
+  const counts = { '감축': 0, '미분류': 0, '적응': 0 };
+  const bodies = { '감축': document.getElementById('body-mit'),
+                   '미분류': document.getElementById('body-unc'),
+                   '적응': document.getElementById('body-ada') };
+  Object.values(bodies).forEach(el => el.innerHTML = '');
+
+  let selected = 0;
+  cards.forEach(c => {
+    const z = getZone(c);
+    counts[z]++;
+    if (c.status === '선정' || c.status === '발표중') selected++;
+    const cardEl = document.createElement('div');
+    cardEl.className = 'card ' + (z === '감축' ? 'mit' : z === '적응' ? 'ada' : '');
+    cardEl.dataset.id = c.id;
+    cardEl.dataset.status = c.status;
+    cardEl.style.setProperty('--rot', rotation(c.id) + 'deg');
+    if (isControl) {
+      cardEl.style.cursor = 'grab';
+      cardEl.style.touchAction = 'none';
+    }
+    cardEl.innerHTML = `
+      <div class="card-content">${escapeHtml(c.content)}</div>
+      <div class="card-meta">
+        <span class="chip">${c.group}조</span>
+        <span class="chip">${escapeHtml(c.domain || '미분류')}</span>
+        ${c.status !== '대기' ? `<span class="chip chip-status-${c.status}">${c.status}</span>` : ''}
+      </div>`;
+    if (isControl) attachDrag(cardEl, c);
+    bodies[z].appendChild(cardEl);
+  });
+
+  Object.entries(bodies).forEach(([z, el]) => {
+    if (counts[z] === 0) el.innerHTML = '<div class="zone-placeholder">의제 없음</div>';
+  });
+
+  document.getElementById('cnt-mit').textContent = counts['감축'];
+  document.getElementById('cnt-unc').textContent = counts['미분류'];
+  document.getElementById('cnt-ada').textContent = counts['적응'];
+  document.getElementById('z-mit-count').textContent = counts['감축'];
+  document.getElementById('z-unc-count').textContent = counts['미분류'];
+  document.getElementById('z-ada-count').textContent = counts['적응'];
+  document.getElementById('progress').textContent = `선정 ${selected} / ${cards.length}`;
+
+  document.getElementById('btnControl').textContent = isControl ? '본부 모드 ON ✓' : '본부 모드 OFF';
+  document.getElementById('btnControl').className = 'btn btn-control' + (isControl ? ' active' : '');
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, ch => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[ch]));
+}
+
+// Pointer-based drag (smoother than HTML5 native drag — Miro-style ghost)
+let dragId = null;
+let dragGhost = null;
+let dragOffset = { x: 0, y: 0 };
+let dragOriginEl = null;
+
+function attachDrag(el, card) {
+  el.addEventListener('pointerdown', e => {
+    if (!isControl) return;
+    if (e.button !== 0) return;
+    e.preventDefault();
+    dragId = card.id;
+    dragOriginEl = el;
+    const rect = el.getBoundingClientRect();
+    dragOffset.x = e.clientX - rect.left;
+    dragOffset.y = e.clientY - rect.top;
+
+    // Ghost
+    dragGhost = el.cloneNode(true);
+    dragGhost.style.position = 'fixed';
+    dragGhost.style.left = (e.clientX - dragOffset.x) + 'px';
+    dragGhost.style.top = (e.clientY - dragOffset.y) + 'px';
+    dragGhost.style.width = rect.width + 'px';
+    dragGhost.style.pointerEvents = 'none';
+    dragGhost.style.zIndex = 9999;
+    dragGhost.style.opacity = '0.9';
+    dragGhost.style.transform = 'scale(1.06) rotate(-2deg)';
+    dragGhost.style.boxShadow = '8px 12px 28px rgba(0,0,0,0.35)';
+    dragGhost.style.animation = 'none';
+    dragGhost.style.transition = 'none';
+    document.body.appendChild(dragGhost);
+
+    el.style.opacity = '0.3';
+    el.style.transform = 'scale(0.96)';
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp, { once: true });
+  });
+}
+
+function onPointerMove(e) {
+  if (!dragGhost) return;
+  dragGhost.style.left = (e.clientX - dragOffset.x) + 'px';
+  dragGhost.style.top = (e.clientY - dragOffset.y) + 'px';
+
+  // Detect hovered zone
+  document.querySelectorAll('.zone').forEach(z => z.classList.remove('drag-over'));
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  if (el) {
+    const zone = el.closest('.zone');
+    if (zone) zone.classList.add('drag-over');
+  }
+}
+
+function onPointerUp(e) {
+  window.removeEventListener('pointermove', onPointerMove);
+  if (!dragGhost || !dragId) { cleanupDrag(); return; }
+
+  const targetEl = document.elementFromPoint(e.clientX, e.clientY);
+  const targetZoneEl = targetEl && targetEl.closest('.zone');
+  const targetZone = targetZoneEl && targetZoneEl.dataset.zone;
+
+  const card = cards.find(c => c.id === dragId);
+  if (!card || !targetZone) { cleanupDrag(); return; }
+  const prevZone = getZone(card);
+  if (prevZone === targetZone) { cleanupDrag(); return; }
+
+  card.override = targetZone;
+  saveOverride(card.id, targetZone);
+  showToast(`[데모] ${card.group}조 의제 #${card.id} → ${targetZone}`);
+  cleanupDrag();
+  render();
+}
+
+function cleanupDrag() {
+  if (dragGhost) { dragGhost.remove(); dragGhost = null; }
+  if (dragOriginEl) { dragOriginEl.style.opacity = ''; dragOriginEl.style.transform = ''; dragOriginEl = null; }
+  document.querySelectorAll('.zone').forEach(z => z.classList.remove('drag-over'));
+  dragId = null;
+}
+
+function toggleControl() {
+  isControl = !isControl;
+  const url = new URL(location);
+  if (isControl) url.searchParams.delete('mode');
+  else url.searchParams.set('mode', 'view');
+  history.replaceState({}, '', url);
+  render();
+  showToast(isControl ? '본부 모드 ON — 카드 드래그 가능' : '본부 모드 OFF (뷰어)');
+}
+
+function togglePresent() {
+  isPresent = !isPresent;
+  document.body.classList.toggle('present', isPresent);
+}
+
+function resetDemo() {
+  if (!confirm('드래그 결과를 모두 초기화할까요?')) return;
+  localStorage.removeItem(LS_KEY);
+  location.reload();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'f' || e.key === 'F') togglePresent();
+  if (e.key === 'Escape') { if (isPresent) togglePresent(); }
+});
+
+loadDemo();
+</script>
+</body>
+</html>
