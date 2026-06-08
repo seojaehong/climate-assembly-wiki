@@ -121,6 +121,41 @@
   body.present .card-content { font-size: 1.4rem; }
   body.present .zone { min-height: 92vh; }
 
+  /* Floating mini-bar — always visible (Present 포함) */
+  .floatbar {
+    position: fixed; top: 12px; right: 12px; z-index: 2000;
+    display: flex; gap: 6px; align-items: center;
+    background: rgba(31,41,55,0.92); color: #fff;
+    padding: 8px 10px; border-radius: 999px;
+    font-size: 0.85rem; font-weight: 600;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    backdrop-filter: blur(8px);
+  }
+  .floatbar button {
+    background: rgba(255,255,255,0.15); color: #fff; border: 0;
+    border-radius: 999px; padding: 6px 12px; cursor: pointer;
+    font-size: 0.8rem; font-weight: 600; transition: background 0.15s;
+  }
+  .floatbar button:hover { background: rgba(255,255,255,0.28); }
+  .floatbar .vol-display {
+    font-variant-numeric: tabular-nums; min-width: 38px; text-align: center;
+    color: #d1d5db; font-size: 0.75rem;
+  }
+  .floatbar .vol-display.muted { color: #fca5a5; }
+  .floatbar .sep { width: 1px; height: 18px; background: rgba(255,255,255,0.2); margin: 0 4px; }
+  .floatbar .exit-btn { background: #dc2626; }
+  .floatbar .exit-btn:hover { background: #b91c1c; }
+
+  .keyhint {
+    position: fixed; bottom: 12px; right: 12px; z-index: 2000;
+    background: rgba(0,0,0,0.65); color: #d1d5db;
+    padding: 6px 12px; border-radius: 8px;
+    font-size: 0.7rem; font-weight: 500;
+    pointer-events: none; opacity: 0;
+    transition: opacity 0.3s;
+  }
+  body.present .keyhint { opacity: 0.95; }
+
   @media (prefers-reduced-motion: reduce) {
     .card { animation: none; transition: opacity 0.2s; }
   }
@@ -185,6 +220,22 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <!-- Floating mini-bar (Present 포함 항상 보임) -->
+  <div class="floatbar" id="floatbar">
+    <button id="btnPlay" title="재생/일시정지 (Space)">▶ BGM</button>
+    <button id="btnMute" title="음소거 (M)">🔊</button>
+    <span class="vol-display" id="volDisplay">50%</span>
+    <button id="btnVolDown" title="볼륨 - (↓)">−</button>
+    <button id="btnVolUp" title="볼륨 + (↑)">+</button>
+    <span class="sep"></span>
+    <button id="btnExit" class="exit-btn" title="Present 해제 (Esc)" style="display:none">✕ 닫기</button>
+  </div>
+
+  <div class="keyhint" id="keyhint">Esc / ✕ 닫기 · M 음소거 · ↑↓ 볼륨 · Space 재생</div>
+
+  <!-- Background music (event/bgm.mp3 재사용) -->
+  <audio id="bgm" src="/event/bgm.mp3" loop preload="auto"></audio>
 
 <script>
 const DOMAIN_MAP = {
@@ -394,6 +445,7 @@ function toggleControl() {
 function togglePresent() {
   isPresent = !isPresent;
   document.body.classList.toggle('present', isPresent);
+  document.getElementById('btnExit').style.display = isPresent ? 'inline-block' : 'none';
 }
 
 function resetDemo() {
@@ -402,10 +454,82 @@ function resetDemo() {
   location.reload();
 }
 
+// ── BGM 컨트롤 ──────────────────────────────────────────────────────
+const bgm = document.getElementById('bgm');
+const volDisplay = document.getElementById('volDisplay');
+const btnPlay = document.getElementById('btnPlay');
+const btnMute = document.getElementById('btnMute');
+
+const BGM_LS = 'board-demo-bgm';
+const bgmState = (() => {
+  try { return JSON.parse(localStorage.getItem(BGM_LS) || '{}'); }
+  catch { return {}; }
+})();
+bgm.volume = typeof bgmState.volume === 'number' ? bgmState.volume : 0.5;
+bgm.muted = !!bgmState.muted;
+
+function saveBgmState() {
+  localStorage.setItem(BGM_LS, JSON.stringify({ volume: bgm.volume, muted: bgm.muted }));
+}
+
+function updateVolDisplay() {
+  const pct = Math.round(bgm.volume * 100);
+  volDisplay.textContent = bgm.muted ? '음소거' : (pct + '%');
+  volDisplay.className = 'vol-display' + (bgm.muted ? ' muted' : '');
+  btnMute.textContent = bgm.muted ? '🔇' : '🔊';
+  btnPlay.textContent = bgm.paused ? '▶ BGM' : '⏸ BGM';
+}
+
+function togglePlay() {
+  if (bgm.paused) {
+    bgm.play().then(() => { updateVolDisplay(); showToast('🎵 BGM 재생'); })
+      .catch(() => showToast('BGM 자동재생 차단 — 클릭하여 시작', true));
+  } else {
+    bgm.pause();
+    updateVolDisplay();
+  }
+}
+
+function toggleMute() {
+  bgm.muted = !bgm.muted;
+  saveBgmState();
+  updateVolDisplay();
+}
+
+function adjustVol(delta) {
+  bgm.muted = false;
+  bgm.volume = Math.max(0, Math.min(1, bgm.volume + delta));
+  saveBgmState();
+  updateVolDisplay();
+}
+
+btnPlay.addEventListener('click', togglePlay);
+btnMute.addEventListener('click', toggleMute);
+document.getElementById('btnVolUp').addEventListener('click', () => adjustVol(0.1));
+document.getElementById('btnVolDown').addEventListener('click', () => adjustVol(-0.1));
+document.getElementById('btnExit').addEventListener('click', () => { if (isPresent) togglePresent(); });
+bgm.addEventListener('play', updateVolDisplay);
+bgm.addEventListener('pause', updateVolDisplay);
+updateVolDisplay();
+
+// 첫 클릭 시 BGM 자동 시작 (브라우저 autoplay policy)
+let bgmAutoStarted = false;
+document.addEventListener('click', () => {
+  if (!bgmAutoStarted && bgm.paused) {
+    bgmAutoStarted = true;
+    bgm.play().catch(() => {});
+  }
+}, { once: false });
+
+// ── 키보드 ──────────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
   if (e.key === 'f' || e.key === 'F') togglePresent();
-  if (e.key === 'Escape') { if (isPresent) togglePresent(); }
+  else if (e.key === 'Escape') { if (isPresent) togglePresent(); }
+  else if (e.key === 'm' || e.key === 'M' || e.key === 's' || e.key === 'S') toggleMute();
+  else if (e.key === 'ArrowUp') { e.preventDefault(); adjustVol(0.1); }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); adjustVol(-0.1); }
+  else if (e.key === ' ' || e.code === 'Space') { e.preventDefault(); togglePlay(); }
 });
 
 loadDemo();
