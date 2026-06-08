@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>의제 보드 데모 [시뮬] v4-세로3행적층-자유떠돌이</title>
+<title>의제 보드 데모 [시뮬] v5-zone통과+가시성</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -93,17 +93,35 @@
   .zone-placeholder { text-align: center; color: #a8a29e; font-size: 0.9rem; padding: 40px 8px; }
 
   .card {
-    background: #fef3c7; border-radius: 4px; padding: 10px 14px 9px 16px;
+    background: #fef3c7; border-radius: 6px; padding: 12px 16px 11px 18px;
     box-shadow: 3px 5px 12px rgba(0,0,0,0.18); cursor: grab; position: relative;
     transition: transform 1.2s cubic-bezier(0.34, 1.56, 0.64, 1),
                 box-shadow 0.2s, opacity 0.3s, filter 0.3s;
     word-break: keep-all; overflow-wrap: break-word;
-    border-left: 5px solid transparent;
+    border-left: 6px solid transparent;
     animation: wobble 4s ease-in-out infinite;
     will-change: transform;
     flex-shrink: 0;
-    width: 200px; min-height: 76px;
+    width: 260px; min-height: 96px;
   }
+  .card-content {
+    font-size: 1.25rem !important;     /* 200명 강당 가시성 — 20px 본문 */
+    font-weight: 600 !important;
+    line-height: 1.35 !important;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card-meta { font-size: 0.85rem !important; }
+  .chip { font-size: 0.78rem !important; padding: 3px 8px !important; }
+
+  /* 🎬 시네마틱 동안만 zone overflow 해제 — 카드가 zone 경계 자유 통과 */
+  body.cinema-mode .zone,
+  body.cinema-mode .zone-body { overflow: visible !important; }
+  body.cinema-mode .zone-columns { overflow: visible !important; }
+  body.cinema-mode .card.entering { z-index: 50; pointer-events: none; }
+  body.cinema-mode .zone-body { contain: none !important; }
   .card.mit { border-left-color: #d97706; }
   .card.ada { border-left-color: #059669; }
   .card.dragging { cursor: grabbing; opacity: 0.85; z-index: 100;
@@ -175,7 +193,12 @@
   body.present .zone-columns { padding: 24px; min-height: 100vh; }
   body.present .zone-name { font-size: 4rem; }
   body.present .zone-count { font-size: 5.5rem; }
-  body.present .card-content { font-size: 1.4rem; }
+  body.present .card-content { font-size: 1.7rem !important; }
+  body.present .card { width: 320px; min-height: 120px; }
+  body.present .zone-name { font-size: 3.4rem; }
+  body.present .zone-count { font-size: 4.5rem; }
+  body.present .zone-head { padding: 24px 28px; }
+  body.present .zone { grid-template-columns: 360px 1fr; }
   body.present .zone { min-height: 92vh; }
 
   /* Floating mini-bar — always visible (Present 포함) */
@@ -220,7 +243,7 @@
 </head>
 <body>
   <div class="banner-demo">
-    🧪 데모 v4 [세로 3행 적층 + 자유 떠돌이 시네마틱] — 로컬 시뮬, localStorage 저장.
+    🧪 데모 v5 [zone 통과 + 가시성 강화] — 로컬 시뮬, localStorage 저장.
     <a href="javascript:resetDemo()">🔄 초기화</a>
     <a href="javascript:toggleControl()" id="controlLink">🎮 본부 모드</a>
     <a href="javascript:togglePresent()">🎬 Present (f)</a>
@@ -364,6 +387,12 @@ function render() {
   let selected = 0;
   const isFirstRender = !window.__boardRendered;
   window.__boardRendered = true;
+  if (isFirstRender) {
+    // 시네마틱 동안 zone overflow 해제 (카드가 경계 자유 통과)
+    document.body.classList.add('cinema-mode');
+    // 마지막 카드 시작 약 2.1s + 4.2s 애니메이션 = 6.3s + 여유 0.5
+    setTimeout(() => document.body.classList.remove('cinema-mode'), 6800);
+  }
   let cardIdx = 0;
   cards.forEach(c => {
     const z = getZone(c);
@@ -376,18 +405,16 @@ function render() {
     cardEl.dataset.status = c.status;
     cardEl.style.setProperty('--rot', rotation(c.id) + 'deg');
     if (isFirstRender) {
-      // 7 keyframe wander — 카드가 viewport 전 영역(3 zone)을 자유롭게 떠돌다 정착
-      // 각 카드마다 6 waypoint 무작위 (vw/vh 단위로 zone 경계 넘나듦)
-      const randVw = (max) => ((Math.random() - 0.5) * max).toFixed(0) + 'vw';
-      const randVh = (max) => ((Math.random() - 0.5) * max).toFixed(0) + 'vh';
+      // 7 keyframe wander — 카드가 viewport 전 영역(3 zone) 자유 통과
+      // body.cinema-mode 클래스로 zone overflow 임시 해제 (별도 토글)
+      const signedRand = (max) => ((Math.random() - 0.5) * max).toFixed(0);
       const randRot = (max) => ((Math.random() - 0.5) * max).toFixed(1) + 'deg';
       for (let i = 0; i <= 5; i++) {
-        // 진폭은 i가 클수록 감소 (정착으로 수렴)
-        const xScale = [60, 55, 45, 30, 18, 8][i];
-        const yScale = [50, 45, 35, 25, 15, 6][i];
-        const rotScale = [25, 22, 18, 12, 7, 3][i];
-        cardEl.style.setProperty('--w' + i + 'x', randVw(xScale));
-        cardEl.style.setProperty('--w' + i + 'y', randVh(yScale));
+        const xScale = [70, 60, 48, 32, 18, 8][i];
+        const yScale = [55, 50, 38, 26, 14, 5][i];
+        const rotScale = [28, 24, 18, 12, 7, 3][i];
+        cardEl.style.setProperty('--w' + i + 'x', signedRand(xScale) + 'vw');
+        cardEl.style.setProperty('--w' + i + 'y', signedRand(yScale) + 'vh');
         cardEl.style.setProperty('--w' + i + 'rot', randRot(rotScale));
       }
       const delay = (cardIdx * 0.05 + Math.random() * 0.15).toFixed(2);
