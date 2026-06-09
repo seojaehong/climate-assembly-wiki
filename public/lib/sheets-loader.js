@@ -46,6 +46,35 @@ export function csvToAgendas(csvText) {
   })).filter(a => a.slot && a.name);
 }
 
+const BOARD_HEADERS = ['id', 'date', 'group', 'speaker', 'content', 'status', 'domain', 'ts', 'keywords', 'override_yangdan'];
+
+export function csvToBoardRows(csvText) {
+  const rows = parseCSV(csvText);
+  if (rows.length < 2) throw new Error('CSV empty');
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  for (const k of BOARD_HEADERS) {
+    if (!header.includes(k)) throw new Error('missing header: ' + k);
+  }
+  const idx = Object.fromEntries(BOARD_HEADERS.map(k => [k, header.indexOf(k)]));
+  return rows.slice(1).map((r, i) => {
+    const idRaw = (r[idx.id] ?? '').trim();
+    const parsed = parseInt(idRaw, 10);
+    const groupRaw = (r[idx.group] ?? '').trim();
+    return {
+      id: Number.isNaN(parsed) ? i + 1 : parsed,
+      date: (r[idx.date] ?? '').trim(),
+      group: groupRaw.replace(/조$/, ''),
+      speaker: (r[idx.speaker] ?? '').trim(),
+      content: (r[idx.content] ?? '').trim(),
+      status: (r[idx.status] ?? '').trim(),
+      domain: (r[idx.domain] ?? '').trim(),
+      ts: (r[idx.ts] ?? '').trim(),
+      keywords: (r[idx.keywords] ?? '').trim(),
+      override_yangdan: (r[idx.override_yangdan] ?? '').trim(),
+    };
+  });
+}
+
 export function pickAgendas(local, sheet) {
   if (sheet == null) return { agendas: local, source: 'local' };
   if (sheet.length !== local.length) {

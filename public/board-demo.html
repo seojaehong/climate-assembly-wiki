@@ -658,8 +658,9 @@ body.present .keyhint { opacity: 0.85; }
 
   <audio id="bgm" src="/event/bgm.mp3" loop preload="auto"></audio>
 
-<script>
+<script type="module">
 'use strict';
+import { buildSheetUrl, csvToBoardRows } from '/lib/sheets-loader.js';
 /* ═══════════════════════════════════════════════════════
    v7 final — 데이터·로직·인터랙션
    ═══════════════════════════════════════════════════════ */
@@ -725,13 +726,32 @@ function sfxDrop() { tone(520, 0.12, 0.05); }
 function sfxLand() { tone(360, 0.08); setTimeout(() => tone(540, 0.08), 60); }
 
 /* ── 데이터 로드 ── */
+const SHEET_ID = new URLSearchParams(location.search).get('sheet');
+const SHEET_TAB = new URLSearchParams(location.search).get('tab') || '';
+
+async function fetchSheetRows() {
+  const url = buildSheetUrl(SHEET_ID, SHEET_TAB);
+  if (!url) return null;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return csvToBoardRows(await res.text());
+}
+
 async function loadDemo() {
   try {
-    const r = await fetch('/data/board-demo-data.json');
-    const data = await r.json();
+    let rows = null;
+    if (SHEET_ID) {
+      try { rows = await fetchSheetRows(); console.info('[sheet] live data loaded:', rows.length, 'rows'); }
+      catch (e) { console.warn('[sheet] load failed, using local fallback:', e); }
+    }
+    if (!rows) {
+      const r = await fetch('/data/board-demo-data.json');
+      const data = await r.json();
+      rows = data.rows || [];
+    }
     const overrides = loadOverrides();
     const statusOv = loadStatusOverrides();
-    cards = (data.rows || []).map(raw => ({
+    cards = rows.map(raw => ({
       id: raw.id, group: (raw.group || '').replace(/조$/, ''),
       speaker: raw.speaker, content: raw.content,
       status: statusOv[raw.id] || raw.status,
