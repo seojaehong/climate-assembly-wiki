@@ -36,7 +36,8 @@
   "devDependencies": {
     "@rollup/plugin-yaml": "^5.0.0",
     "@types/canvas-confetti": "^1.9.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.8"
   },
   "overrides": {
     "clsx": "^2.1.1"

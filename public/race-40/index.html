@@ -401,7 +401,8 @@
   <button class="close-btn" id="closeFinal">▶ 다시 보기</button>
 </div>
 
-<script>
+<script type="module">
+import { buildSheetUrl, csvToAgendas, pickAgendas } from '../lib/sheets-loader.js';
 const PHASE_KEYS = ['pre', 'c1', 'c2', 'c3', 'c4', 'total'];
 let DATA = null;
 let phaseIdx = 0;
@@ -409,8 +410,26 @@ let timer = null;
 let inAnim = false;
 let speedMs = 2000;
 
+const SHEET_ID = new URLSearchParams(location.search).get('sheet');
+const SHEET_TAB = new URLSearchParams(location.search).get('tab') || '';
+
+async function fetchSheetAgendas() {
+  const url = buildSheetUrl(SHEET_ID, SHEET_TAB);
+  if (!url) return null;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return csvToAgendas(await res.text());
+}
+
 async function load() {
   DATA = await fetch('data.json').then(r => r.json());
+  let sheetAgendas = null;
+  try { sheetAgendas = await fetchSheetAgendas(); }
+  catch (e) { console.warn('[sheet] load failed, using local fallback:', e); }
+  const picked = pickAgendas(DATA.agendas, sheetAgendas);
+  if (picked.reason) console.warn('[sheet]', picked.reason);
+  if (picked.source === 'sheet') console.info('[sheet] live data loaded:', picked.agendas.length, 'rows');
+  DATA.agendas = picked.agendas;
   buildPhaseTrack();
   buildGrid();
   renderPhase(0);
