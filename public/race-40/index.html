@@ -464,7 +464,7 @@ function buildGrid() {
       <div class="meter">
         <div class="score-display">
           <span class="v" data-score="0">0.00</span>
-          <span class="max">/ 3.00</span>
+          <span class="max">/ 5.00</span>
           <span class="delta">+0.00</span>
         </div>
         <div class="bar-track"><div class="bar-fill" style="width:0%"></div></div>
@@ -557,7 +557,9 @@ function animateVote(targetEl, finalScore, durMs = 1400) {
       const eased = 1 - Math.pow(1 - k, 3);  // easeOutCubic
       const cur = startScore + delta * eased;
       valEl.textContent = cur.toFixed(2);
-      barEl.style.width = (cur / 3 * 100) + '%';
+      // 5점 척도 비선형 강조: 0.5점 차이여도 8~15pt 폭 차이 확보
+      const norm = Math.max(0, (cur - 1) / 4);
+      barEl.style.width = (Math.pow(norm, 0.6) * 100) + '%';
       if (k < 1) requestAnimationFrame(frame);
       else {
         valEl.dataset.score = String(finalScore);
@@ -583,7 +585,7 @@ async function renderPhase(idx) {
       c.querySelector('.bar-fill').style.width = '0%';
       c.querySelector('.rank-badge').textContent = `${i + 1}위`;
       c.classList.remove('top-3', 'top-1');
-      c.style.order = String(i);
+      c.style.order = String(Math.floor(i / 5) * 5 + (4 - (i % 5)));
     });
     inAnim = false;
     return;
@@ -603,7 +605,10 @@ async function renderPhase(idx) {
     .sort((x, y) => y.s - x.s);
   ranked.forEach((r, rank) => {
     const card = document.getElementById(`card-${r.i}`);
-    card.style.order = String(rank);
+    // RTL within each row: rank 0..4 → order 4,3,2,1,0 / rank 5..9 → order 9,8,7,6,5
+    const row = Math.floor(rank / 5);
+    const colFromRight = rank % 5;
+    card.style.order = String(row * 5 + (4 - colFromRight));
     card.querySelector('.rank-badge').textContent = `${rank + 1}위`;
     card.classList.toggle('top-3', rank < 3);
     card.classList.toggle('top-1', rank === 0);
@@ -620,7 +625,7 @@ function showFinal(ranked) {
   const overlay = document.getElementById('finalOverlay');
   const stats = document.getElementById('finalStats');
   stats.innerHTML = `
-    <div class="stat"><div class="v">${ranked.filter(r => r.s >= 2.5).length}</div><div class="l">★ 우선순위 의제</div></div>
+    <div class="stat"><div class="v">${ranked.filter(r => r.s >= 3.5).length}</div><div class="l">★ 우선순위 의제</div></div>
     <div class="stat"><div class="v">${ranked[0].s.toFixed(2)}</div><div class="l">1위 점수</div></div>
     <div class="stat"><div class="v">${ranked[0].a.short}</div><div class="l">시민 1위 의제</div></div>
   `;
