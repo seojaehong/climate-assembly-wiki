@@ -23,6 +23,10 @@ export interface NavItem {
   labelKo: string;
   /** English label */
   labelEn: string;
+  /** Optional absolute href override (skips /{lang}/ prefix). Used for static demo pages. */
+  href?: string;
+  /** Open in new tab (for static demo pages outside the wiki app) */
+  external?: boolean;
 }
 
 export interface SidebarItem {
@@ -53,7 +57,11 @@ export interface SidebarSection {
 
 export const TOP_NAV_ITEMS: NavItem[] = [
   { section: 'agenda',    labelKo: '의제',    labelEn: 'Agenda' },
-  { section: 'research',  labelKo: '리서치',  labelEn: 'Research' },
+  // 2026-06-13: '리서치' (research) temporarily hidden for 6/13 workshop demo —
+  // research/* pages still build, but link removed from public nav.
+  // { section: 'research',  labelKo: '리서치',  labelEn: 'Research' },
+  // 2026-06-13: '이벤트' demo link → static /event/ page (5-phase 3D bubble live).
+  { section: 'event', labelKo: '이벤트', labelEn: 'Event', href: '/event/', external: true },
   // <!-- temporarily hidden, content private as of 2026-06-02 -->
   // { section: 'tools',     labelKo: '도구',    labelEn: 'Tools' },
   // { section: 'sessions',  labelKo: '회차',    labelEn: 'Sessions' },
