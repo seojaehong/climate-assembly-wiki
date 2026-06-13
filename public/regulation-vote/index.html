@@ -162,25 +162,26 @@
     <div id="q1"></div>
   </div>
 
-  <!-- Q2-1 / Q2-2 / Q2-3 / Q2-4 (2x2 그리드) -->
+  <!-- Q2-1 의사정족수 통일 (풀폭) -->
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <span class="q-num">Q2-1</span>
+        <span class="q-title">의사정족수 통일</span>
+        <div class="q-sub">세 회의체 모두 "재적 과반수"로 통일하는 안에 동의?</div>
+      </div>
+      <div class="q-count" id="q21-count">0<small> 표</small></div>
+    </div>
+    <div id="q21"></div>
+  </div>
+
+  <!-- Q2-2 / Q2-3 / Q2-4 정족수 3종 (2x2 중 한 칸 빔; 균형 위해 그리드) -->
   <div class="grid-2">
     <div class="card">
       <div class="card-head">
         <div>
-          <span class="q-num">Q2-1</span>
-          <span class="q-title">기획참여단</span>
-          <div class="q-sub">의결정족수</div>
-        </div>
-        <div class="q-count" id="q21-count">0<small> 표</small></div>
-      </div>
-      <div id="q21"></div>
-    </div>
-
-    <div class="card">
-      <div class="card-head">
-        <div>
           <span class="q-num">Q2-2</span>
-          <span class="q-title">숙의참여단 (분과별)</span>
+          <span class="q-title">기획참여단</span>
           <div class="q-sub">의결정족수</div>
         </div>
         <div class="q-count" id="q22-count">0<small> 표</small></div>
@@ -192,7 +193,7 @@
       <div class="card-head">
         <div>
           <span class="q-num">Q2-3</span>
-          <span class="q-title">숙의참여단 (전체)</span>
+          <span class="q-title">숙의참여단 (분과별)</span>
           <div class="q-sub">의결정족수</div>
         </div>
         <div class="q-count" id="q23-count">0<small> 표</small></div>
@@ -204,8 +205,8 @@
       <div class="card-head">
         <div>
           <span class="q-num">Q2-4</span>
-          <span class="q-title">의사정족수 통일</span>
-          <div class="q-sub">세 회의체 모두 "재적 과반수"로 통일</div>
+          <span class="q-title">숙의참여단 (전체)</span>
+          <div class="q-sub">의결정족수</div>
         </div>
         <div class="q-count" id="q24-count">0<small> 표</small></div>
       </div>
@@ -231,10 +232,10 @@ const COLORS = {
 
 const QMAP = {
   q1:  { key: 'Q1_분과운영',          colors: COLORS.Q1,  big: true,  countId: 'q1-count' },
-  q21: { key: 'Q2-1_기획참여단',     colors: COLORS.Q2,  big: false, countId: 'q21-count', compact: true },
-  q22: { key: 'Q2-2_분과별',          colors: COLORS.Q2,  big: false, countId: 'q22-count', compact: true },
-  q23: { key: 'Q2-3_전체',            colors: COLORS.Q2,  big: false, countId: 'q23-count', compact: true },
-  q24: { key: 'Q2-4_의사정족수통일', colors: COLORS.Q24, big: false, countId: 'q24-count' },
+  q21: { key: 'Q2-1_의사정족수통일', colors: COLORS.Q24, big: true,  countId: 'q21-count' },
+  q22: { key: 'Q2-2_기획참여단',     colors: COLORS.Q2,  big: false, countId: 'q22-count', compact: true },
+  q23: { key: 'Q2-3_분과별',          colors: COLORS.Q2,  big: false, countId: 'q23-count', compact: true },
+  q24: { key: 'Q2-4_전체',            colors: COLORS.Q2,  big: false, countId: 'q24-count', compact: true },
 };
 
 function getSheetId() {
