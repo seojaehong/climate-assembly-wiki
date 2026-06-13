@@ -64,6 +64,8 @@ export const TOP_NAV_ITEMS: NavItem[] = [
   { section: 'event', labelKo: '이벤트', labelEn: 'Event', href: '/event/', external: true },
   // 2026-06-13: '해외사례' — global climate assembly dashboard + comparison table.
   { section: 'global', labelKo: '해외사례', labelEn: 'Global', href: '/global/', external: true },
+  // 2026-06-13: '운영규정 의견' — 3교시 A조/B조 시민 포스트잇 의견 시각화
+  { section: 'regulation-feedback', labelKo: '운영규정 의견', labelEn: 'Regulation Feedback' },
   // <!-- temporarily hidden, content private as of 2026-06-02 -->
   // { section: 'tools',     labelKo: '도구',    labelEn: 'Tools' },
   // { section: 'sessions',  labelKo: '회차',    labelEn: 'Sessions' },

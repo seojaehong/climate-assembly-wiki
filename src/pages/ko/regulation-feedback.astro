@@ -1,0 +1,736 @@
+---
+/**
+ * /ko/regulation-feedback/ — 운영규정 시민 의견 시각화
+ * 6.13 워크숍 3교시 — A조/B조 시민 포스트잇 의견 대시보드
+ *
+ * 가시성: 200명 8-15m 대형 스크린 대전제
+ *   본문 24px+ / 라벨 36-48px / 큰 숫자 80-120px / WCAG AAA
+ */
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import data from '../../data/regulation-feedback.json';
+
+const totalA = data.boards.reduce((s: number, b: any) => s + b.groups.A.count, 0);
+const totalB = data.boards.reduce((s: number, b: any) => s + b.groups.B.count, 0);
+const totalCards = totalA + totalB;
+const matchRate = Math.round(
+  ((data.matrix.critical_matched + data.matrix.recommend_matched) /
+    (data.matrix.critical_matched + data.matrix.critical_unmatched +
+      data.matrix.recommend_matched + data.matrix.recommend_unmatched)) *
+    100
+);
+---
+
+<BaseLayout
+  title="운영규정 시민의견 — 6.13 워크숍 3교시"
+  description="2026 기후시민회의 운영규정 A조·B조 시민 포스트잇 의견 시각화"
+  noindex={true}
+>
+  <!-- ──────────────── Google Font ──────────────── -->
+  <link
+    slot="head"
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap"
+  />
+
+  <main class="rf-page">
+    <!-- ═══════════════════════════════════════════
+         MASTHEAD
+    ══════════════════════════════════════════════ -->
+    <header class="rf-masthead">
+      <div class="rf-masthead__inner">
+        <div class="rf-masthead__badge">6.13 워크숍 · 3교시</div>
+        <h1 class="rf-masthead__title">운영규정 시민 의견</h1>
+        <p class="rf-masthead__sub">
+          2026 기후시민회의 운영규정 초안에 대한 시민참여단 포스트잇 의견
+        </p>
+        <div class="rf-masthead__meta">
+          <span>{data.meta.date} · {data.meta.venue}</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ═══════════════════════════════════════════
+         USER CONFIRM BANNER
+    ══════════════════════════════════════════════ -->
+    <section class="rf-confirm-banner">
+      <div class="rf-confirm-banner__inner">
+        <span class="rf-confirm-banner__icon">⚠</span>
+        <div>
+          <strong>사용자 확인 필요 ({data.user_confirm_needed.length}건)</strong>
+          — OCR 신뢰도 낮음. 원본 종이 직접 재확인 후 게시 권장.
+          <ul class="rf-confirm-list">
+            {data.user_confirm_needed.map((item: any) => (
+              <li>
+                <span class="rf-confirm-list__grp">{item.group}조</span>
+                {item.text}
+                <span class="rf-confirm-list__reason">— {item.reason}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         KPI STRIP
+    ══════════════════════════════════════════════ -->
+    <section class="rf-kpi">
+      <div class="rf-kpi__card">
+        <span class="rf-kpi__num">{totalCards}</span>
+        <span class="rf-kpi__label">총 포스트잇 건수</span>
+        <span class="rf-kpi__sub">A조 {totalA}건 · B조 {totalB}건</span>
+      </div>
+      <div class="rf-kpi__card">
+        <span class="rf-kpi__num">{totalA}<small>A</small> / {totalB}<small>B</small></span>
+        <span class="rf-kpi__label">조별 의견 분포</span>
+        <span class="rf-kpi__sub">보드 5개 × 양조 비교</span>
+      </div>
+      <div class="rf-kpi__card">
+        <span class="rf-kpi__num">{matchRate}%</span>
+        <span class="rf-kpi__label">사전검토 일치율</span>
+        <span class="rf-kpi__sub">5건 / 12건 검토항목</span>
+      </div>
+      <div class="rf-kpi__card">
+        <span class="rf-kpi__num">{data.matrix.citizen_new}</span>
+        <span class="rf-kpi__label">시민 독자 발굴 의견</span>
+        <span class="rf-kpi__sub">사전검토 미포함 신규</span>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         KEYWORD BAND
+    ══════════════════════════════════════════════ -->
+    <section class="rf-kwband">
+      {['다양성·대표성', '숙의 절차', '정족수·합의', '시민 이해자료', '균등 추첨'].map((kw: string) => (
+        <span class="rf-kwband__tag">{kw}</span>
+      ))}
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         BOARDS
+    ══════════════════════════════════════════════ -->
+    <section class="rf-boards">
+      {data.boards.map((board: any) => (
+        <article class="rf-board">
+          <!-- Board header -->
+          <header class="rf-board__header">
+            <span class="rf-board__no">보드 #{board.no}</span>
+            <h2 class="rf-board__title">{board.title}</h2>
+            <p class="rf-board__original">{board.original}</p>
+          </header>
+
+          <!-- A|B columns -->
+          <div class="rf-board__cols">
+            <!-- A조 -->
+            <div class="rf-board__col rf-board__col--a">
+              <div class="rf-board__col-header">
+                <span class="rf-board__grp-badge rf-board__grp-badge--a">A조</span>
+                <span class="rf-board__count">{board.groups.A.count}건</span>
+              </div>
+              <div class="rf-postits">
+                {board.groups.A.cards.map((card: any) => (
+                  <div
+                    class={`rf-postit rf-postit--${card.color} rf-postit--${card.confidence}`}
+                    style={`transform: rotate(${(card.postit_idx % 2 === 0 ? -1 : 1) * (2 + (card.postit_idx % 3))}deg)`}
+                  >
+                    <span class="rf-postit__text">{card.text}</span>
+                    {card.confidence === 'low' && (
+                      <span class="rf-postit__warn">⚠ 판독 불확실</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <!-- B조 -->
+            <div class="rf-board__col rf-board__col--b">
+              <div class="rf-board__col-header">
+                <span class="rf-board__grp-badge rf-board__grp-badge--b">B조</span>
+                <span class="rf-board__count">{board.groups.B.count}건</span>
+              </div>
+              <div class="rf-postits">
+                {board.groups.B.cards.map((card: any) => (
+                  <div
+                    class={`rf-postit rf-postit--${card.color} rf-postit--${card.confidence}`}
+                    style={`transform: rotate(${(card.postit_idx % 2 === 0 ? 1 : -1) * (1 + (card.postit_idx % 4))}deg)`}
+                  >
+                    <span class="rf-postit__text">{card.text}</span>
+                    {card.confidence === 'low' && (
+                      <span class="rf-postit__warn">⚠ 판독 불확실</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <!-- Review findings for this board -->
+          {board.review_findings && board.review_findings.length > 0 && (
+            <div class="rf-board__review">
+              <div class="rf-board__review-title">사전 검토 의견</div>
+              <ul class="rf-board__review-list">
+                {board.review_findings.map((f: any) => (
+                  <li class={`rf-board__review-item rf-board__review-item--${f.severity}`}>
+                    <span class={`rf-review-badge rf-review-badge--${f.severity}`}>
+                      {f.severity === 'critical' ? '⚠ 중요' : '검토권장'}
+                    </span>
+                    <span class="rf-review-text">{f.text}</span>
+                    {f.citizen_matched && (
+                      <span class="rf-review-match">↔ 시민의견 일치: {f.citizen_note}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </article>
+      ))}
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         MATRIX 4-QUADRANT
+    ══════════════════════════════════════════════ -->
+    <section class="rf-matrix">
+      <h2 class="rf-matrix__title">정합성 매트릭스 — 사전검토 ↔ 시민의견</h2>
+      <div class="rf-matrix__grid">
+        <div class="rf-matrix__cell rf-matrix__cell--critical-matched">
+          <span class="rf-matrix__num">{data.matrix.critical_matched}</span>
+          <span class="rf-matrix__label">중요 · 일치</span>
+          <span class="rf-matrix__desc">시민의견이 중요 검토항목과 일치</span>
+        </div>
+        <div class="rf-matrix__cell rf-matrix__cell--critical-unmatched">
+          <span class="rf-matrix__num">{data.matrix.critical_unmatched}</span>
+          <span class="rf-matrix__label">중요 · 미포함</span>
+          <span class="rf-matrix__desc">시민의견에 반영되지 않은 중요 사항</span>
+        </div>
+        <div class="rf-matrix__cell rf-matrix__cell--recommend-matched">
+          <span class="rf-matrix__num">{data.matrix.recommend_matched}</span>
+          <span class="rf-matrix__label">권장 · 일치</span>
+          <span class="rf-matrix__desc">시민의견이 검토권장 항목과 일치</span>
+        </div>
+        <div class="rf-matrix__cell rf-matrix__cell--recommend-unmatched">
+          <span class="rf-matrix__num">{data.matrix.recommend_unmatched}</span>
+          <span class="rf-matrix__label">권장 · 미포함</span>
+          <span class="rf-matrix__desc">시민의견에 없는 검토권장 사항</span>
+        </div>
+      </div>
+      <div class="rf-matrix__new">
+        <div class="rf-matrix__new-header">
+          <span class="rf-matrix__new-num">{data.matrix.citizen_new}</span>
+          <span class="rf-matrix__new-label">시민 독자 발굴 — 사전검토 미포함 신규 의견</span>
+        </div>
+        <ul class="rf-matrix__new-list">
+          {data.matrix.citizen_new_items.map((item: string) => (
+            <li>{item}</li>
+          ))}
+        </ul>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         DISPUTES
+    ══════════════════════════════════════════════ -->
+    <section class="rf-disputes">
+      <h2 class="rf-disputes__title">쟁점 사항 ({data.disputes.length}건)</h2>
+      <p class="rf-disputes__note">헤드라인 격상 없이 별도 섹션으로 분리. 출처 명시.</p>
+      {data.disputes.map((d: any) => (
+        <div class="rf-disputes__item">
+          <div class="rf-disputes__quote">
+            "{d.text}"
+          </div>
+          <div class="rf-disputes__source">출처: {d.source}</div>
+          <div class="rf-disputes__classify">{d.classification_recommend}</div>
+        </div>
+      ))}
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         FOOTNOTE
+    ══════════════════════════════════════════════ -->
+    <footer class="rf-footnote">
+      <p>
+        법적 맥락: 기후위기 대응을 위한 탄소중립·녹색성장 기본법 §19의2 ④항 — 시민참여단 의견 최대 반영 의무
+        (본조신설 2026.04.07, 시행 2026.10.08)
+      </p>
+      <p>
+        이 페이지는 2026-06-13 워크숍 현장 포스트잇 OCR 결과를 기반으로 합니다.
+        OCR 신뢰도가 낮은 항목(⚠ 표시)은 원본 종이 재확인이 필요합니다.
+        시민 발언 원문은 검열 없이 그대로 보존되었습니다.
+      </p>
+    </footer>
+  </main>
+</BaseLayout>
+
+<style>
+  /* ── Base ───────────────────────────────────── */
+  .rf-page {
+    font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+    background: #f4f6fa;
+    min-height: 100vh;
+    color: #1a1a2e;
+  }
+
+  /* ── Masthead ────────────────────────────────── */
+  .rf-masthead {
+    background: linear-gradient(135deg, #0d3b6e 0%, #1a5f7a 100%);
+    color: #fff;
+    padding: 48px 24px 40px;
+  }
+  .rf-masthead__inner {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .rf-masthead__badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.35);
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    padding: 4px 12px;
+    margin-bottom: 16px;
+  }
+  .rf-masthead__title {
+    font-size: clamp(32px, 5vw, 56px);
+    font-weight: 800;
+    line-height: 1.15;
+    margin: 0 0 12px;
+  }
+  .rf-masthead__sub {
+    font-size: clamp(18px, 2.5vw, 24px);
+    opacity: 0.85;
+    margin: 0 0 16px;
+  }
+  .rf-masthead__meta {
+    font-size: 16px;
+    opacity: 0.65;
+  }
+
+  /* ── Confirm banner ──────────────────────────── */
+  .rf-confirm-banner {
+    background: #fff3cd;
+    border-left: 6px solid #f59e0b;
+    padding: 20px 24px;
+  }
+  .rf-confirm-banner__inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    font-size: 18px;
+    line-height: 1.6;
+  }
+  .rf-confirm-banner__icon {
+    font-size: 28px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .rf-confirm-list {
+    margin: 10px 0 0 20px;
+    padding: 0;
+    list-style: disc;
+  }
+  .rf-confirm-list li {
+    margin-bottom: 6px;
+    font-size: 16px;
+  }
+  .rf-confirm-list__grp {
+    background: #f59e0b;
+    color: #fff;
+    border-radius: 3px;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 1px 6px;
+    margin-right: 6px;
+  }
+  .rf-confirm-list__reason {
+    color: #7c5900;
+    font-size: 14px;
+    margin-left: 6px;
+  }
+
+  /* ── KPI strip ───────────────────────────────── */
+  .rf-kpi {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0;
+    background: #fff;
+    border-bottom: 3px solid #e2e8f0;
+    max-width: 100%;
+  }
+  .rf-kpi__card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 28px 20px;
+    border-right: 1px solid #e2e8f0;
+    text-align: center;
+  }
+  .rf-kpi__card:last-child { border-right: none; }
+  .rf-kpi__num {
+    font-size: clamp(56px, 8vw, 100px);
+    font-weight: 900;
+    line-height: 1;
+    color: #0d3b6e;
+  }
+  .rf-kpi__num small { font-size: 0.45em; color: #64748b; }
+  .rf-kpi__label {
+    font-size: clamp(16px, 2vw, 22px);
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-top: 8px;
+  }
+  .rf-kpi__sub {
+    font-size: 14px;
+    color: #64748b;
+    margin-top: 4px;
+  }
+
+  /* ── Keyword band ────────────────────────────── */
+  .rf-kwband {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 20px 24px;
+    background: #1a5f7a;
+    max-width: 100%;
+  }
+  .rf-kwband__tag {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    font-size: clamp(16px, 2vw, 22px);
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 8px 20px;
+    letter-spacing: 0.03em;
+  }
+
+  /* ── Boards ──────────────────────────────────── */
+  .rf-boards {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+  }
+  .rf-board {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+  .rf-board__header {
+    background: #0d3b6e;
+    color: #fff;
+    padding: 24px 28px;
+  }
+  .rf-board__no {
+    font-size: 14px;
+    opacity: 0.65;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .rf-board__title {
+    font-size: clamp(22px, 3vw, 32px);
+    font-weight: 800;
+    margin: 6px 0 10px;
+  }
+  .rf-board__original {
+    font-size: 16px;
+    opacity: 0.8;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .rf-board__cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border-top: 2px solid #e2e8f0;
+  }
+  @media (max-width: 700px) {
+    .rf-board__cols { grid-template-columns: 1fr; }
+  }
+  .rf-board__col {
+    padding: 24px;
+  }
+  .rf-board__col--a {
+    border-right: 2px solid #e2e8f0;
+  }
+  .rf-board__col-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .rf-board__grp-badge {
+    font-size: 18px;
+    font-weight: 800;
+    border-radius: 6px;
+    padding: 4px 14px;
+    letter-spacing: 0.05em;
+  }
+  .rf-board__grp-badge--a { background: #2d5a8e; color: #fff; }
+  .rf-board__grp-badge--b { background: #1f3a2a; color: #fff; }
+  .rf-board__count {
+    font-size: 18px;
+    font-weight: 600;
+    color: #475569;
+  }
+
+  /* ── Postits ─────────────────────────────────── */
+  .rf-postits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .rf-postit {
+    position: relative;
+    width: 160px;
+    min-height: 120px;
+    padding: 14px 14px 20px;
+    border-radius: 3px;
+    box-shadow: 3px 5px 14px rgba(0,0,0,0.18), inset 0 -2px 6px rgba(0,0,0,0.06);
+    font-family: 'Nanum Pen Script', cursive;
+    font-size: 18px;
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+  }
+  .rf-postit::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: rgba(0,0,0,0.08);
+    border-radius: 3px 3px 0 0;
+  }
+
+  /* Postit colors */
+  .rf-postit--yellow { background: #fef08a; color: #1a1a00; }
+  .rf-postit--green  { background: #bbf7d0; color: #052e16; }
+  .rf-postit--pink   { background: #fda4af; color: #1a0006; }
+  .rf-postit--orange { background: #fed7aa; color: #1a0a00; }
+  .rf-postit--sky    { background: #bae6fd; color: #001a26; }
+
+  /* Low confidence = slightly faded */
+  .rf-postit--low { opacity: 0.72; }
+
+  .rf-postit__text {
+    flex: 1;
+  }
+  .rf-postit__warn {
+    font-family: 'Pretendard', sans-serif;
+    font-size: 12px;
+    color: #b45309;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+
+  /* ── Review findings ─────────────────────────── */
+  .rf-board__review {
+    background: #f8fafc;
+    border-top: 2px solid #e2e8f0;
+    padding: 20px 28px;
+  }
+  .rf-board__review-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 12px;
+  }
+  .rf-board__review-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .rf-board__review-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  .rf-review-badge {
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 3px 10px;
+    flex-shrink: 0;
+  }
+  .rf-review-badge--critical { background: #fee2e2; color: #991b1b; }
+  .rf-review-badge--recommend { background: #fef9c3; color: #854d0e; }
+  .rf-review-text { color: #334155; }
+  .rf-review-match {
+    font-size: 14px;
+    color: #059669;
+    font-weight: 600;
+    background: #d1fae5;
+    border-radius: 4px;
+    padding: 2px 8px;
+  }
+
+  /* ── Matrix ──────────────────────────────────── */
+  .rf-matrix {
+    max-width: 1100px;
+    margin: 0 auto 48px;
+    padding: 0 20px;
+  }
+  .rf-matrix__title {
+    font-size: clamp(22px, 3vw, 30px);
+    font-weight: 800;
+    color: #0d3b6e;
+    margin-bottom: 24px;
+    padding-top: 8px;
+  }
+  .rf-matrix__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .rf-matrix__cell {
+    border-radius: 10px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  }
+  .rf-matrix__cell--critical-matched   { background: #fef2f2; border: 2px solid #f87171; }
+  .rf-matrix__cell--critical-unmatched { background: #fff7ed; border: 2px solid #fb923c; }
+  .rf-matrix__cell--recommend-matched  { background: #f0fdf4; border: 2px solid #4ade80; }
+  .rf-matrix__cell--recommend-unmatched{ background: #fefce8; border: 2px solid #facc15; }
+  .rf-matrix__num {
+    font-size: clamp(48px, 7vw, 80px);
+    font-weight: 900;
+    line-height: 1;
+    color: #1a1a2e;
+  }
+  .rf-matrix__label {
+    font-size: clamp(16px, 2vw, 22px);
+    font-weight: 700;
+  }
+  .rf-matrix__desc {
+    font-size: 15px;
+    color: #475569;
+    line-height: 1.4;
+  }
+  .rf-matrix__new {
+    background: #eff6ff;
+    border: 2px solid #3b82f6;
+    border-radius: 10px;
+    padding: 24px 28px;
+  }
+  .rf-matrix__new-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 14px;
+  }
+  .rf-matrix__new-num {
+    font-size: clamp(40px, 6vw, 64px);
+    font-weight: 900;
+    color: #1d4ed8;
+    line-height: 1;
+  }
+  .rf-matrix__new-label {
+    font-size: clamp(16px, 2vw, 20px);
+    font-weight: 700;
+    color: #1d4ed8;
+    line-height: 1.3;
+  }
+  .rf-matrix__new-list {
+    list-style: disc;
+    margin: 0 0 0 24px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .rf-matrix__new-list li {
+    font-size: 17px;
+    color: #1e3a5f;
+    line-height: 1.5;
+  }
+
+  /* ── Disputes ────────────────────────────────── */
+  .rf-disputes {
+    max-width: 1100px;
+    margin: 0 auto 48px;
+    padding: 0 20px;
+  }
+  .rf-disputes__title {
+    font-size: clamp(20px, 2.5vw, 28px);
+    font-weight: 800;
+    color: #0d3b6e;
+    margin-bottom: 8px;
+  }
+  .rf-disputes__note {
+    font-size: 15px;
+    color: #64748b;
+    margin-bottom: 20px;
+  }
+  .rf-disputes__item {
+    background: #fff;
+    border: 2px solid #e2e8f0;
+    border-left: 6px solid #94a3b8;
+    border-radius: 8px;
+    padding: 22px 24px;
+    margin-bottom: 16px;
+  }
+  .rf-disputes__quote {
+    font-family: 'Nanum Pen Script', cursive;
+    font-size: 22px;
+    color: #1a1a2e;
+    line-height: 1.5;
+    margin-bottom: 10px;
+  }
+  .rf-disputes__source {
+    font-size: 14px;
+    color: #64748b;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .rf-disputes__classify {
+    font-size: 15px;
+    color: #475569;
+    background: #f1f5f9;
+    border-radius: 6px;
+    padding: 10px 14px;
+    line-height: 1.55;
+  }
+
+  /* ── Footnote ────────────────────────────────── */
+  .rf-footnote {
+    background: #1a1a2e;
+    color: rgba(255,255,255,0.7);
+    padding: 32px 24px;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+  .rf-footnote p {
+    max-width: 1100px;
+    margin: 0 auto 10px;
+  }
+  .rf-footnote p:last-child { margin-bottom: 0; }
+</style>
