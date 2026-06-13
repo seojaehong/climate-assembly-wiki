@@ -41,46 +41,55 @@
 
   /* ============ HEADER ============ */
   .head {
-    height: 88px;
+    height: 80px;
     background:
       linear-gradient(180deg, var(--header) 0%, var(--header-2) 100%);
     color: #fff;
-    padding: 14px 44px;
-    display: grid; grid-template-columns: 1fr auto 1fr;
-    align-items: center; gap: 32px;
+    padding: 12px 32px;
+    display: grid; grid-template-columns: auto 1fr auto;
+    align-items: center; column-gap: 24px;
     position: relative;
   }
   .head::after {
     content: ''; position: absolute; bottom: 0; left: 0; right: 0;
     height: 3px;
-    background: linear-gradient(90deg, var(--amber) 0%, var(--amber) 38%, transparent 38.001%);
+    background: linear-gradient(90deg, var(--amber) 0%, var(--amber) 32%, transparent 32.001%);
   }
-  .head-left { display: flex; align-items: baseline; gap: 18px; }
+  .head-left {
+    display: flex; align-items: baseline; gap: 14px;
+    white-space: nowrap;
+  }
   .head-title {
-    font-size: 36px; font-weight: 900; letter-spacing: -0.025em; line-height: 1;
+    font-size: 30px; font-weight: 900;
+    letter-spacing: -0.025em; line-height: 1;
+    white-space: nowrap;
   }
   .head-title .amber { color: var(--amber); }
   .head-sub {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px; font-weight: 600; letter-spacing: 0.22em;
-    text-transform: uppercase; opacity: 0.72;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.2em;
+    text-transform: uppercase; opacity: 0.7;
     border-left: 2px solid rgba(255,255,255,0.3);
-    padding-left: 14px;
+    padding-left: 12px;
+    white-space: nowrap;
   }
   .head-center {
     text-align: center;
-    font-size: 16px; font-weight: 500;
-    letter-spacing: 0.04em;
+    font-size: 15px; font-weight: 500;
+    letter-spacing: 0.02em;
     opacity: 0.85;
+    white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
   }
   .head-right {
-    display: flex; align-items: center; justify-content: flex-end; gap: 28px;
+    display: flex; align-items: center; justify-content: flex-end; gap: 22px;
+    white-space: nowrap;
   }
   .head-clock {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 20px; font-weight: 700;
+    font-size: 18px; font-weight: 700;
     letter-spacing: 0.05em; opacity: 0.92;
-    display: flex; align-items: center; gap: 10px;
+    display: flex; align-items: center; gap: 8px;
   }
   .live-dot {
     width: 10px; height: 10px; border-radius: 50%;
@@ -97,15 +106,35 @@
     padding-left: 28px;
   }
   .head-total-n {
-    font-size: 54px; font-weight: 900; color: var(--amber);
+    font-size: 44px; font-weight: 900; color: var(--amber);
     line-height: 1; font-variant-numeric: tabular-nums;
     letter-spacing: -0.025em;
   }
   .head-total-l {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.18em;
+    font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.16em;
     opacity: 0.78;
+  }
+
+  /* === 헤더 반응형 === */
+  @media (max-width: 1500px) {
+    .head-center { font-size: 13px; }
+  }
+  @media (max-width: 1280px) {
+    .head { padding: 10px 24px; column-gap: 18px; }
+    .head-title { font-size: 26px; }
+    .head-sub { display: none; }              /* 좁아지면 메타 숨김 */
+    .head-center { font-size: 12px; }
+    .head-clock { font-size: 16px; }
+    .head-total-n { font-size: 38px; }
+  }
+  @media (max-width: 980px) {
+    .head { grid-template-columns: auto 1fr; }
+    .head-center { display: none; }            /* 더 좁으면 가운데 부제 숨김 */
+  }
+  @media (max-width: 720px) {
+    .head-title { font-size: 22px; }
   }
 
   /* ============ STAGE ============ */
@@ -186,20 +215,22 @@
   .bars {
     flex: 1;
     display: grid;
+    grid-template-rows: 1fr;       /* 핵심: 단일 행을 1fr로 강제 */
     gap: 16px;
-    margin-top: 14px;
-    min-height: 0;
+    margin-top: 12px;
+    min-height: 0;                 /* flex 자식 shrink 허용 */
+    align-items: stretch;
   }
   .bars.n2 { grid-template-columns: 1fr 1fr; }
   .bars.n3 { grid-template-columns: 1fr 1fr 1fr; }
-  .bars.n4 { grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+  .bars.n4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 
   .vbar {
     display: grid;
     grid-template-rows: auto 1fr auto;
     height: 100%;
-    position: relative;
     min-height: 0;
+    position: relative;
   }
   .vbar-top {
     display: flex; flex-direction: column; align-items: center;
@@ -207,11 +238,11 @@
     position: relative;
   }
   .vbar-pct {
-    font-size: 38px; font-weight: 900; line-height: 1;
+    font-size: 30px; font-weight: 900; line-height: 1;
     color: var(--ink); letter-spacing: -0.03em;
     font-variant-numeric: tabular-nums;
   }
-  .card.lg .vbar-pct { font-size: 46px; }
+  .card.lg .vbar-pct { font-size: 40px; }
   .vbar-pct .pp {
     font-size: 0.48em; font-weight: 700;
     color: var(--ink-3); margin-left: 2px;
@@ -228,14 +259,9 @@
     position: relative;
     background: var(--rule-soft);
     border-radius: 3px 3px 0 0;
-    margin: 10px 4px 0;
-    min-height: 40px;
+    margin: 8px 6px 0;
+    min-height: 80px;              /* 보장 최소 막대 높이 */
     overflow: visible;
-  }
-  .vbar-track::before {
-    content: ''; position: absolute;
-    left: 0; right: 0; top: 50%;
-    border-top: 1px dashed rgba(0,0,0,0.06);
   }
   .vbar-fill {
     position: absolute; left: 0; right: 0; bottom: 0;
@@ -287,17 +313,16 @@
   .f-quo-3  { background: linear-gradient(180deg, #4A8DC4 0%, var(--q-3) 100%); }
   .f-quo-4  { background: linear-gradient(180deg, #2E6492 0%, var(--q-4) 100%); }
 
-  /* Footer */
+  /* Footer — 상단 헤더에 통합되어 더 이상 카드를 가리지 않음 */
   .footer {
-    position: fixed; bottom: 10px; right: 20px;
+    position: absolute; top: 12px; right: 32px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; color: var(--ink-3);
-    letter-spacing: 0.1em; text-transform: uppercase;
-    background: rgba(255,255,255,0.7);
-    padding: 4px 10px; border-radius: 3px;
-    backdrop-filter: blur(4px);
+    font-size: 9px; color: rgba(255,255,255,0.55);
+    letter-spacing: 0.18em; text-transform: uppercase;
+    pointer-events: auto;
   }
-  .footer a { color: var(--blue); text-decoration: none; font-weight: 700; }
+  .footer a { color: rgba(255,255,255,0.85); text-decoration: none; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.35); }
+  @media (max-width: 980px) { .footer { display: none; } }
 
   .err-banner {
     position: fixed; top: 100px; left: 50%; transform: translateX(-50%);
@@ -342,6 +367,9 @@
       <div class="head-total-n" id="total">0</div>
       <div class="head-total-l">총 응답</div>
     </div>
+  </div>
+  <div class="footer">
+    POLL 3s · GVIZ CACHE 15-30s · <a href="#" id="cfg">CONFIG</a>
   </div>
 </div>
 
@@ -428,10 +456,6 @@
     </div>
   </div>
 
-</div>
-
-<div class="footer">
-  POLL 3s · CACHE 15-30s · <a href="#" id="cfg">CONFIG</a>
 </div>
 
 <script>
@@ -530,13 +554,14 @@ async function tick() {
       grouped[r[0]] = grouped[r[0]] || [];
       grouped[r[0]].push({ opt: r[1], count: parseInt(r[2] || '0', 10) || 0 });
     });
-    let q1Total = 0;
+    let maxTotal = 0;
     for (const [tgt, cfg] of Object.entries(QMAP)) {
       const data = grouped[cfg.key] || [];
       const t = render(tgt, data, cfg);
-      if (tgt === 'q1') q1Total = t;
+      if (t > maxTotal) maxTotal = t;
     }
-    document.getElementById('total').textContent = q1Total;
+    // 헤더는 모든 그룹 중 최대 응답수 (Q1을 "기타"로 답한 케이스로 그룹간 카운트가 달라질 수 있음)
+    document.getElementById('total').textContent = maxTotal;
     errEl.classList.remove('show');
   } catch (e) {
     errEl.textContent = '연결 오류: ' + e.message;
