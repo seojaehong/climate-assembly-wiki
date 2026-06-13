@@ -73,6 +73,23 @@
     border: 2px solid rgba(255,255,255,0.32);
   }
 
+  /* 데이터 소스 인디케이터 — 🟢 LIVE / 🟡 LOCAL / 🔴 ERROR */
+  .pill-stack { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+  .live-indicator {
+    padding: 8px 20px;
+    border-radius: 999px;
+    font-weight: 900;
+    font-size: 18px;
+    letter-spacing: 0.06em;
+    backdrop-filter: blur(8px);
+    border: 2px solid rgba(255,255,255,0.32);
+    background: rgba(255,255,255,0.14);
+    transition: background 0.3s, color 0.3s;
+  }
+  .live-indicator.live  { background: rgba(22,163,74,0.85);  color: #fff; border-color: #4ade80; }
+  .live-indicator.local { background: rgba(245,166,35,0.85); color: #1F2937; border-color: #fcd34d; }
+  .live-indicator.error { background: rgba(220,38,38,0.85);  color: #fff; border-color: #fca5a5; }
+
   /* ============ MAIN STAGE ============ */
   .stage {
     position: relative;
@@ -354,9 +371,12 @@
     <div class="num-box">▶<small>RACE</small></div>
     <div>
       <div class="h-title">2026 기후시민회의  <span class="amber">의제선정 매트릭스</span></div>
-      <div class="h-sub">10 의제 슬롯 × 4 선정기준 × 22명 시민 평가 (1~3점) → 종합 가중평균</div>
+      <div class="h-sub">10 의제 슬롯 × 4 선정기준 × 기획의제단 평가 (1~5점) → 종합 가중평균</div>
     </div>
-    <div class="phase-pill" id="phasePill">PHASE 1 / 5</div>
+    <div class="pill-stack">
+      <div class="phase-pill" id="phasePill">PHASE 1 / 5</div>
+      <div class="live-indicator local" id="liveIndicator" title="데이터 소스: LIVE=시트 연동 / LOCAL=내장 더미 / ERROR=시트 로드 실패">🟡 LOCAL</div>
+    </div>
   </div>
 </div>
 
@@ -413,6 +433,17 @@ let speedMs = 2000;
 const SHEET_ID = new URLSearchParams(location.search).get('sheet');
 const SHEET_TAB = new URLSearchParams(location.search).get('tab') || '';
 
+// 데이터 소스 인디케이터 — 대형 스크린에서 더미 폴백 즉시 식별용
+function setLiveStatus(kind) {
+  const el = document.getElementById('liveIndicator');
+  if (!el) return;
+  el.classList.remove('live', 'local', 'error');
+  el.classList.add(kind);
+  el.textContent = kind === 'live'  ? '🟢 LIVE'
+                 : kind === 'local' ? '🟡 LOCAL'
+                 : '🔴 ERROR';
+}
+
 async function fetchSheetAgendas() {
   const url = buildSheetUrl(SHEET_ID, SHEET_TAB);
   if (!url) return null;
@@ -421,14 +452,47 @@ async function fetchSheetAgendas() {
   return csvToAgendas(await res.text());
 }
 
+// 시트 최신값 반영 (재생 직전 호출 — 입력 누적분 동기화)
+async function refreshFromSheet() {
+  if (!SHEET_ID) return;
+  try {
+    const sheetAgendas = await fetchSheetAgendas();
+    const picked = pickAgendas(DATA.agendas, sheetAgendas);
+    if (picked.source === 'sheet') {
+      const namesChanged = picked.agendas.some((a, i) => a.name !== DATA.agendas[i].name);
+      DATA.agendas = picked.agendas;
+      if (namesChanged) {
+        document.getElementById('grid').innerHTML = '';
+        buildGrid();
+        renderPhase(0);
+      }
+      setLiveStatus('live');
+      console.info('[sheet] refreshed before play:', picked.agendas.length, 'rows');
+    } else {
+      if (picked.reason) console.warn('[sheet]', picked.reason);
+      setLiveStatus('local');
+    }
+  } catch (e) {
+    console.warn('[sheet] refresh failed, keeping current data:', e);
+    setLiveStatus('error');
+  }
+}
+
 async function load() {
   DATA = await fetch('data.json').then(r => r.json());
+  setLiveStatus(SHEET_ID ? 'local' : 'local');
   let sheetAgendas = null;
   try { sheetAgendas = await fetchSheetAgendas(); }
-  catch (e) { console.warn('[sheet] load failed, using local fallback:', e); }
+  catch (e) {
+    console.warn('[sheet] load failed, using local fallback:', e);
+    if (SHEET_ID) setLiveStatus('error');
+  }
   const picked = pickAgendas(DATA.agendas, sheetAgendas);
-  if (picked.reason) console.warn('[sheet]', picked.reason);
-  if (picked.source === 'sheet') console.info('[sheet] live data loaded:', picked.agendas.length, 'rows');
+  if (picked.reason) { console.warn('[sheet]', picked.reason); setLiveStatus('local'); }
+  if (picked.source === 'sheet') {
+    console.info('[sheet] live data loaded:', picked.agendas.length, 'rows');
+    setLiveStatus('live');
+  }
   DATA.agendas = picked.agendas;
   buildPhaseTrack();
   buildGrid();
@@ -638,6 +702,8 @@ document.getElementById('closeFinal').addEventListener('click', () => {
 
 async function play() {
   if (timer || inAnim) return;
+  // 시작 시점(평가 전 단계)이면 시트 최신 점수를 먼저 반영
+  if (phaseIdx === 0) await refreshFromSheet();
   document.getElementById('audio').play().catch(() => {});
   document.getElementById('play').textContent = '⏸  일시정지';
   const advance = async () => {

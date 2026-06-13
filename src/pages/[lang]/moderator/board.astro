@@ -35,8 +35,15 @@ export async function getStaticPaths() {
   return [{ params: { lang: 'ko' } }];
 }
 
-const sheetCsvUrl = import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '';
-const writebackUrl = import.meta.env.PUBLIC_BOARD_WRITEBACK_URL ?? '';
+// Board 전용 시트 env 우선, 미설정 시 레거시 PUBLIC_LIVE_SHEET_CSV_URL 폴백.
+// (live.astro의 LiveQA 시트와 스키마가 다르므로 운영 시 반드시 분리 설정)
+// .trim(): Cloudflare env 값에 공백이 섞여 들어가는 사고 방지
+const sheetCsvUrl = (
+  import.meta.env.PUBLIC_BOARD_SHEET_CSV_URL
+  ?? import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL
+  ?? ''
+).trim();
+const writebackUrl = (import.meta.env.PUBLIC_BOARD_WRITEBACK_URL ?? '').trim();
 ---
 <!doctype html>
 <html lang="ko" dir="ltr" data-theme="light">

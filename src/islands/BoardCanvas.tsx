@@ -21,6 +21,16 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 type Zone = '감축' | '미분류' | '적응';
 type Status = '대기' | '선정' | '발표중' | '발표완료';
 
+// 상태 순환 (spec §6 — v8 데모와 동일한 4-cycle)
+const STATUS_CYCLE: Status[] = ['대기', '선정', '발표중', '발표완료'];
+
+const STATUS_META: Record<Status, { label: string; bg: string; fg: string; border: string }> = {
+  '대기':     { label: '대기',   bg: '#f5f5f4', fg: '#78716c', border: '#d6d3d1' },
+  '선정':     { label: '선정',   bg: '#fef3c7', fg: '#b45309', border: '#f59e0b' },
+  '발표중':   { label: '발표중', bg: '#fee2e2', fg: '#b91c1c', border: '#ef4444' },
+  '발표완료': { label: '완료',   bg: '#dcfce7', fg: '#15803d', border: '#22c55e' },
+};
+
 interface AgendaRow {
   id: number;
   row: number; // 1-indexed sheet row (header = 1, data from 2)
@@ -208,6 +218,7 @@ function showToast(text: string, isError = false) {
 // ── Demo localStorage helpers ─────────────────────────────────────────────
 
 const DEMO_LS_KEY = 'board-demo-state';
+const DEMO_STATUS_LS_KEY = 'board-demo-status'; // spec §7 — 데모에서 Sheet 역할
 
 function loadDemoOverrides(): Record<number, Zone> {
   try {
@@ -223,6 +234,25 @@ function saveDemoOverride(cardId: number, zone: Zone): void {
     const current = loadDemoOverrides();
     current[cardId] = zone;
     localStorage.setItem(DEMO_LS_KEY, JSON.stringify(current));
+  } catch {
+    // ignore
+  }
+}
+
+function loadDemoStatuses(): Record<number, Status> {
+  try {
+    const raw = localStorage.getItem(DEMO_STATUS_LS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveDemoStatus(cardId: number, status: Status): void {
+  try {
+    const current = loadDemoStatuses();
+    current[cardId] = status;
+    localStorage.setItem(DEMO_STATUS_LS_KEY, JSON.stringify(current));
   } catch {
     // ignore
   }
@@ -289,7 +319,10 @@ export default function BoardCanvas({
       .then((data: { rows: DemoRawRow[] }) => {
         if (cancelled) return;
         const overrides = loadDemoOverrides();
-        const parsed = demoToRows(data.rows || [], domainMap, overrides);
+        const savedStatuses = loadDemoStatuses();
+        const parsed = demoToRows(data.rows || [], domainMap, overrides).map(c =>
+          savedStatuses[c.id] ? { ...c, status: savedStatuses[c.id] } : c
+        );
         setCards(parsed);
         recomputeCounts(parsed);
         setSheetStatus('live');
@@ -482,6 +515,116 @@ export default function BoardCanvas({
     return true;
   }, [isDemoMode, writebackUrl, hubToken]);
 
+  // ── Status writeback (v2 payload: field 분기 — spec §5) ────────────────
+  const doWritebackStatus = useCallback(async (
+    cardRow: number,
+    cardId: number,
+    newStatus: Status,
+    previousStatus: Status,
+  ) => {
+    // ── DEMO mock path ────────────────────────────────────────────────
+    if (isDemoMode) {
+      saveDemoStatus(cardId, newStatus);
+      showToast(`[데모] 의제 #${cardId} 상태 → ${newStatus}`);
+      return true;
+    }
+
+    // ── Real path ─────────────────────────────────────────────────────
+    if (!writebackUrl) {
+      showToast('환경변수 PUBLIC_BOARD_WRITEBACK_URL 미설정 — 상태 변경 불가', true);
+      return false;
+    }
+    if (!hubToken) {
+      showToast('본부 토큰 없음 — 페이지 새로고침 후 토큰 입력', true);
+      return false;
+    }
+
+    setIsWriting(true);
+
+    const attempt = async (): Promise<boolean> => {
+      try {
+        const res = await fetch(writebackUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            row: cardRow,
+            field: 'status',
+            value: newStatus,
+            token: hubToken,
+            ts: new Date().toISOString(),
+          }),
+        });
+        const data = await res.json();
+        if (data.ok) return true;
+        throw new Error(data.reason || 'writeback failed');
+      } catch {
+        return false;
+      }
+    };
+
+    let ok = await attempt();
+    if (!ok) ok = await attempt();
+    setIsWriting(false);
+
+    if (!ok) {
+      showToast('상태 동기화 실패 — Sheet 직접 편집 (Apps Script v2 배포 확인)', true);
+      // Revert optimistic update
+      setCards(prev => {
+        const next = prev.map(c => c.id === cardId ? { ...c, status: previousStatus } : c);
+        recomputeCounts(next);
+        return next;
+      });
+      return false;
+    }
+    showToast(`의제 #${cardId} 상태 → ${newStatus}`);
+    return true;
+  }, [isDemoMode, writebackUrl, hubToken, recomputeCounts]);
+
+  // ── Status 4-cycle: chip 클릭 / 키보드 1-4 (본부 모드 전용) ────────────
+  const setCardStatus = useCallback((card: AgendaRow, next: Status) => {
+    if (!runtimeControlMode) return;
+    if (next === card.status) return;
+    const previous = card.status;
+    // 1. Optimistic UI
+    setCards(prev => {
+      const updated = prev.map(c => c.id === card.id ? { ...c, status: next } : c);
+      recomputeCounts(updated);
+      return updated;
+    });
+    // 2. Writeback (async)
+    doWritebackStatus(card.row, card.id, next, previous);
+  }, [runtimeControlMode, doWritebackStatus, recomputeCounts]);
+
+  const cycleStatus = useCallback((card: AgendaRow) => {
+    const idx = STATUS_CYCLE.indexOf(card.status);
+    const next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+    setCardStatus(card, next);
+  }, [setCardStatus]);
+
+  // Hovered card id (키보드 1-4 단축키 대상) — id로 저장해 stale 객체 방지
+  const hoveredCardRef = useRef<number | null>(null);
+  const cardsRef = useRef<AgendaRow[]>([]);
+  cardsRef.current = cards;
+
+  // ── Keyboard 1-4: hover 카드 상태 직접 지정 (본부 모드, spec §4) ───────
+  useEffect(() => {
+    if (!runtimeControlMode) return;
+    function onStatusKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+      const map: Record<string, Status> = { '1': '대기', '2': '선정', '3': '발표중', '4': '발표완료' };
+      const next = map[e.key];
+      if (!next) return;
+      if (hoveredCardRef.current == null) return;
+      const card = cardsRef.current.find(c => c.id === hoveredCardRef.current);
+      if (!card) return;
+      e.preventDefault();
+      setCardStatus(card, next);
+    }
+    window.addEventListener('keydown', onStatusKey);
+    return () => window.removeEventListener('keydown', onStatusKey);
+  }, [runtimeControlMode, setCardStatus]);
+
   // ── Drag handlers ─────────────────────────────────────────────────────
   const handleDragStart = useCallback((e: React.DragEvent, card: AgendaRow) => {
     if (!runtimeControlMode) { e.preventDefault(); return; }
@@ -559,6 +702,7 @@ export default function BoardCanvas({
   // ── Demo reset ────────────────────────────────────────────────────────
   const handleDemoReset = useCallback(() => {
     localStorage.removeItem(DEMO_LS_KEY);
+    localStorage.removeItem(DEMO_STATUS_LS_KEY);
     window.location.reload();
   }, []);
 
@@ -598,7 +742,9 @@ export default function BoardCanvas({
             <div id="demo-guide-box" className="demo-guide-box" role="complementary">
               <ul className="demo-guide-list">
                 <li><kbd>f</kbd> 키: Present 풀스크린</li>
-                <li>URL에 <code>&amp;mode=control</code> 추가: 본부 드래그 활성</li>
+                <li>URL에 <code>&amp;mode=control</code> 추가: 본부 드래그 + 상태 변경 활성</li>
+                <li>상태 칩 클릭: 대기→선정→발표중→발표완료 순환 (본부 모드)</li>
+                <li>카드 hover + <kbd>1</kbd>~<kbd>4</kbd>: 상태 직접 지정 (본부 모드)</li>
                 <li>초기화 버튼: localStorage 비우고 새로고침</li>
                 <li>ambient wobble: 카드 등장 후 대기 카드 자동 흔들림</li>
               </ul>
@@ -717,6 +863,8 @@ export default function BoardCanvas({
                       onDragEnd={handleDragEnd}
                       onClick={() => handleCardClick(card)}
                       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCardClick(card); } }}
+                      onMouseEnter={() => { hoveredCardRef.current = card.id; }}
+                      onMouseLeave={() => { if (hoveredCardRef.current === card.id) hoveredCardRef.current = null; }}
                     >
                       {runtimeControlMode && (
                         <div className="drag-handle" aria-hidden="true" title="드래그로 이동">&#9776;</div>
@@ -733,6 +881,26 @@ export default function BoardCanvas({
                           <span className="card-chip chip-group">{card.group}조</span>
                           {card.speaker && <span className="card-chip">{card.speaker}</span>}
                           {card.domain && <span className="card-chip">{card.domain}</span>}
+                          <button
+                            type="button"
+                            className={`status-chip status-chip--${card.status}`}
+                            style={{
+                              background: STATUS_META[card.status].bg,
+                              color: STATUS_META[card.status].fg,
+                              borderColor: STATUS_META[card.status].border,
+                              cursor: runtimeControlMode ? 'pointer' : 'default',
+                            }}
+                            disabled={!runtimeControlMode}
+                            aria-label={`상태: ${card.status}${runtimeControlMode ? ' (클릭 시 다음 상태)' : ''}`}
+                            title={runtimeControlMode ? '클릭: 대기→선정→발표중→발표완료 순환 · hover+1/2/3/4' : `상태: ${card.status}`}
+                            onClick={e => {
+                              e.stopPropagation(); // 카드 클릭(영역 모달)과 분리
+                              if (runtimeControlMode) cycleStatus(card);
+                            }}
+                          >
+                            {card.status === '발표중' && <span className="status-dot" aria-hidden="true" />}
+                            {STATUS_META[card.status].label}
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -1145,6 +1313,43 @@ export default function BoardCanvas({
           background: rgba(217,119,6,0.15);
           color: #92400e;
         }
+
+        /* Status chip — 4-cycle (대기→선정→발표중→발표완료) */
+        .status-chip {
+          margin-left: auto;          /* footer 우측 정렬 */
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 16px;
+          font-weight: 800;
+          border: 2px solid;
+          border-radius: 999px;
+          padding: 2px 10px;
+          line-height: 1.3;
+          font-family: 'Pretendard Variable', 'Pretendard', sans-serif;
+          transition: transform 0.12s ease, box-shadow 0.12s ease;
+        }
+        .status-chip:not(:disabled):hover {
+          transform: scale(1.08);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+        }
+        .status-chip:not(:disabled):active { transform: scale(0.96); }
+        .status-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #ef4444;
+          animation: status-pulse 1.2s ease-in-out infinite;
+        }
+        @keyframes status-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50%      { opacity: 0.4; transform: scale(0.7); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .status-dot { animation: none; }
+        }
+        .present-mode-canvas .status-chip { font-size: 22px !important; }
+
         .drag-handle {
           position: absolute;
           top: 6px;

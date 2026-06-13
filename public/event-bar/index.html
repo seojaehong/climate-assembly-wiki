@@ -221,8 +221,8 @@ function layoutRows() {
   const ROW_H = Math.min(110, Math.floor(total / DATA.agendas.length));
   const GAP = Math.max(8, Math.floor(ROW_H * 0.08));
 
-  // 점수 max for bar 비율 (pre = 0이면 max=3, 평소 max=3)
-  const maxScore = 3.0;
+  // 점수 max for bar 비율 — 5점 척도 (2026-06-12: 시트·race-40과 통일)
+  const maxScore = (DATA.meta && DATA.meta.score_range && DATA.meta.score_range[1]) || 5.0;
 
   arr.forEach((entry, rank) => {
     const r = rows[entry.i];

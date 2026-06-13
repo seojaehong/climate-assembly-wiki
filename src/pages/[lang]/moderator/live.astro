@@ -41,7 +41,8 @@ const experts = [...new Set(
 )];
 
 // Google Sheet CSV URL from build-time env (may be undefined → shows guide)
-const sheetCsvUrl = import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '';
+// .trim(): env 값 앞뒤 공백 사고 방지 (2026-06-12 prod에서 leading space 실측)
+const sheetCsvUrl = (import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '').trim();
 ---
 <!doctype html>
 <html lang="ko" dir="ltr" data-theme="dark" class="dark">
