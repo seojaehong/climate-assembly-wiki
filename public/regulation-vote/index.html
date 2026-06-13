@@ -334,6 +334,67 @@
   }
   .err-banner.show { display: block; }
 
+  /* === BGM 컨트롤 패널 === */
+  .bgm {
+    position: fixed; bottom: 14px; left: 24px;
+    display: flex; align-items: center; gap: 12px;
+    background: #fff;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 6px 16px 6px 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    z-index: 50;
+    font-family: 'JetBrains Mono', monospace;
+    transition: opacity 0.3s;
+  }
+  .bgm:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.12); }
+  .bgm-play {
+    background: var(--header); color: #fff;
+    border: 0; border-radius: 50%;
+    width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 13px; font-weight: 900;
+    transition: background 0.2s, transform 0.15s;
+    padding: 0;
+  }
+  .bgm-play:hover { background: var(--header-2); transform: scale(1.06); }
+  .bgm-play.playing { background: var(--amber-d); }
+  .bgm-label {
+    font-size: 10px; font-weight: 700;
+    color: var(--ink-3); letter-spacing: 0.22em;
+    border-left: 1px solid var(--rule);
+    padding-left: 12px;
+  }
+  .bgm-vol-n {
+    font-size: 11px; font-weight: 700; color: var(--ink);
+    min-width: 22px; text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  #bgmVol {
+    width: 100px;
+    accent-color: var(--header);
+    cursor: pointer;
+  }
+  .bgm-mute {
+    background: var(--rule-soft); color: var(--ink-2);
+    border: 0; border-radius: 50%;
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 13px;
+    transition: background 0.2s;
+    padding: 0;
+  }
+  .bgm-mute:hover { background: var(--rule); color: var(--ink); }
+  .bgm-mute.muted { background: var(--brick); color: #fff; }
+  .bgm-keys {
+    font-size: 9px; font-weight: 600;
+    color: var(--ink-3); letter-spacing: 0.12em;
+    border-left: 1px solid var(--rule); padding-left: 10px;
+    opacity: 0.6;
+  }
+  @media (max-width: 980px) { .bgm-keys { display: none; } }
+  @media (max-width: 720px) { .bgm-label { display: none; } #bgmVol { width: 72px; } }
+
   /* 큰 화면 미세 조정 */
   @media (min-width: 2400px) {
     .head { height: 110px; padding: 18px 60px; }
@@ -456,6 +517,19 @@
     </div>
   </div>
 
+</div>
+
+<!-- === BGM CONTROL === -->
+<audio id="bgm" loop preload="auto">
+  <source src="bgm.mp3" type="audio/mpeg" />
+</audio>
+<div class="bgm" id="bgmPanel">
+  <button class="bgm-play" id="bgmPlay" aria-label="재생/정지" title="재생/정지 (Space)">▶</button>
+  <span class="bgm-label">BGM</span>
+  <input type="range" id="bgmVol" min="0" max="100" value="40" aria-label="음량" />
+  <span class="bgm-vol-n" id="bgmVolN">40</span>
+  <button class="bgm-mute" id="bgmMute" aria-label="음소거" title="음소거 (M)">♪</button>
+  <span class="bgm-keys">SPACE · M · [ ]</span>
 </div>
 
 <script>
@@ -581,6 +655,76 @@ clockTick();
 setInterval(clockTick, 1000);
 tick();
 setInterval(tick, POLL_MS);
+
+// === BGM 컨트롤 ===
+const bgm = document.getElementById('bgm');
+const bgmPlay = document.getElementById('bgmPlay');
+const bgmMute = document.getElementById('bgmMute');
+const bgmVol = document.getElementById('bgmVol');
+const bgmVolN = document.getElementById('bgmVolN');
+
+bgm.volume = 0.4;
+let prevVol = 40;
+
+function togglePlay() {
+  if (bgm.paused) {
+    bgm.play().then(() => {
+      bgmPlay.textContent = '❚❚';
+      bgmPlay.classList.add('playing');
+    }).catch(err => console.warn('BGM 재생 실패:', err));
+  } else {
+    bgm.pause();
+    bgmPlay.textContent = '▶';
+    bgmPlay.classList.remove('playing');
+  }
+}
+function toggleMute() {
+  if (bgm.muted) {
+    bgm.muted = false;
+    bgmMute.textContent = '♪';
+    bgmMute.classList.remove('muted');
+    bgmVol.value = prevVol;
+    bgm.volume = prevVol / 100;
+    bgmVolN.textContent = prevVol;
+  } else {
+    prevVol = +bgm.volume * 100;
+    bgm.muted = true;
+    bgmMute.textContent = '✕';
+    bgmMute.classList.add('muted');
+  }
+}
+function adjustVol(delta) {
+  const next = Math.max(0, Math.min(100, +bgmVol.value + delta));
+  bgmVol.value = next;
+  bgm.volume = next / 100;
+  bgmVolN.textContent = next;
+  if (bgm.muted && next > 0) {
+    bgm.muted = false;
+    bgmMute.textContent = '♪';
+    bgmMute.classList.remove('muted');
+  }
+}
+
+bgmPlay.onclick = togglePlay;
+bgmMute.onclick = toggleMute;
+bgmVol.oninput = () => {
+  bgm.volume = bgmVol.value / 100;
+  bgmVolN.textContent = bgmVol.value;
+  if (bgm.muted && bgmVol.value > 0) {
+    bgm.muted = false;
+    bgmMute.textContent = '♪';
+    bgmMute.classList.remove('muted');
+  }
+};
+
+// 단축키: Space=재생/정지, M=음소거, [ ]=볼륨
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+  else if (e.key === 'm' || e.key === 'M' || e.key === 'ㅡ') toggleMute();
+  else if (e.key === '[' || e.key === ',' || e.key === 'ArrowDown') { e.preventDefault(); adjustVol(-5); }
+  else if (e.key === ']' || e.key === '.' || e.key === 'ArrowUp')  { e.preventDefault(); adjustVol(+5); }
+});
 </script>
 </body>
 </html>
