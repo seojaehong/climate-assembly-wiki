@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>해외 기후시민회의 의제 비교표</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700;900&family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --ink-soft: #2c2c2c;
+    --paper: #faf7f0;
+    --paper-warm: #f5f0e3;
+    --line: #d8d2c2;
+    --line-soft: #ebe6d8;
+    --forest: #1f3a2a;
+    --forest-soft: #2d5039;
+    --terracotta: #b8643a;
+    --amber: #c9963a;
+    --mute: #756f5e;
+    --uk: #1d4e7e;
+    --fr: #6b2c4d;
+    --es: #b8643a;
+    --be: #2d5039;
+    --de: #4a4030;
+    --au: #8c4a2a;
+    --sc: #3d5a78;
+    --ee: #5a6b3a;
+    --ie: #2a6b4f;
+    --uk-dev: #5577a3;
+    --pl: #8a5a2e;
+    --ca-youth: #c4554a;
+    --nl: #d4892c;
+    --no-future: #5b8a8c;
+    --no-consumption: #8c7042;
+    --se: #4a73a3;
+    --uk-nature: #6b8e4e;
+    --ie-bio: #4a7d65;
+    --ie-bio-cyp: #a0b850;
+    --lu: #8c5688;
+    --at: #b85a2e;
+    --dk: #8c2c2e;
+    --dk1: #8c2c2e;
+    --dk2: #c0504e;
+    --dk-cph: #6e1f21;
+    --je: #5a7e9e;
+    --fi: #2a5980;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.6;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ====== Header ====== */
+  .masthead {
+    background: var(--paper-warm);
+    border-bottom: 2px solid var(--ink);
+    padding: 3rem 2.5rem 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .masthead::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 6px;
+    background: linear-gradient(90deg,
+      var(--uk) 0% 9%,
+      var(--fr) 9% 18%,
+      var(--es) 18% 27%,
+      var(--be) 27% 36%,
+      var(--de) 36% 45%,
+      var(--au) 45% 54%,
+      var(--sc) 54% 63%,
+      var(--ee) 63% 72%,
+      var(--ie) 72% 81%,
+      var(--uk-dev) 81% 90%,
+      var(--pl) 90% 100%
+    );
+  }
+
+  .masthead-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--mute);
+    margin-bottom: 0.8rem;
+  }
+
+  .eyebrow .dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--terracotta);
+    border-radius: 50%;
+    margin: 0 0.6rem 0.15rem 0;
+    vertical-align: middle;
+  }
+
+  h1.title {
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 900;
+    font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 0.8rem;
+    max-width: 1000px;
+  }
+
+  h1 .accent {
+    color: var(--terracotta);
+    font-style: italic;
+  }
+
+  .subtitle {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 1rem;
+    color: var(--ink-soft);
+    max-width: 800px;
+    margin-bottom: 1.5rem;
+    line-height: 1.55;
+  }
+
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem 2rem;
+    padding-top: 1.2rem;
+    border-top: 1px dashed var(--line);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--mute);
+    letter-spacing: 0.05em;
+  }
+  .meta-sources {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .meta-config { flex-shrink: 0; }
+
+  /* Masthead two-column layout with usage guide top-right */
+  .masthead-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 2.5rem;
+  }
+  .masthead-main { flex: 1 1 auto; min-width: 0; }
+  .usage-guide {
+    flex: 0 0 auto;
+    width: 260px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--terracotta);
+    padding: 1rem 1.2rem 1.1rem;
+    border-radius: 2px;
+  }
+  .usage-guide h3 {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--forest);
+    margin-bottom: 0.6rem;
+  }
+  .usage-guide p {
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    margin-bottom: 0.2rem;
+  }
+
+  .meta-row strong { color: var(--ink); font-weight: 500; }
+  .meta-row .meta-source-label {
+    color: var(--amber);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+  }
+
+  /* ====== Country Quick Stats ====== */
+  .country-strip {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0.6rem 2.5rem;
+    overflow-x: auto;
+  }
+
+  .country-strip-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    gap: 0;
+    white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+  }
+
+  .strip-item {
+    padding: 0.25rem 1rem;
+    border-right: 1px solid #333;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .strip-item:last-child { border-right: none; }
+  .strip-item:hover { background: #2c2c2c; }
+  .strip-item .num {
+    color: var(--amber);
+    font-weight: 500;
+    margin-left: 0.4rem;
+  }
+
+  /* ====== Filter Panel ====== */
+  .filter-section {
+    background: var(--paper);
+    padding: 1.5rem 2.5rem;
+    border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(8px);
+  }
+
+  .filter-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1.5rem;
+    align-items: center;
+  }
+
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+  }
+
+  .filter-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--mute);
+    margin-right: 0.5rem;
+  }
+
+  .country-btn {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 0.35rem 0.75rem;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.15s;
+    border-radius: 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .country-btn::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--country-color);
+  }
+
+  .country-btn:hover {
+    border-color: var(--ink);
+    background: var(--paper-warm);
+  }
+
+  .country-btn.active {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+
+  .control-group {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+  }
+
+  .search-box {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 0.85rem;
+    padding: 0.5rem 0.85rem;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--ink);
+    width: 230px;
+    border-radius: 2px;
+    transition: border-color 0.15s;
+  }
+
+  .search-box:focus {
+    outline: none;
+    border-color: var(--ink);
+  }
+
+  .reset-btn, .toggle-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    padding: 0.5rem 0.85rem;
+    background: var(--paper-warm);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    cursor: pointer;
+    border-radius: 2px;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+  }
+
+  .reset-btn:hover, .toggle-btn:hover {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+
+  .toggle-btn.active {
+    background: var(--forest);
+    color: var(--paper);
+    border-color: var(--forest);
+  }
+
+  /* ====== Status Bar ====== */
+  .status-bar {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1rem 2.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--mute);
+    letter-spacing: 0.05em;
+  }
+
+  .status-bar .count {
+    color: var(--ink);
+    font-weight: 500;
+    font-size: 0.85rem;
+  }
+
+  /* ====== Main Table ====== */
+  .table-container {
+    max-width: 1400px;
+    margin: 0 auto 4rem;
+    padding: 0 2.5rem;
+  }
+
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--paper);
+    font-size: 0.83rem;
+    table-layout: fixed;
+  }
+
+  .comparison-table thead {
+    position: sticky;
+    top: 88px;
+    z-index: 40;
+  }
+
+  .comparison-table th {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0.85rem 0.75rem;
+    text-align: left;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--terracotta);
+  }
+
+  /* Column widths */
+  .col-country { width: 10%; }
+  .col-theme { width: 13%; }
+  .col-area { width: 17%; }
+  .col-subagenda { width: 23%; }
+  .col-recommendation { width: 37%; }
+
+  .comparison-table td {
+    padding: 0.9rem 0.75rem;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: top;
+    line-height: 1.55;
+  }
+
+  .comparison-table tbody tr {
+    transition: background 0.12s;
+  }
+
+  .comparison-table tbody tr:hover {
+    background: var(--paper-warm);
+  }
+
+  /* Country tag */
+  .country-tag {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 500;
+    padding: 0.3rem 0.6rem;
+    color: white;
+    letter-spacing: 0.08em;
+    border-radius: 2px;
+    white-space: nowrap;
+    line-height: 1.3;
+  }
+  .ct-name {
+    font-weight: 600;
+    letter-spacing: 0.08em;
+  }
+  .ct-case {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 0.92em;
+    font-weight: 400;
+    letter-spacing: 0;
+    opacity: 0.88;
+    margin-top: 0.15rem;
+  }
+
+  .country-tag-name {
+    display: none;
+  }
+
+  .country-tag-year {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--mute);
+    margin-top: 0.4rem;
+    letter-spacing: 0.05em;
+  }
+
+  .ctag-uk { background: var(--uk); }
+  .ctag-fr { background: var(--fr); }
+  .ctag-es { background: var(--es); }
+  .ctag-be { background: var(--be); }
+  .ctag-de { background: var(--de); }
+  .ctag-au { background: var(--au); }
+  .ctag-sc { background: var(--sc); }
+  .ctag-ee { background: var(--ee); }
+  .ctag-ie { background: var(--ie); }
+  .ctag-uk-dev { background: var(--uk-dev); }
+  .ctag-pl { background: var(--pl); }
+  .ctag-ca-youth { background: var(--ca-youth); }
+  .ctag-nl { background: var(--nl); }
+  .ctag-no-future { background: var(--no-future); }
+  .ctag-no-consumption { background: var(--no-consumption); }
+  .ctag-se { background: var(--se); }
+  .ctag-uk-nature { background: var(--uk-nature); }
+  .ctag-ie-bio { background: var(--ie-bio); }
+  .ctag-ie-bio-cyp { background: var(--ie-bio-cyp); }
+  .ctag-lu { background: var(--lu); }
+  .ctag-at { background: var(--at); }
+  .ctag-dk { background: var(--dk); }
+  .ctag-dk1 { background: var(--dk1); }
+  .ctag-dk2 { background: var(--dk2); }
+  .ctag-dk-cph { background: var(--dk-cph); }
+  .ctag-je { background: var(--je); }
+  .ctag-fi { background: var(--fi); }
+
+  .theme-cell {
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 600;
+    color: var(--forest);
+    font-size: 0.85rem;
+  }
+
+  /* "프로세스 특징" 행 — 의제와 시각적으로 구분 */
+  tr.row-process td {
+    background: rgba(184, 100, 58, 0.05);
+  }
+  tr.row-process td:first-child {
+    border-left: 3px solid var(--terracotta);
+  }
+  .theme-cell.theme-process {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: var(--terracotta);
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    text-transform: none;
+  }
+  tr.row-process .area-cell,
+  tr.row-process .sub-cell {
+    color: #8a6a4a;
+    font-style: italic;
+    font-size: 0.85rem;
+  }
+  tr.row-process .rec-cell ul li {
+    color: #6a553e;
+  }
+
+  .area-cell {
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  .area-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--terracotta);
+    margin-right: 0.4rem;
+    font-weight: 500;
+  }
+
+  .sub-cell {
+    color: var(--ink-soft);
+  }
+
+  .rec-cell {
+    color: var(--ink-soft);
+    font-size: 0.82rem;
+  }
+
+  .rec-cell ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .rec-cell ul li {
+    padding-left: 0.9rem;
+    position: relative;
+    margin-bottom: 0.3rem;
+  }
+
+  .rec-cell ul li::before {
+    content: "—";
+    position: absolute;
+    left: 0;
+    color: var(--terracotta);
+  }
+
+  .rec-cell .pct {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--terracotta);
+    font-weight: 500;
+    margin-left: 0.3rem;
+  }
+
+  .rec-cell .highlight {
+    background: linear-gradient(transparent 60%, rgba(201, 150, 58, 0.3) 60%);
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  .rec-cell .rejected {
+    color: var(--mute);
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    font-family: 'Noto Serif KR', serif;
+    color: var(--mute);
+    font-style: italic;
+  }
+
+  /* Group separator */
+  tr.group-start td {
+    border-top: 2px solid var(--ink);
+  }
+
+  /* Footer */
+  .footer {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 2.5rem;
+    margin-top: 4rem;
+  }
+
+  .footer-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 3rem;
+    align-items: stretch;
+  }
+  .footer .footer-right {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .footer h3 {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 1.1rem;
+    margin-bottom: 0.8rem;
+    color: var(--amber);
+  }
+
+  .footer p {
+    font-size: 0.85rem;
+    line-height: 1.7;
+    color: #ccc;
+    margin-bottom: 0.6rem;
+  }
+
+  .footer .source {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--mute);
+    letter-spacing: 0.05em;
+    padding-top: 1rem;
+    border-top: 1px solid #333;
+    margin-top: 1rem;
+    line-height: 1.7;
+  }
+  .footer .source .source-label {
+    color: var(--amber);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    display: inline-block;
+    margin-bottom: 0.3rem;
+  }
+  .footer .kei-memo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--mute);
+    letter-spacing: 0.05em;
+    line-height: 1.7;
+    margin: 0;
+    padding-left: 1.5em;
+    text-indent: -1.5em;
+  }
+  .footer .kei-memo .kei-memo-2 { display: inline-block; text-indent: 0; }
+
+  /* Mobile */
+  @media (max-width: 900px) {
+    .masthead { padding: 2rem 1.2rem 1.5rem; }
+    .masthead-flex { flex-direction: column; gap: 1.5rem; }
+    .usage-guide { width: 100%; }
+    .filter-section { padding: 1rem 1.2rem; }
+    .filter-inner { grid-template-columns: 1fr; }
+    .table-container { padding: 0 1.2rem; }
+    .status-bar { padding: 1rem 1.2rem; }
+    .comparison-table { font-size: 0.75rem; }
+    .comparison-table th, .comparison-table td { padding: 0.6rem 0.5rem; }
+    .footer-inner { grid-template-columns: 1fr; }
+  }
+
+  /* Print */
+  @media print {
+    .filter-section, .country-strip, .footer { display: none; }
+    body { background: white; }
+    .comparison-table { font-size: 0.7rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Masthead -->
+<header class="masthead">
+  <div class="masthead-inner masthead-flex">
+    <div class="masthead-main">
+      <div class="eyebrow"><span class="dot"></span>Comparative Analysis · Climate Citizens' Assemblies</div>
+      <h1 class="title">해외 기후시민회의 의제 <span class="accent">전체 비교표</span></h1>
+      <p class="subtitle">
+        17개 기후시민회의 사례에서 다룬 의제 영역과 권고를 단일 표에 정리하여
+        사례별 상호 비교가 가능하도록 구성한 자료입니다.
+      </p>
+      <div class="meta-row">
+        <div class="meta-config">
+          <strong>구성</strong> · 17개 사례 · 1025개 의제 행
+        </div>
+      </div>
+    </div>
+    <aside class="usage-guide">
+      <h3>표 이용 안내</h3>
+      <p>· 상단 국가 버튼으로 필터링 가능</p>
+      <p>· 키워드 검색으로 모든 열 검색</p>
+    </aside>
+  </div>
+</header>
+
+<!-- Country quick strip -->
+<div class="country-strip">
+  <div class="country-strip-inner" id="countryStrip"></div>
+</div>
+
+<!-- Filter Panel -->
+<section class="filter-section">
+  <div class="filter-inner">
+    <div class="filter-row" id="countryFilters">
+      <span class="filter-label">국가</span>
+    </div>
+    <div class="control-group">
+      <input type="text" class="search-box" id="searchBox" placeholder="키워드 검색 (예: 재생에너지, 육류, 탄소세)">
+      <button class="reset-btn" id="resetBtn">↺ 초기화</button>
+    </div>
+  </div>
+</section>
+
+<!-- Status -->
+<div class="status-bar">
+  <div><span class="count" id="rowCount">0</span> 개 의제 표시</div>
+  <div id="activeFilters"></div>
+</div>
+
+<!-- Main Table -->
+<div class="table-container">
+  <table class="comparison-table">
+    <thead>
+      <tr>
+        <th class="col-country">사례</th>
+        <th class="col-theme">영역(AREA)</th>
+        <th class="col-area">의제(AGENDA)</th>
+        <th class="col-subagenda">세부의제(SUB-AGENDA)</th>
+        <th class="col-recommendation">권고(RECOMMENDATION)</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <h3>본 자료에 대하여</h3>
+      <p>
+        이 표는 17개 기후시민회의 사례의 의제 및 권고 목록을
+        영역(area) — 의제(agenda) — 세부 의제(sub-agenda) — 권고(recommendation)의
+        4단계 구조로 재배열한 것입니다.
+      </p>
+      <p>
+        포함 사례: 네덜란드, 덴마크(1차·2차·코펜하겐), 독일, 룩셈부르크, 벨기에(브뤼셀),
+        스웨덴, 스페인, 아일랜드, 영국, 영국(스코틀랜드), 영국(저지), 오스트리아,
+        캐나다(청년), 프랑스, 핀란드.
+      </p>
+      <p class="source">
+        <span class="source-label">[참고자료]</span><br>
+        KNOCA (Knowledge Network on Climate Assemblies) Compendium of National Climate Assemblies, November 2025 · https://www.knoca.eu<br>
+        (사)한국갈등학회 「기후시민회의(가칭) 등 시민참여를 위한 탄소중립 정책공론화 방안」 최종보고서, 2025.12.17 / 제3장 국외 사례분석, 제4장 제5절 기후시민회의 의제
+      </p>
+    </div>
+    <div class="footer-right">
+      <p class="kei-memo">※ 본 자료는 Claude Opus 4.8을 활용해 구축한 KEI(한국환경연구원) 제작물로, 활용시 반드시 출처를 표기해 주시기 바랍니다.<br><span class="kei-memo-2">기획·제작 KEI 김이진 책임연구원(ljkim@kei.re.kr)</span></p>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ============================================================
+   DATA: 해외 기후시민회의 의제 전체
+   각 row: { country_code, country, year, theme, area, sub, rec }
+   ============================================================ */
+
+const COUNTRIES = {
+  "nl": {
+    "tier": "national",
+    "name": "네덜란드",
+    "case": "NL 기후의회",
+    "year": "2025",
+    "color": "nl",
+    "full": "네덜란드"
+  },
+  "dk1": {
+    "tier": "national",
+    "name": "덴마크",
+    "case": "기후의회 1차",
+    "year": "2020-21",
+    "color": "dk1",
+    "full": "덴마크 (1차)"
+  },
+  "dk2": {
+    "tier": "national",
+    "name": "덴마크",
+    "case": "기후의회 2차",
+    "year": "2021",
+    "color": "dk2",
+    "full": "덴마크 (2차)"
+  },
+  "dk-cph": {
+    "tier": "national",
+    "name": "덴마크",
+    "case": "코펜하겐 기후의회",
+    "year": "2023-24",
+    "color": "dk-cph",
+    "full": "(덴마크) 코펜하겐"
+  },
+  "de": {
+    "tier": "national",
+    "name": "독일",
+    "case": "Bürgerrat Klima",
+    "year": "2021",
+    "color": "de",
+    "full": "독일"
+  },
+  "lu": {
+    "tier": "national",
+    "name": "룩셈부르크",
+    "case": "Klima-Biergerrot",
+    "year": "2022",
+    "color": "lu",
+    "full": "룩셈부르크"
+  },
+  "be": {
+    "tier": "national",
+    "name": "벨기에 브뤼셀",
+    "case": "시민기후·에너지 결의",
+    "year": "2022",
+    "color": "be",
+    "full": "벨기에(브뤼셀)"
+  },
+  "se": {
+    "tier": "national",
+    "name": "스웨덴",
+    "case": "기후의회",
+    "year": "2024",
+    "color": "se",
+    "full": "스웨덴"
+  },
+  "es": {
+    "tier": "national",
+    "name": "스페인",
+    "case": "ACC",
+    "year": "2021-22",
+    "color": "es",
+    "full": "스페인"
+  },
+  "ie": {
+    "tier": "national",
+    "name": "아일랜드",
+    "case": "시민의회 3차",
+    "year": "2017-18",
+    "color": "ie",
+    "full": "아일랜드"
+  },
+  "uk": {
+    "tier": "national",
+    "name": "영국",
+    "case": "CAUK",
+    "year": "2020",
+    "color": "uk",
+    "full": "영국"
+  },
+  "sc": {
+    "tier": "national",
+    "name": "영국 스코틀랜드",
+    "case": "기후의회",
+    "year": "2020-21",
+    "color": "sc",
+    "full": "영국(스코틀랜드)"
+  },
+  "je": {
+    "tier": "national",
+    "name": "영국 저지",
+    "case": "기후의회",
+    "year": "2021",
+    "color": "je",
+    "full": "영국(저지)"
+  },
+  "at": {
+    "tier": "national",
+    "name": "오스트리아",
+    "case": "Klimarat",
+    "year": "2022",
+    "color": "at",
+    "full": "오스트리아"
+  },
+  "ca-youth": {
+    "tier": "national",
+    "name": "캐나다",
+    "case": "청년 CYCA",
+    "year": "2025",
+    "color": "ca-youth",
+    "full": "캐나다(청년)"
+  },
+  "fr": {
+    "tier": "national",
+    "name": "프랑스",
+    "case": "CCC",
+    "year": "2019-20",
+    "color": "fr",
+    "full": "프랑스"
+  },
+  "fi": {
+    "tier": "national",
+    "name": "핀란드",
+    "case": "시민배심",
+    "year": "2021",
+    "color": "fi",
+    "full": "핀란드"
+  }
+};
+
+const DATA = [{"c": "nl", "t": "교육·정보·참여", "a": "일반/거버넌스", "s": "청소년 기후 교육·시민권", "r": ["중학교 교육 과정에 '열린 대화 능력'과 '기후 지식'을 핵심 학습 목표로 강화한다. 매년 정부가 중학교에 기후 논제를 제시하고 학교가 시민회의 방식으로 숙의 후 권고안을 작성하여 하원에 발표하도록 한다."]},
+{"c": "nl", "t": "거버넌스·제도", "a": "일반/거버넌스", "s": "기후 집행위원·협의테이블", "r": ["기후 집행위원(Klimaatcommissaris)을 신설하고 지속가능 모빌리티·식품망 협의테이블을 운영하여 정책 조율 거버넌스를 강화한다."]},
+{"c": "nl", "t": "수송·교통", "a": "이동", "s": "공간계획 국가 주도권", "r": ["국가 정부가 공간계획(ruimtelijke ordening) 정책에서 강력한 주도권을 행사하여 '아스팔트 위주' 원칙을 기후 적응 및 거주 가능성 원칙으로 전환한다. 도시 공간 내부 개발을 우선하고 대중교통·자전거·보행 인프라에 우선 투자한다."]},
+{"c": "nl", "t": "수송·교통", "a": "이동", "s": "항공·등유세", "r": ["1944년 이후 유지되어 온 항공 등유세 면제 조치를 폐지하고 세계적 등유세를 도입한다. 항공사의 청정 연료·기술(SAF, 수소, 전기 항공기) 투자를 유도하고, 세수는 친환경 혁신 및 청정 항공기 개발 보조금으로 활용한다. 네덜란드가 EU·ICAO 등 국제기구에서 선도적 역할을 수행할 것을 촉구한다."]},
+{"c": "nl", "t": "수송·교통", "a": "이동", "s": "기차 이용 확대·품질 향상", "r": ["2030년까지 기차 이용객을 20% 이상 증가시키는 것을 목표로, 국제 기차 예약을 항공권 예약만큼 편리하게 만들고 EU 통합 예약 시스템을 구축한다. 국제 기차표 부가세를 폐지하고, 국내 노선에서는 혼잡 시간대 요금을 인상하고 나머지 시간대 요금을 인하한다."]},
+{"c": "nl", "t": "수송·교통", "a": "이동", "s": "이동 횟수 감축·농촌 교통 허브", "r": ["고용주에게 통근 감소 책임을 부여하고, 농촌 지역에 교통 허브를 구축하여 이동 횟수를 줄이고 지속가능한 이동을 확대한다."]},
+{"c": "nl", "t": "수송·교통", "a": "이동", "s": "친환경 자동차 보급", "r": ["HVO(바이오 디젤) 가격을 기존 디젤보다 저렴하거나 동일하게 유지하고 공급 주유소를 전국으로 확대한다. 리스회사에 중고 전기차 국내 유지 인센티브를 제공하고 개인 보조금으로 중고 전기차 구매를 지원한다."]},
+{"c": "nl", "t": "수송·교통", "a": "이동", "s": "재택근무·자전거 통근", "r": ["자전거 통근 세금 환급을 0.23센트에서 0.50센트/km로 인상하고 고용주가 실제 지급하도록 의무화한다. 고용주·노동자가 재택근무 최소 일수 등 명확한 합의를 체결하되, 자전거 및 재택근무를 강제하지 않고 선택 사항으로 유지한다."]},
+{"c": "nl", "t": "거버넌스·제도", "a": "일반/거버넌스", "s": "부처 간 협력·장관 통합 근무", "r": ["모든 장관이 하나의 건물에서 근무함으로써 부처 간 협력을 구조적으로 강화한다."]},
+{"c": "nl", "t": "소비·폐기물·순환경제", "a": "물건 사용", "s": "공유 물건·공유 창고", "r": ["신규 주거 단지에 '공유 창고(deelschuur)'를 의무 설치하여 가끔 사용하는 물건을 공동 활용하도록 한다."]},
+{"c": "nl", "t": "식품·농축산", "a": "음식", "s": "건강한 식품·추적 가능한 식품 생산", "r": ["2040년까지 기후 친화적 축산·농업·원예업으로 전환하고, 2030년까지 농지의 25%를 유기농화(유럽 Farm to Fork 전략 목표)한다. EU Bio 라벨 시장 점유율을 확대하고 비건강 식품에 '블랙닷' 표기를 도입하며, 식품 정책 총괄 '델타위원(Deltacommissaris voor gezonde voeding)'을 신설한다."]},
+{"c": "nl", "t": "소비·폐기물·순환경제", "a": "음식", "s": "음식 낭비 감축", "r": ["2035년까지 음식 낭비를 절반으로 줄이기 위해 스페인 법률을 참고해 레스토랑 도그백 의무화, 슈퍼마켓 잉여 식품 할인 후 기부 의무화를 시행한다. 지방자치단체에 음식 낭비 방지 정책 계획 수립 의무를 부여하고, 유통기한 표시를 빨간 손/초록 손 아이콘으로 간소화한다."]},
+{"c": "nl", "t": "식품·농축산", "a": "음식", "s": "지속가능 농업 수익성", "r": ["농업·축산업에 배출권거래제(ETS)를 도입하고, 전환기금(omschakelfonds) 일부를 ETS 수익으로 충당하여 친환경 전환 농업인을 지원한다. 소규모 농가의 행정·경제적 부담을 경감하고 대형 축사에 집중 규제를 적용한다."]},
+{"c": "nl", "t": "소비·폐기물·순환경제", "a": "물건 사용", "s": "오염자 부담·제품 등급 세금", "r": ["EU의 ESPR 디지털 제품 패스포트(DPP)를 활용해 제품에 A~F 등급을 부여하고, B~F 등급 제품에 단계적 세금을 부과한다(생산자 부담). 수익은 '모두를 위한 기후 보너스' 또는 지속가능 제품 혁신 보조금으로 환원한다."]},
+{"c": "nl", "t": "소비·폐기물·순환경제", "a": "물건 사용", "s": "제품 영향 라벨·지속가능 선택", "r": ["제품별 A~E 통합 지속가능성 라벨을 도입하고, 현금 캐시백 연동 앱/카드와 연계하여 지속가능한 소비를 유인한다."]},
+{"c": "nl", "t": "소비·폐기물·순환경제", "a": "물건 사용", "s": "제품 수명 연장·수리권", "r": ["전자제품 및 가전제품에 6년 법정 보증기간을 의무화하고, 소프트웨어 업데이트를 제품 기술 수명만큼 지원하도록 의무화한다. 수리권(Right to Repair)을 강화하고, 프랑스 모델을 참고한 수리기금(비용 50% 환급)과 수리 서비스 부가세 면제를 도입한다."]},
+{"c": "nl", "t": "소비·폐기물·순환경제", "a": "물건 사용", "s": "순환경제·재활용 원자재", "r": ["네덜란드 산업계에 재활용 또는 바이오 기반 원자재 사용 비율을 단계적으로 의무화(플라스틱 25~30%)하고, 신규 플라스틱 사용에 세금을 부과하여 재활용 산업 혁신 재원으로 활용한다. 2차 원자재에 대한 세금을 인하하고 EU 내 비유럽산 재활용재 사용 시 부담금을 부과한다."]},
+{"c": "nl", "t": "소비·폐기물·순환경제", "a": "물건 사용", "s": "물 사용 합리화·누진세", "r": ["일일 50리터 초과 물 사용에 누진세를 부과하여 2030년까지 1인당 물 사용량을 130리터에서 100리터로 감축한다."]},
+{"c": "nl", "t": "교육·정보·참여", "a": "일반/거버넌스", "s": "로비 투명성·이해관계 균형", "r": ["로비 등록제(lobbyregister)를 도입하여 정책 결정에 영향을 미친 모든 당사자를 공개하고, 모든 정책 문서에 로비 단락(lobbyparagraaf) 추가를 의무화한다. 지자체·주 단위의 상설 시민 참여 대화 채널을 구축하고 지속가능 중소기업의 정책 접근성을 강화한다."]},
+{"c": "nl", "t": "식품·농축산", "a": "음식", "s": "단백질 전환·식물성 단백질 확대", "r": ["2030년까지 동물성:식물성 단백질 비율을 60:40에서 50:50으로, 2035년까지 40:60으로 전환하도록 정책 목표를 설정한다."]},
+{"c": "nl", "t": "금융·재정", "a": "일반/거버넌스", "s": "기후 보너스·탄소 배당", "r": ["오염 제품 구매 시 추가 부담금을 부과하고, 그 수익을 18세 이상 전 국민에게 월별 균등 환급(기후 보너스)하는 제도를 도입한다."]},
+{"c": "nl", "t": "거버넌스·제도", "a": "일반/거버넌스", "s": "네덜란드 장기 비전", "r": ["2030·2050·2075·2100년 이정표를 포함한 네덜란드 종합 장기 비전을 수립하여 투자 안정성을 확보하고 기후 정책의 일관성을 높인다."]},
+{"c": "nl", "t": "교육·정보·참여", "a": "일반/거버넌스", "s": "기후 소통·미래 델타위원", "r": ["'미래 델타위원(Deltacommissaris voor de toekomst)' 신설과 지자체별 기후 시장(vrijwilliger) 제도를 도입하여 기후 정보를 연결하고 전달하는 체계를 강화한다."]},
+{"c": "dk1", "t": "거버넌스·제도", "a": "시민교육·행동·참여", "s": "기후정책 초당적 협력", "r": ["정치 정파를 초월한 기후정책 초당적 협력 기반을 구축하여 장기적 정책 안정성을 확보한다."]}, {"c": "dk1", "t": "거버넌스·제도", "a": "시민교육·행동·참여", "s": "의회 기후목표 달성 방법 고지", "r": ["의회가 기후 목표 달성 방법을 시민에게 고지하는 의무를 부여한다. 국가 차원의 시민 참여 체계를 마련한다."]}, {"c": "dk1", "t": "거버넌스·제도", "a": "시민교육·행동·참여", "s": "정치적 행동력", "r": ["전문가 의견을 청취하고 과감한 기후행동을 취해야 한다. 소규모 이니셔티브를 지원하고 초당적 기후 협약을 촉구한다."]}, {"c": "dk1", "t": "거버넌스·제도", "a": "시민교육·행동·참여", "s": "정치적 행동력 — 녹색 헌법", "r": ["기후 보호를 위한 녹색 헌법 논의를 시작한다."]}, {"c": "dk1", "t": "거버넌스·제도", "a": "시민교육·행동·참여", "s": "정치적 행동력 — 초당적 기후 협약", "r": ["초당적 기후 협약을 체결하여 장기적·안정적인 기후정책을 추진한다."]}, {"c": "dk1", "t": "거버넌스·제도", "a": "시민교육·행동·참여", "s": "지자체 기후목표", "r": ["지방자치단체별로 구체적인 기후목표를 설정하도록 한다. 중앙 정부의 기후 목표와 연계하여 지역 차원의 이행 책임을 강화한다."]}, {"c": "dk1", "t": "거버넌스·제도", "a": "추가-거버넌스2", "s": "기후행동계획 수립", "r": ["2030년 온실가스 70% 감축 목표 달성을 위한 구체적 기후행동계획을 수립하고 이행 현황을 정기적으로 공개한다."]}, {"c": "dk1", "t": "교육·정보·참여", "a": "시민교육·행동·참여", "s": "CO2 절감 도구 제공", "r": ["시민이 자신의 탄소 발자국을 측정하고 절감할 수 있는 온라인 도구를 국가가 제공한다."]}, {"c": "dk1", "t": "교육·정보·참여", "a": "시민교육·행동·참여", "s": "기후 교육 — 학교 교육과정", "r": ["초·중·고등학교 교육과정에 기후변화와 지속가능성 관련 내용을 의무적으로 포함한다."]}, {"c": "dk1", "t": "교육·정보·참여", "a": "시민교육·행동·참여", "s": "다매체 캠페인", "r": ["다양한 미디어를 활용한 기후 캠페인을 통해 탄소 절감 행동에 대한 시민 인식을 제고한다."]}, {"c": "dk1", "t": "교육·정보·참여", "a": "시민교육·행동·참여", "s": "소비 행동 변화", "r": ["물질 소비를 넘어선 행동 변화를 촉진하는 국가 캠페인을 추진한다. 시민이 친환경 행동을 선택했을 때 혜택을 받을 수 있도록 인센티브를 제공한다."]}, {"c": "dk1", "t": "교육·정보·참여", "a": "시민교육·행동·참여", "s": "시민 소통", "r": ["기후정책에 관한 시민 소통을 이해하기 쉬운 언어와 형식으로 제공한다. 다매체 캠페인을 통해 탄소 절감 관련 정보를 널리 알린다."]}, {"c": "dk1", "t": "교육·정보·참여", "a": "시민교육·행동·참여", "s": "시민 참여 — 공공 도서관 역할", "r": ["공공 도서관이 기후 시민교육(folkeoplysning)의 거점 역할을 수행하도록 지원한다."]}, {"c": "dk1", "t": "교육·정보·참여", "a": "시민교육·행동·참여", "s": "시민 참여 및 민중교육", "r": ["기후위원회 산하 상설 시민의회를 설립한다. 이를 통해 기후정책 수립 과정에 지속적이고 제도적인 시민 의견 반영이 가능하도록 한다.", "지방자치단체별로 지역 기후 시민의회를 설치한다. 지역 단위 기후목표 설정과 이행에 시민이 직접 참여할 수 있는 구조를 마련한다."]}, {"c": "dk1", "t": "교육·정보·참여", "a": "시민교육·행동·참여", "s": "학교 기후 교육", "r": ["학교에서 기후 교육을 의무화한다. 공공 도서관도 시민교육(folkeoplysning) 역할을 수행하도록 지원한다."]}, {"c": "dk1", "t": "교육·정보·참여", "a": "재정 및 세금", "s": "CO2e 세금 — 공공 소통", "r": ["기후세 도입 과정에서 시민과의 충분한 소통을 보장하고, 세금의 사용 목적과 효과를 투명하게 공개한다."]}, {"c": "dk1", "t": "교육·정보·참여", "a": "재정 및 세금", "s": "정보·넛지 활용", "r": ["세금 외에도 정보 제공 및 넛지(nudge) 수단을 활용하여 기후 친화적 행동을 유도한다."]}, {"c": "dk1", "t": "금융·재정", "a": "재정 및 세금", "s": "CO2e 세금 — 국가 차원 시민 참여 체계", "r": ["기후세 도입과 관련한 국가 차원의 시민 참여 체계를 마련한다."]}, {"c": "dk1", "t": "금융·재정", "a": "재정 및 세금", "s": "CO2e 세금 — 신속 도입", "r": ["최대한 빠른 시일 내에 국가 차원의 기후세(CO2e 세금)를 도입한다. 신속한 도입을 통해 탄소 가격 신호를 경제 전반에 조기에 반영한다."]}, {"c": "dk1", "t": "금융·재정", "a": "재정 및 세금", "s": "국가 장기 기후 투자", "r": ["기후세 수입을 재원으로 교통과 농업 분야에 집중 투자하는 국가 장기 투자 계획을 수립한다."]}, {"c": "dk1", "t": "금융·재정", "a": "재정 및 세금", "s": "국가 회계 및 삶의 질 지표", "r": ["GDP 외에 삶의 질·지속가능성 지표를 포함한 국가 회계를 공개한다. 단순 경제성장 이상의 사회적 가치를 정책 목표에 반영한다."]}, {"c": "dk1", "t": "금융·재정", "a": "재정 및 세금", "s": "국가·연금기금 장기 투자", "r": ["시장 실패가 발생하는 영역에 국가·연금기금이 직접 투자한다. 교통·농업 분야에 집중 투자한다."]}, {"c": "dk1", "t": "금융·재정", "a": "재정 및 세금", "s": "기후세 — 업종별 차등 세율", "r": ["기후세 도입 시 업종별 차등 세율을 적용하여 경쟁력 손실을 방지한다."]}, {"c": "dk1", "t": "금융·재정", "a": "재정 및 세금", "s": "기후세 — 에너지세 대체", "r": ["새로운 기후세가 기존 에너지세를 실질적으로 대체하도록 세제 전환을 체계적으로 설계하고, 전환 과정에서 시민 부담이 급격히 증가하지 않도록 한다."]}, {"c": "dk1", "t": "금융·재정", "a": "재정 및 세금", "s": "기후세 수입 재원 활용", "r": ["기후세 수입을 장기 투자 재원으로 활용한다."]}, {"c": "dk1", "t": "금융·재정", "a": "재정 및 세금", "s": "녹색 세제개혁 — 에너지세 단계적 폐지", "r": ["기후세 도입과 함께 기존 에너지세를 단계적으로 폐지하여 이중 과세를 방지한다."]}, {"c": "dk1", "t": "금융·재정", "a": "재정 및 세금", "s": "녹색 세제개혁 — 자체 투자 감면", "r": ["온실가스 감축을 위한 자체 투자에 세금 감면 혜택을 제공한다. 업종별 차등 적용과 전환 기간을 보장한다."]}, {"c": "dk1", "t": "금융·재정", "a": "재정 및 세금", "s": "녹색 세제개혁 — 친환경 대출 조건", "r": ["친환경 전환을 위한 대출 조건을 개선하여 기업과 가계가 녹색 투자를 쉽게 할 수 있도록 한다."]}, {"c": "dk1", "t": "금융·재정", "a": "재정 및 세금", "s": "녹색채권 발행", "r": ["녹색 전환 투자 재원 마련을 위한 녹색채권 발행을 추진한다."]}, {"c": "dk1", "t": "금융·재정", "a": "재정 및 세금", "s": "연금기금 녹색 투자 목표", "r": ["연금기금에 녹색 투자 목표치를 설정하고, 위험 투자를 허용하는 방향으로 규정을 개선한다."]}, {"c": "dk1", "t": "금융·재정", "a": "재정 및 세금", "s": "온실가스 세금 — 생산단계 과세", "r": ["온실가스 배출에 세금을 부과하되, 생산 단계에서 부과하는 방식을 채택한다. 재생에너지는 과세 대상에서 제외하고, 기업 기초공제를 최소화한다."]}, {"c": "dk1", "t": "기후정의·정의로운 전환", "a": "시민교육·행동·참여", "s": "기후정의 — 취약계층 보호", "r": ["기후 정책 설계 시 취약계층(저소득층, 노인, 장애인 등)에 대한 불균형적 부담이 발생하지 않도록 분배적 공정성을 내재화한다."]}, {"c": "dk1", "t": "기후정의·정의로운 전환", "a": "재정 및 세금", "s": "CO2e 세금 — 사회적 형평성", "r": ["기후세 도입 시 사회적 약자에 대한 보호 방안을 마련하고 사회적 균형을 확보한다. 저소득층 부담을 명시적으로 고려하는 대안(에너지세 단계적 폐지, 환급 인센티브 등)을 병행 설계한다."]}, {"c": "dk1", "t": "산림·토지이용", "a": "농업·토지·자원", "s": "국가 토지 이용 전략 수립", "r": ["자연·산림·녹색에너지·바이오매스 등 목적별 비율 목표를 포함한 국가 토지 이용 전략을 수립한다."]}, {"c": "dk1", "t": "산림·토지이용", "a": "농업·토지·자원", "s": "산림 확대", "r": ["토지 이용 국가 전략에 산림 확대 목표를 포함하고, 국가가 저가 농지를 매입하여 산림으로 전환하는 방안을 검토한다."]}, {"c": "dk1", "t": "산림·토지이용", "a": "농업·토지·자원", "s": "습지 강제 휴경·수몰", "r": ["저지대 습지 최대 170,000 ha의 강제적 휴경 또는 수몰을 검토한다."]}, {"c": "dk1", "t": "산림·토지이용", "a": "농업·토지·자원", "s": "토지 이용 — 지역 차원 이행", "r": ["토지 이용 국가 전략을 지역 차원에서 이행하기 위한 인센티브 구조를 마련한다. 지붕 태양광 설치 유인책을 포함한다."]}, {"c": "dk1", "t": "산림·토지이용", "a": "농업·토지·자원", "s": "토지 이용 전략 — 연간 목표", "r": ["국가 토지 이용 전략에 연간 목표를 설정하고 복수 기능 활용(수직농업·방목+녹색에너지 등)을 허용한다."]}, {"c": "dk1", "t": "산림·토지이용", "a": "추가-토지1", "s": "토지 이용 — 복수 기능 활용", "r": ["농지와 재생에너지 생산을 결합하는 복수 기능 토지 활용(수직농업·방목+녹색에너지 등)을 허용하고 지원한다."]}, {"c": "dk1", "t": "산업·노동·녹색일자리", "a": "재정 및 세금", "s": "CO2 집약 산업 세금 — 단일 세율", "r": ["CO2 집약 산업에 단일 세율 원칙을 적용한다. 필요한 경우 업종별 차등을 허용한다."]}, {"c": "dk1", "t": "산업·노동·녹색일자리", "a": "재정 및 세금", "s": "CO2 집약 산업 세금 — 절감 인센티브", "r": ["CO2e 절감 성과를 달성한 경우 세금을 환급하는 인센티브 제도를 도입한다."]}, {"c": "dk1", "t": "소비·폐기물·순환경제", "a": "농업·토지·자원", "s": "기후선언(Klimadeklaration) — 제품 라벨링", "r": ["제품의 기후 영향을 통합 표시하는 기후선언 제도를 국가 차원에서 먼저 도입하고, 이후 EU 및 글로벌 수준으로 확장한다. 소비자 정보 캠페인과 함께 시행한다."]}, {"c": "dk1", "t": "소비·폐기물·순환경제", "a": "농업·토지·자원", "s": "바이오경제 — 선도국 목표", "r": ["바이오매스 재활용에서 선도국이 되는 목표를 설정하고 관련 연구를 지원한다. 잔재물의 바이오경제 순환 활용을 법제화한다."]}, {"c": "dk1", "t": "소비·폐기물·순환경제", "a": "농업·토지·자원", "s": "바이오매스 수입 금지", "r": ["바이오매스 수입을 금지하고 국내 생산 바이오매스를 활용한다."]}, {"c": "dk1", "t": "소비·폐기물·순환경제", "a": "농업·토지·자원", "s": "바이오플라스틱 — 기업 세금·책임 부과", "r": ["화석 플라스틱을 사용하는 기업에 세금과 책임을 부과한다."]}, {"c": "dk1", "t": "소비·폐기물·순환경제", "a": "농업·토지·자원", "s": "바이오플라스틱 — 바이오 기반 인센티브", "r": ["바이오 기반 플라스틱 사용 기업에 인센티브를 제공한다."]}, {"c": "dk1", "t": "소비·폐기물·순환경제", "a": "농업·토지·자원", "s": "분리수거 — 효과 고지", "r": ["분리수거의 환경적 효과를 정기적으로 시민에게 고지하여 참여 동기를 높인다."]}, {"c": "dk1", "t": "소비·폐기물·순환경제", "a": "농업·토지·자원", "s": "쓰레기 분리수거 표준화 — 공통 기준", "r": ["지자체·국가 간 공통 분리수거 기준을 설정하고, 분리수거 효과를 정기적으로 시민에게 고지한다."]}, {"c": "dk1", "t": "소비·폐기물·순환경제", "a": "농업·토지·자원", "s": "쓰레기 분리수거 표준화 — 지자체·국가 협력", "r": ["지자체와 국가 간 협력 체계를 구축하여 쓰레기 분리수거 공통 기준을 마련한다. 포장재를 포함하는 간소화된 분리수거 체계를 도입한다."]}, {"c": "dk1", "t": "소비·폐기물·순환경제", "a": "농업·토지·자원", "s": "제품 책임 확대", "r": ["제조사가 제품의 전체 생애주기에 걸쳐 환경적 책임을 지도록 확대생산자책임제를 강화한다."]}, {"c": "dk1", "t": "소비·폐기물·순환경제", "a": "농업·토지·자원", "s": "탄소 계산 투명화·표준 라벨링", "r": ["소비자가 제품의 탄소 영향을 쉽게 알 수 있도록 표준 라벨링 체계를 도입하고 탄소 계산의 투명성을 높인다."]}, {"c": "dk1", "t": "소비·폐기물·순환경제", "a": "시민교육·행동·참여", "s": "바이오플라스틱 전환 국가 행동계획", "r": ["화석 플라스틱에서 바이오플라스틱으로의 전환을 위한 국가 행동계획을 수립한다. 바이오 기반 인센티브를 마련하고 제조사 제품 책임제를 도입한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "녹색 교통 홍보", "r": ["자전거, 대중교통 등 녹색 교통수단 이용을 장려하는 홍보 캠페인을 실시한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "녹색교통 홍보", "r": ["녹색교통 수단 이용을 장려하는 홍보 활동을 강화한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "대중교통 2030년 전동화", "r": ["대중교통(버스 등) 및 택시를 2030년까지 전동화한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "대중교통 — 거리 기반 요금", "r": ["대중교통 요금을 거리 기반으로 재편하여 공정하고 합리적인 요금 체계를 마련한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "도심 배송차 환경 스티커", "r": ["도심 배송 차량에 환경 스티커 제도를 도입하여 저배출 차량만 도심 배송에 사용하도록 유도한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "도심 외곽 하역 허브", "r": ["도심 외곽에 하역 허브를 설치하고, 도심 내 배송은 전동 소형 트럭으로 전환한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "수송 전환 — 사회적 약자 지원", "r": ["전동 수송 전환 과정에서 교통 취약계층(노인, 장애인, 농촌 주민 등)을 위한 특별 지원 방안을 마련한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "수송 전환 — 사회적 형평성", "r": ["전동 수송 전환 시 사회적 형평성을 고려하여 저소득층이 불이익을 받지 않도록 한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "수송 전환 — 전기차 세금 면제", "r": ["전기차에 대한 세금 면제를 지속하되, 장기적으로 일몰 조항을 설정하여 공평한 세제 구조로 전환한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "유연한 대중교통 재설계", "r": ["대중교통을 유연하게 재설계하여 저렴하고 접근하기 쉽게 개편한다. 도심 외 지역에 직행 버스를 확충하고 소형 버스를 활용한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "자전거 도로망 확충", "r": ["자전거 도로망을 전국적으로 확충하고, 안전한 자전거 주차 시설을 대중교통 허브에 설치한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "장기 철도 화물 경쟁력", "r": ["철도 화물 수송의 장기적 경쟁력을 강화하기 위한 투자와 제도를 마련한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "전기·수소 대중교통", "r": ["대중교통 차량을 전기·수소 기반으로 전환한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "전기차 배터리 투명성·재활용", "r": ["전기차 배터리의 투명성을 강화하고, 배터리 재활용 연구를 지원한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "전기차 세금 면제 일몰 조항", "r": ["전기차 세금 면제에 일몰 조항을 두어 장기적으로 공평한 과세 구조로 전환한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "전기차 홍보캠페인", "r": ["전기차 전환을 촉진하는 홍보 캠페인을 실시한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "전동 수송 전환 — 오염도 기반 세금", "r": ["자동차의 오염도에 기반하여 세금을 차등 부과하는 방식을 강화한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "주차요금 오염도 연계", "r": ["주차요금을 차량의 오염도와 연계하여 친환경 차량에 유리한 체계를 마련한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "직장 충전기 의무화", "r": ["직장 내 전기차 충전기 설치를 의무화한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "충전 결제·단자 표준화", "r": ["전기차 충전 결제 방식과 충전 단자를 표준화한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "충전 인프라 전국 균등 확충", "r": ["전기차 충전 인프라를 전국 균등하게 확충하여 농촌·도서 지역 주민도 전기차를 이용할 수 있도록 한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "친환경 공공 조달", "r": ["공공 조달에 친환경 화물 수송 요건을 반영한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "친환경 화물 수송 — CO2 연계 운임제", "r": ["CO2 배출량과 연계한 화물 운임제 및 바이오연료 재정 인센티브를 도입한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "친환경 화물 수송 — 바이오연료·PtX R&amp;D", "r": ["바이오연료와 Power-to-X(PtX) 기술 연구개발(R&amp;D)을 지원한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "카풀+대중교통+플렉스트래픽 통합 앱", "r": ["카풀, 대중교통, 플렉스트래픽을 하나로 연결하는 통합 모빌리티 앱을 개발한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "폐차 보조금", "r": ["노후 오염 차량 폐차 시 보조금을 지원하여 친환경 차량으로의 전환을 촉진한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "플렉스트래픽·자율주행 버스", "r": ["플렉스트래픽(수요 응답형 교통)을 홍보하고, 자율주행 플렉스버스 시험 운행을 추진한다. 거리 기반 요금제를 도입한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "화물 수송 — 바이오연료 인센티브", "r": ["해운·항공 화물 수송의 바이오연료 사용에 재정 인센티브를 제공한다."]}, {"c": "dk1", "t": "수송·교통", "a": "수송·교통", "s": "화물 수송 — 철도 우선", "r": ["화물 수송에서 도로 대신 철도 활용을 우선적으로 촉진한다."]}, {"c": "dk1", "t": "수송·교통", "a": "재정 및 세금", "s": "소비세 조정 — 전기차·수소차 저렴화", "r": ["전기차·수소차에 유리한 방향으로 소비세를 조정하여 친환경 차량의 가격을 낮춘다. 정보 및 넛지(nudge) 수단을 활용해 행동 변화도 유도한다."]}, {"c": "dk1", "t": "식품·농축산", "a": "농업·토지·자원", "s": "CO2e 세금 — 생산 단계 농업 차등", "r": ["농업 부문에 CO2e 세금을 도입하되, 전환 기간을 두고 낮은 세율에서 시작하여 단계적으로 높인다."]}, {"c": "dk1", "t": "식품·농축산", "a": "농업·토지·자원", "s": "기후 영향 줄이는 농업 — 육류 생산 감축", "r": ["육류 생산을 감축하고, 새로운 식이 지침을 기후정책 수단으로 활용한다."]}, {"c": "dk1", "t": "식품·농축산", "a": "농업·토지·자원", "s": "기후 전문 농업 컨설턴트 지원", "r": ["농업인을 위한 기후 전문 컨설턴트 지원 서비스를 제공한다."]}, {"c": "dk1", "t": "식품·농축산", "a": "농업·토지·자원", "s": "농업 — 농지 전환 인센티브", "r": ["농지의 지속가능 활용을 위한 인센티브 구조를 마련하고, 농업인의 자발적 전환을 지원한다."]}, {"c": "dk1", "t": "식품·농축산", "a": "농업·토지·자원", "s": "농업 — 지속가능 영농 컨설팅", "r": ["기후 친화적 농업 전환을 위한 전문 컨설팅과 정보 서비스를 농업인에게 제공한다."]}, {"c": "dk1", "t": "식품·농축산", "a": "농업·토지·자원", "s": "농업 탄소세 전환 지원", "r": ["농업 부문의 탄소세 도입에 따른 영농인 부담 경감을 위한 전환 지원금을 마련한다."]}, {"c": "dk1", "t": "식품·농축산", "a": "농업·토지·자원", "s": "농지 직불금 기준 전환", "r": ["농업 직불금의 지급 기준을 지속가능한 생산 방식으로 전환한다."]}, {"c": "dk1", "t": "식품·농축산", "a": "농업·토지·자원", "s": "농지 활용 — 가축·토지 분리", "r": ["가축과 토지를 분리하는 요건을 도입한다. 동물 사료 수입을 감축하고 식물성 식품 수요를 강화한다."]}, {"c": "dk1", "t": "식품·농축산", "a": "농업·토지·자원", "s": "농지 활용 — 사료용 토지 전환", "r": ["사료용 토지를 식물성 식품 생산용으로 전환하는 방안을 추진한다."]}, {"c": "dk1", "t": "식품·농축산", "a": "농업·토지·자원", "s": "바이오경제 — 잔재물 순환 법제화", "r": ["농업·산업 잔재물의 바이오경제 순환 활용을 법제화한다."]}, {"c": "dk1", "t": "식품·농축산", "a": "농업·토지·자원", "s": "새 식이 지침", "r": ["새로운 식이 지침을 수립하여 저탄소 식생활을 촉진하고, 기후 친화적 식품 소비를 장려한다."]}, {"c": "dk1", "t": "식품·농축산", "a": "농업·토지·자원", "s": "신종 작물·비료·사료 연구", "r": ["신종 작물, 비료, 사료 개발을 위한 연구 재원을 확충한다."]}, {"c": "dk1", "t": "식품·농축산", "a": "농업·토지·자원", "s": "육류 세금 도입", "r": ["육류 소비를 줄이기 위한 세금을 도입한다. 식물성 식품 수요를 강화하는 정책을 병행한다."]}, {"c": "dk1", "t": "식품·농축산", "a": "농업·토지·자원", "s": "지능적 육류세", "r": ["육류 생산 단계에서 부과하는 '지능적' 육류세를 도입하여 소비 단계 충격을 최소화한다."]}, {"c": "dk1", "t": "식품·농축산", "a": "농업·토지·자원", "s": "지속가능 생산 연구", "r": ["지속가능한 농업 생산 방법에 대한 연구를 지원한다."]}, {"c": "dk1", "t": "에너지·전력", "a": "기술·입지", "s": "VE 입지 — 경관 영향 평가", "r": ["재생에너지 설치 사업에 경관 영향 평가를 의무화한다."]}, {"c": "dk1", "t": "에너지·전력", "a": "기술·입지", "s": "VE 입지 — 경관·자연 보호 기준", "r": ["재생에너지(VE) 설치 입지 결정 시 경관·자연 보호 기준을 포함한다. 생물다양성을 고려하는 육상 풍력·태양광 입지 가이드라인을 수립한다."]}, {"c": "dk1", "t": "에너지·전력", "a": "기술·입지", "s": "VE 입지 — 기존 산업 부지 우선 활용", "r": ["재생에너지 설치 시 기존 산업 부지와 인프라를 우선 활용한다."]}, {"c": "dk1", "t": "에너지·전력", "a": "기술·입지", "s": "VE 입지 — 지역 주민 조기 참여", "r": ["재생에너지 입지 결정 과정에 지역 주민의 조기 참여를 보장한다."]}, {"c": "dk1", "t": "에너지·전력", "a": "기술·입지", "s": "VE 입지 결정의 민주적 절차", "r": ["재생에너지 입지 결정 절차를 민주적으로 운영한다. 지역 주민의 의견이 실질적으로 반영되도록 한다."]}, {"c": "dk1", "t": "에너지·전력", "a": "기술·입지", "s": "국가 차원 공동 소유 법적 틀", "r": ["재생에너지 공동 소유를 위한 국가 차원의 법적 틀을 마련한다."]}, {"c": "dk1", "t": "에너지·전력", "a": "기술·입지", "s": "재생에너지 — 데모 프로젝트", "r": ["지역 단위 재생에너지 공동 소유 데모 프로젝트를 운영한다. VE(vedvarende energi, 재생에너지) 안내 캠페인도 병행한다."]}, {"c": "dk1", "t": "에너지·전력", "a": "기술·입지", "s": "재생에너지 — 조기 주민 참여", "r": ["재생에너지 사업 초기 단계부터 주민이 참여하도록 하여, 보상 방식이 아닌 공동 소유 방식으로 전환한다."]}, {"c": "dk1", "t": "에너지·전력", "a": "기술·입지", "s": "재생에너지 — 지자체 에너지 계획 참여", "r": ["재생에너지 사업 계획 단계에서 지자체와 주민이 참여할 수 있도록 한다."]}, {"c": "dk1", "t": "에너지·전력", "a": "기술·입지", "s": "재생에너지 공동 소유 — VE 안내 캠페인", "r": ["재생에너지에 대한 주민 인식을 높이기 위한 VE 안내 캠페인을 실시한다."]}, {"c": "dk1", "t": "에너지·전력", "a": "기술·입지", "s": "재생에너지 공동 소유 — 법적 틀", "r": ["재생에너지 사업에 지역 주민의 조기 참여와 공동 소유권을 보장하는 국가 차원의 법적 틀을 마련한다. 보상 방식이 아닌 실질적 공동 소유를 원칙으로 한다."]}, {"c": "dk1", "t": "에너지·전력", "a": "기술·입지", "s": "재생에너지 공동 소유 — 지역 이익 공유", "r": ["재생에너지 사업 수익 일부를 지역 이익 공유 기금으로 조성하여 지역 주민이 혜택을 받도록 한다."]}, {"c": "dk1", "t": "에너지·전력", "a": "기술·입지", "s": "재생에너지 공동 소유 모델 — 지역 공동 소유", "r": ["재생에너지 사업에 지역 공동 소유 모델을 도입하고, 개인 지분 투자를 허용한다. 지역 이익 공유 기금을 조성한다."]}, {"c": "dk1", "t": "에너지·전력", "a": "추가-에너지1", "s": "재생에너지 — 공동 소유 세제 혜택", "r": ["재생에너지 공동 소유 투자에 대한 세제 혜택을 제공한다."]}, {"c": "dk1", "t": "에너지·전력", "a": "추가-에너지2", "s": "재생에너지 입지 — 가이드라인 수립", "r": ["육상 풍력과 태양광 설치를 위한 입지 가이드라인을 수립하고, 경관 영향 평가를 제도화한다."]}, {"c": "dk1", "t": "에너지·전력", "a": "추가-에너지3", "s": "재생에너지 공동 소유 — 주민 공청회", "r": ["재생에너지 설치 계획 시 주민 공청회를 의무화하고, 주민 의견이 입지 결정에 반영되도록 한다."]}, {"c": "dk1", "t": "에너지·전력", "a": "추가-에너지4", "s": "해상 풍력 확대", "r": ["해상 풍력 발전 확대를 위한 국가 계획을 수립하고 관련 규제를 개선한다."]}, {"c": "dk1", "t": "자연·생태계", "a": "농업·토지·자원", "s": "VE 입지 — 생물다양성 고려", "r": ["재생에너지 설치 계획 시 생물다양성에 미치는 영향을 고려한다."]}, {"c": "dk1", "t": "자연·생태계", "a": "농업·토지·자원", "s": "생물다양성 지원", "r": ["토지 이용 전략에 생물다양성 지원 목표를 포함한다."]}, {"c": "dk2", "t": "거버넌스·제도", "a": "거버넌스", "s": "공공 부문 녹색 모범 솔선", "r": ["공공 부문(정부·지자체)이 녹색 전환의 모범 사례를 솔선하여 보여준다. 공공 건물 에너지 개보수, 녹색 조달, 전동 공공 차량 등이 포함된다."]}, {"c": "dk2", "t": "거버넌스·제도", "a": "소비", "s": "EU 차원 화석 생산 수입품 관세", "r": ["EU 차원에서 화석 생산 수입품에 관세 메커니즘을 도입하도록 추진한다."]}, {"c": "dk2", "t": "거버넌스·제도", "a": "소비", "s": "공공 이니셔티브 CO2 영향 평가 의무화", "r": ["모든 공공 경제성장 이니셔티브에 CO2 영향 평가를 의무화한다."]}, {"c": "dk2", "t": "거버넌스·제도", "a": "소비", "s": "공공 조달 — DfD 원칙 적용", "r": ["공공 조달과 입찰에 분해 설계(Design for Disassembly, DfD) 원칙을 적용한다."]}, {"c": "dk2", "t": "거버넌스·제도", "a": "소비", "s": "소비와 성장 — 1.5℃ 기여 우선", "r": ["1.5℃ 목표 기여가 경제성장보다 우선한다는 점을 정책에 명시한다."]}, {"c": "dk2", "t": "거버넌스·제도", "a": "소비", "s": "소비와 성장 — 녹색·검은 성장 구분", "r": ["'녹색' 성장과 '검은' 성장(수입 포함)을 명확히 구분하여 정책에 반영한다."]}, {"c": "dk2", "t": "거버넌스·제도", "a": "소비", "s": "탈성장 관련 국제 포럼", "r": ["탈성장(post-growth)과 관련한 국제 포럼 창설을 추진한다."]}, {"c": "dk2", "t": "거버넌스·제도", "a": "소비", "s": "탈성장 연구 전문가 위원회", "r": ["성장과 독립적인 경제 모델을 연구하는 전문가 위원회를 설치한다."]}, {"c": "dk2", "t": "거버넌스·제도", "a": "에너지공급", "s": "CO2 절감 저해 법령 정비", "r": ["CO2 절감을 저해하는 현행 법령을 정비한다."]}, {"c": "dk2", "t": "거버넌스·제도", "a": "에너지공급", "s": "EU 차원 기후 연구 조정", "r": ["EU 및 글로벌 차원에서 기후 연구를 조정하고 지식 공유 포럼을 설립한다."]}, {"c": "dk2", "t": "거버넌스·제도", "a": "에너지공급", "s": "에너지 공급 재정 — 독립 태스크포스", "r": ["국가가 단기 투자 책임을 지고 CO2 절감 프로젝트를 착수·관리하는 독립적 태스크포스를 설치한다."]}, {"c": "dk2", "t": "거버넌스·제도", "a": "에너지공급", "s": "연구 — 지속가능성 내재화", "r": ["모든 연구 분야에 지속가능성을 내재화한다."]}, {"c": "dk2", "t": "건물·주거", "a": "건물", "s": "건축 자재 표준 LCA 인증", "r": ["모든 건축 자재에 표준 생애주기분석(LCA) 인증을 도입한다. 인증은 외부·독립 기관이 시행한다."]}, {"c": "dk2", "t": "건물·주거", "a": "건물", "s": "공공 건물 녹색 개보수 예산 배정", "r": ["공공 건물 에너지 개보수를 위한 예산을 배정하고 2025년·2028년 중간 달성 목표를 설정한다."]}, {"c": "dk2", "t": "건물·주거", "a": "건물", "s": "공공 건물 에너지 등급 2단계 향상 — 2030년", "r": ["2030년까지 모든 공공 건물(국가·지역·지자체)의 에너지 등급을 2단계 향상시킨다. 2025년·2028년 중간 목표와 에너지 개보수 예산을 배정한다."]}, {"c": "dk2", "t": "건물·주거", "a": "건물", "s": "공공 건축물 재활용 자재 비율 권고", "r": ["전문가 그룹이 공공 건축물 내 재활용 자재 비율에 관한 권고안을 마련한다."]}, {"c": "dk2", "t": "건물·주거", "a": "건물", "s": "공통 녹색 개보수 지침 마련", "r": ["국가·지역·지자체가 공통으로 사용할 녹색 개보수 지침을 마련한다."]}, {"c": "dk2", "t": "건물·주거", "a": "건물", "s": "민간 건물 에너지 등급 2단계 향상 — 2040년", "r": ["동일한 에너지 등급 2단계 향상 목표를 민간 건물에도 적용한다. 2040년까지 자발적 인센티브 방식으로 시행한다."]}, {"c": "dk2", "t": "건물·주거", "a": "건물", "s": "친환경 건축 기술·자재 연구 강화", "r": ["새로운 친환경 건축 기술과 자재에 관한 연구를 강화한다."]}, {"c": "dk2", "t": "건물·주거", "a": "소비", "s": "공공 소비 — 민간 건물 에너지 인센티브", "r": ["민간 건물 에너지 등급 향상을 위한 자발적 인센티브를 제공한다."]}, {"c": "dk2", "t": "교육·정보·참여", "a": "소비", "s": "생태발자국 유사 자원 소비 지표 도입", "r": ["생태발자국과 유사한 자원 소비 측정 지표를 도입하고 정치적 목표에 포함한다. 자원 절감이 경제성장보다 우선하는 원칙을 명시한다."]}, {"c": "dk2", "t": "교육·정보·참여", "a": "소비", "s": "소비와 성장 — 성장 독립 경제 모델 연구", "r": ["성장과 독립적인 경제 모델(탈성장 포함)에 대한 연구를 확대한다."]}, {"c": "dk2", "t": "교육·정보·참여", "a": "소비", "s": "지자체 시민 주도 기후 이니셔티브 지원", "r": ["지자체별로 공유경제 등 시민 주도 기후 이니셔티브를 담당하는 직원을 배치한다."]}, {"c": "dk2", "t": "교육·정보·참여", "a": "행동", "s": "기후 라벨링 — 국가 개발·관리", "r": ["국가가 공신력 있는 기후 라벨링 제도를 개발·관리·주기적으로 업데이트한다. 현행 유기농 인증과 유사한 방식으로 운영한다."]}, {"c": "dk2", "t": "교육·정보·참여", "a": "행동", "s": "민중교육 — 국가 기후의 날", "r": ["연간 국가 기후의 날을 설립하여 전국 TV·라디오·미디어 캠페인을 실시하고 당일 대중교통을 무료로 운영한다. 온라인 행사를 병행한다."]}, {"c": "dk2", "t": "교육·정보·참여", "a": "행동", "s": "시민교육 — 지자체 기후 활동 공간", "r": ["지자체가 기후 활동 공간과 전문가 지원을 시민에게 제공하도록 한다.", "지자체가 지역 기후 캠페인과 행사를 의무적으로 개최하도록 한다."]}, {"c": "dk2", "t": "금융·재정", "a": "금융", "s": "CO2 세금 — 2030년까지 단계적 인상", "r": ["CO2 세금을 2030년까지 단계적으로 인상하는 일정을 사전에 공표하여 기업과 가계가 전환을 계획할 수 있도록 한다."]}, {"c": "dk2", "t": "금융·재정", "a": "에너지공급", "s": "기후 이니셔티브·기술 기금 조성", "r": ["소형·대형 모든 주체 대상의 기후 이니셔티브·기술 개발 기금을 조성한다. 개방형·사용자 주도·오픈소스 방식으로 운영한다."]}, {"c": "dk2", "t": "금융·재정", "a": "에너지공급", "s": "연구 착수 시 테스트 시설 결정 병행", "r": ["연구 착수와 동시에 테스트 시설의 재원 조달 및 설치를 결정한다."]}, {"c": "dk2", "t": "금융·재정", "a": "에너지공급", "s": "장기 기초연구 재원 안정적 확보", "r": ["장기 기초연구를 위한 재원을 안정적으로 확보한다."]}, {"c": "dk2", "t": "금융·재정", "a": "행동", "s": "CO2 세금 — 국내 생산 광범위 부과", "r": ["덴마크 내 생산 전반에 광범위한 CO2 세금을 부과한다. 고정 톤당 가격을 설정하여 2030년까지 단계적으로 인상한 후 재검토한다."]}, {"c": "dk2", "t": "금융·재정", "a": "행동", "s": "CO2 세금 — 수입품 제품세", "r": ["수입품에도 제품세(CO2 기반)를 부과하여 국내 생산과의 과세 형평성을 확보한다."]}, {"c": "dk2", "t": "기후정의·정의로운 전환", "a": "행동", "s": "CO2 세금 — 에너지세와 동시 단계적 도입", "r": ["CO2 세금과 기존 에너지세를 동시에 단계적으로 전환하여 사회적 형평성을 확보한다."]}, {"c": "dk2", "t": "산림·토지이용", "a": "농업", "s": "농지 매입 — 산림 전환", "r": ["국가가 저가 농지를 매입하여 산림으로 전환한다."]}, {"c": "dk2", "t": "산업·노동·녹색일자리", "a": "행동", "s": "CO2 세금 — CO2 집약 산업 기초공제", "r": ["CO2 집약 산업에 기초공제를 부여하여 급격한 부담 증가를 방지한다."]}, {"c": "dk2", "t": "소비·폐기물·순환경제", "a": "소비", "s": "공공 물품 수리·재사용·재활용 의무화", "r": ["공공 소유 물품과 장비의 수리·재사용·재활용을 의무화한다."]}, {"c": "dk2", "t": "소비·폐기물·순환경제", "a": "소비", "s": "공공 조달 — TCO 기준 적용", "r": ["공공 조달과 입찰에 총소유비용(TCO) 기준을 적용하여 친환경 제품의 선택을 유도한다."]}, {"c": "dk2", "t": "소비·폐기물·순환경제", "a": "소비", "s": "광고 우편물 기본 거부(opt-in) 전환", "r": ["광고 우편물을 기본 거부(opt-in) 방식으로 전환하여 불필요한 소비를 줄인다."]}, {"c": "dk2", "t": "소비·폐기물·순환경제", "a": "소비", "s": "내구 소비재 법정 보증 기간 연장", "r": ["내구 소비재의 법정 최소 보증 기간을 3년, 청구권을 2년으로 연장하여 제품 수명을 늘린다."]}, {"c": "dk2", "t": "소비·폐기물·순환경제", "a": "행동", "s": "내구 제품 — 계획적 진부화 금지", "r": ["제품에 내장된 수명 제한(계획적 진부화)을 금지하는 요건을 법제화한다."]}, {"c": "dk2", "t": "소비·폐기물·순환경제", "a": "행동", "s": "내구 제품 — 수리 가능 요건 법제화", "r": ["제품의 수리 가능성을 법적으로 요건화하여 소비재의 수명을 연장한다."]}, {"c": "dk2", "t": "수송·교통", "a": "소비", "s": "자동차 수 증가 중단", "r": ["자동차 수의 증가를 중단하는 목표를 추진한다. 대형 도로 사업(고속도로·교량 등)도 자동차 증가 중단 목표에 비추어 재검토한다."]}, {"c": "dk2", "t": "수송·교통", "a": "소비", "s": "자동차 수 증가 중단 — 도로 사업 재검토", "r": ["자동차 수 증가 중단 목표에 비추어 대형 도로 사업(고속도로·교량 등)을 재검토한다."]}, {"c": "dk2", "t": "수송·교통", "a": "수송", "s": "개인 교통 — 바이오가스 활용", "r": ["교통 부문에서 바이오가스를 활용하고 관련 인프라를 확충한다."]}, {"c": "dk2", "t": "수송·교통", "a": "수송", "s": "공공 주차장 50% 전기차 충전 의무화 — 2030년", "r": ["2030년까지 공공 주차장의 50% 이상에 전기차 충전기를 설치하는 것을 의무화한다. 충전 구역에는 전기차만 주차할 수 있도록 한다."]}, {"c": "dk2", "t": "수송·교통", "a": "수송", "s": "기존 인프라 최적화 우선", "r": ["신규 인프라 건설보다 기존 인프라의 최적화에 집중한다."]}, {"c": "dk2", "t": "수송·교통", "a": "수송", "s": "대중교통 티켓 간소화·요금 인하", "r": ["대중교통 티켓 시스템을 간소화하고 요금을 인하한다."]}, {"c": "dk2", "t": "수송·교통", "a": "수송", "s": "도심 속도 제한 하향", "r": ["도시 내 차량 속도 제한을 하향 조정한다."]}, {"c": "dk2", "t": "수송·교통", "a": "수송", "s": "도심 차량 통행 금지 구역", "r": ["도시 내에 차량 통행 금지 구역을 도입한다."]}, {"c": "dk2", "t": "수송·교통", "a": "수송", "s": "안전 자전거 주차장 설치", "r": ["주거지·직장·대중교통 허브에 도난·파손 방지 안전 자전거 주차장을 설치하고, 전기자전거 충전 시설을 포함한다."]}, {"c": "dk2", "t": "수송·교통", "a": "수송", "s": "자전거 도로망 확충", "r": ["자전거 도로망을 지속적으로 확충한다."]}, {"c": "dk2", "t": "수송·교통", "a": "수송", "s": "전국 자전거도로 확충 가속화", "r": ["국가-지자체 협약(2020년 12월 4일)에 따른 전국 자전거도로 확충을 가속화한다."]}, {"c": "dk2", "t": "수송·교통", "a": "수송", "s": "전력망 강화 및 충전소 표준화", "r": ["충전소 지원을 위한 전력망을 대폭 강화하고, 충전소를 표준화한다."]}, {"c": "dk2", "t": "수송·교통", "a": "수송", "s": "충전 구역 전기차 전용 주차", "r": ["충전 구역에는 전기차만 주차할 수 있도록 규정한다."]}, {"c": "dk2", "t": "수송·교통", "a": "수송", "s": "충전소 표준화", "r": ["전기차 충전 인프라의 충전 단자와 결제 방식을 표준화한다."]}, {"c": "dk2", "t": "수송·교통", "a": "수송", "s": "환승 허브 설치", "r": ["도심 외곽에 개인차와 대중교통 간 전환점 역할을 하는 환승 허브를 설치한다."]}, {"c": "dk2", "t": "식품·농축산", "a": "건물", "s": "농업 — 살충제 감소 야심찬 국가 목표", "r": ["살충제 사용 감소에 관한 국가 목표를 EU 기준보다 야심차게 설정한다."]}, {"c": "dk2", "t": "식품·농축산", "a": "농업", "s": "농업 — 기후·생물다양성 유익 영농 전환 보조금", "r": ["기후·생물다양성·토양 비옥도에 유익한 영농 방식(보전농업, 임간농업, 퍼마컬처 등)으로의 전환에 보조금을 지급한다."]}, {"c": "dk2", "t": "식품·농축산", "a": "농업", "s": "동물성 축산 감축", "r": ["동물성 축산을 감축하는 정책을 추진한다."]}, {"c": "dk2", "t": "식품·농축산", "a": "행동", "s": "CO2 세금 — 농업 저세율 시작", "r": ["농업 부문에는 낮은 세율로 CO2 세금을 시작하여 2030년까지 단계적으로 인상한다."]}, {"c": "dk2", "t": "에너지·전력", "a": "에너지공급", "s": "CCS — 2024년 이전 계획·법률 마련", "r": ["2024년 이전에 CCS 활용 계획과 관련 법률을 마련한다. 기술 개발 및 시험 설비 구축을 위한 재원을 배정한다."]}, {"c": "dk2", "t": "에너지·전력", "a": "에너지공급", "s": "CCS — 2025년 이전 CO2 세금 도입", "r": ["2025년 이전에 CCS를 촉진하기에 충분한 CO2 세금을 도입한다. 단, CCS는 화석연료 배출 감축의 면죄부로 사용해서는 안 된다."]}, {"c": "dk2", "t": "에너지·전력", "a": "에너지공급", "s": "CO2 세금 — 단기 투자 재원화", "r": ["CO2 세금을 도입하여 단기 에너지 전환 투자의 재원으로 활용한다."]}, {"c": "dk2", "t": "에너지·전력", "a": "에너지공급", "s": "VE — 보상은 공동 소유권 형태로", "r": ["재생에너지 설치 관련 지역 피해 보상을 금전 보상이 아닌 공동 소유권 형태로 제공한다."]}, {"c": "dk2", "t": "에너지·전력", "a": "에너지공급", "s": "VE — 사회필수 인프라로 간주", "r": ["재생에너지(VE)를 고속도로·철도와 동등한 사회필수 인프라로 간주하여, 지역 반발이 있더라도 설치를 가능하게 하는 규정을 마련한다."]}, {"c": "dk2", "t": "에너지·전력", "a": "에너지공급", "s": "VE 설치 — 지역 주민 조기 참여", "r": ["신규 재생에너지 설치 계획 단계에서 지역 주민의 조기 참여를 보장한다."]}, {"c": "dk2", "t": "에너지·전력", "a": "에너지공급", "s": "기후위원회 — 집중 연구 분야 식별", "r": ["기후위원회(Klimarådet)에 핵심 집중 연구 분야를 식별하도록 요청한다."]}, {"c": "dk2", "t": "에너지·전력", "a": "에너지공급", "s": "에너지 — PtX 개발 지원", "r": ["Power-to-X(PtX) 기술 개발과 시험 설비 구축을 지원한다."]}, {"c": "dk2", "t": "에너지·전력", "a": "에너지공급", "s": "에너지 전환 통합 계획 — 2022년 즉시 수립", "r": ["2022년 즉시 에너지 전환 및 배전망 확충을 위한 구체적 통합 계획을 단기 목표와 함께 수립한다."]}, {"c": "dk2", "t": "에너지·전력", "a": "에너지공급", "s": "열펌프 보급 확대 — 전기세 인하", "r": ["열펌프 보급 확대를 지원하기 위해 열펌프 전력 소비에 대한 전기세를 인하한다. 현행 4,000kWh 초과분에만 적용되는 인하를 전체 소비량으로 확대한다."]}, {"c": "dk2", "t": "에너지·전력", "a": "에너지공급", "s": "재생에너지 — 신속 확충 구체 계획", "r": ["2022년 즉시 재생에너지(VE) 생산과 배전 신속 확충을 위한 구체 계획을 수립한다."]}, {"c": "dk2", "t": "에너지·전력", "a": "에너지공급", "s": "지열에너지 — 국가 관리 체계 전환", "r": ["지열에너지 개발과 재원 조달을 현행 지자체 단위에서 국가 단위 관리 체계로 전환한다."]}, {"c": "dk-cph", "t": "거버넌스·제도", "a": "시스템 변화 및 문화적 가치", "s": "새로운 성장 패러다임을 위한 규범과 정책", "r": ["대기업 및 고소득층(상위 10%가 소비의 50% 차지)의 지속가능 투자를 유도하고, 공공기관 조달 정책에서 식품·교통·건물 등의 소비 절감을 의무화한다. GDP 중심 성장 패러다임을 재정의하여 기쁨·공동체·건강·여가·돌봄·재활용 등을 성과지표로 도입하고, 개인 탄소예산 제도와 기후·지속가능성 관련 3자 협상(tripartite)을 도입하며, 상설 기후시민의회를 설치한다. 공공 부문에서 주 4일 근무제 모델을 개발한다."]}, {"c": "dk-cph", "t": "건물·주거", "a": "주거", "s": "작고 사회적으로 균형 잡힌 주거", "r": ["신규 건물의 평균 면적 기준을 완화하고 공동 작업실·게스트룸·세탁실 등 공유 공간을 확충한다. 기능 부재 없이 철거 후 임대료를 인상하는 행위를 규제하고, 노인 공동주거 및 저소득층 소형 주택을 확대한다. 모든 소유 주택에 실거주 의무를 부과하고, 신축 최대 면적을 제한하며 소형 주택 합산을 금지한다."]}, {"c": "dk-cph", "t": "건물·주거", "a": "주거", "s": "지속가능한 건축", "r": ["재활용 자재·목재 건축 확대 등 지속가능 건축자재 사용을 촉진하고, 에너지 등급 미표시 1만 8천 건물에 등급제를 확대한다. 태양광 패널 설치를 의무화(보존·문화재 건물 제외)하고, 신축 대신 기존 건물 보수·리노베이션을 우선하며 옥상 정원·녹색 안마당·녹색 벽면 조성을 추진한다."]}, {"c": "dk-cph", "t": "교육·정보·참여", "a": "시스템 변화 및 문화적 가치", "s": "희망의 소통 — 기후 교육 및 캠페인", "r": ["어린이·청소년 대상 장기 넛지 교육과 학교 텃밭·온실을 필수화하고, 역할별 맞춤 정보 제공 및 공공장소 '좋은 실천 사례' 공유를 추진한다. '기후 슈퍼히어로' 희망 캠페인을 전개하여 기후 친화 행동을 문화적으로 긍정적으로 만든다."]}, {"c": "dk-cph", "t": "소비·폐기물·순환경제", "a": "시스템 변화 및 문화적 가치", "s": "공동체 내 공유 — 수리 작업장·공유 플랫폼", "r": ["지역 수리 작업장을 확충하고 재활용 시설과 연계한다. 재사용·공유 인센티브를 확대하고(건축자재 재사용, 잉여 음식 나눔 등), 도구·이동수단·의류·도서 등을 무료로 공유할 수 있는 온라인 플랫폼을 구축한다."]}, {"c": "dk-cph", "t": "수송·교통", "a": "교통·수송", "s": "더 많은 자전거 이용과 혼잡 감소", "r": ["자전거 전용 도로(cykelboulevard) 조성, 슈퍼 자전거 도로와 일반 도로 교차점에서 자전거 우선 통행을 추진한다. 녹색 카셰어링 저금리 대출, 카풀 서비스 투자, 노상 주차 요금 인상으로 자가용 대체 수단의 매력을 강화하고, 친환경 교통수단의 고품질 주차 공간 및 다기능 충전소를 확충한다."]}, {"c": "dk-cph", "t": "수송·교통", "a": "교통·수송", "s": "장거리 국내외 철도 여행", "r": ["국내외 빠르고 저렴하며 안정적인 철도 연결을 강화하고 코펜하겐을 북유럽 국제 철도 허브로 육성한다. 다양한 교통수단 간 국제 연계 및 통합 예약 시스템을 도입하고, 업무 칸·가족 칸·식당 칸 등을 갖춘 혁신적 차량을 개발한다."]}, {"c": "dk-cph", "t": "수송·교통", "a": "교통·수송", "s": "저렴하고 개선된 대중교통", "r": ["경전철·트램·지하철 등 대중교통에 대규모 투자하여 배차 빈도를 높이고, 대중교통을 전기화한다. 무료 대중교통 도입을 검토하고, 버스·지하철·광역전철·S-tog·경전철 간 최대 1회 환승으로 이동 가능하도록 5분 간격 배차를 추진한다."]}, {"c": "dk-cph", "t": "수송·교통", "a": "교통·수송", "s": "차 없는 지구", "r": ["도시 외곽 기차·지하철·버스 역에 P+R(주차 후 환승) 시설을 설치한다. 지역 주민 위원회에 완전/부분 차량 통제 구역 결정권을 위임하고, 특정 구역에 로드프라이싱(도로 혼잡통행료)을 도입하여 지역 사업자·장인·서비스 업체에 시간대 통행 허가 또는 보조금을 지원한다."]}, {"c": "dk-cph", "t": "식품·농축산", "a": "식품·먹거리", "s": "기후 파트너십, 규제 및 식품 낭비", "r": ["코펜하겐 시와의 기후 파트너십을 확대하고, 식당·카페·슈퍼마켓 대상 기후 스마일리 라벨을 도입한다. 일회용 포장재 보증금제를 도입하고, 식당·급식소의 식품 낭비 및 폐기물 분리수거 강화를 단속하여 위반 시 벌금을 부과한다."]}, {"c": "dk-cph", "t": "식품·농축산", "a": "식품·먹거리", "s": "동물성 식품 감소", "r": ["식품 생산 시 CO₂ 배출량을 표시하는 탄소 라벨링을 도입하고, 코펜하겐 시 소속 기관에서 식물성 식단을 기본 제공한다. 소고기 소비를 우선적으로 감축하고, 코펜하겐 내 동물성 식품 광고를 제한하며, 코펜하겐 시의회가 국회에 식품 탄소세 도입을 촉구한다."]}, {"c": "dk-cph", "t": "식품·농축산", "a": "식품·먹거리", "s": "지역 식품 확대 및 수입 감소", "r": ["다국어 식품 정보 캠페인을 운영하고, 교사·강사 대상 식품 기후 영향 교육 역량을 강화한다. 모든 학교에 텃밭을 제공하고, 시 지원 공동 급식소(folkekøkken) 및 식품 시장을 확충하며, 시내 옥상에 식품 생산 시설·온실 설치를 허용·지원한다."]}, {"c": "de", "t": "거버넌스·제도", "a": "에너지", "s": "지자체 기후보호 프로그램 의무화", "r": ["2023년까지 모든 지자체가 의무적으로 기후보호 프로그램을 수립하도록 하며, 2030년까지 지자체 기후중립을 목표로 한다."]}, {"c": "de", "t": "거버넌스·제도", "a": "원칙", "s": "1.5도 목표 최우선·기본법 명시", "r": ["1.5도 기후목표를 최우선 원칙으로 삼아 모든 법률이 기후 영향 점검을 받아야 하며, 기후보호는 독일 기본법(헌법)에 명시되어야 한다."]}, {"c": "de", "t": "거버넌스·제도", "a": "원칙", "s": "기후보호 공공이익 우선·대기업 의무", "r": ["기후보호는 공공이익을 위한 것이므로 개인·기업의 이해에 우선한다. 대기업은 기후보호 의무를 부담해야 한다."]}, {"c": "de", "t": "거버넌스·제도", "a": "원칙", "s": "기후중립 경제·세계 모범", "r": ["경제의 미래는 기후중립이어야 하며, 독일이 기후중립 경제의 세계 모범이 되어야 한다."]}, {"c": "de", "t": "거버넌스·제도", "a": "원칙", "s": "전환을 위한 공동 책임", "r": ["기후 전환을 위해 모두가 책임을 지고 변화를 수용해야 한다."]}, {"c": "de", "t": "거버넌스·제도", "a": "이동·수송", "s": "홈오피스 권리 도입(선택 원칙)", "r": ["홈오피스 권리를 도입하되 강제가 아닌 선택 원칙으로 하며, 심리적 부담을 고려한다."]}, {"c": "de", "t": "거버넌스·제도", "a": "전환도구", "s": "1인당 기후예산(Pro-Kopf-Klima-Budget) 도입 목표", "r": ["1인당 기후예산(Pro-Kopf-Klima-Budget) 도입을 목표로 하되, 현실 가능한 요소는 즉시 시행하고 나머지는 연구·개발을 거치며, 개인 소비 감시를 수반해서는 안 된다."]}, {"c": "de", "t": "건물·주거", "a": "건물과 난방", "s": "'리모델링 신호등' 도입·무료 상담 제공", "r": ["2024년까지 모든 건물에 '리모델링 신호등'(Sanierungsampel)을 작성하고 무료 리모델링 상담을 제공한다."]}, {"c": "de", "t": "건물·주거", "a": "건물과 난방", "s": "2022년까지 광역 난방계획 전담반 구성", "r": ["2022년까지 광역 난방계획 전담반(Taskforce) 구성 기반을 마련하며, 외부 전문인력 파견을 포함한다."]}, {"c": "de", "t": "건물·주거", "a": "건물과 난방", "s": "2023년까지 95% 주민 에너지 리모델링 정보 전달", "r": ["2023년까지 95%의 주민에게 에너지 리모델링 및 지원제도 정보를 전달한다(전국 기후주간 등을 통해)."]}, {"c": "de", "t": "건물·주거", "a": "건물과 난방", "s": "2036년까지 공공 건물 기후중립 리모델링", "r": ["2036년까지 모든 공공·관청 건물의 기후중립 리모델링을 완료하여 모범 기능을 수행한다."]}, {"c": "de", "t": "건물·주거", "a": "건물과 난방", "s": "건물 리모델링·난방 디지털 작업 프로세스 촉진", "r": ["건물 리모델링·난방 전 공정에서 디지털 작업 프로세스를 촉진하고 혁신 스타트업을 지원한다."]}, {"c": "de", "t": "건물·주거", "a": "건물과 난방", "s": "난방 전환 수용성 제고·건설직 위상 강화", "r": ["광범위한 정보 캠페인과 모든 이해당사자 간 지속적 대화를 통해 난방 전환에 대한 수용성을 높이고 건설·수리 직종의 위상을 강화해야 한다."]}, {"c": "de", "t": "건물·주거", "a": "건물과 난방", "s": "난방계획 지자체 의무 과제 지정·2026년까지 수립", "r": ["난방계획(Wärmeplanung)을 지자체 의무 과제로 지정하여 2026년까지 현황 파악 및 미래 계획을 수립하도록 하며, 4만 명 이하 지자체는 광역 단위 협력이 가능하다."]}, {"c": "de", "t": "건물·주거", "a": "건물과 난방", "s": "두 의회 임기 내 난방 전환 입법·재정 지원 결단", "r": ["1.5도 목표 달성을 위해 연방·주·지자체는 앞으로 두 의회 임기 내에 관련 입법·재정 지원을 통해 난방 전환을 결정적으로 추진해야 한다."]}, {"c": "de", "t": "건물·주거", "a": "건물과 난방", "s": "리모델링 재정 4자 분담(연방·지자체·소유주·임차인)", "r": ["2023년부터 리모델링 재정을 연방 50%, 지자체 20%, 소유주 20%, 임차인 10%의 4자 분담으로 추진하며, 임차인 분담금은 10년 이상 대출로 처리하고 임대료 인상은 최대 8%로 제한한다."]}, {"c": "de", "t": "건물·주거", "a": "건물과 난방", "s": "리모델링 재정 지원 소득 연동", "r": ["주거 건물 에너지 리모델링 재정 지원 시 저소득 가구에는 최대 70%를 지원하고, 고소득·넓은 주거 면적 가구는 지원율을 대폭 축소한다."]}, {"c": "de", "t": "건물·주거", "a": "건물과 난방", "s": "생태·무독성 건축자재 의무화·순환경제 적용", "r": ["생태·무독성 건축자재를 의무화하고 촉진하며 순환경제 원칙을 적용하고, 비친환경 대안에는 강화된 과세를 부과한다."]}, {"c": "de", "t": "건물·주거", "a": "건물과 난방", "s": "석유보일러 2026·가스보일러 2028년 신규 설치 금지", "r": ["석유보일러 신규 설치를 2026년부터 금지하고, 가스보일러 신규 설치는 2028년부터 금지하며 난방 신호등을 도입한다."]}, {"c": "de", "t": "건물·주거", "a": "건물과 난방", "s": "에너지 효율 주택 소유자 자원봉사 정보망 운영", "r": ["에너지 효율 개조 주택 소유자 자원봉사 정보망을 운영하며, 지자체 데이터베이스로 관리한다."]}, {"c": "de", "t": "건물·주거", "a": "건물과 난방", "s": "유럽(덴마크·네덜란드) 우수 사례 벤치마킹·데이터 공유", "r": ["유럽(덴마크·네덜란드 등)의 건물 난방 우수 사례를 벤치마킹하고 유럽 데이터베이스를 공유한다."]}, {"c": "de", "t": "건물·주거", "a": "건물과 난방", "s": "재생에너지 난방 법적 비용 우위 보장·화석 난방 과세", "r": ["재생에너지 난방이 화석 난방보다 항상 저렴하도록 법적 권리를 창설하고, 화석 난방에는 추가 과세를 부과한다."]}, {"c": "de", "t": "건물·주거", "a": "건물과 난방", "s": "전국 표준화 건물 데이터 인프라 구축", "r": ["건물 리모델링·난방계획을 위한 전국 표준화 데이터 인프라를 구축한다."]}, {"c": "de", "t": "건물·주거", "a": "건물과 난방", "s": "지자체 리모델링·난방계획 연방·주 재정·행정 지원", "r": ["연방·주가 지자체의 리모델링·난방계획 수립을 재정·행정으로 지원한다."]}, {"c": "de", "t": "건물·주거", "a": "건물과 난방", "s": "화석 보조금 전용·기후중립 난방·리모델링 투자", "r": ["화석 관련 기업 보조금을 폐지하고 지자체에 이전하여 기후중립 난방·리모델링에 투자한다."]}, {"c": "de", "t": "교육·정보·참여", "a": "건물과 난방", "s": "지자체 기후·에너지 자원봉사 지원", "r": ["지자체가 기후·에너지 분야 자원봉사(기후클럽·협의회 등)를 지원한다."]}, {"c": "de", "t": "교육·정보·참여", "a": "원칙", "s": "기후 계몽·투명성 보장", "r": ["기후에 영향을 미치는 모든 행위에 대해 계몽과 투명성이 보장되어야 하며, 국가는 정보 제공 의무를 진다."]}, {"c": "de", "t": "교육·정보·참여", "a": "원칙", "s": "기후교육 전면화", "r": ["기후보호는 모든 교육의 일부가 되어야 한다."]}, {"c": "de", "t": "교육·정보·참여", "a": "전환도구", "s": "CO₂ 가격 산정·수입·사용 투명성 보장", "r": ["CO₂ 가격 산정·수입·사용의 투명성을 보장하며, 공영 정기 기후보고서를 발행하고 제품에 CO₂ 가격 및 기후신호등을 표시한다."]}, {"c": "de", "t": "금융·재정", "a": "원칙", "s": "기후 행위자 직접 책임·인센티브·과세", "r": ["기후 관련 행위가 행위자에게 직접적 영향을 미쳐야 하며, 기후 우호적 선택에는 인센티브를, 기후 해로운 행위에는 과세·제재를 부과해야 한다."]}, {"c": "de", "t": "금융·재정", "a": "전환도구", "s": "CO₂ 가격제 구속력 있는 기후보호 수단 시행", "r": ["CO₂ 가격제를 전 경제·사회에 대한 구속력 있는 기후보호 수단으로 시행한다."]}, {"c": "de", "t": "금융·재정", "a": "전환도구", "s": "CO₂ 가격제 시행 시 타 분야 세금 감면 가능성 검토", "r": ["CO₂ 가격제 시행 시 타 분야 세금 감면 가능성을 검토한다."]}, {"c": "de", "t": "금융·재정", "a": "전환도구", "s": "CO₂ 수입금 목적 한정 투자(사회 완충+R&amp;D+인프라)", "r": ["CO₂ 가격제 수입금을 목적 한정으로 투자하며, 사회적 완충·연구개발·기후중립 인프라에 사용한다."]}, {"c": "de", "t": "금융·재정", "a": "전환도구", "s": "CO₂ 수입금 일부 전 지구적 기후피해 보전 사용", "r": ["CO₂ 가격제 수입금 일부를 전 지구적 기후피해 보전에 사용한다."]}, {"c": "de", "t": "금융·재정", "a": "전환도구", "s": "기후배당(Klimadividende) 또는 1인당 정액 환급 도입", "r": ["기후배당(Klimadividende) 또는 1인당 정액 환급(Pro-Kopf-Pauschale)을 도입하여 사회적 부담을 완화한다."]}, {"c": "de", "t": "기후정의·정의로운 전환", "a": "원칙", "s": "사회적 공정·원인자 원칙", "r": ["기후 전환은 사회적으로 공정해야 하며, 부담은 원인자 원칙에 따라 배분되어야 한다."]}, {"c": "de", "t": "기후정의·정의로운 전환", "a": "원칙", "s": "세대 간 공정·선거연령 하향", "r": ["기후 전환은 세대 간 공정해야 하며, 선거연령을 16세로 하향할 것을 권고한다."]}, {"c": "de", "t": "기후정의·정의로운 전환", "a": "원칙", "s": "전 지구적 공정·기후취약국 책임", "r": ["기후 전환은 전 지구적으로 공정해야 하며, 기후 취약국에 대한 책임을 이행하고 기후정책과 평화정책을 연결해야 한다."]}, {"c": "de", "t": "산림·토지이용", "a": "에너지", "s": "CO₂ 흡수 자연저장고 활용·CCS 불가", "r": ["CO₂ 흡수는 습지·나무 등 자연적 저장고를 통해 달성해야 하며, 지하 CCS(이산화탄소 포집·저장)는 허용하지 않는다."]}, {"c": "de", "t": "산업·노동·녹색일자리", "a": "건물과 난방", "s": "건설·수리 인력 부족 즉각 해소·재교육", "r": ["건설·수리 인력 부족을 즉각 해소하기 위해 직업교육 지원·처우 개선·해외 인력 유치를 추진하며, 자동차·화석에너지 산업 출신 인력의 재교육을 지원한다."]}, {"c": "de", "t": "소비·폐기물·순환경제", "a": "에너지", "s": "전자제품 최소 10년 보증·계획적 노후화 폐지", "r": ["전자제품에 최소 10년 보증을 의무화하고 부품 수급을 보장하며, 계획적 노후화(planned obsolescence) 관행을 폐지한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "2030년까지 화물 철도 전환·트럭 감축", "r": ["2030년까지 화물 운송의 철도 전환을 추진하여 트럭 화물을 25% 수준으로 감축한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "50인 이상 기업 친환경 통근 장려 의무화", "r": ["50인 이상 기업에 기후친화적 통근 장려를 의무화하고, 2024년까지 직원 80%가 비기후해로운 이동수단을 이용하는 것을 목표로 한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "e-바이크 지원·S-Pedelec 허용", "r": ["e-바이크를 지원하기 위해 충전·주차 인프라와 구매 보조금을 제공하며, S-Pedelec(고출력 전동 자전거) 이용을 허용한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "기후중립 대안 동력원 연구·2030년 50% 목표", "r": ["모든 기후중립 대안 동력원 연구·실증을 지속하며, 2030년 전체 차량 중 50%를 기후중립 차량으로 전환하는 것을 목표로 한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "내연기관 신규 등록 2027~2030년 중단", "r": ["내연기관 차량의 신규 등록을 2027년, 늦어도 2030년까지 중단하며, 단계적 쿼터제 전환기를 포함하고 농·건설기계는 예외로 한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "단거리 항공 감축·2030년 국내 항공 철도 전환", "r": ["단거리 항공을 우선 감축하고, 연방출장을 원칙적으로 화상회의로 대체하며 2030년까지 국내 항공을 철도로 전환한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "대중교통 요금 대폭 인하·전국 통합권", "r": ["대중교통 요금을 즉시 대폭 인하하고, 전국 통합권 및 정액제를 도입한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "대중교통 즉각 확대·개선·배리어프리·디지털 티켓", "r": ["대중교통(ÖPNV)을 즉각 확대·개선·매력화하며, 의무 과제로 지정하고, 문전 연결·배리어프리·디지털 통합 티켓을 도입한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "디지털화·광섬유 인프라 2025년까지 완비", "r": ["디지털화 및 연관 인프라(광섬유·이동통신) 가속 추진을 통해 2025년까지 100% 광섬유 보급을 목표로 한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "속도제한 즉시 도입(고속도로 120, 국도 80, 시내 30)", "r": ["고속도로 120km/h, 국도 80km/h, 시내 30km/h의 속도제한을 즉시 도입한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "시티 통행료(City-Maut) 도입", "r": ["도심 혼잡 완화 및 기후보호를 위한 시티 통행료(City-Maut)를 도입한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "온디맨드·카셰어링 자율주행 기술·법적 허용", "r": ["온디맨드(Ruftaxi/Rufbus)·카셰어링 분야의 자율주행 기술을 지원하고 법적으로 허용한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "이동 전환 계몽·의식 변화 캠페인", "r": ["이동 전환을 위한 계몽·의식 변화 캠페인을 예산을 확보하여 추진하며, 정치인이 모범을 보여야 한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "이동·수송 기후중립 최우선·대중교통 우선", "r": ["연방·주·지자체의 모든 이동수단 관련 결정은 기후중립을 최우선으로 해야 하며, 대중교통·자전거·보행이 개인 자동차에 우선하고 원거리에서는 철도가 항공에 우선한다. 이동 수요 충족은 소득에 좌우되어서는 안 된다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "인프라 재정 70% 철도·자전거 배정", "r": ["향후 5년간 교통 인프라 재정의 70%를 철도·자전거 인프라에 투입하고 도로 신설을 지양한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "자동차 보조금 재배분·기후친화 이동수단 지원", "r": ["개인자동차 보조금(디젤·회사차 혜택 등)을 기후친화적 이동수단 지원으로 재배분한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "자전거 인프라 대대적 확충(네덜란드 모델)", "r": ["5~10년 내 자전거 인프라를 대대적으로 확충하며, 네덜란드 모델을 기준으로 의무 과제로 지정한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "잔여 항공 합성연료 전환·케로신세 연구 지원", "r": ["모든 잔여 항공을 합성연료로 전환하되, 농산물 기반 바이오연료는 불허하며 케로신세 수입으로 연구를 지원한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "전기차 계통 저장장치 활용·충전 인프라 법제화", "r": ["전기차를 계통 중간 저장장치로 활용하고, 재정 보상 및 표준화된 배터리·충전 인프라를 법제화한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "전기차 확대·충전 인프라·배터리 재활용 의무화", "r": ["전기차 확대를 위해 구매 보조금을 지원하고 전국토 충전 인프라를 구축하며, 배터리 재활용을 의무화하고 고속도로 트럭을 전기화한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "철도망 확충·Deutschlandtakt 2035년 실현", "r": ["철도망을 확충하고 2035년까지 Deutschlandtakt(독일 전국 통합 열차운행 체계)를 실현하며, 국제 화물·여객망을 연결한다."]}, {"c": "de", "t": "수송·교통", "a": "이동·수송", "s": "항공 요금 실제 기후비용 반영·항공유세 도입", "r": ["항공 요금에 실제 기후비용을 반영하여 항공세를 인상하고 항공유세를 도입하며, EU 전역으로의 확대 시행을 촉구한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "2030년까지 EU 공동농업정책(GAP) 개혁", "r": ["2030년까지 EU 공동농업정책(GAP) 개혁을 통해 EU 전역에서 기후친화적 농업·식품 부문을 달성하며, 독일이 EU 내 보조금 문화 개혁을 선도한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "2030년까지 가축 수 50% 이상 감축·집약 축산 불가", "r": ["2030년까지 가축 수를 50% 이상 감축하여 축산 온실가스 배출을 50% 이상 감소시키며, 새 가축관리 지침을 도입하고 기존·복원 습지에서의 집약 축산은 금지한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "공공 연구 기후친화 농식품 시스템 집중", "r": ["공공 연구의 초점을 기후친화적·지속가능 농식품 시스템에 집중한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "과잉생산·폐기·낭비 억제", "r": ["식품 과잉생산·폐기·낭비를 체계적으로 억제한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "기후친화 식사 교과과정 편입(유치원~성인교육)", "r": ["기후친화적·건강한 식사를 유치원·초등학교부터 성인교육까지 교과과정에 편입하며, 텃밭·요리 체험을 포함한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "기후친화적 농업 전환 지체 없이·공정 식품 공급", "r": ["기후친화적 농업으로의 전환은 지체 없이 이루어져야 하며, 전 국민에게 건강하고 저렴한 식품 공급과 생산자 소득을 동시에 보장해야 한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "기후해로운·비건강 제품 광고 금지(아동 대상 포함)", "r": ["기후해로운·비건강 제품의 광고를 금지하며, 특히 아동 대상 광고와 어린이 프로그램 전후 광고를 금지한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "농업 보조금 면적→환경성과·배출량 기준 전환", "r": ["농업 보조금 기준을 면적에서 환경성과·배출량으로 전면 전환하며, 총액은 유지하고 내부 재배분을 실시한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "농업위원회(Landwirtschaftskommission) 설치·협동조합·소농 우대", "r": ["농업 구조 전환을 위한 농업위원회(Landwirtschaftskommission)를 설치하고, 전환 지원 프로그램 및 교육을 포함하며 협동조합·소농을 우대한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "새 농업법(Landwirtschaftsgesetz) 제정·2030년 시행", "r": ["2030년까지 농업·식품 부문 온실가스 감축을 규정하는 새 농업법(Landwirtschaftsgesetz)을 1.5도 경로 기준으로 제정·시행한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "새 영양지침(Planetary Health Diet 기반) 2023년 초까지 수립", "r": ["2023년 초까지 Planetary Health Diet를 기반으로 한 새 영양지침(Ernährungsleitlinien)을 수립하고, 학교·병원·직장 식당 등 공공급식에 의무 적용한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "수입 농식품 국내 기준 동등 적용·수입 대체 불가", "r": ["수입 농식품에 국내 생산 기준을 동등 적용하고, 축산물 감축 분을 수입으로 보충하지 않을 것을 원칙으로 한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "수출정책 기후친화적 재편", "r": ["수출정책을 기후친화적으로 재편하기 위해 관련 지침·제한을 설정한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "식품 낭비·폐기 처벌·남은 음식 사료 전용·구조행위 비범죄화", "r": ["식품 낭비·폐기가 일정 수준 이상일 때 처벌하고, 남은 음식을 동물 사료 전용으로 허용하며, 식품 구조행위(Lebensmittelretten)를 비범죄화한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "식품 부문 민주화·모든 지자체·시민 참여", "r": ["식품 부문의 민주화를 통해 모든 지자체와 시민이 참여할 수 있도록 한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "육류·유제품 대폭 자제 캠페인(Planetary Health Diet)", "r": ["계몽을 통해 Planetary Health Diet에 따른 육류·유제품 대폭 자제를 장려하며, 공익광고와 유튜브·공영방송 캠페인을 활용한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "의무 기후신호등(Klimaampel) 라벨 2030년까지 도입", "r": ["2030년까지 모든 식품에 의무 기후신호등(Klimaampel) 메타 라벨을 도입하며, 전 생산·운송·포장 과정을 반영하고 전문가 위원회가 분류한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "종자 특허 폐지(유전자 변형 포함)", "r": ["유전자 변형 종자를 포함한 모든 종자 특허를 폐지한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "진정한 가격(wahre Preise) 도입·2030년 모든 소득계층 접근", "r": ["2030년까지 건강하고 기후친화적 식품을 모든 소득계층이 구매할 수 있도록 환경·보건 비용을 포함한 진정한 가격(wahre Preise)을 도입하며, 사회보장급여를 조정한다."]}, {"c": "de", "t": "식품·농축산", "a": "식품·영양", "s": "해외 산림 개간 기반 사료 수입 금지", "r": ["해외 산림 개간에 근거한 사료용 수입을 금지하며, 불가피한 수입은 단거리 운송에 한정한다."]}, {"c": "de", "t": "에너지·전력", "a": "에너지", "s": "EEG 자가소비 부담금 인하·비과세", "r": ["EEG 부담금(EEG-Umlage)의 자가소비분을 인하하고 자가소비 전력에 비과세를 적용한다."]}, {"c": "de", "t": "에너지·전력", "a": "에너지", "s": "개인용 장기 계통 매전 보장", "r": ["개인용 재생에너지 설비에 최소 20년의 장기 고정 계통 매전(매입)을 보장한다."]}, {"c": "de", "t": "에너지·전력", "a": "에너지", "s": "국제 에너지 파트너십·EU 지역에너지 배분망", "r": ["국제 에너지 파트너십을 심화하고 EU 차원의 지역에너지 배분망을 구축한다."]}, {"c": "de", "t": "에너지·전력", "a": "에너지", "s": "농지·수면 태양광(Agri-PV·Floating-PV) 촉진", "r": ["농지와 수면을 활용한 Agri-PV·Floating-PV를 촉진하기 위해 인허가를 간소화하고 건설기본법상 우선 사업으로 편입한다."]}, {"c": "de", "t": "에너지·전력", "a": "에너지", "s": "분산 전력공급·에너지협동조합 지원", "r": ["분산형 전력공급을 강화하기 위해 에너지협동조합을 지원하고 전국 균일 기준을 마련한다."]}, {"c": "de", "t": "에너지·전력", "a": "에너지", "s": "석탄 조기 퇴출(2038→2030)", "r": ["석탄 퇴출 시한을 2038년에서 2030년으로 앞당긴다."]}, {"c": "de", "t": "에너지·전력", "a": "에너지", "s": "시민에너지협동조합 지원", "r": ["시민에너지협동조합 및 시민에너지 사업을 적극 지원한다."]}, {"c": "de", "t": "에너지·전력", "a": "에너지", "s": "에너지 집약 산업 EEG 면제 단계적 폐지", "r": ["에너지 집약 산업에 부여된 EEG 면제를 단계적으로 폐지한다."]}, {"c": "de", "t": "에너지·전력", "a": "에너지", "s": "에너지전환 속도 우선·소비자 부담 최소화", "r": ["국가가 에너지전환의 방향 틀을 제시해야 하며, 속도가 비용보다 우선하되 최종소비자 부담은 최소화해야 한다."]}, {"c": "de", "t": "에너지·전력", "a": "에너지", "s": "옥상 태양광 설치 의무화", "r": ["2022년 신축부터 옥상 태양광(Photovoltaik) 설치를 의무화하고, 2023년에는 기존 공공·민간 건물까지 순차적으로 확대한다."]}, {"c": "de", "t": "에너지·전력", "a": "에너지", "s": "유연 전력가격·스마트미터 전국 보급", "r": ["소비자 전력가격을 수요·공급에 유연하게 연동하기 위해 스마트미터를 전국에 보급한다."]}, {"c": "de", "t": "에너지·전력", "a": "에너지", "s": "유휴지·포장지 태양광 활용", "r": ["포장지·유휴지·기타 부지의 태양광 잠재력을 검토하고 활용하며, 간소 보조금 지원을 제공한다."]}, {"c": "de", "t": "에너지·전력", "a": "에너지", "s": "재생에너지 비율 목표(2035·2040)", "r": ["독일 전체 에너지공급의 70%를 2035년까지, 90%를 2040년까지 재생에너지로 충당한다. 전력 부문은 2035년까지 100% 재생에너지를 달성한다."]}, {"c": "de", "t": "에너지·전력", "a": "에너지", "s": "재생에너지 설비 사전 정보 제공·주민 의견 수렴", "r": ["재생에너지 설비 건설 전에 충분한 사전 정보를 제공하고, 디지털 방식을 포함한 주민 의견 수렴을 의무화한다."]}, {"c": "de", "t": "에너지·전력", "a": "에너지", "s": "재생에너지 용지 배정 의무화", "r": ["각 연방주 전체 면적의 최소 2%를 태양광·풍력용으로 배정하도록 연방 계획 및 지자체 의무화를 시행한다."]}, {"c": "de", "t": "에너지·전력", "a": "에너지", "s": "풍력 이격거리 폐지·노후 설비 교체", "r": ["풍력 최소 이격거리를 폐지하고 노후 설비의 교체(Repowering)를 촉진한다."]}, {"c": "de", "t": "에너지·전력", "a": "에너지", "s": "풍력 확대 시 주민 재정 참여·사전 공론화", "r": ["풍력 확대 시 지자체·주민의 재정 참여 기준을 법령으로 정하고, 사전 공론화를 의무화한다."]}, {"c": "lu", "t": "거버넌스·제도", "a": "건물", "s": "PAG 국가 기준 통일 및 정부 권한 강화", "r": ["일반도시계획(PAG) 국가 단위 통일 기준을 마련하고 4개 도시기본계획을 통합한다. 정부-지자체 협력을 강화한다."]}, {"c": "lu", "t": "거버넌스·제도", "a": "건물", "s": "신규 지구 15분 도시 원칙 의무화", "r": ["모든 PAG에 신규 지구는 '15분 도시' 원칙을 준수하는 지속가능 지구여야 한다는 의무 규정을 삽입한다."]}, {"c": "lu", "t": "거버넌스·제도", "a": "에너지", "s": "기업 기후협약(Klimapakt) 도입", "r": ["EU-ETS 미적용 기업에 기후협약(Klimapakt)을 도입한다. 에너지·배출량 연간 감사, 투명성 플랫폼, 보너스·페널티 체계를 포함한다."]}, {"c": "lu", "t": "건물·주거", "a": "건물", "s": "LENOZ 인증 및 전생애 에너지 패스포트", "r": ["LENOZ 인증 또는 전생애 에너지 패스포트(건설~사용~철거/재활용)를 모든 건물에 점진적으로 의무 적용한다."]}, {"c": "lu", "t": "건물·주거", "a": "건물", "s": "건축 자재 순환성 보상 및 비재활용 자재 금지", "r": ["순환 자재 사용에 보상을 제공하고 비재활용·비재사용 자재를 점진적으로 금지한다."]}, {"c": "lu", "t": "건물·주거", "a": "건물", "s": "공공기관 건축 용지 선제 매입", "r": ["공공기관이 건축 용지(빈 필지 포함)를 선제 매입하고 건축 인센티브를 마련하며 도심 고밀화를 추진한다."]}, {"c": "lu", "t": "건물·주거", "a": "건물", "s": "공실 건물 및 미사용 토지 등록부 구축", "r": ["공실 건물 및 미사용 건축 용지의 등록부를 구축하고 활용을 의무화한다."]}, {"c": "lu", "t": "건물·주거", "a": "건물", "s": "기존 건물 리노베이션 우선 원칙", "r": ["기존 건물 철거를 금지하는 원칙을 수립하고 리노베이션을 우선시한다. 투기 억제 세제를 도입하고 순제로 에너지 기준을 강화한다."]}, {"c": "lu", "t": "건물·주거", "a": "건물", "s": "대안 주거 법적 프레임 및 15분 도시", "r": ["대안 주거(혼합 용도 건물, 지속가능 지구)에 관한 법적 프레임을 마련하고 '15분 도시' 개념을 장려한다."]}, {"c": "lu", "t": "건물·주거", "a": "건물", "s": "신규 건물 순제로·탄소마이너스 의무화", "r": ["2024년부터 신규 프로젝트의 40% 이상을 (거의)제로탄소·탄소마이너스 건물로 의무화하고, 2028년 70%, 2030년 80%, 2035년 100%로 단계적으로 상향한다."]}, {"c": "lu", "t": "건물·주거", "a": "건물", "s": "신축·리노베이션 탄소중립 최적화 의무", "r": ["모든 신축·리노베이션에 탄소중립 최적화를 의무화한다. 자재 선택, PV 패널, 지열, 재활용, 물 회수 등이 포함된다."]}, {"c": "lu", "t": "교육·정보·참여", "a": "횡단 주제", "s": "교원 기후 연수 의무화", "r": ["전체 교원·보육 교사를 대상으로 기후 주제 연수를 연 6시간 의무화한다."]}, {"c": "lu", "t": "교육·정보·참여", "a": "횡단 주제", "s": "사회 전반 기후 인식 제고", "r": ["TV·라디오 5분 기후 클립, 공공 캠페인, 직장 내 연간 기후 워크숍, KlimaAgence 홍보를 강화하여 사회 전반의 기후 인식을 제고한다."]}, {"c": "lu", "t": "교육·정보·참여", "a": "횡단 주제", "s": "유아기 환경교육 의무화", "r": ["유아기(취학 전)부터 환경교육을 의무화하고 초등학교에서 환경·지속가능발전 교육을 주 4시간 실시한다."]}, {"c": "lu", "t": "교육·정보·참여", "a": "횡단 주제", "s": "장인 직종 가치화 프로그램", "r": ["학교 진로 개혁, 임금 단체협약, 자격증 수준 격상, 직업 전환 촉진을 포함하는 장인 직종 가치화 프로그램을 수립한다."]}, {"c": "lu", "t": "교육·정보·참여", "a": "횡단 주제", "s": "중등 환경 대표 위원회 구성", "r": ["중등 단계에서 교원·부모를 포함한 환경 대표 위원회를 구성하고 연간 환경 행동계획을 지속가능발전부에 제출한다."]}, {"c": "lu", "t": "교육·정보·참여", "a": "횡단 주제", "s": "중등학교 지리·에코시민 교육 강화", "r": ["중등학교 지리 과목을 '지리 및 에코시민(Géographie et ÉcoCitoyenneté)'으로 개편하고 현장 학습을 의무화한다."]}, {"c": "lu", "t": "교육·정보·참여", "a": "횡단 주제", "s": "지역별 에코빌리지 조성", "r": ["지역별 에코빌리지(Ecovillage)를 조성하여 물품 대여·교환·수리·지역 식품 판매·교육 등 순환경제 거점으로 활용한다."]}, {"c": "lu", "t": "교육·정보·참여", "a": "횡단 주제", "s": "초등 에코 책임 태스크포스 구성", "r": ["초등 단계에서 교원·학부모·지자체가 협력하는 에코 책임 태스크포스를 구성하고 연간 환경 행동계획을 수립한다."]}, {"c": "lu", "t": "금융·재정", "a": "에너지", "s": "CO₂세 대폭 인상 및 시민 배당", "r": ["CO₂세를 현 25€/t에서 최소 200€/tCO₂eq으로 대폭 인상하고, 세수를 시민에게 균등 배분하는 carbon fee-and-dividend 방식을 도입한다."]}, {"c": "lu", "t": "기후적응·재난대응", "a": "농업·산림", "s": "도시·농촌 수분 보전 및 열섬 완화", "r": ["도시·농촌의 수분 보전을 강화하고 도시 열섬을 완화한다. 수로 자연화, 빗물 활용, 녹지 식재 등이 포함된다."]}, {"c": "lu", "t": "산림·토지이용", "a": "농업·산림", "s": "다기능 산림 관리 법제화", "r": ["다기능 산림 관리를 법제화하고, 산림 관계자 플랫폼·레이블·태스크포스를 구성한다. 룩셈부르크산 목재 사용을 확대한다."]}, {"c": "lu", "t": "산업·노동·녹색일자리", "a": "에너지", "s": "기후기술 R&amp;D 혁신", "r": ["R&amp;D 생태계를 강화하고 기후기술 혁신을 촉진한다. 전략적 R&amp;D 축 설정, 공공-민간 협력, 자금 다양화를 추진한다."]}, {"c": "lu", "t": "산업·노동·녹색일자리", "a": "횡단 주제", "s": "장인 직종 사회적 위상 제고", "r": ["장인 직종의 사회적 위상을 제고하고 차별을 해소한다. 에너지 전환·순환경제 인력 확보를 위한 기반을 마련한다."]}, {"c": "lu", "t": "소비·폐기물·순환경제", "a": "폐기물", "s": "소비재 수명 연장 및 수리권", "r": ["소비재(전자·전기·섬유)의 수명 연장을 촉진한다. 에코디자인 지침 강화, 수리권 지원, 보증기간 연장, 부품 공급 의무화를 포함한다."]}, {"c": "lu", "t": "소비·폐기물·순환경제", "a": "폐기물", "s": "수리 인센티브 확대", "r": ["수리 보너스(50% 지원, 최대 200€/기기)와 재생품 부가세 8% 감면을 도입하고 Ecotrel+ 제도를 신설한다."]}, {"c": "lu", "t": "소비·폐기물·순환경제", "a": "폐기물", "s": "오염자부담원칙 강화 및 비재활용 제품 제한", "r": ["오염자부담원칙을 강화하고 비재활용 제품·포장재를 단계적으로 금지한다. 복합 소재에 라벨링을 의무화한다."]}, {"c": "lu", "t": "소비·폐기물·순환경제", "a": "폐기물", "s": "재활용 시스템 최적화", "r": ["재활용 센터 접근성을 향상하고 공공장소 분리수거함을 확충한다. 보증금 시스템을 확대한다."]}, {"c": "lu", "t": "소비·폐기물·순환경제", "a": "폐기물", "s": "중고·재생 판매 및 수리 직업 교육", "r": ["중고·재생 판매 공간을 확대하고 사회적 재사용(Social ReUse) 구조를 강화한다. 수리 직업 교육을 확대한다."]}, {"c": "lu", "t": "소비·폐기물·순환경제", "a": "횡단 주제", "s": "수리용수 시스템 도입 및 물 순환", "r": ["건물 내 빗물 수집 시스템과 분리 하수도 네트워크를 구축하는 수리용수(eau utile) 시스템을 도입하고 음용수 소비를 절감한다."]}, {"c": "lu", "t": "수송·교통", "a": "이동·교통", "s": "고배출 차량 광고 금지 및 친환경 홍보", "r": ["고배출 차량 광고를 금지하고 친환경 이동수단(연성 이동 모드) 홍보를 강화한다."]}, {"c": "lu", "t": "수송·교통", "a": "이동·교통", "s": "고배출 차량 세제 강화", "r": ["등록세·연간 자동차세를 CO₂ 배출량에 연동하여 인상하고 다수 차량 소유에 추가 과세한다. 고배출 차량에 부가세 20%를 부과하고 친환경 차량 지원을 확대한다."]}, {"c": "lu", "t": "수송·교통", "a": "이동·교통", "s": "기업 차량 CO₂ 기준 강화 및 친환경 리스", "r": ["기업 차량 CO₂ 기준을 강화하고 전기자전거(Pedelec) 업무용 리스를 장려한다. 기업 이동 계획(Plan de mobilité)을 의무화한다."]}, {"c": "lu", "t": "수송·교통", "a": "이동·교통", "s": "대광역권 대중교통 무료화 및 카셰어링", "r": ["대광역권(Grande Région) 대중교통을 무료화하고, 농촌 지역에 '개인 버스(My private bus)' 개념을 도입한다. 전기 카셰어링을 확대한다."]}, {"c": "lu", "t": "수송·교통", "a": "이동·교통", "s": "도로 속도 인하 및 에코드라이빙", "r": ["고속도로 최고 속도를 110/90km/h로 인하하고 시내 30km/h 구간을 확대한다. 에코드라이빙을 운전면허 시험에 포함한다."]}, {"c": "lu", "t": "수송·교통", "a": "이동·교통", "s": "도심 차량 통행 제한 및 차 없는 날", "r": ["도심 차량 통행을 대기 질 스티커/배지로 제한하고 월 1회 자동차 없는 날을 시행한다."]}, {"c": "lu", "t": "수송·교통", "a": "이동·교통", "s": "룩셈부르크 선적 선박 그린 쉬핑", "r": ["룩셈부르크 선적 선박의 '그린 쉬핑' 전환을 추진한다. 고탄소 선박에 세제 불이익을 부여하고 선적 등록 기준을 저탄소 선박으로 제한한다."]}, {"c": "lu", "t": "수송·교통", "a": "이동·교통", "s": "위성 사무실 및 코워킹 스페이스 확대", "r": ["기업 위성 사무실·경계 지역 코워킹 스페이스를 확대하여 출퇴근 이동 거리를 감소시킨다."]}, {"c": "lu", "t": "수송·교통", "a": "이동·교통", "s": "재택근무 법정 최소 2일/주 의무화", "r": ["재택근무 법정 최소 주 2일을 의무화하고 유연근무·4일 근무제를 검토한다. 국경지역 재택근무 세무 협약을 재협상한다."]}, {"c": "lu", "t": "수송·교통", "a": "이동·교통", "s": "차량 CO₂ 연동 생태 보험료 체계", "r": ["보험사와 협력하여 차량 CO₂ 배출량에 연동한 생태 보험료(bonus écologique) 체계를 도입한다."]}, {"c": "lu", "t": "수송·교통", "a": "이동·교통", "s": "통합 친환경 교통 디지털 플랫폼", "r": ["대중교통·자전거·카풀을 통합하는 친환경 교통 디지털 플랫폼 'Eco-transport'를 구축한다. 게임화 요소를 포함한다."]}, {"c": "lu", "t": "수송·교통", "a": "이동·교통", "s": "항공 탄소 보상 의무화 및 항공유 세제 개편", "r": ["항공권 가격에 탄소 보상 비용을 의무적으로 포함시키고, 항공유 세제를 개편하여 바이오 연료의 경쟁력을 강화한다."]}, {"c": "lu", "t": "식품·농축산", "a": "농업·산림", "s": "생산 단계 식품 낭비 감소", "r": ["생산 단계에서 식품 낭비를 줄이는 조치 일체를 도입한다. 비규격 농산물 재판매 허용, 유통기한 재정의, 소량 판매 등이 포함된다."]}, {"c": "lu", "t": "식품·농축산", "a": "농업·산림", "s": "생산자·소비자 거리 단축 및 육류 소비 감소", "r": ["생산자와 소비자의 거리를 단축하고, 헥타르당 0.8 가축단위를 목표로 설정한다. 주 1회 무육류의 날을 도입한다."]}, {"c": "lu", "t": "식품·농축산", "a": "농업·산림", "s": "식품 환경영향 표시", "r": ["소비자가 제품의 환경 영향을 직관적으로 파악할 수 있는 단순하고 이해 가능한 '생태지표(indicateur écologique)'를 도입한다."]}, {"c": "lu", "t": "식품·농축산", "a": "농업·산림", "s": "친환경 농업 보조금 및 교육 개혁", "r": ["생태 농업에 보조금·세제 혜택을 부여하고, 농업 교육을 개혁하여 유기농·IT 접목 교육을 도입한다."]}, {"c": "lu", "t": "식품·농축산", "a": "농업·산림", "s": "친환경 식품 전용 코너", "r": ["모든 식품 매장에 환경 부담이 낮은 제품(유기농·채식·로컬) 전용 코너를 의무적으로 설치한다."]}, {"c": "lu", "t": "식품·농축산", "a": "농업·산림", "s": "토양·수질 보호 및 가축 두수 감축", "r": ["토양·수질·대기 자원을 보호하고 음용수 수질을 개선한다. 소·돼지 두수를 66% 대폭 감축하고 농업 보조금을 개편한다."]}, {"c": "lu", "t": "식품·농축산", "a": "횡단 주제", "s": "학교 급식 채식의 날 및 지역 식품 비율 확대", "r": ["학교 급식에서 주 2회 채식의 날(Veggieday)을 운영하고 지역 식품 비율을 현행 50%에서 80%로 상향한다."]}, {"c": "lu", "t": "에너지·전력", "a": "에너지", "s": "공공 부문 에너지 절약 선도", "r": ["지자체 및 공공 부문이 조명 절전에서 선도적 역할을 수행한다."]}, {"c": "lu", "t": "에너지·전력", "a": "에너지", "s": "공공 조명 에너지 효율 개선", "r": ["공공 조명 및 비주거 건물 조명의 에너지 효율을 개선한다. LED 교체 및 조명 관리 인프라를 구축한다."]}, {"c": "lu", "t": "에너지·전력", "a": "에너지", "s": "민간 전기 소비 절감 유인", "r": ["민간 부문의 조명 전기 소비 절감을 위한 유인책을 마련한다. 단계적 소등, 보너스·패널티 요금제를 도입한다."]}, {"c": "lu", "t": "에너지·전력", "a": "에너지", "s": "재생에너지 공급 확대", "r": ["2030년까지 전력 수요의 80%를 풍력·수력·태양광(WWS)으로 공급하고, 2040년 100% 재생전력 목표를 설정한다."]}, {"c": "lu", "t": "자연·생태계", "a": "농업·산림", "s": "산림 자연재생 및 야생동물 관리", "r": ["산림의 자연 재생을 허용하고, 야생동물(멧돼지·노루·사슴) 관리를 통해 어린 나무를 보호한다."]}, {"c": "lu", "t": "자연·생태계", "a": "농업·산림", "s": "생물다양성 강화", "r": ["기존 과수원(Bongerten)을 보호하고, 조류 지표 등 생물다양성 결과 지표를 도입한다."]}, {"c": "lu", "t": "자연·생태계", "a": "횡단 주제", "s": "자연 기반 해법 및 생태계 법적 지위", "r": ["자연 기반 해법을 활용하여 생태계를 복원하고 보조금을 확대한다. 인도·뉴질랜드·에콰도르 사례를 참조해 자연의 법적 지위를 부여하고 조림·도시 녹화·농림 복합경영을 촉진한다."]}, {"c": "be", "t": "거버넌스·제도", "a": "에너지", "s": "2030년까지 CO₂ 20% 감축", "r": ["파리협정·EU 그린딜에 기여하기 위해 2030년까지 브뤼셀의 CO₂ 배출량을 20% 저감하는 목표를 설정한다."]}, {"c": "be", "t": "건물·주거", "a": "건물에너지", "s": "5년 내 전 건물 무료 에너지 감사", "r": ["의회가 5년 내에 모든 건물에 대해 자격을 갖춘 전문가의 종합 에너지 감사를 저비용(또는 무료)으로 실시할 수 있는 입법·재정 프레임워크를 수립한다. 해당 전문가 양성·인증을 브뤼셀 수도 지역이 관장한다."]}, {"c": "be", "t": "건물·주거", "a": "건물에너지", "s": "문화재·역사 건축물 별도 PEB 개선 프로세스", "r": ["문화재·역사 건축물의 경우 기념물·경관 위원회와 협력하여 별도 PEB(에너지 성능) 개선 프로세스를 마련한다."]}, {"c": "be", "t": "건물·주거", "a": "건물에너지", "s": "파리협정 PEB 기준 지역 실행계획", "r": ["에너지 감사 데이터를 토대로 파리협정(PEB D+ 2030) 기준을 충족하는 지역 실행계획을 수립한다. 실행계획은 인센티브·지원·(필요시) 의무화를 포함하여 건물 에너지 등급 개선 투자를 촉진한다."]}, {"c": "be", "t": "건물·주거", "a": "건축·건설", "s": "리모델링 정보 통합 제공", "r": ["주민 대상 무료·접근 가능한 리모델링 정보를 제공한다: 사례 및 정보 통합 웹사이트, 동료 간 정보 공유 유튜브 채널, 지역 TV를 통한 정보 확산, 단열 기법 실습 시연이 가능한 물리적 공간(무료, 일반인·학교 그룹 대상)."]}, {"c": "be", "t": "건물·주거", "a": "건축·건설", "s": "지속가능 건축 기준 입법화", "r": ["건설 전·중·후 전 단계 에너지 소비 절감 목표를 포함한 지속가능 건축 기준을 입법화하고, 공공 건물에 우선 적용한 후 민간으로 확대한다."]}, {"c": "be", "t": "건물·주거", "a": "건축·건설", "s": "친환경 건축 자재 활용 교육·인식", "r": ["건설 부문 전체 이해관계자(전문가, 공공·민간 기업, 자영업자, 훈련 중인 청년, 자가 수선 일반인 등) 참여를 유도하여 친환경 건축 자재 활용에 관한 교육과 의식을 제고한다."]}, {"c": "be", "t": "건물·주거", "a": "건축·건설", "s": "친환경 자재 세제 개편·R&amp;D 강화", "r": ["친환경 자재 사용을 장려하는 세제를 재편하고, 친환경 리모델링 연구·개발을 강화한다(Renolab 이니셔티브 지원 등). 다양한 대상(청년, 건설업체, 건축가, 일반인 등)을 위한 전문 교육 과정을 개설한다."]}, {"c": "be", "t": "교육·정보·참여", "a": "정보·인식", "s": "신규 주민 에너지 정보 패키지 의무화", "r": ["신규 주민 등록 시 자치구가 에너지 정보 패키지(valisette d'informations)를 제공하도록 의무화한다."]}, {"c": "be", "t": "교육·정보·참여", "a": "정보·인식", "s": "에너지 정보 다중채널 배포", "r": ["다양한 연령·문화·사회적 상황을 고려한 에너지 관련 좋은 사례 콘텐츠를 대중 미디어를 통해 배포하고, 시민에게 먼저 정보를 전달하는 '푸시(push)' 커뮤니케이션 시스템을 도입한다."]}, {"c": "be", "t": "교육·정보·참여", "a": "정보·인식", "s": "에너지 커뮤니케이션 예산 확충", "r": ["에너지 관련 정보 커뮤니케이션 예산을 확충하고, 주택관리회사·자치구·부동산업자·공증인·행정기관·CPAS(공공복지센터) 등 중개자에게 정보 배포 의무를 부여한다."]}, {"c": "be", "t": "교육·정보·참여", "a": "정보·인식", "s": "에너지전환 인식 제고 단체 지원", "r": ["에너지전환 교육·인식 제고 활동을 하는 기존 단체에 재정 지원을 하고, 신규 단체 설립을 장려한다."]}, {"c": "be", "t": "교육·정보·참여", "a": "정보·인식", "s": "학교 에너지전환 직종 안내", "r": ["학교에서 에너지전환 관련 직종 및 우수 사례 안내 세션을 운영한다."]}, {"c": "be", "t": "금융·재정", "a": "에너지", "s": "대형 오염자 과세 재원 조달", "r": ["조세를 통한 재원 조달로 '대형 오염자 부담 원칙'을 적용한다(사업용 차량, 야간 조명 방치 사무실·상점 등 대상)."]}, {"c": "be", "t": "산업·노동·녹색일자리", "a": "노동·직업훈련", "s": "건설 수공업 직업훈련 재정 지원 확대", "r": ["브뤼셀 건설 수공업 직종 직업훈련에 대한 재정 지원을 확대하고, 커뮤니케이션 캠페인을 통해 직종 이미지를 홍보하여 친환경 건설 분야 인력을 확충한다."]}, {"c": "be", "t": "산업·노동·녹색일자리", "a": "노동·직업훈련", "s": "건설 직종 지속적 직업교육 인센티브", "r": ["건설 수공업 직종 내 지속적 직업교육에 대한 인센티브를 개발하여 근로 조건 개선 및 직종 매력을 향상시킨다."]}, {"c": "be", "t": "산업·노동·녹색일자리", "a": "노동·직업훈련", "s": "연방·공동체 차원 건설 직종 지원 결의", "r": ["노동시간·임금·업무 강도·교육 시스템 전반을 포괄적으로 해결하기 위해 연방·공동체(Communauté) 차원의 보완적 지원을 요청하는 결의안을 채택한다."]}, {"c": "be", "t": "소비·폐기물·순환경제", "a": "자원", "s": "의류 재활용 단열재 지역 보조금", "r": ["의류 재활용 순환 체계 소재를 활용한 단열 시공이 석유화학 소재보다 비용이 낮거나 동일하게 되도록 지역 보조금(prime régionale) 제도를 도입한다. 이를 통해 의류 폐기물 감축, 지역 순환 단열 소재 사용 촉진, 브뤼셀 지역 재활용 체계를 구축한다."]}, {"c": "be", "t": "수송·교통", "a": "교통·이동", "s": "50인 이상 사업체 단체교통·이동계획 의무화", "r": ["직원 50인 이상 사업체에 단체교통 및 이동계획 수립을 의무화하고, 이동계획에 집단 이동(출퇴근 버스, 카풀 인센티브) 반영을 의무화한다."]}, {"c": "be", "t": "수송·교통", "a": "교통·이동", "s": "대중교통 단계적 무료화", "r": ["대중교통 무료화를 단계적으로 추진한다: 현행 긍정적 요금 정책 유지 → 이용 빈도·소득 비례 요금 인하 → 주 1일 무료 이용일 도입 → 월 1회 자동차 없는 날과 대중교통 인식 캠페인 연계."]}, {"c": "be", "t": "수송·교통", "a": "교통·이동", "s": "모빌리티 예산·무료 환승 주차장", "r": ["사업용 차량 수혜 직원에게 '모빌리티 예산' 대안을 제시하도록 의무화하고, 지역 경계부에 무료 환승 주차장(Park &amp; Ride)을 조성하며 자전거 전용 공간을 포함한다."]}, {"c": "be", "t": "수송·교통", "a": "교통·이동", "s": "안전한 자전거 보관소 확충", "r": ["전 주민이 이용 가능한 안전한 자전거 보관소(cycloBox 등)를 확충하여 자전거 도난 문제를 해결하고 친환경 이동을 장려한다."]}, {"c": "be", "t": "수송·교통", "a": "교통·이동", "s": "야간 교대근무자 대중교통 확대", "r": ["야간 교대근무자를 위한 야간버스 증편 등 운행 시간대를 확대하여 대중교통 접근성을 높인다."]}, {"c": "be", "t": "수송·교통", "a": "교통·이동", "s": "친환경 이동 공간 확장·인식 캠페인", "r": ["안전한 친환경 이동 공간을 지속 확장하고, 전 주민 대상 친환경 이동수단 인식 제고 캠페인을 실시한다."]}, {"c": "be", "t": "에너지·전력", "a": "에너지", "s": "공공 주체 재생에너지공동체 직접 참여", "r": ["이니셔티브 부재 시 공공 주체가 직접 재생에너지공동체 운영 주체로 참여하여 재생에너지 생산을 촉진한다."]}, {"c": "be", "t": "에너지·전력", "a": "에너지", "s": "공동 에너지 관리 참여·청정에너지 생산 지원", "r": ["브뤼셀 수도 지역이 재정·정보·조직·법제 등 다방면에서 공동 에너지 관리에 참여하고, 청정·재생에너지 생산 접근을 지원한다."]}, {"c": "be", "t": "에너지·전력", "a": "에너지", "s": "에너지 잉여 저장·재분배 시스템", "r": ["에너지 잉여 발생 시 저장·재분배 시스템을 구축하고, 보조금·인센티브 관련 정보를 누구나 쉽게 접근 가능하도록 단순화한다."]}, {"c": "be", "t": "에너지·전력", "a": "에너지", "s": "에너지공동체 범위 열 생산까지 확대", "r": ["에너지공동체 범위를 열 생산·교환 분야(바이오매스, 바이오가스, 폐열 회수, 히트펌프, 태양열, 지열)까지 확대하고, 지역 에너지공동체·재생에너지공동체 조직에 대한 인센티브를 강화한다."]}, {"c": "se", "t": "거버넌스·제도", "a": "거버넌스·정치", "s": "Riksbankens självständighet 모델 — 독립 기후 전문가 그룹", "r": ["중앙은행(Riksbank)과 유사한 독립성을 가진 전문가 그룹이 환경·기후 의제를 관할. 정치적 독립 전문가 그룹 구성, 기관 자율성·효율성·책임성 명확화."]}, {"c": "se", "t": "거버넌스·제도", "a": "거버넌스·정치", "s": "Utvärdering av klimatpolitik — 실효성이 있는 기후정책 평가", "r": ["EU 수준 목표·권한 확대, 스웨덴 중앙은행(Riksbank)·국방에 필적하는 기후정책 주체 설치, 국민연금·국방 수준으로 소관을 초당파화."]}, {"c": "se", "t": "교육·정보·참여", "a": "교육·소통", "s": "Allmänbilda i klimatforskning — 독립 기후 과학 대중 교육", "r": ["지자체·국가·랜스티넹(län·광역자치단체)이 의무적으로 시민 대상 독립 기후 과학 교육을 시행."]}, {"c": "se", "t": "교육·정보·참여", "a": "교육·소통", "s": "Klimatutbildning för barn och unga — 아동·청소년 대상 기후 교육", "r": ["유치원 교육·학교 교육과정 도입, 일상 롤모델로서 부모 협력."]}, {"c": "se", "t": "금융·재정", "a": "소비·경제", "s": "Klimatåterbäring och grön märkning — 기후 환급·녹색 라벨링 도입", "r": ["지역별 기후 환급(klimatåterbäring)·연례 기후 선언, 의회가 상품·운송·서비스에 환경 라벨 도입, #17.3 휘발유·경유 기후세 인상(58%) — 수입을 대중교통·로컬푸드·철도 보수에 배분."]}, {"c": "se", "t": "기후적응·재난대응", "a": "도시계획·이동성", "s": "도시계획에서 자연 지역의 지위 제고", "r": ["도시계획에서 자연 지역의 지위를 격상시키고, 대중교통·보행·자전거 도로를 우선 배치. 지자체 종합계획 의무화로 생태계 보전과 기후 적응을 동시 달성."]}, {"c": "se", "t": "소비·폐기물·순환경제", "a": "소비·경제", "s": "EU-märkning av produkter — 기후 스마트 선택을 위한 EU 제품 라벨링", "r": ["\"Green Way\" EU 공통 라벨 도입, 제품 운송·생산·배출 라벨, 재활용 라벨 개선 및 전체 수명 주기 표시."]}, {"c": "se", "t": "수송·교통", "a": "공급망·물류", "s": "Elektrifiering av tung trafik — 중형 화물교통 전동화·효율화", "r": ["시장의 차량 전환 계획 의무화, 국가 통합 충전 인프라, 공공 등급제 기반 물류 최적화, 화물차 km세(전기차 감면)."]}, {"c": "se", "t": "수송·교통", "a": "공급망·물류", "s": "Utvecklad järnväg för godstrafik — 가상 연결 화물 철도 개발", "r": ["R&amp;D 투자, 인프라 투자로 화물운송 효율화를 위한 가상 연결(virtuellt uppkopplad) 철도 개발."]}, {"c": "se", "t": "수송·교통", "a": "교통·수송", "s": "Attraktiv kollektivtrafik — 매력적 대중교통: 요금 상한·정시성·결제 일원화", "r": ["요금 상한 보장(högkostnadsskydd), 정시성 인센티브, 예약·결제 시스템 일원화."]}, {"c": "se", "t": "수송·교통", "a": "교통·수송", "s": "EU-gemensam höghastighetståg — EU 공동 고속철도 투자", "r": ["EU 회원국 공동의 고속철도 인프라 투자 확대로 항공 대안 강화."]}, {"c": "se", "t": "수송·교통", "a": "교통·수송", "s": "En kollektivtrafik för alla — 모두를 위한 대중교통 (6개 조치, 최다)", "r": ["대중교통의 보편적 접근성 보장. 국가 일원 조달·유지보수, 요금 상한 보장, 노인·청년 무료, 수상 교통 향후 조사, 직장 교통복지 장려, 대도시 다자·화석연료 차량 증세(#4.5, 56%), 교통수당 차등화. '올바른 선택은 쉽게, 잘못된 선택은 비용이 들도록' 원칙 반영."]}, {"c": "se", "t": "수송·교통", "a": "교통·수송", "s": "Ett enat kollektivtrafiknav — 스웨덴 전국 대중교통 통합 요금제", "r": ["전국 단일 통합 요금제, 기업-지자체 연계 통근 보조, 농촌 수요 맞춤형 대중교통."]}, {"c": "se", "t": "수송·교통", "a": "교통·수송", "s": "Främja samåkningsplattformer — 카풀 플랫폼 장려·차량 순환 개선", "r": ["스웨덴이 자체 카풀 플랫폼 구축에 실패한 원인 분석, 차량 수명주기 분석·개선, 차량 순환 경제(kretslopp) 강화."]}, {"c": "se", "t": "수송·교통", "a": "교통·수송", "s": "Förenkla samåkning — 카풀 간소화·차량 효율 이용", "r": ["카풀과 카셰어 활용을 간소화하여 기존 차량을 더 효율적으로 이용. 국가 차원의 카풀·카셰어 플랫폼 구축, 단체 카풀에 대한 인센티브 매력 강화."]}, {"c": "se", "t": "수송·교통", "a": "교통·수송", "s": "Förstatliga tågtrafiken — 철도 국유화·확대", "r": ["철도 국유화 가능성에 대한 국가 조사, 고속철·신규 인프라 투자 재개."]}, {"c": "se", "t": "수송·교통", "a": "교통·수송", "s": "Maximera mikromobilitet — 자전거·전기자전거 중심 마이크로모빌리티 극대화", "r": ["도·농촌 자전거 인프라 확충, 배터리 교환소, 스웨덴 기후에 맞춤화된 전기자전거 보급. 보행·자전거 중심 도시 환경 설계."]}, {"c": "se", "t": "수송·교통", "a": "교통·수송", "s": "친환경 등급 차량 전환 가속화", "r": ["친환경(miljöklassade)·적응형 차량으로의 전환 가속화. 도심 공해 구역(miljözoner) 확대, 중형 화물 충전 인프라 보조금, 비친환경 외국 화물차 과세."]}, {"c": "se", "t": "수송·교통", "a": "교통·수송", "s": "Strävan efter elbilar — 지속가능 전기차 전환 추구", "r": ["신차·중고차 전기차 재보조, 대형차량 배출 수수료/세금 활용, 친환경 행동 인센티브, 폐차 장려금."]}, {"c": "se", "t": "수송·교통", "a": "교통·수송", "s": "Tillförlitlig och jämlik kollektivtrafik — 신뢰할 수 있고 평등한 대중교통 투자", "r": ["의회가 철도 용량·인프라 전략적 투자 우선, 2035년부터 신규 버스의 화석연료 동력 불가. 도농 간 이동 격차 해소."]}, {"c": "se", "t": "수송·교통", "a": "교통·수송", "s": "`", "r": ["강력한 누진 항공세 부과로 항공 → 철도 전환 유도. 세수를 철도 요금·인프라에 직접 보조. EU 차원의 항공세 조화 추진."]}, {"c": "se", "t": "수송·교통", "a": "항공", "s": "Förnuftig flygskatt — 합리적 항공세: 친환경 대안·경제 안정성", "r": ["연차·단계적 항공세 인상, 세수를 친환경 항공연료(SAF) 개발에 투자, 자발적 친환경 여행 장려. 경제 안정성을 유지하면서 친환경 항공 대안 장려."]}, {"c": "es", "t": "거버넌스·제도", "a": "노동", "s": "EU 배출권 거래제 개선 정부 역할 강화", "r": ["EU 배출권 거래제 개선을 위한 스페인 정부의 역할을 강화한다."]}, {"c": "es", "t": "거버넌스·제도", "a": "노동", "s": "기후변화 기술 이전 유럽·국제 협력", "r": ["기후변화 기술 이전을 위한 유럽·국제 협력을 강화하고 기술 에라스무스 장학금을 도입한다."]}, {"c": "es", "t": "거버넌스·제도", "a": "노동", "s": "수입 제품 동일 환경 기준 적용(탄소 국경 조정)", "r": ["수입 제품에 동일한 환경 기준을 적용하도록 요구하며 탄소 국경 조정 메커니즘을 지지한다."]}, {"c": "es", "t": "거버넌스·제도", "a": "소비", "s": "전자기파 발생 통신망 연구·통제", "r": ["전자기파 발생 통신망의 사용·확산에 대한 연구를 실시하고 적절한 통제 기준을 마련한다."]}, {"c": "es", "t": "거버넌스·제도", "a": "커뮤니티·보건·돌봄", "s": "범여야 기후 국가협약 체결", "r": ["기후 행동과 에너지 전환을 위한 범여야 국가협약을 체결하여 정권 교체와 무관한 안정적 기후 정책을 보장한다."]}, {"c": "es", "t": "건물·주거", "a": "생태계", "s": "건물 내 물 분리 처리·재이용 시스템 의무 설치", "r": ["건물 내 빗물을 포함한 물 분리 처리·재이용 시스템 설치를 의무화한다."]}, {"c": "es", "t": "건물·주거", "a": "생태계", "s": "신규 도시화 억제·빈집 재활용·주택 투기 방지", "r": ["신규 도시화를 억제하고 빈집·방치 필지를 재활용하며 주택 투기를 방지한다."]}, {"c": "es", "t": "건물·주거", "a": "소비", "s": "건물 내 빗물·회색수 재활용", "r": ["건물 내 빗물 및 회색수(생활하수) 재활용을 의무화한다."]}, {"c": "es", "t": "건물·주거", "a": "소비", "s": "공공 건물 지속가능 건축 모범 사례", "r": ["공공 건물을 지속가능 건축의 모범 사례로 전환하여 민간 부문을 선도한다."]}, {"c": "es", "t": "건물·주거", "a": "소비", "s": "주거 리모델링 원스톱 창구", "r": ["주거 리모델링 지원을 위해 지역·국가 단위의 원스톱 행정 창구를 설치한다."]}, {"c": "es", "t": "건물·주거", "a": "소비", "s": "주거 에너지 효율 리모델링 장벽 제거", "r": ["주거용 건물의 에너지 효율 개선(리모델링)을 가로막는 행정·재정 장벽을 제거한다."]}, {"c": "es", "t": "건물·주거", "a": "소비", "s": "지속가능 건축 재료·관행", "r": ["건물 건축·개보수 시 지속가능한 재료와 친환경 관행 사용을 촉진한다."]}, {"c": "es", "t": "건물·주거", "a": "커뮤니티·보건·돌봄", "s": "농촌 방치 주택·토지·인프라 재활성화", "r": ["농촌의 방치된 주택·토지·인프라를 재활성화하는 메커니즘을 구축한다."]}, {"c": "es", "t": "건물·주거", "a": "커뮤니티·보건·돌봄", "s": "모든 지역·주거지에서 사회 주택 임대 보장", "r": ["모든 지역과 주거지에서 사회 주택 임대를 보장한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "노동", "s": "기업-대학 협력 R&amp;D·중소기업 참여", "r": ["기업-대학 간 협력 R&amp;D를 장려하고 중소기업 및 자영업자의 참여를 확대한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "노동", "s": "기후 관련 교육 옵션 접근성·홍보 강화", "r": ["기후 관련 교육 옵션의 접근성을 높이고 적극적으로 홍보한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "노동", "s": "사회적 경제·협동조합 활성화", "r": ["사회적 경제·협동조합(특히 농수산업)을 활성화한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "생태계", "s": "공공·민간 모범 환경 사례 확산", "r": ["식당, 숙박업소, 나무 입양 등 공공·민간의 모범 환경 사례를 확산한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "생태계", "s": "국가 환경 자원봉사 계획 수립", "r": ["국가 환경 자원봉사 계획을 수립하여 시민 참여를 촉진한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "생태계", "s": "기후 적응 지원금·보조금 정보 접근성 제고", "r": ["기후 적응 지원금 및 보조금 정보에 대한 접근성을 앱·웹을 통해 제고한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "생태계", "s": "의무 교육과정 기후변화 교과목 도입", "r": ["의무 교육과정에 기후변화 교과목을 도입한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "생태계", "s": "판사·사법 인력 기후변화·환경 법제 전문 교육", "r": ["판사 및 사법 인력에게 기후변화·환경 법제에 관한 전문 교육을 실시한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "생태계", "s": "환경 보전 활동 수형자 사회봉사 선택 항목", "r": ["환경 보전 활동을 수형자 사회봉사의 선택 항목으로 포함한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "소비", "s": "관광객 생태·문화 교육 및 위반 제재", "r": ["관광객에게 생태·문화 교육을 강화하고 환경 규정 위반에 대한 제재를 도입한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "소비", "s": "소비재 기후 영향 의무 라벨링", "r": ["소비재의 기후 영향을 명확히 표시하는 의무 라벨링 제도를 도입한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "소비", "s": "정식 교육과정 지속가능 소비 역량·교사 연수", "r": ["정식 교육과정에 지속가능 소비 역량을 통합하고, 교사에게 관련 의무 연수를 실시한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "소비", "s": "탈성장 홍보·친소비 광고 규제", "r": ["탈성장 개념을 홍보하고 과도한 소비를 조장하는 광고를 규제한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "커뮤니티·보건·돌봄", "s": "기후 관련 시민의회 및 참여·조정 공간 신설", "r": ["기후 관련 시민의회 및 시민 참여·조정 공간을 신설한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "커뮤니티·보건·돌봄", "s": "기후 위험 및 극단 현상 대응 역량 교육", "r": ["기술 인력, 공공서비스 종사자, 지역사회·시민에게 기후 위험 및 극단적 기후 현상 대응 역량 교육을 실시한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "커뮤니티·보건·돌봄", "s": "모든 교육 과정 기후변화 교육 강화", "r": ["모든 교육 과정에 기후변화 교육을 강화하고 학교 텃밭 조성 및 환경 코디네이터를 배치한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "커뮤니티·보건·돌봄", "s": "미디어의 기후 영향·취약계층 중심 보도", "r": ["미디어가 기후 영향 및 대책을 취약계층 중심으로 적극 보도하도록 한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "커뮤니티·보건·돌봄", "s": "보건 전문가의 기후 협상·의사결정 참여", "r": ["보건 전문가의 기후 협상 및 의사결정 참여를 확대한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "커뮤니티·보건·돌봄", "s": "사회 전체 기후 교육·인식 제고 참여", "r": ["사회 전체가 기후 교육 및 인식 제고 활동에 참여하도록 독려한다."]}, {"c": "es", "t": "교육·정보·참여", "a": "커뮤니티·보건·돌봄", "s": "의존 상태 시민·돌봄인 기후 위험 교육·정보", "r": ["의존 상태 시민과 돌봄인에게 기후 위험 대응 교육 및 정보를 제공한다."]}, {"c": "es", "t": "금융·재정", "a": "노동", "s": "기업·대학·행정·이해관계자 협력 생태계 자금 지원", "r": ["기업·대학·행정·이해관계자 간 협력 생태계 구축을 위한 자금을 지원한다."]}, {"c": "es", "t": "금융·재정", "a": "노동", "s": "지역 기술 격차 해소 균형 공공 R&amp;D 투자", "r": ["지역 기술 격차 해소를 위해 자치주별로 균형 있는 공공 R&amp;D 투자를 실시한다."]}, {"c": "es", "t": "금융·재정", "a": "노동", "s": "지역 생산·소비 보호 시장 가격 규제", "r": ["지역 생산·소비를 보호하기 위한 시장 가격 규제를 도입한다."]}, {"c": "es", "t": "기후적응·재난대응", "a": "노동", "s": "극단적 기후 현상 시 근무 시간 조정", "r": ["극단적 기후 현상(혹서 등) 발생 시 임금 보전을 전제로 근무 시간을 조정할 수 있도록 한다."]}, {"c": "es", "t": "기후적응·재난대응", "a": "노동", "s": "기존 사업장·인프라 기후 적응 조치 지원", "r": ["기존 사업장 및 인프라에 기후 적응 조치 이행을 지원한다."]}, {"c": "es", "t": "기후적응·재난대응", "a": "노동", "s": "기후변화 건강 영향 산업안전보건 위험 평가 포함", "r": ["기후변화의 건강 영향을 산업안전보건 위험 평가에 포함한다."]}, {"c": "es", "t": "기후적응·재난대응", "a": "생태계", "s": "폭우·우수 관리 도시계획 통합", "r": ["폭우 및 우수 관리를 도시계획에 통합한다."]}, {"c": "es", "t": "기후적응·재난대응", "a": "커뮤니티·보건·돌봄", "s": "기후 위험 대응 연대·협력 네트워크 형성", "r": ["기후 위험 대응을 위한 연대·협력 네트워크 형성을 촉진한다."]}, {"c": "es", "t": "기후적응·재난대응", "a": "커뮤니티·보건·돌봄", "s": "기후 위험 예방·극복 인프라·메커니즘 개선", "r": ["기후 위험 예방·극복을 위한 인프라와 메커니즘을 개선하고 위험 지도 작성 및 건축 금지 구역을 설정한다."]}, {"c": "es", "t": "기후적응·재난대응", "a": "커뮤니티·보건·돌봄", "s": "기후변화 건강 위험 대응 공공보건 역량 강화", "r": ["기후변화의 건강 위험에 대응하기 위해 공공보건 시스템의 역량을 강화한다."]}, {"c": "es", "t": "기후정의·정의로운 전환", "a": "노동", "s": "단체협약에 기후·전환 정의 조항 포함", "r": ["부문별·기업별 단체협약에 기후·전환 정의 조항을 포함하도록 한다."]}, {"c": "es", "t": "기후정의·정의로운 전환", "a": "커뮤니티·보건·돌봄", "s": "과도한 도시화·오염 활동으로부터 농촌 보호", "r": ["과도한 도시화 및 오염 유발 산업 활동으로부터 농촌 지역을 보호하는 규제를 강화한다."]}, {"c": "es", "t": "기후정의·정의로운 전환", "a": "커뮤니티·보건·돌봄", "s": "기후 이주와 농촌 인구 공동화 연계 재정착 전략", "r": ["기후 이주와 국내 농촌 인구 공동화(España Vaciada)를 연계하여 재정착 전략을 수립한다."]}, {"c": "es", "t": "기후정의·정의로운 전환", "a": "커뮤니티·보건·돌봄", "s": "기후 정책 사회적 평등 고려 의무화", "r": ["기후 정책 수립 및 이행 시 사회적 평등을 고려하도록 의무화한다."]}, {"c": "es", "t": "기후정의·정의로운 전환", "a": "커뮤니티·보건·돌봄", "s": "기후변화로 증가하는 돌봄 수요 대응", "r": ["기후변화로 증가하는 돌봄 수요에 대응하는 사회 보호 및 보육 지원을 강화한다."]}, {"c": "es", "t": "기후정의·정의로운 전환", "a": "커뮤니티·보건·돌봄", "s": "농촌 지역 공공서비스 강화", "r": ["농촌 지역의 교통, 통신, 의료, 교육, 인터넷 등 공공서비스를 강화한다."]}, {"c": "es", "t": "기후정의·정의로운 전환", "a": "커뮤니티·보건·돌봄", "s": "지중해 기후 이주 유럽 차원 조정 체계", "r": ["지중해 지역 기후 이주 대응을 위한 유럽 차원의 조정 체계를 구축한다."]}, {"c": "es", "t": "기후정의·정의로운 전환", "a": "커뮤니티·보건·돌봄", "s": "취약 계층 주거 기후 적응 공공 지원", "r": ["기후변화에 대비하기 위한 취약 계층 주거에 공공 지원을 제공한다."]}, {"c": "es", "t": "기후정의·정의로운 전환", "a": "커뮤니티·보건·돌봄", "s": "취약·의존 계층 돌봄 국가 계획 수립", "r": ["기후변화 영향에 대응하는 취약·의존 계층 돌봄 국가 계획을 수립한다."]}, {"c": "es", "t": "산림·토지이용", "a": "노동", "s": "산림 탄소 흡수 프로젝트 인센티브", "r": ["산림 탄소 흡수 프로젝트에 인센티브를 제공하고 토지 소유자를 지원한다."]}, {"c": "es", "t": "산림·토지이용", "a": "생태계", "s": "지속가능 산림 관리·사회 참여 통한 산불 예방", "r": ["지속가능한 산림 관리와 사회 참여를 통한 산불 예방에 투자한다."]}, {"c": "es", "t": "산림·토지이용", "a": "식품과 토지이용", "s": "산림농업 관리·복원·방목 통한 산불 예방", "r": ["산림농업 관리·복원 관행을 촉진하고 방목을 통한 산불 예방 등을 지원한다."]}, {"c": "es", "t": "산업·노동·녹색일자리", "a": "노동", "s": "관광 부문 탄소 중립 규제 및 적응 지원", "r": ["관광 부문의 탄소 중립을 위한 규제를 도입하고 기업 적응을 지원한다."]}, {"c": "es", "t": "산업·노동·녹색일자리", "a": "노동", "s": "기업 내 기후 완화·적응 현황 연간 조사", "r": ["기업 내 기후 완화·적응 현황을 연간 조사하여 공개한다."]}, {"c": "es", "t": "산업·노동·녹색일자리", "a": "노동", "s": "기업 내 기후·환경 노사 공동위원회 설치", "r": ["기업 내에 기후·환경 관련 노사 공동위원회를 설치한다."]}, {"c": "es", "t": "산업·노동·녹색일자리", "a": "노동", "s": "기업 에너지 절약·효율 계획 의무 수립", "r": ["기업 에너지 절약 및 효율 계획 개발을 위한 정책을 수립하여 의무화한다."]}, {"c": "es", "t": "산업·노동·녹색일자리", "a": "노동", "s": "기업 탈탄소화 전환 R&amp;D+i 정책 강화", "r": ["기업의 탈탄소화 전환을 위한 연구개발혁신(R&amp;D+i) 정책을 강화한다."]}, {"c": "es", "t": "산업·노동·녹색일자리", "a": "노동", "s": "기업 환경 영향 파악 빅데이터 활용", "r": ["기업 환경 영향 파악을 위한 빅데이터를 활용한다."]}, {"c": "es", "t": "산업·노동·녹색일자리", "a": "노동", "s": "기업·공공기관 디지털화 촉진", "r": ["기업 및 공공기관의 디지털화를 촉진하되 지속가능 자재 사용과 디지털 격차 해소를 병행한다."]}, {"c": "es", "t": "산업·노동·녹색일자리", "a": "노동", "s": "기후 적응형 산업 전환 인센티브", "r": ["기후 적응형 산업 전환을 위한 인센티브를 제공하되 전환 정의를 주의한다."]}, {"c": "es", "t": "산업·노동·녹색일자리", "a": "노동", "s": "대기업 온실가스 배출 관리 공시 의무 강화", "r": ["대기업의 온실가스 배출 관리 공시 의무를 강화한다."]}, {"c": "es", "t": "산업·노동·녹색일자리", "a": "노동", "s": "사업장 재생에너지 설비·지속가능 교통 금융 지원", "r": ["사업장의 재생에너지 설비 설치 및 지속가능 교통 수단 도입에 금융 지원을 제공한다."]}, {"c": "es", "t": "산업·노동·녹색일자리", "a": "노동", "s": "생태계 복원·산림 복구 일자리 창출", "r": ["생태계 복원·산림 복구 분야의 일자리를 창출하고 구 광산 지역 노동자를 재배치한다."]}, {"c": "es", "t": "산업·노동·녹색일자리", "a": "노동", "s": "순환경제 및 온실가스 감축 경제 활동 지원", "r": ["순환경제 및 온실가스 감축 관련 경제 활동을 지원한다."]}, {"c": "es", "t": "산업·노동·녹색일자리", "a": "노동", "s": "전통·신규 기후 관련 직종 역량 훈련", "r": ["전통 및 신규 기후 관련 직종의 역량 훈련을 강화한다."]}, {"c": "es", "t": "산업·노동·녹색일자리", "a": "노동", "s": "전환 직종 재훈련 계속교육·직업 훈련 강화", "r": ["전환 직종 재훈련 지원을 위한 계속교육 및 직업 훈련을 강화한다."]}, {"c": "es", "t": "산업·노동·녹색일자리", "a": "노동", "s": "주 4일 또는 30/32시간 근무 단축 탐색", "r": ["주 4일 또는 30·32시간 근무 단축을 탐색하여 탄소 발자국을 줄인다."]}, {"c": "es", "t": "산업·노동·녹색일자리", "a": "노동", "s": "탈탄소화를 위한 공기업 전략적 역할 강화", "r": ["탈탄소화 보장을 위해 공기업의 전략적 역할을 강화한다."]}, {"c": "es", "t": "산업·노동·녹색일자리", "a": "노동", "s": "환경 영향 큰 기업 환경감사 의무·중소기업 지원", "r": ["환경 영향이 큰 기업에 환경감사를 의무화하고 중소기업에는 지원을 제공한다."]}, {"c": "es", "t": "산업·노동·녹색일자리", "a": "소비", "s": "순환경제 신직종 직업 훈련", "r": ["순환경제 관련 신직종에 대한 직업 훈련을 강화한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "노동", "s": "순환경제·내구성 향상 R&amp;D+i", "r": ["순환경제 및 제품 내구성 향상을 위한 연구개발혁신(R&amp;D+i)을 촉진한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "노동", "s": "지속가능 제품 유통 세제 인센티브", "r": ["지속가능 제품 유통에 세제 인센티브를 부여한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "생태계", "s": "비생분해 제품 판매 금지 일정 설정", "r": ["비생분해 제품 판매 금지 일정과 기한을 설정한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "생태계", "s": "수돗물 음용 수질 확보·플라스틱 병물 과세", "r": ["수돗물 음용 수질을 확보하고 필터 지원을 제공하며 플라스틱 병물에 과세한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "소비", "s": "가정 폐기물 실질적 재활용 자원 투입", "r": ["농촌 지역을 포함한 모든 가정 폐기물의 실질적 재활용을 위한 자원을 충분히 투입한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "소비", "s": "계획적 진부화 방지 법제 강화", "r": ["계획적 진부화(제조사 의도적 내구성 제한)를 방지하는 법제도를 강화한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "소비", "s": "관광지 생태 발자국 연구·목적지 다양화", "r": ["관광지의 생태 발자국을 연구하고 목적지 다양화를 지원하는 전담 기관을 창설한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "소비", "s": "기업 재활용 소재 사용·재사용 가능 제품 생산 의무", "r": ["기업에 재활용 소재 사용 및 재사용 가능한 제품 생산을 의무화한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "소비", "s": "기후 악영향 소비 장려 정책 폐지", "r": ["기후에 악영향을 미치는 소비를 장려하는 정책을 폐지하거나 친환경 대안으로 대체한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "소비", "s": "도시 폐기물 공공 관리 모델 전환", "r": ["도시 폐기물 관리를 공공 관리 모델로 전환한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "소비", "s": "생태 발자국 기반 관광업소 인증", "r": ["관광업소에 생태 발자국 기반 공식 인증 제도를 도입하여 친환경 관광을 촉진한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "소비", "s": "소비 없이 이용 가능한 공공 여가·문화 공간", "r": ["소비를 전제하지 않고 이용할 수 있는 공공 여가·문화 공간을 설치한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "소비", "s": "시간 은행(시간 기반 서비스 교환)", "r": ["시간 기반 서비스 교환 시스템인 '시간 은행(banco de tiempo)'을 설립하여 비화폐적 교환 경제를 촉진한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "소비", "s": "재사용·재활용 혁신 기업 금융 지원", "r": ["재사용·재활용 혁신을 추진하는 기업, 특히 중소기업에 금융 지원을 제공한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "소비", "s": "전자 폐기물 엄격 규제·책임 관리", "r": ["배터리 등 전자 폐기물에 대한 엄격한 규제와 책임 있는 관리 체계를 마련한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "소비", "s": "제품 수명 연장 정보·접근성 제공", "r": ["소비자에게 제품 수명 연장 정보와 관련 자원의 가시화·접근성을 제공한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "소비", "s": "지속가능 여가·생활 방식 문화유산 인정", "r": ["지속가능한 여가·생활 방식을 문화유산으로 공식 인정하고 보호한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "소비", "s": "지역·근거리 생산 및 소비 촉진", "r": ["킬로미터 0 시장, 지역 화폐, 공공 구매 기준 등을 통해 지역·근거리 생산 및 소비를 촉진하는 정책을 추진한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "소비", "s": "지역사회 수리 센터 설치", "r": ["제품 수명 연장을 위해 지역사회 수리 센터를 설치한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "소비", "s": "지자체 폐기물 관리 투명성·시민 참여", "r": ["지자체 폐기물 관리의 투명성을 강화하고 시민 참여를 확대한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "소비", "s": "포장재 분리수거 인센티브·보증금 제도", "r": ["포장재 폐기물 분리수거 정보를 제공하고 유리병 보증금 제도 등 경제적 인센티브를 도입한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "소비", "s": "포장재 폐기물 감축·일회용 플라스틱 금지", "r": ["포장재 없는 판매를 장려하고 일회용 플라스틱을 금지하는 포장재 폐기물 감축 패키지를 도입한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "소비", "s": "플라스틱 대체 소재 연구 촉진", "r": ["경제적으로 실현 가능한 플라스틱 대체 소재 연구를 촉진한다."]}, {"c": "es", "t": "소비·폐기물·순환경제", "a": "식품과 토지이용", "s": "식품 시스템 환경 피해 예방·오염자 부담 원칙", "r": ["식품 시스템의 환경 피해를 예방하는 정책을 수립하고 오염자 부담 원칙을 적용한다."]}, {"c": "es", "t": "수송·교통", "a": "노동", "s": "무배출 이동수단 전환·친환경 에너지 사용", "r": ["무배출 이동수단으로의 전환 및 친환경 에너지 사용을 촉진한다."]}, {"c": "es", "t": "수송·교통", "a": "노동", "s": "사업장 간 지속가능 공동 교통 촉진", "r": ["사업장 간 지속가능 공동 교통 수단을 촉진한다."]}, {"c": "es", "t": "수송·교통", "a": "노동", "s": "사업장 지속가능 대중교통 이용 촉진", "r": ["사업장으로의 통근에 지속가능 대중교통 이용을 촉진한다."]}, {"c": "es", "t": "수송·교통", "a": "노동", "s": "재택근무 촉진", "r": ["통근 감소를 위해 재택근무를 촉진한다."]}, {"c": "es", "t": "수송·교통", "a": "생태계", "s": "도심 보행자 구역 확대·지속가능 교통 연계", "r": ["도심 보행자 구역을 확대하고 지속가능 교통과 연계한다."]}, {"c": "es", "t": "수송·교통", "a": "소비", "s": "근·단거리 물류 저탄소 분배 시스템", "r": ["도심 배송 거점과 전기 차량을 활용한 근·단거리 저탄소 물류 분배 시스템을 도입한다."]}, {"c": "es", "t": "수송·교통", "a": "소비", "s": "장거리 화물 선박·철도 전환 및 전기화", "r": ["장거리 화물 수송을 선박·철도로 전환하고 전기화를 추진한다."]}, {"c": "es", "t": "수송·교통", "a": "커뮤니티·보건·돌봄", "s": "기후 이주·국내 이동 전환 정의 계획", "r": ["기후 이주 및 국내 이동에 따른 사회문화적 필요를 포괄하는 전환 정의 계획을 수립한다."]}, {"c": "es", "t": "수송·교통", "a": "커뮤니티·보건·돌봄", "s": "대체 교통수단 있는 노선 국내선 항공 최소화", "r": ["대체 지상 교통수단이 있는 노선의 국내선 항공 운항을 최소화한다."]}, {"c": "es", "t": "수송·교통", "a": "커뮤니티·보건·돌봄", "s": "도시·농촌 대중교통 강화", "r": ["도시 및 농촌 대중교통을 강화하고 통합 승차권 도입과 무료화 검토, 친환경 차량 도입을 추진한다."]}, {"c": "es", "t": "수송·교통", "a": "커뮤니티·보건·돌봄", "s": "도시·지자체 간 자전거 전용도로 조성", "r": ["도시 내 및 지자체 간 안전한 자전거 전용도로를 조성한다."]}, {"c": "es", "t": "수송·교통", "a": "커뮤니티·보건·돌봄", "s": "저공해 차량 구입 지원·기존 차량 재생에너지 전환", "r": ["저공해 차량 구입을 지원하고 기존 연소 차량의 재생에너지 전환을 돕는다."]}, {"c": "es", "t": "수송·교통", "a": "커뮤니티·보건·돌봄", "s": "차량 공유 플랫폼·협동조합 촉진", "r": ["차량 공유 플랫폼 및 협동조합 방식의 공유 이동 수단을 촉진한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "GMO 사용·생산·수입 단계적 철폐", "r": ["식품 사슬 내 GMO 사용, 생산, 수입을 단계적으로 철폐한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "건강한 식품 광고 촉진·허위·비건강 식품 광고 규제", "r": ["건강한 식품 광고를 촉진하고 허위 정보나 비건강 식품 광고를 규제한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "공공 구매 친환경·지속가능 식품 기준 의무 적용", "r": ["공공 기관 구매에 친환경·지속가능 식품 기준을 의무적으로 적용한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "근거리 농식품 공동 생산·가공 시설 지원", "r": ["근거리 농식품 공동 생산·가공 시설을 지원하여 지역 식품 경제를 강화한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "농생태학적 전환·전통 품종·GMO 제한", "r": ["생태계에 적합한 작물로의 농생태학적 전환을 추진하고 전통 품종을 보존하며 GMO 사용을 제한한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "농업용수 효율 관리 공공 규제·불법 우물 단속", "r": ["농업용수의 효율적 관리를 위한 공공 규제를 강화하고 불법 우물을 단속한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "농업인 지속가능 생산 기술 전문 교육", "r": ["농업인을 대상으로 지속가능 생산 기술에 관한 전문 교육을 실시한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "농축산 폐수 관리 시스템", "r": ["농축산 폐수 관리 시스템 도입을 촉진한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "산업형 축산 제한·생태적 방목 축산 전환", "r": ["산업형 대규모 축산(mega-granjas)을 제한하고 생태적 방목 축산으로의 전환을 지원한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "수공예·근거리·지속가능 어업 촉진", "r": ["수공예적·근거리·제철 지속가능 어업을 촉진하는 정책을 마련한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "식품 낭비 최소화 책임 구매 문화 촉진", "r": ["식품 낭비를 최소화하는 책임 있는 구매 문화를 촉진한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "식품 손실·낭비 방지법 조속 제정·시행", "r": ["식품 손실·낭비 방지를 위한 법률을 조속히 제정하고 시행한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "식품 안전·위생 기관에 지속가능 식품 촉진 역할 부여", "r": ["식품 안전·위생 기관에 지속가능 식품 촉진 역할을 공식적으로 부여한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "식품 유통기한 표기 개선·임박 식품 할인 의무화", "r": ["식품 유통기한 표기 방식을 개선하고 임박 식품의 할인 판매를 의무화한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "양식업 환경 기준 개선 및 지역 소비 연계", "r": ["양식업의 환경 기준을 개선하고 지역 소비와 연계한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "인간 소비·식품 생산 위한 수자원 우선 사용", "r": ["인간 소비 및 식품 생산을 위한 수자원 우선 사용을 규범화한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "잉여 식품 취약계층 배분", "r": ["잉여 식품을 품질 기준과 비밀 보호를 갖추어 취약계층에 배분한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "제철·근거리 식품 정보 제공 및 홍보", "r": ["제철·근거리 식품에 관한 쉽고 명확한 정보를 제공하고 적극 홍보한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "지역 특성에 맞는 작물 재배 전략", "r": ["지역 기후·생태 특성에 맞는 작물 재배 전략을 수립한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "지역사회 퇴비화·바이오가스화", "r": ["지역사회 퇴비화를 촉진하고 농축산 잔류물을 바이오가스로 전환한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "지자체 식품 위원회 설립", "r": ["공공·민간·시민이 참여하는 플랫폼으로서 지자체 식품 위원회를 설립한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "지중해 식단 회귀 촉진", "r": ["동물성 단백질 균형과 WHO 기준을 반영한 지중해 식단으로의 회귀를 촉진한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "직거래 유통 채널 확대 (생태농업 시장·협동조합)", "r": ["생태농업 시장, 협동조합 슈퍼마켓 등 직거래 유통 채널을 확대한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "친환경 농업 세제 인센티브·불량 관행 과세", "r": ["친환경 농업에 세제 인센티브를 제공하고 환경 불량 농업 관행에 과세하며 생태농업 인증을 확대한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "친환경·근거리·무농약 식품 접근성 개선", "r": ["친환경·근거리·무농약 식품에 대한 접근성을 개선한다."]}, {"c": "es", "t": "식품·농축산", "a": "식품과 토지이용", "s": "화학 비료 감소·유기 비료 촉진", "r": ["화학 비료 사용을 감소시키고 유기 비료 사용을 촉진한다."]}, {"c": "es", "t": "에너지·전력", "a": "노동", "s": "기업 자가 발전 잉여 재생에너지 계통 공급 인센티브", "r": ["기업의 자가 발전 잉여 재생에너지를 계통에 공급할 수 있는 인센티브를 마련한다."]}, {"c": "es", "t": "에너지·전력", "a": "노동", "s": "디지털 기술 에너지 절약·효율 향상", "r": ["디지털 기술을 활용하여 에너지 절약 및 효율을 향상시킨다."]}, {"c": "es", "t": "에너지·전력", "a": "노동", "s": "사업장 재생에너지 자급·의무 계획", "r": ["사업장의 재생에너지 자급을 촉진하고 재생에너지 의무 계획 도입을 추진한다."]}, {"c": "es", "t": "에너지·전력", "a": "노동", "s": "신규 사업장 기후 안전 기준·재생에너지 의무", "r": ["신규 사업장 건물에 기후 안전 기준 및 재생에너지 도입을 의무화한다."]}, {"c": "es", "t": "에너지·전력", "a": "노동", "s": "지속가능 에너지 R&amp;D+i 공공 투자 확대", "r": ["지속가능 에너지 연구개발혁신(R&amp;D+i)에 대한 공공 투자를 확대한다."]}, {"c": "es", "t": "에너지·전력", "a": "소비", "s": "에너지 공동체 확대", "r": ["지자체 내 에너지 공동체를 확대하여 지역 단위의 재생에너지 공동 생산·소비를 촉진한다."]}, {"c": "es", "t": "에너지·전력", "a": "소비", "s": "주거 자가 소비 및 잉여 에너지 판매", "r": ["주거용 태양광 등 자가 소비를 촉진하고, 잉여 에너지의 계통 판매를 허용·장려한다."]}, {"c": "es", "t": "에너지·전력", "a": "식품과 토지이용", "s": "공공 통제 에너지 모델 및 공정 가격", "r": ["공공 통제 및 공정 가격 규제를 갖춘 에너지 모델을 도입하여 에너지 빈곤을 방지한다."]}, {"c": "es", "t": "에너지·전력", "a": "식품과 토지이용", "s": "전력 생산업체 재생에너지 의무 비율", "r": ["전력 생산업체에 재생에너지 의무 비율을 법제화한다."]}, {"c": "es", "t": "자연·생태계", "a": "노동", "s": "채굴·광산 활동 환경 영향 단계적 감소", "r": ["채굴·광산 활동의 환경 영향을 단계적으로 감소시킨다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "국가 전략 생태계 복원 계획 승인", "r": ["명확한 목표·자원·일정을 갖춘 국가 전략 생태계 복원 계획을 승인한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "기존 인프라 생태 투수성 확보", "r": ["도로·댐·도시 등 기존 인프라의 생태 투수성을 확보하여 생태 연결성을 보장한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "기후 취약 동식물 유전자 은행 구축", "r": ["기후변화에 취약한 동식물 종을 보전하는 유전자 은행을 구축한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "기후변화 관련 외래 침입종 조기 경보·통제 계획", "r": ["기후변화로 유입·확산되는 외래 침입종에 대한 조기 경보 및 통제 계획을 수립한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "기후변화 취약 생태계 우선 보호구역·생태 회랑", "r": ["기후변화에 취약한 생태계를 우선 보호구역으로 지정하고 생태 회랑을 마련한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "담수 오염 감소·하천·습지·대수층 보호", "r": ["독성 방류 및 질산염 등 담수 오염을 감소시키고 하천·습지·대수층을 보호한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "담수화 설비 규제 강화", "r": ["담수화 설비(desaladoras)에 대한 탄소 발자국 및 방류 기준 규제를 강화한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "대기 오염 저감·도시 대기질 모니터링 강화", "r": ["대기 오염을 저감하고 도시 대기질 모니터링을 강화한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "모든 분야 지속가능 물 소비", "r": ["모든 분야에서 생태계 영향 평가와 재활용을 포함한 지속가능 물 소비를 실천한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "물 부족 지역 고수요 시설 신설 제한", "r": ["물 부족 지역에서 골프장 등 고수요 시설의 신설을 제한한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "산림 복원·생태계 재생 전문 여단 창설", "r": ["기후변화 전문 산림 복원·생태계 재생 전문 여단을 창설한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "생물다양성 고가치 지역 재생에너지 설비 배제 법적 구속", "r": ["생물다양성 고가치 지역에서 재생에너지 설비를 배제하기 위한 법적 구속력 있는 구역을 설정한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "생태계 피해 복구 의무화 법 집행 실효성 확보", "r": ["생태계 피해 복구 의무화 법 집행의 실효성을 확보하기 위해 충분한 행정 자원을 배정한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "생태학살 형사 범죄 법제화", "r": ["대규모 생태계 파괴(생태학살, ecocidio)를 스페인 법제에서 형사 범죄로 법제화한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "소음·광공해 감소 및 법 준수 강화", "r": ["소음 및 광공해를 감소시키고 관련 법령 준수를 강화한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "음용수 공급 공공·지역사회 관리", "r": ["음용수 공급을 공공·지역사회 관리로 전환하여 사기업의 영리 추구를 배제한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "음용수 공급 공공기업 지속가능 수자원 관리 R&amp;D 의무화", "r": ["음용수 공급 공공기업에 지속가능 수자원 관리 연구개발(R&amp;D)을 의무화한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "음용수 충분한 수량·수질 보장", "r": ["음용수의 충분한 수량 및 수질을 보장한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "재생에너지 설비 환경 영향 평가 독립·엄격 시행", "r": ["재생에너지 설비 환경 영향 평가를 독립 전문가에 의해 엄격하고 투명하게 시행한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "저수지 지속가능 관리·부유 태양광 설치", "r": ["저수지를 지속가능하게 관리하고 생태 유량을 확보하며 부유 태양광 설치를 추진한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "지속가능 건강한 도시 설계·자연 기반 솔루션", "r": ["지속가능하고 건강한 도시 설계를 추진하며 녹지 확대, 자가 소비 등 자연 기반 솔루션을 도입한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "친환경 수영장·물 재사용 촉진", "r": ["천연 정수 방식의 친환경 수영장 및 물 재사용을 촉진한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "토양 오염 감소·오염 토양 정화", "r": ["토양 오염을 감소시키고 오염된 토양의 정화를 촉진한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "하천·수생태계 수질·생태 유량 유지·복원", "r": ["수질 및 생태 유량 보장을 위해 하천·수생태계를 유지·복원한다."]}, {"c": "es", "t": "자연·생태계", "a": "생태계", "s": "해양 오염 감소·블루 카본 보호", "r": ["해양 오염을 감소시키고 Posidonia 등 해초(블루 카본)를 보호한다."]}, {"c": "ie", "t": "거버넌스·제도", "a": "기후변화를 정책결정의 중심에", "s": "국가의 기후 대응 선도적 역할", "r": ["국가는 공공건물 개보수, 저탄소 공공차량 보급, 공공건물 재생에너지 설치 등 완화 조치와 공공토지·인프라 복원력 강화 등 적응 조치를 통해 기후변화 대응에 선도적 역할을 수행한다."]}, {"c": "ie", "t": "거버넌스·제도", "a": "기후변화를 정책결정의 중심에", "s": "독립적 기후 거버넌스 기구 법제화", "r": ["기후변화가 정책결정의 중심에 놓이도록, 새로운 혹은 기존 독립 기구에 법률로 광범위한 기능과 권한을 부여하고 적절히 재원을 지원하여 긴급하게 운영한다. 기능에는 ① 입법 제안에 대한 기후영향 검토 및 공개 의견 표명, ② 국가·부문별 5년 야심 배출 감축 목표 제안 및 정기 검토, ③ 국가의 기후 법적 의무 이행을 위한 법적 절차 추진이 포함된다."]}, {"c": "ie", "t": "건물·주거", "a": "기타", "s": "신규 건물 제로·저탄소 기준 의무화", "r": ["모든 신규 건물은 탄소 발자국이 제로 또는 저탄소여야 하며, 이 기준을 충족하지 않는 신축에는 건축 허가를 부여하지 않는다. 정부는 에너지효율 등급 향상을 위한 주택 개보수 인센티브를 제공한다."]}, {"c": "ie", "t": "교육·정보·참여", "a": "기타", "s": "기후 행동 변화 유도 긍정적 정보 제공", "r": ["기후변화와 관련된 행동 변화를 장려하는 긍정적 정보를 공중에게 제공하는 데 더 많은 노력을 기울인다. 경제·사회·건강·기타 편익을 부각하는 방식으로 모든 연령대를 대상으로 다양한 형식을 활용한다."]}, {"c": "ie", "t": "금융·재정", "a": "기후변화를 정책결정의 중심에", "s": "탄소집약 활동 세금 인상 조건부 수용", "r": ["회원들은 다음 세 가지 조건 하에 탄소 집약적 활동에 대한 세금 인상을 수용한다: [1] 세수는 저탄소·기후 탄력적 전환 조치(태양광 보급, 주택 개보수, 홍수 방어, 전기차 인프라 등)에만 지출, [2] 연료수당 수급 최저소득 40만 가구는 세금 인상 대상 제외, [3] 세금은 매년 점진적으로 인상."]}, {"c": "ie", "t": "기후적응·재난대응", "a": "기후변화를 정책결정의 중심에", "s": "핵심 인프라 취약성 종합 평가", "r": ["국가는 에너지·수송·건조환경·용수·통신을 포함한 모든 핵심 인프라의 취약성을 종합적으로 평가하고 그 결과를 이행한다. 핵심 인프라 붕괴 시 국가가 부담할 비용을 인식하여 인프라 투자를 우선순위화한다."]}, {"c": "ie", "t": "산림·토지이용", "a": "기타", "s": "아일랜드 농업 부문 저배출 생산 모델 전환 지원", "r": ["아일랜드 농업 부문이 낮은 GHG 배출 생산 모델로 전환할 수 있도록 지속적인 지원을 제공한다. 특히 농촌 경제에 미치는 영향에 유의한다."]}, {"c": "ie", "t": "산림·토지이용", "a": "농업 및 토지이용", "s": "토지이용 다양화 — 조림 및 유기농 장려", "r": ["국가는 최선의 환경 관행에 부합하는 조림 지원 및 유기농업 장려에 특히 주의를 기울이면서 토지이용 다양화를 위한 규제 및 지원을 검토·개정한다."]}, {"c": "ie", "t": "소비·폐기물·순환경제", "a": "기타", "s": "포장재·플라스틱 폐기물 감소", "r": ["포장재, 특히 플라스틱 포장재와 그로 인한 폐기물을 줄이는 조치를 취한다. 슈퍼마켓 일회용 플라스틱 근절, 위반 시 페널티, 플라스틱 병 보증금 반환제 도입이 포함된다."]}, {"c": "ie", "t": "소비·폐기물·순환경제", "a": "농업 및 토지이용", "s": "식품 폐기물 의무 측정 및 보고 체계", "r": ["국가는 식품 유통·공급망의 모든 단계에서 식품 폐기물의 표준화된 의무 측정 및 보고 체계를 도입하여 미래의 식품 폐기물을 감소시킨다."]}, {"c": "ie", "t": "수송·교통", "a": "수송", "s": "대중교통:도로 투자 최소 2:1 비율 우선", "r": ["국가는 대중교통 지출 확대를 신규 도로 인프라 지출보다 최소 2:1 비율로 우선한다. 농촌 지역의 대중교통 접근성에 특별히 유의한다."]}, {"c": "ie", "t": "수송·교통", "a": "수송", "s": "버스·자전거 전용차로 및 P+R 대폭 확대", "r": ["향후 5년간 버스 전용차로, 자전거 전용차로, 주차·환승(park and ride) 시설을 대폭 확대하고 이러한 교통수단에 승용차 대비 훨씬 높은 우선순위를 부여한다."]}, {"c": "ie", "t": "수송·교통", "a": "수송", "s": "전기차 전환 즉각적 지원 및 화석연료 차량 억제", "r": ["국가는 즉각적으로 전기차 전환을 지원하는 조치(충전소 전국망 확충, 농촌 구매 인센티브, 자동차세 감면, 통행료 감면 등)를 시행하고, 이후 신규 탄소집약적 차량 구매를 점진적으로 억제하는 조치(휘발유·경유 차량 세금 연간 인상)를 도입한다."]}, {"c": "ie", "t": "식품·농축산", "a": "농업 및 토지이용", "s": "농업 GHG 세금 및 탄소 격리 보상", "r": ["농업 부문의 온실가스 배출에 세금을 부과하고, 탄소를 격리하는 토지 관리를 시행하는 농업인에게 보상을 제공한다. 세수는 기후친화적 농업 관행 지원에 재투자한다."]}, {"c": "ie", "t": "에너지·전력", "a": "에너지", "s": "마이크로발전 전력망 역판매 허용", "r": ["국가는 입법을 통해 민간 시민의 마이크로 발전(태양광 패널, 풍력 터빈 등)으로 생산된 전기를 도매가 이상의 가격으로 전력망에 역판매할 수 있도록 허용한다."]}, {"c": "ie", "t": "에너지·전력", "a": "에너지", "s": "이탄 보조금 5년 단계적 종료", "r": ["이탄 채굴 보조금을 즉시 종료가 아닌 5년에 걸친 단계적 방식으로 종료한다."]}, {"c": "ie", "t": "에너지·전력", "a": "에너지", "s": "재생에너지 프로젝트 공동체 소유 비율 최대화", "r": ["국가는 향후 모든 재생에너지 프로젝트에서 공동체 소유 비율을 최대화한다. 공동체 자체 사업 개발을 장려하고, 민간개발자 주도 프로젝트는 공동체에 주식 청약 기회를 의무적으로 제공한다."]}, {"c": "ie", "t": "자연·생태계", "a": "에너지", "s": "이탄 채굴 보조금 종료 및 습지 복원", "r": ["국가는 이탄(peat) 채굴 보조금을 모두 종료하고 그 재원을 이탄 습지 복원 및 영향받는 노동자 권리 보호에 지출한다."]}, {"c": "uk", "t": "거버넌스·제도", "a": "가정 에너지", "s": "소비자 보호", "r": ["간소화된 소비자 보호 제도를 도입해야 한다."]}, {"c": "uk", "t": "거버넌스·제도", "a": "가정 에너지", "s": "정부 지원(저소득층 포함)", "r": ["저소득층을 포함한 모든 소비자에게 정부 지원을 제공해야 한다."]}, {"c": "uk", "t": "거버넌스·제도", "a": "기본 원칙", "s": "장기 계획", "r": ["장기 계획과 단계적 전환이 필요하다."]}, {"c": "uk", "t": "거버넌스·제도", "a": "기본 원칙", "s": "정부 리더십", "r": ["명확하고 사전적이며 일관된 정부 리더십이 필요하다."]}, {"c": "uk", "t": "거버넌스·제도", "a": "기본 원칙", "s": "지속가능성", "r": ["미래를 위한 해법의 지속가능성을 확보해야 한다."]}, {"c": "uk", "t": "거버넌스·제도", "a": "기본 원칙", "s": "지속가능한 성장", "r": ["혁신을 포함한 지속가능한 성장을 지원해야 한다."]}, {"c": "uk", "t": "거버넌스·제도", "a": "기본 원칙", "s": "지역사회 참여", "r": ["지역사회 참여를 국가적 해법에 내재화해야 한다."]}, {"c": "uk", "t": "거버넌스·제도", "a": "기본 원칙", "s": "통합 접근", "r": ["시스템 전반 및 사회 모든 층위에 걸친 통합 접근이 필요하다."]}, {"c": "uk", "t": "거버넌스·제도", "a": "소비재", "s": "저탄소 기업 우선 정부 조달", "r": ["저탄소 기업을 우선하는 정부 조달 제도를 시행해야 한다."]}, {"c": "uk", "t": "거버넌스·제도", "a": "추가 권고", "s": "국제 기후 공조 강화", "r": ["COVID-19 대응 및 COP26를 활용하여 국제 기후 협력 공조를 강화해야 한다."]}, {"c": "uk", "t": "거버넌스·제도", "a": "추가 권고", "s": "독립 감시 기구 설립", "r": ["탄소중립 진행 상황을 시민 및 독립 전문가를 포함하여 감시하는 독립적·중립적 기구를 설립해야 한다."]}, {"c": "uk", "t": "거버넌스·제도", "a": "추가 권고", "s": "에너지 기업·정부 관계 투명성", "r": ["대형 에너지 기업과 정부 간 관계의 투명성을 강화해야 한다."]}, {"c": "uk", "t": "거버넌스·제도", "a": "추가 권고", "s": "초당적 접근", "r": ["탄소중립 전환은 초당적 과제로 접근해야 하며, 비 당파적 합의가 필요하다."]}, {"c": "uk", "t": "거버넌스·제도", "a": "추가 권고", "s": "회의 결과 후속 조치 보고", "r": ["시민회의 결과에 대한 후속 조치 보고(반영된 것, 반영되지 않은 것, 이유)를 의무적으로 작성해야 한다."]}, {"c": "uk", "t": "건물·주거", "a": "가정 에너지", "s": "VAT 개편", "r": ["에너지 효율·제로탄소 난방 제품에 대한 부가세(VAT)를 개편해야 한다."]}, {"c": "uk", "t": "건물·주거", "a": "가정 에너지", "s": "단열 업그레이드 방식", "r": ["주택 단열 업그레이드는 일괄 방식(all in one go)을 선호하나, 단계적 방식도 비용 지원 조건부로 인정한다."]}, {"c": "uk", "t": "건물·주거", "a": "가정 에너지", "s": "수소 난방", "r": ["수소를 제로탄소 난방 기술 경로에 포함시켜야 한다."]}, {"c": "uk", "t": "건물·주거", "a": "가정 에너지", "s": "신규 가스 보일러 판매 금지", "r": ["2030년 또는 2035년부터 신규 가스 보일러 판매를 금지해야 한다."]}, {"c": "uk", "t": "건물·주거", "a": "가정 에너지", "s": "지역난방 네트워크", "r": ["지역난방 네트워크를 제로탄소 난방 기술 경로에 포함시키고 의무화를 검토해야 한다."]}, {"c": "uk", "t": "건물·주거", "a": "가정 에너지", "s": "지역별 제로탄소 난방 기술", "r": ["지역별로 다른 제로탄소 난방 기술(수소, 히트펌프, 지역난방 등)을 적용해야 한다."]}, {"c": "uk", "t": "건물·주거", "a": "가정 에너지", "s": "지역별 제로탄소 주택 계획", "r": ["지역별 제로탄소 주택 계획을 수립해야 한다."]}, {"c": "uk", "t": "건물·주거", "a": "가정 에너지", "s": "히트펌프", "r": ["히트펌프를 제로탄소 난방 기술 경로에 포함시켜야 한다."]}, {"c": "uk", "t": "교육·정보·참여", "a": "기본 원칙", "s": "긴박성", "r": ["탄소중립 달성을 위한 긴박감을 공유해야 한다."]}, {"c": "uk", "t": "교육·정보·참여", "a": "기본 원칙", "s": "정보·교육", "r": ["탄소중립 전환에 관한 정보와 교육을 모든 시민에게 제공해야 한다."]}, {"c": "uk", "t": "교육·정보·참여", "a": "추가 권고", "s": "미디어 전략", "r": ["시민회의 결과에 대한 강력한 미디어 전략을 수립하여 대중의 인식을 높여야 한다."]}, {"c": "uk", "t": "금융·재정", "a": "소비재", "s": "생산자 세금", "r": ["고탄소 생산자에게 세금을 부과해야 한다."]}, {"c": "uk", "t": "금융·재정", "a": "추가 권고", "s": "탄소중립 가속 인센티브 및 정부 지원 기업 조건", "r": ["탄소중립 가속화를 위한 인센티브를 제공하고, 정부 재정 지원을 받는 기업에 탄소중립 조건을 부과해야 한다."]}, {"c": "uk", "t": "기후정의·정의로운 전환", "a": "기본 원칙", "s": "형평성", "r": ["탄소중립 전환 과정에서 취약계층, 일자리, 지역 등을 포함한 영국 내 형평성을 보장해야 한다."]}, {"c": "uk", "t": "기후정의·정의로운 전환", "a": "추가 권고", "s": "탄소 누출 방지", "r": ["자국의 탄소 배출을 해외로 전가하지 않고 영국 내에서 탄소중립을 달성해야 한다."]}, {"c": "uk", "t": "산림·토지이용", "a": "식품·농업·토지", "s": "산림 탄소 저장 제품 우선 조달", "r": ["산림 등 탄소를 저장하는 제품을 우선 발주하는 공공 조달 절차를 도입해야 한다."]}, {"c": "uk", "t": "산림·토지이용", "a": "식품·농업·토지", "s": "탄소 저장 토지 이용자 보상", "r": ["이탄지 복원, 나무 심기 등 탄소를 흡수·저장하는 토지 이용자(농민 포함)에게 보상금을 지급해야 한다."]}, {"c": "uk", "t": "산림·토지이용", "a": "온실가스 제거", "s": "목재 건축 활용", "r": ["건축에 목재를 활용하여 탄소를 장기 저장해야 한다."]}, {"c": "uk", "t": "산림·토지이용", "a": "온실가스 제거", "s": "산림 확대·관리", "r": ["산림 면적을 확대하고 산림 관리를 개선해야 한다."]}, {"c": "uk", "t": "산림·토지이용", "a": "온실가스 제거", "s": "이탄지·습지 복원", "r": ["이탄지 및 습지를 복원하고 관리해야 한다."]}, {"c": "uk", "t": "산림·토지이용", "a": "온실가스 제거", "s": "토양 탄소 저장 강화", "r": ["토양 내 탄소 저장을 강화해야 한다."]}, {"c": "uk", "t": "산업·노동·녹색일자리", "a": "COVID-19 회복", "s": "경제 회복과 탄소중립 연계", "r": ["경제 회복 패키지가 탄소중립에 기여해야 하며, 고탄소 산업 투자를 제한하고 저탄소 산업을 지원해야 한다."]}, {"c": "uk", "t": "소비·폐기물·순환경제", "a": "COVID-19 회복", "s": "탄소중립 부합 생활방식 장려", "r": ["봉쇄 완화 이후 정부·고용주 등이 탄소중립에 부합하는 생활방식 변화를 장려해야 한다."]}, {"c": "uk", "t": "소비·폐기물·순환경제", "a": "소비재", "s": "가정 배출 재활용 확대", "r": ["가정에서 배출되는 폐기물의 재활용을 확대해야 한다."]}, {"c": "uk", "t": "소비·폐기물·순환경제", "a": "소비재", "s": "고탄소 제품·산업 광고 제한", "r": ["고탄소 제품 및 산업에 대한 광고를 금지하거나 제한해야 한다."]}, {"c": "uk", "t": "소비·폐기물·순환경제", "a": "소비재", "s": "보증금 반환제", "r": ["음료 용기 등에 보증금 반환제(deposit return schemes)를 도입해야 한다."]}, {"c": "uk", "t": "소비·폐기물·순환경제", "a": "소비재", "s": "생산자책임제", "r": ["생산자책임제(Extended Producer Responsibility)를 도입해야 한다."]}, {"c": "uk", "t": "소비·폐기물·순환경제", "a": "소비재", "s": "소비재 — 공유 서비스 지원", "r": ["물건 공유 서비스를 지원해야 한다."]}, {"c": "uk", "t": "소비·폐기물·순환경제", "a": "소비재", "s": "자원 효율 기준·목표", "r": ["자원 효율 및 저탄소 제품 생산을 위한 기준과 목표를 설정해야 한다."]}, {"c": "uk", "t": "소비·폐기물·순환경제", "a": "소비재", "s": "재활용 개선 기업 보조금", "r": ["재활용 개선에 투자하는 기업에 보조금을 지급해야 한다."]}, {"c": "uk", "t": "소비·폐기물·순환경제", "a": "소비재", "s": "재활용 라벨·정보", "r": ["재활용 가능 여부를 명시하는 라벨 및 정보를 제품에 제공해야 한다."]}, {"c": "uk", "t": "소비·폐기물·순환경제", "a": "소비재", "s": "제품별 탄소 발자국 표시", "r": ["모든 제품에 탄소 발자국을 표시해야 한다."]}, {"c": "uk", "t": "소비·폐기물·순환경제", "a": "식품·농업·토지", "s": "음식 낭비 감소 세금·인센티브", "r": ["탄소 표시 등 음식 낭비를 줄이기 위한 세금 및 인센티브를 도입해야 한다."]}, {"c": "uk", "t": "소비·폐기물·순환경제", "a": "식품·농업·토지", "s": "탄소 표시 의무화", "r": ["식품·음료에 탄소 발자국 표시를 의무화해야 한다."]}, {"c": "uk", "t": "소비·폐기물·순환경제", "a": "추가 권고", "s": "제품·서비스 탄소 발자국 표시", "r": ["모든 제품과 서비스에 탄소 발자국을 표시해야 한다."]}, {"c": "uk", "t": "수송·교통", "a": "육상 교통", "s": "내연기관차 판매 금지 (시나리오 결론)", "r": ["2030~2035년까지 신규 휘발유·경유·하이브리드차 판매를 금지하고, 10년당 평균 2~5% 자동차 이용을 감소시키며 대중교통을 개선해야 한다. 이는 1순위 시나리오(49%, 2030년 금지)와 2순위 시나리오(34%, 2032~2035년 금지)를 종합한 결론이다."]}, {"c": "uk", "t": "수송·교통", "a": "육상 교통", "s": "대중교통 공영화", "r": ["대중교통을 공영화해야 한다."]}, {"c": "uk", "t": "수송·교통", "a": "육상 교통", "s": "대중교통 요금 인하", "r": ["대중교통 요금을 인하해야 한다."]}, {"c": "uk", "t": "수송·교통", "a": "육상 교통", "s": "버스 노선 확대", "r": ["신규 버스 노선을 추가하고 배차 빈도를 늘려야 한다."]}, {"c": "uk", "t": "수송·교통", "a": "육상 교통", "s": "버스 속도·신뢰성 개선", "r": ["버스의 속도와 신뢰성 개선에 투자해야 한다."]}, {"c": "uk", "t": "수송·교통", "a": "육상 교통", "s": "자전거·전동킥보드 시설 투자", "r": ["자전거 및 전동킥보드 인프라에 투자해야 한다."]}, {"c": "uk", "t": "수송·교통", "a": "육상 교통", "s": "저탄소 대중교통 투자", "r": ["저탄소 버스·열차에 대한 정부 투자를 확대해야 한다."]}, {"c": "uk", "t": "수송·교통", "a": "육상 교통", "s": "저탄소 차량 구매 보조금", "r": ["저탄소 차량을 구매하는 기업과 개인에게 보조금을 지원해야 한다."]}, {"c": "uk", "t": "수송·교통", "a": "육상 교통", "s": "지역화 정책", "r": ["신규 주택은 대중교통 인근에만 허가하고, 우체국·상점·의원·학교 등 지역 서비스를 복원하는 지역화 정책을 시행해야 한다."]}, {"c": "uk", "t": "수송·교통", "a": "육상 교통", "s": "차량 폐차 지원", "r": ["오래된 고배출 차량 폐차를 지원하는 제도를 도입해야 한다."]}, {"c": "uk", "t": "수송·교통", "a": "육상 교통", "s": "최고 오염 차량 판매 중단", "r": ["오염도가 가장 높은 차량의 판매를 신속히 중단해야 한다."]}, {"c": "uk", "t": "수송·교통", "a": "항공 교통", "s": "비행 빈도·거리 기반 누진세", "r": ["더 자주, 더 멀리 비행할수록 세금이 증가하는 누진세를 도입해야 한다."]}, {"c": "uk", "t": "수송·교통", "a": "항공 교통", "s": "신기술 투자", "r": ["전기 항공기, 합성연료 등 항공 분야 신기술 개발 및 활용에 투자해야 한다."]}, {"c": "uk", "t": "수송·교통", "a": "항공 교통", "s": "여객 성장 시나리오", "r": ["2018년 대비 2050년까지 항공 여객을 25~50% 성장시키되(기술 발전 속도에 따라 조건부), 2050년 잔여 배출량 약 3,000만 톤 CO₂는 대기 중에서 직접 제거해야 한다. 65% 성장 시나리오는 지지를 거의 받지 못했다."]}, {"c": "uk", "t": "수송·교통", "a": "항공 교통", "s": "항공사 온실가스 제거 투자", "r": ["항공사가 온실가스 제거에 의무적으로 투자해야 한다."]}, {"c": "uk", "t": "식품·농축산", "a": "식품·농업·토지", "s": "농업 보조금 저탄소 연계", "r": ["저탄소 농업 관행 준수를 조건으로 농업 보조금을 지급해야 한다."]}, {"c": "uk", "t": "식품·농축산", "a": "식품·농업·토지", "s": "육류·유제품 자발적 감소", "r": ["강제가 아닌 교육·정보 기반으로 육류 및 유제품 소비를 20~40% 자발적으로 감소시켜야 한다."]}, {"c": "uk", "t": "식품·농축산", "a": "식품·농업·토지", "s": "저탄소 농업 기술 교육", "r": ["저탄소 농업 기술 정보 및 훈련을 농민에게 제공해야 한다."]}, {"c": "uk", "t": "식품·농축산", "a": "식품·농업·토지", "s": "저탄소 식품 세금·인센티브", "r": ["저탄소 식품에 대한 세금 및 인센티브를 도입해야 한다."]}, {"c": "uk", "t": "식품·농축산", "a": "식품·농업·토지", "s": "지속가능 식품 생산 계획 규정 변경", "r": ["지속가능한 식품 생산을 위해 계획 규정을 변경해야 한다."]}, {"c": "uk", "t": "에너지·전력", "a": "가정 에너지", "s": "소규모 에너지 서비스 사업자 지원", "r": ["소규모 에너지 서비스 사업자를 지원하여 경쟁을 촉진해야 한다."]}, {"c": "uk", "t": "에너지·전력", "a": "가정 에너지", "s": "에너지 시장 규칙 개편", "r": ["더 많은 기업이 에너지 서비스 분야에서 경쟁할 수 있도록 에너지 시장 규칙을 개편해야 한다."]}, {"c": "uk", "t": "에너지·전력", "a": "가정 에너지", "s": "에너지 효율·스마트 제품 기준", "r": ["에너지 효율 및 스마트 제품 기준을 강화해야 한다."]}, {"c": "uk", "t": "에너지·전력", "a": "가정 에너지", "s": "정부 재원 정보·지원", "r": ["정부 재원으로 에너지 전환 관련 정보·지원을 제공해야 한다."]}, {"c": "uk", "t": "에너지·전력", "a": "전력 생산", "s": "육상풍력 확대", "r": ["육상풍력 발전을 확대해야 한다."]}, {"c": "uk", "t": "에너지·전력", "a": "전력 생산", "s": "태양광 확대", "r": ["태양광 발전을 확대해야 한다."]}, {"c": "uk", "t": "에너지·전력", "a": "전력 생산", "s": "해상풍력 확대", "r": ["해상풍력 발전을 확대해야 한다."]}, {"c": "uk", "t": "에너지·전력", "a": "추가 권고", "s": "화석연료에서 신에너지원으로 전환", "r": ["화석연료에서 신에너지원으로의 전환을 추진해야 한다."]}, {"c": "uk", "t": "자연·생태계", "a": "기본 원칙", "s": "자연환경 보호", "r": ["자연환경을 보호하고 복원해야 한다."]}, {"c": "sc", "t": "거버넌스·제도", "a": "일·자원봉사", "s": "유연 근무 조건 가이드라인", "r": ["유연 근무 조건에 관한 정부 가이드라인을 마련하고 이를 공공 조달 기준과 연동해야 한다."]}, {"c": "sc", "t": "거버넌스·제도", "a": "표준·규제", "s": "공공 부문 2030 넷제로", "r": ["공공 부문 건물·차량·공급망을 2030년까지 넷제로로 전환하되, 2027년 75% 중간 목표와 2035년 완전 제로 목표를 설정해야 한다."]}, {"c": "sc", "t": "거버넌스·제도", "a": "표준·규제", "s": "공공 조달 지속가능성 성과 요건", "r": ["공공 조달에 지속가능성 성과 요건을 의무화하여 공공 지출을 통해 저탄소 전환을 유도해야 한다."]}, {"c": "sc", "t": "거버넌스·제도", "a": "표준·규제", "s": "기후변화 기업법 제정", "r": ["5년 이내에 기후변화 기업법(Climate Change Business Bill)을 제정하고 독립 규제 기관을 설립해야 한다."]}, {"c": "sc", "t": "건물·주거", "a": "20분 생활권", "s": "기존 건물 주거·커뮤니티 전환", "r": ["기존 건물을 주거·커뮤니티 공간으로 전환하고, 도시 외곽 신규 개발을 억제해야 한다."]}, {"c": "sc", "t": "건물·주거", "a": "건물 품질", "s": "건물 탄소 영향 평가 기준", "r": ["신축 및 기존 건물에 EnerPHit/Passivhaus 기준을 채택하여 건물 탄소 영향 평가 기준으로 삼아야 한다."]}, {"c": "sc", "t": "건물·주거", "a": "건물 품질", "s": "비주거 건물 에너지 기준 의무화", "r": ["비주거용 신·기존 건물에 EnerPHit/Passivhaus 기준을 건축 표준으로 법제화해야 한다."]}, {"c": "sc", "t": "건물·주거", "a": "건물 품질", "s": "신축 주거 Passivhaus 기준 의무화", "r": ["5년 이내에 신축 주거용 건물에 대해 Passivhaus 기준을 의무화해야 한다."]}, {"c": "sc", "t": "건물·주거", "a": "건물 품질", "s": "재활용·해체 가능 건물 설계", "r": ["신축 건물에 대해 분해·재활용 가능한 설계를 의무화해야 한다."]}, {"c": "sc", "t": "건물·주거", "a": "순환경제", "s": "고탄소 건설재료 감축·탄소중립 재료 인센티브", "r": ["고탄소 건설 재료 사용 감축 목표를 설정하고 탄소중립 재료 사용에 인센티브를 부여해야 한다."]}, {"c": "sc", "t": "건물·주거", "a": "주거 개보수", "s": "기존 주택 넷제로 레트로핏", "r": ["2030년까지 기존 주택 전체를 대상으로 넷제로 레트로핏 계획을 수립하고 이행해야 한다."]}, {"c": "sc", "t": "건물·주거", "a": "주거 개보수", "s": "레트로핏 인력 개발·재교육", "r": ["레트로핏 인력 개발 및 재교육에 투자하여 넷제로 주택 개조를 이행할 충분한 숙련 인력을 확보해야 한다."]}, {"c": "sc", "t": "건물·주거", "a": "주거 개보수", "s": "레트로핏 품질 기준", "r": ["레트로핏 공사의 품질 기준을 즉시 마련하여 에너지 효율 개선의 실효성을 보장해야 한다."]}, {"c": "sc", "t": "건물·주거", "a": "주거 개보수", "s": "연료 빈곤 전략 조기 시행", "r": ["연료 빈곤 전략(Fuel Poverty Strategy) 목표 시한을 2040년에서 2030년으로 앞당겨 시행해야 한다."]}, {"c": "sc", "t": "건물·주거", "a": "지역사회", "s": "지역 저탄소 난방 인센티브", "r": ["지역 저탄소 난방 시스템 개발을 위한 정부 인센티브를 마련해야 한다."]}, {"c": "sc", "t": "건물·주거", "a": "표준·규제", "s": "건물·거래 표준 강화", "r": ["건물 및 거래 표준을 강화하여 에너지 효율 공사의 품질을 보증해야 한다."]}, {"c": "sc", "t": "건물·주거", "a": "표준·규제", "s": "그린필드 개발 제한", "r": ["그린필드 신규 개발을 제한 강화하고 브라운필드 및 기존 건물 재활용을 우선시해야 한다."]}, {"c": "sc", "t": "교육·정보·참여", "a": "교육", "s": "교육과정 탄소 저감 주제 통합", "r": ["교육과정 내에 탄소 저감 주제를 통합 의무화하여 기후 교육을 정규화해야 한다."]}, {"c": "sc", "t": "교육·정보·참여", "a": "교육", "s": "에너지 효율 문화 캠페인", "r": ["에너지 효율 문화를 조성하는 공공 캠페인을 시행하여 시민의 에너지 절약 행동을 유도해야 한다."]}, {"c": "sc", "t": "교육·정보·참여", "a": "교육", "s": "지속가능 식단 공공 정보 캠페인", "r": ["아동·가족을 포함한 지속가능 식단 공공 정보 캠페인을 시행해야 한다."]}, {"c": "sc", "t": "교육·정보·참여", "a": "지역사회", "s": "지역사회 참여·자문 지원", "r": ["지역 사회의 기후 참여 및 자문 활동을 지원하는 정부 예산을 확보해야 한다."]}, {"c": "sc", "t": "교육·정보·참여", "a": "지역사회", "s": "커뮤니티 매입권 강화", "r": ["커뮤니티 매입권(Community Right to Buy)을 강화하여 지역사회의 토지 관리 역량을 높여야 한다."]}, {"c": "sc", "t": "교육·정보·참여", "a": "표준·규제", "s": "연간 벤치마킹·공개 보고", "r": ["연간 넷제로 경로 벤치마킹 및 공개 보고를 의무화하여 투명성과 책임성을 확보해야 한다."]}, {"c": "sc", "t": "금융·재정", "a": "건물 품질", "s": "환경영향평가·재산세 연동", "r": ["신규 환경영향평가(SAP/EPC 개선)를 도입하고 이를 재산세(Council Tax) 산정과 연동해야 한다."]}, {"c": "sc", "t": "금융·재정", "a": "조세", "s": "탄소세+배당(Carbon Tax &amp; Dividend)", "r": ["오염자 부담 원칙에 따라 1톤당 탄소세를 부과하고 그 수익을 시민에게 배당하는 탄소세+배당(Carbon Tax and Dividend) 제도를 도입해야 한다."]}, {"c": "sc", "t": "금융·재정", "a": "지역사회", "s": "기후 행동 지역 기금", "r": ["기후 행동 프로젝트를 위한 전용 지역 기금을 조성하되 탄소 토지세 세입을 활용해야 한다."]}, {"c": "sc", "t": "기후적응·재난대응", "a": "건물 품질", "s": "도시 계획 기후 고려 의무화", "r": ["도시 계획 시 탄소 격리, 생물다양성, 홍수 위험 관리를 의무적으로 반영해야 한다."]}, {"c": "sc", "t": "기후정의·정의로운 전환", "a": "20분 생활권", "s": "무료 Wi-Fi·스마트 기기 접근 지원", "r": ["무료 Wi-Fi 및 스마트 기기 접근을 지원하여 디지털 격차를 해소해야 한다."]}, {"c": "sc", "t": "기후정의·정의로운 전환", "a": "주거 개보수", "s": "주택소유자 보조금 지원", "r": ["전 주택소유자를 대상으로 레트로핏 무상 보조금을 지원하되 연료 빈곤 가구를 우선 지원해야 한다."]}, {"c": "sc", "t": "산림·토지이용", "a": "조세", "s": "탄소 토지세 도입", "r": ["탄소 배출 토지에 과세하는 탄소 토지세를 도입해야 한다."]}, {"c": "sc", "t": "산림·토지이용", "a": "지역사회", "s": "토지 소유 개혁", "r": ["토지 소유 개혁을 통해 유휴·비생산적 토지를 지역사회가 관리할 수 있도록 전환해야 한다."]}, {"c": "sc", "t": "산림·토지이용", "a": "토지이용", "s": "이탄지 복원·토착 삼림 목표 상향", "r": ["이탄지(Peatland) 복원 및 토착 삼림 조성 목표를 현 정부 계획을 초과하는 수준으로 상향해야 한다."]}, {"c": "sc", "t": "산림·토지이용", "a": "토지이용", "s": "탄소 흡수 토지 이용 인센티브", "r": ["넷제로 목표 달성을 위해 탄소 흡수원 역할을 하는 토지 이용에 인센티브를 제공해야 한다."]}, {"c": "sc", "t": "산림·토지이용", "a": "토지이용", "s": "해양 탄소 격리", "r": ["해양 탄소 격리(Marine Carbon Sequestration) 잠재력을 실현하고 지속가능 해양 식품 생산을 지원해야 한다."]}, {"c": "sc", "t": "산업·노동·녹색일자리", "a": "교육", "s": "녹색 직업 훈련 홍보", "r": ["석유·가스 등 '갈색' 부문 근로자를 대상으로 녹색 산업 직업 훈련 홍보 캠페인을 시행해야 한다."]}, {"c": "sc", "t": "산업·노동·녹색일자리", "a": "비즈니스", "s": "녹색 비즈니스 인증·자금 지원", "r": ["녹색 비즈니스 모델에 대해 브론즈·실버·골드 인증 체계와 함께 정부 자금 지원 인센티브를 제공해야 한다."]}, {"c": "sc", "t": "산업·노동·녹색일자리", "a": "비즈니스", "s": "복지 우선·협동조합 기업 우대", "r": ["직원 소유형·협동조합 형태의 복지 우선 기업을 우대 지원하는 정책을 마련해야 한다."]}, {"c": "sc", "t": "산업·노동·녹색일자리", "a": "비즈니스", "s": "유니버설 기본소득(UBI) 탐색", "r": ["기업 근로 시간 단축과 연계하여 유니버설 기본소득(UBI) 도입을 탐색해야 한다."]}, {"c": "sc", "t": "산업·노동·녹색일자리", "a": "순환경제", "s": "수입 억제·지역 저탄소 제조 육성", "r": ["수입을 억제하고 지역 저탄소 제조업을 육성하여 공급망을 지역화해야 한다."]}, {"c": "sc", "t": "산업·노동·녹색일자리", "a": "일·자원봉사", "s": "녹색 직업 훈련·도제 국가 프로그램", "r": ["모든 이에게 개방된 녹색 직업 훈련 및 도제 국가 프로그램을 운영해야 한다."]}, {"c": "sc", "t": "산업·노동·녹색일자리", "a": "자원·소비", "s": "지속가능 제조업", "r": ["스코틀랜드 정부는 지속가능 제조업 전략을 적극 지원하여 국내 저탄소 산업 역량을 강화해야 한다."]}, {"c": "sc", "t": "산업·노동·녹색일자리", "a": "조세", "s": "고탄소 자원 제조업 탄소세", "r": ["고탄소 자원을 사용하는 제조업자에게 탄소세를 부과해야 한다."]}, {"c": "sc", "t": "산업·노동·녹색일자리", "a": "조세", "s": "녹색 일자리 재교육 세금 인센티브", "r": ["녹색 일자리 재교육을 위한 세금 인센티브를 도입해야 한다."]}, {"c": "sc", "t": "소비·폐기물·순환경제", "a": "순환경제", "s": "재사용·재처리 스타트업 대출", "r": ["재사용·재처리 혁신 스타트업 및 기업을 대상으로 정부 보증 대출을 제공해야 한다."]}, {"c": "sc", "t": "소비·폐기물·순환경제", "a": "자원·소비", "s": "국가 재사용 헌장", "r": ["국가 재사용 헌장(National Reuse Charter)을 도입하고, 재활용 센터를 재사용 센터로 전환하는 데 약 £7,000만을 투자해야 한다."]}, {"c": "sc", "t": "소비·폐기물·순환경제", "a": "자원·소비", "s": "생산자 책임", "r": ["생산자책임(Extended Producer Responsibility)을 입법화하여 제품 생애 전 주기 책임을 제조자에게 부과해야 한다."]}, {"c": "sc", "t": "소비·폐기물·순환경제", "a": "자원·소비", "s": "식품 포장재 규제", "r": ["식품 포장재를 규제하고 소분 판매를 허용·촉진하는 제도를 마련해야 한다."]}, {"c": "sc", "t": "소비·폐기물·순환경제", "a": "자원·소비", "s": "일회용 플라스틱·포장재", "r": ["일회용 플라스틱 및 비재활용 포장재를 금지해야 한다."]}, {"c": "sc", "t": "소비·폐기물·순환경제", "a": "자원·소비", "s": "자원 도서관", "r": ["지역사회에 '자원 도서관(Resource Libraries)'을 설치하여 고가 장비 대여 서비스를 제공함으로써 소비를 줄여야 한다."]}, {"c": "sc", "t": "소비·폐기물·순환경제", "a": "탄소 라벨링", "s": "제품 생산 탄소 발자국 라벨링", "r": ["제품 생산 과정의 탄소 발자국을 라벨링하여 의무 표시하도록 해야 한다."]}, {"c": "sc", "t": "소비·폐기물·순환경제", "a": "탄소 라벨링", "s": "탄소 라벨링 의무화(목표)", "r": ["식품·제품·교통 등 전 분야에서 탄소 라벨링을 의무화하는 체계를 구축해야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "20분 생활권", "s": "공유 업무 공간(Work Hubs) 지원", "r": ["공유 업무 공간(Work Hubs)을 신설하고 기존 공간을 지원하여 재택·분산 근무 인프라를 확충해야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "20분 생활권", "s": "농촌 지역 디지털·원격 서비스", "r": ["농촌 지역에서도 모바일·디지털·원격 서비스를 통해 20분 생활권 원칙을 구현해야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "20분 생활권", "s": "보행·자전거 친화 공공 공간", "r": ["보행자와 자전거 이용자를 위한 친화적 공공 공간에 투자해야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "20분 생활권", "s": "전국 고속 브로드밴드 보장", "r": ["전국 광대역 인프라에 투자하여 전 지역 고속 브로드밴드를 보장해야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "교육", "s": "대중교통·능동 이동 전환 교육", "r": ["자동차 대신 대중교통과 보행·자전거 등 능동 이동 수단으로 전환하도록 교육 지원 프로그램을 마련해야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "교육", "s": "지역생활·주 4일 근무 홍보", "r": ["지역 생활권 중심의 생활 방식과 주 4일 근무의 가치를 홍보하여 이동 수요를 줄이는 문화를 형성해야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "교통 배출", "s": "국내 항공 탈탄소화", "r": ["스코틀랜드 국내 항공을 2025년까지 탈탄소화하도록 추진해야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "교통 배출", "s": "대안 연료·전기차 인센티브", "r": ["전기차·수소차 등 대안 연료 차량으로의 전환을 위한 인센티브를 확대해야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "교통 배출", "s": "전기차 충전 인프라 구축", "r": ["2025년까지 지역 수요와 생활 패턴을 고려한 전기차 충전 인프라를 전국에 구축해야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "교통 배출", "s": "친환경 단거리 항공 기술 R&amp;D", "r": ["단거리 친환경 항공 기술 연구개발(R&amp;D)에 투자하여 항공 부문 탈탄소화를 지원해야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "교통 배출", "s": "페리·선박 배출 규제", "r": ["페리·선박 배출 규제를 강화하고 공공 선단을 2030년까지 탄소 50% 감축하도록 의무화해야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "대중교통", "s": "대중교통 무료화·요금 인하", "r": ["대중교통을 무료화하거나 요금을 대폭 인하하고, 국가 보조 기반의 공공-민간 파트너십으로 재편해야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "대중교통", "s": "전국 통합 스마트 승차권", "r": ["스코틀랜드 전국 통합 스마트 승차권('Oyster Card for Scotland')을 도입하여 대중교통 이용 편의성을 높여야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "대중교통", "s": "철도 중심 통합 교통망", "r": ["철도를 통합 교통망의 핵심으로 육성하고 국내 항공 대비 비용 경쟁력을 확보해야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "비즈니스", "s": "잦은 항공 마일리지 보너스 폐지", "r": ["잦은 항공 이용 마일리지 보너스 프로그램을 폐지하여 빈번한 항공 이용에 대한 인센티브를 제거해야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "비즈니스", "s": "주 4일 근무제 탐색", "r": ["주 4일(32시간) 근무제 도입을 탐색하여 이동 수요 감소와 삶의 질 향상을 도모해야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "조세", "s": "고탄소 항공 연료세", "r": ["고탄소 항공 연료에 세금을 부과하고 그 비용을 고객에게 이전하도록 의무화해야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "조세", "s": "상습 항공 이용자 과세", "r": ["상습 항공 이용자 과세(Frequent Flyer Tax/Levy)를 도입하여 빈번한 항공 이용을 억제해야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "탄소 라벨링", "s": "교통 예약 탄소 영향 공개", "r": ["항공·기차 등 교통 예약 시 탄소 영향 정보를 의무적으로 공개해야 한다."]}, {"c": "sc", "t": "수송·교통", "a": "표준·규제", "s": "공공 서비스 차량 무배출 의무화", "r": ["구급차·경찰차 등 공공 서비스 차량을 무배출 차량으로 의무 전환해야 한다."]}, {"c": "sc", "t": "식품·농축산", "a": "비즈니스", "s": "협동조합형 토지 이용 인센티브", "r": ["협동조합형 토지 이용, 집약 농업 탈피, 농약 의존 감소를 유도하는 인센티브를 마련해야 한다."]}, {"c": "sc", "t": "식품·농축산", "a": "순환경제", "s": "슈퍼마켓 지역 농산물 판매 목표", "r": ["슈퍼마켓 등 대형 유통업체에 지역 농산물 판매 목표를 설정하도록 해야 한다."]}, {"c": "sc", "t": "식품·농축산", "a": "조세", "s": "식품 탄소세·지속가능 식품 보조금", "r": ["식품 탄소세를 도입하고 지속가능 식품 보조금과 연계하여 저탄소 식단을 장려해야 한다."]}, {"c": "sc", "t": "식품·농축산", "a": "탄소 라벨링", "s": "식품 탄소 라벨링", "r": ["5년 이내에 식품 탄소 라벨링을 완전 시행하되, 실제 총 탄소 함유량을 표시하고 상쇄 값은 제외해야 한다."]}, {"c": "sc", "t": "식품·농축산", "a": "토지이용", "s": "농업 보조금 지속가능 전환", "r": ["EU 탈퇴 후 농업 보조금 체계를 5년 이내에 지속가능 농법 전환을 유도하는 방향으로 재설계해야 한다."]}, {"c": "sc", "t": "식품·농축산", "a": "표준·규제", "s": "공공 식당 저탄소 식품 조달", "r": ["공공 부문 식당·구내식당에서 식물성·저탄소 식품 조달을 즉시 의무화해야 한다."]}, {"c": "sc", "t": "에너지·전력", "a": "20분 생활권", "s": "개발 계획법 개혁", "r": ["지역 인프라 포함 개발을 의무화하는 계획법을 개혁해야 한다."]}, {"c": "sc", "t": "에너지·전력", "a": "주거 개보수", "s": "난방 탈탄소화", "r": ["2030년까지 기존 가스망·난방 시스템을 탈탄소화해야 한다."]}, {"c": "sc", "t": "에너지·전력", "a": "표준·규제", "s": "전력 생산 방식 비교 녹서", "r": ["다양한 전력 생산 방식을 비교·검토하는 녹서(Green Paper)를 발간하여 에너지 믹스 논의를 위한 정보를 제공해야 한다."]}, {"c": "sc", "t": "자연·생태계", "a": "일·자원봉사", "s": "국가자연서비스 창설", "r": ["국가자연서비스(National Nature Service)를 창설하고 보전 자원봉사 제도를 마련해야 한다."]}, {"c": "je", "t": "거버넌스·제도", "a": "냉난방·조리", "s": "에너지 장관 신설", "r": ["2022년까지 에너지 장관을 신설하여 독립 전문가 패널 자문 아래 2045년 이전 제로탄소 전환을 총괄한다."]}, {"c": "je", "t": "거버넌스·제도", "a": "지속가능금융", "s": "관련 입법 도입", "r": ["지속가능금융 관련 입법을 도입한다. 기업 탄소 발자국 연간 보고 의무화와 UN 지속가능발전목표(SDGs) 17개 항목 채택을 포함한다."]}, {"c": "je", "t": "거버넌스·제도", "a": "지속가능금융", "s": "저지 허브 구축", "r": ["2025년까지 저지를 지속가능금융 허브로 포지셔닝하고, 그린워싱 방지를 위한 연간 감사를 포함한 규제 체계를 구축한다."]}, {"c": "je", "t": "건물·주거", "a": "냉난방·조리", "s": "건물 기준·계획법", "r": ["2023년까지 모든 건물에 탄소중립 기준을 명시한다."]}, {"c": "je", "t": "건물·주거", "a": "냉난방·조리", "s": "임대 부동산 EPC 도입", "r": ["2025년 1월 1일까지 주거·상업 임대 부동산에 에너지성능인증(EPC)을 도입한다."]}, {"c": "je", "t": "건물·주거", "a": "냉난방·조리", "s": "정부·상업 건물 탄소중립화", "r": ["2030년까지 신규·기존 정부·상업 건물을 탄소중립화하며, 정부가 즉각 선도 역할을 수행한다."]}, {"c": "je", "t": "건물·주거", "a": "냉난방·조리", "s": "주거용 건물 개량 전략", "r": ["2022년 말까지 주거용 건물 개량 전략·재정 방안·교육 프로그램을 수립하고, 2030년부터 의무화한다."]}, {"c": "je", "t": "교육·정보·참여", "a": "냉난방·조리", "s": "변화 실현(소비자·공급자 전환 지원)", "r": ["2030년까지 탄소중립 방식의 생활·노동·학습으로의 소비자·공급자 전환을 위한 교육과 지원을 제공한다."]}, {"c": "je", "t": "교육·정보·참여", "a": "지속가능금융", "s": "교육·인식 제고", "r": ["학교를 포함한 다양한 채널에서 금융상품의 환경·사회적 영향에 대한 교육과 인식 제고를 실시한다."]}, {"c": "je", "t": "산업·노동·녹색일자리", "a": "지속가능금융", "s": "선도 국가·지역으로 육성", "r": ["저지를 지속가능금융 분야의 선도 국가·지역으로 육성한다."]}, {"c": "je", "t": "산업·노동·녹색일자리", "a": "지속가능금융", "s": "투자자 녹색투자 선택권 보장", "r": ["투자자에게 녹색투자 선택권을 보장한다."]}, {"c": "je", "t": "수송·교통", "a": "교통", "s": "공정 전환", "r": ["2030년까지 저소득 가구·소기업에 대한 지원을 포함한 저탄소 교통으로의 즉각적·공정한 전환을 실시한다."]}, {"c": "je", "t": "수송·교통", "a": "교통", "s": "그린 교통 단계적 전환", "r": ["2025년 이후 화석연료 신차 등록을 금지하고, 정부부터 시작하여 공공·기업·가정 순으로 단계적으로 전기·친환경 차량으로 전환한다."]}, {"c": "je", "t": "수송·교통", "a": "교통", "s": "대중교통 탈탄소화", "r": ["2025년까지 저지 대중교통(버스 등)을 탈탄소화하고, 대중교통의 접근성과 저렴성을 향상한다."]}, {"c": "je", "t": "수송·교통", "a": "교통", "s": "보행·자전거 장려", "r": ["안전 인프라 투자, 교육, 법제화를 통해 보행·자전거 우선 교통 모델을 구현한다."]}, {"c": "je", "t": "수송·교통", "a": "교통", "s": "신기술 도입", "r": ["현재 가용한 탄소감축 기술(전기차, 수소차, 바이오디젤 등)을 즉시 도입하고 재정 지원한다. 미래 기술은 실용화 즉시 도입한다."]}, {"c": "je", "t": "수송·교통", "a": "교통", "s": "이동 수요 감소", "r": ["재택근무 확산, 항공 여행 할당제, 도서 자급자족 강화 등을 통해 전반적 이동 수요를 줄이고 문화·마인드셋 변화를 유도한다."]}, {"c": "je", "t": "수송·교통", "a": "교통", "s": "화석연료 자가용 퇴출", "r": ["안전·편리·저렴한 대체 교통 제공을 전제로 화석연료 자가용을 단계적으로 퇴출한다."]}, {"c": "je", "t": "에너지·전력", "a": "냉난방·조리", "s": "커뮤니티 에너지 이니셔티브", "r": ["커뮤니티 단위 재생에너지 생산과 에너지효율화를 위한 정책·재정 체계를 구축한다. 섬 전체 타당성 조사를 전제로 시행한다."]}, {"c": "at", "t": "거버넌스·제도", "a": "소비·생산", "s": "EMAS 인증 강화 및 의무 확대", "r": ["EU 환경경영·감사제도(EMAS) 인증을 강화하고 공공 조달 및 일정 규모 이상 기업에 대해 인증을 의무화해야 한다. EMAS 인증 기업에 대한 행정 절차 간소화 및 재정 인센티브를 도입해야 한다."]}, {"c": "at", "t": "거버넌스·제도", "a": "소비·생산", "s": "독립 기후위원회 설치", "r": ["소비·생산 분야에서도 독립적인 기후위원회 설치를 촉구하며, 위원회는 정책 이행을 감시하고 권고를 지속 갱신하는 역할을 수행해야 한다."]}, {"c": "at", "t": "거버넌스·제도", "a": "소비·생산", "s": "법적 실험공간(Sandkasten) 제도화", "r": ["혁신적인 기후친화 제품·서비스·비즈니스 모델이 기존 규제의 제약 없이 시험 운영될 수 있도록 법적 실험공간(규제 샌드박스, Sandkasten) 제도를 도입해야 한다. 성공한 모델은 신속히 정책으로 편입해야 한다."]}, {"c": "at", "t": "거버넌스·제도", "a": "에너지", "s": "기후보호법 즉시 제정 및 독립 기후위원회 설치", "r": ["구속력 있는 기후보호법을 즉시 제정하고 당파를 초월한 독립 기후위원회를 설치해야 한다. 기후위원회는 영국 기후변화위원회(CCC) 모델을 참고하여 이행 감시·권고 기능을 법적으로 보장받아야 한다."]}, {"c": "at", "t": "거버넌스·제도", "a": "일반", "s": "기후기본권 헌법적 도입", "r": ["개인이 국가를 상대로 기후목표 이행을 요구하는 소송을 제기할 수 있도록 기후보호를 헌법적 기본권으로 신설해야 한다. 이를 통해 기후정책의 구속력과 사법적 집행 가능성을 확보해야 한다."]}, {"c": "at", "t": "거버넌스·제도", "a": "정치 행동 원칙", "s": "과학 기반 갱신", "r": ["기후보호 정책은 최신 과학적 근거에 기반하여 지속적으로 갱신·강화되어야 한다. 독립 과학자문단의 역할을 법적으로 보장하고 정책 재검토 주기를 제도화해야 한다."]}, {"c": "at", "t": "거버넌스·제도", "a": "정치 행동 원칙", "s": "구조적 의무", "r": ["기후보호는 개인의 선택에 맡길 수 없으며 국가와 사회의 구조적 의무로 규정되어야 한다. 기후목표 달성을 위한 제도적 틀과 법적 의무를 정부가 우선적으로 마련해야 한다."]}, {"c": "at", "t": "거버넌스·제도", "a": "정치 행동 원칙", "s": "글로벌 책임", "r": ["오스트리아의 기후보호는 국내에 그치지 않고 글로벌 책임을 포함해야 한다. 수입 제품의 탄소발자국, 개발도상국 기후지원, 국제 협력 등이 정책에 반영되어야 한다."]}, {"c": "at", "t": "건물·주거", "a": "주거", "s": "2027년부터 신축 재활용 건축자재 의무 사용", "r": ["2027년부터 신축 건물에서 재활용 건축자재를 최대 비율로 의무 사용해야 한다. 재활용 자재 품질 기준과 인증 체계를 마련하고 재활용 자재 시장 육성을 위한 공공 조달 우선 구매를 도입해야 한다."]}, {"c": "at", "t": "건물·주거", "a": "주거", "s": "SOS 2024 긴급 단열 리노베이션 지원 프로그램", "r": ["2024년부터 기존 건물의 단열 리노베이션을 위한 긴급 지원 프로그램(SOS 2024)을 도입하여 노후 건물의 에너지 효율을 신속히 개선해야 한다. 저소득 가구와 임차인도 지원받을 수 있도록 사회주택 우선 적용 기준을 마련해야 한다."]}, {"c": "at", "t": "건물·주거", "a": "주거", "s": "건설 분야 기후친화 직업교육·재훈련", "r": ["건설 분야 노동자를 위한 기후친화 직업교육 및 재훈련 프로그램(ZU-KU-NFT)을 신설하여 단열·리노베이션·친환경 건축 기술 역량을 확충해야 한다. 기후 전환에 필요한 숙련 인력을 선제적으로 양성해야 한다."]}, {"c": "at", "t": "건물·주거", "a": "주거", "s": "건축 기준 단일화 및 10년 주기 재평가", "r": ["현재 주별(Land)로 상이한 건축 기준을 전국적으로 단일화하고 에너지·기후 기준을 10년 주기로 재평가하여 지속적으로 강화해야 한다. 단일 기준 도입으로 행정 비용 절감과 에너지 성능 향상을 동시에 달성해야 한다."]}, {"c": "at", "t": "건물·주거", "a": "주거", "s": "건축자재 CO2 가격제 도입", "r": ["건축 자재 생산·사용에 내재된 탄소(내재 탄소, graue Emissionen)에 CO2 가격제를 적용하여 저탄소 건축자재 사용을 유도해야 한다. 건축물 전 생애주기 탄소 평가를 허가 요건으로 도입해야 한다."]}, {"c": "at", "t": "건물·주거", "a": "주거", "s": "공동주거(Co-Housing) 촉진 프로그램", "r": ["공동주거(Co-Housing) 형태를 법적으로 인정하고 보조금·세제 혜택 등 촉진 프로그램을 도입해야 한다. 자원 공유를 통해 1인당 에너지·공간 소비를 줄이고 지역사회 연대를 강화하는 주거 모델을 확산해야 한다."]}, {"c": "at", "t": "건물·주거", "a": "주거", "s": "공실 보유세 및 공실 신고 의무", "r": ["장기 공실 주택에 보유세를 부과하고 소유자가 공실 현황을 신고하도록 의무화해야 한다. 공실 주택을 임대 시장에 유도하여 주택 부족 문제와 에너지 낭비를 동시에 해결해야 한다."]}, {"c": "at", "t": "건물·주거", "a": "주거", "s": "기존 건물 밀도 강화 (인필 개발)", "r": ["기존 주거지 내 유휴 공간을 활용한 인필(infill) 개발을 촉진하여 신규 토지 사용 없이 주택을 공급해야 한다. 인필 개발에 대한 허가 절차를 간소화하고 용적률 인센티브를 제공해야 한다."]}, {"c": "at", "t": "건물·주거", "a": "주거", "s": "모든 건물 태양광 설치 의무화", "r": ["기존 건물과 신규 건물 모두에 태양광 패널 설치를 의무화해야 한다. 임차인도 공동 태양광 발전에 참여할 수 있는 제도를 마련하고 설치 비용 지원 프로그램을 도입해야 한다."]}, {"c": "at", "t": "건물·주거", "a": "주거", "s": "문화재 보호와 기후보호 균형 지원", "r": ["문화재로 지정된 건물이 기후보호 요건(단열·태양광 등)을 충족할 수 있도록 문화재 보호 기준과 기후보호 기준의 균형을 맞추는 가이드라인과 지원 프로그램을 마련해야 한다."]}, {"c": "at", "t": "건물·주거", "a": "주거", "s": "미착공 건축용지 3년 내 착공 의무", "r": ["미개발 건축용지 보유자는 3년 내 착공하지 않을 경우 해당 토지를 녹지로 환원하거나 지자체에 매각해야 하는 의무를 부과해야 한다. 이를 통해 토지 투기를 억제하고 적정 주택 공급을 촉진해야 한다."]}, {"c": "at", "t": "건물·주거", "a": "주거", "s": "신축 대비 리노베이션 보조금 우대", "r": ["신축 건물보다 기존 건물 리노베이션에 더 높은 보조금 비율을 적용하여 불필요한 신축을 억제하고 기존 자원의 활용을 극대화해야 한다. 리노베이션 사업의 행정 절차를 간소화하여 접근성을 높여야 한다."]}, {"c": "at", "t": "교육·정보·참여", "a": "소비·생산", "s": "기후 교육 교과목 의무화", "r": ["기후변화와 지속가능성 교육을 유치원부터 대학까지 전 교육 단계에서 필수 교과목으로 의무화해야 한다. 교사 연수 프로그램과 교육 자료를 정부가 개발·보급하여 교육의 질을 보장해야 한다."]}, {"c": "at", "t": "교육·정보·참여", "a": "식품·토지이용", "s": "식품 교육 전 교육기관 의무화", "r": ["건강하고 기후친화적인 식생활에 관한 교육을 유치원부터 고등교육까지 전 교육기관에서 의무적으로 실시해야 한다. 실습형 요리 교육과 지역 식품 시스템 이해를 교과 과정에 포함해야 한다."]}, {"c": "at", "t": "교육·정보·참여", "a": "일반", "s": "국제 그린동맹 구축", "r": ["오스트리아 정부는 기후 분야 정부 간 회의를 주도하고 '기후의회 간 만남(Treffen der Klimaräte)'을 정례적으로 개최해야 한다. 국제 연대를 통해 기후보호 정책의 글로벌 확산을 촉진해야 한다."]}, {"c": "at", "t": "교육·정보·참여", "a": "정치적 행동 원칙", "s": "시민참여 제도화", "r": ["기후보호는 정부 단독이 아닌 시민과 함께 이루어야 하며, 시민참여를 일회성 자문이 아닌 지속적 제도로 확립해야 한다. 기후시민의회 같은 참여 기제를 정례화하고 이행 감시에도 시민이 참여해야 한다."]}, {"c": "at", "t": "금융·재정", "a": "소비·생산", "s": "그린 주식지수·녹색 국채 도입", "r": ["기후친화 기업만을 포함하는 그린 주식지수를 개발하고 정부는 녹색 국채를 발행하여 기후 투자 재원을 조달해야 한다. 기후친화 투자에 대한 우대 금융 조건(낮은 금리·세제 혜택)을 도입해야 한다."]}, {"c": "at", "t": "금융·재정", "a": "소비·생산", "s": "지역 기후 프로젝트 시민 소액 투자 플랫폼", "r": ["지역 기후친화 프로젝트에 시민이 소액으로 투자할 수 있는 온라인 플랫폼을 구축하고 관련 규제를 간소화해야 한다. 이를 통해 기후 투자의 대중화와 지역 경제 활성화를 동시에 달성해야 한다."]}, {"c": "at", "t": "금융·재정", "a": "에너지", "s": "금융기관 기후친화 투자 의무화", "r": ["은행·보험·연기금 등 금융기관이 기후친화적 투자를 의무적으로 확대하고 기후유해 사업에 대한 금융 지원을 단계적으로 중단해야 한다. 기후 관련 금융 공시와 투자 기준을 법제화해야 한다."]}, {"c": "at", "t": "금융·재정", "a": "에너지", "s": "기후보너스 도입 (탄소세 환급)", "r": ["CO2 가격 인상에 따른 부담을 저·중소득층에서 상쇄하기 위해 기후보너스(Klimabonus)를 모든 국민에게 균등 지급해야 한다. 보너스 금액은 CO2 가격 인상에 연동하여 자동으로 조정되어야 한다."]}, {"c": "at", "t": "금융·재정", "a": "일반", "s": "기후유해 보조금 철폐", "r": ["기후유해 보조금 전체를 투명하게 공개하는 데이터베이스를 구축하고, 단계적으로 5년 내 완전 폐지해야 한다. 폐지 일정과 대상을 법제화하여 이행을 보장해야 한다."]}, {"c": "at", "t": "금융·재정", "a": "일반", "s": "실효적 CO2 가격제 도입", "r": ["CO2 가격을 2025년 120유로/t, 2030년 240유로/t으로 단계적으로 인상해야 한다. 탄소세 수입은 기후보너스(Klimabonus) 형태로 저·중소득층에 균등 환급하여 사회적 역진성을 방지해야 한다."]}, {"c": "at", "t": "기후적응·재난대응", "a": "주거", "s": "위험지역 5~10년 주기 재평가", "r": ["기후변화로 위험이 증가한 홍수·산사태·폭염 등 재해 위험지역을 5~10년 주기로 공식 재평가하여 건축 허가 기준과 보험 요건에 반영해야 한다. 위험지역 신규 개발을 엄격히 제한해야 한다."]}, {"c": "at", "t": "기후정의·정의로운 전환", "a": "일반", "s": "노동시장 기후 전환 지원", "r": ["기후 전환 과정에서 일자리를 잃거나 직종 전환이 필요한 노동자를 위한 재취업·재교육 프로그램을 대폭 확충해야 한다. 공정한 전환(just transition)을 위한 사회 안전망을 기후정책과 통합 설계해야 한다."]}, {"c": "at", "t": "기후정의·정의로운 전환", "a": "일반", "s": "세대 전환 인식 제고", "r": ["불편하더라도 필요한 기후보호 조치에 대한 사회적 이해와 동의를 형성하기 위한 교육·홍보를 강화해야 한다. 세대 간 형평성과 장기적 관점의 필요성을 모든 교육 단계에서 다루어야 한다."]}, {"c": "at", "t": "기후정의·정의로운 전환", "a": "정치 행동 원칙", "s": "기후보호 접근성", "r": ["기후보호는 사치나 특권이어서는 안 되며 모든 소득 계층과 사회 집단이 동등하게 참여하고 혜택을 받을 수 있어야 한다. 저소득층도 기후친화적 생활방식을 선택할 수 있도록 제도적 지원을 보장해야 한다."]}, {"c": "at", "t": "기후정의·정의로운 전환", "a": "정치 행동 원칙", "s": "소득 비례 부담", "r": ["기후보호 비용은 소득과 기여도에 비례하여 부담되어야 하며, 더 많이 기여한(더 많이 배출한) 자가 더 많이 부담하는 원칙을 세제와 부담금 설계에 반영해야 한다."]}, {"c": "at", "t": "기후정의·정의로운 전환", "a": "정치적 행동 원칙", "s": "사회적 형평성", "r": ["기후보호 정책은 아무도 뒤처지지 않도록 사회적 형평성을 핵심 설계 원칙으로 삼아야 한다. 취약계층·지방 주민·고령자 등에 대한 보호 조치를 권고안에 선제적으로 내재화해야 한다."]}, {"c": "at", "t": "산림·토지이용", "a": "식품·토지이용", "s": "공공 수목 식재 의무화", "r": ["도시 및 농촌 공공 공간에 수목을 의무적으로 식재하여 탄소 흡수와 열섬 효과 완화를 동시에 달성해야 한다. 지자체별 녹화 목표를 설정하고 이행을 모니터링하는 체계를 구축해야 한다."]}, {"c": "at", "t": "산림·토지이용", "a": "식품·토지이용", "s": "지속가능 임업·재조림 탄소 저장 증진", "r": ["지속가능한 임업 관행을 의무화하고 대규모 재조림(재식재) 프로그램을 통해 산림의 탄소 흡수원 역할을 강화해야 한다. 가스 배출 기준을 도입하여 임업과 탄소 저장 목표를 연계해야 한다."]}, {"c": "at", "t": "산림·토지이용", "a": "식품·토지이용", "s": "토양 부식층(Humus) 조성 지원", "r": ["토양 내 유기물(부식층) 함량을 증가시키는 영농 방식(피복작물·퇴비·무경운 등)을 장려하고 이에 대한 직접 지불금을 도입해야 한다. 토양 탄소 저장량을 국가 온실가스 인벤토리에 공식 반영해야 한다."]}, {"c": "at", "t": "산림·토지이용", "a": "주거", "s": "토지 봉인 금지 및 공간계획 권한 광역화", "r": ["새로운 토지 봉인(콘크리트화·포장)을 중단하고 공간계획 권한을 기초지자체에서 광역단위로 이전하여 난개발을 방지해야 한다. 토지 봉인 제로(0) 목표를 법제화하고 기존 봉인 면적 감축 로드맵을 수립해야 한다."]}, {"c": "at", "t": "산업·노동·녹색일자리", "a": "소비·생산", "s": "기업 간 기후 시너지 코디네이션 기구", "r": ["기업 간 기후친화 협력을 조율하는 코디네이션 기구를 설치하여 공급망 전체의 탈탄소화를 지원해야 한다. 공동 구매·공동 인프라·기술 공유 등을 통해 개별 기업의 기후 전환 비용을 낮추어야 한다."]}, {"c": "at", "t": "소비·폐기물·순환경제", "a": "소비·생산", "s": "기후유해 광고 제한 및 금지", "r": ["기후유해 제품 및 서비스의 광고를 대폭 제한하고 일부 분야(예: 화석연료, 고배출 차량)는 광고를 금지해야 한다. 그린워싱(greenwashing) 광고를 규제하는 기준을 강화하고 위반 시 실질적 제재를 부과해야 한다."]}, {"c": "at", "t": "소비·폐기물·순환경제", "a": "소비·생산", "s": "리필 시스템 확산", "r": ["리필 스테이션을 소매 매장에 의무적으로 도입하고 다회용 포장재 사용 비율을 음료용기 기준 80% 이상으로 의무화해야 한다. 일회용 플라스틱 포장재를 단계적으로 규제하고 다회용 시스템 인프라를 공공 투자로 지원해야 한다."]}, {"c": "at", "t": "소비·폐기물·순환경제", "a": "소비·생산", "s": "순환경제 센터 설립", "r": ["순환경제 전환을 촉진하는 국가 순환경제 센터(Zentrum für Kreislaufwirtschaft)를 설립하여 기업·소비자·정부 간 조정 역할을 수행해야 한다. 수리·재활용·재제조 관련 정보와 자원을 한 곳에서 연결하는 플랫폼 기능을 갖추어야 한다."]}, {"c": "at", "t": "소비·폐기물·순환경제", "a": "소비·생산", "s": "신상품 폐기 금지", "r": ["제조업체 및 유통업체가 판매되지 않은 신상품을 폐기하는 행위를 법적으로 금지해야 한다. 미판매 상품은 기부·재분배·중고 판매 등을 통해 활용되어야 하며 이를 위한 플랫폼과 인센티브를 마련해야 한다."]}, {"c": "at", "t": "소비·폐기물·순환경제", "a": "소비·생산", "s": "에너지 라벨 전 제품·전 생애주기 확대", "r": ["에너지 효율 라벨을 모든 제품군으로 확대하고 제품의 전 생애주기(생산·사용·폐기) 탄소 영향을 포함한 라벨 정보를 소비자에게 제공해야 한다. 라벨 기준을 주기적으로 강화하여 최상위 등급의 기준을 지속 높여야 한다."]}, {"c": "at", "t": "소비·폐기물·순환경제", "a": "소비·생산", "s": "제품 수리 가능성 의무화 및 보증기간 확대", "r": ["모든 제품에 수리 가능성을 법적으로 의무화하고 제조업체의 보증기간을 대폭 연장해야 한다. 소비자가 저렴하게 수리를 선택할 수 있도록 수리 서비스 부가가치세 감면 등 인센티브를 도입해야 한다."]}, {"c": "at", "t": "소비·폐기물·순환경제", "a": "식품·토지이용", "s": "공공 나눔 냉장고 확대", "r": ["도시와 지역 사회 내 공공 나눔 냉장고(öffentliche Verteiler-Kühlschränke)를 대폭 확대하여 잉여 식품의 재분배를 촉진하고 음식물 폐기를 줄여야 한다. 지자체가 설치·운영을 지원하고 위생 기준을 명확히 해야 한다."]}, {"c": "at", "t": "소비·폐기물·순환경제", "a": "식품·토지이용", "s": "바이오매스 에너지화 및 영양소 순환", "r": ["농업 부산물과 유기 폐기물의 바이오매스 에너지 활용을 확대하고, 영양소 순환(Nährstoffkreislauf)을 통해 화학 비료 의존도를 낮추어야 한다. 이를 위한 시설 지원과 기술 이전 프로그램을 마련해야 한다."]}, {"c": "at", "t": "소비·폐기물·순환경제", "a": "식품·토지이용", "s": "음식물 폐기 금지", "r": ["유통업체·식당·급식소 등에서 판매·소비되지 않은 식품을 폐기하는 행위를 법적으로 금지해야 한다. 잉여 식품은 공공 나눔 냉장고(öffentliche Verteiler-Kühlschränke), 푸드뱅크, 앱 기반 플랫폼 등을 통해 재분배해야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "2027년 1월부터 내연기관 신차 등록 금지", "r": ["2027년 1월부터 내연기관(화석연료) 신차 등록을 금지하여 자동차 시장의 전기차 전환을 강제적으로 촉진해야 한다. 전환 기간 동안 전기차 구매 보조금과 충전 인프라 확충을 병행해야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "공공 무료 대중교통권 한시 지급", "r": ["대중교통 이용 습관 형성을 위해 일정 기간 무료 대중교통권을 전 국민에게 한시적으로 지급해야 한다. 이후 저소득층에 대한 저가·무료 대중교통 혜택을 상시화하는 사회적 대중교통 요금제를 도입해야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "국제 야간기차 확충", "r": ["유럽 내 국제 야간기차 노선을 대폭 확충하여 단거리 항공편을 대체하는 매력적인 교통수단으로 만들어야 한다. 오스트리아는 야간기차 확충에 필요한 국제 협정 체결과 인프라 투자를 주도해야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "기후중립 이동권 보장 제도화", "r": ["모든 시민이 15분 이내에 대중교통에 접근할 수 있도록 보장하는 기후중립 이동권을 법적으로 제도화해야 한다. 대중교통 서비스는 24시간/7일 운영을 목표로 하며 도시와 농촌 간 서비스 격차를 해소해야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "기후친화 화물운송 (철도 전환·LKW 규제)", "r": ["화물 운송을 도로에서 철도로 전환하는 인센티브를 강화하고 장거리 화물 트럭(LKW)의 거리 기반 통행료를 부과해야 한다. 친환경 트럭 구매에 보조금을 지원하고 도시 내 라스트마일 배송의 탈탄소화를 의무화해야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "대중교통 도시·농촌 동시 확충", "r": ["버스·철도 등 대중교통을 도시와 농촌 지역 모두에서 동시에 확충하여 승용차 없이도 이동이 가능한 환경을 조성해야 한다. 농촌 지역 대중교통 투자를 우선순위로 설정하고 수요응답형 교통(DRT) 등 유연한 서비스를 도입해야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "대중교통 완전 배리어프리 의무화", "r": ["모든 대중교통 수단과 역사(驛舍)를 장애인·고령자·영유아 동반자도 불편 없이 이용할 수 있도록 완전 배리어프리 기준에 맞게 개선해야 한다. 기존 시설의 개선 일정을 법적으로 명시해야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "법인차 감축 및 대안 수단 장려", "r": ["기업의 법인차 보유를 억제하고 대신 대중교통 정기권·전기자전거·카셰어링 등 대안 통근 수단을 제공할 경우 세제 혜택을 부여해야 한다. 법인차에 대한 현행 세제 우대를 단계적으로 폐지해야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "속도 제한 강화 (지방 90km/h, 주택가 30km/h)", "r": ["지방도로 최고 속도를 90km/h로, 주택가 도로를 30km/h로 제한하여 연료 소비와 교통사고를 동시에 줄여야 한다. 속도 위반 단속을 강화하고 과속 카메라를 확대 설치해야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "오염 차량 CO2 누진 과세 및 추가 차량 과세", "r": ["고탄소 배출 차량에 대한 CO2 세금을 상한 없이 강화하고, 두 번째·세 번째 차량 보유에 대한 추가 과세를 도입하여 불필요한 차량 보유를 억제해야 한다. 세수는 대중교통 확충과 저소득층 이동 지원에 사용해야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "월 1회 도심 무차(車) 데이", "r": ["매월 1회 도심 주요 구역에서 차량 통행을 금지하는 무차 데이(autofreier Tag)를 시행하여 시민이 차 없는 도시 생활을 경험하게 해야 한다. 이를 통해 도심 재설계와 대안 이동 수단에 대한 공론화를 촉진해야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "자전거 세금 공제 법제화", "r": ["자전거와 전기자전거 구매·유지비를 세금 공제 대상으로 법제화하여 자전거 통근과 이동을 재정적으로 지원해야 한다. 사업주가 직원에게 자전거를 제공할 경우에도 세제 혜택을 부여해야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "자전거·보행 인프라 및 전국 자전거망 구축", "r": ["전국적으로 연결된 자전거 전용 도로망을 구축하고 도시 내 보행자 공간을 대폭 확대해야 한다. 자전거 주차·보관 시설, 수리 스테이션, 자전거 공유 시스템을 확충하여 자전거를 주요 이동 수단으로 정착시켜야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "전기차 충전 인프라 확충 (재생에너지 전용)", "r": ["전기차 충전 인프라를 전국적으로 확충하되 재생에너지 전력만을 사용하는 인증 충전소를 우선 구축해야 한다. 아파트 등 집합 주거지와 농촌 지역의 충전 인프라 공백을 해소하기 위한 공공 투자를 강화해야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "주차 관리 강화 및 도심 혼잡통행료", "r": ["도심 주차공간을 단계적으로 감축하고 주차 요금을 현실화해야 한다. 도심 혼잡통행료를 도입하여 승용차 진입을 억제하고 수익을 대중교통 개선에 재투자해야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "차량 공유(Car-Sharing) 확대 및 법적 근거 마련", "r": ["차량 공유(카셰어링) 서비스의 법적 근거를 마련하고 도시·농촌 전역으로 확대해야 한다. 공공 주차 공간을 카셰어링 차량에 우선 배정하고 세제 혜택을 통해 개인 차량 대체를 유도해야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "토지이용계획 권한 광역화 (교통 분야)", "r": ["교통 계획과 연계된 토지이용계획 권한을 기초지자체에서 광역단위로 이전하여 직주근접 개발과 대중교통 중심 개발(TOD)을 촉진해야 한다. 이를 통해 불필요한 장거리 통근을 구조적으로 줄여야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "통근보조금(Pendlerpauschale) 친환경화", "r": ["현행 통근보조금 제도를 개편하여 대중교통·자전거 통근자에게 우대 혜택을 주고 승용차 통근자에게는 단계적으로 혜택을 축소해야 한다. 농촌·취약계층 통근자를 위한 예외 조치를 함께 마련해야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "학교·유치원 주변 승용차 접근 제한", "r": ["학교와 유치원 주변 도로를 차 없는 구역으로 지정하여 어린이 통학 안전과 대기질을 개선해야 한다. 등하교 시간대 승용차 접근을 제한하고 도보·자전거 통학을 장려하는 인프라를 조성해야 한다."]}, {"c": "at", "t": "수송·교통", "a": "이동·교통", "s": "항공 케로신세 EU 차원 도입 촉구", "r": ["오스트리아는 EU 차원에서 항공 케로신(제트 연료)에 대한 세금 도입을 적극 촉구해야 한다. 항공 분야의 현행 면세 혜택을 단계적으로 폐지하여 기후 비용이 항공 요금에 반영되도록 해야 한다."]}, {"c": "at", "t": "식품·농축산", "a": "식품·토지이용", "s": "EU 공동농업정책(GAP) 기후 목표 연계 촉구", "r": ["오스트리아는 EU 공동농업정책(GAP) 협상에서 기후 목표 달성과 직접 연계된 보조금 조건 강화를 적극 촉구해야 한다. 기후유해 농업 관행에 대한 보조금 지급을 단계적으로 중단해야 한다."]}, {"c": "at", "t": "식품·농축산", "a": "식품·토지이용", "s": "규격 외 농산물 거부 금지", "r": ["외형적 규격 기준을 이유로 유통업체가 농산물을 거부하는 행위를 금지하여 농업 폐기물을 줄여야 한다. 소비자 인식 개선 캠페인과 병행하여 '못생긴 농산물' 유통을 촉진해야 한다."]}, {"c": "at", "t": "식품·농축산", "a": "식품·토지이용", "s": "기후 식품 세제 우대 (친환경 제품 저세율)", "r": ["기후친화적 식품(유기농·식물성·저탄소 인증 등)에 낮은 부가가치세율을 적용하고 기후유해 식품에는 높은 세율을 적용하는 식품 세제를 도입해야 한다. 세수는 소규모 농가 전환 지원 및 소비자 보조금에 활용해야 한다."]}, {"c": "at", "t": "식품·농축산", "a": "식품·토지이용", "s": "기후친화 식품 소비 인센티브 (육류 감축)", "r": ["육류 소비를 보건부 권고 수준으로 최대 2/3까지 감축하는 것을 목표로 기후친화 식품에 세제 혜택·보조금 등 인센티브를 도입해야 한다. 식물성 단백질 소비를 촉진하고 육류에 실질 비용(기후 외부효과 포함)이 반영되도록 가격 체계를 개편해야 한다."]}, {"c": "at", "t": "식품·농축산", "a": "식품·토지이용", "s": "레스토랑·급식소 기후친화 식재료 의무 사용", "r": ["학교·병원·공공 급식소와 레스토랑이 기후친화적 식재료(지역산·유기농·식물성 위주)를 의무적으로 사용하도록 조달 기준을 강화해야 한다. 공공 급식의 식물성 식사 비율 목표를 설정하고 단계적으로 확대해야 한다."]}, {"c": "at", "t": "식품·농축산", "a": "식품·토지이용", "s": "소·중규모 농가 기후친화 전환 지원", "r": ["소규모 및 중규모 농가가 기후친화적 영농 방식으로 전환할 수 있도록 맞춤형 재정 지원, 기술 자문, 교육 프로그램을 제공해야 한다. 대규모 농업법인과의 경쟁에서 불리한 소농을 위한 별도 지원 체계를 마련해야 한다."]}, {"c": "at", "t": "식품·농축산", "a": "식품·토지이용", "s": "수입 농식품 온실가스 관세 도입", "r": ["제3국에서 수입되는 농식품에 온실가스 배출량에 비례한 탄소 관세를 도입하여 국내 기후친화 농업과의 경쟁 공정성을 확보해야 한다. EU 차원의 탄소국경조정제도(CBAM) 식품 분야 확대를 적극 촉구해야 한다."]}, {"c": "at", "t": "식품·농축산", "a": "식품·토지이용", "s": "식품 원산지·탄소발자국 의무 표시", "r": ["모든 식품에 원산지와 탄소발자국을 에너지 등급표 형식으로 의무 표시하여 소비자가 기후친화적 선택을 쉽게 할 수 있도록 해야 한다. 표시 기준은 독립 기관이 검증하고 주기적으로 갱신해야 한다."]}, {"c": "at", "t": "식품·농축산", "a": "식품·토지이용", "s": "혁신 유통 촉진 (협동조합·CSA·직거래)", "r": ["협동조합, 지역사회 지원 농업(CSA), 직거래 장터 등 혁신적 농식품 유통 방식을 법적·재정적으로 지원하여 중간 유통 단계를 줄이고 탄소발자국을 낮추어야 한다. 지역 식품 시스템 강화로 식품 안보와 기후보호를 동시에 달성해야 한다."]}, {"c": "at", "t": "에너지·전력", "a": "식품·토지이용", "s": "농경지 재생에너지 생산 활용", "r": ["농경지와 재생에너지 생산을 병행할 수 있는 영농형 태양광(Agri-PV) 등 혼합 활용 방식을 법적으로 허용하고 지원해야 한다. 농가 소득 다각화와 재생에너지 확충을 동시에 달성하는 모델을 촉진해야 한다."]}, {"c": "at", "t": "에너지·전력", "a": "에너지", "s": "CO2 가격 2030년 240유로/t 인상", "r": ["에너지 분야 탄소 배출에 대한 CO2 가격을 2025년 120유로/t, 2030년 240유로/t으로 단계적으로 인상해야 한다. 이를 통해 화석연료 소비를 실질적으로 억제하고 재생에너지 경쟁력을 높여야 한다."]}, {"c": "at", "t": "에너지·전력", "a": "에너지", "s": "기존 봉인 부지 재생에너지 활용", "r": ["이미 개발·포장된(봉인된) 부지를 태양광 등 재생에너지 설비 설치에 우선적으로 활용해야 한다. 지붕·주차장·도로변·산업단지 등 기존 부지를 재생에너지 생산 공간으로 전환하는 인센티브를 도입해야 한다."]}, {"c": "at", "t": "에너지·전력", "a": "에너지", "s": "난방·냉방 2040년 100% 재생에너지 전환", "r": ["2040년까지 난방과 냉방 분야에서 화석연료를 완전히 대체하여 100% 재생에너지로 전환해야 한다. 열펌프·지역난방망·태양열 등의 확산을 위한 보조금 및 규제 개편이 필요하다."]}, {"c": "at", "t": "에너지·전력", "a": "에너지", "s": "에너지 공간계획 시민참여 의무화", "r": ["지역 에너지 공간계획(räumliche Energieplanung) 수립 과정에 시민참여를 법적으로 의무화해야 한다. 지역 주민이 재생에너지 설비 위치 결정에 실질적으로 참여할 수 있는 절차와 정보 접근을 보장해야 한다."]}, {"c": "at", "t": "에너지·전력", "a": "에너지", "s": "에너지공동체 활성화 및 계시별 요금제", "r": ["지역 에너지공동체(Energiegemeinschaften) 설립과 운영을 법적·행정적으로 간소화하고 재정 지원을 강화해야 한다. 계시별 전력 요금제를 도입하여 소비자가 재생에너지 피크 시간대 소비를 유도받을 수 있도록 해야 한다."]}, {"c": "at", "t": "에너지·전력", "a": "에너지", "s": "전력 2030년 100% 재생에너지 전환", "r": ["2030년까지 오스트리아 전력 공급 전체를 재생에너지로 100% 전환해야 한다. 태양광·풍력·수력·지열 등 다양한 재생에너지원의 보급을 빠르게 확대하기 위한 법적·재정적 지원을 강화해야 한다."]}, {"c": "at", "t": "에너지·전력", "a": "에너지", "s": "지자체 에너지 선도 의무화", "r": ["공공기관 및 지방자치단체가 재생에너지 전환과 에너지 효율 향상에서 선도적 역할을 의무적으로 수행해야 한다. 공공건물·차량·조달 분야에서 기후친화 기준을 우선 적용해야 한다."]}, {"c": "at", "t": "에너지·전력", "a": "에너지", "s": "화석 보조금 단계적 폐지", "r": ["디젤 특혜, 통근보조금 등 화석연료 관련 보조금을 단계적으로 완전히 폐지해야 한다. 폐지 일정을 법으로 명시하고 전환 과정에서 취약계층에 대한 대체 지원책을 병행해야 한다."]}, {"c": "ca-youth", "t": "거버넌스·제도", "a": "기후책임 강화", "s": "환경지속가능발전위원 독립성 강화", "r": ["환경지속가능발전위원(Commissioner of the Environment and Sustainable Development)의 공개 인지도를 제고하고, 의회 직속 독립성을 강화하며 타 기관과의 역할을 명확화한다."]}, {"c": "ca-youth", "t": "건물·주거", "a": "기후위기 대비", "s": "기존 인프라 심층 개조 인센티브", "r": ["공공공간·주택·사업장 등 기존 인프라의 심층 개조(deep retrofit) 및 지속가능 기술 도입 인센티브 프로그램을 강화한다."]}, {"c": "ca-youth", "t": "교육·정보·참여", "a": "기후위기 대비", "s": "기후 위험 연례 종합보고서 의무화", "r": ["모든 정부 부처가 참여하는 기후 위험 및 경제적 영향 연례 종합보고서 작성을 의무화한다."]}, {"c": "ca-youth", "t": "교육·정보·참여", "a": "기후책임 강화", "s": "공공자금 집행 투명 보고 메커니즘", "r": ["기후 행동 인센티브 지급금·탄소크레딧 등 공공자금 집행을 온타리오 Sunshine List 방식으로 투명하게 보고하는 메커니즘을 신설한다."]}, {"c": "ca-youth", "t": "교육·정보·참여", "a": "기후책임 강화", "s": "기후변화 신뢰할 수 있는 온라인 정보 접근 보장", "r": ["기후변화 관련 신뢰할 수 있는 온라인 정보 접근을 보장한다. 지역 및 커뮤니티 언론 연방 지원을 확대하고 온라인뉴스법(C-18)을 재검토한다."]}, {"c": "ca-youth", "t": "교육·정보·참여", "a": "기후책임 강화", "s": "자연 기반 학습 커리큘럼 학교 도입", "r": ["주·준주와 협력하여 학교에 자연 기반 학습 커리큘럼(nature-based learning curriculum)을 도입한다."]}, {"c": "ca-youth", "t": "교육·정보·참여", "a": "기후책임 강화", "s": "청년의 의사결정 참여 보장", "r": ["청년이 의사결정 과정에 인구통계적 대표성을 갖추고 진입장벽이 낮은 방식으로 조기·실질적으로 참여할 수 있도록 의회 및 정부가 보장한다."]}, {"c": "ca-youth", "t": "교육·정보·참여", "a": "석유·가스 부문 배출 감축", "s": "에너지·기후정책 교육 및 정보 리터러시", "r": ["전통 미디어·소셜 미디어·학술계 등 다양한 채널을 통한 에너지·기후정책 교육을 지원하고, 의회위원회를 통한 투명한 정보 공유를 추진한다."]}, {"c": "ca-youth", "t": "금융·재정", "a": "석유·가스 부문 배출 감축", "s": "석유·가스 보조금 감축 및 조건부 지급", "r": ["석유·가스 부문 보조금 감축 관련 규정을 재검토하고, 잔여 보조금은 온실가스 감축 목표 달성에 조건부로 지급한다."]}, {"c": "ca-youth", "t": "기후적응·재난대응", "a": "기후위기 대비", "s": "기후 유발 정신건강 자원 지원", "r": ["기후 유발 외상·불안·고통 치료를 위한 정신건강 자원의 지속적·장기 제공을 의무화한다. 전화·문자 상담전화 및 지원그룹을 포함한다."]}, {"c": "ca-youth", "t": "기후적응·재난대응", "a": "기후위기 대비", "s": "기후재난 피해 지역 인프라 재건 기준", "r": ["주·준주와 협력하여 기후재난 피해 지역에 회복력 있고 지속가능한 인프라 재건 기준을 마련한다."]}, {"c": "ca-youth", "t": "기후적응·재난대응", "a": "기후위기 대비", "s": "정부 간 재난 대응 협력 체계 구축", "r": ["국가 표준을 수립하고 연방 주도의 정부 간 기구를 신설하여 연방·주·준주·지자체·원주민 정부 간 재난 대응을 효율적으로 협력한다."]}, {"c": "ca-youth", "t": "기후정의·정의로운 전환", "a": "기후책임 강화", "s": "원주민 국가 UNDRIP 이행 및 의사결정 참여", "r": ["원주민 국가가 UNDRIP법에 따라 주요 프로젝트 개발 전 과정에 공평하게 참여하고 의사결정권을 갖도록 보장한다."]}, {"c": "ca-youth", "t": "기후정의·정의로운 전환", "a": "석유·가스 부문 배출 감축", "s": "에너지 전환 소비자 생활비 부담 최소화", "r": ["에너지 전환 과정에서 소비자(특히 취약계층)에게 전가되는 주거·식품 등 생활비 부담 최소화를 위한 과학적 의사결정을 추진한다."]}, {"c": "ca-youth", "t": "기후정의·정의로운 전환", "a": "석유·가스 부문 배출 감축", "s": "원주민 토지·자원관리 반환 및 재생에너지 주도권", "r": ["조약 및 비조약 영토 전반에 걸쳐 토지·자원관리를 원주민 국가에 반환하고, 원주민 주권·자결권·국가 대 국가 거버넌스 원칙을 존중한다."]}, {"c": "ca-youth", "t": "산업·노동·녹색일자리", "a": "기후책임 강화", "s": "대기업·고배출 산업 온실가스 배출 공개 의무화", "r": ["대기업·고배출 산업·공공 부문에 범위 1·2·3(Scope 1, 2, 3) 온실가스 배출량 공개를 의무화한다."]}, {"c": "ca-youth", "t": "산업·노동·녹색일자리", "a": "석유·가스 부문 배출 감축", "s": "지속가능 양질의 일자리 창출 인센티브", "r": ["생활임금·안전·고용보호·혜택을 포함한 지속가능 양질의 일자리 창출 인센티브를 확대한다. 청년 대상 STIP 및 Youth Climate Corps를 포함하고 청정에너지 조달·투자에 노동 조건을 부여한다."]}, {"c": "ca-youth", "t": "소비·폐기물·순환경제", "a": "기후책임 강화", "s": "연방 정부 지속가능 구매 선도", "r": ["연방 정부 부처가 지속가능·국산·저배출 물품·서비스 구매를 선도한다."]}, {"c": "ca-youth", "t": "수송·교통", "a": "석유·가스 부문 배출 감축", "s": "대중교통 중심 개발 및 고빈도 전철화", "r": ["대중교통 중심 개발(transit-oriented development) 촉진 입법을 재검토하고, 기존 노선을 활용한 고빈도·고속 전철화를 확대한다."]}, {"c": "ca-youth", "t": "식품·농축산", "a": "기후위기 대비", "s": "지속가능한 농업정책 재검토 및 연방 투자", "r": ["다양한 규모의 농가 및 농업단체와 협력하여 기존 농업정책을 재검토하고, 지속가능한 농업 관행·인센티브·보호 조치에 연방 투자를 확대한다."]}, {"c": "ca-youth", "t": "에너지·전력", "a": "석유·가스 부문 배출 감축", "s": "건설캐나다법 재검토 및 재생에너지 전력망", "r": ["건설캐나다법(Building Canada Act)을 재검토하고, 재생에너지 기반 전력망 구축 주·준주 사업을 우선 지원한다."]}, {"c": "ca-youth", "t": "에너지·전력", "a": "석유·가스 부문 배출 감축", "s": "기존 전력화 사업 재검토 및 집중 투자", "r": ["기존 전력화 사업을 재검토하고 신뢰성 높은 사업에 집중 투자한다."]}, {"c": "ca-youth", "t": "에너지·전력", "a": "석유·가스 부문 배출 감축", "s": "지역 간 전력망 연계 강화", "r": ["동서·남북 지역 간 전력망 연결을 위한 주·준주·원주민 국가 간 협력을 촉진한다."]}, {"c": "fr", "t": "거버넌스·제도", "a": "생산·노동", "s": "공공 조달 환경 조항 강화", "r": ["공공 조달 계약에 환경 조항을 강화하여 친환경 공공 구매를 의무화한다."]}, {"c": "fr", "t": "거버넌스·제도", "a": "소비", "s": "환경 공공정책 감독·독립 평가", "r": ["환경 공공정책의 실효적 적용을 보장하고 독립 기관에 의한 평가를 실시한다."]}, {"c": "fr", "t": "거버넌스·제도", "a": "식품·농업", "s": "에코사이드 범죄 입법화", "r": ["9가지 지구 한계(limites planétaires)를 기반으로 에코사이드 처벌법을 제정한다. 에코사이드 범죄에 최대 20년 징역, 최고 매출의 20%에 달하는 벌금을 부과하며, 지구 한계 보호를 위한 독립 고위 기관(HALP)을 설립한다."]}, {"c": "fr", "t": "거버넌스·제도", "a": "재정", "s": "유럽 그린딜 지지 및 기후·생물다양성 기금 창설", "r": ["EU 차원에서 유럽 그린딜(Green Deal)을 지지하고, 기후·생물다양성 유럽 기금 창설을 지지한다."]}, {"c": "fr", "t": "거버넌스·제도", "a": "헌법 개정", "s": "헌법 전문 수정 — 환경 보존", "r": ["헌법 전문에 '인간의 권리, 자유 및 원칙들의 조화는 인류의 공동 유산인 환경 보존을 침해할 수 없다'는 문구를 추가한다."]}, {"c": "fr", "t": "거버넌스·제도", "a": "헌법 개정", "s": "헌법 제1조 수정 — 생물다양성·환경 보존·기후 투쟁", "r": ["헌법 제1조에 '공화국은 생물다양성 및 환경의 보존을 보장하고 기후 변화에 맞서 싸운다'는 문구를 추가한다."]}, {"c": "fr", "t": "거버넌스·제도", "a": "헌법 개정", "s": "환경 수호자 헌법 기관 창설 검토", "r": ["환경 정책 통제 강화를 위해 '환경 수호자(Défenseur de l'environnement)' 헌법 기관 창설을 검토하도록 권고한다."]}, {"c": "fr", "t": "건물·주거", "a": "주거·건물", "s": "2040년까지 전체 건물 에너지 리노베이션 의무화", "r": ["2040년까지 모든 건물의 에너지 리노베이션을 의무화한다. 2024년부터 단독 주택 매매·이전 시 에너지 성능 기준 충족 의무, 2030년까지 330kWh/m²/년, 2040년까지 150kWh/m²/년 미만 기준을 단계적으로 적용한다."]}, {"c": "fr", "t": "건물·주거", "a": "주거·건물", "s": "건물주·임대인에 전면 리노베이션 의무 및 임대료 규제", "r": ["건물주·임대인에게 전면 리노베이션 의무를 부과하고, 에너지 등급 F·E에 해당하는 임대 건물에 대한 임대료 인상을 금지한다. 2024년부터 단독 주택 매매 시 90kWh/m²/년 이하 기준을 충족해야 한다."]}, {"c": "fr", "t": "건물·주거", "a": "주거·건물", "s": "공공·사유·산업 시설 에너지 소비 제한", "r": ["공공 시설, 사유 건물, 산업 시설의 에너지 소비를 대폭 제한하고, 500m² 이상 상업용 건물에 에너지 절감 의무를 확대 적용한다."]}, {"c": "fr", "t": "건물·주거", "a": "주거·건물", "s": "전국 원스톱 리노베이션 상담 창구 네트워크 구축", "r": ["전국적으로 무상 '원스톱 창구(guichet unique)' 네트워크를 구축하여 건물 리노베이션 관련 상담·지원을 일괄 제공한다."]}, {"c": "fr", "t": "교육·정보·참여", "a": "생산·노동", "s": "수입품 온실가스 배출 회계", "r": ["수입품에 관련된 온실가스 배출을 국가 회계에 포함하는 방안을 도입한다."]}, {"c": "fr", "t": "교육·정보·참여", "a": "생산·노동", "s": "온실가스 재고 의무 대상 확대 및 제재 강화", "r": ["연간 온실가스 재고 작성 의무 기업 대상을 확대하고 미이행 시 제재를 강화한다."]}, {"c": "fr", "t": "교육·정보·참여", "a": "생산·노동", "s": "재무제표 탄소 결산 의무화", "r": ["재무제표 제출 의무가 있는 모든 기관의 재무제표에 탄소 결산을 추가 의무화한다. 연간 온실가스 재고 의무 기업 대상을 확대하고 제재를 강화한다."]}, {"c": "fr", "t": "교육·정보·참여", "a": "소비", "s": "책임 소비 교육·인식 개선", "r": ["책임 소비 교육·훈련·인식 개선 프로그램을 행동 변화의 레버로 활용한다."]}, {"c": "fr", "t": "교육·정보·참여", "a": "이동·교통", "s": "교통 거버넌스에 시민 참여 보장", "r": ["지방 및 국가 차원의 교통 거버넌스에 시민 참여를 제도적으로 보장한다."]}, {"c": "fr", "t": "교육·정보·참여", "a": "헌법 개정", "s": "CESE 개혁 — 추첨 시민 참여 및 명칭 변경", "r": ["추첨 시민 15~50%를 경제사회환경의회(CESE) 위원으로 선발하고, 기관 명칭을 '시민 참여 의회(Chambre de la Participation Citoyenne)'로 변경하는 것을 검토한다."]}, {"c": "fr", "t": "금융·재정", "a": "생산·노동", "s": "기업 생태계 전환 금융 지원", "r": ["기업의 생태계 전환을 위한 금융 지원 체계를 구축한다."]}, {"c": "fr", "t": "금융·재정", "a": "재정", "s": "조세 개혁 — 금융거래세·GAFA세·광고세", "r": ["금융거래세를 강화하고, GAFA(구글·애플·페이스북·아마존) 세금을 인상하며, 광고세를 신설한다."]}, {"c": "fr", "t": "금융·재정", "a": "재정", "s": "탄소 시장 수익 기후 전환 전용", "r": ["탄소 시장 수익을 기후 전환에 전용한다."]}, {"c": "fr", "t": "금융·재정", "a": "재정", "s": "화석연료 세제 혜택 즉시 폐지", "r": ["항공유·중유·디젤 등 화석연료에 대한 세제 혜택을 즉시 폐지한다."]}, {"c": "fr", "t": "기후정의·정의로운 전환", "a": "생산·노동", "s": "지역별 기업 전환 및 직종 변환 지원", "r": ["지역별로 기업 전환과 직종 변환을 지원하고, 건물 분야 직무 교육을 강화한다. 국가·지역 차원의 고용·역량 전환 거버넌스를 신설하고 생태 전환 관련 연간 10만 건 직업 훈련에 투자한다."]}, {"c": "fr", "t": "기후정의·정의로운 전환", "a": "식품·농업", "s": "취약 계층 유기농·AMAP 식품 바우처 도입", "r": ["취약 계층이 유기농 및 AMAP(농촌 공동체 지원 농업) 식품을 이용할 수 있도록 식품 바우처를 도입한다."]}, {"c": "fr", "t": "기후정의·정의로운 전환", "a": "이동·교통", "s": "저소득층 대상 장기 리스 제도 확대", "r": ["저소득층을 대상으로 청정 차량 장기 리스 제도를 확대하여 친환경 이동 수단 접근성을 높인다."]}, {"c": "fr", "t": "기후정의·정의로운 전환", "a": "재정", "s": "저소득층 전기차 구매 무이자 대출 및 주택 리노베이션 보조금", "r": ["저소득층 대상 전기차 구매 무이자 대출 제도를 도입하고 주택 리노베이션 보조금을 강화한다."]}, {"c": "fr", "t": "기후정의·정의로운 전환", "a": "주거·건물", "s": "소득 계층별 차등 리노베이션 지원 체계", "r": ["저소득층에게는 공공 지원금으로 자부담 제로 리노베이션을 제공하고, 중산층에게는 리노베이션 비용을 에너지 절감액으로 상쇄하는 무이자 대출을 제공한다."]}, {"c": "fr", "t": "산림·토지이용", "a": "주거·건물", "s": "토지 포장 방지 및 도시 확장 억제", "r": ["토지 포장(artificialisation)과 도시 확장(sprawl)을 방지하고, 도시와 농촌 생활의 매력을 제고한다."]}, {"c": "fr", "t": "산업·노동·녹색일자리", "a": "생산·노동", "s": "계획적 진부화 금지법 실질 적용", "r": ["계획적 진부화(obsolescence programmée) 금지법의 준수를 강제하고 실질적으로 집행한다."]}, {"c": "fr", "t": "산업·노동·녹색일자리", "a": "생산·노동", "s": "근로 시간 단축 (부결)", "r": ["주 28시간 근무제(임금 유지)를 도입하는 제안이었으나, 투표 결과 반대 65%로 부결되어 부속서에 수록되었다."]}, {"c": "fr", "t": "산업·노동·녹색일자리", "a": "생산·노동", "s": "디지털 기술 환경 영향 최소화", "r": ["디지털 기술 진화를 환경적 영향 최소화 방향으로 유도하는 정책을 도입한다."]}, {"c": "fr", "t": "산업·노동·녹색일자리", "a": "생산·노동", "s": "유럽 탄소 국경 조정 지지", "r": ["유럽 수준에서의 탄소 국경 조정 메커니즘(Carbon Border Adjustment)을 지지하고 적극 추진한다."]}, {"c": "fr", "t": "산업·노동·녹색일자리", "a": "생산·노동", "s": "전환 혁신 개발·지원", "r": ["생태·기후 전환을 위한 혁신 개발 및 지원 체계를 구축한다."]}, {"c": "fr", "t": "산업·노동·녹색일자리", "a": "재정", "s": "고탄소 투자 기업 금융 지원 중단 의무화", "r": ["고탄소 투자에 대한 기업 금융 지원을 중단하도록 의무화한다."]}, {"c": "fr", "t": "소비·폐기물·순환경제", "a": "생산·노동", "s": "미판매 제품 파기 금지 및 해외 쓰레기 수출 금지", "r": ["사업장 폐기물 규제를 강화하고, 2021년부터 미판매 제품 파기를 금지하며, 2025년까지 해외 쓰레기 수출을 금지한다."]}, {"c": "fr", "t": "소비·폐기물·순환경제", "a": "생산·노동", "s": "수리 가능성 의무화 및 수리 세액공제", "r": ["모든 제조품의 수리 가능성을 의무화하고 15년간 부품 공급을 의무화하며 수리 네트워크를 확충한다. 가구당 연 100유로의 수리 세액공제를 도입한다."]}, {"c": "fr", "t": "소비·폐기물·순환경제", "a": "생산·노동", "s": "에코디자인 의무화 및 제품 내구성 향상", "r": ["에코디자인을 의무화하고 제품 보증 기간을 5~10년으로 연장하여 내구성을 향상시킨다."]}, {"c": "fr", "t": "소비·폐기물·순환경제", "a": "생산·노동", "s": "책임 있는 생산 촉진, 수리·재활용 육성", "r": ["책임 있는 생산을 촉진하고, 수리·재활용·폐기물 관리 분야를 육성한다."]}, {"c": "fr", "t": "소비·폐기물·순환경제", "a": "생산·노동", "s": "플라스틱 재활용 의무화 및 일회용 전면 금지", "r": ["2023년까지 모든 플라스틱의 재활용을 의무화하고, 일회용 플라스틱을 전면 금지한다."]}, {"c": "fr", "t": "소비·폐기물·순환경제", "a": "소비", "s": "고탄소 제품 광고 금지", "r": ["TV·라디오·인쇄물·인터넷·야외 광고 등 모든 매체에서 환경 오염 제품 광고를 금지한다. 일명 '기후판 에뱅법(Loi Evin)'에 해당하는 조치이다."]}, {"c": "fr", "t": "소비·폐기물·순환경제", "a": "소비", "s": "과잉 포장 및 일회용 플라스틱 제한", "r": ["과잉 포장 및 일회용 플라스틱을 제한하고, 벌크 판매 및 재사용 용기를 확대한다."]}, {"c": "fr", "t": "소비·폐기물·순환경제", "a": "소비", "s": "광고·상점 온실가스 배출 표시 의무화", "r": ["상점 및 광고에 온실가스 배출량 표시를 의무화한다."]}, {"c": "fr", "t": "소비·폐기물·순환경제", "a": "소비", "s": "비선택적 광고 노출 강력 제한", "r": ["야외 전광판·공공장소 광고판을 금지하고, 온라인 광고 차단 도구를 브라우저에 의무 설치하며, 우편함 광고 투입을 2021년 1월부터 금지한다. 광고용 비행기도 금지한다."]}, {"c": "fr", "t": "소비·폐기물·순환경제", "a": "소비", "s": "소비 경고 문구 의무 부착", "r": ["'덜 소비하라'는 경고 문구를 광고물에 의무적으로 부착한다."]}, {"c": "fr", "t": "소비·폐기물·순환경제", "a": "소비", "s": "탄소 스코어 개발 및 제품 의무 부착", "r": ["제품·서비스에 탄소 스코어를 개발하고 의무적으로 부착한다."]}, {"c": "fr", "t": "소비·폐기물·순환경제", "a": "소비", "s": "탄소 표시 의무화", "r": ["모든 제품 및 서비스에 탄소 영향 점수(CO2 score)를 의무적으로 개발·부착한다. 상점 및 광고에도 온실가스 배출량 표시를 의무화한다."]}, {"c": "fr", "t": "소비·폐기물·순환경제", "a": "식품·농업", "s": "소비자 식품 정보 제공 강화", "r": ["소비자에게 식품의 영양·환경 정보를 강화하여 제공함으로써 지속 가능한 소비 선택을 지원한다."]}, {"c": "fr", "t": "소비·폐기물·순환경제", "a": "식품·농업", "s": "식품 낭비 저감", "r": ["급식 및 개인 차원에서의 식품 낭비를 저감하는 정책과 인식 개선 조치를 시행한다."]}, {"c": "fr", "t": "소비·폐기물·순환경제", "a": "식품·농업", "s": "식품 라벨·인증 체계 개혁", "r": ["식품 라벨 및 인증 체계를 개혁하여 소비자가 친환경·건강 식품을 쉽게 식별할 수 있도록 한다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "고속도로·간선도로 온실가스 감축", "r": ["고속도로 및 간선도로에서의 온실가스 배출을 감축하기 위해 속도 제한 강화 등의 조치를 시행한다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "고탄소 신차 판매 금지 및 화석연료 차량 종료", "r": ["2025년부터 110g CO2/km 이상의 고탄소 신차 판매를 금지하고, 2040년에는 화석연료 차량 신차 판매를 전면 종료한다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "공공 도로 정비 및 새로운 이동 습관 조성", "r": ["공공 도로를 정비하여 새로운 이동 습관을 조성하고, 지속 가능한 교통 문화를 형성한다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "구매 보너스·전환 보조금 강화", "r": ["청정 차량 구매 보너스 및 전환 보조금을 강화하여 친환경 차량 구매를 유도한다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "기업·행정기관 직원 출퇴근 교통 계획 의무화", "r": ["기업 및 행정기관이 직원 출퇴근 교통 계획 수립에 참여하는 것을 의무화한다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "단거리 유통 상품 VAT 감면", "r": ["단거리 유통(circuits courts) 상품에 부가가치세(VAT) 감면 혜택을 부여하여 로컬 유통망을 장려한다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "대형 화주 화물 운송 환경 계획 의무화", "r": ["연매출 1억 유로 이상의 대형 화주 기업에 화물 운송 환경 계획 수립을 의무화한다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "도로 통행세 도입으로 수단 간 비용 조정", "r": ["도로 통행세(vignette)를 도입하여 수로·철도 대비 트럭 운행 비용을 조정함으로써 복합 운송 전환을 유도한다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "디젤 세금 혜택 폐지 및 친환경 화물차 보조금", "r": ["디젤 세금 혜택을 단계적으로 폐지하고, 친환경 화물차 구매 보조금을 확대한다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "일반 철도 이용 활성화", "r": ["고속 노선 이외 일반 철도 이용을 활성화하는 조건을 창출하여 철도 이용률을 높인다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "자동차 대체 교통 수단 개발", "r": ["자전거, 대중교통, 보행 인프라 등 자동차 이외의 교통 수단을 개발하여 자동차 의존도를 낮춘다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "저배출 차량 구매 무이자 대출 도입", "r": ["저배출 차량 구매를 위한 무이자 대출 제도를 도입하여 소비자의 경제적 부담을 경감한다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "지역 교통 수단 정보 통합 단일 포털 구축", "r": ["지역 내 모든 교통 수단 정보를 통합하는 단일 포털을 구축하여 이용자 편의를 높인다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "청정 차량 전환 지원", "r": ["저공해·청정 차량으로의 전환을 지원하기 위한 구매 보너스·전환 보조금 강화, 탄소 배출량 기반 패널티·보너스 확대, 저소득층 대상 장기 리스 및 무이자 대출 제도를 도입한다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "탄소 배출량 기반 자동차 보험료 차등화", "r": ["차량의 탄소 배출량에 따라 자동차 보험료 세율을 차등화하여 고탄소 차량 이용을 억제한다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "탄소 배출량·차량 중량 기반 보너스·패널티 확대", "r": ["탄소 배출량 및 차량 중량을 기준으로 보너스-패널티(bonus-malus) 제도를 확대 개편한다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "항공 운송 온실가스 영향 제한", "r": ["국내 항공 노선을 철도로 대체하고 항공 세제를 개편하여 항공 운송의 온실가스 영향을 제한한다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "항구 내 선박 온실가스 배출 제로화", "r": ["항구 내 정박 중인 선박의 온실가스 배출을 제로화하는 조치를 시행한다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "해양·수로 화물 고속도로 개발", "r": ["해양 및 수로를 이용한 화물 고속도로(autoroutes de fret)를 개발하여 도로 화물 운송을 대체한다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "화물 도로 운송 감축 및 복합 운송 전환", "r": ["화물 트럭의 장거리 운행을 감축하고 철도·수로 전환을 촉진한다. 해양·수로 화물 고속도로 개발, 친환경 운전 교육 강화, 도로 통행세 도입 등을 포함한다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "화물차 제조사 수소 R&amp;D 의무화", "r": ["화물차 제조사에 수소 에너지 분야 R&amp;D 통일 의무를 부과하여 친환경 화물 운송 기술 개발을 촉진한다."]}, {"c": "fr", "t": "수송·교통", "a": "이동·교통", "s": "화물차 친환경 운전 교육 주기 단축", "r": ["화물차 운전자의 친환경 운전(écoconduite) 교육 주기를 5년에서 2년으로 단축한다."]}, {"c": "fr", "t": "식품·농축산", "a": "식품·농업", "s": "DGCCRF 협상 참여 의무화 및 업종별 원탁회의", "r": ["프랑스 경쟁·소비·사기방지청(DGCCRF)의 협상 참여를 의무화하고, 업종별로 반기마다 원탁회의 개최를 의무화한다."]}, {"c": "fr", "t": "식품·농축산", "a": "식품·농업", "s": "EU 금지 가공 보조제 포함 제품 수입 금지", "r": ["EU에서 금지된 가공 보조제가 포함된 식품의 수입을 금지한다."]}, {"c": "fr", "t": "식품·농축산", "a": "식품·농업", "s": "PAC을 농업 전환의 레버로 활용", "r": ["국가 차원에서 유럽공동농업정책(PAC)을 농업의 생태적 전환 레버로 적극 활용한다."]}, {"c": "fr", "t": "식품·농축산", "a": "식품·농업", "s": "가공 보조제·첨가물 5년 이내 단계적 금지", "r": ["가공 보조제 및 첨가물 사용을 5년 이내에 단계적으로 금지한다."]}, {"c": "fr", "t": "식품·농축산", "a": "식품·농업", "s": "가공 정도 표시 의무화 및 윤리적 식품 헌장·라벨 도입", "r": ["식품 가공 정도 표시를 의무화하고, 윤리적 식품 헌장과 라벨을 도입한다."]}, {"c": "fr", "t": "식품·농축산", "a": "식품·농업", "s": "건강하고 저배출 농식품 장려 통상 정책 수립", "r": ["건강하고 저배출 농식품을 장려하는 미래 통상 정책 모델을 수립하여 국제 교역에서도 기후·환경 기준을 적용한다."]}, {"c": "fr", "t": "식품·농축산", "a": "식품·농업", "s": "고탄소·저영양 초가공 식품 고율 과세", "r": ["고탄소·저영양 초가공 식품에 담배세 모델을 참고한 고율 세금을 부과한다."]}, {"c": "fr", "t": "식품·농축산", "a": "식품·농업", "s": "공공 급식 매일 채식 메뉴 제공 의무화", "r": ["2022년부터 모든 공공 급식 기관에서 매일 채식 메뉴 선택지를 의무적으로 제공한다."]}, {"c": "fr", "t": "식품·농축산", "a": "식품·농업", "s": "공공 급식 친환경 전환 강화 (에갈리앙법 이행)", "r": ["2022년까지 모든 공공 급식에 유기농·지속 가능한 식재료를 50% 이상 사용하고, 그 중 20%는 유기농으로 공급한다. 에갈리앙법(EGalim) 이행을 강화한다."]}, {"c": "fr", "t": "식품·농축산", "a": "식품·농업", "s": "농업 교육·훈련 개혁", "r": ["농업 교육 및 훈련 체계를 개혁하여 지속 가능한 농업 방식을 중심으로 인력을 양성한다."]}, {"c": "fr", "t": "식품·농축산", "a": "식품·농업", "s": "로컬 유통망(circuits courts) 확대", "r": ["지역 내 단거리 유통망(circuits courts)을 확대하여 식품 생산자와 소비자를 직접 연결하는 시스템을 강화한다."]}, {"c": "fr", "t": "식품·농축산", "a": "식품·농업", "s": "민간 급식에도 에갈리앙법 전면 적용", "r": ["2025년부터 민간 급식 분야에도 에갈리앙법 조항을 전면 적용한다."]}, {"c": "fr", "t": "식품·농축산", "a": "식품·농업", "s": "생산자-유통-소비자 3자 협상 투명화", "r": ["생산자·유통업체·소비자 3자 협상을 투명화하고 농업인에게 공정한 협상 구조를 구축한다. 프랑스 경쟁·소비·사기방지청(DGCCRF) 참여 의무화 및 업종별 반기 원탁회의를 개최한다."]}, {"c": "fr", "t": "식품·농축산", "a": "식품·농업", "s": "소규모 친환경 급식 보너스 지원", "r": ["200식 이하 소규모 친환경 급식 운영에 식당당 1식당 10센트의 보너스를 지원한다."]}, {"c": "fr", "t": "식품·농축산", "a": "식품·농업", "s": "식품 첨가물 및 가공 보조제 생산·수입·사용 규제", "r": ["식품 첨가물 및 가공 보조제의 생산·수입·사용을 규제하며, 가공 정도 표시 의무화, EU 금지 물질 수입 금지, 5년 이내 단계적 금지를 추진한다."]}, {"c": "fr", "t": "식품·농축산", "a": "식품·농업", "s": "유럽공동농업정책(PAC) 협상에서 야심찬 입장 견지", "r": ["유럽공동농업정책(PAC) 협상에서 프랑스의 야심찬 환경·기후 입장을 고수하여 지속 가능한 농업으로의 전환을 유도한다."]}, {"c": "fr", "t": "식품·농축산", "a": "식품·농업", "s": "친환경 농법 개발·확산 지원", "r": ["친환경 농법(agroécologie)의 개발과 확산을 지원하여 저배출 농업으로의 전환을 촉진한다."]}, {"c": "fr", "t": "에너지·전력", "a": "생산·노동", "s": "시민·지자체·기업 재생에너지 참여 확대", "r": ["시민·지방자치단체·기업이 재생에너지 프로젝트에 직접 참여할 수 있는 경로와 제도를 확대한다."]}, {"c": "fr", "t": "에너지·전력", "a": "생산·노동", "s": "자가 소비 확대 및 신규 건물 태양광 의무화", "r": ["에너지 자가 소비(autoconsommation)를 확대하고, 신규 건물 및 창고에 태양광 패널 설치를 의무화한다."]}, {"c": "fr", "t": "에너지·전력", "a": "생산·노동", "s": "재생에너지 생산·저장·재분배", "r": ["재생에너지(EnR) 생산·저장·재분배를 모든 시민이 참여할 수 있도록 개방한다. 지역 에너지 거버넌스를 개선하고 시민·지자체·기업의 재생에너지 프로젝트 참여를 확대한다."]}, {"c": "fr", "t": "에너지·전력", "a": "생산·노동", "s": "지역 에너지 거버넌스 개선", "r": ["지역 에너지 협의체를 신설하여 지역 차원의 에너지 거버넌스를 개선한다."]}, {"c": "fr", "t": "자연·생태계", "a": "생산·노동", "s": "생태계·생물다양성 보호 의무화", "r": ["생태계 및 생물다양성 보호를 법적으로 의무화한다."]}, {"c": "fr", "t": "자연·생태계", "a": "식품·농업", "s": "저탄소 어업 인센티브 및 해양 생태계 보호", "r": ["저탄소 어업 방식에 인센티브를 제공하고 해안선·해양 생태계 보호를 위한 입법을 추진한다."]}, {"c": "fi", "t": "거버넌스·제도", "a": "횡단", "s": "일반 관찰 — 공공 부문 선도", "r": ["공공 행정 및 지방자치단체가 기후 친화적 교통, 주거, 식품에 세수를 투입하여 모범을 보여야 한다."]}, {"c": "fi", "t": "거버넌스·제도", "a": "횡단", "s": "일반 관찰 — 선택의 자유 보장", "r": ["조치들이 불필요하게 선택의 자유를 제한해서는 안 되며, 핀란드 어디서나 생활하고 일할 수 있는 권리가 보장되어야 한다."]}, {"c": "fi", "t": "건물·주거", "a": "주거", "s": "조치 10 — 유류 난방 포기 보조금", "r": ["유류 난방 포기 보조금의 장기 재원 확보 여부에 주의하고, 소득 수준과 무관하게 모든 가구가 난방 시스템 전환이 가능하도록 보조금 또는 대출 보증을 제공한다."]}, {"c": "fi", "t": "건물·주거", "a": "주거", "s": "조치 11 — 난방유 세금 대폭 인상", "r": ["난방은 기본 필요이므로 난방유 세금 대폭 인상에 반대하며, 투자 보조금 등 다른 수단으로 유류 난방에서 전환을 유도할 것을 권고한다."]}, {"c": "fi", "t": "건물·주거", "a": "주거", "s": "조치 12 — 가사 도우미 세액 공제 인상", "r": ["기존 가사 도우미 세액 공제의 공제 한도를 폐지하여 접근성을 향상한다. 에너지 효율 개선 조치에 한정한 '생태 가사 도우미 세액 공제'를 신설할 것을 제안한다."]}, {"c": "fi", "t": "교육·정보·참여", "a": "횡단", "s": "일반 관찰 — 환경·생물다양성·사회경제적 영향 평가", "r": ["비배출거래 부문 조치의 환경(기후+생물다양성) 및 사회경제적 집단별 재정적 영향을 광범위하게 고려해야 한다."]}, {"c": "fi", "t": "금융·재정", "a": "횡단", "s": "일반 관찰 — 재정적 공정성", "r": ["새로운 기후행동의 비용은 부문 간에 공정하게 분담되어야 한다. 총 세금 비율을 높이지 않는 범위에서 기후 배출에 세금을 부과하고 다른 곳에서 보상해야 한다."]}, {"c": "fi", "t": "금융·재정", "a": "횡단", "s": "일반 관찰 — 전환 기간 보장", "r": ["세금 인상 시 충분히 긴 전환 기간을 설정하여 개별 소비자의 재정적 부담이 급격히 증가하지 않도록 해야 한다."]}, {"c": "fi", "t": "기후정의·정의로운 전환", "a": "횡단", "s": "일반 관찰 — 개인 책임 호소", "r": ["권리를 제한하기보다는 개인적 책임에 호소하여 미래 세대를 위한 생활 여건을 보장해야 한다."]}, {"c": "fi", "t": "기후정의·정의로운 전환", "a": "횡단", "s": "일반 관찰 — 개인·지역적 차이 고려", "r": ["기후 조치 시행에서 개인 및 지역 간 차이를 반드시 고려하고, 가능한 경우 대안을 제공해야 한다."]}, {"c": "fi", "t": "기후정의·정의로운 전환", "a": "횡단", "s": "일반 관찰 — 사미 원주민 권리 존중", "r": ["기후변화 대응 사업이 사미(Sámi) 원주민의 언어·문화에 부정적 영향을 미칠 경우, FPIC 원칙(자유의사에 의한 사전 충분한 동의)에 따라 동의 없이는 시행할 수 없다."]}, {"c": "fi", "t": "기후정의·정의로운 전환", "a": "횡단", "s": "일반 관찰 — 정보 제공 강화", "r": ["재정적 조치는 모든 소득 계층이 보조금·공제를 신청할 수 있도록 명확히 소통되어야 하며, 저소득층·노인에 대한 정보 제공에 특별히 주의해야 한다. 초등학교부터 기후 교육을 포함한 광범위한 정보 제공이 필요하다."]}, {"c": "fi", "t": "산업·노동·녹색일자리", "a": "횡단", "s": "일반 관찰 — 제조업자 책임 강조", "r": ["소비자가 제품의 원산지 및 생태적 지속가능성을 완전히 확인할 기회가 드물기 때문에 제조업자의 책임을 강조해야 한다."]}, {"c": "fi", "t": "수송·교통", "a": "교통", "s": "조치 1 — 보행·자전거 투자 프로그램 지속 및 보행·자전거 환경 개선", "r": ["보행·자전거 투자 프로그램을 지속하되, 자전거 도로는 수요가 가장 많은 지역에 우선 배분한다. 농촌 지역에는 도로변 확장도 대안으로 허용한다."]}, {"c": "fi", "t": "수송·교통", "a": "교통", "s": "조치 2 — 교통용 전기 및 가스 공공 배급 인프라 지원 지속·확대", "r": ["교통용 전기 및 가스 공공 배급 인프라 지원을 농촌 포함 전국 균등하게 배분한다. 바이오가스는 경쟁력 있는 가격으로 충분한 가용성을 확보해야 한다."]}, {"c": "fi", "t": "수송·교통", "a": "교통", "s": "조치 3 — 전기차 구매 보조금 지속 및 증액", "r": ["순수 전기차 구매 보조금을 신차·중고차 모두에 적용하고, 재충전 가능 하이브리드로도 확대한다. 공유경제 발전에도 보조금을 배정한다."]}, {"c": "fi", "t": "수송·교통", "a": "교통", "s": "조치 4 — 노후 휘발유 차량의 에탄올·가스 개조 보조금 지속", "r": ["노후 휘발유 차량의 에탄올·가스 개조 보조금 지속을 위해 신형 차량 에탄올 개조도 쉽게 신청할 수 있도록 행정 절차를 간소화하고 홍보를 강화한다."]}, {"c": "fi", "t": "수송·교통", "a": "교통", "s": "조치 5 —폐차 프리미엄 캠페인 시행", "r": ["폐차 프리미엄을 가구당 최대 2대로 제한하고, 폐차 프리미엄으로 중고 전기차 구매도 허용한다."]}, {"c": "fi", "t": "수송·교통", "a": "교통", "s": "조치 6 — 공동 주택·직장 대상 민간 충전 인프라 보조금 지속·확대", "r": ["국가·지자체도 직원용 충전 인프라를 구축하고, 소규모 기업을 고려하며, 신축 건물에 충전소 설치 의무를 검토한다."]}, {"c": "fi", "t": "수송·교통", "a": "교통", "s": "조치 7 — 자동차세 및 차량 등록세 개편", "r": ["모든 차량세는 배출량 기반으로 일관되게 적용하고, 자동차 취득세를 폐지하여 더 새로운 차 구매를 유도한다. 지역적 공정성을 위한 차등 적용을 검토한다."]}, {"c": "fi", "t": "수송·교통", "a": "교통", "s": "조치 8 — 화석연료세 인상", "r": ["중고 전기차 가격·공급이 화석연료 차량과 동등해지기 전까지는 화석연료세 인상을 보류하여 저소득층을 보호한다."]}, {"c": "fi", "t": "수송·교통", "a": "교통", "s": "조치 9 — 바이오가스·전기연료 보급 의무", "r": ["CO2 보조금 성분의 연료세 공제를 유지하고, 국내 공급 보안을 확보하며, 가격 급등을 방지하기 위한 모니터링을 실시한다."]}, {"c": "fi", "t": "식품·농축산", "a": "식품", "s": "조치 13 — 음식물 낭비 감소·친환경·건강 식품 촉진", "r": ["제조·운반 비용 및 생태적 지속가능성 연구를 강화하고, 어린이 교육 단계부터 정보를 제공한다. 급식 예산은 친환경·건강 식단으로 유도한다."]}, {"c": "fi", "t": "식품·농축산", "a": "식품", "s": "조치 14 — 친환경 식품 가격 인하", "r": ["국내 식물성 단백질 생산을 지원하고, 생태적으로 지속가능한 육류(어류, 야생동물, 순록) 소비를 장려한다. 보조금·세금 감면의 긍정적 인센티브 방식을 사용하고, 질병으로 인한 특수 식단 비용은 세금으로 보상한다."]}];
+
+/* ============================================================
+   RENDER LOGIC
+   ============================================================ */
+
+const tableBody = document.getElementById('tableBody');
+const countryFilters = document.getElementById('countryFilters');
+const countryStrip = document.getElementById('countryStrip');
+const searchBox = document.getElementById('searchBox');
+const resetBtn = document.getElementById('resetBtn');
+const rowCount = document.getElementById('rowCount');
+const activeFilters = document.getElementById('activeFilters');
+
+let activeCountries = new Set(Object.keys(COUNTRIES));
+let searchTerm = '';
+
+/* Build country filter buttons */
+Object.keys(COUNTRIES).forEach(code => {
+  const c = COUNTRIES[code];
+  const btn = document.createElement('button');
+  btn.className = 'country-btn active';
+  btn.dataset.country = code;
+  btn.style.setProperty('--country-color', `var(--${c.color})`);
+  btn.innerHTML = `${c.name} <span style="color:var(--mute); font-family:'JetBrains Mono', monospace; font-size:0.7rem; margin-left:0.2rem;">${c.case}</span>`;
+  btn.addEventListener('click', () => {
+    if (activeCountries.has(code)) {
+      activeCountries.delete(code);
+      btn.classList.remove('active');
+    } else {
+      activeCountries.add(code);
+      btn.classList.add('active');
+    }
+    render();
+  });
+  countryFilters.appendChild(btn);
+});
+
+/* Country strip stats */
+const countByCountry = {};
+DATA.forEach(d => { countByCountry[d.c] = (countByCountry[d.c]||0)+1; });
+Object.keys(COUNTRIES).forEach(code => {
+  const c = COUNTRIES[code];
+  const item = document.createElement('div');
+  item.className = 'strip-item';
+  item.innerHTML = `${c.name} ${c.case}<span class="num">${countByCountry[code]||0}</span>`;
+  item.addEventListener('click', () => {
+    document.getElementById('searchBox').focus();
+    activeCountries = new Set([code]);
+    document.querySelectorAll('.country-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.country === code);
+    });
+    render();
+    window.scrollTo({ top: document.querySelector('.filter-section').offsetTop, behavior: 'smooth' });
+  });
+  countryStrip.appendChild(item);
+});
+
+/* Search */
+searchBox.addEventListener('input', e => {
+  searchTerm = e.target.value.toLowerCase().trim();
+  render();
+});
+
+/* Reset */
+resetBtn.addEventListener('click', () => {
+  activeCountries = new Set(Object.keys(COUNTRIES));
+  searchTerm = '';
+  searchBox.value = '';
+  document.querySelectorAll('.country-btn').forEach(b => b.classList.add('active'));
+  render();
+});
+
+/* Render table */
+function render() {
+  tableBody.innerHTML = '';
+
+  const countryOrder = Object.keys(COUNTRIES);
+  const filtered = DATA.filter(d => {
+    if (!activeCountries.has(d.c)) return false;
+    if (searchTerm) {
+      const blob = [d.t, d.a, d.s, ...(d.r||[])].join(' ').toLowerCase();
+      if (!blob.includes(searchTerm)) return false;
+    }
+    return true;
+  }).sort((a, b) => countryOrder.indexOf(a.c) - countryOrder.indexOf(b.c));
+
+  let lastCountry = null;
+  filtered.forEach(d => {
+    const c = COUNTRIES[d.c];
+    const tr = document.createElement('tr');
+    if (d.c !== lastCountry) tr.classList.add('group-start');
+    lastCountry = d.c;
+    
+    const isProcess = d.t === '프로세스 특징';
+    if (isProcess) tr.classList.add('row-process');
+
+    const recHTML = Array.isArray(d.r) 
+      ? `<ul>${d.r.map(item => `<li>${item}</li>`).join('')}</ul>`
+      : d.r;
+
+    tr.innerHTML = `
+      <td>
+        <span class="country-tag ctag-${c.color}">
+          <span class="ct-name">${c.name}</span>
+          <span class="ct-case">${c.case}</span>
+        </span>
+        <span class="country-tag-year">${c.year}</span>
+      </td>
+      <td class="theme-cell${isProcess ? ' theme-process' : ''}">${isProcess ? '⚙ ' : ''}${d.t}</td>
+      <td class="area-cell">${d.a}</td>
+      <td class="sub-cell">${d.s}</td>
+      <td class="rec-cell">${recHTML}</td>
+    `;
+    tableBody.appendChild(tr);
+  });
+
+  if (filtered.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">선택된 조건에 맞는 의제가 없습니다.</td></tr>`;
+  }
+
+  rowCount.textContent = filtered.length;
+  activeFilters.textContent = activeCountries.size === Object.keys(COUNTRIES).length 
+    ? `전체 ${DATA.length}개 행` 
+    : `${activeCountries.size}개 국가 / ${searchTerm ? `"${searchTerm}" 검색 중` : '전체'}`;
+}
+
+render();
+</script>
+</body>
+</html>

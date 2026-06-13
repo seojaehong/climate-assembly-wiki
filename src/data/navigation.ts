@@ -62,6 +62,8 @@ export const TOP_NAV_ITEMS: NavItem[] = [
   // { section: 'research',  labelKo: '리서치',  labelEn: 'Research' },
   // 2026-06-13: '이벤트' demo link → static /event/ page (5-phase 3D bubble live).
   { section: 'event', labelKo: '이벤트', labelEn: 'Event', href: '/event/', external: true },
+  // 2026-06-13: '해외사례' — global climate assembly dashboard + comparison table.
+  { section: 'global', labelKo: '해외사례', labelEn: 'Global', href: '/global/', external: true },
   // <!-- temporarily hidden, content private as of 2026-06-02 -->
   // { section: 'tools',     labelKo: '도구',    labelEn: 'Tools' },
   // { section: 'sessions',  labelKo: '회차',    labelEn: 'Sessions' },
