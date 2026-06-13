@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>빙산형 의제 분석 템플릿 — 2026 기후시민회의</title>
+<meta name="description" content="6.13 시민교육 워크숍 핵심 워크시트 — 원인·영향·관련의제·대응방안·기대되는 변화 5단 빙산 시스템맵">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700;900&family=Noto+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1a1a1a; --paper:#faf7f0; --paper-warm:#f5f0e3; --paper-deep:#ede6d3;
+    --line:#d8d2c2; --forest:#1f3a2a; --terracotta:#b8643a; --amber:#c9963a; --mute:#756f5e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Noto Sans KR',sans-serif;background:var(--paper);color:var(--ink);line-height:1.55;-webkit-font-smoothing:antialiased}
+
+  .topnav{padding:1rem 2rem;background:var(--paper-deep);border-bottom:1px solid var(--line);font-family:'JetBrains Mono',monospace;font-size:.78rem}
+  .topnav a{color:var(--forest);text-decoration:none;margin-right:1.4rem;border-bottom:1px solid transparent;transition:border-color .12s}
+  .topnav a:hover{border-bottom-color:var(--forest)}
+
+  .masthead{background:var(--ink);color:var(--paper);padding:2.4rem 2rem 2rem;position:relative;overflow:hidden}
+  .masthead::before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,var(--forest),var(--terracotta),var(--amber))}
+  .mast-inner{max-width:1400px;margin:0 auto}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:.7rem;letter-spacing:.25em;color:var(--amber);margin-bottom:.8rem;text-transform:uppercase}
+  h1{font-family:'Noto Serif KR',serif;font-weight:900;font-size:clamp(1.5rem,2.8vw,2.2rem);line-height:1.18;letter-spacing:-.02em;margin-bottom:.6rem}
+  h1 .accent{color:var(--terracotta);font-style:italic}
+  .subtitle{font-family:'Noto Serif KR',serif;font-size:.95rem;color:#d8d2c2;max-width:760px;line-height:1.55}
+
+  main{max-width:1400px;margin:0 auto;padding:2.5rem 2rem}
+  .tabs{display:flex;gap:.3rem;margin-bottom:1.6rem;border-bottom:2px solid var(--ink)}
+  .tab{font-family:'Noto Sans KR',sans-serif;font-size:.95rem;font-weight:600;padding:.7rem 1.2rem;background:transparent;border:0;cursor:pointer;color:var(--mute);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .12s}
+  .tab.active{color:var(--ink);border-bottom-color:var(--terracotta)}
+  .tab:hover{color:var(--ink)}
+
+  .pane{display:none}
+  .pane.active{display:block}
+
+  .img-card{background:#fff;border:1px solid var(--line);border-radius:4px;padding:1.5rem;text-align:center;margin-bottom:1.5rem}
+  .img-card img{max-width:100%;height:auto;display:block;margin:0 auto;border-radius:3px}
+  .img-caption{margin-top:1rem;font-family:'Noto Serif KR',serif;font-size:.92rem;color:var(--mute);font-style:italic}
+
+  .legend{background:var(--paper-warm);border:1px solid var(--line);border-radius:4px;padding:1.4rem 1.6rem;margin-bottom:1.5rem}
+  .legend h2{font-family:'Noto Serif KR',serif;font-weight:700;font-size:1.15rem;margin-bottom:.8rem;letter-spacing:-.01em}
+  .legend ol{padding-left:1.4rem}
+  .legend li{margin-bottom:.6rem;font-size:.92rem;line-height:1.6}
+  .legend li strong{color:var(--forest);font-weight:600}
+  .legend li code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:#fff;padding:.1rem .4rem;border-radius:2px;border:1px solid var(--line);color:var(--terracotta)}
+
+  .download-row{display:flex;flex-wrap:wrap;gap:.7rem;margin-top:1rem}
+  .btn{display:inline-flex;align-items:center;gap:.5rem;font-family:'Noto Sans KR',sans-serif;font-size:.88rem;font-weight:600;padding:.7rem 1.2rem;background:var(--forest);color:#fff;text-decoration:none;border-radius:3px;border:1px solid var(--forest);transition:all .12s}
+  .btn:hover{background:#2d5039}
+  .btn.alt{background:transparent;color:var(--forest);border-color:var(--forest)}
+  .btn.alt:hover{background:var(--paper-warm)}
+
+  .note{background:rgba(184,100,58,.08);border-left:3px solid var(--terracotta);padding:.9rem 1.2rem;margin-top:1.5rem;border-radius:0 3px 3px 0;font-size:.88rem;color:var(--mute)}
+
+  @media (max-width:760px){
+    .masthead{padding:1.8rem 1.3rem 1.5rem}
+    main{padding:1.6rem 1.2rem}
+    .img-card{padding:1rem}
+  }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <a href="/ko/">← 메인</a>
+  <a href="/global/">← 해외사례</a>
+  <a href="/global/citizens/">시민 의제 108건</a>
+</nav>
+
+<header class="masthead">
+  <div class="mast-inner">
+    <div class="eyebrow">6.13 Workshop · System Map Template</div>
+    <h1>빙산형 의제 <span class="accent">분석 템플릿</span></h1>
+    <p class="subtitle">2026 기후시민회의 6.13 시민교육 워크숍에서 사용하는 핵심 워크시트 — 원인·영향·관련의제·대응방안·기대되는 변화의 5단 구조로 선정 의제를 깊이 분석합니다.</p>
+  </div>
+</header>
+
+<main>
+  <div class="tabs">
+    <button class="tab active" data-pane="template">템플릿 (빈 양식)</button>
+    <button class="tab" data-pane="example">작성 예시</button>
+    <button class="tab" data-pane="guide">사용 가이드</button>
+  </div>
+
+  <div class="pane active" id="pane-template">
+    <div class="img-card">
+      <img src="template.png" alt="빙산형 의제 분석 템플릿 — 5단 구조">
+      <div class="img-caption">선정 의제 중심: ① 원인 ② 영향 ③ 관련 의제 ④ 대응방안 ⑤ 기대되는 변화 (개인·지역·국가·국제 4계층)</div>
+    </div>
+    <div class="download-row">
+      <a class="btn" href="template.png" download="빙산형_의제분석_템플릿.png">PNG 다운로드</a>
+      <a class="btn alt" href="template.png" target="_blank">새 탭에서 크게 보기</a>
+    </div>
+    <div class="note">200명 대형 강당 시연용 — 풀스크린(F11) 권장. 이미지 우클릭 저장으로 인쇄도 가능합니다.</div>
+  </div>
+
+  <div class="pane" id="pane-example">
+    <div class="img-card">
+      <img src="example.png" alt="빙산형 시스템맵 작성 예시 — 리필스테이션 확대">
+      <div class="img-caption">완성 예시 — "대형마트 기반 생활화학제품 브랜드 리필스테이션 확대" 의제로 빙산 5단 구조를 모두 채운 모더레이터 시연용 견본</div>
+    </div>
+    <div class="download-row">
+      <a class="btn" href="example.png" download="빙산형_의제분석_예시.png">PNG 다운로드</a>
+      <a class="btn alt" href="example.png" target="_blank">새 탭에서 크게 보기</a>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-guide">
+    <div class="legend">
+      <h2>5단 구조 — 작성 순서</h2>
+      <ol>
+        <li><strong>① 원인</strong> <code>왜 이런 문제가 발생하는가?</code><br>구조적 원인을 3~5개 식별. 표면 증상이 아닌 시스템 차원의 뿌리.</li>
+        <li><strong>② 영향</strong> <code>무엇에 영향을 미치는가?</code><br>경제·사회·환경 측면 영향을 분리해 작성.</li>
+        <li><strong>③ 관련 의제</strong> <code>다른 의제와 어떻게 연결되는가?</code><br>15개 의제 중 직·간접 연결되는 의제를 표시. 시스템적 사고의 핵심.</li>
+        <li><strong>④ 대응방안</strong> <code>무엇을 할 수 있는가?</code><br>개인 실천 / 제도 / 정책 / 인프라 / 국제협력 등 레벨별 분리.</li>
+        <li><strong>⑤ 기대되는 변화</strong> <code>개인·지역·국가·국제 4계층</code><br>각 계층에서 어떤 변화가 일어날지 구체적으로 묘사. 비전 정렬.</li>
+      </ol>
+    </div>
+
+    <div class="legend">
+      <h2>모더레이터 진행 팁</h2>
+      <ol>
+        <li>먼저 작성 예시 탭을 시민들에게 1~2분 보여주고 "이렇게 채우는 것"임을 시연합니다.</li>
+        <li>5단 동시 작성 금지 — ①→②→③→④→⑤ 순서대로 한 단씩.</li>
+        <li>각 단계 5~7분 분량. 전체 40~50분 워크.</li>
+        <li>④ 대응방안에서 시간이 가장 오래 걸림 — 갈등 가능성도 가장 큼.</li>
+        <li>⑤ 4계층 중 "국제" 칸이 비기 쉬움. 적극 유도하되 강요 X.</li>
+      </ol>
+    </div>
+  </div>
+</main>
+
+<script>
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('pane-' + tab.dataset.pane).classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>
