@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>운영규정 투표 라이브 — 분과 운영방식·의결정족수</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --ink: #f1f5f9;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --a: #22d3ee;
+    --b: #f59e0b;
+    --c: #a78bfa;
+    --d: #34d399;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
+    font-family: 'Pretendard', 'Apple SD Gothic Neo', system-ui, sans-serif; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 32px 24px 64px; }
+  header { display:flex; align-items:baseline; justify-content:space-between; gap:24px;
+    border-bottom: 2px solid #334155; padding-bottom: 16px; margin-bottom: 24px; }
+  h1 { font-size: 34px; margin: 0; letter-spacing: -0.02em; }
+  .meta { color: var(--muted); font-size: 16px; }
+  .meta .total { color: var(--accent); font-size: 28px; font-weight: 700; margin-right: 6px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 980px){ .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border-radius: 16px; padding: 24px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.25); }
+  .card h2 { margin: 0 0 4px; font-size: 22px; }
+  .card .sub { color: var(--muted); font-size: 14px; margin-bottom: 18px; }
+  .row { display: grid; grid-template-columns: 200px 1fr 80px; gap: 12px;
+    align-items: center; margin: 10px 0; }
+  .row .lbl { font-size: 18px; font-weight: 600; }
+  .row .bar { background: #0b1220; border-radius: 8px; height: 28px; overflow: hidden; position: relative; }
+  .row .fill { height: 100%; transition: width .8s cubic-bezier(.2,.7,.2,1); }
+  .row .pct { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 18px; }
+  .row .cnt { color: var(--muted); font-size: 14px; }
+  .full { grid-column: 1 / -1; }
+  .footer { margin-top: 32px; color: var(--muted); font-size: 13px; text-align: center; }
+  .pill { display:inline-block; padding: 2px 10px; background:#0b1220; border-radius:999px; color:var(--accent); font-size: 13px; margin-left:8px; }
+  .err { color: #fca5a5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>운영규정 투표 라이브</h1>
+      <div class="meta">분과 운영방식 · 의결정족수 <span class="pill" id="status">대기 중</span></div>
+    </div>
+    <div class="meta"><span class="total" id="total">0</span>표 집계됨</div>
+  </header>
+
+  <div class="grid">
+    <section class="card full">
+      <h2>Q1. 분과 운영방식</h2>
+      <div class="sub">숙의참여단 운영 방식 — 분과 두기 vs 두지 않기</div>
+      <div id="q1"></div>
+    </section>
+
+    <section class="card">
+      <h2>Q2-1. 기획참여단 의결정족수</h2>
+      <div class="sub" id="sub-q21">출석 과반수 / 출석 2/3 / 출석 3/4 / 재적 과반수</div>
+      <div id="q21"></div>
+    </section>
+
+    <section class="card">
+      <h2>Q2-2. 숙의참여단(분과별) 의결정족수</h2>
+      <div class="sub">분과 단위 의사결정 기준</div>
+      <div id="q22"></div>
+    </section>
+
+    <section class="card">
+      <h2>Q2-3. 숙의참여단(전체) 의결정족수</h2>
+      <div class="sub">200명 전체 합의 기준</div>
+      <div id="q23"></div>
+    </section>
+
+    <section class="card">
+      <h2>Q2-4. 의사정족수 통일 (재적 과반수)</h2>
+      <div class="sub">회의 성립 요건을 세 회의체 모두 "재적 과반수"로 통일하는 안</div>
+      <div id="q24"></div>
+    </section>
+  </div>
+
+  <p class="footer">자동 새로고침 30초 · Google Sheets Tally 시트 직결 ·
+    <a href="#" id="cfg" style="color:var(--accent)">SHEET_ID 설정</a></p>
+</div>
+
+<script>
+// === SHEET_ID 설정 ===
+// 빈 값이면 localStorage에서 읽고, 없으면 prompt
+const DEFAULT_SHEET_ID = "12x14DkYQHBtETCsXQ7zHz2oYRoTjGVa-J_34HW6A8cU";
+
+const COLORS = {
+  Q1: ['#22d3ee', '#f59e0b', '#94a3b8'],
+  Q2: ['#22d3ee', '#a78bfa', '#f59e0b', '#34d399'],
+  Q24: ['#34d399', '#fb7185'],
+};
+
+const QMAP = {
+  q1:  { key: 'Q1_분과운영',          colors: COLORS.Q1 },
+  q21: { key: 'Q2-1_기획참여단',     colors: COLORS.Q2 },
+  q22: { key: 'Q2-2_분과별',          colors: COLORS.Q2 },
+  q23: { key: 'Q2-3_전체',            colors: COLORS.Q2 },
+  q24: { key: 'Q2-4_의사정족수통일', colors: COLORS.Q24 },
+};
+
+function getSheetId() {
+  const url = new URL(location.href);
+  const q = url.searchParams.get('sheet');
+  if (q) { localStorage.setItem('reg_vote_sheet', q); return q; }
+  return DEFAULT_SHEET_ID || localStorage.getItem('reg_vote_sheet') || '';
+}
+
+document.getElementById('cfg').onclick = (e) => {
+  e.preventDefault();
+  const cur = getSheetId();
+  const v = prompt('Google Sheet ID 입력', cur);
+  if (v) { localStorage.setItem('reg_vote_sheet', v.trim()); location.reload(); }
+};
+
+function parseCSV(text) {
+  // 단순 CSV (따옴표 처리 포함)
+  const rows = [];
+  let row = [], cur = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQ) {
+      if (ch === '"' && text[i+1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') inQ = false;
+      else cur += ch;
+    } else {
+      if (ch === '"') inQ = true;
+      else if (ch === ',') { row.push(cur); cur = ''; }
+      else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+      else if (ch === '\r') {}
+      else cur += ch;
+    }
+  }
+  if (cur.length || row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
+
+function render(target, rows, colors) {
+  const total = rows.reduce((s, r) => s + r.count, 0);
+  const el = document.getElementById(target);
+  el.innerHTML = rows.map((r, i) => {
+    const pct = total > 0 ? (r.count / total * 100) : 0;
+    const col = colors[i % colors.length];
+    return `
+      <div class="row">
+        <div class="lbl">${r.opt}</div>
+        <div>
+          <div class="bar"><div class="fill" style="width:${pct}%;background:${col}"></div></div>
+          <div class="cnt">${r.count}표</div>
+        </div>
+        <div class="pct">${pct.toFixed(1)}%</div>
+      </div>`;
+  }).join('');
+  return total;
+}
+
+async function fetchTally(sheetId) {
+  const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=Tally`;
+  const r = await fetch(url, { cache: 'no-store' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return parseCSV(await r.text());
+}
+
+async function tick() {
+  const sheetId = getSheetId();
+  const stat = document.getElementById('status');
+  if (!sheetId) { stat.textContent = 'Sheet ID 미설정'; stat.classList.add('err'); return; }
+  try {
+    const rows = await fetchTally(sheetId);
+    // 헤더: 문항,선택지,득표,비율
+    const grouped = {};
+    rows.slice(1).forEach(r => {
+      if (!r[0]) return;
+      grouped[r[0]] = grouped[r[0]] || [];
+      grouped[r[0]].push({ opt: r[1], count: parseInt(r[2] || '0', 10) || 0 });
+    });
+    let grand = 0;
+    for (const [tgt, cfg] of Object.entries(QMAP)) {
+      const data = grouped[cfg.key] || [];
+      const t = render(tgt, data, cfg.colors);
+      if (tgt === 'q1') grand = t;  // Q1을 총 응답수로
+    }
+    document.getElementById('total').textContent = grand;
+    stat.textContent = '실시간 ' + new Date().toLocaleTimeString('ko-KR');
+    stat.classList.remove('err');
+  } catch (e) {
+    stat.textContent = '오류: ' + e.message;
+    stat.classList.add('err');
+  }
+}
+
+tick();
+setInterval(tick, 30000);
+</script>
+</body>
+</html>
