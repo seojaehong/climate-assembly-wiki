@@ -357,7 +357,7 @@
     <div class="head-title">운영규정 <span class="amber">투표</span></div>
     <div class="head-sub">2026 KOREA CITIZENS' CLIMATE ASSEMBLY · 06 / 13</div>
   </div>
-  <div class="head-center">분과 운영방식 · 의결정족수 · 의사정족수 통일</div>
+  <div class="head-center">분과 구성 · 의결정족수 · 의사정족수 통일</div>
   <div class="head-right">
     <div class="head-clock">
       <span class="live-dot"></span>
@@ -382,15 +382,15 @@
       <div class="card-head">
         <span class="q-num">Q1</span>
         <div>
-          <div class="q-title">분과 운영방식</div>
-          <div class="q-sub">숙의참여단을 어떻게 운영하는 것이 좋은가</div>
+          <div class="q-title">분과 구성</div>
+          <div class="q-sub">숙의참여단 분과 구성은 어떻게 하는 것이 좋은가</div>
         </div>
         <div class="q-meta">
           <span class="b" id="q1-c">0</span>
           응답
         </div>
       </div>
-      <div class="bars n3" id="q1"></div>
+      <div class="bars n3 lbl-lg" id="q1"></div>
     </div>
 
     <div class="card lg">
@@ -422,7 +422,7 @@
           응답
         </div>
       </div>
-      <div class="bars n4" id="q22"></div>
+      <div class="bars n3" id="q22"></div>
     </div>
 
     <div class="card">
@@ -437,7 +437,7 @@
           응답
         </div>
       </div>
-      <div class="bars n4" id="q23"></div>
+      <div class="bars n3" id="q23"></div>
     </div>
 
     <div class="card">
@@ -452,7 +452,7 @@
           응답
         </div>
       </div>
-      <div class="bars n4" id="q24"></div>
+      <div class="bars n3" id="q24"></div>
     </div>
   </div>
 
@@ -467,16 +467,16 @@ const C_YN  = ['f-yes', 'f-no'];
 const C_QUO = ['f-quo-1', 'f-quo-2', 'f-quo-3', 'f-quo-4'];
 
 const QMAP = {
-  q1:  { key: 'Q1_분과운영', colors: C_Q1, cnt: 'q1-c',
-         labels: [['옵션 A', '분과 두기'], ['옵션 B', '분과 안 두기'], ['판단 보류', '추가 논의']] },
+  q1:  { key: 'Q1_분과구성', colors: C_Q1, cnt: 'q1-c',
+         labels: [['2개 분과', '감축 · 적응'], ['3개 분과', '감축1 · 감축2 · 적응1'], ['분과 없음', '한 덩어리 운영']] },
   q21: { key: 'Q2-1_의사정족수통일', colors: C_YN, cnt: 'q21-c',
          labels: [['동의', null], ['비동의', null]] },
   q22: { key: 'Q2-2_기획참여단', colors: C_QUO, cnt: 'q22-c',
-         labels: [['출석 과반', null], ['출석 2/3', null], ['출석 3/4', null], ['재적 과반', null]] },
+         labels: [['출석 과반', null], ['출석 2/3', null], ['출석 3/4', null]] },
   q23: { key: 'Q2-3_분과별', colors: C_QUO, cnt: 'q23-c',
-         labels: [['출석 과반', null], ['출석 2/3', null], ['출석 3/4', null], ['재적 과반', null]] },
+         labels: [['출석 과반', null], ['출석 2/3', null], ['출석 3/4', null]] },
   q24: { key: 'Q2-4_전체', colors: C_QUO, cnt: 'q24-c',
-         labels: [['출석 과반', null], ['출석 2/3', null], ['출석 3/4', null], ['재적 과반', null]] },
+         labels: [['출석 과반', null], ['출석 2/3', null], ['출석 3/4', null]] },
 };
 
 function getSheetId() {
