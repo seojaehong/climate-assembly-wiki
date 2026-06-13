@@ -1,132 +1,256 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>운영규정 투표 라이브 — 분과 운영방식·의결정족수</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>운영규정 투표 라이브 — 2026 기후시민회의</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #0f172a;
-    --panel: #1e293b;
-    --ink: #f1f5f9;
-    --muted: #94a3b8;
-    --accent: #38bdf8;
-    --a: #22d3ee;
-    --b: #f59e0b;
-    --c: #a78bfa;
-    --d: #34d399;
+    --bg:        #ffffff;
+    --header:    #2E75B6;
+    --header-2:  #1F4E79;
+    --sky:       #56C2E4;
+    --amber:     #F5A623;
+    --amber-d:   #C77800;
+    --teal:      #1F9E95;
+    --purple:    #7C5AA6;
+    --ink:       #14202b;
+    --ink-2:     #5a6a7a;
+    --rail:      #eef2f6;
+    --good:      #2E9A57;
+    --bad:       #C9444A;
   }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
-    font-family: 'Pretendard', 'Apple SD Gothic Neo', system-ui, sans-serif; }
-  .wrap { max-width: 1400px; margin: 0 auto; padding: 32px 24px 64px; }
-  header { display:flex; align-items:baseline; justify-content:space-between; gap:24px;
-    border-bottom: 2px solid #334155; padding-bottom: 16px; margin-bottom: 24px; }
-  h1 { font-size: 34px; margin: 0; letter-spacing: -0.02em; }
-  .meta { color: var(--muted); font-size: 16px; }
-  .meta .total { color: var(--accent); font-size: 28px; font-weight: 700; margin-right: 6px; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-  @media (max-width: 980px){ .grid { grid-template-columns: 1fr; } }
-  .card { background: var(--panel); border-radius: 16px; padding: 24px;
-    box-shadow: 0 8px 30px rgba(0,0,0,.25); }
-  .card h2 { margin: 0 0 4px; font-size: 22px; }
-  .card .sub { color: var(--muted); font-size: 14px; margin-bottom: 18px; }
-  .row { display: grid; grid-template-columns: 200px 1fr 80px; gap: 12px;
-    align-items: center; margin: 10px 0; }
-  .row .lbl { font-size: 18px; font-weight: 600; }
-  .row .bar { background: #0b1220; border-radius: 8px; height: 28px; overflow: hidden; position: relative; }
-  .row .fill { height: 100%; transition: width .8s cubic-bezier(.2,.7,.2,1); }
-  .row .pct { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 18px; }
-  .row .cnt { color: var(--muted); font-size: 14px; }
-  .full { grid-column: 1 / -1; }
-  .footer { margin-top: 32px; color: var(--muted); font-size: 13px; text-align: center; }
-  .pill { display:inline-block; padding: 2px 10px; background:#0b1220; border-radius:999px; color:var(--accent); font-size: 13px; margin-left:8px; }
-  .err { color: #fca5a5; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg); color: var(--ink);
+    font-family: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* === 헤더 밴드 === */
+  .header-band {
+    background: linear-gradient(180deg, var(--header), var(--header-2));
+    color: #fff;
+    padding: 18px 56px 22px;
+    box-shadow: 0 6px 28px rgba(46,117,182,0.25);
+    display: flex; justify-content: space-between; align-items: center; gap: 32px;
+  }
+  .h-title { font-size: 56px; font-weight: 900; letter-spacing: -0.02em; line-height: 1; }
+  .h-title .amber { color: var(--amber); }
+  .h-sub { font-size: 22px; font-weight: 500; opacity: 0.92; margin-top: 8px; }
+  .h-meta { text-align: right; }
+  .h-total { font-size: 88px; font-weight: 900; color: var(--amber); line-height: 1; font-variant-numeric: tabular-nums; }
+  .h-total-lbl { font-size: 22px; font-weight: 700; opacity: 0.85; margin-top: 6px; }
+  .h-status { font-size: 16px; font-weight: 500; opacity: 0.75; margin-top: 8px; }
+
+  /* === 스테이지 === */
+  .stage { padding: 32px 56px 56px; }
+
+  .card {
+    background: #fff;
+    border: 2px solid var(--rail);
+    border-radius: 18px;
+    padding: 28px 36px 32px;
+    margin-bottom: 28px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+  }
+  .card-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+    border-bottom: 4px solid var(--rail); padding-bottom: 14px; margin-bottom: 22px;
+  }
+  .q-num {
+    display: inline-block;
+    background: var(--header); color: #fff;
+    font-size: 24px; font-weight: 900;
+    padding: 6px 16px; border-radius: 999px;
+    margin-right: 14px; vertical-align: middle;
+  }
+  .q-title { font-size: 40px; font-weight: 900; color: var(--ink); display: inline; vertical-align: middle; }
+  .q-sub { font-size: 20px; font-weight: 500; color: var(--ink-2); margin-top: 10px; line-height: 1.5; }
+  .q-count { font-size: 28px; font-weight: 800; color: var(--header); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .q-count small { font-size: 18px; font-weight: 600; color: var(--ink-2); }
+
+  /* === 막대 행 === */
+  .row {
+    display: grid; grid-template-columns: 1fr 80px;
+    gap: 24px; align-items: center;
+    margin: 14px 0;
+  }
+  .row .lbl-wrap { display: flex; align-items: center; gap: 20px; }
+  .row .lbl {
+    flex: 0 0 auto;
+    font-size: 28px; font-weight: 800; color: var(--ink);
+    min-width: 280px;
+  }
+  .row.compact .lbl { font-size: 24px; min-width: 200px; }
+  .row .bar-wrap {
+    flex: 1; position: relative;
+    height: 60px; background: var(--rail);
+    border-radius: 12px; overflow: hidden;
+  }
+  .row.big .bar-wrap { height: 88px; }
+  .row .bar {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 0%;
+    border-radius: 12px;
+    transition: width 1100ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .row .cnt {
+    position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+    font-size: 24px; font-weight: 900; color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    font-variant-numeric: tabular-nums;
+  }
+  .row .cnt.outside { color: var(--ink-2); text-shadow: none; right: -80px; }
+  .row .pct {
+    text-align: right;
+    font-size: 40px; font-weight: 900; color: var(--header);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .row.big .pct { font-size: 52px; }
+
+  /* === 색상 (옵션별) === */
+  .bar.c-sky    { background: linear-gradient(90deg, var(--sky), #3FA8CC); }
+  .bar.c-amber  { background: linear-gradient(90deg, var(--amber), var(--amber-d)); }
+  .bar.c-teal   { background: linear-gradient(90deg, var(--teal), #16766F); }
+  .bar.c-purple { background: linear-gradient(90deg, var(--purple), #5A3F87); }
+  .bar.c-good   { background: linear-gradient(90deg, var(--good), #1F7A42); }
+  .bar.c-bad    { background: linear-gradient(90deg, var(--bad), #9F353A); }
+  .bar.c-gray   { background: linear-gradient(90deg, #B4BFCB, #8A97A6); }
+
+  /* === 2열 그리드 (Q2-1,2,3,4) === */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .grid-2 .card { margin-bottom: 0; }
+  @media (max-width: 1100px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  .err { color: var(--bad) !important; }
+  .footer {
+    text-align: center; padding: 32px 0 16px;
+    color: var(--ink-2); font-size: 16px;
+  }
+  .footer a { color: var(--header); text-decoration: none; font-weight: 700; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div>
-      <h1>운영규정 투표 라이브</h1>
-      <div class="meta">분과 운영방식 · 의결정족수 <span class="pill" id="status">대기 중</span></div>
+
+<div class="header-band">
+  <div>
+    <div class="h-title">운영규정 <span class="amber">투표</span> 라이브</div>
+    <div class="h-sub">분과 운영방식 · 의결정족수 · 의사정족수 통일</div>
+  </div>
+  <div class="h-meta">
+    <div class="h-total" id="total">0</div>
+    <div class="h-total-lbl">총 응답</div>
+    <div class="h-status" id="status">집계 대기 중</div>
+  </div>
+</div>
+
+<div class="stage">
+
+  <!-- Q1: 분과 운영방식 (큰 카드) -->
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <span class="q-num">Q1</span>
+        <span class="q-title">분과 운영방식</span>
+        <div class="q-sub">옵션 A: 분과별 다른 의제 분담 &nbsp;·&nbsp; 옵션 B: 전체가 같은 의제</div>
+      </div>
+      <div class="q-count" id="q1-count">0<small> 표</small></div>
     </div>
-    <div class="meta"><span class="total" id="total">0</span>표 집계됨</div>
-  </header>
-
-  <div class="grid">
-    <section class="card full">
-      <h2>Q1. 분과 운영방식</h2>
-      <div class="sub">숙의참여단 운영 방식 — 분과 두기 vs 두지 않기</div>
-      <div id="q1"></div>
-    </section>
-
-    <section class="card">
-      <h2>Q2-1. 기획참여단 의결정족수</h2>
-      <div class="sub" id="sub-q21">출석 과반수 / 출석 2/3 / 출석 3/4 / 재적 과반수</div>
-      <div id="q21"></div>
-    </section>
-
-    <section class="card">
-      <h2>Q2-2. 숙의참여단(분과별) 의결정족수</h2>
-      <div class="sub">분과 단위 의사결정 기준</div>
-      <div id="q22"></div>
-    </section>
-
-    <section class="card">
-      <h2>Q2-3. 숙의참여단(전체) 의결정족수</h2>
-      <div class="sub">200명 전체 합의 기준</div>
-      <div id="q23"></div>
-    </section>
-
-    <section class="card">
-      <h2>Q2-4. 의사정족수 통일 (재적 과반수)</h2>
-      <div class="sub">회의 성립 요건을 세 회의체 모두 "재적 과반수"로 통일하는 안</div>
-      <div id="q24"></div>
-    </section>
+    <div id="q1"></div>
   </div>
 
-  <p class="footer">자동 새로고침 30초 · Google Sheets Tally 시트 직결 ·
-    <a href="#" id="cfg" style="color:var(--accent)">SHEET_ID 설정</a></p>
+  <!-- Q2-1 / Q2-2 / Q2-3 / Q2-4 (2x2 그리드) -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <span class="q-num">Q2-1</span>
+          <span class="q-title">기획참여단</span>
+          <div class="q-sub">의결정족수</div>
+        </div>
+        <div class="q-count" id="q21-count">0<small> 표</small></div>
+      </div>
+      <div id="q21"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <span class="q-num">Q2-2</span>
+          <span class="q-title">숙의참여단 (분과별)</span>
+          <div class="q-sub">의결정족수</div>
+        </div>
+        <div class="q-count" id="q22-count">0<small> 표</small></div>
+      </div>
+      <div id="q22"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <span class="q-num">Q2-3</span>
+          <span class="q-title">숙의참여단 (전체)</span>
+          <div class="q-sub">의결정족수</div>
+        </div>
+        <div class="q-count" id="q23-count">0<small> 표</small></div>
+      </div>
+      <div id="q23"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <span class="q-num">Q2-4</span>
+          <span class="q-title">의사정족수 통일</span>
+          <div class="q-sub">세 회의체 모두 "재적 과반수"로 통일</div>
+        </div>
+        <div class="q-count" id="q24-count">0<small> 표</small></div>
+      </div>
+      <div id="q24"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    30초 자동 갱신 · Google Sheets 직결 ·
+    <a href="#" id="cfg">SHEET_ID 설정</a>
+  </div>
 </div>
 
 <script>
-// === SHEET_ID 설정 ===
-// 빈 값이면 localStorage에서 읽고, 없으면 prompt
 const DEFAULT_SHEET_ID = "12x14DkYQHBtETCsXQ7zHz2oYRoTjGVa-J_34HW6A8cU";
 
+// 옵션별 색상 매핑
 const COLORS = {
-  Q1: ['#22d3ee', '#f59e0b', '#94a3b8'],
-  Q2: ['#22d3ee', '#a78bfa', '#f59e0b', '#34d399'],
-  Q24: ['#34d399', '#fb7185'],
+  Q1: ['c-sky', 'c-amber', 'c-gray'],          // A / B / 보류
+  Q2: ['c-sky', 'c-purple', 'c-amber', 'c-teal'],  // 출석과반/2-3/3-4/재적과반
+  Q24: ['c-good', 'c-bad'],
 };
 
 const QMAP = {
-  q1:  { key: 'Q1_분과운영',          colors: COLORS.Q1 },
-  q21: { key: 'Q2-1_기획참여단',     colors: COLORS.Q2 },
-  q22: { key: 'Q2-2_분과별',          colors: COLORS.Q2 },
-  q23: { key: 'Q2-3_전체',            colors: COLORS.Q2 },
-  q24: { key: 'Q2-4_의사정족수통일', colors: COLORS.Q24 },
+  q1:  { key: 'Q1_분과운영',          colors: COLORS.Q1,  big: true,  countId: 'q1-count' },
+  q21: { key: 'Q2-1_기획참여단',     colors: COLORS.Q2,  big: false, countId: 'q21-count', compact: true },
+  q22: { key: 'Q2-2_분과별',          colors: COLORS.Q2,  big: false, countId: 'q22-count', compact: true },
+  q23: { key: 'Q2-3_전체',            colors: COLORS.Q2,  big: false, countId: 'q23-count', compact: true },
+  q24: { key: 'Q2-4_의사정족수통일', colors: COLORS.Q24, big: false, countId: 'q24-count' },
 };
 
 function getSheetId() {
-  const url = new URL(location.href);
-  const q = url.searchParams.get('sheet');
+  const q = new URL(location.href).searchParams.get('sheet');
   if (q) { localStorage.setItem('reg_vote_sheet', q); return q; }
   return DEFAULT_SHEET_ID || localStorage.getItem('reg_vote_sheet') || '';
 }
 
 document.getElementById('cfg').onclick = (e) => {
   e.preventDefault();
-  const cur = getSheetId();
-  const v = prompt('Google Sheet ID 입력', cur);
+  const v = prompt('Google Sheet ID', getSheetId());
   if (v) { localStorage.setItem('reg_vote_sheet', v.trim()); location.reload(); }
 };
 
 function parseCSV(text) {
-  // 단순 CSV (따옴표 처리 포함)
-  const rows = [];
-  let row = [], cur = '', inQ = false;
+  const rows = []; let row = [], cur = '', inQ = false;
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     if (inQ) {
@@ -145,52 +269,53 @@ function parseCSV(text) {
   return rows;
 }
 
-function render(target, rows, colors) {
+function render(target, rows, cfg) {
   const total = rows.reduce((s, r) => s + r.count, 0);
   const el = document.getElementById(target);
+  const bigCls = cfg.big ? 'big' : '';
+  const compactCls = cfg.compact ? 'compact' : '';
   el.innerHTML = rows.map((r, i) => {
     const pct = total > 0 ? (r.count / total * 100) : 0;
-    const col = colors[i % colors.length];
+    const col = cfg.colors[i % cfg.colors.length];
+    const cntInside = pct >= 12;
     return `
-      <div class="row">
-        <div class="lbl">${r.opt}</div>
-        <div>
-          <div class="bar"><div class="fill" style="width:${pct}%;background:${col}"></div></div>
-          <div class="cnt">${r.count}표</div>
+      <div class="row ${bigCls} ${compactCls}">
+        <div class="lbl-wrap">
+          <div class="lbl">${r.opt}</div>
+          <div class="bar-wrap">
+            <div class="bar ${col}" style="width:${pct}%"></div>
+            <div class="cnt ${cntInside ? '' : 'outside'}">${r.count}</div>
+          </div>
         </div>
-        <div class="pct">${pct.toFixed(1)}%</div>
+        <div class="pct">${pct.toFixed(0)}<span style="font-size:0.6em">%</span></div>
       </div>`;
   }).join('');
+  document.getElementById(cfg.countId).innerHTML = `${total}<small> 표</small>`;
   return total;
-}
-
-async function fetchTally(sheetId) {
-  const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=Tally`;
-  const r = await fetch(url, { cache: 'no-store' });
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  return parseCSV(await r.text());
 }
 
 async function tick() {
   const sheetId = getSheetId();
   const stat = document.getElementById('status');
-  if (!sheetId) { stat.textContent = 'Sheet ID 미설정'; stat.classList.add('err'); return; }
+  if (!sheetId) { stat.textContent = 'SHEET_ID 미설정'; stat.classList.add('err'); return; }
   try {
-    const rows = await fetchTally(sheetId);
-    // 헤더: 문항,선택지,득표,비율
+    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=Tally`;
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const rows = parseCSV(await r.text());
     const grouped = {};
     rows.slice(1).forEach(r => {
       if (!r[0]) return;
       grouped[r[0]] = grouped[r[0]] || [];
       grouped[r[0]].push({ opt: r[1], count: parseInt(r[2] || '0', 10) || 0 });
     });
-    let grand = 0;
+    let q1Total = 0;
     for (const [tgt, cfg] of Object.entries(QMAP)) {
       const data = grouped[cfg.key] || [];
-      const t = render(tgt, data, cfg.colors);
-      if (tgt === 'q1') grand = t;  // Q1을 총 응답수로
+      const t = render(tgt, data, cfg);
+      if (tgt === 'q1') q1Total = t;
     }
-    document.getElementById('total').textContent = grand;
+    document.getElementById('total').textContent = q1Total;
     stat.textContent = '실시간 ' + new Date().toLocaleTimeString('ko-KR');
     stat.classList.remove('err');
   } catch (e) {
