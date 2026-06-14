@@ -147,6 +147,23 @@ window._voteSubmit = async function() {
     return;
   }
 
+  // 사전 중복 체크 (성함 정규화)
+  try {
+    const norm = voterName.replace(/\s+/g, '').toLowerCase();
+    const dupCheck = await sbGet('cv_votes', {
+      'round_id': 'eq.' + currentRound.id,
+      'select': 'voter_name',
+    });
+    if (Array.isArray(dupCheck)) {
+      const hit = dupCheck.find(v => (v.voter_name || '').replace(/\s+/g, '').toLowerCase() === norm);
+      if (hit) {
+        alert('이미 같은 성함으로 응답이 접수되었습니다.\n동명이인이라면 운영자에게 알려주세요.');
+        if (btn) { btn.disabled = false; btn.textContent = '제출'; }
+        return;
+      }
+    }
+  } catch(_) {}
+
   const payload = {
     round_id: currentRound.id,
     choice: choice,
@@ -163,7 +180,14 @@ window._voteSubmit = async function() {
     loadTallyPreview();
   } catch(e) {
     console.error(e);
-    alert('제출 오류: ' + (e.message || JSON.stringify(e)));
+    const msg = e && (e.message || e.details || '');
+    if (/uniq_votes_round_voter_name/.test(JSON.stringify(e))) {
+      alert('이미 같은 성함으로 응답이 접수되었습니다.\n동명이인이라면 운영자에게 알려주세요.');
+    } else if (/uniq_votes_round_client/.test(JSON.stringify(e))) {
+      alert('이 기기에서는 이미 응답하셨습니다.');
+    } else {
+      alert('제출 오류: ' + msg);
+    }
     if (btn) { btn.disabled = false; btn.textContent = '제출'; }
   }
 };
