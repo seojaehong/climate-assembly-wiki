@@ -637,19 +637,35 @@ function renderDashboard(round, tally, totalN, closed) {
     mainContent = `<div class="chart-area"><div class="scale-list">${rows}</div></div>`;
 
   } else {
-    // RADIO / CHECKBOX: horizontal bars
+    // RADIO / CHECKBOX: round.options 우선 + tally 머지 (응답 0건이어도 선지 노출)
     const total = tally.reduce((s,r) => s + (r.n||0), 0);
+    const tallyMap = {};
+    tally.forEach(r => { tallyMap[r.choice_text] = r.n || 0; });
 
-    const rows = tally.map((r, i) => {
-      const n = r.n || 0;
+    const optsRaw = round.options || [];
+    const baseOptions = optsRaw.map(o => typeof o === 'string' ? o : (o.label || o.value || String(o)));
+    // tally에만 있고 options엔 없는 값(과거 옵션)도 뒤에 노출
+    const extra = tally.map(r => r.choice_text).filter(x => !baseOptions.includes(x));
+    const orderedOptions = baseOptions.concat(extra);
+
+    // 정렬: 1등(표 많은 순)부터, 표 같으면 원래 순서
+    const ordered = orderedOptions
+      .map((label, origIdx) => ({ label, n: tallyMap[label] || 0, origIdx }))
+      .sort((a, b) => b.n - a.n || a.origIdx - b.origIdx);
+
+    const maxN = ordered[0] ? ordered[0].n : 0;
+
+    const rows = ordered.map((row, i) => {
+      const n = row.n;
       const pct = total > 0 ? (n / total * 100) : 0;
-      const isTop = i === 0;
-      const label = r.choice_text || '-';
+      // 막대 길이: 응답 있으면 1등 기준 정규화, 없으면 0
+      const fillPct = maxN > 0 ? (n / maxN * 100) : 0;
+      const isTop = total > 0 && i === 0 && n > 0;
 
       return `<div class="hbar-row">
-        <div class="hbar-label">${label}</div>
+        <div class="hbar-label">${row.label}</div>
         <div class="hbar-track">
-          <div class="hbar-fill${isTop ? ' top' : ''}" style="width:${pct}%"></div>
+          <div class="hbar-fill${isTop ? ' top' : ''}" style="width:${fillPct}%"></div>
         </div>
         <div class="hbar-count">${n}<span class="pct">${pct.toFixed(0)}%</span></div>
       </div>`;
