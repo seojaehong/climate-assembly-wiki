@@ -29,9 +29,16 @@ function sbPost(path, body) {
     method: 'POST',
     headers: sbHeaders('POST'),
     body: JSON.stringify(body),
-  }).then(r => {
-    if (!r.ok) return r.json().then(e => Promise.reject(e));
-    return r.status === 204 ? {} : r.json();
+  }).then(async r => {
+    const text = await r.text();
+    if (!r.ok) {
+      let e;
+      try { e = JSON.parse(text); }
+      catch(_) { e = { message: text || ('HTTP ' + r.status) }; }
+      return Promise.reject(e);
+    }
+    if (!text) return {};
+    try { return JSON.parse(text); } catch(_) { return {}; }
   });
 }
 
