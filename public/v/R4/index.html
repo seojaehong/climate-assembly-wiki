@@ -97,16 +97,9 @@ body{background:var(--paper);color:var(--ink);font-family:'Pretendard',-apple-sy
     <div id="textSection" style="display:none"><textarea class="text-area" id="textInput" placeholder="의견을 입력해 주세요..."></textarea></div>
     <hr class="divider">
     <div class="voter-section">
-      <div class="voter-label">소속 (선택)</div>
-      <select class="voter-select" id="voterRole">
-        <option value="">선택 안 함</option>
-        <option value="기획참여단">기획참여단</option>
-        <option value="외부자문단">외부자문단</option>
-        <option value="운영지원">운영지원</option>
-        <option value="기타">기타</option>
-      </select>
-      <div class="voter-label">성함 (선택)</div>
-      <input class="voter-input" id="voterName" type="text" placeholder="홍길동">
+      <div class="voter-label">성함 <span style="color:#DC2626">*</span></div>
+      <input class="voter-input" id="voterName" type="text" placeholder="홍길동" required>
+      <input type="hidden" id="voterRole" value="">
     </div>
     <button class="submit-btn" id="submitBtn" onclick="_voteSubmit()">제출</button>
   </div>

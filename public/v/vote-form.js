@@ -139,11 +139,19 @@ window._voteSubmit = async function() {
     choice = val;
   }
 
+  const voterName = (document.getElementById('voterName').value || '').trim();
+  if (!voterName) {
+    alert('성함을 입력해 주세요.');
+    if (btn) { btn.disabled = false; btn.textContent = '제출'; }
+    document.getElementById('voterName').focus();
+    return;
+  }
+
   const payload = {
     round_id: currentRound.id,
     choice: choice,
-    voter_role: document.getElementById('voterRole').value || null,
-    voter_name: (document.getElementById('voterName').value || '').trim() || null,
+    voter_role: null,
+    voter_name: voterName,
     client_id: getClientId(),
   };
 
