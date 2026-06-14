@@ -12,10 +12,7 @@ function sbHeaders(method) {
     'apikey': SB_KEY,
     'Authorization': 'Bearer ' + SB_KEY,
   };
-  if (!method || method === 'GET') {
-    h['Accept-Profile'] = 'climate_vote';
-  } else {
-    h['Content-Profile'] = 'climate_vote';
+  if (method && method !== 'GET') {
     h['Content-Type'] = 'application/json';
   }
   return h;
@@ -151,7 +148,7 @@ window._voteSubmit = async function() {
   };
 
   try {
-    await sbPost('votes', payload);
+    await sbPost('cv_votes', payload);
     const thanksMsg = document.getElementById('thanksMsg');
     if (thanksMsg) thanksMsg.textContent = currentRound.title + ' 라운드에 응답하셨습니다.';
     show('screenThanks');
@@ -169,9 +166,9 @@ async function loadTallyPreview() {
   try {
     let rows;
     if (type === 'SCALE_MULTI') {
-      rows = await sbGet('tally_scale', { 'round_id': 'eq.' + currentRound.id, 'order': 'avg_score.desc' });
+      rows = await sbGet('cv_tally_scale', { 'round_id': 'eq.' + currentRound.id, 'order': 'avg_score.desc' });
     } else {
-      rows = await sbGet('tally', { 'round_id': 'eq.' + currentRound.id, 'order': 'n.desc' });
+      rows = await sbGet('cv_tally', { 'round_id': 'eq.' + currentRound.id, 'order': 'n.desc' });
     }
     if (!rows || rows.code) return;
     const total = rows.reduce((s, r) => s + (r.n || 0), 0);
@@ -295,7 +292,7 @@ async function init() {
   if (hdr) hdr.textContent = roundId + ' 라운드';
 
   try {
-    const data = await sbGet('rounds', { 'id': 'eq.' + roundId, 'limit': '1' });
+    const data = await sbGet('cv_rounds', { 'id': 'eq.' + roundId, 'limit': '1' });
     if (!data || data.length === 0 || data.code) {
       throw new Error(data?.message || '라운드 정보를 찾을 수 없습니다');
     }

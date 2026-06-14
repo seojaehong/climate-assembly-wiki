@@ -351,7 +351,6 @@ function sbGet(path, params) {
     headers: {
       'apikey': SB_KEY,
       'Authorization': 'Bearer ' + SB_KEY,
-      'Accept-Profile': 'climate_vote',
     }
   }).then(r => r.json());
 }
@@ -362,7 +361,6 @@ function sbPost(path, body) {
     headers: {
       'apikey': SB_KEY,
       'Authorization': 'Bearer ' + SB_KEY,
-      'Content-Profile': 'climate_vote',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -377,7 +375,6 @@ function sbPatch(path, filter, body) {
     headers: {
       'apikey': SB_KEY,
       'Authorization': 'Bearer ' + SB_KEY,
-      'Content-Profile': 'climate_vote',
       'Content-Type': 'application/json',
       'Prefer': 'return=minimal',
     },
@@ -391,7 +388,6 @@ function sbRpc(fn, body) {
     headers: {
       'apikey': SB_KEY,
       'Authorization': 'Bearer ' + SB_KEY,
-      'Content-Profile': 'climate_vote',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -411,7 +407,7 @@ let allRounds = [];
 
 async function loadRounds() {
   try {
-    const rounds = await sbGet('rounds', { 'order': 'sort_order.asc' });
+    const rounds = await sbGet('cv_rounds', { 'order': 'sort_order.asc' });
     if (!rounds || rounds.code) {
       document.getElementById('roundsGrid').innerHTML =
         `<div style="grid-column:1/-1;padding:32px;color:#DC2626;font-size:16px;font-weight:700">
@@ -492,15 +488,15 @@ async function activateRound(id) {
   if (!confirm(id + ' 라운드를 활성화합니다.\n현재 활성 라운드는 자동으로 마감됩니다.\n계속하시겠습니까?')) return;
   try {
     // Try RPC set_active first (if function exists in DB)
-    let result = await sbRpc('set_active', { p_round_id: id });
+    let result = await sbRpc('cv_set_active', { p_round_id: id });
     if (result && result.code) {
       // RPC not available — manual two-step fallback
       const activeRound = allRounds.find(r => r.status === 'active');
       if (activeRound) {
-        const closeRes = await sbPatch('rounds', { 'id': 'eq.' + activeRound.id }, { status: 'closed' });
+        const closeRes = await sbPatch('cv_rounds', { 'id': 'eq.' + activeRound.id }, { status: 'closed' });
         if (closeRes && closeRes.code) throw new Error('마감 오류: ' + (closeRes.message || JSON.stringify(closeRes)));
       }
-      result = await sbPatch('rounds', { 'id': 'eq.' + id }, { status: 'active' });
+      result = await sbPatch('cv_rounds', { 'id': 'eq.' + id }, { status: 'active' });
       if (result && result.code) throw new Error(result.message || JSON.stringify(result));
     }
     showToast(id + ' 활성화 완료');
@@ -513,7 +509,7 @@ async function activateRound(id) {
 async function closeRound(id) {
   if (!confirm(id + ' 라운드를 마감합니다. 계속하시겠습니까?')) return;
   try {
-    const result = await sbPatch('rounds', { 'id': 'eq.' + id }, { status: 'closed' });
+    const result = await sbPatch('cv_rounds', { 'id': 'eq.' + id }, { status: 'closed' });
     if (result && result.code) throw new Error(result.message || JSON.stringify(result));
     showToast(id + ' 마감 완료');
     await loadRounds();
@@ -541,7 +537,7 @@ async function saveOpts(id) {
     return;
   }
   try {
-    const result = await sbPatch('rounds', { 'id': 'eq.' + id }, { options: parsed });
+    const result = await sbPatch('cv_rounds', { 'id': 'eq.' + id }, { options: parsed });
     if (result && result.code) throw new Error(result.message || JSON.stringify(result));
     showToast(id + ' 옵션 저장 완료');
     await loadRounds();

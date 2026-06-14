@@ -417,7 +417,6 @@ function sbGet(path, params) {
     headers: {
       'apikey': SB_KEY,
       'Authorization': 'Bearer ' + SB_KEY,
-      'Accept-Profile': 'climate_vote',
     }
   }).then(r => r.json());
 }
@@ -442,7 +441,7 @@ let pollTimer = null;
 async function poll() {
   try {
     // 1. Fetch active round
-    const rounds = await sbGet('rounds', { 'status': 'eq.active', 'limit': '1', 'order': 'sort_order.asc' });
+    const rounds = await sbGet('cv_rounds', { 'status': 'eq.active', 'limit': '1', 'order': 'sort_order.asc' });
     if (!rounds || rounds.code) {
       renderError(rounds?.message || 'API 오류');
       return;
@@ -451,7 +450,7 @@ async function poll() {
     const activeRound = rounds.length > 0 ? rounds[0] : null;
 
     // 2. Fetch closed rounds for history
-    const closed = await sbGet('rounds', {
+    const closed = await sbGet('cv_rounds', {
       'status': 'eq.closed',
       'order': 'updated_at.desc',
       'limit': '5',
@@ -465,9 +464,9 @@ async function poll() {
     // 3. Fetch tally for active round
     let tally = [];
     if (activeRound.type === 'SCALE_MULTI') {
-      tally = await sbGet('tally_scale', { 'round_id': 'eq.' + activeRound.id, 'order': 'avg_score.desc' });
+      tally = await sbGet('cv_tally_scale', { 'round_id': 'eq.' + activeRound.id, 'order': 'avg_score.desc' });
     } else {
-      tally = await sbGet('tally', { 'round_id': 'eq.' + activeRound.id, 'order': 'n.desc' });
+      tally = await sbGet('cv_tally', { 'round_id': 'eq.' + activeRound.id, 'order': 'n.desc' });
     }
     if (!tally || tally.code) tally = [];
 
