@@ -108,6 +108,31 @@ const matchRate = Math.round(
     </section>
 
     <!-- ═══════════════════════════════════════════
+         CORRECTIONS APPLIED
+    ══════════════════════════════════════════════ -->
+    {data.corrections_applied && data.corrections_applied.length > 0 && (
+      <section class="rf-corrections">
+        <details class="rf-corrections__details">
+          <summary class="rf-corrections__summary">
+            현장 OCR 정정 이력 ({data.corrections_applied.length}건)
+            <span class="rf-corrections__hint">— 추가촬영·xlsx·CSV 3원 대조 후 확정</span>
+          </summary>
+          <div class="rf-corrections__grid">
+            {(data.corrections_applied as any[]).map((c: any) => (
+              <div class="rf-corrections__card">
+                <span class="rf-corrections__loc">{c.board} · {c.field}</span>
+                <span class="rf-corrections__before">{c.before}</span>
+                <span class="rf-corrections__arrow">→</span>
+                <span class="rf-corrections__after">{c.after}</span>
+                <span class="rf-corrections__ev">근거: {c.evidence}</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      </section>
+    )}
+
+    <!-- ═══════════════════════════════════════════
          BOARDS
     ══════════════════════════════════════════════ -->
     <section class="rf-boards">
@@ -718,6 +743,81 @@ const matchRate = Math.round(
     border-radius: 6px;
     padding: 10px 14px;
     line-height: 1.55;
+  }
+
+  /* ── Corrections Applied ────────────────────── */
+  .rf-corrections {
+    max-width: 1100px;
+    margin: 0 auto 36px;
+    padding: 0 20px;
+  }
+  .rf-corrections__details {
+    background: #f0f9ff;
+    border: 1.5px solid #bae6fd;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .rf-corrections__summary {
+    cursor: pointer;
+    padding: 18px 24px;
+    font-size: clamp(18px, 2vw, 22px);
+    font-weight: 700;
+    color: #0369a1;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    user-select: none;
+  }
+  .rf-corrections__summary::-webkit-details-marker { display: none; }
+  .rf-corrections__hint {
+    font-size: 15px;
+    font-weight: 400;
+    color: #64748b;
+  }
+  .rf-corrections__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+    padding: 0 20px 20px;
+  }
+  .rf-corrections__card {
+    background: #fff;
+    border: 1.5px solid #bae6fd;
+    border-radius: 8px;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .rf-corrections__loc {
+    font-size: 14px;
+    font-weight: 700;
+    color: #0369a1;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .rf-corrections__before {
+    font-size: 16px;
+    color: #94a3b8;
+    text-decoration: line-through;
+    line-height: 1.4;
+  }
+  .rf-corrections__arrow {
+    font-size: 16px;
+    color: #0284c7;
+    font-weight: 700;
+  }
+  .rf-corrections__after {
+    font-size: 17px;
+    color: #0f172a;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  .rf-corrections__ev {
+    font-size: 13px;
+    color: #64748b;
+    margin-top: 4px;
   }
 
   /* ── Footnote ────────────────────────────────── */
