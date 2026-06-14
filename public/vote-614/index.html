@@ -202,6 +202,23 @@ html, body {
   color: #92400E;
   border: 2.5px solid var(--yellow);
 }
+.result-tag {
+  display: inline-block;
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-size: 38px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.result-tag.pass {
+  background: var(--green);
+  color: #fff;
+}
+.result-tag.retry {
+  background: var(--red);
+  color: #fff;
+}
 
 /* ─── BAR CHART AREA ─── */
 .chart-area {
@@ -644,12 +661,12 @@ function renderDashboard(round, tally, totalN, closed) {
   let winnerHtml = '';
   if (winner) {
     if (winner.tie) {
-      winnerHtml = `<div class="winner-line tie">${winner.text}</div>`;
+      winnerHtml = `<div class="winner-line tie"><span class="result-tag retry">재투표</span> ${winner.text}</div>`;
     } else {
-      const badge = winner.pass
-        ? `<span class="quorum-badge pass">의결정족수 ${winner.quorum} 통과 ✓</span>`
-        : `<span class="quorum-badge fail">의결정족수 ${winner.quorum} 미달 ✗</span>`;
-      winnerHtml = `<div class="winner-line ${winner.pass ? 'pass' : 'fail'}">${winner.text} ${badge}</div>`;
+      const tag = winner.pass
+        ? `<span class="result-tag pass">통과</span>`
+        : `<span class="result-tag retry">재투표</span>`;
+      winnerHtml = `<div class="winner-line ${winner.pass ? 'pass' : 'fail'}">${tag} ${winner.text}</div>`;
     }
   }
 
