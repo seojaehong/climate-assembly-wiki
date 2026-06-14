@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>투표 라이브 대시보드 — 2026 기후시민회의</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0F1A2A;
+  --ink-2: #4A5568;
+  --ink-3: #8A95A3;
+  --paper: #F7F9FB;
+  --rule: #DDE3EC;
+  --rule-s: #EDF0F5;
+  --navy: #1F4E79;
+  --navy-2: #14334F;
+  --teal: #0D7490;
+  --teal-2: #0B5F76;
+  --teal-light: #E0F5FA;
+  --amber: #F5A623;
+  --green: #16A34A;
+  --green-light: #DCFCE7;
+  --yellow: #EAB308;
+  --yellow-light: #FEF9C3;
+  --red: #DC2626;
+  --red-light: #FEE2E2;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100vh; width: 100vw;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'tnum' 1;
+  overflow: hidden;
+}
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+/* ─── HEADER ─── */
+.header {
+  height: 88px;
+  background: linear-gradient(180deg, var(--navy) 0%, var(--navy-2) 100%);
+  color: #fff;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  padding: 0 40px;
+  gap: 32px;
+  position: relative;
+  z-index: 10;
+  box-shadow: 0 4px 20px rgba(15,26,42,0.35);
+}
+.header::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--amber) 0%, var(--amber) 40%, transparent 40.001%);
+}
+.h-title-wrap { display: flex; align-items: baseline; gap: 20px; min-width: 0; }
+.h-round-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px; font-weight: 700;
+  letter-spacing: 0.16em;
+  background: var(--amber);
+  color: var(--navy-2);
+  padding: 4px 12px;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.h-title {
+  font-size: 32px; font-weight: 900;
+  letter-spacing: -0.025em; line-height: 1.1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.h-response {
+  display: flex; align-items: baseline; gap: 8px;
+  white-space: nowrap;
+}
+.h-response-n {
+  font-size: 56px; font-weight: 900;
+  color: var(--amber); line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.h-response-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.72;
+  line-height: 1.3;
+}
+.h-clock {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 20px; font-weight: 700;
+  letter-spacing: 0.05em;
+  opacity: 0.85;
+  display: flex; align-items: center; gap: 10px;
+  white-space: nowrap;
+}
+.live-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 12px rgba(245,166,35,0.7);
+  animation: blink 1.8s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+/* ─── STAGE ─── */
+.stage {
+  height: calc(100vh - 88px);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 40px 20px;
+  gap: 18px;
+  overflow: hidden;
+}
+
+/* ─── WAITING SCREEN ─── */
+.waiting {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  text-align: center;
+}
+.waiting-title {
+  font-size: 48px; font-weight: 900;
+  color: var(--ink-2);
+  letter-spacing: -0.02em;
+}
+.waiting-sub { font-size: 24px; color: var(--ink-3); }
+
+/* ─── VERDICT BADGE ─── */
+.verdict {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 24px;
+  border-radius: 10px;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  flex-shrink: 0;
+}
+.verdict.pass {
+  background: var(--green-light);
+  border: 3px solid var(--green);
+  color: var(--green);
+}
+.verdict.warn {
+  background: var(--yellow-light);
+  border: 3px solid var(--yellow);
+  color: #92400E;
+}
+.verdict.split {
+  background: var(--red-light);
+  border: 3px solid var(--red);
+  color: var(--red);
+}
+.verdict-icon { font-size: 36px; }
+
+/* ─── BAR CHART AREA ─── */
+.chart-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* RADIO/CHECKBOX: horizontal bars */
+.hbar-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 10px;
+  min-height: 0;
+}
+.hbar-row {
+  display: grid;
+  grid-template-columns: 280px 1fr 160px;
+  align-items: center;
+  gap: 16px;
+  min-height: 80px;
+  max-height: 140px;
+  flex: 1;
+}
+.hbar-label {
+  font-size: 26px; font-weight: 700;
+  color: var(--ink);
+  line-height: 1.2;
+  text-align: right;
+  letter-spacing: -0.01em;
+}
+.hbar-track {
+  height: 100%;
+  min-height: 80px;
+  max-height: 140px;
+  background: var(--rule-s);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+.hbar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--teal), var(--teal-2));
+  border-radius: 6px;
+  transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 4px;
+  display: flex;
+  align-items: center;
+  padding-left: 16px;
+}
+.hbar-fill.top {
+  background: linear-gradient(90deg, var(--navy), var(--navy-2));
+}
+/* threshold line */
+.threshold-line {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 3px;
+  background: var(--red);
+  z-index: 2;
+}
+.threshold-label {
+  position: absolute;
+  top: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; font-weight: 700;
+  color: var(--red);
+  white-space: nowrap;
+  letter-spacing: 0.06em;
+  background: rgba(255,255,255,0.9);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+.hbar-count {
+  font-size: 100px; font-weight: 900;
+  color: var(--ink);
+  line-height: 1;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+}
+.hbar-count .pct {
+  font-size: 32px; font-weight: 700;
+  color: var(--ink-2);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* SCALE_MULTI: avg score bars */
+.scale-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+}
+.scale-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule-s);
+}
+.scale-row:last-child { border-bottom: none; }
+.scale-track-wrap { display: flex; align-items: center; gap: 12px; }
+.scale-track {
+  flex: 1;
+  height: 48px;
+  background: var(--rule-s);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.scale-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--teal), var(--teal-2));
+  border-radius: 6px;
+  transition: width 0.7s ease;
+}
+.scale-label-text {
+  font-size: 22px; font-weight: 700;
+  color: var(--ink);
+  line-height: 1.2;
+}
+.scale-avg {
+  font-size: 36px; font-weight: 900;
+  color: var(--teal);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  text-align: right;
+}
+.scale-avg .n {
+  font-size: 16px; font-weight: 500;
+  color: var(--ink-3);
+  margin-left: 4px;
+}
+
+/* ─── HISTORY CHIPS ─── */
+.history {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 10px 0 4px;
+  border-top: 1.5px solid var(--rule);
+  flex-shrink: 0;
+}
+.history-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+.hist-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #fff;
+  border: 1.5px solid var(--rule);
+  border-radius: 20px;
+  font-size: 16px; font-weight: 700;
+  color: var(--ink-2);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.hist-chip .rid {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; font-weight: 700;
+  color: var(--teal);
+  letter-spacing: 0.08em;
+}
+.hist-chip .icon { font-size: 16px; }
+
+/* ─── PENDING STATE ─── */
+.pending-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 20px;
+}
+.pending-title {
+  font-size: 40px; font-weight: 900;
+  color: var(--ink-2); letter-spacing: -0.02em;
+}
+.pending-sub { font-size: 22px; color: var(--ink-3); }
+.spinner {
+  width: 56px; height: 56px;
+  border: 5px solid var(--rule);
+  border-top-color: var(--teal);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="h-title-wrap">
+    <span class="h-round-badge mono" id="hBadge">LOADING</span>
+    <span class="h-title" id="hTitle">라이브 투표 대시보드</span>
+  </div>
+  <div class="h-response">
+    <div style="text-align:right">
+      <div class="h-response-n" id="hCount">—</div>
+      <div class="h-response-label mono">응답 / 20</div>
+    </div>
+  </div>
+  <div class="h-clock">
+    <div class="live-dot"></div>
+    <span id="clockDisplay" class="mono">00:00:00</span>
+  </div>
+</div>
+
+<div class="stage" id="stage">
+  <!-- content rendered by JS -->
+  <div class="pending-wrap" id="pendingScreen">
+    <div class="spinner"></div>
+    <div class="pending-title">연결 중...</div>
+    <div class="pending-sub">Supabase에서 라운드 정보를 가져오는 중입니다</div>
+  </div>
+</div>
+
+<script>
+const SB_URL = 'https://pleyuknjnprsckssxvrh.supabase.co';
+const SB_KEY = 'sb_publishable_OVwo9zs5i6xl5iFykM6zJQ_GWFcf5zn';
+const TOTAL_PARTICIPANTS = 20;
+
+function sbGet(path, params) {
+  const u = new URL(SB_URL + '/rest/v1/' + path);
+  if (params) Object.entries(params).forEach(([k,v]) => u.searchParams.set(k,v));
+  return fetch(u.toString(), {
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': 'Bearer ' + SB_KEY,
+      'Accept-Profile': 'climate_vote',
+    }
+  }).then(r => r.json());
+}
+
+// ─── Clock ───
+function updateClock() {
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mm = String(d.getMinutes()).padStart(2,'0');
+  const ss = String(d.getSeconds()).padStart(2,'0');
+  const el = document.getElementById('clockDisplay');
+  if (el) el.textContent = hh + ':' + mm + ':' + ss;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ─── State ───
+let lastRoundId = null;
+let pollTimer = null;
+
+// ─── Main poll loop ───
+async function poll() {
+  try {
+    // 1. Fetch active round
+    const rounds = await sbGet('rounds', { 'status': 'eq.active', 'limit': '1', 'order': 'sort_order.asc' });
+    if (!rounds || rounds.code) {
+      renderError(rounds?.message || 'API 오류');
+      return;
+    }
+
+    const activeRound = rounds.length > 0 ? rounds[0] : null;
+
+    // 2. Fetch closed rounds for history
+    const closed = await sbGet('rounds', {
+      'status': 'eq.closed',
+      'order': 'sort_order.desc',
+      'limit': '5',
+    });
+
+    if (!activeRound) {
+      renderWaiting(Array.isArray(closed) ? closed : []);
+      return;
+    }
+
+    // 3. Fetch tally for active round
+    let tally = [];
+    if (activeRound.type === 'SCALE_MULTI') {
+      tally = await sbGet('tally_scale', { 'round_id': 'eq.' + activeRound.id, 'order': 'avg_score.desc' });
+    } else {
+      tally = await sbGet('tally', { 'round_id': 'eq.' + activeRound.id, 'order': 'n.desc' });
+    }
+    if (!tally || tally.code) tally = [];
+
+    // 4. Total count
+    const totalN = tally.reduce((s,r) => s + (r.n || 0), 0);
+
+    // 5. Render
+    renderDashboard(activeRound, tally, totalN, Array.isArray(closed) ? closed : []);
+
+  } catch(e) {
+    console.error('poll error', e);
+    renderError(e.message || String(e));
+  }
+}
+
+function renderError(msg) {
+  document.getElementById('stage').innerHTML =
+    `<div class="pending-wrap">
+      <div style="font-size:28px;font-weight:900;color:#DC2626">연결 오류</div>
+      <div style="font-size:18px;color:#4A5568;max-width:600px;line-height:1.6">${msg}<br><br>
+        <small>Supabase API Settings &gt; Exposed schemas에 <b>climate_vote</b>를 추가해야 합니다.</small>
+      </div>
+    </div>`;
+}
+
+function renderWaiting(closed) {
+  const hBadge = document.getElementById('hBadge');
+  const hTitle = document.getElementById('hTitle');
+  const hCount = document.getElementById('hCount');
+  if (hBadge) hBadge.textContent = 'WAIT';
+  if (hTitle) hTitle.textContent = '다음 라운드 대기 중';
+  if (hCount) hCount.textContent = '—';
+  lastRoundId = null;
+
+  const histChips = renderHistory(closed);
+
+  document.getElementById('stage').innerHTML = `
+    <div class="pending-wrap" style="flex:1">
+      <div class="pending-title">다음 라운드 대기 중</div>
+      <div class="pending-sub">사회자가 다음 라운드를 활성화하면 자동으로 시작됩니다.</div>
+    </div>
+    ${histChips ? `<div class="history"><span class="history-label mono">완료된 라운드</span>${histChips}</div>` : ''}
+  `;
+}
+
+function renderHistory(closed) {
+  if (!closed || closed.length === 0) return '';
+  return closed.map(r => {
+    return `<div class="hist-chip">
+      <span class="rid">${r.id}</span>
+      <span class="icon">&#x2705;</span>
+      <span>${r.title ? r.title.slice(0,12) : r.id}</span>
+    </div>`;
+  }).join('');
+}
+
+function getVerdict(tally, thresholdLines, type) {
+  if (type === 'SCALE_MULTI' || type === 'TEXT') return null;
+  if (!tally || tally.length < 2) return null;
+  const total = tally.reduce((s,r) => s + (r.n||0), 0);
+  if (total === 0) return null;
+
+  const top = tally[0].n || 0;
+  const second = tally.length > 1 ? (tally[1].n || 0) : 0;
+  const topPct = top / total;
+
+  // Check threshold lines (2/3 = ~0.667)
+  const twoThirds = 2/3;
+  const half = 0.5;
+
+  if (topPct >= twoThirds) {
+    return { cls: 'pass', icon: '&#x2705;', text: '압도적 통과 (' + (topPct*100).toFixed(0) + '%)' };
+  } else if (topPct > half) {
+    return { cls: 'warn', icon: '&#x26A0;&#xFE0F;', text: '과반 도달 — 결선 권장 (' + (topPct*100).toFixed(0) + '%)' };
+  } else if (top - second <= 2) {
+    return { cls: 'split', icon: '&#x1F534;', text: '분산 — 결선 필요 (1·2위 차이 ' + (top - second) + '표)' };
+  }
+  return null;
+}
+
+function renderDashboard(round, tally, totalN, closed) {
+  // Update header
+  const hBadge = document.getElementById('hBadge');
+  const hTitle = document.getElementById('hTitle');
+  const hCount = document.getElementById('hCount');
+  if (hBadge) hBadge.textContent = round.id;
+  if (hTitle) hTitle.textContent = round.title || round.id;
+  if (hCount) hCount.textContent = totalN;
+
+  const verdict = getVerdict(tally, round.threshold_lines, round.type);
+  const histChips = renderHistory(closed);
+
+  let mainContent = '';
+
+  if (round.type === 'SCALE_MULTI') {
+    // Sorted by avg_score desc (already ordered from API)
+    const rows = tally.map(r => {
+      const avg = r.avg_score || 0;
+      const pct = ((avg - 1) / 4 * 100).toFixed(1);
+      return `<div class="scale-row">
+        <div class="scale-label-text">${r.item_label || '-'}</div>
+        <div class="scale-track-wrap">
+          <div class="scale-track">
+            <div class="scale-fill" style="width:${pct}%"></div>
+          </div>
+        </div>
+        <div class="scale-avg">${avg.toFixed(2)}<span class="n">/5 (${r.n}명)</span></div>
+      </div>`;
+    }).join('');
+
+    mainContent = `<div class="chart-area"><div class="scale-list">${rows}</div></div>`;
+
+  } else {
+    // RADIO / CHECKBOX: horizontal bars
+    const total = tally.reduce((s,r) => s + (r.n||0), 0);
+
+    // Find threshold pct for line drawing
+    const threshLines = round.threshold_lines || [];
+
+    const rows = tally.map((r, i) => {
+      const n = r.n || 0;
+      const pct = total > 0 ? (n / total * 100) : 0;
+      const isTop = i === 0;
+      const label = r.choice_text || '-';
+
+      // Build threshold lines
+      let threshHtml = '';
+      if (Array.isArray(threshLines)) {
+        threshLines.forEach(t => {
+          const tPct = typeof t.pct === 'number' ? t.pct :
+                       (t.value && total > 0 ? (t.value / total * 100) : null);
+          if (tPct !== null) {
+            threshHtml += `<div class="threshold-line" style="left:${tPct}%">
+              <span class="threshold-label" style="left:4px">${t.label || ''}</span>
+            </div>`;
+          }
+        });
+      }
+
+      return `<div class="hbar-row">
+        <div class="hbar-label">${label}</div>
+        <div class="hbar-track">
+          ${threshHtml}
+          <div class="hbar-fill${isTop ? ' top' : ''}" style="width:${pct}%"></div>
+        </div>
+        <div class="hbar-count">${n}<span class="pct">${pct.toFixed(0)}%</span></div>
+      </div>`;
+    }).join('');
+
+    mainContent = `<div class="chart-area"><div class="hbar-list">${rows}</div></div>`;
+  }
+
+  const verdictHtml = verdict
+    ? `<div class="verdict ${verdict.cls}"><span class="verdict-icon">${verdict.icon}</span>${verdict.text}</div>`
+    : '';
+
+  document.getElementById('stage').innerHTML = `
+    ${verdictHtml}
+    ${mainContent}
+    ${histChips ? `<div class="history"><span class="history-label">완료</span>${histChips}</div>` : ''}
+  `;
+}
+
+// ─── Start polling ───
+poll();
+setInterval(poll, 1500);
+</script>
+</body>
+</html>

@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>투표 관리 — 2026 기후시민회의</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0F1A2A;
+  --ink-2: #4A5568;
+  --ink-3: #8A95A3;
+  --paper: #F7F9FB;
+  --rule: #DDE3EC;
+  --rule-s: #EDF0F5;
+  --navy: #1F4E79;
+  --teal: #0D7490;
+  --amber: #F5A623;
+  --green: #16A34A;
+  --green-light: #DCFCE7;
+  --yellow: #D97706;
+  --yellow-light: #FEF3C7;
+  --gray-light: #F1F5F9;
+  --red: #DC2626;
+  --red-light: #FEE2E2;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+/* ─── AUTH ─── */
+.auth-overlay {
+  position: fixed; inset: 0;
+  background: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 999;
+}
+.auth-box {
+  background: #fff;
+  border-radius: 12px;
+  padding: 48px 40px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+.auth-title { font-size: 26px; font-weight: 900; color: var(--ink); margin-bottom: 8px; }
+.auth-sub { font-size: 15px; color: var(--ink-3); margin-bottom: 32px; }
+.auth-input {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 18px;
+  font-family: inherit;
+  border: 2px solid var(--rule);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  text-align: center;
+  letter-spacing: 0.1em;
+}
+.auth-input:focus { outline: none; border-color: var(--teal); }
+.auth-btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--teal);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.auth-error { color: var(--red); font-size: 14px; margin-top: 10px; display: none; }
+
+/* ─── HEADER ─── */
+.header {
+  background: linear-gradient(180deg, var(--navy) 0%, #14334F 100%);
+  color: #fff;
+  padding: 18px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.h-title { font-size: 24px; font-weight: 900; letter-spacing: -0.02em; }
+.h-sub { font-size: 13px; opacity: 0.65; margin-top: 3px; }
+.refresh-btn {
+  padding: 8px 20px;
+  background: rgba(255,255,255,0.12);
+  border: 1.5px solid rgba(255,255,255,0.3);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.refresh-btn:hover { background: rgba(255,255,255,0.2); }
+
+/* ─── MAIN ─── */
+.main {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 32px 24px 60px;
+}
+
+/* ─── STATUS BAR ─── */
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: #fff;
+  border: 1.5px solid var(--rule);
+  border-radius: 8px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.status-label { font-size: 13px; font-weight: 700; color: var(--ink-3); letter-spacing: 0.1em; text-transform: uppercase; }
+.active-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: var(--green-light);
+  border: 1.5px solid var(--green);
+  border-radius: 20px;
+  font-size: 14px; font-weight: 700;
+  color: var(--green);
+}
+.no-active { font-size: 14px; color: var(--ink-3); }
+.live-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--green);
+  animation: blink 1.8s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+/* ─── ROUND CARDS ─── */
+.rounds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.round-card {
+  background: #fff;
+  border: 2px solid var(--rule);
+  border-radius: 10px;
+  padding: 20px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color 0.15s;
+}
+.round-card.active {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(22,163,74,0.12);
+}
+.round-card.closed { opacity: 0.55; }
+
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.card-id {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--teal);
+  background: var(--rule-s);
+  padding: 3px 8px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.card-status {
+  font-size: 12px; font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.card-status.pending { background: var(--gray-light); color: var(--ink-3); }
+.card-status.active { background: var(--green-light); color: var(--green); }
+.card-status.closed { background: var(--rule-s); color: var(--ink-3); }
+.card-status.runoff { background: var(--yellow-light); color: var(--yellow); }
+
+.card-title {
+  font-size: 16px; font-weight: 700;
+  color: var(--ink);
+  line-height: 1.3;
+}
+.card-type {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; font-weight: 600;
+  color: var(--ink-3);
+  letter-spacing: 0.1em;
+}
+.card-opts {
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+
+/* ─── CARD ACTIONS ─── */
+.card-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.btn-activate {
+  flex: 1;
+  padding: 10px 16px;
+  background: var(--teal);
+  color: #fff;
+  font-size: 14px; font-weight: 700;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+}
+.btn-activate:disabled { background: var(--ink-3); cursor: not-allowed; }
+.btn-close {
+  padding: 10px 16px;
+  background: #fff;
+  border: 1.5px solid var(--red);
+  color: var(--red);
+  font-size: 14px; font-weight: 700;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn-close:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-edit-opts {
+  padding: 10px 14px;
+  background: #fff;
+  border: 1.5px solid var(--rule);
+  color: var(--ink-2);
+  font-size: 13px; font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* ─── INLINE EDIT ─── */
+.opts-editor {
+  display: none;
+  margin-top: 6px;
+}
+.opts-editor.open { display: block; }
+.opts-textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+  border: 1.5px solid var(--rule);
+  border-radius: 6px;
+  resize: vertical;
+  color: var(--ink);
+  background: #fff;
+}
+.opts-textarea:focus { outline: none; border-color: var(--teal); }
+.opts-hint { font-size: 11px; color: var(--ink-3); margin-top: 4px; line-height: 1.5; }
+.btn-save-opts {
+  margin-top: 8px;
+  padding: 8px 18px;
+  background: var(--teal);
+  color: #fff;
+  font-size: 13px; font-weight: 700;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* ─── TOAST ─── */
+.toast {
+  position: fixed;
+  bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--ink);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 15px; font-weight: 600;
+  transition: transform 0.3s ease;
+  z-index: 100;
+  white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- Auth overlay -->
+<div id="authOverlay" class="auth-overlay">
+  <div class="auth-box">
+    <div class="auth-title">관리자 접속</div>
+    <div class="auth-sub">관리자 암호를 입력해 주세요.</div>
+    <input class="auth-input" type="password" id="passInput" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter') checkAuth()">
+    <button class="auth-btn" onclick="checkAuth()">확인</button>
+    <div class="auth-error" id="authError">암호가 틀렸습니다.</div>
+  </div>
+</div>
+
+<div class="header">
+  <div>
+    <div class="h-title">투표 관리 — 2026 기후시민회의</div>
+    <div class="h-sub">사회자 전용 · 라운드 활성화 / 마감 / 옵션 편집</div>
+  </div>
+  <button class="refresh-btn" onclick="loadRounds()">새로고침</button>
+</div>
+
+<div class="main">
+  <div class="status-bar" id="statusBar">
+    <span class="status-label">현재 활성</span>
+    <span class="no-active" id="activeStatus">로딩 중...</span>
+  </div>
+  <div class="rounds-grid" id="roundsGrid">
+    <!-- cards rendered by JS -->
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SB_URL = 'https://pleyuknjnprsckssxvrh.supabase.co';
+const SB_KEY = 'sb_publishable_OVwo9zs5i6xl5iFykM6zJQ_GWFcf5zn';
+const ADMIN_PASSPHRASE = 'climate2026';
+
+// ─── Auth ───
+function checkAuth() {
+  const val = document.getElementById('passInput').value;
+  if (val === ADMIN_PASSPHRASE) {
+    document.getElementById('authOverlay').style.display = 'none';
+    loadRounds();
+  } else {
+    document.getElementById('authError').style.display = 'block';
+  }
+}
+
+// ─── API ───
+function sbGet(path, params) {
+  const u = new URL(SB_URL + '/rest/v1/' + path);
+  if (params) Object.entries(params).forEach(([k,v]) => u.searchParams.set(k,v));
+  return fetch(u.toString(), {
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': 'Bearer ' + SB_KEY,
+      'Accept-Profile': 'climate_vote',
+    }
+  }).then(r => r.json());
+}
+
+function sbPost(path, body) {
+  return fetch(SB_URL + '/rest/v1/' + path, {
+    method: 'POST',
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': 'Bearer ' + SB_KEY,
+      'Content-Profile': 'climate_vote',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  }).then(r => r.status === 204 ? {} : r.json());
+}
+
+function sbPatch(path, filter, body) {
+  const u = new URL(SB_URL + '/rest/v1/' + path);
+  Object.entries(filter).forEach(([k,v]) => u.searchParams.set(k, v));
+  return fetch(u.toString(), {
+    method: 'PATCH',
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': 'Bearer ' + SB_KEY,
+      'Content-Profile': 'climate_vote',
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal',
+    },
+    body: JSON.stringify(body),
+  }).then(r => r.status === 204 ? {} : r.json());
+}
+
+function sbRpc(fn, body) {
+  return fetch(SB_URL + '/rest/v1/rpc/' + fn, {
+    method: 'POST',
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': 'Bearer ' + SB_KEY,
+      'Content-Profile': 'climate_vote',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  }).then(r => r.status === 204 ? {} : r.json());
+}
+
+// ─── Toast ───
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ─── Load rounds ───
+let allRounds = [];
+
+async function loadRounds() {
+  try {
+    const rounds = await sbGet('rounds', { 'order': 'sort_order.asc' });
+    if (!rounds || rounds.code) {
+      document.getElementById('roundsGrid').innerHTML =
+        `<div style="grid-column:1/-1;padding:32px;color:#DC2626;font-size:16px;font-weight:700">
+          API 오류: ${rounds?.message || '알 수 없는 오류'}<br>
+          <small style="font-weight:400;color:#4A5568">Supabase API Settings > Exposed schemas에 climate_vote 추가 필요</small>
+        </div>`;
+      return;
+    }
+    allRounds = rounds;
+    renderRounds(rounds);
+  } catch(e) {
+    document.getElementById('roundsGrid').innerHTML =
+      `<div style="grid-column:1/-1;padding:32px;color:#DC2626">${e.message}</div>`;
+  }
+}
+
+function renderRounds(rounds) {
+  const active = rounds.find(r => r.status === 'active');
+  const statusBar = document.getElementById('activeStatus');
+  if (active) {
+    statusBar.innerHTML = `<span class="active-chip"><span class="live-dot"></span>${active.id} — ${active.title || ''}</span>`;
+  } else {
+    statusBar.innerHTML = `<span class="no-active">활성 라운드 없음</span>`;
+  }
+
+  const grid = document.getElementById('roundsGrid');
+  grid.innerHTML = rounds.map(r => renderCard(r)).join('');
+}
+
+function statusClass(status, id) {
+  if (status === 'active') return 'active';
+  if (status === 'closed') return 'closed';
+  if (id && id.includes('runoff')) return 'runoff';
+  return 'pending';
+}
+
+function statusLabel(status) {
+  if (status === 'active') return '활성';
+  if (status === 'closed') return '마감';
+  if (status === 'pending') return '대기';
+  return status || '대기';
+}
+
+function renderCard(r) {
+  const sc = statusClass(r.status, r.id);
+  const opts = r.options || [];
+  const optLabels = opts.slice(0,3).map(o => typeof o === 'string' ? o : (o.label || o.value || '')).join(', ');
+  const moreOpts = opts.length > 3 ? ` +${opts.length - 3}개` : '';
+
+  const canActivate = r.status !== 'active';
+  const canClose = r.status === 'active';
+  const isRunoff = (r.id || '').includes('runoff');
+
+  return `<div class="round-card ${sc}" id="card_${r.id.replace(/-/g,'_')}">
+    <div class="card-top">
+      <span class="card-id mono">${r.id}</span>
+      <span class="card-status ${sc}">${statusLabel(r.status)}</span>
+    </div>
+    <div class="card-title">${r.title || '(제목 없음)'}</div>
+    <div class="card-type mono">${r.type || 'RADIO'} ${r.sort_order ? '· #' + r.sort_order : ''}</div>
+    ${opts.length > 0 ? `<div class="card-opts">${optLabels}${moreOpts}</div>` : ''}
+    <div class="card-actions">
+      <button class="btn-activate" onclick="activateRound('${r.id}')" ${canActivate ? '' : 'disabled'}>
+        ${r.status === 'active' ? '&#x25B6; 활성 중' : '활성화'}
+      </button>
+      <button class="btn-close" onclick="closeRound('${r.id}')" ${canClose ? '' : 'disabled'}>마감</button>
+      ${isRunoff ? `<button class="btn-edit-opts" onclick="toggleEditOpts('${r.id}')">옵션 편집</button>` : ''}
+    </div>
+    ${isRunoff ? `<div class="opts-editor" id="editor_${r.id.replace(/-/g,'_')}">
+      <textarea class="opts-textarea" id="ta_${r.id.replace(/-/g,'_')}" placeholder='["옵션1", "옵션2", "옵션3"]'>${JSON.stringify(opts, null, 2)}</textarea>
+      <div class="opts-hint">JSON 배열 형식으로 입력. 예: ["A안", "B안", "C안"]<br>SCALE_MULTI는 [{"label":"항목1"}, ...] 형식</div>
+      <button class="btn-save-opts" onclick="saveOpts('${r.id}')">옵션 저장</button>
+    </div>` : ''}
+  </div>`;
+}
+
+async function activateRound(id) {
+  if (!confirm(id + ' 라운드를 활성화합니다.\n현재 활성 라운드는 자동으로 마감됩니다.\n계속하시겠습니까?')) return;
+  try {
+    // Try RPC set_active first (if function exists)
+    let result;
+    try {
+      result = await sbRpc('set_active', { p_round_id: id });
+    } catch(e) {
+      // Fallback: manual update — close all active, then activate target
+      const activeRound = allRounds.find(r => r.status === 'active');
+      if (activeRound) {
+        await sbPatch('rounds', { 'id': 'eq.' + activeRound.id }, { status: 'closed' });
+      }
+      result = await sbPatch('rounds', { 'id': 'eq.' + id }, { status: 'active' });
+    }
+    if (result && result.code) throw new Error(result.message || JSON.stringify(result));
+    showToast(id + ' 활성화 완료');
+    await loadRounds();
+  } catch(e) {
+    alert('활성화 오류: ' + (e.message || JSON.stringify(e)));
+  }
+}
+
+async function closeRound(id) {
+  if (!confirm(id + ' 라운드를 마감합니다. 계속하시겠습니까?')) return;
+  try {
+    const result = await sbPatch('rounds', { 'id': 'eq.' + id }, { status: 'closed' });
+    if (result && result.code) throw new Error(result.message || JSON.stringify(result));
+    showToast(id + ' 마감 완료');
+    await loadRounds();
+  } catch(e) {
+    alert('마감 오류: ' + (e.message || JSON.stringify(e)));
+  }
+}
+
+function toggleEditOpts(id) {
+  const key = id.replace(/-/g,'_');
+  const editor = document.getElementById('editor_' + key);
+  if (!editor) return;
+  editor.classList.toggle('open');
+}
+
+async function saveOpts(id) {
+  const key = id.replace(/-/g,'_');
+  const ta = document.getElementById('ta_' + key);
+  if (!ta) return;
+  let parsed;
+  try {
+    parsed = JSON.parse(ta.value);
+  } catch(e) {
+    alert('JSON 파싱 오류: ' + e.message + '\n예시: ["A안", "B안"]');
+    return;
+  }
+  try {
+    const result = await sbPatch('rounds', { 'id': 'eq.' + id }, { options: parsed });
+    if (result && result.code) throw new Error(result.message || JSON.stringify(result));
+    showToast(id + ' 옵션 저장 완료');
+    await loadRounds();
+  } catch(e) {
+    alert('저장 오류: ' + (e.message || JSON.stringify(e)));
+  }
+}
+</script>
+</body>
+</html>

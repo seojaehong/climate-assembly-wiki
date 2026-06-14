@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>투표 — 2026 기후시민회의</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0F1A2A;
+  --ink-2: #4A5568;
+  --ink-3: #8A95A3;
+  --paper: #FAFBFC;
+  --rule: #E2E6EC;
+  --navy: #1F4E79;
+  --teal: #0D7490;
+  --amber: #F5A623;
+  --green: #1A9E5C;
+  --red: #DC2626;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 18px; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+/* ─── HEADER ─── */
+.header {
+  background: linear-gradient(180deg, var(--navy) 0%, #14334F 100%);
+  color: #fff;
+  padding: 18px 20px 16px;
+}
+.header-title {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.header-sub {
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0.72;
+  margin-top: 4px;
+  letter-spacing: 0.02em;
+}
+/* ─── MAIN ─── */
+.main {
+  padding: 28px 20px 60px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+/* ─── STATE SCREENS ─── */
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* Loading */
+.loading-wrap {
+  text-align: center;
+  padding: 80px 0;
+  color: var(--ink-2);
+  font-size: 17px;
+}
+.spinner {
+  width: 44px; height: 44px;
+  border: 4px solid var(--rule);
+  border-top-color: var(--teal);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 20px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Error */
+.error-wrap {
+  background: #FFF5F5;
+  border: 2px solid #FCA5A5;
+  border-radius: 8px;
+  padding: 28px 24px;
+  text-align: center;
+}
+.error-title { font-size: 20px; font-weight: 700; color: var(--red); margin-bottom: 10px; }
+.error-body { font-size: 15px; color: var(--ink-2); line-height: 1.6; }
+
+/* Closed */
+.closed-wrap {
+  background: #F1F5F9;
+  border: 2px solid #CBD5E1;
+  border-radius: 8px;
+  padding: 40px 24px;
+  text-align: center;
+}
+.closed-title { font-size: 24px; font-weight: 800; color: var(--ink-2); margin-bottom: 10px; }
+.closed-body { font-size: 16px; color: var(--ink-3); line-height: 1.6; }
+
+/* ─── FORM ─── */
+.round-badge {
+  display: inline-block;
+  background: var(--teal);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 4px 12px;
+  border-radius: 4px;
+  margin-bottom: 14px;
+}
+.round-title {
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--ink);
+  line-height: 1.2;
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+}
+.round-desc {
+  font-size: 16px;
+  color: var(--ink-2);
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+/* divider */
+.divider { border: none; border-top: 1px solid var(--rule); margin: 24px 0; }
+
+/* RADIO / CHECKBOX */
+.options-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
+.opt-label {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 80px;
+  padding: 16px 20px;
+  background: #fff;
+  border: 2.5px solid var(--rule);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+}
+.opt-label:active { background: #F0F9FF; }
+.opt-label input { display: none; }
+.opt-custom {
+  width: 28px; height: 28px; flex-shrink: 0;
+  border: 3px solid var(--rule);
+  border-radius: 50%;
+  background: #fff;
+  position: relative;
+  transition: border-color 0.12s;
+}
+.opt-label.checkbox .opt-custom { border-radius: 7px; }
+.opt-label.selected {
+  border-color: var(--teal);
+  background: #EFF9FB;
+}
+.opt-label.selected .opt-custom {
+  border-color: var(--teal);
+  background: var(--teal);
+}
+.opt-label.selected .opt-custom::after {
+  content: '';
+  position: absolute;
+  top: 5px; left: 5px;
+  width: 14px; height: 14px;
+  background: #fff;
+  border-radius: 50%;
+}
+.opt-label.checkbox.selected .opt-custom::after {
+  content: '✓';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: none;
+  border-radius: 0;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+  width: auto; height: auto;
+}
+
+/* SCALE_MULTI */
+.scale-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 28px; }
+.scale-row {
+  background: #fff;
+  border: 1.5px solid var(--rule);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.scale-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 10px;
+  line-height: 1.3;
+}
+.scale-btns {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.scale-btn {
+  padding: 12px 4px;
+  border: 2.5px solid var(--rule);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink-2);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.scale-btn:active { background: #F0F9FB; }
+.scale-btn.sel {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: #fff;
+}
+.scale-hint {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+/* TEXT */
+.text-area {
+  width: 100%;
+  min-height: 160px;
+  padding: 16px;
+  font-size: 18px;
+  font-family: inherit;
+  border: 2.5px solid var(--rule);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  resize: vertical;
+  margin-bottom: 28px;
+  line-height: 1.5;
+  transition: border-color 0.12s;
+}
+.text-area:focus { outline: none; border-color: var(--teal); }
+
+/* VOTER INFO */
+.voter-section { margin-bottom: 24px; }
+.voter-label { font-size: 15px; font-weight: 600; color: var(--ink-2); margin-bottom: 8px; }
+.voter-select, .voter-input {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 18px;
+  font-family: inherit;
+  border: 2px solid var(--rule);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  margin-bottom: 10px;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.voter-select:focus, .voter-input:focus {
+  outline: none;
+  border-color: var(--teal);
+}
+
+/* SUBMIT */
+.submit-btn {
+  width: 100%;
+  height: 80px;
+  background: var(--teal);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 900;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  letter-spacing: -0.01em;
+  transition: background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.submit-btn:active { background: #0B6680; }
+.submit-btn:disabled {
+  background: var(--ink-3);
+  cursor: not-allowed;
+}
+
+/* ─── THANK YOU / PREVIEW ─── */
+.thankyou-wrap { text-align: center; padding: 20px 0 40px; }
+.thankyou-icon { font-size: 72px; margin-bottom: 16px; }
+.thankyou-title {
+  font-size: 30px; font-weight: 900;
+  color: var(--green);
+  margin-bottom: 10px;
+  letter-spacing: -0.02em;
+}
+.thankyou-sub { font-size: 17px; color: var(--ink-2); line-height: 1.6; margin-bottom: 32px; }
+
+.retry-btn {
+  display: inline-block;
+  padding: 14px 32px;
+  background: #fff;
+  border: 2px solid var(--teal);
+  border-radius: 8px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--teal);
+  cursor: pointer;
+  margin-bottom: 32px;
+}
+
+/* TALLY PREVIEW */
+.tally-preview {
+  background: #fff;
+  border: 1.5px solid var(--rule);
+  border-radius: 10px;
+  padding: 20px 20px 16px;
+  margin-top: 4px;
+  text-align: left;
+}
+.tally-preview-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 14px;
+}
+.tally-bar-row { margin-bottom: 10px; }
+.tally-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin-bottom: 4px;
+}
+.tally-bar-track {
+  height: 16px;
+  background: var(--rule);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.tally-bar-fill {
+  height: 100%;
+  background: var(--teal);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-title">2026 기후시민회의 의제선정</div>
+  <div class="header-sub" id="headerRoundId">투표 참여</div>
+</div>
+
+<div class="main">
+  <!-- Loading -->
+  <div class="screen active" id="screenLoading">
+    <div class="loading-wrap">
+      <div class="spinner"></div>
+      <div>라운드 정보를 불러오는 중...</div>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="screen" id="screenError">
+    <div class="error-wrap">
+      <div class="error-title">오류가 발생했습니다</div>
+      <div class="error-body" id="errorMsg">다시 시도해 주세요.</div>
+    </div>
+  </div>
+
+  <!-- Closed -->
+  <div class="screen" id="screenClosed">
+    <div class="closed-wrap">
+      <div class="closed-title">마감된 라운드입니다</div>
+      <div class="closed-body">이 라운드는 이미 마감되었습니다.<br>다음 라운드를 기다려 주세요.</div>
+    </div>
+  </div>
+
+  <!-- Form -->
+  <div class="screen" id="screenForm">
+    <div class="round-badge" id="formRoundBadge">R1</div>
+    <div class="round-title" id="formTitle"></div>
+    <div class="round-desc" id="formDesc"></div>
+
+    <!-- RADIO -->
+    <div id="radioSection" style="display:none">
+      <div class="options-list" id="radioList"></div>
+    </div>
+
+    <!-- CHECKBOX -->
+    <div id="checkboxSection" style="display:none">
+      <div class="options-list" id="checkboxList"></div>
+    </div>
+
+    <!-- SCALE_MULTI -->
+    <div id="scaleSection" style="display:none">
+      <div class="scale-list" id="scaleList"></div>
+    </div>
+
+    <!-- TEXT -->
+    <div id="textSection" style="display:none">
+      <textarea class="text-area" id="textInput" placeholder="의견을 입력해 주세요..."></textarea>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Voter info -->
+    <div class="voter-section">
+      <div class="voter-label">소속 (선택)</div>
+      <select class="voter-select" id="voterRole">
+        <option value="">선택 안 함</option>
+        <option value="기획참여단">기획참여단</option>
+        <option value="외부자문단">외부자문단</option>
+        <option value="운영지원">운영지원</option>
+        <option value="기타">기타</option>
+      </select>
+      <div class="voter-label">성함 (선택)</div>
+      <input class="voter-input" id="voterName" type="text" placeholder="홍길동">
+    </div>
+
+    <button class="submit-btn" id="submitBtn" onclick="submitVote()">제출</button>
+  </div>
+
+  <!-- Thank you -->
+  <div class="screen" id="screenThanks">
+    <div class="thankyou-wrap">
+      <div class="thankyou-icon">✅</div>
+      <div class="thankyou-title">응답 감사합니다!</div>
+      <div class="thankyou-sub" id="thanksMsg">소중한 의견이 기록되었습니다.</div>
+      <button class="retry-btn" onclick="showForm()">다시 응답하기</button>
+    </div>
+    <div class="tally-preview" id="tallyPreview" style="display:none">
+      <div class="tally-preview-title">현재 집계</div>
+      <div id="tallyRows"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SB_URL = 'https://pleyuknjnprsckssxvrh.supabase.co';
+const SB_KEY = 'sb_publishable_OVwo9zs5i6xl5iFykM6zJQ_GWFcf5zn';
+
+function sbHeaders(method) {
+  const h = {
+    'apikey': SB_KEY,
+    'Authorization': 'Bearer ' + SB_KEY,
+  };
+  if (method === 'GET' || !method) {
+    h['Accept-Profile'] = 'climate_vote';
+  } else {
+    h['Content-Profile'] = 'climate_vote';
+    h['Content-Type'] = 'application/json';
+  }
+  return h;
+}
+
+function sbGet(path, params) {
+  const u = new URL(SB_URL + '/rest/v1/' + path);
+  if (params) Object.entries(params).forEach(([k,v]) => u.searchParams.set(k,v));
+  return fetch(u.toString(), { headers: sbHeaders('GET') }).then(r => r.json());
+}
+
+function sbPost(path, body) {
+  return fetch(SB_URL + '/rest/v1/' + path, {
+    method: 'POST',
+    headers: sbHeaders('POST'),
+    body: JSON.stringify(body),
+  }).then(r => {
+    if (!r.ok) return r.json().then(e => Promise.reject(e));
+    return r.status === 204 ? {} : r.json();
+  });
+}
+
+// UUID v4
+function uuid4() {
+  return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+}
+
+function getClientId() {
+  let id = localStorage.getItem('climate_vote_client_id');
+  if (!id) { id = uuid4(); localStorage.setItem('climate_vote_client_id', id); }
+  return id;
+}
+
+// Extract round ID from URL: /v/R1 or /v/R5-runoff
+function getRoundId() {
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  // parts: ['v', 'R1'] or ['v', 'R5-runoff', '']
+  const idx = parts.indexOf('v');
+  if (idx >= 0 && parts[idx+1]) return parts[idx+1];
+  return null;
+}
+
+// State
+let currentRound = null;
+let radioSelected = null;
+let checkboxSelected = new Set();
+let scaleValues = {};
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+async function init() {
+  const roundId = getRoundId();
+  if (!roundId) {
+    document.getElementById('errorMsg').textContent = 'URL에 라운드 ID가 없습니다. /v/R1 형식으로 접속해 주세요.';
+    show('screenError');
+    return;
+  }
+
+  document.getElementById('headerRoundId').textContent = roundId + ' 라운드';
+
+  try {
+    const data = await sbGet('rounds', { 'id': 'eq.' + roundId, 'limit': '1' });
+    if (!data || data.length === 0 || data.code) {
+      throw new Error(data?.message || '라운드 정보를 찾을 수 없습니다 (id=' + roundId + ')');
+    }
+    currentRound = data[0];
+    renderForm(currentRound);
+  } catch(e) {
+    console.error(e);
+    document.getElementById('errorMsg').innerHTML =
+      '<b>라운드 로드 실패</b><br>' + (e.message || JSON.stringify(e)) +
+      '<br><br><small>Supabase API Settings에서 <b>climate_vote</b> 스키마가 노출되어 있는지 확인하세요.</small>';
+    show('screenError');
+  }
+}
+
+function renderForm(round) {
+  if (round.status === 'closed') { show('screenClosed'); return; }
+
+  document.getElementById('formRoundBadge').textContent = round.id;
+  document.getElementById('formTitle').textContent = round.title || '';
+  document.getElementById('formDesc').textContent = round.description || '';
+
+  // Hide all sections
+  ['radioSection','checkboxSection','scaleSection','textSection'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+
+  const opts = round.options || [];
+
+  if (round.type === 'RADIO') {
+    const list = document.getElementById('radioList');
+    list.innerHTML = opts.map((o, i) => {
+      const val = typeof o === 'string' ? o : (o.label || o.value || JSON.stringify(o));
+      return `<label class="opt-label" id="radio_${i}" onclick="selectRadio(${i}, '${val.replace(/'/g,"\\'")}')">
+        <input type="radio" name="vote_radio" value="${val}">
+        <span class="opt-custom"></span>
+        <span>${val}</span>
+      </label>`;
+    }).join('');
+    document.getElementById('radioSection').style.display = 'block';
+
+  } else if (round.type === 'CHECKBOX') {
+    const list = document.getElementById('checkboxList');
+    list.innerHTML = opts.map((o, i) => {
+      const val = typeof o === 'string' ? o : (o.label || o.value || JSON.stringify(o));
+      return `<label class="opt-label checkbox" id="chk_${i}" onclick="toggleCheckbox(${i}, '${val.replace(/'/g,"\\'")}')">
+        <input type="checkbox" value="${val}">
+        <span class="opt-custom"></span>
+        <span>${val}</span>
+      </label>`;
+    }).join('');
+    document.getElementById('checkboxSection').style.display = 'block';
+
+  } else if (round.type === 'SCALE_MULTI') {
+    const list = document.getElementById('scaleList');
+    const low = round.scale_low || 1;
+    const high = round.scale_high || 5;
+    const lowLabel = round.scale_low_label || '낮음';
+    const highLabel = round.scale_high_label || '높음';
+    list.innerHTML = opts.map((o, idx) => {
+      const lbl = typeof o === 'string' ? o : (o.label || '항목' + (idx+1));
+      const btns = [];
+      for (let s = low; s <= high; s++) {
+        btns.push(`<button class="scale-btn" id="sb_${idx}_${s}" onclick="setScale('${lbl.replace(/'/g,"\\'")}',${s},${idx})">${s}</button>`);
+      }
+      return `<div class="scale-row">
+        <div class="scale-label">${lbl}</div>
+        <div class="scale-btns">${btns.join('')}</div>
+        <div class="scale-hint"><span>${low} = ${lowLabel}</span><span>${high} = ${highLabel}</span></div>
+      </div>`;
+    }).join('');
+    document.getElementById('scaleSection').style.display = 'block';
+
+  } else if (round.type === 'TEXT') {
+    document.getElementById('textSection').style.display = 'block';
+  }
+
+  show('screenForm');
+}
+
+function selectRadio(idx, val) {
+  radioSelected = val;
+  document.querySelectorAll('.options-list .opt-label').forEach(el => el.classList.remove('selected'));
+  const el = document.getElementById('radio_' + idx);
+  if (el) el.classList.add('selected');
+}
+
+function toggleCheckbox(idx, val) {
+  if (checkboxSelected.has(val)) {
+    checkboxSelected.delete(val);
+    const el = document.getElementById('chk_' + idx);
+    if (el) el.classList.remove('selected');
+  } else {
+    checkboxSelected.add(val);
+    const el = document.getElementById('chk_' + idx);
+    if (el) el.classList.add('selected');
+  }
+}
+
+function setScale(label, score, rowIdx) {
+  scaleValues[label] = score;
+  const low = currentRound.scale_low || 1;
+  const high = currentRound.scale_high || 5;
+  for (let s = low; s <= high; s++) {
+    const btn = document.getElementById('sb_' + rowIdx + '_' + s);
+    if (btn) btn.classList.toggle('sel', s === score);
+  }
+}
+
+function showForm() {
+  // Reset selections
+  radioSelected = null;
+  checkboxSelected = new Set();
+  scaleValues = {};
+  document.getElementById('textInput').value = '';
+  document.querySelectorAll('.opt-label').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.scale-btn').forEach(el => el.classList.remove('sel'));
+  renderForm(currentRound);
+}
+
+async function submitVote() {
+  if (!currentRound) return;
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '제출 중...';
+
+  let choice;
+  const type = currentRound.type;
+
+  if (type === 'RADIO') {
+    if (!radioSelected) { alert('항목을 선택해 주세요.'); btn.disabled = false; btn.textContent = '제출'; return; }
+    choice = radioSelected;
+  } else if (type === 'CHECKBOX') {
+    if (checkboxSelected.size === 0) { alert('항목을 하나 이상 선택해 주세요.'); btn.disabled = false; btn.textContent = '제출'; return; }
+    choice = Array.from(checkboxSelected);
+  } else if (type === 'SCALE_MULTI') {
+    const opts = currentRound.options || [];
+    const labels = opts.map(o => typeof o === 'string' ? o : (o.label || ''));
+    const missing = labels.filter(l => !(l in scaleValues));
+    if (missing.length > 0) { alert('모든 항목에 점수를 매겨 주세요.\n미입력: ' + missing.slice(0,3).join(', ')); btn.disabled = false; btn.textContent = '제출'; return; }
+    choice = scaleValues;
+  } else if (type === 'TEXT') {
+    const val = document.getElementById('textInput').value.trim();
+    if (!val) { alert('의견을 입력해 주세요.'); btn.disabled = false; btn.textContent = '제출'; return; }
+    choice = val;
+  }
+
+  const payload = {
+    round_id: currentRound.id,
+    choice: choice,
+    voter_role: document.getElementById('voterRole').value || null,
+    voter_name: document.getElementById('voterName').value.trim() || null,
+    client_id: getClientId(),
+  };
+
+  try {
+    await sbPost('votes', payload);
+    document.getElementById('thanksMsg').textContent =
+      currentRound.title + ' 라운드에 응답하셨습니다.';
+    show('screenThanks');
+    loadTallyPreview();
+  } catch(e) {
+    console.error(e);
+    alert('제출 오류: ' + (e.message || JSON.stringify(e)));
+    btn.disabled = false;
+    btn.textContent = '제출';
+  }
+}
+
+async function loadTallyPreview() {
+  if (!currentRound) return;
+  const type = currentRound.type;
+  let rows = [];
+
+  try {
+    if (type === 'SCALE_MULTI') {
+      rows = await sbGet('tally_scale', { 'round_id': 'eq.' + currentRound.id, 'order': 'avg_score.desc' });
+    } else {
+      rows = await sbGet('tally', { 'round_id': 'eq.' + currentRound.id, 'order': 'n.desc' });
+    }
+
+    if (!rows || rows.code) { console.warn('tally not available'); return; }
+
+    const total = rows.reduce((s, r) => s + (r.n || 0), 0);
+    const preview = document.getElementById('tallyPreview');
+    const rowsEl = document.getElementById('tallyRows');
+
+    if (type === 'SCALE_MULTI') {
+      rowsEl.innerHTML = rows.slice(0,5).map(r => {
+        const pct = ((r.avg_score - 1) / 4 * 100).toFixed(0);
+        return `<div class="tally-bar-row">
+          <div class="tally-bar-label"><span>${r.item_label || '-'}</span><span>평균 ${(r.avg_score||0).toFixed(1)} / 5 (${r.n}명)</span></div>
+          <div class="tally-bar-track"><div class="tally-bar-fill" style="width:${pct}%"></div></div>
+        </div>`;
+      }).join('');
+    } else {
+      rowsEl.innerHTML = rows.map(r => {
+        const pct = total > 0 ? (r.n / total * 100).toFixed(0) : 0;
+        return `<div class="tally-bar-row">
+          <div class="tally-bar-label"><span>${r.choice_text || '-'}</span><span>${r.n}표 (${pct}%)</span></div>
+          <div class="tally-bar-track"><div class="tally-bar-fill" style="width:${pct}%"></div></div>
+        </div>`;
+      }).join('');
+    }
+    preview.style.display = 'block';
+  } catch(e) {
+    console.warn('tally preview failed', e);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
