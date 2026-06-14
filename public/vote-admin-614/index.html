@@ -491,19 +491,18 @@ function renderCard(r) {
 async function activateRound(id) {
   if (!confirm(id + ' 라운드를 활성화합니다.\n현재 활성 라운드는 자동으로 마감됩니다.\n계속하시겠습니까?')) return;
   try {
-    // Try RPC set_active first (if function exists)
-    let result;
-    try {
-      result = await sbRpc('set_active', { p_round_id: id });
-    } catch(e) {
-      // Fallback: manual update — close all active, then activate target
+    // Try RPC set_active first (if function exists in DB)
+    let result = await sbRpc('set_active', { p_round_id: id });
+    if (result && result.code) {
+      // RPC not available — manual two-step fallback
       const activeRound = allRounds.find(r => r.status === 'active');
       if (activeRound) {
-        await sbPatch('rounds', { 'id': 'eq.' + activeRound.id }, { status: 'closed' });
+        const closeRes = await sbPatch('rounds', { 'id': 'eq.' + activeRound.id }, { status: 'closed' });
+        if (closeRes && closeRes.code) throw new Error('마감 오류: ' + (closeRes.message || JSON.stringify(closeRes)));
       }
       result = await sbPatch('rounds', { 'id': 'eq.' + id }, { status: 'active' });
+      if (result && result.code) throw new Error(result.message || JSON.stringify(result));
     }
-    if (result && result.code) throw new Error(result.message || JSON.stringify(result));
     showToast(id + ' 활성화 완료');
     await loadRounds();
   } catch(e) {

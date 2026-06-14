@@ -453,7 +453,7 @@ async function poll() {
     // 2. Fetch closed rounds for history
     const closed = await sbGet('rounds', {
       'status': 'eq.closed',
-      'order': 'sort_order.desc',
+      'order': 'updated_at.desc',
       'limit': '5',
     });
 
