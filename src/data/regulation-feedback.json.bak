@@ -1,0 +1,562 @@
+{
+  "meta": {
+    "date": "2026-06-13",
+    "workshop": "3교시 — 운영규정 시민의견",
+    "venue": "국립생태원 국제회의동",
+    "participant_count_approx": 200
+  },
+  "boards": [
+    {
+      "no": 1,
+      "title": "가장 인상깊은 조항·원칙",
+      "prompt_note": "워크숍 토론 프롬프트 (운영규정 챕터명 아님). 1차 OCR 오판독 정정 2026-06-13.",
+      "original": "6 기본원칙: 대표성·숙의성·독립성·투명성·지속성·포용성(제3조). 시민참여단이 결정한 사항을 책임 있게 이행하고 모니터링·평가체계를 갖춘다.",
+      "groups": {
+        "A": {
+          "count": 7,
+          "cards": [
+            {
+              "type": "postit",
+              "text": "청년·청소년 참여체계 명시 필요 — 제1조",
+              "color": "yellow",
+              "confidence": "high",
+              "postit_idx": 1
+            },
+            {
+              "type": "postit",
+              "text": "기후[참여]단이 이해할 수 있도록 우수 의견 제시",
+              "color": "yellow",
+              "confidence": "medium",
+              "postit_idx": 2
+            },
+            {
+              "type": "postit",
+              "text": "우선의 원칙 + 참외 의견(소수의견) 명시 — 위원회 분쟁 줄이는 방향 (제3조 6항)",
+              "color": "orange",
+              "confidence": "medium",
+              "postit_idx": 3
+            },
+            {
+              "type": "postit",
+              "text": "\"숙의연속성\" 명시 (제5조)",
+              "color": "green",
+              "confidence": "high",
+              "postit_idx": 4
+            },
+            {
+              "type": "postit",
+              "text": "각 강사에 대한 역할 — 가운데 앉아서 균형 잡는 역할 강조(★)",
+              "color": "sky",
+              "confidence": "medium",
+              "postit_idx": 5
+            },
+            {
+              "type": "postit",
+              "text": "가능 시민 참여 결정 — 임기·주기 축소 (3~4년→1년) [원본 재확인 권장]",
+              "color": "orange",
+              "confidence": "low",
+              "postit_idx": 6
+            },
+            {
+              "type": "postit",
+              "text": "책임·역할 명확화 요청 [판독불가 부분 있음]",
+              "color": "sky",
+              "confidence": "low",
+              "postit_idx": 7
+            }
+          ]
+        },
+        "B": {
+          "count": 1,
+          "cards": [
+            {
+              "type": "postit",
+              "text": "3조 - 숙의성원칙: 과반수 의결 아닌 합의를 지향 / 8조 - 10-18세 발언기회 보장, 의견개진 → 필요시 별도 토론그룹 구성 / 18조 - 소수의견 기록, 소수의견은 존중 → 부속서로 첨부하도록 요청",
+              "color": "yellow",
+              "confidence": "high",
+              "postit_idx": 1,
+              "sub_prompt": "인상 깊은 부분",
+              "articles_cited": ["3조", "8조", "18조"],
+              "verified_by_user": "2026-06-13"
+            }
+          ]
+        }
+      },
+      "review_findings": [
+        {
+          "severity": "recommend",
+          "text": "제20조 정책 반영 추적 — 이행 보고 기한·미반영 이유 설명 의무·이행률 공개 방안",
+          "citizen_matched": true,
+          "citizen_note": "B조: 모니터링·평가체계 필요"
+        },
+        {
+          "severity": "recommend",
+          "text": "부칙 제2조 운영규정 개정 정족수 미명시",
+          "citizen_matched": false
+        }
+      ]
+    },
+    {
+      "no": 2,
+      "title": "숙의참여단 분과 구성방안",
+      "original": "시민참여단 기획 20명 + 숙의 180명(제4조). 기획참여단은 숙의참여단 토론에 참여하지 않음(제5조). 50% 연임 원칙(제8조). 감축분과·적응분과로 운영(제6조).",
+      "groups": {
+        "A": {
+          "count": 7,
+          "cards": [
+            {
+              "type": "postit",
+              "text": "누구나 손들 수 있는 발언권, 차별 없이 소통",
+              "color": "orange",
+              "confidence": "medium",
+              "postit_idx": 1
+            },
+            {
+              "type": "postit",
+              "text": "발언권 차별 없이 소통",
+              "color": "yellow",
+              "confidence": "medium",
+              "postit_idx": 2
+            },
+            {
+              "type": "postit",
+              "text": "의견 거르지 않고 받아서 반영",
+              "color": "yellow",
+              "confidence": "medium",
+              "postit_idx": 3
+            },
+            {
+              "type": "postit",
+              "text": "그 입장에서 [판독불가]을 보고 — 발언 관련 [추정]",
+              "color": "yellow",
+              "confidence": "low",
+              "postit_idx": 4
+            },
+            {
+              "type": "postit",
+              "text": "참여인 인선 — 반반 비례, 다양한 연령대 구분 [추정]",
+              "color": "yellow",
+              "confidence": "low",
+              "postit_idx": 5
+            },
+            {
+              "type": "postit",
+              "text": "1팀당 10~12명 구성",
+              "color": "orange",
+              "confidence": "high",
+              "postit_idx": 6
+            },
+            {
+              "type": "postit",
+              "text": "청년 수 비례한 인원 + 포용 설계 — 함께 만들어 가야 함 [판독불가 부분 있음]",
+              "color": "sky",
+              "confidence": "low",
+              "postit_idx": 7
+            }
+          ]
+        },
+        "B": {
+          "count": 8,
+          "cards": [
+            {
+              "type": "postit",
+              "text": "1) 숙의참여단: 전체적으로 한다 — 통으로 하고 서로 숙의하다 (감축/적응)  2) 회의결정 2/3",
+              "color": "yellow",
+              "confidence": "high",
+              "postit_idx": 1,
+              "verified_by_user": "2026-06-13"
+            },
+            {
+              "type": "postit",
+              "text": "기획참여단을 분리해서 운영하자",
+              "color": "yellow",
+              "confidence": "high",
+              "postit_idx": 2,
+              "verified_by_user": "2026-06-13"
+            },
+            {
+              "type": "postit",
+              "text": "숙의참여단 분과: 1. 기획참여단이 정한 의제를 숙의참여단이 신뢰한다. 2. 축소와 적응 2:1로 비율을 나눈다. 3. 각조당 10명 이하로 조직한다. 4. 각 조당 기획참여단 1인씩 들어가 참여한다.",
+              "color": "yellow",
+              "confidence": "high",
+              "postit_idx": 3,
+              "sub_prompt": "숙의참여단 분과",
+              "verified_by_user": "2026-06-13"
+            },
+            {
+              "type": "postit",
+              "text": "운영규정의 개정 제안을 추가로 해주었으면 합니다. 숙의참여단 인원 15명씩 나누어 운영되었으면 합니다.",
+              "color": "yellow",
+              "confidence": "high",
+              "postit_idx": 4,
+              "verified_by_user": "2026-06-13"
+            },
+            {
+              "type": "postit",
+              "text": "3분의 2 이상 / 청소년은 별도로 운영",
+              "color": "yellow",
+              "confidence": "high",
+              "postit_idx": 5,
+              "verified_by_user": "2026-06-13"
+            },
+            {
+              "type": "postit",
+              "text": "분과를 적응과 감축으로 나누어 15명씩 한조로 나누는 것이 의견을 교류하는데 원활할 듯 하다.",
+              "color": "yellow",
+              "confidence": "high",
+              "postit_idx": 6,
+              "verified_by_user": "2026-06-13"
+            },
+            {
+              "type": "postit",
+              "text": "숙의참여단 분과 구성 — 분과 기존 운영규정 유지 — 감축, 적응으로 나눈 후 조별 10~15 이내",
+              "color": "yellow",
+              "confidence": "high",
+              "postit_idx": 7,
+              "sub_prompt": "숙의참여단 분과 구성",
+              "verified_by_user": "2026-06-13"
+            },
+            {
+              "type": "postit",
+              "text": "기후시민회의 구성 (분과 구성 등) — 분과구성은 감축·적응으로 / 청소년 참여자는 별도로 토론그룹으로 구성 / 조당 12명 이내로 구성",
+              "color": "yellow",
+              "confidence": "high",
+              "postit_idx": 8,
+              "sub_prompt": "기후시민회의 구성 (분과 구성 등)",
+              "verified_by_user": "2026-06-13"
+            }
+          ]
+        }
+      },
+      "review_findings": [
+        {
+          "severity": "critical",
+          "text": "제5조① '200여 명 중 선발' 표현 — 기획참여단 모집 절차 역순 인상 (실제: 기획 먼저 선발 → 의제설정 → 숙의 모집)",
+          "citizen_matched": false
+        },
+        {
+          "severity": "recommend",
+          "text": "제8조 50% 연임 비율 적정성 검토",
+          "citizen_matched": false
+        }
+      ]
+    },
+    {
+      "no": 3,
+      "title": "의사결정방법",
+      "original": "의제선정 워크숍을 통해 시민입장에서 이해 가능한 자료를 사전·현장 배포. 모더레이터/촉진자가 자료 안내. 발언권 보장.",
+      "groups": {
+        "A": {
+          "count": 8,
+          "cards": [
+            {
+              "type": "postit",
+              "text": "청소년 참여 적정 [추정]",
+              "color": "sky",
+              "confidence": "low",
+              "postit_idx": 1
+            },
+            {
+              "type": "postit",
+              "text": "견문·조사 관련 의견 [판독불가 부분 있음]",
+              "color": "sky",
+              "confidence": "low",
+              "postit_idx": 2
+            },
+            {
+              "type": "postit",
+              "text": "노년·청년 균등 + 참외 의견(소수의견) 수렴 + 만족도 조사",
+              "color": "yellow",
+              "confidence": "medium",
+              "postit_idx": 3
+            },
+            {
+              "type": "postit",
+              "text": "학생 정기 [판독불가]",
+              "color": "sky",
+              "confidence": "low",
+              "postit_idx": 4
+            },
+            {
+              "type": "postit",
+              "text": "참여단보다 더 강조 — 우선 의견 수렴 [추정]",
+              "color": "sky",
+              "confidence": "low",
+              "postit_idx": 5
+            },
+            {
+              "type": "postit",
+              "text": "청년 6개·25개 이상 [수치 정확 재확인 필요]",
+              "color": "orange",
+              "confidence": "low",
+              "postit_idx": 6
+            },
+            {
+              "type": "postit",
+              "text": "청년 직접 작성한 결정 (밑줄 강조) — 시민(청년) 작성 주체 강조",
+              "color": "orange",
+              "confidence": "medium",
+              "postit_idx": 7
+            },
+            {
+              "type": "postit",
+              "text": "임기·주기 기간 단축 (3~4년→1년) [원본 재확인 권장]",
+              "color": "orange",
+              "confidence": "low",
+              "postit_idx": 8
+            }
+          ]
+        },
+        "B": {
+          "count": 6,
+          "cards": [
+            {
+              "type": "postit",
+              "text": "현장 회의·사전 자료배포 — 분야별 자료 다운로드 가능",
+              "color": "yellow",
+              "confidence": "medium",
+              "postit_idx": 1
+            },
+            {
+              "type": "postit",
+              "text": "의제 발표 + 대표성 확보 + 현재 5명씩 8개 그룹은 적절 [추정]",
+              "color": "yellow",
+              "confidence": "medium",
+              "postit_idx": 2
+            },
+            {
+              "type": "postit",
+              "text": "분야별 충분한 자료 — 시민입장에서 이해 가능한 자료 (사전+현장 배포)",
+              "color": "yellow",
+              "confidence": "high",
+              "postit_idx": 3
+            },
+            {
+              "type": "postit",
+              "text": "모더레이터/촉진자가 자료 안내 + 시민 직접 발언 보장 + 자료배포 시점 조정",
+              "color": "yellow",
+              "confidence": "medium",
+              "postit_idx": 4
+            },
+            {
+              "type": "postit",
+              "text": "1축·2축·3축 공약 구조 제안",
+              "color": "yellow",
+              "confidence": "high",
+              "postit_idx": 5
+            },
+            {
+              "type": "postit",
+              "text": "개별·소그룹별 토론 후 2/3 이상 합의 → 권고안",
+              "color": "yellow",
+              "confidence": "high",
+              "postit_idx": 6
+            }
+          ]
+        }
+      },
+      "review_findings": [
+        {
+          "severity": "recommend",
+          "text": "제16조 의제선정 5기준 — 시급성·NDC 정책창 / 국제정합성 추가 여부",
+          "citizen_matched": false
+        },
+        {
+          "severity": "recommend",
+          "text": "제19조 권고안 5기준 ↔ 제16조 의제선정 기준 지속가능성 일관성 갭",
+          "citizen_matched": false
+        }
+      ]
+    },
+    {
+      "no": 4,
+      "title": "의제선정기준·권고안 채택기준",
+      "original": "의제선정 기준 5개(제16조): 기후위기 직결·법령 위배X·시민 삶·이해관계 차이·여러 대안 비교. 의사결정 정족수: 기획·분과 75%, 전체회의 67%(제17조). 권고안 5기준(제19조): 온실가스 효과·형평성·사회수용성·지속가능성·실행가능성.",
+      "groups": {
+        "A": {
+          "count": 5,
+          "cards": [
+            {
+              "type": "postit",
+              "text": "명확하고 중요한 자료 — 자료 기반 기준 [판독불가 부분]",
+              "color": "sky",
+              "confidence": "medium",
+              "postit_idx": 1
+            },
+            {
+              "type": "postit",
+              "text": "지역 이슈 반영 (영남·호남 등) 호응하는 이슈 선정 + 결정 결과로 종결",
+              "color": "sky",
+              "confidence": "medium",
+              "postit_idx": 2
+            },
+            {
+              "type": "postit",
+              "text": "지역 이슈 (영남이 이슈가 되는 것 같음) — 지역균형 고려",
+              "color": "orange",
+              "confidence": "medium",
+              "postit_idx": 3
+            },
+            {
+              "type": "postit",
+              "text": "제14조 — [판독불가]청장년 가산점 부여로 진행한다 ※ 거버넌스 핵심 — 원본 재확인 필수",
+              "color": "yellow",
+              "confidence": "low",
+              "postit_idx": 4
+            },
+            {
+              "type": "postit",
+              "text": "채택 결과·정확한 기준·운영방식 명시 필요",
+              "color": "orange",
+              "confidence": "medium",
+              "postit_idx": 5
+            }
+          ]
+        },
+        "B": {
+          "count": 5,
+          "cards": [
+            {
+              "type": "postit",
+              "text": "의제선정 기준 — 모든 상황을 듣겠다 (포괄적 의견 수렴)",
+              "color": "orange",
+              "confidence": "medium",
+              "postit_idx": 1
+            },
+            {
+              "type": "postit",
+              "text": "[판독불가] 한지 — 시민감수(검수?) 필요 [추정]",
+              "color": "yellow",
+              "confidence": "low",
+              "postit_idx": 2
+            },
+            {
+              "type": "postit",
+              "text": "권고 결정에 [판독불가] 반영",
+              "color": "yellow",
+              "confidence": "low",
+              "postit_idx": 3
+            },
+            {
+              "type": "postit",
+              "text": "기후위기 의제에 대한 정의·원칙 명확화 (강조 표시)",
+              "color": "orange",
+              "confidence": "high",
+              "postit_idx": 4
+            },
+            {
+              "type": "postit",
+              "text": "보호된(본질적인) [판독불가]·고려 강조 — 기후위기 의제 정의",
+              "color": "orange",
+              "confidence": "medium",
+              "postit_idx": 5
+            }
+          ]
+        }
+      },
+      "review_findings": [
+        {
+          "severity": "recommend",
+          "text": "제16조 4호 '지역' 명시 검토 — 의제선정 기준에 도시·농어촌·수도권·비수도권 균형 반영",
+          "citizen_matched": true,
+          "citizen_note": "A조: 영남·호남 지역 이슈 반영 제안"
+        },
+        {
+          "severity": "critical",
+          "text": "제17조 의사결정 정족수 역구조 — 기획·분과 75% / 전체 67% (상위 단계가 낮음)",
+          "citizen_matched": true,
+          "citizen_note": "B조 사진3: 2/3 이상 합의 → 권고안 (정족수 논의)"
+        }
+      ]
+    },
+    {
+      "no": 5,
+      "title": "초안의 추가·수정사항",
+      "original": "기후시민회의는 매년 1회기 이상 개최(제9조). 회의는 원칙적으로 공개. 참여자 자유로운 발언 보호(제22조).",
+      "groups": {
+        "A": {
+          "count": 2,
+          "cards": [
+            {
+              "type": "postit",
+              "text": "한국[기후위기위원회?] 비공개 보완 — 비참여자도 정보 접근 가능하게 [판독불가 부분]",
+              "color": "sky",
+              "confidence": "low",
+              "postit_idx": 1
+            },
+            {
+              "type": "postit",
+              "text": "정기 3회 + 제5장의2 최소[정족수?] 명시 + 의장단 합의로 운영 [판독불가 다수, 추정]",
+              "color": "yellow",
+              "confidence": "low",
+              "postit_idx": 2
+            }
+          ]
+        },
+        "B": {
+          "count": 1,
+          "cards": [
+            {
+              "type": "postit",
+              "text": "2026.06.13 기후시민회의 — 사전회의 포함 시민참여단 전원 참여 강조 [추정]",
+              "color": "yellow",
+              "confidence": "low",
+              "postit_idx": 1
+            }
+          ]
+        }
+      },
+      "review_findings": [
+        {
+          "severity": "recommend",
+          "text": "제22조 발언 비공개 기준 모호 — '위축될 수 있는' 판단 주체·기준 불명. Chatham House Rule 채택 여부",
+          "citizen_matched": true,
+          "citizen_note": "A조: 비공개 통해 비참여자도 접근 가능하게 보완 [추정]"
+        }
+      ]
+    }
+  ],
+  "review_total": {
+    "critical": 5,
+    "recommend": 7,
+    "agreed": 8
+  },
+  "matrix": {
+    "critical_matched": 1,
+    "critical_unmatched": 4,
+    "recommend_matched": 4,
+    "recommend_unmatched": 3,
+    "citizen_new": 4,
+    "citizen_new_items": [
+      "1팀당 10~12명 구성 (A조 사진2)",
+      "\"숙의연속성\" 개념 명시 필요 (A조 사진1, 연두 포스트잇)",
+      "직접 작성 주체 강조 — 시민이 직접 결정문 작성 (A조 사진3)",
+      "1축·2축·3축 공약 구조 제안 (B조 사진3)"
+    ]
+  },
+  "disputes": [
+    {
+      "group": "B",
+      "text": "〈모더레이터 문제〉: 참여단 입장에서 어색했다. 정해지지 않은 그림이 이상한 것 같다. 모더레이터가 시민과 같이 참여하는 방식 제안",
+      "source": "B조 사진2 포스트잇 1건",
+      "classification_recommend": "운영규정 외 영역 — 모더레이터 교육·역할 피드백으로 분류 권장. 운영규정 개정 사항이 아닌 운영 실무 영역."
+    }
+  ],
+  "user_confirm_needed": [
+    {
+      "group": "A",
+      "text": "제14조 — [판독불가]청장년 가산점 부여로 진행한다",
+      "reason": "OCR 30~40% 추정 신뢰도. 거버넌스 핵심 조항. 원본 종이 직접 확인 필수."
+    },
+    {
+      "group": "A",
+      "text": "임기·주기 축소 (3~4년→1년) — 사진1, 사진3 반복 등장",
+      "reason": "두 장에 걸쳐 반복되나 '3~4년'의 맥락(임기인지 회기인지 점검 주기인지) 불명확. 원본 확인 권장."
+    },
+    {
+      "group": "A",
+      "text": "청년 6개·25개 이상 수치 (사진3)",
+      "reason": "숫자 맥락 불명. 원본 재확인 필요."
+    }
+  ]
+}

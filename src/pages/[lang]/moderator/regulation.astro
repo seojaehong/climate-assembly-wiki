@@ -1,0 +1,720 @@
+---
+// @ts-nocheck
+/**
+ * /ko/moderator/regulation/ — 3교시 운영규정 토론 질문 순위 (양단 카드 · 프로젝터용)
+ *
+ * PRIVACY:
+ *   - KO-only route (getStaticPaths emits only 'ko')
+ *   - robots noindex,nofollow
+ *   - NOT in sitemap (whitelist filter excludes /moderator/*)
+ *   - NOT in pagefind (no data-pagefind-body)
+ *   - No nav links to this page from public pages
+ *
+ * DATA SOURCE:
+ *   - PUBLIC_REGULATION_SHEET_CSV_URL → Google Sheet (Form 응답 자동 적재)
+ *   - Sheet 컬럼: 타임스탬프 | 우리 조 | 1등 질문 | 2등 질문 | ... | 10등 질문
+ *   - Client-side fetch, poll every 10s
+ *   - 동일 조 복수 응답 시 타임스탬프 최신 행 1개만 렌더
+ *
+ * LAYOUT:
+ *   - 화면 좌(A조) / 우(B조) 50:50 분할
+ *   - 각 패널에 1~10등 카드 세로 stack
+ *   - 200명 가시성: 순위 배지 80-120px, 질문 본문 24px+
+ *   - 태블릿(<1100px): 상하 분할 fallback
+ *
+ * CSV PARSING:
+ *   - RFC 4180 quoted-CSV state machine (장문형 답변에 쉼표·개행 안전)
+ *   - vanilla JS client-side only (no Astro island — rolldown .tsx 트랩 회피)
+ */
+
+import '../../../styles/global.css';
+
+export async function getStaticPaths() {
+  return [{ params: { lang: 'ko' } }];
+}
+
+const sheetCsvUrl = (import.meta.env.PUBLIC_REGULATION_SHEET_CSV_URL ?? '').trim();
+---
+<!doctype html>
+<html lang="ko" dir="ltr" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>운영규정 토론 — 조별 질문 순위 [모더레이터]</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <!-- No canonical, no hreflang, no OG — private page -->
+  <style>
+    /* ============================================================
+       REGULATION RANKING PAGE — 200명 가시성 기준
+       ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --color-a: #0891b2;      /* A조 청록 */
+      --color-a-light: #e0f7fa;
+      --color-a-dark: #065a6e;
+      --color-b: #ea580c;      /* B조 주황 */
+      --color-b-light: #fff3e0;
+      --color-b-dark: #9a3a07;
+      --bg: #f5f0ea;
+      --bg-card: #ffffff;
+      --border: #d1c8bc;
+      --text: #1c1917;
+      --text-muted: #6b6560;
+      --font: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Privacy banner ---- */
+    .privacy-banner {
+      background: #7c2d12;
+      color: #fed7aa;
+      text-align: center;
+      padding: 6px 16px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      border-bottom: 2px solid #ea580c;
+      flex-shrink: 0;
+    }
+
+    /* ---- Sub-nav ---- */
+    .subnav {
+      background: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 6px 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #6b7280;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    .subnav-label { font-weight: 700; margin-right: 4px; color: #374151; }
+    .subnav a {
+      color: #6b7280;
+      text-decoration: none;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+    }
+    .subnav a:hover { color: #111827; border-color: #d1d5db; }
+    .subnav a.current { color: #d97706; border-color: #d97706; font-weight: 600; }
+    .subnav-sep { color: #d1d5db; }
+
+    /* ---- Env error banner ---- */
+    .env-error-banner {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      color: #dc2626;
+      padding: 20px 24px;
+      margin: 20px;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: 600;
+      line-height: 1.6;
+    }
+
+    /* ---- Page header ---- */
+    .page-header {
+      padding: 14px 24px 10px;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      background: #fffbf7;
+      flex-shrink: 0;
+    }
+    .page-header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .page-header .status {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #9ca3af;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+    .status-dot.live { background: #22c55e; animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ---- Main layout (세로형: 좌 A조 / 우 B조) ---- */
+    .split-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: row;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 18px 22px 22px;
+      min-width: 0;
+    }
+
+    .panel-a { border-right: 2px solid var(--border); }
+
+    /* ---- Panel header ---- */
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 3px solid;
+      flex-shrink: 0;
+    }
+    .panel-a .panel-header { border-color: var(--color-a); }
+    .panel-b .panel-header { border-color: var(--color-b); }
+
+    .panel-label {
+      font-size: 36px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+    }
+    .panel-a .panel-label { color: var(--color-a); }
+    .panel-b .panel-label { color: var(--color-b); }
+
+    .panel-sublabel {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .response-time {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* ---- Question cards (세로형 포스트잇 — 1열, 조별 다 보이게) ---- */
+    .card-list {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 10px 4px 20px;
+      min-height: 0;
+      overflow-y: auto;
+    }
+    .q-card { min-height: 0; }
+
+    /* ---- Post-it sticky note ---- */
+    .q-card {
+      position: relative;
+      border-radius: 6px;
+      padding: 24px 28px 26px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow: visible;
+      box-shadow:
+        3px 6px 18px rgba(0, 0, 0, 0.18),
+        0 1px 2px rgba(0, 0, 0, 0.08);
+      transition: transform 0.2s ease;
+    }
+    /* A조 = mint sticky, B조 = peach sticky */
+    .panel-a .q-card { background: #d6f3ee; }
+    .panel-b .q-card { background: #ffe6c7; }
+
+    /* Subtle deterministic rotation — alternating tilt */
+    .q-card:nth-child(odd)  { transform: rotate(-1.2deg); }
+    .q-card:nth-child(even) { transform: rotate(1.1deg); }
+    .q-card:nth-child(3n)   { transform: rotate(-0.4deg); }
+    .q-card:nth-child(5n)   { transform: rotate(0.8deg); }
+    .q-card:nth-child(7n)   { transform: rotate(-1.5deg); }
+
+    .q-card.placeholder {
+      background: #f5f5f4;
+      box-shadow: 1px 2px 6px rgba(0, 0, 0, 0.08);
+      opacity: 0.6;
+    }
+
+    /* ---- Rank badge — big number top-left ---- */
+    .rank-badge {
+      flex-shrink: 0;
+      align-self: flex-start;
+      width: auto;
+      min-width: 56px;
+      height: auto;
+      padding: 2px 14px 4px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 38px;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      background: rgba(0, 0, 0, 0.08);
+    }
+    .panel-a .q-card:not(.placeholder) .rank-badge {
+      background: rgba(8, 145, 178, 0.18);
+      color: #065a6e;
+    }
+    .panel-b .q-card:not(.placeholder) .rank-badge {
+      background: rgba(234, 88, 12, 0.18);
+      color: #9a3a07;
+    }
+    .q-card.placeholder .rank-badge {
+      background: rgba(0, 0, 0, 0.05);
+      color: #a8a29e;
+    }
+
+    /* ---- Question text — MASSIVE for 100명 강당 ---- */
+    .q-text {
+      flex: 1;
+      font-size: 64px;
+      font-weight: 800;
+      line-height: 1.22;
+      color: #1c1917;
+      word-break: keep-all;
+      overflow-wrap: break-word;
+      font-family: 'Pretendard Variable', 'Pretendard', sans-serif;
+    }
+    .q-card.placeholder .q-text {
+      font-size: 44px;
+      font-weight: 500;
+      color: #a8a29e;
+      font-style: italic;
+    }
+
+    /* ---- 해상도별 자동 확대 ---- */
+    @media (min-width: 1280px) {
+      .q-text { font-size: 76px; }
+      .rank-badge { font-size: 88px; min-width: 122px; padding: 8px 26px 10px; }
+    }
+    @media (min-width: 1600px) {
+      .q-text { font-size: 92px; }
+      .rank-badge { font-size: 108px; min-width: 148px; padding: 10px 30px 12px; }
+    }
+    @media (min-width: 1920px) {
+      .q-text { font-size: 108px; line-height: 1.18; }
+      .rank-badge { font-size: 124px; min-width: 172px; }
+    }
+    @media (min-width: 2400px) {
+      .q-text { font-size: 132px; }
+      .rank-badge { font-size: 152px; min-width: 210px; }
+    }
+
+    /* ---- Loading overlay ---- */
+    .loading-overlay {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      flex-direction: column;
+      gap: 16px;
+      color: var(--text-muted);
+      font-size: 20px;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #e5e7eb;
+      border-top-color: #6b7280;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---- Narrow viewport fallback: 1열 stack ---- */
+    @media (max-width: 900px) {
+      .split-wrapper { flex-direction: column; }
+      .panel-a { border-right: none; border-bottom: 2px solid var(--border); }
+      .card-list { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Privacy banner -->
+  <div class="privacy-banner">
+    🔒 모더레이터 운영 페이지 · 외부 공개 금지
+  </div>
+
+  <!-- Sub-nav -->
+  <nav class="subnav" aria-label="모더레이터 도구 네비게이션">
+    <span class="subnav-label">[모더레이터 도구]</span>
+    <a href="/ko/moderator/live">라이브</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/board">보드</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/heatmap">히트맵</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/clusters">클러스터</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/agenda-network">의제연결</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/groups">조별</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/regulation" class="current">운영규정</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/agenda">의제선정</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/agenda-race">투표버블</a>
+  </nav>
+
+  <!-- Env error banner — shown when PUBLIC_REGULATION_SHEET_CSV_URL is not set -->
+  <div id="env-error-banner" class="env-error-banner" style="display:none;" role="alert">
+    ⚠️ PUBLIC_REGULATION_SHEET_CSV_URL 환경변수가 설정되지 않았습니다.<br>
+    Cloudflare 환경변수 설정 후 재배포하세요. 설정 전까지는 빈 슬롯으로 표시됩니다.
+  </div>
+
+  <!-- Page header -->
+  <header class="page-header">
+    <h1>3교시 운영규정 토론 — 조별 질문 순위</h1>
+    <div class="status" id="status-bar">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-text">불러오는 중...</span>
+    </div>
+  </header>
+
+  <!-- Build-time data island: sheet URL -->
+  <script id="sheet-url-data" type="application/json" set:html={JSON.stringify(sheetCsvUrl)}></script>
+
+  <!-- Main split layout -->
+  <div class="split-wrapper" id="split-wrapper" style="display:none;">
+    <!-- A조 패널 -->
+    <div class="panel panel-a" id="panel-a">
+      <div class="panel-header">
+        <span class="panel-label">A조</span>
+        <span class="panel-sublabel">합의 질문 TOP 10</span>
+        <span class="response-time" id="time-a"></span>
+      </div>
+      <div class="card-list" id="cards-a"></div>
+    </div>
+
+    <!-- B조 패널 -->
+    <div class="panel panel-b" id="panel-b">
+      <div class="panel-header">
+        <span class="panel-label">B조</span>
+        <span class="panel-sublabel">합의 질문 TOP 10</span>
+        <span class="response-time" id="time-b"></span>
+      </div>
+      <div class="card-list" id="cards-b"></div>
+    </div>
+  </div>
+
+  <!-- Loading overlay (shown before first fetch) -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+    <span>응답 대기 중...</span>
+  </div>
+
+  <script is:inline>
+    (function () {
+      /* ---- Read build-time env ---- */
+      var dataEl = document.getElementById('sheet-url-data');
+      var sheetUrl = dataEl ? JSON.parse(dataEl.textContent || '""') : '';
+
+      if (!sheetUrl) {
+        document.getElementById('env-error-banner').style.display = 'block';
+      }
+
+      var POLL_INTERVAL = 10000; // 10s
+      var lastUpdated = { A조: null, B조: null };
+
+      /* ---- Demo mode (?demo=1 or env missing) — 가로형 검증용 더미 데이터 ---- */
+      var DEMO_DATA = {
+        'A조': {
+          ts: '데모 · A조',
+          questions: [
+            '운영규정에 명시된 의장 선출 절차를 가중다수(2/3)로 강화해야 하는가?',
+            '시민회의 권고안의 법적 구속력은 어디까지로 정해야 하는가?',
+            '회의록 비공개 사유 5개 조항이 너무 광범위하지 않은가?',
+            '대표자 임기 1년은 숙의 연속성을 보장하기에 부족한가?',
+            '안건 발의 정족수 1/3을 1/4로 완화하면 어떤 부작용이 있는가?',
+            '온라인 참여자의 표결권을 현장 참여자와 동등하게 인정해야 하나?',
+            '관찰자 자격 기준이 모호하다 — 누가 어떤 절차로 결정하나?',
+            '예산 항목 공개 범위를 어디까지 의무화할 수 있나?',
+            '운영규정 개정 발의 주체에 시민도 포함되어야 하지 않나?',
+            '사무국과 의장단의 권한 충돌 시 우선순위는 무엇인가?'
+          ]
+        },
+        'B조': {
+          ts: '데모 · B조',
+          questions: [
+            '권고안 채택 정족수 60%는 충분한가, 75%로 올려야 하는가?',
+            '회의 비공개 결정권을 의장 단독이 아닌 의결로 바꿔야 하나?',
+            '시민참여단 중도 사퇴 시 대체 충원 절차가 명확한가?',
+            '소위원회 구성 시 외부 전문가 비율 한도가 필요한가?',
+            '연간 회의 횟수 최소 4회 규정은 실효성이 있는가?',
+            '의장의 발언 차단 권한 남용을 어떻게 견제할 것인가?',
+            '비공개 회의 회의록 공개 시한 2년은 너무 긴가?',
+            '운영비 사용 내역의 시민 감사 절차를 어떻게 둘 것인가?',
+            '안건 상정 우선순위 결정 기준이 자의적이지 않은가?',
+            '권고안 이행 점검 주체와 주기는 어떻게 정해야 하나?'
+          ]
+        }
+      };
+
+      function isDemoMode() {
+        try {
+          var p = new URLSearchParams(window.location.search);
+          return p.get('demo') === '1' || !sheetUrl;
+        } catch (e) {
+          return !sheetUrl;
+        }
+      }
+
+      /* ---- RFC 4180 quoted-CSV parser ---- */
+      function parseCSV(text) {
+        // Returns array of rows; each row is array of field strings.
+        var rows = [];
+        var row = [];
+        var field = '';
+        var inQuotes = false;
+        var i = 0;
+        var len = text.length;
+
+        while (i < len) {
+          var ch = text[i];
+
+          if (inQuotes) {
+            if (ch === '"') {
+              if (i + 1 < len && text[i + 1] === '"') {
+                // escaped quote
+                field += '"';
+                i += 2;
+              } else {
+                // end of quoted field
+                inQuotes = false;
+                i++;
+              }
+            } else {
+              field += ch;
+              i++;
+            }
+          } else {
+            if (ch === '"') {
+              inQuotes = true;
+              i++;
+            } else if (ch === ',') {
+              row.push(field);
+              field = '';
+              i++;
+            } else if (ch === '\r') {
+              // CRLF or lone CR
+              row.push(field);
+              field = '';
+              rows.push(row);
+              row = [];
+              i++;
+              if (i < len && text[i] === '\n') i++;
+            } else if (ch === '\n') {
+              row.push(field);
+              field = '';
+              rows.push(row);
+              row = [];
+              i++;
+            } else {
+              field += ch;
+              i++;
+            }
+          }
+        }
+        // trailing field/row
+        if (field !== '' || row.length > 0) {
+          row.push(field);
+          rows.push(row);
+        }
+        // drop empty trailing row
+        if (rows.length > 0) {
+          var last = rows[rows.length - 1];
+          if (last.length === 1 && last[0] === '') rows.pop();
+        }
+        return rows;
+      }
+
+      /* ---- Parse Sheet into { A조: [...10 questions], B조: [...10 questions] } ---- */
+      function extractLatest(rows) {
+        if (rows.length < 2) return {};
+        // Row 0 = header: 타임스탬프 | 우리 조 | 1등 질문 | ... | 10등 질문
+        // We want latest row per group (조).
+        // Google Forms timestamps are ISO-ish strings, lexicographic sort works.
+        var byGroup = {};
+        for (var r = 1; r < rows.length; r++) {
+          var row = rows[r];
+          if (!row || row.length < 2) continue;
+          var ts = (row[0] || '').trim();
+          var group = (row[1] || '').trim();
+          if (!group) continue;
+          if (!byGroup[group] || ts > byGroup[group].ts) {
+            byGroup[group] = { ts: ts, row: row };
+          }
+        }
+        var result = {};
+        for (var g in byGroup) {
+          var qs = [];
+          var rowData = byGroup[g].row;
+          // cols 2..11 = 1등~10등
+          for (var k = 0; k < 10; k++) {
+            var val = (rowData[2 + k] || '').trim();
+            qs.push(val || null);
+          }
+          result[g] = { questions: qs, ts: byGroup[g].ts };
+        }
+        return result;
+      }
+
+      /* ---- Render cards for one panel ---- */
+      function renderCards(containerId, questions) {
+        var container = document.getElementById(containerId);
+        if (!container) return;
+        var html = '';
+        for (var i = 0; i < 10; i++) {
+          var q = questions ? questions[i] : null;
+          if (q) {
+            html += '<div class="q-card">'
+              + '<div class="rank-badge">' + (i + 1) + '</div>'
+              + '<div class="q-text">' + escHtml(q) + '</div>'
+              + '</div>';
+          } else {
+            html += '<div class="q-card placeholder">'
+              + '<div class="rank-badge">' + (i + 1) + '</div>'
+              + '<div class="q-text">응답 대기</div>'
+              + '</div>';
+          }
+        }
+        container.innerHTML = html;
+      }
+
+      function escHtml(s) {
+        return s
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      /* ---- Format timestamp for display ---- */
+      function fmtTs(ts) {
+        if (!ts) return '';
+        // Google Forms timestamps: "2026/06/14 15:32:10" or ISO variant
+        try {
+          var d = new Date(ts.replace(/\//g, '-'));
+          if (isNaN(d)) return ts;
+          return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        } catch (e) {
+          return ts;
+        }
+      }
+
+      /* ---- Update UI state ---- */
+      function updateStatus(state, detail) {
+        var dot = document.getElementById('status-dot');
+        var txt = document.getElementById('status-text');
+        if (!dot || !txt) return;
+        if (state === 'live') {
+          dot.className = 'status-dot live';
+          txt.textContent = detail || '라이브 연결됨';
+        } else if (state === 'error') {
+          dot.className = 'status-dot';
+          txt.textContent = detail || '오류';
+        } else {
+          dot.className = 'status-dot';
+          txt.textContent = detail || '대기 중';
+        }
+      }
+
+      /* ---- Show panels (hide loading) ---- */
+      function showPanels() {
+        document.getElementById('loading-overlay').style.display = 'none';
+        document.getElementById('split-wrapper').style.display = 'flex';
+      }
+
+      /* ---- Render empty skeleton (when env missing) ---- */
+      function renderEmpty() {
+        renderCards('cards-a', null);
+        renderCards('cards-b', null);
+        showPanels();
+        updateStatus('error', '환경변수 미설정 — 빈 슬롯');
+      }
+
+      /* ---- Render demo data ---- */
+      function renderDemo() {
+        var a = DEMO_DATA['A조'];
+        var b = DEMO_DATA['B조'];
+        renderCards('cards-a', a.questions);
+        renderCards('cards-b', b.questions);
+        var timeA = document.getElementById('time-a');
+        var timeB = document.getElementById('time-b');
+        if (timeA) timeA.textContent = a.ts;
+        if (timeB) timeB.textContent = b.ts;
+        showPanels();
+        updateStatus('error', 'DEMO 모드 — 더미 데이터');
+      }
+
+      /* ---- Fetch & render ---- */
+      function fetchAndRender() {
+        if (isDemoMode()) {
+          renderDemo();
+          return;
+        }
+
+        fetch(sheetUrl + '&t=' + Date.now(), { cache: 'no-store' })
+          .then(function (res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.text();
+          })
+          .then(function (text) {
+            var rows = parseCSV(text);
+            var data = extractLatest(rows);
+
+            var groupA = data['A조'];
+            var groupB = data['B조'];
+
+            renderCards('cards-a', groupA ? groupA.questions : null);
+            renderCards('cards-b', groupB ? groupB.questions : null);
+
+            // Timestamps
+            var timeA = document.getElementById('time-a');
+            var timeB = document.getElementById('time-b');
+            if (timeA) timeA.textContent = groupA ? ('최신 응답: ' + fmtTs(groupA.ts)) : '응답 없음';
+            if (timeB) timeB.textContent = groupB ? ('최신 응답: ' + fmtTs(groupB.ts)) : '응답 없음';
+
+            showPanels();
+            updateStatus('live', '라이브 · 10초 폴링');
+          })
+          .catch(function (err) {
+            console.error('[regulation] fetch error:', err);
+            updateStatus('error', '연결 오류 — 재시도 중');
+            // Still show panels with whatever was rendered (or empty)
+            showPanels();
+          });
+      }
+
+      /* ---- Init ---- */
+      fetchAndRender();
+      if (sheetUrl) {
+        setInterval(fetchAndRender, POLL_INTERVAL);
+      }
+    })();
+  </script>
+</body>
+</html>

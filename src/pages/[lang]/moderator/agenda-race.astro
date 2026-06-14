@@ -1,0 +1,828 @@
+---
+// @ts-nocheck
+/**
+ * /ko/moderator/agenda-race/ — 4교시 의제 5점척도 투표 버블 시각화 (200명 강당 프로젝터용)
+ *
+ * PRIVACY:
+ *   - KO-only route (getStaticPaths emits only 'ko')
+ *   - robots noindex,nofollow
+ *   - NOT in sitemap (whitelist filter excludes /moderator/*)
+ *   - NOT in pagefind (no data-pagefind-body)
+ *
+ * DATA SOURCES (두 CSV 동시 fetch, 5초 폴링):
+ *   1. PUBLIC_AGENDA_SHEET_CSV_URL — A조/B조 최신 행에서 10개 의제 텍스트 추출
+ *      cols: 0=ts | 1=그룹 | 2~6=채택1~5 (cols 2~11이면 의제1~10)
+ *      A조 row cols 2~6 → A1~A5, B조 row cols 2~6 → B1~B5
+ *   2. PUBLIC_AGENDA_VOTE_SHEET_CSV_URL — 1인 1행, 10개 의제 각 1~5점 투표
+ *      cols: 0=타임스탬프 | 1~10=의제1~의제10 점수
+ *      집계: 의제별 합계·평균·응답수
+ *
+ *   COLUMN CONVENTION (fixed, never reorder):
+ *     index 0 = A1, 1 = A2, 2 = A3, 3 = A4, 4 = A5
+ *     index 5 = B1, 6 = B2, 7 = B3, 8 = B4, 9 = B5
+ *   Vote CSV col 1 = 의제1 (→ index 0 = A1), col 10 = 의제10 (→ index 9 = B5)
+ *
+ * LAYOUT (Option 1 — stable 2×5 grid):
+ *   화이트 배경 · 2열 5행 고정 배치 (A조 왼쪽 열, B조 오른쪽 열)
+ *   버블 크기 = CSS width/height transition (cubic-bezier 1s)
+ *   1등 버블 → 펄스 글로우 (게임 톤)
+ *
+ * DEMO:
+ *   ?demo=1 또는 두 env 미설정 시 자동 데모 (10의제 + 18가짜 응답, 고정 분포)
+ *
+ * ROLLDOWN TRAP AVOIDANCE:
+ *   vanilla JS is:inline only — no .tsx/.jsx imports
+ */
+
+import '../../../styles/global.css';
+
+export async function getStaticPaths() {
+  return [{ params: { lang: 'ko' } }];
+}
+
+const agendaCsvUrl = (import.meta.env.PUBLIC_AGENDA_SHEET_CSV_URL ?? '').trim();
+const voteCsvUrl   = (import.meta.env.PUBLIC_AGENDA_VOTE_SHEET_CSV_URL ?? '').trim();
+---
+<!doctype html>
+<html lang="ko" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>의제 투표 버블 레이스 — [모더레이터]</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <style>
+    /* ============================================================
+       AGENDA RACE — 버블 시각화 · 화이트 배경 · 200명 강당
+       ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f8f6f0;
+      --color-a: #0e7490;
+      --color-b: #c2410c;
+      --font: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', sans-serif;
+      --bubble-min: 120px;   /* minimum diameter */
+      --bubble-max: 420px;   /* maximum diameter (1920px viewport) */
+      --transition: cubic-bezier(0.34, 1.56, 0.64, 1) 1s;
+    }
+
+    body {
+      background: var(--bg);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ---- Privacy banner ---- */
+    .privacy-banner {
+      background: #4a1010;
+      color: #fca5a5;
+      text-align: center;
+      padding: 5px 16px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid #7f1d1d;
+      flex-shrink: 0;
+    }
+
+    /* ---- Sub-nav ---- */
+    .subnav {
+      background: #1a2130;
+      border-bottom: 1px solid #2d3748;
+      padding: 5px 14px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: #718096;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    .subnav-label { font-weight: 700; margin-right: 4px; color: #a0aec0; }
+    .subnav a {
+      color: #718096;
+      text-decoration: none;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+    }
+    .subnav a:hover { color: #e2e8f0; border-color: #4a5568; }
+    .subnav a.current { color: var(--color-b); border-color: var(--color-b); font-weight: 600; }
+    .subnav-sep { color: #4a5568; }
+
+    /* ---- Page header ---- */
+    .page-header {
+      background: #161c24;
+      color: #f3f4f6;
+      padding: 10px 24px 8px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-shrink: 0;
+      border-bottom: 2px solid #2d3748;
+    }
+    .page-header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .response-counter {
+      background: #0f2027;
+      border: 1px solid #2d3748;
+      border-radius: 6px;
+      padding: 4px 14px;
+      font-size: 22px;
+      font-weight: 900;
+      color: #67e8f9;
+      letter-spacing: 0.01em;
+    }
+    .toggle-btn {
+      margin-left: auto;
+      background: #1a2130;
+      border: 1px solid #4a5568;
+      color: #a0aec0;
+      padding: 5px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: all 0.15s;
+    }
+    .toggle-btn:hover { color: #e2e8f0; border-color: #718096; }
+    .toggle-btn.active { color: #67e8f9; border-color: #0e7490; }
+    .status-area {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #4a5568;
+    }
+    .status-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #4a5568;
+    }
+    .status-dot.live { background: #22c55e; animation: pulse-dot 2s infinite; }
+    .status-dot.demo { background: #f59e0b; }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    /* ---- Env error banner ---- */
+    .env-error-banner {
+      background: #1a0a0a;
+      border: 1px solid #7f1d1d;
+      color: #fca5a5;
+      padding: 14px 20px;
+      margin: 12px 16px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.6;
+    }
+
+    /* ---- Column headers (A조 / B조) ---- */
+    .col-headers {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      padding: 6px 16px 0;
+      flex-shrink: 0;
+      gap: 12px;
+    }
+    .col-header {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      padding: 4px 0 2px;
+      border-bottom: 3px solid;
+    }
+    .col-header-a { color: var(--color-a); border-color: var(--color-a); }
+    .col-header-b { color: var(--color-b); border-color: var(--color-b); }
+    @media (min-width: 1280px) { .col-header { font-size: 36px; } }
+    @media (min-width: 1920px) { .col-header { font-size: 44px; } }
+
+    /* ============================================================
+       BUBBLE GRID — 2×5 stable grid
+       ============================================================ */
+    .bubble-arena {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: repeat(5, 1fr);
+      gap: 12px;
+      padding: 16px;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* ---- Bubble cell (contains the circle) ---- */
+    .bubble-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+    }
+
+    /* ---- The circle ---- */
+    .bubble {
+      position: relative;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      overflow: hidden;
+      /* Size is set via JS inline style, transitioned */
+      transition: width var(--transition), height var(--transition), box-shadow 0.5s ease;
+      flex-shrink: 0;
+    }
+
+    /* A조 bubble gradient */
+    .bubble-a {
+      background: radial-gradient(circle at 35% 35%, #67e8f9, #0e7490 70%);
+      box-shadow: 0 8px 32px rgba(14, 116, 144, 0.35),
+                  inset 0 1px 0 rgba(255,255,255,0.3);
+    }
+    /* B조 bubble gradient */
+    .bubble-b {
+      background: radial-gradient(circle at 35% 35%, #fdba74, #c2410c 70%);
+      box-shadow: 0 8px 32px rgba(194, 65, 12, 0.35),
+                  inset 0 1px 0 rgba(255,255,255,0.3);
+    }
+
+    /* 1등 펄스 글로우 */
+    .bubble.rank-1 {
+      animation: glow-pulse 1.6s ease-in-out infinite;
+    }
+    .bubble-a.rank-1 {
+      box-shadow: 0 0 0 0 rgba(103, 232, 249, 0.7),
+                  0 8px 32px rgba(14, 116, 144, 0.4),
+                  inset 0 1px 0 rgba(255,255,255,0.3);
+    }
+    .bubble-b.rank-1 {
+      box-shadow: 0 0 0 0 rgba(253, 186, 116, 0.7),
+                  0 8px 32px rgba(194, 65, 12, 0.4),
+                  inset 0 1px 0 rgba(255,255,255,0.3);
+    }
+    @keyframes glow-pulse {
+      0%   { box-shadow: 0 0 0 0   rgba(255,255,255,0.6), 0 8px 40px rgba(0,0,0,0.25); }
+      50%  { box-shadow: 0 0 0 28px rgba(255,255,255,0),  0 8px 40px rgba(0,0,0,0.25); }
+      100% { box-shadow: 0 0 0 0   rgba(255,255,255,0.6), 0 8px 40px rgba(0,0,0,0.25); }
+    }
+
+    /* ---- Bubble content ---- */
+    .bubble-score {
+      font-size: 80px;
+      font-weight: 900;
+      line-height: 1;
+      color: #fff;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      letter-spacing: -0.02em;
+      flex-shrink: 0;
+    }
+    .bubble-star {
+      font-size: 36px;
+      line-height: 1;
+      color: rgba(255,255,255,0.85);
+      margin-bottom: -4px;
+      flex-shrink: 0;
+    }
+    .bubble-label {
+      font-size: 22px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.9);
+      line-height: 1.2;
+      padding: 0 12px;
+      word-break: keep-all;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      text-overflow: ellipsis;
+    }
+
+    /* 해상도별 버블 텍스트 확대 */
+    @media (min-width: 1280px) {
+      .bubble-score  { font-size: 100px; }
+      .bubble-star   { font-size: 44px; }
+      .bubble-label  { font-size: 26px; }
+    }
+    @media (min-width: 1600px) {
+      .bubble-score  { font-size: 120px; }
+      .bubble-star   { font-size: 52px; }
+      .bubble-label  { font-size: 30px; }
+    }
+    @media (min-width: 1920px) {
+      .bubble-score  { font-size: 140px; }
+      .bubble-star   { font-size: 60px; }
+      .bubble-label  { font-size: 36px; }
+    }
+
+    /* ---- Placeholder bubble (no data) ---- */
+    .bubble-placeholder {
+      background: #e5e7eb;
+      box-shadow: none;
+    }
+    .bubble-placeholder .bubble-score { color: #9ca3af; font-size: 36px; }
+    .bubble-placeholder .bubble-label { color: #6b7280; }
+
+    /* ---- Loading overlay ---- */
+    .loading-overlay {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 16px;
+      color: #718096;
+      font-size: 20px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #2a3240;
+      border-top-color: #06b6d4;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---- Narrow fallback ---- */
+    @media (max-width: 760px) {
+      .bubble-arena {
+        grid-template-columns: 1fr;
+        grid-template-rows: none;
+        overflow-y: auto;
+      }
+      body { overflow: auto; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Privacy banner -->
+  <div class="privacy-banner">
+    모더레이터 운영 페이지 · 외부 공개 금지
+  </div>
+
+  <!-- Sub-nav -->
+  <nav class="subnav" aria-label="모더레이터 도구 네비게이션">
+    <span class="subnav-label">[모더레이터 도구]</span>
+    <a href="/ko/moderator/live">라이브</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/board">보드</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/heatmap">히트맵</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/clusters">클러스터</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/agenda-network">의제연결</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/groups">조별</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/regulation">운영규정</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/agenda">의제선정</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/agenda-race" class="current">투표버블</a>
+  </nav>
+
+  <!-- Env error banner (shown by JS when both URLs missing) -->
+  <div id="env-error-banner" class="env-error-banner" style="display:none;" role="alert">
+    PUBLIC_AGENDA_VOTE_SHEET_CSV_URL 환경변수가 설정되지 않았습니다.
+    Cloudflare 환경변수 설정 후 재배포하세요. ?demo=1 파라미터로 더미 데이터를 확인할 수 있습니다.
+  </div>
+
+  <!-- Page header -->
+  <header class="page-header">
+    <h1>의제 우선순위 투표 라이브</h1>
+    <div class="response-counter">
+      응답: <span id="resp-count">0</span>명
+    </div>
+    <div class="status-area">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-text">불러오는 중...</span>
+    </div>
+    <button class="toggle-btn" id="mode-toggle" type="button">평균 보기</button>
+  </header>
+
+  <!-- Column headers -->
+  <div class="col-headers" id="col-headers" style="display:none;">
+    <div class="col-header col-header-a">A조 의제</div>
+    <div class="col-header col-header-b">B조 의제</div>
+  </div>
+
+  <!-- Bubble arena: 2 columns × 5 rows = 10 bubbles -->
+  <!-- A1 A-col row1, B1 B-col row1, A2 A-col row2 ... -->
+  <!-- Grid order: A1,B1,A2,B2,A3,B3,A4,B4,A5,B5 -->
+  <div class="bubble-arena" id="bubble-arena" style="display:none;">
+    <!-- 10 cells rendered by JS -->
+  </div>
+
+  <!-- Loading overlay -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+    <span>응답 대기 중...</span>
+  </div>
+
+  <!-- Build-time env data island -->
+  <script id="env-data" type="application/json"
+    set:html={JSON.stringify({ agendaUrl: agendaCsvUrl, voteUrl: voteCsvUrl })}
+  ></script>
+
+  <script is:inline>
+  (function () {
+    'use strict';
+
+    /* ---- Read build-time env ---- */
+    var envEl = document.getElementById('env-data');
+    var env = envEl ? JSON.parse(envEl.textContent || '{}') : {};
+    var AGENDA_URL = env.agendaUrl || '';
+    var VOTE_URL   = env.voteUrl   || '';
+
+    var POLL_MS = 5000;  // 5-second polling
+
+    /* ---- Demo / fallback detection ---- */
+    function isDemoMode() {
+      try {
+        var p = new URLSearchParams(window.location.search);
+        if (p.get('demo') === '1') return true;
+      } catch (e) {}
+      return !VOTE_URL && !AGENDA_URL;
+    }
+
+    /* ============================================================
+       DEMO DATA — fixed distribution for stable QA screenshots
+       18 fake respondents, non-uniform to show size variance.
+       Convention: index 0-4 = A1-A5, index 5-9 = B1-B5
+       ============================================================ */
+    var DEMO_AGENDA = [
+      '탄소세 도입 시 서민 부담 완화',      // A1
+      '재생에너지 전환 법제화',              // A2
+      '기후 취약계층 우선 지원',             // A3
+      '건물 에너지 효율 기준 강화',          // A4
+      '탄소중립 교육 의무화',               // A5
+      '기후 적응 도시 인프라 투자',          // B1
+      '농업 기후 피해 보상 제도화',          // B2
+      '해수면 상승 연안 정비',              // B3
+      '폭염 취약계층 냉방 지원',            // B4
+      '홍수 예보 시스템 고도화'             // B5
+    ];
+
+    /* 18개 응답 × 10 의제 (1~5점) — 비대칭 분포 */
+    var DEMO_VOTES = [
+      [5,4,5,3,2, 4,3,3,2,2],
+      [5,5,4,4,3, 5,4,3,3,2],
+      [4,5,5,3,2, 4,5,4,2,3],
+      [5,4,4,4,3, 3,4,5,3,2],
+      [5,5,5,3,2, 4,3,4,3,3],
+      [4,4,4,4,3, 5,4,3,2,2],
+      [5,4,5,3,1, 4,4,4,4,3],
+      [5,5,4,4,2, 3,5,3,3,2],
+      [5,4,4,3,3, 4,4,4,3,3],
+      [4,5,5,4,2, 5,3,3,2,2],
+      [5,5,4,3,3, 4,4,4,3,3],
+      [4,4,5,4,2, 3,5,4,4,2],
+      [5,5,4,3,2, 4,4,3,3,3],
+      [5,4,4,4,3, 5,4,4,2,2],
+      [4,5,5,3,2, 4,3,4,3,2],
+      [5,4,4,4,3, 4,4,3,3,3],
+      [5,5,5,3,2, 3,4,4,4,2],
+      [4,4,4,4,3, 4,4,4,3,3]
+    ];
+    /* Expected: A1 sum ~85 (avg~4.7), A5 sum ~42 (avg~2.3), B1 sum ~70 (avg~3.9) */
+
+    /* ============================================================
+       RFC 4180 CSV parser (reused from agenda.astro)
+       ============================================================ */
+    function parseCSV(text) {
+      var rows = [], row = [], field = '', inQ = false, i = 0, len = text.length;
+      while (i < len) {
+        var ch = text[i];
+        if (inQ) {
+          if (ch === '"') {
+            if (i+1 < len && text[i+1] === '"') { field += '"'; i += 2; }
+            else { inQ = false; i++; }
+          } else { field += ch; i++; }
+        } else {
+          if (ch === '"')      { inQ = true; i++; }
+          else if (ch === ',') { row.push(field); field = ''; i++; }
+          else if (ch === '\r') {
+            row.push(field); field = '';
+            rows.push(row); row = [];
+            i++;
+            if (i < len && text[i] === '\n') i++;
+          } else if (ch === '\n') {
+            row.push(field); field = '';
+            rows.push(row); row = [];
+            i++;
+          } else { field += ch; i++; }
+        }
+      }
+      if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
+      if (rows.length > 0) {
+        var last = rows[rows.length - 1];
+        if (last.length === 1 && last[0] === '') rows.pop();
+      }
+      return rows;
+    }
+
+    /* ----
+       Extract 10 agenda texts from agenda CSV.
+       A조 row cols 2~6 → index 0~4, B조 row cols 2~6 → index 5~9
+    ---- */
+    function extractAgendaTexts(rows) {
+      if (rows.length < 2) return null;
+      var byGroup = {};
+      for (var r = 1; r < rows.length; r++) {
+        var row = rows[r];
+        if (!row || row.length < 2) continue;
+        var ts    = (row[0] || '').trim();
+        var group = (row[1] || '').trim();
+        if (!group) continue;
+        if (!byGroup[group] || ts > byGroup[group].ts) {
+          byGroup[group] = { ts: ts, row: row };
+        }
+      }
+      var texts = new Array(10);
+      for (var i = 0; i < 10; i++) texts[i] = null;
+
+      var rowA = byGroup['A조'] ? byGroup['A조'].row : null;
+      var rowB = byGroup['B조'] ? byGroup['B조'].row : null;
+      for (var k = 0; k < 5; k++) {
+        texts[k]     = rowA ? ((rowA[2 + k] || '').trim() || null) : null;
+        texts[5 + k] = rowB ? ((rowB[2 + k] || '').trim() || null) : null;
+      }
+      return texts;
+    }
+
+    /* ----
+       Aggregate vote CSV.
+       Returns: { sums:[...10], avgs:[...10], counts:[...10], total: N }
+       col 0 = timestamp, col 1~10 = 의제1~의제10 (index 0~9)
+    ---- */
+    function aggregateVotes(rows) {
+      if (rows.length < 2) return null;
+      var sums = new Array(10).fill(0);
+      var counts = new Array(10).fill(0);
+      var total = 0;
+      for (var r = 1; r < rows.length; r++) {
+        var row = rows[r];
+        if (!row || row.length < 2) continue;
+        var hasValue = false;
+        for (var c = 0; c < 10; c++) {
+          var v = parseFloat((row[1 + c] || '').trim());
+          if (!isNaN(v) && v >= 1 && v <= 5) {
+            sums[c] += v;
+            counts[c]++;
+            hasValue = true;
+          }
+        }
+        if (hasValue) total++;
+      }
+      var avgs = sums.map(function (s, i) {
+        return counts[i] > 0 ? s / counts[i] : 0;
+      });
+      return { sums: sums, avgs: avgs, counts: counts, total: total };
+    }
+
+    function aggregateDemoVotes() {
+      var rows = [['ts'].concat(DEMO_VOTES[0].map(function(_,i){return '의제'+(i+1);}))];
+      for (var i = 0; i < DEMO_VOTES.length; i++) {
+        rows.push(['2026-06-14T10:0'+i+':00'].concat(DEMO_VOTES[i].map(String)));
+      }
+      return aggregateVotes(rows);
+    }
+
+    /* ============================================================
+       STATE
+       ============================================================ */
+    var state = {
+      agendaTexts: null,   // array of 10 (null = unknown)
+      voteAgg: null,       // { sums, avgs, counts, total }
+      showSum: true,       // toggle: true=합계, false=평균
+      initialized: false
+    };
+
+    /* ============================================================
+       BUILD BUBBLES (called once on first render)
+       ============================================================ */
+    function buildBubbles() {
+      var arena = document.getElementById('bubble-arena');
+      if (!arena) return;
+
+      /* Re-order for 2-col grid interleaving:
+         Natural grid (row-major, 2 cols) reads: col0-row0, col1-row0, col0-row1 ...
+         We want: A1(idx0),B1(idx5), A2(idx1),B2(idx6), A3(idx2),B3(idx7) ...
+         So grid-order by index = [0,5,1,6,2,7,3,8,4,9] */
+      var order = [0,5,1,6,2,7,3,8,4,9];
+      var cells = [];
+      for (var j = 0; j < 10; j++) {
+        var idx = order[j];
+        var s   = idx < 5 ? 'a' : 'b';
+        var n   = idx < 5 ? (idx + 1) : (idx - 4);
+        cells.push(
+          '<div class="bubble-cell" id="cell-' + idx + '">'
+          + '<div class="bubble bubble-' + s + '" id="bubble-' + idx + '" style="width:var(--bubble-min);height:var(--bubble-min);">'
+          + '<span class="bubble-star" aria-hidden="true">★</span>'
+          + '<div class="bubble-score" id="score-' + idx + '">—</div>'
+          + '<div class="bubble-label" id="label-' + idx + '">'
+          + (s === 'a' ? 'A' : 'B') + n
+          + '</div>'
+          + '</div>'
+          + '</div>'
+        );
+      }
+      arena.innerHTML = cells.join('');
+    }
+
+    /* ============================================================
+       UPDATE BUBBLES — call after state changes
+       ============================================================ */
+    function updateBubbles() {
+      var agg   = state.voteAgg;
+      var texts = state.agendaTexts;
+      var useSum = state.showSum;
+
+      /* Score values for sizing */
+      var scores = new Array(10).fill(0);
+      if (agg) {
+        for (var i = 0; i < 10; i++) {
+          scores[i] = useSum ? agg.sums[i] : agg.avgs[i];
+        }
+      }
+
+      /* Compute max for normalization */
+      var maxScore = 0;
+      for (var i = 0; i < 10; i++) {
+        if (scores[i] > maxScore) maxScore = scores[i];
+      }
+      /* Safe floor: if no votes, use max possible for equal sizing */
+      if (maxScore === 0) maxScore = useSum ? (5 * 18) : 5;
+
+      /* Find #1 rank index (only glow if clearly ahead) */
+      var sortedScores = scores.slice().sort(function(a,b){return b-a;});
+      var top1 = sortedScores[0];
+      var top2 = sortedScores[1];
+      var hasGap = top1 > 0 && (top2 === 0 || top1 >= top2 * 1.1);
+
+      /* Min / max diameter in px */
+      var minD = 120;
+      var maxD = Math.min(window.innerWidth, window.innerHeight) * 0.38;
+      maxD = Math.max(maxD, 180);
+
+      for (var i = 0; i < 10; i++) {
+        var bubbleEl = document.getElementById('bubble-' + i);
+        var scoreEl  = document.getElementById('score-' + i);
+        var labelEl  = document.getElementById('label-' + i);
+        if (!bubbleEl || !scoreEl || !labelEl) continue;
+
+        /* Diameter: linear interpolation from minD to maxD */
+        var ratio = maxScore > 0 ? (scores[i] / maxScore) : 0;
+        /* When no data at all, show equal small bubbles */
+        var diam;
+        if (!agg || agg.total === 0) {
+          diam = minD;
+        } else {
+          diam = Math.round(minD + ratio * (maxD - minD));
+          diam = Math.max(diam, minD);
+        }
+        bubbleEl.style.width  = diam + 'px';
+        bubbleEl.style.height = diam + 'px';
+
+        /* Score display */
+        if (!agg || agg.total === 0) {
+          scoreEl.textContent = '—';
+        } else if (useSum) {
+          scoreEl.textContent = String(agg.sums[i]);
+        } else {
+          scoreEl.textContent = agg.avgs[i] > 0
+            ? agg.avgs[i].toFixed(1)
+            : '—';
+        }
+
+        /* Label: agenda text or fallback */
+        var side = i < 5 ? 'A' : 'B';
+        var num  = i < 5 ? (i+1) : (i-4);
+        var fallback = side + num;
+        var txt = texts && texts[i] ? texts[i] : fallback;
+        /* Truncate for bubble readability (강당 200명 — 짧게 유지) */
+        if (txt.length > 16) txt = txt.slice(0, 15) + '…';
+        labelEl.textContent = txt;
+
+        /* Glow rank */
+        if (hasGap && scores[i] === top1) {
+          bubbleEl.classList.add('rank-1');
+        } else {
+          bubbleEl.classList.remove('rank-1');
+        }
+
+        /* Placeholder class when no data */
+        if (!agg || agg.total === 0) {
+          bubbleEl.classList.add('bubble-placeholder');
+        } else {
+          bubbleEl.classList.remove('bubble-placeholder');
+        }
+      }
+
+      /* Response counter */
+      var respEl   = document.getElementById('resp-count');
+      if (respEl)  respEl.textContent  = agg ? String(agg.total) : '0';
+    }
+
+    /* ============================================================
+       STATUS helpers
+       ============================================================ */
+    function updateStatus(mode, text) {
+      var dot = document.getElementById('status-dot');
+      var txt = document.getElementById('status-text');
+      if (dot) dot.className = 'status-dot' + (mode === 'live' ? ' live' : mode === 'demo' ? ' demo' : '');
+      if (txt) txt.textContent = text || '';
+    }
+
+    function showArena() {
+      document.getElementById('loading-overlay').style.display = 'none';
+      document.getElementById('bubble-arena').style.display   = 'grid';
+      document.getElementById('col-headers').style.display    = 'grid';
+    }
+
+    /* ============================================================
+       FETCH & AGGREGATE
+       ============================================================ */
+    function fetchAll() {
+      if (isDemoMode()) {
+        state.agendaTexts = DEMO_AGENDA;
+        state.voteAgg     = aggregateDemoVotes();
+        if (!state.initialized) { buildBubbles(); state.initialized = true; showArena(); }
+        updateBubbles();
+        updateStatus('demo', 'DEMO 모드 — 더미 데이터');
+        return;
+      }
+
+      var agendaPromise = AGENDA_URL
+        ? fetch(AGENDA_URL + '&t=' + Date.now(), { cache: 'no-store' })
+            .then(function(r){ return r.ok ? r.text() : null; })
+            .then(function(t){ return t ? extractAgendaTexts(parseCSV(t)) : null; })
+            .catch(function(){ return null; })
+        : Promise.resolve(null);
+
+      var votePromise = VOTE_URL
+        ? fetch(VOTE_URL + (VOTE_URL.indexOf('?') > -1 ? '&' : '?') + 't=' + Date.now(), { cache: 'no-store' })
+            .then(function(r){ return r.ok ? r.text() : null; })
+            .then(function(t){ return t ? aggregateVotes(parseCSV(t)) : null; })
+            .catch(function(){ return null; })
+        : Promise.resolve(null);
+
+      Promise.all([agendaPromise, votePromise]).then(function(results) {
+        var newTexts = results[0];
+        var newAgg   = results[1];
+
+        if (newTexts) state.agendaTexts = newTexts;
+        if (newAgg)   state.voteAgg     = newAgg;
+
+        if (!state.initialized) {
+          buildBubbles();
+          state.initialized = true;
+          showArena();
+        }
+        updateBubbles();
+        updateStatus('live', '라이브 · 5초 폴링');
+
+        /* Show env error only if vote URL missing */
+        if (!VOTE_URL) {
+          document.getElementById('env-error-banner').style.display = 'block';
+        }
+      });
+    }
+
+    /* ============================================================
+       TOGGLE: 합계 / 평균
+       ============================================================ */
+    var toggleBtn = document.getElementById('mode-toggle');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', function() {
+        state.showSum = !state.showSum;
+        /* 버튼 = 다음에 전환할 모드 (액션 레이블) */
+        toggleBtn.textContent  = state.showSum ? '평균 보기' : '합계 보기';
+        toggleBtn.classList.toggle('active', !state.showSum);
+        updateBubbles();
+      });
+    }
+
+    /* ============================================================
+       INIT
+       ============================================================ */
+    fetchAll();
+    if (VOTE_URL || AGENDA_URL || isDemoMode()) {
+      setInterval(fetchAll, POLL_MS);
+    }
+
+  })();
+  </script>
+</body>
+</html>

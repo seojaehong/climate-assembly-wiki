@@ -1,0 +1,1745 @@
+---
+// @ts-nocheck
+/**
+ * /ko/moderator/agenda/ — 4교시 의제선정 라이브 시각화 (다크 배경 · 프로젝터용)
+ *
+ * PRIVACY:
+ *   - KO-only route (getStaticPaths emits only 'ko')
+ *   - robots noindex,nofollow
+ *   - NOT in sitemap (whitelist filter excludes /moderator/*)
+ *   - NOT in pagefind (no data-pagefind-body)
+ *   - No nav links to this page from public pages
+ *
+ * DATA SOURCE:
+ *   - PUBLIC_AGENDA_SHEET_CSV_URL → Google Sheet (Form 응답 자동 적재)
+ *   - Sheet 컬럼: 타임스탬프 | 우리 조 | 채택1 | 채택2 | 채택3 | 채택4 | 채택5 | 나머지1..8
+ *   - Client-side fetch, poll every 10s
+ *   - 동일 조 복수 응답 시 타임스탬프 최신 행 1개만 렌더
+ *
+ * LAYOUT:
+ *   - 좌(A조) / 우(B조) 50:50 분할
+ *   - 각 패널 상하 70:30 — 위 70% 채택 큰 카드 / 아래 30% 나머지 chip
+ *   - 200명 가시성: 채택 본문 120px(1920px), ⭐ 200px, 나머지 chip 40px
+ *
+ * AUTO-ROTATE:
+ *   - 채택 카드 > 3장이면 3장씩 슬라이딩 윈도우 (step=1, 8초 간격)
+ *   - A·B 패널 독립 rotator
+ *   - 스페이스로 전역 일시정지/재개
+ *
+ * DESIGN:
+ *   - 다크 배경 #0f1419 (강당 형광등 가시성)
+ *   - 채택 카드: 형광 노란 포스트잇 #fde047, 미세 회전, 강한 그림자
+ *   - 나머지 chip: 다크 회색 #3f4248, 흰 글씨
+ *   - A조 상단 strip: 청록 #06b6d4 / B조: 주황 #f97316
+ *
+ * CSV PARSING:
+ *   - RFC 4180 quoted-CSV state machine (regulation.astro 동일 파서 재사용)
+ *   - vanilla JS client-side only (rolldown .tsx 트랩 회피)
+ */
+
+import '../../../styles/global.css';
+
+export async function getStaticPaths() {
+  return [{ params: { lang: 'ko' } }];
+}
+
+const sheetCsvUrl = (import.meta.env.PUBLIC_AGENDA_SHEET_CSV_URL ?? '').trim();
+---
+<!doctype html>
+<html lang="ko" dir="ltr" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>의제선정 결과 — 조별 채택 의제 [모더레이터]</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <!-- No canonical, no hreflang, no OG — private page -->
+  <style>
+    /* ============================================================
+       AGENDA SELECTION PAGE — 다크 배경 · 200명 강당 가시성
+       ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f8f6f0;                /* 화이트(살짝 따뜻한 종이톤) */
+      --bg-panel: #fdfcf7;
+      --bg-card-adopted: #fde047;
+      --bg-card-remaining: #e7e2d6;
+      --color-a: #0e7490;
+      --color-b: #c2410c;
+      --text-on-adopted: #1c1917;
+      --text-on-remaining: #1c1917;
+      --text-header: #1c1917;
+      --text-muted: #6b6560;
+      --border-divider: #d6cfbf;
+      --font: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text-header);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ---- Privacy banner ---- */
+    .privacy-banner {
+      background: #4a1010;
+      color: #fca5a5;
+      text-align: center;
+      padding: 5px 16px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid #7f1d1d;
+      flex-shrink: 0;
+    }
+
+    /* ---- Sub-nav (다크 테마) ---- */
+    .subnav {
+      background: #1a2130;
+      border-bottom: 1px solid var(--border-divider);
+      padding: 5px 14px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    .subnav-label { font-weight: 700; margin-right: 4px; color: #a0aec0; }
+    .subnav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+    }
+    .subnav a:hover { color: #e2e8f0; border-color: #4a5568; }
+    .subnav a.current { color: var(--color-b); border-color: var(--color-b); font-weight: 600; }
+    .subnav-sep { color: #4a5568; }
+
+    /* ---- Env error banner ---- */
+    .env-error-banner {
+      background: #1a0a0a;
+      border: 1px solid #7f1d1d;
+      color: #fca5a5;
+      padding: 16px 20px;
+      margin: 16px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 1.6;
+    }
+
+    /* ---- Page header ---- */
+    .page-header {
+      padding: 10px 20px 8px;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      border-bottom: 1px solid var(--border-divider);
+      background: #161c24;
+      flex-shrink: 0;
+    }
+    .page-header h1 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-header);
+    }
+    .page-header .status {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+    .status-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #4a5568;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .status-dot.live { background: #22c55e; animation: pulse 2s infinite; }
+    .status-dot.demo { background: #f59e0b; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ---- Space-pause hint ---- */
+    .pause-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: 16px;
+      opacity: 0.7;
+    }
+    .pause-hint.paused { color: #f59e0b; opacity: 1; }
+
+    /* ---- Main split layout ---- */
+    .split-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: row;
+      gap: 28px;                       /* 가운데 드래그 통로 */
+      min-height: 0;
+      overflow: hidden;
+      background: var(--border-divider);
+    }
+
+    /* ---- Panel (A조 or B조) ---- */
+    .panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+      background: var(--bg-panel);
+    }
+
+    /* ---- DnD styles ---- */
+    .postit { cursor: grab; user-select: none; }
+    .postit:active { cursor: grabbing; }
+    .postit.dragging { opacity: 0.35; transform: scale(0.97) !important; }
+    .postit.drop-target-before { box-shadow: 0 -6px 0 0 #06b6d4, 4px 7px 18px rgba(0,0,0,0.18); }
+    .postit.drop-target-after  { box-shadow: 0 6px 0 0 #06b6d4, 4px 7px 18px rgba(0,0,0,0.18); }
+    .postit-grid.drop-empty { outline: 4px dashed #06b6d4; outline-offset: -10px; }
+
+    /* ---- Reset button (small, top-right of page header) ---- */
+    .reset-btn {
+      margin-left: 14px;
+      background: transparent;
+      border: 1px solid var(--border-divider);
+      color: var(--text-muted);
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+    }
+    .reset-btn:hover { background: #ece6d6; color: var(--text-header); }
+    .reset-btn[hidden] { display: none; }
+
+    /* ---- Link mode ---- */
+    .link-btn {
+      margin-left: 10px;
+      background: transparent;
+      border: 1px solid var(--border-divider);
+      color: var(--text-muted);
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 4px;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+    }
+    .link-btn:hover { background: #ece6d6; color: var(--text-header); }
+    body.link-mode .link-btn { background: #0e7490; color: #fff; border-color: #0e7490; }
+    body.link-mode .postit { cursor: crosshair; }
+    body.link-mode .postit.link-pending { outline: 4px solid #0e7490; outline-offset: 4px; }
+    body.link-mode .postit.link-pending::after {
+      content: '연결 대상 선택...';
+      position: absolute; top: 4px; right: 8px;
+      font-size: 12px; color: #0e7490; font-weight: 700;
+      background: rgba(255,255,255,0.85); padding: 2px 6px; border-radius: 3px;
+    }
+
+    /* ---- SVG link overlay ---- */
+    .link-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .link-overlay path {
+      fill: none;
+      stroke: #0e7490;
+      stroke-width: 4;
+      stroke-linecap: round;
+      pointer-events: stroke;
+      cursor: pointer;
+      opacity: 0.78;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.18));
+    }
+    .link-overlay path:hover { stroke: #c2410c; stroke-width: 6; opacity: 1; }
+    .link-overlay circle {
+      fill: #0e7490;
+      pointer-events: none;
+    }
+    .split-wrapper { position: relative; }
+
+    /* ---- Panel header ---- */
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px 8px;
+      border-bottom: 3px solid;
+      flex-shrink: 0;
+      background: #0f1419;
+    }
+    .panel-a .panel-header { border-color: var(--color-a); }
+    .panel-b .panel-header { border-color: var(--color-b); }
+
+    .panel-label {
+      font-size: 36px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+    .panel-a .panel-label { color: var(--color-a); }
+    .panel-b .panel-label { color: var(--color-b); }
+
+    .panel-sublabel {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .response-time {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* ---- ADOPTED ZONE (상단 70%) ---- */
+    .adopted-zone {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 20px 24px 28px;
+      position: relative;
+    }
+    .remaining-zone { display: none !important; }
+
+    .adopted-zone-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      flex-shrink: 0;
+    }
+
+    /* ============================================================
+       NEW POSTIT GRID — 어제 regulation-feedback 톤
+       (작은 종이 포스트잇 여러 개를 grid로 흩뿌리기)
+       ============================================================ */
+    .postit-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-auto-rows: minmax(0, 1fr);
+      gap: 36px;
+      padding: 20px 18px 28px;
+      min-height: 0;
+      overflow: hidden;
+      align-content: stretch;
+    }
+    body[data-view="a"] .postit-grid,
+    body[data-view="b"] .postit-grid {
+      gap: 52px;
+      padding: 28px 32px 40px;
+    }
+    .postit {
+      position: relative;
+      padding: 18px 26px 22px 22px;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 22px;
+      font-family: var(--font);
+      box-shadow:
+        4px 7px 18px rgba(0, 0, 0, 0.45),
+        inset 0 -3px 8px rgba(0, 0, 0, 0.08),
+        inset 0 2px 0 rgba(255, 255, 255, 0.5);
+      transition: transform 0.25s ease;
+      min-height: 0;
+      overflow: hidden;
+    }
+    /* "테이프" 상단 strip */
+    .postit::before {
+      content: '';
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%) rotate(-3deg);
+      width: 70px;
+      height: 22px;
+      background: rgba(255, 255, 255, 0.35);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    }
+    /* 색상 5종 — A조는 노란계열, B조는 주황계열 위주 */
+    .panel-a .postit:nth-child(5n+1) { background: #fef08a; color: #1a1a00; }
+    .panel-a .postit:nth-child(5n+2) { background: #fde047; color: #1a1a00; }
+    .panel-a .postit:nth-child(5n+3) { background: #fbbf24; color: #1a1000; }
+    .panel-a .postit:nth-child(5n+4) { background: #a7f3d0; color: #052e16; }
+    .panel-a .postit:nth-child(5n)   { background: #bae6fd; color: #001a26; }
+    .panel-b .postit:nth-child(5n+1) { background: #fed7aa; color: #1a0a00; }
+    .panel-b .postit:nth-child(5n+2) { background: #fdba74; color: #1a0a00; }
+    .panel-b .postit:nth-child(5n+3) { background: #fda4af; color: #1a0006; }
+    .panel-b .postit:nth-child(5n+4) { background: #fef08a; color: #1a1a00; }
+    .panel-b .postit:nth-child(5n)   { background: #c4b5fd; color: #0c0420; }
+    /* 회전 다양화 */
+    .postit:nth-child(odd)  { transform: rotate(-1.8deg); }
+    .postit:nth-child(even) { transform: rotate(1.5deg); }
+    .postit:nth-child(3n)   { transform: rotate(-0.6deg); }
+    .postit:nth-child(5n)   { transform: rotate(2deg); }
+    .postit:nth-child(7n)   { transform: rotate(-2.3deg); }
+
+    .postit-star {
+      align-self: center;
+      flex-shrink: 0;
+      font-size: 56px;
+      line-height: 1;
+      color: #b45309;
+      text-shadow: 0 0 10px rgba(245, 158, 11, 0.7);
+      font-family: 'Segoe UI Symbol', 'Apple Color Emoji', sans-serif;
+    }
+    .postit-text {
+      flex: 1;
+      min-width: 0;
+      font-size: 30px;
+      font-weight: 800;
+      line-height: 1.28;
+      word-break: keep-all;
+      overflow-wrap: break-word;
+      letter-spacing: -0.01em;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      white-space: pre-line;
+    }
+    @media (min-width: 1280px) {
+      .postit-star { font-size: 54px; }
+      .postit-text { font-size: 34px; }
+    }
+    @media (min-width: 1600px) {
+      .postit-star { font-size: 64px; }
+      .postit-text { font-size: 40px; }
+    }
+    @media (min-width: 1920px) {
+      .postit-star { font-size: 76px; }
+      .postit-text { font-size: 48px; line-height: 1.26; }
+    }
+    @media (min-width: 2400px) {
+      .postit-star { font-size: 92px; }
+      .postit-text { font-size: 60px; }
+    }
+    /* 단일 조 뷰: 1.4x */
+    body[data-view="a"] .postit-star,
+    body[data-view="b"] .postit-star { font-size: 84px; }
+    body[data-view="a"] .postit-text,
+    body[data-view="b"] .postit-text { font-size: 56px; }
+    @media (min-width: 1600px) {
+      body[data-view="a"] .postit-star, body[data-view="b"] .postit-star { font-size: 100px; }
+      body[data-view="a"] .postit-text, body[data-view="b"] .postit-text { font-size: 68px; }
+    }
+    @media (min-width: 1920px) {
+      body[data-view="a"] .postit-star, body[data-view="b"] .postit-star { font-size: 120px; }
+      body[data-view="a"] .postit-text, body[data-view="b"] .postit-text { font-size: 82px; }
+    }
+
+    /* legacy 1장 모드 (사용 안 함) */
+    .adopted-cards-viewport {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* ---- Adopted card (형광 노란 포스트잇) — 1장씩 전체 영역 차지 ---- */
+    .adopted-card {
+      position: absolute;
+      inset: 12px;
+      border-radius: 6px;
+      background: var(--bg-card-adopted);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow:
+        8px 14px 40px rgba(0, 0, 0, 0.7),
+        2px 4px 10px rgba(0, 0, 0, 0.5),
+        inset 0 2px 0 rgba(255, 255, 255, 0.5);
+      opacity: 1;
+      transition: opacity 0.4s ease, transform 0.3s ease;
+      transform: rotate(-1.6deg);
+    }
+    .adopted-card.alt-rotate { transform: rotate(1.4deg); }
+
+    /* A vs B strip at top of card */
+    .adopted-card::before {
+      content: '';
+      display: block;
+      height: 10px;
+      flex-shrink: 0;
+    }
+    .panel-a .adopted-card::before { background: var(--color-a); }
+    .panel-b .adopted-card::before { background: var(--color-b); }
+
+    .adopted-card.fading { opacity: 0; }
+
+    /* ---- Star mark (CSS only for cross-OS consistency at 200px) ---- */
+    .star-mark {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      font-size: 100px;
+      line-height: 1;
+      color: #f59e0b;
+      text-shadow:
+        0 0 12px rgba(245, 158, 11, 0.9),
+        0 0 28px rgba(245, 158, 11, 0.6),
+        0 0 50px rgba(245, 158, 11, 0.3);
+      user-select: none;
+      pointer-events: none;
+      font-family: 'Segoe UI Symbol', 'Apple Color Emoji', sans-serif;
+    }
+
+    .adopted-card-body {
+      flex: 1;
+      padding: 20px 28px 24px 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 0;
+    }
+
+    .adopted-text {
+      font-size: 60px;
+      font-weight: 900;
+      line-height: 1.3;
+      letter-spacing: -0.02em;
+      color: var(--text-on-adopted);
+      word-break: keep-all;
+      overflow-wrap: break-word;
+      font-family: var(--font);
+    }
+
+    /* ---- 해상도별 자동 확대 — 채택 카드 (양조 모드) ---- */
+    @media (min-width: 1280px) {
+      .star-mark { font-size: 120px; }
+      .adopted-text { font-size: 84px; }
+      .panel-label { font-size: 48px; }
+    }
+    @media (min-width: 1600px) {
+      .star-mark { font-size: 160px; }
+      .adopted-text { font-size: 108px; }
+      .panel-label { font-size: 60px; }
+    }
+    @media (min-width: 1920px) {
+      .star-mark { font-size: 200px; }
+      .adopted-text { font-size: 132px; line-height: 1.22; }
+      .panel-label { font-size: 72px; }
+    }
+    @media (min-width: 2400px) {
+      .star-mark { font-size: 240px; }
+      .adopted-text { font-size: 156px; }
+      .panel-label { font-size: 88px; }
+    }
+
+    /* ---- 단일 조 모드: 한 조가 전체 화면 차지하면 폰트 1.5x ---- */
+    body[data-view="a"] .panel-b,
+    body[data-view="b"] .panel-a { display: none !important; }
+    body[data-view="a"] .panel-a,
+    body[data-view="b"] .panel-b { flex: 1 1 100%; border-right: none; }
+    body[data-view="a"] .adopted-text,
+    body[data-view="b"] .adopted-text { font-size: 132px; }
+    body[data-view="a"] .star-mark,
+    body[data-view="b"] .star-mark { font-size: 200px; }
+    body[data-view="a"] .panel-label,
+    body[data-view="b"] .panel-label { font-size: 96px; }
+    body[data-view="a"] .remaining-chip,
+    body[data-view="b"] .remaining-chip { font-size: 48px; padding: 10px 24px 12px; }
+    @media (min-width: 1600px) {
+      body[data-view="a"] .adopted-text,
+      body[data-view="b"] .adopted-text { font-size: 168px; }
+      body[data-view="a"] .star-mark,
+      body[data-view="b"] .star-mark { font-size: 260px; }
+      body[data-view="a"] .panel-label,
+      body[data-view="b"] .panel-label { font-size: 120px; }
+      body[data-view="a"] .remaining-chip,
+      body[data-view="b"] .remaining-chip { font-size: 60px; }
+    }
+    @media (min-width: 1920px) {
+      body[data-view="a"] .adopted-text,
+      body[data-view="b"] .adopted-text { font-size: 200px; line-height: 1.18; }
+      body[data-view="a"] .star-mark,
+      body[data-view="b"] .star-mark { font-size: 320px; }
+      body[data-view="a"] .panel-label,
+      body[data-view="b"] .panel-label { font-size: 140px; }
+      body[data-view="a"] .remaining-chip,
+      body[data-view="b"] .remaining-chip { font-size: 72px; }
+    }
+
+    /* ---- 포스트잇 강화: 약간 회전 + corner curl + 미세 결 ---- */
+    .adopted-card {
+      background-image:
+        linear-gradient(135deg, rgba(255,255,255,0.18) 0%, transparent 30%),
+        linear-gradient(180deg, var(--bg-card-adopted), #fcd34d 100%);
+    }
+    .adopted-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.18) 50%, rgba(0,0,0,0.06) 100%);
+      border-bottom-right-radius: 10px;
+      pointer-events: none;
+    }
+
+    /* ---- 뷰 모드 토글 힌트 ---- */
+    .view-hint {
+      position: fixed;
+      bottom: 14px;
+      right: 18px;
+      background: rgba(0,0,0,0.55);
+      color: #fde047;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      z-index: 50;
+      pointer-events: none;
+      font-family: var(--font);
+    }
+    body.hint-hidden .view-hint { opacity: 0; transition: opacity 0.6s; }
+
+    /* ---- Pagination dots ---- */
+    .pagination-dots {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      align-items: center;
+      padding: 8px 0 4px;
+      flex-shrink: 0;
+      min-height: 22px;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #4a5568;
+      transition: background 0.3s ease;
+    }
+    .dot.active { background: #fde047; }
+
+    /* ---- REMAINING ZONE (하단 30%) ---- */
+    .remaining-zone {
+      flex: 0 0 30%;
+      border-top: 1px solid var(--border-divider);
+      display: flex;
+      flex-direction: column;
+      padding: 10px 20px 12px;
+      overflow: hidden;
+      background: #111820;
+    }
+
+    .remaining-zone-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      flex-shrink: 0;
+    }
+
+    .remaining-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      overflow-y: auto;
+      align-content: flex-start;
+    }
+
+    .remaining-chip {
+      background: var(--bg-card-remaining);
+      color: var(--text-on-remaining);
+      border-radius: 6px;
+      padding: 6px 14px 7px;
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.3;
+      letter-spacing: -0.01em;
+      word-break: keep-all;
+      max-width: 100%;
+    }
+
+    @media (min-width: 1280px) { .remaining-chip { font-size: 32px; } }
+    @media (min-width: 1600px) { .remaining-chip { font-size: 36px; padding: 7px 18px 8px; } }
+    @media (min-width: 1920px) { .remaining-chip { font-size: 40px; padding: 8px 20px 10px; } }
+    @media (min-width: 2400px) { .remaining-chip { font-size: 48px; } }
+
+    .remaining-chip.placeholder {
+      background: #2a3240;
+      color: #4a5568;
+      font-style: italic;
+      font-weight: 400;
+    }
+
+    /* ---- Waiting placeholder card ---- */
+    .adopted-card.placeholder {
+      background: #2a3240;
+      box-shadow: none;
+    }
+    .adopted-card.placeholder::before { background: #3a4560; }
+    .adopted-card.placeholder .star-mark { color: #4a5568; text-shadow: none; }
+    .adopted-card.placeholder .adopted-text {
+      color: #4a5568;
+      font-weight: 500;
+      font-style: italic;
+      font-size: 40px;
+    }
+
+    /* ---- Loading overlay ---- */
+    .loading-overlay {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      flex-direction: column;
+      gap: 16px;
+      color: var(--text-muted);
+      font-size: 20px;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #2a3240;
+      border-top-color: #06b6d4;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---- Narrow viewport fallback ---- */
+    @media (max-width: 900px) {
+      .split-wrapper { flex-direction: column; overflow-y: auto; }
+      .panel-a { border-right: none; border-bottom: 2px solid var(--border-divider); }
+      body { overflow: auto; }
+    }
+  </style>
+
+  <!-- Global styles for dynamically-injected DOM (Astro scoped CSS won't reach innerHTML) -->
+  <style is:global>
+    .postit-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-auto-rows: minmax(0, 1fr);
+      gap: 36px;
+      padding: 20px 18px 28px;
+      min-height: 0;
+      overflow: hidden;
+      align-content: stretch;
+    }
+    body[data-view="a"] .postit-grid,
+    body[data-view="b"] .postit-grid {
+      gap: 52px;
+      padding: 28px 32px 40px;
+    }
+    .postit {
+      position: relative;
+      padding: 18px 26px 22px 22px;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 22px;
+      font-family: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', sans-serif;
+      box-shadow:
+        4px 7px 18px rgba(0, 0, 0, 0.18),
+        inset 0 -3px 8px rgba(0, 0, 0, 0.06),
+        inset 0 2px 0 rgba(255, 255, 255, 0.5);
+      transition: transform 0.25s ease;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .postit::before {
+      content: '';
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%) rotate(-3deg);
+      width: 70px;
+      height: 22px;
+      background: rgba(255, 255, 255, 0.55);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    }
+    .panel-a .postit:nth-child(5n+1) { background: #fef08a; color: #1a1a00; }
+    .panel-a .postit:nth-child(5n+2) { background: #fde047; color: #1a1a00; }
+    .panel-a .postit:nth-child(5n+3) { background: #fbbf24; color: #1a1000; }
+    .panel-a .postit:nth-child(5n+4) { background: #a7f3d0; color: #052e16; }
+    .panel-a .postit:nth-child(5n)   { background: #bae6fd; color: #001a26; }
+    .panel-b .postit:nth-child(5n+1) { background: #fed7aa; color: #1a0a00; }
+    .panel-b .postit:nth-child(5n+2) { background: #fdba74; color: #1a0a00; }
+    .panel-b .postit:nth-child(5n+3) { background: #fda4af; color: #1a0006; }
+    .panel-b .postit:nth-child(5n+4) { background: #fef08a; color: #1a1a00; }
+    .panel-b .postit:nth-child(5n)   { background: #c4b5fd; color: #0c0420; }
+    .postit:nth-child(odd)  { transform: rotate(-1.8deg); }
+    .postit:nth-child(even) { transform: rotate(1.5deg); }
+    .postit:nth-child(3n)   { transform: rotate(-0.6deg); }
+    .postit:nth-child(5n)   { transform: rotate(2deg); }
+    .postit:nth-child(7n)   { transform: rotate(-2.3deg); }
+    .postit-star {
+      align-self: center;
+      flex-shrink: 0;
+      font-size: 56px;
+      line-height: 1;
+      color: #b45309;
+      text-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+      font-family: 'Segoe UI Symbol', 'Apple Color Emoji', sans-serif;
+    }
+    .postit-text {
+      flex: 1;
+      min-width: 0;
+      font-size: 30px;
+      font-weight: 800;
+      line-height: 1.28;
+      word-break: keep-all;
+      overflow-wrap: break-word;
+      letter-spacing: -0.01em;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      white-space: pre-line;
+    }
+    @media (min-width: 1280px) {
+      .postit-star { font-size: 54px; }
+      .postit-text { font-size: 34px; }
+    }
+    @media (min-width: 1600px) {
+      .postit-star { font-size: 64px; }
+      .postit-text { font-size: 40px; }
+    }
+    @media (min-width: 1920px) {
+      .postit-star { font-size: 76px; }
+      .postit-text { font-size: 48px; line-height: 1.26; }
+    }
+    @media (min-width: 2400px) {
+      .postit-star { font-size: 92px; }
+      .postit-text { font-size: 60px; }
+    }
+    body[data-view="a"] .postit-star,
+    body[data-view="b"] .postit-star { font-size: 84px; }
+    body[data-view="a"] .postit-text,
+    body[data-view="b"] .postit-text { font-size: 56px; }
+    @media (min-width: 1600px) {
+      body[data-view="a"] .postit-star, body[data-view="b"] .postit-star { font-size: 100px; }
+      body[data-view="a"] .postit-text, body[data-view="b"] .postit-text { font-size: 68px; }
+    }
+    @media (min-width: 1920px) {
+      body[data-view="a"] .postit-star, body[data-view="b"] .postit-star { font-size: 120px; }
+      body[data-view="a"] .postit-text, body[data-view="b"] .postit-text { font-size: 82px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Privacy banner -->
+  <div class="privacy-banner">
+    🔒 모더레이터 운영 페이지 · 외부 공개 금지
+  </div>
+
+  <!-- Sub-nav -->
+  <nav class="subnav" aria-label="모더레이터 도구 네비게이션">
+    <span class="subnav-label">[모더레이터 도구]</span>
+    <a href="/ko/moderator/live">라이브</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/board">보드</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/heatmap">히트맵</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/clusters">클러스터</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/agenda-network">의제연결</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/groups">조별</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/regulation">운영규정</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/agenda" class="current">의제선정</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/agenda-race">투표버블</a>
+  </nav>
+
+  <!-- Env error banner -->
+  <div id="env-error-banner" class="env-error-banner" style="display:none;" role="alert">
+    ⚠️ PUBLIC_AGENDA_SHEET_CSV_URL 환경변수가 설정되지 않았습니다.<br>
+    Cloudflare 환경변수 설정 후 재배포하세요. ?demo=1 파라미터로 더미 데이터를 확인할 수 있습니다.
+  </div>
+
+  <!-- Page header -->
+  <header class="page-header">
+    <h1>4교시 의제선정 — 조별 채택 의제</h1>
+    <div class="status" id="status-bar">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-text">불러오는 중...</span>
+      <span class="pause-hint" id="pause-hint">드래그로 의제 이동 · [스페이스] 회전 일시정지</span>
+      <button id="link-btn" class="link-btn" type="button">🔗 연결</button>
+      <button id="reset-btn" class="reset-btn" type="button" hidden>↺ 시트 순서로</button>
+    </div>
+  </header>
+
+  <!-- Build-time data island: sheet URL -->
+  <script id="sheet-url-data" type="application/json" set:html={JSON.stringify(sheetCsvUrl)}></script>
+
+  <!-- Main split layout -->
+  <div class="split-wrapper" id="split-wrapper" style="display:none;">
+    <svg id="link-overlay" class="link-overlay" xmlns="http://www.w3.org/2000/svg"></svg>
+    <!-- A조 패널 -->
+    <div class="panel panel-a" id="panel-a">
+      <div class="panel-header">
+        <span class="panel-label">A조</span>
+        <span class="panel-sublabel">채택 의제</span>
+        <span class="response-time" id="time-a"></span>
+      </div>
+      <!-- 채택 zone (70%) -->
+      <div class="adopted-zone">
+        <div class="adopted-zone-label">⭐ 채택된 의제</div>
+        <div class="postit-grid" id="adopted-a"></div>
+        <div class="pagination-dots" id="dots-a" style="display:none;"></div>
+      </div>
+      <!-- 나머지 zone (30%) -->
+      <div class="remaining-zone">
+        <div class="remaining-zone-label">논의된 나머지 의제</div>
+        <div class="remaining-chips" id="remaining-a"></div>
+      </div>
+    </div>
+
+    <!-- B조 패널 -->
+    <div class="panel panel-b" id="panel-b">
+      <div class="panel-header">
+        <span class="panel-label">B조</span>
+        <span class="panel-sublabel">채택 의제</span>
+        <span class="response-time" id="time-b"></span>
+      </div>
+      <!-- 채택 zone (70%) -->
+      <div class="adopted-zone">
+        <div class="adopted-zone-label">⭐ 채택된 의제</div>
+        <div class="postit-grid" id="adopted-b"></div>
+        <div class="pagination-dots" id="dots-b" style="display:none;"></div>
+      </div>
+      <!-- 나머지 zone (30%) -->
+      <div class="remaining-zone">
+        <div class="remaining-zone-label">논의된 나머지 의제</div>
+        <div class="remaining-chips" id="remaining-b"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading overlay -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+    <span>응답 대기 중...</span>
+  </div>
+
+  <!-- View mode hint -->
+  <div class="view-hint" id="view-hint">
+    <span>키: <b>1</b>=A조만 · <b>2</b>=B조만 · <b>0</b>=양조 같이</span>
+  </div>
+
+  <script is:inline>
+    /* ---- 뷰 모드 키보드 토글 (0=양조, 1=A조만, 2=B조만) ---- */
+    (function () {
+      var initial = new URLSearchParams(location.search).get('view') || 'both';
+      document.body.setAttribute('data-view', initial);
+      var hint = document.getElementById('view-hint');
+      var hideTimer;
+      function setView(v) {
+        document.body.setAttribute('data-view', v);
+        document.body.classList.remove('hint-hidden');
+        if (hideTimer) clearTimeout(hideTimer);
+        hideTimer = setTimeout(function () { document.body.classList.add('hint-hidden'); }, 3500);
+      }
+      document.addEventListener('keydown', function (e) {
+        if (e.key === '0') setView('both');
+        else if (e.key === '1') setView('a');
+        else if (e.key === '2') setView('b');
+      });
+      // initial fade out
+      setTimeout(function () { document.body.classList.add('hint-hidden'); }, 4000);
+    })();
+  </script>
+
+  <script is:inline>
+    (function () {
+      /* ---- Read build-time env ---- */
+      var dataEl = document.getElementById('sheet-url-data');
+      var sheetUrl = dataEl ? JSON.parse(dataEl.textContent || '""') : '';
+
+      if (!sheetUrl) {
+        document.getElementById('env-error-banner').style.display = 'block';
+      }
+
+      var POLL_INTERVAL = 10000;   // 10s
+      var ROTATE_INTERVAL = 8000; // 8s per card
+      /* WINDOW_SIZE=1: 한 장씩 크게 (강당 8-15m 가시성 최우선)
+         카드 > 1장이면 auto-rotate */
+
+      /* ---- Demo data (?demo=1) ---- */
+      var DEMO_DATA = {
+        'A조': {
+          ts: '데모 · A조',
+          adopted: [
+            '탄소세 도입 시 서민 부담 완화 방안 마련',
+            '재생에너지 전환 가속화 로드맵 법제화',
+            '기후위기 취약계층 우선 지원 제도',
+            '건물 에너지 효율 기준 강화',
+            '탄소중립 교육 의무화'
+          ],
+          remaining: [
+            '핵에너지 역할 재검토',
+            '탄소 포집 기술 투자',
+            '해상풍력 규제 완화',
+            '대중교통 무상화',
+            '육식 소비 감축 인센티브',
+            '녹색 공공조달 의무화'
+          ]
+        },
+        'B조': {
+          ts: '데모 · B조',
+          adopted: [
+            '기후 적응 도시 인프라 투자 확대',
+            '농업 분야 기후 피해 보상 제도화',
+            '해수면 상승 대응 연안 정비',
+            '폭염 취약계층 냉방 지원 확대'
+          ],
+          remaining: [
+            '홍수 예보 시스템 고도화',
+            '산불 대응 인력 확충',
+            '기후 이주민 지원 법제화',
+            '가뭄 대비 저수 시설 확대',
+            '생태계 복원 펀드 조성'
+          ]
+        }
+      };
+
+      function isDemoMode() {
+        try {
+          var p = new URLSearchParams(window.location.search);
+          return p.get('demo') === '1' || !sheetUrl;
+        } catch (e) {
+          return !sheetUrl;
+        }
+      }
+
+      /* ---- RFC 4180 quoted-CSV parser (regulation.astro 동일) ---- */
+      function parseCSV(text) {
+        var rows = [];
+        var row = [];
+        var field = '';
+        var inQuotes = false;
+        var i = 0;
+        var len = text.length;
+
+        while (i < len) {
+          var ch = text[i];
+          if (inQuotes) {
+            if (ch === '"') {
+              if (i + 1 < len && text[i + 1] === '"') {
+                field += '"'; i += 2;
+              } else {
+                inQuotes = false; i++;
+              }
+            } else {
+              field += ch; i++;
+            }
+          } else {
+            if (ch === '"') {
+              inQuotes = true; i++;
+            } else if (ch === ',') {
+              row.push(field); field = ''; i++;
+            } else if (ch === '\r') {
+              row.push(field); field = '';
+              rows.push(row); row = [];
+              i++;
+              if (i < len && text[i] === '\n') i++;
+            } else if (ch === '\n') {
+              row.push(field); field = '';
+              rows.push(row); row = [];
+              i++;
+            } else {
+              field += ch; i++;
+            }
+          }
+        }
+        if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
+        if (rows.length > 0) {
+          var last = rows[rows.length - 1];
+          if (last.length === 1 && last[0] === '') rows.pop();
+        }
+        return rows;
+      }
+
+      /* ---- Parse Sheet into { A조: { adopted:[...], remaining:[...], ts }, B조: ... } ---- */
+      function extractLatest(rows) {
+        if (rows.length < 2) return {};
+        // Row 0 = header
+        // cols: 0=ts, 1=그룹, 2-6=채택1-5, 7-14=나머지1-8
+        var byGroup = {};
+        for (var r = 1; r < rows.length; r++) {
+          var row = rows[r];
+          if (!row || row.length < 2) continue;
+          var ts = (row[0] || '').trim();
+          var group = (row[1] || '').trim();
+          if (!group) continue;
+          if (!byGroup[group] || ts > byGroup[group].ts) {
+            byGroup[group] = { ts: ts, row: row };
+          }
+        }
+        var result = {};
+        for (var g in byGroup) {
+          var rowData = byGroup[g].row;
+          // 실제 폼 스키마: cols 2~6 = 채택 5개 (의제1~5), cols 7~ = 나머지 가변 (의제6~의제17)
+          var adopted = [];
+          for (var k = 0; k < 5; k++) {
+            var v = (rowData[2 + k] || '').trim();
+            if (v) adopted.push(v);
+          }
+          var remaining = [];
+          for (var m = 7; m < rowData.length; m++) {
+            var rv = (rowData[m] || '').trim();
+            if (rv) remaining.push(rv);
+          }
+          result[g] = { adopted: adopted, remaining: remaining, ts: byGroup[g].ts };
+        }
+        return result;
+      }
+
+      function escHtml(s) {
+        return s
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function fmtTs(ts) {
+        if (!ts) return '';
+        try {
+          var d = new Date(ts.replace(/\//g, '-'));
+          if (isNaN(d)) return ts;
+          return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        } catch (e) { return ts; }
+      }
+
+      /* ---- Auto-rotate state (A·B 독립) ---- */
+      // rotators[panelId] = { idx, timer, total, panelId }
+      var rotators = {};
+      var globalPaused = false;
+
+      /*
+       * createRotator: 패널당 독립 로테이터.
+       * - total <= 1이면 타이머 없음 (회전 불필요)
+       * - poll 시 타임스탬프가 바뀌지 않으면 rotator를 재생성하지 않음
+       *   → lastTs 캐시로 체크 (Blocker #1 fix)
+       */
+      var lastTs = { a: null, b: null };
+
+      function startRotator(panelId, total) {
+        // Clear existing
+        if (rotators[panelId] && rotators[panelId].timer) {
+          clearInterval(rotators[panelId].timer);
+        }
+        var rot = { idx: 0, timer: null, total: total, panelId: panelId };
+        rotators[panelId] = rot;
+        if (total <= 1) return rot; // no rotation needed
+        rot.timer = setInterval(function () {
+          if (globalPaused) return;
+          advanceCard(rot);
+        }, ROTATE_INTERVAL);
+        return rot;
+      }
+
+      function advanceCard(rot) {
+        var viewport = document.getElementById('adopted-' + rot.panelId);
+        var dotsEl = document.getElementById('dots-' + rot.panelId);
+        if (!viewport) return;
+
+        var card = viewport.querySelector('.adopted-card');
+        if (card) card.classList.add('fading');
+
+        var nextIdx = (rot.idx + 1) % rot.total;
+        setTimeout(function () {
+          rot.idx = nextIdx;
+          renderAdoptedCard(rot.panelId, rot.idx);
+          updateDots(dotsEl, rot);
+        }, 400);
+      }
+
+      /* ---- Render single adopted card (1장 at idx) ---- */
+      function renderAdoptedCard(panelId, idx) {
+        var viewport = document.getElementById('adopted-' + panelId);
+        if (!viewport) return;
+        var panelData = currentData[panelId];
+        var adopted = panelData ? panelData.adopted : [];
+
+        var html = '';
+        var rotClass = (idx % 2 === 1) ? ' alt-rotate' : '';
+        if (adopted.length === 0) {
+          html = buildPlaceholderCard('');
+        } else {
+          html = buildAdoptedCard(adopted[idx % adopted.length], rotClass);
+        }
+        viewport.innerHTML = html;
+      }
+
+      function buildAdoptedCard(text, rotClass) {
+        return '<div class="adopted-card' + (rotClass || '') + '">'
+          + '<span class="star-mark" aria-hidden="true">★</span>'
+          + '<div class="adopted-card-body">'
+          + '<div class="adopted-text">' + escHtml(text) + '</div>'
+          + '</div>'
+          + '</div>';
+      }
+
+      function buildPlaceholderCard() {
+        return '<div class="adopted-card placeholder">'
+          + '<span class="star-mark" aria-hidden="true">★</span>'
+          + '<div class="adopted-card-body">'
+          + '<div class="adopted-text">응답 대기 중</div>'
+          + '</div>'
+          + '</div>';
+      }
+
+      function updateDots(dotsEl, rot) {
+        if (!dotsEl) return;
+        var total = rot.total;
+        if (total <= 1) {
+          dotsEl.innerHTML = '';
+          return;
+        }
+        var html = '';
+        for (var i = 0; i < total; i++) {
+          html += '<div class="dot' + (i === rot.idx ? ' active' : '') + '"></div>';
+        }
+        dotsEl.innerHTML = html;
+      }
+
+      /* ---- Render remaining chips ---- */
+      function renderRemaining(panelId, remainingArr) {
+        var el = document.getElementById('remaining-' + panelId);
+        if (!el) return;
+        if (!remainingArr || remainingArr.length === 0) {
+          el.innerHTML = '<div class="remaining-chip placeholder">나머지 의제 없음</div>';
+          return;
+        }
+        var html = '';
+        for (var i = 0; i < remainingArr.length; i++) {
+          html += '<div class="remaining-chip">' + escHtml(remainingArr[i]) + '</div>';
+        }
+        el.innerHTML = html;
+      }
+
+      /* ============================================================
+         BOARD STATE — DnD persistent reorder (localStorage)
+         ============================================================
+         Semantics: Trello/Insert style
+           - 카드 X → Y 상단 절반 드롭: X가 Y 자리, Y와 아래 한 칸씩 밀림
+           - 카드 X → Y 하단 절반 드롭: X가 Y 다음 자리, 그 아래만 밀림
+           - 카드 X → 빈 영역 드롭: 해당 패널 맨 끝에 추가
+           - 자기 자신/같은 자리: no-op
+           - 패널 교차 (A→B): A에서 제거, B에 삽입 (5/5 → 4/6 등 허용)
+         Persistence:
+           - localStorage key 'agenda-board-state-v1'
+           - sig = "A타임스탬프|||B타임스탬프"
+           - 시트 ts 변경 시 자동 폐기 → 시트 원본 순서로 복귀
+         Polling 안전:
+           - isDragging=true 동안 fetchAndRender skip → 드래그 중 DOM 폭파 방지
+      */
+      var STORAGE_KEY = 'agenda-board-state-v1';
+      var boardState = null;
+      var latestSheetData = null;
+      var isDragging = false;
+      var draggedId = null;
+      var draggedFromPanel = null;
+
+      function uid() {
+        return 'p_' + Math.random().toString(36).slice(2, 10) + '_' + Date.now().toString(36);
+      }
+
+      function buildSig(data) {
+        var aTs = (data && data['A조']) ? data['A조'].ts : '';
+        var bTs = (data && data['B조']) ? data['B조'].ts : '';
+        return aTs + '|||' + bTs;
+      }
+
+      function loadBoardState() {
+        try {
+          var raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return null;
+          var p = JSON.parse(raw);
+          if (!p || !p.sig || !p.items || !p.items.a || !p.items.b) return null;
+          return p;
+        } catch (e) { return null; }
+      }
+
+      function saveBoardState() {
+        try {
+          if (boardState) localStorage.setItem(STORAGE_KEY, JSON.stringify(boardState));
+        } catch (e) {}
+      }
+
+      function freshBoardStateFromSheet(data, sig) {
+        var aArr = (data && data['A조'] && data['A조'].adopted) ? data['A조'].adopted : [];
+        var bArr = (data && data['B조'] && data['B조'].adopted) ? data['B조'].adopted : [];
+        return {
+          sig: sig,
+          sheetSnapshot: { a: aArr.slice(), b: bArr.slice() },
+          items: {
+            a: aArr.map(function (t) { return { id: uid(), text: t }; }),
+            b: bArr.map(function (t) { return { id: uid(), text: t }; })
+          },
+          links: []
+        };
+      }
+
+      function syncWithSheet(data) {
+        latestSheetData = data;
+        var sig = buildSig(data);
+        var saved = loadBoardState();
+        if (saved && saved.sig === sig) {
+          boardState = saved;
+          if (!boardState.links) boardState.links = [];
+        } else {
+          boardState = freshBoardStateFromSheet(data, sig);
+          saveBoardState();
+        }
+      }
+
+      function isDirty() {
+        if (!boardState) return false;
+        var snap = boardState.sheetSnapshot;
+        var panels = ['a', 'b'];
+        for (var k = 0; k < panels.length; k++) {
+          var p = panels[k];
+          var items = boardState.items[p] || [];
+          var src = snap[p] || [];
+          if (items.length !== src.length) return true;
+          for (var i = 0; i < items.length; i++) {
+            if (items[i].text !== src[i]) return true;
+          }
+        }
+        return false;
+      }
+
+      function updateResetButton() {
+        var btn = document.getElementById('reset-btn');
+        if (!btn) return;
+        btn.hidden = !isDirty();
+      }
+
+      /* ---- 양 패널 줄(층위) 정렬 — max(A,B) 행 분할로 1번째 줄 높이 통일 ---- */
+      function syncRowAlignment() {
+        if (!boardState) return;
+        var aLen = (boardState.items.a || []).length;
+        var bLen = (boardState.items.b || []).length;
+        var max = Math.max(aLen, bLen, 1);
+        var spec = 'repeat(' + max + ', minmax(0, 1fr))';
+        var gridA = document.getElementById('adopted-a');
+        var gridB = document.getElementById('adopted-b');
+        if (gridA) { gridA.style.gridTemplateRows = spec; gridA.style.gridAutoRows = 'minmax(0, 1fr)'; }
+        if (gridB) { gridB.style.gridTemplateRows = spec; gridB.style.gridAutoRows = 'minmax(0, 1fr)'; }
+      }
+
+      /* ---- Render single panel from boardState ---- */
+      function renderPanel(panelId, groupData) {
+        var items = boardState ? (boardState.items[panelId] || []) : [];
+        renderAdoptedGrid(panelId, items);
+        renderRemaining(panelId, groupData ? groupData.remaining : null);
+      }
+
+      /* ---- postit-grid 렌더 (items: [{id,text}]) — draggable + data-* ---- */
+      function renderAdoptedGrid(panelId, items) {
+        var el = document.getElementById('adopted-' + panelId);
+        if (!el) return;
+        var dragAttr = document.body.classList.contains('link-mode') ? 'false' : 'true';
+        if (!items || items.length === 0) {
+          el.innerHTML = '<div class="postit placeholder" data-panel="' + panelId
+            + '" style="background:#f5f0e6;color:#9c8d75;cursor:default;">'
+            + '<span class="postit-star">★</span>'
+            + '<div class="postit-text" style="font-style:italic;">응답 대기 중</div></div>';
+          return;
+        }
+        var html = '';
+        for (var i = 0; i < items.length; i++) {
+          var it = items[i];
+          html += '<div class="postit" draggable="' + dragAttr + '"'
+            + ' data-postit-id="' + it.id + '"'
+            + ' data-panel="' + panelId + '">'
+            + '<span class="postit-star" aria-hidden="true">★</span>'
+            + '<div class="postit-text">' + escHtml(it.text) + '</div>'
+            + '</div>';
+        }
+        el.innerHTML = html;
+      }
+
+      /* ---- Update UI state ---- */
+      function updateStatus(state, detail) {
+        var dot = document.getElementById('status-dot');
+        var txt = document.getElementById('status-text');
+        if (!dot || !txt) return;
+        dot.className = 'status-dot' + (state === 'live' ? ' live' : state === 'demo' ? ' demo' : '');
+        txt.textContent = detail || '대기 중';
+      }
+
+      function showPanels() {
+        document.getElementById('loading-overlay').style.display = 'none';
+        document.getElementById('split-wrapper').style.display = 'flex';
+      }
+
+      /* ---- Render with data ---- */
+      function applyData(data) {
+        syncWithSheet(data);
+        var groupA = data['A조'];
+        var groupB = data['B조'];
+        renderPanel('a', groupA || null);
+        renderPanel('b', groupB || null);
+
+        var timeA = document.getElementById('time-a');
+        var timeB = document.getElementById('time-b');
+        if (timeA) timeA.textContent = groupA ? ('최신: ' + fmtTs(groupA.ts)) : '응답 없음';
+        if (timeB) timeB.textContent = groupB ? ('최신: ' + fmtTs(groupB.ts)) : '응답 없음';
+
+        syncRowAlignment();
+        redrawLinks();
+        updateResetButton();
+        showPanels();
+      }
+
+      function renderDemo() {
+        applyData(DEMO_DATA);
+        updateStatus('demo', 'DEMO 모드 — 더미 데이터');
+      }
+
+      /* ---- Fetch & render ---- */
+      function fetchAndRender() {
+        if (isDragging) return;     // 드래그 중 폴링 결과 적용 보류
+        if (isDemoMode()) {
+          renderDemo();
+          return;
+        }
+
+        fetch(sheetUrl + '&t=' + Date.now(), { cache: 'no-store' })
+          .then(function (res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.text();
+          })
+          .then(function (text) {
+            if (isDragging) return; // race: 시작 후 drag
+            var rows = parseCSV(text);
+            var data = extractLatest(rows);
+            applyData(data);
+            updateStatus('live', '라이브 · 10초 폴링');
+          })
+          .catch(function (err) {
+            console.error('[agenda] fetch error:', err);
+            updateStatus('error', '연결 오류 — 재시도 중');
+            showPanels();
+          });
+      }
+
+      /* ============================================================
+         DnD HANDLERS (HTML5 native drag)
+         ============================================================ */
+      function clearDropIndicators() {
+        var nodes = document.querySelectorAll('.drop-target-before, .drop-target-after');
+        for (var i = 0; i < nodes.length; i++) {
+          nodes[i].classList.remove('drop-target-before');
+          nodes[i].classList.remove('drop-target-after');
+        }
+        var grids = document.querySelectorAll('.postit-grid');
+        for (var j = 0; j < grids.length; j++) grids[j].classList.remove('drop-empty');
+      }
+
+      function findIndexById(arr, id) {
+        for (var i = 0; i < arr.length; i++) if (arr[i].id === id) return i;
+        return -1;
+      }
+
+      function handleDrop(dstPanel, targetEl, clientY) {
+        if (!boardState) return;
+        var srcPanel = draggedFromPanel;
+        var srcId = draggedId;
+        if (!srcPanel || !srcId) return;
+        var srcArr = boardState.items[srcPanel];
+        var dstArr = boardState.items[dstPanel];
+        if (!srcArr || !dstArr) return;
+        var srcIdx = findIndexById(srcArr, srcId);
+        if (srcIdx === -1) return;
+
+        // Determine destination index BEFORE removal
+        var dstIdx;
+        var targetId = targetEl ? targetEl.getAttribute('data-postit-id') : null;
+        if (!targetEl || !targetId || targetId === srcId) {
+          dstIdx = dstArr.length;   // empty area or self → append
+        } else {
+          var targetIdx = findIndexById(dstArr, targetId);
+          if (targetIdx === -1) {
+            dstIdx = dstArr.length;
+          } else {
+            var rect = targetEl.getBoundingClientRect();
+            var midY = rect.top + rect.height / 2;
+            dstIdx = (clientY < midY) ? targetIdx : targetIdx + 1;
+          }
+        }
+
+        var srcItem = srcArr[srcIdx];
+        srcArr.splice(srcIdx, 1);
+
+        // Same-panel adjust: removal shifts indexes
+        if (srcPanel === dstPanel && srcIdx < dstIdx) dstIdx -= 1;
+        if (dstIdx < 0) dstIdx = 0;
+        if (dstIdx > dstArr.length) dstIdx = dstArr.length;
+
+        dstArr.splice(dstIdx, 0, srcItem);
+
+        clearDropIndicators();
+        saveBoardState();
+        renderAdoptedGrid('a', boardState.items.a);
+        renderAdoptedGrid('b', boardState.items.b);
+        syncRowAlignment();
+        redrawLinks();
+        updateResetButton();
+      }
+
+      function attachGridDnD(panelId) {
+        var grid = document.getElementById('adopted-' + panelId);
+        if (!grid) return;
+        grid.addEventListener('dragover', function (e) {
+          if (!draggedId) return;
+          e.preventDefault();
+          try { e.dataTransfer.dropEffect = 'move'; } catch (_) {}
+          clearDropIndicators();
+          var target = e.target.closest && e.target.closest('.postit[data-postit-id]');
+          if (!target) { grid.classList.add('drop-empty'); return; }
+          var tid = target.getAttribute('data-postit-id');
+          if (!tid || tid === draggedId) { grid.classList.add('drop-empty'); return; }
+          var rect = target.getBoundingClientRect();
+          var midY = rect.top + rect.height / 2;
+          if (e.clientY < midY) target.classList.add('drop-target-before');
+          else target.classList.add('drop-target-after');
+        });
+        grid.addEventListener('dragleave', function (e) {
+          if (!grid.contains(e.relatedTarget)) clearDropIndicators();
+        });
+        grid.addEventListener('drop', function (e) {
+          if (!draggedId) return;
+          e.preventDefault();
+          var dstPanel = (grid.id === 'adopted-a') ? 'a' : 'b';
+          var target = e.target.closest && e.target.closest('.postit[data-postit-id]');
+          handleDrop(dstPanel, target, e.clientY);
+        });
+      }
+
+      document.addEventListener('dragstart', function (e) {
+        var p = e.target && e.target.closest && e.target.closest('.postit[data-postit-id]');
+        if (!p) return;
+        var id = p.getAttribute('data-postit-id');
+        if (!id) return;
+        draggedId = id;
+        draggedFromPanel = p.getAttribute('data-panel');
+        isDragging = true;
+        try {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', id);
+        } catch (_) {}
+        p.classList.add('dragging');
+      });
+
+      document.addEventListener('dragend', function (e) {
+        var p = e.target && e.target.closest && e.target.closest('.postit');
+        if (p) p.classList.remove('dragging');
+        clearDropIndicators();
+        isDragging = false;
+        draggedId = null;
+        draggedFromPanel = null;
+      });
+
+      attachGridDnD('a');
+      attachGridDnD('b');
+
+      /* ---- Reset button ---- */
+      var resetBtn = document.getElementById('reset-btn');
+      if (resetBtn) {
+        resetBtn.addEventListener('click', function () {
+          try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
+          if (latestSheetData) {
+            boardState = freshBoardStateFromSheet(latestSheetData, buildSig(latestSheetData));
+            saveBoardState();
+            renderAdoptedGrid('a', boardState.items.a);
+            renderAdoptedGrid('b', boardState.items.b);
+            syncRowAlignment();
+            redrawLinks();
+            updateResetButton();
+          }
+        });
+      }
+
+      /* ============================================================
+         LINK MODE — 카드 두 개 클릭 → 곡선 연결 (SVG overlay)
+         ============================================================
+         - 헤더 "🔗 연결" 토글 → linkMode on/off
+         - linkMode 중: 카드 클릭 = 1차 source, 두 번째 카드 클릭 = 연결 생성
+         - 같은 카드 다시 클릭 = 취소
+         - 연결선 클릭 = 삭제
+         - linkMode 중에는 DnD 비활성
+         - 리사이즈/렌더 시 자동 재계산
+      */
+      var pendingLink = null;
+
+      function clearPendingLink() {
+        pendingLink = null;
+        var nodes = document.querySelectorAll('.postit.link-pending');
+        for (var i = 0; i < nodes.length; i++) nodes[i].classList.remove('link-pending');
+      }
+
+      function setLinkMode(on) {
+        if (on) document.body.classList.add('link-mode');
+        else document.body.classList.remove('link-mode');
+        var nodes = document.querySelectorAll('.postit[data-postit-id]');
+        for (var i = 0; i < nodes.length; i++) {
+          nodes[i].setAttribute('draggable', on ? 'false' : 'true');
+        }
+        if (!on) clearPendingLink();
+      }
+
+      function getCenterRel(el, container) {
+        var r = el.getBoundingClientRect();
+        var cr = container.getBoundingClientRect();
+        return { x: r.left + r.width / 2 - cr.left, y: r.top + r.height / 2 - cr.top, w: r.width, h: r.height };
+      }
+
+      function redrawLinks() {
+        var svg = document.getElementById('link-overlay');
+        var wrap = document.getElementById('split-wrapper');
+        if (!svg || !wrap || !boardState) return;
+        var wRect = wrap.getBoundingClientRect();
+        svg.setAttribute('viewBox', '0 0 ' + wRect.width + ' ' + wRect.height);
+        svg.setAttribute('width', wRect.width);
+        svg.setAttribute('height', wRect.height);
+        var links = boardState.links || [];
+        var html = '';
+        for (var i = 0; i < links.length; i++) {
+          var l = links[i];
+          if (!l || !l.from || !l.to) continue;
+          var elA = document.querySelector('.postit[data-postit-id="' + l.from.id + '"]');
+          var elB = document.querySelector('.postit[data-postit-id="' + l.to.id + '"]');
+          if (!elA || !elB) continue;
+          var pa = getCenterRel(elA, wrap);
+          var pb = getCenterRel(elB, wrap);
+          var d;
+          if (l.from.panel === l.to.panel) {
+            // 같은 패널 — 옆으로 휘는 활
+            var side = (l.from.panel === 'a') ? -1 : 1;
+            var bow = (l.from.panel === 'a') ? Math.min(pa.x, pb.x) - 70 : Math.max(pa.x, pb.x) + 70;
+            d = 'M ' + pa.x + ' ' + pa.y + ' C ' + bow + ' ' + pa.y + ', ' + bow + ' ' + pb.y + ', ' + pb.x + ' ' + pb.y;
+          } else {
+            // 패널 교차 — 가운데 부드러운 베지에
+            var midX = (pa.x + pb.x) / 2;
+            d = 'M ' + pa.x + ' ' + pa.y + ' C ' + midX + ' ' + pa.y + ', ' + midX + ' ' + pb.y + ', ' + pb.x + ' ' + pb.y;
+          }
+          html += '<path d="' + d + '" data-link-id="' + i + '"></path>';
+          html += '<circle cx="' + pa.x + '" cy="' + pa.y + '" r="7"></circle>';
+          html += '<circle cx="' + pb.x + '" cy="' + pb.y + '" r="7"></circle>';
+        }
+        svg.innerHTML = html;
+      }
+
+      /* 연결선 클릭 → 삭제 */
+      document.getElementById('link-overlay').addEventListener('click', function (e) {
+        var path = e.target.closest && e.target.closest('path[data-link-id]');
+        if (!path || !boardState) return;
+        var idx = parseInt(path.getAttribute('data-link-id'), 10);
+        if (isNaN(idx)) return;
+        boardState.links.splice(idx, 1);
+        saveBoardState();
+        redrawLinks();
+      });
+
+      /* 카드 클릭 → 연결 만들기 (linkMode일 때만) */
+      document.addEventListener('click', function (e) {
+        if (!document.body.classList.contains('link-mode')) return;
+        var p = e.target.closest && e.target.closest('.postit[data-postit-id]');
+        if (!p) return;
+        var id = p.getAttribute('data-postit-id');
+        var panel = p.getAttribute('data-panel');
+        if (!id) return;
+        if (pendingLink && pendingLink.id === id) { clearPendingLink(); return; }
+        if (!pendingLink) {
+          pendingLink = { id: id, panel: panel };
+          p.classList.add('link-pending');
+          return;
+        }
+        if (!boardState.links) boardState.links = [];
+        // 중복 방지 (양방향 동일 취급)
+        var dup = false;
+        for (var j = 0; j < boardState.links.length; j++) {
+          var L = boardState.links[j];
+          if ((L.from.id === pendingLink.id && L.to.id === id) ||
+              (L.from.id === id && L.to.id === pendingLink.id)) { dup = true; break; }
+        }
+        if (!dup) {
+          boardState.links.push({
+            from: { panel: pendingLink.panel, id: pendingLink.id },
+            to:   { panel: panel, id: id }
+          });
+        }
+        clearPendingLink();
+        saveBoardState();
+        redrawLinks();
+      });
+
+      /* Toggle button */
+      var linkBtn = document.getElementById('link-btn');
+      if (linkBtn) {
+        linkBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          setLinkMode(!document.body.classList.contains('link-mode'));
+        });
+      }
+
+      /* 리사이즈 시 재계산 */
+      window.addEventListener('resize', redrawLinks);
+
+      /* ---- Space-bar pause ---- */
+      document.addEventListener('keydown', function (e) {
+        if (e.code === 'Space' || e.key === ' ') {
+          e.preventDefault();
+          globalPaused = !globalPaused;
+          var hint = document.getElementById('pause-hint');
+          if (hint) {
+            if (globalPaused) {
+              hint.textContent = '[스페이스] 회전 재개 (일시정지 중)';
+              hint.classList.add('paused');
+            } else {
+              hint.textContent = '[스페이스] 회전 일시정지';
+              hint.classList.remove('paused');
+            }
+          }
+        }
+      });
+
+      /* ---- Init ---- */
+      fetchAndRender();
+      if (sheetUrl) {
+        setInterval(fetchAndRender, POLL_INTERVAL);
+      }
+    })();
+  </script>
+</body>
+</html>
