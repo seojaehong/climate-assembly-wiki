@@ -249,8 +249,20 @@ body {
 .opts-editor {
   display: none;
   margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--rule);
 }
 .opts-editor.open { display: block; }
+.edit-field { margin-bottom: 10px; }
+.edit-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
 .opts-textarea {
   width: 100%;
   min-height: 100px;
@@ -459,9 +471,22 @@ function renderCard(r) {
 
   const canActivate = r.status !== 'active';
   const canClose = r.status === 'active';
-  const isRunoff = (r.id || '').includes('runoff');
+  const key = r.id.replace(/-/g,'_');
+  // 옵션 textarea 가이드 (유형별)
+  const optsHint = r.type === 'SCALE_MULTI'
+    ? '척도 항목 JSON 배열. 예: [{"key":"의제01","label":"의제 01"}, {"key":"의제02","label":"의제 02"}]'
+    : r.type === 'TEXT'
+      ? 'TEXT 유형은 선지 없음 (자유 응답).'
+      : 'JSON 배열 형식. 예: ["A안", "B안", "C안"]';
 
-  return `<div class="round-card ${sc}" id="card_${r.id.replace(/-/g,'_')}">
+  const optsTextarea = r.type === 'TEXT' ? '' : `
+    <div class="edit-field">
+      <label class="edit-label">선지 (options)</label>
+      <textarea class="opts-textarea" id="ta_opts_${key}" placeholder='["옵션1","옵션2"]'>${escapeAttr(JSON.stringify(opts, null, 2))}</textarea>
+      <div class="opts-hint">${optsHint}</div>
+    </div>`;
+
+  return `<div class="round-card ${sc}" id="card_${key}">
     <div class="card-top">
       <span class="card-id mono">${r.id}</span>
       <span class="card-status ${sc}">${statusLabel(r.status)}</span>
@@ -474,14 +499,25 @@ function renderCard(r) {
         ${r.status === 'active' ? '&#x25B6; 활성 중' : '활성화'}
       </button>
       <button class="btn-close" onclick="closeRound('${r.id}')" ${canClose ? '' : 'disabled'}>마감</button>
-      ${isRunoff ? `<button class="btn-edit-opts" onclick="toggleEditOpts('${r.id}')">옵션 편집</button>` : ''}
+      <button class="btn-edit-opts" onclick="toggleEditOpts('${r.id}')">편집</button>
     </div>
-    ${isRunoff ? `<div class="opts-editor" id="editor_${r.id.replace(/-/g,'_')}">
-      <textarea class="opts-textarea" id="ta_${r.id.replace(/-/g,'_')}" placeholder='["옵션1", "옵션2", "옵션3"]'>${JSON.stringify(opts, null, 2)}</textarea>
-      <div class="opts-hint">JSON 배열 형식으로 입력. 예: ["A안", "B안", "C안"]<br>SCALE_MULTI는 [{"label":"항목1"}, ...] 형식</div>
-      <button class="btn-save-opts" onclick="saveOpts('${r.id}')">옵션 저장</button>
-    </div>` : ''}
+    <div class="opts-editor" id="editor_${key}">
+      <div class="edit-field">
+        <label class="edit-label">제목 (title)</label>
+        <input class="opts-textarea" style="min-height:auto" id="ta_title_${key}" value="${escapeAttr(r.title || '')}" />
+      </div>
+      <div class="edit-field">
+        <label class="edit-label">설명 (description)</label>
+        <textarea class="opts-textarea" id="ta_desc_${key}" placeholder="안내 문구">${escapeAttr(r.description || '')}</textarea>
+      </div>
+      ${optsTextarea}
+      <button class="btn-save-opts" onclick="saveRound('${r.id}')">저장</button>
+    </div>
   </div>`;
+}
+
+function escapeAttr(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 async function activateRound(id) {
@@ -525,21 +561,40 @@ function toggleEditOpts(id) {
   editor.classList.toggle('open');
 }
 
-async function saveOpts(id) {
+async function saveRound(id) {
   const key = id.replace(/-/g,'_');
-  const ta = document.getElementById('ta_' + key);
-  if (!ta) return;
-  let parsed;
-  try {
-    parsed = JSON.parse(ta.value);
-  } catch(e) {
-    alert('JSON 파싱 오류: ' + e.message + '\n예시: ["A안", "B안"]');
+  const titleEl = document.getElementById('ta_title_' + key);
+  const descEl  = document.getElementById('ta_desc_' + key);
+  const optsEl  = document.getElementById('ta_opts_' + key);
+
+  const patch = {};
+  if (titleEl) patch.title = (titleEl.value || '').trim();
+  if (descEl)  patch.description = descEl.value || '';
+
+  if (optsEl) {
+    let parsed;
+    try {
+      parsed = JSON.parse(optsEl.value);
+    } catch(e) {
+      alert('선지 JSON 파싱 오류: ' + e.message + '\n예시: ["A안", "B안"]');
+      return;
+    }
+    if (!Array.isArray(parsed)) {
+      alert('선지는 배열이어야 합니다. 예: ["A안","B안"]');
+      return;
+    }
+    patch.options = parsed;
+  }
+
+  if (!patch.title) {
+    alert('제목은 비울 수 없습니다.');
     return;
   }
+
   try {
-    const result = await sbPatch('cv_rounds', { 'id': 'eq.' + id }, { options: parsed });
+    const result = await sbPatch('cv_rounds', { 'id': 'eq.' + id }, patch);
     if (result && result.code) throw new Error(result.message || JSON.stringify(result));
-    showToast(id + ' 옵션 저장 완료');
+    showToast(id + ' 저장 완료');
     await loadRounds();
   } catch(e) {
     alert('저장 오류: ' + (e.message || JSON.stringify(e)));
