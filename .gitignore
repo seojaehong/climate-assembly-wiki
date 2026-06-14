@@ -4,6 +4,11 @@ node_modules/
 .yarn/
 package-lock.json.bak
 
+# Data file backups (do not commit)
+src/data/*.bak
+src/data/*.bak.*
+src/data/*.json.bak
+
 # Astro
 dist/
 .astro/
