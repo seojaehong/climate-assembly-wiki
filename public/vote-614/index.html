@@ -170,12 +170,37 @@ html, body {
 
 /* ─── WINNER LINE (선정 안건 요약) ─── */
 .winner-line {
-  font-size: 32px;
+  font-size: 30px;
   font-weight: 800;
   color: var(--navy);
   letter-spacing: -0.02em;
-  padding: 8px 0 16px;
+  padding: 10px 0 14px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.winner-line.fail { color: var(--ink-2); }
+.winner-line.tie  { color: var(--red); }
+.quorum-badge {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 8px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.quorum-badge.pass {
+  background: var(--green-light);
+  color: var(--green);
+  border: 2.5px solid var(--green);
+}
+.quorum-badge.fail {
+  background: var(--yellow-light);
+  color: #92400E;
+  border: 2.5px solid var(--yellow);
 }
 
 /* ─── BAR CHART AREA ─── */
@@ -536,6 +561,10 @@ function renderHistory(closed) {
   }).join('');
 }
 
+// 의결정족수: 출석자의 2/3 (R1에서 확정)
+const QUORUM_RATIO = 2/3;
+const QUORUM_LABEL = '2/3';
+
 function getWinnerSummary(tally, type) {
   if (type === 'SCALE_MULTI' || type === 'TEXT') return null;
   if (!tally || tally.length === 0) return null;
@@ -543,11 +572,19 @@ function getWinnerSummary(tally, type) {
   if (total < 3) return null;
   const top = tally[0];
   const second = tally.length > 1 ? tally[1] : null;
-  const topPct = (top.n || 0) / total;
-  // 명확한 1위가 없으면(2등과 동률) null
-  if (second && top.n === second.n) return null;
-  // 선정된 안건만 표시 — 라벨 + 백분율
-  return (top.choice_text || '-') + ' (' + Math.round(topPct * 100) + '%)';
+  const topN = top.n || 0;
+  const topPct = topN / total;
+  // 동률 처리
+  if (second && top.n === second.n) {
+    return { text: '동률 — 결선 필요', pass: false, tie: true };
+  }
+  const passed = topPct >= QUORUM_RATIO;
+  return {
+    text: (top.choice_text || '-') + ' — ' + topN + '표 (' + Math.round(topPct * 100) + '%)',
+    pass: passed,
+    quorum: QUORUM_LABEL,
+    tie: false,
+  };
 }
 
 function renderDashboard(round, tally, totalN, closed) {
@@ -604,9 +641,17 @@ function renderDashboard(round, tally, totalN, closed) {
     mainContent = `<div class="chart-area"><div class="hbar-list">${rows}</div></div>`;
   }
 
-  const winnerHtml = winner
-    ? `<div class="winner-line">${winner}</div>`
-    : '';
+  let winnerHtml = '';
+  if (winner) {
+    if (winner.tie) {
+      winnerHtml = `<div class="winner-line tie">${winner.text}</div>`;
+    } else {
+      const badge = winner.pass
+        ? `<span class="quorum-badge pass">의결정족수 ${winner.quorum} 통과 ✓</span>`
+        : `<span class="quorum-badge fail">의결정족수 ${winner.quorum} 미달 ✗</span>`;
+      winnerHtml = `<div class="winner-line ${winner.pass ? 'pass' : 'fail'}">${winner.text} ${badge}</div>`;
+    }
+  }
 
   document.getElementById('stage').innerHTML = `
     ${winnerHtml}
