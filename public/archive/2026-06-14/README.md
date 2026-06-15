@@ -11,6 +11,7 @@
 | `rounds/R1.html` ~ `rounds/R9.html` | 라운드별 결과 (8건, R3는 1차·결선 분리) |
 | `vote-round.html` | 투표 라운드 결과 (단일 표시용) |
 | `vote-614-v1-deprecated/` | 관리자 v1 (admin v2로 통합됨, 2026-06-15) |
+| `vote-admin-614-v2-disabled/` | 관리자 v2 (2026-06-15 보안 점검 위해 비활성. 원본 보존) |
 
 ## 참고
 
