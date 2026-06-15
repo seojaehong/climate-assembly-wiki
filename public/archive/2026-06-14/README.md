@@ -10,6 +10,7 @@
 | `regulation_R1-R9_results.html` | 운영규정 R1~R9 투표 결과 종합 |
 | `rounds/R1.html` ~ `rounds/R9.html` | 라운드별 결과 (8건, R3는 1차·결선 분리) |
 | `vote-round.html` | 투표 라운드 결과 (단일 표시용) |
+| `vote-614-v1-deprecated/` | 관리자 v1 (admin v2로 통합됨, 2026-06-15) |
 
 ## 참고
 
