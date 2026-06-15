@@ -1,4 +1,17 @@
 User-agent: *
 Allow: /
 
+# 2026-06-15 정리: 데모/템플릿/관리자/내부 페이지 색인 차단
+Disallow: /event/
+Disallow: /event-bar/
+Disallow: /race-40/
+Disallow: /identity-demo/
+Disallow: /sample/
+Disallow: /board-demo.html
+Disallow: /event-vote/
+Disallow: /vote-614/
+Disallow: /vote-admin-614/
+Disallow: /v/
+Disallow: /archive/
+
 Sitemap: https://climate-assembly-wiki.pages.dev/sitemap-index.xml

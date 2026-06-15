@@ -2,5 +2,9 @@
 # Add server-side 302 fallback in case JS/meta is blocked
 /  /ko  302
 
+# Deprecated admin v1 → v2 (2026-06-15 정리)
+/vote-614/*  /vote-admin-614/:splat  301
+/vote-614    /vote-admin-614/        301
+
 # 404 fallback
 /*  /404.html  404

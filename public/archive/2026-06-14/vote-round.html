@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>투표 라운드 결과</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0F1A2A;--ink-2:#4A5568;--ink-3:#8A95A3;
+  --paper:#F7F9FB;--rule:#DDE3EC;--rule-s:#EDF0F5;
+  --navy:#1F4E79;--navy-2:#14334F;
+  --teal:#0D7490;--teal-2:#0B5F76;
+  --amber:#F5A623;--green:#16A34A;--green-light:#DCFCE7;
+  --yellow:#EAB308;--yellow-light:#FEF9C3;
+  --red:#DC2626;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100vh;width:100vw;background:var(--paper);color:var(--ink);
+  font-family:'Pretendard',-apple-system,'Apple SD Gothic Neo',sans-serif;
+  -webkit-font-smoothing:antialiased;font-feature-settings:'tnum' 1;overflow:hidden}
+.mono{font-family:'JetBrains Mono',monospace}
+
+.header{height:96px;background:linear-gradient(180deg,var(--navy) 0%,var(--navy-2) 100%);color:#fff;
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;padding:0 48px;gap:28px;position:relative;
+  box-shadow:0 4px 20px rgba(15,26,42,0.35)}
+.header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--amber) 0%,var(--amber) 40%,transparent 40.001%)}
+.h-badge{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;letter-spacing:0.18em;
+  background:var(--amber);color:var(--navy-2);padding:8px 16px;border-radius:6px;white-space:nowrap}
+.h-title{font-size:34px;font-weight:900;letter-spacing:-0.025em;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.h-meta{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.h-meta .time{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:800;letter-spacing:0.04em}
+.h-meta .lbl{font-size:12px;color:#A8C5E0;font-weight:700;letter-spacing:0.18em;text-transform:uppercase}
+
+.stage{position:absolute;top:96px;left:0;right:0;bottom:84px;padding:32px 56px;display:flex;flex-direction:column;gap:18px}
+.s-question{font-size:24px;color:var(--ink-2);font-weight:700;line-height:1.35;letter-spacing:-0.01em}
+.s-question b{color:var(--ink);font-weight:900}
+
+.kpi-row{display:flex;align-items:stretch;gap:18px;flex-shrink:0}
+.kpi{background:#fff;border:2px solid var(--rule);border-radius:14px;padding:14px 22px;display:flex;flex-direction:column;gap:2px;min-width:180px}
+.kpi .v{font-family:'JetBrains Mono',monospace;font-size:38px;font-weight:900;color:var(--ink);letter-spacing:-0.03em;line-height:1}
+.kpi .l{font-size:12px;color:var(--ink-3);font-weight:800;letter-spacing:0.16em;text-transform:uppercase;margin-top:2px}
+.kpi.pass{background:var(--green-light);border-color:var(--green)}
+.kpi.pass .v{color:#166534}
+.kpi.threshold{background:var(--yellow-light);border-color:var(--yellow)}
+.kpi.threshold .v{color:#854D0E}
+
+.bars{flex:1;display:flex;flex-direction:column;justify-content:center;gap:18px;min-height:0}
+.row{display:grid;grid-template-columns:280px 1fr 280px;align-items:center;gap:24px;min-height:90px}
+.row .lbl{font-size:32px;font-weight:800;color:var(--ink);line-height:1.2;text-align:right;letter-spacing:-0.01em}
+.row.top .lbl{color:var(--navy)}
+.row .lbl .star{color:var(--amber);margin-left:6px}
+.row .track{height:88px;background:var(--rule-s);border-radius:10px;overflow:hidden;position:relative}
+.row .fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--teal-2));border-radius:10px}
+.row.top .fill{background:linear-gradient(90deg,var(--navy),var(--navy-2))}
+.row .thresh{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--red);z-index:2}
+.row .thresh-lbl{position:absolute;top:-22px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:800;color:var(--red);
+  letter-spacing:0.08em;background:#fff;padding:2px 6px;border-radius:3px;border:1px solid var(--red);white-space:nowrap;transform:translateX(-50%)}
+.row .count{font-family:'JetBrains Mono',monospace;font-size:84px;font-weight:900;color:var(--ink);letter-spacing:-0.04em;line-height:1;text-align:right;white-space:nowrap}
+.row .count .pct{font-size:30px;font-weight:700;color:var(--ink-2);margin-left:10px;font-variant-numeric:tabular-nums}
+
+.result-bar{position:absolute;bottom:0;left:0;right:0;height:84px;background:#fff;border-top:2px solid var(--rule);
+  display:flex;align-items:center;justify-content:space-between;padding:0 56px;gap:24px}
+.result-tag{font-size:26px;font-weight:900;letter-spacing:-0.02em;padding:14px 28px;border-radius:10px;display:flex;align-items:center;gap:14px}
+.result-tag .icon{font-size:32px}
+.result-tag.pass{background:var(--green);color:#fff}
+.result-tag.retry{background:var(--yellow);color:#854D0E}
+.r-meta{font-size:18px;color:var(--ink-2);font-weight:700;text-align:right;letter-spacing:-0.005em;line-height:1.3}
+.r-meta b{color:var(--navy)}
+
+.history{position:absolute;top:104px;right:32px;display:flex;gap:6px;align-items:center}
+.hchip{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:800;padding:5px 10px;border-radius:6px;
+  background:#fff;border:1.5px solid var(--rule);color:var(--ink-3);letter-spacing:0.08em}
+.hchip.passed{background:var(--green-light);border-color:var(--green);color:#166534}
+.hchip.active{background:var(--amber);border-color:var(--amber);color:var(--navy-2)}
+</style></head><body>
+
+<div class="header">
+  <span class="h-badge mono" id="hBadge">R-</span>
+  <div class="h-title" id="hTitle">—</div>
+  <div class="h-meta"><div class="time" id="hTime">—</div><div class="lbl">KST · 2026-06-14</div></div>
+</div>
+
+<div class="history" id="hist"></div>
+
+<div class="stage">
+  <div class="s-question" id="sQ">—</div>
+  <div class="kpi-row">
+    <div class="kpi"><div class="v" id="kVotes">0/18</div><div class="l">투표 수 / 정원</div></div>
+    <div class="kpi threshold"><div class="v" id="kThr">12</div><div class="l">통과 정족수 (2/3)</div></div>
+    <div class="kpi pass" id="kPass"><div class="v" id="kPassV">—</div><div class="l">최다 득표</div></div>
+  </div>
+  <div class="bars" id="bars"></div>
+</div>
+
+<div class="result-bar">
+  <div class="result-tag pass" id="rTag"><span class="icon">✓</span><span id="rTagTxt">통과</span></div>
+  <div class="r-meta" id="rMeta">—</div>
+</div>
+
+<script>
+const ROUNDS = {
+  R1: {
+    badge:'R1',title:'기획참여단 의결정족수',time:'13:57 — 14:01',
+    question:'운영규정 확정·의제선정에 적용되는 <b>기획참여단의 의결정족수</b>를 결정합니다.',
+    options:[
+      {lbl:'출석 2/3',n:14,top:true,pass:true},
+      {lbl:'출석 3/4',n:3},
+      {lbl:'과반수',n:1},
+    ],
+    result:'pass', resultTxt:'출석 2/3 채택', meta:'18명 중 <b>14표 (78%)</b> · 정족수 12표 충족',
+    history:[{r:'R1',s:'active'}]
+  },
+  R2: {
+    badge:'R2',title:'숙의참여단 분과 구성',time:'14:01 — 14:02',
+    question:'<b>숙의참여단을 분과로 나눌지</b> 결정합니다.',
+    options:[
+      {lbl:'분과를 둠',n:13,top:true,pass:true},
+      {lbl:'두지 않음',n:5},
+    ],
+    result:'pass', resultTxt:'분과 구성으로 진행', meta:'18명 중 <b>13표 (72%)</b> · 정족수 12표 충족',
+    history:[{r:'R1',s:'passed'},{r:'R2',s:'active'}]
+  },
+  'R3-1': {
+    badge:'R3 · 1차',title:'분과 개수 (3안 선택)',time:'14:07 — 14:09',
+    question:'<b>2개 / 3개 / 4개 이상</b> — 3-way 선택. 균등 분산 시 결선 진행.',
+    options:[
+      {lbl:'2개 분과 (감축·적응)',n:6},
+      {lbl:'3개 분과 (감1·감2·적응)',n:6},
+      {lbl:'4개 이상 (현장 협의)',n:6},
+    ],
+    result:'retry', resultTxt:'결선 진행', meta:'3-way 완전 균등 분산 (6/6/6) · 상위 2안으로 <b>R3 결선</b>',
+    history:[{r:'R1',s:'passed'},{r:'R2',s:'passed'},{r:'R3·1',s:'active'}]
+  },
+  'R3-2': {
+    badge:'R3 · 결선',title:'분과 개수 결선',time:'14:17 — 14:19',
+    question:'1차 균등 분산에 따라 <b>상위 2안 결선</b> — 3개 분과 vs 4개 이상.',
+    options:[
+      {lbl:'3개 분과 (감1·감2·적응)',n:13,top:true,pass:true},
+      {lbl:'4개 이상 (현장 협의)',n:5},
+    ],
+    result:'pass', resultTxt:'감축1·감축2·적응 3개 분과 채택', meta:'18명 중 <b>13표 (72%)</b> · 정족수 12표 충족',
+    history:[{r:'R1',s:'passed'},{r:'R2',s:'passed'},{r:'R3·결',s:'active'}]
+  },
+  R5: {
+    badge:'R5',title:'분과 의결정족수 결선',time:'14:23',
+    question:'<b>분과 회의 안건 통과 정족수</b> — 과반수 제외 후 2/3 vs 3/4.',
+    options:[
+      {lbl:'출석 2/3',n:15,top:true,pass:true},
+      {lbl:'출석 3/4',n:3},
+    ],
+    result:'pass', resultTxt:'출석 2/3 채택', meta:'18명 중 <b>15표 (83%)</b> · 정족수 12표 충족',
+    history:[{r:'R1',s:'passed'},{r:'R2',s:'passed'},{r:'R3',s:'passed'},{r:'R5',s:'active'}]
+  },
+  R6: {
+    badge:'R6',title:'전체 의결정족수 재투표',time:'14:26',
+    question:'R4 결과 분산 → <b>3/4 제외 후 재투표</b>로 진행합니다.',
+    options:[
+      {lbl:'출석 2/3',n:14,top:true,pass:true},
+      {lbl:'과반수',n:4},
+    ],
+    result:'pass', resultTxt:'출석 2/3 채택', meta:'18명 중 <b>14표 (78%)</b> · 정족수 12표 충족',
+    history:[{r:'R1',s:'passed'},{r:'R2',s:'passed'},{r:'R3',s:'passed'},{r:'R5',s:'passed'},{r:'R6',s:'active'}]
+  },
+  R7: {
+    badge:'R7',title:'기준 ①호 "직접" 표현',time:'14:29 — 14:30',
+    question:'의제선정기준 1호 — <b>"기후위기 대응과 직접 관련"</b>을 "직간접"으로 확장할지.',
+    options:[
+      {lbl:'직간접으로 수정',n:17,top:true,pass:true},
+      {lbl:'현행 유지 (직접)',n:1},
+    ],
+    result:'pass', resultTxt:'"직간접"으로 수정 (거의 만장일치)', meta:'18명 중 <b>17표 (94%)</b> · 정족수 12표 충족',
+    history:[{r:'R1',s:'passed'},{r:'R2',s:'passed'},{r:'R3',s:'passed'},{r:'R5',s:'passed'},{r:'R6',s:'passed'},{r:'R7',s:'active'}]
+  },
+  R9: {
+    badge:'R9',title:'기준 ③호 "시민의 삶과 일상실천"',time:'14:31 — 14:32',
+    question:'의제선정기준 3호 — <b>현행 유지 vs 수정</b>. (R8 ②호는 건너뜀)',
+    options:[
+      {lbl:'유지',n:16,top:true,pass:true},
+      {lbl:'수정',n:2},
+    ],
+    result:'pass', resultTxt:'현행 유지', meta:'18명 중 <b>16표 (89%)</b> · 정족수 12표 충족',
+    history:[{r:'R1',s:'passed'},{r:'R2',s:'passed'},{r:'R3',s:'passed'},{r:'R5',s:'passed'},{r:'R6',s:'passed'},{r:'R7',s:'passed'},{r:'R9',s:'active'}]
+  }
+};
+
+const qp = new URLSearchParams(location.search);
+const rid = qp.get('r') || 'R1';
+const D = ROUNDS[rid] || ROUNDS.R1;
+
+document.getElementById('hBadge').textContent = D.badge;
+document.getElementById('hTitle').textContent = D.title;
+document.getElementById('hTime').textContent = D.time;
+document.getElementById('sQ').innerHTML = D.question;
+
+const totalN = D.options.reduce((s,o)=>s+o.n,0);
+document.getElementById('kVotes').textContent = totalN + '/18';
+const top = D.options.find(o=>o.top) || D.options[0];
+document.getElementById('kPassV').textContent = top.n + '표';
+const kPass = document.getElementById('kPass');
+if (D.result==='retry') { kPass.classList.remove('pass'); kPass.style.background='#FEF9C3'; kPass.style.borderColor='#EAB308'; kPass.querySelector('.l').textContent='최다 (균등)'; }
+
+const max = Math.max(...D.options.map(o=>o.n));
+const bars = document.getElementById('bars');
+bars.innerHTML = D.options.map(o=>{
+  const pct = Math.round((o.n/18)*100);
+  const widthPct = Math.round((o.n/Math.max(max,12))*100);
+  const cls = o.top?'top':'';
+  const star = o.pass?'<span class="star">★</span>':'';
+  // threshold line at 12/18 = 66.67% of max-based width; we use 12 relative to denom max
+  const thr = Math.round((12/Math.max(max,12))*100);
+  return `<div class="row ${cls}">
+    <div class="lbl">${o.lbl}${star}</div>
+    <div class="track">
+      <div class="fill" style="width:${widthPct}%"></div>
+      <div class="thresh" style="left:${thr}%"></div>
+      <div class="thresh-lbl" style="left:${thr}%">정족수 12표</div>
+    </div>
+    <div class="count">${o.n}<span class="pct">${pct}%</span></div>
+  </div>`;
+}).join('');
+
+const rTag = document.getElementById('rTag');
+const rTagTxt = document.getElementById('rTagTxt');
+if (D.result==='retry') {
+  rTag.classList.remove('pass'); rTag.classList.add('retry');
+  rTag.querySelector('.icon').textContent = '↻';
+}
+rTagTxt.textContent = D.resultTxt;
+document.getElementById('rMeta').innerHTML = D.meta;
+
+const hist = document.getElementById('hist');
+hist.innerHTML = D.history.map(h=>`<span class="hchip ${h.s}">${h.r}</span>`).join('');
+</script>
+</body></html>

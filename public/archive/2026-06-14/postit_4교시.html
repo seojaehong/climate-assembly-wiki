@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>4교시 의제 — 조별 포스트잇 (행 정렬)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Pretendard Variable',Pretendard,system-ui,sans-serif}
+:root{
+  --bg:#ffffff;
+  --bg-panel:#ffffff;
+  --card-a:#fde047;
+  --card-b:#fed7aa;
+  --ink:#1f2937;
+  --muted:#6b7280;
+  --merge:#7c3aed;
+  --divider:#d6cfbe;
+}
+html,body{background:var(--bg);color:var(--ink);width:100%;height:100%}
+.wrap{width:100vw;height:100vh;padding:18px 28px 22px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.head{display:grid;grid-template-columns:1fr 130px 1fr;gap:18px;align-items:end;padding-bottom:8px;border-bottom:2px solid var(--divider)}
+.head .ha{color:#0e7490;font-size:34px;font-weight:900;letter-spacing:-0.02em;min-width:0}
+.head .hb{color:#c2410c;font-size:34px;font-weight:900;letter-spacing:-0.02em;text-align:right;min-width:0}
+.head .hc{color:var(--muted);font-size:16px;font-weight:700;text-align:center;line-height:1.25}
+.rows{display:flex;flex-direction:column;gap:12px;flex:1;min-height:0}
+.row{display:grid;grid-template-columns:1fr 130px 1fr;gap:18px;align-items:stretch;flex:1;min-height:0}
+.card{background:var(--bg-panel);padding:14px 22px;border-radius:14px;
+  box-shadow:0 6px 14px rgba(31,41,55,.10), 0 1px 2px rgba(31,41,55,.06);
+  display:flex;gap:14px;align-items:center;
+  font-size:24px;font-weight:800;line-height:1.3;letter-spacing:-0.015em;color:var(--ink);min-width:0;min-height:0;
+  border:1px solid #ece6d6;word-break:keep-all;overflow:hidden}
+.card .star{font-size:46px;flex:0 0 auto;line-height:1}
+.card .txt{flex:1;min-width:0}
+.a{background:var(--card-a);border-color:#eab308}
+.a .star{color:#b45309}
+.b{background:var(--card-b);border-color:#f97316}
+.b .star{color:#9a3412}
+.row .merge{display:flex;align-items:center;justify-content:center}
+.merge .pill{display:none;font-size:14px;font-weight:900;color:#fff;background:var(--merge);
+  padding:8px 12px;border-radius:999px;text-align:center;box-shadow:0 6px 14px rgba(124,58,237,.32);line-height:1.2;white-space:nowrap}
+.row.merged .pill{display:inline-block}
+.row.merged .card{outline:3px solid var(--merge);outline-offset:-2px}
+.foot{color:var(--muted);font-size:16px;font-weight:700;text-align:center;padding-top:4px}
+.foot b{color:#b45309}
+</style></head><body>
+<div class="wrap">
+  <div class="head">
+    <div class="ha">A조 · 질문형 (5)</div>
+    <div class="hc">합쳐진 안건은<br>같은 행 · 보라 테두리</div>
+    <div class="hb">B조 · 개조체 (5)</div>
+  </div>
+  <div class="rows">
+    <div class="row">
+      <div class="card a"><span class="star">★</span><span class="txt">기후재정 확보와 지자체 자발적 참여는 어떻게 하면 좋을까요?</span></div>
+      <div class="merge"><span class="pill">—</span></div>
+      <div class="card b"><span class="star">★</span><span class="txt">전 생애주기 탄소중립 교육체계 구축</span></div>
+    </div>
+    <div class="row merged">
+      <div class="card a"><span class="star">★</span><span class="txt">자원순환형 배달 및 문화조성을 위해 어떠한 방안이 필요한가요?</span></div>
+      <div class="merge"><span class="pill">통합 ①<br>자원순환·폐기물</span></div>
+      <div class="card b"><span class="star">★</span><span class="txt">자원순환 촉진 및 생활폐기물 감축</span></div>
+    </div>
+    <div class="row">
+      <div class="card a"><span class="star">★</span><span class="txt">시민의식을 개선하고 참여를 활성화하는 방안은 무엇일까요?</span></div>
+      <div class="merge"><span class="pill">—</span></div>
+      <div class="card b"><span class="star">★</span><span class="txt">에너지 절약 및 온실가스 배출 감축</span></div>
+    </div>
+    <div class="row">
+      <div class="card a"><span class="star">★</span><span class="txt">대중교통을 통한 친환경 교통전환 방안은 무엇일까요?</span></div>
+      <div class="merge"><span class="pill">—</span></div>
+      <div class="card b"><span class="star">★</span><span class="txt">시민참여 기반 기후 거버넌스 강화</span></div>
+    </div>
+    <div class="row merged">
+      <div class="card a"><span class="star">★</span><span class="txt">친환경도시인프라 및 에너지 전환 구축방안은 무엇일까요?</span></div>
+      <div class="merge"><span class="pill">통합 ②<br>친환경도시·기후적응</span></div>
+      <div class="card b"><span class="star">★</span><span class="txt">기후위기 적응형 도시 조성 및 취약계층 보호</span></div>
+    </div>
+  </div>
+  <div class="foot">2026 기후시민회의 · 4교시 의제선정 — A조·B조 채택 의제 10건 → 통합 2쌍 → 최종 <b>8개</b></div>
+</div>
+</body></html>
