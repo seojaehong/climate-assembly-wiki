@@ -4,6 +4,7 @@ import { agendasToNodes, mergeRealtimeChange, type AgendaNode, type AgendaRow } 
 
 export function useRealtimeAgendas(sessionSlug: string) {
   const [nodes, setNodes] = useState<AgendaNode[]>([]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   useEffect(() => {
     const sb = getSupabase(); if (!sb) return;
     // cleanup must be returned from useEffect itself (not the async IIFE).
@@ -14,6 +15,7 @@ export function useRealtimeAgendas(sessionSlug: string) {
       const { data: sess } = await sb.schema('climate_vote').from('session').select('id').eq('slug', sessionSlug).single();
       if (!sess || cancelled) return;
       const sessionId = sess.id;
+      setSessionId(sessionId);
       const { data: rows } = await sb.schema('climate_vote').from('agenda').select('*').eq('session_id', sessionId);
       if (cancelled) return;
       setNodes(agendasToNodes((rows ?? []) as AgendaRow[]));
@@ -29,5 +31,5 @@ export function useRealtimeAgendas(sessionSlug: string) {
       if (channel) sb.removeChannel(channel);
     };
   }, [sessionSlug]);
-  return { nodes, setNodes };
+  return { nodes, setNodes, sessionId };
 }
