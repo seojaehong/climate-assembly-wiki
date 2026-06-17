@@ -1,0 +1,13 @@
+---
+import '../../../styles/global.css';
+import CanvasBoard from '../../../islands/CanvasBoard';
+export async function getStaticPaths() { return [{ params: { lang: 'ko' } }]; }
+const sessionSlug = Astro.url.searchParams.get('s') ?? '7.4';
+---
+<!doctype html>
+<html lang="ko"><head>
+  <meta charset="UTF-8" /><meta name="robots" content="noindex,nofollow" />
+  <title>기후시민회의 모더레이션 캔버스 [캔버스]</title>
+</head><body>
+  <CanvasBoard client:only="react" sessionSlug={sessionSlug} />
+</body></html>
