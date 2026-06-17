@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { type NodeProps } from '@xyflow/react';
 import type { AgendaNode as TNode } from './agenda-sync';
 import { getSupabase } from '../../lib/supabase';
-
-const ZONE_BG: Record<string, string> = { '감축': '#fde047', '적응': '#fed7aa', '미분류': '#e5e7eb' };
+import { joColor } from './palette';
 
 async function saveEdit(id: string, before: string, after: string) {
   if (after.trim() === before.trim()) return;
@@ -19,14 +18,15 @@ async function saveEdit(id: string, before: string, after: string) {
 export default function AgendaNode({ id, data }: NodeProps<TNode>) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(data.label);
+  const { bg, ink } = joColor(data.jo);
 
   return (
     <div style={{
-      background: ZONE_BG[data.zone ?? '미분류'] ?? '#fff', borderRadius: 14,
+      background: bg, borderRadius: 14,
       padding: '16px 20px', minWidth: 240, maxWidth: 420, fontSize: 22, fontWeight: 800,
-      boxShadow: '0 6px 16px rgba(0,0,0,.12)', wordBreak: 'keep-all', color: '#1f2937',
+      boxShadow: '0 6px 16px rgba(0,0,0,.12)', wordBreak: 'keep-all', color: ink,
     }}>
-      <div style={{ fontSize: 14, opacity: .6 }}>{data.jo}</div>
+      <div style={{ fontSize: 14, opacity: .65, fontWeight: 800 }}>{data.jo}{data.zone ? ` · ${data.zone}` : ''}</div>
       {editing ? (
         <textarea
           className="nodrag"
