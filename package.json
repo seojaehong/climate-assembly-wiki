@@ -21,6 +21,7 @@
     "@astrojs/react": "^5.0.7",
     "@astrojs/sitemap": "^3.2.1",
     "@excalidraw/excalidraw": "^0.18.1",
+    "@supabase/supabase-js": "^2.108.2",
     "@tailwindcss/vite": "^4.1.6",
     "@types/react": "^19.2.16",
     "@types/react-dom": "^19.2.3",
