@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { joColor, BG_PRESETS } from './palette';
+import { joColor, BG_PRESETS, readableInk } from './palette';
 
 describe('joColor', () => {
   it('조마다 다른 색을 준다 (A조 ≠ B조)', () => {
@@ -16,6 +16,17 @@ describe('joColor', () => {
   });
   it('항상 어두운 잉크색을 동반한다 (대형스크린 대비)', () => {
     expect(joColor('A조').ink).toMatch(/^#/);
+  });
+});
+
+describe('readableInk', () => {
+  it('밝은 배경엔 어두운 잉크', () => {
+    expect(readableInk('#FACC15')).toBe('#1f2937');
+    expect(readableInk('#ffffff')).toBe('#1f2937');
+  });
+  it('어두운 배경엔 밝은 잉크', () => {
+    expect(readableInk('#0b1220')).toBe('#f8fafc');
+    expect(readableInk('#111827')).toBe('#f8fafc');
   });
 });
 

@@ -27,6 +27,17 @@ export function joColor(jo: string | null | undefined): JoColor {
   return { bg: FALLBACK_POOL[h % FALLBACK_POOL.length], ink: INK };
 }
 
+// 임의 배경색 위 가독 잉크색(상대휘도 기준). 커스텀 조색·커스텀 배경에 사용.
+export function readableInk(hex: string): string {
+  const h = hex.replace('#', '');
+  const n = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  const r = parseInt(n.slice(0, 2), 16) / 255;
+  const g = parseInt(n.slice(2, 4), 16) / 255;
+  const b = parseInt(n.slice(4, 6), 16) / 255;
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b; // 단순 상대휘도
+  return lum > 0.5 ? '#1f2937' : '#f8fafc';
+}
+
 export interface BgPreset { id: string; label: string; bg: string; dot: string; }
 
 // 대시보드 배경 선택지 (배경색 + 그리드 점색).

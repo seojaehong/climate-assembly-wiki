@@ -18,7 +18,10 @@ async function saveEdit(id: string, before: string, after: string) {
 export default function AgendaNode({ id, data }: NodeProps<TNode>) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(data.label);
-  const { bg, ink } = joColor(data.jo);
+  // 우선순위: CanvasBoard가 주입한 조별 커스텀 색(data.cardBg) > 기본 팔레트(joColor)
+  const fallback = joColor(data.jo);
+  const bg = (data as { cardBg?: string }).cardBg ?? fallback.bg;
+  const ink = (data as { cardInk?: string }).cardInk ?? fallback.ink;
 
   return (
     <div style={{
