@@ -3,6 +3,7 @@ import { ReactFlow, Background, Controls, applyNodeChanges, type NodeChange } fr
 import '@xyflow/react/dist/style.css';
 import AgendaNode from './canvas/AgendaNode';
 import { useRealtimeAgendas } from './canvas/use-realtime-agendas';
+import { useAuth } from './canvas/useAuth';
 import { getSupabase } from '../lib/supabase';
 import { BG_PRESETS, joColor, readableInk } from './canvas/palette';
 
@@ -43,6 +44,19 @@ function dotFor(bg: string): string {
 export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
   const { nodes, setNodes, sessionId } = useRealtimeAgendas(sessionSlug);
 
+  // 진행자 인증 — 미인증 시 읽기전용(로그인 패널), 인증 시 쓰기 허용
+  const { session, email, signIn, signOut } = useAuth();
+  const authed = !!session;
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginSent, setLoginSent] = useState(false);
+  const [loginErr, setLoginErr] = useState<string | null>(null);
+  const submitLogin = async () => {
+    setLoginErr(null);
+    const { error } = await signIn(loginEmail.trim());
+    if (error) setLoginErr(error.message);
+    else setLoginSent(true);
+  };
+
   // 배경색 (프리셋 또는 커스텀 hex), localStorage 기억
   const [bgHex, setBgHex] = useState<string>(() => {
     try { return localStorage.getItem(BG_KEY) || BG_PRESETS[0].bg; } catch { return BG_PRESETS[0].bg; }
@@ -82,19 +96,21 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', background: bgHex }}>
-      <button
-        onClick={() => sessionId && addAgenda(sessionId)}
-        disabled={!sessionId}
-        style={{
-          position: 'absolute', top: 16, left: 16, zIndex: 10,
-          padding: '12px 20px', fontSize: 18, fontWeight: 800, borderRadius: 12,
-          border: 'none', background: sessionId ? '#2563eb' : '#9ca3af',
-          color: '#fff', cursor: sessionId ? 'pointer' : 'not-allowed',
-          boxShadow: '0 4px 12px rgba(0,0,0,.18)',
-        }}
-      >
-        + 의제
-      </button>
+      {authed && (
+        <button
+          onClick={() => sessionId && addAgenda(sessionId)}
+          disabled={!sessionId}
+          style={{
+            position: 'absolute', top: 16, left: 16, zIndex: 10,
+            padding: '12px 20px', fontSize: 18, fontWeight: 800, borderRadius: 12,
+            border: 'none', background: sessionId ? '#2563eb' : '#9ca3af',
+            color: '#fff', cursor: sessionId ? 'pointer' : 'not-allowed',
+            boxShadow: '0 4px 12px rgba(0,0,0,.18)',
+          }}
+        >
+          + 의제
+        </button>
+      )}
 
       {/* 조별 색상 선택 레전드 (현재 보드의 조) */}
       {jos.length > 0 && (
@@ -120,8 +136,22 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
         </div>
       )}
 
-      {/* 배경(대시보드) 색상 선택 — 프리셋 + 커스텀 */}
+      {/* 배경(대시보드) 색상 선택 — 프리셋 + 커스텀 + 진행자 칩 */}
       <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
+        {authed && (
+          <button
+            onClick={signOut}
+            title="로그아웃"
+            style={{
+              padding: '6px 12px', borderRadius: 999, border: 'none', cursor: 'pointer',
+              background: 'rgba(0,0,0,.55)', color: '#fff', fontSize: 13, fontWeight: 800,
+              maxWidth: 260, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              boxShadow: '0 2px 6px rgba(0,0,0,.25)',
+            }}
+          >
+            ✓ {email} · 로그아웃
+          </button>
+        )}
         {BG_PRESETS.map((p) => (
           <button
             key={p.id}
@@ -158,6 +188,55 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
       >
         <Background color={dotFor(bgHex)} /><Controls />
       </ReactFlow>
+
+      {/* 진행자 로그인 패널 — 미인증 시 캔버스 위 중앙 오버레이 (뒤 캔버스는 읽기전용 노출) */}
+      {!authed && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 20,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(2px)',
+        }}>
+          <div style={{
+            width: 'min(92vw, 420px)', padding: '28px 28px 24px', borderRadius: 16,
+            background: '#fff', boxShadow: '0 12px 40px rgba(0,0,0,.35)', textAlign: 'center',
+          }}>
+            <h2 style={{ margin: '0 0 16px', fontSize: 24, fontWeight: 900, color: '#1f2937' }}>진행자 로그인</h2>
+            {loginSent ? (
+              <p style={{ fontSize: 16, fontWeight: 700, color: '#2563eb', margin: '12px 0 0' }}>
+                메일함의 링크를 확인하세요
+              </p>
+            ) : (
+              <>
+                <input
+                  type="email"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') submitLogin(); }}
+                  placeholder="이메일 주소"
+                  style={{
+                    width: '100%', boxSizing: 'border-box', padding: '12px 14px', fontSize: 16,
+                    border: '2px solid #cbd5e1', borderRadius: 10, marginBottom: 12,
+                  }}
+                />
+                <button
+                  onClick={submitLogin}
+                  disabled={!loginEmail.trim()}
+                  style={{
+                    width: '100%', padding: '12px 16px', fontSize: 17, fontWeight: 800, borderRadius: 10,
+                    border: 'none', color: '#fff', cursor: loginEmail.trim() ? 'pointer' : 'not-allowed',
+                    background: loginEmail.trim() ? '#2563eb' : '#9ca3af',
+                  }}
+                >
+                  매직링크 보내기
+                </button>
+                {loginErr && (
+                  <p style={{ fontSize: 14, color: '#dc2626', margin: '12px 0 0' }}>{loginErr}</p>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
