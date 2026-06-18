@@ -48,13 +48,17 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
   const { session, email, signIn, signOut } = useAuth();
   const authed = !!session;
   const [loginEmail, setLoginEmail] = useState('');
-  const [loginSent, setLoginSent] = useState(false);
+  const [loginPw, setLoginPw] = useState('');
   const [loginErr, setLoginErr] = useState<string | null>(null);
+  const [loggingIn, setLoggingIn] = useState(false);
   const submitLogin = async () => {
+    if (!loginEmail.trim() || !loginPw) return;
     setLoginErr(null);
-    const { error } = await signIn(loginEmail.trim());
+    setLoggingIn(true);
+    const { error } = await signIn(loginEmail.trim(), loginPw);
+    setLoggingIn(false);
     if (error) setLoginErr(error.message);
-    else setLoginSent(true);
+    // 성공 시 onAuthStateChange가 session을 채워 모달이 자동으로 사라짐
   };
 
   // 배경색 (프리셋 또는 커스텀 hex), localStorage 기억
@@ -201,38 +205,44 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
             background: '#fff', boxShadow: '0 12px 40px rgba(0,0,0,.35)', textAlign: 'center',
           }}>
             <h2 style={{ margin: '0 0 16px', fontSize: 24, fontWeight: 900, color: '#1f2937' }}>진행자 로그인</h2>
-            {loginSent ? (
-              <p style={{ fontSize: 16, fontWeight: 700, color: '#2563eb', margin: '12px 0 0' }}>
-                메일함의 링크를 확인하세요
-              </p>
-            ) : (
-              <>
-                <input
-                  type="email"
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') submitLogin(); }}
-                  placeholder="이메일 주소"
-                  style={{
-                    width: '100%', boxSizing: 'border-box', padding: '12px 14px', fontSize: 16,
-                    border: '2px solid #cbd5e1', borderRadius: 10, marginBottom: 12,
-                  }}
-                />
-                <button
-                  onClick={submitLogin}
-                  disabled={!loginEmail.trim()}
-                  style={{
-                    width: '100%', padding: '12px 16px', fontSize: 17, fontWeight: 800, borderRadius: 10,
-                    border: 'none', color: '#fff', cursor: loginEmail.trim() ? 'pointer' : 'not-allowed',
-                    background: loginEmail.trim() ? '#2563eb' : '#9ca3af',
-                  }}
-                >
-                  매직링크 보내기
-                </button>
-                {loginErr && (
-                  <p style={{ fontSize: 14, color: '#dc2626', margin: '12px 0 0' }}>{loginErr}</p>
-                )}
-              </>
+            <input
+              type="email"
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') submitLogin(); }}
+              placeholder="이메일 주소"
+              autoComplete="username"
+              style={{
+                width: '100%', boxSizing: 'border-box', padding: '12px 14px', fontSize: 16,
+                border: '2px solid #cbd5e1', borderRadius: 10, marginBottom: 10,
+              }}
+            />
+            <input
+              type="password"
+              value={loginPw}
+              onChange={(e) => setLoginPw(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') submitLogin(); }}
+              placeholder="비밀번호"
+              autoComplete="current-password"
+              style={{
+                width: '100%', boxSizing: 'border-box', padding: '12px 14px', fontSize: 16,
+                border: '2px solid #cbd5e1', borderRadius: 10, marginBottom: 12,
+              }}
+            />
+            <button
+              onClick={submitLogin}
+              disabled={!loginEmail.trim() || !loginPw || loggingIn}
+              style={{
+                width: '100%', padding: '12px 16px', fontSize: 17, fontWeight: 800, borderRadius: 10,
+                border: 'none', color: '#fff',
+                cursor: (loginEmail.trim() && loginPw && !loggingIn) ? 'pointer' : 'not-allowed',
+                background: (loginEmail.trim() && loginPw && !loggingIn) ? '#2563eb' : '#9ca3af',
+              }}
+            >
+              {loggingIn ? '로그인 중…' : '로그인'}
+            </button>
+            {loginErr && (
+              <p style={{ fontSize: 14, color: '#dc2626', margin: '12px 0 0' }}>{loginErr}</p>
             )}
           </div>
         </div>
