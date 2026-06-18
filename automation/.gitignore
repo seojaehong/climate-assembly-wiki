@@ -2,3 +2,7 @@ node_modules/
 *.png
 *.json.tmp
 .env
+# 런타임 산출물 — 소스 아님, git 금지 (실데이터는 /tmp→Drive로만)
+*.out.json
+snapshots/
+captures/
