@@ -1,0 +1,31 @@
+name: finalize
+on:
+  workflow_dispatch:
+    inputs:
+      workshop:
+        type: string
+        required: true
+  schedule:
+    # 워크숍 당일 1회. UTC 13:00 = KST 22:00 (end_kst 18:00 + 4h). KST 22시는 UTC 동일 날짜.
+    - cron: '0 13 4 7 *'    # 2026-07-04 (7월_행사)
+    - cron: '0 13 29 8 *'   # 2026-08-29 (2차_의제선정)
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: automation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Finalize report
+        env:
+          DRIVE_SA_JSON: ${{ secrets.DRIVE_SA_JSON }}
+          DRIVE_PARENT_ID: ${{ secrets.DRIVE_PARENT_ID }}
+          SHEETS_ID: ${{ secrets.SHEETS_ID }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          WORKSHOP: ${{ github.event.inputs.workshop }}
+        run: node finalize-report.mjs

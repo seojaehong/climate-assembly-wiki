@@ -1,0 +1,62 @@
+name: capture
+on:
+  schedule:
+    # 워크숍 당일에만 발화 (date-gated). UTC 0-9시 = KST 09:00~18:55, 5분 간격.
+    - cron: '*/5 0-9 4 7 *'    # 2026-07-04 (7월_행사)
+    - cron: '*/5 0-9 29 8 *'   # 2026-08-29 (2차_의제선정)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        type: boolean
+        default: false
+      workshop:
+        type: string
+        required: false
+concurrency:
+  group: capture-${{ github.event.inputs.workshop || 'cron' }}
+  cancel-in-progress: false
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: automation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('automation/package-lock.json') }}
+      - run: npx playwright install --with-deps chromium
+      - name: Capture pages
+        run: node capture-pages.mjs > capture.out.json
+      - name: Upload to Drive
+        env:
+          DRIVE_SA_JSON: ${{ secrets.DRIVE_SA_JSON }}
+          DRIVE_PARENT_ID: ${{ secrets.DRIVE_PARENT_ID }}
+        run: |
+          node -e "
+          const o = JSON.parse(require('fs').readFileSync('capture.out.json'));
+          if (o.skipped) { console.log('skipped:', o.skipped); process.exit(0); }
+          const files = (o.success || []).map(s => s.outPath);
+          if (files.length === 0) { console.log('no successful captures'); process.exit(0); }
+          const { execSync } = require('child_process');
+          execSync('node upload-to-drive.mjs ' + process.env.DRIVE_PARENT_ID + ' ' + o.workshop + ' ' + o.ts + ' ' + files.join(' '), { stdio: 'inherit' });
+          "
+      - name: Failure artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capture-${{ github.run_id }}
+          path: /tmp/**/*.png
+      - name: Discord alert on failure
+        if: failure()
+        run: |
+          curl -X POST -H 'Content-Type: application/json' \
+            -d "{\"content\":\"⚠️ capture failed run=${{ github.run_id }}\"}" \
+            ${{ secrets.DISCORD_WEBHOOK }}

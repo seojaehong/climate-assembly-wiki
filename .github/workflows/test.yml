@@ -1,0 +1,23 @@
+# automation/ 변경 시에만 실행 (wiki 사이트 커밋마다 도는 것 방지)
+name: test
+on:
+  push:
+    paths: ['automation/**', '.github/workflows/test.yml']
+  pull_request:
+    paths: ['automation/**', '.github/workflows/test.yml']
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: automation } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm ci
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('automation/package-lock.json') }}
+      - run: npx playwright install --with-deps chromium
+      - run: npm test

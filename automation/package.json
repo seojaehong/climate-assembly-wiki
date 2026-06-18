@@ -1,0 +1,23 @@
+{
+  "name": "climate-assembly-automation",
+  "type": "module",
+  "version": "0.1.0",
+  "engines": { "node": ">=20.18.0" },
+  "scripts": {
+    "test": "vitest run",
+    "capture": "node capture-pages.mjs",
+    "snapshot": "node snapshot-db.mjs",
+    "upload": "node upload-to-drive.mjs",
+    "finalize": "node finalize-report.mjs",
+    "verify-drive": "node scripts/verify-drive.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.49.0",
+    "googleapis": "^144.0.0",
+    "@supabase/supabase-js": "^2.46.0",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.5"
+  }
+}

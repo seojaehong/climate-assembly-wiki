@@ -1,0 +1,19 @@
+base_url: https://climate-assembly.org
+pages:
+  - { id: board,     path: /board/ }
+  - { id: event,     path: /event/ }
+  - { id: race-40,   path: /race-40/ }
+  - { id: event-bar, path: /event-bar/ }
+workshops:
+  - date: 2026-07-04
+    name: 7월_행사
+    start_kst: "09:00"
+    end_kst: "18:00"
+    drive_folder_root: REPLACE_WITH_DRIVE_PARENT_ID
+    supabase_round_id: 2
+  - date: 2026-08-29
+    name: 2차_의제선정
+    start_kst: "09:00"
+    end_kst: "18:00"
+    drive_folder_root: REPLACE_WITH_DRIVE_PARENT_ID
+    supabase_round_id: 3
