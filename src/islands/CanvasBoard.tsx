@@ -49,6 +49,20 @@ function archiveAgenda(id: string) {
     .then(() => {});
 }
 
+// 연결선 — 관련 의견끼리 잇기/끊기
+function linkAgendas(sessionId: string, source: string, target: string) {
+  const sb = getSupabase();
+  if (!sb) return;
+  sb.schema('climate_vote').from('agenda_link')
+    .insert({ session_id: sessionId, source_id: source, target_id: target, created_by: 'moderator' })
+    .then(() => {});
+}
+function unlink(id: string) {
+  const sb = getSupabase();
+  if (!sb) return;
+  sb.schema('climate_vote').from('agenda_link').delete().eq('id', id).then(() => {});
+}
+
 // 관련 의제 묶기/풀기 — 선택 카드들에 공통 group_id 부여/해제
 function setGroup(ids: string[], groupId: string | null) {
   const sb = getSupabase();
@@ -65,7 +79,7 @@ function dotFor(bg: string): string {
 }
 
 export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
-  const { nodes, setNodes, sessionId } = useRealtimeAgendas(sessionSlug);
+  const { nodes, setNodes, edges, sessionId } = useRealtimeAgendas(sessionSlug);
 
   // 진행자 인증 — 미인증 시 읽기전용(로그인 패널), 인증 시 쓰기 허용
   const { session, email, signIn, signOut } = useAuth();
@@ -232,12 +246,14 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
 
       <ReactFlow
         nodes={[...FRAME_NODES, ...displayNodes]}
-        edges={[]}
+        edges={edges}
         nodeTypes={nodeTypes}
         nodesDraggable
         onNodesChange={(changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds) as typeof nds)}
         onNodeDragStop={onNodeDragStop}
         onNodesDelete={(deleted) => deleted.forEach((n) => archiveAgenda(n.id))}
+        onConnect={(c) => { if (sessionId && c.source && c.target) linkAgendas(sessionId, c.source, c.target); }}
+        onEdgesDelete={(deleted) => deleted.forEach((e) => unlink(e.id))}
         deleteKeyCode={['Delete', 'Backspace']}
         multiSelectionKeyCode={['Shift', 'Control', 'Meta']}
         fitView

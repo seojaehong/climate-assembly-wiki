@@ -1,5 +1,19 @@
 import { describe, it, expect } from 'vitest';
-import { agendasToNodes, mergeRealtimeChange } from './agenda-sync';
+import { agendasToNodes, mergeRealtimeChange, linksToEdges, mergeLinkChange } from './agenda-sync';
+
+describe('linksToEdges', () => {
+  it('링크 → React Flow 엣지(source/target)', () => {
+    const [e] = linksToEdges([{ id: 'l1', source_id: 'a1', target_id: 'a2' }]);
+    expect(e).toMatchObject({ id: 'l1', source: 'a1', target: 'a2' });
+  });
+  it('mergeLinkChange: INSERT 추가, DELETE 제거', () => {
+    let edges = linksToEdges([{ id: 'l1', source_id: 'a1', target_id: 'a2' }]);
+    edges = mergeLinkChange(edges, { eventType: 'INSERT', new: { id: 'l2', source_id: 'a2', target_id: 'a3' } } as any);
+    expect(edges).toHaveLength(2);
+    edges = mergeLinkChange(edges, { eventType: 'DELETE', old: { id: 'l1' } } as any);
+    expect(edges.map((e) => e.id)).toEqual(['l2']);
+  });
+});
 
 const A = { id: 'a1', text: '교육', jo: 'A조', zone: '감축', status: 'active', x: 10, y: 20 };
 

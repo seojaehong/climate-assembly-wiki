@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type NodeProps } from '@xyflow/react';
+import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { AgendaNode as TNode } from './agenda-sync';
 import { getSupabase } from '../../lib/supabase';
 import { joColor } from './palette';
@@ -46,6 +46,9 @@ export default function AgendaNode({ id, data }: NodeProps<TNode>) {
       outline: groupOutline ? `4px solid ${groupOutline}` : undefined,
       outlineOffset: groupOutline ? 3 : undefined,
     }}>
+      {/* 연결선 핸들 — 같은/관련 의견끼리 선으로 잇기 (드래그) */}
+      <Handle type="target" position={Position.Left} style={{ width: 13, height: 13, background: '#7c3aed', border: '2px solid #fff' }} />
+      <Handle type="source" position={Position.Right} style={{ width: 13, height: 13, background: '#7c3aed', border: '2px solid #fff' }} />
       <div style={{ fontSize: 14, opacity: .65, fontWeight: 800 }}>{data.jo}{data.zone ? ` · ${data.zone}` : ''}</div>
       {editing ? (
         <div className="nodrag">

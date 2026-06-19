@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react';
+import type { Edge } from '@xyflow/react';
 import { getSupabase } from '../../lib/supabase';
-import { agendasToNodes, mergeRealtimeChange, type AgendaNode, type AgendaRow } from './agenda-sync';
+import {
+  agendasToNodes, mergeRealtimeChange, linksToEdges, mergeLinkChange,
+  type AgendaNode, type AgendaRow, type AgendaLink,
+} from './agenda-sync';
 
 export function useRealtimeAgendas(sessionSlug: string) {
   const [nodes, setNodes] = useState<AgendaNode[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   useEffect(() => {
     const sb = getSupabase(); if (!sb) return;
@@ -17,12 +22,17 @@ export function useRealtimeAgendas(sessionSlug: string) {
       const sessionId = sess.id;
       setSessionId(sessionId);
       const { data: rows } = await sb.schema('climate_vote').from('agenda').select('*').eq('session_id', sessionId);
+      const { data: links } = await sb.schema('climate_vote').from('agenda_link').select('id,source_id,target_id').eq('session_id', sessionId);
       if (cancelled) return;
       setNodes(agendasToNodes((rows ?? []) as AgendaRow[]));
+      setEdges(linksToEdges((links ?? []) as AgendaLink[]));
       channel = sb.channel(`agenda:${sessionId}`)
         .on('postgres_changes',
           { event: '*', schema: 'climate_vote', table: 'agenda', filter: `session_id=eq.${sessionId}` },
-          (payload) => setNodes(prev => mergeRealtimeChange(prev, payload as any)))
+          (payload) => setNodes((prev) => mergeRealtimeChange(prev, payload as any)))
+        .on('postgres_changes',
+          { event: '*', schema: 'climate_vote', table: 'agenda_link', filter: `session_id=eq.${sessionId}` },
+          (payload) => setEdges((prev) => mergeLinkChange(prev, payload as any)))
         .subscribe();
       if (cancelled) { sb.removeChannel(channel); channel = null; }
     })();
@@ -31,5 +41,5 @@ export function useRealtimeAgendas(sessionSlug: string) {
       if (channel) sb.removeChannel(channel);
     };
   }, [sessionSlug]);
-  return { nodes, setNodes, sessionId };
+  return { nodes, setNodes, edges, setEdges, sessionId };
 }
