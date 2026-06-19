@@ -2,20 +2,33 @@ import { useState, useMemo } from 'react';
 import { ReactFlow, Background, Controls, applyNodeChanges, type NodeChange } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import AgendaNode from './canvas/AgendaNode';
+import ZoneFrameNode from './canvas/ZoneFrameNode';
 import { useRealtimeAgendas } from './canvas/use-realtime-agendas';
 import { useAuth } from './canvas/useAuth';
 import { getSupabase } from '../lib/supabase';
 import { BG_PRESETS, joColor, readableInk, groupColor } from './canvas/palette';
+import { ZONE_FRAMES, FRAME_Y, FRAME_H, zoneForX } from './canvas/zones';
 
-const nodeTypes = { agenda: AgendaNode };
+const nodeTypes = { agenda: AgendaNode, zoneFrame: ZoneFrameNode };
+
+// 카테고리 프레임(=zone) 노드 — 카드 뒤 배경, 비상호작용.
+const FRAME_NODES = ZONE_FRAMES.map((f) => ({
+  id: `frame-${f.zone}`, type: 'zoneFrame',
+  position: { x: f.x, y: FRAME_Y },
+  data: { label: f.label, w: f.w, h: FRAME_H, bg: f.bg },
+  draggable: false, selectable: false, deletable: false, focusable: false,
+  zIndex: -1,
+}));
 const BG_KEY = 'canvas-bg-hex';
 const JO_KEY = 'canvas-jo-colors';
 
 function onNodeDragStop(_: unknown, node: { id: string; position: { x: number; y: number } }) {
+  if (node.id.startsWith('frame-')) return; // 프레임은 고정
   const sb = getSupabase();
   if (!sb) return;
+  // 드롭한 프레임 영역이 곧 zone — x좌표로 판정해 zone도 함께 저장
   sb.schema('climate_vote').from('agenda')
-    .update({ x: node.position.x, y: node.position.y, updated_at: new Date().toISOString() })
+    .update({ x: node.position.x, y: node.position.y, zone: zoneForX(node.position.x), updated_at: new Date().toISOString() })
     .eq('id', node.id)
     .then(() => {});
 }
@@ -218,7 +231,7 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
       </div>
 
       <ReactFlow
-        nodes={displayNodes}
+        nodes={[...FRAME_NODES, ...displayNodes]}
         edges={[]}
         nodeTypes={nodeTypes}
         nodesDraggable
