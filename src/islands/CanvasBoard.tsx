@@ -141,13 +141,20 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
     return [...s].sort();
   }, [nodes]);
 
-  // 조별 색 + 그룹 테두리색을 각 노드 data에 주입
+  // 조별 확인 — 특정 조만 보기(focus). null=전체. zone(공간축)과 직교한 가시성 필터.
+  const [focusJo, setFocusJo] = useState<string | null>(null);
+
+  // 조별 색 + 그룹 테두리색 주입 + 조 필터(focus 외 숨김)
   const displayNodes = useMemo(() => nodes.map((n) => {
     const jo = (n.data.jo ?? '').trim();
     const cardBg = joColors[jo] ?? joColor(jo).bg;
     const gid = (n.data as { group_id?: string | null }).group_id;
-    return { ...n, data: { ...n.data, cardBg, cardInk: readableInk(cardBg), groupOutline: gid ? groupColor(gid) : null } };
-  }), [nodes, joColors]);
+    return {
+      ...n,
+      hidden: focusJo ? jo !== focusJo : false,
+      data: { ...n.data, cardBg, cardInk: readableInk(cardBg), groupOutline: gid ? groupColor(gid) : null },
+    };
+  }), [nodes, joColors, focusJo]);
 
   const colorOf = (jo: string) => joColors[jo] ?? joColor(jo).bg;
 
@@ -296,19 +303,32 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
           gap: 8, maxWidth: 360, padding: '8px 10px', borderRadius: 10,
           background: 'rgba(0,0,0,.35)', backdropFilter: 'blur(4px)',
         }}>
+          <span style={{ color: '#cbd5e1', fontSize: 11, fontWeight: 800, width: '100%' }}>조별 보기 (칩 클릭=해당 조만)</span>
+          <button
+            onClick={() => setFocusJo(null)}
+            style={{
+              padding: '3px 10px', borderRadius: 999, cursor: 'pointer', fontSize: 13, fontWeight: 800,
+              border: focusJo === null ? '2px solid #fff' : '1px solid rgba(255,255,255,.4)',
+              background: focusJo === null ? '#2563eb' : 'rgba(255,255,255,.15)', color: '#fff',
+            }}
+          >전체</button>
           {jos.map((jo) => (
-            <label key={jo} title={`${jo} 색 선택`} style={{
-              display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
-              color: '#fff', fontSize: 13, fontWeight: 800,
+            <span key={jo} style={{
+              display: 'flex', alignItems: 'center', gap: 5, padding: '2px 8px 2px 4px', borderRadius: 999,
+              background: focusJo === jo ? 'rgba(255,255,255,.95)' : 'rgba(255,255,255,.15)',
+              color: focusJo === jo ? '#1f2937' : '#fff', fontSize: 13, fontWeight: 800,
+              border: focusJo === jo ? '2px solid #fff' : '1px solid rgba(255,255,255,.3)', cursor: 'pointer',
             }}>
               <input
                 type="color"
                 value={colorOf(jo)}
+                onClick={(e) => e.stopPropagation()}
                 onChange={(e) => setJo(jo, e.target.value)}
-                style={{ width: 22, height: 22, border: 'none', borderRadius: 5, background: 'none', cursor: 'pointer', padding: 0 }}
+                title={`${jo} 색 선택`}
+                style={{ width: 20, height: 20, border: 'none', borderRadius: 5, background: 'none', cursor: 'pointer', padding: 0 }}
               />
-              {jo}
-            </label>
+              <span onClick={() => setFocusJo(focusJo === jo ? null : jo)} title={`${jo}만 보기`}>{jo}</span>
+            </span>
           ))}
         </div>
       )}
