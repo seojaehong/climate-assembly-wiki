@@ -155,14 +155,15 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
   const selectedIds = selectedNodes.map((n) => n.id);
   const [voteUrl, setVoteUrl] = useState<string | null>(null);
 
-  // ✨ 임베딩 유사 의제 추천 (gte-small edge function)
+  // ✨ 임베딩 유사 의제 추천 (gte-small 코사인 유사도, edge function). 추천일 뿐 자동병합 없음.
   const [suggestions, setSuggestions] = useState<{ a: string; at: string; b: string; bt: string; sim: number }[]>([]);
   const [suggesting, setSuggesting] = useState(false);
+  const [simThreshold, setSimThreshold] = useState(0.88); // 짧은 한국어 baseline 높아 보수적 기본값
   const suggestMerges = async () => {
     const sb = getSupabase(); if (!sb) return;
     setSuggesting(true);
     const agendas = nodes.map((n) => ({ id: n.id, text: (n.data as { label: string }).label }));
-    const { data } = await sb.functions.invoke('suggest-merges', { body: { agendas, threshold: 0.86 } });
+    const { data } = await sb.functions.invoke('suggest-merges', { body: { agendas, threshold: simThreshold } });
     setSuggesting(false);
     setSuggestions((data as { pairs?: typeof suggestions })?.pairs ?? []);
   };

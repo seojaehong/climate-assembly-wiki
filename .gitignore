@@ -25,6 +25,11 @@ dist/
 public/pagefind/
 pagefind/
 
+# Scratch render files (PNG 추출용 임시 HTML — 노출/배포 제외, 로컬엔 보존)
+public/tmp-postit.html
+public/tmp-rounds/
+public/tmp-*
+
 # Environment
 .env
 .env.*
