@@ -156,6 +156,14 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
     };
   }), [nodes, joColors, focusJo]);
 
+  // 실천과제(action) → 부모 의제 점선 엣지
+  const parentEdges = useMemo(() => nodes
+    .filter((n) => (n.data as { parent_id?: string | null }).parent_id)
+    .map((n) => ({
+      id: `pe-${n.id}`, source: (n.data as { parent_id?: string }).parent_id as string, target: n.id,
+      type: 'default', style: { stroke: '#7c3aed', strokeWidth: 2, strokeDasharray: '5 5' },
+    })), [nodes]);
+
   const colorOf = (jo: string) => joColors[jo] ?? joColor(jo).bg;
 
   // 선택된 카드 + 묶기/해제 상태
@@ -418,7 +426,7 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
 
       <ReactFlow
         nodes={[...FRAME_NODES, ...displayNodes]}
-        edges={edges}
+        edges={[...edges, ...parentEdges]}
         nodeTypes={nodeTypes}
         nodesDraggable
         onNodesChange={(changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds) as typeof nds)}

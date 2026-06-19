@@ -4,6 +4,7 @@ export interface AgendaRow {
   id: string; text: string; jo: string | null; zone: string | null;
   status: 'active' | 'archived'; x: number; y: number;
   group_id?: string | null; merged_into?: string | null;
+  parent_id?: string | null; kind?: string | null; // kind: 'agenda' | 'action'(실천과제)
 }
 export type AgendaNode = Node<AgendaRow & { label: string }, 'agenda'>;
 

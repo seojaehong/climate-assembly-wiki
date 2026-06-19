@@ -26,6 +26,16 @@ async function saveField(id: string, patch: Record<string, unknown>) {
     .eq('id', id);
 }
 
+// 확정 의제 아래 실천과제(action) 카드 추가
+async function addAction(parentId: string, sessionId: string, px: number, py: number) {
+  const sb = getSupabase();
+  if (!sb) return;
+  await sb.schema('climate_vote').from('agenda').insert({
+    session_id: sessionId, text: '새 실천과제', kind: 'action', parent_id: parentId,
+    status: 'active', x: px + 40, y: py + 170, created_by: 'moderator',
+  });
+}
+
 export default function AgendaNode({ id, data }: NodeProps<TNode>) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(data.label);
@@ -35,21 +45,28 @@ export default function AgendaNode({ id, data }: NodeProps<TNode>) {
   const bg = (data as { cardBg?: string }).cardBg ?? fallback.bg;
   const ink = (data as { cardInk?: string }).cardInk ?? fallback.ink;
   const groupOutline = (data as { groupOutline?: string | null }).groupOutline ?? null;
+  const isAction = (data as { kind?: string | null }).kind === 'action';
+  const sessionId = (data as { session_id?: string }).session_id ?? '';
 
   const keepFocus = (e: React.MouseEvent) => e.preventDefault();
 
   return (
     <div style={{
-      background: bg, borderRadius: 14,
-      padding: '16px 20px', minWidth: 240, maxWidth: 440, fontSize: 22, fontWeight: 800,
-      boxShadow: '0 6px 16px rgba(0,0,0,.12)', wordBreak: 'keep-all', color: ink,
+      background: isAction ? '#fff' : bg, borderRadius: 14,
+      padding: isAction ? '12px 16px' : '16px 20px',
+      minWidth: isAction ? 200 : 240, maxWidth: isAction ? 360 : 440,
+      fontSize: isAction ? 17 : 22, fontWeight: 800, wordBreak: 'keep-all', color: ink,
+      boxShadow: '0 6px 16px rgba(0,0,0,.12)',
+      border: isAction ? `2px dashed ${bg}` : undefined,
       outline: groupOutline ? `4px solid ${groupOutline}` : undefined,
       outlineOffset: groupOutline ? 3 : undefined,
     }}>
       {/* 연결선 핸들 — 점을 드래그해 다른 카드에 놓으면 선으로 연결 */}
       <Handle type="target" position={Position.Left} title="여기로 연결" style={{ width: 18, height: 18, background: '#7c3aed', border: '3px solid #fff', boxShadow: '0 1px 4px rgba(0,0,0,.3)' }} />
       <Handle type="source" position={Position.Right} title="여기서 끌어 연결" style={{ width: 18, height: 18, background: '#7c3aed', border: '3px solid #fff', boxShadow: '0 1px 4px rgba(0,0,0,.3)' }} />
-      <div style={{ fontSize: 14, opacity: .65, fontWeight: 800 }}>{data.jo}{data.zone ? ` · ${data.zone}` : ''}</div>
+      <div style={{ fontSize: isAction ? 12 : 14, opacity: .7, fontWeight: 800, color: isAction ? '#7c3aed' : undefined }}>
+        {isAction ? '🛠 실천과제' : `${data.jo ?? ''}${data.zone ? ` · ${data.zone}` : ''}`}
+      </div>
       {editing ? (
         <div className="nodrag">
           <textarea
@@ -112,6 +129,19 @@ export default function AgendaNode({ id, data }: NodeProps<TNode>) {
               </button>
             ))}
           </div>
+          {/* 확정 의제 아래 실천과제 추가 (의제 카드에서만) */}
+          {!isAction && sessionId && (
+            <button
+              onMouseDown={keepFocus}
+              onClick={() => addAction(id, sessionId, (data as { x?: number }).x ?? 0, (data as { y?: number }).y ?? 0)}
+              style={{
+                width: '100%', marginTop: 8, padding: '8px', fontSize: 14, fontWeight: 800,
+                borderRadius: 8, border: '2px dashed #7c3aed', background: '#faf5ff', color: '#7c3aed', cursor: 'pointer',
+              }}
+            >
+              🛠 + 실천과제
+            </button>
+          )}
           {/* 완료 (멀티 컨트롤이라 명시적 닫기) */}
           <button
             onMouseDown={keepFocus}
