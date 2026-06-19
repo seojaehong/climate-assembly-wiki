@@ -497,6 +497,9 @@ function getClientId() {
 
 // Extract round ID from URL: /v/R1 or /v/R5-runoff
 function getRoundId() {
+  // 동적 라운드: /v/?round=AGV-xxx (캔버스에서 생성한 의제 투표)
+  const q = new URLSearchParams(window.location.search).get('round');
+  if (q) return q;
   const parts = window.location.pathname.split('/').filter(Boolean);
   // parts: ['v', 'R1'] or ['v', 'R5-runoff', '']
   const idx = parts.indexOf('v');

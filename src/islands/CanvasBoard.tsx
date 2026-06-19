@@ -63,6 +63,20 @@ function unlink(id: string) {
   sb.schema('climate_vote').from('agenda_link').delete().eq('id', id).then(() => {});
 }
 
+// 채택 → cv 투표 생성: 선택 의제들로 SCALE_MULTI 라운드 insert (기존 cv 투표 프론트가 받음)
+async function createVoteRound(agendaTexts: string[]): Promise<string | null> {
+  const sb = getSupabase();
+  if (!sb || agendaTexts.length === 0) return null;
+  const id = 'AGV-' + crypto.randomUUID().slice(0, 8);
+  const { error } = await sb.schema('climate_vote').from('rounds').insert({
+    id, title: '의제 평가 투표', description: '각 의제의 중요도를 5점 척도로 평가해 주세요.',
+    type: 'SCALE_MULTI', options: agendaTexts,
+    scale_low: 1, scale_high: 5, scale_low_label: '낮음', scale_high_label: '높음',
+    status: 'pending', sort_order: 100,
+  });
+  return error ? null : id;
+}
+
 // 관련 의제 묶기/풀기 — 선택 카드들에 공통 group_id 부여/해제
 function setGroup(ids: string[], groupId: string | null) {
   const sb = getSupabase();
@@ -139,6 +153,13 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
   // 선택된 카드 + 묶기/해제 상태
   const selectedNodes = useMemo(() => nodes.filter((n) => (n as { selected?: boolean }).selected), [nodes]);
   const selectedIds = selectedNodes.map((n) => n.id);
+  const [voteUrl, setVoteUrl] = useState<string | null>(null);
+  const makeVote = async () => {
+    const texts = selectedNodes.map((n) => (n.data as { label: string }).label);
+    const id = await createVoteRound(texts);
+    if (id) setVoteUrl(`${window.location.origin}/v/?round=${id}`);
+  };
+
   const sharedGroup = selectedNodes.length >= 2
     && selectedNodes.every((n) => {
       const g = (n.data as { group_id?: string | null }).group_id;
@@ -179,6 +200,35 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
         >
           {sharedGroup ? '묶음 해제' : `🔗 묶기 (${selectedIds.length})`}
         </button>
+      )}
+
+      {/* 채택 → cv 투표 생성: 선택 의제로 모바일 투표(SCALE_MULTI) 라운드 만들기 */}
+      {authed && selectedIds.length >= 1 && (
+        <button
+          onClick={makeVote}
+          style={{
+            position: 'absolute', top: 16, left: selectedIds.length >= 2 ? 250 : 128, zIndex: 10,
+            padding: '12px 18px', fontSize: 16, fontWeight: 800, borderRadius: 12,
+            border: 'none', background: '#0d9488', color: '#fff', cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(0,0,0,.18)',
+          }}
+        >
+          🗳 투표 생성 ({selectedIds.length})
+        </button>
+      )}
+
+      {/* 생성된 투표 URL — 모바일 공유/QR용 */}
+      {voteUrl && (
+        <div style={{
+          position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 30,
+          background: '#fff', borderRadius: 12, padding: '14px 18px', maxWidth: '90vw',
+          boxShadow: '0 8px 30px rgba(0,0,0,.3)', display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <span style={{ fontWeight: 800, color: '#0d9488' }}>🗳 투표 생성됨</span>
+          <a href={voteUrl} target="_blank" rel="noreferrer" style={{ fontSize: 14, color: '#1f2937', wordBreak: 'break-all' }}>{voteUrl}</a>
+          <button onClick={() => { navigator.clipboard?.writeText(voteUrl); }} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', cursor: 'pointer', fontWeight: 800 }}>복사</button>
+          <button onClick={() => setVoteUrl(null)} style={{ padding: '6px 10px', borderRadius: 8, border: 'none', background: '#e5e7eb', cursor: 'pointer' }}>✕</button>
+        </div>
       )}
 
       {/* 조별 색상 선택 레전드 (현재 보드의 조) */}
