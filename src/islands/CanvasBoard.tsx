@@ -5,7 +5,7 @@ import AgendaNode from './canvas/AgendaNode';
 import { useRealtimeAgendas } from './canvas/use-realtime-agendas';
 import { useAuth } from './canvas/useAuth';
 import { getSupabase } from '../lib/supabase';
-import { BG_PRESETS, joColor, readableInk } from './canvas/palette';
+import { BG_PRESETS, joColor, readableInk, groupColor } from './canvas/palette';
 
 const nodeTypes = { agenda: AgendaNode };
 const BG_KEY = 'canvas-bg-hex';
@@ -33,6 +33,16 @@ function archiveAgenda(id: string) {
   sb.schema('climate_vote').from('agenda')
     .update({ status: 'archived', updated_at: new Date().toISOString() })
     .eq('id', id)
+    .then(() => {});
+}
+
+// 관련 의제 묶기/풀기 — 선택 카드들에 공통 group_id 부여/해제
+function setGroup(ids: string[], groupId: string | null) {
+  const sb = getSupabase();
+  if (!sb || ids.length === 0) return;
+  sb.schema('climate_vote').from('agenda')
+    .update({ group_id: groupId, updated_at: new Date().toISOString() })
+    .in('id', ids)
     .then(() => {});
 }
 
@@ -89,14 +99,27 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
     return [...s].sort();
   }, [nodes]);
 
-  // 조별 색을 각 노드 data에 주입 (override > 기본 팔레트)
+  // 조별 색 + 그룹 테두리색을 각 노드 data에 주입
   const displayNodes = useMemo(() => nodes.map((n) => {
     const jo = (n.data.jo ?? '').trim();
     const cardBg = joColors[jo] ?? joColor(jo).bg;
-    return { ...n, data: { ...n.data, cardBg, cardInk: readableInk(cardBg) } };
+    const gid = (n.data as { group_id?: string | null }).group_id;
+    return { ...n, data: { ...n.data, cardBg, cardInk: readableInk(cardBg), groupOutline: gid ? groupColor(gid) : null } };
   }), [nodes, joColors]);
 
   const colorOf = (jo: string) => joColors[jo] ?? joColor(jo).bg;
+
+  // 선택된 카드 + 묶기/해제 상태
+  const selectedNodes = useMemo(() => nodes.filter((n) => (n as { selected?: boolean }).selected), [nodes]);
+  const selectedIds = selectedNodes.map((n) => n.id);
+  const sharedGroup = selectedNodes.length >= 2
+    && selectedNodes.every((n) => {
+      const g = (n.data as { group_id?: string | null }).group_id;
+      const g0 = (selectedNodes[0].data as { group_id?: string | null }).group_id;
+      return g && g === g0;
+    })
+    ? (selectedNodes[0].data as { group_id?: string | null }).group_id ?? null
+    : null;
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', background: bgHex }}>
@@ -113,6 +136,21 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
           }}
         >
           + 의제
+        </button>
+      )}
+
+      {/* 관련 의제 묶기/해제 — 카드 2개 이상 선택 시 (Shift+클릭 다중선택) */}
+      {authed && selectedIds.length >= 2 && (
+        <button
+          onClick={() => setGroup(selectedIds, sharedGroup ? null : crypto.randomUUID())}
+          style={{
+            position: 'absolute', top: 16, left: 128, zIndex: 10,
+            padding: '12px 18px', fontSize: 16, fontWeight: 800, borderRadius: 12,
+            border: 'none', background: sharedGroup ? '#6b7280' : '#7c3aed', color: '#fff',
+            cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,.18)',
+          }}
+        >
+          {sharedGroup ? '묶음 해제' : `🔗 묶기 (${selectedIds.length})`}
         </button>
       )}
 
@@ -188,6 +226,7 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
         onNodeDragStop={onNodeDragStop}
         onNodesDelete={(deleted) => deleted.forEach((n) => archiveAgenda(n.id))}
         deleteKeyCode={['Delete', 'Backspace']}
+        multiSelectionKeyCode={['Shift', 'Control', 'Meta']}
         fitView
       >
         <Background color={dotFor(bgHex)} /><Controls />

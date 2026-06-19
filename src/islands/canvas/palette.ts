@@ -3,28 +3,45 @@
 
 const INK = '#1f2937';
 
-// 조 명시 매핑 (A~F조). 그 외/미상은 해시로 팔레트에서 결정적 선택.
-const JO_MAP: Record<string, string> = {
-  'A조': '#FACC15', // 노랑
-  'B조': '#FDBA74', // 살구
-  'C조': '#93C5FD', // 하늘
-  'D조': '#86EFAC', // 연두
-  'E조': '#F9A8D4', // 분홍
-  'F조': '#C4B5FD', // 라벤더
-};
-const FALLBACK_POOL = Object.values(JO_MAP);
+// 최대 20개 조 — 각 조에 고유한 밝은 색(어두운 잉크 대비). 유동적 조 개수 지원.
+const JO_PALETTE = [
+  '#FACC15', '#FDBA74', '#93C5FD', '#86EFAC', '#F9A8D4',
+  '#C4B5FD', '#FCA5A5', '#6EE7B7', '#FCD34D', '#A5B4FC',
+  '#F0ABFC', '#7DD3FC', '#BEF264', '#FDA4AF', '#D8B4FE',
+  '#5EEAD4', '#FED7AA', '#BBF7D0', '#DDD6FE', '#99F6E4',
+];
 const UNASSIGNED = '#E5E7EB'; // 미배정(조 없음)
+
+function hashIndex(key: string, mod: number): number {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return h % mod;
+}
+
+// 조 라벨 → 팔레트 슬롯. A조~T조(20) 또는 1조~20조는 순서대로, 그 외는 해시.
+function joIndex(key: string): number {
+  const letter = key.match(/^([A-Ta-t])\s*조?$/);
+  if (letter) return letter[1].toUpperCase().charCodeAt(0) - 65; // A=0 .. T=19
+  const num = key.match(/^(\d{1,2})\s*조?$/);
+  if (num) { const n = parseInt(num[1], 10) - 1; if (n >= 0 && n < 20) return n; }
+  return hashIndex(key, JO_PALETTE.length);
+}
 
 export interface JoColor { bg: string; ink: string; }
 
 export function joColor(jo: string | null | undefined): JoColor {
   const key = (jo ?? '').trim();
   if (!key) return { bg: UNASSIGNED, ink: INK };
-  if (JO_MAP[key]) return { bg: JO_MAP[key], ink: INK };
-  // 미지의 조 라벨도 결정적으로 같은 색을 받도록 해시
-  let h = 0;
-  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
-  return { bg: FALLBACK_POOL[h % FALLBACK_POOL.length], ink: INK };
+  return { bg: JO_PALETTE[joIndex(key)], ink: INK };
+}
+
+// 그룹(묶음) 테두리용 진한 채도 색 — group_id마다 결정적·구분되게.
+const GROUP_OUTLINE = [
+  '#2563eb', '#dc2626', '#16a34a', '#9333ea', '#ea580c', '#0891b2',
+  '#ca8a04', '#db2777', '#4f46e5', '#65a30d', '#0d9488', '#be123c',
+];
+export function groupColor(groupId: string): string {
+  return GROUP_OUTLINE[hashIndex(groupId, GROUP_OUTLINE.length)];
 }
 
 // 임의 배경색 위 가독 잉크색(상대휘도 기준). 커스텀 조색·커스텀 배경에 사용.

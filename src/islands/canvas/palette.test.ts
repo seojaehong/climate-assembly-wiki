@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { joColor, BG_PRESETS, readableInk } from './palette';
+import { joColor, BG_PRESETS, readableInk, groupColor } from './palette';
 
 describe('joColor', () => {
   it('조마다 다른 색을 준다 (A조 ≠ B조)', () => {
@@ -16,6 +16,29 @@ describe('joColor', () => {
   });
   it('항상 어두운 잉크색을 동반한다 (대형스크린 대비)', () => {
     expect(joColor('A조').ink).toMatch(/^#/);
+  });
+});
+
+describe('joColor 20색 유동', () => {
+  it('20개 조(A조~T조)가 거의 다 고유색', () => {
+    const labels = Array.from({ length: 20 }, (_, i) => String.fromCharCode(65 + i) + '조');
+    const bgs = new Set(labels.map((l) => joColor(l).bg));
+    expect(bgs.size).toBeGreaterThanOrEqual(18);
+  });
+  it('숫자 조(1조,2조)도 서로 다른 색', () => {
+    expect(joColor('1조').bg).not.toBe(joColor('2조').bg);
+  });
+});
+
+describe('groupColor', () => {
+  it('group_id마다 결정적', () => {
+    expect(groupColor('g-abc')).toBe(groupColor('g-abc'));
+  });
+  it('다른 group_id는 (대개) 다른 색', () => {
+    expect(groupColor('g-1')).not.toBe(groupColor('g-7'));
+  });
+  it('항상 hex', () => {
+    expect(groupColor('any')).toMatch(/^#[0-9a-f]{6}$/i);
   });
 });
 
