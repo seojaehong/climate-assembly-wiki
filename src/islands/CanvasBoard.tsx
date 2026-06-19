@@ -154,6 +154,18 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
   const selectedNodes = useMemo(() => nodes.filter((n) => (n as { selected?: boolean }).selected), [nodes]);
   const selectedIds = selectedNodes.map((n) => n.id);
   const [voteUrl, setVoteUrl] = useState<string | null>(null);
+
+  // ✨ 임베딩 유사 의제 추천 (gte-small edge function)
+  const [suggestions, setSuggestions] = useState<{ a: string; at: string; b: string; bt: string; sim: number }[]>([]);
+  const [suggesting, setSuggesting] = useState(false);
+  const suggestMerges = async () => {
+    const sb = getSupabase(); if (!sb) return;
+    setSuggesting(true);
+    const agendas = nodes.map((n) => ({ id: n.id, text: (n.data as { label: string }).label }));
+    const { data } = await sb.functions.invoke('suggest-merges', { body: { agendas, threshold: 0.86 } });
+    setSuggesting(false);
+    setSuggestions((data as { pairs?: typeof suggestions })?.pairs ?? []);
+  };
   const makeVote = async () => {
     const texts = selectedNodes.map((n) => (n.data as { label: string }).label);
     const id = await createVoteRound(texts);
@@ -293,6 +305,41 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
           />
         </label>
       </div>
+
+      {/* ✨ 임베딩 유사 의제 추천 패널 */}
+      {authed && (
+        <div style={{ position: 'absolute', top: 64, right: 16, zIndex: 10, width: 300, maxHeight: '70vh', overflowY: 'auto' }}>
+          <button
+            onClick={suggestMerges}
+            disabled={suggesting}
+            style={{
+              width: '100%', padding: '10px 14px', fontSize: 15, fontWeight: 800, borderRadius: 10,
+              border: 'none', background: suggesting ? '#9ca3af' : '#9333ea', color: '#fff',
+              cursor: suggesting ? 'wait' : 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,.18)',
+            }}
+          >
+            {suggesting ? '분석 중…' : '✨ 유사 의제 추천'}
+          </button>
+          {suggestions.map((s, i) => (
+            <div key={i} style={{
+              marginTop: 8, padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,.95)',
+              boxShadow: '0 2px 8px rgba(0,0,0,.15)', fontSize: 13, color: '#1f2937',
+            }}>
+              <div style={{ fontWeight: 700, marginBottom: 2 }}>{s.at}</div>
+              <div style={{ color: '#6b7280', margin: '2px 0' }}>↔ {s.bt}</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: '#9333ea' }}>유사도 {s.sim}</span>
+                <button
+                  onClick={() => { setGroup([s.a, s.b], crypto.randomUUID()); setSuggestions((prev) => prev.filter((x) => x !== s)); }}
+                  style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: '#7c3aed', color: '#fff', fontWeight: 800, cursor: 'pointer' }}
+                >
+                  🔗 묶기
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <ReactFlow
         nodes={[...FRAME_NODES, ...displayNodes]}
