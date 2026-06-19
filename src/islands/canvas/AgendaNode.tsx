@@ -46,9 +46,9 @@ export default function AgendaNode({ id, data }: NodeProps<TNode>) {
       outline: groupOutline ? `4px solid ${groupOutline}` : undefined,
       outlineOffset: groupOutline ? 3 : undefined,
     }}>
-      {/* 연결선 핸들 — 같은/관련 의견끼리 선으로 잇기 (드래그) */}
-      <Handle type="target" position={Position.Left} style={{ width: 13, height: 13, background: '#7c3aed', border: '2px solid #fff' }} />
-      <Handle type="source" position={Position.Right} style={{ width: 13, height: 13, background: '#7c3aed', border: '2px solid #fff' }} />
+      {/* 연결선 핸들 — 점을 드래그해 다른 카드에 놓으면 선으로 연결 */}
+      <Handle type="target" position={Position.Left} title="여기로 연결" style={{ width: 18, height: 18, background: '#7c3aed', border: '3px solid #fff', boxShadow: '0 1px 4px rgba(0,0,0,.3)' }} />
+      <Handle type="source" position={Position.Right} title="여기서 끌어 연결" style={{ width: 18, height: 18, background: '#7c3aed', border: '3px solid #fff', boxShadow: '0 1px 4px rgba(0,0,0,.3)' }} />
       <div style={{ fontSize: 14, opacity: .65, fontWeight: 800 }}>{data.jo}{data.zone ? ` · ${data.zone}` : ''}</div>
       {editing ? (
         <div className="nodrag">

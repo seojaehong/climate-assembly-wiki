@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import QRCode from 'qrcode';
 import { ReactFlow, Background, Controls, applyNodeChanges, type NodeChange } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import AgendaNode from './canvas/AgendaNode';
@@ -167,10 +168,21 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
     setSuggesting(false);
     setSuggestions((data as { pairs?: typeof suggestions })?.pairs ?? []);
   };
+  const [voteQr, setVoteQr] = useState<string | null>(null);
   const makeVote = async () => {
     const texts = selectedNodes.map((n) => (n.data as { label: string }).label);
     const id = await createVoteRound(texts);
-    if (id) setVoteUrl(`${window.location.origin}/v/?round=${id}`);
+    if (id) {
+      const u = `${window.location.origin}/v/?round=${id}`;
+      setVoteUrl(u);
+      QRCode.toDataURL(u, { width: 200, margin: 1 }).then(setVoteQr).catch(() => setVoteQr(null));
+    }
+  };
+  // 📲 참여 QR — 180명이 폰으로 /join 접속해 의제 제출
+  const [joinQr, setJoinQr] = useState<string | null>(null);
+  const showJoinQr = () => {
+    const u = `${window.location.origin}/ko/join?s=${sessionSlug}`;
+    QRCode.toDataURL(u, { width: 240, margin: 1 }).then(setJoinQr).catch(() => setJoinQr(null));
   };
 
   const sharedGroup = selectedNodes.length >= 2
@@ -197,6 +209,21 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
           }}
         >
           + 의제
+        </button>
+      )}
+
+      {/* 📲 참여 QR — 시민 폰 입력(/join) 배포 */}
+      {authed && (
+        <button
+          onClick={showJoinQr}
+          style={{
+            position: 'absolute', bottom: 20, left: 16, zIndex: 10,
+            padding: '12px 18px', fontSize: 15, fontWeight: 800, borderRadius: 12,
+            border: 'none', background: '#1f4e79', color: '#fff', cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(0,0,0,.18)',
+          }}
+        >
+          📲 참여 QR
         </button>
       )}
 
@@ -230,17 +257,35 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
         </button>
       )}
 
-      {/* 생성된 투표 URL — 모바일 공유/QR용 */}
+      {/* 생성된 투표 — QR로 사람들이 스캔해 투표 */}
       {voteUrl && (
         <div style={{
           position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 30,
-          background: '#fff', borderRadius: 12, padding: '14px 18px', maxWidth: '90vw',
-          boxShadow: '0 8px 30px rgba(0,0,0,.3)', display: 'flex', alignItems: 'center', gap: 12,
+          background: '#fff', borderRadius: 16, padding: '20px 24px', maxWidth: '92vw', textAlign: 'center',
+          boxShadow: '0 12px 40px rgba(0,0,0,.35)',
         }}>
-          <span style={{ fontWeight: 800, color: '#0d9488' }}>🗳 투표 생성됨</span>
-          <a href={voteUrl} target="_blank" rel="noreferrer" style={{ fontSize: 14, color: '#1f2937', wordBreak: 'break-all' }}>{voteUrl}</a>
-          <button onClick={() => { navigator.clipboard?.writeText(voteUrl); }} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', cursor: 'pointer', fontWeight: 800 }}>복사</button>
-          <button onClick={() => setVoteUrl(null)} style={{ padding: '6px 10px', borderRadius: 8, border: 'none', background: '#e5e7eb', cursor: 'pointer' }}>✕</button>
+          <div style={{ fontWeight: 900, fontSize: 18, color: '#0d9488', marginBottom: 12 }}>🗳 투표 생성됨 — 스캔해서 투표하세요</div>
+          {voteQr && <img src={voteQr} alt="투표 QR" style={{ width: 200, height: 200 }} />}
+          <div style={{ marginTop: 10, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
+            <a href={voteUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#6b7280', wordBreak: 'break-all', maxWidth: 240 }}>{voteUrl}</a>
+            <button onClick={() => { navigator.clipboard?.writeText(voteUrl); }} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', cursor: 'pointer', fontWeight: 800 }}>복사</button>
+            <button onClick={() => { setVoteUrl(null); setVoteQr(null); }} style={{ padding: '6px 10px', borderRadius: 8, border: 'none', background: '#e5e7eb', cursor: 'pointer' }}>✕</button>
+          </div>
+        </div>
+      )}
+
+      {/* 📲 참여 QR 모달 — 시민이 폰으로 의제 제출(/join) */}
+      {joinQr && (
+        <div onClick={() => setJoinQr(null)} style={{
+          position: 'absolute', inset: 0, zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,.5)',
+        }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: '24px 28px', textAlign: 'center', boxShadow: '0 12px 40px rgba(0,0,0,.4)' }}>
+            <div style={{ fontWeight: 900, fontSize: 20, color: '#1f4e79', marginBottom: 14 }}>📲 의제 제출 — 폰으로 스캔</div>
+            <img src={joinQr} alt="참여 QR" style={{ width: 240, height: 240 }} />
+            <div style={{ marginTop: 12, fontSize: 14, color: '#6b7280' }}>스캔하면 의제·의견을 제출할 수 있어요</div>
+            <button onClick={() => setJoinQr(null)} style={{ marginTop: 14, padding: '8px 20px', borderRadius: 10, border: 'none', background: '#1f4e79', color: '#fff', fontWeight: 800, cursor: 'pointer' }}>닫기</button>
+          </div>
         </div>
       )}
 
@@ -321,6 +366,15 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
           >
             {suggesting ? '분석 중…' : '✨ 유사 의제 추천'}
           </button>
+          {/* 방식 투명성 + 임계값 조절 (전문가 검수용) */}
+          <div style={{ marginTop: 6, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,.9)', fontSize: 11, color: '#6b7280' }}>
+            gte-small 임베딩 · 코사인 유사도 · 추천만(자동병합X)
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+              <span style={{ whiteSpace: 'nowrap' }}>임계값 {simThreshold.toFixed(2)}</span>
+              <input type="range" min={0.7} max={0.98} step={0.01} value={simThreshold}
+                onChange={(e) => setSimThreshold(parseFloat(e.target.value))} style={{ flex: 1 }} />
+            </div>
+          </div>
           {suggestions.map((s, i) => (
             <div key={i} style={{
               marginTop: 8, padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,.95)',
