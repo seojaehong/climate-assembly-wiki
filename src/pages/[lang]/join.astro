@@ -1,0 +1,19 @@
+---
+import '../../styles/global.css';
+import JoinForm from '../../islands/JoinForm';
+export async function getStaticPaths() { return [{ params: { lang: 'ko' } }]; }
+const sessionSlug = Astro.url.searchParams.get('s') ?? '7.4';
+---
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>의제 제출 — 2026 기후시민회의</title>
+  <style>body{background:#fafbfc;margin:0;}</style>
+</head>
+<body>
+  <JoinForm client:only="react" sessionSlug={sessionSlug} />
+</body>
+</html>
