@@ -142,6 +142,19 @@ export default function AgendaNode({ id, data }: NodeProps<TNode>) {
               🛠 + 실천과제
             </button>
           )}
+          {/* 실천과제 → 의제로 승격 (잘못 붙인 경우 되돌리기) */}
+          {isAction && (
+            <button
+              onMouseDown={keepFocus}
+              onClick={() => saveField(id, { kind: 'agenda', parent_id: null })}
+              style={{
+                width: '100%', marginTop: 8, padding: '8px', fontSize: 14, fontWeight: 800,
+                borderRadius: 8, border: '2px solid #2563eb', background: '#eff6ff', color: '#2563eb', cursor: 'pointer',
+              }}
+            >
+              ⬆ 의제로 승격
+            </button>
+          )}
           {/* 완료 (멀티 컨트롤이라 명시적 닫기) */}
           <button
             onMouseDown={keepFocus}

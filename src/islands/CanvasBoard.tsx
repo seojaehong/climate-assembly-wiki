@@ -88,6 +88,16 @@ function setGroup(ids: string[], groupId: string | null) {
     .then(() => {});
 }
 
+// 선택 카드를 특정 의제의 실천과제로 붙이기 — kind=action + parent_id 지정
+function setParent(id: string, parentId: string) {
+  const sb = getSupabase();
+  if (!sb) return;
+  sb.schema('climate_vote').from('agenda')
+    .update({ kind: 'action', parent_id: parentId, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .then(() => {});
+}
+
 // 배경 휘도에 맞는 그리드 점색.
 function dotFor(bg: string): string {
   return readableInk(bg) === '#1f2937' ? '#cbd5e1' : '#475569';
@@ -183,6 +193,38 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
     setSuggesting(false);
     setSuggestions((data as { pairs?: typeof suggestions })?.pairs ?? []);
   };
+
+  // 🔍 앵커 KNN — 카드 1개만 선택 시, 그 카드 기준 최근접. 토글: 전수 코퍼스(173) | 현재 의제(부모추천)
+  const anchor = selectedNodes.length === 1 ? selectedNodes[0] : null;
+  const anchorLabel = anchor ? (anchor.data as { label: string }).label : '';
+  const anchorHasChildren = anchor
+    ? nodes.some((n) => (n.data as { parent_id?: string | null }).parent_id === anchor.id)
+    : false;
+  const [knnTarget, setKnnTarget] = useState<'corpus' | 'agenda'>('corpus');
+  const [knnCorpus, setKnnCorpus] = useState<{ source: string; title: string; category: string; similarity: number }[]>([]);
+  const [knnAgenda, setKnnAgenda] = useState<{ id: string; text: string; sim: number }[]>([]);
+  const [knnFor, setKnnFor] = useState<string | null>(null); // 결과가 어느 카드 것인지(앵커 바뀌면 옛 결과 숨김)
+  const [knnLoading, setKnnLoading] = useState(false);
+  const runKnn = async () => {
+    if (!anchor) return;
+    const sb = getSupabase(); if (!sb) return;
+    const query = (anchor.data as { label: string }).label;
+    setKnnLoading(true);
+    if (knnTarget === 'corpus') {
+      const { data } = await sb.functions.invoke('corpus-search', { body: { query, k: 8 } });
+      setKnnCorpus((data as { matches?: typeof knnCorpus })?.matches ?? []);
+    } else {
+      // 후보 = 현재 캔버스의 의제(kind!=action) 중 자기 자신 제외 → 부모 후보
+      const candidates = nodes
+        .filter((n) => (n.data as { kind?: string | null }).kind !== 'action' && n.id !== anchor.id)
+        .map((n) => ({ id: n.id, text: (n.data as { label: string }).label }));
+      const { data } = await sb.functions.invoke('agenda-knn', { body: { query, candidates, k: 6 } });
+      setKnnAgenda((data as { matches?: typeof knnAgenda })?.matches ?? []);
+    }
+    setKnnFor(anchor.id);
+    setKnnLoading(false);
+  };
+
   const [voteQr, setVoteQr] = useState<string | null>(null);
   const makeVote = async () => {
     const texts = selectedNodes.map((n) => (n.data as { label: string }).label);
@@ -380,47 +422,104 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
         </label>
       </div>
 
-      {/* ✨ 임베딩 유사 의제 추천 패널 */}
+      {/* ✨ 임베딩 추천 패널 — 카드 1개 선택=앵커 KNN(코퍼스/현재의제 토글), 그 외=pairwise 유사쌍 */}
       {authed && (
-        <div style={{ position: 'absolute', top: 64, right: 16, zIndex: 10, width: 300, maxHeight: '70vh', overflowY: 'auto' }}>
-          <button
-            onClick={suggestMerges}
-            disabled={suggesting}
-            style={{
-              width: '100%', padding: '10px 14px', fontSize: 15, fontWeight: 800, borderRadius: 10,
-              border: 'none', background: suggesting ? '#9ca3af' : '#9333ea', color: '#fff',
-              cursor: suggesting ? 'wait' : 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,.18)',
-            }}
-          >
-            {suggesting ? '분석 중…' : '✨ 유사 의제 추천'}
-          </button>
-          {/* 방식 투명성 + 임계값 조절 (전문가 검수용) */}
-          <div style={{ marginTop: 6, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,.9)', fontSize: 11, color: '#6b7280' }}>
-            gte-small 임베딩 · 코사인 유사도 · 추천만(자동병합X)
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-              <span style={{ whiteSpace: 'nowrap' }}>임계값 {simThreshold.toFixed(2)}</span>
-              <input type="range" min={0.7} max={0.98} step={0.01} value={simThreshold}
-                onChange={(e) => setSimThreshold(parseFloat(e.target.value))} style={{ flex: 1 }} />
-            </div>
-          </div>
-          {suggestions.map((s, i) => (
-            <div key={i} style={{
-              marginTop: 8, padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,.95)',
-              boxShadow: '0 2px 8px rgba(0,0,0,.15)', fontSize: 13, color: '#1f2937',
-            }}>
-              <div style={{ fontWeight: 700, marginBottom: 2 }}>{s.at}</div>
-              <div style={{ color: '#6b7280', margin: '2px 0' }}>↔ {s.bt}</div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 800, color: '#9333ea' }}>유사도 {s.sim}</span>
-                <button
-                  onClick={() => { setGroup([s.a, s.b], crypto.randomUUID()); setSuggestions((prev) => prev.filter((x) => x !== s)); }}
-                  style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: '#7c3aed', color: '#fff', fontWeight: 800, cursor: 'pointer' }}
-                >
-                  🔗 묶기
-                </button>
+        <div style={{ position: 'absolute', top: 64, right: 16, zIndex: 10, width: 312, maxHeight: '76vh', overflowY: 'auto' }}>
+          {anchor ? (
+            /* ── 앵커 모드: 선택한 1개 카드 기준 최근접 ── */
+            <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,.97)', boxShadow: '0 4px 14px rgba(0,0,0,.18)' }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#6b7280' }}>🔍 이 카드와 유사한 의제</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#1f2937', margin: '3px 0 9px', wordBreak: 'keep-all' }}>{anchorLabel}</div>
+              {/* 매칭 대상 토글 */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                {([['corpus', '전수 코퍼스 173'], ['agenda', '현재 의제(부모)']] as const).map(([v, l]) => (
+                  <button key={v} onClick={() => setKnnTarget(v)} style={{
+                    flex: 1, padding: '6px 4px', fontSize: 12, fontWeight: 800, borderRadius: 8, cursor: 'pointer',
+                    border: knnTarget === v ? '2px solid #9333ea' : '1px solid #cbd5e1',
+                    background: knnTarget === v ? '#9333ea' : '#fff', color: knnTarget === v ? '#fff' : '#374151',
+                  }}>{l}</button>
+                ))}
               </div>
+              <button onClick={runKnn} disabled={knnLoading} style={{
+                width: '100%', padding: '9px', fontSize: 14, fontWeight: 800, borderRadius: 9, border: 'none',
+                background: knnLoading ? '#9ca3af' : '#9333ea', color: '#fff', cursor: knnLoading ? 'wait' : 'pointer',
+              }}>{knnLoading ? '분석 중…' : '✨ 분석'}</button>
+              <div style={{ marginTop: 6, fontSize: 11, color: '#9ca3af' }}>gte-small 임베딩 · 코사인 유사도 · 추천만</div>
+
+              {/* 코퍼스 결과 */}
+              {knnFor === anchor.id && knnTarget === 'corpus' && knnCorpus.map((m, i) => (
+                <div key={i} style={{ marginTop: 8, padding: '8px 10px', borderRadius: 9, background: '#f8fafc', border: '1px solid #e5e7eb', fontSize: 13 }}>
+                  <div style={{ fontWeight: 700, color: '#1f2937', wordBreak: 'keep-all' }}>{m.title}</div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, padding: '1px 7px', borderRadius: 999, background: m.source === 'expert-65' ? '#dbeafe' : '#dcfce7', color: m.source === 'expert-65' ? '#1e40af' : '#166534' }}>{m.source === 'expert-65' ? '전문가' : '대국민'}</span>
+                    <span style={{ fontSize: 11, color: '#6b7280' }}>{m.category}</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 800, color: '#9333ea' }}>{m.similarity.toFixed(2)}</span>
+                  </div>
+                </div>
+              ))}
+
+              {/* 현재 의제 결과 — '여기 붙이기'로 parent 지정 */}
+              {knnFor === anchor.id && knnTarget === 'agenda' && knnAgenda.map((m) => (
+                <div key={m.id} style={{ marginTop: 8, padding: '8px 10px', borderRadius: 9, background: '#f8fafc', border: '1px solid #e5e7eb', fontSize: 13 }}>
+                  <div style={{ fontWeight: 700, color: '#1f2937', wordBreak: 'keep-all' }}>{m.text}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', marginTop: 6, gap: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: '#9333ea' }}>유사도 {m.sim.toFixed(2)}</span>
+                    <button
+                      onClick={() => { setParent(anchor.id, m.id); setKnnAgenda([]); setKnnFor(null); }}
+                      disabled={anchorHasChildren}
+                      title={anchorHasChildren ? '이 카드에 이미 실천과제가 달려 있어 붙일 수 없습니다' : '이 의제의 실천과제로 붙이기'}
+                      style={{ marginLeft: 'auto', padding: '5px 11px', borderRadius: 8, border: 'none', background: anchorHasChildren ? '#d1d5db' : '#7c3aed', color: '#fff', fontWeight: 800, cursor: anchorHasChildren ? 'not-allowed' : 'pointer' }}
+                    >🛠 여기 붙이기</button>
+                  </div>
+                </div>
+              ))}
+              {knnTarget === 'agenda' && anchorHasChildren && (
+                <div style={{ marginTop: 6, fontSize: 11, color: '#b45309' }}>※ 자식 실천과제가 있어 다른 의제 밑으로 붙이기 불가</div>
+              )}
             </div>
-          ))}
+          ) : (
+            /* ── pairwise 모드: 0개 또는 2개+ 선택 시 캔버스 의제 간 유사쌍 추천 ── */
+            <>
+              <button
+                onClick={suggestMerges}
+                disabled={suggesting}
+                style={{
+                  width: '100%', padding: '10px 14px', fontSize: 15, fontWeight: 800, borderRadius: 10,
+                  border: 'none', background: suggesting ? '#9ca3af' : '#9333ea', color: '#fff',
+                  cursor: suggesting ? 'wait' : 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,.18)',
+                }}
+              >
+                {suggesting ? '분석 중…' : '✨ 유사 의제 추천'}
+              </button>
+              {/* 방식 투명성 + 임계값 조절 (전문가 검수용) */}
+              <div style={{ marginTop: 6, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,.9)', fontSize: 11, color: '#6b7280' }}>
+                gte-small 임베딩 · 코사인 유사도 · 추천만(자동병합X) · <b>카드 1개 선택 시 코퍼스/부모 매칭</b>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                  <span style={{ whiteSpace: 'nowrap' }}>임계값 {simThreshold.toFixed(2)}</span>
+                  <input type="range" min={0.7} max={0.98} step={0.01} value={simThreshold}
+                    onChange={(e) => setSimThreshold(parseFloat(e.target.value))} style={{ flex: 1 }} />
+                </div>
+              </div>
+              {suggestions.map((s, i) => (
+                <div key={i} style={{
+                  marginTop: 8, padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,.95)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,.15)', fontSize: 13, color: '#1f2937',
+                }}>
+                  <div style={{ fontWeight: 700, marginBottom: 2 }}>{s.at}</div>
+                  <div style={{ color: '#6b7280', margin: '2px 0' }}>↔ {s.bt}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: '#9333ea' }}>유사도 {s.sim}</span>
+                    <button
+                      onClick={() => { setGroup([s.a, s.b], crypto.randomUUID()); setSuggestions((prev) => prev.filter((x) => x !== s)); }}
+                      style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: '#7c3aed', color: '#fff', fontWeight: 800, cursor: 'pointer' }}
+                    >
+                      🔗 묶기
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       )}
 
