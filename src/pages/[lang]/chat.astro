@@ -1,0 +1,14 @@
+---
+import '../../styles/global.css';
+import ChatBot from '../../islands/ChatBot';
+export async function getStaticPaths() { return [{ params: { lang: 'ko' } }]; }
+---
+<!doctype html>
+<html lang="ko"><head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>그득이에게 물어보기 — 기후시민회의 자료 도우미</title>
+</head><body>
+  <ChatBot client:only="react" />
+</body></html>
