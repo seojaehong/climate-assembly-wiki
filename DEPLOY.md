@@ -1,7 +1,12 @@
 # Cloudflare Pages 배포 가이드
 
 본 문서는 **2026 기후시민회의 위키**를 Cloudflare Pages에 배포하는 절차입니다.
-M3(2026.8) 시점까지는 **비공개 프리뷰** 상태를 유지합니다 (robots.txt의 `Disallow: /` 유지).
+
+> **2026-06-21 갱신**: 정책 현실 반영
+> - 원래 계획: M3(2026.8)까지 `Disallow: /` 비공개 프리뷰
+> - **실제 운영**: 2026-06-13 의제숙의워크숍부터 시민이 현장에서 사이트 접근 — **라이브 운영 중** (https://climate-assembly.org)
+> - 현재 `public/robots.txt`: `Allow: /` + 데모·관리자·내부 페이지만 `Disallow` (event/, vote-admin 등). 이게 사실상의 현 정책.
+> - M3(2026.8) MVP는 별도 마일스톤으로 진행 (한·영 콘텐츠 완성·Pagefind 검색·도메인 안정화 등)
 
 ## 권장 방식 — Cloudflare 대시보드 GitHub 통합 (5분)
 
@@ -39,16 +44,22 @@ M3(2026.8) 시점까지는 **비공개 프리뷰** 상태를 유지합니다 (ro
 https://climate-assembly-wiki.pages.dev
 ```
 
-### 5. 인덱싱 차단 확인 (★ 매우 중요 ★)
+### 5. 인덱싱 정책 확인 (현행)
 
-M3 이전까지 검색엔진 노출을 막아야 합니다.
+**2026-06-21 정책**: 본문 색인 허용 + 데모/관리자/내부 페이지만 차단.
 
-1. 배포 완료 후 https://climate-assembly-wiki.pages.dev/robots.txt 접속
-2. 다음이 보여야 함:
+1. 배포 완료 후 https://climate-assembly.org/robots.txt 접속
+2. 다음 형태여야 함:
    ```
    User-agent: *
-   Disallow: /
+   Allow: /
+
+   # 데모/템플릿/관리자/내부 페이지 색인 차단
+   Disallow: /event/
+   Disallow: /vote-admin-614/
+   # ... 기타 내부 경로
    ```
+3. 추가 내부 경로 발생 시 `public/robots.txt`에 Disallow line 추가하고 push.
 3. **Pages 프로젝트 → Settings → Builds & deployments**:
    - **Production branch**: `main` 만 활성화
    - **Preview deployments**: 자동 빌드는 켜두되, 외부 공유는 금지 (PM 승인 전 URL 공유 금지)
