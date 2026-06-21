@@ -82,6 +82,14 @@ const S = {
 // 유사도 → 백분율 라벨
 function simPct(s: number) { return `${Math.round(s * 100)}%`; }
 
+// 추천 이유 — 이미 있는 필드(similarity·category·source)만으로 한 문장 합성
+function recommendReason(c: Citation) {
+  const parts = [`질문과 ${simPct(c.similarity)} 유사합니다`];
+  if (c.category) parts.push(`분류는 ‘${c.category}’입니다`);
+  parts.push(`출처는 ${sourceMeta(c.source).label}입니다`);
+  return parts.join(' · ');
+}
+
 function CitationCard({ c }: { c: Citation }) {
   const [open, setOpen] = useState(false);
   const m = sourceMeta(c.source);
@@ -102,6 +110,7 @@ function CitationCard({ c }: { c: Citation }) {
       </button>
       {open && (
         <div style={{ padding: '0 var(--space-3) var(--space-3)', fontSize: 'var(--text-sm)', color: 'var(--color-fg-muted)', lineHeight: 'var(--leading-relaxed)' }}>
+          <div style={{ marginBottom: 'var(--space-2)' }}><strong style={{ color: 'var(--color-fg)' }}>추천 이유</strong> {recommendReason(c)}</div>
           <div style={{ marginBottom: 'var(--space-1)' }}><strong style={{ color: 'var(--color-fg)' }}>문서</strong> {c.doc}</div>
           {c.category && <div style={{ marginBottom: 'var(--space-1)' }}><strong style={{ color: 'var(--color-fg)' }}>분류</strong> {c.category}</div>}
           <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-fg-subtle)' }}>ref: {c.ref_id}</div>
