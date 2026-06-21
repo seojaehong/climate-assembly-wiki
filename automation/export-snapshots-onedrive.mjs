@@ -24,9 +24,10 @@
  *
  * ENV VARS
  * ────────
- * ONEDRIVE_EXPORT_DIR   내보낼 폴더 (기본: <script 위치>/../.vote-snapshots)
- * SUPABASE_URL          Supabase 프로젝트 URL
- * SUPABASE_SERVICE_ROLE_KEY  service_role JWT — climate_vote.snapshots SELECT 권한 필요
+ * ONEDRIVE_EXPORT_DIR        내보낼 폴더 (기본: <script 위치>/../.vote-snapshots)
+ * SUPABASE_URL               Supabase 프로젝트 URL
+ * SUPABASE_SERVICE_ROLE_KEY  service_role JWT (우선). 없으면 SUPABASE_SERVICE_ROLE 사용.
+ *                            snapshot-db.mjs + RUNBOOK은 SUPABASE_SERVICE_ROLE 명칭 사용.
  *
  * PREREQ: service_role이 climate_vote 스키마에 USAGE + snapshots에 SELECT 권한 보유.
  *         (supabase/migrations/20260621143355_grant_service_role_snapshots_read.sql 적용 필요)
@@ -101,9 +102,11 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const { createClient } = await import('@supabase/supabase-js');
 
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // RUNBOOK·snapshot-db.mjs 은 SUPABASE_SERVICE_ROLE 사용; 로컬 쉘은 _KEY suffix 사용.
+  // 두 이름 모두 허용 — SUPABASE_SERVICE_ROLE_KEY 우선, 없으면 SUPABASE_SERVICE_ROLE.
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE;
   if (!url || !key) {
-    console.error('오류: SUPABASE_URL 과 SUPABASE_SERVICE_ROLE_KEY 환경변수가 필요합니다.');
+    console.error('오류: SUPABASE_URL 과 SUPABASE_SERVICE_ROLE_KEY (또는 SUPABASE_SERVICE_ROLE) 환경변수가 필요합니다.');
     process.exit(1);
   }
 
