@@ -53,7 +53,7 @@
     overflow: hidden;
   }
   .bubble-stage { position: relative; padding: 18px 0 0; }
-  svg.bubble { width: 100%; height: 780px; display: block; }
+  svg.bubble { width: 100%; height: 1120px; display: block; }
   .phase-big {
     position: absolute; right: 56px; bottom: 28px;
     font-size: 280px; font-weight: 900;
@@ -214,8 +214,8 @@ let speed = 2000;
 
 const svg = d3.select('#bubbleSvg');
 const width = () => svg.node().clientWidth;
-const height = () => 780;
-const margin = { top: 70, right: 70, bottom: 80, left: 110 };
+const height = () => 1120;
+const margin = { top: 80, right: 80, bottom: 100, left: 120 };
 
 let xScale, yScale, rScale;
 
@@ -227,7 +227,7 @@ async function load() {
 
   xScale = d3.scaleLinear().domain([0, 10]).range([margin.left, width() - margin.right]);
   yScale = d3.scaleLinear().domain([0, 10]).range([height() - margin.bottom, margin.top]);
-  rScale = d3.scaleSqrt().domain([0, maxR]).range([18, 160]);  // BIG bubbles for 200 viewers
+  rScale = d3.scaleSqrt().domain([0, maxR]).range([14, 120]);  // 가시성 유지하면서 겹침 차단 (높이 1120 + margin 확장과 페어)
 
   buildParticles();
   drawAxes();
