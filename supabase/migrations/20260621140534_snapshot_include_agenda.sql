@@ -15,7 +15,7 @@
 --         모든 agg는 COALESCE(...,'[]') 로 NULL(빈 테이블, 예: agenda_vote 0행) 방어.
 --         tally 는 뷰이므로 ORDER BY 생략(확인된 정렬 컬럼 없음 — 백업이라 순서 불요).
 --
--- ROLLBACK: supabase/migrations/20260621140534_BEFORE_snapshot_rpc.sql 실행.
+-- ROLLBACK: supabase/rollbacks/20260621140534_BEFORE_snapshot_rpc.sql 실행.
 --
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- [B-007] RESET 안전 불변식 — 이 파일을 수정하는 개발자 필독 (2026-06-21)
