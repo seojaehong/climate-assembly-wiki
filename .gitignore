@@ -76,9 +76,9 @@ scripts/.cache/
 # Internal subagent memory (not public)
 .claude/
 build_output.txt
-# Lockfile intentionally ignored — Cloudflare auto-selects npm ci (strict) when
-# committed, which fails on cross-platform optional deps (sharp/@emnapi etc).
-# package.json#overrides handles version pinning declaratively. See feedback memory.
-package-lock.json
+# 2026-06-21: lockfile 추적 복원 — 빌드 재현성 (npm ci 가능)
+# (이전 우려였던 sharp/@emnapi cross-platform 충돌은 npm install + 로컬 ci 검증으로 해소 확인)
+# Cloudflare 빌드 깨지면 본 line 재활성화 + package-lock.json 다시 untrack
+# package-lock.json
 dist_backup_tmp
 dist_backup2
