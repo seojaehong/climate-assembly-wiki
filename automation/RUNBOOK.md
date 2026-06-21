@@ -114,19 +114,25 @@ in-repo에 reset/DELETE/cv_archive_round를 호출하는 활성 코드 경로가
 
 `climate_vote.votes` 테이블 grants (2026-06-21 live 확인):
 
-| 역할 | INSERT | SELECT | UPDATE | DELETE |
-|------|--------|--------|--------|--------|
-| anon | O | O | — | — |
-| authenticated | O | O | — | — |
-| service_role | — | — | — | — |
-| postgres (내부) | O | O | O | O |
+| 역할 | INSERT | SELECT | UPDATE | DELETE | rolbypassrls |
+|------|--------|--------|--------|--------|--------------|
+| anon | O | O | — | — | false |
+| authenticated | O | O | — | — | false |
+| service_role | — | — | — | — | **true** |
+| postgres (내부) | O | O | O | O | true |
 
-**결론**: anon·authenticated·service_role 모두 votes에 UPDATE/DELETE 권한 없음.
-PostgREST(REST API), Edge Function, 브라우저 Supabase 클라이언트 어느 경로로도
-votes를 직접 삭제·수정하는 것이 **구조적으로 불가능**하다.
+`cv_archive_round` 함수 속성 (2026-06-21 live 확인):
+- `prosecdef = false` → **SECURITY INVOKER** (호출자 권한으로 실행)
+- EXECUTE 권한: `authenticated`, `service_role` 만 (anon 없음)
 
-UPDATE(archived_at)는 오직 `cv_archive_round` plpgsql 함수 내부(postgres role)에서만 실행된다.
-이 함수는 단일 트랜잭션이므로 **snapshot INSERT가 실패하면 UPDATE도 자동 롤백** — snapshot 실패 시
+**결론**: `cv_archive_round`가 SECURITY INVOKER이므로, 호출자 역할의 권한이 실제 실행 권한을 결정한다.
+- `authenticated` 호출 → votes에 UPDATE 권한 없음 → **내부 UPDATE 실패** → 실질적으로 archive 불가
+- `service_role` 호출 → rolbypassrls=true + EXECUTE 보유 → **실제 archive 가능** (자동화 스크립트 경로)
+
+즉, votes를 실제로 아카이브할 수 있는 것은 `service_role` 키를 가진 서버 사이드 스크립트/자동화뿐이다.
+브라우저(anon/authenticated)는 votes를 직접 삭제·수정하는 것이 **구조적으로 불가능**하다.
+
+이 함수는 단일 트랜잭션이므로 **snapshot INSERT가 실패하면 votes UPDATE도 자동 롤백** — snapshot 실패 시
 reset이 강행되는 경로는 현재 없다.
 
 ### 불변식 3개
@@ -147,12 +153,15 @@ reset이 강행되는 경로는 현재 없다.
 
 admin 기능을 재활성화하기 전에 다음 조건을 **모두** 충족해야 한다:
 
-- [ ] **reset 버튼 → cv_archive_round만 호출** (raw DELETE·UPDATE 경로 절대 없음)
+- [ ] **reset 버튼 → 서버 사이드에서 service_role 키로 cv_archive_round 호출**
+  (브라우저에서 직접 RPC 호출 금지 — authenticated는 실제로 votes UPDATE 불가, 혼선 방지)
 - [ ] **2단계 확인 다이얼로그** — "라운드 {id}를 아카이브합니다. 되돌릴 수 없습니다. 계속하시겠습니까?"
 - [ ] **snapshot 실패 시 UI에서 reset 차단** — cv_archive_round 반환 오류를 catch해 사용자에게
   표시, reset 완료 처리 금지
 - [ ] **reset 전 OneDrive export 트리거** — admin UI가 export-snapshots-onedrive 실행 또는
   운영자에게 수동 export 완료 확인을 요구
+- [ ] **admin 접근 제어 게이트** — authenticated 역할로도 cv_archive_round EXECUTE 가능하므로
+  admin 기능은 인증된 운영자(특정 이메일/역할)만 접근 가능하도록 RLS/미들웨어 게이트 필수
 - [ ] **anon/authenticated에 votes DELETE/UPDATE 권한 부여 금지** — 현재 grants 상태 유지
 - [ ] **PITR 활성화 확인** — 8/29 이전에 Supabase Pro PITR add-on 활성화 권장 (미활성 시
   이 문서의 불변식 3개가 유일한 복구 수단)

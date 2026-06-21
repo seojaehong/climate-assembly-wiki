@@ -23,10 +23,14 @@
 --
 -- cv_archive_round 는 climate_vote.votes 를 리셋하는 유일한 sanctioned 경로이다.
 --
--- 구조적 보장 (2026-06-21 live 검증):
---   · anon / authenticated / service_role — votes 에 UPDATE·DELETE 권한 없음
---   · PostgREST · Edge Function · 브라우저 클라이언트 모두 raw delete 불가
---   · 오직 이 함수 내부(postgres role)에서만 UPDATE archived_at 가능
+-- 실행 권한 구조 (2026-06-21 live 검증 — prosecdef=false, SECURITY INVOKER):
+--   · EXECUTE 권한: authenticated, service_role 만 (anon 없음)
+--   · 이 함수는 SECURITY INVOKER — 호출자 권한으로 실행됨
+--   · votes UPDATE·DELETE: anon/authenticated 모두 table·column level 권한 없음
+--   · service_role 만 rolbypassrls=true + EXECUTE 보유 → 실제 archive 가능
+--   · 결론: authenticated 가 호출하면 내부 votes UPDATE 가 권한 오류로 실패함
+--            실질적으로 service_role 키(자동화 스크립트)만이 실제 archive 를 수행
+--   · PostgREST(anon/authenticated) · 브라우저 클라이언트 로는 실제 reset 불가
 --
 -- 트랜잭션 보장:
 --   · snapshot INSERT → votes UPDATE 가 단일 트랜잭션
@@ -38,6 +42,8 @@
 --   2. EXCEPTION 블록으로 snapshot 실패를 무시하고 UPDATE 를 계속하는 로직 추가 금지
 --   3. 두 작업을 별도 트랜잭션으로 분리 금지
 --   4. 외부(admin UI·스크립트)에서 직접 DELETE/UPDATE 쿼리 실행 금지
+--   5. 8/29 admin 재설계 시: 새 admin 경로도 반드시 service_role 키(서버 사이드)를 통해
+--      cv_archive_round 를 호출할 것. 브라우저에서 직접 archive 호출 금지.
 --
 -- 8/29 admin 재설계 시 반드시 확인:
 --   → automation/RUNBOOK.md § [B-007] reset 안전 불변식 참조
