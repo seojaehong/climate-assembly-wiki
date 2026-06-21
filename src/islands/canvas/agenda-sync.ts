@@ -5,8 +5,10 @@ export interface AgendaRow {
   status: 'active' | 'archived'; x: number; y: number;
   group_id?: string | null; merged_into?: string | null;
   parent_id?: string | null; kind?: string | null; // kind: 'agenda' | 'action'(실천과제)
+  [key: string]: unknown; // React Flow Node<T> 제약: Record<string, unknown> 호환
 }
-export type AgendaNode = Node<AgendaRow & { label: string }, 'agenda'>;
+export type AgendaNodeData = AgendaRow & { label: string };
+export type AgendaNode = Node<AgendaNodeData, 'agenda'>;
 
 export function agendasToNodes(rows: AgendaRow[]): AgendaNode[] {
   return rows.filter(r => r.status === 'active').map(r => ({

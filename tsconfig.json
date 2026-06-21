@@ -9,5 +9,6 @@
     },
     "jsx": "react-jsx",
     "jsxImportSource": "react"
-  }
+  },
+  "exclude": ["dist", "dist_*", "dist.bak.*", "node_modules", "**/*.bak/**"]
 }
