@@ -1,6 +1,0 @@
-# Root redirect already handled by src/pages/index.astro (meta refresh to /ko)
-# Add server-side 302 fallback in case JS/meta is blocked
-/  /ko  302
-
-# 404 fallback
-/*  /404.html  404
