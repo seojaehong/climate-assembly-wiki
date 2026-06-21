@@ -5,6 +5,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 export async function snapshotRound({
   client,
   roundId,
+  label = null,
   maxRetries = 5,
   baseDelayMs = 1000,
   alert = () => {},
@@ -12,7 +13,7 @@ export async function snapshotRound({
 }) {
   let lastError;
   for (let i = 0; i < maxRetries; i++) {
-    const { data, error } = await client.rpc('cv_snapshot_now', { p_round_id: roundId });
+    const { data, error } = await client.rpc('cv_snapshot_now', { p_label: label, p_source: 'cron' });
     if (!error) return data;
     lastError = error;
     if (i < maxRetries - 1) await sleep(baseDelayMs * 2 ** i);
@@ -34,7 +35,9 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(0);
   }
   const client = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE);
-  const data = await snapshotRound({ client, roundId: ws.supabase_round_id });
+  const roundId = ws.supabase_round_id;
+  const snapshotLabel = `${ws.name ?? ws.date}-r${roundId}`;
+  const data = await snapshotRound({ client, roundId, label: snapshotLabel });
   const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 16);
   const outDir = `/tmp/${ws.name}/snapshots`;
   mkdirSync(outDir, { recursive: true });

@@ -9,7 +9,8 @@
     "snapshot": "node snapshot-db.mjs",
     "upload": "node upload-to-drive.mjs",
     "finalize": "node finalize-report.mjs",
-    "verify-drive": "node scripts/verify-drive.mjs"
+    "verify-drive": "node scripts/verify-drive.mjs",
+    "export-snapshots": "node export-snapshots-onedrive.mjs"
   },
   "dependencies": {
     "playwright": "^1.49.0",

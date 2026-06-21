@@ -82,3 +82,8 @@ build_output.txt
 # package-lock.json
 dist_backup_tmp
 dist_backup2
+
+# Vote snapshots (PII·용량 → git 추적 금지, OneDrive 동기화로만 보존)
+# export-snapshots-onedrive.mjs 기본 출력 폴더
+.vote-snapshots/
+# ONEDRIVE_EXPORT_DIR 사용자 지정 폴더도 명시 시 여기에 추가

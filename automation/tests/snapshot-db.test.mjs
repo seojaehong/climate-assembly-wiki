@@ -1,11 +1,14 @@
 import { test, expect, vi } from 'vitest';
 import { snapshotRound } from '../snapshot-db.mjs';
 
-test('calls cv_snapshot_now with round_id and returns JSON', async () => {
+test('calls cv_snapshot_now with p_label + p_source (not p_round_id) and returns JSON', async () => {
   const rpc = vi.fn().mockResolvedValue({ data: { snapshot_id: 42, votes: 126 }, error: null });
   const client = { rpc };
-  const out = await snapshotRound({ client, roundId: 2 });
-  expect(rpc).toHaveBeenCalledWith('cv_snapshot_now', { p_round_id: 2 });
+  const out = await snapshotRound({ client, roundId: 2, label: '7월_행사-r2' });
+  // Correct signature: (p_label, p_source) — no p_round_id
+  expect(rpc).toHaveBeenCalledWith('cv_snapshot_now', { p_label: '7월_행사-r2', p_source: 'cron' });
+  // Regression: must NOT pass p_round_id (that caused PGRST202 / HTTP 404)
+  expect(rpc).not.toHaveBeenCalledWith('cv_snapshot_now', expect.objectContaining({ p_round_id: expect.anything() }));
   expect(out.snapshot_id).toBe(42);
 });
 
