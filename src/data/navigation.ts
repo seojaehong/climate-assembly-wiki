@@ -63,11 +63,13 @@ export const TOP_NAV_ITEMS: NavItem[] = [
   // 2026-06-13: '이벤트' demo link.
   // 2026-06-15 정리: /event/는 더미 데이터(감축1~5/적응1~5)라 사용자 혼선 유발 → 실제 198 의제 3D 버블인 /race-bubble/로 재지정.
   // /event/는 noindex + 데모/템플릿 폴더로 격리 예정.
-  { section: 'event', labelKo: '이벤트', labelEn: 'Event', href: '/race-bubble/', external: true },
+  // 2026-06-22: 탭 숨김 — race-bubble 겹침 이슈 후속 정비 중. 직접 URL(/race-bubble/, /event/) 접근은 보존
+  // { section: 'event', labelKo: '이벤트', labelEn: 'Event', href: '/race-bubble/', external: true },
   // 2026-06-13: '해외사례' — global climate assembly dashboard + comparison table.
   { section: 'global', labelKo: '해외사례', labelEn: 'Global', href: '/global/', external: true },
   // 2026-06-13: '운영규정 의견' — 3교시 A조/B조 시민 포스트잇 의견 시각화
-  { section: 'regulation-feedback', labelKo: '운영규정 의견', labelEn: 'Regulation Feedback' },
+  // 2026-06-22: 탭 숨김 — 6/13 일회성 시각화라 일반 탐색에 노출 불필요. 직접 URL(/ko/regulation-feedback/) 보존
+  // { section: 'regulation-feedback', labelKo: '운영규정 의견', labelEn: 'Regulation Feedback' },
   // <!-- temporarily hidden, content private as of 2026-06-02 -->
   // { section: 'tools',     labelKo: '도구',    labelEn: 'Tools' },
   // { section: 'sessions',  labelKo: '회차',    labelEn: 'Sessions' },
