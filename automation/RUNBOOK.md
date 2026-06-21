@@ -92,6 +92,80 @@ GitHub Actions schedules는 트래픽 폭주 시 5~15분 지연될 수 있다. 9
 
 snapshot-db는 cumulativeFailures ≥3 시 자동으로 warning → critical 격상.
 
+---
+
+## [B-007] reset 안전 불변식 (2026-06-21 확정)
+
+> 6/14 ~150표 영구 손실 원인 = PITR 미활성 + raw reset. 이 섹션은 같은 사고가 재발하지 않도록
+> reset 경로를 **구조적으로** 봉쇄한 결과와, 8/29 admin 재설계의 하드 요구사항을 기록한다.
+
+### 현재 reset 경로 상태 (2026-06-21 조사 완료)
+
+**admin(vote-admin) 페이지**: 6/15에 archive 이동·503 stub 처리됨 — **현재 완전 비활성**.
+in-repo에 reset/DELETE/cv_archive_round를 호출하는 활성 코드 경로가 **존재하지 않는다**.
+
+조사 범위:
+- `src/pages/`, `src/islands/`, `src/lib/` 전수 grep — reset·DELETE·cv_archive_round 호출 없음
+- `automation/` 스크립트 전수 — `cv_snapshot_now` 호출만 존재, archive/reset 없음
+- Supabase edge functions 전수(7개): suggest-merges·build-corpus·corpus-search·agenda-knn·build-kb·kb-search·chat — 모두 votes에 쓰기 없음
+- Supabase DB 함수: `cv_archive_round`, `cv_snapshot_now`, `set_active` 3개만 존재
+
+### 구조적 가드 (Supabase 권한 확인)
+
+`climate_vote.votes` 테이블 grants (2026-06-21 live 확인):
+
+| 역할 | INSERT | SELECT | UPDATE | DELETE |
+|------|--------|--------|--------|--------|
+| anon | O | O | — | — |
+| authenticated | O | O | — | — |
+| service_role | — | — | — | — |
+| postgres (내부) | O | O | O | O |
+
+**결론**: anon·authenticated·service_role 모두 votes에 UPDATE/DELETE 권한 없음.
+PostgREST(REST API), Edge Function, 브라우저 Supabase 클라이언트 어느 경로로도
+votes를 직접 삭제·수정하는 것이 **구조적으로 불가능**하다.
+
+UPDATE(archived_at)는 오직 `cv_archive_round` plpgsql 함수 내부(postgres role)에서만 실행된다.
+이 함수는 단일 트랜잭션이므로 **snapshot INSERT가 실패하면 UPDATE도 자동 롤백** — snapshot 실패 시
+reset이 강행되는 경로는 현재 없다.
+
+### 불변식 3개
+
+다음 불변식은 현재 이미 구조적으로 보장되어 있으며, 8/29 admin 재설계 이후에도 반드시 유지해야 한다.
+
+1. **모든 reset은 `cv_archive_round` 경유** — 이 RPC가 유일한 sanctioned reset 경로.
+   직접 `DELETE` 또는 `UPDATE archived_at` 쿼리를 admin UI·스크립트·대시보드에서 실행 금지.
+
+2. **snapshot 실패 시 reset 금지** — `cv_archive_round`는 단일 트랜잭션이므로 snapshot INSERT
+   실패 → 전체 롤백. 이 동작을 절대 우회하지 말 것(분리 트랜잭션·EXCEPTION 무시 금지).
+
+3. **reset 전 OneDrive export 권장** — `automation/export-snapshots-onedrive.mjs`로 최신
+   snapshot을 off-Supabase에 내보낸 후 cv_archive_round 호출. PITR 미활성 상태이므로
+   Supabase snapshots 테이블 손상 시 유일한 복구 수단.
+
+### 8/29 admin 재설계 하드 요구사항
+
+admin 기능을 재활성화하기 전에 다음 조건을 **모두** 충족해야 한다:
+
+- [ ] **reset 버튼 → cv_archive_round만 호출** (raw DELETE·UPDATE 경로 절대 없음)
+- [ ] **2단계 확인 다이얼로그** — "라운드 {id}를 아카이브합니다. 되돌릴 수 없습니다. 계속하시겠습니까?"
+- [ ] **snapshot 실패 시 UI에서 reset 차단** — cv_archive_round 반환 오류를 catch해 사용자에게
+  표시, reset 완료 처리 금지
+- [ ] **reset 전 OneDrive export 트리거** — admin UI가 export-snapshots-onedrive 실행 또는
+  운영자에게 수동 export 완료 확인을 요구
+- [ ] **anon/authenticated에 votes DELETE/UPDATE 권한 부여 금지** — 현재 grants 상태 유지
+- [ ] **PITR 활성화 확인** — 8/29 이전에 Supabase Pro PITR add-on 활성화 권장 (미활성 시
+  이 문서의 불변식 3개가 유일한 복구 수단)
+
+### 알려진 한계 (B-007 범위 밖, 의도적 보류)
+
+- `climate_vote.agenda` UPDATE status='archived' 및 `agenda_link` hard DELETE:
+  캔버스(canvas) 운영 기능으로 votes 손실과 무관. snapshot payload에 agenda/agenda_link가
+  포함되어 있으므로 cv_archive_round/cv_snapshot_now 실행 후 복구 가능.
+  별도 agenda-soft-delete 개선 시 검토.
+
+---
+
 ## 알려진 한계 (B-008a 범위 밖)
 
 - 시민 모바일 디바이스 화면 캡쳐 → B-008b (별도 spec)
