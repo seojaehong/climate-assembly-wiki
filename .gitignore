@@ -82,6 +82,10 @@ build_output.txt
 # package-lock.json
 dist_backup_tmp
 dist_backup2
+# 2026-06-22: 모든 dist_*·dist.bak.* 패턴 일괄 차단 (재발 방지)
+dist_*/
+dist.bak.*/
+dist.bak.*
 
 # Vote snapshots (PII·용량 → git 추적 금지, OneDrive 동기화로만 보존)
 # export-snapshots-onedrive.mjs 기본 출력 폴더
