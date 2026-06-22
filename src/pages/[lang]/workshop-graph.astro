@@ -1,0 +1,76 @@
+---
+/**
+ * /[lang]/workshop-graph/ — 6/13-14 워크숍 숙의 온톨로지 (다국어 wrapper)
+ *
+ * 본 시각화는 정적 HTML (vis-network 인라인 데이터)이라 i18n 콘텐츠 분리 어려움 →
+ * 다국어 메타데이터(title/description/hreflang)만 제공하고 본문은 iframe 임베드.
+ *
+ * 원본: /public/workshop-graph/index.html
+ * 직접 접근: /workshop-graph/
+ * 다국어 wrapper: /ko/workshop-graph/ · /en/workshop-graph/ · /ja/workshop-graph/ · /zh/workshop-graph/ · /es/workshop-graph/
+ */
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  return [
+    { params: { lang: 'ko' } },
+    { params: { lang: 'en' } },
+    { params: { lang: 'ja' } },
+    { params: { lang: 'zh' } },
+    { params: { lang: 'es' } },
+  ];
+}
+
+const { lang } = Astro.params;
+
+const COPY = {
+  ko: {
+    title: '숙의 온톨로지 — 6/13-14 워크숍',
+    description: '2026 기후시민회의 1차 의제숙의워크숍의 9개 세션 발언을 414 노드·319 엣지로 시각화 (vis-network)',
+    caption: '414 노드 · 319 엣지 · 9 세션 · 7 분류 (Issue / Claim / Proposal / Concern / Condition / Value / Evidence)',
+  },
+  en: {
+    title: 'Deliberation Map — 6/13-14 Workshop',
+    description: 'Interactive ontology of 414 nodes / 319 edges across 9 sessions from the 1st Korea Climate Citizens Assembly agenda workshop.',
+    caption: '414 nodes · 319 edges · 9 sessions · 7 categories (Issue / Claim / Proposal / Concern / Condition / Value / Evidence)',
+  },
+  ja: {
+    title: '熟議オントロジー — 6/13-14 ワークショップ',
+    description: '2026 韓国気候市民会議 第1回議題熟議ワークショップの9セッション発言を 414 ノード・319 エッジで可視化',
+    caption: '414 ノード · 319 エッジ · 9 セッション · 7 分類',
+  },
+  zh: {
+    title: '审议本体论 — 6/13-14 工作坊',
+    description: '2026 韩国气候公民会议第1次议题审议工作坊9个会议的发言可视化(414节点·319边)',
+    caption: '414 节点 · 319 边 · 9 会议 · 7 分类',
+  },
+  es: {
+    title: 'Mapa de deliberación — Taller 6/13-14',
+    description: 'Ontología interactiva de 414 nodos / 319 aristas a través de 9 sesiones del 1er taller de agenda de la Asamblea Ciudadana del Clima de Corea.',
+    caption: '414 nodos · 319 aristas · 9 sesiones · 7 categorías',
+  },
+} as const;
+
+const copy = COPY[lang as keyof typeof COPY] ?? COPY.ko;
+---
+
+<BaseLayout
+  lang={lang}
+  title={copy.title}
+  description={copy.description}
+  noindex={true}
+>
+  <main style="padding: 0; margin: 0;">
+    <div style="padding: 12px 20px; background: #f8f9fa; border-bottom: 1px solid #dee2e6; font-size: 13px; color: #495057;">
+      <strong>{copy.title}</strong> &nbsp;·&nbsp; <span style="color: #6c757d;">{copy.caption}</span>
+    </div>
+    <iframe
+      src="/workshop-graph/"
+      title={copy.title}
+      style="width: 100%; height: calc(100vh - 100px); border: 0; display: block;"
+      loading="lazy"
+      sandbox="allow-scripts allow-same-origin"
+    ></iframe>
+  </main>
+</BaseLayout>
