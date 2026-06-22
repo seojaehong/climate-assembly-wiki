@@ -19,5 +19,6 @@ Disallow: /race-bubble/
 Disallow: /workshop-graph/
 Disallow: /workshop-graph-3d/
 Disallow: /regulation-graph/
+Disallow: /live-graph/
 
 Sitemap: https://climate-assembly-wiki.pages.dev/sitemap-index.xml

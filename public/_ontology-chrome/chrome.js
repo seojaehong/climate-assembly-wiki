@@ -17,6 +17,7 @@ const PAGES = [
   { id:'workshop',     href:'/workshop-graph/',     icon:'🗂', label:'워크숍 2D' },
   { id:'workshop-3d',  href:'/workshop-graph-3d/',  icon:'🌐', label:'워크숍 3D' },
   { id:'regulation',   href:'/regulation-graph/',   icon:'📜', label:'운영규정' },
+  { id:'live',         href:'/live-graph/',         icon:'🔴', label:'LIVE (모더 전용)' },
   { id:'inputs',       href:'/workshop-graph/inputs/', icon:'📄', label:'원문 회의록' },
 ];
 
