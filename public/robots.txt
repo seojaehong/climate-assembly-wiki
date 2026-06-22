@@ -17,5 +17,6 @@ Disallow: /ko/regulation-feedback/
 Disallow: /en/regulation-feedback/
 Disallow: /race-bubble/
 Disallow: /workshop-graph/
+Disallow: /workshop-graph-3d/
 
 Sitemap: https://climate-assembly-wiki.pages.dev/sitemap-index.xml
