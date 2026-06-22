@@ -34,7 +34,7 @@ const EXAMPLES = [
 
 interface Citation {
   id: string; source: string; doc: string; ref_id: string;
-  title: string; category: string; similarity: number;
+  title: string; category: string; similarity: number; body?: string;
 }
 interface ChatResponse {
   found: boolean; answer: string; citations?: Citation[];
@@ -110,6 +110,12 @@ function CitationCard({ c }: { c: Citation }) {
       </button>
       {open && (
         <div style={{ padding: '0 var(--space-3) var(--space-3)', fontSize: 'var(--text-sm)', color: 'var(--color-fg-muted)', lineHeight: 'var(--leading-relaxed)' }}>
+          {c.body && (
+            <blockquote style={{ margin: '0 0 var(--space-3)', padding: 'var(--space-3)', background: 'var(--color-card-bg)', borderLeft: '3px solid var(--color-accent)', borderRadius: 'var(--radius-sm)', maxHeight: 320, overflowY: 'auto' }}>
+              <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-accent)', marginBottom: 'var(--space-1)', letterSpacing: 'var(--tracking-wide)' }}>원문 권고</div>
+              <p style={{ margin: 0, maxWidth: 'none', color: 'var(--color-fg)', whiteSpace: 'pre-wrap', fontSize: 'var(--text-sm)', lineHeight: 'var(--leading-relaxed)' }}>{c.body}</p>
+            </blockquote>
+          )}
           <div style={{ marginBottom: 'var(--space-2)' }}><strong style={{ color: 'var(--color-fg)' }}>추천 이유</strong> {recommendReason(c)}</div>
           <div style={{ marginBottom: 'var(--space-1)' }}><strong style={{ color: 'var(--color-fg)' }}>문서</strong> {c.doc}</div>
           {c.category && <div style={{ marginBottom: 'var(--space-1)' }}><strong style={{ color: 'var(--color-fg)' }}>분류</strong> {c.category}</div>}
