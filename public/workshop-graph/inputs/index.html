@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<title>워크숍 원문 회의록 — 6/13-14</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#f8f9fa; --ink:#212529; --muted:#6c757d; --accent:#1c7ed6; --border:#dee2e6 }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Pretendard','Malgun Gothic',sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;padding:0}
+  header{background:#212529;color:#fff;padding:16px 24px}
+  header h1{font-size:18px;font-weight:800;margin-bottom:4px}
+  header p{font-size:13px;color:#adb5bd}
+  main{max-width:960px;margin:0 auto;padding:32px 24px}
+  h2{font-size:16px;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin:32px 0 12px;font-weight:800}
+  h2:first-of-type{margin-top:0}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+  .card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:16px;transition:.15s}
+  .card:hover{border-color:var(--accent);box-shadow:0 4px 12px rgba(28,126,214,.08)}
+  .card a{color:var(--ink);text-decoration:none;display:block}
+  .card .num{font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px}
+  .card .ttl{font-size:15px;font-weight:700;margin-bottom:6px}
+  .card .meta{font-size:12px;color:var(--muted)}
+  .note{background:#fff3bf;border-left:4px solid #fab005;padding:12px 16px;border-radius:4px;margin-bottom:24px;font-size:13px}
+  .note b{color:#212529}
+  .back{display:inline-block;margin-top:24px;color:var(--accent);text-decoration:none;font-size:13px}
+  .back:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<header>
+  <h1>워크숍 원문 회의록 — 6/13-14 (인풋 v2)</h1>
+  <p>숙의 온톨로지 graph의 입력 텍스트. 원문 그대로 (LLM 처리·요약 X). 그래프와 대조해 발화 역추적 가능.</p>
+</header>
+<main>
+  <div class="note">
+    <b>출처</b>: <code>00_입력자료/6.13_원본자료/</code> HWP/HWPX 회의록 7건 → 6 카테고리 통합.<br>
+    <b>처리</b>: hwpjs + Python XML 파싱 — 원문 텍스트만 추출, 요약·재구성 없음.<br>
+    <b>m4a-only 세션은 제외</b> (조별발표·환경교육·기후취약성 등).
+  </div>
+
+  <h2>운영규정 (6/13 토론1)</h2>
+  <div class="grid">
+    <div class="card"><a href="01_운영규정_A조.md"><div class="num">01</div><div class="ttl">A조</div><div class="meta">6.4K · A조 단독</div></a></div>
+    <div class="card"><a href="02_운영규정_B조.md"><div class="num">02</div><div class="ttl">B조</div><div class="meta">10.5K · B조 단독</div></a></div>
+    <div class="card"><a href="03_운영규정_통합.md"><div class="num">03</div><div class="ttl">통합 (A+B)</div><div class="meta">17K · 합본</div></a></div>
+  </div>
+
+  <h2>조 숙의 — 의제선정 (6/14 토론2·3·4)</h2>
+  <div class="grid">
+    <div class="card"><a href="04_조숙의_A조.md"><div class="num">04</div><div class="ttl">A조 (토론2-1 + 2,3)</div><div class="meta">11K · 합본</div></a></div>
+    <div class="card"><a href="05_조숙의_B조_의제선정.md"><div class="num">05</div><div class="ttl">B조 (의제선정)</div><div class="meta">11K · 단독</div></a></div>
+    <div class="card"><a href="06_조숙의_통합.md"><div class="num">06</div><div class="ttl">통합 (토론2,3 + 토론4)</div><div class="meta">15K · 합본</div></a></div>
+  </div>
+
+  <h2>분할 원본 (디버깅·재합본용)</h2>
+  <div class="grid">
+    <div class="card"><a href="04a_조숙의_A조_토론2-1.md"><div class="num">04a</div><div class="ttl">A조 토론2-1</div><div class="meta">3.9K</div></a></div>
+    <div class="card"><a href="04b_조숙의_A조_토론2-3.md"><div class="num">04b</div><div class="ttl">A조 토론2,3</div><div class="meta">7.2K</div></a></div>
+    <div class="card"><a href="06a_조숙의_통합_토론2-3.md"><div class="num">06a</div><div class="ttl">통합 토론2,3</div><div class="meta">6.6K · 조 미명시</div></a></div>
+    <div class="card"><a href="06b_조숙의_통합_토론4.md"><div class="num">06b</div><div class="ttl">통합 토론4</div><div class="meta">8.8K · 의제선정·운영규정안</div></a></div>
+  </div>
+
+  <h2>참고</h2>
+  <div class="card" style="grid-column:1/-1">
+    <a href="README.md"><div class="num">INDEX</div><div class="ttl">README.md</div><div class="meta">매핑·처리 도구·다음 액션 인덱스</div></a>
+  </div>
+
+  <a class="back" href="../">← 숙의 온톨로지 그래프로 돌아가기</a>
+</main>
+</body>
+</html>
