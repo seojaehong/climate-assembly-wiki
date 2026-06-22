@@ -1,0 +1,1512 @@
+{
+  "elements": {
+    "nodes": [
+      {
+        "data": {
+          "id": "Issue_000",
+          "node_id": "Issue_000",
+          "label": "기후위기 대응 위원회 역할",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "기후위기대응위원회, 위원회인가 그게 인터넷에 찾아보면 있는데 거기에 연결되어 있는 거잖아요.",
+          "cited": [
+            "260614/A조/토론2-1/c0000s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0000s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Issue_001",
+          "node_id": "Issue_001",
+          "label": "시민참여단의 안건 선정 및 산업구조 개편 영향",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "그게 시민참여단에서 다룰 안건을 받으시던데 이 시스템을 바꾼다면 사회의 구조 자체가 개편이 될 것 같고요. 그런 것도 되게 의미가 같습니다. 오늘은 이제 오늘은 주로 어제는 많이 들었잖아요 이게 그냥 이벤트성인 건지 아니면 6월 30일까지 받는 걸 장려를 하고 공부도 하고 거기에 대한 인생틱도 주고 그리고 저도 말씀하시는 거랑 좀 비슷하게 느꼈는데 어제 많이 듣고 오늘은 여러분께서 많이 말씀해주시고 그래서 전반적인 산업구조가 개편이 됐으면 하는 것을 그걸 진짜 저희가 시민단에서 하는 건지 그게 좀 궁금했어요.",
+          "cited": [
+            "260614/A조/토론2-1/c0001s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0001s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Issue_002",
+          "node_id": "Issue_002",
+          "label": "기후 환경 관련 정책의 역사 및 추진 방식",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "기후 환경 관련해서 어제도 제가 궁금했는데 역사를 세계 최초라고 했어요. 아니면 별도로 추진되는 건지 그런 부분에 대해서 말씀해주시는 거고요.",
+          "cited": [
+            "260614/A조/토론2-1/c0002s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0002s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Claim_003",
+          "node_id": "Claim_003",
+          "label": "탄소 100% 감축 시 산업 기반 붕괴 우려",
+          "kind": "Claim",
+          "kindKo": "주장",
+          "text": "탄소 관련해서 만약에 100% 까지 원한다면 솔직히 저희는 모든 산업 기반 시설이 다 무너질 수 있다고 생각해요",
+          "cited": [
+            "260614/A조/토론2-1/c0003s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0003s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 0,
+          "isolated": true
+        }
+      },
+      {
+        "data": {
+          "id": "Issue_004",
+          "node_id": "Issue_004",
+          "label": "기후시민회의에 대한 전문가들의 소감",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "세계 최초로 시행되고 있는 기유신문회의에 대해서 뒤에 계시는 교수진, 연구원 진에서는 어떻게 느끼고 있는지 그분들의 소감을 한번 듣고 싶어요.",
+          "cited": [
+            "260614/A조/토론2-1/c0004s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0004s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 3,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Issue_005",
+          "node_id": "Issue_005",
+          "label": "지역별 폐기물 처리세 차이 및 개선 방안",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "지역마다 폐기물 처리세를 좀 다르겠지만",
+          "cited": [
+            "260614/A조/토론2-1/c0004s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0004s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Concern_006",
+          "node_id": "Concern_006",
+          "label": "플라스틱 제품 사용 불가피성",
+          "kind": "Concern",
+          "kindKo": "우려",
+          "text": "이런 저희가 쓰고 있는 이 모든 제품 플라스틱이면 그걸 안 쓸 수는 없는데",
+          "cited": [
+            "260614/A조/토론2-1/c0005s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0005s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Claim_007",
+          "node_id": "Claim_007",
+          "label": "정책 결정의 중심은 사람",
+          "kind": "Claim",
+          "kindKo": "주장",
+          "text": "저는 솔직히 인권에 관심이 많아서 모든 것들이 정책이나 모든 것들이 지나가겠지만 거기서 중심은 사람이잖아요.",
+          "cited": [
+            "260614/A조/토론2-1/c0005s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0005s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Proposal_008",
+          "node_id": "Proposal_008",
+          "label": "재활용 사업 지원 확대",
+          "kind": "Proposal",
+          "kindKo": "정책대안",
+          "text": "민생 기업들이 재활용을 하는 사업, 심지어 재활용해서 제품을 만들거나 그런거 지원 확대?",
+          "cited": [
+            "260614/A조/토론2-1/c0005s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0005s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Claim_009",
+          "node_id": "Claim_009",
+          "label": "제품은 품질이 가격보다 중요",
+          "kind": "Claim",
+          "kindKo": "주장",
+          "text": "제품은 당연히 품질이 최고여야 되잖아요. 가격보다는.",
+          "cited": [
+            "260614/A조/토론2-1/c0005s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0005s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Proposal_010",
+          "node_id": "Proposal_010",
+          "label": "탄소 감축과 경제 활성화 동시 달성 방안",
+          "kind": "Proposal",
+          "kindKo": "정책대안",
+          "text": "탄소는 줄여야 하고 산업과 경제는 돌아가야 하는데 일명 먹고사는 문제 그렇게 정말 가격 정량이 안 된다면 지원을 정부에서 해줄 수 있는 그런 게 있으면 좋겠습니다.",
+          "cited": [
+            "260614/A조/토론2-1/c0006s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0006s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Issue_011",
+          "node_id": "Issue_011",
+          "label": "기후위기 대응 과정에서의 갈등 조정 및 해소 방안",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "갈등조정과 해소는 어떻게 준비하고 해야 되는지",
+          "cited": [
+            "260614/A조/토론2-1/c0006s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0006s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Issue_012",
+          "node_id": "Issue_012",
+          "label": "정책 결정의 한계 및 시민 의견 수렴의 중요성",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "정책 결정이라는 게 대부분 전문가 집단, 소위 말해서 정책 결정권자분들이 한계가 많잖아요. ... 일반 시민들의 의견을 수겸을 해서 이렇게 의제를 등록을 해서",
+          "cited": [
+            "260614/A조/토론2-1/c0007s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0007s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 4,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Concern_013",
+          "node_id": "Concern_013",
+          "label": "플라스틱 빨대 금지 정책으로 인한 업체 생존 문제",
+          "kind": "Concern",
+          "kindKo": "우려",
+          "text": "여기에 플라스틱 빨대를 공급하는 업체는 하루아침에 큰 거래처를 모든 거래처가 잃어버렸을 때 그 정책에 반영을 할 수 있다는 것에 대해서 좀 긍정적으로 답변을 하고",
+          "cited": [
+            "260614/A조/토론2-1/c0007s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0007s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Proposal_014",
+          "node_id": "Proposal_014",
+          "label": "노후 차량 전기차 개조 지원 확대",
+          "kind": "Proposal",
+          "kindKo": "정책대안",
+          "text": "노후된 차를 전기차 개조하는 지원을 확대하는 방안도 조금 더 있으면 좋을 것 같다.",
+          "cited": [
+            "260614/A조/토론2-1/c0008s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0008s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 3,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Issue_015",
+          "node_id": "Issue_015",
+          "label": "시민 대표의 정책 공간 역할 및 성과 달성 가능성",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "시민을 대표할 수 있을까 정책 공간이 나오는데 얼마나 제 역할을 할 수 있을까 개선 방안으로 향후의 계획이 없는가",
+          "cited": [
+            "260614/A조/토론2-1/c0008s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0008s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Claim_016",
+          "node_id": "Claim_016",
+          "label": "일반 시민들은 정부나 전문가들이 놓치는 사각지대 문제에 관심",
+          "kind": "Claim",
+          "kindKo": "주장",
+          "text": "일반 시민들은 정부나 전문가들이 하는 생각 이외의 것들, 사각지대, 우리가 생각하면서 그런 것들을 원하는 것 같아요.",
+          "cited": [
+            "260614/A조/토론2-1/c0009s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0009s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Proposal_017",
+          "node_id": "Proposal_017",
+          "label": "새로운 차 생산보다 기존 차 전기차 개조",
+          "kind": "Proposal",
+          "kindKo": "정책대안",
+          "text": "새로운 차를 만드는 것보다는 차라리 껍데기는 그대로 하되 저희가 일단은 나온 질문이 있는데 한번 가서 보실까요? 어떤 질문들이 나왔는지 직접 보시라고요. 저뿐만이 아니라 계속해서 정책이 시민들한테 많이 열려져서 함께해서 조금 더 나은 세상이 됐으면 좋겠다는 생각을 해보고 싶습니다. 엔진 모터나 배터리만 이식하면 전기차가 될 수 있게끔",
+          "cited": [
+            "260614/A조/토론2-1/c0009s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0009s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Issue_018",
+          "node_id": "Issue_018",
+          "label": "기후시민회의에 대한 전문가들의 소감 및 지원 사업 가능성",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "여기는 이제 테레식처럼 기후시민회의가 되고 있는데 거기에 대해서 학교에서 전문가들이 보는 소감이 어떤지 그런 지원 사업들 가능성 있는지 여부와 이런 것들도 물어보고 싶습니다.",
+          "cited": [
+            "260614/A조/토론2-1/c0009s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0009s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 3,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Concern_019",
+          "node_id": "Concern_019",
+          "label": "기후 저감 기술 기업 지원책 부족 우려",
+          "kind": "Concern",
+          "kindKo": "우려",
+          "text": "저는 개인적으로 오기 전에 굉장히 우려를 많이 했어요. 최대한 3개를 붙일 수 있습니다 2개 1개 아니면 1개 1개 1개 좀 넓게 보자면 그런 기술들, 기후 저감을 위한 기술들을 가진 기업들에 대해서는 그 이외에 사각지대에 어떤 좋은 제안들?",
+          "cited": [
+            "260614/A조/토론2-1/c0010s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0010s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Issue_020",
+          "node_id": "Issue_020",
+          "label": "기후시민회의의 성과 가능성 및 전문가 시각",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "그럼에도 일반 시민들이 오셔서 이게 좀 성과가 날까. 다행스럽게도 오기 전에 동영상 교육을 기회를 줬잖아요. 태양광 패널 의무다 큰 틀로 봤을 때 정말 많은 걸 준비해왔고 시행을 하려면 일단 거기에 대해서도 저거는 알았으니까 같이 투표하시죠. 그런 업체들이 좀 많아져야 되잖아요. 전 세계 최초고 경쟁력이 있어야 되잖아요. 그래서 투표를 하겠습니다. 되게 좋은 단체고 저희가 그래서 많이 열심히 더 해가지고 저희들이 또 의기투합해서 잘 이번에 정리해서 수건치기도 잘 끝났잖아요. 경쟁력 있게 해주고 그 다음에 육성을 시키면 일자리는 그대로 가면서 그리고 수출까지 우리나라에서만 소비되는게 아니라 전세계적으로 수출할 수 있는 일단 태양광 빼고 하면 되는 거죠. 태양광은 탄압에 대해서. 결정됐으니까요.",
+          "cited": [
+            "260614/A조/토론2-1/c0011s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0011s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 3,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Proposal_021",
+          "node_id": "Proposal_021",
+          "label": "국내 태양광 기술 육성 및 수출 확대",
+          "kind": "Proposal",
+          "kindKo": "정책대안",
+          "text": "태양광 패널도 우리나라랑 못 맞는 게 없는데 육성해서 수출까지 기술도 하면 또 전 세계적으로 표준이 될 수 있어요.",
+          "cited": [
+            "260614/A조/토론2-1/c0012s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0012s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 3,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Concern_022",
+          "node_id": "Concern_022",
+          "label": "비전문가 시민들의 정책 참여 실효성 의문",
+          "kind": "Concern",
+          "kindKo": "우려",
+          "text": "비전문가들, 막말로 살림하시던 분, 학생, 이것까지 고려해서 붙여주시면 됩니다. 저희는 이제 같이 한번 이야기 나눠볼까요? 이건 하기로 했잖아요. 아까 저희가 쭉 이야기 나눌 때 여러 가지 이야기들이 나왔는데 좀 막연하다는 말씀도 나왔고 우려되는 면들에 대해서 말씀해주신 것도 있고 어디 또 공무원 하시던 분, 이렇게 다양하게 모이셨는데 아 네 뭐 좀 더 생겨지지 아예 이거는 할 때 쓰니까 이걸 하고 나머지 3 쭉 한번 보셨는데 감사는 하나 낙관론자가 아닌데 자 이번엔 간략하게 이렇게 정리를 할게요. 비전문가죠, 사실은. 용어도 잘 못 알아들을 수 있고, 전문용어니까. 지금 우리가 사소한 불편도 감수하지 못하면서 이번엔 저희가 드릴 질문은 뭐냐면 아 아 아 아니면 우리가 책임감을 있는데 전문성은 떨어지는 것 같다.",
+          "cited": [
+            "260614/A조/토론2-1/c0013s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0013s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Issue_023",
+          "node_id": "Issue_023",
+          "label": "국민들의 기후 정책 감수 의지 양성 방안",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "국민들이 이것을 감수할 만한 의지를 어떻게 양성할 것인가. 그게 안 되면 여기서 하는 모든 의지 토론은 난상 그냥 탁상공론이고 난상공론이 될 수밖에 없어요.",
+          "cited": [
+            "260614/A조/토론2-1/c0014s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0014s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Issue_024",
+          "node_id": "Issue_024",
+          "label": "전문가들의 역할 및 활용 방안",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "전문가 분들에게 도와주는 거에 대한 질문인 거죠. 그 적은 데 과연 역할이 저는 저 조금 4 의심이 되는 게 뭐냐 저 분들 다진 고급 인력의 예산도 많이 들어간 거거든 갈등관리에 대한 분도 계셨고 공론화에 대한 분도 계셨고 말씀하셨던 노후 경유차의 전기차로의 전환이 궁금하거든요. 환경 관련된 분도 계셨고 그렇게 다양한 분야들이 있으니까 그런 국민의 불편함 그러면 지리 응답의 그 어제 같은 날은 거의 뭐 그냥 하루종일 앉아 계셨거든요 근데 오늘은 또 어떤 역할을 당장 에어컨 하나도 안 켜고 그건 전문가 분들에게 물어볼까요?",
+          "cited": [
+            "260614/A조/토론2-1/c0015s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0015s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Claim_025",
+          "node_id": "Claim_025",
+          "label": "K-기술력의 우수성",
+          "kind": "Claim",
+          "kindKo": "주장",
+          "text": "K기술력이 진짜 좋잖아요.",
+          "cited": [
+            "260614/A조/토론2-1/c0016s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0016s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Issue_026",
+          "node_id": "Issue_026",
+          "label": "재생에너지 전환 시 일자리 문제 및 수용성 확보 방안",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "재생에너지 관련돼서 전환을 할 시에 아까 일자리도 고민도 많고 여기까지 선정해가지고 밑으로 내려가는 거예요. 좀 궁금하다라는 질문으로 말씀해주셨고요 도움도 주고 옆에서 코치도 해주고. 근데 지금 과연 저 교수진하고 연구진들 이걸 목표로 삼으려고 하는데 일단 저희가 포스트잇을 나눠드릴게요. 잘 적은 거예요. 저는 계속 제가 회의적으로 얘기를 하게 되는 것 같은데 그래서 오히려 이렇게 해서 좋은데 그러면 태양광도 여기서 실제로 기술력도 많으니까 그걸로 수출까지 할 수 있는 그 방안이 좋다고 생각합니다.",
+          "cited": [
+            "260614/A조/토론2-1/c0016s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0016s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Issue_027",
+          "node_id": "Issue_027",
+          "label": "운영 규정 변경 가능성",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "저희가 운영 규정을 지금 만들고 있긴 한데, 규정이 한번 이렇게 픽스가 되면 이걸 다시 고치기가 어렵잖아요. 좀 오류가 있는 걸 제가 바로잡아준 적도 있었지만 또 이제 그렇다고 저 분들이 다 만만물이 아니거든요 어떻게 보면 교수와 연구원들은 연구진들한테 물어볼까? 네 편도 드리겠습니다. 오늘은 색깔은 달리해서 새로운 기분을 팔아볼게요. 일단 태양광 말씀하셨는데 지금 국내 기술이 많이 발전해 열효율이라고요? 그게 엄청 좋대요. 우리나라가 지금. 다른 거 하나는 여기 두 개가 다 5표거든요.",
+          "cited": [
+            "260614/A조/토론2-1/c0017s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0017s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Claim_028",
+          "node_id": "Claim_028",
+          "label": "국내 태양광 기술의 높은 열효율",
+          "kind": "Claim",
+          "kindKo": "주장",
+          "text": "국내 기술이 많이 발전해 열효율이라고요? 그게 엄청 좋대요. 우리나라가 지금.",
+          "cited": [
+            "260614/A조/토론2-1/c0017s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0017s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Concern_029",
+          "node_id": "Concern_029",
+          "label": "저가 입찰 방식의 문제점 및 국내 산업 위축 우려",
+          "kind": "Concern",
+          "kindKo": "우려",
+          "text": "그게 무조건 입찰을 저가 방식으로 하면 중국산한테 밀릴 수밖에 없거든요. 네. 네, 알겠습니다. 그럼 저희 이렇게 아까 한 가지 질문과 총 네 가지 질문으로 넘기도록 하겠습니다. 여러 가지로 책임감은 별로 없고 감시 차원에서 왔어요. 엄격히 이게 다르거든요 이거를 규정 변화에 대한 가능성은 없을지 이런 게 좀 궁금해요. 저 같은 경우는 실무입니다 그렇게 되면 우리나라 산업이 다 주지 않으니까",
+          "cited": [
+            "260614/A조/토론2-1/c0018s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0018s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 3,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Proposal_030",
+          "node_id": "Proposal_030",
+          "label": "국내 기업에 대한 가산점 부여",
+          "kind": "Proposal",
+          "kindKo": "정책대안",
+          "text": "최저 입찰제가 아니라 큰 분야를. 약간 국내 기업에 가산점을 주든지",
+          "cited": [
+            "260614/A조/토론2-1/c0019s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0019s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Issue_031",
+          "node_id": "Issue_031",
+          "label": "기후시민회의의 시행착오 및 향후 홍보 방안",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "기후시민회의가 지금 시작한 게긴 한데 그래서 이제 아마 지금 하면 아마 시행착오가 없을 수는 없다고 생각해요. 당연히 있을 건데 억양이 좀 어떻게 되겠습니까? 여기서 우리나라 업체가 점점 줄어들면 수출도 못 하죠 그래서 그거 같은 경우는 오늘 있는 것 같아요. 상황이니까 이거 안나오겠다 중국도... 잠깐만요. 잠깐만요. 오늘도 많이 활용해 주시고요. 이어서 한 번씩 쭉 돌아가고 있으니까",
+          "cited": [
+            "260614/A조/토론2-1/c0019s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0019s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 3,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Claim_032",
+          "node_id": "Claim_032",
+          "label": "중국의 전기차 보조금 정책 및 시장 점유율",
+          "kind": "Claim",
+          "kindKo": "주장",
+          "text": "중국도 보조금 엄청 주고 있거든요. 전기차도 마찬가지예요. 3분간 더 그럼 우리나라는 당연히 쓰고 어떤 사람이든지 정치 성향이나 나이나 지역이나 이런 거를 불문하고 공정경쟁이 안 돼요. 지금 전기차 버스 배터리는 거의 90% 중국산이에요.",
+          "cited": [
+            "260614/A조/토론2-1/c0020s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0020s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Issue_033",
+          "node_id": "Issue_033",
+          "label": "시민 참여 유도 방안 및 후원금 활용 계획",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "그 사람들이 다 참여를 할 수 있게 유도할 수 있는 알겠습니다. 네, 선생님. 아까 가격 경쟁이라고 한 말씀만 드렸는데 우리 소그룹에서나 A, B그룹에서 함께 하는. 향후에 더 넓게 유도할 수 있는 방안이 앞으로 마련이 되는지 좀 궁금하고 그걸 또 못다리를 뜯어보면 여기 오신다고 했잖아요. 일단은 더 궁금하신 부분들 어떤 부분이 궁금하신 부분도 있으세요?",
+          "cited": [
+            "260614/A조/토론2-1/c0020s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0020s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Issue_034",
+          "node_id": "Issue_034",
+          "label": "기후위기 적응을 위한 리스크 관리 및 보건증진 방안",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "어떤 기후위기 적응에 대해서 리스크 관리 형 되게 딥하게 들어와도 되나요? 너무 딥하네. 간단한 뭐 나중에 또 깊게 얘기할 시간이 있나요? 그래서 최저입찰자 아까 지적을 잘 해주셨어요. 그다음에 탄소 흡수 분야에 대해서 이미 시작이 됐잖아요. 어디 가격경쟁 정부 조달청 입찰할 때 보면 어떤 피해를 최소화하고 보건증을 높이기 위한 이런 것들 우리가 토요일을 통해서도 공고안도 나올 텐데 있나요? 궁금해서 지금 어디가 약간 라이트하게 얘기할 수 있나요? 그것도 이제 중국계 무조건 다 나쁜 게 아니고 아 좋은 것도 많이 줘가지고 지금은 스몰토크 하는 수준인데 이런 공고안들이 많이 홍보가 되고 생활에 실천할 수 있는 것들이 정말 얼마나 효능감이나 자랄 것인가 아 예를 들어 철근 같은 게 좀 소프트해 중국계 라이트부터 딥까지 쭉 가주시죠 너무 시간이 공백하고 좀 물컹하다고 할까 아직 시간 괜찮습니다. 시간 컨트롤 제가 할게요 근데 이제 가격에서 이제 걔들이 저기 하니까",
+          "cited": [
+            "260614/A조/토론2-1/c0022s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0022s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Claim_035",
+          "node_id": "Claim_035",
+          "label": "중국산 건축 자재의 품질 문제",
+          "kind": "Claim",
+          "kindKo": "주장",
+          "text": "철근 같은 게 좀 소프트해 중국계 라이트부터 딥까지 쭉 가주시죠 너무 시간이 공백하고 좀 물컹하다고 할까",
+          "cited": [
+            "260614/A조/토론2-1/c0022s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0022s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "Claim_036",
+          "node_id": "Claim_036",
+          "label": "시장경제 원칙에 따른 가격 경쟁 문제",
+          "kind": "Claim",
+          "kindKo": "주장",
+          "text": "그거는 하루아침에 개선될 일, 정부에서 나서서 될 일은 시장경제 원칙에 따라가야 되기 때문에",
+          "cited": [
+            "260614/A조/토론2-1/c0023s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0023s0000"
+          ],
+          "meta": {},
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      }
+    ],
+    "edges": [
+      {
+        "data": {
+          "id": "e_0",
+          "source": "Issue_001",
+          "target": "Issue_000",
+          "src": "Issue_001",
+          "dst": "Issue_000",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0001s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0001s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_1",
+          "source": "Issue_001",
+          "target": "Issue_002",
+          "src": "Issue_001",
+          "dst": "Issue_002",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0001s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0001s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_2",
+          "source": "Issue_004",
+          "target": "Issue_002",
+          "src": "Issue_004",
+          "dst": "Issue_002",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0004s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0004s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_3",
+          "source": "Issue_004",
+          "target": "Issue_005",
+          "src": "Issue_004",
+          "dst": "Issue_005",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0004s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0004s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_4",
+          "source": "Concern_006",
+          "target": "Issue_005",
+          "src": "Concern_006",
+          "dst": "Issue_005",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0005s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0005s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_5",
+          "source": "Claim_007",
+          "target": "Issue_012",
+          "src": "Claim_007",
+          "dst": "Issue_012",
+          "rel": "reflectsValue",
+          "relKo": "가치반영",
+          "cited": [
+            "260614/A조/토론2-1/c0005s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0005s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_6",
+          "source": "Proposal_008",
+          "target": "Claim_009",
+          "src": "Proposal_008",
+          "dst": "Claim_009",
+          "rel": "supports",
+          "relKo": "지지",
+          "cited": [
+            "260614/A조/토론2-1/c0005s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0005s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_7",
+          "source": "Proposal_010",
+          "target": "Issue_011",
+          "src": "Proposal_010",
+          "dst": "Issue_011",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0006s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0006s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_8",
+          "source": "Issue_012",
+          "target": "Concern_013",
+          "src": "Issue_012",
+          "dst": "Concern_013",
+          "rel": "hasConcern",
+          "relKo": "우려",
+          "opposes": true,
+          "cited": [
+            "260614/A조/토론2-1/c0007s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0007s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_9",
+          "source": "Issue_012",
+          "target": "Proposal_014",
+          "src": "Issue_012",
+          "dst": "Proposal_014",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0007s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0007s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_10",
+          "source": "Issue_015",
+          "target": "Proposal_014",
+          "src": "Issue_015",
+          "dst": "Proposal_014",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0008s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0008s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_11",
+          "source": "Claim_016",
+          "target": "Issue_012",
+          "src": "Claim_016",
+          "dst": "Issue_012",
+          "rel": "supports",
+          "relKo": "지지",
+          "cited": [
+            "260614/A조/토론2-1/c0009s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0009s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_12",
+          "source": "Proposal_017",
+          "target": "Proposal_014",
+          "src": "Proposal_017",
+          "dst": "Proposal_014",
+          "rel": "supports",
+          "relKo": "지지",
+          "cited": [
+            "260614/A조/토론2-1/c0009s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0009s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_13",
+          "source": "Issue_018",
+          "target": "Issue_004",
+          "src": "Issue_018",
+          "dst": "Issue_004",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0009s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0009s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_14",
+          "source": "Concern_019",
+          "target": "Issue_018",
+          "src": "Concern_019",
+          "dst": "Issue_018",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0010s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0010s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_15",
+          "source": "Issue_020",
+          "target": "Issue_018",
+          "src": "Issue_020",
+          "dst": "Issue_018",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0011s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0011s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_16",
+          "source": "Proposal_021",
+          "target": "Issue_020",
+          "src": "Proposal_021",
+          "dst": "Issue_020",
+          "rel": "supports",
+          "relKo": "지지",
+          "cited": [
+            "260614/A조/토론2-1/c0012s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0012s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_17",
+          "source": "Concern_022",
+          "target": "Issue_020",
+          "src": "Concern_022",
+          "dst": "Issue_020",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0013s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0013s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_18",
+          "source": "Issue_023",
+          "target": "Concern_022",
+          "src": "Issue_023",
+          "dst": "Concern_022",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0014s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0014s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_19",
+          "source": "Issue_024",
+          "target": "Issue_023",
+          "src": "Issue_024",
+          "dst": "Issue_023",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0015s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0015s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_20",
+          "source": "Claim_025",
+          "target": "Proposal_021",
+          "src": "Claim_025",
+          "dst": "Proposal_021",
+          "rel": "supports",
+          "relKo": "지지",
+          "cited": [
+            "260614/A조/토론2-1/c0016s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0016s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_21",
+          "source": "Issue_026",
+          "target": "Issue_024",
+          "src": "Issue_026",
+          "dst": "Issue_024",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0016s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0016s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_22",
+          "source": "Issue_027",
+          "target": "Issue_026",
+          "src": "Issue_027",
+          "dst": "Issue_026",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0017s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0017s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_23",
+          "source": "Claim_028",
+          "target": "Proposal_021",
+          "src": "Claim_028",
+          "dst": "Proposal_021",
+          "rel": "supports",
+          "relKo": "지지",
+          "cited": [
+            "260614/A조/토론2-1/c0017s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0017s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_24",
+          "source": "Concern_029",
+          "target": "Issue_027",
+          "src": "Concern_029",
+          "dst": "Issue_027",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0018s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0018s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_25",
+          "source": "Proposal_030",
+          "target": "Concern_029",
+          "src": "Proposal_030",
+          "dst": "Concern_029",
+          "rel": "supports",
+          "relKo": "지지",
+          "cited": [
+            "260614/A조/토론2-1/c0019s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0019s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_26",
+          "source": "Issue_031",
+          "target": "Concern_029",
+          "src": "Issue_031",
+          "dst": "Concern_029",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0019s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0019s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_27",
+          "source": "Claim_032",
+          "target": "Issue_031",
+          "src": "Claim_032",
+          "dst": "Issue_031",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "cited": [
+            "260614/A조/토론2-1/c0020s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0020s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_28",
+          "source": "Issue_033",
+          "target": "Issue_031",
+          "src": "Issue_033",
+          "dst": "Issue_031",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0020s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0020s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_29",
+          "source": "Issue_034",
+          "target": "Issue_033",
+          "src": "Issue_034",
+          "dst": "Issue_033",
+          "rel": "raisesIssue",
+          "relKo": "쟁점제기",
+          "cited": [
+            "260614/A조/토론2-1/c0021s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0021s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_30",
+          "source": "Claim_035",
+          "target": "Issue_034",
+          "src": "Claim_035",
+          "dst": "Issue_034",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "cited": [
+            "260614/A조/토론2-1/c0022s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0022s0000"
+          ],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_31",
+          "source": "Claim_036",
+          "target": "Proposal_030",
+          "src": "Claim_036",
+          "dst": "Proposal_030",
+          "rel": "opposes",
+          "relKo": "반대",
+          "opposes": true,
+          "cited": [
+            "260614/A조/토론2-1/c0023s0000"
+          ],
+          "cited_uids": [
+            "260614/A조/토론2-1/c0023s0000"
+          ],
+          "meta": {}
+        }
+      }
+    ]
+  },
+  "meta": {
+    "variant": "live",
+    "generated_at": "2026-06-22T22:42:58.044Z",
+    "counts": {
+      "by_kind": {
+        "Claim": 9,
+        "Concern": 5,
+        "Issue": 17,
+        "Proposal": 6
+      },
+      "by_rel": {
+        "hasConcern": 1,
+        "hasEvidence": 2,
+        "opposes": 1,
+        "raisesIssue": 20,
+        "reflectsValue": 1,
+        "supports": 7
+      },
+      "edges": 32,
+      "nodes": 37
+    },
+    "kinds": {
+      "Issue": 17,
+      "Claim": 9,
+      "Proposal": 6,
+      "Concern": 5,
+      "Condition": 0,
+      "Value": 0,
+      "Evidence": 0,
+      "Group": 0,
+      "Clause": 0,
+      "Decision": 0
+    },
+    "advisory_notice": "🔴 LIVE 미검증 초안 — 모더레이터 상황인식용. 주기적 재추출본이며 시민 비노출. 청크 단위 provenance(uid 역추적).",
+    "uncited_dropped": 0,
+    "live": true,
+    "recommendations": null
+  }
+}

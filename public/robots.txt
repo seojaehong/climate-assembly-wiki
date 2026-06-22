@@ -20,5 +20,7 @@ Disallow: /workshop-graph/
 Disallow: /workshop-graph-3d/
 Disallow: /regulation-graph/
 Disallow: /live-graph/
+# /workshop-graph/ 가 통합 페이지 (소스 dropdown + view 토글)
+# /workshop-graph-3d/, /regulation-graph/, /live-graph/는 redirect stub만 유지
 
 Sitemap: https://climate-assembly-wiki.pages.dev/sitemap-index.xml

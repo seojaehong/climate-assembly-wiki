@@ -1,0 +1,32 @@
+{
+  "default": "workshop-2026-06-13",
+  "categories": {
+    "workshop": "워크숍 통합",
+    "regulation": "운영규정",
+    "live": "🔴 LIVE (모더 전용)"
+  },
+  "sources": [
+    {
+      "id": "workshop-2026-06-13",
+      "category": "workshop",
+      "label": "2026-06-13~14 워크숍 통합",
+      "data": "data/workshop-2026-06-13.json",
+      "supportsView": ["2d", "3d"]
+    },
+    {
+      "id": "regulation-2026-06-13",
+      "category": "regulation",
+      "label": "운영규정 (6/13 토론1)",
+      "data": "data/regulation-2026-06-13.json",
+      "supportsView": ["2d"]
+    },
+    {
+      "id": "live-A_t1",
+      "category": "live",
+      "label": "🔴 LIVE — A조 토론2-1",
+      "data": "data/live-A_t1.json",
+      "supportsView": ["2d"],
+      "polling_default_sec": 15
+    }
+  ]
+}

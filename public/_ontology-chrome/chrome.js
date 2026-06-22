@@ -14,11 +14,8 @@ const PRESETS = {
 };
 const KIND_KO = {Issue:'쟁점',Claim:'주장',Proposal:'정책대안',Concern:'우려',Condition:'조건',Value:'가치',Evidence:'근거',Group:'영향집단',Clause:'조항',Decision:'의결'};
 const PAGES = [
-  { id:'workshop',     href:'/workshop-graph/',     icon:'🗂', label:'워크숍 2D' },
-  { id:'workshop-3d',  href:'/workshop-graph-3d/',  icon:'🌐', label:'워크숍 3D' },
-  { id:'regulation',   href:'/regulation-graph/',   icon:'📜', label:'운영규정' },
-  { id:'live',         href:'/live-graph/',         icon:'🔴', label:'LIVE (모더 전용)' },
-  { id:'inputs',       href:'/workshop-graph/inputs/', icon:'📄', label:'원문 회의록' },
+  { id:'workshop', href:'/workshop-graph/',        icon:'🕸', label:'온톨로지 그래프' },
+  { id:'inputs',   href:'/workshop-graph/inputs/', icon:'📄', label:'원문 회의록' },
 ];
 
 function migrateOldKeys() {
