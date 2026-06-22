@@ -75,7 +75,8 @@ fetch('data.json').then(r => r.json()).then(payload => {
     activeId: 'workshop',
     title: '숙의 온톨로지 — 6/13-14 워크숍',
     meta: `노드 ${meta.counts.nodes} · 엣지 ${meta.counts.edges}`,
-    advisory: '이 논변 그래프는 모더레이터 검토 전 LLM 조립 초안입니다. 최종 채택은 시민·모더레이터 권한.',
+    advisory: meta.advisory_notice || '이 논변 그래프는 모더레이터 검토 전 LLM 조립 초안입니다. 최종 채택은 시민·모더레이터 권한.',
+    live: meta.live || false,
   });
 
   try { if (typeof cytoscapeFcose !== 'undefined') cytoscape.use(cytoscapeFcose); } catch (e) {}
@@ -194,7 +195,11 @@ function buildStyle(palette) {
     { selector:'edge[?opposes]', style:{
         'line-color':'#ff6b6b','target-arrow-color':'#ff6b6b','width':2.6,'color':'#ff9c9c','z-index':10 }},
     { selector:'.dim', style:{ 'opacity':0.10 }},
-    { selector:'.hidden', style:{ 'display':'none' }}
+    { selector:'.hidden', style:{ 'display':'none' }},
+    { selector:'node[!is_public]', style:{ 'opacity':0.25,'border-style':'dashed','border-color':'#9fcfff' }},
+    { selector:'edge[!is_public]', style:{ 'opacity':0.20,'line-style':'dashed' }},
+    { selector:'.mod-show node[!is_public]', style:{ 'opacity':1 }},
+    { selector:'.mod-show edge[!is_public]', style:{ 'opacity':0.8 }},
   ];
 }
 

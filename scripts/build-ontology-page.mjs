@@ -102,22 +102,30 @@ function visToCytoscape({ nodes, edges }) {
 }
 
 function rawGraphToCytoscape(g) {
-  // build_ontology_viz.py 출력 형식 (raw graph)을 cytoscape으로
-  // nodes: {node_id, kind, label, text, cited_uids, session}
-  // edges: {src, dst, rel}
+  // 2026-06-23-ontology-output-schema 정합:
+  // Graph = { nodes[], edges[], counts, uncited_dropped, advisory_notice, live?, recommendations?, provenance_index? }
+  // Node = { node_id, kind, label, text, cited_uids[], meta }
+  // Edge = { src, rel, dst, cited_uids[], meta }
   const cyNodes = [];
   const deg = {};
   for (const n of g.nodes || []) {
+    const meta = n.meta || {};
     cyNodes.push({
       data: {
         id: n.node_id,
+        node_id: n.node_id,                  // schema alias 보존
         label: n.label || n.node_id,
         kind: n.kind,
         kindKo: KIND_KO[n.kind] || n.kind,
         text: n.text || '',
         cited: n.cited_uids || [],
+        cited_uids: n.cited_uids || [],      // schema alias 보존
+        meta,                                // {evidence_type, session, review_state, ...}
+        session: meta.session || n.session || '',
+        evidence_type: meta.evidence_type || null,
+        review_state: meta.review_state || null,
+        is_public: meta.review_state?.is_public !== false,  // default true (모더 미검증도 화면엔 표시, 게이트는 페이지가)
         synthesized: false,
-        session: n.session || '',
       },
     });
   }
@@ -131,10 +139,13 @@ function rawGraphToCytoscape(g) {
       data: {
         id: `e_${cyEdges.length}`,
         source: src, target: dst,
+        src, dst,                            // schema alias 보존
         rel: e.rel,
         relKo: REL_KO[e.rel] || e.rel,
         opposes: OPPOSING_RELS.has(e.rel) || undefined,
         cited: e.cited_uids || [],
+        cited_uids: e.cited_uids || [],
+        meta: e.meta || {},
       },
     });
   }
@@ -159,15 +170,25 @@ function main() {
     const g = JSON.parse(readFileSync(src, 'utf8'));
     elements = rawGraphToCytoscape(g);
   }
+  // 원본 graph (raw)에서 schema 최상위 필드 통과
+  let raw = null;
+  if (!src.endsWith('.html')) {
+    try { raw = JSON.parse(readFileSync(src, 'utf8')); } catch {}
+  }
   const out = {
     elements,
     meta: {
       variant,
       generated_at: new Date().toISOString(),
-      counts: { nodes: elements.nodes.length, edges: elements.edges.length },
+      counts: raw?.counts || { nodes: elements.nodes.length, edges: elements.edges.length, by_kind: {}, by_rel: {} },
       kinds: Object.fromEntries(
         Object.keys(KIND_COLOR).map(k => [k, elements.nodes.filter(n => n.data.kind === k).length])
       ),
+      // 새 스키마 통과 필드
+      advisory_notice: raw?.advisory_notice || null,
+      uncited_dropped: raw?.uncited_dropped ?? null,
+      live: raw?.live || false,
+      recommendations: raw?.recommendations || null,
     },
   };
   writeFileSync(dst, JSON.stringify(out, null, 2));

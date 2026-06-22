@@ -13087,10 +13087,12 @@
   },
   "meta": {
     "variant": "workshop",
-    "generated_at": "2026-06-22T16:35:18.160Z",
+    "generated_at": "2026-06-22T22:42:57.659Z",
     "counts": {
       "nodes": 613,
-      "edges": 491
+      "edges": 491,
+      "by_kind": {},
+      "by_rel": {}
     },
     "kinds": {
       "Issue": 93,
@@ -13103,6 +13105,10 @@
       "Group": 0,
       "Clause": 0,
       "Decision": 0
-    }
+    },
+    "advisory_notice": null,
+    "uncited_dropped": null,
+    "live": false,
+    "recommendations": null
   }
 }

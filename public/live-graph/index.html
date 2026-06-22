@@ -238,18 +238,14 @@ function setupPolling() {
   if (sec > 0) pollTimer = setInterval(loadData, sec * 1000);
 }
 
-// init
+// init (live:true → 빨강 LIVE pill + pulse 자동)
 OntologyChrome.init({
   activeId: 'live',
   title: '🔴 LIVE — 숙의 온톨로지',
   meta: '로딩 중…',
   advisory: '🔴 LIVE 미검증 초안 — 모더레이터 상황인식용. 주기적 재추출본 · 시민 비노출 · 청크 단위 provenance(uid 역추적).',
+  live: true,
 });
-// LIVE pill 색 변경
-setTimeout(() => {
-  const pill = document.querySelector('.og-pill');
-  if (pill) { pill.classList.add('og-live'); pill.textContent = 'LIVE'; }
-}, 50);
 
 loadData();
 document.getElementById('og-poll-interval').onchange = setupPolling;

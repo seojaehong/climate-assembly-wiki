@@ -59,7 +59,8 @@ fetch('data.json').then(r => r.json()).then(payload => {
     activeId: 'regulation',
     title: '운영규정 온톨로지 — 조항 중심',
     meta: `노드 ${meta.counts.nodes} · 엣지 ${meta.counts.edges}`,
-    advisory: '6/13 워크숍의 운영규정 조항·수정안·우려·의결을 LLM이 조립한 초안입니다.',
+    advisory: meta.advisory_notice || '6/13 워크숍의 운영규정 조항·수정안·우려·의결을 LLM이 조립한 초안입니다.',
+    live: meta.live || false,
   });
 
   try { if (typeof cytoscapeFcose !== 'undefined') cytoscape.use(cytoscapeFcose); } catch (e) {}

@@ -45,19 +45,20 @@ function setPalette(p) { localStorage.setItem('og-colors', JSON.stringify(p)); }
 function getLang() { return localStorage.getItem('og-lang') || 'ko'; }
 function setLang(l) { localStorage.setItem('og-lang', l); }
 
-function renderChrome({ activeId, title, meta, advisory }) {
+function renderChrome({ activeId, title, meta, advisory, live }) {
   // 헤더 + 탭바 + footer 영역을 DOM에 삽입. body 안에 #og-app 컨테이너 가정.
   const app = document.getElementById('og-app') || document.body;
-  // 헤더
+  const pillClass = live ? 'og-pill og-live' : 'og-pill';
+  const pillText = live ? 'LIVE' : 'advisory · uid 역추적';
   const header = document.createElement('div');
   header.className = 'og-header';
   header.innerHTML = `
     <div class="og-h-top">
       <h1>${escapeHtml(title)}</h1>
       <span class="og-stat" id="og-stat">${escapeHtml(meta || '')}</span>
-      <span class="og-pill">advisory · uid 역추적</span>
+      <span class="${pillClass}">${escapeHtml(pillText)}</span>
     </div>
-    ${advisory ? `<div class="og-advisory">${escapeHtml(advisory)}</div>` : ''}
+    ${advisory ? `<div class="og-advisory" id="og-advisory">${escapeHtml(advisory)}</div>` : '<div class="og-advisory" id="og-advisory" style="display:none"></div>'}
   `;
   // 탭바
   const tabs = document.createElement('div');
@@ -198,10 +199,18 @@ function escapeHtml(s) {
 
 export const OntologyChrome = {
   KIND_DEFAULT, KIND_KO, PRESETS, PAGES,
-  init({ activeId, title, meta, advisory }) {
+  init({ activeId, title, meta, advisory, live }) {
     migrateOldKeys();
-    renderChrome({ activeId, title, meta, advisory });
+    renderChrome({ activeId, title, meta, advisory, live });
     ensureModal();
+  },
+  updateAdvisory(advisory) {
+    const el = document.getElementById('og-advisory');
+    if (el) { el.textContent = advisory || ''; el.style.display = advisory ? '' : 'none'; }
+  },
+  updateMeta(meta) {
+    const el = document.getElementById('og-stat');
+    if (el) el.textContent = meta || '';
   },
   openSettings,
   renderDetail,

@@ -4,6 +4,7 @@
       {
         "data": {
           "id": "Clause_01",
+          "node_id": "Clause_01",
           "label": "목적",
           "kind": "Clause",
           "kindKo": "조항",
@@ -11,8 +12,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【목적】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【목적】"
+          ],
+          "meta": {
+            "art_ref": "제1조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -20,6 +30,7 @@
       {
         "data": {
           "id": "Clause_02",
+          "node_id": "Clause_02",
           "label": "정의",
           "kind": "Clause",
           "kindKo": "조항",
@@ -27,8 +38,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【정의】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【정의】"
+          ],
+          "meta": {
+            "art_ref": "제2조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 2,
           "isolated": false
         }
@@ -36,6 +56,7 @@
       {
         "data": {
           "id": "Clause_03",
+          "node_id": "Clause_03",
           "label": "기본 원칙",
           "kind": "Clause",
           "kindKo": "조항",
@@ -43,8 +64,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【기본 원칙】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【기본 원칙】"
+          ],
+          "meta": {
+            "art_ref": "제3조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 2,
           "isolated": false
         }
@@ -52,6 +82,7 @@
       {
         "data": {
           "id": "Clause_04",
+          "node_id": "Clause_04",
           "label": "기획참여단",
           "kind": "Clause",
           "kindKo": "조항",
@@ -59,8 +90,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【기획참여단】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【기획참여단】"
+          ],
+          "meta": {
+            "art_ref": "제4조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 0,
           "isolated": true
         }
@@ -68,6 +108,7 @@
       {
         "data": {
           "id": "Clause_05",
+          "node_id": "Clause_05",
           "label": "숙의참여단",
           "kind": "Clause",
           "kindKo": "조항",
@@ -75,8 +116,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【숙의참여단】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【숙의참여단】"
+          ],
+          "meta": {
+            "art_ref": "제5조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 0,
           "isolated": true
         }
@@ -84,6 +134,7 @@
       {
         "data": {
           "id": "Clause_06",
+          "node_id": "Clause_06",
           "label": "기획참여단과 숙의참여단의 소통 등",
           "kind": "Clause",
           "kindKo": "조항",
@@ -91,8 +142,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【기획참여단과 숙의참여단의 소통 등】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【기획참여단과 숙의참여단의 소통 등】"
+          ],
+          "meta": {
+            "art_ref": "제6조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -100,6 +160,7 @@
       {
         "data": {
           "id": "Clause_07",
+          "node_id": "Clause_07",
           "label": "운영 기간",
           "kind": "Clause",
           "kindKo": "조항",
@@ -107,8 +168,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【운영 기간】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【운영 기간】"
+          ],
+          "meta": {
+            "art_ref": "제7조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 0,
           "isolated": true
         }
@@ -116,6 +186,7 @@
       {
         "data": {
           "id": "Clause_08",
+          "node_id": "Clause_08",
           "label": "숙의참여단의 분과 구성",
           "kind": "Clause",
           "kindKo": "조항",
@@ -123,8 +194,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【숙의참여단의 분과 구성】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【숙의참여단의 분과 구성】"
+          ],
+          "meta": {
+            "art_ref": "제8조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 10,
           "isolated": false
         }
@@ -132,6 +212,7 @@
       {
         "data": {
           "id": "Clause_09",
+          "node_id": "Clause_09",
           "label": "이해관계자 참여",
           "kind": "Clause",
           "kindKo": "조항",
@@ -139,8 +220,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【이해관계자 참여】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【이해관계자 참여】"
+          ],
+          "meta": {
+            "art_ref": "제9조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 0,
           "isolated": true
         }
@@ -148,6 +238,7 @@
       {
         "data": {
           "id": "Clause_10",
+          "node_id": "Clause_10",
           "label": "시민참여단 의무와 윤리",
           "kind": "Clause",
           "kindKo": "조항",
@@ -155,8 +246,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【시민참여단 의무와 윤리】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【시민참여단 의무와 윤리】"
+          ],
+          "meta": {
+            "art_ref": "제10조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 0,
           "isolated": true
         }
@@ -164,6 +264,7 @@
       {
         "data": {
           "id": "Clause_11",
+          "node_id": "Clause_11",
           "label": "운영과정 평가",
           "kind": "Clause",
           "kindKo": "조항",
@@ -171,8 +272,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【운영과정 평가】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【운영과정 평가】"
+          ],
+          "meta": {
+            "art_ref": "제11조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 0,
           "isolated": true
         }
@@ -180,6 +290,7 @@
       {
         "data": {
           "id": "Clause_12",
+          "node_id": "Clause_12",
           "label": "결과의 사회적 확산",
           "kind": "Clause",
           "kindKo": "조항",
@@ -187,8 +298,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【결과의 사회적 확산】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【결과의 사회적 확산】"
+          ],
+          "meta": {
+            "art_ref": "제12조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 0,
           "isolated": true
         }
@@ -196,6 +316,7 @@
       {
         "data": {
           "id": "Clause_13",
+          "node_id": "Clause_13",
           "label": "의제선정 절차",
           "kind": "Clause",
           "kindKo": "조항",
@@ -203,8 +324,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【의제선정 절차】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【의제선정 절차】"
+          ],
+          "meta": {
+            "art_ref": "제13조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 0,
           "isolated": true
         }
@@ -212,6 +342,7 @@
       {
         "data": {
           "id": "Clause_14",
+          "node_id": "Clause_14",
           "label": "의제선정 기준",
           "kind": "Clause",
           "kindKo": "조항",
@@ -219,8 +350,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【의제선정 기준】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【의제선정 기준】"
+          ],
+          "meta": {
+            "art_ref": "제14조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 7,
           "isolated": false
         }
@@ -228,6 +368,7 @@
       {
         "data": {
           "id": "Clause_15",
+          "node_id": "Clause_15",
           "label": "숙의 과정",
           "kind": "Clause",
           "kindKo": "조항",
@@ -235,8 +376,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【숙의 과정】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【숙의 과정】"
+          ],
+          "meta": {
+            "art_ref": "제15조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -244,6 +394,7 @@
       {
         "data": {
           "id": "Clause_16",
+          "node_id": "Clause_16",
           "label": "회의 성립 및 의결정족수",
           "kind": "Clause",
           "kindKo": "조항",
@@ -251,8 +402,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【회의 성립 및 의결정족수】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【회의 성립 및 의결정족수】"
+          ],
+          "meta": {
+            "art_ref": "제16조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 12,
           "isolated": false
         }
@@ -260,6 +420,7 @@
       {
         "data": {
           "id": "Clause_17",
+          "node_id": "Clause_17",
           "label": "권고안",
           "kind": "Clause",
           "kindKo": "조항",
@@ -267,8 +428,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【권고안】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【권고안】"
+          ],
+          "meta": {
+            "art_ref": "제17조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 2,
           "isolated": false
         }
@@ -276,6 +446,7 @@
       {
         "data": {
           "id": "Clause_18",
+          "node_id": "Clause_18",
           "label": "소수의견 기록",
           "kind": "Clause",
           "kindKo": "조항",
@@ -283,8 +454,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【소수의견 기록】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【소수의견 기록】"
+          ],
+          "meta": {
+            "art_ref": "제18조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -292,6 +472,7 @@
       {
         "data": {
           "id": "Clause_19",
+          "node_id": "Clause_19",
           "label": "시행일",
           "kind": "Clause",
           "kindKo": "조항",
@@ -299,8 +480,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【시행일】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【시행일】"
+          ],
+          "meta": {
+            "art_ref": "제19조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 0,
           "isolated": true
         }
@@ -308,6 +498,7 @@
       {
         "data": {
           "id": "Clause_20",
+          "node_id": "Clause_20",
           "label": "운영규정의 개정",
           "kind": "Clause",
           "kindKo": "조항",
@@ -315,8 +506,17 @@
           "cited": [
             "운영규범_초안_최종4.md::【운영규정의 개정】"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【운영규정의 개정】"
+          ],
+          "meta": {
+            "art_ref": "제20조"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 0,
           "isolated": true
         }
@@ -324,6 +524,7 @@
       {
         "data": {
           "id": "Proposal_01",
+          "node_id": "Proposal_01",
           "label": "기획-숙의 가교 필요",
           "kind": "Proposal",
           "kindKo": "정책대안",
@@ -332,8 +533,19 @@
             "A조-인상조항-순번2",
             "[토론1]A조전사::가교 필요 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "A조-인상조항-순번2",
+            "[토론1]A조전사::가교 필요 발언"
+          ],
+          "meta": {
+            "group": null,
+            "src_art_ref": "제2조 제4호/제4조②(역할분리) — clause는 6조(소통)에 정합 배치"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -341,6 +553,7 @@
       {
         "data": {
           "id": "Claim_01",
+          "node_id": "Claim_01",
           "label": "숙의성=합의 지향 인상적(A조)",
           "kind": "Claim",
           "kindKo": "주장",
@@ -349,8 +562,18 @@
             "A조-인상조항-순번3,4",
             "[토론1]A조전사::숙의성 원칙 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "A조-인상조항-순번3,4",
+            "[토론1]A조전사::숙의성 원칙 발언"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -358,6 +581,7 @@
       {
         "data": {
           "id": "Claim_02",
+          "node_id": "Claim_02",
           "label": "지속성 원칙=기성세대 편향 방지",
           "kind": "Claim",
           "kindKo": "주장",
@@ -366,8 +590,19 @@
             "A조-인상조항-순번5",
             "[토론1]A조전사::지속성 원칙 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "A조-인상조항-순번5",
+            "[토론1]A조전사::지속성 원칙 발언"
+          ],
+          "meta": {
+            "group": null,
+            "verbatim": "임기는 1년으로 하고 1년 후에는 50%는 존속하고 50%는 신규로 들어온 시스템 자체가 너무 좋은 것 같아요. 기성 세력이 생기는 것을 사전에 예방할 수 있는 시스템."
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -375,6 +610,7 @@
       {
         "data": {
           "id": "Claim_03",
+          "node_id": "Claim_03",
           "label": "소수의견 존중 인상적(A조)",
           "kind": "Claim",
           "kindKo": "주장",
@@ -383,8 +619,18 @@
             "A조-인상조항-순번6",
             "[토론1]A조전사::18조 소수의견 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "A조-인상조항-순번6",
+            "[토론1]A조전사::18조 소수의견 발언"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -392,6 +638,7 @@
       {
         "data": {
           "id": "Claim_04",
+          "node_id": "Claim_04",
           "label": "타인의 다름 존중 인상적",
           "kind": "Claim",
           "kindKo": "주장",
@@ -400,8 +647,18 @@
             "A조-인상조항-순번7",
             "[토론1]A조전사::토론규칙 1호 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "A조-인상조항-순번7",
+            "[토론1]A조전사::토론규칙 1호 발언"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -409,6 +666,7 @@
       {
         "data": {
           "id": "Claim_05",
+          "node_id": "Claim_05",
           "label": "분과 찬성: 논의범위 압축",
           "kind": "Claim",
           "kindKo": "주장",
@@ -417,8 +675,18 @@
             "A조-분과구성-순번1",
             "[토론1]A조전사::분과 논의"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "A조-분과구성-순번1",
+            "[토론1]A조전사::분과 논의"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -426,6 +694,7 @@
       {
         "data": {
           "id": "Claim_06",
+          "node_id": "Claim_06",
           "label": "분과 찬성: 전문성 함양",
           "kind": "Claim",
           "kindKo": "주장",
@@ -434,8 +703,18 @@
             "A조-분과구성-순번2,3",
             "[토론1]A조전사::분과 전문성·인원 배분 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "A조-분과구성-순번2,3",
+            "[토론1]A조전사::분과 전문성·인원 배분 발언"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -443,6 +722,7 @@
       {
         "data": {
           "id": "Concern_01",
+          "node_id": "Concern_01",
           "label": "분과 반대: 비전문가 한계",
           "kind": "Concern",
           "kindKo": "우려",
@@ -451,8 +731,19 @@
             "A조-분과구성-순번5,6",
             "[토론1]A조전사::비전문가 분과 무의미 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "A조-분과구성-순번5,6",
+            "[토론1]A조전사::비전문가 분과 무의미 발언"
+          ],
+          "meta": {
+            "group": null,
+            "verbatim": "여기 전문가가 아니에요 사실은. 비전문가를 또 쪼개서 여기는 발전소 여기는 자전거 저는 더 의미가 없다고 생각합니다."
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -460,6 +751,7 @@
       {
         "data": {
           "id": "Concern_02",
+          "node_id": "Concern_02",
           "label": "분과 반대: 부담·취지 불일치",
           "kind": "Concern",
           "kindKo": "우려",
@@ -468,8 +760,18 @@
             "A조-분과구성-순번7,8",
             "[토론1]A조전사::소규모 그룹토론 선호 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "A조-분과구성-순번7,8",
+            "[토론1]A조전사::소규모 그룹토론 선호 발언"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -477,6 +779,7 @@
       {
         "data": {
           "id": "Proposal_02",
+          "node_id": "Proposal_02",
           "label": "정족수: 출석 2/3(A조)",
           "kind": "Proposal",
           "kindKo": "정책대안",
@@ -485,8 +788,18 @@
             "A조-의사결정-순번1",
             "[토론1]A조전사::의결정족수 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "A조-의사결정-순번1",
+            "[토론1]A조전사::의결정족수 발언"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -494,6 +807,7 @@
       {
         "data": {
           "id": "Proposal_03",
+          "node_id": "Proposal_03",
           "label": "정족수: 재적 2/3(A조)",
           "kind": "Proposal",
           "kindKo": "정책대안",
@@ -502,8 +816,18 @@
             "A조-의사결정-순번4",
             "[토론1]A조전사::의결정족수 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "A조-의사결정-순번4",
+            "[토론1]A조전사::의결정족수 발언"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -511,6 +835,7 @@
       {
         "data": {
           "id": "Proposal_04",
+          "node_id": "Proposal_04",
           "label": "정족수: 재적 3/4(A조)",
           "kind": "Proposal",
           "kindKo": "정책대안",
@@ -519,8 +844,18 @@
             "A조-의사결정-순번5",
             "[토론1]A조전사::의결정족수 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "A조-의사결정-순번5",
+            "[토론1]A조전사::의결정족수 발언"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -528,6 +863,7 @@
       {
         "data": {
           "id": "Proposal_05",
+          "node_id": "Proposal_05",
           "label": "정족수: 참석자 과반(A조)",
           "kind": "Proposal",
           "kindKo": "정책대안",
@@ -536,8 +872,18 @@
             "A조-의사결정-순번6",
             "[토론1]A조전사::의결정족수 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "A조-의사결정-순번6",
+            "[토론1]A조전사::의결정족수 발언"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -545,6 +891,7 @@
       {
         "data": {
           "id": "Concern_03",
+          "node_id": "Concern_03",
           "label": "전문가 의결 참여 주장",
           "kind": "Concern",
           "kindKo": "우려",
@@ -553,8 +900,19 @@
             "A조-의사결정-순번8",
             "[토론1]A조전사::전문가 의결참여 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "A조-의사결정-순번8",
+            "[토론1]A조전사::전문가 의결참여 발언"
+          ],
+          "meta": {
+            "group": null,
+            "verbatim": "저희가 전문가가 아니기 때문에 전문가들과 비율로 구성을 해서 투표를 하는 방식도 제안 드리고 싶습니다."
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -562,6 +920,7 @@
       {
         "data": {
           "id": "Proposal_06",
+          "node_id": "Proposal_06",
           "label": "14조1호 직접→직간접(A조)",
           "kind": "Proposal",
           "kindKo": "정책대안",
@@ -570,8 +929,19 @@
             "A조-의제기준-순번3",
             "[토론1]A조전사::직간접 확장 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "A조-의제기준-순번3",
+            "[토론1]A조전사::직간접 확장 발언"
+          ],
+          "meta": {
+            "group": null,
+            "verbatim": "기후위기대응과 직간접적으로 관련된 것으로 간접적인 것도 포함해도 어떨까. 직간접적으로 좀 더 범위를 넓히는 것도 어떨까."
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -579,6 +949,7 @@
       {
         "data": {
           "id": "Proposal_07",
+          "node_id": "Proposal_07",
           "label": "의제기준: 실행가능성·공정성 추가",
           "kind": "Proposal",
           "kindKo": "정책대안",
@@ -587,8 +958,19 @@
             "A조-의제기준-순번4,5",
             "[토론1]A조전사::예산 실행가능성·공정성 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "A조-의제기준-순번4,5",
+            "[토론1]A조전사::예산 실행가능성·공정성 발언"
+          ],
+          "meta": {
+            "group": null,
+            "verbatim": "실천 가능하고 한꺼번에 예산이 수반되지 않는 것. 그것이 핵심이에요. 그래야 시행이 돼요."
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -596,6 +978,7 @@
       {
         "data": {
           "id": "Proposal_08",
+          "node_id": "Proposal_08",
           "label": "준전문가 비중 확대(찬·반)",
           "kind": "Proposal",
           "kindKo": "정책대안",
@@ -603,8 +986,18 @@
           "cited": [
             "A조-초안수정-순번1"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "A조-초안수정-순번1"
+          ],
+          "meta": {
+            "group": null,
+            "note": "찬반 병존"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -612,6 +1005,7 @@
       {
         "data": {
           "id": "Proposal_09",
+          "node_id": "Proposal_09",
           "label": "환경 관심 청소년 표본 구성",
           "kind": "Proposal",
           "kindKo": "정책대안",
@@ -619,8 +1013,17 @@
           "cited": [
             "A조-초안수정-순번2"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "A조-초안수정-순번2"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -628,6 +1031,7 @@
       {
         "data": {
           "id": "Proposal_10",
+          "node_id": "Proposal_10",
           "label": "이행·피드백 의무조항 명시",
           "kind": "Proposal",
           "kindKo": "정책대안",
@@ -636,8 +1040,19 @@
             "B조-질문답변-(3)추가의견",
             "[토론1]B조전사::이행 피드백 의무조항 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "B조-질문답변-(3)추가의견",
+            "[토론1]B조전사::이행 피드백 의무조항 발언"
+          ],
+          "meta": {
+            "group": null,
+            "verbatim": "법을 보고 할 수 있는 의무조항을 넣어야 합니다."
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -645,6 +1060,7 @@
       {
         "data": {
           "id": "Proposal_11",
+          "node_id": "Proposal_11",
           "label": "사업 목표·실행과제 조항 추가",
           "kind": "Proposal",
           "kindKo": "정책대안",
@@ -653,8 +1069,18 @@
             "B조-추가안건-순번1",
             "[토론1]B조전사::사업 목표 추가 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "B조-추가안건-순번1",
+            "[토론1]B조전사::사업 목표 추가 발언"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -662,6 +1088,7 @@
       {
         "data": {
           "id": "Proposal_12",
+          "node_id": "Proposal_12",
           "label": "10개 분과·세부주제(B조)",
           "kind": "Proposal",
           "kindKo": "정책대안",
@@ -670,8 +1097,18 @@
             "B조-안건①-순번1,2",
             "[토론1]B조전사::10개 분과 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "B조-안건①-순번1,2",
+            "[토론1]B조전사::10개 분과 발언"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -679,6 +1116,7 @@
       {
         "data": {
           "id": "Proposal_13",
+          "node_id": "Proposal_13",
           "label": "감축·적응 2분과 유지(B조)",
           "kind": "Proposal",
           "kindKo": "정책대안",
@@ -687,8 +1125,18 @@
             "B조-안건①-순번5,6,7,8,9",
             "[토론1]B조전사::감축적응 2분과 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "B조-안건①-순번5,6,7,8,9",
+            "[토론1]B조전사::감축적응 2분과 발언"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -696,6 +1144,7 @@
       {
         "data": {
           "id": "Concern_04",
+          "node_id": "Concern_04",
           "label": "분과보다 전체 소그룹(B조)",
           "kind": "Concern",
           "kindKo": "우려",
@@ -704,8 +1153,18 @@
             "B조-안건①-순번3",
             "[토론1]B조전사::전체 소그룹 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "B조-안건①-순번3",
+            "[토론1]B조전사::전체 소그룹 발언"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -713,6 +1172,7 @@
       {
         "data": {
           "id": "Proposal_14",
+          "node_id": "Proposal_14",
           "label": "정족수: 참석자 과반(B조)",
           "kind": "Proposal",
           "kindKo": "정책대안",
@@ -721,8 +1181,18 @@
             "B조-안건②-순번1",
             "[토론1]B조전사::참석자 과반 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "B조-안건②-순번1",
+            "[토론1]B조전사::참석자 과반 발언"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -730,6 +1200,7 @@
       {
         "data": {
           "id": "Proposal_15",
+          "node_id": "Proposal_15",
           "label": "정족수: 참석자 2/3(B조)",
           "kind": "Proposal",
           "kindKo": "정책대안",
@@ -738,8 +1209,18 @@
             "B조-안건②-순번2,3,6",
             "[토론1]B조전사::참석자 2/3 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "B조-안건②-순번2,3,6",
+            "[토론1]B조전사::참석자 2/3 발언"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -747,6 +1228,7 @@
       {
         "data": {
           "id": "Proposal_16",
+          "node_id": "Proposal_16",
           "label": "정족수: 수준별 차등(B조)",
           "kind": "Proposal",
           "kindKo": "정책대안",
@@ -755,8 +1237,18 @@
             "B조-안건②-순번4,5",
             "[토론1]B조전사::수준별 차등 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "B조-안건②-순번4,5",
+            "[토론1]B조전사::수준별 차등 발언"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -764,6 +1256,7 @@
       {
         "data": {
           "id": "Proposal_17",
+          "node_id": "Proposal_17",
           "label": "정족수: 기획 재적과반 75%(B조, 부결안)",
           "kind": "Proposal",
           "kindKo": "정책대안",
@@ -771,8 +1264,18 @@
           "cited": [
             "B조-안건②-순번7"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "B조-안건②-순번7"
+          ],
+          "meta": {
+            "group": null,
+            "status": "부결안(75%는 채택되지 않음)"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -780,6 +1283,7 @@
       {
         "data": {
           "id": "Proposal_18",
+          "node_id": "Proposal_18",
           "label": "14조1호 '직접' 삭제(B조)",
           "kind": "Proposal",
           "kindKo": "정책대안",
@@ -788,8 +1292,18 @@
             "B조-안건③-순번1",
             "[토론1]B조전사::직접 삭제 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "B조-안건③-순번1",
+            "[토론1]B조전사::직접 삭제 발언"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -797,6 +1311,7 @@
       {
         "data": {
           "id": "Proposal_19",
+          "node_id": "Proposal_19",
           "label": "14조 명령형 어조 순화(B조)",
           "kind": "Proposal",
           "kindKo": "정책대안",
@@ -805,8 +1320,19 @@
             "B조-안건③-순번2",
             "[토론1]B조전사::명령형 순화 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "B조-안건③-순번2",
+            "[토론1]B조전사::명령형 순화 발언"
+          ],
+          "meta": {
+            "group": null,
+            "verbatim": "14조의 1,2,3,4,5 보니까 이게 전부 다 명령 지시형이에요. 어조를 좀 바꿔서 순화했으면 좋겠다."
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -814,6 +1340,7 @@
       {
         "data": {
           "id": "Concern_05",
+          "node_id": "Concern_05",
           "label": "14조2호 묵직한 사안 우려(B조)",
           "kind": "Concern",
           "kindKo": "우려",
@@ -822,8 +1349,18 @@
             "B조-안건③-추가질문",
             "[토론1]B조전사::묵직한 사안 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "B조-안건③-추가질문",
+            "[토론1]B조전사::묵직한 사안 발언"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -831,6 +1368,7 @@
       {
         "data": {
           "id": "Claim_07",
+          "node_id": "Claim_07",
           "label": "권고안 채택기준 동의(B조)",
           "kind": "Claim",
           "kindKo": "주장",
@@ -839,8 +1377,18 @@
             "B조-안건④-순번1",
             "[토론1]B조전사::권고안 기준 동의 발언"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "B조-안건④-순번1",
+            "[토론1]B조전사::권고안 기준 동의 발언"
+          ],
+          "meta": {
+            "group": null
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -848,6 +1396,7 @@
       {
         "data": {
           "id": "Claim_08",
+          "node_id": "Claim_08",
           "label": "기획·숙의 인원 변경 가능여부 질의(B조)",
           "kind": "Claim",
           "kindKo": "주장",
@@ -856,8 +1405,19 @@
             "B조-질문답변-(2)",
             "[토론1]B조전사::인원 변경 질의"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "B조-질문답변-(2)",
+            "[토론1]B조전사::인원 변경 질의"
+          ],
+          "meta": {
+            "group": null,
+            "note": "사실 질의(가치충돌 아님)"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -865,6 +1425,7 @@
       {
         "data": {
           "id": "Decision_01",
+          "node_id": "Decision_01",
           "label": "기획참여단 의결정족수 = 출석 2/3",
           "kind": "Decision",
           "kindKo": "의결",
@@ -873,8 +1434,21 @@
             "7.4_발표덱::2026기후시민회의_운영규정.pptx",
             "토론4::통합운영 의결표"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "7.4_발표덱::2026기후시민회의_운영규정.pptx",
+            "토론4::통합운영 의결표"
+          ],
+          "meta": {
+            "round": "투표①",
+            "result": "출석 2/3",
+            "vote": "14/18 (78%)",
+            "ts": "13:57"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -882,6 +1456,7 @@
       {
         "data": {
           "id": "Decision_02",
+          "node_id": "Decision_02",
           "label": "숙의참여단 분과 구성 = 분과를 둠",
           "kind": "Decision",
           "kindKo": "의결",
@@ -890,8 +1465,21 @@
             "7.4_발표덱::2026기후시민회의_운영규정.pptx",
             "토론4::통합운영 의결표"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "7.4_발표덱::2026기후시민회의_운영규정.pptx",
+            "토론4::통합운영 의결표"
+          ],
+          "meta": {
+            "round": "투표②",
+            "result": "분과를 둠",
+            "vote": "13/18 (72%)",
+            "ts": "14:01"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -899,6 +1487,7 @@
       {
         "data": {
           "id": "Decision_03",
+          "node_id": "Decision_03",
           "label": "분과 개수 = 3개 분과(감축1·감축2·적응)",
           "kind": "Decision",
           "kindKo": "의결",
@@ -907,8 +1496,22 @@
             "7.4_발표덱::2026기후시민회의_운영규정.pptx",
             "토론4::통합운영 의결표"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "7.4_발표덱::2026기후시민회의_운영규정.pptx",
+            "토론4::통합운영 의결표"
+          ],
+          "meta": {
+            "round": "투표③(결선)",
+            "result": "3개 분과",
+            "vote": "13/18 (72%)",
+            "ts": "14:07~14:19",
+            "note": "1차 6:6:6 3-way tie"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -916,6 +1519,7 @@
       {
         "data": {
           "id": "Decision_04",
+          "node_id": "Decision_04",
           "label": "분과 의결정족수 = 출석 2/3",
           "kind": "Decision",
           "kindKo": "의결",
@@ -924,8 +1528,21 @@
             "7.4_발표덱::2026기후시민회의_운영규정.pptx",
             "토론4::통합운영 의결표"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "7.4_발표덱::2026기후시민회의_운영규정.pptx",
+            "토론4::통합운영 의결표"
+          ],
+          "meta": {
+            "round": "투표④",
+            "result": "출석 2/3",
+            "vote": "15/18 (83%)",
+            "ts": "14:23"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -933,6 +1550,7 @@
       {
         "data": {
           "id": "Decision_05",
+          "node_id": "Decision_05",
           "label": "전체 의결정족수 = 출석 2/3",
           "kind": "Decision",
           "kindKo": "의결",
@@ -941,8 +1559,21 @@
             "7.4_발표덱::2026기후시민회의_운영규정.pptx",
             "토론4::통합운영 의결표"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "7.4_발표덱::2026기후시민회의_운영규정.pptx",
+            "토론4::통합운영 의결표"
+          ],
+          "meta": {
+            "round": "투표⑤",
+            "result": "출석 2/3",
+            "vote": "14/18 (78%)",
+            "ts": "14:26"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -950,6 +1581,7 @@
       {
         "data": {
           "id": "Decision_06",
+          "node_id": "Decision_06",
           "label": "의제기준 14조1항 = 직간접으로 확장",
           "kind": "Decision",
           "kindKo": "의결",
@@ -958,8 +1590,21 @@
             "7.4_발표덱::2026기후시민회의_운영규정.pptx",
             "토론4::통합운영 의결표"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "7.4_발표덱::2026기후시민회의_운영규정.pptx",
+            "토론4::통합운영 의결표"
+          ],
+          "meta": {
+            "round": "투표⑥",
+            "result": "직간접 확장",
+            "vote": "17/18 (94%)",
+            "ts": "14:29"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -967,6 +1612,7 @@
       {
         "data": {
           "id": "Decision_07",
+          "node_id": "Decision_07",
           "label": "의제기준 14조3항 = 시민의 삶 표현 유지",
           "kind": "Decision",
           "kindKo": "의결",
@@ -975,8 +1621,21 @@
             "7.4_발표덱::2026기후시민회의_운영규정.pptx",
             "토론4::통합운영 의결표"
           ],
-          "synthesized": false,
+          "cited_uids": [
+            "7.4_발표덱::2026기후시민회의_운영규정.pptx",
+            "토론4::통합운영 의결표"
+          ],
+          "meta": {
+            "round": "투표⑦",
+            "result": "현행 유지",
+            "vote": "16/18 (89%)",
+            "ts": "14:31"
+          },
           "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
           "deg": 1,
           "isolated": false
         }
@@ -988,12 +1647,19 @@
           "id": "e_0",
           "source": "Proposal_01",
           "target": "Clause_06",
+          "src": "Proposal_01",
+          "dst": "Clause_06",
           "rel": "proposesEditTo",
           "relKo": "수정제안",
           "cited": [
             "A조-인상조항-순번2",
             "[토론1]A조전사::가교 필요 발언"
-          ]
+          ],
+          "cited_uids": [
+            "A조-인상조항-순번2",
+            "[토론1]A조전사::가교 필요 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1001,12 +1667,19 @@
           "id": "e_1",
           "source": "Claim_01",
           "target": "Clause_03",
+          "src": "Claim_01",
+          "dst": "Clause_03",
           "rel": "supports",
           "relKo": "지지",
           "cited": [
             "A조-인상조항-순번3,4",
             "[토론1]A조전사::숙의성 원칙 발언"
-          ]
+          ],
+          "cited_uids": [
+            "A조-인상조항-순번3,4",
+            "[토론1]A조전사::숙의성 원칙 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1014,12 +1687,19 @@
           "id": "e_2",
           "source": "Claim_02",
           "target": "Clause_03",
+          "src": "Claim_02",
+          "dst": "Clause_03",
           "rel": "supports",
           "relKo": "지지",
           "cited": [
             "A조-인상조항-순번5",
             "[토론1]A조전사::지속성 원칙 발언"
-          ]
+          ],
+          "cited_uids": [
+            "A조-인상조항-순번5",
+            "[토론1]A조전사::지속성 원칙 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1027,12 +1707,19 @@
           "id": "e_3",
           "source": "Claim_03",
           "target": "Clause_18",
+          "src": "Claim_03",
+          "dst": "Clause_18",
           "rel": "supports",
           "relKo": "지지",
           "cited": [
             "A조-인상조항-순번6",
             "[토론1]A조전사::18조 소수의견 발언"
-          ]
+          ],
+          "cited_uids": [
+            "A조-인상조항-순번6",
+            "[토론1]A조전사::18조 소수의견 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1040,12 +1727,19 @@
           "id": "e_4",
           "source": "Claim_04",
           "target": "Clause_15",
+          "src": "Claim_04",
+          "dst": "Clause_15",
           "rel": "supports",
           "relKo": "지지",
           "cited": [
             "A조-인상조항-순번7",
             "[토론1]A조전사::토론규칙 1호 발언"
-          ]
+          ],
+          "cited_uids": [
+            "A조-인상조항-순번7",
+            "[토론1]A조전사::토론규칙 1호 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1053,12 +1747,19 @@
           "id": "e_5",
           "source": "Claim_05",
           "target": "Clause_08",
+          "src": "Claim_05",
+          "dst": "Clause_08",
           "rel": "supports",
           "relKo": "지지",
           "cited": [
             "A조-분과구성-순번1",
             "[토론1]A조전사::분과 논의"
-          ]
+          ],
+          "cited_uids": [
+            "A조-분과구성-순번1",
+            "[토론1]A조전사::분과 논의"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1066,12 +1767,19 @@
           "id": "e_6",
           "source": "Claim_06",
           "target": "Clause_08",
+          "src": "Claim_06",
+          "dst": "Clause_08",
           "rel": "supports",
           "relKo": "지지",
           "cited": [
             "A조-분과구성-순번2,3",
             "[토론1]A조전사::분과 전문성·인원 배분 발언"
-          ]
+          ],
+          "cited_uids": [
+            "A조-분과구성-순번2,3",
+            "[토론1]A조전사::분과 전문성·인원 배분 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1079,13 +1787,20 @@
           "id": "e_7",
           "source": "Concern_01",
           "target": "Clause_08",
+          "src": "Concern_01",
+          "dst": "Clause_08",
           "rel": "raisesConcernOn",
           "relKo": "우려제기",
           "opposes": true,
           "cited": [
             "A조-분과구성-순번5,6",
             "[토론1]A조전사::비전문가 분과 무의미 발언"
-          ]
+          ],
+          "cited_uids": [
+            "A조-분과구성-순번5,6",
+            "[토론1]A조전사::비전문가 분과 무의미 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1093,13 +1808,20 @@
           "id": "e_8",
           "source": "Concern_02",
           "target": "Clause_08",
+          "src": "Concern_02",
+          "dst": "Clause_08",
           "rel": "raisesConcernOn",
           "relKo": "우려제기",
           "opposes": true,
           "cited": [
             "A조-분과구성-순번7,8",
             "[토론1]A조전사::소규모 그룹토론 선호 발언"
-          ]
+          ],
+          "cited_uids": [
+            "A조-분과구성-순번7,8",
+            "[토론1]A조전사::소규모 그룹토론 선호 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1107,12 +1829,19 @@
           "id": "e_9",
           "source": "Proposal_02",
           "target": "Clause_16",
+          "src": "Proposal_02",
+          "dst": "Clause_16",
           "rel": "proposesEditTo",
           "relKo": "수정제안",
           "cited": [
             "A조-의사결정-순번1",
             "[토론1]A조전사::의결정족수 발언"
-          ]
+          ],
+          "cited_uids": [
+            "A조-의사결정-순번1",
+            "[토론1]A조전사::의결정족수 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1120,12 +1849,19 @@
           "id": "e_10",
           "source": "Proposal_03",
           "target": "Clause_16",
+          "src": "Proposal_03",
+          "dst": "Clause_16",
           "rel": "proposesEditTo",
           "relKo": "수정제안",
           "cited": [
             "A조-의사결정-순번4",
             "[토론1]A조전사::의결정족수 발언"
-          ]
+          ],
+          "cited_uids": [
+            "A조-의사결정-순번4",
+            "[토론1]A조전사::의결정족수 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1133,12 +1869,19 @@
           "id": "e_11",
           "source": "Proposal_04",
           "target": "Clause_16",
+          "src": "Proposal_04",
+          "dst": "Clause_16",
           "rel": "proposesEditTo",
           "relKo": "수정제안",
           "cited": [
             "A조-의사결정-순번5",
             "[토론1]A조전사::의결정족수 발언"
-          ]
+          ],
+          "cited_uids": [
+            "A조-의사결정-순번5",
+            "[토론1]A조전사::의결정족수 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1146,12 +1889,19 @@
           "id": "e_12",
           "source": "Proposal_05",
           "target": "Clause_16",
+          "src": "Proposal_05",
+          "dst": "Clause_16",
           "rel": "proposesEditTo",
           "relKo": "수정제안",
           "cited": [
             "A조-의사결정-순번6",
             "[토론1]A조전사::의결정족수 발언"
-          ]
+          ],
+          "cited_uids": [
+            "A조-의사결정-순번6",
+            "[토론1]A조전사::의결정족수 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1159,13 +1909,20 @@
           "id": "e_13",
           "source": "Concern_03",
           "target": "Clause_16",
+          "src": "Concern_03",
+          "dst": "Clause_16",
           "rel": "raisesConcernOn",
           "relKo": "우려제기",
           "opposes": true,
           "cited": [
             "A조-의사결정-순번8",
             "[토론1]A조전사::전문가 의결참여 발언"
-          ]
+          ],
+          "cited_uids": [
+            "A조-의사결정-순번8",
+            "[토론1]A조전사::전문가 의결참여 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1173,12 +1930,19 @@
           "id": "e_14",
           "source": "Proposal_06",
           "target": "Clause_14",
+          "src": "Proposal_06",
+          "dst": "Clause_14",
           "rel": "proposesEditTo",
           "relKo": "수정제안",
           "cited": [
             "A조-의제기준-순번3",
             "[토론1]A조전사::직간접 확장 발언"
-          ]
+          ],
+          "cited_uids": [
+            "A조-의제기준-순번3",
+            "[토론1]A조전사::직간접 확장 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1186,12 +1950,19 @@
           "id": "e_15",
           "source": "Proposal_07",
           "target": "Clause_14",
+          "src": "Proposal_07",
+          "dst": "Clause_14",
           "rel": "proposesEditTo",
           "relKo": "수정제안",
           "cited": [
             "A조-의제기준-순번4,5",
             "[토론1]A조전사::예산 실행가능성·공정성 발언"
-          ]
+          ],
+          "cited_uids": [
+            "A조-의제기준-순번4,5",
+            "[토론1]A조전사::예산 실행가능성·공정성 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1199,11 +1970,17 @@
           "id": "e_16",
           "source": "Proposal_08",
           "target": "Clause_02",
+          "src": "Proposal_08",
+          "dst": "Clause_02",
           "rel": "proposesEditTo",
           "relKo": "수정제안",
           "cited": [
             "A조-초안수정-순번1"
-          ]
+          ],
+          "cited_uids": [
+            "A조-초안수정-순번1"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1211,11 +1988,17 @@
           "id": "e_17",
           "source": "Proposal_09",
           "target": "Clause_08",
+          "src": "Proposal_09",
+          "dst": "Clause_08",
           "rel": "proposesEditTo",
           "relKo": "수정제안",
           "cited": [
             "A조-초안수정-순번2"
-          ]
+          ],
+          "cited_uids": [
+            "A조-초안수정-순번2"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1223,12 +2006,19 @@
           "id": "e_18",
           "source": "Proposal_10",
           "target": "Clause_17",
+          "src": "Proposal_10",
+          "dst": "Clause_17",
           "rel": "proposesEditTo",
           "relKo": "수정제안",
           "cited": [
             "B조-질문답변-(3)추가의견",
             "[토론1]B조전사::이행 피드백 의무조항 발언"
-          ]
+          ],
+          "cited_uids": [
+            "B조-질문답변-(3)추가의견",
+            "[토론1]B조전사::이행 피드백 의무조항 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1236,12 +2026,19 @@
           "id": "e_19",
           "source": "Proposal_11",
           "target": "Clause_01",
+          "src": "Proposal_11",
+          "dst": "Clause_01",
           "rel": "proposesEditTo",
           "relKo": "수정제안",
           "cited": [
             "B조-추가안건-순번1",
             "[토론1]B조전사::사업 목표 추가 발언"
-          ]
+          ],
+          "cited_uids": [
+            "B조-추가안건-순번1",
+            "[토론1]B조전사::사업 목표 추가 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1249,12 +2046,19 @@
           "id": "e_20",
           "source": "Proposal_12",
           "target": "Clause_08",
+          "src": "Proposal_12",
+          "dst": "Clause_08",
           "rel": "proposesEditTo",
           "relKo": "수정제안",
           "cited": [
             "B조-안건①-순번1,2",
             "[토론1]B조전사::10개 분과 발언"
-          ]
+          ],
+          "cited_uids": [
+            "B조-안건①-순번1,2",
+            "[토론1]B조전사::10개 분과 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1262,12 +2066,19 @@
           "id": "e_21",
           "source": "Proposal_13",
           "target": "Clause_08",
+          "src": "Proposal_13",
+          "dst": "Clause_08",
           "rel": "proposesEditTo",
           "relKo": "수정제안",
           "cited": [
             "B조-안건①-순번5,6,7,8,9",
             "[토론1]B조전사::감축적응 2분과 발언"
-          ]
+          ],
+          "cited_uids": [
+            "B조-안건①-순번5,6,7,8,9",
+            "[토론1]B조전사::감축적응 2분과 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1275,13 +2086,20 @@
           "id": "e_22",
           "source": "Concern_04",
           "target": "Clause_08",
+          "src": "Concern_04",
+          "dst": "Clause_08",
           "rel": "raisesConcernOn",
           "relKo": "우려제기",
           "opposes": true,
           "cited": [
             "B조-안건①-순번3",
             "[토론1]B조전사::전체 소그룹 발언"
-          ]
+          ],
+          "cited_uids": [
+            "B조-안건①-순번3",
+            "[토론1]B조전사::전체 소그룹 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1289,12 +2107,19 @@
           "id": "e_23",
           "source": "Proposal_14",
           "target": "Clause_16",
+          "src": "Proposal_14",
+          "dst": "Clause_16",
           "rel": "proposesEditTo",
           "relKo": "수정제안",
           "cited": [
             "B조-안건②-순번1",
             "[토론1]B조전사::참석자 과반 발언"
-          ]
+          ],
+          "cited_uids": [
+            "B조-안건②-순번1",
+            "[토론1]B조전사::참석자 과반 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1302,12 +2127,19 @@
           "id": "e_24",
           "source": "Proposal_15",
           "target": "Clause_16",
+          "src": "Proposal_15",
+          "dst": "Clause_16",
           "rel": "proposesEditTo",
           "relKo": "수정제안",
           "cited": [
             "B조-안건②-순번2,3,6",
             "[토론1]B조전사::참석자 2/3 발언"
-          ]
+          ],
+          "cited_uids": [
+            "B조-안건②-순번2,3,6",
+            "[토론1]B조전사::참석자 2/3 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1315,12 +2147,19 @@
           "id": "e_25",
           "source": "Proposal_16",
           "target": "Clause_16",
+          "src": "Proposal_16",
+          "dst": "Clause_16",
           "rel": "proposesEditTo",
           "relKo": "수정제안",
           "cited": [
             "B조-안건②-순번4,5",
             "[토론1]B조전사::수준별 차등 발언"
-          ]
+          ],
+          "cited_uids": [
+            "B조-안건②-순번4,5",
+            "[토론1]B조전사::수준별 차등 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1328,11 +2167,17 @@
           "id": "e_26",
           "source": "Proposal_17",
           "target": "Clause_16",
+          "src": "Proposal_17",
+          "dst": "Clause_16",
           "rel": "proposesEditTo",
           "relKo": "수정제안",
           "cited": [
             "B조-안건②-순번7"
-          ]
+          ],
+          "cited_uids": [
+            "B조-안건②-순번7"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1340,12 +2185,19 @@
           "id": "e_27",
           "source": "Proposal_18",
           "target": "Clause_14",
+          "src": "Proposal_18",
+          "dst": "Clause_14",
           "rel": "proposesEditTo",
           "relKo": "수정제안",
           "cited": [
             "B조-안건③-순번1",
             "[토론1]B조전사::직접 삭제 발언"
-          ]
+          ],
+          "cited_uids": [
+            "B조-안건③-순번1",
+            "[토론1]B조전사::직접 삭제 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1353,12 +2205,19 @@
           "id": "e_28",
           "source": "Proposal_19",
           "target": "Clause_14",
+          "src": "Proposal_19",
+          "dst": "Clause_14",
           "rel": "proposesEditTo",
           "relKo": "수정제안",
           "cited": [
             "B조-안건③-순번2",
             "[토론1]B조전사::명령형 순화 발언"
-          ]
+          ],
+          "cited_uids": [
+            "B조-안건③-순번2",
+            "[토론1]B조전사::명령형 순화 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1366,13 +2225,20 @@
           "id": "e_29",
           "source": "Concern_05",
           "target": "Clause_14",
+          "src": "Concern_05",
+          "dst": "Clause_14",
           "rel": "raisesConcernOn",
           "relKo": "우려제기",
           "opposes": true,
           "cited": [
             "B조-안건③-추가질문",
             "[토론1]B조전사::묵직한 사안 발언"
-          ]
+          ],
+          "cited_uids": [
+            "B조-안건③-추가질문",
+            "[토론1]B조전사::묵직한 사안 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1380,12 +2246,19 @@
           "id": "e_30",
           "source": "Claim_07",
           "target": "Clause_17",
+          "src": "Claim_07",
+          "dst": "Clause_17",
           "rel": "supports",
           "relKo": "지지",
           "cited": [
             "B조-안건④-순번1",
             "[토론1]B조전사::권고안 기준 동의 발언"
-          ]
+          ],
+          "cited_uids": [
+            "B조-안건④-순번1",
+            "[토론1]B조전사::권고안 기준 동의 발언"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1393,12 +2266,19 @@
           "id": "e_31",
           "source": "Claim_08",
           "target": "Clause_02",
+          "src": "Claim_08",
+          "dst": "Clause_02",
           "rel": "supports",
           "relKo": "지지",
           "cited": [
             "B조-질문답변-(2)",
             "[토론1]B조전사::인원 변경 질의"
-          ]
+          ],
+          "cited_uids": [
+            "B조-질문답변-(2)",
+            "[토론1]B조전사::인원 변경 질의"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1406,12 +2286,19 @@
           "id": "e_32",
           "source": "Decision_01",
           "target": "Clause_16",
+          "src": "Decision_01",
+          "dst": "Clause_16",
           "rel": "resolves",
           "relKo": "확정",
           "cited": [
             "7.4_발표덱",
             "토론4 의결표"
-          ]
+          ],
+          "cited_uids": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1419,12 +2306,19 @@
           "id": "e_33",
           "source": "Decision_02",
           "target": "Clause_08",
+          "src": "Decision_02",
+          "dst": "Clause_08",
           "rel": "resolves",
           "relKo": "확정",
           "cited": [
             "7.4_발표덱",
             "토론4 의결표"
-          ]
+          ],
+          "cited_uids": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1432,12 +2326,19 @@
           "id": "e_34",
           "source": "Decision_03",
           "target": "Clause_08",
+          "src": "Decision_03",
+          "dst": "Clause_08",
           "rel": "resolves",
           "relKo": "확정",
           "cited": [
             "7.4_발표덱",
             "토론4 의결표"
-          ]
+          ],
+          "cited_uids": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1445,12 +2346,19 @@
           "id": "e_35",
           "source": "Decision_04",
           "target": "Clause_16",
+          "src": "Decision_04",
+          "dst": "Clause_16",
           "rel": "resolves",
           "relKo": "확정",
           "cited": [
             "7.4_발표덱",
             "토론4 의결표"
-          ]
+          ],
+          "cited_uids": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1458,12 +2366,19 @@
           "id": "e_36",
           "source": "Decision_05",
           "target": "Clause_16",
+          "src": "Decision_05",
+          "dst": "Clause_16",
           "rel": "resolves",
           "relKo": "확정",
           "cited": [
             "7.4_발표덱",
             "토론4 의결표"
-          ]
+          ],
+          "cited_uids": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1471,12 +2386,19 @@
           "id": "e_37",
           "source": "Decision_06",
           "target": "Clause_14",
+          "src": "Decision_06",
+          "dst": "Clause_14",
           "rel": "resolves",
           "relKo": "확정",
           "cited": [
             "7.4_발표덱",
             "토론4 의결표"
-          ]
+          ],
+          "cited_uids": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "meta": {}
         }
       },
       {
@@ -1484,22 +2406,36 @@
           "id": "e_38",
           "source": "Decision_07",
           "target": "Clause_14",
+          "src": "Decision_07",
+          "dst": "Clause_14",
           "rel": "resolves",
           "relKo": "확정",
           "cited": [
             "7.4_발표덱",
             "토론4 의결표"
-          ]
+          ],
+          "cited_uids": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "meta": {}
         }
       }
     ]
   },
   "meta": {
     "variant": "regulation",
-    "generated_at": "2026-06-22T16:35:18.345Z",
+    "generated_at": "2026-06-22T22:42:57.831Z",
     "counts": {
-      "nodes": 59,
-      "edges": 39
+      "Clause": 20,
+      "Proposal": 19,
+      "Concern": 5,
+      "Claim": 8,
+      "CitizenInput_total": 32,
+      "Decision": 7,
+      "nodes_total": 59,
+      "edges_total": 39,
+      "pii_masked": 0
     },
     "kinds": {
       "Issue": 0,
@@ -1512,6 +2448,10 @@
       "Group": 0,
       "Clause": 20,
       "Decision": 7
-    }
+    },
+    "advisory_notice": "조립 초안 — 최종 권위는 시민·모더레이터. 운영규정 조항 권위는 【제목】, 조번호는 추정. 음성 전사 발언자 실명 마스킹됨.",
+    "uncited_dropped": null,
+    "live": false,
+    "recommendations": null
   }
 }

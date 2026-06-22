@@ -14,6 +14,13 @@ html,body{margin:0;height:100%;font-family:'Noto Sans KR','Pretendard','Malgun G
 .og-stat{font-size:13px;color:var(--og-muted)}
 .og-stat b{color:var(--og-txt);font-weight:700}
 .og-pill{display:inline-block;margin-left:auto;font-size:11px;color:#ffd9a8;background:#3a2a18;border:1px solid #5c4222;padding:3px 9px;border-radius:999px}
+.og-pill.og-live{background:#3a1f1f;color:#ff9c9c;border-color:#5c2e2e;font-weight:700}
+.og-pill.og-live::before{content:"●";color:#ff6b6b;margin-right:5px;animation:og-pulse 1.5s infinite}
+.og-pill.og-mod-only{background:#1f2c3a;color:#9fcfff;border-color:#2c4868;cursor:pointer}
+.og-pill.og-mod-only:hover{background:#2c4868}
+.og-mod-toggle{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#9aa7b8;margin-left:8px}
+.og-mod-toggle input{accent-color:#1c7ed6}
+@keyframes og-pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .og-advisory{margin-top:5px;font-size:12px;color:#ffc078;line-height:1.5}
 
 /* ─── 탭바 ─── */
