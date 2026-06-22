@@ -1,0 +1,153 @@
+---
+// @ts-nocheck
+/**
+ * /ko/moderator/quorum/ — 정족수·출석 라이브 보드 (대형스크린용)
+ *
+ * PRIVACY:
+ *   - KO-only route (getStaticPaths emits only 'ko')
+ *   - robots noindex,nofollow
+ *   - NOT in sitemap (whitelist filter excludes /moderator/*)
+ *   - NOT in pagefind (no data-pagefind-body)
+ *   - No nav links to this page from public pages
+ *
+ * 대전제: 200명 대형스크린 가시성 (아이~노인 8~15m)
+ *   - 재적·출석·찬성: 80–120px 큰 숫자
+ *   - 라벨: 36–48px
+ *   - WCAG AAA 대비 (어두운 배경 + 밝은 텍스트)
+ *   - hover·얇은 선 금지
+ *
+ * 데이터:
+ *   현재: 수동 입력 (수동 재적/출석/찬성 입력)
+ *   TODO(와이어 지점): 갤럽 명단 → climate_vote.participant/attendance/vote 연동
+ *
+ * URL 파라미터:
+ *   ?n=200    재적(정원)
+ *   ?m=120    출석
+ *   ?v=80     찬성 (의결 전이면 생략)
+ *   ?label=10/17+전체회의    회의 레이블
+ *   → 파라미터 있으면 입력 패널 자동 숨김 (프로젝터 프레젠 모드)
+ *
+ * 회차별 재적:
+ *   - 7/4 기획참여단:   ~30명
+ *   - 9/13 분과회의:    ~50명
+ *   - 10/17 전체회의:   200명
+ */
+
+import QuorumBoard from '../../../islands/quorum/QuorumBoard';
+
+export async function getStaticPaths() {
+  return [{ params: { lang: 'ko' } }];
+}
+---
+<!doctype html>
+<html lang="ko" dir="ltr" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>정족수 라이브 보드 [모더레이터]</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <!-- No canonical, no hreflang, no OG — private operational page -->
+  <style>
+    /* ========================================================
+       QUORUM BOARD — 대형스크린 전용, 어두운 배경
+       ======================================================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f172a;
+      color: #f1f5f9;
+      font-family: 'Pretendard Variable', 'Pretendard', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Privacy banner ---- */
+    .privacy-banner {
+      background: #7c2d12;
+      color: #fed7aa;
+      text-align: center;
+      padding: 6px 16px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      border-bottom: 2px solid #ea580c;
+      flex-shrink: 0;
+    }
+
+    /* ---- Sub-nav ---- */
+    .subnav {
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      padding: 6px 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #94a3b8;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    .subnav-label { font-weight: 700; margin-right: 4px; color: #e2e8f0; }
+    .subnav a {
+      color: #94a3b8;
+      text-decoration: none;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .subnav a:hover { color: #f1f5f9; border-color: #475569; }
+    .subnav a.current { color: #f59e0b; border-color: #f59e0b; font-weight: 600; }
+    .subnav-sep { color: #475569; }
+
+    /* ---- Board wrapper ---- */
+    .board-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+  </style>
+</head>
+<body>
+  <!-- Privacy banner -->
+  <div class="privacy-banner">
+    [모더레이터 운영 페이지] 외부 공개 금지
+  </div>
+
+  <!-- Sub-nav -->
+  <nav class="subnav" aria-label="모더레이터 도구 네비게이션">
+    <span class="subnav-label">[모더레이터 도구]</span>
+    <a href="/ko/moderator/live">라이브</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/board">보드</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/quorum" class="current">정족수</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/heatmap">히트맵</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/clusters">클러스터</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/agenda-network">의제연결</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/insights/groups">조별</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/regulation">운영규정</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/agenda">의제선정</a>
+    <span class="subnav-sep">·</span>
+    <a href="/ko/moderator/agenda-race">투표버블</a>
+  </nav>
+
+  <!-- QuorumBoard React island -->
+  <div class="board-wrapper">
+    <QuorumBoard
+      client:load
+      initialEnrolled={200}
+      initialPresent={0}
+      sessionLabel="10/17 전체회의"
+    />
+  </div>
+</body>
+</html>
