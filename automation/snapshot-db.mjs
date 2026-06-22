@@ -13,7 +13,7 @@ export async function snapshotRound({
 }) {
   let lastError;
   for (let i = 0; i < maxRetries; i++) {
-    const { data, error } = await client.rpc('cv_snapshot_now', { p_label: label, p_source: 'cron' });
+    const { data, error } = await client.schema('climate_vote').rpc('cv_snapshot_now', { p_label: label, p_source: 'cron' });
     if (!error) return data;
     lastError = error;
     if (i < maxRetries - 1) await sleep(baseDelayMs * 2 ** i);
