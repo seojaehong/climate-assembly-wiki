@@ -1,11 +1,24 @@
 import { test, expect, vi } from 'vitest';
 import { snapshotRound } from '../snapshot-db.mjs';
 
-test('calls cv_snapshot_now with p_label + p_source (not p_round_id) and returns JSON', async () => {
+/**
+ * Factory that produces a mock supabase client with .schema() chain.
+ * Closes over a single rpc instance so retries all hit the same mock.
+ * No top-level .rpc — ensures client.schema(...).rpc(...) path is required.
+ */
+function makeClient(rpc) {
+  const schema = vi.fn(() => ({ rpc }));
+  return { schema };
+}
+
+test('calls .schema("climate_vote").rpc("cv_snapshot_now", p_label+p_source) — regression guard', async () => {
   const rpc = vi.fn().mockResolvedValue({ data: { snapshot_id: 42, votes: 126 }, error: null });
-  const client = { rpc };
+  const client = makeClient(rpc);
   const out = await snapshotRound({ client, roundId: 2, label: '7월_행사-r2' });
-  // Correct signature: (p_label, p_source) — no p_round_id
+
+  // Must route through schema('climate_vote') — catches public-schema revert
+  expect(client.schema).toHaveBeenCalledWith('climate_vote');
+  // Correct RPC signature: p_label + p_source — no p_round_id
   expect(rpc).toHaveBeenCalledWith('cv_snapshot_now', { p_label: '7월_행사-r2', p_source: 'cron' });
   // Regression: must NOT pass p_round_id (that caused PGRST202 / HTTP 404)
   expect(rpc).not.toHaveBeenCalledWith('cv_snapshot_now', expect.objectContaining({ p_round_id: expect.anything() }));
@@ -16,7 +29,7 @@ test('retries 5 times then alerts on persistent failure (warning by default)', a
   const rpc = vi.fn().mockResolvedValue({ data: null, error: { message: 'token expired' } });
   const alert = vi.fn();
   await expect(snapshotRound({
-    client: { rpc }, roundId: 2, maxRetries: 5, baseDelayMs: 1, alert
+    client: makeClient(rpc), roundId: 2, maxRetries: 5, baseDelayMs: 1, alert
   })).rejects.toThrow();
   expect(rpc).toHaveBeenCalledTimes(5);
   expect(alert).toHaveBeenCalledWith(expect.objectContaining({ level: 'warning' }));
@@ -26,7 +39,7 @@ test('escalates to critical after 3 cumulative failures', async () => {
   const rpc = vi.fn().mockResolvedValue({ data: null, error: { message: 'x' } });
   const alert = vi.fn();
   await expect(snapshotRound({
-    client: { rpc }, roundId: 2, maxRetries: 1, baseDelayMs: 1, alert,
+    client: makeClient(rpc), roundId: 2, maxRetries: 1, baseDelayMs: 1, alert,
     cumulativeFailures: 3
   })).rejects.toThrow();
   expect(alert).toHaveBeenCalledWith(expect.objectContaining({ level: 'critical' }));
@@ -35,7 +48,7 @@ test('escalates to critical after 3 cumulative failures', async () => {
 test('returns immediately on first try success (no retry, no alert)', async () => {
   const rpc = vi.fn().mockResolvedValue({ data: { ok: true }, error: null });
   const alert = vi.fn();
-  const out = await snapshotRound({ client: { rpc }, roundId: 5, alert, maxRetries: 5, baseDelayMs: 1 });
+  const out = await snapshotRound({ client: makeClient(rpc), roundId: 5, alert, maxRetries: 5, baseDelayMs: 1 });
   expect(rpc).toHaveBeenCalledTimes(1);
   expect(alert).not.toHaveBeenCalled();
   expect(out.ok).toBe(true);

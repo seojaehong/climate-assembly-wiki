@@ -28,6 +28,65 @@
 - `supabase_round_id`가 climate_vote.rounds의 실제 round_id와 일치하는지 확인 (현재 7월=2, 8월=3 가정)
 - PR로 머지 → main에 cron이 발화하기 시작
 
+## 수동 dry-run 실행법 (로컬 / env 없는 환경)
+
+env(`SUPABASE_SERVICE_ROLE`)가 없거나 오늘이 워크숍 날이 아닐 때 스냅샷 RPC만 직접 검증하는 방법.
+
+### 방법 A — CLI 강제 실행 (env 보유 시)
+
+```bash
+cd automation
+npm ci
+
+# 오늘이 workshop-schedule.yml 날짜가 아니어도 snapshotRound를 직접 호출
+node -e "
+import('@supabase/supabase-js').then(async ({ createClient }) => {
+  const { snapshotRound } = await import('./snapshot-db.mjs');
+  const client = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE);
+  const data = await snapshotRound({ client, roundId: 2, label: 'TEST_DISCARD_manual-dry-run' });
+  console.log(JSON.stringify(data, null, 2));
+});
+"
+```
+
+- `SUPABASE_URL`·`SUPABASE_SERVICE_ROLE` 를 셸 환경에 미리 export해야 함
+- `label`에 `TEST_DISCARD_` 접두사 필수 (사후 relabel 기준)
+- 생성된 row는 Supabase SQL Editor에서 `UPDATE climate_vote.snapshots SET label='TEST_DISCARD_...' WHERE id=<id>` 로 relabel (DELETE 금지)
+
+### 방법 B — Supabase MCP / SQL Editor (env 없는 환경)
+
+```sql
+-- 1. RPC 직접 실행
+SELECT climate_vote.cv_snapshot_now(
+  p_label := 'TEST_DISCARD_dry-run-YYYY-MM-DD',
+  p_source := 'cron'
+);
+-- → {id, taken_at, votes, rounds, archive_log, bytes} 반환 = PGRST202 없음 확인
+
+-- 2. payload 키 확인
+SELECT jsonb_object_keys(payload) FROM climate_vote.snapshots WHERE id = <returned_id>;
+-- 기대 키: agenda, agenda_link, agenda_vote, tally, votes, rounds, archive_log
+
+-- 3. relabel (DELETE 금지)
+UPDATE climate_vote.snapshots
+SET label = 'TEST_DISCARD_dry-run-YYYY-MM-DD'
+WHERE id = <returned_id>;
+```
+
+### 소스 레벨 확인 (grep)
+
+```bash
+grep -n "p_label\|p_source\|p_round_id" automation/snapshot-db.mjs
+# 기대 출력 (p_round_id 없음):
+# 16:    const { data, error } = await client.rpc('cv_snapshot_now', { p_label: label, p_source: 'cron' });
+```
+
+**검증 기록 (2026-06-22)**: 방법 B로 DB 함수 레벨 검증 완료. snapshot id=4, payload 7키(agenda·agenda_link·agenda_vote·tally·votes·rounds·archive_log) 확인, relabel 완료.
+
+**⚠️ 런타임 차단 결함 발견 (별도 수정 필요)**: `snapshot-db.mjs`의 `client.rpc('cv_snapshot_now', ...)` 호출이 스키마를 지정하지 않음. supabase-js 기본값은 `public`이지만 함수는 `climate_vote` 스키마에만 존재. 이 상태로 cron 실행 시 PGRST202("function not found in schema cache") 재발 가능성 있음. 수정: `client.schema('climate_vote').rpc('cv_snapshot_now', ...)` (참고: 전체 repo에서 climate_vote 접근은 모두 `.schema('climate_vote')` 경유, `export-snapshots-onedrive.mjs`도 동일 패턴 사용).
+
+---
+
 ## D-7 — 통합 dry-run (워크숍 4시간 전 절대 금지, 최소 일주일 여유)
 
 ```bash
