@@ -81,7 +81,9 @@ grep -n "p_label\|p_source\|p_round_id" automation/snapshot-db.mjs
 # 16:    const { data, error } = await client.rpc('cv_snapshot_now', { p_label: label, p_source: 'cron' });
 ```
 
-**검증 기록 (2026-06-22)**: 방법 B로 검증 완료. snapshot id=4, payload 7키(agenda·agenda_link·agenda_vote·tally·votes·rounds·archive_log) 확인, PGRST202 없음, relabel 완료.
+**검증 기록 (2026-06-22)**: 방법 B로 DB 함수 레벨 검증 완료. snapshot id=4, payload 7키(agenda·agenda_link·agenda_vote·tally·votes·rounds·archive_log) 확인, relabel 완료.
+
+**⚠️ 런타임 차단 결함 발견 (별도 수정 필요)**: `snapshot-db.mjs`의 `client.rpc('cv_snapshot_now', ...)` 호출이 스키마를 지정하지 않음. supabase-js 기본값은 `public`이지만 함수는 `climate_vote` 스키마에만 존재. 이 상태로 cron 실행 시 PGRST202("function not found in schema cache") 재발 가능성 있음. 수정: `client.schema('climate_vote').rpc('cv_snapshot_now', ...)` (참고: 전체 repo에서 climate_vote 접근은 모두 `.schema('climate_vote')` 경유, `export-snapshots-onedrive.mjs`도 동일 패턴 사용).
 
 ---
 
