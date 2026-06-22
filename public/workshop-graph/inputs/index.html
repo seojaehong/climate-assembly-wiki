@@ -27,6 +27,7 @@
   .back{display:inline-block;margin-top:24px;color:var(--accent);text-decoration:none;font-size:13px}
   .back:hover{text-decoration:underline}
 </style>
+<link rel="stylesheet" href="/_ontology-chrome/chrome.css">
 </head>
 <body>
 <header>
@@ -69,5 +70,10 @@
 
   <a class="back" href="../">← 숙의 온톨로지 그래프로 돌아가기</a>
 </main>
+
+<script type="module">
+  import { OntologyChrome } from '/_ontology-chrome/chrome.js';
+  OntologyChrome.init({ activeId: 'inputs', title: '워크숍 원문 회의록 — 6/13-14 (인풋 v2)', meta: '6 카테고리 .md', advisory: 'LLM 처리·요약 없음 — HWP/HWPX 원문 그대로' });
+</script>
 </body>
 </html>

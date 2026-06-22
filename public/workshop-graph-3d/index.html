@@ -45,6 +45,7 @@
   #info.show{display:block}
   #info b{color:#56C2E4}
 </style>
+<link rel="stylesheet" href="/_ontology-chrome/chrome.css">
 </head>
 <body>
 <div id="h">
@@ -284,6 +285,15 @@ document.getElementById('label-size').oninput = e => {
 };
 document.getElementById('link-width').oninput = e => { if (Graph) Graph.linkWidth(+e.target.value); };
 document.getElementById('zoom-fit').onclick = () => { if (Graph) Graph.zoomToFit(800, 50); };
+</script>
+
+<script type="module">
+  import { OntologyChrome } from '/_ontology-chrome/chrome.js';
+  // 3D 페이지 자체 헤더(#h)와 충돌 방지: 탭바만 #h 위에 prepend
+  document.addEventListener('DOMContentLoaded', () => {
+    OntologyChrome.init({ activeId: 'workshop-3d', title: '숙의 온톨로지 3D — 6/13-14 워크숍', meta: '노드 — · 엣지 —', advisory: '3D force-directed · 노드 회전·줌 가능' });
+    // 기존 #h, #legend, #filters는 그대로 유지 (3D 페이지 고유 UI)
+  });
 </script>
 </body>
 </html>

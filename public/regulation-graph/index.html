@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>숙의 온톨로지 — 6/13-14 워크숍</title>
+<title>운영규정 온톨로지 — 조항 중심</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/_ontology-chrome/chrome.css">
@@ -16,16 +16,7 @@
 <body>
 <div id="og-app">
   <div class="og-controls">
-    <input id="og-search" type="search" placeholder="라벨 검색…" autocomplete="off">
-    <span class="og-lbl">날짜</span>
-    <button class="og-btn on" data-day="all">전체</button>
-    <button class="og-btn" data-day="6/13">6/13</button>
-    <button class="og-btn" data-day="6/14">6/14</button>
-    <span class="og-lbl">조</span>
-    <button class="og-btn on" data-jo="all">전체</button>
-    <button class="og-btn" data-jo="A">A조</button>
-    <button class="og-btn" data-jo="B">B조</button>
-    <button class="og-btn" data-jo="통합">통합</button>
+    <input id="og-search" type="search" placeholder="조항·발화 검색…" autocomplete="off">
     <span class="og-lbl">종류</span>
     <div class="og-filters" id="og-kind-filters"></div>
     <span class="og-spacer"></span>
@@ -49,21 +40,14 @@
   <div class="og-footer">
     <div class="og-leg" id="og-legend"></div>
     <span class="og-spacer"></span>
-    <span style="font-size:11px;color:#5c6878">LLM 추출 · 인간 검증 전 · 정책반영 모니터링 별도</span>
+    <span style="font-size:11px;color:#5c6878">6/13 운영규정 토론 · 조항 · 수정안 · 의결 추적</span>
   </div>
 </div>
 
 <script type="module">
 import { OntologyChrome } from '/_ontology-chrome/chrome.js';
 
-const PREFIX_META = {
-  'A_t21':{day:'6/14',jo:'A'},'A_t22':{day:'6/14',jo:'A'},'A_t23':{day:'6/14',jo:'A'},
-  'B_t1':{day:'6/13',jo:'B'},'B_t2':{day:'6/14',jo:'B'},'B_t3':{day:'6/14',jo:'B'},
-  'OA_t1':{day:'6/13',jo:'A'},'OB_t1':{day:'6/13',jo:'B'},'OZ_t1':{day:'6/13',jo:'통합'},
-  'DA_t2':{day:'6/14',jo:'A'},'DB_t2':{day:'6/14',jo:'B'},'DZ_t2':{day:'6/14',jo:'통합'},
-};
-
-let cy, ALL_NODES = [], ALL_EDGES = [], curFilter = { day:'all', jo:'all', kind:new Set(Object.keys(OntologyChrome.KIND_DEFAULT)) };
+let cy, ALL_NODES = [], ALL_EDGES = [], curFilter = { kind:new Set(Object.keys(OntologyChrome.KIND_DEFAULT)) };
 let isoShown = false;
 
 fetch('data.json').then(r => r.json()).then(payload => {
@@ -72,10 +56,10 @@ fetch('data.json').then(r => r.json()).then(payload => {
   ALL_EDGES = elements.edges;
 
   OntologyChrome.init({
-    activeId: 'workshop',
-    title: '숙의 온톨로지 — 6/13-14 워크숍',
+    activeId: 'regulation',
+    title: '운영규정 온톨로지 — 조항 중심',
     meta: `노드 ${meta.counts.nodes} · 엣지 ${meta.counts.edges}`,
-    advisory: '이 논변 그래프는 모더레이터 검토 전 LLM 조립 초안입니다. 최종 채택은 시민·모더레이터 권한.',
+    advisory: '6/13 워크숍의 운영규정 조항·수정안·우려·의결을 LLM이 조립한 초안입니다.',
   });
 
   try { if (typeof cytoscapeFcose !== 'undefined') cytoscape.use(cytoscapeFcose); } catch (e) {}
@@ -85,7 +69,9 @@ fetch('data.json').then(r => r.json()).then(payload => {
     elements: { nodes: ALL_NODES, edges: ALL_EDGES },
     wheelSensitivity: 0.25, minZoom: 0.08, maxZoom: 3,
     style: buildStyle(OntologyChrome.getPalette()),
-    layout: layoutOpts(),
+    layout: { name:'fcose', quality:'default', animate:false, randomize:true,
+      nodeRepulsion:8000, idealEdgeLength:120, edgeElasticity:0.45,
+      gravity:0.3, numIter:2500, packComponents:true, nodeSeparation:80 },
   });
   applyIsolated();
 
@@ -108,15 +94,6 @@ fetch('data.json').then(r => r.json()).then(payload => {
 
   buildLegend();
 
-  document.querySelectorAll('[data-day]').forEach(b => b.onclick = () => {
-    document.querySelectorAll('[data-day]').forEach(x => x.classList.remove('on'));
-    b.classList.add('on'); curFilter.day = b.dataset.day; applyFilter();
-  });
-  document.querySelectorAll('[data-jo]').forEach(b => b.onclick = () => {
-    document.querySelectorAll('[data-jo]').forEach(x => x.classList.remove('on'));
-    b.classList.add('on'); curFilter.jo = b.dataset.jo; applyFilter();
-  });
-
   document.getElementById('og-zin').onclick = () => cy.zoom({ level: cy.zoom() * 1.25, renderedPosition: { x: cy.width()/2, y: cy.height()/2 } });
   document.getElementById('og-zout').onclick = () => cy.zoom({ level: cy.zoom() / 1.25, renderedPosition: { x: cy.width()/2, y: cy.height()/2 } });
   document.getElementById('og-zfit').onclick = () => cy.fit(null, 30);
@@ -127,10 +104,7 @@ fetch('data.json').then(r => r.json()).then(payload => {
     applyIsolated();
   };
 
-  cy.on('tap', 'node', (evt) => {
-    const n = evt.target.data();
-    OntologyChrome.showQuick(document.getElementById('og-quick'), document.getElementById('og-side'), n);
-  });
+  cy.on('tap', 'node', (evt) => OntologyChrome.showQuick(document.getElementById('og-quick'), document.getElementById('og-side'), evt.target.data()));
   cy.on('tap', (evt) => {
     if (evt.target === cy) {
       OntologyChrome.hideQuick(document.getElementById('og-quick'));
@@ -163,12 +137,6 @@ fetch('data.json').then(r => r.json()).then(payload => {
   cy.ready(() => setTimeout(() => cy.fit(null, 40), 300));
 });
 
-function layoutOpts() {
-  return { name:'fcose', quality:'default', animate:false, randomize:true,
-    nodeRepulsion:9000, idealEdgeLength:130, edgeElasticity:0.45,
-    gravity:0.25, numIter:2500, packComponents:true, nodeSeparation:90 };
-}
-
 function buildStyle(palette) {
   return [
     { selector:'node', style:{
@@ -177,22 +145,22 @@ function buildStyle(palette) {
         'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif", 'font-weight':500,
         'text-wrap':'wrap','text-max-width':'140px','text-valign':'bottom','text-margin-y':4,
         'text-outline-color':'#11151c','text-outline-width':2.5,
-        'width': n => 22 + Math.min(n.data('deg')||0,8)*4,
-        'height': n => 22 + Math.min(n.data('deg')||0,8)*4,
+        'width': n => 24 + Math.min(n.data('deg')||0,8)*5,
+        'height': n => 24 + Math.min(n.data('deg')||0,8)*5,
         'border-width':2,'border-color':'#0d1118','shape':'ellipse',
-        'transition-property':'opacity,border-color,border-width','transition-duration':'120ms'
     }},
-    { selector:'node[?synthesized]', style:{ 'shape':'round-diamond','border-style':'dashed','border-color':'#ff8787' }},
+    { selector:'node[kind="Clause"]', style:{ 'shape':'round-rectangle','border-color':'#e9ecef','border-width':3 }},
+    { selector:'node[kind="Decision"]', style:{ 'shape':'star','border-color':'#ffa94d','border-width':3 }},
     { selector:'edge', style:{
-        'width':1.6, 'line-color':'#54637a', 'target-arrow-color':'#54637a',
-        'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale':1,
+        'width':1.8, 'line-color':'#54637a', 'target-arrow-color':'#54637a',
+        'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale':1.1,
         'label':'data(relKo)','font-size':'10px','color':'#aeb9c8',
         'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif",
         'text-rotation':'autorotate','text-background-color':'#11151c',
         'text-background-opacity':0.85,'text-background-padding':2,
     }},
     { selector:'edge[?opposes]', style:{
-        'line-color':'#ff6b6b','target-arrow-color':'#ff6b6b','width':2.6,'color':'#ff9c9c','z-index':10 }},
+        'line-color':'#ff6b6b','target-arrow-color':'#ff6b6b','width':2.8 }},
     { selector:'.dim', style:{ 'opacity':0.10 }},
     { selector:'.hidden', style:{ 'display':'none' }}
   ];
@@ -224,14 +192,8 @@ function applyFilter() {
   if (!cy) return;
   cy.batch(() => {
     cy.nodes().forEach(n => {
-      const pfx = (n.id() || '').split('__')[0];
-      const meta = PREFIX_META[pfx] || {};
       const k = n.data('kind');
-      let ok = true;
-      if (curFilter.day !== 'all' && meta.day !== curFilter.day) ok = false;
-      if (curFilter.jo !== 'all' && meta.jo !== curFilter.jo) ok = false;
-      if (!curFilter.kind.has(k)) ok = false;
-      if (ok) n.removeClass('hidden'); else n.addClass('hidden');
+      if (curFilter.kind.has(k)) n.removeClass('hidden'); else n.addClass('hidden');
     });
     cy.edges().forEach(e => {
       if (e.source().hasClass('hidden') || e.target().hasClass('hidden')) e.addClass('hidden');
