@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>숙의 온톨로지 그래프 — 사용설명서</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/_ontology-chrome/chrome.css">
+<style>
+  body{margin:0;background:var(--og-bg,#11151c);color:var(--og-txt,#e8edf4);
+    font-family:'Noto Sans KR','Malgun Gothic',sans-serif;line-height:1.7}
+  .gd-wrap{max-width:980px;margin:0 auto;padding:32px 24px 80px}
+  .gd-top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--og-line,#2c3848);padding-bottom:16px;margin-bottom:8px}
+  .gd-top h1{font-size:30px;font-weight:900;margin:0}
+  .gd-top .sub{color:#9aa7b8;font-size:15px}
+  .gd-back{margin-left:auto;font-size:14px;color:var(--og-accent,#56C2E4);text-decoration:none;border:1px solid var(--og-line,#2c3848);border-radius:6px;padding:7px 14px}
+  h2{font-size:22px;font-weight:700;margin:38px 0 12px;color:#fff}
+  h2 .em{color:var(--og-accent,#56C2E4)}
+  p{font-size:16px;color:#d4dbe4;margin:8px 0}
+  .gd-note{background:rgba(255,169,77,.10);border:1px solid #ffa94d;border-radius:10px;padding:16px 18px;margin:16px 0}
+  .gd-note b{color:#ffd8a8}
+  .gd-haber{background:rgba(86,194,228,.08);border:1px solid #56C2E4;border-radius:10px;padding:18px 20px;margin:16px 0}
+  .gd-haber li{font-size:16px;margin:6px 0}
+  table{border-collapse:collapse;width:100%;margin:10px 0;font-size:15px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--og-line,#2c3848);vertical-align:top}
+  th{color:#9aa7b8;font-weight:500;font-size:13px}
+  .dot{display:inline-block;width:16px;height:16px;border-radius:50%;vertical-align:-2px;margin-right:8px;border:1px solid #0d1118}
+  .swsq{display:inline-block;width:16px;height:16px;border-radius:4px;vertical-align:-2px;margin-right:8px}
+  .kname{font-weight:700;white-space:nowrap}
+  .gd-ctrl{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--og-line,#2c3848)}
+  .gd-ctrl .ic{flex:0 0 96px;font-weight:700;color:#fff}
+  .gd-ctrl .ds{color:#d4dbe4;font-size:15px}
+  .pill{display:inline-block;background:#222c3a;border:1px solid #2c3848;border-radius:5px;padding:2px 8px;font-size:13px;color:#cfd8e3}
+  footer{margin-top:48px;font-size:13px;color:#5c6878;border-top:1px solid var(--og-line,#2c3848);padding-top:16px}
+</style>
+</head>
+<body>
+<div class="gd-wrap">
+  <div class="gd-top">
+    <h1>숙의 온톨로지 그래프 — 사용설명서</h1>
+    <span class="sub">시민 숙의 발언을 타입화 논변 지식그래프로</span>
+    <a class="gd-back" href="../">← 그래프로 돌아가기</a>
+  </div>
+
+  <h2>이 그래프는 <span class="em">무엇</span>인가</h2>
+  <p>시민들이 워크숍·토론에서 실제로 한 발언을, 발언의 <b>역할(타입)</b>과 <b>관계</b>로 분해해 하나의 지식그래프로 그린 것입니다. "어떤 쟁점에 어떤 주장이 있었고, 무엇이 그것을 지지·반대했으며, 어떤 우려와 조건·가치가 얽혔는가"를 한눈에 봅니다. 모든 노드는 출처 발언(uid)을 보존합니다.</p>
+
+  <h2>왜 <span class="em">만들었나</span> — 하버마스 공론과 기후시민회의</h2>
+  <p>이 그래프는 기후시민회의의 숙의를 <b>의사결정으로 잇는 일을 보조</b>하기 위해 만들었습니다. 200명의 발언이 흩어져 사라지지 않고, 모더레이터·위원·시민이 <b>논의 전체 지형</b>을 함께 보며 더 나은 결정을 내리도록 돕는 것이 목적입니다. 설계는 위르겐 하버마스의 <b>공론장(Öffentlichkeit)</b>과 <b>의사소통행위이론</b>에서 다음을 빌려왔습니다.</p>
+  <table>
+    <tr><th style="width:200px">하버마스 개념</th><th>이 그래프에서</th></tr>
+    <tr><td><b>이상적 담화상황</b><br><span style="color:#9aa7b8;font-size:13px">평등한 발언·강제 없는 "더 나은 논증의 힘"</span></td><td>모든 발언을 동등하게 보존(무손실)하고 출처(uid)를 추적합니다. 누가 더 목소리가 컸는지가 아니라 <b>무엇이 어떻게 연결되는가</b>로 봅니다.</td></tr>
+    <tr><td><b>타당성 주장</b><br><span style="color:#9aa7b8;font-size:13px">진리·정당성·진실성 (이해가능성은 전제)</span></td><td>주장을 <b>근거(진리)</b>와 <b>가치(정당성)</b> 두 축으로 분해합니다. 화자의 <b>진실성</b>은 모델링하지 않습니다 — 부분 구현.</td></tr>
+    <tr><td><b>담론(Diskurs)</b><br><span style="color:#9aa7b8;font-size:13px">주장은 근거로 옹호되고 반박에 열린다</span></td><td>지지·반대·우려·조건 관계로 <b>논증과 반론</b>을 그대로 잇습니다. 반대는 숨기지 않고 빨간 선으로 드러냅니다.</td></tr>
+    <tr><td><b>합의 지향</b><br><span style="color:#9aa7b8;font-size:13px">상호이해를 향한 소통</span></td><td>합의문·수렴 추적은 <b>개발 중(로드맵)</b>입니다. 현재 그래프는 합의 이전의 <b>논의 지형</b>을 보여줍니다.</td></tr>
+  </table>
+  <p><b>소수의견 존중.</b> 숙의민주주의에서 소수의견은 다수결로 지워야 할 것이 아니라 <b>숙의의 자원</b>입니다. 그래서 이 도구는 적게 나온 우려·반대·조건도 <b>똑같이 그래프에 남깁니다</b>(무손실). "보기 편하게 중요한 것만 추리는" 행위는 곧 소수의 침묵이자 왜곡이라고 봅니다.</p>
+  <p><b>기후시민회의 맞춤.</b> 노드·관계 종류를 기후·정책 숙의 맥락에 맞췄습니다 — 정책대안·조건(예산·법개정·단계시행)·가치(감축효과·세대정의·형평성), 영향집단(저소득층·중소기업·농어민), 근거를 <b>전문가 자료</b>와 <b>시민 경험</b>으로 구분합니다. 데이터는 실제 기후시민회의 워크숍 발언입니다.</p>
+  <p style="color:#9aa7b8;font-size:14px">※ 정직하게: 이 그래프는 하버마스 이론을 <b>부분적으로 구현한 보조 도구의 초안</b>이며, 이론의 완성형(예: DeepMind 하버마스 머신식 합의 생성·입장 변화 추적)은 지향점이자 개발 중인 로드맵입니다. 도구는 결정을 <b>대신하지 않고 돕습니다.</b></p>
+
+  <div class="gd-note">
+    <p style="margin:0"><b>⚠️ 한계 — 반드시 읽어주세요.</b> 이 그래프는 <b>AI(LLM)가 발언에서 조립한 초안</b>이며 <b>인간(모더레이터) 검증 전</b>입니다. 자동 추출에는 누락·오해가 있을 수 있습니다. 최종 권위는 원문 회의록과 모더레이터에게 있습니다. 의사결정의 단독 근거로 쓰지 마세요.</p>
+  </div>
+
+  <h2>설계 <span class="em">원칙</span> — 하버마스 충실성</h2>
+  <p>공론(공적 숙의)의 이론에 충실하기 위해, 이 도구는 다음을 지킵니다.</p>
+  <div class="gd-haber">
+    <ul style="margin:0;padding-left:20px">
+      <li><b>무손실(완전성)</b> — 발언·노드를 임의로 골라내거나 지우지 않습니다. 보기 편하라고 "중요한 것만" 추리면 그 자체가 <b>왜곡·조작</b>이 됩니다. 모든 목소리가 그래프에 남습니다.</li>
+      <li><b>무평가(중립)</b> — 무엇이 더 중요한지 우리가 미리 판단하지 않습니다. 묶기·정렬은 <b>데이터에 이미 있는 구조</b>(쟁점·세션)로만 합니다.</li>
+      <li><b>가독성은 삭제가 아니라 줌으로</b> — 화면이 빽빽하면 데이터를 지우는 대신 <b>줌 레벨로 표현 농도</b>를 조절합니다(줌아웃=구조, 줌인=상세). 접어둔 무리도 펼치면 그대로 다 있습니다.</li>
+      <li><b>출처 추적</b> — 모든 노드·관계는 어느 발언에서 나왔는지(uid) 보존합니다.</li>
+    </ul>
+  </div>
+
+  <h2>노드 <span class="em">7종</span> (발언의 역할)</h2>
+  <table>
+    <tr><th style="width:130px">종류</th><th>뜻</th></tr>
+    <tr><td><span class="dot" style="background:#f08c4b"></span><span class="kname">쟁점</span> Issue</td><td>다뤄야 할 문제·논점 (예: 전기요금, 산업전환)</td></tr>
+    <tr><td><span class="dot" style="background:#4dabf7"></span><span class="kname">주장</span> Claim</td><td>입장·견해의 진술</td></tr>
+    <tr><td><span class="dot" style="background:#51cf66"></span><span class="kname">정책대안</span> Proposal</td><td>정책 제안·권고 후보</td></tr>
+    <tr><td><span class="dot" style="background:#ffd43b"></span><span class="kname">우려</span> Concern</td><td>우려·반대 논거</td></tr>
+    <tr><td><span class="dot" style="background:#cc5de8"></span><span class="kname">조건</span> Condition</td><td>실행 조건 (예산·법개정·단계 시행)</td></tr>
+    <tr><td><span class="dot" style="background:#22b8cf"></span><span class="kname">가치</span> Value</td><td>밑바탕 가치 (형평성·감축효과·세대정의)</td></tr>
+    <tr><td><span class="dot" style="background:#adb5bd"></span><span class="kname">근거</span> Evidence</td><td>근거 — 전문가 자료 또는 시민 경험</td></tr>
+  </table>
+  <p style="font-size:14px;color:#9aa7b8">운영규정 소스에서는 <span class="dot" style="background:#e9ecef"></span><b>조항</b>(Clause)·<span class="dot" style="background:#ffa94d"></span><b>의결</b>(Decision)·<span class="dot" style="background:#ff8787"></span><b>영향집단</b>(Group)도 등장합니다.</p>
+
+  <h2>관계 <span class="em">9종</span> (노드 사이의 연결)</h2>
+  <table>
+    <tr><th style="width:130px">관계</th><th>뜻</th></tr>
+    <tr><td class="kname">쟁점제기</td><td>raisesIssue — 어떤 발언이 그 쟁점을 제기</td></tr>
+    <tr><td class="kname">지지</td><td>supports — 근거·주장이 대안을 뒷받침</td></tr>
+    <tr><td class="kname" style="color:#ff6b6b">반대</td><td>opposes — 반대·상충 (그래프에서 <b>빨간 선</b>)</td></tr>
+    <tr><td class="kname">우려</td><td>hasConcern — 우려가 딸림</td></tr>
+    <tr><td class="kname">근거</td><td>hasEvidence — 근거가 붙음</td></tr>
+    <tr><td class="kname">가치반영</td><td>reflectsValue — 밑바탕 가치를 반영</td></tr>
+    <tr><td class="kname">조건필요</td><td>requiresCondition — 실행에 조건이 필요</td></tr>
+    <tr><td class="kname">수정</td><td>modifies — 제안을 수정·보완</td></tr>
+    <tr><td class="kname">영향집단</td><td>affectsGroup — 영향받는 집단(저소득층·중소기업·농어민…)</td></tr>
+  </table>
+
+  <h2>모양 <span class="em">규칙</span></h2>
+  <p>색은 종류, <b>모양</b>은 특성을 나타냅니다 — <span class="swsq" style="background:#e9ecef"></span><b>둥근 사각형</b>=조항, ★<b>별</b>=의결, <b>점선 마름모</b>=AI가 합성한 노드(원발언 직접인용 아님). 노드 <b>크기</b>는 연결이 많을수록 큽니다.</p>
+
+  <h2>사용 <span class="em">방법</span></h2>
+  <div class="gd-ctrl"><div class="ic">소스</div><div class="ds">볼 데이터를 고릅니다(워크숍 통합 · 운영규정 · 🔴LIVE 등). 상단 드롭다운.</div></div>
+  <div class="gd-ctrl"><div class="ic">2D / 3D</div><div class="ds">평면 그래프 ↔ 3차원 입체 뷰 전환. 3D는 좌클릭=회전, 휠=확대, 우클릭=이동.</div></div>
+  <div class="gd-ctrl"><div class="ic">시맨틱 줌</div><div class="ds">줌아웃하면 라벨이 자동으로 숨어 전체 <b>구조</b>가 보이고(노드는 점으로 유지), 줌인하면 라벨·상세가 나타납니다. 데이터는 삭제되지 않습니다.</div></div>
+  <div class="gd-ctrl"><div class="ic">🖥 발표</div><div class="ds"><span class="pill">발표 모드</span> 큰 글씨로 전환 — 대형 스크린·청중용. 링크에 <span class="pill">?mode=present</span>가 붙어 그대로 공유됩니다.</div></div>
+  <div class="gd-ctrl"><div class="ic">묶기</div><div class="ds"><b>없음</b>(기본·전체) / <b>쟁점별</b> / <b>세션별</b>로 노드를 무리지어 봅니다. 무리는 <b>접기·펼치기</b>가 되며, 접어도 안의 노드는 그대로 다 있습니다(무손실). 중요도 평가가 아니라 데이터 구조로만 묶습니다.</div></div>
+  <div class="gd-ctrl"><div class="ic">검색</div><div class="ds">입력하면 일치하지 않는 노드가 흐려집니다(사라지지 않음).</div></div>
+  <div class="gd-ctrl"><div class="ic">종류 필터</div><div class="ds">상단 칩으로 특정 종류를 숨김/표시. 다시 켜면 복원.</div></div>
+  <div class="gd-ctrl"><div class="ic">고립 노드</div><div class="ds">연결이 없는 노드의 표시/숨김 토글.</div></div>
+  <div class="gd-ctrl"><div class="ic">⚛ 물리</div><div class="ds">켜면 노드를 끌 때 연결된 이웃이 함께 출렁이는 "살아있는" 배치. (묶기 사용 중에는 꺼집니다.)</div></div>
+  <div class="gd-ctrl"><div class="ic">＋ − ⊡</div><div class="ds">확대 · 축소 · 전체 맞춤(좌하단).</div></div>
+
+  <h2>읽는 <span class="em">법</span> 팁</h2>
+  <p>① 줌아웃해 전체 덩어리(구조)를 먼저 봅니다 → ② 큰 노드(연결 많은 핵심)와 <b>빨간 선(반대·우려)</b>을 찾습니다 → ③ 관심 영역을 줌인하면 라벨·상세가 보입니다 → ④ 노드를 클릭하면 원문 발췌(상세)가 우하단에 뜹니다.</p>
+
+  <footer>이 페이지는 내부 도구 안내입니다. 그래프는 AI 조립 초안 · 인간 검증 전입니다. 최종 권위는 원문 회의록과 모더레이터.</footer>
+</div>
+</body>
+</html>
