@@ -1,9 +1,10 @@
 ---
 /**
- * /[lang]/workshop-graph/ — 6/13-14 워크숍 숙의 온톨로지 (다국어 wrapper)
+ * /[lang]/workshop-graph/ — 6/13-14 워크숍 숙의 온톨로지 redirect
  *
- * 본 시각화는 정적 HTML (vis-network 인라인 데이터)이라 i18n 콘텐츠 분리 어려움 →
- * 다국어 메타데이터(title/description/hreflang)만 제공하고 본문은 iframe 임베드.
+ * 본 시각화는 /public/workshop-graph/index.html의 정적 앱이다.
+ * iframe wrapper는 배포 환경에서 /ko prefix 조합 시 빈 캔버스를 만들 수 있어
+ * 언어 경로는 canonical 앱으로 즉시 이동시킨다.
  *
  * 원본: /public/workshop-graph/index.html
  * 직접 접근: /workshop-graph/
@@ -27,28 +28,38 @@ const { lang } = Astro.params;
 const COPY = {
   ko: {
     title: '숙의 온톨로지 — 6/13-14 워크숍',
-    description: '2026 기후시민회의 1차 의제숙의워크숍의 9개 세션 발언을 414 노드·319 엣지로 시각화 (vis-network)',
-    caption: '414 노드 · 319 엣지 · 9 세션 · 7 분류 (Issue / Claim / Proposal / Concern / Condition / Value / Evidence)',
+    description: '2026 기후시민회의 1차 의제숙의워크숍 발언을 하버마스 기반 온톨로지 그래프로 시각화',
+    caption: '시민 발언을 쟁점 · 주장 · 정책대안 · 우려 · 조건 · 가치 · 근거로 연결한 숙의 보조 그래프',
+    graphLabel: '그래프 직접 열기',
+    guideLabel: '사용설명서',
   },
   en: {
     title: 'Deliberation Map — 6/13-14 Workshop',
-    description: 'Interactive ontology of 414 nodes / 319 edges across 9 sessions from the 1st Korea Climate Citizens Assembly agenda workshop.',
-    caption: '414 nodes · 319 edges · 9 sessions · 7 categories (Issue / Claim / Proposal / Concern / Condition / Value / Evidence)',
+    description: 'Habermas-informed ontology graph for the 1st Korea Climate Citizens Assembly agenda workshop.',
+    caption: 'A deliberation support graph connecting citizen statements as issues, claims, proposals, concerns, conditions, values, and evidence.',
+    graphLabel: 'Open graph',
+    guideLabel: 'Guide',
   },
   ja: {
     title: '熟議オントロジー — 6/13-14 ワークショップ',
-    description: '2026 韓国気候市民会議 第1回議題熟議ワークショップの9セッション発言を 414 ノード・319 エッジで可視化',
-    caption: '414 ノード · 319 エッジ · 9 セッション · 7 分類',
+    description: '韓国気候市民会議の発言を熟議支援オントロジーグラフとして可視化',
+    caption: '発言を論点・主張・政策案・懸念・条件・価値・根拠として接続します',
+    graphLabel: 'グラフを開く',
+    guideLabel: 'ガイド',
   },
   zh: {
     title: '审议本体论 — 6/13-14 工作坊',
-    description: '2026 韩国气候公民会议第1次议题审议工作坊9个会议的发言可视化(414节点·319边)',
-    caption: '414 节点 · 319 边 · 9 会议 · 7 分类',
+    description: '以审议支持本体论图谱呈现韩国气候公民会议发言',
+    caption: '将发言连接为议题、主张、政策方案、担忧、条件、价值与依据',
+    graphLabel: '打开图谱',
+    guideLabel: '使用说明',
   },
   es: {
     title: 'Mapa de deliberación — Taller 6/13-14',
-    description: 'Ontología interactiva de 414 nodos / 319 aristas a través de 9 sesiones del 1er taller de agenda de la Asamblea Ciudadana del Clima de Corea.',
-    caption: '414 nodos · 319 aristas · 9 sesiones · 7 categorías',
+    description: 'Grafo ontológico inspirado en Habermas para apoyar la deliberación de la Asamblea Ciudadana del Clima de Corea.',
+    caption: 'Conecta intervenciones ciudadanas como problemas, afirmaciones, propuestas, preocupaciones, condiciones, valores y evidencias.',
+    graphLabel: 'Abrir grafo',
+    guideLabel: 'Guía',
   },
 } as const;
 
@@ -61,16 +72,23 @@ const copy = COPY[lang as keyof typeof COPY] ?? COPY.ko;
   description={copy.description}
   noindex={true}
 >
-  <main style="padding: 0; margin: 0;">
-    <div style="padding: 12px 20px; background: #f8f9fa; border-bottom: 1px solid #dee2e6; font-size: 13px; color: #495057;">
-      <strong>{copy.title}</strong> &nbsp;·&nbsp; <span style="color: #6c757d;">{copy.caption}</span>
+  <main style="min-height: calc(100vh - 120px); display: grid; place-items: center; padding: 48px 20px;">
+    <script is:inline>
+      const target = new URL('/workshop-graph/', location.origin);
+      target.search = location.search;
+      target.hash = location.hash;
+      location.replace(target.toString());
+    </script>
+    <div style="max-width: 640px; padding: 28px; border: 1px solid #dee2e6; border-radius: 16px; background: #fff; color: #212529; box-shadow: 0 12px 32px rgba(15,23,42,.08);">
+      <p style="margin: 0 0 8px; color: #0ca678; font-weight: 800;">{copy.title}</p>
+      <h1 style="margin: 0 0 12px; font-size: 24px; line-height: 1.35;">{copy.graphLabel}</h1>
+      <p style="margin: 0 0 20px; color: #6c757d; line-height: 1.7;">{copy.caption}</p>
+      <a href="/workshop-graph/" style="display:inline-flex;align-items:center;min-height:40px;padding:0 14px;border:1px solid #0ca678;border-radius:8px;color:#fff;text-decoration:none;font-weight:700;background:#0ca678">
+        {copy.graphLabel}
+      </a>
+      <a href="/workshop-graph/guide/" style="display:inline-flex;align-items:center;min-height:40px;margin-left:8px;padding:0 14px;border:1px solid #228be6;border-radius:8px;color:#0b5ed7;text-decoration:none;font-weight:700;background:#e7f5ff">
+        {copy.guideLabel}
+      </a>
     </div>
-    <iframe
-      src="/workshop-graph/"
-      title={copy.title}
-      style="width: 100%; height: calc(100vh - 100px); border: 0; display: block;"
-      loading="lazy"
-      sandbox="allow-scripts allow-same-origin"
-    ></iframe>
   </main>
 </BaseLayout>

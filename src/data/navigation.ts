@@ -27,6 +27,13 @@ export interface NavItem {
   href?: string;
   /** Open in new tab (for static demo pages outside the wiki app) */
   external?: boolean;
+  /** Optional dropdown items for a top-level section */
+  children?: {
+    labelKo: string;
+    labelEn: string;
+    href: string;
+    external?: boolean;
+  }[];
 }
 
 export interface SidebarItem {
@@ -67,8 +74,18 @@ export const TOP_NAV_ITEMS: NavItem[] = [
   // { section: 'event', labelKo: '이벤트', labelEn: 'Event', href: '/race-bubble/', external: true },
   // 2026-06-13: '해외사례' — global climate assembly dashboard + comparison table.
   { section: 'global', labelKo: '해외사례', labelEn: 'Global', href: '/global/', external: true },
-  // 2026-06-22: '숙의 온톨로지' — 6/13-14 워크숍 vis-network (414 노드·319 엣지·9 세션·7 분류). 다국어 Astro 페이지 wrapper는 /[lang]/workshop-graph.astro
-  { section: 'workshop-graph', labelKo: '숙의 온톨로지', labelEn: 'Deliberation Map' },
+  // 2026-06-22: '숙의 온톨로지' — 6/13-14 워크숍 하버마스 기반 온톨로지 그래프.
+  {
+    section: 'workshop-graph',
+    labelKo: '숙의 온톨로지',
+    labelEn: 'Deliberation Map',
+    href: '/workshop-graph/',
+    external: true,
+    children: [
+      { labelKo: '그래프', labelEn: 'Graph', href: '/workshop-graph/', external: true },
+      { labelKo: '사용설명서', labelEn: 'Guide', href: '/workshop-graph/guide/', external: true },
+    ],
+  },
   // 2026-06-13: '운영규정 의견' — 3교시 A조/B조 시민 포스트잇 의견 시각화
   // 2026-06-22: 탭 숨김 — 6/13 일회성 시각화라 일반 탐색에 노출 불필요. 직접 URL(/ko/regulation-feedback/) 보존
   // { section: 'regulation-feedback', labelKo: '운영규정 의견', labelEn: 'Regulation Feedback' },

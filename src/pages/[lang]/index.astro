@@ -79,17 +79,17 @@ if (nextSession?.data.date) {
 
 const isKo = lang === 'ko';
 
-// Latest activity — agenda-only entries (2026-06-02 privacy: doc/session links removed)
+// Latest activity — official climatevoice notices plus site updates.
 const latestActivity = isKo ? [
-  { date: '2026-06-01', label: '의제 ⑤ 기후불평등 — 한국어 전면 갱신', href: `/${lang}/agenda/05-climate-injustice/` },
-  { date: '2026-06-01', label: '의제 ⑭ 기후배당 영문 번역 진행 중', href: `/${lang}/agenda/14-climate-dividend/` },
-  { date: '2026-05-31', label: '의제 ⑮ 복합취약성 초안 등록', href: `/${lang}/agenda/15-compound-vulnerability/` },
-  { date: '2026-05-31', label: '의제 ⑧ ESG·RE100 갱신', href: `/${lang}/agenda/08-esg-re100/` },
+  { date: '2026-06-08', label: '공식 공지 — 기후시민회의 의제 접수', href: 'https://climatevoice.kr/notice/list.do?category=&pageNo=1&contentNo=11' },
+  { date: '2026-06-08', label: '공식 의제 제안 홈페이지 열림', href: 'https://climatevoice.kr/opinion/write.do' },
+  { date: '2026-05-16', label: '공식 공지 — 기후시민회의 발대식', href: 'https://climatevoice.kr/notice/list.do?category=&pageNo=2&contentNo=3' },
+  { date: '2026-01-28', label: '공식 공지 — K-기후공론장 개설 토론회', href: 'https://climatevoice.kr/notice/list.do?category=&pageNo=2&contentNo=13' },
 ] : [
-  { date: '2026-06-01', label: 'Agenda ⑤ Climate Injustice — full KO refresh', href: `/${lang}/agenda/05-climate-injustice/` },
-  { date: '2026-06-01', label: 'Agenda ⑭ Climate Dividend — EN translation in progress', href: `/${lang}/agenda/14-climate-dividend/` },
-  { date: '2026-05-31', label: 'Agenda ⑮ Compound Vulnerability — draft registered', href: `/${lang}/agenda/15-compound-vulnerability/` },
-  { date: '2026-05-31', label: 'Agenda ⑧ ESG · RE100 refreshed', href: `/${lang}/agenda/08-esg-re100/` },
+  { date: '2026-06-08', label: 'Official notice — climate agenda proposal intake', href: 'https://climatevoice.kr/notice/list.do?category=&pageNo=1&contentNo=11' },
+  { date: '2026-06-08', label: 'Official agenda proposal page opened', href: 'https://climatevoice.kr/opinion/write.do' },
+  { date: '2026-05-16', label: 'Official notice — Climate Citizens Assembly launch', href: 'https://climatevoice.kr/notice/list.do?category=&pageNo=2&contentNo=3' },
+  { date: '2026-01-28', label: 'Official notice — K-climate public sphere forum', href: 'https://climatevoice.kr/notice/list.do?category=&pageNo=2&contentNo=13' },
 ];
 
 // Organization + WebSite JSON-LD
@@ -127,8 +127,8 @@ const ldJson = JSON.stringify([
   title={isKo ? '홈' : 'Home'}
   lang={lang}
   description={isKo
-    ? '2026 기후시민회의 모더레이터 아카이브 — 200명 시민참여단의 9차 숙의 과정, En-ROADS 기후 시뮬레이터, 15개 의제 다국어 위키'
-    : "2026 Korea Climate Citizens' Assembly Archive — 200 participants, 9 sessions, En-ROADS climate simulator, 15-agenda multilingual wiki"}
+    ? '2026 기후시민회의 모더레이터 아카이브 — 220명 규모 시민참여단의 숙의 과정, En-ROADS 기후 시뮬레이터, 15개 의제 다국어 위키'
+    : "2026 Korea Climate Citizens' Assembly Archive — about 220 citizen participants, deliberation sessions, En-ROADS climate simulator, 15-agenda multilingual wiki"}
   ldJson={ldJson}
 >
 
@@ -177,8 +177,8 @@ const ldJson = JSON.stringify([
         style="font-size: var(--size-display-3); line-height: var(--leading-relaxed);"
       >
         {isKo
-          ? '「탄소중립·녹색성장 기본법」 제19조의2에 따라 구성된 200명 시민참여단의 기후 숙의 과정을 기록합니다.'
-          : "Documents the climate deliberation of 200 citizen participants constituted under Article 19-2 of Korea's Carbon Neutrality Framework Act."}
+          ? '「탄소중립·녹색성장 기본법」 제19조의2에 따라 구성된 220명 규모 시민참여단의 기후 숙의 과정을 기록합니다.'
+          : "Documents the climate deliberation of about 220 citizen participants constituted under Article 19-2 of Korea's Carbon Neutrality Framework Act."}
       </p>
 
       <!-- CTAs -->
@@ -189,6 +189,14 @@ const ldJson = JSON.stringify([
         >
           {isKo ? '의제 전체 보기' : 'View All Agendas'}
         </a>
+        <a
+          href="https://climatevoice.kr/opinion/write.do"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn btn-secondary"
+        >
+          {isKo ? '공식 의제 제안' : 'Official Agenda Proposal'}
+        </a>
         {/* 2026-06-02 privacy: About link removed (doc routes privatized). */}
       </div>
 
@@ -198,8 +206,8 @@ const ldJson = JSON.stringify([
           <span
             class="font-bold text-[var(--color-accent)]"
             style="font-size: var(--size-display-2); letter-spacing: var(--tracking-tight);"
-          >200</span>
-          <span class="text-xs text-[var(--color-fg-muted)] mt-0.5">{isKo ? '시민참여단' : 'Citizens'}</span>
+          >220</span>
+          <span class="text-xs text-[var(--color-fg-muted)] mt-0.5">{isKo ? '시민참여단 규모' : 'Citizen panel scale'}</span>
         </div>
         <div class="flex flex-col">
           <span
@@ -271,8 +279,8 @@ const ldJson = JSON.stringify([
           style="font-size: var(--size-display-3); line-height: var(--leading-relaxed);"
         >
           {isKo
-            ? '2026년 5월 16일, 헌법재판소 헌법불합치 결정 이후 출범한 국가 단위 최초의 상설 기후시민의회. 200명의 무작위 선출 시민이 15개 의제에 걸쳐 권고안을 직접 심의합니다.'
-            : 'Established May 16, 2026 following the Constitutional Court ruling — the first permanent national-level climate citizens assembly. 200 randomly selected citizens deliberate directly on 15 policy agendas.'}
+            ? '2026년 5월 16일 출범한 세계 최초 국가 단위 기후 공론 상설기구. 220명 규모의 시민참여단이 학습·토론·숙의를 거쳐 정부에 정책 권고를 제안합니다.'
+            : 'Launched on May 16, 2026 as a national permanent climate public sphere. A citizen panel of about 220 people learns, discusses, deliberates, and proposes policy recommendations to the government.'}
         </p>
 
         <!-- Supporting facts row -->
@@ -359,7 +367,7 @@ const ldJson = JSON.stringify([
           <div class="text-xs font-bold text-[var(--color-accent)] mb-1">STEP 3</div>
           <h3 class="font-bold text-[var(--color-fg)] text-base mb-2">{isKo ? '숙의참여단 9회차' : '9-Session Deliberation'}</h3>
           <p class="text-xs text-[var(--color-fg-muted)]" style="line-height: var(--leading-relaxed);">
-            {isKo ? '200명이 6개월간 9회 숙의. En-ROADS 시뮬레이터 등 도구 직접 사용.' : '200 participants deliberate over 9 sessions, 6 months. Direct use of En-ROADS and other tools.'}
+            {isKo ? '220명 규모 시민참여단이 6개월간 숙의. En-ROADS 시뮬레이터 등 도구 직접 사용.' : 'A citizen panel of about 220 deliberates over six months, with direct use of En-ROADS and other tools.'}
           </p>
         </div>
 
@@ -373,7 +381,7 @@ const ldJson = JSON.stringify([
           <div class="text-xs font-bold text-[var(--color-accent)] mb-1">STEP 4</div>
           <h3 class="font-bold text-[var(--color-fg)] text-base mb-2">{isKo ? '권고안 제출' : 'Final Recommendations'}</h3>
           <p class="text-xs text-[var(--color-fg-muted)]" style="line-height: var(--leading-relaxed);">
-            {isKo ? '2026년 11월, 시민 권고안이 국가 기후정책에 반영됩니다.' : 'November 2026 — citizen recommendations feed directly into national climate policy.'}
+            {isKo ? '2026년 연말까지 시민 권고안을 도출해 국가 기후정책 논의에 제출합니다.' : 'By the end of 2026, citizen recommendations are prepared for national climate policy discussion.'}
           </p>
         </div>
       </div>
@@ -484,8 +492,8 @@ const ldJson = JSON.stringify([
           </h2>
           <p class="text-[var(--color-fg-muted)] mb-4" style="font-size: var(--text-base); line-height: var(--leading-relaxed);">
             {isKo
-              ? '이 도구로 시민 200명이 18개 정책 슬라이더를 직접 조작해 2100년 지구 온도를 시뮬레이션합니다. 매사추세츠 MIT Climate Interactive 개발.'
-              : '200 citizens use this tool to directly manipulate 18 policy levers and simulate global temperatures to 2100. Developed by MIT Climate Interactive.'}
+              ? '이 도구로 시민참여단이 18개 정책 슬라이더를 직접 조작해 2100년 지구 온도를 시뮬레이션합니다. 매사추세츠 MIT Climate Interactive 개발.'
+              : 'Citizen participants use this tool to directly manipulate 18 policy levers and simulate global temperatures to 2100. Developed by MIT Climate Interactive.'}
           </p>
           <ul class="space-y-2 mb-8">
             {(isKo ? [
@@ -562,6 +570,48 @@ const ldJson = JSON.stringify([
           </div>
         </div>
       </div>
+
+      <div class="grid gap-5 md:grid-cols-2 mt-10">
+        <a
+          href="/workshop-graph/"
+          class="group block p-6 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-bg)] hover:bg-[var(--color-card-hover)] shadow-[var(--shadow-sm)] transition-colors"
+        >
+          <p class="text-xs font-bold tracking-widest uppercase text-[var(--color-accent)] mb-3">
+            ONTOLOGY + HABERMAS
+          </p>
+          <h3 class="font-bold text-[var(--color-fg)] text-xl mb-3">
+            {isKo ? '숙의 온톨로지 그래프' : 'Deliberation Ontology Graph'}
+          </h3>
+          <p class="text-sm text-[var(--color-fg-muted)] mb-5" style="line-height: var(--leading-relaxed);">
+            {isKo
+              ? '시민 발언을 쟁점·주장·정책대안·우려·조건·가치·근거로 연결해, 하버마스적 숙의의 논의 지형을 보여줍니다.'
+              : 'Connects citizen statements as issues, claims, proposals, concerns, conditions, values, and evidence to show the terrain of deliberation.'}
+          </p>
+          <span class="inline-flex items-center gap-1 text-sm font-semibold text-[var(--color-accent)] group-hover:gap-2 transition-all">
+            {isKo ? '그래프 열기' : 'Open graph'} <span aria-hidden="true">→</span>
+          </span>
+        </a>
+
+        <a
+          href="/workshop-graph/guide/"
+          class="group block p-6 rounded-2xl border border-[var(--color-accent-muted)] bg-[var(--color-accent-subtle)] hover:bg-[var(--color-card-hover)] shadow-[var(--shadow-sm)] transition-colors"
+        >
+          <p class="text-xs font-bold tracking-widest uppercase text-[var(--color-accent)] mb-3">
+            GUIDE
+          </p>
+          <h3 class="font-bold text-[var(--color-fg)] text-xl mb-3">
+            {isKo ? '온톨로지 사용설명서' : 'Ontology Guide'}
+          </h3>
+          <p class="text-sm text-[var(--color-fg-muted)] mb-5" style="line-height: var(--leading-relaxed);">
+            {isKo
+              ? 'AI가 합의를 만드는 도구가 아니라, 발언을 무손실로 보존하고 소수의견까지 추적하는 숙의 보조 도구임을 설명합니다.'
+              : 'Explains that the tool supports deliberation by preserving statements and minority opinions rather than making consensus for citizens.'}
+          </p>
+          <span class="inline-flex items-center gap-1 text-sm font-semibold text-[var(--color-accent)] group-hover:gap-2 transition-all">
+            {isKo ? '설명서 보기' : 'Read guide'} <span aria-hidden="true">→</span>
+          </span>
+        </a>
+      </div>
     </div>
   </section>
 
@@ -588,10 +638,12 @@ const ldJson = JSON.stringify([
           </h2>
         </div>
         <a
-          href={`/${lang}/agenda/`}
+          href="https://climatevoice.kr/notice/list.do"
+          target="_blank"
+          rel="noopener noreferrer"
           class="text-sm font-semibold text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors"
         >
-          {isKo ? '전체 목록 →' : 'Full list →'}
+          {isKo ? '공식 공지 전체 →' : 'Official notices →'}
         </a>
       </div>
 
@@ -727,14 +779,14 @@ const ldJson = JSON.stringify([
       </h2>
       <p class="text-gray-300 mb-12 max-w-xl" style="line-height: var(--leading-relaxed);">
         {isKo
-          ? '모더레이터, 번역 자원봉사자, 오픈소스 기여자 모두 환영합니다.'
-          : 'We welcome moderators, volunteer translators, and open-source contributors.'}
+          ? '공식 의제 제안과 공지, 위키 기여 경로를 함께 안내합니다.'
+          : 'Official agenda proposals, notices, and wiki contribution paths are collected here.'}
       </p>
 
       <div class="grid gap-5 sm:grid-cols-3">
-        <!-- 모더레이터 참여 -->
+        <!-- 공식 의제 제안 -->
         <a
-          href="https://climatevoice.kr"
+          href="https://climatevoice.kr/opinion/write.do"
           target="_blank"
           rel="noopener noreferrer"
           class="group block p-6 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
@@ -745,38 +797,39 @@ const ldJson = JSON.stringify([
             </svg>
           </div>
           <h3 class="font-bold text-white text-base mb-2">
-            {isKo ? '모더레이터로 참여' : 'Join as Moderator'}
+            {isKo ? '공식 의제 제안' : 'Official Agenda Proposal'}
           </h3>
           <p class="text-xs text-gray-400" style="line-height: var(--leading-relaxed);">
-            {isKo ? 'climatevoice.kr 신청 페이지로 이동합니다.' : 'Navigate to climatevoice.kr application page.'}
+            {isKo ? 'climatevoice.kr 본인인증 후 기후시민회의 의제를 제안합니다.' : 'Submit an agenda through climatevoice.kr after identity verification.'}
           </p>
           <span class="mt-4 inline-flex items-center gap-1 text-xs text-[var(--color-accent)] group-hover:gap-2 transition-all">
-            {isKo ? '신청하기' : 'Apply'} <span aria-hidden="true">→</span>
+            {isKo ? '제안하기' : 'Submit'} <span aria-hidden="true">→</span>
           </span>
         </a>
 
-        <!-- 번역 자원봉사 -->
-        <div class="p-6 rounded-2xl border border-white/10 bg-white/5">
+        <!-- 공식 공지 -->
+        <a
+          href="https://climatevoice.kr/notice/list.do"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="group block p-6 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
+        >
           <div class="w-10 h-10 rounded-xl bg-[var(--color-accent)] flex items-center justify-center mb-4">
             <svg aria-hidden="true" class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
+              <path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l6 6v8a2 2 0 01-2 2z"/>
+              <path d="M14 4v6h6M8 13h8M8 17h5"/>
             </svg>
           </div>
           <h3 class="font-bold text-white text-base mb-2">
-            {isKo ? '자원봉사 번역' : 'Volunteer Translation'}
+            {isKo ? '공식 공지사항' : 'Official Notices'}
           </h3>
           <p class="text-xs text-gray-400" style="line-height: var(--leading-relaxed);">
-            {isKo ? 'EN·JA·ZH·ES 번역 기여자 모집 중. GitHub 이슈로 연락하세요.' : 'Seeking EN · JA · ZH · ES translators. Contact via GitHub issues.'}
+            {isKo ? '발대식, 의제 접수, 영상 안내 등 공식 자료를 확인합니다.' : 'Check official launch, agenda intake, and media notices.'}
           </p>
-          <a
-            href={`${REPO}/issues/new`}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="mt-4 inline-flex items-center gap-1 text-xs text-[var(--color-accent)] hover:gap-2 transition-all"
-          >
-            {isKo ? 'GitHub 이슈 열기' : 'Open GitHub issue'} <span aria-hidden="true">→</span>
-          </a>
-        </div>
+          <span class="mt-4 inline-flex items-center gap-1 text-xs text-[var(--color-accent)] group-hover:gap-2 transition-all">
+            {isKo ? '공지 보기' : 'View notices'} <span aria-hidden="true">→</span>
+          </span>
+        </a>
 
         <!-- 이슈·제안 -->
         <div class="p-6 rounded-2xl border border-white/10 bg-white/5">
