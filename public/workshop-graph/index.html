@@ -187,7 +187,11 @@ async function loadSource(srcId) {
 
   const payload = await fetch(meta.data + '?_=' + Date.now()).then(r => r.json());
   const { elements, meta: mt } = payload;
-  ALL_NODES = elements.nodes;
+  ALL_NODES = elements.nodes.map(n => ({
+    ...n,
+    data: { ...n.data, is_public: n.data?.is_public !== false },
+    classes: [n.classes, n.data?.is_public === false ? 'non-public' : ''].filter(Boolean).join(' '),
+  }));
   ALL_EDGES = elements.edges;
 
   // A-6: 기존 자산(합의·DQI)이 데이터에 있으면 읽기전용으로만 노출 (없으면 무표시 — 방어적)
@@ -439,7 +443,7 @@ function applyGrouping(mode) {
       const pid = '__grp_' + key;
       if (!seen[pid]) {
         seen[pid] = true;
-        cy.add({ group: 'nodes', data: { id: pid, isGroup: true, label } });
+        cy.add({ group: 'nodes', data: { id: pid, isGroup: true, label, is_public: true } });
       }
       n.move({ parent: pid });
     });
@@ -570,7 +574,7 @@ function buildCyStyle(palette) {
         'border-width':2,'border-color':'#12b886','border-opacity':0.8,
         'label':'data(label)','color':'#63e6be','text-valign':'top','text-halign':'center',
         'text-margin-y':-4,'font-weight':700,'font-size': presentMode ? '30px' : '15px',
-        'min-zoomed-font-size': 6,'text-outline-color':'#11151c','text-outline-width': presentMode ? 4 : 2.5,
+        'min-zoomed-font-size': presentMode ? 3 : 6,'text-outline-color':'#11151c','text-outline-width': presentMode ? 4 : 2.5,
         'text-max-width': presentMode ? '320px' : '220px','text-wrap':'wrap',
         'padding': presentMode ? '34px' : '24px',
     }},
@@ -578,9 +582,9 @@ function buildCyStyle(palette) {
     { selector:'node[?isGroup].cy-expand-collapse-collapsed-node', style:{
         'background-opacity':0.85,'shape':'round-rectangle','border-width':3,
     }},
+    { selector:'node.non-public', style:{ 'opacity':0.25,'border-style':'dashed','border-color':'#9fcfff' }},
     { selector:'.dim', style:{ 'opacity':0.10 }},
     { selector:'.hidden', style:{ 'display':'none' }},
-    { selector:'node[!is_public]', style:{ 'opacity':0.25,'border-style':'dashed','border-color':'#9fcfff' }},
   ];
 }
 
