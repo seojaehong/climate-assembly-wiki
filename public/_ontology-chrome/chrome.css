@@ -55,7 +55,7 @@ html,body{margin:0;height:100%;font-family:'Noto Sans KR','Pretendard','Malgun G
 
 /* 미니맵·줌 컨트롤 */
 .og-minimap{position:absolute;right:14px;bottom:14px;width:180px;height:130px;background:rgba(12,16,22,.85);border:1px solid var(--og-line);border-radius:6px;z-index:5}
-.og-zoomctl{position:absolute;left:14px;bottom:14px;z-index:5;display:flex;flex-direction:column;gap:5px}
+.og-zoomctl{position:absolute;left:14px;bottom:14px;z-index:1001;display:flex;flex-direction:column;gap:5px}
 .og-zoomctl button{width:34px;height:34px;font-size:18px;line-height:1;background:var(--og-panel2);border:1px solid var(--og-line);color:var(--og-txt);border-radius:6px;cursor:pointer}
 .og-zoomctl button:hover{background:#2c3848}
 
