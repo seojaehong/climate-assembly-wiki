@@ -12,6 +12,8 @@
 <script src="https://unpkg.com/layout-base@2.0.1/layout-base.js"></script>
 <script src="https://unpkg.com/cose-base@2.2.0/cose-base.js"></script>
 <script src="https://unpkg.com/cytoscape-fcose@2.2.0/cytoscape-fcose.js"></script>
+<script src="https://unpkg.com/webcola@3.4.0/WebCola/cola.min.js"></script>
+<script src="https://unpkg.com/cytoscape-cola@2.5.1/cytoscape-cola.js"></script>
 <script src="https://unpkg.com/3d-force-graph"></script>
 <style>
   .og-source-sel{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#9aa7b8}
@@ -23,6 +25,8 @@
   .og-poll-ctl select{background:#222c3a;border:1px solid #2c3848;color:#e8edf4;border-radius:5px;padding:3px 7px;font-size:11px}
   .og-poll-status{font-size:11px;color:#9aa7b8}
   .og-poll-status.fresh{color:#51cf66}
+  #og-physics{cursor:pointer;white-space:nowrap}
+  #og-physics.on{background:#1c7ed6;color:#fff;border-color:#1c7ed6}
   .og-3d-only{display:none}
   body.view-3d .og-3d-only{display:inline-flex}
   body.view-3d .og-2d-only{display:none}
@@ -39,6 +43,7 @@
       <button id="og-view-2d" class="active">📐 2D</button>
       <button id="og-view-3d">🌐 3D</button>
     </div>
+    <button class="og-btn og-2d-only" id="og-physics" title="물리 시뮬레이션 — 노드를 끌면 연결 노드가 함께 움직입니다" aria-pressed="false">⚛ 물리 OFF</button>
     <input id="og-search" type="search" placeholder="검색…" autocomplete="off" style="width:160px">
     <span class="og-spacer"></span>
     <div class="og-poll-ctl" id="og-poll-ui" style="display:none">
@@ -95,6 +100,7 @@ const PREFIX_META = {
 let cy, graph3d, ALL_NODES = [], ALL_EDGES = [], curFilter = { kind:new Set(Object.keys(OntologyChrome.KIND_DEFAULT)) };
 let isoShown = false;
 let sources = null, curSource = null, curView = '2d', pollTimer = null;
+let physicsOn = localStorage.getItem('og-physics') === '1', colaLayout = null;
 
 const params = new URLSearchParams(location.search);
 
@@ -194,10 +200,40 @@ function renderCy() {
   buildKindChips();
   buildLegend();
   bindCyEvents();
-  cy.ready(() => setTimeout(() => cy.fit(null, 40), 300));
+  cy.ready(() => setTimeout(() => { cy.fit(null, 40); if (physicsOn) applyPhysics(); }, 300));
+}
+
+// 살아있는 드래그: cytoscape-cola 연속 물리엔진 (노드를 끌면 이웃 출렁)
+function applyPhysics() {
+  stopPhysics();
+  if (!cy || !physicsOn) return;
+  try { if (typeof cytoscapeCola !== 'undefined') cytoscape.use(cytoscapeCola); } catch {}
+  try {
+    colaLayout = cy.layout({ name:'cola', infinite:true, fit:false, animate:true,
+      nodeSpacing: 6, edgeLength: 110, randomize:false, handleDisconnected:true,
+      centerGraph:false });
+    colaLayout.run();
+  } catch (e) { colaLayout = null; }
+}
+function stopPhysics() {
+  if (colaLayout) { try { colaLayout.stop(); } catch {} colaLayout = null; }
+}
+function togglePhysics() {
+  physicsOn = !physicsOn;
+  localStorage.setItem('og-physics', physicsOn ? '1' : '0');
+  updatePhysicsBtn();
+  if (physicsOn) applyPhysics(); else stopPhysics();
+}
+function updatePhysicsBtn() {
+  const b = document.getElementById('og-physics');
+  if (!b) return;
+  b.textContent = physicsOn ? '⚛ 물리 ON' : '⚛ 물리 OFF';
+  b.classList.toggle('on', physicsOn);
+  b.setAttribute('aria-pressed', String(physicsOn));
 }
 
 function render3d() {
+  stopPhysics();
   if (cy) try { cy.destroy(); } catch {}
   document.getElementById('cy').style.display = 'none';
   document.getElementById('cy3d').style.display = '';
@@ -338,6 +374,8 @@ function applyFilter() {
 function bindGlobalEvents() {
   document.getElementById('og-view-2d').onclick = () => applyView('2d');
   document.getElementById('og-view-3d').onclick = () => applyView('3d');
+  document.getElementById('og-physics').onclick = togglePhysics;
+  updatePhysicsBtn();
   document.getElementById('og-toggle-iso').onclick = (e) => {
     isoShown = !isoShown;
     e.target.textContent = isoShown ? '고립 노드 숨기기' : '고립 노드 보이기';
