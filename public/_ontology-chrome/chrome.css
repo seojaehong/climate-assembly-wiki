@@ -78,7 +78,7 @@ html,body{margin:0;height:100%;font-family:'Noto Sans KR','Pretendard','Malgun G
 .og-s-rel .og-r.og-opp b{color:var(--og-danger)}
 
 /* ─── 좌하단 quick glance 카드 ─── */
-.og-quick{position:absolute;bottom:14px;left:14px;background:rgba(30,30,36,.92);border:1px solid var(--og-line);border-radius:6px;padding:9px 13px;color:#ced4da;font-size:11px;max-width:320px;line-height:1.5;z-index:50;display:none;backdrop-filter:blur(4px)}
+.og-quick{position:absolute;bottom:14px;right:14px;background:rgba(30,30,36,.92);border:1px solid var(--og-line);border-radius:6px;padding:9px 13px;color:#ced4da;font-size:11px;max-width:320px;line-height:1.5;z-index:50;display:none;backdrop-filter:blur(4px)}
 .og-quick.show{display:block}
 .og-quick b{color:var(--og-accent)}
 .og-quick .og-more{display:inline-block;margin-top:6px;font-size:11px;color:var(--og-accent);cursor:pointer;text-decoration:underline}

@@ -254,7 +254,7 @@ function render3d() {
     .nodeId('id').nodeLabel(n => n.label).nodeColor(n => n.color)
     .nodeVal(n => 3 + Math.min(8, (n.deg || 0)) * 0.8)
     .nodeRelSize(5).nodeResolution(12).nodeOpacity(0.95)
-    .linkColor(() => 'rgba(173,181,189,0.4)').linkWidth(1)
+    .linkColor(() => 'rgba(189,197,205,0.62)').linkWidth(1.4)
     .linkDirectionalArrowLength(3).linkDirectionalArrowRelPos(1)
     .linkDirectionalArrowColor(() => '#56C2E4')
     .onNodeClick(n => OntologyChrome.showQuick(
@@ -283,6 +283,7 @@ function buildCyStyle(palette) {
     { selector:'node', style:{
         'background-color': n => palette[n.data('kind')] || '#888',
         'label':'data(label)', 'color':'#eef3f9', 'font-size':'12px',
+        'min-zoomed-font-size': 7,  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
         'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif", 'font-weight':500,
         'text-wrap':'wrap','text-max-width':'140px','text-valign':'bottom','text-margin-y':4,
         'text-outline-color':'#11151c','text-outline-width':2.5,
@@ -296,7 +297,7 @@ function buildCyStyle(palette) {
     { selector:'edge', style:{
         'width':1.6, 'line-color':'#54637a', 'target-arrow-color':'#54637a',
         'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale':1,
-        'label':'data(relKo)','font-size':'10px','color':'#aeb9c8',
+        'label':'data(relKo)','font-size':'10px','min-zoomed-font-size': 9,'color':'#aeb9c8',
         'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif",
         'text-rotation':'autorotate','text-background-color':'#11151c',
         'text-background-opacity':0.85,'text-background-padding':2,
