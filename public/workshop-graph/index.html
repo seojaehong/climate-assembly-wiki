@@ -27,6 +27,8 @@
   .og-poll-status.fresh{color:#51cf66}
   #og-physics{cursor:pointer;white-space:nowrap}
   #og-physics.on{background:#1c7ed6;color:#fff;border-color:#1c7ed6}
+  #og-present{cursor:pointer;white-space:nowrap}
+  #og-present.on{background:#7048e8;color:#fff;border-color:#7048e8}
   .og-3d-only{display:none}
   body.view-3d .og-3d-only{display:inline-flex}
   body.view-3d .og-2d-only{display:none}
@@ -44,6 +46,7 @@
       <button id="og-view-3d">🌐 3D</button>
     </div>
     <button class="og-btn og-2d-only" id="og-physics" title="물리 시뮬레이션 — 노드를 끌면 연결 노드가 함께 움직입니다" aria-pressed="false">⚛ 물리 OFF</button>
+    <button class="og-btn" id="og-present" title="발표 모드 — 큰 글씨(대형 스크린·청중용)" aria-pressed="false">🖥 발표</button>
     <input id="og-search" type="search" placeholder="검색…" autocomplete="off" style="width:160px">
     <span class="og-spacer"></span>
     <div class="og-poll-ctl" id="og-poll-ui" style="display:none">
@@ -101,6 +104,7 @@ let cy, graph3d, ALL_NODES = [], ALL_EDGES = [], curFilter = { kind:new Set(Obje
 let isoShown = false;
 let sources = null, curSource = null, curView = '2d', pollTimer = null;
 let physicsOn = localStorage.getItem('og-physics') === '1', colaLayout = null;
+let presentMode = false;  // 발표(대형스크린) 모드 — 공유 가능 뷰 상태라 URL 파라미터
 
 const params = new URLSearchParams(location.search);
 
@@ -108,6 +112,7 @@ const params = new URLSearchParams(location.search);
   sources = await fetch('sources.json').then(r => r.json());
   curSource = params.get('source') || sources.default;
   curView = params.get('view') || '2d';
+  presentMode = params.get('mode') === 'present';
   buildSourceDropdown();
   OntologyChrome.init({ activeId: 'workshop', title: '숙의 온톨로지', meta: '로딩 중…' });
   bindGlobalEvents();
@@ -144,6 +149,7 @@ function updateUrl() {
   const p = new URLSearchParams();
   p.set('source', curSource);
   if (curView !== '2d') p.set('view', curView);
+  if (presentMode) p.set('mode', 'present');
   history.replaceState(null, '', '?' + p.toString());
 }
 
@@ -232,6 +238,21 @@ function updatePhysicsBtn() {
   b.setAttribute('aria-pressed', String(physicsOn));
 }
 
+// 발표 모드: 대형스크린·청중용 큰 글씨. 데이터 불변 — 스타일만(무손실).
+function togglePresent() {
+  presentMode = !presentMode;
+  updatePresentBtn();
+  updateUrl();
+  if (cy) cy.style(buildCyStyle(OntologyChrome.getPalette())).update();
+}
+function updatePresentBtn() {
+  const b = document.getElementById('og-present');
+  if (!b) return;
+  b.textContent = presentMode ? '🖥 발표 ON' : '🖥 발표';
+  b.classList.toggle('on', presentMode);
+  b.setAttribute('aria-pressed', String(presentMode));
+}
+
 function render3d() {
   stopPhysics();
   if (cy) try { cy.destroy(); } catch {}
@@ -282,13 +303,13 @@ function buildCyStyle(palette) {
   return [
     { selector:'node', style:{
         'background-color': n => palette[n.data('kind')] || '#888',
-        'label':'data(label)', 'color':'#eef3f9', 'font-size':'12px',
+        'label':'data(label)', 'color':'#eef3f9', 'font-size': presentMode ? '26px' : '12px',
         'min-zoomed-font-size': 7,  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
-        'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif", 'font-weight':500,
-        'text-wrap':'wrap','text-max-width':'140px','text-valign':'bottom','text-margin-y':4,
-        'text-outline-color':'#11151c','text-outline-width':2.5,
-        'width': n => 22 + Math.min(n.data('deg')||0,8)*4,
-        'height': n => 22 + Math.min(n.data('deg')||0,8)*4,
+        'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif", 'font-weight': presentMode ? 700 : 500,
+        'text-wrap':'wrap','text-max-width': presentMode ? '220px' : '140px','text-valign':'bottom','text-margin-y':4,
+        'text-outline-color':'#11151c','text-outline-width': presentMode ? 4 : 2.5,
+        'width': n => (presentMode?34:22) + Math.min(n.data('deg')||0,8)*(presentMode?6:4),
+        'height': n => (presentMode?34:22) + Math.min(n.data('deg')||0,8)*(presentMode?6:4),
         'border-width':2,'border-color':'#0d1118','shape':'ellipse',
     }},
     { selector:'node[kind="Clause"]', style:{ 'shape':'round-rectangle','border-color':'#e9ecef','border-width':3 }},
@@ -297,7 +318,7 @@ function buildCyStyle(palette) {
     { selector:'edge', style:{
         'width':1.6, 'line-color':'#54637a', 'target-arrow-color':'#54637a',
         'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale':1,
-        'label':'data(relKo)','font-size':'10px','min-zoomed-font-size': 9,'color':'#aeb9c8',
+        'label':'data(relKo)','font-size': presentMode ? '18px' : '10px','min-zoomed-font-size': 9,'color':'#aeb9c8',
         'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif",
         'text-rotation':'autorotate','text-background-color':'#11151c',
         'text-background-opacity':0.85,'text-background-padding':2,
@@ -377,6 +398,8 @@ function bindGlobalEvents() {
   document.getElementById('og-view-3d').onclick = () => applyView('3d');
   document.getElementById('og-physics').onclick = togglePhysics;
   updatePhysicsBtn();
+  document.getElementById('og-present').onclick = togglePresent;
+  updatePresentBtn();
   document.getElementById('og-toggle-iso').onclick = (e) => {
     isoShown = !isoShown;
     e.target.textContent = isoShown ? '고립 노드 숨기기' : '고립 노드 보이기';
