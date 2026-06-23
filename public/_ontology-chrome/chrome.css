@@ -51,7 +51,7 @@ html,body{margin:0;height:100%;font-family:'Noto Sans KR','Pretendard','Malgun G
 /* ─── 본문 ─── */
 .og-body{flex:1;display:flex;min-height:0;position:relative}
 .og-canvas{flex:1;min-width:0;background:radial-gradient(circle at 18% 22%,#1a2433 0,var(--og-bg) 60%);position:relative}
-.og-canvas > *{width:100%;height:100%}
+.og-canvas > #cy,.og-canvas > #cy3d{width:100%;height:100%}
 
 /* 미니맵·줌 컨트롤 */
 .og-minimap{position:absolute;right:14px;bottom:14px;width:180px;height:130px;background:rgba(12,16,22,.85);border:1px solid var(--og-line);border-radius:6px;z-index:5}
