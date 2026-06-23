@@ -76,12 +76,27 @@ html,body{margin:0;height:100%;font-family:'Noto Sans KR','Pretendard','Malgun G
 .og-s-rel .og-r{font-size:12px;color:var(--og-txt);background:var(--og-panel2);border:1px solid var(--og-line);border-radius:6px;padding:6px 9px}
 .og-s-rel .og-r b{color:var(--og-accent)}
 .og-s-rel .og-r.og-opp b{color:var(--og-danger)}
+.og-surface-role{margin:9px 0 10px;padding:9px 11px;border:1px solid rgba(86,194,228,.24);border-radius:8px;background:rgba(77,171,247,.08);color:#cfe8ff;font-size:13px;line-height:1.55;word-break:keep-all}
+.og-surface-role b{display:block;margin-bottom:3px;color:#8bd3ff;font-size:12px;letter-spacing:0;font-weight:800}
+.og-surface-role span{display:block}
+.og-surface-chips{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 2px}
+.og-surface-chip{display:inline-flex;align-items:center;gap:4px;min-height:24px;padding:0 8px;border:1px solid var(--og-line);border-radius:999px;background:#111923;color:#cbd5e1;font-size:11px;font-weight:700}
+.og-surface-chip b{color:#63e6be;font-size:12px}
+.og-s-details{margin-top:14px}
+.og-s-details summary{cursor:pointer;list-style:none;border:1px solid var(--og-line);border-radius:8px;background:#141a23;color:#dbeafe;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:9px 11px}
+.og-s-details summary::-webkit-details-marker{display:none}
+.og-s-details[open] summary{border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom-color:#3b4a5f}
+.og-s-details .og-s-text{border-top:0;border-top-left-radius:0;border-top-right-radius:0}
 
 /* ─── 좌하단 quick glance 카드 ─── */
-.og-quick{position:absolute;bottom:14px;right:14px;background:rgba(30,30,36,.92);border:1px solid var(--og-line);border-radius:6px;padding:9px 13px;color:#ced4da;font-size:11px;max-width:320px;line-height:1.5;z-index:50;display:none;backdrop-filter:blur(4px)}
+.og-quick{position:absolute;bottom:14px;right:14px;background:rgba(17,24,36,.92);border:1px solid rgba(86,194,228,.24);border-radius:10px;padding:11px 13px;color:#ced4da;font-size:11px;max-width:360px;line-height:1.5;z-index:50;display:none;backdrop-filter:blur(8px);box-shadow:0 16px 40px rgba(0,0,0,.34)}
 .og-quick.show{display:block}
 .og-quick b{color:var(--og-accent)}
 .og-quick .og-more{display:inline-block;margin-top:6px;font-size:11px;color:var(--og-accent);cursor:pointer;text-decoration:underline}
+.og-surface-card{min-width:260px}
+.og-surface-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
+.og-surface-small{font-size:10px;color:#94a3b8;font-weight:700}
+.og-surface-card p{margin:6px 0 7px;color:#cbd5e1;line-height:1.55;word-break:keep-all}
 
 /* ─── footer 범례 ─── */
 .og-footer{background:#0e131a;border-top:1px solid var(--og-line);padding:7px 18px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--og-muted);flex-shrink:0}
