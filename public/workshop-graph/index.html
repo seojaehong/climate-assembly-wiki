@@ -42,6 +42,10 @@
   .og-3d-hud .og-3d-pill{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 11px;border:1px solid rgba(86,194,228,.30);border-radius:999px;background:rgba(10,15,23,.72);box-shadow:0 12px 32px rgba(0,0,0,.22);backdrop-filter:blur(8px);color:#dbeafe;font-size:12px;font-weight:700;letter-spacing:.01em}
   .og-3d-hud .og-3d-muted{color:#94a3b8;font-weight:600}
   body.view-3d .og-3d-hud{display:flex}
+  .og-hub-rail{position:absolute;left:16px;right:16px;top:16px;z-index:11;display:flex;gap:7px;align-items:center;flex-wrap:wrap;pointer-events:none}
+  body.view-3d .og-hub-rail{top:58px;right:390px}
+  .og-hub-chip{pointer-events:auto;display:inline-flex;align-items:center;max-width:220px;min-height:30px;padding:0 10px;border:1px solid rgba(139,211,255,.34);border-radius:999px;background:rgba(9,15,23,.78);box-shadow:0 10px 28px rgba(0,0,0,.24);backdrop-filter:blur(8px);color:#dbeafe;font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+  .og-hub-chip:hover{border-color:#63e6be;color:#fff;background:rgba(18,184,134,.22)}
 </style>
 </head>
 <body>
@@ -97,6 +101,7 @@
         <span class="og-3d-pill"><span class="og-3d-muted">노랑</span> 조건</span>
         <span class="og-3d-pill"><span class="og-3d-muted">회색</span> 근거</span>
       </div>
+      <div class="og-hub-rail" id="og-hub-rail" aria-label="주요 쟁점 바로가기"></div>
       <div class="og-zoomctl og-2d-only">
         <button id="og-zin">＋</button>
         <button id="og-zout">−</button>
@@ -234,11 +239,21 @@ async function loadSource(srcId) {
 
   const payload = await fetch(meta.data + '?_=' + Date.now()).then(r => r.json());
   const { elements, meta: mt } = payload;
-  ALL_NODES = elements.nodes.map(n => ({
-    ...n,
-    data: { ...n.data, is_public: n.data?.is_public !== false },
-    classes: [n.classes, n.data?.is_public === false ? 'non-public' : ''].filter(Boolean).join(' '),
-  }));
+  const maxDeg = Math.max(0, ...elements.nodes.map(n => Number(n.data?.deg || 0)));
+  ALL_NODES = elements.nodes.map(n => {
+    const deg = Number(n.data?.deg || 0);
+    const isOverviewLabel = n.data?.kind === 'Issue' || deg >= Math.max(4, Math.min(8, maxDeg - 1));
+    return {
+      ...n,
+      data: {
+        ...n.data,
+        deg,
+        is_public: n.data?.is_public !== false,
+        isOverviewLabel,
+      },
+      classes: [n.classes, n.data?.is_public === false ? 'non-public' : ''].filter(Boolean).join(' '),
+    };
+  });
   ALL_EDGES = elements.edges;
 
   // A-6: 기존 자산(합의·DQI)이 데이터에 있으면 읽기전용으로만 노출 (없으면 무표시 — 방어적)
@@ -258,6 +273,8 @@ async function loadSource(srcId) {
 
   if (curView === '2d') renderCy();
   else render3d();
+  renderHubRail();
+  renderOverviewSurface(meta, mt);
 
   if (isLive) setupPolling(meta);
   else { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
@@ -410,6 +427,95 @@ function relationChips(ctx) {
     ['근거', ctx.counts.evidence],
   ];
   return chips.map(([label, count]) => `<span class="og-surface-chip"><b>${count}</b>${label}</span>`).join('');
+}
+
+function topHubNodes(limit = 8) {
+  return [...ALL_NODES]
+    .map(n => n.data)
+    .filter(n => !n.isGroup && (n.kind === 'Issue' || Number(n.deg || 0) > 0))
+    .sort((a, b) => {
+      const kindWeight = (b.kind === 'Issue' ? 2 : 0) - (a.kind === 'Issue' ? 2 : 0);
+      return kindWeight || Number(b.deg || 0) - Number(a.deg || 0) || String(a.label).localeCompare(String(b.label), 'ko');
+    })
+    .slice(0, limit);
+}
+
+function selectNodeById(nodeId, fixed = true) {
+  const ctx = buildNodeContext(nodeId);
+  if (!ctx) return;
+  fixedNodeId = fixed ? nodeId : null;
+  renderNodeSurface(ctx, fixed ? 'fixed' : 'hover');
+  applyFocus(nodeId, fixed);
+  document.getElementById('og-quick').classList.remove('show');
+  if (cy && curView === '2d') {
+    const n = cy.getElementById(nodeId);
+    if (n && n.length) {
+      try { cy.animate({ center: { eles: n }, zoom: Math.max(cy.zoom(), 0.72) }, { duration: 420 }); } catch {}
+    }
+  }
+  if (graph3d && graph3dData && curView === '3d') {
+    const n = graph3dData.nodes.find(x => x.id === nodeId);
+    if (n) {
+      const dist = 88;
+      const len = Math.hypot(n.x || 0, n.y || 0, n.z || 0) || 1;
+      const ratio = 1 + dist / len;
+      try {
+        graph3d.cameraPosition(
+          { x: (n.x || 0) * ratio, y: (n.y || 0) * ratio, z: (n.z || 0) * ratio },
+          n,
+          850
+        );
+      } catch {}
+    }
+  }
+}
+
+function renderHubRail() {
+  const rail = document.getElementById('og-hub-rail');
+  if (!rail) return;
+  const hubs = topHubNodes(curView === '3d' ? 5 : 7);
+  rail.innerHTML = hubs.map(n => `
+    <button class="og-hub-chip" data-node-id="${escapeHtml(n.id)}" title="${escapeHtml(n.label || n.id)}">
+      ${escapeHtml(n.kindKo || n.kind)} · ${escapeHtml(shortText(n.label || n.id, 22))}
+    </button>`).join('');
+  rail.querySelectorAll('[data-node-id]').forEach(btn => {
+    btn.onclick = () => selectNodeById(btn.dataset.nodeId, true);
+  });
+}
+
+function renderOverviewSurface(sourceMeta, graphMeta) {
+  if (fixedNodeId) return;
+  const side = document.getElementById('og-side');
+  if (!side) return;
+  const hubs = topHubNodes(7);
+  const kinds = graphMeta?.kinds || {};
+  side.innerHTML = `
+    <div>
+      <span class="og-s-badge" style="background:#228be6">데이터 로드됨</span>
+      <span class="og-s-badge" style="background:#2c3848;color:#9aa7b8;margin-left:5px">${escapeHtml(sourceMeta?.label || curSource || '')}</span>
+      <div class="og-s-label">숙의 온톨로지 개요</div>
+      <div class="og-surface-role"><b>화면을 어떻게 읽나</b><span>색은 발언 역할, 선은 논증 관계, 큰 노드는 논의가 모인 허브입니다. 노드를 올리면 1-hop 관계가 보이고, 클릭하면 원문과 출처가 고정됩니다.</span></div>
+      <div class="og-surface-chips">
+        <span class="og-surface-chip"><b>${ALL_NODES.length}</b>노드</span>
+        <span class="og-surface-chip"><b>${ALL_EDGES.length}</b>관계</span>
+        <span class="og-surface-chip"><b>${kinds.Issue || 0}</b>쟁점</span>
+        <span class="og-surface-chip"><b>${kinds.Concern || 0}</b>우려</span>
+      </div>
+      <div class="og-s-sec">
+        <h4>주요 쟁점·허브</h4>
+        <div class="og-s-rel">
+          ${hubs.map(n => `<button class="og-r og-hub-row" data-node-id="${escapeHtml(n.id)}"><b>${escapeHtml(n.kindKo || n.kind)}</b> · ${escapeHtml(n.label || n.id)} <span>연결 ${Number(n.deg || 0)}</span></button>`).join('')}
+        </div>
+      </div>
+      <div class="og-s-sec">
+        <h4>하버마스 기준</h4>
+        <div class="og-s-text">AI가 합의를 만드는 것이 아니라, 주장·근거·가치·우려·조건을 분리해 숙의를 돕고 소수의견이 사라지지 않게 보여주는 보조 화면입니다.</div>
+      </div>
+    </div>`;
+  side.classList.remove('collapsed');
+  side.querySelectorAll('[data-node-id]').forEach(btn => {
+    btn.onclick = () => selectNodeById(btn.dataset.nodeId, true);
+  });
 }
 
 function renderRelationList(title, edges) {
@@ -869,18 +975,28 @@ function buildCyStyle(palette) {
         'text-outline-color':'#11151c','text-outline-width': presentMode ? 4 : 2.5,
         'width': n => (presentMode?34:22) + Math.min(n.data('deg')||0,8)*(presentMode?6:4),
         'height': n => (presentMode?34:22) + Math.min(n.data('deg')||0,8)*(presentMode?6:4),
-        'border-width':2,'border-color':'#0d1118','shape':'ellipse',
+        'border-width':2,'border-color':'#0d1118','shape':'ellipse','opacity':0.98,
+    }},
+    { selector:'node[?isOverviewLabel]', style:{
+        'min-zoomed-font-size':0,
+        'font-size': presentMode ? '28px' : '13px',
+        'font-weight':800,
+        'text-background-color':'#0b111a',
+        'text-background-opacity':0.82,
+        'text-background-padding':3,
+        'text-outline-width':3,
+        'z-index':20,
     }},
     { selector:'node[kind="Clause"]', style:{ 'shape':'round-rectangle','border-color':'#e9ecef','border-width':3 }},
     { selector:'node[kind="Decision"]', style:{ 'shape':'star','border-color':'#ffa94d','border-width':3 }},
     { selector:'node[?synthesized]', style:{ 'shape':'round-diamond','border-style':'dashed','border-color':'#ff8787' }},
     { selector:'edge', style:{
-        'width':1.6, 'line-color':'#54637a', 'target-arrow-color':'#54637a',
+        'width':1.8, 'line-color':'#6b7890', 'target-arrow-color':'#6b7890',
         'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale':1,
-        'label':'data(relKo)','font-size': presentMode ? '18px' : '10px','min-zoomed-font-size': 9,'color':'#aeb9c8',
+        'label':'data(relKo)','font-size': presentMode ? '18px' : '10px','min-zoomed-font-size': 9,'color':'#d3dbe8',
         'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif",
         'text-rotation':'autorotate','text-background-color':'#11151c',
-        'text-background-opacity':0.85,'text-background-padding':2,
+        'text-background-opacity':0.85,'text-background-padding':2,'opacity':0.82,
     }},
     { selector:'edge[?opposes]', style:{
         'line-color':'#ff6b6b','target-arrow-color':'#ff6b6b','width':2.6 }},

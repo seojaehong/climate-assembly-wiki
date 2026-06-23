@@ -76,6 +76,9 @@ html,body{margin:0;height:100%;font-family:'Noto Sans KR','Pretendard','Malgun G
 .og-s-rel .og-r{font-size:12px;color:var(--og-txt);background:var(--og-panel2);border:1px solid var(--og-line);border-radius:6px;padding:6px 9px}
 .og-s-rel .og-r b{color:var(--og-accent)}
 .og-s-rel .og-r.og-opp b{color:var(--og-danger)}
+.og-s-rel button.og-r{display:block;width:100%;text-align:left;font-family:inherit;cursor:pointer}
+.og-s-rel button.og-r:hover{border-color:#63e6be;background:#1c2b35}
+.og-s-rel button.og-r span{float:right;color:#8bd3ff;font-size:11px;font-weight:800}
 .og-surface-role{margin:9px 0 10px;padding:9px 11px;border:1px solid rgba(86,194,228,.24);border-radius:8px;background:rgba(77,171,247,.08);color:#cfe8ff;font-size:13px;line-height:1.55;word-break:keep-all}
 .og-surface-role b{display:block;margin-bottom:3px;color:#8bd3ff;font-size:12px;letter-spacing:0;font-weight:800}
 .og-surface-role span{display:block}
