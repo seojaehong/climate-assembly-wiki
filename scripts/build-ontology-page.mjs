@@ -184,11 +184,13 @@ function main() {
       kinds: Object.fromEntries(
         Object.keys(KIND_COLOR).map(k => [k, elements.nodes.filter(n => n.data.kind === k).length])
       ),
-      // 새 스키마 통과 필드
+      // 새 스키마 통과 필드 — 렌더러는 read-only로만 소비한다.
       advisory_notice: raw?.advisory_notice || null,
       uncited_dropped: raw?.uncited_dropped ?? null,
       live: raw?.live || false,
       recommendations: raw?.recommendations || null,
+      uid_time_index: raw?.uid_time_index || null,
+      quality: raw?.meta?.quality || raw?.quality || null,
     },
   };
   writeFileSync(dst, JSON.stringify(out, null, 2));
