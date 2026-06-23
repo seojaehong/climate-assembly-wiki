@@ -1,0 +1,2208 @@
+{
+  "version": "v1-keyword-jaccard",
+  "source_workshop": "workshop-2026-06-13",
+  "source_regulation": "regulation-2026-06-13",
+  "stats": {
+    "workshop_linked": 92,
+    "total_matches": 146,
+    "clauses": 20
+  },
+  "links": [
+    {
+      "from": "A_t22__Issue_003",
+      "from_label": "시민의 자발적 참여 방안 모색",
+      "from_kind": "Issue",
+      "session": "A_t22",
+      "matches": [
+        {
+          "to": "Clause_09",
+          "art_ref": "제9조",
+          "label": "이해관계자 참여",
+          "score": 0.057,
+          "shared": [
+            "시민의",
+            "참여"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "A_t22__Proposal_013",
+      "from_label": "탄소 절감 정책 실천 방안 향상법 토론",
+      "from_kind": "Proposal",
+      "session": "A_t22",
+      "matches": [
+        {
+          "to": "Clause_04",
+          "art_ref": "제4조",
+          "label": "기획참여단",
+          "score": 0.056,
+          "shared": [
+            "정책",
+            "토론"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "A_t22__Issue_015",
+      "from_label": "기후위기 대응 재정 확보 방안",
+      "from_kind": "Issue",
+      "session": "A_t22",
+      "matches": [
+        {
+          "to": "Clause_14",
+          "art_ref": "제14조",
+          "label": "의제선정 기준",
+          "score": 0.032,
+          "shared": [
+            "관련",
+            "기후위기",
+            "시민의"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "A_t23__Proposal_006",
+      "from_label": "시민의식 개선 및 시민 참여 활성화 방안",
+      "from_kind": "Proposal",
+      "session": "A_t23",
+      "matches": [
+        {
+          "to": "Clause_02",
+          "art_ref": "제2조",
+          "label": "정의",
+          "score": 0.069,
+          "shared": [
+            "시민",
+            "참여"
+          ]
+        },
+        {
+          "to": "Clause_09",
+          "art_ref": "제9조",
+          "label": "이해관계자 참여",
+          "score": 0.065,
+          "shared": [
+            "시민의",
+            "참여"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "B_t1__Claim_000",
+      "from_label": "기획참여단의 역할",
+      "from_kind": "Claim",
+      "session": "B_t1",
+      "matches": [
+        {
+          "to": "Clause_04",
+          "art_ref": "제4조",
+          "label": "기획참여단",
+          "score": 0.077,
+          "shared": [
+            "기획참여단은",
+            "의제"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "B_t1__Issue_002",
+      "from_label": "친환경 교통생활 전환 의제 및 교육 홍보",
+      "from_kind": "Issue",
+      "session": "B_t1",
+      "matches": [
+        {
+          "to": "Clause_01",
+          "art_ref": "제1조",
+          "label": "목적",
+          "score": 0.061,
+          "shared": [
+            "관련",
+            "위한"
+          ]
+        },
+        {
+          "to": "Clause_09",
+          "art_ref": "제9조",
+          "label": "이해관계자 참여",
+          "score": 0.061,
+          "shared": [
+            "관련",
+            "의제"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "B_t2__Proposal_003",
+      "from_label": "기후시민회의 온라인 의회 설립",
+      "from_kind": "Proposal",
+      "session": "B_t2",
+      "matches": [
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.062,
+          "shared": [
+            "기후시민회의"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "B_t2__Proposal_005",
+      "from_label": "국회에 기후시민회의 어젠다 제안",
+      "from_kind": "Proposal",
+      "session": "B_t2",
+      "matches": [
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.05,
+          "shared": [
+            "기후시민회의"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "B_t3__Claim_000",
+      "from_label": "의제 그룹핑 가능성",
+      "from_kind": "Claim",
+      "session": "B_t3",
+      "matches": [
+        {
+          "to": "Clause_04",
+          "art_ref": "제4조",
+          "label": "기획참여단",
+          "score": 0.05,
+          "shared": [
+            "의제"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "B_t3__Proposal_002",
+      "from_label": "전생애주기 탄소중립 교육체계 구축 의제",
+      "from_kind": "Proposal",
+      "session": "B_t3",
+      "matches": [
+        {
+          "to": "Clause_09",
+          "art_ref": "제9조",
+          "label": "이해관계자 참여",
+          "score": 0.071,
+          "shared": [
+            "관련",
+            "의제"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "B_t3__Claim_002",
+      "from_label": "교육체계 구축 의제의 정책 도출 가능성",
+      "from_kind": "Claim",
+      "session": "B_t3",
+      "matches": [
+        {
+          "to": "Clause_04",
+          "art_ref": "제4조",
+          "label": "기획참여단",
+          "score": 0.074,
+          "shared": [
+            "의제",
+            "정책"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "B_t3__Proposal_005",
+      "from_label": "기후위기 적응형 도시 조성 및 취약계층 보호",
+      "from_kind": "Proposal",
+      "session": "B_t3",
+      "matches": [
+        {
+          "to": "Clause_14",
+          "art_ref": "제14조",
+          "label": "의제선정 기준",
+          "score": 0.057,
+          "shared": [
+            "관련",
+            "기후위기"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "B_t3__Proposal_006",
+      "from_label": "기후 관련 시민 역할 강화 방안 의제",
+      "from_kind": "Proposal",
+      "session": "B_t3",
+      "matches": [
+        {
+          "to": "Clause_01",
+          "art_ref": "제1조",
+          "label": "목적",
+          "score": 0.097,
+          "shared": [
+            "관련",
+            "역할",
+            "운영"
+          ]
+        },
+        {
+          "to": "Clause_09",
+          "art_ref": "제9조",
+          "label": "이해관계자 참여",
+          "score": 0.062,
+          "shared": [
+            "관련",
+            "의제"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "B_t3__Claim_003",
+      "from_label": "최종 의제 선정 방식",
+      "from_kind": "Claim",
+      "session": "B_t3",
+      "matches": [
+        {
+          "to": "Clause_05",
+          "art_ref": "제5조",
+          "label": "숙의참여단",
+          "score": 0.087,
+          "shared": [
+            "의제를",
+            "최종"
+          ]
+        },
+        {
+          "to": "Clause_04",
+          "art_ref": "제4조",
+          "label": "기획참여단",
+          "score": 0.083,
+          "shared": [
+            "의제",
+            "최종"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "B_t3__Issue_000",
+      "from_label": "최종 의제 선정 개수",
+      "from_kind": "Issue",
+      "session": "B_t3",
+      "matches": [
+        {
+          "to": "Clause_05",
+          "art_ref": "제5조",
+          "label": "숙의참여단",
+          "score": 0.158,
+          "shared": [
+            "선정한",
+            "의제를",
+            "최종"
+          ]
+        },
+        {
+          "to": "Clause_04",
+          "art_ref": "제4조",
+          "label": "기획참여단",
+          "score": 0.095,
+          "shared": [
+            "의제",
+            "최종"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "B_t3__Proposal_007",
+      "from_label": "10개 중 7개 의제 선정",
+      "from_kind": "Proposal",
+      "session": "B_t3",
+      "matches": [
+        {
+          "to": "Clause_05",
+          "art_ref": "제5조",
+          "label": "숙의참여단",
+          "score": 0.056,
+          "shared": [
+            "의제를"
+          ]
+        },
+        {
+          "to": "Clause_04",
+          "art_ref": "제4조",
+          "label": "기획참여단",
+          "score": 0.053,
+          "shared": [
+            "의제"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "B_t3__Claim_008",
+      "from_label": "의제 문구 수정 제안",
+      "from_kind": "Claim",
+      "session": "B_t3",
+      "matches": [
+        {
+          "to": "Clause_18",
+          "art_ref": "제18조",
+          "label": "소수의견 기록",
+          "score": 0.061,
+          "shared": [
+            "의제",
+            "제안"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "B_t3__Claim_010",
+      "from_label": "기후시민회의 미션 필요성",
+      "from_kind": "Claim",
+      "session": "B_t3",
+      "matches": [
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.05,
+          "shared": [
+            "기후시민회의"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "B_t3__Proposal_010",
+      "from_label": "기후시민회의 대표 로고 제작",
+      "from_kind": "Proposal",
+      "session": "B_t3",
+      "matches": [
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.053,
+          "shared": [
+            "기후시민회의"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "B_t3__Claim_014",
+      "from_label": "기존 캐릭터 선정 과정",
+      "from_kind": "Claim",
+      "session": "B_t3",
+      "matches": [
+        {
+          "to": "Clause_13",
+          "art_ref": "제13조",
+          "label": "의제선정 절차",
+          "score": 0.057,
+          "shared": [
+            "과정",
+            "선정"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "발표__Proposal_000",
+      "from_label": "분과 구성 찬성",
+      "from_kind": "Proposal",
+      "session": "발표",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.071,
+          "shared": [
+            "구성",
+            "분과",
+            "분과를"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "발표__Proposal_002",
+      "from_label": "의제 선정 기준 '직접' 단어 삭제",
+      "from_kind": "Proposal",
+      "session": "발표",
+      "matches": [
+        {
+          "to": "Clause_09",
+          "art_ref": "제9조",
+          "label": "이해관계자 참여",
+          "score": 0.067,
+          "shared": [
+            "의제",
+            "직접"
+          ]
+        },
+        {
+          "to": "Clause_14",
+          "art_ref": "제14조",
+          "label": "의제선정 기준",
+          "score": 0.067,
+          "shared": [
+            "기준",
+            "직접"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "환경4조__Issue_002",
+      "from_label": "주요 의제 키워드: 플라스틱",
+      "from_kind": "Issue",
+      "session": "환경4조",
+      "matches": [
+        {
+          "to": "Clause_04",
+          "art_ref": "제4조",
+          "label": "기획참여단",
+          "score": 0.053,
+          "shared": [
+            "의제"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "환경4조__Issue_003",
+      "from_label": "주요 의제 키워드: 자연순환/자원순환",
+      "from_kind": "Issue",
+      "session": "환경4조",
+      "matches": [
+        {
+          "to": "Clause_04",
+          "art_ref": "제4조",
+          "label": "기획참여단",
+          "score": 0.05,
+          "shared": [
+            "의제"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "환경4조__Issue_004",
+      "from_label": "주요 의제 키워드: 중고거래",
+      "from_kind": "Issue",
+      "session": "환경4조",
+      "matches": [
+        {
+          "to": "Clause_04",
+          "art_ref": "제4조",
+          "label": "기획참여단",
+          "score": 0.053,
+          "shared": [
+            "의제"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "환경4조__Issue_006",
+      "from_label": "주요 의제 키워드: 교육 의무화",
+      "from_kind": "Issue",
+      "session": "환경4조",
+      "matches": [
+        {
+          "to": "Clause_04",
+          "art_ref": "제4조",
+          "label": "기획참여단",
+          "score": 0.05,
+          "shared": [
+            "의제"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "환경4조__Claim_012",
+      "from_label": "교육을 통한 지역사회 효과 확산",
+      "from_kind": "Claim",
+      "session": "환경4조",
+      "matches": [
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.053,
+          "shared": [
+            "확산"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OA_t1__Claim_000",
+      "from_label": "시민 직접 검토 및 결정",
+      "from_kind": "Claim",
+      "session": "OA_t1",
+      "matches": [
+        {
+          "to": "Clause_02",
+          "art_ref": "제2조",
+          "label": "정의",
+          "score": 0.077,
+          "shared": [
+            "결정",
+            "시민"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OA_t1__Proposal_000",
+      "from_label": "기획참여단의 숙의과정 참여",
+      "from_kind": "Proposal",
+      "session": "OA_t1",
+      "matches": [
+        {
+          "to": "Clause_10",
+          "art_ref": "제10조",
+          "label": "시민참여단 의무와 윤리",
+          "score": 0.071,
+          "shared": [
+            "기획참여단의",
+            "참여"
+          ]
+        },
+        {
+          "to": "Clause_20",
+          "art_ref": "제20조",
+          "label": "운영규정의 개정",
+          "score": 0.053,
+          "shared": [
+            "기획참여단의"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OA_t1__Proposal_003",
+      "from_label": "시민참여단 의사 반영 분과 구성 및 배분",
+      "from_kind": "Proposal",
+      "session": "OA_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.086,
+          "shared": [
+            "가능",
+            "구성",
+            "분과"
+          ]
+        },
+        {
+          "to": "Clause_13",
+          "art_ref": "제13조",
+          "label": "의제선정 절차",
+          "score": 0.079,
+          "shared": [
+            "가능",
+            "배분",
+            "분과"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OA_t1__Proposal_005",
+      "from_label": "발언 기회 균등 보장을 위한 소규모 그룹화",
+      "from_kind": "Proposal",
+      "session": "OA_t1",
+      "matches": [
+        {
+          "to": "Clause_01",
+          "art_ref": "제1조",
+          "label": "목적",
+          "score": 0.074,
+          "shared": [
+            "운영",
+            "위한"
+          ]
+        },
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.056,
+          "shared": [
+            "운영"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OA_t1__Proposal_006",
+      "from_label": "분과 없는 소규모 그룹 토론",
+      "from_kind": "Proposal",
+      "session": "OA_t1",
+      "matches": [
+        {
+          "to": "Clause_15",
+          "art_ref": "제15조",
+          "label": "숙의 과정",
+          "score": 0.062,
+          "shared": [
+            "다양한",
+            "토론"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OA_t1__Proposal_007",
+      "from_label": "소수의견 소외 방지를 위한 소규모 그룹 숙의",
+      "from_kind": "Proposal",
+      "session": "OA_t1",
+      "matches": [
+        {
+          "to": "Clause_15",
+          "art_ref": "제15조",
+          "label": "숙의 과정",
+          "score": 0.054,
+          "shared": [
+            "다양한",
+            "숙의"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OA_t1__Claim_002",
+      "from_label": "전문가의 의결 과정 참여 필요성",
+      "from_kind": "Claim",
+      "session": "OA_t1",
+      "matches": [
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.059,
+          "shared": [
+            "과정"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OA_t1__Proposal_008",
+      "from_label": "전문가 참여 인원: 기획/숙의참여단 인원수에 비례 결정",
+      "from_kind": "Proposal",
+      "session": "OA_t1",
+      "matches": [
+        {
+          "to": "Clause_02",
+          "art_ref": "제2조",
+          "label": "정의",
+          "score": 0.12,
+          "shared": [
+            "결정",
+            "숙의참여단",
+            "참여"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OA_t1__Proposal_009",
+      "from_label": "의제 관련성 기준 변경: '직접'에서 '직·간접적'으로",
+      "from_kind": "Proposal",
+      "session": "OA_t1",
+      "matches": [
+        {
+          "to": "Clause_09",
+          "art_ref": "제9조",
+          "label": "이해관계자 참여",
+          "score": 0.08,
+          "shared": [
+            "의제",
+            "직접"
+          ]
+        },
+        {
+          "to": "Clause_14",
+          "art_ref": "제14조",
+          "label": "의제선정 기준",
+          "score": 0.08,
+          "shared": [
+            "기준",
+            "직접"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Issue_001",
+      "from_label": "기획·숙의 참여단 인원 조정 가능성",
+      "from_kind": "Issue",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_06",
+          "art_ref": "제6조",
+          "label": "기획참여단과 숙의참여단의 소통 등",
+          "score": 0.067,
+          "shared": [
+            "조정",
+            "참여단"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Issue_002",
+      "from_label": "권고안 제출 후 피드백 절차 부재",
+      "from_kind": "Issue",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_07",
+          "art_ref": "제7조",
+          "label": "운영 기간",
+          "score": 0.095,
+          "shared": [
+            "권고안",
+            "제출"
+          ]
+        },
+        {
+          "to": "Clause_17",
+          "art_ref": "제17조",
+          "label": "권고안",
+          "score": 0.087,
+          "shared": [
+            "권고안",
+            "제출"
+          ]
+        },
+        {
+          "to": "Clause_13",
+          "art_ref": "제13조",
+          "label": "의제선정 절차",
+          "score": 0.069,
+          "shared": [
+            "결과",
+            "절차"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Issue_004",
+      "from_label": "운영규정 부칙 제2조 인원 변경 가능성",
+      "from_kind": "Issue",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_20",
+          "art_ref": "제20조",
+          "label": "운영규정의 개정",
+          "score": 0.136,
+          "shared": [
+            "개정",
+            "또는",
+            "이상"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Proposal_002",
+      "from_label": "다양한 세부 주제별 분과 구성",
+      "from_kind": "Proposal",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.077,
+          "shared": [
+            "구성",
+            "분과"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Proposal_003",
+      "from_label": "숙의참여단 10-15명 이내로 분과 세분화",
+      "from_kind": "Proposal",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.115,
+          "shared": [
+            "분과",
+            "분과를",
+            "운영"
+          ]
+        },
+        {
+          "to": "Clause_07",
+          "art_ref": "제7조",
+          "label": "운영 기간",
+          "score": 0.091,
+          "shared": [
+            "분과",
+            "운영"
+          ]
+        },
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.056,
+          "shared": [
+            "운영"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Proposal_004",
+      "from_label": "숙의참여단 전체 소그룹으로 주제 상의",
+      "from_kind": "Proposal",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_05",
+          "art_ref": "제5조",
+          "label": "숙의참여단",
+          "score": 0.087,
+          "shared": [
+            "숙의참여단",
+            "숙의참여단은"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Proposal_005",
+      "from_label": "감축:적응 2:1 비율, 한 조당 10명 이내",
+      "from_kind": "Proposal",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.107,
+          "shared": [
+            "구성",
+            "이내",
+            "조당"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Proposal_006",
+      "from_label": "각 조당 기획참여단 1명 참여",
+      "from_kind": "Proposal",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_02",
+          "art_ref": "제2조",
+          "label": "정의",
+          "score": 0.1,
+          "shared": [
+            "기획참여단",
+            "참여"
+          ]
+        },
+        {
+          "to": "Clause_20",
+          "art_ref": "제20조",
+          "label": "운영규정의 개정",
+          "score": 0.067,
+          "shared": [
+            "기획참여단"
+          ]
+        },
+        {
+          "to": "Clause_04",
+          "art_ref": "제4조",
+          "label": "기획참여단",
+          "score": 0.056,
+          "shared": [
+            "기획참여단"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Proposal_007",
+      "from_label": "분과 감축·적응으로 나누고 한 조당 12명 이내",
+      "from_kind": "Proposal",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.154,
+          "shared": [
+            "구성",
+            "분과",
+            "이내",
+            "조당"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Proposal_008",
+      "from_label": "청소년 참여자 별도 토론그룹 구성",
+      "from_kind": "Proposal",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.13,
+          "shared": [
+            "구성",
+            "별도",
+            "토론그룹"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Proposal_009",
+      "from_label": "감축·적응 2개 분과 유지, 조 당 10-15명 이내",
+      "from_kind": "Proposal",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.083,
+          "shared": [
+            "분과",
+            "이내"
+          ]
+        },
+        {
+          "to": "Clause_04",
+          "art_ref": "제4조",
+          "label": "기획참여단",
+          "score": 0.05,
+          "shared": [
+            "운영규정"
+          ]
+        },
+        {
+          "to": "Clause_07",
+          "art_ref": "제7조",
+          "label": "운영 기간",
+          "score": 0.05,
+          "shared": [
+            "분과"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Proposal_010",
+      "from_label": "숙의참여단 1조당 15명 이내, 청소년 별도 운영",
+      "from_kind": "Proposal",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.217,
+          "shared": [
+            "별도",
+            "운영",
+            "이내",
+            "조당",
+            "청소년은"
+          ]
+        },
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.059,
+          "shared": [
+            "운영"
+          ]
+        },
+        {
+          "to": "Clause_20",
+          "art_ref": "제20조",
+          "label": "운영규정의 개정",
+          "score": 0.053,
+          "shared": [
+            "숙의참여단"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Proposal_011",
+      "from_label": "분과 감축·적응으로 나누고 한 조당 15명 이내",
+      "from_kind": "Proposal",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.16,
+          "shared": [
+            "구성",
+            "분과",
+            "이내",
+            "조당"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Proposal_012",
+      "from_label": "숙의참여단 분과 분야별 구분 운영(감축·적응)",
+      "from_kind": "Proposal",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.111,
+          "shared": [
+            "분과",
+            "분과를",
+            "운영"
+          ]
+        },
+        {
+          "to": "Clause_07",
+          "art_ref": "제7조",
+          "label": "운영 기간",
+          "score": 0.087,
+          "shared": [
+            "분과",
+            "운영"
+          ]
+        },
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.053,
+          "shared": [
+            "운영"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Proposal_013",
+      "from_label": "10세 이상 18세 이하 청소년 별도 구분 운영",
+      "from_kind": "Proposal",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.077,
+          "shared": [
+            "별도",
+            "운영"
+          ]
+        },
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.059,
+          "shared": [
+            "운영"
+          ]
+        },
+        {
+          "to": "Clause_20",
+          "art_ref": "제20조",
+          "label": "운영규정의 개정",
+          "score": 0.053,
+          "shared": [
+            "이상"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Proposal_014",
+      "from_label": "기획참여단 분리 운영",
+      "from_kind": "Proposal",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.077,
+          "shared": [
+            "운영"
+          ]
+        },
+        {
+          "to": "Clause_20",
+          "art_ref": "제20조",
+          "label": "운영규정의 개정",
+          "score": 0.067,
+          "shared": [
+            "기획참여단"
+          ]
+        },
+        {
+          "to": "Clause_04",
+          "art_ref": "제4조",
+          "label": "기획참여단",
+          "score": 0.056,
+          "shared": [
+            "기획참여단"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Proposal_015",
+      "from_label": "14조 1호 '직접' 삭제",
+      "from_kind": "Proposal",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_14",
+          "art_ref": "제14조",
+          "label": "의제선정 기준",
+          "score": 0.143,
+          "shared": [
+            "기후위기",
+            "대응과",
+            "직접"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Issue_007",
+      "from_label": "권고안 처리 절차",
+      "from_kind": "Issue",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_05",
+          "art_ref": "제5조",
+          "label": "숙의참여단",
+          "score": 0.05,
+          "shared": [
+            "권고안"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Proposal_017",
+      "from_label": "2026년도 기후시민회의 과업(목적) 실행과제 제안",
+      "from_kind": "Proposal",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.071,
+          "shared": [
+            "기후시민회의"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Proposal_018",
+      "from_label": "3조 숙의성 원칙: 합의 지향",
+      "from_kind": "Proposal",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_03",
+          "art_ref": "제3조",
+          "label": "기본 원칙",
+          "score": 0.25,
+          "shared": [
+            "숙의성",
+            "아닌",
+            "원칙",
+            "지향",
+            "합의"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Proposal_019",
+      "from_label": "8조: 10-18세 발언기회 보장 및 별도 토론그룹 구성",
+      "from_kind": "Proposal",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.136,
+          "shared": [
+            "구성",
+            "별도",
+            "토론그룹"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OB_t1__Proposal_020",
+      "from_label": "18조: 소수의견 기록 및 존중 (부속서 첨부)",
+      "from_kind": "Proposal",
+      "session": "OB_t1",
+      "matches": [
+        {
+          "to": "Clause_18",
+          "art_ref": "제18조",
+          "label": "소수의견 기록",
+          "score": 0.286,
+          "shared": [
+            "기록",
+            "부속서",
+            "소수의견",
+            "요청",
+            "존중",
+            "첨부"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OZ_t1__Claim_001",
+      "from_label": "의사 반영 분과 구성 및 배분 효과",
+      "from_kind": "Claim",
+      "session": "OZ_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.086,
+          "shared": [
+            "가능",
+            "구성",
+            "분과"
+          ]
+        },
+        {
+          "to": "Clause_13",
+          "art_ref": "제13조",
+          "label": "의제선정 절차",
+          "score": 0.079,
+          "shared": [
+            "가능",
+            "배분",
+            "분과"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OZ_t1__Proposal_000",
+      "from_label": "발언 기회 균등 보장 위한 소규모 그룹화",
+      "from_kind": "Proposal",
+      "session": "OZ_t1",
+      "matches": [
+        {
+          "to": "Clause_01",
+          "art_ref": "제1조",
+          "label": "목적",
+          "score": 0.074,
+          "shared": [
+            "운영",
+            "위한"
+          ]
+        },
+        {
+          "to": "Clause_10",
+          "art_ref": "제10조",
+          "label": "시민참여단 의무와 윤리",
+          "score": 0.069,
+          "shared": [
+            "기회",
+            "보장"
+          ]
+        },
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.056,
+          "shared": [
+            "운영"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OZ_t1__Proposal_002",
+      "from_label": "소수의견 소외 방지 위한 소규모 그룹 숙의",
+      "from_kind": "Proposal",
+      "session": "OZ_t1",
+      "matches": [
+        {
+          "to": "Clause_15",
+          "art_ref": "제15조",
+          "label": "숙의 과정",
+          "score": 0.056,
+          "shared": [
+            "다양한",
+            "숙의"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OZ_t1__Proposal_006",
+      "from_label": "대중교통·쓰레기·식량 등 세부 주제별 분과 구성",
+      "from_kind": "Proposal",
+      "session": "OZ_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.074,
+          "shared": [
+            "구성",
+            "분과"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OZ_t1__Proposal_007",
+      "from_label": "숙의참여단 10-15명 이내 분과 세분화 운영",
+      "from_kind": "Proposal",
+      "session": "OZ_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.154,
+          "shared": [
+            "분과",
+            "분과를",
+            "운영",
+            "이내"
+          ]
+        },
+        {
+          "to": "Clause_07",
+          "art_ref": "제7조",
+          "label": "운영 기간",
+          "score": 0.087,
+          "shared": [
+            "분과",
+            "운영"
+          ]
+        },
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.053,
+          "shared": [
+            "운영"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OZ_t1__Proposal_008",
+      "from_label": "분과 없이 전체 소그룹으로 나눠 주제 논의",
+      "from_kind": "Proposal",
+      "session": "OZ_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.065,
+          "shared": [
+            "분과",
+            "분과를"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OZ_t1__Proposal_009",
+      "from_label": "감축과 적응 2:1 비율, 한 조당 10명 이내",
+      "from_kind": "Proposal",
+      "session": "OZ_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.111,
+          "shared": [
+            "구성",
+            "이내",
+            "조당"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OZ_t1__Proposal_010",
+      "from_label": "분과 감축과 적응, 한 조당 12명 이내",
+      "from_kind": "Proposal",
+      "session": "OZ_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.16,
+          "shared": [
+            "구성",
+            "분과",
+            "이내",
+            "조당"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OZ_t1__Proposal_011",
+      "from_label": "감축·적응 2개 분과(초안 유지), 조 당 10-15명 이내",
+      "from_kind": "Proposal",
+      "session": "OZ_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.083,
+          "shared": [
+            "분과",
+            "이내"
+          ]
+        },
+        {
+          "to": "Clause_04",
+          "art_ref": "제4조",
+          "label": "기획참여단",
+          "score": 0.05,
+          "shared": [
+            "운영규정"
+          ]
+        },
+        {
+          "to": "Clause_07",
+          "art_ref": "제7조",
+          "label": "운영 기간",
+          "score": 0.05,
+          "shared": [
+            "분과"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OZ_t1__Proposal_012",
+      "from_label": "숙의참여단 1조당 15명 이내, 청소년 별도 운영",
+      "from_kind": "Proposal",
+      "session": "OZ_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.217,
+          "shared": [
+            "별도",
+            "운영",
+            "이내",
+            "조당",
+            "청소년은"
+          ]
+        },
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.059,
+          "shared": [
+            "운영"
+          ]
+        },
+        {
+          "to": "Clause_20",
+          "art_ref": "제20조",
+          "label": "운영규정의 개정",
+          "score": 0.053,
+          "shared": [
+            "숙의참여단"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OZ_t1__Proposal_013",
+      "from_label": "분과 감축·적응, 한 조당 15명 이내",
+      "from_kind": "Proposal",
+      "session": "OZ_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.16,
+          "shared": [
+            "구성",
+            "분과",
+            "이내",
+            "조당"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OZ_t1__Proposal_014",
+      "from_label": "숙의참여단 분과 분야별 구분 분리 운영(감축·적응)",
+      "from_kind": "Proposal",
+      "session": "OZ_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.111,
+          "shared": [
+            "분과",
+            "분과를",
+            "운영"
+          ]
+        },
+        {
+          "to": "Clause_07",
+          "art_ref": "제7조",
+          "label": "운영 기간",
+          "score": 0.087,
+          "shared": [
+            "분과",
+            "운영"
+          ]
+        },
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.053,
+          "shared": [
+            "운영"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OZ_t1__Proposal_015",
+      "from_label": "10세 이상 18세 이하 청소년 별도 구분 운영",
+      "from_kind": "Proposal",
+      "session": "OZ_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.077,
+          "shared": [
+            "별도",
+            "운영"
+          ]
+        },
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.059,
+          "shared": [
+            "운영"
+          ]
+        },
+        {
+          "to": "Clause_20",
+          "art_ref": "제20조",
+          "label": "운영규정의 개정",
+          "score": 0.053,
+          "shared": [
+            "이상"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OZ_t1__Proposal_016",
+      "from_label": "14조 1호 '직접' 삭제",
+      "from_kind": "Proposal",
+      "session": "OZ_t1",
+      "matches": [
+        {
+          "to": "Clause_14",
+          "art_ref": "제14조",
+          "label": "의제선정 기준",
+          "score": 0.143,
+          "shared": [
+            "기후위기",
+            "대응과",
+            "직접"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OZ_t1__Proposal_018",
+      "from_label": "2026년도 기후시민회의 과업(목적) 실행과제 제안",
+      "from_kind": "Proposal",
+      "session": "OZ_t1",
+      "matches": [
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.071,
+          "shared": [
+            "기후시민회의"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OZ_t1__Proposal_019",
+      "from_label": "3조 숙의성 원칙: 과반수 의결 아닌 합의 지향",
+      "from_kind": "Proposal",
+      "session": "OZ_t1",
+      "matches": [
+        {
+          "to": "Clause_03",
+          "art_ref": "제3조",
+          "label": "기본 원칙",
+          "score": 0.25,
+          "shared": [
+            "숙의성",
+            "아닌",
+            "원칙",
+            "지향",
+            "합의"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OZ_t1__Proposal_020",
+      "from_label": "8조 10-18세 발언기회 보장, 필요 시 별도 토론그룹 구성",
+      "from_kind": "Proposal",
+      "session": "OZ_t1",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.136,
+          "shared": [
+            "구성",
+            "별도",
+            "토론그룹"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "OZ_t1__Proposal_021",
+      "from_label": "18조 소수의견 기록, 소수의견 존중 (부속서로 첨부 요청)",
+      "from_kind": "Proposal",
+      "session": "OZ_t1",
+      "matches": [
+        {
+          "to": "Clause_18",
+          "art_ref": "제18조",
+          "label": "소수의견 기록",
+          "score": 0.238,
+          "shared": [
+            "기록",
+            "소수의견",
+            "요청",
+            "존중",
+            "첨부"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "DA_t2__Issue_002",
+      "from_label": "권고안 시행의 실행가능성",
+      "from_kind": "Issue",
+      "session": "DA_t2",
+      "matches": [
+        {
+          "to": "Clause_17",
+          "art_ref": "제17조",
+          "label": "권고안",
+          "score": 0.118,
+          "shared": [
+            "권고안",
+            "실행가능성"
+          ]
+        },
+        {
+          "to": "Clause_05",
+          "art_ref": "제5조",
+          "label": "숙의참여단",
+          "score": 0.067,
+          "shared": [
+            "권고안"
+          ]
+        },
+        {
+          "to": "Clause_07",
+          "art_ref": "제7조",
+          "label": "운영 기간",
+          "score": 0.062,
+          "shared": [
+            "권고안"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "DA_t2__Claim_001",
+      "from_label": "초기 정책 정착을 위한 보상 확대",
+      "from_kind": "Claim",
+      "session": "DA_t2",
+      "matches": [
+        {
+          "to": "Clause_04",
+          "art_ref": "제4조",
+          "label": "기획참여단",
+          "score": 0.05,
+          "shared": [
+            "정책"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "DA_t2__Proposal_008",
+      "from_label": "기후시민회의의 댐 관련 정부 의사결정 지원",
+      "from_kind": "Proposal",
+      "session": "DA_t2",
+      "matches": [
+        {
+          "to": "Clause_01",
+          "art_ref": "제1조",
+          "label": "목적",
+          "score": 0.12,
+          "shared": [
+            "관련",
+            "기후시민회의가",
+            "의사결정"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "DZ_t2__Issue_001",
+      "from_label": "시민의 기업 환경 의견 제시 기관 유무",
+      "from_kind": "Issue",
+      "session": "DZ_t2",
+      "matches": [
+        {
+          "to": "Clause_09",
+          "art_ref": "제9조",
+          "label": "이해관계자 참여",
+          "score": 0.094,
+          "shared": [
+            "관련",
+            "시민의",
+            "의견"
+          ]
+        },
+        {
+          "to": "Clause_01",
+          "art_ref": "제1조",
+          "label": "목적",
+          "score": 0.061,
+          "shared": [
+            "관련",
+            "의견을"
+          ]
+        },
+        {
+          "to": "Clause_14",
+          "art_ref": "제14조",
+          "label": "의제선정 기준",
+          "score": 0.061,
+          "shared": [
+            "관련",
+            "시민의"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "DZ_t2__Proposal_011",
+      "from_label": "기후시민회의 운영 방안",
+      "from_kind": "Proposal",
+      "session": "DZ_t2",
+      "matches": [
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.105,
+          "shared": [
+            "기후시민회의",
+            "운영"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "DZ_t2__Proposal_012",
+      "from_label": "기획참여단 소그룹 토론 시간 부여",
+      "from_kind": "Proposal",
+      "session": "DZ_t2",
+      "matches": [
+        {
+          "to": "Clause_04",
+          "art_ref": "제4조",
+          "label": "기획참여단",
+          "score": 0.074,
+          "shared": [
+            "기획참여단",
+            "토론"
+          ]
+        },
+        {
+          "to": "Clause_02",
+          "art_ref": "제2조",
+          "label": "정의",
+          "score": 0.067,
+          "shared": [
+            "기획참여단",
+            "토론"
+          ]
+        },
+        {
+          "to": "Clause_16",
+          "art_ref": "제16조",
+          "label": "회의 성립 및 의결정족수",
+          "score": 0.065,
+          "shared": [
+            "기획참여단",
+            "토론"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "DZ_t2__Proposal_014",
+      "from_label": "기후시민회의 온라인 의회 설립",
+      "from_kind": "Proposal",
+      "session": "DZ_t2",
+      "matches": [
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.05,
+          "shared": [
+            "기후시민회의"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "DZ_t2__Proposal_015",
+      "from_label": "시민 기후도서관 설립",
+      "from_kind": "Proposal",
+      "session": "DZ_t2",
+      "matches": [
+        {
+          "to": "Clause_02",
+          "art_ref": "제2조",
+          "label": "정의",
+          "score": 0.053,
+          "shared": [
+            "시민"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "DZ_t2__Proposal_016",
+      "from_label": "국회 또는 대통령 대상 토론회 개최",
+      "from_kind": "Proposal",
+      "session": "DZ_t2",
+      "matches": [
+        {
+          "to": "Clause_20",
+          "art_ref": "제20조",
+          "label": "운영규정의 개정",
+          "score": 0.05,
+          "shared": [
+            "또는"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "DZ_t2__Proposal_017",
+      "from_label": "기후시민회의 예산 반영",
+      "from_kind": "Proposal",
+      "session": "DZ_t2",
+      "matches": [
+        {
+          "to": "Clause_12",
+          "art_ref": "제12조",
+          "label": "결과의 사회적 확산",
+          "score": 0.067,
+          "shared": [
+            "기후시민회의"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "DZ_t2__Claim_000",
+      "from_label": "기획참여단 의결정족수 '출석 2/3' 채택",
+      "from_kind": "Claim",
+      "session": "DZ_t2",
+      "matches": [
+        {
+          "to": "Clause_16",
+          "art_ref": "제16조",
+          "label": "회의 성립 및 의결정족수",
+          "score": 0.15,
+          "shared": [
+            "기획참여단",
+            "의결정족수",
+            "출석"
+          ]
+        },
+        {
+          "to": "Clause_20",
+          "art_ref": "제20조",
+          "label": "운영규정의 개정",
+          "score": 0.067,
+          "shared": [
+            "기획참여단"
+          ]
+        },
+        {
+          "to": "Clause_04",
+          "art_ref": "제4조",
+          "label": "기획참여단",
+          "score": 0.056,
+          "shared": [
+            "기획참여단"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "DZ_t2__Claim_001",
+      "from_label": "분과 구성 '분과를 둠' 채택",
+      "from_kind": "Claim",
+      "session": "DZ_t2",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.143,
+          "shared": [
+            "구성",
+            "분과",
+            "분과를"
+          ]
+        },
+        {
+          "to": "Clause_07",
+          "art_ref": "제7조",
+          "label": "운영 기간",
+          "score": 0.056,
+          "shared": [
+            "분과"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "DZ_t2__Claim_002",
+      "from_label": "분과 구성 (세부 분과) '3개 분과' 채택",
+      "from_kind": "Claim",
+      "session": "DZ_t2",
+      "matches": [
+        {
+          "to": "Clause_08",
+          "art_ref": "제8조",
+          "label": "숙의참여단의 분과 구성",
+          "score": 0.083,
+          "shared": [
+            "구성",
+            "분과"
+          ]
+        },
+        {
+          "to": "Clause_07",
+          "art_ref": "제7조",
+          "label": "운영 기간",
+          "score": 0.05,
+          "shared": [
+            "분과"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "DZ_t2__Claim_003",
+      "from_label": "숙의참여단 분과 의결 정족수 '출석 2/3' 채택",
+      "from_kind": "Claim",
+      "session": "DZ_t2",
+      "matches": [
+        {
+          "to": "Clause_16",
+          "art_ref": "제16조",
+          "label": "회의 성립 및 의결정족수",
+          "score": 0.087,
+          "shared": [
+            "숙의참여단",
+            "출석"
+          ]
+        },
+        {
+          "to": "Clause_20",
+          "art_ref": "제20조",
+          "label": "운영규정의 개정",
+          "score": 0.059,
+          "shared": [
+            "숙의참여단"
+          ]
+        },
+        {
+          "to": "Clause_05",
+          "art_ref": "제5조",
+          "label": "숙의참여단",
+          "score": 0.053,
+          "shared": [
+            "숙의참여단"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "DZ_t2__Claim_004",
+      "from_label": "숙의참여단 전체 의결정족수 '출석 2/3' 채택",
+      "from_kind": "Claim",
+      "session": "DZ_t2",
+      "matches": [
+        {
+          "to": "Clause_16",
+          "art_ref": "제16조",
+          "label": "회의 성립 및 의결정족수",
+          "score": 0.143,
+          "shared": [
+            "숙의참여단",
+            "의결정족수",
+            "출석"
+          ]
+        },
+        {
+          "to": "Clause_20",
+          "art_ref": "제20조",
+          "label": "운영규정의 개정",
+          "score": 0.062,
+          "shared": [
+            "숙의참여단"
+          ]
+        },
+        {
+          "to": "Clause_05",
+          "art_ref": "제5조",
+          "label": "숙의참여단",
+          "score": 0.056,
+          "shared": [
+            "숙의참여단"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "DZ_t2__Proposal_018",
+      "from_label": "의제선정 기준 14조 제1호 수정 제안",
+      "from_kind": "Proposal",
+      "session": "DZ_t2",
+      "matches": [
+        {
+          "to": "Clause_14",
+          "art_ref": "제14조",
+          "label": "의제선정 기준",
+          "score": 0.12,
+          "shared": [
+            "기준",
+            "대응과",
+            "의제선정"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -205,7 +205,12 @@ function render3d() {
   // 노드/엣지를 3d-force-graph 포맷으로
   const palette = OntologyChrome.getPalette();
   const data3d = {
-    nodes: ALL_NODES.map(n => ({ id: n.data.id, label: n.data.label, kind: n.data.kind, text: n.data.text, color: palette[n.data.kind] || '#888' })),
+    nodes: ALL_NODES.map(n => ({
+      id: n.data.id, label: n.data.label, kind: n.data.kind, text: n.data.text,
+      kindKo: n.data.kindKo, cited: n.data.cited, session: n.data.session,
+      synthesized: n.data.synthesized,
+      color: palette[n.data.kind] || '#888',
+    })),
     links: ALL_EDGES.map(e => ({ source: e.data.source, target: e.data.target, label: e.data.relKo || e.data.rel }))
   };
   if (graph3d) try { graph3d._destructor && graph3d._destructor(); } catch {}
@@ -220,6 +225,15 @@ function render3d() {
     .linkColor(() => 'rgba(173,181,189,0.4)').linkWidth(1)
     .linkDirectionalArrowLength(3).linkDirectionalArrowRelPos(1)
     .linkDirectionalArrowColor(() => '#56C2E4')
+    .onNodeClick(n => OntologyChrome.showQuick(
+      document.getElementById('og-quick'),
+      document.getElementById('og-side'),
+      n
+    ))
+    .onBackgroundClick(() => {
+      OntologyChrome.hideQuick(document.getElementById('og-quick'));
+      document.getElementById('og-side').classList.add('collapsed');
+    })
     .graphData(data3d);
 }
 
