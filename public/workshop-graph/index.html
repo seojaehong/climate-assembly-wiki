@@ -170,7 +170,11 @@ async function loadSource(srcId) {
   ALL_NODES = elements.nodes;
   ALL_EDGES = elements.edges;
 
-  OntologyChrome.updateMeta(`노드 ${mt.counts.nodes || ALL_NODES.length} · 엣지 ${mt.counts.edges || ALL_EDGES.length}`);
+  // A-6: 기존 자산(합의·DQI)이 데이터에 있으면 읽기전용으로만 노출 (없으면 무표시 — 방어적)
+  const _extra = [];
+  if (Array.isArray(mt.recommendations) && mt.recommendations.length) _extra.push(`합의·권고 ${mt.recommendations.length}건`);
+  if (mt.quality) _extra.push('DQI 지표');
+  OntologyChrome.updateMeta(`노드 ${mt.counts.nodes || ALL_NODES.length} · 엣지 ${mt.counts.edges || ALL_EDGES.length}${_extra.length ? ' · ' + _extra.join(' · ') : ''}`);
   OntologyChrome.updateAdvisory(mt.advisory_notice || (isLive ? '🔴 LIVE 미검증 초안 · 시민 비노출' : ''));
 
   // 헤더 pill 색 동기화 (LIVE면 빨강)
