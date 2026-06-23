@@ -136,7 +136,7 @@ let sources = null, curSource = null, curView = '2d', pollTimer = null;
 let currentMetaAssets = null;
 let physicsOn = localStorage.getItem('og-physics') === '1', colaLayout = null;
 let presentMode = false;  // 발표(대형스크린) 모드 — 공유 가능 뷰 상태라 URL 파라미터
-let fixedNodeId = null, hoverNodeId = null, graph3dData = null;
+let fixedNodeId = null, hoverNodeId = null, graph3dData = null, quickHover = false, hoverHideTimer = null;
 // A-3 묶기(클러스터): 'none' | 'issue' | 'session'. 공유 가능 뷰 상태라 URL 파라미터(?group=).
 // 무손실 원칙 — 그룹은 합성 부모 노드로만 표현하고 실제 노드/엣지는 절대 삭제하지 않는다.
 let groupMode = 'none', ecApi = null;
@@ -591,7 +591,50 @@ function renderNodeSurface(ctx, mode = 'hover') {
     renderNodeSurface(ctx, 'fixed');
     applyFocus(ctx.node.id, true);
     quick.classList.remove('show');
+    positionHoverCard(null);
   };
+}
+
+function positionHoverCard(anchor) {
+  const quick = document.getElementById('og-quick');
+  if (!quick || !anchor) {
+    quick?.classList.remove('floating');
+    if (quick) {
+      quick.style.left = '';
+      quick.style.top = '';
+    }
+    return;
+  }
+  const canvas = document.querySelector('.og-canvas');
+  if (!canvas) return;
+  quick.classList.add('floating');
+  const margin = 14;
+  const offset = 18;
+  const width = quick.offsetWidth || 340;
+  const height = quick.offsetHeight || 160;
+  const canvasRect = canvas.getBoundingClientRect();
+  let left = anchor.x + offset;
+  let top = anchor.y + offset;
+  if (left + width + margin > canvasRect.width) left = anchor.x - width - offset;
+  if (top + height + margin > canvasRect.height) top = anchor.y - height - offset;
+  left = Math.max(margin, Math.min(left, canvasRect.width - width - margin));
+  top = Math.max(margin, Math.min(top, canvasRect.height - height - margin));
+  quick.style.left = `${Math.round(left)}px`;
+  quick.style.top = `${Math.round(top)}px`;
+}
+
+function showHoverSurface(ctx, anchor = null) {
+  if (hoverHideTimer) clearTimeout(hoverHideTimer);
+  renderNodeSurface(ctx, 'hover');
+  positionHoverCard(anchor);
+}
+
+function hideHoverSurface() {
+  if (fixedNodeId || quickHover) return;
+  const quick = document.getElementById('og-quick');
+  quick?.classList.remove('show');
+  positionHoverCard(null);
+  clearFocus();
 }
 
 function applyFocus(nodeId, pinned = false) {
@@ -904,13 +947,14 @@ function render3d() {
       if (fixedNodeId) return;
       if (!n) {
         document.getElementById('og-quick').classList.remove('show');
+        positionHoverCard(null);
         clearFocus();
         return;
       }
       hoverNodeId = n.id;
       const ctx = buildNodeContext(n.id);
       if (!ctx) return;
-      renderNodeSurface(ctx, 'hover');
+      showHoverSurface(ctx, null);
       applyFocus(n.id);
     })
     .onNodeClick(n => {
@@ -920,6 +964,7 @@ function render3d() {
       renderNodeSurface(ctx, 'fixed');
       applyFocus(n.id, true);
       document.getElementById('og-quick').classList.remove('show');
+      positionHoverCard(null);
       const dist = 88;
       const len = Math.hypot(n.x || 0, n.y || 0, n.z || 0) || 1;
       const ratio = 1 + dist / len;
@@ -932,6 +977,7 @@ function render3d() {
     .onBackgroundClick(() => {
       fixedNodeId = null;
       document.getElementById('og-quick').classList.remove('show');
+      positionHoverCard(null);
       document.getElementById('og-side').classList.add('collapsed');
       clearFocus();
     })
@@ -1062,13 +1108,16 @@ function bindCyEvents() {
     hoverNodeId = n.id();
     const ctx = buildNodeContext(n.id());
     if (!ctx) return;
-    renderNodeSurface(ctx, 'hover');
+    showHoverSurface(ctx, evt.renderedPosition);
     applyFocus(n.id());
+  });
+  cy.on('mousemove', 'node', (evt) => {
+    if (fixedNodeId) return;
+    positionHoverCard(evt.renderedPosition);
   });
   cy.on('mouseout', 'node', () => {
     if (fixedNodeId) return;
-    document.getElementById('og-quick').classList.remove('show');
-    clearFocus();
+    hoverHideTimer = setTimeout(hideHoverSurface, 90);
   });
   cy.on('tap', 'node', (evt) => {
     const n = evt.target;
@@ -1085,11 +1134,13 @@ function bindCyEvents() {
     renderNodeSurface(ctx, 'fixed');
     applyFocus(n.id(), true);
     document.getElementById('og-quick').classList.remove('show');
+    positionHoverCard(null);
   });
   cy.on('tap', (evt) => {
     if (evt.target === cy) {
       fixedNodeId = null;
       document.getElementById('og-quick').classList.remove('show');
+      positionHoverCard(null);
       document.getElementById('og-side').classList.add('collapsed');
       clearFocus();
     }
@@ -1124,6 +1175,15 @@ function applyFilter() {
 }
 
 function bindGlobalEvents() {
+  const quick = document.getElementById('og-quick');
+  quick.onmouseenter = () => {
+    quickHover = true;
+    if (hoverHideTimer) clearTimeout(hoverHideTimer);
+  };
+  quick.onmouseleave = () => {
+    quickHover = false;
+    hoverHideTimer = setTimeout(hideHoverSurface, 70);
+  };
   document.getElementById('og-view-2d').onclick = () => applyView('2d');
   document.getElementById('og-view-3d').onclick = () => applyView('3d');
   document.getElementById('og-physics').onclick = togglePhysics;

@@ -1,0 +1,58 @@
+{
+  "feature": "ontology hover surface full update",
+  "branchName": "main",
+  "qualityChecks": [
+    "git diff --check",
+    "browser check: local /workshop-graph/?source=workshop-2026-06-13 2D hover card follows node",
+    "browser check: local /workshop-graph/?source=workshop-2026-06-13&view=3d still renders",
+    "live check after push"
+  ],
+  "userStories": [
+    {
+      "id": "H1",
+      "title": "2D node hover shows the same message card beside the node",
+      "priority": 1,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "Hovering a 2D ontology node opens the existing card design near the hovered node, not only in the corner",
+        "Moving from the node into the card keeps it usable long enough to click 상세 고정",
+        "Unrelated nodes and edges dim while 1-hop context remains highlighted"
+      ],
+      "files": [
+        "public/workshop-graph/index.html",
+        "public/_ontology-chrome/chrome.css"
+      ]
+    },
+    {
+      "id": "H2",
+      "title": "Preserve 3D and overview visibility",
+      "priority": 2,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "3D graph still renders nonblank with hub chips and overview panel",
+        "2D initial view still shows overview labels, hub chips, and overview panel"
+      ],
+      "files": [
+        "public/workshop-graph/index.html"
+      ]
+    },
+    {
+      "id": "H3",
+      "title": "Record DB limitation and deployment evidence",
+      "priority": 3,
+      "status": "todo",
+      "passes": false,
+      "acceptance": [
+        "DB-backed graph limitation is recorded in docs",
+        "Commit is pushed and live /workshop-graph/ 2D and 3D are checked"
+      ],
+      "files": [
+        "docs/ontology-graph-db-visibility-check-2026-06-24.md",
+        "tasks/ralph/ontology-hover-surface/progress.txt",
+        "tasks/ralph/ontology-hover-surface/prd.json"
+      ]
+    }
+  ]
+}

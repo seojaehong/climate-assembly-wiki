@@ -93,6 +93,7 @@ html,body{margin:0;height:100%;font-family:'Noto Sans KR','Pretendard','Malgun G
 
 /* ─── 좌하단 quick glance 카드 ─── */
 .og-quick{position:absolute;bottom:14px;right:14px;background:rgba(17,24,36,.92);border:1px solid rgba(86,194,228,.24);border-radius:10px;padding:11px 13px;color:#ced4da;font-size:11px;max-width:360px;line-height:1.5;z-index:50;display:none;backdrop-filter:blur(8px);box-shadow:0 16px 40px rgba(0,0,0,.34)}
+.og-quick.floating{bottom:auto;right:auto;z-index:120;pointer-events:auto}
 .og-quick.show{display:block}
 .og-quick b{color:var(--og-accent)}
 .og-quick .og-more{display:inline-block;margin-top:6px;font-size:11px;color:var(--og-accent);cursor:pointer;text-decoration:underline}

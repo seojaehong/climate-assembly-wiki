@@ -1,0 +1,11 @@
+## 2026-06-24 start
+- Changed: created Ralph run folder for ontology hover surface completion.
+- Verified: initial repo status checked; only unrelated CSV files were already untracked.
+- Learned: current 2D hover card exists but is positioned as the shared quick card, not as a node-adjacent message card.
+- Next: H1.
+
+## 2026-06-24 H1-H2
+- Changed: reused the existing quick card design as a node-adjacent floating hover card in 2D; added stable hover-to-card interaction and cleanup after fixed detail.
+- Verified: local Chrome check showed floating 2D card visible near node, detail link clickable, 1-hop focus active, and 3D still rendering 613 nodes / 491 links with hub chips.
+- Learned: Cytoscape rendered positions are relative to the graph container and can be clamped directly inside `.og-canvas`.
+- Next: H3.
