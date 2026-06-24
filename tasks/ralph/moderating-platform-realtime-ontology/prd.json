@@ -1,0 +1,56 @@
+{
+  "feature": "moderating platform and realtime ontology roadmap",
+  "branchName": "main",
+  "qualityChecks": [
+    "git diff --check",
+    "document review: docs/superpowers/specs/2026-06-24-moderating-platform-implementation-plan.md",
+    "document review: docs/superpowers/specs/2026-06-24-realtime-transcription-ontology-plan.md"
+  ],
+  "userStories": [
+    {
+      "id": "P1",
+      "title": "Moderating platform implementation plan",
+      "priority": 1,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "Plan maps current moderator pages, Supabase realtime patterns, and ontology graph surface",
+        "Plan separates immediate platform slices from DB/schema approval gates",
+        "Plan preserves the principle that AI supports moderation and does not make consensus"
+      ],
+      "files": [
+        "docs/superpowers/specs/2026-06-24-moderating-platform-implementation-plan.md"
+      ]
+    },
+    {
+      "id": "R1",
+      "title": "Realtime transcription to ontology implementation plan",
+      "priority": 2,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "Plan defines audio capture, transcript chunking, extraction, review queue, and graph publication flow",
+        "Plan includes provenance, privacy, moderator review, and static JSON fallback gates",
+        "Plan identifies DB schema/RLS/edge-function work as approval-required before execution"
+      ],
+      "files": [
+        "docs/superpowers/specs/2026-06-24-realtime-transcription-ontology-plan.md"
+      ]
+    },
+    {
+      "id": "V1",
+      "title": "Ralph tracking and verification closeout",
+      "priority": 3,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "Ralph progress records current-state evidence and remaining implementation gates",
+        "All created planning artifacts are committed and pushed"
+      ],
+      "files": [
+        "tasks/ralph/moderating-platform-realtime-ontology/prd.json",
+        "tasks/ralph/moderating-platform-realtime-ontology/progress.txt"
+      ]
+    }
+  ]
+}

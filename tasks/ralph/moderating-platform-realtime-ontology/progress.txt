@@ -1,0 +1,17 @@
+## 2026-06-24 start
+- Changed: created Ralph run folder for the final moderating platform plus realtime ontology planning work.
+- Verified: current branch is main and synced to origin; only pre-existing untracked CSV files are present.
+- Learned: `/workshop-graph/` is currently a static JSON graph app, while live moderator tools use separate Google Sheet polling and Supabase `climate_vote` patterns.
+- Next: P1 and R1 planning artifacts.
+
+## 2026-06-24 P1-R1
+- Changed: added two implementation handoff specs: moderating platform plan and realtime transcription-to-ontology plan.
+- Verified: parallel read-only audits confirmed the current state: moderator platform core should build on `CanvasBoard + JoinForm + useRealtimeAgendas + useAuth`; `/workshop-graph/` should first consume reviewed live JSON exports before a DB-backed adapter; raw transcript/audio must stay private and review-gated.
+- Learned: the first blockers are not UI polish but DB contract/RLS/realtime publication, canvas write hardening, and a review queue/export loop.
+- Next: V1 closeout, commit, push.
+
+## 2026-06-24 V1
+- Changed: marked all Ralph stories complete after document verification.
+- Verified: `git diff --check` passed; grep checks found the required platform core, safety gates, live JSON first slice, no-AI-consensus rule, and private transcript/RLS constraints in the specs.
+- Learned: implementation should proceed next as small slices, starting with DB contract freeze and canvas write hardening rather than live microphone capture.
+- Next: commit and push.
