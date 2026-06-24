@@ -7,7 +7,7 @@
 <title>숙의 온톨로지 — 통합 그래프</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/_ontology-chrome/chrome.css?v=20260624-hover-mobile">
+<link rel="stylesheet" href="/_ontology-chrome/chrome.css?v=20260625-agenda-surface">
 <script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
 <script src="https://unpkg.com/layout-base@2.0.1/layout-base.js"></script>
 <script src="https://unpkg.com/cose-base@2.2.0/cose-base.js"></script>
@@ -141,6 +141,7 @@ let cy, graph3d, ALL_NODES = [], ALL_EDGES = [], curFilter = { kind:new Set(Obje
 let isoShown = false;
 let sources = null, curSource = null, curView = '2d', pollTimer = null;
 let currentMetaAssets = null;
+let agendaSurface = null, agendaSurfacePromise = null;
 let physicsOn = localStorage.getItem('og-physics') === '1', colaLayout = null;
 let presentMode = false;  // 발표(대형스크린) 모드 — 공유 가능 뷰 상태라 URL 파라미터
 let fixedNodeId = null, hoverNodeId = null, graph3dData = null, quickHover = false, hoverHideTimer = null;
@@ -182,6 +183,21 @@ const REL_KO = {
   isAbout: '관련',
   impacts: '영향',
 };
+const AGENDA_HINTS = [
+  { terms:['원전','원자력','재생에너지','태양광','풍력','전력믹스'], ids:[1,13,3] },
+  { terms:['전기요금','요금','에너지복지','전환비용'], ids:[2,14] },
+  { terms:['전력망','송전','수도권','데이터센터','전력수요'], ids:[3,11,13] },
+  { terms:['내연기관','경유차','전기차','무공해차','자동차'], ids:[4] },
+  { terms:['기후정의','불평등','취약계층','폭염','복합위기'], ids:[5,15,14] },
+  { terms:['생활실천','규제','소비','인센티브'], ids:[6] },
+  { terms:['개발도상국','국제지원','기후재원'], ids:[7,12] },
+  { terms:['ESG','RE100','기후공시','공시'], ids:[8] },
+  { terms:['이행점검','모니터링','권고안','점검'], ids:[9] },
+  { terms:['지자체','지역계획','상향식','중앙정부'], ids:[10] },
+  { terms:['AI','인공지능','데이터센터'], ids:[11] },
+  { terms:['기후배당','탄소세','기후대응기금'], ids:[14] },
+];
+const AGENDA_STOP_TERMS = new Set(['정부','정책','방안','논의','기후','탄소','중립','확대','지원','필요','대응','사회','지역','시민','회의','계획','구축','활용','도입','관련','문제']);
 
 const params = new URLSearchParams(location.search);
 
@@ -195,6 +211,7 @@ const params = new URLSearchParams(location.search);
   OntologyChrome.init({ activeId: 'workshop', title: '숙의 온톨로지', meta: '로딩 중…' });
   bindGlobalEvents();
   if (curView === '3d') applyView('3d');
+  loadAgendaSurface();
   loadSource(curSource);
 })();
 
@@ -373,6 +390,105 @@ function shortText(text, len = 120) {
   return s.length > len ? s.slice(0, len - 1) + '…' : s;
 }
 
+async function loadAgendaSurface() {
+  if (agendaSurfacePromise) return agendaSurfacePromise;
+  agendaSurfacePromise = fetch('data/agenda-surface.json?_=' + Date.now())
+    .then(r => {
+      if (!r.ok) throw new Error(`agenda surface ${r.status}`);
+      return r.json();
+    })
+    .then(data => {
+      const agendas = Array.isArray(data?.agendas) ? data.agendas : [];
+      const byId = {};
+      for (const agenda of agendas) byId[String(agenda.id)] = agenda;
+      agendaSurface = { ...data, agendas, byId };
+      return agendaSurface;
+    })
+    .catch(err => {
+      console.warn('[agenda-surface] unavailable', err);
+      agendaSurface = null;
+      return null;
+    });
+  return agendaSurfacePromise;
+}
+
+function normalizeAgendaIds(value) {
+  const values = Array.isArray(value) ? value : (value == null ? [] : [value]);
+  return values
+    .flatMap(item => String(item).split(/[,\s]+/))
+    .map(item => Number(String(item).replace(/^agenda[-_]?/i, '')))
+    .filter(Number.isFinite);
+}
+
+function agendaTokens(value) {
+  return [...new Set(String(value || '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .split(/\s+/)
+    .map(token => token.trim())
+    .filter(token => token.length >= 2 && !/^\d+$/.test(token)))];
+}
+
+function addAgendaCandidate(map, agenda, rank, reason) {
+  if (!agenda) return;
+  const key = String(agenda.id);
+  const prev = map.get(key);
+  if (!prev || rank > prev.rank) map.set(key, { ...agenda, rank, match_reason: reason });
+}
+
+function findRelatedAgendas(node) {
+  if (!agendaSurface?.agendas?.length || !node) return [];
+  const candidates = new Map();
+  const explicitIds = [
+    ...normalizeAgendaIds(node.agenda_ids),
+    ...normalizeAgendaIds(node.agenda_id),
+    ...normalizeAgendaIds(node.related_agendas),
+    ...normalizeAgendaIds(node.related_agenda_ids),
+  ];
+  for (const id of explicitIds) addAgendaCandidate(candidates, agendaSurface.byId[String(id)], 100, '직접 연결');
+
+  const haystack = `${node.label || ''} ${node.text || ''}`.toLowerCase();
+  const nodeTerms = new Set(agendaTokens(haystack));
+  for (const hint of AGENDA_HINTS) {
+    if (hint.terms.some(term => haystack.includes(term.toLowerCase()))) {
+      for (const id of hint.ids) addAgendaCandidate(candidates, agendaSurface.byId[String(id)], 92, '핵심어 연결');
+    }
+  }
+  if (haystack.trim()) {
+    for (const agenda of agendaSurface.agendas) {
+      let rank = 0;
+      const title = String(agenda.title || '').toLowerCase();
+      const domain = String(agenda.domain || '').toLowerCase();
+      const category = String(agenda.big_category || '').toLowerCase();
+      const labelLower = String(node.label || '').toLowerCase().trim();
+      if (title && (haystack.includes(title) || (labelLower.length >= 2 && title.includes(labelLower)))) rank += 40;
+      if (domain && haystack.includes(domain)) rank += 12;
+      if (category && haystack.includes(category)) rank += 4;
+      const keywords = Array.isArray(agenda.keywords) ? agenda.keywords : [];
+      for (const keyword of keywords) {
+        const term = String(keyword).toLowerCase();
+        if (term.length >= 2 && !AGENDA_STOP_TERMS.has(term) && nodeTerms.has(term)) rank += 3;
+      }
+      if (rank >= 15) addAgendaCandidate(candidates, agenda, rank, '제목·키워드 유사');
+    }
+  }
+
+  const seedAgendas = [...candidates.values()].sort((a, b) => b.rank - a.rank).slice(0, 3);
+  for (const agenda of seedAgendas) {
+    for (const id of normalizeAgendaIds(agenda.related_agendas).slice(0, 3)) {
+      addAgendaCandidate(candidates, agendaSurface.byId[String(id)], Math.min(agenda.rank - 10, 70), '연관 의제');
+    }
+    for (const id of normalizeAgendaIds(agenda.similar_agendas).slice(0, 3)) {
+      addAgendaCandidate(candidates, agendaSurface.byId[String(id)], Math.min(agenda.rank - 14, 60), '의제 네트워크 유사');
+    }
+  }
+
+  return [...candidates.values()]
+    .filter(agenda => Number.isFinite(Number(agenda.id)))
+    .sort((a, b) => b.rank - a.rank || Number(a.id) - Number(b.id))
+    .slice(0, 5);
+}
+
 function findNodeData(nodeId) {
   return ALL_NODES.find(n => n.data.id === nodeId)?.data || null;
 }
@@ -414,6 +530,7 @@ function buildNodeContext(nodeId) {
   }
   const related = [...incoming, ...outgoing];
   const sourceIds = [...new Set([...(node.cited || []), ...(node.cited_uids || [])])];
+  const agendas = findRelatedAgendas(node);
   return {
     node,
     incoming,
@@ -422,6 +539,7 @@ function buildNodeContext(nodeId) {
     neighborIds,
     counts,
     sourceIds,
+    agendas,
     role: ROLE_TEXT[node.kind] || '숙의 구조 안에서 연결 관계로 의미가 결정되는 노드입니다.',
   };
 }
@@ -542,6 +660,49 @@ function renderRelationList(title, edges) {
     </div>`;
 }
 
+function renderAgendaPreview(agendas) {
+  if (!Array.isArray(agendas) || !agendas.length) return '';
+  const top = agendas[0];
+  return `
+    <div class="og-agenda-preview">
+      <span class="og-surface-chip"><b>${agendas.length}</b>관련 의제</span>
+      <span title="${escapeHtml(top.title || '')}">${escapeHtml(shortText(top.title || `의제 ${top.id}`, 42))}</span>
+    </div>`;
+}
+
+function renderAgendaWikiCards(agendas) {
+  if (!Array.isArray(agendas) || !agendas.length) return '';
+  return `
+    <div class="og-s-sec og-agenda-sec">
+      <h4>관련 의제 위키</h4>
+      <div class="og-surface-role"><b>숙의 보조 링크</b><span>관련 가능성이 높은 의제입니다. AI가 결론을 만든 것이 아니며, 원문 위키와 출처를 함께 확인하는 용도입니다.</span></div>
+      <div class="og-agenda-list">
+        ${agendas.slice(0, 3).map(agenda => {
+          const summary = agenda.summary || agenda.current_situation || agenda.proposed_policy || '요약 정보가 아직 연결되지 않았습니다.';
+          const details = [agenda.proposed_policy, agenda.expected_effect].filter(Boolean);
+          const title = `${agenda.id ? `${agenda.id}. ` : ''}${agenda.title || '의제'}`;
+          return `
+            <article class="og-agenda-card" data-agenda-id="${escapeHtml(agenda.id)}">
+              <div class="og-agenda-meta">
+                <span>${escapeHtml(agenda.big_category || '분류 미상')}</span>
+                ${agenda.domain ? `<span>${escapeHtml(agenda.domain)}</span>` : ''}
+                ${agenda.match_reason ? `<span>${escapeHtml(agenda.match_reason)}</span>` : ''}
+              </div>
+              <div class="og-agenda-title">${escapeHtml(title)}</div>
+              <p>${escapeHtml(shortText(summary, 150))}</p>
+              ${details.length ? `
+                <details class="og-agenda-details">
+                  <summary>정책대안·기대효과</summary>
+                  ${agenda.proposed_policy ? `<div><b>정책대안</b><br>${escapeHtml(shortText(agenda.proposed_policy, 220))}</div>` : ''}
+                  ${agenda.expected_effect ? `<div><b>기대효과</b><br>${escapeHtml(shortText(agenda.expected_effect, 220))}</div>` : ''}
+                </details>` : ''}
+              ${agenda.href ? `<a class="og-agenda-link" href="${escapeHtml(agenda.href)}" target="_blank" rel="noopener">의제 원문 보기</a>` : '<span class="og-agenda-link muted">위키 원문 준비 중</span>'}
+            </article>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
 function renderNodeSurface(ctx, mode = 'hover') {
   const palette = OntologyChrome.getPalette();
   const color = palette[ctx.node.kind] || '#888';
@@ -571,6 +732,7 @@ function renderNodeSurface(ctx, mode = 'hover') {
         </div>
         ${renderRelationList('들어오는 관계', ctx.incoming)}
         ${renderRelationList('나가는 관계', ctx.outgoing)}
+        ${renderAgendaWikiCards(ctx.agendas)}
       </div>`;
     side.classList.remove('collapsed');
     side.querySelector('[data-side-close]').onclick = () => {
@@ -590,6 +752,7 @@ function renderNodeSurface(ctx, mode = 'hover') {
       <b>${escapeHtml(ctx.node.label || '')}</b>
       <p>${escapeHtml(shortText(ctx.node.text || '', 120))}</p>
       <div class="og-surface-chips">${relationChips(ctx)}</div>
+      ${renderAgendaPreview(ctx.agendas)}
       <a class="og-more" data-more>상세 고정 →</a>
     </div>`;
   quick.classList.add('show');

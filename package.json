@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "astro dev",
     "build:scene": "node scripts/build-agenda-network-scene.mjs",
-    "prebuild": "npm run build:scene && npm run wiki:reindex && npm run wiki:log",
+    "build:agenda-surface": "node scripts/build-agenda-surface.mjs",
+    "prebuild": "npm run build:scene && npm run build:agenda-surface && npm run wiki:reindex && npm run wiki:log",
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",

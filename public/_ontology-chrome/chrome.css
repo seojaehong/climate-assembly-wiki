@@ -101,6 +101,22 @@ html,body{margin:0;height:100%;font-family:'Noto Sans KR','Pretendard','Malgun G
 .og-surface-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
 .og-surface-small{font-size:10px;color:#94a3b8;font-weight:700}
 .og-surface-card p{margin:6px 0 7px;color:#cbd5e1;line-height:1.55;word-break:keep-all}
+.og-agenda-preview{display:flex;align-items:center;gap:7px;margin:8px 0 2px;color:#dbeafe;font-size:11px;min-width:0}
+.og-agenda-preview > span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#cbd5e1}
+.og-agenda-list{display:flex;flex-direction:column;gap:8px}
+.og-agenda-card{border:1px solid rgba(99,230,190,.22);border-radius:8px;background:linear-gradient(180deg,rgba(18,184,134,.08),rgba(17,25,35,.92));padding:10px 11px;word-break:keep-all}
+.og-agenda-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:6px}
+.og-agenda-meta span{display:inline-flex;align-items:center;min-height:20px;padding:0 7px;border:1px solid var(--og-line);border-radius:999px;background:#111923;color:#9aa7b8;font-size:10px;font-weight:800}
+.og-agenda-title{font-size:14px;line-height:1.45;font-weight:900;color:#e8fff6}
+.og-agenda-card p{margin:6px 0 8px;color:#cbd5e1;font-size:12px;line-height:1.6}
+.og-agenda-details{margin:7px 0}
+.og-agenda-details summary{cursor:pointer;color:#8bd3ff;font-size:11px;font-weight:900;list-style:none}
+.og-agenda-details summary::-webkit-details-marker{display:none}
+.og-agenda-details div{margin-top:6px;padding:8px;border:1px solid var(--og-line);border-radius:6px;background:rgba(12,18,26,.66);color:#cbd5e1;font-size:12px;line-height:1.58}
+.og-agenda-details b{color:#63e6be}
+.og-agenda-link{display:inline-flex;align-items:center;min-height:26px;margin-top:3px;color:#63e6be;font-size:12px;font-weight:900;text-decoration:none}
+.og-agenda-link:hover{text-decoration:underline}
+.og-agenda-link.muted{color:#9aa7b8;font-weight:700}
 
 /* ─── footer 범례 ─── */
 .og-footer{background:#0e131a;border-top:1px solid var(--og-line);padding:7px 18px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--og-muted);flex-shrink:0}
