@@ -42,8 +42,8 @@
       "id": "H3",
       "title": "Record DB limitation and deployment evidence",
       "priority": 3,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "acceptance": [
         "DB-backed graph limitation is recorded in docs",
         "Commit is pushed and live /workshop-graph/ 2D and 3D are checked"

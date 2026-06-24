@@ -15,3 +15,9 @@
 - Verified: local Chrome 390x844 showed no horizontal page scroll, 2D canvas 390x331, bottom-sheet detail panel 390x270, compact hub rail 40px, and a node tap opened the fixed detail card with Habermas role and original transcript. 3D mobile also rendered nonblank with compact HUD/hub rail.
 - Learned: mobile rendering was not blank, but the previous absolute right-side panel covered most of the graph width and made the graph feel unavailable.
 - Next: complete H3 live deployment evidence.
+
+## 2026-06-24 H3 live deployment evidence
+- Changed: fixed the manual backup deploy workflow dependency step so it no longer requires a missing lockfile.
+- Verified: GitHub remote main has hover/mobile assets; live `https://climate-assembly.org/workshop-graph/` serves `chrome.css?v=20260624-hover-mobile` and includes `positionHoverCard`. Live Chrome checks passed for desktop 2D, desktop 3D, and 390px mobile.
+- Learned: Cloudflare dashboard integration eventually deployed main; the manual backup workflow still needs the `CLOUDFLARE_API_TOKEN` secret before it can deploy with Wrangler.
+- Next: complete.
