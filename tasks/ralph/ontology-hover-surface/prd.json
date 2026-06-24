@@ -53,6 +53,22 @@
         "tasks/ralph/ontology-hover-surface/progress.txt",
         "tasks/ralph/ontology-hover-surface/prd.json"
       ]
+    },
+    {
+      "id": "H4",
+      "title": "Mobile graph layout stays usable",
+      "priority": 4,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "390px mobile view keeps controls compact with horizontal toolbars instead of a tall stacked block",
+        "The detail panel becomes a bottom sheet and does not cover the graph width",
+        "2D graph canvas remains visible and the page has no horizontal scroll"
+      ],
+      "files": [
+        "public/_ontology-chrome/chrome.css",
+        "public/workshop-graph/index.html"
+      ]
     }
   ]
 }

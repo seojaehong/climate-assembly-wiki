@@ -9,3 +9,9 @@
 - Verified: local Chrome check showed floating 2D card visible near node, detail link clickable, 1-hop focus active, compact card height 168px, and 3D still rendering 613 nodes / 491 links with hub chips.
 - Learned: Cytoscape rendered positions are relative to the graph container and can be clamped directly inside `.og-canvas`; floating quick cards need an explicit max-height to avoid stale oversized measurement.
 - Next: H3.
+
+## 2026-06-24 H4 mobile layout
+- Changed: added a Ralph mobile story and patched the small-screen layout so controls scroll horizontally, the detail panel becomes a bottom sheet, and hub/HUD overlays are compact.
+- Verified: local Chrome 390x844 showed no horizontal page scroll, 2D canvas 390x331, bottom-sheet detail panel 390x270, compact hub rail 40px, and a node tap opened the fixed detail card with Habermas role and original transcript. 3D mobile also rendered nonblank with compact HUD/hub rail.
+- Learned: mobile rendering was not blank, but the previous absolute right-side panel covered most of the graph width and made the graph feel unavailable.
+- Next: complete H3 live deployment evidence.

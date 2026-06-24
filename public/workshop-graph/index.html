@@ -7,7 +7,7 @@
 <title>숙의 온톨로지 — 통합 그래프</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/_ontology-chrome/chrome.css?v=20260624-hover-surface">
+<link rel="stylesheet" href="/_ontology-chrome/chrome.css?v=20260624-hover-mobile">
 <script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
 <script src="https://unpkg.com/layout-base@2.0.1/layout-base.js"></script>
 <script src="https://unpkg.com/cose-base@2.2.0/cose-base.js"></script>
@@ -46,6 +46,13 @@
   body.view-3d .og-hub-rail{top:58px;right:390px}
   .og-hub-chip{pointer-events:auto;display:inline-flex;align-items:center;max-width:220px;min-height:30px;padding:0 10px;border:1px solid rgba(139,211,255,.34);border-radius:999px;background:rgba(9,15,23,.78);box-shadow:0 10px 28px rgba(0,0,0,.24);backdrop-filter:blur(8px);color:#dbeafe;font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
   .og-hub-chip:hover{border-color:#63e6be;color:#fff;background:rgba(18,184,134,.22)}
+  @media (max-width:640px){
+    .og-hub-rail{left:10px;right:10px;top:10px;gap:5px;max-height:40px;overflow:hidden}
+    body.view-3d .og-hub-rail{top:46px;right:10px}
+    .og-hub-chip{max-width:176px;min-height:28px;padding:0 8px;font-size:11px}
+    .og-3d-hud{left:10px;right:10px;top:10px;max-width:none;gap:5px;max-height:36px;overflow:hidden}
+    .og-3d-hud .og-3d-pill{min-height:26px;padding:0 8px;font-size:11px}
+  }
 </style>
 </head>
 <body>
