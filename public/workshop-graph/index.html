@@ -143,6 +143,7 @@ let sources = null, curSource = null, curView = '2d', pollTimer = null;
 let currentMetaAssets = null;
 let agendaSurface = null, agendaSurfacePromise = null;
 let gyeonggiAgendaSurface = null, gyeonggiAgendaSurfacePromise = null;
+let supabaseAgendaSurface = null, supabaseAgendaSurfacePromise = null;
 let physicsOn = localStorage.getItem('og-physics') === '1', colaLayout = null;
 let presentMode = false;  // 발표(대형스크린) 모드 — 공유 가능 뷰 상태라 URL 파라미터
 let fixedNodeId = null, hoverNodeId = null, graph3dData = null, quickHover = false, hoverHideTimer = null;
@@ -214,6 +215,7 @@ const params = new URLSearchParams(location.search);
   if (curView === '3d') applyView('3d');
   loadAgendaSurface();
   loadGyeonggiAgendaSurface();
+  loadSupabaseAgendaSurface();
   loadSource(curSource);
 })();
 
@@ -434,6 +436,26 @@ async function loadGyeonggiAgendaSurface() {
   return gyeonggiAgendaSurfacePromise;
 }
 
+async function loadSupabaseAgendaSurface() {
+  if (supabaseAgendaSurfacePromise) return supabaseAgendaSurfacePromise;
+  supabaseAgendaSurfacePromise = fetch('data/supabase-agenda-surface.json?_=' + Date.now())
+    .then(r => {
+      if (!r.ok) throw new Error(`supabase agenda surface ${r.status}`);
+      return r.json();
+    })
+    .then(data => {
+      const records = Array.isArray(data?.records) ? data.records : [];
+      supabaseAgendaSurface = { ...data, records };
+      return supabaseAgendaSurface;
+    })
+    .catch(err => {
+      console.warn('[supabase-agenda-surface] unavailable', err);
+      supabaseAgendaSurface = null;
+      return null;
+    });
+  return supabaseAgendaSurfacePromise;
+}
+
 function normalizeAgendaIds(value) {
   const values = Array.isArray(value) ? value : (value == null ? [] : [value]);
   return values
@@ -459,7 +481,7 @@ function addAgendaCandidate(map, agenda, rank, reason) {
 }
 
 function findRelatedAgendas(node) {
-  if (!node || (!agendaSurface?.agendas?.length && !gyeonggiAgendaSurface?.records?.length)) return [];
+  if (!node || (!agendaSurface?.agendas?.length && !gyeonggiAgendaSurface?.records?.length && !supabaseAgendaSurface?.records?.length)) return [];
   const candidates = new Map();
   const explicitIds = [
     ...normalizeAgendaIds(node.agenda_ids),
@@ -516,6 +538,33 @@ function findRelatedAgendas(node) {
           summary: record.original_excerpt || record.summary || record.title,
           match_reason: '경기도 OCR 유사',
         }, rank + 8, '경기도 OCR 유사');
+      }
+    }
+  }
+
+  if (supabaseAgendaSurface?.records?.length && haystack.trim()) {
+    for (const record of supabaseAgendaSurface.records) {
+      let rank = 0;
+      const title = String(record.title || '').toLowerCase();
+      const category = String(record.category || record.working_group || '').toLowerCase();
+      const sourceKind = String(record.source_kind || '').toLowerCase();
+      const labelLower = String(node.label || '').toLowerCase().trim();
+      if (title && (haystack.includes(title) || (labelLower.length >= 2 && title.includes(labelLower)))) rank += 70;
+      if (category && haystack.includes(category)) rank += 10;
+      if (sourceKind && haystack.includes(sourceKind)) rank += 6;
+      const keywords = Array.isArray(record.keywords) ? record.keywords : [];
+      for (const keyword of keywords) {
+        const term = String(keyword).toLowerCase();
+        if (term.length >= 2 && !AGENDA_STOP_TERMS.has(term) && nodeTerms.has(term)) rank += 4;
+      }
+      if (rank >= 18) {
+        addAgendaCandidate(candidates, {
+          ...record,
+          big_category: record.status_label || 'Supabase 공개 코퍼스',
+          domain: record.category || record.source_kind || '',
+          summary: record.summary || record.title,
+          match_reason: 'Supabase 코퍼스 유사',
+        }, rank + 6, 'Supabase 코퍼스 유사');
       }
     }
   }

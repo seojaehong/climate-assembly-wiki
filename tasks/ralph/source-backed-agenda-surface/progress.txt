@@ -14,3 +14,15 @@
 - Verified: export produced 71 records, 70 OCR/page matches, 20 final-selected/33 adopted/18 rejected, 71 source-backed hrefs; Astro dev route `/ko/agenda-source/gyeonggi/001-경기도형-탄소-포인트-기부-나눔/` returned 200 and showed title, source label, and original excerpt; graph browser check found a `/ko/agenda-source/gyeonggi/...` link and no `/ko/agenda/` internal draft links.
 - Learned: Astro `getStaticPaths` in this repo cannot rely on local helper constants from frontmatter; read the JSON inside `getStaticPaths` directly.
 - Next: Supabase adapter and better ranking can build on the same source-backed shape.
+
+## 2026-06-25 S4
+- Changed: `scripts/audit-agenda-source-inventory.mjs`, `evaluation/agenda-source-inventory.json`, `docs/agenda-source-inventory-2026-06-25.md`, `package.json`, `tasks/ralph/source-backed-agenda-surface/prd.json`.
+- Verified: `node scripts/audit-agenda-source-inventory.mjs` wrote both artifacts; report says `complete=false`, Supabase public `agenda_corpus=173` (`expert-65=65`, `citizen-108=108`), Gyeonggi OCR surface `71` records with `70` OCR matches and `71` source-backed hrefs, internal draft `/ko/agenda/` href exposure `0`.
+- Learned: current public Supabase read path does not prove the user's expected overseas thousand-scale agenda DB; do not claim homepage wiki completion until the actual table/view/RPC and publication status contract are found.
+- Next: S5 build a Supabase source-backed surface adapter, or first obtain/confirm the overseas agenda table/view name if it is not exposed through anon public read.
+
+## 2026-06-25 S5
+- Changed: `scripts/build-supabase-agenda-source.mjs`, `public/workshop-graph/data/supabase-agenda-surface.json`, `src/pages/[lang]/agenda-source/[source]/[id].astro`, `public/workshop-graph/index.html`, `package.json`, `tasks/ralph/source-backed-agenda-surface/prd.json`.
+- Verified: `node scripts/build-supabase-agenda-source.mjs` wrote 173 source-backed records and warned that the public read path is below the expected overseas-thousand scale; local HTTP checks returned 200 for `/ko/agenda-source/supabase/0001-재생에너지-한계를-보완하는-한국형-탄소중립-전력체계-구축/` and `/workshop-graph/data/supabase-agenda-surface.json`; `/workshop-graph/index.html` includes `supabase-agenda-surface` loader.
+- Learned: source-backed route can support both `gyeonggi` and `supabase` without reusing internal draft `/ko/agenda/` pages; Astro dev still reports unrelated existing esbuild scan errors in moderator insights groups/heatmap.
+- Next: confirm the actual overseas agenda thousand-scale table/view/RPC and add a public reviewed surface contract before design-complete claims.

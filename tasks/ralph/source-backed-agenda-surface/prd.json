@@ -3,6 +3,7 @@
   "branchName": "main",
   "qualityChecks": [
     "node scripts/build-agenda-surface.mjs",
+    "node scripts/audit-agenda-source-inventory.mjs",
     "browser check /workshop-graph/?source=workshop-2026-06-13",
     "git diff --check"
   ],
@@ -53,6 +54,41 @@
       ],
       "files": [
         "src/pages/[lang]/agenda-source/[source]/[id].astro"
+      ]
+    },
+    {
+      "id": "S4",
+      "title": "Audit official agenda source inventory before more page work",
+      "priority": 4,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "read-only audit verifies current Supabase public agenda corpus count and source distribution",
+        "audit verifies Gyeonggi OCR source-backed surface count, OCR match count, and href coverage",
+        "audit report states that internal draft agenda pages are not the official source of truth",
+        "audit report explicitly lists remaining blockers before claiming all agenda wiki pages are complete"
+      ],
+      "files": [
+        "scripts/audit-agenda-source-inventory.mjs",
+        "evaluation/agenda-source-inventory.json",
+        "docs/agenda-source-inventory-2026-06-25.md"
+      ]
+    },
+    {
+      "id": "S5",
+      "title": "Add Supabase source-backed agenda surface adapter",
+      "priority": 5,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "adapter reads only approved/public source-backed agenda rows without DB mutation",
+        "adapter does not use internal draft markdown as source of truth",
+        "exported shape matches Gyeonggi agenda-source page route contract",
+        "if overseas thousand-scale data is unavailable on the public read path, the script fails loudly or reports a blocker instead of silently claiming completion"
+      ],
+      "files": [
+        "scripts/build-supabase-agenda-source.mjs",
+        "public/workshop-graph/data/supabase-agenda-surface.json"
       ]
     }
   ]

@@ -1,0 +1,185 @@
+{
+  "generatedAt": "2026-06-25T01:01:59.199Z",
+  "verdict": {
+    "complete": false,
+    "reason": "Supabase overseas thousand-scale agenda data is not verified on the current public read path; Gyeonggi OCR pages are first-pass source-backed records, not fully manual-QAed wiki pages."
+  },
+  "supabaseAgendaCorpus": {
+    "available": true,
+    "table": "public.agenda_corpus",
+    "total": 173,
+    "fetched": 173,
+    "bySource": {
+      "expert-65": 65,
+      "citizen-108": 108
+    },
+    "byCategory": {
+      "감축": 119,
+      "적응": 50,
+      "혼합": 3,
+      "감축+적응": 1
+    },
+    "sample": [
+      {
+        "id": 1,
+        "source": "expert-65",
+        "ref_id": "1",
+        "title": "재생에너지 한계를 보완하는 한국형 탄소중립 전력체계 구축",
+        "category": "감축"
+      },
+      {
+        "id": 2,
+        "source": "expert-65",
+        "ref_id": "2",
+        "title": "주민이 이익을 공유하는 지역상생형 재생에너지 확대 방안",
+        "category": "감축"
+      },
+      {
+        "id": 3,
+        "source": "expert-65",
+        "ref_id": "3",
+        "title": "전력수요와 재생에너지 공급의 지역 불일치, 어떻게 해결할 것인가? — 전력망 확충, 전력다소비 시설 입지,  지역수용성 및 지역상생 방안",
+        "category": "감축"
+      },
+      {
+        "id": 4,
+        "source": "expert-65",
+        "ref_id": "4",
+        "title": "햇빛/바람소득마을의 적정 소득은 얼마인가?",
+        "category": "감축"
+      },
+      {
+        "id": 5,
+        "source": "expert-65",
+        "ref_id": "5",
+        "title": "지역별 재생에너지 전력자립도 목표 설정 및 이행 방안",
+        "category": "감축"
+      },
+      {
+        "id": 6,
+        "source": "expert-65",
+        "ref_id": "6",
+        "title": "에너지믹스의 전기요금에 대한 영향",
+        "category": "감축"
+      },
+      {
+        "id": 7,
+        "source": "expert-65",
+        "ref_id": "7",
+        "title": "탄소중립 선도도시 조성을 위한 도심형 무탄소 에너지원(CFE) 입지 안전 가이드라인 수립",
+        "category": "감축"
+      },
+      {
+        "id": 8,
+        "source": "expert-65",
+        "ref_id": "8",
+        "title": "지역 기반 재생에너지 확대를 위해 사회적 합의",
+        "category": "감축"
+      }
+    ]
+  },
+  "gyeonggiOcrSurface": {
+    "available": true,
+    "file": "public/workshop-graph/data/gyeonggi-agenda-surface.json",
+    "total": 71,
+    "ocrMatched": 70,
+    "withSourceBackedHref": 71,
+    "byStatus": {
+      "최종선정": 20,
+      "3차 채택": 33,
+      "3차 미채택": 18
+    },
+    "source": {
+      "review_file": "10_작업산출물/2026-06-22_경기의제_검토본.md",
+      "ocr_json_dir": "00_입력자료/경기도 기후도민회의/evaluation/json",
+      "record_count": 71,
+      "ocr_matched_count": 70,
+      "status_counts": {
+        "final_selected": 20,
+        "third_adopted": 33,
+        "third_rejected": 18
+      }
+    },
+    "sample": [
+      {
+        "id": "gyeonggi-001",
+        "title": "경기도형 탄소 포인트 기부 나눔",
+        "status_label": "최종선정",
+        "working_group": "기후격차",
+        "ocr_found": true,
+        "source_backed_href": "/ko/agenda-source/gyeonggi/001-경기도형-탄소-포인트-기부-나눔/"
+      },
+      {
+        "id": "gyeonggi-002",
+        "title": "일회용품 사용 금지 및 제한 사용 유도",
+        "status_label": "최종선정",
+        "working_group": "기후격차",
+        "ocr_found": true,
+        "source_backed_href": "/ko/agenda-source/gyeonggi/002-일회용품-사용-금지-및-제한-사용-유도/"
+      },
+      {
+        "id": "gyeonggi-003",
+        "title": "수소 에너지 인식 개선 사업",
+        "status_label": "최종선정",
+        "working_group": "기후격차",
+        "ocr_found": true,
+        "source_backed_href": "/ko/agenda-source/gyeonggi/003-수소-에너지-인식-개선-사업/"
+      },
+      {
+        "id": "gyeonggi-004",
+        "title": "온실가스 감축을 위한 친환경 냉난방기 설치 제안 + 총량 제안",
+        "status_label": "3차 채택",
+        "working_group": "기후격차",
+        "ocr_found": true,
+        "source_backed_href": "/ko/agenda-source/gyeonggi/004-온실가스-감축을-위한-친환경-냉난방기-설치-제안-총량-제안/"
+      },
+      {
+        "id": "gyeonggi-005",
+        "title": "취약계층을 위한 자원봉사 기반 기후학습 프로그램",
+        "status_label": "3차 채택",
+        "working_group": "기후격차",
+        "ocr_found": true,
+        "source_backed_href": "/ko/agenda-source/gyeonggi/005-취약계층을-위한-자원봉사-기반-기후학습-프로그램/"
+      },
+      {
+        "id": "gyeonggi-006",
+        "title": "동두천-양주 기후·지형 특성으로 인한 홍수 방지로 기후 격차 해소",
+        "status_label": "3차 채택",
+        "working_group": "기후격차",
+        "ocr_found": true,
+        "source_backed_href": "/ko/agenda-source/gyeonggi/006-동두천-양주-기후-지형-특성으로-인한-홍수-방지로-기후-격차-해소/"
+      },
+      {
+        "id": "gyeonggi-007",
+        "title": "정부기관 거버넌스 구축과 조례 제정을 통한 기후 격차 해소",
+        "status_label": "3차 채택",
+        "working_group": "기후격차",
+        "ocr_found": true,
+        "source_backed_href": "/ko/agenda-source/gyeonggi/007-정부기관-거버넌스-구축과-조례-제정을-통한-기후-격차-해소/"
+      },
+      {
+        "id": "gyeonggi-008",
+        "title": "기후 변화 피해 농가를 위한 기후 재난 보험",
+        "status_label": "3차 채택",
+        "working_group": "기후격차",
+        "ocr_found": true,
+        "source_backed_href": "/ko/agenda-source/gyeonggi/008-기후-변화-피해-농가를-위한-기후-재난-보험/"
+      }
+    ]
+  },
+  "internalDraftSurface": {
+    "file": "public/workshop-graph/data/agenda-surface.json",
+    "total": 65,
+    "internalDraftCount": 15,
+    "exposedInternalHrefCount": 0,
+    "source": {
+      "wiki_agenda_count": 15,
+      "agenda_count": 65,
+      "inputs": [
+        "internal draft markdown, links excluded",
+        "src/data/agendas-65.json",
+        "src/data/network/agenda-similarity.json"
+      ]
+    }
+  }
+}

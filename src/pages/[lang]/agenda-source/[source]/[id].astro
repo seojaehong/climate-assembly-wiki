@@ -18,24 +18,36 @@ interface AgendaSourceRecord {
   title: string;
   source: string;
   source_label: string;
-  working_group: string;
-  stage: string;
-  status: string;
-  status_label: string;
+  source_kind?: string;
+  source_table?: string;
+  ref_id?: string;
+  category?: string;
+  working_group?: string;
+  stage?: string;
+  status?: string;
+  status_label?: string;
   summary: string;
-  original_excerpt: string;
-  page_refs: PageRef[];
-  ocr_found: boolean;
+  original_excerpt?: string;
+  page_refs?: PageRef[];
+  ocr_found?: boolean;
 }
 
 export async function getStaticPaths() {
   const langs = ['ko', 'en', 'ja', 'zh', 'es'];
-  const dataPath = path.join(process.cwd(), 'public', 'workshop-graph', 'data', 'gyeonggi-agenda-surface.json');
-  const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
-  const records: AgendaSourceRecord[] = Array.isArray(data.records) ? data.records : [];
+  const sources = [
+    { routeSource: 'gyeonggi', file: 'gyeonggi-agenda-surface.json' },
+    { routeSource: 'supabase', file: 'supabase-agenda-surface.json' },
+  ];
+  const allRecords = sources.flatMap(({ routeSource, file }) => {
+    const dataPath = path.join(process.cwd(), 'public', 'workshop-graph', 'data', file);
+    if (!fs.existsSync(dataPath)) return [];
+    const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+    const records: AgendaSourceRecord[] = Array.isArray(data.records) ? data.records : [];
+    return records.map((record) => ({ routeSource, record }));
+  });
   return langs.flatMap((lang) =>
-    records.map((record) => ({
-      params: { lang, source: 'gyeonggi', id: record.slug },
+    allRecords.map(({ routeSource, record }) => ({
+      params: { lang, source: routeSource, id: record.slug },
       props: { record, lang },
     }))
   );
@@ -48,10 +60,19 @@ interface Props {
 
 const { record, lang } = Astro.props;
 const isKo = lang === 'ko';
+const pageRefs = Array.isArray(record.page_refs) ? record.page_refs : [];
+const isGyeonggi = record.source === 'gyeonggi-citizens-ocr';
+const sourceDescription = isGyeonggi
+  ? '이 페이지는 내부 가안 위키가 아니라 경기도 기후도민총회 OCR/텍스트 원천에서 만든 source-backed 의제 자료입니다. OCR 발췌는 원문 확인을 돕기 위한 것이며, 최종 인용 전에는 문서 페이지를 재확인해야 합니다.'
+  : '이 페이지는 내부 가안 위키가 아니라 Supabase 공개 의제 코퍼스에서 만든 source-backed 의제 자료입니다. 현재 공개 읽기 경로의 검수 데이터만 표시하며, 해외의제 전체 DB와 동일하다고 단정하지 않습니다.';
+const sourceDescriptionEn = isGyeonggi
+  ? 'This page is generated from source-backed Gyeonggi climate assembly OCR/text materials, not from the internal draft agenda wiki.'
+  : 'This page is generated from the Supabase public agenda corpus, not from the internal draft agenda wiki. It does not prove that the full overseas agenda database is connected.';
 const statusTone: Record<string, string> = {
   final_selected: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
   third_adopted: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
   third_rejected: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
+  public_corpus: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200',
 };
 const title = isKo ? record.title : `${record.title} | Source-backed agenda`;
 ---
@@ -67,32 +88,32 @@ const title = isKo ? record.title : `${record.title} | Source-backed agenda`;
     <header class="mb-6 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-subtle)] p-5">
       <div class="mb-3 flex flex-wrap items-center gap-2 text-xs">
         <span class="rounded-full border border-[var(--color-border)] px-2 py-1 font-mono text-[var(--color-fg-muted)]">{record.id}</span>
-        <span class={`rounded-full px-2 py-1 font-semibold ${statusTone[record.status] ?? 'border border-[var(--color-border)] text-[var(--color-fg-muted)]'}`}>
-          {record.status_label}
+        <span class={`rounded-full px-2 py-1 font-semibold ${statusTone[record.status || ''] ?? 'border border-[var(--color-border)] text-[var(--color-fg-muted)]'}`}>
+          {record.status_label || record.status || 'source-backed'}
         </span>
-        <span class="rounded-full border border-[var(--color-border)] px-2 py-1 text-[var(--color-fg-muted)]">{record.working_group}</span>
+        <span class="rounded-full border border-[var(--color-border)] px-2 py-1 text-[var(--color-fg-muted)]">{record.working_group || record.category || record.source_kind || '분류 미상'}</span>
         <span class="rounded-full border border-[var(--color-border)] px-2 py-1 text-[var(--color-fg-muted)]">{record.source_label}</span>
       </div>
       <h1 class="text-2xl font-bold leading-snug text-[var(--color-fg)]">{record.title}</h1>
       <p class="mt-3 text-sm leading-6 text-[var(--color-fg-muted)]">
         {isKo
-          ? '이 페이지는 내부 가안 위키가 아니라 경기도 기후도민총회 OCR/텍스트 원천에서 만든 source-backed 의제 자료입니다. OCR 발췌는 원문 확인을 돕기 위한 것이며, 최종 인용 전에는 문서 페이지를 재확인해야 합니다.'
-          : 'This page is generated from source-backed Gyeonggi climate assembly OCR/text materials, not from the internal draft agenda wiki.'}
+          ? sourceDescription
+          : sourceDescriptionEn}
       </p>
     </header>
 
     <section class="mb-6 grid gap-4 md:grid-cols-3">
       <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4">
         <h2 class="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--color-fg-muted)]">{isKo ? '단계' : 'Stage'}</h2>
-        <p class="text-sm font-semibold text-[var(--color-fg)]">{record.stage}</p>
+        <p class="text-sm font-semibold text-[var(--color-fg)]">{record.stage || record.source_kind || record.source}</p>
       </div>
       <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4">
         <h2 class="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--color-fg-muted)]">{isKo ? '원천 매칭' : 'Source match'}</h2>
-        <p class="text-sm font-semibold text-[var(--color-fg)]">{record.ocr_found ? (isKo ? 'OCR/텍스트 페이지 발견' : 'OCR/text pages found') : (isKo ? '검토 필요' : 'Needs review')}</p>
+        <p class="text-sm font-semibold text-[var(--color-fg)]">{isGyeonggi ? (record.ocr_found ? (isKo ? 'OCR/텍스트 페이지 발견' : 'OCR/text pages found') : (isKo ? '검토 필요' : 'Needs review')) : (isKo ? 'Supabase 공개 행' : 'Supabase public row')}</p>
       </div>
       <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4">
-        <h2 class="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--color-fg-muted)]">{isKo ? '페이지 참조' : 'Page refs'}</h2>
-        <p class="text-sm font-semibold text-[var(--color-fg)]">{record.page_refs.length}{isKo ? '건' : ''}</p>
+        <h2 class="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--color-fg-muted)]">{isGyeonggi ? (isKo ? '페이지 참조' : 'Page refs') : (isKo ? '원천 ID' : 'Source ID')}</h2>
+        <p class="text-sm font-semibold text-[var(--color-fg)]">{isGyeonggi ? `${pageRefs.length}${isKo ? '건' : ''}` : (record.ref_id || record.id)}</p>
       </div>
     </section>
 
@@ -110,7 +131,7 @@ const title = isKo ? record.title : `${record.title} | Source-backed agenda`;
     <section class="mb-6 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
       <h2 class="mb-3 text-lg font-bold text-[var(--color-fg)]">{isKo ? '문서·페이지 근거' : 'Document and page evidence'}</h2>
       <div class="space-y-3">
-        {record.page_refs.length ? record.page_refs.map((ref) => (
+        {pageRefs.length ? pageRefs.map((ref) => (
           <article class="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-subtle)] p-4">
             <div class="mb-2 flex flex-wrap items-center gap-2 text-xs text-[var(--color-fg-muted)]">
               <span class="font-semibold text-[var(--color-fg)]">{ref.doc}</span>
@@ -121,7 +142,11 @@ const title = isKo ? record.title : `${record.title} | Source-backed agenda`;
             <p class="text-sm leading-6 text-[var(--color-fg-muted)]">{ref.excerpt}</p>
           </article>
         )) : (
-          <p class="text-sm text-[var(--color-fg-muted)]">{isKo ? '페이지 참조 없음' : 'No page references'}</p>
+          <p class="text-sm text-[var(--color-fg-muted)]">
+            {isGyeonggi
+              ? (isKo ? '페이지 참조 없음' : 'No page references')
+              : (isKo ? `Supabase ${record.source_table || '공개 코퍼스'} · ref_id ${record.ref_id || record.id}` : `Supabase ${record.source_table || 'public corpus'} · ref_id ${record.ref_id || record.id}`)}
+          </p>
         )}
       </div>
     </section>
