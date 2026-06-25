@@ -7,7 +7,7 @@
 <title>숙의 온톨로지 — 통합 그래프</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/_ontology-chrome/chrome.css?v=20260625-present-audit">
+<link rel="stylesheet" href="/_ontology-chrome/chrome.css?v=20260625-present-groups">
 <script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
 <script src="https://unpkg.com/layout-base@2.0.1/layout-base.js"></script>
 <script src="https://unpkg.com/cose-base@2.2.0/cose-base.js"></script>
@@ -89,6 +89,7 @@
     <div class="og-group-tog og-2d-only" id="og-group-tog" title="묶기 — 무손실 클러스터(노드/엣지 보존, 부모 안에 둥지). 그룹을 클릭하면 접기/펼치기">
       <span class="og-grp-lbl">묶기</span>
       <button data-group="none" class="active">없음</button>
+      <button data-group="present">대목차</button>
       <button data-group="issue">쟁점</button>
       <button data-group="session">세션</button>
     </div>
@@ -127,7 +128,7 @@
         <span class="og-3d-pill"><span class="og-3d-muted">회색</span> 근거</span>
       </div>
       <div class="og-present-hud og-2d-only" aria-hidden="true">
-        <b>발표 보기</b> — AI가 합의를 만들지 않습니다. 발언·근거·우려·조건을 보존하고, 같은 원본 그래프를 쟁점/세션 단위로 확대해 설명합니다.
+        <b>발표 보기</b> — 밝은 배경과 대목차 노드로 설명합니다. AI가 합의를 만들지 않고, 원 발언·근거·우려·조건을 보존해 숙의를 돕습니다.
       </div>
       <div class="og-hub-rail" id="og-hub-rail" aria-label="주요 쟁점 바로가기"></div>
       <div class="og-zoomctl og-2d-only">
@@ -180,7 +181,7 @@ let kbAgendaSurface = null, kbAgendaSurfacePromise = null;
 let physicsOn = localStorage.getItem('og-physics') === '1', colaLayout = null;
 let presentMode = false;  // 발표(대형스크린) 모드 — 공유 가능 뷰 상태라 URL 파라미터
 let fixedNodeId = null, hoverNodeId = null, graph3dData = null, quickHover = false, hoverHideTimer = null;
-// A-3 묶기(클러스터): 'none' | 'issue' | 'session'. 공유 가능 뷰 상태라 URL 파라미터(?group=).
+// A-3 묶기(클러스터): 'none' | 'present' | 'issue' | 'session'. 공유 가능 뷰 상태라 URL 파라미터(?group=).
 // 무손실 원칙 — 그룹은 합성 부모 노드로만 표현하고 실제 노드/엣지는 절대 삭제하지 않는다.
 let groupMode = 'none', ecApi = null;
 
@@ -241,7 +242,7 @@ const params = new URLSearchParams(location.search);
   curSource = params.get('source') || sources.default;
   curView = params.get('view') || '2d';
   presentMode = params.get('mode') === 'present';
-  groupMode = ['issue','session'].includes(params.get('group')) ? params.get('group') : (presentMode ? 'issue' : 'none');
+  groupMode = ['present','issue','session'].includes(params.get('group')) ? params.get('group') : (presentMode ? 'present' : 'none');
   if (presentMode && !params.has('view')) curView = '2d';
   buildSourceDropdown();
   OntologyChrome.init({ activeId: 'workshop', title: '숙의 온톨로지', meta: '로딩 중…' });
@@ -1109,12 +1110,12 @@ function updatePhysicsBtn() {
   b.setAttribute('aria-pressed', String(physicsOn));
 }
 
-// 발표 모드: 밝은 2D 쟁점/세션 설명 화면. 데이터 불변 — 표현만(무손실).
+// 발표 모드: 밝은 2D 상위 목차 설명 화면. 데이터 불변 — 표현만(무손실).
 function togglePresent() {
   presentMode = !presentMode;
   if (presentMode) {
     if (curView !== '2d') curView = '2d';
-    if (groupMode === 'none') groupMode = 'issue';
+    if (groupMode === 'none') groupMode = 'present';
   }
   syncPresentationBody();
   updatePresentBtn();
@@ -1144,11 +1145,34 @@ function syncPresentationBody() {
 // 반드시 자식을 먼저 부모에서 빼낸 뒤(child.move({parent:null})) 합성 부모를 제거한다.
 // (Cytoscape는 부모를 remove하면 자식까지 함께 삭제하므로 순서가 핵심)
 
+function presentChapterOf(session, kind) {
+  if (!session) return { key: 'present__other', label: '기타/미분류' };
+  if (['OA_t1','OB_t1','OZ_t1'].includes(session)) return { key: 'present__operating', label: '운영규정 논의' };
+  if (['DA_t2','A_t21','A_t22','A_t23'].includes(session)) return { key: 'present__agenda_a', label: 'A조 의제선정 흐름' };
+  if (['DB_t2','B_t1','B_t2','B_t3'].includes(session)) return { key: 'present__agenda_b', label: 'B조 의제선정 흐름' };
+  if (session === 'DZ_t2') return { key: 'present__agenda_joint', label: '통합 의제정리' };
+  if (session === '환경4조') return { key: 'present__environment', label: '환경교육·생활실천' };
+  if (session === '정의전환') return { key: 'present__just_transition', label: '정의로운전환' };
+  if (session === '발표') return { key: 'present__presentation', label: '조별발표·공유' };
+  if (kind === 'Group') return { key: 'present__stakeholders', label: '영향집단·참여자 관점' };
+  return { key: 'present__stakeholders', label: '영향집단·참여자 관점' };
+}
+
+function sessionGroupOf(session, kind) {
+  if (!session) return { key: 'sess__기타', label: '기타/미분류' };
+  if (PREFIX_META[session]) return { key: 'sess__' + session, label: sessionLabel(session) };
+  if (kind === 'Group') return { key: 'sess__stakeholders', label: '영향집단·참여자 관점' };
+  return { key: 'sess__stakeholders', label: '영향집단·참여자 관점' };
+}
+
 // 그룹 키 산정 — 중립적 구조 기준만 사용(중요도 판단 금지)
 function groupKeyOf(node, issueByNode) {
+  if (groupMode === 'present') {
+    const chapter = presentChapterOf(node.data('session'), node.data('kind'));
+    return { key: chapter.key, label: chapter.label };
+  }
   if (groupMode === 'session') {
-    const s = node.data('session');
-    return s ? { key: 'sess__' + s, label: sessionLabel(s) } : { key: 'sess__기타', label: '기타/미분류' };
+    return sessionGroupOf(node.data('session'), node.data('kind'));
   }
   // issue 모드: raisesIssue 엣지로 연결된 Issue 아래에 둔다.
   //   규칙 — 자기 자신이 Issue면 자기 자신 그룹. 그 외엔 raisesIssue로 처음 연결된 Issue(node→Issue 또는 Issue→node).
@@ -1387,18 +1411,18 @@ function buildCyStyle(palette) {
   return [
     { selector:'node', style:{
         'background-color': n => palette[n.data('kind')] || '#888',
-        'label':'data(label)', 'color': paper ? '#111827' : '#eef3f9', 'font-size': presentMode ? '26px' : '12px',
-        'min-zoomed-font-size': 7,  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
+        'label':'data(label)', 'color': paper ? '#111827' : '#eef3f9', 'font-size': presentMode ? '18px' : '12px',
+        'min-zoomed-font-size': presentMode ? 18 : 7,  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
         'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif", 'font-weight': presentMode ? 700 : 500,
-        'text-wrap':'wrap','text-max-width': presentMode ? '220px' : '140px','text-valign':'bottom','text-margin-y':4,
-        'text-outline-color': paper ? '#ffffff' : '#11151c','text-outline-width': presentMode ? 4 : 2.5,
-        'width': n => (presentMode?34:22) + Math.min(n.data('deg')||0,8)*(presentMode?6:4),
-        'height': n => (presentMode?34:22) + Math.min(n.data('deg')||0,8)*(presentMode?6:4),
+        'text-wrap':'wrap','text-max-width': presentMode ? '130px' : '140px','text-valign':'bottom','text-margin-y':4,
+        'text-outline-color': paper ? '#ffffff' : '#11151c','text-outline-width': presentMode ? 3 : 2.5,
+        'width': n => (presentMode?30:22) + Math.min(n.data('deg')||0,8)*(presentMode?4:4),
+        'height': n => (presentMode?30:22) + Math.min(n.data('deg')||0,8)*(presentMode?4:4),
         'border-width':2,'border-color':'#0d1118','shape':'ellipse','opacity':0.98,
     }},
     { selector:'node[?isOverviewLabel]', style:{
         'min-zoomed-font-size':0,
-        'font-size': presentMode ? '28px' : '13px',
+        'font-size': presentMode ? '22px' : '13px',
         'font-weight':800,
         'text-background-color': paper ? '#ffffff' : '#0b111a',
         'text-background-opacity': paper ? 0.9 : 0.82,
