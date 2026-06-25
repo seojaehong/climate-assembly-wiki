@@ -28,8 +28,8 @@
       "id": "S2",
       "title": "Add Gyeonggi OCR agenda-source static export",
       "priority": 2,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "acceptance": [
         "static export is generated from Gyeonggi OCR/review materials",
         "export distinguishes original excerpt, OCR source document, page refs, stage, working group, and status",
@@ -44,8 +44,8 @@
       "id": "S3",
       "title": "Create source-backed agenda page route",
       "priority": 3,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "acceptance": [
         "new route renders source-backed agenda records separately from internal draft wiki",
         "page shows source document, OCR status, original excerpt, summary, and related materials",

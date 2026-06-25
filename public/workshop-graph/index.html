@@ -142,6 +142,7 @@ let isoShown = false;
 let sources = null, curSource = null, curView = '2d', pollTimer = null;
 let currentMetaAssets = null;
 let agendaSurface = null, agendaSurfacePromise = null;
+let gyeonggiAgendaSurface = null, gyeonggiAgendaSurfacePromise = null;
 let physicsOn = localStorage.getItem('og-physics') === '1', colaLayout = null;
 let presentMode = false;  // 발표(대형스크린) 모드 — 공유 가능 뷰 상태라 URL 파라미터
 let fixedNodeId = null, hoverNodeId = null, graph3dData = null, quickHover = false, hoverHideTimer = null;
@@ -212,6 +213,7 @@ const params = new URLSearchParams(location.search);
   bindGlobalEvents();
   if (curView === '3d') applyView('3d');
   loadAgendaSurface();
+  loadGyeonggiAgendaSurface();
   loadSource(curSource);
 })();
 
@@ -412,6 +414,26 @@ async function loadAgendaSurface() {
   return agendaSurfacePromise;
 }
 
+async function loadGyeonggiAgendaSurface() {
+  if (gyeonggiAgendaSurfacePromise) return gyeonggiAgendaSurfacePromise;
+  gyeonggiAgendaSurfacePromise = fetch('data/gyeonggi-agenda-surface.json?_=' + Date.now())
+    .then(r => {
+      if (!r.ok) throw new Error(`gyeonggi agenda surface ${r.status}`);
+      return r.json();
+    })
+    .then(data => {
+      const records = Array.isArray(data?.records) ? data.records : [];
+      gyeonggiAgendaSurface = { ...data, records };
+      return gyeonggiAgendaSurface;
+    })
+    .catch(err => {
+      console.warn('[gyeonggi-agenda-surface] unavailable', err);
+      gyeonggiAgendaSurface = null;
+      return null;
+    });
+  return gyeonggiAgendaSurfacePromise;
+}
+
 function normalizeAgendaIds(value) {
   const values = Array.isArray(value) ? value : (value == null ? [] : [value]);
   return values
@@ -437,7 +459,7 @@ function addAgendaCandidate(map, agenda, rank, reason) {
 }
 
 function findRelatedAgendas(node) {
-  if (!agendaSurface?.agendas?.length || !node) return [];
+  if (!node || (!agendaSurface?.agendas?.length && !gyeonggiAgendaSurface?.records?.length)) return [];
   const candidates = new Map();
   const explicitIds = [
     ...normalizeAgendaIds(node.agenda_ids),
@@ -445,16 +467,16 @@ function findRelatedAgendas(node) {
     ...normalizeAgendaIds(node.related_agendas),
     ...normalizeAgendaIds(node.related_agenda_ids),
   ];
-  for (const id of explicitIds) addAgendaCandidate(candidates, agendaSurface.byId[String(id)], 100, '직접 연결');
+  for (const id of explicitIds) addAgendaCandidate(candidates, agendaSurface?.byId?.[String(id)], 100, '직접 연결');
 
   const haystack = `${node.label || ''} ${node.text || ''}`.toLowerCase();
   const nodeTerms = new Set(agendaTokens(haystack));
   for (const hint of AGENDA_HINTS) {
     if (hint.terms.some(term => haystack.includes(term.toLowerCase()))) {
-      for (const id of hint.ids) addAgendaCandidate(candidates, agendaSurface.byId[String(id)], 92, '핵심어 연결');
+      for (const id of hint.ids) addAgendaCandidate(candidates, agendaSurface?.byId?.[String(id)], 92, '핵심어 연결');
     }
   }
-  if (haystack.trim()) {
+  if (agendaSurface?.agendas?.length && haystack.trim()) {
     for (const agenda of agendaSurface.agendas) {
       let rank = 0;
       const title = String(agenda.title || '').toLowerCase();
@@ -473,19 +495,44 @@ function findRelatedAgendas(node) {
     }
   }
 
+  if (gyeonggiAgendaSurface?.records?.length && haystack.trim()) {
+    for (const record of gyeonggiAgendaSurface.records) {
+      let rank = 0;
+      const title = String(record.title || '').toLowerCase();
+      const group = String(record.working_group || '').toLowerCase();
+      const labelLower = String(node.label || '').toLowerCase().trim();
+      if (title && (haystack.includes(title) || (labelLower.length >= 2 && title.includes(labelLower)))) rank += 80;
+      if (group && haystack.includes(group)) rank += 16;
+      const keywords = Array.isArray(record.keywords) ? record.keywords : [];
+      for (const keyword of keywords) {
+        const term = String(keyword).toLowerCase();
+        if (term.length >= 2 && !AGENDA_STOP_TERMS.has(term) && nodeTerms.has(term)) rank += 5;
+      }
+      if (rank >= 18) {
+        addAgendaCandidate(candidates, {
+          ...record,
+          big_category: record.status_label || '경기도 OCR',
+          domain: record.working_group || '',
+          summary: record.original_excerpt || record.summary || record.title,
+          match_reason: '경기도 OCR 유사',
+        }, rank + 8, '경기도 OCR 유사');
+      }
+    }
+  }
+
   const seedAgendas = [...candidates.values()].sort((a, b) => b.rank - a.rank).slice(0, 3);
   for (const agenda of seedAgendas) {
     for (const id of normalizeAgendaIds(agenda.related_agendas).slice(0, 3)) {
-      addAgendaCandidate(candidates, agendaSurface.byId[String(id)], Math.min(agenda.rank - 10, 70), '연관 의제');
+      addAgendaCandidate(candidates, agendaSurface?.byId?.[String(id)], Math.min(agenda.rank - 10, 70), '연관 의제');
     }
     for (const id of normalizeAgendaIds(agenda.similar_agendas).slice(0, 3)) {
-      addAgendaCandidate(candidates, agendaSurface.byId[String(id)], Math.min(agenda.rank - 14, 60), '의제 네트워크 유사');
+      addAgendaCandidate(candidates, agendaSurface?.byId?.[String(id)], Math.min(agenda.rank - 14, 60), '의제 네트워크 유사');
     }
   }
 
   return [...candidates.values()]
-    .filter(agenda => Number.isFinite(Number(agenda.id)))
-    .sort((a, b) => b.rank - a.rank || Number(a.id) - Number(b.id))
+    .filter(agenda => agenda.id != null)
+    .sort((a, b) => b.rank - a.rank || String(a.id).localeCompare(String(b.id), 'ko'))
     .slice(0, 5);
 }
 

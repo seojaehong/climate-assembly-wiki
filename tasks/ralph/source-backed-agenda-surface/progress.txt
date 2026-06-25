@@ -8,3 +8,9 @@
 - Verified: generated JSON has `linked=0`, no `/ko/agenda/`, no `content/ko/agenda/`; browser check on `B_t1__Issue_008` showed `관련 의제 자료`, `내부 가안 링크는 제외했습니다`, `원천 자료 페이지 준비 중`, old `의제 원문 보기=false`, internal links `[]`.
 - Learned: existing agenda markdown can still provide temporary matching titles/summaries, but must not expose public hrefs until Gyeonggi OCR/Supabase source-backed pages exist.
 - Next: S2 build Gyeonggi OCR agenda-source static export.
+
+## 2026-06-25 S2/S3
+- Changed: `scripts/build-gyeonggi-agenda-source.mjs`, `public/workshop-graph/data/gyeonggi-agenda-surface.json`, `src/pages/[lang]/agenda-source/[source]/[id].astro`, `public/workshop-graph/index.html`, `package.json`.
+- Verified: export produced 71 records, 70 OCR/page matches, 20 final-selected/33 adopted/18 rejected, 71 source-backed hrefs; Astro dev route `/ko/agenda-source/gyeonggi/001-경기도형-탄소-포인트-기부-나눔/` returned 200 and showed title, source label, and original excerpt; graph browser check found a `/ko/agenda-source/gyeonggi/...` link and no `/ko/agenda/` internal draft links.
+- Learned: Astro `getStaticPaths` in this repo cannot rely on local helper constants from frontmatter; read the JSON inside `getStaticPaths` directly.
+- Next: Supabase adapter and better ranking can build on the same source-backed shape.
