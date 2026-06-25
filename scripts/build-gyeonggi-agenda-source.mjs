@@ -7,6 +7,22 @@ const reviewPath = path.join(projectRoot, '10_작업산출물', '2026-06-22_경�
 const ocrJsonDir = path.join(projectRoot, '00_입력자료', '경기도 기후도민회의', 'evaluation', 'json');
 const outPath = path.join(root, 'public', 'workshop-graph', 'data', 'gyeonggi-agenda-surface.json');
 
+const missingInputs = [
+  [reviewPath, 'review markdown'],
+  [ocrJsonDir, 'OCR JSON directory'],
+].filter(([target]) => !fs.existsSync(target));
+
+if (missingInputs.length > 0) {
+  if (fs.existsSync(outPath)) {
+    const labels = missingInputs.map(([, label]) => label).join(', ');
+    console.warn(`[gyeonggi-agenda-source] skipped regeneration: missing ${labels}; keeping committed ${path.relative(root, outPath)}`);
+    process.exit(0);
+  }
+
+  const details = missingInputs.map(([target, label]) => `${label}: ${target}`).join('\n');
+  throw new Error(`[gyeonggi-agenda-source] cannot build: missing source inputs and no committed output exists\n${details}`);
+}
+
 const GROUP_RE = /^##\s+(.+?)\s+—\s+최종선정\s+(\d+)\s+·\s+채택\s+(\d+)\s+·\s+미채택\s+(\d+)\s+·\s+2차상세\s+(\d+)건/m;
 const STATUS_LABELS = [
   { marker: '**🏆 최종선정', status: 'final_selected', label: '최종선정' },
