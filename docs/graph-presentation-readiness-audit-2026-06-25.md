@@ -1,74 +1,84 @@
-# Graph Presentation Readiness Audit — 2026-06-25
+# Graph Presentation Readiness Audit — 2026-06-26
 
 ## Scope
 
 - Target: `/workshop-graph/?source=workshop-2026-06-13`
-- Purpose: presentation-surface readiness check after planner feedback.
-- Non-goal: editing `/ko/agenda/` pages or mutating Supabase/database records.
+- Purpose: presentation A/B surface after planner feedback.
+- Non-goal: editing `/ko/agenda/` pages, mutating Supabase records, or claiming official minutes validation.
 
 ## Current Decision
 
-- Presentation mode is not a reduced or sampled graph.
-- `mode=present` uses a bright 2D surface and adds top-level chapter containers.
-- Original nodes and edges stay present: 613 nodes and 491 edges.
-- AI is presented as a deliberation aid, not as a consensus maker.
+- Presentation mode is a density-controlled view over the same source graph.
+- It is not a sampled or reduced replacement for the ontology.
+- Original workshop graph data remains the source of truth: 613 nodes and 491 edges.
+- AI is framed as a deliberation aid, not as a consensus maker.
+
+## Presentation Levels
+
+| URL | Label | Purpose | First-screen density |
+| --- | --- | --- | --- |
+| `?mode=present&level=chapter` | 대목차 | Stage opening / explain the big map | 8 collapsed chapter nodes |
+| `?mode=present&level=brief` | 중간목차 | A/B testable presentation map | 72 collapsed representative nodes |
+| `?mode=present&level=full` | 원본전체 | Q&A / inspection / verification | full graph, labels constrained |
 
 ## Fixed In This Pass
 
-- Added `대목차` grouping for presentation mode.
-- Default `mode=present` now opens with `group=present`.
-- Presentation top-level chapters:
-  - A조 의제선정 흐름: 170
-  - B조 의제선정 흐름: 156
-  - 운영규정 논의: 129
-  - 환경교육·생활실천: 88
-  - 통합 의제정리: 34
-  - 정의로운전환: 22
-  - 영향집단·참여자 관점: 8
-  - 조별발표·공유: 6
-- Session grouping no longer surfaces `청년`, `농민`, `직장인` and similar participant labels as fake sessions. They are grouped as `영향집단·참여자 관점`.
-- Presentation label styling was reduced for ordinary nodes so Chrome zoom or graph zoom does not try to keep every node label large at once.
+- Added `level=chapter|brief|full` URL state and `발표 밀도` segmented control.
+- `chapter` uses 8 top-level chapter containers.
+- `brief` uses session-by-ontology-role representative containers. Current data creates 72 representative nodes, inside the requested 50-100 screen-density band.
+- `full` no longer displays every label at once. It keeps edge labels off and shows only overview/focus labels.
+- Presentation mode hides or compresses operator-heavy UI: 2D/3D toggle, search, hub chips, and legacy grouping controls.
+- Edge relation labels are hidden by default in presentation mode. They appear only in focus contexts outside chapter mode.
+- Collapsed presentation groups now get a second layout pass and are fit by visible representative nodes, not by the expanded compound graph.
+- Group labels include child counts, making it clear that the original nodes are folded inside.
 
-## Verified
+## Verified Locally
 
-- Local static route loaded:
-  - `/workshop-graph/?source=workshop-2026-06-13&mode=present`
-  - `/workshop-graph/?source=workshop-2026-06-13&mode=present&group=session`
-  - `/workshop-graph/?source=workshop-2026-06-13&view=3d`
-- Presentation default:
-  - Active group: `present`
-  - Real nodes: 613
-  - Edges: 491
-  - Chapter groups: 8
+- `chapter`
+  - Visible nodes: 8
+  - Visible groups: 8
+  - Collapsed groups: 8
+  - Edge labels shown: 0
+  - Normal node labels shown: 0
   - Horizontal overflow: 0
-- Session view:
-  - Real nodes: 613
-  - Edges: 491
-  - Session groups: 16
-  - Fake singleton sessions removed from visible grouping.
-- Mobile 390px:
-  - Real nodes: 613
-  - Edges: 491
-  - Chapter groups: 8
+- `brief`
+  - Visible nodes: 72
+  - Visible groups: 72
+  - Collapsed groups: 72
+  - Edge labels shown: 0
+  - Normal node labels shown: 0
   - Horizontal overflow: 0
-- 3D:
+- `full`
+  - Visible nodes: 562 after isolated-node default filter
+  - Edge labels shown: 0
+  - Normal node labels shown: 82 overview labels
+  - Horizontal overflow: 0
+- Browser page-scale smoke for `chapter` and `brief` at 1, 1.25, 1.5, 1.75:
+  - Visible node count remained stable.
+  - Edge labels stayed hidden.
+  - Normal node labels stayed hidden.
+  - Horizontal overflow remained 0.
+- Mobile 390px `brief`:
+  - Visible nodes: 72
+  - Edge labels shown: 0
+  - Normal node labels shown: 0
+  - Horizontal overflow: 0
+- 3D regression:
   - Nodes: 613
   - Links: 491
   - Canvas present.
-- Browser zoom smoke:
-  - Page scale 1, 1.25, 1.5, 1.75 kept active `present` group, 613 nodes, 8 chapter groups, and horizontal overflow 0.
 
-## Remaining Presentation Caveats
+## Remaining Caveats
 
-- The graph is now safer for presentation, but live site deployment still must be verified after Cloudflare publishes the pushed commit.
-- Visual label collision is reduced by semantic zoom and smaller ordinary labels, but full automatic pixel-level overlap detection is not implemented.
+- Live Cloudflare deployment must still be verified after publish.
+- Automatic pixel-level label-overlap detection is not implemented; this audit uses label-count, visibility, zoom, and overflow checks.
 - `B_t2` remains a partial-source caveat from the source coverage audit: it is present in graph output but based on incomplete transcription artifacts.
-- The page still states `LLM 추출 · 인간 검증 전`; do not present node labels as official minutes or final validated ontology.
+- Node labels remain LLM-extracted and not official minutes.
 
 ## Recommended Presentation Use
 
-1. Use `?mode=present` as the default stage view.
-2. Explain `대목차` as a presentation guide laid over the full graph, not as a reduced graph.
-3. Switch to `세션` to explain the 1박2일 discussion flow.
-4. Switch to `쟁점` only when explaining the detailed ontology extraction layer.
-5. Use 3D only as a supplementary exploration view, not as the main presentation surface.
+1. Start with `level=chapter`.
+2. Use `level=brief` for the main planner A/B test because it shows 72 representative nodes without exposing every raw label.
+3. Use `level=full` only for Q&A or verification.
+4. Explain that representative nodes are folded containers. They are not deleted or final consensus nodes.
+5. Keep 3D as an exploration view, not the main stage surface.

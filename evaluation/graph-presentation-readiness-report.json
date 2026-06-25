@@ -1,45 +1,60 @@
 {
-  "generated_at": "2026-06-25T22:55:00+09:00",
+  "generated_at": "2026-06-26T00:00:00+09:00",
   "target": "/workshop-graph/?source=workshop-2026-06-13",
   "decision": {
-    "presentation_default": "bright 2D with top-level chapter grouping",
+    "presentation_default": "bright 2D density-controlled presentation view",
+    "levels": ["chapter", "brief", "full"],
     "not_reduced_graph": true,
-    "original_nodes_preserved": true,
-    "original_edges_preserved": true,
+    "original_nodes": 613,
+    "original_edges": 491,
     "ai_consensus_maker": false
   },
-  "presentation_default": {
-    "route": "/workshop-graph/?source=workshop-2026-06-13&mode=present",
-    "active_group": "present",
-    "real_nodes": 613,
-    "edges": 491,
-    "chapter_groups": 8,
-    "horizontal_overflow": 0,
-    "chapters": [
-      { "label": "A조 의제선정 흐름", "children": 170 },
-      { "label": "B조 의제선정 흐름", "children": 156 },
-      { "label": "운영규정 논의", "children": 129 },
-      { "label": "환경교육·생활실천", "children": 88 },
-      { "label": "통합 의제정리", "children": 34 },
-      { "label": "정의로운전환", "children": 22 },
-      { "label": "영향집단·참여자 관점", "children": 8 },
-      { "label": "조별발표·공유", "children": 6 }
-    ]
+  "levels": {
+    "chapter": {
+      "route": "/workshop-graph/?source=workshop-2026-06-13&mode=present&level=chapter",
+      "active_group": "present",
+      "visible_nodes": 8,
+      "visible_groups": 8,
+      "collapsed_groups": 8,
+      "edge_labels_shown": 0,
+      "normal_node_labels_shown": 0,
+      "horizontal_overflow": 0
+    },
+    "brief": {
+      "route": "/workshop-graph/?source=workshop-2026-06-13&mode=present&level=brief",
+      "active_group": "brief",
+      "visible_nodes": 72,
+      "visible_groups": 72,
+      "collapsed_groups": 72,
+      "edge_labels_shown": 0,
+      "normal_node_labels_shown": 0,
+      "horizontal_overflow": 0
+    },
+    "full": {
+      "route": "/workshop-graph/?source=workshop-2026-06-13&mode=present&level=full",
+      "active_group": "none",
+      "visible_nodes": 562,
+      "edge_labels_shown": 0,
+      "normal_node_labels_shown": 82,
+      "horizontal_overflow": 0
+    }
   },
-  "session_view": {
-    "route": "/workshop-graph/?source=workshop-2026-06-13&mode=present&group=session",
-    "active_group": "session",
-    "real_nodes": 613,
-    "edges": 491,
-    "groups": 16,
-    "fake_singleton_sessions_removed": true
-  },
+  "browser_zoom": [
+    { "level": "chapter", "scale": 1, "visible_nodes": 8, "edge_labels_shown": 0, "normal_node_labels_shown": 0, "horizontal_overflow": 0 },
+    { "level": "chapter", "scale": 1.25, "visible_nodes": 8, "edge_labels_shown": 0, "normal_node_labels_shown": 0, "horizontal_overflow": 0 },
+    { "level": "chapter", "scale": 1.5, "visible_nodes": 8, "edge_labels_shown": 0, "normal_node_labels_shown": 0, "horizontal_overflow": 0 },
+    { "level": "chapter", "scale": 1.75, "visible_nodes": 8, "edge_labels_shown": 0, "normal_node_labels_shown": 0, "horizontal_overflow": 0 },
+    { "level": "brief", "scale": 1, "visible_nodes": 72, "edge_labels_shown": 0, "normal_node_labels_shown": 0, "horizontal_overflow": 0 },
+    { "level": "brief", "scale": 1.25, "visible_nodes": 72, "edge_labels_shown": 0, "normal_node_labels_shown": 0, "horizontal_overflow": 0 },
+    { "level": "brief", "scale": 1.5, "visible_nodes": 72, "edge_labels_shown": 0, "normal_node_labels_shown": 0, "horizontal_overflow": 0 },
+    { "level": "brief", "scale": 1.75, "visible_nodes": 72, "edge_labels_shown": 0, "normal_node_labels_shown": 0, "horizontal_overflow": 0 }
+  ],
   "mobile": {
     "viewport": "390x844",
-    "active_group": "present",
-    "real_nodes": 613,
-    "edges": 491,
-    "chapter_groups": 8,
+    "level": "brief",
+    "visible_nodes": 72,
+    "edge_labels_shown": 0,
+    "normal_node_labels_shown": 0,
     "horizontal_overflow": 0
   },
   "three_d": {
@@ -48,12 +63,6 @@
     "links": 491,
     "canvas_present": true
   },
-  "browser_zoom": [
-    { "scale": 1, "active_group": "present", "real_nodes": 613, "chapter_groups": 8, "horizontal_overflow": 0 },
-    { "scale": 1.25, "active_group": "present", "real_nodes": 613, "chapter_groups": 8, "horizontal_overflow": 0 },
-    { "scale": 1.5, "active_group": "present", "real_nodes": 613, "chapter_groups": 8, "horizontal_overflow": 0 },
-    { "scale": 1.75, "active_group": "present", "real_nodes": 613, "chapter_groups": 8, "horizontal_overflow": 0 }
-  ],
   "remaining_caveats": [
     "Live Cloudflare deployment must still be verified after publish.",
     "Full pixel-level text-overlap detection is not implemented.",

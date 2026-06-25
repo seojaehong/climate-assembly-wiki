@@ -7,7 +7,7 @@
 <title>숙의 온톨로지 — 통합 그래프</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/_ontology-chrome/chrome.css?v=20260625-present-groups">
+<link rel="stylesheet" href="/_ontology-chrome/chrome.css?v=20260626-present-levels">
 <script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
 <script src="https://unpkg.com/layout-base@2.0.1/layout-base.js"></script>
 <script src="https://unpkg.com/cose-base@2.2.0/cose-base.js"></script>
@@ -59,9 +59,17 @@
   body.og-present-mode #og-guide-link,
   body.og-present-mode #og-physics{display:none !important}
   body.og-present-mode .og-source-sel select{min-width:260px}
+  body.og-present-mode .og-source-sel .og-lbl,
+  body.og-present-mode .og-view-tog{display:none}
+  body.og-present-mode #og-group-tog,
+  body.og-present-mode #og-search,
+  body.og-present-mode .og-hub-rail{display:none !important}
   body.og-present-mode .og-group-tog .og-grp-lbl{font-size:0}
   body.og-present-mode .og-group-tog .og-grp-lbl::after{content:"보기";font-size:11px}
   body.og-present-mode .og-footer{background:#f8fafc;color:#475569;border-top-color:#dbe4ef}
+  .og-level-tog{display:none}
+  body.og-present-mode .og-level-tog{display:flex}
+  body.og-present-mode .og-present-hud{max-width:min(720px,calc(100vw - 420px));padding:7px 10px;font-size:12px}
   @media (max-width:640px){
     .og-hub-rail{left:10px;right:10px;top:10px;gap:5px;max-height:40px;overflow:hidden}
     body.view-3d .og-hub-rail{top:46px;right:10px}
@@ -86,6 +94,12 @@
     </div>
     <button class="og-btn og-2d-only" id="og-physics" title="물리 시뮬레이션 — 노드를 끌면 연결 노드가 함께 움직입니다" aria-pressed="false">⚛ 물리 OFF</button>
     <button class="og-btn" id="og-present" title="발표 모드 — 큰 글씨(대형 스크린·청중용)" aria-pressed="false">🖥 발표</button>
+    <div class="og-group-tog og-level-tog og-2d-only" id="og-level-tog" title="발표 밀도 — 같은 원본 그래프를 발표용 밀도로 접어 봅니다">
+      <span class="og-grp-lbl">발표 밀도</span>
+      <button data-level="chapter">대목차</button>
+      <button data-level="brief">중간목차</button>
+      <button data-level="full">원본전체</button>
+    </div>
     <div class="og-group-tog og-2d-only" id="og-group-tog" title="묶기 — 무손실 클러스터(노드/엣지 보존, 부모 안에 둥지). 그룹을 클릭하면 접기/펼치기">
       <span class="og-grp-lbl">묶기</span>
       <button data-group="none" class="active">없음</button>
@@ -127,8 +141,8 @@
         <span class="og-3d-pill"><span class="og-3d-muted">노랑</span> 조건</span>
         <span class="og-3d-pill"><span class="og-3d-muted">회색</span> 근거</span>
       </div>
-      <div class="og-present-hud og-2d-only" aria-hidden="true">
-        <b>발표 보기</b> — 밝은 배경과 대목차 노드로 설명합니다. AI가 합의를 만들지 않고, 원 발언·근거·우려·조건을 보존해 숙의를 돕습니다.
+      <div class="og-present-hud og-2d-only" id="og-present-hud" aria-hidden="true">
+        <b>발표 보기</b> · 원본 613개 노드 보존 · 검증 전
       </div>
       <div class="og-hub-rail" id="og-hub-rail" aria-label="주요 쟁점 바로가기"></div>
       <div class="og-zoomctl og-2d-only">
@@ -180,8 +194,9 @@ let supabaseAgendaSurface = null, supabaseAgendaSurfacePromise = null;
 let kbAgendaSurface = null, kbAgendaSurfacePromise = null;
 let physicsOn = localStorage.getItem('og-physics') === '1', colaLayout = null;
 let presentMode = false;  // 발표(대형스크린) 모드 — 공유 가능 뷰 상태라 URL 파라미터
+let presentLevel = 'chapter'; // 'chapter' | 'brief' | 'full' — 발표 A/B 테스트용 노출 밀도
 let fixedNodeId = null, hoverNodeId = null, graph3dData = null, quickHover = false, hoverHideTimer = null;
-// A-3 묶기(클러스터): 'none' | 'present' | 'issue' | 'session'. 공유 가능 뷰 상태라 URL 파라미터(?group=).
+// A-3 묶기(클러스터): 'none' | 'present' | 'brief' | 'issue' | 'session'. 공유 가능 뷰 상태라 URL 파라미터(?group=).
 // 무손실 원칙 — 그룹은 합성 부모 노드로만 표현하고 실제 노드/엣지는 절대 삭제하지 않는다.
 let groupMode = 'none', ecApi = null;
 
@@ -242,7 +257,10 @@ const params = new URLSearchParams(location.search);
   curSource = params.get('source') || sources.default;
   curView = params.get('view') || '2d';
   presentMode = params.get('mode') === 'present';
-  groupMode = ['present','issue','session'].includes(params.get('group')) ? params.get('group') : (presentMode ? 'present' : 'none');
+  presentLevel = ['chapter','brief','full'].includes(params.get('level')) ? params.get('level') : 'chapter';
+  groupMode = ['present','brief','issue','session','none'].includes(params.get('group'))
+    ? params.get('group')
+    : (presentMode ? groupForPresentLevel(presentLevel) : 'none');
   if (presentMode && !params.has('view')) curView = '2d';
   buildSourceDropdown();
   OntologyChrome.init({ activeId: 'workshop', title: '숙의 온톨로지', meta: '로딩 중…' });
@@ -285,8 +303,11 @@ function updateUrl() {
   const p = new URLSearchParams();
   p.set('source', curSource);
   if (curView !== '2d') p.set('view', curView);
-  if (presentMode) p.set('mode', 'present');
-  if (groupMode !== 'none') p.set('group', groupMode);
+  if (presentMode) {
+    p.set('mode', 'present');
+    p.set('level', presentLevel);
+  }
+  if (groupMode !== 'none' && (!presentMode || groupMode !== groupForPresentLevel(presentLevel))) p.set('group', groupMode);
   history.replaceState(null, '', '?' + p.toString());
 }
 
@@ -1069,6 +1090,7 @@ function renderCy() {
       nodeRepulsion:9000, idealEdgeLength:130, edgeElasticity:0.45,
       gravity:0.25, numIter:2500, packComponents:true, nodeSeparation:90 },
   });
+  configurePresentationZoom();
   applyIsolated();
   buildKindChips();
   buildLegend();
@@ -1115,10 +1137,11 @@ function togglePresent() {
   presentMode = !presentMode;
   if (presentMode) {
     if (curView !== '2d') curView = '2d';
-    if (groupMode === 'none') groupMode = 'present';
+    if (groupMode === 'none') groupMode = groupForPresentLevel(presentLevel);
   }
   syncPresentationBody();
   updatePresentBtn();
+  updatePresentLevelUI();
   updateGroupBtns();
   updateUrl();
   if (ALL_NODES.length) {
@@ -1137,6 +1160,88 @@ function updatePresentBtn() {
 
 function syncPresentationBody() {
   document.body.classList.toggle('og-present-mode', presentMode && curView === '2d');
+  document.body.classList.toggle('og-present-chapter', presentMode && curView === '2d' && presentLevel === 'chapter');
+  document.body.classList.toggle('og-present-brief', presentMode && curView === '2d' && presentLevel === 'brief');
+  document.body.classList.toggle('og-present-full', presentMode && curView === '2d' && presentLevel === 'full');
+}
+
+function groupForPresentLevel(level) {
+  if (level === 'brief') return 'brief';
+  if (level === 'full') return 'none';
+  return 'present';
+}
+
+function presentLevelCopy(level) {
+  if (level === 'brief') return {
+    title: '중간목차 보기',
+    body: '50-100개 안팎의 세션×발언역할 대표 노드로 접어 봅니다. 모든 원 발언은 접힌 내부에 남아 있고 클릭해 펼칠 수 있습니다.',
+  };
+  if (level === 'full') return {
+    title: '원본전체 보기',
+    body: '원 발언·근거·우려·조건 노드를 모두 펼친 검증/탐색 화면입니다. 발표 첫 화면보다는 질문 대응용입니다.',
+  };
+  return {
+    title: '대목차 보기',
+    body: '8개 상위 목차 노드로 전체 토론 지형을 설명합니다. 원본을 삭제하지 않고 발표자가 길을 잡기 위한 안내층입니다.',
+  };
+}
+
+function updatePresentLevelUI() {
+  document.querySelectorAll('#og-level-tog button').forEach(b => {
+    b.classList.toggle('active', b.dataset.level === presentLevel);
+  });
+  const hud = document.getElementById('og-present-hud');
+  if (hud) {
+    const copy = presentLevelCopy(presentLevel);
+    hud.innerHTML = `<b>${copy.title}</b> — ${copy.body} AI가 합의를 만들지 않고 숙의를 돕습니다.`;
+  }
+}
+
+function setPresentLevel(level) {
+  if (!['chapter','brief','full'].includes(level)) return;
+  presentLevel = level;
+  presentMode = true;
+  if (curView !== '2d') curView = '2d';
+  groupMode = groupForPresentLevel(level);
+  syncPresentationBody();
+  updatePresentBtn();
+  updatePresentLevelUI();
+  updateGroupBtns();
+  updateUrl();
+  if (ALL_NODES.length) renderCy();
+}
+
+function configurePresentationZoom() {
+  if (!cy) return;
+  if (!presentMode || presentLevel === 'full') {
+    cy.minZoom(0.08);
+    cy.maxZoom(3);
+    return;
+  }
+  if (presentLevel === 'chapter') {
+    cy.minZoom(0.22);
+    cy.maxZoom(1.7);
+    return;
+  }
+  cy.minZoom(0.14);
+  cy.maxZoom(2.2);
+}
+
+function fitPresentationLevel(level = presentLevel) {
+  if (!cy) return;
+  configurePresentationZoom();
+  const groups = cy.nodes('[?isGroup]:visible');
+  if (presentMode && (level === 'chapter' || level === 'brief') && groups.length) {
+    cy.fit(groups, level === 'chapter' ? 120 : 84);
+    const current = cy.zoom();
+    const floor = level === 'chapter' ? 0.28 : 0.18;
+    if (current < floor) {
+      cy.zoom({ level: floor, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } });
+      cy.center(groups);
+    }
+    return;
+  }
+  cy.fit(null, presentMode ? 56 : 40);
 }
 
 // ─── A-3 완전성 보존 묶기(클러스터) ───────────────────────────────
@@ -1165,11 +1270,60 @@ function sessionGroupOf(session, kind) {
   return { key: 'sess__stakeholders', label: '영향집단·참여자 관점' };
 }
 
+const BRIEF_KIND_LABEL = {
+  Issue: '쟁점',
+  Claim: '주장',
+  Proposal: '대안',
+  Concern: '우려',
+  Condition: '조건',
+  Value: '가치',
+  Evidence: '근거',
+  Group: '영향집단',
+  Clause: '조항',
+  Decision: '결정',
+};
+
+function briefBaseOf(node) {
+  const session = sessionGroupOf(node.data('session'), node.data('kind'));
+  const kind = node.data('kind') || '기타';
+  return {
+    key: `brief__${session.key}__${kind}`,
+    label: `${session.label} · ${BRIEF_KIND_LABEL[kind] || kind}`,
+    sessionKey: session.key,
+    sessionLabel: session.label,
+  };
+}
+
+function buildBriefBaseCounts() {
+  const counts = {};
+  if (!cy) return counts;
+  cy.nodes().forEach(n => {
+    if (n.data('isGroup')) return;
+    const base = briefBaseOf(n);
+    counts[base.key] = (counts[base.key] || 0) + 1;
+  });
+  return counts;
+}
+
+function briefGroupOf(node, counts) {
+  const base = briefBaseOf(node);
+  if ((counts?.[base.key] || 0) < 3) {
+    return {
+      key: `brief__${base.sessionKey}__other`,
+      label: `${base.sessionLabel} · 기타 발언`,
+    };
+  }
+  return { key: base.key, label: base.label };
+}
+
 // 그룹 키 산정 — 중립적 구조 기준만 사용(중요도 판단 금지)
 function groupKeyOf(node, issueByNode) {
   if (groupMode === 'present') {
     const chapter = presentChapterOf(node.data('session'), node.data('kind'));
     return { key: chapter.key, label: chapter.label };
+  }
+  if (groupMode === 'brief') {
+    return briefGroupOf(node, issueByNode?.briefCounts || {});
   }
   if (groupMode === 'session') {
     return sessionGroupOf(node.data('session'), node.data('kind'));
@@ -1224,13 +1378,16 @@ function applyGrouping(mode) {
   clearGrouping();
   if (mode === 'none') {
     // 무리 해제 → 정상 레이아웃 + 물리 복원(localStorage 선호 유지)
-    runFcose(() => { if (physicsOn) applyPhysics(); });
+    configurePresentationZoom();
+    runFcose({ level: 'full' }, () => { if (physicsOn) applyPhysics(); });
     return;
   }
   // 묶기 모드에서는 물리 비활성(cola+compound 취약 — de-risk). 실행만 멈추고
   // physicsOn(=사용자 선호)은 보존 → 없음 복귀 시 자동 복원.
   stopPhysics();
-  const issueByNode = mode === 'issue' ? buildIssueByNode() : null;
+  const issueByNode = mode === 'issue'
+    ? buildIssueByNode()
+    : (mode === 'brief' ? { briefCounts: buildBriefBaseCounts() } : null);
   cy.batch(() => {
     const seen = {};
     cy.nodes().forEach(n => {
@@ -1243,18 +1400,54 @@ function applyGrouping(mode) {
       }
       n.move({ parent: pid });
     });
+    cy.nodes('[?isGroup]').forEach(p => {
+      const childCount = p.children().length;
+      const baseLabel = String(p.data('label') || p.id()).replace(/\s+\(\d+\)$/, '');
+      p.data('baseLabel', baseLabel);
+      p.data('childCount', childCount);
+      if (mode === 'present' || mode === 'brief' || mode === 'session') p.data('label', `${baseLabel} (${childCount})`);
+    });
   });
-  runFcose(() => registerEC());
+  configurePresentationZoom();
+  runFcose({ level: presentLevel, collapsed: false, fit: !presentMode }, () => {
+    registerEC();
+    if (presentMode && (mode === 'present' || mode === 'brief')) collapsePresentationGroups();
+  });
 }
 
-function runFcose(done) {
+function layoutPreset(level = presentLevel, collapsed = false) {
+  const preset = {
+    name:'fcose', quality:'default', animate:false, randomize:true,
+    nodeDimensionsIncludeLabels:true, fit:false, packComponents:true,
+    edgeElasticity:0.45, numIter:2500,
+    nodeRepulsion:9000, idealEdgeLength:130, gravity:0.25, nodeSeparation:90,
+  };
+  if (collapsed && level === 'chapter') {
+    return { ...preset, nodeRepulsion:16000, idealEdgeLength:260, gravity:0.12, nodeSeparation:210 };
+  }
+  if (collapsed && level === 'brief') {
+    return { ...preset, nodeRepulsion:12000, idealEdgeLength:190, gravity:0.18, nodeSeparation:130 };
+  }
+  return preset;
+}
+
+function runFcose(options = {}, done) {
+  const level = options.level || presentLevel;
+  const collapsed = Boolean(options.collapsed);
+  const fit = options.fit !== false;
+  const eles = options.eles || (cy ? cy.elements() : null);
   try {
-    const lay = cy.layout({ name:'fcose', quality:'default', animate:false, randomize:true,
-      nodeRepulsion:9000, idealEdgeLength:130, edgeElasticity:0.45,
-      gravity:0.25, numIter:2500, packComponents:true, nodeSeparation:90 });
-    lay.one('layoutstop', () => { cy.fit(null, 40); done && done(); });
+    if (!cy || !eles) return;
+    const lay = eles.layout(layoutPreset(level, collapsed));
+    lay.one('layoutstop', () => {
+      if (fit) fitPresentationLevel(level);
+      done && done();
+    });
     lay.run();
-  } catch (e) { cy.fit(null, 40); done && done(); }
+  } catch (e) {
+    try { fitPresentationLevel(level); } catch {}
+    done && done();
+  }
 }
 
 // expand-collapse: 그룹 부모 클릭 → 접기/펼치기(자식은 숨김 토글일 뿐 그래프에 잔존 → 무손실)
@@ -1268,9 +1461,27 @@ function registerEC() {
   } catch (e) { ecApi = null; }
 }
 
+function collapsePresentationGroups() {
+  if (!cy || !ecApi) return;
+  cy.nodes('[?isGroup]').forEach(n => {
+    try {
+      if (ecApi.isCollapsible(n)) ecApi.collapse(n);
+    } catch {}
+  });
+  runFcose({ level: presentLevel, collapsed: true, eles: cy.elements(':visible'), fit: true }, () => {
+    applyFilter();
+  });
+}
+
 function setGroupMode(mode) {
   if (mode === groupMode) return;
   groupMode = mode;
+  if (presentMode) {
+    if (mode === 'present') presentLevel = 'chapter';
+    else if (mode === 'brief') presentLevel = 'brief';
+    else if (mode === 'none') presentLevel = 'full';
+    updatePresentLevelUI();
+  }
   updateGroupBtns();
   updateUrl();
   applyGrouping(mode);
@@ -1408,21 +1619,27 @@ function applyView(view) {
 
 function buildCyStyle(palette) {
   const paper = presentMode;
+  const presentationOverview = presentMode && presentLevel !== 'full';
   return [
     { selector:'node', style:{
         'background-color': n => palette[n.data('kind')] || '#888',
-        'label':'data(label)', 'color': paper ? '#111827' : '#eef3f9', 'font-size': presentMode ? '18px' : '12px',
-        'min-zoomed-font-size': presentMode ? 18 : 7,  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
+        'label': n => {
+          if (!presentMode || n.data('isGroup')) return n.data('label') || '';
+          if (presentLevel === 'full' && n.data('isOverviewLabel')) return n.data('label') || '';
+          return '';
+        },
+        'color': paper ? '#111827' : '#eef3f9', 'font-size': presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px',
+        'min-zoomed-font-size': presentMode ? (presentLevel === 'full' ? 18 : 999) : 7,  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
         'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif", 'font-weight': presentMode ? 700 : 500,
-        'text-wrap':'wrap','text-max-width': presentMode ? '130px' : '140px','text-valign':'bottom','text-margin-y':4,
-        'text-outline-color': paper ? '#ffffff' : '#11151c','text-outline-width': presentMode ? 3 : 2.5,
-        'width': n => (presentMode?30:22) + Math.min(n.data('deg')||0,8)*(presentMode?4:4),
-        'height': n => (presentMode?30:22) + Math.min(n.data('deg')||0,8)*(presentMode?4:4),
+        'text-wrap':'wrap','text-max-width': presentMode ? '120px' : '140px','text-valign':'bottom','text-margin-y':4,
+        'text-outline-color': paper ? '#ffffff' : '#11151c','text-outline-width': presentMode ? 2.5 : 2.5,
+        'width': n => (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4),
+        'height': n => (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4),
         'border-width':2,'border-color':'#0d1118','shape':'ellipse','opacity':0.98,
     }},
     { selector:'node[?isOverviewLabel]', style:{
-        'min-zoomed-font-size':0,
-        'font-size': presentMode ? '22px' : '13px',
+        'min-zoomed-font-size': presentationOverview ? 999 : (presentMode ? 18 : 0),
+        'font-size': presentMode ? '18px' : '13px',
         'font-weight':800,
         'text-background-color': paper ? '#ffffff' : '#0b111a',
         'text-background-opacity': paper ? 0.9 : 0.82,
@@ -1436,7 +1653,7 @@ function buildCyStyle(palette) {
     { selector:'edge', style:{
         'width':1.8, 'line-color': paper ? '#718096' : '#6b7890', 'target-arrow-color': paper ? '#718096' : '#6b7890',
         'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale':1,
-        'label':'data(relKo)','font-size': presentMode ? '18px' : '10px','min-zoomed-font-size': 9,'color': paper ? '#334155' : '#d3dbe8',
+        'label': paper ? '' : 'data(relKo)','font-size': '10px','min-zoomed-font-size': 9,'color': paper ? '#334155' : '#d3dbe8',
         'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif",
         'text-rotation':'autorotate','text-background-color': paper ? '#ffffff' : '#11151c',
         'text-background-opacity':0.85,'text-background-padding':2,'opacity':0.82,
@@ -1448,10 +1665,10 @@ function buildCyStyle(palette) {
         'shape':'round-rectangle','background-color': paper ? '#e6fffa' : '#12b886','background-opacity': paper ? 0.28 : 0.10,
         'border-width':2,'border-color': paper ? '#0f766e' : '#12b886','border-opacity':0.8,
         'label':'data(label)','color': paper ? '#0f766e' : '#63e6be','text-valign':'top','text-halign':'center',
-        'text-margin-y':-4,'font-weight':700,'font-size': presentMode ? '30px' : '15px',
+        'text-margin-y':-4,'font-weight':700,'font-size': presentMode ? (presentLevel === 'brief' ? '18px' : '22px') : '15px',
         'min-zoomed-font-size': presentMode ? 0 : 6,'text-outline-color': paper ? '#ffffff' : '#11151c','text-outline-width': presentMode ? 4 : 2.5,
-        'text-max-width': presentMode ? '320px' : '220px','text-wrap':'wrap',
-        'padding': presentMode ? '34px' : '24px',
+        'text-max-width': presentMode ? (presentLevel === 'brief' ? '190px' : '260px') : '220px','text-wrap':'wrap',
+        'padding': presentMode ? (presentLevel === 'brief' ? '22px' : '30px') : '24px',
     }},
     // 접힌 그룹(expand-collapse) — 단일 노드처럼 강조(여전히 모든 자식 대표 = 무손실)
     { selector:'node[?isGroup].cy-expand-collapse-collapsed-node', style:{
@@ -1462,8 +1679,18 @@ function buildCyStyle(palette) {
     { selector:'node.focus-dim', style:{ 'opacity': presentMode ? 0.72 : 0.10 }},
     { selector:'edge.focus-dim', style:{ 'opacity': presentMode ? 0.34 : 0.08 }},
     { selector:'node.focus-neighbor', style:{ 'opacity':0.92,'border-width':3,'border-color':'#8bd3ff' }},
+    { selector:'node.focus-main, node.focus-neighbor', style:{
+        'label':'data(label)','font-size': presentMode ? '13px' : '12px','min-zoomed-font-size':0,
+        'text-max-width':'120px','text-background-color': paper ? '#ffffff' : '#0b111a',
+        'text-background-opacity':0.92,'text-background-padding':3,
+    }},
     { selector:'node.focus-main', style:{ 'opacity':1,'border-width':5,'border-color':'#63e6be','overlay-color':'#63e6be','overlay-opacity':0.18,'overlay-padding':8 }},
-    { selector:'edge.focus-edge', style:{ 'opacity':0.92,'width':3.2,'line-color':'#8bd3ff','target-arrow-color':'#8bd3ff' }},
+    { selector:'edge.focus-edge', style:{
+        'opacity':0.92,'width':3.2,'line-color':'#8bd3ff','target-arrow-color':'#8bd3ff',
+        'label': presentMode && presentLevel === 'chapter' ? '' : 'data(relKo)',
+        'font-size':'11px','text-background-color': paper ? '#ffffff' : '#11151c',
+        'text-background-opacity':0.95,'text-background-padding':2,
+    }},
     { selector:'.hidden', style:{ 'display':'none' }},
   ];
 }
@@ -1587,6 +1814,10 @@ function bindGlobalEvents() {
   updatePhysicsBtn();
   document.getElementById('og-present').onclick = togglePresent;
   updatePresentBtn();
+  document.querySelectorAll('#og-level-tog button').forEach(b => {
+    b.onclick = () => setPresentLevel(b.dataset.level);
+  });
+  updatePresentLevelUI();
   document.querySelectorAll('#og-group-tog button').forEach(b => {
     b.onclick = () => setGroupMode(b.dataset.group);
   });
@@ -1598,7 +1829,7 @@ function bindGlobalEvents() {
   };
   document.getElementById('og-zin').onclick = () => cy && cy.zoom({ level: cy.zoom() * 1.25, renderedPosition: { x: cy.width()/2, y: cy.height()/2 } });
   document.getElementById('og-zout').onclick = () => cy && cy.zoom({ level: cy.zoom() / 1.25, renderedPosition: { x: cy.width()/2, y: cy.height()/2 } });
-  document.getElementById('og-zfit').onclick = () => cy && cy.fit(null, 30);
+  document.getElementById('og-zfit').onclick = () => cy && fitPresentationLevel(presentLevel);
   document.getElementById('og-search').oninput = (e) => {
     const q = e.target.value.trim().toLowerCase();
     if (!cy) return;
@@ -1648,6 +1879,7 @@ if (['127.0.0.1', 'localhost'].includes(location.hostname)) {
     renderNodeSurface,
     applyFocus,
     clearFocus,
+    getState: () => ({ presentMode, presentLevel, groupMode, curView, curSource }),
   };
 }
 </script>
