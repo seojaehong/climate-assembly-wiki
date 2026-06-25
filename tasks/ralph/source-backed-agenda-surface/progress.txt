@@ -56,3 +56,9 @@
 - Verified: live `https://climate-assembly.org/workshop-graph/data/kb-agenda-surface.json?cb=d57b38a` returned 200, length `1756986`, and contained `overseas-cases`; live `/ko/agenda-source/kb/000002-청소년-기후-교육-시민권/?cb=d57b38a` returned 200 and contained the KB agenda title; live `/workshop-graph/index.html?source=workshop-2026-06-13&cb=d57b38a` returned 200 and contained `kb-agenda-surface`.
 - Learned: production deployment did eventually pick up the pushed `main`; cache-busting query strings are useful for distinguishing deployment lag from browser/CDN cache.
 - Next: S8 remains open for manual publication/design QA before any KB record is promoted from `needs_review`.
+
+## 2026-06-25 S8
+- Changed: `src/pages/[lang]/agenda-source/[source]/[id].astro` now labels KB pages as protected KB export/needs review; `public/workshop-graph/index.html` shows review chips and avoids official-conclusion wording in related agenda cards; mobile header controls were reduced for source pages; QA report added at `docs/agenda-source-publication-qa-2026-06-25.md`.
+- Verified: local HTTP checks returned 200 for overseas KB, Gyeonggi KB, and graph HTML with expected review copy; `kb-agenda-surface.json` still has 1311 records and 0 records outside `needs_review`/`internal_static_export`; Chrome headless screenshots were saved to `evaluation/screenshots/kb-agenda-desktop.png` and `evaluation/screenshots/kb-agenda-mobile-final8.png`.
+- Learned: source-backed KB pages are ready to link as review material, but not to promote as official agenda wiki entries without a human review-status process.
+- Next: no open Ralph story for this feature; future work is a separate review/promotion workflow if the user wants official publication status changes.

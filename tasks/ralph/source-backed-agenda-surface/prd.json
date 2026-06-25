@@ -131,8 +131,8 @@
       "id": "S8",
       "title": "Review and design QA for KB agenda publication",
       "priority": 8,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "acceptance": [
         "selected KB agenda pages are manually reviewed for public wording, title quality, and source labels",
         "graph related agenda cards do not overstate unreviewed KB records as official conclusions",
@@ -142,7 +142,8 @@
       "files": [
         "src/pages/[lang]/agenda-source/[source]/[id].astro",
         "public/workshop-graph/index.html",
-        "public/workshop-graph/data/kb-agenda-surface.json"
+        "public/workshop-graph/data/kb-agenda-surface.json",
+        "docs/agenda-source-publication-qa-2026-06-25.md"
       ]
     },
     {

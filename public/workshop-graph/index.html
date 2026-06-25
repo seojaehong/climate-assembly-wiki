@@ -820,18 +820,20 @@ function renderAgendaWikiCards(agendas) {
   return `
     <div class="og-s-sec og-agenda-sec">
       <h4>관련 의제 자료</h4>
-      <div class="og-surface-role"><b>숙의 보조 자료</b><span>관련 가능성이 높은 자료입니다. AI가 결론을 만든 것이 아니며, 내부 가안 링크는 제외했습니다. 경기도 OCR·Supabase 원천 연결 후 원문 링크를 제공합니다.</span></div>
+      <div class="og-surface-role"><b>숙의 보조 자료</b><span>관련 가능성이 높은 원천 기반 자료입니다. AI가 결론을 만든 것이 아니며, 내부 가안 링크는 제외했습니다. 검수 전 KB 자료는 참고용으로 표시합니다.</span></div>
       <div class="og-agenda-list">
         ${agendas.slice(0, 3).map(agenda => {
           const summary = agenda.summary || agenda.current_situation || agenda.proposed_policy || '요약 정보가 아직 연결되지 않았습니다.';
           const details = [agenda.proposed_policy, agenda.expected_effect].filter(Boolean);
           const title = `${agenda.id ? `${agenda.id}. ` : ''}${agenda.title || '의제'}`;
+          const reviewLabel = agenda.review_status === 'needs_review' ? '검수 필요' : (agenda.status_label || '');
           return `
             <article class="og-agenda-card" data-agenda-id="${escapeHtml(agenda.id)}">
               <div class="og-agenda-meta">
                 <span>${escapeHtml(agenda.big_category || '분류 미상')}</span>
                 ${agenda.domain ? `<span>${escapeHtml(agenda.domain)}</span>` : ''}
                 ${agenda.match_reason ? `<span>${escapeHtml(agenda.match_reason)}</span>` : ''}
+                ${reviewLabel ? `<span>${escapeHtml(reviewLabel)}</span>` : ''}
               </div>
               <div class="og-agenda-title">${escapeHtml(title)}</div>
               <p>${escapeHtml(shortText(summary, 150))}</p>

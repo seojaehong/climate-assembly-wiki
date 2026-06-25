@@ -27,6 +27,8 @@ interface AgendaSourceRecord {
   stage?: string;
   status?: string;
   status_label?: string;
+  review_status?: string;
+  publication_status?: string;
   summary: string;
   original_excerpt?: string;
   page_refs?: PageRef[];
@@ -82,6 +84,14 @@ const statusTone: Record<string, string> = {
   public_corpus: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200',
   source_backed_unreviewed: 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200',
 };
+const sourceMatchText = isGyeonggi
+  ? (record.ocr_found ? (isKo ? 'OCR/텍스트 페이지 발견' : 'OCR/text pages found') : (isKo ? '검토 필요' : 'Needs review'))
+  : isKb
+    ? (isKo ? '보호 KB export · 검수 필요' : 'Protected KB export · needs review')
+    : (isKo ? 'Supabase 공개 행' : 'Supabase public row');
+const sourceIdText = isGyeonggi
+  ? `${pageRefs.length}${isKo ? '건' : ''}`
+  : [record.doc, record.ref_id || record.id].filter(Boolean).join(' · ');
 const title = isKo ? record.title : `${record.title} | Source-backed agenda`;
 ---
 
@@ -99,6 +109,11 @@ const title = isKo ? record.title : `${record.title} | Source-backed agenda`;
         <span class={`rounded-full px-2 py-1 font-semibold ${statusTone[record.status || ''] ?? 'border border-[var(--color-border)] text-[var(--color-fg-muted)]'}`}>
           {record.status_label || record.status || 'source-backed'}
         </span>
+        {record.review_status ? (
+          <span class="rounded-full border border-[var(--color-border)] px-2 py-1 text-[var(--color-fg-muted)]">
+            {isKo ? '검수상태' : 'Review'} · {record.review_status}
+          </span>
+        ) : null}
         <span class="rounded-full border border-[var(--color-border)] px-2 py-1 text-[var(--color-fg-muted)]">{record.working_group || record.category || record.source_kind || '분류 미상'}</span>
         <span class="rounded-full border border-[var(--color-border)] px-2 py-1 text-[var(--color-fg-muted)]">{record.source_label}</span>
       </div>
@@ -117,13 +132,24 @@ const title = isKo ? record.title : `${record.title} | Source-backed agenda`;
       </div>
       <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4">
         <h2 class="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--color-fg-muted)]">{isKo ? '원천 매칭' : 'Source match'}</h2>
-        <p class="text-sm font-semibold text-[var(--color-fg)]">{isGyeonggi ? (record.ocr_found ? (isKo ? 'OCR/텍스트 페이지 발견' : 'OCR/text pages found') : (isKo ? '검토 필요' : 'Needs review')) : (isKo ? 'Supabase 공개 행' : 'Supabase public row')}</p>
+        <p class="text-sm font-semibold text-[var(--color-fg)]">{sourceMatchText}</p>
       </div>
       <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4">
         <h2 class="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--color-fg-muted)]">{isGyeonggi ? (isKo ? '페이지 참조' : 'Page refs') : (isKo ? '원천 ID' : 'Source ID')}</h2>
-        <p class="text-sm font-semibold text-[var(--color-fg)]">{isGyeonggi ? `${pageRefs.length}${isKo ? '건' : ''}` : [record.doc, record.ref_id || record.id].filter(Boolean).join(' · ')}</p>
+        <p class="break-words text-sm font-semibold text-[var(--color-fg)]">{sourceIdText || (isKo ? '원천 ID 없음' : 'No source ID')}</p>
       </div>
     </section>
+
+    {isKb ? (
+      <section class="mb-6 rounded-2xl border border-violet-200 bg-violet-50 p-5 text-sm leading-7 text-violet-950 dark:border-violet-800/70 dark:bg-violet-950/30 dark:text-violet-100">
+        <h2 class="mb-2 text-base font-bold">{isKo ? '공개 전 검수 메모' : 'Pre-publication review note'}</h2>
+        <p>
+          {isKo
+            ? '이 항목은 보호된 지식베이스에서 추출한 원천 기반 자료입니다. 시민회의 결론이나 공식 권고안이 아니며, 공개 문구·분류·요약은 별도 검수 후 승격해야 합니다.'
+            : 'This item is source-backed material exported from a protected knowledge base. It is not an official assembly conclusion; public wording, categorisation, and summary require review before promotion.'}
+        </p>
+      </section>
+    ) : null}
 
     <section class="mb-6 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
       <h2 class="mb-3 text-lg font-bold text-[var(--color-fg)]">{isKo ? '원문 발췌' : 'Original excerpt'}</h2>

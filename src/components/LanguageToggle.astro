@@ -59,3 +59,11 @@ const langs = [
     </a>
   ))}
 </nav>
+
+<style>
+  @media (max-width: 640px) {
+    .language-toggle a:not([aria-current="true"]) {
+      display: none;
+    }
+  }
+</style>
