@@ -7,6 +7,14 @@ const reviewPath = path.join(projectRoot, '10_작업산출물', '2026-06-22_경�
 const ocrJsonDir = path.join(projectRoot, '00_입력자료', '경기도 기후도민회의', 'evaluation', 'json');
 const outPath = path.join(root, 'public', 'workshop-graph', 'data', 'gyeonggi-agenda-surface.json');
 
+if (!fs.existsSync(reviewPath) || !fs.existsSync(ocrJsonDir)) {
+  if (fs.existsSync(outPath)) {
+    console.warn('[gyeonggi-agenda-source] source materials unavailable; keeping committed static surface');
+    process.exit(0);
+  }
+  throw new Error(`Gyeonggi source materials are missing: ${reviewPath}`);
+}
+
 const GROUP_RE = /^##\s+(.+?)\s+—\s+최종선정\s+(\d+)\s+·\s+채택\s+(\d+)\s+·\s+미채택\s+(\d+)\s+·\s+2차상세\s+(\d+)건/m;
 const STATUS_LABELS = [
   { marker: '**🏆 최종선정', status: 'final_selected', label: '최종선정' },

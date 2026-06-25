@@ -26,3 +26,9 @@
 - Verified: `node scripts/build-supabase-agenda-source.mjs` wrote 173 source-backed records and warned that the public read path is below the expected overseas-thousand scale; local HTTP checks returned 200 for `/ko/agenda-source/supabase/0001-재생에너지-한계를-보완하는-한국형-탄소중립-전력체계-구축/` and `/workshop-graph/data/supabase-agenda-surface.json`; `/workshop-graph/index.html` includes `supabase-agenda-surface` loader.
 - Learned: source-backed route can support both `gyeonggi` and `supabase` without reusing internal draft `/ko/agenda/` pages; Astro dev still reports unrelated existing esbuild scan errors in moderator insights groups/heatmap.
 - Next: confirm the actual overseas agenda thousand-scale table/view/RPC and add a public reviewed surface contract before design-complete claims.
+
+## 2026-06-25 Deploy fallback
+- Changed: `scripts/build-gyeonggi-agenda-source.mjs`.
+- Verified: backup GitHub deploy failed because the runner cannot read OneDrive-only `10_작업산출물/2026-06-22_경기의제_검토본.md`; script now keeps committed static JSON and exits successfully when source materials are unavailable in CI.
+- Learned: build-time scripts that depend on parent OneDrive folders must degrade to committed static artifacts in Cloudflare/GitHub runners.
+- Next: rerun backup deploy and verify live `/workshop-graph/data/supabase-agenda-surface.json`.
