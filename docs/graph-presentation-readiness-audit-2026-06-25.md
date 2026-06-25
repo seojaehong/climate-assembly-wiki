@@ -20,6 +20,7 @@
 | `?mode=present&level=chapter` | 대목차 | Stage opening / explain the big map | 8 collapsed chapter nodes |
 | `?mode=present&level=brief` | 중간목차 | A/B testable presentation map | 72 collapsed representative nodes |
 | `?mode=present&level=full` | 원본전체 | Q&A / inspection / verification | full graph, labels constrained |
+| `?mode=showcase&count=50|75|100` | 쇼케이스 | Planner-facing product demo feel | sampled original nodes with physics |
 
 ## Fixed In This Pass
 
@@ -31,6 +32,8 @@
 - Edge relation labels are hidden by default in presentation mode. They appear only in focus contexts outside chapter mode.
 - Collapsed presentation groups now get a second layout pass and are fit by visible representative nodes, not by the expanded compound graph.
 - Group labels include child counts, making it clear that the original nodes are folded inside.
+- Added a separate `showcase` mode for A/B testing against planner expectations. It keeps the early dark force-graph feel, shows Korean node/edge labels, enables physics by default, and lets the presenter choose 50, 75, or 100 visible original nodes.
+- Showcase labels use `shortLabel` only for display. Click/hover surfaces still read the original node text and provenance.
 
 ## Verified Locally
 
@@ -53,6 +56,10 @@
   - Edge labels shown: 0
   - Normal node labels shown: 82 overview labels
   - Horizontal overflow: 0
+- `showcase`
+  - `count=50`: 50 visible original nodes, 62 visible edges, 50 shortened node labels, 62 Korean edge labels, physics ON, horizontal overflow 0
+  - `count=75`: 75 visible original nodes, 85 visible edges, 75 shortened node labels, 85 Korean edge labels, physics ON, horizontal overflow 0
+  - `count=100`: 100 visible original nodes, 107 visible edges, 100 shortened node labels, 107 Korean edge labels, physics ON, horizontal overflow 0
 - Browser page-scale smoke for `chapter` and `brief` at 1, 1.25, 1.5, 1.75:
   - Visible node count remained stable.
   - Edge labels stayed hidden.
@@ -79,6 +86,7 @@
 
 1. Start with `level=chapter`.
 2. Use `level=brief` for the main planner A/B test because it shows 72 representative nodes without exposing every raw label.
-3. Use `level=full` only for Q&A or verification.
-4. Explain that representative nodes are folded containers. They are not deleted or final consensus nodes.
-5. Keep 3D as an exploration view, not the main stage surface.
+3. Use `mode=showcase&count=75` when the goal is product-demo feel: early force-graph style, live physics, Korean relation labels, and shortened node names.
+4. Use `level=full` only for Q&A or verification.
+5. Explain that `present` folds containers, while `showcase` samples original nodes for visual A/B testing. Neither is an AI-made consensus.
+6. Keep 3D as an exploration view, not the main stage surface.

@@ -4,6 +4,7 @@
   "decision": {
     "presentation_default": "bright 2D density-controlled presentation view",
     "levels": ["chapter", "brief", "full"],
+    "showcase_ab_mode": "dark force-graph style with physics, Korean labels, and 50/75/100 node selection",
     "not_reduced_graph": true,
     "original_nodes": 613,
     "original_edges": 491,
@@ -37,6 +38,43 @@
       "edge_labels_shown": 0,
       "normal_node_labels_shown": 82,
       "horizontal_overflow": 0
+    }
+  },
+  "showcase": {
+    "purpose": "planner-facing A/B demo variant, not a replacement for the full ontology",
+    "routes": [
+      "/workshop-graph/?source=workshop-2026-06-13&mode=showcase&count=50",
+      "/workshop-graph/?source=workshop-2026-06-13&mode=showcase&count=75",
+      "/workshop-graph/?source=workshop-2026-06-13&mode=showcase&count=100"
+    ],
+    "physics_default": true,
+    "uses_short_labels": true,
+    "korean_edge_labels_visible": true,
+    "counts": {
+      "50": {
+        "visible_nodes": 50,
+        "visible_edges": 62,
+        "node_labels_shown": 50,
+        "edge_labels_shown": 62,
+        "short_labels_shown": 50,
+        "horizontal_overflow": 0
+      },
+      "75": {
+        "visible_nodes": 75,
+        "visible_edges": 85,
+        "node_labels_shown": 75,
+        "edge_labels_shown": 85,
+        "short_labels_shown": 75,
+        "horizontal_overflow": 0
+      },
+      "100": {
+        "visible_nodes": 100,
+        "visible_edges": 107,
+        "node_labels_shown": 100,
+        "edge_labels_shown": 107,
+        "short_labels_shown": 100,
+        "horizontal_overflow": 0
+      }
     }
   },
   "browser_zoom": [

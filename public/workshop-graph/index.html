@@ -30,6 +30,8 @@
   #og-physics.on{background:#1c7ed6;color:#fff;border-color:#1c7ed6}
   #og-present{cursor:pointer;white-space:nowrap}
   #og-present.on{background:#7048e8;color:#fff;border-color:#7048e8}
+  #og-showcase{cursor:pointer;white-space:nowrap}
+  #og-showcase.on{background:#0f766e;color:#fff;border-color:#0f766e}
   /* A-3 묶기(클러스터) 토글 — 기존 .og-view-tog 톤 일관 */
   .og-group-tog{display:inline-flex;align-items:center;gap:3px;background:#222c3a;border:1px solid #2c3848;border-radius:5px;padding:2px}
   .og-group-tog .og-grp-lbl{font-size:11px;color:#9aa7b8;padding:0 6px 0 4px;white-space:nowrap}
@@ -70,6 +72,12 @@
   .og-level-tog{display:none}
   body.og-present-mode .og-level-tog{display:flex}
   body.og-present-mode .og-present-hud{max-width:min(720px,calc(100vw - 420px));padding:7px 10px;font-size:12px}
+  .og-showcase-count-tog{display:none}
+  body.og-showcase-mode .og-showcase-count-tog{display:flex}
+  body.og-showcase-mode .og-hub-rail{top:58px}
+  body.og-showcase-mode #og-group-tog,
+  body.og-showcase-mode #og-filter-bar{display:none}
+  body.og-showcase-mode .og-footer{background:#101821;color:#cbd5e1;border-top-color:#243244}
   @media (max-width:640px){
     .og-hub-rail{left:10px;right:10px;top:10px;gap:5px;max-height:40px;overflow:hidden}
     body.view-3d .og-hub-rail{top:46px;right:10px}
@@ -94,11 +102,18 @@
     </div>
     <button class="og-btn og-2d-only" id="og-physics" title="물리 시뮬레이션 — 노드를 끌면 연결 노드가 함께 움직입니다" aria-pressed="false">⚛ 물리 OFF</button>
     <button class="og-btn" id="og-present" title="발표 모드 — 큰 글씨(대형 스크린·청중용)" aria-pressed="false">🖥 발표</button>
+    <button class="og-btn og-2d-only" id="og-showcase" title="쇼케이스 — 초기 그래프 감성 + 물리 + 축약 라벨 + 노드 수 선택" aria-pressed="false">✨ 쇼케이스</button>
     <div class="og-group-tog og-level-tog og-2d-only" id="og-level-tog" title="발표 밀도 — 같은 원본 그래프를 발표용 밀도로 접어 봅니다">
       <span class="og-grp-lbl">발표 밀도</span>
       <button data-level="chapter">대목차</button>
       <button data-level="brief">중간목차</button>
       <button data-level="full">원본전체</button>
+    </div>
+    <div class="og-group-tog og-showcase-count-tog og-2d-only" id="og-showcase-count-tog" title="쇼케이스 노드 수 — 원본 그래프에서 연결도 높은 노드를 중심으로 보여줍니다">
+      <span class="og-grp-lbl">노드 수</span>
+      <button data-count="50">50</button>
+      <button data-count="75">75</button>
+      <button data-count="100">100</button>
     </div>
     <div class="og-group-tog og-2d-only" id="og-group-tog" title="묶기 — 무손실 클러스터(노드/엣지 보존, 부모 안에 둥지). 그룹을 클릭하면 접기/펼치기">
       <span class="og-grp-lbl">묶기</span>
@@ -195,6 +210,8 @@ let kbAgendaSurface = null, kbAgendaSurfacePromise = null;
 let physicsOn = localStorage.getItem('og-physics') === '1', colaLayout = null;
 let presentMode = false;  // 발표(대형스크린) 모드 — 공유 가능 뷰 상태라 URL 파라미터
 let presentLevel = 'chapter'; // 'chapter' | 'brief' | 'full' — 발표 A/B 테스트용 노출 밀도
+let showcaseMode = false; // 기획자 A/B용: 초기 물리 그래프 감성 + 축약 라벨 + 제한 노드
+let showcaseCount = 75;
 let fixedNodeId = null, hoverNodeId = null, graph3dData = null, quickHover = false, hoverHideTimer = null;
 // A-3 묶기(클러스터): 'none' | 'present' | 'brief' | 'issue' | 'session'. 공유 가능 뷰 상태라 URL 파라미터(?group=).
 // 무손실 원칙 — 그룹은 합성 부모 노드로만 표현하고 실제 노드/엣지는 절대 삭제하지 않는다.
@@ -257,11 +274,14 @@ const params = new URLSearchParams(location.search);
   curSource = params.get('source') || sources.default;
   curView = params.get('view') || '2d';
   presentMode = params.get('mode') === 'present';
+  showcaseMode = params.get('mode') === 'showcase';
   presentLevel = ['chapter','brief','full'].includes(params.get('level')) ? params.get('level') : 'chapter';
+  showcaseCount = [50,75,100].includes(Number(params.get('count'))) ? Number(params.get('count')) : 75;
   groupMode = ['present','brief','issue','session','none'].includes(params.get('group'))
     ? params.get('group')
     : (presentMode ? groupForPresentLevel(presentLevel) : 'none');
-  if (presentMode && !params.has('view')) curView = '2d';
+  if ((presentMode || showcaseMode) && !params.has('view')) curView = '2d';
+  if (showcaseMode) groupMode = 'none';
   buildSourceDropdown();
   OntologyChrome.init({ activeId: 'workshop', title: '숙의 온톨로지', meta: '로딩 중…' });
   bindGlobalEvents();
@@ -306,14 +326,85 @@ function updateUrl() {
   if (presentMode) {
     p.set('mode', 'present');
     p.set('level', presentLevel);
+  } else if (showcaseMode) {
+    p.set('mode', 'showcase');
+    p.set('count', String(showcaseCount));
   }
-  if (groupMode !== 'none' && (!presentMode || groupMode !== groupForPresentLevel(presentLevel))) p.set('group', groupMode);
+  if (groupMode !== 'none' && !showcaseMode && (!presentMode || groupMode !== groupForPresentLevel(presentLevel))) p.set('group', groupMode);
   history.replaceState(null, '', '?' + p.toString());
 }
 
 function sessionLabel(session, fallback = '기타/미분류') {
   if (!session) return fallback;
   return PREFIX_META[session]?.label || session;
+}
+
+function shortenNodeLabel(label, maxChars = 18) {
+  const raw = String(label || '').replace(/\[[^\]]+\]/g, '').replace(/\([^)]{8,}\)/g, '').replace(/\s+/g, ' ').trim();
+  if (raw.length <= maxChars) return raw;
+  const particles = ['에 대한 ', ' 관련 ', ' 및 ', '을 위한 ', '를 위한 ', '의 '];
+  let compact = raw;
+  for (const p of particles) compact = compact.replaceAll(p, ' ');
+  compact = compact.replace(/\s+/g, ' ').trim();
+  if (compact.length <= maxChars) return compact;
+  const words = compact.split(' ');
+  let acc = '';
+  for (const w of words) {
+    const next = acc ? `${acc} ${w}` : w;
+    if (next.length > maxChars) break;
+    acc = next;
+  }
+  return acc || compact.slice(0, maxChars);
+}
+
+function nodeShowcaseScore(node) {
+  const kind = node.data?.kind || '';
+  const kindBoost = { Issue: 70, Claim: 54, Proposal: 50, Concern: 48, Condition: 42, Evidence: 38, Value: 36, Group: 18 }[kind] || 20;
+  const deg = Number(node.data?.deg || 0);
+  const textBoost = node.data?.text ? 5 : 0;
+  return deg * 20 + kindBoost + textBoost;
+}
+
+function buildShowcaseElements(limit = showcaseCount) {
+  const capped = Math.max(50, Math.min(100, Number(limit) || 75));
+  const byId = new Map(ALL_NODES.map(n => [n.data.id, n]));
+  const adjacency = new Map();
+  for (const e of ALL_EDGES) {
+    const s = e.data.source, t = e.data.target;
+    if (!byId.has(s) || !byId.has(t)) continue;
+    if (!adjacency.has(s)) adjacency.set(s, new Set());
+    if (!adjacency.has(t)) adjacency.set(t, new Set());
+    adjacency.get(s).add(t);
+    adjacency.get(t).add(s);
+  }
+  const ranked = [...ALL_NODES]
+    .filter(n => !n.isGroup && Number(n.data?.deg || 0) > 0)
+    .sort((a, b) => nodeShowcaseScore(b) - nodeShowcaseScore(a) || String(a.data.label).localeCompare(String(b.data.label), 'ko'));
+  const selected = new Set();
+  for (const seed of ranked) {
+    if (selected.size >= capped) break;
+    selected.add(seed.data.id);
+    const neighbors = [...(adjacency.get(seed.data.id) || [])]
+      .map(id => byId.get(id))
+      .filter(Boolean)
+      .sort((a, b) => nodeShowcaseScore(b) - nodeShowcaseScore(a));
+    for (const n of neighbors) {
+      if (selected.size >= capped) break;
+      selected.add(n.data.id);
+    }
+  }
+  const nodes = ALL_NODES
+    .filter(n => selected.has(n.data.id))
+    .map(n => ({
+      ...n,
+      data: {
+        ...n.data,
+        shortLabel: shortenNodeLabel(n.data.label, showcaseCount === 50 ? 16 : 18),
+      },
+      classes: [n.classes, 'showcase-node'].filter(Boolean).join(' '),
+    }));
+  const edges = ALL_EDGES.filter(e => selected.has(e.data.source) && selected.has(e.data.target));
+  return { nodes, edges };
 }
 
 async function loadSource(srcId) {
@@ -1081,14 +1172,19 @@ function renderCy() {
   ecApi = null;
   try { if (typeof cytoscapeFcose !== 'undefined') cytoscape.use(cytoscapeFcose); } catch {}
   try { if (typeof cytoscapeExpandCollapse !== 'undefined') cytoscape.use(cytoscapeExpandCollapse); } catch {}
+  const renderElements = showcaseMode ? buildShowcaseElements(showcaseCount) : { nodes: ALL_NODES, edges: ALL_EDGES };
   cy = cytoscape({
     container: document.getElementById('cy'),
-    elements: { nodes: ALL_NODES, edges: ALL_EDGES },
+    elements: renderElements,
     wheelSensitivity: 0.25, minZoom: 0.08, maxZoom: 3,
     style: buildCyStyle(OntologyChrome.getPalette()),
-    layout: { name:'fcose', quality:'default', animate:false, randomize:true,
-      nodeRepulsion:9000, idealEdgeLength:130, edgeElasticity:0.45,
-      gravity:0.25, numIter:2500, packComponents:true, nodeSeparation:90 },
+    layout: showcaseMode
+      ? { name:'fcose', quality:'default', animate:false, randomize:true,
+          nodeRepulsion:13000, idealEdgeLength:120, edgeElasticity:0.42,
+          gravity:0.16, numIter:2800, packComponents:true, nodeSeparation:88 }
+      : { name:'fcose', quality:'default', animate:false, randomize:true,
+          nodeRepulsion:9000, idealEdgeLength:130, edgeElasticity:0.45,
+          gravity:0.25, numIter:2500, packComponents:true, nodeSeparation:90 },
   });
   configurePresentationZoom();
   applyIsolated();
@@ -1099,18 +1195,18 @@ function renderCy() {
   cy.ready(() => setTimeout(() => {
     cy.fit(null, 40);
     if (groupMode !== 'none') applyGrouping(groupMode);  // URL ?group= 진입 시 즉시 묶기
-    else if (physicsOn) applyPhysics();
+    else if (physicsOn || showcaseMode) applyPhysics();
   }, 300));
 }
 
 // 살아있는 드래그: cytoscape-cola 연속 물리엔진 (노드를 끌면 이웃 출렁)
 function applyPhysics() {
   stopPhysics();
-  if (!cy || !physicsOn) return;
+  if (!cy || (!physicsOn && !showcaseMode)) return;
   try { if (typeof cytoscapeCola !== 'undefined') cytoscape.use(cytoscapeCola); } catch {}
   try {
     colaLayout = cy.layout({ name:'cola', infinite:true, fit:false, animate:true,
-      nodeSpacing: 6, edgeLength: 110, randomize:false, handleDisconnected:true,
+      nodeSpacing: showcaseMode ? 10 : 6, edgeLength: showcaseMode ? 92 : 110, randomize:false, handleDisconnected:true,
       centerGraph:false });
     colaLayout.run();
   } catch (e) { colaLayout = null; }
@@ -1127,20 +1223,23 @@ function togglePhysics() {
 function updatePhysicsBtn() {
   const b = document.getElementById('og-physics');
   if (!b) return;
-  b.textContent = physicsOn ? '⚛ 물리 ON' : '⚛ 물리 OFF';
-  b.classList.toggle('on', physicsOn);
-  b.setAttribute('aria-pressed', String(physicsOn));
+  const active = physicsOn || showcaseMode;
+  b.textContent = active ? '⚛ 물리 ON' : '⚛ 물리 OFF';
+  b.classList.toggle('on', active);
+  b.setAttribute('aria-pressed', String(active));
 }
 
 // 발표 모드: 밝은 2D 상위 목차 설명 화면. 데이터 불변 — 표현만(무손실).
 function togglePresent() {
   presentMode = !presentMode;
   if (presentMode) {
+    showcaseMode = false;
     if (curView !== '2d') curView = '2d';
     if (groupMode === 'none') groupMode = groupForPresentLevel(presentLevel);
   }
   syncPresentationBody();
   updatePresentBtn();
+  updateShowcaseUI();
   updatePresentLevelUI();
   updateGroupBtns();
   updateUrl();
@@ -1163,6 +1262,7 @@ function syncPresentationBody() {
   document.body.classList.toggle('og-present-chapter', presentMode && curView === '2d' && presentLevel === 'chapter');
   document.body.classList.toggle('og-present-brief', presentMode && curView === '2d' && presentLevel === 'brief');
   document.body.classList.toggle('og-present-full', presentMode && curView === '2d' && presentLevel === 'full');
+  document.body.classList.toggle('og-showcase-mode', showcaseMode && curView === '2d');
 }
 
 function groupForPresentLevel(level) {
@@ -1201,18 +1301,69 @@ function setPresentLevel(level) {
   if (!['chapter','brief','full'].includes(level)) return;
   presentLevel = level;
   presentMode = true;
+  showcaseMode = false;
   if (curView !== '2d') curView = '2d';
   groupMode = groupForPresentLevel(level);
   syncPresentationBody();
   updatePresentBtn();
+  updateShowcaseUI();
   updatePresentLevelUI();
   updateGroupBtns();
   updateUrl();
   if (ALL_NODES.length) renderCy();
 }
 
+function updateShowcaseUI() {
+  const b = document.getElementById('og-showcase');
+  if (b) {
+    b.textContent = showcaseMode ? '✨ 쇼케이스 ON' : '✨ 쇼케이스';
+    b.classList.toggle('on', showcaseMode);
+    b.setAttribute('aria-pressed', String(showcaseMode));
+  }
+  document.querySelectorAll('#og-showcase-count-tog button').forEach(btn => {
+    btn.classList.toggle('active', Number(btn.dataset.count) === showcaseCount);
+  });
+}
+
+function setShowcaseMode(active = !showcaseMode) {
+  showcaseMode = active;
+  if (showcaseMode) {
+    presentMode = false;
+    curView = '2d';
+    groupMode = 'none';
+  }
+  syncPresentationBody();
+  updatePresentBtn();
+  updateShowcaseUI();
+  updatePresentLevelUI();
+  updateGroupBtns();
+  updatePhysicsBtn();
+  updateUrl();
+  if (ALL_NODES.length) renderCy();
+}
+
+function setShowcaseCount(count) {
+  showcaseCount = [50,75,100].includes(Number(count)) ? Number(count) : 75;
+  showcaseMode = true;
+  presentMode = false;
+  curView = '2d';
+  groupMode = 'none';
+  syncPresentationBody();
+  updatePresentBtn();
+  updateShowcaseUI();
+  updateGroupBtns();
+  updatePhysicsBtn();
+  updateUrl();
+  if (ALL_NODES.length) renderCy();
+}
+
 function configurePresentationZoom() {
   if (!cy) return;
+  if (showcaseMode) {
+    cy.minZoom(0.12);
+    cy.maxZoom(2.6);
+    return;
+  }
   if (!presentMode || presentLevel === 'full') {
     cy.minZoom(0.08);
     cy.maxZoom(3);
@@ -1609,32 +1760,36 @@ function render3d() {
 
 function applyView(view) {
   curView = view;
+  if (view === '3d') showcaseMode = false;
   document.body.classList.toggle('view-3d', view === '3d');
   syncPresentationBody();
   document.getElementById('og-view-2d').classList.toggle('active', view === '2d');
   document.getElementById('og-view-3d').classList.toggle('active', view === '3d');
+  updateShowcaseUI();
   updateUrl();
   if (ALL_NODES.length) { if (view === '2d') renderCy(); else render3d(); }
 }
 
 function buildCyStyle(palette) {
   const paper = presentMode;
+  const demo = showcaseMode;
   const presentationOverview = presentMode && presentLevel !== 'full';
   return [
     { selector:'node', style:{
         'background-color': n => palette[n.data('kind')] || '#888',
         'label': n => {
+          if (demo) return n.data('shortLabel') || n.data('label') || '';
           if (!presentMode || n.data('isGroup')) return n.data('label') || '';
           if (presentLevel === 'full' && n.data('isOverviewLabel')) return n.data('label') || '';
           return '';
         },
-        'color': paper ? '#111827' : '#eef3f9', 'font-size': presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px',
-        'min-zoomed-font-size': presentMode ? (presentLevel === 'full' ? 18 : 999) : 7,  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
-        'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif", 'font-weight': presentMode ? 700 : 500,
-        'text-wrap':'wrap','text-max-width': presentMode ? '120px' : '140px','text-valign':'bottom','text-margin-y':4,
-        'text-outline-color': paper ? '#ffffff' : '#11151c','text-outline-width': presentMode ? 2.5 : 2.5,
-        'width': n => (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4),
-        'height': n => (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4),
+        'color': paper ? '#111827' : '#eef3f9', 'font-size': demo ? '11px' : (presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px'),
+        'min-zoomed-font-size': demo ? 5 : (presentMode ? (presentLevel === 'full' ? 18 : 999) : 7),  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
+        'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif", 'font-weight': presentMode || demo ? 700 : 500,
+        'text-wrap':'wrap','text-max-width': demo ? '86px' : (presentMode ? '120px' : '140px'),'text-valign':'bottom','text-margin-y':4,
+        'text-outline-color': paper ? '#ffffff' : '#11151c','text-outline-width': demo ? 3 : (presentMode ? 2.5 : 2.5),
+        'width': n => (demo ? 20 : (presentMode?26:22)) + Math.min(n.data('deg')||0,8)*(demo ? 3.2 : (presentMode?3:4)),
+        'height': n => (demo ? 20 : (presentMode?26:22)) + Math.min(n.data('deg')||0,8)*(demo ? 3.2 : (presentMode?3:4)),
         'border-width':2,'border-color':'#0d1118','shape':'ellipse','opacity':0.98,
     }},
     { selector:'node[?isOverviewLabel]', style:{
@@ -1651,12 +1806,12 @@ function buildCyStyle(palette) {
     { selector:'node[kind="Decision"]', style:{ 'shape':'star','border-color':'#ffa94d','border-width':3 }},
     { selector:'node[?synthesized]', style:{ 'shape':'round-diamond','border-style':'dashed','border-color':'#ff8787' }},
     { selector:'edge', style:{
-        'width':1.8, 'line-color': paper ? '#718096' : '#6b7890', 'target-arrow-color': paper ? '#718096' : '#6b7890',
+        'width': demo ? 1.35 : 1.8, 'line-color': paper ? '#718096' : (demo ? '#526073' : '#6b7890'), 'target-arrow-color': paper ? '#718096' : (demo ? '#526073' : '#6b7890'),
         'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale':1,
-        'label': paper ? '' : 'data(relKo)','font-size': '10px','min-zoomed-font-size': 9,'color': paper ? '#334155' : '#d3dbe8',
+        'label': paper ? '' : 'data(relKo)','font-size': demo ? '8px' : '10px','min-zoomed-font-size': demo ? 5 : 9,'color': paper ? '#334155' : (demo ? '#bac7d8' : '#d3dbe8'),
         'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif",
         'text-rotation':'autorotate','text-background-color': paper ? '#ffffff' : '#11151c',
-        'text-background-opacity':0.85,'text-background-padding':2,'opacity':0.82,
+        'text-background-opacity': demo ? 0.72 : 0.85,'text-background-padding':2,'opacity': demo ? 0.58 : 0.82,
     }},
     { selector:'edge[?opposes]', style:{
         'line-color':'#ff6b6b','target-arrow-color':'#ff6b6b','width':2.6 }},
@@ -1814,6 +1969,11 @@ function bindGlobalEvents() {
   updatePhysicsBtn();
   document.getElementById('og-present').onclick = togglePresent;
   updatePresentBtn();
+  document.getElementById('og-showcase').onclick = () => setShowcaseMode();
+  document.querySelectorAll('#og-showcase-count-tog button').forEach(b => {
+    b.onclick = () => setShowcaseCount(b.dataset.count);
+  });
+  updateShowcaseUI();
   document.querySelectorAll('#og-level-tog button').forEach(b => {
     b.onclick = () => setPresentLevel(b.dataset.level);
   });
@@ -1879,7 +2039,16 @@ if (['127.0.0.1', 'localhost'].includes(location.hostname)) {
     renderNodeSurface,
     applyFocus,
     clearFocus,
-    getState: () => ({ presentMode, presentLevel, groupMode, curView, curSource }),
+    getState: () => ({ presentMode, presentLevel, showcaseMode, showcaseCount, groupMode, curView, curSource }),
+    getStats: () => cy ? ({
+      visibleNodes: cy.nodes(':visible').length,
+      visibleRealNodes: cy.nodes(':visible').filter(n => !n.data('isGroup')).length,
+      visibleEdges: cy.edges(':visible').length,
+      edgeLabelsShown: cy.edges(':visible').filter(e => !!e.style('label')).length,
+      nodeLabelsShown: cy.nodes(':visible').filter(n => !!n.style('label')).length,
+      shortLabelsShown: cy.nodes(':visible').filter(n => !!n.data('shortLabel')).length,
+      zoom: Number(cy.zoom().toFixed(3)),
+    }) : null,
   };
 }
 </script>
