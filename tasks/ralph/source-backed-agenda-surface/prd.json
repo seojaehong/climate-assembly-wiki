@@ -144,6 +144,22 @@
         "public/workshop-graph/index.html",
         "public/workshop-graph/data/kb-agenda-surface.json"
       ]
+    },
+    {
+      "id": "S9",
+      "title": "Include KB agenda export in deployment prebuild",
+      "priority": 9,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "`npm.cmd run prebuild` executes `build:kb-agenda-source` before Astro build",
+        "KB export remains available as committed static JSON even if deployment runtime lacks service role credentials",
+        "live deployment state is checked separately from git push state"
+      ],
+      "files": [
+        "package.json",
+        "public/workshop-graph/data/kb-agenda-surface.json"
+      ]
     }
   ]
 }

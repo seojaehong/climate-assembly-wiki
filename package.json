@@ -14,7 +14,7 @@
     "build:supabase-agenda-source": "node scripts/build-supabase-agenda-source.mjs",
     "build:kb-agenda-source": "node scripts/build-kb-agenda-source.mjs",
     "audit:agenda-sources": "node scripts/audit-agenda-source-inventory.mjs",
-    "prebuild": "npm run build:scene && npm run build:agenda-surface && npm run build:gyeonggi-agenda-source && npm run wiki:reindex && npm run wiki:log",
+    "prebuild": "npm run build:scene && npm run build:agenda-surface && npm run build:gyeonggi-agenda-source && npm run build:kb-agenda-source && npm run wiki:reindex && npm run wiki:log",
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",

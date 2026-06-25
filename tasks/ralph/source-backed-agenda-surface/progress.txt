@@ -44,3 +44,9 @@
 - Verified: `npm.cmd run build:kb-agenda-source` wrote `1311` source-backed KB records (`overseas-cases=1025`, `kei-expert-agenda=65`, `citizen-domestic=108`, `gyeonggi-citizens=113`); `npm.cmd run audit:agenda-sources` records the protected KB export and RLS status; local HTTP checks returned 200 for `/ko/agenda-source/kb/000002-청소년-기후-교육-시민권/`, `/workshop-graph/data/kb-agenda-surface.json`, and `/workshop-graph/index.html?source=workshop-2026-06-13`.
 - Learned: local service role export can produce the requested overseas/Gyeonggi KB surface, but every record remains `needs_review` and `internal_static_export`; public copy must say source-backed review material, not reviewed official wiki.
 - Next: S8 manually review/publication-QA selected KB pages and graph cards before promoting any record to reviewed public status.
+
+## 2026-06-25 S9
+- Changed: `package.json` prebuild now runs `build:kb-agenda-source` before reindex/log generation; regenerated public agenda JSON and wiki index/log via the full prebuild path.
+- Verified: `npm.cmd run prebuild` completed and wrote `public/workshop-graph/data/kb-agenda-surface.json (1311 records)` in the same command path Cloudflare uses before Astro build.
+- Learned: GitHub `main` has the KB export commit, but `https://climate-assembly.org` still served the previous deployment during 12 live polling attempts; Cloudflare API deployment cannot be forced locally because `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are not present.
+- Next: S8 remains the publication/design QA gate; separate infra step is Cloudflare dashboard deployment trigger or credential-backed backup workflow.
