@@ -39,11 +39,17 @@ function countBy(rows, key) {
   return out;
 }
 
-async function readSupabaseAgendaCorpus() {
+function envCredentials() {
   loadEnv(path.join(root, '.env'));
   loadEnv(path.join(root, '.env.local'));
-  const url = process.env.PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.PUBLIC_SUPABASE_ANON_KEY;
+  return {
+    url: process.env.PUBLIC_SUPABASE_URL,
+    anonKey: process.env.PUBLIC_SUPABASE_ANON_KEY,
+  };
+}
+
+async function readSupabaseAgendaCorpus() {
+  const { url, anonKey } = envCredentials();
   if (!url || !anonKey) {
     return {
       available: false,
@@ -87,6 +93,117 @@ async function readSupabaseAgendaCorpus() {
   };
 }
 
+async function postEdgeFunction(name, body) {
+  const { url, anonKey } = envCredentials();
+  if (!url || !anonKey) {
+    return {
+      ok: false,
+      status: 0,
+      error: 'PUBLIC_SUPABASE_URL or PUBLIC_SUPABASE_ANON_KEY is missing',
+      data: null,
+    };
+  }
+  const response = await fetch(`${url}/functions/v1/${name}`, {
+    method: 'POST',
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${anonKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  const text = await response.text();
+  let data = null;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = { raw: text.slice(0, 500) };
+  }
+  return {
+    ok: response.ok,
+    status: response.status,
+    error: response.ok ? null : JSON.stringify(data).slice(0, 500),
+    data,
+  };
+}
+
+async function readProtectedKnowledgeBase() {
+  const { url, anonKey } = envCredentials();
+  if (!url || !anonKey) {
+    return {
+      available: false,
+      rawTable: 'public.kb_chunks',
+      directAnonRows: null,
+      expectedSourcesFromInventory: {
+        'overseas-cases': 1025,
+        'kei-expert-agenda': 65,
+        'citizen-domestic': 108,
+      },
+      searches: [],
+      error: 'PUBLIC_SUPABASE_URL or PUBLIC_SUPABASE_ANON_KEY is missing',
+    };
+  }
+
+  const supabase = createClient(url, anonKey);
+  const { data: directRows, error: directError, count: directCount } = await supabase
+    .from('kb_chunks')
+    .select('id,source,title,category', { count: 'exact' })
+    .limit(5);
+
+  const searchCases = [
+    {
+      label: 'overseas-sentinel',
+      body: { query: '해외 기후의회 권고 재생에너지', k: 5, source: 'overseas-cases' },
+    },
+    {
+      label: 'overseas-wide-cap',
+      body: { query: '기후 시민의회 정책 권고 에너지 교통 건물 농업', k: 1200, source: 'overseas-cases' },
+    },
+    {
+      label: 'gyeonggi-sentinel',
+      body: { query: '경기도 최종 선정 정책', k: 5, source: 'gyeonggi-citizens' },
+    },
+  ];
+  const searches = [];
+  for (const item of searchCases) {
+    const result = await postEdgeFunction('kb-search', item.body);
+    const matches = Array.isArray(result.data?.matches) ? result.data.matches : [];
+    searches.push({
+      label: item.label,
+      function: 'kb-search',
+      status: result.status,
+      ok: result.ok,
+      source: item.body.source,
+      requestedK: item.body.k,
+      matchCount: matches.length,
+      error: result.error,
+      sample: matches.slice(0, 3).map((match) => ({
+        id: match.id,
+        source: match.source,
+        doc: match.doc,
+        ref_id: match.ref_id,
+        title: match.title,
+        category: match.category,
+      })),
+    });
+  }
+
+  return {
+    available: searches.some((search) => search.ok && search.matchCount > 0),
+    rawTable: 'public.kb_chunks',
+    directAnonRows: Array.isArray(directRows) ? directRows.length : null,
+    directAnonCount: directCount,
+    directAnonError: directError?.message || null,
+    directPolicy: 'RLS intentionally blocks anon direct SELECT; service_role edge functions read this table.',
+    expectedSourcesFromInventory: {
+      'overseas-cases': 1025,
+      'kei-expert-agenda': 65,
+      'citizen-domestic': 108,
+    },
+    searches,
+  };
+}
+
 function readGyeonggiSurface() {
   const surface = readJson('public/workshop-graph/data/gyeonggi-agenda-surface.json', { records: [], source: {} });
   const records = Array.isArray(surface.records) ? surface.records : [];
@@ -121,6 +238,21 @@ function readInternalDraftSurface() {
   };
 }
 
+function readKbSurface() {
+  const surface = readJson('public/workshop-graph/data/kb-agenda-surface.json', { records: [], source: {} });
+  const records = Array.isArray(surface.records) ? surface.records : [];
+  return {
+    available: records.length > 0,
+    file: 'public/workshop-graph/data/kb-agenda-surface.json',
+    total: records.length,
+    bySource: countBy(records, 'source_kind'),
+    withSourceBackedHref: records.filter((record) => String(record.source_backed_href || '').startsWith('/ko/agenda-source/kb/')).length,
+    reviewStatus: countBy(records, 'review_status'),
+    publicationStatus: countBy(records, 'publication_status'),
+    source: surface.source || {},
+  };
+}
+
 function buildMarkdown(report) {
   const corpusSources = Object.entries(report.supabaseAgendaCorpus.bySource)
     .map(([key, value]) => `- ${key}: ${value}건`)
@@ -131,6 +263,12 @@ function buildMarkdown(report) {
   const gyeonggiStatus = Object.entries(report.gyeonggiOcrSurface.byStatus)
     .map(([key, value]) => `- ${key}: ${value}건`)
     .join('\n') || '- 확인된 status 없음';
+  const kbSearches = report.protectedKnowledgeBase.searches
+    .map((search) => `- ${search.label}: ${search.ok ? '성공' : '실패'} · source=${search.source} · 요청 ${search.requestedK}건 · 반환 ${search.matchCount}건`)
+    .join('\n') || '- 검색 검증 없음';
+  const kbSurfaceSources = Object.entries(report.kbAgendaSurface.bySource)
+    .map(([key, value]) => `- ${key}: ${value}건`)
+    .join('\n') || '- export 없음';
 
   return `# 공식 의제 DB 인벤토리 감사
 
@@ -160,8 +298,47 @@ ${corpusCategories}
 해석:
 
 - 현재 anon 공개 경로에서 확인되는 Supabase 의제 코퍼스는 ${report.supabaseAgendaCorpus.total}건이다.
-- 사용자가 언급한 해외의제 천건 단위 데이터는 현재 이 공개 테이블/권한 경로에서는 확인되지 않는다.
-- 따라서 해외의제 천건을 홈페이지 위키에 연결하려면 실제 테이블명, 공개 view/RPC, 검수 상태 필드가 먼저 확정되어야 한다.
+- 이 테이블은 공개용 보조 코퍼스이며, 해외의제 천건 단위 원천은 여기서 확인되지 않는다.
+
+### Supabase 보호 KB 코퍼스
+
+- raw table: \`${report.protectedKnowledgeBase.rawTable}\`
+- anon 직접 SELECT 행수: ${report.protectedKnowledgeBase.directAnonRows}
+- anon 직접 count: ${report.protectedKnowledgeBase.directAnonCount}
+- 정책: ${report.protectedKnowledgeBase.directPolicy}
+
+문서상 기대 source:
+
+- overseas-cases: ${report.protectedKnowledgeBase.expectedSourcesFromInventory['overseas-cases']}건
+- kei-expert-agenda: ${report.protectedKnowledgeBase.expectedSourcesFromInventory['kei-expert-agenda']}건
+- citizen-domestic: ${report.protectedKnowledgeBase.expectedSourcesFromInventory['citizen-domestic']}건
+
+edge function 검색 검증:
+
+${kbSearches}
+
+해석:
+
+- 해외의제 천건 단위 데이터는 \`agenda_corpus\`가 아니라 보호된 \`kb_chunks\`/edge function 검색 경로에 있다.
+- anon 직접 SELECT는 RLS로 차단되어야 하며, 현재 직접 행수는 ${report.protectedKnowledgeBase.directAnonRows}건이다.
+- \`kb-search\`는 \`source=overseas-cases\`로 해외 권고를 반환한다. 다만 검색 endpoint는 top-k 검색 표면이라 전체 1025건의 공개 위키 페이지 생성 근거로 바로 쓰면 안 된다.
+- 공개 위키에 연결하려면 service_role batch export 또는 검수 완료 view/RPC가 필요하다.
+
+### 보호 KB source-backed export
+
+- 파일: \`${report.kbAgendaSurface.file}\`
+- export 건수: ${report.kbAgendaSurface.total}건
+- source-backed href 보유: ${report.kbAgendaSurface.withSourceBackedHref}건
+
+source 분포:
+
+${kbSurfaceSources}
+
+해석:
+
+- 이 export는 service role 기반 source-backed 정적 산출물이다.
+- 현재 \`review_status\`는 검수 필요 상태이므로 "공개 검수 완료 위키"가 아니라 "원천 기반 검토 자료"로 표시해야 한다.
+- 그래프와 페이지는 이 파일을 읽을 수 있지만, 발표/공개 문구에서는 전체 검수 완료처럼 말하면 안 된다.
 
 ### 경기도 OCR 의제 surface
 
@@ -194,11 +371,12 @@ ${gyeonggiStatus}
 
 ## 다음 작업
 
-1. Supabase 해외의제 실제 저장 위치 확인: 테이블명, 스키마, RLS, 공개 view/RPC.
-2. 공개용 source-backed shape 확정: \`id\`, \`source_type\`, \`title\`, \`summary\`, \`origin_url\`, \`document_ref\`, \`review_status\`, \`publication_status\`.
-3. 해외의제와 경기도 OCR을 같은 surface 계약으로 export.
-4. \`/ko/agenda-source/{source}/{id}/\` 페이지 디자인 QA.
-5. 그래프 카드에는 검수 완료 원천만 연결.
+1. Supabase 해외의제 실제 저장 위치는 보호된 \`public.kb_chunks\`로 확인했다. 다음은 공개용 view/RPC 또는 service_role batch export 확정이다.
+2. \`kb_chunks\`에서 공개 가능한 해외의제 source-backed export를 만들기 위한 service_role batch 또는 reviewed RPC를 확정한다.
+3. 공개용 source-backed shape 확정: \`id\`, \`source_type\`, \`title\`, \`summary\`, \`origin_url\`, \`document_ref\`, \`review_status\`, \`publication_status\`.
+4. 해외의제와 경기도 OCR을 같은 surface 계약으로 export.
+5. \`/ko/agenda-source/{source}/{id}/\` 페이지 디자인 QA.
+6. 그래프 카드에는 검수 완료 원천만 연결.
 `;
 }
 
@@ -209,9 +387,11 @@ async function main() {
     generatedAt: new Date().toISOString(),
     verdict: {
       complete: false,
-      reason: 'Supabase overseas thousand-scale agenda data is not verified on the current public read path; Gyeonggi OCR pages are first-pass source-backed records, not fully manual-QAed wiki pages.',
+      reason: 'Overseas thousand-scale agenda data is verified as a protected kb_chunks/edge-function source, but it is not yet exported as reviewed public wiki pages; Gyeonggi OCR pages are first-pass source-backed records, not fully manual-QAed wiki pages.',
     },
     supabaseAgendaCorpus: await readSupabaseAgendaCorpus(),
+    protectedKnowledgeBase: await readProtectedKnowledgeBase(),
+    kbAgendaSurface: readKbSurface(),
     gyeonggiOcrSurface: readGyeonggiSurface(),
     internalDraftSurface: readInternalDraftSurface(),
   };

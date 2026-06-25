@@ -32,3 +32,15 @@
 - Verified: backup GitHub deploy failed because the runner cannot read OneDrive-only `10_작업산출물/2026-06-22_경기의제_검토본.md`; script now keeps committed static JSON and exits successfully when source materials are unavailable in CI.
 - Learned: build-time scripts that depend on parent OneDrive folders must degrade to committed static artifacts in Cloudflare/GitHub runners.
 - Next: rerun backup deploy and verify live `/workshop-graph/data/supabase-agenda-surface.json`.
+
+## 2026-06-25 S6
+- Changed: `scripts/audit-agenda-source-inventory.mjs`, `evaluation/agenda-source-inventory.json`, `docs/agenda-source-inventory-2026-06-25.md`, `tasks/ralph/source-backed-agenda-surface/prd.json`.
+- Verified: `npm.cmd run audit:agenda-sources` now records protected KB status: `public.kb_chunks` anon direct rows `0`, documented expected `overseas-cases=1025`, `kei-expert-agenda=65`, `citizen-domestic=108`; `kb-search` returns `overseas-cases` matches and `gyeonggi-citizens` matches through edge functions; wide overseas request returned `1000` matches for `k=1200`, confirming search access but not a reviewed public export.
+- Learned: the "overseas thousand" corpus exists behind RLS/edge functions, not in public `agenda_corpus`; public wiki pages must be produced from a reviewed service_role export or approved RPC/view, not anon direct table reads.
+- Next: S7 define and implement the reviewed public export contract for protected KB agendas.
+
+## 2026-06-25 S7
+- Changed: `docs/agenda-source-public-export-contract-2026-06-25.md`, `scripts/build-kb-agenda-source.mjs`, `public/workshop-graph/data/kb-agenda-surface.json`, `src/pages/[lang]/agenda-source/[source]/[id].astro`, `public/workshop-graph/index.html`, `package.json`, `scripts/audit-agenda-source-inventory.mjs`, `evaluation/agenda-source-inventory.json`, `docs/agenda-source-inventory-2026-06-25.md`.
+- Verified: `npm.cmd run build:kb-agenda-source` wrote `1311` source-backed KB records (`overseas-cases=1025`, `kei-expert-agenda=65`, `citizen-domestic=108`, `gyeonggi-citizens=113`); `npm.cmd run audit:agenda-sources` records the protected KB export and RLS status; local HTTP checks returned 200 for `/ko/agenda-source/kb/000002-청소년-기후-교육-시민권/`, `/workshop-graph/data/kb-agenda-surface.json`, and `/workshop-graph/index.html?source=workshop-2026-06-13`.
+- Learned: local service role export can produce the requested overseas/Gyeonggi KB surface, but every record remains `needs_review` and `internal_static_export`; public copy must say source-backed review material, not reviewed official wiki.
+- Next: S8 manually review/publication-QA selected KB pages and graph cards before promoting any record to reviewed public status.

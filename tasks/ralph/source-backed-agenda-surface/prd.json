@@ -90,6 +90,60 @@
         "scripts/build-supabase-agenda-source.mjs",
         "public/workshop-graph/data/supabase-agenda-surface.json"
       ]
+    },
+    {
+      "id": "S6",
+      "title": "Audit protected KB overseas agenda source",
+      "priority": 6,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "audit verifies that overseas thousand-scale agenda source is protected kb_chunks rather than public agenda_corpus",
+        "audit verifies anon direct kb_chunks SELECT remains blocked by RLS",
+        "audit verifies kb-search can return overseas-cases and gyeonggi-citizens matches through edge functions",
+        "report states that search results are not a reviewed public wiki export yet"
+      ],
+      "files": [
+        "scripts/audit-agenda-source-inventory.mjs",
+        "evaluation/agenda-source-inventory.json",
+        "docs/agenda-source-inventory-2026-06-25.md"
+      ]
+    },
+    {
+      "id": "S7",
+      "title": "Define reviewed public export contract for protected KB agendas",
+      "priority": 7,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "contract separates protected kb_chunks raw rows from public source-backed agenda pages",
+        "contract defines reviewed/public fields and excludes unreviewed raw body from graph cards",
+        "implementation path requires service_role batch export or approved RPC/view, not anon direct SELECT",
+        "graph cards consume only the reviewed static/public surface for overseas cases"
+      ],
+      "files": [
+        "docs/agenda-source-public-export-contract-2026-06-25.md",
+        "scripts/build-kb-agenda-source.mjs",
+        "public/workshop-graph/data/kb-agenda-surface.json"
+      ]
+    },
+    {
+      "id": "S8",
+      "title": "Review and design QA for KB agenda publication",
+      "priority": 8,
+      "status": "todo",
+      "passes": false,
+      "acceptance": [
+        "selected KB agenda pages are manually reviewed for public wording, title quality, and source labels",
+        "graph related agenda cards do not overstate unreviewed KB records as official conclusions",
+        "mobile and desktop layouts are checked against long overseas/Gyeonggi OCR excerpts",
+        "publication status can be promoted only after review_status is changed by an approved process"
+      ],
+      "files": [
+        "src/pages/[lang]/agenda-source/[source]/[id].astro",
+        "public/workshop-graph/index.html",
+        "public/workshop-graph/data/kb-agenda-surface.json"
+      ]
     }
   ]
 }
