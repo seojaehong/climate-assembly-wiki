@@ -100,10 +100,10 @@ function loadWikiEntries() {
       id,
       title: data.title || '',
       slug,
-      href: `/ko/agenda/${slug}/`,
+      href: null,
       summary: truncate(sectionText(body, '한 줄 요약') || fallbackSummary(body), 420),
       related_agendas: Array.isArray(data.related_agendas) ? data.related_agendas.map(Number).filter(Number.isFinite) : [],
-      wiki_source: `content/ko/agenda/${file}`,
+      wiki_source: 'internal-draft-agenda-md',
     });
   }
   return entries;
@@ -176,7 +176,8 @@ for (const id of [...ids].sort((a, b) => a - b)) {
     id,
     title,
     slug: wiki.slug || null,
-    href: wiki.href || null,
+    href: null,
+    source_backed_href: null,
     big_category: base.big_category || '',
     domain: base.domain || '',
     summary,
@@ -187,7 +188,8 @@ for (const id of [...ids].sort((a, b) => a - b)) {
     similar_agendas: similar,
     keywords,
     has_wiki: wikiIds.has(id),
-    source: wiki.wiki_source || 'src/data/agendas-65.json',
+    source_status: wikiIds.has(id) ? 'internal_draft_unlinked' : 'matrix_only_unlinked',
+    source: wiki.wiki_source || 'agenda-matrix-65',
   });
 }
 
@@ -206,7 +208,7 @@ const out = {
     wiki_agenda_count: wikiEntries.size,
     agenda_count: agendaMap.size,
     inputs: [
-      'content/ko/agenda/*.md',
+      'internal draft markdown, links excluded',
       'src/data/agendas-65.json',
       'src/data/network/agenda-similarity.json',
     ],

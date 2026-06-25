@@ -674,8 +674,8 @@ function renderAgendaWikiCards(agendas) {
   if (!Array.isArray(agendas) || !agendas.length) return '';
   return `
     <div class="og-s-sec og-agenda-sec">
-      <h4>관련 의제 위키</h4>
-      <div class="og-surface-role"><b>숙의 보조 링크</b><span>관련 가능성이 높은 의제입니다. AI가 결론을 만든 것이 아니며, 원문 위키와 출처를 함께 확인하는 용도입니다.</span></div>
+      <h4>관련 의제 자료</h4>
+      <div class="og-surface-role"><b>숙의 보조 자료</b><span>관련 가능성이 높은 자료입니다. AI가 결론을 만든 것이 아니며, 내부 가안 링크는 제외했습니다. 경기도 OCR·Supabase 원천 연결 후 원문 링크를 제공합니다.</span></div>
       <div class="og-agenda-list">
         ${agendas.slice(0, 3).map(agenda => {
           const summary = agenda.summary || agenda.current_situation || agenda.proposed_policy || '요약 정보가 아직 연결되지 않았습니다.';
@@ -696,7 +696,7 @@ function renderAgendaWikiCards(agendas) {
                   ${agenda.proposed_policy ? `<div><b>정책대안</b><br>${escapeHtml(shortText(agenda.proposed_policy, 220))}</div>` : ''}
                   ${agenda.expected_effect ? `<div><b>기대효과</b><br>${escapeHtml(shortText(agenda.expected_effect, 220))}</div>` : ''}
                 </details>` : ''}
-              ${agenda.href ? `<a class="og-agenda-link" href="${escapeHtml(agenda.href)}" target="_blank" rel="noopener">의제 원문 보기</a>` : '<span class="og-agenda-link muted">위키 원문 준비 중</span>'}
+              ${agenda.source_backed_href ? `<a class="og-agenda-link" href="${escapeHtml(agenda.source_backed_href)}" target="_blank" rel="noopener">원천 자료 보기</a>` : '<span class="og-agenda-link muted">원천 자료 페이지 준비 중 · 내부 가안 링크 제외</span>'}
             </article>`;
         }).join('')}
       </div>

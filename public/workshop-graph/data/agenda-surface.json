@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "generated_at": "2026-06-24T23:55:36.764Z",
+  "generated_at": "2026-06-25T00:08:24.530Z",
   "source": {
     "wiki_agenda_count": 15,
     "agenda_count": 65,
     "inputs": [
-      "content/ko/agenda/*.md",
+      "internal draft markdown, links excluded",
       "src/data/agendas-65.json",
       "src/data/network/agenda-similarity.json"
     ]
@@ -15,7 +15,8 @@
       "id": 1,
       "title": "전력믹스 — 원전인가, 재생에너지인가?",
       "slug": "nuclear-vs-renewable",
-      "href": "/ko/agenda/nuclear-vs-renewable/",
+      "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "에너지전환",
       "summary": "한국 탄소중립 경로에서 원자력을 ‘무탄소 에너지’로 인정해 확대할 것인가, 아니면 재생에너지 중심 전환을 가속할 것인가 — 2030 NDC 상향(2018년 대비 53~61%) 논의의 출발점 .",
@@ -72,13 +73,15 @@
         "안정적인"
       ],
       "has_wiki": true,
-      "source": "content/ko/agenda/01-nuclear-vs-renewable.md"
+      "source_status": "internal_draft_unlinked",
+      "source": "internal-draft-agenda-md"
     },
     {
       "id": 2,
       "title": "전기요금 인상 — 받아들일 수 있는가?",
       "slug": "electricity-price",
-      "href": "/ko/agenda/electricity-price/",
+      "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "에너지전환",
       "summary": "탄소중립 비용을 누가·얼마나 부담할 것인가? 한국 가정용 전기요금(158원/kWh)은 EU 평균(367원)의 절반 이하 — 인상 폭과 부담 분담 설계가 핵심.",
@@ -135,13 +138,15 @@
         "확대"
       ],
       "has_wiki": true,
-      "source": "content/ko/agenda/02-electricity-price.md"
+      "source_status": "internal_draft_unlinked",
+      "source": "internal-draft-agenda-md"
     },
     {
       "id": 3,
       "title": "수도권 vs 비수도권 — 에너지 부담의 불균형",
       "slug": "seoul-metro-gap",
-      "href": "/ko/agenda/seoul-metro-gap/",
+      "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "에너지전환",
       "summary": "호남에 태양광 8.8GW·원전 5.9GW가 있는데 전력수요의 45%는 수도권 . 한국도 지역별 차등 전기요금·송전망 보강·자급률 법제화를 도입할 것인가?",
@@ -198,13 +203,15 @@
         "빠르게"
       ],
       "has_wiki": true,
-      "source": "content/ko/agenda/03-seoul-metro-gap.md"
+      "source_status": "internal_draft_unlinked",
+      "source": "internal-draft-agenda-md"
     },
     {
       "id": 4,
       "title": "내연차 판매금지 시점 — 한국은 언제?",
       "slug": "ice-vehicle-phaseout",
-      "href": "/ko/agenda/ice-vehicle-phaseout/",
+      "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "에너지전환",
       "summary": "한국은 언제부터 내연차(ICE) 신차 판매를 중단 할 것인가? 노르웨이 2025, 영국·EU 2035 — 한국은 공식 목표 미설정.",
@@ -260,13 +267,15 @@
         "있음"
       ],
       "has_wiki": true,
-      "source": "content/ko/agenda/04-ice-vehicle-phaseout.md"
+      "source_status": "internal_draft_unlinked",
+      "source": "internal-draft-agenda-md"
     },
     {
       "id": 5,
       "title": "기후재난의 사회적 불평등",
       "slug": "climate-injustice",
-      "href": "/ko/agenda/climate-injustice/",
+      "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "에너지전환",
       "summary": "같은 폭염·홍수에도 누군가는 죽고, 누군가는 에어컨을 켭니다. 기후재난 피해 보상의 공공 책임 범위 를 어디까지 둘 것인가가 본 의제의 출발점.",
@@ -322,13 +331,15 @@
         "분산에너지"
       ],
       "has_wiki": true,
-      "source": "content/ko/agenda/05-climate-injustice.md"
+      "source_status": "internal_draft_unlinked",
+      "source": "internal-draft-agenda-md"
     },
     {
       "id": 6,
       "title": "개인 라이프스타일에 대한 정책 개입의 경계",
       "slug": "lifestyle-regulation",
-      "href": "/ko/agenda/lifestyle-regulation/",
+      "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "에너지전환",
       "summary": "육류세, 일회용품 강제 규제, 자가용 통행 제한 — 개인의 식단·이동·소비 에 정책이 어디까지 개입할 수 있는가?",
@@ -383,13 +394,15 @@
         "석탄"
       ],
       "has_wiki": true,
-      "source": "content/ko/agenda/06-lifestyle-regulation.md"
+      "source_status": "internal_draft_unlinked",
+      "source": "internal-draft-agenda-md"
     },
     {
       "id": 7,
       "title": "개도국 지원 vs 국내 우선 — 기후금융의 분배",
       "slug": "developing-country-support",
-      "href": "/ko/agenda/developing-country-support/",
+      "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "에너지전환",
       "summary": "한국 GDP의 어느 정도까지 개도국 감축·적응에 재원을 보내야 하는가? 국제탄소시장(파리협정 6조)을 통한 ‘해외 NDC 달성’은 정당한가?",
@@ -444,13 +457,15 @@
         "당진"
       ],
       "has_wiki": true,
-      "source": "content/ko/agenda/07-developing-country-support.md"
+      "source_status": "internal_draft_unlinked",
+      "source": "internal-draft-agenda-md"
     },
     {
       "id": 8,
       "title": "기후공시·ESG 의무화의 속도 조절",
       "slug": "esg-re100",
-      "href": "/ko/agenda/esg-re100/",
+      "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "에너지전환",
       "summary": "ESG 공시·RE100 이행이 중소기업·자영업·소비자 에게 미칠 부담을 어떻게 분담할 것인가? 의무화 일정의 적절성은?",
@@ -507,13 +522,15 @@
         "있다"
       ],
       "has_wiki": true,
-      "source": "content/ko/agenda/08-esg-re100.md"
+      "source_status": "internal_draft_unlinked",
+      "source": "internal-draft-agenda-md"
     },
     {
       "id": 9,
       "title": "[메타-의제] 권고안 사후 이행 점검권",
       "slug": "implementation-monitoring",
-      "href": "/ko/agenda/implementation-monitoring/",
+      "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "에너지전환",
       "summary": "시민회의 권고가 정부에 전달된 뒤 누가·언제·어떤 권한으로 이행을 점검할 것인가? — 권고의 실효성을 시민이 직접 짜는 메타 의제.",
@@ -569,13 +586,15 @@
         "감축으로"
       ],
       "has_wiki": true,
-      "source": "content/ko/agenda/09-implementation-monitoring.md"
+      "source_status": "internal_draft_unlinked",
+      "source": "internal-draft-agenda-md"
     },
     {
       "id": 10,
       "title": "[메타-의제] 국가 권고를 17개 광역으로 어떻게 내려보낼 것인가",
       "slug": "national-to-local",
-      "href": "/ko/agenda/national-to-local/",
+      "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "에너지전환",
       "summary": "국가 시민회의 권고를 17개 광역시·도 로 어떻게 확산·이행할 것인가? — 경기 모델을 전국으로 펼칠지가 핵심.",
@@ -632,13 +651,15 @@
         "계획"
       ],
       "has_wiki": true,
-      "source": "content/ko/agenda/10-national-to-local.md"
+      "source_status": "internal_draft_unlinked",
+      "source": "internal-draft-agenda-md"
     },
     {
       "id": 11,
       "title": "AI·데이터센터 — 기후 게임체인저인가, 새로운 위기인가",
       "slug": "ai-datacenter",
-      "href": "/ko/agenda/ai-datacenter/",
+      "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "에너지전환",
       "summary": "AI를 ‘기후 해결자’와 ‘기후 위협’ 중 어디로 다룰 것인가? 데이터센터 입지·전력·RE100 의무화·신소재의 공공성을 한꺼번에 묻는 메가 의제.",
@@ -692,13 +713,15 @@
         "변화하고"
       ],
       "has_wiki": true,
-      "source": "content/ko/agenda/11-ai-datacenter.md"
+      "source_status": "internal_draft_unlinked",
+      "source": "internal-draft-agenda-md"
     },
     {
       "id": 12,
       "title": "개도국 성장 9대 변수 — 한국은 어디부터 지원할 것인가",
       "slug": "developing-9vars",
-      "href": "/ko/agenda/developing-9vars/",
+      "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "에너지전환",
       "summary": "한국은 개도국 성장을 어떤 ‘메뉴’ 로 지원할 것인가? — 의제 ⑦의 추상 토론을 9변수 우선순위 선택으로 구체화.",
@@ -754,13 +777,15 @@
         "중단"
       ],
       "has_wiki": true,
-      "source": "content/ko/agenda/12-developing-9vars.md"
+      "source_status": "internal_draft_unlinked",
+      "source": "internal-draft-agenda-md"
     },
     {
       "id": 13,
       "title": "[메타-의제] 한정된 재생에너지 — 전기차 vs 데이터센터 vs 산업, 누가 먼저?",
       "slug": "renewable-zerosum",
-      "href": "/ko/agenda/renewable-zerosum/",
+      "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "에너지전환",
       "summary": "2030년 한국 재생E 100GW를 전기차·데이터센터·산업 RE100·건물 히트펌프·가정 중 누가 먼저 가져갈 것인가? — 4개 의제를 한 번에 묶는 메가 의제.",
@@ -819,13 +844,15 @@
         "중립"
       ],
       "has_wiki": true,
-      "source": "content/ko/agenda/13-renewable-zerosum.md"
+      "source_status": "internal_draft_unlinked",
+      "source": "internal-draft-agenda-md"
     },
     {
       "id": 14,
       "title": "시민 환급형 기후배당(Climate Dividend) 도입",
       "slug": "climate-dividend",
-      "href": "/ko/agenda/climate-dividend/",
+      "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "교통·이동",
       "summary": "탄소세를 거둬 국민에게 균등 환급(per capita) 하는 시민 환급형 기후배당 — 의제 ②(전기요금 부담)의 정면 대안 . 한국은 미도입.",
@@ -882,13 +909,15 @@
         "산업"
       ],
       "has_wiki": true,
-      "source": "content/ko/agenda/14-climate-dividend.md"
+      "source_status": "internal_draft_unlinked",
+      "source": "internal-draft-agenda-md"
     },
     {
       "id": 15,
       "title": "복합 취약성(Compound Vulnerability) 정의·보호",
       "slug": "compound-vulnerability",
-      "href": "/ko/agenda/compound-vulnerability/",
+      "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "교통·이동",
       "summary": "2026 기후시민회의는 ‘기후재난 취약계층’의 정의를 소득·연령 같은 단일 변수 에서 주거·건강·이동·고립 4축이 결합된 ‘복합 취약성(Compound Vulnerability)’ 으로 확장할지 논의 중입니다.",
@@ -944,13 +973,15 @@
         "수준으로"
       ],
       "has_wiki": true,
-      "source": "content/ko/agenda/15-compound-vulnerability.md"
+      "source_status": "internal_draft_unlinked",
+      "source": "internal-draft-agenda-md"
     },
     {
       "id": 16,
       "title": "수송 부문 탄소중립을 위한 '자동차 탄소중립 포인트제' 확대 및 대중교통 활성화",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "교통·이동",
       "summary": "○ 대한민국 온실가스 배출량 중 수송 부문이 차지하는 비중은 약 14%로 높은 수준을 보이고 있습니다.○ 전기차 보급이 확산되고 있음에도 불구하고 내연기관차 운행 감소 속도는 더딘 상황입니다. 따라서 시민들의 이동권을 보장하면서도 탄소 배출을 효과적으로 줄일 수 있는 구체적인 인센티브 체계 마련이 시급합니다. 이 의제는 시민들의 자발적인 참여를 유도하여 수송 부문의 탄소 감축 목표 달성에 기여하고자 합니다.",
@@ -1003,13 +1034,15 @@
         "시민들의"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 17,
       "title": "자전거 동행차로제",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "교통·이동",
       "summary": "○ 수송 부문 온실가스, 줄일 여지가 크다 국내 온실가스 총배출량 중 수송 부문이 약 14%를 차지하며, 그 중 대부분이 도로수송에서 발생. 전기차 전환이 주목받고 있으나, 제조·폐기 단계의 탄소 배출까지 고려하면 자전거는 전 주기에 걸쳐 탄소 배출이 거의 없는 진정한 무탄소 이동수단임○ 한국의 자전거 수송 분담률은 너무 낮다. 한국의 자전거 수송 분담률은 1~2% 수준으로, 네덜란드(27%), 덴마크(18%), 독일(10%)에 비해 현저히 낮음. 자전거 이용이 레저 중심에 머물고 있으며, 통근·통학 등 일상 교통수단으로는 정착되지 못한 상태임○ 왜 도로 공유인가 — 구조적 한계 별도의 자전거 전용도로를 신설하려면 막대한 예산과 공간이 필요하지만, 기존 도로의 마지막 차로를 자동차와 자전거가 함께 쓰는 공유차로 방식은 추가 도로 없이 즉시 …",
@@ -1057,13 +1090,15 @@
         "무탄소"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 18,
       "title": "민간건축물 그린리모델링 활성화를 위한 설비 중심 직접 보조금 제도 도입",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "건물·주거",
       "summary": "○ 현행 국토교통부의 민간 그린리모델링 정책은 대출 이자의 일부(최 대 5.5%)를 지원하는 '이자지원사업' 중심으로 운영 중.○ 그린리모델링을 하기위해 대출을 해야만 하는 구조로 대출 피로감 이 높은 일반 가구, 특히 취약계층의 참여를 제한하는 한계 ○ 민간 주택에 직접 국고 보조금을 지급할 경우 '사유재산 특혜 논란 '이 발생해 정책 확대가 저지 ○ 현 민간 그린리모델링 이자지원사업 대상인 창호·단열 등 부동산 가치에 직결되는 외피 부문(융자 유지)은 건축물의 사용을 잠시 중 지해야하는 한계도 지적 ○ 따라서 감가상각이 빠르고 저감 성능이 확실한 고효율 설비형 부문 (직접 보조 전환)을 분리하는 패러다임 전환이 시급",
@@ -1114,13 +1149,15 @@
         "취약계층의"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 19,
       "title": "건물부문 에너지절약과 제로에너지 전환 확대",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "건물·주거",
       "summary": "○ 건물 부문은 2030 국가온실가스감축목표에서 온실가스 배출을 2018년 52.1백만 톤에서 2030년 35.0백만 톤으로 줄여야 하는 핵심 감축 부문입니다.○ 가정·상업용 건물은 난방, 냉방, 조명, 대기전력 등 일상적 에너지 사용과 직접 연결되어 있어 시민이 체감하는 비용과 배출을 동시에 줄일 수 있습니다.○ 특히 냉난방 수요가 큰 여름·겨울에는 전기요금 부담과 에너지빈곤 문제가 함께 나타나므로, 건물 에너지 효율 개선은 기후정책이면서 민생정책입니다.",
@@ -1174,13 +1211,15 @@
         "시민이"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 20,
       "title": "탄소흡수원 확충을 위한 유휴토지 확보",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "농축산임업 및 토지관리",
       "summary": "○ 2035 NDC에 따르면 흡수원 부문에서는 산림순환경영, 신규 흡수원 확충, 목재이용 활성화 등을 통해 38.3백만톤에서 39.3백만톤의 온실가스를 흡수하는 것을 목표로 제시하고 있습니다.○ 특히 흡수량 증진을 위한 감축수단으로 유휴토지에 신규조림을 실시하여 신규 흡수원을 확충하는 것을 제시하고 있습니다. 즉 매년 기존에 산림이 아닌 유휴토지를 확보하여 신규조림을 추진하여 흡수원을 확충한다는 것입니다.○ 따라서 흡수원 목표를 달성하기 위해서는 한계농지, 수변지역, 도시녹지, 간척지 등 신규조림을 할 수 있는 유휴토지를 확보하는 것이 필수적이며, 이를 위해서는 국토부, 농식품부, 환경부 등 관련된 전부처가 참여하는 정책적 노력이 필요합니다.",
@@ -1232,13 +1271,15 @@
         "확충하는"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 21,
       "title": "저메탄 사료·가축분뇨 에너지화·정밀축산을 통한 축산 메탄 감축 패키지",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "농축산임업 및 토지관리",
       "summary": "○ 한국은 2021년 글로벌 메탄 서약(GMP)에 가입하면서 2030년까지 2020년 대비 메탄을 30% 이상 감축하기로 약속하였다. 정부는 2023년 11월 「2030 메탄 감축 로드맵」을 통해 농축산 부문 34.2% (990만 톤 CO₂eq) 감축 목표를 제시하였다(2050 탄소중립녹색성장위원회, 2023). ○ 농업 부문 온실가스 중 메탄이 가장 큰 비중을 차지하는데, 가축 장내발효 447만 톤(2018년)을 2050년 198만 톤으로 56% 감축, 가축분뇨 처리는 11% 감축하기로 하였다. 메탄은 100년 기준 CO₂의 28배, 20년 기준 약 80배의 온실효과를 갖지만 대기 수명이 11.8년에 불과해(IPCC, 2021), 단기 감축이 1.5℃ 목표 달성에 결정적이다.○ 그러나 현실은 목표와 멀다. 기후솔루션(SFOC) 「예산 없이…",
@@ -1292,13 +1333,15 @@
         "제시하였다"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 22,
       "title": "저탄소 농법과 바이오차로 농업이 기후 해결사가 됩니다.",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "농축산임업 및 토지관리",
       "summary": "○ 농업 부문은 국내 온실가스 배출량의 약 3.1%를 차지합니다. 물을 가득 채운 논에서 나오는 메탄과 비료에서 발생하는 아산화질소가 주요 원인입니다. 그러나 반대로 농업은 탄소를 ‘줄이는 것’을 넘어 토양 속에 ‘가두는’ 역할을 할 수 있습니다.○ 논물 관리 방식만 바꿔도 메탄을 크게 줄일 수 있습니다. 토양에 유기물을 쌓고, 피복작물을 심는 것만으로도 탄소가 땅속에 저장됩니다. 유럽에서는 이미 온실가스를 줄이는 농사를 지은 농민에게 탄소 크레딧을 지급하는 ‘탄소 농업’을 탄소중립 전략의 핵심으로 운영하고 있습니다.○ 매년 막대한 양의 과수 가지, 볏짚, 농업 부산물이 발생하지만 태우면 탄소가 배출되고 방치하면 오염원이 됩니다. 이를 숯 형태인 ‘바이오차’로 만들어 땅에 묻으면 탄소를 100년 이상 토양 속에 가둘 수 있습니다. 동시에 토…",
@@ -1349,13 +1392,15 @@
         "가두는"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 23,
       "title": "농업과 에너지의 만남 – 탄소도 줄이고 소득도 늘립니다.",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "농축산임업 및 토지관리",
       "summary": "○ 비닐하우스, 유리온실에서 토마토, 딸기, 파프리카 등을 재배하는 시설원예는 연중 난방과 냉방에 박대한 에너지를 씁니다. 우리나라 시설원예 면적은 약 5만 ha로 세계 최상위권이며, 한파, 폭염이 심해질수록 관리비 부담이 커져 농가 경영이 악화됩니다.○ 반면 농촌은 태양광, 풍력 등 재생에너지를 생산할 수 있는 넓은 공간을 갖고 있습니다. 농사를 지으면서 동시에 전기를 생산하는 ‘영농형 태양광’은 농가 소득을 올리면서 국가 탄소중립에도 기여하는 일석이조의 방법입니다.○ 시설원예의 에너지 절감과 농촌의 재생에너지 생산은 같은 방향을 향합니다. 농업현장을 탄소 감축의 거점으로 전환할 수 있습니다.",
@@ -1406,13 +1451,15 @@
         "부담이"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 24,
       "title": "산불 등 기후재난 회복력을 고려한 탄소흡수원 관리",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "농축산임업 및 토지관리",
       "summary": "○ 최근 기후변화가 심각해지면서 전세계 산림은 산불, 병해충 등 산림재난의 위협에 직면해있습니다. 특히 가뭄과 고온, 낮은 습도, 강풍 등 산불에 취약한 기상조건을 조성되면서 산불로 인한 피해가 점차 증가하고 있습니다. IPCC에서는 지구온난화로 인해 앞으로 더욱 산불에 취약해질 것이라고 전망하고 있습니다.○ 우리나라도 예외는 아닙니다. 최근 10년간 산불발생 현황을 살펴보면 평균 529건, 1만4천ha의 산림이 피해를 입었으며, 특히 2025년에 발생한 경북 의성지역 산불은 약 10만 ha의 산림을 태우고 28명의 인명피해를 야기하는 등 최악의 산불로 기록되었습니다.○ 산불은 산림에 저장된 온실가스를 대기중으로 대량으로 배출시키는배출원이 되기도 합니다. 따라서 기후위기 심화로 인해 산불이 점차 빈번해지면 흡수원을 통한 감축목표 달성에 위협…",
@@ -1463,13 +1510,15 @@
         "지구온난화로"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 25,
       "title": "(카페, 배달 음식점, 생수 등) 다회용기의 선택권 부여 내지 표준화",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "소비(생활양식, 식생활) 및 폐기물 관리",
       "summary": "○ 국내/외적으로 테이크아웃 및 배달 음식으로 인한 일회용 플라스틱 쓰레기 급증 문제, 일회용품의 일방적 금지는 자영업자 및 소비자의 실천 한계○ 따라서 ‘선택’과 ‘표준화’를 동시에 제공하고, 인센티브 정책이나 규정의 입법화를 활용",
@@ -1520,13 +1569,15 @@
         "제공하고"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 26,
       "title": "지속가능한 식생활을 통한 기후변화 대응",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "소비(생활양식, 식생활) 및 폐기물 관리",
       "summary": "○ 전 세계적으로 식품시스템으로 발생하는 온실가스는 전체 배출량의 약 25%를 차지하며 국내 농식품시스템 전체 배출량 비중은 전체 배출량의 약 16%에 이름○ 현재 농업부문 온실가스 감축 전략은 생산에만 집중되어 있어, 농업부문 감축 목표 달성은 물론 식품시스템 전반을 고려한 효과적인 감축에 한계가 있음○ 특히 지난 10년간 국내 육류 섭취량은 약 19% 증가하는 등 점차 탄소발자국이 높은 식단으로 변화하고 있음○ 또한 식품의 가공 및 유통, 소비 단계에서 발생하는 온실가스 배출량이 농식품시스템 전체 배출량의 74.3%를 차지함○ 마지막으로 배달 및 포장 증가에 따른 일회용기 폐기 증가와 가식부 식품폐기 발생 등으로 인해 소비단계의 환경부담이 갈수록 가중 되고 있음○ 기존 생산 중심 정책을 보완하여 소비자의 지속가능한 식생활 정착과 실질적인…",
@@ -1574,13 +1625,15 @@
         "고려한"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 27,
       "title": "정의로운 전환 과정에서 비정규노동자들의 거버넌스 참여 강화",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "소비(생활양식, 식생활) 및 폐기물 관리",
       "summary": "○ 현재의 탄소중립 및 정의로운 전환 관련 의사결정 체계(거버넌스)는 대기업 중심의 사측과 정규직 위주의 주류 노조, 그리고 정부 관료 중심으로 편중되어 있음○ 현장 최전선에서 기후위기의 물리적 위험과 고용 위기를 동시에 겪는 비정규직 노동자의 목소리가 배제된다면, 전환의 비용이 취약계층에게 전가되는 '불평등한 전환'이 고착화될 수밖에 없다. 따라서 이들의 거버넌스 참여를 법제적으로 의무화하여 정책의 민주성과 실효성을 확보해야 함",
@@ -1634,13 +1687,15 @@
         "위험과"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 28,
       "title": "탄소중립 전환 비용을 어떻게 공정하게 분담할 것인가?– 탄소세·기후대응기금 확대와 기후배당 제도 도입 필요성 –",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "정의로운 전환·일자리",
       "summary": "○ 우리나라 역시 2050 탄소중립 목표 달성을 추진 중이나, 에너지 전환 과정에서 전기요금·연료비·교통비·생활물가 상승 가능성이 커지고 있다. 특히 저소득층과 에너지 취약계층은 탄소중립 비용 부담에 더 취약할 수 있다는 우려가 제기되고 있다.○ 이에 따라 탄소세 또는 기후대응기금을 확대할 필요가 있는지, 또한 확보된 재원을 시민에게 직접 환급하는 기후배당 제도를 도입할 필요가 있는지에 대한 사회적 논의가 필요하다. 단순히 세금을 늘리는 문제가 아니라, 탄소중립 비용을 누가·어떻게 부담하고 혜택을 공유할 것인가에 대한 사회적 합의가 핵심 과제이다.",
@@ -1694,13 +1749,15 @@
         "취약계층은"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 29,
       "title": "산업 온실가스 감축 과정에서일자리, 중소기업, 지역경제를 보호하는 전환 방안 논의",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "정의로운 전환·일자리",
       "summary": "○ 2024년 산업 부문 온실가스 배출량은 2억 8,590만 톤으로 전년 대비 0.5% 증가함. 일부 업종의 경기회복과 생산량 증가, 온실가스 원단위 개선 부진이 원인으로 제시되었으며, 이는 산업 부문의 감축이 한국 탄소중립 이행의 핵심 난제임을 보여줌○ 철강, 석유화학, 시멘트, 정유, 자동차, 조선 등은 국가경제와 고용을 지탱하는 산업이지만 동시에 고탄소 구조를 갖고 있음. 무리한 감축은 고용과 지역경제에 충격을 줄 수 있고, 반대로 감축을 늦추면 탄소국경조정, 글로벌 공급망 규제, 저탄소 제품 수요 확대에 뒤처질 수 있음. IEA도 한국 에너지 구조의 특징으로 화석연료 의존, 높은 에너지 수입 의존도, 산업 에너지 사용 비중이 큰 구조를 지적함○ 따라서 시민회의에서는 “산업 경쟁력과 감축을 어떻게 동시에 달성할 것인가”, “노동자와 지…",
@@ -1754,13 +1811,15 @@
         "탄소중립"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 30,
       "title": "청소년 주도 기후정의 거버넌스 구축",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "정의로운 전환·일자리",
       "summary": "○ 기후위기는 청소년들의 미래 생존권과 직결된 문제이지만, 현재 주요 기후 정책 결정 과정에서 청소년들의 목소리가 반영될 수 있는 제도적 통로는 매우 제한적임○ 청소년들이 기후위기로 인한 불안감(기후 우울증)을 극복하고 효능감을 갖게 하려면, 정책의 수혜자를 넘어 전환 과정을 함께 이끄는 '파트너'로 인정하고 이를 뒷받침할 교육적·제도적 거버넌스를 구축할 필요가 있음",
@@ -1814,13 +1873,15 @@
         "갖게"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 31,
       "title": "폐지발전소 인프라 활용을 위한 제도 지원",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "정의로운 전환·일자리",
       "summary": "○ 폐지계획 제11차 전기본에 따라 2038년까지 40기 폐지 예정(전체 62기) 새정부는 2040년까지 국내 석탄발전기 폐지 공약○ 국내 대규모 석탄발전단지 현황 공공 대표 석탄발전소명: 태안화력, 보령화력, 하동화력, 삼천포화력, 당진화력, 영흥화력 등 시설현황: 발전기, 부두, 저탄장, 회처리장, 송전계통, 부지 등 태안화력: 140만평, 발전기 11기, 부두 3개, 회처리장(2개소) 행정동, 자재창고 등 다수 시설보유, 송전계통 6GW",
@@ -1871,13 +1932,15 @@
         "당진화력"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 32,
       "title": "체계적이고 질서있는 전환 정책 추진을 통한 정의로운 전환 구현",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "정의로운 전환·일자리",
       "summary": "○ 국내 탄소중립 정책과 탈석탄 정책 현황 문재인 정부는 탈석탄 정책을 선언하고 전력수급기본계획을 중심으로 노후 석탄화력발전소 조기 폐지 추진 2050 탄소중립 시나리오를 통해 2050 탈석탄 목표와 석탄발전 중단 근거 법률 및 보상방안 마련 필요성을 제시하고 있으나, 석탄발전 폐지 지역 지원에 관한 특별법이 국회에 계류 중이며, 새정부는 2040년까지 석탄발전 폐지 공약을 선언하고 관련 정책 추진을 검토중에 있음 태안화력 1호기(2025.12.31. 발전정지)를 시작으로 2038년까지 전국의 석탄발전기 40기가 단계적으로 폐지될 예정임○ “정의로운 전환” 용어 및 관련내용 규정 제도 글로벌: 2015 COP21(파리협정문) 및 2018 COP24 탄소중립법 제2조(정의) 및 산업안전고용안전법 1조(노동전환 및 고용안정지원)○ 주요 갈등 이…",
@@ -1931,13 +1994,15 @@
         "필요성을"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 33,
       "title": "탄소 감축량에 관한 계획에 구체적인 예산의 규모와 재원 마련 방안을 시민들에게 공개",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "기후정책 통합·조정",
       "summary": "○ 정의로운 전환, 감축량 달성 등에 관한 안정적인 달성이 가능한지. 이를 담보할 구체적인 전략에 관한 질문, 특히 재원 확보에 관한 질문계속 중○ 탄소중립이라는 기후목표의 달성을 위해 소요되는 비용은 곧 시민들에게도 직간접적 영향을 미치는 중요한 사항○ 따라서 관련된 예산의 구체적인 규모/수치와 그 재원의 마련 방안을 포함하여 시민들에게 정보 공개 필요○ 이를 통해 탄소중립의 실질적, 지속적 이행이 담보될 것임",
@@ -1990,13 +2055,15 @@
         "소요되는"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 34,
       "title": "정책 수립-집행-평가-환류 과정에 대한 시민참여 보장 및 일상적 정보공개",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "기후정책 통합·조정",
       "summary": "○ 기후는 다양하고 복잡하며 과거와 현재, 그리고 미래를 아우르는 혼합되어 있는 주제이므로, 특정한 하나의 분야에 대한 전문성 만으로도 접근하기 어려움 특히 민주사회에서 국가의 정책결정과정에 대한 시민참여는 기본적인 책무이기도 하지만, 실제로는 참여기회 및 해당 정책에 대한 정보가 부족하여 거의 불가능한 상황임 따라서 일상적으로 기후정책에 대한 정보공개를 바탕으로 정책과정에 대한 시민의 참여를 보장해야 함",
@@ -2046,13 +2113,15 @@
         "국가의"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 35,
       "title": "기후재난(폭염·홍수) 취약계층 보호를 위한 '기후안전망' 강화",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "감축",
       "domain": "기후정책 통합·조정",
       "summary": "○ 2024년부터 2025년까지 대한민국은 기록적인 폭염을 경험했으며, 이로 인해 온열질환자 수가 급증했습니다. 2025년 온열질환자는 4,460명으로 전년 대비 20% 이상 증가했으며, 사망자도 29명 발생했습니다. 특히 쪽방촌 거주자, 고령자, 저소득층 등 기후 취약계층에 피해가 집중되는 경향을 보였습니다○ 현재 운영되는 '한파/폭염 쉼터'와 같은 사후 약방문식 대책만으로는 기후재난에 근본적으로 대응하기 어렵습니다. 기후변화가 심화됨에 따라 주거 환경 개선을 통한 단열 강화, 냉방권 보장 등 선제적이고 근본적인 대책 마련이 시급합니다○ 기후위기는 단순히 환경 문제가 아니라 생존권과 직결된 문제이며, 사회적 불평등을 심화시키는 요인으로 작용하고 있습니다. 시민들이 직접 기후재난으로부터 보호받아야 할 대상과 보호 수준에 대해 논의하고 합의를…",
@@ -2106,13 +2175,15 @@
         "거주자"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 36,
       "title": "기후재난 취약계층을 어떻게 정의하고 보호할 것인가?",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "폭염·한파 대응과 에너지 정의",
       "summary": "○ 최근 국내 폭염 사망자와 온열질환자는 지속 증가하고 있으며, 집중호우 시 반지하 침수 및 고립 피해도 반복되고 있다. 그러나 현재의 재난 대응체계는 연령·소득 중심의 제한적 기준에 머물러 있어, 실제 기후위험과 생활환경을 충분히 반영하지 못한다는 지적이 제기되고 있다.○ 기후재난 취약성은 단순 소득 문제가 아니라 주거환경, 건강상태, 이동능력, 사회적 고립, 지역 인프라 접근성 등이 복합적으로 작용하는 문제이다. 따라서 누가 기후재난 취약계층인가에 대한 사회적 기준을 마련하고, 이를 기반으로 한 보호체계와 지원 우선순위를 시민사회와 함께 논의할 필요가 있다.",
@@ -2166,13 +2237,15 @@
         "머물러"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 37,
       "title": "도심열섬대응 녹색인프라확충",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "폭염·한파 대응과 에너지 정의",
       "summary": "○ 폭염은 이제 '재난'이다 기후위기로 한국의 여름은 매년 더 길고 더 뜨거워지고 있음. 온열질환 사망자는 매년 증가 추세입니다. 기상청은 현재 추세가 지속될 경우 2050년대에는 서울의 여름이 6개월에 달할 수 있다고 경고.○ 도시는 농촌보다 훨씬 뜨겁다 도시 열섬 현상(Urban Heat Island)은 콘크리트·아스팔트·건물이 낮 동안 열을 흡수했다가 밤에 방출하면서 도시 기온이 주변 농촌보다 3~7℃ 높게 유지되는 현상. 한국은 인구의 92%가 도시에 거주하고 있어, 폭염의 피해가 도시에 집중될 수밖에 없는 구조임.○ 가장 피해를 입는 것은 취약계층이다 폭염 사망자의 대다수는 고령자, 저소득층, 옥외 노동자임. 에어컨이 없는 고시원·반지하·쪽방 거주자, 건설·배달·농업 종사자는 폭염을 피할 수단 자체가 없고 냉방 에너지 비용 부담도 …",
@@ -2226,13 +2299,15 @@
         "도시는"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 38,
       "title": "폭염, 홍수, 가뭄에 대비한생활권 안전대책의 우선순위와 취약계층 보호 논의",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "폭염·한파 대응과 에너지 정의",
       "summary": "○ 기후위기는 더 이상 장기적 환경 문제가 아니라 시민의 건강, 주거, 이동, 노동, 먹거리 가격에 영향을 주는 생활위험임. 기상청의 2025년 이상기후 보고서에 따르면 2025년에는 대형 산불, 1973년 관측 이래 가장 뜨거웠던 여름, 시간당 100mm가 넘는 기록적 집중호우, 108년 만의 극심한 가뭄이 동시다발적으로 나타남○ 또한 2025년 연 기후특성 분석에서도 연평균기온은 13.7℃로 역대 2위였고, 시간당 100mm 이상 호우가 15개 지점에서 발생한 것으로 나타남. 이는 폭염과 집중호우가 동시에 반복되는 복합재난 양상이 강화되고 있음을 보여줌○ 폭염은 고령자, 야외노동자, 쪽방·반지하 거주자, 에너지 빈곤층에게 직접적인 건강위험이 되고, 집중호우는 침수, 교통마비, 하천 범람, 지하공간 피해로 이어짐. 가뭄은 식수, 농업, 산…",
@@ -2286,13 +2361,15 @@
         "2025년에는"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 39,
       "title": "이주민 기후취약성 해소 및 기후 적응 방안 마련",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "폭염·한파 대응과 에너지 정의",
       "summary": "○ 다문화가정·중도입국 청소년의 경우 폭염주의보·홍수경보·재난문자 등이 한국어로만 제공되어 정보 접근 사각지대에 놓여 있음. 그러나 이주민의 일부는 옥외 노동 혹은 컨테이너 등 비적정 주거 상황에 놓여 있음. 따라서 기후위기로 인한 취약성 문제를 해결할 필요가 있음○ 한편 최근 KAIST 연구는 도시 녹지 확대 등 기후적응 정책이 오히려 저소득층을 외곽으로 밀어내는 '기후적응 젠트리피케이션'을 야기할 수 있음을 실증한 바 있음(경향신문, 2026.5.18.). 한국 도시정책 수립 과정에서도 적응 정책과 주거 형평성을 함께 고려할 필요를 시사",
@@ -2346,13 +2423,15 @@
         "주거"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 40,
       "title": "폭염·홍수 등 기후재난에 대비한 도시 기준을 어떻게 바꿔야 하는가?",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "집중호우·침수 대응과 도시 인프라",
       "summary": "○ 「한국 기후위기 평가보고서」에 따르면 폭염 발생일수와 극한강수 강도는 지속적으로 증가할 것으로 전망된다.○ 특히 도시는 아스팔트·콘크리트 중심의 고밀 개발 구조로 인해 열섬현상과 침수 위험이 더욱 심화되고 있으며, 고령층·저소득층·반지하 거주자 등 취약계층에 피해가 집중되고 있다. 그러나 현재 도시계획·건축·배수 기준은 과거 기후를 기준으로 설계되어 미래 기후위험을 충분히 반영하지 못하고 있다는 한계가 있다.○ 이에 따라 단순 재난 대응을 넘어, 도시 구조 자체를 기후위기에 적응할 수 있는 방향으로 전환하기 위한 사회적 논의가 필요하다.",
@@ -2406,13 +2485,15 @@
         "위험이"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 41,
       "title": "자연기반 인프라(EbA) 확충을 통한 도심 기후재난 대응력 제고",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "집중호우·침수 대응과 도시 인프라",
       "summary": "○ 전통적 방재 대책의 한계성과 부작용: 인공구조물에 의존하는 토목공학적 회색 인프라(Grey Infrastructure) 중심 방재는 기후재난 심화에 따른 예산 소요 대비 한계 효용에 도달함. 생태축 단절 및 도시 회복력 저하 등의 구조적 부작용을 유발함○ 국제 표준(EbA) 도입 지체 및 제도적 연계 미비: UNEP·CBD의 생태계기반적응(EbA) 핵심 전략 권고에도 불구, 국내 지자체 도시계획 및 재난 예방 정책과의 제도적 연계 미비로 기술적 전환 지체 유발○ 가치평가 기술의 한계 및 행정 적용의 격차: 현재 기후부 국립생태원 등 생태계서비스 가치평가(ESA) 기법이 연구·개발 중이나, 표준화된 정량적 지표 부재로 행정 계획에 즉각 반영하기 어려운 공백이 존재함. 이에 따라 기술 개발 완료 전이라도 현행 지표를 활용한 단계적 도입 로드…",
@@ -2466,13 +2547,15 @@
         "생태축"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 42,
       "title": "기후위기에 취약한 소나무숲의 관리 정책",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "산불·산림 관리",
       "summary": "○ 소나무는 우리나라 전역에 분포하는 고유수종으로 산림생태계 회복, 우량 목재공급, 송이 등 임산물 생산, 휴양관광 공간 제공 등 다양한 가치를 제공하는 역할을 해왔습니다. 역사적으로도 궁궐의 건축재나 군선의 제조 등에 사용되는 등 그 가치가 인정되어 오랫동안 이용·관리·보호 되어온 수종입니다.○ 최근 기후변화가 심화되면서 산불발생 빈도가 높아지면서 산불에 취약한 소나무숲의 피해가 크게 늘고 있으며, 또한 남부지역을 중심으로 재선충병이 확산하면서 큰 위협을 받고 있습니다. 이처럼 기후위기의 심각한 피해를 입고 있음에도 불구하고, 오히려 소나무숲이 산불의 대형화를 키우고 있다며 참나무와 같은 활엽수로 바꾸어야 한다는 목소리가 점차 높아지고 있습니다.○ 따라서 소나무숲에 대한 가치를 다시 한번 평가하고, 기후위기에 취약한 소나무숲을 앞으로 어떻…",
@@ -2522,13 +2605,15 @@
         "가치가"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 43,
       "title": "기후위기 대응 꿀벌생태마을 100개 조성",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "생태계·생물다양성 보호",
       "summary": "○ 기후위기로 꿀벌 급격한 감소, 농업과 식량 위기○ 유엔 세계식량기구(FAO) 2018년 5월 20일 ‘세계 벌의 날(World Bee Day)’ 지정○ 이상기후, 서식지 파괴, 농약 사용, 전염병 등으로 국내 꿀벌 급격한 감소와 양봉농가 피해 급증○ 밀원숲 조성, 밀원 농작물 재배 등 꿀벌 서식환경 조성과 양봉농가 지원, 관련 산업과 서비스 개발 필요",
@@ -2582,13 +2667,15 @@
         "국내"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 44,
       "title": "내 식탁의 사과·배추가 사라지는 미래를 막는 농업 R&D 강화",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "농수산업 적응과 식량안보",
       "summary": "○ 한국 농업은 이미 기후위기의 직격탄을 맞고 있다. 2024년 한 해 농작물재해보험 보험금 지급액은 1조 271억 원, 피해 농가 245,146명, 농가당 평균 419만 원으로, 가입농가 59.3만 명 가운데 41.3%가 피해를 입었다(농림축산식품부, 2025). ○ 농촌진흥청 SSP5 8.5 시나리오 분석에 따르면 연평균기온이 1℃ 오를 때마다 농산물 재배 적지가 81km 북상하며, 사과 재배면적은 2033년까지 2,900ha(축구장 4,000개 규모) 감소할 전망이다(농촌진흥청, 2020; 한국농촌경제연구원 농업전망 2024). ○ 강원도 사과 재배면적은 2014년 522ha에서 2024년 1,748ha로 3배 이상 늘었다. 이러한 변화는 시민의 식탁과 가계를 직접 흔든다. 2024년 3월 사과 가격은 전년 동월 대비 88.2%, 배 …",
@@ -2641,13 +2728,15 @@
         "피해를"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 45,
       "title": "기후 식량위기 대응을 위한 바이오신기술(LMO·합성생물학)의 안전성 확보와 시민 수용성 제고",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "농수산업 적응과 식량안보",
       "summary": "○ 식량 공급망 구조적 취약성 심화: IPCC 제6차 평가보고서(AR6) 및 기후부 리스크 평가에 따라 극한 기상현상으로 농업 생산성 저하가 심화됨. 특히 국내 곡물자급률은 21.6%, 식량자급률은 47.9%(사료용 제외) 수준으로 가파른 하락세를 보이며, 농림축산식품부 「중장기 식량안보 강화방안」상의 국가 법정 목표치(55.5%)와의 괴리가 심화되어 자력 방어의 한계성에 직면함. 급증하는 글로벌 기후 shock에 매우 취약함○ 바이오신기술 수요 확대 및 수용성의 불가피성: 세계 최초 「합성생물학 육성법」 제정(25.4.) 및 본격 시행(26.4.)에 따라 가뭄·고온 저항성 작물 등 차세대 바이오신기술 기반 연구개발과 수요가 전 분야에서 급격히 확대될 전망임. 기술 도입 여부를 선택할 수 있는 기호의 문제가 아니며, 기후위기 시대를 극복하고…",
@@ -2701,13 +2790,15 @@
         "특히"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 46,
       "title": "농식품시스템 기후인플레이션 대응 체계 구축",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "농수산업 적응과 식량안보",
       "summary": "○ 이상기후의 빈도와 강도 증가로 농작물 생산의 변동성이 커지며, 이로 인해 농산물 및 식료품 가격이 급등하는 이른바 기후플레이션이 빈번하게 발생하고 있음. 또한 최근에는 이러한 기후플레이션은 전쟁과 무역 분쟁 등과 같은 글로벌 리스크와 합쳐져 식량위기사태의 원인이 되기도 함 한국은행(2024)에 따르면 일시적으로 기온이 1℃ 상승하는 경우 농산물가격 상승률은 0.4 ~ 0.5%p, 전체 소비자물가지수 상승률은 0.07%p 높아지는 것으로 분석됨. 또한 점진적으로 기온이 상승하는 온난화의 영향을 살펴보기 위해 1℃ 기온 상승 충격이 1년간 지속된다고 가정하여 분석한 결과, 1년 후 농산물가격 수준은 2%, 전체 소비자물가 수준은 0.7% 높아지는 것으로 추정됨. 마지막으로 기후변화의 영향으로 2040년까지 농산물가격은 대략 0.6 ~ 1.1…",
@@ -2760,13 +2851,15 @@
         "등과"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 47,
       "title": "기후변화로 우리 먹거리 지도가 바뀌고 있습니다.",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "농수산업 적응과 식량안보",
       "summary": "○ 지난 100년간 함반도 평균 기온은 1.8℃ 상승했으며, 이는 세계 평균(1.1℃)보다 1.6배 빠른 속도입니다. 이러한 변화는 우리 밥상을 직접 바꾸고 있습니다.○ 경북 사과, 나주 배, 제주 감귤 등 지역 특산물의 재배 적지가 빠르게 북상하고 있습니다. 2070년에는 사과를 강원도 일부에서만 재배할 수 있을 것으로 예측됩니다. 반면, 과거엔 제주에서만 자라던 망고, 파파야, 용과 같은 아열대 작물이 이제 전남, 경남 내륙에서도 재배되기 시작했습니다. 현재 아열대 기후지역은 경지의 약 10%이지만, 2080년에는 62.3%까지 확대될 전망입니다.○ 봄 냉해, 여름 폭우, 가을 집중호우 등 기상재해 피해가 매년 반복되고 있습니다.○ 한국은 식량 수입 의존도가 높아 국내 농업 생산성 저하는 곧 장바구니 물가 상승으로 직결됩니다. 작목 전환…",
@@ -2820,13 +2913,15 @@
         "적지가"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 48,
       "title": "가축도 폭염에 쓰러집니다.",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "농수산업 적응과 식량안보",
       "summary": "○ 2024년 여름 폭염으로 전국에서 닭, 오리, 돼지 등 가축 수천만 마리가 폐사하고, 피해액은 500억원 이상으로 추정됩니다.○ 고온 스트레스를 받은 가축은 생산성(우유, 달걀, 고기)이 떨어지고 질병에도 취약해집니다. 폭염이 지속되면 젖소의 우유 생산량은 최대 20~30% 감소할 수 있습니다.○ 현재 중소규모 축산 농가의 냉방 시설 보급률은 매누 낮습니다. 가축 폐사와 생산성 저하는 달걀, 우유, 육류 가격 상승으로 이어져 소비자에게도 직접 영향을 미칩니다.○ 기후변화가 계속되면 이런 폭염 피해는 매해 반복될 것입니다. 지금 축산 환경을 바꾸지 않으면 피해는 더 커집니다.",
@@ -2878,13 +2973,15 @@
         "생산량은"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 49,
       "title": "기후변화로 낯선 병해충, 잡초가 밀려옵니다.",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "농수산업 적응과 식량안보",
       "summary": "○ 기온이 오르면서 과거 겨울에 얼어 죽던 병해충이 이제 월동하여 이듬해 더 빠르게 확산됩니다.○ 열대, 아열대 기원의 외래 잡초(가시박, 다눙잎돼지풀, 털별꽃아재비 등)가 빠르게 북상하며 작물과 햇빛, 물, 양분을 경쟁합니다. 기존 제초제에 저항성을 가진 잡초도 늘어나고 있습니다.○ 농민들은 전에 없던 병해충과 잡초에 대응하기 위해 농약을 더 써야 하는 악순환에 빠지고 있습니다. 농동력과 비용 부담이 가중되고, 환경 부담도 커집니다.○ 기후변화에 따른 병해충, 잡초 피해는 이미 현장에서 체감되고 있지만 체계적인 대응 시스템은 아직 미흡합니다.",
@@ -2936,13 +3033,15 @@
         "제초제에"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 50,
       "title": "기후위기 시대 옥외노동자 안전보장을 위한 작업중지권 의무화 및 소득손실 보전 제도 수립",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "건강영향과 보건",
       "summary": "○ 가속화된 기후변화는 노동환경의 안전 보전 방식을 근본적으로 재정의할 것을 요구하고 있음, 기상 여건은 단순한 불편함을 넘어 노동자의 생명과 건강을 직접적으로 타격하는 중대한 산업재해 유발 요인으로 부상하고 있음○ 특히, 기후위기의 직격탄은 건설현장, 도로정비, 농림어업, 배달 및 물류 배송 등 야외에서 신체 노동을 전개하는 옥외노동자층에 집중되고 있음○ 현행 「산업안전보건법」 제52조는 근로자가 산업재해 발생의 '급박한 위험'이 있다고 믿을 합리적인 이유가 있을 때 작업을 중단하고 대피할 수 있는 작업중지권을 보장하고 있으나 불안정한 고용 형태에 놓인 일용직, 특수고용직, 플랫폼 배달노동자들은 작업을 멈추는 즉시 당일의 생계 소득이 차단되는 구조적 취약성에 묶여 있기 때문에 실효성을 거두기 어려움○ 기후위기를 개인의 인내가 아닌 공공 행…",
@@ -2995,13 +3094,15 @@
         "산업재해"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 51,
       "title": "탄소감축과 건강한 주거환경을 위한 기후적응형 그린리모델링 확대",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "건강영향과 보건",
       "summary": "○ 폭염·한파·미세먼지 등 기후위기 영향이 심화되면서 주거환경이 시민 건강에 미치는 영향이 커지고 있음○ 노후 주택은 단열 성능이 낮고 냉난방 효율이 떨어져 에너지 소비와 탄소배출이 많으며, 실내 온도 변화로 건강 취약계층 피해가 증가하고 있음○ 특히 저소득층·고령층은 열악한 주거환경으로 인해 폭염과 한파에 더욱 취약한 상황임○ 건물 부문은 국가 온실가스 배출의 주요 원인 중 하나로, 탄소감축을 위해 주거 건물의 에너지 효율 개선이 필요함○ 현재 일부 공공건물 중심의 개선사업은 진행되고 있으나 일반 주택과 취약계층 대상 지원은 부족한 상황임○ 따라서 탄소감축과 시민 건강을 동시에 실현할 수 있는 기후적응형 주거환경 개선 정책 확대가 필요함",
@@ -3055,13 +3156,15 @@
         "온도"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 52,
       "title": "보이지 않는/입증할 수 없는 기후위기 건강 피해 보장",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "건강영향과 보건",
       "summary": "○ 기후위기가 기온변화, 생태계변화, 재난, 대기오염 등의 기상현상을 통해 지금까지 우리의 건강에 영향을 미쳐 왔음은 과학적으로 입증되고, 지속적으로 보고되어 왔음○ 그럼에도 기후위기의 피해는 현재 세대의 문제이기보다는 미래의 문제로 여기는 인식은 여전함○ 그것은 기후위기와 건강간의 메커니즘 특성때문인데, 기후위기와 건강의 관련성이 복잡하기 때문임. 또한 폭염과 온열질환처럼 직접적이고 단순한 관계를 보이는 경우도 있지만, 대부분 기후위기가 ‘새로운’ 질환을 의 발생시키기 보다는 기저질환을 더 악화시키는 형태로 영향을 미침○ 따라서 기후위기의 건강영향은 단시간에 나타나지 않을 수 있고, 직관적으로 판단하거나 입증하기 어려움",
@@ -3115,13 +3218,15 @@
         "문제이기보다는"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 53,
       "title": "기후 위기의 최전선, 농촌 어른과 농민의 삶이 위협받고 있습니다.",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "기후재난 손실과 보험·재정",
       "summary": "○ 기후변화의 피해는 모두에게 똑같이 오지 않습니다. 우리나라 농가 인구의 55.8%가 65세 이상 고령이고, 전체 농가의 74%가 1ha 미만 소규모 농가입니다.○ 폭염, 홍수 발생 시 신속하게 대응하기 어렵고, 기후정보 접근성, 디지털 역량, 재정 여력이 부족한 고령과 소농에게 피해가 집중됩니다. 현재 대규모 스마트팜 위주의 기후 정책 설계는 이들을 구조적으로 소외시킵니다.○ 건강 피해도 심각합니다 야외에서 하루 종일 일하는 농민은 폭염에 가장 많이 노출되는 직업군으로, 여름철 온열진환 사망자 중 농업인 비중이 전체 직업군 중 가장 높습니다.○ 기후변화 대응은 생산성 문제를 넘어 농민의 생명과 존엄을 지키는 문제이기도 합니다.",
@@ -3175,13 +3280,15 @@
         "신속하게"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 54,
       "title": "기후변화 위험 취약 지역 거주자의 이주 및 개발 제한에 대한 방안",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "기후재난 손실과 보험·재정",
       "summary": "○ 기후변화로 인한 각종 취약 지역(집중호우 강도와 빈도의 증가에 따른 상습 침수 지역, 해수면 상승에 따른 침수 위험 지역, 가뭄 증가에 따른 산불 취약 지역 등)에서의 피해가 증가하고 있음○ 이 피해를 줄이기 위해 해당 지역 거주자를 보다 안전한 장소로 이주하거나, 해당 지역의 개발을 제한하는 적응정책의 필요성이 갈수록 높아지고 있음○ 그러나 해당 정책을 어떻게 현실화하느냐는 당사자들에게 매우 민감한 이슈여서 쉽게 추진하지 못하는 상황임 ○ 이러한 조치가 적기에 이루어지지 않을 경우 피해는 훨씬 크게 나타날 수 있기 때문에 해당 지역이나 주변 지역에 거주하는 시민들과 관련 부처, 관련 산업 등의 이해관계자들의 합의와 공론화가 필요한 상황임",
@@ -3235,13 +3342,15 @@
         "위해"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 55,
       "title": "기후적응에 대한 언론의 역할과 가능 강화",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "교육",
       "summary": "○ 기후위기 적응처럼 중앙 및 지방정부, 기관과 기업, 개인 등 각 주체별 행동 참여와 협력관계 형성이 절대적으로 필요한 정책일수록 언론의 역할이 중요하다. ○ 언론이 얼마나 자주, 어떠한 내용으로 보도했느냐에 따라 정책 이해와 수용성에 영향을 주기 때문이다. 이미 시작된 기후위기 속에서 인류가 지속적인 삶을 영위하기 위해서는 적응에 대한 사회적인 공감대 형성과 정책 참여가 필요하고 이 과정에서 언론은 핵심적인 역할을 해나가야 한다. ○ 이미 해외 유수의 언론은 적응에 대한 혁신적인 보도를 선보이면서 개인과 지역사회가 구현할 수 있는 다양한 해법을 제안하고 있다. ○ 이런 의미에서 국내 언론의 기후적응에 대한 사회적 역할과 기능을 강화할 필요가 있다.",
@@ -3294,13 +3403,15 @@
         "영향을"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 56,
       "title": "현장 교육과 전시 및 연구를 위한 기후변화 모의 시설 구축",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "교육",
       "summary": "○ 미래에 예상되는 온난화와 강수 변화 등을 모의하고 자연환경에 미치는 영향을 직접 현장에서 확인하여 교육 및 전시와 연구에 활용할 수 있는 시설을 갖추고 구동하는 것이 필요함○ 국외에서는 다양한 야외 기후변화 모의 연구들이 실행되고 있으나(예, Climaite, SOILGUARD), 국내에서는 극히 일부 분야에서 소규모 연구만 진행되고 있는 실정임○ 따라서 도시, 농지, 초지, 습지, 산림지 등 다양한 토지이용 유형별로 시나리오에 따라 기후변화를 모의하고 미래에 나타날 변화를 직접 확인하여 사전에 대응하는 체계를 갖추는 것이 필요함",
@@ -3348,13 +3459,15 @@
         "야외"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 57,
       "title": "국가기후위기 적응 정책에 관한 현장 체험형 통합 교육 프로그램 운영",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "교육",
       "summary": "○ 우리나라는 매우 적극적인 기후변화에 대응한 적응정책을 실행하고 있음○ 2026년부터 제4차 국가 기후위기 적응정책을 시행 중이나, 일반 국민들의 관련 정책에 대한 체감도는 상대적으로 높지 않은 것으로 보임○ 적응정책의 효과를 제고하기 위해서는 국민들이 직접 정책 집행 현장을 확인하여 정책에 대한 이해도를 높이는 방안이 필요함○ 적응대책 부문별 분절이 아닌 모든 부문을 통합한 현장 체험형 프로그램을 개발할 필요가 있음",
@@ -3408,13 +3521,15 @@
         "효과를"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 58,
       "title": "지역사회 중심 기후위기 대응 리빙랩",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "교육",
       "summary": "○ 한국은 2050 탄소중립과 2030 국가온실가스감축목표(NDC)를 선언했지만, 가계·개인이 차지하는 생활 부문 배출 비중이 여전히 크고, 특히 청소년·청년층의 참여는 캠페인 수준에 머무는 경우가 많음. 정부는 2022개정교육과정 등을 통하여 생태전환교육을 교육과정에 포함하고 탄소중립 중점·시범학교를 늘려가고 있으나 탄소중립이라기보다 개인적 수준의 실천에 머물러 있음○ 기후위기 대응관련 지역의 이슈는 지역의 맥락에 따라 다를 수 있으며, 이를 토대로 할 때 실제적인 기후위기 대응으로 삶이 바뀔 수 있음",
@@ -3468,13 +3583,15 @@
         "교육과정에"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 59,
       "title": "기후에너지 일자리 재교육을 위한 평생학습체제",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "교육",
       "summary": "○ 기후위기 대응에 있어서 산업구조 재편은 필수불가결함. 그러나 이로 인하여 해당 산업 종사자들과 지역 경제가 직접적인 타격을 받을 수 있음. 정의로운 전환을 위하여, 해당 산업 종사자를 대상으로 하는 신재생에너지, 순환경제 등으로의 이동이 가능하도록 하는 체계적인 연수 프로그램은 거의 전무함.",
@@ -3528,13 +3645,15 @@
         "가능하도록"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 60,
       "title": "기후불안에 대한 올바른 이해와 대응",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "교육",
       "summary": "○ 2022년 IPCC 제6차 보고서에서 기후불안이 언급된 이후 국내에서는 기후불안에 대한 추측성, 자극성 기사가 보도되었는데, 당시 국내에서는 연구가 부족했고 이에 대응하는 부처도 없었음○ 이후 젊은 세대의 기후불안에 대한 호소가 지속되고 있고, 국내에서는 민간 중심으로 기후불안에 대한 논의가 진행되고 있음○ 국내에서는 IPCC 보고 이후 기후불안에 대한 연구가 상당히 수행되어(아직 연구해야할 내용이 많이 남아있기는 하지만), 공공에서 근거를 바탕으로 소통할 수 있는 상황임○ 제4차 국가 기후변화 적응 대책에서도 기후불안이 건강분야 리스크로 새롭게 추가되어, 국가는 향후 5년간 이와 관련된 사업을 수행해야 함○ 기후불안은 잘 다루지 못하면 정신건강 문제로 악화될 수 있고, 잘 활용하면 국가 기후정책의 동력이 될 수 있음. 따라서 기후불안을…",
@@ -3588,13 +3707,15 @@
         "있음"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 61,
       "title": "장바구니 물가를 흔드는 기후플레이션, 시민이 알아야 할 새로운 통화정책 의제",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "민생경제·관광",
       "summary": "○ 한국은행 조병수(2024)는 폭염 등으로 기온이 1℃ 상승하면 농산물가격 상승률이 0.4~0.5%p, 전체 소비자물가 상승률이 0.07%p 높아지며, 1℃ 상승이 1년간 지속되면 농산물가격 수준은 2%, 전체 소비자물가 수준은 0.7% 높아진다고 추정하였다(BOK, 2024). ○ 실제 2024년 6월 배 가격은 전년 동월 대비 139.6%, 사과는 88.2% 상승하였고 서울 폭염일수는 평년(8.8일)의 약 4배인 33일에 달하였다(한국농촌경제연구원, 2024). ○ 기후플레이션은 농가·중앙은행만의 문제가 아니라 시민의 장바구니, 기대인플레이션, 통화정책의 사회적 수용성을 함께 흔드는 의제이므로, 시민이 그 개념과 영향을 이해하고 정책 결정에 참여하는 것이 필수적이다.",
@@ -3648,13 +3769,15 @@
         "동월"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 62,
       "title": "지역 단위 기후적응 거버넌스 구축",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "적응",
       "domain": "기후회복사회·민관협력",
       "summary": "○ 기후위기의 영향을 지역별로 상이하기 때문에 기후적응 정책도 지역의 특성을 충분히 반영할 필요가 있다.○ 현재 지방자치단체별 기후위기 적응대책이 마련돼 있고 지역주민에 대한 설문조사, 개별 사안에 대한 지역주민 참여 프로그램 등을 운영하고 있지만 기후적응을 총괄하는 거버넌스는 빈약해 보인다.○ 지역 단위 기후적응 거버넌스를 구축하고, 각각의 지역별 기후적응 거버넌스를 네트워크화하는 한편 성과공유 및 평가체계를 마련할 경우 중앙정부, 지역, 개인과 관련된 정책의 분절화를 방지하고 정책의 실효성을 높일 수 있을 것으로 기대된다.",
@@ -3708,13 +3831,15 @@
         "운영하고"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 63,
       "title": "시민 참여형 기후금융 활성화 방안",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "혼합",
       "domain": "기후금융",
       "summary": "○ 충분한 기후대응(감축, 적응 모두)에는 막대한 비용이 소요되며 이러한 비용은 단순히 정부가 지원해 주는 것만으로는 한계가 있음. ○ 이에 따라 민간 금융에서의 재원 확보가 갈수록 중요한 이슈가 되고 있음. 이러한 상황에서 기후대응을 위한 민간 금융이 활성화되기 민간 금융사와 더불어 전반적인 시민의 의견을 모으는 과정이 효과적일 수 있음. ○ 시민 참여가 유도되기 위한 최소한의 투자조건(수익률, 투자 기간 등)이나 참여 투자의 형평성을 위해 제도설계 시 추가되어야 할 부분 등은 단순히 금융사나 정부 부처에서 일방적으로 설정하기보다는 시민들의 의견을 모으는 과정이 시민의 호응을 유도하기에 유리함",
@@ -3762,13 +3887,15 @@
         "기후대응을"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 64,
       "title": "시민이 함께하는 기후위기 대응의 주류화(법정계획 중심)",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "혼합",
       "domain": "기후정책 통합·조정",
       "summary": "○ 기후위기가 현실화되는 시점에 ‘적응의 주류화’를 넘어 ‘기후위기 대응의 주류화(적응+감축)’ 필요○ 이를 위해 가장 먼저 해결해야 할 것은 지자체 단위에서 수립되던 다양한 법정계획에(도시기본계획, 공원녹지기본계획 등) 기후위기 대응에 관한 요소를 내재화하는 것임○ 현재에도 탄소중립 등의 이슈를 다루고 있고 매년 적응 주류화 관점에서 점검하고 있으나, 선언적인 수준에 그쳐 주요 계획목표와 전략, 사업에는 반영되고 있지 않다는 한계가 있음○ 환경적 요소의 강화가 ‘규제의 강화’ 또는 ‘비용의 증가’로 인식하는 경향이 여전히 남아 있고 이를 바꾸기가 쉽지 않으므로, 새로운 과정인 ‘시민참여’를 통한 하나의 ‘전환점’ 필요",
@@ -3822,13 +3949,15 @@
         "내재화하는"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     },
     {
       "id": 65,
       "title": "정책과 정책의 충돌, 어떻게 조정할 것인가?",
       "slug": null,
       "href": null,
+      "source_backed_href": null,
       "big_category": "혼합",
       "domain": "기후정책 통합·조정",
       "summary": "○ 과거에는 개발과 환경보전의 대립 구도가 주요하였으나, 다양한 환경 이슈가 발생하고 그에 대응하는 과정에서 환경 정책 간의 충돌 문제도 발생하고 있음○ 예를 들면, 에너지전환을 위한 인프라 건설하는데 녹지가 가장 먼저 훼손되는 문제, 또는 적응 능력을 개선하기 위한 사업이 온실가스 배출량을 증가시키는 문제, 지속 가능한 산업으로 전환하는 과정에서 발생하는 일자리 감소 문제 등이 있음○ 이러한 정책 충돌의 문제는 옳고 그름으로 판단하기 어려우며, 지역의 여건에 기초하여 우선해야 할 가치와 방향을 설정하고 그에 따라 다양한 정책을 조정하는 과정이 필요함(국가 단위에서는 “상충되지 않도록 한다”고 선언할 수 있지만, 실제 지역에서는 선택의 문제일 수 있음)",
@@ -3881,7 +4010,8 @@
         "먼저"
       ],
       "has_wiki": false,
-      "source": "src/data/agendas-65.json"
+      "source_status": "matrix_only_unlinked",
+      "source": "agenda-matrix-65"
     }
   ]
 }

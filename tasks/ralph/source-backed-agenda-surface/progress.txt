@@ -1,0 +1,10 @@
+## 2026-06-25 Start
+- Goal: replace internal draft agenda wiki links with source-backed agenda surfaces.
+- Constraint: current `content/ko/agenda/*.md` is an internal draft/fake DB and must not be exposed as "original agenda" links.
+- Next: S1 exclude internal draft links from graph cards.
+
+## 2026-06-25 S1
+- Changed: `scripts/build-agenda-surface.mjs`, `public/workshop-graph/index.html`, `public/workshop-graph/data/agenda-surface.json`.
+- Verified: generated JSON has `linked=0`, no `/ko/agenda/`, no `content/ko/agenda/`; browser check on `B_t1__Issue_008` showed `관련 의제 자료`, `내부 가안 링크는 제외했습니다`, `원천 자료 페이지 준비 중`, old `의제 원문 보기=false`, internal links `[]`.
+- Learned: existing agenda markdown can still provide temporary matching titles/summaries, but must not expose public hrefs until Gyeonggi OCR/Supabase source-backed pages exist.
+- Next: S2 build Gyeonggi OCR agenda-source static export.

@@ -1,0 +1,59 @@
+{
+  "feature": "source-backed agenda surface",
+  "branchName": "main",
+  "qualityChecks": [
+    "node scripts/build-agenda-surface.mjs",
+    "browser check /workshop-graph/?source=workshop-2026-06-13",
+    "git diff --check"
+  ],
+  "userStories": [
+    {
+      "id": "S1",
+      "title": "Exclude internal draft agenda links from graph cards",
+      "priority": 1,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "agenda-surface.json does not expose /ko/agenda/{slug}/ hrefs from internal draft markdown",
+        "workshop graph related agenda cards do not show '의제 원문 보기' for internal draft data",
+        "cards clearly say source-backed page is pending until OCR/Supabase source is connected"
+      ],
+      "files": [
+        "scripts/build-agenda-surface.mjs",
+        "public/workshop-graph/index.html",
+        "public/workshop-graph/data/agenda-surface.json"
+      ]
+    },
+    {
+      "id": "S2",
+      "title": "Add Gyeonggi OCR agenda-source static export",
+      "priority": 2,
+      "status": "todo",
+      "passes": false,
+      "acceptance": [
+        "static export is generated from Gyeonggi OCR/review materials",
+        "export distinguishes original excerpt, OCR source document, page refs, stage, working group, and status",
+        "graph cards can prefer source-backed hrefs when available"
+      ],
+      "files": [
+        "scripts/build-gyeonggi-agenda-source.mjs",
+        "public/workshop-graph/data/gyeonggi-agenda-surface.json"
+      ]
+    },
+    {
+      "id": "S3",
+      "title": "Create source-backed agenda page route",
+      "priority": 3,
+      "status": "todo",
+      "passes": false,
+      "acceptance": [
+        "new route renders source-backed agenda records separately from internal draft wiki",
+        "page shows source document, OCR status, original excerpt, summary, and related materials",
+        "internal draft wiki is labeled as non-official if linked anywhere"
+      ],
+      "files": [
+        "src/pages/[lang]/agenda-source/[source]/[id].astro"
+      ]
+    }
+  ]
+}
