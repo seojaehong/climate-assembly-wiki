@@ -132,6 +132,7 @@ const translationStatus: 'machine' | 'reviewed' | 'native' | 'author-verified' |
   title={pageTitle}
   lang={lang}
   trustLabel={translationStatus ?? 'author-verified'}
+  isInternalDraft={true}
   license={entry.data.license as 'CC-BY-SA-4.0' | 'CC-BY-4.0' | 'CC-BY-NC-SA-3.0-IGO' | 'all-rights-reserved'}
   alternateLangs={['ko', 'en', 'ja', 'zh', 'es']}
   canonicalPath={`/${lang}/agenda/${entry.data.slug}/`}

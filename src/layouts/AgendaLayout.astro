@@ -38,6 +38,8 @@ export interface Props {
   description?: string;
   /** Trust/translation status for TrustBadge (Design §3.1) */
   trustLabel?: TrustStatus;
+  /** True for legacy internal agenda brief pages that are not source-backed records. */
+  isInternalDraft?: boolean;
   /** License for LicenseBadge (Design §3.2) */
   license?: LicenseValue;
   /**
@@ -87,6 +89,7 @@ const {
   lang,
   description,
   trustLabel = 'author-verified',
+  isInternalDraft = false,
   license = 'CC-BY-SA-4.0',
   alternateLangs = ['ko'],
   canonicalPath,
@@ -96,6 +99,8 @@ const {
   orgName,
   headings = [],
 } = Astro.props;
+
+const showTrustBadge = Boolean(trustLabel) && !isInternalDraft;
 
 // ---------------------------------------------------------------------------
 // Canonical site base URL — use Astro.site (set in astro.config.mjs via PUBLIC_SITE_URL env)
@@ -156,6 +161,33 @@ const ldJson = JSON.stringify(articleSchema);
         <!-- Mobile TOC (M2-2) — <details> toggle, hidden on xl+ -->
         <Toc headings={headings} lang={lang} variant="mobile" />
 
+        {isInternalDraft && (
+          <div class="mb-5 rounded-lg border border-amber-300/70 bg-amber-50/80 p-4 text-sm text-amber-950 dark:border-amber-500/50 dark:bg-amber-950/30 dark:text-amber-100">
+            <div class="font-semibold mb-1">
+              {lang === 'ko' ? '내부 해설 초안입니다' : 'Internal brief draft'}
+            </div>
+            <p class="leading-6">
+              {lang === 'ko'
+                ? '이 페이지는 워크숍 운영을 위해 만든 설명 가안이며, 공식 원천 DB가 아닙니다. 발표나 검토에서는 보호 KB export, 경기도 OCR, Supabase 원천 페이지의 원문 발췌와 함께 확인하세요.'
+                : 'This page is a working explanatory draft, not an authoritative source record. Cross-check against source-backed KB export, Gyeonggi OCR, and Supabase records.'}
+            </p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <a
+                href={`/${lang}/agenda/`}
+                class="rounded-md border border-amber-400/70 px-2.5 py-1 text-xs font-semibold text-amber-900 no-underline hover:bg-amber-100 dark:border-amber-400/50 dark:text-amber-100 dark:hover:bg-amber-900/50"
+              >
+                {lang === 'ko' ? '의제 자료실로 돌아가기' : 'Back to agenda library'}
+              </a>
+              <a
+                href="/workshop-graph/"
+                class="rounded-md border border-amber-400/70 px-2.5 py-1 text-xs font-semibold text-amber-900 no-underline hover:bg-amber-100 dark:border-amber-400/50 dark:text-amber-100 dark:hover:bg-amber-900/50"
+              >
+                {lang === 'ko' ? '숙의 온톨로지 보기' : 'Open ontology graph'}
+              </a>
+            </div>
+          </div>
+        )}
+
         <!-- Wiki meta line: last updated · trust · license -->
         {frontmatter?.last_updated && (
           <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-4 text-xs text-[var(--color-fg-muted)]">
@@ -164,8 +196,12 @@ const ldJson = JSON.stringify(articleSchema);
               <time class="ml-1 font-mono text-[var(--color-fg-muted)]">{frontmatter.last_updated}</time>
             </span>
             <span aria-hidden="true" class="text-[var(--color-border-strong)]">·</span>
-            {trustLabel && (
+            {showTrustBadge ? (
               <TrustBadge status={trustLabel} lang={lang} />
+            ) : (
+              <span class="rounded-md border border-amber-400/70 px-2 py-0.5 text-amber-700 dark:text-amber-200">
+                {lang === 'ko' ? '내부 가안' : 'Internal draft'}
+              </span>
             )}
             <span aria-hidden="true" class="text-[var(--color-border-strong)]">·</span>
             <LicenseBadge license={license} orgName={orgName} />
@@ -173,7 +209,7 @@ const ldJson = JSON.stringify(articleSchema);
         )}
 
         {/* Fallback: trust badge without meta line (when no last_updated) */}
-        {!frontmatter?.last_updated && trustLabel && (
+        {!frontmatter?.last_updated && showTrustBadge && (
           <div class="mb-3">
             <TrustBadge status={trustLabel} lang={lang} />
           </div>

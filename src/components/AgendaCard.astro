@@ -28,9 +28,21 @@ interface Props {
   /** Whether an English translation is available. */
   enAvailable: boolean;
   lang: string;
+  /** Marks legacy agenda briefs as internal drafts, not source-backed records. */
+  sourceMode?: 'standard' | 'internal-draft';
 }
 
-const { id, slug, title, category, status, contentStatus, enAvailable, lang } = Astro.props;
+const {
+  id,
+  slug,
+  title,
+  category,
+  status,
+  contentStatus,
+  enAvailable,
+  lang,
+  sourceMode = 'standard',
+} = Astro.props;
 
 // R-16: Category color config now uses CSS custom properties (tokens.css)
 // instead of raw Tailwind color classes. Enables dark-mode + theming control.
@@ -85,6 +97,7 @@ const stsCfg = statusConfig[status];
 const catLabel = isKo ? catCfg.labelKo : catCfg.labelEn;
 const stsLabel = isKo ? stsCfg.labelKo : stsCfg.labelEn;
 const idPadded = id.toString().padStart(2, '0');
+const isInternalDraft = sourceMode === 'internal-draft';
 ---
 
 <a
@@ -111,15 +124,24 @@ const idPadded = id.toString().padStart(2, '0');
     {title}
   </h3>
 
-  <!-- Bottom row: category tag + content trust badge + EN indicator -->
+  <!-- Bottom row: category tag + content/source badge + EN indicator -->
   <div class="flex items-center flex-wrap gap-1.5 mt-auto">
     <!-- R-16: pill uses CSS token vars instead of raw Tailwind color classes -->
     <span class="text-xs px-2 py-0.5 rounded-full font-medium" style={catCfg.pillStyle}>
       {catLabel}
     </span>
 
-    <!-- R-05: contentStatus = trust of the current-language original content -->
-    <TrustBadge status={contentStatus} lang={lang} />
+    {isInternalDraft ? (
+      <span
+        class="text-xs px-2 py-0.5 rounded-md border border-amber-400/70 text-amber-700 bg-amber-50 dark:border-amber-500/60 dark:text-amber-200 dark:bg-amber-950/40 font-medium"
+        title={isKo ? '공식 원천 DB가 아닌 내부 해설 초안' : 'Internal brief draft, not an official source record'}
+      >
+        {isKo ? '내부 해설 초안' : 'Internal draft'}
+      </span>
+    ) : (
+      <!-- R-05: contentStatus = trust of the current-language original content -->
+      <TrustBadge status={contentStatus} lang={lang} />
+    )}
 
     {enAvailable && (
       <span
