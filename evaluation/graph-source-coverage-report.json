@@ -1,0 +1,725 @@
+{
+  "generated_at": "2026-06-25T10:48:13.817Z",
+  "original_dir": "00_입력자료/6.13_원본자료",
+  "transcription_dir": "30_추출/6.13_원본자료_음성",
+  "text_dir": "30_추출/6.13_원본자료_텍스트",
+  "data_dir": "wiki/public/workshop-graph/data",
+  "original_file_count": 25,
+  "original_files": [
+    {
+      "name": "(수정)260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.hwp",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\(수정)260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.hwp",
+      "rel": "00_입력자료/6.13_원본자료/(수정)260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.hwp",
+      "bytes": 70656,
+      "modified": "2026-06-18T12:45:13.767Z"
+    },
+    {
+      "name": "[토론 1] 운영규정 초안 토론_A조.m4a",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\[토론 1] 운영규정 초안 토론_A조.m4a",
+      "rel": "00_입력자료/6.13_원본자료/[토론 1] 운영규정 초안 토론_A조.m4a",
+      "bytes": 52220098,
+      "modified": "2026-06-18T12:45:31.488Z"
+    },
+    {
+      "name": "[토론 1] 운영규정 초안 토론_B조.m4a",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\[토론 1] 운영규정 초안 토론_B조.m4a",
+      "rel": "00_입력자료/6.13_원본자료/[토론 1] 운영규정 초안 토론_B조.m4a",
+      "bytes": 94119325,
+      "modified": "2026-06-18T12:46:05.101Z"
+    },
+    {
+      "name": "20260611-기후시민회의 운영규범 초안_(시민배포용)_최종4.hwpx",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\20260611-기후시민회의 운영규범 초안_(시민배포용)_최종4.hwpx",
+      "rel": "00_입력자료/6.13_원본자료/20260611-기후시민회의 운영규범 초안_(시민배포용)_최종4.hwpx",
+      "bytes": 388220,
+      "modified": "2026-06-13T00:25:39.428Z"
+    },
+    {
+      "name": "20260613-기후시민회의 의제워크숍 모더레이터 운영 매뉴얼_v1.hwpx",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\20260613-기후시민회의 의제워크숍 모더레이터 운영 매뉴얼_v1.hwpx",
+      "rel": "00_입력자료/6.13_원본자료/20260613-기후시민회의 의제워크숍 모더레이터 운영 매뉴얼_v1.hwpx",
+      "bytes": 42232,
+      "modified": "2026-06-13T00:25:50.355Z"
+    },
+    {
+      "name": "20260614_[토론1] 기초발제 및 의제선정에 대한 조별 토론 _B조.hwpx",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\20260614_[토론1] 기초발제 및 의제선정에 대한 조별 토론 _B조.hwpx",
+      "rel": "00_입력자료/6.13_원본자료/20260614_[토론1] 기초발제 및 의제선정에 대한 조별 토론 _B조.hwpx",
+      "bytes": 75778,
+      "modified": "2026-06-18T12:43:53.065Z"
+    },
+    {
+      "name": "20260614_[토론1] 기초발제 및 의제선정에 대한 조별토론_B조.m4a",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\20260614_[토론1] 기초발제 및 의제선정에 대한 조별토론_B조.m4a",
+      "rel": "00_입력자료/6.13_원본자료/20260614_[토론1] 기초발제 및 의제선정에 대한 조별토론_B조.m4a",
+      "bytes": 223300691,
+      "modified": "2026-06-18T12:45:13.578Z"
+    },
+    {
+      "name": "20260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론.hwpx",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\20260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론.hwpx",
+      "rel": "00_입력자료/6.13_원본자료/20260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론.hwpx",
+      "bytes": 51533,
+      "modified": "2026-06-18T12:42:20.322Z"
+    },
+    {
+      "name": "20260614_[토론2] 의제선정 브레인스토밍_B조.m4a",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\20260614_[토론2] 의제선정 브레인스토밍_B조.m4a",
+      "rel": "00_입력자료/6.13_원본자료/20260614_[토론2] 의제선정 브레인스토밍_B조.m4a",
+      "bytes": 93397561,
+      "modified": "2026-06-18T12:43:34.258Z"
+    },
+    {
+      "name": "20260614_[토론3] 의제선정 조별토론_B조.m4a",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\20260614_[토론3] 의제선정 조별토론_B조.m4a",
+      "rel": "00_입력자료/6.13_원본자료/20260614_[토론3] 의제선정 조별토론_B조.m4a",
+      "bytes": 58517967,
+      "modified": "2026-06-18T12:42:50.456Z"
+    },
+    {
+      "name": "20260614_[토론4] 의제 선정 및 운영규정안 마련_통합 운영.hwpx",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\20260614_[토론4] 의제 선정 및 운영규정안 마련_통합 운영.hwpx",
+      "rel": "00_입력자료/6.13_원본자료/20260614_[토론4] 의제 선정 및 운영규정안 마련_통합 운영.hwpx",
+      "bytes": 58731,
+      "modified": "2026-06-18T12:41:06.611Z"
+    },
+    {
+      "name": "20260614_[토론4] 의제선정 및 운영규정안 마련.m4a",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\20260614_[토론4] 의제선정 및 운영규정안 마련.m4a",
+      "rel": "00_입력자료/6.13_원본자료/20260614_[토론4] 의제선정 및 운영규정안 마련.m4a",
+      "bytes": 178544633,
+      "modified": "2026-06-18T12:42:19.863Z"
+    },
+    {
+      "name": "20260614-의제워크숍 모더레이터 매뉴얼(2일차).hwpx",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\20260614-의제워크숍 모더레이터 매뉴얼(2일차).hwpx",
+      "rel": "00_입력자료/6.13_원본자료/20260614-의제워크숍 모더레이터 매뉴얼(2일차).hwpx",
+      "bytes": 16998,
+      "modified": "2026-06-18T12:45:31.825Z"
+    },
+    {
+      "name": "260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.hwp",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.hwp",
+      "rel": "00_입력자료/6.13_원본자료/260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.hwp",
+      "bytes": 131072,
+      "modified": "2026-06-18T12:45:31.671Z"
+    },
+    {
+      "name": "260613_[토론1]운영규정 초안 토론_B조_회의내용 정리.hwpx",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\260613_[토론1]운영규정 초안 토론_B조_회의내용 정리.hwpx",
+      "rel": "00_입력자료/6.13_원본자료/260613_[토론1]운영규정 초안 토론_B조_회의내용 정리.hwpx",
+      "bytes": 58528,
+      "modified": "2026-06-18T12:45:31.936Z"
+    },
+    {
+      "name": "260613_조별발표.m4a",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\260613_조별발표.m4a",
+      "rel": "00_입력자료/6.13_원본자료/260613_조별발표.m4a",
+      "bytes": 18267906,
+      "modified": "2026-06-18T12:46:11.021Z"
+    },
+    {
+      "name": "260614_[토론2-1] 기초발제 및 의제선정에 대한 조별 토론_A조_회의내용 정리.hwp",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\260614_[토론2-1] 기초발제 및 의제선정에 대한 조별 토론_A조_회의내용 정리.hwp",
+      "rel": "00_입력자료/6.13_원본자료/260614_[토론2-1] 기초발제 및 의제선정에 대한 조별 토론_A조_회의내용 정리.hwp",
+      "bytes": 65536,
+      "modified": "2026-06-18T12:43:52.970Z"
+    },
+    {
+      "name": "260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론_A조_회의내용 정리.hwp",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론_A조_회의내용 정리.hwp",
+      "rel": "00_입력자료/6.13_원본자료/260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론_A조_회의내용 정리.hwp",
+      "bytes": 78336,
+      "modified": "2026-06-18T12:40:48.764Z"
+    },
+    {
+      "name": "260614_토론2-1_A조.m4a",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\260614_토론2-1_A조.m4a",
+      "rel": "00_입력자료/6.13_원본자료/260614_토론2-1_A조.m4a",
+      "bytes": 47040030,
+      "modified": "2026-06-18T12:43:52.838Z"
+    },
+    {
+      "name": "260614_토론2-2_A조.m4a",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\260614_토론2-2_A조.m4a",
+      "rel": "00_입력자료/6.13_원본자료/260614_토론2-2_A조.m4a",
+      "bytes": 40292446,
+      "modified": "2026-06-18T12:41:06.389Z"
+    },
+    {
+      "name": "260614_토론2-3_A조.m4a",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\260614_토론2-3_A조.m4a",
+      "rel": "00_입력자료/6.13_원본자료/260614_토론2-3_A조.m4a",
+      "bytes": 31942557,
+      "modified": "2026-06-18T12:40:48.400Z"
+    },
+    {
+      "name": "기후취약성괴정의로운전환녹음.m4a",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\기후취약성괴정의로운전환녹음.m4a",
+      "rel": "00_입력자료/6.13_원본자료/기후취약성괴정의로운전환녹음.m4a",
+      "bytes": 25188422,
+      "modified": "2026-06-18T12:46:55.865Z"
+    },
+    {
+      "name": "수정기후시민회의_6_13_시민교육_교안_0610_ver5 (1).hwpx",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\수정기후시민회의_6_13_시민교육_교안_0610_ver5 (1).hwpx",
+      "rel": "00_입력자료/6.13_원본자료/수정기후시민회의_6_13_시민교육_교안_0610_ver5 (1).hwpx",
+      "bytes": 9266410,
+      "modified": "2026-06-13T00:25:41.426Z"
+    },
+    {
+      "name": "음성 002.m4a",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\음성 002.m4a",
+      "rel": "00_입력자료/6.13_원본자료/음성 002.m4a",
+      "bytes": 81599655,
+      "modified": "2026-06-18T12:46:35.041Z"
+    },
+    {
+      "name": "환경교육_4조_(전문_소비생활-의제_청소년거버넌스).m4a",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\00_입력자료\\6.13_원본자료\\환경교육_4조_(전문_소비생활-의제_청소년거버넌스).m4a",
+      "rel": "00_입력자료/6.13_원본자료/환경교육_4조_(전문_소비생활-의제_청소년거버넌스).m4a",
+      "bytes": 52208554,
+      "modified": "2026-06-18T12:46:48.616Z"
+    }
+  ],
+  "text_file_count": 12,
+  "text_files": [
+    {
+      "name": "(수정)260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.md",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\30_추출\\6.13_원본자료_텍스트\\(수정)260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.md",
+      "rel": "30_추출/6.13_원본자료_텍스트/(수정)260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.md",
+      "bytes": 6192,
+      "modified": "2026-06-18T12:54:04.937Z"
+    },
+    {
+      "name": "20260611-기후시민회의 운영규범 초안_(시민배포용)_최종4.md",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\30_추출\\6.13_원본자료_텍스트\\20260611-기후시민회의 운영규범 초안_(시민배포용)_최종4.md",
+      "rel": "30_추출/6.13_원본자료_텍스트/20260611-기후시민회의 운영규범 초안_(시민배포용)_최종4.md",
+      "bytes": 14746,
+      "modified": "2026-06-18T12:53:26.209Z"
+    },
+    {
+      "name": "20260613-기후시민회의 의제워크숍 모더레이터 운영 매뉴얼_v1.md",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\30_추출\\6.13_원본자료_텍스트\\20260613-기후시민회의 의제워크숍 모더레이터 운영 매뉴얼_v1.md",
+      "rel": "30_추출/6.13_원본자료_텍스트/20260613-기후시민회의 의제워크숍 모더레이터 운영 매뉴얼_v1.md",
+      "bytes": 14560,
+      "modified": "2026-06-18T12:53:26.226Z"
+    },
+    {
+      "name": "20260614_[토론1] 기초발제 및 의제선정에 대한 조별 토론 _B조.md",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\30_추출\\6.13_원본자료_텍스트\\20260614_[토론1] 기초발제 및 의제선정에 대한 조별 토론 _B조.md",
+      "rel": "30_추출/6.13_원본자료_텍스트/20260614_[토론1] 기초발제 및 의제선정에 대한 조별 토론 _B조.md",
+      "bytes": 7591,
+      "modified": "2026-06-18T12:53:26.231Z"
+    },
+    {
+      "name": "20260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론.md",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\30_추출\\6.13_원본자료_텍스트\\20260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론.md",
+      "rel": "30_추출/6.13_원본자료_텍스트/20260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론.md",
+      "bytes": 3849,
+      "modified": "2026-06-18T12:53:26.235Z"
+    },
+    {
+      "name": "20260614_[토론4] 의제 선정 및 운영규정안 마련_통합 운영.md",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\30_추출\\6.13_원본자료_텍스트\\20260614_[토론4] 의제 선정 및 운영규정안 마련_통합 운영.md",
+      "rel": "30_추출/6.13_원본자료_텍스트/20260614_[토론4] 의제 선정 및 운영규정안 마련_통합 운영.md",
+      "bytes": 4931,
+      "modified": "2026-06-18T12:53:26.246Z"
+    },
+    {
+      "name": "20260614-의제워크숍 모더레이터 매뉴얼(2일차).md",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\30_추출\\6.13_원본자료_텍스트\\20260614-의제워크숍 모더레이터 매뉴얼(2일차).md",
+      "rel": "30_추출/6.13_원본자료_텍스트/20260614-의제워크숍 모더레이터 매뉴얼(2일차).md",
+      "bytes": 7813,
+      "modified": "2026-06-18T12:53:26.250Z"
+    },
+    {
+      "name": "260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.md",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\30_추출\\6.13_원본자료_텍스트\\260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.md",
+      "rel": "30_추출/6.13_원본자료_텍스트/260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.md",
+      "bytes": 6192,
+      "modified": "2026-06-18T12:54:04.940Z"
+    },
+    {
+      "name": "260613_[토론1]운영규정 초안 토론_B조_회의내용 정리.md",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\30_추출\\6.13_원본자료_텍스트\\260613_[토론1]운영규정 초안 토론_B조_회의내용 정리.md",
+      "rel": "30_추출/6.13_원본자료_텍스트/260613_[토론1]운영규정 초안 토론_B조_회의내용 정리.md",
+      "bytes": 6189,
+      "modified": "2026-06-18T12:53:26.266Z"
+    },
+    {
+      "name": "260614_[토론2-1] 기초발제 및 의제선정에 대한 조별 토론_A조_회의내용 정리.md",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\30_추출\\6.13_원본자료_텍스트\\260614_[토론2-1] 기초발제 및 의제선정에 대한 조별 토론_A조_회의내용 정리.md",
+      "rel": "30_추출/6.13_원본자료_텍스트/260614_[토론2-1] 기초발제 및 의제선정에 대한 조별 토론_A조_회의내용 정리.md",
+      "bytes": 3575,
+      "modified": "2026-06-18T12:54:04.944Z"
+    },
+    {
+      "name": "260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론_A조_회의내용 정리.md",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\30_추출\\6.13_원본자료_텍스트\\260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론_A조_회의내용 정리.md",
+      "rel": "30_추출/6.13_원본자료_텍스트/260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론_A조_회의내용 정리.md",
+      "bytes": 7045,
+      "modified": "2026-06-18T12:54:04.942Z"
+    },
+    {
+      "name": "수정기후시민회의_6_13_시민교육_교안_0610_ver5 (1).md",
+      "path": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\30_추출\\6.13_원본자료_텍스트\\수정기후시민회의_6_13_시민교육_교안_0610_ver5 (1).md",
+      "rel": "30_추출/6.13_원본자료_텍스트/수정기후시민회의_6_13_시민교육_교안_0610_ver5 (1).md",
+      "bytes": 7761,
+      "modified": "2026-06-18T12:53:26.257Z"
+    }
+  ],
+  "graph_summaries": {
+    "workshop-2026-06-13.json": {
+      "nodes": 613,
+      "edges": 491,
+      "by_session": {
+        "A_t21": 34,
+        "A_t22": 84,
+        "A_t23": 29,
+        "B_t1": 81,
+        "B_t2": 20,
+        "B_t3": 50,
+        "발표": 6,
+        "정의전환": 22,
+        "환경4조": 88,
+        "20, 30대": 1,
+        "청년": 1,
+        "농민": 1,
+        "노동자": 1,
+        "육아하는 사람": 1,
+        "젊은 세대": 1,
+        "10대 아이들": 1,
+        "직장인": 1,
+        "OA_t1": 43,
+        "OB_t1": 42,
+        "OZ_t1": 44,
+        "DA_t2": 23,
+        "DB_t2": 5,
+        "DZ_t2": 34
+      },
+      "by_prefix": {
+        "A_t21": 34,
+        "A_t22": 84,
+        "A_t23": 29,
+        "B_t1": 81,
+        "B_t2": 20,
+        "B_t3": 50,
+        "발표": 6,
+        "정의전환": 22,
+        "환경4조": 88,
+        "(none)": 8,
+        "OA_t1": 43,
+        "OB_t1": 42,
+        "OZ_t1": 44,
+        "DA_t2": 23,
+        "DB_t2": 5,
+        "DZ_t2": 34
+      }
+    },
+    "regulation-2026-06-13.json": {
+      "nodes": 59,
+      "edges": 39,
+      "by_session": {
+        "(none)": 59
+      },
+      "by_prefix": {
+        "(none)": 59
+      }
+    },
+    "live-A_t1.json": {
+      "nodes": 37,
+      "edges": 32,
+      "by_session": {
+        "(none)": 37
+      },
+      "by_prefix": {
+        "(none)": 37
+      }
+    }
+  },
+  "sessions": [
+    {
+      "tag": "reg_A",
+      "label": "6/13 운영규정 A조",
+      "folder": "[토론 1] 운영규정 초안 토론_A조",
+      "graph": "regulation-2026-06-13.json",
+      "graphScope": "regulation",
+      "transcription": {
+        "folder": "[토론 1] 운영규정 초안 토론_A조",
+        "exists": true,
+        "dir": "30_추출/6.13_원본자료_음성/[토론 1] 운영규정 초안 토론_A조",
+        "main_json_bytes": 335016,
+        "txt_bytes": 47910,
+        "srt_bytes": 70028,
+        "review_json_bytes": 306,
+        "chunks_mp3": 6,
+        "chunks_transcript_json": 6,
+        "chunks_tmp": [],
+        "status": "transcript_ready"
+      },
+      "graph_nodes": 59,
+      "graph_status": "graph_represented",
+      "status": "ready"
+    },
+    {
+      "tag": "reg_B",
+      "label": "6/13 운영규정 B조",
+      "folder": "[토론 1] 운영규정 초안 토론_B조",
+      "graph": "regulation-2026-06-13.json",
+      "graphScope": "regulation",
+      "transcription": {
+        "folder": "[토론 1] 운영규정 초안 토론_B조",
+        "exists": true,
+        "dir": "30_추출/6.13_원본자료_음성/[토론 1] 운영규정 초안 토론_B조",
+        "main_json_bytes": 302853,
+        "txt_bytes": 41828,
+        "srt_bytes": 61568,
+        "review_json_bytes": 3731,
+        "chunks_mp3": 5,
+        "chunks_transcript_json": 5,
+        "chunks_tmp": [],
+        "status": "transcript_ready"
+      },
+      "graph_nodes": 59,
+      "graph_status": "graph_represented",
+      "status": "ready"
+    },
+    {
+      "tag": "A_t21",
+      "label": "6/14 A조 토론2-1",
+      "folder": "260614_토론2-1_A조",
+      "graph": "workshop-2026-06-13.json",
+      "transcription": {
+        "folder": "260614_토론2-1_A조",
+        "exists": true,
+        "dir": "30_추출/6.13_원본자료_음성/260614_토론2-1_A조",
+        "main_json_bytes": 316625,
+        "txt_bytes": 41486,
+        "srt_bytes": 64387,
+        "review_json_bytes": 1156,
+        "chunks_mp3": 5,
+        "chunks_transcript_json": 5,
+        "chunks_tmp": [],
+        "status": "transcript_ready"
+      },
+      "graph_nodes": 34,
+      "graph_status": "graph_represented",
+      "status": "ready"
+    },
+    {
+      "tag": "A_t22",
+      "label": "6/14 A조 토론2-2",
+      "folder": "260614_토론2-2_A조",
+      "graph": "workshop-2026-06-13.json",
+      "transcription": {
+        "folder": "260614_토론2-2_A조",
+        "exists": true,
+        "dir": "30_추출/6.13_원본자료_음성/260614_토론2-2_A조",
+        "main_json_bytes": 305425,
+        "txt_bytes": 39976,
+        "srt_bytes": 61627,
+        "review_json_bytes": 32,
+        "chunks_mp3": 5,
+        "chunks_transcript_json": 5,
+        "chunks_tmp": [],
+        "status": "transcript_ready"
+      },
+      "graph_nodes": 84,
+      "graph_status": "graph_represented",
+      "status": "ready"
+    },
+    {
+      "tag": "A_t23",
+      "label": "6/14 A조 토론2-3",
+      "folder": "260614_토론2-3_A조",
+      "graph": "workshop-2026-06-13.json",
+      "transcription": {
+        "folder": "260614_토론2-3_A조",
+        "exists": true,
+        "dir": "30_추출/6.13_원본자료_음성/260614_토론2-3_A조",
+        "main_json_bytes": 244572,
+        "txt_bytes": 25689,
+        "srt_bytes": 45586,
+        "review_json_bytes": 32,
+        "chunks_mp3": 4,
+        "chunks_transcript_json": 4,
+        "chunks_tmp": [],
+        "status": "transcript_ready"
+      },
+      "graph_nodes": 29,
+      "graph_status": "graph_represented",
+      "status": "ready"
+    },
+    {
+      "tag": "B_t1",
+      "label": "6/14 B조 토론1",
+      "folder": "20260614_[토론1] 기초발제 및 의제선정에 대한 조별토론_B조",
+      "graph": "workshop-2026-06-13.json",
+      "transcription": {
+        "folder": "20260614_[토론1] 기초발제 및 의제선정에 대한 조별토론_B조",
+        "exists": true,
+        "dir": "30_추출/6.13_원본자료_음성/20260614_[토론1] 기초발제 및 의제선정에 대한 조별토론_B조",
+        "main_json_bytes": 827712,
+        "txt_bytes": 106375,
+        "srt_bytes": 166780,
+        "review_json_bytes": 1607,
+        "chunks_mp3": 12,
+        "chunks_transcript_json": 12,
+        "chunks_tmp": [],
+        "status": "transcript_ready"
+      },
+      "graph_nodes": 81,
+      "graph_status": "graph_represented",
+      "status": "ready"
+    },
+    {
+      "tag": "B_t2",
+      "label": "6/14 B조 토론2",
+      "folder": "20260614_[토론2] 의제선정 브레인스토밍_B조",
+      "graph": "workshop-2026-06-13.json",
+      "transcription": {
+        "folder": "20260614_[토론2] 의제선정 브레인스토밍_B조",
+        "exists": true,
+        "dir": "30_추출/6.13_원본자료_음성/20260614_[토론2] 의제선정 브레인스토밍_B조",
+        "main_json_bytes": 52,
+        "txt_bytes": 0,
+        "srt_bytes": 0,
+        "review_json_bytes": 32,
+        "chunks_mp3": 5,
+        "chunks_transcript_json": 1,
+        "chunks_tmp": [
+          "t_001.json.tmp"
+        ],
+        "status": "transcript_partial"
+      },
+      "graph_nodes": 20,
+      "graph_status": "graph_represented",
+      "status": "needs_review"
+    },
+    {
+      "tag": "B_t3",
+      "label": "6/14 B조 토론3",
+      "folder": "20260614_[토론3] 의제선정 조별토론_B조",
+      "graph": "workshop-2026-06-13.json",
+      "transcription": {
+        "folder": "20260614_[토론3] 의제선정 조별토론_B조",
+        "exists": true,
+        "dir": "30_추출/6.13_원본자료_음성/20260614_[토론3] 의제선정 조별토론_B조",
+        "main_json_bytes": 266768,
+        "txt_bytes": 29234,
+        "srt_bytes": 50458,
+        "review_json_bytes": 629,
+        "chunks_mp3": 4,
+        "chunks_transcript_json": 4,
+        "chunks_tmp": [],
+        "status": "transcript_ready"
+      },
+      "graph_nodes": 50,
+      "graph_status": "graph_represented",
+      "status": "ready"
+    },
+    {
+      "tag": "발표",
+      "label": "6/13 조별발표",
+      "folder": "260613_조별발표",
+      "graph": "workshop-2026-06-13.json",
+      "transcription": {
+        "folder": "260613_조별발표",
+        "exists": true,
+        "dir": "30_추출/6.13_원본자료_음성/260613_조별발표",
+        "main_json_bytes": 138859,
+        "txt_bytes": 18229,
+        "srt_bytes": 28144,
+        "review_json_bytes": 32,
+        "chunks_mp3": 2,
+        "chunks_transcript_json": 2,
+        "chunks_tmp": [],
+        "status": "transcript_ready"
+      },
+      "graph_nodes": 6,
+      "graph_status": "graph_represented",
+      "status": "ready"
+    },
+    {
+      "tag": "정의전환",
+      "label": "6/14 정의로운전환",
+      "folder": "기후취약성괴정의로운전환녹음",
+      "graph": "workshop-2026-06-13.json",
+      "transcription": {
+        "folder": "기후취약성괴정의로운전환녹음",
+        "exists": true,
+        "dir": "30_추출/6.13_원본자료_음성/기후취약성괴정의로운전환녹음",
+        "main_json_bytes": 170069,
+        "txt_bytes": 18854,
+        "srt_bytes": 32395,
+        "review_json_bytes": 479,
+        "chunks_mp3": 3,
+        "chunks_transcript_json": 3,
+        "chunks_tmp": [],
+        "status": "transcript_ready"
+      },
+      "graph_nodes": 22,
+      "graph_status": "graph_represented",
+      "status": "ready"
+    },
+    {
+      "tag": "환경4조",
+      "label": "6/14 환경교육 4조",
+      "folder": "환경교육_4조_(전문_소비생활-의제_청소년거버넌스)",
+      "graph": "workshop-2026-06-13.json",
+      "transcription": {
+        "folder": "환경교육_4조_(전문_소비생활-의제_청소년거버넌스)",
+        "exists": true,
+        "dir": "30_추출/6.13_원본자료_음성/환경교육_4조_(전문_소비생활-의제_청소년거버넌스)",
+        "main_json_bytes": 346881,
+        "txt_bytes": 40115,
+        "srt_bytes": 66992,
+        "review_json_bytes": 711,
+        "chunks_mp3": 6,
+        "chunks_transcript_json": 6,
+        "chunks_tmp": [],
+        "status": "transcript_ready"
+      },
+      "graph_nodes": 88,
+      "graph_status": "graph_represented",
+      "status": "ready"
+    },
+    {
+      "tag": "토론4통합",
+      "label": "6/14 토론4 통합 운영",
+      "folder": "20260614_[토론4] 의제선정 및 운영규정안 마련",
+      "graph": "workshop-2026-06-13.json",
+      "expectedInGraph": false,
+      "transcription": {
+        "folder": "20260614_[토론4] 의제선정 및 운영규정안 마련",
+        "exists": true,
+        "dir": "30_추출/6.13_원본자료_음성/20260614_[토론4] 의제선정 및 운영규정안 마련",
+        "main_json_bytes": 52,
+        "txt_bytes": 0,
+        "srt_bytes": 0,
+        "review_json_bytes": 32,
+        "chunks_mp3": 10,
+        "chunks_transcript_json": 0,
+        "chunks_tmp": [
+          "t_000.json.tmp"
+        ],
+        "status": "transcript_partial"
+      },
+      "graph_nodes": 0,
+      "graph_status": "not_expected_in_current_graph",
+      "status": "needs_review"
+    },
+    {
+      "tag": "음성002",
+      "label": "음성 002",
+      "folder": "음성 002",
+      "graph": "workshop-2026-06-13.json",
+      "expectedInGraph": false,
+      "transcription": {
+        "folder": "음성 002",
+        "exists": true,
+        "dir": "30_추출/6.13_원본자료_음성/음성 002",
+        "main_json_bytes": 581874,
+        "txt_bytes": 65738,
+        "srt_bytes": 111626,
+        "review_json_bytes": 5755,
+        "chunks_mp3": 9,
+        "chunks_transcript_json": 9,
+        "chunks_tmp": [],
+        "status": "transcript_ready"
+      },
+      "graph_nodes": 0,
+      "graph_status": "not_expected_in_current_graph",
+      "status": "ui_or_graph_gap"
+    }
+  ],
+  "text_sessions": [
+    {
+      "tag": "OA_t1",
+      "label": "6/13 운영규정 A조 텍스트",
+      "file": "(수정)260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.md",
+      "exists": true,
+      "path": "30_추출/6.13_원본자료_텍스트/(수정)260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.md",
+      "bytes": 6192,
+      "graph_nodes": 43,
+      "status": "ready"
+    },
+    {
+      "tag": "OB_t1",
+      "label": "6/13 운영규정 B조 텍스트",
+      "file": "260613_[토론1]운영규정 초안 토론_B조_회의내용 정리.md",
+      "exists": true,
+      "path": "30_추출/6.13_원본자료_텍스트/260613_[토론1]운영규정 초안 토론_B조_회의내용 정리.md",
+      "bytes": 6189,
+      "graph_nodes": 42,
+      "status": "ready"
+    },
+    {
+      "tag": "OZ_t1",
+      "label": "6/13 운영규정 통합 텍스트",
+      "file": "20260611-기후시민회의 운영규범 초안_(시민배포용)_최종4.md",
+      "exists": true,
+      "path": "30_추출/6.13_원본자료_텍스트/20260611-기후시민회의 운영규범 초안_(시민배포용)_최종4.md",
+      "bytes": 14746,
+      "graph_nodes": 44,
+      "status": "ready"
+    },
+    {
+      "tag": "DA_t2",
+      "label": "6/14 A조 의제선정 텍스트",
+      "file": "260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론_A조_회의내용 정리.md",
+      "exists": true,
+      "path": "30_추출/6.13_원본자료_텍스트/260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론_A조_회의내용 정리.md",
+      "bytes": 7045,
+      "graph_nodes": 23,
+      "status": "ready"
+    },
+    {
+      "tag": "DB_t2",
+      "label": "6/14 B조 의제선정 텍스트",
+      "file": "20260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론.md",
+      "exists": true,
+      "path": "30_추출/6.13_원본자료_텍스트/20260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론.md",
+      "bytes": 3849,
+      "graph_nodes": 5,
+      "status": "ready"
+    },
+    {
+      "tag": "DZ_t2",
+      "label": "6/14 통합 의제선정 텍스트",
+      "file": "20260614_[토론4] 의제 선정 및 운영규정안 마련_통합 운영.md",
+      "exists": true,
+      "path": "30_추출/6.13_원본자료_텍스트/20260614_[토론4] 의제 선정 및 운영규정안 마련_통합 운영.md",
+      "bytes": 4931,
+      "graph_nodes": 34,
+      "status": "ready"
+    }
+  ],
+  "issues": [
+    {
+      "tag": "B_t2",
+      "label": "6/14 B조 토론2",
+      "status": "needs_review",
+      "transcription_status": "transcript_partial",
+      "graph_status": "graph_represented",
+      "note": "B조 토론2는 그래프에 일부 반영되었지만 전사 상위 txt/srt가 0바이트이고 tmp 청크가 남아 있어 재확인이 필요합니다."
+    },
+    {
+      "tag": "토론4통합",
+      "label": "6/14 토론4 통합 운영",
+      "status": "needs_review",
+      "transcription_status": "transcript_partial",
+      "graph_status": "not_expected_in_current_graph",
+      "note": "토론4 통합 운영은 원본 음성과 청크가 있으나 전사 산출물이 미완결이고 현재 통합 그래프 세션으로 노출되지 않습니다."
+    },
+    {
+      "tag": "음성002",
+      "label": "음성 002",
+      "status": "ui_or_graph_gap",
+      "transcription_status": "transcript_ready",
+      "graph_status": "not_expected_in_current_graph",
+      "note": "원본-전사-그래프 연결 상태 확인이 필요합니다."
+    }
+  ]
+}

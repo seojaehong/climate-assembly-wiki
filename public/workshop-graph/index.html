@@ -7,7 +7,7 @@
 <title>숙의 온톨로지 — 통합 그래프</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/_ontology-chrome/chrome.css?v=20260625-agenda-surface">
+<link rel="stylesheet" href="/_ontology-chrome/chrome.css?v=20260625-present-audit">
 <script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
 <script src="https://unpkg.com/layout-base@2.0.1/layout-base.js"></script>
 <script src="https://unpkg.com/cose-base@2.2.0/cose-base.js"></script>
@@ -46,12 +46,30 @@
   body.view-3d .og-hub-rail{top:58px;right:390px}
   .og-hub-chip{pointer-events:auto;display:inline-flex;align-items:center;max-width:220px;min-height:30px;padding:0 10px;border:1px solid rgba(139,211,255,.34);border-radius:999px;background:rgba(9,15,23,.78);box-shadow:0 10px 28px rgba(0,0,0,.24);backdrop-filter:blur(8px);color:#dbeafe;font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
   .og-hub-chip:hover{border-color:#63e6be;color:#fff;background:rgba(18,184,134,.22)}
+  .og-present-hud{position:absolute;left:16px;top:58px;z-index:10;display:none;max-width:min(680px,calc(100vw - 440px));padding:10px 13px;border:1px solid rgba(21,101,192,.16);border-radius:8px;background:rgba(255,255,255,.86);box-shadow:0 16px 42px rgba(15,23,42,.12);color:#1f2937;font-size:13px;font-weight:800;line-height:1.55;pointer-events:none}
+  .og-present-hud b{color:#0f766e}
+  body.og-present-mode .og-present-hud{display:block}
+  body.og-present-mode .og-hub-rail{top:104px}
+  body.og-present-mode .og-hub-chip{background:rgba(255,255,255,.90);border-color:rgba(21,101,192,.20);color:#1f2937;box-shadow:0 10px 30px rgba(15,23,42,.10)}
+  body.og-present-mode .og-hub-chip:hover{background:#e6fffa;border-color:#0f766e;color:#0f172a}
+  body.og-present-mode .og-controls{padding-top:5px;padding-bottom:5px}
+  body.og-present-mode #og-filter-bar{display:none}
+  body.og-present-mode #og-assets-btn,
+  body.og-present-mode #og-settings-btn,
+  body.og-present-mode #og-guide-link,
+  body.og-present-mode #og-physics{display:none !important}
+  body.og-present-mode .og-source-sel select{min-width:260px}
+  body.og-present-mode .og-group-tog .og-grp-lbl{font-size:0}
+  body.og-present-mode .og-group-tog .og-grp-lbl::after{content:"보기";font-size:11px}
+  body.og-present-mode .og-footer{background:#f8fafc;color:#475569;border-top-color:#dbe4ef}
   @media (max-width:640px){
     .og-hub-rail{left:10px;right:10px;top:10px;gap:5px;max-height:40px;overflow:hidden}
     body.view-3d .og-hub-rail{top:46px;right:10px}
     .og-hub-chip{max-width:176px;min-height:28px;padding:0 8px;font-size:11px}
     .og-3d-hud{left:10px;right:10px;top:10px;max-width:none;gap:5px;max-height:36px;overflow:hidden}
     .og-3d-hud .og-3d-pill{min-height:26px;padding:0 8px;font-size:11px}
+    .og-present-hud{left:10px;right:10px;top:52px;max-width:none;font-size:11px;max-height:54px;overflow:hidden}
+    body.og-present-mode .og-hub-rail{top:112px}
   }
 </style>
 </head>
@@ -108,6 +126,9 @@
         <span class="og-3d-pill"><span class="og-3d-muted">노랑</span> 조건</span>
         <span class="og-3d-pill"><span class="og-3d-muted">회색</span> 근거</span>
       </div>
+      <div class="og-present-hud og-2d-only" aria-hidden="true">
+        <b>발표 보기</b> — AI가 합의를 만들지 않습니다. 발언·근거·우려·조건을 보존하고, 같은 원본 그래프를 쟁점/세션 단위로 확대해 설명합니다.
+      </div>
       <div class="og-hub-rail" id="og-hub-rail" aria-label="주요 쟁점 바로가기"></div>
       <div class="og-zoomctl og-2d-only">
         <button id="og-zin">＋</button>
@@ -131,10 +152,21 @@
 import { OntologyChrome } from '/_ontology-chrome/chrome.js';
 
 const PREFIX_META = {
-  'A_t21':{day:'6/14',jo:'A'},'A_t22':{day:'6/14',jo:'A'},'A_t23':{day:'6/14',jo:'A'},
-  'B_t1':{day:'6/13',jo:'B'},'B_t2':{day:'6/14',jo:'B'},'B_t3':{day:'6/14',jo:'B'},
-  'OA_t1':{day:'6/13',jo:'A'},'OB_t1':{day:'6/13',jo:'B'},'OZ_t1':{day:'6/13',jo:'통합'},
-  'DA_t2':{day:'6/14',jo:'A'},'DB_t2':{day:'6/14',jo:'B'},'DZ_t2':{day:'6/14',jo:'통합'},
+  'A_t21':{day:'6/14',jo:'A조',round:'토론2-1',label:'6/14 A조 토론2-1'},
+  'A_t22':{day:'6/14',jo:'A조',round:'토론2-2',label:'6/14 A조 토론2-2'},
+  'A_t23':{day:'6/14',jo:'A조',round:'토론2-3',label:'6/14 A조 토론2-3'},
+  'B_t1':{day:'6/14',jo:'B조',round:'토론1',label:'6/14 B조 토론1'},
+  'B_t2':{day:'6/14',jo:'B조',round:'토론2',label:'6/14 B조 토론2'},
+  'B_t3':{day:'6/14',jo:'B조',round:'토론3',label:'6/14 B조 토론3'},
+  'OA_t1':{day:'6/13',jo:'A조',round:'운영규정',label:'6/13 운영규정 A조'},
+  'OB_t1':{day:'6/13',jo:'B조',round:'운영규정',label:'6/13 운영규정 B조'},
+  'OZ_t1':{day:'6/13',jo:'통합',round:'운영규정',label:'6/13 운영규정 통합'},
+  'DA_t2':{day:'6/14',jo:'A조',round:'의제선정',label:'6/14 A조 의제선정'},
+  'DB_t2':{day:'6/14',jo:'B조',round:'의제선정',label:'6/14 B조 의제선정'},
+  'DZ_t2':{day:'6/14',jo:'통합',round:'의제선정',label:'6/14 통합 의제선정'},
+  '발표':{day:'6/13',jo:'전체',round:'조별발표',label:'6/13 조별발표'},
+  '정의전환':{day:'6/14',jo:'기타조',round:'정의로운전환',label:'6/14 정의로운전환'},
+  '환경4조':{day:'6/14',jo:'4조',round:'환경교육',label:'6/14 환경교육 4조'},
 };
 
 let cy, graph3d, ALL_NODES = [], ALL_EDGES = [], curFilter = { kind:new Set(Object.keys(OntologyChrome.KIND_DEFAULT)) };
@@ -209,10 +241,12 @@ const params = new URLSearchParams(location.search);
   curSource = params.get('source') || sources.default;
   curView = params.get('view') || '2d';
   presentMode = params.get('mode') === 'present';
-  groupMode = ['issue','session'].includes(params.get('group')) ? params.get('group') : 'none';
+  groupMode = ['issue','session'].includes(params.get('group')) ? params.get('group') : (presentMode ? 'issue' : 'none');
+  if (presentMode && !params.has('view')) curView = '2d';
   buildSourceDropdown();
   OntologyChrome.init({ activeId: 'workshop', title: '숙의 온톨로지', meta: '로딩 중…' });
   bindGlobalEvents();
+  syncPresentationBody();
   if (curView === '3d') applyView('3d');
   loadAgendaSurface();
   loadGyeonggiAgendaSurface();
@@ -253,6 +287,11 @@ function updateUrl() {
   if (presentMode) p.set('mode', 'present');
   if (groupMode !== 'none') p.set('group', groupMode);
   history.replaceState(null, '', '?' + p.toString());
+}
+
+function sessionLabel(session, fallback = '기타/미분류') {
+  if (!session) return fallback;
+  return PREFIX_META[session]?.label || session;
 }
 
 async function loadSource(srcId) {
@@ -860,7 +899,7 @@ function renderNodeSurface(ctx, mode = 'hover') {
       <button class="og-s-close" data-side-close>✕</button>
       <div>
         <span class="og-s-badge" style="background:${color}">${escapeHtml(kindLabel)}</span>
-        ${ctx.node.session ? `<span class="og-s-badge" style="background:#2c3848;color:#9aa7b8;margin-left:5px">${escapeHtml(ctx.node.session)}</span>` : ''}
+        ${ctx.node.session ? `<span class="og-s-badge" style="background:#2c3848;color:#9aa7b8;margin-left:5px" title="${escapeHtml(ctx.node.session)}">${escapeHtml(sessionLabel(ctx.node.session))}</span>` : ''}
         ${ctx.node.synthesized ? '<div class="og-s-synth">합성 노드 — 원천 추출 아님</div>' : ''}
         <div class="og-s-label">${escapeHtml(ctx.node.label || '')}</div>
         <div class="og-surface-role"><b>이 노드는 숙의에서 어떤 기능인가</b><span>${escapeHtml(ctx.role)}</span></div>
@@ -894,7 +933,7 @@ function renderNodeSurface(ctx, mode = 'hover') {
     <div class="og-surface-card">
       <div class="og-surface-top">
         <span class="og-s-badge" style="background:${color}">${escapeHtml(kindLabel)}</span>
-        <span class="og-surface-small">${escapeHtml(ctx.node.session || '')}</span>
+        <span class="og-surface-small" title="${escapeHtml(ctx.node.session || '')}">${escapeHtml(sessionLabel(ctx.node.session, ''))}</span>
       </div>
       <b>${escapeHtml(ctx.node.label || '')}</b>
       <p>${escapeHtml(shortText(ctx.node.text || '', 120))}</p>
@@ -958,6 +997,7 @@ function applyFocus(nodeId, pinned = false) {
   const ctx = buildNodeContext(nodeId);
   if (!ctx) return;
   const edgeIds = new Set(ctx.related.map(e => e.id));
+  const keepContextVisible = presentMode && curView === '2d';
   if (cy && curView === '2d') {
     cy.batch(() => {
       cy.elements().removeClass('focus-main focus-neighbor focus-edge focus-dim');
@@ -965,11 +1005,11 @@ function applyFocus(nodeId, pinned = false) {
         if (n.data('isGroup')) return;
         if (n.id() === nodeId) n.addClass('focus-main');
         else if (ctx.neighborIds.has(n.id())) n.addClass('focus-neighbor');
-        else n.addClass('focus-dim');
+        else if (!keepContextVisible) n.addClass('focus-dim');
       });
       cy.edges().forEach(e => {
         if (edgeIds.has(e.id())) e.addClass('focus-edge');
-        else e.addClass('focus-dim');
+        else if (!keepContextVisible) e.addClass('focus-dim');
       });
     });
   }
@@ -1069,12 +1109,22 @@ function updatePhysicsBtn() {
   b.setAttribute('aria-pressed', String(physicsOn));
 }
 
-// 발표 모드: 대형스크린·청중용 큰 글씨. 데이터 불변 — 스타일만(무손실).
+// 발표 모드: 밝은 2D 쟁점/세션 설명 화면. 데이터 불변 — 표현만(무손실).
 function togglePresent() {
   presentMode = !presentMode;
+  if (presentMode) {
+    if (curView !== '2d') curView = '2d';
+    if (groupMode === 'none') groupMode = 'issue';
+  }
+  syncPresentationBody();
   updatePresentBtn();
+  updateGroupBtns();
   updateUrl();
-  if (cy) cy.style(buildCyStyle(OntologyChrome.getPalette())).update();
+  if (ALL_NODES.length) {
+    if (curView === '2d') renderCy();
+    else render3d();
+    renderHubRail();
+  }
 }
 function updatePresentBtn() {
   const b = document.getElementById('og-present');
@@ -1082,6 +1132,10 @@ function updatePresentBtn() {
   b.textContent = presentMode ? '🖥 발표 ON' : '🖥 발표';
   b.classList.toggle('on', presentMode);
   b.setAttribute('aria-pressed', String(presentMode));
+}
+
+function syncPresentationBody() {
+  document.body.classList.toggle('og-present-mode', presentMode && curView === '2d');
 }
 
 // ─── A-3 완전성 보존 묶기(클러스터) ───────────────────────────────
@@ -1094,7 +1148,7 @@ function updatePresentBtn() {
 function groupKeyOf(node, issueByNode) {
   if (groupMode === 'session') {
     const s = node.data('session');
-    return s ? { key: 'sess__' + s, label: s } : { key: 'sess__기타', label: '기타/미분류' };
+    return s ? { key: 'sess__' + s, label: sessionLabel(s) } : { key: 'sess__기타', label: '기타/미분류' };
   }
   // issue 모드: raisesIssue 엣지로 연결된 Issue 아래에 둔다.
   //   규칙 — 자기 자신이 Issue면 자기 자신 그룹. 그 외엔 raisesIssue로 처음 연결된 Issue(node→Issue 또는 Issue→node).
@@ -1321,6 +1375,7 @@ function render3d() {
 function applyView(view) {
   curView = view;
   document.body.classList.toggle('view-3d', view === '3d');
+  syncPresentationBody();
   document.getElementById('og-view-2d').classList.toggle('active', view === '2d');
   document.getElementById('og-view-3d').classList.toggle('active', view === '3d');
   updateUrl();
@@ -1328,14 +1383,15 @@ function applyView(view) {
 }
 
 function buildCyStyle(palette) {
+  const paper = presentMode;
   return [
     { selector:'node', style:{
         'background-color': n => palette[n.data('kind')] || '#888',
-        'label':'data(label)', 'color':'#eef3f9', 'font-size': presentMode ? '26px' : '12px',
+        'label':'data(label)', 'color': paper ? '#111827' : '#eef3f9', 'font-size': presentMode ? '26px' : '12px',
         'min-zoomed-font-size': 7,  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
         'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif", 'font-weight': presentMode ? 700 : 500,
         'text-wrap':'wrap','text-max-width': presentMode ? '220px' : '140px','text-valign':'bottom','text-margin-y':4,
-        'text-outline-color':'#11151c','text-outline-width': presentMode ? 4 : 2.5,
+        'text-outline-color': paper ? '#ffffff' : '#11151c','text-outline-width': presentMode ? 4 : 2.5,
         'width': n => (presentMode?34:22) + Math.min(n.data('deg')||0,8)*(presentMode?6:4),
         'height': n => (presentMode?34:22) + Math.min(n.data('deg')||0,8)*(presentMode?6:4),
         'border-width':2,'border-color':'#0d1118','shape':'ellipse','opacity':0.98,
@@ -1344,8 +1400,8 @@ function buildCyStyle(palette) {
         'min-zoomed-font-size':0,
         'font-size': presentMode ? '28px' : '13px',
         'font-weight':800,
-        'text-background-color':'#0b111a',
-        'text-background-opacity':0.82,
+        'text-background-color': paper ? '#ffffff' : '#0b111a',
+        'text-background-opacity': paper ? 0.9 : 0.82,
         'text-background-padding':3,
         'text-outline-width':3,
         'z-index':20,
@@ -1354,22 +1410,22 @@ function buildCyStyle(palette) {
     { selector:'node[kind="Decision"]', style:{ 'shape':'star','border-color':'#ffa94d','border-width':3 }},
     { selector:'node[?synthesized]', style:{ 'shape':'round-diamond','border-style':'dashed','border-color':'#ff8787' }},
     { selector:'edge', style:{
-        'width':1.8, 'line-color':'#6b7890', 'target-arrow-color':'#6b7890',
+        'width':1.8, 'line-color': paper ? '#718096' : '#6b7890', 'target-arrow-color': paper ? '#718096' : '#6b7890',
         'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale':1,
-        'label':'data(relKo)','font-size': presentMode ? '18px' : '10px','min-zoomed-font-size': 9,'color':'#d3dbe8',
+        'label':'data(relKo)','font-size': presentMode ? '18px' : '10px','min-zoomed-font-size': 9,'color': paper ? '#334155' : '#d3dbe8',
         'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif",
-        'text-rotation':'autorotate','text-background-color':'#11151c',
+        'text-rotation':'autorotate','text-background-color': paper ? '#ffffff' : '#11151c',
         'text-background-opacity':0.85,'text-background-padding':2,'opacity':0.82,
     }},
     { selector:'edge[?opposes]', style:{
         'line-color':'#ff6b6b','target-arrow-color':'#ff6b6b','width':2.6 }},
     // A-3 묶기 합성 부모(컨테이너) — 라벨 달린 둥근 사각, 반투명 배경, 자식이 안에 들도록 패딩
     { selector:'node[?isGroup]', style:{
-        'shape':'round-rectangle','background-color':'#12b886','background-opacity':0.10,
-        'border-width':2,'border-color':'#12b886','border-opacity':0.8,
-        'label':'data(label)','color':'#63e6be','text-valign':'top','text-halign':'center',
+        'shape':'round-rectangle','background-color': paper ? '#e6fffa' : '#12b886','background-opacity': paper ? 0.28 : 0.10,
+        'border-width':2,'border-color': paper ? '#0f766e' : '#12b886','border-opacity':0.8,
+        'label':'data(label)','color': paper ? '#0f766e' : '#63e6be','text-valign':'top','text-halign':'center',
         'text-margin-y':-4,'font-weight':700,'font-size': presentMode ? '30px' : '15px',
-        'min-zoomed-font-size': presentMode ? 3 : 6,'text-outline-color':'#11151c','text-outline-width': presentMode ? 4 : 2.5,
+        'min-zoomed-font-size': presentMode ? 0 : 6,'text-outline-color': paper ? '#ffffff' : '#11151c','text-outline-width': presentMode ? 4 : 2.5,
         'text-max-width': presentMode ? '320px' : '220px','text-wrap':'wrap',
         'padding': presentMode ? '34px' : '24px',
     }},
@@ -1379,8 +1435,8 @@ function buildCyStyle(palette) {
     }},
     { selector:'node.non-public', style:{ 'opacity':0.25,'border-style':'dashed','border-color':'#9fcfff' }},
     { selector:'.dim', style:{ 'opacity':0.10 }},
-    { selector:'node.focus-dim', style:{ 'opacity':0.10 }},
-    { selector:'edge.focus-dim', style:{ 'opacity':0.08 }},
+    { selector:'node.focus-dim', style:{ 'opacity': presentMode ? 0.72 : 0.10 }},
+    { selector:'edge.focus-dim', style:{ 'opacity': presentMode ? 0.34 : 0.08 }},
     { selector:'node.focus-neighbor', style:{ 'opacity':0.92,'border-width':3,'border-color':'#8bd3ff' }},
     { selector:'node.focus-main', style:{ 'opacity':1,'border-width':5,'border-color':'#63e6be','overlay-color':'#63e6be','overlay-opacity':0.18,'overlay-padding':8 }},
     { selector:'edge.focus-edge', style:{ 'opacity':0.92,'width':3.2,'line-color':'#8bd3ff','target-arrow-color':'#8bd3ff' }},
