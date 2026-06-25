@@ -160,6 +160,23 @@
         "package.json",
         "public/workshop-graph/data/kb-agenda-surface.json"
       ]
+    },
+    {
+      "id": "S10",
+      "title": "Verify live deployment of KB agenda surface",
+      "priority": 10,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "live `kb-agenda-surface.json` returns the KB JSON, not the SPA fallback HTML",
+        "live `/ko/agenda-source/kb/.../` source-backed page renders a KB agenda",
+        "live workshop graph HTML includes the KB agenda surface loader"
+      ],
+      "files": [
+        "public/workshop-graph/index.html",
+        "public/workshop-graph/data/kb-agenda-surface.json",
+        "src/pages/[lang]/agenda-source/[source]/[id].astro"
+      ]
     }
   ]
 }

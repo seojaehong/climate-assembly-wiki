@@ -50,3 +50,9 @@
 - Verified: `npm.cmd run prebuild` completed and wrote `public/workshop-graph/data/kb-agenda-surface.json (1311 records)` in the same command path Cloudflare uses before Astro build.
 - Learned: GitHub `main` has the KB export commit, but `https://climate-assembly.org` still served the previous deployment during 12 live polling attempts; Cloudflare API deployment cannot be forced locally because `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are not present.
 - Next: S8 remains the publication/design QA gate; separate infra step is Cloudflare dashboard deployment trigger or credential-backed backup workflow.
+
+## 2026-06-25 S10
+- Changed: no runtime code; recorded live deployment verification after commit `d57b38a`.
+- Verified: live `https://climate-assembly.org/workshop-graph/data/kb-agenda-surface.json?cb=d57b38a` returned 200, length `1756986`, and contained `overseas-cases`; live `/ko/agenda-source/kb/000002-청소년-기후-교육-시민권/?cb=d57b38a` returned 200 and contained the KB agenda title; live `/workshop-graph/index.html?source=workshop-2026-06-13&cb=d57b38a` returned 200 and contained `kb-agenda-surface`.
+- Learned: production deployment did eventually pick up the pushed `main`; cache-busting query strings are useful for distinguishing deployment lag from browser/CDN cache.
+- Next: S8 remains open for manual publication/design QA before any KB record is promoted from `needs_review`.
