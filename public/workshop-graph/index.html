@@ -73,11 +73,22 @@
   body.og-present-mode .og-level-tog{display:flex}
   body.og-present-mode .og-present-hud{max-width:min(720px,calc(100vw - 420px));padding:7px 10px;font-size:12px}
   .og-showcase-count-tog{display:none}
-  body.og-showcase-mode .og-showcase-count-tog{display:flex}
-  body.og-showcase-mode .og-hub-rail{top:58px}
+  body.og-showcase-mode .og-header,
+  body.og-showcase-mode .og-tabs,
+  body.og-showcase-mode #og-filter-bar,
+  body.og-showcase-mode .og-footer,
+  body.og-showcase-mode .og-side{display:none !important}
+  body.og-showcase-mode .og-controls{position:fixed;right:14px;bottom:14px;top:auto;z-index:80;width:auto;padding:0;background:transparent;border:0;box-shadow:none}
+  body.og-showcase-mode .og-controls > :not(#og-showcase-count-tog){display:none !important}
+  body.og-showcase-mode .og-showcase-count-tog{display:flex;background:rgba(13,20,30,.76);border-color:rgba(139,211,255,.24);box-shadow:0 12px 34px rgba(0,0,0,.28);backdrop-filter:blur(10px)}
+  body.og-showcase-mode .og-showcase-count-tog .og-grp-lbl{color:#9fb3c8}
+  body.og-showcase-mode .og-canvas{background:radial-gradient(circle at 42% 44%,#192536 0,#0f1722 48%,#080d14 100%)}
+  body.og-showcase-mode .og-body{flex:1}
+  body.og-showcase-mode .og-hub-rail{display:none !important}
   body.og-showcase-mode #og-group-tog,
   body.og-showcase-mode #og-filter-bar{display:none}
-  body.og-showcase-mode .og-footer{background:#101821;color:#cbd5e1;border-top-color:#243244}
+  body.og-showcase-mode .og-quick{right:18px;bottom:18px;max-width:340px;background:rgba(11,17,26,.88);box-shadow:0 18px 54px rgba(0,0,0,.42)}
+  body.og-showcase-mode .og-zoomctl{left:14px;bottom:14px}
   @media (max-width:640px){
     .og-hub-rail{left:10px;right:10px;top:10px;gap:5px;max-height:40px;overflow:hidden}
     body.view-3d .og-hub-rail{top:46px;right:10px}
@@ -399,7 +410,7 @@ function buildShowcaseElements(limit = showcaseCount) {
       ...n,
       data: {
         ...n.data,
-        shortLabel: shortenNodeLabel(n.data.label, showcaseCount === 50 ? 16 : 18),
+        shortLabel: shortenNodeLabel(n.data.label, showcaseCount === 50 ? 10 : 12),
       },
       classes: [n.classes, 'showcase-node'].filter(Boolean).join(' '),
     }));
@@ -895,6 +906,10 @@ function selectNodeById(nodeId, fixed = true) {
 function renderHubRail() {
   const rail = document.getElementById('og-hub-rail');
   if (!rail) return;
+  if (showcaseMode) {
+    rail.innerHTML = '';
+    return;
+  }
   const hubs = topHubNodes(curView === '3d' ? 5 : 7);
   rail.innerHTML = hubs.map(n => `
     <button class="og-hub-chip" data-node-id="${escapeHtml(n.id)}" title="${escapeHtml(n.label || n.id)}">
@@ -909,6 +924,11 @@ function renderOverviewSurface(sourceMeta, graphMeta) {
   if (fixedNodeId) return;
   const side = document.getElementById('og-side');
   if (!side) return;
+  if (showcaseMode) {
+    side.classList.add('collapsed');
+    side.innerHTML = '';
+    return;
+  }
   const hubs = topHubNodes(7);
   const kinds = graphMeta?.kinds || {};
   side.innerHTML = `
@@ -1783,13 +1803,13 @@ function buildCyStyle(palette) {
           if (presentLevel === 'full' && n.data('isOverviewLabel')) return n.data('label') || '';
           return '';
         },
-        'color': paper ? '#111827' : '#eef3f9', 'font-size': demo ? '11px' : (presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px'),
-        'min-zoomed-font-size': demo ? 5 : (presentMode ? (presentLevel === 'full' ? 18 : 999) : 7),  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
+        'color': paper ? '#111827' : '#eef3f9', 'font-size': demo ? '8px' : (presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px'),
+        'min-zoomed-font-size': demo ? 4 : (presentMode ? (presentLevel === 'full' ? 18 : 999) : 7),  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
         'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif", 'font-weight': presentMode || demo ? 700 : 500,
-        'text-wrap':'wrap','text-max-width': demo ? '86px' : (presentMode ? '120px' : '140px'),'text-valign':'bottom','text-margin-y':4,
-        'text-outline-color': paper ? '#ffffff' : '#11151c','text-outline-width': demo ? 3 : (presentMode ? 2.5 : 2.5),
-        'width': n => (demo ? 20 : (presentMode?26:22)) + Math.min(n.data('deg')||0,8)*(demo ? 3.2 : (presentMode?3:4)),
-        'height': n => (demo ? 20 : (presentMode?26:22)) + Math.min(n.data('deg')||0,8)*(demo ? 3.2 : (presentMode?3:4)),
+        'text-wrap':'wrap','text-max-width': demo ? '62px' : (presentMode ? '120px' : '140px'),'text-valign':'bottom','text-margin-y':3,
+        'text-outline-color': paper ? '#ffffff' : '#0b111a','text-outline-width': demo ? 2 : (presentMode ? 2.5 : 2.5),
+        'width': n => (demo ? 15 : (presentMode?26:22)) + Math.min(n.data('deg')||0,8)*(demo ? 2.1 : (presentMode?3:4)),
+        'height': n => (demo ? 15 : (presentMode?26:22)) + Math.min(n.data('deg')||0,8)*(demo ? 2.1 : (presentMode?3:4)),
         'border-width':2,'border-color':'#0d1118','shape':'ellipse','opacity':0.98,
     }},
     { selector:'node[?isOverviewLabel]', style:{
@@ -1808,7 +1828,7 @@ function buildCyStyle(palette) {
     { selector:'edge', style:{
         'width': demo ? 1.35 : 1.8, 'line-color': paper ? '#718096' : (demo ? '#526073' : '#6b7890'), 'target-arrow-color': paper ? '#718096' : (demo ? '#526073' : '#6b7890'),
         'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale':1,
-        'label': paper ? '' : 'data(relKo)','font-size': demo ? '8px' : '10px','min-zoomed-font-size': demo ? 5 : 9,'color': paper ? '#334155' : (demo ? '#bac7d8' : '#d3dbe8'),
+        'label': paper ? '' : 'data(relKo)','font-size': demo ? '6px' : '10px','min-zoomed-font-size': demo ? 4 : 9,'color': paper ? '#334155' : (demo ? '#94a3b8' : '#d3dbe8'),
         'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif",
         'text-rotation':'autorotate','text-background-color': paper ? '#ffffff' : '#11151c',
         'text-background-opacity': demo ? 0.72 : 0.85,'text-background-padding':2,'opacity': demo ? 0.58 : 0.82,
@@ -1910,6 +1930,11 @@ function bindCyEvents() {
     fixedNodeId = n.id();
     const ctx = buildNodeContext(n.id());
     if (!ctx) return;
+    if (showcaseMode) {
+      showHoverSurface(ctx, evt.renderedPosition);
+      applyFocus(n.id(), true);
+      return;
+    }
     renderNodeSurface(ctx, 'fixed');
     applyFocus(n.id(), true);
     document.getElementById('og-quick').classList.remove('show');

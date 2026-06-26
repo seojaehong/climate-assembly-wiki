@@ -34,6 +34,7 @@
 - Group labels include child counts, making it clear that the original nodes are folded inside.
 - Added a separate `showcase` mode for A/B testing against planner expectations. It keeps the early dark force-graph feel, shows Korean node/edge labels, enables physics by default, and lets the presenter choose 50, 75, or 100 visible original nodes.
 - Showcase labels use `shortLabel` only for display. Click/hover surfaces still read the original node text and provenance.
+- Updated `showcase` into a theatre view: header, tabs, search, source selector, footer, hub chips, and the right overview panel are hidden so the canvas uses the full viewport. Only a small 50/75/100 count switch remains at the bottom-right, keeping the top of the screen empty.
 
 ## Verified Locally
 
@@ -60,6 +61,7 @@
   - `count=50`: 50 visible original nodes, 62 visible edges, 50 shortened node labels, 62 Korean edge labels, physics ON, horizontal overflow 0
   - `count=75`: 75 visible original nodes, 85 visible edges, 75 shortened node labels, 85 Korean edge labels, physics ON, horizontal overflow 0
   - `count=100`: 100 visible original nodes, 107 visible edges, 100 shortened node labels, 107 Korean edge labels, physics ON, horizontal overflow 0
+  - Theatre viewport check at 1892x768: canvas 1892x768, top visible controls 0, header/tabs/footer/side/hub hidden, count switch bottom-right, dark background, horizontal overflow 0
 - Browser page-scale smoke for `chapter` and `brief` at 1, 1.25, 1.5, 1.75:
   - Visible node count remained stable.
   - Edge labels stayed hidden.

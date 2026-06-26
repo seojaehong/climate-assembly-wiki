@@ -50,6 +50,19 @@
     "physics_default": true,
     "uses_short_labels": true,
     "korean_edge_labels_visible": true,
+    "theatre_view": {
+      "viewport": "1892x768",
+      "canvas": "1892x768",
+      "header_visible": false,
+      "tabs_visible": false,
+      "side_visible": false,
+      "footer_visible": false,
+      "hub_visible": false,
+      "count_switch_visible": true,
+      "count_switch_position": "bottom-right",
+      "top_visible_controls": 0,
+      "horizontal_overflow": 0
+    },
     "counts": {
       "50": {
         "visible_nodes": 50,
