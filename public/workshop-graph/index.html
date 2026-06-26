@@ -80,14 +80,18 @@
   body.og-showcase-mode .og-side{display:none !important}
   body.og-showcase-mode .og-controls{position:fixed;right:14px;bottom:14px;top:auto;z-index:80;width:auto;padding:0;background:transparent;border:0;box-shadow:none}
   body.og-showcase-mode .og-controls > :not(#og-showcase-count-tog){display:none !important}
-  body.og-showcase-mode .og-showcase-count-tog{display:flex;background:rgba(13,20,30,.76);border-color:rgba(139,211,255,.24);box-shadow:0 12px 34px rgba(0,0,0,.28);backdrop-filter:blur(10px)}
-  body.og-showcase-mode .og-showcase-count-tog .og-grp-lbl{color:#9fb3c8}
-  body.og-showcase-mode .og-canvas{background:radial-gradient(circle at 42% 44%,#192536 0,#0f1722 48%,#080d14 100%)}
+  body.og-showcase-mode .og-showcase-count-tog{display:flex;background:rgba(255,255,255,.88);border-color:rgba(37,99,235,.20);box-shadow:0 12px 34px rgba(15,23,42,.12);backdrop-filter:blur(10px)}
+  body.og-showcase-mode .og-showcase-count-tog .og-grp-lbl{color:#475569}
+  body.og-showcase-mode .og-canvas{background:radial-gradient(circle at 42% 42%,#ffffff 0,#fbfdff 46%,#f1f8fb 100%)}
+  body.og-showcase-mode.og-showcase-dark .og-showcase-count-tog{background:rgba(13,20,30,.76);border-color:rgba(139,211,255,.24);box-shadow:0 12px 34px rgba(0,0,0,.28)}
+  body.og-showcase-mode.og-showcase-dark .og-showcase-count-tog .og-grp-lbl{color:#9fb3c8}
+  body.og-showcase-mode.og-showcase-dark .og-canvas{background:radial-gradient(circle at 42% 44%,#192536 0,#0f1722 48%,#080d14 100%)}
   body.og-showcase-mode .og-body{flex:1}
   body.og-showcase-mode .og-hub-rail{display:none !important}
   body.og-showcase-mode #og-group-tog,
   body.og-showcase-mode #og-filter-bar{display:none}
-  body.og-showcase-mode .og-quick{right:18px;bottom:18px;max-width:340px;background:rgba(11,17,26,.88);box-shadow:0 18px 54px rgba(0,0,0,.42)}
+  body.og-showcase-mode .og-quick{right:18px;bottom:18px;max-width:340px;background:rgba(255,255,255,.94);color:#111827;border-color:rgba(37,99,235,.18);box-shadow:0 18px 54px rgba(15,23,42,.16)}
+  body.og-showcase-mode.og-showcase-dark .og-quick{background:rgba(11,17,26,.88);color:#eef3f9;border-color:rgba(139,211,255,.22);box-shadow:0 18px 54px rgba(0,0,0,.42)}
   body.og-showcase-mode .og-zoomctl{left:14px;bottom:14px}
   @media (max-width:640px){
     .og-hub-rail{left:10px;right:10px;top:10px;gap:5px;max-height:40px;overflow:hidden}
@@ -222,7 +226,8 @@ let physicsOn = localStorage.getItem('og-physics') === '1', colaLayout = null;
 let presentMode = false;  // 발표(대형스크린) 모드 — 공유 가능 뷰 상태라 URL 파라미터
 let presentLevel = 'chapter'; // 'chapter' | 'brief' | 'full' — 발표 A/B 테스트용 노출 밀도
 let showcaseMode = false; // 기획자 A/B용: 초기 물리 그래프 감성 + 축약 라벨 + 제한 노드
-let showcaseCount = 75;
+let showcaseCount = 50;
+let showcaseTheme = 'light';
 let fixedNodeId = null, hoverNodeId = null, graph3dData = null, quickHover = false, hoverHideTimer = null;
 // A-3 묶기(클러스터): 'none' | 'present' | 'brief' | 'issue' | 'session'. 공유 가능 뷰 상태라 URL 파라미터(?group=).
 // 무손실 원칙 — 그룹은 합성 부모 노드로만 표현하고 실제 노드/엣지는 절대 삭제하지 않는다.
@@ -287,7 +292,8 @@ const params = new URLSearchParams(location.search);
   presentMode = params.get('mode') === 'present';
   showcaseMode = params.get('mode') === 'showcase';
   presentLevel = ['chapter','brief','full'].includes(params.get('level')) ? params.get('level') : 'chapter';
-  showcaseCount = [50,75,100].includes(Number(params.get('count'))) ? Number(params.get('count')) : 75;
+  showcaseCount = [50,75,100].includes(Number(params.get('count'))) ? Number(params.get('count')) : 50;
+  showcaseTheme = ['light','dark'].includes(params.get('theme')) ? params.get('theme') : 'light';
   groupMode = ['present','brief','issue','session','none'].includes(params.get('group'))
     ? params.get('group')
     : (presentMode ? groupForPresentLevel(presentLevel) : 'none');
@@ -340,6 +346,7 @@ function updateUrl() {
   } else if (showcaseMode) {
     p.set('mode', 'showcase');
     p.set('count', String(showcaseCount));
+    if (showcaseTheme === 'dark') p.set('theme', 'dark');
   }
   if (groupMode !== 'none' && !showcaseMode && (!presentMode || groupMode !== groupForPresentLevel(presentLevel))) p.set('group', groupMode);
   history.replaceState(null, '', '?' + p.toString());
@@ -377,7 +384,7 @@ function nodeShowcaseScore(node) {
 }
 
 function buildShowcaseElements(limit = showcaseCount) {
-  const capped = Math.max(50, Math.min(100, Number(limit) || 75));
+  const capped = Math.max(50, Math.min(100, Number(limit) || 50));
   const byId = new Map(ALL_NODES.map(n => [n.data.id, n]));
   const adjacency = new Map();
   for (const e of ALL_EDGES) {
@@ -410,7 +417,7 @@ function buildShowcaseElements(limit = showcaseCount) {
       ...n,
       data: {
         ...n.data,
-        shortLabel: shortenNodeLabel(n.data.label, showcaseCount === 50 ? 10 : 12),
+        shortLabel: shortenNodeLabel(n.data.label, showcaseCount === 50 ? 9 : 11),
       },
       classes: [n.classes, 'showcase-node'].filter(Boolean).join(' '),
     }));
@@ -1130,7 +1137,7 @@ function applyFocus(nodeId, pinned = false) {
   const ctx = buildNodeContext(nodeId);
   if (!ctx) return;
   const edgeIds = new Set(ctx.related.map(e => e.id));
-  const keepContextVisible = presentMode && curView === '2d';
+  const keepContextVisible = (presentMode || showcaseMode) && curView === '2d';
   if (cy && curView === '2d') {
     cy.batch(() => {
       cy.elements().removeClass('focus-main focus-neighbor focus-edge focus-dim');
@@ -1200,8 +1207,8 @@ function renderCy() {
     style: buildCyStyle(OntologyChrome.getPalette()),
     layout: showcaseMode
       ? { name:'fcose', quality:'default', animate:false, randomize:true,
-          nodeRepulsion:13000, idealEdgeLength:120, edgeElasticity:0.42,
-          gravity:0.16, numIter:2800, packComponents:true, nodeSeparation:88 }
+          nodeRepulsion:21000, idealEdgeLength:190, edgeElasticity:0.28,
+          gravity:0.10, numIter:3600, packComponents:true, nodeSeparation:150 }
       : { name:'fcose', quality:'default', animate:false, randomize:true,
           nodeRepulsion:9000, idealEdgeLength:130, edgeElasticity:0.45,
           gravity:0.25, numIter:2500, packComponents:true, nodeSeparation:90 },
@@ -1226,8 +1233,8 @@ function applyPhysics() {
   try { if (typeof cytoscapeCola !== 'undefined') cytoscape.use(cytoscapeCola); } catch {}
   try {
     colaLayout = cy.layout({ name:'cola', infinite:true, fit:false, animate:true,
-      nodeSpacing: showcaseMode ? 10 : 6, edgeLength: showcaseMode ? 92 : 110, randomize:false, handleDisconnected:true,
-      centerGraph:false });
+      nodeSpacing: showcaseMode ? 34 : 6, edgeLength: showcaseMode ? 190 : 110, randomize:false, handleDisconnected:true,
+      centerGraph:false, refresh:1, maxSimulationTime: showcaseMode ? 180000 : undefined });
     colaLayout.run();
   } catch (e) { colaLayout = null; }
 }
@@ -1283,6 +1290,7 @@ function syncPresentationBody() {
   document.body.classList.toggle('og-present-brief', presentMode && curView === '2d' && presentLevel === 'brief');
   document.body.classList.toggle('og-present-full', presentMode && curView === '2d' && presentLevel === 'full');
   document.body.classList.toggle('og-showcase-mode', showcaseMode && curView === '2d');
+  document.body.classList.toggle('og-showcase-dark', showcaseMode && curView === '2d' && showcaseTheme === 'dark');
 }
 
 function groupForPresentLevel(level) {
@@ -1363,7 +1371,7 @@ function setShowcaseMode(active = !showcaseMode) {
 }
 
 function setShowcaseCount(count) {
-  showcaseCount = [50,75,100].includes(Number(count)) ? Number(count) : 75;
+  showcaseCount = [50,75,100].includes(Number(count)) ? Number(count) : 50;
   showcaseMode = true;
   presentMode = false;
   curView = '2d';
@@ -1793,6 +1801,8 @@ function applyView(view) {
 function buildCyStyle(palette) {
   const paper = presentMode;
   const demo = showcaseMode;
+  const demoLight = showcaseMode && showcaseTheme !== 'dark';
+  const paperLike = paper || demoLight;
   const presentationOverview = presentMode && presentLevel !== 'full';
   return [
     { selector:'node', style:{
@@ -1803,21 +1813,21 @@ function buildCyStyle(palette) {
           if (presentLevel === 'full' && n.data('isOverviewLabel')) return n.data('label') || '';
           return '';
         },
-        'color': paper ? '#111827' : '#eef3f9', 'font-size': demo ? '8px' : (presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px'),
+        'color': paperLike ? '#0f172a' : '#eef3f9', 'font-size': demo ? '8px' : (presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px'),
         'min-zoomed-font-size': demo ? 4 : (presentMode ? (presentLevel === 'full' ? 18 : 999) : 7),  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
         'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif", 'font-weight': presentMode || demo ? 700 : 500,
-        'text-wrap':'wrap','text-max-width': demo ? '62px' : (presentMode ? '120px' : '140px'),'text-valign':'bottom','text-margin-y':3,
-        'text-outline-color': paper ? '#ffffff' : '#0b111a','text-outline-width': demo ? 2 : (presentMode ? 2.5 : 2.5),
-        'width': n => (demo ? 15 : (presentMode?26:22)) + Math.min(n.data('deg')||0,8)*(demo ? 2.1 : (presentMode?3:4)),
-        'height': n => (demo ? 15 : (presentMode?26:22)) + Math.min(n.data('deg')||0,8)*(demo ? 2.1 : (presentMode?3:4)),
-        'border-width':2,'border-color':'#0d1118','shape':'ellipse','opacity':0.98,
+        'text-wrap':'wrap','text-max-width': demo ? '60px' : (presentMode ? '120px' : '140px'),'text-valign':'bottom','text-margin-y':3,
+        'text-outline-color': paperLike ? '#ffffff' : '#0b111a','text-outline-width': demo ? 2.6 : (presentMode ? 2.5 : 2.5),
+        'width': n => (demo ? 15 : (presentMode?26:22)) + Math.min(n.data('deg')||0,8)*(demo ? 2.2 : (presentMode?3:4)),
+        'height': n => (demo ? 15 : (presentMode?26:22)) + Math.min(n.data('deg')||0,8)*(demo ? 2.2 : (presentMode?3:4)),
+        'border-width':2.2,'border-color':'#0d1118','shape':'ellipse','opacity':1,
     }},
     { selector:'node[?isOverviewLabel]', style:{
         'min-zoomed-font-size': presentationOverview ? 999 : (presentMode ? 18 : 0),
         'font-size': presentMode ? '18px' : '13px',
         'font-weight':800,
-        'text-background-color': paper ? '#ffffff' : '#0b111a',
-        'text-background-opacity': paper ? 0.9 : 0.82,
+        'text-background-color': paperLike ? '#ffffff' : '#0b111a',
+        'text-background-opacity': paperLike ? 0.9 : 0.82,
         'text-background-padding':3,
         'text-outline-width':3,
         'z-index':20,
@@ -1826,22 +1836,22 @@ function buildCyStyle(palette) {
     { selector:'node[kind="Decision"]', style:{ 'shape':'star','border-color':'#ffa94d','border-width':3 }},
     { selector:'node[?synthesized]', style:{ 'shape':'round-diamond','border-style':'dashed','border-color':'#ff8787' }},
     { selector:'edge', style:{
-        'width': demo ? 1.35 : 1.8, 'line-color': paper ? '#718096' : (demo ? '#526073' : '#6b7890'), 'target-arrow-color': paper ? '#718096' : (demo ? '#526073' : '#6b7890'),
-        'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale':1,
-        'label': paper ? '' : 'data(relKo)','font-size': demo ? '6px' : '10px','min-zoomed-font-size': demo ? 4 : 9,'color': paper ? '#334155' : (demo ? '#94a3b8' : '#d3dbe8'),
+        'width': demo ? 1.65 : 1.8, 'line-color': paperLike ? '#64748b' : (demo ? '#526073' : '#6b7890'), 'target-arrow-color': paperLike ? '#64748b' : (demo ? '#526073' : '#6b7890'),
+        'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale': demo ? 1.18 : 1,
+        'label': demo ? (showcaseCount <= 50 ? 'data(relKo)' : '') : (paper ? '' : 'data(relKo)'),'font-size': demo ? '6.8px' : '10px','min-zoomed-font-size': demo ? (showcaseCount <= 50 ? 5 : 999) : 9,'color': paperLike ? '#1f2937' : (demo ? '#cbd5e1' : '#d3dbe8'),
         'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif",
-        'text-rotation':'autorotate','text-background-color': paper ? '#ffffff' : '#11151c',
-        'text-background-opacity': demo ? 0.72 : 0.85,'text-background-padding':2,'opacity': demo ? 0.58 : 0.82,
+        'text-rotation':'autorotate','text-background-color': paperLike ? '#ffffff' : '#11151c',
+        'text-background-opacity': demo ? 0.88 : 0.85,'text-background-padding':2,'opacity': demo ? 0.78 : 0.82,
     }},
     { selector:'edge[?opposes]', style:{
         'line-color':'#ff6b6b','target-arrow-color':'#ff6b6b','width':2.6 }},
     // A-3 묶기 합성 부모(컨테이너) — 라벨 달린 둥근 사각, 반투명 배경, 자식이 안에 들도록 패딩
     { selector:'node[?isGroup]', style:{
-        'shape':'round-rectangle','background-color': paper ? '#e6fffa' : '#12b886','background-opacity': paper ? 0.28 : 0.10,
-        'border-width':2,'border-color': paper ? '#0f766e' : '#12b886','border-opacity':0.8,
-        'label':'data(label)','color': paper ? '#0f766e' : '#63e6be','text-valign':'top','text-halign':'center',
+        'shape':'round-rectangle','background-color': paperLike ? '#e6fffa' : '#12b886','background-opacity': paperLike ? 0.28 : 0.10,
+        'border-width':2,'border-color': paperLike ? '#0f766e' : '#12b886','border-opacity':0.8,
+        'label':'data(label)','color': paperLike ? '#0f766e' : '#63e6be','text-valign':'top','text-halign':'center',
         'text-margin-y':-4,'font-weight':700,'font-size': presentMode ? (presentLevel === 'brief' ? '18px' : '22px') : '15px',
-        'min-zoomed-font-size': presentMode ? 0 : 6,'text-outline-color': paper ? '#ffffff' : '#11151c','text-outline-width': presentMode ? 4 : 2.5,
+        'min-zoomed-font-size': presentMode ? 0 : 6,'text-outline-color': paperLike ? '#ffffff' : '#11151c','text-outline-width': presentMode ? 4 : 2.5,
         'text-max-width': presentMode ? (presentLevel === 'brief' ? '190px' : '260px') : '220px','text-wrap':'wrap',
         'padding': presentMode ? (presentLevel === 'brief' ? '22px' : '30px') : '24px',
     }},
@@ -1856,14 +1866,14 @@ function buildCyStyle(palette) {
     { selector:'node.focus-neighbor', style:{ 'opacity':0.92,'border-width':3,'border-color':'#8bd3ff' }},
     { selector:'node.focus-main, node.focus-neighbor', style:{
         'label':'data(label)','font-size': presentMode ? '13px' : '12px','min-zoomed-font-size':0,
-        'text-max-width':'120px','text-background-color': paper ? '#ffffff' : '#0b111a',
+        'text-max-width': demo ? '92px' : '120px','text-background-color': paperLike ? '#ffffff' : '#0b111a',
         'text-background-opacity':0.92,'text-background-padding':3,
     }},
     { selector:'node.focus-main', style:{ 'opacity':1,'border-width':5,'border-color':'#63e6be','overlay-color':'#63e6be','overlay-opacity':0.18,'overlay-padding':8 }},
     { selector:'edge.focus-edge', style:{
         'opacity':0.92,'width':3.2,'line-color':'#8bd3ff','target-arrow-color':'#8bd3ff',
         'label': presentMode && presentLevel === 'chapter' ? '' : 'data(relKo)',
-        'font-size':'11px','text-background-color': paper ? '#ffffff' : '#11151c',
+        'font-size': demo ? '8px' : '11px','text-background-color': paperLike ? '#ffffff' : '#11151c',
         'text-background-opacity':0.95,'text-background-padding':2,
     }},
     { selector:'.hidden', style:{ 'display':'none' }},
@@ -1948,6 +1958,9 @@ function bindCyEvents() {
       document.getElementById('og-side').classList.add('collapsed');
       clearFocus();
     }
+  });
+  cy.on('dragfree', 'node', () => {
+    if (showcaseMode || physicsOn) applyPhysics();
   });
 }
 
@@ -2064,7 +2077,7 @@ if (['127.0.0.1', 'localhost'].includes(location.hostname)) {
     renderNodeSurface,
     applyFocus,
     clearFocus,
-    getState: () => ({ presentMode, presentLevel, showcaseMode, showcaseCount, groupMode, curView, curSource }),
+    getState: () => ({ presentMode, presentLevel, showcaseMode, showcaseCount, showcaseTheme, groupMode, curView, curSource, physicsRunning: Boolean(colaLayout) }),
     getStats: () => cy ? ({
       visibleNodes: cy.nodes(':visible').length,
       visibleRealNodes: cy.nodes(':visible').filter(n => !n.data('isGroup')).length,
