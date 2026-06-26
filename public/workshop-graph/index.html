@@ -72,19 +72,23 @@
   .og-level-tog{display:none}
   body.og-present-mode .og-level-tog{display:flex}
   body.og-present-mode .og-present-hud{max-width:min(720px,calc(100vw - 420px));padding:7px 10px;font-size:12px}
-  .og-showcase-count-tog{display:none}
+  .og-showcase-count-tog,.og-showcase-edge-tog{display:none}
   body.og-showcase-mode .og-header,
   body.og-showcase-mode .og-tabs,
   body.og-showcase-mode #og-filter-bar,
   body.og-showcase-mode .og-footer,
   body.og-showcase-mode .og-side{display:none !important}
-  body.og-showcase-mode .og-controls{position:fixed;right:14px;bottom:14px;top:auto;z-index:80;width:auto;padding:0;background:transparent;border:0;box-shadow:none}
-  body.og-showcase-mode .og-controls > :not(#og-showcase-count-tog){display:none !important}
-  body.og-showcase-mode .og-showcase-count-tog{display:flex;background:rgba(255,255,255,.88);border-color:rgba(37,99,235,.20);box-shadow:0 12px 34px rgba(15,23,42,.12);backdrop-filter:blur(10px)}
-  body.og-showcase-mode .og-showcase-count-tog .og-grp-lbl{color:#475569}
+  body.og-showcase-mode .og-controls{position:fixed;right:14px;bottom:14px;top:auto;z-index:80;width:auto;padding:0;background:transparent;border:0;box-shadow:none;gap:8px}
+  body.og-showcase-mode .og-controls > :not(#og-showcase-count-tog):not(#og-showcase-edge-tog){display:none !important}
+  body.og-showcase-mode .og-showcase-count-tog,
+  body.og-showcase-mode .og-showcase-edge-tog{display:flex;background:rgba(255,255,255,.88);border-color:rgba(37,99,235,.20);box-shadow:0 12px 34px rgba(15,23,42,.12);backdrop-filter:blur(10px)}
+  body.og-showcase-mode .og-showcase-count-tog .og-grp-lbl,
+  body.og-showcase-mode .og-showcase-edge-tog .og-grp-lbl{color:#475569}
   body.og-showcase-mode .og-canvas{background:radial-gradient(circle at 42% 42%,#ffffff 0,#fbfdff 46%,#f1f8fb 100%)}
-  body.og-showcase-mode.og-showcase-dark .og-showcase-count-tog{background:rgba(13,20,30,.76);border-color:rgba(139,211,255,.24);box-shadow:0 12px 34px rgba(0,0,0,.28)}
-  body.og-showcase-mode.og-showcase-dark .og-showcase-count-tog .og-grp-lbl{color:#9fb3c8}
+  body.og-showcase-mode.og-showcase-dark .og-showcase-count-tog,
+  body.og-showcase-mode.og-showcase-dark .og-showcase-edge-tog{background:rgba(13,20,30,.76);border-color:rgba(139,211,255,.24);box-shadow:0 12px 34px rgba(0,0,0,.28)}
+  body.og-showcase-mode.og-showcase-dark .og-showcase-count-tog .og-grp-lbl,
+  body.og-showcase-mode.og-showcase-dark .og-showcase-edge-tog .og-grp-lbl{color:#9fb3c8}
   body.og-showcase-mode.og-showcase-dark .og-canvas{background:radial-gradient(circle at 42% 44%,#192536 0,#0f1722 48%,#080d14 100%)}
   body.og-showcase-mode .og-body{flex:1}
   body.og-showcase-mode .og-hub-rail{display:none !important}
@@ -129,6 +133,11 @@
       <button data-count="50">50</button>
       <button data-count="75">75</button>
       <button data-count="100">100</button>
+    </div>
+    <div class="og-group-tog og-showcase-edge-tog og-2d-only" id="og-showcase-edge-tog" title="엣지명 — 선 위의 관계명을 켜거나 끕니다">
+      <span class="og-grp-lbl">엣지명</span>
+      <button data-edge-labels="on">ON</button>
+      <button data-edge-labels="off">OFF</button>
     </div>
     <div class="og-group-tog og-2d-only" id="og-group-tog" title="묶기 — 무손실 클러스터(노드/엣지 보존, 부모 안에 둥지). 그룹을 클릭하면 접기/펼치기">
       <span class="og-grp-lbl">묶기</span>
@@ -228,6 +237,7 @@ let presentLevel = 'chapter'; // 'chapter' | 'brief' | 'full' — 발표 A/B 테
 let showcaseMode = false; // 기획자 A/B용: 초기 물리 그래프 감성 + 축약 라벨 + 제한 노드
 let showcaseCount = 50;
 let showcaseTheme = 'light';
+let showcaseEdgeLabels = true;
 let fixedNodeId = null, hoverNodeId = null, graph3dData = null, quickHover = false, hoverHideTimer = null;
 // A-3 묶기(클러스터): 'none' | 'present' | 'brief' | 'issue' | 'session'. 공유 가능 뷰 상태라 URL 파라미터(?group=).
 // 무손실 원칙 — 그룹은 합성 부모 노드로만 표현하고 실제 노드/엣지는 절대 삭제하지 않는다.
@@ -294,6 +304,7 @@ const params = new URLSearchParams(location.search);
   presentLevel = ['chapter','brief','full'].includes(params.get('level')) ? params.get('level') : 'chapter';
   showcaseCount = [50,75,100].includes(Number(params.get('count'))) ? Number(params.get('count')) : 50;
   showcaseTheme = ['light','dark'].includes(params.get('theme')) ? params.get('theme') : 'light';
+  showcaseEdgeLabels = params.get('edgeLabels') !== 'off';
   groupMode = ['present','brief','issue','session','none'].includes(params.get('group'))
     ? params.get('group')
     : (presentMode ? groupForPresentLevel(presentLevel) : 'none');
@@ -346,6 +357,7 @@ function updateUrl() {
   } else if (showcaseMode) {
     p.set('mode', 'showcase');
     p.set('count', String(showcaseCount));
+    p.set('edgeLabels', showcaseEdgeLabels ? 'on' : 'off');
     if (showcaseTheme === 'dark') p.set('theme', 'dark');
   }
   if (groupMode !== 'none' && !showcaseMode && (!presentMode || groupMode !== groupForPresentLevel(presentLevel))) p.set('group', groupMode);
@@ -1351,6 +1363,9 @@ function updateShowcaseUI() {
   document.querySelectorAll('#og-showcase-count-tog button').forEach(btn => {
     btn.classList.toggle('active', Number(btn.dataset.count) === showcaseCount);
   });
+  document.querySelectorAll('#og-showcase-edge-tog button').forEach(btn => {
+    btn.classList.toggle('active', (btn.dataset.edgeLabels === 'on') === showcaseEdgeLabels);
+  });
 }
 
 function setShowcaseMode(active = !showcaseMode) {
@@ -1383,6 +1398,21 @@ function setShowcaseCount(count) {
   updatePhysicsBtn();
   updateUrl();
   if (ALL_NODES.length) renderCy();
+}
+
+function setShowcaseEdgeLabels(active) {
+  showcaseEdgeLabels = active;
+  showcaseMode = true;
+  presentMode = false;
+  curView = '2d';
+  groupMode = 'none';
+  syncPresentationBody();
+  updatePresentBtn();
+  updateShowcaseUI();
+  updateGroupBtns();
+  updatePhysicsBtn();
+  updateUrl();
+  if (cy && curView === '2d') cy.style(buildCyStyle(OntologyChrome.getPalette())).update();
 }
 
 function configurePresentationZoom() {
@@ -1838,7 +1868,7 @@ function buildCyStyle(palette) {
     { selector:'edge', style:{
         'width': demo ? 1.65 : 1.8, 'line-color': paperLike ? '#64748b' : (demo ? '#526073' : '#6b7890'), 'target-arrow-color': paperLike ? '#64748b' : (demo ? '#526073' : '#6b7890'),
         'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale': demo ? 1.18 : 1,
-        'label': demo ? (showcaseCount <= 50 ? 'data(relKo)' : '') : (paper ? '' : 'data(relKo)'),'font-size': demo ? '6.8px' : '10px','min-zoomed-font-size': demo ? (showcaseCount <= 50 ? 5 : 999) : 9,'color': paperLike ? '#1f2937' : (demo ? '#cbd5e1' : '#d3dbe8'),
+        'label': demo ? (showcaseEdgeLabels ? 'data(relKo)' : '') : (paper ? '' : 'data(relKo)'),'font-size': demo ? '6.8px' : '10px','min-zoomed-font-size': demo ? (showcaseEdgeLabels ? 5 : 999) : 9,'color': paperLike ? '#1f2937' : (demo ? '#cbd5e1' : '#d3dbe8'),
         'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif",
         'text-rotation':'autorotate','text-background-color': paperLike ? '#ffffff' : '#11151c',
         'text-background-opacity': demo ? 0.88 : 0.85,'text-background-padding':2,'opacity': demo ? 0.78 : 0.82,
@@ -2011,6 +2041,9 @@ function bindGlobalEvents() {
   document.querySelectorAll('#og-showcase-count-tog button').forEach(b => {
     b.onclick = () => setShowcaseCount(b.dataset.count);
   });
+  document.querySelectorAll('#og-showcase-edge-tog button').forEach(b => {
+    b.onclick = () => setShowcaseEdgeLabels(b.dataset.edgeLabels === 'on');
+  });
   updateShowcaseUI();
   document.querySelectorAll('#og-level-tog button').forEach(b => {
     b.onclick = () => setPresentLevel(b.dataset.level);
@@ -2077,7 +2110,7 @@ if (['127.0.0.1', 'localhost'].includes(location.hostname)) {
     renderNodeSurface,
     applyFocus,
     clearFocus,
-    getState: () => ({ presentMode, presentLevel, showcaseMode, showcaseCount, showcaseTheme, groupMode, curView, curSource, physicsRunning: Boolean(colaLayout) }),
+    getState: () => ({ presentMode, presentLevel, showcaseMode, showcaseCount, showcaseTheme, showcaseEdgeLabels, groupMode, curView, curSource, physicsRunning: Boolean(colaLayout) }),
     getStats: () => cy ? ({
       visibleNodes: cy.nodes(':visible').length,
       visibleRealNodes: cy.nodes(':visible').filter(n => !n.data('isGroup')).length,
