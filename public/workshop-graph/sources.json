@@ -2,6 +2,7 @@
   "default": "workshop-2026-06-13",
   "categories": {
     "workshop": "워크숍 통합",
+    "audit": "데이터 연결상태",
     "regulation": "운영규정",
     "live": "🔴 LIVE (모더 전용)"
   },
@@ -12,6 +13,13 @@
       "label": "2026-06-13~14 워크숍 통합",
       "data": "data/workshop-2026-06-13.json",
       "supportsView": ["2d", "3d"]
+    },
+    {
+      "id": "source-coverage-2026-06-13",
+      "category": "audit",
+      "label": "원본→전사→그래프 연결상태 전체",
+      "data": "data/source-coverage-2026-06-13.json",
+      "supportsView": ["2d"]
     },
     {
       "id": "regulation-2026-06-13",

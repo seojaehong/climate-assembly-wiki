@@ -1,0 +1,2188 @@
+{
+  "elements": {
+    "nodes": [
+      {
+        "data": {
+          "kindKo": "쟁점",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 22,
+          "isolated": false,
+          "id": "coverage::hub",
+          "label": "6/13-14 원본자료 연결상태",
+          "kind": "Issue",
+          "session": "coverage",
+          "text": "원본 25건, 텍스트 12건, 그래프 세션 반영 상태를 함께 점검합니다. 이 화면은 AI가 내용을 새로 판단한 것이 아니라 원본-전사-그래프 연결상태를 표시합니다."
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 26,
+          "isolated": false,
+          "id": "coverage::originals",
+          "label": "원본자료 25건",
+          "kind": "Evidence",
+          "session": "coverage",
+          "text": "00_입력자료/6.13_원본자료"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/(수정)260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.hwp"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/(수정)260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.hwp"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::수정_260613_토론1_운영규정_초안_토론_A조_회의내용_정리_hwp",
+          "label": "(수정)260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.hwp",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/(수정)260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.hwp\n크기: 69.0KB\n수정: 2026-06-18T12:45:13.767Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/[토론 1] 운영규정 초안 토론_A조.m4a"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/[토론 1] 운영규정 초안 토론_A조.m4a"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::토론_1_운영규정_초안_토론_A조_m4a",
+          "label": "[토론 1] 운영규정 초안 토론_A조.m4a",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/[토론 1] 운영규정 초안 토론_A조.m4a\n크기: 49.8MB\n수정: 2026-06-18T12:45:31.488Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/[토론 1] 운영규정 초안 토론_B조.m4a"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/[토론 1] 운영규정 초안 토론_B조.m4a"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::토론_1_운영규정_초안_토론_B조_m4a",
+          "label": "[토론 1] 운영규정 초안 토론_B조.m4a",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/[토론 1] 운영규정 초안 토론_B조.m4a\n크기: 89.8MB\n수정: 2026-06-18T12:46:05.101Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/20260611-기후시민회의 운영규범 초안_(시민배포용)_최종4.hwpx"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/20260611-기후시민회의 운영규범 초안_(시민배포용)_최종4.hwpx"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::20260611_기후시민회의_운영규범_초안_시민배포용_최종4_hwpx",
+          "label": "20260611-기후시민회의 운영규범 초안_(시민배포용)_최종4.hwpx",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/20260611-기후시민회의 운영규범 초안_(시민배포용)_최종4.hwpx\n크기: 379.1KB\n수정: 2026-06-13T00:25:39.428Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/20260613-기후시민회의 의제워크숍 모더레이터 운영 매뉴얼_v1.hwpx"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/20260613-기후시민회의 의제워크숍 모더레이터 운영 매뉴얼_v1.hwpx"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::20260613_기후시민회의_의제워크숍_모더레이터_운영_매뉴얼_v1_hwpx",
+          "label": "20260613-기후시민회의 의제워크숍 모더레이터 운영 매뉴얼_v1.hwpx",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/20260613-기후시민회의 의제워크숍 모더레이터 운영 매뉴얼_v1.hwpx\n크기: 41.2KB\n수정: 2026-06-13T00:25:50.355Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/20260614_[토론1] 기초발제 및 의제선정에 대한 조별 토론 _B조.hwpx"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/20260614_[토론1] 기초발제 및 의제선정에 대한 조별 토론 _B조.hwpx"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::20260614_토론1_기초발제_및_의제선정에_대한_조별_토론_B조_hwpx",
+          "label": "20260614_[토론1] 기초발제 및 의제선정에 대한 조별 토론 _B조.hwpx",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/20260614_[토론1] 기초발제 및 의제선정에 대한 조별 토론 _B조.hwpx\n크기: 74.0KB\n수정: 2026-06-18T12:43:53.065Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/20260614_[토론1] 기초발제 및 의제선정에 대한 조별토론_B조.m4a"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/20260614_[토론1] 기초발제 및 의제선정에 대한 조별토론_B조.m4a"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::20260614_토론1_기초발제_및_의제선정에_대한_조별토론_B조_m4a",
+          "label": "20260614_[토론1] 기초발제 및 의제선정에 대한 조별토론_B조.m4a",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/20260614_[토론1] 기초발제 및 의제선정에 대한 조별토론_B조.m4a\n크기: 213.0MB\n수정: 2026-06-18T12:45:13.578Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/20260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론.hwpx"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/20260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론.hwpx"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::20260614_토론2_3_의제선정_브레인스토밍_및_조별_토론_hwpx",
+          "label": "20260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론.hwpx",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/20260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론.hwpx\n크기: 50.3KB\n수정: 2026-06-18T12:42:20.322Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/20260614_[토론2] 의제선정 브레인스토밍_B조.m4a"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/20260614_[토론2] 의제선정 브레인스토밍_B조.m4a"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::20260614_토론2_의제선정_브레인스토밍_B조_m4a",
+          "label": "20260614_[토론2] 의제선정 브레인스토밍_B조.m4a",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/20260614_[토론2] 의제선정 브레인스토밍_B조.m4a\n크기: 89.1MB\n수정: 2026-06-18T12:43:34.258Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/20260614_[토론3] 의제선정 조별토론_B조.m4a"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/20260614_[토론3] 의제선정 조별토론_B조.m4a"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::20260614_토론3_의제선정_조별토론_B조_m4a",
+          "label": "20260614_[토론3] 의제선정 조별토론_B조.m4a",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/20260614_[토론3] 의제선정 조별토론_B조.m4a\n크기: 55.8MB\n수정: 2026-06-18T12:42:50.456Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/20260614_[토론4] 의제 선정 및 운영규정안 마련_통합 운영.hwpx"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/20260614_[토론4] 의제 선정 및 운영규정안 마련_통합 운영.hwpx"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::20260614_토론4_의제_선정_및_운영규정안_마련_통합_운영_hwpx",
+          "label": "20260614_[토론4] 의제 선정 및 운영규정안 마련_통합 운영.hwpx",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/20260614_[토론4] 의제 선정 및 운영규정안 마련_통합 운영.hwpx\n크기: 57.4KB\n수정: 2026-06-18T12:41:06.611Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/20260614_[토론4] 의제선정 및 운영규정안 마련.m4a"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/20260614_[토론4] 의제선정 및 운영규정안 마련.m4a"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::20260614_토론4_의제선정_및_운영규정안_마련_m4a",
+          "label": "20260614_[토론4] 의제선정 및 운영규정안 마련.m4a",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/20260614_[토론4] 의제선정 및 운영규정안 마련.m4a\n크기: 170.3MB\n수정: 2026-06-18T12:42:19.863Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/20260614-의제워크숍 모더레이터 매뉴얼(2일차).hwpx"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/20260614-의제워크숍 모더레이터 매뉴얼(2일차).hwpx"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::20260614_의제워크숍_모더레이터_매뉴얼_2일차_hwpx",
+          "label": "20260614-의제워크숍 모더레이터 매뉴얼(2일차).hwpx",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/20260614-의제워크숍 모더레이터 매뉴얼(2일차).hwpx\n크기: 16.6KB\n수정: 2026-06-18T12:45:31.825Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.hwp"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.hwp"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::260613_토론1_운영규정_초안_토론_A조_회의내용_정리_hwp",
+          "label": "260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.hwp",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.hwp\n크기: 128.0KB\n수정: 2026-06-18T12:45:31.671Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/260613_[토론1]운영규정 초안 토론_B조_회의내용 정리.hwpx"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/260613_[토론1]운영규정 초안 토론_B조_회의내용 정리.hwpx"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::260613_토론1_운영규정_초안_토론_B조_회의내용_정리_hwpx",
+          "label": "260613_[토론1]운영규정 초안 토론_B조_회의내용 정리.hwpx",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/260613_[토론1]운영규정 초안 토론_B조_회의내용 정리.hwpx\n크기: 57.2KB\n수정: 2026-06-18T12:45:31.936Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/260613_조별발표.m4a"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/260613_조별발표.m4a"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::260613_조별발표_m4a",
+          "label": "260613_조별발표.m4a",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/260613_조별발표.m4a\n크기: 17.4MB\n수정: 2026-06-18T12:46:11.021Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/260614_[토론2-1] 기초발제 및 의제선정에 대한 조별 토론_A조_회의내용 정리.hwp"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/260614_[토론2-1] 기초발제 및 의제선정에 대한 조별 토론_A조_회의내용 정리.hwp"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::260614_토론2_1_기초발제_및_의제선정에_대한_조별_토론_A조_회의내용_정리_hwp",
+          "label": "260614_[토론2-1] 기초발제 및 의제선정에 대한 조별 토론_A조_회의내용 정리.hwp",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/260614_[토론2-1] 기초발제 및 의제선정에 대한 조별 토론_A조_회의내용 정리.hwp\n크기: 64.0KB\n수정: 2026-06-18T12:43:52.970Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론_A조_회의내용 정리.hwp"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론_A조_회의내용 정리.hwp"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::260614_토론2_3_의제선정_브레인스토밍_및_조별_토론_A조_회의내용_정리_hwp",
+          "label": "260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론_A조_회의내용 정리.hwp",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론_A조_회의내용 정리.hwp\n크기: 76.5KB\n수정: 2026-06-18T12:40:48.764Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/260614_토론2-1_A조.m4a"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/260614_토론2-1_A조.m4a"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::260614_토론2_1_A조_m4a",
+          "label": "260614_토론2-1_A조.m4a",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/260614_토론2-1_A조.m4a\n크기: 44.9MB\n수정: 2026-06-18T12:43:52.838Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/260614_토론2-2_A조.m4a"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/260614_토론2-2_A조.m4a"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::260614_토론2_2_A조_m4a",
+          "label": "260614_토론2-2_A조.m4a",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/260614_토론2-2_A조.m4a\n크기: 38.4MB\n수정: 2026-06-18T12:41:06.389Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/260614_토론2-3_A조.m4a"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/260614_토론2-3_A조.m4a"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::260614_토론2_3_A조_m4a",
+          "label": "260614_토론2-3_A조.m4a",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/260614_토론2-3_A조.m4a\n크기: 30.5MB\n수정: 2026-06-18T12:40:48.400Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/기후취약성괴정의로운전환녹음.m4a"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/기후취약성괴정의로운전환녹음.m4a"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::기후취약성괴정의로운전환녹음_m4a",
+          "label": "기후취약성괴정의로운전환녹음.m4a",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/기후취약성괴정의로운전환녹음.m4a\n크기: 24.0MB\n수정: 2026-06-18T12:46:55.865Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/수정기후시민회의_6_13_시민교육_교안_0610_ver5 (1).hwpx"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/수정기후시민회의_6_13_시민교육_교안_0610_ver5 (1).hwpx"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::수정기후시민회의_6_13_시민교육_교안_0610_ver5_1_hwpx",
+          "label": "수정기후시민회의_6_13_시민교육_교안_0610_ver5 (1).hwpx",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/수정기후시민회의_6_13_시민교육_교안_0610_ver5 (1).hwpx\n크기: 8.8MB\n수정: 2026-06-13T00:25:41.426Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/음성 002.m4a"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/음성 002.m4a"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::음성_002_m4a",
+          "label": "음성 002.m4a",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/음성 002.m4a\n크기: 77.8MB\n수정: 2026-06-18T12:46:35.041Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "00_입력자료/6.13_원본자료/환경교육_4조_(전문_소비생활-의제_청소년거버넌스).m4a"
+          ],
+          "cited_uids": [
+            "00_입력자료/6.13_원본자료/환경교육_4조_(전문_소비생활-의제_청소년거버넌스).m4a"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "original::환경교육_4조_전문_소비생활_의제_청소년거버넌스_m4a",
+          "label": "환경교육_4조_(전문_소비생활-의제_청소년거버넌스).m4a",
+          "kind": "Evidence",
+          "session": "original",
+          "text": "00_입력자료/6.13_원본자료/환경교육_4조_(전문_소비생활-의제_청소년거버넌스).m4a\n크기: 49.8MB\n수정: 2026-06-18T12:46:48.616Z"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "coverage::graphs",
+          "label": "공개 그래프 데이터",
+          "kind": "Claim",
+          "session": "coverage",
+          "text": "workshop-2026-06-13.json: 613 nodes / 491 edges\nregulation-2026-06-13.json: 59 nodes / 39 edges\nlive-A_t1.json: 37 nodes / 32 edges"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "우려",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 4,
+          "isolated": false,
+          "id": "coverage::issues",
+          "label": "재확인 필요 3건",
+          "kind": "Concern",
+          "session": "coverage",
+          "text": "B_t2: B조 토론2는 그래프에 일부 반영되었지만 전사 상위 txt/srt가 0바이트이고 tmp 청크가 남아 있어 재확인이 필요합니다.\n토론4통합: 토론4 통합 운영은 원본 음성과 청크가 있으나 전사 산출물이 미완결이고 현재 통합 그래프 세션으로 노출되지 않습니다.\n음성002: 원본-전사-그래프 연결 상태 확인이 필요합니다."
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 3,
+          "isolated": false,
+          "id": "session::reg_A",
+          "label": "6/13 운영규정 A조",
+          "kind": "Claim",
+          "session": "reg_A",
+          "text": "태그: reg_A\n종합 상태: ready\n전사 상태: transcript_ready\n전사 chunk/json: 6/6\ntxt/srt: 46.8KB / 68.4KB\n그래프 노드: 59\n그래프 상태: graph_represented\n폴더: [토론 1] 운영규정 초안 토론_A조"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "transcript::reg_A",
+          "label": "6/13 운영규정 A조 전사",
+          "kind": "Evidence",
+          "session": "reg_A",
+          "text": "30_추출/6.13_원본자료_음성/[토론 1] 운영규정 초안 토론_A조\nmain json: 327.2KB\ntxt: 46.8KB\nsrt: 68.4KB\ntmp: 없음"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "graph::reg_A",
+          "label": "reg_A 그래프 반영 59",
+          "kind": "Claim",
+          "session": "reg_A",
+          "text": "regulation-2026-06-13.json: 59 nodes\ngraph_represented"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 3,
+          "isolated": false,
+          "id": "session::reg_B",
+          "label": "6/13 운영규정 B조",
+          "kind": "Claim",
+          "session": "reg_B",
+          "text": "태그: reg_B\n종합 상태: ready\n전사 상태: transcript_ready\n전사 chunk/json: 5/5\ntxt/srt: 40.8KB / 60.1KB\n그래프 노드: 59\n그래프 상태: graph_represented\n폴더: [토론 1] 운영규정 초안 토론_B조"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "transcript::reg_B",
+          "label": "6/13 운영규정 B조 전사",
+          "kind": "Evidence",
+          "session": "reg_B",
+          "text": "30_추출/6.13_원본자료_음성/[토론 1] 운영규정 초안 토론_B조\nmain json: 295.8KB\ntxt: 40.8KB\nsrt: 60.1KB\ntmp: 없음"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "graph::reg_B",
+          "label": "reg_B 그래프 반영 59",
+          "kind": "Claim",
+          "session": "reg_B",
+          "text": "regulation-2026-06-13.json: 59 nodes\ngraph_represented"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 3,
+          "isolated": false,
+          "id": "session::A_t21",
+          "label": "6/14 A조 토론2-1",
+          "kind": "Claim",
+          "session": "A_t21",
+          "text": "태그: A_t21\n종합 상태: ready\n전사 상태: transcript_ready\n전사 chunk/json: 5/5\ntxt/srt: 40.5KB / 62.9KB\n그래프 노드: 34\n그래프 상태: graph_represented\n폴더: 260614_토론2-1_A조"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "transcript::A_t21",
+          "label": "6/14 A조 토론2-1 전사",
+          "kind": "Evidence",
+          "session": "A_t21",
+          "text": "30_추출/6.13_원본자료_음성/260614_토론2-1_A조\nmain json: 309.2KB\ntxt: 40.5KB\nsrt: 62.9KB\ntmp: 없음"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "graph::A_t21",
+          "label": "A_t21 그래프 반영 34",
+          "kind": "Claim",
+          "session": "A_t21",
+          "text": "workshop-2026-06-13.json: 34 nodes\ngraph_represented"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 3,
+          "isolated": false,
+          "id": "session::A_t22",
+          "label": "6/14 A조 토론2-2",
+          "kind": "Claim",
+          "session": "A_t22",
+          "text": "태그: A_t22\n종합 상태: ready\n전사 상태: transcript_ready\n전사 chunk/json: 5/5\ntxt/srt: 39.0KB / 60.2KB\n그래프 노드: 84\n그래프 상태: graph_represented\n폴더: 260614_토론2-2_A조"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "transcript::A_t22",
+          "label": "6/14 A조 토론2-2 전사",
+          "kind": "Evidence",
+          "session": "A_t22",
+          "text": "30_추출/6.13_원본자료_음성/260614_토론2-2_A조\nmain json: 298.3KB\ntxt: 39.0KB\nsrt: 60.2KB\ntmp: 없음"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "graph::A_t22",
+          "label": "A_t22 그래프 반영 84",
+          "kind": "Claim",
+          "session": "A_t22",
+          "text": "workshop-2026-06-13.json: 84 nodes\ngraph_represented"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 3,
+          "isolated": false,
+          "id": "session::A_t23",
+          "label": "6/14 A조 토론2-3",
+          "kind": "Claim",
+          "session": "A_t23",
+          "text": "태그: A_t23\n종합 상태: ready\n전사 상태: transcript_ready\n전사 chunk/json: 4/4\ntxt/srt: 25.1KB / 44.5KB\n그래프 노드: 29\n그래프 상태: graph_represented\n폴더: 260614_토론2-3_A조"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "transcript::A_t23",
+          "label": "6/14 A조 토론2-3 전사",
+          "kind": "Evidence",
+          "session": "A_t23",
+          "text": "30_추출/6.13_원본자료_음성/260614_토론2-3_A조\nmain json: 238.8KB\ntxt: 25.1KB\nsrt: 44.5KB\ntmp: 없음"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "graph::A_t23",
+          "label": "A_t23 그래프 반영 29",
+          "kind": "Claim",
+          "session": "A_t23",
+          "text": "workshop-2026-06-13.json: 29 nodes\ngraph_represented"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 3,
+          "isolated": false,
+          "id": "session::B_t1",
+          "label": "6/14 B조 토론1",
+          "kind": "Claim",
+          "session": "B_t1",
+          "text": "태그: B_t1\n종합 상태: ready\n전사 상태: transcript_ready\n전사 chunk/json: 12/12\ntxt/srt: 103.9KB / 162.9KB\n그래프 노드: 81\n그래프 상태: graph_represented\n폴더: 20260614_[토론1] 기초발제 및 의제선정에 대한 조별토론_B조"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "transcript::B_t1",
+          "label": "6/14 B조 토론1 전사",
+          "kind": "Evidence",
+          "session": "B_t1",
+          "text": "30_추출/6.13_원본자료_음성/20260614_[토론1] 기초발제 및 의제선정에 대한 조별토론_B조\nmain json: 808.3KB\ntxt: 103.9KB\nsrt: 162.9KB\ntmp: 없음"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "graph::B_t1",
+          "label": "B_t1 그래프 반영 81",
+          "kind": "Claim",
+          "session": "B_t1",
+          "text": "workshop-2026-06-13.json: 81 nodes\ngraph_represented"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "우려",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 4,
+          "isolated": false,
+          "id": "session::B_t2",
+          "label": "6/14 B조 토론2",
+          "kind": "Concern",
+          "session": "B_t2",
+          "text": "태그: B_t2\n종합 상태: needs_review\n전사 상태: transcript_partial\n전사 chunk/json: 1/5\ntxt/srt: 0B / 0B\n그래프 노드: 20\n그래프 상태: graph_represented\n폴더: 20260614_[토론2] 의제선정 브레인스토밍_B조"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "우려",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "transcript::B_t2",
+          "label": "6/14 B조 토론2 전사",
+          "kind": "Concern",
+          "session": "B_t2",
+          "text": "30_추출/6.13_원본자료_음성/20260614_[토론2] 의제선정 브레인스토밍_B조\nmain json: 52B\ntxt: 0B\nsrt: 0B\ntmp: t_001.json.tmp"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "graph::B_t2",
+          "label": "B_t2 그래프 반영 20",
+          "kind": "Claim",
+          "session": "B_t2",
+          "text": "workshop-2026-06-13.json: 20 nodes\ngraph_represented"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 3,
+          "isolated": false,
+          "id": "session::B_t3",
+          "label": "6/14 B조 토론3",
+          "kind": "Claim",
+          "session": "B_t3",
+          "text": "태그: B_t3\n종합 상태: ready\n전사 상태: transcript_ready\n전사 chunk/json: 4/4\ntxt/srt: 28.5KB / 49.3KB\n그래프 노드: 50\n그래프 상태: graph_represented\n폴더: 20260614_[토론3] 의제선정 조별토론_B조"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "transcript::B_t3",
+          "label": "6/14 B조 토론3 전사",
+          "kind": "Evidence",
+          "session": "B_t3",
+          "text": "30_추출/6.13_원본자료_음성/20260614_[토론3] 의제선정 조별토론_B조\nmain json: 260.5KB\ntxt: 28.5KB\nsrt: 49.3KB\ntmp: 없음"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "graph::B_t3",
+          "label": "B_t3 그래프 반영 50",
+          "kind": "Claim",
+          "session": "B_t3",
+          "text": "workshop-2026-06-13.json: 50 nodes\ngraph_represented"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 3,
+          "isolated": false,
+          "id": "session::발표",
+          "label": "6/13 조별발표",
+          "kind": "Claim",
+          "session": "발표",
+          "text": "태그: 발표\n종합 상태: ready\n전사 상태: transcript_ready\n전사 chunk/json: 2/2\ntxt/srt: 17.8KB / 27.5KB\n그래프 노드: 6\n그래프 상태: graph_represented\n폴더: 260613_조별발표"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "transcript::발표",
+          "label": "6/13 조별발표 전사",
+          "kind": "Evidence",
+          "session": "발표",
+          "text": "30_추출/6.13_원본자료_음성/260613_조별발표\nmain json: 135.6KB\ntxt: 17.8KB\nsrt: 27.5KB\ntmp: 없음"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "graph::발표",
+          "label": "발표 그래프 반영 6",
+          "kind": "Claim",
+          "session": "발표",
+          "text": "workshop-2026-06-13.json: 6 nodes\ngraph_represented"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 3,
+          "isolated": false,
+          "id": "session::정의전환",
+          "label": "6/14 정의로운전환",
+          "kind": "Claim",
+          "session": "정의전환",
+          "text": "태그: 정의전환\n종합 상태: ready\n전사 상태: transcript_ready\n전사 chunk/json: 3/3\ntxt/srt: 18.4KB / 31.6KB\n그래프 노드: 22\n그래프 상태: graph_represented\n폴더: 기후취약성괴정의로운전환녹음"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "transcript::정의전환",
+          "label": "6/14 정의로운전환 전사",
+          "kind": "Evidence",
+          "session": "정의전환",
+          "text": "30_추출/6.13_원본자료_음성/기후취약성괴정의로운전환녹음\nmain json: 166.1KB\ntxt: 18.4KB\nsrt: 31.6KB\ntmp: 없음"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "graph::정의전환",
+          "label": "정의전환 그래프 반영 22",
+          "kind": "Claim",
+          "session": "정의전환",
+          "text": "workshop-2026-06-13.json: 22 nodes\ngraph_represented"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 3,
+          "isolated": false,
+          "id": "session::환경4조",
+          "label": "6/14 환경교육 4조",
+          "kind": "Claim",
+          "session": "환경4조",
+          "text": "태그: 환경4조\n종합 상태: ready\n전사 상태: transcript_ready\n전사 chunk/json: 6/6\ntxt/srt: 39.2KB / 65.4KB\n그래프 노드: 88\n그래프 상태: graph_represented\n폴더: 환경교육_4조_(전문_소비생활-의제_청소년거버넌스)"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "transcript::환경4조",
+          "label": "6/14 환경교육 4조 전사",
+          "kind": "Evidence",
+          "session": "환경4조",
+          "text": "30_추출/6.13_원본자료_음성/환경교육_4조_(전문_소비생활-의제_청소년거버넌스)\nmain json: 338.8KB\ntxt: 39.2KB\nsrt: 65.4KB\ntmp: 없음"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "주장",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "graph::환경4조",
+          "label": "환경4조 그래프 반영 88",
+          "kind": "Claim",
+          "session": "환경4조",
+          "text": "workshop-2026-06-13.json: 88 nodes\ngraph_represented"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "우려",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 4,
+          "isolated": false,
+          "id": "session::토론4통합",
+          "label": "6/14 토론4 통합 운영",
+          "kind": "Concern",
+          "session": "토론4통합",
+          "text": "태그: 토론4통합\n종합 상태: needs_review\n전사 상태: transcript_partial\n전사 chunk/json: 0/10\ntxt/srt: 0B / 0B\n그래프 노드: 0\n그래프 상태: not_expected_in_current_graph\n폴더: 20260614_[토론4] 의제선정 및 운영규정안 마련"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "우려",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "transcript::토론4통합",
+          "label": "6/14 토론4 통합 운영 전사",
+          "kind": "Concern",
+          "session": "토론4통합",
+          "text": "30_추출/6.13_원본자료_음성/20260614_[토론4] 의제선정 및 운영규정안 마련\nmain json: 52B\ntxt: 0B\nsrt: 0B\ntmp: t_000.json.tmp"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "우려",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "graph::토론4통합",
+          "label": "토론4통합 그래프 반영 0",
+          "kind": "Concern",
+          "session": "토론4통합",
+          "text": "workshop-2026-06-13.json: 0 nodes\nnot_expected_in_current_graph"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "조건",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 4,
+          "isolated": false,
+          "id": "session::음성002",
+          "label": "음성 002",
+          "kind": "Condition",
+          "session": "음성002",
+          "text": "태그: 음성002\n종합 상태: ui_or_graph_gap\n전사 상태: transcript_ready\n전사 chunk/json: 9/9\ntxt/srt: 64.2KB / 109.0KB\n그래프 노드: 0\n그래프 상태: not_expected_in_current_graph\n폴더: 음성 002"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "transcript::음성002",
+          "label": "음성 002 전사",
+          "kind": "Evidence",
+          "session": "음성002",
+          "text": "30_추출/6.13_원본자료_음성/음성 002\nmain json: 568.2KB\ntxt: 64.2KB\nsrt: 109.0KB\ntmp: 없음"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "우려",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "graph::음성002",
+          "label": "음성002 그래프 반영 0",
+          "kind": "Concern",
+          "session": "음성002",
+          "text": "workshop-2026-06-13.json: 0 nodes\nnot_expected_in_current_graph"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "30_추출/6.13_원본자료_텍스트/(수정)260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.md"
+          ],
+          "cited_uids": [
+            "30_추출/6.13_원본자료_텍스트/(수정)260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.md"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "text::OA_t1",
+          "label": "6/13 운영규정 A조 텍스트",
+          "kind": "Evidence",
+          "session": "OA_t1",
+          "text": "파일: (수정)260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.md\n경로: 30_추출/6.13_원본자료_텍스트/(수정)260613_[토론1]운영규정 초안 토론_A조_회의내용 정리.md\n크기: 6.0KB\n그래프 노드: 43\n상태: ready"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "30_추출/6.13_원본자료_텍스트/260613_[토론1]운영규정 초안 토론_B조_회의내용 정리.md"
+          ],
+          "cited_uids": [
+            "30_추출/6.13_원본자료_텍스트/260613_[토론1]운영규정 초안 토론_B조_회의내용 정리.md"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "text::OB_t1",
+          "label": "6/13 운영규정 B조 텍스트",
+          "kind": "Evidence",
+          "session": "OB_t1",
+          "text": "파일: 260613_[토론1]운영규정 초안 토론_B조_회의내용 정리.md\n경로: 30_추출/6.13_원본자료_텍스트/260613_[토론1]운영규정 초안 토론_B조_회의내용 정리.md\n크기: 6.0KB\n그래프 노드: 42\n상태: ready"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "30_추출/6.13_원본자료_텍스트/20260611-기후시민회의 운영규범 초안_(시민배포용)_최종4.md"
+          ],
+          "cited_uids": [
+            "30_추출/6.13_원본자료_텍스트/20260611-기후시민회의 운영규범 초안_(시민배포용)_최종4.md"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "text::OZ_t1",
+          "label": "6/13 운영규정 통합 텍스트",
+          "kind": "Evidence",
+          "session": "OZ_t1",
+          "text": "파일: 20260611-기후시민회의 운영규범 초안_(시민배포용)_최종4.md\n경로: 30_추출/6.13_원본자료_텍스트/20260611-기후시민회의 운영규범 초안_(시민배포용)_최종4.md\n크기: 14.4KB\n그래프 노드: 44\n상태: ready"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "30_추출/6.13_원본자료_텍스트/260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론_A조_회의내용 정리.md"
+          ],
+          "cited_uids": [
+            "30_추출/6.13_원본자료_텍스트/260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론_A조_회의내용 정리.md"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "text::DA_t2",
+          "label": "6/14 A조 의제선정 텍스트",
+          "kind": "Evidence",
+          "session": "DA_t2",
+          "text": "파일: 260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론_A조_회의내용 정리.md\n경로: 30_추출/6.13_원본자료_텍스트/260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론_A조_회의내용 정리.md\n크기: 6.9KB\n그래프 노드: 23\n상태: ready"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "30_추출/6.13_원본자료_텍스트/20260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론.md"
+          ],
+          "cited_uids": [
+            "30_추출/6.13_원본자료_텍스트/20260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론.md"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "text::DB_t2",
+          "label": "6/14 B조 의제선정 텍스트",
+          "kind": "Evidence",
+          "session": "DB_t2",
+          "text": "파일: 20260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론.md\n경로: 30_추출/6.13_원본자료_텍스트/20260614_[토론2,3] 의제선정 브레인스토밍 및 조별 토론.md\n크기: 3.8KB\n그래프 노드: 5\n상태: ready"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "근거",
+          "cited": [
+            "30_추출/6.13_원본자료_텍스트/20260614_[토론4] 의제 선정 및 운영규정안 마련_통합 운영.md"
+          ],
+          "cited_uids": [
+            "30_추출/6.13_원본자료_텍스트/20260614_[토론4] 의제 선정 및 운영규정안 마련_통합 운영.md"
+          ],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 1,
+          "isolated": false,
+          "id": "text::DZ_t2",
+          "label": "6/14 통합 의제선정 텍스트",
+          "kind": "Evidence",
+          "session": "DZ_t2",
+          "text": "파일: 20260614_[토론4] 의제 선정 및 운영규정안 마련_통합 운영.md\n경로: 30_추출/6.13_원본자료_텍스트/20260614_[토론4] 의제 선정 및 운영규정안 마련_통합 운영.md\n크기: 4.8KB\n그래프 노드: 34\n상태: ready"
+        }
+      },
+      {
+        "data": {
+          "kindKo": "우려",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 2,
+          "isolated": false,
+          "id": "issue::B_t2",
+          "label": "6/14 B조 토론2 재확인",
+          "kind": "Concern",
+          "session": "B_t2",
+          "text": "상태: needs_review\n전사: transcript_partial\n그래프: graph_represented\nB조 토론2는 그래프에 일부 반영되었지만 전사 상위 txt/srt가 0바이트이고 tmp 청크가 남아 있어 재확인이 필요합니다."
+        }
+      },
+      {
+        "data": {
+          "kindKo": "우려",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 2,
+          "isolated": false,
+          "id": "issue::토론4통합",
+          "label": "6/14 토론4 통합 운영 재확인",
+          "kind": "Concern",
+          "session": "토론4통합",
+          "text": "상태: needs_review\n전사: transcript_partial\n그래프: not_expected_in_current_graph\n토론4 통합 운영은 원본 음성과 청크가 있으나 전사 산출물이 미완결이고 현재 통합 그래프 세션으로 노출되지 않습니다."
+        }
+      },
+      {
+        "data": {
+          "kindKo": "우려",
+          "cited": [],
+          "cited_uids": [],
+          "synthesized": false,
+          "is_public": true,
+          "deg": 2,
+          "isolated": false,
+          "id": "issue::음성002",
+          "label": "음성 002 재확인",
+          "kind": "Concern",
+          "session": "음성002",
+          "text": "상태: ui_or_graph_gap\n전사: transcript_ready\n그래프: not_expected_in_current_graph\n원본-전사-그래프 연결 상태 확인이 필요합니다."
+        }
+      }
+    ],
+    "edges": [
+      {
+        "data": {
+          "id": "e_0",
+          "source": "coverage::hub",
+          "target": "coverage::originals",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_1",
+          "source": "coverage::originals",
+          "target": "original::수정_260613_토론1_운영규정_초안_토론_A조_회의내용_정리_hwp",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_2",
+          "source": "coverage::originals",
+          "target": "original::토론_1_운영규정_초안_토론_A조_m4a",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_3",
+          "source": "coverage::originals",
+          "target": "original::토론_1_운영규정_초안_토론_B조_m4a",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_4",
+          "source": "coverage::originals",
+          "target": "original::20260611_기후시민회의_운영규범_초안_시민배포용_최종4_hwpx",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_5",
+          "source": "coverage::originals",
+          "target": "original::20260613_기후시민회의_의제워크숍_모더레이터_운영_매뉴얼_v1_hwpx",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_6",
+          "source": "coverage::originals",
+          "target": "original::20260614_토론1_기초발제_및_의제선정에_대한_조별_토론_B조_hwpx",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_7",
+          "source": "coverage::originals",
+          "target": "original::20260614_토론1_기초발제_및_의제선정에_대한_조별토론_B조_m4a",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_8",
+          "source": "coverage::originals",
+          "target": "original::20260614_토론2_3_의제선정_브레인스토밍_및_조별_토론_hwpx",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_9",
+          "source": "coverage::originals",
+          "target": "original::20260614_토론2_의제선정_브레인스토밍_B조_m4a",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_10",
+          "source": "coverage::originals",
+          "target": "original::20260614_토론3_의제선정_조별토론_B조_m4a",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_11",
+          "source": "coverage::originals",
+          "target": "original::20260614_토론4_의제_선정_및_운영규정안_마련_통합_운영_hwpx",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_12",
+          "source": "coverage::originals",
+          "target": "original::20260614_토론4_의제선정_및_운영규정안_마련_m4a",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_13",
+          "source": "coverage::originals",
+          "target": "original::20260614_의제워크숍_모더레이터_매뉴얼_2일차_hwpx",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_14",
+          "source": "coverage::originals",
+          "target": "original::260613_토론1_운영규정_초안_토론_A조_회의내용_정리_hwp",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_15",
+          "source": "coverage::originals",
+          "target": "original::260613_토론1_운영규정_초안_토론_B조_회의내용_정리_hwpx",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_16",
+          "source": "coverage::originals",
+          "target": "original::260613_조별발표_m4a",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_17",
+          "source": "coverage::originals",
+          "target": "original::260614_토론2_1_기초발제_및_의제선정에_대한_조별_토론_A조_회의내용_정리_hwp",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_18",
+          "source": "coverage::originals",
+          "target": "original::260614_토론2_3_의제선정_브레인스토밍_및_조별_토론_A조_회의내용_정리_hwp",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_19",
+          "source": "coverage::originals",
+          "target": "original::260614_토론2_1_A조_m4a",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_20",
+          "source": "coverage::originals",
+          "target": "original::260614_토론2_2_A조_m4a",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_21",
+          "source": "coverage::originals",
+          "target": "original::260614_토론2_3_A조_m4a",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_22",
+          "source": "coverage::originals",
+          "target": "original::기후취약성괴정의로운전환녹음_m4a",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_23",
+          "source": "coverage::originals",
+          "target": "original::수정기후시민회의_6_13_시민교육_교안_0610_ver5_1_hwpx",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_24",
+          "source": "coverage::originals",
+          "target": "original::음성_002_m4a",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_25",
+          "source": "coverage::originals",
+          "target": "original::환경교육_4조_전문_소비생활_의제_청소년거버넌스_m4a",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_26",
+          "source": "coverage::hub",
+          "target": "coverage::graphs",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_27",
+          "source": "coverage::hub",
+          "target": "coverage::issues",
+          "rel": "hasConcern",
+          "relKo": "우려",
+          "opposes": true,
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_28",
+          "source": "coverage::hub",
+          "target": "session::reg_A",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_29",
+          "source": "session::reg_A",
+          "target": "transcript::reg_A",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_30",
+          "source": "session::reg_A",
+          "target": "graph::reg_A",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_31",
+          "source": "coverage::hub",
+          "target": "session::reg_B",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_32",
+          "source": "session::reg_B",
+          "target": "transcript::reg_B",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_33",
+          "source": "session::reg_B",
+          "target": "graph::reg_B",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_34",
+          "source": "coverage::hub",
+          "target": "session::A_t21",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_35",
+          "source": "session::A_t21",
+          "target": "transcript::A_t21",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_36",
+          "source": "session::A_t21",
+          "target": "graph::A_t21",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_37",
+          "source": "coverage::hub",
+          "target": "session::A_t22",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_38",
+          "source": "session::A_t22",
+          "target": "transcript::A_t22",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_39",
+          "source": "session::A_t22",
+          "target": "graph::A_t22",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_40",
+          "source": "coverage::hub",
+          "target": "session::A_t23",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_41",
+          "source": "session::A_t23",
+          "target": "transcript::A_t23",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_42",
+          "source": "session::A_t23",
+          "target": "graph::A_t23",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_43",
+          "source": "coverage::hub",
+          "target": "session::B_t1",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_44",
+          "source": "session::B_t1",
+          "target": "transcript::B_t1",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_45",
+          "source": "session::B_t1",
+          "target": "graph::B_t1",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_46",
+          "source": "coverage::hub",
+          "target": "session::B_t2",
+          "rel": "hasConcern",
+          "relKo": "우려",
+          "opposes": true,
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_47",
+          "source": "session::B_t2",
+          "target": "transcript::B_t2",
+          "rel": "hasConcern",
+          "relKo": "우려",
+          "opposes": true,
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_48",
+          "source": "session::B_t2",
+          "target": "graph::B_t2",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_49",
+          "source": "coverage::hub",
+          "target": "session::B_t3",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_50",
+          "source": "session::B_t3",
+          "target": "transcript::B_t3",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_51",
+          "source": "session::B_t3",
+          "target": "graph::B_t3",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_52",
+          "source": "coverage::hub",
+          "target": "session::발표",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_53",
+          "source": "session::발표",
+          "target": "transcript::발표",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_54",
+          "source": "session::발표",
+          "target": "graph::발표",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_55",
+          "source": "coverage::hub",
+          "target": "session::정의전환",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_56",
+          "source": "session::정의전환",
+          "target": "transcript::정의전환",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_57",
+          "source": "session::정의전환",
+          "target": "graph::정의전환",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_58",
+          "source": "coverage::hub",
+          "target": "session::환경4조",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_59",
+          "source": "session::환경4조",
+          "target": "transcript::환경4조",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_60",
+          "source": "session::환경4조",
+          "target": "graph::환경4조",
+          "rel": "supports",
+          "relKo": "지지",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_61",
+          "source": "coverage::hub",
+          "target": "session::토론4통합",
+          "rel": "hasConcern",
+          "relKo": "우려",
+          "opposes": true,
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_62",
+          "source": "session::토론4통합",
+          "target": "transcript::토론4통합",
+          "rel": "hasConcern",
+          "relKo": "우려",
+          "opposes": true,
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_63",
+          "source": "session::토론4통합",
+          "target": "graph::토론4통합",
+          "rel": "hasConcern",
+          "relKo": "우려",
+          "opposes": true,
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_64",
+          "source": "coverage::hub",
+          "target": "session::음성002",
+          "rel": "hasConcern",
+          "relKo": "우려",
+          "opposes": true,
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_65",
+          "source": "session::음성002",
+          "target": "transcript::음성002",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_66",
+          "source": "session::음성002",
+          "target": "graph::음성002",
+          "rel": "hasConcern",
+          "relKo": "우려",
+          "opposes": true,
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_67",
+          "source": "coverage::hub",
+          "target": "text::OA_t1",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_68",
+          "source": "coverage::hub",
+          "target": "text::OB_t1",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_69",
+          "source": "coverage::hub",
+          "target": "text::OZ_t1",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_70",
+          "source": "coverage::hub",
+          "target": "text::DA_t2",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_71",
+          "source": "coverage::hub",
+          "target": "text::DB_t2",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_72",
+          "source": "coverage::hub",
+          "target": "text::DZ_t2",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_73",
+          "source": "coverage::issues",
+          "target": "issue::B_t2",
+          "rel": "hasConcern",
+          "relKo": "우려",
+          "opposes": true,
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_74",
+          "source": "session::B_t2",
+          "target": "issue::B_t2",
+          "rel": "hasConcern",
+          "relKo": "우려",
+          "opposes": true,
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_75",
+          "source": "coverage::issues",
+          "target": "issue::토론4통합",
+          "rel": "hasConcern",
+          "relKo": "우려",
+          "opposes": true,
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_76",
+          "source": "session::토론4통합",
+          "target": "issue::토론4통합",
+          "rel": "hasConcern",
+          "relKo": "우려",
+          "opposes": true,
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_77",
+          "source": "coverage::issues",
+          "target": "issue::음성002",
+          "rel": "hasConcern",
+          "relKo": "우려",
+          "opposes": true,
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_78",
+          "source": "session::음성002",
+          "target": "issue::음성002",
+          "rel": "hasConcern",
+          "relKo": "우려",
+          "opposes": true,
+          "meta": {}
+        }
+      }
+    ]
+  },
+  "meta": {
+    "variant": "source-coverage",
+    "generated_at": "2026-06-28T05:04:43.569Z",
+    "counts": {
+      "nodes": 77,
+      "edges": 79,
+      "source_original_files": 25,
+      "issues": 3
+    },
+    "kinds": {
+      "Issue": 1,
+      "Claim": 22,
+      "Proposal": 0,
+      "Concern": 10,
+      "Condition": 1,
+      "Value": 0,
+      "Evidence": 43
+    },
+    "advisory_notice": "원본-전사-그래프 연결상태 표시용입니다. 내용 판단이나 합의 생성이 아니라 누락/부분반영 점검을 돕습니다."
+  }
+}

@@ -218,9 +218,13 @@ const PREFIX_META = {
   'DA_t2':{day:'6/14',jo:'A조',round:'의제선정',label:'6/14 A조 의제선정'},
   'DB_t2':{day:'6/14',jo:'B조',round:'의제선정',label:'6/14 B조 의제선정'},
   'DZ_t2':{day:'6/14',jo:'통합',round:'의제선정',label:'6/14 통합 의제선정'},
+  '토론4통합':{day:'6/14',jo:'통합',round:'토론4',label:'6/14 토론4 통합 운영'},
+  '음성002':{day:'6/14',jo:'확인필요',round:'음성자료',label:'음성 002'},
   '발표':{day:'6/13',jo:'전체',round:'조별발표',label:'6/13 조별발표'},
   '정의전환':{day:'6/14',jo:'기타조',round:'정의로운전환',label:'6/14 정의로운전환'},
   '환경4조':{day:'6/14',jo:'4조',round:'환경교육',label:'6/14 환경교육 4조'},
+  'coverage':{day:'6/13-14',jo:'전체',round:'연결상태',label:'원본→전사→그래프 연결상태'},
+  'original':{day:'6/13-14',jo:'전체',round:'원본자료',label:'원본자료'},
 };
 
 let cy, graph3d, ALL_NODES = [], ALL_EDGES = [], curFilter = { kind:new Set(Object.keys(OntologyChrome.KIND_DEFAULT)) };
@@ -480,6 +484,12 @@ async function loadSource(srcId) {
   if (mt.quality) _extra.push('DQI 지표');
   OntologyChrome.updateMeta(`노드 ${mt.counts.nodes || ALL_NODES.length} · 엣지 ${mt.counts.edges || ALL_EDGES.length}${_extra.length ? ' · ' + _extra.join(' · ') : ''}`);
   OntologyChrome.updateAdvisory(mt.advisory_notice || (isLive ? '🔴 LIVE 미검증 초안 · 시민 비노출' : ''));
+  const footerNote = document.getElementById('og-footer-note');
+  if (footerNote) {
+    footerNote.textContent = mt.variant === 'source-coverage'
+      ? '원본-전사-그래프 연결상태 · 내용판단 아님'
+      : (isLive ? 'LIVE 미검증 초안 · 시민 비노출' : 'LLM 추출 · 인간 검증 전');
+  }
   updateAssetsButton(mt);
 
   // 헤더 pill 색 동기화 (LIVE면 빨강)
