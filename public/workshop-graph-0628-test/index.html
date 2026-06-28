@@ -188,6 +188,7 @@
     </div>
     <div class="og-group-tog og-participant-rel-tog og-2d-only" id="og-participant-rel-tog" title="연결 보기 — 응답, 유사성, 분석 렌즈를 분리해서 봅니다">
       <span class="og-grp-lbl">연결</span>
+      <button data-participant-rel="overview">개요</button>
       <button data-participant-rel="response">응답</button>
       <button data-participant-rel="similar">유사</button>
       <button data-participant-rel="lens">연관</button>
@@ -294,7 +295,7 @@ let showcaseTheme = 'light';
 let showcaseTone = 'calm';
 let showcaseEdgeLabels = true;
 let participantView = 'all';
-let participantRel = 'response';
+let participantRel = 'overview';
 let fixedNodeId = null, hoverNodeId = null, graph3dData = null, quickHover = false, hoverHideTimer = null;
 // A-3 묶기(클러스터): 'none' | 'present' | 'brief' | 'issue' | 'session'. 공유 가능 뷰 상태라 URL 파라미터(?group=).
 // 무손실 원칙 — 그룹은 합성 부모 노드로만 표현하고 실제 노드/엣지는 절대 삭제하지 않는다.
@@ -372,7 +373,7 @@ const params = new URLSearchParams(location.search);
   showcaseTone = ['calm','contrast','mono'].includes(params.get('tone')) ? params.get('tone') : 'calm';
   showcaseEdgeLabels = params.get('edgeLabels') !== 'off';
   participantView = ['all','impression','question'].includes(params.get('participantView')) ? params.get('participantView') : 'all';
-  participantRel = ['response','similar','lens','all'].includes(params.get('participantRel')) ? params.get('participantRel') : 'response';
+  participantRel = ['overview','response','similar','lens','all'].includes(params.get('participantRel')) ? params.get('participantRel') : 'overview';
   groupMode = ['present','brief','issue','session','none'].includes(params.get('group'))
     ? params.get('group')
     : (presentMode ? groupForPresentLevel(presentLevel) : 'none');
@@ -430,7 +431,7 @@ function updateUrl() {
     if (showcaseTheme === 'dark') p.set('theme', 'dark');
     if (curSource === 'participant-open-questions') {
       if (participantView !== 'all') p.set('participantView', participantView);
-      if (participantRel !== 'response') p.set('participantRel', participantRel);
+      if (participantRel !== 'overview') p.set('participantRel', participantRel);
     }
   }
   if (groupMode !== 'none' && !showcaseMode && (!presentMode || groupMode !== groupForPresentLevel(presentLevel))) p.set('group', groupMode);
@@ -505,10 +506,11 @@ function participantGroupPaletteFromMeta(meta = {}, session = '') {
 
 function participantRelAllowed(rel) {
   if (participantRel === 'all') return true;
+  if (participantRel === 'overview') return rel === 'raisesIssue' || rel === 'similarTo';
   if (participantRel === 'response') return rel === 'raisesIssue';
   if (participantRel === 'similar') return rel === 'similarTo';
   if (participantRel === 'lens') return rel === 'framesThrough';
-  return rel === 'raisesIssue';
+  return rel === 'raisesIssue' || rel === 'similarTo';
 }
 
 function buildParticipantShowcaseElements(limit = showcaseCount) {
@@ -1462,7 +1464,6 @@ function groupSortValue(node) {
 
 function applyParticipantQuestionLanes() {
   if (!cy || !showcaseMode || curSource !== 'participant-open-questions') return false;
-  if (participantView === 'all' && participantRel === 'response') return false;
   stopPhysics();
   const responses = cy.nodes().filter(n => String(n.id()).startsWith('resp_'));
   if (!responses.length) return false;
@@ -1472,29 +1473,51 @@ function applyParticipantQuestionLanes() {
   const questions = responses
     .filter(n => n.data('meta')?.question_key === 'question')
     .sort((a, b) => groupSortValue(a) - groupSortValue(b) || String(a.data('label')).localeCompare(String(b.data('label')), 'ko'));
-  const xGap = 392;
-  const yGap = 250;
-  const laneY = participantView === 'impression'
-    ? { impression: 0, question: 0 }
-    : participantView === 'question'
-      ? { impression: 0, question: 0 }
-      : { impression: -430, question: 430 };
-  function placeCluster(nodes, centerY) {
-    const cols = Math.max(3, Math.ceil(Math.sqrt(nodes.length * 1.7)));
+  const xGap = 380;
+  const yGap = 210;
+  function placeGridCluster(nodes, centerX, centerY) {
+    const cols = Math.max(3, Math.ceil(Math.sqrt(nodes.length * 1.55)));
     const rows = Math.ceil(nodes.length / cols);
-    const startX = -((cols - 1) * xGap) / 2;
+    const startX = centerX - ((cols - 1) * xGap) / 2;
     const startY = centerY - ((rows - 1) * yGap) / 2;
     nodes.forEach((n, i) => {
       const col = i % cols;
       const row = Math.floor(i / cols);
-      n.position({ x: startX + col * xGap, y: startY + row * yGap });
+      const stagger = row % 2 ? 44 : -22;
+      n.position({ x: startX + col * xGap + stagger, y: startY + row * yGap });
     });
   }
-  placeCluster(impressions, laneY.impression);
-  placeCluster(questions, laneY.question);
-  const leftX = -Math.max(4, Math.ceil(Math.sqrt(Math.max(impressions.length, questions.length) * 1.7))) * xGap / 2 - 360;
-  cy.$id('Question_impression').position({ x: leftX, y: laneY.impression });
-  cy.$id('Question_question').position({ x: leftX, y: laneY.question });
+  function placeOrganicCluster(nodes, centerX, centerY, spreadX, spreadY) {
+    const ordered = [...nodes];
+    ordered.forEach((n, i) => {
+      const ring = Math.floor(Math.sqrt(i));
+      const angle = i * 2.399963229728653 + (ring % 2 ? 0.35 : 0);
+      const radius = 0.28 + (i / Math.max(1, ordered.length - 1)) * 0.78;
+      const wave = Math.sin(i * 1.73) * 58;
+      n.position({
+        x: centerX + Math.cos(angle) * spreadX * radius + wave,
+        y: centerY + Math.sin(angle) * spreadY * radius + Math.cos(i * 0.91) * 46,
+      });
+    });
+  }
+
+  if (participantView === 'all' && participantRel === 'overview') {
+    placeOrganicCluster(questions, -760, 0, 760, 520);
+    placeOrganicCluster(impressions, 820, 0, 1040, 610);
+    cy.$id('Question_question').position({ x: -760, y: 0 });
+    cy.$id('Question_impression').position({ x: 820, y: 0 });
+  } else if (participantView === 'all') {
+    placeGridCluster(questions, -760, 0);
+    placeGridCluster(impressions, 820, 0);
+    cy.$id('Question_question').position({ x: -760, y: 0 });
+    cy.$id('Question_impression').position({ x: 820, y: 0 });
+  } else if (participantView === 'question') {
+    placeGridCluster(questions, 0, 0);
+    cy.$id('Question_question').position({ x: 0, y: 0 });
+  } else {
+    placeGridCluster(impressions, 0, 0);
+    cy.$id('Question_impression').position({ x: 0, y: 0 });
+  }
   const lenses = cy.nodes('[kind = "Value"]')
     .sort((a, b) => String(a.data('label')).localeCompare(String(b.data('label')), 'ko'));
   const lensCols = Math.max(1, Math.min(4, lenses.length));
@@ -1724,7 +1747,7 @@ function setParticipantView(view) {
 }
 
 function setParticipantRel(rel) {
-  participantRel = ['response','similar','lens','all'].includes(rel) ? rel : 'response';
+  participantRel = ['overview','response','similar','lens','all'].includes(rel) ? rel : 'overview';
   showcaseMode = true;
   presentMode = false;
   curView = '2d';
