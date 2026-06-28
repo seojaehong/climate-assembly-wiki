@@ -92,7 +92,7 @@
     <div>
       <span class="eyebrow">0628 운영 이벤트</span>
       <h1>저녁식사 투표 결과</h1>
-      <p>중국집, 삼겹살, 불참. 5초 동안 쇽 쇽 쇽 돌다가 오늘의 대세를 크게 보여줍니다.</p>
+      <p>저녁 선택도 하나의 작은 전환입니다. 잠시 뒤 오늘의 시민 선택이 발표됩니다.</p>
     </div>
     <nav class="actions" aria-label="빠른 이동">
       <a class="btn ghost" href="/0628-admin/index.html">관리자</a>
@@ -121,9 +121,9 @@
     absent: "assets/absent.svg"
   };
   const copies = {
-    chinese: "면과 불맛으로 모이는 쪽",
-    pork: "불판 중심 숙의로 가는 쪽",
-    absent: "오늘은 일정상 빠지는 쪽"
+    chinese: "탄소는 줄이고 국물은 순환시키는 쪽",
+    pork: "불판 열에너지까지 숙의 자원으로 쓰는 쪽",
+    absent: "지구와 환경을 위해 저녁 수요를 감축하는 쪽"
   };
 
   const stage = document.getElementById("stage");
@@ -191,14 +191,11 @@
     headline.innerHTML = `
       <div>
         <b>오늘의 결과는 ${winner.label}</b>
-        <span>총 ${total}명 기준, ${winner.count}표가 모였습니다. 같은 이름은 최신 응답만 반영했습니다.</span>
+        <span>총 ${total}명 기준, ${winner.count}표가 모였습니다. 이 결과는 기후시민회의식 저녁 전환 시나리오입니다.</span>
       </div>
       <div class="winner-badge">${winner.label}<br>${winner.count}표</div>
     `;
-    const duplicates = data.duplicate_names && data.duplicate_names.length
-      ? `중복 응답 최신 반영: ${data.duplicate_names.join(", ")}`
-      : "중복 응답 없음";
-    note.textContent = `마지막 갱신 ${data.updated_at} · ${duplicates}`;
+    note.textContent = `마지막 갱신 ${data.updated_at}`;
   }
 
   function startShuffle(data) {
