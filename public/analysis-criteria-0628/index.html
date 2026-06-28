@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>0628 분류 기준</title>
+<style>
+  :root{
+    --bg:#f5f7fb;
+    --ink:#0f172a;
+    --muted:#64748b;
+    --line:#d9e2ee;
+    --panel:#ffffff;
+    --blue:#2563eb;
+    --green:#0f8b7f;
+    --orange:#e07a00;
+    --shadow:0 18px 54px rgba(15,23,42,.08);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#fbfdff 0%,var(--bg) 100%);color:var(--ink);font-family:"Noto Sans KR",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  header{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;gap:18px;align-items:flex-start;padding:22px 28px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.82);backdrop-filter:blur(18px)}
+  h1{margin:0;font-size:34px;line-height:1.14}
+  p{margin:0;color:var(--muted);font-weight:800;line-height:1.5}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+  a.btn{height:40px;border-radius:8px;background:#111827;color:#fff;text-decoration:none;display:inline-flex;align-items:center;padding:0 13px;font-weight:900}
+  a.btn.secondary{background:#eef2f7;color:#0f172a}
+  a.btn.warm{background:var(--orange)}
+  main{width:min(1240px,calc(100vw - 32px));margin:0 auto;padding:22px 0 34px;display:grid;gap:16px}
+  .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:16px}
+  .panel,.metric,.flow{background:rgba(255,255,255,.86);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:18px}
+  .panel h2,.metric h2,.flow h2{margin:0 0 8px;font-size:22px}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
+  .stat{padding:12px;border-radius:10px;background:#f8fafc;border:1px solid rgba(15,23,42,.08)}
+  .stat b{display:block;font-size:24px}
+  .stat span{display:block;color:var(--muted);font-size:12px;font-weight:900}
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+  .metric{min-height:250px}
+  .metric .tag{display:inline-flex;align-items:center;min-height:24px;border-radius:999px;background:#eff6ff;color:#1d4ed8;padding:0 9px;font-size:12px;font-weight:900;margin-bottom:10px}
+  .metric.green .tag{background:#ecfdf5;color:#047857}
+  .metric.orange .tag{background:#fff7ed;color:#c2410c}
+  .metric.purple .tag{background:#f5f3ff;color:#6d28d9}
+  .metric ul{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:8px}
+  .metric li{padding:10px;border:1px solid rgba(15,23,42,.08);border-radius:9px;background:#f8fafc;font-weight:900;line-height:1.35}
+  .metric li small{display:block;margin-top:3px;color:var(--muted);font-weight:800}
+  .flow{display:grid;gap:12px}
+  .flow-row{display:grid;grid-template-columns:150px 1fr;gap:12px;padding:12px;border:1px solid rgba(15,23,42,.08);border-radius:10px;background:#f8fafc}
+  .flow-row b{font-size:14px}
+  .flow-row span{color:#475569;font-weight:800;line-height:1.45}
+  .empty{color:var(--muted);font-weight:900}
+  @media (max-width:860px){
+    header{display:block}
+    header .actions{margin-top:14px}
+    .hero,.grid{grid-template-columns:1fr}
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .flow-row{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>0628 응답 분류 기준</h1>
+    <p>같은 응답을 온톨로지, 포스트잇, 관리자 요약에서 어떻게 다르게 읽는지 보여주는 기준 화면입니다.</p>
+  </div>
+  <nav class="actions">
+    <a class="btn secondary" href="/0628-admin/?_=7957a34">관리자</a>
+    <a class="btn" href="/workshop-graph-0628-test/index.html?source=participant-open-questions&mode=showcase&count=50&edgeLabels=on&participantRel=similar">온톨로지</a>
+    <a class="btn warm" href="/miro-0628-test/index.html">포스트잇</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <article class="panel">
+      <h2>오늘 화면을 읽는 순서</h2>
+      <p>먼저 많이 나온 말과 중심 질문을 잡고, 이어주는 질문과 유사 묶음으로 논의 덩어리를 확인한 뒤, 하버마스·사회과학 렌즈로 해석합니다.</p>
+      <div class="stats" id="stats"></div>
+    </article>
+    <article class="flow">
+      <h2>화면별 역할</h2>
+      <div class="flow-row"><b>온톨로지</b><span>관계와 방향을 봅니다. 노드를 클릭하면 주변 1-hop 관계와 원문 카드가 고정됩니다.</span></div>
+      <div class="flow-row"><b>포스트잇</b><span>사람이 읽기 쉬운 묶음으로 봅니다. 소감/질문, 조별, 분석 요약, 유사 묶음, 연관 렌즈를 탭으로 봅니다.</span></div>
+      <div class="flow-row"><b>분류 기준</b><span>왜 그렇게 묶었는지 설명합니다. 발표 전 모더레이터에게 기준을 공유할 때 씁니다.</span></div>
+    </article>
+  </section>
+
+  <section class="grid">
+    <article class="metric" id="frequency"></article>
+    <article class="metric green" id="degree"></article>
+    <article class="metric orange" id="betweenness"></article>
+    <article class="metric purple" id="central"></article>
+    <article class="metric green" id="similarity"></article>
+    <article class="metric orange" id="lens"></article>
+    <article class="metric" id="ego"></article>
+    <article class="metric purple" id="link"></article>
+  </section>
+</main>
+
+<script>
+const DATA_URL = '/workshop-graph-0628-test/data/participant-open-questions.json';
+const esc = value => String(value ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const list = (items, render) => items && items.length ? `<ul>${items.map(render).join('')}</ul>` : '<p class="empty">아직 표시할 항목이 없습니다.</p>';
+function metric(id, tag, title, desc, items, render) {
+  document.getElementById(id).innerHTML = `
+    <span class="tag">${esc(tag)}</span>
+    <h2>${esc(title)}</h2>
+    <p>${esc(desc)}</p>
+    ${list(items, render)}
+  `;
+}
+async function load() {
+  const graph = await fetch(DATA_URL + '?_=' + Date.now()).then(r => r.json());
+  const meta = graph.meta || {};
+  const counts = meta.counts || {};
+  const centrality = meta.centrality || {};
+  document.getElementById('stats').innerHTML = [
+    ['응답', counts.responses || 0],
+    ['관계', counts.edges || 0],
+    ['유사 묶음', counts.similarity_clusters || 0],
+    ['연결 후보', counts.link_candidates || 0],
+  ].map(([label, value]) => `<div class="stat"><b>${esc(value)}</b><span>${esc(label)}</span></div>`).join('');
+  metric('frequency','Frequency','많이 나온 것','반복 등장한 키워드입니다. 논의의 표면 온도를 빠르게 봅니다.',
+    (meta.frequency_terms || []).slice(0,8),
+    item => `<li>${esc(item.term)}<small>${esc(item.count)}회 등장</small></li>`);
+  metric('degree','Degree','많이 연결된 것','다른 소감·질문과 직접 연결이 많은 노드입니다.',
+    (centrality.degree_top || []).slice(0,6),
+    item => `<li>${esc(item.label)}<small>${esc(item.group)} · ${esc(item.question_key === 'impression' ? '소감' : '질문')}</small></li>`);
+  metric('betweenness','Betweenness','이어주는 질문','서로 다른 덩어리를 이어주는 질문입니다. 토론 연결점으로 쓰기 좋습니다.',
+    (centrality.betweenness_top || []).slice(0,6),
+    item => `<li>${esc(item.label)}<small>${esc(item.group)}</small></li>`);
+  metric('central','Closeness / PageRank','중심 질문','전체 응답군에 의미상 가깝거나 중요한 노드와 연결된 질문입니다.',
+    (centrality.closeness_top || centrality.pagerank_top || []).slice(0,6),
+    item => `<li>${esc(item.label)}<small>${esc(item.group)}</small></li>`);
+  metric('similarity','Similarity Cluster','유사 묶음','문장이 비슷하거나 공유 표현이 많은 응답 묶음입니다.',
+    (meta.similarity_clusters || []).slice(0,6),
+    item => `<li>${esc(item.label)}<small>${esc(item.size || 0)}개 카드 · ${(item.groups || []).slice(0,4).map(esc).join(', ')}</small></li>`);
+  metric('lens','Theory Lens','논의 프레임','절차 정당성, 역할 경계, 숙의 품질 같은 해석 렌즈입니다.',
+    (meta.theory_lenses || []).slice().sort((a,b)=>(b.count || 0)-(a.count || 0)).slice(0,6),
+    item => `<li>${esc(item.label)}<small>${esc(item.model)} · ${esc(item.count || 0)}개 응답</small></li>`);
+  metric('ego','Ego Network','주변 관계 보기','온톨로지에서 특정 노드를 클릭하면 그 노드 주변 관계만 좁혀 봅니다.',
+    [{label:'노드 클릭', text:'1-hop 관계와 원문 카드 고정'}, {label:'활용', text:'모더레이터가 특정 질문을 중심으로 설명할 때 사용'}],
+    item => `<li>${esc(item.label)}<small>${esc(item.text)}</small></li>`);
+  metric('link','Link Candidate','권고안 연결 가능성','자동 확정이 아니라 검토할 잠재 연결 후보입니다.',
+    (meta.link_candidates || []).slice(0,6),
+    item => `<li>${esc(item.source_label)} ↔ ${esc(item.target_label)}<small>${esc(item.reason || '검토 후보')}</small></li>`);
+}
+load().catch(() => {
+  document.getElementById('stats').innerHTML = '<div class="empty">데이터를 불러오지 못했습니다.</div>';
+});
+</script>
+</body>
+</html>

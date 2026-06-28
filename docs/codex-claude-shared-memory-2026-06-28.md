@@ -32,6 +32,7 @@ This repository is the shared working surface for Codex and Claude on the climat
 - Admin: `https://climate-assembly.org/0628-admin/index.html?_=422e12b`
 - Ontology: `https://climate-assembly.org/workshop-graph-0628-test/?source=participant-open-questions&mode=showcase&count=50&edgeLabels=on&participantRel=similar`
 - Miro-style post-it board: `https://climate-assembly.org/miro-0628-test/`
+- Analysis criteria page: `https://climate-assembly.org/analysis-criteria-0628/`
 - Form response: `https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform`
 - Form edit: `https://docs.google.com/forms/d/1yktkA_XAMGcVt4mlnC-0Yc3d3N0N0YQ__Dk1TfdTaCc/edit`
 - Sheet: `https://docs.google.com/spreadsheets/d/1T31pzPV8JHeqyCuGUq0M28e81-cCujOC_V8mMFACG20/edit`
@@ -73,6 +74,7 @@ Display labels should be facilitator-facing Korean, while JSON fields may use En
 - Admin page includes:
   - Ontology graph launch
   - Miro-style post-it launch
+  - Analysis criteria page launch
   - Participant Google Form response/edit/QR tab
   - Dinner RSVP response/edit/QR tab
   - Google Sheet link
@@ -91,6 +93,7 @@ Display labels should be facilitator-facing Korean, while JSON fields may use En
   - `유사 묶음`
   - `연관 렌즈`
   - admin return link
+- Analysis criteria page is a separate facilitator-facing explainer for the shared classification logic. It reads the current participant JSON and shows Frequency, Degree, Betweenness, Closeness/PageRank, Similarity Cluster, Theory Lens, Ego Network, and Link Candidate with example rows.
 - The current dummy dataset has 40 rows and 80 responses. It is safe as a demo snapshot until real data arrives.
 - The actual Sheet CSV refresh script remains at `scripts/refresh-0628-participant-test.ps1`, but the admin card for that workflow was removed. Use it only when the user explicitly asks to refresh from the live Sheet.
 
