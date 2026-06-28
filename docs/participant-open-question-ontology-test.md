@@ -74,6 +74,17 @@ node scripts/build-participant-question-ontology.mjs --csv-url "https://docs.goo
 
 ## Google Workspace 실제 리소스
 
+생성된 Google Form:
+
+- 제목: `0628 참여단 주관식 질문 - 운영 감축`
+- formId: `1yktkA_XAMGcVt4mlnC-0Yc3d3N0N0YQ__Dk1TfdTaCc`
+- 편집 URL: https://docs.google.com/forms/d/1yktkA_XAMGcVt4mlnC-0Yc3d3N0N0YQ__Dk1TfdTaCc/edit
+- 응답 URL: https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform
+- 문항:
+  - `조`
+  - `기후시민회의 운영 관련 질문`
+  - `감축의제 질문`
+
 생성된 Google Sheet:
 
 - 파일명: `0628 참여단 주관식 질문 응답 - 운영 감축`
@@ -93,25 +104,27 @@ https://docs.google.com/spreadsheets/d/1hfFGfAhV6BQx0gRXRDIfu_aFvu5jcfJL4AAlYUJw
 node scripts/build-participant-question-ontology.mjs --csv-url "https://docs.google.com/spreadsheets/d/1hfFGfAhV6BQx0gRXRDIfu_aFvu5jcfJL4AAlYUJwR-M/gviz/tq?tqx=out:csv&sheet=Form%20Responses%201"
 ```
 
+gws 연결 상태:
+
+- `gws 0.11.1`
+- 계정: `iceamericano9@gmail.com`
+- 승인 scope: Forms body, Forms responses readonly, Drive, Drive file, Sheets
+- Forms API로 Form 생성 및 문항 추가 완료
+- Google Drive 커넥터로 Sheet 생성과 탭 세팅 완료
+
 현재 자동화 한계:
 
-- Google Drive 커넥터로 Sheet 생성과 탭 세팅은 완료했다.
-- 현재 커넥터는 Google Forms 생성 MIME을 지원하지 않는다.
-- headless 브라우저에서 `forms.new`는 Google 로그인 화면에서 막혔다.
-- 따라서 Form 생성과 응답 Sheet 연결은 로그인된 브라우저에서 수동으로 처리한다.
+- Google Forms API에는 응답 저장소를 기존 Spreadsheet로 지정하는 메서드가 노출되어 있지 않다.
+- Google 공식 Help도 Form UI에서 `Responses` 탭의 `Select destination for responses`를 사용하도록 안내한다.
+- 따라서 Form 응답을 위 Sheet에 연결하는 마지막 단계는 로그인된 브라우저에서 수동으로 처리한다.
 
 Form 생성 절차:
 
-1. https://forms.new 를 연다.
-2. 제목을 `0628 참여단 주관식 질문 - 운영 감축`으로 둔다.
-3. 문항을 3개 만든다.
-   - `조`: 단답형 또는 드롭다운
-   - `기후시민회의 운영 관련 질문`: 장문형
-   - `감축의제 질문`: 장문형
-4. `응답` 탭에서 Google Sheets 아이콘을 누른다.
-5. `기존 스프레드시트 선택`에서 위 Sheet를 연결한다.
-6. 연결 후 응답 탭 이름이 `Form Responses 1`인지 확인한다.
-7. 현장 테스트 전 샘플 행은 삭제하거나 `처리상태=sample`로 유지한다.
+1. Form 편집 URL을 연다.
+2. `응답` 탭에서 Google Sheets 아이콘을 누른다.
+3. `기존 스프레드시트 선택`에서 위 Sheet를 연결한다.
+4. 연결 후 응답 탭 이름이 `Form Responses 1`인지 확인한다.
+5. 현장 테스트 전 샘플 행은 삭제하거나 `처리상태=sample`로 유지한다.
 
 ## Supabase 승격 계획
 

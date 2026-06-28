@@ -27,3 +27,9 @@
 - Verified: Google Sheets range `Form Responses 1!A1:F2` contains the expected headers and one sample row for the two open-question fields.
 - Learned: the current Google Drive connector can create Sheets but not Google Forms; headless browser access to `forms.new` stops at Google sign-in, so Form creation and response-Sheet linking must happen in a logged-in browser.
 - Next: user creates the Google Form and links it to the prepared Sheet, then run the CSV URL command to refresh the 0628 graph JSON.
+
+## 2026-06-28 GWS-CLI
+- Changed: connected `googleworkspace/cli` (`gws 0.11.1`) with Forms body, Forms responses readonly, Drive, Drive file, and Sheets scopes; created Google Form `0628 참여단 주관식 질문 - 운영 감축` with the three required questions.
+- Verified: `gws forms forms get` returned formId `1yktkA_XAMGcVt4mlnC-0Yc3d3N0N0YQ__Dk1TfdTaCc`, published response URL, and all three required question items.
+- Learned: `gws forms forms create` works after clearing stale token cache and reauthing with explicit scopes; Google Forms API still does not expose response destination linking to an existing spreadsheet, so the last Form UI `Responses` to Sheet selection remains manual.
+- Next: link the created Form to the prepared Sheet in the Forms UI, then refresh ontology JSON from the Sheet CSV URL.
