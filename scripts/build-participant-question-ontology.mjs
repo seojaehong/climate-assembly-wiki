@@ -54,9 +54,11 @@ const GROUP_COLUMNS = ['조', '우리 조', '테이블', '분임', 'group'];
 const TIMESTAMP_COLUMNS = ['타임스탬프', 'timestamp', 'Timestamp', '제출시간'];
 const STOPWORDS = new Set([
   '그리고', '그러면', '그래서', '하지만', '또는', '또한', '대한', '관련', '위한', '위해',
-  '있는', '있나요', '있을까요', '있습니까', '어떻게', '무엇', '어떤', '이번', '오늘',
+  '있는', '있나요', '있을까요', '있습니까', '어떻게', '어디까지', '무엇', '어떤', '이번', '오늘',
   '기후', '시민', '회의', '질문', '의제', '운영', '감축', '관련해서', '부분', '생각',
-  '합니다', '해주세요', '궁금합니다', '필요', '가능', '정책', '방안',
+  '합니다', '했습니다', '습니다', '었습니다', '었습니', '있습니', '했습니', '하나요',
+  '되나요', '인가요', '정하나', '것인가', '수있는', '해주세요', '궁금합니다', '필요',
+  '가능', '정책', '방안',
 ]);
 
 const DOMAIN_TERMS = [
@@ -266,13 +268,25 @@ function jaccard(a, b) {
   return inter / union.size;
 }
 
+function isAnalysisTerm(term) {
+  const clean = String(term || '').trim();
+  const isDomainTerm = DOMAIN_TERMS.includes(clean);
+  if (clean.length < 3 || STOPWORDS.has(clean)) return false;
+  if (!isDomainTerm && clean.length < 4) return false;
+  if (!isDomainTerm && /[습같였졌]/.test(clean)) return false;
+  if (!isDomainTerm && /[은는이가을를와과의에로도만]$/.test(clean)) return false;
+  if (/(습니다|습니까|하나요|인가요|되나요|있나요|했습니|었습니)$/.test(clean)) return false;
+  if (DOMAIN_TERMS.some((domain) => domain !== clean && domain.includes(clean))) return false;
+  return true;
+}
+
 function topTerms(responses, limit = 24) {
   const freq = new Map();
   for (const r of responses) {
     for (const t of r.tokens) freq.set(t, (freq.get(t) || 0) + 1);
   }
   return [...freq.entries()]
-    .filter(([term, n]) => n >= 2 && term.length >= 3 && !STOPWORDS.has(term))
+    .filter(([term, n]) => n >= 2 && isAnalysisTerm(term))
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko'))
     .slice(0, limit)
     .map(([term, count]) => ({ term, count }));
@@ -377,11 +391,119 @@ function centrality(nodes, edges) {
   }
   const maxBetweenness = Math.max(1, ...Object.values(betweenness));
   const maxCloseness = Math.max(1, ...Object.values(closeness));
+  let pagerank = Object.fromEntries(ids.map((id) => [id, 1 / Math.max(1, ids.length)]));
+  const damping = 0.85;
+  for (let iter = 0; iter < 42; iter += 1) {
+    const next = Object.fromEntries(ids.map((id) => [id, (1 - damping) / Math.max(1, ids.length)]));
+    for (const id of ids) {
+      const links = adj[id];
+      const weightSum = links.reduce((sum, e) => sum + e.weight, 0);
+      if (!weightSum) {
+        const share = damping * pagerank[id] / Math.max(1, ids.length);
+        ids.forEach((target) => { next[target] += share; });
+        continue;
+      }
+      for (const link of links) {
+        next[link.id] += damping * pagerank[id] * (link.weight / weightSum);
+      }
+    }
+    pagerank = next;
+  }
+  const maxPagerank = Math.max(1e-9, ...Object.values(pagerank));
   return {
     degree: degreeCentrality,
     betweenness: Object.fromEntries(ids.map((id) => [id, betweenness[id] / maxBetweenness])),
     closeness: Object.fromEntries(ids.map((id) => [id, closeness[id] / maxCloseness])),
+    pagerank: Object.fromEntries(ids.map((id) => [id, pagerank[id] / maxPagerank])),
   };
+}
+
+function buildSimilarityClusters(responses, simEdges) {
+  const parent = Object.fromEntries(responses.map((r) => [r.id, r.id]));
+  const find = (id) => {
+    let cur = id;
+    while (parent[cur] !== cur) {
+      parent[cur] = parent[parent[cur]];
+      cur = parent[cur];
+    }
+    return cur;
+  };
+  const union = (a, b) => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent[rb] = ra;
+  };
+  simEdges.forEach((edge) => union(edge.source, edge.target));
+  const grouped = new Map();
+  responses.forEach((r) => {
+    const root = find(r.id);
+    if (!grouped.has(root)) grouped.set(root, []);
+    grouped.get(root).push(r);
+  });
+  const clusters = [...grouped.values()]
+    .filter((members) => members.length > 1)
+    .sort((a, b) => b.length - a.length || a[0].id.localeCompare(b[0].id))
+    .map((members, index) => {
+      const tokenFreq = new Map();
+      members.forEach((r) => {
+        r.tokens.forEach((token) => tokenFreq.set(token, (tokenFreq.get(token) || 0) + 1));
+      });
+      const topTokens = [...tokenFreq.entries()]
+        .filter(([token, count]) => count >= 2 && isAnalysisTerm(token))
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko'))
+        .slice(0, 5)
+        .map(([term, count]) => ({ term, count }));
+      const labelSource = topTokens[0]?.term || members[0].text;
+      return {
+        id: `sim_cluster_${index + 1}`,
+        label: compactDisplayLabel(labelSource, '유사 묶음'),
+        size: members.length,
+        question_keys: [...new Set(members.map((r) => r.questionKey))],
+        groups: [...new Set(members.map((r) => r.group).filter(Boolean))],
+        top_terms: topTokens,
+        members: members.map((r) => r.id),
+      };
+    });
+  const assignment = {};
+  clusters.forEach((cluster) => {
+    cluster.members.forEach((id) => {
+      assignment[id] = cluster.id;
+    });
+  });
+  return { clusters, assignment };
+}
+
+function buildLinkCandidates(responses, simEdges, limit = 24) {
+  const existing = new Set(simEdges.map((e) => [e.source, e.target].sort().join('::')));
+  const candidates = [];
+  for (let i = 0; i < responses.length; i += 1) {
+    for (let j = i + 1; j < responses.length; j += 1) {
+      const a = responses[i];
+      const b = responses[j];
+      const key = [a.id, b.id].sort().join('::');
+      if (existing.has(key)) continue;
+      const similarity = jaccard(a.tokens, b.tokens);
+      const sharedLenses = a.lenses.filter((lens) => b.lenses.includes(lens));
+      const sharedTokens = a.tokens.filter((token) => b.tokens.includes(token) && isAnalysisTerm(token));
+      const sameQuestionBonus = a.questionKey === b.questionKey ? 0.04 : 0;
+      const score = Math.min(1, similarity * 0.62 + sharedLenses.length * 0.14 + Math.min(4, sharedTokens.length) * 0.025 + sameQuestionBonus);
+      if (score < 0.22) continue;
+      candidates.push({
+        source: a.id,
+        source_label: responseLabel(a.text, a.questionKey),
+        target: b.id,
+        target_label: responseLabel(b.text, b.questionKey),
+        relation: 'linkCandidate',
+        label: '연결 후보',
+        score: Number(score.toFixed(4)),
+        similarity: Number(similarity.toFixed(4)),
+        shared_lenses: sharedLenses,
+        shared_terms: [...new Set(sharedTokens)].slice(0, 8),
+        reason: sharedLenses.length ? '공유 분석렌즈와 부분 유사성이 함께 나타남' : '공유 표현과 구조적 유사성이 나타남',
+      });
+    }
+  }
+  return candidates.sort((a, b) => b.score - a.score || a.source.localeCompare(b.source)).slice(0, limit);
 }
 
 const LABEL_PATTERNS = [
@@ -518,6 +640,21 @@ function buildGraph(rows, args) {
   const terms = topTerms(responses);
   const metricEdges = buildMetricEdges(responses, simEdges, terms);
   const metrics = centrality(responses, metricEdges);
+  const similarityClusters = buildSimilarityClusters(responses, simEdges);
+  const linkCandidates = buildLinkCandidates(responses, simEdges);
+  const linkCandidatesByNode = {};
+  linkCandidates.forEach((candidate) => {
+    [candidate.source, candidate.target].forEach((id) => {
+      if (!linkCandidatesByNode[id]) linkCandidatesByNode[id] = [];
+      linkCandidatesByNode[id].push({
+        node_id: id === candidate.source ? candidate.target : candidate.source,
+        label: id === candidate.source ? candidate.target_label : candidate.source_label,
+        score: candidate.score,
+        reason: candidate.reason,
+      });
+    });
+  });
+  const frequencyByTerm = Object.fromEntries(terms.map((t) => [t.term, t.count]));
   const termById = new Map(terms.map((t, i) => [t.term, `term_${i + 1}`]));
   const now = new Date().toISOString();
 
@@ -580,10 +717,27 @@ function buildGraph(rows, args) {
           timestamp: r.timestamp,
           tokens: r.tokens,
           lenses: r.lenses,
+          similarity_cluster: similarityClusters.assignment[r.id] || null,
+          link_candidates: (linkCandidatesByNode[r.id] || []).slice(0, 5),
           centrality: {
             degree: Number(metrics.degree[r.id]?.toFixed(4) || 0),
             betweenness: Number(metrics.betweenness[r.id]?.toFixed(4) || 0),
             closeness: Number(metrics.closeness[r.id]?.toFixed(4) || 0),
+            pagerank: Number(metrics.pagerank[r.id]?.toFixed(4) || 0),
+          },
+          analysis: {
+            frequency: r.tokens
+              .filter((token) => frequencyByTerm[token])
+              .map((token) => ({ term: token, count: frequencyByTerm[token] }))
+              .sort((a, b) => b.count - a.count || a.term.localeCompare(b.term, 'ko'))
+              .slice(0, 8),
+            degree: Number(metrics.degree[r.id]?.toFixed(4) || 0),
+            betweenness: Number(metrics.betweenness[r.id]?.toFixed(4) || 0),
+            closeness: Number(metrics.closeness[r.id]?.toFixed(4) || 0),
+            pagerank: Number(metrics.pagerank[r.id]?.toFixed(4) || 0),
+            similarity_cluster: similarityClusters.assignment[r.id] || null,
+            theory_lens: r.lenses,
+            link_candidates: (linkCandidatesByNode[r.id] || []).slice(0, 5),
           },
         },
       },
@@ -692,6 +846,8 @@ function buildGraph(rows, args) {
         nodes: nodes.length,
         edges: edges.length,
         similarity_edges: simEdges.length,
+        similarity_clusters: similarityClusters.clusters.length,
+        link_candidates: linkCandidates.length,
         keyword_nodes: args.includeKeywordNodes ? terms.length : 0,
         theory_lens_nodes: THEORY_LENSES.filter((lens) => responses.some((r) => r.lenses.includes(lens.id))).length,
         theory_lens_edges: responses.reduce((sum, r) => sum + r.lenses.length, 0),
@@ -707,12 +863,25 @@ function buildGraph(rows, args) {
         title: '변형 하버마스 + 사회과학 분석 렌즈',
         summary: '응답을 정책 쟁점 구조로 강제하지 않고, 숙의 과정의 절차 정당성, 역할 경계, 포용성, 공론장 연결성, 신뢰, 발언 안정성, 전문성 매개로 읽는다.',
         relation_logic: '문항 연결은 응답 관계, 유사 연결은 텍스트 유사성, 분석렌즈 연결은 사회과학적 해석 범주, 중심성은 유사성+공유 렌즈 네트워크에서 계산한다.',
+        metrics: {
+          frequency: '응답 토큰의 반복 노출을 집계한다.',
+          degree: '유사성·공유 렌즈 네트워크에서 직접 연결 강도를 본다.',
+          betweenness: '서로 다른 응답 묶음을 이어주는 매개 노드를 본다.',
+          closeness: '전체 응답군에 의미상 가까운 노드를 본다.',
+          pagerank: '중요한 노드와 연결된 응답을 더 높게 본다.',
+          similarity_cluster: '직접 유사 엣지로 연결된 응답 묶음을 본다.',
+          link_candidate: '아직 확정 엣지는 아니지만 공유 렌즈와 부분 유사성이 높은 연결 후보를 본다.',
+        },
       },
+      frequency_terms: terms,
       centrality: {
         degree_top: topBy('degree'),
         betweenness_top: topBy('betweenness'),
         closeness_top: topBy('closeness'),
+        pagerank_top: topBy('pagerank'),
       },
+      similarity_clusters: similarityClusters.clusters,
+      link_candidates: linkCandidates,
       similarity_edges: simEdges.slice(0, 20).map((e) => ({
         source: e.source,
         source_label: responseLabel(responseById[e.source]?.text, responseById[e.source]?.questionKey),

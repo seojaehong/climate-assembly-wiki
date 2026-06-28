@@ -39,3 +39,9 @@
 - Verified: the shared note records the active working root, current 0628 URLs, design baseline, non-overlap rule for `질문`/`소감` hubs, QR PNG requirement, and the last verified deployed commit.
 - Learned: the day-of analysis should show facilitator-facing Korean labels (`많이 나온 것`, `이어주는 질문`, `유사 묶음`, `논의 프레임`) while keeping English metric field names internally.
 - Next: implement the next analysis slice in JSON generation/UI only after checking this shared memory and avoiding duplication with parallel Claude work.
+
+## 2026-06-28 advanced-analysis-json
+- Changed: extended `scripts/build-participant-question-ontology.mjs` so generated 0628 JSON includes PageRank, frequency terms, similarity clusters, per-node analysis fields, and review-only link candidates.
+- Verified: regenerating `public/workshop-graph-0628-test/data/participant-open-questions.json` from the current 40-row test snapshot produced 80 responses, 90 nodes, 362 edges, 120 similarity edges, 22 similarity clusters, 24 link candidates, 24 frequency terms, and 8 theory lens nodes.
+- Learned: n-gram tokens are useful for similarity but too noisy for facilitator-facing frequency labels, so analysis display terms now use a stricter filter.
+- Next: integrate the UI-side overlap and edge-label check from the parallel worker, then expose analysis categories in the 0628 view.

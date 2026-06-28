@@ -1529,29 +1529,60 @@ function applyParticipantQuestionLanes() {
       }
     }
   }
+  function keepAwayFromHub(nodes, hubId, hubX, hubY, minX = 480, minY = 190, iterations = 16) {
+    const hub = cy.$id(hubId);
+    if (!hub.length) return;
+    for (let pass = 0; pass < iterations; pass += 1) {
+      hub.position({ x: hubX, y: hubY });
+      nodes.forEach((n, i) => {
+        const p = n.position();
+        const dx = p.x - hubX;
+        const dy = p.y - hubY;
+        const ax = Math.abs(dx);
+        const ay = Math.abs(dy);
+        if (ax >= minX || ay >= minY) return;
+        const sx = dx === 0 ? (i % 2 ? 1 : -1) : Math.sign(dx);
+        const sy = dy === 0 ? (i % 3 ? 1 : -1) : Math.sign(dy);
+        const xPush = (minX - ax) + 28;
+        const yPush = (minY - ay) + 18;
+        if ((minX - ax) / minX >= (minY - ay) / minY) {
+          n.position({ x: p.x + sx * xPush, y: p.y + sy * Math.min(42, yPush * 0.25) });
+        } else {
+          n.position({ x: p.x + sx * Math.min(64, xPush * 0.30), y: p.y + sy * yPush });
+        }
+      });
+    }
+    hub.position({ x: hubX, y: hubY });
+  }
 
   if (participantView === 'all' && participantRel === 'overview') {
     placeOrganicCluster(questions, -1380, 0, 880, 680);
     placeOrganicCluster(impressions, 980, 0, 1320, 780);
     cy.$id('Question_question').position({ x: -1180, y: 0 });
     cy.$id('Question_impression').position({ x: 780, y: 0 });
-    relaxOverlaps([...questions, cy.$id('Question_question')], 380, 158, 48);
-    relaxOverlaps([...impressions, cy.$id('Question_impression')], 380, 158, 48);
+    relaxOverlaps(questions, 380, 158, 48);
+    relaxOverlaps(impressions, 380, 158, 48);
+    keepAwayFromHub(questions, 'Question_question', -1180, 0, 520, 220, 20);
+    keepAwayFromHub(impressions, 'Question_impression', 780, 0, 520, 220, 20);
   } else if (participantView === 'all') {
     placeGridCluster(questions, -760, 0);
     placeGridCluster(impressions, 820, 0);
     cy.$id('Question_question').position({ x: -760, y: 0 });
     cy.$id('Question_impression').position({ x: 820, y: 0 });
-    relaxOverlaps([...questions, cy.$id('Question_question')], 360, 148, 24);
-    relaxOverlaps([...impressions, cy.$id('Question_impression')], 360, 148, 24);
+    relaxOverlaps(questions, 360, 148, 24);
+    relaxOverlaps(impressions, 360, 148, 24);
+    keepAwayFromHub(questions, 'Question_question', -760, 0, 500, 210, 18);
+    keepAwayFromHub(impressions, 'Question_impression', 820, 0, 500, 210, 18);
   } else if (participantView === 'question') {
     placeGridCluster(questions, 0, 0);
     cy.$id('Question_question').position({ x: 0, y: 0 });
-    relaxOverlaps([...questions, cy.$id('Question_question')], 360, 148, 24);
+    relaxOverlaps(questions, 360, 148, 24);
+    keepAwayFromHub(questions, 'Question_question', 0, 0, 520, 220, 22);
   } else {
     placeGridCluster(impressions, 0, 0);
     cy.$id('Question_impression').position({ x: 0, y: 0 });
-    relaxOverlaps([...impressions, cy.$id('Question_impression')], 360, 148, 24);
+    relaxOverlaps(impressions, 360, 148, 24);
+    keepAwayFromHub(impressions, 'Question_impression', 0, 0, 520, 220, 22);
   }
   const lenses = cy.nodes('[kind = "Value"]')
     .sort((a, b) => String(a.data('label')).localeCompare(String(b.data('label')), 'ko'));
@@ -2368,12 +2399,13 @@ function buildCyStyle(palette) {
     { selector:'node[kind="Decision"]', style:{ 'shape':'star','border-color':'#ffa94d','border-width':3 }},
     { selector:'node[?synthesized]', style:{ 'shape':'round-diamond','border-style':'dashed','border-color':'#ff8787' }},
     { selector:'edge', style:{
-        'width': demo ? 1.45 : 1.8, 'line-color': e => demo ? showcaseRelColor(e.data('rel'), paperLike) : (paperLike ? '#64748b' : '#6b7890'), 'target-arrow-color': e => demo ? showcaseRelColor(e.data('rel'), paperLike) : (paperLike ? '#64748b' : '#6b7890'),
+        'width': demo ? 1.55 : 1.8, 'line-color': e => demo ? showcaseRelColor(e.data('rel'), paperLike) : (paperLike ? '#64748b' : '#6b7890'), 'target-arrow-color': e => demo ? showcaseRelColor(e.data('rel'), paperLike) : (paperLike ? '#64748b' : '#6b7890'),
         'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale': demo ? 1.05 : 1,
-        'label': demo ? (showcaseEdgeLabels ? 'data(relKo)' : '') : (paper ? '' : 'data(relKo)'),'font-size': demo ? '12px' : '10px','min-zoomed-font-size': demo ? (showcaseEdgeLabels ? 0 : 999) : 9,'color': paperLike ? (demo ? '#334155' : '#1f2937') : (demo ? '#cbd5e1' : '#d3dbe8'),
+        'label': demo ? (showcaseEdgeLabels ? 'data(relKo)' : '') : (paper ? '' : 'data(relKo)'),'font-size': demo ? '15px' : '10px','min-zoomed-font-size': demo ? (showcaseEdgeLabels ? 0 : 999) : 9,'color': paperLike ? (demo ? '#0f172a' : '#1f2937') : (demo ? '#f8fafc' : '#d3dbe8'),
         'font-family':'Noto Sans KR, Malgun Gothic, sans-serif',
+        'font-weight': demo ? 900 : 500,
         'text-rotation':'autorotate','text-background-color': paperLike ? '#ffffff' : '#11151c',
-        'text-background-opacity': demo ? 0.64 : 0.85,'text-background-padding':2,'opacity': demo ? 0.74 : 0.82,
+        'text-background-opacity': demo ? 0.92 : 0.85,'text-background-padding': demo ? 4 : 2,'text-background-shape':'roundrectangle','text-border-width': demo ? 1 : 0,'text-border-opacity': demo ? 0.18 : 0,'text-border-color': paperLike ? '#94a3b8' : '#64748b','opacity': demo ? 0.78 : 0.82,
     }},
     { selector:'edge[?opposes]', style:{
         'line-color': demo ? '#f4a3a3' : '#ff6b6b','target-arrow-color': demo ? '#f4a3a3' : '#ff6b6b','width': demo ? 1.65 : 2.6 }},
@@ -2405,8 +2437,8 @@ function buildCyStyle(palette) {
     { selector:'edge.focus-edge', style:{
         'opacity':0.92,'width':3.2,'line-color':'#8bd3ff','target-arrow-color':'#8bd3ff',
         'label': presentMode && presentLevel === 'chapter' ? '' : 'data(relKo)',
-        'font-size': demo ? '12px' : '11px','text-background-color': paperLike ? '#ffffff' : '#11151c',
-        'text-background-opacity':0.95,'text-background-padding':2,
+        'font-size': demo ? '16px' : '11px','font-weight': demo ? 900 : 500,'text-background-color': paperLike ? '#ffffff' : '#11151c',
+        'text-background-opacity':0.96,'text-background-padding': demo ? 5 : 2,
     }},
     { selector:'.hidden', style:{ 'display':'none' }},
   ];
