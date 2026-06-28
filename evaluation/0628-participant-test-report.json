@@ -112,7 +112,7 @@
     "dinner_vote_result": "저녁식사 투표 결과 발표용 페이지를 public/dinner-vote-0628/index.html로 추가했다. 중국집/삼겹살/불참 이미지 카드가 5초간 순환한 뒤 최다 선택을 크게 보여준다.",
     "note": "기존 workshop-graph와 board-demo 원본은 수정하지 않고 0628 테스트 페이지를 별도로 추가했다.",
     "dinner_vote_manual_refresh": {
-      "updated_at": "2026-06-28T17:18:41+09:00",
+      "updated_at": "2026-06-28T17:27:22+09:00",
       "total_responses": 33,
       "valid_responses": 32,
       "unique_voters": 32,
@@ -130,6 +130,7 @@
           "count": 23
         }
       ]
-    }
+    },
+    "dinner_vote_refresh_command": "powershell -ExecutionPolicy Bypass -File scripts/refresh-dinner-vote-results.ps1 -Commit -Deploy"
   }
 }
