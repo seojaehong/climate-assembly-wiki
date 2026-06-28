@@ -29,11 +29,14 @@ This repository is the shared working surface for Codex and Claude on the climat
 
 ## Current 0628 URLs
 
-- Admin: `https://climate-assembly.org/0628-admin/`
-- Ontology: `https://climate-assembly.org/workshop-graph-0628-test/?source=participant-open-questions&mode=showcase&count=50&edgeLabels=on&theme=light&tone=calm`
+- Admin: `https://climate-assembly.org/0628-admin/index.html?_=422e12b`
+- Ontology: `https://climate-assembly.org/workshop-graph-0628-test/?source=participant-open-questions&mode=showcase&count=50&edgeLabels=on&participantRel=similar`
+- Miro-style post-it board: `https://climate-assembly.org/miro-0628-test/`
 - Form response: `https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform`
 - Form edit: `https://docs.google.com/forms/d/1yktkA_XAMGcVt4mlnC-0Yc3d3N0N0YQ__Dk1TfdTaCc/edit`
 - Sheet: `https://docs.google.com/spreadsheets/d/1T31pzPV8JHeqyCuGUq0M28e81-cCujOC_V8mMFACG20/edit`
+- Dinner RSVP form: `https://docs.google.com/forms/d/e/1FAIpQLSeGs-baoPj_2Kry0jHBMtuMcy_03SZfkVX5jxZ93LOR1H3ZGA/viewform`
+- Dinner RSVP edit: `https://docs.google.com/forms/d/1unIaSHFwm_qZj0M1b_sfRVjACgE-obQSKB-o7UfAlY8/edit`
 
 ## Current Design Baseline
 
@@ -41,7 +44,10 @@ This repository is the shared working surface for Codex and Claude on the climat
 - The first view should not become a straight line, grid, or slide carousel.
 - Use stronger classroom-readable labels, transparent message cards, and avoid inner white text boxes.
 - Node overlap prevention must include both response nodes and the `질문`/`소감` hub nodes.
-- QR must be visible in the admin page and use `public/0628-admin/google-form-qr.png`.
+- QR must be visible in the admin page:
+  - Participant open-response QR: `public/0628-admin/google-form-qr.png`
+  - Dinner RSVP QR: `public/0628-admin/dinner-rsvp-qr.png`
+- Admin page deliberately no longer shows the old `17시 실제 데이터 운영` refresh instruction card. The user wanted the admin surface kept simpler; keep the script available but do not re-add that card unless asked.
 
 ## Analysis Baseline
 
@@ -59,16 +65,63 @@ The 0628 test should support both simple and advanced ontology/text-network anal
 
 Display labels should be facilitator-facing Korean, while JSON fields may use English metric names.
 
+## Current State For Claude
+
+- We are now waiting for real participant data input. Do not rebuild forms or recreate QR resources unless the URLs break.
+- The currently deployed admin page is the main operator surface. Password: `climate2026`.
+- Admin page includes:
+  - Ontology graph launch
+  - Miro-style post-it launch
+  - Participant Google Form response/edit/QR tab
+  - Dinner RSVP response/edit/QR tab
+  - Google Sheet link
+  - Analysis summary cards
+- Ontology page includes:
+  - Showcase label graph
+  - participant view filters: `전체`, `소감`, `질문`
+  - relation filters: `개요`, `응답`, `유사`, `연관`, `전체`
+  - admin return link
+  - analysis summary panel
+  - shared overlap guard after showcase layout changes
+- Miro page includes:
+  - `소감/질문`
+  - `조별 보기`
+  - `분석 요약`
+  - `유사 묶음`
+  - `연관 렌즈`
+  - admin return link
+- The current dummy dataset has 40 rows and 80 responses. It is safe as a demo snapshot until real data arrives.
+- The actual Sheet CSV refresh script remains at `scripts/refresh-0628-participant-test.ps1`, but the admin card for that workflow was removed. Use it only when the user explicitly asks to refresh from the live Sheet.
+
 ## Last Known Deployment
 
 Last verified commit during Codex work:
 
 ```text
-320af1f fix: keep 0628 hubs clear
+422e12b fix: remove admin refresh notice
 ```
 
 Verified:
 
-- `https://climate-assembly.org/0628-admin/index.html` returned 200 and contained `google-form-qr.png`.
-- `https://climate-assembly.org/0628-admin/google-form-qr.png` returned 200 `image/png`.
-- `https://climate-assembly.org/workshop-graph-0628-test/` loaded with showcase mode and canvas.
+- `https://climate-assembly.org/0628-admin/index.html?_=422e12b` returned 200, contains dinner RSVP and analysis summary, and no longer contains `17시 실제 데이터 운영` or `refresh-0628`.
+- `https://climate-assembly.org/0628-admin/google-form-qr.png?_=c767990` returned 200 `image/png`.
+- `https://climate-assembly.org/0628-admin/dinner-rsvp-qr.png?_=c767990` returned 200 `image/png`.
+- `https://climate-assembly.org/workshop-graph-0628-test/index.html?source=participant-open-questions&mode=showcase&count=50&edgeLabels=on&participantRel=similar&_=c767990` returned 200 and contains `분석 요약`.
+- `https://climate-assembly.org/miro-0628-test/index.html?_=c767990` returned 200 and contains `분석 요약`.
+
+## Dirty Files To Avoid
+
+At the latest Codex handoff, these unrelated dirty/untracked files existed and were intentionally not staged:
+
+```text
+M index.md
+M log.md
+M public/workshop-graph/data/agenda-surface.json
+M public/workshop-graph/data/gyeonggi-agenda-surface.json
+M public/workshop-graph/data/kb-agenda-surface.json
+M src/data/agenda-network-scene.json
+?? 02_Sheet_샘플_3조입력예시.csv
+?? public/sim-identity.csv
+```
+
+Do not revert or stage them unless the user explicitly asks.
