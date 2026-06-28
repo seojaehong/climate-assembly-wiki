@@ -120,7 +120,7 @@
         "data": {
           "id": "resp_impression_1",
           "node_id": "resp_impression_1",
-          "label": "감사합니다",
+          "label": "긍정적 참여 소감",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "감사합니다",
@@ -155,7 +155,7 @@
             "link_candidates": [
               {
                 "node_id": "resp_question_32",
-                "label": "패스합니다",
+                "label": "질문 미기재",
                 "score": 0.2433,
                 "reason": "공유 분석렌즈와 부분 유사성이 함께 나타남"
               }
@@ -179,7 +179,7 @@
               "link_candidates": [
                 {
                   "node_id": "resp_question_32",
-                  "label": "패스합니다",
+                  "label": "질문 미기재",
                   "score": 0.2433,
                   "reason": "공유 분석렌즈와 부분 유사성이 함께 나타남"
                 }
@@ -192,7 +192,7 @@
         "data": {
           "id": "resp_question_2",
           "node_id": "resp_question_2",
-          "label": "용어를 통일 할 수 없",
+          "label": "용어 통일 필요",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "용어를 통일 할 수 없나요?",
@@ -260,7 +260,7 @@
         "data": {
           "id": "resp_impression_3",
           "node_id": "resp_impression_3",
-          "label": "유용한 정보였음",
+          "label": "긍정적 참여 소감",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "유용한 정보였음",
@@ -323,7 +323,7 @@
         "data": {
           "id": "resp_question_4",
           "node_id": "resp_question_4",
-          "label": "없음",
+          "label": "질문 미기재",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "없음",
@@ -375,7 +375,7 @@
         "data": {
           "id": "resp_impression_5",
           "node_id": "resp_impression_5",
-          "label": "좋았음",
+          "label": "긍정적 참여 소감",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "좋았음",
@@ -429,7 +429,7 @@
         "data": {
           "id": "resp_question_6",
           "node_id": "resp_question_6",
-          "label": "궁금함",
+          "label": "질문 미기재",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "궁금함",
@@ -537,7 +537,7 @@
         "data": {
           "id": "resp_question_8",
           "node_id": "resp_question_8",
-          "label": "트럼프의 미국도 안하는데 왜 우…",
+          "label": "국제 형평성 문제",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "트럼프의 미국도 안하는데 왜 우리는 이렇게 해야되나요?",
@@ -632,7 +632,7 @@
         "data": {
           "id": "resp_impression_9",
           "node_id": "resp_impression_9",
-          "label": "좋았다.",
+          "label": "긍정적 참여 소감",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "좋았다.",
@@ -686,7 +686,7 @@
         "data": {
           "id": "resp_question_10",
           "node_id": "resp_question_10",
-          "label": "없다",
+          "label": "질문 미기재",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "없다",
@@ -738,7 +738,7 @@
         "data": {
           "id": "resp_impression_11",
           "node_id": "resp_impression_11",
-          "label": "운영 모더레이터의 운영 실제",
+          "label": "모더레이터 실습 요구",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "운영 모더레이터의 운영 실제",
@@ -815,7 +815,7 @@
         "data": {
           "id": "resp_question_12",
           "node_id": "resp_question_12",
-          "label": "에너지 전환 전력",
+          "label": "에너지 전환 전략",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "에너지 전환 전력",
@@ -877,7 +877,7 @@
         "data": {
           "id": "resp_impression_13",
           "node_id": "resp_impression_13",
-          "label": "완전 좋았다",
+          "label": "긍정적 참여 소감",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "완전 좋았다",
@@ -935,7 +935,7 @@
         "data": {
           "id": "resp_question_14",
           "node_id": "resp_question_14",
-          "label": "없다",
+          "label": "질문 미기재",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "없다",
@@ -1070,7 +1070,7 @@
         "data": {
           "id": "resp_question_16",
           "node_id": "resp_question_16",
-          "label": "2분과 5도",
+          "label": "분과·온도목표 쟁점",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "2분과 5도",
@@ -1128,7 +1128,7 @@
         "data": {
           "id": "resp_impression_17",
           "node_id": "resp_impression_17",
-          "label": "많이 배웠습니다.",
+          "label": "참여 열정에서 학습",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "많이 배웠습니다.",
@@ -1167,7 +1167,7 @@
             "link_candidates": [
               {
                 "node_id": "resp_impression_33",
-                "label": "새로 알게된것이 많습니다.",
+                "label": "새로운 정보 학습",
                 "score": 0.2228,
                 "reason": "공유 분석렌즈와 부분 유사성이 함께 나타남"
               }
@@ -1191,7 +1191,7 @@
               "link_candidates": [
                 {
                   "node_id": "resp_impression_33",
-                  "label": "새로 알게된것이 많습니다.",
+                  "label": "새로운 정보 학습",
                   "score": 0.2228,
                   "reason": "공유 분석렌즈와 부분 유사성이 함께 나타남"
                 }
@@ -1204,7 +1204,7 @@
         "data": {
           "id": "resp_question_18",
           "node_id": "resp_question_18",
-          "label": "현재 우리나라의 위치와 연도별…",
+          "label": "부문별 감축목표 확인",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "현재 우리나라의 위치와 연도별 부문별 구체적 감축 목표",
@@ -1298,7 +1298,7 @@
         "data": {
           "id": "resp_impression_19",
           "node_id": "resp_impression_19",
-          "label": "8월에 다시보아요 이런 자리가…",
+          "label": "후속 전략회의 요구",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "8월에 다시보아요\n\n이런 자리가 또 있어야 할거같아요 일명 전략회의",
@@ -1403,7 +1403,7 @@
         "data": {
           "id": "resp_question_20",
           "node_id": "resp_question_20",
-          "label": "탄소중립과 저탄소.차이 모두 숙…",
+          "label": "탄소중립·저탄소 구분",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "탄소중립과 저탄소.차이 모두 숙지하고 있나요",
@@ -1489,7 +1489,7 @@
         "data": {
           "id": "resp_impression_21",
           "node_id": "resp_impression_21",
-          "label": "포스트잇 큰 사이즈로 준비부탁드…",
+          "label": "큰 포스트잇 요청",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "포스트잇 큰 사이즈로 준비부탁드립니다. 화이팅입니다!",
@@ -1586,7 +1586,7 @@
         "data": {
           "id": "resp_question_22",
           "node_id": "resp_question_22",
-          "label": "질문",
+          "label": "질문 미기재",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "???",
@@ -1636,7 +1636,7 @@
         "data": {
           "id": "resp_impression_23",
           "node_id": "resp_impression_23",
-          "label": "구체적인 것을 알게 되어 준비에…",
+          "label": "구체적 준비 도움",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "구체적인 것을 알게 되어 준비에 도움이 됩니다",
@@ -1723,7 +1723,7 @@
         "data": {
           "id": "resp_question_24",
           "node_id": "resp_question_24",
-          "label": "내가 실천하고 있는 탄소 감축은…",
+          "label": "개인 실천 감축행동",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "내가 실천하고 있는 탄소 감축은  무엇이 있습니까?",
@@ -1808,7 +1808,7 @@
         "data": {
           "id": "resp_impression_25",
           "node_id": "resp_impression_25",
-          "label": "다들 열정적으로 참여하시는 모습…",
+          "label": "참여 열정에서 학습",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "다들 열정적으로 참여하시는 모습에 많이배웠습니다",
@@ -1901,7 +1901,7 @@
         "data": {
           "id": "resp_question_26",
           "node_id": "resp_question_26",
-          "label": "-",
+          "label": "질문 미기재",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "-",
@@ -1951,7 +1951,7 @@
         "data": {
           "id": "resp_impression_27",
           "node_id": "resp_impression_27",
-          "label": "이진우 이사님 강의 길게 듣고…",
+          "label": "모더레이터 교육 확대",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "이진우 이사님 강의 길게 듣고 실습시간,  나중에 모더래이터 교육 길게... 원랍니다.",
@@ -2065,7 +2065,7 @@
         "data": {
           "id": "resp_question_28",
           "node_id": "resp_question_28",
-          "label": "감축비용에 대해서 에는 방식 설명",
+          "label": "감축비용 설명 방식",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "감축비용에 대해서 숙의참여단에는 어떻게 설명하나요?",
@@ -2163,7 +2163,7 @@
         "data": {
           "id": "resp_impression_29",
           "node_id": "resp_impression_29",
-          "label": "모더레이터 활동에 대한 방법적…",
+          "label": "모더레이터 실습 요구",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "모더레이터 활동에 대한 방법적 강의가 더 필요해요",
@@ -2258,7 +2258,7 @@
         "data": {
           "id": "resp_question_30",
           "node_id": "resp_question_30",
-          "label": "탄소 감축으로 피해를 보는 산업…",
+          "label": "전환 피해 산업·노동자 보호",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "탄소 감축으로 피해를 보는 산업과 노동자의 보호방법(다양한 방안)",
@@ -2360,7 +2360,7 @@
         "data": {
           "id": "resp_impression_31",
           "node_id": "resp_impression_31",
-          "label": "이란 자리 한번 더, 감의빼고요",
+          "label": "추가 교육 자리 요구",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "이란 자리 한번 더, 감의빼고요",
@@ -2433,7 +2433,7 @@
         "data": {
           "id": "resp_question_32",
           "node_id": "resp_question_32",
-          "label": "패스합니다",
+          "label": "질문 미기재",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "패스합니다",
@@ -2468,7 +2468,7 @@
             "link_candidates": [
               {
                 "node_id": "resp_impression_1",
-                "label": "감사합니다",
+                "label": "긍정적 참여 소감",
                 "score": 0.2433,
                 "reason": "공유 분석렌즈와 부분 유사성이 함께 나타남"
               }
@@ -2492,7 +2492,7 @@
               "link_candidates": [
                 {
                   "node_id": "resp_impression_1",
-                  "label": "감사합니다",
+                  "label": "긍정적 참여 소감",
                   "score": 0.2433,
                   "reason": "공유 분석렌즈와 부분 유사성이 함께 나타남"
                 }
@@ -2505,7 +2505,7 @@
         "data": {
           "id": "resp_impression_33",
           "node_id": "resp_impression_33",
-          "label": "새로 알게된것이 많습니다.",
+          "label": "새로운 정보 학습",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "새로 알게된것이 많습니다.",
@@ -2553,7 +2553,7 @@
             "link_candidates": [
               {
                 "node_id": "resp_impression_17",
-                "label": "많이 배웠습니다.",
+                "label": "참여 열정에서 학습",
                 "score": 0.2228,
                 "reason": "공유 분석렌즈와 부분 유사성이 함께 나타남"
               }
@@ -2577,7 +2577,7 @@
               "link_candidates": [
                 {
                   "node_id": "resp_impression_17",
-                  "label": "많이 배웠습니다.",
+                  "label": "참여 열정에서 학습",
                   "score": 0.2228,
                   "reason": "공유 분석렌즈와 부분 유사성이 함께 나타남"
                 }
@@ -2590,7 +2590,7 @@
         "data": {
           "id": "resp_question_34",
           "node_id": "resp_question_34",
-          "label": "넷제로와 탄소 중립은 다른건가요",
+          "label": "넷제로·탄소중립 구분",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "넷제로와 탄소 중립은 다른건가요?",
@@ -2667,7 +2667,7 @@
         "data": {
           "id": "resp_impression_35",
           "node_id": "resp_impression_35",
-          "label": "긴장됩니다",
+          "label": "참여 긴장감",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "긴장됩니다",
@@ -2726,7 +2726,7 @@
         "data": {
           "id": "resp_question_36",
           "node_id": "resp_question_36",
-          "label": "우리 모두의 지속가능한 삶을 위…",
+          "label": "지속가능한 기후행동",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "우리 모두의 지속가능한 삶을 위해 우리가 해야하는 탄소감축  기후행동은 무엇이라고 생각하시나요?",
@@ -2854,7 +2854,7 @@
         "data": {
           "id": "resp_impression_37",
           "node_id": "resp_impression_37",
-          "label": "기후위기에 대한 사전 지식을 습…",
+          "label": "돌발상황 대응 준비",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "기후위기에 대한 사전 지식을 습득하고 돌발 상황에 대응할수 있게 준비해야겠다고 생각했습니다.",
@@ -2981,7 +2981,7 @@
         "data": {
           "id": "resp_question_38",
           "node_id": "resp_question_38",
-          "label": "전력이나 산업은 실행주체가 정부…",
+          "label": "전력·산업 의제 시민숙의",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "전력이나 산업은 실행주체가 정부나 기업인데 시민들이 논의하는 것이 어렵지 않을지. 그럼에도 불구하고 의제를 끌어내야 하는지 궁금합니다.",
@@ -4306,7 +4306,7 @@
   },
   "meta": {
     "variant": "participant-open-questions",
-    "generated_at": "2026-06-28T09:49:05.821Z",
+    "generated_at": "2026-06-28T09:53:55.811Z",
     "source": "local-csv",
     "threshold": 0.08,
     "counts": {
@@ -4384,70 +4384,70 @@
       "degree_top": [
         {
           "id": "resp_question_10",
-          "label": "없다",
+          "label": "질문 미기재",
           "group": "5조",
           "question_key": "question",
           "value": 1
         },
         {
           "id": "resp_question_14",
-          "label": "없다",
+          "label": "질문 미기재",
           "group": "7조",
           "question_key": "question",
           "value": 1
         },
         {
           "id": "resp_impression_9",
-          "label": "좋았다.",
+          "label": "긍정적 참여 소감",
           "group": "5조",
           "question_key": "impression",
           "value": 0.9481
         },
         {
           "id": "resp_impression_13",
-          "label": "완전 좋았다",
+          "label": "긍정적 참여 소감",
           "group": "7조",
           "question_key": "impression",
           "value": 0.9297
         },
         {
           "id": "resp_impression_5",
-          "label": "좋았음",
+          "label": "긍정적 참여 소감",
           "group": "1조",
           "question_key": "impression",
           "value": 0.8825
         },
         {
           "id": "resp_impression_17",
-          "label": "많이 배웠습니다.",
+          "label": "참여 열정에서 학습",
           "group": "2조",
           "question_key": "impression",
           "value": 0.8662
         },
         {
           "id": "resp_impression_25",
-          "label": "다들 열정적으로 참여하시는 모습…",
+          "label": "참여 열정에서 학습",
           "group": "2조",
           "question_key": "impression",
           "value": 0.8662
         },
         {
           "id": "resp_question_24",
-          "label": "내가 실천하고 있는 탄소 감축은…",
+          "label": "개인 실천 감축행동",
           "group": "14조",
           "question_key": "question",
           "value": 0.8386
         },
         {
           "id": "resp_question_36",
-          "label": "우리 모두의 지속가능한 삶을 위…",
+          "label": "지속가능한 기후행동",
           "group": "11조",
           "question_key": "question",
           "value": 0.8386
         },
         {
           "id": "resp_question_20",
-          "label": "탄소중립과 저탄소.차이 모두 숙…",
+          "label": "탄소중립·저탄소 구분",
           "group": "4조",
           "question_key": "question",
           "value": 0.8366
@@ -4456,42 +4456,42 @@
       "betweenness_top": [
         {
           "id": "resp_impression_1",
-          "label": "감사합니다",
+          "label": "긍정적 참여 소감",
           "group": "1조",
           "question_key": "impression",
           "value": 0
         },
         {
           "id": "resp_question_2",
-          "label": "용어를 통일 할 수 없",
+          "label": "용어 통일 필요",
           "group": "1조",
           "question_key": "question",
           "value": 0
         },
         {
           "id": "resp_impression_3",
-          "label": "유용한 정보였음",
+          "label": "긍정적 참여 소감",
           "group": "1조",
           "question_key": "impression",
           "value": 0
         },
         {
           "id": "resp_question_4",
-          "label": "없음",
+          "label": "질문 미기재",
           "group": "1조",
           "question_key": "question",
           "value": 0
         },
         {
           "id": "resp_impression_5",
-          "label": "좋았음",
+          "label": "긍정적 참여 소감",
           "group": "1조",
           "question_key": "impression",
           "value": 0
         },
         {
           "id": "resp_question_6",
-          "label": "궁금함",
+          "label": "질문 미기재",
           "group": "1조",
           "question_key": "question",
           "value": 0
@@ -4505,21 +4505,21 @@
         },
         {
           "id": "resp_question_8",
-          "label": "트럼프의 미국도 안하는데 왜 우…",
+          "label": "국제 형평성 문제",
           "group": "1조",
           "question_key": "question",
           "value": 0
         },
         {
           "id": "resp_impression_9",
-          "label": "좋았다.",
+          "label": "긍정적 참여 소감",
           "group": "5조",
           "question_key": "impression",
           "value": 0
         },
         {
           "id": "resp_question_10",
-          "label": "없다",
+          "label": "질문 미기재",
           "group": "5조",
           "question_key": "question",
           "value": 0
@@ -4528,42 +4528,42 @@
       "closeness_top": [
         {
           "id": "resp_impression_1",
-          "label": "감사합니다",
+          "label": "긍정적 참여 소감",
           "group": "1조",
           "question_key": "impression",
           "value": 1
         },
         {
           "id": "resp_question_2",
-          "label": "용어를 통일 할 수 없",
+          "label": "용어 통일 필요",
           "group": "1조",
           "question_key": "question",
           "value": 1
         },
         {
           "id": "resp_impression_3",
-          "label": "유용한 정보였음",
+          "label": "긍정적 참여 소감",
           "group": "1조",
           "question_key": "impression",
           "value": 1
         },
         {
           "id": "resp_question_4",
-          "label": "없음",
+          "label": "질문 미기재",
           "group": "1조",
           "question_key": "question",
           "value": 1
         },
         {
           "id": "resp_impression_5",
-          "label": "좋았음",
+          "label": "긍정적 참여 소감",
           "group": "1조",
           "question_key": "impression",
           "value": 1
         },
         {
           "id": "resp_question_6",
-          "label": "궁금함",
+          "label": "질문 미기재",
           "group": "1조",
           "question_key": "question",
           "value": 1
@@ -4577,21 +4577,21 @@
         },
         {
           "id": "resp_question_8",
-          "label": "트럼프의 미국도 안하는데 왜 우…",
+          "label": "국제 형평성 문제",
           "group": "1조",
           "question_key": "question",
           "value": 1
         },
         {
           "id": "resp_impression_9",
-          "label": "좋았다.",
+          "label": "긍정적 참여 소감",
           "group": "5조",
           "question_key": "impression",
           "value": 1
         },
         {
           "id": "resp_question_10",
-          "label": "없다",
+          "label": "질문 미기재",
           "group": "5조",
           "question_key": "question",
           "value": 1
@@ -4600,70 +4600,70 @@
       "pagerank_top": [
         {
           "id": "resp_impression_11",
-          "label": "운영 모더레이터의 운영 실제",
+          "label": "모더레이터 실습 요구",
           "group": "9조",
           "question_key": "impression",
           "value": 1
         },
         {
           "id": "resp_impression_29",
-          "label": "모더레이터 활동에 대한 방법적…",
+          "label": "모더레이터 실습 요구",
           "group": "4조",
           "question_key": "impression",
           "value": 1
         },
         {
           "id": "resp_question_10",
-          "label": "없다",
+          "label": "질문 미기재",
           "group": "5조",
           "question_key": "question",
           "value": 0.9494
         },
         {
           "id": "resp_question_14",
-          "label": "없다",
+          "label": "질문 미기재",
           "group": "7조",
           "question_key": "question",
           "value": 0.9494
         },
         {
           "id": "resp_impression_9",
-          "label": "좋았다.",
+          "label": "긍정적 참여 소감",
           "group": "5조",
           "question_key": "impression",
           "value": 0.9088
         },
         {
           "id": "resp_impression_13",
-          "label": "완전 좋았다",
+          "label": "긍정적 참여 소감",
           "group": "7조",
           "question_key": "impression",
           "value": 0.8934
         },
         {
           "id": "resp_impression_5",
-          "label": "좋았음",
+          "label": "긍정적 참여 소감",
           "group": "1조",
           "question_key": "impression",
           "value": 0.8547
         },
         {
           "id": "resp_impression_17",
-          "label": "많이 배웠습니다.",
+          "label": "참여 열정에서 학습",
           "group": "2조",
           "question_key": "impression",
           "value": 0.8419
         },
         {
           "id": "resp_impression_25",
-          "label": "다들 열정적으로 참여하시는 모습…",
+          "label": "참여 열정에서 학습",
           "group": "2조",
           "question_key": "impression",
           "value": 0.8419
         },
         {
           "id": "resp_question_24",
-          "label": "내가 실천하고 있는 탄소 감축은…",
+          "label": "개인 실천 감축행동",
           "group": "14조",
           "question_key": "question",
           "value": 0.819
@@ -4673,7 +4673,7 @@
     "similarity_clusters": [
       {
         "id": "sim_cluster_1",
-        "label": "좋았음",
+        "label": "긍정적 참여 소감",
         "size": 3,
         "question_keys": [
           "impression"
@@ -4714,7 +4714,7 @@
       },
       {
         "id": "sim_cluster_3",
-        "label": "많이 배웠습니다",
+        "label": "참여 열정에서 학습",
         "size": 2,
         "question_keys": [
           "impression"
@@ -4730,7 +4730,7 @@
       },
       {
         "id": "sim_cluster_4",
-        "label": "없다",
+        "label": "질문 미기재",
         "size": 2,
         "question_keys": [
           "question"
@@ -4747,7 +4747,7 @@
       },
       {
         "id": "sim_cluster_5",
-        "label": "탄소중립과 저탄소.차이 모두 숙…",
+        "label": "탄소중립·저탄소 구분",
         "size": 2,
         "question_keys": [
           "question"
@@ -4764,7 +4764,7 @@
       },
       {
         "id": "sim_cluster_6",
-        "label": "내가 실천하고 있는 탄소 감축은…",
+        "label": "개인 실천 감축행동",
         "size": 2,
         "question_keys": [
           "question"
@@ -4783,9 +4783,9 @@
     "link_candidates": [
       {
         "source": "resp_impression_1",
-        "source_label": "감사합니다",
+        "source_label": "긍정적 참여 소감",
         "target": "resp_question_32",
-        "target_label": "패스합니다",
+        "target_label": "질문 미기재",
         "relation": "linkCandidate",
         "label": "연결 후보",
         "score": 0.2433,
@@ -4798,9 +4798,9 @@
       },
       {
         "source": "resp_impression_17",
-        "source_label": "많이 배웠습니다.",
+        "source_label": "참여 열정에서 학습",
         "target": "resp_impression_33",
-        "target_label": "새로 알게된것이 많습니다.",
+        "target_label": "새로운 정보 학습",
         "relation": "linkCandidate",
         "label": "연결 후보",
         "score": 0.2228,
@@ -4815,58 +4815,58 @@
     "similarity_edges": [
       {
         "source": "resp_question_10",
-        "source_label": "없다",
+        "source_label": "질문 미기재",
         "target": "resp_question_14",
-        "target_label": "없다",
+        "target_label": "질문 미기재",
         "similarity": 1
       },
       {
         "source": "resp_impression_9",
-        "source_label": "좋았다.",
+        "source_label": "긍정적 참여 소감",
         "target": "resp_impression_13",
-        "target_label": "완전 좋았다",
+        "target_label": "긍정적 참여 소감",
         "similarity": 0.4286
       },
       {
         "source": "resp_impression_17",
-        "source_label": "많이 배웠습니다.",
+        "source_label": "참여 열정에서 학습",
         "target": "resp_impression_25",
-        "target_label": "다들 열정적으로 참여하시는 모습…",
+        "target_label": "참여 열정에서 학습",
         "similarity": 0.2326
       },
       {
         "source": "resp_impression_5",
-        "source_label": "좋았음",
+        "source_label": "긍정적 참여 소감",
         "target": "resp_impression_9",
-        "target_label": "좋았다.",
+        "target_label": "긍정적 참여 소감",
         "similarity": 0.2
       },
       {
         "source": "resp_impression_11",
-        "source_label": "운영 모더레이터의 운영 실제",
+        "source_label": "모더레이터 실습 요구",
         "target": "resp_impression_29",
-        "target_label": "모더레이터 활동에 대한 방법적…",
+        "target_label": "모더레이터 실습 요구",
         "similarity": 0.1538
       },
       {
         "source": "resp_impression_5",
-        "source_label": "좋았음",
+        "source_label": "긍정적 참여 소감",
         "target": "resp_impression_13",
-        "target_label": "완전 좋았다",
+        "target_label": "긍정적 참여 소감",
         "similarity": 0.1111
       },
       {
         "source": "resp_question_24",
-        "source_label": "내가 실천하고 있는 탄소 감축은…",
+        "source_label": "개인 실천 감축행동",
         "target": "resp_question_36",
-        "target_label": "우리 모두의 지속가능한 삶을 위…",
+        "target_label": "지속가능한 기후행동",
         "similarity": 0.099
       },
       {
         "source": "resp_question_20",
-        "source_label": "탄소중립과 저탄소.차이 모두 숙…",
+        "source_label": "탄소중립·저탄소 구분",
         "target": "resp_question_34",
-        "target_label": "넷제로와 탄소 중립은 다른건가요",
+        "target_label": "넷제로·탄소중립 구분",
         "similarity": 0.0893
       }
     ],

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-28T09:49:48.569Z",
+  "generated_at": "2026-06-28T09:54:13.990Z",
   "scope": "0628 participant open-response test",
   "input": {
     "provider": "google_workspace_cli",
@@ -140,6 +140,33 @@
       "nodes": 45,
       "edges": 86,
       "note": "Refreshed from live Google Form responses via gws; Form Responses 1 remains sample data."
+    },
+    "live_participant_label_qa": {
+      "updated_at": "2026-06-28T09:54:13.991Z",
+      "question_labels": [
+        "용어 통일 필요",
+        "질문 미기재",
+        "질문 미기재",
+        "국제 형평성 문제",
+        "질문 미기재",
+        "에너지 전환 전략",
+        "질문 미기재",
+        "분과·온도목표 쟁점",
+        "부문별 감축목표 확인",
+        "탄소중립·저탄소 구분",
+        "질문 미기재",
+        "개인 실천 감축행동",
+        "질문 미기재",
+        "감축비용 설명 방식",
+        "전환 피해 산업·노동자 보호",
+        "질문 미기재",
+        "넷제로·탄소중립 구분",
+        "지속가능한 기후행동",
+        "전력·산업 의제 시민숙의"
+      ],
+      "raw_cut_label_count": 0,
+      "status": "passed",
+      "note": "Actual participant question nodes use facilitator-facing summary labels, not raw leading text truncation."
     }
   }
 }
