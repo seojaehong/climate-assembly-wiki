@@ -15,3 +15,9 @@
 - Verified: `git diff --check` passed; grep checks found the required platform core, safety gates, live JSON first slice, no-AI-consensus rule, and private transcript/RLS constraints in the specs.
 - Learned: implementation should proceed next as small slices, starting with DB contract freeze and canvas write hardening rather than live microphone capture.
 - Next: commit and push.
+
+## 2026-06-28 T0628
+- Changed: added a separate 0628 participant open-question ontology page instead of changing the existing `/workshop-graph/` record surface.
+- Verified: Playwright opened `/workshop-graph-0628-test/index.html`; state showed showcase mode, source `participant-open-questions`, count 75, edge labels on; stats showed 38 visible nodes, 81 visible edges, 38 node labels, and 81 edge labels. Hover card showed speaker `1조`, question `기후시민회의 운영 관련 질문`, and the full sentence text.
+- Learned: the existing Miro/post-it resources are already in `src/components/BoardAgendaCard.astro`, `src/components/BoardZone.astro`, `src/pages/[lang]/moderator/board.astro`, and `public/board-demo.html`; 0628 should reuse their interaction tone without mutating archival graph pages.
+- Next: commit and push the isolated 0628 test slice.

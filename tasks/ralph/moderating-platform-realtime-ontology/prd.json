@@ -51,6 +51,25 @@
         "tasks/ralph/moderating-platform-realtime-ontology/prd.json",
         "tasks/ralph/moderating-platform-realtime-ontology/progress.txt"
       ]
+    },
+    {
+      "id": "T0628",
+      "title": "Participant open-question ontology test page",
+      "priority": 4,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "Existing /workshop-graph/ source list and viewer remain content-unchanged",
+        "0628 test page opens separately with post-it-style labels and full-message hover card",
+        "Google Form/Sheet CSV is the day-of input path while Supabase remains an approval-gated upgrade"
+      ],
+      "files": [
+        "public/workshop-graph-0628-test/index.html",
+        "public/workshop-graph-0628-test/sources.json",
+        "public/workshop-graph-0628-test/data/participant-open-questions.json",
+        "scripts/build-participant-question-ontology.mjs",
+        "docs/participant-open-question-ontology-test.md"
+      ]
     }
   ]
 }
