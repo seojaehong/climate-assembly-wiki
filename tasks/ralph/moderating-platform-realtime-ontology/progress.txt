@@ -33,3 +33,9 @@
 - Verified: `gws forms forms get` returned formId `1yktkA_XAMGcVt4mlnC-0Yc3d3N0N0YQ__Dk1TfdTaCc`, published response URL, and all three required question items; `gws sheets spreadsheets values get` read the gws Sheet `Form Responses 1!A1:D2` headers and sample row.
 - Learned: `gws forms forms create` works after clearing stale token cache and reauthing with explicit scopes; Google Forms API still does not expose response destination linking to an existing spreadsheet, so the last Form UI `Responses` to Sheet selection remains manual.
 - Next: link the created Form to the prepared Sheet in the Forms UI, then refresh ontology JSON from the Sheet CSV URL.
+
+## 2026-06-28 shared-memory-analysis
+- Changed: added `docs/codex-claude-shared-memory-2026-06-28.md` as the shared coordination note for Codex and Claude, and expanded `docs/participant-open-question-ontology-test.md` with ontology/text-network analysis methods beyond frequency and betweenness.
+- Verified: the shared note records the active working root, current 0628 URLs, design baseline, non-overlap rule for `질문`/`소감` hubs, QR PNG requirement, and the last verified deployed commit.
+- Learned: the day-of analysis should show facilitator-facing Korean labels (`많이 나온 것`, `이어주는 질문`, `유사 묶음`, `논의 프레임`) while keeping English metric field names internally.
+- Next: implement the next analysis slice in JSON generation/UI only after checking this shared memory and avoiding duplication with parallel Claude work.

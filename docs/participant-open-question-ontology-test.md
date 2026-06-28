@@ -67,6 +67,43 @@ node scripts/build-participant-question-ontology.mjs --csv-url "https://docs.goo
 - 비트윈니스: 응답 유사도 그래프에서 Brandes 방식으로 betweenness centrality를 계산한다.
 - 추가로 closeness centrality도 함께 산출해 현장 검토용 순위를 남긴다.
 
+## 분석 방식 확장 계획
+
+0628 테스트에서는 학술 지표명을 그대로 노출하기보다, 관리자/발표 화면에서 바로 이해되는 말로 변환한다.
+
+우선 적용 순서:
+
+1. `Frequency`: 많이 나온 단어와 요약 라벨을 찾는다. 화면 표기는 `많이 나온 것`.
+2. `Degree centrality`: 직접 연결이 많은 응답/요약 노드를 찾는다. 화면 표기는 `많이 연결된 것`.
+3. `Betweenness centrality`: 소감과 질문, 또는 서로 다른 조의 응답 사이를 이어주는 중간 노드를 찾는다. 화면 표기는 `이어주는 질문`.
+4. `Closeness centrality`: 전체 응답군에 의미상 빨리 도달하는 노드를 찾는다. 화면 표기는 `전체와 가까운 것`.
+5. `PageRank`: 중요한 노드와 연결된 응답을 찾는다. 화면 표기는 `핵심 흐름과 가까운 것`.
+6. `Similarity cluster`: Jaccard/Cosine 유사도로 유사 질문·유사 소감을 묶는다. 화면 표기는 `유사 묶음`.
+7. `Theory lens`: 하버마스/사회과학 렌즈로 응답을 해석한다. 화면 표기는 `논의 프레임`.
+8. `Ego network`: 선택한 노드 주변 1-hop/2-hop만 확대한다. 화면 표기는 `이 응답 주변 보기`.
+9. `Link candidate`: 아직 직접 연결되지 않았지만 구조상 연결 후보인 응답을 제안한다. 화면 표기는 `연결 후보`이며, 자동 확정하지 않는다.
+
+지표별 내부 필드 후보:
+
+| 분석 | 내부 필드 | 화면 표현 | 오늘 테스트 적용 |
+| --- | --- | --- | --- |
+| 빈도 | `analysis.frequency` | 많이 나온 것 | 가능 |
+| 연결 중심성 | `analysis.degree` | 많이 연결된 것 | 가능 |
+| 사이 중심성 | `analysis.betweenness` | 이어주는 질문 | 가능 |
+| 근접 중심성 | `analysis.closeness` | 전체와 가까운 것 | 가능 |
+| PageRank | `analysis.pagerank` | 핵심 흐름과 가까운 것 | 다음 slice |
+| 유사 군집 | `analysis.similarity_cluster` | 유사 묶음 | 가능 |
+| 이론 렌즈 | `analysis.theory_lens` | 논의 프레임 | 가능 |
+| 에고 네트워크 | runtime filter | 이 응답 주변 보기 | UI slice |
+| 링크 후보 | `analysis.link_candidates` | 연결 후보 | 검토용만 |
+
+주의:
+
+- 분석 결과는 합의나 최종 판단이 아니라 진행자 검토 보조다.
+- `추천 연결`은 관리자 검토 전까지 확정 엣지와 구분한다.
+- Supabase 승격 전에는 JSON snapshot에 분석 필드를 함께 저장한다.
+- Google Form/Sheet 원문은 보존하고, 노드 라벨은 별도 요약 필드로 관리한다.
+
 ## 입력 파이프 결정
 
 오늘 참여단 테스트는 Google Form/Sheet를 주 경로로 쓴다.
