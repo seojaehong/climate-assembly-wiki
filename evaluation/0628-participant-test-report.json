@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-28T12:18:00+09:00",
+  "generated_at": "2026-06-28T13:08:00+09:00",
   "scope": "0628 participant open-response test",
   "input": {
     "provider": "google_workspace_cli",
@@ -13,32 +13,47 @@
     "columns": ["타임스탬프", "조", "소감", "질문", "메모", "처리상태"],
     "group_options": ["1조", "2조", "3조", "4조", "5조", "6조", "7조", "8조", "9조", "10조", "11조", "12조", "13조", "14조", "15조", "연구진"],
     "linked_sheet_confirmed": true,
+    "editor_permissions": {
+      "form": ["iceamericano9@gmail.com", "kesica3@gmail.com"],
+      "spreadsheet": ["iceamericano9@gmail.com", "kesica3@gmail.com"]
+    },
     "manual_step_remaining": "없음. Form linkedSheetId가 위 Google Sheet로 확인됐다."
   },
   "graph_data": {
     "path": "public/workshop-graph-0628-test/data/participant-open-questions.json",
-    "rows": 8,
-    "responses": 16,
-    "impression_responses": 8,
-    "question_responses": 8,
-    "nodes": 18,
-    "edges": 20,
-    "similarity_edges": 4,
-    "keyword_nodes": 0
+    "rows": 40,
+    "responses": 80,
+    "impression_responses": 40,
+    "question_responses": 40,
+    "nodes": 90,
+    "edges": 378,
+    "similarity_edges": 136,
+    "keyword_nodes": 0,
+    "theory_lens_nodes": 8,
+    "theory_lens_edges": 162
   },
   "views": {
     "admin": "/0628-admin/index.html",
-    "ontology": "/workshop-graph-0628-test/index.html?source=participant-open-questions&mode=showcase&count=75&edgeLabels=on&theme=light",
+    "ontology": "/workshop-graph-0628-test/index.html?source=participant-open-questions&mode=showcase&count=50&edgeLabels=on&theme=light",
     "miro_board": "/miro-0628-test/index.html",
     "original_miro_resource": "/board-demo.html"
+  },
+  "deployment": {
+    "primary_url": "https://climate-assembly.org/0628-admin/index.html",
+    "pages_url": "https://climate-assembly-0628-test.pages.dev/0628-admin/index.html",
+    "project": "climate-assembly-0628-test"
   },
   "verification": {
     "local_server": "http://127.0.0.1:4321",
     "server_status": 200,
     "data_generation_command": "node scripts/build-participant-question-ontology.mjs --csv %TEMP%/participant-open-questions-gws.csv",
-    "data_generation_result": "rows=8 responses=16 nodes=18 edges=20",
+    "data_generation_result": "rows=40 responses=80 nodes=90 edges=378",
     "browser_tabs_opened": true,
     "miro_group_view": "implemented with view-groups button and group-filter select for 1조-15조 plus 연구진",
+    "node_labeling": "원문 앞부분 자르기 대신 표시용 요약 라벨을 생성하고, 원문 전문은 메시지 카드에 유지한다.",
+    "methodology": "변형 하버마스와 사회과학 분석 렌즈를 추가해 절차 정당성, 역할 경계, 공론장 연결성, 숙의 품질, 포용·대표성, 신뢰·투명성, 발언 안정성, 전문성 매개를 함께 본다.",
+    "message_card": "포스트잇형 배경을 제거하고 온톨로지 최종판에 가까운 흰 패널형 카드로 정리했다.",
+    "classroom_readability": "50명 강의실 기준으로 쇼케이스 노드 폰트와 노드 크기를 키우고 스타일 프리셋을 추가했다.",
     "note": "기존 workshop-graph와 board-demo 원본은 수정하지 않고 0628 테스트 페이지를 별도로 추가했다."
   }
 }

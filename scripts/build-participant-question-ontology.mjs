@@ -66,6 +66,65 @@ const DOMAIN_TERMS = [
   '부담', '지원', '규제', '전환', '효율', '폐기물', '일회용품',
 ];
 
+const THEORY_LENSES = [
+  {
+    id: 'lens_public_sphere',
+    label: '공론장 연결성',
+    model: '변형 하버마스',
+    description: '현장·온라인·조별 논의가 하나의 공론장으로 연결되는지 본다.',
+    patterns: [/온라인|현장|공론장|공개|공유|같이 보|연결|전체/],
+  },
+  {
+    id: 'lens_procedural_legitimacy',
+    label: '절차 정당성',
+    model: '숙의 민주주의',
+    description: '의제 조정, 우선순위, 최종 판단의 절차가 납득 가능한지 본다.',
+    patterns: [/절차|기준|우선순위|최종 판단|결정 이후|어디까지|반영 비율|조정/],
+  },
+  {
+    id: 'lens_role_boundary',
+    label: '역할 경계',
+    model: '거버넌스 분석',
+    description: '참여단, 기획참여단, 연구진, 모더레이터의 권한과 책임 경계를 본다.',
+    patterns: [/역할|기획참여단|숙의참여단|연구진|모더레이터|누가|개입/],
+  },
+  {
+    id: 'lens_discourse_quality',
+    label: '숙의 품질',
+    model: '담론윤리 변형',
+    description: '질문이 명확히 정리되고 유사 의견이 묶이며 논의가 깊어지는지 본다.',
+    patterns: [/질문|핵심|정리|묶|비슷한|이해|논의|토론|명확|선명/],
+  },
+  {
+    id: 'lens_inclusion',
+    label: '포용·대표성',
+    model: '사회적 대표성',
+    description: '소수의견과 우려가 배제되지 않고 권고안까지 이동하는지 본다.',
+    patterns: [/소수의견|우려|배제|포함|대표|권고안|발언 부담|남겨/],
+  },
+  {
+    id: 'lens_trust_transparency',
+    label: '신뢰·투명성',
+    model: '제도 신뢰',
+    description: '검토 기준, 공개 범위, 기록 방식이 신뢰를 만드는지 본다.',
+    patterns: [/검토|공개|투명|기록|회의록|기준 공유|설명|신뢰/],
+  },
+  {
+    id: 'lens_emotional_safety',
+    label: '발언 안정성',
+    model: '참여 심리',
+    description: '참여자가 부담을 낮추고 안전하게 말할 수 있는 조건을 본다.',
+    patterns: [/부담|편안|안심|말하기|발언|소외|긴장|안전/],
+  },
+  {
+    id: 'lens_knowledge_mediation',
+    label: '전문성 매개',
+    model: '지식사회학',
+    description: '전문가·연구진 해석이 시민 언어와 어떻게 연결되는지 본다.',
+    patterns: [/연구진|전문|검토|자료|근거|해석|설명|데이터/],
+  },
+];
+
 function parseArgs(argv) {
   const args = {
     csv: null,
@@ -240,12 +299,23 @@ function buildMetricEdges(responses, simEdges, terms) {
   }
   for (let i = 0; i < responses.length; i += 1) {
     for (let j = i + 1; j < responses.length; j += 1) {
-      if (responses[i].questionKey !== responses[j].questionKey) continue;
-      const sharedTerms = responses[i].tokens.filter((t) => topTermSet.has(t) && responses[j].tokens.includes(t));
+      const sameQuestion = responses[i].questionKey === responses[j].questionKey;
+      const sharedTerms = sameQuestion ? responses[i].tokens.filter((t) => topTermSet.has(t) && responses[j].tokens.includes(t)) : [];
+      const sharedLenses = (responses[i].lenses || []).filter((id) => (responses[j].lenses || []).includes(id));
       if (!sharedTerms.length) continue;
       const key = keyFor(responses[i].id, responses[j].id);
       const existing = metricEdges.get(key);
-      const weight = Math.min(1, (existing?.weight || 0) + sharedTerms.length * 0.08);
+      const weight = Math.min(1, (existing?.weight || 0) + sharedTerms.length * 0.08 + sharedLenses.length * 0.12);
+      metricEdges.set(key, { source: responses[i].id, target: responses[j].id, weight });
+    }
+  }
+  for (let i = 0; i < responses.length; i += 1) {
+    for (let j = i + 1; j < responses.length; j += 1) {
+      const sharedLenses = (responses[i].lenses || []).filter((id) => (responses[j].lenses || []).includes(id));
+      if (!sharedLenses.length) continue;
+      const key = keyFor(responses[i].id, responses[j].id);
+      const existing = metricEdges.get(key);
+      const weight = Math.min(1, (existing?.weight || 0) + sharedLenses.length * 0.12);
       metricEdges.set(key, { source: responses[i].id, target: responses[j].id, weight });
     }
   }
@@ -314,10 +384,87 @@ function centrality(nodes, edges) {
   };
 }
 
-function responseLabel(text) {
+const LABEL_PATTERNS = [
+  [/의제 범위.*조정.*기준|조정할 수 있는 기준/, '의제 범위 조정 기준'],
+  [/역할.*겹칠.*최종 판단|역할이 겹칠 때/, '역할 겹침 시 최종 판단 주체'],
+  [/소수의견.*회의록|소수의견.*권고안/, '소수의견 기록·권고안 반영'],
+  [/온라인.*현장.*반영 비율|현장토론.*반영 비율/, '온라인·현장 의견 반영 비율'],
+  [/모더레이터.*원문.*유지|원문 표현.*유지/, '모더레이터 원문 유지 범위'],
+  [/의제.*수정.*절차|결정 이후.*수정/, '의제 수정 절차'],
+  [/질문.*우선순위.*기준|우선순위는 어떤 기준/, '질문 우선순위 기준'],
+  [/연구진.*검토.*공개|검토 결과.*공개/, '연구진 검토 결과 공개 범위'],
+  [/우려사항.*권고안.*표시|우려사항은 최종 권고안/, '우려사항 권고안 별도 표시'],
+  [/의제 범위.*넓게.*조별|조별로 나누니/, '조별 논의로 의제 이해'],
+  [/역할.*구분.*설명|역할을 구분/, '참여단·기획참여단 역할 구분'],
+  [/소수의견.*기록.*발언 부담|발언 부담.*줄/, '소수의견 기록으로 발언 부담 완화'],
+  [/온라인 의견.*현장 의견.*공정|같이 보는 방식/, '온라인·현장 의견 병행 검토'],
+  [/긴 발언.*정리|핵심이 잘 보/, '모더레이터 정리로 핵심 파악'],
+  [/의제.*고정.*토론 중 조정|토론 중 조정/, '토론 중 의제 조정 가능성'],
+  [/비슷한 내용.*묶어|질문이 많이.*묶어/, '유사 질문 묶음으로 토론 용이'],
+  [/연구진.*검토 기준|검토 기준.*공유/, '연구진 검토 기준 공유 필요'],
+  [/우려사항.*따로 모아|쟁점이 더 선명/, '우려사항 분리로 쟁점 명확화'],
+];
+
+const LABEL_STOP_PHRASES = [
+  '기후시민회의', '숙의참여단과', '숙의참여단', '기획참여단의', '기획참여단이',
+  '참여단과', '참여단', '관련해서', '어디까지', '어떻게', '어떤', '누가',
+  '하나요', '인가요', '되나요', '있나요', '필요한가요', '좋았습니다',
+  '느껴졌습니다', '같습니다', '들었습니다',
+];
+
+const CONNECTIVE_ENDINGS = [
+  '수 있는', '할 수 있는', '때', '에서', '으로', '와', '과', '은', '는', '이', '가',
+  '어떤', '어떻게', '누가', '어디까지',
+];
+
+function compactDisplayLabel(text, fallbackKind = '') {
   const clean = String(text || '').replace(/\s+/g, ' ').trim();
-  if (clean.length <= 28) return clean;
-  return `${clean.slice(0, 27)}…`;
+  if (!clean) return fallbackKind || '응답';
+  for (const [pattern, label] of LABEL_PATTERNS) {
+    if (pattern.test(clean)) return label;
+  }
+  let label = clean
+    .replace(/[?？!！.。]+$/g, '')
+    .replace(/할 수 있나요|할 수 있는지|할 수 있는|수 있는/g, '가능성')
+    .replace(/해야 하나요|해야 하는지|해야 하는/g, '필요성')
+    .replace(/어디까지인가요|어디까지/g, '범위')
+    .replace(/어떻게 남겨지나요|어떻게/g, '방식')
+    .replace(/누가 하나요|누가/g, '주체')
+    .replace(/어떤 기준으로 정하나요|어떤 기준/g, '기준')
+    .replace(/무엇인가요|무엇인지|무엇/g, '내용')
+    .replace(/인가요|하나요|되나요|있나요|나요$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  for (const phrase of LABEL_STOP_PHRASES) {
+    label = label.replaceAll(phrase, '');
+  }
+  label = label.replace(/\s+/g, ' ').replace(/^[,·\s]+|[,·\s]+$/g, '').trim();
+  if (!label) label = fallbackKind || clean;
+  let words = label.split(/\s+/).filter(Boolean);
+  while (words.length > 1 && CONNECTIVE_ENDINGS.includes(words.at(-1))) words = words.slice(0, -1);
+  label = words.join(' ');
+  if (label.length <= 18) return label;
+  const cutPoints = [' 기준', ' 범위', ' 방식', ' 주체', ' 절차', ' 필요성', ' 가능성', ' 반영', ' 공개', ' 공유'];
+  for (const point of cutPoints) {
+    const idx = label.indexOf(point);
+    if (idx > 4 && idx + point.length <= 20) return label.slice(0, idx + point.length).trim();
+  }
+  return `${label.slice(0, 17).trim()}…`;
+}
+
+function responseLabel(text, questionKey = '') {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  if (clean.length <= 18 && !/[?？]$/.test(clean)) return clean;
+  return compactDisplayLabel(clean, questionKey === 'question' ? '질문' : '소감');
+}
+
+function detectTheoryLenses(text) {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  const hits = THEORY_LENSES
+    .filter((lens) => lens.patterns.some((pattern) => pattern.test(clean)))
+    .map((lens) => lens.id);
+  if (hits.length) return [...new Set(hits)].slice(0, 3);
+  return ['lens_discourse_quality'];
 }
 
 function buildGraph(rows, args) {
@@ -337,6 +484,7 @@ function buildGraph(rows, args) {
         timestamp,
         text: answer,
         tokens: tokenize(answer),
+        lenses: detectTheoryLenses(answer),
       });
     });
   });
@@ -364,12 +512,33 @@ function buildGraph(rows, args) {
       },
     });
   }
+  for (const lens of THEORY_LENSES) {
+    const count = responses.filter((r) => r.lenses.includes(lens.id)).length;
+    if (!count) continue;
+    nodes.push({
+      data: {
+        id: lens.id,
+        label: lens.label,
+        kind: 'Value',
+        kindKo: '분석렌즈',
+        text: `${lens.model}: ${lens.description}`,
+        session: 'analysis-method',
+        deg: count,
+        isolated: false,
+        meta: {
+          model: lens.model,
+          description: lens.description,
+          theory_lens: true,
+        },
+      },
+    });
+  }
   for (const r of responses) {
     nodes.push({
       data: {
         id: r.id,
         node_id: r.id,
-        label: responseLabel(r.text),
+        label: responseLabel(r.text, r.questionKey),
         kind: r.questionKey === 'impression' ? 'Claim' : 'Issue',
         kindKo: r.questionKey === 'impression' ? '소감' : '질문',
         text: r.text,
@@ -385,6 +554,7 @@ function buildGraph(rows, args) {
           group: r.group,
           timestamp: r.timestamp,
           tokens: r.tokens,
+          lenses: r.lenses,
           centrality: {
             degree: Number(metrics.degree[r.id]?.toFixed(4) || 0),
             betweenness: Number(metrics.betweenness[r.id]?.toFixed(4) || 0),
@@ -426,6 +596,24 @@ function buildGraph(rows, args) {
         meta: { question_key: r.questionKey },
       },
     });
+    for (const lensId of r.lenses) {
+      const lens = THEORY_LENSES.find((l) => l.id === lensId);
+      if (!lens) continue;
+      edges.push({
+        data: {
+          id: `lens_${edges.length + 1}`,
+          source: r.id,
+          target: lens.id,
+          rel: 'framesThrough',
+          relKo: '분석렌즈',
+          weight: 0.72,
+          meta: {
+            model: lens.model,
+            lens: lens.label,
+          },
+        },
+      });
+    }
     if (args.includeKeywordNodes) {
       for (const token of r.tokens) {
         const termId = termById.get(token);
@@ -460,7 +648,7 @@ function buildGraph(rows, args) {
 
   const responseById = Object.fromEntries(responses.map((r) => [r.id, r]));
   const topBy = (metric) => responses
-    .map((r) => ({ id: r.id, label: responseLabel(r.text), group: r.group, question_key: r.questionKey, value: Number(metrics[metric][r.id]?.toFixed(4) || 0) }))
+    .map((r) => ({ id: r.id, label: responseLabel(r.text, r.questionKey), group: r.group, question_key: r.questionKey, value: Number(metrics[metric][r.id]?.toFixed(4) || 0) }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 10);
 
@@ -480,6 +668,20 @@ function buildGraph(rows, args) {
         edges: edges.length,
         similarity_edges: simEdges.length,
         keyword_nodes: args.includeKeywordNodes ? terms.length : 0,
+        theory_lens_nodes: THEORY_LENSES.filter((lens) => responses.some((r) => r.lenses.includes(lens.id))).length,
+        theory_lens_edges: responses.reduce((sum, r) => sum + r.lenses.length, 0),
+      },
+      theory_lenses: THEORY_LENSES.map((lens) => ({
+        id: lens.id,
+        label: lens.label,
+        model: lens.model,
+        count: responses.filter((r) => r.lenses.includes(lens.id)).length,
+        description: lens.description,
+      })).filter((lens) => lens.count > 0),
+      methodology: {
+        title: '변형 하버마스 + 사회과학 분석 렌즈',
+        summary: '응답을 정책 쟁점 구조로 강제하지 않고, 숙의 과정의 절차 정당성, 역할 경계, 포용성, 공론장 연결성, 신뢰, 발언 안정성, 전문성 매개로 읽는다.',
+        relation_logic: '문항 연결은 응답 관계, 유사 연결은 텍스트 유사성, 분석렌즈 연결은 사회과학적 해석 범주, 중심성은 유사성+공유 렌즈 네트워크에서 계산한다.',
       },
       centrality: {
         degree_top: topBy('degree'),
@@ -488,9 +690,9 @@ function buildGraph(rows, args) {
       },
       similarity_edges: simEdges.slice(0, 20).map((e) => ({
         source: e.source,
-        source_label: responseLabel(responseById[e.source]?.text),
+        source_label: responseLabel(responseById[e.source]?.text, responseById[e.source]?.questionKey),
         target: e.target,
-        target_label: responseLabel(responseById[e.target]?.text),
+        target_label: responseLabel(responseById[e.target]?.text, responseById[e.target]?.questionKey),
         similarity: Number(e.weight.toFixed(4)),
       })),
       advisory_notice: '참여단 주관식 응답을 현장 검토용으로 구조화한 임시 온톨로지입니다. 최종 해석이나 합의가 아닙니다.',
