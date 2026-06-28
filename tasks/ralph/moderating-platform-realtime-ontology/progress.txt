@@ -21,3 +21,9 @@
 - Verified: Playwright opened `/workshop-graph-0628-test/index.html`; state showed showcase mode, source `participant-open-questions`, count 75, edge labels on; stats showed 38 visible nodes, 81 visible edges, 38 node labels, and 81 edge labels. Hover card showed speaker `1조`, question `기후시민회의 운영 관련 질문`, and the full sentence text.
 - Learned: the existing Miro/post-it resources are already in `src/components/BoardAgendaCard.astro`, `src/components/BoardZone.astro`, `src/pages/[lang]/moderator/board.astro`, and `public/board-demo.html`; 0628 should reuse their interaction tone without mutating archival graph pages.
 - Next: commit and push the isolated 0628 test slice.
+
+## 2026-06-28 GWS
+- Changed: created the Google Sheet `0628 참여단 주관식 질문 응답 - 운영 감축` and documented the live Sheet URL, CSV URL candidate, and Form-to-Sheet checklist in `docs/participant-open-question-ontology-test.md`.
+- Verified: Google Sheets range `Form Responses 1!A1:F2` contains the expected headers and one sample row for the two open-question fields.
+- Learned: the current Google Drive connector can create Sheets but not Google Forms; headless browser access to `forms.new` stops at Google sign-in, so Form creation and response-Sheet linking must happen in a logged-in browser.
+- Next: user creates the Google Form and links it to the prepared Sheet, then run the CSV URL command to refresh the 0628 graph JSON.
