@@ -177,22 +177,6 @@
 
       <article class="card">
         <div>
-          <h2>17시 실제 데이터 운영</h2>
-          <p>이 페이지는 정적 배포라서 브라우저만으로 Sheet 재빌드/배포까지 자동 실행하지 않습니다. 현장 마감 후 아래 순서로 한 번 갱신합니다.</p>
-          <div class="ops">
-            <div class="op"><b>1. 마감</b><span>Form 편집 화면의 응답 탭에서 응답 받기를 OFF로 전환합니다.</span></div>
-            <div class="op"><b>2. 권한</b><span>Sheet CSV가 읽히도록 공유 권한을 확인합니다. 비공개 상태면 작업 PC에서도 갱신이 막힙니다.</span></div>
-            <div class="op"><b>3. 갱신</b><span>작업 PC에서 연결 Sheet CSV를 읽어 온톨로지 JSON을 재생성합니다.<code class="codeblock">powershell -ExecutionPolicy Bypass -File scripts/refresh-0628-participant-test.ps1 -Commit -Deploy</code></span></div>
-            <div class="op"><b>4. 확인</b><span>온톨로지/포스트잇 화면을 새로고침하고 응답 수와 묶음 수를 확인합니다.</span></div>
-          </div>
-        </div>
-        <div class="actions">
-          <a class="btn ghost" href="/workshop-graph-0628-test/data/participant-open-questions.json" target="_blank" rel="noopener">현재 JSON 보기</a>
-        </div>
-      </article>
-
-      <article class="card">
-        <div>
           <h2>분석 요약</h2>
           <p>발표 화면에는 학술 지표명보다 현장 언어로 보여줍니다.</p>
           <div class="analysis-grid" id="analysis-summary">
@@ -208,10 +192,6 @@
       </article>
     </section>
 
-    <div class="note">
-      Google Form 응답 저장소는 위 Google Sheet로 연결되어 있습니다.
-      17시 실제 운영에서는 <code>scripts/refresh-0628-participant-test.ps1</code>가 Sheet 읽기, JSON 생성, 보고서 갱신, 선택적 커밋/배포를 수행합니다.
-    </div>
   </div>
 </main>
 

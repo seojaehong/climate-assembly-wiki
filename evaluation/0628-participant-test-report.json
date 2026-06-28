@@ -56,6 +56,7 @@
     "data_generation_result": "rows=40 responses=80 nodes=90 edges=362",
     "actual_sheet_refresh_status": "blocked_by_sheet_csv_401_until_google_sheet_sharing_or_publish_setting_is_opened",
     "day_of_operation": "17시 실제 운영은 Form 응답 마감 후 Sheet CSV 권한 확인, refresh-0628-participant-test.ps1 실행, Cloudflare 배포 확인 순서로 진행한다.",
+    "admin_data_refresh_notice": "관리자 페이지에서는 현장 혼선을 줄이기 위해 데이터 갱신 안내 카드를 제거했다.",
     "advanced_analysis": "JSON now includes frequency_terms, degree/betweenness/closeness/pagerank, similarity_clusters, theory_lens, and link_candidates. Link candidates are review suggestions, not confirmed edges.",
     "browser_tabs_opened": true,
     "miro_group_view": "implemented with view-groups button and group-filter select for 1조-15조 plus 연구진",
