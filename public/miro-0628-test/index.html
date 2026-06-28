@@ -53,10 +53,17 @@
   .cluster-head .count{font-size:44px;font-weight:900;color:#111827;line-height:1}
   .cluster-notes{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;align-content:start}
   .cluster-meta{margin:-4px 0 12px;color:var(--muted);font-size:13px;font-weight:800}
+  .analysis-board{display:none;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+  .analysis-card{border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.82);padding:18px;box-shadow:0 14px 38px rgba(15,23,42,.07)}
+  .analysis-card h2{margin:0 0 8px;font-size:22px;line-height:1.2}
+  .analysis-card p{margin:0;color:var(--muted);font-weight:800;line-height:1.45}
+  .analysis-card ul{margin:12px 0 0;padding:0;list-style:none;display:grid;gap:8px}
+  .analysis-card li{padding:9px 10px;border:1px solid rgba(15,23,42,.08);border-radius:8px;background:#f8fafc;font-weight:900;line-height:1.35}
   .empty{padding:28px;color:var(--muted);font-weight:900}
-  body.group-mode .board,body.cluster-mode .board{display:none}
+  body.group-mode .board,body.cluster-mode .board,body.analysis-mode .board{display:none}
   body.group-mode .group-board{display:grid}
   body.cluster-mode .cluster-board{display:grid}
+  body.analysis-mode .analysis-board{display:grid}
   @media (max-width:980px){
     header{display:block}
     .controls{margin-top:12px}
@@ -75,9 +82,10 @@
     <h1>소감과 질문 포스트잇 보드</h1>
   </div>
   <div class="controls">
-    <a class="admin-link" href="/0628-admin/index.html">관리자</a>
+    <a class="admin-link" href="/0628-admin/?_=920d25b">관리자</a>
     <button id="view-lanes" class="active">소감/질문</button>
     <button id="view-groups">조별 보기</button>
+    <button id="view-analysis">분석 요약</button>
     <button id="view-similar">유사 묶음</button>
     <button id="view-related">연관 렌즈</button>
     <select id="group-filter" title="조 필터">
@@ -89,11 +97,12 @@
   <section class="board" id="board"></section>
   <section class="group-board" id="group-board"></section>
   <section class="cluster-board" id="cluster-board"></section>
+  <section class="analysis-board" id="analysis-board"></section>
 </main>
 <script>
 const DATA_URL = '/workshop-graph-0628-test/data/participant-open-questions.json';
 const GROUP_OPTIONS = Array.from({ length: 15 }, (_, i) => `${i + 1}조`).concat('연구진');
-const state = { responses: [], group: '', mode: 'lanes', edges: [], nodeById: new Map() };
+const state = { responses: [], group: '', mode: 'lanes', edges: [], nodeById: new Map(), meta: {} };
 const labels = {
   impression: { title: '소감', eyebrow: 'IMPRESSION', color: '#d97706', note: '#fef3c7' },
   question: { title: '질문', eyebrow: 'QUESTION', color: '#14a46c', note: '#f2f7f4' },
@@ -116,6 +125,7 @@ function groupPalette(group){
 
 async function load(){
   const data = await fetch(DATA_URL + '?_=' + Date.now()).then(r => r.json());
+  state.meta = data.meta || {};
   state.edges = data.elements.edges.map(edge => edge.data);
   state.nodeById = new Map(data.elements.nodes.map(n => [n.data.id, n.data]));
   const relationCount = new Map();
@@ -279,9 +289,62 @@ function renderRelatedClusters(rows) {
     </section>`).join('') || '<div class="empty">연관 렌즈 묶음이 아직 없습니다.</div>';
 }
 
+function renderAnalysisBoard(){
+  const meta = state.meta || {};
+  const terms = (meta.frequency_terms || []).slice(0, 8).map(t => t.term);
+  const top = meta.centrality || {};
+  const clusters = (meta.similarity_clusters || []).slice(0, 5);
+  const lenses = (meta.theory_lenses || []).slice().sort((a,b)=>(b.count || 0)-(a.count || 0)).slice(0, 5);
+  const links = (meta.link_candidates || []).slice(0, 5);
+  const list = (items, render) => items.length ? `<ul>${items.map(render).join('')}</ul>` : '<p>아직 표시할 항목이 없습니다.</p>';
+  document.getElementById('analysis-board').innerHTML = `
+    <article class="analysis-card">
+      <h2>많이 나온 것</h2>
+      <p>Frequency 기준으로 반복 등장한 의제 언어입니다.</p>
+      ${list(terms, item => `<li>${esc(item)}</li>`)}
+    </article>
+    <article class="analysis-card">
+      <h2>많이 연결된 것</h2>
+      <p>Degree 기준으로 직접 연결이 많은 소감/질문입니다.</p>
+      ${list((top.degree_top || []).slice(0,5), item => `<li>${esc(item.label)} · ${esc(item.group)}</li>`)}
+    </article>
+    <article class="analysis-card">
+      <h2>이어주는 질문</h2>
+      <p>Betweenness 기준으로 서로 다른 덩어리를 이어주는 질문입니다.</p>
+      ${list((top.betweenness_top || []).slice(0,5), item => `<li>${esc(item.label)} · ${esc(item.group)}</li>`)}
+    </article>
+    <article class="analysis-card">
+      <h2>중심 질문</h2>
+      <p>Closeness/PageRank 기준으로 전체 응답군과 의미상 가까운 의제입니다.</p>
+      ${list((top.closeness_top || top.pagerank_top || []).slice(0,5), item => `<li>${esc(item.label)} · ${esc(item.group)}</li>`)}
+    </article>
+    <article class="analysis-card">
+      <h2>유사 질문 묶음</h2>
+      <p>텍스트 유사성과 공유 표현으로 묶인 군집입니다.</p>
+      ${list(clusters, item => `<li>${esc(item.label)} · ${item.size || 0}개 카드</li>`)}
+    </article>
+    <article class="analysis-card">
+      <h2>논의 프레임</h2>
+      <p>하버마스/사회과학 렌즈로 본 해석 범주입니다.</p>
+      ${list(lenses, item => `<li>${esc(item.label)} · ${esc(item.model || '')}</li>`)}
+    </article>
+    <article class="analysis-card">
+      <h2>권고안 연결 가능성</h2>
+      <p>자동 확정이 아니라 검토할 연결 후보입니다.</p>
+      ${list(links, item => `<li>${esc(item.source_label)} ↔ ${esc(item.target_label)}</li>`)}
+    </article>
+    <article class="analysis-card">
+      <h2>에고 네트워크</h2>
+      <p>온톨로지 화면에서 노드를 클릭하면 주변 1-hop 관계와 원문 카드가 고정됩니다.</p>
+      <ul><li>오늘 시연에서는 특정 질문을 클릭해 주변 유사 질문과 분석 렌즈만 좁혀 설명합니다.</li></ul>
+    </article>
+  `;
+}
+
 function render(){
   renderLanes();
   renderGroups();
+  renderAnalysisBoard();
   const rows = visibleResponses();
   if (state.mode === 'similar') renderSimilarClusters(rows);
   if (state.mode === 'related') renderRelatedClusters(rows);
@@ -291,10 +354,12 @@ function setMode(mode) {
   state.mode = mode;
   document.body.classList.toggle('group-mode', mode === 'groups');
   document.body.classList.toggle('cluster-mode', mode === 'similar' || mode === 'related');
+  document.body.classList.toggle('analysis-mode', mode === 'analysis');
   document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
   const active = {
     lanes: 'view-lanes',
     groups: 'view-groups',
+    analysis: 'view-analysis',
     similar: 'view-similar',
     related: 'view-related',
   }[mode];
@@ -308,6 +373,7 @@ document.getElementById('view-lanes').onclick = () => {
 document.getElementById('view-groups').onclick = () => {
   setMode('groups');
 };
+document.getElementById('view-analysis').onclick = () => setMode('analysis');
 document.getElementById('view-similar').onclick = () => setMode('similar');
 document.getElementById('view-related').onclick = () => setMode('related');
 

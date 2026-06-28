@@ -63,9 +63,14 @@
   .qr-modal-card h2{margin:0 0 6px;font-size:22px}
   .qr-modal-card p{font-size:14px}
   .note{margin-top:18px;padding:12px 14px;border:1px solid #fde68a;background:#fffbeb;border-radius:8px;color:#78350f;font-size:13px;line-height:1.55}
+  .analysis-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+  .analysis-item{padding:11px;border:1px solid rgba(15,23,42,.08);border-radius:10px;background:#f8fafc}
+  .analysis-item b{display:block;margin-bottom:5px;font-size:13px}
+  .analysis-item span{display:block;color:#475569;font-size:13px;font-weight:800;line-height:1.4}
   code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;background:#eef2f7;padding:2px 5px;border-radius:4px}
   @media (max-width:760px){
     .grid{grid-template-columns:1fr}
+    .analysis-grid{grid-template-columns:1fr}
     .top{display:block}
     .top .actions{margin-top:14px}
     .form-access{grid-template-columns:1fr}
@@ -167,6 +172,22 @@
           <a class="btn ghost" href="/workshop-graph-0628-test/data/participant-open-questions.json" target="_blank" rel="noopener">현재 JSON 보기</a>
         </div>
       </article>
+
+      <article class="card">
+        <div>
+          <h2>분석 요약</h2>
+          <p>발표 화면에는 학술 지표명보다 현장 언어로 보여줍니다.</p>
+          <div class="analysis-grid" id="analysis-summary">
+            <div class="analysis-item"><b>많이 나온 것</b><span>불러오는 중</span></div>
+            <div class="analysis-item"><b>많이 연결된 것</b><span>불러오는 중</span></div>
+            <div class="analysis-item"><b>이어주는 질문</b><span>불러오는 중</span></div>
+            <div class="analysis-item"><b>논의 프레임</b><span>불러오는 중</span></div>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="btn ghost" href="/miro-0628-test/index.html" target="_blank" rel="noopener">포스트잇 분석 보기</a>
+        </div>
+      </article>
     </section>
 
     <div class="note">
@@ -199,6 +220,7 @@
   const error = document.getElementById('error');
   const qrModal = document.getElementById('qr-modal');
   const qrInline = document.getElementById('qr-inline');
+  const analysisSummary = document.getElementById('analysis-summary');
 
   function showApp() {
     login.style.display = 'none';
@@ -213,6 +235,7 @@
 
   function enter() {
     if (input.value === PASS) {
+      localStorage.setItem(KEY, 'ok');
       sessionStorage.setItem(KEY, 'ok');
       error.style.display = 'none';
       showApp();
@@ -226,10 +249,12 @@
   document.getElementById('clear').onclick = () => {
     input.value = '';
     error.style.display = 'none';
+    localStorage.removeItem(KEY);
     sessionStorage.removeItem(KEY);
     input.focus();
   };
   document.getElementById('logout').onclick = () => {
+    localStorage.removeItem(KEY);
     sessionStorage.removeItem(KEY);
     input.value = '';
     showLogin();
@@ -251,8 +276,34 @@
     if (event.key === 'Escape') qrModal.classList.remove('show');
   });
 
-  if (sessionStorage.getItem(KEY) === 'ok') showApp();
+  async function loadAnalysisSummary() {
+    if (!analysisSummary) return;
+    try {
+      const res = await fetch('/workshop-graph-0628-test/data/participant-open-questions.json?_=' + Date.now());
+      if (!res.ok) throw new Error('graph json failed');
+      const graph = await res.json();
+      const meta = graph.meta || {};
+      const terms = (meta.frequency_terms || []).slice(0, 4).map(t => t.term).join(', ');
+      const degree = meta.centrality?.degree_top?.[0]?.label || '대기 중';
+      const bridge = meta.centrality?.betweenness_top?.[0]?.label || '대기 중';
+      const frame = (meta.theory_lenses || []).slice().sort((a,b)=>(b.count || 0)-(a.count || 0))[0]?.label || '대기 중';
+      const cluster = meta.similarity_clusters?.[0]?.label || '대기 중';
+      analysisSummary.innerHTML = `
+        <div class="analysis-item"><b>많이 나온 것</b><span>${terms || '응답 대기 중'}</span></div>
+        <div class="analysis-item"><b>많이 연결된 것</b><span>${degree}</span></div>
+        <div class="analysis-item"><b>이어주는 질문</b><span>${bridge}</span></div>
+        <div class="analysis-item"><b>유사 묶음</b><span>${cluster}</span></div>
+        <div class="analysis-item"><b>논의 프레임</b><span>${frame}</span></div>
+        <div class="analysis-item"><b>주변 관계 보기</b><span>온톨로지 노드 클릭 시 1-hop 관계와 원문 카드를 고정합니다.</span></div>
+      `;
+    } catch (err) {
+      analysisSummary.innerHTML = '<div class="analysis-item"><b>분석 요약</b><span>현재 JSON을 읽지 못했습니다. 배포 또는 캐시를 확인하세요.</span></div>';
+    }
+  }
+
+  if (localStorage.getItem(KEY) === 'ok' || sessionStorage.getItem(KEY) === 'ok') showApp();
   else showLogin();
+  loadAnalysisSummary();
 </script>
 </body>
 </html>

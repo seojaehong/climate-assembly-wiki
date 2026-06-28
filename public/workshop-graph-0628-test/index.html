@@ -134,7 +134,18 @@
   body.og-showcase-mode .og-zoomctl{left:14px;bottom:14px}
   .og-admin-back{position:fixed;left:14px;top:14px;z-index:120;display:inline-flex;align-items:center;min-height:34px;padding:0 12px;border:1px solid rgba(15,23,42,.12);border-radius:999px;background:rgba(255,255,255,.82);box-shadow:0 14px 36px rgba(15,23,42,.12);backdrop-filter:blur(14px);color:#0f172a;text-decoration:none;font-size:13px;font-weight:900}
   .og-admin-back:hover{background:#0f172a;color:#fff}
+  .og-analysis-panel{position:fixed;left:14px;top:58px;z-index:115;width:min(360px,calc(100vw - 28px));display:none;gap:8px;padding:12px;border:1px solid rgba(15,23,42,.10);border-radius:12px;background:rgba(255,255,255,.72);box-shadow:0 18px 48px rgba(15,23,42,.13);backdrop-filter:blur(18px) saturate(1.25);color:#0f172a}
+  body.og-showcase-mode .og-analysis-panel{display:grid}
+  .og-analysis-panel h3{margin:0;font-size:15px;line-height:1.2}
+  .og-analysis-panel .og-analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .og-analysis-panel .og-analysis-card{min-height:58px;padding:8px;border:1px solid rgba(15,23,42,.08);border-radius:9px;background:rgba(248,250,252,.82)}
+  .og-analysis-panel b{display:block;margin-bottom:4px;font-size:11px}
+  .og-analysis-panel span{display:block;color:#475569;font-size:12px;font-weight:900;line-height:1.3}
+  body.og-showcase-dark .og-analysis-panel{background:rgba(15,23,42,.60);border-color:rgba(148,163,184,.24);color:#f8fafc}
+  body.og-showcase-dark .og-analysis-panel .og-analysis-card{background:rgba(15,23,42,.58);border-color:rgba(148,163,184,.18)}
+  body.og-showcase-dark .og-analysis-panel span{color:#cbd5e1}
   @media (max-width:640px){
+    .og-analysis-panel{display:none !important}
     .og-hub-rail{left:10px;right:10px;top:10px;gap:5px;max-height:40px;overflow:hidden}
     body.view-3d .og-hub-rail{top:46px;right:10px}
     .og-hub-chip{max-width:176px;min-height:28px;padding:0 8px;font-size:11px}
@@ -146,7 +157,7 @@
 </style>
 </head>
 <body>
-<a class="og-admin-back" href="/0628-admin/index.html">관리자</a>
+<a class="og-admin-back" href="/0628-admin/?_=920d25b">관리자</a>
 <div id="og-app">
   <div class="og-controls">
     <div class="og-source-sel">
@@ -242,6 +253,7 @@
         <b>발표 보기</b> · 원본 613개 노드 보존 · 검증 전
       </div>
       <div class="og-hub-rail" id="og-hub-rail" aria-label="주요 쟁점 바로가기"></div>
+      <div class="og-analysis-panel" id="og-analysis-panel" aria-label="분석 요약"></div>
       <div class="og-zoomctl og-2d-only">
         <button id="og-zin">＋</button>
         <button id="og-zout">−</button>
@@ -661,6 +673,7 @@ async function loadSource(srcId) {
   else render3d();
   renderHubRail();
   renderOverviewSurface(meta, mt);
+  renderAnalysisPanel(mt);
 
   if (isLive) setupPolling(meta);
   else { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
@@ -1113,6 +1126,30 @@ function renderHubRail() {
   });
 }
 
+function renderAnalysisPanel(graphMeta) {
+  const panel = document.getElementById('og-analysis-panel');
+  if (!panel) return;
+  if (curSource !== 'participant-open-questions') {
+    panel.innerHTML = '';
+    return;
+  }
+  const terms = (graphMeta?.frequency_terms || []).slice(0, 3).map(t => t.term).join(', ') || '응답 대기';
+  const degree = graphMeta?.centrality?.degree_top?.[0]?.label || '응답 대기';
+  const bridge = graphMeta?.centrality?.betweenness_top?.[0]?.label || '응답 대기';
+  const cluster = graphMeta?.similarity_clusters?.[0]?.label || '응답 대기';
+  const frame = (graphMeta?.theory_lenses || []).slice().sort((a,b)=>(b.count || 0)-(a.count || 0))[0]?.label || '응답 대기';
+  panel.innerHTML = `
+    <h3>분석 요약</h3>
+    <div class="og-analysis-grid">
+      <div class="og-analysis-card"><b>많이 나온 것</b><span>${escapeHtml(terms)}</span></div>
+      <div class="og-analysis-card"><b>많이 연결된 것</b><span>${escapeHtml(degree)}</span></div>
+      <div class="og-analysis-card"><b>이어주는 질문</b><span>${escapeHtml(bridge)}</span></div>
+      <div class="og-analysis-card"><b>유사 묶음</b><span>${escapeHtml(cluster)}</span></div>
+      <div class="og-analysis-card"><b>논의 프레임</b><span>${escapeHtml(frame)}</span></div>
+      <div class="og-analysis-card"><b>주변 관계</b><span>노드 클릭으로 1-hop 보기</span></div>
+    </div>`;
+}
+
 function renderOverviewSurface(sourceMeta, graphMeta) {
   if (fixedNodeId) return;
   const side = document.getElementById('og-side');
@@ -1453,7 +1490,8 @@ function renderCy() {
   updateGroupBtns();
   cy.ready(() => setTimeout(() => {
     const laneApplied = applyParticipantQuestionLanes();
-    if (!laneApplied) cy.fit(null, 40);
+    applyShowcaseLayoutGuard({ jitter: showcaseMode && !laneApplied, preserveFit: laneApplied });
+    if (!laneApplied) cy.fit(null, showcaseMode ? 64 : 40);
     if (groupMode !== 'none') applyGrouping(groupMode);  // URL ?group= 진입 시 즉시 묶기
     else if (!laneApplied && (physicsOn || showcaseMode)) applyPhysics();
   }, 300));
@@ -1605,6 +1643,56 @@ function applyParticipantQuestionLanes() {
   return true;
 }
 
+function applyShowcaseLayoutGuard(options = {}) {
+  if (!cy || !showcaseMode || groupMode !== 'none') return false;
+  const nodes = cy.nodes(':visible')
+    .filter(n => !n.isParent || !n.isParent())
+    .filter(n => n.renderedWidth() > 0 && n.renderedHeight() > 0);
+  if (nodes.length < 2) return false;
+  const list = nodes.toArray();
+  if (options.jitter) {
+    list.forEach((n, i) => {
+      const p = n.position();
+      const seed = String(n.id()).split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+      const dx = Math.sin(seed * 12.9898 + i) * 42;
+      const dy = Math.cos(seed * 78.233 + i * 0.71) * 28;
+      n.position({ x: p.x + dx, y: p.y + dy });
+    });
+  }
+  const minX = curSource === 'participant-open-questions' ? 342 : 292;
+  const minY = curSource === 'participant-open-questions' ? 138 : 118;
+  for (let pass = 0; pass < 30; pass += 1) {
+    for (let i = 0; i < list.length; i += 1) {
+      for (let j = i + 1; j < list.length; j += 1) {
+        const a = list[i];
+        const b = list[j];
+        const pa = a.position();
+        const pb = b.position();
+        const dx = pb.x - pa.x;
+        const dy = pb.y - pa.y;
+        const ax = Math.abs(dx);
+        const ay = Math.abs(dy);
+        if (ax >= minX || ay >= minY) continue;
+        const sx = dx === 0 ? (i % 2 ? 1 : -1) : Math.sign(dx);
+        const sy = dy === 0 ? (j % 2 ? 1 : -1) : Math.sign(dy);
+        const overlapX = minX - ax;
+        const overlapY = minY - ay;
+        if (overlapX / minX > overlapY / minY) {
+          const push = overlapX * 0.58 + 8;
+          a.position({ x: pa.x - sx * push, y: pa.y - sy * Math.min(14, overlapY * 0.08) });
+          b.position({ x: pb.x + sx * push, y: pb.y + sy * Math.min(14, overlapY * 0.08) });
+        } else {
+          const push = overlapY * 0.58 + 6;
+          a.position({ x: pa.x - sx * Math.min(18, overlapX * 0.10), y: pa.y - sy * push });
+          b.position({ x: pb.x + sx * Math.min(18, overlapX * 0.10), y: pb.y + sy * push });
+        }
+      }
+    }
+  }
+  if (!options.preserveFit) cy.fit(cy.elements(':visible'), 64);
+  return true;
+}
+
 // 살아있는 드래그: cytoscape-cola 연속 물리엔진 (노드를 끌면 이웃 출렁)
 function applyPhysics() {
   stopPhysics();
@@ -1612,7 +1700,7 @@ function applyPhysics() {
   try { if (typeof cytoscapeCola !== 'undefined') cytoscape.use(cytoscapeCola); } catch {}
   try {
     colaLayout = cy.layout({ name:'cola', infinite:true, fit:false, animate:true,
-      nodeSpacing: showcaseMode ? 86 : 6, edgeLength: showcaseMode ? 245 : 110, randomize:false, handleDisconnected:true,
+      nodeSpacing: showcaseMode ? 180 : 6, edgeLength: showcaseMode ? 300 : 110, randomize:false, handleDisconnected:true,
       centerGraph:false, refresh:1, maxSimulationTime: showcaseMode ? 180000 : undefined });
     colaLayout.run();
   } catch (e) { colaLayout = null; }

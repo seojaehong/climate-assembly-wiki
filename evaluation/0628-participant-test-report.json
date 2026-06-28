@@ -68,6 +68,8 @@
     "lane_layout": "0628 참여단 데이터의 변주 화면은 소감/질문을 덩어리로 모아 보여준다. 기본 화면은 비정형 위치값을 유지한다.",
     "miro_board": "포스트잇 보드는 소감/질문 큰 덩어리, 조별 보기, 유사 묶음, 연관 렌즈 탭을 제공한다. 유사/연관 묶음은 강의실 가독성을 위해 세로 섹션과 카드 그리드 조합으로 표시한다. 각 카드는 1조-15조+연구진의 16색 조별 팔레트를 적용한다.",
     "admin_return_links": "온톨로지와 포스트잇 세션 상단에 관리자 복귀 링크를 추가했다.",
+    "analysis_cards": "관리자, 온톨로지 쇼케이스, 포스트잇 보드에 Frequency, Degree, Betweenness, Similarity Cluster, Theory Lens, Ego View를 현장 언어의 분석 카드로 노출했다.",
+    "showcase_layout_guard": "쇼케이스의 모든 메뉴 전환 후 공통 겹침 방지 후처리를 적용하고, 비참여단 쇼케이스에는 작은 물리적 위치 jitter를 더해 자연스러운 랜덤성을 유지한다.",
     "group_colors": "온톨로지 응답 노드와 포스트잇 카드 모두 조별 16색 팔레트를 적용해 조별 식별성을 높였다.",
     "qr": "Google Form 응답 URL QR을 public/0628-admin/google-form-qr.png로 생성하고 관리자 페이지 QR 탭에서 크게 띄운다.",
     "note": "기존 workshop-graph와 board-demo 원본은 수정하지 않고 0628 테스트 페이지를 별도로 추가했다."
