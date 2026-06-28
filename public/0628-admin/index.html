@@ -44,6 +44,11 @@
   .card{background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 32px rgba(15,23,42,.07);padding:18px;min-height:176px;display:flex;flex-direction:column;justify-content:space-between}
   .card h2{margin:0 0 8px;font-size:22px;line-height:1.2}
   .card p{font-size:15px}
+  .ops{display:grid;gap:10px;margin-top:12px}
+  .op{display:grid;grid-template-columns:92px 1fr;gap:10px;align-items:start;padding:10px;border:1px solid rgba(15,23,42,.08);border-radius:10px;background:#f8fafc}
+  .op b{font-size:13px;color:#0f172a}
+  .op span{font-size:13px;color:#475569;font-weight:800;line-height:1.45}
+  .codeblock{display:block;margin-top:8px;padding:10px;border-radius:8px;background:#0f172a;color:#e2e8f0;overflow:auto;white-space:nowrap}
   .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
   .qr-toggle{background:#eef2f7;color:#111827}
   .form-access{display:grid;grid-template-columns:1fr 190px;gap:18px;align-items:center}
@@ -146,11 +151,27 @@
           <a class="btn secondary" href="https://docs.google.com/spreadsheets/d/1T31pzPV8JHeqyCuGUq0M28e81-cCujOC_V8mMFACG20/edit" target="_blank" rel="noopener">Sheet 열기</a>
         </div>
       </article>
+
+      <article class="card">
+        <div>
+          <h2>17시 실제 데이터 운영</h2>
+          <p>이 페이지는 정적 배포라서 브라우저만으로 Sheet 재빌드/배포까지 자동 실행하지 않습니다. 현장 마감 후 아래 순서로 한 번 갱신합니다.</p>
+          <div class="ops">
+            <div class="op"><b>1. 마감</b><span>Form 편집 화면의 응답 탭에서 응답 받기를 OFF로 전환합니다.</span></div>
+            <div class="op"><b>2. 권한</b><span>Sheet CSV가 읽히도록 공유 권한을 확인합니다. 비공개 상태면 작업 PC에서도 갱신이 막힙니다.</span></div>
+            <div class="op"><b>3. 갱신</b><span>작업 PC에서 연결 Sheet CSV를 읽어 온톨로지 JSON을 재생성합니다.<code class="codeblock">powershell -ExecutionPolicy Bypass -File scripts/refresh-0628-participant-test.ps1 -Commit -Deploy</code></span></div>
+            <div class="op"><b>4. 확인</b><span>온톨로지/포스트잇 화면을 새로고침하고 응답 수와 묶음 수를 확인합니다.</span></div>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="btn ghost" href="/workshop-graph-0628-test/data/participant-open-questions.json" target="_blank" rel="noopener">현재 JSON 보기</a>
+        </div>
+      </article>
     </section>
 
     <div class="note">
       Google Form 응답 저장소는 위 Google Sheet로 연결되어 있습니다.
-      갱신 명령은 <code>node scripts/build-participant-question-ontology.mjs --csv-url "...Form%20Responses%201"</code> 입니다.
+      17시 실제 운영에서는 <code>scripts/refresh-0628-participant-test.ps1</code>가 Sheet 읽기, JSON 생성, 보고서 갱신, 선택적 커밋/배포를 수행합니다.
     </div>
   </div>
 </main>

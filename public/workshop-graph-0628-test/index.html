@@ -132,6 +132,8 @@
   body.og-showcase-mode.og-showcase-dark .og-message-label,
   body.og-showcase-mode.og-showcase-dark .og-message-meta{color:#cbd5e1}
   body.og-showcase-mode .og-zoomctl{left:14px;bottom:14px}
+  .og-admin-back{position:fixed;left:14px;top:14px;z-index:120;display:inline-flex;align-items:center;min-height:34px;padding:0 12px;border:1px solid rgba(15,23,42,.12);border-radius:999px;background:rgba(255,255,255,.82);box-shadow:0 14px 36px rgba(15,23,42,.12);backdrop-filter:blur(14px);color:#0f172a;text-decoration:none;font-size:13px;font-weight:900}
+  .og-admin-back:hover{background:#0f172a;color:#fff}
   @media (max-width:640px){
     .og-hub-rail{left:10px;right:10px;top:10px;gap:5px;max-height:40px;overflow:hidden}
     body.view-3d .og-hub-rail{top:46px;right:10px}
@@ -144,6 +146,7 @@
 </style>
 </head>
 <body>
+<a class="og-admin-back" href="/0628-admin/index.html">관리자</a>
 <div id="og-app">
   <div class="og-controls">
     <div class="og-source-sel">
@@ -2401,11 +2404,11 @@ function buildCyStyle(palette) {
     { selector:'edge', style:{
         'width': demo ? 1.55 : 1.8, 'line-color': e => demo ? showcaseRelColor(e.data('rel'), paperLike) : (paperLike ? '#64748b' : '#6b7890'), 'target-arrow-color': e => demo ? showcaseRelColor(e.data('rel'), paperLike) : (paperLike ? '#64748b' : '#6b7890'),
         'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale': demo ? 1.05 : 1,
-        'label': demo ? (showcaseEdgeLabels ? 'data(relKo)' : '') : (paper ? '' : 'data(relKo)'),'font-size': demo ? '15px' : '10px','min-zoomed-font-size': demo ? (showcaseEdgeLabels ? 0 : 999) : 9,'color': paperLike ? (demo ? '#0f172a' : '#1f2937') : (demo ? '#f8fafc' : '#d3dbe8'),
+        'label': demo ? (showcaseEdgeLabels ? 'data(relKo)' : '') : (paper ? '' : 'data(relKo)'),'font-size': demo ? '16px' : '10px','min-zoomed-font-size': demo ? (showcaseEdgeLabels ? 0 : 999) : 9,'color': paperLike ? (demo ? '#0f172a' : '#1f2937') : (demo ? '#f8fafc' : '#d3dbe8'),
         'font-family':'Noto Sans KR, Malgun Gothic, sans-serif',
         'font-weight': demo ? 900 : 500,
         'text-rotation':'autorotate','text-background-color': paperLike ? '#ffffff' : '#11151c',
-        'text-background-opacity': demo ? 0.92 : 0.85,'text-background-padding': demo ? 4 : 2,'text-background-shape':'roundrectangle','text-border-width': demo ? 1 : 0,'text-border-opacity': demo ? 0.18 : 0,'text-border-color': paperLike ? '#94a3b8' : '#64748b','opacity': demo ? 0.78 : 0.82,
+        'text-background-opacity': demo ? 0.98 : 0.85,'text-background-padding': demo ? 5 : 2,'text-background-shape':'roundrectangle','text-border-width': demo ? 1 : 0,'text-border-opacity': demo ? 0.28 : 0,'text-border-color': paperLike ? '#94a3b8' : '#64748b','opacity': demo ? 0.9 : 0.82,'text-opacity':1,
     }},
     { selector:'edge[?opposes]', style:{
         'line-color': demo ? '#f4a3a3' : '#ff6b6b','target-arrow-color': demo ? '#f4a3a3' : '#ff6b6b','width': demo ? 1.65 : 2.6 }},
@@ -2426,7 +2429,7 @@ function buildCyStyle(palette) {
     { selector:'node.non-public', style:{ 'opacity':0.25,'border-style':'dashed','border-color':'#9fcfff' }},
     { selector:'.dim', style:{ 'opacity':0.10 }},
     { selector:'node.focus-dim', style:{ 'opacity': presentMode ? 0.72 : 0.10 }},
-    { selector:'edge.focus-dim', style:{ 'opacity': presentMode ? 0.34 : 0.08 }},
+    { selector:'edge.focus-dim', style:{ 'opacity': presentMode ? 0.26 : 0.08,'text-opacity': presentMode ? 0.18 : 0 }},
     { selector:'node.focus-neighbor', style:{ 'opacity':0.92,'border-width':3,'border-color':'#8bd3ff' }},
     { selector:'node.focus-main, node.focus-neighbor', style:{
         'label': demo ? 'data(shortLabel)' : 'data(label)','font-size': demo ? '30px' : (presentMode ? '13px' : '12px'),'min-zoomed-font-size':0,
@@ -2437,8 +2440,8 @@ function buildCyStyle(palette) {
     { selector:'edge.focus-edge', style:{
         'opacity':0.92,'width':3.2,'line-color':'#8bd3ff','target-arrow-color':'#8bd3ff',
         'label': presentMode && presentLevel === 'chapter' ? '' : 'data(relKo)',
-        'font-size': demo ? '16px' : '11px','font-weight': demo ? 900 : 500,'text-background-color': paperLike ? '#ffffff' : '#11151c',
-        'text-background-opacity':0.96,'text-background-padding': demo ? 5 : 2,
+        'font-size': demo ? '17px' : '11px','font-weight': demo ? 900 : 500,'text-background-color': paperLike ? '#ffffff' : '#11151c',
+        'text-background-opacity':0.98,'text-background-padding': demo ? 6 : 2,'text-opacity':1,
     }},
     { selector:'.hidden', style:{ 'display':'none' }},
   ];

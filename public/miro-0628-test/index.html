@@ -23,6 +23,7 @@
   .meta{color:var(--muted);font-size:13px;font-weight:800}
   .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   select,button{height:34px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);font-weight:900;padding:0 10px;font:inherit;font-size:13px}
+  a.admin-link{height:34px;border:1px solid #111827;border-radius:6px;background:#111827;color:#fff;font-weight:900;padding:0 11px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center}
   button.active{background:#111827;color:#fff;border-color:#111827}
   main{padding:16px;display:grid;gap:14px}
   .board{display:grid;grid-template-columns:1fr;gap:14px;min-height:calc(100vh - 94px)}
@@ -41,10 +42,16 @@
   .chips{position:absolute;left:14px;right:14px;bottom:12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
   .chip{display:inline-flex;align-items:center;min-height:23px;padding:0 8px;border-radius:999px;background:rgba(15,23,42,.07);font-size:12px;font-weight:900;color:#475467}
   .chip.group{background:var(--group-color,#111827);color:#fff}
-  .group-board,.cluster-board{display:none;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+  .group-board{display:none;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+  .cluster-board{display:none;grid-template-columns:1fr;gap:16px}
   .group-card{border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.78);padding:14px}
   .group-card h2{margin:0 0 12px;font-size:22px}
   .group-card .note{min-height:136px;margin-bottom:12px;transform:none}
+  .cluster-card{display:grid;grid-template-columns:260px minmax(0,1fr);padding:0;overflow:hidden}
+  .cluster-head{padding:20px;border-right:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(248,250,252,.78))}
+  .cluster-head h2{margin:0 0 10px;font-size:24px;line-height:1.2}
+  .cluster-head .count{font-size:44px;font-weight:900;color:#111827;line-height:1}
+  .cluster-notes{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;align-content:start}
   .cluster-meta{margin:-4px 0 12px;color:var(--muted);font-size:13px;font-weight:800}
   .empty{padding:28px;color:var(--muted);font-weight:900}
   body.group-mode .board,body.cluster-mode .board{display:none}
@@ -56,6 +63,8 @@
     .board{grid-template-columns:1fr}
     .lane{grid-template-columns:1fr}
     .lane-head{border-right:0;border-bottom:1px solid rgba(0,0,0,.12)}
+    .cluster-card{grid-template-columns:1fr}
+    .cluster-head{border-right:0;border-bottom:1px solid var(--line)}
   }
 </style>
 </head>
@@ -66,6 +75,7 @@
     <h1>소감과 질문 포스트잇 보드</h1>
   </div>
   <div class="controls">
+    <a class="admin-link" href="/0628-admin/index.html">관리자</a>
     <button id="view-lanes" class="active">소감/질문</button>
     <button id="view-groups">조별 보기</button>
     <button id="view-similar">유사 묶음</button>
@@ -234,10 +244,13 @@ function renderSimilarClusters(rows) {
   document.getElementById('cluster-board').innerHTML = comps.map((ids, i) => {
     const clusterRows = ids.map(id => byId.get(id)).filter(Boolean);
     const title = clusterTitleFromRows(clusterRows, `유사 묶음 ${i + 1}`);
-    return `<section class="group-card">
-      <h2>유사: ${esc(title)}</h2>
-      <div class="cluster-meta">${clusterRows.length}개 카드 · 텍스트 유사성 기준</div>
-      ${clusterRows.map(noteHtml).join('')}
+    return `<section class="group-card cluster-card">
+      <div class="cluster-head">
+        <h2>유사: ${esc(title)}</h2>
+        <div class="count">${clusterRows.length}</div>
+        <div class="cluster-meta">텍스트 유사성 기준</div>
+      </div>
+      <div class="cluster-notes">${clusterRows.map(noteHtml).join('')}</div>
     </section>`;
   }).join('') || '<div class="empty">유사 묶음이 아직 없습니다.</div>';
 }
@@ -256,10 +269,13 @@ function renderRelatedClusters(rows) {
     lensRows.get(label).push(response);
   }
   const clusters = [...lensRows.entries()].sort((a,b)=>b[1].length-a[1].length).slice(0, 12);
-  document.getElementById('cluster-board').innerHTML = clusters.map(([label, clusterRows]) => `<section class="group-card">
-      <h2>연관: ${esc(label)}</h2>
-      <div class="cluster-meta">${clusterRows.length}개 카드 · 사회과학 분석 렌즈 기준</div>
-      ${clusterRows.map(noteHtml).join('')}
+  document.getElementById('cluster-board').innerHTML = clusters.map(([label, clusterRows]) => `<section class="group-card cluster-card">
+      <div class="cluster-head">
+        <h2>연관: ${esc(label)}</h2>
+        <div class="count">${clusterRows.length}</div>
+        <div class="cluster-meta">사회과학 분석 렌즈 기준</div>
+      </div>
+      <div class="cluster-notes">${clusterRows.map(noteHtml).join('')}</div>
     </section>`).join('') || '<div class="empty">연관 렌즈 묶음이 아직 없습니다.</div>';
 }
 

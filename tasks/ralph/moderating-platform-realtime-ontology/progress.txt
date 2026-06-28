@@ -45,3 +45,9 @@
 - Verified: regenerating `public/workshop-graph-0628-test/data/participant-open-questions.json` from the current 40-row test snapshot produced 80 responses, 90 nodes, 362 edges, 120 similarity edges, 22 similarity clusters, 24 link candidates, 24 frequency terms, and 8 theory lens nodes.
 - Learned: n-gram tokens are useful for similarity but too noisy for facilitator-facing frequency labels, so analysis display terms now use a stricter filter.
 - Next: integrate the UI-side overlap and edge-label check from the parallel worker, then expose analysis categories in the 0628 view.
+
+## 2026-06-28 day-of-ops
+- Changed: added `scripts/refresh-0628-participant-test.ps1` for the 17시 field workflow, added admin return links to the ontology and post-it sessions, and changed post-it similarity/related clusters to vertical sections with card grids.
+- Verified: the refresh script now fails fast when the connected Google Sheet CSV is not readable; current live Sheet CSV returns 401, so the Sheet must be shared/published before the 17시 refresh command can complete.
+- Learned: the deployed static site cannot close the Google Form or rebuild/deploy JSON by itself. The operator/Codex flow is Form 응답 마감 -> Sheet CSV 권한 확인 -> `powershell -ExecutionPolicy Bypass -File scripts/refresh-0628-participant-test.ps1 -Commit -Deploy`.
+- Next: at 17시, open Sheet CSV access, run the refresh script with `-Commit -Deploy`, then verify response counts on `/0628-admin/`, `/workshop-graph-0628-test/`, and `/miro-0628-test/`.
