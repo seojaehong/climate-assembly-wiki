@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>0628 저녁식사 투표 결과</title>
+<style>
+  :root{
+    --bg:#f8fafc;
+    --ink:#0f172a;
+    --muted:#64748b;
+    --line:#dbe4ef;
+    --panel:rgba(255,255,255,.78);
+    --shadow:0 24px 80px rgba(15,23,42,.12);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    min-height:100vh;
+    overflow-x:hidden;
+    background:
+      radial-gradient(circle at 14% 10%,rgba(220,38,38,.09),transparent 30%),
+      radial-gradient(circle at 82% 14%,rgba(217,119,6,.10),transparent 34%),
+      linear-gradient(180deg,#fff 0%,#f1f5f9 100%);
+    color:var(--ink);
+    font-family:"Noto Sans KR",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+  .wrap{width:min(1180px,calc(100vw - 32px));margin:0 auto;padding:26px 0 34px}
+  .top{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:18px}
+  .eyebrow{display:inline-flex;align-items:center;min-height:28px;padding:0 10px;border:1px solid rgba(15,23,42,.08);border-radius:999px;background:rgba(255,255,255,.7);color:#475569;font-size:13px;font-weight:900}
+  h1{margin:10px 0 7px;font-size:clamp(34px,5vw,68px);line-height:1.04;letter-spacing:0}
+  p{margin:0;color:var(--muted);font-size:clamp(16px,2.1vw,22px);line-height:1.5;font-weight:800}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .btn{height:42px;padding:0 14px;border-radius:10px;background:#111827;color:#fff;text-decoration:none;font-size:14px;font-weight:900;display:inline-flex;align-items:center;justify-content:center}
+  .btn.ghost{background:#e9eef5;color:#111827}
+  .stage{position:relative;border:1px solid var(--line);border-radius:28px;background:var(--panel);box-shadow:var(--shadow);padding:20px;backdrop-filter:blur(18px)}
+  .slot{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:stretch}
+  .card{
+    position:relative;
+    min-height:560px;
+    border:1px solid rgba(15,23,42,.10);
+    border-radius:24px;
+    background:#fff;
+    overflow:hidden;
+    box-shadow:0 14px 40px rgba(15,23,42,.08);
+    transform:translateY(0) scale(.98);
+    transition:transform .42s cubic-bezier(.22,1,.36,1), box-shadow .42s, border-color .42s, opacity .42s, filter .42s;
+  }
+  .card.active{transform:translateY(-10px) scale(1.03);box-shadow:0 28px 86px rgba(15,23,42,.18);border-color:var(--choice-color)}
+  .card.winner{transform:translateY(-18px) scale(1.08);z-index:3;box-shadow:0 36px 110px rgba(15,23,42,.22);border-color:var(--choice-color)}
+  .card.dimmed{opacity:.58;filter:saturate(.7)}
+  .media{height:270px;padding:12px;background:linear-gradient(180deg,var(--choice-accent),#fff)}
+  .media img{display:block;width:100%;height:100%;object-fit:cover;border-radius:18px}
+  .body{padding:22px}
+  .label{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .label h2{margin:0;font-size:clamp(28px,3.4vw,42px);line-height:1.05}
+  .count{min-width:96px;text-align:center;padding:9px 10px;border-radius:16px;background:var(--choice-color);color:#fff;font-size:30px;font-weight:1000;line-height:1}
+  .count small{display:block;margin-top:5px;font-size:12px;font-weight:900;opacity:.9}
+  .bar{height:16px;border-radius:999px;background:#edf2f7;overflow:hidden;margin:18px 0 16px}
+  .bar span{display:block;width:0;height:100%;border-radius:999px;background:var(--choice-color);transition:width .72s cubic-bezier(.22,1,.36,1)}
+  .names{display:flex;flex-wrap:wrap;gap:7px;min-height:82px}
+  .names span{display:inline-flex;align-items:center;min-height:30px;padding:0 10px;border:1px solid rgba(15,23,42,.08);border-radius:999px;background:#f8fafc;color:#334155;font-size:13px;font-weight:900}
+  .empty{color:#94a3b8;font-size:15px;font-weight:900}
+  .ticker{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;margin-top:16px;padding:14px 16px;border:1px solid rgba(15,23,42,.08);border-radius:18px;background:#0f172a;color:#e2e8f0}
+  .ticker strong{font-size:clamp(18px,2.5vw,26px)}
+  .ticker span{color:#cbd5e1;font-size:14px;font-weight:900}
+  .progress{height:8px;border-radius:999px;background:rgba(255,255,255,.16);overflow:hidden}
+  .progress span{display:block;width:0;height:100%;background:#f8fafc;border-radius:999px;animation:load 5s linear forwards}
+  .reveal .progress span{width:100%;animation:none}
+  .headline{margin-top:18px;display:none;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;padding:20px;border:1px solid rgba(15,23,42,.08);border-radius:24px;background:#fff;box-shadow:0 18px 60px rgba(15,23,42,.10)}
+  .reveal .headline{display:grid;animation:pop .55s cubic-bezier(.22,1,.36,1)}
+  .headline b{display:block;margin-bottom:4px;font-size:clamp(24px,3.2vw,40px)}
+  .headline span{color:#475569;font-size:17px;font-weight:900}
+  .winner-badge{padding:12px 16px;border-radius:18px;background:#111827;color:#fff;font-size:22px;font-weight:1000;text-align:center}
+  .note{margin-top:12px;color:#64748b;font-size:13px;font-weight:800;text-align:right}
+  @keyframes load{from{width:0}to{width:100%}}
+  @keyframes pop{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+  @media (max-width:900px){
+    .slot{grid-template-columns:1fr}
+    .card{min-height:0}
+    .top{display:block}
+    .actions{justify-content:flex-start;margin-top:14px}
+    .headline{grid-template-columns:1fr}
+    .note{text-align:left}
+  }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <div>
+      <span class="eyebrow">0628 운영 이벤트</span>
+      <h1>저녁식사 투표 결과</h1>
+      <p>중국집, 삼겹살, 불참. 5초 동안 쇽 쇽 쇽 돌다가 오늘의 대세를 크게 보여줍니다.</p>
+    </div>
+    <nav class="actions" aria-label="빠른 이동">
+      <a class="btn ghost" href="/0628-admin/index.html">관리자</a>
+      <a class="btn" href="https://docs.google.com/forms/d/e/1FAIpQLSeGs-baoPj_2Kry0jHBMtuMcy_03SZfkVX5jxZ93LOR1H3ZGA/viewform" target="_blank" rel="noopener">응답 폼</a>
+    </nav>
+  </header>
+
+  <section class="stage" id="stage">
+    <div class="slot" id="cards" aria-live="polite"></div>
+    <div class="ticker">
+      <div>
+        <strong id="ticker-title">결과 집계 중</strong>
+        <span id="ticker-copy">표심이 회전 중입니다. 잠시 후 오늘의 선택이 등장합니다.</span>
+      </div>
+      <div class="progress" aria-hidden="true"><span></span></div>
+    </div>
+    <div class="headline" id="headline"></div>
+    <div class="note" id="note"></div>
+  </section>
+</main>
+
+<script>
+  const assets = {
+    chinese: "assets/chinese.svg",
+    pork: "assets/pork.svg",
+    absent: "assets/absent.svg"
+  };
+  const copies = {
+    chinese: "면과 불맛으로 모이는 쪽",
+    pork: "불판 중심 숙의로 가는 쪽",
+    absent: "오늘은 일정상 빠지는 쪽"
+  };
+
+  const stage = document.getElementById("stage");
+  const cardsRoot = document.getElementById("cards");
+  const headline = document.getElementById("headline");
+  const tickerTitle = document.getElementById("ticker-title");
+  const tickerCopy = document.getElementById("ticker-copy");
+  const note = document.getElementById("note");
+
+  async function loadResults() {
+    const response = await fetch(`data/results.json?_=${Date.now()}`);
+    if (!response.ok) throw new Error(`results.json load failed: ${response.status}`);
+    return response.json();
+  }
+
+  function percent(count, total) {
+    if (!total) return 0;
+    return Math.round((count / total) * 100);
+  }
+
+  function renderCards(data) {
+    const total = data.unique_voters || data.choices.reduce((sum, choice) => sum + choice.count, 0);
+    cardsRoot.innerHTML = data.choices.map((choice) => {
+      const names = choice.names.length
+        ? choice.names.map((name) => `<span>${name}</span>`).join("")
+        : `<div class="empty">아직 선택 없음</div>`;
+      return `
+        <article class="card" data-choice="${choice.id}" style="--choice-color:${choice.color};--choice-accent:${choice.accent}">
+          <div class="media"><img src="${assets[choice.id]}" alt="${choice.label} 이미지"></div>
+          <div class="body">
+            <div class="label">
+              <h2>${choice.label}</h2>
+              <div class="count">${choice.count}<small>표</small></div>
+            </div>
+            <p>${copies[choice.id]}</p>
+            <div class="bar"><span data-width="${percent(choice.count, total)}%"></span></div>
+            <div class="names">${names}</div>
+          </div>
+        </article>
+      `;
+    }).join("");
+    requestAnimationFrame(() => {
+      document.querySelectorAll(".bar span").forEach((bar) => {
+        bar.style.width = bar.dataset.width;
+      });
+    });
+  }
+
+  function revealWinner(data) {
+    const choices = [...data.choices];
+    choices.sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "ko"));
+    const winner = choices[0];
+    const total = data.unique_voters || choices.reduce((sum, choice) => sum + choice.count, 0);
+    stage.classList.add("reveal");
+    document.querySelectorAll(".card").forEach((card) => {
+      card.classList.remove("active");
+      if (card.dataset.choice === winner.id) {
+        card.classList.add("winner");
+      } else {
+        card.classList.add("dimmed");
+      }
+    });
+    tickerTitle.textContent = "결과 발표";
+    tickerCopy.textContent = `${winner.label} ${winner.count}표. 오늘의 대세가 정해졌습니다.`;
+    headline.innerHTML = `
+      <div>
+        <b>오늘의 결과는 ${winner.label}</b>
+        <span>총 ${total}명 기준, ${winner.count}표가 모였습니다. 같은 이름은 최신 응답만 반영했습니다.</span>
+      </div>
+      <div class="winner-badge">${winner.label}<br>${winner.count}표</div>
+    `;
+    const duplicates = data.duplicate_names && data.duplicate_names.length
+      ? `중복 응답 최신 반영: ${data.duplicate_names.join(", ")}`
+      : "중복 응답 없음";
+    note.textContent = `마지막 갱신 ${data.updated_at} · ${duplicates}`;
+  }
+
+  function startShuffle(data) {
+    const cards = [...document.querySelectorAll(".card")];
+    let index = 0;
+    const timer = window.setInterval(() => {
+      cards.forEach((card) => card.classList.remove("active"));
+      cards[index % cards.length].classList.add("active");
+      tickerCopy.textContent = ["쇽", "쇽 쇽", "쇽 쇽 쇽"][index % 3];
+      index += 1;
+    }, 260);
+    window.setTimeout(() => {
+      window.clearInterval(timer);
+      revealWinner(data);
+    }, 5000);
+  }
+
+  loadResults()
+    .then((data) => {
+      renderCards(data);
+      startShuffle(data);
+    })
+    .catch((error) => {
+      console.error(error);
+      cardsRoot.innerHTML = `<article class="card"><div class="body"><h2>결과를 불러오지 못했습니다</h2><p>data/results.json을 확인해주세요.</p></div></article>`;
+    });
+</script>
+</body>
+</html>

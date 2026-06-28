@@ -39,6 +39,7 @@ This repository is the shared working surface for Codex and Claude on the climat
 - Dinner RSVP form: `https://docs.google.com/forms/d/e/1FAIpQLSeGs-baoPj_2Kry0jHBMtuMcy_03SZfkVX5jxZ93LOR1H3ZGA/viewform`
 - Dinner RSVP edit: `https://docs.google.com/forms/d/1unIaSHFwm_qZj0M1b_sfRVjACgE-obQSKB-o7UfAlY8/edit`
 - Dinner RSVP fields: required `이름`, required `저녁식사 선택` with options `중국집`, `삼겹살`, `불참`.
+- Dinner vote result: `https://climate-assembly.org/dinner-vote-0628/`
 
 ## Current Design Baseline
 
@@ -76,9 +77,15 @@ Display labels should be facilitator-facing Korean, while JSON fields may use En
   - Miro-style post-it launch
   - Analysis criteria page launch
   - Participant Google Form response/edit/QR tab
-  - Dinner RSVP response/edit/QR tab
+  - Dinner RSVP response/edit/result-view launch. The inline dinner QR remains visible, but the old QR tab button was replaced by `결과 보기` because the URL had already circulated.
   - Google Sheet link
   - Analysis summary cards
+- Dinner vote result page:
+  - Path: `public/dinner-vote-0628/index.html`
+  - Data snapshot: `public/dinner-vote-0628/data/results.json`
+  - Assets: `public/dinner-vote-0628/assets/chinese.svg`, `pork.svg`, `absent.svg`
+  - Behavior: Chinese restaurant / pork belly / absent cards shuffle for 5 seconds, then the highest count is enlarged.
+  - Counting rule: same-name duplicate responses use the latest row only.
 - Ontology page includes:
   - Showcase label graph
   - participant view filters: `전체`, `소감`, `질문`
