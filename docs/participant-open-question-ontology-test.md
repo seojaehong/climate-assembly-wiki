@@ -87,21 +87,21 @@ node scripts/build-participant-question-ontology.mjs --csv-url "https://docs.goo
 
 생성된 Google Sheet:
 
-- 파일명: `0628 참여단 주관식 질문 응답 - 운영 감축`
-- URL: https://docs.google.com/spreadsheets/d/1hfFGfAhV6BQx0gRXRDIfu_aFvu5jcfJL4AAlYUJwR-M/edit?usp=drivesdk
+- 파일명: `0628 참여단 주관식 질문 응답 - 운영 감축 - gws`
+- URL: https://docs.google.com/spreadsheets/d/1T31pzPV8JHeqyCuGUq0M28e81-cCujOC_V8mMFACG20/edit
 - 응답 탭: `Form Responses 1`
 - 헤더: `타임스탬프`, `조`, `기후시민회의 운영 관련 질문`, `감축의제 질문`, `메모`, `처리상태`
 
 CSV URL 후보:
 
 ```text
-https://docs.google.com/spreadsheets/d/1hfFGfAhV6BQx0gRXRDIfu_aFvu5jcfJL4AAlYUJwR-M/gviz/tq?tqx=out:csv&sheet=Form%20Responses%201
+https://docs.google.com/spreadsheets/d/1T31pzPV8JHeqyCuGUq0M28e81-cCujOC_V8mMFACG20/gviz/tq?tqx=out:csv&sheet=Form%20Responses%201
 ```
 
 온톨로지 생성 명령:
 
 ```powershell
-node scripts/build-participant-question-ontology.mjs --csv-url "https://docs.google.com/spreadsheets/d/1hfFGfAhV6BQx0gRXRDIfu_aFvu5jcfJL4AAlYUJwR-M/gviz/tq?tqx=out:csv&sheet=Form%20Responses%201"
+node scripts/build-participant-question-ontology.mjs --csv-url "https://docs.google.com/spreadsheets/d/1T31pzPV8JHeqyCuGUq0M28e81-cCujOC_V8mMFACG20/gviz/tq?tqx=out:csv&sheet=Form%20Responses%201"
 ```
 
 gws 연결 상태:
@@ -110,7 +110,7 @@ gws 연결 상태:
 - 계정: `iceamericano9@gmail.com`
 - 승인 scope: Forms body, Forms responses readonly, Drive, Drive file, Sheets
 - Forms API로 Form 생성 및 문항 추가 완료
-- Google Drive 커넥터로 Sheet 생성과 탭 세팅 완료
+- gws로 Sheet 생성, 탭 세팅, 값 읽기 검증 완료
 
 현재 자동화 한계:
 

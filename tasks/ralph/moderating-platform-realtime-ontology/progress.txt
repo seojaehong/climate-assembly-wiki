@@ -29,7 +29,7 @@
 - Next: user creates the Google Form and links it to the prepared Sheet, then run the CSV URL command to refresh the 0628 graph JSON.
 
 ## 2026-06-28 GWS-CLI
-- Changed: connected `googleworkspace/cli` (`gws 0.11.1`) with Forms body, Forms responses readonly, Drive, Drive file, and Sheets scopes; created Google Form `0628 참여단 주관식 질문 - 운영 감축` with the three required questions.
-- Verified: `gws forms forms get` returned formId `1yktkA_XAMGcVt4mlnC-0Yc3d3N0N0YQ__Dk1TfdTaCc`, published response URL, and all three required question items.
+- Changed: connected `googleworkspace/cli` (`gws 0.11.1`) with Forms body, Forms responses readonly, Drive, Drive file, and Sheets scopes; created Google Form `0628 참여단 주관식 질문 - 운영 감축` with the three required questions and a gws-owned response Sheet.
+- Verified: `gws forms forms get` returned formId `1yktkA_XAMGcVt4mlnC-0Yc3d3N0N0YQ__Dk1TfdTaCc`, published response URL, and all three required question items; `gws sheets spreadsheets values get` read the gws Sheet `Form Responses 1!A1:D2` headers and sample row.
 - Learned: `gws forms forms create` works after clearing stale token cache and reauthing with explicit scopes; Google Forms API still does not expose response destination linking to an existing spreadsheet, so the last Form UI `Responses` to Sheet selection remains manual.
 - Next: link the created Form to the prepared Sheet in the Forms UI, then refresh ontology JSON from the Sheet CSV URL.
