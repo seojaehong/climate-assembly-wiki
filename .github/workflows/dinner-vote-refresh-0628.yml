@@ -1,0 +1,89 @@
+name: dinner-vote-refresh-0628
+
+on:
+  schedule:
+    # 2026-06-28 KST 17:00~18:59 every minute.
+    - cron: '* 8-9 28 6 *'
+    # One final run at 19:00 KST.
+    - cron: '0 10 28 6 *'
+  workflow_dispatch:
+
+concurrency:
+  group: dinner-vote-refresh-0628
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      DINNER_CSV_URL: https://docs.google.com/spreadsheets/d/1UMgk4pHgB33oI8eMVylQCIlvaBES_ez0nIIX4cDZcOg/gviz/tq?tqx=out:csv&sheet=%EC%84%A4%EB%AC%B8%EC%A7%80%20%EC%9D%91%EB%8B%B5%20%EC%8B%9C%ED%8A%B81
+    steps:
+      - name: Stop outside 0628 KST window
+        run: |
+          NOW="$(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M')"
+          echo "KST now: $NOW"
+          if [[ "$NOW" < "2026-06-28 00:00" || "$NOW" > "2026-06-28 19:00" ]]; then
+            echo "Outside the requested refresh window."
+            exit 0
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Download dinner vote CSV
+        run: |
+          curl -fsSL "$DINNER_CSV_URL" -o "$RUNNER_TEMP/dinner-vote.csv"
+          head -n 3 "$RUNNER_TEMP/dinner-vote.csv"
+
+      - name: Refresh dinner vote JSON
+        run: |
+          node scripts/build-dinner-vote-results.mjs "$RUNNER_TEMP/dinner-vote.csv" public/dinner-vote-0628/data/results.json evaluation/0628-participant-test-report.json
+
+      - name: Commit if changed
+        id: commit
+        run: |
+          if git diff --quiet -- public/dinner-vote-0628/data/results.json evaluation/0628-participant-test-report.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No dinner vote changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/dinner-vote-0628/data/results.json evaluation/0628-participant-test-report.json
+          git commit -m "data: refresh dinner vote results"
+          git pull --rebase --autostash
+          git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to Cloudflare Pages
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          SITE="$RUNNER_TEMP/climate-assembly-0628-pages"
+          rm -rf "$SITE"
+          mkdir -p "$SITE"
+          cp -R public/. "$SITE/"
+          cat > "$SITE/index.html" <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <meta http-equiv="refresh" content="0; url=/0628-admin/index.html">
+          <title>0628 참여단 테스트</title>
+          <a href="/0628-admin/index.html">0628 참여단 테스트 관리자</a>
+          HTML
+          cat > "$SITE/_redirects" <<'REDIRECTS'
+          / /0628-admin/index.html 302
+          /vote-614/* /vote-admin-614/:splat 301
+          /vote-614 /vote-admin-614/ 301
+          REDIRECTS
+          npx --yes wrangler@latest pages deploy "$SITE" --project-name climate-assembly-wiki --branch main --commit-hash "$(git rev-parse HEAD)" --commit-message "$(git log -1 --pretty=%s)" --commit-dirty=true --skip-caching

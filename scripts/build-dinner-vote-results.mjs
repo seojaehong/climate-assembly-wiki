@@ -8,8 +8,9 @@ if (!inputPath || !outputPath) {
 }
 
 const inputText = fs.readFileSync(inputPath, "utf8").replace(/^\uFEFF/, "");
-const sheet = JSON.parse(inputText);
-const rows = sheet.values || [];
+const rows = inputText.trimStart().startsWith("{")
+  ? (JSON.parse(inputText).values || [])
+  : parseCsv(inputText);
 const header = rows[0] || [];
 const body = rows.slice(1);
 
@@ -79,7 +80,7 @@ const updatedAt = new Intl.DateTimeFormat("sv-SE", {
   hour12: false,
 }).format(new Date()).replace(" ", "T") + "+09:00";
 
-const result = {
+let result = {
   updated_at: updatedAt,
   source: {
     form_id: "1unIaSHFwm_qZj0M1b_sfRVjACgE-obQSKB-o7UfAlY8",
@@ -95,6 +96,15 @@ const result = {
   choices,
   raw_rows: validRows,
 };
+
+if (fs.existsSync(outputPath)) {
+  const previous = JSON.parse(fs.readFileSync(outputPath, "utf8"));
+  const previousStable = withoutUpdatedAt(previous);
+  const nextStable = withoutUpdatedAt(result);
+  if (JSON.stringify(previousStable) === JSON.stringify(nextStable)) {
+    result = { ...result, updated_at: previous.updated_at };
+  }
+}
 
 fs.writeFileSync(outputPath, `${JSON.stringify(result, null, 2)}\n`);
 
@@ -117,3 +127,60 @@ if (reportPath && fs.existsSync(reportPath)) {
 }
 
 console.log(JSON.stringify(summary, null, 2));
+
+function withoutUpdatedAt(value) {
+  const clone = JSON.parse(JSON.stringify(value));
+  delete clone.updated_at;
+  return clone;
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const next = text[index + 1];
+
+    if (inQuotes) {
+      if (char === "\"" && next === "\"") {
+        field += "\"";
+        index += 1;
+      } else if (char === "\"") {
+        inQuotes = false;
+      } else {
+        field += char;
+      }
+      continue;
+    }
+
+    if (char === "\"") {
+      inQuotes = true;
+    } else if (char === ",") {
+      row.push(field);
+      field = "";
+    } else if (char === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+    } else if (char !== "\r") {
+      field += char;
+    }
+  }
+
+  if (field.length || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  return rows.map((cells) => {
+    let last = cells.length - 1;
+    while (last >= 0 && String(cells[last] || "").trim() === "") {
+      last -= 1;
+    }
+    return cells.slice(0, last + 1);
+  });
+}
