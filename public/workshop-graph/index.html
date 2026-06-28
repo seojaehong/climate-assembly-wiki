@@ -84,7 +84,7 @@
   body.og-showcase-mode .og-showcase-edge-tog{display:flex;background:rgba(255,255,255,.88);border-color:rgba(37,99,235,.20);box-shadow:0 12px 34px rgba(15,23,42,.12);backdrop-filter:blur(10px)}
   body.og-showcase-mode .og-showcase-count-tog .og-grp-lbl,
   body.og-showcase-mode .og-showcase-edge-tog .og-grp-lbl{color:#475569}
-  body.og-showcase-mode .og-canvas{background:radial-gradient(circle at 42% 42%,#ffffff 0,#fbfdff 46%,#f1f8fb 100%)}
+  body.og-showcase-mode .og-canvas{background:#fbfdff}
   body.og-showcase-mode.og-showcase-dark .og-showcase-count-tog,
   body.og-showcase-mode.og-showcase-dark .og-showcase-edge-tog{background:rgba(13,20,30,.76);border-color:rgba(139,211,255,.24);box-shadow:0 12px 34px rgba(0,0,0,.28)}
   body.og-showcase-mode.og-showcase-dark .og-showcase-count-tog .og-grp-lbl,
@@ -387,6 +387,12 @@ function shortenNodeLabel(label, maxChars = 18) {
   return acc || compact.slice(0, maxChars);
 }
 
+function showcaseLabelLimit() {
+  if (showcaseCount <= 50) return 26;
+  if (showcaseCount <= 75) return 22;
+  return 18;
+}
+
 function nodeShowcaseScore(node) {
   const kind = node.data?.kind || '';
   const kindBoost = { Issue: 70, Claim: 54, Proposal: 50, Concern: 48, Condition: 42, Evidence: 38, Value: 36, Group: 18 }[kind] || 20;
@@ -429,7 +435,7 @@ function buildShowcaseElements(limit = showcaseCount) {
       ...n,
       data: {
         ...n.data,
-        shortLabel: shortenNodeLabel(n.data.label, showcaseCount === 50 ? 9 : 11),
+        shortLabel: shortenNodeLabel(n.data.label, showcaseLabelLimit()),
       },
       classes: [n.classes, 'showcase-node'].filter(Boolean).join(' '),
     }));
@@ -1219,8 +1225,8 @@ function renderCy() {
     style: buildCyStyle(OntologyChrome.getPalette()),
     layout: showcaseMode
       ? { name:'fcose', quality:'default', animate:false, randomize:true,
-          nodeRepulsion:21000, idealEdgeLength:190, edgeElasticity:0.28,
-          gravity:0.10, numIter:3600, packComponents:true, nodeSeparation:150 }
+          nodeRepulsion:36000, idealEdgeLength:245, edgeElasticity:0.18,
+          gravity:0.045, numIter:5200, packComponents:true, nodeSeparation:230 }
       : { name:'fcose', quality:'default', animate:false, randomize:true,
           nodeRepulsion:9000, idealEdgeLength:130, edgeElasticity:0.45,
           gravity:0.25, numIter:2500, packComponents:true, nodeSeparation:90 },
@@ -1245,7 +1251,7 @@ function applyPhysics() {
   try { if (typeof cytoscapeCola !== 'undefined') cytoscape.use(cytoscapeCola); } catch {}
   try {
     colaLayout = cy.layout({ name:'cola', infinite:true, fit:false, animate:true,
-      nodeSpacing: showcaseMode ? 34 : 6, edgeLength: showcaseMode ? 190 : 110, randomize:false, handleDisconnected:true,
+      nodeSpacing: showcaseMode ? 86 : 6, edgeLength: showcaseMode ? 245 : 110, randomize:false, handleDisconnected:true,
       centerGraph:false, refresh:1, maxSimulationTime: showcaseMode ? 180000 : undefined });
     colaLayout.run();
   } catch (e) { colaLayout = null; }
@@ -1843,14 +1849,29 @@ function buildCyStyle(palette) {
           if (presentLevel === 'full' && n.data('isOverviewLabel')) return n.data('label') || '';
           return '';
         },
-        'color': paperLike ? '#0f172a' : '#eef3f9', 'font-size': demo ? '8px' : (presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px'),
-        'min-zoomed-font-size': demo ? 4 : (presentMode ? (presentLevel === 'full' ? 18 : 999) : 7),  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
-        'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif", 'font-weight': presentMode || demo ? 700 : 500,
-        'text-wrap':'wrap','text-max-width': demo ? '60px' : (presentMode ? '120px' : '140px'),'text-valign':'bottom','text-margin-y':3,
-        'text-outline-color': paperLike ? '#ffffff' : '#0b111a','text-outline-width': demo ? 2.6 : (presentMode ? 2.5 : 2.5),
-        'width': n => (demo ? 15 : (presentMode?26:22)) + Math.min(n.data('deg')||0,8)*(demo ? 2.2 : (presentMode?3:4)),
-        'height': n => (demo ? 15 : (presentMode?26:22)) + Math.min(n.data('deg')||0,8)*(demo ? 2.2 : (presentMode?3:4)),
+        'color': paperLike ? '#0f172a' : '#eef3f9', 'font-size': demo ? '15px' : (presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px'),
+        'min-zoomed-font-size': demo ? 0 : (presentMode ? (presentLevel === 'full' ? 18 : 999) : 7),  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
+        'font-family':'Noto Sans KR, Malgun Gothic, sans-serif', 'font-weight': presentMode || demo ? 700 : 500,
+        'text-wrap':'wrap','text-max-width': demo ? '190px' : (presentMode ? '120px' : '140px'),'text-valign': demo ? 'center' : 'bottom','text-halign':'center','text-margin-y': demo ? 0 : 3,
+        'text-outline-color': paperLike ? '#ffffff' : '#0b111a','text-outline-width': demo ? 0 : (presentMode ? 2.5 : 2.5),
+        'width': n => demo ? Math.max(96, Math.min(250, String(n.data('shortLabel') || n.data('label') || '').length * 13 + 34)) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4),
+        'height': n => demo ? Math.max(32, String(n.data('shortLabel') || n.data('label') || '').length > 15 ? 44 : 36) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4),
         'border-width':2.2,'border-color':'#0d1118','shape':'ellipse','opacity':1,
+    }},
+    { selector:'node.showcase-node', style:{
+        'shape':'round-rectangle',
+        'background-opacity':0.96,
+        'border-width':1.5,
+        'border-color': n => palette[n.data('kind')] || '#888',
+        'border-opacity':0.92,
+        'color':'#ffffff',
+        'text-outline-width':0,
+        'padding':'10px',
+        'z-index':12,
+        'overlay-opacity':0,
+    }},
+    { selector:'node.showcase-node[kind="Concern"], node.showcase-node[kind="Evidence"], node.showcase-node[kind="Clause"]', style:{
+        'color':'#111827',
     }},
     { selector:'node[?isOverviewLabel]', style:{
         'min-zoomed-font-size': presentationOverview ? 999 : (presentMode ? 18 : 0),
@@ -1866,15 +1887,15 @@ function buildCyStyle(palette) {
     { selector:'node[kind="Decision"]', style:{ 'shape':'star','border-color':'#ffa94d','border-width':3 }},
     { selector:'node[?synthesized]', style:{ 'shape':'round-diamond','border-style':'dashed','border-color':'#ff8787' }},
     { selector:'edge', style:{
-        'width': demo ? 1.65 : 1.8, 'line-color': paperLike ? '#64748b' : (demo ? '#526073' : '#6b7890'), 'target-arrow-color': paperLike ? '#64748b' : (demo ? '#526073' : '#6b7890'),
-        'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale': demo ? 1.18 : 1,
-        'label': demo ? (showcaseEdgeLabels ? 'data(relKo)' : '') : (paper ? '' : 'data(relKo)'),'font-size': demo ? '6.8px' : '10px','min-zoomed-font-size': demo ? (showcaseEdgeLabels ? 5 : 999) : 9,'color': paperLike ? '#1f2937' : (demo ? '#cbd5e1' : '#d3dbe8'),
-        'font-family':"'Noto Sans KR','Malgun Gothic',sans-serif",
+        'width': demo ? 1.25 : 1.8, 'line-color': paperLike ? (demo ? '#cbd5e1' : '#64748b') : (demo ? '#526073' : '#6b7890'), 'target-arrow-color': paperLike ? (demo ? '#cbd5e1' : '#64748b') : (demo ? '#526073' : '#6b7890'),
+        'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale': demo ? 0.9 : 1,
+        'label': demo ? (showcaseEdgeLabels ? 'data(relKo)' : '') : (paper ? '' : 'data(relKo)'),'font-size': demo ? '8.2px' : '10px','min-zoomed-font-size': demo ? (showcaseEdgeLabels ? 0 : 999) : 9,'color': paperLike ? (demo ? '#475569' : '#1f2937') : (demo ? '#cbd5e1' : '#d3dbe8'),
+        'font-family':'Noto Sans KR, Malgun Gothic, sans-serif',
         'text-rotation':'autorotate','text-background-color': paperLike ? '#ffffff' : '#11151c',
-        'text-background-opacity': demo ? 0.88 : 0.85,'text-background-padding':2,'opacity': demo ? 0.78 : 0.82,
+        'text-background-opacity': demo ? 0.74 : 0.85,'text-background-padding':2,'opacity': demo ? 0.66 : 0.82,
     }},
     { selector:'edge[?opposes]', style:{
-        'line-color':'#ff6b6b','target-arrow-color':'#ff6b6b','width':2.6 }},
+        'line-color': demo ? '#f4a3a3' : '#ff6b6b','target-arrow-color': demo ? '#f4a3a3' : '#ff6b6b','width': demo ? 1.65 : 2.6 }},
     // A-3 묶기 합성 부모(컨테이너) — 라벨 달린 둥근 사각, 반투명 배경, 자식이 안에 들도록 패딩
     { selector:'node[?isGroup]', style:{
         'shape':'round-rectangle','background-color': paperLike ? '#e6fffa' : '#12b886','background-opacity': paperLike ? 0.28 : 0.10,
@@ -1895,9 +1916,9 @@ function buildCyStyle(palette) {
     { selector:'edge.focus-dim', style:{ 'opacity': presentMode ? 0.34 : 0.08 }},
     { selector:'node.focus-neighbor', style:{ 'opacity':0.92,'border-width':3,'border-color':'#8bd3ff' }},
     { selector:'node.focus-main, node.focus-neighbor', style:{
-        'label':'data(label)','font-size': presentMode ? '13px' : '12px','min-zoomed-font-size':0,
-        'text-max-width': demo ? '92px' : '120px','text-background-color': paperLike ? '#ffffff' : '#0b111a',
-        'text-background-opacity':0.92,'text-background-padding':3,
+        'label': demo ? 'data(shortLabel)' : 'data(label)','font-size': demo ? '15px' : (presentMode ? '13px' : '12px'),'min-zoomed-font-size':0,
+        'text-max-width': demo ? '190px' : '120px','text-background-color': demo ? 'transparent' : (paperLike ? '#ffffff' : '#0b111a'),
+        'text-background-opacity': demo ? 0 : 0.92,'text-background-padding': demo ? 0 : 3,
     }},
     { selector:'node.focus-main', style:{ 'opacity':1,'border-width':5,'border-color':'#63e6be','overlay-color':'#63e6be','overlay-opacity':0.18,'overlay-padding':8 }},
     { selector:'edge.focus-edge', style:{
