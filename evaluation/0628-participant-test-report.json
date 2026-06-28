@@ -1,0 +1,42 @@
+{
+  "generated_at": "2026-06-28T12:18:00+09:00",
+  "scope": "0628 participant open-response test",
+  "input": {
+    "provider": "google_workspace_cli",
+    "account": "iceamericano9@gmail.com",
+    "form_id": "1yktkA_XAMGcVt4mlnC-0Yc3d3N0N0YQ__Dk1TfdTaCc",
+    "form_edit_url": "https://docs.google.com/forms/d/1yktkA_XAMGcVt4mlnC-0Yc3d3N0N0YQ__Dk1TfdTaCc/edit",
+    "form_response_url": "https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform",
+    "spreadsheet_id": "1T31pzPV8JHeqyCuGUq0M28e81-cCujOC_V8mMFACG20",
+    "spreadsheet_url": "https://docs.google.com/spreadsheets/d/1T31pzPV8JHeqyCuGUq0M28e81-cCujOC_V8mMFACG20/edit",
+    "sheet_name": "Form Responses 1",
+    "columns": ["타임스탬프", "조", "소감", "질문", "메모", "처리상태"],
+    "manual_step_remaining": "Google Forms UI에서 응답 저장소를 위 Google Sheet로 연결해야 한다."
+  },
+  "graph_data": {
+    "path": "public/workshop-graph-0628-test/data/participant-open-questions.json",
+    "rows": 8,
+    "responses": 16,
+    "impression_responses": 8,
+    "question_responses": 8,
+    "nodes": 18,
+    "edges": 20,
+    "similarity_edges": 4,
+    "keyword_nodes": 0
+  },
+  "views": {
+    "admin": "/0628-admin/index.html",
+    "ontology": "/workshop-graph-0628-test/index.html?source=participant-open-questions&mode=showcase&count=75&edgeLabels=on&theme=light",
+    "miro_board": "/miro-0628-test/index.html",
+    "original_miro_resource": "/board-demo.html"
+  },
+  "verification": {
+    "local_server": "http://127.0.0.1:4321",
+    "server_status": 200,
+    "data_generation_command": "node scripts/build-participant-question-ontology.mjs --csv %TEMP%/participant-open-questions-gws.csv",
+    "data_generation_result": "rows=8 responses=16 nodes=18 edges=20",
+    "browser_tabs_opened": true,
+    "miro_group_view": "implemented with view-groups button and group-filter select",
+    "note": "기존 workshop-graph와 board-demo 원본은 수정하지 않고 0628 테스트 페이지를 별도로 추가했다."
+  }
+}

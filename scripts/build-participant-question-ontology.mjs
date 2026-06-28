@@ -10,28 +10,40 @@ const SOURCES_PATH = join(WIKI_ROOT, 'public', 'workshop-graph-0628-test', 'sour
 
 const QUESTION_COLUMNS = [
   {
-    key: 'operation',
-    kindKo: '운영',
-    hubId: 'Question_operation',
-    hubLabel: '기후시민회의 운영 관련 질문',
+    key: 'impression',
+    kindKo: '소감',
+    hubId: 'Question_impression',
+    hubLabel: '소감',
     candidates: [
+      '소감',
+      '참여 소감',
+      '오늘 소감',
+      '회의 소감',
+      '워크숍 소감',
       '기후시민회의 운영 관련 질문',
       '운영 관련 질문',
       '운영 질문',
+      'q_impression',
+      'impression',
       'q_operation',
       'operation',
     ],
   },
   {
-    key: 'mitigation',
-    kindKo: '감축',
-    hubId: 'Question_mitigation',
-    hubLabel: '감축의제 질문',
+    key: 'question',
+    kindKo: '질문',
+    hubId: 'Question_question',
+    hubLabel: '질문',
     candidates: [
+      '질문',
+      '궁금한 점',
+      '남기고 싶은 질문',
       '감축의제 질문',
       '감축 의제 질문',
       '감축 관련 질문',
       '감축 질문',
+      'q_question',
+      'question',
       'q_mitigation',
       'mitigation',
     ],
@@ -60,9 +72,10 @@ function parseArgs(argv) {
     csvUrl: null,
     out: DEFAULT_OUT,
     sourceId: 'participant-open-questions',
-    label: '참여단 주관식 질문 — 운영/감축',
+    label: '참여단 주관식 — 소감/질문',
     threshold: 0.08,
     updateSources: false,
+    includeKeywordNodes: false,
   };
   for (let i = 2; i < argv.length; i += 1) {
     const a = argv[i];
@@ -74,13 +87,17 @@ function parseArgs(argv) {
     else if (a === '--threshold') args.threshold = Number(argv[++i]);
     else if (a === '--update-sources') args.updateSources = true;
     else if (a === '--no-update-sources') args.updateSources = false;
+    else if (a === '--include-keyword-nodes') args.includeKeywordNodes = true;
     else if (a === '--help') {
       console.log(`Usage:
   node scripts/build-participant-question-ontology.mjs --csv <responses.csv>
   node scripts/build-participant-question-ontology.mjs --csv-url <google_sheet_csv_url>
 
 Expected columns:
-  타임스탬프, 조, 기후시민회의 운영 관련 질문, 감축의제 질문`);
+  타임스탬프, 조, 소감, 질문
+Aliases:
+  기후시민회의 운영 관련 질문 -> 소감
+  감축의제 질문 -> 질문`);
       process.exit(0);
     }
   }
@@ -196,7 +213,7 @@ function topTerms(responses, limit = 24) {
     for (const t of r.tokens) freq.set(t, (freq.get(t) || 0) + 1);
   }
   return [...freq.entries()]
-    .filter(([, n]) => n >= 2)
+    .filter(([term, n]) => n >= 2 && term.length >= 3 && !STOPWORDS.has(term))
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko'))
     .slice(0, limit)
     .map(([term, count]) => ({ term, count }));
@@ -353,8 +370,8 @@ function buildGraph(rows, args) {
         id: r.id,
         node_id: r.id,
         label: responseLabel(r.text),
-        kind: r.questionKey === 'operation' ? 'Issue' : 'Proposal',
-        kindKo: r.questionKey === 'operation' ? '운영질문' : '감축질문',
+        kind: r.questionKey === 'impression' ? 'Claim' : 'Issue',
+        kindKo: r.questionKey === 'impression' ? '소감' : '질문',
         text: r.text,
         session: r.group || '참여단',
         cited: [r.id],
@@ -377,20 +394,22 @@ function buildGraph(rows, args) {
       },
     });
   }
-  for (const t of terms) {
-    nodes.push({
-      data: {
-        id: termById.get(t.term),
-        label: t.term,
-        kind: 'Value',
-        kindKo: '공통키워드',
-        text: `${t.term} (${t.count})`,
-        session: 'keyword',
-        deg: t.count,
-        isolated: false,
-        meta: { count: t.count },
-      },
-    });
+  if (args.includeKeywordNodes) {
+    for (const t of terms) {
+      nodes.push({
+        data: {
+          id: termById.get(t.term),
+          label: t.term,
+          kind: 'Value',
+          kindKo: '공통키워드',
+          text: `${t.term} (${t.count})`,
+          session: 'keyword',
+          deg: t.count,
+          isolated: false,
+          meta: { count: t.count },
+        },
+      });
+    }
   }
 
   const edges = [];
@@ -407,20 +426,22 @@ function buildGraph(rows, args) {
         meta: { question_key: r.questionKey },
       },
     });
-    for (const token of r.tokens) {
-      const termId = termById.get(token);
-      if (!termId) continue;
-      edges.push({
-        data: {
-          id: `kw_${edges.length + 1}`,
-          source: r.id,
-          target: termId,
-          rel: 'hasKeyword',
-          relKo: '키워드',
-          weight: 0.4,
-          meta: { token },
-        },
-      });
+    if (args.includeKeywordNodes) {
+      for (const token of r.tokens) {
+        const termId = termById.get(token);
+        if (!termId) continue;
+        edges.push({
+          data: {
+            id: `kw_${edges.length + 1}`,
+            source: r.id,
+            target: termId,
+            rel: 'hasKeyword',
+            relKo: '키워드',
+            weight: 0.4,
+            meta: { token },
+          },
+        });
+      }
     }
   }
   simEdges.forEach((e, i) => {
@@ -453,12 +474,12 @@ function buildGraph(rows, args) {
       counts: {
         rows: rows.length,
         responses: responses.length,
-        operation_responses: responses.filter((r) => r.questionKey === 'operation').length,
-        mitigation_responses: responses.filter((r) => r.questionKey === 'mitigation').length,
+        impression_responses: responses.filter((r) => r.questionKey === 'impression').length,
+        question_responses: responses.filter((r) => r.questionKey === 'question').length,
         nodes: nodes.length,
         edges: edges.length,
         similarity_edges: simEdges.length,
-        keyword_nodes: terms.length,
+        keyword_nodes: args.includeKeywordNodes ? terms.length : 0,
       },
       centrality: {
         degree_top: topBy('degree'),

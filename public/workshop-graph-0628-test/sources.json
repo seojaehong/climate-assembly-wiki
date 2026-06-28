@@ -7,7 +7,7 @@
     {
       "id": "participant-open-questions",
       "category": "participant",
-      "label": "0628 참여단 주관식 질문 — 운영/감축",
+      "label": "0628 참여단 주관식 — 소감/질문",
       "data": "data/participant-open-questions.json",
       "supportsView": ["2d"]
     }

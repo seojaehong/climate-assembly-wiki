@@ -3,57 +3,148 @@
     "nodes": [
       {
         "data": {
-          "id": "Question_operation",
-          "label": "기후시민회의 운영 관련 질문",
+          "id": "Question_impression",
+          "label": "소감",
           "kind": "Group",
           "kindKo": "문항",
-          "text": "기후시민회의 운영 관련 질문",
+          "text": "소감",
           "session": "participant-test",
-          "deg": 6,
+          "deg": 8,
           "isolated": false,
           "meta": {
-            "question_key": "operation"
+            "question_key": "impression"
           }
         }
       },
       {
         "data": {
-          "id": "Question_mitigation",
-          "label": "감축의제 질문",
+          "id": "Question_question",
+          "label": "질문",
           "kind": "Group",
           "kindKo": "문항",
-          "text": "감축의제 질문",
+          "text": "질문",
           "session": "participant-test",
-          "deg": 6,
+          "deg": 8,
           "isolated": false,
           "meta": {
-            "question_key": "mitigation"
+            "question_key": "question"
           }
         }
       },
       {
         "data": {
-          "id": "resp_operation_1",
-          "node_id": "resp_operation_1",
-          "label": "기획참여단이 의제 범위를 조정할 수 있는 기준은 …",
-          "kind": "Issue",
-          "kindKo": "운영질문",
-          "text": "기획참여단이 의제 범위를 조정할 수 있는 기준은 어디까지인가요?",
+          "id": "resp_impression_1",
+          "node_id": "resp_impression_1",
+          "label": "처음에는 의제 범위가 넓게 느껴졌지만 조별로 나누…",
+          "kind": "Claim",
+          "kindKo": "소감",
+          "text": "처음에는 의제 범위가 넓게 느껴졌지만 조별로 나누니 이해가 쉬웠습니다.",
           "session": "1조",
           "cited": [
-            "resp_operation_1"
+            "resp_impression_1"
           ],
           "cited_uids": [
-            "resp_operation_1"
+            "resp_impression_1"
           ],
-          "deg": 3,
+          "deg": 1,
           "isolated": false,
           "meta": {
             "row_index": 1,
-            "question_key": "operation",
-            "question_label": "기후시민회의 운영 관련 질문",
+            "question_key": "impression",
+            "question_label": "소감",
             "group": "1조",
-            "timestamp": "2026-06-28 11:00:01",
+            "timestamp": "2026-06-28 12:01:00",
+            "tokens": [
+              "처음에",
+              "범위",
+              "넓게",
+              "느껴졌지",
+              "조별로",
+              "나누니",
+              "이해",
+              "쉬웠습니다",
+              "처음",
+              "음에",
+              "에는",
+              "는의",
+              "제범",
+              "위가",
+              "가넓",
+              "게느",
+              "느껴",
+              "껴졌",
+              "졌지",
+              "지만",
+              "만조",
+              "조별",
+              "별로",
+              "로나",
+              "나누",
+              "누니",
+              "니이",
+              "해가",
+              "가쉬",
+              "쉬웠",
+              "웠습",
+              "습니",
+              "니다",
+              "음에는",
+              "에는의",
+              "는의제",
+              "의제범",
+              "제범위",
+              "범위가",
+              "위가넓",
+              "가넓게",
+              "넓게느",
+              "게느껴",
+              "느껴졌",
+              "껴졌지",
+              "졌지만",
+              "지만조",
+              "만조별",
+              "별로나",
+              "로나누",
+              "누니이",
+              "니이해",
+              "이해가",
+              "해가쉬",
+              "가쉬웠",
+              "쉬웠습",
+              "웠습니",
+              "습니다"
+            ],
+            "centrality": {
+              "degree": 0.6283,
+              "betweenness": 0,
+              "closeness": 1
+            }
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "resp_question_2",
+          "node_id": "resp_question_2",
+          "label": "기획참여단이 의제 범위를 조정할 수 있는 기준은 …",
+          "kind": "Issue",
+          "kindKo": "질문",
+          "text": "기획참여단이 의제 범위를 조정할 수 있는 기준은 어디까지인가요?",
+          "session": "1조",
+          "cited": [
+            "resp_question_2"
+          ],
+          "cited_uids": [
+            "resp_question_2"
+          ],
+          "deg": 4,
+          "isolated": false,
+          "meta": {
+            "row_index": 1,
+            "question_key": "question",
+            "question_label": "질문",
+            "group": "1조",
+            "timestamp": "2026-06-28 12:01:00",
             "tokens": [
               "기획참여단",
               "범위",
@@ -108,118 +199,124 @@
               "인가요"
             ],
             "centrality": {
-              "degree": 1,
-              "betweenness": 0,
-              "closeness": 0.7143
+              "degree": 0.9334,
+              "betweenness": 0.2857,
+              "closeness": 0.8333
             }
           }
         }
       },
       {
         "data": {
-          "id": "resp_mitigation_2",
-          "node_id": "resp_mitigation_2",
-          "label": "산업 부문 감축에서 중소기업 부담을 줄이는 지원책…",
-          "kind": "Proposal",
-          "kindKo": "감축질문",
-          "text": "산업 부문 감축에서 중소기업 부담을 줄이는 지원책은 무엇인가요?",
-          "session": "1조",
+          "id": "resp_impression_3",
+          "node_id": "resp_impression_3",
+          "label": "참여단과 기획참여단의 역할을 구분해서 설명해준 점…",
+          "kind": "Claim",
+          "kindKo": "소감",
+          "text": "참여단과 기획참여단의 역할을 구분해서 설명해준 점이 좋았습니다.",
+          "session": "2조",
           "cited": [
-            "resp_mitigation_2"
+            "resp_impression_3"
           ],
           "cited_uids": [
-            "resp_mitigation_2"
+            "resp_impression_3"
           ],
           "deg": 1,
           "isolated": false,
           "meta": {
-            "row_index": 1,
-            "question_key": "mitigation",
-            "question_label": "감축의제 질문",
-            "group": "1조",
-            "timestamp": "2026-06-28 11:00:01",
+            "row_index": 2,
+            "question_key": "impression",
+            "question_label": "소감",
+            "group": "2조",
+            "timestamp": "2026-06-28 12:02:00",
             "tokens": [
-              "산업",
-              "부문",
-              "중소기업",
-              "부담",
-              "줄이",
-              "지원책",
-              "지원",
-              "업부",
-              "문감",
-              "축에",
-              "에서",
-              "서중",
-              "중소",
-              "소기",
-              "기업",
-              "담을",
-              "을줄",
-              "이는",
-              "는지",
-              "원책",
-              "책은",
-              "은무",
-              "엇인",
-              "인가",
-              "가요",
-              "산업부",
-              "업부문",
-              "부문감",
-              "문감축",
-              "감축에",
-              "축에서",
-              "에서중",
-              "서중소",
-              "중소기",
-              "소기업",
-              "기업부",
-              "업부담",
-              "부담을",
-              "담을줄",
-              "을줄이",
-              "줄이는",
-              "이는지",
-              "는지원",
-              "원책은",
-              "책은무",
-              "은무엇",
-              "무엇인",
-              "엇인가",
-              "인가요"
+              "참여단",
+              "기획참여단의",
+              "역할",
+              "구분해서",
+              "설명해준",
+              "좋았습니다",
+              "기획참여단",
+              "참여",
+              "여단",
+              "단과",
+              "과기",
+              "기획",
+              "획참",
+              "단의",
+              "의역",
+              "할을",
+              "을구",
+              "구분",
+              "분해",
+              "해서",
+              "서설",
+              "설명",
+              "명해",
+              "해준",
+              "준점",
+              "점이",
+              "이좋",
+              "좋았",
+              "았습",
+              "습니",
+              "니다",
+              "여단과",
+              "단과기",
+              "과기획",
+              "기획참",
+              "획참여",
+              "여단의",
+              "단의역",
+              "의역할",
+              "역할을",
+              "할을구",
+              "을구분",
+              "구분해",
+              "분해서",
+              "해서설",
+              "서설명",
+              "설명해",
+              "명해준",
+              "해준점",
+              "준점이",
+              "점이좋",
+              "이좋았",
+              "좋았습",
+              "았습니",
+              "습니다"
             ],
             "centrality": {
-              "degree": 0.0821,
-              "betweenness": 0.6667,
-              "closeness": 0.625
+              "degree": 0.4887,
+              "betweenness": 0,
+              "closeness": 1
             }
           }
         }
       },
       {
         "data": {
-          "id": "resp_operation_3",
-          "node_id": "resp_operation_3",
+          "id": "resp_question_4",
+          "node_id": "resp_question_4",
           "label": "숙의참여단과 기획참여단의 역할이 겹칠 때 최종 판…",
           "kind": "Issue",
-          "kindKo": "운영질문",
+          "kindKo": "질문",
           "text": "숙의참여단과 기획참여단의 역할이 겹칠 때 최종 판단은 누가 하나요?",
           "session": "2조",
           "cited": [
-            "resp_operation_3"
+            "resp_question_4"
           ],
           "cited_uids": [
-            "resp_operation_3"
+            "resp_question_4"
           ],
           "deg": 3,
           "isolated": false,
           "meta": {
             "row_index": 2,
-            "question_key": "operation",
-            "question_label": "기후시민회의 운영 관련 질문",
+            "question_key": "question",
+            "question_label": "질문",
             "group": "2조",
-            "timestamp": "2026-06-28 11:00:04",
+            "timestamp": "2026-06-28 12:02:00",
             "tokens": [
               "숙의참여단",
               "기획참여단의",
@@ -277,8 +374,8 @@
               "하나요"
             ],
             "centrality": {
-              "degree": 0.916,
-              "betweenness": 0.1111,
+              "degree": 1,
+              "betweenness": 1,
               "closeness": 1
             }
           }
@@ -286,104 +383,106 @@
       },
       {
         "data": {
-          "id": "resp_mitigation_4",
-          "node_id": "resp_mitigation_4",
-          "label": "전기요금 인상 없이 재생에너지 전환을 확대할 수 …",
-          "kind": "Proposal",
-          "kindKo": "감축질문",
-          "text": "전기요금 인상 없이 재생에너지 전환을 확대할 수 있나요?",
-          "session": "2조",
+          "id": "resp_impression_5",
+          "node_id": "resp_impression_5",
+          "label": "소수의견도 기록된다고 들으니 발언 부담이 줄었습니…",
+          "kind": "Claim",
+          "kindKo": "소감",
+          "text": "소수의견도 기록된다고 들으니 발언 부담이 줄었습니다.",
+          "session": "3조",
           "cited": [
-            "resp_mitigation_4"
+            "resp_impression_5"
           ],
           "cited_uids": [
-            "resp_mitigation_4"
+            "resp_impression_5"
           ],
           "deg": 1,
           "isolated": false,
           "meta": {
-            "row_index": 2,
-            "question_key": "mitigation",
-            "question_label": "감축의제 질문",
-            "group": "2조",
-            "timestamp": "2026-06-28 11:00:04",
+            "row_index": 3,
+            "question_key": "impression",
+            "question_label": "소감",
+            "group": "3조",
+            "timestamp": "2026-06-28 12:03:00",
             "tokens": [
-              "전기요금",
-              "인상",
-              "재생에너지",
-              "전환",
-              "확대할",
-              "전기",
-              "기요",
-              "요금",
-              "금인",
-              "상없",
-              "없이",
-              "이재",
-              "재생",
-              "생에",
-              "에너",
-              "너지",
-              "지전",
-              "환을",
-              "을확",
-              "확대",
-              "대할",
-              "할수",
-              "수있",
-              "있나",
-              "나요",
-              "전기요",
-              "기요금",
-              "요금인",
-              "금인상",
-              "인상없",
-              "상없이",
-              "없이재",
-              "이재생",
-              "재생에",
-              "생에너",
-              "에너지",
-              "너지전",
-              "지전환",
-              "전환을",
-              "환을확",
-              "을확대",
-              "대할수",
-              "할수있",
-              "수있나"
+              "소수의견",
+              "기록된다고",
+              "들으니",
+              "발언",
+              "부담",
+              "줄었습니다",
+              "소수",
+              "수의",
+              "의견",
+              "견도",
+              "도기",
+              "기록",
+              "록된",
+              "된다",
+              "다고",
+              "고들",
+              "들으",
+              "으니",
+              "니발",
+              "언부",
+              "담이",
+              "이줄",
+              "줄었",
+              "었습",
+              "습니",
+              "니다",
+              "소수의",
+              "수의견",
+              "의견도",
+              "견도기",
+              "도기록",
+              "기록된",
+              "록된다",
+              "된다고",
+              "다고들",
+              "고들으",
+              "으니발",
+              "니발언",
+              "발언부",
+              "언부담",
+              "부담이",
+              "담이줄",
+              "이줄었",
+              "줄었습",
+              "었습니",
+              "습니다"
             ],
             "centrality": {
-              "degree": 0.1641,
+              "degree": 0.4887,
               "betweenness": 0,
-              "closeness": 0.625
+              "closeness": 1
             }
           }
         }
       },
       {
         "data": {
-          "id": "resp_operation_5",
-          "node_id": "resp_operation_5",
+          "id": "resp_question_6",
+          "node_id": "resp_question_6",
           "label": "소수의견은 회의록과 권고안에 어떻게 남겨지나요?",
           "kind": "Issue",
-          "kindKo": "운영질문",
+          "kindKo": "질문",
           "text": "소수의견은 회의록과 권고안에 어떻게 남겨지나요?",
           "session": "3조",
           "cited": [
-            "resp_operation_5"
+            "resp_question_6"
           ],
           "cited_uids": [
-            "resp_operation_5"
+            "resp_question_6"
           ],
           "deg": 1,
           "isolated": false,
           "meta": {
             "row_index": 3,
-            "question_key": "operation",
-            "question_label": "기후시민회의 운영 관련 질문",
+            "question_key": "question",
+            "question_label": "질문",
             "group": "3조",
-            "timestamp": "2026-06-28 11:00:09",
+            "timestamp": "2026-06-28 12:03:00",
             "tokens": [
               "소수의견",
               "회의록",
@@ -427,183 +526,8 @@
               "지나요"
             ],
             "centrality": {
-              "degree": 0.1641,
+              "degree": 0.1396,
               "betweenness": 0,
-              "closeness": 0.8333
-            }
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "resp_mitigation_6",
-          "node_id": "resp_mitigation_6",
-          "label": "대중교통 확대가 실제 온실가스 감축으로 이어지려면…",
-          "kind": "Proposal",
-          "kindKo": "감축질문",
-          "text": "대중교통 확대가 실제 온실가스 감축으로 이어지려면 어떤 조건이 필요한가요?",
-          "session": "3조",
-          "cited": [
-            "resp_mitigation_6"
-          ],
-          "cited_uids": [
-            "resp_mitigation_6"
-          ],
-          "deg": 1,
-          "isolated": false,
-          "meta": {
-            "row_index": 3,
-            "question_key": "mitigation",
-            "question_label": "감축의제 질문",
-            "group": "3조",
-            "timestamp": "2026-06-28 11:00:09",
-            "tokens": [
-              "대중교통",
-              "확대",
-              "실제",
-              "온실가스",
-              "이어지려면",
-              "조건",
-              "필요한가요",
-              "대중",
-              "중교",
-              "교통",
-              "통확",
-              "대가",
-              "가실",
-              "제온",
-              "온실",
-              "실가",
-              "가스",
-              "스감",
-              "축으",
-              "으로",
-              "로이",
-              "이어",
-              "어지",
-              "지려",
-              "려면",
-              "면어",
-              "떤조",
-              "건이",
-              "이필",
-              "요한",
-              "한가",
-              "가요",
-              "대중교",
-              "중교통",
-              "교통확",
-              "통확대",
-              "확대가",
-              "대가실",
-              "가실제",
-              "실제온",
-              "제온실",
-              "온실가",
-              "실가스",
-              "가스감",
-              "스감축",
-              "감축으",
-              "축으로",
-              "으로이",
-              "로이어",
-              "이어지",
-              "어지려",
-              "지려면",
-              "려면어",
-              "면어떤",
-              "어떤조",
-              "떤조건",
-              "조건이",
-              "건이필",
-              "이필요",
-              "필요한",
-              "요한가",
-              "한가요"
-            ],
-            "centrality": {
-              "degree": 0.041,
-              "betweenness": 0,
-              "closeness": 0.4167
-            }
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "resp_operation_7",
-          "node_id": "resp_operation_7",
-          "label": "모더레이터가 의견을 정리할 때 어디까지 개입해도 …",
-          "kind": "Issue",
-          "kindKo": "운영질문",
-          "text": "모더레이터가 의견을 정리할 때 어디까지 개입해도 되나요?",
-          "session": "4조",
-          "cited": [
-            "resp_operation_7"
-          ],
-          "cited_uids": [
-            "resp_operation_7"
-          ],
-          "deg": 1,
-          "isolated": false,
-          "meta": {
-            "row_index": 4,
-            "question_key": "operation",
-            "question_label": "기후시민회의 운영 관련 질문",
-            "group": "4조",
-            "timestamp": "2026-06-28 11:00:13",
-            "tokens": [
-              "모더레이터",
-              "의견",
-              "정리할",
-              "어디까지",
-              "개입해",
-              "모더",
-              "더레",
-              "레이",
-              "이터",
-              "터가",
-              "가의",
-              "견을",
-              "을정",
-              "정리",
-              "리할",
-              "할때",
-              "때어",
-              "어디",
-              "디까",
-              "까지",
-              "지개",
-              "개입",
-              "입해",
-              "해도",
-              "도되",
-              "되나",
-              "나요",
-              "모더레",
-              "더레이",
-              "레이터",
-              "이터가",
-              "터가의",
-              "가의견",
-              "의견을",
-              "견을정",
-              "을정리",
-              "리할때",
-              "할때어",
-              "때어디",
-              "어디까",
-              "디까지",
-              "까지개",
-              "지개입",
-              "입해도",
-              "해도되",
-              "도되나",
-              "되나요"
-            ],
-            "centrality": {
-              "degree": 0.4103,
-              "betweenness": 0.1111,
               "closeness": 1
             }
           }
@@ -611,73 +535,336 @@
       },
       {
         "data": {
-          "id": "resp_mitigation_8",
-          "node_id": "resp_mitigation_8",
-          "label": "건물 에너지 효율 개선 비용은 누가 부담해야 하나…",
-          "kind": "Proposal",
-          "kindKo": "감축질문",
-          "text": "건물 에너지 효율 개선 비용은 누가 부담해야 하나요?",
+          "id": "resp_impression_7",
+          "node_id": "resp_impression_7",
+          "label": "온라인 의견과 현장 의견을 같이 보는 방식이 공정…",
+          "kind": "Claim",
+          "kindKo": "소감",
+          "text": "온라인 의견과 현장 의견을 같이 보는 방식이 공정하게 느껴졌습니다.",
           "session": "4조",
           "cited": [
-            "resp_mitigation_8"
+            "resp_impression_7"
           ],
           "cited_uids": [
-            "resp_mitigation_8"
+            "resp_impression_7"
           ],
           "deg": 1,
           "isolated": false,
           "meta": {
             "row_index": 4,
-            "question_key": "mitigation",
-            "question_label": "감축의제 질문",
+            "question_key": "impression",
+            "question_label": "소감",
             "group": "4조",
-            "timestamp": "2026-06-28 11:00:13",
+            "timestamp": "2026-06-28 12:04:00",
             "tokens": [
-              "건물",
-              "에너지",
-              "효율",
-              "개선",
-              "비용",
-              "부담해야",
-              "건물에너지",
-              "부담",
-              "물에",
-              "에너",
-              "너지",
-              "지효",
-              "율개",
-              "선비",
-              "용은",
-              "은누",
-              "누가",
-              "가부",
-              "담해",
+              "온라인",
+              "의견",
+              "현장",
+              "방식",
+              "공정하게",
+              "느껴졌습니다",
+              "온라",
+              "라인",
+              "인의",
+              "견과",
+              "과현",
+              "장의",
+              "견을",
+              "을같",
+              "같이",
+              "이보",
+              "보는",
+              "는방",
+              "식이",
+              "이공",
+              "공정",
+              "정하",
+              "하게",
+              "게느",
+              "느껴",
+              "껴졌",
+              "졌습",
+              "습니",
+              "니다",
+              "라인의",
+              "인의견",
+              "의견과",
+              "견과현",
+              "과현장",
+              "현장의",
+              "장의견",
+              "의견을",
+              "견을같",
+              "을같이",
+              "같이보",
+              "이보는",
+              "보는방",
+              "는방식",
+              "방식이",
+              "식이공",
+              "이공정",
+              "공정하",
+              "정하게",
+              "하게느",
+              "게느껴",
+              "느껴졌",
+              "껴졌습",
+              "졌습니",
+              "습니다"
+            ],
+            "centrality": {
+              "degree": 0.6283,
+              "betweenness": 0,
+              "closeness": 1
+            }
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "resp_question_8",
+          "node_id": "resp_question_8",
+          "label": "온라인 의견과 현장토론 의견의 반영 비율은 어떻게…",
+          "kind": "Issue",
+          "kindKo": "질문",
+          "text": "온라인 의견과 현장토론 의견의 반영 비율은 어떻게 정하나요?",
+          "session": "4조",
+          "cited": [
+            "resp_question_8"
+          ],
+          "cited_uids": [
+            "resp_question_8"
+          ],
+          "deg": 1,
+          "isolated": false,
+          "meta": {
+            "row_index": 4,
+            "question_key": "question",
+            "question_label": "질문",
+            "group": "4조",
+            "timestamp": "2026-06-28 12:04:00",
+            "tokens": [
+              "온라인",
+              "의견",
+              "현장토론",
+              "의견의",
+              "반영",
+              "비율",
+              "온라",
+              "라인",
+              "인의",
+              "견과",
+              "과현",
+              "현장",
+              "장토",
+              "토론",
+              "론의",
+              "견의",
+              "의반",
+              "영비",
+              "율은",
+              "은어",
+              "어떻",
+              "떻게",
+              "게정",
+              "정하",
+              "하나",
+              "나요",
+              "라인의",
+              "인의견",
+              "의견과",
+              "견과현",
+              "과현장",
+              "현장토",
+              "장토론",
+              "토론의",
+              "론의견",
+              "견의반",
+              "의반영",
+              "반영비",
+              "영비율",
+              "비율은",
+              "율은어",
+              "은어떻",
+              "떻게정",
+              "게정하",
+              "정하나",
+              "하나요"
+            ],
+            "centrality": {
+              "degree": 0.2094,
+              "betweenness": 0,
+              "closeness": 0.7143
+            }
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "resp_impression_9",
+          "node_id": "resp_impression_9",
+          "label": "모더레이터가 긴 발언을 정리해주니 핵심이 잘 보였…",
+          "kind": "Claim",
+          "kindKo": "소감",
+          "text": "모더레이터가 긴 발언을 정리해주니 핵심이 잘 보였습니다.",
+          "session": "5조",
+          "cited": [
+            "resp_impression_9"
+          ],
+          "cited_uids": [
+            "resp_impression_9"
+          ],
+          "deg": 1,
+          "isolated": false,
+          "meta": {
+            "row_index": 5,
+            "question_key": "impression",
+            "question_label": "소감",
+            "group": "5조",
+            "timestamp": "2026-06-28 12:05:00",
+            "tokens": [
+              "모더레이터",
+              "발언",
+              "정리해주니",
+              "핵심",
+              "보였습니다",
+              "모더",
+              "더레",
+              "레이",
+              "이터",
+              "터가",
+              "가긴",
+              "긴발",
+              "언을",
+              "을정",
+              "정리",
+              "리해",
+              "해주",
+              "주니",
+              "니핵",
+              "심이",
+              "이잘",
+              "잘보",
+              "보였",
+              "였습",
+              "습니",
+              "니다",
+              "모더레",
+              "더레이",
+              "레이터",
+              "이터가",
+              "터가긴",
+              "가긴발",
+              "긴발언",
+              "발언을",
+              "언을정",
+              "을정리",
+              "정리해",
+              "리해주",
+              "해주니",
+              "주니핵",
+              "니핵심",
+              "핵심이",
+              "심이잘",
+              "이잘보",
+              "잘보였",
+              "보였습",
+              "였습니",
+              "습니다"
+            ],
+            "centrality": {
+              "degree": 0.4887,
+              "betweenness": 0,
+              "closeness": 1
+            }
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "resp_question_10",
+          "node_id": "resp_question_10",
+          "label": "모더레이터가 질문을 정리할 때 원문 표현은 어디까…",
+          "kind": "Issue",
+          "kindKo": "질문",
+          "text": "모더레이터가 질문을 정리할 때 원문 표현은 어디까지 유지해야 하나요?",
+          "session": "5조",
+          "cited": [
+            "resp_question_10"
+          ],
+          "cited_uids": [
+            "resp_question_10"
+          ],
+          "deg": 2,
+          "isolated": false,
+          "meta": {
+            "row_index": 5,
+            "question_key": "question",
+            "question_label": "질문",
+            "group": "5조",
+            "timestamp": "2026-06-28 12:05:00",
+            "tokens": [
+              "모더레이터",
+              "정리할",
+              "원문",
+              "표현",
+              "어디까지",
+              "유지해야",
+              "모더",
+              "더레",
+              "레이",
+              "이터",
+              "터가",
+              "가질",
+              "문을",
+              "을정",
+              "정리",
+              "리할",
+              "할때",
+              "때원",
+              "문표",
+              "현은",
+              "은어",
+              "어디",
+              "디까",
+              "까지",
+              "지유",
+              "유지",
+              "지해",
               "해야",
               "야하",
               "하나",
               "나요",
-              "건물에",
-              "물에너",
-              "너지효",
-              "지효율",
-              "효율개",
-              "율개선",
-              "개선비",
-              "선비용",
-              "비용은",
-              "용은누",
-              "은누가",
-              "누가부",
-              "가부담",
-              "부담해",
-              "담해야",
+              "모더레",
+              "더레이",
+              "레이터",
+              "이터가",
+              "터가질",
+              "가질문",
+              "질문을",
+              "문을정",
+              "을정리",
+              "리할때",
+              "할때원",
+              "때원문",
+              "원문표",
+              "문표현",
+              "표현은",
+              "현은어",
+              "은어디",
+              "어디까",
+              "디까지",
+              "까지유",
+              "지유지",
+              "유지해",
+              "지해야",
               "해야하",
               "야하나",
               "하나요"
             ],
             "centrality": {
-              "degree": 0.3283,
-              "betweenness": 1,
+              "degree": 0.3491,
+              "betweenness": 0.2857,
               "closeness": 0.8333
             }
           }
@@ -685,205 +872,119 @@
       },
       {
         "data": {
-          "id": "resp_operation_9",
-          "node_id": "resp_operation_9",
-          "label": "온라인으로 제출한 질문도 현장 토론과 같은 비중으…",
-          "kind": "Issue",
-          "kindKo": "운영질문",
-          "text": "온라인으로 제출한 질문도 현장 토론과 같은 비중으로 다뤄지나요?",
-          "session": "5조",
+          "id": "resp_impression_11",
+          "node_id": "resp_impression_11",
+          "label": "의제가 고정된 것이 아니라 토론 중 조정될 수 있…",
+          "kind": "Claim",
+          "kindKo": "소감",
+          "text": "의제가 고정된 것이 아니라 토론 중 조정될 수 있다는 점이 인상적이었습니다.",
+          "session": "6조",
           "cited": [
-            "resp_operation_9"
+            "resp_impression_11"
           ],
           "cited_uids": [
-            "resp_operation_9"
+            "resp_impression_11"
           ],
           "deg": 1,
           "isolated": false,
           "meta": {
-            "row_index": 5,
-            "question_key": "operation",
-            "question_label": "기후시민회의 운영 관련 질문",
-            "group": "5조",
-            "timestamp": "2026-06-28 11:00:18",
+            "row_index": 6,
+            "question_key": "impression",
+            "question_label": "소감",
+            "group": "6조",
+            "timestamp": "2026-06-28 12:06:00",
             "tokens": [
-              "온라인",
-              "제출한",
-              "현장",
+              "고정된",
+              "아니라",
               "토론",
-              "비중",
-              "다뤄지나요",
-              "현장토론",
-              "온라",
-              "라인",
-              "인으",
-              "으로",
-              "로제",
-              "제출",
-              "출한",
-              "한질",
-              "문도",
-              "도현",
-              "장토",
-              "론과",
-              "과같",
-              "같은",
-              "은비",
-              "중으",
-              "로다",
-              "다뤄",
-              "뤄지",
-              "지나",
-              "나요",
-              "라인으",
-              "인으로",
-              "으로제",
-              "로제출",
-              "출한질",
-              "한질문",
-              "질문도",
-              "문도현",
-              "도현장",
-              "현장토",
-              "장토론",
-              "토론과",
-              "론과같",
-              "과같은",
-              "같은비",
-              "은비중",
-              "비중으",
-              "중으로",
-              "으로다",
-              "로다뤄",
-              "다뤄지",
-              "뤄지나",
-              "지나요"
+              "조정될",
+              "있다",
+              "인상적이었습니다",
+              "제가",
+              "가고",
+              "고정",
+              "정된",
+              "된것",
+              "것이",
+              "이아",
+              "아니",
+              "니라",
+              "라토",
+              "론중",
+              "중조",
+              "조정",
+              "정될",
+              "될수",
+              "수있",
+              "다는",
+              "는점",
+              "점이",
+              "이인",
+              "인상",
+              "상적",
+              "적이",
+              "이었",
+              "었습",
+              "습니",
+              "니다",
+              "의제가",
+              "제가고",
+              "가고정",
+              "정된것",
+              "된것이",
+              "것이아",
+              "이아니",
+              "니라토",
+              "라토론",
+              "토론중",
+              "론중조",
+              "중조정",
+              "정될수",
+              "될수있",
+              "수있다",
+              "있다는",
+              "다는점",
+              "는점이",
+              "점이인",
+              "이인상",
+              "인상적",
+              "상적이",
+              "적이었",
+              "이었습",
+              "었습니",
+              "습니다"
             ],
             "centrality": {
-              "degree": 0.1641,
+              "degree": 0.4887,
               "betweenness": 0,
-              "closeness": 0.8333
+              "closeness": 1
             }
           }
         }
       },
       {
         "data": {
-          "id": "resp_mitigation_10",
-          "node_id": "resp_mitigation_10",
-          "label": "폐기물 감축을 위해 일회용품 규제를 강화하면 소상…",
-          "kind": "Proposal",
-          "kindKo": "감축질문",
-          "text": "폐기물 감축을 위해 일회용품 규제를 강화하면 소상공인 지원은 어떻게 하나요?",
-          "session": "5조",
-          "cited": [
-            "resp_mitigation_10"
-          ],
-          "cited_uids": [
-            "resp_mitigation_10"
-          ],
-          "deg": 1,
-          "isolated": false,
-          "meta": {
-            "row_index": 5,
-            "question_key": "mitigation",
-            "question_label": "감축의제 질문",
-            "group": "5조",
-            "timestamp": "2026-06-28 11:00:18",
-            "tokens": [
-              "폐기물",
-              "일회용품",
-              "규제",
-              "강화하면",
-              "소상공인",
-              "지원",
-              "폐기",
-              "기물",
-              "물감",
-              "축을",
-              "을위",
-              "해일",
-              "일회",
-              "회용",
-              "용품",
-              "품규",
-              "제를",
-              "를강",
-              "강화",
-              "화하",
-              "하면",
-              "면소",
-              "소상",
-              "상공",
-              "공인",
-              "인지",
-              "원은",
-              "은어",
-              "어떻",
-              "떻게",
-              "게하",
-              "하나",
-              "나요",
-              "기물감",
-              "물감축",
-              "감축을",
-              "축을위",
-              "을위해",
-              "위해일",
-              "해일회",
-              "일회용",
-              "회용품",
-              "용품규",
-              "품규제",
-              "규제를",
-              "제를강",
-              "를강화",
-              "강화하",
-              "화하면",
-              "하면소",
-              "면소상",
-              "소상공",
-              "상공인",
-              "공인지",
-              "인지원",
-              "지원은",
-              "원은어",
-              "은어떻",
-              "떻게하",
-              "게하나",
-              "하나요"
-            ],
-            "centrality": {
-              "degree": 0.2052,
-              "betweenness": 0,
-              "closeness": 0.625
-            }
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "resp_operation_11",
-          "node_id": "resp_operation_11",
+          "id": "resp_question_12",
+          "node_id": "resp_question_12",
           "label": "기획참여단 결정 이후에도 의제를 수정할 절차가 있…",
           "kind": "Issue",
-          "kindKo": "운영질문",
+          "kindKo": "질문",
           "text": "기획참여단 결정 이후에도 의제를 수정할 절차가 있나요?",
           "session": "6조",
           "cited": [
-            "resp_operation_11"
+            "resp_question_12"
           ],
           "cited_uids": [
-            "resp_operation_11"
+            "resp_question_12"
           ],
           "deg": 3,
           "isolated": false,
           "meta": {
             "row_index": 6,
-            "question_key": "operation",
-            "question_label": "기후시민회의 운영 관련 질문",
+            "question_key": "question",
+            "question_label": "질문",
             "group": "6조",
-            "timestamp": "2026-06-28 11:00:22",
+            "timestamp": "2026-06-28 12:06:00",
             "tokens": [
               "기획참여단",
               "결정",
@@ -929,8 +1030,99 @@
               "가있나"
             ],
             "centrality": {
-              "degree": 0.9287,
-              "betweenness": 0.1111,
+              "degree": 0.8121,
+              "betweenness": 0,
+              "closeness": 0.7143
+            }
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "resp_impression_13",
+          "node_id": "resp_impression_13",
+          "label": "질문이 많이 나와도 비슷한 내용을 묶어 보여주면 …",
+          "kind": "Claim",
+          "kindKo": "소감",
+          "text": "질문이 많이 나와도 비슷한 내용을 묶어 보여주면 토론이 쉬울 것 같습니다.",
+          "session": "7조",
+          "cited": [
+            "resp_impression_13"
+          ],
+          "cited_uids": [
+            "resp_impression_13"
+          ],
+          "deg": 1,
+          "isolated": false,
+          "meta": {
+            "row_index": 7,
+            "question_key": "impression",
+            "question_label": "소감",
+            "group": "7조",
+            "timestamp": "2026-06-28 12:07:00",
+            "tokens": [
+              "나와",
+              "비슷한",
+              "내용",
+              "묶어",
+              "보여주면",
+              "토론",
+              "쉬울",
+              "같습니다",
+              "문이",
+              "이많",
+              "많이",
+              "이나",
+              "와도",
+              "도비",
+              "비슷",
+              "슷한",
+              "한내",
+              "용을",
+              "을묶",
+              "어보",
+              "보여",
+              "여주",
+              "주면",
+              "면토",
+              "론이",
+              "이쉬",
+              "울것",
+              "것같",
+              "같습",
+              "습니",
+              "니다",
+              "질문이",
+              "문이많",
+              "이많이",
+              "많이나",
+              "이나와",
+              "나와도",
+              "와도비",
+              "도비슷",
+              "슷한내",
+              "한내용",
+              "내용을",
+              "용을묶",
+              "을묶어",
+              "묶어보",
+              "어보여",
+              "보여주",
+              "여주면",
+              "주면토",
+              "면토론",
+              "토론이",
+              "론이쉬",
+              "이쉬울",
+              "쉬울것",
+              "울것같",
+              "것같습",
+              "같습니",
+              "습니다"
+            ],
+            "centrality": {
+              "degree": 0.4887,
+              "betweenness": 0,
               "closeness": 1
             }
           }
@@ -938,442 +1130,234 @@
       },
       {
         "data": {
-          "id": "resp_mitigation_12",
-          "node_id": "resp_mitigation_12",
-          "label": "농어촌 지역의 감축 정책은 도시와 다르게 설계해야…",
-          "kind": "Proposal",
-          "kindKo": "감축질문",
-          "text": "농어촌 지역의 감축 정책은 도시와 다르게 설계해야 하지 않나요?",
-          "session": "6조",
+          "id": "resp_question_14",
+          "node_id": "resp_question_14",
+          "label": "참여단 질문이 많을 때 우선순위는 어떤 기준으로 …",
+          "kind": "Issue",
+          "kindKo": "질문",
+          "text": "참여단 질문이 많을 때 우선순위는 어떤 기준으로 정하나요?",
+          "session": "7조",
           "cited": [
-            "resp_mitigation_12"
+            "resp_question_14"
           ],
           "cited_uids": [
-            "resp_mitigation_12"
+            "resp_question_14"
           ],
           "deg": 1,
           "isolated": false,
           "meta": {
-            "row_index": 6,
-            "question_key": "mitigation",
-            "question_label": "감축의제 질문",
-            "group": "6조",
-            "timestamp": "2026-06-28 11:00:22",
+            "row_index": 7,
+            "question_key": "question",
+            "question_label": "질문",
+            "group": "7조",
+            "timestamp": "2026-06-28 12:07:00",
             "tokens": [
-              "농어촌",
-              "지역의",
-              "도시",
-              "다르게",
-              "설계해야",
-              "하지",
-              "않나요",
-              "농어",
-              "어촌",
-              "촌지",
-              "지역",
-              "역의",
-              "의감",
-              "축정",
-              "책은",
-              "은도",
-              "시와",
-              "와다",
-              "다르",
-              "르게",
-              "게설",
-              "설계",
-              "계해",
-              "해야",
-              "야하",
-              "지않",
-              "않나",
+              "참여단",
+              "우선순위",
+              "기준",
+              "참여",
+              "여단",
+              "단질",
+              "문이",
+              "이많",
+              "많을",
+              "을때",
+              "때우",
+              "우선",
+              "선순",
+              "순위",
+              "위는",
+              "는어",
+              "떤기",
+              "준으",
+              "으로",
+              "로정",
+              "정하",
+              "하나",
               "나요",
-              "어촌지",
-              "촌지역",
-              "역의감",
-              "의감축",
-              "감축정",
-              "축정책",
-              "정책은",
-              "책은도",
-              "은도시",
-              "도시와",
-              "시와다",
-              "와다르",
-              "르게설",
-              "게설계",
-              "설계해",
-              "계해야",
-              "해야하",
-              "야하지",
-              "하지않",
-              "지않나"
+              "여단질",
+              "단질문",
+              "질문이",
+              "문이많",
+              "이많을",
+              "많을때",
+              "을때우",
+              "때우선",
+              "우선순",
+              "선순위",
+              "순위는",
+              "위는어",
+              "는어떤",
+              "어떤기",
+              "떤기준",
+              "기준으",
+              "준으로",
+              "으로정",
+              "로정하",
+              "정하나",
+              "하나요"
             ],
             "centrality": {
-              "degree": 0.1641,
-              "betweenness": 0,
-              "closeness": 0.625
+              "degree": 0.4189,
+              "betweenness": 1,
+              "closeness": 1
             }
           }
         }
       },
       {
         "data": {
-          "id": "term_1",
-          "label": "나요",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "나요 (9)",
-          "session": "keyword",
-          "deg": 9,
+          "id": "resp_impression_15",
+          "node_id": "resp_impression_15",
+          "label": "우려사항을 따로 모아 보니 쟁점이 더 선명해졌습니…",
+          "kind": "Claim",
+          "kindKo": "소감",
+          "text": "우려사항을 따로 모아 보니 쟁점이 더 선명해졌습니다.",
+          "session": "8조",
+          "cited": [
+            "resp_impression_15"
+          ],
+          "cited_uids": [
+            "resp_impression_15"
+          ],
+          "deg": 1,
           "isolated": false,
           "meta": {
-            "count": 9
+            "row_index": 8,
+            "question_key": "impression",
+            "question_label": "소감",
+            "group": "8조",
+            "timestamp": "2026-06-28 12:08:00",
+            "tokens": [
+              "우려사항",
+              "따로",
+              "모아",
+              "보니",
+              "쟁점",
+              "선명해졌습니다",
+              "우려",
+              "려사",
+              "사항",
+              "항을",
+              "을따",
+              "로모",
+              "아보",
+              "니쟁",
+              "점이",
+              "이더",
+              "더선",
+              "선명",
+              "명해",
+              "해졌",
+              "졌습",
+              "습니",
+              "니다",
+              "우려사",
+              "려사항",
+              "사항을",
+              "항을따",
+              "을따로",
+              "따로모",
+              "로모아",
+              "모아보",
+              "아보니",
+              "보니쟁",
+              "니쟁점",
+              "쟁점이",
+              "점이더",
+              "이더선",
+              "더선명",
+              "선명해",
+              "명해졌",
+              "해졌습",
+              "졌습니",
+              "습니다"
+            ],
+            "centrality": {
+              "degree": 0.4887,
+              "betweenness": 0,
+              "closeness": 1
+            }
           }
         }
       },
       {
         "data": {
-          "id": "term_2",
-          "label": "가요",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "가요 (3)",
-          "session": "keyword",
-          "deg": 3,
+          "id": "resp_question_16",
+          "node_id": "resp_question_16",
+          "label": "회의 중 나온 우려사항은 최종 권고안에서 별도로 …",
+          "kind": "Issue",
+          "kindKo": "질문",
+          "text": "회의 중 나온 우려사항은 최종 권고안에서 별도로 표시되나요?",
+          "session": "8조",
+          "cited": [
+            "resp_question_16"
+          ],
+          "cited_uids": [
+            "resp_question_16"
+          ],
+          "deg": 1,
           "isolated": false,
           "meta": {
-            "count": 3
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_3",
-          "label": "기획",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "기획 (3)",
-          "session": "keyword",
-          "deg": 3,
-          "isolated": false,
-          "meta": {
-            "count": 3
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_4",
-          "label": "기획참",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "기획참 (3)",
-          "session": "keyword",
-          "deg": 3,
-          "isolated": false,
-          "meta": {
-            "count": 3
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_5",
-          "label": "기획참여단",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "기획참여단 (3)",
-          "session": "keyword",
-          "deg": 3,
-          "isolated": false,
-          "meta": {
-            "count": 3
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_6",
-          "label": "여단",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "여단 (3)",
-          "session": "keyword",
-          "deg": 3,
-          "isolated": false,
-          "meta": {
-            "count": 3
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_7",
-          "label": "참여",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "참여 (3)",
-          "session": "keyword",
-          "deg": 3,
-          "isolated": false,
-          "meta": {
-            "count": 3
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_8",
-          "label": "참여단",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "참여단 (3)",
-          "session": "keyword",
-          "deg": 3,
-          "isolated": false,
-          "meta": {
-            "count": 3
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_9",
-          "label": "하나",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "하나 (3)",
-          "session": "keyword",
-          "deg": 3,
-          "isolated": false,
-          "meta": {
-            "count": 3
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_10",
-          "label": "하나요",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "하나요 (3)",
-          "session": "keyword",
-          "deg": 3,
-          "isolated": false,
-          "meta": {
-            "count": 3
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_11",
-          "label": "획참",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "획참 (3)",
-          "session": "keyword",
-          "deg": 3,
-          "isolated": false,
-          "meta": {
-            "count": 3
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_12",
-          "label": "획참여",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "획참여 (3)",
-          "session": "keyword",
-          "deg": 3,
-          "isolated": false,
-          "meta": {
-            "count": 3
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_13",
-          "label": "까지",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "까지 (2)",
-          "session": "keyword",
-          "deg": 2,
-          "isolated": false,
-          "meta": {
-            "count": 2
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_14",
-          "label": "너지",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "너지 (2)",
-          "session": "keyword",
-          "deg": 2,
-          "isolated": false,
-          "meta": {
-            "count": 2
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_15",
-          "label": "누가",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "누가 (2)",
-          "session": "keyword",
-          "deg": 2,
-          "isolated": false,
-          "meta": {
-            "count": 2
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_16",
-          "label": "디까",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "디까 (2)",
-          "session": "keyword",
-          "deg": 2,
-          "isolated": false,
-          "meta": {
-            "count": 2
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_17",
-          "label": "디까지",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "디까지 (2)",
-          "session": "keyword",
-          "deg": 2,
-          "isolated": false,
-          "meta": {
-            "count": 2
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_18",
-          "label": "떻게",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "떻게 (2)",
-          "session": "keyword",
-          "deg": 2,
-          "isolated": false,
-          "meta": {
-            "count": 2
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_19",
-          "label": "부담",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "부담 (2)",
-          "session": "keyword",
-          "deg": 2,
-          "isolated": false,
-          "meta": {
-            "count": 2
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_20",
-          "label": "수있",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "수있 (2)",
-          "session": "keyword",
-          "deg": 2,
-          "isolated": false,
-          "meta": {
-            "count": 2
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_21",
-          "label": "야하",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "야하 (2)",
-          "session": "keyword",
-          "deg": 2,
-          "isolated": false,
-          "meta": {
-            "count": 2
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_22",
-          "label": "어디",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "어디 (2)",
-          "session": "keyword",
-          "deg": 2,
-          "isolated": false,
-          "meta": {
-            "count": 2
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_23",
-          "label": "어디까",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "어디까 (2)",
-          "session": "keyword",
-          "deg": 2,
-          "isolated": false,
-          "meta": {
-            "count": 2
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "term_24",
-          "label": "어디까지",
-          "kind": "Value",
-          "kindKo": "공통키워드",
-          "text": "어디까지 (2)",
-          "session": "keyword",
-          "deg": 2,
-          "isolated": false,
-          "meta": {
-            "count": 2
+            "row_index": 8,
+            "question_key": "question",
+            "question_label": "질문",
+            "group": "8조",
+            "timestamp": "2026-06-28 12:08:00",
+            "tokens": [
+              "나온",
+              "우려사항",
+              "최종",
+              "권고안",
+              "별도로",
+              "표시",
+              "의중",
+              "중나",
+              "온우",
+              "우려",
+              "려사",
+              "사항",
+              "항은",
+              "은최",
+              "종권",
+              "권고",
+              "고안",
+              "안에",
+              "에서",
+              "서별",
+              "별도",
+              "도로",
+              "로표",
+              "시되",
+              "되나",
+              "나요",
+              "회의중",
+              "의중나",
+              "중나온",
+              "나온우",
+              "온우려",
+              "우려사",
+              "려사항",
+              "사항은",
+              "항은최",
+              "은최종",
+              "최종권",
+              "종권고",
+              "고안에",
+              "안에서",
+              "에서별",
+              "서별도",
+              "도로표",
+              "로표시",
+              "표시되",
+              "시되나",
+              "되나요"
+            ],
+            "centrality": {
+              "degree": 0.1396,
+              "betweenness": 0,
+              "closeness": 1
+            }
           }
         }
       }
@@ -1382,1022 +1366,216 @@
       {
         "data": {
           "id": "q_1",
-          "source": "Question_operation",
-          "target": "resp_operation_1",
+          "source": "Question_impression",
+          "target": "resp_impression_1",
           "rel": "raisesIssue",
           "relKo": "응답",
           "weight": 1,
           "meta": {
-            "question_key": "operation"
+            "question_key": "impression"
           }
         }
       },
       {
         "data": {
-          "id": "kw_2",
-          "source": "resp_operation_1",
-          "target": "term_5",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "기획참여단"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_3",
-          "source": "resp_operation_1",
-          "target": "term_24",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "어디까지"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_4",
-          "source": "resp_operation_1",
-          "target": "term_3",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "기획"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_5",
-          "source": "resp_operation_1",
-          "target": "term_11",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "획참"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_6",
-          "source": "resp_operation_1",
-          "target": "term_7",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "참여"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_7",
-          "source": "resp_operation_1",
-          "target": "term_6",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "여단"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_8",
-          "source": "resp_operation_1",
-          "target": "term_20",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "수있"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_9",
-          "source": "resp_operation_1",
-          "target": "term_22",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "어디"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_10",
-          "source": "resp_operation_1",
-          "target": "term_16",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "디까"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_11",
-          "source": "resp_operation_1",
-          "target": "term_13",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "까지"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_12",
-          "source": "resp_operation_1",
-          "target": "term_2",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "가요"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_13",
-          "source": "resp_operation_1",
-          "target": "term_4",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "기획참"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_14",
-          "source": "resp_operation_1",
-          "target": "term_12",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "획참여"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_15",
-          "source": "resp_operation_1",
-          "target": "term_8",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "참여단"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_16",
-          "source": "resp_operation_1",
-          "target": "term_23",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "어디까"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_17",
-          "source": "resp_operation_1",
-          "target": "term_17",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "디까지"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "q_18",
-          "source": "Question_mitigation",
-          "target": "resp_mitigation_2",
+          "id": "q_2",
+          "source": "Question_question",
+          "target": "resp_question_2",
           "rel": "raisesIssue",
           "relKo": "응답",
           "weight": 1,
           "meta": {
-            "question_key": "mitigation"
+            "question_key": "question"
           }
         }
       },
       {
         "data": {
-          "id": "kw_19",
-          "source": "resp_mitigation_2",
-          "target": "term_19",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "부담"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_20",
-          "source": "resp_mitigation_2",
-          "target": "term_2",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "가요"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "q_21",
-          "source": "Question_operation",
-          "target": "resp_operation_3",
+          "id": "q_3",
+          "source": "Question_impression",
+          "target": "resp_impression_3",
           "rel": "raisesIssue",
           "relKo": "응답",
           "weight": 1,
           "meta": {
-            "question_key": "operation"
+            "question_key": "impression"
           }
         }
       },
       {
         "data": {
-          "id": "kw_22",
-          "source": "resp_operation_3",
-          "target": "term_5",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "기획참여단"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_23",
-          "source": "resp_operation_3",
-          "target": "term_7",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "참여"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_24",
-          "source": "resp_operation_3",
-          "target": "term_6",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "여단"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_25",
-          "source": "resp_operation_3",
-          "target": "term_3",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "기획"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_26",
-          "source": "resp_operation_3",
-          "target": "term_11",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "획참"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_27",
-          "source": "resp_operation_3",
-          "target": "term_15",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "누가"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_28",
-          "source": "resp_operation_3",
-          "target": "term_9",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "하나"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_29",
-          "source": "resp_operation_3",
-          "target": "term_1",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "나요"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_30",
-          "source": "resp_operation_3",
-          "target": "term_8",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "참여단"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_31",
-          "source": "resp_operation_3",
-          "target": "term_4",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "기획참"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_32",
-          "source": "resp_operation_3",
-          "target": "term_12",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "획참여"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_33",
-          "source": "resp_operation_3",
-          "target": "term_10",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "하나요"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "q_34",
-          "source": "Question_mitigation",
-          "target": "resp_mitigation_4",
+          "id": "q_4",
+          "source": "Question_question",
+          "target": "resp_question_4",
           "rel": "raisesIssue",
           "relKo": "응답",
           "weight": 1,
           "meta": {
-            "question_key": "mitigation"
+            "question_key": "question"
           }
         }
       },
       {
         "data": {
-          "id": "kw_35",
-          "source": "resp_mitigation_4",
-          "target": "term_14",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "너지"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_36",
-          "source": "resp_mitigation_4",
-          "target": "term_20",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "수있"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_37",
-          "source": "resp_mitigation_4",
-          "target": "term_1",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "나요"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "q_38",
-          "source": "Question_operation",
-          "target": "resp_operation_5",
+          "id": "q_5",
+          "source": "Question_impression",
+          "target": "resp_impression_5",
           "rel": "raisesIssue",
           "relKo": "응답",
           "weight": 1,
           "meta": {
-            "question_key": "operation"
+            "question_key": "impression"
           }
         }
       },
       {
         "data": {
-          "id": "kw_39",
-          "source": "resp_operation_5",
-          "target": "term_18",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "떻게"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_40",
-          "source": "resp_operation_5",
-          "target": "term_1",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "나요"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "q_41",
-          "source": "Question_mitigation",
-          "target": "resp_mitigation_6",
+          "id": "q_6",
+          "source": "Question_question",
+          "target": "resp_question_6",
           "rel": "raisesIssue",
           "relKo": "응답",
           "weight": 1,
           "meta": {
-            "question_key": "mitigation"
+            "question_key": "question"
           }
         }
       },
       {
         "data": {
-          "id": "kw_42",
-          "source": "resp_mitigation_6",
-          "target": "term_2",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "가요"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "q_43",
-          "source": "Question_operation",
-          "target": "resp_operation_7",
+          "id": "q_7",
+          "source": "Question_impression",
+          "target": "resp_impression_7",
           "rel": "raisesIssue",
           "relKo": "응답",
           "weight": 1,
           "meta": {
-            "question_key": "operation"
+            "question_key": "impression"
           }
         }
       },
       {
         "data": {
-          "id": "kw_44",
-          "source": "resp_operation_7",
-          "target": "term_24",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "어디까지"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_45",
-          "source": "resp_operation_7",
-          "target": "term_22",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "어디"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_46",
-          "source": "resp_operation_7",
-          "target": "term_16",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "디까"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_47",
-          "source": "resp_operation_7",
-          "target": "term_13",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "까지"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_48",
-          "source": "resp_operation_7",
-          "target": "term_1",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "나요"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_49",
-          "source": "resp_operation_7",
-          "target": "term_23",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "어디까"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_50",
-          "source": "resp_operation_7",
-          "target": "term_17",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "디까지"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "q_51",
-          "source": "Question_mitigation",
-          "target": "resp_mitigation_8",
+          "id": "q_8",
+          "source": "Question_question",
+          "target": "resp_question_8",
           "rel": "raisesIssue",
           "relKo": "응답",
           "weight": 1,
           "meta": {
-            "question_key": "mitigation"
+            "question_key": "question"
           }
         }
       },
       {
         "data": {
-          "id": "kw_52",
-          "source": "resp_mitigation_8",
-          "target": "term_19",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "부담"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_53",
-          "source": "resp_mitigation_8",
-          "target": "term_14",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "너지"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_54",
-          "source": "resp_mitigation_8",
-          "target": "term_15",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "누가"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_55",
-          "source": "resp_mitigation_8",
-          "target": "term_21",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "야하"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_56",
-          "source": "resp_mitigation_8",
-          "target": "term_9",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "하나"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_57",
-          "source": "resp_mitigation_8",
-          "target": "term_1",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "나요"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_58",
-          "source": "resp_mitigation_8",
-          "target": "term_10",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "하나요"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "q_59",
-          "source": "Question_operation",
-          "target": "resp_operation_9",
+          "id": "q_9",
+          "source": "Question_impression",
+          "target": "resp_impression_9",
           "rel": "raisesIssue",
           "relKo": "응답",
           "weight": 1,
           "meta": {
-            "question_key": "operation"
+            "question_key": "impression"
           }
         }
       },
       {
         "data": {
-          "id": "kw_60",
-          "source": "resp_operation_9",
-          "target": "term_1",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "나요"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "q_61",
-          "source": "Question_mitigation",
-          "target": "resp_mitigation_10",
+          "id": "q_10",
+          "source": "Question_question",
+          "target": "resp_question_10",
           "rel": "raisesIssue",
           "relKo": "응답",
           "weight": 1,
           "meta": {
-            "question_key": "mitigation"
+            "question_key": "question"
           }
         }
       },
       {
         "data": {
-          "id": "kw_62",
-          "source": "resp_mitigation_10",
-          "target": "term_18",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "떻게"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_63",
-          "source": "resp_mitigation_10",
-          "target": "term_9",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "하나"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_64",
-          "source": "resp_mitigation_10",
-          "target": "term_1",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "나요"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_65",
-          "source": "resp_mitigation_10",
-          "target": "term_10",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "하나요"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "q_66",
-          "source": "Question_operation",
-          "target": "resp_operation_11",
+          "id": "q_11",
+          "source": "Question_impression",
+          "target": "resp_impression_11",
           "rel": "raisesIssue",
           "relKo": "응답",
           "weight": 1,
           "meta": {
-            "question_key": "operation"
+            "question_key": "impression"
           }
         }
       },
       {
         "data": {
-          "id": "kw_67",
-          "source": "resp_operation_11",
-          "target": "term_5",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "기획참여단"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_68",
-          "source": "resp_operation_11",
-          "target": "term_3",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "기획"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_69",
-          "source": "resp_operation_11",
-          "target": "term_11",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "획참"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_70",
-          "source": "resp_operation_11",
-          "target": "term_7",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "참여"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_71",
-          "source": "resp_operation_11",
-          "target": "term_6",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "여단"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_72",
-          "source": "resp_operation_11",
-          "target": "term_1",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "나요"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_73",
-          "source": "resp_operation_11",
-          "target": "term_4",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "기획참"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_74",
-          "source": "resp_operation_11",
-          "target": "term_12",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "획참여"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "kw_75",
-          "source": "resp_operation_11",
-          "target": "term_8",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
-          "meta": {
-            "token": "참여단"
-          }
-        }
-      },
-      {
-        "data": {
-          "id": "q_76",
-          "source": "Question_mitigation",
-          "target": "resp_mitigation_12",
+          "id": "q_12",
+          "source": "Question_question",
+          "target": "resp_question_12",
           "rel": "raisesIssue",
           "relKo": "응답",
           "weight": 1,
           "meta": {
-            "question_key": "mitigation"
+            "question_key": "question"
           }
         }
       },
       {
         "data": {
-          "id": "kw_77",
-          "source": "resp_mitigation_12",
-          "target": "term_21",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
+          "id": "q_13",
+          "source": "Question_impression",
+          "target": "resp_impression_13",
+          "rel": "raisesIssue",
+          "relKo": "응답",
+          "weight": 1,
           "meta": {
-            "token": "야하"
+            "question_key": "impression"
           }
         }
       },
       {
         "data": {
-          "id": "kw_78",
-          "source": "resp_mitigation_12",
-          "target": "term_1",
-          "rel": "hasKeyword",
-          "relKo": "키워드",
-          "weight": 0.4,
+          "id": "q_14",
+          "source": "Question_question",
+          "target": "resp_question_14",
+          "rel": "raisesIssue",
+          "relKo": "응답",
+          "weight": 1,
           "meta": {
-            "token": "나요"
+            "question_key": "question"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "q_15",
+          "source": "Question_impression",
+          "target": "resp_impression_15",
+          "rel": "raisesIssue",
+          "relKo": "응답",
+          "weight": 1,
+          "meta": {
+            "question_key": "impression"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "q_16",
+          "source": "Question_question",
+          "target": "resp_question_16",
+          "rel": "raisesIssue",
+          "relKo": "응답",
+          "weight": 1,
+          "meta": {
+            "question_key": "question"
           }
         }
       },
       {
         "data": {
           "id": "sim_1",
-          "source": "resp_operation_1",
-          "target": "resp_operation_11",
+          "source": "resp_question_2",
+          "target": "resp_question_12",
           "rel": "similarTo",
           "relKo": "유사",
           "weight": 0.1071,
@@ -2409,8 +1587,8 @@
       {
         "data": {
           "id": "sim_2",
-          "source": "resp_operation_3",
-          "target": "resp_operation_11",
+          "source": "resp_question_4",
+          "target": "resp_question_12",
           "rel": "similarTo",
           "relKo": "유사",
           "weight": 0.1034,
@@ -2422,8 +1600,8 @@
       {
         "data": {
           "id": "sim_3",
-          "source": "resp_operation_1",
-          "target": "resp_operation_3",
+          "source": "resp_question_2",
+          "target": "resp_question_4",
           "rel": "similarTo",
           "relKo": "유사",
           "weight": 0.0825,
@@ -2431,263 +1609,283 @@
             "similarity": 0.0825
           }
         }
+      },
+      {
+        "data": {
+          "id": "sim_4",
+          "source": "resp_question_2",
+          "target": "resp_question_10",
+          "rel": "similarTo",
+          "relKo": "유사",
+          "weight": 0.08,
+          "meta": {
+            "similarity": 0.08
+          }
+        }
       }
     ]
   },
   "meta": {
     "variant": "participant-open-questions",
-    "generated_at": "2026-06-28T02:14:10.416Z",
+    "generated_at": "2026-06-28T03:15:02.854Z",
     "source": "local-csv",
     "threshold": 0.08,
     "counts": {
-      "rows": 6,
-      "responses": 12,
-      "operation_responses": 6,
-      "mitigation_responses": 6,
-      "nodes": 38,
-      "edges": 81,
-      "similarity_edges": 3,
-      "keyword_nodes": 24
+      "rows": 8,
+      "responses": 16,
+      "impression_responses": 8,
+      "question_responses": 8,
+      "nodes": 18,
+      "edges": 20,
+      "similarity_edges": 4,
+      "keyword_nodes": 0
     },
     "centrality": {
       "degree_top": [
         {
-          "id": "resp_operation_1",
-          "label": "기획참여단이 의제 범위를 조정할 수 있는 기준은 …",
-          "group": "1조",
-          "question_key": "operation",
+          "id": "resp_question_4",
+          "label": "숙의참여단과 기획참여단의 역할이 겹칠 때 최종 판…",
+          "group": "2조",
+          "question_key": "question",
           "value": 1
         },
         {
-          "id": "resp_operation_11",
+          "id": "resp_question_2",
+          "label": "기획참여단이 의제 범위를 조정할 수 있는 기준은 …",
+          "group": "1조",
+          "question_key": "question",
+          "value": 0.9334
+        },
+        {
+          "id": "resp_question_12",
           "label": "기획참여단 결정 이후에도 의제를 수정할 절차가 있…",
           "group": "6조",
-          "question_key": "operation",
-          "value": 0.9287
+          "question_key": "question",
+          "value": 0.8121
         },
         {
-          "id": "resp_operation_3",
-          "label": "숙의참여단과 기획참여단의 역할이 겹칠 때 최종 판…",
-          "group": "2조",
-          "question_key": "operation",
-          "value": 0.916
+          "id": "resp_impression_1",
+          "label": "처음에는 의제 범위가 넓게 느껴졌지만 조별로 나누…",
+          "group": "1조",
+          "question_key": "impression",
+          "value": 0.6283
         },
         {
-          "id": "resp_operation_7",
-          "label": "모더레이터가 의견을 정리할 때 어디까지 개입해도 …",
+          "id": "resp_impression_7",
+          "label": "온라인 의견과 현장 의견을 같이 보는 방식이 공정…",
           "group": "4조",
-          "question_key": "operation",
-          "value": 0.4103
+          "question_key": "impression",
+          "value": 0.6283
         },
         {
-          "id": "resp_mitigation_8",
-          "label": "건물 에너지 효율 개선 비용은 누가 부담해야 하나…",
-          "group": "4조",
-          "question_key": "mitigation",
-          "value": 0.3283
-        },
-        {
-          "id": "resp_mitigation_10",
-          "label": "폐기물 감축을 위해 일회용품 규제를 강화하면 소상…",
-          "group": "5조",
-          "question_key": "mitigation",
-          "value": 0.2052
-        },
-        {
-          "id": "resp_mitigation_4",
-          "label": "전기요금 인상 없이 재생에너지 전환을 확대할 수 …",
+          "id": "resp_impression_3",
+          "label": "참여단과 기획참여단의 역할을 구분해서 설명해준 점…",
           "group": "2조",
-          "question_key": "mitigation",
-          "value": 0.1641
+          "question_key": "impression",
+          "value": 0.4887
         },
         {
-          "id": "resp_operation_5",
-          "label": "소수의견은 회의록과 권고안에 어떻게 남겨지나요?",
+          "id": "resp_impression_5",
+          "label": "소수의견도 기록된다고 들으니 발언 부담이 줄었습니…",
           "group": "3조",
-          "question_key": "operation",
-          "value": 0.1641
+          "question_key": "impression",
+          "value": 0.4887
         },
         {
-          "id": "resp_operation_9",
-          "label": "온라인으로 제출한 질문도 현장 토론과 같은 비중으…",
+          "id": "resp_impression_9",
+          "label": "모더레이터가 긴 발언을 정리해주니 핵심이 잘 보였…",
           "group": "5조",
-          "question_key": "operation",
-          "value": 0.1641
+          "question_key": "impression",
+          "value": 0.4887
         },
         {
-          "id": "resp_mitigation_12",
-          "label": "농어촌 지역의 감축 정책은 도시와 다르게 설계해야…",
+          "id": "resp_impression_11",
+          "label": "의제가 고정된 것이 아니라 토론 중 조정될 수 있…",
           "group": "6조",
-          "question_key": "mitigation",
-          "value": 0.1641
+          "question_key": "impression",
+          "value": 0.4887
+        },
+        {
+          "id": "resp_impression_13",
+          "label": "질문이 많이 나와도 비슷한 내용을 묶어 보여주면 …",
+          "group": "7조",
+          "question_key": "impression",
+          "value": 0.4887
         }
       ],
       "betweenness_top": [
         {
-          "id": "resp_mitigation_8",
-          "label": "건물 에너지 효율 개선 비용은 누가 부담해야 하나…",
-          "group": "4조",
-          "question_key": "mitigation",
+          "id": "resp_question_4",
+          "label": "숙의참여단과 기획참여단의 역할이 겹칠 때 최종 판…",
+          "group": "2조",
+          "question_key": "question",
           "value": 1
         },
         {
-          "id": "resp_mitigation_2",
-          "label": "산업 부문 감축에서 중소기업 부담을 줄이는 지원책…",
-          "group": "1조",
-          "question_key": "mitigation",
-          "value": 0.6667
+          "id": "resp_question_14",
+          "label": "참여단 질문이 많을 때 우선순위는 어떤 기준으로 …",
+          "group": "7조",
+          "question_key": "question",
+          "value": 1
         },
         {
-          "id": "resp_operation_3",
-          "label": "숙의참여단과 기획참여단의 역할이 겹칠 때 최종 판…",
-          "group": "2조",
-          "question_key": "operation",
-          "value": 0.1111
-        },
-        {
-          "id": "resp_operation_7",
-          "label": "모더레이터가 의견을 정리할 때 어디까지 개입해도 …",
-          "group": "4조",
-          "question_key": "operation",
-          "value": 0.1111
-        },
-        {
-          "id": "resp_operation_11",
-          "label": "기획참여단 결정 이후에도 의제를 수정할 절차가 있…",
-          "group": "6조",
-          "question_key": "operation",
-          "value": 0.1111
-        },
-        {
-          "id": "resp_operation_1",
+          "id": "resp_question_2",
           "label": "기획참여단이 의제 범위를 조정할 수 있는 기준은 …",
           "group": "1조",
-          "question_key": "operation",
+          "question_key": "question",
+          "value": 0.2857
+        },
+        {
+          "id": "resp_question_10",
+          "label": "모더레이터가 질문을 정리할 때 원문 표현은 어디까…",
+          "group": "5조",
+          "question_key": "question",
+          "value": 0.2857
+        },
+        {
+          "id": "resp_impression_1",
+          "label": "처음에는 의제 범위가 넓게 느껴졌지만 조별로 나누…",
+          "group": "1조",
+          "question_key": "impression",
           "value": 0
         },
         {
-          "id": "resp_mitigation_4",
-          "label": "전기요금 인상 없이 재생에너지 전환을 확대할 수 …",
+          "id": "resp_impression_3",
+          "label": "참여단과 기획참여단의 역할을 구분해서 설명해준 점…",
           "group": "2조",
-          "question_key": "mitigation",
+          "question_key": "impression",
           "value": 0
         },
         {
-          "id": "resp_operation_5",
+          "id": "resp_impression_5",
+          "label": "소수의견도 기록된다고 들으니 발언 부담이 줄었습니…",
+          "group": "3조",
+          "question_key": "impression",
+          "value": 0
+        },
+        {
+          "id": "resp_question_6",
           "label": "소수의견은 회의록과 권고안에 어떻게 남겨지나요?",
           "group": "3조",
-          "question_key": "operation",
+          "question_key": "question",
           "value": 0
         },
         {
-          "id": "resp_mitigation_6",
-          "label": "대중교통 확대가 실제 온실가스 감축으로 이어지려면…",
-          "group": "3조",
-          "question_key": "mitigation",
+          "id": "resp_impression_7",
+          "label": "온라인 의견과 현장 의견을 같이 보는 방식이 공정…",
+          "group": "4조",
+          "question_key": "impression",
           "value": 0
         },
         {
-          "id": "resp_operation_9",
-          "label": "온라인으로 제출한 질문도 현장 토론과 같은 비중으…",
-          "group": "5조",
-          "question_key": "operation",
+          "id": "resp_question_8",
+          "label": "온라인 의견과 현장토론 의견의 반영 비율은 어떻게…",
+          "group": "4조",
+          "question_key": "question",
           "value": 0
         }
       ],
       "closeness_top": [
         {
-          "id": "resp_operation_3",
+          "id": "resp_impression_1",
+          "label": "처음에는 의제 범위가 넓게 느껴졌지만 조별로 나누…",
+          "group": "1조",
+          "question_key": "impression",
+          "value": 1
+        },
+        {
+          "id": "resp_impression_3",
+          "label": "참여단과 기획참여단의 역할을 구분해서 설명해준 점…",
+          "group": "2조",
+          "question_key": "impression",
+          "value": 1
+        },
+        {
+          "id": "resp_question_4",
           "label": "숙의참여단과 기획참여단의 역할이 겹칠 때 최종 판…",
           "group": "2조",
-          "question_key": "operation",
+          "question_key": "question",
           "value": 1
         },
         {
-          "id": "resp_operation_7",
-          "label": "모더레이터가 의견을 정리할 때 어디까지 개입해도 …",
-          "group": "4조",
-          "question_key": "operation",
+          "id": "resp_impression_5",
+          "label": "소수의견도 기록된다고 들으니 발언 부담이 줄었습니…",
+          "group": "3조",
+          "question_key": "impression",
           "value": 1
         },
         {
-          "id": "resp_operation_11",
-          "label": "기획참여단 결정 이후에도 의제를 수정할 절차가 있…",
-          "group": "6조",
-          "question_key": "operation",
-          "value": 1
-        },
-        {
-          "id": "resp_operation_5",
+          "id": "resp_question_6",
           "label": "소수의견은 회의록과 권고안에 어떻게 남겨지나요?",
           "group": "3조",
-          "question_key": "operation",
-          "value": 0.8333
+          "question_key": "question",
+          "value": 1
         },
         {
-          "id": "resp_mitigation_8",
-          "label": "건물 에너지 효율 개선 비용은 누가 부담해야 하나…",
+          "id": "resp_impression_7",
+          "label": "온라인 의견과 현장 의견을 같이 보는 방식이 공정…",
           "group": "4조",
-          "question_key": "mitigation",
-          "value": 0.8333
+          "question_key": "impression",
+          "value": 1
         },
         {
-          "id": "resp_operation_9",
-          "label": "온라인으로 제출한 질문도 현장 토론과 같은 비중으…",
+          "id": "resp_impression_9",
+          "label": "모더레이터가 긴 발언을 정리해주니 핵심이 잘 보였…",
           "group": "5조",
-          "question_key": "operation",
-          "value": 0.8333
+          "question_key": "impression",
+          "value": 1
         },
         {
-          "id": "resp_operation_1",
-          "label": "기획참여단이 의제 범위를 조정할 수 있는 기준은 …",
-          "group": "1조",
-          "question_key": "operation",
-          "value": 0.7143
+          "id": "resp_impression_11",
+          "label": "의제가 고정된 것이 아니라 토론 중 조정될 수 있…",
+          "group": "6조",
+          "question_key": "impression",
+          "value": 1
         },
         {
-          "id": "resp_mitigation_2",
-          "label": "산업 부문 감축에서 중소기업 부담을 줄이는 지원책…",
-          "group": "1조",
-          "question_key": "mitigation",
-          "value": 0.625
+          "id": "resp_impression_13",
+          "label": "질문이 많이 나와도 비슷한 내용을 묶어 보여주면 …",
+          "group": "7조",
+          "question_key": "impression",
+          "value": 1
         },
         {
-          "id": "resp_mitigation_4",
-          "label": "전기요금 인상 없이 재생에너지 전환을 확대할 수 …",
-          "group": "2조",
-          "question_key": "mitigation",
-          "value": 0.625
-        },
-        {
-          "id": "resp_mitigation_10",
-          "label": "폐기물 감축을 위해 일회용품 규제를 강화하면 소상…",
-          "group": "5조",
-          "question_key": "mitigation",
-          "value": 0.625
+          "id": "resp_question_14",
+          "label": "참여단 질문이 많을 때 우선순위는 어떤 기준으로 …",
+          "group": "7조",
+          "question_key": "question",
+          "value": 1
         }
       ]
     },
     "similarity_edges": [
       {
-        "source": "resp_operation_1",
+        "source": "resp_question_2",
         "source_label": "기획참여단이 의제 범위를 조정할 수 있는 기준은 …",
-        "target": "resp_operation_11",
+        "target": "resp_question_12",
         "target_label": "기획참여단 결정 이후에도 의제를 수정할 절차가 있…",
         "similarity": 0.1071
       },
       {
-        "source": "resp_operation_3",
+        "source": "resp_question_4",
         "source_label": "숙의참여단과 기획참여단의 역할이 겹칠 때 최종 판…",
-        "target": "resp_operation_11",
+        "target": "resp_question_12",
         "target_label": "기획참여단 결정 이후에도 의제를 수정할 절차가 있…",
         "similarity": 0.1034
       },
       {
-        "source": "resp_operation_1",
+        "source": "resp_question_2",
         "source_label": "기획참여단이 의제 범위를 조정할 수 있는 기준은 …",
-        "target": "resp_operation_3",
+        "target": "resp_question_4",
         "target_label": "숙의참여단과 기획참여단의 역할이 겹칠 때 최종 판…",
         "similarity": 0.0825
+      },
+      {
+        "source": "resp_question_2",
+        "source_label": "기획참여단이 의제 범위를 조정할 수 있는 기준은 …",
+        "target": "resp_question_10",
+        "target_label": "모더레이터가 질문을 정리할 때 원문 표현은 어디까…",
+        "similarity": 0.08
       }
     ],
     "advisory_notice": "참여단 주관식 응답을 현장 검토용으로 구조화한 임시 온톨로지입니다. 최종 해석이나 합의가 아닙니다."

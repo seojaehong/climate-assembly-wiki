@@ -4,15 +4,16 @@
 
 오늘 참여단 테스트에서 주관식 2문항을 받아 즉시 구조화한다.
 
-- 기후시민회의 운영 관련 질문 1개
-- 감축의제 질문 1개
+- 소감 1개
+- 질문 1개
 
 ## 원칙
 
 기존 워크숍 기록과 기존 온톨로지 화면은 수정하지 않는다.
 
 - 기존 화면: `/workshop-graph/index.html`
-- 0628 테스트 전용 화면: `/workshop-graph-0628-test/index.html`
+- 0628 온톨로지 테스트 전용 화면: `/workshop-graph-0628-test/index.html`
+- 0628 포스트잇 테스트 전용 화면: `/miro-0628-test/index.html`
 - 기존 포스트잇/Miro형 리소스는 재사용한다.
   - `src/components/BoardAgendaCard.astro`
   - `src/components/BoardZone.astro`
@@ -24,8 +25,8 @@
 1. Google Form을 만든다.
 2. 문항을 아래 3개로 둔다.
    - 조
-   - 기후시민회의 운영 관련 질문
-   - 감축의제 질문
+   - 소감
+   - 질문
 3. Form 응답을 Google Sheet로 연결한다.
 4. Sheet를 CSV로 가져오거나, 게시된 CSV URL을 사용한다.
 5. 아래 명령으로 온톨로지 데이터를 만든다.
@@ -45,7 +46,9 @@ node scripts/build-participant-question-ontology.mjs --csv-url "https://docs.goo
 - `public/workshop-graph-0628-test/index.html`
 - `public/workshop-graph-0628-test/sources.json`
 - `public/workshop-graph-0628-test/data/participant-open-questions.json`
-- 보기 URL: `/workshop-graph-0628-test/index.html`
+- 온톨로지 URL: `/workshop-graph-0628-test/index.html`
+- 포스트잇 URL: `/miro-0628-test/index.html`
+- 관리자 URL: `/0628-admin/index.html`
 
 0628 테스트 화면은 기본으로 아래 상태를 쓴다.
 
@@ -55,7 +58,7 @@ node scripts/build-participant-question-ontology.mjs --csv-url "https://docs.goo
 - `edgeLabels=on`
 - `theme=light`
 
-노드는 축약 라벨로 보이고, 호버/탭 메시지 카드는 조/화자와 풀 문장을 보여준다.
+노드는 축약 라벨로 보이고, 호버/탭 메시지 카드는 조와 풀 문장을 보여준다. 포스트잇 화면은 소감/질문 레인과 조별 보기를 제공한다.
 
 ## 분석 방식
 
@@ -82,15 +85,15 @@ node scripts/build-participant-question-ontology.mjs --csv-url "https://docs.goo
 - 응답 URL: https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform
 - 문항:
   - `조`
-  - `기후시민회의 운영 관련 질문`
-  - `감축의제 질문`
+  - `소감`
+  - `질문`
 
 생성된 Google Sheet:
 
 - 파일명: `0628 참여단 주관식 질문 응답 - 운영 감축 - gws`
 - URL: https://docs.google.com/spreadsheets/d/1T31pzPV8JHeqyCuGUq0M28e81-cCujOC_V8mMFACG20/edit
 - 응답 탭: `Form Responses 1`
-- 헤더: `타임스탬프`, `조`, `기후시민회의 운영 관련 질문`, `감축의제 질문`, `메모`, `처리상태`
+- 헤더: `타임스탬프`, `조`, `소감`, `질문`, `메모`, `처리상태`
 
 CSV URL 후보:
 

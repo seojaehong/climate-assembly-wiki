@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>0628 참여단 테스트 관리자</title>
+<style>
+  :root{
+    --bg:#f6f7f9;
+    --panel:#ffffff;
+    --text:#171717;
+    --muted:#6b7280;
+    --line:#d8dee8;
+    --accent:#0f766e;
+    --accent-2:#d97706;
+    --danger:#b91c1c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:"Noto Sans KR",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  .wrap{width:min(1040px,calc(100vw - 32px));margin:0 auto;padding:34px 0}
+  .login{min-height:100vh;display:grid;place-items:center;padding:24px}
+  .login-card{width:min(420px,100%);background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 18px 48px rgba(15,23,42,.10);padding:24px}
+  h1{margin:0 0 8px;font-size:24px;line-height:1.25}
+  p{margin:0;color:var(--muted);line-height:1.55}
+  label{display:block;margin:20px 0 8px;font-weight:800;font-size:13px}
+  input{width:100%;height:46px;border:1px solid var(--line);border-radius:6px;padding:0 12px;font:inherit}
+  input:focus{outline:3px solid rgba(15,118,110,.18);border-color:var(--accent)}
+  button,a.btn{height:42px;border:0;border-radius:6px;background:var(--accent);color:#fff;font-weight:900;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 14px;text-decoration:none;cursor:pointer}
+  button.secondary,a.btn.secondary{background:#111827}
+  button.warm,a.btn.warm{background:var(--accent-2)}
+  button.ghost,a.btn.ghost{background:#eef2f7;color:#1f2937}
+  .login-actions{display:flex;gap:8px;margin-top:14px}
+  .error{display:none;margin-top:12px;color:var(--danger);font-weight:800;font-size:13px}
+  .app{display:none}
+  .top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:22px}
+  .badge{display:inline-flex;align-items:center;min-height:24px;padding:0 8px;border-radius:999px;background:#d1fae5;color:#065f46;font-size:12px;font-weight:900;margin-bottom:8px}
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 28px rgba(15,23,42,.07);padding:16px;min-height:160px;display:flex;flex-direction:column;justify-content:space-between}
+  .card h2{margin:0 0 8px;font-size:18px;line-height:1.25}
+  .card p{font-size:14px}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+  .note{margin-top:18px;padding:12px 14px;border:1px solid #fde68a;background:#fffbeb;border-radius:8px;color:#78350f;font-size:13px;line-height:1.55}
+  code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;background:#eef2f7;padding:2px 5px;border-radius:4px}
+  @media (max-width:760px){
+    .grid{grid-template-columns:1fr}
+    .top{display:block}
+    .top .actions{margin-top:14px}
+  }
+</style>
+</head>
+<body>
+<main class="login" id="login">
+  <section class="login-card">
+    <span class="badge">0628 테스트 관리자</span>
+    <h1>참여단 테스트 진입</h1>
+    <p>시연 담당자용 화면입니다. 비밀번호 입력 후 온톨로지와 포스트잇 세션을 열 수 있습니다.</p>
+    <label for="password">비밀번호</label>
+    <input id="password" type="password" autocomplete="current-password" autofocus>
+    <div class="login-actions">
+      <button id="enter">입장</button>
+      <button class="ghost" id="clear" type="button">초기화</button>
+    </div>
+    <div class="error" id="error">비밀번호를 확인해주세요.</div>
+  </section>
+</main>
+
+<main class="app" id="app">
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <span class="badge">관리자 권한 확인됨</span>
+        <h1>0628 참여단 테스트 운영</h1>
+        <p>더미 응답 기준으로 온톨로지와 Miro식 포스트잇 세션을 확인합니다.</p>
+      </div>
+      <div class="actions">
+        <button class="ghost" id="logout">로그아웃</button>
+      </div>
+    </div>
+
+    <section class="grid">
+      <article class="card">
+        <div>
+          <h2>온톨로지 그래프</h2>
+          <p>주관식 질문을 라벨형 노드, 관계명, 유사도 엣지, 메시지 카드로 봅니다.</p>
+        </div>
+        <div class="actions">
+          <a class="btn" href="/workshop-graph-0628-test/index.html" target="_blank" rel="noopener">새 탭 열기</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <div>
+          <h2>Miro식 포스트잇 세션</h2>
+          <p>0628 응답을 소감/질문 카테고리와 조별 보기로 정리한 포스트잇 화면입니다.</p>
+        </div>
+        <div class="actions">
+          <a class="btn warm" href="/miro-0628-test/index.html" target="_blank" rel="noopener">새 탭 열기</a>
+          <a class="btn ghost" href="/board-demo.html" target="_blank" rel="noopener">원본 데모</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <div>
+          <h2>Google Form</h2>
+          <p>참여단이 입력하는 실제 주관식 응답 폼입니다.</p>
+        </div>
+        <div class="actions">
+          <a class="btn secondary" href="https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform" target="_blank" rel="noopener">응답 화면</a>
+          <a class="btn ghost" href="https://docs.google.com/forms/d/1yktkA_XAMGcVt4mlnC-0Yc3d3N0N0YQ__Dk1TfdTaCc/edit" target="_blank" rel="noopener">편집 화면</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <div>
+          <h2>Google Sheet</h2>
+          <p>Form 응답 저장소와 온톨로지 생성 CSV 원천입니다.</p>
+        </div>
+        <div class="actions">
+          <a class="btn secondary" href="https://docs.google.com/spreadsheets/d/1T31pzPV8JHeqyCuGUq0M28e81-cCujOC_V8mMFACG20/edit" target="_blank" rel="noopener">Sheet 열기</a>
+        </div>
+      </article>
+    </section>
+
+    <div class="note">
+      마지막 수동 단계: Google Form 편집 화면에서 <b>응답</b> 탭을 열고 이 Google Sheet를 응답 저장소로 연결하세요.
+      갱신 명령은 <code>node scripts/build-participant-question-ontology.mjs --csv-url "...Form%20Responses%201"</code> 입니다.
+    </div>
+  </div>
+</main>
+
+<script>
+  const PASS = 'climate2026';
+  const KEY = 'climate0628Admin';
+  const login = document.getElementById('login');
+  const app = document.getElementById('app');
+  const input = document.getElementById('password');
+  const error = document.getElementById('error');
+
+  function showApp() {
+    login.style.display = 'none';
+    app.style.display = 'block';
+  }
+
+  function showLogin() {
+    app.style.display = 'none';
+    login.style.display = 'grid';
+    input.focus();
+  }
+
+  function enter() {
+    if (input.value === PASS) {
+      sessionStorage.setItem(KEY, 'ok');
+      error.style.display = 'none';
+      showApp();
+    } else {
+      error.style.display = 'block';
+      input.select();
+    }
+  }
+
+  document.getElementById('enter').onclick = enter;
+  document.getElementById('clear').onclick = () => {
+    input.value = '';
+    error.style.display = 'none';
+    sessionStorage.removeItem(KEY);
+    input.focus();
+  };
+  document.getElementById('logout').onclick = () => {
+    sessionStorage.removeItem(KEY);
+    input.value = '';
+    showLogin();
+  };
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') enter();
+  });
+
+  if (sessionStorage.getItem(KEY) === 'ok') showApp();
+  else showLogin();
+</script>
+</body>
+</html>
