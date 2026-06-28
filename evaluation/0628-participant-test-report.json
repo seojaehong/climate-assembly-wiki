@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-28T13:49:54+09:00",
+  "generated_at": "2026-06-28T09:49:48.569Z",
   "scope": "0628 participant open-response test",
   "input": {
     "provider": "google_workspace_cli",
@@ -51,19 +51,19 @@
   },
   "graph_data": {
     "path": "public/workshop-graph-0628-test/data/participant-open-questions.json",
-    "rows": 40,
-    "responses": 80,
-    "impression_responses": 40,
-    "question_responses": 40,
-    "nodes": 90,
-    "edges": 362,
-    "similarity_edges": 120,
-    "similarity_clusters": 22,
-    "link_candidates": 24,
-    "frequency_terms": 24,
+    "rows": 19,
+    "responses": 38,
+    "impression_responses": 19,
+    "question_responses": 19,
+    "nodes": 45,
+    "edges": 86,
+    "similarity_edges": 8,
+    "similarity_clusters": 6,
+    "link_candidates": 2,
+    "frequency_terms": 1,
     "keyword_nodes": 0,
-    "theory_lens_nodes": 8,
-    "theory_lens_edges": 162
+    "theory_lens_nodes": 5,
+    "theory_lens_edges": 40
   },
   "views": {
     "admin": "/0628-admin/index.html",
@@ -131,6 +131,15 @@
         }
       ]
     },
-    "dinner_vote_refresh_command": "powershell -ExecutionPolicy Bypass -File scripts/refresh-dinner-vote-results.ps1 -Commit -Deploy"
+    "dinner_vote_refresh_command": "powershell -ExecutionPolicy Bypass -File scripts/refresh-dinner-vote-results.ps1 -Commit -Deploy",
+    "live_participant_sheet_refresh": {
+      "updated_at": "2026-06-28T09:49:48.569Z",
+      "source_sheet": "설문지 응답 시트1",
+      "rows": 19,
+      "responses": 38,
+      "nodes": 45,
+      "edges": 86,
+      "note": "Refreshed from live Google Form responses via gws; Form Responses 1 remains sample data."
+    }
   }
 }
