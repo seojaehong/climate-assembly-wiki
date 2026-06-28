@@ -11,7 +11,9 @@
     "spreadsheet_url": "https://docs.google.com/spreadsheets/d/1T31pzPV8JHeqyCuGUq0M28e81-cCujOC_V8mMFACG20/edit",
     "sheet_name": "Form Responses 1",
     "columns": ["타임스탬프", "조", "소감", "질문", "메모", "처리상태"],
-    "manual_step_remaining": "Google Forms UI에서 응답 저장소를 위 Google Sheet로 연결해야 한다."
+    "group_options": ["1조", "2조", "3조", "4조", "5조", "6조", "7조", "8조", "9조", "10조", "11조", "12조", "13조", "14조", "15조", "연구진"],
+    "linked_sheet_confirmed": true,
+    "manual_step_remaining": "없음. Form linkedSheetId가 위 Google Sheet로 확인됐다."
   },
   "graph_data": {
     "path": "public/workshop-graph-0628-test/data/participant-open-questions.json",
@@ -36,7 +38,7 @@
     "data_generation_command": "node scripts/build-participant-question-ontology.mjs --csv %TEMP%/participant-open-questions-gws.csv",
     "data_generation_result": "rows=8 responses=16 nodes=18 edges=20",
     "browser_tabs_opened": true,
-    "miro_group_view": "implemented with view-groups button and group-filter select",
+    "miro_group_view": "implemented with view-groups button and group-filter select for 1조-15조 plus 연구진",
     "note": "기존 workshop-graph와 board-demo 원본은 수정하지 않고 0628 테스트 페이지를 별도로 추가했다."
   }
 }

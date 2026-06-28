@@ -76,6 +76,7 @@
 </main>
 <script>
 const DATA_URL = '/workshop-graph-0628-test/data/participant-open-questions.json';
+const GROUP_OPTIONS = Array.from({ length: 15 }, (_, i) => `${i + 1}조`).concat('연구진');
 const state = { responses: [], group: '' };
 const labels = {
   impression: { title: '소감', eyebrow: 'IMPRESSION', color: '#d97706', note: '#fef3c7' },
@@ -106,7 +107,7 @@ function visibleResponses(){
 
 function buildFilter(){
   const sel = document.getElementById('group-filter');
-  const groups = [...new Set(state.responses.map(r => r.group).filter(Boolean))]
+  const groups = [...new Set(GROUP_OPTIONS.concat(state.responses.map(r => r.group).filter(Boolean)))]
     .sort((a,b)=>a.localeCompare(b,'ko',{numeric:true}));
   sel.innerHTML = '<option value="">전체 조</option>' + groups.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
   sel.onchange = () => { state.group = sel.value; render(); };
@@ -140,13 +141,14 @@ function renderLanes(){
 }
 
 function renderGroups(){
-  const groups = [...new Set(visibleResponses().map(r => r.group))]
+  const rows = visibleResponses();
+  const groups = state.group ? [state.group] : [...new Set(rows.map(r => r.group))]
     .sort((a,b)=>a.localeCompare(b,'ko',{numeric:true}));
   document.getElementById('group-board').innerHTML = groups.map(group => {
-    const rows = visibleResponses().filter(r => r.group === group);
+    const groupRows = rows.filter(r => r.group === group);
     return `<section class="group-card">
       <h2>${esc(group)}</h2>
-      ${rows.map(noteHtml).join('')}
+      ${groupRows.length ? groupRows.map(noteHtml).join('') : '<div class="empty">아직 입력된 카드가 없습니다.</div>'}
     </section>`;
   }).join('');
 }

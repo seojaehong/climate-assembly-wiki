@@ -24,7 +24,7 @@
 
 1. Google Form을 만든다.
 2. 문항을 아래 3개로 둔다.
-   - 조
+   - 조: `1조`부터 `15조`, `연구진`
    - 소감
    - 질문
 3. Form 응답을 Google Sheet로 연결한다.
@@ -84,7 +84,7 @@ node scripts/build-participant-question-ontology.mjs --csv-url "https://docs.goo
 - 편집 URL: https://docs.google.com/forms/d/1yktkA_XAMGcVt4mlnC-0Yc3d3N0N0YQ__Dk1TfdTaCc/edit
 - 응답 URL: https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform
 - 문항:
-  - `조`
+  - `조`: `1조`부터 `15조`, `연구진`
   - `소감`
   - `질문`
 
@@ -114,18 +114,19 @@ gws 연결 상태:
 - 승인 scope: Forms body, Forms responses readonly, Drive, Drive file, Sheets
 - Forms API로 Form 생성 및 문항 추가 완료
 - gws로 Sheet 생성, 탭 세팅, 값 읽기 검증 완료
+- Form 응답 저장소 연결 확인 완료: `linkedSheetId=1T31pzPV8JHeqyCuGUq0M28e81-cCujOC_V8mMFACG20`
 
-현재 자동화 한계:
+현재 연결 상태:
 
 - Google Forms API에는 응답 저장소를 기존 Spreadsheet로 지정하는 메서드가 노출되어 있지 않다.
 - Google 공식 Help도 Form UI에서 `Responses` 탭의 `Select destination for responses`를 사용하도록 안내한다.
-- 따라서 Form 응답을 위 Sheet에 연결하는 마지막 단계는 로그인된 브라우저에서 수동으로 처리한다.
+- 이번 테스트 Form은 현재 위 Sheet에 연결된 상태다.
 
-Form 생성 절차:
+Form-Sheet 연결 확인 절차:
 
 1. Form 편집 URL을 연다.
 2. `응답` 탭에서 Google Sheets 아이콘을 누른다.
-3. `기존 스프레드시트 선택`에서 위 Sheet를 연결한다.
+3. 연결 대상이 위 Sheet인지 확인한다.
 4. 연결 후 응답 탭 이름이 `Form Responses 1`인지 확인한다.
 5. 현장 테스트 전 샘플 행은 삭제하거나 `처리상태=sample`로 유지한다.
 
