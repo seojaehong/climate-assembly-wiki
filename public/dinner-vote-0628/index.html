@@ -156,7 +156,7 @@
           <div class="body">
             <div class="label">
               <h2>${choice.label}</h2>
-              <div class="count">${choice.count}<small>표</small></div>
+              <div class="count" data-count="${choice.count}">000<small>표</small></div>
             </div>
             <p>${copies[choice.id]}</p>
             <div class="bar"><span data-width="${percent(choice.count, total)}%"></span></div>
@@ -186,6 +186,9 @@
         card.classList.add("dimmed");
       }
     });
+    document.querySelectorAll(".count").forEach((countNode) => {
+      animateCount(countNode, Number(countNode.dataset.count || 0));
+    });
     tickerTitle.textContent = "결과 발표";
     tickerCopy.textContent = `${winner.label} ${winner.count}표. 오늘의 대세가 정해졌습니다.`;
     headline.innerHTML = `
@@ -196,6 +199,21 @@
       <div class="winner-badge">${winner.label}<br>${winner.count}표</div>
     `;
     note.textContent = `마지막 갱신 ${data.updated_at}`;
+  }
+
+  function animateCount(node, target) {
+    const duration = 900;
+    const startTime = performance.now();
+    const small = node.querySelector("small");
+    const render = (now) => {
+      const progress = Math.min(1, (now - startTime) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const value = Math.round(target * eased);
+      node.firstChild.nodeValue = String(value).padStart(3, "0");
+      if (small) node.appendChild(small);
+      if (progress < 1) requestAnimationFrame(render);
+    };
+    requestAnimationFrame(render);
   }
 
   function startShuffle(data) {
