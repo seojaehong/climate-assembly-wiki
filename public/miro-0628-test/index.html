@@ -7,46 +7,49 @@
 <title>0628 소감·질문 포스트잇 보드</title>
 <style>
   :root{
-    --bg:#f7f2e7;
-    --ink:#1f1a14;
-    --muted:#766d62;
-    --line:#e7d6ad;
-    --note:#fef3c7;
-    --note-green:#d1fae5;
-    --accent:#d97706;
-    --green:#059669;
+    --bg:#f6f7f9;
+    --ink:#111827;
+    --muted:#667085;
+    --line:#d9e1ec;
+    --note:#eef5ff;
+    --note-green:#f2f7f4;
+    --accent:#2563eb;
+    --green:#14a46c;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans KR",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-  header{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 22px;background:rgba(255,251,235,.92);border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
+  header{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 22px;background:rgba(255,255,255,.84);border-bottom:1px solid var(--line);backdrop-filter:blur(18px) saturate(1.25)}
   h1{margin:0;font-size:24px;line-height:1.25}
   .meta{color:var(--muted);font-size:13px;font-weight:800}
   .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  select,button{height:34px;border:1px solid var(--line);border-radius:6px;background:#fffaf0;color:var(--ink);font-weight:900;padding:0 10px;font:inherit;font-size:13px}
+  select,button{height:34px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);font-weight:900;padding:0 10px;font:inherit;font-size:13px}
   button.active{background:#111827;color:#fff;border-color:#111827}
   main{padding:16px;display:grid;gap:14px}
-  .board{display:grid;grid-template-columns:1fr 1fr;gap:14px;min-height:calc(100vh - 94px)}
-  .lane{display:grid;grid-template-columns:260px 1fr;border:2px solid var(--lane-color);border-radius:14px;background:rgba(255,255,255,.44);overflow:hidden}
-  .lane-head{padding:28px 26px;border-right:1px solid rgba(0,0,0,.12);background:rgba(255,255,255,.35)}
+  .board{display:grid;grid-template-columns:1fr;gap:14px;min-height:calc(100vh - 94px)}
+  .lane{display:grid;grid-template-columns:220px minmax(0,1fr);border:1px solid rgba(17,24,39,.10);border-radius:16px;background:rgba(255,255,255,.72);overflow:hidden;box-shadow:0 18px 50px rgba(15,23,42,.08)}
+  .lane-head{padding:24px 24px;border-right:1px solid rgba(15,23,42,.10);background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(255,255,255,.62))}
   .lane-head .eyebrow{font-size:13px;color:var(--lane-color);font-weight:900;letter-spacing:.08em}
-  .lane-head h2{margin:8px 0 10px;font-size:42px;line-height:1}
-  .lane-head .count{font-size:70px;font-weight:900;color:var(--lane-color);line-height:1}
-  .notes{padding:22px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));align-content:start;gap:16px}
-  .note{position:relative;min-height:154px;background:var(--note-bg);border-radius:4px;box-shadow:2px 4px 12px rgba(0,0,0,.16);padding:18px 18px 44px;border-left:6px solid var(--lane-color);transform:rotate(var(--rot));word-break:keep-all;overflow-wrap:break-word}
+  .lane-head h2{margin:8px 0 10px;font-size:40px;line-height:1}
+  .lane-head .count{font-size:64px;font-weight:900;color:var(--lane-color);line-height:1}
+  .notes{padding:22px;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));align-content:start;gap:16px}
+  .note{position:relative;min-height:172px;background:var(--group-bg,var(--note-bg));border-radius:10px;box-shadow:0 12px 30px rgba(15,23,42,.10);padding:18px 18px 50px;border:2px solid var(--group-color,var(--lane-color));transform:rotate(var(--rot));word-break:keep-all;overflow-wrap:break-word}
   .note:nth-child(3n+1){--rot:-.45deg}
   .note:nth-child(3n+2){--rot:.35deg}
   .note:nth-child(3n){--rot:-.1deg}
-  .note .text{font-size:20px;font-weight:900;line-height:1.42}
+  .note .summary{font-size:22px;font-weight:900;line-height:1.28;color:#101828}
+  .note .original{margin-top:8px;font-size:13px;font-weight:800;line-height:1.35;color:#667085}
   .chips{position:absolute;left:14px;right:14px;bottom:12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-  .chip{display:inline-flex;align-items:center;min-height:23px;padding:0 8px;border-radius:4px;background:rgba(0,0,0,.08);font-size:12px;font-weight:900;color:#57534e}
-  .chip.group{background:#111827;color:#fff}
-  .group-board{display:none;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
-  .group-card{border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.55);padding:14px}
+  .chip{display:inline-flex;align-items:center;min-height:23px;padding:0 8px;border-radius:999px;background:rgba(15,23,42,.07);font-size:12px;font-weight:900;color:#475467}
+  .chip.group{background:var(--group-color,#111827);color:#fff}
+  .group-board,.cluster-board{display:none;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+  .group-card{border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.78);padding:14px}
   .group-card h2{margin:0 0 12px;font-size:22px}
   .group-card .note{min-height:136px;margin-bottom:12px;transform:none}
+  .cluster-meta{margin:-4px 0 12px;color:var(--muted);font-size:13px;font-weight:800}
   .empty{padding:28px;color:var(--muted);font-weight:900}
-  body.group-mode .board{display:none}
+  body.group-mode .board,body.cluster-mode .board{display:none}
   body.group-mode .group-board{display:grid}
+  body.cluster-mode .cluster-board{display:grid}
   @media (max-width:980px){
     header{display:block}
     .controls{margin-top:12px}
@@ -65,6 +68,8 @@
   <div class="controls">
     <button id="view-lanes" class="active">소감/질문</button>
     <button id="view-groups">조별 보기</button>
+    <button id="view-similar">유사 묶음</button>
+    <button id="view-related">연관 렌즈</button>
     <select id="group-filter" title="조 필터">
       <option value="">전체 조</option>
     </select>
@@ -73,20 +78,44 @@
 <main>
   <section class="board" id="board"></section>
   <section class="group-board" id="group-board"></section>
+  <section class="cluster-board" id="cluster-board"></section>
 </main>
 <script>
 const DATA_URL = '/workshop-graph-0628-test/data/participant-open-questions.json';
 const GROUP_OPTIONS = Array.from({ length: 15 }, (_, i) => `${i + 1}조`).concat('연구진');
-const state = { responses: [], group: '' };
+const state = { responses: [], group: '', mode: 'lanes', edges: [], nodeById: new Map() };
 const labels = {
   impression: { title: '소감', eyebrow: 'IMPRESSION', color: '#d97706', note: '#fef3c7' },
-  question: { title: '질문', eyebrow: 'QUESTION', color: '#059669', note: '#d1fae5' },
+  question: { title: '질문', eyebrow: 'QUESTION', color: '#14a46c', note: '#f2f7f4' },
 };
+const GROUP_PALETTE = [
+  ['#2563eb','#eff6ff'], ['#16a34a','#f0fdf4'], ['#d97706','#fff7ed'], ['#7c3aed','#f5f3ff'],
+  ['#db2777','#fdf2f8'], ['#0891b2','#ecfeff'], ['#ca8a04','#fefce8'], ['#dc2626','#fef2f2'],
+  ['#4f46e5','#eef2ff'], ['#059669','#ecfdf5'], ['#ea580c','#fff7ed'], ['#9333ea','#faf5ff'],
+  ['#be123c','#fff1f2'], ['#0284c7','#f0f9ff'], ['#65a30d','#f7fee7'], ['#475569','#f8fafc'],
+];
 
 function esc(s){return String(s ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function groupPalette(group){
+  const text = String(group || '');
+  const m = text.match(/\d+/);
+  const idx = m ? Math.max(0, Math.min(14, Number(m[0]) - 1)) : 15;
+  const [color,bg] = GROUP_PALETTE[idx] || GROUP_PALETTE[15];
+  return { color, bg };
+}
 
 async function load(){
   const data = await fetch(DATA_URL + '?_=' + Date.now()).then(r => r.json());
+  state.edges = data.elements.edges.map(edge => edge.data);
+  state.nodeById = new Map(data.elements.nodes.map(n => [n.data.id, n.data]));
+  const relationCount = new Map();
+  const similarityCount = new Map();
+  for (const e of state.edges) {
+    if (!e.source || !e.target) continue;
+    const map = e.rel === 'similarTo' ? similarityCount : relationCount;
+    map.set(e.source, (map.get(e.source) || 0) + 1);
+    map.set(e.target, (map.get(e.target) || 0) + 1);
+  }
   state.responses = data.elements.nodes
     .map(n => n.data)
     .filter(n => n.id && n.id.startsWith('resp_') && n.meta && (n.meta.question_key === 'impression' || n.meta.question_key === 'question'))
@@ -96,6 +125,8 @@ async function load(){
       kind:n.meta.question_key,
       text:n.text || n.label,
       label:n.label,
+      similar:similarityCount.get(n.id) || 0,
+      related:relationCount.get(n.id) || 0,
     }));
   buildFilter();
   render();
@@ -115,11 +146,15 @@ function buildFilter(){
 
 function noteHtml(r){
   const cfg = labels[r.kind];
-  return `<article class="note" style="--lane-color:${cfg.color};--note-bg:${cfg.note}">
-    <div class="text">${esc(r.text)}</div>
+  const gp = groupPalette(r.group);
+  return `<article class="note" style="--lane-color:${cfg.color};--note-bg:${cfg.note};--group-color:${gp.color};--group-bg:${gp.bg}">
+    <div class="summary">${esc(r.label || r.text)}</div>
+    <div class="original">${esc(r.text)}</div>
     <div class="chips">
       <span class="chip group">${esc(r.group)}</span>
       <span class="chip">${esc(cfg.title)}</span>
+      <span class="chip">유사 ${r.similar}</span>
+      <span class="chip">연관 ${r.related}</span>
     </div>
   </article>`;
 }
@@ -153,21 +188,112 @@ function renderGroups(){
   }).join('');
 }
 
+function connectedComponents(edges, ids) {
+  const idSet = new Set(ids);
+  const adj = new Map(ids.map(id => [id, new Set()]));
+  for (const e of edges) {
+    if (!idSet.has(e.source) || !idSet.has(e.target)) continue;
+    adj.get(e.source).add(e.target);
+    adj.get(e.target).add(e.source);
+  }
+  const seen = new Set();
+  const comps = [];
+  for (const id of ids) {
+    if (seen.has(id)) continue;
+    const stack = [id];
+    const comp = [];
+    seen.add(id);
+    while (stack.length) {
+      const cur = stack.pop();
+      comp.push(cur);
+      for (const next of adj.get(cur) || []) {
+        if (!seen.has(next)) {
+          seen.add(next);
+          stack.push(next);
+        }
+      }
+    }
+    if (comp.length > 1) comps.push(comp);
+  }
+  return comps.sort((a,b)=>b.length-a.length);
+}
+
+function clusterTitleFromRows(rows, fallback) {
+  const counts = new Map();
+  for (const r of rows) {
+    for (const token of String(r.label || '').split(/\s+/).filter(t => t.length >= 2)) {
+      counts.set(token, (counts.get(token) || 0) + 1);
+    }
+  }
+  return [...counts.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0] || fallback;
+}
+
+function renderSimilarClusters(rows) {
+  const byId = new Map(rows.map(r => [r.id, r]));
+  const comps = connectedComponents(state.edges.filter(e => e.rel === 'similarTo'), rows.map(r => r.id)).slice(0, 12);
+  document.getElementById('cluster-board').innerHTML = comps.map((ids, i) => {
+    const clusterRows = ids.map(id => byId.get(id)).filter(Boolean);
+    const title = clusterTitleFromRows(clusterRows, `유사 묶음 ${i + 1}`);
+    return `<section class="group-card">
+      <h2>유사: ${esc(title)}</h2>
+      <div class="cluster-meta">${clusterRows.length}개 카드 · 텍스트 유사성 기준</div>
+      ${clusterRows.map(noteHtml).join('')}
+    </section>`;
+  }).join('') || '<div class="empty">유사 묶음이 아직 없습니다.</div>';
+}
+
+function renderRelatedClusters(rows) {
+  const byId = new Map(rows.map(r => [r.id, r]));
+  const lensRows = new Map();
+  for (const e of state.edges.filter(edge => edge.rel === 'framesThrough')) {
+    const responseId = byId.has(e.source) ? e.source : (byId.has(e.target) ? e.target : '');
+    const lensId = responseId === e.source ? e.target : e.source;
+    const response = byId.get(responseId);
+    const lens = state.nodeById.get(lensId);
+    if (!response || !lens) continue;
+    const label = lens.label || '분석 렌즈';
+    if (!lensRows.has(label)) lensRows.set(label, []);
+    lensRows.get(label).push(response);
+  }
+  const clusters = [...lensRows.entries()].sort((a,b)=>b[1].length-a[1].length).slice(0, 12);
+  document.getElementById('cluster-board').innerHTML = clusters.map(([label, clusterRows]) => `<section class="group-card">
+      <h2>연관: ${esc(label)}</h2>
+      <div class="cluster-meta">${clusterRows.length}개 카드 · 사회과학 분석 렌즈 기준</div>
+      ${clusterRows.map(noteHtml).join('')}
+    </section>`).join('') || '<div class="empty">연관 렌즈 묶음이 아직 없습니다.</div>';
+}
+
 function render(){
   renderLanes();
   renderGroups();
+  const rows = visibleResponses();
+  if (state.mode === 'similar') renderSimilarClusters(rows);
+  if (state.mode === 'related') renderRelatedClusters(rows);
+}
+
+function setMode(mode) {
+  state.mode = mode;
+  document.body.classList.toggle('group-mode', mode === 'groups');
+  document.body.classList.toggle('cluster-mode', mode === 'similar' || mode === 'related');
+  document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
+  const active = {
+    lanes: 'view-lanes',
+    groups: 'view-groups',
+    similar: 'view-similar',
+    related: 'view-related',
+  }[mode];
+  if (active) document.getElementById(active).classList.add('active');
+  render();
 }
 
 document.getElementById('view-lanes').onclick = () => {
-  document.body.classList.remove('group-mode');
-  document.getElementById('view-lanes').classList.add('active');
-  document.getElementById('view-groups').classList.remove('active');
+  setMode('lanes');
 };
 document.getElementById('view-groups').onclick = () => {
-  document.body.classList.add('group-mode');
-  document.getElementById('view-groups').classList.add('active');
-  document.getElementById('view-lanes').classList.remove('active');
+  setMode('groups');
 };
+document.getElementById('view-similar').onclick = () => setMode('similar');
+document.getElementById('view-related').onclick = () => setMode('related');
 
 load().catch(err => {
   document.getElementById('board').innerHTML = `<div class="empty">데이터를 불러오지 못했습니다: ${esc(err.message)}</div>`;

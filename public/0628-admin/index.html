@@ -15,6 +15,7 @@
     --accent:#0f766e;
     --accent-2:#d97706;
     --danger:#b91c1c;
+    --qr:#111827;
   }
   *{box-sizing:border-box}
   body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:"Noto Sans KR",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -40,12 +41,26 @@
   .card h2{margin:0 0 8px;font-size:18px;line-height:1.25}
   .card p{font-size:14px}
   .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+  .qr-toggle{background:#eef2f7;color:#111827}
+  .form-access{display:grid;grid-template-columns:1fr 164px;gap:14px;align-items:end}
+  .qr-box{display:none;border:1px solid var(--line);border-radius:8px;background:#f8fafc;padding:10px;text-align:center}
+  .qr-box.show{display:block}
+  .qr-box img{display:block;width:142px;height:142px;margin:0 auto;border-radius:4px}
+  .qr-box span{display:block;margin-top:7px;color:var(--qr);font-size:12px;font-weight:900}
+  .qr-modal{position:fixed;inset:0;z-index:50;display:none;place-items:center;background:rgba(15,23,42,.54);padding:24px}
+  .qr-modal.show{display:grid}
+  .qr-modal-card{width:min(420px,calc(100vw - 32px));background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 24px 80px rgba(15,23,42,.28);padding:18px;text-align:center}
+  .qr-modal-card img{display:block;width:min(320px,100%);height:auto;margin:8px auto 14px}
+  .qr-modal-card h2{margin:0 0 6px;font-size:22px}
+  .qr-modal-card p{font-size:14px}
   .note{margin-top:18px;padding:12px 14px;border:1px solid #fde68a;background:#fffbeb;border-radius:8px;color:#78350f;font-size:13px;line-height:1.55}
   code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;background:#eef2f7;padding:2px 5px;border-radius:4px}
   @media (max-width:760px){
     .grid{grid-template-columns:1fr}
     .top{display:block}
     .top .actions{margin-top:14px}
+    .form-access{grid-template-columns:1fr}
+    .qr-box{width:max-content;max-width:100%}
   }
 </style>
 </head>
@@ -101,13 +116,20 @@
       </article>
 
       <article class="card">
-        <div>
-          <h2>Google Form</h2>
-          <p>참여단이 입력하는 실제 주관식 응답 폼입니다.</p>
-        </div>
-        <div class="actions">
-          <a class="btn secondary" href="https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform" target="_blank" rel="noopener">응답 화면</a>
-          <a class="btn ghost" href="https://docs.google.com/forms/d/1yktkA_XAMGcVt4mlnC-0Yc3d3N0N0YQ__Dk1TfdTaCc/edit" target="_blank" rel="noopener">편집 화면</a>
+        <div class="form-access">
+          <div>
+            <h2>Google Form</h2>
+            <p>참여단이 입력하는 실제 주관식 응답 폼입니다. 현장에서는 아래 QR을 띄워 바로 접속하게 합니다.</p>
+            <div class="actions">
+              <a class="btn secondary" href="https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform" target="_blank" rel="noopener">응답 화면</a>
+              <a class="btn ghost" href="https://docs.google.com/forms/d/1yktkA_XAMGcVt4mlnC-0Yc3d3N0N0YQ__Dk1TfdTaCc/edit" target="_blank" rel="noopener">편집 화면</a>
+              <button class="qr-toggle" id="show-qr" type="button">QR 탭</button>
+            </div>
+          </div>
+          <a class="qr-box" id="qr-inline" href="https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform" target="_blank" rel="noopener">
+            <img alt="Google Form 응답 QR" src="/0628-admin/google-form-qr.svg">
+            <span>응답 QR</span>
+          </a>
         </div>
       </article>
 
@@ -123,11 +145,25 @@
     </section>
 
     <div class="note">
-      마지막 수동 단계: Google Form 편집 화면에서 <b>응답</b> 탭을 열고 이 Google Sheet를 응답 저장소로 연결하세요.
+      Google Form 응답 저장소는 위 Google Sheet로 연결되어 있습니다.
       갱신 명령은 <code>node scripts/build-participant-question-ontology.mjs --csv-url "...Form%20Responses%201"</code> 입니다.
     </div>
   </div>
 </main>
+
+<div class="qr-modal" id="qr-modal" role="dialog" aria-modal="true" aria-labelledby="qr-title">
+  <section class="qr-modal-card">
+    <h2 id="qr-title">Google Form 응답 QR</h2>
+    <p>참여단 휴대폰 카메라로 스캔하면 응답 화면으로 이동합니다.</p>
+    <a href="https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform" target="_blank" rel="noopener">
+      <img alt="Google Form 응답 QR" src="/0628-admin/google-form-qr.svg">
+    </a>
+    <div class="actions" style="justify-content:center">
+      <a class="btn secondary" href="https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform" target="_blank" rel="noopener">응답 화면 열기</a>
+      <button class="ghost" id="close-qr" type="button">닫기</button>
+    </div>
+  </section>
+</div>
 
 <script>
   const PASS = 'climate2026';
@@ -136,6 +172,8 @@
   const app = document.getElementById('app');
   const input = document.getElementById('password');
   const error = document.getElementById('error');
+  const qrModal = document.getElementById('qr-modal');
+  const qrInline = document.getElementById('qr-inline');
 
   function showApp() {
     login.style.display = 'none';
@@ -173,6 +211,19 @@
   };
   input.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') enter();
+  });
+  document.getElementById('show-qr').onclick = () => {
+    qrInline.classList.add('show');
+    qrModal.classList.add('show');
+  };
+  document.getElementById('close-qr').onclick = () => {
+    qrModal.classList.remove('show');
+  };
+  qrModal.addEventListener('click', (event) => {
+    if (event.target === qrModal) qrModal.classList.remove('show');
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') qrModal.classList.remove('show');
   });
 
   if (sessionStorage.getItem(KEY) === 'ok') showApp();

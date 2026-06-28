@@ -72,30 +72,38 @@
   .og-level-tog{display:none}
   body.og-present-mode .og-level-tog{display:flex}
   body.og-present-mode .og-present-hud{max-width:min(720px,calc(100vw - 420px));padding:7px 10px;font-size:12px}
-  .og-showcase-count-tog,.og-showcase-edge-tog,.og-showcase-tone-tog{display:none}
+  .og-showcase-count-tog,.og-showcase-edge-tog,.og-showcase-tone-tog,.og-participant-view-tog,.og-participant-rel-tog{display:none}
   body.og-showcase-mode .og-header,
   body.og-showcase-mode .og-tabs,
   body.og-showcase-mode #og-filter-bar,
   body.og-showcase-mode .og-footer,
   body.og-showcase-mode .og-side{display:none !important}
   body.og-showcase-mode .og-controls{position:fixed;right:14px;bottom:14px;top:auto;z-index:80;width:auto;padding:0;background:transparent;border:0;box-shadow:none;gap:8px}
-  body.og-showcase-mode .og-controls > :not(#og-showcase-count-tog):not(#og-showcase-edge-tog):not(#og-showcase-tone-tog){display:none !important}
+  body.og-showcase-mode .og-controls > :not(#og-showcase-count-tog):not(#og-showcase-edge-tog):not(#og-showcase-tone-tog):not(#og-participant-view-tog):not(#og-participant-rel-tog){display:none !important}
   body.og-showcase-mode .og-showcase-count-tog,
   body.og-showcase-mode .og-showcase-edge-tog,
-  body.og-showcase-mode .og-showcase-tone-tog{display:flex;background:rgba(255,255,255,.88);border-color:rgba(37,99,235,.20);box-shadow:0 12px 34px rgba(15,23,42,.12);backdrop-filter:blur(10px)}
+  body.og-showcase-mode .og-showcase-tone-tog,
+  body.og-showcase-mode .og-participant-view-tog,
+  body.og-showcase-mode .og-participant-rel-tog{display:flex;background:rgba(255,255,255,.88);border-color:rgba(37,99,235,.20);box-shadow:0 12px 34px rgba(15,23,42,.12);backdrop-filter:blur(10px)}
   body.og-showcase-mode .og-showcase-count-tog .og-grp-lbl,
   body.og-showcase-mode .og-showcase-edge-tog .og-grp-lbl,
-  body.og-showcase-mode .og-showcase-tone-tog .og-grp-lbl{color:#475569}
+  body.og-showcase-mode .og-showcase-tone-tog .og-grp-lbl,
+  body.og-showcase-mode .og-participant-view-tog .og-grp-lbl,
+  body.og-showcase-mode .og-participant-rel-tog .og-grp-lbl{color:#475569}
   body.og-showcase-mode .og-canvas{background:#f8fafc}
   body.og-showcase-mode.og-showcase-calm .og-canvas{background:#f8fafc}
   body.og-showcase-mode.og-showcase-contrast .og-canvas{background:#f5f7fb}
   body.og-showcase-mode.og-showcase-mono .og-canvas{background:#f7f7f8}
   body.og-showcase-mode.og-showcase-dark .og-showcase-count-tog,
   body.og-showcase-mode.og-showcase-dark .og-showcase-edge-tog,
-  body.og-showcase-mode.og-showcase-dark .og-showcase-tone-tog{background:rgba(13,20,30,.76);border-color:rgba(139,211,255,.24);box-shadow:0 12px 34px rgba(0,0,0,.28)}
+  body.og-showcase-mode.og-showcase-dark .og-showcase-tone-tog,
+  body.og-showcase-mode.og-showcase-dark .og-participant-view-tog,
+  body.og-showcase-mode.og-showcase-dark .og-participant-rel-tog{background:rgba(13,20,30,.76);border-color:rgba(139,211,255,.24);box-shadow:0 12px 34px rgba(0,0,0,.28)}
   body.og-showcase-mode.og-showcase-dark .og-showcase-count-tog .og-grp-lbl,
   body.og-showcase-mode.og-showcase-dark .og-showcase-edge-tog .og-grp-lbl,
-  body.og-showcase-mode.og-showcase-dark .og-showcase-tone-tog .og-grp-lbl{color:#9fb3c8}
+  body.og-showcase-mode.og-showcase-dark .og-showcase-tone-tog .og-grp-lbl,
+  body.og-showcase-mode.og-showcase-dark .og-participant-view-tog .og-grp-lbl,
+  body.og-showcase-mode.og-showcase-dark .og-participant-rel-tog .og-grp-lbl{color:#9fb3c8}
   body.og-showcase-mode.og-showcase-dark .og-canvas{background:radial-gradient(circle at 42% 44%,#192536 0,#0f1722 48%,#080d14 100%)}
   body.og-showcase-mode .og-body{flex:1}
   body.og-showcase-mode .og-hub-rail{display:none !important}
@@ -171,6 +179,19 @@
       <button data-tone="calm">회의</button>
       <button data-tone="contrast">발표</button>
       <button data-tone="mono">흑백</button>
+    </div>
+    <div class="og-group-tog og-participant-view-tog og-2d-only" id="og-participant-view-tog" title="참여단 응답 보기 — 소감과 질문을 따로 확대해서 봅니다">
+      <span class="og-grp-lbl">보기</span>
+      <button data-participant-view="all">전체</button>
+      <button data-participant-view="impression">소감</button>
+      <button data-participant-view="question">질문</button>
+    </div>
+    <div class="og-group-tog og-participant-rel-tog og-2d-only" id="og-participant-rel-tog" title="연결 보기 — 응답, 유사성, 분석 렌즈를 분리해서 봅니다">
+      <span class="og-grp-lbl">연결</span>
+      <button data-participant-rel="response">응답</button>
+      <button data-participant-rel="similar">유사</button>
+      <button data-participant-rel="lens">연관</button>
+      <button data-participant-rel="all">전체</button>
     </div>
     <div class="og-group-tog og-2d-only" id="og-group-tog" title="묶기 — 무손실 클러스터(노드/엣지 보존, 부모 안에 둥지). 그룹을 클릭하면 접기/펼치기">
       <span class="og-grp-lbl">묶기</span>
@@ -272,6 +293,8 @@ let showcaseCount = 50;
 let showcaseTheme = 'light';
 let showcaseTone = 'calm';
 let showcaseEdgeLabels = true;
+let participantView = 'all';
+let participantRel = 'response';
 let fixedNodeId = null, hoverNodeId = null, graph3dData = null, quickHover = false, hoverHideTimer = null;
 // A-3 묶기(클러스터): 'none' | 'present' | 'brief' | 'issue' | 'session'. 공유 가능 뷰 상태라 URL 파라미터(?group=).
 // 무손실 원칙 — 그룹은 합성 부모 노드로만 표현하고 실제 노드/엣지는 절대 삭제하지 않는다.
@@ -313,6 +336,12 @@ const REL_KO = {
   isAbout: '관련',
   impacts: '영향',
 };
+const PARTICIPANT_GROUP_PALETTE = [
+  ['#2563eb','#eff6ff'], ['#16a34a','#f0fdf4'], ['#d97706','#fff7ed'], ['#7c3aed','#f5f3ff'],
+  ['#db2777','#fdf2f8'], ['#0891b2','#ecfeff'], ['#ca8a04','#fefce8'], ['#dc2626','#fef2f2'],
+  ['#4f46e5','#eef2ff'], ['#059669','#ecfdf5'], ['#ea580c','#fff7ed'], ['#9333ea','#faf5ff'],
+  ['#be123c','#fff1f2'], ['#0284c7','#f0f9ff'], ['#65a30d','#f7fee7'], ['#475569','#f8fafc'],
+];
 const AGENDA_HINTS = [
   { terms:['원전','원자력','재생에너지','태양광','풍력','전력믹스'], ids:[1,13,3] },
   { terms:['전기요금','요금','에너지복지','전환비용'], ids:[2,14] },
@@ -342,6 +371,8 @@ const params = new URLSearchParams(location.search);
   showcaseTheme = ['light','dark'].includes(params.get('theme')) ? params.get('theme') : 'light';
   showcaseTone = ['calm','contrast','mono'].includes(params.get('tone')) ? params.get('tone') : 'calm';
   showcaseEdgeLabels = params.get('edgeLabels') !== 'off';
+  participantView = ['all','impression','question'].includes(params.get('participantView')) ? params.get('participantView') : 'all';
+  participantRel = ['response','similar','lens','all'].includes(params.get('participantRel')) ? params.get('participantRel') : 'response';
   groupMode = ['present','brief','issue','session','none'].includes(params.get('group'))
     ? params.get('group')
     : (presentMode ? groupForPresentLevel(presentLevel) : 'none');
@@ -397,6 +428,10 @@ function updateUrl() {
     p.set('edgeLabels', showcaseEdgeLabels ? 'on' : 'off');
     if (showcaseTone !== 'calm') p.set('tone', showcaseTone);
     if (showcaseTheme === 'dark') p.set('theme', 'dark');
+    if (curSource === 'participant-open-questions') {
+      if (participantView !== 'all') p.set('participantView', participantView);
+      if (participantRel !== 'response') p.set('participantRel', participantRel);
+    }
   }
   if (groupMode !== 'none' && !showcaseMode && (!presentMode || groupMode !== groupForPresentLevel(presentLevel))) p.set('group', groupMode);
   history.replaceState(null, '', '?' + p.toString());
@@ -439,7 +474,97 @@ function nodeShowcaseScore(node) {
   return deg * 20 + kindBoost + textBoost;
 }
 
+function isParticipantSource() {
+  return curSource === 'participant-open-questions';
+}
+
+function responseQuestionKey(node) {
+  return node?.data?.meta?.question_key || node?.data?.question_key || '';
+}
+
+function participantResponseNodes() {
+  return ALL_NODES
+    .filter(n => String(n.data?.id || '').startsWith('resp_'))
+    .filter(n => participantView === 'all' || responseQuestionKey(n) === participantView)
+    .sort((a, b) => groupSortValueData(a) - groupSortValueData(b) || String(a.data.label).localeCompare(String(b.data.label), 'ko'));
+}
+
+function groupSortValueData(node) {
+  const group = String(node.data?.meta?.group || node.data?.session || '');
+  const m = group.match(/\d+/);
+  return m ? Number(m[0]) : (group.includes('연구') ? 99 : 50);
+}
+
+function participantGroupPaletteFromMeta(meta = {}, session = '') {
+  const text = String(meta.group || session || '');
+  const m = text.match(/\d+/);
+  const idx = m ? Math.max(0, Math.min(14, Number(m[0]) - 1)) : 15;
+  const [border, bg] = PARTICIPANT_GROUP_PALETTE[idx] || PARTICIPANT_GROUP_PALETTE[15];
+  return { border, bg };
+}
+
+function participantRelAllowed(rel) {
+  if (participantRel === 'all') return true;
+  if (participantRel === 'response') return rel === 'raisesIssue';
+  if (participantRel === 'similar') return rel === 'similarTo';
+  if (participantRel === 'lens') return rel === 'framesThrough';
+  return rel === 'raisesIssue';
+}
+
+function buildParticipantShowcaseElements(limit = showcaseCount) {
+  const capped = Math.max(50, Math.min(100, Number(limit) || 50));
+  const responses = participantResponseNodes();
+  const byKey = {
+    impression: responses.filter(n => responseQuestionKey(n) === 'impression'),
+    question: responses.filter(n => responseQuestionKey(n) === 'question'),
+  };
+  let pickedResponses = [];
+  if (participantView === 'all') {
+    const half = Math.floor(capped / 2);
+    pickedResponses = byKey.impression.slice(0, half).concat(byKey.question.slice(0, capped - half));
+  } else {
+    pickedResponses = responses.slice(0, capped);
+  }
+  const selected = new Set(pickedResponses.map(n => n.data.id));
+  const allowedEdges = ALL_EDGES.filter(e => participantRelAllowed(e.data.rel));
+  const pickedIds = new Set(selected);
+  for (const e of allowedEdges) {
+    if (e.data.rel === 'raisesIssue') {
+      if (pickedIds.has(e.data.source) || pickedIds.has(e.data.target)) {
+        selected.add(e.data.source);
+        selected.add(e.data.target);
+      }
+    } else if (e.data.rel === 'similarTo') {
+      if (pickedIds.has(e.data.source)) selected.add(e.data.target);
+      if (pickedIds.has(e.data.target)) selected.add(e.data.source);
+    } else if (e.data.rel === 'framesThrough') {
+      if (pickedIds.has(e.data.source)) selected.add(e.data.target);
+      if (pickedIds.has(e.data.target)) selected.add(e.data.source);
+    } else if (participantRel === 'all') {
+      if (pickedIds.has(e.data.source) || pickedIds.has(e.data.target)) {
+        selected.add(e.data.source);
+        selected.add(e.data.target);
+      }
+    }
+  }
+  if (participantView === 'all' || participantView === 'impression') selected.add('Question_impression');
+  if (participantView === 'all' || participantView === 'question') selected.add('Question_question');
+  const nodes = ALL_NODES
+    .filter(n => selected.has(n.data.id))
+    .map(n => ({
+      ...n,
+      data: {
+        ...n.data,
+        shortLabel: shortenNodeLabel(n.data.label, showcaseLabelLimit()),
+      },
+      classes: [n.classes, 'showcase-node'].filter(Boolean).join(' '),
+    }));
+  const edges = allowedEdges.filter(e => selected.has(e.data.source) && selected.has(e.data.target));
+  return { nodes, edges };
+}
+
 function buildShowcaseElements(limit = showcaseCount) {
+  if (isParticipantSource()) return buildParticipantShowcaseElements(limit);
   const capped = Math.max(50, Math.min(100, Number(limit) || 50));
   const byId = new Map(ALL_NODES.map(n => [n.data.id, n]));
   const adjacency = new Map();
@@ -1322,10 +1447,64 @@ function renderCy() {
   bindCyEvents();
   updateGroupBtns();
   cy.ready(() => setTimeout(() => {
-    cy.fit(null, 40);
+    const laneApplied = applyParticipantQuestionLanes();
+    if (!laneApplied) cy.fit(null, 40);
     if (groupMode !== 'none') applyGrouping(groupMode);  // URL ?group= 진입 시 즉시 묶기
-    else if (physicsOn || showcaseMode) applyPhysics();
+    else if (!laneApplied && (physicsOn || showcaseMode)) applyPhysics();
   }, 300));
+}
+
+function groupSortValue(node) {
+  const group = String(node.data('meta')?.group || node.data('session') || '');
+  const m = group.match(/\d+/);
+  return m ? Number(m[0]) : (group.includes('연구') ? 99 : 50);
+}
+
+function applyParticipantQuestionLanes() {
+  if (!cy || !showcaseMode || curSource !== 'participant-open-questions') return false;
+  if (participantView === 'all' && participantRel === 'response') return false;
+  stopPhysics();
+  const responses = cy.nodes().filter(n => String(n.id()).startsWith('resp_'));
+  if (!responses.length) return false;
+  const impressions = responses
+    .filter(n => n.data('meta')?.question_key === 'impression')
+    .sort((a, b) => groupSortValue(a) - groupSortValue(b) || String(a.data('label')).localeCompare(String(b.data('label')), 'ko'));
+  const questions = responses
+    .filter(n => n.data('meta')?.question_key === 'question')
+    .sort((a, b) => groupSortValue(a) - groupSortValue(b) || String(a.data('label')).localeCompare(String(b.data('label')), 'ko'));
+  const xGap = 392;
+  const yGap = 250;
+  const laneY = participantView === 'impression'
+    ? { impression: 0, question: 0 }
+    : participantView === 'question'
+      ? { impression: 0, question: 0 }
+      : { impression: -430, question: 430 };
+  function placeCluster(nodes, centerY) {
+    const cols = Math.max(3, Math.ceil(Math.sqrt(nodes.length * 1.7)));
+    const rows = Math.ceil(nodes.length / cols);
+    const startX = -((cols - 1) * xGap) / 2;
+    const startY = centerY - ((rows - 1) * yGap) / 2;
+    nodes.forEach((n, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      n.position({ x: startX + col * xGap, y: startY + row * yGap });
+    });
+  }
+  placeCluster(impressions, laneY.impression);
+  placeCluster(questions, laneY.question);
+  const leftX = -Math.max(4, Math.ceil(Math.sqrt(Math.max(impressions.length, questions.length) * 1.7))) * xGap / 2 - 360;
+  cy.$id('Question_impression').position({ x: leftX, y: laneY.impression });
+  cy.$id('Question_question').position({ x: leftX, y: laneY.question });
+  const lenses = cy.nodes('[kind = "Value"]')
+    .sort((a, b) => String(a.data('label')).localeCompare(String(b.data('label')), 'ko'));
+  const lensCols = Math.max(1, Math.min(4, lenses.length));
+  const lensStart = -((lensCols - 1) * 330) / 2;
+  lenses.forEach((n, i) => n.position({ x: lensStart + (i % lensCols) * 330, y: -120 + Math.floor(i / lensCols) * 210 }));
+  cy.nodes()
+    .filter(n => !String(n.id()).startsWith('resp_') && !String(n.id()).startsWith('Question_') && n.data('kind') !== 'Value')
+    .forEach((n, i) => n.position({ x: -520 + (i % 6) * 210, y: -120 + Math.floor(i / 6) * 180 }));
+  cy.fit(cy.nodes(), 90);
+  return true;
 }
 
 // 살아있는 드래그: cytoscape-cola 연속 물리엔진 (노드를 끌면 이웃 출렁)
@@ -1462,6 +1641,12 @@ function updateShowcaseUI() {
   document.querySelectorAll('#og-showcase-tone-tog button').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tone === showcaseTone);
   });
+  document.querySelectorAll('#og-participant-view-tog button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.participantView === participantView);
+  });
+  document.querySelectorAll('#og-participant-rel-tog button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.participantRel === participantRel);
+  });
 }
 
 function setShowcaseMode(active = !showcaseMode) {
@@ -1524,6 +1709,30 @@ function setShowcaseTone(tone) {
   updatePhysicsBtn();
   updateUrl();
   if (cy && curView === '2d') cy.style(buildCyStyle(OntologyChrome.getPalette())).update();
+}
+
+function setParticipantView(view) {
+  participantView = ['all','impression','question'].includes(view) ? view : 'all';
+  showcaseMode = true;
+  presentMode = false;
+  curView = '2d';
+  groupMode = 'none';
+  syncPresentationBody();
+  updateShowcaseUI();
+  updateUrl();
+  if (ALL_NODES.length) renderCy();
+}
+
+function setParticipantRel(rel) {
+  participantRel = ['response','similar','lens','all'].includes(rel) ? rel : 'response';
+  showcaseMode = true;
+  presentMode = false;
+  curView = '2d';
+  groupMode = 'none';
+  syncPresentationBody();
+  updateShowcaseUI();
+  updateUrl();
+  if (ALL_NODES.length) renderCy();
 }
 
 function configurePresentationZoom() {
@@ -2001,6 +2210,20 @@ function showcaseRelColor(rel, paperLike) {
   }[rel] || '#dbe4ef';
 }
 
+function showcaseNodeBg(node, displayPalette) {
+  if (isParticipantSource() && String(node.data('id') || '').startsWith('resp_')) {
+    return participantGroupPaletteFromMeta(node.data('meta'), node.data('session')).bg;
+  }
+  return displayPalette[node.data('kind')] || '#888';
+}
+
+function showcaseNodeBorderColor(node) {
+  if (isParticipantSource() && String(node.data('id') || '').startsWith('resp_')) {
+    return participantGroupPaletteFromMeta(node.data('meta'), node.data('session')).border;
+  }
+  return showcaseNodeBorder(node.data('kind'));
+}
+
 function buildCyStyle(palette) {
   const paper = presentMode;
   const demo = showcaseMode;
@@ -2010,38 +2233,43 @@ function buildCyStyle(palette) {
   const displayPalette = showcasePalette(palette);
   return [
     { selector:'node', style:{
-        'background-color': n => displayPalette[n.data('kind')] || '#888',
+        'background-color': n => showcaseNodeBg(n, displayPalette),
         'label': n => {
           if (demo) return n.data('shortLabel') || n.data('label') || '';
           if (!presentMode || n.data('isGroup')) return n.data('label') || '';
           if (presentLevel === 'full' && n.data('isOverviewLabel')) return n.data('label') || '';
           return '';
         },
-        'color': paperLike ? '#0f172a' : '#eef3f9', 'font-size': demo ? '21px' : (presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px'),
+        'color': paperLike ? '#0f172a' : '#eef3f9', 'font-size': demo ? '24px' : (presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px'),
         'min-zoomed-font-size': demo ? 0 : (presentMode ? (presentLevel === 'full' ? 18 : 999) : 7),  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
         'font-family':'Noto Sans KR, Malgun Gothic, sans-serif', 'font-weight': presentMode || demo ? 700 : 500,
-        'text-wrap':'wrap','text-max-width': demo ? '260px' : (presentMode ? '120px' : '140px'),'text-valign': demo ? 'center' : 'bottom','text-halign':'center','text-margin-y': demo ? 0 : 3,
+        'text-wrap':'wrap','text-max-width': demo ? '340px' : (presentMode ? '120px' : '140px'),'text-valign': demo ? 'center' : 'bottom','text-halign':'center','text-margin-y': demo ? 0 : 3,
         'text-outline-color': paperLike ? '#ffffff' : '#0b111a','text-outline-width': demo ? 0 : (presentMode ? 2.5 : 2.5),
-        'width': n => demo ? Math.max(178, Math.min(360, String(n.data('shortLabel') || n.data('label') || '').length * 18 + 54)) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4),
-        'height': n => demo ? Math.max(58, String(n.data('shortLabel') || n.data('label') || '').length > 14 ? 72 : 64) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4),
+        'width': n => demo ? Math.max(196, Math.min(390, String(n.data('shortLabel') || n.data('label') || '').length * 18 + 48)) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4),
+        'height': n => demo ? Math.max(62, String(n.data('shortLabel') || n.data('label') || '').length > 13 ? 82 : 68) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4),
         'border-width':2.2,'border-color':'#0d1118','shape':'ellipse','opacity':1,
     }},
     { selector:'node.showcase-node', style:{
         'shape':'round-rectangle',
-        'background-opacity':0.96,
-        'border-width':1,
-        'border-color': n => showcaseNodeBorder(n.data('kind')),
-        'border-opacity':0.92,
+        'background-opacity':0.88,
+        'border-width':3,
+        'border-color': n => showcaseNodeBorderColor(n),
+        'border-opacity':1,
         'color': demoLight ? '#111827' : '#ffffff',
         'font-weight':900,
+        'font-size':'24px',
         'text-outline-width':0,
         'text-outline-opacity':0,
         'text-background-color':'transparent',
         'text-background-opacity':0,
         'text-background-padding':0,
-        'padding':'10px',
+        'padding':'6px',
         'z-index':12,
-        'overlay-opacity':0,
+        'overlay-opacity':0.05,
+        'overlay-color':'#ffffff',
+        'underlay-color': n => showcaseNodeBorderColor(n),
+        'underlay-opacity':0.08,
+        'underlay-padding':7,
     }},
     { selector:'node.showcase-node[kind="Concern"], node.showcase-node[kind="Evidence"], node.showcase-node[kind="Clause"]', style:{
         'color':'#111827',
@@ -2055,6 +2283,16 @@ function buildCyStyle(palette) {
         'text-background-padding':3,
         'text-outline-width':3,
         'z-index':20,
+    }},
+    { selector:'node.showcase-node[?isOverviewLabel]', style:{
+        'min-zoomed-font-size':0,
+        'font-size':'24px',
+        'font-weight':900,
+        'text-background-color':'transparent',
+        'text-background-opacity':0,
+        'text-background-padding':0,
+        'text-outline-width':0,
+        'z-index':22,
     }},
     { selector:'node[kind="Clause"]', style:{ 'shape':'round-rectangle','border-color':'#e9ecef','border-width':3 }},
     { selector:'node[kind="Decision"]', style:{ 'shape':'star','border-color':'#ffa94d','border-width':3 }},
@@ -2184,6 +2422,7 @@ function bindCyEvents() {
     }
   });
   cy.on('dragfree', 'node', () => {
+    if (showcaseMode && isParticipantSource()) return;
     if (showcaseMode || physicsOn) applyPhysics();
   });
 }
@@ -2240,6 +2479,12 @@ function bindGlobalEvents() {
   });
   document.querySelectorAll('#og-showcase-tone-tog button').forEach(b => {
     b.onclick = () => setShowcaseTone(b.dataset.tone);
+  });
+  document.querySelectorAll('#og-participant-view-tog button').forEach(b => {
+    b.onclick = () => setParticipantView(b.dataset.participantView);
+  });
+  document.querySelectorAll('#og-participant-rel-tog button').forEach(b => {
+    b.onclick = () => setParticipantRel(b.dataset.participantRel);
   });
   updateShowcaseUI();
   document.querySelectorAll('#og-level-tog button').forEach(b => {
@@ -2307,7 +2552,7 @@ if (['127.0.0.1', 'localhost'].includes(location.hostname)) {
     renderNodeSurface,
     applyFocus,
     clearFocus,
-    getState: () => ({ presentMode, presentLevel, showcaseMode, showcaseCount, showcaseTheme, showcaseEdgeLabels, groupMode, curView, curSource, physicsRunning: Boolean(colaLayout) }),
+    getState: () => ({ presentMode, presentLevel, showcaseMode, showcaseCount, showcaseTheme, showcaseEdgeLabels, showcaseTone, participantView, participantRel, groupMode, curView, curSource, physicsRunning: Boolean(colaLayout) }),
     getStats: () => cy ? ({
       visibleNodes: cy.nodes(':visible').length,
       visibleRealNodes: cy.nodes(':visible').filter(n => !n.data('isGroup')).length,

@@ -171,7 +171,7 @@
         "data": {
           "id": "resp_impression_1",
           "node_id": "resp_impression_1",
-          "label": "조별 논의로 의제 범위",
+          "label": "조별 논의로 의제 범위 구체화",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "조별 논의로 의제 범위가 구체화되어 전체 흐름을 이해하기 쉬웠습니다.",
@@ -353,7 +353,7 @@
         "data": {
           "id": "resp_impression_3",
           "node_id": "resp_impression_3",
-          "label": "기획 의 역할 차이를 더 분명히…",
+          "label": "참여단 역할 차이 명확화",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "기획참여단과 숙의참여단의 역할 차이를 더 분명히 알게 되었습니다.",
@@ -789,7 +789,7 @@
         "data": {
           "id": "resp_question_8",
           "node_id": "resp_question_8",
-          "label": "조별 논의에서 나온 질문이 전체…",
+          "label": "조별 질문의 전체 의제화 기준",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "조별 논의에서 나온 질문이 전체 의제로 올라가는 기준은 무엇인가요?",
@@ -963,7 +963,7 @@
         "data": {
           "id": "resp_question_10",
           "node_id": "resp_question_10",
-          "label": "소수의견이 반복해서 나오면 별도…",
+          "label": "반복 소수의견의 쟁점화 기준",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "소수의견이 반복해서 나오면 별도 쟁점으로 승격되나요?",
@@ -1124,7 +1124,7 @@
         "data": {
           "id": "resp_question_12",
           "node_id": "resp_question_12",
-          "label": "조별 토론 결과가 서로 다를 때…",
+          "label": "조별 차이의 공통분모 정리",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "조별 토론 결과가 서로 다를 때 공통분모는 누가 정리하나요?",
@@ -1298,7 +1298,7 @@
         "data": {
           "id": "resp_question_14",
           "node_id": "resp_question_14",
-          "label": "현장에 참석하지 못한 사람의 의…",
+          "label": "비참석자 의견 보완 방식",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "현장에 참석하지 못한 사람의 의견은 어떻게 보완하나요?",
@@ -1377,7 +1377,7 @@
         "data": {
           "id": "resp_impression_15",
           "node_id": "resp_impression_15",
-          "label": "비슷한 질문을 묶어 보여주니 토…",
+          "label": "유사 질문 묶음 효과",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "비슷한 질문을 묶어 보여주니 토론 속도가 빨라졌습니다.",
@@ -1739,7 +1739,7 @@
         "data": {
           "id": "resp_impression_19",
           "node_id": "resp_impression_19",
-          "label": "조마다 다른 관점이 드러나서 공…",
+          "label": "조별 관점으로 공론장 확장",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "조마다 다른 관점이 드러나서 공론장 전체가 더 풍부해졌습니다.",
@@ -1909,7 +1909,7 @@
         "data": {
           "id": "resp_impression_21",
           "node_id": "resp_impression_21",
-          "label": "발언이 짧아도 화면에 남으니 참…",
+          "label": "짧은 발언의 기록 효과",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "발언이 짧아도 화면에 남으니 참여했다는 느낌이 강했습니다.",
@@ -1994,7 +1994,7 @@
         "data": {
           "id": "resp_question_22",
           "node_id": "resp_question_22",
-          "label": "발언을 요약할 때 모더레이터의…",
+          "label": "요약 시 해석 개입 통제",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "발언을 요약할 때 모더레이터의 해석이 과도하게 들어가지 않게 하려면 어떻게 해야 하나요?",
@@ -2106,7 +2106,7 @@
         "data": {
           "id": "resp_impression_23",
           "node_id": "resp_impression_23",
-          "label": "전문 용어를 시민 언어로 다시…",
+          "label": "전문용어의 시민 언어화",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "전문 용어를 시민 언어로 다시 풀어주는 과정이 필요하다고 느꼈습니다.",
@@ -2197,7 +2197,7 @@
         "data": {
           "id": "resp_question_24",
           "node_id": "resp_question_24",
-          "label": "전문가 설명과 시민 의견이 충돌…",
+          "label": "전문가·시민 의견 충돌 조정",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "전문가 설명과 시민 의견이 충돌할 때 어떤 절차로 조정하나요?",
@@ -2280,7 +2280,7 @@
         "data": {
           "id": "resp_impression_25",
           "node_id": "resp_impression_25",
-          "label": "권고안까지 이어지는 기록 방식",
+          "label": "권고안 연계 기록 동기",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "권고안까지 이어지는 기록 방식이 보이면 참여 동기가 커질 것 같습니다.",
@@ -2374,7 +2374,7 @@
         "data": {
           "id": "resp_question_26",
           "node_id": "resp_question_26",
-          "label": "우려사항과 반대의견은 같은 범주…",
+          "label": "우려·반대의견 분류 기준",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "우려사항과 반대의견은 같은 범주로 처리하나요?",
@@ -2449,7 +2449,7 @@
         "data": {
           "id": "resp_impression_27",
           "node_id": "resp_impression_27",
-          "label": "현장 발언과 사전 질문이 함께…",
+          "label": "현장 발언·사전 질문 연결",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "현장 발언과 사전 질문이 함께 연결되면 논의가 더 공정해 보입니다.",
@@ -2539,7 +2539,7 @@
         "data": {
           "id": "resp_question_28",
           "node_id": "resp_question_28",
-          "label": "토론 시간이 부족할 때 질문 우…",
+          "label": "시간 부족 시 질문 우선순위",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "토론 시간이 부족할 때 질문 우선순위는 누가 결정하나요?",
@@ -2620,7 +2620,7 @@
         "data": {
           "id": "resp_impression_29",
           "node_id": "resp_impression_29",
-          "label": "역할과 책임을 먼저 정리하고 토…",
+          "label": "역할·책임 선정리 효과",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "역할과 책임을 먼저 정리하고 토론하니 불필요한 혼선이 줄었습니다.",
@@ -2790,7 +2790,7 @@
         "data": {
           "id": "resp_impression_31",
           "node_id": "resp_impression_31",
-          "label": "연구진이 판단하는 부분과 이 결…",
+          "label": "연구진 판단·참여단 결정 구분",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "연구진이 판단하는 부분과 참여단이 결정하는 부분을 구분해야 한다고 느꼈습니다.",
@@ -2967,7 +2967,7 @@
         "data": {
           "id": "resp_impression_33",
           "node_id": "resp_impression_33",
-          "label": "우려와 제안을 분리해 보니 반대…",
+          "label": "우려·제안 분리 효과",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "우려와 제안을 분리해 보니 반대 의견도 논의 자원처럼 보였습니다.",
@@ -3141,7 +3141,7 @@
         "data": {
           "id": "resp_impression_35",
           "node_id": "resp_impression_35",
-          "label": "모더레이터 개입 범위",
+          "label": "모더레이터 개입 범위 명확화",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "모더레이터 개입 범위가 명확하면 발언자 신뢰가 높아질 것 같습니다.",
@@ -3235,7 +3235,7 @@
         "data": {
           "id": "resp_question_36",
           "node_id": "resp_question_36",
-          "label": "온라인으로 제출한 질문도 현장…",
+          "label": "온라인 질문의 동등 반영",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "온라인으로 제출한 질문도 현장 발언과 같은 무게로 다뤄지나요?",
@@ -3322,7 +3322,7 @@
         "data": {
           "id": "resp_impression_37",
           "node_id": "resp_impression_37",
-          "label": "회의록에 원문과 요약이 함께 남…",
+          "label": "회의록 원문·요약 병기",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "회의록에 원문과 요약이 함께 남는 방식이 좋았습니다.",
@@ -3400,7 +3400,7 @@
         "data": {
           "id": "resp_question_38",
           "node_id": "resp_question_38",
-          "label": "권고안 문장에 의 원래 표현을…",
+          "label": "권고안 내 원문 표현 반영",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "권고안 문장에 참여단의 원래 표현을 일부 남길 수 있나요?",
@@ -3479,7 +3479,7 @@
         "data": {
           "id": "resp_impression_39",
           "node_id": "resp_impression_39",
-          "label": "조별 결과를 전체 공론장에 다시…",
+          "label": "조별 결과의 전체 연결",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "조별 결과를 전체 공론장에 다시 연결하는 장치가 중요해 보였습니다.",
@@ -3570,7 +3570,7 @@
         "data": {
           "id": "resp_question_40",
           "node_id": "resp_question_40",
-          "label": "연구진이 만든 요약을 이 다시…",
+          "label": "연구진 요약 재검토 기회",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "연구진이 만든 요약을 참여단이 다시 검토할 기회가 있나요?",
@@ -3652,7 +3652,7 @@
         "data": {
           "id": "resp_impression_41",
           "node_id": "resp_impression_41",
-          "label": "조별 논의로 의제 범위",
+          "label": "조별 논의로 의제 범위 구체화",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "조별 논의로 의제 범위가 구체화되어 전체 흐름을 이해하기 쉬웠습니다.",
@@ -3834,7 +3834,7 @@
         "data": {
           "id": "resp_impression_43",
           "node_id": "resp_impression_43",
-          "label": "기획 의 역할 차이를 더 분명히…",
+          "label": "참여단 역할 차이 명확화",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "기획참여단과 숙의참여단의 역할 차이를 더 분명히 알게 되었습니다.",
@@ -4270,7 +4270,7 @@
         "data": {
           "id": "resp_question_48",
           "node_id": "resp_question_48",
-          "label": "조별 논의에서 나온 질문이 전체…",
+          "label": "조별 질문의 전체 의제화 기준",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "조별 논의에서 나온 질문이 전체 의제로 올라가는 기준은 무엇인가요?",
@@ -4444,7 +4444,7 @@
         "data": {
           "id": "resp_question_50",
           "node_id": "resp_question_50",
-          "label": "소수의견이 반복해서 나오면 별도…",
+          "label": "반복 소수의견의 쟁점화 기준",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "소수의견이 반복해서 나오면 별도 쟁점으로 승격되나요?",
@@ -4605,7 +4605,7 @@
         "data": {
           "id": "resp_question_52",
           "node_id": "resp_question_52",
-          "label": "조별 토론 결과가 서로 다를 때…",
+          "label": "조별 차이의 공통분모 정리",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "조별 토론 결과가 서로 다를 때 공통분모는 누가 정리하나요?",
@@ -4779,7 +4779,7 @@
         "data": {
           "id": "resp_question_54",
           "node_id": "resp_question_54",
-          "label": "현장에 참석하지 못한 사람의 의…",
+          "label": "비참석자 의견 보완 방식",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "현장에 참석하지 못한 사람의 의견은 어떻게 보완하나요?",
@@ -4858,7 +4858,7 @@
         "data": {
           "id": "resp_impression_55",
           "node_id": "resp_impression_55",
-          "label": "비슷한 질문을 묶어 보여주니 토…",
+          "label": "유사 질문 묶음 효과",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "비슷한 질문을 묶어 보여주니 토론 속도가 빨라졌습니다.",
@@ -5220,7 +5220,7 @@
         "data": {
           "id": "resp_impression_59",
           "node_id": "resp_impression_59",
-          "label": "조마다 다른 관점이 드러나서 공…",
+          "label": "조별 관점으로 공론장 확장",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "조마다 다른 관점이 드러나서 공론장 전체가 더 풍부해졌습니다.",
@@ -5390,7 +5390,7 @@
         "data": {
           "id": "resp_impression_61",
           "node_id": "resp_impression_61",
-          "label": "발언이 짧아도 화면에 남으니 참…",
+          "label": "짧은 발언의 기록 효과",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "발언이 짧아도 화면에 남으니 참여했다는 느낌이 강했습니다.",
@@ -5475,7 +5475,7 @@
         "data": {
           "id": "resp_question_62",
           "node_id": "resp_question_62",
-          "label": "발언을 요약할 때 모더레이터의…",
+          "label": "요약 시 해석 개입 통제",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "발언을 요약할 때 모더레이터의 해석이 과도하게 들어가지 않게 하려면 어떻게 해야 하나요?",
@@ -5587,7 +5587,7 @@
         "data": {
           "id": "resp_impression_63",
           "node_id": "resp_impression_63",
-          "label": "전문 용어를 시민 언어로 다시…",
+          "label": "전문용어의 시민 언어화",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "전문 용어를 시민 언어로 다시 풀어주는 과정이 필요하다고 느꼈습니다.",
@@ -5678,7 +5678,7 @@
         "data": {
           "id": "resp_question_64",
           "node_id": "resp_question_64",
-          "label": "전문가 설명과 시민 의견이 충돌…",
+          "label": "전문가·시민 의견 충돌 조정",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "전문가 설명과 시민 의견이 충돌할 때 어떤 절차로 조정하나요?",
@@ -5761,7 +5761,7 @@
         "data": {
           "id": "resp_impression_65",
           "node_id": "resp_impression_65",
-          "label": "권고안까지 이어지는 기록 방식",
+          "label": "권고안 연계 기록 동기",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "권고안까지 이어지는 기록 방식이 보이면 참여 동기가 커질 것 같습니다.",
@@ -5855,7 +5855,7 @@
         "data": {
           "id": "resp_question_66",
           "node_id": "resp_question_66",
-          "label": "우려사항과 반대의견은 같은 범주…",
+          "label": "우려·반대의견 분류 기준",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "우려사항과 반대의견은 같은 범주로 처리하나요?",
@@ -5930,7 +5930,7 @@
         "data": {
           "id": "resp_impression_67",
           "node_id": "resp_impression_67",
-          "label": "현장 발언과 사전 질문이 함께…",
+          "label": "현장 발언·사전 질문 연결",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "현장 발언과 사전 질문이 함께 연결되면 논의가 더 공정해 보입니다.",
@@ -6020,7 +6020,7 @@
         "data": {
           "id": "resp_question_68",
           "node_id": "resp_question_68",
-          "label": "토론 시간이 부족할 때 질문 우…",
+          "label": "시간 부족 시 질문 우선순위",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "토론 시간이 부족할 때 질문 우선순위는 누가 결정하나요?",
@@ -6101,7 +6101,7 @@
         "data": {
           "id": "resp_impression_69",
           "node_id": "resp_impression_69",
-          "label": "역할과 책임을 먼저 정리하고 토…",
+          "label": "역할·책임 선정리 효과",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "역할과 책임을 먼저 정리하고 토론하니 불필요한 혼선이 줄었습니다.",
@@ -6271,7 +6271,7 @@
         "data": {
           "id": "resp_impression_71",
           "node_id": "resp_impression_71",
-          "label": "연구진이 판단하는 부분과 이 결…",
+          "label": "연구진 판단·참여단 결정 구분",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "연구진이 판단하는 부분과 참여단이 결정하는 부분을 구분해야 한다고 느꼈습니다.",
@@ -6448,7 +6448,7 @@
         "data": {
           "id": "resp_impression_73",
           "node_id": "resp_impression_73",
-          "label": "우려와 제안을 분리해 보니 반대…",
+          "label": "우려·제안 분리 효과",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "우려와 제안을 분리해 보니 반대 의견도 논의 자원처럼 보였습니다.",
@@ -6622,7 +6622,7 @@
         "data": {
           "id": "resp_impression_75",
           "node_id": "resp_impression_75",
-          "label": "모더레이터 개입 범위",
+          "label": "모더레이터 개입 범위 명확화",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "모더레이터 개입 범위가 명확하면 발언자 신뢰가 높아질 것 같습니다.",
@@ -6716,7 +6716,7 @@
         "data": {
           "id": "resp_question_76",
           "node_id": "resp_question_76",
-          "label": "온라인으로 제출한 질문도 현장…",
+          "label": "온라인 질문의 동등 반영",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "온라인으로 제출한 질문도 현장 발언과 같은 무게로 다뤄지나요?",
@@ -6803,7 +6803,7 @@
         "data": {
           "id": "resp_impression_77",
           "node_id": "resp_impression_77",
-          "label": "회의록에 원문과 요약이 함께 남…",
+          "label": "회의록 원문·요약 병기",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "회의록에 원문과 요약이 함께 남는 방식이 좋았습니다.",
@@ -6881,7 +6881,7 @@
         "data": {
           "id": "resp_question_78",
           "node_id": "resp_question_78",
-          "label": "권고안 문장에 의 원래 표현을…",
+          "label": "권고안 내 원문 표현 반영",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "권고안 문장에 참여단의 원래 표현을 일부 남길 수 있나요?",
@@ -6960,7 +6960,7 @@
         "data": {
           "id": "resp_impression_79",
           "node_id": "resp_impression_79",
-          "label": "조별 결과를 전체 공론장에 다시…",
+          "label": "조별 결과의 전체 연결",
           "kind": "Claim",
           "kindKo": "소감",
           "text": "조별 결과를 전체 공론장에 다시 연결하는 장치가 중요해 보였습니다.",
@@ -7051,7 +7051,7 @@
         "data": {
           "id": "resp_question_80",
           "node_id": "resp_question_80",
-          "label": "연구진이 만든 요약을 이 다시…",
+          "label": "연구진 요약 재검토 기회",
           "kind": "Issue",
           "kindKo": "질문",
           "text": "연구진이 만든 요약을 참여단이 다시 검토할 기회가 있나요?",
@@ -12211,7 +12211,7 @@
   },
   "meta": {
     "variant": "participant-open-questions",
-    "generated_at": "2026-06-28T04:04:46.089Z",
+    "generated_at": "2026-06-28T04:32:06.424Z",
     "source": "local-csv",
     "threshold": 0.08,
     "counts": {
@@ -12293,14 +12293,14 @@
       "degree_top": [
         {
           "id": "resp_impression_35",
-          "label": "모더레이터 개입 범위",
+          "label": "모더레이터 개입 범위 명확화",
           "group": "2조",
           "question_key": "impression",
           "value": 1
         },
         {
           "id": "resp_impression_75",
-          "label": "모더레이터 개입 범위",
+          "label": "모더레이터 개입 범위 명확화",
           "group": "6조",
           "question_key": "impression",
           "value": 1
@@ -12335,14 +12335,14 @@
         },
         {
           "id": "resp_question_28",
-          "label": "토론 시간이 부족할 때 질문 우…",
+          "label": "시간 부족 시 질문 우선순위",
           "group": "14조",
           "question_key": "question",
           "value": 0.8378
         },
         {
           "id": "resp_question_68",
-          "label": "토론 시간이 부족할 때 질문 우…",
+          "label": "시간 부족 시 질문 우선순위",
           "group": "2조",
           "question_key": "question",
           "value": 0.8378
@@ -12386,7 +12386,7 @@
         },
         {
           "id": "resp_impression_33",
-          "label": "우려와 제안을 분리해 보니 반대…",
+          "label": "우려·제안 분리 효과",
           "group": "1조",
           "question_key": "impression",
           "value": 0.8034
@@ -12400,7 +12400,7 @@
         },
         {
           "id": "resp_impression_73",
-          "label": "우려와 제안을 분리해 보니 반대…",
+          "label": "우려·제안 분리 효과",
           "group": "5조",
           "question_key": "impression",
           "value": 0.8034
@@ -12421,14 +12421,14 @@
         },
         {
           "id": "resp_impression_25",
-          "label": "권고안까지 이어지는 기록 방식",
+          "label": "권고안 연계 기록 동기",
           "group": "13조",
           "question_key": "impression",
           "value": 0.5286
         },
         {
           "id": "resp_impression_65",
-          "label": "권고안까지 이어지는 기록 방식",
+          "label": "권고안 연계 기록 동기",
           "group": "1조",
           "question_key": "impression",
           "value": 0.5286
@@ -12437,14 +12437,14 @@
       "closeness_top": [
         {
           "id": "resp_impression_35",
-          "label": "모더레이터 개입 범위",
+          "label": "모더레이터 개입 범위 명확화",
           "group": "2조",
           "question_key": "impression",
           "value": 0.8876
         },
         {
           "id": "resp_impression_75",
-          "label": "모더레이터 개입 범위",
+          "label": "모더레이터 개입 범위 명확화",
           "group": "6조",
           "question_key": "impression",
           "value": 0.8876
@@ -12465,7 +12465,7 @@
         },
         {
           "id": "resp_impression_29",
-          "label": "역할과 책임을 먼저 정리하고 토…",
+          "label": "역할·책임 선정리 효과",
           "group": "15조",
           "question_key": "impression",
           "value": 0.8495
@@ -12493,7 +12493,7 @@
         },
         {
           "id": "resp_impression_69",
-          "label": "역할과 책임을 먼저 정리하고 토…",
+          "label": "역할·책임 선정리 효과",
           "group": "3조",
           "question_key": "impression",
           "value": 0.8495
@@ -12510,9 +12510,9 @@
     "similarity_edges": [
       {
         "source": "resp_impression_1",
-        "source_label": "조별 논의로 의제 범위",
+        "source_label": "조별 논의로 의제 범위 구체화",
         "target": "resp_impression_41",
-        "target_label": "조별 논의로 의제 범위",
+        "target_label": "조별 논의로 의제 범위 구체화",
         "similarity": 1
       },
       {
@@ -12524,9 +12524,9 @@
       },
       {
         "source": "resp_impression_3",
-        "source_label": "기획 의 역할 차이를 더 분명히…",
+        "source_label": "참여단 역할 차이 명확화",
         "target": "resp_impression_43",
-        "target_label": "기획 의 역할 차이를 더 분명히…",
+        "target_label": "참여단 역할 차이 명확화",
         "similarity": 1
       },
       {
@@ -12559,9 +12559,9 @@
       },
       {
         "source": "resp_question_8",
-        "source_label": "조별 논의에서 나온 질문이 전체…",
+        "source_label": "조별 질문의 전체 의제화 기준",
         "target": "resp_question_48",
-        "target_label": "조별 논의에서 나온 질문이 전체…",
+        "target_label": "조별 질문의 전체 의제화 기준",
         "similarity": 1
       },
       {
@@ -12573,9 +12573,9 @@
       },
       {
         "source": "resp_question_10",
-        "source_label": "소수의견이 반복해서 나오면 별도…",
+        "source_label": "반복 소수의견의 쟁점화 기준",
         "target": "resp_question_50",
-        "target_label": "소수의견이 반복해서 나오면 별도…",
+        "target_label": "반복 소수의견의 쟁점화 기준",
         "similarity": 1
       },
       {
@@ -12587,9 +12587,9 @@
       },
       {
         "source": "resp_question_12",
-        "source_label": "조별 토론 결과가 서로 다를 때…",
+        "source_label": "조별 차이의 공통분모 정리",
         "target": "resp_question_52",
-        "target_label": "조별 토론 결과가 서로 다를 때…",
+        "target_label": "조별 차이의 공통분모 정리",
         "similarity": 1
       },
       {
@@ -12601,16 +12601,16 @@
       },
       {
         "source": "resp_question_14",
-        "source_label": "현장에 참석하지 못한 사람의 의…",
+        "source_label": "비참석자 의견 보완 방식",
         "target": "resp_question_54",
-        "target_label": "현장에 참석하지 못한 사람의 의…",
+        "target_label": "비참석자 의견 보완 방식",
         "similarity": 1
       },
       {
         "source": "resp_impression_15",
-        "source_label": "비슷한 질문을 묶어 보여주니 토…",
+        "source_label": "유사 질문 묶음 효과",
         "target": "resp_impression_55",
-        "target_label": "비슷한 질문을 묶어 보여주니 토…",
+        "target_label": "유사 질문 묶음 효과",
         "similarity": 1
       },
       {
@@ -12636,9 +12636,9 @@
       },
       {
         "source": "resp_impression_19",
-        "source_label": "조마다 다른 관점이 드러나서 공…",
+        "source_label": "조별 관점으로 공론장 확장",
         "target": "resp_impression_59",
-        "target_label": "조마다 다른 관점이 드러나서 공…",
+        "target_label": "조별 관점으로 공론장 확장",
         "similarity": 1
       },
       {
