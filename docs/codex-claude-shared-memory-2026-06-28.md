@@ -37,6 +37,7 @@ This repository is the shared working surface for Codex and Claude on the climat
 - Sheet: `https://docs.google.com/spreadsheets/d/1T31pzPV8JHeqyCuGUq0M28e81-cCujOC_V8mMFACG20/edit`
 - Dinner RSVP form: `https://docs.google.com/forms/d/e/1FAIpQLSeGs-baoPj_2Kry0jHBMtuMcy_03SZfkVX5jxZ93LOR1H3ZGA/viewform`
 - Dinner RSVP edit: `https://docs.google.com/forms/d/1unIaSHFwm_qZj0M1b_sfRVjACgE-obQSKB-o7UfAlY8/edit`
+- Dinner RSVP fields: required `이름`, required `저녁식사 선택` with options `중국집`, `삼겹살`, `불참`.
 
 ## Current Design Baseline
 
