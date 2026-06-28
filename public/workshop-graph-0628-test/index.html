@@ -338,10 +338,10 @@ const REL_KO = {
   impacts: '영향',
 };
 const PARTICIPANT_GROUP_PALETTE = [
-  ['#2563eb','#eff6ff'], ['#16a34a','#f0fdf4'], ['#d97706','#fff7ed'], ['#7c3aed','#f5f3ff'],
-  ['#db2777','#fdf2f8'], ['#0891b2','#ecfeff'], ['#ca8a04','#fefce8'], ['#dc2626','#fef2f2'],
-  ['#4f46e5','#eef2ff'], ['#059669','#ecfdf5'], ['#ea580c','#fff7ed'], ['#9333ea','#faf5ff'],
-  ['#be123c','#fff1f2'], ['#0284c7','#f0f9ff'], ['#65a30d','#f7fee7'], ['#475569','#f8fafc'],
+  ['#2563eb','#dbeafe'], ['#16a34a','#dcfce7'], ['#d97706','#ffedd5'], ['#7c3aed','#ede9fe'],
+  ['#db2777','#fce7f3'], ['#0891b2','#cffafe'], ['#ca8a04','#fef3c7'], ['#dc2626','#fee2e2'],
+  ['#4f46e5','#e0e7ff'], ['#059669','#d1fae5'], ['#ea580c','#fed7aa'], ['#9333ea','#f3e8ff'],
+  ['#be123c','#ffe4e6'], ['#0284c7','#e0f2fe'], ['#65a30d','#ecfccb'], ['#475569','#e2e8f0'],
 ];
 const AGENDA_HINTS = [
   { terms:['원전','원자력','재생에너지','태양광','풍력','전력믹스'], ids:[1,13,3] },
@@ -1500,10 +1500,41 @@ function applyParticipantQuestionLanes() {
       });
     });
   }
+  function relaxOverlaps(nodes, minX = 330, minY = 138, iterations = 34) {
+    const list = [...nodes];
+    for (let pass = 0; pass < iterations; pass += 1) {
+      for (let i = 0; i < list.length; i += 1) {
+        for (let j = i + 1; j < list.length; j += 1) {
+          const a = list[i];
+          const b = list[j];
+          const pa = a.position();
+          const pb = b.position();
+          const dx = pb.x - pa.x;
+          const dy = pb.y - pa.y;
+          const ax = Math.abs(dx);
+          const ay = Math.abs(dy);
+          if (ax >= minX || ay >= minY) continue;
+          const pushX = (minX - ax) * 0.54;
+          const pushY = (minY - ay) * 0.54;
+          const sx = dx >= 0 ? 1 : -1;
+          const sy = dy >= 0 ? 1 : -1;
+          if ((minX - ax) / minX > (minY - ay) / minY) {
+            a.position({ x: pa.x - sx * pushX, y: pa.y });
+            b.position({ x: pb.x + sx * pushX, y: pb.y });
+          } else {
+            a.position({ x: pa.x, y: pa.y - sy * pushY });
+            b.position({ x: pb.x, y: pb.y + sy * pushY });
+          }
+        }
+      }
+    }
+  }
 
   if (participantView === 'all' && participantRel === 'overview') {
-    placeOrganicCluster(questions, -1180, 0, 620, 500);
-    placeOrganicCluster(impressions, 780, 0, 980, 600);
+    placeOrganicCluster(questions, -1380, 0, 880, 680);
+    placeOrganicCluster(impressions, 980, 0, 1320, 780);
+    relaxOverlaps(questions, 360, 150, 42);
+    relaxOverlaps(impressions, 360, 150, 42);
     cy.$id('Question_question').position({ x: -1180, y: 0 });
     cy.$id('Question_impression').position({ x: 780, y: 0 });
   } else if (participantView === 'all') {
@@ -1526,7 +1557,13 @@ function applyParticipantQuestionLanes() {
   cy.nodes()
     .filter(n => !String(n.id()).startsWith('resp_') && !String(n.id()).startsWith('Question_') && n.data('kind') !== 'Value')
     .forEach((n, i) => n.position({ x: -520 + (i % 6) * 210, y: -120 + Math.floor(i / 6) * 180 }));
-  cy.fit(cy.nodes(), 90);
+  const visible = cy.elements(':visible');
+  cy.fit(visible, participantView === 'all' && participantRel === 'overview' ? 34 : 56);
+  if (participantView === 'all' && participantRel === 'overview') {
+    const bounds = visible.boundingBox();
+    const focus = { x: (bounds.x1 + bounds.x2) / 2, y: (bounds.y1 + bounds.y2) / 2 };
+    cy.zoom({ level: Math.min(cy.maxZoom(), cy.zoom() * 1.34), position: focus });
+  }
   return true;
 }
 
@@ -2175,19 +2212,19 @@ function showcasePalette(basePalette) {
   if (!showcaseMode) return basePalette;
   const tones = {
     calm: {
-      Issue:'#dbeafe', Claim:'#dcfce7', Proposal:'#e0f2fe', Concern:'#fef3c7',
-      Condition:'#ede9fe', Value:'#f1f5f9', Evidence:'#e5e7eb', Group:'#fee2e2',
-      Clause:'#e2e8f0', Decision:'#fef9c3',
+      Issue:'#dbeafe', Claim:'#d1fae5', Proposal:'#cffafe', Concern:'#fed7aa',
+      Condition:'#ede9fe', Value:'#e2e8f0', Evidence:'#e5e7eb', Group:'#ffe4e6',
+      Clause:'#dbeafe', Decision:'#fef3c7',
     },
     contrast: {
-      Issue:'#bfdbfe', Claim:'#bbf7d0', Proposal:'#bae6fd', Concern:'#fde68a',
-      Condition:'#ddd6fe', Value:'#e2e8f0', Evidence:'#e5e7eb', Group:'#fecaca',
-      Clause:'#cbd5e1', Decision:'#fef08a',
+      Issue:'#93c5fd', Claim:'#86efac', Proposal:'#67e8f9', Concern:'#fdba74',
+      Condition:'#c4b5fd', Value:'#cbd5e1', Evidence:'#d1d5db', Group:'#fda4af',
+      Clause:'#bfdbfe', Decision:'#fde68a',
     },
     mono: {
-      Issue:'#f3f4f6', Claim:'#f9fafb', Proposal:'#f3f4f6', Concern:'#e5e7eb',
-      Condition:'#f4f4f5', Value:'#f8fafc', Evidence:'#e5e7eb', Group:'#f3f4f6',
-      Clause:'#e5e7eb', Decision:'#f9fafb',
+      Issue:'#e5e7eb', Claim:'#f3f4f6', Proposal:'#e5e7eb', Concern:'#d4d4d8',
+      Condition:'#e4e4e7', Value:'#f1f5f9', Evidence:'#d1d5db', Group:'#e5e7eb',
+      Clause:'#d1d5db', Decision:'#f9fafb',
     },
   };
   return { ...basePalette, ...(tones[showcaseTone] || tones.calm) };
@@ -2219,18 +2256,18 @@ function showcaseRelColor(rel, paperLike) {
   if (showcaseTone === 'mono') return '#a3a3a3';
   if (showcaseTone === 'contrast') {
     return {
-      similarTo:'#94a3b8',
-      framesThrough:'#8b5cf6',
-      raisesIssue:'#60a5fa',
-      hasKeyword:'#94a3b8',
-    }[rel] || '#d1d5db';
+      similarTo:'#64748b',
+      framesThrough:'#7c3aed',
+      raisesIssue:'#2563eb',
+      hasKeyword:'#64748b',
+    }[rel] || '#94a3b8';
   }
   return {
-    similarTo:'#cbd5e1',
-    framesThrough:'#a78bfa',
-    raisesIssue:'#93c5fd',
-    hasKeyword:'#cbd5e1',
-  }[rel] || '#dbe4ef';
+    similarTo:'#94a3b8',
+    framesThrough:'#8b5cf6',
+    raisesIssue:'#60a5fa',
+    hasKeyword:'#94a3b8',
+  }[rel] || '#cbd5e1';
 }
 
 function showcaseNodeBg(node, displayPalette) {
@@ -2263,36 +2300,36 @@ function buildCyStyle(palette) {
           if (presentLevel === 'full' && n.data('isOverviewLabel')) return n.data('label') || '';
           return '';
         },
-        'color': paperLike ? '#0f172a' : '#eef3f9', 'font-size': demo ? '24px' : (presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px'),
+        'color': paperLike ? '#0f172a' : '#eef3f9', 'font-size': demo ? '28px' : (presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px'),
         'min-zoomed-font-size': demo ? 0 : (presentMode ? (presentLevel === 'full' ? 18 : 999) : 7),  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
-        'font-family':'Noto Sans KR, Malgun Gothic, sans-serif', 'font-weight': presentMode || demo ? 700 : 500,
-        'text-wrap':'wrap','text-max-width': demo ? '340px' : (presentMode ? '120px' : '140px'),'text-valign': demo ? 'center' : 'bottom','text-halign':'center','text-margin-y': demo ? 0 : 3,
+        'font-family':'Noto Sans KR, Malgun Gothic, sans-serif', 'font-weight': presentMode || demo ? 900 : 500,
+        'text-wrap':'wrap','text-max-width': demo ? '360px' : (presentMode ? '120px' : '140px'),'text-valign': demo ? 'center' : 'bottom','text-halign':'center','text-margin-y': demo ? 0 : 3,
         'text-outline-color': paperLike ? '#ffffff' : '#0b111a','text-outline-width': demo ? 0 : (presentMode ? 2.5 : 2.5),
-        'width': n => demo ? Math.max(196, Math.min(390, String(n.data('shortLabel') || n.data('label') || '').length * 18 + 48)) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4),
-        'height': n => demo ? Math.max(62, String(n.data('shortLabel') || n.data('label') || '').length > 13 ? 82 : 68) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4),
+        'width': n => demo ? Math.max(220, Math.min(440, String(n.data('shortLabel') || n.data('label') || '').length * 19 + 38)) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4),
+        'height': n => demo ? Math.max(66, String(n.data('shortLabel') || n.data('label') || '').length > 13 ? 86 : 70) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4),
         'border-width':2.2,'border-color':'#0d1118','shape':'ellipse','opacity':1,
     }},
     { selector:'node.showcase-node', style:{
         'shape':'round-rectangle',
-        'background-opacity':0.88,
-        'border-width':3,
+        'background-opacity':0.96,
+        'border-width':3.6,
         'border-color': n => showcaseNodeBorderColor(n),
         'border-opacity':1,
         'color': demoLight ? '#111827' : '#ffffff',
         'font-weight':900,
-        'font-size':'24px',
+        'font-size':'28px',
         'text-outline-width':0,
         'text-outline-opacity':0,
         'text-background-color':'transparent',
         'text-background-opacity':0,
         'text-background-padding':0,
-        'padding':'6px',
+        'padding':'2px',
         'z-index':12,
         'overlay-opacity':0.05,
         'overlay-color':'#ffffff',
         'underlay-color': n => showcaseNodeBorderColor(n),
-        'underlay-opacity':0.08,
-        'underlay-padding':7,
+        'underlay-opacity':0.10,
+        'underlay-padding':8,
     }},
     { selector:'node.showcase-node[kind="Concern"], node.showcase-node[kind="Evidence"], node.showcase-node[kind="Clause"]', style:{
         'color':'#111827',
@@ -2309,7 +2346,7 @@ function buildCyStyle(palette) {
     }},
     { selector:'node.showcase-node[?isOverviewLabel]', style:{
         'min-zoomed-font-size':0,
-        'font-size':'24px',
+        'font-size':'28px',
         'font-weight':900,
         'text-background-color':'transparent',
         'text-background-opacity':0,
@@ -2321,12 +2358,12 @@ function buildCyStyle(palette) {
     { selector:'node[kind="Decision"]', style:{ 'shape':'star','border-color':'#ffa94d','border-width':3 }},
     { selector:'node[?synthesized]', style:{ 'shape':'round-diamond','border-style':'dashed','border-color':'#ff8787' }},
     { selector:'edge', style:{
-        'width': demo ? 1.25 : 1.8, 'line-color': e => demo ? showcaseRelColor(e.data('rel'), paperLike) : (paperLike ? '#64748b' : '#6b7890'), 'target-arrow-color': e => demo ? showcaseRelColor(e.data('rel'), paperLike) : (paperLike ? '#64748b' : '#6b7890'),
-        'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale': demo ? 0.9 : 1,
-        'label': demo ? (showcaseEdgeLabels ? 'data(relKo)' : '') : (paper ? '' : 'data(relKo)'),'font-size': demo ? '11px' : '10px','min-zoomed-font-size': demo ? (showcaseEdgeLabels ? 0 : 999) : 9,'color': paperLike ? (demo ? '#475569' : '#1f2937') : (demo ? '#cbd5e1' : '#d3dbe8'),
+        'width': demo ? 1.45 : 1.8, 'line-color': e => demo ? showcaseRelColor(e.data('rel'), paperLike) : (paperLike ? '#64748b' : '#6b7890'), 'target-arrow-color': e => demo ? showcaseRelColor(e.data('rel'), paperLike) : (paperLike ? '#64748b' : '#6b7890'),
+        'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale': demo ? 1.05 : 1,
+        'label': demo ? (showcaseEdgeLabels ? 'data(relKo)' : '') : (paper ? '' : 'data(relKo)'),'font-size': demo ? '12px' : '10px','min-zoomed-font-size': demo ? (showcaseEdgeLabels ? 0 : 999) : 9,'color': paperLike ? (demo ? '#334155' : '#1f2937') : (demo ? '#cbd5e1' : '#d3dbe8'),
         'font-family':'Noto Sans KR, Malgun Gothic, sans-serif',
         'text-rotation':'autorotate','text-background-color': paperLike ? '#ffffff' : '#11151c',
-        'text-background-opacity': demo ? 0.74 : 0.85,'text-background-padding':2,'opacity': demo ? 0.66 : 0.82,
+        'text-background-opacity': demo ? 0.64 : 0.85,'text-background-padding':2,'opacity': demo ? 0.74 : 0.82,
     }},
     { selector:'edge[?opposes]', style:{
         'line-color': demo ? '#f4a3a3' : '#ff6b6b','target-arrow-color': demo ? '#f4a3a3' : '#ff6b6b','width': demo ? 1.65 : 2.6 }},
@@ -2350,15 +2387,15 @@ function buildCyStyle(palette) {
     { selector:'edge.focus-dim', style:{ 'opacity': presentMode ? 0.34 : 0.08 }},
     { selector:'node.focus-neighbor', style:{ 'opacity':0.92,'border-width':3,'border-color':'#8bd3ff' }},
     { selector:'node.focus-main, node.focus-neighbor', style:{
-        'label': demo ? 'data(shortLabel)' : 'data(label)','font-size': demo ? '21px' : (presentMode ? '13px' : '12px'),'min-zoomed-font-size':0,
-        'text-max-width': demo ? '260px' : '120px','text-background-color': demo ? 'transparent' : (paperLike ? '#ffffff' : '#0b111a'),
+        'label': demo ? 'data(shortLabel)' : 'data(label)','font-size': demo ? '30px' : (presentMode ? '13px' : '12px'),'min-zoomed-font-size':0,
+        'text-max-width': demo ? '340px' : '120px','text-background-color': demo ? 'transparent' : (paperLike ? '#ffffff' : '#0b111a'),
         'text-background-opacity': demo ? 0 : 0.92,'text-background-padding': demo ? 0 : 3,
     }},
     { selector:'node.focus-main', style:{ 'opacity':1,'border-width':5,'border-color':'#63e6be','overlay-color':'#63e6be','overlay-opacity':0.18,'overlay-padding':8 }},
     { selector:'edge.focus-edge', style:{
         'opacity':0.92,'width':3.2,'line-color':'#8bd3ff','target-arrow-color':'#8bd3ff',
         'label': presentMode && presentLevel === 'chapter' ? '' : 'data(relKo)',
-        'font-size': demo ? '8px' : '11px','text-background-color': paperLike ? '#ffffff' : '#11151c',
+        'font-size': demo ? '12px' : '11px','text-background-color': paperLike ? '#ffffff' : '#11151c',
         'text-background-opacity':0.95,'text-background-padding':2,
     }},
     { selector:'.hidden', style:{ 'display':'none' }},
