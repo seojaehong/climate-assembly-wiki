@@ -1533,21 +1533,25 @@ function applyParticipantQuestionLanes() {
   if (participantView === 'all' && participantRel === 'overview') {
     placeOrganicCluster(questions, -1380, 0, 880, 680);
     placeOrganicCluster(impressions, 980, 0, 1320, 780);
-    relaxOverlaps(questions, 360, 150, 42);
-    relaxOverlaps(impressions, 360, 150, 42);
     cy.$id('Question_question').position({ x: -1180, y: 0 });
     cy.$id('Question_impression').position({ x: 780, y: 0 });
+    relaxOverlaps([...questions, cy.$id('Question_question')], 380, 158, 48);
+    relaxOverlaps([...impressions, cy.$id('Question_impression')], 380, 158, 48);
   } else if (participantView === 'all') {
     placeGridCluster(questions, -760, 0);
     placeGridCluster(impressions, 820, 0);
     cy.$id('Question_question').position({ x: -760, y: 0 });
     cy.$id('Question_impression').position({ x: 820, y: 0 });
+    relaxOverlaps([...questions, cy.$id('Question_question')], 360, 148, 24);
+    relaxOverlaps([...impressions, cy.$id('Question_impression')], 360, 148, 24);
   } else if (participantView === 'question') {
     placeGridCluster(questions, 0, 0);
     cy.$id('Question_question').position({ x: 0, y: 0 });
+    relaxOverlaps([...questions, cy.$id('Question_question')], 360, 148, 24);
   } else {
     placeGridCluster(impressions, 0, 0);
     cy.$id('Question_impression').position({ x: 0, y: 0 });
+    relaxOverlaps([...impressions, cy.$id('Question_impression')], 360, 148, 24);
   }
   const lenses = cy.nodes('[kind = "Value"]')
     .sort((a, b) => String(a.data('label')).localeCompare(String(b.data('label')), 'ko'));
@@ -2353,6 +2357,12 @@ function buildCyStyle(palette) {
         'text-background-padding':0,
         'text-outline-width':0,
         'z-index':22,
+    }},
+    { selector:'node.showcase-node[id ^= "Question_"]', style:{
+        'z-index':60,
+        'underlay-opacity':0.16,
+        'underlay-padding':10,
+        'border-width':4,
     }},
     { selector:'node[kind="Clause"]', style:{ 'shape':'round-rectangle','border-color':'#e9ecef','border-width':3 }},
     { selector:'node[kind="Decision"]', style:{ 'shape':'star','border-color':'#ffa94d','border-width':3 }},
