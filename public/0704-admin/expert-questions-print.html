@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>0704 전문가 질의 인쇄</title>
+<style>
+  body{margin:0;background:#f8fafc;color:#0f172a;font-family:"Noto Sans KR",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  main{width:min(920px,calc(100vw - 32px));margin:0 auto;padding:28px 0}
+  h1{margin:0 0 6px;font-size:30px;line-height:1.2}
+  .sub{margin:0 0 18px;color:#64748b;font-weight:800}
+  .actions{display:flex;gap:8px;margin-bottom:18px}
+  button,a{height:38px;border:0;border-radius:8px;background:#0f172a;color:#fff;font-weight:900;padding:0 14px;text-decoration:none;display:inline-flex;align-items:center;cursor:pointer}
+  a{background:#eef2f7;color:#0f172a}
+  .q-card{break-inside:avoid;margin:0 0 14px;padding:18px 20px;border:1px solid #dbe4ef;border-radius:12px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.05)}
+  .q-meta{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px;color:#475569;font-size:13px;font-weight:900}
+  .q-text{font-size:23px;line-height:1.5;font-weight:900;letter-spacing:0}
+  .impression{margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;color:#334155;font-size:14px;line-height:1.55}
+  .impression b{display:block;margin-bottom:4px;color:#0f172a}
+  .impression span{white-space:pre-wrap}
+  .empty{border:1px solid #dbe4ef;background:#fff;border-radius:12px;padding:22px;font-weight:900}
+  @media print{
+    @page{size:A4;margin:13mm}
+    body{background:#fff}
+    main{width:auto;margin:0;padding:0}
+    .actions{display:none}
+    .q-card{box-shadow:none;border-color:#cbd5e1}
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="actions">
+    <button onclick="window.print()">인쇄</button>
+    <a href="/0704-admin/">관리자</a>
+  </div>
+  <h1>0704 전문가 질의</h1>
+  <p class="sub">생성: 2026-07-03 21:00:22 · 질문 0건</p>
+  <div class="empty">현재 인쇄할 전문가 질의가 없습니다.</div>
+</main>
+</body>
+</html>

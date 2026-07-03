@@ -31,8 +31,26 @@
     "Run scripts/promote-0704-group-agendas-to-vote.ps1 to preview vote choices.",
     "Run scripts/promote-0704-group-agendas-to-vote.ps1 -Apply to replace the agenda vote Form options.",
     "Run scripts/refresh-0704-agenda-vote.ps1 to update Scores for the bubble race.",
-    "Repeat scripts/refresh-0704-agenda-vote.ps1 during or after voting."
+    "Repeat scripts/refresh-0704-agenda-vote.ps1 during or after voting.",
+    "Run scripts/export-0704-reflection-questions.ps1 to create the final-sharing question print page.",
+    "Run scripts/export-0704-reflection-questions.ps1 -SendEmail after Gmail OAuth scope is active."
   ],
+  "expert_question_print_and_email": {
+    "recipient": "kesica3@gmail.com",
+    "purpose": "questions for external advisors before Q&A",
+    "print_pdf": "public/0704-admin/expert-questions-print.pdf",
+    "print_preview": "public/0704-admin/expert-questions-print.html",
+    "script": "scripts/export-0704-expert-questions.ps1",
+    "gmail_scope_note": "gws token has Gmail send scope after 2026-07-03 re-auth."
+  },
+  "agenda_candidate_print_and_email": {
+    "recipient": "kesica3@gmail.com",
+    "purpose": "group agenda candidates for agenda vote setup",
+    "print_pdf": "public/0704-admin/group-agendas-print.pdf",
+    "print_preview": "public/0704-admin/group-agendas-print.html",
+    "script": "scripts/export-0704-group-agendas.ps1",
+    "gmail_scope_note": "gws token has Gmail send scope after 2026-07-03 re-auth."
+  },
   "previous_vote_pattern_found": {
     "sources": [
       "public/workshop-graph/inputs/06_조숙의_통합.md",

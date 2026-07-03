@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-07-03T20:59:56.7818274+09:00",
+  "groupAgendaFormId": "1hWBiDnSvVdelCAXbwgkk1H9w06LDUim0-FcTr5-tXHE",
+  "sample": true,
+  "agendaCount": 4,
+  "outputHtml": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\wiki\\public\\0704-admin\\group-agendas-print-sample.html",
+  "outputPdf": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\wiki\\public\\0704-admin\\group-agendas-print-sample.pdf",
+  "emailTo": "kesica3@gmail.com",
+  "emailStatus": "sent",
+  "agendas": [
+    {
+      "group": "1조",
+      "submittedAt": "2026-07-04T15:21:12+09:00",
+      "agenda": "공공건물과 학교의 에너지 절약 실천을 의무화하고 절감 효과를 시민에게 공개하는 방안",
+      "responseId": "sample-agenda-001"
+    },
+    {
+      "group": "2조",
+      "submittedAt": "2026-07-04T15:23:40+09:00",
+      "agenda": "탄소 감축 행동에 참여한 시민에게 교통비나 공공시설 이용 혜택을 제공하는 통합 인센티브 제도",
+      "responseId": "sample-agenda-002"
+    },
+    {
+      "group": "3조",
+      "submittedAt": "2026-07-04T15:25:09+09:00",
+      "agenda": "기업의 탄소배출 정보와 감축 계획을 시민이 쉽게 확인하고 의견을 낼 수 있는 공개 플랫폼",
+      "responseId": "sample-agenda-003"
+    },
+    {
+      "group": "연구진",
+      "submittedAt": "2026-07-04T15:26:33+09:00",
+      "agenda": "조별 의제를 권고안 문장으로 전환하기 위한 우선순위와 실행가능성 기준 정리",
+      "responseId": "sample-agenda-004"
+    }
+  ]
+}

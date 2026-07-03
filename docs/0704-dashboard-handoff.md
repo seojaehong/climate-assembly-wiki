@@ -24,6 +24,10 @@ Keep the 7.4 operating dashboard separate from the 0628 test archive. Do not mut
 - Reflection Form edit: `https://docs.google.com/forms/d/1mxwgRD-IHocgAIsisgr9v9-9J-wotjgmHqRDK1NlLyI/edit`
 - Reflection Sheet: `https://docs.google.com/spreadsheets/d/1HK4B_CilVyEbQgtDuZnnMPgUW0naDT3VAYt2Shh8qms/edit`
 - Reflection QR asset: `/0704-admin/reflection-qr.png`
+- Group agenda print PDF: `/0704-admin/group-agendas-print.pdf`
+- Group agenda print HTML preview: `/0704-admin/group-agendas-print.html`
+- Expert question print PDF: `/0704-admin/expert-questions-print.pdf`
+- Expert question print HTML preview: `/0704-admin/expert-questions-print.html`
 
 Admin password:
 
@@ -136,6 +140,48 @@ The following editor permissions were applied through `gws drive permissions cre
 - reflection Form and Sheet;
 - agenda vote Form and Scores Sheet.
 
+## Fast Expert Question Print And Email
+
+For the external advisor Q&A block, the fastest route is:
+
+1. Participants submit the carbon-reduction question Form.
+2. Run the export script.
+3. Open `/0704-admin/expert-questions-print.pdf` and print.
+4. Add `-SendEmail` to forward the same question list to `kesica3@gmail.com`.
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-expert-questions.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-expert-questions.ps1 -UseSample
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-expert-questions.ps1 -SendEmail
+```
+
+The script reads the carbon-reduction question Form directly through Forms API, filters non-empty question values, writes the print HTML and A4 PDF, and creates `evaluation/0704-expert-questions-print-report.json`.
+
+Because this Form was reused from the 0628 test, the script defaults to `-Since 2026-07-04T00:00:00+09:00` so old responses are not printed. Override `-Since` only for investigation.
+
+## Fast Agenda Candidate Print And Email
+
+For the agenda vote setup, the fastest route is:
+
+1. Each group submits the group agenda Form.
+2. Run the export script.
+3. Open `/0704-admin/group-agendas-print.pdf` and print.
+4. Add `-SendEmail` to forward the same agenda candidate list to `kesica3@gmail.com`.
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-group-agendas.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-group-agendas.ps1 -UseSample
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-group-agendas.ps1 -SendEmail
+```
+
+The script reads the group agenda Form directly through Forms API, filters non-empty agenda candidates, writes the print HTML and A4 PDF, and creates `evaluation/0704-group-agendas-print-report.json`.
+
+Current note: Gmail sending needs an OAuth token with Gmail scope. The current token was re-authenticated with `gmail.send` on 2026-07-03. If sending fails with insufficient scopes, run:
+
+```powershell
+gws auth login --scopes https://www.googleapis.com/auth/forms.responses.readonly,https://www.googleapis.com/auth/gmail.send,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/spreadsheets
+```
+
 ## Schedule Check
 
 The 2026-07-04 moderator manual places the group session from 17:00 to 18:00.
@@ -157,6 +203,8 @@ Invoke-WebRequest "http://127.0.0.1:4321/agenda-vote-0704/index.html?sheet=1wbAw
 pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\refresh-0704-agenda-vote.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\refresh-0704-input-forms.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\promote-0704-group-agendas-to-vote.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-expert-questions.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-group-agendas.ps1
 ```
 
 Both commands should return no matches.
