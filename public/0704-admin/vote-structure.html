@@ -30,17 +30,41 @@
   .step b{display:block;margin-bottom:4px;font-size:14px;color:#0f172a}
   .step span{display:block;font-size:14px;color:#475569;font-weight:800;line-height:1.45}
   .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
-  a.btn{min-height:42px;border:0;border-radius:8px;background:var(--ink);color:#fff;font-weight:900;font-size:14px;display:inline-flex;align-items:center;justify-content:center;padding:9px 13px;text-decoration:none}
-  a.btn.green{background:var(--green)}
-  a.btn.orange{background:var(--orange)}
-  a.btn.blue{background:var(--blue)}
-  a.btn.light{background:#eef2f7;color:#111827}
+  a.btn,button.btn{min-height:42px;border:0;border-radius:8px;background:var(--ink);color:#fff;font-weight:900;font-size:14px;display:inline-flex;align-items:center;justify-content:center;padding:9px 13px;text-decoration:none;cursor:pointer;font-family:inherit}
+  a.btn.green,button.btn.green{background:var(--green)}
+  a.btn.orange,button.btn.orange{background:var(--orange)}
+  a.btn.blue,button.btn.blue{background:var(--blue)}
+  a.btn.light,button.btn.light{background:#eef2f7;color:#111827}
+  button.btn.line{background:#fff;color:#111827;border:1px solid var(--line)}
   .copy-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .count-pill{display:inline-flex;align-items:center;justify-content:center;min-height:30px;padding:0 10px;border-radius:999px;background:#ecfeff;color:#0e7490;font-size:13px;font-weight:900}
+  .modal{position:fixed;inset:0;z-index:80;display:none;place-items:center;background:rgba(15,23,42,.66);padding:22px}
+  .modal.show{display:grid}
+  .modal-card{width:min(980px,calc(100vw - 30px));max-height:calc(100vh - 30px);overflow:auto;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 30px 90px rgba(15,23,42,.32);padding:22px}
+  .modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
+  .modal-title{margin:0;font-size:31px;line-height:1.15}
+  .modal-sub{margin-top:6px}
+  .modal-close{width:44px;height:44px;border:0;border-radius:50%;background:#eef2f7;color:#111827;font-size:24px;font-weight:900;cursor:pointer}
+  .qr-stage{display:grid;grid-template-columns:minmax(280px,430px) 1fr;gap:24px;align-items:center}
+  .qr-stage img{width:100%;max-width:430px;aspect-ratio:1/1;border:12px solid #fff;border-radius:18px;background:#fff;box-shadow:0 14px 46px rgba(15,23,42,.14);image-rendering:pixelated}
+  .qr-question{font-size:28px;font-weight:900;line-height:1.25;color:#0f172a}
+  .qr-choice{display:inline-flex;margin-top:14px;padding:8px 12px;border-radius:999px;background:#fffbeb;color:#92400e;font-weight:900}
+  .result-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+  .result-card{border:1px solid var(--line);border-radius:14px;padding:16px;background:#f8fafc}
+  .result-card h3{margin:0 0 8px;font-size:18px}
+  .result-total{font-size:42px;font-weight:950;letter-spacing:-.04em;line-height:1;color:#0f172a}
+  .result-total small{font-size:15px;color:#64748b;font-weight:900;margin-left:4px}
+  .bar-row{display:grid;grid-template-columns:86px 1fr 44px;gap:8px;align-items:center;margin-top:10px}
+  .bar-label{font-size:13px;font-weight:900;color:#334155}
+  .bar-track{height:16px;border-radius:999px;background:#e2e8f0;overflow:hidden}
+  .bar-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--green),#14b8a6);min-width:2px}
+  .bar-count{font-size:13px;font-weight:900;text-align:right;color:#0f172a}
+  .private-note{margin-top:14px;padding:12px 14px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-weight:900;line-height:1.45}
   table{width:100%;border-collapse:collapse;margin-top:12px;background:#fff;border-radius:10px;overflow:hidden}
   th,td{border:1px solid var(--line);padding:10px;text-align:left;font-size:14px;vertical-align:top}
   th{background:#f8fafc;color:#0f172a}
   td{color:#475569;font-weight:750;line-height:1.45}
-  @media(max-width:820px){.grid{grid-template-columns:1fr}header{display:block}header .actions{margin-top:14px}.slot-head{grid-template-columns:1fr}.copy-list{grid-template-columns:1fr}}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}header{display:block}header .actions{margin-top:14px}.slot-head{grid-template-columns:1fr}.copy-list{grid-template-columns:1fr}.qr-stage{grid-template-columns:1fr}.result-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -55,6 +79,7 @@
       <a class="btn green" href="/0704-admin/">관리자</a>
       <a class="btn" href="/0704-admin/operator-manual">현장 매뉴얼</a>
       <a class="btn light" href="https://docs.google.com/spreadsheets/d/1m_GD3ohvDW1PXT8Gg3AoTxpf0voRdrJpz2a38PREBB8/edit">추가투표 결과 Sheet</a>
+      <button class="btn blue" type="button" data-results="all">결과보기</button>
     </div>
   </header>
 
@@ -76,6 +101,8 @@
         <div class="step"><b>결과</b><span>동의면 감축 추가 의제 논의로 이동, 부결이면 V1A/V1B 판단</span></div>
       </div>
       <div class="actions">
+        <button class="btn orange" type="button" data-qr="V0">QR 탭</button>
+        <button class="btn blue" type="button" data-result-slot="V0">결과보기 <span class="count-pill" data-count-slot="V0">0명</span></button>
         <a class="btn orange" href="https://docs.google.com/forms/d/e/1FAIpQLSc8NV9MvB52WM8IzQFJCGK3HJmZ8e_UOW4cbV6wd3MERohc-Q/viewform" target="_blank" rel="noopener">응답 화면</a>
         <a class="btn light" href="https://docs.google.com/forms/d/1QXrENjjmh7NcTF_9sm4aUPhnh1_WuAWvP4q80AdBM8s/edit" target="_blank" rel="noopener">편집 화면</a>
       </div>
@@ -98,6 +125,8 @@
         <div class="step"><b>결과</b><span>감축분야 추가 논의 지속 여부 결정</span></div>
       </div>
       <div class="actions">
+        <button class="btn orange" type="button" data-qr="V1A">QR 탭</button>
+        <button class="btn blue" type="button" data-result-slot="V1A">결과보기 <span class="count-pill" data-count-slot="V1A">0명</span></button>
         <a class="btn orange" href="https://docs.google.com/forms/d/e/1FAIpQLSeyeycU58FPedk64L8E5QeDdvEETgVcnGwJDEC6NEZTrMGOtA/viewform" target="_blank" rel="noopener">응답 화면</a>
         <a class="btn light" href="https://docs.google.com/forms/d/1YCMzcYk_XLD95_8MvzJAB4ReQKQs4nl7P18o9hBQTk4/edit" target="_blank" rel="noopener">편집 화면</a>
       </div>
@@ -120,6 +149,8 @@
         <div class="step"><b>결과</b><span>기존 의제 유지와 배분 방식 결정</span></div>
       </div>
       <div class="actions">
+        <button class="btn orange" type="button" data-qr="V1B">QR 탭</button>
+        <button class="btn blue" type="button" data-result-slot="V1B">결과보기 <span class="count-pill" data-count-slot="V1B">0명</span></button>
         <a class="btn orange" href="https://docs.google.com/forms/d/e/1FAIpQLSfN73ZpueVP0YHcPNiQeMxVdAwPsDUHU8sbG5oW-Bk20oXAUg/viewform" target="_blank" rel="noopener">응답 화면</a>
         <a class="btn light" href="https://docs.google.com/forms/d/1bdEi3hN6p8qOqWGdJV3f8UK3g4wPDEtojjQakCpDTd4/edit" target="_blank" rel="noopener">편집 화면</a>
       </div>
@@ -166,5 +197,171 @@
     </article>
   </section>
 </main>
+<section class="modal" id="qrModal" aria-hidden="true">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <h2 class="modal-title" id="qrTitle">QR</h2>
+        <p class="modal-sub" id="qrSub">참여단에게 이 화면을 크게 띄워주세요.</p>
+      </div>
+      <button class="modal-close" type="button" data-close="qrModal">×</button>
+    </div>
+    <div class="qr-stage">
+      <a id="qrLink" href="#" target="_blank" rel="noopener"><img id="qrImage" alt="투표 QR" src=""></a>
+      <div>
+        <div class="qr-question" id="qrQuestion"></div>
+        <div class="qr-choice" id="qrChoices"></div>
+        <div class="actions">
+          <a class="btn green" id="qrOpen" href="#" target="_blank" rel="noopener">응답 화면 열기</a>
+          <button class="btn line" type="button" data-close="qrModal">닫기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="modal" id="resultModal" aria-hidden="true">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <h2 class="modal-title">추가 판단 투표 결과</h2>
+        <p class="modal-sub" id="resultRefreshed">마지막 갱신 정보를 불러오는 중입니다.</p>
+      </div>
+      <button class="modal-close" type="button" data-close="resultModal">×</button>
+    </div>
+    <div class="result-grid" id="resultGrid"></div>
+    <div class="private-note">완료 전에는 결과를 참여단에게 공개하지 않습니다. 이 화면은 관리자 점검 및 실시간 캡처용입니다. 응답이 마감되면 필요한 카드만 발표 화면으로 전환합니다.</div>
+  </div>
+</section>
+<script>
+const VOTE_META = {
+  V0: {
+    title: 'V0. 의제 통합 동의',
+    question: '교육 의제와 시민참여 의제를 하나의 통합 의제로 다루는 데 동의하십니까?',
+    choices: '동의 / 동의하지 않음 / 판단 유보',
+    qr: '/0704-admin/decision-vote-v0-qr.png',
+    url: 'https://docs.google.com/forms/d/e/1FAIpQLSc8NV9MvB52WM8IzQFJCGK3HJmZ8e_UOW4cbV6wd3MERohc-Q/viewform'
+  },
+  V1A: {
+    title: 'V1A. 감축분야 추가 찬반',
+    question: '감축분야 추가 의제를 선정하는 데 동의하십니까?',
+    choices: '찬성 / 반대 / 판단 유보',
+    qr: '/0704-admin/decision-vote-v1a-qr.png',
+    url: 'https://docs.google.com/forms/d/e/1FAIpQLSeyeycU58FPedk64L8E5QeDdvEETgVcnGwJDEC6NEZTrMGOtA/viewform'
+  },
+  V1B: {
+    title: 'V1B. 적응 의제 배분 찬반',
+    question: '기존 적응분야 의제 2개를 적응분과 내에서 구분해 다루는 데 동의하십니까?',
+    choices: '찬성 / 반대 / 판단 유보',
+    qr: '/0704-admin/decision-vote-v1b-qr.png',
+    url: 'https://docs.google.com/forms/d/e/1FAIpQLSfN73ZpueVP0YHcPNiQeMxVdAwPsDUHU8sbG5oW-Bk20oXAUg/viewform'
+  }
+};
+let decisionReport = null;
+
+function showModal(id) {
+  const modal = document.getElementById(id);
+  modal.classList.add('show');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function hideModal(id) {
+  const modal = document.getElementById(id);
+  modal.classList.remove('show');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+function openQr(code) {
+  const meta = VOTE_META[code];
+  if (!meta) return;
+  document.getElementById('qrTitle').textContent = meta.title;
+  document.getElementById('qrQuestion').textContent = meta.question;
+  document.getElementById('qrChoices').textContent = meta.choices;
+  document.getElementById('qrImage').src = `${meta.qr}?_=${Date.now()}`;
+  document.getElementById('qrLink').href = meta.url;
+  document.getElementById('qrOpen').href = meta.url;
+  showModal('qrModal');
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[char]));
+}
+
+function renderResults(focusCode = null) {
+  const report = decisionReport;
+  const grid = document.getElementById('resultGrid');
+  if (!report || !Array.isArray(report.slots)) {
+    grid.innerHTML = '<div class="result-card"><h3>결과를 불러오지 못했습니다</h3><p>갱신 스크립트를 실행한 뒤 다시 열어주세요.</p></div>';
+    return;
+  }
+  const refreshed = report.refreshedAt ? new Date(report.refreshedAt) : null;
+  document.getElementById('resultRefreshed').textContent = refreshed
+    ? `마지막 갱신: ${refreshed.toLocaleString('ko-KR')} · 결과 공개 전 관리자 확인용`
+    : '결과 공개 전 관리자 확인용';
+  const slots = focusCode ? report.slots.filter((slot) => slot.code === focusCode) : report.slots;
+  grid.innerHTML = slots.map((slot) => {
+    const counts = slot.counts || {};
+    const entries = Object.entries(counts);
+    const max = Math.max(1, ...entries.map(([, count]) => Number(count) || 0));
+    const bars = entries.map(([label, count]) => {
+      const safeCount = Number(count) || 0;
+      const width = Math.max(2, Math.round((safeCount / max) * 100));
+      return `<div class="bar-row"><div class="bar-label">${escapeHtml(label)}</div><div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div><div class="bar-count">${safeCount}</div></div>`;
+    }).join('');
+    return `<article class="result-card"><h3>${escapeHtml(slot.code)} · ${escapeHtml(slot.title)}</h3><div class="result-total">${Number(slot.responseCount) || 0}<small>명 응답</small></div>${bars}</article>`;
+  }).join('');
+}
+
+async function loadDecisionReport() {
+  try {
+    const response = await fetch(`/0704-admin/decision-votes-report.json?_=${Date.now()}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    decisionReport = await response.json();
+    for (const slot of decisionReport.slots || []) {
+      document.querySelectorAll(`[data-count-slot="${slot.code}"]`).forEach((node) => {
+        node.textContent = `${Number(slot.responseCount) || 0}명`;
+      });
+    }
+  } catch (error) {
+    console.warn('[decision-votes] report load failed:', error);
+  }
+}
+
+document.querySelectorAll('[data-qr]').forEach((button) => {
+  button.addEventListener('click', () => openQr(button.dataset.qr));
+});
+document.querySelectorAll('[data-result-slot]').forEach((button) => {
+  button.addEventListener('click', async () => {
+    await loadDecisionReport();
+    renderResults(button.dataset.resultSlot);
+    showModal('resultModal');
+  });
+});
+document.querySelector('[data-results="all"]')?.addEventListener('click', async () => {
+  await loadDecisionReport();
+  renderResults();
+  showModal('resultModal');
+});
+document.querySelectorAll('[data-close]').forEach((button) => {
+  button.addEventListener('click', () => hideModal(button.dataset.close));
+});
+document.querySelectorAll('.modal').forEach((modal) => {
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) hideModal(modal.id);
+  });
+});
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    hideModal('qrModal');
+    hideModal('resultModal');
+  }
+});
+loadDecisionReport();
+</script>
 </body>
 </html>

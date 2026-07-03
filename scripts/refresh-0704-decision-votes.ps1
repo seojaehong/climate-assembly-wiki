@@ -186,6 +186,9 @@ Update-SheetRows -TargetSpreadsheetId $SpreadsheetId -Range "Guide!A1:B$($guideR
 if (-not (Test-Path "evaluation")) {
   New-Item -ItemType Directory -Path "evaluation" | Out-Null
 }
+if (-not (Test-Path "public/0704-admin")) {
+  New-Item -ItemType Directory -Path "public/0704-admin" -Force | Out-Null
+}
 
 $report = [pscustomobject]@{
   refreshedAt = (Get-Date).ToString("o")
@@ -195,6 +198,9 @@ $report = [pscustomobject]@{
 }
 
 $reportPath = "evaluation/0704-decision-votes-report.json"
-$report | ConvertTo-Json -Depth 12 | Set-Content -Path $reportPath -Encoding UTF8
+$publicReportPath = "public/0704-admin/decision-votes-report.json"
+$reportJson = $report | ConvertTo-Json -Depth 12
+$reportJson | Set-Content -Path $reportPath -Encoding UTF8
+$reportJson | Set-Content -Path $publicReportPath -Encoding UTF8
 $report | ConvertTo-Json -Depth 12
 

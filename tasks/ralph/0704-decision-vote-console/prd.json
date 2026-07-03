@@ -1,0 +1,75 @@
+{
+  "feature": "0704 conditional vote console",
+  "branchName": "main",
+  "qualityChecks": [
+    "npm.cmd exec -- vitest run scripts/decision-vote-console.test.mjs",
+    "npm.cmd exec -- vitest run",
+    "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\\refresh-0704-decision-votes.ps1"
+  ],
+  "userStories": [
+    {
+      "id": "C1",
+      "title": "Projector-sized QR tabs for conditional votes",
+      "priority": 1,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "V0, V1A, and V1B expose QR tab buttons.",
+        "Clicking QR tab opens a large modal suitable for room projection."
+      ],
+      "files": [
+        "public/0704-admin/vote-structure.html"
+      ]
+    },
+    {
+      "id": "C2",
+      "title": "Admin-only result preview with response counts",
+      "priority": 2,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "V0, V1A, and V1B expose result buttons with response count chips.",
+        "Result modal shows response count and option bars.",
+        "Result modal says results are not public before close."
+      ],
+      "files": [
+        "public/0704-admin/vote-structure.html",
+        "public/0704-admin/decision-votes-report.json",
+        "scripts/refresh-0704-decision-votes.ps1"
+      ]
+    },
+    {
+      "id": "C3",
+      "title": "Record Supabase regulation-vote reference",
+      "priority": 3,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "Handoff references the previous regulation vote result board.",
+        "Handoff explains why 0704 keeps Google Form plus Sheet instead of opening new Supabase writes."
+      ],
+      "files": [
+        "docs/0704-dashboard-handoff.md",
+        "scripts/decision-vote-console.test.mjs"
+      ]
+    },
+    {
+      "id": "C4",
+      "title": "Validate dashboard question routes against 0704 field scenario",
+      "priority": 4,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "Admin dashboard states A/B live Sheet is the default question route.",
+        "Operator manual states the carbon Form is used only when direct QR input is announced.",
+        "A scenario-fit report maps dashboard cards to the 0704 flow."
+      ],
+      "files": [
+        "public/0704-admin/index.html",
+        "public/0704-admin/operator-manual.html",
+        "docs/0704-field-operator-manual.md",
+        "evaluation/0704-dashboard-scenario-fit.md"
+      ]
+    }
+  ]
+}

@@ -37,9 +37,15 @@
   .qr{border:1px solid var(--line);border-radius:12px;background:#f8fafc;padding:12px;text-align:center}
   .qr img{display:block;width:140px;height:140px;max-width:100%;margin:0 auto 8px;image-rendering:pixelated}
   .qr b{display:block;font-size:13px}
+  .qr-modal{position:fixed;inset:0;z-index:80;display:none;place-items:center;background:rgba(15,23,42,.66);padding:22px}
+  .qr-modal.show{display:grid}
+  .qr-modal-card{width:min(760px,calc(100vw - 32px));background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 30px 90px rgba(15,23,42,.32);padding:22px;text-align:center}
+  .qr-modal-card h2{margin:0 0 6px;font-size:30px;line-height:1.15}
+  .qr-modal-card p{margin:0 0 12px}
+  .qr-modal-card img{display:block;width:min(540px,78vw);height:auto;margin:10px auto 16px;border:12px solid #fff;border-radius:16px;box-shadow:0 14px 44px rgba(15,23,42,.14);image-rendering:pixelated}
   .toast{position:fixed;right:20px;bottom:20px;z-index:80;display:none;padding:10px 13px;border-radius:10px;background:#111827;color:#fff;font-size:13px;font-weight:900;box-shadow:0 16px 40px rgba(15,23,42,.20)}
   .toast.show{display:block}
-  @media print{header .actions,.copy,.toast{display:none}.wrap{width:auto;padding:0}.card,header{box-shadow:none;break-inside:avoid}.grid,.qr-grid{display:block}.card,.qr{margin-bottom:12px}}
+  @media print{header .actions,.copy,.toast,.qr-modal{display:none}.wrap{width:auto;padding:0}.card,header{box-shadow:none;break-inside:avoid}.grid,.qr-grid{display:block}.card,.qr{margin-bottom:12px}}
   @media (max-width:860px){.grid,.qr-grid{grid-template-columns:1fr}.url-row{grid-template-columns:1fr}header{display:block}header .actions{margin-top:14px}}
 </style>
 </head>
@@ -75,9 +81,9 @@
 
     <article class="card">
       <h2>2. 폼입력</h2>
-      <p>참여단 또는 조별 응답자가 QR로 입력하는 화면입니다.</p>
+      <p>기본 질문 수합은 A/B 입력 Sheet입니다. 진행자가 직접 QR 입력을 안내할 때만 Form을 씁니다.</p>
       <div class="steps">
-        <div class="step"><b>탄소 감축 질문</b><span>참여단이 전문가에게 묻고 싶은 질문 입력</span></div>
+        <div class="step"><b>탄소 감축 질문</b><span>참여단 직접 QR 입력을 지시할 때만 전문가에게 묻고 싶은 질문을 Form으로 입력</span></div>
         <div class="step"><b>조별 의제 입력</b><span>조별로 투표 후보가 될 의제 입력</span></div>
         <div class="step"><b>의제투표</b><span>최종 후보가 정리된 뒤 참여단이 투표</span></div>
         <div class="step"><b>소감발표</b><span>17~18시 전체 공유용 소감 입력</span></div>
@@ -144,9 +150,52 @@
     </article>
   </section>
 </main>
+<div class="qr-modal" id="qr-modal" role="dialog" aria-modal="true" aria-labelledby="qr-title">
+  <section class="qr-modal-card">
+    <h2 id="qr-title">QR</h2>
+    <p>참여단 휴대폰 카메라로 스캔하면 응답 화면으로 이동합니다.</p>
+    <a id="qr-modal-link" href="#" target="_blank" rel="noopener"><img id="qr-modal-img" alt="QR" src=""></a>
+    <div class="actions" style="justify-content:center">
+      <a class="btn green" id="qr-modal-open" href="#" target="_blank" rel="noopener">응답 화면 열기</a>
+      <button id="close-qr" type="button">닫기</button>
+    </div>
+  </section>
+</div>
 <div class="toast" id="toast">URL을 복사했습니다.</div>
 <script>
   const toast = document.getElementById('toast');
+  const qrModal = document.getElementById('qr-modal');
+  const qrTitle = document.getElementById('qr-title');
+  const qrImage = document.getElementById('qr-modal-img');
+  const qrLink = document.getElementById('qr-modal-link');
+  const qrOpen = document.getElementById('qr-modal-open');
+
+  function openQr(source) {
+    const title = source.querySelector('b')?.textContent || source.querySelector('img')?.alt || 'QR';
+    const image = source.querySelector('img')?.getAttribute('src');
+    const href = source.getAttribute('href');
+    qrTitle.textContent = title;
+    qrImage.src = image + '?_=' + Date.now();
+    qrImage.alt = title;
+    qrLink.href = href;
+    qrOpen.href = href;
+    qrModal.classList.add('show');
+  }
+
+  document.querySelectorAll('a.qr').forEach((qr) => {
+    qr.addEventListener('click', (event) => {
+      event.preventDefault();
+      openQr(qr);
+    });
+  });
+  document.getElementById('close-qr').addEventListener('click', () => qrModal.classList.remove('show'));
+  qrModal.addEventListener('click', (event) => {
+    if (event.target === qrModal) qrModal.classList.remove('show');
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') qrModal.classList.remove('show');
+  });
+
   document.querySelectorAll('[data-copy-url]').forEach((button) => {
     button.addEventListener('click', async () => {
       const url = button.getAttribute('data-copy-url');

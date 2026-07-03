@@ -1,0 +1,16 @@
+## 2026-07-03 C1-C3
+- Changed: added projector-sized QR modal, admin result modal, public decision-votes report JSON export, and Supabase regulation-vote reference notes.
+- Verified: `npm.cmd exec -- vitest run scripts/decision-vote-console.test.mjs` failed first on missing Supabase handoff note, then passed after documenting the reference.
+- Verified: `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\refresh-0704-decision-votes.ps1` wrote both evaluation and public result JSON with 0 current responses.
+- Learned: previous `/regulation-vote/` and `/archive/2026-06-14/regulation_R1-R9_results.html` are valuable result-screen references, but the archive itself documents a data-loss caveat, so new Supabase writes should wait for explicit approval.
+- Next: deploy and verify live custom-domain modal links after the full regression suite passes.
+
+## 2026-07-03 C4
+- Changed: clarified that default expert-question collection uses the A/B live Sheet, while the carbon-question Form is only for facilitator-announced direct QR input.
+- Changed: added `evaluation/0704-dashboard-scenario-fit.md` to map dashboard cards to expert questions, agenda candidates, final voting, conditional decision votes, and 17~18 reflection sharing.
+- Verified: `npm.cmd exec -- vitest run scripts/decision-vote-console.test.mjs` failed first on the missing A/B default-route phrase, then passed after the dashboard/manual wording update.
+- Verified: `npm.cmd exec -- vitest run` passed 84 tests across 7 files.
+- Verified: `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\refresh-0704-decision-votes.ps1` refreshed the public and evaluation result JSON with V0/V1A/V1B response counts at 0.
+- Verified: MCP browser check on local static server showed admin QR modal at 540px, operator-manual QR modal at 540px, V0 conditional QR modal at 430px, and result modal rendering `0명 응답` plus option rows and the pre-close warning.
+- Learned: Python static server does not emulate Cloudflare extensionless routing, so local checks use `.html` while deployed checks must verify `/0704-admin/vote-structure`.
+- Next: deploy and verify live custom-domain extensionless URLs and public JSON.

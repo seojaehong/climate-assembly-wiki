@@ -59,9 +59,9 @@
   .qr-box span{display:block;margin-top:7px;color:var(--qr);font-size:12px;font-weight:900}
   .qr-modal{position:fixed;inset:0;z-index:50;display:none;place-items:center;background:rgba(15,23,42,.54);padding:24px}
   .qr-modal.show{display:grid}
-  .qr-modal-card{width:min(440px,calc(100vw - 32px));background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 24px 80px rgba(15,23,42,.28);padding:20px;text-align:center}
-  .qr-modal-card img{display:block;width:min(320px,100%);height:auto;margin:8px auto 14px}
-  .qr-modal-card h2{margin:0 0 6px;font-size:22px}
+  .qr-modal-card{width:min(760px,calc(100vw - 32px));background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 80px rgba(15,23,42,.28);padding:22px;text-align:center}
+  .qr-modal-card img{display:block;width:min(540px,78vw);height:auto;margin:10px auto 16px;border:12px solid #fff;border-radius:16px;box-shadow:0 14px 44px rgba(15,23,42,.14);image-rendering:pixelated}
+  .qr-modal-card h2{margin:0 0 6px;font-size:30px;line-height:1.15}
   .qr-modal-card p{font-size:14px}
   .note{margin-top:18px;padding:12px 14px;border:1px solid #fde68a;background:#fffbeb;border-radius:8px;color:#78350f;font-size:13px;line-height:1.55}
   .analysis-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
@@ -137,8 +137,8 @@
       <article class="card">
         <div class="form-access">
           <div>
-            <h2>탄소 감축 질문</h2>
-            <p>참여단이 입력하는 실제 주관식 응답 폼입니다. 현장에서는 오른쪽 QR을 바로 띄워 접속하게 합니다.</p>
+            <h2>탄소 감축 질문 Form</h2>
+            <p>기본은 A/B 기록모더레이터 Sheet 입력입니다. 참여단 직접 QR 입력을 지시할 때만 이 Form을 띄웁니다.</p>
             <div class="actions">
           <a class="btn secondary" href="https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform" target="_blank" rel="noopener">응답 화면</a>
           <a class="btn ghost" href="https://docs.google.com/forms/d/1yktkA_XAMGcVt4mlnC-0Yc3d3N0N0YQ__Dk1TfdTaCc/edit" target="_blank" rel="noopener">편집 화면</a>
@@ -146,7 +146,7 @@
           <button class="qr-toggle" id="show-qr" type="button">QR 탭</button>
             </div>
           </div>
-          <a class="qr-box" id="qr-inline" href="https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform" target="_blank" rel="noopener">
+          <a class="qr-box" id="qr-inline" href="https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform" target="_blank" rel="noopener" data-qr-title="탄소 감축 질문 QR" data-qr-src="/0704-admin/google-form-qr.png">
             <img alt="Google Form 응답 QR" src="/0704-admin/google-form-qr.png">
             <span>응답 QR</span>
           </a>
@@ -184,7 +184,7 @@
               <div class="op"><b>입력</b><span>조 선택 + 투표 후보 의제 한 문장</span></div>
             </div>
           </div>
-          <a class="qr-box" href="https://docs.google.com/forms/d/e/1FAIpQLSf6irdECaMygffockxbuSxhsCxOG9WExkxHhtspZT4FhlmouQ/viewform" target="_blank" rel="noopener">
+          <a class="qr-box" href="https://docs.google.com/forms/d/e/1FAIpQLSf6irdECaMygffockxbuSxhsCxOG9WExkxHhtspZT4FhlmouQ/viewform" target="_blank" rel="noopener" data-qr-title="조별 의제 입력 QR" data-qr-src="/0704-admin/group-agenda-qr.png">
             <img alt="조별 의제 입력 QR" src="/0704-admin/group-agenda-qr.png">
             <span>조별 의제 QR</span>
           </a>
@@ -207,7 +207,7 @@
               <div class="op"><b>결과</b><span>Google Sheet의 <code>Scores</code> 탭을 버블레이스가 5초마다 읽습니다.</span></div>
             </div>
           </div>
-          <a class="qr-box" href="https://docs.google.com/forms/d/e/1FAIpQLSf9-AIDhnd0cy8Dfu-xXOgz6cQINjpA-tLzHdM2Ypk8qU_eMA/viewform" target="_blank" rel="noopener">
+          <a class="qr-box" href="https://docs.google.com/forms/d/e/1FAIpQLSf9-AIDhnd0cy8Dfu-xXOgz6cQINjpA-tLzHdM2Ypk8qU_eMA/viewform" target="_blank" rel="noopener" data-qr-title="의제투표 QR" data-qr-src="/0704-admin/agenda-vote-qr.png">
             <img alt="의제투표 QR" src="/0704-admin/agenda-vote-qr.png">
             <span>의제투표 QR</span>
           </a>
@@ -241,7 +241,7 @@
               <div class="op"><b>발표</b><span>포스트잇 화면으로 조별 소감 묶음, 온톨로지로 핵심 연결 질문 확대</span></div>
             </div>
           </div>
-          <a class="qr-box" href="https://docs.google.com/forms/d/e/1FAIpQLSccOoHa2gSgIm2EUGqq4zrzkBpr1C6ptsx9HpfYdYLjebINmg/viewform" target="_blank" rel="noopener">
+          <a class="qr-box" href="https://docs.google.com/forms/d/e/1FAIpQLSccOoHa2gSgIm2EUGqq4zrzkBpr1C6ptsx9HpfYdYLjebINmg/viewform" target="_blank" rel="noopener" data-qr-title="17~18시 소감발표 QR" data-qr-src="/0704-admin/reflection-qr.png">
             <img alt="조별 소감 입력 QR" src="/0704-admin/reflection-qr.png">
             <span>소감 입력 QR</span>
           </a>
@@ -359,11 +359,11 @@
   <section class="qr-modal-card">
     <h2 id="qr-title">Google Form 응답 QR</h2>
     <p>참여단 휴대폰 카메라로 스캔하면 응답 화면으로 이동합니다.</p>
-    <a href="https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform" target="_blank" rel="noopener">
-      <img alt="Google Form 응답 QR" src="/0704-admin/google-form-qr.png">
+    <a id="qr-modal-link" href="https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform" target="_blank" rel="noopener">
+      <img id="qr-modal-img" alt="Google Form 응답 QR" src="/0704-admin/google-form-qr.png">
     </a>
     <div class="actions" style="justify-content:center">
-      <a class="btn secondary" href="https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform" target="_blank" rel="noopener">응답 화면 열기</a>
+      <a class="btn secondary" id="qr-modal-open" href="https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform" target="_blank" rel="noopener">응답 화면 열기</a>
       <button class="ghost" id="close-qr" type="button">닫기</button>
     </div>
   </section>
@@ -379,6 +379,10 @@
   const error = document.getElementById('error');
   const qrModal = document.getElementById('qr-modal');
   const qrInline = document.getElementById('qr-inline');
+  const qrModalTitle = document.getElementById('qr-title');
+  const qrModalImage = document.getElementById('qr-modal-img');
+  const qrModalLink = document.getElementById('qr-modal-link');
+  const qrModalOpen = document.getElementById('qr-modal-open');
   const analysisSummary = document.getElementById('analysis-summary');
   const toast = document.getElementById('toast');
 
@@ -422,10 +426,27 @@
   input.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') enter();
   });
+  function openQrModal(source) {
+    const title = source.getAttribute('data-qr-title') || source.querySelector('span')?.textContent || 'QR';
+    const image = source.getAttribute('data-qr-src') || source.querySelector('img')?.getAttribute('src');
+    const href = source.getAttribute('href');
+    qrModalTitle.textContent = title;
+    qrModalImage.src = image + '?_=' + Date.now();
+    qrModalImage.alt = title;
+    qrModalLink.href = href;
+    qrModalOpen.href = href;
+    qrModal.classList.add('show');
+  }
   document.getElementById('show-qr').onclick = () => {
     qrInline.classList.add('show');
-    qrModal.classList.add('show');
+    openQrModal(qrInline);
   };
+  document.querySelectorAll('.qr-box').forEach((qrBox) => {
+    qrBox.addEventListener('click', (event) => {
+      event.preventDefault();
+      openQrModal(qrBox);
+    });
+  });
   document.getElementById('close-qr').onclick = () => {
     qrModal.classList.remove('show');
   };

@@ -19,9 +19,9 @@
 
 ## 2. 폼입력
 
-참여단 또는 조별 응답자가 QR로 입력한다.
+기본 질문 수합은 A/B 입력 Sheet이다. 진행자가 참여단 직접 QR 입력을 안내할 때만 탄소 감축 질문 Form을 사용한다.
 
-- 탄소 감축 질문: https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform
+- 탄소 감축 질문 Form: https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform
 - 조별 의제 입력: https://docs.google.com/forms/d/e/1FAIpQLSf6irdECaMygffockxbuSxhsCxOG9WExkxHhtspZT4FhlmouQ/viewform
 - 의제투표: https://docs.google.com/forms/d/e/1FAIpQLSf9-AIDhnd0cy8Dfu-xXOgz6cQINjpA-tLzHdM2Ypk8qU_eMA/viewform
 - 17~18시 소감발표: https://docs.google.com/forms/d/e/1FAIpQLSccOoHa2gSgIm2EUGqq4zrzkBpr1C6ptsx9HpfYdYLjebINmg/viewform
