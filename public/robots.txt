@@ -24,6 +24,7 @@ Disallow: /0704-admin/
 Disallow: /workshop-graph-0704/
 Disallow: /miro-0704/
 Disallow: /analysis-criteria-0704/
+Disallow: /agenda-vote-0704/
 # /workshop-graph/ 가 통합 페이지 (소스 dropdown + view 토글)
 # /workshop-graph-3d/, /regulation-graph/, /live-graph/는 redirect stub만 유지
 

@@ -148,29 +148,50 @@
       </article>
 
       <article class="card">
-        <div>
-          <h2>추가 투표</h2>
-          <p>7.4 현장에서 하나 더 받을 의제투표 슬롯입니다. 매뉴얼 기준으로는 세션 말미 설문조사 5분 구간에 붙이는 것이 가장 자연스럽습니다.</p>
-          <div class="ops">
-            <div class="op"><b>권장 시간</b><span>17:50~17:55 설문조사 진행 구간. 17:35~17:50 전체 토론 직후라 의제 이해가 모인 뒤 투표하기 좋습니다.</span></div>
-            <div class="op"><b>필요 정보</b><span>투표 제목, 의제 선택지, 이름/조 수집 여부, 중복응답 처리 기준</span></div>
-            <div class="op"><b>운영 방식</b><span>Google Form QR로 받고, 발표용 화면은 기존 의제투표 버블 또는 중요도 평가 화면을 연결합니다.</span></div>
+        <div class="form-access">
+          <div>
+            <h2>의제투표</h2>
+            <p>17:50~17:55 설문조사 구간에 쓰는 7.4 의제 우선순위 투표입니다. QR로 받고 결과는 버블레이스로 보여줍니다.</p>
+            <div class="ops">
+              <div class="op"><b>응답</b><span>Google Form 객관식 1문항, 필수 응답</span></div>
+              <div class="op"><b>결과</b><span>Google Sheet의 <code>Scores</code> 탭을 버블레이스가 5초마다 읽습니다.</span></div>
+            </div>
           </div>
+          <a class="qr-box" href="https://docs.google.com/forms/d/e/1FAIpQLSf9-AIDhnd0cy8Dfu-xXOgz6cQINjpA-tLzHdM2Ypk8qU_eMA/viewform" target="_blank" rel="noopener">
+            <img alt="의제투표 QR" src="/0704-admin/agenda-vote-qr.png">
+            <span>의제투표 QR</span>
+          </a>
         </div>
         <div class="actions">
-          <a class="btn ghost" href="#vote-pending" aria-disabled="true">투표 대기</a>
-          <a class="btn secondary" href="/ko/moderator/agenda-race/" target="_blank" rel="noopener">투표버블 보기</a>
-          <a class="btn ghost" href="/ko/moderator/vote-rating/" target="_blank" rel="noopener">중요도 평가</a>
+          <a class="btn secondary" href="https://docs.google.com/forms/d/e/1FAIpQLSf9-AIDhnd0cy8Dfu-xXOgz6cQINjpA-tLzHdM2Ypk8qU_eMA/viewform" target="_blank" rel="noopener">응답 화면</a>
+          <a class="btn ghost" href="https://docs.google.com/forms/d/1soeRdPzIv4l7Bs6JyJEbb4nzb7MCtmZEe2q8VFwmjgc/edit" target="_blank" rel="noopener">편집 화면</a>
+          <a class="btn warm" href="/agenda-vote-0704/index.html?sheet=1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw" target="_blank" rel="noopener">결과 버블레이스</a>
+          <a class="btn ghost" href="https://docs.google.com/spreadsheets/d/1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw/edit" target="_blank" rel="noopener">Scores Sheet</a>
         </div>
       </article>
 
       <article class="card">
         <div>
           <h2>Google Sheet</h2>
-          <p>Form 응답 저장소와 온톨로지 생성 CSV 원천입니다.</p>
+          <p>주관식 Form 응답 저장소와 온톨로지 생성 CSV 원천입니다.</p>
         </div>
         <div class="actions">
           <a class="btn secondary" href="https://docs.google.com/spreadsheets/d/1T31pzPV8JHeqyCuGUq0M28e81-cCujOC_V8mMFACG20/edit" target="_blank" rel="noopener">Sheet 열기</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <div>
+          <h2>17~18시 소감발표</h2>
+          <p>마지막 전체 나누기 때는 포스트잇 화면으로 조별 소감 묶음을 보여주고, 필요하면 온톨로지에서 핵심 연결 질문만 확대합니다.</p>
+          <div class="ops">
+            <div class="op"><b>기본</b><span>소감/질문 덩어리와 조별 색상은 Miro식 포스트잇 화면에서 확인</span></div>
+            <div class="op"><b>발표</b><span>중심 질문, 유사 묶음, 연결 질문은 온톨로지 화면에서 확대</span></div>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="btn warm" href="/miro-0704/index.html" target="_blank" rel="noopener">소감 포스트잇</a>
+          <a class="btn secondary" href="/workshop-graph-0704/index.html?source=participant-open-questions&mode=showcase&count=50&edgeLabels=on&theme=light&tone=calm" target="_blank" rel="noopener">온톨로지 발표</a>
         </div>
       </article>
 

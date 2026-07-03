@@ -11,6 +11,11 @@ Keep the 7.4 operating dashboard separate from the 0628 test archive. Do not mut
 - Miro-style post-it board: `/miro-0704/index.html`
 - Analysis criteria: `/analysis-criteria-0704/index.html`
 - Response QR asset: `/0704-admin/google-form-qr.png`
+- Agenda vote Form response: `https://docs.google.com/forms/d/e/1FAIpQLSf9-AIDhnd0cy8Dfu-xXOgz6cQINjpA-tLzHdM2Ypk8qU_eMA/viewform`
+- Agenda vote Form edit: `https://docs.google.com/forms/d/1soeRdPzIv4l7Bs6JyJEbb4nzb7MCtmZEe2q8VFwmjgc/edit`
+- Agenda vote Scores Sheet: `https://docs.google.com/spreadsheets/d/1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw/edit`
+- Agenda vote bubble race: `/agenda-vote-0704/index.html?sheet=1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw`
+- Agenda vote QR asset: `/0704-admin/agenda-vote-qr.png`
 
 Admin password:
 
@@ -21,22 +26,36 @@ climate2026
 ## What Changed From 0628
 
 - Removed the dinner RSVP/result card from the admin dashboard.
-- Added a 7.4 "additional vote" slot in the admin dashboard.
+- Added a concrete 7.4 agenda vote card in the admin dashboard.
+- Created a separate 7.4 agenda vote Form and Scores Sheet.
+- Copied the previous bubble race viewer to `/agenda-vote-0704/` and connected it to the Scores Sheet through the `sheet` query parameter.
+- Added a 17:00-18:00 final sharing card for the post-it and ontology presentation flow.
 - Copied the ontology, Miro board, and analysis criteria pages to 0704-specific paths.
 - Updated 0704 internal admin-return and data URLs.
 - Added robots exclusions for the 0704 operating paths.
 
-## Pending Input
+## Agenda Vote Setup
 
-The additional vote cannot be finalized until the operator provides:
+The 7.4 agenda vote Form currently has one required multiple-choice question:
 
-- vote title
-- vote options
-- whether name/team is required
-- duplicate response rule
-- result visualization preference
+- 기후재정확보와 지자체 자발적 참여 방안
+- 전 생애주기 탄소중립 교육체계 구축
+- 시민의식 개선 및 참여 활성화 방안
+- 시민참여 기반 기후 거버넌스 강화
+- 자원순환형 배달 문화 조성 및 생활폐기물 감축
+- 에너지 절약 및 온실가스 배출 감축
+- 친환경 도시 인프라·에너지 전환 및 기후위기 적응
+- 대중교통 친환경 교통전환 방안
 
-Until then the admin page shows the vote slot as pending.
+The bubble race reads the public `Scores` tab from the agenda vote Sheet every five seconds. Keep this header order:
+
+```csv
+slot,name,short,color,c1,c2,c3,c4
+```
+
+If the vote is treated as a simple priority vote, put the same normalized result value into `c1`, `c2`, `c3`, and `c4`. The existing bubble page expects values in the 1-5 visual range.
+
+Current limitation: the Google Forms API created the Form and the Sheets API created the Scores Sheet, but Google does not expose the same one-click "link responses to spreadsheet" workflow cleanly through this CLI flow. Before the live run, connect or copy Form response counts into the `Scores` tab and verify the bubble race shows `LIVE`.
 
 ## Schedule Check
 
@@ -55,6 +74,7 @@ Recommendation: put the additional agenda vote inside the 17:50-17:55 survey blo
 ```powershell
 rg -n "0628|0628-admin|workshop-graph-0628-test|miro-0628-test|analysis-criteria-0628|dinner|저녁" public\0704-admin public\workshop-graph-0704 public\miro-0704 public\analysis-criteria-0704
 rg -n "dinner-vote-0628|dinner-rsvp|저녁식사" public\0704-admin public\workshop-graph-0704 public\miro-0704 public\analysis-criteria-0704
+Invoke-WebRequest "http://127.0.0.1:4321/agenda-vote-0704/index.html?sheet=1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw" -UseBasicParsing
 ```
 
 Both commands should return no matches.

@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>7.4 의제투표 결과 — 2026 기후시민회의</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:        #ffffff;
+    --bg-2:      #f4f6f8;
+    --header:    #2E75B6;
+    --header-2:  #1F4E79;
+    --sky:       #56C2E4;
+    --amber:     #F5A623;
+    --ink:       #14202b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    height: 100vh; width: 100vw;
+    overflow: hidden;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background: #ffffff;
+    pointer-events: none; z-index: 0;
+  }
+
+  /* HEADER — 발표용 최소화: 큰 제목만 */
+  .header-band {
+    background: linear-gradient(180deg, var(--header), #28679F);
+    color: #fff;
+    padding: 14px 56px 16px;
+    box-shadow: 0 6px 28px rgba(46,117,182,0.45);
+    position: relative; z-index: 10;
+  }
+  .h-title {
+    font-size: 60px; font-weight: 900;
+    letter-spacing: -0.02em; line-height: 1;
+  }
+  .h-title .amber { color: var(--amber); }
+
+  /* STAGE — 본문 */
+  .stage {
+    position: relative;
+    height: calc(100vh - 96px);
+    overflow: hidden;
+  }
+  svg.canvas { width: 100%; height: 100%; display: block; position: relative; z-index: 3; }
+
+  /* HUGE phase number bg (Rosling year) */
+  .phase-bg {
+    position: absolute;
+    right: 56px; bottom: 32px;
+    font-size: 460px; font-weight: 900;
+    color: rgba(255,255,255,0.045);
+    letter-spacing: -0.06em; line-height: 0.85;
+    pointer-events: none; user-select: none;
+    font-variant-numeric: tabular-nums;
+    z-index: 1;
+  }
+
+  /* PHASE TITLE — 큰 상단 좌측 발표 라벨 */
+  .phase-title {
+    position: absolute;
+    left: 56px; top: 24px;
+    z-index: 5; pointer-events: none;
+    max-width: 800px;
+  }
+  .pt-kicker {
+    font-size: 18px; font-weight: 900;
+    color: var(--sky); letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .pt-name {
+    font-size: 56px; font-weight: 900;
+    margin-top: 10px;
+    letter-spacing: -0.025em; line-height: 1.0;
+    text-shadow: 0 4px 24px rgba(0,0,0,0.6);
+  }
+  .pt-name .amber { color: var(--amber); }
+  .pt-weight {
+    margin-top: 14px; display: inline-block;
+    background: var(--amber); color: var(--header-2);
+    padding: 12px 22px; border-radius: 14px;
+    font-size: 30px; font-weight: 900; line-height: 1;
+    box-shadow: 0 8px 24px rgba(245,166,35,0.5);
+  }
+
+  /* BUBBLE LABELS */
+  .bubble-label {
+    font-weight: 900; text-anchor: middle;
+    fill: #14202b; pointer-events: none;
+  }
+  .bubble-score {
+    font-weight: 900; text-anchor: middle;
+    fill: #C77800; pointer-events: none;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* AXIS — 흰 배경용 정식 축 */
+  .axis-line { stroke: #5a6a7a; stroke-width: 3; }
+  .axis-tick { stroke: #8a98a8; stroke-width: 2; }
+  .axis-tick-label {
+    fill: #5a6a7a; font-size: 22px; font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .axis-title {
+    fill: #2E75B6; font-size: 30px; font-weight: 900;
+    letter-spacing: 0.02em;
+  }
+  .axis-title.amber { fill: #C77800; }
+
+  /* PLAY OVERLAY (initial big play button) */
+  .play-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(4, 16, 26, 0.7);
+    backdrop-filter: blur(12px);
+    z-index: 20;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 24px;
+    transition: opacity 0.6s, visibility 0.6s;
+  }
+  .play-overlay.hide { opacity: 0; visibility: hidden; }
+  .play-overlay .big-play {
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    background: var(--amber);
+    color: var(--header-2);
+    border: 0;
+    display: grid; place-items: center;
+    font-size: 80px; font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 16px 60px rgba(245,166,35,0.5);
+    transition: transform 0.2s;
+  }
+  .play-overlay .big-play:hover { transform: scale(1.06); }
+  .play-overlay .hint {
+    font-size: 22px; font-weight: 700; color: rgba(255,255,255,0.85);
+    letter-spacing: 0.04em;
+  }
+  .play-overlay .hint small { display: block; font-size: 15px; opacity: 0.6; margin-top: 8px; }
+
+  /* CONTROL DRAWER — 숨겨져 있음, M키로 토글 */
+  .control-drawer {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--header-2);
+    color: #fff;
+    padding: 12px 56px;
+    display: flex; align-items: center; gap: 18px;
+    border-top: 3px solid var(--sky);
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.5);
+    z-index: 30;
+    transform: translateY(100%);
+    transition: transform 0.4s ease;
+  }
+  .control-drawer.show { transform: translateY(0); }
+  .control-drawer button {
+    background: var(--amber); color: var(--header-2);
+    border: 0; padding: 12px 22px; border-radius: 999px;
+    font-weight: 900; font-size: 16px; cursor: pointer; font-family: inherit;
+  }
+  .control-drawer button.secondary {
+    background: rgba(255,255,255,0.14); color: #fff;
+    border: 2px solid rgba(255,255,255,0.28);
+  }
+  .speed-toggle { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; color: #fff;}
+  .speed-toggle input[type=range] { width: 160px; accent-color: var(--amber); }
+  audio { filter: invert(1) hue-rotate(180deg) brightness(0.85); margin-left: auto; }
+
+  /* PHASE TRACK (작은 진행 표시 상단 우측) */
+  .phase-track {
+    position: absolute;
+    top: 32px; right: 40px;
+    display: flex; gap: 10px;
+    z-index: 6; pointer-events: none;
+  }
+  .phase-dot {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: rgba(255,255,255,0.18);
+    transition: background 0.4s, transform 0.4s;
+  }
+  .phase-dot.active { background: var(--amber); transform: scale(1.5); }
+  .phase-dot.done { background: var(--sky); }
+
+  /* SPEED control (상단 우측, 페이즈 트랙 아래) */
+  .speed-control {
+    position: absolute;
+    top: 70px; right: 40px;
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(20, 38, 52, 0.85);
+    border: 1.5px solid rgba(86,194,228,0.35);
+    border-radius: 999px;
+    padding: 10px 18px;
+    font-size: 14px; font-weight: 800;
+    color: #fff;
+    z-index: 7;
+    backdrop-filter: blur(6px);
+  }
+  .speed-control input[type=range] {
+    width: 130px; accent-color: var(--amber);
+  }
+  .speed-control .v { color: var(--amber); min-width: 38px; text-align: right; font-variant-numeric: tabular-nums;}
+
+  /* HUD bottom-left (controls hint) — 흰 배경용 */
+  .hud-hint {
+    position: absolute;
+    left: 56px; bottom: 18px;
+    font-size: 22px; color: #5a6a7a;
+    font-weight: 800; letter-spacing: 0.02em;
+    z-index: 5; pointer-events: none;
+    background: rgba(255,255,255,0.85);
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: 1px solid rgba(46,117,182,0.18);
+  }
+  .hud-hint .key {
+    display: inline-block; padding: 4px 12px;
+    background: #2E75B6;
+    border-radius: 7px;
+    color: #fff; margin: 0 6px;
+    font-weight: 900;
+    font-size: 20px;
+    box-shadow: 0 2px 0 #1F4E79;
+  }
+  .hud-hint .sep { color: #c5cdd6; margin: 0 8px; }
+
+  /* MUTE 버튼 — 우상단 항상 표시 */
+  .mute-btn {
+    position: absolute;
+    right: 32px; top: 28px;
+    z-index: 20;
+    background: #2E75B6; color: #fff;
+    border: none; padding: 14px 22px;
+    border-radius: 12px;
+    font-size: 20px; font-weight: 900;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 4px 14px rgba(46,117,182,0.25);
+    transition: background .2s;
+  }
+  .mute-btn:hover { background: #1F4E79; }
+  .mute-btn.muted { background: #8a98a8; }
+  .mute-btn.muted:hover { background: #5a6a7a; }
+
+  /* LIVE/LOCAL/ERROR indicator — mute 버튼 옆 */
+  .live-indicator {
+    position: absolute;
+    right: 32px; top: 82px;
+    z-index: 20;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 14px; font-weight: 900;
+    font-family: inherit;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    letter-spacing: 0.5px;
+    user-select: none;
+  }
+  .live-indicator.live  { background: #16a34a; }
+  .live-indicator.local { background: #ca8a04; }
+  .live-indicator.error { background: #dc2626; }
+  .admin-link {
+    position: absolute;
+    right: 32px; top: 136px;
+    z-index: 20;
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 38px; padding: 0 15px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.92);
+    color: #1F4E79;
+    border: 1px solid rgba(46,117,182,0.22);
+    font-size: 14px; font-weight: 900;
+    text-decoration: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER 최소 -->
+<div class="header-band">
+  <div class="h-title">2026 기후시민회의  <span class="amber">7.4 의제투표</span></div>
+</div>
+
+<!-- STAGE -->
+<div class="stage">
+  <svg class="canvas" id="canvas"></svg>
+  <div class="phase-bg" id="phaseBg">0</div>
+
+  <div class="phase-title" id="phaseTitle">
+    <div class="pt-kicker">평가 전</div>
+    <div class="pt-name">의제투표 — <span class="amber">결과 집계</span></div>
+  </div>
+
+  <div class="phase-track" id="phaseTrack"></div>
+
+  <div class="speed-control">
+    속도 <input type="range" id="speedTop" min="8000" max="30000" step="1000" value="30000" /> <span class="v" id="speedTopV">30초</span>
+  </div>
+
+  <!-- PLAY OVERLAY -->
+  <div class="play-overlay" id="overlay">
+    <button class="big-play" id="bigPlay">▶</button>
+    <div class="hint">
+      재생 버튼을 누르거나 <b>SPACE</b>를 눌러 시작
+      <small>M: 컨트롤 ↔ · ← →: 페이즈 이동 · R: 처음</small>
+    </div>
+  </div>
+
+  <div class="hud-hint">
+    <span class="key">SPACE</span> 다음 페이즈 <span class="sep">·</span>
+    <span class="key">P</span> 일시정지 <span class="sep">·</span>
+    <span class="key">←</span><span class="key">→</span> 페이즈 이동 <span class="sep">·</span>
+    <span class="key">1-5</span> 직접 점프 <span class="sep">·</span>
+    <span class="key">S</span> 사운드 ON/OFF <span class="sep">·</span>
+    <span class="key">R</span> 처음부터
+  </div>
+
+  <!-- MUTE 버튼 — 항상 보이는 우상단 -->
+  <button id="muteBtn" class="mute-btn" title="사운드 ON/OFF (단축키: S)">🔊 사운드 ON</button>
+  <div id="liveIndicator" class="live-indicator local" title="데이터 소스 상태">🟡 LOCAL</div>
+  <a class="admin-link" href="/0704-admin/index.html">관리자</a>
+</div>
+
+<!-- CONTROL DRAWER -->
+<div class="control-drawer" id="drawer">
+  <button id="play">▶  시작 / 다음 페이즈</button>
+  <button class="secondary" id="prev">⟨ 이전</button>
+  <button class="secondary" id="next">다음 ⟩</button>
+  <button class="secondary" id="reset">↺ 처음</button>
+  <span class="speed-toggle">
+    페이즈당 <input type="range" id="speed" min="8000" max="30000" step="1000" value="30000" />
+    <span id="speedLabel" style="color:var(--amber);font-weight:900">30초</span>
+  </span>
+  <audio id="audio" controls preload="auto">
+    <source src="bgm.mp3" type="audio/mpeg" />
+  </audio>
+</div>
+
+<script>
+const PHASE_ORDER = ['pre', 'c1', 'c2', 'c3', 'c4', 'total'];
+let DATA = null;
+let phaseIdx = 0;
+let phaseSec = 16000;   // 16초 × 5 페이즈 ≈ 80초 (90초 지루함 한계 미만)
+let timer = null;
+let phaseAnimating = false;
+let isPaused = false;       // 진짜 freeze 플래그
+let phaseStart = 0, phaseDur = 0;
+let phaseStartScores = [];
+let phaseEndScores = [];
+let phaseStartYScores = [];
+let phaseEndYScores = [];
+
+const state = [];
+const svg = document.getElementById('canvas');
+const ns = 'http://www.w3.org/2000/svg';
+const W = () => svg.clientWidth;
+const H = () => svg.clientHeight;
+const margin = { top: 130, right: 120, bottom: 100, left: 120 };
+
+const RADIUS_MIN = 40;     // 직전 32→40
+const RADIUS_MAX = 380;    // 직전 320→380 — 화면 임팩트↑
+const SIZE_POW   = 1.6;    // >1 = 점수 차이가 크기 차이로 더 극명
+
+// 10 후보 base — 캔버스 전체 fully spread (zig-zag로 겹침 최소)
+const BASE_POS = [
+  { bx: 0.07, by: 0.76 },   // 감축1
+  { bx: 0.28, by: 0.82 },   // 감축2
+  { bx: 0.50, by: 0.74 },   // 감축3
+  { bx: 0.72, by: 0.80 },   // 감축4
+  { bx: 0.93, by: 0.72 },   // 감축5
+  { bx: 0.07, by: 0.22 },   // 적응1
+  { bx: 0.28, by: 0.16 },   // 적응2
+  { bx: 0.50, by: 0.26 },   // 적응3
+  { bx: 0.72, by: 0.18 },   // 적응4
+  { bx: 0.93, by: 0.24 },   // 적응5
+];
+
+// X·Y 독립 부유 seed (느린·큰 swing)
+const SEEDS = [];
+function generateSeeds(n) {
+  for (let i = 0; i < n; i++) {
+    SEEDS.push({
+      xs: [
+        { freq: 0.32 + i * 0.05, phase: i * 1.91, amp: 0.06 },
+        { freq: 0.65 + i * 0.04, phase: i * 0.83, amp: 0.03 },
+      ],
+      ys: [
+        { freq: 0.28 + i * 0.06, phase: i * 2.47, amp: 0.07 },
+        { freq: 0.55 + i * 0.05, phase: i * 1.13, amp: 0.03 },
+      ],
+    });
+  }
+}
+function freeMove(i, axis, energy = 1.0) {
+  const tNow = performance.now() / 1000;
+  const seeds = SEEDS[i][axis === 'x' ? 'xs' : 'ys'];
+  let v = 0;
+  for (const s of seeds) v += Math.sin(tNow * s.freq + s.phase) * s.amp;
+  return v * energy;
+}
+
+function xCoord(t) { return margin.left + t * (W() - margin.left - margin.right); }
+function yCoord(t) { return H() - margin.bottom - t * (H() - margin.top - margin.bottom); }
+
+// 파스텔 변환 — hex 컬러를 흰색과 mix해서 그득이 PPT 같은 부드러운 톤
+function toPastel(hex, mix = 0.62) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  const pr = Math.round(r * (1 - mix) + 255 * mix);
+  const pg = Math.round(g * (1 - mix) + 255 * mix);
+  const pb = Math.round(b * (1 - mix) + 255 * mix);
+  return `rgb(${pr}, ${pg}, ${pb})`;
+}
+
+function svgEl(name, attrs = {}) {
+  const e = document.createElementNS(ns, name);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+
+// ─── 점수 스케일 (2026-06-12: 시트가 5점 척도 출력으로 변경됨 — race-40과 통일) ──
+const SCORE_MIN = 1, SCORE_MAX = 5, SCORE_SPAN = SCORE_MAX - SCORE_MIN;
+
+// ─── 위치 스케일 — 관찰된 점수 범위로 auto-fit (좁은 실제 범위를 화면 전체로 펼침) ──
+// 2026-06-13: 0.1점 차이도 시각적으로 명확히 떨어져 보이게 + 점수 높을수록 우측+위쪽 monotonic
+let _posRange = { min: SCORE_MIN, span: SCORE_SPAN };
+function setPosRangeFromScores(scores) {
+  let mn = Infinity, mx = -Infinity;
+  for (const s of scores) {
+    if (s > 0) { if (s < mn) mn = s; if (s > mx) mx = s; }
+  }
+  if (!isFinite(mn) || (mx - mn) < 0.05) {
+    _posRange = { min: SCORE_MIN, span: SCORE_SPAN };
+    return;
+  }
+  // 양 끝 10% 패딩 — 최댓값·최솟값이 코너에 박히지 않도록
+  const raw = mx - mn;
+  const pad = raw * 0.10;
+  _posRange = { min: mn - pad, span: raw + 2 * pad };
+}
+
+// ─── Google Sheets live integration ─────────────────────────────────
+const SHEET_ID = new URLSearchParams(location.search).get('sheet');
+const SHEET_NAME = 'Scores';
+const POLL_MS = 5000;
+let pollTimer = null;
+
+function setLiveStatus(kind) {
+  // kind: 'live' | 'local' | 'error'
+  const el = document.getElementById('liveIndicator');
+  if (!el) return;
+  el.classList.remove('live', 'local', 'error');
+  el.classList.add(kind);
+  el.textContent = kind === 'live'  ? '🟢 LIVE'
+                 : kind === 'local' ? '🟡 LOCAL'
+                 : '🔴 ERROR';
+}
+
+// CSV 파서 — 따옴표 안 콤마/이중따옴표 처리
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i+1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (c === '\r') { /* skip */ }
+      else field += c;
+    }
+  }
+  if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+  return rows.filter(r => r.length > 0 && r.some(v => v !== ''));
+}
+
+function csvToAgendas(csvText) {
+  const rows = parseCSV(csvText);
+  if (rows.length < 2) throw new Error('CSV empty');
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const need = ['slot','name','short','color','c1','c2','c3','c4'];
+  for (const k of need) if (!header.includes(k)) throw new Error('missing header: ' + k);
+  const idx = Object.fromEntries(need.map(k => [k, header.indexOf(k)]));
+  return rows.slice(1).map(r => ({
+    slot:  r[idx.slot]?.trim(),
+    name:  r[idx.name]?.trim(),
+    short: r[idx.short]?.trim(),
+    color: r[idx.color]?.trim(),
+    scores: {
+      c1: parseFloat(r[idx.c1]),
+      c2: parseFloat(r[idx.c2]),
+      c3: parseFloat(r[idx.c3]),
+      c4: parseFloat(r[idx.c4]),
+    },
+  })).filter(a => a.slot && a.name);
+}
+
+async function fetchSheetAgendas() {
+  if (!SHEET_ID) return null;
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const text = await res.text();
+  return csvToAgendas(text);
+}
+
+async function refetchSheet() {
+  if (!SHEET_ID) return;
+  // 페이즈 애니메이션 중에는 데이터 교체 안 함 (시각적 점프 방지)
+  if (phaseAnimating) return;
+  try {
+    const agendas = await fetchSheetAgendas();
+    if (agendas && agendas.length === DATA.agendas.length) {
+      DATA.agendas = agendas;
+      setLiveStatus('live');
+    }
+  } catch (e) {
+    console.warn('[sheet] poll failed:', e);
+    setLiveStatus('error');
+  }
+}
+
+async function load() {
+  // 1) data.json 항상 로드 — meta + fallback agendas
+  DATA = await fetch('data.json', { cache: 'no-store' }).then(r => r.json());
+  setLiveStatus('local');
+
+  // 2) ?sheet=ID 있으면 Sheets에서 agendas 교체 시도
+  if (SHEET_ID) {
+    try {
+      const agendas = await fetchSheetAgendas();
+      if (agendas && agendas.length > 0) {
+        DATA.agendas = agendas;
+        setLiveStatus('live');
+        console.info('[sheet] live data loaded:', agendas.length, 'rows');
+      }
+    } catch (e) {
+      console.warn('[sheet] initial load failed, using data.json fallback:', e);
+      setLiveStatus('error');
+    }
+    // 5초 폴링 시작
+    pollTimer = setInterval(refetchSheet, POLL_MS);
+  }
+
+  generateSeeds(DATA.agendas.length);
+  drawDefs();
+  drawAxes();
+  drawBubbles();
+  initState();
+  setPhaseLabel(0);
+  buildPhaseTrack();
+  requestAnimationFrame(tick);
+}
+
+function drawDefs() {
+  // BBC Gapminder 식 2D 플랫 — radialGradient 제거 (의도적 no-op)
+  const defs = svgEl('defs');
+  svg.appendChild(defs);
+}
+
+function drawAxes() {
+  const yMin = yCoord(0), yMax = yCoord(1);
+  const xMin = xCoord(0), xMax = xCoord(1);
+
+  // X 축 본선
+  const xLine = svgEl('line', { class:'axis-line', x1: xMin, y1: yMin, x2: xMax, y2: yMin });
+  svg.appendChild(xLine);
+  // Y 축 본선
+  const yLine = svgEl('line', { class:'axis-line', x1: xMin, y1: yMin, x2: xMin, y2: yMax });
+  svg.appendChild(yLine);
+
+  // 눈금 + 라벨 — 점수 1.0 / 3.0 / 5.0 (정규화 0 / 0.5 / 1)
+  // X 축: 점수 1 → t≈0.08, 점수 5 → t≈0.90 (getTarget의 tx 매핑과 일치)
+  [[0.08, '1.0'], [0.49, '3.0'], [0.90, '5.0']].forEach(([t, lbl]) => {
+    const x = xCoord(t);
+    const tick = svgEl('line', { class:'axis-tick', x1:x, y1:yMin, x2:x, y2:yMin + 12 });
+    svg.appendChild(tick);
+    const txt = svgEl('text', { class:'axis-tick-label', x:x, y:yMin + 42, 'text-anchor':'middle' });
+    txt.textContent = lbl;
+    svg.appendChild(txt);
+  });
+  // Y 축 (yCoord 거꾸로 — 0 = 하단, 1 = 상단; getTarget의 ty 매핑 0.10~0.90)
+  [[0.10, '1.0'], [0.50, '3.0'], [0.90, '5.0']].forEach(([t, lbl]) => {
+    const y = yCoord(t);
+    const tick = svgEl('line', { class:'axis-tick', x1:xMin - 12, y1:y, x2:xMin, y2:y });
+    svg.appendChild(tick);
+    const txt = svgEl('text', { class:'axis-tick-label', x:xMin - 20, y:y + 8, 'text-anchor':'end' });
+    txt.textContent = lbl;
+    svg.appendChild(txt);
+  });
+
+  // 축 제목 — 페이즈별로 갱신 (setAxisTitles)
+  const xT = svgEl('text', { id:'xAxisTitle', class:'axis-title amber', x: xMax, y: yMin + 80, 'text-anchor':'end' });
+  xT.textContent = '평가 기준 점수 →';
+  svg.appendChild(xT);
+
+  const yT = svgEl('text', { id:'yAxisTitle', class:'axis-title', x: 0, y: 0, 'text-anchor':'end' });
+  yT.textContent = '↑ 다른 기준 평균';
+  yT.setAttribute('transform', `translate(${xMin - 60}, ${yMax + 10}) rotate(-90)`);
+  svg.appendChild(yT);
+}
+
+// 페이즈마다 축 제목 갱신
+function setAxisTitles(idx) {
+  const xT = document.getElementById('xAxisTitle');
+  const yT = document.getElementById('yAxisTitle');
+  if (!xT || !yT) return;
+  const phKey = PHASE_ORDER[idx];
+  // 통일 규칙: 점수 높을수록 오른쪽 + 위쪽
+  const phaseNames = {
+    pre:   ['→ 평가 시작 전',           '↑ 평가 시작 전'],
+    c1:    ['→ 기후위기 직접 관련 (점수↑)', '↑ 점수 높을수록 위'],
+    c2:    ['→ 시민 삶·일상 실천 (점수↑)',  '↑ 점수 높을수록 위'],
+    c3:    ['→ 사회적 합의 필요 (점수↑)',   '↑ 점수 높을수록 위'],
+    c4:    ['→ 다양한 대안 비교 (점수↑)',   '↑ 점수 높을수록 위'],
+    total: ['→ 종합 가중평균 점수',         '↑ 순위 (위쪽 = 1위)'],
+  };
+  const [xLbl, yLbl] = phaseNames[phKey] || ['→ 점수', '↑ 점수'];
+  xT.textContent = xLbl;
+  yT.textContent = yLbl;
+}
+
+function drawBubbles() {
+  // 2-layer 구조: 원이 모두 먼저, 글자/배지가 모두 나중에 → 글자는 항상 모든 원 위
+  const circlesLayer = svgEl('g', { id: 'bubble-circles' });
+  const labelsLayer = svgEl('g', { id: 'bubble-labels' });
+  svg.appendChild(circlesLayer);
+  svg.appendChild(labelsLayer);
+
+  DATA.agendas.forEach((a, i) => {
+    // 원 (circlesLayer)
+    const halo = svgEl('circle', { cx:0, cy:0, r:0, fill:'none', opacity:0 });
+    halo.classList.add('halo');
+    circlesLayer.appendChild(halo);
+    const pastel = toPastel(a.color, 0.62);
+    const circle = svgEl('circle', { cx:0, cy:0, r:25, fill:pastel, 'fill-opacity':1, stroke:a.color, 'stroke-width':7, 'stroke-opacity':1 });
+    circle.classList.add('main');
+    circlesLayer.appendChild(circle);
+    const spec = svgEl('ellipse', { cx:0, cy:0, rx:0, ry:0, fill:'none', opacity:0 });
+    spec.classList.add('spec');
+    circlesLayer.appendChild(spec);
+
+    // 글자/배지 (labelsLayer) — 모든 원 위에 그려짐
+    const scoreBox = svgEl('rect', { class:'score-box', x:0, y:0, rx:10, ry:10, width:0, height:0, fill:'#ffffff', stroke:a.color, 'stroke-width':3, opacity:0 });
+    labelsLayer.appendChild(scoreBox);
+    const scoreT = svgEl('text', { class:'bubble-score', x:0, y:0, 'font-size':'18px' });
+    scoreT.textContent = '0';
+    labelsLayer.appendChild(scoreT);
+    const labelBox = svgEl('rect', { class:'label-box', x:0, y:0, rx:14, ry:14, width:0, height:0, fill:'#ffffff', stroke:a.color, 'stroke-width':4, opacity:0 });
+    labelsLayer.appendChild(labelBox);
+    const nameT = svgEl('text', { class:'bubble-label', x:0, y:0, 'font-size':'18px' });
+    nameT.textContent = a.short;
+    labelsLayer.appendChild(nameT);
+    const rankBg = svgEl('circle', { class:'rank-bg', cx:0, cy:0, r:0, fill:'#FFFFFF', stroke:a.color, 'stroke-width':4, opacity:0 });
+    labelsLayer.appendChild(rankBg);
+    const rankT = svgEl('text', { class:'rank-num', x:0, y:0, 'font-size':'40px', 'text-anchor':'middle', 'dominant-baseline':'central', fill:'#0D0F1A', 'font-weight':'900', opacity:0 });
+    rankT.textContent = '';
+    labelsLayer.appendChild(rankT);
+    const crown = svgEl('text', { class:'crown', x:0, y:0, 'font-size':'72px', 'text-anchor':'middle', opacity:0 });
+    crown.textContent = '👑';
+    labelsLayer.appendChild(crown);
+
+    // applyBubble가 쓸 노드 레퍼런스를 state에 저장 (querySelector 대체)
+    if (!state[i]) state[i] = {};
+    state[i].nodes = { halo, main: circle, spec, scoreT, nameT, scoreBox, labelBox, rankBg, rankT, crown };
+  });
+}
+
+function initState() {
+  DATA.agendas.forEach((a, i) => {
+    const nodes = state[i] && state[i].nodes;   // drawBubbles에서 저장한 노드 보존
+    state[i] = {
+      x: BASE_POS[i].bx,
+      y: BASE_POS[i].by,
+      r: RADIUS_MIN,
+      scoreNow: 0,
+      nodes,
+    };
+    applyBubble(i);
+  });
+}
+
+function buildPhaseTrack() {
+  const wrap = document.getElementById('phaseTrack');
+  for (let i = 0; i < 5; i++) {
+    const d = document.createElement('div');
+    d.className = 'phase-dot';
+    wrap.appendChild(d);
+  }
+  updatePhaseDots();
+}
+function updatePhaseDots() {
+  const dots = document.querySelectorAll('.phase-dot');
+  dots.forEach((d, i) => {
+    d.classList.toggle('active', i + 1 === phaseIdx);
+    d.classList.toggle('done', i + 1 < phaseIdx);
+  });
+}
+
+function getScoreForPhase(agenda, key) {
+  if (key === 'pre') return 0;
+  if (key === 'total') {
+    const w = DATA.meta.weights, s = agenda.scores;
+    return s.c1*w.c1 + s.c2*w.c2 + s.c3*w.c3 + s.c4*w.c4;
+  }
+  return agenda.scores[key];
+}
+
+// 핵심: getTarget — base 위치에서 점수 따라 우상향 드리프트
+// 점수 높으면 더 (0.85, 0.85)에 가까워짐, 낮으면 base 위치 유지
+// Y metric: "현재 기준 외 나머지 기준들의 평균" — X와 다른 차원
+// Rosling 식 두 metric 분리 — 4 사분면 자연 활용
+function getYMetric(agenda, phKey) {
+  if (phKey === 'pre') return 0;
+  if (phKey === 'total') {
+    // 종합 페이즈: Y = total (X와 같음 → 대각선 정렬)
+    const w = DATA.meta.weights, s = agenda.scores;
+    return s.c1*w.c1 + s.c2*w.c2 + s.c3*w.c3 + s.c4*w.c4;
+  }
+  // 기준 페이즈: Y = 나머지 3 기준의 평균
+  const others = ['c1','c2','c3','c4'].filter(c => c !== phKey);
+  let sum = 0;
+  for (const c of others) sum += agenda.scores[c];
+  return sum / others.length;
+}
+
+function getTarget(i, score) {
+  // 단순·명확 규칙 — 200명 가시성: 점수 높을수록 오른쪽 + 위쪽 (대각선 상승)
+  // 2026-06-13: 관찰 범위 auto-fit → 0.1점 차이도 화면에서 명확히 분리됨
+  // 2026-06-13: jitY 제거 — score-monotonic 깨던 원인 (높은 점수 ↔ 낮은 ty 가능했음)
+  if (score <= 0) {
+    // pre-phase — 좌하단 베이스라인에 옆으로 살짝 흩어 두기 (리셋 가시화)
+    return { tx: 0.08 + (i % 10) * 0.018, ty: 0.08 };
+  }
+  const tNorm = Math.max(0, Math.min(1, (score - _posRange.min) / _posRange.span));
+  const tx = 0.08 + tNorm * 0.84;       // 0.08 ~ 0.92
+  const ty = 0.10 + tNorm * 0.82;       // 0.10 ~ 0.92 (yCoord 컨벤션: 큰 ty = 화면 위)
+  return {
+    tx: Math.max(0.05, Math.min(0.95, tx)),
+    ty: Math.max(0.08, Math.min(0.94, ty)),
+  };
+}
+
+// 좌표 trajectory — 시작 12%는 pre 위치 유지 (가시적 리셋), 그 후 자유 방황
+function posTrajectory(i, k, startX, startY, endX, endY) {
+  if (k < 0.20) return { x: startX, y: startY };    // 첫 20% pre 위치 hold — 리셋 확실히 보이게
+  if (k >= 0.97) return { x: endX, y: endY };
+
+  const lk = (k - 0.20) / 0.77;
+  // 베이스 직선 경로
+  const baseX = startX + (endX - startX) * (1 - Math.pow(1 - lk, 2.0));
+  const baseY = startY + (endY - startY) * (1 - Math.pow(1 - lk, 2.0));
+
+  // 플로팅 제거 — 페이즈 전환만 부드럽게, 좌우 흔들림 없음
+  const wobX = 0;
+  const wobY = 0;
+
+  return {
+    x: Math.max(0.05, Math.min(0.95, baseX + wobX)),
+    y: Math.max(0.08, Math.min(0.92, baseY + wobY)),
+  };
+}
+
+// 점수 trajectory — 표시되는 숫자만 (위치와 별개). 첫 12%는 0점 유지 (리셋 가시화)
+function trajectory(i, k, sStart, sEnd) {
+  if (k < 0.20) return sStart;
+  if (k >= 0.97) return sEnd;
+  const lk = (k - 0.20) / 0.77;
+  const base = sStart + (sEnd - sStart) * (1 - Math.pow(1 - lk, 2.2));
+  const decay = Math.pow(1 - lk, 1.6) * 0.22;
+  const sd = i * 0.83;
+  const osc =
+      Math.sin(lk * Math.PI * 1.8 + sd) * 0.22
+    + Math.sin(lk * Math.PI * 3.6 + sd * 1.7) * 0.08;
+  return Math.max(0, Math.min(SCORE_MAX, base + osc * decay));
+}
+
+function applyBubble(i) {
+  const a = DATA.agendas[i];
+  const s = state[i];
+  const tNorm = Math.max(0, Math.min(1, (s.scoreNow - SCORE_MIN) / SCORE_SPAN));
+
+  const cx = xCoord(s.x);
+  const cy = yCoord(s.y);
+  const r = s.r;
+
+  // 2-layer 구조 — state[i].nodes에서 직접 참조
+  const n = s.nodes;
+  const halo = n.halo, main = n.main;
+  const scoreT = n.scoreT, nameT = n.nameT;
+  const scoreBox = n.scoreBox, labelBox = n.labelBox;
+  const rankBg = n.rankBg, rankT = n.rankT, crown = n.crown;
+
+  halo.setAttribute('cx', cx); halo.setAttribute('cy', cy); halo.setAttribute('r', r + 14);
+  main.setAttribute('cx', cx); main.setAttribute('cy', cy); main.setAttribute('r', r);
+  if (s.rank && s.rank >= 1 && s.rank <= 3 && PHASE_ORDER[phaseIdx] === 'total') {
+    // 순위는 원 안 중앙 — 다른 의제 라벨과 겹치지 않도록
+    const bx = cx;
+    const by = cy;
+    const br = Math.max(50, r * 0.48);
+    rankBg.setAttribute('cx', bx); rankBg.setAttribute('cy', by); rankBg.setAttribute('r', br);
+    rankBg.setAttribute('opacity', 0.95);
+    rankT.setAttribute('x', bx); rankT.setAttribute('y', by);
+    rankT.setAttribute('font-size', `${br * 1.4}px`);
+    rankT.textContent = String(s.rank);
+    rankT.setAttribute('opacity', 1);
+    crown.setAttribute('opacity', 0);
+    if (s.rank === 1)      main.setAttribute('stroke-width', 14);
+    else if (s.rank === 2) main.setAttribute('stroke-width', 11);
+    else                   main.setAttribute('stroke-width', 9);
+  } else {
+    rankBg.setAttribute('opacity', 0);
+    rankT.setAttribute('opacity', 0);
+    crown.setAttribute('opacity', 0);
+    main.setAttribute('stroke-width', 7);
+  }
+  // 2D 플랫 — drop-shadow / specular highlight 제거
+  main.removeAttribute('filter');
+
+  // 점수 글자
+  scoreT.textContent = s.scoreNow > 0 ? s.scoreNow.toFixed(2) : '';
+  scoreT.setAttribute('x', cx);
+  scoreT.setAttribute('y', cy + r + 76);
+  scoreT.setAttribute('font-size', '68px');
+
+  // 안건 이름: placeLabels()가 미리 정한 위치·폰트 사용 (못 찾으면 축소)
+  const labelGap = 30;
+  const px = (s.labelX !== undefined) ? s.labelX : cx;
+  const py = (s.labelY !== undefined) ? s.labelY : (cy - r - labelGap);
+  const labelFont = s.labelFont || 96;
+  nameT.setAttribute('x', px);
+  nameT.setAttribute('y', py);
+  nameT.setAttribute('font-size', `${labelFont}px`);
+  nameT.setAttribute('opacity', 1);
+
+  // 글상자 — 텍스트 뒤에 흰 배경 + 컬러 테두리
+  // bbox 측정해서 정확히 둘러쌈 (paddings 포함)
+  fitBox(labelBox, nameT, 24, 14, true);
+  fitBox(scoreBox, scoreT, 18, 10, s.scoreNow > 0);
+}
+
+// 텍스트 노드 둘레에 rect 배경 박스를 맞춤
+function fitBox(boxEl, textEl, padX, padY, visible) {
+  if (!visible) { boxEl.setAttribute('opacity', 0); return; }
+  let bb;
+  try { bb = textEl.getBBox(); } catch { boxEl.setAttribute('opacity', 0); return; }
+  if (!bb || bb.width === 0) { boxEl.setAttribute('opacity', 0); return; }
+  boxEl.setAttribute('x', bb.x - padX);
+  boxEl.setAttribute('y', bb.y - padY);
+  boxEl.setAttribute('width', bb.width + padX * 2);
+  boxEl.setAttribute('height', bb.height + padY * 2);
+  boxEl.setAttribute('opacity', 1);
+}
+
+// 라벨 충돌 해소 — 원 안 겹치지만 글자 겹치는 문제 해결
+// 큰 원(중요 의제) 우선, 16개 후보 순회 + 안 되면 폰트 축소 (fallback)
+function placeLabels() {
+  const LABEL_FONT_MAX = 96;
+  const LABEL_FONT_MIN = 56;       // 못 찾으면 여기까지 축소
+  const SCORE_FONT = 68;
+  const GAP = 24;
+  const placed = [];
+
+  // 점수 박스 먼저 등록 (원 바로 아래 고정) — 라벨이 점수를 피하도록
+  for (let i = 0; i < state.length; i++) {
+    const s = state[i];
+    const cx = xCoord(s.x), cy = yCoord(s.y), r = s.r;
+    if (s.scoreNow <= 0) continue;
+    const sw = SCORE_FONT * 2.2;
+    const sh = SCORE_FONT;
+    placed.push({
+      x1: cx - sw/2, x2: cx + sw/2,
+      y1: cy + r + 64 - sh/2, y2: cy + r + 64 + sh/2,
+    });
+  }
+
+  // 큰 원부터 우선 배치
+  const order = state.map((s, i) => i).sort((a, b) => state[b].r - state[a].r);
+  for (const i of order) {
+    const s = state[i];
+    const a = DATA.agendas[i];
+    const cx = xCoord(s.x), cy = yCoord(s.y), r = s.r;
+    const text = a.short || '';
+
+    // 폰트 80→48 단계 축소하며 자리 찾기
+    let chosen = null;
+    let chosenFont = LABEL_FONT_MAX;
+    for (let font = LABEL_FONT_MAX; font >= LABEL_FONT_MIN; font -= 8) {
+      const charW = font * 0.58;
+      const w = Math.max(font * 2, text.length * charW);
+      const h = font;
+      const candidates = [];
+      // 위 4단계, 아래 4단계 — 점점 멀리
+      for (let k = 0; k < 4; k++) {
+        candidates.push({ x: cx, y: cy - r - GAP - h * k * 0.9 });
+        candidates.push({ x: cx, y: cy + r + GAP + h * (1 + k * 0.9) });
+      }
+      // 좌우 대각 — 위/아래 각 3단계
+      for (let k = 0; k < 3; k++) {
+        const off = r * 0.55 + h * k * 0.9;
+        candidates.push({ x: cx + off, y: cy - r - GAP - h * k * 0.6 });
+        candidates.push({ x: cx - off, y: cy - r - GAP - h * k * 0.6 });
+        candidates.push({ x: cx + off, y: cy + r + GAP + h * (1 + k * 0.6) });
+        candidates.push({ x: cx - off, y: cy + r + GAP + h * (1 + k * 0.6) });
+      }
+      for (const c of candidates) {
+        const box = { x1: c.x - w/2, x2: c.x + w/2, y1: c.y - h*0.85, y2: c.y + h*0.15 };
+        let ok = true;
+        for (const p of placed) {
+          if (box.x1 < p.x2 && box.x2 > p.x1 && box.y1 < p.y2 && box.y2 > p.y1) { ok = false; break; }
+        }
+        if (ok) { chosen = c; chosenFont = font; break; }
+      }
+      if (chosen) break;
+    }
+    // 그래도 못 찾으면 최소 폰트로 위에 고정 (최후)
+    if (!chosen) {
+      chosen = { x: cx, y: cy - r - GAP };
+      chosenFont = LABEL_FONT_MIN;
+    }
+    const charW = chosenFont * 0.58;
+    const w = Math.max(chosenFont * 2, text.length * charW);
+    placed.push({ x1: chosen.x - w/2, x2: chosen.x + w/2, y1: chosen.y - chosenFont*0.85, y2: chosen.y + chosenFont*0.15 });
+
+    if (s.labelX === undefined) { s.labelX = chosen.x; s.labelY = chosen.y; s.labelFont = chosenFont; }
+    else {
+      s.labelX += (chosen.x - s.labelX) * 0.25;
+      s.labelY += (chosen.y - s.labelY) * 0.25;
+      s.labelFont = (s.labelFont || chosenFont) + (chosenFont - (s.labelFont || chosenFont)) * 0.25;
+    }
+  }
+}
+
+function setPhaseLabel(idx) {
+  setAxisTitles(idx);
+  const ph = DATA.meta.phases[idx];
+  const bg = document.getElementById('phaseBg');
+  const t = document.getElementById('phaseTitle');
+
+  if (idx === 0) {
+    bg.textContent = '0';
+    t.innerHTML = `<div class="pt-kicker">평가 전</div><div class="pt-name">의제투표 — <span class="amber">결과 집계</span></div>`;
+    return;
+  }
+
+  if (idx === 5) {
+    bg.textContent = '★';
+    t.innerHTML = `<div class="pt-kicker">종합 결과</div><div class="pt-name">4 기준 <span class="amber">가중평균</span></div><div class="pt-weight">시민 우선순위 의제</div>`;
+    return;
+  }
+
+  bg.textContent = String(idx);
+  const parts = ph.label.split('  ');
+  const name = (parts.slice(1).join(' ') || '').replace(
+    /(시민 삶|일상 실천|기후위기|사회적 합의|다양한 대안)/g, '<span class="amber">$1</span>'
+  );
+  t.innerHTML = `
+    <div class="pt-kicker">${parts[0]}</div>
+    <div class="pt-name">${name}</div>
+    <div class="pt-weight">${ph.weight}% <small style="font-size:18px;opacity:0.9;margin-left:4px">가중</small></div>
+  `;
+}
+
+// Phase 시작·끝 좌표 (좌표 trajectory용)
+let phaseStartXs = [], phaseStartYs = [];
+let phaseEndXs = [], phaseEndYs = [];
+
+// 매 페이즈 시작 시 모든 버블을 pre 상태로 리셋 (좌하단 cluster, 0점)
+function snapToPre() {
+  DATA.agendas.forEach((a, i) => {
+    state[i].scoreNow = 0;
+    // 좌하단 가로로 펼쳐 — 10개가 잘 보이게
+    state[i].x = 0.06 + (i % 5) * 0.10 + (Math.floor(i / 5)) * 0.04;
+    state[i].y = 0.10 + (Math.floor(i / 5)) * 0.10;
+    state[i].r = RADIUS_MIN;
+    state[i].rank = 0;
+    // 라벨 위치도 리셋 — 잔상 방지
+    state[i].labelX = undefined;
+    state[i].labelY = undefined;
+    state[i].labelFont = 80;
+    applyBubble(i);
+  });
+}
+
+function startPhase(idx) {
+  isPaused = false;
+  // 매 페이즈마다 pre 리셋 — 이전 페이즈 결과 영향 X
+  snapToPre();
+
+  phaseIdx = idx;
+  setPhaseLabel(idx);
+  updatePhaseDots();
+
+  // 점수: 모두 0에서 시작 → 해당 페이즈 최종 점수로
+  phaseStartScores = DATA.agendas.map(() => 0);
+  phaseEndScores = DATA.agendas.map(a => getScoreForPhase(a, PHASE_ORDER[idx]));
+
+  // 2026-06-13: 위치 범위를 이번 페이즈 최종 점수 기준으로 auto-fit
+  setPosRangeFromScores(phaseEndScores);
+
+  // 좌표: 현재 (pre 위치) → 페이즈 최종 위치
+  phaseStartXs = state.map(s => s.x);
+  phaseStartYs = state.map(s => s.y);
+  phaseEndXs = []; phaseEndYs = [];
+  DATA.agendas.forEach((a, i) => {
+    const finalScore = phaseEndScores[i];
+    const t = getTarget(i, finalScore);
+    phaseEndXs.push(t.tx);
+    phaseEndYs.push(t.ty);
+  });
+  phaseStart = performance.now();
+  phaseDur = phaseSec;
+  phaseAnimating = true;
+}
+
+// 즉시 페이즈 N의 최종 결과 위치로 점프 (애니메이션 없이)
+function jumpToPhase(idx) {
+  isPaused = false;
+  phaseAnimating = false;
+  phaseIdx = idx;
+  setPhaseLabel(idx);
+  updatePhaseDots();
+  // 2026-06-13: 위치 범위 auto-fit (점프 시에도 동일하게)
+  const _targetScores = DATA.agendas.map(a => getScoreForPhase(a, PHASE_ORDER[idx]));
+  setPosRangeFromScores(_targetScores);
+  DATA.agendas.forEach((a, i) => {
+    const score = _targetScores[i];
+    state[i].scoreNow = score;
+    const { tx, ty } = getTarget(i, score);
+    state[i].x = tx;
+    state[i].y = ty;
+    const tNorm = Math.max(0, Math.min(1, (score - SCORE_MIN) / SCORE_SPAN));
+    state[i].r = score <= 0 ? RADIUS_MIN : RADIUS_MIN + (RADIUS_MAX - RADIUS_MIN) * Math.pow(tNorm, SIZE_POW);
+    applyBubble(i);
+  });
+  document.getElementById('play').textContent = idx >= PHASE_ORDER.length - 1 ? '↺ 처음' : '▶  다음 페이즈 전환';
+}
+
+function tick() {
+  // 진짜 freeze — 점수·위치·크기 모두 그대로
+  if (isPaused) {
+    DATA.agendas.forEach((_, i) => applyBubble(i));
+    requestAnimationFrame(tick);
+    return;
+  }
+
+  const tnow = performance.now();
+  let k = 1;
+  if (phaseAnimating) {
+    k = Math.min((tnow - phaseStart) / phaseDur, 1);
+    if (k >= 1) phaseAnimating = false;
+  }
+
+  DATA.agendas.forEach((a, i) => {
+    const score = phaseAnimating
+      ? trajectory(i, k, phaseStartScores[i], phaseEndScores[i])
+      : state[i].scoreNow;
+
+    let tgtX, tgtY;
+    if (phaseAnimating) {
+      // 좌표 자체가 trajectory — 직선이 아닌 자유 2D 방황 → 끝점에 정확히 도착
+      const p = posTrajectory(i, k, phaseStartXs[i], phaseStartYs[i], phaseEndXs[i], phaseEndYs[i]);
+      tgtX = p.x;
+      tgtY = p.y;
+    } else {
+      // 정지 상태 — 작은 부유
+      const t = getTarget(i, score);
+      // 정지 상태 = 완전 정지 (플로팅 제거)
+      tgtX = Math.max(0.05, Math.min(0.95, t.tx));
+      tgtY = Math.max(0.05, Math.min(0.95, t.ty));
+    }
+
+    const lerp = phaseAnimating ? 0.3 : 0.06;
+    state[i].x += (tgtX - state[i].x) * lerp;
+    state[i].y += (tgtY - state[i].y) * lerp;
+
+    const tNorm = Math.max(0, Math.min(1, (score - SCORE_MIN) / SCORE_SPAN));
+    const r = score <= 0 ? RADIUS_MIN : RADIUS_MIN + (RADIUS_MAX - RADIUS_MIN) * Math.pow(tNorm, SIZE_POW);
+    state[i].r += (r - state[i].r) * 0.15;
+    state[i].scoreNow = score;
+  });
+
+  // ──── 충돌 회피 (relaxation) ────
+  // 픽셀 공간에서 pair-wise 밀어내기, 정규화 좌표에 반영. 3 iter면 충분.
+  relaxCollisions(3);
+
+  // ──── 라벨 충돌 해소 ────
+  placeLabels();
+
+  // ──── 종합 페이즈 settle 후 순위 + Y 단조성 보정 ────
+  if (!phaseAnimating && PHASE_ORDER[phaseIdx] === 'total') {
+    assignRanks();
+    enforceYMonotonic();  // 점수 높을수록 위로 — 충돌 회피로 뒤집힌 거 보정
+  } else {
+    DATA.agendas.forEach((_, i) => { state[i].rank = 0; });
+  }
+
+  DATA.agendas.forEach((_, i) => applyBubble(i));
+
+  requestAnimationFrame(tick);
+}
+
+// 버블 간 겹침 해소 — 픽셀 공간에서 push apart, 정규화 좌표로 환산
+function relaxCollisions(iter) {
+  const w = W(), h = H();
+  const xToPx = t => margin.left + t * (w - margin.left - margin.right);
+  const yToPx = t => h - margin.bottom - t * (h - margin.top - margin.bottom);
+  const pxToX = px => (px - margin.left) / (w - margin.left - margin.right);
+  const pxToY = py => 1 - (py - margin.top) / (h - margin.top - margin.bottom);
+
+  const PAD = 28;  // 버블 간 최소 여백 (px) — 라벨이 들어갈 공간 확보
+  for (let it = 0; it < iter; it++) {
+    for (let i = 0; i < state.length; i++) {
+      for (let j = i + 1; j < state.length; j++) {
+        const a = state[i], b = state[j];
+        const ax = xToPx(a.x), ay = yToPx(a.y);
+        const bx = xToPx(b.x), by = yToPx(b.y);
+        let dx = bx - ax, dy = by - ay;
+        let d = Math.sqrt(dx * dx + dy * dy);
+        const minD = a.r + b.r + PAD;
+        if (d < 0.01) { dx = (Math.random() - 0.5); dy = (Math.random() - 0.5); d = 1; }
+        if (d < minD) {
+          const push = (minD - d) * 0.5;
+          const nx = dx / d, ny = dy / d;
+          // 큰 원이 더 무거움 — 점수 높은 의제는 덜 밀리고, 작은 원이 더 밀림
+          const wA = b.r / (a.r + b.r);
+          const wB = a.r / (a.r + b.r);
+          const ax2 = ax - nx * push * wA;
+          const ay2 = ay - ny * push * wA;
+          const bx2 = bx + nx * push * wB;
+          const by2 = by + ny * push * wB;
+          a.x = Math.max(0.04, Math.min(0.96, pxToX(ax2)));
+          a.y = Math.max(0.06, Math.min(0.94, pxToY(ay2)));
+          b.x = Math.max(0.04, Math.min(0.96, pxToX(bx2)));
+          b.y = Math.max(0.06, Math.min(0.94, pxToY(by2)));
+        }
+      }
+    }
+  }
+}
+
+// 종합 페이즈 — 점수 높을수록 위, X는 보존
+// 현재 Y 값들을 모은 뒤 점수 순위에 따라 재할당 (충돌 회피로 뒤집힌 케이스 보정)
+function enforceYMonotonic() {
+  const scoreSorted = state.map((s, i) => ({ i, score: s.scoreNow }))
+    .sort((a, b) => b.score - a.score);              // 점수 desc
+  const yPool = state.map(s => s.y).slice()
+    .sort((a, b) => b - a);                          // y desc (높은 위치부터)
+  scoreSorted.forEach((entry, rank) => {
+    // lerp으로 부드럽게 — 갑작스러운 점프 방지
+    state[entry.i].y += (yPool[rank] - state[entry.i].y) * 0.18;
+  });
+}
+
+// 현재 점수 기준 순위 매기기 (1~10)
+function assignRanks() {
+  const sorted = state
+    .map((s, i) => ({ i, score: s.scoreNow }))
+    .sort((a, b) => b.score - a.score);
+  sorted.forEach((entry, idx) => {
+    state[entry.i].rank = idx + 1;
+  });
+}
+
+// ============ CONTROLS ============
+// 수동 모드 — 한 페이즈씩 진행, 발표자가 SPACE/Next로 다음 페이즈 트리거
+function play() {
+  if (phaseAnimating) return;     // 진행 중엔 무시
+  isPaused = false;               // 정지 상태였다면 해제
+  document.getElementById('audio').play().catch(() => {});
+  document.getElementById('overlay').classList.add('hide');
+
+  // 마지막 페이즈에 도달했고 settle 완료 → reset 후 다시 시작
+  if (phaseIdx >= PHASE_ORDER.length - 1) {
+    reset();
+    setTimeout(play, 400);
+    return;
+  }
+
+  // 다음 페이즈 한 번만 진행
+  startPhase(phaseIdx + 1);
+  document.getElementById('play').textContent = '▶  다음 페이즈';
+}
+function pause() {
+  // 진짜 정지 — tick에서 모든 업데이트 skip
+  isPaused = true;
+  phaseAnimating = false;
+  document.getElementById('play').textContent = '▶  다음 페이즈';
+}
+function reset() {
+  isPaused = false;
+  phaseAnimating = false;
+  phaseIdx = 0;
+  state.forEach(s => { s.scoreNow = 0; });
+  initState();
+  setPhaseLabel(0);
+  updatePhaseDots();
+  document.getElementById('audio').pause();
+  document.getElementById('audio').currentTime = 0;
+  document.getElementById('overlay').classList.remove('hide');
+  document.getElementById('play').textContent = '▶  재생';
+}
+function togglePlay() {
+  if (timer) pause();
+  else if (phaseIdx >= PHASE_ORDER.length - 1) { reset(); setTimeout(play, 300); }
+  else play();
+}
+
+document.getElementById('bigPlay').addEventListener('click', play);
+document.getElementById('play').addEventListener('click', togglePlay);
+document.getElementById('reset').addEventListener('click', reset);
+document.getElementById('prev').addEventListener('click', () => { pause(); startPhase(Math.max(0, phaseIdx - 1)); });
+document.getElementById('next').addEventListener('click', () => { pause(); startPhase(Math.min(PHASE_ORDER.length - 1, phaseIdx + 1)); });
+document.getElementById('speed').addEventListener('input', e => {
+  phaseSec = +e.target.value;
+  document.getElementById('speedLabel').textContent = (phaseSec/1000).toFixed(0) + '초';
+  document.getElementById('speedTop').value = phaseSec;
+  document.getElementById('speedTopV').textContent = (phaseSec/1000).toFixed(0) + '초';
+});
+
+// 상단 우측 속도 슬라이더 — 항상 보임
+document.getElementById('speedTop').addEventListener('input', e => {
+  phaseSec = +e.target.value;
+  document.getElementById('speedTopV').textContent = (phaseSec/1000).toFixed(0) + '초';
+  document.getElementById('speed').value = phaseSec;
+  document.getElementById('speedLabel').textContent = (phaseSec/1000).toFixed(0) + '초';
+});
+
+// 키보드 단축키 — focus 잡힌 input element가 키를 흡수하는 거 방지
+document.addEventListener('keydown', e => {
+  // active input (슬라이더) blur 처리 — 화살표·SPACE 가로채기 방지
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'BUTTON' || tag === 'AUDIO') {
+    document.activeElement.blur();
+  }
+
+  // arrow/SPACE preventDefault (scroll 방지)
+  if (['Space','ArrowRight','ArrowLeft','ArrowUp','ArrowDown'].includes(e.code)) {
+    e.preventDefault();
+  }
+
+  if (e.code === 'Space')       { togglePlay(); }
+  else if (e.code === 'ArrowRight') { jumpToPhase(Math.min(PHASE_ORDER.length - 1, phaseIdx + 1)); }
+  else if (e.code === 'ArrowLeft')  { jumpToPhase(Math.max(0, phaseIdx - 1)); }
+  else if (e.code === 'Digit1') { jumpToPhase(1); }
+  else if (e.code === 'Digit2') { jumpToPhase(2); }
+  else if (e.code === 'Digit3') { jumpToPhase(3); }
+  else if (e.code === 'Digit4') { jumpToPhase(4); }
+  else if (e.code === 'Digit5') { jumpToPhase(5); }
+  else if (e.code === 'Digit0') { jumpToPhase(0); }
+  else if (e.code === 'KeyP')   { pause(); }
+  // Enter = 결과 보기 (현재 페이즈 최종 위치·점수·크기로 즉시 점프)
+  else if (e.code === 'Enter')  { jumpToPhase(Math.max(1, phaseIdx)); }
+  else if (e.code === 'KeyM')   { document.getElementById('drawer').classList.toggle('show'); }
+  else if (e.code === 'KeyR')   { reset(); }
+  else if (e.code === 'KeyS')   { toggleMute(); }
+});
+
+// 사운드 ON/OFF
+function toggleMute() {
+  const a = document.getElementById('audio');
+  const btn = document.getElementById('muteBtn');
+  a.muted = !a.muted;
+  if (a.muted) {
+    btn.textContent = '🔇 사운드 OFF';
+    btn.classList.add('muted');
+  } else {
+    btn.textContent = '🔊 사운드 ON';
+    btn.classList.remove('muted');
+  }
+}
+document.getElementById('muteBtn').addEventListener('click', toggleMute);
+
+// 클릭 시 input/button focus 자동 해제 (5ms 후) — 키 인식 보장
+document.addEventListener('mouseup', () => {
+  setTimeout(() => {
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'BUTTON') document.activeElement.blur();
+  }, 5);
+});
+
+window.addEventListener('resize', () => {
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  drawDefs(); drawAxes(); drawBubbles();
+  DATA.agendas.forEach((_, i) => applyBubble(i));
+});
+
+load();
+</script>
+
+</body>
+</html>
