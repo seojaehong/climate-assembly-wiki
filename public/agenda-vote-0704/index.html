@@ -265,6 +265,7 @@
   .live-indicator.live  { background: #16a34a; }
   .live-indicator.local { background: #ca8a04; }
   .live-indicator.error { background: #dc2626; }
+  .live-indicator.demo  { background: #7c3aed; }
   .admin-link {
     position: absolute;
     right: 32px; top: 136px;
@@ -344,6 +345,9 @@
 </div>
 
 <script>
+const PAGE_PARAMS = new URLSearchParams(location.search);
+const DEMO_MODE = PAGE_PARAMS.get('demo') === 'full';
+const DATA_FILE = DEMO_MODE ? 'data-demo-full.json' : 'data.json';
 const PHASE_ORDER = ['pre', 'c1', 'c2', 'c3', 'c4', 'total'];
 let DATA = null;
 let phaseIdx = 0;
@@ -449,18 +453,19 @@ function setPosRangeFromScores(scores) {
 }
 
 // ─── Google Sheets live integration ─────────────────────────────────
-const SHEET_ID = new URLSearchParams(location.search).get('sheet');
+const SHEET_ID = DEMO_MODE ? null : PAGE_PARAMS.get('sheet');
 const SHEET_NAME = 'Scores';
 const POLL_MS = 5000;
 let pollTimer = null;
 
 function setLiveStatus(kind) {
-  // kind: 'live' | 'local' | 'error'
+  // kind: 'live' | 'local' | 'error' | 'demo'
   const el = document.getElementById('liveIndicator');
   if (!el) return;
-  el.classList.remove('live', 'local', 'error');
+  el.classList.remove('live', 'local', 'error', 'demo');
   el.classList.add(kind);
   el.textContent = kind === 'live'  ? '🟢 LIVE'
+                 : kind === 'demo'  ? '🟣 DEMO'
                  : kind === 'local' ? '🟡 LOCAL'
                  : '🔴 ERROR';
 }
@@ -536,8 +541,8 @@ async function refetchSheet() {
 
 async function load() {
   // 1) data.json 항상 로드 — meta + fallback agendas
-  DATA = await fetch('data.json', { cache: 'no-store' }).then(r => r.json());
-  setLiveStatus('local');
+  DATA = await fetch(DATA_FILE, { cache: 'no-store' }).then(r => r.json());
+  setLiveStatus(DEMO_MODE ? 'demo' : 'local');
 
   // 2) ?sheet=ID 있으면 Sheets에서 agendas 교체 시도
   if (SHEET_ID) {

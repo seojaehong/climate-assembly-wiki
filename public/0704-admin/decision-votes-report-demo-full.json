@@ -1,16 +1,16 @@
 {
-  "refreshedAt": "2026-07-04T00:26:32.3972813+09:00",
-  "spreadsheetId": "1m_GD3ohvDW1PXT8Gg3AoTxpf0voRdrJpz2a38PREBB8",
-  "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1m_GD3ohvDW1PXT8Gg3AoTxpf0voRdrJpz2a38PREBB8/edit",
+  "refreshedAt": "2026-07-04T15:52:00+09:00",
+  "spreadsheetId": "demo-full-scenario",
+  "spreadsheetUrl": "https://climate-assembly.org/0704-admin/vote-structure?demo=full",
   "slots": [
     {
       "code": "V0",
       "title": "의제 통합 동의",
-      "responseCount": 0,
+      "responseCount": 64,
       "counts": {
-        "동의하지 않음": 0,
-        "판단 유보": 0,
-        "동의": 0
+        "동의하지 않음": 11,
+        "동의": 47,
+        "판단 유보": 6
       },
       "responseUrl": "https://docs.google.com/forms/d/e/1FAIpQLSc8NV9MvB52WM8IzQFJCGK3HJmZ8e_UOW4cbV6wd3MERohc-Q/viewform",
       "editUrl": "https://docs.google.com/forms/d/1QXrENjjmh7NcTF_9sm4aUPhnh1_WuAWvP4q80AdBM8s/edit"
@@ -18,11 +18,11 @@
     {
       "code": "V1A",
       "title": "감축분야 추가 의제 선정",
-      "responseCount": 0,
+      "responseCount": 61,
       "counts": {
-        "찬성": 0,
-        "반대": 0,
-        "판단 유보": 0
+        "반대": 14,
+        "찬성": 41,
+        "판단 유보": 6
       },
       "responseUrl": "https://docs.google.com/forms/d/e/1FAIpQLSeyeycU58FPedk64L8E5QeDdvEETgVcnGwJDEC6NEZTrMGOtA/viewform",
       "editUrl": "https://docs.google.com/forms/d/1YCMzcYk_XLD95_8MvzJAB4ReQKQs4nl7P18o9hBQTk4/edit"
@@ -30,11 +30,11 @@
     {
       "code": "V1B",
       "title": "적응 의제 배분",
-      "responseCount": 0,
+      "responseCount": 58,
       "counts": {
-        "찬성": 0,
-        "반대": 0,
-        "판단 유보": 0
+        "반대": 9,
+        "찬성": 45,
+        "판단 유보": 4
       },
       "responseUrl": "https://docs.google.com/forms/d/e/1FAIpQLSfN73ZpueVP0YHcPNiQeMxVdAwPsDUHU8sbG5oW-Bk20oXAUg/viewform",
       "editUrl": "https://docs.google.com/forms/d/1bdEi3hN6p8qOqWGdJV3f8UK3g4wPDEtojjQakCpDTd4/edit"

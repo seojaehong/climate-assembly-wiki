@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-07-04T00:28:00+09:00",
+  "agendaVote": {
+    "formId": "1soeRdPzIv4l7Bs6JyJEbb4nzb7MCtmZEe2q8VFwmjgc",
+    "spreadsheetId": "1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw",
+    "isAcceptingResponses": true,
+    "requiredQuestion": true,
+    "emailCollectionType": "DO_NOT_COLLECT",
+    "responseCountAfterRefresh": 0,
+    "scoresAreZeroWhenNoResponses": true
+  },
+  "decisionVotes": {
+    "spreadsheetId": "1m_GD3ohvDW1PXT8Gg3AoTxpf0voRdrJpz2a38PREBB8",
+    "slots": [
+      {
+        "code": "V0",
+        "formId": "1QXrENjjmh7NcTF_9sm4aUPhnh1_WuAWvP4q80AdBM8s",
+        "isAcceptingResponses": true,
+        "requiredQuestion": true,
+        "emailCollectionType": "DO_NOT_COLLECT",
+        "responseCountAfterRefresh": 0
+      },
+      {
+        "code": "V1A",
+        "formId": "1YCMzcYk_XLD95_8MvzJAB4ReQKQs4nl7P18o9hBQTk4",
+        "isAcceptingResponses": true,
+        "requiredQuestion": true,
+        "emailCollectionType": "DO_NOT_COLLECT",
+        "responseCountAfterRefresh": 0
+      },
+      {
+        "code": "V1B",
+        "formId": "1bdEi3hN6p8qOqWGdJV3f8UK3g4wPDEtojjQakCpDTd4",
+        "isAcceptingResponses": true,
+        "requiredQuestion": true,
+        "emailCollectionType": "DO_NOT_COLLECT",
+        "responseCountAfterRefresh": 0
+      }
+    ]
+  },
+  "verdict": {
+    "actualAccumulation": "partial_requires_refresh_bridge",
+    "liveWithoutOperator": "partial_sheet_polls_but_form_to_sheet_requires_refresh",
+    "completionByAttendeeCount": "not_guaranteed_without_roster_or_token",
+    "duplicatePrevention": "not_guaranteed_without_login_or_token",
+    "resultPreservation": "pass",
+    "zeroResponseDisplaySafety": "pass"
+  },
+  "recommendedNextControl": "participant_token_field_or_google_login_limit_one_response"
+}
+

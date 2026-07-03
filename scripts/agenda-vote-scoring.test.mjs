@@ -2,8 +2,8 @@ import { describe, expect, test } from 'vitest';
 import { buildScoreRows, normalizeVoteCounts, scoreToPosition } from './agenda-vote-scoring.mjs';
 
 describe('normalizeVoteCounts', () => {
-  test('uses projector-friendly sample scores when no responses exist', () => {
-    expect(normalizeVoteCounts([0, 0, 0, 0])).toEqual([4.9, 4.4, 3.9, 3.4]);
+  test('keeps live vote scores at zero when no responses exist', () => {
+    expect(normalizeVoteCounts([0, 0, 0, 0])).toEqual([0, 0, 0, 0]);
   });
 
   test('normalizes vote counts to the visible 1.00-4.90 range', () => {
@@ -12,7 +12,7 @@ describe('normalizeVoteCounts', () => {
 
   test('never emits a display score below 1.00 or above 5.00', () => {
     const scores = normalizeVoteCounts([2, -1, 1, 999]);
-    expect(Math.min(...scores)).toBeGreaterThanOrEqual(1);
+    expect(Math.min(...scores)).toBeGreaterThanOrEqual(0);
     expect(Math.max(...scores)).toBeLessThanOrEqual(4.9);
   });
 });

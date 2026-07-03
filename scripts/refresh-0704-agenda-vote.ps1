@@ -179,7 +179,7 @@ foreach ($option in $Options) {
     $rawScore = 1 + (3.9 * $count / $maxCount)
     $score = [math]::Min([double]4.9, [math]::Max([double]1.0, [double]([math]::Round($rawScore * 2) / 2)))
   } else {
-    $score = [math]::Max([double]1.0, [double]([math]::Round((4.9 - 0.5 * $optionIndex) * 10) / 10))
+    $score = 0
   }
   $scoreRows += ,@($option.Slot, $option.Name, $option.Short, $option.Color, $score, $score, $score, $score)
   $optionIndex++

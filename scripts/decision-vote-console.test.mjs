@@ -15,6 +15,9 @@ describe('0704 conditional vote console', () => {
 
     expect(html).toContain('id="qrModal"');
     expect(html).toContain('id="resultModal"');
+    expect(html).toContain('data-result-next');
+    expect(html).toContain('result-card feature');
+    expect(html).toContain('renderActiveResult');
     expect(html).toContain('완료 전에는 결과를 참여단에게 공개하지 않습니다');
     expect(html).toContain('/0704-admin/decision-votes-report.json');
   });
@@ -59,5 +62,22 @@ describe('0704 conditional vote console', () => {
     expect(handoff).toContain('Supabase 운영규정 투표 레퍼런스');
     expect(handoff).toContain('/regulation-vote/');
     expect(handoff).toContain('/archive/2026-06-14/regulation_R1-R9_results.html');
+  });
+
+  test('full demo scenario is available without touching live Sheets', () => {
+    const admin = readText('public/0704-admin/index.html');
+    const voteStructure = readText('public/0704-admin/vote-structure.html');
+    const agendaRace = readText('public/agenda-vote-0704/index.html');
+    const decisionDemo = JSON.parse(readText('public/0704-admin/decision-votes-report-demo-full.json'));
+    const agendaDemo = JSON.parse(readText('public/agenda-vote-0704/data-demo-full.json'));
+
+    expect(admin).toContain('/0704-admin/vote-structure?demo=full');
+    expect(admin).toContain('/agenda-vote-0704/index.html?demo=full');
+    expect(voteStructure).toContain('decision-votes-report-demo-full.json');
+    expect(agendaRace).toContain("DATA_FILE = DEMO_MODE ? 'data-demo-full.json' : 'data.json'");
+    expect(agendaRace).toContain("SHEET_ID = DEMO_MODE ? null : PAGE_PARAMS.get('sheet')");
+    expect(decisionDemo.slots.map((slot) => slot.responseCount)).toEqual([64, 61, 58]);
+    expect(agendaDemo.agendas).toHaveLength(10);
+    expect(agendaDemo.meta.phases.map((phase) => phase.id)).toEqual(['pre', 'c1', 'c2', 'c3', 'c4', 'total']);
   });
 });

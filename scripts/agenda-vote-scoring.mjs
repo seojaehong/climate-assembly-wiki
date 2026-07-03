@@ -1,12 +1,11 @@
 const MIN_SCORE = 1;
 const MAX_SCORE = 4.9;
-const SAMPLE_STEP = 0.5;
 
 export function normalizeVoteCounts(counts) {
   const safeCounts = counts.map((count) => Math.max(0, Number(count) || 0));
   const maxCount = Math.max(...safeCounts, 0);
   if (maxCount <= 0) {
-    return safeCounts.map((_, index) => Math.max(MIN_SCORE, Number((MAX_SCORE - SAMPLE_STEP * index).toFixed(2))));
+    return safeCounts.map(() => 0);
   }
   return safeCounts.map((count) => {
     const score = MIN_SCORE + ((MAX_SCORE - MIN_SCORE) * count / maxCount);
