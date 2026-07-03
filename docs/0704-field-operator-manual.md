@@ -26,6 +26,12 @@
 - 의제투표: https://docs.google.com/forms/d/e/1FAIpQLSf9-AIDhnd0cy8Dfu-xXOgz6cQINjpA-tLzHdM2Ypk8qU_eMA/viewform
 - 17~18시 소감발표: https://docs.google.com/forms/d/e/1FAIpQLSccOoHa2gSgIm2EUGqq4zrzkBpr1C6ptsx9HpfYdYLjebINmg/viewform
 
+추가 판단 투표가 진행자가 별도로 안내될 때만 아래 URL을 사용한다.
+
+- V0 의제 통합 동의: https://docs.google.com/forms/d/e/1FAIpQLSc8NV9MvB52WM8IzQFJCGK3HJmZ8e_UOW4cbV6wd3MERohc-Q/viewform
+- V1A 감축분야 추가 의제 선정: https://docs.google.com/forms/d/e/1FAIpQLSeyeycU58FPedk64L8E5QeDdvEETgVcnGwJDEC6NEZTrMGOtA/viewform
+- V1B 적응 의제 배분: https://docs.google.com/forms/d/e/1FAIpQLSfN73ZpueVP0YHcPNiQeMxVdAwPsDUHU8sbG5oW-Bk20oXAUg/viewform
+
 ## 3. 출력
 
 출력 담당자가 관리자 메뉴에서 PDF 버튼을 눌러 인쇄한다.
@@ -37,4 +43,4 @@
 
 ## 추가 투표가 안내되는 경우
 
-진행자가 추가 투표를 안내하면, 새로 안내되는 QR 또는 관리자 메뉴의 `투표 구조` 화면만 따른다. 현장 담당자에게는 별도 명령어를 안내하지 않는다.
+진행자가 추가 투표를 안내하면 관리자 메뉴의 `투표 구조` 화면에서 해당 QR만 크게 띄운다. 현장 담당자에게는 별도 명령어를 안내하지 않는다.

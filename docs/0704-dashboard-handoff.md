@@ -34,6 +34,14 @@ Keep the 7.4 operating dashboard separate from the 0628 test archive. Do not mut
 - A/B live question print PDF: `/0704-admin/live-sheet-questions-print.pdf`
 - A/B live agenda print PDF: `/0704-admin/live-sheet-agendas-print.pdf`
 - Script-based vote structure: `/0704-admin/vote-structure.html`
+- Decision vote V0 response: `https://docs.google.com/forms/d/e/1FAIpQLSc8NV9MvB52WM8IzQFJCGK3HJmZ8e_UOW4cbV6wd3MERohc-Q/viewform`
+- Decision vote V0 edit: `https://docs.google.com/forms/d/1QXrENjjmh7NcTF_9sm4aUPhnh1_WuAWvP4q80AdBM8s/edit`
+- Decision vote V1A response: `https://docs.google.com/forms/d/e/1FAIpQLSeyeycU58FPedk64L8E5QeDdvEETgVcnGwJDEC6NEZTrMGOtA/viewform`
+- Decision vote V1A edit: `https://docs.google.com/forms/d/1YCMzcYk_XLD95_8MvzJAB4ReQKQs4nl7P18o9hBQTk4/edit`
+- Decision vote V1B response: `https://docs.google.com/forms/d/e/1FAIpQLSfN73ZpueVP0YHcPNiQeMxVdAwPsDUHU8sbG5oW-Bk20oXAUg/viewform`
+- Decision vote V1B edit: `https://docs.google.com/forms/d/1bdEi3hN6p8qOqWGdJV3f8UK3g4wPDEtojjQakCpDTd4/edit`
+- Decision vote result Sheet: `https://docs.google.com/spreadsheets/d/1m_GD3ohvDW1PXT8Gg3AoTxpf0voRdrJpz2a38PREBB8/edit`
+- Decision vote QR assets: `/0704-admin/decision-vote-v0-qr.png`, `/0704-admin/decision-vote-v1a-qr.png`, `/0704-admin/decision-vote-v1b-qr.png`
 
 ## Copy-Ready Response URLs
 
@@ -42,6 +50,9 @@ Use these when a URL needs to be pasted into KakaoTalk or a slide. The admin pag
 - Carbon-reduction question response: `https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform`
 - Group agenda input response: `https://docs.google.com/forms/d/e/1FAIpQLSf6irdECaMygffockxbuSxhsCxOG9WExkxHhtspZT4FhlmouQ/viewform`
 - Agenda vote response: `https://docs.google.com/forms/d/e/1FAIpQLSf9-AIDhnd0cy8Dfu-xXOgz6cQINjpA-tLzHdM2Ypk8qU_eMA/viewform`
+- Decision V0 response: `https://docs.google.com/forms/d/e/1FAIpQLSc8NV9MvB52WM8IzQFJCGK3HJmZ8e_UOW4cbV6wd3MERohc-Q/viewform`
+- Decision V1A response: `https://docs.google.com/forms/d/e/1FAIpQLSeyeycU58FPedk64L8E5QeDdvEETgVcnGwJDEC6NEZTrMGOtA/viewform`
+- Decision V1B response: `https://docs.google.com/forms/d/e/1FAIpQLSfN73ZpueVP0YHcPNiQeMxVdAwPsDUHU8sbG5oW-Bk20oXAUg/viewform`
 - Reflection response: `https://docs.google.com/forms/d/e/1FAIpQLSccOoHa2gSgIm2EUGqq4zrzkBpr1C6ptsx9HpfYdYLjebINmg/viewform`
 - A/B live input Sheet: `https://docs.google.com/spreadsheets/d/1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ/edit`
 
@@ -69,10 +80,18 @@ Script check note: `20260702-기후시민회의 2차 의제 워크숍 진행 스
 
 Vote slots:
 
-- V0: education + citizen participation agenda integration agreement, only if whole-room confirmation is needed.
-- V1A: carbon-reduction agenda addition yes/no, only if integration is rejected or separate confirmation is needed.
-- V1B: adaptation agenda two-item allocation yes/no, only if integration is rejected.
+- V0: education + citizen participation agenda integration agreement, only if whole-room confirmation is needed. Form and QR are already created.
+- V1A: carbon-reduction agenda addition yes/no, only if integration is rejected or separate confirmation is needed. Form and QR are already created.
+- V1B: adaptation agenda two-item allocation yes/no, only if integration is rejected. Form and QR are already created.
 - V2: final carbon-reduction/energy-transition agenda selection. This is the current `Agenda vote Form` plus bubble race.
+
+Refresh conditional vote results:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\refresh-0704-decision-votes.ps1
+```
+
+This updates `V0`, `V1A`, `V1B`, `Summary`, and `Guide` in `0704 추가 판단 투표 결과`.
 
 The 7.4 agenda vote Form currently has one required multiple-choice question:
 
