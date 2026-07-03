@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2026-07-03T21:39:03.4196159+09:00",
+  "mode": "live_sheet",
+  "spreadsheetId": "1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ",
+  "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ/edit",
+  "questionCount": 0,
+  "agendaCount": 0,
+  "questionOutputHtml": "public/0704-admin/live-sheet-questions-print.html",
+  "questionOutputPdf": "public/0704-admin/live-sheet-questions-print.pdf",
+  "agendaOutputHtml": "public/0704-admin/live-sheet-agendas-print.html",
+  "agendaOutputPdf": "public/0704-admin/live-sheet-agendas-print.pdf",
+  "emailTo": "kesica3@gmail.com",
+  "emailStatus": "dry_run"
+}

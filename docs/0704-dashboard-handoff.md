@@ -30,6 +30,19 @@ Keep the 7.4 operating dashboard separate from the 0628 test archive. Do not mut
 - Expert question print PDF: `/0704-admin/expert-questions-print.pdf`
 - Expert question print HTML preview: `/0704-admin/expert-questions-print.html`
 - Expert question sample print PDF: `/0704-admin/expert-questions-print-sample-v2.pdf`
+- A/B live input Sheet: `https://docs.google.com/spreadsheets/d/1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ/edit`
+- A/B live question print PDF: `/0704-admin/live-sheet-questions-print.pdf`
+- A/B live agenda print PDF: `/0704-admin/live-sheet-agendas-print.pdf`
+
+## Copy-Ready Response URLs
+
+Use these when a URL needs to be pasted into KakaoTalk or a slide. The admin page also has copy buttons for the same operational URLs.
+
+- Carbon-reduction question response: `https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform`
+- Group agenda input response: `https://docs.google.com/forms/d/e/1FAIpQLSf6irdECaMygffockxbuSxhsCxOG9WExkxHhtspZT4FhlmouQ/viewform`
+- Agenda vote response: `https://docs.google.com/forms/d/e/1FAIpQLSf9-AIDhnd0cy8Dfu-xXOgz6cQINjpA-tLzHdM2Ypk8qU_eMA/viewform`
+- Reflection response: `https://docs.google.com/forms/d/e/1FAIpQLSccOoHa2gSgIm2EUGqq4zrzkBpr1C6ptsx9HpfYdYLjebINmg/viewform`
+- A/B live input Sheet: `https://docs.google.com/spreadsheets/d/1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ/edit`
 
 Admin password:
 
@@ -143,6 +156,46 @@ The following editor permissions were applied through `gws drive permissions cre
 - agenda vote Form and Scores Sheet.
 
 ## Fast Expert Question Print And Email
+
+Default route for 2026-07-04 field operation: use the A/B live input Sheet below. The older Form-based route remains available as backup when the team wants to print participant Form responses directly.
+
+## A/B Live Sheet Input
+
+This is the main live operation route for tomorrow, excluding final PPT deck work.
+
+- Live Sheet: `https://docs.google.com/spreadsheets/d/1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ/edit`
+- Editor already added: `kesica3@gmail.com`
+- Question tabs: `A조 질문입력`, `B조 질문입력`
+- Agenda tabs: `A조 의제입력`, `B조 의제입력`
+- Guide tab: `Guide`
+
+Moderator flow:
+
+1. Recorder A enters expert questions into `A조 질문입력`.
+2. Recorder B enters expert questions into `B조 질문입력`.
+3. Operator refreshes the print packet.
+4. Later, recorders enter agenda candidates into `A조 의제입력` and `B조 의제입력`.
+5. Operator refreshes the agenda print packet.
+6. When agenda candidates are confirmed, promote the Sheet agenda rows into the agenda vote Form.
+7. Refresh the agenda vote Scores Sheet and open the bubble race.
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-sheet-packets.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-sheet-packets.ps1 -SendEmail
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\promote-0704-live-sheet-agendas-to-vote.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\promote-0704-live-sheet-agendas-to-vote.ps1 -Apply
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\refresh-0704-agenda-vote.ps1
+```
+
+Generated outputs:
+
+- `/0704-admin/live-sheet-questions-print.html`
+- `/0704-admin/live-sheet-questions-print.pdf`
+- `/0704-admin/live-sheet-agendas-print.html`
+- `/0704-admin/live-sheet-agendas-print.pdf`
+- `evaluation/0704-live-sheet-packets-report.json`
+
+Current check on 2026-07-03 21:39 KST: the live Sheet is empty, so the export report showed `questionCount: 0` and `agendaCount: 0`; both PDFs were still generated with empty-state text. The promotion dry run correctly returned `no_live_sheet_agendas`.
 
 For the external advisor Q&A block, the fastest route is:
 

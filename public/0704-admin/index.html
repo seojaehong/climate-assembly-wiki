@@ -35,6 +35,7 @@
   button.secondary,a.btn.secondary{background:#111827}
   button.warm,a.btn.warm{background:var(--accent-2)}
   button.ghost,a.btn.ghost{background:#eef2f7;color:#1f2937}
+  button.copy{background:#e8f3f1;color:#0f766e}
   .login-actions{display:flex;gap:8px;margin-top:14px}
   .error{display:none;margin-top:12px;color:var(--danger);font-weight:800;font-size:13px}
   .app{display:none}
@@ -67,6 +68,8 @@
   .analysis-item{padding:11px;border:1px solid rgba(15,23,42,.08);border-radius:10px;background:#f8fafc}
   .analysis-item b{display:block;margin-bottom:5px;font-size:13px}
   .analysis-item span{display:block;color:#475569;font-size:13px;font-weight:800;line-height:1.4}
+  .toast{position:fixed;right:20px;bottom:20px;z-index:80;display:none;padding:10px 13px;border-radius:10px;background:#111827;color:#fff;font-size:13px;font-weight:900;box-shadow:0 16px 40px rgba(15,23,42,.20)}
+  .toast.show{display:block}
   code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;background:#eef2f7;padding:2px 5px;border-radius:4px}
   @media (max-width:760px){
     .grid{grid-template-columns:1fr}
@@ -135,9 +138,10 @@
             <h2>탄소 감축 질문</h2>
             <p>참여단이 입력하는 실제 주관식 응답 폼입니다. 현장에서는 오른쪽 QR을 바로 띄워 접속하게 합니다.</p>
             <div class="actions">
-              <a class="btn secondary" href="https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform" target="_blank" rel="noopener">응답 화면</a>
-              <a class="btn ghost" href="https://docs.google.com/forms/d/1yktkA_XAMGcVt4mlnC-0Yc3d3N0N0YQ__Dk1TfdTaCc/edit" target="_blank" rel="noopener">편집 화면</a>
-              <button class="qr-toggle" id="show-qr" type="button">QR 탭</button>
+          <a class="btn secondary" href="https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform" target="_blank" rel="noopener">응답 화면</a>
+          <a class="btn ghost" href="https://docs.google.com/forms/d/1yktkA_XAMGcVt4mlnC-0Yc3d3N0N0YQ__Dk1TfdTaCc/edit" target="_blank" rel="noopener">편집 화면</a>
+          <button class="copy" type="button" data-copy-url="https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform">응답 URL 복사</button>
+          <button class="qr-toggle" id="show-qr" type="button">QR 탭</button>
             </div>
           </div>
           <a class="qr-box" id="qr-inline" href="https://docs.google.com/forms/d/e/1FAIpQLSeH8fIX-Mjha32u1osfa_aQ2fM8OxAWUCg6_kZsFF33WsCaqA/viewform" target="_blank" rel="noopener">
@@ -166,6 +170,7 @@
           <a class="btn secondary" href="https://docs.google.com/forms/d/e/1FAIpQLSf6irdECaMygffockxbuSxhsCxOG9WExkxHhtspZT4FhlmouQ/viewform" target="_blank" rel="noopener">응답 화면</a>
           <a class="btn ghost" href="https://docs.google.com/forms/d/1hWBiDnSvVdelCAXbwgkk1H9w06LDUim0-FcTr5-tXHE/edit" target="_blank" rel="noopener">편집 화면</a>
           <a class="btn ghost" href="https://docs.google.com/spreadsheets/d/1JCW6-r86Jr9uJWH4kc0GINe4R7u0EbPgIvbxMaRtZwY/edit" target="_blank" rel="noopener">입력 Sheet</a>
+          <button class="copy" type="button" data-copy-url="https://docs.google.com/forms/d/e/1FAIpQLSf6irdECaMygffockxbuSxhsCxOG9WExkxHhtspZT4FhlmouQ/viewform">응답 URL 복사</button>
         </div>
       </article>
 
@@ -189,6 +194,7 @@
           <a class="btn ghost" href="https://docs.google.com/forms/d/1soeRdPzIv4l7Bs6JyJEbb4nzb7MCtmZEe2q8VFwmjgc/edit" target="_blank" rel="noopener">편집 화면</a>
           <a class="btn warm" href="/agenda-vote-0704/index.html?sheet=1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw" target="_blank" rel="noopener">결과 버블레이스</a>
           <a class="btn ghost" href="https://docs.google.com/spreadsheets/d/1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw/edit" target="_blank" rel="noopener">Scores Sheet</a>
+          <button class="copy" type="button" data-copy-url="https://docs.google.com/forms/d/e/1FAIpQLSf9-AIDhnd0cy8Dfu-xXOgz6cQINjpA-tLzHdM2Ypk8qU_eMA/viewform">투표 URL 복사</button>
         </div>
       </article>
 
@@ -221,6 +227,7 @@
           <a class="btn secondary" href="https://docs.google.com/forms/d/e/1FAIpQLSccOoHa2gSgIm2EUGqq4zrzkBpr1C6ptsx9HpfYdYLjebINmg/viewform" target="_blank" rel="noopener">소감 응답</a>
           <a class="btn ghost" href="https://docs.google.com/forms/d/1mxwgRD-IHocgAIsisgr9v9-9J-wotjgmHqRDK1NlLyI/edit" target="_blank" rel="noopener">소감 편집</a>
           <a class="btn ghost" href="https://docs.google.com/spreadsheets/d/1HK4B_CilVyEbQgtDuZnnMPgUW0naDT3VAYt2Shh8qms/edit" target="_blank" rel="noopener">소감 Sheet</a>
+          <button class="copy" type="button" data-copy-url="https://docs.google.com/forms/d/e/1FAIpQLSccOoHa2gSgIm2EUGqq4zrzkBpr1C6ptsx9HpfYdYLjebINmg/viewform">소감 URL 복사</button>
           <a class="btn warm" href="/miro-0704/index.html" target="_blank" rel="noopener">소감 포스트잇</a>
           <a class="btn secondary" href="/workshop-graph-0704/index.html?source=participant-open-questions&mode=showcase&count=50&edgeLabels=on&theme=light&tone=calm" target="_blank" rel="noopener">온톨로지 발표</a>
         </div>
@@ -229,7 +236,7 @@
       <article class="card">
         <div>
           <h2>전문가 질문 인쇄·메일</h2>
-          <p>현장에서 A/B조 질문 입력자료가 들어오면 Form 응답을 다시 읽어 즉시 생성하는 인쇄본입니다. 외부자문단 질의응답용이라 질문만 정리합니다.</p>
+          <p>예비 경로입니다. 기본 운영은 아래 A/B 실시간 Sheet 입력을 쓰고, 참여단 Form 응답을 그대로 인쇄할 때만 사용합니다.</p>
           <div class="ops">
             <div class="op"><b>시점</b><span>조별 질문 만들기 이후, 외부자문단 질의응답 전</span></div>
             <div class="op"><b>실시간</b><span>현재 PDF는 마지막 갱신본입니다. 응답이 새로 들어오면 아래 명령을 다시 실행해야 최신 인쇄본이 됩니다.</span></div>
@@ -247,8 +254,28 @@
 
       <article class="card">
         <div>
+          <h2>A/B 실시간 Sheet 입력</h2>
+          <p>내일 기본 경로입니다. 기록모더레이터 2명이 A조/B조 탭에 질문과 의제를 바로 입력하면, 이 Sheet에서 질문 PDF와 의제 PDF를 생성합니다.</p>
+          <div class="ops">
+            <div class="op"><b>질문</b><span><code>A조 질문입력</code>, <code>B조 질문입력</code> 탭에 전문가 질의용 질문만 입력합니다.</span></div>
+            <div class="op"><b>의제</b><span><code>A조 의제입력</code>, <code>B조 의제입력</code> 탭에 투표 후보 문장을 입력합니다.</span></div>
+            <div class="op"><b>PDF</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-sheet-packets.ps1</code></span></div>
+            <div class="op"><b>메일</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-sheet-packets.ps1 -SendEmail</code></span></div>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="btn secondary" href="https://docs.google.com/spreadsheets/d/1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ/edit" target="_blank" rel="noopener">실시간 입력 Sheet</a>
+          <button class="copy" type="button" data-copy-url="https://docs.google.com/spreadsheets/d/1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ/edit">Sheet URL 복사</button>
+          <a class="btn ghost" href="/0704-admin/live-sheet-questions-print.pdf" target="_blank" rel="noopener">질문 PDF</a>
+          <a class="btn ghost" href="/0704-admin/live-sheet-agendas-print.pdf" target="_blank" rel="noopener">의제 PDF</a>
+          <a class="btn warm" href="/agenda-vote-0704/index.html?sheet=1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw" target="_blank" rel="noopener">버블레이스</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <div>
           <h2>의제 후보 인쇄·메일</h2>
-          <p>현장에서 A/B조 의제 후보 입력자료를 받은 뒤 Form 응답을 다시 읽어 즉시 생성하는 인쇄본입니다. 의제자문단 검토 직전에 갱신합니다.</p>
+          <p>예비 경로입니다. 기본 운영은 A/B 실시간 Sheet 의제 탭을 쓰고, 조별 의제 Form 응답을 그대로 인쇄할 때만 사용합니다.</p>
           <div class="ops">
             <div class="op"><b>시점</b><span>감축·에너지전환 추가 의제 논의 이후, 의제자문단 검토 전</span></div>
             <div class="op"><b>실시간</b><span>현재 PDF는 마지막 갱신본입니다. 응답이 새로 들어오면 아래 명령을 다시 실행해야 최신 인쇄본이 됩니다.</span></div>
@@ -268,15 +295,19 @@
       <article class="card">
         <div>
           <h2>현장 인쇄본 일괄 갱신</h2>
-          <p>A/B조 입력자료가 들어온 직후 이 명령 하나로 전문가 질문 인쇄본과 의제 후보 인쇄본을 함께 최신화합니다. 질문 인쇄본은 질문만, 의제 인쇄본은 후보 의제만 담습니다.</p>
+          <p>내일 기본은 실시간 Sheet 명령입니다. Form 응답을 병행할 때만 기존 Form 기반 명령을 사용합니다.</p>
           <div class="ops">
-            <div class="op"><b>갱신</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-print-packets.ps1</code></span></div>
-            <div class="op"><b>메일까지</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-print-packets.ps1 -SendEmail</code></span></div>
+            <div class="op"><b>Sheet 갱신</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-sheet-packets.ps1</code></span></div>
+            <div class="op"><b>Sheet 메일</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-sheet-packets.ps1 -SendEmail</code></span></div>
+            <div class="op"><b>투표 반영</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\promote-0704-live-sheet-agendas-to-vote.ps1 -Apply</code></span></div>
+            <div class="op"><b>Form 예비</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-print-packets.ps1</code></span></div>
           </div>
         </div>
         <div class="actions">
-          <a class="btn secondary" href="/0704-admin/expert-questions-print.pdf" target="_blank" rel="noopener">질문 PDF</a>
-          <a class="btn warm" href="/0704-admin/group-agendas-print.pdf" target="_blank" rel="noopener">의제 PDF</a>
+          <a class="btn secondary" href="/0704-admin/live-sheet-questions-print.pdf" target="_blank" rel="noopener">Sheet 질문 PDF</a>
+          <a class="btn warm" href="/0704-admin/live-sheet-agendas-print.pdf" target="_blank" rel="noopener">Sheet 의제 PDF</a>
+          <a class="btn ghost" href="/0704-admin/expert-questions-print.pdf" target="_blank" rel="noopener">Form 질문 PDF</a>
+          <a class="btn ghost" href="/0704-admin/group-agendas-print.pdf" target="_blank" rel="noopener">Form 의제 PDF</a>
         </div>
       </article>
 
@@ -314,6 +345,7 @@
     </div>
   </section>
 </div>
+<div class="toast" id="toast" role="status" aria-live="polite">URL을 복사했습니다.</div>
 
 <script>
   const PASS = 'climate2026';
@@ -325,6 +357,7 @@
   const qrModal = document.getElementById('qr-modal');
   const qrInline = document.getElementById('qr-inline');
   const analysisSummary = document.getElementById('analysis-summary');
+  const toast = document.getElementById('toast');
 
   function showApp() {
     login.style.display = 'none';
@@ -380,6 +413,20 @@
     if (event.key === 'Escape') {
       qrModal.classList.remove('show');
     }
+  });
+  document.querySelectorAll('[data-copy-url]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const url = button.getAttribute('data-copy-url');
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.textContent = 'URL을 복사했습니다.';
+      } catch (err) {
+        window.prompt('아래 URL을 복사하세요.', url);
+        toast.textContent = '복사 창을 열었습니다.';
+      }
+      toast.classList.add('show');
+      window.setTimeout(() => toast.classList.remove('show'), 1600);
+    });
   });
 
   async function loadAnalysisSummary() {
