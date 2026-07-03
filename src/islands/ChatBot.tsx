@@ -9,12 +9,17 @@ import { getSupabase } from '../lib/supabase';
    ============================================================ */
 
 // 소스 정의 — 필터 토글과 인용 배지가 공유하는 단일 진실원(SaaS 모듈화 핵심)
-type SourceKey = 'overseas-cases' | 'kei-expert-agenda' | 'agenda-textbook-vol2' | 'basic-textbook';
+type SourceKey = 'overseas-cases' | 'kei-expert-agenda' | 'agenda-textbook-vol2' | 'basic-textbook'
+  | 'citizen-domestic' | 'gyeonggi-citizens' | 'gyeonggi-ops' | 'agenda-faq';
 const SOURCES: Record<SourceKey, { label: string; emoji: string; bg: string; fg: string }> = {
   'overseas-cases': { label: '해외사례', emoji: '🌍', bg: 'var(--color-info-bg)', fg: 'var(--color-info)' },
   'kei-expert-agenda': { label: '국내·전문가 의제', emoji: '🇰🇷', bg: 'var(--color-success-bg)', fg: 'var(--color-success)' },
   'agenda-textbook-vol2': { label: '학습자료집', emoji: '📘', bg: 'var(--color-bg-subtle)', fg: 'var(--color-fg)' },
   'basic-textbook': { label: '기본교재', emoji: '📗', bg: 'var(--color-bg-subtle)', fg: 'var(--color-fg)' },
+  'citizen-domestic': { label: '시민 제안', emoji: '🙋', bg: 'var(--color-bg-subtle)', fg: 'var(--color-fg)' },
+  'gyeonggi-citizens': { label: '경기 도민제안', emoji: '🙋', bg: 'var(--color-bg-subtle)', fg: 'var(--color-fg)' },
+  'gyeonggi-ops': { label: '경기 운영자료', emoji: '📋', bg: 'var(--color-bg-subtle)', fg: 'var(--color-fg)' },
+  'agenda-faq': { label: '핵심개념', emoji: '💡', bg: 'var(--color-bg-subtle)', fg: 'var(--color-fg)' },
 };
 function sourceMeta(key: string) {
   return SOURCES[key as SourceKey] ?? { label: key, emoji: '📄', bg: 'var(--color-bg-subtle)', fg: 'var(--color-fg-muted)' };
