@@ -1,0 +1,37 @@
+{
+  "id": "presentation-linkage",
+  "title": "입력데이터 누락 검증과 운영규정·의제 결론 도출과정 발표자료",
+  "created_at": "2026-07-04",
+  "objective": "전체 입력데이터가 어떤 범위까지 반영되었는지 철저히 검증하고, 운영규정 및 의제 3개가 토론-기준/후보-투표-통합-결론으로 이어진 과정을 발표자료 형태로 별도 제시한다.",
+  "user_questions": [
+    "현재 공개 메뉴가 A조 자료만 부각하는 것처럼 보이는 위험이 해소되었는가?",
+    "모든 입력데이터가 누락 없이 들어갔는가, 아니면 아직 남은 gap이 무엇인가?",
+    "운영규정 결과와 의제 3개가 단순 끝장토론 결론이 아니라 숙의와 투표를 통해 어떻게 연결되었는가?"
+  ],
+  "done_conditions": [
+    "입력데이터 반영 범위와 남은 gap을 파일·건수 기준으로 검증한다.",
+    "운영규정 결정은 토론 쟁점, 투표 결과, 최종 규정 문안의 연결 구조로 정리한다.",
+    "의제 결과는 사전 접수, 토론 기준, 후보, 투표, 통합 판단, 확정/미확정 슬롯을 분리해 정리한다.",
+    "발표자료 PPTX와 스토리보드를 생성한다.",
+    "별도 검증 에이전트 보고서를 확보하고 발표자료 반영 여부를 확인한다.",
+    "PPTX 텍스트 추출 및 가능하면 시각 변환 QA를 수행한다.",
+    "검증된 변경만 stage, commit, push한다."
+  ],
+  "source_of_truth": [
+    "evaluation/input-coverage/input-coverage-report.json",
+    "evaluation/ontology-final-decisions/final-decision-ontology-report.json",
+    "public/workshop-graph/sources.json",
+    "public/workshop-graph/data/source-coverage-2026-06-13.json",
+    "public/workshop-graph/data/final-process-to-conclusion-0704.json",
+    "public/workshop-graph/data/final-regulation-decisions-0704.json",
+    "public/workshop-graph/data/final-agenda-decisions-0704.json",
+    "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
+    "10_작업산출물/7.4_발표덱/의제결과_v6/발표시나리오_의제선정결과_김영현.md"
+  ],
+  "known_caveats": [
+    "B_t2는 그래프에는 일부 반영되었지만 전사 상태가 partial이다.",
+    "토론4통합은 원본/청크 증거가 있으나 현재 통합 그래프 노드가 없다.",
+    "음성002는 전사 증거가 있으나 현재 통합 그래프 노드가 없다.",
+    "의제 발표 시나리오의 세 번째 감축2 의제는 7.4 당일 확정 후 수정 표시가 있어 미확정 슬롯으로 다룬다."
+  ]
+}

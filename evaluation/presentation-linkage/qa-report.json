@@ -1,0 +1,47 @@
+{
+  "generated_at": "2026-07-03T23:46:43Z",
+  "passed": true,
+  "checks": {
+    "required_files_exist": true,
+    "slide_count_matches_report": true,
+    "public_menu_not_a_only": true,
+    "partial_gap_count_matches": true,
+    "agenda_slots_count_matches": true,
+    "required_text_present": true,
+    "forbidden_unqualified_claims_absent": true
+  },
+  "counts": {
+    "slides": 9,
+    "required_files": 5,
+    "missing_required_files": 0,
+    "pptx_characters_extracted": 3214
+  },
+  "missing_files": [],
+  "missing_required_phrases": [],
+  "forbidden_unqualified_hits": [],
+  "outputs": {
+    "text_extract": "evaluation/presentation-linkage/pptx-text-extract.txt",
+    "markitdown_log": "evaluation/presentation-linkage/markitdown-check.log",
+    "slide_contact_sheet": "evaluation/presentation-linkage/slide-contact-sheet.png"
+  },
+  "markitdown": {
+    "command": [
+      "C:\\Users\\iceam\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+      "-m",
+      "markitdown",
+      "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\wiki\\evaluation\\presentation-linkage\\20260704_process_to_conclusion_linkage.pptx"
+    ],
+    "returncode": 1,
+    "available": false,
+    "log": "evaluation/presentation-linkage/markitdown-check.log"
+  },
+  "visual_export": {
+    "available": true,
+    "slides": 9,
+    "contact_sheet": "evaluation/presentation-linkage/slide-contact-sheet.png"
+  },
+  "notes": [
+    "markitdown is attempted because the PPTX workflow expects it. If unavailable, python-pptx text extraction is the fallback QA source.",
+    "Visual rendering is represented by slide PNG exports and a contact sheet when PowerPoint COM export is available."
+  ]
+}

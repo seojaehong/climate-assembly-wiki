@@ -1,0 +1,322 @@
+{
+  "generated_at": "2026-07-03T23:45:18Z",
+  "summary": {
+    "a_only_public_menu": false,
+    "all_data_completely_reflected": false,
+    "linkage_supported": true,
+    "recommended_framing": "숙의가 기준과 선택지를 만들고, 투표와 통합 판단이 결론을 고정했다."
+  },
+  "public_menu": {
+    "default": "final-process-to-conclusion-0704",
+    "categories": {
+      "final": "결론 도출과정",
+      "workshop": "워크숍 통합",
+      "audit": "전체 데이터 반영상태",
+      "regulation": "운영규정"
+    },
+    "source_ids": [
+      "final-process-to-conclusion-0704",
+      "final-regulation-decisions-0704",
+      "final-agenda-decisions-0704",
+      "workshop-2026-06-13",
+      "source-coverage-2026-06-13",
+      "regulation-2026-06-13"
+    ],
+    "has_live_a_t1": false
+  },
+  "coverage": {
+    "source_coverage_graph": {
+      "nodes": 77,
+      "edges": 79
+    },
+    "process_graph": {
+      "nodes": 21,
+      "edges": 30
+    },
+    "final_regulation_graph": {
+      "nodes": 32,
+      "edges": 31
+    },
+    "final_agenda_graph": {
+      "nodes": 67,
+      "edges": 74
+    },
+    "original_files": 25,
+    "workflow_markdown_files": 10,
+    "ready_sessions": 10,
+    "partial_or_review_sessions": 3,
+    "partial_or_review_labels": [
+      "6/14 B조 토론2",
+      "6/14 토론4 통합 운영",
+      "음성 002"
+    ],
+    "input_gap_items": [
+      {
+        "label": "6/14 B조 토론2",
+        "tag": "B_t2",
+        "status": "needs_review",
+        "transcript": "transcript_partial",
+        "graphNodes": 20,
+        "graphStatus": "graph_represented"
+      },
+      {
+        "label": "6/14 토론4 통합 운영",
+        "tag": "토론4통합",
+        "status": "needs_review",
+        "transcript": "transcript_partial",
+        "graphNodes": 0,
+        "graphStatus": "not_expected_in_current_graph"
+      },
+      {
+        "label": "음성 002",
+        "tag": "음성002",
+        "status": "ui_or_graph_gap",
+        "transcript": "transcript_ready",
+        "graphNodes": 0,
+        "graphStatus": "not_expected_in_current_graph"
+      }
+    ]
+  },
+  "regulation_decisions": [
+    {
+      "id": "reg-planning-quorum",
+      "decision": "기획참여단 의결정족수 = 출석 2/3",
+      "result": "출석 2/3",
+      "vote": "2차 투표 14/18",
+      "existing_context_matches": 5,
+      "discussion_signal": "medium",
+      "reflected_in_existing_regulation_graph": true
+    },
+    {
+      "id": "reg-division-yes",
+      "decision": "숙의참여단 분과 구성 = 분과를 둠",
+      "result": "분과를 둠",
+      "vote": "1차 투표 13/18",
+      "existing_context_matches": 3,
+      "discussion_signal": "weak",
+      "reflected_in_existing_regulation_graph": true
+    },
+    {
+      "id": "reg-division-three",
+      "decision": "분과 개수 = 3개 분과(감축1·감축2·적응)",
+      "result": "3개 분과",
+      "vote": "결선 13/18",
+      "existing_context_matches": 1,
+      "discussion_signal": "weak",
+      "reflected_in_existing_regulation_graph": true
+    },
+    {
+      "id": "reg-division-quorum",
+      "decision": "숙의참여단 분과 의결정족수 = 출석 2/3",
+      "result": "출석 2/3",
+      "vote": "결선 15/18",
+      "existing_context_matches": 1,
+      "discussion_signal": "weak",
+      "reflected_in_existing_regulation_graph": true
+    },
+    {
+      "id": "reg-full-quorum",
+      "decision": "숙의참여단 전체 의결정족수 = 출석 2/3",
+      "result": "출석 2/3",
+      "vote": "2차 투표 14/18",
+      "existing_context_matches": 1,
+      "discussion_signal": "weak",
+      "reflected_in_existing_regulation_graph": true
+    },
+    {
+      "id": "reg-article14-direct-indirect",
+      "decision": "의제 기준 14조 1항 = 직·간접 관련으로 확장",
+      "result": "직·간접 관련",
+      "vote": "17/18",
+      "existing_context_matches": 4,
+      "discussion_signal": "medium",
+      "reflected_in_existing_regulation_graph": true
+    },
+    {
+      "id": "reg-article14-everyday-life",
+      "decision": "의제 기준 14조 3항 = 시민의 삶·일상 실천 유지",
+      "result": "현행 유지",
+      "vote": "16/18",
+      "existing_context_matches": 2,
+      "discussion_signal": "weak",
+      "reflected_in_existing_regulation_graph": true
+    }
+  ],
+  "agenda_candidates": [
+    {
+      "id": "agenda-education-citizen-participation",
+      "agenda": "생애주기 탄소중립 교육 및 시민의식 개선",
+      "slot": "2",
+      "status": "selected_in_deck_narrative",
+      "vote_rank": 1,
+      "vote_score": 4.06,
+      "existing_context_matches": 10,
+      "discussion_signal": "strong",
+      "caveat": "citizen participation was a separate vote option and is represented here as an integrated narrative conclusion"
+    },
+    {
+      "id": "agenda-resource-circulation",
+      "agenda": "자원순환·생활폐기물 감축",
+      "slot": "5",
+      "status": "selected_in_deck_narrative",
+      "vote_rank": 3,
+      "vote_score": 3.89,
+      "existing_context_matches": 12,
+      "discussion_signal": "strong",
+      "caveat": null
+    },
+    {
+      "id": "agenda-citizen-participation-original",
+      "agenda": "시민의식 개선 및 참여 활성화",
+      "slot": "3",
+      "status": "integrated_into_selected",
+      "vote_rank": 2,
+      "vote_score": 3.89,
+      "existing_context_matches": 12,
+      "discussion_signal": "strong",
+      "caveat": null
+    },
+    {
+      "id": "agenda-transit-transition",
+      "agenda": "대중교통 친환경 교통전환",
+      "slot": "8",
+      "status": "candidate_discussed",
+      "vote_rank": 4,
+      "vote_score": 3.72,
+      "existing_context_matches": 12,
+      "discussion_signal": "strong",
+      "caveat": null
+    },
+    {
+      "id": "agenda-green-city-adaptation",
+      "agenda": "친환경 도시 인프라·에너지 전환 및 기후위기 적응",
+      "slot": "7",
+      "status": "candidate_discussed",
+      "vote_rank": 5,
+      "vote_score": 3.56,
+      "existing_context_matches": 6,
+      "discussion_signal": "medium",
+      "caveat": null
+    },
+    {
+      "id": "agenda-climate-finance-local",
+      "agenda": "기후재정 확보와 지자체 자발적 참여",
+      "slot": "1",
+      "status": "candidate_discussed",
+      "vote_rank": 6,
+      "vote_score": 3.28,
+      "existing_context_matches": 12,
+      "discussion_signal": "strong",
+      "caveat": null
+    },
+    {
+      "id": "agenda-governance",
+      "agenda": "시민참여 기반 기후 거버넌스 강화",
+      "slot": "4",
+      "status": "candidate_discussed",
+      "vote_rank": 7,
+      "vote_score": 3.11,
+      "existing_context_matches": 8,
+      "discussion_signal": "medium",
+      "caveat": null
+    },
+    {
+      "id": "agenda-energy-saving-ghg",
+      "agenda": "에너지 절약 및 온실가스 배출 감축",
+      "slot": "6",
+      "status": "candidate_discussed",
+      "vote_rank": 8,
+      "vote_score": 3.06,
+      "existing_context_matches": 9,
+      "discussion_signal": "medium",
+      "caveat": null
+    }
+  ],
+  "agenda_final_slots": [
+    {
+      "slot": "적응",
+      "status": "확정 설명 가능",
+      "conclusion": "생애주기 탄소중립 교육 및 시민의식 개선",
+      "source_decisions": [
+        {
+          "id": "agenda-education-citizen-participation",
+          "agenda": "생애주기 탄소중립 교육 및 시민의식 개선",
+          "slot": "2",
+          "status": "selected_in_deck_narrative",
+          "vote_rank": 1,
+          "vote_score": 4.06,
+          "existing_context_matches": 10,
+          "discussion_signal": "strong",
+          "caveat": "citizen participation was a separate vote option and is represented here as an integrated narrative conclusion"
+        },
+        {
+          "id": "agenda-citizen-participation-original",
+          "agenda": "시민의식 개선 및 참여 활성화",
+          "slot": "3",
+          "status": "integrated_into_selected",
+          "vote_rank": 2,
+          "vote_score": 3.89,
+          "existing_context_matches": 12,
+          "discussion_signal": "strong",
+          "caveat": null
+        }
+      ],
+      "linkage": [
+        "사전 접수와 조별 숙의에서 교육·시민참여 맥락이 반복됨",
+        "교육 의제가 평가 1위, 시민참여 의제가 공동 2위로 확인됨",
+        "발표 시나리오에서 시민참여를 교육 의제에 통합해 적응 분과 의제로 설명함"
+      ]
+    },
+    {
+      "slot": "감축1",
+      "status": "확정 설명 가능",
+      "conclusion": "자원순환·생활폐기물 감축",
+      "source_decisions": [
+        {
+          "id": "agenda-resource-circulation",
+          "agenda": "자원순환·생활폐기물 감축",
+          "slot": "5",
+          "status": "selected_in_deck_narrative",
+          "vote_rank": 3,
+          "vote_score": 3.89,
+          "existing_context_matches": 12,
+          "discussion_signal": "strong",
+          "caveat": null
+        }
+      ],
+      "linkage": [
+        "사전 접수 분석에서 소비·생활양식과 자원순환 흐름이 크게 나타남",
+        "A조 자원순환형 배달 문화와 B조 생활폐기물 감축 논의를 통합함",
+        "평가 결과 공동 2위권으로 확인되어 감축1 분과 의제로 설명함"
+      ]
+    },
+    {
+      "slot": "감축2",
+      "status": "확정명 증거 부족",
+      "conclusion": "새로운 의제 슬롯",
+      "source_decisions": [],
+      "linkage": [
+        "시민의식 개선 후보가 교육 의제에 통합되며 세 번째 자리가 열림",
+        "발표 시나리오 7쪽·10쪽에 7.4 당일 확정 후 수정 표시가 남아 있음",
+        "현재 repo 증거만으로는 별도 최종 의제명을 단정할 수 없음"
+      ]
+    }
+  ],
+  "caveats": [
+    "PPT text extracted through markitdown was garbled for Korean text, so the sibling presentation scenario Markdown files are used as readable deck-text evidence.",
+    "The integrated workshop graph includes A, B, and combined text sessions, but the source coverage audit still marks B_t2, 토론4통합, and 음성002 as partial/review/gap items.",
+    "public/0704-admin/decision-votes-report.json currently has zero responses in V0/V1A/V1B, so conditional final-decision votes are not treated as proven final outcomes.",
+    "The agenda v6 scenario still contains [7.4 당일 확정 후 수정] markers for the new agenda slot; this is represented as a caveat node, not as a final selected agenda."
+  ],
+  "source_files": {
+    "input_coverage": "evaluation/input-coverage/input-coverage-report.json",
+    "final_decision_report": "evaluation/ontology-final-decisions/final-decision-ontology-report.json",
+    "sources": "public/workshop-graph/sources.json",
+    "source_coverage_graph": "public/workshop-graph/data/source-coverage-2026-06-13.json",
+    "process_graph": "public/workshop-graph/data/final-process-to-conclusion-0704.json",
+    "final_regulation_graph": "public/workshop-graph/data/final-regulation-decisions-0704.json",
+    "final_agenda_graph": "public/workshop-graph/data/final-agenda-decisions-0704.json",
+    "regulation_scenario": "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
+    "agenda_scenario": "10_작업산출물/7.4_발표덱/의제결과_v6/발표시나리오_의제선정결과_김영현.md"
+  }
+}

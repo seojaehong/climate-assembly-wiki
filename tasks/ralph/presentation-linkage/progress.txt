@@ -1,0 +1,15 @@
+2026-07-04 started
+- Goal: verify full input coverage and produce a presentation artifact linking discussion, votes, integration, and conclusions.
+- Skills in use: ralph-loop, superpowers:subagent-driven-development, pptx.
+- Separate verification agent: started; report target evaluation/presentation-linkage/subagent-verification.md.
+- Current local work: build evidence map, storyboard, and PPTX.
+
+2026-07-04 completed
+- Evidence package generated: evaluation/presentation-linkage/linkage-evidence-map.json.
+- Storyboard generated: evaluation/presentation-linkage/linkage-storyboard.md.
+- PPTX generated: evaluation/presentation-linkage/20260704_process_to_conclusion_linkage.pptx.
+- Independent input verification completed: evaluation/presentation-linkage/subagent-verification.md.
+- Final artifact review completed: evaluation/presentation-linkage/subagent-artifact-review.md.
+- QA passed: evaluation/presentation-linkage/qa-report.json.
+- Visual export succeeded: evaluation/presentation-linkage/slide-contact-sheet.png and slide-export/slide-01.png through slide-09.png.
+- Final framing: A-only public menu risk is resolved, but full data reflection is not complete because B_t2, 토론4통합, and 음성002 remain as gap/review items.

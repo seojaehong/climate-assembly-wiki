@@ -1,0 +1,8 @@
+command: C:\Users\iceam\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m markitdown C:\Users\iceam\OneDrive\_30_컨설팅\2026\기후회의모더레이터\wiki\evaluation\presentation-linkage\20260704_process_to_conclusion_linkage.pptx
+returncode: 1
+
+[stdout]
+
+
+[stderr]
+C:\Users\iceam\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe: No module named markitdown
