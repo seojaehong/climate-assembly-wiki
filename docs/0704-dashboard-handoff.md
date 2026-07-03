@@ -159,6 +159,8 @@ The script reads the carbon-reduction question Form directly through Forms API, 
 
 Because this Form was reused from the 0628 test, the script defaults to `-Since 2026-07-04T00:00:00+09:00` so old responses are not printed. Override `-Since` only for investigation.
 
+Important field rule: these print files are not static handouts. They are regenerated from live A/B group input data. If new responses arrive after the PDF was opened, run the export command again and then refresh the PDF tab.
+
 ## Fast Agenda Candidate Print And Email
 
 For the agenda vote setup, the fastest route is:
@@ -175,6 +177,24 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-group-agendas.
 ```
 
 The script reads the group agenda Form directly through Forms API, filters non-empty agenda candidates, writes the print HTML and A4 PDF, and creates `evaluation/0704-group-agendas-print-report.json`.
+
+Important field rule: these print files are not static handouts. They are regenerated from live A/B group input data. If new agenda candidates arrive after the PDF was opened, run the export command again and then refresh the PDF tab.
+
+## Live Print Packet Refresh
+
+When the field team says the A/B group input data is ready, refresh both print packets together:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-print-packets.ps1
+```
+
+To refresh both packets and send the current lists to `kesica3@gmail.com`:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-print-packets.ps1 -SendEmail
+```
+
+This writes `evaluation/0704-live-print-packets-report.json` with the current expert question count, group agenda count, and output PDF paths.
 
 Current note: Gmail sending needs an OAuth token with Gmail scope. The current token was re-authenticated with `gmail.send` on 2026-07-03. If sending fails with insufficient scopes, run:
 

@@ -229,10 +229,10 @@
       <article class="card">
         <div>
           <h2>전문가 질문 인쇄·메일</h2>
-          <p>탄소 감축 질문 Form에 올라온 조별 질문을 빠르게 뽑아 강혜연 위원에게 전달하고, 외부자문단 배포용 PDF로 엽니다.</p>
+          <p>현장에서 A/B조 입력자료가 들어오면 Form 응답을 다시 읽어 즉시 생성하는 인쇄본입니다. 외부자문단 질의응답 직전에 갱신합니다.</p>
           <div class="ops">
             <div class="op"><b>시점</b><span>조별 질문 만들기 이후, 외부자문단 질의응답 전</span></div>
-            <div class="op"><b>인쇄</b><span>조별 전문가 질문을 A4 카드형 PDF로 정리합니다.</span></div>
+            <div class="op"><b>실시간</b><span>현재 PDF는 마지막 갱신본입니다. 응답이 새로 들어오면 아래 명령을 다시 실행해야 최신 인쇄본이 됩니다.</span></div>
             <div class="op"><b>명령</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-expert-questions.ps1</code></span></div>
           </div>
         </div>
@@ -247,10 +247,10 @@
       <article class="card">
         <div>
           <h2>의제 후보 인쇄·메일</h2>
-          <p>각 조가 투표에 올릴 추가 의제 후보를 빠르게 뽑아 강혜연 위원에게 전달하고, 의제자문서 검토용 PDF로 엽니다.</p>
+          <p>현장에서 A/B조 의제 후보 입력자료를 받은 뒤 Form 응답을 다시 읽어 즉시 생성하는 인쇄본입니다. 의제자문단 검토 직전에 갱신합니다.</p>
           <div class="ops">
             <div class="op"><b>시점</b><span>감축·에너지전환 추가 의제 논의 이후, 의제자문단 검토 전</span></div>
-            <div class="op"><b>인쇄</b><span>조별 의제 후보를 A4 카드형 PDF로 정리합니다.</span></div>
+            <div class="op"><b>실시간</b><span>현재 PDF는 마지막 갱신본입니다. 응답이 새로 들어오면 아래 명령을 다시 실행해야 최신 인쇄본이 됩니다.</span></div>
             <div class="op"><b>메일</b><span><code>kesica3@gmail.com</code>으로 의제 후보 목록을 자동 전송합니다. 실제 발송은 <code>-SendEmail</code>을 붙입니다.</span></div>
             <div class="op"><b>명령</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-group-agendas.ps1</code></span></div>
           </div>
@@ -260,6 +260,21 @@
           <a class="btn ghost" href="/0704-admin/group-agendas-print.html" target="_blank" rel="noopener">HTML 미리보기</a>
           <a class="btn ghost" href="https://docs.google.com/spreadsheets/d/1JCW6-r86Jr9uJWH4kc0GINe4R7u0EbPgIvbxMaRtZwY/edit" target="_blank" rel="noopener">의제 Sheet</a>
           <a class="btn ghost" href="https://docs.google.com/forms/d/1hWBiDnSvVdelCAXbwgkk1H9w06LDUim0-FcTr5-tXHE/edit" target="_blank" rel="noopener">Form 편집</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <div>
+          <h2>현장 인쇄본 일괄 갱신</h2>
+          <p>A/B조 입력자료가 들어온 직후 이 명령 하나로 전문가 질문 인쇄본과 의제 후보 인쇄본을 함께 최신화합니다.</p>
+          <div class="ops">
+            <div class="op"><b>갱신</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-print-packets.ps1</code></span></div>
+            <div class="op"><b>메일까지</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-print-packets.ps1 -SendEmail</code></span></div>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="btn secondary" href="/0704-admin/expert-questions-print.pdf" target="_blank" rel="noopener">질문 PDF</a>
+          <a class="btn warm" href="/0704-admin/group-agendas-print.pdf" target="_blank" rel="noopener">의제 PDF</a>
         </div>
       </article>
 
