@@ -128,7 +128,7 @@ $guideRows += ,@("key", "value")
 $guideRows += ,@("refreshedAt", (Get-Date).ToString("s"))
 $guideRows += ,@("resultSheet", "https://docs.google.com/spreadsheets/d/$SpreadsheetId/edit")
 $guideRows += ,@("adminPage", "https://climate-assembly.org/0704-admin/")
-$guideRows += ,@("voteStructurePage", "https://climate-assembly.org/0704-admin/vote-structure.html")
+$guideRows += ,@("voteStructurePage", "https://climate-assembly.org/0704-admin/vote-structure")
 
 $reportSlots = @()
 
@@ -197,3 +197,4 @@ $report = [pscustomobject]@{
 $reportPath = "evaluation/0704-decision-votes-report.json"
 $report | ConvertTo-Json -Depth 12 | Set-Content -Path $reportPath -Encoding UTF8
 $report | ConvertTo-Json -Depth 12
+

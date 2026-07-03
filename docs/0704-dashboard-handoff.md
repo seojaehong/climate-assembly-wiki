@@ -33,7 +33,7 @@ Keep the 7.4 operating dashboard separate from the 0628 test archive. Do not mut
 - A/B live input Sheet: `https://docs.google.com/spreadsheets/d/1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ/edit`
 - A/B live question print PDF: `/0704-admin/live-sheet-questions-print.pdf`
 - A/B live agenda print PDF: `/0704-admin/live-sheet-agendas-print.pdf`
-- Script-based vote structure: `/0704-admin/vote-structure.html`
+- Script-based vote structure: `/0704-admin/vote-structure`
 - Decision vote V0 response: `https://docs.google.com/forms/d/e/1FAIpQLSc8NV9MvB52WM8IzQFJCGK3HJmZ8e_UOW4cbV6wd3MERohc-Q/viewform`
 - Decision vote V0 edit: `https://docs.google.com/forms/d/1QXrENjjmh7NcTF_9sm4aUPhnh1_WuAWvP4q80AdBM8s/edit`
 - Decision vote V1A response: `https://docs.google.com/forms/d/e/1FAIpQLSeyeycU58FPedk64L8E5QeDdvEETgVcnGwJDEC6NEZTrMGOtA/viewform`
@@ -314,3 +314,4 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-group-agendas.
 ```
 
 Both commands should return no matches.
+
