@@ -34,3 +34,7 @@
 - 질문 PDF: https://climate-assembly.org/0704-admin/live-sheet-questions-print.pdf
 - 의제 PDF: https://climate-assembly.org/0704-admin/live-sheet-agendas-print.pdf
 - 결과 버블레이스: https://climate-assembly.org/agenda-vote-0704/index.html?sheet=1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw
+
+## 추가 투표가 안내되는 경우
+
+진행자가 추가 투표를 안내하면, 새로 안내되는 QR 또는 관리자 메뉴의 `투표 구조` 화면만 따른다. 현장 담당자에게는 별도 명령어를 안내하지 않는다.

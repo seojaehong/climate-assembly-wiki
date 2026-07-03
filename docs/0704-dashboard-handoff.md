@@ -33,6 +33,7 @@ Keep the 7.4 operating dashboard separate from the 0628 test archive. Do not mut
 - A/B live input Sheet: `https://docs.google.com/spreadsheets/d/1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ/edit`
 - A/B live question print PDF: `/0704-admin/live-sheet-questions-print.pdf`
 - A/B live agenda print PDF: `/0704-admin/live-sheet-agendas-print.pdf`
+- Script-based vote structure: `/0704-admin/vote-structure.html`
 
 ## Copy-Ready Response URLs
 
@@ -63,6 +64,15 @@ climate2026
 - Added robots exclusions for the 0704 operating paths.
 
 ## Agenda Vote Setup
+
+Script check note: `20260702-기후시민회의 2차 의제 워크숍 진행 스크립트_v2_070317시.hwpx` creates one confirmed final vote and up to three conditional decision votes. See `docs/0704-script-vote-structure-check.md`.
+
+Vote slots:
+
+- V0: education + citizen participation agenda integration agreement, only if whole-room confirmation is needed.
+- V1A: carbon-reduction agenda addition yes/no, only if integration is rejected or separate confirmation is needed.
+- V1B: adaptation agenda two-item allocation yes/no, only if integration is rejected.
+- V2: final carbon-reduction/energy-transition agenda selection. This is the current `Agenda vote Form` plus bubble race.
 
 The 7.4 agenda vote Form currently has one required multiple-choice question:
 
