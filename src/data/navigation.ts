@@ -72,8 +72,8 @@ export const TOP_NAV_ITEMS: NavItem[] = [
   // /event/는 noindex + 데모/템플릿 폴더로 격리 예정.
   // 2026-06-22: 탭 숨김 — race-bubble 겹침 이슈 후속 정비 중. 직접 URL(/race-bubble/, /event/) 접근은 보존
   // { section: 'event', labelKo: '이벤트', labelEn: 'Event', href: '/race-bubble/', external: true },
-  // 2026-06-13: '해외사례' — global climate assembly dashboard + comparison table.
-  { section: 'global', labelKo: '해외사례', labelEn: 'Global', href: '/global/', external: true },
+  // 2026-07-04: 탭 숨김 — public top nav는 의제 + 숙의 온톨로지만 유지. 직접 URL(/global/) 접근은 보존.
+  // { section: 'global', labelKo: '해외사례', labelEn: 'Global', href: '/global/', external: true },
   // 2026-06-22: '숙의 온톨로지' — 6/13-14 워크숍 하버마스 기반 온톨로지 그래프.
   {
     section: 'workshop-graph',
