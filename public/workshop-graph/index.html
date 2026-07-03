@@ -486,9 +486,10 @@ async function loadSource(srcId) {
   OntologyChrome.updateAdvisory(mt.advisory_notice || (isLive ? '🔴 LIVE 미검증 초안 · 시민 비노출' : ''));
   const footerNote = document.getElementById('og-footer-note');
   if (footerNote) {
+    const isFinalDecision = String(mt.variant || '').startsWith('final-');
     footerNote.textContent = mt.variant === 'source-coverage'
       ? '원본-전사-그래프 연결상태 · 내용판단 아님'
-      : (isLive ? 'LIVE 미검증 초안 · 시민 비노출' : 'LLM 추출 · 인간 검증 전');
+      : (isFinalDecision ? '검증 산출물 기반 · 미완/갭 항목 별도 표시' : (isLive ? 'LIVE 미검증 초안 · 시민 비노출' : 'LLM 추출 · 인간 검증 전'));
   }
   updateAssetsButton(mt);
 
@@ -1478,8 +1479,7 @@ function fitPresentationLevel(level = presentLevel) {
 function presentChapterOf(session, kind) {
   if (!session) return { key: 'present__other', label: '기타/미분류' };
   if (['OA_t1','OB_t1','OZ_t1'].includes(session)) return { key: 'present__operating', label: '운영규정 논의' };
-  if (['DA_t2','A_t21','A_t22','A_t23'].includes(session)) return { key: 'present__agenda_a', label: 'A조 의제선정 흐름' };
-  if (['DB_t2','B_t1','B_t2','B_t3'].includes(session)) return { key: 'present__agenda_b', label: 'B조 의제선정 흐름' };
+  if (['DA_t2','A_t21','A_t22','A_t23','DB_t2','B_t1','B_t2','B_t3'].includes(session)) return { key: 'present__agenda_groups', label: '조별 의제선정 흐름' };
   if (session === 'DZ_t2') return { key: 'present__agenda_joint', label: '통합 의제정리' };
   if (session === '환경4조') return { key: 'present__environment', label: '환경교육·생활실천' };
   if (session === '정의전환') return { key: 'present__just_transition', label: '정의로운전환' };

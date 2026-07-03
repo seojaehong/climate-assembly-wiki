@@ -1,12 +1,15 @@
 {
-  "generated_at": "2026-07-03T23:07:46.703Z",
+  "generated_at": "2026-07-03T23:23:05.416Z",
   "outputs": {
     "regulation": "public/workshop-graph/data/final-regulation-decisions-0704.json",
-    "agenda": "public/workshop-graph/data/final-agenda-decisions-0704.json"
+    "agenda": "public/workshop-graph/data/final-agenda-decisions-0704.json",
+    "process": "public/workshop-graph/data/final-process-to-conclusion-0704.json"
   },
   "inputs": {
     "regulation_graph": "public/workshop-graph/data/regulation-2026-06-13.json",
     "workshop_graph": "public/workshop-graph/data/workshop-2026-06-13.json",
+    "source_coverage_graph": "public/workshop-graph/data/source-coverage-2026-06-13.json",
+    "input_coverage_audit": "evaluation/input-coverage/input-coverage-report.json",
     "agenda_vote": "public/agenda-vote-0704/data.json",
     "decision_vote": "public/0704-admin/decision-votes-report.json",
     "scenarios": {
@@ -70,7 +73,7 @@
         "vote": "17/18",
         "existing_context_matches": 4,
         "discussion_signal": "medium",
-        "reflected_in_existing_regulation_graph": false
+        "reflected_in_existing_regulation_graph": true
       },
       {
         "id": "reg-article14-everyday-life",
@@ -171,10 +174,124 @@
         "discussion_signal": "medium",
         "caveat": null
       }
-    ]
+    ],
+    "process": {
+      "original_files": 25,
+      "source_coverage_nodes": 77,
+      "source_coverage_edges": 79,
+      "workshop_graph_nodes": 613,
+      "workshop_graph_edges": 491,
+      "ready_sessions": 10,
+      "partial_or_review_sessions": 3,
+      "partial_or_review_labels": [
+        "6/14 B조 토론2",
+        "6/14 토론4 통합 운영",
+        "음성 002"
+      ],
+      "issue_labels": [
+        "6/14 B조 토론2 재확인",
+        "6/14 토론4 통합 운영 재확인",
+        "음성 002 재확인"
+      ],
+      "session_counts": [
+        {
+          "session": "A_t21",
+          "nodes": 34
+        },
+        {
+          "session": "A_t22",
+          "nodes": 84
+        },
+        {
+          "session": "A_t23",
+          "nodes": 29
+        },
+        {
+          "session": "B_t1",
+          "nodes": 81
+        },
+        {
+          "session": "B_t2",
+          "nodes": 20
+        },
+        {
+          "session": "B_t3",
+          "nodes": 50
+        },
+        {
+          "session": "발표",
+          "nodes": 6
+        },
+        {
+          "session": "정의전환",
+          "nodes": 22
+        },
+        {
+          "session": "환경4조",
+          "nodes": 88
+        },
+        {
+          "session": "20, 30대",
+          "nodes": 1
+        },
+        {
+          "session": "청년",
+          "nodes": 1
+        },
+        {
+          "session": "농민",
+          "nodes": 1
+        },
+        {
+          "session": "노동자",
+          "nodes": 1
+        },
+        {
+          "session": "육아하는 사람",
+          "nodes": 1
+        },
+        {
+          "session": "젊은 세대",
+          "nodes": 1
+        },
+        {
+          "session": "10대 아이들",
+          "nodes": 1
+        },
+        {
+          "session": "직장인",
+          "nodes": 1
+        },
+        {
+          "session": "OA_t1",
+          "nodes": 43
+        },
+        {
+          "session": "OB_t1",
+          "nodes": 42
+        },
+        {
+          "session": "OZ_t1",
+          "nodes": 44
+        },
+        {
+          "session": "DA_t2",
+          "nodes": 23
+        },
+        {
+          "session": "DB_t2",
+          "nodes": 5
+        },
+        {
+          "session": "DZ_t2",
+          "nodes": 34
+        }
+      ]
+    }
   },
   "caveats": [
     "PPT text extracted through markitdown was garbled for Korean text, so the sibling presentation scenario Markdown files are used as readable deck-text evidence.",
+    "The integrated workshop graph includes A, B, and combined text sessions, but the source coverage audit still marks B_t2, 토론4통합, and 음성002 as partial/review/gap items.",
     "public/0704-admin/decision-votes-report.json currently has zero responses in V0/V1A/V1B, so conditional final-decision votes are not treated as proven final outcomes.",
     "The agenda v6 scenario still contains [7.4 당일 확정 후 수정] markers for the new agenda slot; this is represented as a caveat node, not as a final selected agenda."
   ]

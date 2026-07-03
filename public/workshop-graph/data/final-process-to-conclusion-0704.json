@@ -1,0 +1,1185 @@
+{
+  "elements": {
+    "nodes": [
+      {
+        "data": {
+          "id": "process-final-map",
+          "node_id": "process-final-map",
+          "label": "전체 과정에서 최종 결론으로 이어지는 지도",
+          "kind": "Decision",
+          "kindKo": "결정",
+          "text": "원본자료, 전사, 조별·통합 숙의, 후보 압축, 7.4 투표·발표자료, 최종 운영규정·의제 결론을 한 흐름으로 연결한다.",
+          "cited": [
+            "public/workshop-graph/data/source-coverage-2026-06-13.json",
+            "public/workshop-graph/data/workshop-2026-06-13.json",
+            "evaluation/input-coverage/input-coverage-report.json",
+            "public/agenda-vote-0704/data.json",
+            "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
+            "10_작업산출물/7.4_발표덱/의제결과_v6/발표시나리오_의제선정결과_김영현.md"
+          ],
+          "cited_uids": [
+            "public/workshop-graph/data/source-coverage-2026-06-13.json",
+            "public/workshop-graph/data/workshop-2026-06-13.json",
+            "evaluation/input-coverage/input-coverage-report.json",
+            "public/agenda-vote-0704/data.json",
+            "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
+            "10_작업산출물/7.4_발표덱/의제결과_v6/발표시나리오_의제선정결과_김영현.md"
+          ],
+          "meta": {
+            "cited": [
+              "public/workshop-graph/data/source-coverage-2026-06-13.json",
+              "public/workshop-graph/data/workshop-2026-06-13.json",
+              "evaluation/input-coverage/input-coverage-report.json",
+              "public/agenda-vote-0704/data.json",
+              "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
+              "10_작업산출물/7.4_발표덱/의제결과_v6/발표시나리오_의제선정결과_김영현.md"
+            ],
+            "decision_set": "process_to_conclusion_0704"
+          },
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": true,
+          "deg": 7,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "stage-raw-data",
+          "node_id": "stage-raw-data",
+          "label": "원본자료 25건",
+          "kind": "Evidence",
+          "kindKo": "근거",
+          "text": "6/13~14 원본 음성·문서 파일 묶음. 모든 결론 연결의 시작점이다.",
+          "cited": [
+            "public/workshop-graph/data/source-coverage-2026-06-13.json"
+          ],
+          "cited_uids": [
+            "public/workshop-graph/data/source-coverage-2026-06-13.json"
+          ],
+          "meta": {
+            "cited": [
+              "public/workshop-graph/data/source-coverage-2026-06-13.json"
+            ],
+            "original_count": 25
+          },
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": true,
+          "deg": 3,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "stage-transcripts",
+          "node_id": "stage-transcripts",
+          "label": "음성·문서 세션 13건 + 텍스트 세션 6건",
+          "kind": "Evidence",
+          "kindKo": "근거",
+          "text": "10건은 ready, 3건은 재확인 또는 부분 반영 상태다. 별도 텍스트 입력 세션은 6건이다.",
+          "cited": [
+            "docs/graph-source-coverage-audit-2026-06-25.md",
+            "public/workshop-graph/data/source-coverage-2026-06-13.json",
+            "evaluation/input-coverage/input-coverage-report.json"
+          ],
+          "cited_uids": [
+            "docs/graph-source-coverage-audit-2026-06-25.md",
+            "public/workshop-graph/data/source-coverage-2026-06-13.json",
+            "evaluation/input-coverage/input-coverage-report.json"
+          ],
+          "meta": {
+            "cited": [
+              "docs/graph-source-coverage-audit-2026-06-25.md",
+              "public/workshop-graph/data/source-coverage-2026-06-13.json",
+              "evaluation/input-coverage/input-coverage-report.json"
+            ],
+            "ready_sessions": 10,
+            "partial_or_review_sessions": 3
+          },
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": true,
+          "deg": 7,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "stage-workshop-graph",
+          "node_id": "stage-workshop-graph",
+          "label": "통합 워크숍 그래프 613노드",
+          "kind": "Claim",
+          "kindKo": "주장",
+          "text": "워크숍 통합 그래프는 613노드 / 491엣지이며 A조, B조, 통합 텍스트 세션을 함께 포함한다.",
+          "cited": [
+            "public/workshop-graph/data/workshop-2026-06-13.json"
+          ],
+          "cited_uids": [
+            "public/workshop-graph/data/workshop-2026-06-13.json"
+          ],
+          "meta": {
+            "cited": [
+              "public/workshop-graph/data/workshop-2026-06-13.json"
+            ],
+            "session_counts": [
+              {
+                "session": "A_t21",
+                "nodes": 34
+              },
+              {
+                "session": "A_t22",
+                "nodes": 84
+              },
+              {
+                "session": "A_t23",
+                "nodes": 29
+              },
+              {
+                "session": "B_t1",
+                "nodes": 81
+              },
+              {
+                "session": "B_t2",
+                "nodes": 20
+              },
+              {
+                "session": "B_t3",
+                "nodes": 50
+              },
+              {
+                "session": "발표",
+                "nodes": 6
+              },
+              {
+                "session": "정의전환",
+                "nodes": 22
+              },
+              {
+                "session": "환경4조",
+                "nodes": 88
+              },
+              {
+                "session": "20, 30대",
+                "nodes": 1
+              },
+              {
+                "session": "청년",
+                "nodes": 1
+              },
+              {
+                "session": "농민",
+                "nodes": 1
+              },
+              {
+                "session": "노동자",
+                "nodes": 1
+              },
+              {
+                "session": "육아하는 사람",
+                "nodes": 1
+              },
+              {
+                "session": "젊은 세대",
+                "nodes": 1
+              },
+              {
+                "session": "10대 아이들",
+                "nodes": 1
+              },
+              {
+                "session": "직장인",
+                "nodes": 1
+              },
+              {
+                "session": "OA_t1",
+                "nodes": 43
+              },
+              {
+                "session": "OB_t1",
+                "nodes": 42
+              },
+              {
+                "session": "OZ_t1",
+                "nodes": 44
+              },
+              {
+                "session": "DA_t2",
+                "nodes": 23
+              },
+              {
+                "session": "DB_t2",
+                "nodes": 5
+              },
+              {
+                "session": "DZ_t2",
+                "nodes": 34
+              }
+            ]
+          },
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": true,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "stage-final-votes",
+          "node_id": "stage-final-votes",
+          "label": "7.4 투표·발표자료",
+          "kind": "Evidence",
+          "kindKo": "근거",
+          "text": "의제투표는 18명 응답 기준 8개 후보를 집계했고, 운영규정 결론은 발표시나리오와 운영규정 그래프의 결정 노드로 확인했다.",
+          "cited": [
+            "public/agenda-vote-0704/data.json",
+            "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
+            "10_작업산출물/7.4_발표덱/의제결과_v6/발표시나리오_의제선정결과_김영현.md"
+          ],
+          "cited_uids": [
+            "public/agenda-vote-0704/data.json",
+            "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
+            "10_작업산출물/7.4_발표덱/의제결과_v6/발표시나리오_의제선정결과_김영현.md"
+          ],
+          "meta": {
+            "cited": [
+              "public/agenda-vote-0704/data.json",
+              "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
+              "10_작업산출물/7.4_발표덱/의제결과_v6/발표시나리오_의제선정결과_김영현.md"
+            ],
+            "n_voters": 18
+          },
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": true,
+          "deg": 7,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "stage-final-conclusions",
+          "node_id": "stage-final-conclusions",
+          "label": "최종 운영규정·의제 결론",
+          "kind": "Decision",
+          "kindKo": "결정",
+          "text": "운영규정 최종 결정 세트와 의제 선정 결론·후보 세트로 분리해 결론을 확인한다.",
+          "cited": [
+            "public/workshop-graph/data/final-regulation-decisions-0704.json",
+            "public/workshop-graph/data/final-agenda-decisions-0704.json"
+          ],
+          "cited_uids": [
+            "public/workshop-graph/data/final-regulation-decisions-0704.json",
+            "public/workshop-graph/data/final-agenda-decisions-0704.json"
+          ],
+          "meta": {
+            "cited": [
+              "public/workshop-graph/data/final-regulation-decisions-0704.json",
+              "public/workshop-graph/data/final-agenda-decisions-0704.json"
+            ]
+          },
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": true,
+          "deg": 9,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "coverage_ctx_coverage::hub",
+          "node_id": "coverage_ctx_coverage::hub",
+          "label": "6/13-14 원본자료 연결상태",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "원본 25건, 텍스트 12건, 그래프 세션 반영 상태를 함께 점검합니다. 이 화면은 AI가 내용을 새로 판단한 것이 아니라 원본-전사-그래프 연결상태를 표시합니다.",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {
+            "cited": [],
+            "source_node_id": "coverage::hub",
+            "source_graph": "source-coverage-2026-06-13",
+            "evidence_type": "source_coverage",
+            "synthesized": false,
+            "session": "coverage"
+          },
+          "session": "coverage",
+          "evidence_type": "source_coverage",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "process-input-coverage-audit",
+          "node_id": "process-input-coverage-audit",
+          "label": "입력 데이터 누락 감사",
+          "kind": "Evidence",
+          "kindKo": "근거",
+          "text": "현재 저장소 증거 기준으로 A조만 반영된 것은 아니지만, B_t2·토론4통합·음성002는 부분 반영 또는 그래프 갭으로 남아 있음을 검증했다.",
+          "cited": [
+            "evaluation/input-coverage/input-coverage-report.json",
+            "evaluation/input-coverage/input-coverage-audit.md"
+          ],
+          "cited_uids": [
+            "evaluation/input-coverage/input-coverage-report.json",
+            "evaluation/input-coverage/input-coverage-audit.md"
+          ],
+          "meta": {
+            "cited": [
+              "evaluation/input-coverage/input-coverage-report.json",
+              "evaluation/input-coverage/input-coverage-audit.md"
+            ],
+            "evidence_type": "coverage_audit",
+            "allDataCompletelyReflected": false,
+            "aOnlyDataClaimIsFalse": true
+          },
+          "session": "",
+          "evidence_type": "coverage_audit",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": true,
+          "deg": 3,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "partial_session_session::B_t2",
+          "node_id": "partial_session_session::B_t2",
+          "label": "6/14 B조 토론2",
+          "kind": "Concern",
+          "kindKo": "우려",
+          "text": "태그: B_t2\n종합 상태: needs_review\n전사 상태: transcript_partial\n전사 chunk/json: 1/5\ntxt/srt: 0B / 0B\n그래프 노드: 20\n그래프 상태: graph_represented\n폴더: 20260614_[토론2] 의제선정 브레인스토밍_B조",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {
+            "cited": [],
+            "source_node_id": "session::B_t2",
+            "source_graph": "source-coverage-2026-06-13",
+            "evidence_type": "source_coverage",
+            "synthesized": false,
+            "session": "B_t2"
+          },
+          "session": "B_t2",
+          "evidence_type": "source_coverage",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "partial_session_session::토론4통합",
+          "node_id": "partial_session_session::토론4통합",
+          "label": "6/14 토론4 통합 운영",
+          "kind": "Concern",
+          "kindKo": "우려",
+          "text": "태그: 토론4통합\n종합 상태: needs_review\n전사 상태: transcript_partial\n전사 chunk/json: 0/10\ntxt/srt: 0B / 0B\n그래프 노드: 0\n그래프 상태: not_expected_in_current_graph\n폴더: 20260614_[토론4] 의제선정 및 운영규정안 마련",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {
+            "cited": [],
+            "source_node_id": "session::토론4통합",
+            "source_graph": "source-coverage-2026-06-13",
+            "evidence_type": "source_coverage",
+            "synthesized": false,
+            "session": "토론4통합"
+          },
+          "session": "토론4통합",
+          "evidence_type": "source_coverage",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "partial_session_session::음성002",
+          "node_id": "partial_session_session::음성002",
+          "label": "음성 002",
+          "kind": "Condition",
+          "kindKo": "조건",
+          "text": "태그: 음성002\n종합 상태: ui_or_graph_gap\n전사 상태: transcript_ready\n전사 chunk/json: 9/9\ntxt/srt: 64.2KB / 109.0KB\n그래프 노드: 0\n그래프 상태: not_expected_in_current_graph\n폴더: 음성 002",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {
+            "cited": [],
+            "source_node_id": "session::음성002",
+            "source_graph": "source-coverage-2026-06-13",
+            "evidence_type": "source_coverage",
+            "synthesized": false,
+            "session": "음성002"
+          },
+          "session": "음성002",
+          "evidence_type": "source_coverage",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "coverage_issue_issue::B_t2",
+          "node_id": "coverage_issue_issue::B_t2",
+          "label": "6/14 B조 토론2 재확인",
+          "kind": "Concern",
+          "kindKo": "우려",
+          "text": "상태: needs_review\n전사: transcript_partial\n그래프: graph_represented\nB조 토론2는 그래프에 일부 반영되었지만 전사 상위 txt/srt가 0바이트이고 tmp 청크가 남아 있어 재확인이 필요합니다.",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {
+            "cited": [],
+            "source_node_id": "issue::B_t2",
+            "source_graph": "source-coverage-2026-06-13",
+            "evidence_type": "source_coverage",
+            "synthesized": false,
+            "session": "B_t2"
+          },
+          "session": "B_t2",
+          "evidence_type": "source_coverage",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "coverage_issue_issue::토론4통합",
+          "node_id": "coverage_issue_issue::토론4통합",
+          "label": "6/14 토론4 통합 운영 재확인",
+          "kind": "Concern",
+          "kindKo": "우려",
+          "text": "상태: needs_review\n전사: transcript_partial\n그래프: not_expected_in_current_graph\n토론4 통합 운영은 원본 음성과 청크가 있으나 전사 산출물이 미완결이고 현재 통합 그래프 세션으로 노출되지 않습니다.",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {
+            "cited": [],
+            "source_node_id": "issue::토론4통합",
+            "source_graph": "source-coverage-2026-06-13",
+            "evidence_type": "source_coverage",
+            "synthesized": false,
+            "session": "토론4통합"
+          },
+          "session": "토론4통합",
+          "evidence_type": "source_coverage",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "coverage_issue_issue::음성002",
+          "node_id": "coverage_issue_issue::음성002",
+          "label": "음성 002 재확인",
+          "kind": "Concern",
+          "kindKo": "우려",
+          "text": "상태: ui_or_graph_gap\n전사: transcript_ready\n그래프: not_expected_in_current_graph\n원본-전사-그래프 연결 상태 확인이 필요합니다.",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {
+            "cited": [],
+            "source_node_id": "issue::음성002",
+            "source_graph": "source-coverage-2026-06-13",
+            "evidence_type": "source_coverage",
+            "synthesized": false,
+            "session": "음성002"
+          },
+          "session": "음성002",
+          "evidence_type": "source_coverage",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "process_agenda_vote_2",
+          "node_id": "process_agenda_vote_2",
+          "label": "1순위 후보: 전 생애주기 탄소중립 교육체계 구축",
+          "kind": "Decision",
+          "kindKo": "결정",
+          "text": "탄소중립 교육체계: 평균 4.06, 슬롯 2.",
+          "cited": [
+            "public/agenda-vote-0704/data.json"
+          ],
+          "cited_uids": [
+            "public/agenda-vote-0704/data.json"
+          ],
+          "meta": {
+            "cited": [
+              "public/agenda-vote-0704/data.json"
+            ],
+            "slot": "2",
+            "vote_rank": 1,
+            "vote_score": 4.06,
+            "evidence_type": "vote_result"
+          },
+          "session": "",
+          "evidence_type": "vote_result",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": true,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "process_agenda_vote_3",
+          "node_id": "process_agenda_vote_3",
+          "label": "2순위 후보: 시민의식 개선 및 참여 활성화 방안",
+          "kind": "Decision",
+          "kindKo": "결정",
+          "text": "시민의식·참여: 평균 3.89, 슬롯 3.",
+          "cited": [
+            "public/agenda-vote-0704/data.json"
+          ],
+          "cited_uids": [
+            "public/agenda-vote-0704/data.json"
+          ],
+          "meta": {
+            "cited": [
+              "public/agenda-vote-0704/data.json"
+            ],
+            "slot": "3",
+            "vote_rank": 2,
+            "vote_score": 3.89,
+            "evidence_type": "vote_result"
+          },
+          "session": "",
+          "evidence_type": "vote_result",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": true,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "process_agenda_vote_5",
+          "node_id": "process_agenda_vote_5",
+          "label": "3순위 후보: 자원순환형 배달 문화 조성 + 자원순환 촉진·생활폐기물 감축",
+          "kind": "Decision",
+          "kindKo": "결정",
+          "text": "자원순환·폐기물 [통합]: 평균 3.89, 슬롯 5.",
+          "cited": [
+            "public/agenda-vote-0704/data.json"
+          ],
+          "cited_uids": [
+            "public/agenda-vote-0704/data.json"
+          ],
+          "meta": {
+            "cited": [
+              "public/agenda-vote-0704/data.json"
+            ],
+            "slot": "5",
+            "vote_rank": 3,
+            "vote_score": 3.89,
+            "evidence_type": "vote_result"
+          },
+          "session": "",
+          "evidence_type": "vote_result",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": true,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "process_agenda_vote_8",
+          "node_id": "process_agenda_vote_8",
+          "label": "4순위 후보: 대중교통 친환경 교통전환 방안",
+          "kind": "Proposal",
+          "kindKo": "정책대안",
+          "text": "대중교통 전환: 평균 3.72, 슬롯 8.",
+          "cited": [
+            "public/agenda-vote-0704/data.json"
+          ],
+          "cited_uids": [
+            "public/agenda-vote-0704/data.json"
+          ],
+          "meta": {
+            "cited": [
+              "public/agenda-vote-0704/data.json"
+            ],
+            "slot": "8",
+            "vote_rank": 4,
+            "vote_score": 3.72,
+            "evidence_type": "vote_result"
+          },
+          "session": "",
+          "evidence_type": "vote_result",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": true,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "process_agenda_vote_7",
+          "node_id": "process_agenda_vote_7",
+          "label": "5순위 후보: 친환경 도시 인프라·에너지 전환 + 기후위기 적응형 도시·취약계층 보호",
+          "kind": "Proposal",
+          "kindKo": "정책대안",
+          "text": "친환경도시·기후적응 [통합]: 평균 3.56, 슬롯 7.",
+          "cited": [
+            "public/agenda-vote-0704/data.json"
+          ],
+          "cited_uids": [
+            "public/agenda-vote-0704/data.json"
+          ],
+          "meta": {
+            "cited": [
+              "public/agenda-vote-0704/data.json"
+            ],
+            "slot": "7",
+            "vote_rank": 5,
+            "vote_score": 3.56,
+            "evidence_type": "vote_result"
+          },
+          "session": "",
+          "evidence_type": "vote_result",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": true,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "process-regulation-link",
+          "node_id": "process-regulation-link",
+          "label": "운영규정 결론 세트로 연결",
+          "kind": "Decision",
+          "kindKo": "결정",
+          "text": "기획참여단·숙의참여단 정족수, 분과 구성, 의제 기준 수정 결론을 별도 세트에서 확인한다.",
+          "cited": [
+            "public/workshop-graph/data/final-regulation-decisions-0704.json"
+          ],
+          "cited_uids": [
+            "public/workshop-graph/data/final-regulation-decisions-0704.json"
+          ],
+          "meta": {
+            "cited": [
+              "public/workshop-graph/data/final-regulation-decisions-0704.json"
+            ]
+          },
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": true,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "process-agenda-link",
+          "node_id": "process-agenda-link",
+          "label": "의제선정 결론 세트로 연결",
+          "kind": "Decision",
+          "kindKo": "결정",
+          "text": "탄소중립 교육, 자원순환·폐기물, 시민의식·참여 통합 관계와 후순위 후보를 별도 세트에서 확인한다.",
+          "cited": [
+            "public/workshop-graph/data/final-agenda-decisions-0704.json"
+          ],
+          "cited_uids": [
+            "public/workshop-graph/data/final-agenda-decisions-0704.json"
+          ],
+          "meta": {
+            "cited": [
+              "public/workshop-graph/data/final-agenda-decisions-0704.json"
+            ]
+          },
+          "session": "",
+          "evidence_type": null,
+          "review_state": null,
+          "is_public": true,
+          "synthesized": true,
+          "deg": 2,
+          "isolated": false
+        }
+      }
+    ],
+    "edges": [
+      {
+        "data": {
+          "id": "e_0",
+          "source": "stage-raw-data",
+          "target": "stage-transcripts",
+          "src": "stage-raw-data",
+          "dst": "stage-transcripts",
+          "rel": "mapsTo",
+          "relKo": "연결",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_1",
+          "source": "stage-transcripts",
+          "target": "stage-workshop-graph",
+          "src": "stage-transcripts",
+          "dst": "stage-workshop-graph",
+          "rel": "mapsTo",
+          "relKo": "연결",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_2",
+          "source": "stage-workshop-graph",
+          "target": "stage-final-votes",
+          "src": "stage-workshop-graph",
+          "dst": "stage-final-votes",
+          "rel": "narrowsTo",
+          "relKo": "압축",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_3",
+          "source": "stage-final-votes",
+          "target": "stage-final-conclusions",
+          "src": "stage-final-votes",
+          "dst": "stage-final-conclusions",
+          "rel": "resolves",
+          "relKo": "확정",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_4",
+          "source": "stage-final-conclusions",
+          "target": "process-final-map",
+          "src": "stage-final-conclusions",
+          "dst": "process-final-map",
+          "rel": "supports",
+          "relKo": "지지",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_5",
+          "source": "coverage_ctx_coverage::hub",
+          "target": "stage-raw-data",
+          "src": "coverage_ctx_coverage::hub",
+          "dst": "stage-raw-data",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_6",
+          "source": "coverage_ctx_coverage::hub",
+          "target": "stage-transcripts",
+          "src": "coverage_ctx_coverage::hub",
+          "dst": "stage-transcripts",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_7",
+          "source": "process-input-coverage-audit",
+          "target": "stage-raw-data",
+          "src": "process-input-coverage-audit",
+          "dst": "stage-raw-data",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_8",
+          "source": "process-input-coverage-audit",
+          "target": "stage-transcripts",
+          "src": "process-input-coverage-audit",
+          "dst": "stage-transcripts",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_9",
+          "source": "process-input-coverage-audit",
+          "target": "process-final-map",
+          "src": "process-input-coverage-audit",
+          "dst": "process-final-map",
+          "rel": "raisesConcernOn",
+          "relKo": "우려제기",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_10",
+          "source": "partial_session_session::B_t2",
+          "target": "stage-transcripts",
+          "src": "partial_session_session::B_t2",
+          "dst": "stage-transcripts",
+          "rel": "raisesConcernOn",
+          "relKo": "우려제기",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_11",
+          "source": "partial_session_session::토론4통합",
+          "target": "stage-transcripts",
+          "src": "partial_session_session::토론4통합",
+          "dst": "stage-transcripts",
+          "rel": "raisesConcernOn",
+          "relKo": "우려제기",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_12",
+          "source": "partial_session_session::음성002",
+          "target": "stage-transcripts",
+          "src": "partial_session_session::음성002",
+          "dst": "stage-transcripts",
+          "rel": "raisesConcernOn",
+          "relKo": "우려제기",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_13",
+          "source": "coverage_issue_issue::B_t2",
+          "target": "process-final-map",
+          "src": "coverage_issue_issue::B_t2",
+          "dst": "process-final-map",
+          "rel": "raisesConcernOn",
+          "relKo": "우려제기",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_14",
+          "source": "coverage_issue_issue::토론4통합",
+          "target": "process-final-map",
+          "src": "coverage_issue_issue::토론4통합",
+          "dst": "process-final-map",
+          "rel": "raisesConcernOn",
+          "relKo": "우려제기",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_15",
+          "source": "coverage_issue_issue::음성002",
+          "target": "process-final-map",
+          "src": "coverage_issue_issue::음성002",
+          "dst": "process-final-map",
+          "rel": "raisesConcernOn",
+          "relKo": "우려제기",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_16",
+          "source": "stage-final-votes",
+          "target": "process_agenda_vote_2",
+          "src": "stage-final-votes",
+          "dst": "process_agenda_vote_2",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_17",
+          "source": "process_agenda_vote_2",
+          "target": "stage-final-conclusions",
+          "src": "process_agenda_vote_2",
+          "dst": "stage-final-conclusions",
+          "rel": "supports",
+          "relKo": "지지",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_18",
+          "source": "stage-final-votes",
+          "target": "process_agenda_vote_3",
+          "src": "stage-final-votes",
+          "dst": "process_agenda_vote_3",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_19",
+          "source": "process_agenda_vote_3",
+          "target": "stage-final-conclusions",
+          "src": "process_agenda_vote_3",
+          "dst": "stage-final-conclusions",
+          "rel": "supports",
+          "relKo": "지지",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_20",
+          "source": "stage-final-votes",
+          "target": "process_agenda_vote_5",
+          "src": "stage-final-votes",
+          "dst": "process_agenda_vote_5",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_21",
+          "source": "process_agenda_vote_5",
+          "target": "stage-final-conclusions",
+          "src": "process_agenda_vote_5",
+          "dst": "stage-final-conclusions",
+          "rel": "supports",
+          "relKo": "지지",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_22",
+          "source": "stage-final-votes",
+          "target": "process_agenda_vote_8",
+          "src": "stage-final-votes",
+          "dst": "process_agenda_vote_8",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_23",
+          "source": "process_agenda_vote_8",
+          "target": "stage-final-conclusions",
+          "src": "process_agenda_vote_8",
+          "dst": "stage-final-conclusions",
+          "rel": "comparesWith",
+          "relKo": "비교",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_24",
+          "source": "stage-final-votes",
+          "target": "process_agenda_vote_7",
+          "src": "stage-final-votes",
+          "dst": "process_agenda_vote_7",
+          "rel": "hasEvidence",
+          "relKo": "근거",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_25",
+          "source": "process_agenda_vote_7",
+          "target": "stage-final-conclusions",
+          "src": "process_agenda_vote_7",
+          "dst": "stage-final-conclusions",
+          "rel": "comparesWith",
+          "relKo": "비교",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_26",
+          "source": "stage-final-conclusions",
+          "target": "process-regulation-link",
+          "src": "stage-final-conclusions",
+          "dst": "process-regulation-link",
+          "rel": "mapsTo",
+          "relKo": "연결",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_27",
+          "source": "stage-final-conclusions",
+          "target": "process-agenda-link",
+          "src": "stage-final-conclusions",
+          "dst": "process-agenda-link",
+          "rel": "mapsTo",
+          "relKo": "연결",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_28",
+          "source": "process-regulation-link",
+          "target": "process-final-map",
+          "src": "process-regulation-link",
+          "dst": "process-final-map",
+          "rel": "supports",
+          "relKo": "지지",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_29",
+          "source": "process-agenda-link",
+          "target": "process-final-map",
+          "src": "process-agenda-link",
+          "dst": "process-final-map",
+          "rel": "supports",
+          "relKo": "지지",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      }
+    ]
+  },
+  "meta": {
+    "variant": "final-process-to-conclusion-0704",
+    "title": "전체 과정에서 최종 결론으로 이어지는 온톨로지",
+    "generated_at": "2026-07-03T23:23:05.408Z",
+    "source_files": [
+      "public/workshop-graph/data/source-coverage-2026-06-13.json",
+      "public/workshop-graph/data/workshop-2026-06-13.json",
+      "evaluation/input-coverage/input-coverage-report.json",
+      "public/agenda-vote-0704/data.json",
+      "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
+      "10_작업산출물/7.4_발표덱/의제결과_v6/발표시나리오_의제선정결과_김영현.md"
+    ],
+    "counts": {
+      "nodes": 21,
+      "edges": 30
+    },
+    "quality": {
+      "conclusion": "A/B/통합 세션은 통합 그래프에 함께 들어 있으나, B_t2·토론4통합·음성002는 부분 반영 또는 그래프 갭으로 표시해야 한다.",
+      "public_menu_guidance": "A조 live sample should not be the public entry point; the process map and source coverage should lead."
+    }
+  }
+}

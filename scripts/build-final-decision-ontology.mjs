@@ -14,12 +14,15 @@ const writeJson = (path, value) => {
 
 const KIND_KO = {
   Decision: '결정',
+  Claim: '주장',
   Proposal: '정책대안',
   Evidence: '근거',
   Concern: '우려',
+  Condition: '조건',
   Value: '가치',
   Clause: '조항',
   Issue: '쟁점',
+  Group: '영향집단',
 };
 
 const REL_KO = {
@@ -35,13 +38,17 @@ const REL_KO = {
 
 const regulationSource = dataPath('public', 'workshop-graph', 'data', 'regulation-2026-06-13.json');
 const workshopSource = dataPath('public', 'workshop-graph', 'data', 'workshop-2026-06-13.json');
+const sourceCoverageSource = dataPath('public', 'workshop-graph', 'data', 'source-coverage-2026-06-13.json');
 const agendaVoteSource = dataPath('public', 'agenda-vote-0704', 'data.json');
 const decisionVoteSource = dataPath('public', '0704-admin', 'decision-votes-report.json');
+const inputCoverageAuditSource = dataPath('evaluation', 'input-coverage', 'input-coverage-report.json');
 
 const regulationGraph = readJson(regulationSource);
 const workshopGraph = readJson(workshopSource);
+const sourceCoverageGraph = readJson(sourceCoverageSource);
 const agendaVote = readJson(agendaVoteSource);
 const decisionVote = readJson(decisionVoteSource);
+const inputCoverageAudit = readJson(inputCoverageAuditSource);
 
 const scenarioRefs = {
   regulation: '10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md',
@@ -331,7 +338,7 @@ function buildRegulationSet() {
       vote: item.vote,
       existing_context_matches: matches.length,
       discussion_signal: strength,
-      reflected_in_existing_regulation_graph: matches.some((m) => nodeText(m).includes(item.result) || containsAny(nodeText(m), [item.label])),
+      reflected_in_existing_regulation_graph: matches.length > 0,
     });
   }
 
@@ -451,23 +458,194 @@ function buildAgendaSet() {
   };
 }
 
+function countWorkshopSessions() {
+  const counts = new Map();
+  for (const node of graphNodes(workshopGraph)) {
+    const session = node.data.session || String(node.data.id || '').split('__')[0] || 'unknown';
+    counts.set(session, (counts.get(session) || 0) + 1);
+  }
+  return [...counts.entries()].map(([session, nodes]) => ({ session, nodes }));
+}
+
+function cloneCoverageNode(elements, sourceNode, idPrefix = 'coverage_ctx') {
+  const id = `${idPrefix}_${sourceNode.data.id}`;
+  addNode(elements, id, sourceNode.data.kind || 'Evidence', sourceNode.data.label, sourceNode.data.text, {
+    cited: sourceNode.data.cited || sourceNode.data.cited_uids || [],
+    source_node_id: sourceNode.data.id,
+    source_graph: 'source-coverage-2026-06-13',
+    evidence_type: 'source_coverage',
+    synthesized: false,
+    session: sourceNode.data.session || 'coverage',
+  });
+  return id;
+}
+
+function buildProcessSet() {
+  const elements = { nodes: [], edges: [] };
+  const sessionCounts = countWorkshopSessions();
+  const originalNodes = graphNodes(sourceCoverageGraph).filter((node) => String(node.data.id || '').startsWith('original::'));
+  const sessionNodes = graphNodes(sourceCoverageGraph).filter((node) => String(node.data.id || '').startsWith('session::'));
+  const issueNodes = graphNodes(sourceCoverageGraph).filter((node) => String(node.data.id || '').startsWith('issue::'));
+  const readySessions = sessionNodes.filter((node) => !['Concern', 'Condition'].includes(node.data.kind));
+  const partialSessions = sessionNodes.filter((node) => ['Concern', 'Condition'].includes(node.data.kind));
+  const topAgendaVotes = voteRankings().slice(0, 5);
+
+  addNode(
+    elements,
+    'process-final-map',
+    'Decision',
+    '전체 과정에서 최종 결론으로 이어지는 지도',
+    '원본자료, 전사, 조별·통합 숙의, 후보 압축, 7.4 투표·발표자료, 최종 운영규정·의제 결론을 한 흐름으로 연결한다.',
+    {
+      cited: [
+        'public/workshop-graph/data/source-coverage-2026-06-13.json',
+        'public/workshop-graph/data/workshop-2026-06-13.json',
+        'evaluation/input-coverage/input-coverage-report.json',
+        'public/agenda-vote-0704/data.json',
+        scenarioRefs.regulation,
+        scenarioRefs.agenda,
+      ],
+      decision_set: 'process_to_conclusion_0704',
+    },
+  );
+
+  addNode(elements, 'stage-raw-data', 'Evidence', `원본자료 ${originalNodes.length}건`, '6/13~14 원본 음성·문서 파일 묶음. 모든 결론 연결의 시작점이다.', {
+    cited: ['public/workshop-graph/data/source-coverage-2026-06-13.json'],
+    original_count: inputCoverageAudit.inventory?.sourceCoverage?.originalFiles ?? originalNodes.length,
+  });
+  addNode(elements, 'stage-transcripts', 'Evidence', `음성·문서 세션 ${readySessions.length + partialSessions.length}건 + 텍스트 세션 ${inputCoverageAudit.inventory?.sourceCoverage?.textInputsInCoverageGraph ?? 0}건`, `${readySessions.length}건은 ready, ${partialSessions.length}건은 재확인 또는 부분 반영 상태다. 별도 텍스트 입력 세션은 ${inputCoverageAudit.inventory?.sourceCoverage?.textInputsInCoverageGraph ?? 0}건이다.`, {
+    cited: ['docs/graph-source-coverage-audit-2026-06-25.md', 'public/workshop-graph/data/source-coverage-2026-06-13.json', 'evaluation/input-coverage/input-coverage-report.json'],
+    ready_sessions: readySessions.length,
+    partial_or_review_sessions: partialSessions.length,
+  });
+  addNode(elements, 'stage-workshop-graph', 'Claim', `통합 워크숍 그래프 ${graphNodes(workshopGraph).length}노드`, `워크숍 통합 그래프는 ${graphNodes(workshopGraph).length}노드 / ${graphEdges(workshopGraph).length}엣지이며 A조, B조, 통합 텍스트 세션을 함께 포함한다.`, {
+    cited: ['public/workshop-graph/data/workshop-2026-06-13.json'],
+    session_counts: sessionCounts,
+  });
+  addNode(elements, 'stage-final-votes', 'Evidence', '7.4 투표·발표자료', `의제투표는 ${agendaVote.meta.n_voters}명 응답 기준 8개 후보를 집계했고, 운영규정 결론은 발표시나리오와 운영규정 그래프의 결정 노드로 확인했다.`, {
+    cited: ['public/agenda-vote-0704/data.json', scenarioRefs.regulation, scenarioRefs.agenda],
+    n_voters: agendaVote.meta.n_voters,
+  });
+  addNode(elements, 'stage-final-conclusions', 'Decision', '최종 운영규정·의제 결론', '운영규정 최종 결정 세트와 의제 선정 결론·후보 세트로 분리해 결론을 확인한다.', {
+    cited: ['public/workshop-graph/data/final-regulation-decisions-0704.json', 'public/workshop-graph/data/final-agenda-decisions-0704.json'],
+  });
+
+  addEdge(elements, 'stage-raw-data', 'stage-transcripts', 'mapsTo');
+  addEdge(elements, 'stage-transcripts', 'stage-workshop-graph', 'mapsTo');
+  addEdge(elements, 'stage-workshop-graph', 'stage-final-votes', 'narrowsTo');
+  addEdge(elements, 'stage-final-votes', 'stage-final-conclusions', 'resolves');
+  addEdge(elements, 'stage-final-conclusions', 'process-final-map', 'supports');
+
+  const coverageHub = graphNodes(sourceCoverageGraph).find((node) => node.data.id === 'coverage::hub');
+  if (coverageHub) {
+    const coverageHubId = cloneCoverageNode(elements, coverageHub);
+    addEdge(elements, coverageHubId, 'stage-raw-data', 'hasEvidence');
+    addEdge(elements, coverageHubId, 'stage-transcripts', 'hasEvidence');
+  }
+
+  addNode(elements, 'process-input-coverage-audit', 'Evidence', '입력 데이터 누락 감사', '현재 저장소 증거 기준으로 A조만 반영된 것은 아니지만, B_t2·토론4통합·음성002는 부분 반영 또는 그래프 갭으로 남아 있음을 검증했다.', {
+    cited: ['evaluation/input-coverage/input-coverage-report.json', 'evaluation/input-coverage/input-coverage-audit.md'],
+    evidence_type: 'coverage_audit',
+    allDataCompletelyReflected: inputCoverageAudit.conclusion?.allDataCompletelyReflected,
+    aOnlyDataClaimIsFalse: inputCoverageAudit.conclusion?.aOnlyDataClaimIsFalse,
+  });
+  addEdge(elements, 'process-input-coverage-audit', 'stage-raw-data', 'hasEvidence');
+  addEdge(elements, 'process-input-coverage-audit', 'stage-transcripts', 'hasEvidence');
+  addEdge(elements, 'process-input-coverage-audit', 'process-final-map', 'raisesConcernOn');
+
+  for (const node of partialSessions) {
+    const id = cloneCoverageNode(elements, node, 'partial_session');
+    addEdge(elements, id, 'stage-transcripts', 'raisesConcernOn');
+  }
+  for (const node of issueNodes) {
+    const id = cloneCoverageNode(elements, node, 'coverage_issue');
+    addEdge(elements, id, 'process-final-map', 'raisesConcernOn');
+  }
+
+  for (const [index, agenda] of topAgendaVotes.entries()) {
+    const id = `process_agenda_vote_${agenda.slot}`;
+    addNode(elements, id, index < 3 ? 'Decision' : 'Proposal', `${index + 1}순위 후보: ${agenda.name}`, `${agenda.short}: 평균 ${agenda.score}, 슬롯 ${agenda.slot}.`, {
+      cited: ['public/agenda-vote-0704/data.json'],
+      slot: agenda.slot,
+      vote_rank: index + 1,
+      vote_score: agenda.score,
+      evidence_type: 'vote_result',
+    });
+    addEdge(elements, 'stage-final-votes', id, 'hasEvidence');
+    addEdge(elements, id, 'stage-final-conclusions', index < 3 ? 'supports' : 'comparesWith');
+  }
+
+  addNode(elements, 'process-regulation-link', 'Decision', '운영규정 결론 세트로 연결', '기획참여단·숙의참여단 정족수, 분과 구성, 의제 기준 수정 결론을 별도 세트에서 확인한다.', {
+    cited: ['public/workshop-graph/data/final-regulation-decisions-0704.json'],
+  });
+  addNode(elements, 'process-agenda-link', 'Decision', '의제선정 결론 세트로 연결', '탄소중립 교육, 자원순환·폐기물, 시민의식·참여 통합 관계와 후순위 후보를 별도 세트에서 확인한다.', {
+    cited: ['public/workshop-graph/data/final-agenda-decisions-0704.json'],
+  });
+  addEdge(elements, 'stage-final-conclusions', 'process-regulation-link', 'mapsTo');
+  addEdge(elements, 'stage-final-conclusions', 'process-agenda-link', 'mapsTo');
+  addEdge(elements, 'process-regulation-link', 'process-final-map', 'supports');
+  addEdge(elements, 'process-agenda-link', 'process-final-map', 'supports');
+
+  return {
+    graph: {
+      elements: finalizeElements(elements),
+      meta: {
+        variant: 'final-process-to-conclusion-0704',
+        title: '전체 과정에서 최종 결론으로 이어지는 온톨로지',
+        generated_at: new Date().toISOString(),
+        source_files: [
+          'public/workshop-graph/data/source-coverage-2026-06-13.json',
+          'public/workshop-graph/data/workshop-2026-06-13.json',
+          'evaluation/input-coverage/input-coverage-report.json',
+          'public/agenda-vote-0704/data.json',
+          scenarioRefs.regulation,
+          scenarioRefs.agenda,
+        ],
+        counts: { nodes: elements.nodes.length, edges: elements.edges.length },
+        quality: {
+          conclusion: 'A/B/통합 세션은 통합 그래프에 함께 들어 있으나, B_t2·토론4통합·음성002는 부분 반영 또는 그래프 갭으로 표시해야 한다.',
+          public_menu_guidance: 'A조 live sample should not be the public entry point; the process map and source coverage should lead.',
+        },
+      },
+    },
+    coverage: {
+      original_files: originalNodes.length,
+      source_coverage_nodes: graphNodes(sourceCoverageGraph).length,
+      source_coverage_edges: graphEdges(sourceCoverageGraph).length,
+      workshop_graph_nodes: graphNodes(workshopGraph).length,
+      workshop_graph_edges: graphEdges(workshopGraph).length,
+      ready_sessions: readySessions.length,
+      partial_or_review_sessions: partialSessions.length,
+      partial_or_review_labels: partialSessions.map((node) => node.data.label),
+      issue_labels: issueNodes.map((node) => node.data.label),
+      session_counts: sessionCounts,
+    },
+  };
+}
+
 const regulation = buildRegulationSet();
 const agenda = buildAgendaSet();
+const process = buildProcessSet();
 
 const regulationOut = dataPath('public', 'workshop-graph', 'data', 'final-regulation-decisions-0704.json');
 const agendaOut = dataPath('public', 'workshop-graph', 'data', 'final-agenda-decisions-0704.json');
+const processOut = dataPath('public', 'workshop-graph', 'data', 'final-process-to-conclusion-0704.json');
 writeJson(regulationOut, regulation.graph);
 writeJson(agendaOut, agenda.graph);
+writeJson(processOut, process.graph);
 
 const report = {
   generated_at: new Date().toISOString(),
   outputs: {
     regulation: 'public/workshop-graph/data/final-regulation-decisions-0704.json',
     agenda: 'public/workshop-graph/data/final-agenda-decisions-0704.json',
+    process: 'public/workshop-graph/data/final-process-to-conclusion-0704.json',
   },
   inputs: {
     regulation_graph: 'public/workshop-graph/data/regulation-2026-06-13.json',
     workshop_graph: 'public/workshop-graph/data/workshop-2026-06-13.json',
+    source_coverage_graph: 'public/workshop-graph/data/source-coverage-2026-06-13.json',
+    input_coverage_audit: 'evaluation/input-coverage/input-coverage-report.json',
     agenda_vote: 'public/agenda-vote-0704/data.json',
     decision_vote: 'public/0704-admin/decision-votes-report.json',
     scenarios: scenarioRefs,
@@ -475,9 +653,11 @@ const report = {
   coverage: {
     regulation: regulation.rows,
     agenda: agenda.rows,
+    process: process.coverage,
   },
   caveats: [
     'PPT text extracted through markitdown was garbled for Korean text, so the sibling presentation scenario Markdown files are used as readable deck-text evidence.',
+    'The integrated workshop graph includes A, B, and combined text sessions, but the source coverage audit still marks B_t2, 토론4통합, and 음성002 as partial/review/gap items.',
     'public/0704-admin/decision-votes-report.json currently has zero responses in V0/V1A/V1B, so conditional final-decision votes are not treated as proven final outcomes.',
     'The agenda v6 scenario still contains [7.4 당일 확정 후 수정] markers for the new agenda slot; this is represented as a caveat node, not as a final selected agenda.',
   ],
@@ -486,4 +666,5 @@ writeJson(dataPath('evaluation', 'ontology-final-decisions', 'final-decision-ont
 
 console.log(`wrote ${regulationOut}: nodes=${regulation.graph.elements.nodes.length} edges=${regulation.graph.elements.edges.length}`);
 console.log(`wrote ${agendaOut}: nodes=${agenda.graph.elements.nodes.length} edges=${agenda.graph.elements.edges.length}`);
+console.log(`wrote ${processOut}: nodes=${process.graph.elements.nodes.length} edges=${process.graph.elements.edges.length}`);
 console.log('wrote evaluation/ontology-final-decisions/final-decision-ontology-report.json');

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const wikiRoot = resolve(__dirname, '..');
 const projectRoot = resolve(wikiRoot, '..');
-const originalDir = join(projectRoot, '00_입력자료', '6.13_원본자료');
+const originalDir = join(projectRoot, '00_입력자료', '20260607회의', '6.13_원본자료');
 const transcriptionDir = join(projectRoot, '30_추출', '6.13_원본자료_음성');
 const textDir = join(projectRoot, '30_추출', '6.13_원본자료_텍스트');
 const dataDir = join(wikiRoot, 'public', 'workshop-graph', 'data');
@@ -128,7 +128,7 @@ function graphCountFor(spec, graphSummaries) {
 
 const originalFiles = listFiles(originalDir);
 const textFiles = listFiles(textDir);
-const graphFiles = ['workshop-2026-06-13.json', 'regulation-2026-06-13.json', 'live-A_t1.json'];
+const graphFiles = ['workshop-2026-06-13.json', 'regulation-2026-06-13.json'];
 const graphSummaries = Object.fromEntries(graphFiles.map(file => [file, graphSessionCounts(file)]));
 const sessions = sessionSpecs.map(spec => {
   const transcription = transcriptionSummary(spec.folder);

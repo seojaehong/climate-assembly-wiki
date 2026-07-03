@@ -1,0 +1,23 @@
+## 2026-07-04 start
+- Changed: created Ralph PRD for input coverage to conclusion ontology.
+- Verified: pending.
+- Learned: user wants two distinct gates: exhaustive input coverage audit and process-to-conclusion connection, with separate agent verification.
+- Next: C1.
+
+## 2026-07-04 C1
+- Changed: added scripts/audit-input-coverage.mjs and generated evaluation/input-coverage/input-coverage-report.json plus input-coverage-audit.md.
+- Verified: node scripts/audit-input-coverage.mjs wrote the audit and identified B_t2, 토론4통합, 음성002 as partial/gap sessions.
+- Learned: A-only claim is false, but complete-reflection claim is also false.
+- Next: C2.
+
+## 2026-07-04 C2
+- Changed: wired evaluation/input-coverage/input-coverage-report.json into scripts/build-final-decision-ontology.mjs and regenerated final-process-to-conclusion-0704.json.
+- Verified: node scripts/audit-input-coverage.mjs; node scripts/build-final-decision-ontology.mjs. Process graph now has 21 nodes and 30 edges.
+- Learned: the process graph now carries the audit as an evidence node, so coverage caveats travel with the conclusion path.
+- Next: C3.
+
+## 2026-07-04 C3
+- Changed: incorporated independent agent findings; removed public live-A_t1.json, fixed final footer copy, merged A/B presentation chapter label, fixed kindKo mappings, corrected source coverage paths and graph list.
+- Verified: independent agents Kant and Confucius completed read-only reviews; regenerated graph-source coverage, input coverage, and final decision ontology. Source coverage is back to 25 originals, 77 nodes, 79 edges; process graph is 21 nodes, 30 edges.
+- Learned: menu removal alone is not enough when a public JSON remains directly addressable; source coverage generators must be kept in sync with public source changes.
+- Next: build and deploy.

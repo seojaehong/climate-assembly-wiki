@@ -1,0 +1,63 @@
+{
+  "feature": "input coverage to conclusion ontology",
+  "branchName": "main",
+  "qualityChecks": [
+    "node scripts/audit-input-coverage.mjs",
+    "node scripts/build-final-decision-ontology.mjs",
+    "node -e \"for (const p of ['evaluation/input-coverage/input-coverage-report.json','public/workshop-graph/sources.json','public/workshop-graph/data/final-process-to-conclusion-0704.json']) JSON.parse(require('fs').readFileSync(p,'utf8')); console.log('json ok')\"",
+    "npm.cmd exec --yes --package node@20 -- node node_modules/astro/astro.js build"
+  ],
+  "userStories": [
+    {
+      "id": "C1",
+      "title": "Create authoritative input inventory audit",
+      "priority": 1,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "Audit compares source coverage graph, source coverage markdown, workflow input markdown files, graph data files, and 7.4 vote/conclusion files.",
+        "Audit reports included, partial, missing, and menu-only/UX-highlight risks separately.",
+        "Writes evaluation/input-coverage/input-coverage-report.json and evaluation/input-coverage/input-coverage-audit.md."
+      ],
+      "files": [
+        "scripts/audit-input-coverage.mjs",
+        "evaluation/input-coverage/input-coverage-report.json",
+        "evaluation/input-coverage/input-coverage-audit.md"
+      ]
+    },
+    {
+      "id": "C2",
+      "title": "Wire coverage audit into conclusion process ontology",
+      "priority": 2,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "The default public workshop graph source is the process-to-conclusion ontology.",
+        "The process ontology cites the input coverage audit and exposes partial/gap items as concern nodes.",
+        "A-only live source is not exposed in public sources.json."
+      ],
+      "files": [
+        "scripts/build-final-decision-ontology.mjs",
+        "public/workshop-graph/sources.json",
+        "public/workshop-graph/data/final-process-to-conclusion-0704.json"
+      ]
+    },
+    {
+      "id": "C3",
+      "title": "Independent subagent verification and deployment",
+      "priority": 3,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "At least one separate agent reviews whether input coverage claims match repository evidence.",
+        "At least one separate agent reviews whether public menu and ontology structure satisfy the user goal.",
+        "Build, deploy, and live endpoint checks pass after fixes."
+      ],
+      "files": [
+        "tasks/ralph/input-coverage-to-conclusion/progress.txt",
+        "evaluation/input-coverage/input-coverage-audit.md",
+        "evaluation/ontology-final-decisions/final-decision-ontology-audit.md"
+      ]
+    }
+  ]
+}

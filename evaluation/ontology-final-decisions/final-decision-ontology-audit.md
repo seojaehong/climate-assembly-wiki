@@ -2,22 +2,73 @@
 
 ## 결론
 
+이번 요청은 두 가지로 나누어 확인했다.
+
+1. 공개 그래프에 모든 데이터가 다 들어갔는지
+2. 전체 과정이 최종 결론 도출 과정과 연결되어 보이는지
+
+현재 답은 “A조만 들어간 것은 아니지만, 모든 데이터가 완전 반영된 것도 아니다”이다. 공개 메뉴에서 `LIVE — A조 토론2-1`이 따로 노출되어 A조만 부각되는 인상을 만들었고, 이는 데이터 실체보다 UI 신호가 더 큰 문제였다. 그래서 공개 메뉴 기본 진입점을 `전체 과정 → 최종 결론`으로 바꾸고, A조 LIVE 샘플은 공개 소스 선택 목록에서 제거했다.
+
+통합 워크숍 그래프에는 A조, B조, 통합 텍스트 세션이 함께 들어 있다. 다만 데이터 연결상태 감사 기준으로는 `B_t2`, `토론4통합`, `음성002`가 각각 부분 반영 또는 그래프 갭으로 남아 있으므로 “완전 반영 완료”라고 말하면 안 된다.
+
 운영규정 최종 결정은 기존 `regulation-2026-06-13.json`에 이미 상당 부분 반영되어 있었다. 이번 작업에서는 그중 최종 결정에 해당하는 노드와 표결 근거, 토론 맥락 노드를 따로 묶어 `final-regulation-decisions-0704.json` 세트로 분리했다.
 
 의제 선정은 기존 `workshop-2026-06-13.json`에 후보별 논의 맥락이 들어 있었고, 7.4 투표 결과는 `public/agenda-vote-0704/data.json`에 별도로 있었다. 그러나 “PPT 결론 + 투표 결과 + 기존 논의 맥락”이 하나의 온톨로지 세트로 묶인 상태는 아니었다. 이번 작업에서 이를 `final-agenda-decisions-0704.json`으로 새로 만들었다.
 
+그리고 위 두 세트를 다시 `final-process-to-conclusion-0704.json`에 연결했다. 이 새 세트는 원본자료, 전사 상태, 통합 그래프, 7.4 투표·발표자료, 최종 운영규정·의제 결론을 한 흐름으로 보여주는 공개 기본 화면이다.
+
 ## 생성 산출물
 
+- `public/workshop-graph/data/final-process-to-conclusion-0704.json`
 - `public/workshop-graph/data/final-regulation-decisions-0704.json`
 - `public/workshop-graph/data/final-agenda-decisions-0704.json`
+- `evaluation/input-coverage/input-coverage-report.json`
+- `evaluation/input-coverage/input-coverage-audit.md`
 - `evaluation/ontology-final-decisions/final-decision-ontology-report.json`
 - `evaluation/ontology-final-decisions/20260704_운영규정_v6.pptx.md`
 - `evaluation/ontology-final-decisions/20260704_의제선정결과_v6.pptx.md`
 
-`public/workshop-graph/sources.json`에도 두 세트를 등록했다.
+`public/workshop-graph/sources.json`에도 세 세트를 등록했다.
 
+- `/workshop-graph/?source=final-process-to-conclusion-0704`
 - `/workshop-graph/?source=final-regulation-decisions-0704`
 - `/workshop-graph/?source=final-agenda-decisions-0704`
+
+## 전체 데이터 반영 상태
+
+`source-coverage-2026-06-13.json` 기준으로 원본자료는 25건, 원본-전사-그래프 연결상태 노드는 77개다. 통합 워크숍 그래프는 613노드 / 491엣지다.
+
+통합 그래프에는 다음처럼 A조·B조·통합 텍스트가 함께 존재한다.
+
+| 묶음 | 확인된 세션 |
+| --- | --- |
+| A조 토론 | `A_t21`, `A_t22`, `A_t23`, `OA_t1`, `DA_t2` |
+| B조 토론 | `B_t1`, `B_t2`, `B_t3`, `OB_t1`, `DB_t2` |
+| 통합/발표/교육 | `OZ_t1`, `DZ_t2`, `발표`, `정의전환`, `환경4조` |
+
+재확인 항목은 다음 세 가지다.
+
+| 항목 | 상태 | 의미 |
+| --- | --- | --- |
+| `B_t2` | 부분 전사·일부 그래프 반영 | B조 토론2는 일부 노드가 있으나 전사 상위 산출물 재확인이 필요 |
+| `토론4통합` | 전사 미완·그래프 미노출 | 최종 운영/의제 통합 토론의 원본은 있으나 현재 통합 그래프 세션으로 노출되지 않음 |
+| `음성002` | 전사 있음·그래프 갭 | 전사 산출물은 있으나 공개 그래프 연결 상태 확인 필요 |
+
+따라서 공개 설명 문구는 “전체 데이터 반영 완료”가 아니라 “전체 반영 상태를 함께 공개하고, 미완/갭 항목은 별도 표시”가 맞다.
+
+## 결론 도출과정 연결
+
+새 기본 그래프 `final-process-to-conclusion-0704.json`은 다음 흐름으로 구성했다. 이 그래프는 `evaluation/input-coverage/input-coverage-report.json`을 직접 근거로 인용한다.
+
+| 단계 | 연결 |
+| --- | --- |
+| 원본자료 | 6/13~14 원본 음성·문서 25건 |
+| 전사·텍스트 | ready 세션과 재확인 세션을 분리 |
+| 통합 워크숍 그래프 | A/B/통합 논의 맥락 613노드 |
+| 7.4 투표·발표자료 | 의제투표 결과, 운영규정 발표시나리오, 의제 발표시나리오 |
+| 최종 결론 | 운영규정 최종결정 세트와 의제선정 결론 세트 |
+
+이제 공개 기본 화면에서는 A조 라이브 샘플이 아니라 전체 도출과정이 먼저 보이고, 세부 결론은 운영규정·의제선정 별도 세트로 내려가서 확인할 수 있다.
 
 ## 운영규정 반영 상태
 

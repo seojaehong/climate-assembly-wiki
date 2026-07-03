@@ -358,7 +358,7 @@
           "node_id": "ctx_reg-division-yes_Claim_05",
           "label": "분과 찬성: 논의범위 압축",
           "kind": "Claim",
-          "kindKo": "Claim",
+          "kindKo": "주장",
           "text": "제한된 시간 속 깊이 있는 대화를 위해 분과로 논의범위를 좁히는 것이 필요. 50:50 구성.",
           "cited": [
             "A조-분과구성-순번1",
@@ -393,7 +393,7 @@
           "node_id": "ctx_reg-division-yes_Claim_06",
           "label": "분과 찬성: 전문성 함양",
           "kind": "Claim",
-          "kindKo": "Claim",
+          "kindKo": "주장",
           "text": "분과는 한 주제 깊은 탐구로 전문성을 높여줄 수 있음. 감축120·적응60 배분 제안, 미성년자 혼합.",
           "cited": [
             "A조-분과구성-순번2,3",
@@ -1567,7 +1567,7 @@
   "meta": {
     "variant": "final-regulation-decisions-0704",
     "title": "운영규정 최종 결정 온톨로지",
-    "generated_at": "2026-07-03T23:07:46.666Z",
+    "generated_at": "2026-07-03T23:23:05.362Z",
     "source_files": [
       "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
       "10_작업산출물/7.4_발표덱/운영규정_v6/20260704_운영규정_v6.pptx",

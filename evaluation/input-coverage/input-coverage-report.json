@@ -1,0 +1,219 @@
+{
+  "generated_at": "2026-07-03T23:23:05.158Z",
+  "conclusion": {
+    "allDataCompletelyReflected": false,
+    "aOnlyDataClaimIsFalse": true,
+    "publicMenuAOnlyRiskResolved": true,
+    "processOntologyLinksConclusionPath": true
+  },
+  "inventory": {
+    "sourceCoverage": {
+      "nodes": 77,
+      "edges": 79,
+      "originalFiles": 25,
+      "audioOrDocumentSessions": 13,
+      "textInputsInCoverageGraph": 6,
+      "reviewIssueNodes": 3
+    },
+    "workflowInputMarkdownFiles": [
+      "01_운영규정_A조.md",
+      "02_운영규정_B조.md",
+      "03_운영규정_통합.md",
+      "04_조숙의_A조.md",
+      "04a_조숙의_A조_토론2-1.md",
+      "04b_조숙의_A조_토론2-3.md",
+      "05_조숙의_B조_의제선정.md",
+      "06_조숙의_통합.md",
+      "06a_조숙의_통합_토론2-3.md",
+      "06b_조숙의_통합_토론4.md"
+    ],
+    "graphs": {
+      "workshop": {
+        "nodes": 613,
+        "edges": 491,
+        "sessionCounts": {
+          "10대 아이들": 1,
+          "20, 30대": 1,
+          "노동자": 1,
+          "농민": 1,
+          "발표": 6,
+          "육아하는 사람": 1,
+          "젊은 세대": 1,
+          "정의전환": 22,
+          "직장인": 1,
+          "청년": 1,
+          "환경4조": 88,
+          "A_t21": 34,
+          "A_t22": 84,
+          "A_t23": 29,
+          "B_t1": 81,
+          "B_t2": 20,
+          "B_t3": 50,
+          "DA_t2": 23,
+          "DB_t2": 5,
+          "DZ_t2": 34,
+          "OA_t1": 43,
+          "OB_t1": 42,
+          "OZ_t1": 44
+        }
+      },
+      "regulation": {
+        "nodes": 59,
+        "edges": 39
+      },
+      "process": {
+        "nodes": 21,
+        "edges": 30
+      },
+      "finalAgenda": {
+        "nodes": 67,
+        "edges": 74
+      },
+      "finalRegulation": {
+        "nodes": 32,
+        "edges": 31
+      }
+    },
+    "votes": {
+      "agendaVoteCandidates": 8,
+      "agendaVoteRespondents": 18,
+      "decisionVoteSlots": [
+        {
+          "code": "V0",
+          "responseCount": 0
+        },
+        {
+          "code": "V1A",
+          "responseCount": 0
+        },
+        {
+          "code": "V1B",
+          "responseCount": 0
+        }
+      ]
+    },
+    "publicMenu": {
+      "default": "final-process-to-conclusion-0704",
+      "categories": {
+        "final": "결론 도출과정",
+        "workshop": "워크숍 통합",
+        "audit": "전체 데이터 반영상태",
+        "regulation": "운영규정"
+      },
+      "exposedSourceIds": [
+        "final-process-to-conclusion-0704",
+        "final-regulation-decisions-0704",
+        "final-agenda-decisions-0704",
+        "workshop-2026-06-13",
+        "source-coverage-2026-06-13",
+        "regulation-2026-06-13"
+      ],
+      "hasAOnlyLivePublicSource": false,
+      "finalProcessIsDefault": true
+    }
+  },
+  "coverage": {
+    "includedReadySessions": [
+      {
+        "label": "6/13 운영규정 A조",
+        "tag": "reg_A",
+        "graphNodes": 59
+      },
+      {
+        "label": "6/13 운영규정 B조",
+        "tag": "reg_B",
+        "graphNodes": 59
+      },
+      {
+        "label": "6/14 A조 토론2-1",
+        "tag": "A_t21",
+        "graphNodes": 34
+      },
+      {
+        "label": "6/14 A조 토론2-2",
+        "tag": "A_t22",
+        "graphNodes": 84
+      },
+      {
+        "label": "6/14 A조 토론2-3",
+        "tag": "A_t23",
+        "graphNodes": 29
+      },
+      {
+        "label": "6/14 B조 토론1",
+        "tag": "B_t1",
+        "graphNodes": 81
+      },
+      {
+        "label": "6/14 B조 토론3",
+        "tag": "B_t3",
+        "graphNodes": 50
+      },
+      {
+        "label": "6/13 조별발표",
+        "tag": "발표",
+        "graphNodes": 6
+      },
+      {
+        "label": "6/14 정의로운전환",
+        "tag": "정의전환",
+        "graphNodes": 22
+      },
+      {
+        "label": "6/14 환경교육 4조",
+        "tag": "환경4조",
+        "graphNodes": 88
+      }
+    ],
+    "partialOrGapSessions": [
+      {
+        "label": "6/14 B조 토론2",
+        "tag": "B_t2",
+        "status": "needs_review",
+        "transcript": "transcript_partial",
+        "graphNodes": 20,
+        "graphStatus": "graph_represented"
+      },
+      {
+        "label": "6/14 토론4 통합 운영",
+        "tag": "토론4통합",
+        "status": "needs_review",
+        "transcript": "transcript_partial",
+        "graphNodes": 0,
+        "graphStatus": "not_expected_in_current_graph"
+      },
+      {
+        "label": "음성 002",
+        "tag": "음성002",
+        "status": "ui_or_graph_gap",
+        "transcript": "transcript_ready",
+        "graphNodes": 0,
+        "graphStatus": "not_expected_in_current_graph"
+      }
+    ],
+    "reviewIssues": [
+      {
+        "label": "6/14 B조 토론2 재확인",
+        "session": "B_t2",
+        "text": "상태: needs_review\n전사: transcript_partial\n그래프: graph_represented\nB조 토론2는 그래프에 일부 반영되었지만 전사 상위 txt/srt가 0바이트이고 tmp 청크가 남아 있어 재확인이 필요합니다."
+      },
+      {
+        "label": "6/14 토론4 통합 운영 재확인",
+        "session": "토론4통합",
+        "text": "상태: needs_review\n전사: transcript_partial\n그래프: not_expected_in_current_graph\n토론4 통합 운영은 원본 음성과 청크가 있으나 전사 산출물이 미완결이고 현재 통합 그래프 세션으로 노출되지 않습니다."
+      },
+      {
+        "label": "음성 002 재확인",
+        "session": "음성002",
+        "text": "상태: ui_or_graph_gap\n전사: transcript_ready\n그래프: not_expected_in_current_graph\n원본-전사-그래프 연결 상태 확인이 필요합니다."
+      }
+    ],
+    "missingPublicSources": []
+  },
+  "caveats": [
+    "This audit does not re-transcribe audio or mutate database records; it validates current repository artifacts.",
+    "B_t2 is represented in the workshop graph but remains transcript_partial in the source coverage graph.",
+    "토론4통합 has source/chunk evidence but no current workshop graph nodes.",
+    "음성002 has transcript evidence but no current workshop graph nodes."
+  ]
+}
