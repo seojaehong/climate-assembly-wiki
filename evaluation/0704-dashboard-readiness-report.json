@@ -11,6 +11,9 @@
     "response_qr": "/0704-admin/google-form-qr.png",
     "agenda_vote": "/agenda-vote-0704/index.html?sheet=1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw",
     "agenda_vote_qr": "/0704-admin/agenda-vote-qr.png"
+    ,
+    "group_agenda_qr": "/0704-admin/group-agenda-qr.png",
+    "reflection_qr": "/0704-admin/reflection-qr.png"
   },
   "source_reuse": {
     "copied_from": [
@@ -34,7 +37,7 @@
     "refresh_script": "scripts/refresh-0704-agenda-vote.ps1",
     "refresh_command": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\\refresh-0704-agenda-vote.ps1",
     "last_refresh": {
-      "ran_at": "2026-07-03T18:24:37+09:00",
+      "ran_at": "2026-07-03T18:41:47+09:00",
       "response_count": 0,
       "scores_updated": true,
       "raw_response_tab_updated": true,
@@ -57,6 +60,29 @@
     },
     "known_limit": "Google Forms API does not expose the UI-only response-destination button, so the operational connection is the repository bridge script that reads Forms responses and writes Scores."
   },
+  "group_agenda_input": {
+    "status": "form_created_sheet_created_bridge_ran",
+    "form_response_url": "https://docs.google.com/forms/d/e/1FAIpQLSf6irdECaMygffockxbuSxhsCxOG9WExkxHhtspZT4FhlmouQ/viewform",
+    "form_edit_url": "https://docs.google.com/forms/d/1hWBiDnSvVdelCAXbwgkk1H9w06LDUim0-FcTr5-tXHE/edit",
+    "sheet_url": "https://docs.google.com/spreadsheets/d/1JCW6-r86Jr9uJWH4kc0GINe4R7u0EbPgIvbxMaRtZwY/edit",
+    "refresh_script": "scripts/refresh-0704-input-forms.ps1",
+    "question_ids": {
+      "group": "2fc17f88",
+      "agenda": "51bc9809"
+    }
+  },
+  "reflection_input": {
+    "status": "form_created_sheet_created_bridge_ran",
+    "form_response_url": "https://docs.google.com/forms/d/e/1FAIpQLSccOoHa2gSgIm2EUGqq4zrzkBpr1C6ptsx9HpfYdYLjebINmg/viewform",
+    "form_edit_url": "https://docs.google.com/forms/d/1mxwgRD-IHocgAIsisgr9v9-9J-wotjgmHqRDK1NlLyI/edit",
+    "sheet_url": "https://docs.google.com/spreadsheets/d/1HK4B_CilVyEbQgtDuZnnMPgUW0naDT3VAYt2Shh8qms/edit",
+    "refresh_script": "scripts/refresh-0704-input-forms.ps1",
+    "question_ids": {
+      "group": "09d5b108",
+      "reflection": "2df9b8e2",
+      "question": "2499f5c7"
+    }
+  },
   "checks": {
     "no_0628_internal_references_in_0704_paths": true,
     "no_dinner_references_in_0704_paths": true,
@@ -69,6 +95,10 @@
     "scores_sheet_public_csv_readable": true,
     "form_to_scores_bridge_script_added": true,
     "form_to_scores_bridge_script_ran": true,
+    "group_agenda_form_created": true,
+    "reflection_form_created": true,
+    "group_and_reflection_bridge_script_added": true,
+    "group_and_reflection_bridge_script_ran": true,
     "playwright_visual_capture": "not_run_package_resolution_issue"
   },
   "notes": [

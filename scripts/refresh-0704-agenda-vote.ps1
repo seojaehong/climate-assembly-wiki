@@ -90,10 +90,17 @@ foreach ($key in $counts.Keys) {
 
 $scoreRows = @()
 $scoreRows += ,@("slot", "name", "short", "color", "c1", "c2", "c3", "c4")
+$optionIndex = 0
 foreach ($option in $Options) {
   $count = [int]$counts[$option.Name]
-  $score = if ($maxCount -gt 0) { [math]::Round(1 + (4 * $count / $maxCount), 2) } else { 1 }
+  if ($maxCount -gt 0) {
+    $rawScore = 1 + (3.9 * $count / $maxCount)
+    $score = [math]::Min([double]4.9, [math]::Max([double]1.0, [double]([math]::Round($rawScore * 2) / 2)))
+  } else {
+    $score = [math]::Max([double]1.0, [double]([math]::Round((4.9 - 0.5 * $optionIndex) * 10) / 10))
+  }
   $scoreRows += ,@($option.Slot, $option.Name, $option.Short, $option.Color, $score, $score, $score, $score)
+  $optionIndex++
 }
 
 $summaryRows = @()

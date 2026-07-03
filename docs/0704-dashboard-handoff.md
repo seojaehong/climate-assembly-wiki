@@ -16,6 +16,14 @@ Keep the 7.4 operating dashboard separate from the 0628 test archive. Do not mut
 - Agenda vote Scores Sheet: `https://docs.google.com/spreadsheets/d/1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw/edit`
 - Agenda vote bubble race: `/agenda-vote-0704/index.html?sheet=1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw`
 - Agenda vote QR asset: `/0704-admin/agenda-vote-qr.png`
+- Group agenda input Form response: `https://docs.google.com/forms/d/e/1FAIpQLSf6irdECaMygffockxbuSxhsCxOG9WExkxHhtspZT4FhlmouQ/viewform`
+- Group agenda input Form edit: `https://docs.google.com/forms/d/1hWBiDnSvVdelCAXbwgkk1H9w06LDUim0-FcTr5-tXHE/edit`
+- Group agenda input Sheet: `https://docs.google.com/spreadsheets/d/1JCW6-r86Jr9uJWH4kc0GINe4R7u0EbPgIvbxMaRtZwY/edit`
+- Group agenda QR asset: `/0704-admin/group-agenda-qr.png`
+- Reflection Form response: `https://docs.google.com/forms/d/e/1FAIpQLSccOoHa2gSgIm2EUGqq4zrzkBpr1C6ptsx9HpfYdYLjebINmg/viewform`
+- Reflection Form edit: `https://docs.google.com/forms/d/1mxwgRD-IHocgAIsisgr9v9-9J-wotjgmHqRDK1NlLyI/edit`
+- Reflection Sheet: `https://docs.google.com/spreadsheets/d/1HK4B_CilVyEbQgtDuZnnMPgUW0naDT3VAYt2Shh8qms/edit`
+- Reflection QR asset: `/0704-admin/reflection-qr.png`
 
 Admin password:
 
@@ -28,6 +36,7 @@ climate2026
 - Removed the dinner RSVP/result card from the admin dashboard.
 - Added a concrete 7.4 agenda vote card in the admin dashboard.
 - Created a separate 7.4 agenda vote Form and Scores Sheet.
+- Created separate group agenda input and reflection Forms/Sheets.
 - Copied the previous bubble race viewer to `/agenda-vote-0704/` and connected it to the Scores Sheet through the `sheet` query parameter.
 - Added a 17:00-18:00 final sharing card for the post-it and ontology presentation flow.
 - Copied the ontology, Miro board, and analysis criteria pages to 0704-specific paths.
@@ -67,7 +76,28 @@ This script updates:
 - `Scores!A:H`: bubble-race rows
 - `Guide!D:E`: last refresh status
 
-Google's public Forms API does not expose the same UI-only "link responses to spreadsheet" button, so this scripted bridge is the current source-of-truth connection. It was run successfully on 2026-07-03 18:24 KST with 0 responses, and the public `Scores` CSV endpoint was readable afterward.
+Google's public Forms API does not expose the same UI-only "link responses to spreadsheet" button, so this scripted bridge is the current source-of-truth connection. It was run successfully on 2026-07-03 18:41 KST with 0 responses. The public `Scores` CSV endpoint then showed projector-friendly sample scores from 4.9 down by 0.5.
+
+The group agenda and reflection Forms have their own bridge:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\refresh-0704-input-forms.ps1
+```
+
+This script updates:
+
+- Group agenda Sheet `Responses!A:D`: response id, submitted time, group, agenda text
+- Reflection Sheet `Responses!A:E`: response id, submitted time, group, reflection, question
+- Both `Guide` tabs: last refresh status
+
+Operational flow:
+
+1. Each group enters an agenda candidate through the group agenda QR.
+2. The operator summarizes or selects those entries into the agenda vote Form choices.
+3. Participants vote through the agenda vote QR.
+4. The agenda vote refresh script writes normalized scores to the `Scores` tab.
+5. The bubble race reads `Scores` and displays higher scores farther right and higher on the stage.
+6. One hour later, each group enters reflections through the reflection QR for the post-it/ontology presentation.
 
 ## Schedule Check
 
@@ -88,6 +118,7 @@ rg -n "0628|0628-admin|workshop-graph-0628-test|miro-0628-test|analysis-criteria
 rg -n "dinner-vote-0628|dinner-rsvp|저녁식사" public\0704-admin public\workshop-graph-0704 public\miro-0704 public\analysis-criteria-0704
 Invoke-WebRequest "http://127.0.0.1:4321/agenda-vote-0704/index.html?sheet=1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw" -UseBasicParsing
 pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\refresh-0704-agenda-vote.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\refresh-0704-input-forms.ps1
 ```
 
 Both commands should return no matches.
