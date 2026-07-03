@@ -30,10 +30,10 @@ const FILTERS: { value: SourceKey | null; label: string; emoji: string }[] = [
 ];
 
 const EXAMPLES = [
-  '재생에너지 지역 갈등 해결책은?',
-  '탄소세 관련 해외 사례',
-  '청소년 기후교육 사례',
-  '기후시민회의는 어떻게 운영되나요?',
+  '재생에너지 주민 갈등 해결 사례',
+  '자원순환 정책 해외 사례',
+  '청소년 기후교육 의제',
+  '탄소세로 산업 배출 줄이는 방안',
 ];
 
 interface Citation {
@@ -219,7 +219,7 @@ export default function ChatBot({ defaultSource = null, endpoint = 'chat', k }: 
     <div style={S.wrap}>
       <header style={S.header}>
         <h1 style={S.title}>🌱 그득이에게 물어보기</h1>
-        <p style={S.sub}>기후시민회의 자료(해외사례·전문가 의제)에서 출처와 함께 찾아드려요.</p>
+        <p style={S.sub}>의제 선정을 돕는 기후 의제·정책·국내외 사례 자료를 출처와 함께 찾아드려요. <br />(일정·운영 안내는 진행요원께 문의해 주세요)</p>
       </header>
 
       {/* 소스 필터 */}
