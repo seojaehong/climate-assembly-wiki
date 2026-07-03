@@ -9,11 +9,12 @@ import { getSupabase } from '../lib/supabase';
    ============================================================ */
 
 // 소스 정의 — 필터 토글과 인용 배지가 공유하는 단일 진실원(SaaS 모듈화 핵심)
-type SourceKey = 'overseas-cases' | 'kei-expert-agenda' | 'agenda-textbook-vol2';
+type SourceKey = 'overseas-cases' | 'kei-expert-agenda' | 'agenda-textbook-vol2' | 'basic-textbook';
 const SOURCES: Record<SourceKey, { label: string; emoji: string; bg: string; fg: string }> = {
   'overseas-cases': { label: '해외사례', emoji: '🌍', bg: 'var(--color-info-bg)', fg: 'var(--color-info)' },
   'kei-expert-agenda': { label: '국내·전문가 의제', emoji: '🇰🇷', bg: 'var(--color-success-bg)', fg: 'var(--color-success)' },
   'agenda-textbook-vol2': { label: '학습자료집', emoji: '📘', bg: 'var(--color-bg-subtle)', fg: 'var(--color-fg)' },
+  'basic-textbook': { label: '기본교재', emoji: '📗', bg: 'var(--color-bg-subtle)', fg: 'var(--color-fg)' },
 };
 function sourceMeta(key: string) {
   return SOURCES[key as SourceKey] ?? { label: key, emoji: '📄', bg: 'var(--color-bg-subtle)', fg: 'var(--color-fg-muted)' };
@@ -25,6 +26,7 @@ const FILTERS: { value: SourceKey | null; label: string; emoji: string }[] = [
   { value: 'overseas-cases', label: SOURCES['overseas-cases'].label, emoji: SOURCES['overseas-cases'].emoji },
   { value: 'kei-expert-agenda', label: SOURCES['kei-expert-agenda'].label, emoji: SOURCES['kei-expert-agenda'].emoji },
   { value: 'agenda-textbook-vol2', label: SOURCES['agenda-textbook-vol2'].label, emoji: SOURCES['agenda-textbook-vol2'].emoji },
+  { value: 'basic-textbook', label: SOURCES['basic-textbook'].label, emoji: SOURCES['basic-textbook'].emoji },
 ];
 
 const EXAMPLES = [
