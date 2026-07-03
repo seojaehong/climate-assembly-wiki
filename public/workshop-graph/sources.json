@@ -3,6 +3,7 @@
   "categories": {
     "workshop": "워크숍 통합",
     "audit": "데이터 연결상태",
+    "final": "최종결정 온톨로지",
     "regulation": "운영규정",
     "live": "🔴 LIVE (모더 전용)"
   },
@@ -19,6 +20,20 @@
       "category": "audit",
       "label": "원본→전사→그래프 연결상태 전체",
       "data": "data/source-coverage-2026-06-13.json",
+      "supportsView": ["2d"]
+    },
+    {
+      "id": "final-regulation-decisions-0704",
+      "category": "final",
+      "label": "최종결정 — 운영규정 7.4",
+      "data": "data/final-regulation-decisions-0704.json",
+      "supportsView": ["2d"]
+    },
+    {
+      "id": "final-agenda-decisions-0704",
+      "category": "final",
+      "label": "최종결정 — 의제선정 7.4",
+      "data": "data/final-agenda-decisions-0704.json",
       "supportsView": ["2d"]
     },
     {
