@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>0704 전문가 질의 인쇄</title>
+<style>
+  body{margin:0;background:#f8fafc;color:#0f172a;font-family:"Noto Sans KR",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  main{width:min(920px,calc(100vw - 32px));margin:0 auto;padding:28px 0}
+  h1{margin:0 0 6px;font-size:30px;line-height:1.2}
+  .sub{margin:0 0 18px;color:#64748b;font-weight:800}
+  .actions{display:flex;gap:8px;margin-bottom:18px}
+  button,a{height:38px;border:0;border-radius:8px;background:#0f172a;color:#fff;font-weight:900;padding:0 14px;text-decoration:none;display:inline-flex;align-items:center;cursor:pointer}
+  a{background:#eef2f7;color:#0f172a}
+  .q-card{break-inside:avoid;margin:0 0 14px;padding:18px 20px;border:1px solid #dbe4ef;border-radius:12px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.05)}
+  .q-meta{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px;color:#475569;font-size:13px;font-weight:900}
+  .q-text{font-size:23px;line-height:1.5;font-weight:900;letter-spacing:0}
+  .empty{border:1px solid #dbe4ef;background:#fff;border-radius:12px;padding:22px;font-weight:900}
+  @media print{
+    @page{size:A4;margin:13mm}
+    body{background:#fff}
+    main{width:auto;margin:0;padding:0}
+    .actions{display:none}
+    .q-card{box-shadow:none;border-color:#cbd5e1}
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="actions">
+    <button onclick="window.print()">인쇄</button>
+    <a href="/0704-admin/">관리자</a>
+  </div>
+  <h1>0704 전문가 질의</h1>
+  <p class="sub">생성: 2026-07-03 21:27:31 · 질문 3건</p>
+      <article class="q-card">
+      <div class="q-meta"><span>2조</span><span>2026-07-04T14:04:12+09:00</span></div>
+      <div class="q-text">에너지전환 의제를 다룰 때 시민들이 가장 먼저 이해해야 할 핵심 쟁점은 무엇인가요?</div>
+    </article>
+    <article class="q-card">
+      <div class="q-meta"><span>7조</span><span>2026-07-04T14:06:33+09:00</span></div>
+      <div class="q-text">산업 부문 감축 정책이 일자리와 지역경제에 미치는 영향을 어떻게 설명하면 좋을까요?</div>
+    </article>
+    <article class="q-card">
+      <div class="q-meta"><span>12조</span><span>2026-07-04T14:08:20+09:00</span></div>
+      <div class="q-text">재생에너지 확대 과정에서 주민 수용성을 높이기 위한 구체적인 정책 사례가 있을까요?</div>
+    </article>
+</main>
+</body>
+</html>

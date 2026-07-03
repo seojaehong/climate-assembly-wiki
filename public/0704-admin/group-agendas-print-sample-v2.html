@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>0704 조별 의제 후보 인쇄</title>
+<style>
+  body{margin:0;background:#f8fafc;color:#0f172a;font-family:"Noto Sans KR",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  main{width:min(920px,calc(100vw - 32px));margin:0 auto;padding:28px 0}
+  h1{margin:0 0 6px;font-size:30px;line-height:1.2}
+  .sub{margin:0 0 18px;color:#64748b;font-weight:800}
+  .actions{display:flex;gap:8px;margin-bottom:18px}
+  button,a{height:38px;border:0;border-radius:8px;background:#0f172a;color:#fff;font-weight:900;padding:0 14px;text-decoration:none;display:inline-flex;align-items:center;cursor:pointer}
+  a{background:#eef2f7;color:#0f172a}
+  .agenda-card{break-inside:avoid;margin:0 0 14px;padding:18px 20px;border:1px solid #dbe4ef;border-radius:12px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.05)}
+  .agenda-meta{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px;color:#475569;font-size:13px;font-weight:900}
+  .agenda-text{font-size:23px;line-height:1.5;font-weight:900;letter-spacing:0}
+  .empty{border:1px solid #dbe4ef;background:#fff;border-radius:12px;padding:22px;font-weight:900}
+  @media print{
+    @page{size:A4;margin:13mm}
+    body{background:#fff}
+    main{width:auto;margin:0;padding:0}
+    .actions{display:none}
+    .agenda-card{box-shadow:none;border-color:#cbd5e1}
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="actions">
+    <button onclick="window.print()">인쇄</button>
+    <a href="/0704-admin/">관리자</a>
+  </div>
+  <h1>0704 조별 의제 후보</h1>
+  <p class="sub">생성: 2026-07-03 21:23:45 · 의제 후보 4건</p>
+      <article class="agenda-card">
+      <div class="agenda-meta"><span>1조</span><span>2026-07-04T15:21:12+09:00</span></div>
+      <div class="agenda-text">공공건물과 학교의 에너지 절약 실천을 의무화하고 절감 효과를 시민에게 공개하는 방안</div>
+    </article>
+    <article class="agenda-card">
+      <div class="agenda-meta"><span>2조</span><span>2026-07-04T15:23:40+09:00</span></div>
+      <div class="agenda-text">탄소 감축 행동에 참여한 시민에게 교통비나 공공시설 이용 혜택을 제공하는 통합 인센티브 제도</div>
+    </article>
+    <article class="agenda-card">
+      <div class="agenda-meta"><span>3조</span><span>2026-07-04T15:25:09+09:00</span></div>
+      <div class="agenda-text">기업의 탄소배출 정보와 감축 계획을 시민이 쉽게 확인하고 의견을 낼 수 있는 공개 플랫폼</div>
+    </article>
+    <article class="agenda-card">
+      <div class="agenda-meta"><span>연구진</span><span>2026-07-04T15:26:33+09:00</span></div>
+      <div class="agenda-text">조별 의제를 권고안 문장으로 전환하기 위한 우선순위와 실행가능성 기준 정리</div>
+    </article>
+</main>
+</body>
+</html>

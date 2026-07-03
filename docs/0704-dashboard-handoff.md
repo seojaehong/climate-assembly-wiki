@@ -26,10 +26,10 @@ Keep the 7.4 operating dashboard separate from the 0628 test archive. Do not mut
 - Reflection QR asset: `/0704-admin/reflection-qr.png`
 - Group agenda print PDF: `/0704-admin/group-agendas-print.pdf`
 - Group agenda print HTML preview: `/0704-admin/group-agendas-print.html`
-- Group agenda sample print PDF: `/0704-admin/group-agendas-print-sample.pdf`
+- Group agenda sample print PDF: `/0704-admin/group-agendas-print-sample-v2.pdf`
 - Expert question print PDF: `/0704-admin/expert-questions-print.pdf`
 - Expert question print HTML preview: `/0704-admin/expert-questions-print.html`
-- Expert question sample print PDF: `/0704-admin/expert-questions-print-sample.pdf`
+- Expert question sample print PDF: `/0704-admin/expert-questions-print-sample-v2.pdf`
 
 Admin password:
 
