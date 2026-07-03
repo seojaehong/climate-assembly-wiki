@@ -1,0 +1,50 @@
+{
+  "checked_at": "2026-07-03T20:12:00+09:00",
+  "status": "ready",
+  "gws": {
+    "version": "0.11.1",
+    "issue_found": "Drive discovery cache was corrupted and caused discoveryError on drive.* commands.",
+    "fix_applied": "Moved the corrupt drive_v3.json cache aside; gws regenerated a valid Drive discovery cache.",
+    "verified_services": [
+      "forms.forms.get",
+      "forms.forms.responses.list",
+      "sheets.spreadsheets.get",
+      "drive.files.get",
+      "drive.permissions.create",
+      "drive.permissions.list"
+    ]
+  },
+  "permissions": {
+    "editor": "kesica3@gmail.com",
+    "applied_to": [
+      "0704 group agenda input Form",
+      "0704 group agenda input Sheet",
+      "0704 reflection Form",
+      "0704 reflection Sheet",
+      "0704 agenda vote Form",
+      "0704 agenda vote Scores Sheet"
+    ],
+    "verified_example": "0704 group agenda Sheet permission list shows kesica3@gmail.com as writer."
+  },
+  "tomorrow_flow": [
+    "Run scripts/refresh-0704-input-forms.ps1 to copy group agenda responses to the Sheet.",
+    "Run scripts/promote-0704-group-agendas-to-vote.ps1 to preview vote choices.",
+    "Run scripts/promote-0704-group-agendas-to-vote.ps1 -Apply to replace the agenda vote Form options.",
+    "Run scripts/refresh-0704-agenda-vote.ps1 to update Scores for the bubble race.",
+    "Repeat scripts/refresh-0704-agenda-vote.ps1 during or after voting."
+  ],
+  "previous_vote_pattern_found": {
+    "sources": [
+      "public/workshop-graph/inputs/06_조숙의_통합.md",
+      "public/workshop-graph/data/workshop-2026-06-13.json",
+      "public/event-result/index.html",
+      "public/event-result/data.json"
+    ],
+    "summary": "Earlier workshop flow grouped agenda candidates, voted by 5-point scale, and displayed rank/average-score results. The 0704 flow reuses that structure with separate group-input, vote, and bubble-race screens."
+  },
+  "verification": {
+    "promote_dry_run": "passed_no_responses_yet",
+    "agenda_vote_refresh": "passed_dynamic_form_options",
+    "vitest": "6 files, 79 tests passed"
+  }
+}
