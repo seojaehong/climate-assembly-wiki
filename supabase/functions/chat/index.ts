@@ -89,14 +89,13 @@ Deno.serve(async (req: Request) => {
     const keys = { GEMINI: K("GEMINI_API_KEY"), NVIDIA: K("NVIDIA_API_KEY"), ANTHROPIC: K("ANTHROPIC_API_KEY") };
     const GEMINI_MODEL = K("GEMINI_MODEL") ?? "gemini-2.5-flash";
     const NVIDIA_MODEL = K("NVIDIA_MODEL") ?? "deepseek-ai/deepseek-v4-flash";
-    const ANTHROPIC_MODEL = K("ANTHROPIC_MODEL") ?? "claude-haiku-4-5-20251001"; // 1차: 저비용 Haiku(RAG 요약엔 충분)
-    const ANTHROPIC_FALLBACK = K("ANTHROPIC_FALLBACK") ?? "claude-sonnet-4-6";     // 2차: Sonnet 폴백
-    // 우선순위 체인: anthropic(haiku→sonnet) > gemini > nvidia. busy/error 시 다음으로 failover(정상 found=false는 폴백 안 함). LLM_PROVIDER로 고정 가능.
+    const ANTHROPIC_MODEL = K("ANTHROPIC_MODEL") ?? "claude-haiku-4-5-20251001"; // 최후 폴백(유료): Haiku
+    // 체인: gemini(무료 기본) → nvidia(무료 폴백) → anthropic Haiku(유료 최후 안전망). 무료 우선이라 Anthropic 과금은 둘 다 죽을 때만. busy/error 시에만 failover(정상 found=false는 폴백 안 함). LLM_PROVIDER로 고정 가능.
     const forced = K("LLM_PROVIDER");
     let chain: [string, string][] = [];
-    if (keys.ANTHROPIC) { chain.push(["anthropic", ANTHROPIC_MODEL]); chain.push(["anthropic", ANTHROPIC_FALLBACK]); }
-    if (keys.GEMINI) chain.push(["gemini", GEMINI_MODEL]);  // 무료 최후 안전망(동시접속·쿼터 대비)
+    if (keys.GEMINI) chain.push(["gemini", GEMINI_MODEL]);
     if (keys.NVIDIA) chain.push(["nvidia", NVIDIA_MODEL]);
+    if (keys.ANTHROPIC) chain.push(["anthropic", ANTHROPIC_MODEL]);
     if (forced) chain = chain.filter(([p]) => p === forced);
 
     if (!OPENAI) return json({ error: "OPENAI_API_KEY 미설정" }, 500);
