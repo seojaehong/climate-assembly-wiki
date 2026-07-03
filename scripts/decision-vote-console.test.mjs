@@ -80,4 +80,34 @@ describe('0704 conditional vote console', () => {
     expect(agendaDemo.agendas).toHaveLength(10);
     expect(agendaDemo.meta.phases.map((phase) => phase.id)).toEqual(['pre', 'c1', 'c2', 'c3', 'c4', 'total']);
   });
+
+  test('0704 field operation labels match the A/B and 17-group scenario', () => {
+    const admin = readText('public/0704-admin/index.html');
+    const manual = readText('public/0704-admin/operator-manual.html');
+
+    expect(admin).toContain('13~16시는 A/B조');
+    expect(admin).toContain('A조/B조');
+    expect(admin).toContain('1~17조 + 연구진');
+    expect(manual).toContain('13~16시');
+    expect(manual).toContain('A조/B조');
+    expect(manual).toContain('17시 이후');
+    expect(manual).toContain('1~17조 + 연구진');
+  });
+
+  test('vote refresh scripts use participant names for duplicate checks', () => {
+    const agendaRefresh = readText('scripts/refresh-0704-agenda-vote.ps1');
+    const decisionRefresh = readText('scripts/refresh-0704-decision-votes.ps1');
+    const formSetup = readText('scripts/ensure-0704-form-field-setup.ps1');
+
+    expect(agendaRefresh).toContain('NameQuestionTitle');
+    expect(agendaRefresh).toContain('name_latest_response');
+    expect(agendaRefresh).toContain('duplicate_dropped');
+    expect(agendaRefresh).toContain('Guide!D1:E11');
+    expect(agendaRefresh).not.toContain('"Guide!D1:E7"');
+    expect(decisionRefresh).toContain('NameQuestionTitle');
+    expect(decisionRefresh).toContain('name_latest_response');
+    expect(decisionRefresh).toContain('duplicate_dropped');
+    expect(formSetup).toContain('title = "이름"');
+    expect(formSetup).toContain('$i -le 17');
+  });
 });

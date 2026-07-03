@@ -1,12 +1,17 @@
 {
-  "generatedAt": "2026-07-04T00:28:00+09:00",
+  "generatedAt": "2026-07-04T07:20:00+09:00",
   "agendaVote": {
     "formId": "1soeRdPzIv4l7Bs6JyJEbb4nzb7MCtmZEe2q8VFwmjgc",
     "spreadsheetId": "1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw",
     "isAcceptingResponses": true,
     "requiredQuestion": true,
+    "requiredNameQuestion": true,
     "emailCollectionType": "DO_NOT_COLLECT",
     "responseCountAfterRefresh": 0,
+    "uniqueVoterCountAfterRefresh": 0,
+    "duplicateDroppedCountAfterRefresh": 0,
+    "dedupeMode": "name_latest_response",
+    "nameQuestionId": "4f0b2e58",
     "scoresAreZeroWhenNoResponses": true
   },
   "decisionVotes": {
@@ -17,35 +22,54 @@
         "formId": "1QXrENjjmh7NcTF_9sm4aUPhnh1_WuAWvP4q80AdBM8s",
         "isAcceptingResponses": true,
         "requiredQuestion": true,
+        "requiredNameQuestion": true,
         "emailCollectionType": "DO_NOT_COLLECT",
-        "responseCountAfterRefresh": 0
+        "responseCountAfterRefresh": 0,
+        "uniqueVoterCountAfterRefresh": 0,
+        "duplicateDroppedCountAfterRefresh": 0,
+        "dedupeMode": "name_latest_response",
+        "nameQuestionId": "380be3dc"
       },
       {
         "code": "V1A",
         "formId": "1YCMzcYk_XLD95_8MvzJAB4ReQKQs4nl7P18o9hBQTk4",
         "isAcceptingResponses": true,
         "requiredQuestion": true,
+        "requiredNameQuestion": true,
         "emailCollectionType": "DO_NOT_COLLECT",
-        "responseCountAfterRefresh": 0
+        "responseCountAfterRefresh": 0,
+        "uniqueVoterCountAfterRefresh": 0,
+        "duplicateDroppedCountAfterRefresh": 0,
+        "dedupeMode": "name_latest_response",
+        "nameQuestionId": "6c1868ed"
       },
       {
         "code": "V1B",
         "formId": "1bdEi3hN6p8qOqWGdJV3f8UK3g4wPDEtojjQakCpDTd4",
         "isAcceptingResponses": true,
         "requiredQuestion": true,
+        "requiredNameQuestion": true,
         "emailCollectionType": "DO_NOT_COLLECT",
-        "responseCountAfterRefresh": 0
+        "responseCountAfterRefresh": 0,
+        "uniqueVoterCountAfterRefresh": 0,
+        "duplicateDroppedCountAfterRefresh": 0,
+        "dedupeMode": "name_latest_response",
+        "nameQuestionId": "150bc490"
       }
     ]
+  },
+  "reflectionForm": {
+    "formId": "1mxwgRD-IHocgAIsisgr9v9-9J-wotjgmHqRDK1NlLyI",
+    "groupChoices": "1-17 plus research",
+    "groupChoiceCount": 18
   },
   "verdict": {
     "actualAccumulation": "partial_requires_refresh_bridge",
     "liveWithoutOperator": "partial_sheet_polls_but_form_to_sheet_requires_refresh",
-    "completionByAttendeeCount": "not_guaranteed_without_roster_or_token",
-    "duplicatePrevention": "not_guaranteed_without_login_or_token",
+    "completionByAttendeeCount": "partial_unique_name_count_requires_operator_review",
+    "duplicatePrevention": "partial_latest_response_per_name",
     "resultPreservation": "pass",
     "zeroResponseDisplaySafety": "pass"
   },
   "recommendedNextControl": "participant_token_field_or_google_login_limit_one_response"
 }
-

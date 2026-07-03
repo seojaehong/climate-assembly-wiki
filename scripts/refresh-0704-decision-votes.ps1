@@ -1,5 +1,6 @@
 param(
-  [string]$SpreadsheetId = "1m_GD3ohvDW1PXT8Gg3AoTxpf0voRdrJpz2a38PREBB8"
+  [string]$SpreadsheetId = "1m_GD3ohvDW1PXT8Gg3AoTxpf0voRdrJpz2a38PREBB8",
+  [string]$NameQuestionTitle = "이름"
 )
 
 $ErrorActionPreference = "Stop"
@@ -120,6 +121,30 @@ function Get-ResponseAnswer {
   return $null
 }
 
+function Get-QuestionIdByTitle {
+  param(
+    [string]$FormId,
+    [string]$TitlePattern
+  )
+  $form = Invoke-GwsJson -CommandArgs @(
+    "forms", "forms", "get",
+    "--params", "{`"formId`":`"$FormId`"}"
+  )
+  foreach ($candidate in @($form.items)) {
+    $title = ([string]$candidate.title).Trim()
+    $question = $candidate.questionItem.question
+    if ($question -and $title -like "*$TitlePattern*") {
+      return [string]$question.questionId
+    }
+  }
+  return $null
+}
+
+function Normalize-VoterName {
+  param([string]$Name)
+  return (($Name -replace "\s+", " ").Trim()).ToLowerInvariant()
+}
+
 $summaryRows = @()
 $summaryRows += ,@("slot", "title", "option", "count", "responseUrl", "editUrl")
 
@@ -133,6 +158,7 @@ $guideRows += ,@("voteStructurePage", "https://climate-assembly.org/0704-admin/v
 $reportSlots = @()
 
 foreach ($slot in $VoteSlots) {
+  $nameQuestionId = Get-QuestionIdByTitle -FormId $slot.FormId -TitlePattern $NameQuestionTitle
   $responses = Invoke-GwsJson -CommandArgs @(
     "forms", "forms", "responses", "list",
     "--params", "{`"formId`":`"$($slot.FormId)`",`"pageSize`":5000}"
@@ -147,22 +173,59 @@ foreach ($slot in $VoteSlots) {
     $counts[$option] = 0
   }
 
-  $rawRows = @()
-  $rawRows += ,@("responseId", "submittedAt", "answer")
+  $candidateRows = @()
   foreach ($response in $responseItems) {
     $answer = Get-ResponseAnswer -Response $response -QuestionId $slot.QuestionId
     if ([string]::IsNullOrWhiteSpace($answer)) {
       continue
     }
+    $participantName = Get-ResponseAnswer -Response $response -QuestionId $nameQuestionId
+    $candidateRows += [pscustomobject]@{
+      responseId = $response.responseId
+      submittedAt = [datetime]$response.lastSubmittedTime
+      participantName = $participantName
+      answer = $answer
+      voterKey = Normalize-VoterName -Name $participantName
+    }
+  }
+
+  $dedupeEnabled = -not [string]::IsNullOrWhiteSpace($nameQuestionId)
+  $latestByName = @{}
+  $acceptedRows = @()
+  if ($dedupeEnabled) {
+    foreach ($row in $candidateRows) {
+      if ([string]::IsNullOrWhiteSpace($row.voterKey)) {
+        $acceptedRows += $row
+        continue
+      }
+      if (-not $latestByName.ContainsKey($row.voterKey) -or $row.submittedAt -gt $latestByName[$row.voterKey].submittedAt) {
+        $latestByName[$row.voterKey] = $row
+      }
+    }
+    $acceptedRows += @($latestByName.Values)
+  } else {
+    $acceptedRows = @($candidateRows)
+  }
+
+  $acceptedIds = @{}
+  foreach ($row in $acceptedRows) {
+    $acceptedIds[$row.responseId] = $true
+    $answer = $row.answer
     if (-not $counts.ContainsKey($answer)) {
       $counts[$answer] = 0
     }
     $counts[$answer]++
-    $rawRows += ,@($response.responseId, $response.lastSubmittedTime, $answer)
   }
 
-  Clear-SheetRange -TargetSpreadsheetId $SpreadsheetId -Range "$($slot.Code)!A:C"
-  Update-SheetRows -TargetSpreadsheetId $SpreadsheetId -Range "$($slot.Code)!A1:C$($rawRows.Count)" -Rows $rawRows
+  $rawRows = @()
+  $rawRows += ,@("responseId", "submittedAt", "participantName", "answer", "dedupeStatus")
+  foreach ($row in @($candidateRows | Sort-Object submittedAt)) {
+    $status = if ($acceptedIds.ContainsKey($row.responseId)) { "counted" } else { "duplicate_dropped" }
+    $rawRows += ,@($row.responseId, $row.submittedAt.ToString("o"), $row.participantName, $row.answer, $status)
+  }
+
+  Clear-SheetRange -TargetSpreadsheetId $SpreadsheetId -Range "$($slot.Code)!A:E"
+  Update-SheetRows -TargetSpreadsheetId $SpreadsheetId -Range "$($slot.Code)!A1:E$($rawRows.Count)" -Rows $rawRows
 
   foreach ($option in $slot.Options) {
     $summaryRows += ,@($slot.Code, $slot.Title, $option, [int]$counts[$option], $slot.ResponseUrl, $slot.EditUrl)
@@ -172,6 +235,10 @@ foreach ($slot in $VoteSlots) {
     code = $slot.Code
     title = $slot.Title
     responseCount = ($rawRows.Count - 1)
+    uniqueVoterCount = $acceptedRows.Count
+    duplicateDroppedCount = (($rawRows.Count - 1) - $acceptedRows.Count)
+    dedupeMode = if ($dedupeEnabled) { "name_latest_response" } else { "none_no_name_question" }
+    nameQuestionId = $nameQuestionId
     counts = $counts
     responseUrl = $slot.ResponseUrl
     editUrl = $slot.EditUrl

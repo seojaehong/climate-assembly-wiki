@@ -1,7 +1,8 @@
 param(
   [string]$FormId = "1soeRdPzIv4l7Bs6JyJEbb4nzb7MCtmZEe2q8VFwmjgc",
   [string]$SpreadsheetId = "1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw",
-  [string]$QuestionId = "66dd7cab"
+  [string]$QuestionId = "66dd7cab",
+  [string]$NameQuestionTitle = "이름"
 )
 
 $ErrorActionPreference = "Stop"
@@ -113,6 +114,48 @@ function Get-VoteOptions {
   return $liveOptions
 }
 
+function Get-QuestionIdByTitle {
+  param(
+    [string]$VoteFormId,
+    [string]$TitlePattern
+  )
+  $form = Invoke-GwsJson -CommandArgs @(
+    "forms", "forms", "get",
+    "--params", "{`"formId`":`"$VoteFormId`"}"
+  )
+  foreach ($candidate in @($form.items)) {
+    $title = ([string]$candidate.title).Trim()
+    $question = $candidate.questionItem.question
+    if ($question -and $title -like "*$TitlePattern*") {
+      return [string]$question.questionId
+    }
+  }
+  return $null
+}
+
+function Get-TextAnswer {
+  param(
+    [object]$Response,
+    [string]$TargetQuestionId
+  )
+  if ([string]::IsNullOrWhiteSpace($TargetQuestionId) -or -not $Response.answers) {
+    return ""
+  }
+  if (-not ($Response.answers.PSObject.Properties.Name -contains $TargetQuestionId)) {
+    return ""
+  }
+  $answer = $Response.answers.$TargetQuestionId
+  if ($answer -and $answer.textAnswers -and $answer.textAnswers.answers.Count -gt 0) {
+    return ([string]$answer.textAnswers.answers[0].value).Trim()
+  }
+  return ""
+}
+
+function Normalize-VoterName {
+  param([string]$Name)
+  return (($Name -replace "\s+", " ").Trim()).ToLowerInvariant()
+}
+
 function Clear-SheetRange {
   param(
     [string]$TargetSpreadsheetId,
@@ -131,36 +174,71 @@ $responses = Invoke-GwsJson -CommandArgs @(
 )
 
 $Options = Get-VoteOptions -VoteFormId $FormId -VoteQuestionId $QuestionId
+$NameQuestionId = Get-QuestionIdByTitle -VoteFormId $FormId -TitlePattern $NameQuestionTitle
 
 $counts = @{}
 foreach ($option in $Options) {
   $counts[$option.Name] = 0
 }
 
-$rawRows = @()
-$rawRows += ,@("responseId", "submittedAt", "selectedAgenda")
+$candidateRows = @()
 $responseItems = @()
 if ($responses.PSObject.Properties.Name -contains "responses") {
   $responseItems = @($responses.responses)
 }
 
 foreach ($response in $responseItems) {
-  $answer = $null
-  if ($response.answers -and ($response.answers.PSObject.Properties.Name -contains $QuestionId)) {
-    $answer = $response.answers.$QuestionId
-  }
+  $participantName = Get-TextAnswer -Response $response -TargetQuestionId $NameQuestionId
+  $answer = Get-TextAnswer -Response $response -TargetQuestionId $QuestionId
   $selected = $null
-  if ($answer -and $answer.textAnswers -and $answer.textAnswers.answers.Count -gt 0) {
-    $selected = [string]$answer.textAnswers.answers[0].value
+  if (-not [string]::IsNullOrWhiteSpace($answer)) {
+    $selected = [string]$answer
   }
   if ([string]::IsNullOrWhiteSpace($selected)) {
     continue
   }
+  $candidateRows += [pscustomobject]@{
+    responseId = $response.responseId
+    submittedAt = [datetime]$response.lastSubmittedTime
+    participantName = $participantName
+    selectedAgenda = $selected
+    voterKey = Normalize-VoterName -Name $participantName
+  }
+}
+
+$dedupeEnabled = -not [string]::IsNullOrWhiteSpace($NameQuestionId)
+$latestByName = @{}
+$acceptedRows = @()
+if ($dedupeEnabled) {
+  foreach ($row in $candidateRows) {
+    if ([string]::IsNullOrWhiteSpace($row.voterKey)) {
+      $acceptedRows += $row
+      continue
+    }
+    if (-not $latestByName.ContainsKey($row.voterKey) -or $row.submittedAt -gt $latestByName[$row.voterKey].submittedAt) {
+      $latestByName[$row.voterKey] = $row
+    }
+  }
+  $acceptedRows += @($latestByName.Values)
+} else {
+  $acceptedRows = @($candidateRows)
+}
+
+$acceptedIds = @{}
+foreach ($row in $acceptedRows) {
+  $acceptedIds[$row.responseId] = $true
+  $selected = $row.selectedAgenda
   if (-not $counts.ContainsKey($selected)) {
     $counts[$selected] = 0
   }
   $counts[$selected]++
-  $rawRows += ,@($response.responseId, $response.lastSubmittedTime, $selected)
+}
+
+$rawRows = @()
+$rawRows += ,@("responseId", "submittedAt", "participantName", "selectedAgenda", "dedupeStatus")
+foreach ($row in @($candidateRows | Sort-Object submittedAt)) {
+  $status = if ($acceptedIds.ContainsKey($row.responseId)) { "counted" } else { "duplicate_dropped" }
+  $rawRows += ,@($row.responseId, $row.submittedAt.ToString("o"), $row.participantName, $row.selectedAgenda, $status)
 }
 
 $maxCount = 0
@@ -189,13 +267,17 @@ $summaryRows = @()
 $summaryRows += ,@("metric", "value")
 $summaryRows += ,@("refreshedAt", (Get-Date).ToString("s"))
 $summaryRows += ,@("responseCount", ($rawRows.Count - 1))
+$summaryRows += ,@("uniqueVoterCount", $acceptedRows.Count)
+$summaryRows += ,@("duplicateDroppedCount", (($rawRows.Count - 1) - $acceptedRows.Count))
+$summaryRows += ,@("dedupeMode", $(if ($dedupeEnabled) { "name_latest_response" } else { "none_no_name_question" }))
 $summaryRows += ,@("maxCount", $maxCount)
 $summaryRows += ,@("formId", $FormId)
 $summaryRows += ,@("questionId", $QuestionId)
+$summaryRows += ,@("nameQuestionId", $NameQuestionId)
 $summaryRows += ,@("optionCount", $Options.Count)
 
 Clear-SheetRange -TargetSpreadsheetId $SpreadsheetId -Range "Scores!A:H"
-Clear-SheetRange -TargetSpreadsheetId $SpreadsheetId -Range "FormResponses!A:C"
+Clear-SheetRange -TargetSpreadsheetId $SpreadsheetId -Range "FormResponses!A:E"
 
 $scoreRange = "Scores!A1:H$($scoreRows.Count)"
 $scoreBody = @{ range = $scoreRange; majorDimension = "ROWS"; values = $scoreRows } | ConvertTo-Json -Depth 12 -Compress
@@ -205,26 +287,30 @@ Invoke-GwsJson -CommandArgs @(
   "--json", $scoreBody
 ) | Out-Null
 
-$rawBody = @{ range = "FormResponses!A1:C$($rawRows.Count)"; majorDimension = "ROWS"; values = $rawRows } | ConvertTo-Json -Depth 12 -Compress
+$rawBody = @{ range = "FormResponses!A1:E$($rawRows.Count)"; majorDimension = "ROWS"; values = $rawRows } | ConvertTo-Json -Depth 12 -Compress
 Invoke-GwsJson -CommandArgs @(
   "sheets", "spreadsheets", "values", "update",
-  "--params", "{`"spreadsheetId`":`"$SpreadsheetId`",`"range`":`"FormResponses!A1:C$($rawRows.Count)`",`"valueInputOption`":`"USER_ENTERED`"}",
+  "--params", "{`"spreadsheetId`":`"$SpreadsheetId`",`"range`":`"FormResponses!A1:E$($rawRows.Count)`",`"valueInputOption`":`"USER_ENTERED`"}",
   "--json", $rawBody
 ) | Out-Null
 
-$summaryBody = @{ range = "Guide!D1:E7"; majorDimension = "ROWS"; values = $summaryRows } | ConvertTo-Json -Depth 12 -Compress
+$summaryBody = @{ range = "Guide!D1:E11"; majorDimension = "ROWS"; values = $summaryRows } | ConvertTo-Json -Depth 12 -Compress
 Invoke-GwsJson -CommandArgs @(
   "sheets", "spreadsheets", "values", "update",
-  "--params", "{`"spreadsheetId`":`"$SpreadsheetId`",`"range`":`"Guide!D1:E7`",`"valueInputOption`":`"USER_ENTERED`"}",
+  "--params", "{`"spreadsheetId`":`"$SpreadsheetId`",`"range`":`"Guide!D1:E11`",`"valueInputOption`":`"USER_ENTERED`"}",
   "--json", $summaryBody
 ) | Out-Null
 
 $report = [pscustomobject]@{
   refreshedAt = (Get-Date).ToString("o")
   responseCount = ($rawRows.Count - 1)
+  uniqueVoterCount = $acceptedRows.Count
+  duplicateDroppedCount = (($rawRows.Count - 1) - $acceptedRows.Count)
+  dedupeMode = if ($dedupeEnabled) { "name_latest_response" } else { "none_no_name_question" }
   maxCount = $maxCount
   spreadsheetId = $SpreadsheetId
   formId = $FormId
+  nameQuestionId = $NameQuestionId
   scores = $scoreRows[1..($scoreRows.Count - 1)]
 }
 

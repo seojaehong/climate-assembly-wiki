@@ -1,5 +1,5 @@
 {
-  "refreshedAt": "2026-07-04T00:26:32.3972813+09:00",
+  "refreshedAt": "2026-07-04T07:18:03.7546249+09:00",
   "spreadsheetId": "1m_GD3ohvDW1PXT8Gg3AoTxpf0voRdrJpz2a38PREBB8",
   "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1m_GD3ohvDW1PXT8Gg3AoTxpf0voRdrJpz2a38PREBB8/edit",
   "slots": [
@@ -7,10 +7,14 @@
       "code": "V0",
       "title": "의제 통합 동의",
       "responseCount": 0,
+      "uniqueVoterCount": 0,
+      "duplicateDroppedCount": 0,
+      "dedupeMode": "name_latest_response",
+      "nameQuestionId": "380be3dc",
       "counts": {
         "동의하지 않음": 0,
-        "판단 유보": 0,
-        "동의": 0
+        "동의": 0,
+        "판단 유보": 0
       },
       "responseUrl": "https://docs.google.com/forms/d/e/1FAIpQLSc8NV9MvB52WM8IzQFJCGK3HJmZ8e_UOW4cbV6wd3MERohc-Q/viewform",
       "editUrl": "https://docs.google.com/forms/d/1QXrENjjmh7NcTF_9sm4aUPhnh1_WuAWvP4q80AdBM8s/edit"
@@ -19,6 +23,10 @@
       "code": "V1A",
       "title": "감축분야 추가 의제 선정",
       "responseCount": 0,
+      "uniqueVoterCount": 0,
+      "duplicateDroppedCount": 0,
+      "dedupeMode": "name_latest_response",
+      "nameQuestionId": "6c1868ed",
       "counts": {
         "찬성": 0,
         "반대": 0,
@@ -31,6 +39,10 @@
       "code": "V1B",
       "title": "적응 의제 배분",
       "responseCount": 0,
+      "uniqueVoterCount": 0,
+      "duplicateDroppedCount": 0,
+      "dedupeMode": "name_latest_response",
+      "nameQuestionId": "150bc490",
       "counts": {
         "찬성": 0,
         "반대": 0,
