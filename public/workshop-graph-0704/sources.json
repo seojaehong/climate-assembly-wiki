@@ -1,0 +1,15 @@
+{
+  "default": "participant-open-questions",
+  "categories": {
+    "participant": "0704 참여단 운영"
+  },
+  "sources": [
+    {
+      "id": "participant-open-questions",
+      "category": "participant",
+      "label": "0704 참여단 주관식 — 소감/질문",
+      "data": "data/participant-open-questions.json",
+      "supportsView": ["2d"]
+    }
+  ]
+}

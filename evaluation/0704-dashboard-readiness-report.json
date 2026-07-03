@@ -1,0 +1,50 @@
+{
+  "scope": "0704 participant dashboard readiness",
+  "status": "scaffold_ready_vote_details_pending",
+  "created_at": "2026-07-03",
+  "operator_password": "climate2026",
+  "public_paths": {
+    "admin": "/0704-admin/index.html",
+    "ontology": "/workshop-graph-0704/index.html?source=participant-open-questions&mode=showcase&count=50&edgeLabels=on&theme=light&tone=calm",
+    "miro_board": "/miro-0704/index.html",
+    "analysis_criteria": "/analysis-criteria-0704/index.html",
+    "response_qr": "/0704-admin/google-form-qr.png"
+  },
+  "source_reuse": {
+    "copied_from": [
+      "/0628-admin/index.html",
+      "/workshop-graph-0628-test/",
+      "/miro-0628-test/",
+      "/analysis-criteria-0628/"
+    ],
+    "excluded": [
+      "dinner RSVP card",
+      "dinner vote result link",
+      "dinner QR asset reference"
+    ]
+  },
+  "vote_slot": {
+    "status": "pending_user_details",
+    "schedule_fit": {
+      "recommended_window": "17:50-17:55",
+      "manual_basis": "The moderator guide lists a 5-minute survey block after the full discussion block. This is the least disruptive slot for an additional agenda vote.",
+      "fallback_window": "17:35-17:50 full discussion closing, only if the vote must be shown before the survey block"
+    },
+    "needed": [
+      "vote title",
+      "vote options",
+      "whether name/team is required",
+      "duplicate response rule",
+      "result visualization preference"
+    ]
+  },
+  "checks": {
+    "no_0628_internal_references_in_0704_paths": true,
+    "no_dinner_references_in_0704_paths": true,
+    "robots_noindex_paths_added": true
+  },
+  "notes": [
+    "The 0704 dashboard is separated from the archived 0628 pages so the previous field record remains untouched.",
+    "The current response form links are still the previously connected Google Form until a 0704 form or vote form is created."
+  ]
+}

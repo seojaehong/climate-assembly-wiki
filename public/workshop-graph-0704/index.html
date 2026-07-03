@@ -1,0 +1,2762 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>0704 참여단 운영 — 포스트잇형 온톨로지</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/_ontology-chrome/chrome.css?v=20260626-present-levels">
+<script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+<script src="https://unpkg.com/layout-base@2.0.1/layout-base.js"></script>
+<script src="https://unpkg.com/cose-base@2.2.0/cose-base.js"></script>
+<script src="https://unpkg.com/cytoscape-fcose@2.2.0/cytoscape-fcose.js"></script>
+<script src="https://unpkg.com/webcola@3.4.0/WebCola/cola.min.js"></script>
+<script src="https://unpkg.com/cytoscape-cola@2.5.1/cytoscape-cola.js"></script>
+<script src="https://unpkg.com/cytoscape-expand-collapse@4.1.1/cytoscape-expand-collapse.js"></script>
+<script src="https://unpkg.com/3d-force-graph"></script>
+<style>
+  .og-source-sel{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#9aa7b8}
+  .og-source-sel select{background:#222c3a;border:1px solid #2c3848;color:#e8edf4;border-radius:5px;padding:5px 10px;font-size:12px;font-family:inherit;min-width:200px}
+  .og-view-tog{display:inline-flex;gap:3px;background:#222c3a;border:1px solid #2c3848;border-radius:5px;padding:2px}
+  .og-view-tog button{background:transparent;border:0;color:#9aa7b8;padding:4px 10px;font-size:11px;cursor:pointer;border-radius:3px;font-family:inherit}
+  .og-view-tog button.active{background:#1c7ed6;color:#fff}
+  .og-poll-ctl{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#9aa7b8}
+  .og-poll-ctl select{background:#222c3a;border:1px solid #2c3848;color:#e8edf4;border-radius:5px;padding:3px 7px;font-size:11px}
+  .og-poll-status{font-size:11px;color:#9aa7b8}
+  .og-poll-status.fresh{color:#51cf66}
+  #og-physics{cursor:pointer;white-space:nowrap}
+  #og-physics.on{background:#1c7ed6;color:#fff;border-color:#1c7ed6}
+  #og-present{cursor:pointer;white-space:nowrap}
+  #og-present.on{background:#7048e8;color:#fff;border-color:#7048e8}
+  #og-showcase{cursor:pointer;white-space:nowrap}
+  #og-showcase.on{background:#0f766e;color:#fff;border-color:#0f766e}
+  /* A-3 묶기(클러스터) 토글 — 기존 .og-view-tog 톤 일관 */
+  .og-group-tog{display:inline-flex;align-items:center;gap:3px;background:#222c3a;border:1px solid #2c3848;border-radius:5px;padding:2px}
+  .og-group-tog .og-grp-lbl{font-size:11px;color:#9aa7b8;padding:0 6px 0 4px;white-space:nowrap}
+  .og-group-tog button{background:transparent;border:0;color:#9aa7b8;padding:4px 10px;font-size:11px;cursor:pointer;border-radius:3px;font-family:inherit;white-space:nowrap}
+  .og-group-tog button.active{background:#12b886;color:#fff}
+  .og-3d-only{display:none}
+  body.view-3d .og-3d-only{display:inline-flex}
+  body.view-3d .og-2d-only{display:none}
+  .og-3d-hud{position:absolute;left:16px;top:16px;z-index:12;display:none;gap:8px;align-items:center;flex-wrap:wrap;max-width:min(760px,calc(100vw - 420px));pointer-events:none}
+  .og-3d-hud .og-3d-pill{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 11px;border:1px solid rgba(86,194,228,.30);border-radius:999px;background:rgba(10,15,23,.72);box-shadow:0 12px 32px rgba(0,0,0,.22);backdrop-filter:blur(8px);color:#dbeafe;font-size:12px;font-weight:700;letter-spacing:.01em}
+  .og-3d-hud .og-3d-muted{color:#94a3b8;font-weight:600}
+  body.view-3d .og-3d-hud{display:flex}
+  .og-hub-rail{position:absolute;left:16px;right:16px;top:16px;z-index:11;display:flex;gap:7px;align-items:center;flex-wrap:wrap;pointer-events:none}
+  body.view-3d .og-hub-rail{top:58px;right:390px}
+  .og-hub-chip{pointer-events:auto;display:inline-flex;align-items:center;max-width:220px;min-height:30px;padding:0 10px;border:1px solid rgba(139,211,255,.34);border-radius:999px;background:rgba(9,15,23,.78);box-shadow:0 10px 28px rgba(0,0,0,.24);backdrop-filter:blur(8px);color:#dbeafe;font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+  .og-hub-chip:hover{border-color:#63e6be;color:#fff;background:rgba(18,184,134,.22)}
+  .og-present-hud{position:absolute;left:16px;top:58px;z-index:10;display:none;max-width:min(680px,calc(100vw - 440px));padding:10px 13px;border:1px solid rgba(21,101,192,.16);border-radius:8px;background:rgba(255,255,255,.86);box-shadow:0 16px 42px rgba(15,23,42,.12);color:#1f2937;font-size:13px;font-weight:800;line-height:1.55;pointer-events:none}
+  .og-present-hud b{color:#0f766e}
+  body.og-present-mode .og-present-hud{display:block}
+  body.og-present-mode .og-hub-rail{top:104px}
+  body.og-present-mode .og-hub-chip{background:rgba(255,255,255,.90);border-color:rgba(21,101,192,.20);color:#1f2937;box-shadow:0 10px 30px rgba(15,23,42,.10)}
+  body.og-present-mode .og-hub-chip:hover{background:#e6fffa;border-color:#0f766e;color:#0f172a}
+  body.og-present-mode .og-controls{padding-top:5px;padding-bottom:5px}
+  body.og-present-mode #og-filter-bar{display:none}
+  body.og-present-mode #og-assets-btn,
+  body.og-present-mode #og-settings-btn,
+  body.og-present-mode #og-guide-link,
+  body.og-present-mode #og-physics{display:none !important}
+  body.og-present-mode .og-source-sel select{min-width:260px}
+  body.og-present-mode .og-source-sel .og-lbl,
+  body.og-present-mode .og-view-tog{display:none}
+  body.og-present-mode #og-group-tog,
+  body.og-present-mode #og-search,
+  body.og-present-mode .og-hub-rail{display:none !important}
+  body.og-present-mode .og-group-tog .og-grp-lbl{font-size:0}
+  body.og-present-mode .og-group-tog .og-grp-lbl::after{content:"보기";font-size:11px}
+  body.og-present-mode .og-footer{background:#f8fafc;color:#475569;border-top-color:#dbe4ef}
+  .og-level-tog{display:none}
+  body.og-present-mode .og-level-tog{display:flex}
+  body.og-present-mode .og-present-hud{max-width:min(720px,calc(100vw - 420px));padding:7px 10px;font-size:12px}
+  .og-showcase-count-tog,.og-showcase-edge-tog,.og-showcase-tone-tog,.og-participant-view-tog,.og-participant-rel-tog{display:none}
+  body.og-showcase-mode .og-header,
+  body.og-showcase-mode .og-tabs,
+  body.og-showcase-mode #og-filter-bar,
+  body.og-showcase-mode .og-footer,
+  body.og-showcase-mode .og-side{display:none !important}
+  body.og-showcase-mode .og-controls{position:fixed;right:14px;bottom:14px;top:auto;z-index:80;width:auto;padding:0;background:transparent;border:0;box-shadow:none;gap:8px}
+  body.og-showcase-mode .og-controls > :not(#og-showcase-count-tog):not(#og-showcase-edge-tog):not(#og-showcase-tone-tog):not(#og-participant-view-tog):not(#og-participant-rel-tog){display:none !important}
+  body.og-showcase-mode .og-showcase-count-tog,
+  body.og-showcase-mode .og-showcase-edge-tog,
+  body.og-showcase-mode .og-showcase-tone-tog,
+  body.og-showcase-mode .og-participant-view-tog,
+  body.og-showcase-mode .og-participant-rel-tog{display:flex;background:rgba(255,255,255,.88);border-color:rgba(37,99,235,.20);box-shadow:0 12px 34px rgba(15,23,42,.12);backdrop-filter:blur(10px)}
+  body.og-showcase-mode .og-showcase-count-tog .og-grp-lbl,
+  body.og-showcase-mode .og-showcase-edge-tog .og-grp-lbl,
+  body.og-showcase-mode .og-showcase-tone-tog .og-grp-lbl,
+  body.og-showcase-mode .og-participant-view-tog .og-grp-lbl,
+  body.og-showcase-mode .og-participant-rel-tog .og-grp-lbl{color:#475569}
+  body.og-showcase-mode .og-canvas{background:#f8fafc}
+  body.og-showcase-mode.og-showcase-calm .og-canvas{background:#f8fafc}
+  body.og-showcase-mode.og-showcase-contrast .og-canvas{background:#f5f7fb}
+  body.og-showcase-mode.og-showcase-mono .og-canvas{background:#f7f7f8}
+  body.og-showcase-mode.og-showcase-dark .og-showcase-count-tog,
+  body.og-showcase-mode.og-showcase-dark .og-showcase-edge-tog,
+  body.og-showcase-mode.og-showcase-dark .og-showcase-tone-tog,
+  body.og-showcase-mode.og-showcase-dark .og-participant-view-tog,
+  body.og-showcase-mode.og-showcase-dark .og-participant-rel-tog{background:rgba(13,20,30,.76);border-color:rgba(139,211,255,.24);box-shadow:0 12px 34px rgba(0,0,0,.28)}
+  body.og-showcase-mode.og-showcase-dark .og-showcase-count-tog .og-grp-lbl,
+  body.og-showcase-mode.og-showcase-dark .og-showcase-edge-tog .og-grp-lbl,
+  body.og-showcase-mode.og-showcase-dark .og-showcase-tone-tog .og-grp-lbl,
+  body.og-showcase-mode.og-showcase-dark .og-participant-view-tog .og-grp-lbl,
+  body.og-showcase-mode.og-showcase-dark .og-participant-rel-tog .og-grp-lbl{color:#9fb3c8}
+  body.og-showcase-mode.og-showcase-dark .og-canvas{background:radial-gradient(circle at 42% 44%,#192536 0,#0f1722 48%,#080d14 100%)}
+  body.og-showcase-mode .og-body{flex:1}
+  body.og-showcase-mode .og-hub-rail{display:none !important}
+  body.og-showcase-mode #og-group-tog,
+  body.og-showcase-mode #og-filter-bar{display:none}
+  body.og-showcase-mode .og-quick{right:18px;bottom:18px;max-width:340px;background:rgba(255,255,255,.48);color:#111827;border-color:rgba(255,255,255,.62);box-shadow:0 18px 54px rgba(15,23,42,.14);backdrop-filter:blur(18px) saturate(1.35)}
+  body.og-showcase-mode .og-quick.floating{max-width:min(520px,calc(100vw - 28px));border:1px solid rgba(255,255,255,.68);border-radius:12px;background:rgba(255,255,255,.42);box-shadow:0 24px 70px rgba(15,23,42,.18);backdrop-filter:blur(24px) saturate(1.45)}
+  body.og-showcase-mode .og-message-card{display:grid;gap:12px;min-width:min(390px,calc(100vw - 56px));max-width:520px;padding:4px 2px 2px;word-break:keep-all;overflow-wrap:break-word}
+  body.og-showcase-mode .og-message-head{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding-bottom:9px;border-bottom:1px solid rgba(226,232,240,.90)}
+  body.og-showcase-mode .og-speaker-chip{display:inline-flex;align-items:center;min-height:25px;padding:0 9px;border-radius:999px;background:rgba(37,99,235,.10);color:#1d4ed8;font-size:12px;font-weight:900}
+  body.og-showcase-mode .og-question-chip{display:inline-flex;align-items:center;min-height:25px;padding:0 9px;border-radius:999px;background:rgba(15,23,42,.06);color:#334155;font-size:11px;font-weight:900}
+  body.og-showcase-mode .og-message-text{margin:0;max-height:230px;overflow:auto;color:#111827;font-size:16px;font-weight:700;line-height:1.55;word-break:keep-all;overflow-wrap:anywhere}
+  body.og-showcase-mode .og-message-label{color:#0f172a;font-size:19px;font-weight:900;line-height:1.32}
+  body.og-showcase-mode .og-message-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:7px;border-top:1px solid rgba(226,232,240,.75);color:#64748b;font-size:11px;font-weight:800}
+  body.og-showcase-mode .og-message-meta span{display:inline-flex;align-items:center;gap:4px}
+  body.og-showcase-mode .og-message-actions{display:none}
+  body.og-showcase-mode .og-message-actions .og-more{position:static;margin:0;color:#0f766e;font-weight:900}
+  body.og-showcase-mode.og-showcase-dark .og-quick{background:rgba(11,17,26,.48);color:#eef3f9;border-color:rgba(255,255,255,.16);box-shadow:0 18px 54px rgba(0,0,0,.42);backdrop-filter:blur(22px) saturate(1.25)}
+  body.og-showcase-mode.og-showcase-dark .og-quick.floating{background:rgba(11,17,26,.48);border-color:rgba(255,255,255,.18);box-shadow:0 22px 62px rgba(0,0,0,.46);backdrop-filter:blur(26px) saturate(1.25)}
+  body.og-showcase-mode.og-showcase-dark .og-speaker-chip{background:rgba(226,232,240,.16);color:#dbeafe}
+  body.og-showcase-mode.og-showcase-dark .og-question-chip{background:rgba(148,163,184,.18);color:#cbd5e1}
+  body.og-showcase-mode.og-showcase-dark .og-message-text{color:#f8fafc}
+  body.og-showcase-mode.og-showcase-dark .og-message-head,
+  body.og-showcase-mode.og-showcase-dark .og-message-meta{border-color:rgba(148,163,184,.20)}
+  body.og-showcase-mode.og-showcase-dark .og-message-label{color:#f8fafc}
+  body.og-showcase-mode.og-showcase-dark .og-message-label,
+  body.og-showcase-mode.og-showcase-dark .og-message-meta{color:#cbd5e1}
+  body.og-showcase-mode .og-zoomctl{left:14px;bottom:14px}
+  .og-admin-back{position:fixed;left:14px;top:14px;z-index:120;display:inline-flex;align-items:center;min-height:34px;padding:0 12px;border:1px solid rgba(15,23,42,.12);border-radius:999px;background:rgba(255,255,255,.82);box-shadow:0 14px 36px rgba(15,23,42,.12);backdrop-filter:blur(14px);color:#0f172a;text-decoration:none;font-size:13px;font-weight:900}
+  .og-admin-back:hover{background:#0f172a;color:#fff}
+  .og-analysis-panel{position:fixed;left:14px;top:58px;z-index:115;width:min(360px,calc(100vw - 28px));display:none;gap:8px;padding:12px;border:1px solid rgba(15,23,42,.10);border-radius:12px;background:rgba(255,255,255,.72);box-shadow:0 18px 48px rgba(15,23,42,.13);backdrop-filter:blur(18px) saturate(1.25);color:#0f172a}
+  body.og-showcase-mode .og-analysis-panel{display:grid}
+  .og-analysis-panel h3{margin:0;font-size:15px;line-height:1.2}
+  .og-analysis-panel .og-analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .og-analysis-panel .og-analysis-card{min-height:58px;padding:8px;border:1px solid rgba(15,23,42,.08);border-radius:9px;background:rgba(248,250,252,.82)}
+  .og-analysis-panel b{display:block;margin-bottom:4px;font-size:11px}
+  .og-analysis-panel span{display:block;color:#475569;font-size:12px;font-weight:900;line-height:1.3}
+  body.og-showcase-dark .og-analysis-panel{background:rgba(15,23,42,.60);border-color:rgba(148,163,184,.24);color:#f8fafc}
+  body.og-showcase-dark .og-analysis-panel .og-analysis-card{background:rgba(15,23,42,.58);border-color:rgba(148,163,184,.18)}
+  body.og-showcase-dark .og-analysis-panel span{color:#cbd5e1}
+  @media (max-width:640px){
+    .og-analysis-panel{display:none !important}
+    .og-hub-rail{left:10px;right:10px;top:10px;gap:5px;max-height:40px;overflow:hidden}
+    body.view-3d .og-hub-rail{top:46px;right:10px}
+    .og-hub-chip{max-width:176px;min-height:28px;padding:0 8px;font-size:11px}
+    .og-3d-hud{left:10px;right:10px;top:10px;max-width:none;gap:5px;max-height:36px;overflow:hidden}
+    .og-3d-hud .og-3d-pill{min-height:26px;padding:0 8px;font-size:11px}
+    .og-present-hud{left:10px;right:10px;top:52px;max-width:none;font-size:11px;max-height:54px;overflow:hidden}
+    body.og-present-mode .og-hub-rail{top:112px}
+  }
+</style>
+</head>
+<body>
+<a class="og-admin-back" href="/0704-admin/">관리자</a>
+<div id="og-app">
+  <div class="og-controls">
+    <div class="og-source-sel">
+      <span class="og-lbl">소스</span>
+      <select id="og-source"></select>
+    </div>
+    <div class="og-view-tog">
+      <button id="og-view-2d" class="active">📐 2D</button>
+      <button id="og-view-3d">🌐 3D</button>
+    </div>
+    <button class="og-btn og-2d-only" id="og-physics" title="물리 시뮬레이션 — 노드를 끌면 연결 노드가 함께 움직입니다" aria-pressed="false">⚛ 물리 OFF</button>
+    <button class="og-btn" id="og-present" title="발표 모드 — 큰 글씨(대형 스크린·청중용)" aria-pressed="false">🖥 발표</button>
+    <button class="og-btn og-2d-only" id="og-showcase" title="쇼케이스 — 초기 그래프 감성 + 물리 + 축약 라벨 + 노드 수 선택" aria-pressed="false">✨ 쇼케이스</button>
+    <div class="og-group-tog og-level-tog og-2d-only" id="og-level-tog" title="발표 밀도 — 같은 원본 그래프를 발표용 밀도로 접어 봅니다">
+      <span class="og-grp-lbl">발표 밀도</span>
+      <button data-level="chapter">대목차</button>
+      <button data-level="brief">중간목차</button>
+      <button data-level="full">원본전체</button>
+    </div>
+    <div class="og-group-tog og-showcase-count-tog og-2d-only" id="og-showcase-count-tog" title="쇼케이스 노드 수 — 원본 그래프에서 연결도 높은 노드를 중심으로 보여줍니다">
+      <span class="og-grp-lbl">노드 수</span>
+      <button data-count="50">50</button>
+      <button data-count="75">75</button>
+      <button data-count="100">100</button>
+    </div>
+    <div class="og-group-tog og-showcase-edge-tog og-2d-only" id="og-showcase-edge-tog" title="엣지명 — 선 위의 관계명을 켜거나 끕니다">
+      <span class="og-grp-lbl">엣지명</span>
+      <button data-edge-labels="on">ON</button>
+      <button data-edge-labels="off">OFF</button>
+    </div>
+    <div class="og-group-tog og-showcase-tone-tog og-2d-only" id="og-showcase-tone-tog" title="스타일 — 같은 구조를 다른 색감으로 봅니다">
+      <span class="og-grp-lbl">스타일</span>
+      <button data-tone="calm">회의</button>
+      <button data-tone="contrast">발표</button>
+      <button data-tone="mono">흑백</button>
+    </div>
+    <div class="og-group-tog og-participant-view-tog og-2d-only" id="og-participant-view-tog" title="참여단 응답 보기 — 소감과 질문을 따로 확대해서 봅니다">
+      <span class="og-grp-lbl">보기</span>
+      <button data-participant-view="all">전체</button>
+      <button data-participant-view="impression">소감</button>
+      <button data-participant-view="question">질문</button>
+    </div>
+    <div class="og-group-tog og-participant-rel-tog og-2d-only" id="og-participant-rel-tog" title="연결 보기 — 응답, 유사성, 분석 렌즈를 분리해서 봅니다">
+      <span class="og-grp-lbl">연결</span>
+      <button data-participant-rel="overview">개요</button>
+      <button data-participant-rel="response">응답</button>
+      <button data-participant-rel="similar">유사</button>
+      <button data-participant-rel="lens">연관</button>
+      <button data-participant-rel="all">전체</button>
+    </div>
+    <div class="og-group-tog og-2d-only" id="og-group-tog" title="묶기 — 무손실 클러스터(노드/엣지 보존, 부모 안에 둥지). 그룹을 클릭하면 접기/펼치기">
+      <span class="og-grp-lbl">묶기</span>
+      <button data-group="none" class="active">없음</button>
+      <button data-group="present">대목차</button>
+      <button data-group="issue">쟁점</button>
+      <button data-group="session">세션</button>
+    </div>
+    <input id="og-search" type="search" placeholder="검색…" autocomplete="off" style="width:160px">
+    <button class="og-btn" id="og-assets-btn" style="display:none" title="합의·권고와 DQI 품질 지표를 읽기전용으로 봅니다">합의·DQI</button>
+    <span class="og-spacer"></span>
+    <div class="og-poll-ctl" id="og-poll-ui" style="display:none">
+      <span>🔄</span>
+      <select id="og-poll-interval">
+        <option value="0">수동</option>
+        <option value="15" selected>15s</option>
+        <option value="30">30s</option>
+        <option value="60">1m</option>
+      </select>
+      <button class="og-btn" id="og-poll-now">즉시</button>
+      <span class="og-poll-status" id="og-poll-status">—</span>
+    </div>
+    <a class="og-icon-btn" id="og-guide-link" href="guide/" target="_blank" rel="noopener" title="사용설명서 — 이 그래프를 만든 이유·노드/관계 뜻·사용법" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">📖</a>
+    <button class="og-icon-btn" id="og-settings-btn" title="설정">⚙</button>
+  </div>
+  <div class="og-controls og-2d-only" id="og-filter-bar" style="border-top:1px solid var(--og-line)">
+    <span class="og-lbl">종류</span>
+    <div class="og-filters" id="og-kind-filters"></div>
+    <span class="og-spacer"></span>
+    <button class="og-btn" id="og-toggle-iso">고립 노드 보이기</button>
+  </div>
+  <div class="og-body">
+    <div class="og-canvas">
+      <div id="cy" style="width:100%;height:100%"></div>
+      <div id="cy3d" style="width:100%;height:100%;display:none;background:#0a0a0f"></div>
+      <div class="og-3d-hud og-3d-only" aria-hidden="true">
+        <span class="og-3d-pill">색 = 발언 역할</span>
+        <span class="og-3d-pill">선 = 논증 관계</span>
+        <span class="og-3d-pill"><span class="og-3d-muted">빨강</span> 반대·우려</span>
+        <span class="og-3d-pill"><span class="og-3d-muted">노랑</span> 조건</span>
+        <span class="og-3d-pill"><span class="og-3d-muted">회색</span> 근거</span>
+      </div>
+      <div class="og-present-hud og-2d-only" id="og-present-hud" aria-hidden="true">
+        <b>발표 보기</b> · 원본 613개 노드 보존 · 검증 전
+      </div>
+      <div class="og-hub-rail" id="og-hub-rail" aria-label="주요 쟁점 바로가기"></div>
+      <div class="og-analysis-panel" id="og-analysis-panel" aria-label="분석 요약"></div>
+      <div class="og-zoomctl og-2d-only">
+        <button id="og-zin">＋</button>
+        <button id="og-zout">−</button>
+        <button id="og-zfit">⊡</button>
+      </div>
+      <div class="og-quick" id="og-quick"></div>
+    </div>
+    <aside class="og-side collapsed" id="og-side">
+      <div class="og-s-empty">노드를 클릭하면 상세가 표시됩니다.</div>
+    </aside>
+  </div>
+  <div class="og-footer">
+    <div class="og-leg" id="og-legend"></div>
+    <span class="og-spacer"></span>
+    <span style="font-size:11px;color:#5c6878" id="og-footer-note">LLM 추출 · 인간 검증 전</span>
+  </div>
+</div>
+
+<script type="module">
+import { OntologyChrome } from '/_ontology-chrome/chrome.js';
+
+const PREFIX_META = {
+  'A_t21':{day:'6/14',jo:'A조',round:'토론2-1',label:'6/14 A조 토론2-1'},
+  'A_t22':{day:'6/14',jo:'A조',round:'토론2-2',label:'6/14 A조 토론2-2'},
+  'A_t23':{day:'6/14',jo:'A조',round:'토론2-3',label:'6/14 A조 토론2-3'},
+  'B_t1':{day:'6/14',jo:'B조',round:'토론1',label:'6/14 B조 토론1'},
+  'B_t2':{day:'6/14',jo:'B조',round:'토론2',label:'6/14 B조 토론2'},
+  'B_t3':{day:'6/14',jo:'B조',round:'토론3',label:'6/14 B조 토론3'},
+  'OA_t1':{day:'6/13',jo:'A조',round:'운영규정',label:'6/13 운영규정 A조'},
+  'OB_t1':{day:'6/13',jo:'B조',round:'운영규정',label:'6/13 운영규정 B조'},
+  'OZ_t1':{day:'6/13',jo:'통합',round:'운영규정',label:'6/13 운영규정 통합'},
+  'DA_t2':{day:'6/14',jo:'A조',round:'의제선정',label:'6/14 A조 의제선정'},
+  'DB_t2':{day:'6/14',jo:'B조',round:'의제선정',label:'6/14 B조 의제선정'},
+  'DZ_t2':{day:'6/14',jo:'통합',round:'의제선정',label:'6/14 통합 의제선정'},
+  '발표':{day:'6/13',jo:'전체',round:'조별발표',label:'6/13 조별발표'},
+  '정의전환':{day:'6/14',jo:'기타조',round:'정의로운전환',label:'6/14 정의로운전환'},
+  '환경4조':{day:'6/14',jo:'4조',round:'환경교육',label:'6/14 환경교육 4조'},
+};
+
+let cy, graph3d, ALL_NODES = [], ALL_EDGES = [], curFilter = { kind:new Set(Object.keys(OntologyChrome.KIND_DEFAULT)) };
+let isoShown = false;
+let sources = null, curSource = null, curView = '2d', pollTimer = null;
+let currentMetaAssets = null;
+let agendaSurface = null, agendaSurfacePromise = null;
+let gyeonggiAgendaSurface = null, gyeonggiAgendaSurfacePromise = null;
+let supabaseAgendaSurface = null, supabaseAgendaSurfacePromise = null;
+let kbAgendaSurface = null, kbAgendaSurfacePromise = null;
+let physicsOn = localStorage.getItem('og-physics') === '1', colaLayout = null;
+let presentMode = false;  // 발표(대형스크린) 모드 — 공유 가능 뷰 상태라 URL 파라미터
+let presentLevel = 'chapter'; // 'chapter' | 'brief' | 'full' — 발표 A/B 테스트용 노출 밀도
+let showcaseMode = false; // 기획자 A/B용: 초기 물리 그래프 감성 + 축약 라벨 + 제한 노드
+let showcaseCount = 50;
+let showcaseTheme = 'light';
+let showcaseTone = 'calm';
+let showcaseEdgeLabels = true;
+let participantView = 'all';
+let participantRel = 'overview';
+let fixedNodeId = null, hoverNodeId = null, graph3dData = null, quickHover = false, hoverHideTimer = null;
+// A-3 묶기(클러스터): 'none' | 'present' | 'brief' | 'issue' | 'session'. 공유 가능 뷰 상태라 URL 파라미터(?group=).
+// 무손실 원칙 — 그룹은 합성 부모 노드로만 표현하고 실제 노드/엣지는 절대 삭제하지 않는다.
+let groupMode = 'none', ecApi = null;
+
+const ROLE_TEXT = {
+  Issue: '논의가 모이는 쟁점입니다. 서로 다른 주장·근거·우려가 이 지점으로 연결됩니다.',
+  Claim: '타당성 검토가 필요한 주장입니다. 무엇이 이를 뒷받침하거나 반박하는지 함께 봅니다.',
+  Proposal: '정책 대안입니다. 실행 조건, 우려, 근거가 함께 붙을 때 권고안 후보가 됩니다.',
+  Concern: '반대·우려·소수의견입니다. 다수 의견에 흡수하지 않고 별도로 보존합니다.',
+  Condition: '합의나 실행을 위해 필요한 조건입니다. 예산, 법개정, 단계 시행 등이 여기에 해당합니다.',
+  Value: '정당성·가치 판단입니다. 형평성, 세대정의, 수용성 같은 판단 기준을 드러냅니다.',
+  Evidence: '진리 주장에 해당하는 근거입니다. 자료, 경험, 사례, 관찰이 주장을 지탱합니다.',
+  Group: '영향집단입니다. 특정 정책이 누구에게 영향을 주는지 보여줍니다.',
+  Clause: '규정·조항입니다. 제도 문장의 근거 단위입니다.',
+  Decision: '의결·결정입니다. 숙의 이후의 판단 결과를 나타냅니다.',
+};
+const REL_COLOR = {
+  opposes: '#ff6b6b',
+  hasConcern: '#ff922b',
+  requiresCondition: '#ffd43b',
+  hasEvidence: '#adb5bd',
+  supports: '#56c2e4',
+  modifies: '#b197fc',
+  raisesIssue: '#63e6be',
+  framesThrough: '#7c3aed',
+  isAbout: '#74c0fc',
+  impacts: '#f783ac',
+};
+const REL_KO = {
+  supports: '지지',
+  opposes: '반대',
+  hasConcern: '우려',
+  requiresCondition: '조건',
+  hasEvidence: '근거',
+  modifies: '수정',
+  raisesIssue: '쟁점제기',
+  framesThrough: '분석렌즈',
+  isAbout: '관련',
+  impacts: '영향',
+};
+const PARTICIPANT_GROUP_PALETTE = [
+  ['#2563eb','#dbeafe'], ['#16a34a','#dcfce7'], ['#d97706','#ffedd5'], ['#7c3aed','#ede9fe'],
+  ['#db2777','#fce7f3'], ['#0891b2','#cffafe'], ['#ca8a04','#fef3c7'], ['#dc2626','#fee2e2'],
+  ['#4f46e5','#e0e7ff'], ['#059669','#d1fae5'], ['#ea580c','#fed7aa'], ['#9333ea','#f3e8ff'],
+  ['#be123c','#ffe4e6'], ['#0284c7','#e0f2fe'], ['#65a30d','#ecfccb'], ['#475569','#e2e8f0'],
+];
+const AGENDA_HINTS = [
+  { terms:['원전','원자력','재생에너지','태양광','풍력','전력믹스'], ids:[1,13,3] },
+  { terms:['전기요금','요금','에너지복지','전환비용'], ids:[2,14] },
+  { terms:['전력망','송전','수도권','데이터센터','전력수요'], ids:[3,11,13] },
+  { terms:['내연기관','경유차','전기차','무공해차','자동차'], ids:[4] },
+  { terms:['기후정의','불평등','취약계층','폭염','복합위기'], ids:[5,15,14] },
+  { terms:['생활실천','규제','소비','인센티브'], ids:[6] },
+  { terms:['개발도상국','국제지원','기후재원'], ids:[7,12] },
+  { terms:['ESG','RE100','기후공시','공시'], ids:[8] },
+  { terms:['이행점검','모니터링','권고안','점검'], ids:[9] },
+  { terms:['지자체','지역계획','상향식','중앙정부'], ids:[10] },
+  { terms:['AI','인공지능','데이터센터'], ids:[11] },
+  { terms:['기후배당','탄소세','기후대응기금'], ids:[14] },
+];
+const AGENDA_STOP_TERMS = new Set(['정부','정책','방안','논의','기후','탄소','중립','확대','지원','필요','대응','사회','지역','시민','회의','계획','구축','활용','도입','관련','문제']);
+
+const params = new URLSearchParams(location.search);
+
+(async function init() {
+  sources = await fetch('sources.json').then(r => r.json());
+  curSource = params.get('source') || sources.default;
+  curView = params.get('view') || '2d';
+  presentMode = params.get('mode') === 'present';
+  showcaseMode = params.get('mode') !== 'off';
+  presentLevel = ['chapter','brief','full'].includes(params.get('level')) ? params.get('level') : 'chapter';
+  showcaseCount = [50,75,100].includes(Number(params.get('count'))) ? Number(params.get('count')) : 75;
+  showcaseTheme = ['light','dark'].includes(params.get('theme')) ? params.get('theme') : 'light';
+  showcaseTone = ['calm','contrast','mono'].includes(params.get('tone')) ? params.get('tone') : 'calm';
+  showcaseEdgeLabels = params.get('edgeLabels') !== 'off';
+  participantView = ['all','impression','question'].includes(params.get('participantView')) ? params.get('participantView') : 'all';
+  participantRel = ['overview','response','similar','lens','all'].includes(params.get('participantRel')) ? params.get('participantRel') : 'overview';
+  groupMode = ['present','brief','issue','session','none'].includes(params.get('group'))
+    ? params.get('group')
+    : (presentMode ? groupForPresentLevel(presentLevel) : 'none');
+  if ((presentMode || showcaseMode) && !params.has('view')) curView = '2d';
+  if (showcaseMode) groupMode = 'none';
+  buildSourceDropdown();
+  OntologyChrome.init({ activeId: 'workshop', title: '숙의 온톨로지', meta: '로딩 중…' });
+  bindGlobalEvents();
+  syncPresentationBody();
+  if (curView === '3d') applyView('3d');
+  loadAgendaSurface();
+  loadGyeonggiAgendaSurface();
+  loadSupabaseAgendaSurface();
+  loadKbAgendaSurface();
+  loadSource(curSource);
+})();
+
+function buildSourceDropdown() {
+  const sel = document.getElementById('og-source');
+  const byCat = {};
+  for (const s of sources.sources) (byCat[s.category] = byCat[s.category] || []).push(s);
+  sel.innerHTML = '';
+  for (const cat of Object.keys(sources.categories)) {
+    const list = byCat[cat] || [];
+    if (!list.length) continue;
+    const og = document.createElement('optgroup');
+    og.label = sources.categories[cat];
+    for (const s of list) {
+      const o = document.createElement('option');
+      o.value = s.id; o.textContent = s.label;
+      if (s.id === curSource) o.selected = true;
+      og.appendChild(o);
+    }
+    sel.appendChild(og);
+  }
+  sel.onchange = () => {
+    curSource = sel.value;
+    updateUrl();
+    loadSource(curSource);
+  };
+}
+
+function updateUrl() {
+  const p = new URLSearchParams();
+  p.set('source', curSource);
+  if (curView !== '2d') p.set('view', curView);
+  if (presentMode) {
+    p.set('mode', 'present');
+    p.set('level', presentLevel);
+  } else if (showcaseMode) {
+    p.set('mode', 'showcase');
+    p.set('count', String(showcaseCount));
+    p.set('edgeLabels', showcaseEdgeLabels ? 'on' : 'off');
+    if (showcaseTone !== 'calm') p.set('tone', showcaseTone);
+    if (showcaseTheme === 'dark') p.set('theme', 'dark');
+    if (curSource === 'participant-open-questions') {
+      if (participantView !== 'all') p.set('participantView', participantView);
+      if (participantRel !== 'overview') p.set('participantRel', participantRel);
+    }
+  }
+  if (groupMode !== 'none' && !showcaseMode && (!presentMode || groupMode !== groupForPresentLevel(presentLevel))) p.set('group', groupMode);
+  history.replaceState(null, '', '?' + p.toString());
+}
+
+function sessionLabel(session, fallback = '기타/미분류') {
+  if (!session) return fallback;
+  return PREFIX_META[session]?.label || session;
+}
+
+function shortenNodeLabel(label, maxChars = 18) {
+  const raw = String(label || '').replace(/\[[^\]]+\]/g, '').replace(/\([^)]{8,}\)/g, '').replace(/\s+/g, ' ').trim();
+  if (raw.length <= maxChars) return raw;
+  const particles = ['에 대한 ', ' 관련 ', ' 및 ', '을 위한 ', '를 위한 ', '의 '];
+  let compact = raw;
+  for (const p of particles) compact = compact.replaceAll(p, ' ');
+  compact = compact.replace(/\s+/g, ' ').trim();
+  if (compact.length <= maxChars) return compact;
+  const words = compact.split(' ');
+  let acc = '';
+  for (const w of words) {
+    const next = acc ? `${acc} ${w}` : w;
+    if (next.length > maxChars) break;
+    acc = next;
+  }
+  return acc || compact.slice(0, maxChars);
+}
+
+function showcaseLabelLimit() {
+  if (showcaseCount <= 50) return 26;
+  if (showcaseCount <= 75) return 22;
+  return 18;
+}
+
+function nodeShowcaseScore(node) {
+  const kind = node.data?.kind || '';
+  const kindBoost = { Issue: 70, Claim: 54, Proposal: 50, Concern: 48, Condition: 42, Evidence: 38, Value: 36, Group: 18 }[kind] || 20;
+  const deg = Number(node.data?.deg || 0);
+  const textBoost = node.data?.text ? 5 : 0;
+  return deg * 20 + kindBoost + textBoost;
+}
+
+function isParticipantSource() {
+  return curSource === 'participant-open-questions';
+}
+
+function responseQuestionKey(node) {
+  return node?.data?.meta?.question_key || node?.data?.question_key || '';
+}
+
+function participantResponseNodes() {
+  return ALL_NODES
+    .filter(n => String(n.data?.id || '').startsWith('resp_'))
+    .filter(n => participantView === 'all' || responseQuestionKey(n) === participantView)
+    .sort((a, b) => groupSortValueData(a) - groupSortValueData(b) || String(a.data.label).localeCompare(String(b.data.label), 'ko'));
+}
+
+function groupSortValueData(node) {
+  const group = String(node.data?.meta?.group || node.data?.session || '');
+  const m = group.match(/\d+/);
+  return m ? Number(m[0]) : (group.includes('연구') ? 99 : 50);
+}
+
+function participantGroupPaletteFromMeta(meta = {}, session = '') {
+  const text = String(meta.group || session || '');
+  const m = text.match(/\d+/);
+  const idx = m ? Math.max(0, Math.min(14, Number(m[0]) - 1)) : 15;
+  const [border, bg] = PARTICIPANT_GROUP_PALETTE[idx] || PARTICIPANT_GROUP_PALETTE[15];
+  return { border, bg };
+}
+
+function participantRelAllowed(rel) {
+  if (participantRel === 'all') return true;
+  if (participantRel === 'overview') return rel === 'raisesIssue' || rel === 'similarTo';
+  if (participantRel === 'response') return rel === 'raisesIssue';
+  if (participantRel === 'similar') return rel === 'similarTo';
+  if (participantRel === 'lens') return rel === 'framesThrough';
+  return rel === 'raisesIssue' || rel === 'similarTo';
+}
+
+function buildParticipantShowcaseElements(limit = showcaseCount) {
+  const capped = Math.max(50, Math.min(100, Number(limit) || 50));
+  const responses = participantResponseNodes();
+  const byKey = {
+    impression: responses.filter(n => responseQuestionKey(n) === 'impression'),
+    question: responses.filter(n => responseQuestionKey(n) === 'question'),
+  };
+  let pickedResponses = [];
+  if (participantView === 'all') {
+    const half = Math.floor(capped / 2);
+    pickedResponses = byKey.impression.slice(0, half).concat(byKey.question.slice(0, capped - half));
+  } else {
+    pickedResponses = responses.slice(0, capped);
+  }
+  const selected = new Set(pickedResponses.map(n => n.data.id));
+  const allowedEdges = ALL_EDGES.filter(e => participantRelAllowed(e.data.rel));
+  const pickedIds = new Set(selected);
+  for (const e of allowedEdges) {
+    if (e.data.rel === 'raisesIssue') {
+      if (pickedIds.has(e.data.source) || pickedIds.has(e.data.target)) {
+        selected.add(e.data.source);
+        selected.add(e.data.target);
+      }
+    } else if (e.data.rel === 'similarTo' && participantRel !== 'overview') {
+      if (pickedIds.has(e.data.source)) selected.add(e.data.target);
+      if (pickedIds.has(e.data.target)) selected.add(e.data.source);
+    } else if (e.data.rel === 'framesThrough') {
+      if (pickedIds.has(e.data.source)) selected.add(e.data.target);
+      if (pickedIds.has(e.data.target)) selected.add(e.data.source);
+    } else if (participantRel === 'all') {
+      if (pickedIds.has(e.data.source) || pickedIds.has(e.data.target)) {
+        selected.add(e.data.source);
+        selected.add(e.data.target);
+      }
+    }
+  }
+  if (participantView === 'all' || participantView === 'impression') selected.add('Question_impression');
+  if (participantView === 'all' || participantView === 'question') selected.add('Question_question');
+  const nodes = ALL_NODES
+    .filter(n => selected.has(n.data.id))
+    .map(n => ({
+      ...n,
+      data: {
+        ...n.data,
+        shortLabel: shortenNodeLabel(n.data.label, showcaseLabelLimit()),
+      },
+      classes: [n.classes, 'showcase-node'].filter(Boolean).join(' '),
+    }));
+  const edges = allowedEdges.filter(e => selected.has(e.data.source) && selected.has(e.data.target));
+  return { nodes, edges };
+}
+
+function buildShowcaseElements(limit = showcaseCount) {
+  if (isParticipantSource()) return buildParticipantShowcaseElements(limit);
+  const capped = Math.max(50, Math.min(100, Number(limit) || 50));
+  const byId = new Map(ALL_NODES.map(n => [n.data.id, n]));
+  const adjacency = new Map();
+  for (const e of ALL_EDGES) {
+    const s = e.data.source, t = e.data.target;
+    if (!byId.has(s) || !byId.has(t)) continue;
+    if (!adjacency.has(s)) adjacency.set(s, new Set());
+    if (!adjacency.has(t)) adjacency.set(t, new Set());
+    adjacency.get(s).add(t);
+    adjacency.get(t).add(s);
+  }
+  const ranked = [...ALL_NODES]
+    .filter(n => !n.isGroup && Number(n.data?.deg || 0) > 0)
+    .sort((a, b) => nodeShowcaseScore(b) - nodeShowcaseScore(a) || String(a.data.label).localeCompare(String(b.data.label), 'ko'));
+  const selected = new Set();
+  for (const seed of ranked) {
+    if (selected.size >= capped) break;
+    selected.add(seed.data.id);
+    const neighbors = [...(adjacency.get(seed.data.id) || [])]
+      .map(id => byId.get(id))
+      .filter(Boolean)
+      .sort((a, b) => nodeShowcaseScore(b) - nodeShowcaseScore(a));
+    for (const n of neighbors) {
+      if (selected.size >= capped) break;
+      selected.add(n.data.id);
+    }
+  }
+  const nodes = ALL_NODES
+    .filter(n => selected.has(n.data.id))
+    .map(n => ({
+      ...n,
+      data: {
+        ...n.data,
+        shortLabel: shortenNodeLabel(n.data.label, showcaseLabelLimit()),
+      },
+      classes: [n.classes, 'showcase-node'].filter(Boolean).join(' '),
+    }));
+  const edges = ALL_EDGES.filter(e => selected.has(e.data.source) && selected.has(e.data.target));
+  return { nodes, edges };
+}
+
+async function loadSource(srcId) {
+  const meta = sources.sources.find(s => s.id === srcId);
+  if (!meta) return;
+  // view 지원 여부
+  const supportsView = meta.supportsView || ['2d'];
+  document.getElementById('og-view-3d').disabled = !supportsView.includes('3d');
+  if (curView === '3d' && !supportsView.includes('3d')) applyView('2d');
+
+  // polling UI: live category만
+  const isLive = meta.category === 'live';
+  document.getElementById('og-poll-ui').style.display = isLive ? '' : 'none';
+
+  const payload = await fetch(meta.data + '?_=' + Date.now()).then(r => r.json());
+  const { elements, meta: mt } = payload;
+  const maxDeg = Math.max(0, ...elements.nodes.map(n => Number(n.data?.deg || 0)));
+  ALL_NODES = elements.nodes.map(n => {
+    const deg = Number(n.data?.deg || 0);
+    const isOverviewLabel = n.data?.kind === 'Issue' || deg >= Math.max(4, Math.min(8, maxDeg - 1));
+    return {
+      ...n,
+      data: {
+        ...n.data,
+        deg,
+        is_public: n.data?.is_public !== false,
+        isOverviewLabel,
+      },
+      classes: [n.classes, n.data?.is_public === false ? 'non-public' : ''].filter(Boolean).join(' '),
+    };
+  });
+  ALL_EDGES = elements.edges;
+
+  // A-6: 기존 자산(합의·DQI)이 데이터에 있으면 읽기전용으로만 노출 (없으면 무표시 — 방어적)
+  const _extra = [];
+  if (Array.isArray(mt.recommendations) && mt.recommendations.length) _extra.push(`합의·권고 ${mt.recommendations.length}건`);
+  if (mt.quality) _extra.push('DQI 지표');
+  OntologyChrome.updateMeta(`노드 ${mt.counts.nodes || ALL_NODES.length} · 엣지 ${mt.counts.edges || ALL_EDGES.length}${_extra.length ? ' · ' + _extra.join(' · ') : ''}`);
+  OntologyChrome.updateAdvisory(mt.advisory_notice || (isLive ? '🔴 LIVE 미검증 초안 · 시민 비노출' : ''));
+  updateAssetsButton(mt);
+
+  // 헤더 pill 색 동기화 (LIVE면 빨강)
+  const pill = document.querySelector('.og-pill');
+  if (pill) {
+    pill.classList.toggle('og-live', !!mt.live);
+    pill.textContent = mt.live ? 'LIVE' : 'advisory · uid 역추적';
+  }
+
+  if (curView === '2d') renderCy();
+  else render3d();
+  renderHubRail();
+  renderOverviewSurface(meta, mt);
+  renderAnalysisPanel(mt);
+
+  if (isLive) setupPolling(meta);
+  else { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+}
+
+function fmtTime(sec) {
+  if (sec == null || Number.isNaN(Number(sec))) return '—';
+  const n = Math.max(0, Math.round(Number(sec)));
+  const m = Math.floor(n / 60);
+  const s = n % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function fmtSpan(span) {
+  if (!span || (span.start == null && span.end == null)) return '시간 미상';
+  return `${fmtTime(span.start)}~${fmtTime(span.end)}`;
+}
+
+function qualityLabel(q) {
+  if (!q) return '';
+  const label = q.validity_label || q.label || 'quality';
+  if (label === 'official-5indicators') return 'DQI 공식 5지표';
+  if (label === 'exploratory-text-metric') return 'DQI 탐색적 지표';
+  return `DQI ${label}`;
+}
+
+function renderSourceAssets(mt) {
+  const recs = Array.isArray(mt.recommendations) ? mt.recommendations : [];
+  const quality = mt.quality || null;
+  const side = document.getElementById('og-side');
+  if (!side || (!recs.length && !quality)) {
+    if (side && !side.querySelector('.og-s-label')) side.classList.add('collapsed');
+    return;
+  }
+  const q = quality ? `
+    <div class="og-s-sec">
+      <h4>DQI 품질 지표</h4>
+      <div class="og-s-text">
+        <b>${qualityLabel(quality)}</b><br>
+        ${quality.reliability ? `신뢰도 검토 있음<br>` : ''}
+        ${quality.limitations_notice ? `${escapeHtml(quality.limitations_notice)}` : '읽기전용 메타데이터입니다. 공식 판단은 모더레이터 검토 후 확정됩니다.'}
+      </div>
+    </div>` : '';
+  const r = recs.length ? `
+    <div class="og-s-sec">
+      <h4>권고안 추적</h4>
+      <div class="og-s-rel">
+        ${recs.map((rec, i) => `
+          <div class="og-r">
+            <b>${escapeHtml(rec.title || rec.rec_id || `권고안 ${i + 1}`)}</b><br>
+            <span style="color:#9aa7b8">논의 시각 ${escapeHtml(fmtSpan(rec.time_span))}</span>
+            ${Array.isArray(rec.minority) && rec.minority.length ? `<br><span style="color:#ffd43b">소수의견 ${rec.minority.length}건 별도 보존</span>` : ''}
+            ${Array.isArray(rec.was_derived_from) ? `<br><span style="color:#9aa7b8">출처 ${rec.was_derived_from.length}건</span>` : ''}
+          </div>`).join('')}
+      </div>
+    </div>` : '';
+  side.innerHTML = `
+    <button class="og-s-close" data-side-close>✕</button>
+    <div>
+      <span class="og-s-badge" style="background:#7048e8;color:#fff">읽기전용</span>
+      <div class="og-s-label">합의·DQI 자산</div>
+      ${q}${r}
+    </div>`;
+  side.classList.remove('collapsed');
+  side.querySelector('[data-side-close]').onclick = () => side.classList.add('collapsed');
+}
+
+function updateAssetsButton(mt) {
+  currentMetaAssets = mt || null;
+  const btn = document.getElementById('og-assets-btn');
+  if (!btn) return;
+  const recs = Array.isArray(mt?.recommendations) ? mt.recommendations : [];
+  const hasAssets = recs.length > 0 || !!mt?.quality;
+  btn.style.display = hasAssets ? '' : 'none';
+  btn.textContent = recs.length && mt?.quality ? `합의·DQI ${recs.length}` :
+    recs.length ? `합의 ${recs.length}` : 'DQI';
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+function relLabel(rel) {
+  return REL_KO[rel] || rel || '관계';
+}
+
+function shortText(text, len = 120) {
+  const s = String(text || '').replace(/\s+/g, ' ').trim();
+  return s.length > len ? s.slice(0, len - 1) + '…' : s;
+}
+
+async function loadAgendaSurface() {
+  if (agendaSurfacePromise) return agendaSurfacePromise;
+  agendaSurfacePromise = fetch('../workshop-graph/data/agenda-surface.json?_=' + Date.now())
+    .then(r => {
+      if (!r.ok) throw new Error(`agenda surface ${r.status}`);
+      return r.json();
+    })
+    .then(data => {
+      const agendas = Array.isArray(data?.agendas) ? data.agendas : [];
+      const byId = {};
+      for (const agenda of agendas) byId[String(agenda.id)] = agenda;
+      agendaSurface = { ...data, agendas, byId };
+      return agendaSurface;
+    })
+    .catch(err => {
+      console.warn('[agenda-surface] unavailable', err);
+      agendaSurface = null;
+      return null;
+    });
+  return agendaSurfacePromise;
+}
+
+async function loadGyeonggiAgendaSurface() {
+  if (gyeonggiAgendaSurfacePromise) return gyeonggiAgendaSurfacePromise;
+  gyeonggiAgendaSurfacePromise = fetch('../workshop-graph/data/gyeonggi-agenda-surface.json?_=' + Date.now())
+    .then(r => {
+      if (!r.ok) throw new Error(`gyeonggi agenda surface ${r.status}`);
+      return r.json();
+    })
+    .then(data => {
+      const records = Array.isArray(data?.records) ? data.records : [];
+      gyeonggiAgendaSurface = { ...data, records };
+      return gyeonggiAgendaSurface;
+    })
+    .catch(err => {
+      console.warn('[gyeonggi-agenda-surface] unavailable', err);
+      gyeonggiAgendaSurface = null;
+      return null;
+    });
+  return gyeonggiAgendaSurfacePromise;
+}
+
+async function loadSupabaseAgendaSurface() {
+  if (supabaseAgendaSurfacePromise) return supabaseAgendaSurfacePromise;
+  supabaseAgendaSurfacePromise = fetch('../workshop-graph/data/supabase-agenda-surface.json?_=' + Date.now())
+    .then(r => {
+      if (!r.ok) throw new Error(`supabase agenda surface ${r.status}`);
+      return r.json();
+    })
+    .then(data => {
+      const records = Array.isArray(data?.records) ? data.records : [];
+      supabaseAgendaSurface = { ...data, records };
+      return supabaseAgendaSurface;
+    })
+    .catch(err => {
+      console.warn('[supabase-agenda-surface] unavailable', err);
+      supabaseAgendaSurface = null;
+      return null;
+    });
+  return supabaseAgendaSurfacePromise;
+}
+
+async function loadKbAgendaSurface() {
+  if (kbAgendaSurfacePromise) return kbAgendaSurfacePromise;
+  kbAgendaSurfacePromise = fetch('../workshop-graph/data/kb-agenda-surface.json?_=' + Date.now())
+    .then(r => {
+      if (!r.ok) throw new Error(`kb agenda surface ${r.status}`);
+      return r.json();
+    })
+    .then(data => {
+      const records = Array.isArray(data?.records) ? data.records : [];
+      kbAgendaSurface = { ...data, records };
+      return kbAgendaSurface;
+    })
+    .catch(err => {
+      console.warn('[kb-agenda-surface] unavailable', err);
+      kbAgendaSurface = null;
+      return null;
+    });
+  return kbAgendaSurfacePromise;
+}
+
+function normalizeAgendaIds(value) {
+  const values = Array.isArray(value) ? value : (value == null ? [] : [value]);
+  return values
+    .flatMap(item => String(item).split(/[,\s]+/))
+    .map(item => Number(String(item).replace(/^agenda[-_]?/i, '')))
+    .filter(Number.isFinite);
+}
+
+function agendaTokens(value) {
+  return [...new Set(String(value || '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .split(/\s+/)
+    .map(token => token.trim())
+    .filter(token => token.length >= 2 && !/^\d+$/.test(token)))];
+}
+
+function addAgendaCandidate(map, agenda, rank, reason) {
+  if (!agenda) return;
+  const key = String(agenda.id);
+  const prev = map.get(key);
+  if (!prev || rank > prev.rank) map.set(key, { ...agenda, rank, match_reason: reason });
+}
+
+function findRelatedAgendas(node) {
+  if (!node || (!agendaSurface?.agendas?.length && !gyeonggiAgendaSurface?.records?.length && !supabaseAgendaSurface?.records?.length && !kbAgendaSurface?.records?.length)) return [];
+  const candidates = new Map();
+  const explicitIds = [
+    ...normalizeAgendaIds(node.agenda_ids),
+    ...normalizeAgendaIds(node.agenda_id),
+    ...normalizeAgendaIds(node.related_agendas),
+    ...normalizeAgendaIds(node.related_agenda_ids),
+  ];
+  for (const id of explicitIds) addAgendaCandidate(candidates, agendaSurface?.byId?.[String(id)], 100, '직접 연결');
+
+  const haystack = `${node.label || ''} ${node.text || ''}`.toLowerCase();
+  const nodeTerms = new Set(agendaTokens(haystack));
+  for (const hint of AGENDA_HINTS) {
+    if (hint.terms.some(term => haystack.includes(term.toLowerCase()))) {
+      for (const id of hint.ids) addAgendaCandidate(candidates, agendaSurface?.byId?.[String(id)], 92, '핵심어 연결');
+    }
+  }
+  if (agendaSurface?.agendas?.length && haystack.trim()) {
+    for (const agenda of agendaSurface.agendas) {
+      let rank = 0;
+      const title = String(agenda.title || '').toLowerCase();
+      const domain = String(agenda.domain || '').toLowerCase();
+      const category = String(agenda.big_category || '').toLowerCase();
+      const labelLower = String(node.label || '').toLowerCase().trim();
+      if (title && (haystack.includes(title) || (labelLower.length >= 2 && title.includes(labelLower)))) rank += 40;
+      if (domain && haystack.includes(domain)) rank += 12;
+      if (category && haystack.includes(category)) rank += 4;
+      const keywords = Array.isArray(agenda.keywords) ? agenda.keywords : [];
+      for (const keyword of keywords) {
+        const term = String(keyword).toLowerCase();
+        if (term.length >= 2 && !AGENDA_STOP_TERMS.has(term) && nodeTerms.has(term)) rank += 3;
+      }
+      if (rank >= 15) addAgendaCandidate(candidates, agenda, rank, '제목·키워드 유사');
+    }
+  }
+
+  if (gyeonggiAgendaSurface?.records?.length && haystack.trim()) {
+    for (const record of gyeonggiAgendaSurface.records) {
+      let rank = 0;
+      const title = String(record.title || '').toLowerCase();
+      const group = String(record.working_group || '').toLowerCase();
+      const labelLower = String(node.label || '').toLowerCase().trim();
+      if (title && (haystack.includes(title) || (labelLower.length >= 2 && title.includes(labelLower)))) rank += 80;
+      if (group && haystack.includes(group)) rank += 16;
+      const keywords = Array.isArray(record.keywords) ? record.keywords : [];
+      for (const keyword of keywords) {
+        const term = String(keyword).toLowerCase();
+        if (term.length >= 2 && !AGENDA_STOP_TERMS.has(term) && nodeTerms.has(term)) rank += 5;
+      }
+      if (rank >= 18) {
+        addAgendaCandidate(candidates, {
+          ...record,
+          big_category: record.status_label || '경기도 OCR',
+          domain: record.working_group || '',
+          summary: record.original_excerpt || record.summary || record.title,
+          match_reason: '경기도 OCR 유사',
+        }, rank + 8, '경기도 OCR 유사');
+      }
+    }
+  }
+
+  if (supabaseAgendaSurface?.records?.length && haystack.trim()) {
+    for (const record of supabaseAgendaSurface.records) {
+      let rank = 0;
+      const title = String(record.title || '').toLowerCase();
+      const category = String(record.category || record.working_group || '').toLowerCase();
+      const sourceKind = String(record.source_kind || '').toLowerCase();
+      const labelLower = String(node.label || '').toLowerCase().trim();
+      if (title && (haystack.includes(title) || (labelLower.length >= 2 && title.includes(labelLower)))) rank += 70;
+      if (category && haystack.includes(category)) rank += 10;
+      if (sourceKind && haystack.includes(sourceKind)) rank += 6;
+      const keywords = Array.isArray(record.keywords) ? record.keywords : [];
+      for (const keyword of keywords) {
+        const term = String(keyword).toLowerCase();
+        if (term.length >= 2 && !AGENDA_STOP_TERMS.has(term) && nodeTerms.has(term)) rank += 4;
+      }
+      if (rank >= 18) {
+        addAgendaCandidate(candidates, {
+          ...record,
+          big_category: record.status_label || 'Supabase 공개 코퍼스',
+          domain: record.category || record.source_kind || '',
+          summary: record.summary || record.title,
+          match_reason: 'Supabase 코퍼스 유사',
+        }, rank + 6, 'Supabase 코퍼스 유사');
+      }
+    }
+  }
+
+  if (kbAgendaSurface?.records?.length && haystack.trim()) {
+    for (const record of kbAgendaSurface.records) {
+      let rank = 0;
+      const title = String(record.title || '').toLowerCase();
+      const category = String(record.category || record.working_group || '').toLowerCase();
+      const sourceKind = String(record.source_kind || '').toLowerCase();
+      const labelLower = String(node.label || '').toLowerCase().trim();
+      if (title && (haystack.includes(title) || (labelLower.length >= 2 && title.includes(labelLower)))) rank += 74;
+      if (category && haystack.includes(category)) rank += 12;
+      if (sourceKind && haystack.includes(sourceKind)) rank += 4;
+      const keywords = Array.isArray(record.keywords) ? record.keywords : [];
+      for (const keyword of keywords) {
+        const term = String(keyword).toLowerCase();
+        if (term.length >= 2 && !AGENDA_STOP_TERMS.has(term) && nodeTerms.has(term)) rank += 4;
+      }
+      if (rank >= 18) {
+        addAgendaCandidate(candidates, {
+          ...record,
+          big_category: record.source_label || record.status_label || '보호 KB',
+          domain: record.category || record.source_kind || '',
+          summary: record.summary || record.original_excerpt || record.title,
+          match_reason: record.source_kind === 'overseas-cases' ? '해외 권고 유사' : '보호 KB 유사',
+        }, rank + 12, record.source_kind === 'overseas-cases' ? '해외 권고 유사' : '보호 KB 유사');
+      }
+    }
+  }
+
+  const seedAgendas = [...candidates.values()].sort((a, b) => b.rank - a.rank).slice(0, 3);
+  for (const agenda of seedAgendas) {
+    for (const id of normalizeAgendaIds(agenda.related_agendas).slice(0, 3)) {
+      addAgendaCandidate(candidates, agendaSurface?.byId?.[String(id)], Math.min(agenda.rank - 10, 70), '연관 의제');
+    }
+    for (const id of normalizeAgendaIds(agenda.similar_agendas).slice(0, 3)) {
+      addAgendaCandidate(candidates, agendaSurface?.byId?.[String(id)], Math.min(agenda.rank - 14, 60), '의제 네트워크 유사');
+    }
+  }
+
+  return [...candidates.values()]
+    .filter(agenda => agenda.id != null)
+    .sort((a, b) => b.rank - a.rank || String(a.id).localeCompare(String(b.id), 'ko'))
+    .slice(0, 5);
+}
+
+function findNodeData(nodeId) {
+  return ALL_NODES.find(n => n.data.id === nodeId)?.data || null;
+}
+
+function buildNodeContext(nodeId) {
+  const node = findNodeData(nodeId);
+  if (!node) return null;
+  const incoming = [];
+  const outgoing = [];
+  const neighborIds = new Set([nodeId]);
+  const counts = { support: 0, oppose: 0, condition: 0, evidence: 0, other: 0 };
+  for (const e of ALL_EDGES) {
+    const d = e.data || {};
+    const touches = d.source === nodeId || d.target === nodeId;
+    if (!touches) continue;
+    const item = {
+      id: d.id,
+      source: d.source,
+      target: d.target,
+      rel: d.rel,
+      relKo: d.relKo || relLabel(d.rel),
+      sourceNode: findNodeData(d.source),
+      targetNode: findNodeData(d.target),
+    };
+    if (d.source === nodeId) {
+      item.otherNode = item.targetNode;
+      outgoing.push(item);
+      neighborIds.add(d.target);
+    } else {
+      item.otherNode = item.sourceNode;
+      incoming.push(item);
+      neighborIds.add(d.source);
+    }
+    if (d.rel === 'supports') counts.support++;
+    else if (d.rel === 'opposes' || d.rel === 'hasConcern' || d.opposes) counts.oppose++;
+    else if (d.rel === 'requiresCondition') counts.condition++;
+    else if (d.rel === 'hasEvidence') counts.evidence++;
+    else counts.other++;
+  }
+  const related = [...incoming, ...outgoing];
+  const sourceIds = [...new Set([...(node.cited || []), ...(node.cited_uids || [])])];
+  const agendas = findRelatedAgendas(node);
+  return {
+    node,
+    incoming,
+    outgoing,
+    related,
+    neighborIds,
+    counts,
+    sourceIds,
+    agendas,
+    role: ROLE_TEXT[node.kind] || '숙의 구조 안에서 연결 관계로 의미가 결정되는 노드입니다.',
+  };
+}
+
+function relationChips(ctx) {
+  const chips = [
+    ['지지', ctx.counts.support],
+    ['반대·우려', ctx.counts.oppose],
+    ['조건', ctx.counts.condition],
+    ['근거', ctx.counts.evidence],
+  ];
+  return chips.map(([label, count]) => `<span class="og-surface-chip"><b>${count}</b>${label}</span>`).join('');
+}
+
+function topHubNodes(limit = 8) {
+  return [...ALL_NODES]
+    .map(n => n.data)
+    .filter(n => !n.isGroup && (n.kind === 'Issue' || Number(n.deg || 0) > 0))
+    .sort((a, b) => {
+      const kindWeight = (b.kind === 'Issue' ? 2 : 0) - (a.kind === 'Issue' ? 2 : 0);
+      return kindWeight || Number(b.deg || 0) - Number(a.deg || 0) || String(a.label).localeCompare(String(b.label), 'ko');
+    })
+    .slice(0, limit);
+}
+
+function selectNodeById(nodeId, fixed = true) {
+  const ctx = buildNodeContext(nodeId);
+  if (!ctx) return;
+  fixedNodeId = fixed ? nodeId : null;
+  renderNodeSurface(ctx, fixed ? 'fixed' : 'hover');
+  applyFocus(nodeId, fixed);
+  document.getElementById('og-quick').classList.remove('show');
+  if (cy && curView === '2d') {
+    const n = cy.getElementById(nodeId);
+    if (n && n.length) {
+      try { cy.animate({ center: { eles: n }, zoom: Math.max(cy.zoom(), 0.72) }, { duration: 420 }); } catch {}
+    }
+  }
+  if (graph3d && graph3dData && curView === '3d') {
+    const n = graph3dData.nodes.find(x => x.id === nodeId);
+    if (n) {
+      const dist = 88;
+      const len = Math.hypot(n.x || 0, n.y || 0, n.z || 0) || 1;
+      const ratio = 1 + dist / len;
+      try {
+        graph3d.cameraPosition(
+          { x: (n.x || 0) * ratio, y: (n.y || 0) * ratio, z: (n.z || 0) * ratio },
+          n,
+          850
+        );
+      } catch {}
+    }
+  }
+}
+
+function renderHubRail() {
+  const rail = document.getElementById('og-hub-rail');
+  if (!rail) return;
+  if (showcaseMode) {
+    rail.innerHTML = '';
+    return;
+  }
+  const hubs = topHubNodes(curView === '3d' ? 5 : 7);
+  rail.innerHTML = hubs.map(n => `
+    <button class="og-hub-chip" data-node-id="${escapeHtml(n.id)}" title="${escapeHtml(n.label || n.id)}">
+      ${escapeHtml(n.kindKo || n.kind)} · ${escapeHtml(shortText(n.label || n.id, 22))}
+    </button>`).join('');
+  rail.querySelectorAll('[data-node-id]').forEach(btn => {
+    btn.onclick = () => selectNodeById(btn.dataset.nodeId, true);
+  });
+}
+
+function renderAnalysisPanel(graphMeta) {
+  const panel = document.getElementById('og-analysis-panel');
+  if (!panel) return;
+  if (curSource !== 'participant-open-questions') {
+    panel.innerHTML = '';
+    return;
+  }
+  const terms = (graphMeta?.frequency_terms || []).slice(0, 3).map(t => t.term).join(', ') || '응답 대기';
+  const degree = graphMeta?.centrality?.degree_top?.[0]?.label || '응답 대기';
+  const bridge = graphMeta?.centrality?.betweenness_top?.[0]?.label || '응답 대기';
+  const cluster = graphMeta?.similarity_clusters?.[0]?.label || '응답 대기';
+  const frame = (graphMeta?.theory_lenses || []).slice().sort((a,b)=>(b.count || 0)-(a.count || 0))[0]?.label || '응답 대기';
+  panel.innerHTML = `
+    <h3>분석 요약</h3>
+    <div class="og-analysis-grid">
+      <div class="og-analysis-card"><b>많이 나온 것</b><span>${escapeHtml(terms)}</span></div>
+      <div class="og-analysis-card"><b>많이 연결된 것</b><span>${escapeHtml(degree)}</span></div>
+      <div class="og-analysis-card"><b>이어주는 질문</b><span>${escapeHtml(bridge)}</span></div>
+      <div class="og-analysis-card"><b>유사 묶음</b><span>${escapeHtml(cluster)}</span></div>
+      <div class="og-analysis-card"><b>논의 프레임</b><span>${escapeHtml(frame)}</span></div>
+      <div class="og-analysis-card"><b>주변 관계</b><span>노드 클릭으로 1-hop 보기</span></div>
+    </div>`;
+}
+
+function renderOverviewSurface(sourceMeta, graphMeta) {
+  if (fixedNodeId) return;
+  const side = document.getElementById('og-side');
+  if (!side) return;
+  if (showcaseMode) {
+    side.classList.add('collapsed');
+    side.innerHTML = '';
+    return;
+  }
+  const hubs = topHubNodes(7);
+  const kinds = graphMeta?.kinds || {};
+  side.innerHTML = `
+    <div>
+      <span class="og-s-badge" style="background:#228be6">데이터 로드됨</span>
+      <span class="og-s-badge" style="background:#2c3848;color:#9aa7b8;margin-left:5px">${escapeHtml(sourceMeta?.label || curSource || '')}</span>
+      <div class="og-s-label">숙의 온톨로지 개요</div>
+      <div class="og-surface-role"><b>화면을 어떻게 읽나</b><span>색은 발언 역할, 선은 논증 관계, 큰 노드는 논의가 모인 허브입니다. 노드를 올리면 1-hop 관계가 보이고, 클릭하면 원문과 출처가 고정됩니다.</span></div>
+      <div class="og-surface-chips">
+        <span class="og-surface-chip"><b>${ALL_NODES.length}</b>노드</span>
+        <span class="og-surface-chip"><b>${ALL_EDGES.length}</b>관계</span>
+        <span class="og-surface-chip"><b>${kinds.Issue || 0}</b>쟁점</span>
+        <span class="og-surface-chip"><b>${kinds.Concern || 0}</b>우려</span>
+      </div>
+      <div class="og-s-sec">
+        <h4>주요 쟁점·허브</h4>
+        <div class="og-s-rel">
+          ${hubs.map(n => `<button class="og-r og-hub-row" data-node-id="${escapeHtml(n.id)}"><b>${escapeHtml(n.kindKo || n.kind)}</b> · ${escapeHtml(n.label || n.id)} <span>연결 ${Number(n.deg || 0)}</span></button>`).join('')}
+        </div>
+      </div>
+      <div class="og-s-sec">
+        <h4>하버마스 기준</h4>
+        <div class="og-s-text">AI가 합의를 만드는 것이 아니라, 주장·근거·가치·우려·조건을 분리해 숙의를 돕고 소수의견이 사라지지 않게 보여주는 보조 화면입니다.</div>
+      </div>
+    </div>`;
+  side.classList.remove('collapsed');
+  side.querySelectorAll('[data-node-id]').forEach(btn => {
+    btn.onclick = () => selectNodeById(btn.dataset.nodeId, true);
+  });
+}
+
+function renderRelationList(title, edges) {
+  if (!edges.length) return '';
+  return `
+    <div class="og-s-sec">
+      <h4>${escapeHtml(title)} (${edges.length})</h4>
+      <div class="og-s-rel">
+        ${edges.slice(0, 10).map(e => {
+          const other = e.otherNode;
+          const otherLabel = other?.label || e.source || e.target;
+          const cls = (e.rel === 'opposes' || e.rel === 'hasConcern') ? ' og-opp' : '';
+          return `<div class="og-r${cls}"><b>${escapeHtml(e.relKo)}</b> · ${escapeHtml(otherLabel)}</div>`;
+        }).join('')}
+        ${edges.length > 10 ? `<div class="og-r">외 ${edges.length - 10}건</div>` : ''}
+      </div>
+    </div>`;
+}
+
+function renderAgendaPreview(agendas) {
+  if (!Array.isArray(agendas) || !agendas.length) return '';
+  const top = agendas[0];
+  return `
+    <div class="og-agenda-preview">
+      <span class="og-surface-chip"><b>${agendas.length}</b>관련 의제</span>
+      <span title="${escapeHtml(top.title || '')}">${escapeHtml(shortText(top.title || `의제 ${top.id}`, 42))}</span>
+    </div>`;
+}
+
+function renderAgendaWikiCards(agendas) {
+  if (!Array.isArray(agendas) || !agendas.length) return '';
+  return `
+    <div class="og-s-sec og-agenda-sec">
+      <h4>관련 의제 자료</h4>
+      <div class="og-surface-role"><b>숙의 보조 자료</b><span>관련 가능성이 높은 원천 기반 자료입니다. AI가 결론을 만든 것이 아니며, 내부 가안 링크는 제외했습니다. 검수 전 KB 자료는 참고용으로 표시합니다.</span></div>
+      <div class="og-agenda-list">
+        ${agendas.slice(0, 3).map(agenda => {
+          const summary = agenda.summary || agenda.current_situation || agenda.proposed_policy || '요약 정보가 아직 연결되지 않았습니다.';
+          const details = [agenda.proposed_policy, agenda.expected_effect].filter(Boolean);
+          const title = `${agenda.id ? `${agenda.id}. ` : ''}${agenda.title || '의제'}`;
+          const reviewLabel = agenda.review_status === 'needs_review' ? '검수 필요' : (agenda.status_label || '');
+          return `
+            <article class="og-agenda-card" data-agenda-id="${escapeHtml(agenda.id)}">
+              <div class="og-agenda-meta">
+                <span>${escapeHtml(agenda.big_category || '분류 미상')}</span>
+                ${agenda.domain ? `<span>${escapeHtml(agenda.domain)}</span>` : ''}
+                ${agenda.match_reason ? `<span>${escapeHtml(agenda.match_reason)}</span>` : ''}
+                ${reviewLabel ? `<span>${escapeHtml(reviewLabel)}</span>` : ''}
+              </div>
+              <div class="og-agenda-title">${escapeHtml(title)}</div>
+              <p>${escapeHtml(shortText(summary, 150))}</p>
+              ${details.length ? `
+                <details class="og-agenda-details">
+                  <summary>정책대안·기대효과</summary>
+                  ${agenda.proposed_policy ? `<div><b>정책대안</b><br>${escapeHtml(shortText(agenda.proposed_policy, 220))}</div>` : ''}
+                  ${agenda.expected_effect ? `<div><b>기대효과</b><br>${escapeHtml(shortText(agenda.expected_effect, 220))}</div>` : ''}
+                </details>` : ''}
+              ${agenda.source_backed_href ? `<a class="og-agenda-link" href="${escapeHtml(agenda.source_backed_href)}" target="_blank" rel="noopener">원천 자료 보기</a>` : '<span class="og-agenda-link muted">원천 자료 페이지 준비 중 · 내부 가안 링크 제외</span>'}
+            </article>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+function nodeSpeakerLabel(node) {
+  const meta = node?.meta || {};
+  return meta.speaker || meta.group || node?.speaker || node?.session || '참여단';
+}
+
+function nodeQuestionLabel(node, fallback = '') {
+  const meta = node?.meta || {};
+  return meta.question_label || node?.kindKo || fallback || node?.kind || '';
+}
+
+function renderNodeSurface(ctx, mode = 'hover') {
+  const palette = OntologyChrome.getPalette();
+  const color = palette[ctx.node.kind] || '#888';
+  const kindLabel = OntologyChrome.KIND_KO[ctx.node.kind] || ctx.node.kind;
+  if (mode === 'fixed') {
+    const side = document.getElementById('og-side');
+    side.innerHTML = `
+      <button class="og-s-close" data-side-close>✕</button>
+      <div>
+        <span class="og-s-badge" style="background:${color}">${escapeHtml(kindLabel)}</span>
+        ${ctx.node.session ? `<span class="og-s-badge" style="background:#2c3848;color:#9aa7b8;margin-left:5px" title="${escapeHtml(ctx.node.session)}">${escapeHtml(sessionLabel(ctx.node.session))}</span>` : ''}
+        ${ctx.node.synthesized ? '<div class="og-s-synth">합성 노드 — 원천 추출 아님</div>' : ''}
+        <div class="og-s-label">${escapeHtml(ctx.node.label || '')}</div>
+        <div class="og-surface-role"><b>이 노드는 숙의에서 어떤 기능인가</b><span>${escapeHtml(ctx.role)}</span></div>
+        <div class="og-surface-chips">${relationChips(ctx)}</div>
+        <div class="og-s-sec">
+          <h4>요약</h4>
+          <div class="og-s-text">${escapeHtml(shortText(ctx.node.text || '요약할 원문이 없습니다.', 220))}</div>
+        </div>
+        <details class="og-s-details" ${ctx.node.text ? '' : 'open'}>
+          <summary>실제 대화 전사 원문</summary>
+          <div class="og-s-text">${escapeHtml(ctx.node.text || '원문 전사 없음')}</div>
+        </details>
+        <div class="og-s-sec">
+          <h4>출처 uid</h4>
+          ${ctx.sourceIds.length ? ctx.sourceIds.map(c => `<div class="og-s-cite">${escapeHtml(c)}</div>`).join('') : '<div class="og-s-cite">출처 uid 없음 · 현재 노드 원문 텍스트 기반</div>'}
+        </div>
+        ${renderRelationList('들어오는 관계', ctx.incoming)}
+        ${renderRelationList('나가는 관계', ctx.outgoing)}
+        ${renderAgendaWikiCards(ctx.agendas)}
+      </div>`;
+    side.classList.remove('collapsed');
+    side.querySelector('[data-side-close]').onclick = () => {
+      fixedNodeId = null;
+      side.classList.add('collapsed');
+      clearFocus();
+    };
+    return;
+  }
+  const quick = document.getElementById('og-quick');
+  if (showcaseMode) {
+    const speaker = nodeSpeakerLabel(ctx.node);
+    const questionLabel = nodeQuestionLabel(ctx.node, kindLabel);
+    const centrality = ctx.node.meta?.centrality || {};
+    const metricBits = [
+      centrality.degree ? '중심 연결' : '',
+      centrality.betweenness ? '연결 매개' : '',
+    ].filter(Boolean);
+    quick.innerHTML = `
+      <div class="og-message-card">
+        <div class="og-message-head">
+          <span class="og-speaker-chip">${escapeHtml(sessionLabel(speaker, speaker))}</span>
+          <span class="og-question-chip">${escapeHtml(questionLabel)}</span>
+        </div>
+        ${ctx.node.label && ctx.node.label !== ctx.node.text ? `<div class="og-message-label">${escapeHtml(ctx.node.label)}</div>` : ''}
+        <p class="og-message-text">${escapeHtml(ctx.node.text || ctx.node.label || '')}</p>
+        <div class="og-message-meta">
+          <span>${escapeHtml(ctx.node.kindKo || kindLabel)}</span>
+          <span>연결 ${ctx.related.length}</span>
+          ${metricBits.map(m => `<span>${escapeHtml(m)}</span>`).join('')}
+        </div>
+        <div class="og-message-actions">
+          <div class="og-surface-chips">${relationChips(ctx)}</div>
+          <a class="og-more" data-more>고정</a>
+        </div>
+      </div>`;
+    quick.classList.add('show');
+    quick.querySelector('[data-more]').onclick = () => {
+      fixedNodeId = ctx.node.id;
+      renderNodeSurface(ctx, 'fixed');
+      applyFocus(ctx.node.id, true);
+      quick.classList.remove('show');
+      positionHoverCard(null);
+    };
+    return;
+  }
+  quick.innerHTML = `
+    <div class="og-surface-card">
+      <div class="og-surface-top">
+        <span class="og-s-badge" style="background:${color}">${escapeHtml(kindLabel)}</span>
+        <span class="og-surface-small" title="${escapeHtml(ctx.node.session || '')}">${escapeHtml(sessionLabel(ctx.node.session, ''))}</span>
+      </div>
+      <b>${escapeHtml(ctx.node.label || '')}</b>
+      <p>${escapeHtml(shortText(ctx.node.text || '', 120))}</p>
+      <div class="og-surface-chips">${relationChips(ctx)}</div>
+      ${renderAgendaPreview(ctx.agendas)}
+      <a class="og-more" data-more>상세 고정 →</a>
+    </div>`;
+  quick.classList.add('show');
+  quick.querySelector('[data-more]').onclick = () => {
+    fixedNodeId = ctx.node.id;
+    renderNodeSurface(ctx, 'fixed');
+    applyFocus(ctx.node.id, true);
+    quick.classList.remove('show');
+    positionHoverCard(null);
+  };
+}
+
+function positionHoverCard(anchor) {
+  const quick = document.getElementById('og-quick');
+  if (!quick || !anchor) {
+    quick?.classList.remove('floating');
+    if (quick) {
+      quick.style.left = '';
+      quick.style.top = '';
+    }
+    return;
+  }
+  const canvas = document.querySelector('.og-canvas');
+  if (!canvas) return;
+  quick.classList.add('floating');
+  const margin = 14;
+  const offset = 18;
+  const width = quick.offsetWidth || 340;
+  const height = quick.offsetHeight || 160;
+  const canvasRect = canvas.getBoundingClientRect();
+  let left = anchor.x + offset;
+  let top = anchor.y + offset;
+  if (left + width + margin > canvasRect.width) left = anchor.x - width - offset;
+  if (top + height + margin > canvasRect.height) top = anchor.y - height - offset;
+  left = Math.max(margin, Math.min(left, canvasRect.width - width - margin));
+  top = Math.max(margin, Math.min(top, canvasRect.height - height - margin));
+  quick.style.left = `${Math.round(left)}px`;
+  quick.style.top = `${Math.round(top)}px`;
+}
+
+function showHoverSurface(ctx, anchor = null) {
+  if (hoverHideTimer) clearTimeout(hoverHideTimer);
+  renderNodeSurface(ctx, 'hover');
+  positionHoverCard(anchor);
+}
+
+function hideHoverSurface() {
+  if (fixedNodeId || quickHover) return;
+  const quick = document.getElementById('og-quick');
+  quick?.classList.remove('show');
+  positionHoverCard(null);
+  clearFocus();
+}
+
+function applyFocus(nodeId, pinned = false) {
+  const ctx = buildNodeContext(nodeId);
+  if (!ctx) return;
+  const edgeIds = new Set(ctx.related.map(e => e.id));
+  const keepContextVisible = (presentMode || showcaseMode) && curView === '2d';
+  if (cy && curView === '2d') {
+    cy.batch(() => {
+      cy.elements().removeClass('focus-main focus-neighbor focus-edge focus-dim');
+      cy.nodes().forEach(n => {
+        if (n.data('isGroup')) return;
+        if (n.id() === nodeId) n.addClass('focus-main');
+        else if (ctx.neighborIds.has(n.id())) n.addClass('focus-neighbor');
+        else if (!keepContextVisible) n.addClass('focus-dim');
+      });
+      cy.edges().forEach(e => {
+        if (edgeIds.has(e.id())) e.addClass('focus-edge');
+        else if (!keepContextVisible) e.addClass('focus-dim');
+      });
+    });
+  }
+  if (graph3d && graph3dData && curView === '3d') {
+    graph3dData.nodes.forEach(n => {
+      n._focus = n.id === nodeId ? 'main' : ctx.neighborIds.has(n.id) ? 'neighbor' : 'dim';
+      n._pinned = pinned && n.id === nodeId;
+    });
+    graph3dData.links.forEach(l => {
+      const id = l.id || `${l.source?.id || l.source}-${l.target?.id || l.target}-${l.rel}`;
+      l._focus = edgeIds.has(id) ? 'edge' : 'dim';
+    });
+    try {
+      graph3d.nodeColor(n => n._focus === 'dim' ? 'rgba(94,105,122,0.28)' : n.color)
+        .nodeOpacity(0.96)
+        .linkColor(l => l._focus === 'edge' ? (l.color || '#8bd3ff') : 'rgba(80,91,108,0.18)')
+        .linkOpacity(l => l._focus === 'edge' ? 0.82 : 0.16)
+        .linkWidth(l => l._focus === 'edge' ? (l.rel === 'opposes' ? 2.8 : 1.8) : 0.7)
+        .refresh();
+    } catch {}
+  }
+}
+
+function clearFocus() {
+  hoverNodeId = null;
+  if (cy) cy.elements().removeClass('focus-main focus-neighbor focus-edge focus-dim');
+  if (graph3d && graph3dData) {
+    graph3dData.nodes.forEach(n => { n._focus = null; n._pinned = false; });
+    graph3dData.links.forEach(l => { l._focus = null; });
+    try {
+      graph3d.nodeColor(n => n.color)
+        .linkColor(l => l.color || 'rgba(148,163,184,.52)')
+        .linkOpacity(0.42)
+        .linkWidth(l => l.rel === 'opposes' ? 2.2 : l.rel === 'requiresCondition' ? 1.8 : 1.1)
+        .refresh();
+    } catch {}
+  }
+}
+
+function renderCy() {
+  if (graph3d) try { graph3d._destructor && graph3d._destructor(); } catch {}
+  graph3d = null;
+  graph3dData = null;
+  document.getElementById('cy3d').style.display = 'none';
+  document.getElementById('cy').style.display = '';
+  if (cy) try { cy.destroy(); } catch {}
+  ecApi = null;
+  try { if (typeof cytoscapeFcose !== 'undefined') cytoscape.use(cytoscapeFcose); } catch {}
+  try { if (typeof cytoscapeExpandCollapse !== 'undefined') cytoscape.use(cytoscapeExpandCollapse); } catch {}
+  const renderElements = showcaseMode ? buildShowcaseElements(showcaseCount) : { nodes: ALL_NODES, edges: ALL_EDGES };
+  cy = cytoscape({
+    container: document.getElementById('cy'),
+    elements: renderElements,
+    wheelSensitivity: 0.25, minZoom: 0.08, maxZoom: 3,
+    style: buildCyStyle(OntologyChrome.getPalette()),
+    layout: showcaseMode
+      ? { name:'fcose', quality:'default', animate:false, randomize:true,
+          nodeRepulsion:62000, idealEdgeLength:320, edgeElasticity:0.14,
+          gravity:0.035, numIter:6200, packComponents:true, nodeSeparation:300 }
+      : { name:'fcose', quality:'default', animate:false, randomize:true,
+          nodeRepulsion:9000, idealEdgeLength:130, edgeElasticity:0.45,
+          gravity:0.25, numIter:2500, packComponents:true, nodeSeparation:90 },
+  });
+  configurePresentationZoom();
+  applyIsolated();
+  buildKindChips();
+  buildLegend();
+  bindCyEvents();
+  updateGroupBtns();
+  cy.ready(() => setTimeout(() => {
+    const laneApplied = applyParticipantQuestionLanes();
+    applyShowcaseLayoutGuard({ jitter: showcaseMode && !laneApplied, preserveFit: laneApplied });
+    if (!laneApplied) cy.fit(null, showcaseMode ? 64 : 40);
+    if (groupMode !== 'none') applyGrouping(groupMode);  // URL ?group= 진입 시 즉시 묶기
+    else if (!laneApplied && (physicsOn || showcaseMode)) applyPhysics();
+  }, 300));
+}
+
+function groupSortValue(node) {
+  const group = String(node.data('meta')?.group || node.data('session') || '');
+  const m = group.match(/\d+/);
+  return m ? Number(m[0]) : (group.includes('연구') ? 99 : 50);
+}
+
+function applyParticipantQuestionLanes() {
+  if (!cy || !showcaseMode || curSource !== 'participant-open-questions') return false;
+  stopPhysics();
+  const responses = cy.nodes().filter(n => String(n.id()).startsWith('resp_'));
+  if (!responses.length) return false;
+  const impressions = responses
+    .filter(n => n.data('meta')?.question_key === 'impression')
+    .sort((a, b) => groupSortValue(a) - groupSortValue(b) || String(a.data('label')).localeCompare(String(b.data('label')), 'ko'));
+  const questions = responses
+    .filter(n => n.data('meta')?.question_key === 'question')
+    .sort((a, b) => groupSortValue(a) - groupSortValue(b) || String(a.data('label')).localeCompare(String(b.data('label')), 'ko'));
+  const xGap = 380;
+  const yGap = 210;
+  function placeGridCluster(nodes, centerX, centerY) {
+    const cols = Math.max(3, Math.ceil(Math.sqrt(nodes.length * 1.55)));
+    const rows = Math.ceil(nodes.length / cols);
+    const startX = centerX - ((cols - 1) * xGap) / 2;
+    const startY = centerY - ((rows - 1) * yGap) / 2;
+    nodes.forEach((n, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const stagger = row % 2 ? 44 : -22;
+      n.position({ x: startX + col * xGap + stagger, y: startY + row * yGap });
+    });
+  }
+  function placeOrganicCluster(nodes, centerX, centerY, spreadX, spreadY) {
+    const ordered = [...nodes];
+    ordered.forEach((n, i) => {
+      const ring = Math.floor(Math.sqrt(i));
+      const angle = i * 2.399963229728653 + (ring % 2 ? 0.35 : 0);
+      const radius = 0.28 + (i / Math.max(1, ordered.length - 1)) * 0.78;
+      const wave = Math.sin(i * 1.73) * 58;
+      n.position({
+        x: centerX + Math.cos(angle) * spreadX * radius + wave,
+        y: centerY + Math.sin(angle) * spreadY * radius + Math.cos(i * 0.91) * 46,
+      });
+    });
+  }
+  function relaxOverlaps(nodes, minX = 330, minY = 138, iterations = 34) {
+    const list = [...nodes];
+    for (let pass = 0; pass < iterations; pass += 1) {
+      for (let i = 0; i < list.length; i += 1) {
+        for (let j = i + 1; j < list.length; j += 1) {
+          const a = list[i];
+          const b = list[j];
+          const pa = a.position();
+          const pb = b.position();
+          const dx = pb.x - pa.x;
+          const dy = pb.y - pa.y;
+          const ax = Math.abs(dx);
+          const ay = Math.abs(dy);
+          if (ax >= minX || ay >= minY) continue;
+          const pushX = (minX - ax) * 0.54;
+          const pushY = (minY - ay) * 0.54;
+          const sx = dx >= 0 ? 1 : -1;
+          const sy = dy >= 0 ? 1 : -1;
+          if ((minX - ax) / minX > (minY - ay) / minY) {
+            a.position({ x: pa.x - sx * pushX, y: pa.y });
+            b.position({ x: pb.x + sx * pushX, y: pb.y });
+          } else {
+            a.position({ x: pa.x, y: pa.y - sy * pushY });
+            b.position({ x: pb.x, y: pb.y + sy * pushY });
+          }
+        }
+      }
+    }
+  }
+  function keepAwayFromHub(nodes, hubId, hubX, hubY, minX = 480, minY = 190, iterations = 16) {
+    const hub = cy.$id(hubId);
+    if (!hub.length) return;
+    for (let pass = 0; pass < iterations; pass += 1) {
+      hub.position({ x: hubX, y: hubY });
+      nodes.forEach((n, i) => {
+        const p = n.position();
+        const dx = p.x - hubX;
+        const dy = p.y - hubY;
+        const ax = Math.abs(dx);
+        const ay = Math.abs(dy);
+        if (ax >= minX || ay >= minY) return;
+        const sx = dx === 0 ? (i % 2 ? 1 : -1) : Math.sign(dx);
+        const sy = dy === 0 ? (i % 3 ? 1 : -1) : Math.sign(dy);
+        const xPush = (minX - ax) + 28;
+        const yPush = (minY - ay) + 18;
+        if ((minX - ax) / minX >= (minY - ay) / minY) {
+          n.position({ x: p.x + sx * xPush, y: p.y + sy * Math.min(42, yPush * 0.25) });
+        } else {
+          n.position({ x: p.x + sx * Math.min(64, xPush * 0.30), y: p.y + sy * yPush });
+        }
+      });
+    }
+    hub.position({ x: hubX, y: hubY });
+  }
+
+  if (participantView === 'all' && participantRel === 'overview') {
+    placeOrganicCluster(questions, -1380, 0, 880, 680);
+    placeOrganicCluster(impressions, 980, 0, 1320, 780);
+    cy.$id('Question_question').position({ x: -1180, y: 0 });
+    cy.$id('Question_impression').position({ x: 780, y: 0 });
+    relaxOverlaps(questions, 380, 158, 48);
+    relaxOverlaps(impressions, 380, 158, 48);
+    keepAwayFromHub(questions, 'Question_question', -1180, 0, 520, 220, 20);
+    keepAwayFromHub(impressions, 'Question_impression', 780, 0, 520, 220, 20);
+  } else if (participantView === 'all') {
+    placeGridCluster(questions, -760, 0);
+    placeGridCluster(impressions, 820, 0);
+    cy.$id('Question_question').position({ x: -760, y: 0 });
+    cy.$id('Question_impression').position({ x: 820, y: 0 });
+    relaxOverlaps(questions, 360, 148, 24);
+    relaxOverlaps(impressions, 360, 148, 24);
+    keepAwayFromHub(questions, 'Question_question', -760, 0, 500, 210, 18);
+    keepAwayFromHub(impressions, 'Question_impression', 820, 0, 500, 210, 18);
+  } else if (participantView === 'question') {
+    placeGridCluster(questions, 0, 0);
+    cy.$id('Question_question').position({ x: 0, y: 0 });
+    relaxOverlaps(questions, 360, 148, 24);
+    keepAwayFromHub(questions, 'Question_question', 0, 0, 520, 220, 22);
+  } else {
+    placeGridCluster(impressions, 0, 0);
+    cy.$id('Question_impression').position({ x: 0, y: 0 });
+    relaxOverlaps(impressions, 360, 148, 24);
+    keepAwayFromHub(impressions, 'Question_impression', 0, 0, 520, 220, 22);
+  }
+  const lenses = cy.nodes('[kind = "Value"]')
+    .sort((a, b) => String(a.data('label')).localeCompare(String(b.data('label')), 'ko'));
+  const lensCols = Math.max(1, Math.min(4, lenses.length));
+  const lensStart = -((lensCols - 1) * 330) / 2;
+  lenses.forEach((n, i) => n.position({ x: lensStart + (i % lensCols) * 330, y: -120 + Math.floor(i / lensCols) * 210 }));
+  cy.nodes()
+    .filter(n => !String(n.id()).startsWith('resp_') && !String(n.id()).startsWith('Question_') && n.data('kind') !== 'Value')
+    .forEach((n, i) => n.position({ x: -520 + (i % 6) * 210, y: -120 + Math.floor(i / 6) * 180 }));
+  const visible = cy.elements(':visible');
+  cy.fit(visible, participantView === 'all' && participantRel === 'overview' ? 34 : 56);
+  if (participantView === 'all' && participantRel === 'overview') {
+    const bounds = visible.boundingBox();
+    const focus = { x: (bounds.x1 + bounds.x2) / 2, y: (bounds.y1 + bounds.y2) / 2 };
+    cy.zoom({ level: Math.min(cy.maxZoom(), cy.zoom() * 1.34), position: focus });
+  }
+  return true;
+}
+
+function applyShowcaseLayoutGuard(options = {}) {
+  if (!cy || !showcaseMode || groupMode !== 'none') return false;
+  const nodes = cy.nodes(':visible')
+    .filter(n => !n.isParent || !n.isParent())
+    .filter(n => n.renderedWidth() > 0 && n.renderedHeight() > 0);
+  if (nodes.length < 2) return false;
+  const list = nodes.toArray();
+  if (options.jitter) {
+    list.forEach((n, i) => {
+      const p = n.position();
+      const seed = String(n.id()).split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+      const dx = Math.sin(seed * 12.9898 + i) * 42;
+      const dy = Math.cos(seed * 78.233 + i * 0.71) * 28;
+      n.position({ x: p.x + dx, y: p.y + dy });
+    });
+  }
+  const minX = curSource === 'participant-open-questions' ? 342 : 292;
+  const minY = curSource === 'participant-open-questions' ? 138 : 118;
+  for (let pass = 0; pass < 30; pass += 1) {
+    for (let i = 0; i < list.length; i += 1) {
+      for (let j = i + 1; j < list.length; j += 1) {
+        const a = list[i];
+        const b = list[j];
+        const pa = a.position();
+        const pb = b.position();
+        const dx = pb.x - pa.x;
+        const dy = pb.y - pa.y;
+        const ax = Math.abs(dx);
+        const ay = Math.abs(dy);
+        if (ax >= minX || ay >= minY) continue;
+        const sx = dx === 0 ? (i % 2 ? 1 : -1) : Math.sign(dx);
+        const sy = dy === 0 ? (j % 2 ? 1 : -1) : Math.sign(dy);
+        const overlapX = minX - ax;
+        const overlapY = minY - ay;
+        if (overlapX / minX > overlapY / minY) {
+          const push = overlapX * 0.58 + 8;
+          a.position({ x: pa.x - sx * push, y: pa.y - sy * Math.min(14, overlapY * 0.08) });
+          b.position({ x: pb.x + sx * push, y: pb.y + sy * Math.min(14, overlapY * 0.08) });
+        } else {
+          const push = overlapY * 0.58 + 6;
+          a.position({ x: pa.x - sx * Math.min(18, overlapX * 0.10), y: pa.y - sy * push });
+          b.position({ x: pb.x + sx * Math.min(18, overlapX * 0.10), y: pb.y + sy * push });
+        }
+      }
+    }
+  }
+  if (!options.preserveFit) cy.fit(cy.elements(':visible'), 64);
+  return true;
+}
+
+// 살아있는 드래그: cytoscape-cola 연속 물리엔진 (노드를 끌면 이웃 출렁)
+function applyPhysics() {
+  stopPhysics();
+  if (!cy || (!physicsOn && !showcaseMode)) return;
+  try { if (typeof cytoscapeCola !== 'undefined') cytoscape.use(cytoscapeCola); } catch {}
+  try {
+    colaLayout = cy.layout({ name:'cola', infinite:true, fit:false, animate:true,
+      nodeSpacing: showcaseMode ? 180 : 6, edgeLength: showcaseMode ? 300 : 110, randomize:false, handleDisconnected:true,
+      centerGraph:false, refresh:1, maxSimulationTime: showcaseMode ? 180000 : undefined });
+    colaLayout.run();
+  } catch (e) { colaLayout = null; }
+}
+function stopPhysics() {
+  if (colaLayout) { try { colaLayout.stop(); } catch {} colaLayout = null; }
+}
+function togglePhysics() {
+  physicsOn = !physicsOn;
+  localStorage.setItem('og-physics', physicsOn ? '1' : '0');
+  updatePhysicsBtn();
+  if (physicsOn) applyPhysics(); else stopPhysics();
+}
+function updatePhysicsBtn() {
+  const b = document.getElementById('og-physics');
+  if (!b) return;
+  const active = physicsOn || showcaseMode;
+  b.textContent = active ? '⚛ 물리 ON' : '⚛ 물리 OFF';
+  b.classList.toggle('on', active);
+  b.setAttribute('aria-pressed', String(active));
+}
+
+// 발표 모드: 밝은 2D 상위 목차 설명 화면. 데이터 불변 — 표현만(무손실).
+function togglePresent() {
+  presentMode = !presentMode;
+  if (presentMode) {
+    showcaseMode = false;
+    if (curView !== '2d') curView = '2d';
+    if (groupMode === 'none') groupMode = groupForPresentLevel(presentLevel);
+  }
+  syncPresentationBody();
+  updatePresentBtn();
+  updateShowcaseUI();
+  updatePresentLevelUI();
+  updateGroupBtns();
+  updateUrl();
+  if (ALL_NODES.length) {
+    if (curView === '2d') renderCy();
+    else render3d();
+    renderHubRail();
+  }
+}
+function updatePresentBtn() {
+  const b = document.getElementById('og-present');
+  if (!b) return;
+  b.textContent = presentMode ? '🖥 발표 ON' : '🖥 발표';
+  b.classList.toggle('on', presentMode);
+  b.setAttribute('aria-pressed', String(presentMode));
+}
+
+function syncPresentationBody() {
+  document.body.classList.toggle('og-present-mode', presentMode && curView === '2d');
+  document.body.classList.toggle('og-present-chapter', presentMode && curView === '2d' && presentLevel === 'chapter');
+  document.body.classList.toggle('og-present-brief', presentMode && curView === '2d' && presentLevel === 'brief');
+  document.body.classList.toggle('og-present-full', presentMode && curView === '2d' && presentLevel === 'full');
+  document.body.classList.toggle('og-showcase-mode', showcaseMode && curView === '2d');
+  document.body.classList.toggle('og-showcase-dark', showcaseMode && curView === '2d' && showcaseTheme === 'dark');
+  document.body.classList.toggle('og-showcase-calm', showcaseMode && curView === '2d' && showcaseTone === 'calm');
+  document.body.classList.toggle('og-showcase-contrast', showcaseMode && curView === '2d' && showcaseTone === 'contrast');
+  document.body.classList.toggle('og-showcase-mono', showcaseMode && curView === '2d' && showcaseTone === 'mono');
+}
+
+function groupForPresentLevel(level) {
+  if (level === 'brief') return 'brief';
+  if (level === 'full') return 'none';
+  return 'present';
+}
+
+function presentLevelCopy(level) {
+  if (level === 'brief') return {
+    title: '중간목차 보기',
+    body: '50-100개 안팎의 세션×발언역할 대표 노드로 접어 봅니다. 모든 원 발언은 접힌 내부에 남아 있고 클릭해 펼칠 수 있습니다.',
+  };
+  if (level === 'full') return {
+    title: '원본전체 보기',
+    body: '원 발언·근거·우려·조건 노드를 모두 펼친 검증/탐색 화면입니다. 발표 첫 화면보다는 질문 대응용입니다.',
+  };
+  return {
+    title: '대목차 보기',
+    body: '8개 상위 목차 노드로 전체 토론 지형을 설명합니다. 원본을 삭제하지 않고 발표자가 길을 잡기 위한 안내층입니다.',
+  };
+}
+
+function updatePresentLevelUI() {
+  document.querySelectorAll('#og-level-tog button').forEach(b => {
+    b.classList.toggle('active', b.dataset.level === presentLevel);
+  });
+  const hud = document.getElementById('og-present-hud');
+  if (hud) {
+    const copy = presentLevelCopy(presentLevel);
+    hud.innerHTML = `<b>${copy.title}</b> — ${copy.body} AI가 합의를 만들지 않고 숙의를 돕습니다.`;
+  }
+}
+
+function setPresentLevel(level) {
+  if (!['chapter','brief','full'].includes(level)) return;
+  presentLevel = level;
+  presentMode = true;
+  showcaseMode = false;
+  if (curView !== '2d') curView = '2d';
+  groupMode = groupForPresentLevel(level);
+  syncPresentationBody();
+  updatePresentBtn();
+  updateShowcaseUI();
+  updatePresentLevelUI();
+  updateGroupBtns();
+  updateUrl();
+  if (ALL_NODES.length) renderCy();
+}
+
+function updateShowcaseUI() {
+  const b = document.getElementById('og-showcase');
+  if (b) {
+    b.textContent = showcaseMode ? '✨ 쇼케이스 ON' : '✨ 쇼케이스';
+    b.classList.toggle('on', showcaseMode);
+    b.setAttribute('aria-pressed', String(showcaseMode));
+  }
+  document.querySelectorAll('#og-showcase-count-tog button').forEach(btn => {
+    btn.classList.toggle('active', Number(btn.dataset.count) === showcaseCount);
+  });
+  document.querySelectorAll('#og-showcase-edge-tog button').forEach(btn => {
+    btn.classList.toggle('active', (btn.dataset.edgeLabels === 'on') === showcaseEdgeLabels);
+  });
+  document.querySelectorAll('#og-showcase-tone-tog button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tone === showcaseTone);
+  });
+  document.querySelectorAll('#og-participant-view-tog button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.participantView === participantView);
+  });
+  document.querySelectorAll('#og-participant-rel-tog button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.participantRel === participantRel);
+  });
+}
+
+function setShowcaseMode(active = !showcaseMode) {
+  showcaseMode = active;
+  if (showcaseMode) {
+    presentMode = false;
+    curView = '2d';
+    groupMode = 'none';
+  }
+  syncPresentationBody();
+  updatePresentBtn();
+  updateShowcaseUI();
+  updatePresentLevelUI();
+  updateGroupBtns();
+  updatePhysicsBtn();
+  updateUrl();
+  if (ALL_NODES.length) renderCy();
+}
+
+function setShowcaseCount(count) {
+  showcaseCount = [50,75,100].includes(Number(count)) ? Number(count) : 50;
+  showcaseMode = true;
+  presentMode = false;
+  curView = '2d';
+  groupMode = 'none';
+  syncPresentationBody();
+  updatePresentBtn();
+  updateShowcaseUI();
+  updateGroupBtns();
+  updatePhysicsBtn();
+  updateUrl();
+  if (ALL_NODES.length) renderCy();
+}
+
+function setShowcaseEdgeLabels(active) {
+  showcaseEdgeLabels = active;
+  showcaseMode = true;
+  presentMode = false;
+  curView = '2d';
+  groupMode = 'none';
+  syncPresentationBody();
+  updatePresentBtn();
+  updateShowcaseUI();
+  updateGroupBtns();
+  updatePhysicsBtn();
+  updateUrl();
+  if (cy && curView === '2d') cy.style(buildCyStyle(OntologyChrome.getPalette())).update();
+}
+
+function setShowcaseTone(tone) {
+  showcaseTone = ['calm','contrast','mono'].includes(tone) ? tone : 'calm';
+  showcaseMode = true;
+  presentMode = false;
+  curView = '2d';
+  groupMode = 'none';
+  syncPresentationBody();
+  updatePresentBtn();
+  updateShowcaseUI();
+  updateGroupBtns();
+  updatePhysicsBtn();
+  updateUrl();
+  if (cy && curView === '2d') cy.style(buildCyStyle(OntologyChrome.getPalette())).update();
+}
+
+function setParticipantView(view) {
+  participantView = ['all','impression','question'].includes(view) ? view : 'all';
+  showcaseMode = true;
+  presentMode = false;
+  curView = '2d';
+  groupMode = 'none';
+  syncPresentationBody();
+  updateShowcaseUI();
+  updateUrl();
+  if (ALL_NODES.length) renderCy();
+}
+
+function setParticipantRel(rel) {
+  participantRel = ['overview','response','similar','lens','all'].includes(rel) ? rel : 'overview';
+  showcaseMode = true;
+  presentMode = false;
+  curView = '2d';
+  groupMode = 'none';
+  syncPresentationBody();
+  updateShowcaseUI();
+  updateUrl();
+  if (ALL_NODES.length) renderCy();
+}
+
+function configurePresentationZoom() {
+  if (!cy) return;
+  if (showcaseMode) {
+    cy.minZoom(0.12);
+    cy.maxZoom(2.6);
+    return;
+  }
+  if (!presentMode || presentLevel === 'full') {
+    cy.minZoom(0.08);
+    cy.maxZoom(3);
+    return;
+  }
+  if (presentLevel === 'chapter') {
+    cy.minZoom(0.22);
+    cy.maxZoom(1.7);
+    return;
+  }
+  cy.minZoom(0.14);
+  cy.maxZoom(2.2);
+}
+
+function fitPresentationLevel(level = presentLevel) {
+  if (!cy) return;
+  configurePresentationZoom();
+  const groups = cy.nodes('[?isGroup]:visible');
+  if (presentMode && (level === 'chapter' || level === 'brief') && groups.length) {
+    cy.fit(groups, level === 'chapter' ? 120 : 84);
+    const current = cy.zoom();
+    const floor = level === 'chapter' ? 0.28 : 0.18;
+    if (current < floor) {
+      cy.zoom({ level: floor, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } });
+      cy.center(groups);
+    }
+    return;
+  }
+  cy.fit(null, presentMode ? 56 : 40);
+}
+
+// ─── A-3 완전성 보존 묶기(클러스터) ───────────────────────────────
+// 무손실: 실제 노드/엣지는 절대 삭제하지 않는다. 합성 부모 노드(__grp_*)를 추가하고
+// node.move({parent})로 실제 노드를 둥지에 넣을 뿐이다. 없음으로 돌아갈 때는
+// 반드시 자식을 먼저 부모에서 빼낸 뒤(child.move({parent:null})) 합성 부모를 제거한다.
+// (Cytoscape는 부모를 remove하면 자식까지 함께 삭제하므로 순서가 핵심)
+
+function presentChapterOf(session, kind) {
+  if (!session) return { key: 'present__other', label: '기타/미분류' };
+  if (['OA_t1','OB_t1','OZ_t1'].includes(session)) return { key: 'present__operating', label: '운영규정 논의' };
+  if (['DA_t2','A_t21','A_t22','A_t23'].includes(session)) return { key: 'present__agenda_a', label: 'A조 의제선정 흐름' };
+  if (['DB_t2','B_t1','B_t2','B_t3'].includes(session)) return { key: 'present__agenda_b', label: 'B조 의제선정 흐름' };
+  if (session === 'DZ_t2') return { key: 'present__agenda_joint', label: '통합 의제정리' };
+  if (session === '환경4조') return { key: 'present__environment', label: '환경교육·생활실천' };
+  if (session === '정의전환') return { key: 'present__just_transition', label: '정의로운전환' };
+  if (session === '발표') return { key: 'present__presentation', label: '조별발표·공유' };
+  if (kind === 'Group') return { key: 'present__stakeholders', label: '영향집단·참여자 관점' };
+  return { key: 'present__stakeholders', label: '영향집단·참여자 관점' };
+}
+
+function sessionGroupOf(session, kind) {
+  if (!session) return { key: 'sess__기타', label: '기타/미분류' };
+  if (PREFIX_META[session]) return { key: 'sess__' + session, label: sessionLabel(session) };
+  if (kind === 'Group') return { key: 'sess__stakeholders', label: '영향집단·참여자 관점' };
+  return { key: 'sess__stakeholders', label: '영향집단·참여자 관점' };
+}
+
+const BRIEF_KIND_LABEL = {
+  Issue: '쟁점',
+  Claim: '주장',
+  Proposal: '대안',
+  Concern: '우려',
+  Condition: '조건',
+  Value: '가치',
+  Evidence: '근거',
+  Group: '영향집단',
+  Clause: '조항',
+  Decision: '결정',
+};
+
+function briefBaseOf(node) {
+  const session = sessionGroupOf(node.data('session'), node.data('kind'));
+  const kind = node.data('kind') || '기타';
+  return {
+    key: `brief__${session.key}__${kind}`,
+    label: `${session.label} · ${BRIEF_KIND_LABEL[kind] || kind}`,
+    sessionKey: session.key,
+    sessionLabel: session.label,
+  };
+}
+
+function buildBriefBaseCounts() {
+  const counts = {};
+  if (!cy) return counts;
+  cy.nodes().forEach(n => {
+    if (n.data('isGroup')) return;
+    const base = briefBaseOf(n);
+    counts[base.key] = (counts[base.key] || 0) + 1;
+  });
+  return counts;
+}
+
+function briefGroupOf(node, counts) {
+  const base = briefBaseOf(node);
+  if ((counts?.[base.key] || 0) < 3) {
+    return {
+      key: `brief__${base.sessionKey}__other`,
+      label: `${base.sessionLabel} · 기타 발언`,
+    };
+  }
+  return { key: base.key, label: base.label };
+}
+
+// 그룹 키 산정 — 중립적 구조 기준만 사용(중요도 판단 금지)
+function groupKeyOf(node, issueByNode) {
+  if (groupMode === 'present') {
+    const chapter = presentChapterOf(node.data('session'), node.data('kind'));
+    return { key: chapter.key, label: chapter.label };
+  }
+  if (groupMode === 'brief') {
+    return briefGroupOf(node, issueByNode?.briefCounts || {});
+  }
+  if (groupMode === 'session') {
+    return sessionGroupOf(node.data('session'), node.data('kind'));
+  }
+  // issue 모드: raisesIssue 엣지로 연결된 Issue 아래에 둔다.
+  //   규칙 — 자기 자신이 Issue면 자기 자신 그룹. 그 외엔 raisesIssue로 처음 연결된 Issue(node→Issue 또는 Issue→node).
+  //   여러 Issue 연결 시 첫 번째만 사용. Issue 링크 없으면 '기타/미분류'.
+  if (node.data('kind') === 'Issue') return { key: 'iss__' + node.id(), label: node.data('label') || node.id() };
+  const iss = issueByNode[node.id()];
+  if (iss) return { key: 'iss__' + iss.id, label: iss.label };
+  return { key: 'iss__기타', label: '기타/미분류' };
+}
+
+// raisesIssue 엣지를 훑어 node.id → {연결된 첫 Issue} 매핑을 만든다(무손실 조회용, 그래프 변경 없음)
+function buildIssueByNode() {
+  const issueByNode = {};
+  const kindOf = {}; const labelOf = {};
+  ALL_NODES.forEach(n => { kindOf[n.data.id] = n.data.kind; labelOf[n.data.id] = n.data.label; });
+  ALL_EDGES.forEach(e => {
+    if (e.data.rel !== 'raisesIssue') return;
+    const s = e.data.source, t = e.data.target;
+    // Issue 쪽을 찾고, 반대편(비-Issue)을 그 Issue에 매핑(이미 있으면 첫 번째 유지)
+    let issueId = null, otherId = null;
+    if (kindOf[t] === 'Issue') { issueId = t; otherId = s; }
+    else if (kindOf[s] === 'Issue') { issueId = s; otherId = t; }
+    if (issueId && otherId && !issueByNode[otherId]) {
+      issueByNode[otherId] = { id: issueId, label: labelOf[issueId] || issueId };
+    }
+  });
+  return issueByNode;
+}
+
+function destroyEC() {
+  if (ecApi) { try { ecApi.expandAll(); } catch {} ecApi = null; }
+}
+
+// 모든 자식을 부모에서 빼낸 뒤 합성 부모만 제거(실제 노드 손실 0 보장)
+function clearGrouping() {
+  if (!cy) return;
+  destroyEC();
+  cy.batch(() => {
+    cy.nodes('[?isGroup]').forEach(p => {
+      p.children().forEach(c => c.move({ parent: null }));
+    });
+    cy.remove(cy.nodes('[?isGroup]'));
+  });
+}
+
+function applyGrouping(mode) {
+  if (!cy) return;
+  // 기존 그룹 해제(자식 보존) 후 재구성
+  clearGrouping();
+  if (mode === 'none') {
+    // 무리 해제 → 정상 레이아웃 + 물리 복원(localStorage 선호 유지)
+    configurePresentationZoom();
+    runFcose({ level: 'full' }, () => { if (physicsOn) applyPhysics(); });
+    return;
+  }
+  // 묶기 모드에서는 물리 비활성(cola+compound 취약 — de-risk). 실행만 멈추고
+  // physicsOn(=사용자 선호)은 보존 → 없음 복귀 시 자동 복원.
+  stopPhysics();
+  const issueByNode = mode === 'issue'
+    ? buildIssueByNode()
+    : (mode === 'brief' ? { briefCounts: buildBriefBaseCounts() } : null);
+  cy.batch(() => {
+    const seen = {};
+    cy.nodes().forEach(n => {
+      if (n.data('isGroup')) return;
+      const { key, label } = groupKeyOf(n, issueByNode);
+      const pid = '__grp_' + key;
+      if (!seen[pid]) {
+        seen[pid] = true;
+        cy.add({ group: 'nodes', data: { id: pid, isGroup: true, label, is_public: true } });
+      }
+      n.move({ parent: pid });
+    });
+    cy.nodes('[?isGroup]').forEach(p => {
+      const childCount = p.children().length;
+      const baseLabel = String(p.data('label') || p.id()).replace(/\s+\(\d+\)$/, '');
+      p.data('baseLabel', baseLabel);
+      p.data('childCount', childCount);
+      if (mode === 'present' || mode === 'brief' || mode === 'session') p.data('label', `${baseLabel} (${childCount})`);
+    });
+  });
+  configurePresentationZoom();
+  runFcose({ level: presentLevel, collapsed: false, fit: !presentMode }, () => {
+    registerEC();
+    if (presentMode && (mode === 'present' || mode === 'brief')) collapsePresentationGroups();
+  });
+}
+
+function layoutPreset(level = presentLevel, collapsed = false) {
+  const preset = {
+    name:'fcose', quality:'default', animate:false, randomize:true,
+    nodeDimensionsIncludeLabels:true, fit:false, packComponents:true,
+    edgeElasticity:0.45, numIter:2500,
+    nodeRepulsion:9000, idealEdgeLength:130, gravity:0.25, nodeSeparation:90,
+  };
+  if (collapsed && level === 'chapter') {
+    return { ...preset, nodeRepulsion:16000, idealEdgeLength:260, gravity:0.12, nodeSeparation:210 };
+  }
+  if (collapsed && level === 'brief') {
+    return { ...preset, nodeRepulsion:12000, idealEdgeLength:190, gravity:0.18, nodeSeparation:130 };
+  }
+  return preset;
+}
+
+function runFcose(options = {}, done) {
+  const level = options.level || presentLevel;
+  const collapsed = Boolean(options.collapsed);
+  const fit = options.fit !== false;
+  const eles = options.eles || (cy ? cy.elements() : null);
+  try {
+    if (!cy || !eles) return;
+    const lay = eles.layout(layoutPreset(level, collapsed));
+    lay.one('layoutstop', () => {
+      if (fit) fitPresentationLevel(level);
+      done && done();
+    });
+    lay.run();
+  } catch (e) {
+    try { fitPresentationLevel(level); } catch {}
+    done && done();
+  }
+}
+
+// expand-collapse: 그룹 부모 클릭 → 접기/펼치기(자식은 숨김 토글일 뿐 그래프에 잔존 → 무손실)
+function registerEC() {
+  if (!cy || typeof cy.expandCollapse !== 'function') return;
+  try {
+    ecApi = cy.expandCollapse({
+      layoutBy: null, fisheye: false, animate: false, undoable: false,
+      cueEnabled: true, expandCollapseCueSize: 14,
+    });
+  } catch (e) { ecApi = null; }
+}
+
+function collapsePresentationGroups() {
+  if (!cy || !ecApi) return;
+  cy.nodes('[?isGroup]').forEach(n => {
+    try {
+      if (ecApi.isCollapsible(n)) ecApi.collapse(n);
+    } catch {}
+  });
+  runFcose({ level: presentLevel, collapsed: true, eles: cy.elements(':visible'), fit: true }, () => {
+    applyFilter();
+  });
+}
+
+function setGroupMode(mode) {
+  if (mode === groupMode) return;
+  groupMode = mode;
+  if (presentMode) {
+    if (mode === 'present') presentLevel = 'chapter';
+    else if (mode === 'brief') presentLevel = 'brief';
+    else if (mode === 'none') presentLevel = 'full';
+    updatePresentLevelUI();
+  }
+  updateGroupBtns();
+  updateUrl();
+  applyGrouping(mode);
+}
+
+function updateGroupBtns() {
+  document.querySelectorAll('#og-group-tog button').forEach(b => {
+    b.classList.toggle('active', b.dataset.group === groupMode);
+  });
+  // 묶기 중에는 물리 버튼 비활성(cola+compound 취약)
+  const pb = document.getElementById('og-physics');
+  if (pb) {
+    const grouped = groupMode !== 'none';
+    pb.disabled = grouped;
+    pb.style.opacity = grouped ? '0.4' : '';
+    pb.style.pointerEvents = grouped ? 'none' : '';
+    // 묶기 중 물리 실행만 멈춘다. physicsOn(저장된 선호)은 보존 → 버튼 표기·복원 일관.
+    if (grouped) stopPhysics();
+  }
+}
+
+function render3d() {
+  stopPhysics();
+  if (cy) try { cy.destroy(); } catch {}
+  cy = null;
+  document.getElementById('cy').style.display = 'none';
+  document.getElementById('cy3d').style.display = '';
+  // 노드/엣지를 3d-force-graph 포맷으로
+  const palette = OntologyChrome.getPalette();
+  graph3dData = {
+    nodes: ALL_NODES.map((n, i) => ({
+      id: n.data.id, label: n.data.label, kind: n.data.kind, text: n.data.text,
+      kindKo: n.data.kindKo, cited: n.data.cited, session: n.data.session,
+      cited_uids: n.data.cited_uids, synthesized: n.data.synthesized, deg: n.data.deg || 0,
+      seed: i,
+      color: palette[n.data.kind] || '#888',
+    })),
+    links: ALL_EDGES.map(e => ({
+      id: e.data.id,
+      source: e.data.source,
+      target: e.data.target,
+      label: e.data.relKo || relLabel(e.data.rel),
+      rel: e.data.rel,
+      color: REL_COLOR[e.data.rel] || 'rgba(148,163,184,.52)',
+    }))
+  };
+  if (graph3d) try { graph3d._destructor && graph3d._destructor(); } catch {}
+  graph3d = ForceGraph3D()(document.getElementById('cy3d'))
+    .backgroundColor('#080c13')
+    .nodeId('id')
+    .nodeLabel(n => `${n.kindKo || n.kind} · ${n.label}`)
+    .nodeColor(n => n._focus === 'dim' ? 'rgba(94,105,122,0.28)' : n.color)
+    .nodeVal(n => 3.2 + Math.min(12, (n.deg || 0)) * 0.42)
+    .nodeRelSize(4.1)
+    .nodeResolution(14)
+    .nodeOpacity(0.96)
+    .linkLabel(l => `${l.label || relLabel(l.rel)}`)
+    .linkColor(l => l._focus === 'edge' ? (l.color || '#8bd3ff') : (l.color || 'rgba(148,163,184,.52)'))
+    .linkOpacity(0.42)
+    .linkWidth(l => l.rel === 'opposes' ? 2.2 : l.rel === 'requiresCondition' ? 1.8 : 1.1)
+    .linkDirectionalArrowLength(l => l.rel === 'opposes' ? 5 : 3.6)
+    .linkDirectionalArrowRelPos(1)
+    .linkDirectionalArrowColor(l => l.color || '#56C2E4')
+    .linkDirectionalParticles(l => ['opposes','requiresCondition','hasEvidence'].includes(l.rel) ? 2 : (l.rel === 'supports' ? 1 : 0))
+    .linkDirectionalParticleWidth(l => l.rel === 'opposes' ? 2.4 : 1.25)
+    .linkDirectionalParticleColor(l => l.color || '#56C2E4')
+    .onNodeHover(n => {
+      document.getElementById('cy3d').style.cursor = n ? 'pointer' : 'default';
+      if (fixedNodeId) return;
+      if (!n) {
+        document.getElementById('og-quick').classList.remove('show');
+        positionHoverCard(null);
+        clearFocus();
+        return;
+      }
+      hoverNodeId = n.id;
+      const ctx = buildNodeContext(n.id);
+      if (!ctx) return;
+      showHoverSurface(ctx, null);
+      applyFocus(n.id);
+    })
+    .onNodeClick(n => {
+      fixedNodeId = n.id;
+      const ctx = buildNodeContext(n.id);
+      if (!ctx) return;
+      renderNodeSurface(ctx, 'fixed');
+      applyFocus(n.id, true);
+      document.getElementById('og-quick').classList.remove('show');
+      positionHoverCard(null);
+      const dist = 88;
+      const len = Math.hypot(n.x || 0, n.y || 0, n.z || 0) || 1;
+      const ratio = 1 + dist / len;
+      graph3d.cameraPosition(
+        { x: (n.x || 0) * ratio, y: (n.y || 0) * ratio, z: (n.z || 0) * ratio },
+        n,
+        850
+      );
+    })
+    .onBackgroundClick(() => {
+      fixedNodeId = null;
+      document.getElementById('og-quick').classList.remove('show');
+      positionHoverCard(null);
+      document.getElementById('og-side').classList.add('collapsed');
+      clearFocus();
+    })
+    .graphData(graph3dData);
+  graph3d.d3Force('charge').strength(-145);
+  graph3d.d3Force('link').distance(l => l.rel === 'hasEvidence' ? 34 : l.rel === 'opposes' ? 72 : 54);
+  graph3d.d3Force('center').strength(0.34);
+  graph3d.d3Force('ontology-radial', alpha => {
+    for (const n of graph3dData.nodes) {
+      const deg = Math.min(12, n.deg || 0);
+      const target = n.deg ? 58 + (12 - deg) * 9 : 205;
+      const angle = (n.seed * 2.399963229728653) % (Math.PI * 2);
+      const zBand = ((n.seed % 9) - 4) * 10;
+      n.vx += (Math.cos(angle) * target - (n.x || 0)) * 0.0055 * alpha;
+      n.vy += (Math.sin(angle) * target - (n.y || 0)) * 0.0055 * alpha;
+      n.vz += (zBand - (n.z || 0)) * 0.0045 * alpha;
+    }
+  });
+  setTimeout(() => {
+    try { graph3d.cameraPosition({ x: 0, y: -70, z: 560 }, { x: 0, y: 0, z: 0 }, 800); } catch {}
+  }, 250);
+}
+
+function applyView(view) {
+  curView = view;
+  if (view === '3d') showcaseMode = false;
+  document.body.classList.toggle('view-3d', view === '3d');
+  syncPresentationBody();
+  document.getElementById('og-view-2d').classList.toggle('active', view === '2d');
+  document.getElementById('og-view-3d').classList.toggle('active', view === '3d');
+  updateShowcaseUI();
+  updateUrl();
+  if (ALL_NODES.length) { if (view === '2d') renderCy(); else render3d(); }
+}
+
+function showcasePalette(basePalette) {
+  if (!showcaseMode) return basePalette;
+  const tones = {
+    calm: {
+      Issue:'#dbeafe', Claim:'#d1fae5', Proposal:'#cffafe', Concern:'#fed7aa',
+      Condition:'#ede9fe', Value:'#e2e8f0', Evidence:'#e5e7eb', Group:'#ffe4e6',
+      Clause:'#dbeafe', Decision:'#fef3c7',
+    },
+    contrast: {
+      Issue:'#93c5fd', Claim:'#86efac', Proposal:'#67e8f9', Concern:'#fdba74',
+      Condition:'#c4b5fd', Value:'#cbd5e1', Evidence:'#d1d5db', Group:'#fda4af',
+      Clause:'#bfdbfe', Decision:'#fde68a',
+    },
+    mono: {
+      Issue:'#e5e7eb', Claim:'#f3f4f6', Proposal:'#e5e7eb', Concern:'#d4d4d8',
+      Condition:'#e4e4e7', Value:'#f1f5f9', Evidence:'#d1d5db', Group:'#e5e7eb',
+      Clause:'#d1d5db', Decision:'#f9fafb',
+    },
+  };
+  return { ...basePalette, ...(tones[showcaseTone] || tones.calm) };
+}
+
+function showcaseNodeBorder(kind) {
+  const tones = {
+    calm: {
+      Issue:'#2563eb', Claim:'#16a34a', Proposal:'#0284c7', Concern:'#d97706',
+      Condition:'#7c3aed', Value:'#64748b', Evidence:'#94a3b8', Group:'#e11d48',
+      Clause:'#475569', Decision:'#ca8a04',
+    },
+    contrast: {
+      Issue:'#1d4ed8', Claim:'#15803d', Proposal:'#0369a1', Concern:'#b45309',
+      Condition:'#6d28d9', Value:'#475569', Evidence:'#6b7280', Group:'#be123c',
+      Clause:'#334155', Decision:'#a16207',
+    },
+    mono: {
+      Issue:'#111827', Claim:'#374151', Proposal:'#4b5563', Concern:'#525252',
+      Condition:'#27272a', Value:'#64748b', Evidence:'#9ca3af', Group:'#1f2937',
+      Clause:'#4b5563', Decision:'#111827',
+    },
+  };
+  return (tones[showcaseTone] || tones.calm)[kind] || '#64748b';
+}
+
+function showcaseRelColor(rel, paperLike) {
+  if (!showcaseMode) return REL_COLOR[rel] || (paperLike ? '#64748b' : '#6b7890');
+  if (showcaseTone === 'mono') return '#a3a3a3';
+  if (showcaseTone === 'contrast') {
+    return {
+      similarTo:'#64748b',
+      framesThrough:'#7c3aed',
+      raisesIssue:'#2563eb',
+      hasKeyword:'#64748b',
+    }[rel] || '#94a3b8';
+  }
+  return {
+    similarTo:'#94a3b8',
+    framesThrough:'#8b5cf6',
+    raisesIssue:'#60a5fa',
+    hasKeyword:'#94a3b8',
+  }[rel] || '#cbd5e1';
+}
+
+function showcaseNodeBg(node, displayPalette) {
+  if (isParticipantSource() && String(node.data('id') || '').startsWith('resp_')) {
+    return participantGroupPaletteFromMeta(node.data('meta'), node.data('session')).bg;
+  }
+  return displayPalette[node.data('kind')] || '#888';
+}
+
+function showcaseNodeBorderColor(node) {
+  if (isParticipantSource() && String(node.data('id') || '').startsWith('resp_')) {
+    return participantGroupPaletteFromMeta(node.data('meta'), node.data('session')).border;
+  }
+  return showcaseNodeBorder(node.data('kind'));
+}
+
+function buildCyStyle(palette) {
+  const paper = presentMode;
+  const demo = showcaseMode;
+  const demoLight = showcaseMode && showcaseTheme !== 'dark';
+  const paperLike = paper || demoLight;
+  const presentationOverview = presentMode && presentLevel !== 'full';
+  const displayPalette = showcasePalette(palette);
+  return [
+    { selector:'node', style:{
+        'background-color': n => showcaseNodeBg(n, displayPalette),
+        'label': n => {
+          if (demo) return n.data('shortLabel') || n.data('label') || '';
+          if (!presentMode || n.data('isGroup')) return n.data('label') || '';
+          if (presentLevel === 'full' && n.data('isOverviewLabel')) return n.data('label') || '';
+          return '';
+        },
+        'color': paperLike ? '#0f172a' : '#eef3f9', 'font-size': demo ? '28px' : (presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px'),
+        'min-zoomed-font-size': demo ? 0 : (presentMode ? (presentLevel === 'full' ? 18 : 999) : 7),  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
+        'font-family':'Noto Sans KR, Malgun Gothic, sans-serif', 'font-weight': presentMode || demo ? 900 : 500,
+        'text-wrap':'wrap','text-max-width': demo ? '360px' : (presentMode ? '120px' : '140px'),'text-valign': demo ? 'center' : 'bottom','text-halign':'center','text-margin-y': demo ? 0 : 3,
+        'text-outline-color': paperLike ? '#ffffff' : '#0b111a','text-outline-width': demo ? 0 : (presentMode ? 2.5 : 2.5),
+        'width': n => demo ? Math.max(220, Math.min(440, String(n.data('shortLabel') || n.data('label') || '').length * 19 + 38)) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4),
+        'height': n => demo ? Math.max(66, String(n.data('shortLabel') || n.data('label') || '').length > 13 ? 86 : 70) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4),
+        'border-width':2.2,'border-color':'#0d1118','shape':'ellipse','opacity':1,
+    }},
+    { selector:'node.showcase-node', style:{
+        'shape':'round-rectangle',
+        'background-opacity':0.96,
+        'border-width':3.6,
+        'border-color': n => showcaseNodeBorderColor(n),
+        'border-opacity':1,
+        'color': demoLight ? '#111827' : '#ffffff',
+        'font-weight':900,
+        'font-size':'28px',
+        'text-outline-width':0,
+        'text-outline-opacity':0,
+        'text-background-color':'transparent',
+        'text-background-opacity':0,
+        'text-background-padding':0,
+        'padding':'2px',
+        'z-index':12,
+        'overlay-opacity':0.05,
+        'overlay-color':'#ffffff',
+        'underlay-color': n => showcaseNodeBorderColor(n),
+        'underlay-opacity':0.10,
+        'underlay-padding':8,
+    }},
+    { selector:'node.showcase-node[kind="Concern"], node.showcase-node[kind="Evidence"], node.showcase-node[kind="Clause"]', style:{
+        'color':'#111827',
+    }},
+    { selector:'node[?isOverviewLabel]', style:{
+        'min-zoomed-font-size': presentationOverview ? 999 : (presentMode ? 18 : 0),
+        'font-size': presentMode ? '18px' : '13px',
+        'font-weight':800,
+        'text-background-color': paperLike ? '#ffffff' : '#0b111a',
+        'text-background-opacity': paperLike ? 0.9 : 0.82,
+        'text-background-padding':3,
+        'text-outline-width':3,
+        'z-index':20,
+    }},
+    { selector:'node.showcase-node[?isOverviewLabel]', style:{
+        'min-zoomed-font-size':0,
+        'font-size':'28px',
+        'font-weight':900,
+        'text-background-color':'transparent',
+        'text-background-opacity':0,
+        'text-background-padding':0,
+        'text-outline-width':0,
+        'z-index':22,
+    }},
+    { selector:'node.showcase-node[id ^= "Question_"]', style:{
+        'z-index':60,
+        'underlay-opacity':0.16,
+        'underlay-padding':10,
+        'border-width':4,
+    }},
+    { selector:'node[kind="Clause"]', style:{ 'shape':'round-rectangle','border-color':'#e9ecef','border-width':3 }},
+    { selector:'node[kind="Decision"]', style:{ 'shape':'star','border-color':'#ffa94d','border-width':3 }},
+    { selector:'node[?synthesized]', style:{ 'shape':'round-diamond','border-style':'dashed','border-color':'#ff8787' }},
+    { selector:'edge', style:{
+        'width': demo ? 1.55 : 1.8, 'line-color': e => demo ? showcaseRelColor(e.data('rel'), paperLike) : (paperLike ? '#64748b' : '#6b7890'), 'target-arrow-color': e => demo ? showcaseRelColor(e.data('rel'), paperLike) : (paperLike ? '#64748b' : '#6b7890'),
+        'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale': demo ? 1.05 : 1,
+        'label': demo ? (showcaseEdgeLabels ? 'data(relKo)' : '') : (paper ? '' : 'data(relKo)'),'font-size': demo ? '16px' : '10px','min-zoomed-font-size': demo ? (showcaseEdgeLabels ? 0 : 999) : 9,'color': paperLike ? (demo ? '#0f172a' : '#1f2937') : (demo ? '#f8fafc' : '#d3dbe8'),
+        'font-family':'Noto Sans KR, Malgun Gothic, sans-serif',
+        'font-weight': demo ? 900 : 500,
+        'text-rotation':'autorotate','text-background-color': paperLike ? '#ffffff' : '#11151c',
+        'text-background-opacity': demo ? 0.98 : 0.85,'text-background-padding': demo ? 5 : 2,'text-background-shape':'roundrectangle','text-border-width': demo ? 1 : 0,'text-border-opacity': demo ? 0.28 : 0,'text-border-color': paperLike ? '#94a3b8' : '#64748b','opacity': demo ? 0.9 : 0.82,'text-opacity':1,
+    }},
+    { selector:'edge[?opposes]', style:{
+        'line-color': demo ? '#f4a3a3' : '#ff6b6b','target-arrow-color': demo ? '#f4a3a3' : '#ff6b6b','width': demo ? 1.65 : 2.6 }},
+    // A-3 묶기 합성 부모(컨테이너) — 라벨 달린 둥근 사각, 반투명 배경, 자식이 안에 들도록 패딩
+    { selector:'node[?isGroup]', style:{
+        'shape':'round-rectangle','background-color': paperLike ? '#e6fffa' : '#12b886','background-opacity': paperLike ? 0.28 : 0.10,
+        'border-width':2,'border-color': paperLike ? '#0f766e' : '#12b886','border-opacity':0.8,
+        'label':'data(label)','color': paperLike ? '#0f766e' : '#63e6be','text-valign':'top','text-halign':'center',
+        'text-margin-y':-4,'font-weight':700,'font-size': presentMode ? (presentLevel === 'brief' ? '18px' : '22px') : '15px',
+        'min-zoomed-font-size': presentMode ? 0 : 6,'text-outline-color': paperLike ? '#ffffff' : '#11151c','text-outline-width': presentMode ? 4 : 2.5,
+        'text-max-width': presentMode ? (presentLevel === 'brief' ? '190px' : '260px') : '220px','text-wrap':'wrap',
+        'padding': presentMode ? (presentLevel === 'brief' ? '22px' : '30px') : '24px',
+    }},
+    // 접힌 그룹(expand-collapse) — 단일 노드처럼 강조(여전히 모든 자식 대표 = 무손실)
+    { selector:'node[?isGroup].cy-expand-collapse-collapsed-node', style:{
+        'background-opacity':0.85,'shape':'round-rectangle','border-width':3,
+    }},
+    { selector:'node.non-public', style:{ 'opacity':0.25,'border-style':'dashed','border-color':'#9fcfff' }},
+    { selector:'.dim', style:{ 'opacity':0.10 }},
+    { selector:'node.focus-dim', style:{ 'opacity': presentMode ? 0.72 : 0.10 }},
+    { selector:'edge.focus-dim', style:{ 'opacity': presentMode ? 0.26 : 0.08,'text-opacity': presentMode ? 0.18 : 0 }},
+    { selector:'node.focus-neighbor', style:{ 'opacity':0.92,'border-width':3,'border-color':'#8bd3ff' }},
+    { selector:'node.focus-main, node.focus-neighbor', style:{
+        'label': demo ? 'data(shortLabel)' : 'data(label)','font-size': demo ? '30px' : (presentMode ? '13px' : '12px'),'min-zoomed-font-size':0,
+        'text-max-width': demo ? '340px' : '120px','text-background-color': demo ? 'transparent' : (paperLike ? '#ffffff' : '#0b111a'),
+        'text-background-opacity': demo ? 0 : 0.92,'text-background-padding': demo ? 0 : 3,
+    }},
+    { selector:'node.focus-main', style:{ 'opacity':1,'border-width':5,'border-color':'#63e6be','overlay-color':'#63e6be','overlay-opacity':0.18,'overlay-padding':8 }},
+    { selector:'edge.focus-edge', style:{
+        'opacity':0.92,'width':3.2,'line-color':'#8bd3ff','target-arrow-color':'#8bd3ff',
+        'label': presentMode && presentLevel === 'chapter' ? '' : 'data(relKo)',
+        'font-size': demo ? '17px' : '11px','font-weight': demo ? 900 : 500,'text-background-color': paperLike ? '#ffffff' : '#11151c',
+        'text-background-opacity':0.98,'text-background-padding': demo ? 6 : 2,'text-opacity':1,
+    }},
+    { selector:'.hidden', style:{ 'display':'none' }},
+  ];
+}
+
+function buildKindChips() {
+  const present = {}; cy.nodes().forEach(n => present[n.data('kind')] = true);
+  const palette = OntologyChrome.getPalette();
+  const kf = document.getElementById('og-kind-filters'); kf.innerHTML = '';
+  curFilter.kind = new Set(Object.keys(OntologyChrome.KIND_DEFAULT));
+  Object.keys(OntologyChrome.KIND_DEFAULT).forEach(k => {
+    if (!present[k]) { curFilter.kind.delete(k); return; }
+    const c = document.createElement('span'); c.className = 'og-chip'; c.dataset.kind = k;
+    c.innerHTML = `<span class="og-dot" style="background:${palette[k]}"></span>${OntologyChrome.KIND_KO[k] || k}`;
+    c.onclick = () => {
+      c.classList.toggle('off');
+      if (curFilter.kind.has(k)) curFilter.kind.delete(k); else curFilter.kind.add(k);
+      applyFilter();
+    };
+    kf.appendChild(c);
+  });
+}
+
+function buildLegend() {
+  const lang = OntologyChrome.getLang();
+  const palette = OntologyChrome.getPalette();
+  const el = document.getElementById('og-legend');
+  const present = {};
+  cy && cy.nodes().forEach(n => present[n.data('kind')] = true);
+  el.innerHTML = Object.keys(OntologyChrome.KIND_DEFAULT).filter(k => present[k]).map(k =>
+    `<span class="og-item"><span class="og-sw" style="background:${palette[k]}"></span>${lang === 'ko' ? (OntologyChrome.KIND_KO[k] || k) : k}</span>`
+  ).join('') + `<span class="og-item"><span class="og-ln"></span>관계</span><span class="og-item"><span class="og-ln og-opp"></span>반대·우려</span>`;
+}
+
+function bindCyEvents() {
+  cy.on('mouseover', 'node', (evt) => {
+    if (fixedNodeId) return;
+    const n = evt.target;
+    if (n.data('isGroup')) return;
+    hoverNodeId = n.id();
+    const ctx = buildNodeContext(n.id());
+    if (!ctx) return;
+    showHoverSurface(ctx, evt.renderedPosition);
+    applyFocus(n.id());
+  });
+  cy.on('mousemove', 'node', (evt) => {
+    if (fixedNodeId) return;
+    positionHoverCard(evt.renderedPosition);
+  });
+  cy.on('mouseout', 'node', () => {
+    if (fixedNodeId) return;
+    hoverHideTimer = setTimeout(hideHoverSurface, 90);
+  });
+  cy.on('tap', 'node', (evt) => {
+    const n = evt.target;
+    // 합성 그룹 부모 클릭 → 접기/펼치기(무손실). 상세 패널 대신.
+    if (n.data('isGroup')) {
+      if (ecApi) {
+        try { if (ecApi.isCollapsible(n)) ecApi.collapse(n); else ecApi.expand(n); } catch {}
+      }
+      return;
+    }
+    fixedNodeId = n.id();
+    const ctx = buildNodeContext(n.id());
+    if (!ctx) return;
+    if (showcaseMode) {
+      showHoverSurface(ctx, evt.renderedPosition);
+      applyFocus(n.id(), true);
+      return;
+    }
+    renderNodeSurface(ctx, 'fixed');
+    applyFocus(n.id(), true);
+    document.getElementById('og-quick').classList.remove('show');
+    positionHoverCard(null);
+  });
+  cy.on('tap', (evt) => {
+    if (evt.target === cy) {
+      fixedNodeId = null;
+      document.getElementById('og-quick').classList.remove('show');
+      positionHoverCard(null);
+      document.getElementById('og-side').classList.add('collapsed');
+      clearFocus();
+    }
+  });
+  cy.on('dragfree', 'node', () => {
+    if (showcaseMode && isParticipantSource()) return;
+    if (showcaseMode || physicsOn) applyPhysics();
+  });
+}
+
+function applyIsolated() {
+  if (!cy) return;
+  cy.batch(() => cy.nodes().forEach(n => {
+    if (n.data('isGroup')) return;
+    if (n.data('isolated')) { if (isoShown) n.removeClass('hidden'); else n.addClass('hidden'); }
+  }));
+}
+
+function applyFilter() {
+  if (!cy) return;
+  cy.batch(() => {
+    cy.nodes().forEach(n => {
+      if (n.data('isGroup')) return;  // 합성 부모는 필터 대상 아님
+      const k = n.data('kind');
+      const visibleByKind = curFilter.kind.has(k);
+      const visibleByIsolation = isoShown || !n.data('isolated');
+      if (visibleByKind && visibleByIsolation) n.removeClass('hidden'); else n.addClass('hidden');
+    });
+    cy.edges().forEach(e => {
+      if (e.source().hasClass('hidden') || e.target().hasClass('hidden')) e.addClass('hidden');
+      else e.removeClass('hidden');
+    });
+  });
+  const visN = cy.nodes(':visible').filter(n => !n.data('isGroup')).length, visE = cy.edges(':visible').length;
+  OntologyChrome.updateMeta(`표시 ${visN}/${ALL_NODES.length} · 엣지 ${visE}/${ALL_EDGES.length}`);
+}
+
+function bindGlobalEvents() {
+  const quick = document.getElementById('og-quick');
+  quick.onmouseenter = () => {
+    quickHover = true;
+    if (hoverHideTimer) clearTimeout(hoverHideTimer);
+  };
+  quick.onmouseleave = () => {
+    quickHover = false;
+    hoverHideTimer = setTimeout(hideHoverSurface, 70);
+  };
+  document.getElementById('og-view-2d').onclick = () => applyView('2d');
+  document.getElementById('og-view-3d').onclick = () => applyView('3d');
+  document.getElementById('og-physics').onclick = togglePhysics;
+  updatePhysicsBtn();
+  document.getElementById('og-present').onclick = togglePresent;
+  updatePresentBtn();
+  document.getElementById('og-showcase').onclick = () => setShowcaseMode();
+  document.querySelectorAll('#og-showcase-count-tog button').forEach(b => {
+    b.onclick = () => setShowcaseCount(b.dataset.count);
+  });
+  document.querySelectorAll('#og-showcase-edge-tog button').forEach(b => {
+    b.onclick = () => setShowcaseEdgeLabels(b.dataset.edgeLabels === 'on');
+  });
+  document.querySelectorAll('#og-showcase-tone-tog button').forEach(b => {
+    b.onclick = () => setShowcaseTone(b.dataset.tone);
+  });
+  document.querySelectorAll('#og-participant-view-tog button').forEach(b => {
+    b.onclick = () => setParticipantView(b.dataset.participantView);
+  });
+  document.querySelectorAll('#og-participant-rel-tog button').forEach(b => {
+    b.onclick = () => setParticipantRel(b.dataset.participantRel);
+  });
+  updateShowcaseUI();
+  document.querySelectorAll('#og-level-tog button').forEach(b => {
+    b.onclick = () => setPresentLevel(b.dataset.level);
+  });
+  updatePresentLevelUI();
+  document.querySelectorAll('#og-group-tog button').forEach(b => {
+    b.onclick = () => setGroupMode(b.dataset.group);
+  });
+  updateGroupBtns();
+  document.getElementById('og-toggle-iso').onclick = (e) => {
+    isoShown = !isoShown;
+    e.target.textContent = isoShown ? '고립 노드 숨기기' : '고립 노드 보이기';
+    applyIsolated();
+  };
+  document.getElementById('og-zin').onclick = () => cy && cy.zoom({ level: cy.zoom() * 1.25, renderedPosition: { x: cy.width()/2, y: cy.height()/2 } });
+  document.getElementById('og-zout').onclick = () => cy && cy.zoom({ level: cy.zoom() / 1.25, renderedPosition: { x: cy.width()/2, y: cy.height()/2 } });
+  document.getElementById('og-zfit').onclick = () => cy && fitPresentationLevel(presentLevel);
+  document.getElementById('og-search').oninput = (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    if (!cy) return;
+    cy.batch(() => cy.nodes().forEach(n => {
+      if (n.data('isGroup')) return;  // 합성 부모는 검색 dim 제외
+      const m = !q || (n.data('label') || '').toLowerCase().includes(q) || (n.data('text') || '').toLowerCase().includes(q);
+      if (m) n.removeClass('dim'); else n.addClass('dim');
+    }));
+  };
+  document.getElementById('og-assets-btn').onclick = () => {
+    if (currentMetaAssets) renderSourceAssets(currentMetaAssets);
+  };
+  document.getElementById('og-settings-btn').onclick = () => {
+    OntologyChrome.openSettings(({ palette, lang }) => {
+      if (cy) { cy.style(buildCyStyle(palette)).update(); }
+      buildLegend();
+      document.querySelectorAll('#og-kind-filters .og-chip').forEach(c => {
+        const k = c.dataset.kind;
+        c.querySelector('.og-dot').style.background = palette[k];
+        c.lastChild.textContent = lang === 'ko' ? (OntologyChrome.KIND_KO[k] || k) : k;
+      });
+    });
+  };
+  document.getElementById('og-poll-now').onclick = () => loadSource(curSource);
+  document.getElementById('og-poll-interval').onchange = () => {
+    const meta = sources.sources.find(s => s.id === curSource);
+    if (meta) setupPolling(meta);
+  };
+}
+
+function setupPolling(meta) {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  const sec = parseInt(document.getElementById('og-poll-interval').value, 10) || 0;
+  if (sec > 0) pollTimer = setInterval(() => loadSource(meta.id), sec * 1000);
+  const stat = document.getElementById('og-poll-status');
+  stat.textContent = `갱신 ${new Date().toLocaleTimeString('ko')}`;
+  stat.classList.add('fresh');
+  setTimeout(() => stat.classList.remove('fresh'), 1500);
+}
+
+if (['127.0.0.1', 'localhost'].includes(location.hostname)) {
+  window.__ontologyGraphDebug = {
+    getCy: () => cy,
+    getGraph3d: () => graph3d,
+    getGraph3dData: () => graph3dData,
+    buildNodeContext,
+    renderNodeSurface,
+    applyFocus,
+    clearFocus,
+    getState: () => ({ presentMode, presentLevel, showcaseMode, showcaseCount, showcaseTheme, showcaseEdgeLabels, showcaseTone, participantView, participantRel, groupMode, curView, curSource, physicsRunning: Boolean(colaLayout) }),
+    getStats: () => cy ? ({
+      visibleNodes: cy.nodes(':visible').length,
+      visibleRealNodes: cy.nodes(':visible').filter(n => !n.data('isGroup')).length,
+      visibleEdges: cy.edges(':visible').length,
+      edgeLabelsShown: cy.edges(':visible').filter(e => !!e.style('label')).length,
+      nodeLabelsShown: cy.nodes(':visible').filter(n => !!n.style('label')).length,
+      shortLabelsShown: cy.nodes(':visible').filter(n => !!n.data('shortLabel')).length,
+      zoom: Number(cy.zoom().toFixed(3)),
+    }) : null,
+  };
+}
+</script>
+</body>
+</html>
