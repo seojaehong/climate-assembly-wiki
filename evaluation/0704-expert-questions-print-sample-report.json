@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-03T21:00:10.0805167+09:00",
+  "generatedAt": "2026-07-03T21:27:36.4125783+09:00",
   "questionFormId": "1yktkA_XAMGcVt4mlnC-0Yc3d3N0N0YQ__Dk1TfdTaCc",
   "sample": true,
   "since": "2026-07-04T00:00:00+09:00",
@@ -7,27 +7,24 @@
   "outputHtml": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\wiki\\public\\0704-admin\\expert-questions-print-sample.html",
   "outputPdf": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\wiki\\public\\0704-admin\\expert-questions-print-sample.pdf",
   "emailTo": "kesica3@gmail.com",
-  "emailStatus": "sent",
+  "emailStatus": "sent_with_pdf",
   "questions": [
     {
       "group": "2조",
       "submittedAt": "2026-07-04T14:04:12+09:00",
       "question": "에너지전환 의제를 다룰 때 시민들이 가장 먼저 이해해야 할 핵심 쟁점은 무엇인가요?",
-      "impression": "감축 분야가 중요하다는 점은 이해했지만 생활과 어떻게 연결되는지 궁금했습니다.",
       "responseId": "sample-question-001"
     },
     {
       "group": "7조",
       "submittedAt": "2026-07-04T14:06:33+09:00",
       "question": "산업 부문 감축 정책이 일자리와 지역경제에 미치는 영향을 어떻게 설명하면 좋을까요?",
-      "impression": "감축 필요성과 정의로운 전환이 함께 논의되어야 한다고 느꼈습니다.",
       "responseId": "sample-question-002"
     },
     {
       "group": "12조",
       "submittedAt": "2026-07-04T14:08:20+09:00",
       "question": "재생에너지 확대 과정에서 주민 수용성을 높이기 위한 구체적인 정책 사례가 있을까요?",
-      "impression": "실행 가능한 사례를 듣고 의제를 더 구체화하고 싶습니다.",
       "responseId": "sample-question-003"
     }
   ]

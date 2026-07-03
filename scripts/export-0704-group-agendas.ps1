@@ -111,6 +111,80 @@ function ConvertTo-Base64Url {
   return [Convert]::ToBase64String($bytes).TrimEnd("=").Replace("+", "-").Replace("/", "_")
 }
 
+function ConvertBytesTo-Base64Url {
+  param([byte[]]$Bytes)
+  return [Convert]::ToBase64String($Bytes).TrimEnd("=").Replace("+", "-").Replace("/", "_")
+}
+
+function ConvertTo-MimeBase64 {
+  param([byte[]]$Bytes)
+  return [Convert]::ToBase64String($Bytes, [System.Base64FormattingOptions]::InsertLineBreaks)
+}
+
+function ConvertTo-EncodedWord {
+  param([string]$Text)
+  $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
+  return "=?UTF-8?B?$([Convert]::ToBase64String($bytes))?="
+}
+
+function Get-GmailAccessToken {
+  $credentials = Invoke-GwsJson -CommandArgs @("auth", "export", "--unmasked")
+  $tokenResponse = Invoke-RestMethod -Method Post -Uri "https://oauth2.googleapis.com/token" -ContentType "application/x-www-form-urlencoded" -Body @{
+    client_id = [string]$credentials.client_id
+    client_secret = [string]$credentials.client_secret
+    refresh_token = [string]$credentials.refresh_token
+    grant_type = "refresh_token"
+  }
+  if (-not $tokenResponse.access_token) {
+    throw "Google OAuth token refresh did not return an access token."
+  }
+  return [string]$tokenResponse.access_token
+}
+
+function Send-GmailWithPdfAttachment {
+  param(
+    [string]$From,
+    [string]$To,
+    [string]$Subject,
+    [string]$Body,
+    [string]$PdfPath,
+    [string]$AttachmentName
+  )
+  if (-not (Test-Path -LiteralPath $PdfPath)) {
+    throw "Attachment PDF does not exist: $PdfPath"
+  }
+  $boundary = "----=_0704_$([guid]::NewGuid().ToString("N"))"
+  $encodedSubject = ConvertTo-EncodedWord -Text $Subject
+  $encodedBody = ConvertTo-MimeBase64 -Bytes ([System.Text.Encoding]::UTF8.GetBytes($Body))
+  $encodedAttachment = ConvertTo-MimeBase64 -Bytes ([System.IO.File]::ReadAllBytes($PdfPath))
+  $rawMessage = @"
+From: $From
+To: $To
+Subject: $encodedSubject
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="$boundary"
+
+--$boundary
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: base64
+
+$encodedBody
+--$boundary
+Content-Type: application/pdf; name="$AttachmentName"
+Content-Disposition: attachment; filename="$AttachmentName"
+Content-Transfer-Encoding: base64
+
+$encodedAttachment
+--$boundary--
+"@
+  $rawBytes = [System.Text.Encoding]::UTF8.GetBytes(($rawMessage -replace "`r?`n", "`r`n"))
+  $accessToken = Get-GmailAccessToken
+  $payload = @{ raw = ConvertBytesTo-Base64Url -Bytes $rawBytes } | ConvertTo-Json -Compress
+  Invoke-RestMethod -Method Post -Uri "https://gmail.googleapis.com/gmail/v1/users/me/messages/send" -Headers @{
+    Authorization = "Bearer $accessToken"
+  } -ContentType "application/json; charset=utf-8" -Body $payload | Out-Null
+}
+
 function Get-ChromePath {
   $candidates = @(
     "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
@@ -299,14 +373,8 @@ $mailBody = $mailLines -join "`r`n"
 
 $emailStatus = "dry_run"
 if ($SendEmail) {
-  $rawMessage = "From: $EmailFrom`r`nTo: $EmailTo`r`nSubject: $mailSubject`r`nMIME-Version: 1.0`r`nContent-Type: text/plain; charset=UTF-8`r`n`r`n$mailBody"
-  $raw = ConvertTo-Base64Url -Text $rawMessage
-  Invoke-GwsJson -CommandArgs @(
-    "gmail", "users", "messages", "send",
-    "--params", "{`"userId`":`"me`"}",
-    "--json", (@{ raw = $raw } | ConvertTo-Json -Compress)
-  ) | Out-Null
-  $emailStatus = "sent"
+  Send-GmailWithPdfAttachment -From $EmailFrom -To $EmailTo -Subject $mailSubject -Body $mailBody -PdfPath $pdfPath -AttachmentName "0704-group-agendas-print.pdf"
+  $emailStatus = "sent_with_pdf"
 }
 
 $report = [pscustomobject]@{

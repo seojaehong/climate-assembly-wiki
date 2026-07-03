@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-07-03T20:59:56.7818274+09:00",
+  "generatedAt": "2026-07-03T21:23:52.6593590+09:00",
   "groupAgendaFormId": "1hWBiDnSvVdelCAXbwgkk1H9w06LDUim0-FcTr5-tXHE",
   "sample": true,
   "agendaCount": 4,
   "outputHtml": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\wiki\\public\\0704-admin\\group-agendas-print-sample.html",
   "outputPdf": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\wiki\\public\\0704-admin\\group-agendas-print-sample.pdf",
   "emailTo": "kesica3@gmail.com",
-  "emailStatus": "sent",
+  "emailStatus": "sent_with_pdf",
   "agendas": [
     {
       "group": "1조",

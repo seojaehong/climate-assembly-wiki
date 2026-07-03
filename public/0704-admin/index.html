@@ -229,7 +229,7 @@
       <article class="card">
         <div>
           <h2>전문가 질문 인쇄·메일</h2>
-          <p>현장에서 A/B조 입력자료가 들어오면 Form 응답을 다시 읽어 즉시 생성하는 인쇄본입니다. 외부자문단 질의응답 직전에 갱신합니다.</p>
+          <p>현장에서 A/B조 질문 입력자료가 들어오면 Form 응답을 다시 읽어 즉시 생성하는 인쇄본입니다. 외부자문단 질의응답용이라 질문만 정리합니다.</p>
           <div class="ops">
             <div class="op"><b>시점</b><span>조별 질문 만들기 이후, 외부자문단 질의응답 전</span></div>
             <div class="op"><b>실시간</b><span>현재 PDF는 마지막 갱신본입니다. 응답이 새로 들어오면 아래 명령을 다시 실행해야 최신 인쇄본이 됩니다.</span></div>
@@ -239,6 +239,7 @@
         <div class="actions">
           <a class="btn secondary" href="/0704-admin/expert-questions-print.pdf" target="_blank" rel="noopener">PDF 인쇄본</a>
           <a class="btn ghost" href="/0704-admin/expert-questions-print.html" target="_blank" rel="noopener">HTML 미리보기</a>
+          <a class="btn ghost" href="/0704-admin/expert-questions-print-sample.pdf" target="_blank" rel="noopener">샘플 PDF</a>
           <a class="btn ghost" href="https://docs.google.com/spreadsheets/d/1T31pzPV8JHeqyCuGUq0M28e81-cCujOC_V8mMFACG20/edit" target="_blank" rel="noopener">질문 Sheet</a>
           <a class="btn ghost" href="https://docs.google.com/forms/d/1yktkA_XAMGcVt4mlnC-0Yc3d3N0N0YQ__Dk1TfdTaCc/edit" target="_blank" rel="noopener">Form 편집</a>
         </div>
@@ -258,6 +259,7 @@
         <div class="actions">
           <a class="btn secondary" href="/0704-admin/group-agendas-print.pdf" target="_blank" rel="noopener">PDF 인쇄본</a>
           <a class="btn ghost" href="/0704-admin/group-agendas-print.html" target="_blank" rel="noopener">HTML 미리보기</a>
+          <a class="btn ghost" href="/0704-admin/group-agendas-print-sample.pdf" target="_blank" rel="noopener">샘플 PDF</a>
           <a class="btn ghost" href="https://docs.google.com/spreadsheets/d/1JCW6-r86Jr9uJWH4kc0GINe4R7u0EbPgIvbxMaRtZwY/edit" target="_blank" rel="noopener">의제 Sheet</a>
           <a class="btn ghost" href="https://docs.google.com/forms/d/1hWBiDnSvVdelCAXbwgkk1H9w06LDUim0-FcTr5-tXHE/edit" target="_blank" rel="noopener">Form 편집</a>
         </div>
@@ -266,7 +268,7 @@
       <article class="card">
         <div>
           <h2>현장 인쇄본 일괄 갱신</h2>
-          <p>A/B조 입력자료가 들어온 직후 이 명령 하나로 전문가 질문 인쇄본과 의제 후보 인쇄본을 함께 최신화합니다.</p>
+          <p>A/B조 입력자료가 들어온 직후 이 명령 하나로 전문가 질문 인쇄본과 의제 후보 인쇄본을 함께 최신화합니다. 질문 인쇄본은 질문만, 의제 인쇄본은 후보 의제만 담습니다.</p>
           <div class="ops">
             <div class="op"><b>갱신</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-print-packets.ps1</code></span></div>
             <div class="op"><b>메일까지</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-print-packets.ps1 -SendEmail</code></span></div>

@@ -26,8 +26,10 @@ Keep the 7.4 operating dashboard separate from the 0628 test archive. Do not mut
 - Reflection QR asset: `/0704-admin/reflection-qr.png`
 - Group agenda print PDF: `/0704-admin/group-agendas-print.pdf`
 - Group agenda print HTML preview: `/0704-admin/group-agendas-print.html`
+- Group agenda sample print PDF: `/0704-admin/group-agendas-print-sample.pdf`
 - Expert question print PDF: `/0704-admin/expert-questions-print.pdf`
 - Expert question print HTML preview: `/0704-admin/expert-questions-print.html`
+- Expert question sample print PDF: `/0704-admin/expert-questions-print-sample.pdf`
 
 Admin password:
 
@@ -159,7 +161,7 @@ The script reads the carbon-reduction question Form directly through Forms API, 
 
 Because this Form was reused from the 0628 test, the script defaults to `-Since 2026-07-04T00:00:00+09:00` so old responses are not printed. Override `-Since` only for investigation.
 
-Important field rule: these print files are not static handouts. They are regenerated from live A/B group input data. If new responses arrive after the PDF was opened, run the export command again and then refresh the PDF tab.
+Important field rule: these print files are not static handouts. They are regenerated from live A/B group question input data. If new responses arrive after the PDF was opened, run the export command again and then refresh the PDF tab. The expert question packet intentionally prints questions only; impressions are excluded from the advisor handout unless tomorrow's form structure changes.
 
 ## Fast Agenda Candidate Print And Email
 
@@ -195,6 +197,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-print-pac
 ```
 
 This writes `evaluation/0704-live-print-packets-report.json` with the current expert question count, group agenda count, and output PDF paths.
+
+Email subject and PDF attachment check: the export scripts send mail through Gmail API with RFC 2047 UTF-8 subject encoding and attach the generated PDF as `application/pdf`. The sample runs on 2026-07-03 wrote `emailStatus: sent_with_pdf` in both sample reports.
 
 Current note: Gmail sending needs an OAuth token with Gmail scope. The current token was re-authenticated with `gmail.send` on 2026-07-03. If sending fails with insufficient scopes, run:
 
