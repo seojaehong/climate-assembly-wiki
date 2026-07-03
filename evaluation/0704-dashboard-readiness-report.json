@@ -31,6 +31,15 @@
     "form_edit_url": "https://docs.google.com/forms/d/1soeRdPzIv4l7Bs6JyJEbb4nzb7MCtmZEe2q8VFwmjgc/edit",
     "scores_sheet_url": "https://docs.google.com/spreadsheets/d/1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw/edit",
     "bubble_race_url": "/agenda-vote-0704/index.html?sheet=1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw",
+    "refresh_script": "scripts/refresh-0704-agenda-vote.ps1",
+    "refresh_command": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\\refresh-0704-agenda-vote.ps1",
+    "last_refresh": {
+      "ran_at": "2026-07-03T18:24:37+09:00",
+      "response_count": 0,
+      "scores_updated": true,
+      "raw_response_tab_updated": true,
+      "guide_status_updated": true
+    },
     "scores_sheet_schema": [
       "slot",
       "name",
@@ -46,7 +55,7 @@
       "manual_basis": "The moderator guide lists a 5-minute survey block after the full discussion block. This is the least disruptive slot for an additional agenda vote.",
       "fallback_window": "17:35-17:50 full discussion closing, only if the vote must be shown before the survey block"
     },
-    "known_limit": "The Form and Scores Sheet are separate resources. Before live use, connect/copy Form response counts into Scores and confirm the bubble race shows LIVE."
+    "known_limit": "Google Forms API does not expose the UI-only response-destination button, so the operational connection is the repository bridge script that reads Forms responses and writes Scores."
   },
   "checks": {
     "no_0628_internal_references_in_0704_paths": true,
@@ -58,6 +67,8 @@
     "local_agenda_vote_http_200": true,
     "local_agenda_vote_qr_http_200": true,
     "scores_sheet_public_csv_readable": true,
+    "form_to_scores_bridge_script_added": true,
+    "form_to_scores_bridge_script_ran": true,
     "playwright_visual_capture": "not_run_package_resolution_issue"
   },
   "notes": [

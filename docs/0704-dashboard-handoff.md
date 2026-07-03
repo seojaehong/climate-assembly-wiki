@@ -55,7 +55,19 @@ slot,name,short,color,c1,c2,c3,c4
 
 If the vote is treated as a simple priority vote, put the same normalized result value into `c1`, `c2`, `c3`, and `c4`. The existing bubble page expects values in the 1-5 visual range.
 
-Current limitation: the Google Forms API created the Form and the Sheets API created the Scores Sheet, but Google does not expose the same one-click "link responses to spreadsheet" workflow cleanly through this CLI flow. Before the live run, connect or copy Form response counts into the `Scores` tab and verify the bubble race shows `LIVE`.
+The repository now includes a bridge script that reads Google Form responses through the Forms API and writes both raw responses and normalized scores into the Google Sheet:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\refresh-0704-agenda-vote.ps1
+```
+
+This script updates:
+
+- `FormResponses!A:C`: response id, submitted time, selected agenda
+- `Scores!A:H`: bubble-race rows
+- `Guide!D:E`: last refresh status
+
+Google's public Forms API does not expose the same UI-only "link responses to spreadsheet" button, so this scripted bridge is the current source-of-truth connection. It was run successfully on 2026-07-03 18:24 KST with 0 responses, and the public `Scores` CSV endpoint was readable afterward.
 
 ## Schedule Check
 
@@ -75,6 +87,7 @@ Recommendation: put the additional agenda vote inside the 17:50-17:55 survey blo
 rg -n "0628|0628-admin|workshop-graph-0628-test|miro-0628-test|analysis-criteria-0628|dinner|저녁" public\0704-admin public\workshop-graph-0704 public\miro-0704 public\analysis-criteria-0704
 rg -n "dinner-vote-0628|dinner-rsvp|저녁식사" public\0704-admin public\workshop-graph-0704 public\miro-0704 public\analysis-criteria-0704
 Invoke-WebRequest "http://127.0.0.1:4321/agenda-vote-0704/index.html?sheet=1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw" -UseBasicParsing
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\refresh-0704-agenda-vote.ps1
 ```
 
 Both commands should return no matches.
