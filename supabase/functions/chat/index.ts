@@ -61,15 +61,17 @@ async function runLLM(provider: string, model: string, keys: Record<string, stri
     return { ok: true, txt: j.choices?.[0]?.message?.content ?? "" };
   }
   if (provider === "anthropic") {
-    const schema = { type: "object", additionalProperties: false, required: ["found", "answer", "citation_ids"], properties: { found: { type: "boolean" }, answer: { type: "string" }, citation_ids: { type: "array", items: { type: "integer" } } } };
+    // tool_use 강제 = Anthropic 표준 구조화 출력(항상 유효 JSON 보장). output_config(미검증) 대신 사용.
+    const input_schema = { type: "object", required: ["found", "answer", "citation_ids"], properties: { found: { type: "boolean" }, answer: { type: "string" }, citation_ids: { type: "array", items: { type: "integer" } } } };
     const r = await llmFetch("https://api.anthropic.com/v1/messages", {
       method: "POST", headers: { "x-api-key": keys.ANTHROPIC!, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-      body: JSON.stringify({ model, max_tokens: 1024, system: GROUND_SYS, messages: [{ role: "user", content: userText }], output_config: { format: { type: "json_schema", schema } } }),
+      body: JSON.stringify({ model, max_tokens: 1024, system: GROUND_SYS, messages: [{ role: "user", content: userText }], tools: [{ name: "respond", description: "그득이 답변 JSON", input_schema }], tool_choice: { type: "tool", name: "respond" } }),
     });
     if (r.status === 429 || r.status === 503) return { ok: false, busy: true, err: `anthropic ${r.status}` };
     if (!r.ok) return { ok: false, err: `anthropic ${r.status}: ${(await r.text()).slice(0, 200)}` };
     const j = await r.json();
-    return { ok: true, txt: (j.content ?? []).find((b: { type: string }) => b.type === "text")?.text ?? "{}" };
+    const tu = (j.content ?? []).find((b: { type: string }) => b.type === "tool_use");
+    return { ok: true, txt: tu ? JSON.stringify(tu.input) : "{}" };
   }
   return { ok: false, err: "provider 없음" };
 }
@@ -87,12 +89,14 @@ Deno.serve(async (req: Request) => {
     const keys = { GEMINI: K("GEMINI_API_KEY"), NVIDIA: K("NVIDIA_API_KEY"), ANTHROPIC: K("ANTHROPIC_API_KEY") };
     const GEMINI_MODEL = K("GEMINI_MODEL") ?? "gemini-2.5-flash";
     const NVIDIA_MODEL = K("NVIDIA_MODEL") ?? "deepseek-ai/deepseek-v4-flash";
-    // 우선순위 체인: gemini > nvidia > anthropic(키 있는 것만). busy/error 시 다음으로 failover. LLM_PROVIDER로 고정 가능.
+    const ANTHROPIC_MODEL = K("ANTHROPIC_MODEL") ?? "claude-haiku-4-5-20251001"; // 1차: 저비용 Haiku(RAG 요약엔 충분)
+    const ANTHROPIC_FALLBACK = K("ANTHROPIC_FALLBACK") ?? "claude-sonnet-4-6";     // 2차: Sonnet 폴백
+    // 우선순위 체인: anthropic(haiku→sonnet) > gemini > nvidia. busy/error 시 다음으로 failover(정상 found=false는 폴백 안 함). LLM_PROVIDER로 고정 가능.
     const forced = K("LLM_PROVIDER");
     let chain: [string, string][] = [];
-    if (keys.GEMINI) chain.push(["gemini", GEMINI_MODEL]);
+    if (keys.ANTHROPIC) { chain.push(["anthropic", ANTHROPIC_MODEL]); chain.push(["anthropic", ANTHROPIC_FALLBACK]); }
+    if (keys.GEMINI) chain.push(["gemini", GEMINI_MODEL]);  // 무료 최후 안전망(동시접속·쿼터 대비)
     if (keys.NVIDIA) chain.push(["nvidia", NVIDIA_MODEL]);
-    if (keys.ANTHROPIC) chain.push(["anthropic", "claude-sonnet-4-6"]);
     if (forced) chain = chain.filter(([p]) => p === forced);
 
     if (!OPENAI) return json({ error: "OPENAI_API_KEY 미설정" }, 500);
