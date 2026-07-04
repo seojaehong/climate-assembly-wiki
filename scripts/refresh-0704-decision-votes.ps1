@@ -2,6 +2,7 @@ param(
   [string]$SpreadsheetId = "1m_GD3ohvDW1PXT8Gg3AoTxpf0voRdrJpz2a38PREBB8",
   [string]$PublicSummarySpreadsheetId = "19xrXFFmaP4bS3JB2o6HeYmDyYgZhK6ez8URAHFYcBss",
   [string]$NameQuestionTitle = "이름",
+  [string]$ResetMarkerPath = "evaluation/0704-vote-reset.json",
   [switch]$Watch,
   [int]$IntervalSeconds = 5
 )
@@ -19,7 +20,8 @@ if ($Watch) {
     "-NoProfile", "-ExecutionPolicy", "Bypass",
     "-File", $MyInvocation.MyCommand.Path,
     "-SpreadsheetId", $SpreadsheetId,
-    "-PublicSummarySpreadsheetId", $PublicSummarySpreadsheetId
+    "-PublicSummarySpreadsheetId", $PublicSummarySpreadsheetId,
+    "-ResetMarkerPath", $ResetMarkerPath
   )
   Write-Host "Watching decision vote responses every $IntervalSeconds seconds. Press Ctrl+C to stop."
   while ($true) {
@@ -180,6 +182,22 @@ function Normalize-VoterName {
   return (($Name -replace "\s+", " ").Trim()).ToLowerInvariant()
 }
 
+function Get-ResponseListParams {
+  param([string]$TargetFormId)
+  $params = @{
+    formId = $TargetFormId
+    pageSize = 5000
+  }
+  if (Test-Path -LiteralPath $ResetMarkerPath) {
+    $markerText = Get-Content -LiteralPath $ResetMarkerPath -Raw
+    $match = [regex]::Match($markerText, '"resetAtUtc"\s*:\s*"([^"]+)"')
+    if ($match.Success) {
+      $params.filter = "timestamp > $($match.Groups[1].Value)"
+    }
+  }
+  return $params | ConvertTo-Json -Compress
+}
+
 $summaryRows = @()
 $summaryRows += ,@("slot", "title", "option", "count", "responseUrl", "editUrl")
 
@@ -200,7 +218,7 @@ foreach ($slot in $VoteSlots) {
   }
   $responses = Invoke-GwsJson -CommandArgs @(
     "forms", "forms", "responses", "list",
-    "--params", "{`"formId`":`"$($slot.FormId)`",`"pageSize`":5000}"
+    "--params", (Get-ResponseListParams -TargetFormId $slot.FormId)
   )
   $responseItems = @()
   if ($responses.PSObject.Properties.Name -contains "responses") {
@@ -306,6 +324,8 @@ $report = [pscustomobject]@{
   spreadsheetUrl = "https://docs.google.com/spreadsheets/d/$SpreadsheetId/edit"
   publicSummarySpreadsheetId = $PublicSummarySpreadsheetId
   publicSummaryCsvUrl = if ([string]::IsNullOrWhiteSpace($PublicSummarySpreadsheetId)) { $null } else { "https://docs.google.com/spreadsheets/d/$PublicSummarySpreadsheetId/gviz/tq?tqx=out:csv&sheet=Summary" }
+  resetMarkerPath = $ResetMarkerPath
+  resetAtUtc = if (Test-Path -LiteralPath $ResetMarkerPath) { ([regex]::Match((Get-Content -LiteralPath $ResetMarkerPath -Raw), '"resetAtUtc"\s*:\s*"([^"]+)"')).Groups[1].Value } else { $null }
   slots = $reportSlots
 }
 

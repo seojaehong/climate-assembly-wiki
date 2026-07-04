@@ -181,9 +181,24 @@ describe('0704 conditional vote console', () => {
     expect(decisionRefresh).toContain('NameQuestionTitle');
     expect(decisionRefresh).toContain('name_latest_response');
     expect(decisionRefresh).toContain('duplicate_dropped');
+    expect(agendaRefresh).toContain('ResetMarkerPath');
+    expect(agendaRefresh).toContain('timestamp >');
+    expect(decisionRefresh).toContain('ResetMarkerPath');
+    expect(decisionRefresh).toContain('timestamp >');
     expect(formSetup).toContain('title = "이름"');
     expect(formSetup).toContain('$i -le 17');
     expect(formSetup).not.toContain('$targetGroups += "연구진"');
+  });
+
+  test('0704 vote reset keeps old Google Form responses out of live tallies', () => {
+    const reset = readText('scripts/reset-0704-votes.ps1');
+
+    expect(reset).toContain('evaluation/0704-vote-reset.json');
+    expect(reset).toContain('refresh-0704-agenda-vote.ps1');
+    expect(reset).toContain('refresh-0704-decision-votes.ps1');
+    expect(reset).toContain('cv_votes?round_id=in.($ids)');
+    expect(reset).toContain('0704-vote-reset-report.json');
+    expect(reset).toContain('Google Forms API cannot delete responses via gws');
   });
 
   test('agenda vote is generated as one 1-to-5 scale question per agenda and averaged into Scores', () => {

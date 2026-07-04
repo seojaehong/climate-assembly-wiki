@@ -1,0 +1,40 @@
+{
+  "resetAt": "2026-07-04T13:12:20.4123883+09:00",
+  "resetAtUtc": "2026-07-04T04:12:20Z",
+  "resetMarkerPath": "evaluation/0704-vote-reset.json",
+  "before": {
+    "agendaFormResponses": 0,
+    "supabaseVotes": 0
+  },
+  "supabaseReset": {
+    "skipped": false,
+    "before": 0,
+    "deleted": 0,
+    "after": 0
+  },
+  "after": {
+    "agendaCountedResponses": 0,
+    "agendaUniqueVoters": 0,
+    "decisionSlots": [
+      {
+        "code": "V0",
+        "responseCount": 0,
+        "uniqueVoterCount": 0
+      },
+      {
+        "code": "V1A",
+        "responseCount": 0,
+        "uniqueVoterCount": 0
+      },
+      {
+        "code": "V1B",
+        "responseCount": 0,
+        "uniqueVoterCount": 0
+      }
+    ],
+    "supabaseVotes": 0
+  },
+  "agendaSpreadsheetUrl": "https://docs.google.com/spreadsheets/d/1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw/edit",
+  "decisionSpreadsheetUrl": "https://docs.google.com/spreadsheets/d/1m_GD3ohvDW1PXT8Gg3AoTxpf0voRdrJpz2a38PREBB8/edit",
+  "publicSummarySpreadsheetUrl": "https://docs.google.com/spreadsheets/d/19xrXFFmaP4bS3JB2o6HeYmDyYgZhK6ez8URAHFYcBss/edit"
+}

@@ -1,0 +1,10 @@
+{
+  "resetAt": "2026-07-04T13:12:20.4123883+09:00",
+  "resetAtUtc": "2026-07-04T04:12:20Z",
+  "scope": [
+    "0704 agenda vote Google Form responses after baseline only",
+    "0704 decision vote Google Forms responses after baseline only",
+    "0704 Supabase D0704-V0/D0704-V1A/D0704-V1B votes"
+  ],
+  "note": "Google Forms API cannot delete responses via gws; refresh scripts ignore responses at or before this timestamp."
+}

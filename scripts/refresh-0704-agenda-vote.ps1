@@ -2,6 +2,7 @@ param(
   [string]$FormId = "1soeRdPzIv4l7Bs6JyJEbb4nzb7MCtmZEe2q8VFwmjgc",
   [string]$SpreadsheetId = "1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw",
   [string]$NameQuestionTitle = "이름",
+  [string]$ResetMarkerPath = "evaluation/0704-vote-reset.json",
   [switch]$Watch,
   [int]$IntervalSeconds = 10
 )
@@ -17,7 +18,8 @@ if ($Watch) {
     "-File", $MyInvocation.MyCommand.Path,
     "-FormId", $FormId,
     "-SpreadsheetId", $SpreadsheetId,
-    "-NameQuestionTitle", $NameQuestionTitle
+    "-NameQuestionTitle", $NameQuestionTitle,
+    "-ResetMarkerPath", $ResetMarkerPath
   )
   Write-Host "Watching agenda vote responses every $IntervalSeconds seconds. Press Ctrl+C to stop."
   while ($true) {
@@ -203,6 +205,22 @@ function Normalize-VoterName {
   return (($Name -replace "\s+", " ").Trim()).ToLowerInvariant()
 }
 
+function Get-ResponseListParams {
+  param([string]$TargetFormId)
+  $params = @{
+    formId = $TargetFormId
+    pageSize = 5000
+  }
+  if (Test-Path -LiteralPath $ResetMarkerPath) {
+    $markerText = Get-Content -LiteralPath $ResetMarkerPath -Raw
+    $match = [regex]::Match($markerText, '"resetAtUtc"\s*:\s*"([^"]+)"')
+    if ($match.Success) {
+      $params.filter = "timestamp > $($match.Groups[1].Value)"
+    }
+  }
+  return $params | ConvertTo-Json -Compress
+}
+
 function Clear-SheetRange {
   param(
     [string]$TargetSpreadsheetId,
@@ -221,7 +239,7 @@ $NameQuestionId = Get-QuestionIdByTitle -Form $form -TitlePattern $NameQuestionT
 
 $responses = Invoke-GwsJson -CommandArgs @(
   "forms", "forms", "responses", "list",
-  "--params", "{`"formId`":`"$FormId`",`"pageSize`":5000}"
+  "--params", (Get-ResponseListParams -TargetFormId $FormId)
 )
 
 $responseItems = @()
@@ -359,6 +377,8 @@ $report = [pscustomobject]@{
   spreadsheetId = $SpreadsheetId
   formId = $FormId
   nameQuestionId = $NameQuestionId
+  resetMarkerPath = $ResetMarkerPath
+  resetAtUtc = if (Test-Path -LiteralPath $ResetMarkerPath) { ([regex]::Match((Get-Content -LiteralPath $ResetMarkerPath -Raw), '"resetAtUtc"\s*:\s*"([^"]+)"')).Groups[1].Value } else { $null }
   scores = $scoreRows[1..($scoreRows.Count - 1)]
 }
 
