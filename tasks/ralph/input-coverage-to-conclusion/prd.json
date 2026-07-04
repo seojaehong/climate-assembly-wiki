@@ -58,6 +58,60 @@
         "evaluation/input-coverage/input-coverage-audit.md",
         "evaluation/ontology-final-decisions/final-decision-ontology-audit.md"
       ]
+    },
+    {
+      "id": "C4",
+      "title": "Restore final decision graph readability",
+      "priority": 4,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "Final decision graphs use the original physics/showcase grammar with readable node labels.",
+        "Agenda and regulation final decision sets remain separate.",
+        "Readability and lineage tests pass."
+      ],
+      "files": [
+        "public/workshop-graph/index.html",
+        "public/workshop-graph/sources.json",
+        "scripts/workshop-graph-readability.test.mjs",
+        "scripts/final-decision-lineage.test.mjs"
+      ]
+    },
+    {
+      "id": "C5",
+      "title": "Keep internal process graph preserved but not public",
+      "priority": 5,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "The public default is the final regulation decision graph.",
+        "The internal process-to-conclusion graph remains present but hidden.",
+        "Old process URLs fall back away from the internal graph."
+      ],
+      "files": [
+        "public/workshop-graph/sources.json",
+        "public/workshop-graph/index.html",
+        "tasks/ralph/input-coverage-to-conclusion/progress.txt"
+      ]
+    },
+    {
+      "id": "C6",
+      "title": "Streamline final public menu surface",
+      "priority": 6,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "Top navigation presents only agenda and deliberation ontology as primary choices.",
+        "The workshop graph dropdown defaults to the two final decision sources only.",
+        "Workshop, source-coverage, and legacy regulation sources stay addressable by direct URL for verification."
+      ],
+      "files": [
+        "src/data/navigation.ts",
+        "public/workshop-graph/sources.json",
+        "public/workshop-graph/index.html",
+        "scripts/workshop-graph-readability.test.mjs",
+        "evaluation/autoresearch-finish/20260704-karpathy-loop-finish.md"
+      ]
     }
   ]
 }

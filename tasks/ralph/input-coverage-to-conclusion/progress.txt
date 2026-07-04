@@ -39,3 +39,10 @@
 - Learned: do not present `final-process-to-conclusion-0704` as a finished public story. It is an internal/audit bridge and currently fails the user's planning standard because it looks edited, mixed, and cut off from the original deliberation flow.
 - Learned: next ontology iteration must start from the origin-version Habermas physics graph and ask whether the desired decision result can emerge from that structure. Avoid creating new editorial story nodes until the structure is rethought.
 - Next: pause ontology content/modeling changes; keep the live-safe split/fallback in place; revisit how citizen deliberation from A through ER naturally yields agenda and regulation decisions.
+
+## 2026-07-04 C6
+- Changed: ran a Karpathy-style keep/discard finish loop and kept only low-risk public-surface improvements: top navigation now has no ontology dropdown children, and the workshop graph source dropdown defaults to the two final decision sources.
+- Changed: marked workshop, source-coverage, and legacy regulation graph sources with `menu: false`, preserving them as direct-link verification sources while removing them from the default public dropdown.
+- Verified: `npm.cmd exec -- vitest run scripts/workshop-graph-readability.test.mjs scripts/final-decision-lineage.test.mjs` passed with 2 test files and 5 tests; `npm.cmd exec --yes --package node@20 -- node node_modules/astro/astro.js build` completed 7901 pages with existing large-chunk warnings only.
+- Learned: menu simplification should not delete evidence surfaces. Use `menu:false` for field-facing simplicity and keep addressable source IDs for audit/provenance.
+- Next: no further finish-loop changes; keep future ontology content/modeling changes paused until the final narrative structure is rethought.
