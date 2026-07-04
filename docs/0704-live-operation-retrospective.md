@@ -75,6 +75,158 @@ Andrej Karpathy가 강조하는 작은 자동화 루프 관점으로 보면, 현
 
 다음 운영에서는 이 루프를 `preflight`, `live-watch`, `finalize`, `archive` 네 명령으로 나누는 것이 좋다.
 
+### Karpathy Loop v2: 운영 자동화 사양
+
+참고한 AutoResearch 패턴은 "작은 실제 환경을 주고, 에이전트가 변경하고, 짧은 실험을 돌리고, 개선 여부를 평가한 뒤 반복한다"는 구조다. 워크숍 운영에 그대로 옮기면 LLM이 모든 판단을 대신하는 것이 아니라, 사람이 정한 운영 기준을 기계적으로 반복 검증하는 루프가 된다.
+
+#### 1. Preflight Loop
+
+목표: 행사 시작 전 깨진 링크, 누락 QR, 시트 권한, 컬럼 불일치를 잡는다.
+
+입력:
+
+- 관리자 URL
+- 모든 Google Form 응답 URL
+- 모든 Google Sheet ID
+- public board/result URL
+- expected schema JSON
+
+행동:
+
+- URL 200 확인
+- QR 이미지 존재 확인
+- Sheet 탭/컬럼 이름 확인
+- Form 문항 제목과 필수 여부 확인
+- Cloudflare preview/custom domain 동시 확인
+
+평가 기준:
+
+- `ok=true`가 아니면 운영 시작 금지
+- 실패 항목은 `evaluation/0704-preflight-report.json`에 저장
+
+권장 명령:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/preflight-0704-live-operation.ps1
+```
+
+#### 2. Live-Watch Loop
+
+목표: 운영 중 사람이 새로고침을 기억하지 않아도 응답 수와 출력물이 따라오게 한다.
+
+입력:
+
+- 질문 Sheet
+- 의제 Sheet
+- 투표 Form
+- Scores Sheet
+
+행동:
+
+- 10~30초마다 Form/Sheet 읽기
+- 질문/의제 JSON 재생성
+- PDF/HTML 인쇄본 재생성
+- Scores 시트 갱신
+- 화면별 응답 수와 마지막 갱신 시각 기록
+
+평가 기준:
+
+- 직전 루프 대비 응답 수 증가 여부
+- Form 응답 수와 Scores unique voter 수 일치 여부
+- selected marker가 있는 의제 수가 기대값과 맞는지
+- 화면 HTML에 최신 문구가 들어갔는지
+
+권장 명령:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/live-watch-0704-operation.ps1 -IntervalSeconds 10
+```
+
+#### 3. Finalize Loop
+
+목표: 발표 직전 "최종값"을 고정하고, 결과 화면과 기록 파일을 같은 상태로 맞춘다.
+
+입력:
+
+- 최종 선정 의제 4개
+- 투표 Form 응답
+- Scores Sheet
+
+행동:
+
+- Form 문항 원문과 Sheet 원문 비교
+- Scores `name`과 `short` 라벨 비교
+- 응답 수, unique voter 수, duplicate dropped 수 기록
+- 버블레이스 final phase로 강제 이동
+- 질문/의제/투표/버블레이스 화면 캡쳐
+
+평가 기준:
+
+- 원문 4개가 Sheet/Form/Scores/보드에 모두 일치
+- 발표용 short 라벨이 4개 모두 존재
+- 최종 버블레이스 캡쳐에 play overlay가 없음
+- 캡쳐 파일 6종 이상 존재
+
+권장 명령:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/finalize-0704-live-operation.ps1 -Capture
+```
+
+#### 4. Archive Loop
+
+목표: 운영 종료 후 다음 세션이 바로 이어받을 수 있게 증거와 교훈을 남긴다.
+
+입력:
+
+- evaluation reports
+- screenshots
+- final JSON
+- docs retrospective
+
+행동:
+
+- 작업산출물 폴더로 화면 캡쳐 복사
+- 회고 문서 업데이트
+- ad-hoc memory note 생성
+- git commit/push
+
+평가 기준:
+
+- 산출물 폴더에 이미지 세트 존재
+- docs 회고 문서 존재
+- memory note 존재
+- commit hash 존재
+
+권장 명령:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/archive-0704-live-operation.ps1
+```
+
+### 자동 평가 항목
+
+다음 운영에서 루프가 매번 확인해야 할 최소 지표:
+
+| 구분 | 지표 | 실패 시 조치 |
+| --- | --- | --- |
+| 입력 | Sheet 탭/컬럼 존재 | 관리자에게 입력 Sheet 수정 요청 |
+| 질문 | 전체 질문 수, 선정 질문 수 | 선정 보드/인쇄본 재생성 |
+| 의제 | 전체 후보 수, 선정 의제 수 | `view=all`과 기본 보드 동시 확인 |
+| 투표 | responseCount, uniqueVoterCount, duplicateDroppedCount | 중복 기준과 reset marker 확인 |
+| 문구 | Sheet/Form/Scores/Board 일치 | promote + refresh 재실행 |
+| 발표 | short label 존재, overlay 없음 | capture final mode 사용 |
+| 배포 | preview/custom domain 일치 | custom domain 재확인 또는 preview URL 임시 사용 |
+| 기록 | screenshot count, report JSON count | archive loop 재실행 |
+
+### 다음 구현 우선순위
+
+1. `verify-0704-final-wording.ps1`: 문구 불일치를 한 번에 잡는 검증기
+2. `capture-0704-live-artifacts.mjs`: 질문/의제/투표/버블레이스 캡쳐 전용 Playwright 스크립트
+3. `finalize-0704-live-operation.ps1`: refresh, verify, capture, report를 한 번에 실행
+4. `preflight-0704-live-operation.ps1`: 다음 행사 전 QR/권한/링크 사전 점검
+5. `live-watch-0704-operation.ps1`: 실시간 갱신과 응답 수 모니터링을 한 콘솔에서 표시
+
 ## 다음 운영 체크리스트
 
 - 시작 전: 모든 QR 확대 모달 확인
