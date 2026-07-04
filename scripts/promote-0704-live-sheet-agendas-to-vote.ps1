@@ -1,8 +1,6 @@
 param(
   [string]$SpreadsheetId = "1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ",
   [string]$VoteFormId = "1soeRdPzIv4l7Bs6JyJEbb4nzb7MCtmZEe2q8VFwmjgc",
-  [string]$VoteQuestionId = "66dd7cab",
-  [string]$VoteItemId = "3863dc5f",
   [int]$MaxChoices = 10,
   [switch]$Apply
 )
@@ -86,8 +84,8 @@ function Invoke-GwsJson {
 function Normalize-AgendaText {
   param([string]$Text)
   $clean = ($Text -replace "\s+", " ").Trim().Trim(" .`t`r`n")
-  if ($clean.Length -gt 90) {
-    $clean = $clean.Substring(0, 90).Trim() + "..."
+  if ($clean.Length -gt 120) {
+    $clean = $clean.Substring(0, 120).Trim() + "..."
   }
   return $clean
 }
@@ -131,6 +129,13 @@ function Read-AgendaChoices {
   return @($items | Select-Object -First $MaxChoices)
 }
 
+function Get-Form {
+  Invoke-GwsJson -CommandArgs @(
+    "forms", "forms", "get",
+    "--params", "{`"formId`":`"$VoteFormId`"}"
+  )
+}
+
 $choices = Read-AgendaChoices -Ranges @("'A조 의제입력'!A1:E80", "'B조 의제입력'!A1:E80")
 
 if ($choices.Count -eq 0) {
@@ -143,38 +148,61 @@ if ($choices.Count -eq 0) {
   exit 0
 }
 
-$options = @()
-foreach ($choice in $choices) {
-  $options += @{ value = $choice.agenda }
+$requests = @()
+$form = Get-Form
+$itemCount = @($form.items).Count
+for ($i = $itemCount - 1; $i -ge 0; $i--) {
+  $requests += @{
+    deleteItem = @{
+      location = @{ index = $i }
+    }
+  }
 }
 
-$item = @{
-  itemId = $VoteItemId
-  title = "오늘 논의 후 가장 우선적으로 다루어야 한다고 생각하는 의제를 하나 선택해주세요."
-  description = "A/B조 실시간 Sheet 입력 의제를 정리해 만든 투표입니다."
-  questionItem = @{
-    question = @{
-      questionId = $VoteQuestionId
-      required = $true
-      choiceQuestion = @{
-        type = "RADIO"
-        options = $options
+$requests += @{
+  createItem = @{
+    location = @{ index = 0 }
+    item = @{
+      title = "이름"
+      description = "중복 응답 확인용입니다. 동일 이름의 마지막 응답만 집계합니다."
+      questionItem = @{
+        question = @{
+          required = $true
+          textQuestion = @{}
+        }
       }
     }
   }
 }
 
-$requestBody = @{
-  includeFormInResponse = $true
-  requests = @(
-    @{
-      updateItem = @{
-        item = $item
-        location = @{ index = 0 }
-        updateMask = "title,description,questionItem.question.choiceQuestion.options,questionItem.question.required"
+$index = 1
+foreach ($choice in $choices) {
+  $requests += @{
+    createItem = @{
+      location = @{ index = $index }
+      item = @{
+        title = $choice.agenda
+        description = "$($choice.group) $($choice.number)번 의제입니다. 1점은 낮음, 5점은 높음입니다."
+        questionItem = @{
+          question = @{
+            required = $true
+            scaleQuestion = @{
+              low = 1
+              high = 5
+              lowLabel = "낮음"
+              highLabel = "높음"
+            }
+          }
+        }
       }
     }
-  )
+  }
+  $index++
+}
+
+$requestBody = @{
+  includeFormInResponse = $true
+  requests = $requests
 } | ConvertTo-Json -Depth 32 -Compress
 
 if ($Apply) {
@@ -190,10 +218,10 @@ if ($Apply) {
 
 [pscustomobject]@{
   applied = [bool]$Apply
+  mode = "agenda_scale_1_to_5"
   spreadsheetId = $SpreadsheetId
   voteFormId = $VoteFormId
-  voteQuestionId = $VoteQuestionId
-  choiceCount = $choices.Count
+  agendaQuestionCount = $choices.Count
   revisionId = $revisionId
   choices = @($choices)
   nextCommand = "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\refresh-0704-agenda-vote.ps1"

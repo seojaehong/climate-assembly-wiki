@@ -202,10 +202,11 @@
         <div class="form-access">
           <div>
             <h2>의제투표</h2>
-            <p>조별 의제 입력값을 정리한 뒤 투표 선택지로 전환합니다. QR로 받고 결과는 버블레이스로 보여줍니다.</p>
+            <p>조별 의제 입력값을 정리한 뒤 의제별 1~5점 평가 문항으로 전환합니다. QR로 받고 평균점수 결과는 버블레이스로 보여줍니다.</p>
             <div class="ops">
-              <div class="op"><b>응답</b><span>Google Form 객관식 1문항, 필수 응답</span></div>
+              <div class="op"><b>응답</b><span>Google Form 의제별 1~5점 척도, 이름 필수</span></div>
               <div class="op"><b>결과</b><span>Google Sheet의 <code>Scores</code> 탭을 버블레이스가 5초마다 읽습니다.</span></div>
+              <div class="op"><b>집계</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\refresh-0704-agenda-vote.ps1 -Watch -IntervalSeconds 10</code></span></div>
             </div>
           </div>
           <a class="qr-box" href="https://docs.google.com/forms/d/e/1FAIpQLSf9-AIDhnd0cy8Dfu-xXOgz6cQINjpA-tLzHdM2Ypk8qU_eMA/viewform" target="_blank" rel="noopener" data-qr-title="의제투표 QR" data-qr-src="/0704-admin/agenda-vote-qr.png">
@@ -237,9 +238,9 @@
         <div class="form-access">
           <div>
             <h2>17~18시 소감발표</h2>
-            <p>17시 이후 전체조 소감 입력입니다. 1~17조 + 연구진까지 열어두고, 마지막 전체 나누기 때 포스트잇과 온톨로지로 묶어 보여줍니다.</p>
+            <p>17시 이후 전체조 소감 입력입니다. 1~17조 시민 응답만 받고, 마지막 전체 나누기 때 포스트잇과 온톨로지로 묶어 보여줍니다.</p>
             <div class="ops">
-              <div class="op"><b>대상</b><span>1~17조 + 연구진</span></div>
+              <div class="op"><b>대상</b><span>1~17조</span></div>
               <div class="op"><b>입력</b><span>조 선택 + 소감 필수 + 전체 공유 질문 선택</span></div>
               <div class="op"><b>발표</b><span>포스트잇 화면으로 조별 소감 묶음, 온톨로지로 핵심 연결 질문 확대</span></div>
             </div>

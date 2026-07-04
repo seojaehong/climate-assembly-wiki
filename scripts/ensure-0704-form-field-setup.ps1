@@ -190,7 +190,6 @@ $targetGroups = @()
 for ($i = 1; $i -le 17; $i++) {
   $targetGroups += "$($i)조"
 }
-$targetGroups += "연구진"
 
 $currentGroups = @($groupItem.questionItem.question.choiceQuestion.options | ForEach-Object { [string]$_.value })
 $groupNeedsUpdate = (@($targetGroups | Where-Object { $_ -notin $currentGroups }).Count -gt 0) -or ($currentGroups.Count -ne $targetGroups.Count)

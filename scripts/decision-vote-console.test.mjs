@@ -87,11 +87,13 @@ describe('0704 conditional vote console', () => {
 
     expect(admin).toContain('13~16시는 A/B조');
     expect(admin).toContain('A조/B조');
-    expect(admin).toContain('1~17조 + 연구진');
+    expect(admin).toContain('1~17조 시민 응답만');
+    expect(admin).not.toContain('1~17조 + 연구진');
     expect(manual).toContain('13~16시');
     expect(manual).toContain('A조/B조');
     expect(manual).toContain('17시 이후');
-    expect(manual).toContain('1~17조 + 연구진');
+    expect(manual).toContain('1~17조 중 선택');
+    expect(manual).not.toContain('1~17조 + 연구진');
   });
 
   test('vote refresh scripts use participant names for duplicate checks', () => {
@@ -109,6 +111,24 @@ describe('0704 conditional vote console', () => {
     expect(decisionRefresh).toContain('duplicate_dropped');
     expect(formSetup).toContain('title = "이름"');
     expect(formSetup).toContain('$i -le 17');
+    expect(formSetup).not.toContain('$targetGroups += "연구진"');
+  });
+
+  test('agenda vote is generated as one 1-to-5 scale question per agenda and averaged into Scores', () => {
+    const promote = readText('scripts/promote-0704-live-sheet-agendas-to-vote.ps1');
+    const refresh = readText('scripts/refresh-0704-agenda-vote.ps1');
+
+    expect(promote).toContain('scaleQuestion');
+    expect(promote).toContain('low = 1');
+    expect(promote).toContain('high = 5');
+    expect(promote).toContain('createItem');
+    expect(promote).not.toContain('type = "RADIO"');
+    expect(refresh).toContain('scaleQuestion');
+    expect(refresh).toContain('averageScore');
+    expect(refresh).toContain('scoreSum');
+    expect(refresh).toContain('[switch]$Watch');
+    expect(refresh).toContain('Watching agenda vote responses every $IntervalSeconds seconds');
+    expect(refresh).not.toContain('selectedAgenda');
   });
 
   test('single live operation sync command refreshes sheets, forms, votes, and deploys optionally', () => {
