@@ -13,21 +13,29 @@ describe('workshop graph final-decision readability', () => {
       .filter((source) => !source.hidden)
       .filter((source) => source.id.startsWith('final-'))
       .map((source) => source.id);
+    const menuSuppressedSources = sources.sources
+      .filter((source) => !source.hidden && source.menu === false)
+      .map((source) => source.id);
 
     expect(sources.default).toBe('final-regulation-decisions-0704');
     expect(hiddenProcessSource?.hidden).toBe(true);
     expect(finalSources).toContain('final-regulation-decisions-0704');
     expect(finalSources).toContain('final-agenda-decisions-0704');
     expect(finalSources).not.toContain('final-process-to-conclusion-0704');
+    expect(menuSuppressedSources).toContain('workshop-2026-06-13');
+    expect(menuSuppressedSources).toContain('source-coverage-2026-06-13');
+    expect(menuSuppressedSources).toContain('regulation-2026-06-13');
     expect(html).toContain('function isFinalSourceId(sourceId)');
     expect(html).toContain('function isFinalSourceGraph()');
     expect(html).toContain('function isFinalDecisionShowcase()');
     expect(html).toContain('pretendard.css');
     expect(html).toContain('function getPublicSources()');
+    expect(html).toContain('function getMenuSources()');
     expect(html).toContain('function isPublicSourceId(sourceId)');
     expect(html).toContain("const finalSourceDefault = isFinalSourceId(curSource) && !params.has('mode');");
     expect(html).toContain('if (!isPublicSourceId(curSource)) curSource = sources.default;');
-    expect(html).toContain('for (const s of getPublicSources())');
+    expect(html).toContain('for (const s of getMenuSources())');
+    expect(html).toContain('return current && current.menu === false');
     expect(html).toContain('const meta = getPublicSources().find(s => s.id === srcId);');
     expect(html).toContain("showcaseMode = params.get('mode') === 'showcase' || finalSourceDefault;");
     expect(html).toContain("showcaseCount = [50,75,100].includes(Number(params.get('count'))) ? Number(params.get('count')) : (finalSourceDefault ? 100 : 50);");

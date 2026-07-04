@@ -34,21 +34,24 @@
       "category": "workshop",
       "label": "2026-06-13~14 워크숍 통합",
       "data": "data/workshop-2026-06-13.json",
-      "supportsView": ["2d", "3d"]
+      "supportsView": ["2d", "3d"],
+      "menu": false
     },
     {
       "id": "source-coverage-2026-06-13",
       "category": "audit",
       "label": "원본→전사→그래프 연결상태 전체",
       "data": "data/source-coverage-2026-06-13.json",
-      "supportsView": ["2d"]
+      "supportsView": ["2d"],
+      "menu": false
     },
     {
       "id": "regulation-2026-06-13",
       "category": "regulation",
       "label": "운영규정 (6/13 토론1)",
       "data": "data/regulation-2026-06-13.json",
-      "supportsView": ["2d"]
+      "supportsView": ["2d"],
+      "menu": false
     }
   ]
 }

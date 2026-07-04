@@ -1,0 +1,116 @@
+{
+  "created_at": "2026-07-04T09:08:40.360014+00:00",
+  "repo": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\wiki",
+  "note": "0704 Karpathy-loop finish: menu, navigation, evidence",
+  "branch": "main",
+  "head": "d170e9a",
+  "upstream": "origin/main",
+  "git_commands": {
+    "branch": {
+      "command": [
+        "git",
+        "branch",
+        "--show-current"
+      ],
+      "returncode": 0,
+      "stdout": "main",
+      "stderr": ""
+    },
+    "head": {
+      "command": [
+        "git",
+        "rev-parse",
+        "--short",
+        "HEAD"
+      ],
+      "returncode": 0,
+      "stdout": "d170e9a",
+      "stderr": ""
+    },
+    "upstream": {
+      "command": [
+        "git",
+        "rev-parse",
+        "--abbrev-ref",
+        "--symbolic-full-name",
+        "@{u}"
+      ],
+      "returncode": 0,
+      "stdout": "origin/main",
+      "stderr": ""
+    },
+    "status": {
+      "command": [
+        "git",
+        "status",
+        "--short"
+      ],
+      "returncode": 0,
+      "stdout": "M public/workshop-graph/index.html\n M public/workshop-graph/sources.json\n M scripts/workshop-graph-readability.test.mjs\n M src/data/navigation.ts\n?? evaluation/autoresearch-finish/",
+      "stderr": ""
+    },
+    "staged": {
+      "command": [
+        "git",
+        "diff",
+        "--cached",
+        "--name-status"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "unstaged": {
+      "command": [
+        "git",
+        "diff",
+        "--name-status"
+      ],
+      "returncode": 0,
+      "stdout": "M\tpublic/workshop-graph/index.html\nM\tpublic/workshop-graph/sources.json\nM\tscripts/workshop-graph-readability.test.mjs\nM\tsrc/data/navigation.ts",
+      "stderr": "warning: in the working copy of 'public/workshop-graph/index.html', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'public/workshop-graph/sources.json', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'scripts/workshop-graph-readability.test.mjs', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'src/data/navigation.ts', LF will be replaced by CRLF the next time Git touches it"
+    },
+    "last_commit": {
+      "command": [
+        "git",
+        "show",
+        "--stat",
+        "--oneline",
+        "--no-renames",
+        "--max-count=1",
+        "HEAD"
+      ],
+      "returncode": 0,
+      "stdout": "d170e9a docs: add karpathy loop ops improvements\n docs/0704-live-operation-retrospective.md | 152 ++++++++++++++++++++++++++++++\n 1 file changed, 152 insertions(+)",
+      "stderr": ""
+    },
+    "recent": {
+      "command": [
+        "git",
+        "log",
+        "--oneline",
+        "-5"
+      ],
+      "returncode": 0,
+      "stdout": "d170e9a docs: add karpathy loop ops improvements\n7fccfc7 docs: archive 0704 live operation lessons\nd77a733 chore: add final 0704 vote capture\n46cf1c6 chore: add 0704 verification screenshots\n44da8bd chore: add 0704 question board screenshot",
+      "stderr": ""
+    }
+  },
+  "summary": {
+    "status_count": 5,
+    "staged_files": [],
+    "unstaged_files": [
+      "M\tpublic/workshop-graph/index.html",
+      "M\tpublic/workshop-graph/sources.json",
+      "M\tscripts/workshop-graph-readability.test.mjs",
+      "M\tsrc/data/navigation.ts"
+    ],
+    "status_lines": [
+      "M public/workshop-graph/index.html",
+      " M public/workshop-graph/sources.json",
+      " M scripts/workshop-graph-readability.test.mjs",
+      " M src/data/navigation.ts",
+      "?? evaluation/autoresearch-finish/"
+    ]
+  }
+}

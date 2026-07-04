@@ -336,6 +336,15 @@ function getPublicSources() {
   return (sources?.sources || []).filter((source) => !source.hidden);
 }
 
+function getMenuSources() {
+  const publicSources = getPublicSources();
+  const menuSources = publicSources.filter((source) => source.menu !== false);
+  const current = publicSources.find((source) => source.id === curSource);
+  return current && current.menu === false
+    ? [current, ...menuSources.filter((source) => source.id !== current.id)]
+    : menuSources;
+}
+
 function isPublicSourceId(sourceId) {
   return getPublicSources().some((source) => source.id === sourceId);
 }
@@ -372,7 +381,7 @@ function isPublicSourceId(sourceId) {
 function buildSourceDropdown() {
   const sel = document.getElementById('og-source');
   const byCat = {};
-  for (const s of getPublicSources()) (byCat[s.category] = byCat[s.category] || []).push(s);
+  for (const s of getMenuSources()) (byCat[s.category] = byCat[s.category] || []).push(s);
   sel.innerHTML = '';
   for (const cat of Object.keys(sources.categories)) {
     const list = byCat[cat] || [];

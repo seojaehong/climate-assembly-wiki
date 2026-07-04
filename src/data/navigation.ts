@@ -81,10 +81,6 @@ export const TOP_NAV_ITEMS: NavItem[] = [
     labelEn: 'Deliberation Map',
     href: '/workshop-graph/',
     external: true,
-    children: [
-      { labelKo: '그래프', labelEn: 'Graph', href: '/workshop-graph/', external: true },
-      { labelKo: '사용설명서', labelEn: 'Guide', href: '/workshop-graph/guide/', external: true },
-    ],
   },
   // 2026-06-13: '운영규정 의견' — 3교시 A조/B조 시민 포스트잇 의견 시각화
   // 2026-06-22: 탭 숨김 — 6/13 일회성 시각화라 일반 탐색에 노출 불필요. 직접 URL(/ko/regulation-feedback/) 보존
