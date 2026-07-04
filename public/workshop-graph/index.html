@@ -90,6 +90,10 @@
   body.og-showcase-mode.og-showcase-dark .og-showcase-count-tog .og-grp-lbl,
   body.og-showcase-mode.og-showcase-dark .og-showcase-edge-tog .og-grp-lbl{color:#9fb3c8}
   body.og-showcase-mode.og-showcase-dark .og-canvas{background:radial-gradient(circle at 42% 44%,#192536 0,#0f1722 48%,#080d14 100%)}
+  body.og-final-decision-showcase .og-canvas{background:linear-gradient(180deg,#f8fbff 0,#eef5fb 100%)}
+  body.og-final-decision-showcase .og-quick{font-size:14px;line-height:1.65;max-width:440px;border-color:rgba(15,118,110,.28);box-shadow:0 22px 64px rgba(15,23,42,.18)}
+  body.og-final-decision-showcase .og-surface-card{min-width:320px}
+  body.og-final-decision-showcase .og-surface-card p{font-size:14px;color:#1f2937}
   body.og-showcase-mode .og-body{flex:1}
   body.og-showcase-mode .og-hub-rail{display:none !important}
   body.og-showcase-mode #og-group-tog,
@@ -1251,7 +1255,7 @@ function renderCy() {
   cy.ready(() => setTimeout(() => {
     cy.fit(null, 40);
     if (groupMode !== 'none') applyGrouping(groupMode);  // URL ?group= 진입 시 즉시 묶기
-    else if (physicsOn || showcaseMode) applyPhysics();
+    else if ((physicsOn || showcaseMode) && !isFinalDecisionShowcase()) applyPhysics();
   }, 300));
 }
 
@@ -1320,6 +1324,11 @@ function syncPresentationBody() {
   document.body.classList.toggle('og-present-full', presentMode && curView === '2d' && presentLevel === 'full');
   document.body.classList.toggle('og-showcase-mode', showcaseMode && curView === '2d');
   document.body.classList.toggle('og-showcase-dark', showcaseMode && curView === '2d' && showcaseTheme === 'dark');
+  document.body.classList.toggle('og-final-decision-showcase', isFinalDecisionShowcase());
+}
+
+function isFinalDecisionShowcase() {
+  return showcaseMode && curView === '2d' && String(curSource || '').startsWith('final-');
 }
 
 function groupForPresentLevel(level) {
@@ -1850,33 +1859,37 @@ function buildCyStyle(palette) {
   const demoLight = showcaseMode && showcaseTheme !== 'dark';
   const paperLike = paper || demoLight;
   const presentationOverview = presentMode && presentLevel !== 'full';
+  const finalDecisionProjectorMode = isFinalDecisionShowcase();
   return [
     { selector:'node', style:{
-        'background-color': n => palette[n.data('kind')] || '#888',
+        'background-color': n => finalDecisionProjectorMode ? '#ffffff' : (palette[n.data('kind')] || '#888'),
         'label': n => {
           if (demo) return n.data('shortLabel') || n.data('label') || '';
           if (!presentMode || n.data('isGroup')) return n.data('label') || '';
           if (presentLevel === 'full' && n.data('isOverviewLabel')) return n.data('label') || '';
           return '';
         },
-        'color': paperLike ? '#0f172a' : '#eef3f9', 'font-size': demo ? '15px' : (presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px'),
+        'color': finalDecisionProjectorMode ? '#0f172a' : (paperLike ? '#0f172a' : '#eef3f9'), 'font-size': finalDecisionProjectorMode ? '20px' : (demo ? '15px' : (presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px')),
         'min-zoomed-font-size': demo ? 0 : (presentMode ? (presentLevel === 'full' ? 18 : 999) : 7),  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
-        'font-family':'Noto Sans KR, Malgun Gothic, sans-serif', 'font-weight': presentMode || demo ? 700 : 500,
-        'text-wrap':'wrap','text-max-width': demo ? '190px' : (presentMode ? '120px' : '140px'),'text-valign': demo ? 'center' : 'bottom','text-halign':'center','text-margin-y': demo ? 0 : 3,
-        'text-outline-color': paperLike ? '#ffffff' : '#0b111a','text-outline-width': demo ? 0 : (presentMode ? 2.5 : 2.5),
-        'width': n => demo ? Math.max(96, Math.min(250, String(n.data('shortLabel') || n.data('label') || '').length * 13 + 34)) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4),
-        'height': n => demo ? Math.max(32, String(n.data('shortLabel') || n.data('label') || '').length > 15 ? 44 : 36) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4),
-        'border-width':2.2,'border-color':'#0d1118','shape':'ellipse','opacity':1,
+        'font-family':'Noto Sans KR, Malgun Gothic, sans-serif', 'font-weight': finalDecisionProjectorMode ? 900 : (presentMode || demo ? 700 : 500),
+        'text-wrap':'wrap','text-max-width': finalDecisionProjectorMode ? '260px' : (demo ? '190px' : (presentMode ? '120px' : '140px')),'text-valign': demo ? 'center' : 'bottom','text-halign':'center','text-margin-y': demo ? 0 : 3,
+        'text-outline-color': '#ffffff','text-outline-width': finalDecisionProjectorMode ? 3.5 : (demo ? 0 : (presentMode ? 2.5 : 2.5)),
+        'width': n => finalDecisionProjectorMode ? Math.max(150, Math.min(330, String(n.data('shortLabel') || n.data('label') || '').length * 15 + 46)) : (demo ? Math.max(96, Math.min(250, String(n.data('shortLabel') || n.data('label') || '').length * 13 + 34)) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4)),
+        'height': n => finalDecisionProjectorMode ? Math.max(54, String(n.data('shortLabel') || n.data('label') || '').length > 15 ? 72 : 60) : (demo ? Math.max(32, String(n.data('shortLabel') || n.data('label') || '').length > 15 ? 44 : 36) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4)),
+        'border-width': finalDecisionProjectorMode ? 2.8 : 2.2,'border-color': n => finalDecisionProjectorMode ? (palette[n.data('kind')] || '#2563eb') : '#0d1118','shape':'ellipse','opacity':1,
     }},
     { selector:'node.showcase-node', style:{
         'shape':'round-rectangle',
-        'background-opacity':0.96,
-        'border-width':1.5,
+        'background-opacity': finalDecisionProjectorMode ? 0.98 : 0.96,
+        'border-width': finalDecisionProjectorMode ? 3 : 1.5,
         'border-color': n => palette[n.data('kind')] || '#888',
         'border-opacity':0.92,
-        'color':'#ffffff',
-        'text-outline-width':0,
-        'padding':'10px',
+        'color': finalDecisionProjectorMode ? '#0f172a' : '#ffffff',
+        'text-background-color': finalDecisionProjectorMode ? '#ffffff' : 'transparent',
+        'text-background-opacity': finalDecisionProjectorMode ? 0.96 : 0,
+        'text-background-padding': finalDecisionProjectorMode ? 6 : 0,
+        'text-outline-width': finalDecisionProjectorMode ? 3.5 : 0,
+        'padding': finalDecisionProjectorMode ? '14px' : '10px',
         'z-index':12,
         'overlay-opacity':0,
     }},
@@ -1897,12 +1910,12 @@ function buildCyStyle(palette) {
     { selector:'node[kind="Decision"]', style:{ 'shape':'star','border-color':'#ffa94d','border-width':3 }},
     { selector:'node[?synthesized]', style:{ 'shape':'round-diamond','border-style':'dashed','border-color':'#ff8787' }},
     { selector:'edge', style:{
-        'width': demo ? 1.25 : 1.8, 'line-color': paperLike ? (demo ? '#cbd5e1' : '#64748b') : (demo ? '#526073' : '#6b7890'), 'target-arrow-color': paperLike ? (demo ? '#cbd5e1' : '#64748b') : (demo ? '#526073' : '#6b7890'),
+        'width': finalDecisionProjectorMode ? 2.2 : (demo ? 1.25 : 1.8), 'line-color': paperLike ? (demo ? '#cbd5e1' : '#64748b') : (demo ? '#526073' : '#6b7890'), 'target-arrow-color': paperLike ? (demo ? '#cbd5e1' : '#64748b') : (demo ? '#526073' : '#6b7890'),
         'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale': demo ? 0.9 : 1,
-        'label': demo ? (showcaseEdgeLabels ? 'data(relKo)' : '') : (paper ? '' : 'data(relKo)'),'font-size': demo ? '8.2px' : '10px','min-zoomed-font-size': demo ? (showcaseEdgeLabels ? 0 : 999) : 9,'color': paperLike ? (demo ? '#475569' : '#1f2937') : (demo ? '#cbd5e1' : '#d3dbe8'),
+        'label': demo ? (showcaseEdgeLabels ? 'data(relKo)' : '') : (paper ? '' : 'data(relKo)'),'font-size': finalDecisionProjectorMode ? '16px' : (demo ? '8.2px' : '10px'),'min-zoomed-font-size': demo ? (showcaseEdgeLabels ? 0 : 999) : 9,'color': paperLike ? (demo ? '#475569' : '#1f2937') : (demo ? '#cbd5e1' : '#d3dbe8'),
         'font-family':'Noto Sans KR, Malgun Gothic, sans-serif',
         'text-rotation':'autorotate','text-background-color': paperLike ? '#ffffff' : '#11151c',
-        'text-background-opacity': demo ? 0.74 : 0.85,'text-background-padding':2,'opacity': demo ? 0.66 : 0.82,
+        'text-background-opacity': finalDecisionProjectorMode ? 0.96 : (demo ? 0.74 : 0.85),'text-background-padding': finalDecisionProjectorMode ? 4 : 2,'opacity': finalDecisionProjectorMode ? 0.82 : (demo ? 0.66 : 0.82),
     }},
     { selector:'edge[?opposes]', style:{
         'line-color': demo ? '#f4a3a3' : '#ff6b6b','target-arrow-color': demo ? '#f4a3a3' : '#ff6b6b','width': demo ? 1.65 : 2.6 }},
@@ -2021,7 +2034,7 @@ function bindCyEvents() {
     }
   });
   cy.on('dragfree', 'node', () => {
-    if (showcaseMode || physicsOn) applyPhysics();
+    if ((showcaseMode || physicsOn) && !isFinalDecisionShowcase()) applyPhysics();
   });
 }
 

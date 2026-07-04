@@ -1,0 +1,56 @@
+{
+  "generatedAt": "2026-07-04T11:25:20+09:00",
+  "scope": "public/workshop-graph final-decision showcase readability",
+  "changes": [
+    "Added a final-decision showcase body state for high-contrast projector styling.",
+    "Increased final-decision node label size, weight, outline, background, padding, and node dimensions.",
+    "Increased final-decision edge label size and background contrast.",
+    "Disabled infinite showcase physics for final-decision sources so the graph remains fitted and stable."
+  ],
+  "localRuntimeChecks": [
+    {
+      "source": "final-regulation-decisions-0704",
+      "url": "http://localhost:4179/workshop-graph/?source=final-regulation-decisions-0704&mode=showcase&count=75&edgeLabels=on",
+      "visibleNodes": 32,
+      "visibleRealNodes": 32,
+      "visibleEdges": 31,
+      "nodeLabelsShown": 32,
+      "edgeLabelsShown": 31,
+      "shortLabelsShown": 32,
+      "physicsRunning": false,
+      "runtimeExceptions": 0,
+      "screenshot": "evaluation/screenshots/0704-final-regulation-readability-cdp.png"
+    },
+    {
+      "source": "final-agenda-decisions-0704",
+      "url": "http://localhost:4179/workshop-graph/?source=final-agenda-decisions-0704&mode=showcase&count=75&edgeLabels=on",
+      "visibleNodes": 67,
+      "visibleRealNodes": 67,
+      "visibleEdges": 74,
+      "nodeLabelsShown": 67,
+      "edgeLabelsShown": 74,
+      "shortLabelsShown": 67,
+      "physicsRunning": false,
+      "runtimeExceptions": 0,
+      "screenshot": "evaluation/screenshots/0704-final-agenda-readability-cdp.png"
+    }
+  ],
+  "tests": [
+    {
+      "command": ".\\node_modules\\.bin\\vitest.cmd run scripts\\workshop-graph-readability.test.mjs",
+      "status": "passed",
+      "testFiles": 1,
+      "tests": 1
+    },
+    {
+      "command": ".\\node_modules\\.bin\\vitest.cmd run scripts\\workshop-graph-readability.test.mjs scripts\\decision-vote-console.test.mjs",
+      "status": "failed",
+      "reason": "Pre-existing agenda vote console expectation mismatch: scripts/promote-0704-group-agendas-to-vote.ps1 no longer contains scaleQuestion."
+    },
+    {
+      "command": ".\\node_modules\\.bin\\astro.cmd build",
+      "status": "failed",
+      "reason": "Astro returned exit code 1 after build info collection; no explicit error text was emitted. The static public page was verified directly and should be deployed through the public bundle path."
+    }
+  ]
+}
