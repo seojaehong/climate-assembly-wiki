@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>0704 조별 의제 후보 보드</title>
+<title>0704 선정 의제 보드</title>
 <style>
   :root{--bg:#f5f7fb;--ink:#0f172a;--muted:#667085;--line:#d9e2ee;--a:#2563eb;--b:#0f766e;--paper:#fff}
   *{box-sizing:border-box}
@@ -41,7 +41,7 @@
 <header>
   <div>
     <div class="meta" id="meta">A/B 실시간 Sheet 의제 입력</div>
-    <h1>투표 전 조별 의제 후보 보드</h1>
+    <h1>투표 대상 선정 의제 4개</h1>
   </div>
   <div class="actions">
     <a href="/0704-admin/">관리자</a>
@@ -51,9 +51,9 @@
 </header>
 <main>
   <section class="summary">
-    <div class="stat"><b>전체 후보</b><span id="total-count">0</span></div>
-    <div class="stat"><b>A조 후보</b><span id="a-count">0</span></div>
-    <div class="stat"><b>B조 후보</b><span id="b-count">0</span></div>
+    <div class="stat"><b>선정 의제</b><span id="total-count">0</span></div>
+    <div class="stat"><b>A조 선정</b><span id="a-count">0</span></div>
+    <div class="stat"><b>B조 선정</b><span id="b-count">0</span></div>
   </section>
   <section class="board" id="board"></section>
 </main>
@@ -62,6 +62,7 @@ const DATA_URL = '/agenda-board-0704/data.json';
 const SHEET_ID = '1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ';
 const SHEETS = ['A조 의제입력', 'B조 의제입력'];
 const POLL_MS = 5000;
+const SELECTED_NOTE_RE = /선정|1위|2위|1순위|2순위/;
 function esc(s){return String(s ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function parseCsv(text){
   const rows=[]; let row=[]; let cell=''; let quoted=false;
@@ -97,7 +98,7 @@ async function fetchSheetRows(sheetName){
     note: row[noteIdx] || '',
     speaker: row[speakerIdx] || '',
     kind: 'agenda'
-  })).filter(item => item.text.trim());
+  })).filter(item => item.text.trim() && SELECTED_NOTE_RE.test(item.note));
 }
 async function loadAgendas(){
   try {
@@ -105,7 +106,7 @@ async function loadAgendas(){
     return {agendas: rows, generatedAt: new Date().toISOString(), source: 'google_sheet'};
   } catch (err) {
     const data = await fetch(DATA_URL + '?_=' + Date.now(), {cache:'no-store'}).then(r => r.json());
-    return {agendas: data.agendas || [], generatedAt: data.generatedAt, source: 'fallback_json', error: err.message};
+    return {agendas: (data.agendas || []).filter(item => SELECTED_NOTE_RE.test(item.note || '')), generatedAt: data.generatedAt, source: 'fallback_json', error: err.message};
   }
 }
 function renderNote(item){
@@ -122,10 +123,10 @@ function renderLane(group, rows){
   const isA = group === 'A조';
   return `<section class="lane" style="--lane:${isA ? '#2563eb' : '#0f766e'};--note:${isA ? '#eff6ff' : '#ecfdf5'}">
     <div class="lane-head">
-      <div class="eyebrow">AGENDA CANDIDATES</div>
+      <div class="eyebrow">SELECTED AGENDA</div>
       <h2>${esc(group)}</h2>
     </div>
-    <div class="cards">${rows.length ? rows.map(renderNote).join('') : '<div class="empty">아직 입력된 의제가 없습니다.</div>'}</div>
+    <div class="cards">${rows.length ? rows.map(renderNote).join('') : '<div class="empty">선정된 의제가 없습니다.</div>'}</div>
   </section>`;
 }
 async function load(){
