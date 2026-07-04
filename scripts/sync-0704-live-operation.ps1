@@ -65,7 +65,7 @@ try {
 
   if ($PromoteVoteChoices) {
     Invoke-Step -Name "promote_live_sheet_agendas_to_vote" -Action {
-      pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\promote-0704-live-sheet-agendas-to-vote.ps1 -Apply
+      pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\promote-0704-live-sheet-agendas-to-vote.ps1 -MaxChoices 4 -Apply
     }
   }
 

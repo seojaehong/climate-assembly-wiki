@@ -218,6 +218,14 @@ describe('0704 conditional vote console', () => {
     expect(refresh).not.toContain('selectedAgenda');
   });
 
+  test('0704 agenda vote promotion is capped to the final four A/B candidates', () => {
+    const admin = readText('public/0704-admin/index.html');
+    const sync = readText('scripts/sync-0704-live-operation.ps1');
+
+    expect(admin).toContain('promote-0704-live-sheet-agendas-to-vote.ps1 -MaxChoices 4 -Apply');
+    expect(sync).toContain('promote-0704-live-sheet-agendas-to-vote.ps1 -MaxChoices 4 -Apply');
+  });
+
   test('single live operation sync command refreshes sheets, forms, votes, and deploys optionally', () => {
     const admin = readText('public/0704-admin/index.html');
     const manual = readText('public/0704-admin/operator-manual.html');
@@ -228,7 +236,7 @@ describe('0704 conditional vote console', () => {
     expect(sync).toContain('ensure-0704-form-field-setup.ps1 -Apply');
     expect(sync).toContain('refresh-0704-input-forms.ps1');
     expect(sync).toContain('export-0704-live-sheet-packets.ps1');
-    expect(sync).toContain('promote-0704-live-sheet-agendas-to-vote.ps1 -Apply');
+    expect(sync).toContain('promote-0704-live-sheet-agendas-to-vote.ps1 -MaxChoices 4 -Apply');
     expect(sync).toContain('refresh-0704-agenda-vote.ps1');
     expect(sync).toContain('refresh-0704-decision-votes.ps1');
     expect(sync).toContain('wrangler pages deploy');

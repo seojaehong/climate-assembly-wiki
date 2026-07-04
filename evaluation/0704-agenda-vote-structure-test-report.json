@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-07-04T15:09:07.1502726+09:00",
+  "tdd": {
+    "redTest": "0704 agenda vote promotion is capped to the final four A/B candidates",
+    "redResult": "failed before implementation because admin/sync did not include -MaxChoices 4",
+    "greenResult": "25 tests passed after adding -MaxChoices 4 to admin and sync command",
+    "testCommand": "npm.cmd exec -- vitest run scripts/decision-vote-console.test.mjs scripts/agenda-vote-scoring.test.mjs"
+  },
+  "currentLiveSheetAgendas": {
+    "sourceSheet": "1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ",
+    "status": "A/B agenda candidate cells are currently empty, so promotion dry-run returns no_live_sheet_agendas",
+    "expectedNext": "When A조 2 and B조 2 agenda sentences are entered, run promote script with -MaxChoices 4 -Apply"
+  },
+  "votePipeline": {
+    "voteFormId": "1soeRdPzIv4l7Bs6JyJEbb4nzb7MCtmZEe2q8VFwmjgc",
+    "scoreSheetId": "1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw",
+    "promoteCommand": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\\promote-0704-live-sheet-agendas-to-vote.ps1 -MaxChoices 4 -Apply",
+    "refreshCommand": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\\refresh-0704-agenda-vote.ps1 -Watch -IntervalSeconds 10",
+    "resultUrl": "https://climate-assembly.org/agenda-vote-0704/index.html?sheet=1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw",
+    "resultPolling": "bubble race reads Scores tab every 5 seconds"
+  }
+}
