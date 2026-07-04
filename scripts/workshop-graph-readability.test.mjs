@@ -16,11 +16,14 @@ describe('workshop graph final-decision readability', () => {
     expect(finalSources).toContain('final-agenda-decisions-0704');
     expect(html).toContain('function isFinalDecisionShowcase()');
     expect(html).toContain('body.og-final-decision-showcase');
+    expect(html).toContain('pretendard.css');
     expect(html).toContain('finalDecisionProjectorMode');
     expect(html).toContain("'color': finalDecisionProjectorMode ? '#0f172a'");
     expect(html).toContain("'text-outline-width': finalDecisionProjectorMode ? 3.5");
     expect(html).toContain("'border-color': n => finalDecisionProjectorMode");
-    expect(html).toContain("'font-size': finalDecisionProjectorMode ? '20px'");
+    expect(html).toContain("'font-size': finalDecisionProjectorMode ? '24px'");
+    expect(html).toContain("'font-size': finalDecisionProjectorMode ? '18px'");
+    expect(html).toContain("'font-family': finalDecisionProjectorMode ? 'Pretendard");
     expect(html).toContain("'text-background-opacity': finalDecisionProjectorMode ? 0.96");
     expect(html).toContain('else if ((physicsOn || showcaseMode) && !isFinalDecisionShowcase()) applyPhysics();');
   });

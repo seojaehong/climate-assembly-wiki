@@ -1,10 +1,11 @@
 {
-  "generatedAt": "2026-07-04T11:25:20+09:00",
+  "generatedAt": "2026-07-04T11:30:45+09:00",
   "scope": "public/workshop-graph final-decision showcase readability",
   "changes": [
     "Added a final-decision showcase body state for high-contrast projector styling.",
-    "Increased final-decision node label size, weight, outline, background, padding, and node dimensions.",
-    "Increased final-decision edge label size and background contrast.",
+    "Loaded Pretendard and applied it to final-decision showcase labels and hover cards.",
+    "Increased final-decision node label size to 24px with bold Pretendard, stronger outline, background, padding, and larger node dimensions.",
+    "Increased final-decision edge label size to 18px and improved background contrast.",
     "Disabled infinite showcase physics for final-decision sources so the graph remains fitted and stable."
   ],
   "localRuntimeChecks": [

@@ -7,6 +7,7 @@
 <title>숙의 온톨로지 — 통합 그래프</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="/_ontology-chrome/chrome.css?v=20260626-present-levels">
 <script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
 <script src="https://unpkg.com/layout-base@2.0.1/layout-base.js"></script>
@@ -91,9 +92,9 @@
   body.og-showcase-mode.og-showcase-dark .og-showcase-edge-tog .og-grp-lbl{color:#9fb3c8}
   body.og-showcase-mode.og-showcase-dark .og-canvas{background:radial-gradient(circle at 42% 44%,#192536 0,#0f1722 48%,#080d14 100%)}
   body.og-final-decision-showcase .og-canvas{background:linear-gradient(180deg,#f8fbff 0,#eef5fb 100%)}
-  body.og-final-decision-showcase .og-quick{font-size:14px;line-height:1.65;max-width:440px;border-color:rgba(15,118,110,.28);box-shadow:0 22px 64px rgba(15,23,42,.18)}
+  body.og-final-decision-showcase .og-quick{font-family:'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif;font-size:16px;font-weight:800;line-height:1.7;max-width:500px;border-color:rgba(15,118,110,.28);box-shadow:0 22px 64px rgba(15,23,42,.18)}
   body.og-final-decision-showcase .og-surface-card{min-width:320px}
-  body.og-final-decision-showcase .og-surface-card p{font-size:14px;color:#1f2937}
+  body.og-final-decision-showcase .og-surface-card p{font-size:16px;font-weight:800;color:#1f2937}
   body.og-showcase-mode .og-body{flex:1}
   body.og-showcase-mode .og-hub-rail{display:none !important}
   body.og-showcase-mode #og-group-tog,
@@ -1869,13 +1870,13 @@ function buildCyStyle(palette) {
           if (presentLevel === 'full' && n.data('isOverviewLabel')) return n.data('label') || '';
           return '';
         },
-        'color': finalDecisionProjectorMode ? '#0f172a' : (paperLike ? '#0f172a' : '#eef3f9'), 'font-size': finalDecisionProjectorMode ? '20px' : (demo ? '15px' : (presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px')),
+        'color': finalDecisionProjectorMode ? '#0f172a' : (paperLike ? '#0f172a' : '#eef3f9'), 'font-size': finalDecisionProjectorMode ? '24px' : (demo ? '15px' : (presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px')),
         'min-zoomed-font-size': demo ? 0 : (presentMode ? (presentLevel === 'full' ? 18 : 999) : 7),  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
-        'font-family':'Noto Sans KR, Malgun Gothic, sans-serif', 'font-weight': finalDecisionProjectorMode ? 900 : (presentMode || demo ? 700 : 500),
-        'text-wrap':'wrap','text-max-width': finalDecisionProjectorMode ? '260px' : (demo ? '190px' : (presentMode ? '120px' : '140px')),'text-valign': demo ? 'center' : 'bottom','text-halign':'center','text-margin-y': demo ? 0 : 3,
+        'font-family': finalDecisionProjectorMode ? 'Pretendard, Noto Sans KR, Malgun Gothic, sans-serif' : 'Noto Sans KR, Malgun Gothic, sans-serif', 'font-weight': finalDecisionProjectorMode ? 900 : (presentMode || demo ? 700 : 500),
+        'text-wrap':'wrap','text-max-width': finalDecisionProjectorMode ? '300px' : (demo ? '190px' : (presentMode ? '120px' : '140px')),'text-valign': demo ? 'center' : 'bottom','text-halign':'center','text-margin-y': demo ? 0 : 3,
         'text-outline-color': '#ffffff','text-outline-width': finalDecisionProjectorMode ? 3.5 : (demo ? 0 : (presentMode ? 2.5 : 2.5)),
-        'width': n => finalDecisionProjectorMode ? Math.max(150, Math.min(330, String(n.data('shortLabel') || n.data('label') || '').length * 15 + 46)) : (demo ? Math.max(96, Math.min(250, String(n.data('shortLabel') || n.data('label') || '').length * 13 + 34)) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4)),
-        'height': n => finalDecisionProjectorMode ? Math.max(54, String(n.data('shortLabel') || n.data('label') || '').length > 15 ? 72 : 60) : (demo ? Math.max(32, String(n.data('shortLabel') || n.data('label') || '').length > 15 ? 44 : 36) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4)),
+        'width': n => finalDecisionProjectorMode ? Math.max(180, Math.min(380, String(n.data('shortLabel') || n.data('label') || '').length * 18 + 56)) : (demo ? Math.max(96, Math.min(250, String(n.data('shortLabel') || n.data('label') || '').length * 13 + 34)) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4)),
+        'height': n => finalDecisionProjectorMode ? Math.max(68, String(n.data('shortLabel') || n.data('label') || '').length > 15 ? 88 : 74) : (demo ? Math.max(32, String(n.data('shortLabel') || n.data('label') || '').length > 15 ? 44 : 36) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4)),
         'border-width': finalDecisionProjectorMode ? 2.8 : 2.2,'border-color': n => finalDecisionProjectorMode ? (palette[n.data('kind')] || '#2563eb') : '#0d1118','shape':'ellipse','opacity':1,
     }},
     { selector:'node.showcase-node', style:{
@@ -1912,8 +1913,8 @@ function buildCyStyle(palette) {
     { selector:'edge', style:{
         'width': finalDecisionProjectorMode ? 2.2 : (demo ? 1.25 : 1.8), 'line-color': paperLike ? (demo ? '#cbd5e1' : '#64748b') : (demo ? '#526073' : '#6b7890'), 'target-arrow-color': paperLike ? (demo ? '#cbd5e1' : '#64748b') : (demo ? '#526073' : '#6b7890'),
         'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale': demo ? 0.9 : 1,
-        'label': demo ? (showcaseEdgeLabels ? 'data(relKo)' : '') : (paper ? '' : 'data(relKo)'),'font-size': finalDecisionProjectorMode ? '16px' : (demo ? '8.2px' : '10px'),'min-zoomed-font-size': demo ? (showcaseEdgeLabels ? 0 : 999) : 9,'color': paperLike ? (demo ? '#475569' : '#1f2937') : (demo ? '#cbd5e1' : '#d3dbe8'),
-        'font-family':'Noto Sans KR, Malgun Gothic, sans-serif',
+        'label': demo ? (showcaseEdgeLabels ? 'data(relKo)' : '') : (paper ? '' : 'data(relKo)'),'font-size': finalDecisionProjectorMode ? '18px' : (demo ? '8.2px' : '10px'),'min-zoomed-font-size': demo ? (showcaseEdgeLabels ? 0 : 999) : 9,'color': paperLike ? (demo ? '#475569' : '#1f2937') : (demo ? '#cbd5e1' : '#d3dbe8'),
+        'font-family': finalDecisionProjectorMode ? 'Pretendard, Noto Sans KR, Malgun Gothic, sans-serif' : 'Noto Sans KR, Malgun Gothic, sans-serif',
         'text-rotation':'autorotate','text-background-color': paperLike ? '#ffffff' : '#11151c',
         'text-background-opacity': finalDecisionProjectorMode ? 0.96 : (demo ? 0.74 : 0.85),'text-background-padding': finalDecisionProjectorMode ? 4 : 2,'opacity': finalDecisionProjectorMode ? 0.82 : (demo ? 0.66 : 0.82),
     }},
