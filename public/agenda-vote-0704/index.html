@@ -347,6 +347,7 @@
 <script>
 const PAGE_PARAMS = new URLSearchParams(location.search);
 const DEMO_MODE = PAGE_PARAMS.get('demo') === 'full';
+const CAPTURE_MODE = PAGE_PARAMS.get('capture');
 const DATA_FILE = DEMO_MODE ? 'data-demo-full.json' : 'data.json';
 const PHASE_ORDER = ['pre', 'c1', 'c2', 'c3', 'c4', 'total'];
 const PHASE_FALLBACKS = {
@@ -577,6 +578,10 @@ async function load() {
   setPhaseLabel(0);
   buildPhaseTrack();
   requestAnimationFrame(tick);
+  if (CAPTURE_MODE === 'final') {
+    document.getElementById('overlay').classList.add('hide');
+    requestAnimationFrame(() => jumpToPhase(PHASE_ORDER.length - 1));
+  }
 }
 
 function drawDefs() {

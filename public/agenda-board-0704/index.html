@@ -63,6 +63,7 @@ const SHEET_ID = '1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ';
 const SHEETS = ['A조 의제입력', 'B조 의제입력'];
 const POLL_MS = 5000;
 const SELECTED_NOTE_RE = /선정|1위|2위|1순위|2순위/;
+const SHOW_ALL = new URLSearchParams(location.search).get('view') === 'all';
 function esc(s){return String(s ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function parseCsv(text){
   const rows=[]; let row=[]; let cell=''; let quoted=false;
@@ -98,7 +99,7 @@ async function fetchSheetRows(sheetName){
     note: row[noteIdx] || '',
     speaker: row[speakerIdx] || '',
     kind: 'agenda'
-  })).filter(item => item.text.trim() && SELECTED_NOTE_RE.test(item.note));
+  })).filter(item => item.text.trim() && (SHOW_ALL || SELECTED_NOTE_RE.test(item.note)));
 }
 async function loadAgendas(){
   try {
@@ -106,7 +107,7 @@ async function loadAgendas(){
     return {agendas: rows, generatedAt: new Date().toISOString(), source: 'google_sheet'};
   } catch (err) {
     const data = await fetch(DATA_URL + '?_=' + Date.now(), {cache:'no-store'}).then(r => r.json());
-    return {agendas: (data.agendas || []).filter(item => SELECTED_NOTE_RE.test(item.note || '')), generatedAt: data.generatedAt, source: 'fallback_json', error: err.message};
+    return {agendas: (data.agendas || []).filter(item => SHOW_ALL || SELECTED_NOTE_RE.test(item.note || '')), generatedAt: data.generatedAt, source: 'fallback_json', error: err.message};
   }
 }
 function renderNote(item){
@@ -134,6 +135,11 @@ async function load(){
   const agendas = data.agendas || [];
   const aRows = agendas.filter(item => item.group === 'A조');
   const bRows = agendas.filter(item => item.group === 'B조');
+  document.title = SHOW_ALL ? '0704 조별 의제 후보 보드' : '0704 선정 의제 보드';
+  document.querySelector('h1').textContent = SHOW_ALL ? '투표 전 조별 의제 후보 17개' : '투표 대상 선정 의제 4개';
+  document.querySelector('#total-count').previousElementSibling.textContent = SHOW_ALL ? '전체 후보' : '선정 의제';
+  document.querySelector('#a-count').previousElementSibling.textContent = SHOW_ALL ? 'A조 후보' : 'A조 선정';
+  document.querySelector('#b-count').previousElementSibling.textContent = SHOW_ALL ? 'B조 후보' : 'B조 선정';
   document.getElementById('total-count').textContent = agendas.length;
   document.getElementById('a-count').textContent = aRows.length;
   document.getElementById('b-count').textContent = bRows.length;
