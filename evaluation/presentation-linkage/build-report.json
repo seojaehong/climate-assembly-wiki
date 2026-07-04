@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-07-03T23:45:18Z",
+  "generated_at": "2026-07-03T23:59:15Z",
   "outputs": {
     "evidence_map": "evaluation/presentation-linkage/linkage-evidence-map.json",
     "storyboard": "evaluation/presentation-linkage/linkage-storyboard.md",
     "pptx": "evaluation/presentation-linkage/20260704_process_to_conclusion_linkage.pptx"
   },
   "counts": {
-    "slides": 9,
+    "slides": 10,
     "public_sources": 6,
     "original_files": 25,
     "coverage_nodes": 77,
@@ -14,6 +14,7 @@
     "regulation_decisions": 7,
     "agenda_candidates": 8,
     "agenda_final_slots": 3,
+    "scenario_variant_slots": 3,
     "partial_or_review_sessions": 3
   },
   "fallbacks": [

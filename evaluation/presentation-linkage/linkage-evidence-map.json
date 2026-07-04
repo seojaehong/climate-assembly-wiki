@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-03T23:45:18Z",
+  "generated_at": "2026-07-03T23:59:15Z",
   "summary": {
     "a_only_public_menu": false,
     "all_data_completely_reflected": false,
@@ -232,10 +232,130 @@
       "caveat": null
     }
   ],
+  "agenda_deck_cross_check": {
+    "path": "10_작업산출물/7.4_발표덱/2026기후시민회의_숙의의제.pptx",
+    "exists": true,
+    "slides": 22,
+    "signals": [
+      {
+        "slide": 13,
+        "text": "8 || 1위 의제 · 4.06점 || 전 생애주기 탄소중립 교육 체계 구축 || 🥇 1위 || 왜 1위였을까요 | \"개개인의 실천\"보다 \"다음 세대를 같이 키우는 일\"이 가장 먼저라는 공감대가 컸습니다. 학교·평생교육·지역사회 모두를 잇는 체계가 필요하다는 의견이 모였습니다. || 학교 단계 | 초·중·고 정규 교과에서 | 기후·생태 통합 교육 || 평생 단계 | 성인 시민교육·직장 교육 | 생애 전 주기 학습 || 지역 단계 | 마을·도서관·문화센터 | 생활권 학습 거점 마련 || 우리가 1위로 꼽은 의제는 \"다음 세대를 같이 키우는\" 일이었습니다. || 13 / 22"
+      },
+      {
+        "slide": 14,
+        "text": "8 || 공동 2위 의제 · 3.89점 || 시민의식 개선 · 참여 활성화 || 🥈 공동 2위 || 왜 이 의제였을까요 | 정책이 아무리 좋아도 시민의 일상 행동·참여로 이어지지 않으면 변화는 멈춥니다. 평소 잘 하지 않던 \"한 번 더\" 행동을 어떻게 끌어낼지가 관건이었습니다. || 일상 캠페인 | 카페 일회용컵 줄이기 등 | 생활 밀착형 캠페인 || 동기 부여 | 실천에 대한 리워드 | 인센티브 · 포인트 || 지역 커뮤니티 | 마을·동네 단위 | 실천 공동체 활성화 || 디지털 도구 | 앱·플랫폼을 통한 | 실천 가시화·기록 || \"평소 행동\"의 변화를 어떻게 일상으로 끌어들일지가 핵심이었습니다. || 14 / 22"
+      },
+      {
+        "slide": 15,
+        "text": "8 || 공동 2위 의제 · 3.89점 || 자원순환 · 생활폐기물 감축 || 🥈 공동 2위 || 왜 이 의제였을까요 | A조의 \"자원순환형 배달·문화\"와 B조의 \"생활폐기물 감축\"이 한 문제의 양면이라는 데 동의했습니다. 일회용·배달·과대포장의 일상화를 어떻게 되돌릴지가 핵심이었습니다. || 다회용기·재사용 | 배달·테이크아웃에 | 다회용기 인프라 || 분리배출 고도화 | 올바른 분리·재활용률 | 실효성 강화 || 과대포장 규제 | 포장재 감축 의무화 | 생산자 책임 확대 || 지역 순환경제 | 동네 단위 자원순환 | 수리·재사용 거점 || \"한 문제의 양면\" — 자원순환과 폐기물 감축은 결국 같은 의제였습니다. || 15 / 22"
+      },
+      {
+        "slide": 18,
+        "text": "10 || 우리가 발견한 것 || 발산에서 선정까지, 우리가 배운 세 가지 || 1 || 비슷한 결은 묶을수록 분명해진다 | \"자원순환\"·\"적응형 도시\" 두 쌍을 통합한 뒤 의제의 의미가 더 또렷해졌습니다. || 2 || 점수는 \"버리기\"가 아니라 \"순서\"다 | 공동 2위·동률 결과를 그대로 유지했습니다. 8개 모두 우리가 다룰 의제입니다. || 3 || 의제 폭을 넓혀야 일상이 들어온다 | \"직간접\"으로 기준을 넓힌 결정이 \"교육 1위\"라는 결과로 이어졌습니다. || 통합하고, 순위로 보고, 폭을 넓힌 세 결정이 8개 의제를 만들었습니다. || 18 / 22"
+      }
+    ],
+    "current_three_agendas": [
+      {
+        "slot": "1위",
+        "conclusion": "전 생애주기 탄소중립 교육 체계 구축",
+        "source_decision_id": "agenda-education-citizen-participation",
+        "deck_slide": 13,
+        "status": "현재 숙의의제 발표덱에 별도 의제로 제시"
+      },
+      {
+        "slot": "공동 2위",
+        "conclusion": "시민의식 개선 · 참여 활성화",
+        "source_decision_id": "agenda-citizen-participation-original",
+        "deck_slide": 14,
+        "status": "현재 숙의의제 발표덱에 별도 의제로 제시"
+      },
+      {
+        "slot": "공동 2위",
+        "conclusion": "자원순환 · 생활폐기물 감축",
+        "source_decision_id": "agenda-resource-circulation",
+        "deck_slide": 15,
+        "status": "현재 숙의의제 발표덱에 별도 의제로 제시"
+      }
+    ]
+  },
   "agenda_final_slots": [
     {
+      "slot": "1위",
+      "status": "현재 숙의의제 발표덱에 별도 의제로 제시",
+      "conclusion": "전 생애주기 탄소중립 교육 체계 구축",
+      "deck_slide": 13,
+      "source_decisions": [
+        {
+          "id": "agenda-education-citizen-participation",
+          "agenda": "생애주기 탄소중립 교육 및 시민의식 개선",
+          "slot": "2",
+          "status": "selected_in_deck_narrative",
+          "vote_rank": 1,
+          "vote_score": 4.06,
+          "existing_context_matches": 10,
+          "discussion_signal": "strong",
+          "caveat": "citizen participation was a separate vote option and is represented here as an integrated narrative conclusion"
+        }
+      ],
+      "linkage": [
+        "사전 접수와 조별 숙의에서 교육 필요성이 반복됨",
+        "투표에서 가장 앞선 후보로 확인됨",
+        "현재 숙의의제 발표덱 13쪽에서 별도 의제로 설명됨"
+      ]
+    },
+    {
+      "slot": "공동 2위",
+      "status": "현재 숙의의제 발표덱에 별도 의제로 제시",
+      "conclusion": "시민의식 개선 · 참여 활성화",
+      "deck_slide": 14,
+      "source_decisions": [
+        {
+          "id": "agenda-citizen-participation-original",
+          "agenda": "시민의식 개선 및 참여 활성화",
+          "slot": "3",
+          "status": "integrated_into_selected",
+          "vote_rank": 2,
+          "vote_score": 3.89,
+          "existing_context_matches": 12,
+          "discussion_signal": "strong",
+          "caveat": null
+        }
+      ],
+      "linkage": [
+        "시민의식 개선과 참여 활성화 맥락이 교육·거버넌스 논의와 연결됨",
+        "투표에서 공동 2위권 후보로 확인됨",
+        "현재 숙의의제 발표덱 14쪽에서 별도 의제로 설명됨"
+      ]
+    },
+    {
+      "slot": "공동 2위",
+      "status": "현재 숙의의제 발표덱에 별도 의제로 제시",
+      "conclusion": "자원순환 · 생활폐기물 감축",
+      "deck_slide": 15,
+      "source_decisions": [
+        {
+          "id": "agenda-resource-circulation",
+          "agenda": "자원순환·생활폐기물 감축",
+          "slot": "5",
+          "status": "selected_in_deck_narrative",
+          "vote_rank": 3,
+          "vote_score": 3.89,
+          "existing_context_matches": 12,
+          "discussion_signal": "strong",
+          "caveat": null
+        }
+      ],
+      "linkage": [
+        "A조 자원순환형 배달 문화와 B조 생활폐기물 감축 논의가 만남",
+        "투표에서 공동 2위권 후보로 확인됨",
+        "현재 숙의의제 발표덱 15쪽에서 별도 의제로 설명됨"
+      ]
+    }
+  ],
+  "scenario_variant_slots": [
+    {
       "slot": "적응",
-      "status": "확정 설명 가능",
+      "status": "v6 시나리오상 통합 설명",
       "conclusion": "생애주기 탄소중립 교육 및 시민의식 개선",
       "source_decisions": [
         {
@@ -269,7 +389,7 @@
     },
     {
       "slot": "감축1",
-      "status": "확정 설명 가능",
+      "status": "v6 시나리오상 확정 설명 가능",
       "conclusion": "자원순환·생활폐기물 감축",
       "source_decisions": [
         {
@@ -292,7 +412,7 @@
     },
     {
       "slot": "감축2",
-      "status": "확정명 증거 부족",
+      "status": "v6 시나리오상 확정명 증거 부족",
       "conclusion": "새로운 의제 슬롯",
       "source_decisions": [],
       "linkage": [
@@ -316,6 +436,7 @@
     "process_graph": "public/workshop-graph/data/final-process-to-conclusion-0704.json",
     "final_regulation_graph": "public/workshop-graph/data/final-regulation-decisions-0704.json",
     "final_agenda_graph": "public/workshop-graph/data/final-agenda-decisions-0704.json",
+    "current_agenda_deck": "10_작업산출물/7.4_발표덱/2026기후시민회의_숙의의제.pptx",
     "regulation_scenario": "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
     "agenda_scenario": "10_작업산출물/7.4_발표덱/의제결과_v6/발표시나리오_의제선정결과_김영현.md"
   }

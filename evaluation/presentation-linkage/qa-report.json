@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-03T23:46:43Z",
+  "generated_at": "2026-07-03T23:59:50Z",
   "passed": true,
   "checks": {
     "required_files_exist": true,
@@ -7,14 +7,16 @@
     "public_menu_not_a_only": true,
     "partial_gap_count_matches": true,
     "agenda_slots_count_matches": true,
+    "scenario_variant_slots_count_matches": true,
+    "current_agenda_deck_checked": true,
     "required_text_present": true,
     "forbidden_unqualified_claims_absent": true
   },
   "counts": {
-    "slides": 9,
+    "slides": 10,
     "required_files": 5,
     "missing_required_files": 0,
-    "pptx_characters_extracted": 3214
+    "pptx_characters_extracted": 3720
   },
   "missing_files": [],
   "missing_required_phrases": [],
@@ -37,7 +39,7 @@
   },
   "visual_export": {
     "available": true,
-    "slides": 9,
+    "slides": 10,
     "contact_sheet": "evaluation/presentation-linkage/slide-contact-sheet.png"
   },
   "notes": [

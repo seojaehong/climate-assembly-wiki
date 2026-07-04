@@ -11,5 +11,6 @@
 - Independent input verification completed: evaluation/presentation-linkage/subagent-verification.md.
 - Final artifact review completed: evaluation/presentation-linkage/subagent-artifact-review.md.
 - QA passed: evaluation/presentation-linkage/qa-report.json.
-- Visual export succeeded: evaluation/presentation-linkage/slide-contact-sheet.png and slide-export/slide-01.png through slide-09.png.
+- Visual export succeeded: evaluation/presentation-linkage/slide-contact-sheet.png and slide-export/slide-01.png through slide-10.png.
 - Final framing: A-only public menu risk is resolved, but full data reflection is not complete because B_t2, 토론4통합, and 음성002 remain as gap/review items.
+- Follow-up correction: current top-level agenda deck evidence shows three agenda items separately as education, citizen awareness/participation, and resource circulation; the v6 scenario's education+citizen-participation integration and unresolved 감축2 slot are now documented as a separate variant/caveat.

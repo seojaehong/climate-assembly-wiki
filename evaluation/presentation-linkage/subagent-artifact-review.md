@@ -2,21 +2,23 @@
 
 ## 검토 결과
 
-- 블로커 없음.
-- 입력데이터 반영 범위는 과장하지 않는다. `tasks/ralph/presentation-linkage/prd.json`, `evaluation/presentation-linkage/linkage-evidence-map.json`, `evaluation/presentation-linkage/linkage-storyboard.md`, `evaluation/presentation-linkage/pptx-text-extract.txt` 모두 `B_t2`, `토론4통합`, `음성002`를 남은 gap으로 보존하고, `all_data_completely_reflected: false` 및 "완전 반영 완료라고는 말하지 않는다"는 표현을 유지한다.
-- 공개 메뉴/default가 A-only 또는 live-A_t1 중심이 아니라는 점이 명확하다. 근거맵은 기본값을 `final-process-to-conclusion-0704`, 공개 source를 6개, `has_live_a_t1: false`로 기록했고, 스토리보드와 PPTX 텍스트도 `A-only` 위험 해소와 별도 gap 유지를 함께 말한다.
-- 운영규정 결정 연결은 요구사항을 충족한다. 근거맵과 스토리보드는 운영규정 결정 7건을 토론맥락 건수, 투표 결과, 최종 규정 결론으로 연결하고, 검증 보고서도 최종 운영규정 그래프의 투표 근거와 토론 맥락 엣지를 확인한다.
-- 의제 결과 연결은 과장 없이 구성되어 있다. 의제는 후보/기준/투표/통합/최종 슬롯 흐름으로 설명되며, 감축2 세 번째 슬롯은 `새로운 의제 슬롯`, `확정명 증거 부족`, `현재 repo 증거상 확정명 없음`으로 남겨 잘못된 확정명을 만들지 않는다.
-- 구체 수치와 source reference가 포함되어 있다. 패키지는 원본 파일 25건, coverage 77 nodes / 79 edges, ready sessions 10건, partial/gap 3건, 운영규정 결정 7건, 의제 후보 8건, 최종 슬롯 3건, PPTX 9장을 제시하며, `source_files`에 `input-coverage-report.json`, `final-decision-ontology-report.json`, `sources.json`, `final-process-to-conclusion-0704.json`, `final-regulation-decisions-0704.json`, `final-agenda-decisions-0704.json` 등을 명시한다.
-- PPTX QA는 통과 상태다. `evaluation/presentation-linkage/qa-report.json`은 `passed: true`, 필수 파일 누락 0건, 추출 텍스트 3214자, 시각 export 9장을 기록한다. `markitdown`은 미설치로 실패했지만 `markitdown-check.log`와 QA notes에 제한이 남아 있고, `python-pptx` 텍스트 추출 fallback 및 slide export/contact sheet로 보완되어 있다.
+- **블로커 없음.** 업데이트된 패키지는 사용자의 최종 목적, 즉 “입력데이터 반영 범위와 남은 갭을 검증하고, 운영규정·의제 결론이 토론-투표-통합-결론으로 이어지는 과정을 발표자료 형태로 제시”한다는 요구를 충족한다.
+- 공개 메뉴 오해는 해소되어 있다. 근거맵은 기본 source를 `final-process-to-conclusion-0704`, 공개 source를 6개, `has_live_a_t1: false`로 기록하고, PPTX 2장은 이를 발표용 문장으로 풀어낸다.
+- 완전 반영 주장을 하지 않는다. 근거맵, 스토리보드, PPTX 1·2·9·10장은 모두 `B_t2`, `토론4통합`, `음성002` 3건을 gap/review 항목으로 남기며, “완전 반영 완료” 표현을 피한다.
+- 운영규정 산출물은 목적에 맞다. 결정 7건을 토론맥락 건수, 투표 결과, 최종 규정값으로 표 형태로 정리해 “끝장토론에서 바로 결론”이 아니라 “논의가 선택지를 만들고 투표가 결론을 고정”했다는 설명을 뒷받침한다.
+- 의제 산출물은 이번 업데이트의 핵심 차이를 반영했다. 현재 상위 숙의의제 덱은 교육, 시민의식·참여, 자원순환을 각각 별도 의제로 보여주며, 패키지의 `agenda_final_slots`와 PPTX 6~7장이 이 구조를 따른다.
+- v6 시나리오도 별도 caveat로 충분히 분리되어 있다. PPTX 8장과 스토리보드는 v6에서 교육+시민참여가 통합되고, 감축2는 새로운 의제 슬롯이지만 확정명 증거가 부족하다고 표시한다. 따라서 현재 덱 증거와 예전 시나리오를 섞어 말하는 위험은 낮아졌다.
+- QA 산출물은 사용 가능하다. `qa-report.json`은 `passed: true`, slides 10장, required files 누락 0건, text extraction 3720자, visual export 10장을 기록한다. `slide-contact-sheet.png`도 10개 슬라이드 썸네일을 보여준다.
+- source와 count가 발표자료에 남아 있다. 원본 파일 25건, source coverage 77 nodes / 79 edges, process graph 21 nodes / 30 edges, final regulation graph 32 nodes / 31 edges, final agenda graph 67 nodes / 74 edges, 운영규정 결정 7건, 의제 후보 8건, 현재 덱 슬롯 3건, v6 variant 슬롯 3건이 근거맵에 구체적으로 제시된다.
 
 ## 문제/리스크
 
-- 블로커는 없다. 다만 `subagent-verification.md`가 지적한 것처럼 "모든 입력 데이터 완전 반영 완료"라고 발표하면 블로커가 된다. 현재 생성 PPTX와 스토리보드는 이 표현을 피하고 3개 gap을 표시하므로 요구사항 기준으로는 해소되어 있다.
-- 운영규정 토론맥락은 연결 자체는 확인되지만 강도가 균일하지 않다. 일부 항목은 토론맥락 신호가 약하므로 "모든 결정의 토론 근거가 강하다"는 식의 문구는 피해야 한다.
-- `markitdown` 기반 독립 변환은 현재 환경에서 사용할 수 없다. QA fallback은 명시되어 있고 통과했지만, 향후 배포 기준이 markitdown 변환 자체를 요구하면 설치 후 재검증이 필요하다.
-- 근거맵 내부에는 후보별 평가값 필드가 남아 있다. 공개 발표물인 스토리보드/PPTX는 순위와 건수 중심이라 괜찮지만, 근거맵 내용을 대외 문서로 복사할 때는 해당 필드를 그대로 노출하지 않도록 주의가 필요하다.
+- 현재 패키지 기준 블로커는 없다.
+- 가장 큰 운영 리스크는 발표자가 “모든 입력이 완전 반영됐다”고 말하는 경우다. 산출물은 이를 막고 있지만, 실제 발표 문구에서 3개 gap을 생략하면 최종 목적에 어긋난다.
+- `markitdown` 변환은 현재 환경에서 실패했고, QA는 python-pptx 추출과 시각 export로 보완했다. 텍스트/시각 검수 목적에는 충분하지만, markitdown 자체 제출이 필요하면 추가 환경 정리가 필요하다.
+- `progress.txt`는 최신 QA의 10장 export와 상위 숙의의제 덱 기준 3개 의제 보완사항까지 반영되어 있다.
+- 근거맵의 `agenda_candidates`에는 기존 통합 서사의 후보 id와 caveat가 남아 있다. 공개 발표나 최종 보고에는 `agenda_final_slots`를 현재 덱 근거로, `scenario_variant_slots`를 v6 차이 설명으로 함께 사용해야 오해가 없다.
 
 ## 최종 판단
 
-현재 발표자료 연결 패키지는 제시된 6개 요구사항을 충족한다. 특히 A-only 오해 해소와 전체 반영 미완료 gap 보존을 동시에 처리했고, 운영규정/의제 결론을 토론-투표-통합-최종 슬롯 흐름으로 설명하면서 unresolved 감축2 의제를 허위 확정하지 않는다. QA 산출물도 통과했고 fallback 제한도 문서화되어 있으므로, 남은 gap을 발표 시 그대로 유지한다는 조건에서 최종 사용 가능으로 판단한다.
+업데이트된 발표자료 연결 패키지는 사용자의 최종 목적을 충족한다. 현재 상위 숙의의제 덱의 3개 의제와 v6 통합 시나리오의 차이를 분리했고, 입력 반영 범위를 과장하지 않으며, 운영규정과 의제 결론의 연결 구조도 근거와 숫자로 설명한다. 남은 gap을 발표에서 그대로 유지한다는 조건으로 최종 사용 가능하다.

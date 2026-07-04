@@ -1,35 +1,32 @@
-# 발표자료 연결 독립 검증
+# 발표자료 연결 패키지 독립 검증
 
 ## 검증 범위
 
 - 작업 위치: `C:\Users\iceam\OneDrive\_30_컨설팅\2026\기후회의모더레이터\wiki`
-- 검증 대상: `public/workshop-graph/sources.json`, `public/workshop-graph/data/source-coverage-2026-06-13.json`, `public/workshop-graph/data/final-process-to-conclusion-0704.json`, `public/workshop-graph/data/final-regulation-decisions-0704.json`, `public/workshop-graph/data/final-agenda-decisions-0704.json`
-- 대조 산출물: `evaluation/input-coverage/input-coverage-report.json`, `evaluation/input-coverage/input-coverage-audit.md`, `evaluation/ontology-final-decisions/final-decision-ontology-report.json`, `docs/graph-source-coverage-audit-2026-06-25.md`
-- 방식: 현재 저장소 산출물 기준 정적 검증. 재전사, DB 변경, 다른 파일 수정은 하지 않았다.
+- 검증 대상: `evaluation/presentation-linkage/linkage-evidence-map.json`, `evaluation/presentation-linkage/linkage-storyboard.md`, `evaluation/presentation-linkage/qa-report.json`, `evaluation/presentation-linkage/pptx-text-extract.txt`, `evaluation/presentation-linkage/slide-contact-sheet.png`, `scripts/build_presentation_linkage_package.py`, `scripts/qa_presentation_linkage_package.py`, `tasks/ralph/presentation-linkage/prd.json`, `tasks/ralph/presentation-linkage/progress.txt`
+- 추가 대조: 상위 발표덱 `..\10_작업산출물\7.4_발표덱\2026기후시민회의_숙의의제.pptx`를 읽어 22장 구성과 13~15쪽 의제 텍스트를 확인했다.
+- 방식: 현재 저장소 산출물 기준 정적 검증. PPTX 재생성, QA 재실행, DB 변경, git 조작은 하지 않았다. 쓰기 범위는 이 보고서와 `subagent-artifact-review.md`로 제한했다.
 
 ## 확인 결과
 
-- 공개 메뉴는 더 이상 A조 전용/live A조 데이터를 기본으로 강조하지 않는다. `public/workshop-graph/sources.json`의 기본 소스는 `final-process-to-conclusion-0704`이고, 공개 소스는 6개다: `final-process-to-conclusion-0704`, `final-regulation-decisions-0704`, `final-agenda-decisions-0704`, `workshop-2026-06-13`, `source-coverage-2026-06-13`, `regulation-2026-06-13`. `live-A_t1` 또는 A조 전용 live 소스는 현재 메뉴에 없고, `public/workshop-graph` 아래에도 해당 데이터 파일은 남아 있지 않다.
-- 입력 커버리지 산출물은 주요 입력 가족을 별도로 표현한다. `source-coverage-2026-06-13.json`은 77노드 / 79엣지, 원본 파일 25건, 이슈 3건을 담고 있다. `input-coverage-report.json` 기준으로 음성/문서 세션은 13건, 텍스트 입력은 6건, 워크플로 입력 Markdown은 10건이다.
-- 통합 워크숍 그래프는 A조만이 아니다. `workshop-2026-06-13.json`은 613노드 / 491엣지이며 A조 세션(`A_t21`, `A_t22`, `A_t23`, `OA_t1`, `DA_t2`), B조 세션(`B_t1`, `B_t2`, `B_t3`, `OB_t1`, `DB_t2`), 통합/발표/교육 세션(`OZ_t1`, `DZ_t2`, `발표`, `정의전환`, `환경4조`)을 함께 포함한다.
-- 결론 도출 경로는 별도 그래프로 연결되어 있다. `final-process-to-conclusion-0704.json`은 21노드 / 30엣지이고, 핵심 흐름은 `원본자료 -> 전사·텍스트 -> 통합 워크숍 그래프 -> 7.4 투표·발표자료 -> 최종 운영규정·의제 결론`이다. 엣지도 `mapsTo`, `narrowsTo`, `resolves`, `supports`로 이 흐름을 구분한다.
-- 운영규정 결정 연결은 명시적이다. `final-regulation-decisions-0704.json`은 32노드 / 31엣지이고, 최종 운영규정 결정 7건 모두에 투표 근거 엣지 1개, 최종 세트의 확정 엣지 1개, 토론 맥락 지지 엣지가 붙어 있다. 다만 토론 맥락 신호는 2건이 중간, 5건이 약함으로 기록되어 있어 “모든 결정의 토론 근거가 강하다”고 표현하면 과장이다.
-- 의제 결정/후보 연결도 명시적이다. `final-agenda-decisions-0704.json`은 67노드 / 74엣지이고, 의제 8건 모두에 투표 근거 엣지와 토론 맥락 지지 엣지가 있다. 처리 상태는 발표 시나리오상 선정 2건, 선정 의제로 통합 1건, 후보로 논의됨 5건이다. 따라서 “후보별 논의 맥락은 있었다”는 말은 가능하지만, 후보 8건 모두를 최종 선정 의제처럼 말하면 안 된다.
-- “끝장토론이 곧바로 결론을 만들었다”가 아니라 “토론이 기준과 후보를 만들고, 이후 투표·발표자료·통합 로직이 최종 결론을 고정했다”는 설명은 현재 산출물로 지지된다. 근거는 `final-process-to-conclusion-0704.json`의 `stage-workshop-graph -> stage-final-votes -> stage-final-conclusions` 경로와, 운영규정/의제 최종 세트의 `ctx_* -> decision_*`, `decision_* -> vote_*`, `final-set -> decision_*` 연결이다.
+- **공개 메뉴는 A-only/live-A_t1 중심이 아니다.** `linkage-evidence-map.json`의 `summary.a_only_public_menu`는 `false`이고, `public_menu.default`는 `final-process-to-conclusion-0704`다. 공개 source는 6개이며 `has_live_a_t1`은 `false`다. `pptx-text-extract.txt` 2장도 `live-A_t1 노출: False`와 `A-only 위험은 해소`를 같이 표시한다.
+- **전체 입력 반영 완료를 과장하지 않는다.** 근거맵의 `summary.all_data_completely_reflected`는 `false`이고, coverage는 원본 파일 25건, workflow Markdown 10건, ready session 10건, partial/review/gap 3건으로 제시된다. `linkage-storyboard.md`와 PPTX 9~10장은 `B_t2`, `토론4통합`, `음성002`를 남은 검증 게이트와 발표 주의 문구로 별도 표시한다.
+- **남은 입력 갭 3건은 구체적으로 보존되어 있다.** `B_t2`는 `needs_review`, `transcript_partial`, graph node 20건으로 일부 반영이나 전사 검토가 남았다. `토론4통합`은 `needs_review`, `transcript_partial`, graph node 0건이다. `음성002`는 `transcript_ready`이나 graph node 0건으로 UI/graph gap으로 남아 있다.
+- **운영규정 결정은 토론 맥락, 투표 결과, 최종 규정 결론으로 연결된다.** 근거맵과 스토리보드는 운영규정 결정 7건을 각각 토론맥락 건수, 투표 결과, 최종값으로 정리한다. 관련 최종 운영규정 그래프 수치도 32 nodes / 31 edges로 제시된다. 다만 토론 신호는 중간 2건, 약함 5건이므로 “모든 결정의 토론 근거가 강하다”는 표현은 부적절하다.
+- **현재 상위 숙의의제 발표덱 기준 의제 3개가 분리되었다.** 근거맵의 `agenda_deck_cross_check`는 상위 덱 존재, 22 slides, 13쪽 교육, 14쪽 시민의식·참여, 15쪽 자원순환·생활폐기물 감축을 확인한다. 독립 PPTX 읽기에서도 같은 13~15쪽 텍스트가 확인되었다.
+- **v6 시나리오 차이도 숨기지 않는다.** `agenda_final_slots`는 현재 덱 기준 3개 의제를 별도 슬롯으로 두고, `scenario_variant_slots`는 v6 시나리오를 적응=교육+시민참여 통합, 감축1=자원순환, 감축2=새로운 의제 슬롯/확정명 증거 부족으로 분리한다. PPTX 8장도 “현재 숙의의제 덱 기준 3의제”와 “v6 시나리오의 통합/미확정 슬롯”을 섞지 말라고 명시한다.
+- **PPTX QA는 통과 상태다.** `qa-report.json`은 `passed: true`이며 required files 5건 중 누락 0건, slides 10장, text extraction 3720자, visual export 10장을 기록한다. `pptx-text-extract.txt`도 slide 1~10을 포함한다.
+- **시각 export/contact sheet도 확인 가능하다.** `slide-export`에는 `slide-01.png`부터 `slide-10.png`까지 10개 파일이 있고, `slide-contact-sheet.png`에는 10개 썸네일이 배치되어 있다.
+- **source reference와 count는 구체적이다.** `source_files`는 input coverage, final decision report, public sources, source coverage graph, process graph, final regulation graph, final agenda graph, 현재 숙의의제 덱, 운영규정 v6 시나리오, 의제결과 v6 시나리오를 모두 경로로 남긴다. 핵심 그래프 count는 source coverage 77 nodes / 79 edges, process 21 nodes / 30 edges, final regulation 32 nodes / 31 edges, final agenda 67 nodes / 74 edges다.
 
 ## 남은 갭
 
-- **블로커: “모든 입력 데이터 완전 반영 완료”라고 발표하는 것은 현재 산출물과 맞지 않는다.** `input-coverage-report.json`의 `allDataCompletelyReflected`는 `false`이고, `partialOrGapSessions`는 3건이다.
-- `B_t2`(`6/14 B조 토론2`): 전사 상태가 `transcript_partial`이고 chunk/json은 1/5다. 그래프에는 20노드가 있어 일부 반영은 되었지만, 상위 txt/srt가 0바이트로 기록되어 재확인이 필요하다.
-- `토론4통합`(`6/14 토론4 통합 운영`): 전사 상태가 `transcript_partial`, chunk/json은 0/10, 그래프 노드는 0이다. 운영규정 최종 결정 그래프는 `06b_조숙의_통합_토론4.md` 및 의결표를 근거로 쓰지만, 원본 음성 전사-그래프 연결은 아직 미완으로 남는다.
-- `음성002`: 전사 상태는 `transcript_ready`, chunk/json은 9/9지만 그래프 노드는 0이다. 현재 공개 그래프 또는 UI에서 별도 연결 상태가 확인되지 않는다.
-- 조건부 운영 투표 입력(`public/0704-admin/decision-votes-report.json`의 V0/V1A/V1B)은 `input-coverage-report.json`에서 응답 수 0으로 잡혀 있다. 현재 최종 결론 근거로 쓰지 않는 판단은 타당하지만, 발표자료가 이 조건부 투표를 근거로 말하면 추가 확인이 필요하다.
+- **블로커 없음.** 현재 패키지 자체는 요구한 검증 조건을 충족한다.
+- **조건부 블로커: “모든 입력 데이터 완전 반영 완료”라고 발표하면 안 된다.** 현재 산출물은 이 표현을 피하고 있지만, `B_t2`, `토론4통합`, `음성002` 3건을 숨기면 검증 판단이 뒤집힌다.
+- `markitdown`은 현재 환경에서 `returncode: 1`, `available: false`다. QA는 python-pptx 텍스트 추출 fallback과 slide PNG/contact sheet로 통과했으므로 현 패키지의 블로커는 아니지만, markitdown 변환 자체가 납품 조건이면 별도 재검증이 필요하다.
+- `tasks/ralph/presentation-linkage/progress.txt`도 최신 10장 export와 상위 숙의의제 덱 기준 3개 의제 보완사항을 반영한다.
+- `agenda_candidates`에는 과거 통합 서사의 흔적이 남아 있어, raw JSON의 후보 목록만 떼어 읽으면 교육+시민참여 통합으로 오해할 수 있다. 발표/보고에는 `agenda_final_slots`와 `scenario_variant_slots`를 함께 써야 한다.
 
-## 발표자료 반영 권고
+## 최종 판단
 
-- 첫 장에서는 “A조 live 샘플”이 아니라 `전체 과정 -> 최종 결론`을 기본 진입점으로 보여준다. 메뉴 검증 결과는 “A조 전용 공개 노출 없음”으로 말해도 된다.
-- 데이터 반영 상태는 “원본 25건, 음성/문서 세션 13건, 텍스트 입력 6건, 워크플로 Markdown 10건을 커버리지 감사에 올렸고, 통합 그래프는 613노드 / 491엣지”라고 설명한다.
-- 단, 같은 장 또는 각주에 `B_t2`, `토론4통합`, `음성002` 3건은 재확인/그래프 갭으로 남아 있다고 명시한다.
-- 결론 서사는 “토론이 기준과 후보를 형성했고, 7.4 투표·발표자료·통합 로직이 최종 결론을 확정했다”로 잡는 것이 현재 온톨로지 구조와 가장 잘 맞다.
-- 운영규정은 “최종 결정 7건 모두 투표 근거와 토론 맥락이 연결됨. 다만 일부 토론 맥락은 약함”으로 표현한다.
-- 의제는 “선정 2건, 통합 1건, 후보 논의 5건”으로 구분한다. 후보 전체를 최종 선정처럼 묶지 말고, 통합된 후보는 `integrates` 관계로 설명한다.
+현재 발표자료 연결 패키지는 공개 메뉴가 A조/live-A_t1 중심이 아니라는 점, 전체 입력 반영을 과장하지 않는 점, 운영규정 결정을 토론-투표-최종값으로 연결한 점, 그리고 상위 숙의의제 덱의 3개 의제를 v6 통합 시나리오와 분리한 점을 모두 충족한다. 블로커는 없으며, 남은 3개 입력 갭과 v6 감축2 미확정 슬롯을 발표 시 그대로 유지하는 조건에서 검증 통과로 판단한다.

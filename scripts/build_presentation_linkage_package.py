@@ -69,6 +69,63 @@ def graph_counts(graph: dict[str, Any]) -> dict[str, int]:
     return {"nodes": len(nodes), "edges": len(edges)}
 
 
+def extract_pptx_slide_text(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    prs = Presentation(path)
+    slides: list[dict[str, Any]] = []
+    for slide_index, slide in enumerate(prs.slides, start=1):
+        texts: list[str] = []
+        for shape in slide.shapes:
+            if hasattr(shape, "text"):
+                text = str(shape.text or "").strip()
+                if text:
+                    texts.append(text.replace("\n", " | "))
+        slides.append({"slide": slide_index, "text": " || ".join(texts)})
+    return slides
+
+
+def agenda_deck_cross_check() -> dict[str, Any]:
+    relative_path = Path("10_작업산출물") / "7.4_발표덱" / "2026기후시민회의_숙의의제.pptx"
+    deck_path = ROOT.parent / relative_path
+    slides = extract_pptx_slide_text(deck_path)
+    signals = [
+        item
+        for item in slides
+        if item["slide"] in {13, 14, 15, 18}
+        or any(term in item["text"] for term in ["1위 의제", "공동 2위 의제", "우리가 발견한 것"])
+    ]
+    return {
+        "path": relative_path.as_posix(),
+        "exists": deck_path.exists(),
+        "slides": len(slides),
+        "signals": signals,
+        "current_three_agendas": [
+            {
+                "slot": "1위",
+                "conclusion": "전 생애주기 탄소중립 교육 체계 구축",
+                "source_decision_id": "agenda-education-citizen-participation",
+                "deck_slide": 13,
+                "status": "현재 숙의의제 발표덱에 별도 의제로 제시",
+            },
+            {
+                "slot": "공동 2위",
+                "conclusion": "시민의식 개선 · 참여 활성화",
+                "source_decision_id": "agenda-citizen-participation-original",
+                "deck_slide": 14,
+                "status": "현재 숙의의제 발표덱에 별도 의제로 제시",
+            },
+            {
+                "slot": "공동 2위",
+                "conclusion": "자원순환 · 생활폐기물 감축",
+                "source_decision_id": "agenda-resource-circulation",
+                "deck_slide": 15,
+                "status": "현재 숙의의제 발표덱에 별도 의제로 제시",
+            },
+        ],
+    }
+
+
 def short_vote(decision: dict[str, Any]) -> str:
     vote = decision.get("vote")
     if vote:
@@ -94,10 +151,43 @@ def build_evidence_map() -> dict[str, Any]:
     agenda_items = final_report["coverage"]["agenda"]
 
     agenda_by_id = {item["id"]: item for item in agenda_items}
-    final_slots = [
+    deck_check = agenda_deck_cross_check()
+    final_slots = []
+    for deck_item in deck_check["current_three_agendas"]:
+        decision = agenda_by_id[deck_item["source_decision_id"]]
+        if deck_item["source_decision_id"] == "agenda-education-citizen-participation":
+            linkage = [
+                "사전 접수와 조별 숙의에서 교육 필요성이 반복됨",
+                "투표에서 가장 앞선 후보로 확인됨",
+                "현재 숙의의제 발표덱 13쪽에서 별도 의제로 설명됨",
+            ]
+        elif deck_item["source_decision_id"] == "agenda-citizen-participation-original":
+            linkage = [
+                "시민의식 개선과 참여 활성화 맥락이 교육·거버넌스 논의와 연결됨",
+                "투표에서 공동 2위권 후보로 확인됨",
+                "현재 숙의의제 발표덱 14쪽에서 별도 의제로 설명됨",
+            ]
+        else:
+            linkage = [
+                "A조 자원순환형 배달 문화와 B조 생활폐기물 감축 논의가 만남",
+                "투표에서 공동 2위권 후보로 확인됨",
+                "현재 숙의의제 발표덱 15쪽에서 별도 의제로 설명됨",
+            ]
+        final_slots.append(
+            {
+                "slot": deck_item["slot"],
+                "status": deck_item["status"],
+                "conclusion": deck_item["conclusion"],
+                "deck_slide": deck_item["deck_slide"],
+                "source_decisions": [decision],
+                "linkage": linkage,
+            }
+        )
+
+    scenario_variant_slots = [
         {
             "slot": "적응",
-            "status": "확정 설명 가능",
+            "status": "v6 시나리오상 통합 설명",
             "conclusion": "생애주기 탄소중립 교육 및 시민의식 개선",
             "source_decisions": [
                 agenda_by_id["agenda-education-citizen-participation"],
@@ -111,7 +201,7 @@ def build_evidence_map() -> dict[str, Any]:
         },
         {
             "slot": "감축1",
-            "status": "확정 설명 가능",
+            "status": "v6 시나리오상 확정 설명 가능",
             "conclusion": "자원순환·생활폐기물 감축",
             "source_decisions": [agenda_by_id["agenda-resource-circulation"]],
             "linkage": [
@@ -122,7 +212,7 @@ def build_evidence_map() -> dict[str, Any]:
         },
         {
             "slot": "감축2",
-            "status": "확정명 증거 부족",
+            "status": "v6 시나리오상 확정명 증거 부족",
             "conclusion": "새로운 의제 슬롯",
             "source_decisions": [],
             "linkage": [
@@ -162,7 +252,9 @@ def build_evidence_map() -> dict[str, Any]:
         },
         "regulation_decisions": regulation_items,
         "agenda_candidates": agenda_items,
+        "agenda_deck_cross_check": deck_check,
         "agenda_final_slots": final_slots,
+        "scenario_variant_slots": scenario_variant_slots,
         "caveats": final_report["caveats"],
         "source_files": {
             "input_coverage": "evaluation/input-coverage/input-coverage-report.json",
@@ -172,6 +264,7 @@ def build_evidence_map() -> dict[str, Any]:
             "process_graph": "public/workshop-graph/data/final-process-to-conclusion-0704.json",
             "final_regulation_graph": "public/workshop-graph/data/final-regulation-decisions-0704.json",
             "final_agenda_graph": "public/workshop-graph/data/final-agenda-decisions-0704.json",
+            "current_agenda_deck": deck_check["path"],
             "regulation_scenario": "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
             "agenda_scenario": "10_작업산출물/7.4_발표덱/의제결과_v6/발표시나리오_의제선정결과_김영현.md",
         },
@@ -319,8 +412,17 @@ def build_storyboard(evidence: dict[str, Any]) -> str:
     ]
     for item in regulation:
         lines.append(f"- {item['decision']}: 토론맥락 {item['existing_context_matches']}건, 투표 `{item['vote']}`, 결론 `{item['result']}`")
-    lines.extend(["", "## 의제 3개 연결 구조", ""])
+    lines.extend(["", "## 의제 3개 연결 구조 - 현재 숙의의제 발표덱 기준", ""])
     for slot in slots:
+        decision_bits = []
+        for decision in slot["source_decisions"]:
+            decision_bits.append(f"{decision['agenda']} ({short_vote(decision)}, 토론맥락 {decision['existing_context_matches']}건)")
+        source_text = "; ".join(decision_bits)
+        lines.append(f"- {slot['slot']} / {slot['conclusion']} / {slot['status']} / deck {slot['deck_slide']}쪽: {source_text}")
+        for step in slot["linkage"]:
+            lines.append(f"  - {step}")
+    lines.extend(["", "## v6 시나리오와 자료 차이", ""])
+    for slot in evidence["scenario_variant_slots"]:
         decision_bits = []
         for decision in slot["source_decisions"]:
             decision_bits.append(f"{decision['agenda']} ({short_vote(decision)}, 토론맥락 {decision['existing_context_matches']}건)")
@@ -334,7 +436,8 @@ def build_storyboard(evidence: dict[str, Any]) -> str:
             "## 발표 시 주의 문구",
             "",
             "- 모든 데이터가 완전 반영됐다고 말하지 않는다. 현재 검증상 A-only 주장은 해소됐지만, partial/gap 3건은 별도 표시한다.",
-            "- 세 번째 감축2 의제는 현재 증거상 `새 의제 슬롯`으로 표시하고, 확정명은 추가 근거가 들어올 때 업데이트한다.",
+            "- 현재 숙의의제 발표덱은 교육, 시민의식·참여, 자원순환을 각각 별도 의제로 보여준다.",
+            "- 의제결과 v6 시나리오는 시민의식·참여를 교육 의제에 통합하고 감축2 새 의제를 미확정 슬롯으로 둔다. 두 자료의 차이를 숨기지 않는다.",
             "- 운영규정은 조별토론·전체논의·전자투표 흐름을 통해 결정되었다고 설명한다.",
         ]
     )
@@ -498,17 +601,17 @@ def build_pptx(evidence: dict[str, Any], output_path: Path) -> None:
     )
     add_text(slide, "운영규정 제14조 기준이 의제 선정의 필터 역할을 한다.", 1.25, 4.55, 9.8, 0.3, font_size=12, color=COLORS["muted"])
 
-    slide = new_slide("5. 의제 3개: 확정·통합·미확정 슬롯을 분리", "세 번째는 현재 증거상 확정명이 아니라 새 의제 슬롯")
-    slot_colors = [COLORS["teal"], COLORS["cyan"], COLORS["rose"]]
+    slide = new_slide("5. 의제 3개: 현재 발표덱 기준", "상위 숙의의제 PPTX는 3개 의제를 별도 슬라이드로 제시")
+    slot_colors = [COLORS["teal"], COLORS["indigo"], COLORS["cyan"]]
     for index, slot in enumerate(evidence["agenda_final_slots"]):
         x = 0.75 + index * 4.15
         add_rect(slide, x, 1.55, 3.65, 4.6, fill=COLORS["white"], line=slot_colors[index], radius=True)
         add_label(slide, slot["slot"], x + 0.25, 1.82, 0.95, slot_colors[index])
         add_text(slide, slot["conclusion"], x + 0.25, 2.35, 3.05, 0.78, font_size=16, bold=True, color=COLORS["ink"])
-        add_text(slide, slot["status"], x + 0.25, 3.22, 3.1, 0.28, font_size=11, color=slot_colors[index], bold=True)
+        add_text(slide, f"{slot['status']} · deck {slot['deck_slide']}쪽", x + 0.25, 3.22, 3.1, 0.28, font_size=10, color=slot_colors[index], bold=True)
         body = "\n".join(f"- {line}" for line in slot["linkage"])
         add_text(slide, body, x + 0.25, 3.75, 3.1, 1.45, font_size=8, color=COLORS["muted"])
-    add_text(slide, "이 구분이 있어야 `없는 확정명`을 만들어내지 않으면서도 세 방향의 도출과정을 보여줄 수 있다.", 1.15, 6.42, 10.9, 0.3, font_size=13, bold=True, color=COLORS["teal"], align=PP_ALIGN.CENTER)
+    add_text(slide, "현재 숙의의제 발표덱 기준으로는 교육, 시민의식·참여, 자원순환이 각각 의제 3개로 보인다.", 1.15, 6.42, 10.9, 0.3, font_size=13, bold=True, color=COLORS["teal"], align=PP_ALIGN.CENTER)
 
     slide = new_slide("6. 의제별 근거 연결", "투표 근거와 토론 맥락을 같이 보여주기")
     widths = [2.25, 3.35, 2.1, 1.65, 3.2]
@@ -516,11 +619,18 @@ def build_pptx(evidence: dict[str, Any], output_path: Path) -> None:
     y = 2.15
     table_rows = [
         [
-            "교육·시민참여",
-            "교육 의제에 시민의식 개선 후보 통합",
-            "1위 + 공동 2위",
-            "10건 + 12건",
-            "교육 체계와 참여 활성화를 하나로 설명",
+            "교육",
+            "전 생애주기 탄소중립 교육 체계 구축",
+            "1위",
+            "10건",
+            "학습·다음세대·지역교육 논의가 투표 결과로 연결",
+        ],
+        [
+            "시민의식·참여",
+            "시민의식 개선 및 참여 활성화",
+            "공동 2위",
+            "12건",
+            "일상 행동과 참여 활성화 논의가 별도 의제로 연결",
         ],
         [
             "자원순환·폐기물",
@@ -529,21 +639,26 @@ def build_pptx(evidence: dict[str, Any], output_path: Path) -> None:
             "12건",
             "소비·생활양식 논의를 감축1 의제로 연결",
         ],
-        [
-            "감축2 새 의제",
-            "새 의제 슬롯",
-            "추가 필요",
-            "추가 필요",
-            "현재 파일만으로 확정명 단정 불가",
-        ],
     ]
     for row in table_rows:
         add_table_row(slide, row, 0.65, y, widths, [COLORS["white"]] * 5, font_size=8)
         y += 0.72
     add_rect(slide, 1.0, 5.2, 11.25, 0.8, fill="FEF3C7", line="F59E0B", radius=True)
-    add_text(slide, "권고: 본 발표에서는 1·2번을 확정 연결로, 3번은 `새 의제 확정 근거 필요`로 말한다.", 1.25, 5.45, 10.8, 0.28, font_size=14, color=COLORS["amber"], bold=True, align=PP_ALIGN.CENTER)
+    add_text(slide, "권고: 3개 의제는 현재 숙의의제 발표덱 기준으로 말하고, v6 통합 시나리오 차이는 다음 장에서 별도 설명한다.", 1.25, 5.45, 10.8, 0.28, font_size=13, color=COLORS["amber"], bold=True, align=PP_ALIGN.CENTER)
 
-    slide = new_slide("7. 남은 검증 게이트", "완전 반영 완료라고 말하기 전에 닫아야 할 항목")
+    slide = new_slide("7. 자료 간 차이: v6 통합 시나리오", "교육+시민참여 통합과 감축2 새 슬롯은 별도 caveat")
+    variant_colors = [COLORS["teal"], COLORS["cyan"], COLORS["rose"]]
+    for index, slot in enumerate(evidence["scenario_variant_slots"]):
+        x = 0.75 + index * 4.15
+        add_rect(slide, x, 1.55, 3.65, 3.55, fill=COLORS["white"], line=variant_colors[index], radius=True)
+        add_label(slide, slot["slot"], x + 0.25, 1.82, 0.95, variant_colors[index])
+        add_text(slide, slot["conclusion"], x + 0.25, 2.33, 3.05, 0.58, font_size=14, bold=True, color=COLORS["ink"])
+        add_text(slide, slot["status"], x + 0.25, 3.08, 3.1, 0.32, font_size=9, color=variant_colors[index], bold=True)
+        body = "\n".join(f"- {line}" for line in slot["linkage"][:2])
+        add_text(slide, body, x + 0.25, 3.62, 3.1, 0.72, font_size=8, color=COLORS["muted"])
+    add_text(slide, "따라서 발표에서는 `현재 숙의의제 덱 기준 3의제`와 `v6 시나리오의 통합/미확정 슬롯`을 섞어 말하지 않는다.", 1.05, 5.8, 11.1, 0.42, font_size=15, bold=True, color=COLORS["rose"], align=PP_ALIGN.CENTER)
+
+    slide = new_slide("8. 남은 검증 게이트", "완전 반영 완료라고 말하기 전에 닫아야 할 항목")
     gaps = coverage["input_gap_items"]
     for index, gap in enumerate(gaps):
         y = 1.65 + index * 1.25
@@ -562,7 +677,7 @@ def build_pptx(evidence: dict[str, Any], output_path: Path) -> None:
         )
     add_text(slide, "이 3건이 남아 있기 때문에 `모든 입력이 완전 반영`이라는 표현은 아직 금물이다.", 1.05, 5.8, 11.0, 0.42, font_size=17, bold=True, color=COLORS["rose"], align=PP_ALIGN.CENTER)
 
-    slide = new_slide("8. 발표용 한 문장", "운영규정과 의제 결과를 같이 묶는 닫는 말")
+    slide = new_slide("9. 발표용 한 문장", "운영규정과 의제 결과를 같이 묶는 닫는 말")
     add_rect(slide, 1.15, 1.65, 11.0, 3.1, fill=COLORS["white"], line=COLORS["teal"], radius=True)
     add_text(
         slide,
@@ -612,7 +727,7 @@ def build_package(out_dir: Path) -> dict[str, Any]:
             "pptx": pptx_path.relative_to(ROOT).as_posix(),
         },
         "counts": {
-            "slides": 9,
+            "slides": 10,
             "public_sources": len(evidence["public_menu"]["source_ids"]),
             "original_files": evidence["coverage"]["original_files"],
             "coverage_nodes": evidence["coverage"]["source_coverage_graph"]["nodes"],
@@ -620,6 +735,7 @@ def build_package(out_dir: Path) -> dict[str, Any]:
             "regulation_decisions": len(evidence["regulation_decisions"]),
             "agenda_candidates": len(evidence["agenda_candidates"]),
             "agenda_final_slots": len(evidence["agenda_final_slots"]),
+            "scenario_variant_slots": len(evidence["scenario_variant_slots"]),
             "partial_or_review_sessions": evidence["coverage"]["partial_or_review_sessions"],
         },
         "fallbacks": [

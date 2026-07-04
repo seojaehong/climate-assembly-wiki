@@ -139,7 +139,9 @@ def qa_package(out_dir: Path) -> dict[str, Any]:
         "숙의가 기준과 선택지를 만들고",
         "운영규정",
         "의제 3개",
-        "감축2 새 의제",
+        "시민의식·참여",
+        "자료 간 차이",
+        "새로운 의제 슬롯",
         "B_t2",
         "토론4통합",
         "음성002",
@@ -156,10 +158,12 @@ def qa_package(out_dir: Path) -> dict[str, Any]:
     visual_export = build_contact_sheet(slide_export_dir, contact_sheet_path)
     checks = {
         "required_files_exist": not missing_files,
-        "slide_count_matches_report": len(slides) == build_report["counts"]["slides"] == 9,
+        "slide_count_matches_report": len(slides) == build_report["counts"]["slides"] == 10,
         "public_menu_not_a_only": evidence["public_menu"]["has_live_a_t1"] is False,
         "partial_gap_count_matches": evidence["coverage"]["partial_or_review_sessions"] == 3,
         "agenda_slots_count_matches": len(evidence["agenda_final_slots"]) == 3,
+        "scenario_variant_slots_count_matches": len(evidence["scenario_variant_slots"]) == 3,
+        "current_agenda_deck_checked": evidence["agenda_deck_cross_check"]["exists"] is True,
         "required_text_present": not missing_phrases,
         "forbidden_unqualified_claims_absent": not forbidden_hits,
     }
