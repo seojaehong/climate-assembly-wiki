@@ -3,7 +3,7 @@ param(
   [string]$PublicSummarySpreadsheetId = "19xrXFFmaP4bS3JB2o6HeYmDyYgZhK6ez8URAHFYcBss",
   [string]$NameQuestionTitle = "이름",
   [switch]$Watch,
-  [int]$IntervalSeconds = 10
+  [int]$IntervalSeconds = 5
 )
 
 $ErrorActionPreference = "Stop"

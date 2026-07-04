@@ -1,0 +1,9 @@
+## 2026-07-04 S1/S2
+- Changed: lowered Google decision vote screen polling to 2 seconds and watcher default to 5 seconds.
+- Changed: added presentation fullscreen mode to the Google decision result modal.
+- Changed: created parallel Supabase fallback console at /0704-supabase-vote/.
+- Changed: created Supabase RADIO rounds D0704-V0, D0704-V1A, D0704-V1B with the same V0/V1A/V1B prompts and options.
+- Verified: npm.cmd exec -- vitest run scripts/decision-vote-console.test.mjs passed with 16 tests.
+- Verified: Supabase REST read showed all D0704 rounds as RADIO and pending.
+- Learned: EX2 and EX3 were not usable for same-structure fallback because their existing types were CHECKBOX and TEXT.
+- Next: Deploy and browser-check /0704-supabase-vote/ plus /v/D0704-V0/.

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>투표 D0704-V1A — 2026 기후시민회의</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0F1A2A;--ink-2:#4A5568;--ink-3:#8A95A3;--paper:#FAFBFC;--rule:#E2E6EC;--navy:#1F4E79;--teal:#0D7490;--amber:#F5A623;--green:#1A9E5C;--red:#DC2626;}
+*{box-sizing:border-box;margin:0;padding:0;}html{font-size:18px;}
+body{background:var(--paper);color:var(--ink);font-family:'Pretendard',-apple-system,'Apple SD Gothic Neo',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;}
+.header{background:linear-gradient(180deg,var(--navy) 0%,#14334F 100%);color:#fff;padding:18px 20px 16px;}
+.header-title{font-size:22px;font-weight:900;letter-spacing:-0.02em;line-height:1.1;}
+.header-sub{font-size:13px;font-weight:500;opacity:0.72;margin-top:4px;letter-spacing:0.02em;}
+.main{padding:28px 20px 60px;max-width:640px;margin:0 auto;}
+.screen{display:none;}.screen.active{display:block;}
+.loading-wrap{text-align:center;padding:80px 0;color:var(--ink-2);font-size:17px;}
+.spinner{width:44px;height:44px;border:4px solid var(--rule);border-top-color:var(--teal);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 20px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.error-wrap{background:#FFF5F5;border:2px solid #FCA5A5;border-radius:8px;padding:28px 24px;text-align:center;}
+.error-title{font-size:20px;font-weight:700;color:var(--red);margin-bottom:10px;}
+.error-body{font-size:15px;color:var(--ink-2);line-height:1.6;}
+.closed-wrap{background:#F1F5F9;border:2px solid #CBD5E1;border-radius:8px;padding:40px 24px;text-align:center;}
+.closed-title{font-size:24px;font-weight:800;color:var(--ink-2);margin-bottom:10px;}
+.closed-body{font-size:16px;color:var(--ink-3);line-height:1.6;}
+.round-badge{display:inline-block;background:var(--teal);color:#fff;font-size:13px;font-weight:700;letter-spacing:0.12em;padding:4px 12px;border-radius:4px;margin-bottom:14px;}
+.round-title{font-size:28px;font-weight:900;color:var(--ink);line-height:1.2;margin-bottom:8px;letter-spacing:-0.02em;}
+.round-desc{font-size:16px;color:var(--ink-2);line-height:1.6;margin-bottom:28px;}
+.divider{border:none;border-top:1px solid var(--rule);margin:24px 0;}
+.options-list{display:flex;flex-direction:column;gap:12px;margin-bottom:28px;}
+.opt-label{display:flex;align-items:center;gap:16px;min-height:80px;padding:16px 20px;background:#fff;border:2.5px solid var(--rule);border-radius:10px;cursor:pointer;font-size:20px;font-weight:600;line-height:1.3;color:var(--ink);-webkit-tap-highlight-color:transparent;user-select:none;}
+.opt-label:active{background:#F0F9FF;}
+.opt-custom{width:28px;height:28px;flex-shrink:0;border:3px solid var(--rule);border-radius:50%;background:#fff;position:relative;}
+.opt-label.checkbox .opt-custom{border-radius:7px;}
+.opt-label.selected{border-color:var(--teal);background:#EFF9FB;}
+.opt-label.selected .opt-custom{border-color:var(--teal);background:var(--teal);}
+.opt-label:not(.checkbox).selected .opt-custom::after{content:"";position:absolute;top:5px;left:5px;width:14px;height:14px;background:#fff;border-radius:50%;}
+.opt-label.checkbox.selected .opt-custom::after{content:"\2713";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:16px;font-weight:900;}
+.scale-list{display:flex;flex-direction:column;gap:16px;margin-bottom:28px;}
+.scale-row{background:#fff;border:1.5px solid var(--rule);border-radius:10px;padding:14px 16px;}
+.scale-label{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:10px;line-height:1.3;}
+.scale-btns{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+.scale-btn{padding:12px 4px;border:2.5px solid var(--rule);border-radius:8px;background:#fff;font-size:20px;font-weight:700;color:var(--ink-2);cursor:pointer;text-align:center;-webkit-tap-highlight-color:transparent;}
+.scale-btn.sel{border-color:var(--teal);background:var(--teal);color:#fff;}
+.scale-hint{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-3);margin-top:6px;font-weight:500;}
+.text-area{width:100%;min-height:160px;padding:16px;font-size:18px;font-family:inherit;border:2.5px solid var(--rule);border-radius:10px;background:#fff;color:var(--ink);resize:vertical;margin-bottom:28px;line-height:1.5;}
+.text-area:focus{outline:none;border-color:var(--teal);}
+.voter-section{margin-bottom:24px;}
+.voter-label{font-size:15px;font-weight:600;color:var(--ink-2);margin-bottom:8px;}
+.voter-select,.voter-input{width:100%;padding:14px 16px;font-size:18px;font-family:inherit;border:2px solid var(--rule);border-radius:8px;background:#fff;color:var(--ink);margin-bottom:10px;appearance:none;-webkit-appearance:none;}
+.voter-select:focus,.voter-input:focus{outline:none;border-color:var(--teal);}
+.submit-btn{width:100%;height:80px;background:var(--teal);color:#fff;font-size:22px;font-weight:900;border:none;border-radius:10px;cursor:pointer;letter-spacing:-0.01em;}
+.submit-btn:disabled{background:var(--ink-3);cursor:not-allowed;}
+.thankyou-wrap{text-align:center;padding:20px 0 40px;}
+.thankyou-icon{font-size:72px;margin-bottom:16px;}
+.thankyou-title{font-size:30px;font-weight:900;color:var(--green);margin-bottom:10px;letter-spacing:-0.02em;}
+.thankyou-sub{font-size:17px;color:var(--ink-2);line-height:1.6;margin-bottom:32px;}
+.retry-btn{display:inline-block;padding:14px 32px;background:#fff;border:2px solid var(--teal);border-radius:8px;font-size:17px;font-weight:700;color:var(--teal);cursor:pointer;margin-bottom:32px;}
+.tally-preview{background:#fff;border:1.5px solid var(--rule);border-radius:10px;padding:20px 20px 16px;margin-top:4px;text-align:left;}
+.tally-preview-title{font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px;}
+.tally-bar-row{margin-bottom:10px;}
+.tally-bar-label{display:flex;justify-content:space-between;font-size:14px;font-weight:600;color:var(--ink-2);margin-bottom:4px;}
+.tally-bar-track{height:16px;background:var(--rule);border-radius:4px;overflow:hidden;}
+.tally-bar-fill{height:100%;background:var(--teal);border-radius:4px;transition:width 0.5s ease;}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-title">2026 기후시민회의 의제선정</div>
+  <div class="header-sub" id="headerRoundId">투표 참여</div>
+</div>
+<div class="main">
+  <div class="screen active" id="screenLoading">
+    <div class="loading-wrap"><div class="spinner"></div><div>라운드 정보를 불러오는 중...</div></div>
+  </div>
+  <div class="screen" id="screenError">
+    <div class="error-wrap">
+      <div class="error-title">오류가 발생했습니다</div>
+      <div class="error-body" id="errorMsg">다시 시도해 주세요.</div>
+    </div>
+  </div>
+  <div class="screen" id="screenClosed">
+    <div class="closed-wrap">
+      <div class="closed-title">마감된 라운드입니다</div>
+      <div class="closed-body">이 라운드는 이미 마감되었습니다.<br>다음 라운드를 기다려 주세요.</div>
+    </div>
+  </div>
+  <div class="screen" id="screenForm">
+    <div class="round-badge" id="formRoundBadge">R?</div>
+    <div class="round-title" id="formTitle"></div>
+    <div class="round-desc" id="formDesc"></div>
+    <div id="radioSection" style="display:none"><div class="options-list" id="radioList"></div></div>
+    <div id="checkboxSection" style="display:none"><div class="options-list" id="checkboxList"></div></div>
+    <div id="scaleSection" style="display:none"><div class="scale-list" id="scaleList"></div></div>
+    <div id="textSection" style="display:none"><textarea class="text-area" id="textInput" placeholder="의견을 입력해 주세요..."></textarea></div>
+    <hr class="divider">
+    <div class="voter-section">
+      <div class="voter-label">성함 <span style="color:#DC2626">*</span></div>
+      <input class="voter-input" id="voterName" type="text" placeholder="홍길동" required>
+      <input type="hidden" id="voterRole" value="">
+    </div>
+    <button class="submit-btn" id="submitBtn" onclick="_voteSubmit()">제출</button>
+  </div>
+  <div class="screen" id="screenThanks">
+    <div class="thankyou-wrap">
+      <div class="thankyou-icon">&#x2705;</div>
+      <div class="thankyou-title">응답 감사합니다!</div>
+      <div class="thankyou-sub" id="thanksMsg">소중한 의견이 기록되었습니다.</div>
+      <button class="retry-btn" onclick="_voteShowForm()">다시 응답하기</button>
+    </div>
+    <div class="tally-preview" id="tallyPreview" style="display:none">
+      <div class="tally-preview-title">현재 집계</div>
+      <div id="tallyRows"></div>
+    </div>
+  </div>
+</div>
+<script>window.VOTE_ROUND_ID = 'D0704-V1A';</script>
+<script src="/v/vote-form.js"></script>
+</body>
+</html>
+

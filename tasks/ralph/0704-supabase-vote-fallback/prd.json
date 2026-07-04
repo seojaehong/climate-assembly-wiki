@@ -1,0 +1,43 @@
+{
+  "feature": "0704 Supabase vote fallback",
+  "branchName": "fix/0704-supabase-vote-fallback",
+  "qualityChecks": [
+    "npm.cmd exec -- vitest run scripts/decision-vote-console.test.mjs",
+    "Supabase REST read: D0704-V0, D0704-V1A, D0704-V1B are RADIO rounds"
+  ],
+  "userStories": [
+    {
+      "id": "S1",
+      "title": "Lower Google decision vote polling and add presentation fullscreen",
+      "priority": 1,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "Decision vote page declares DECISION_POLL_MS = 2000",
+        "Result modal has presentation fullscreen button and styles"
+      ],
+      "files": [
+        "public/0704-admin/vote-structure.html",
+        "scripts/refresh-0704-decision-votes.ps1"
+      ]
+    },
+    {
+      "id": "S2",
+      "title": "Provide parallel Supabase fallback for V0/V1A/V1B",
+      "priority": 2,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "Supabase fallback console links D0704-V0, D0704-V1A, D0704-V1B",
+        "Each Supabase round is RADIO and has matching Korean options",
+        "Fallback result page polls Supabase tally every 2 seconds"
+      ],
+      "files": [
+        "public/0704-supabase-vote/index.html",
+        "public/v/D0704-V0/index.html",
+        "public/v/D0704-V1A/index.html",
+        "public/v/D0704-V1B/index.html"
+      ]
+    }
+  ]
+}

@@ -35,12 +35,13 @@ describe('0704 conditional vote console', () => {
     const liveFunction = readText('functions/0704-admin/decision-votes-live.json.js');
 
     expect(page).toContain('/0704-admin/decision-votes-live.json');
-    expect(page).toContain('setInterval(loadDecisionReport, 5000)');
-    expect(page).toContain('결과는 5초마다 자동 갱신됩니다');
+    expect(page).toContain('const DECISION_POLL_MS = 2000');
+    expect(page).toContain('setInterval(loadDecisionReport, DECISION_POLL_MS)');
+    expect(page).toContain('결과는 2초마다 자동 갱신됩니다');
     expect(page).toContain('운영 확인 및 발표 전환용');
     expect(page).not.toContain('관리자 확인용');
     expect(script).toContain('[switch]$Watch');
-    expect(script).toContain('[int]$IntervalSeconds = 10');
+    expect(script).toContain('[int]$IntervalSeconds = 5');
     expect(script).toContain('Watching decision vote responses every $IntervalSeconds seconds');
     expect(script).toContain('Start-Sleep -Seconds $IntervalSeconds');
     expect(script).not.toContain('"-NameQuestionTitle", $NameQuestionTitle');
@@ -53,6 +54,26 @@ describe('0704 conditional vote console', () => {
     expect(liveFunction).toContain('PUBLIC_SUMMARY_SPREADSHEET_ID');
     expect(liveFunction).toContain('19xrXFFmaP4bS3JB2o6HeYmDyYgZhK6ez8URAHFYcBss');
     expect(liveFunction).toContain('public_summary_sheet');
+  });
+
+  test('parallel Supabase fallback keeps the same three decision vote slots', () => {
+    const admin = readText('public/0704-admin/vote-structure.html');
+    const supabasePage = readText('public/0704-supabase-vote/index.html');
+
+    expect(admin).toContain('/0704-supabase-vote/');
+    expect(supabasePage).toContain('Supabase 백업 투표');
+    expect(supabasePage).toContain('/v/D0704-V0/');
+    expect(supabasePage).toContain('/v/D0704-V1A/');
+    expect(supabasePage).toContain('/v/D0704-V1B/');
+    expect(supabasePage).toContain('D0704-V0');
+    expect(supabasePage).toContain('D0704-V1A');
+    expect(supabasePage).toContain('D0704-V1B');
+    expect(supabasePage).toContain('V0. 의제 통합 동의');
+    expect(supabasePage).toContain('V1A. 감축분야 추가 찬반');
+    expect(supabasePage).toContain('V1B. 적응 의제 배분 찬반');
+    expect(supabasePage).toContain('const SUPABASE_POLL_MS = 2000');
+    expect(supabasePage).toContain('cv_tally');
+    expect(supabasePage).toContain('requestFullscreen');
   });
 
   test('admin and field manual enlarge every QR instead of opening tiny thumbnails', () => {
