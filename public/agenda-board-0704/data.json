@@ -1,17 +1,35 @@
 {
-  "generatedAt": "2026-07-04T13:57:19.7112338+09:00",
+  "generatedAt": "2026-07-04T14:04:01.5634483+09:00",
   "spreadsheetId": "1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ",
   "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ/edit",
-  "questionCount": 4,
+  "questionCount": 7,
   "agendaCount": 6,
   "questions": [
     {
       "number": "1",
       "group": "A조",
-      "text": "워크숍 진행과정, 안건 등에 대해 사전공유해줄수는없는지?",
+      "text": "워크숍 진행과정, 안건 등에 대해 사전공유해줄수는없는지? (6월 30일까지 추가접수된 의제를 오늘 다룬다는 것을 공유받지 못해, 오늘 회의의 취지를 이해하기 어려움)",
       "note": "",
       "speaker": "신지원",
       "writer": "신지원",
+      "kind": "question"
+    },
+    {
+      "number": "2",
+      "group": "A조",
+      "text": "42페이지의 2020탄소중립과 관련한 표 내용이 궁금합니다 - 2050년 CCUS수치가 왜 -70인지 - 2050 탄소중립 수치가 왜 10인지",
+      "note": "",
+      "speaker": "김영현",
+      "writer": "김영현",
+      "kind": "question"
+    },
+    {
+      "number": "6",
+      "group": "A조",
+      "text": "시민입장은 미시적 관점에서 의제를 선정하게 되는데, 교육을 받으면서 거시적 관점에서 의제를 선정해야 할 것 같음",
+      "note": "",
+      "speaker": "이대진",
+      "writer": "이대진",
       "kind": "question"
     },
     {
@@ -39,6 +57,15 @@
       "note": "",
       "speaker": "김승기",
       "writer": "김승기",
+      "kind": "question"
+    },
+    {
+      "number": "4",
+      "group": "B조",
+      "text": "기후변화 연구가 활발한 국가에 한국인들이 파견되어 교육이 이루어지고 있는지 (해외연수), 그리고 기후위기 논의가 국내에서만 이루어지고 있는지 아니면 외국과도 관련 사례를 공유하고 있는지 궁금합니다.",
+      "note": "",
+      "speaker": "굴잔",
+      "writer": "굴잔",
       "kind": "question"
     }
   ],

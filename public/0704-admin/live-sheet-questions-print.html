@@ -31,15 +31,27 @@
   </div>
   <h1>0704 전문가 질의</h1>
   <p class="subtitle">A/B조 기록모더레이터가 실시간 Sheet에 입력한 질문만 모은 인쇄본입니다.</p>
-  <div class="meta"><span>생성: 2026-07-04 13:57</span><span>건수: 4</span></div>
+  <div class="meta"><span id="generated">생성: 2026-07-04 14:04</span><span id="count">건수: 7</span></div>
   <table>
     <thead><tr><th class="group">조</th><th class="num">번호</th><th>내용</th><th class="note">비고</th><th class="speaker">발언자</th></tr></thead>
-    <tbody><tr>
+    <tbody id="rows"><tr>
   <td class="group">A조</td>
   <td class="num">1</td>
-  <td class="text">워크숍 진행과정, 안건 등에 대해 사전공유해줄수는없는지?</td>
+  <td class="text">워크숍 진행과정, 안건 등에 대해 사전공유해줄수는없는지? (6월 30일까지 추가접수된 의제를 오늘 다룬다는 것을 공유받지 못해, 오늘 회의의 취지를 이해하기 어려움)</td>
   <td class="note"></td>
   <td class="speaker">신지원</td>
+</tr><tr>
+  <td class="group">A조</td>
+  <td class="num">2</td>
+  <td class="text">42페이지의 2020탄소중립과 관련한 표 내용이 궁금합니다 - 2050년 CCUS수치가 왜 -70인지 - 2050 탄소중립 수치가 왜 10인지</td>
+  <td class="note"></td>
+  <td class="speaker">김영현</td>
+</tr><tr>
+  <td class="group">A조</td>
+  <td class="num">6</td>
+  <td class="text">시민입장은 미시적 관점에서 의제를 선정하게 되는데, 교육을 받으면서 거시적 관점에서 의제를 선정해야 할 것 같음</td>
+  <td class="note"></td>
+  <td class="speaker">이대진</td>
 </tr><tr>
   <td class="group">B조</td>
   <td class="num">1</td>
@@ -58,7 +70,76 @@
   <td class="text">과거에는 나무심기와 관련하여 정부의 지원 정책이 있었던 것으로 아는데, 현재도 관련 인센티브 제도(혜택을 부여하는 제도)가 운영되고 있는지 궁금합니다.</td>
   <td class="note"></td>
   <td class="speaker">김승기</td>
+</tr><tr>
+  <td class="group">B조</td>
+  <td class="num">4</td>
+  <td class="text">기후변화 연구가 활발한 국가에 한국인들이 파견되어 교육이 이루어지고 있는지 (해외연수), 그리고 기후위기 논의가 국내에서만 이루어지고 있는지 아니면 외국과도 관련 사례를 공유하고 있는지 궁금합니다.</td>
+  <td class="note"></td>
+  <td class="speaker">굴잔</td>
 </tr></tbody>
   </table>
+<script>
+const SHEET_ID = '1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ';
+const SHEETS = ['A조 질문입력', 'B조 질문입력'];
+const POLL_MS = 5000;
+function esc(s){return String(s ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function parseCsv(text){
+  const rows=[]; let row=[]; let cell=''; let quoted=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i], next=text[i+1];
+    if(ch === '"' && quoted && next === '"'){ cell+='"'; i++; continue; }
+    if(ch === '"'){ quoted=!quoted; continue; }
+    if(ch === ',' && !quoted){ row.push(cell); cell=''; continue; }
+    if((ch === '\n' || ch === '\r') && !quoted){
+      if(ch === '\r' && next === '\n') i++;
+      row.push(cell); if(row.some(v=>v!=='')) rows.push(row); row=[]; cell=''; continue;
+    }
+    cell+=ch;
+  }
+  row.push(cell); if(row.some(v=>v!=='')) rows.push(row);
+  return rows;
+}
+async function fetchSheetRows(sheetName){
+  const url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&sheet=' + encodeURIComponent(sheetName) + '&_=' + Date.now();
+  const csv = await fetch(url, {cache:'no-store'}).then(r => {
+    if(!r.ok) throw new Error(sheetName + ' HTTP ' + r.status);
+    return r.text();
+  });
+  const rows = parseCsv(csv);
+  const header = rows.shift() || [];
+  const idx = name => header.indexOf(name);
+  const speakerIdx = idx('발언자') >= 0 ? idx('발언자') : idx('입력자');
+  const numberIdx = idx('번호'), groupIdx = idx('조'), textIdx = idx('질문'), noteIdx = idx('비고');
+  return rows.map(row => ({
+    number: row[numberIdx] || '',
+    group: row[groupIdx] || sheetName.slice(0, 2),
+    text: row[textIdx] || '',
+    note: row[noteIdx] || '',
+    speaker: row[speakerIdx] || ''
+  })).filter(item => item.text.trim());
+}
+function renderRows(items){
+  if(!items.length){
+    return '<tr><td colspan="5" class="empty">아직 입력된 전문가 질의가 없습니다.</td></tr>';
+  }
+  return items.map(item => '<tr>' +
+    '<td class="group">' + esc(item.group) + '</td>' +
+    '<td class="num">' + esc(item.number) + '</td>' +
+    '<td class="text">' + esc(item.text) + '</td>' +
+    '<td class="note">' + esc(item.note) + '</td>' +
+    '<td class="speaker">' + esc(item.speaker) + '</td>' +
+  '</tr>').join('');
+}
+async function refreshLiveQuestions(){
+  const items = (await Promise.all(SHEETS.map(fetchSheetRows))).flat();
+  document.getElementById('rows').innerHTML = renderRows(items);
+  document.getElementById('count').textContent = '건수: ' + items.length;
+  document.getElementById('generated').textContent = 'Sheet 확인: ' + new Date().toLocaleString('ko-KR');
+}
+refreshLiveQuestions().catch(err => {
+  document.getElementById('generated').textContent = 'Sheet 확인 실패: ' + err.message;
+});
+setInterval(refreshLiveQuestions, POLL_MS);
+</script>
 </body>
 </html>

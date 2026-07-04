@@ -319,6 +319,74 @@ function Build-PrintHtml {
     [string]$EmptyText
   )
   $generatedAt = (Get-Date).ToString("yyyy-MM-dd HH:mm")
+  $livePollingScript = ""
+  if ($Title -eq "0704 전문가 질의") {
+    $livePollingScript = @'
+<script>
+const SHEET_ID = '1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ';
+const SHEETS = ['A조 질문입력', 'B조 질문입력'];
+const POLL_MS = 5000;
+function esc(s){return String(s ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function parseCsv(text){
+  const rows=[]; let row=[]; let cell=''; let quoted=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i], next=text[i+1];
+    if(ch === '"' && quoted && next === '"'){ cell+='"'; i++; continue; }
+    if(ch === '"'){ quoted=!quoted; continue; }
+    if(ch === ',' && !quoted){ row.push(cell); cell=''; continue; }
+    if((ch === '\n' || ch === '\r') && !quoted){
+      if(ch === '\r' && next === '\n') i++;
+      row.push(cell); if(row.some(v=>v!=='')) rows.push(row); row=[]; cell=''; continue;
+    }
+    cell+=ch;
+  }
+  row.push(cell); if(row.some(v=>v!=='')) rows.push(row);
+  return rows;
+}
+async function fetchSheetRows(sheetName){
+  const url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&sheet=' + encodeURIComponent(sheetName) + '&_=' + Date.now();
+  const csv = await fetch(url, {cache:'no-store'}).then(r => {
+    if(!r.ok) throw new Error(sheetName + ' HTTP ' + r.status);
+    return r.text();
+  });
+  const rows = parseCsv(csv);
+  const header = rows.shift() || [];
+  const idx = name => header.indexOf(name);
+  const speakerIdx = idx('발언자') >= 0 ? idx('발언자') : idx('입력자');
+  const numberIdx = idx('번호'), groupIdx = idx('조'), textIdx = idx('질문'), noteIdx = idx('비고');
+  return rows.map(row => ({
+    number: row[numberIdx] || '',
+    group: row[groupIdx] || sheetName.slice(0, 2),
+    text: row[textIdx] || '',
+    note: row[noteIdx] || '',
+    speaker: row[speakerIdx] || ''
+  })).filter(item => item.text.trim());
+}
+function renderRows(items){
+  if(!items.length){
+    return '<tr><td colspan="5" class="empty">아직 입력된 전문가 질의가 없습니다.</td></tr>';
+  }
+  return items.map(item => '<tr>' +
+    '<td class="group">' + esc(item.group) + '</td>' +
+    '<td class="num">' + esc(item.number) + '</td>' +
+    '<td class="text">' + esc(item.text) + '</td>' +
+    '<td class="note">' + esc(item.note) + '</td>' +
+    '<td class="speaker">' + esc(item.speaker) + '</td>' +
+  '</tr>').join('');
+}
+async function refreshLiveQuestions(){
+  const items = (await Promise.all(SHEETS.map(fetchSheetRows))).flat();
+  document.getElementById('rows').innerHTML = renderRows(items);
+  document.getElementById('count').textContent = '건수: ' + items.length;
+  document.getElementById('generated').textContent = 'Sheet 확인: ' + new Date().toLocaleString('ko-KR');
+}
+refreshLiveQuestions().catch(err => {
+  document.getElementById('generated').textContent = 'Sheet 확인 실패: ' + err.message;
+});
+setInterval(refreshLiveQuestions, POLL_MS);
+</script>
+'@
+  }
   $rows = ""
   if ($Items.Count -eq 0) {
     $rows = "<tr><td colspan=""5"" class=""empty"">$(Escape-Html -Text $EmptyText)</td></tr>"
@@ -370,11 +438,12 @@ function Build-PrintHtml {
   </div>
   <h1>$(Escape-Html -Text $Title)</h1>
   <p class="subtitle">$(Escape-Html -Text $Subtitle)</p>
-  <div class="meta"><span>생성: $generatedAt</span><span>건수: $($Items.Count)</span></div>
+  <div class="meta"><span id="generated">생성: $generatedAt</span><span id="count">건수: $($Items.Count)</span></div>
   <table>
     <thead><tr><th class="group">조</th><th class="num">번호</th><th>내용</th><th class="note">비고</th><th class="speaker">발언자</th></tr></thead>
-    <tbody>$rows</tbody>
+    <tbody id="rows">$rows</tbody>
   </table>
+$livePollingScript
 </body>
 </html>
 "@

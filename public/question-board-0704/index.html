@@ -45,7 +45,7 @@
   </div>
   <div class="actions">
     <a href="/0704-admin/">관리자</a>
-    <a class="secondary" id="question-pdf-link" href="/0704-admin/live-sheet-questions-print.pdf">질문 PDF</a>
+    <a class="secondary" id="question-pdf-link" href="/0704-admin/live-sheet-questions-print.html">질문 PDF/인쇄</a>
     <button class="secondary" type="button" onclick="location.reload()">새로고침</button>
   </div>
 </header>
@@ -63,7 +63,7 @@ const SHEET_ID = '1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ';
 const SHEETS = ['A조 질문입력', 'B조 질문입력'];
 const POLL_MS = 5000;
 const pdfLink = document.getElementById('question-pdf-link');
-if (pdfLink) pdfLink.href = `/0704-admin/live-sheet-questions-print.pdf?_=${Date.now()}`;
+if (pdfLink) pdfLink.href = `/0704-admin/live-sheet-questions-print.html?_=${Date.now()}`;
 function esc(s){return String(s ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function parseCsv(text){
   const rows=[]; let row=[]; let cell=''; let quoted=false;
