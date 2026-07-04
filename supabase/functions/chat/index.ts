@@ -101,7 +101,7 @@ Deno.serve(async (req: Request) => {
     if (!OPENAI) return json({ error: "OPENAI_API_KEY 미설정" }, 500);
     const body = await req.json().catch(() => ({}));
     q = String(body.query ?? "").trim();
-    const k = body.k ?? 10;
+    const k = body.k ?? 20; // top-20: 게이트 통과 질의에 더 깊은 컨텍스트(정답 청크가 rank 11+일 때 회복). 네거티브는 top[0]로 게이트되어 무관.
     source = body.source ?? null;
     session_id = body.session_id ?? null;
     if (q.length < 2) return json({ found: false, answer: "질문을 입력해 주세요.", citations: [], abstained: true });
