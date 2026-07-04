@@ -249,7 +249,7 @@
       <span class="step" id="resultStep">1 / 1</span>
       <button type="button" data-result-next>다음 결과</button>
     </div>
-    <div class="private-note">완료 전에는 결과를 참여단에게 공개하지 않습니다. 이 화면은 관리자 점검 및 실시간 캡처용입니다. 응답이 마감되면 필요한 카드만 발표 화면으로 전환합니다.</div>
+    <div class="private-note">완료 전에는 결과를 참여단에게 공개하지 않습니다. 결과는 5초마다 자동 갱신됩니다. 이 화면은 운영 확인 및 발표 전환용입니다. 응답이 마감되면 필요한 카드만 발표 화면으로 보여주세요.</div>
   </div>
 </section>
 <script>
@@ -284,6 +284,7 @@ const DECISION_REPORT_PATH = DEMO_MODE
 let decisionReport = null;
 let resultSlots = [];
 let resultIndex = 0;
+let activeResultFocusCode = null;
 
 function showModal(id) {
   const modal = document.getElementById(id);
@@ -351,8 +352,8 @@ function renderResults(focusCode = null) {
   }
   const refreshed = report.refreshedAt ? new Date(report.refreshedAt) : null;
   document.getElementById('resultRefreshed').textContent = refreshed
-    ? `마지막 갱신: ${refreshed.toLocaleString('ko-KR')} · 결과 공개 전 관리자 확인용`
-    : '결과 공개 전 관리자 확인용';
+    ? `마지막 갱신: ${refreshed.toLocaleString('ko-KR')} · 운영 확인 및 발표 전환용`
+    : '운영 확인 및 발표 전환용';
   resultSlots = focusCode ? report.slots.filter((slot) => slot.code === focusCode) : report.slots;
   resultIndex = 0;
   renderActiveResult();
@@ -368,6 +369,13 @@ async function loadDecisionReport() {
         node.textContent = `${Number(slot.responseCount) || 0}명`;
       });
     }
+    const resultModal = document.getElementById('resultModal');
+    if (resultModal?.classList.contains('show')) {
+      const previousIndex = resultIndex;
+      renderResults(activeResultFocusCode);
+      resultIndex = Math.min(previousIndex, Math.max(0, resultSlots.length - 1));
+      renderActiveResult();
+    }
   } catch (error) {
     console.warn('[decision-votes] report load failed:', error);
   }
@@ -379,12 +387,14 @@ document.querySelectorAll('[data-qr]').forEach((button) => {
 document.querySelectorAll('[data-result-slot]').forEach((button) => {
   button.addEventListener('click', async () => {
     await loadDecisionReport();
+    activeResultFocusCode = button.dataset.resultSlot;
     renderResults(button.dataset.resultSlot);
     showModal('resultModal');
   });
 });
 document.querySelector('[data-results="all"]')?.addEventListener('click', async () => {
   await loadDecisionReport();
+  activeResultFocusCode = null;
   renderResults();
   showModal('resultModal');
 });
@@ -413,6 +423,7 @@ window.addEventListener('keydown', (event) => {
   }
 });
 loadDecisionReport();
+setInterval(loadDecisionReport, 5000);
 if (DEMO_MODE) {
   document.getElementById('demoNote')?.classList.add('show');
 }

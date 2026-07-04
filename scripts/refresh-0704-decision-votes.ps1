@@ -1,9 +1,36 @@
 param(
   [string]$SpreadsheetId = "1m_GD3ohvDW1PXT8Gg3AoTxpf0voRdrJpz2a38PREBB8",
-  [string]$NameQuestionTitle = "이름"
+  [string]$NameQuestionTitle = "이름",
+  [switch]$Watch,
+  [int]$IntervalSeconds = 10
 )
 
 $ErrorActionPreference = "Stop"
+
+if ($Watch) {
+  if ($IntervalSeconds -lt 5) {
+    throw "-IntervalSeconds must be 5 or greater."
+  }
+  $watchArgs = @(
+    "-NoProfile", "-ExecutionPolicy", "Bypass",
+    "-File", $MyInvocation.MyCommand.Path,
+    "-SpreadsheetId", $SpreadsheetId
+  )
+  Write-Host "Watching decision vote responses every $IntervalSeconds seconds. Press Ctrl+C to stop."
+  while ($true) {
+    $startedAt = Get-Date
+    try {
+      Write-Host "[$($startedAt.ToString("HH:mm:ss"))] Refreshing decision vote report..."
+      pwsh @watchArgs
+      if ($LASTEXITCODE -ne 0) {
+        Write-Error "Refresh failed with exit code $LASTEXITCODE"
+      }
+    } catch {
+      Write-Error $_
+    }
+    Start-Sleep -Seconds $IntervalSeconds
+  }
+}
 
 $VoteSlots = @(
   [pscustomobject]@{
@@ -11,6 +38,7 @@ $VoteSlots = @(
     Title = "의제 통합 동의"
     FormId = "1QXrENjjmh7NcTF_9sm4aUPhnh1_WuAWvP4q80AdBM8s"
     QuestionId = "0b6a9799"
+    NameQuestionId = "380be3dc"
     ResponseUrl = "https://docs.google.com/forms/d/e/1FAIpQLSc8NV9MvB52WM8IzQFJCGK3HJmZ8e_UOW4cbV6wd3MERohc-Q/viewform"
     EditUrl = "https://docs.google.com/forms/d/1QXrENjjmh7NcTF_9sm4aUPhnh1_WuAWvP4q80AdBM8s/edit"
     Options = @("동의", "동의하지 않음", "판단 유보")
@@ -20,6 +48,7 @@ $VoteSlots = @(
     Title = "감축분야 추가 의제 선정"
     FormId = "1YCMzcYk_XLD95_8MvzJAB4ReQKQs4nl7P18o9hBQTk4"
     QuestionId = "3323eced"
+    NameQuestionId = "6c1868ed"
     ResponseUrl = "https://docs.google.com/forms/d/e/1FAIpQLSeyeycU58FPedk64L8E5QeDdvEETgVcnGwJDEC6NEZTrMGOtA/viewform"
     EditUrl = "https://docs.google.com/forms/d/1YCMzcYk_XLD95_8MvzJAB4ReQKQs4nl7P18o9hBQTk4/edit"
     Options = @("찬성", "반대", "판단 유보")
@@ -29,6 +58,7 @@ $VoteSlots = @(
     Title = "적응 의제 배분"
     FormId = "1bdEi3hN6p8qOqWGdJV3f8UK3g4wPDEtojjQakCpDTd4"
     QuestionId = "34c2e29e"
+    NameQuestionId = "150bc490"
     ResponseUrl = "https://docs.google.com/forms/d/e/1FAIpQLSfN73ZpueVP0YHcPNiQeMxVdAwPsDUHU8sbG5oW-Bk20oXAUg/viewform"
     EditUrl = "https://docs.google.com/forms/d/1bdEi3hN6p8qOqWGdJV3f8UK3g4wPDEtojjQakCpDTd4/edit"
     Options = @("찬성", "반대", "판단 유보")
@@ -158,7 +188,10 @@ $guideRows += ,@("voteStructurePage", "https://climate-assembly.org/0704-admin/v
 $reportSlots = @()
 
 foreach ($slot in $VoteSlots) {
-  $nameQuestionId = Get-QuestionIdByTitle -FormId $slot.FormId -TitlePattern $NameQuestionTitle
+  $nameQuestionId = [string]$slot.NameQuestionId
+  if ([string]::IsNullOrWhiteSpace($nameQuestionId)) {
+    $nameQuestionId = Get-QuestionIdByTitle -FormId $slot.FormId -TitlePattern $NameQuestionTitle
+  }
   $responses = Invoke-GwsJson -CommandArgs @(
     "forms", "forms", "responses", "list",
     "--params", "{`"formId`":`"$($slot.FormId)`",`"pageSize`":5000}"

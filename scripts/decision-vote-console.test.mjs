@@ -29,6 +29,25 @@ describe('0704 conditional vote console', () => {
     expect(script).toContain('evaluation/0704-decision-votes-report.json');
   });
 
+  test('conditional vote results can refresh continuously during a live vote', () => {
+    const page = readText('public/0704-admin/vote-structure.html');
+    const script = readText('scripts/refresh-0704-decision-votes.ps1');
+
+    expect(page).toContain('setInterval(loadDecisionReport, 5000)');
+    expect(page).toContain('결과는 5초마다 자동 갱신됩니다');
+    expect(page).toContain('운영 확인 및 발표 전환용');
+    expect(page).not.toContain('관리자 확인용');
+    expect(script).toContain('[switch]$Watch');
+    expect(script).toContain('[int]$IntervalSeconds = 10');
+    expect(script).toContain('Watching decision vote responses every $IntervalSeconds seconds');
+    expect(script).toContain('Start-Sleep -Seconds $IntervalSeconds');
+    expect(script).not.toContain('"-NameQuestionTitle", $NameQuestionTitle');
+    expect(script).toContain('NameQuestionId = "380be3dc"');
+    expect(script).toContain('NameQuestionId = "6c1868ed"');
+    expect(script).toContain('NameQuestionId = "150bc490"');
+    expect(script).toContain('$slot.NameQuestionId');
+  });
+
   test('admin and field manual enlarge every QR instead of opening tiny thumbnails', () => {
     const admin = readText('public/0704-admin/index.html');
     const manual = readText('public/0704-admin/operator-manual.html');

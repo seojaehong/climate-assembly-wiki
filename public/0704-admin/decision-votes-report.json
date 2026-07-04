@@ -1,5 +1,5 @@
 {
-  "refreshedAt": "2026-07-04T10:21:36.5011827+09:00",
+  "refreshedAt": "2026-07-04T11:50:03.7332496+09:00",
   "spreadsheetId": "1m_GD3ohvDW1PXT8Gg3AoTxpf0voRdrJpz2a38PREBB8",
   "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1m_GD3ohvDW1PXT8Gg3AoTxpf0voRdrJpz2a38PREBB8/edit",
   "slots": [
@@ -12,8 +12,8 @@
       "dedupeMode": "name_latest_response",
       "nameQuestionId": "380be3dc",
       "counts": {
-        "동의하지 않음": 0,
         "판단 유보": 0,
+        "동의하지 않음": 0,
         "동의": 0
       },
       "responseUrl": "https://docs.google.com/forms/d/e/1FAIpQLSc8NV9MvB52WM8IzQFJCGK3HJmZ8e_UOW4cbV6wd3MERohc-Q/viewform",
@@ -28,9 +28,9 @@
       "dedupeMode": "name_latest_response",
       "nameQuestionId": "6c1868ed",
       "counts": {
-        "반대": 0,
+        "찬성": 0,
         "판단 유보": 0,
-        "찬성": 0
+        "반대": 0
       },
       "responseUrl": "https://docs.google.com/forms/d/e/1FAIpQLSeyeycU58FPedk64L8E5QeDdvEETgVcnGwJDEC6NEZTrMGOtA/viewform",
       "editUrl": "https://docs.google.com/forms/d/1YCMzcYk_XLD95_8MvzJAB4ReQKQs4nl7P18o9hBQTk4/edit"
@@ -44,9 +44,9 @@
       "dedupeMode": "name_latest_response",
       "nameQuestionId": "150bc490",
       "counts": {
-        "반대": 0,
+        "찬성": 0,
         "판단 유보": 0,
-        "찬성": 0
+        "반대": 0
       },
       "responseUrl": "https://docs.google.com/forms/d/e/1FAIpQLSfN73ZpueVP0YHcPNiQeMxVdAwPsDUHU8sbG5oW-Bk20oXAUg/viewform",
       "editUrl": "https://docs.google.com/forms/d/1bdEi3hN6p8qOqWGdJV3f8UK3g4wPDEtojjQakCpDTd4/edit"
