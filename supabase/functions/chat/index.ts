@@ -106,16 +106,53 @@ Deno.serve(async (req: Request) => {
     session_id = body.session_id ?? null;
     if (q.length < 2) return json({ found: false, answer: "질문을 입력해 주세요.", citations: [], abstained: true });
 
-    const er = await fetch("https://api.openai.com/v1/embeddings", {
-      method: "POST", headers: { Authorization: `Bearer ${OPENAI}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "text-embedding-3-large", dimensions: 1536, input: q }),
-    });
-    if (!er.ok) { logChat(sb, { session_id, query: q, source_filter: source, error: `embed ${er.status}`, latency_ms: Date.now() - t0 }); return json({ error: `embed ${er.status}` }, 500); }
-    const embedding = (await er.json()).data[0].embedding as number[];
-    const { data: hits, error } = await sb.rpc("match_kb", { query_embedding: embedding, match_count: k, source_filter: source });
-    if (error) { logChat(sb, { session_id, query: q, source_filter: source, error: error.message, latency_ms: Date.now() - t0 }); return json({ error: error.message }, 500); }
-    const rows = (hits ?? []) as { id: number; source: string; doc: string; ref_id: string; title: string; body: string; category: string; similarity: number }[];
-    const top = rows[0]?.similarity ?? 0;
+    // ── 쿼리 확장(짧은 질의 recall 개선) — max-of-both, false-positive 무회귀 ──
+    const EXPAND = (K("QUERY_EXPANSION") ?? "on") !== "off";
+    const doEmbed = async (text: string): Promise<number[]> => {
+      const e = await fetch("https://api.openai.com/v1/embeddings", {
+        method: "POST", headers: { Authorization: `Bearer ${OPENAI}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "text-embedding-3-large", dimensions: 1536, input: text }),
+      });
+      if (!e.ok) throw new Error(`embed ${e.status}`);
+      return (await e.json()).data[0].embedding as number[];
+    };
+    const expandQuery = async (short: string): Promise<string> => {
+      if (!keys.GEMINI) return short;
+      try {
+        const sys = "너는 기후시민회의 '의제 선정' 자료 검색을 돕는다. 사용자의 짧은 검색어를 자료 검색에 적합한 완전한 한국어 질문 한 문장으로만 바꿔라. 의미를 추가·왜곡하지 말고, 원래 없는 주제·수치·고유명사를 지어내지 마라. 검색어가 기후 의제·정책·사례와 무관해 보이면(예: 주차·점심·화장실·일정·개인신상) 바꾸지 말고 원문 그대로 반환하라. 오직 질문 문장만 출력.";
+        const r = await llmFetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${keys.GEMINI}`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: [{ role: "user", parts: [{ text: short }] }], generationConfig: { temperature: 0, thinkingConfig: { thinkingBudget: 0 } } }),
+        });
+        if (!r.ok) return short;
+        const j = await r.json();
+        const t = (j.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("") ?? "").trim();
+        return t.length >= 2 ? t : short;
+      } catch { return short; }
+    };
+    type Row = { id: number; source: string; doc: string; ref_id: string; title: string; body: string; category: string; similarity: number };
+    let rows: Row[] = [];
+    let top = 0;
+    let usedQuery = q;
+    try {
+      const embRaw = await doEmbed(q);
+      const { data: hRaw, error: e1 } = await sb.rpc("match_kb", { query_embedding: embRaw, match_count: k, source_filter: source });
+      if (e1) throw new Error(e1.message);
+      rows = (hRaw ?? []) as Row[]; top = rows[0]?.similarity ?? 0;
+      const isShort = q.replace(/\s/g, "").length <= 12 || q.split(/\s+/).filter(Boolean).length <= 2;
+      if (EXPAND && isShort) {
+        const exp = await expandQuery(q);
+        if (exp && exp !== q) {
+          const embExp = await doEmbed(exp);
+          const { data: hExp } = await sb.rpc("match_kb", { query_embedding: embExp, match_count: k, source_filter: source });
+          const rowsExp = (hExp ?? []) as Row[]; const topExp = rowsExp[0]?.similarity ?? 0;
+          if (topExp > top) { rows = rowsExp; top = topExp; usedQuery = exp; }
+        }
+      }
+    } catch (e) {
+      logChat(sb, { session_id, query: q, source_filter: source, error: String(e), latency_ms: Date.now() - t0 });
+      return json({ error: String(e) }, 500);
+    }
 
     if (!rows.length || top < FLOOR) {
       logChat(sb, { session_id, query: q, source_filter: source, answer: ABSTAIN, found: false, abstained: true, top_similarity: top, retrieved: rows.length, latency_ms: Date.now() - t0 });
