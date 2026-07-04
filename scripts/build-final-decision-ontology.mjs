@@ -286,6 +286,10 @@ function supportStrength(matchCount, voteScore = null) {
   return 'missing';
 }
 
+function decisionTopic(label) {
+  return normalize(label).split('=')[0].trim();
+}
+
 const regulationDecisions = [
   {
     id: 'reg-planning-quorum',
@@ -445,7 +449,7 @@ function buildRegulationSet() {
       discussion_signal: strength,
       matched_context_count: matches.length,
     });
-    addNode(elements, voteId, 'Evidence', `${item.vote} 표결 근거`, item.vote, {
+    addNode(elements, voteId, 'Evidence', `${decisionTopic(item.label)} 표결 근거`, `${item.label}. 표결 결과: ${item.vote}. ${item.scenario}`, {
       cited: [scenarioRefs.regulation, 'public/workshop-graph/inputs/06b_조숙의_통합_토론4.md'],
       evidence_type: 'vote_result',
       decision_id: item.id,

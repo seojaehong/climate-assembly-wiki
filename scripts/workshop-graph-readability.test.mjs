@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest';
 const readText = (path) => readFileSync(path, 'utf8');
 
 describe('workshop graph final-decision readability', () => {
-  test('final decision showcase uses a high-contrast projector profile', () => {
+  test('final decision sources use the origin physics graph with readable colored node text', () => {
     const html = readText('public/workshop-graph/index.html');
     const sources = JSON.parse(readText('public/workshop-graph/sources.json'));
 
@@ -14,28 +14,42 @@ describe('workshop graph final-decision readability', () => {
 
     expect(finalSources).toContain('final-regulation-decisions-0704');
     expect(finalSources).toContain('final-agenda-decisions-0704');
+    expect(html).toContain('function isFinalSourceId(sourceId)');
+    expect(html).toContain('function isFinalSourceGraph()');
     expect(html).toContain('function isFinalDecisionShowcase()');
-    expect(html).toContain('body.og-final-decision-showcase');
     expect(html).toContain('pretendard.css');
-    expect(html).toContain("html,body,#og-app,button,input,select,textarea{font-family:'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif;font-weight:700}");
-    expect(html).toContain('body.og-final-decision-showcase .og-surface-role{font-size:17px;font-weight:800');
-    expect(html).toContain('body.og-final-decision-showcase .og-s-rel .og-r{font-size:15px;font-weight:800');
-    expect(html).toContain('body.og-final-decision-showcase .og-hub-chip{max-width:320px;min-height:36px;font-size:15px;font-weight:900');
-    expect(html).toContain('finalDecisionProjectorMode');
-    expect(html).toContain("return curView === '2d' && String(curSource || '').startsWith('final-');");
-    expect(html).toContain('function fitFinalDecisionViewport()');
-    expect(html).toContain('if (isFinalDecisionShowcase()) fitFinalDecisionViewport();');
-    expect(html).toContain('function shouldShowFinalNodeLabel(node)');
-    expect(html).toContain("if (finalDecisionProjectorMode) return shouldShowFinalNodeLabel(n) ? n.data('label') || '' : '';");
-    expect(html).toContain("'shape': n => finalDecisionProjectorMode && shouldShowFinalNodeLabel(n) ? 'round-rectangle' : 'ellipse'");
-    expect(html).toContain("'color': finalDecisionProjectorMode ? '#0f172a'");
-    expect(html).toContain("'text-outline-width': finalDecisionProjectorMode ? 3.5");
-    expect(html).toContain("'border-color': n => finalDecisionProjectorMode");
-    expect(html).toContain("'font-size': finalDecisionProjectorMode ? '24px'");
-    expect(html).toContain("'font-size': finalDecisionProjectorMode ? '18px'");
-    expect(html).toContain("'font-family': finalDecisionProjectorMode ? 'Pretendard");
-    expect(html).toContain("'text-background-opacity': finalDecisionProjectorMode ? 0.96");
-    expect(html).toContain('else if (isFinalDecisionShowcase()) fitFinalDecisionViewport();');
+    expect(html).toContain("const finalSourceDefault = isFinalSourceId(curSource) && !params.has('mode');");
+    expect(html).toContain("showcaseMode = params.get('mode') === 'showcase' || finalSourceDefault;");
+    expect(html).toContain("showcaseCount = [50,75,100].includes(Number(params.get('count'))) ? Number(params.get('count')) : (finalSourceDefault ? 100 : 50);");
+    expect(html).toContain('if (isFinalSourceId(curSource)) return 34;');
+    expect(html).toContain('applyFinalSourceShowcaseDefaults();');
+    expect(html).toContain('body.og-final-decision-showcase .og-canvas{background:#ffffff}');
+    expect(html).toContain('body.og-final-decision-showcase .og-controls > :not(#og-showcase-count-tog){display:none !important}');
+    expect(html).toContain("return String(sourceId || '').startsWith('final-');");
+    expect(html).toContain("return curView === '2d' && isFinalSourceId(curSource);");
+    expect(html).toContain("return showcaseMode && isFinalSourceGraph();");
+    expect(html).toContain('const finalSourceGraphMode = isFinalSourceGraph();');
+    expect(html).toContain('const finalPhysicsGraphMode = isFinalSourceGraph();');
+    expect(html).toContain("if (finalSourceGraphMode) return n.data('shortLabel') || n.data('label') || '';");
+    expect(html).toContain("'background-color': n => palette[n.data('kind')] || '#888'");
+    expect(html).toContain("'font-family': finalSourceGraphMode ? 'Pretendard, Noto Sans KR, Malgun Gothic, sans-serif'");
+    expect(html).toContain("'font-weight': finalSourceGraphMode ? 800");
+    expect(html).toContain("'font-size': finalSourceGraphMode ? '30px'");
+    expect(html).toContain("'font-size': finalSourceGraphMode ? '30px' : (presentMode ? '18px' : '13px')");
+    expect(html).toContain("'text-background-opacity': finalSourceGraphMode ? 0");
+    expect(html).toContain("'text-valign': finalSourceGraphMode ? 'center'");
+    expect(html).toContain("'shape': n => finalSourceGraphMode ? 'round-rectangle'");
+    expect(html).toContain("'label': demo ? (showcaseEdgeLabels ? 'data(relKo)' : '') : (paper ? '' : 'data(relKo)')");
     expect(html).toContain('if (physicsOn || showcaseMode) applyPhysics();');
+    expect(html).toContain('setTimeout(() => fitFinalDecisionViewport(), 1200);');
+    expect(html).toContain('idealEdgeLength: finalPhysicsGraphMode ? 150 : 245');
+    expect(html).toContain('edgeLength: finalPhysicsGraphMode ? 150 : (showcaseMode ? 245 : 110)');
+    expect(html).toContain("${escapeHtml(ctx.node.text || '원문 전사 없음')}");
+    expect(html).not.toContain("<p>${escapeHtml(shortText(ctx.node.text || '', 120))}</p>");
+    expect(html).not.toContain("'background-color': n => finalSourceGraphMode ? '#ffffff'");
+    expect(html).not.toContain('body{font-size:17px}');
+    expect(html).not.toContain("html,body,#og-app,button,input,select,textarea{font-family:'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif;font-weight:700}");
+    expect(html).toContain('function fitFinalDecisionViewport()');
+    expect(html).not.toContain('else if (isFinalDecisionShowcase()) fitFinalDecisionViewport();');
   });
 });

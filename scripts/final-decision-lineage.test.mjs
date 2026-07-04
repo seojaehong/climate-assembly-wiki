@@ -75,4 +75,16 @@ describe('final decision ontology lineage', () => {
       'advancedToVote',
     ))).toBe(true);
   });
+
+  it('uses human-readable labels for regulation vote evidence nodes', () => {
+    const graph = readJson('public/workshop-graph/data/final-regulation-decisions-0704.json');
+    const voteEvidenceNodes = (graph.elements?.nodes || [])
+      .map((node) => node.data || {})
+      .filter((node) => node.evidence_type === 'vote_result');
+
+    expect(voteEvidenceNodes.length).toBeGreaterThan(0);
+    expect(voteEvidenceNodes.every((node) => (
+      !/^(?:\d+차 투표 |결선 )?\d+\/\d+ 표결 근거$/.test(node.label || '')
+    ))).toBe(true);
+  });
 });

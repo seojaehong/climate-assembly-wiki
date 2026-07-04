@@ -1164,7 +1164,7 @@
   "meta": {
     "variant": "final-process-to-conclusion-0704",
     "title": "전체 과정에서 최종 결론으로 이어지는 온톨로지",
-    "generated_at": "2026-07-03T23:23:05.408Z",
+    "generated_at": "2026-07-04T03:51:35.697Z",
     "source_files": [
       "public/workshop-graph/data/source-coverage-2026-06-13.json",
       "public/workshop-graph/data/workshop-2026-06-13.json",

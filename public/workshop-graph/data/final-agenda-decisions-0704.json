@@ -5391,7 +5391,7 @@
               },
               {
                 "code": "V1A",
-                "responseCount": 0
+                "responseCount": 1
               },
               {
                 "code": "V1B",
@@ -8699,7 +8699,7 @@
   "meta": {
     "variant": "final-agenda-decisions-0704",
     "title": "의제 선정 결론·후보 온톨로지",
-    "generated_at": "2026-07-04T02:57:38.653Z",
+    "generated_at": "2026-07-04T03:51:35.696Z",
     "source_files": [
       "10_작업산출물/7.4_발표덱/의제결과_v6/발표시나리오_의제선정결과_김영현.md",
       "10_작업산출물/7.4_발표덱/의제결과_v6/20260704_의제선정결과_v6.pptx",

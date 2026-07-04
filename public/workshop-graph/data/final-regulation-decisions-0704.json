@@ -76,10 +76,10 @@
         "data": {
           "id": "vote_reg-planning-quorum",
           "node_id": "vote_reg-planning-quorum",
-          "label": "2차 투표 14/18 표결 근거",
+          "label": "기획참여단 의결정족수 표결 근거",
           "kind": "Evidence",
           "kindKo": "근거",
-          "text": "2차 투표 14/18",
+          "text": "기획참여단 의결정족수 = 출석 2/3. 표결 결과: 2차 투표 14/18. 6쪽: 출석 2/3, 18명 중 14명 찬성",
           "cited": [
             "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
             "public/workshop-graph/inputs/06b_조숙의_통합_토론4.md"
@@ -361,10 +361,10 @@
         "data": {
           "id": "vote_reg-division-yes",
           "node_id": "vote_reg-division-yes",
-          "label": "1차 투표 13/18 표결 근거",
+          "label": "숙의참여단 분과 구성 표결 근거",
           "kind": "Evidence",
           "kindKo": "근거",
-          "text": "1차 투표 13/18",
+          "text": "숙의참여단 분과 구성 = 분과를 둠. 표결 결과: 1차 투표 13/18. 7쪽: 18명 중 13명 찬성, 분과 운영 채택",
           "cited": [
             "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
             "public/workshop-graph/inputs/06b_조숙의_통합_토론4.md"
@@ -574,10 +574,10 @@
         "data": {
           "id": "vote_reg-division-three",
           "node_id": "vote_reg-division-three",
-          "label": "결선 13/18 표결 근거",
+          "label": "분과 개수 표결 근거",
           "kind": "Evidence",
           "kindKo": "근거",
-          "text": "결선 13/18",
+          "text": "분과 개수 = 3개 분과(감축1·감축2·적응). 표결 결과: 결선 13/18. 7쪽: 3:3:3 동률 이후 결선으로 감축1·감축2·적응 세 개 채택",
           "cited": [
             "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
             "public/workshop-graph/inputs/06b_조숙의_통합_토론4.md"
@@ -715,10 +715,10 @@
         "data": {
           "id": "vote_reg-division-quorum",
           "node_id": "vote_reg-division-quorum",
-          "label": "결선 15/18 표결 근거",
+          "label": "숙의참여단 분과 의결정족수 표결 근거",
           "kind": "Evidence",
           "kindKo": "근거",
-          "text": "결선 15/18",
+          "text": "숙의참여단 분과 의결정족수 = 출석 2/3. 표결 결과: 결선 15/18. 8쪽: 분과 안 결정 기준도 출석 2/3, 18명 중 15명 찬성",
           "cited": [
             "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
             "public/workshop-graph/inputs/06b_조숙의_통합_토론4.md"
@@ -856,10 +856,10 @@
         "data": {
           "id": "vote_reg-full-quorum",
           "node_id": "vote_reg-full-quorum",
-          "label": "2차 투표 14/18 표결 근거",
+          "label": "숙의참여단 전체 의결정족수 표결 근거",
           "kind": "Evidence",
           "kindKo": "근거",
-          "text": "2차 투표 14/18",
+          "text": "숙의참여단 전체 의결정족수 = 출석 2/3. 표결 결과: 2차 투표 14/18. 9쪽: 전체회의 기준도 출석 2/3, 14명 찬성",
           "cited": [
             "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
             "public/workshop-graph/inputs/06b_조숙의_통합_토론4.md"
@@ -997,10 +997,10 @@
         "data": {
           "id": "vote_reg-article14-direct-indirect",
           "node_id": "vote_reg-article14-direct-indirect",
-          "label": "17/18 표결 근거",
+          "label": "의제 기준 14조 1항 표결 근거",
           "kind": "Evidence",
           "kindKo": "근거",
-          "text": "17/18",
+          "text": "의제 기준 14조 1항 = 직·간접 관련으로 확장. 표결 결과: 17/18. 10쪽: 직접 관련을 직·간접 관련으로 확장, 17명 찬성",
           "cited": [
             "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
             "public/workshop-graph/inputs/06b_조숙의_통합_토론4.md"
@@ -1354,10 +1354,10 @@
         "data": {
           "id": "vote_reg-article14-everyday-life",
           "node_id": "vote_reg-article14-everyday-life",
-          "label": "16/18 표결 근거",
+          "label": "의제 기준 14조 3항 표결 근거",
           "kind": "Evidence",
           "kindKo": "근거",
-          "text": "16/18",
+          "text": "의제 기준 14조 3항 = 시민의 삶·일상 실천 유지. 표결 결과: 16/18. 11쪽: 시민의 삶과 일상 실천 표현 유지, 16명 찬성",
           "cited": [
             "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
             "public/workshop-graph/inputs/06b_조숙의_통합_토론4.md"
@@ -2737,7 +2737,7 @@
   "meta": {
     "variant": "final-regulation-decisions-0704",
     "title": "운영규정 최종 결정 온톨로지",
-    "generated_at": "2026-07-04T02:57:38.627Z",
+    "generated_at": "2026-07-04T03:51:35.655Z",
     "source_files": [
       "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
       "10_작업산출물/7.4_발표덱/운영규정_v6/20260704_운영규정_v6.pptx",

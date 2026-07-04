@@ -18,8 +18,6 @@
 <script src="https://unpkg.com/cytoscape-expand-collapse@4.1.1/cytoscape-expand-collapse.js"></script>
 <script src="https://unpkg.com/3d-force-graph"></script>
 <style>
-  html,body,#og-app,button,input,select,textarea{font-family:'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif;font-weight:700}
-  body{font-size:17px}
   .og-source-sel{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#9aa7b8}
   .og-source-sel select{background:#222c3a;border:1px solid #2c3848;color:#e8edf4;border-radius:5px;padding:5px 10px;font-size:12px;font-family:inherit;min-width:200px}
   .og-view-tog{display:inline-flex;gap:3px;background:#222c3a;border:1px solid #2c3848;border-radius:5px;padding:2px}
@@ -93,24 +91,14 @@
   body.og-showcase-mode.og-showcase-dark .og-showcase-count-tog .og-grp-lbl,
   body.og-showcase-mode.og-showcase-dark .og-showcase-edge-tog .og-grp-lbl{color:#9fb3c8}
   body.og-showcase-mode.og-showcase-dark .og-canvas{background:radial-gradient(circle at 42% 44%,#192536 0,#0f1722 48%,#080d14 100%)}
-  body.og-final-decision-showcase .og-canvas{background:linear-gradient(180deg,#f8fbff 0,#eef5fb 100%)}
-  body.og-final-decision-showcase .og-side{width:420px;flex-basis:420px;padding:20px 22px}
-  body.og-final-decision-showcase .og-controls{font-size:15px;font-weight:800}
-  body.og-final-decision-showcase .og-source-sel,body.og-final-decision-showcase .og-poll-ctl{font-size:14px;font-weight:800}
-  body.og-final-decision-showcase .og-source-sel select{font-size:15px;font-weight:800;min-width:260px}
-  body.og-final-decision-showcase .og-btn,body.og-final-decision-showcase .og-view-tog button,body.og-final-decision-showcase .og-group-tog button{font-size:14px;font-weight:800}
-  body.og-final-decision-showcase .og-s-label{font-size:24px;font-weight:900;line-height:1.32;margin-top:12px}
-  body.og-final-decision-showcase .og-s-sec h4{font-size:13px;font-weight:900}
-  body.og-final-decision-showcase .og-surface-role{font-size:17px;font-weight:800;line-height:1.72;padding:13px 15px}
-  body.og-final-decision-showcase .og-surface-role b{font-size:16px;font-weight:900}
-  body.og-final-decision-showcase .og-surface-chip{min-height:30px;padding:0 10px;font-size:13px;font-weight:800}
-  body.og-final-decision-showcase .og-surface-chip b{font-size:15px;font-weight:900}
-  body.og-final-decision-showcase .og-s-rel .og-r{font-size:15px;font-weight:800;line-height:1.62;padding:10px 12px}
-  body.og-final-decision-showcase .og-s-rel button.og-r span{font-size:13px}
-  body.og-final-decision-showcase .og-hub-chip{max-width:320px;min-height:36px;font-size:15px;font-weight:900;padding:0 13px}
+  body.og-final-decision-showcase .og-canvas{background:#ffffff}
+  body.og-final-decision-showcase .og-controls > :not(#og-showcase-count-tog){display:none !important}
+  body.og-final-decision-showcase .og-controls{display:flex !important;position:fixed;right:14px;bottom:14px;top:auto;z-index:80;width:auto;padding:0;background:transparent;border:0;box-shadow:none}
+  body.og-final-decision-showcase .og-showcase-count-tog{display:flex !important;background:rgba(255,255,255,.92);border-color:rgba(37,99,235,.22);box-shadow:0 12px 34px rgba(15,23,42,.12);backdrop-filter:blur(10px)}
   body.og-final-decision-showcase .og-quick{font-family:'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif;font-size:16px;font-weight:800;line-height:1.7;max-width:500px;border-color:rgba(15,118,110,.28);box-shadow:0 22px 64px rgba(15,23,42,.18)}
   body.og-final-decision-showcase .og-surface-card{min-width:320px}
   body.og-final-decision-showcase .og-surface-card p{font-size:16px;font-weight:800;color:#1f2937}
+  .og-surface-transcript{margin-top:8px;max-height:210px;overflow:auto;white-space:pre-wrap;font-size:13px;line-height:1.65;color:#1f2937}
   body.og-showcase-mode .og-body{flex:1}
   body.og-showcase-mode .og-hub-rail{display:none !important}
   body.og-showcase-mode #og-group-tog,
@@ -340,14 +328,19 @@ const AGENDA_STOP_TERMS = new Set(['정부','정책','방안','논의','기후',
 
 const params = new URLSearchParams(location.search);
 
+function isFinalSourceId(sourceId) {
+  return String(sourceId || '').startsWith('final-');
+}
+
 (async function init() {
   sources = await fetch('sources.json').then(r => r.json());
   curSource = params.get('source') || sources.default;
+  const finalSourceDefault = isFinalSourceId(curSource) && !params.has('mode');
   curView = params.get('view') || '2d';
   presentMode = params.get('mode') === 'present';
-  showcaseMode = params.get('mode') === 'showcase';
+  showcaseMode = params.get('mode') === 'showcase' || finalSourceDefault;
   presentLevel = ['chapter','brief','full'].includes(params.get('level')) ? params.get('level') : 'chapter';
-  showcaseCount = [50,75,100].includes(Number(params.get('count'))) ? Number(params.get('count')) : 50;
+  showcaseCount = [50,75,100].includes(Number(params.get('count'))) ? Number(params.get('count')) : (finalSourceDefault ? 100 : 50);
   showcaseTheme = ['light','dark'].includes(params.get('theme')) ? params.get('theme') : 'light';
   showcaseEdgeLabels = params.get('edgeLabels') !== 'off';
   groupMode = ['present','brief','issue','session','none'].includes(params.get('group'))
@@ -387,9 +380,21 @@ function buildSourceDropdown() {
   }
   sel.onchange = () => {
     curSource = sel.value;
+    applyFinalSourceShowcaseDefaults();
     updateUrl();
     loadSource(curSource);
   };
+}
+
+function applyFinalSourceShowcaseDefaults() {
+  if (!isFinalSourceId(curSource)) return;
+  presentMode = false;
+  showcaseMode = true;
+  showcaseCount = 100;
+  showcaseTheme = 'light';
+  showcaseEdgeLabels = true;
+  groupMode = 'none';
+  curView = '2d';
 }
 
 function updateUrl() {
@@ -433,6 +438,7 @@ function shortenNodeLabel(label, maxChars = 18) {
 }
 
 function showcaseLabelLimit() {
+  if (isFinalSourceId(curSource)) return 34;
   if (showcaseCount <= 50) return 26;
   if (showcaseCount <= 75) return 22;
   return 18;
@@ -1196,9 +1202,7 @@ function renderNodeSurface(ctx, mode = 'hover') {
         <span class="og-surface-small" title="${escapeHtml(ctx.node.session || '')}">${escapeHtml(sessionLabel(ctx.node.session, ''))}</span>
       </div>
       <b>${escapeHtml(ctx.node.label || '')}</b>
-      <p>${escapeHtml(shortText(ctx.node.text || '', 120))}</p>
-      <div class="og-surface-chips">${relationChips(ctx)}</div>
-      ${renderAgendaPreview(ctx.agendas)}
+      <div class="og-surface-transcript">${escapeHtml(ctx.node.text || '원문 전사 없음')}</div>
       <a class="og-more" data-more>상세 고정 →</a>
     </div>`;
   quick.classList.add('show');
@@ -1317,6 +1321,7 @@ function renderCy() {
   document.getElementById('cy').style.display = '';
   if (cy) try { cy.destroy(); } catch {}
   ecApi = null;
+  const finalPhysicsGraphMode = isFinalSourceGraph();
   try { if (typeof cytoscapeFcose !== 'undefined') cytoscape.use(cytoscapeFcose); } catch {}
   try { if (typeof cytoscapeExpandCollapse !== 'undefined') cytoscape.use(cytoscapeExpandCollapse); } catch {}
   const renderElements = showcaseMode ? buildShowcaseElements(showcaseCount) : { nodes: ALL_NODES, edges: ALL_EDGES };
@@ -1327,8 +1332,8 @@ function renderCy() {
     style: buildCyStyle(OntologyChrome.getPalette()),
     layout: showcaseMode
       ? { name:'fcose', quality:'default', animate:false, randomize:true,
-          nodeRepulsion:36000, idealEdgeLength:245, edgeElasticity:0.18,
-          gravity:0.045, numIter:5200, packComponents:true, nodeSeparation:230 }
+          nodeRepulsion: finalPhysicsGraphMode ? 18000 : 36000, idealEdgeLength: finalPhysicsGraphMode ? 150 : 245, edgeElasticity:0.18,
+          gravity: finalPhysicsGraphMode ? 0.08 : 0.045, numIter:5200, packComponents:true, nodeSeparation: finalPhysicsGraphMode ? 72 : 230 }
       : { name:'fcose', quality:'default', animate:false, randomize:true,
           nodeRepulsion:9000, idealEdgeLength:130, edgeElasticity:0.45,
           gravity:0.25, numIter:2500, packComponents:true, nodeSeparation:90 },
@@ -1341,10 +1346,10 @@ function renderCy() {
   updateGroupBtns();
   cy.ready(() => setTimeout(() => {
     if (groupMode !== 'none') applyGrouping(groupMode);  // URL ?group= 진입 시 즉시 묶기
-    else if (isFinalDecisionShowcase()) fitFinalDecisionViewport();
     else {
       cy.fit(null, 40);
       if (physicsOn || showcaseMode) applyPhysics();
+      if (isFinalDecisionShowcase()) setTimeout(() => fitFinalDecisionViewport(), 1200);
     }
   }, 300));
 }
@@ -1355,8 +1360,9 @@ function applyPhysics() {
   if (!cy || (!physicsOn && !showcaseMode)) return;
   try { if (typeof cytoscapeCola !== 'undefined') cytoscape.use(cytoscapeCola); } catch {}
   try {
+    const finalPhysicsGraphMode = isFinalSourceGraph();
     colaLayout = cy.layout({ name:'cola', infinite:true, fit:false, animate:true,
-      nodeSpacing: showcaseMode ? 86 : 6, edgeLength: showcaseMode ? 245 : 110, randomize:false, handleDisconnected:true,
+      nodeSpacing: finalPhysicsGraphMode ? 28 : (showcaseMode ? 86 : 6), edgeLength: finalPhysicsGraphMode ? 150 : (showcaseMode ? 245 : 110), randomize:false, handleDisconnected:true,
       centerGraph:false, refresh:1, maxSimulationTime: showcaseMode ? 180000 : undefined });
     colaLayout.run();
   } catch (e) { colaLayout = null; }
@@ -1418,7 +1424,11 @@ function syncPresentationBody() {
 }
 
 function isFinalDecisionShowcase() {
-  return curView === '2d' && String(curSource || '').startsWith('final-');
+  return showcaseMode && isFinalSourceGraph();
+}
+
+function isFinalSourceGraph() {
+  return curView === '2d' && isFinalSourceId(curSource);
 }
 
 function groupForPresentLevel(level) {
@@ -1973,17 +1983,15 @@ function shouldShowFinalNodeLabel(node) {
 }
 
 function finalNodeWidth(node) {
-  const degree = Number(node.data('deg') || 0);
-  if (!shouldShowFinalNodeLabel(node)) return 28 + Math.min(degree, 8) * 4;
   const label = String(node.data('shortLabel') || node.data('label') || '');
-  return Math.max(190, Math.min(360, label.length * 15 + 56));
+  return Math.max(270, Math.min(560, label.length * 20 + 92));
 }
 
 function finalNodeHeight(node) {
-  const degree = Number(node.data('deg') || 0);
-  if (!shouldShowFinalNodeLabel(node)) return 28 + Math.min(degree, 8) * 4;
   const label = String(node.data('shortLabel') || node.data('label') || '');
-  return Math.max(64, label.length > 16 ? 84 : 70);
+  if (label.length > 32) return 166;
+  if (label.length > 18) return 138;
+  return 110;
 }
 
 function buildCyStyle(palette) {
@@ -1992,69 +2000,70 @@ function buildCyStyle(palette) {
   const demoLight = showcaseMode && showcaseTheme !== 'dark';
   const paperLike = paper || demoLight;
   const presentationOverview = presentMode && presentLevel !== 'full';
+  const finalSourceGraphMode = isFinalSourceGraph();
   const finalDecisionProjectorMode = isFinalDecisionShowcase();
   return [
     { selector:'node', style:{
-        'background-color': n => finalDecisionProjectorMode ? '#ffffff' : (palette[n.data('kind')] || '#888'),
+        'background-color': n => palette[n.data('kind')] || '#888',
         'label': n => {
-          if (finalDecisionProjectorMode) return shouldShowFinalNodeLabel(n) ? n.data('label') || '' : '';
+          if (finalSourceGraphMode) return n.data('shortLabel') || n.data('label') || '';
           if (demo) return n.data('shortLabel') || n.data('label') || '';
           if (!presentMode || n.data('isGroup')) return n.data('label') || '';
           if (presentLevel === 'full' && n.data('isOverviewLabel')) return n.data('label') || '';
           return '';
         },
-        'color': finalDecisionProjectorMode ? '#0f172a' : (paperLike ? '#0f172a' : '#eef3f9'), 'font-size': finalDecisionProjectorMode ? '24px' : (demo ? '15px' : (presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px')),
+        'color': finalSourceGraphMode ? '#ffffff' : (paperLike ? '#0f172a' : '#eef3f9'), 'font-size': finalSourceGraphMode ? '30px' : (demo ? '15px' : (presentMode ? (presentLevel === 'full' ? '16px' : '14px') : '12px')),
         'min-zoomed-font-size': demo ? 0 : (presentMode ? (presentLevel === 'full' ? 18 : 999) : 7),  /* 시맨틱 줌: 줌아웃 시 라벨 자동 숨김(노드는 점으로 유지·무손실) */
-        'font-family': finalDecisionProjectorMode ? 'Pretendard, Noto Sans KR, Malgun Gothic, sans-serif' : 'Noto Sans KR, Malgun Gothic, sans-serif', 'font-weight': finalDecisionProjectorMode ? 900 : (presentMode || demo ? 700 : 500),
-        'text-wrap':'wrap','text-max-width': finalDecisionProjectorMode ? '300px' : (demo ? '190px' : (presentMode ? '120px' : '140px')),'text-valign': demo ? 'center' : 'bottom','text-halign':'center','text-margin-y': demo ? 0 : 3,
-        'text-outline-color': '#ffffff','text-outline-width': finalDecisionProjectorMode ? 3.5 : (demo ? 0 : (presentMode ? 2.5 : 2.5)),
-        'width': n => finalDecisionProjectorMode ? finalNodeWidth(n) : (demo ? Math.max(96, Math.min(250, String(n.data('shortLabel') || n.data('label') || '').length * 13 + 34)) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4)),
-        'height': n => finalDecisionProjectorMode ? finalNodeHeight(n) : (demo ? Math.max(32, String(n.data('shortLabel') || n.data('label') || '').length > 15 ? 44 : 36) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4)),
-        'border-width': finalDecisionProjectorMode ? 2.8 : 2.2,'border-color': n => finalDecisionProjectorMode ? (palette[n.data('kind')] || '#2563eb') : '#0d1118','shape': n => finalDecisionProjectorMode && shouldShowFinalNodeLabel(n) ? 'round-rectangle' : 'ellipse','opacity':1,
+        'font-family': finalSourceGraphMode ? 'Pretendard, Noto Sans KR, Malgun Gothic, sans-serif' : 'Noto Sans KR, Malgun Gothic, sans-serif', 'font-weight': finalSourceGraphMode ? 800 : (presentMode || demo ? 700 : 500),
+        'text-wrap':'wrap','text-max-width': finalSourceGraphMode ? '430px' : (demo ? '190px' : (presentMode ? '120px' : '140px')),'text-valign': finalSourceGraphMode ? 'center' : (demo ? 'center' : 'bottom'),'text-halign':'center','text-margin-y': finalSourceGraphMode || demo ? 0 : 3,
+        'text-outline-color': '#ffffff','text-outline-width': finalSourceGraphMode ? 0 : (demo ? 0 : (presentMode ? 2.5 : 2.5)),
+        'width': n => finalSourceGraphMode ? finalNodeWidth(n) : (demo ? Math.max(96, Math.min(250, String(n.data('shortLabel') || n.data('label') || '').length * 13 + 34)) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4)),
+        'height': n => finalSourceGraphMode ? finalNodeHeight(n) : (demo ? Math.max(32, String(n.data('shortLabel') || n.data('label') || '').length > 15 ? 44 : 36) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4)),
+        'border-width': finalSourceGraphMode ? 1.5 : 2.2,'border-color': n => finalSourceGraphMode ? (palette[n.data('kind')] || '#2563eb') : '#0d1118','shape': n => finalSourceGraphMode ? 'round-rectangle' : 'ellipse','opacity':1,
     }},
     { selector:'node.showcase-node', style:{
         'shape':'round-rectangle',
-        'background-opacity': finalDecisionProjectorMode ? 0.98 : 0.96,
-        'border-width': finalDecisionProjectorMode ? 3 : 1.5,
+        'background-opacity':0.96,
+        'border-width':1.5,
         'border-color': n => palette[n.data('kind')] || '#888',
         'border-opacity':0.92,
-        'color': finalDecisionProjectorMode ? '#0f172a' : '#ffffff',
-        'text-background-color': finalDecisionProjectorMode ? '#ffffff' : 'transparent',
-        'text-background-opacity': finalDecisionProjectorMode ? 0.96 : 0,
-        'text-background-padding': finalDecisionProjectorMode ? 6 : 0,
-        'text-outline-width': finalDecisionProjectorMode ? 3.5 : 0,
-        'padding': finalDecisionProjectorMode ? '14px' : '10px',
+        'color':'#ffffff',
+        'text-background-color':'transparent',
+        'text-background-opacity':0,
+        'text-background-padding':0,
+        'text-outline-width':0,
+        'padding': finalSourceGraphMode ? '20px' : '10px',
         'z-index':12,
         'overlay-opacity':0,
     }},
     { selector:'node.showcase-node[kind="Concern"], node.showcase-node[kind="Evidence"], node.showcase-node[kind="Clause"]', style:{
-        'color':'#111827',
+        'color': finalSourceGraphMode ? '#ffffff' : '#111827',
     }},
     { selector:'node[?isOverviewLabel]', style:{
         'min-zoomed-font-size': presentationOverview ? 999 : (presentMode ? 18 : 0),
-        'font-size': presentMode ? '18px' : '13px',
+        'font-size': finalSourceGraphMode ? '30px' : (presentMode ? '18px' : '13px'),
         'font-weight':800,
-        'text-background-color': paperLike ? '#ffffff' : '#0b111a',
-        'text-background-opacity': paperLike ? 0.9 : 0.82,
+        'text-background-color': finalSourceGraphMode ? 'transparent' : (paperLike ? '#ffffff' : '#0b111a'),
+        'text-background-opacity': finalSourceGraphMode ? 0 : (paperLike ? 0.9 : 0.82),
         'text-background-padding':3,
-        'text-outline-width':3,
+        'text-outline-width': finalSourceGraphMode ? 0 : 3,
         'z-index':20,
     }},
     { selector:'node[kind="Clause"]', style:{ 'shape':'round-rectangle','border-color':'#e9ecef','border-width':3 }},
-    { selector:'node[kind="Decision"]', style:{ 'shape':'star','border-color':'#ffa94d','border-width':3 }},
-    { selector:'node[?synthesized]', style:{ 'shape':'round-diamond','border-style':'dashed','border-color':'#ff8787' }},
+    { selector:'node[kind="Decision"]', style:{ 'shape': finalSourceGraphMode ? 'round-rectangle' : 'star','border-color':'#ffa94d','border-width': finalSourceGraphMode ? 1.5 : 3 }},
+    { selector:'node[?synthesized]', style:{ 'shape': finalSourceGraphMode ? 'round-rectangle' : 'round-diamond','border-style':'dashed','border-color':'#ff8787' }},
     { selector:'edge', style:{
-        'width': finalDecisionProjectorMode ? 2.2 : (demo ? 1.25 : 1.8), 'line-color': paperLike ? (demo ? '#cbd5e1' : '#64748b') : (demo ? '#526073' : '#6b7890'), 'target-arrow-color': paperLike ? (demo ? '#cbd5e1' : '#64748b') : (demo ? '#526073' : '#6b7890'),
+        'width': finalSourceGraphMode ? 2.4 : (demo ? 1.25 : 1.8), 'line-color': paperLike ? (demo ? '#cbd5e1' : '#64748b') : (demo ? '#526073' : '#6b7890'), 'target-arrow-color': paperLike ? (demo ? '#cbd5e1' : '#64748b') : (demo ? '#526073' : '#6b7890'),
         'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale': demo ? 0.9 : 1,
-        'label': demo ? (showcaseEdgeLabels ? 'data(relKo)' : '') : (paper ? '' : 'data(relKo)'),'font-size': finalDecisionProjectorMode ? '18px' : (demo ? '8.2px' : '10px'),'min-zoomed-font-size': demo ? (showcaseEdgeLabels ? 0 : 999) : 9,'color': paperLike ? (demo ? '#475569' : '#1f2937') : (demo ? '#cbd5e1' : '#d3dbe8'),
-        'font-family': finalDecisionProjectorMode ? 'Pretendard, Noto Sans KR, Malgun Gothic, sans-serif' : 'Noto Sans KR, Malgun Gothic, sans-serif',
+        'label': demo ? (showcaseEdgeLabels ? 'data(relKo)' : '') : (paper ? '' : 'data(relKo)'),'font-size': finalSourceGraphMode ? '10.5px' : (demo ? '8.2px' : '10px'),'min-zoomed-font-size': demo ? (showcaseEdgeLabels ? 0 : 999) : 9,'color': paperLike ? (demo ? '#475569' : '#1f2937') : (demo ? '#cbd5e1' : '#d3dbe8'),
+        'font-family': finalSourceGraphMode ? 'Pretendard, Noto Sans KR, Malgun Gothic, sans-serif' : 'Noto Sans KR, Malgun Gothic, sans-serif',
         'text-rotation':'autorotate','text-background-color': paperLike ? '#ffffff' : '#11151c',
-        'text-background-opacity': finalDecisionProjectorMode ? 0.96 : (demo ? 0.74 : 0.85),'text-background-padding': finalDecisionProjectorMode ? 4 : 2,'opacity': finalDecisionProjectorMode ? 0.82 : (demo ? 0.66 : 0.82),
+        'text-background-opacity': finalSourceGraphMode ? 0.96 : (demo ? 0.74 : 0.85),'text-background-padding': finalSourceGraphMode ? 4 : 2,'opacity': finalSourceGraphMode ? 0.76 : (demo ? 0.66 : 0.82),
     }},
-    { selector:'edge[rel="emergesAsAgenda"]', style:{ 'line-color':'#0f766e','target-arrow-color':'#0f766e','width': finalDecisionProjectorMode ? 4 : 2.8 }},
-    { selector:'edge[rel="advancedToVote"]', style:{ 'line-color':'#f59f00','target-arrow-color':'#f59f00','width': finalDecisionProjectorMode ? 4 : 2.8 }},
-    { selector:'edge[rel="settledInDeliberation"]', style:{ 'line-color':'#7048e8','target-arrow-color':'#7048e8','width': finalDecisionProjectorMode ? 3.6 : 2.5 }},
-    { selector:'edge[rel="proposesEditTo"]', style:{ 'line-color':'#2b8a3e','target-arrow-color':'#2b8a3e','width': finalDecisionProjectorMode ? 3.2 : 2.2 }},
+    { selector:'edge[rel="emergesAsAgenda"]', style:{ 'line-color':'#0f766e','target-arrow-color':'#0f766e','width': finalSourceGraphMode ? 4 : 2.8 }},
+    { selector:'edge[rel="advancedToVote"]', style:{ 'line-color':'#f59f00','target-arrow-color':'#f59f00','width': finalSourceGraphMode ? 4 : 2.8 }},
+    { selector:'edge[rel="settledInDeliberation"]', style:{ 'line-color':'#7048e8','target-arrow-color':'#7048e8','width': finalSourceGraphMode ? 3.6 : 2.5 }},
+    { selector:'edge[rel="proposesEditTo"]', style:{ 'line-color':'#2b8a3e','target-arrow-color':'#2b8a3e','width': finalSourceGraphMode ? 3.2 : 2.2 }},
     { selector:'edge[?opposes]', style:{
         'line-color': demo ? '#f4a3a3' : '#ff6b6b','target-arrow-color': demo ? '#f4a3a3' : '#ff6b6b','width': demo ? 1.65 : 2.6 }},
     // A-3 묶기 합성 부모(컨테이너) — 라벨 달린 둥근 사각, 반투명 배경, 자식이 안에 들도록 패딩
