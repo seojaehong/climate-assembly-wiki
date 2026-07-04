@@ -8,24 +8,34 @@ describe('workshop graph final-decision readability', () => {
     const html = readText('public/workshop-graph/index.html');
     const sources = JSON.parse(readText('public/workshop-graph/sources.json'));
 
+    const hiddenProcessSource = sources.sources.find((source) => source.id === 'final-process-to-conclusion-0704');
     const finalSources = sources.sources
+      .filter((source) => !source.hidden)
       .filter((source) => source.id.startsWith('final-'))
       .map((source) => source.id);
 
+    expect(sources.default).toBe('final-regulation-decisions-0704');
+    expect(hiddenProcessSource?.hidden).toBe(true);
     expect(finalSources).toContain('final-regulation-decisions-0704');
     expect(finalSources).toContain('final-agenda-decisions-0704');
+    expect(finalSources).not.toContain('final-process-to-conclusion-0704');
     expect(html).toContain('function isFinalSourceId(sourceId)');
     expect(html).toContain('function isFinalSourceGraph()');
     expect(html).toContain('function isFinalDecisionShowcase()');
     expect(html).toContain('pretendard.css');
+    expect(html).toContain('function getPublicSources()');
+    expect(html).toContain('function isPublicSourceId(sourceId)');
     expect(html).toContain("const finalSourceDefault = isFinalSourceId(curSource) && !params.has('mode');");
+    expect(html).toContain('if (!isPublicSourceId(curSource)) curSource = sources.default;');
+    expect(html).toContain('for (const s of getPublicSources())');
+    expect(html).toContain('const meta = getPublicSources().find(s => s.id === srcId);');
     expect(html).toContain("showcaseMode = params.get('mode') === 'showcase' || finalSourceDefault;");
     expect(html).toContain("showcaseCount = [50,75,100].includes(Number(params.get('count'))) ? Number(params.get('count')) : (finalSourceDefault ? 100 : 50);");
     expect(html).toContain('if (isFinalSourceId(curSource)) return 34;');
     expect(html).toContain('applyFinalSourceShowcaseDefaults();');
     expect(html).toContain('body.og-final-decision-showcase .og-canvas{background:#ffffff}');
     expect(html).toContain('body.og-final-decision-showcase .og-controls > :not(#og-showcase-count-tog){display:none !important}');
-    expect(html).toContain("return String(sourceId || '').startsWith('final-');");
+    expect(html).toContain("return sourceId === 'final-regulation-decisions-0704' || sourceId === 'final-agenda-decisions-0704';");
     expect(html).toContain("return curView === '2d' && isFinalSourceId(curSource);");
     expect(html).toContain("return showcaseMode && isFinalSourceGraph();");
     expect(html).toContain('const finalSourceGraphMode = isFinalSourceGraph();');

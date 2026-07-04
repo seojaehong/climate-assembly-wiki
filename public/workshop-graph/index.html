@@ -329,12 +329,21 @@ const AGENDA_STOP_TERMS = new Set(['정부','정책','방안','논의','기후',
 const params = new URLSearchParams(location.search);
 
 function isFinalSourceId(sourceId) {
-  return String(sourceId || '').startsWith('final-');
+  return sourceId === 'final-regulation-decisions-0704' || sourceId === 'final-agenda-decisions-0704';
+}
+
+function getPublicSources() {
+  return (sources?.sources || []).filter((source) => !source.hidden);
+}
+
+function isPublicSourceId(sourceId) {
+  return getPublicSources().some((source) => source.id === sourceId);
 }
 
 (async function init() {
   sources = await fetch('sources.json').then(r => r.json());
   curSource = params.get('source') || sources.default;
+  if (!isPublicSourceId(curSource)) curSource = sources.default;
   const finalSourceDefault = isFinalSourceId(curSource) && !params.has('mode');
   curView = params.get('view') || '2d';
   presentMode = params.get('mode') === 'present';
@@ -363,7 +372,7 @@ function isFinalSourceId(sourceId) {
 function buildSourceDropdown() {
   const sel = document.getElementById('og-source');
   const byCat = {};
-  for (const s of sources.sources) (byCat[s.category] = byCat[s.category] || []).push(s);
+  for (const s of getPublicSources()) (byCat[s.category] = byCat[s.category] || []).push(s);
   sel.innerHTML = '';
   for (const cat of Object.keys(sources.categories)) {
     const list = byCat[cat] || [];
@@ -495,7 +504,7 @@ function buildShowcaseElements(limit = showcaseCount) {
 }
 
 async function loadSource(srcId) {
-  const meta = sources.sources.find(s => s.id === srcId);
+  const meta = getPublicSources().find(s => s.id === srcId);
   if (!meta) return;
   // view 지원 여부
   const supportsView = meta.supportsView || ['2d'];
@@ -1010,7 +1019,7 @@ function renderHubRail() {
 }
 
 function setSourceFromPanel(srcId) {
-  if (!srcId || srcId === curSource) return;
+  if (!srcId || srcId === curSource || !isPublicSourceId(srcId)) return;
   curSource = srcId;
   fixedNodeId = null;
   const sel = document.getElementById('og-source');
@@ -2277,7 +2286,7 @@ function bindGlobalEvents() {
   };
   document.getElementById('og-poll-now').onclick = () => loadSource(curSource);
   document.getElementById('og-poll-interval').onchange = () => {
-    const meta = sources.sources.find(s => s.id === curSource);
+    const meta = getPublicSources().find(s => s.id === curSource);
     if (meta) setupPolling(meta);
   };
 }
