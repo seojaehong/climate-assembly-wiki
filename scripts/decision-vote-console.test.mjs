@@ -128,6 +128,17 @@ describe('0704 conditional vote console', () => {
     expect(sync).toContain('Deployment complete');
   });
 
+  test('live sheet packet export can watch and refresh print files every 30 seconds', () => {
+    const admin = readText('public/0704-admin/index.html');
+    const exportScript = readText('scripts/export-0704-live-sheet-packets.ps1');
+
+    expect(admin).toContain('export-0704-live-sheet-packets.ps1 -Watch -IntervalSeconds 30');
+    expect(exportScript).toContain('[switch]$Watch');
+    expect(exportScript).toContain('[int]$IntervalSeconds = 30');
+    expect(exportScript).toContain('Start-Sleep -Seconds $IntervalSeconds');
+    expect(exportScript).toContain('-Watch and -SendEmail cannot be used together');
+  });
+
   test('agenda candidates have a Miro-style board before voting', () => {
     const admin = readText('public/0704-admin/index.html');
     const manual = readText('public/0704-admin/operator-manual.html');
@@ -161,5 +172,15 @@ describe('0704 conditional vote console', () => {
     expect(board).toContain("const POLL_MS = 5000");
     expect(board).toContain('Google Sheet 직접 연결');
     expect(board).toContain('setInterval(load, POLL_MS)');
+  });
+
+  test('question and agenda boards keep cards within narrow mobile lanes', () => {
+    const questionBoard = readText('public/question-board-0704/index.html');
+    const agendaBoard = readText('public/agenda-board-0704/index.html');
+
+    expect(questionBoard).toContain('minmax(min(100%,340px),1fr)');
+    expect(agendaBoard).toContain('minmax(min(100%,320px),1fr)');
+    expect(questionBoard).toContain('@media (max-width:900px)');
+    expect(agendaBoard).toContain('@media (max-width:900px)');
   });
 });

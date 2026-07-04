@@ -9,13 +9,54 @@ param(
   [string]$EmailTo = "kesica3@gmail.com",
   [string]$EmailFrom = "iceamericano9@gmail.com",
   [switch]$SendEmail,
-  [switch]$UseSample
+  [switch]$UseSample,
+  [switch]$Watch,
+  [int]$IntervalSeconds = 30
 )
 
 $ErrorActionPreference = "Stop"
 
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent $scriptRoot
+
+if ($Watch) {
+  if ($SendEmail) {
+    throw "-Watch and -SendEmail cannot be used together because it would send email every interval."
+  }
+  if ($IntervalSeconds -lt 5) {
+    throw "-IntervalSeconds must be 5 or greater."
+  }
+  $watchArgs = @(
+    "-NoProfile", "-ExecutionPolicy", "Bypass",
+    "-File", $MyInvocation.MyCommand.Path,
+    "-SpreadsheetId", $SpreadsheetId,
+    "-QuestionOutputHtml", $QuestionOutputHtml,
+    "-QuestionOutputPdf", $QuestionOutputPdf,
+    "-AgendaOutputHtml", $AgendaOutputHtml,
+    "-AgendaOutputPdf", $AgendaOutputPdf,
+    "-AgendaBoardData", $AgendaBoardData,
+    "-OutputReport", $OutputReport,
+    "-EmailTo", $EmailTo,
+    "-EmailFrom", $EmailFrom
+  )
+  if ($UseSample) {
+    $watchArgs += "-UseSample"
+  }
+  Write-Host "Watching live Sheet packets every $IntervalSeconds seconds. Press Ctrl+C to stop."
+  while ($true) {
+    $startedAt = Get-Date
+    try {
+      Write-Host "[$($startedAt.ToString("HH:mm:ss"))] Refreshing live Sheet packets..."
+      pwsh @watchArgs
+      if ($LASTEXITCODE -ne 0) {
+        Write-Error "Refresh failed with exit code $LASTEXITCODE"
+      }
+    } catch {
+      Write-Error $_
+    }
+    Start-Sleep -Seconds $IntervalSeconds
+  }
+}
 
 function Convert-GwsJson {
   param([string[]]$Lines)

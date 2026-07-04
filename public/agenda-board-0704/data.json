@@ -1,30 +1,22 @@
 {
-  "generatedAt": "2026-07-04T10:21:02.4475782+09:00",
+  "generatedAt": "2026-07-04T10:59:06.2298891+09:00",
   "spreadsheetId": "1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ",
   "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ/edit",
-  "questionCount": 8,
+  "questionCount": 9,
   "agendaCount": 6,
   "questions": [
     {
       "number": "1",
       "group": "A조",
-      "text": "테스트",
+      "text": "test1",
       "note": "",
-      "writer": "",
+      "writer": "서재홍",
       "kind": "question"
     },
     {
       "number": "2",
       "group": "A조",
-      "text": "입니다",
-      "note": "",
-      "writer": "",
-      "kind": "question"
-    },
-    {
-      "number": "3",
-      "group": "A조",
-      "text": "오늘 다들 화이팅입미다!",
+      "text": "안녕하세요",
       "note": "",
       "writer": "",
       "kind": "question"
@@ -32,23 +24,23 @@
     {
       "number": "1",
       "group": "B조",
-      "text": "이렇게 입력하면 될까요?",
-      "note": "",
+      "text": "testb",
+      "note": "선정",
       "writer": "",
       "kind": "question"
     },
     {
       "number": "2",
       "group": "B조",
-      "text": "테스트용입니다",
-      "note": "",
+      "text": "c",
+      "note": "선정",
       "writer": "",
       "kind": "question"
     },
     {
       "number": "3",
       "group": "B조",
-      "text": "정수기는 언제 설치되나요?",
+      "text": "d",
       "note": "",
       "writer": "",
       "kind": "question"
@@ -56,7 +48,7 @@
     {
       "number": "4",
       "group": "B조",
-      "text": "의미있는 질문을 해야할까요?",
+      "text": "e",
       "note": "",
       "writer": "",
       "kind": "question"
@@ -64,7 +56,23 @@
     {
       "number": "5",
       "group": "B조",
-      "text": "잘 입력되고 있을까요?",
+      "text": "f",
+      "note": "",
+      "writer": "",
+      "kind": "question"
+    },
+    {
+      "number": "6",
+      "group": "B조",
+      "text": "g",
+      "note": "",
+      "writer": "",
+      "kind": "question"
+    },
+    {
+      "number": "7",
+      "group": "B조",
+      "text": "h",
       "note": "",
       "writer": "",
       "kind": "question"
