@@ -141,7 +141,9 @@ describe('0704 conditional vote console', () => {
     expect(board).toContain('투표 전 조별 의제 후보 보드');
     expect(board).toContain('/agenda-board-0704/data.json');
     expect(board).toContain('renderLane');
-    expect(board).toContain('setInterval(load, 30000)');
+    expect(board).toContain("const POLL_MS = 5000");
+    expect(board).toContain('Google Sheet 직접 연결');
+    expect(board).toContain('setInterval(load, POLL_MS)');
   });
 
   test('live questions have a board for expert review as a separate track from print PDFs', () => {
@@ -156,6 +158,8 @@ describe('0704 conditional vote console', () => {
     expect(board).toContain('전문가 전달용 조별 질문 누적 보드');
     expect(board).toContain('/agenda-board-0704/data.json');
     expect(board).toContain('LIVE QUESTIONS');
-    expect(board).toContain('setInterval(load, 30000)');
+    expect(board).toContain("const POLL_MS = 5000");
+    expect(board).toContain('Google Sheet 직접 연결');
+    expect(board).toContain('setInterval(load, POLL_MS)');
   });
 });

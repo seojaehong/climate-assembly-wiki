@@ -59,7 +59,54 @@
 </main>
 <script>
 const DATA_URL = '/agenda-board-0704/data.json';
+const SHEET_ID = '1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ';
+const SHEETS = ['A조 의제입력', 'B조 의제입력'];
+const POLL_MS = 5000;
 function esc(s){return String(s ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function parseCsv(text){
+  const rows=[]; let row=[]; let cell=''; let quoted=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i], next=text[i+1];
+    if(ch === '"' && quoted && next === '"'){ cell+='"'; i++; continue; }
+    if(ch === '"'){ quoted=!quoted; continue; }
+    if(ch === ',' && !quoted){ row.push(cell); cell=''; continue; }
+    if((ch === '\n' || ch === '\r') && !quoted){
+      if(ch === '\r' && next === '\n') i++;
+      row.push(cell); if(row.some(v=>v!=='')) rows.push(row); row=[]; cell=''; continue;
+    }
+    cell+=ch;
+  }
+  row.push(cell); if(row.some(v=>v!=='')) rows.push(row);
+  return rows;
+}
+async function fetchSheetRows(sheetName){
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}&_=${Date.now()}`;
+  const csv = await fetch(url, {cache:'no-store'}).then(r => {
+    if(!r.ok) throw new Error(`${sheetName} HTTP ${r.status}`);
+    return r.text();
+  });
+  const rows = parseCsv(csv);
+  const header = rows.shift() || [];
+  const idx = name => header.indexOf(name);
+  const numberIdx = idx('번호'), groupIdx = idx('조'), textIdx = idx('의제 후보'), noteIdx = idx('비고'), writerIdx = idx('입력자');
+  return rows.map(row => ({
+    number: row[numberIdx] || '',
+    group: row[groupIdx] || sheetName.slice(0, 2),
+    text: row[textIdx] || '',
+    note: row[noteIdx] || '',
+    writer: row[writerIdx] || '',
+    kind: 'agenda'
+  })).filter(item => item.text.trim());
+}
+async function loadAgendas(){
+  try {
+    const rows = (await Promise.all(SHEETS.map(fetchSheetRows))).flat();
+    return {agendas: rows, generatedAt: new Date().toISOString(), source: 'google_sheet'};
+  } catch (err) {
+    const data = await fetch(DATA_URL + '?_=' + Date.now(), {cache:'no-store'}).then(r => r.json());
+    return {agendas: data.agendas || [], generatedAt: data.generatedAt, source: 'fallback_json', error: err.message};
+  }
+}
 function renderNote(item){
   const note = item.note ? `<span class="chip">${esc(item.note)}</span>` : '';
   const writer = item.writer ? `<span class="chip">${esc(item.writer)}</span>` : '';
@@ -80,20 +127,21 @@ function renderLane(group, rows){
   </section>`;
 }
 async function load(){
-  const data = await fetch(DATA_URL + '?_=' + Date.now(), {cache:'no-store'}).then(r => r.json());
+  const data = await loadAgendas();
   const agendas = data.agendas || [];
   const aRows = agendas.filter(item => item.group === 'A조');
   const bRows = agendas.filter(item => item.group === 'B조');
   document.getElementById('total-count').textContent = agendas.length;
   document.getElementById('a-count').textContent = aRows.length;
   document.getElementById('b-count').textContent = bRows.length;
-  document.getElementById('meta').textContent = `마지막 갱신 ${new Date(data.generatedAt).toLocaleString('ko-KR')} · A/B 실시간 Sheet`;
+  const source = data.source === 'google_sheet' ? 'Google Sheet 직접 연결' : 'JSON fallback';
+  document.getElementById('meta').textContent = `마지막 Sheet 확인 ${new Date(data.generatedAt).toLocaleString('ko-KR')} · ${source} · 5초 자동 갱신`;
   document.getElementById('board').innerHTML = renderLane('A조', aRows) + renderLane('B조', bRows);
 }
 load().catch(err => {
   document.getElementById('board').innerHTML = `<div class="empty">의제 데이터를 불러오지 못했습니다: ${esc(err.message)}</div>`;
 });
-setInterval(load, 30000);
+setInterval(load, POLL_MS);
 </script>
 </body>
 </html>
