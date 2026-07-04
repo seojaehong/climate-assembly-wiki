@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-04T14:04:01.5634483+09:00",
+  "generatedAt": "2026-07-04T14:07:31.7261750+09:00",
   "spreadsheetId": "1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ",
   "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ/edit",
-  "questionCount": 7,
+  "questionCount": 10,
   "agendaCount": 6,
   "questions": [
     {
@@ -24,12 +24,39 @@
       "kind": "question"
     },
     {
+      "number": "3",
+      "group": "A조",
+      "text": "탄소중립을 실현시킬 수 있는 도시조성계획과 이행과정?",
+      "note": "",
+      "speaker": "김근화",
+      "writer": "김근화",
+      "kind": "question"
+    },
+    {
+      "number": "5",
+      "group": "A조",
+      "text": "이미 제안된 3가지 의제를 실천할 수 있는 현실적 계획은 무엇인지?",
+      "note": "",
+      "speaker": "신두식",
+      "writer": "신두식",
+      "kind": "question"
+    },
+    {
       "number": "6",
       "group": "A조",
       "text": "시민입장은 미시적 관점에서 의제를 선정하게 되는데, 교육을 받으면서 거시적 관점에서 의제를 선정해야 할 것 같음",
       "note": "",
       "speaker": "이대진",
       "writer": "이대진",
+      "kind": "question"
+    },
+    {
+      "number": "7",
+      "group": "A조",
+      "text": "감축시키기 위해 제도적으로 의무화하고있는 방안이 있는지(시행되고 있는 게 없다면 계획이 있는지)",
+      "note": "",
+      "speaker": "이상돈",
+      "writer": "이상돈",
       "kind": "question"
     },
     {
