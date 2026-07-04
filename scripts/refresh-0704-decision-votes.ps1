@@ -1,5 +1,6 @@
 param(
   [string]$SpreadsheetId = "1m_GD3ohvDW1PXT8Gg3AoTxpf0voRdrJpz2a38PREBB8",
+  [string]$PublicSummarySpreadsheetId = "19xrXFFmaP4bS3JB2o6HeYmDyYgZhK6ez8URAHFYcBss",
   [string]$NameQuestionTitle = "이름",
   [switch]$Watch,
   [int]$IntervalSeconds = 10
@@ -14,7 +15,8 @@ if ($Watch) {
   $watchArgs = @(
     "-NoProfile", "-ExecutionPolicy", "Bypass",
     "-File", $MyInvocation.MyCommand.Path,
-    "-SpreadsheetId", $SpreadsheetId
+    "-SpreadsheetId", $SpreadsheetId,
+    "-PublicSummarySpreadsheetId", $PublicSummarySpreadsheetId
   )
   Write-Host "Watching decision vote responses every $IntervalSeconds seconds. Press Ctrl+C to stop."
   while ($true) {
@@ -182,6 +184,7 @@ $guideRows = @()
 $guideRows += ,@("key", "value")
 $guideRows += ,@("refreshedAt", (Get-Date).ToString("s"))
 $guideRows += ,@("resultSheet", "https://docs.google.com/spreadsheets/d/$SpreadsheetId/edit")
+$guideRows += ,@("publicSummarySheet", "https://docs.google.com/spreadsheets/d/$PublicSummarySpreadsheetId/edit")
 $guideRows += ,@("adminPage", "https://climate-assembly.org/0704-admin/")
 $guideRows += ,@("voteStructurePage", "https://climate-assembly.org/0704-admin/vote-structure")
 
@@ -282,6 +285,10 @@ Clear-SheetRange -TargetSpreadsheetId $SpreadsheetId -Range "Summary!A:F"
 Clear-SheetRange -TargetSpreadsheetId $SpreadsheetId -Range "Guide!A:B"
 Update-SheetRows -TargetSpreadsheetId $SpreadsheetId -Range "Summary!A1:F$($summaryRows.Count)" -Rows $summaryRows
 Update-SheetRows -TargetSpreadsheetId $SpreadsheetId -Range "Guide!A1:B$($guideRows.Count)" -Rows $guideRows
+if (-not [string]::IsNullOrWhiteSpace($PublicSummarySpreadsheetId)) {
+  Clear-SheetRange -TargetSpreadsheetId $PublicSummarySpreadsheetId -Range "Summary!A:F"
+  Update-SheetRows -TargetSpreadsheetId $PublicSummarySpreadsheetId -Range "Summary!A1:F$($summaryRows.Count)" -Rows $summaryRows
+}
 
 if (-not (Test-Path "evaluation")) {
   New-Item -ItemType Directory -Path "evaluation" | Out-Null
@@ -294,6 +301,8 @@ $report = [pscustomobject]@{
   refreshedAt = (Get-Date).ToString("o")
   spreadsheetId = $SpreadsheetId
   spreadsheetUrl = "https://docs.google.com/spreadsheets/d/$SpreadsheetId/edit"
+  publicSummarySpreadsheetId = $PublicSummarySpreadsheetId
+  publicSummaryCsvUrl = if ([string]::IsNullOrWhiteSpace($PublicSummarySpreadsheetId)) { $null } else { "https://docs.google.com/spreadsheets/d/$PublicSummarySpreadsheetId/gviz/tq?tqx=out:csv&sheet=Summary" }
   slots = $reportSlots
 }
 

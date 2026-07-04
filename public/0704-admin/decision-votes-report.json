@@ -1,20 +1,22 @@
 {
-  "refreshedAt": "2026-07-04T11:50:03.7332496+09:00",
+  "refreshedAt": "2026-07-04T12:01:11.0444863+09:00",
   "spreadsheetId": "1m_GD3ohvDW1PXT8Gg3AoTxpf0voRdrJpz2a38PREBB8",
   "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1m_GD3ohvDW1PXT8Gg3AoTxpf0voRdrJpz2a38PREBB8/edit",
+  "publicSummarySpreadsheetId": "19xrXFFmaP4bS3JB2o6HeYmDyYgZhK6ez8URAHFYcBss",
+  "publicSummaryCsvUrl": "https://docs.google.com/spreadsheets/d/19xrXFFmaP4bS3JB2o6HeYmDyYgZhK6ez8URAHFYcBss/gviz/tq?tqx=out:csv&sheet=Summary",
   "slots": [
     {
       "code": "V0",
       "title": "의제 통합 동의",
-      "responseCount": 0,
-      "uniqueVoterCount": 0,
+      "responseCount": 1,
+      "uniqueVoterCount": 1,
       "duplicateDroppedCount": 0,
       "dedupeMode": "name_latest_response",
       "nameQuestionId": "380be3dc",
       "counts": {
-        "판단 유보": 0,
+        "동의": 1,
         "동의하지 않음": 0,
-        "동의": 0
+        "판단 유보": 0
       },
       "responseUrl": "https://docs.google.com/forms/d/e/1FAIpQLSc8NV9MvB52WM8IzQFJCGK3HJmZ8e_UOW4cbV6wd3MERohc-Q/viewform",
       "editUrl": "https://docs.google.com/forms/d/1QXrENjjmh7NcTF_9sm4aUPhnh1_WuAWvP4q80AdBM8s/edit"
@@ -28,9 +30,9 @@
       "dedupeMode": "name_latest_response",
       "nameQuestionId": "6c1868ed",
       "counts": {
-        "찬성": 0,
+        "반대": 0,
         "판단 유보": 0,
-        "반대": 0
+        "찬성": 0
       },
       "responseUrl": "https://docs.google.com/forms/d/e/1FAIpQLSeyeycU58FPedk64L8E5QeDdvEETgVcnGwJDEC6NEZTrMGOtA/viewform",
       "editUrl": "https://docs.google.com/forms/d/1YCMzcYk_XLD95_8MvzJAB4ReQKQs4nl7P18o9hBQTk4/edit"
@@ -44,9 +46,9 @@
       "dedupeMode": "name_latest_response",
       "nameQuestionId": "150bc490",
       "counts": {
-        "찬성": 0,
+        "반대": 0,
         "판단 유보": 0,
-        "반대": 0
+        "찬성": 0
       },
       "responseUrl": "https://docs.google.com/forms/d/e/1FAIpQLSfN73ZpueVP0YHcPNiQeMxVdAwPsDUHU8sbG5oW-Bk20oXAUg/viewform",
       "editUrl": "https://docs.google.com/forms/d/1bdEi3hN6p8qOqWGdJV3f8UK3g4wPDEtojjQakCpDTd4/edit"

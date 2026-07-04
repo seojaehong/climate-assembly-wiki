@@ -32,7 +32,9 @@ describe('0704 conditional vote console', () => {
   test('conditional vote results can refresh continuously during a live vote', () => {
     const page = readText('public/0704-admin/vote-structure.html');
     const script = readText('scripts/refresh-0704-decision-votes.ps1');
+    const liveFunction = readText('functions/0704-admin/decision-votes-live.json.js');
 
+    expect(page).toContain('/0704-admin/decision-votes-live.json');
     expect(page).toContain('setInterval(loadDecisionReport, 5000)');
     expect(page).toContain('결과는 5초마다 자동 갱신됩니다');
     expect(page).toContain('운영 확인 및 발표 전환용');
@@ -46,6 +48,11 @@ describe('0704 conditional vote console', () => {
     expect(script).toContain('NameQuestionId = "6c1868ed"');
     expect(script).toContain('NameQuestionId = "150bc490"');
     expect(script).toContain('$slot.NameQuestionId');
+    expect(script).toContain('PublicSummarySpreadsheetId = "19xrXFFmaP4bS3JB2o6HeYmDyYgZhK6ez8URAHFYcBss"');
+    expect(script).toContain('Update-SheetRows -TargetSpreadsheetId $PublicSummarySpreadsheetId');
+    expect(liveFunction).toContain('PUBLIC_SUMMARY_SPREADSHEET_ID');
+    expect(liveFunction).toContain('19xrXFFmaP4bS3JB2o6HeYmDyYgZhK6ez8URAHFYcBss');
+    expect(liveFunction).toContain('public_summary_sheet');
   });
 
   test('admin and field manual enlarge every QR instead of opening tiny thumbnails', () => {

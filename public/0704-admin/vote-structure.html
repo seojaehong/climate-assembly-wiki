@@ -278,6 +278,7 @@ const VOTE_META = {
 };
 const PAGE_PARAMS = new URLSearchParams(location.search);
 const DEMO_MODE = PAGE_PARAMS.get('demo') === 'full';
+const DECISION_LIVE_REPORT_PATH = '/0704-admin/decision-votes-live.json';
 const DECISION_REPORT_PATH = DEMO_MODE
   ? '/0704-admin/decision-votes-report-demo-full.json'
   : '/0704-admin/decision-votes-report.json';
@@ -361,7 +362,11 @@ function renderResults(focusCode = null) {
 
 async function loadDecisionReport() {
   try {
-    const response = await fetch(`${DECISION_REPORT_PATH}?_=${Date.now()}`, { cache: 'no-store' });
+    const reportPath = DEMO_MODE ? DECISION_REPORT_PATH : DECISION_LIVE_REPORT_PATH;
+    let response = await fetch(`${reportPath}?_=${Date.now()}`, { cache: 'no-store' });
+    if (!response.ok && !DEMO_MODE) {
+      response = await fetch(`${DECISION_REPORT_PATH}?_=${Date.now()}`, { cache: 'no-store' });
+    }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     decisionReport = await response.json();
     for (const slot of decisionReport.slots || []) {
