@@ -349,6 +349,14 @@ const PAGE_PARAMS = new URLSearchParams(location.search);
 const DEMO_MODE = PAGE_PARAMS.get('demo') === 'full';
 const DATA_FILE = DEMO_MODE ? 'data-demo-full.json' : 'data.json';
 const PHASE_ORDER = ['pre', 'c1', 'c2', 'c3', 'c4', 'total'];
+const PHASE_FALLBACKS = {
+  pre: { label: '평가 전  의제투표 결과 집계', weight: 0 },
+  c1: { label: '기준 1  기후위기 직접 관련성', weight: 25 },
+  c2: { label: '기준 2  시민 삶·일상 실천성', weight: 25 },
+  c3: { label: '기준 3  사회적 합의 필요성', weight: 25 },
+  c4: { label: '기준 4  다양한 대안 비교성', weight: 25 },
+  total: { label: '종합  우선순위 결과', weight: 100 },
+};
 let DATA = null;
 let phaseIdx = 0;
 let phaseSec = 16000;   // 16초 × 5 페이즈 ≈ 80초 (90초 지루함 한계 미만)
@@ -952,7 +960,8 @@ function placeLabels() {
 
 function setPhaseLabel(idx) {
   setAxisTitles(idx);
-  const ph = DATA.meta.phases[idx];
+  const phKey = PHASE_ORDER[idx];
+  const ph = (DATA.meta.phases || []).find(item => item.id === phKey) || PHASE_FALLBACKS[phKey];
   const bg = document.getElementById('phaseBg');
   const t = document.getElementById('phaseTitle');
 
@@ -962,21 +971,21 @@ function setPhaseLabel(idx) {
     return;
   }
 
-  if (idx === 5) {
+  if (idx === PHASE_ORDER.length - 1) {
     bg.textContent = '★';
     t.innerHTML = `<div class="pt-kicker">종합 결과</div><div class="pt-name">4 기준 <span class="amber">가중평균</span></div><div class="pt-weight">시민 우선순위 의제</div>`;
     return;
   }
 
   bg.textContent = String(idx);
-  const parts = ph.label.split('  ');
+  const parts = (ph.label || PHASE_FALLBACKS[phKey].label).split('  ');
   const name = (parts.slice(1).join(' ') || '').replace(
     /(시민 삶|일상 실천|기후위기|사회적 합의|다양한 대안)/g, '<span class="amber">$1</span>'
   );
   t.innerHTML = `
     <div class="pt-kicker">${parts[0]}</div>
     <div class="pt-name">${name}</div>
-    <div class="pt-weight">${ph.weight}% <small style="font-size:18px;opacity:0.9;margin-left:4px">가중</small></div>
+    <div class="pt-weight">${ph.weight ?? PHASE_FALLBACKS[phKey].weight}% <small style="font-size:18px;opacity:0.9;margin-left:4px">가중</small></div>
   `;
 }
 

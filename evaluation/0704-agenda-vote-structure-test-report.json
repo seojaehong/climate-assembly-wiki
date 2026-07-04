@@ -3,7 +3,7 @@
   "tdd": {
     "redTest": "0704 agenda vote promotion is capped to the final four A/B candidates",
     "redResult": "failed before implementation because admin/sync did not include -MaxChoices 4",
-    "greenResult": "25 tests passed after adding -MaxChoices 4 to admin and sync command",
+    "greenResult": "26 tests passed after adding -MaxChoices 4 to admin/sync command and stable phase-label fallbacks",
     "testCommand": "npm.cmd exec -- vitest run scripts/decision-vote-console.test.mjs scripts/agenda-vote-scoring.test.mjs"
   },
   "currentLiveSheetAgendas": {
@@ -18,5 +18,33 @@
     "refreshCommand": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\\refresh-0704-agenda-vote.ps1 -Watch -IntervalSeconds 10",
     "resultUrl": "https://climate-assembly.org/agenda-vote-0704/index.html?sheet=1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw",
     "resultPolling": "bubble race reads Scores tab every 5 seconds"
+  },
+  "fourCandidateDummyVerification": {
+    "verifiedAt": "2026-07-04T15:22:00+09:00",
+    "scoreSheetId": "1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw",
+    "rowsWrittenToScores": [
+      {
+        "slot": "A1",
+        "short": "A조 의제 1",
+        "score": 4.9
+      },
+      {
+        "slot": "A2",
+        "short": "A조 의제 2",
+        "score": 4.4
+      },
+      {
+        "slot": "B1",
+        "short": "B조 의제 1",
+        "score": 3.7
+      },
+      {
+        "slot": "B2",
+        "short": "B조 의제 2",
+        "score": 2.8
+      }
+    ],
+    "liveResult": "agenda-vote page rendered four bubbles from the Scores sheet, showed LIVE, final phase scores 4.90/4.40/3.70/2.80, and no visible undefined text",
+    "screenshot": "evaluation/screenshots/0704-agenda-vote-four-dummy-final-phase.png"
   }
 }

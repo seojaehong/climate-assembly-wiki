@@ -218,6 +218,14 @@ describe('0704 conditional vote console', () => {
     expect(refresh).not.toContain('selectedAgenda');
   });
 
+  test('agenda vote race keeps phase labels stable when live data only has total metadata', () => {
+    const agendaRace = readText('public/agenda-vote-0704/index.html');
+
+    expect(agendaRace).toContain('PHASE_FALLBACKS');
+    expect(agendaRace).toContain('PHASE_ORDER.length - 1');
+    expect(agendaRace).not.toContain('if (idx === 5)');
+  });
+
   test('0704 agenda vote promotion is capped to the final four A/B candidates', () => {
     const admin = readText('public/0704-admin/index.html');
     const sync = readText('scripts/sync-0704-live-operation.ps1');
