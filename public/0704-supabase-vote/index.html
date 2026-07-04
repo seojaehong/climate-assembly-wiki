@@ -142,6 +142,7 @@ const SLOTS = [
 ];
 let latest = new Map();
 let activeCode = null;
+let gridRendered = false;
 
 function headers() {
   return { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
@@ -202,9 +203,9 @@ function renderGrid() {
       <div class="meta">
         <div class="row"><b>라운드</b><span>${escapeHtml(slot.code)}</span></div>
         <div class="row"><b>선택</b><span>${slot.options.map(escapeHtml).join(' / ')}</span></div>
-        <div class="row"><b>응답</b><span><span class="count-pill">${slot.responseCount}명</span></span></div>
+        <div class="row"><b>응답</b><span><span class="count-pill" data-response-count="${slot.code}">${slot.responseCount}명</span></span></div>
       </div>
-      <div class="result">${bars(slot)}</div>
+      <div class="result" data-bars="${slot.code}">${bars(slot)}</div>
       <div class="actions">
         <a class="btn orange" href="${slot.url}" target="_blank" rel="noopener">응답 화면</a>
         <button class="btn light" type="button" data-qr="${slot.code}">QR 탭</button>
@@ -218,6 +219,18 @@ function renderGrid() {
   document.querySelectorAll('[data-qr]').forEach((button) => {
     button.addEventListener('click', () => openQr(button.dataset.qr));
   });
+}
+
+function updateGrid() {
+  for (const base of SLOTS) {
+    const slot = latest.get(base.code) || { ...base, counts: emptyCounts(base), responseCount: 0 };
+    document.querySelectorAll(`[data-response-count="${slot.code}"]`).forEach((node) => {
+      node.textContent = `${slot.responseCount}명`;
+    });
+    document.querySelectorAll(`[data-bars="${slot.code}"]`).forEach((node) => {
+      node.innerHTML = bars(slot);
+    });
+  }
 }
 
 function renderModal() {
@@ -332,7 +345,12 @@ function closeModal() {
 async function tick() {
   try {
     await fetchTally();
-    renderGrid();
+    if (!gridRendered) {
+      renderGrid();
+      gridRendered = true;
+    } else {
+      updateGrid();
+    }
     if (document.getElementById('resultModal').classList.contains('show')) renderModal();
     document.getElementById('status').textContent = `마지막 갱신 ${new Date().toLocaleTimeString('ko-KR')} · Supabase 직접 집계`;
   } catch (error) {

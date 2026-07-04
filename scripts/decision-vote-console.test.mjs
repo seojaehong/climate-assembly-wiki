@@ -76,6 +76,8 @@ describe('0704 conditional vote console', () => {
     expect(supabasePage).toContain('V1B. 적응 의제 배분 찬반');
     expect(supabasePage).toContain('const SUPABASE_POLL_MS = 2000');
     expect(supabasePage).toContain('setInterval(tick, SUPABASE_POLL_MS)');
+    expect(supabasePage).toContain('let gridRendered = false');
+    expect(supabasePage).toContain('updateGrid');
     expect(supabasePage).toContain('cv_tally');
     expect(supabasePage).toContain('requestFullscreen');
     expect(supabasePage).toContain('id="qrModal"');
