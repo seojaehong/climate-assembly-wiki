@@ -293,7 +293,7 @@ function Read-LiveSheetItems {
       $group = if ($row.Count -gt 1) { [string]$row[1] } else { "" }
       $text = if ($row.Count -gt 2) { Normalize-Text -Text ([string]$row[2]) } else { "" }
       $note = if ($row.Count -gt 3) { Normalize-Text -Text ([string]$row[3]) } else { "" }
-      $writer = if ($row.Count -gt 4) { Normalize-Text -Text ([string]$row[4]) } else { "" }
+      $speaker = if ($row.Count -gt 4) { Normalize-Text -Text ([string]$row[4]) } else { "" }
       if ([string]::IsNullOrWhiteSpace($text)) {
         continue
       }
@@ -302,7 +302,8 @@ function Read-LiveSheetItems {
         group = if ([string]::IsNullOrWhiteSpace($group)) { $range.Split(" ")[0] } else { $group }
         text = $text
         note = $note
-        writer = $writer
+        speaker = $speaker
+        writer = $speaker
         kind = $TextKind
       }
     }
@@ -320,15 +321,17 @@ function Build-PrintHtml {
   $generatedAt = (Get-Date).ToString("yyyy-MM-dd HH:mm")
   $rows = ""
   if ($Items.Count -eq 0) {
-    $rows = "<tr><td colspan=""4"" class=""empty"">$(Escape-Html -Text $EmptyText)</td></tr>"
+    $rows = "<tr><td colspan=""5"" class=""empty"">$(Escape-Html -Text $EmptyText)</td></tr>"
   } else {
     foreach ($item in $Items) {
+      $speaker = if ($item.PSObject.Properties.Name -contains "speaker") { $item.speaker } else { $item.writer }
       $rows += @"
 <tr>
   <td class="group">$(Escape-Html -Text $item.group)</td>
   <td class="num">$(Escape-Html -Text $item.number)</td>
   <td class="text">$(Escape-Html -Text $item.text)</td>
   <td class="note">$(Escape-Html -Text $item.note)</td>
+  <td class="speaker">$(Escape-Html -Text $speaker)</td>
 </tr>
 "@
     }
@@ -355,7 +358,8 @@ function Build-PrintHtml {
   .group{width:58px;font-weight:900;color:#0f766e}
   .num{width:42px;color:#64748b}
   .text{font-size:14px;font-weight:800}
-  .note{width:150px;color:#475569}
+  .note{width:120px;color:#475569}
+  .speaker{width:105px;color:#0f172a;font-weight:900}
   .empty{padding:32px;text-align:center;color:#64748b;font-weight:900;background:#f8fafc}
 </style>
 </head>
@@ -368,7 +372,7 @@ function Build-PrintHtml {
   <p class="subtitle">$(Escape-Html -Text $Subtitle)</p>
   <div class="meta"><span>생성: $generatedAt</span><span>건수: $($Items.Count)</span></div>
   <table>
-    <thead><tr><th class="group">조</th><th class="num">번호</th><th>내용</th><th class="note">비고</th></tr></thead>
+    <thead><tr><th class="group">조</th><th class="num">번호</th><th>내용</th><th class="note">비고</th><th class="speaker">발언자</th></tr></thead>
     <tbody>$rows</tbody>
   </table>
 </body>
@@ -380,14 +384,14 @@ Push-Location $repoRoot
 try {
   if ($UseSample) {
     $questions = @(
-      [pscustomobject]@{ number = "1"; group = "A조"; text = "산업 부문 탄소 감축 목표를 시민에게 설명할 때 가장 설득력 있는 근거는 무엇인가요?"; note = "전문가 질의"; writer = "기록A"; kind = "question" },
-      [pscustomobject]@{ number = "2"; group = "A조"; text = "재생에너지 확대 과정에서 지역 주민 수용성을 높인 국내외 사례가 있을까요?"; note = "사례 요청"; writer = "기록A"; kind = "question" },
-      [pscustomobject]@{ number = "1"; group = "B조"; text = "탄소 감축 정책이 취약계층 부담으로 이어지지 않게 설계하는 기준은 무엇인가요?"; note = "형평성"; writer = "기록B"; kind = "question" }
+      [pscustomobject]@{ number = "1"; group = "A조"; text = "산업 부문 탄소 감축 목표를 시민에게 설명할 때 가장 설득력 있는 근거는 무엇인가요?"; note = "전문가 질의"; speaker = "A조 시민"; writer = "A조 시민"; kind = "question" },
+      [pscustomobject]@{ number = "2"; group = "A조"; text = "재생에너지 확대 과정에서 지역 주민 수용성을 높인 국내외 사례가 있을까요?"; note = "사례 요청"; speaker = "A조 시민"; writer = "A조 시민"; kind = "question" },
+      [pscustomobject]@{ number = "1"; group = "B조"; text = "탄소 감축 정책이 취약계층 부담으로 이어지지 않게 설계하는 기준은 무엇인가요?"; note = "형평성"; speaker = "B조 시민"; writer = "B조 시민"; kind = "question" }
     )
     $agendas = @(
-      [pscustomobject]@{ number = "1"; group = "A조"; text = "공공건물과 학교의 에너지 절감 실적을 공개하고 시민 참여형 절감 캠페인과 연계한다."; note = "투표 후보"; writer = "기록A"; kind = "agenda" },
-      [pscustomobject]@{ number = "2"; group = "A조"; text = "생활권 교통 감축 행동에 참여한 시민에게 대중교통·공공시설 통합 인센티브를 제공한다."; note = "투표 후보"; writer = "기록A"; kind = "agenda" },
-      [pscustomobject]@{ number = "1"; group = "B조"; text = "기업 탄소배출 정보와 감축 계획을 시민이 쉽게 확인하고 의견을 낼 수 있는 공개 플랫폼을 만든다."; note = "투표 후보"; writer = "기록B"; kind = "agenda" }
+      [pscustomobject]@{ number = "1"; group = "A조"; text = "공공건물과 학교의 에너지 절감 실적을 공개하고 시민 참여형 절감 캠페인과 연계한다."; note = "투표 후보"; speaker = "A조 시민"; writer = "A조 시민"; kind = "agenda" },
+      [pscustomobject]@{ number = "2"; group = "A조"; text = "생활권 교통 감축 행동에 참여한 시민에게 대중교통·공공시설 통합 인센티브를 제공한다."; note = "투표 후보"; speaker = "A조 시민"; writer = "A조 시민"; kind = "agenda" },
+      [pscustomobject]@{ number = "1"; group = "B조"; text = "기업 탄소배출 정보와 감축 계획을 시민이 쉽게 확인하고 의견을 낼 수 있는 공개 플랫폼을 만든다."; note = "투표 후보"; speaker = "B조 시민"; writer = "B조 시민"; kind = "agenda" }
     )
   } else {
     $questions = Read-LiveSheetItems -Ranges @("'A조 질문입력'!A1:E80", "'B조 질문입력'!A1:E80") -TextKind "question"

@@ -1,89 +1,17 @@
 {
-  "generatedAt": "2026-07-04T10:59:06.2298891+09:00",
+  "generatedAt": "2026-07-04T13:47:37.0716626+09:00",
   "spreadsheetId": "1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ",
   "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ/edit",
-  "questionCount": 9,
+  "questionCount": 0,
   "agendaCount": 6,
-  "questions": [
-    {
-      "number": "1",
-      "group": "A조",
-      "text": "test1",
-      "note": "",
-      "writer": "서재홍",
-      "kind": "question"
-    },
-    {
-      "number": "2",
-      "group": "A조",
-      "text": "안녕하세요",
-      "note": "",
-      "writer": "",
-      "kind": "question"
-    },
-    {
-      "number": "1",
-      "group": "B조",
-      "text": "testb",
-      "note": "선정",
-      "writer": "",
-      "kind": "question"
-    },
-    {
-      "number": "2",
-      "group": "B조",
-      "text": "c",
-      "note": "선정",
-      "writer": "",
-      "kind": "question"
-    },
-    {
-      "number": "3",
-      "group": "B조",
-      "text": "d",
-      "note": "",
-      "writer": "",
-      "kind": "question"
-    },
-    {
-      "number": "4",
-      "group": "B조",
-      "text": "e",
-      "note": "",
-      "writer": "",
-      "kind": "question"
-    },
-    {
-      "number": "5",
-      "group": "B조",
-      "text": "f",
-      "note": "",
-      "writer": "",
-      "kind": "question"
-    },
-    {
-      "number": "6",
-      "group": "B조",
-      "text": "g",
-      "note": "",
-      "writer": "",
-      "kind": "question"
-    },
-    {
-      "number": "7",
-      "group": "B조",
-      "text": "h",
-      "note": "",
-      "writer": "",
-      "kind": "question"
-    }
-  ],
+  "questions": [],
   "agendas": [
     {
       "number": "1",
       "group": "A조",
       "text": "태양광에너지로의 전환 방법",
       "note": "",
+      "speaker": "",
       "writer": "",
       "kind": "agenda"
     },
@@ -92,6 +20,7 @@
       "group": "A조",
       "text": "전기차 상용화 극대화 방안",
       "note": "",
+      "speaker": "",
       "writer": "",
       "kind": "agenda"
     },
@@ -100,6 +29,7 @@
       "group": "A조",
       "text": "에너지 감축을 위해 시민이 해야 할 일",
       "note": "",
+      "speaker": "",
       "writer": "",
       "kind": "agenda"
     },
@@ -108,6 +38,7 @@
       "group": "B조",
       "text": "전생애주기 탄소중립 교육체계 구축",
       "note": "",
+      "speaker": "",
       "writer": "",
       "kind": "agenda"
     },
@@ -116,6 +47,7 @@
       "group": "B조",
       "text": "시민의식을 개선하고 참여를 활성화하는 방안은 무엇일까요",
       "note": "",
+      "speaker": "",
       "writer": "",
       "kind": "agenda"
     },
@@ -124,6 +56,7 @@
       "group": "B조",
       "text": "자원순환형 배달 및 문화 조성을 위해 어떠한 방법이 필요한가요?",
       "note": "",
+      "speaker": "",
       "writer": "",
       "kind": "agenda"
     }

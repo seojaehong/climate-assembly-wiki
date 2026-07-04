@@ -88,13 +88,14 @@ async function fetchSheetRows(sheetName){
   const rows = parseCsv(csv);
   const header = rows.shift() || [];
   const idx = name => header.indexOf(name);
-  const numberIdx = idx('번호'), groupIdx = idx('조'), textIdx = idx('질문'), noteIdx = idx('비고'), writerIdx = idx('입력자');
+  const speakerIdx = idx('발언자') >= 0 ? idx('발언자') : idx('입력자');
+  const numberIdx = idx('번호'), groupIdx = idx('조'), textIdx = idx('질문'), noteIdx = idx('비고');
   return rows.map(row => ({
     number: row[numberIdx] || '',
     group: row[groupIdx] || sheetName.slice(0, 2),
     text: row[textIdx] || '',
     note: row[noteIdx] || '',
-    writer: row[writerIdx] || '',
+    speaker: row[speakerIdx] || '',
     kind: 'question'
   })).filter(item => item.text.trim());
 }
@@ -109,11 +110,12 @@ async function loadQuestions(){
 }
 function renderNote(item){
   const note = item.note ? `<span class="chip">${esc(item.note)}</span>` : '';
-  const writer = item.writer ? `<span class="chip">${esc(item.writer)}</span>` : '';
+  const speaker = item.speaker || item.writer;
+  const speakerChip = speaker ? `<span class="chip">발언자 ${esc(speaker)}</span>` : '';
   return `<article class="note">
     <div class="num">${esc(item.number || '')}</div>
     <div class="text">${esc(item.text)}</div>
-    <div class="note-meta"><span class="chip group">${esc(item.group)}</span>${note}${writer}</div>
+    <div class="note-meta"><span class="chip group">${esc(item.group)}</span>${note}${speakerChip}</div>
   </article>`;
 }
 function renderLane(group, rows){
