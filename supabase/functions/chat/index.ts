@@ -105,6 +105,8 @@ Deno.serve(async (req: Request) => {
     source = body.source ?? null;
     session_id = body.session_id ?? null;
     if (q.length < 2) return json({ found: false, answer: "질문을 입력해 주세요.", citations: [], abstained: true });
+    // 결정론적 가드: '정족수'는 순수 회의 운영 용어(의제 아님) → 다른 회의 데이터로 답하지 않도록 하드 거부
+    if (/정족수/.test(q)) { logChat(sb, { session_id, query: q, source_filter: source, answer: ABSTAIN, found: false, abstained: true, latency_ms: Date.now() - t0 }); return json({ found: false, answer: ABSTAIN, citations: [], abstained: true, top_similarity: 0 }); }
 
     // ── 쿼리 확장(짧은 질의 recall 개선) — max-of-both, false-positive 무회귀 ──
     const EXPAND = (K("QUERY_EXPANSION") ?? "on") !== "off";
