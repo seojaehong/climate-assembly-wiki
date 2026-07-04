@@ -42,20 +42,21 @@
 <body>
 <header>
   <div>
-    <div class="meta" id="meta">A/B 실시간 Sheet 질문 입력</div>
-    <h1>전문가 전달용 조별 질문 누적 보드</h1>
+    <div class="meta" id="meta">A/B 실시간 Sheet 선정 질문</div>
+    <h1>전문가 전달용 선정 질문 보드</h1>
   </div>
   <div class="actions">
     <a href="/0704-admin/">관리자</a>
+    <a class="secondary" href="/question-board-0704/">전체 질문</a>
     <a class="secondary" id="question-pdf-link" href="/0704-admin/live-sheet-questions-print.html">질문 PDF/인쇄</a>
     <button class="secondary" type="button" onclick="location.reload()">새로고침</button>
   </div>
 </header>
 <main>
   <section class="summary">
-    <div class="stat"><b>전체 질문</b><span id="total-count">0</span></div>
-    <div class="stat"><b>A조 질문</b><span id="a-count">0</span></div>
-    <div class="stat"><b>B조 질문</b><span id="b-count">0</span></div>
+    <div class="stat"><b>선정 질문</b><span id="total-count">0</span></div>
+    <div class="stat"><b>A조 선정</b><span id="a-count">0</span></div>
+    <div class="stat"><b>B조 선정</b><span id="b-count">0</span></div>
   </section>
   <section class="board" id="board"></section>
 </main>
@@ -107,7 +108,7 @@ async function fetchSheetRows(sheetName){
 }
 async function loadQuestions(){
   try {
-    const rows = (await Promise.all(SHEETS.map(fetchSheetRows))).flat();
+    const rows = (await Promise.all(SHEETS.map(fetchSheetRows))).flat().filter(item => item.selected);
     return {questions: rows, generatedAt: new Date().toISOString(), source: 'google_sheet'};
   } catch (err) {
     const data = await fetch(DATA_URL + '?_=' + Date.now(), {cache:'no-store'}).then(r => r.json());
@@ -118,8 +119,8 @@ function renderNote(item){
   const note = item.note ? `<span class="chip">${esc(item.note)}</span>` : '';
   const speaker = item.speaker || item.writer;
   const speakerChip = speaker ? `<span class="chip">발언자 ${esc(speaker)}</span>` : '';
-  const selectedChip = item.selected ? '<span class="chip selected">선정</span>' : '';
-  return `<article class="note ${item.selected ? 'selected' : ''}">
+  const selectedChip = '<span class="chip selected">선정</span>';
+  return `<article class="note selected">
     <div class="num">${esc(item.number || '')}</div>
     <div class="text">${esc(item.text)}</div>
     <div class="note-meta"><span class="chip group">${esc(item.group)}</span>${selectedChip}${note}${speakerChip}</div>
@@ -132,12 +133,12 @@ function renderLane(group, rows){
       <div class="eyebrow">LIVE QUESTIONS</div>
       <h2>${esc(group)}</h2>
     </div>
-    <div class="cards">${rows.length ? rows.map(renderNote).join('') : '<div class="empty">아직 입력된 질문이 없습니다.</div>'}</div>
+    <div class="cards">${rows.length ? rows.map(renderNote).join('') : '<div class="empty">아직 선정된 질문이 없습니다.</div>'}</div>
   </section>`;
 }
 async function load(){
   const data = await loadQuestions();
-  const questions = data.questions || [];
+  const questions = (data.questions || []).filter(item => item.selected);
   const aRows = questions.filter(item => item.group === 'A조');
   const bRows = questions.filter(item => item.group === 'B조');
   document.getElementById('total-count').textContent = questions.length;
