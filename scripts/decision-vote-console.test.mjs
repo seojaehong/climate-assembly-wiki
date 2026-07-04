@@ -110,4 +110,52 @@ describe('0704 conditional vote console', () => {
     expect(formSetup).toContain('title = "이름"');
     expect(formSetup).toContain('$i -le 17');
   });
+
+  test('single live operation sync command refreshes sheets, forms, votes, and deploys optionally', () => {
+    const admin = readText('public/0704-admin/index.html');
+    const manual = readText('public/0704-admin/operator-manual.html');
+    const sync = readText('scripts/sync-0704-live-operation.ps1');
+
+    expect(admin).toContain('scripts\\sync-0704-live-operation.ps1 -Deploy');
+    expect(manual).toContain('scripts\\sync-0704-live-operation.ps1 -Deploy');
+    expect(sync).toContain('ensure-0704-form-field-setup.ps1 -Apply');
+    expect(sync).toContain('refresh-0704-input-forms.ps1');
+    expect(sync).toContain('export-0704-live-sheet-packets.ps1');
+    expect(sync).toContain('promote-0704-live-sheet-agendas-to-vote.ps1 -Apply');
+    expect(sync).toContain('refresh-0704-agenda-vote.ps1');
+    expect(sync).toContain('refresh-0704-decision-votes.ps1');
+    expect(sync).toContain('wrangler pages deploy');
+    expect(sync).toContain('Deployment complete');
+  });
+
+  test('agenda candidates have a Miro-style board before voting', () => {
+    const admin = readText('public/0704-admin/index.html');
+    const manual = readText('public/0704-admin/operator-manual.html');
+    const exportScript = readText('scripts/export-0704-live-sheet-packets.ps1');
+    const board = readText('public/agenda-board-0704/index.html');
+
+    expect(admin).toContain('/agenda-board-0704/index.html');
+    expect(manual).toContain('https://climate-assembly.org/agenda-board-0704/');
+    expect(exportScript).toContain('AgendaBoardData');
+    expect(exportScript).toContain('public/agenda-board-0704/data.json');
+    expect(board).toContain('투표 전 조별 의제 후보 보드');
+    expect(board).toContain('/agenda-board-0704/data.json');
+    expect(board).toContain('renderLane');
+    expect(board).toContain('setInterval(load, 30000)');
+  });
+
+  test('live questions have a board for expert review as a separate track from print PDFs', () => {
+    const admin = readText('public/0704-admin/index.html');
+    const manual = readText('public/0704-admin/operator-manual.html');
+    const board = readText('public/question-board-0704/index.html');
+
+    expect(admin).toContain('/question-board-0704/index.html');
+    expect(admin).toContain('Sheet 질문 보드');
+    expect(manual).toContain('질문 보드는 전문가 화면');
+    expect(manual).toContain('https://climate-assembly.org/question-board-0704/');
+    expect(board).toContain('전문가 전달용 조별 질문 누적 보드');
+    expect(board).toContain('/agenda-board-0704/data.json');
+    expect(board).toContain('LIVE QUESTIONS');
+    expect(board).toContain('setInterval(load, 30000)');
+  });
 });

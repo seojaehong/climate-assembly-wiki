@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>0704 조별 질문 누적 보드</title>
+<style>
+  :root{--bg:#f6f8fb;--ink:#0f172a;--muted:#667085;--line:#d9e2ee;--a:#1d4ed8;--b:#0f766e;--paper:#fff}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(circle at 8% 0%,rgba(29,78,216,.10),transparent 32%),radial-gradient(circle at 92% 8%,rgba(15,118,110,.10),transparent 30%),linear-gradient(180deg,#f8fafc 0%,var(--bg) 100%);color:var(--ink);font-family:"Noto Sans KR",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  header{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;gap:18px;align-items:center;padding:16px 22px;background:rgba(255,255,255,.88);border-bottom:1px solid var(--line);backdrop-filter:blur(18px)}
+  h1{margin:0;font-size:28px;line-height:1.2;letter-spacing:0}
+  .meta{font-size:13px;color:var(--muted);font-weight:900}
+  .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  a,button{height:36px;border:1px solid #111827;border-radius:8px;background:#111827;color:#fff;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-weight:900;font-size:13px;font-family:inherit;cursor:pointer}
+  button.secondary,a.secondary{background:#eef2f7;color:#111827;border-color:#d9e2ee}
+  main{padding:18px;display:grid;gap:18px}
+  .summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .stat{border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.84);padding:16px;box-shadow:0 12px 32px rgba(15,23,42,.07)}
+  .stat b{display:block;font-size:13px;color:var(--muted);margin-bottom:8px}
+  .stat span{font-size:42px;font-weight:950;line-height:1;color:#111827}
+  .board{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+  .lane{border:1px solid rgba(15,23,42,.10);border-radius:18px;background:rgba(255,255,255,.78);overflow:hidden;box-shadow:0 18px 52px rgba(15,23,42,.08)}
+  .lane-head{padding:22px 24px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(248,250,252,.76))}
+  .lane-head .eyebrow{font-size:13px;font-weight:950;color:var(--lane);letter-spacing:.08em}
+  .lane-head h2{margin:7px 0 0;font-size:44px;line-height:1}
+  .cards{padding:22px;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+  .note{position:relative;min-height:178px;border:2px solid var(--lane);border-radius:12px;background:var(--note);box-shadow:0 14px 34px rgba(15,23,42,.11);padding:18px 18px 56px;transform:rotate(var(--rot));word-break:keep-all;overflow-wrap:break-word}
+  .note:nth-child(3n+1){--rot:-.30deg}.note:nth-child(3n+2){--rot:.22deg}.note:nth-child(3n){--rot:-.10deg}
+  .num{position:absolute;top:12px;right:14px;color:var(--lane);font-size:18px;font-weight:950}
+  .text{font-size:25px;font-weight:950;line-height:1.25;padding-right:34px}
+  .note-meta{position:absolute;left:14px;right:14px;bottom:12px;display:flex;gap:6px;flex-wrap:wrap}
+  .chip{display:inline-flex;align-items:center;min-height:25px;border-radius:999px;background:rgba(15,23,42,.08);padding:0 9px;color:#475467;font-size:12px;font-weight:900}
+  .chip.group{background:var(--lane);color:#fff}
+  .empty{padding:28px;color:var(--muted);font-weight:900}
+  @media (max-width:900px){header{display:block}.actions{margin-top:12px}.summary,.board{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="meta" id="meta">A/B 실시간 Sheet 질문 입력</div>
+    <h1>전문가 전달용 조별 질문 누적 보드</h1>
+  </div>
+  <div class="actions">
+    <a href="/0704-admin/">관리자</a>
+    <a class="secondary" href="/0704-admin/live-sheet-questions-print.pdf">질문 PDF</a>
+    <button class="secondary" type="button" onclick="location.reload()">새로고침</button>
+  </div>
+</header>
+<main>
+  <section class="summary">
+    <div class="stat"><b>전체 질문</b><span id="total-count">0</span></div>
+    <div class="stat"><b>A조 질문</b><span id="a-count">0</span></div>
+    <div class="stat"><b>B조 질문</b><span id="b-count">0</span></div>
+  </section>
+  <section class="board" id="board"></section>
+</main>
+<script>
+const DATA_URL = '/agenda-board-0704/data.json';
+function esc(s){return String(s ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function renderNote(item){
+  const note = item.note ? `<span class="chip">${esc(item.note)}</span>` : '';
+  const writer = item.writer ? `<span class="chip">${esc(item.writer)}</span>` : '';
+  return `<article class="note">
+    <div class="num">${esc(item.number || '')}</div>
+    <div class="text">${esc(item.text)}</div>
+    <div class="note-meta"><span class="chip group">${esc(item.group)}</span>${note}${writer}</div>
+  </article>`;
+}
+function renderLane(group, rows){
+  const isA = group === 'A조';
+  return `<section class="lane" style="--lane:${isA ? '#1d4ed8' : '#0f766e'};--note:${isA ? '#eff6ff' : '#ecfdf5'}">
+    <div class="lane-head">
+      <div class="eyebrow">LIVE QUESTIONS</div>
+      <h2>${esc(group)}</h2>
+    </div>
+    <div class="cards">${rows.length ? rows.map(renderNote).join('') : '<div class="empty">아직 입력된 질문이 없습니다.</div>'}</div>
+  </section>`;
+}
+async function load(){
+  const data = await fetch(DATA_URL + '?_=' + Date.now(), {cache:'no-store'}).then(r => r.json());
+  const questions = data.questions || [];
+  const aRows = questions.filter(item => item.group === 'A조');
+  const bRows = questions.filter(item => item.group === 'B조');
+  document.getElementById('total-count').textContent = questions.length;
+  document.getElementById('a-count').textContent = aRows.length;
+  document.getElementById('b-count').textContent = bRows.length;
+  document.getElementById('meta').textContent = `마지막 갱신 ${new Date(data.generatedAt).toLocaleString('ko-KR')} · A/B 실시간 Sheet`;
+  document.getElementById('board').innerHTML = renderLane('A조', aRows) + renderLane('B조', bRows);
+}
+load().catch(err => {
+  document.getElementById('board').innerHTML = `<div class="empty">질문 데이터를 불러오지 못했습니다: ${esc(err.message)}</div>`;
+});
+setInterval(load, 30000);
+</script>
+</body>
+</html>

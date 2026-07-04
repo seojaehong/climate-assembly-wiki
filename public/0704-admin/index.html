@@ -293,7 +293,9 @@
           <a class="btn secondary" href="https://docs.google.com/spreadsheets/d/1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ/edit" target="_blank" rel="noopener">실시간 입력 Sheet</a>
           <button class="copy" type="button" data-copy-url="https://docs.google.com/spreadsheets/d/1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ/edit">Sheet URL 복사</button>
           <a class="btn ghost" href="/0704-admin/live-sheet-questions-print.pdf" target="_blank" rel="noopener">질문 PDF</a>
+          <a class="btn warm" href="/question-board-0704/index.html" target="_blank" rel="noopener">질문 보드</a>
           <a class="btn ghost" href="/0704-admin/live-sheet-agendas-print.pdf" target="_blank" rel="noopener">의제 PDF</a>
+          <a class="btn warm" href="/agenda-board-0704/index.html" target="_blank" rel="noopener">의제 보드</a>
           <a class="btn warm" href="/agenda-vote-0704/index.html?sheet=1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw" target="_blank" rel="noopener">버블레이스</a>
         </div>
       </article>
@@ -323,15 +325,17 @@
           <h2>현장 인쇄본 일괄 갱신</h2>
           <p>내일 기본은 실시간 Sheet 명령입니다. Form 응답을 병행할 때만 기존 Form 기반 명령을 사용합니다.</p>
           <div class="ops">
-            <div class="op"><b>Sheet 갱신</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-sheet-packets.ps1</code></span></div>
-            <div class="op"><b>Sheet 메일</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-sheet-packets.ps1 -SendEmail</code></span></div>
+            <div class="op"><b>전체 갱신</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\sync-0704-live-operation.ps1 -Deploy</code></span></div>
+            <div class="op"><b>메일 포함</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\sync-0704-live-operation.ps1 -SendEmail -Deploy</code></span></div>
             <div class="op"><b>투표 반영</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\promote-0704-live-sheet-agendas-to-vote.ps1 -Apply</code></span></div>
             <div class="op"><b>Form 예비</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-print-packets.ps1</code></span></div>
           </div>
         </div>
         <div class="actions">
           <a class="btn secondary" href="/0704-admin/live-sheet-questions-print.pdf" target="_blank" rel="noopener">Sheet 질문 PDF</a>
+          <a class="btn warm" href="/question-board-0704/index.html" target="_blank" rel="noopener">Sheet 질문 보드</a>
           <a class="btn warm" href="/0704-admin/live-sheet-agendas-print.pdf" target="_blank" rel="noopener">Sheet 의제 PDF</a>
+          <a class="btn warm" href="/agenda-board-0704/index.html" target="_blank" rel="noopener">Sheet 의제 보드</a>
           <a class="btn ghost" href="/0704-admin/expert-questions-print.pdf" target="_blank" rel="noopener">Form 질문 PDF</a>
           <a class="btn ghost" href="/0704-admin/group-agendas-print.pdf" target="_blank" rel="noopener">Form 의제 PDF</a>
         </div>

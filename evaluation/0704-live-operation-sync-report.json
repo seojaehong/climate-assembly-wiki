@@ -1,0 +1,52 @@
+{
+  "generatedAt": "2026-07-04T10:22:42.9069821+09:00",
+  "promoteVoteChoices": false,
+  "sendEmail": false,
+  "deploy": true,
+  "skipPrint": false,
+  "skipVotes": false,
+  "steps": [
+    {
+      "name": "ensure_form_fields",
+      "status": "ok",
+      "startedAt": "2026-07-04T10:20:39.2215113+09:00",
+      "finishedAt": "2026-07-04T10:20:49.8553309+09:00",
+      "output": "{\n  \"applied\": true,\n  \"voteForms\": [\n    {\n      \"label\": \"agenda\",\n      \"formId\": \"1soeRdPzIv4l7Bs6JyJEbb4nzb7MCtmZEe2q8VFwmjgc\",\n      \"hadNameField\": true,\n      \"addedNameField\": false,\n      \"applied\": false,\n      \"revisionId\": \"00000006\"\n    },\n    {\n      \"label\": \"decision_v0\",\n      \"formId\": \"1QXrENjjmh7NcTF_9sm4aUPhnh1_WuAWvP4q80AdBM8s\",\n      \"hadNameField\": true,\n      \"addedNameField\": false,\n      \"applied\": false,\n      \"revisionId\": \"00000005\"\n    },\n    {\n      \"label\": \"decision_v1a\",\n      \"formId\": \"1YCMzcYk_XLD95_8MvzJAB4ReQKQs4nl7P18o9hBQTk4\",\n      \"hadNameField\": true,\n      \"addedNameField\": false,\n      \"applied\": false,\n      \"revisionId\": \"00000005\"\n    },\n    {\n      \"label\": \"decision_v1b\",\n      \"formId\": \"1bdEi3hN6p8qOqWGdJV3f8UK3g4wPDEtojjQakCpDTd4\",\n      \"hadNameField\": true,\n      \"addedNameField\": false,\n      \"applied\": false,\n      \"revisionId\": \"00000005\"\n    }\n  ],\n  \"reflection\": {\n    \"formId\": \"1mxwgRD-IHocgAIsisgr9v9-9J-wotjgmHqRDK1NlLyI\",\n    \"previousGroupCount\": 18,\n    \"targetGroupCount\": 18,\n    \"updatedGroups\": false,\n    \"groups\": [\n      \"1조\",\n      \"2조\",\n      \"3조\",\n      \"4조\",\n      \"5조\",\n      \"6조\",\n      \"7조\",\n      \"8조\",\n      \"9조\",\n      \"10조\",\n      \"11조\",\n      \"12조\",\n      \"13조\",\n      \"14조\",\n      \"15조\",\n      \"16조\",\n      \"17조\",\n      \"연구진\"\n    ],\n    \"revisionId\": \"00000005\"\n  }\n}"
+    },
+    {
+      "name": "refresh_input_forms",
+      "status": "ok",
+      "startedAt": "2026-07-04T10:20:49.8613164+09:00",
+      "finishedAt": "2026-07-04T10:20:57.5919367+09:00",
+      "output": "{\n  \"refreshedAt\": \"2026-07-04T10:20:57.2106326+09:00\",\n  \"agendaResponseCount\": 0,\n  \"reflectionResponseCount\": 0,\n  \"agendaSpreadsheetId\": \"1JCW6-r86Jr9uJWH4kc0GINe4R7u0EbPgIvbxMaRtZwY\",\n  \"reflectionSpreadsheetId\": \"1HK4B_CilVyEbQgtDuZnnMPgUW0naDT3VAYt2Shh8qms\"\n}"
+    },
+    {
+      "name": "export_live_sheet_packets",
+      "status": "ok",
+      "startedAt": "2026-07-04T10:20:57.5952648+09:00",
+      "finishedAt": "2026-07-04T10:21:08.8914643+09:00",
+      "output": "{\n  \"generatedAt\": \"2026-07-04T10:21:08.7046020+09:00\",\n  \"mode\": \"live_sheet\",\n  \"spreadsheetId\": \"1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ\",\n  \"spreadsheetUrl\": \"https://docs.google.com/spreadsheets/d/1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ/edit\",\n  \"questionCount\": 8,\n  \"agendaCount\": 6,\n  \"questionOutputHtml\": \"public/0704-admin/live-sheet-questions-print.html\",\n  \"questionOutputPdf\": \"public/0704-admin/live-sheet-questions-print.pdf\",\n  \"agendaOutputHtml\": \"public/0704-admin/live-sheet-agendas-print.html\",\n  \"agendaOutputPdf\": \"public/0704-admin/live-sheet-agendas-print.pdf\",\n  \"agendaBoardData\": \"public/agenda-board-0704/data.json\",\n  \"emailTo\": \"kesica3@gmail.com\",\n  \"emailStatus\": \"dry_run\"\n}"
+    },
+    {
+      "name": "refresh_agenda_vote",
+      "status": "ok",
+      "startedAt": "2026-07-04T10:21:08.8918523+09:00",
+      "finishedAt": "2026-07-04T10:21:18.7505575+09:00",
+      "output": "{\n  \"refreshedAt\": \"2026-07-04T10:21:18.5751772+09:00\",\n  \"responseCount\": 0,\n  \"uniqueVoterCount\": 0,\n  \"duplicateDroppedCount\": 0,\n  \"dedupeMode\": \"name_latest_response\",\n  \"maxCount\": 0,\n  \"spreadsheetId\": \"1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw\",\n  \"formId\": \"1soeRdPzIv4l7Bs6JyJEbb4nzb7MCtmZEe2q8VFwmjgc\",\n  \"nameQuestionId\": \"4f0b2e58\",\n  \"scores\": [\n    [\n      \"1\",\n      \"기후재정확보와 지자체 자발적 참여 방안\",\n      \"기후재정·지자체\",\n      \"#06b6d4\",\n      0,\n      0,\n      0,\n      0\n    ],\n    [\n      \"2\",\n      \"전 생애주기 탄소중립 교육체계 구축\",\n      \"탄소중립 교육체계\",\n      \"#f97316\",\n      0,\n      0,\n      0,\n      0\n    ],\n    [\n      \"3\",\n      \"시민의식 개선 및 참여 활성화 방안\",\n      \"시민의식·참여\",\n      \"#a855f7\",\n      0,\n      0,\n      0,\n      0\n    ],\n    [\n      \"4\",\n      \"시민참여 기반 기후 거버넌스 강화\",\n      \"기후 거버넌스\",\n      \"#22c55e\",\n      0,\n      0,\n      0,\n      0\n    ],\n    [\n      \"5\",\n      \"자원순환형 배달 문화 조성 및 생활폐기물 감축\",\n      \"자원순환·폐기물\",\n      \"#ef4444\",\n      0,\n      0,\n      0,\n      0\n    ],\n    [\n      \"6\",\n      \"에너지 절약 및 온실가스 배출 감축\",\n      \"에너지·온실가스\",\n      \"#0f172a\",\n      0,\n      0,\n      0,\n      0\n    ],\n    [\n      \"7\",\n      \"친환경 도시 인프라·에너지 전환 및 기후위기 적응\",\n      \"친환경도시·기후적응\",\n      \"#14b8a6\",\n      0,\n      0,\n      0,\n      0\n    ],\n    [\n      \"8\",\n      \"대중교통 친환경 교통전환 방안\",\n      \"대중교통 전환\",\n      \"#f59e0b\",\n      0,\n      0,\n      0,\n      0\n    ]\n  ]\n}"
+    },
+    {
+      "name": "refresh_decision_votes",
+      "status": "ok",
+      "startedAt": "2026-07-04T10:21:18.7508999+09:00",
+      "finishedAt": "2026-07-04T10:21:36.5689978+09:00",
+      "output": "{\n  \"refreshedAt\": \"2026-07-04T10:21:36.5011827+09:00\",\n  \"spreadsheetId\": \"1m_GD3ohvDW1PXT8Gg3AoTxpf0voRdrJpz2a38PREBB8\",\n  \"spreadsheetUrl\": \"https://docs.google.com/spreadsheets/d/1m_GD3ohvDW1PXT8Gg3AoTxpf0voRdrJpz2a38PREBB8/edit\",\n  \"slots\": [\n    {\n      \"code\": \"V0\",\n      \"title\": \"의제 통합 동의\",\n      \"responseCount\": 0,\n      \"uniqueVoterCount\": 0,\n      \"duplicateDroppedCount\": 0,\n      \"dedupeMode\": \"name_latest_response\",\n      \"nameQuestionId\": \"380be3dc\",\n      \"counts\": {\n        \"동의하지 않음\": 0,\n        \"판단 유보\": 0,\n        \"동의\": 0\n      },\n      \"responseUrl\": \"https://docs.google.com/forms/d/e/1FAIpQLSc8NV9MvB52WM8IzQFJCGK3HJmZ8e_UOW4cbV6wd3MERohc-Q/viewform\",\n      \"editUrl\": \"https://docs.google.com/forms/d/1QXrENjjmh7NcTF_9sm4aUPhnh1_WuAWvP4q80AdBM8s/edit\"\n    },\n    {\n      \"code\": \"V1A\",\n      \"title\": \"감축분야 추가 의제 선정\",\n      \"responseCount\": 0,\n      \"uniqueVoterCount\": 0,\n      \"duplicateDroppedCount\": 0,\n      \"dedupeMode\": \"name_latest_response\",\n      \"nameQuestionId\": \"6c1868ed\",\n      \"counts\": {\n        \"반대\": 0,\n        \"판단 유보\": 0,\n        \"찬성\": 0\n      },\n      \"responseUrl\": \"https://docs.google.com/forms/d/e/1FAIpQLSeyeycU58FPedk64L8E5QeDdvEETgVcnGwJDEC6NEZTrMGOtA/viewform\",\n      \"editUrl\": \"https://docs.google.com/forms/d/1YCMzcYk_XLD95_8MvzJAB4ReQKQs4nl7P18o9hBQTk4/edit\"\n    },\n    {\n      \"code\": \"V1B\",\n      \"title\": \"적응 의제 배분\",\n      \"responseCount\": 0,\n      \"uniqueVoterCount\": 0,\n      \"duplicateDroppedCount\": 0,\n      \"dedupeMode\": \"name_latest_response\",\n      \"nameQuestionId\": \"150bc490\",\n      \"counts\": {\n        \"반대\": 0,\n        \"판단 유보\": 0,\n        \"찬성\": 0\n      },\n      \"responseUrl\": \"https://docs.google.com/forms/d/e/1FAIpQLSfN73ZpueVP0YHcPNiQeMxVdAwPsDUHU8sbG5oW-Bk20oXAUg/viewform\",\n      \"editUrl\": \"https://docs.google.com/forms/d/1bdEi3hN6p8qOqWGdJV3f8UK3g4wPDEtojjQakCpDTd4/edit\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "deploy_public_pages",
+      "status": "ok",
+      "startedAt": "2026-07-04T10:21:36.5692935+09:00",
+      "finishedAt": "2026-07-04T10:22:42.9068362+09:00",
+      "output": "\n ⛅️ wrangler 4.30.0 (update available 4.107.0)\n──────────────────────────────────────────────\nUploading... (0/16249)\nUploading... (38/16249)\nUploading... (56/16249)\nUploading... (68/16249)\nUploading... (1068/16249)\nUploading... (2068/16249)\nUploading... (3068/16249)\nUploading... (4068/16249)\nUploading... (5068/16249)\nUploading... (6068/16249)\nUploading... (7068/16249)\nUploading... (8068/16249)\nUploading... (9068/16249)\nUploading... (10068/16249)\nUploading... (11068/16249)\nUploading... (12068/16249)\nUploading... (13068/16249)\nUploading... (14068/16249)\nUploading... (15068/16249)\nUploading... (16068/16249)\nUploading... (16249/16249)\n✨ Success! Uploaded 16249 files (45.76 sec)\n\n✨ Uploading _headers\n✨ Uploading _redirects\n🌎 Deploying...\n✨ Deployment complete! Take a peek over at https://ea85cfb0.climate-assembly-wiki.pages.dev"
+    }
+  ]
+}

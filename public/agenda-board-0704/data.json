@@ -1,0 +1,123 @@
+{
+  "generatedAt": "2026-07-04T10:21:02.4475782+09:00",
+  "spreadsheetId": "1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ",
+  "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ/edit",
+  "questionCount": 8,
+  "agendaCount": 6,
+  "questions": [
+    {
+      "number": "1",
+      "group": "A조",
+      "text": "테스트",
+      "note": "",
+      "writer": "",
+      "kind": "question"
+    },
+    {
+      "number": "2",
+      "group": "A조",
+      "text": "입니다",
+      "note": "",
+      "writer": "",
+      "kind": "question"
+    },
+    {
+      "number": "3",
+      "group": "A조",
+      "text": "오늘 다들 화이팅입미다!",
+      "note": "",
+      "writer": "",
+      "kind": "question"
+    },
+    {
+      "number": "1",
+      "group": "B조",
+      "text": "이렇게 입력하면 될까요?",
+      "note": "",
+      "writer": "",
+      "kind": "question"
+    },
+    {
+      "number": "2",
+      "group": "B조",
+      "text": "테스트용입니다",
+      "note": "",
+      "writer": "",
+      "kind": "question"
+    },
+    {
+      "number": "3",
+      "group": "B조",
+      "text": "정수기는 언제 설치되나요?",
+      "note": "",
+      "writer": "",
+      "kind": "question"
+    },
+    {
+      "number": "4",
+      "group": "B조",
+      "text": "의미있는 질문을 해야할까요?",
+      "note": "",
+      "writer": "",
+      "kind": "question"
+    },
+    {
+      "number": "5",
+      "group": "B조",
+      "text": "잘 입력되고 있을까요?",
+      "note": "",
+      "writer": "",
+      "kind": "question"
+    }
+  ],
+  "agendas": [
+    {
+      "number": "1",
+      "group": "A조",
+      "text": "태양광에너지로의 전환 방법",
+      "note": "",
+      "writer": "",
+      "kind": "agenda"
+    },
+    {
+      "number": "2",
+      "group": "A조",
+      "text": "전기차 상용화 극대화 방안",
+      "note": "",
+      "writer": "",
+      "kind": "agenda"
+    },
+    {
+      "number": "3",
+      "group": "A조",
+      "text": "에너지 감축을 위해 시민이 해야 할 일",
+      "note": "",
+      "writer": "",
+      "kind": "agenda"
+    },
+    {
+      "number": "1",
+      "group": "B조",
+      "text": "전생애주기 탄소중립 교육체계 구축",
+      "note": "",
+      "writer": "",
+      "kind": "agenda"
+    },
+    {
+      "number": "2",
+      "group": "B조",
+      "text": "시민의식을 개선하고 참여를 활성화하는 방안은 무엇일까요",
+      "note": "",
+      "writer": "",
+      "kind": "agenda"
+    },
+    {
+      "number": "3",
+      "group": "B조",
+      "text": "자원순환형 배달 및 문화 조성을 위해 어떠한 방법이 필요한가요?",
+      "note": "",
+      "writer": "",
+      "kind": "agenda"
+    }
+  ]
+}

@@ -4,6 +4,7 @@ param(
   [string]$QuestionOutputPdf = "public/0704-admin/live-sheet-questions-print.pdf",
   [string]$AgendaOutputHtml = "public/0704-admin/live-sheet-agendas-print.html",
   [string]$AgendaOutputPdf = "public/0704-admin/live-sheet-agendas-print.pdf",
+  [string]$AgendaBoardData = "public/agenda-board-0704/data.json",
   [string]$OutputReport = "evaluation/0704-live-sheet-packets-report.json",
   [string]$EmailTo = "kesica3@gmail.com",
   [string]$EmailFrom = "iceamericano9@gmail.com",
@@ -365,6 +366,20 @@ try {
 
   $questionHtml | Set-Content -LiteralPath $QuestionOutputHtml -Encoding UTF8
   $agendaHtml | Set-Content -LiteralPath $AgendaOutputHtml -Encoding UTF8
+  $agendaBoardDir = Split-Path -Parent $AgendaBoardData
+  if (-not (Test-Path -LiteralPath $agendaBoardDir)) {
+    New-Item -ItemType Directory -Path $agendaBoardDir -Force | Out-Null
+  }
+  $agendaBoardPayload = [pscustomobject]@{
+    generatedAt = (Get-Date).ToString("o")
+    spreadsheetId = $SpreadsheetId
+    spreadsheetUrl = "https://docs.google.com/spreadsheets/d/$SpreadsheetId/edit"
+    questionCount = $questions.Count
+    agendaCount = $agendas.Count
+    questions = @($questions)
+    agendas = @($agendas)
+  }
+  $agendaBoardPayload | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $AgendaBoardData -Encoding UTF8
   $resolvedQuestionPdf = Export-HtmlToPdf -HtmlPath $QuestionOutputHtml -PdfPath $QuestionOutputPdf
   $resolvedAgendaPdf = Export-HtmlToPdf -HtmlPath $AgendaOutputHtml -PdfPath $AgendaOutputPdf
 
@@ -398,6 +413,7 @@ try {
     questionOutputPdf = $QuestionOutputPdf
     agendaOutputHtml = $AgendaOutputHtml
     agendaOutputPdf = $AgendaOutputPdf
+    agendaBoardData = $AgendaBoardData
     emailTo = $EmailTo
     emailStatus = $emailStatus
   }
