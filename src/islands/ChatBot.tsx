@@ -13,7 +13,7 @@ type SourceKey = 'overseas-cases' | 'kei-expert-agenda' | 'agenda-textbook-vol2'
   | 'citizen-domestic' | 'gyeonggi-citizens' | 'gyeonggi-ops' | 'agenda-faq';
 const SOURCES: Record<SourceKey, { label: string; emoji: string; bg: string; fg: string }> = {
   'overseas-cases': { label: '해외사례', emoji: '🌍', bg: 'var(--color-info-bg)', fg: 'var(--color-info)' },
-  'kei-expert-agenda': { label: '국내·전문가 의제', emoji: '🇰🇷', bg: 'var(--color-success-bg)', fg: 'var(--color-success)' },
+  'kei-expert-agenda': { label: '국내·전문가 의제', emoji: '🏛️', bg: 'var(--color-success-bg)', fg: 'var(--color-success)' },
   'agenda-textbook-vol2': { label: '학습자료집', emoji: '📘', bg: 'var(--color-bg-subtle)', fg: 'var(--color-fg)' },
   'basic-textbook': { label: '기본교재', emoji: '📗', bg: 'var(--color-bg-subtle)', fg: 'var(--color-fg)' },
   'citizen-domestic': { label: '시민 제안', emoji: '🙋', bg: 'var(--color-bg-subtle)', fg: 'var(--color-fg)' },
@@ -135,6 +135,22 @@ function CitationCard({ c }: { c: Citation }) {
   );
 }
 
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      aria-label="답변 복사"
+      onClick={async () => {
+        try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* */ }
+      }}
+      style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', color: copied ? 'var(--color-accent)' : 'var(--color-fg-subtle)', fontSize: 'var(--text-xs)', fontWeight: 600, padding: '2px 4px', transition: 'color var(--transition-fast)' }}
+    >
+      <span aria-hidden="true">{copied ? '✅' : '📋'}</span>{copied ? '복사됨' : '복사'}
+    </button>
+  );
+}
+
 function BotMessage({ m }: { m: Msg }) {
   return (
     <div style={S.botRow}>
@@ -155,6 +171,9 @@ function BotMessage({ m }: { m: Msg }) {
         ) : (
           <>
             <div style={S.botBubble}>{m.text}</div>
+            <CopyButton text={m.citations && m.citations.length > 0
+              ? `${m.text}\n\n[근거 자료]\n${m.citations.map((c) => `· ${c.title || c.doc} (${sourceMeta(c.source).label})`).join('\n')}`
+              : m.text} />
             {m.citations && m.citations.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                 <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-fg-muted)', letterSpacing: 'var(--tracking-wide)' }}>
@@ -238,8 +257,8 @@ export default function ChatBot({ defaultSource = null, endpoint = 'chat', k }: 
               onClick={() => setSource(f.value)}
               aria-pressed={active}
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: 'var(--space-2) var(--space-4)', borderRadius: 'var(--radius-full)',
+                display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap',
+                padding: '6px 12px', borderRadius: 'var(--radius-full)',
                 fontSize: 'var(--text-sm)', fontWeight: 700, cursor: 'pointer',
                 border: active ? '1.5px solid var(--color-accent)' : '1.5px solid var(--color-border)',
                 background: active ? 'var(--color-accent-subtle)' : 'var(--color-card-bg)',
