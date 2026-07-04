@@ -1,17 +1,18 @@
 {
-  "generatedAt": "2026-07-04T14:07:31.7261750+09:00",
+  "generatedAt": "2026-07-04T14:19:22.0368214+09:00",
   "spreadsheetId": "1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ",
   "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ/edit",
-  "questionCount": 10,
+  "questionCount": 17,
   "agendaCount": 6,
   "questions": [
     {
       "number": "1",
       "group": "A조",
       "text": "워크숍 진행과정, 안건 등에 대해 사전공유해줄수는없는지? (6월 30일까지 추가접수된 의제를 오늘 다룬다는 것을 공유받지 못해, 오늘 회의의 취지를 이해하기 어려움)",
-      "note": "",
+      "note": "선정(2위)",
       "speaker": "신지원",
       "writer": "신지원",
+      "selected": false,
       "kind": "question"
     },
     {
@@ -21,6 +22,7 @@
       "note": "",
       "speaker": "김영현",
       "writer": "김영현",
+      "selected": false,
       "kind": "question"
     },
     {
@@ -30,24 +32,37 @@
       "note": "",
       "speaker": "김근화",
       "writer": "김근화",
+      "selected": false,
+      "kind": "question"
+    },
+    {
+      "number": "4",
+      "group": "A조",
+      "text": "없음",
+      "note": "",
+      "speaker": "박애경",
+      "writer": "박애경",
+      "selected": false,
       "kind": "question"
     },
     {
       "number": "5",
       "group": "A조",
-      "text": "이미 제안된 3가지 의제를 실천할 수 있는 현실적 계획은 무엇인지?",
-      "note": "",
+      "text": "이미 제안된 3가지 의제를 실천할 수 있는 현실적 계획은 무엇인지? 의제 선정 이후 숙의과정이 어떻게 진행되는지",
+      "note": "선정(2위)",
       "speaker": "신두식",
       "writer": "신두식",
+      "selected": false,
       "kind": "question"
     },
     {
       "number": "6",
       "group": "A조",
       "text": "시민입장은 미시적 관점에서 의제를 선정하게 되는데, 교육을 받으면서 거시적 관점에서 의제를 선정해야 할 것 같음",
-      "note": "",
+      "note": "선정(2위)",
       "speaker": "이대진",
       "writer": "이대진",
+      "selected": false,
       "kind": "question"
     },
     {
@@ -57,6 +72,17 @@
       "note": "",
       "speaker": "이상돈",
       "writer": "이상돈",
+      "selected": false,
+      "kind": "question"
+    },
+    {
+      "number": "8",
+      "group": "A조",
+      "text": "지난 a조 만장일치 의제안은 댐건설관련이었음. 물부족국가현실에서 물을 활용해 에너지를 만들 수 있는 방안이 있는지? 물부족문제를 해결할 수 있는 방안이 있는지? 즉, 댐확보와 수자원에 대한 전문가 의견을 듣고 싶습니다.",
+      "note": "선정(1위)",
+      "speaker": "신지원",
+      "writer": "신지원",
+      "selected": false,
       "kind": "question"
     },
     {
@@ -66,6 +92,7 @@
       "note": "",
       "speaker": "이든솔",
       "writer": "이든솔",
+      "selected": true,
       "kind": "question"
     },
     {
@@ -75,6 +102,7 @@
       "note": "",
       "speaker": "안동규",
       "writer": "안동규",
+      "selected": false,
       "kind": "question"
     },
     {
@@ -84,6 +112,7 @@
       "note": "",
       "speaker": "김승기",
       "writer": "김승기",
+      "selected": false,
       "kind": "question"
     },
     {
@@ -93,6 +122,57 @@
       "note": "",
       "speaker": "굴잔",
       "writer": "굴잔",
+      "selected": false,
+      "kind": "question"
+    },
+    {
+      "number": "5",
+      "group": "B조",
+      "text": "재생에너지가 얼마나 활성화되고 있는지 궁금합니다",
+      "note": "",
+      "speaker": "백경란",
+      "writer": "백경란",
+      "selected": false,
+      "kind": "question"
+    },
+    {
+      "number": "6",
+      "group": "B조",
+      "text": "- ① 전년 대비 전력 소비를 일정 비율 이상 절감한 기업에 한하여 탄소배출권을 인정하고 법인세 감면 등의 인센티브를 제공하는 정책이 실현 가능한지, ② 실현 가능하다면 구체적으로 어떤 보상체계를 설계할 수 있는지 궁금합니다.",
+      "note": "",
+      "speaker": "이민경",
+      "writer": "이민경",
+      "selected": false,
+      "kind": "question"
+    },
+    {
+      "number": "7",
+      "group": "B조",
+      "text": "- AI 시대에 대규모 전력을 소비하는 기업(전력 다소비 기업)이 지는 기후 책임의 정도는 어느 정도이며, 이에 대한 정부의 대응 계획은 무엇인지 궁금합니다.",
+      "note": "",
+      "speaker": "송민서",
+      "writer": "송민서",
+      "selected": true,
+      "kind": "question"
+    },
+    {
+      "number": "8",
+      "group": "B조",
+      "text": "- 탄소중립이 가능한 도시모델을 확립할 필요성이 있다고 생각되는데, 이에 대한 세부안과 현재 실현 가능성은 어느 정도인지 궁금합니다.",
+      "note": "",
+      "speaker": "송민서",
+      "writer": "송민서",
+      "selected": false,
+      "kind": "question"
+    },
+    {
+      "number": "9",
+      "group": "B조",
+      "text": "- 웹사이트의 기본 옵션을 전력 효율이 높은 ‘다크모드’로 설정하고, 불필요한 리소스 로딩을 최소화하는 코드 최적화를 의무화할 가능성이 있는지, 그리고 의무화가 시행될 경우 예상되는 전력 절감률은 어느 정도인지 궁금합니다.",
+      "note": "",
+      "speaker": "이민경",
+      "writer": "이민경",
+      "selected": false,
       "kind": "question"
     }
   ],
@@ -104,6 +184,7 @@
       "note": "",
       "speaker": "",
       "writer": "",
+      "selected": false,
       "kind": "agenda"
     },
     {
@@ -113,6 +194,7 @@
       "note": "",
       "speaker": "",
       "writer": "",
+      "selected": false,
       "kind": "agenda"
     },
     {
@@ -122,6 +204,7 @@
       "note": "",
       "speaker": "",
       "writer": "",
+      "selected": false,
       "kind": "agenda"
     },
     {
@@ -131,6 +214,7 @@
       "note": "",
       "speaker": "",
       "writer": "",
+      "selected": false,
       "kind": "agenda"
     },
     {
@@ -140,6 +224,7 @@
       "note": "",
       "speaker": "",
       "writer": "",
+      "selected": false,
       "kind": "agenda"
     },
     {
@@ -149,6 +234,7 @@
       "note": "",
       "speaker": "",
       "writer": "",
+      "selected": false,
       "kind": "agenda"
     }
   ]

@@ -27,12 +27,14 @@
   .lane-head h2{margin:7px 0 0;font-size:44px;line-height:1}
   .cards{padding:18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:14px}
   .note{position:relative;min-height:172px;border:2px solid var(--lane);border-radius:12px;background:var(--note);box-shadow:0 14px 34px rgba(15,23,42,.11);padding:16px 16px 50px;transform:rotate(var(--rot));word-break:keep-all;overflow-wrap:break-word}
+  .note.selected{border-color:#f97316;background:#fff7ed;box-shadow:0 18px 44px rgba(249,115,22,.20)}
   .note:nth-child(3n+1){--rot:-.30deg}.note:nth-child(3n+2){--rot:.22deg}.note:nth-child(3n){--rot:-.10deg}
   .num{position:absolute;top:12px;right:14px;color:var(--lane);font-size:18px;font-weight:950}
   .text{font-size:28px;font-weight:950;line-height:1.18;padding-right:30px}
   .note-meta{position:absolute;left:14px;right:14px;bottom:12px;display:flex;gap:6px;flex-wrap:wrap}
   .chip{display:inline-flex;align-items:center;min-height:25px;border-radius:999px;background:rgba(15,23,42,.08);padding:0 9px;color:#475467;font-size:12px;font-weight:900}
   .chip.group{background:var(--lane);color:#fff}
+  .chip.selected{background:#f97316;color:#fff}
   .empty{padding:28px;color:var(--muted);font-weight:900}
   @media (max-width:900px){header{display:block}.actions{margin-top:12px}.summary,.board{grid-template-columns:1fr}main{padding:12px}.cards{padding:12px}.text{font-size:24px;line-height:1.18}.lane-head{padding:18px}.lane-head h2{font-size:38px}}
 </style>
@@ -40,8 +42,8 @@
 <body>
 <header>
   <div>
-    <div class="meta" id="meta">A/B 실시간 Sheet 질문 입력</div>
-    <h1>전문가 전달용 조별 질문 누적 보드</h1>
+    <div class="meta" id="meta">A/B 실시간 Sheet 선정 질문</div>
+    <h1>전문가 전달용 선정 질문 보드</h1>
   </div>
   <div class="actions">
     <a href="/0704-admin/">관리자</a>
@@ -51,9 +53,9 @@
 </header>
 <main>
   <section class="summary">
-    <div class="stat"><b>전체 질문</b><span id="total-count">0</span></div>
-    <div class="stat"><b>A조 질문</b><span id="a-count">0</span></div>
-    <div class="stat"><b>B조 질문</b><span id="b-count">0</span></div>
+    <div class="stat"><b>선정 질문</b><span id="total-count">0</span></div>
+    <div class="stat"><b>A조 선정</b><span id="a-count">0</span></div>
+    <div class="stat"><b>B조 선정</b><span id="b-count">0</span></div>
   </section>
   <section class="board" id="board"></section>
 </main>
@@ -91,6 +93,7 @@ async function fetchSheetRows(sheetName){
   const header = rows.shift() || [];
   const idx = name => header.indexOf(name);
   const speakerIdx = idx('발언자') >= 0 ? idx('발언자') : idx('입력자');
+  const selectedIdx = idx('선정');
   const numberIdx = idx('번호'), groupIdx = idx('조'), textIdx = idx('질문'), noteIdx = idx('비고');
   return rows.map(row => ({
     number: row[numberIdx] || '',
@@ -98,12 +101,13 @@ async function fetchSheetRows(sheetName){
     text: row[textIdx] || '',
     note: row[noteIdx] || '',
     speaker: row[speakerIdx] || '',
+    selected: /^(TRUE|True|true|1|Y|YES|예|선정|체크|✓|✔)$/.test(String(row[selectedIdx] || '').trim()),
     kind: 'question'
-  })).filter(item => item.text.trim());
+  })).filter(item => item.text.trim() && /^\d+$/.test(String(item.number || '').trim()));
 }
 async function loadQuestions(){
   try {
-    const rows = (await Promise.all(SHEETS.map(fetchSheetRows))).flat();
+    const rows = (await Promise.all(SHEETS.map(fetchSheetRows))).flat().filter(item => item.selected);
     return {questions: rows, generatedAt: new Date().toISOString(), source: 'google_sheet'};
   } catch (err) {
     const data = await fetch(DATA_URL + '?_=' + Date.now(), {cache:'no-store'}).then(r => r.json());
@@ -114,10 +118,11 @@ function renderNote(item){
   const note = item.note ? `<span class="chip">${esc(item.note)}</span>` : '';
   const speaker = item.speaker || item.writer;
   const speakerChip = speaker ? `<span class="chip">발언자 ${esc(speaker)}</span>` : '';
-  return `<article class="note">
+  const selectedChip = '<span class="chip selected">선정</span>';
+  return `<article class="note selected">
     <div class="num">${esc(item.number || '')}</div>
     <div class="text">${esc(item.text)}</div>
-    <div class="note-meta"><span class="chip group">${esc(item.group)}</span>${note}${speakerChip}</div>
+    <div class="note-meta"><span class="chip group">${esc(item.group)}</span>${selectedChip}${note}${speakerChip}</div>
   </article>`;
 }
 function renderLane(group, rows){
@@ -127,12 +132,12 @@ function renderLane(group, rows){
       <div class="eyebrow">LIVE QUESTIONS</div>
       <h2>${esc(group)}</h2>
     </div>
-    <div class="cards">${rows.length ? rows.map(renderNote).join('') : '<div class="empty">아직 입력된 질문이 없습니다.</div>'}</div>
+    <div class="cards">${rows.length ? rows.map(renderNote).join('') : '<div class="empty">아직 선정된 질문이 없습니다.</div>'}</div>
   </section>`;
 }
 async function load(){
   const data = await loadQuestions();
-  const questions = data.questions || [];
+  const questions = (data.questions || []).filter(item => item.selected);
   const aRows = questions.filter(item => item.group === 'A조');
   const bRows = questions.filter(item => item.group === 'B조');
   document.getElementById('total-count').textContent = questions.length;

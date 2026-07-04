@@ -142,6 +142,12 @@ function Normalize-Text {
   return ($Text -replace "\s+", " ").Trim()
 }
 
+function Convert-ToSelected {
+  param([string]$Text)
+  $value = Normalize-Text -Text $Text
+  return $value -match "^(TRUE|True|true|1|Y|y|YES|Yes|yes|예|선정|체크|✓|✔)$"
+}
+
 function Get-ChromePath {
   $candidates = @(
     "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
@@ -294,7 +300,11 @@ function Read-LiveSheetItems {
       $text = if ($row.Count -gt 2) { Normalize-Text -Text ([string]$row[2]) } else { "" }
       $note = if ($row.Count -gt 3) { Normalize-Text -Text ([string]$row[3]) } else { "" }
       $speaker = if ($row.Count -gt 4) { Normalize-Text -Text ([string]$row[4]) } else { "" }
+      $selected = if ($row.Count -gt 5) { Convert-ToSelected -Text ([string]$row[5]) } else { $false }
       if ([string]::IsNullOrWhiteSpace($text)) {
+        continue
+      }
+      if ($number -notmatch "^\d+$") {
         continue
       }
       $items += [pscustomobject]@{
@@ -304,6 +314,7 @@ function Read-LiveSheetItems {
         note = $note
         speaker = $speaker
         writer = $speaker
+        selected = $selected
         kind = $TextKind
       }
     }
@@ -353,20 +364,23 @@ async function fetchSheetRows(sheetName){
   const header = rows.shift() || [];
   const idx = name => header.indexOf(name);
   const speakerIdx = idx('발언자') >= 0 ? idx('발언자') : idx('입력자');
+  const selectedIdx = idx('선정');
   const numberIdx = idx('번호'), groupIdx = idx('조'), textIdx = idx('질문'), noteIdx = idx('비고');
   return rows.map(row => ({
     number: row[numberIdx] || '',
     group: row[groupIdx] || sheetName.slice(0, 2),
     text: row[textIdx] || '',
     note: row[noteIdx] || '',
-    speaker: row[speakerIdx] || ''
-  })).filter(item => item.text.trim());
+    speaker: row[speakerIdx] || '',
+    selected: /^(TRUE|True|true|1|Y|YES|예|선정|체크|✓|✔)$/.test(String(row[selectedIdx] || '').trim())
+  })).filter(item => item.text.trim() && /^\d+$/.test(String(item.number || '').trim()));
 }
 function renderRows(items){
   if(!items.length){
-    return '<tr><td colspan="5" class="empty">아직 입력된 전문가 질의가 없습니다.</td></tr>';
+    return '<tr><td colspan="6" class="empty">아직 입력된 전문가 질의가 없습니다.</td></tr>';
   }
-  return items.map(item => '<tr>' +
+  return items.map(item => '<tr class="' + (item.selected ? 'selected' : '') + '">' +
+    '<td class="picked">' + (item.selected ? '선정' : '') + '</td>' +
     '<td class="group">' + esc(item.group) + '</td>' +
     '<td class="num">' + esc(item.number) + '</td>' +
     '<td class="text">' + esc(item.text) + '</td>' +
@@ -389,12 +403,16 @@ setInterval(refreshLiveQuestions, POLL_MS);
   }
   $rows = ""
   if ($Items.Count -eq 0) {
-    $rows = "<tr><td colspan=""5"" class=""empty"">$(Escape-Html -Text $EmptyText)</td></tr>"
+    $rows = "<tr><td colspan=""6"" class=""empty"">$(Escape-Html -Text $EmptyText)</td></tr>"
   } else {
     foreach ($item in $Items) {
       $speaker = if ($item.PSObject.Properties.Name -contains "speaker") { $item.speaker } else { $item.writer }
+      $selected = ($item.PSObject.Properties.Name -contains "selected") -and $item.selected
+      $selectedClass = if ($selected) { " class=""selected""" } else { "" }
+      $selectedLabel = if ($selected) { "선정" } else { "" }
       $rows += @"
-<tr>
+<tr$selectedClass>
+  <td class="picked">$selectedLabel</td>
   <td class="group">$(Escape-Html -Text $item.group)</td>
   <td class="num">$(Escape-Html -Text $item.number)</td>
   <td class="text">$(Escape-Html -Text $item.text)</td>
@@ -423,6 +441,8 @@ setInterval(refreshLiveQuestions, POLL_MS);
   table{width:100%;border-collapse:collapse;table-layout:fixed}
   th{padding:9px 8px;border-top:2px solid #111827;border-bottom:1px solid #cbd5e1;background:#f8fafc;text-align:left;font-size:12px}
   td{padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top;font-size:12px;line-height:1.55}
+  tr.selected td{background:#fff7ed;border-top:2px solid #f97316;border-bottom:2px solid #f97316}
+  .picked{width:52px;color:#ea580c;font-weight:950;text-align:center}
   .group{width:58px;font-weight:900;color:#0f766e}
   .num{width:42px;color:#64748b}
   .text{font-size:14px;font-weight:800}
@@ -440,7 +460,7 @@ setInterval(refreshLiveQuestions, POLL_MS);
   <p class="subtitle">$(Escape-Html -Text $Subtitle)</p>
   <div class="meta"><span id="generated">생성: $generatedAt</span><span id="count">건수: $($Items.Count)</span></div>
   <table>
-    <thead><tr><th class="group">조</th><th class="num">번호</th><th>내용</th><th class="note">비고</th><th class="speaker">발언자</th></tr></thead>
+    <thead><tr><th class="picked">선정</th><th class="group">조</th><th class="num">번호</th><th>내용</th><th class="note">비고</th><th class="speaker">발언자</th></tr></thead>
     <tbody id="rows">$rows</tbody>
   </table>
 $livePollingScript
@@ -463,7 +483,7 @@ try {
       [pscustomobject]@{ number = "1"; group = "B조"; text = "기업 탄소배출 정보와 감축 계획을 시민이 쉽게 확인하고 의견을 낼 수 있는 공개 플랫폼을 만든다."; note = "투표 후보"; speaker = "B조 시민"; writer = "B조 시민"; kind = "agenda" }
     )
   } else {
-    $questions = Read-LiveSheetItems -Ranges @("'A조 질문입력'!A1:E80", "'B조 질문입력'!A1:E80") -TextKind "question"
+    $questions = Read-LiveSheetItems -Ranges @("'A조 질문입력'!A1:F80", "'B조 질문입력'!A1:F80") -TextKind "question"
     $agendas = Read-LiveSheetItems -Ranges @("'A조 의제입력'!A1:E80", "'B조 의제입력'!A1:E80") -TextKind "agenda"
   }
 
