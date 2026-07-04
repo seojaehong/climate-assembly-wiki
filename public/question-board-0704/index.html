@@ -101,7 +101,7 @@ async function fetchSheetRows(sheetName){
     text: row[textIdx] || '',
     note: row[noteIdx] || '',
     speaker: row[speakerIdx] || '',
-    selected: /^(TRUE|True|true|1|Y|YES|예|선정|체크|✓|✔)$/.test(String(row[selectedIdx] || '').trim()),
+    selected: /^(TRUE|True|true|1|Y|YES|예|선정|체크|✓|✔)$/.test(String(row[selectedIdx] || '').trim()) || String(row[noteIdx] || '').includes('선정'),
     kind: 'question'
   })).filter(item => item.text.trim() && /^\d+$/.test(String(item.number || '').trim()));
 }
