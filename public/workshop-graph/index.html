@@ -18,6 +18,8 @@
 <script src="https://unpkg.com/cytoscape-expand-collapse@4.1.1/cytoscape-expand-collapse.js"></script>
 <script src="https://unpkg.com/3d-force-graph"></script>
 <style>
+  html,body,#og-app,button,input,select,textarea{font-family:'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif;font-weight:700}
+  body{font-size:17px}
   .og-source-sel{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#9aa7b8}
   .og-source-sel select{background:#222c3a;border:1px solid #2c3848;color:#e8edf4;border-radius:5px;padding:5px 10px;font-size:12px;font-family:inherit;min-width:200px}
   .og-view-tog{display:inline-flex;gap:3px;background:#222c3a;border:1px solid #2c3848;border-radius:5px;padding:2px}
@@ -92,6 +94,20 @@
   body.og-showcase-mode.og-showcase-dark .og-showcase-edge-tog .og-grp-lbl{color:#9fb3c8}
   body.og-showcase-mode.og-showcase-dark .og-canvas{background:radial-gradient(circle at 42% 44%,#192536 0,#0f1722 48%,#080d14 100%)}
   body.og-final-decision-showcase .og-canvas{background:linear-gradient(180deg,#f8fbff 0,#eef5fb 100%)}
+  body.og-final-decision-showcase .og-side{width:420px;flex-basis:420px;padding:20px 22px}
+  body.og-final-decision-showcase .og-controls{font-size:15px;font-weight:800}
+  body.og-final-decision-showcase .og-source-sel,body.og-final-decision-showcase .og-poll-ctl{font-size:14px;font-weight:800}
+  body.og-final-decision-showcase .og-source-sel select{font-size:15px;font-weight:800;min-width:260px}
+  body.og-final-decision-showcase .og-btn,body.og-final-decision-showcase .og-view-tog button,body.og-final-decision-showcase .og-group-tog button{font-size:14px;font-weight:800}
+  body.og-final-decision-showcase .og-s-label{font-size:24px;font-weight:900;line-height:1.32;margin-top:12px}
+  body.og-final-decision-showcase .og-s-sec h4{font-size:13px;font-weight:900}
+  body.og-final-decision-showcase .og-surface-role{font-size:17px;font-weight:800;line-height:1.72;padding:13px 15px}
+  body.og-final-decision-showcase .og-surface-role b{font-size:16px;font-weight:900}
+  body.og-final-decision-showcase .og-surface-chip{min-height:30px;padding:0 10px;font-size:13px;font-weight:800}
+  body.og-final-decision-showcase .og-surface-chip b{font-size:15px;font-weight:900}
+  body.og-final-decision-showcase .og-s-rel .og-r{font-size:15px;font-weight:800;line-height:1.62;padding:10px 12px}
+  body.og-final-decision-showcase .og-s-rel button.og-r span{font-size:13px}
+  body.og-final-decision-showcase .og-hub-chip{max-width:320px;min-height:36px;font-size:15px;font-weight:900;padding:0 13px}
   body.og-final-decision-showcase .og-quick{font-family:'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif;font-size:16px;font-weight:800;line-height:1.7;max-width:500px;border-color:rgba(15,118,110,.28);box-shadow:0 22px 64px rgba(15,23,42,.18)}
   body.og-final-decision-showcase .og-surface-card{min-width:320px}
   body.og-final-decision-showcase .og-surface-card p{font-size:16px;font-weight:800;color:#1f2937}
@@ -272,6 +288,16 @@ const REL_COLOR = {
   supports: '#56c2e4',
   modifies: '#b197fc',
   raisesIssue: '#63e6be',
+  raisesConcernOn: '#ff922b',
+  proposesEditTo: '#8ce99a',
+  emergesAsAgenda: '#0f766e',
+  advancedToVote: '#f59f00',
+  settledInDeliberation: '#7048e8',
+  resolves: '#ffa94d',
+  integrates: '#4c6ef5',
+  mapsTo: '#74c0fc',
+  narrowsTo: '#15aabf',
+  comparesWith: '#868e96',
   isAbout: '#74c0fc',
   impacts: '#f783ac',
 };
@@ -283,6 +309,16 @@ const REL_KO = {
   hasEvidence: '근거',
   modifies: '수정',
   raisesIssue: '쟁점제기',
+  raisesConcernOn: '우려제기',
+  proposesEditTo: '수정제안',
+  emergesAsAgenda: '의제로 도출',
+  advancedToVote: '투표상정',
+  settledInDeliberation: '숙의정리',
+  resolves: '확정',
+  integrates: '통합',
+  mapsTo: '연결',
+  narrowsTo: '압축',
+  comparesWith: '비교',
   isAbout: '관련',
   impacts: '영향',
 };
@@ -848,7 +884,7 @@ function buildNodeContext(nodeId) {
   const incoming = [];
   const outgoing = [];
   const neighborIds = new Set([nodeId]);
-  const counts = { support: 0, oppose: 0, condition: 0, evidence: 0, other: 0 };
+  const counts = { support: 0, oppose: 0, condition: 0, evidence: 0, emergence: 0, votePath: 0, settled: 0, other: 0 };
   for (const e of ALL_EDGES) {
     const d = e.data || {};
     const touches = d.source === nodeId || d.target === nodeId;
@@ -875,6 +911,9 @@ function buildNodeContext(nodeId) {
     else if (d.rel === 'opposes' || d.rel === 'hasConcern' || d.opposes) counts.oppose++;
     else if (d.rel === 'requiresCondition') counts.condition++;
     else if (d.rel === 'hasEvidence') counts.evidence++;
+    else if (d.rel === 'emergesAsAgenda') counts.emergence++;
+    else if (d.rel === 'advancedToVote') counts.votePath++;
+    else if (d.rel === 'settledInDeliberation') counts.settled++;
     else counts.other++;
   }
   const related = [...incoming, ...outgoing];
@@ -899,6 +938,9 @@ function relationChips(ctx) {
     ['반대·우려', ctx.counts.oppose],
     ['조건', ctx.counts.condition],
     ['근거', ctx.counts.evidence],
+    ['도출', ctx.counts.emergence],
+    ['투표상정', ctx.counts.votePath],
+    ['숙의정리', ctx.counts.settled],
   ];
   return chips.map(([label, count]) => `<span class="og-surface-chip"><b>${count}</b>${label}</span>`).join('');
 }
@@ -961,6 +1003,46 @@ function renderHubRail() {
   });
 }
 
+function setSourceFromPanel(srcId) {
+  if (!srcId || srcId === curSource) return;
+  curSource = srcId;
+  fixedNodeId = null;
+  const sel = document.getElementById('og-source');
+  if (sel) sel.value = srcId;
+  updateUrl();
+  loadSource(srcId);
+}
+
+function renderFinalLineageIntro(graphMeta) {
+  const variant = String(graphMeta?.variant || curSource || '');
+  if (variant === 'final-process-to-conclusion-0704') {
+    return `
+      <div class="og-s-sec">
+        <h4>발표 흐름</h4>
+        <div class="og-surface-role"><b>전체 도출과정 먼저</b><span>이 화면은 최종 결론으로 가는 입구입니다. 상세 화면에서는 하버마스 발화 역할과 원 그래프의 발화-발화 관계를 유지한 채 운영규정과 의제를 따로 봅니다.</span></div>
+        <div class="og-s-rel">
+          <button class="og-r og-source-jump" data-source-id="final-regulation-decisions-0704"><b>운영규정</b> · 숙의에서 정리된 조항과 투표로 간 쟁점 보기 <span>상세</span></button>
+          <button class="og-r og-source-jump" data-source-id="final-agenda-decisions-0704"><b>의제선정</b> · 시민 발화 묶음에서 의제가 도출된 경로 보기 <span>상세</span></button>
+        </div>
+      </div>`;
+  }
+  if (variant === 'final-regulation-decisions-0704') {
+    return `
+      <div class="og-s-sec">
+        <h4>운영규정 읽는 법</h4>
+        <div class="og-surface-role"><b>조항과 발화 관계를 먼저 본다</b><span>분과 구성, 정족수, 의제 기준을 둘러싼 주장·우려·수정제안이 원 그래프 관계로 남아 있고, 이견이 남은 항목은 투표상정 선을 따라 표결 근거와 최종 의결로 이어집니다.</span></div>
+      </div>`;
+  }
+  if (variant === 'final-agenda-decisions-0704') {
+    return `
+      <div class="og-s-sec">
+        <h4>의제선정 읽는 법</h4>
+        <div class="og-surface-role"><b>발화 묶음에서 의제가 나온다</b><span>쟁점·주장·가치·우려·조건·정책대안의 기존 연결을 보존하고, 시민들이 논의한 말들이 의제로 도출되는 마지막 연결만 따로 표시합니다.</span></div>
+      </div>`;
+  }
+  return '';
+}
+
 function renderOverviewSurface(sourceMeta, graphMeta) {
   if (fixedNodeId) return;
   const side = document.getElementById('og-side');
@@ -978,6 +1060,7 @@ function renderOverviewSurface(sourceMeta, graphMeta) {
       <span class="og-s-badge" style="background:#2c3848;color:#9aa7b8;margin-left:5px">${escapeHtml(sourceMeta?.label || curSource || '')}</span>
       <div class="og-s-label">숙의 온톨로지 개요</div>
       <div class="og-surface-role"><b>화면을 어떻게 읽나</b><span>색은 발언 역할, 선은 논증 관계, 큰 노드는 논의가 모인 허브입니다. 노드를 올리면 1-hop 관계가 보이고, 클릭하면 원문과 출처가 고정됩니다.</span></div>
+      ${renderFinalLineageIntro(graphMeta)}
       <div class="og-surface-chips">
         <span class="og-surface-chip"><b>${ALL_NODES.length}</b>노드</span>
         <span class="og-surface-chip"><b>${ALL_EDGES.length}</b>관계</span>
@@ -996,6 +1079,9 @@ function renderOverviewSurface(sourceMeta, graphMeta) {
       </div>
     </div>`;
   side.classList.remove('collapsed');
+  side.querySelectorAll('[data-source-id]').forEach(btn => {
+    btn.onclick = () => setSourceFromPanel(btn.dataset.sourceId);
+  });
   side.querySelectorAll('[data-node-id]').forEach(btn => {
     btn.onclick = () => selectNodeById(btn.dataset.nodeId, true);
   });
@@ -1254,9 +1340,12 @@ function renderCy() {
   bindCyEvents();
   updateGroupBtns();
   cy.ready(() => setTimeout(() => {
-    cy.fit(null, 40);
     if (groupMode !== 'none') applyGrouping(groupMode);  // URL ?group= 진입 시 즉시 묶기
-    else if ((physicsOn || showcaseMode) && !isFinalDecisionShowcase()) applyPhysics();
+    else if (isFinalDecisionShowcase()) fitFinalDecisionViewport();
+    else {
+      cy.fit(null, 40);
+      if (physicsOn || showcaseMode) applyPhysics();
+    }
   }, 300));
 }
 
@@ -1329,7 +1418,7 @@ function syncPresentationBody() {
 }
 
 function isFinalDecisionShowcase() {
-  return showcaseMode && curView === '2d' && String(curSource || '').startsWith('final-');
+  return curView === '2d' && String(curSource || '').startsWith('final-');
 }
 
 function groupForPresentLevel(level) {
@@ -1444,6 +1533,11 @@ function setShowcaseEdgeLabels(active) {
 
 function configurePresentationZoom() {
   if (!cy) return;
+  if (isFinalDecisionShowcase()) {
+    cy.minZoom(0.18);
+    cy.maxZoom(3.2);
+    return;
+  }
   if (showcaseMode) {
     cy.minZoom(0.12);
     cy.maxZoom(2.6);
@@ -1463,8 +1557,26 @@ function configurePresentationZoom() {
   cy.maxZoom(2.2);
 }
 
+function fitFinalDecisionViewport() {
+  if (!cy) return;
+  configurePresentationZoom();
+  const important = cy.nodes(':visible').filter((node) => {
+    const kind = node.data('kind');
+    const degree = Number(node.data('deg') || 0);
+    return kind === 'Decision' || kind === 'Evidence' || kind === 'Clause' || degree >= 4;
+  });
+  const focus = important.length ? important : cy.nodes(':visible');
+  cy.fit(focus, 88);
+  const floor = ALL_NODES.length > 120 ? 0.52 : 0.58;
+  if (cy.zoom() < floor) {
+    cy.zoom({ level: floor, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } });
+    cy.center(focus);
+  }
+}
+
 function fitPresentationLevel(level = presentLevel) {
   if (!cy) return;
+  if (isFinalDecisionShowcase()) { fitFinalDecisionViewport(); return; }
   configurePresentationZoom();
   const groups = cy.nodes('[?isGroup]:visible');
   if (presentMode && (level === 'chapter' || level === 'brief') && groups.length) {
@@ -1854,6 +1966,26 @@ function applyView(view) {
   if (ALL_NODES.length) { if (view === '2d') renderCy(); else render3d(); }
 }
 
+function shouldShowFinalNodeLabel(node) {
+  const kind = node.data('kind');
+  const degree = Number(node.data('deg') || 0);
+  return kind === 'Decision' || kind === 'Evidence' || kind === 'Clause' || degree >= 5;
+}
+
+function finalNodeWidth(node) {
+  const degree = Number(node.data('deg') || 0);
+  if (!shouldShowFinalNodeLabel(node)) return 28 + Math.min(degree, 8) * 4;
+  const label = String(node.data('shortLabel') || node.data('label') || '');
+  return Math.max(190, Math.min(360, label.length * 15 + 56));
+}
+
+function finalNodeHeight(node) {
+  const degree = Number(node.data('deg') || 0);
+  if (!shouldShowFinalNodeLabel(node)) return 28 + Math.min(degree, 8) * 4;
+  const label = String(node.data('shortLabel') || node.data('label') || '');
+  return Math.max(64, label.length > 16 ? 84 : 70);
+}
+
 function buildCyStyle(palette) {
   const paper = presentMode;
   const demo = showcaseMode;
@@ -1865,6 +1997,7 @@ function buildCyStyle(palette) {
     { selector:'node', style:{
         'background-color': n => finalDecisionProjectorMode ? '#ffffff' : (palette[n.data('kind')] || '#888'),
         'label': n => {
+          if (finalDecisionProjectorMode) return shouldShowFinalNodeLabel(n) ? n.data('label') || '' : '';
           if (demo) return n.data('shortLabel') || n.data('label') || '';
           if (!presentMode || n.data('isGroup')) return n.data('label') || '';
           if (presentLevel === 'full' && n.data('isOverviewLabel')) return n.data('label') || '';
@@ -1875,9 +2008,9 @@ function buildCyStyle(palette) {
         'font-family': finalDecisionProjectorMode ? 'Pretendard, Noto Sans KR, Malgun Gothic, sans-serif' : 'Noto Sans KR, Malgun Gothic, sans-serif', 'font-weight': finalDecisionProjectorMode ? 900 : (presentMode || demo ? 700 : 500),
         'text-wrap':'wrap','text-max-width': finalDecisionProjectorMode ? '300px' : (demo ? '190px' : (presentMode ? '120px' : '140px')),'text-valign': demo ? 'center' : 'bottom','text-halign':'center','text-margin-y': demo ? 0 : 3,
         'text-outline-color': '#ffffff','text-outline-width': finalDecisionProjectorMode ? 3.5 : (demo ? 0 : (presentMode ? 2.5 : 2.5)),
-        'width': n => finalDecisionProjectorMode ? Math.max(180, Math.min(380, String(n.data('shortLabel') || n.data('label') || '').length * 18 + 56)) : (demo ? Math.max(96, Math.min(250, String(n.data('shortLabel') || n.data('label') || '').length * 13 + 34)) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4)),
-        'height': n => finalDecisionProjectorMode ? Math.max(68, String(n.data('shortLabel') || n.data('label') || '').length > 15 ? 88 : 74) : (demo ? Math.max(32, String(n.data('shortLabel') || n.data('label') || '').length > 15 ? 44 : 36) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4)),
-        'border-width': finalDecisionProjectorMode ? 2.8 : 2.2,'border-color': n => finalDecisionProjectorMode ? (palette[n.data('kind')] || '#2563eb') : '#0d1118','shape':'ellipse','opacity':1,
+        'width': n => finalDecisionProjectorMode ? finalNodeWidth(n) : (demo ? Math.max(96, Math.min(250, String(n.data('shortLabel') || n.data('label') || '').length * 13 + 34)) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4)),
+        'height': n => finalDecisionProjectorMode ? finalNodeHeight(n) : (demo ? Math.max(32, String(n.data('shortLabel') || n.data('label') || '').length > 15 ? 44 : 36) : (presentMode?26:22) + Math.min(n.data('deg')||0,8)*(presentMode?3:4)),
+        'border-width': finalDecisionProjectorMode ? 2.8 : 2.2,'border-color': n => finalDecisionProjectorMode ? (palette[n.data('kind')] || '#2563eb') : '#0d1118','shape': n => finalDecisionProjectorMode && shouldShowFinalNodeLabel(n) ? 'round-rectangle' : 'ellipse','opacity':1,
     }},
     { selector:'node.showcase-node', style:{
         'shape':'round-rectangle',
@@ -1918,6 +2051,10 @@ function buildCyStyle(palette) {
         'text-rotation':'autorotate','text-background-color': paperLike ? '#ffffff' : '#11151c',
         'text-background-opacity': finalDecisionProjectorMode ? 0.96 : (demo ? 0.74 : 0.85),'text-background-padding': finalDecisionProjectorMode ? 4 : 2,'opacity': finalDecisionProjectorMode ? 0.82 : (demo ? 0.66 : 0.82),
     }},
+    { selector:'edge[rel="emergesAsAgenda"]', style:{ 'line-color':'#0f766e','target-arrow-color':'#0f766e','width': finalDecisionProjectorMode ? 4 : 2.8 }},
+    { selector:'edge[rel="advancedToVote"]', style:{ 'line-color':'#f59f00','target-arrow-color':'#f59f00','width': finalDecisionProjectorMode ? 4 : 2.8 }},
+    { selector:'edge[rel="settledInDeliberation"]', style:{ 'line-color':'#7048e8','target-arrow-color':'#7048e8','width': finalDecisionProjectorMode ? 3.6 : 2.5 }},
+    { selector:'edge[rel="proposesEditTo"]', style:{ 'line-color':'#2b8a3e','target-arrow-color':'#2b8a3e','width': finalDecisionProjectorMode ? 3.2 : 2.2 }},
     { selector:'edge[?opposes]', style:{
         'line-color': demo ? '#f4a3a3' : '#ff6b6b','target-arrow-color': demo ? '#f4a3a3' : '#ff6b6b','width': demo ? 1.65 : 2.6 }},
     // A-3 묶기 합성 부모(컨테이너) — 라벨 달린 둥근 사각, 반투명 배경, 자식이 안에 들도록 패딩

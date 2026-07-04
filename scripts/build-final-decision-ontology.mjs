@@ -34,6 +34,14 @@ const REL_KO = {
   narrowsTo: '압축',
   integrates: '통합',
   comparesWith: '비교',
+  modifies: '수정',
+  raisesIssue: '쟁점제기',
+  hasConcern: '우려',
+  requiresCondition: '조건필요',
+  proposesEditTo: '수정제안',
+  emergesAsAgenda: '의제로 도출',
+  advancedToVote: '투표상정',
+  settledInDeliberation: '숙의정리',
 };
 
 const regulationSource = dataPath('public', 'workshop-graph', 'data', 'regulation-2026-06-13.json');
@@ -131,6 +139,131 @@ function addEdge(elements, source, target, rel, meta = {}) {
       meta,
     },
   });
+}
+
+function hasNode(elements, id) {
+  return elements.nodes.some((node) => node.data?.id === id);
+}
+
+function hasEdge(elements, source, target, rel) {
+  return elements.edges.some((edge) => edge.data?.source === source && edge.data?.target === target && edge.data?.rel === rel);
+}
+
+function addSourceEdge(elements, source, target, edge) {
+  const data = edge.data || {};
+  const rel = data.rel || 'supports';
+  if (hasEdge(elements, source, target, rel)) return;
+  elements.edges.push({
+    data: {
+      id: `e_${elements.edges.length}`,
+      source,
+      target,
+      src: source,
+      dst: target,
+      rel,
+      relKo: data.relKo || REL_KO[rel] || rel,
+      cited: data.cited || data.cited_uids || [],
+      cited_uids: data.cited_uids || data.cited || [],
+      opposes: data.opposes || undefined,
+      meta: {
+        ...(data.meta || {}),
+        source_edge_id: data.id || null,
+        source_rel: rel,
+      },
+    },
+  });
+}
+
+function cloneContextNode(elements, sourceNode, decisionId, sourceGraph) {
+  const sourceId = sourceNode?.data?.id;
+  if (!sourceId) return null;
+  const contextId = `ctx_${decisionId}_${sourceId}`;
+  if (!hasNode(elements, contextId)) {
+    addNode(elements, contextId, sourceNode.data.kind || 'Evidence', sourceNode.data.label, sourceNode.data.text, {
+      cited: sourceNode.data.cited || sourceNode.data.cited_uids || [],
+      source_node_id: sourceId,
+      source_graph: sourceGraph,
+      evidence_type: 'discussion_context',
+      synthesized: false,
+      session: sourceNode.data.session || '',
+    });
+  }
+  return contextId;
+}
+
+function addDiscussionLineage(elements, sourceGraph, sourceGraphName, decisionId, matches, options = {}) {
+  const sourceNodes = graphNodes(sourceGraph);
+  const sourceEdges = graphEdges(sourceGraph);
+  const byId = new Map(sourceNodes.map((node) => [node.data?.id, node]));
+  const seedIds = new Set(matches.map((node) => node.data?.id).filter(Boolean));
+  const clonedBySourceId = new Map();
+  const allowedRels = new Set([
+    'supports',
+    'opposes',
+    'hasConcern',
+    'raisesConcernOn',
+    'requiresCondition',
+    'modifies',
+    'raisesIssue',
+    'proposesEditTo',
+    'resolves',
+  ]);
+  const includeKinds = new Set(options.includeNeighborKinds || ['Issue', 'Claim', 'Proposal', 'Concern', 'Condition', 'Value', 'Evidence', 'Clause', 'Decision']);
+
+  function ensureClone(sourceId) {
+    if (clonedBySourceId.has(sourceId)) return clonedBySourceId.get(sourceId);
+    const sourceNode = byId.get(sourceId);
+    if (!sourceNode || !includeKinds.has(sourceNode.data?.kind || '')) return null;
+    const clonedId = cloneContextNode(elements, sourceNode, decisionId, sourceGraphName);
+    if (clonedId) clonedBySourceId.set(sourceId, clonedId);
+    return clonedId;
+  }
+
+  for (const sourceId of seedIds) ensureClone(sourceId);
+
+  for (const edge of sourceEdges) {
+    const data = edge.data || {};
+    if (!allowedRels.has(data.rel)) continue;
+    const touchesSeed = seedIds.has(data.source) || seedIds.has(data.target);
+    if (!touchesSeed) continue;
+    const source = ensureClone(data.source);
+    const target = ensureClone(data.target);
+    if (!source || !target) continue;
+    addSourceEdge(elements, source, target, edge);
+  }
+
+  return clonedBySourceId;
+}
+
+function linkAgendaEmergence(elements, clonedBySourceId, matches, decisionId) {
+  const preferred = matches.filter((node) => ['Proposal', 'Issue'].includes(node.data?.kind));
+  const fallback = matches.filter((node) => ['Claim', 'Value', 'Concern', 'Condition'].includes(node.data?.kind));
+  for (const sourceNode of [...preferred, ...fallback].slice(0, 5)) {
+    const contextId = clonedBySourceId.get(sourceNode.data.id);
+    if (contextId) addEdge(elements, contextId, decisionId, 'emergesAsAgenda', {
+      source_node_id: sourceNode.data.id,
+      source_graph: 'workshop-2026-06-13',
+    });
+  }
+}
+
+function linkRegulationVotePath(elements, clonedBySourceId, matches, voteId, decisionId) {
+  for (const sourceNode of matches) {
+    const contextId = clonedBySourceId.get(sourceNode.data.id);
+    if (!contextId) continue;
+    if (sourceNode.data.kind === 'Decision') {
+      addEdge(elements, contextId, decisionId, 'settledInDeliberation', {
+        source_node_id: sourceNode.data.id,
+        source_graph: 'regulation-2026-06-13',
+      });
+    } else if (['Proposal', 'Claim', 'Concern', 'Condition', 'Value', 'Clause'].includes(sourceNode.data.kind)) {
+      addEdge(elements, contextId, voteId, 'advancedToVote', {
+        source_node_id: sourceNode.data.id,
+        source_graph: 'regulation-2026-06-13',
+      });
+    }
+  }
+  addEdge(elements, voteId, decisionId, 'resolves');
 }
 
 function finalizeElements(elements) {
@@ -317,20 +450,10 @@ function buildRegulationSet() {
       evidence_type: 'vote_result',
       decision_id: item.id,
     });
-    addEdge(elements, 'reg-final-set', decisionId, 'resolves');
-    addEdge(elements, decisionId, voteId, 'hasEvidence');
+    addEdge(elements, decisionId, 'reg-final-set', 'integrates');
 
-    for (const match of matches.slice(0, 5)) {
-      const contextId = `ctx_${item.id}_${match.data.id}`;
-      addNode(elements, contextId, match.data.kind || 'Evidence', match.data.label, match.data.text, {
-        cited: match.data.cited || match.data.cited_uids || [],
-        source_node_id: match.data.id,
-        source_graph: 'regulation-2026-06-13',
-        evidence_type: 'discussion_context',
-        synthesized: false,
-      });
-      addEdge(elements, contextId, decisionId, 'supports');
-    }
+    const lineage = addDiscussionLineage(elements, regulationGraph, 'regulation-2026-06-13', item.id, matches.slice(0, 6));
+    linkRegulationVotePath(elements, lineage, matches.slice(0, 6), voteId, decisionId);
     rows.push({
       id: item.id,
       decision: item.label,
@@ -401,21 +524,12 @@ function buildAgendaSet() {
       evidence_type: 'vote_result',
       slot: item.slot,
     });
-    addEdge(elements, 'agenda-final-set', decisionId, item.status === 'integrated_into_selected' ? 'integrates' : 'resolves');
-    addEdge(elements, decisionId, voteId, 'hasEvidence');
+    addEdge(elements, decisionId, 'agenda-final-set', item.status === 'integrated_into_selected' ? 'integrates' : 'resolves');
+    addEdge(elements, voteId, decisionId, 'resolves');
     addEdge(elements, voteRootId, voteId, 'mapsTo');
 
-    for (const match of matches.slice(0, 6)) {
-      const contextId = `ctx_${item.id}_${match.data.id}`;
-      addNode(elements, contextId, match.data.kind || 'Evidence', match.data.label, match.data.text, {
-        cited: match.data.cited || match.data.cited_uids || [],
-        source_node_id: match.data.id,
-        source_graph: 'workshop-2026-06-13',
-        evidence_type: 'discussion_context',
-        synthesized: false,
-      });
-      addEdge(elements, contextId, decisionId, 'supports');
-    }
+    const lineage = addDiscussionLineage(elements, workshopGraph, 'workshop-2026-06-13', item.id, matches.slice(0, 7));
+    linkAgendaEmergence(elements, lineage, matches.slice(0, 7), decisionId);
 
     rows.push({
       id: item.id,

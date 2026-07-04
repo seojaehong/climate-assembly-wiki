@@ -68,7 +68,7 @@
           "review_state": null,
           "is_public": true,
           "synthesized": true,
-          "deg": 7,
+          "deg": 5,
           "isolated": false
         }
       },
@@ -101,7 +101,7 @@
           "review_state": null,
           "is_public": true,
           "synthesized": true,
-          "deg": 1,
+          "deg": 3,
           "isolated": false
         }
       },
@@ -129,14 +129,15 @@
             "source_node_id": "Proposal_02",
             "source_graph": "regulation-2026-06-13",
             "evidence_type": "discussion_context",
-            "synthesized": false
+            "synthesized": false,
+            "session": ""
           },
           "session": "",
           "evidence_type": "discussion_context",
           "review_state": null,
           "is_public": true,
           "synthesized": false,
-          "deg": 1,
+          "deg": 2,
           "isolated": false
         }
       },
@@ -164,14 +165,15 @@
             "source_node_id": "Proposal_15",
             "source_graph": "regulation-2026-06-13",
             "evidence_type": "discussion_context",
-            "synthesized": false
+            "synthesized": false,
+            "session": ""
           },
           "session": "",
           "evidence_type": "discussion_context",
           "review_state": null,
           "is_public": true,
           "synthesized": false,
-          "deg": 1,
+          "deg": 2,
           "isolated": false
         }
       },
@@ -199,14 +201,15 @@
             "source_node_id": "Decision_01",
             "source_graph": "regulation-2026-06-13",
             "evidence_type": "discussion_context",
-            "synthesized": false
+            "synthesized": false,
+            "session": ""
           },
           "session": "",
           "evidence_type": "discussion_context",
           "review_state": null,
           "is_public": true,
           "synthesized": false,
-          "deg": 1,
+          "deg": 2,
           "isolated": false
         }
       },
@@ -234,14 +237,15 @@
             "source_node_id": "Decision_04",
             "source_graph": "regulation-2026-06-13",
             "evidence_type": "discussion_context",
-            "synthesized": false
+            "synthesized": false,
+            "session": ""
           },
           "session": "",
           "evidence_type": "discussion_context",
           "review_state": null,
           "is_public": true,
           "synthesized": false,
-          "deg": 1,
+          "deg": 2,
           "isolated": false
         }
       },
@@ -269,14 +273,48 @@
             "source_node_id": "Decision_05",
             "source_graph": "regulation-2026-06-13",
             "evidence_type": "discussion_context",
-            "synthesized": false
+            "synthesized": false,
+            "session": ""
           },
           "session": "",
           "evidence_type": "discussion_context",
           "review_state": null,
           "is_public": true,
           "synthesized": false,
-          "deg": 1,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "ctx_reg-planning-quorum_Clause_16",
+          "node_id": "ctx_reg-planning-quorum_Clause_16",
+          "label": "회의 성립 및 의결정족수",
+          "kind": "Clause",
+          "kindKo": "조항",
+          "text": "의사결정은 충분한 정보·토론 후. 기획참여단/숙의참여단 분과별/숙의참여단 전체회의의 의결정족수(재적 과반 출석 + 000 이상 찬성) — 초안 공란.",
+          "cited": [
+            "운영규범_초안_최종4.md::【회의 성립 및 의결정족수】"
+          ],
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【회의 성립 및 의결정족수】"
+          ],
+          "meta": {
+            "cited": [
+              "운영규범_초안_최종4.md::【회의 성립 및 의결정족수】"
+            ],
+            "source_node_id": "Clause_16",
+            "source_graph": "regulation-2026-06-13",
+            "evidence_type": "discussion_context",
+            "synthesized": false,
+            "session": ""
+          },
+          "session": "",
+          "evidence_type": "discussion_context",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 5,
           "isolated": false
         }
       },
@@ -315,7 +353,7 @@
           "review_state": null,
           "is_public": true,
           "synthesized": true,
-          "deg": 5,
+          "deg": 3,
           "isolated": false
         }
       },
@@ -348,7 +386,7 @@
           "review_state": null,
           "is_public": true,
           "synthesized": true,
-          "deg": 1,
+          "deg": 3,
           "isolated": false
         }
       },
@@ -376,14 +414,15 @@
             "source_node_id": "Claim_05",
             "source_graph": "regulation-2026-06-13",
             "evidence_type": "discussion_context",
-            "synthesized": false
+            "synthesized": false,
+            "session": ""
           },
           "session": "",
           "evidence_type": "discussion_context",
           "review_state": null,
           "is_public": true,
           "synthesized": false,
-          "deg": 1,
+          "deg": 2,
           "isolated": false
         }
       },
@@ -411,14 +450,15 @@
             "source_node_id": "Claim_06",
             "source_graph": "regulation-2026-06-13",
             "evidence_type": "discussion_context",
-            "synthesized": false
+            "synthesized": false,
+            "session": ""
           },
           "session": "",
           "evidence_type": "discussion_context",
           "review_state": null,
           "is_public": true,
           "synthesized": false,
-          "deg": 1,
+          "deg": 2,
           "isolated": false
         }
       },
@@ -446,14 +486,48 @@
             "source_node_id": "Decision_02",
             "source_graph": "regulation-2026-06-13",
             "evidence_type": "discussion_context",
-            "synthesized": false
+            "synthesized": false,
+            "session": ""
           },
           "session": "",
           "evidence_type": "discussion_context",
           "review_state": null,
           "is_public": true,
           "synthesized": false,
-          "deg": 1,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "ctx_reg-division-yes_Clause_08",
+          "node_id": "ctx_reg-division-yes_Clause_08",
+          "label": "숙의참여단의 분과 구성",
+          "kind": "Clause",
+          "kindKo": "조항",
+          "text": "분과를 두면 각 분과를 여러 조로, 두지 않으면 전체를 여러 조로 운영. 조별 1개 조당 12명 이내. 10~18세 청소년은 필요시 별도 토론그룹 구성 가능.",
+          "cited": [
+            "운영규범_초안_최종4.md::【숙의참여단의 분과 구성】"
+          ],
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【숙의참여단의 분과 구성】"
+          ],
+          "meta": {
+            "cited": [
+              "운영규범_초안_최종4.md::【숙의참여단의 분과 구성】"
+            ],
+            "source_node_id": "Clause_08",
+            "source_graph": "regulation-2026-06-13",
+            "evidence_type": "discussion_context",
+            "synthesized": false,
+            "session": ""
+          },
+          "session": "",
+          "evidence_type": "discussion_context",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 3,
           "isolated": false
         }
       },
@@ -553,7 +627,41 @@
             "source_node_id": "Decision_03",
             "source_graph": "regulation-2026-06-13",
             "evidence_type": "discussion_context",
-            "synthesized": false
+            "synthesized": false,
+            "session": ""
+          },
+          "session": "",
+          "evidence_type": "discussion_context",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "ctx_reg-division-three_Clause_08",
+          "node_id": "ctx_reg-division-three_Clause_08",
+          "label": "숙의참여단의 분과 구성",
+          "kind": "Clause",
+          "kindKo": "조항",
+          "text": "분과를 두면 각 분과를 여러 조로, 두지 않으면 전체를 여러 조로 운영. 조별 1개 조당 12명 이내. 10~18세 청소년은 필요시 별도 토론그룹 구성 가능.",
+          "cited": [
+            "운영규범_초안_최종4.md::【숙의참여단의 분과 구성】"
+          ],
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【숙의참여단의 분과 구성】"
+          ],
+          "meta": {
+            "cited": [
+              "운영규범_초안_최종4.md::【숙의참여단의 분과 구성】"
+            ],
+            "source_node_id": "Clause_08",
+            "source_graph": "regulation-2026-06-13",
+            "evidence_type": "discussion_context",
+            "synthesized": false,
+            "session": ""
           },
           "session": "",
           "evidence_type": "discussion_context",
@@ -660,7 +768,41 @@
             "source_node_id": "Decision_04",
             "source_graph": "regulation-2026-06-13",
             "evidence_type": "discussion_context",
-            "synthesized": false
+            "synthesized": false,
+            "session": ""
+          },
+          "session": "",
+          "evidence_type": "discussion_context",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "ctx_reg-division-quorum_Clause_16",
+          "node_id": "ctx_reg-division-quorum_Clause_16",
+          "label": "회의 성립 및 의결정족수",
+          "kind": "Clause",
+          "kindKo": "조항",
+          "text": "의사결정은 충분한 정보·토론 후. 기획참여단/숙의참여단 분과별/숙의참여단 전체회의의 의결정족수(재적 과반 출석 + 000 이상 찬성) — 초안 공란.",
+          "cited": [
+            "운영규범_초안_최종4.md::【회의 성립 및 의결정족수】"
+          ],
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【회의 성립 및 의결정족수】"
+          ],
+          "meta": {
+            "cited": [
+              "운영규범_초안_최종4.md::【회의 성립 및 의결정족수】"
+            ],
+            "source_node_id": "Clause_16",
+            "source_graph": "regulation-2026-06-13",
+            "evidence_type": "discussion_context",
+            "synthesized": false,
+            "session": ""
           },
           "session": "",
           "evidence_type": "discussion_context",
@@ -767,7 +909,41 @@
             "source_node_id": "Decision_05",
             "source_graph": "regulation-2026-06-13",
             "evidence_type": "discussion_context",
-            "synthesized": false
+            "synthesized": false,
+            "session": ""
+          },
+          "session": "",
+          "evidence_type": "discussion_context",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "ctx_reg-full-quorum_Clause_16",
+          "node_id": "ctx_reg-full-quorum_Clause_16",
+          "label": "회의 성립 및 의결정족수",
+          "kind": "Clause",
+          "kindKo": "조항",
+          "text": "의사결정은 충분한 정보·토론 후. 기획참여단/숙의참여단 분과별/숙의참여단 전체회의의 의결정족수(재적 과반 출석 + 000 이상 찬성) — 초안 공란.",
+          "cited": [
+            "운영규범_초안_최종4.md::【회의 성립 및 의결정족수】"
+          ],
+          "cited_uids": [
+            "운영규범_초안_최종4.md::【회의 성립 및 의결정족수】"
+          ],
+          "meta": {
+            "cited": [
+              "운영규범_초안_최종4.md::【회의 성립 및 의결정족수】"
+            ],
+            "source_node_id": "Clause_16",
+            "source_graph": "regulation-2026-06-13",
+            "evidence_type": "discussion_context",
+            "synthesized": false,
+            "session": ""
           },
           "session": "",
           "evidence_type": "discussion_context",
@@ -813,7 +989,7 @@
           "review_state": null,
           "is_public": true,
           "synthesized": true,
-          "deg": 6,
+          "deg": 3,
           "isolated": false
         }
       },
@@ -846,7 +1022,7 @@
           "review_state": null,
           "is_public": true,
           "synthesized": true,
-          "deg": 1,
+          "deg": 4,
           "isolated": false
         }
       },
@@ -871,14 +1047,15 @@
             "source_node_id": "Clause_14",
             "source_graph": "regulation-2026-06-13",
             "evidence_type": "discussion_context",
-            "synthesized": false
+            "synthesized": false,
+            "session": ""
           },
           "session": "",
           "evidence_type": "discussion_context",
           "review_state": null,
           "is_public": true,
           "synthesized": false,
-          "deg": 1,
+          "deg": 8,
           "isolated": false
         }
       },
@@ -906,14 +1083,15 @@
             "source_node_id": "Proposal_06",
             "source_graph": "regulation-2026-06-13",
             "evidence_type": "discussion_context",
-            "synthesized": false
+            "synthesized": false,
+            "session": ""
           },
           "session": "",
           "evidence_type": "discussion_context",
           "review_state": null,
           "is_public": true,
           "synthesized": false,
-          "deg": 1,
+          "deg": 2,
           "isolated": false
         }
       },
@@ -941,14 +1119,15 @@
             "source_node_id": "Proposal_18",
             "source_graph": "regulation-2026-06-13",
             "evidence_type": "discussion_context",
-            "synthesized": false
+            "synthesized": false,
+            "session": ""
           },
           "session": "",
           "evidence_type": "discussion_context",
           "review_state": null,
           "is_public": true,
           "synthesized": false,
-          "deg": 1,
+          "deg": 2,
           "isolated": false
         }
       },
@@ -976,7 +1155,152 @@
             "source_node_id": "Decision_06",
             "source_graph": "regulation-2026-06-13",
             "evidence_type": "discussion_context",
-            "synthesized": false
+            "synthesized": false,
+            "session": ""
+          },
+          "session": "",
+          "evidence_type": "discussion_context",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "ctx_reg-article14-direct-indirect_Proposal_07",
+          "node_id": "ctx_reg-article14-direct-indirect_Proposal_07",
+          "label": "의제기준: 실행가능성·공정성 추가",
+          "kind": "Proposal",
+          "kindKo": "정책대안",
+          "text": "한정된 예산·자원 속 실행가능한 의제, 특정 지역·인구에 유불리하지 않은 공정한 의제 선정 강조.",
+          "cited": [
+            "A조-의제기준-순번4,5",
+            "[토론1]A조전사::예산 실행가능성·공정성 발언"
+          ],
+          "cited_uids": [
+            "A조-의제기준-순번4,5",
+            "[토론1]A조전사::예산 실행가능성·공정성 발언"
+          ],
+          "meta": {
+            "cited": [
+              "A조-의제기준-순번4,5",
+              "[토론1]A조전사::예산 실행가능성·공정성 발언"
+            ],
+            "source_node_id": "Proposal_07",
+            "source_graph": "regulation-2026-06-13",
+            "evidence_type": "discussion_context",
+            "synthesized": false,
+            "session": ""
+          },
+          "session": "",
+          "evidence_type": "discussion_context",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "ctx_reg-article14-direct-indirect_Proposal_19",
+          "node_id": "ctx_reg-article14-direct-indirect_Proposal_19",
+          "label": "14조 명령형 어조 순화(B조)",
+          "kind": "Proposal",
+          "kindKo": "정책대안",
+          "text": "14조 1~5호가 전부 명령·지시형 어조라 시민회의 성격에 안 맞음. 부드러운 표현으로 순화.",
+          "cited": [
+            "B조-안건③-순번2",
+            "[토론1]B조전사::명령형 순화 발언"
+          ],
+          "cited_uids": [
+            "B조-안건③-순번2",
+            "[토론1]B조전사::명령형 순화 발언"
+          ],
+          "meta": {
+            "cited": [
+              "B조-안건③-순번2",
+              "[토론1]B조전사::명령형 순화 발언"
+            ],
+            "source_node_id": "Proposal_19",
+            "source_graph": "regulation-2026-06-13",
+            "evidence_type": "discussion_context",
+            "synthesized": false,
+            "session": ""
+          },
+          "session": "",
+          "evidence_type": "discussion_context",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "ctx_reg-article14-direct-indirect_Concern_05",
+          "node_id": "ctx_reg-article14-direct-indirect_Concern_05",
+          "label": "14조2호 묵직한 사안 우려(B조)",
+          "kind": "Concern",
+          "kindKo": "우려",
+          "text": "14조2호(법령 위배 안될 것) 때문에 일회성 아닌 묵직한 사안을 다룰 수 있어야 지속가능하지 않을까 하는 우려(※모더레이터: 의견 개진 자체를 막는 취지 아님).",
+          "cited": [
+            "B조-안건③-추가질문",
+            "[토론1]B조전사::묵직한 사안 발언"
+          ],
+          "cited_uids": [
+            "B조-안건③-추가질문",
+            "[토론1]B조전사::묵직한 사안 발언"
+          ],
+          "meta": {
+            "cited": [
+              "B조-안건③-추가질문",
+              "[토론1]B조전사::묵직한 사안 발언"
+            ],
+            "source_node_id": "Concern_05",
+            "source_graph": "regulation-2026-06-13",
+            "evidence_type": "discussion_context",
+            "synthesized": false,
+            "session": ""
+          },
+          "session": "",
+          "evidence_type": "discussion_context",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "ctx_reg-article14-direct-indirect_Decision_07",
+          "node_id": "ctx_reg-article14-direct-indirect_Decision_07",
+          "label": "의제기준 14조3항 = 시민의 삶 표현 유지",
+          "kind": "Decision",
+          "kindKo": "결정",
+          "text": "14조 제3호 '시민의 삶·일상 실천 연결' 표현 현행 유지(16/18·89%). 의제 폭은 넓히되 일상에 닿아야 한다는 출발점 유지.",
+          "cited": [
+            "7.4_발표덱::2026기후시민회의_운영규정.pptx",
+            "토론4::통합운영 의결표"
+          ],
+          "cited_uids": [
+            "7.4_발표덱::2026기후시민회의_운영규정.pptx",
+            "토론4::통합운영 의결표"
+          ],
+          "meta": {
+            "cited": [
+              "7.4_발표덱::2026기후시민회의_운영규정.pptx",
+              "토론4::통합운영 의결표"
+            ],
+            "source_node_id": "Decision_07",
+            "source_graph": "regulation-2026-06-13",
+            "evidence_type": "discussion_context",
+            "synthesized": false,
+            "session": ""
           },
           "session": "",
           "evidence_type": "discussion_context",
@@ -1022,7 +1346,7 @@
           "review_state": null,
           "is_public": true,
           "synthesized": true,
-          "deg": 4,
+          "deg": 3,
           "isolated": false
         }
       },
@@ -1055,7 +1379,7 @@
           "review_state": null,
           "is_public": true,
           "synthesized": true,
-          "deg": 1,
+          "deg": 2,
           "isolated": false
         }
       },
@@ -1080,14 +1404,15 @@
             "source_node_id": "Clause_14",
             "source_graph": "regulation-2026-06-13",
             "evidence_type": "discussion_context",
-            "synthesized": false
+            "synthesized": false,
+            "session": ""
           },
           "session": "",
           "evidence_type": "discussion_context",
           "review_state": null,
           "is_public": true,
           "synthesized": false,
-          "deg": 1,
+          "deg": 8,
           "isolated": false
         }
       },
@@ -1115,7 +1440,224 @@
             "source_node_id": "Decision_07",
             "source_graph": "regulation-2026-06-13",
             "evidence_type": "discussion_context",
-            "synthesized": false
+            "synthesized": false,
+            "session": ""
+          },
+          "session": "",
+          "evidence_type": "discussion_context",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 2,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "ctx_reg-article14-everyday-life_Proposal_06",
+          "node_id": "ctx_reg-article14-everyday-life_Proposal_06",
+          "label": "14조1호 직접→직간접(A조)",
+          "kind": "Proposal",
+          "kindKo": "정책대안",
+          "text": "제14조 제1호 '기후위기 대응과 직접 관련될 것'을 '직·간접적 관련될 것'으로 확장.",
+          "cited": [
+            "A조-의제기준-순번3",
+            "[토론1]A조전사::직간접 확장 발언"
+          ],
+          "cited_uids": [
+            "A조-의제기준-순번3",
+            "[토론1]A조전사::직간접 확장 발언"
+          ],
+          "meta": {
+            "cited": [
+              "A조-의제기준-순번3",
+              "[토론1]A조전사::직간접 확장 발언"
+            ],
+            "source_node_id": "Proposal_06",
+            "source_graph": "regulation-2026-06-13",
+            "evidence_type": "discussion_context",
+            "synthesized": false,
+            "session": ""
+          },
+          "session": "",
+          "evidence_type": "discussion_context",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "ctx_reg-article14-everyday-life_Proposal_07",
+          "node_id": "ctx_reg-article14-everyday-life_Proposal_07",
+          "label": "의제기준: 실행가능성·공정성 추가",
+          "kind": "Proposal",
+          "kindKo": "정책대안",
+          "text": "한정된 예산·자원 속 실행가능한 의제, 특정 지역·인구에 유불리하지 않은 공정한 의제 선정 강조.",
+          "cited": [
+            "A조-의제기준-순번4,5",
+            "[토론1]A조전사::예산 실행가능성·공정성 발언"
+          ],
+          "cited_uids": [
+            "A조-의제기준-순번4,5",
+            "[토론1]A조전사::예산 실행가능성·공정성 발언"
+          ],
+          "meta": {
+            "cited": [
+              "A조-의제기준-순번4,5",
+              "[토론1]A조전사::예산 실행가능성·공정성 발언"
+            ],
+            "source_node_id": "Proposal_07",
+            "source_graph": "regulation-2026-06-13",
+            "evidence_type": "discussion_context",
+            "synthesized": false,
+            "session": ""
+          },
+          "session": "",
+          "evidence_type": "discussion_context",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "ctx_reg-article14-everyday-life_Proposal_18",
+          "node_id": "ctx_reg-article14-everyday-life_Proposal_18",
+          "label": "14조1호 '직접' 삭제(B조)",
+          "kind": "Proposal",
+          "kindKo": "정책대안",
+          "text": "제14조 제1호 '기후위기 대응과 직접 관련될 것'에서 '직접' 삭제.",
+          "cited": [
+            "B조-안건③-순번1",
+            "[토론1]B조전사::직접 삭제 발언"
+          ],
+          "cited_uids": [
+            "B조-안건③-순번1",
+            "[토론1]B조전사::직접 삭제 발언"
+          ],
+          "meta": {
+            "cited": [
+              "B조-안건③-순번1",
+              "[토론1]B조전사::직접 삭제 발언"
+            ],
+            "source_node_id": "Proposal_18",
+            "source_graph": "regulation-2026-06-13",
+            "evidence_type": "discussion_context",
+            "synthesized": false,
+            "session": ""
+          },
+          "session": "",
+          "evidence_type": "discussion_context",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "ctx_reg-article14-everyday-life_Proposal_19",
+          "node_id": "ctx_reg-article14-everyday-life_Proposal_19",
+          "label": "14조 명령형 어조 순화(B조)",
+          "kind": "Proposal",
+          "kindKo": "정책대안",
+          "text": "14조 1~5호가 전부 명령·지시형 어조라 시민회의 성격에 안 맞음. 부드러운 표현으로 순화.",
+          "cited": [
+            "B조-안건③-순번2",
+            "[토론1]B조전사::명령형 순화 발언"
+          ],
+          "cited_uids": [
+            "B조-안건③-순번2",
+            "[토론1]B조전사::명령형 순화 발언"
+          ],
+          "meta": {
+            "cited": [
+              "B조-안건③-순번2",
+              "[토론1]B조전사::명령형 순화 발언"
+            ],
+            "source_node_id": "Proposal_19",
+            "source_graph": "regulation-2026-06-13",
+            "evidence_type": "discussion_context",
+            "synthesized": false,
+            "session": ""
+          },
+          "session": "",
+          "evidence_type": "discussion_context",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "ctx_reg-article14-everyday-life_Concern_05",
+          "node_id": "ctx_reg-article14-everyday-life_Concern_05",
+          "label": "14조2호 묵직한 사안 우려(B조)",
+          "kind": "Concern",
+          "kindKo": "우려",
+          "text": "14조2호(법령 위배 안될 것) 때문에 일회성 아닌 묵직한 사안을 다룰 수 있어야 지속가능하지 않을까 하는 우려(※모더레이터: 의견 개진 자체를 막는 취지 아님).",
+          "cited": [
+            "B조-안건③-추가질문",
+            "[토론1]B조전사::묵직한 사안 발언"
+          ],
+          "cited_uids": [
+            "B조-안건③-추가질문",
+            "[토론1]B조전사::묵직한 사안 발언"
+          ],
+          "meta": {
+            "cited": [
+              "B조-안건③-추가질문",
+              "[토론1]B조전사::묵직한 사안 발언"
+            ],
+            "source_node_id": "Concern_05",
+            "source_graph": "regulation-2026-06-13",
+            "evidence_type": "discussion_context",
+            "synthesized": false,
+            "session": ""
+          },
+          "session": "",
+          "evidence_type": "discussion_context",
+          "review_state": null,
+          "is_public": true,
+          "synthesized": false,
+          "deg": 1,
+          "isolated": false
+        }
+      },
+      {
+        "data": {
+          "id": "ctx_reg-article14-everyday-life_Decision_06",
+          "node_id": "ctx_reg-article14-everyday-life_Decision_06",
+          "label": "의제기준 14조1항 = 직간접으로 확장",
+          "kind": "Decision",
+          "kindKo": "결정",
+          "text": "14조 제1호 '직접'→'직간접' 수정 채택(17/18·94%, 거의 만장일치). 기후 문제는 다른 영역과 분리되지 않는다는 의견 강하게 제기.",
+          "cited": [
+            "7.4_발표덱::2026기후시민회의_운영규정.pptx",
+            "토론4::통합운영 의결표"
+          ],
+          "cited_uids": [
+            "7.4_발표덱::2026기후시민회의_운영규정.pptx",
+            "토론4::통합운영 의결표"
+          ],
+          "meta": {
+            "cited": [
+              "7.4_발표덱::2026기후시민회의_운영규정.pptx",
+              "토론4::통합운영 의결표"
+            ],
+            "source_node_id": "Decision_06",
+            "source_graph": "regulation-2026-06-13",
+            "evidence_type": "discussion_context",
+            "synthesized": false,
+            "session": ""
           },
           "session": "",
           "evidence_type": "discussion_context",
@@ -1131,12 +1673,12 @@
       {
         "data": {
           "id": "e_0",
-          "source": "reg-final-set",
-          "target": "decision_reg-planning-quorum",
-          "src": "reg-final-set",
-          "dst": "decision_reg-planning-quorum",
-          "rel": "resolves",
-          "relKo": "확정",
+          "source": "decision_reg-planning-quorum",
+          "target": "reg-final-set",
+          "src": "decision_reg-planning-quorum",
+          "dst": "reg-final-set",
+          "rel": "integrates",
+          "relKo": "통합",
           "cited": [],
           "cited_uids": [],
           "meta": {}
@@ -1145,152 +1687,212 @@
       {
         "data": {
           "id": "e_1",
-          "source": "decision_reg-planning-quorum",
-          "target": "vote_reg-planning-quorum",
-          "src": "decision_reg-planning-quorum",
-          "dst": "vote_reg-planning-quorum",
-          "rel": "hasEvidence",
-          "relKo": "근거",
-          "cited": [],
-          "cited_uids": [],
-          "meta": {}
+          "source": "ctx_reg-planning-quorum_Proposal_02",
+          "target": "ctx_reg-planning-quorum_Clause_16",
+          "src": "ctx_reg-planning-quorum_Proposal_02",
+          "dst": "ctx_reg-planning-quorum_Clause_16",
+          "rel": "proposesEditTo",
+          "relKo": "수정제안",
+          "cited": [
+            "A조-의사결정-순번1",
+            "[토론1]A조전사::의결정족수 발언"
+          ],
+          "cited_uids": [
+            "A조-의사결정-순번1",
+            "[토론1]A조전사::의결정족수 발언"
+          ],
+          "meta": {
+            "source_edge_id": "e_9",
+            "source_rel": "proposesEditTo"
+          }
         }
       },
       {
         "data": {
           "id": "e_2",
-          "source": "ctx_reg-planning-quorum_Proposal_02",
-          "target": "decision_reg-planning-quorum",
-          "src": "ctx_reg-planning-quorum_Proposal_02",
-          "dst": "decision_reg-planning-quorum",
-          "rel": "supports",
-          "relKo": "지지",
-          "cited": [],
-          "cited_uids": [],
-          "meta": {}
+          "source": "ctx_reg-planning-quorum_Proposal_15",
+          "target": "ctx_reg-planning-quorum_Clause_16",
+          "src": "ctx_reg-planning-quorum_Proposal_15",
+          "dst": "ctx_reg-planning-quorum_Clause_16",
+          "rel": "proposesEditTo",
+          "relKo": "수정제안",
+          "cited": [
+            "B조-안건②-순번2,3,6",
+            "[토론1]B조전사::참석자 2/3 발언"
+          ],
+          "cited_uids": [
+            "B조-안건②-순번2,3,6",
+            "[토론1]B조전사::참석자 2/3 발언"
+          ],
+          "meta": {
+            "source_edge_id": "e_24",
+            "source_rel": "proposesEditTo"
+          }
         }
       },
       {
         "data": {
           "id": "e_3",
-          "source": "ctx_reg-planning-quorum_Proposal_15",
-          "target": "decision_reg-planning-quorum",
-          "src": "ctx_reg-planning-quorum_Proposal_15",
-          "dst": "decision_reg-planning-quorum",
-          "rel": "supports",
-          "relKo": "지지",
-          "cited": [],
-          "cited_uids": [],
-          "meta": {}
+          "source": "ctx_reg-planning-quorum_Decision_01",
+          "target": "ctx_reg-planning-quorum_Clause_16",
+          "src": "ctx_reg-planning-quorum_Decision_01",
+          "dst": "ctx_reg-planning-quorum_Clause_16",
+          "rel": "resolves",
+          "relKo": "확정",
+          "cited": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "cited_uids": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "meta": {
+            "source_edge_id": "e_32",
+            "source_rel": "resolves"
+          }
         }
       },
       {
         "data": {
           "id": "e_4",
-          "source": "ctx_reg-planning-quorum_Decision_01",
-          "target": "decision_reg-planning-quorum",
-          "src": "ctx_reg-planning-quorum_Decision_01",
-          "dst": "decision_reg-planning-quorum",
-          "rel": "supports",
-          "relKo": "지지",
-          "cited": [],
-          "cited_uids": [],
-          "meta": {}
+          "source": "ctx_reg-planning-quorum_Decision_04",
+          "target": "ctx_reg-planning-quorum_Clause_16",
+          "src": "ctx_reg-planning-quorum_Decision_04",
+          "dst": "ctx_reg-planning-quorum_Clause_16",
+          "rel": "resolves",
+          "relKo": "확정",
+          "cited": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "cited_uids": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "meta": {
+            "source_edge_id": "e_35",
+            "source_rel": "resolves"
+          }
         }
       },
       {
         "data": {
           "id": "e_5",
-          "source": "ctx_reg-planning-quorum_Decision_04",
-          "target": "decision_reg-planning-quorum",
-          "src": "ctx_reg-planning-quorum_Decision_04",
-          "dst": "decision_reg-planning-quorum",
-          "rel": "supports",
-          "relKo": "지지",
-          "cited": [],
-          "cited_uids": [],
-          "meta": {}
+          "source": "ctx_reg-planning-quorum_Decision_05",
+          "target": "ctx_reg-planning-quorum_Clause_16",
+          "src": "ctx_reg-planning-quorum_Decision_05",
+          "dst": "ctx_reg-planning-quorum_Clause_16",
+          "rel": "resolves",
+          "relKo": "확정",
+          "cited": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "cited_uids": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "meta": {
+            "source_edge_id": "e_36",
+            "source_rel": "resolves"
+          }
         }
       },
       {
         "data": {
           "id": "e_6",
-          "source": "ctx_reg-planning-quorum_Decision_05",
-          "target": "decision_reg-planning-quorum",
-          "src": "ctx_reg-planning-quorum_Decision_05",
-          "dst": "decision_reg-planning-quorum",
-          "rel": "supports",
-          "relKo": "지지",
+          "source": "ctx_reg-planning-quorum_Proposal_02",
+          "target": "vote_reg-planning-quorum",
+          "src": "ctx_reg-planning-quorum_Proposal_02",
+          "dst": "vote_reg-planning-quorum",
+          "rel": "advancedToVote",
+          "relKo": "투표상정",
           "cited": [],
           "cited_uids": [],
-          "meta": {}
+          "meta": {
+            "source_node_id": "Proposal_02",
+            "source_graph": "regulation-2026-06-13"
+          }
         }
       },
       {
         "data": {
           "id": "e_7",
-          "source": "reg-final-set",
-          "target": "decision_reg-division-yes",
-          "src": "reg-final-set",
-          "dst": "decision_reg-division-yes",
-          "rel": "resolves",
-          "relKo": "확정",
+          "source": "ctx_reg-planning-quorum_Proposal_15",
+          "target": "vote_reg-planning-quorum",
+          "src": "ctx_reg-planning-quorum_Proposal_15",
+          "dst": "vote_reg-planning-quorum",
+          "rel": "advancedToVote",
+          "relKo": "투표상정",
           "cited": [],
           "cited_uids": [],
-          "meta": {}
+          "meta": {
+            "source_node_id": "Proposal_15",
+            "source_graph": "regulation-2026-06-13"
+          }
         }
       },
       {
         "data": {
           "id": "e_8",
-          "source": "decision_reg-division-yes",
-          "target": "vote_reg-division-yes",
-          "src": "decision_reg-division-yes",
-          "dst": "vote_reg-division-yes",
-          "rel": "hasEvidence",
-          "relKo": "근거",
+          "source": "ctx_reg-planning-quorum_Decision_01",
+          "target": "decision_reg-planning-quorum",
+          "src": "ctx_reg-planning-quorum_Decision_01",
+          "dst": "decision_reg-planning-quorum",
+          "rel": "settledInDeliberation",
+          "relKo": "숙의정리",
           "cited": [],
           "cited_uids": [],
-          "meta": {}
+          "meta": {
+            "source_node_id": "Decision_01",
+            "source_graph": "regulation-2026-06-13"
+          }
         }
       },
       {
         "data": {
           "id": "e_9",
-          "source": "ctx_reg-division-yes_Claim_05",
-          "target": "decision_reg-division-yes",
-          "src": "ctx_reg-division-yes_Claim_05",
-          "dst": "decision_reg-division-yes",
-          "rel": "supports",
-          "relKo": "지지",
+          "source": "ctx_reg-planning-quorum_Decision_04",
+          "target": "decision_reg-planning-quorum",
+          "src": "ctx_reg-planning-quorum_Decision_04",
+          "dst": "decision_reg-planning-quorum",
+          "rel": "settledInDeliberation",
+          "relKo": "숙의정리",
           "cited": [],
           "cited_uids": [],
-          "meta": {}
+          "meta": {
+            "source_node_id": "Decision_04",
+            "source_graph": "regulation-2026-06-13"
+          }
         }
       },
       {
         "data": {
           "id": "e_10",
-          "source": "ctx_reg-division-yes_Claim_06",
-          "target": "decision_reg-division-yes",
-          "src": "ctx_reg-division-yes_Claim_06",
-          "dst": "decision_reg-division-yes",
-          "rel": "supports",
-          "relKo": "지지",
+          "source": "ctx_reg-planning-quorum_Decision_05",
+          "target": "decision_reg-planning-quorum",
+          "src": "ctx_reg-planning-quorum_Decision_05",
+          "dst": "decision_reg-planning-quorum",
+          "rel": "settledInDeliberation",
+          "relKo": "숙의정리",
           "cited": [],
           "cited_uids": [],
-          "meta": {}
+          "meta": {
+            "source_node_id": "Decision_05",
+            "source_graph": "regulation-2026-06-13"
+          }
         }
       },
       {
         "data": {
           "id": "e_11",
-          "source": "ctx_reg-division-yes_Decision_02",
-          "target": "decision_reg-division-yes",
-          "src": "ctx_reg-division-yes_Decision_02",
-          "dst": "decision_reg-division-yes",
-          "rel": "supports",
-          "relKo": "지지",
+          "source": "vote_reg-planning-quorum",
+          "target": "decision_reg-planning-quorum",
+          "src": "vote_reg-planning-quorum",
+          "dst": "decision_reg-planning-quorum",
+          "rel": "resolves",
+          "relKo": "확정",
           "cited": [],
           "cited_uids": [],
           "meta": {}
@@ -1299,12 +1901,12 @@
       {
         "data": {
           "id": "e_12",
-          "source": "reg-final-set",
-          "target": "decision_reg-division-three",
-          "src": "reg-final-set",
-          "dst": "decision_reg-division-three",
-          "rel": "resolves",
-          "relKo": "확정",
+          "source": "decision_reg-division-yes",
+          "target": "reg-final-set",
+          "src": "decision_reg-division-yes",
+          "dst": "reg-final-set",
+          "rel": "integrates",
+          "relKo": "통합",
           "cited": [],
           "cited_uids": [],
           "meta": {}
@@ -1313,96 +1915,132 @@
       {
         "data": {
           "id": "e_13",
-          "source": "decision_reg-division-three",
-          "target": "vote_reg-division-three",
-          "src": "decision_reg-division-three",
-          "dst": "vote_reg-division-three",
-          "rel": "hasEvidence",
-          "relKo": "근거",
-          "cited": [],
-          "cited_uids": [],
-          "meta": {}
+          "source": "ctx_reg-division-yes_Claim_05",
+          "target": "ctx_reg-division-yes_Clause_08",
+          "src": "ctx_reg-division-yes_Claim_05",
+          "dst": "ctx_reg-division-yes_Clause_08",
+          "rel": "supports",
+          "relKo": "지지",
+          "cited": [
+            "A조-분과구성-순번1",
+            "[토론1]A조전사::분과 논의"
+          ],
+          "cited_uids": [
+            "A조-분과구성-순번1",
+            "[토론1]A조전사::분과 논의"
+          ],
+          "meta": {
+            "source_edge_id": "e_5",
+            "source_rel": "supports"
+          }
         }
       },
       {
         "data": {
           "id": "e_14",
-          "source": "ctx_reg-division-three_Decision_03",
-          "target": "decision_reg-division-three",
-          "src": "ctx_reg-division-three_Decision_03",
-          "dst": "decision_reg-division-three",
+          "source": "ctx_reg-division-yes_Claim_06",
+          "target": "ctx_reg-division-yes_Clause_08",
+          "src": "ctx_reg-division-yes_Claim_06",
+          "dst": "ctx_reg-division-yes_Clause_08",
           "rel": "supports",
           "relKo": "지지",
-          "cited": [],
-          "cited_uids": [],
-          "meta": {}
+          "cited": [
+            "A조-분과구성-순번2,3",
+            "[토론1]A조전사::분과 전문성·인원 배분 발언"
+          ],
+          "cited_uids": [
+            "A조-분과구성-순번2,3",
+            "[토론1]A조전사::분과 전문성·인원 배분 발언"
+          ],
+          "meta": {
+            "source_edge_id": "e_6",
+            "source_rel": "supports"
+          }
         }
       },
       {
         "data": {
           "id": "e_15",
-          "source": "reg-final-set",
-          "target": "decision_reg-division-quorum",
-          "src": "reg-final-set",
-          "dst": "decision_reg-division-quorum",
+          "source": "ctx_reg-division-yes_Decision_02",
+          "target": "ctx_reg-division-yes_Clause_08",
+          "src": "ctx_reg-division-yes_Decision_02",
+          "dst": "ctx_reg-division-yes_Clause_08",
           "rel": "resolves",
           "relKo": "확정",
-          "cited": [],
-          "cited_uids": [],
-          "meta": {}
+          "cited": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "cited_uids": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "meta": {
+            "source_edge_id": "e_33",
+            "source_rel": "resolves"
+          }
         }
       },
       {
         "data": {
           "id": "e_16",
-          "source": "decision_reg-division-quorum",
-          "target": "vote_reg-division-quorum",
-          "src": "decision_reg-division-quorum",
-          "dst": "vote_reg-division-quorum",
-          "rel": "hasEvidence",
-          "relKo": "근거",
+          "source": "ctx_reg-division-yes_Claim_05",
+          "target": "vote_reg-division-yes",
+          "src": "ctx_reg-division-yes_Claim_05",
+          "dst": "vote_reg-division-yes",
+          "rel": "advancedToVote",
+          "relKo": "투표상정",
           "cited": [],
           "cited_uids": [],
-          "meta": {}
+          "meta": {
+            "source_node_id": "Claim_05",
+            "source_graph": "regulation-2026-06-13"
+          }
         }
       },
       {
         "data": {
           "id": "e_17",
-          "source": "ctx_reg-division-quorum_Decision_04",
-          "target": "decision_reg-division-quorum",
-          "src": "ctx_reg-division-quorum_Decision_04",
-          "dst": "decision_reg-division-quorum",
-          "rel": "supports",
-          "relKo": "지지",
+          "source": "ctx_reg-division-yes_Claim_06",
+          "target": "vote_reg-division-yes",
+          "src": "ctx_reg-division-yes_Claim_06",
+          "dst": "vote_reg-division-yes",
+          "rel": "advancedToVote",
+          "relKo": "투표상정",
           "cited": [],
           "cited_uids": [],
-          "meta": {}
+          "meta": {
+            "source_node_id": "Claim_06",
+            "source_graph": "regulation-2026-06-13"
+          }
         }
       },
       {
         "data": {
           "id": "e_18",
-          "source": "reg-final-set",
-          "target": "decision_reg-full-quorum",
-          "src": "reg-final-set",
-          "dst": "decision_reg-full-quorum",
-          "rel": "resolves",
-          "relKo": "확정",
+          "source": "ctx_reg-division-yes_Decision_02",
+          "target": "decision_reg-division-yes",
+          "src": "ctx_reg-division-yes_Decision_02",
+          "dst": "decision_reg-division-yes",
+          "rel": "settledInDeliberation",
+          "relKo": "숙의정리",
           "cited": [],
           "cited_uids": [],
-          "meta": {}
+          "meta": {
+            "source_node_id": "Decision_02",
+            "source_graph": "regulation-2026-06-13"
+          }
         }
       },
       {
         "data": {
           "id": "e_19",
-          "source": "decision_reg-full-quorum",
-          "target": "vote_reg-full-quorum",
-          "src": "decision_reg-full-quorum",
-          "dst": "vote_reg-full-quorum",
-          "rel": "hasEvidence",
-          "relKo": "근거",
+          "source": "vote_reg-division-yes",
+          "target": "decision_reg-division-yes",
+          "src": "vote_reg-division-yes",
+          "dst": "decision_reg-division-yes",
+          "rel": "resolves",
+          "relKo": "확정",
           "cited": [],
           "cited_uids": [],
           "meta": {}
@@ -1411,12 +2049,12 @@
       {
         "data": {
           "id": "e_20",
-          "source": "ctx_reg-full-quorum_Decision_05",
-          "target": "decision_reg-full-quorum",
-          "src": "ctx_reg-full-quorum_Decision_05",
-          "dst": "decision_reg-full-quorum",
-          "rel": "supports",
-          "relKo": "지지",
+          "source": "decision_reg-division-three",
+          "target": "reg-final-set",
+          "src": "decision_reg-division-three",
+          "dst": "reg-final-set",
+          "rel": "integrates",
+          "relKo": "통합",
           "cited": [],
           "cited_uids": [],
           "meta": {}
@@ -1425,10 +2063,50 @@
       {
         "data": {
           "id": "e_21",
-          "source": "reg-final-set",
-          "target": "decision_reg-article14-direct-indirect",
-          "src": "reg-final-set",
-          "dst": "decision_reg-article14-direct-indirect",
+          "source": "ctx_reg-division-three_Decision_03",
+          "target": "ctx_reg-division-three_Clause_08",
+          "src": "ctx_reg-division-three_Decision_03",
+          "dst": "ctx_reg-division-three_Clause_08",
+          "rel": "resolves",
+          "relKo": "확정",
+          "cited": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "cited_uids": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "meta": {
+            "source_edge_id": "e_34",
+            "source_rel": "resolves"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_22",
+          "source": "ctx_reg-division-three_Decision_03",
+          "target": "decision_reg-division-three",
+          "src": "ctx_reg-division-three_Decision_03",
+          "dst": "decision_reg-division-three",
+          "rel": "settledInDeliberation",
+          "relKo": "숙의정리",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {
+            "source_node_id": "Decision_03",
+            "source_graph": "regulation-2026-06-13"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_23",
+          "source": "vote_reg-division-three",
+          "target": "decision_reg-division-three",
+          "src": "vote_reg-division-three",
+          "dst": "decision_reg-division-three",
           "rel": "resolves",
           "relKo": "확정",
           "cited": [],
@@ -1438,41 +2116,13 @@
       },
       {
         "data": {
-          "id": "e_22",
-          "source": "decision_reg-article14-direct-indirect",
-          "target": "vote_reg-article14-direct-indirect",
-          "src": "decision_reg-article14-direct-indirect",
-          "dst": "vote_reg-article14-direct-indirect",
-          "rel": "hasEvidence",
-          "relKo": "근거",
-          "cited": [],
-          "cited_uids": [],
-          "meta": {}
-        }
-      },
-      {
-        "data": {
-          "id": "e_23",
-          "source": "ctx_reg-article14-direct-indirect_Clause_14",
-          "target": "decision_reg-article14-direct-indirect",
-          "src": "ctx_reg-article14-direct-indirect_Clause_14",
-          "dst": "decision_reg-article14-direct-indirect",
-          "rel": "supports",
-          "relKo": "지지",
-          "cited": [],
-          "cited_uids": [],
-          "meta": {}
-        }
-      },
-      {
-        "data": {
           "id": "e_24",
-          "source": "ctx_reg-article14-direct-indirect_Proposal_06",
-          "target": "decision_reg-article14-direct-indirect",
-          "src": "ctx_reg-article14-direct-indirect_Proposal_06",
-          "dst": "decision_reg-article14-direct-indirect",
-          "rel": "supports",
-          "relKo": "지지",
+          "source": "decision_reg-division-quorum",
+          "target": "reg-final-set",
+          "src": "decision_reg-division-quorum",
+          "dst": "reg-final-set",
+          "rel": "integrates",
+          "relKo": "통합",
           "cited": [],
           "cited_uids": [],
           "meta": {}
@@ -1481,38 +2131,50 @@
       {
         "data": {
           "id": "e_25",
-          "source": "ctx_reg-article14-direct-indirect_Proposal_18",
-          "target": "decision_reg-article14-direct-indirect",
-          "src": "ctx_reg-article14-direct-indirect_Proposal_18",
-          "dst": "decision_reg-article14-direct-indirect",
-          "rel": "supports",
-          "relKo": "지지",
-          "cited": [],
-          "cited_uids": [],
-          "meta": {}
+          "source": "ctx_reg-division-quorum_Decision_04",
+          "target": "ctx_reg-division-quorum_Clause_16",
+          "src": "ctx_reg-division-quorum_Decision_04",
+          "dst": "ctx_reg-division-quorum_Clause_16",
+          "rel": "resolves",
+          "relKo": "확정",
+          "cited": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "cited_uids": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "meta": {
+            "source_edge_id": "e_35",
+            "source_rel": "resolves"
+          }
         }
       },
       {
         "data": {
           "id": "e_26",
-          "source": "ctx_reg-article14-direct-indirect_Decision_06",
-          "target": "decision_reg-article14-direct-indirect",
-          "src": "ctx_reg-article14-direct-indirect_Decision_06",
-          "dst": "decision_reg-article14-direct-indirect",
-          "rel": "supports",
-          "relKo": "지지",
+          "source": "ctx_reg-division-quorum_Decision_04",
+          "target": "decision_reg-division-quorum",
+          "src": "ctx_reg-division-quorum_Decision_04",
+          "dst": "decision_reg-division-quorum",
+          "rel": "settledInDeliberation",
+          "relKo": "숙의정리",
           "cited": [],
           "cited_uids": [],
-          "meta": {}
+          "meta": {
+            "source_node_id": "Decision_04",
+            "source_graph": "regulation-2026-06-13"
+          }
         }
       },
       {
         "data": {
           "id": "e_27",
-          "source": "reg-final-set",
-          "target": "decision_reg-article14-everyday-life",
-          "src": "reg-final-set",
-          "dst": "decision_reg-article14-everyday-life",
+          "source": "vote_reg-division-quorum",
+          "target": "decision_reg-division-quorum",
+          "src": "vote_reg-division-quorum",
+          "dst": "decision_reg-division-quorum",
           "rel": "resolves",
           "relKo": "확정",
           "cited": [],
@@ -1523,12 +2185,12 @@
       {
         "data": {
           "id": "e_28",
-          "source": "decision_reg-article14-everyday-life",
-          "target": "vote_reg-article14-everyday-life",
-          "src": "decision_reg-article14-everyday-life",
-          "dst": "vote_reg-article14-everyday-life",
-          "rel": "hasEvidence",
-          "relKo": "근거",
+          "source": "decision_reg-full-quorum",
+          "target": "reg-final-set",
+          "src": "decision_reg-full-quorum",
+          "dst": "reg-final-set",
+          "rel": "integrates",
+          "relKo": "통합",
           "cited": [],
           "cited_uids": [],
           "meta": {}
@@ -1537,12 +2199,52 @@
       {
         "data": {
           "id": "e_29",
-          "source": "ctx_reg-article14-everyday-life_Clause_14",
-          "target": "decision_reg-article14-everyday-life",
-          "src": "ctx_reg-article14-everyday-life_Clause_14",
-          "dst": "decision_reg-article14-everyday-life",
-          "rel": "supports",
-          "relKo": "지지",
+          "source": "ctx_reg-full-quorum_Decision_05",
+          "target": "ctx_reg-full-quorum_Clause_16",
+          "src": "ctx_reg-full-quorum_Decision_05",
+          "dst": "ctx_reg-full-quorum_Clause_16",
+          "rel": "resolves",
+          "relKo": "확정",
+          "cited": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "cited_uids": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "meta": {
+            "source_edge_id": "e_36",
+            "source_rel": "resolves"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_30",
+          "source": "ctx_reg-full-quorum_Decision_05",
+          "target": "decision_reg-full-quorum",
+          "src": "ctx_reg-full-quorum_Decision_05",
+          "dst": "decision_reg-full-quorum",
+          "rel": "settledInDeliberation",
+          "relKo": "숙의정리",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {
+            "source_node_id": "Decision_05",
+            "source_graph": "regulation-2026-06-13"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_31",
+          "source": "vote_reg-full-quorum",
+          "target": "decision_reg-full-quorum",
+          "src": "vote_reg-full-quorum",
+          "dst": "decision_reg-full-quorum",
+          "rel": "resolves",
+          "relKo": "확정",
           "cited": [],
           "cited_uids": [],
           "meta": {}
@@ -1550,13 +2252,481 @@
       },
       {
         "data": {
-          "id": "e_30",
+          "id": "e_32",
+          "source": "decision_reg-article14-direct-indirect",
+          "target": "reg-final-set",
+          "src": "decision_reg-article14-direct-indirect",
+          "dst": "reg-final-set",
+          "rel": "integrates",
+          "relKo": "통합",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_33",
+          "source": "ctx_reg-article14-direct-indirect_Proposal_06",
+          "target": "ctx_reg-article14-direct-indirect_Clause_14",
+          "src": "ctx_reg-article14-direct-indirect_Proposal_06",
+          "dst": "ctx_reg-article14-direct-indirect_Clause_14",
+          "rel": "proposesEditTo",
+          "relKo": "수정제안",
+          "cited": [
+            "A조-의제기준-순번3",
+            "[토론1]A조전사::직간접 확장 발언"
+          ],
+          "cited_uids": [
+            "A조-의제기준-순번3",
+            "[토론1]A조전사::직간접 확장 발언"
+          ],
+          "meta": {
+            "source_edge_id": "e_14",
+            "source_rel": "proposesEditTo"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_34",
+          "source": "ctx_reg-article14-direct-indirect_Proposal_07",
+          "target": "ctx_reg-article14-direct-indirect_Clause_14",
+          "src": "ctx_reg-article14-direct-indirect_Proposal_07",
+          "dst": "ctx_reg-article14-direct-indirect_Clause_14",
+          "rel": "proposesEditTo",
+          "relKo": "수정제안",
+          "cited": [
+            "A조-의제기준-순번4,5",
+            "[토론1]A조전사::예산 실행가능성·공정성 발언"
+          ],
+          "cited_uids": [
+            "A조-의제기준-순번4,5",
+            "[토론1]A조전사::예산 실행가능성·공정성 발언"
+          ],
+          "meta": {
+            "source_edge_id": "e_15",
+            "source_rel": "proposesEditTo"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_35",
+          "source": "ctx_reg-article14-direct-indirect_Proposal_18",
+          "target": "ctx_reg-article14-direct-indirect_Clause_14",
+          "src": "ctx_reg-article14-direct-indirect_Proposal_18",
+          "dst": "ctx_reg-article14-direct-indirect_Clause_14",
+          "rel": "proposesEditTo",
+          "relKo": "수정제안",
+          "cited": [
+            "B조-안건③-순번1",
+            "[토론1]B조전사::직접 삭제 발언"
+          ],
+          "cited_uids": [
+            "B조-안건③-순번1",
+            "[토론1]B조전사::직접 삭제 발언"
+          ],
+          "meta": {
+            "source_edge_id": "e_27",
+            "source_rel": "proposesEditTo"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_36",
+          "source": "ctx_reg-article14-direct-indirect_Proposal_19",
+          "target": "ctx_reg-article14-direct-indirect_Clause_14",
+          "src": "ctx_reg-article14-direct-indirect_Proposal_19",
+          "dst": "ctx_reg-article14-direct-indirect_Clause_14",
+          "rel": "proposesEditTo",
+          "relKo": "수정제안",
+          "cited": [
+            "B조-안건③-순번2",
+            "[토론1]B조전사::명령형 순화 발언"
+          ],
+          "cited_uids": [
+            "B조-안건③-순번2",
+            "[토론1]B조전사::명령형 순화 발언"
+          ],
+          "meta": {
+            "source_edge_id": "e_28",
+            "source_rel": "proposesEditTo"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_37",
+          "source": "ctx_reg-article14-direct-indirect_Concern_05",
+          "target": "ctx_reg-article14-direct-indirect_Clause_14",
+          "src": "ctx_reg-article14-direct-indirect_Concern_05",
+          "dst": "ctx_reg-article14-direct-indirect_Clause_14",
+          "rel": "raisesConcernOn",
+          "relKo": "우려제기",
+          "cited": [
+            "B조-안건③-추가질문",
+            "[토론1]B조전사::묵직한 사안 발언"
+          ],
+          "cited_uids": [
+            "B조-안건③-추가질문",
+            "[토론1]B조전사::묵직한 사안 발언"
+          ],
+          "opposes": true,
+          "meta": {
+            "source_edge_id": "e_29",
+            "source_rel": "raisesConcernOn"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_38",
+          "source": "ctx_reg-article14-direct-indirect_Decision_06",
+          "target": "ctx_reg-article14-direct-indirect_Clause_14",
+          "src": "ctx_reg-article14-direct-indirect_Decision_06",
+          "dst": "ctx_reg-article14-direct-indirect_Clause_14",
+          "rel": "resolves",
+          "relKo": "확정",
+          "cited": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "cited_uids": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "meta": {
+            "source_edge_id": "e_37",
+            "source_rel": "resolves"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_39",
+          "source": "ctx_reg-article14-direct-indirect_Decision_07",
+          "target": "ctx_reg-article14-direct-indirect_Clause_14",
+          "src": "ctx_reg-article14-direct-indirect_Decision_07",
+          "dst": "ctx_reg-article14-direct-indirect_Clause_14",
+          "rel": "resolves",
+          "relKo": "확정",
+          "cited": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "cited_uids": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "meta": {
+            "source_edge_id": "e_38",
+            "source_rel": "resolves"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_40",
+          "source": "ctx_reg-article14-direct-indirect_Clause_14",
+          "target": "vote_reg-article14-direct-indirect",
+          "src": "ctx_reg-article14-direct-indirect_Clause_14",
+          "dst": "vote_reg-article14-direct-indirect",
+          "rel": "advancedToVote",
+          "relKo": "투표상정",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {
+            "source_node_id": "Clause_14",
+            "source_graph": "regulation-2026-06-13"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_41",
+          "source": "ctx_reg-article14-direct-indirect_Proposal_06",
+          "target": "vote_reg-article14-direct-indirect",
+          "src": "ctx_reg-article14-direct-indirect_Proposal_06",
+          "dst": "vote_reg-article14-direct-indirect",
+          "rel": "advancedToVote",
+          "relKo": "투표상정",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {
+            "source_node_id": "Proposal_06",
+            "source_graph": "regulation-2026-06-13"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_42",
+          "source": "ctx_reg-article14-direct-indirect_Proposal_18",
+          "target": "vote_reg-article14-direct-indirect",
+          "src": "ctx_reg-article14-direct-indirect_Proposal_18",
+          "dst": "vote_reg-article14-direct-indirect",
+          "rel": "advancedToVote",
+          "relKo": "투표상정",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {
+            "source_node_id": "Proposal_18",
+            "source_graph": "regulation-2026-06-13"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_43",
+          "source": "ctx_reg-article14-direct-indirect_Decision_06",
+          "target": "decision_reg-article14-direct-indirect",
+          "src": "ctx_reg-article14-direct-indirect_Decision_06",
+          "dst": "decision_reg-article14-direct-indirect",
+          "rel": "settledInDeliberation",
+          "relKo": "숙의정리",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {
+            "source_node_id": "Decision_06",
+            "source_graph": "regulation-2026-06-13"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_44",
+          "source": "vote_reg-article14-direct-indirect",
+          "target": "decision_reg-article14-direct-indirect",
+          "src": "vote_reg-article14-direct-indirect",
+          "dst": "decision_reg-article14-direct-indirect",
+          "rel": "resolves",
+          "relKo": "확정",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_45",
+          "source": "decision_reg-article14-everyday-life",
+          "target": "reg-final-set",
+          "src": "decision_reg-article14-everyday-life",
+          "dst": "reg-final-set",
+          "rel": "integrates",
+          "relKo": "통합",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {}
+        }
+      },
+      {
+        "data": {
+          "id": "e_46",
+          "source": "ctx_reg-article14-everyday-life_Proposal_06",
+          "target": "ctx_reg-article14-everyday-life_Clause_14",
+          "src": "ctx_reg-article14-everyday-life_Proposal_06",
+          "dst": "ctx_reg-article14-everyday-life_Clause_14",
+          "rel": "proposesEditTo",
+          "relKo": "수정제안",
+          "cited": [
+            "A조-의제기준-순번3",
+            "[토론1]A조전사::직간접 확장 발언"
+          ],
+          "cited_uids": [
+            "A조-의제기준-순번3",
+            "[토론1]A조전사::직간접 확장 발언"
+          ],
+          "meta": {
+            "source_edge_id": "e_14",
+            "source_rel": "proposesEditTo"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_47",
+          "source": "ctx_reg-article14-everyday-life_Proposal_07",
+          "target": "ctx_reg-article14-everyday-life_Clause_14",
+          "src": "ctx_reg-article14-everyday-life_Proposal_07",
+          "dst": "ctx_reg-article14-everyday-life_Clause_14",
+          "rel": "proposesEditTo",
+          "relKo": "수정제안",
+          "cited": [
+            "A조-의제기준-순번4,5",
+            "[토론1]A조전사::예산 실행가능성·공정성 발언"
+          ],
+          "cited_uids": [
+            "A조-의제기준-순번4,5",
+            "[토론1]A조전사::예산 실행가능성·공정성 발언"
+          ],
+          "meta": {
+            "source_edge_id": "e_15",
+            "source_rel": "proposesEditTo"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_48",
+          "source": "ctx_reg-article14-everyday-life_Proposal_18",
+          "target": "ctx_reg-article14-everyday-life_Clause_14",
+          "src": "ctx_reg-article14-everyday-life_Proposal_18",
+          "dst": "ctx_reg-article14-everyday-life_Clause_14",
+          "rel": "proposesEditTo",
+          "relKo": "수정제안",
+          "cited": [
+            "B조-안건③-순번1",
+            "[토론1]B조전사::직접 삭제 발언"
+          ],
+          "cited_uids": [
+            "B조-안건③-순번1",
+            "[토론1]B조전사::직접 삭제 발언"
+          ],
+          "meta": {
+            "source_edge_id": "e_27",
+            "source_rel": "proposesEditTo"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_49",
+          "source": "ctx_reg-article14-everyday-life_Proposal_19",
+          "target": "ctx_reg-article14-everyday-life_Clause_14",
+          "src": "ctx_reg-article14-everyday-life_Proposal_19",
+          "dst": "ctx_reg-article14-everyday-life_Clause_14",
+          "rel": "proposesEditTo",
+          "relKo": "수정제안",
+          "cited": [
+            "B조-안건③-순번2",
+            "[토론1]B조전사::명령형 순화 발언"
+          ],
+          "cited_uids": [
+            "B조-안건③-순번2",
+            "[토론1]B조전사::명령형 순화 발언"
+          ],
+          "meta": {
+            "source_edge_id": "e_28",
+            "source_rel": "proposesEditTo"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_50",
+          "source": "ctx_reg-article14-everyday-life_Concern_05",
+          "target": "ctx_reg-article14-everyday-life_Clause_14",
+          "src": "ctx_reg-article14-everyday-life_Concern_05",
+          "dst": "ctx_reg-article14-everyday-life_Clause_14",
+          "rel": "raisesConcernOn",
+          "relKo": "우려제기",
+          "cited": [
+            "B조-안건③-추가질문",
+            "[토론1]B조전사::묵직한 사안 발언"
+          ],
+          "cited_uids": [
+            "B조-안건③-추가질문",
+            "[토론1]B조전사::묵직한 사안 발언"
+          ],
+          "opposes": true,
+          "meta": {
+            "source_edge_id": "e_29",
+            "source_rel": "raisesConcernOn"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_51",
+          "source": "ctx_reg-article14-everyday-life_Decision_06",
+          "target": "ctx_reg-article14-everyday-life_Clause_14",
+          "src": "ctx_reg-article14-everyday-life_Decision_06",
+          "dst": "ctx_reg-article14-everyday-life_Clause_14",
+          "rel": "resolves",
+          "relKo": "확정",
+          "cited": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "cited_uids": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "meta": {
+            "source_edge_id": "e_37",
+            "source_rel": "resolves"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_52",
+          "source": "ctx_reg-article14-everyday-life_Decision_07",
+          "target": "ctx_reg-article14-everyday-life_Clause_14",
+          "src": "ctx_reg-article14-everyday-life_Decision_07",
+          "dst": "ctx_reg-article14-everyday-life_Clause_14",
+          "rel": "resolves",
+          "relKo": "확정",
+          "cited": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "cited_uids": [
+            "7.4_발표덱",
+            "토론4 의결표"
+          ],
+          "meta": {
+            "source_edge_id": "e_38",
+            "source_rel": "resolves"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_53",
+          "source": "ctx_reg-article14-everyday-life_Clause_14",
+          "target": "vote_reg-article14-everyday-life",
+          "src": "ctx_reg-article14-everyday-life_Clause_14",
+          "dst": "vote_reg-article14-everyday-life",
+          "rel": "advancedToVote",
+          "relKo": "투표상정",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {
+            "source_node_id": "Clause_14",
+            "source_graph": "regulation-2026-06-13"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_54",
           "source": "ctx_reg-article14-everyday-life_Decision_07",
           "target": "decision_reg-article14-everyday-life",
           "src": "ctx_reg-article14-everyday-life_Decision_07",
           "dst": "decision_reg-article14-everyday-life",
-          "rel": "supports",
-          "relKo": "지지",
+          "rel": "settledInDeliberation",
+          "relKo": "숙의정리",
+          "cited": [],
+          "cited_uids": [],
+          "meta": {
+            "source_node_id": "Decision_07",
+            "source_graph": "regulation-2026-06-13"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "e_55",
+          "source": "vote_reg-article14-everyday-life",
+          "target": "decision_reg-article14-everyday-life",
+          "src": "vote_reg-article14-everyday-life",
+          "dst": "decision_reg-article14-everyday-life",
+          "rel": "resolves",
+          "relKo": "확정",
           "cited": [],
           "cited_uids": [],
           "meta": {}
@@ -1567,15 +2737,15 @@
   "meta": {
     "variant": "final-regulation-decisions-0704",
     "title": "운영규정 최종 결정 온톨로지",
-    "generated_at": "2026-07-03T23:23:05.362Z",
+    "generated_at": "2026-07-04T02:57:38.627Z",
     "source_files": [
       "10_작업산출물/7.4_발표덱/운영규정_v6/발표시나리오_운영규정_이대진.md",
       "10_작업산출물/7.4_발표덱/운영규정_v6/20260704_운영규정_v6.pptx",
       "public/workshop-graph/data/regulation-2026-06-13.json"
     ],
     "counts": {
-      "nodes": 32,
-      "edges": 31
+      "nodes": 47,
+      "edges": 56
     },
     "quality": {
       "conclusion": "current regulation graph already contains final decision nodes; this file extracts and connects them as a compact decision set"
