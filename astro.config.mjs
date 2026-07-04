@@ -1,10 +1,14 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
-import pagefind from 'astro-pagefind';
 import tailwindcss from '@tailwindcss/vite';
 import yaml from '@rollup/plugin-yaml';
 
 import react from '@astrojs/react';
+
+const nodeMajor = Number.parseInt(process.versions.node.split('.')[0] || '0', 10);
+const pagefindIntegrations = nodeMajor >= 23
+  ? []
+  : [(await import('astro-pagefind')).default()];
 
 export default defineConfig({
   // MAJOR 6 fix: set to canonical domain so Astro.site is used in citation URLs.
@@ -31,7 +35,7 @@ export default defineConfig({
         es: 'es-ES',
       },
     },
-  }), pagefind(), react()],
+  }), ...pagefindIntegrations, react()],
   vite: {
     plugins: [tailwindcss(), yaml()],
   },
