@@ -21,3 +21,21 @@
 - Verified: independent agents Kant and Confucius completed read-only reviews; regenerated graph-source coverage, input coverage, and final decision ontology. Source coverage is back to 25 originals, 77 nodes, 79 edges; process graph is 21 nodes, 30 edges.
 - Learned: menu removal alone is not enough when a public JSON remains directly addressable; source coverage generators must be kept in sync with public source changes.
 - Next: build and deploy.
+
+## 2026-07-04 C4
+- Changed: restored final-decision presentation readability around the original Habermas physics graph style: white background, only 50/75/100 node count control, larger Pretendard Bold node labels, final source-specific physics defaults, and raw transcript text in hover cards.
+- Changed: kept final decision sets split by domain: `final-regulation-decisions-0704` and `final-agenda-decisions-0704`.
+- Verified: `npm.cmd exec -- vitest run scripts/workshop-graph-readability.test.mjs scripts/final-decision-lineage.test.mjs` passed with 2 test files and 5 tests.
+- Verified: commit `b4c28d1` deployed the readability pass, but user review found the combined process graph still exposed nonsensical audit/meta nodes.
+- Learned: "readable" is not enough. The user wants the original graph grammar: node label = concise original-summary inside the node; hover = raw transcript text; relation/ontology = Habermas role and edge structure, not an editorial process card.
+- Next: separate public final sources from internal process/audit graph.
+
+## 2026-07-04 C5
+- Changed: made `final-regulation-decisions-0704` the public default, kept `final-process-to-conclusion-0704` preserved but hidden, and added source fallback so old `?source=final-process-to-conclusion-0704` links open the regulation final graph instead of the internal audit/process graph.
+- Changed: limited final showcase detection to the two public final sets only: regulation and agenda.
+- Changed: fixed Cloudflare Pages production alias by making the build tolerate Node 24 while preferring Node 20 through `package.json` engines.
+- Verified: commits `85362c2` and `71492bd` are pushed. Cloudflare Pages production has source `71492bd` active. Live `https://climate-assembly.org/workshop-graph/sources.json` returns default `final-regulation-decisions-0704`, process source hidden, and public final sources only regulation/agenda.
+- Verified: live DOM checks showed default graph selects `final-regulation-decisions-0704`, old process URL falls back to `final-regulation-decisions-0704`, agenda URL selects `final-agenda-decisions-0704`, menu does not include `final-process-to-conclusion-0704`, and visible text contains none of `원본자료`, `음성 002`, `재확인`, `transcript_partial`, `needs_review`, `not_expected_in_current_graph`.
+- Learned: do not present `final-process-to-conclusion-0704` as a finished public story. It is an internal/audit bridge and currently fails the user's planning standard because it looks edited, mixed, and cut off from the original deliberation flow.
+- Learned: next ontology iteration must start from the origin-version Habermas physics graph and ask whether the desired decision result can emerge from that structure. Avoid creating new editorial story nodes until the structure is rethought.
+- Next: pause ontology content/modeling changes; keep the live-safe split/fallback in place; revisit how citizen deliberation from A through ER naturally yields agenda and regulation decisions.
