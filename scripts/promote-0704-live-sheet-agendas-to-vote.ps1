@@ -83,11 +83,12 @@ function Invoke-GwsJson {
 
 function Normalize-AgendaText {
   param([string]$Text)
-  $clean = ($Text -replace "\s+", " ").Trim().Trim(" .`t`r`n")
-  if ($clean.Length -gt 120) {
-    $clean = $clean.Substring(0, 120).Trim() + "..."
-  }
-  return $clean
+  return $Text.Trim()
+}
+
+function Is-SelectedAgendaNote {
+  param([string]$Note)
+  return -not [string]::IsNullOrWhiteSpace($Note) -and ($Note -match "선정|1위|2위|1순위|2순위")
 }
 
 function Read-SheetRange {
@@ -115,13 +116,18 @@ function Read-AgendaChoices {
       $number = if ($row.Count -gt 0) { [string]$row[0] } else { "" }
       $group = if ($row.Count -gt 1) { [string]$row[1] } else { "" }
       $agenda = if ($row.Count -gt 2) { Normalize-AgendaText -Text ([string]$row[2]) } else { "" }
+      $note = if ($row.Count -gt 3) { [string]$row[3] } else { "" }
       if ([string]::IsNullOrWhiteSpace($agenda)) {
+        continue
+      }
+      if (-not (Is-SelectedAgendaNote -Note $note)) {
         continue
       }
       $items += [pscustomobject]@{
         group = $group
         number = $number
         agenda = $agenda
+        note = $note
         sourceRange = $range
       }
     }
@@ -141,7 +147,7 @@ $choices = Read-AgendaChoices -Ranges @("'A조 의제입력'!A1:E80", "'B조 의
 if ($choices.Count -eq 0) {
   [pscustomobject]@{
     applied = $false
-    reason = "no_live_sheet_agendas"
+    reason = "no_selected_live_sheet_agendas"
     spreadsheetId = $SpreadsheetId
     voteFormId = $VoteFormId
   } | ConvertTo-Json -Depth 6

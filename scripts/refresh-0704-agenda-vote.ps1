@@ -118,12 +118,31 @@ function Invoke-GwsJson {
 }
 
 function Get-ShortLabel {
-  param([string]$Text)
+  param(
+    [string]$Text,
+    [string]$Description = ""
+  )
   $clean = ($Text -replace "\s+", " ").Trim()
-  if ($clean.Length -le 18) {
-    return $clean
+  $groupPrefix = ""
+  if ($Description -match "(A조|B조)") {
+    $groupPrefix = "($($Matches[1])) "
   }
-  return $clean.Substring(0, 18).Trim() + "..."
+  if ($clean -match "인센티브 중심.*기업.*감축") {
+    return "${groupPrefix}기업 인센티브 감축방안"
+  }
+  if ($clean -match "재생에너지.*사용.*생산|재생에너지.*생산.*확대") {
+    return "${groupPrefix}재생에너지 생산·사용 확대"
+  }
+  if ($clean -match "재건축|리모델링") {
+    return "${groupPrefix}재건축·리모델링 탄소감축"
+  }
+  if ($clean -match "지역 특성.*탄소 절감|지자체 평가|인센티브 제공") {
+    return "${groupPrefix}지역맞춤 탄소절감 방안"
+  }
+  if ($clean.Length -le 18) {
+    return "$groupPrefix$clean"
+  }
+  return "$groupPrefix$($clean.Substring(0, 18).Trim())..."
 }
 
 function Get-Form {
@@ -147,10 +166,11 @@ function Get-AgendaScaleQuestions {
       continue
     }
     if ($question.scaleQuestion) {
+      $description = ([string]$candidate.description).Trim()
       $items += [pscustomobject]@{
         Slot = [string]($index + 1)
         Name = $title
-        Short = Get-ShortLabel -Text $title
+        Short = Get-ShortLabel -Text $title -Description $description
         Color = $Palette[$index % $Palette.Count]
         QuestionId = [string]$question.questionId
         scoreSum = 0.0

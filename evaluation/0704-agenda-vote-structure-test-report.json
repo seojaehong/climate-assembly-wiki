@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-07-04T15:09:07.1502726+09:00",
+  "generatedAt": "2026-07-04T15:52:00+09:00",
   "tdd": {
     "redTest": "0704 agenda vote promotion is capped to the final four A/B candidates",
     "redResult": "failed before implementation because admin/sync did not include -MaxChoices 4",
-    "greenResult": "26 tests passed after adding -MaxChoices 4 to admin/sync command and stable phase-label fallbacks",
+    "greenResult": "27 tests passed after adding selected-note promotion, full-text agenda titles, QR tab wiring, and stable phase-label fallbacks",
     "testCommand": "npm.cmd exec -- vitest run scripts/decision-vote-console.test.mjs scripts/agenda-vote-scoring.test.mjs"
   },
   "currentLiveSheetAgendas": {
     "sourceSheet": "1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ",
-    "status": "A/B agenda candidate cells are currently empty, so promotion dry-run returns no_live_sheet_agendas",
-    "expectedNext": "When A조 2 and B조 2 agenda sentences are entered, run promote script with -MaxChoices 4 -Apply"
+    "status": "A/B agenda candidate cells are populated. Only rows marked selected in the note column are promoted.",
+    "expectedNext": "Run promote script with -MaxChoices 4 -Apply whenever final selected agenda wording changes."
   },
   "votePipeline": {
     "voteFormId": "1soeRdPzIv4l7Bs6JyJEbb4nzb7MCtmZEe2q8VFwmjgc",
@@ -19,32 +19,49 @@
     "resultUrl": "https://climate-assembly.org/agenda-vote-0704/index.html?sheet=1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw",
     "resultPolling": "bubble race reads Scores tab every 5 seconds"
   },
-  "fourCandidateDummyVerification": {
-    "verifiedAt": "2026-07-04T15:22:00+09:00",
+  "selectedAgendaPromotionContract": {
+    "sourceTabs": [
+      "A조 의제입력",
+      "B조 의제입력"
+    ],
+    "selectionColumn": "비고",
+    "selectionMarkers": [
+      "선정",
+      "1위",
+      "2위",
+      "1순위",
+      "2순위"
+    ],
+    "promotionRule": "Only rows with one of the selection markers in the note column are promoted to the agenda vote Form. The agenda candidate text is used as the scale-question title without truncation.",
+    "currentDryRun": "A조 rows 9 and 10 plus B조 rows 2 and 6 are detected as the four agenda vote candidates. Agenda titles are promoted without truncation."
+  },
+  "agendaVoteQr": {
+    "responseUrl": "https://docs.google.com/forms/d/e/1FAIpQLSf9-AIDhnd0cy8Dfu-xXOgz6cQINjpA-tLzHdM2Ypk8qU_eMA/viewform",
+    "qrImage": "public/0704-admin/agenda-vote-qr.png",
+    "adminControl": "0704 admin agenda vote card has a QR tab button bound to agenda-vote-qr."
+  },
+  "finalAgendaWordingVerification": {
+    "verifiedAt": "2026-07-04T15:52:00+09:00",
     "scoreSheetId": "1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw",
-    "rowsWrittenToScores": [
+    "formQuestions": [
       {
-        "slot": "A1",
-        "short": "A조 의제 1",
-        "score": 4.9
+        "slot": "1",
+        "title": "제재가 아닌 인센티브 중심으로 기업이 스스로 탄소 감축방안을 만들게 하는 방안은 무엇일까요?"
       },
       {
-        "slot": "A2",
-        "short": "A조 의제 2",
-        "score": 4.4
+        "slot": "2",
+        "title": "가정·기업·사회 등 분야별 재생에너지 사용과 생산을 확대하는 방안은 무엇일까요?"
       },
       {
-        "slot": "B1",
-        "short": "B조 의제 1",
-        "score": 3.7
+        "slot": "3",
+        "title": "오래된 도시와 건물의 재건축·리모델링 과정에서 탄소배출을 줄이는 방향으로 전환하려면 어떻게 해야 할까요?"
       },
       {
-        "slot": "B2",
-        "short": "B조 의제 2",
-        "score": 2.8
+        "slot": "4",
+        "title": "각 지역 특성에 맞는 탄소 절감 방안을 수립하려면 무엇이 필요할까요? (지자체 평가, 인센티브 제공 논의 포함)"
       }
     ],
-    "liveResult": "agenda-vote page rendered four bubbles from the Scores sheet, showed LIVE, final phase scores 4.90/4.40/3.70/2.80, and no visible undefined text",
-    "screenshot": "evaluation/screenshots/0704-agenda-vote-four-dummy-final-phase.png"
+    "scoresReset": "Scores tab contains the same four full titles and all score cells are reset to 0.",
+    "liveResult": "Admin QR tab, public agenda board data, Google Form questions, and Scores sheet all point to the same final four agenda titles."
   }
 }

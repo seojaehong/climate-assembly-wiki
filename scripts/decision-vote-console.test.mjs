@@ -109,8 +109,10 @@ describe('0704 conditional vote console', () => {
     expect(admin).toContain('data-qr-title="탄소 감축 질문 QR"');
     expect(admin).toContain('data-qr-title="조별 의제 입력 QR"');
     expect(admin).toContain('data-qr-title="의제투표 QR"');
+    expect(admin).toContain('data-open-qr-target="agenda-vote-qr"');
     expect(admin).toContain('data-qr-title="17~18시 소감발표 QR"');
     expect(admin).toContain('id="qr-modal-img"');
+    expect(admin).toContain('openQrByTarget');
     expect(admin).toContain('openQrModal(qrBox)');
 
     expect((manual.match(/class="qr"/g) ?? []).length).toBeGreaterThanOrEqual(7);
@@ -213,9 +215,25 @@ describe('0704 conditional vote console', () => {
     expect(refresh).toContain('scaleQuestion');
     expect(refresh).toContain('averageScore');
     expect(refresh).toContain('scoreSum');
+    expect(refresh).toContain('groupPrefix = "($($Matches[1])) "');
+    expect(refresh).toContain('${groupPrefix}기업 인센티브 감축방안');
+    expect(refresh).toContain('${groupPrefix}재생에너지 생산·사용 확대');
+    expect(refresh).toContain('${groupPrefix}재건축·리모델링 탄소감축');
+    expect(refresh).toContain('${groupPrefix}지역맞춤 탄소절감 방안');
     expect(refresh).toContain('[switch]$Watch');
     expect(refresh).toContain('Watching agenda vote responses every $IntervalSeconds seconds');
     expect(refresh).not.toContain('selectedAgenda');
+  });
+
+  test('agenda vote promotion only uses rows marked selected in the note column', () => {
+    const promote = readText('scripts/promote-0704-live-sheet-agendas-to-vote.ps1');
+
+    expect(promote).toContain('Is-SelectedAgendaNote');
+    expect(promote).toContain('$note = if ($row.Count -gt 3)');
+    expect(promote).toContain('if (-not (Is-SelectedAgendaNote -Note $note))');
+    expect(promote).toContain('선정|1위|2위|1순위|2순위');
+    expect(promote).toContain('reason = "no_selected_live_sheet_agendas"');
+    expect(promote).not.toContain('Substring(0, 120)');
   });
 
   test('agenda vote race keeps phase labels stable when live data only has total metadata', () => {

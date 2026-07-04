@@ -209,7 +209,7 @@
               <div class="op"><b>집계</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\refresh-0704-agenda-vote.ps1 -Watch -IntervalSeconds 10</code></span></div>
             </div>
           </div>
-          <a class="qr-box" href="https://docs.google.com/forms/d/e/1FAIpQLSf9-AIDhnd0cy8Dfu-xXOgz6cQINjpA-tLzHdM2Ypk8qU_eMA/viewform" target="_blank" rel="noopener" data-qr-title="의제투표 QR" data-qr-src="/0704-admin/agenda-vote-qr.png">
+          <a class="qr-box" id="agenda-vote-qr" href="https://docs.google.com/forms/d/e/1FAIpQLSf9-AIDhnd0cy8Dfu-xXOgz6cQINjpA-tLzHdM2Ypk8qU_eMA/viewform" target="_blank" rel="noopener" data-qr-title="의제투표 QR" data-qr-src="/0704-admin/agenda-vote-qr.png">
             <img alt="의제투표 QR" src="/0704-admin/agenda-vote-qr.png">
             <span>의제투표 QR</span>
           </a>
@@ -217,10 +217,11 @@
         <div class="actions">
           <a class="btn secondary" href="https://docs.google.com/forms/d/e/1FAIpQLSf9-AIDhnd0cy8Dfu-xXOgz6cQINjpA-tLzHdM2Ypk8qU_eMA/viewform" target="_blank" rel="noopener">응답 화면</a>
           <a class="btn ghost" href="https://docs.google.com/forms/d/1soeRdPzIv4l7Bs6JyJEbb4nzb7MCtmZEe2q8VFwmjgc/edit" target="_blank" rel="noopener">편집 화면</a>
-          <a class="btn warm" href="/agenda-vote-0704/index.html?sheet=1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw" target="_blank" rel="noopener">결과 버블레이스</a>
+          <a class="btn warm" href="/agenda-vote-0704/index.html?sheet=1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw" target="_blank" rel="noopener">의제투표 결과 버블레이스</a>
           <a class="btn blue" href="/agenda-vote-0704/index.html?demo=full" target="_blank" rel="noopener">샘플 버블레이스</a>
           <a class="btn ghost" href="https://docs.google.com/spreadsheets/d/1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw/edit" target="_blank" rel="noopener">Scores Sheet</a>
           <button class="copy" type="button" data-copy-url="https://docs.google.com/forms/d/e/1FAIpQLSf9-AIDhnd0cy8Dfu-xXOgz6cQINjpA-tLzHdM2Ypk8qU_eMA/viewform">투표 URL 복사</button>
+          <button class="qr-toggle" type="button" data-open-qr-target="agenda-vote-qr">QR 탭</button>
         </div>
       </article>
 
@@ -286,6 +287,7 @@
           <div class="ops">
             <div class="op"><b>질문</b><span><code>A조 질문입력</code>, <code>B조 질문입력</code> 탭에 전문가 질의용 질문만 입력합니다.</span></div>
             <div class="op"><b>의제</b><span><code>A조 의제입력</code>, <code>B조 의제입력</code> 탭에 투표 후보 문장을 입력합니다.</span></div>
+            <div class="op"><b>결과</b><span>투표 결과는 위 <code>의제투표</code> 카드의 <code>의제투표 결과 버블레이스</code> 버튼에서 확인합니다.</span></div>
             <div class="op"><b>PDF 자동</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-sheet-packets.ps1 -Watch -IntervalSeconds 30</code></span></div>
             <div class="op"><b>메일</b><span><code>pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\export-0704-live-sheet-packets.ps1 -SendEmail</code></span></div>
           </div>
@@ -298,7 +300,6 @@
           <a class="btn secondary" href="/selected-question-board-0704/index.html" target="_blank" rel="noopener">선정질문 보드</a>
           <a class="btn ghost" href="/0704-admin/live-sheet-agendas-print.pdf" target="_blank" rel="noopener">의제 PDF</a>
           <a class="btn warm" href="/agenda-board-0704/index.html" target="_blank" rel="noopener">의제 보드</a>
-          <a class="btn warm" href="/agenda-vote-0704/index.html?sheet=1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw" target="_blank" rel="noopener">버블레이스</a>
         </div>
       </article>
 
@@ -447,6 +448,10 @@
     qrModalOpen.href = href;
     qrModal.classList.add('show');
   }
+  function openQrByTarget(targetId) {
+    const target = document.getElementById(targetId);
+    if (target) openQrModal(target);
+  }
   document.getElementById('show-qr').onclick = () => {
     qrInline.classList.add('show');
     openQrModal(qrInline);
@@ -455,6 +460,11 @@
     qrBox.addEventListener('click', (event) => {
       event.preventDefault();
       openQrModal(qrBox);
+    });
+  });
+  document.querySelectorAll('[data-open-qr-target]').forEach((button) => {
+    button.addEventListener('click', () => {
+      openQrByTarget(button.getAttribute('data-open-qr-target'));
     });
   });
   document.getElementById('close-qr').onclick = () => {

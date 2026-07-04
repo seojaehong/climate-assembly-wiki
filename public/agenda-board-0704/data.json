@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-07-04T14:58:48.9744788+09:00",
+  "generatedAt": "2026-07-04T15:53:12.5331415+09:00",
   "spreadsheetId": "1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ",
   "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1aA0h2wUuKydj-RC7ZeD-bI-9C-7f1MQhe_78t7pA4JQ/edit",
   "questionCount": 17,
-  "agendaCount": 0,
+  "agendaCount": 17,
   "questions": [
     {
       "number": "1",
@@ -176,5 +176,176 @@
       "kind": "question"
     }
   ],
-  "agendas": []
+  "agendas": [
+    {
+      "number": "1",
+      "group": "A조",
+      "text": "제로에너지빌딩(도시)활성화 방안",
+      "note": "",
+      "speaker": "신지원",
+      "writer": "신지원",
+      "selected": false,
+      "kind": "agenda"
+    },
+    {
+      "number": "2",
+      "group": "A조",
+      "text": "재생에너지를 생산하고 확대하여 실생활에 적용할 수 있도록 하기 위해 가정·기업·사회에서 수행해야 할 방안?",
+      "note": "",
+      "speaker": "김근화",
+      "writer": "김근화",
+      "selected": false,
+      "kind": "agenda"
+    },
+    {
+      "number": "3",
+      "group": "A조",
+      "text": "신재생에너지 지원재정방안은 어떤 것이 있을지? /신재생에너지 도입 시 저렴하게 도입하여 상용화될 수 있도록 할 수 있는 방안",
+      "note": "",
+      "speaker": "김영현",
+      "writer": "김영현",
+      "selected": false,
+      "kind": "agenda"
+    },
+    {
+      "number": "4",
+      "group": "A조",
+      "text": "언급된 의제 외에 사각지대에 놓여있는 의제를 발굴할 수 있는 방안",
+      "note": "",
+      "speaker": "이대진",
+      "writer": "이대진",
+      "selected": false,
+      "kind": "agenda"
+    },
+    {
+      "number": "5",
+      "group": "A조",
+      "text": "심야전력활용방안",
+      "note": "",
+      "speaker": "신두식",
+      "writer": "신두식",
+      "selected": false,
+      "kind": "agenda"
+    },
+    {
+      "number": "6",
+      "group": "A조",
+      "text": "도심 속 온실가스 감소를 위한 녹지활성화방안(공원 확대)",
+      "note": "",
+      "speaker": "이상돈",
+      "writer": "이상돈",
+      "selected": false,
+      "kind": "agenda"
+    },
+    {
+      "number": "7",
+      "group": "A조",
+      "text": "난방효율성 제고 등과 같은 그린리모델링, 건축에너지저감방안",
+      "note": "",
+      "speaker": "이상돈",
+      "writer": "이상돈",
+      "selected": false,
+      "kind": "agenda"
+    },
+    {
+      "number": "8",
+      "group": "A조",
+      "text": "신재생에너지 활용방안",
+      "note": "",
+      "speaker": "김영현",
+      "writer": "김영현",
+      "selected": false,
+      "kind": "agenda"
+    },
+    {
+      "number": "9",
+      "group": "A조",
+      "text": "제재가 아닌 인센티브 중심으로 기업이 스스로 감축방안을 만들게 하기 위한 방법",
+      "note": "2위 선정",
+      "speaker": "신지원",
+      "writer": "신지원",
+      "selected": false,
+      "kind": "agenda"
+    },
+    {
+      "number": "10",
+      "group": "A조",
+      "text": "가정·기업·사회 등 분야별 재생에너지 사용과 생산을 확대하는 방안은 무엇일까요?",
+      "note": "1위 선정",
+      "speaker": "김근화, 김영현",
+      "writer": "김근화, 김영현",
+      "selected": false,
+      "kind": "agenda"
+    },
+    {
+      "number": "1",
+      "group": "B조",
+      "text": "일상생활에서 전력낭비를 줄이려면 어떤 방법을 활용하면 좋을까요?",
+      "note": "",
+      "speaker": "백경란",
+      "writer": "백경란",
+      "selected": false,
+      "kind": "agenda"
+    },
+    {
+      "number": "2",
+      "group": "B조",
+      "text": "오래된 도시와 건물의 재건축·리모델링 과정에서 탄소배출을 줄이는 방향으로 전환하려면 어떻게 해야 할까요?",
+      "note": "2위",
+      "speaker": "김서란",
+      "writer": "김서란",
+      "selected": false,
+      "kind": "agenda"
+    },
+    {
+      "number": "3",
+      "group": "B조",
+      "text": "새로운(첨단) 태양광 패널 개발 업체에 대하여 정부는 어떠한 지원을 해야되나요?",
+      "note": "",
+      "speaker": "안동규",
+      "writer": "안동규",
+      "selected": false,
+      "kind": "agenda"
+    },
+    {
+      "number": "4",
+      "group": "B조",
+      "text": "대기업에 국한된 탄소관리체계를 산업전반으로 확산하기 위한 방법은 어떤 것이 있을까요?",
+      "note": "",
+      "speaker": "송민서",
+      "writer": "송민서",
+      "selected": false,
+      "kind": "agenda"
+    },
+    {
+      "number": "5",
+      "group": "B조",
+      "text": "대중교통 이용 확대를 위한 편의 개선방안은 어떤 것이 있을까요? (ex. 배차 간격 단축, 지자체별 대중교통 이용 혜택, 노선 개선 등)",
+      "note": "",
+      "speaker": "이민경",
+      "writer": "이민경",
+      "selected": false,
+      "kind": "agenda"
+    },
+    {
+      "number": "6",
+      "group": "B조",
+      "text": "각 지역 특성에 맞는 탄소 절감 방안을 수립할 수 있는 방법은 무엇일까요? (지자체 평가, 인센티브 제공 논의 필요성 포함)",
+      "note": "1위",
+      "speaker": "김승기, 안동규",
+      "writer": "김승기, 안동규",
+      "selected": false,
+      "kind": "agenda"
+    },
+    {
+      "number": "7",
+      "group": "B조",
+      "text": "피크타임에 개인의 전력 사용을 줄이기 위해 어떤 방법을 사용할 수 있을까요? (개인의 노력, 정부의 노력)",
+      "note": "",
+      "speaker": "이든솔",
+      "writer": "이든솔",
+      "selected": false,
+      "kind": "agenda"
+    }
+  ]
 }
