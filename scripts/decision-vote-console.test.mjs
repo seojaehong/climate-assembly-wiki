@@ -40,6 +40,9 @@ describe('0704 conditional vote console', () => {
     expect(page).toContain('결과는 2초마다 자동 갱신됩니다');
     expect(page).toContain('운영 확인 및 발표 전환용');
     expect(page).not.toContain('관리자 확인용');
+    expect(page).toContain('data-save-result');
+    expect(page).toContain('downloadCurrentResultPng');
+    expect(page).toContain('toBlob');
     expect(script).toContain('[switch]$Watch');
     expect(script).toContain('[int]$IntervalSeconds = 5');
     expect(script).toContain('Watching decision vote responses every $IntervalSeconds seconds');
@@ -72,8 +75,28 @@ describe('0704 conditional vote console', () => {
     expect(supabasePage).toContain('V1A. 감축분야 추가 찬반');
     expect(supabasePage).toContain('V1B. 적응 의제 배분 찬반');
     expect(supabasePage).toContain('const SUPABASE_POLL_MS = 2000');
+    expect(supabasePage).toContain('setInterval(tick, SUPABASE_POLL_MS)');
     expect(supabasePage).toContain('cv_tally');
     expect(supabasePage).toContain('requestFullscreen');
+    expect(supabasePage).toContain('id="qrModal"');
+    expect(supabasePage).toContain('data-qr="${slot.code}"');
+    expect(supabasePage).toContain('openQr');
+    expect(supabasePage).toContain('d0704-v0-qr.png');
+    expect(supabasePage).toContain('d0704-v1a-qr.png');
+    expect(supabasePage).toContain('d0704-v1b-qr.png');
+    expect(supabasePage).toContain('data-save-result');
+    expect(supabasePage).toContain('downloadCurrentResultPng');
+    expect(supabasePage).toContain('toBlob');
+    expect(supabasePage).toContain('공개 재투표 없음');
+  });
+
+  test('Supabase voting form prevents public revotes by name and device', () => {
+    const voteForm = readText('public/v/vote-form.js');
+
+    expect(voteForm).toContain('이미 같은 성함으로 응답이 접수되었습니다');
+    expect(voteForm).toContain('uniq_votes_round_voter_name');
+    expect(voteForm).toContain('uniq_votes_round_client');
+    expect(voteForm).toContain('이 기기에서는 이미 응답하셨습니다');
   });
 
   test('admin and field manual enlarge every QR instead of opening tiny thumbnails', () => {

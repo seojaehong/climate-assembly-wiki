@@ -7,3 +7,9 @@
 - Verified: Supabase REST read showed all D0704 rounds as RADIO and pending.
 - Learned: EX2 and EX3 were not usable for same-structure fallback because their existing types were CHECKBOX and TEXT.
 - Next: Deploy and browser-check /0704-supabase-vote/ plus /v/D0704-V0/.
+
+## 2026-07-04 S3
+- Changed: added projector-sized QR modal buttons to the Supabase fallback console.
+- Changed: added result PNG export buttons to both Google decision results and Supabase fallback results.
+- Kept: public revote remains disabled by name/device duplicate checks; correction should be handled by an operator, not a public revote button.
+- Verified: npm.cmd exec -- vitest run scripts/decision-vote-console.test.mjs passed with 17 tests.

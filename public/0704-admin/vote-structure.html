@@ -265,6 +265,7 @@
       </div>
       <div class="result-tools">
         <button class="result-fullscreen" type="button" data-result-fullscreen>발표 전체화면</button>
+        <button class="result-fullscreen" type="button" data-save-result>PNG 저장</button>
         <button class="modal-close" type="button" data-close="resultModal">×</button>
       </div>
     </div>
@@ -385,6 +386,74 @@ function renderActiveResult() {
   nav.classList.toggle('show', resultSlots.length > 1);
 }
 
+function downloadCurrentResultPng() {
+  const slot = resultSlots[resultIndex];
+  if (!slot) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = 1920;
+  canvas.height = 1080;
+  const ctx = canvas.getContext('2d');
+  const counts = slot.counts || {};
+  const entries = Object.entries(counts);
+  const max = Math.max(1, ...entries.map(([, count]) => Number(count) || 0));
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = '#dbeafe';
+  ctx.lineWidth = 4;
+  roundRect(ctx, 96, 88, 1728, 904, 44);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '700 72px "Noto Sans KR", sans-serif';
+  ctx.fillText(`${slot.code} · ${slot.title}`, 170, 210);
+  ctx.font = '900 190px "Noto Sans KR", sans-serif';
+  ctx.fillText(`${Number(slot.responseCount) || 0}`, 170, 430);
+  ctx.font = '700 54px "Noto Sans KR", sans-serif';
+  ctx.fillStyle = '#64748b';
+  ctx.fillText('명 응답', 450, 410);
+  let y = 560;
+  for (const [label, count] of entries) {
+    const safeCount = Number(count) || 0;
+    const width = Math.max(8, Math.round((safeCount / max) * 970));
+    ctx.fillStyle = '#0f172a';
+    ctx.font = '800 48px "Noto Sans KR", sans-serif';
+    ctx.fillText(label, 170, y + 44);
+    ctx.fillStyle = '#dbeafe';
+    roundRect(ctx, 520, y, 980, 62, 31);
+    ctx.fill();
+    ctx.fillStyle = '#0f766e';
+    roundRect(ctx, 520, y, width, 62, 31);
+    ctx.fill();
+    ctx.fillStyle = '#0f172a';
+    ctx.font = '900 54px "Noto Sans KR", sans-serif';
+    ctx.fillText(`${safeCount}`, 1560, y + 48);
+    y += 112;
+  }
+  ctx.fillStyle = '#64748b';
+  ctx.font = '700 28px "Noto Sans KR", sans-serif';
+  ctx.fillText(`저장 시각 ${new Date().toLocaleString('ko-KR')}`, 170, 940);
+  canvas.toBlob((blob) => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `0704-${slot.code}-result.png`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+}
+
+function roundRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + width, y, x + width, y + height, radius);
+  ctx.arcTo(x + width, y + height, x, y + height, radius);
+  ctx.arcTo(x, y + height, x, y, radius);
+  ctx.arcTo(x, y, x + width, y, radius);
+  ctx.closePath();
+}
+
 function renderResults(focusCode = null) {
   const report = decisionReport;
   if (!report || !Array.isArray(report.slots)) {
@@ -458,6 +527,7 @@ document.querySelector('[data-result-fullscreen]')?.addEventListener('click', as
     await document.exitFullscreen().catch(() => {});
   }
 });
+document.querySelector('[data-save-result]')?.addEventListener('click', downloadCurrentResultPng);
 document.querySelector('[data-result-prev]')?.addEventListener('click', () => {
   if (resultSlots.length <= 1) return;
   resultIndex = (resultIndex - 1 + resultSlots.length) % resultSlots.length;
