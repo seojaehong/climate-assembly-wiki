@@ -71,7 +71,7 @@ Display labels should be facilitator-facing Korean, while JSON fields may use En
 ## Current State For Claude
 
 - We are now waiting for real participant data input. Do not rebuild forms or recreate QR resources unless the URLs break.
-- The currently deployed admin page is the main operator surface. Password: `climate2026`.
+- The currently deployed admin page is the main operator surface. Password is stored separately and must not be committed.
 - Admin page includes:
   - Ontology graph launch
   - Miro-style post-it launch

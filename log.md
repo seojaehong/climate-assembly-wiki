@@ -4,24 +4,24 @@
 
 2026-06-26 21:11 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-26 21:10 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
-!-- APPEND-ONLY. Newest entries at top. -->
+<!-- APPEND-ONLY. Newest entries at top. -->
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
 2026-06-26 08:54 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
-!-- APPEND-ONLY. Newest entries at top. -->
+<!-- APPEND-ONLY. Newest entries at top. -->
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
 2026-06-26 08:19 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
-!-- APPEND-ONLY. Newest entries at top. -->
+<!-- APPEND-ONLY. Newest entries at top. -->
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
 2026-06-25 22:50 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-25 13:36 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-25 13:13 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
-!-- APPEND-ONLY. Newest entries at top. -->
+<!-- APPEND-ONLY. Newest entries at top. -->
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
@@ -37,32 +37,32 @@
 2026-06-09 21:42 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-09 21:39 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-09 21:38 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
-!-- APPEND-ONLY. Newest entries at top. -->
+<!-- APPEND-ONLY. Newest entries at top. -->
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
 2026-06-08 10:06 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
-!-- APPEND-ONLY. Newest entries at top. -->
+<!-- APPEND-ONLY. Newest entries at top. -->
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
 2026-06-07 23:02 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-07 23:01 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-06 09:34 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
-!-- APPEND-ONLY. Newest entries at top. -->
+<!-- APPEND-ONLY. Newest entries at top. -->
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
 2026-06-04 10:47 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-04 10:46 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
-!-- APPEND-ONLY. Newest entries at top. -->
+<!-- APPEND-ONLY. Newest entries at top. -->
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
 2026-06-02 11:21 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-02 10:41 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-02 10:41 | update | content/ko/doc/moderator-live-setup.md | 모더레이터 라이브 대시보드 운영 가이드 (last_updated: 2026-06-02)
-!-- APPEND-ONLY. Newest entries at top. -->
+<!-- APPEND-ONLY. Newest entries at top. -->
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
@@ -165,7 +165,7 @@
 2026-06-01 20:29 | update | content/ko/doc/about.md | 2026 기후시민회의 모더레이터 아카이브 소개 (last_updated: 2026-05-31)
 2026-06-01 20:25 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-06-01 20:25 | update | content/ko/doc/about.md | 2026 기후시민회의 모더레이터 아카이브 소개 (last_updated: 2026-05-31)
-!-- APPEND-ONLY. Newest entries at top. -->
+<!-- APPEND-ONLY. Newest entries at top. -->
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
@@ -259,7 +259,7 @@
 2026-06-01 18:08 | update | content/ko/agenda/14-climate-dividend.md | 시민 환급형 기후배당(Climate Dividend) 도입 (last_updated: 2026-06-01)
 2026-06-01 18:08 | update | content/ko/agenda/15-compound-vulnerability.md | 복합 취약성(Compound Vulnerability) 정의·보호 (last_updated: 2026-05-31)
 2026-06-01 18:08 | update | content/ko/doc/downloads.md | 다운로드 센터 (last_updated: 2026-05-31)
-!-- APPEND-ONLY. Newest entries at top. -->
+<!-- APPEND-ONLY. Newest entries at top. -->
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
