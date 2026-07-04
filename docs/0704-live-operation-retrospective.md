@@ -63,21 +63,25 @@
 - 투표 시작 전 `reset`, 투표 중 `refresh`, 발표 전 `freeze`, 기록 후 `capture` 단계가 자동으로 실행되게 한다.
 - 모든 갱신 스크립트는 마지막 실행 시각, 응답 수, 중복 제외 수, 출력 파일 경로를 evaluation JSON으로 남긴다.
 
-### 자동 리서치/에이전트 루프
+### Jaehong Loop: Human-Grounded Field Ops Loop
 
-Andrej Karpathy가 강조하는 작은 자동화 루프 관점으로 보면, 현장 운영은 거대한 단일 앱보다 여러 개의 작고 검증 가능한 루프가 더 안전하다.
+오늘 운영에서 확인한 실제 패턴은 Karpathy식 AutoResearch를 그대로 가져온 것이 아니라, 현장에서 사람이 계속 바꾸는 최종 판단을 source of truth로 두고 에이전트가 전파·대조·기록을 맡는 Jaehong Loop에 가깝다.
+
+정의:
+
+> 사람이 정한 최종 상태를 기준으로, 입력·처리·표시·기록이 모두 같은지 계속 맞추는 현장 운영 루프
 
 - Observe: Sheet/Form/페이지/CSV/PDF 상태를 주기적으로 읽는다.
-- Act: 필요한 변환만 수행한다. 예: selected rows -> Form questions -> Scores.
+- Propagate: 필요한 변환만 수행한다. 예: selected rows -> Form questions -> Scores.
 - Eval: 문구 일치, 응답 수, 중복 제거, 화면 렌더링, 캡쳐 파일 존재를 자동 확인한다.
 - Snapshot: 운영 순간의 화면과 JSON을 저장한다.
 - Recover: custom domain 지연, Google Sheet 지연, Form 구조 변경, 캡쳐 실패 시 fallback 경로를 둔다.
 
 다음 운영에서는 이 루프를 `preflight`, `live-watch`, `finalize`, `archive` 네 명령으로 나누는 것이 좋다.
 
-### Karpathy Loop v2: 운영 자동화 사양
+### Jaehong Loop v1: 운영 자동화 사양
 
-참고한 AutoResearch 패턴은 "작은 실제 환경을 주고, 에이전트가 변경하고, 짧은 실험을 돌리고, 개선 여부를 평가한 뒤 반복한다"는 구조다. 워크숍 운영에 그대로 옮기면 LLM이 모든 판단을 대신하는 것이 아니라, 사람이 정한 운영 기준을 기계적으로 반복 검증하는 루프가 된다.
+참고한 AutoResearch 패턴은 "작은 실제 환경을 주고, 에이전트가 변경하고, 짧은 실험을 돌리고, 개선 여부를 평가한 뒤 반복한다"는 구조다. Jaehong Loop는 이를 워크숍 운영에 맞게 바꿔, LLM이 판단을 대신하지 않고 사람이 정한 마지막 기준을 모든 운영 산출물에 반복 동기화하게 만든다.
 
 #### 1. Preflight Loop
 
