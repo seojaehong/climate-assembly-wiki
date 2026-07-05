@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>7.4 의제투표 결과 — 2026 기후시민회의</title>
+<title>추가의제 투표결과 — 2026 기후시민회의</title>
 <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
 <style>
   :root {
@@ -433,7 +433,7 @@
 
 <!-- HEADER 최소 -->
 <div class="header-band">
-  <div class="h-title">2026 기후시민회의  <span class="amber">7.4 의제투표</span></div>
+  <div class="h-title">2026 기후시민회의  <span class="amber">추가의제 투표결과</span></div>
 </div>
 
 <main id="finalBoard" class="final-board" hidden>
@@ -448,7 +448,7 @@
   </div>
   <div class="final-result-grid" id="finalResultGrid"></div>
   <div class="final-footnote">
-    <div>1회 투표 결과를 마지막 결과 화면으로 고정했습니다. 예전 애니메이션 레이스는 URL에 <code>race=1</code>을 붙이면 열립니다.</div>
+    <div>1회 투표 결과를 카드형 화면으로 고정했습니다. 기본 결과 화면은 버블레이스형이며, 이 카드형 화면은 URL에 <code>view=cards</code>를 붙이면 열립니다.</div>
     <a href="/0704-admin/index.html">관리자</a>
   </div>
 </main>
@@ -513,7 +513,9 @@ const PAGE_PARAMS = new URLSearchParams(location.search);
 const DEMO_MODE = PAGE_PARAMS.get('demo') === 'full';
 const CAPTURE_MODE = PAGE_PARAMS.get('capture');
 const RACE_MODE = PAGE_PARAMS.get('race') === '1';
-const FINAL_ONLY = !RACE_MODE || CAPTURE_MODE === 'final' || PAGE_PARAMS.get('view') === 'final';
+const FINAL_CARD_MODE = PAGE_PARAMS.get('view') === 'cards';
+const FINAL_BUBBLE_MODE = !RACE_MODE && !FINAL_CARD_MODE;
+const FINAL_ONLY = FINAL_CARD_MODE;
 const DATA_FILE = DEMO_MODE ? 'data-demo-full.json' : 'data.json';
 const PHASE_ORDER = ['pre', 'c1', 'c2', 'c3', 'c4', 'total'];
 const PHASE_FALLBACKS = {
@@ -760,6 +762,42 @@ function renderFinalBoard() {
   }).join('');
 }
 
+function applyFinalBubbleLayout() {
+  const slots = [
+    { x: 0.79, y: 0.78, r: 150, font: 46, lx: 0.79, ly: 0.94 },
+    { x: 0.60, y: 0.62, r: 132, font: 43, lx: 0.56, ly: 0.80 },
+    { x: 0.42, y: 0.44, r: 118, font: 40, lx: 0.27, ly: 0.58 },
+    { x: 0.23, y: 0.22, r: 104, font: 39, lx: 0.24, ly: 0.39 },
+  ];
+  const sorted = state
+    .map((s, i) => ({ i, score: s.scoreNow }))
+    .sort((a, b) => b.score - a.score || a.i - b.i);
+
+  sorted.forEach((entry, rank) => {
+    const slot = slots[rank] || slots[slots.length - 1];
+    const s = state[entry.i];
+    s.x = slot.x;
+    s.y = slot.y;
+    s.r = slot.r;
+    s.rank = rank + 1;
+    s.labelX = xCoord(slot.lx);
+    s.labelY = yCoord(slot.ly);
+    s.labelFont = slot.font;
+  });
+}
+
+function showFinalBubbleScreen() {
+  document.body.classList.remove('final-only');
+  document.getElementById('finalBoard').hidden = true;
+  document.getElementById('overlay').classList.add('hide');
+  document.querySelector('.speed-control').style.display = 'none';
+  document.querySelector('.phase-track').style.display = 'none';
+  document.querySelector('.hud-hint').style.display = 'none';
+  document.getElementById('muteBtn').style.display = 'none';
+  jumpToPhase(PHASE_ORDER.length - 1);
+  applyFinalBubbleLayout();
+}
+
 async function load() {
   // 1) data.json 항상 로드 — meta + fallback agendas
   DATA = await fetch(DATA_FILE, { cache: 'no-store' }).then(r => r.json());
@@ -795,9 +833,8 @@ async function load() {
   setPhaseLabel(0);
   buildPhaseTrack();
   requestAnimationFrame(tick);
-  if (CAPTURE_MODE === 'final') {
-    document.getElementById('overlay').classList.add('hide');
-    requestAnimationFrame(() => jumpToPhase(PHASE_ORDER.length - 1));
+  if (FINAL_BUBBLE_MODE || CAPTURE_MODE === 'final') {
+    requestAnimationFrame(showFinalBubbleScreen);
   }
 }
 
@@ -862,7 +899,7 @@ function setAxisTitles(idx) {
     c2:    ['→ 시민 삶·일상 실천 (점수↑)',  '↑ 점수 높을수록 위'],
     c3:    ['→ 사회적 합의 필요 (점수↑)',   '↑ 점수 높을수록 위'],
     c4:    ['→ 다양한 대안 비교 (점수↑)',   '↑ 점수 높을수록 위'],
-    total: ['→ 종합 가중평균 점수',         '↑ 순위 (위쪽 = 1위)'],
+    total: ['→ 투표 평균 점수',             '↑ 결과 순위 (위쪽 = 1위)'],
   };
   const [xLbl, yLbl] = phaseNames[phKey] || ['→ 점수', '↑ 점수'];
   xT.textContent = xLbl;
@@ -1195,7 +1232,7 @@ function setPhaseLabel(idx) {
 
   if (idx === PHASE_ORDER.length - 1) {
     bg.textContent = '★';
-    t.innerHTML = `<div class="pt-kicker">종합 결과</div><div class="pt-name">4 기준 <span class="amber">가중평균</span></div><div class="pt-weight">시민 우선순위 의제</div>`;
+    t.innerHTML = `<div class="pt-kicker">FINAL RESULT</div><div class="pt-name">추가의제 <span class="amber">투표결과</span></div><div class="pt-weight">평균점수 기준 순위</div>`;
     return;
   }
 
@@ -1287,6 +1324,13 @@ function jumpToPhase(idx) {
 }
 
 function tick() {
+  if (FINAL_BUBBLE_MODE && PHASE_ORDER[phaseIdx] === 'total' && !phaseAnimating) {
+    applyFinalBubbleLayout();
+    DATA.agendas.forEach((_, i) => applyBubble(i));
+    requestAnimationFrame(tick);
+    return;
+  }
+
   // 진짜 freeze — 점수·위치·크기 모두 그대로
   if (isPaused) {
     DATA.agendas.forEach((_, i) => applyBubble(i));
