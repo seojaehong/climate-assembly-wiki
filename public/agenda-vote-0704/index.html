@@ -764,6 +764,20 @@ function finalVisualScale() {
   return Math.max(1, Math.min(1.55, areaScale));
 }
 
+function assignCompetitionRanks(sortedEntries) {
+  let lastScore = null;
+  let lastRank = 0;
+  return sortedEntries.map((entry, idx) => {
+    const roundedScore = Math.round(Number(entry.score || 0) * 100) / 100;
+    const rank = lastScore !== null && Math.abs(roundedScore - lastScore) < 0.001
+      ? lastRank
+      : idx + 1;
+    lastScore = roundedScore;
+    lastRank = rank;
+    return { ...entry, rank };
+  });
+}
+
 function applyFinalBubbleLayout() {
   const scale = finalVisualScale();
   const slots = [
@@ -776,13 +790,13 @@ function applyFinalBubbleLayout() {
     .map((s, i) => ({ i, score: s.scoreNow }))
     .sort((a, b) => b.score - a.score || a.i - b.i);
 
-  sorted.forEach((entry, rank) => {
-    const slot = slots[rank] || slots[slots.length - 1];
+  assignCompetitionRanks(sorted).forEach((entry, idx) => {
+    const slot = slots[idx] || slots[slots.length - 1];
     const s = state[entry.i];
     s.x = slot.x;
     s.y = slot.y;
     s.r = slot.r * scale;
-    s.rank = rank + 1;
+    s.rank = entry.rank;
     s.labelX = xCoord(slot.lx);
     s.labelY = yCoord(slot.ly);
     s.labelFont = slot.font * scale;
@@ -1065,7 +1079,7 @@ function applyBubble(i) {
 
   halo.setAttribute('cx', cx); halo.setAttribute('cy', cy); halo.setAttribute('r', r + 14);
   main.setAttribute('cx', cx); main.setAttribute('cy', cy); main.setAttribute('r', r);
-  if (s.rank && s.rank >= 1 && s.rank <= 3 && PHASE_ORDER[phaseIdx] === 'total') {
+  if (s.rank && s.rank >= 1 && s.rank <= state.length && PHASE_ORDER[phaseIdx] === 'total') {
     // 순위는 원 안 중앙 — 다른 의제 라벨과 겹치지 않도록
     const bx = cx;
     const by = cy;
