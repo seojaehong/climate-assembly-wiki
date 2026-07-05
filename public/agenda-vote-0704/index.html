@@ -280,6 +280,153 @@
     text-decoration: none;
     box-shadow: 0 2px 8px rgba(0,0,0,0.12);
   }
+
+  /* 0704 final-only board: one vote, one final result screen */
+  .final-board {
+    position: relative;
+    min-height: calc(100vh - 96px);
+    padding: 42px 56px 54px;
+    background: radial-gradient(circle at 82% 18%, rgba(86,194,228,0.16), transparent 34%),
+                linear-gradient(180deg, #ffffff 0%, #f6f8fb 100%);
+    overflow: hidden;
+  }
+  .final-board[hidden] { display: none; }
+  .final-topline {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    align-items: flex-start;
+    margin-bottom: 28px;
+  }
+  .final-kicker {
+    color: #2E75B6;
+    font-size: 21px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+  }
+  .final-title {
+    margin-top: 8px;
+    font-size: clamp(42px, 4.7vw, 76px);
+    line-height: 0.98;
+    font-weight: 900;
+    letter-spacing: -0.035em;
+    color: #101827;
+  }
+  .final-title .amber { color: var(--amber); }
+  .final-meta {
+    text-align: right;
+    color: #51606f;
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.45;
+    padding-top: 8px;
+  }
+  .final-result-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 22px;
+    align-items: stretch;
+  }
+  .final-card {
+    position: relative;
+    min-height: 590px;
+    border: 5px solid var(--card-color, #56C2E4);
+    border-radius: 34px;
+    background: rgba(255,255,255,0.94);
+    box-shadow: 0 24px 60px rgba(31,78,121,0.14);
+    padding: 30px 26px 28px;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    overflow: hidden;
+  }
+  .final-card::before {
+    content: '';
+    position: absolute;
+    width: 360px;
+    height: 360px;
+    right: -110px;
+    top: -110px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--card-color, #56C2E4) 24%, transparent);
+    border: 14px solid color-mix(in srgb, var(--card-color, #56C2E4) 90%, white);
+    opacity: 0.85;
+  }
+  .final-rank-row {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .final-rank {
+    width: 92px;
+    height: 92px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-size: 54px;
+    font-weight: 900;
+    background: var(--card-color, #56C2E4);
+    box-shadow: 0 12px 30px color-mix(in srgb, var(--card-color, #56C2E4) 30%, transparent);
+  }
+  .final-score {
+    font-size: 56px;
+    font-weight: 900;
+    color: #B45309;
+    font-variant-numeric: tabular-nums;
+    padding: 8px 16px;
+    border: 3px solid var(--card-color, #56C2E4);
+    border-radius: 16px;
+    background: #fff;
+  }
+  .final-agenda-name {
+    position: relative;
+    z-index: 1;
+    align-self: center;
+    font-size: clamp(30px, 2.2vw, 46px);
+    line-height: 1.14;
+    font-weight: 900;
+    letter-spacing: -0.035em;
+    color: #101827;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+  .final-agenda-full {
+    position: relative;
+    z-index: 1;
+    min-height: 86px;
+    color: #4b5968;
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.35;
+    word-break: keep-all;
+    overflow: hidden;
+  }
+  .final-footnote {
+    margin-top: 26px;
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: center;
+    color: #5a6a7a;
+    font-size: 18px;
+    font-weight: 800;
+  }
+  .final-footnote a {
+    color: #1F4E79;
+    text-decoration: none;
+    background: rgba(46,117,182,0.09);
+    padding: 10px 14px;
+    border-radius: 10px;
+  }
+  body.final-only .stage,
+  body.final-only .control-drawer { display: none; }
+  @media (max-width: 1280px) {
+    .final-result-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .final-card { min-height: 430px; }
+  }
 </style>
 </head>
 <body>
@@ -288,6 +435,23 @@
 <div class="header-band">
   <div class="h-title">2026 기후시민회의  <span class="amber">7.4 의제투표</span></div>
 </div>
+
+<main id="finalBoard" class="final-board" hidden>
+  <div class="final-topline">
+    <div>
+      <div class="final-kicker">FINAL RESULT</div>
+      <div class="final-title">4개 의제 <span class="amber">투표 결과</span></div>
+    </div>
+    <div class="final-meta" id="finalMeta">
+      Google Scores Sheet<br />최종 결과 표시
+    </div>
+  </div>
+  <div class="final-result-grid" id="finalResultGrid"></div>
+  <div class="final-footnote">
+    <div>1회 투표 결과를 마지막 결과 화면으로 고정했습니다. 예전 애니메이션 레이스는 URL에 <code>race=1</code>을 붙이면 열립니다.</div>
+    <a href="/0704-admin/index.html">관리자</a>
+  </div>
+</main>
 
 <!-- STAGE -->
 <div class="stage">
@@ -348,6 +512,8 @@
 const PAGE_PARAMS = new URLSearchParams(location.search);
 const DEMO_MODE = PAGE_PARAMS.get('demo') === 'full';
 const CAPTURE_MODE = PAGE_PARAMS.get('capture');
+const RACE_MODE = PAGE_PARAMS.get('race') === '1';
+const FINAL_ONLY = !RACE_MODE || CAPTURE_MODE === 'final' || PAGE_PARAMS.get('view') === 'final';
 const DATA_FILE = DEMO_MODE ? 'data-demo-full.json' : 'data.json';
 const PHASE_ORDER = ['pre', 'c1', 'c2', 'c3', 'c4', 'total'];
 const PHASE_FALLBACKS = {
@@ -535,17 +701,63 @@ async function fetchSheetAgendas() {
 async function refetchSheet() {
   if (!SHEET_ID) return;
   // 페이즈 애니메이션 중에는 데이터 교체 안 함 (시각적 점프 방지)
-  if (phaseAnimating) return;
+  if (!FINAL_ONLY && phaseAnimating) return;
   try {
     const agendas = await fetchSheetAgendas();
-    if (agendas && agendas.length === DATA.agendas.length) {
+    if (agendas && (FINAL_ONLY || agendas.length === DATA.agendas.length)) {
       DATA.agendas = agendas;
       setLiveStatus('live');
+      if (FINAL_ONLY) renderFinalBoard();
     }
   } catch (e) {
     console.warn('[sheet] poll failed:', e);
     setLiveStatus('error');
   }
+}
+
+function finalScore(agenda) {
+  return getScoreForPhase(agenda, 'total') || agenda.scores?.c1 || 0;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[ch]));
+}
+
+function renderFinalBoard() {
+  document.body.classList.add('final-only');
+  const board = document.getElementById('finalBoard');
+  const grid = document.getElementById('finalResultGrid');
+  const meta = document.getElementById('finalMeta');
+  board.hidden = false;
+
+  const rows = (DATA.agendas || [])
+    .map((agenda, index) => ({ agenda, index, score: finalScore(agenda) }))
+    .sort((a, b) => b.score - a.score || a.index - b.index);
+
+  meta.innerHTML = `${SHEET_ID ? 'Google Scores Sheet LIVE' : 'data.json fallback'}<br>${rows.length}개 의제 · 최종 결과`;
+
+  grid.innerHTML = rows.map((row, idx) => {
+    const agenda = row.agenda;
+    const color = agenda.color || ['#13B8D4', '#22C55E', '#F97316', '#A855F7'][idx % 4];
+    const short = agenda.short || agenda.name || `의제 ${idx + 1}`;
+    const full = agenda.name && agenda.name !== short ? agenda.name : '';
+    return `
+      <article class="final-card" style="--card-color:${escapeHtml(color)}">
+        <div class="final-rank-row">
+          <div class="final-rank">${idx + 1}</div>
+          <div class="final-score">${row.score.toFixed(2)}</div>
+        </div>
+        <div class="final-agenda-name">${escapeHtml(short)}</div>
+        <div class="final-agenda-full">${escapeHtml(full)}</div>
+      </article>
+    `;
+  }).join('');
 }
 
 async function load() {
@@ -568,6 +780,11 @@ async function load() {
     }
     // 5초 폴링 시작
     pollTimer = setInterval(refetchSheet, POLL_MS);
+  }
+
+  if (FINAL_ONLY) {
+    renderFinalBoard();
+    return;
   }
 
   generateSeeds(DATA.agendas.length);
