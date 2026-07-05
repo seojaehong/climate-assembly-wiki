@@ -5,3 +5,10 @@
 - Verified: Playwright 2048x1152 render check showed one phase dot, no old criteria/weighted-average wording, four labels, four scores, and LIVE sheet status.
 - Learned: for field capture, avoid fixed pixel bubble sizes; scale by viewport area while keeping the bubble-race visual grammar.
 - Next: if reusing for a future event, keep the public Scores contract as `slot,name,short,color,score` unless a new multi-criteria voting design is explicitly requested.
+
+## 2026-07-05 C3
+- Incident: the published final agenda vote snapshot was overwritten by rerunning the live Form refresh script against the same `Scores` sheet.
+- Restored: `Scores` was manually reset to the announced values: 3.60, 3.53, 3.47, 2.87.
+- Verified: live page rendered those four restored values and rank labels 1-4 after deploy.
+- Learned: a public result page must never read from a mutable live aggregation sheet after announcement.
+- Next: future events must split `Scores_Live` and `Scores_Final`, and scripts must require an explicit force flag before touching final/public outputs.

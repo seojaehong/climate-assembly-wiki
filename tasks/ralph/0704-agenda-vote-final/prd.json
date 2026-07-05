@@ -36,6 +36,23 @@
       "files": [
         "public/agenda-vote-0704/index.html"
       ]
+    },
+    {
+      "id": "C3",
+      "title": "Document final-score overwrite incident and freeze protocol",
+      "priority": 0,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "Root cause distinguishes published final snapshot from live recomputation",
+        "Official 0704 scores are recorded as a separate freeze artifact",
+        "Next-event prevention checklist names the required live/final split"
+      ],
+      "files": [
+        "evaluation/0704-agenda-vote-incident-jaehong-loop.md",
+        "evaluation/0704-agenda-vote-final-snapshot.json",
+        "tasks/ralph/0704-agenda-vote-final/progress.txt"
+      ]
     }
   ]
 }

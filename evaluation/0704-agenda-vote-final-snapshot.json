@@ -1,0 +1,35 @@
+{
+  "event": "2026-07-04 climate assembly agenda runoff vote",
+  "status": "published_final_snapshot",
+  "sourceOfTruth": "announced result restored after accidental live refresh",
+  "scoresSheet": "1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw",
+  "resultUrl": "https://climate-assembly.org/agenda-vote-0704/?sheet=1wbAwRa7ynC12SanI7VJWc-fMea_NmOPVvIAKBLt5Wrw",
+  "capturedAtKst": "2026-07-05T19:48:00+09:00",
+  "results": [
+    {
+      "rank": 1,
+      "slot": "1",
+      "short": "(A조) 기업 인센티브 감축방안",
+      "score": 3.60
+    },
+    {
+      "rank": 2,
+      "slot": "2",
+      "short": "(B조) 지역맞춤 탄소절감 방안",
+      "score": 3.53
+    },
+    {
+      "rank": 3,
+      "slot": "3",
+      "short": "(A조) 재생에너지 생산·사용 확대",
+      "score": 3.47
+    },
+    {
+      "rank": 4,
+      "slot": "4",
+      "short": "(B조) 재건축·리모델링 탄소감축",
+      "score": 2.87
+    }
+  ],
+  "doNotOverwriteWithoutExplicitApproval": true
+}
