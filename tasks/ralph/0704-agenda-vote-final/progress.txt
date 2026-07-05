@@ -1,0 +1,7 @@
+## 2026-07-05 C1/C2
+- Changed: converted 0704 agenda vote result from four copied criteria columns to one runoff `score` column.
+- Changed: kept the bubble-race final view as default and added viewport-aware bubble, label, and score scaling for wide capture screens.
+- Verified: `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/refresh-0704-agenda-vote.ps1` refreshed the live Scores sheet with 17 responses and `slot,name,short,color,score`.
+- Verified: Playwright 2048x1152 render check showed one phase dot, no old criteria/weighted-average wording, four labels, four scores, and LIVE sheet status.
+- Learned: for field capture, avoid fixed pixel bubble sizes; scale by viewport area while keeping the bubble-race visual grammar.
+- Next: if reusing for a future event, keep the public Scores contract as `slot,name,short,color,score` unless a new multi-criteria voting design is explicitly requested.

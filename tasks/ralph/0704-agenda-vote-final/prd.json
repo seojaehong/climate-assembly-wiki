@@ -1,0 +1,41 @@
+{
+  "feature": "0704 agenda vote final result",
+  "branchName": "main",
+  "qualityChecks": [
+    "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/refresh-0704-agenda-vote.ps1",
+    "Playwright render check at 2048x1152 for /agenda-vote-0704/?sheet=..."
+  ],
+  "userStories": [
+    {
+      "id": "C1",
+      "title": "Use one runoff vote score instead of four criteria",
+      "priority": 1,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "Scores sheet has slot, name, short, color, score columns",
+        "Result page has no criteria 1-4 or weighted-average wording",
+        "Final page reads and renders the single score value"
+      ],
+      "files": [
+        "public/agenda-vote-0704/index.html",
+        "scripts/refresh-0704-agenda-vote.ps1"
+      ]
+    },
+    {
+      "id": "C2",
+      "title": "Keep bubble-race visual while supporting wide capture screens",
+      "priority": 2,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "Default result view remains the bubble-race final screen",
+        "Bubbles, labels, and scores scale with viewport area",
+        "2048x1152 screenshot shows all four agenda labels and scores without unreadable overlap"
+      ],
+      "files": [
+        "public/agenda-vote-0704/index.html"
+      ]
+    }
+  ]
+}

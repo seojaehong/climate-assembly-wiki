@@ -80,6 +80,15 @@ function Convert-GwsJson {
   return ($jsonLines -join "`n") | ConvertFrom-Json
 }
 
+function ConvertTo-ProcessArgument {
+  param([string]$Value)
+  if ($null -eq $Value) {
+    return '""'
+  }
+  $escaped = $Value -replace '\\', '\\' -replace '"', '\"'
+  return '"' + $escaped + '"'
+}
+
 function Invoke-GwsJson {
   param([string[]]$CommandArgs)
   $gwsScript = Join-Path $env:APPDATA "npm\node_modules\@googleworkspace\cli\run-gws.js"
@@ -88,19 +97,17 @@ function Invoke-GwsJson {
   }
   $psi = [System.Diagnostics.ProcessStartInfo]::new()
   $psi.FileName = "node.exe"
+  $psi.Arguments = (@($gwsScript) + $CommandArgs | ForEach-Object { ConvertTo-ProcessArgument $_ }) -join " "
   $psi.UseShellExecute = $false
   $psi.RedirectStandardOutput = $true
   $psi.RedirectStandardError = $true
   $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
   $psi.StandardErrorEncoding = [System.Text.Encoding]::UTF8
-  [void]$psi.ArgumentList.Add($gwsScript)
-  foreach ($arg in $CommandArgs) {
-    [void]$psi.ArgumentList.Add($arg)
-  }
   $process = [System.Diagnostics.Process]::Start($psi)
   $stdout = $process.StandardOutput.ReadToEnd()
   $stderr = $process.StandardError.ReadToEnd()
   $process.WaitForExit()
+  $exitCode = $process.ExitCode
   $output = @()
   if (-not [string]::IsNullOrWhiteSpace($stdout)) {
     $output += ($stdout -split "`r?`n")
@@ -108,8 +115,8 @@ function Invoke-GwsJson {
   if (-not [string]::IsNullOrWhiteSpace($stderr)) {
     $output += ($stderr -split "`r?`n")
   }
-  if ($process.ExitCode -ne 0) {
-    throw "gws failed ($($process.ExitCode)): $($output -join "`n")"
+  if ($exitCode -ne 0) {
+    throw "gws failed ($exitCode): $($output -join "`n")"
   }
   if (($output | Measure-Object).Count -eq 0) {
     return [pscustomobject]@{}
@@ -343,10 +350,10 @@ foreach ($row in @($candidateRows | Sort-Object submittedAt)) {
 }
 
 $scoreRows = @()
-$scoreRows += ,@("slot", "name", "short", "color", "c1", "c2", "c3", "c4")
+$scoreRows += ,@("slot", "name", "short", "color", "score")
 foreach ($option in $Options) {
   $score = [double]$option.averageScore
-  $scoreRows += ,@($option.Slot, $option.Name, $option.Short, $option.Color, $score, $score, $score, $score)
+  $scoreRows += ,@($option.Slot, $option.Name, $option.Short, $option.Color, $score)
 }
 
 $summaryRows = @()
@@ -364,7 +371,7 @@ $summaryRows += ,@("optionCount", $Options.Count)
 Clear-SheetRange -TargetSpreadsheetId $SpreadsheetId -Range "Scores!A:H"
 Clear-SheetRange -TargetSpreadsheetId $SpreadsheetId -Range "FormResponses!A:Z"
 
-$scoreRange = "Scores!A1:H$($scoreRows.Count)"
+$scoreRange = "Scores!A1:E$($scoreRows.Count)"
 $scoreBody = @{ range = $scoreRange; majorDimension = "ROWS"; values = $scoreRows } | ConvertTo-Json -Depth 12 -Compress
 Invoke-GwsJson -CommandArgs @(
   "sheets", "spreadsheets", "values", "update",
