@@ -222,7 +222,7 @@ function HomeScreen({
                 투표 만들기
               </h3>
             </div>
-            <div className="p-6 space-y-5">
+            <div className="p-4 sm:p-6 space-y-5">
               <div>
                 <label className="block text-[#5A6B73] font-mono text-[12px] font-semibold uppercase mb-2" style={{ letterSpacing: '.14em' }}>
                   질문
@@ -232,7 +232,7 @@ function HomeScreen({
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="예: 우리 조가 가장 중요하게 볼 의제는?"
-                  className="w-full h-14 rounded-xl border border-[#C4D8E4] focus:border-[#23B2C3] px-4 text-[18px] text-[#1F2933] outline-none"
+                  className="w-full min-w-0 h-14 rounded-xl border border-[#C4D8E4] focus:border-[#23B2C3] px-4 text-[18px] text-[#1F2933] outline-none"
                 />
               </div>
 
@@ -264,7 +264,7 @@ function HomeScreen({
                 </label>
                 <div className="space-y-3">
                   {options.map((opt, i) => (
-                    <div key={i} className="flex items-center gap-3">
+                    <div key={i} className="flex min-w-0 items-center gap-2 sm:gap-3">
                       <span className="w-9 h-9 shrink-0 rounded-lg bg-[#F1F7FA] border border-[#DCE7EE] grid place-items-center text-[16px] font-bold text-[#1F4E79]">
                         {i + 1}
                       </span>
@@ -272,14 +272,14 @@ function HomeScreen({
                         type="text"
                         value={opt}
                         onChange={(e) => setOption(i, e.target.value)}
-                        className="flex-1 h-[52px] rounded-xl border border-[#C4D8E4] focus:border-[#23B2C3] px-4 text-[18px] text-[#1F2933] outline-none"
+                        className="min-w-0 flex-1 h-[52px] rounded-xl border border-[#C4D8E4] focus:border-[#23B2C3] px-3 sm:px-4 text-[18px] text-[#1F2933] outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => removeOption(i)}
                         disabled={options.length <= 2}
                         aria-label={`보기 ${i + 1} 삭제`}
-                        className="w-12 h-12 shrink-0 rounded-lg border border-[#DCE7EE] text-[#5A6B73] text-2xl grid place-items-center disabled:opacity-30"
+                        className="w-10 sm:w-12 h-12 shrink-0 rounded-lg border border-[#DCE7EE] text-[#5A6B73] text-2xl grid place-items-center disabled:opacity-30"
                       >
                         ×
                       </button>

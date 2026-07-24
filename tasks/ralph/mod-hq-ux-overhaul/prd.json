@@ -12,8 +12,8 @@
       "id": "M1",
       "title": "Keep moderator form usable at narrow width and 200 percent zoom",
       "priority": 1,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "acceptance": [
         "At 390px all option inputs and delete controls remain inside the poll card",
         "At 200 percent zoom the poll and timer cards remain readable without horizontal clipping",

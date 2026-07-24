@@ -7,3 +7,11 @@
 - Product decision: card selection opens a team detail panel. Recent poll results must not be mislabeled as an official recommendation. Compare mode is explicit and limited to three teams.
 - Known baseline: focused moderator tests pass; full `astro check` has pre-existing errors in `VoteCard.tsx`, readonly test fixtures, and Deno edge-function type resolution.
 - Next: M1.
+
+## 2026-07-25 M1
+- Changed: added narrow-width padding, `min-w-0`, adaptive gaps, and compact delete controls to the poll form.
+- Verified: Node 20 Astro production build passed.
+- Verified: local static build at 390×844 kept the question input, both option inputs, and both delete controls inside the 336px card; document horizontal overflow was false.
+- Verified: 53 focused moderator tests passed and browser console had no warnings or errors.
+- Learned: the clipping came from the default flex-item minimum width, not from test data or the one-column breakpoint.
+- Next: H1.
