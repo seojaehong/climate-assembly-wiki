@@ -15,3 +15,11 @@
 - Verified: 53 focused moderator tests passed and browser console had no warnings or errors.
 - Learned: the clipping came from the default flex-item minimum width, not from test data or the one-column breakpoint.
 - Next: H1.
+
+## 2026-07-25 H1
+- Changed: compressed the HQ cards to 158px, reduced title/counter scale, removed truncation, and added status summary plus subgroup/status filters.
+- Verified: 9 HQ logic tests passed.
+- Verified: at 1440×900 all 15 cards ended at 732px with no horizontal overflow; at 1920×1080 all 15 cards had no clipped descendants.
+- Verified: the live-backed local build loaded 15 teams and status filters updated their pressed state correctly.
+- Learned: the 5×3 topology was not the problem; the former 354px card height and 92px counter were.
+- Next: H2.

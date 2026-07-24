@@ -27,8 +27,8 @@
       "id": "H1",
       "title": "Make the 15-team headquarters overview projector-readable",
       "priority": 2,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "acceptance": [
         "At 1440x900 and 1920x1080 all 15 teams fit in a compact 5 by 3 overview",
         "Full team names and participation counters do not truncate or wrap",

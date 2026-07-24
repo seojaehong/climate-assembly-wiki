@@ -1,6 +1,7 @@
 import type { HqTeam, Round } from '../../lib/mod-console';
 
 export type TeamCellResult = { label: '대기' | '투표중' | '마감'; participation: string };
+export type HqSummary = { total: number; waiting: number; polling: number; closed: number };
 
 function latestClosedRound(rounds: Round[]): Round | undefined {
   return [...rounds]
@@ -51,4 +52,30 @@ export function relevantRoundIds(teams: HqTeam[], rounds: Round[]): string[] {
     if (closed) ids.push(closed.id);
   }
   return ids;
+}
+
+export function summarizeTeamCells(
+  teams: HqTeam[],
+  rounds: Round[],
+  voteCounts: Record<string, number>,
+): HqSummary {
+  const summary: HqSummary = { total: teams.length, waiting: 0, polling: 0, closed: 0 };
+  for (const team of teams) {
+    const label = teamCell(team, rounds, voteCounts).label;
+    if (label === '대기') summary.waiting += 1;
+    if (label === '투표중') summary.polling += 1;
+    if (label === '마감') summary.closed += 1;
+  }
+  return summary;
+}
+
+export function teamMatchesFilters(
+  team: HqTeam,
+  cell: TeamCellResult,
+  statusFilter: '전체' | TeamCellResult['label'],
+  subgroupFilter: string,
+): boolean {
+  const statusMatches = statusFilter === '전체' || cell.label === statusFilter;
+  const subgroupMatches = subgroupFilter === '전체' || team.subgroup === subgroupFilter;
+  return statusMatches && subgroupMatches;
 }

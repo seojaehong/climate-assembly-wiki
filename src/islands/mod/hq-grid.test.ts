@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { teamCell, relevantRoundIds } from './hq-grid-logic';
+import { teamCell, relevantRoundIds, summarizeTeamCells, teamMatchesFilters } from './hq-grid-logic';
 import type { HqTeam, Round } from '../../lib/mod-console';
 
 const team: HqTeam = { id: 't1', name: '1조', subgroup: '교육', capacity: 14, status: 'active' };
@@ -74,5 +74,36 @@ describe('relevantRoundIds', () => {
       // t3: 라운드 없음
     ];
     expect(relevantRoundIds(teams, rounds)).toEqual(['r1', 'r3']);
+  });
+});
+
+describe('summarizeTeamCells', () => {
+  it('대기·투표중·마감 상태를 전체 조 기준으로 집계한다', () => {
+    const teams: HqTeam[] = [
+      team,
+      { id: 't2', name: '2조', subgroup: '전환', capacity: 10, status: 'active' },
+      { id: 't3', name: '3조', subgroup: '전환', capacity: 10, status: 'active' },
+    ];
+    const rounds = [
+      round({ id: 'r1', status: 'active', team_id: 't1', created_at: '2026-07-24T03:00:00Z' }),
+      round({ id: 'r2', status: 'closed', team_id: 't2', created_at: '2026-07-24T02:00:00Z' }),
+    ];
+
+    expect(summarizeTeamCells(teams, rounds, { r1: 4, r2: 7 })).toEqual({
+      total: 3,
+      waiting: 1,
+      polling: 1,
+      closed: 1,
+    });
+  });
+});
+
+describe('teamMatchesFilters', () => {
+  it('상태와 분과 필터를 함께 적용한다', () => {
+    const cell = { label: '투표중', participation: '5/14' } as const;
+    expect(teamMatchesFilters(team, cell, '전체', '전체')).toBe(true);
+    expect(teamMatchesFilters(team, cell, '투표중', '교육')).toBe(true);
+    expect(teamMatchesFilters(team, cell, '마감', '교육')).toBe(false);
+    expect(teamMatchesFilters(team, cell, '투표중', '전환')).toBe(false);
   });
 });
