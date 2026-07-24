@@ -862,7 +862,9 @@ export default function ModConsole() {
         if (round) setVotes([]);
         dispatch({ type: 'RESTORE_TEAM', team, round });
       })
-      .catch(() => sessionStorage.removeItem(CODE_KEY));
+      // RPC/네트워크 오류(일시 장애)에는 저장 코드를 지우지 않는다 — 다음 새로고침에서 재시도.
+      // 무효/재발급된 코드는 위의 team===null 분기에서만 제거된다.
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
