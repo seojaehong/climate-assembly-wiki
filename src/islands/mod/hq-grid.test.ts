@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { teamCell, relevantRoundIds } from './hq-grid-logic';
+import {
+  hqConnectionState,
+  latestTeamRound,
+  leadingResult,
+  toggleComparisonSelection,
+  teamCell,
+  relevantRoundIds,
+  summarizeTeamCells,
+  teamMatchesFilters,
+} from './hq-grid-logic';
 import type { HqTeam, Round } from '../../lib/mod-console';
 
 const team: HqTeam = { id: 't1', name: '1조', subgroup: '교육', capacity: 14, status: 'active' };
@@ -74,5 +83,93 @@ describe('relevantRoundIds', () => {
       // t3: 라운드 없음
     ];
     expect(relevantRoundIds(teams, rounds)).toEqual(['r1', 'r3']);
+  });
+});
+
+describe('latestTeamRound and leadingResult', () => {
+  it('활성 라운드를 우선하고, 없으면 최신 마감 라운드를 선택한다', () => {
+    const rounds = [
+      round({ id: 'closed-new', status: 'closed', created_at: '2026-07-24T03:00:00Z' }),
+      round({ id: 'active-old', status: 'active', created_at: '2026-07-24T01:00:00Z' }),
+    ];
+    expect(latestTeamRound('t1', rounds)?.id).toBe('active-old');
+    expect(latestTeamRound('missing', rounds)).toBeNull();
+  });
+
+  it('선두 선택지와 공동 선두를 도출하고 무득표는 null로 처리한다', () => {
+    const target = round({ id: 'r1', status: 'closed' });
+    const votes = [
+      { id: 1, round_id: 'r1', choice: 'A', archived_at: null },
+      { id: 2, round_id: 'r1', choice: 'B', archived_at: null },
+      { id: 3, round_id: 'r1', choice: 'A', archived_at: null },
+    ];
+    expect(leadingResult(target, votes)).toEqual({ option: 'A', count: 2, tied: false });
+    expect(leadingResult(target, votes.slice(0, 2))).toEqual({ option: 'A', count: 1, tied: true });
+    expect(leadingResult(target, [])).toBeNull();
+  });
+});
+
+describe('toggleComparisonSelection', () => {
+  it('최대 3개까지 추가하고 선택된 조는 다시 누르면 해제한다', () => {
+    expect(toggleComparisonSelection([], 't1')).toEqual({ ids: ['t1'], limitReached: false });
+    expect(toggleComparisonSelection(['t1', 't2'], 't3')).toEqual({
+      ids: ['t1', 't2', 't3'],
+      limitReached: false,
+    });
+    expect(toggleComparisonSelection(['t1', 't2'], 't1')).toEqual({ ids: ['t2'], limitReached: false });
+  });
+
+  it('최대치에서는 기존 선택을 보존하고 제한 도달을 알린다', () => {
+    expect(toggleComparisonSelection(['t1', 't2', 't3'], 't4')).toEqual({
+      ids: ['t1', 't2', 't3'],
+      limitReached: true,
+    });
+  });
+});
+
+describe('summarizeTeamCells', () => {
+  it('대기·투표중·마감 상태를 전체 조 기준으로 집계한다', () => {
+    const teams: HqTeam[] = [
+      team,
+      { id: 't2', name: '2조', subgroup: '전환', capacity: 10, status: 'active' },
+      { id: 't3', name: '3조', subgroup: '전환', capacity: 10, status: 'active' },
+    ];
+    const rounds = [
+      round({ id: 'r1', status: 'active', team_id: 't1', created_at: '2026-07-24T03:00:00Z' }),
+      round({ id: 'r2', status: 'closed', team_id: 't2', created_at: '2026-07-24T02:00:00Z' }),
+    ];
+
+    expect(summarizeTeamCells(teams, rounds, { r1: 4, r2: 7 })).toEqual({
+      total: 3,
+      waiting: 1,
+      polling: 1,
+      closed: 1,
+    });
+  });
+});
+
+describe('teamMatchesFilters', () => {
+  it('상태와 분과 필터를 함께 적용한다', () => {
+    const cell = { label: '투표중', participation: '5/14' } as const;
+    expect(teamMatchesFilters(team, cell, '전체', '전체')).toBe(true);
+    expect(teamMatchesFilters(team, cell, '투표중', '교육')).toBe(true);
+    expect(teamMatchesFilters(team, cell, '마감', '교육')).toBe(false);
+    expect(teamMatchesFilters(team, cell, '투표중', '전환')).toBe(false);
+  });
+});
+
+describe('hqConnectionState', () => {
+  const base = { nowMs: 70_000, staleAfterMs: 65_000 };
+
+  it('첫 로딩과 첫 연결 실패를 구분한다', () => {
+    expect(hqConnectionState({ ...base, updatedAtMs: null, refreshing: true, hasError: false })).toBe('loading');
+    expect(hqConnectionState({ ...base, updatedAtMs: null, refreshing: false, hasError: true })).toBe('failed');
+  });
+
+  it('성공 데이터가 있으면 실시간·갱신중·지연·성능저하를 구분한다', () => {
+    expect(hqConnectionState({ ...base, updatedAtMs: 60_000, refreshing: false, hasError: false })).toBe('live');
+    expect(hqConnectionState({ ...base, updatedAtMs: 60_000, refreshing: true, hasError: false })).toBe('refreshing');
+    expect(hqConnectionState({ ...base, updatedAtMs: 0, refreshing: false, hasError: false })).toBe('stale');
+    expect(hqConnectionState({ ...base, updatedAtMs: 60_000, refreshing: false, hasError: true })).toBe('degraded');
   });
 });

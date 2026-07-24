@@ -1,0 +1,113 @@
+{
+  "feature": "Moderator and headquarters UX overhaul",
+  "branchName": "feat/mod-hq-ux-overhaul",
+  "qualityChecks": [
+    "npm.cmd exec -- vitest run src/lib/mod-console.test.ts src/islands/mod/mod-state.test.ts src/islands/mod/timer.test.ts src/islands/mod/vote-card.test.ts src/islands/mod/hq-grid.test.ts",
+    "npm.cmd run check",
+    "npm.cmd run build",
+    "Browser verification at 390x844, 1440x900, and 1920x1080"
+  ],
+  "userStories": [
+    {
+      "id": "M1",
+      "title": "Keep moderator form usable at narrow width and 200 percent zoom",
+      "priority": 1,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "At 390px all option inputs and delete controls remain inside the poll card",
+        "At 200 percent zoom the poll and timer cards remain readable without horizontal clipping",
+        "Focused tests and browser checks pass"
+      ],
+      "files": [
+        "src/islands/mod/ModConsole.tsx"
+      ]
+    },
+    {
+      "id": "H1",
+      "title": "Make the 15-team headquarters overview projector-readable",
+      "priority": 2,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "At 1440x900 and 1920x1080 all 15 teams fit in a compact 5 by 3 overview",
+        "Full team names and participation counters do not truncate or wrap",
+        "Summary counts and subgroup or status filters make attention states scannable"
+      ],
+      "files": [
+        "src/islands/mod/HqGrid.tsx",
+        "src/islands/mod/hq-grid-logic.ts",
+        "src/islands/mod/hq-grid.test.ts"
+      ]
+    },
+    {
+      "id": "H2",
+      "title": "Expose connection, loading, stale, and retry states",
+      "priority": 3,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "Fetch failures show a recoverable error instead of an endless loading state",
+        "Last successful data remains visible during a refresh failure",
+        "The header distinguishes live, refreshing, delayed, and failed states with text"
+      ],
+      "files": [
+        "src/islands/mod/HqGrid.tsx"
+      ]
+    },
+    {
+      "id": "H3",
+      "title": "Open a keyboard-accessible team detail panel",
+      "priority": 4,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "Click, Enter, or Space on a team card opens its detail panel",
+        "The selected team is reflected in the team URL query parameter and restores on reload",
+        "The panel shows latest question, options, per-option results, participation, status, and update time",
+        "Recent poll results are clearly distinguished from an official recommendation"
+      ],
+      "files": [
+        "src/islands/mod/HqGrid.tsx",
+        "src/lib/mod-console.ts",
+        "src/lib/mod-console.test.ts"
+      ]
+    },
+    {
+      "id": "H4",
+      "title": "Add an explicit limited team comparison mode",
+      "priority": 5,
+      "status": "done",
+      "passes": true,
+      "acceptance": [
+        "Comparison controls appear only after compare mode is enabled",
+        "Users can select up to three teams and compare status, participation, latest question, and leading result",
+        "Selection limits and empty states are explained in visible text"
+      ],
+      "files": [
+        "src/islands/mod/HqGrid.tsx",
+        "src/islands/mod/hq-grid-logic.ts",
+        "src/islands/mod/hq-grid.test.ts"
+      ]
+    },
+    {
+      "id": "V1",
+      "title": "Complete regression, responsive, and live deployment verification",
+      "priority": 6,
+      "status": "todo",
+      "passes": false,
+      "acceptance": [
+        "Relevant unit tests pass",
+        "Production build passes",
+        "Known unrelated type-check failures are either fixed or explicitly evidenced",
+        "Browser verification passes at the required desktop, mobile, dark-mode, and 200 percent zoom states",
+        "Git remote and deployed custom-domain state match the final implementation"
+      ],
+      "files": [
+        "tasks/ralph/mod-hq-ux-overhaul/prd.json",
+        "tasks/ralph/mod-hq-ux-overhaul/progress.txt",
+        "evaluation/2026-07-25-mod-hq-ux-overhaul-verification.md"
+      ]
+    }
+  ]
+}

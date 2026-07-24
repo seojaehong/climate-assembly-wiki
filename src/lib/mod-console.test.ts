@@ -7,7 +7,10 @@ import {
   fetchHqTeams,
   fetchTeamRounds,
   fetchVoteCounts,
+  fetchVotesForRounds,
   joinTeam,
+  type Round,
+  type Vote,
 } from './mod-console';
 import { getSupabase } from './supabase';
 
@@ -24,9 +27,9 @@ describe('isValidJoinCode', () => {
   });
 });
 describe('tallyVotes', () => {
-  const round = { id: 'r', title: 't', type: 'RADIO', options: ['A','B'], status: 'active', team_id: null } as const;
+  const round: Round = { id: 'r', title: 't', type: 'RADIO', options: ['A', 'B'], status: 'active', team_id: null };
   it('RADIO 집계 + archived 제외', () => {
-    const votes = [
+    const votes: Vote[] = [
       { id: 1, round_id: 'r', choice: 'A', archived_at: null },
       { id: 2, round_id: 'r', choice: 'A', archived_at: null },
       { id: 3, round_id: 'r', choice: 'B', archived_at: '2026-07-24' },
@@ -34,8 +37,8 @@ describe('tallyVotes', () => {
     expect(tallyVotes(round, votes)).toEqual({ total: 2, byOption: { A: 2, B: 0 } });
   });
   it('CHECKBOX는 배열 각 항목 1카운트', () => {
-    const r = { ...round, type: 'CHECKBOX' as const };
-    const votes = [{ id: 1, round_id: 'r', choice: ['A','B'], archived_at: null }];
+    const r: Round = { ...round, type: 'CHECKBOX' };
+    const votes: Vote[] = [{ id: 1, round_id: 'r', choice: ['A', 'B'], archived_at: null }];
     expect(tallyVotes(r, votes)).toEqual({ total: 1, byOption: { A: 1, B: 1 } });
   });
 });
@@ -294,5 +297,51 @@ describe('fetchVoteCounts', () => {
     mockCountChain({ r1: { count: null, error: err } });
 
     await expect(fetchVoteCounts(['r1'])).rejects.toBe(err);
+  });
+});
+
+describe('fetchVotesForRounds', () => {
+  beforeEach(() => {
+    vi.mocked(getSupabase).mockReset();
+  });
+
+  it('미보관 표를 한 번에 조회해 라운드별로 묶고 빈 라운드도 보존한다', async () => {
+    const result = {
+      data: [
+        { id: 1, round_id: 'r1', choice: 'A', archived_at: null },
+        { id: 2, round_id: 'r1', choice: 'B', archived_at: null },
+      ],
+      error: null,
+    };
+    const is = vi.fn(() => Promise.resolve(result));
+    const inFilter = vi.fn(() => ({ is }));
+    const select = vi.fn(() => ({ in: inFilter }));
+    const from = vi.fn(() => ({ select }));
+    const schema = vi.fn(() => ({ from }));
+    vi.mocked(getSupabase).mockReturnValue({ schema } as never);
+
+    await expect(fetchVotesForRounds(['r1', 'r2'])).resolves.toEqual({
+      r1: result.data,
+      r2: [],
+    });
+    expect(inFilter).toHaveBeenCalledWith('round_id', ['r1', 'r2']);
+    expect(is).toHaveBeenCalledWith('archived_at', null);
+  });
+
+  it('라운드가 없으면 Supabase를 호출하지 않는다', async () => {
+    await expect(fetchVotesForRounds([])).resolves.toEqual({});
+    expect(getSupabase).not.toHaveBeenCalled();
+  });
+
+  it('조회 오류를 throw한다', async () => {
+    const err = new Error('boom');
+    const is = vi.fn(() => Promise.resolve({ data: null, error: err }));
+    const inFilter = vi.fn(() => ({ is }));
+    const select = vi.fn(() => ({ in: inFilter }));
+    const from = vi.fn(() => ({ select }));
+    const schema = vi.fn(() => ({ from }));
+    vi.mocked(getSupabase).mockReturnValue({ schema } as never);
+
+    await expect(fetchVotesForRounds(['r1'])).rejects.toBe(err);
   });
 });

@@ -1,0 +1,54 @@
+# Ralph progress — mod-hq-ux-overhaul
+
+## 2026-07-25 baseline
+- Branch: `feat/mod-hq-ux-overhaul` from `eeb1890`.
+- Live evidence: `/mod` option delete buttons are clipped at a 390px effective viewport; `/hq` truncates team names and wraps `0/20` at 1440px.
+- Data contract: `/hq` currently reads teams, rounds, and total vote counts. Existing rounds already contain question title and options; per-option details require loading vote rows.
+- Product decision: card selection opens a team detail panel. Recent poll results must not be mislabeled as an official recommendation. Compare mode is explicit and limited to three teams.
+- Known baseline: focused moderator tests pass; full `astro check` has pre-existing errors in `VoteCard.tsx`, readonly test fixtures, and Deno edge-function type resolution.
+- Next: M1.
+
+## 2026-07-25 M1
+- Changed: added narrow-width padding, `min-w-0`, adaptive gaps, and compact delete controls to the poll form.
+- Verified: Node 20 Astro production build passed.
+- Verified: local static build at 390×844 kept the question input, both option inputs, and both delete controls inside the 336px card; document horizontal overflow was false.
+- Verified: 53 focused moderator tests passed and browser console had no warnings or errors.
+- Learned: the clipping came from the default flex-item minimum width, not from test data or the one-column breakpoint.
+- Next: H1.
+
+## 2026-07-25 H1
+- Changed: compressed the HQ cards to 158px, reduced title/counter scale, removed truncation, and added status summary plus subgroup/status filters.
+- Verified: 9 HQ logic tests passed.
+- Verified: at 1440×900 all 15 cards ended at 732px with no horizontal overflow; at 1920×1080 all 15 cards had no clipped descendants.
+- Verified: the live-backed local build loaded 15 teams and status filters updated their pressed state correctly.
+- Learned: the 5×3 topology was not the problem; the former 354px card height and 92px counter were.
+- Next: H2.
+
+## 2026-07-25 H2
+- Changed: replaced the silent refresh failure with explicit loading, refreshing, live, stale, failed, and degraded states plus a retry action.
+- Changed: preserved last successful teams and counts when a refresh fails and added a logged error.
+- Verified: 11 HQ logic tests passed, including connection-state boundaries.
+- Verified: browser network-offline simulation produced `이전 데이터 표시`, a visible alert, and a retry button while all 15 prior cards remained visible.
+- Verified: restoring the network and pressing retry removed the alert and returned to `실시간 연결`.
+- Next: H3.
+
+## 2026-07-25 H3
+- Changed: converted every team card into a native keyboard-operable button and added a right-side detail dialog with Escape/backdrop/close controls.
+- Changed: synchronized the selected team with the `team` URL query parameter so the detail survives reload and browser history navigation.
+- Changed: added one read-only batched vote query for relevant rounds, option-level tally bars, leading-result context, participation, status, and last-update time.
+- Guardrail: the detail explicitly labels results as operational context and states that they are not an official recommendation.
+- Verified: 37 focused data/logic tests passed, including batching, errors, latest-round selection, leaders, ties, and empty results.
+- Verified: the Node 20 production build passed.
+- Verified: the live-backed local UI exposed every card as a named button; clicking opened the expected dialog and added `?team=<id>`, reload restored it, and Escape closed it while removing the query parameter.
+- Verified: current seeded data has no rounds, so the browser correctly showed the no-poll empty state; option-level rendering is covered by deterministic tally tests without mutating the live database.
+- Next: H4.
+
+## 2026-07-25 H4
+- Changed: added an explicit compare entry point; team cards become comparison toggles only while compare mode is active.
+- Changed: added visible selection count, three-team limit guidance, empty state, clear, remove, and exit controls.
+- Changed: selected teams render side-by-side status, participation, latest question, and leading-result summaries.
+- Verified: 39 focused data/logic tests passed, including add/remove/maximum selection behavior.
+- Verified: the Node 20 production build passed.
+- Verified: the live-backed local UI hid comparison controls before activation, rendered a 0/3 empty state after activation, compared exactly three teams, retained three after a fourth selection attempt, and showed a visible maximum-limit alert.
+- Verified: each comparison card exposed status, participation, latest question, leading result, and an explicit remove action; exiting removed all comparison UI.
+- Next: V1.

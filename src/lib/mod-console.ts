@@ -269,6 +269,26 @@ export async function fetchVoteCounts(roundIds: string[]): Promise<Record<string
   return counts;
 }
 
+/** 주어진 라운드들의 미보관 표를 한 번에 조회해 라운드별로 묶는다. /hq 상세·비교 표시 전용 읽기 경로. */
+export async function fetchVotesForRounds(roundIds: string[]): Promise<Record<string, Vote[]>> {
+  const votesByRound = Object.fromEntries(roundIds.map((roundId) => [roundId, [] as Vote[]]));
+  if (roundIds.length === 0) return votesByRound;
+
+  const sb = client();
+  const { data, error } = await sb
+    .schema('climate_vote')
+    .from('votes')
+    .select('id,round_id,choice,archived_at')
+    .in('round_id', roundIds)
+    .is('archived_at', null);
+  if (error) throw error;
+
+  for (const vote of (data ?? []) as Vote[]) {
+    (votesByRound[vote.round_id] ??= []).push(vote);
+  }
+  return votesByRound;
+}
+
 /** rounds/votes(climate_vote) 실시간 변경을 구독한다(필터 없음 — 그리드 전체 갱신 트리거용). */
 export function subscribeHqUpdates(onChange: () => void): () => void {
   const sb = client();
