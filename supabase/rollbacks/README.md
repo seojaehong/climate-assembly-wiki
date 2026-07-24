@@ -12,6 +12,7 @@
 | 파일 | 대응 migration | 설명 |
 |------|----------------|------|
 | `20260621140534_BEFORE_snapshot_rpc.sql` | `migrations/20260621140534_snapshot_include_agenda.sql` | agenda·tally 키 추가 이전 cv_snapshot_now·cv_archive_round 원상복구 |
+| `20260724_BEFORE_mod_console.sql` | `migrations/20260724_mod_console_core.sql` | Part A: team/timer_log 키 추가 이전 cv_snapshot_now 원상복구. Part B(파괴적): team·timer_log·module_state·chat_message 테이블 및 mod_*/hq_teams RPC 전체 drop |
 
 ## 롤백 절차 (예시)
 
