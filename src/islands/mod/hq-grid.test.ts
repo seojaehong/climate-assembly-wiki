@@ -47,6 +47,17 @@ describe('teamCell', () => {
     const result = teamCell(team, rounds, { r1: 5 });
     expect(result).toEqual({ label: '대기', participation: '0/14' });
   });
+
+  it('팀에 active 라운드 2개(비정렬 입력) → 최신 created_at 선택', () => {
+    // 스키마상 팀당 active 라운드가 2개 이상일 수 있음. 입력 순서(older-first)에
+    // 의존하지 않고 created_at 기준 최신 라운드를 선택해야 한다.
+    const rounds = [
+      round({ id: 'r-older', status: 'active', created_at: '2026-07-24T01:00:00Z' }),
+      round({ id: 'r-newer', status: 'active', created_at: '2026-07-24T02:00:00Z' }),
+    ];
+    const result = teamCell(team, rounds, { 'r-older': 3, 'r-newer': 9 });
+    expect(result).toEqual({ label: '투표중', participation: '9/14' });
+  });
 });
 
 describe('relevantRoundIds', () => {

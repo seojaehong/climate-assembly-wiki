@@ -15,7 +15,12 @@ function latestClosedRound(rounds: Round[]): Round | undefined {
  * - 둘 다 없으면 '대기' + 0/capacity.
  */
 export function teamCell(team: HqTeam, rounds: Round[], voteCounts: Record<string, number>): TeamCellResult {
-  const teamRounds = rounds.filter((r) => r.team_id === team.id);
+  // 스키마상 팀당 active 라운드가 2개 이상일 수 있어(동시 다건 오픈), 호출자의 정렬 순서에
+  // 기대지 않도록 여기서 created_at desc로 한 번 정렬한 사본을 두 선택 경로(active .find /
+  // closed 최신 선택)가 공유한다 — order-independent 보장.
+  const teamRounds = rounds
+    .filter((r) => r.team_id === team.id)
+    .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
 
   const active = teamRounds.find((r) => r.status === 'active');
   if (active) {
