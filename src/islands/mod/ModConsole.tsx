@@ -56,6 +56,7 @@ function JoinScreen({
   busy: boolean;
 }) {
   const [digits, setDigits] = useState<string>('');
+  const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -87,25 +88,31 @@ function JoinScreen({
           </p>
 
           <div
-            className="flex justify-center gap-2 sm:gap-3 mb-3"
+            className="flex justify-center gap-2 sm:gap-3 mb-3 max-w-full cursor-text"
             role="group"
             aria-label="접속코드 6자리"
+            onClick={() => inputRef.current?.focus()}
           >
-            {cells.map((d, i) => (
-              <div
-                key={i}
-                className={`w-[72px] h-[96px] sm:w-[88px] sm:h-[120px] rounded-2xl border grid place-items-center text-[44px] font-extrabold tr-num ${
-                  error
-                    ? 'border-2 border-[#DC2626] bg-[#FEF2F2] text-[#DC2626]'
-                    : d
-                      ? 'border-[#C4D8E4] bg-[#F1F7FA] text-[#1F4E79]'
-                      : 'border-[#DCE7EE] bg-white text-[#1F4E79]'
-                }`}
-                style={{ fontVariantNumeric: 'tabular-nums' }}
-              >
-                {d}
-              </div>
-            ))}
+            {cells.map((d, i) => {
+              const isActive = focused && i === digits.length && digits.length < 6;
+              return (
+                <div
+                  key={i}
+                  className={`w-12 h-16 sm:w-14 sm:h-[72px] rounded-2xl border grid place-items-center text-[44px] font-extrabold tr-num ${
+                    error
+                      ? 'border-2 border-[#DC2626] bg-[#FEF2F2] text-[#DC2626]'
+                      : isActive
+                        ? 'border-2 border-[#23B2C3] bg-[#F1F7FA] text-[#1F4E79]'
+                        : d
+                          ? 'border-[#C4D8E4] bg-[#F1F7FA] text-[#1F4E79]'
+                          : 'border-[#DCE7EE] bg-white text-[#1F4E79]'
+                  }`}
+                  style={{ fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {d}
+                </div>
+              );
+            })}
           </div>
 
           <input
@@ -116,6 +123,14 @@ function JoinScreen({
             value={digits}
             aria-label="조 접속코드 6자리 입력"
             className="sr-only"
+            autoFocus
+            onFocus={() => setFocused(true)}
+            onBlur={() => {
+              setFocused(false);
+              setTimeout(() => {
+                if (document.activeElement === document.body) inputRef.current?.focus();
+              }, 50);
+            }}
             onChange={(e) => {
               const v = e.target.value.replace(/\D/g, '').slice(0, 6);
               setDigits(v);
