@@ -52,3 +52,16 @@
 - Verified: the live-backed local UI hid comparison controls before activation, rendered a 0/3 empty state after activation, compared exactly three teams, retained three after a fourth selection attempt, and showed a visible maximum-limit alert.
 - Verified: each comparison card exposed status, participation, latest question, leading result, and an explicit remove action; exiting removed all comparison UI.
 - Next: V1.
+
+## 2026-07-25 V1
+- Changed: fixed the remaining frontend type errors and separated Deno Edge Functions from the Astro web-app type-check boundary.
+- Verified: 87 focused moderator/HQ tests passed.
+- Verified: `npm.cmd run check` passed with 0 errors and 0 warnings.
+- Verified: the final Node 20 Astro production build produced 7,905 pages in 98.61 seconds.
+- Verified: final browser matrix passed at 390×844 effective mobile width, 1440×900, 1920×1080, OS dark mode, and the prior 200 percent effective-width scenario.
+- Verified: Cloudflare Pages production deployment `329e0e90` uploaded 16,267 files from main `e450a25`; the custom domain switched to `HqGrid.CG6Is15V.js`.
+- Verified: live `/hq` loaded 15 teams, restored a team detail from the URL, closed with Escape, compared three teams, and rejected a fourth with a visible alert.
+- Verified: live `/mod` loaded, accepted join code `422040`, showed the poll/timer controls, retained the light palette under dark mode, and had no horizontal overflow.
+- Honest limit: current live seed has no rounds, so option-level results were verified by unit tests without writing synthetic production votes. Physical-phone QR voting remains a field-device check.
+- Artifact: `evaluation/2026-07-25-mod-hq-ux-overhaul-verification.md`.
+- Result: all Ralph stories pass.

@@ -94,8 +94,8 @@
       "id": "V1",
       "title": "Complete regression, responsive, and live deployment verification",
       "priority": 6,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "acceptance": [
         "Relevant unit tests pass",
         "Production build passes",
