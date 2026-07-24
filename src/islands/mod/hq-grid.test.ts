@@ -3,6 +3,7 @@ import {
   hqConnectionState,
   latestTeamRound,
   leadingResult,
+  toggleComparisonSelection,
   teamCell,
   relevantRoundIds,
   summarizeTeamCells,
@@ -105,6 +106,24 @@ describe('latestTeamRound and leadingResult', () => {
     expect(leadingResult(target, votes)).toEqual({ option: 'A', count: 2, tied: false });
     expect(leadingResult(target, votes.slice(0, 2))).toEqual({ option: 'A', count: 1, tied: true });
     expect(leadingResult(target, [])).toBeNull();
+  });
+});
+
+describe('toggleComparisonSelection', () => {
+  it('최대 3개까지 추가하고 선택된 조는 다시 누르면 해제한다', () => {
+    expect(toggleComparisonSelection([], 't1')).toEqual({ ids: ['t1'], limitReached: false });
+    expect(toggleComparisonSelection(['t1', 't2'], 't3')).toEqual({
+      ids: ['t1', 't2', 't3'],
+      limitReached: false,
+    });
+    expect(toggleComparisonSelection(['t1', 't2'], 't1')).toEqual({ ids: ['t2'], limitReached: false });
+  });
+
+  it('최대치에서는 기존 선택을 보존하고 제한 도달을 알린다', () => {
+    expect(toggleComparisonSelection(['t1', 't2', 't3'], 't4')).toEqual({
+      ids: ['t1', 't2', 't3'],
+      limitReached: true,
+    });
   });
 });
 

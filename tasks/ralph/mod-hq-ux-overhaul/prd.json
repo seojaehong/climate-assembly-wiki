@@ -77,8 +77,8 @@
       "id": "H4",
       "title": "Add an explicit limited team comparison mode",
       "priority": 5,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "acceptance": [
         "Comparison controls appear only after compare mode is enabled",
         "Users can select up to three teams and compare status, participation, latest question, and leading result",

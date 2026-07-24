@@ -4,6 +4,7 @@ export type TeamCellResult = { label: '대기' | '투표중' | '마감'; partici
 export type HqSummary = { total: number; waiting: number; polling: number; closed: number };
 export type HqConnectionState = 'loading' | 'refreshing' | 'live' | 'stale' | 'failed' | 'degraded';
 export type LeadingResult = { option: string; count: number; tied: boolean } | null;
+export type ComparisonSelection = { ids: string[]; limitReached: boolean };
 
 function latestClosedRound(rounds: Round[]): Round | undefined {
   return [...rounds]
@@ -76,6 +77,15 @@ export function leadingResult(round: Round | null, votes: Vote[]): LeadingResult
     count: ranked[0][1],
     tied: ranked.length > 1 && ranked[1][1] === ranked[0][1],
   };
+}
+
+/** 비교 선택을 토글한다. 이미 선택된 조는 해제하고, 최대치에서는 기존 선택을 보존한다. */
+export function toggleComparisonSelection(currentIds: string[], teamId: string, maxTeams = 3): ComparisonSelection {
+  if (currentIds.includes(teamId)) {
+    return { ids: currentIds.filter((id) => id !== teamId), limitReached: false };
+  }
+  if (currentIds.length >= maxTeams) return { ids: currentIds, limitReached: true };
+  return { ids: [...currentIds, teamId], limitReached: false };
 }
 
 export function summarizeTeamCells(
