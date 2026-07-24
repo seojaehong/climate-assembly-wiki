@@ -59,8 +59,8 @@
       "id": "H3",
       "title": "Open a keyboard-accessible team detail panel",
       "priority": 4,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "acceptance": [
         "Click, Enter, or Space on a team card opens its detail panel",
         "The selected team is reflected in the team URL query parameter and restores on reload",

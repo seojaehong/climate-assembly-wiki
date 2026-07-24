@@ -1,8 +1,9 @@
-import type { HqTeam, Round } from '../../lib/mod-console';
+import { tallyVotes, type HqTeam, type Round, type Vote } from '../../lib/mod-console';
 
 export type TeamCellResult = { label: '대기' | '투표중' | '마감'; participation: string };
 export type HqSummary = { total: number; waiting: number; polling: number; closed: number };
 export type HqConnectionState = 'loading' | 'refreshing' | 'live' | 'stale' | 'failed' | 'degraded';
+export type LeadingResult = { option: string; count: number; tied: boolean } | null;
 
 function latestClosedRound(rounds: Round[]): Round | undefined {
   return [...rounds]
@@ -53,6 +54,28 @@ export function relevantRoundIds(teams: HqTeam[], rounds: Round[]): string[] {
     if (closed) ids.push(closed.id);
   }
   return ids;
+}
+
+/** 상세·비교 화면에서 보여줄 팀의 현재 라운드. 활성 라운드를 우선하고, 없으면 최신 마감 라운드다. */
+export function latestTeamRound(teamId: string, rounds: Round[]): Round | null {
+  const teamRounds = rounds
+    .filter((round) => round.team_id === teamId)
+    .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
+  return teamRounds.find((round) => round.status === 'active') ?? latestClosedRound(teamRounds) ?? null;
+}
+
+/** 최근 투표의 선두 선택지. 공동 선두 여부를 함께 반환하고, 득표가 없으면 null이다. */
+export function leadingResult(round: Round | null, votes: Vote[]): LeadingResult {
+  if (!round) return null;
+  const ranked = Object.entries(tallyVotes(round, votes).byOption).sort(
+    ([optionA, countA], [optionB, countB]) => countB - countA || optionA.localeCompare(optionB, 'ko-KR'),
+  );
+  if (ranked.length === 0 || ranked[0][1] === 0) return null;
+  return {
+    option: ranked[0][0],
+    count: ranked[0][1],
+    tied: ranked.length > 1 && ranked[1][1] === ranked[0][1],
+  };
 }
 
 export function summarizeTeamCells(

@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   hqConnectionState,
+  latestTeamRound,
+  leadingResult,
   teamCell,
   relevantRoundIds,
   summarizeTeamCells,
@@ -80,6 +82,29 @@ describe('relevantRoundIds', () => {
       // t3: 라운드 없음
     ];
     expect(relevantRoundIds(teams, rounds)).toEqual(['r1', 'r3']);
+  });
+});
+
+describe('latestTeamRound and leadingResult', () => {
+  it('활성 라운드를 우선하고, 없으면 최신 마감 라운드를 선택한다', () => {
+    const rounds = [
+      round({ id: 'closed-new', status: 'closed', created_at: '2026-07-24T03:00:00Z' }),
+      round({ id: 'active-old', status: 'active', created_at: '2026-07-24T01:00:00Z' }),
+    ];
+    expect(latestTeamRound('t1', rounds)?.id).toBe('active-old');
+    expect(latestTeamRound('missing', rounds)).toBeNull();
+  });
+
+  it('선두 선택지와 공동 선두를 도출하고 무득표는 null로 처리한다', () => {
+    const target = round({ id: 'r1', status: 'closed' });
+    const votes = [
+      { id: 1, round_id: 'r1', choice: 'A', archived_at: null },
+      { id: 2, round_id: 'r1', choice: 'B', archived_at: null },
+      { id: 3, round_id: 'r1', choice: 'A', archived_at: null },
+    ];
+    expect(leadingResult(target, votes)).toEqual({ option: 'A', count: 2, tied: false });
+    expect(leadingResult(target, votes.slice(0, 2))).toEqual({ option: 'A', count: 1, tied: true });
+    expect(leadingResult(target, [])).toBeNull();
   });
 });
 

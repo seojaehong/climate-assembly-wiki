@@ -31,3 +31,14 @@
 - Verified: browser network-offline simulation produced `이전 데이터 표시`, a visible alert, and a retry button while all 15 prior cards remained visible.
 - Verified: restoring the network and pressing retry removed the alert and returned to `실시간 연결`.
 - Next: H3.
+
+## 2026-07-25 H3
+- Changed: converted every team card into a native keyboard-operable button and added a right-side detail dialog with Escape/backdrop/close controls.
+- Changed: synchronized the selected team with the `team` URL query parameter so the detail survives reload and browser history navigation.
+- Changed: added one read-only batched vote query for relevant rounds, option-level tally bars, leading-result context, participation, status, and last-update time.
+- Guardrail: the detail explicitly labels results as operational context and states that they are not an official recommendation.
+- Verified: 37 focused data/logic tests passed, including batching, errors, latest-round selection, leaders, ties, and empty results.
+- Verified: the Node 20 production build passed.
+- Verified: the live-backed local UI exposed every card as a named button; clicking opened the expected dialog and added `?team=<id>`, reload restored it, and Escape closed it while removing the query parameter.
+- Verified: current seeded data has no rounds, so the browser correctly showed the no-poll empty state; option-level rendering is covered by deterministic tally tests without mutating the live database.
+- Next: H4.

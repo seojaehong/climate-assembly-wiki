@@ -3,13 +3,18 @@ import {
   fetchHqTeams,
   fetchTeamRounds,
   fetchVoteCounts,
+  fetchVotesForRounds,
   subscribeHqUpdates,
+  tallyVotes,
   type HqTeam,
   type Round,
+  type Vote,
 } from '../../lib/mod-console';
 import {
   teamCell,
   hqConnectionState,
+  latestTeamRound,
+  leadingResult,
   relevantRoundIds,
   summarizeTeamCells,
   teamMatchesFilters,
@@ -38,10 +43,28 @@ function Eyebrow({ children, className = '' }: { children: React.ReactNode; clas
   );
 }
 
-function TeamCard({ team, cell }: { team: HqTeam; cell: TeamCellResult }) {
+function TeamCard({
+  team,
+  cell,
+  selected,
+  onSelect,
+}: {
+  team: HqTeam;
+  cell: TeamCellResult;
+  selected: boolean;
+  onSelect: () => void;
+}) {
   const style = STATUS_STYLE[cell.label];
   return (
-    <div className="min-h-[158px] rounded-2xl border border-[#DCE7EE] bg-white p-4 flex flex-col gap-3 shadow-sm">
+    <button
+      type="button"
+      aria-label={`${team.name} 상세 보기, ${cell.label}, 참여 ${cell.participation}`}
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={`min-h-[158px] w-full rounded-2xl border bg-white p-4 flex flex-col gap-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#23B2C3]/40 ${
+        selected ? 'border-[#1F4E79] ring-2 ring-[#1F4E79]/20' : 'border-[#DCE7EE]'
+      }`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div>
           <div
@@ -68,21 +91,174 @@ function TeamCard({ team, cell }: { team: HqTeam; cell: TeamCellResult }) {
           {cell.participation}
         </div>
       </div>
+      <span className="text-[12px] font-bold text-[#1F4E79]">상세 보기 →</span>
+    </button>
+  );
+}
+
+function TeamDetailPanel({
+  team,
+  cell,
+  round,
+  votes,
+  updatedAt,
+  onClose,
+}: {
+  team: HqTeam;
+  cell: TeamCellResult;
+  round: Round | null;
+  votes: Vote[];
+  updatedAt: Date | null;
+  onClose: () => void;
+}) {
+  const tally = round ? tallyVotes(round, votes) : null;
+  const leader = leadingResult(round, votes);
+  const options = round
+    ? Object.entries(tally?.byOption ?? {}).sort(
+        ([optionA, countA], [optionB, countB]) => countB - countA || optionA.localeCompare(optionB, 'ko-KR'),
+      )
+    : [];
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end" role="presentation">
+      <button
+        type="button"
+        aria-label="조 상세 닫기"
+        className="absolute inset-0 bg-[#132646]/45"
+        onClick={onClose}
+      />
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="team-detail-title"
+        className="relative z-10 flex h-full w-full max-w-[520px] flex-col overflow-y-auto bg-[#F5F8FB] shadow-2xl"
+      >
+        <header className="sticky top-0 z-10 border-b border-[#DCE7EE] bg-white px-5 py-5 sm:px-7">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <Eyebrow className="text-[#5A6B73]">Team detail · Read-only</Eyebrow>
+              <h2 id="team-detail-title" className="mt-1 text-[30px] font-extrabold leading-tight text-[#1F4E79]">
+                {team.name}
+              </h2>
+            </div>
+            <button
+              type="button"
+              autoFocus
+              onClick={onClose}
+              className="min-h-11 min-w-11 rounded-full border border-[#C4D8E4] bg-white text-[24px] font-bold text-[#1F4E79] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#23B2C3]/40"
+              aria-label={`${team.name} 상세 닫기`}
+            >
+              ×
+            </button>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="rounded-xl bg-[#EEF4F8] px-4 py-3">
+              <div className="text-[12px] font-bold text-[#5A6B73]">현재 상태</div>
+              <div className="mt-1 text-[20px] font-extrabold text-[#1F2933]">{cell.label}</div>
+            </div>
+            <div className="rounded-xl bg-[#EEF4F8] px-4 py-3">
+              <div className="text-[12px] font-bold text-[#5A6B73]">참여</div>
+              <div className="mt-1 text-[20px] font-extrabold text-[#1F4E79] tr-num">{cell.participation}</div>
+            </div>
+          </div>
+        </header>
+
+        <div className="space-y-5 p-5 sm:p-7">
+          {round ? (
+            <>
+              <div className="rounded-2xl border border-[#DCE7EE] bg-white p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Eyebrow className="text-[#5A6B73]">최근 투표 질문</Eyebrow>
+                  <span className="rounded-full bg-[#E6EBF3] px-3 py-1 text-[12px] font-bold text-[#132646]">
+                    {round.status === 'active' ? '투표 진행 중' : '투표 마감'}
+                  </span>
+                </div>
+                <h3 className="mt-3 text-[23px] font-extrabold leading-snug text-[#1F2933]">{round.title}</h3>
+                {leader ? (
+                  <div className="mt-4 rounded-xl bg-[#DFF6F8] px-4 py-3 text-[#0A4A52]">
+                    <div className="text-[12px] font-bold">현재 선두 선택지{leader.tied ? ' · 공동 선두' : ''}</div>
+                    <div className="mt-1 text-[18px] font-extrabold">{leader.option}</div>
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-xl bg-[#EEF1F3] px-4 py-3 text-[14px] font-semibold text-[#5A6B73]">
+                    아직 집계된 표가 없습니다.
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-[#DCE7EE] bg-white p-5">
+                <div className="flex items-end justify-between gap-3">
+                  <h3 className="text-[19px] font-extrabold text-[#1F2933]">선택지별 결과</h3>
+                  <span className="text-[13px] font-bold text-[#5A6B73]">참여 {tally?.total ?? 0}명</span>
+                </div>
+                <div className="mt-4 space-y-4">
+                  {options.map(([option, count]) => {
+                    const percentage = tally && tally.total > 0 ? Math.round((count / tally.total) * 100) : 0;
+                    return (
+                      <div key={option}>
+                        <div className="flex items-start justify-between gap-4 text-[15px]">
+                          <span className="font-bold text-[#1F2933]">{option}</span>
+                          <span className="shrink-0 font-extrabold text-[#1F4E79] tr-num">
+                            {count}표 · {percentage}%
+                          </span>
+                        </div>
+                        <div className="mt-2 h-3 overflow-hidden rounded-full bg-[#E6EBF3]">
+                          <div
+                            className="h-full rounded-full bg-[#23B2C3]"
+                            style={{ width: `${Math.min(percentage, 100)}%` }}
+                            aria-hidden="true"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-[#F0D28A] bg-[#FFF9E8] p-4 text-[14px] leading-relaxed text-[#5B450B]">
+                <strong className="block text-[#6B4B00]">운영 참고용 최근 투표 결과</strong>
+                이 결과는 조별 논의 흐름을 확인하기 위한 것이며, 공식 권고안으로 확정된 내용이 아닙니다.
+              </div>
+            </>
+          ) : (
+            <div className="rounded-2xl border border-[#DCE7EE] bg-white p-8 text-center">
+              <div className="text-[44px]" aria-hidden="true">🗳️</div>
+              <h3 className="mt-3 text-[20px] font-extrabold text-[#1F2933]">아직 진행된 조별 투표가 없습니다</h3>
+              <p className="mt-2 text-[14px] leading-relaxed text-[#5A6B73]">
+                모더레이터가 투표를 열면 최근 질문과 선택지별 결과가 이곳에 표시됩니다.
+              </p>
+            </div>
+          )}
+          <p className="text-center text-[12px] font-semibold text-[#5A6B73]">
+            마지막 데이터 갱신 {updatedAt ? formatTime(updatedAt) : '—'}
+          </p>
+        </div>
+      </section>
     </div>
   );
 }
 
-/** /hq 본부용 15조 읽기전용 현황 그리드. 버튼·입력 없음 — 표시만 한다. */
+/** /hq 본부용 15조 읽기전용 현황 그리드. */
 export default function HqGrid() {
   const [teams, setTeams] = useState<HqTeam[]>([]);
   const [rounds, setRounds] = useState<Round[]>([]);
   const [voteCounts, setVoteCounts] = useState<Record<string, number>>({});
+  const [votesByRound, setVotesByRound] = useState<Record<string, Vote[]>>({});
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [statusFilter, setStatusFilter] = useState<'전체' | TeamCellResult['label']>('전체');
   const [subgroupFilter, setSubgroupFilter] = useState('전체');
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const loadingRef = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -92,11 +268,12 @@ export default function HqGrid() {
     try {
       const [nextTeams, nextRounds] = await Promise.all([fetchHqTeams(), fetchTeamRounds()]);
       const ids = relevantRoundIds(nextTeams, nextRounds);
-      const counts = await fetchVoteCounts(ids);
+      const [counts, nextVotesByRound] = await Promise.all([fetchVoteCounts(ids), fetchVotesForRounds(ids)]);
       const completedAt = new Date();
       setTeams(nextTeams);
       setRounds(nextRounds);
       setVoteCounts(counts);
+      setVotesByRound(nextVotesByRound);
       setUpdatedAt(completedAt);
       setNowMs(completedAt.getTime());
       setRefreshError(null);
@@ -121,6 +298,24 @@ export default function HqGrid() {
     };
   }, [refresh]);
 
+  useEffect(() => {
+    const restoreTeamFromUrl = () => {
+      const teamId = new URL(window.location.href).searchParams.get('team');
+      setSelectedTeamId(teamId);
+    };
+    restoreTeamFromUrl();
+    window.addEventListener('popstate', restoreTeamFromUrl);
+    return () => window.removeEventListener('popstate', restoreTeamFromUrl);
+  }, []);
+
+  const setTeamSelection = useCallback((teamId: string | null) => {
+    const url = new URL(window.location.href);
+    if (teamId) url.searchParams.set('team', teamId);
+    else url.searchParams.delete('team');
+    window.history.pushState({}, '', url);
+    setSelectedTeamId(teamId);
+  }, []);
+
   const cells = useMemo(
     () => new Map(teams.map((team) => [team.id, teamCell(team, rounds, voteCounts)])),
     [rounds, teams, voteCounts],
@@ -137,6 +332,8 @@ export default function HqGrid() {
       ),
     [cells, statusFilter, subgroupFilter, teams],
   );
+  const selectedTeam = teams.find((team) => team.id === selectedTeamId) ?? null;
+  const selectedRound = selectedTeam ? latestTeamRound(selectedTeam.id, rounds) : null;
 
   const statusOptions: Array<{ label: '전체' | TeamCellResult['label']; value: number }> = [
     { label: '전체', value: summary.total },
@@ -254,6 +451,8 @@ export default function HqGrid() {
             key={team.id}
             team={team}
             cell={cells.get(team.id) ?? { label: '대기', participation: `0/${team.capacity}` }}
+            selected={selectedTeamId === team.id}
+            onSelect={() => setTeamSelection(team.id)}
           />
         ))}
       </div>
@@ -268,6 +467,17 @@ export default function HqGrid() {
         <div className="rounded-2xl border border-[#DCE7EE] bg-white p-8 text-center text-[#5A6B73]">
           선택한 조건에 해당하는 조가 없습니다.
         </div>
+      ) : null}
+
+      {selectedTeam ? (
+        <TeamDetailPanel
+          team={selectedTeam}
+          cell={cells.get(selectedTeam.id) ?? { label: '대기', participation: `0/${selectedTeam.capacity}` }}
+          round={selectedRound}
+          votes={selectedRound ? (votesByRound[selectedRound.id] ?? []) : []}
+          updatedAt={updatedAt}
+          onClose={() => setTeamSelection(null)}
+        />
       ) : null}
     </div>
   );
