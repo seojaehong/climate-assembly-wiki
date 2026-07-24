@@ -837,7 +837,14 @@ export default function ModConsole() {
   const [votes, setVotes] = useState<Vote[]>([]);
   const [fullscreen, setFullscreen] = useState(false);
   const [restoreNotice, setRestoreNotice] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const codeRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   // 새로고침 시 sessionStorage 코드로 조용히 재입장
   useEffect(() => {
@@ -912,7 +919,9 @@ export default function ModConsole() {
         dispatch({ type: 'JOIN_FAILURE', message: '존재하지 않는 접속코드입니다. 다시 확인해 주세요.' });
       }
     } catch {
-      dispatch({ type: 'JOIN_FAILURE', message: '입장에 실패했습니다. 다시 시도해 주세요.' });
+      // joinTeam이 throw하는 경우는 RPC/네트워크 오류(코드 자체 오류가 아님) —
+      // "코드가 틀렸습니다" 대신 연결 문제임을 명확히 안내한다.
+      dispatch({ type: 'JOIN_FAILURE', message: '연결에 실패했습니다 — 네트워크(와이파이)를 확인해 주세요.' });
     } finally {
       setJoinBusy(false);
     }
@@ -936,7 +945,8 @@ export default function ModConsole() {
       setVotes([]);
       dispatch({ type: 'CREATE_POLL_SUCCESS', round: opened });
     } catch {
-      // 개설 실패 — 홈에 머무름 (조용히 실패, 재시도 가능)
+      // 개설 실패 — 홈에 머무름(재시도 가능), 단 무슨 일이 일어났는지는 토스트로 알린다.
+      setToast('투표 열기에 실패했습니다 — 네트워크를 확인하고 다시 시도해 주세요.');
     } finally {
       setCreating(false);
     }
@@ -951,13 +961,20 @@ export default function ModConsole() {
       setRestoreNotice(false);
       dispatch({ type: 'CLOSE_POLL', round: closed });
     } catch {
-      // 마감 실패 — 진행 화면에 머무름
+      // 마감 실패 — 진행 화면에 머무름, 토스트로 재시도를 안내한다.
+      setToast('투표 마감에 실패했습니다 — 다시 시도해 주세요.');
     } finally {
       setClosing(false);
     }
   };
 
   const enterFullscreen = () => {
+    // 풀스크린 진입 시 1회 재조회 — 마감 직전(가드 적용 이전) 도착한 표까지 반영한다.
+    if (state.round) {
+      fetchVotes(state.round.id)
+        .then(setVotes)
+        .catch(() => {});
+    }
     setFullscreen(true);
     const el = document.documentElement;
     if (el.requestFullscreen) {
@@ -976,18 +993,14 @@ export default function ModConsole() {
 
   const teamName = state.team?.name ?? '';
 
-  if (state.screen === 'join') {
-    return <JoinScreen onJoin={handleJoin} error={state.joinError} busy={joinBusy} />;
-  }
+  let screenEl: React.ReactNode;
 
   if (state.screen === 'home') {
-    return (
+    screenEl = (
       <HomeScreen teamName={teamName} code={codeRef.current} onCreatePoll={handleCreatePoll} creating={creating} />
     );
-  }
-
-  if (state.screen === 'polling' && state.round) {
-    return (
+  } else if (state.screen === 'polling' && state.round) {
+    screenEl = (
       <PollingScreen
         teamName={teamName}
         code={codeRef.current}
@@ -999,15 +1012,10 @@ export default function ModConsole() {
         restoreNotice={restoreNotice}
       />
     );
-  }
-
-  if (state.screen === 'results' && state.round) {
-    if (fullscreen) {
-      return (
-        <FullscreenResults teamName={teamName} round={state.round} votes={votes} onExit={exitFullscreen} />
-      );
-    }
-    return (
+  } else if (state.screen === 'results' && state.round && fullscreen) {
+    screenEl = <FullscreenResults teamName={teamName} round={state.round} votes={votes} onExit={exitFullscreen} />;
+  } else if (state.screen === 'results' && state.round) {
+    screenEl = (
       <ResultsScreen
         teamName={teamName}
         round={state.round}
@@ -1016,7 +1024,18 @@ export default function ModConsole() {
         onEnterFullscreen={enterFullscreen}
       />
     );
+  } else {
+    screenEl = <JoinScreen onJoin={handleJoin} error={state.joinError} busy={joinBusy} />;
   }
 
-  return <JoinScreen onJoin={handleJoin} error={state.joinError} busy={joinBusy} />;
+  return (
+    <>
+      {screenEl}
+      {toast ? (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#1F4E79] text-white text-[16px] font-bold rounded-full px-5 py-3 shadow-lg">
+          {toast}
+        </div>
+      ) : null}
+    </>
+  );
 }

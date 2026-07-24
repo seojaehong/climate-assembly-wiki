@@ -52,11 +52,16 @@ function client() {
   return sb;
 }
 
-/** 조인코드로 팀에 합류한다. RPC가 예외를 던지면(잘못된 코드) null을 반환한다. */
+/**
+ * 조인코드로 팀에 합류한다. RPC가 정상 실행됐으나 일치하는 팀이 없으면(잘못된 코드) null을
+ * 반환한다. RPC 자체가 실패하면(네트워크·서버 오류) 그 error를 throw한다 — 호출부가 "코드가
+ * 틀렸습니다"와 "연결에 실패했습니다"를 구분해 안내할 수 있도록 한다.
+ */
 export async function joinTeam(code: string): Promise<Team | null> {
   const sb = client();
   const { data, error } = await sb.schema('climate_vote').rpc('mod_join', { p_code: code });
-  if (error || !data) return null;
+  if (error) throw error;
+  if (!data) return null;
   const row = Array.isArray(data) ? data[0] : data;
   return (row as Team) ?? null;
 }
@@ -118,8 +123,13 @@ export async function setPollStatus(code: string, roundId: string, status: 'acti
   return data as Round;
 }
 
-/** 익명 표를 등록한다. voter_name은 절대 전송하지 않는다. 동일 client_id의 미보관 표가 이미 있으면 'duplicate'를 반환한다. */
-export async function castBallot(roundId: string, choice: unknown): Promise<'ok' | 'duplicate'> {
+/**
+ * 익명 표를 등록한다. voter_name은 절대 전송하지 않는다. 동일 client_id의 미보관 표가
+ * 이미 있으면 'duplicate'를 반환한다. round가 이미 closed로 전환됐으면(스테일 탭·직접
+ * REST 호출 등) DB 트리거(votes_active_round_guard)가 'round not active' 예외를 던지고,
+ * 이를 'closed'로 매핑해 반환한다(에러가 아니라 결과 화면 전환 신호).
+ */
+export async function castBallot(roundId: string, choice: unknown): Promise<'ok' | 'duplicate' | 'closed'> {
   const sb = client();
   const clientId = getDeviceToken();
 
@@ -146,6 +156,7 @@ export async function castBallot(roundId: string, choice: unknown): Promise<'ok'
   });
   if (error) {
     if ((error as { code?: string }).code === '23505') return 'duplicate';
+    if ((error as { message?: string }).message?.includes('round not active')) return 'closed';
     throw error;
   }
   return 'ok';

@@ -27,12 +27,15 @@ describe('parseVoteUrl', () => {
   });
 });
 
-describe('nextCastState — idle → voted → duplicate 전이', () => {
+describe('nextCastState — idle → voted → duplicate → closed 전이', () => {
   it('ok 결과 → voted', () => {
     expect(nextCastState('ok')).toBe('voted');
   });
   it('duplicate 결과 → duplicate', () => {
     expect(nextCastState('duplicate')).toBe('duplicate');
+  });
+  it('closed 결과 → closed', () => {
+    expect(nextCastState('closed')).toBe('closed');
   });
 });
 
@@ -62,5 +65,8 @@ describe('resolveVoteScreen', () => {
   it('round closed → closed (voted 상태여도 closed 우선)', () => {
     const round = { ...activeRound, status: 'closed' as const };
     expect(resolveVoteScreen({ hasRoundId: true, round, castState: 'voted' })).toBe('closed');
+  });
+  it('castState closed → closed (round가 아직 갱신 전 active여도)', () => {
+    expect(resolveVoteScreen({ hasRoundId: true, round: activeRound, castState: 'closed' })).toBe('closed');
   });
 });

@@ -7,6 +7,7 @@ import {
   fetchHqTeams,
   fetchTeamRounds,
   fetchVoteCounts,
+  joinTeam,
 } from './mod-console';
 import { getSupabase } from './supabase';
 
@@ -36,6 +37,43 @@ describe('tallyVotes', () => {
     const r = { ...round, type: 'CHECKBOX' as const };
     const votes = [{ id: 1, round_id: 'r', choice: ['A','B'], archived_at: null }];
     expect(tallyVotes(r, votes)).toEqual({ total: 1, byOption: { A: 1, B: 1 } });
+  });
+});
+
+describe('joinTeam', () => {
+  function mockRpc(result: { data: unknown; error: unknown }) {
+    const rpc = vi.fn(() => Promise.resolve(result));
+    const schema = vi.fn(() => ({ rpc }));
+    (getSupabase as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ schema });
+    return { rpc, schema };
+  }
+
+  beforeEach(() => {
+    vi.mocked(getSupabase).mockReset();
+  });
+
+  it('일치하는 팀이 없으면(빈 배열) null 반환 — 잘못된 코드', async () => {
+    mockRpc({ data: [], error: null });
+
+    const result = await joinTeam('000000');
+
+    expect(result).toBeNull();
+  });
+
+  it('RPC 자체가 실패하면(네트워크/서버 오류) error를 throw', async () => {
+    const err = new Error('network down');
+    mockRpc({ data: null, error: err });
+
+    await expect(joinTeam('123456')).rejects.toBe(err);
+  });
+
+  it('일치하는 팀이 있으면 해당 팀 반환', async () => {
+    const team = { id: 't1', name: '1조', subgroup: null, join_code: '123456', capacity: 14 };
+    mockRpc({ data: [team], error: null });
+
+    const result = await joinTeam('123456');
+
+    expect(result).toEqual(team);
   });
 });
 

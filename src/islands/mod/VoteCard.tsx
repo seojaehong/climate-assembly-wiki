@@ -309,6 +309,9 @@ export default function VoteCard() {
     try {
       const result = await castBallot(roundId, choice);
       setCastState(nextCastState(result));
+      // 라운드가 방금 마감됐다면(가드가 차단) 최신 round(status='closed')를 다시 받아와
+      // 결과 화면이 정확한 데이터로 뜨도록 한다.
+      if (result === 'closed') load();
     } catch {
       setError('투표에 실패했습니다. 다시 시도해 주세요.');
     } finally {
