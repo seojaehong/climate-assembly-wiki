@@ -12,6 +12,9 @@ Disallow: /event-vote/
 Disallow: /vote-614/
 Disallow: /vote-admin-614/
 Disallow: /v/
+Disallow: /mod/
+Disallow: /hq/
+Disallow: /mod-help/
 Disallow: /archive/
 Disallow: /ko/regulation-feedback/
 Disallow: /en/regulation-feedback/
