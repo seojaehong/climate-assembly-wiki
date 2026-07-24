@@ -1,9 +1,11 @@
 import { getSupabase } from './supabase';
 
 export type Team = { id: string; name: string; subgroup: string | null; join_code: string; capacity: number };
-export type Round = { id: string; title: string; type: 'RADIO' | 'CHECKBOX' | 'SCALE'; options: string[] | null; status: 'pending' | 'active' | 'closed'; team_id: string | null };
+export type Round = { id: string; title: string; type: 'RADIO' | 'CHECKBOX' | 'SCALE'; options: string[] | null; status: 'pending' | 'active' | 'closed'; team_id: string | null; created_at?: string };
 export type Vote = { id: number; round_id: string; choice: unknown; archived_at: string | null };
 export type Tally = { total: number; byOption: Record<string, number> };
+/** /hq 읽기전용: join_code 제외 팀 정보(hq_teams RPC 반환). */
+export type HqTeam = { id: string; name: string; subgroup: string | null; capacity: number; status: string };
 
 /** 6자리 숫자 조인코드만 허용 (앞뒤 공백 포함 불허). */
 export function isValidJoinCode(code: string): boolean {
@@ -205,6 +207,64 @@ export function subscribeRound(roundId: string, onChange: () => void): () => voi
       { event: '*', schema: 'climate_vote', table: 'votes', filter: `round_id=eq.${roundId}` },
       onChange,
     )
+    .subscribe();
+  return () => {
+    sb.removeChannel(channel);
+  };
+}
+
+// ============================================================
+// /hq — 본부 읽기전용 그리드. 쓰기 경로 없음(전부 SELECT/RPC-읽기).
+// ============================================================
+
+/** 활성 팀 목록(join_code 제외, hq_teams RPC 경유). status='active'만 반환한다. */
+export async function fetchHqTeams(): Promise<HqTeam[]> {
+  const sb = client();
+  const { data, error } = await sb.schema('climate_vote').rpc('hq_teams');
+  if (error) throw error;
+  const rows = (data ?? []) as HqTeam[];
+  return rows.filter((t) => t.status === 'active');
+}
+
+/** team_id가 있는 전체 라운드(팀 스코프)를 최신순으로 가져온다. rounds SELECT는 공개(anon) 정책이다. */
+export async function fetchTeamRounds(): Promise<Round[]> {
+  const sb = client();
+  const { data, error } = await sb
+    .schema('climate_vote')
+    .from('rounds')
+    .select('*')
+    .not('team_id', 'is', null)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Round[];
+}
+
+/** 주어진 라운드 id들의 미보관(archived_at is null) 표 개수를 라운드별로 집계한다. */
+export async function fetchVoteCounts(roundIds: string[]): Promise<Record<string, number>> {
+  const sb = client();
+  const counts: Record<string, number> = {};
+  await Promise.all(
+    roundIds.map(async (id) => {
+      const { count, error } = await sb
+        .schema('climate_vote')
+        .from('votes')
+        .select('*', { count: 'exact', head: true })
+        .eq('round_id', id)
+        .is('archived_at', null);
+      if (error) throw error;
+      counts[id] = count ?? 0;
+    }),
+  );
+  return counts;
+}
+
+/** rounds/votes(climate_vote) 실시간 변경을 구독한다(필터 없음 — 그리드 전체 갱신 트리거용). */
+export function subscribeHqUpdates(onChange: () => void): () => void {
+  const sb = client();
+  const channel = sb
+    .channel('hq:grid')
+    .on('postgres_changes', { event: '*', schema: 'climate_vote', table: 'rounds' }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'climate_vote', table: 'votes' }, onChange)
     .subscribe();
   return () => {
     sb.removeChannel(channel);

@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { isValidJoinCode, tallyVotes, fetchActiveRound, fetchRound } from './mod-console';
+import {
+  isValidJoinCode,
+  tallyVotes,
+  fetchActiveRound,
+  fetchRound,
+  fetchHqTeams,
+  fetchTeamRounds,
+  fetchVoteCounts,
+} from './mod-console';
 import { getSupabase } from './supabase';
 
 vi.mock('./supabase', () => ({
@@ -121,5 +129,132 @@ describe('fetchRound', () => {
     mockSingle({ data: null, error: err });
 
     await expect(fetchRound(roundId)).rejects.toBe(err);
+  });
+});
+
+describe('fetchHqTeams', () => {
+  function mockRpc(result: { data: unknown; error: unknown }) {
+    const rpc = vi.fn(() => Promise.resolve(result));
+    const schema = vi.fn(() => ({ rpc }));
+    (getSupabase as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ schema });
+    return { rpc, schema };
+  }
+
+  beforeEach(() => {
+    vi.mocked(getSupabase).mockReset();
+  });
+
+  it('hq_teams RPC 호출 + status active만 반환(join_code 없음)', async () => {
+    const rows = [
+      { id: 't1', name: '1조', subgroup: '교육', capacity: 14, status: 'active' },
+      { id: 't2', name: '2조', subgroup: null, capacity: 10, status: 'disabled' },
+    ];
+    const { rpc, schema } = mockRpc({ data: rows, error: null });
+
+    const result = await fetchHqTeams();
+
+    expect(result).toEqual([rows[0]]);
+    expect(schema).toHaveBeenCalledWith('climate_vote');
+    expect(rpc).toHaveBeenCalledWith('hq_teams');
+  });
+
+  it('data 없으면 빈 배열', async () => {
+    mockRpc({ data: null, error: null });
+
+    const result = await fetchHqTeams();
+
+    expect(result).toEqual([]);
+  });
+
+  it('error 존재 시 throw', async () => {
+    const err = new Error('boom');
+    mockRpc({ data: null, error: err });
+
+    await expect(fetchHqTeams()).rejects.toBe(err);
+  });
+});
+
+describe('fetchTeamRounds', () => {
+  function mockChain(result: { data: unknown; error: unknown }) {
+    const order = vi.fn(() => Promise.resolve(result));
+    const not = vi.fn(() => ({ order }));
+    const select = vi.fn(() => ({ not }));
+    const from = vi.fn(() => ({ select }));
+    const schema = vi.fn(() => ({ from }));
+    (getSupabase as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ schema });
+    return { not, order, select, from };
+  }
+
+  beforeEach(() => {
+    vi.mocked(getSupabase).mockReset();
+  });
+
+  it('team_id not null 필터 + created_at desc 정렬로 조회', async () => {
+    const rows = [{ id: 'r1', title: 't', type: 'RADIO', options: ['A'], status: 'active', team_id: 't1' }];
+    const { not } = mockChain({ data: rows, error: null });
+
+    const result = await fetchTeamRounds();
+
+    expect(result).toEqual(rows);
+    expect(not).toHaveBeenCalledWith('team_id', 'is', null);
+  });
+
+  it('data 없으면 빈 배열', async () => {
+    mockChain({ data: null, error: null });
+
+    const result = await fetchTeamRounds();
+
+    expect(result).toEqual([]);
+  });
+
+  it('error 존재 시 throw', async () => {
+    const err = new Error('boom');
+    mockChain({ data: null, error: err });
+
+    await expect(fetchTeamRounds()).rejects.toBe(err);
+  });
+});
+
+describe('fetchVoteCounts', () => {
+  function mockCountChain(resultByRoundId: Record<string, { count: number | null; error: unknown }>) {
+    const from = vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn((_col: string, roundId: string) => ({
+          is: vi.fn(() => Promise.resolve(resultByRoundId[roundId])),
+        })),
+      })),
+    }));
+    const schema = vi.fn(() => ({ from }));
+    (getSupabase as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ schema });
+  }
+
+  beforeEach(() => {
+    vi.mocked(getSupabase).mockReset();
+  });
+
+  it('라운드별 count를 맵으로 반환', async () => {
+    mockCountChain({
+      r1: { count: 5, error: null },
+      r2: { count: 0, error: null },
+    });
+
+    const result = await fetchVoteCounts(['r1', 'r2']);
+
+    expect(result).toEqual({ r1: 5, r2: 0 });
+  });
+
+  it('count가 null이면 0으로 처리', async () => {
+    mockCountChain({ r1: { count: null, error: null } });
+
+    const result = await fetchVoteCounts(['r1']);
+
+    expect(result).toEqual({ r1: 0 });
+  });
+
+  it('error 존재 시 throw', async () => {
+    const err = new Error('boom');
+    mockCountChain({ r1: { count: null, error: err } });
+
+    await expect(fetchVoteCounts(['r1'])).rejects.toBe(err);
   });
 });
