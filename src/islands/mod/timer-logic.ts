@@ -63,6 +63,15 @@ export function tickTimer(state: TimerState, now: number): TimerState {
   return { ...state, remainingMs };
 }
 
+/**
+ * handleStop이 timer_log를 남겨야 하는지 판정한다.
+ * expired는 만료 useEffect가 이미 로그를 남겼으므로 중복 방지를 위해 false.
+ * running/paused는 수동 종료도 유효한 발언 구간이므로 true. idle은 로그할 구간이 없다.
+ */
+export function shouldLogOnStop(phase: TimerPhase): boolean {
+  return phase === 'running' || phase === 'paused';
+}
+
 /** 마지막 10초(경고 임계값) 여부. running/expired 상태에서만 의미 있음. */
 export function isLastTenSeconds(state: TimerState): boolean {
   return state.remainingMs > 0 && state.remainingMs <= 10_000 && state.phase === 'running';

@@ -7,6 +7,7 @@ import {
   stopTimer,
   tickTimer,
   isLastTenSeconds,
+  shouldLogOnStop,
   formatRemaining,
   type TimerState,
 } from './timer-logic';
@@ -151,6 +152,21 @@ describe('isLastTenSeconds', () => {
   });
   it('idle 상태는 false', () => {
     expect(isLastTenSeconds(createIdleTimer('speech', 60_000))).toBe(false);
+  });
+});
+
+describe('shouldLogOnStop — 만료 이중 로깅 방지', () => {
+  it('expired는 false (만료 useEffect가 이미 로그를 남김)', () => {
+    expect(shouldLogOnStop('expired')).toBe(false);
+  });
+  it('running은 true (수동 종료도 유효한 구간)', () => {
+    expect(shouldLogOnStop('running')).toBe(true);
+  });
+  it('paused는 true (일시정지 중 종료도 유효한 구간)', () => {
+    expect(shouldLogOnStop('paused')).toBe(true);
+  });
+  it('idle은 false (로그할 구간 없음)', () => {
+    expect(shouldLogOnStop('idle')).toBe(false);
   });
 });
 

@@ -7,6 +7,7 @@ import {
   stopTimer,
   tickTimer,
   isLastTenSeconds,
+  shouldLogOnStop,
   formatRemaining,
   type TimerState,
   type TimerKind,
@@ -70,7 +71,8 @@ export default function Timer({ code, teamName }: { code: string | null; teamNam
   const handleResume = () => setState((s) => resumeTimer(s, Date.now()));
   const handleStop = () => {
     // 진행 중 수동 종료도 로그를 남긴다(만료가 아니어도 발언 배분 지표에는 유효한 구간).
-    if (code && state.startedAt != null && state.phase !== 'idle') {
+    // expired는 만료 useEffect가 이미 로그를 남겼으므로 shouldLogOnStop이 중복 기록을 막는다.
+    if (code && state.startedAt != null && shouldLogOnStop(state.phase)) {
       const elapsedMs = state.durationMs - state.remainingMs;
       if (elapsedMs > 0) {
         void logTimer(code, {
