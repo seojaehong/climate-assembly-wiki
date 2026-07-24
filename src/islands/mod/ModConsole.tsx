@@ -144,6 +144,14 @@ function JoinScreen({
             {busy ? '입장 중…' : error ? '다시 입장' : '입장'}
           </button>
           <p className="text-[14px] text-[#5A6B73] mt-5">코드를 모르면 운영 데스크에 문의하세요.</p>
+          <a
+            href="/mod-help"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[13px] text-[#23B2C3] font-semibold underline underline-offset-2 mt-2"
+          >
+            도움말
+          </a>
         </div>
       </div>
     </div>
