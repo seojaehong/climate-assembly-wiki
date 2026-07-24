@@ -7,6 +7,7 @@ import {
   createPoll,
   setPollStatus,
   fetchVotes,
+  fetchActiveRound,
   subscribeRound,
   type Round,
   type Vote,
@@ -251,7 +252,7 @@ function HomeScreen({
                         onClick={() => removeOption(i)}
                         disabled={options.length <= 2}
                         aria-label={`보기 ${i + 1} 삭제`}
-                        className="w-11 h-11 shrink-0 rounded-lg border border-[#DCE7EE] text-[#5A6B73] text-2xl grid place-items-center disabled:opacity-30"
+                        className="w-12 h-12 shrink-0 rounded-lg border border-[#DCE7EE] text-[#5A6B73] text-2xl grid place-items-center disabled:opacity-30"
                       >
                         ×
                       </button>
@@ -344,6 +345,7 @@ function PollingScreen({
   votes,
   onClose,
   closing,
+  restoreNotice,
 }: {
   teamName: string;
   capacity: number;
@@ -351,14 +353,17 @@ function PollingScreen({
   votes: Vote[];
   onClose: () => void;
   closing: boolean;
+  restoreNotice?: boolean;
 }) {
   const [qr, setQr] = useState<string | null>(null);
+  const participantUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/v?r=${round.id}`;
+  const participantUrlDisplay = participantUrl.replace(/^https?:\/\//, '');
 
   useEffect(() => {
-    const url = `${window.location.origin}/v?r=${round.id}`;
-    QRCode.toDataURL(url, { width: 480, margin: 1 })
+    QRCode.toDataURL(participantUrl, { width: 480, margin: 1 })
       .then(setQr)
       .catch(() => setQr(null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round.id]);
 
   const tally = tallyVotes(round, votes);
@@ -369,6 +374,11 @@ function PollingScreen({
       <TopBar right={<TeamBadge name={teamName} />} live />
 
       <div className="max-w-6xl mx-auto p-6 sm:p-8">
+        {restoreNotice ? (
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-[#C4D8E4] bg-[#F1F7FA] px-4 py-2.5 text-[14px] font-semibold text-[#135C73]">
+            <span aria-hidden="true">↻</span> 진행 중인 투표를 불러왔습니다.
+          </div>
+        ) : null}
         <div className="mb-6">
           <Eyebrow className="text-[#5A6B73] mb-1.5">질문</Eyebrow>
           <h2 className="text-[26px] font-extrabold text-[#1F4E79] leading-snug" style={{ letterSpacing: '-.022em' }}>
@@ -390,6 +400,16 @@ function PollingScreen({
               <span aria-hidden="true">📷</span> 휴대폰 카메라로 스캔하세요
             </div>
             <p className="text-[#5A6B73] text-[15px] mt-1">카메라를 QR에 비추면 투표 화면이 열립니다.</p>
+
+            <div className="mt-6 pt-5 border-t border-[#DCE7EE] w-full max-w-[380px]">
+              <Eyebrow className="text-[#5A6B73] mb-2">QR이 안 되면</Eyebrow>
+              <p
+                className="font-mono text-[20px] font-bold text-[#1F4E79] break-all select-all"
+                style={{ letterSpacing: '-.01em' }}
+              >
+                {participantUrlDisplay}
+              </p>
+            </div>
           </div>
 
           {/* 우: 집계 */}
@@ -587,7 +607,7 @@ function FullscreenResults({
           type="button"
           onClick={onExit}
           aria-label="풀스크린 결과 나가기"
-          className="hidden sm:block ml-4 rounded-full border border-[#C4D8E4] px-4 py-2 text-[15px] font-bold text-[#5A6B73]"
+          className="fixed top-4 right-4 sm:static ml-0 sm:ml-4 z-10 rounded-full border border-[#C4D8E4] bg-white/90 px-4 py-2 text-[15px] font-bold text-[#5A6B73] shadow-sm"
         >
           나가기 (ESC)
         </button>
@@ -646,6 +666,7 @@ export default function ModConsole() {
   const [closing, setClosing] = useState(false);
   const [votes, setVotes] = useState<Vote[]>([]);
   const [fullscreen, setFullscreen] = useState(false);
+  const [restoreNotice, setRestoreNotice] = useState(false);
   const codeRef = useRef<string | null>(null);
 
   // 새로고침 시 sessionStorage 코드로 조용히 재입장
@@ -654,9 +675,15 @@ export default function ModConsole() {
     if (!saved || !isValidJoinCode(saved)) return;
     codeRef.current = saved;
     joinTeam(saved)
-      .then((team) => {
-        if (team) dispatch({ type: 'RESTORE_TEAM', team });
-        else sessionStorage.removeItem(CODE_KEY);
+      .then(async (team) => {
+        if (!team) {
+          sessionStorage.removeItem(CODE_KEY);
+          return;
+        }
+        // 진행 중인 라운드가 있으면 함께 복원해 polling 화면(QR + 실시간 집계)으로 재진입한다.
+        const round = await fetchActiveRound(team.id).catch(() => null);
+        if (round) setVotes([]);
+        dispatch({ type: 'RESTORE_TEAM', team, round });
       })
       .catch(() => sessionStorage.removeItem(CODE_KEY));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -723,9 +750,17 @@ export default function ModConsole() {
 
   const handleCreatePoll = async (input: { title: string; type: 'RADIO' | 'CHECKBOX'; options: string[] }) => {
     const code = codeRef.current;
-    if (!code) return;
+    if (!code || !state.team) return;
     setCreating(true);
     try {
+      // 방어적 이중 클릭/새로고침 경합 대비 — 이미 진행 중인 라운드가 있으면 새로 만들지 않고 복원한다.
+      const active = await fetchActiveRound(state.team.id).catch(() => null);
+      if (active) {
+        setRestoreNotice(true);
+        setVotes([]);
+        dispatch({ type: 'RESTORE_TEAM', team: state.team, round: active });
+        return;
+      }
       const round = await createPoll(code, input);
       const opened = await setPollStatus(code, round.id, 'active');
       setVotes([]);
@@ -743,6 +778,7 @@ export default function ModConsole() {
     setClosing(true);
     try {
       const closed = await setPollStatus(code, state.round.id, 'closed');
+      setRestoreNotice(false);
       dispatch({ type: 'CLOSE_POLL', round: closed });
     } catch {
       // 마감 실패 — 진행 화면에 머무름
@@ -787,6 +823,7 @@ export default function ModConsole() {
         votes={votes}
         onClose={handleClosePoll}
         closing={closing}
+        restoreNotice={restoreNotice}
       />
     );
   }

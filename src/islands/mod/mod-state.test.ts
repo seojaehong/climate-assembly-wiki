@@ -55,9 +55,17 @@ describe('modReducer', () => {
     expect(next.round).toBeNull();
   });
 
-  it('RESTORE_TEAM silently re-enters on reload', () => {
-    const next = modReducer(initialModState, { type: 'RESTORE_TEAM', team });
+  it('RESTORE_TEAM without an active round re-enters on the home screen', () => {
+    const next = modReducer(initialModState, { type: 'RESTORE_TEAM', team, round: null });
     expect(next.screen).toBe('home');
     expect(next.team).toEqual(team);
+    expect(next.round).toBeNull();
+  });
+
+  it('RESTORE_TEAM with an active round resumes the polling screen', () => {
+    const next = modReducer(initialModState, { type: 'RESTORE_TEAM', team, round });
+    expect(next.screen).toBe('polling');
+    expect(next.team).toEqual(team);
+    expect(next.round).toEqual(round);
   });
 });

@@ -75,6 +75,22 @@ export async function createPoll(
   return data as Round;
 }
 
+/** 팀의 진행 중(active) 라운드를 조회한다. 없으면 null. rounds SELECT는 공개(anon) 정책이다. */
+export async function fetchActiveRound(teamId: string): Promise<Round | null> {
+  const sb = client();
+  const { data, error } = await sb
+    .schema('climate_vote')
+    .from('rounds')
+    .select('*')
+    .eq('team_id', teamId)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  const rows = (data ?? []) as Round[];
+  return rows[0] ?? null;
+}
+
 /** 라운드 상태(active/closed)를 변경한다. */
 export async function setPollStatus(code: string, roundId: string, status: 'active' | 'closed'): Promise<Round> {
   const sb = client();
