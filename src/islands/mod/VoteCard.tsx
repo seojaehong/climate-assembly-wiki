@@ -4,9 +4,20 @@ import { parseVoteUrl, nextCastState, resolveVoteScreen, type CastState } from '
 
 const OPTION_COLORS = ['#23B2C3', '#2E75B6', '#4F9D3A', '#F5A623', '#135C73', '#1F4E79'];
 
-function Eyebrow({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+function Eyebrow({
+  children,
+  className = '',
+  style,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
   return (
-    <div className={`font-mono text-[12px] font-semibold uppercase ${className}`} style={{ letterSpacing: '.14em' }}>
+    <div
+      className={`font-mono text-[12px] font-semibold uppercase ${className}`}
+      style={{ letterSpacing: '.14em', ...style }}
+    >
       {children}
     </div>
   );

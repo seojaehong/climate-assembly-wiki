@@ -9,6 +9,8 @@ import {
   fetchVoteCounts,
   fetchVotesForRounds,
   joinTeam,
+  type Round,
+  type Vote,
 } from './mod-console';
 import { getSupabase } from './supabase';
 
@@ -25,9 +27,9 @@ describe('isValidJoinCode', () => {
   });
 });
 describe('tallyVotes', () => {
-  const round = { id: 'r', title: 't', type: 'RADIO', options: ['A','B'], status: 'active', team_id: null } as const;
+  const round: Round = { id: 'r', title: 't', type: 'RADIO', options: ['A', 'B'], status: 'active', team_id: null };
   it('RADIO 집계 + archived 제외', () => {
-    const votes = [
+    const votes: Vote[] = [
       { id: 1, round_id: 'r', choice: 'A', archived_at: null },
       { id: 2, round_id: 'r', choice: 'A', archived_at: null },
       { id: 3, round_id: 'r', choice: 'B', archived_at: '2026-07-24' },
@@ -35,8 +37,8 @@ describe('tallyVotes', () => {
     expect(tallyVotes(round, votes)).toEqual({ total: 2, byOption: { A: 2, B: 0 } });
   });
   it('CHECKBOX는 배열 각 항목 1카운트', () => {
-    const r = { ...round, type: 'CHECKBOX' as const };
-    const votes = [{ id: 1, round_id: 'r', choice: ['A','B'], archived_at: null }];
+    const r: Round = { ...round, type: 'CHECKBOX' };
+    const votes: Vote[] = [{ id: 1, round_id: 'r', choice: ['A', 'B'], archived_at: null }];
     expect(tallyVotes(r, votes)).toEqual({ total: 1, byOption: { A: 1, B: 1 } });
   });
 });
