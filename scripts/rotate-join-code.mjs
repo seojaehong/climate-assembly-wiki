@@ -7,6 +7,16 @@ import { SESSION_SLUG, genUniqueCodes } from './seed-0829-lib.mjs';
 
 const cliRandomInt = () => randomInt(100000, 1000000);
 
+function checkEnvOrExit() {
+  const missing = [];
+  if (!process.env.SUPABASE_URL) missing.push('SUPABASE_URL');
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+  if (missing.length > 0) {
+    console.error(`환경변수 누락: ${missing.join(', ')} — .env 또는 셸 환경에 설정 후 다시 실행하세요.`);
+    process.exit(1);
+  }
+}
+
 function parseArgs(argv) {
   const args = argv.slice(2);
   const dryRun = args.includes('--dry-run');
@@ -27,6 +37,7 @@ async function runDryRun(teamName) {
 }
 
 async function runLive(teamName) {
+  checkEnvOrExit();
   const { createClient } = await import('@supabase/supabase-js');
   const client = createClient(
     process.env.SUPABASE_URL,

@@ -55,6 +55,16 @@ export function genUniqueCodes(n, taken, randomInt) {
   return codes;
 }
 
+/**
+ * Decide what to do with a session row found (or not) by slug lookup.
+ * Pure helper — never overwrites an existing session (create-only semantics).
+ * @param {object|null|undefined} existing - the session row from a SELECT by slug, or null/undefined if none.
+ * @returns {'use'|'create'}
+ */
+export function sessionAction(existing) {
+  return existing ? 'use' : 'create';
+}
+
 export function formatCodeTable(rows) {
   const header = ['조 이름', '코드'];
   const widths = [

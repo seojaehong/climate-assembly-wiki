@@ -4,6 +4,7 @@ import {
   buildTeamPlan,
   genUniqueCodes,
   formatCodeTable,
+  sessionAction,
   SESSION_SLUG,
   SESSION_TITLE,
   SESSION_CONFIG,
@@ -78,6 +79,17 @@ describe('formatCodeTable', () => {
     expect(lines[2]).toContain('1분과 1조');
     expect(lines[2]).toContain('482910');
     expect(lines[3]).toContain('3분과 5조');
+  });
+});
+
+describe('sessionAction', () => {
+  test('returns "use" when a session row already exists (never overwrite)', () => {
+    expect(sessionAction({ id: 'abc-123', slug: SESSION_SLUG })).toBe('use');
+  });
+
+  test('returns "create" when no session row exists (null or undefined)', () => {
+    expect(sessionAction(null)).toBe('create');
+    expect(sessionAction(undefined)).toBe('create');
   });
 });
 
