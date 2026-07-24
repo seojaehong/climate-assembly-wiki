@@ -1,0 +1,107 @@
+{
+  "created_at": "2026-07-24T15:51:53.990295+00:00",
+  "repo": "C:\\Users\\iceam\\OneDrive\\_30_컨설팅\\2026\\기후회의모더레이터\\wiki",
+  "note": "mod console hotfix edb0403 is live and browser join succeeds; physical phone QR E2E remains",
+  "branch": "main",
+  "head": "edb0403",
+  "upstream": "origin/main",
+  "git_commands": {
+    "branch": {
+      "command": [
+        "git",
+        "branch",
+        "--show-current"
+      ],
+      "returncode": 0,
+      "stdout": "main",
+      "stderr": ""
+    },
+    "head": {
+      "command": [
+        "git",
+        "rev-parse",
+        "--short",
+        "HEAD"
+      ],
+      "returncode": 0,
+      "stdout": "edb0403",
+      "stderr": ""
+    },
+    "upstream": {
+      "command": [
+        "git",
+        "rev-parse",
+        "--abbrev-ref",
+        "--symbolic-full-name",
+        "@{u}"
+      ],
+      "returncode": 0,
+      "stdout": "origin/main",
+      "stderr": ""
+    },
+    "status": {
+      "command": [
+        "git",
+        "status",
+        "--short"
+      ],
+      "returncode": 0,
+      "stdout": "?? evaluation/2026-07-25-mod-console-hotfix-live-verification.md",
+      "stderr": ""
+    },
+    "staged": {
+      "command": [
+        "git",
+        "diff",
+        "--cached",
+        "--name-status"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "unstaged": {
+      "command": [
+        "git",
+        "diff",
+        "--name-status"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "last_commit": {
+      "command": [
+        "git",
+        "show",
+        "--stat",
+        "--oneline",
+        "--no-renames",
+        "--max-count=1",
+        "HEAD"
+      ],
+      "returncode": 0,
+      "stdout": "edb0403 fix(mod-console): 다크모드 색반전 차단(라이트 고정)·입장 입력 포커스 복구·코드박스 클리핑\n src/islands/mod/ModConsole.tsx | 47 ++++++++++++++++++++++++++++--------------\n src/pages/hq.astro             |  3 ++-\n src/pages/mod-help.astro       |  3 ++-\n src/pages/mod.astro            |  3 ++-\n src/pages/v.astro              |  3 ++-\n 5 files changed, 39 insertions(+), 20 deletions(-)",
+      "stderr": ""
+    },
+    "recent": {
+      "command": [
+        "git",
+        "log",
+        "--oneline",
+        "-5"
+      ],
+      "returncode": 0,
+      "stdout": "edb0403 fix(mod-console): 다크모드 색반전 차단(라이트 고정)·입장 입력 포커스 복구·코드박스 클리핑\n8e3321c merge: 모더레이터 콘솔 (투표+타이머 셀프서비스) — /mod /v /hq /mod-help\n7fb155e chore(mod-console): robots.txt에 /mod /hq /mod-help 색인 차단 추가\nab4ee34 fix(mod-console): 일시 네트워크 오류 시 저장된 조 코드 유지 (재입장 생존성)\n33cfe90 fix(mod-console): 최종리뷰 반영 — 마감라운드 표 차단·에러 토스트·인덱스 캡처·풀스크린 갱신",
+      "stderr": ""
+    }
+  },
+  "summary": {
+    "status_count": 1,
+    "staged_files": [],
+    "unstaged_files": [],
+    "status_lines": [
+      "?? evaluation/2026-07-25-mod-console-hotfix-live-verification.md"
+    ]
+  }
+}
