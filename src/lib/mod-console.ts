@@ -91,6 +91,19 @@ export async function fetchActiveRound(teamId: string): Promise<Round | null> {
   return rows[0] ?? null;
 }
 
+/** 라운드 id로 단건 조회한다. 없으면 null. rounds SELECT는 공개(anon) 정책이다. */
+export async function fetchRound(roundId: string): Promise<Round | null> {
+  const sb = client();
+  const { data, error } = await sb
+    .schema('climate_vote')
+    .from('rounds')
+    .select('*')
+    .eq('id', roundId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as Round | null) ?? null;
+}
+
 /** 라운드 상태(active/closed)를 변경한다. */
 export async function setPollStatus(code: string, roundId: string, status: 'active' | 'closed'): Promise<Round> {
   const sb = client();

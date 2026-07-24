@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { isValidJoinCode, tallyVotes, fetchActiveRound } from './mod-console';
+import { isValidJoinCode, tallyVotes, fetchActiveRound, fetchRound } from './mod-console';
 import { getSupabase } from './supabase';
 
 vi.mock('./supabase', () => ({
@@ -79,5 +79,47 @@ describe('fetchActiveRound', () => {
     mockChain({ data: null, error: err });
 
     await expect(fetchActiveRound(teamId)).rejects.toBe(err);
+  });
+});
+
+describe('fetchRound', () => {
+  const roundId = 'round-abc';
+
+  function mockSingle(result: { data: unknown; error: unknown }) {
+    const eq = vi.fn(() => ({ maybeSingle: vi.fn(() => Promise.resolve(result)) }));
+    const select = vi.fn(() => ({ eq }));
+    const from = vi.fn(() => ({ select }));
+    const schema = vi.fn(() => ({ from }));
+    (getSupabase as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ schema });
+    return { eq, select, from };
+  }
+
+  beforeEach(() => {
+    vi.mocked(getSupabase).mockReset();
+  });
+
+  it('row 존재 시 해당 round 반환', async () => {
+    const row = { id: roundId, title: 't', type: 'RADIO', options: ['A', 'B'], status: 'active', team_id: 't1' };
+    const { eq } = mockSingle({ data: row, error: null });
+
+    const result = await fetchRound(roundId);
+
+    expect(result).toEqual(row);
+    expect(eq).toHaveBeenCalledWith('id', roundId);
+  });
+
+  it('없으면 null 반환', async () => {
+    mockSingle({ data: null, error: null });
+
+    const result = await fetchRound(roundId);
+
+    expect(result).toBeNull();
+  });
+
+  it('error 존재 시 해당 error를 throw', async () => {
+    const err = new Error('boom');
+    mockSingle({ data: null, error: err });
+
+    await expect(fetchRound(roundId)).rejects.toBe(err);
   });
 });
