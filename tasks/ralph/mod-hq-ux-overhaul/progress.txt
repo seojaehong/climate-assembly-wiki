@@ -1,0 +1,9 @@
+# Ralph progress — mod-hq-ux-overhaul
+
+## 2026-07-25 baseline
+- Branch: `feat/mod-hq-ux-overhaul` from `eeb1890`.
+- Live evidence: `/mod` option delete buttons are clipped at a 390px effective viewport; `/hq` truncates team names and wraps `0/20` at 1440px.
+- Data contract: `/hq` currently reads teams, rounds, and total vote counts. Existing rounds already contain question title and options; per-option details require loading vote rows.
+- Product decision: card selection opens a team detail panel. Recent poll results must not be mislabeled as an official recommendation. Compare mode is explicit and limited to three teams.
+- Known baseline: focused moderator tests pass; full `astro check` has pre-existing errors in `VoteCard.tsx`, readonly test fixtures, and Deno edge-function type resolution.
+- Next: M1.
