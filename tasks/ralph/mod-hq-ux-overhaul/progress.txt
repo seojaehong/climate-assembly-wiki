@@ -23,3 +23,11 @@
 - Verified: the live-backed local build loaded 15 teams and status filters updated their pressed state correctly.
 - Learned: the 5×3 topology was not the problem; the former 354px card height and 92px counter were.
 - Next: H2.
+
+## 2026-07-25 H2
+- Changed: replaced the silent refresh failure with explicit loading, refreshing, live, stale, failed, and degraded states plus a retry action.
+- Changed: preserved last successful teams and counts when a refresh fails and added a logged error.
+- Verified: 11 HQ logic tests passed, including connection-state boundaries.
+- Verified: browser network-offline simulation produced `이전 데이터 표시`, a visible alert, and a retry button while all 15 prior cards remained visible.
+- Verified: restoring the network and pressing retry removed the alert and returned to `실시간 연결`.
+- Next: H3.

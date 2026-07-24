@@ -2,6 +2,7 @@ import type { HqTeam, Round } from '../../lib/mod-console';
 
 export type TeamCellResult = { label: '대기' | '투표중' | '마감'; participation: string };
 export type HqSummary = { total: number; waiting: number; polling: number; closed: number };
+export type HqConnectionState = 'loading' | 'refreshing' | 'live' | 'stale' | 'failed' | 'degraded';
 
 function latestClosedRound(rounds: Round[]): Round | undefined {
   return [...rounds]
@@ -78,4 +79,18 @@ export function teamMatchesFilters(
   const statusMatches = statusFilter === '전체' || cell.label === statusFilter;
   const subgroupMatches = subgroupFilter === '전체' || team.subgroup === subgroupFilter;
   return statusMatches && subgroupMatches;
+}
+
+export function hqConnectionState(input: {
+  updatedAtMs: number | null;
+  nowMs: number;
+  refreshing: boolean;
+  hasError: boolean;
+  staleAfterMs: number;
+}): HqConnectionState {
+  if (input.updatedAtMs == null) return input.hasError ? 'failed' : 'loading';
+  if (input.hasError) return 'degraded';
+  if (input.nowMs - input.updatedAtMs > input.staleAfterMs) return 'stale';
+  if (input.refreshing) return 'refreshing';
+  return 'live';
 }

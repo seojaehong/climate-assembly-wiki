@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { teamCell, relevantRoundIds, summarizeTeamCells, teamMatchesFilters } from './hq-grid-logic';
+import {
+  hqConnectionState,
+  teamCell,
+  relevantRoundIds,
+  summarizeTeamCells,
+  teamMatchesFilters,
+} from './hq-grid-logic';
 import type { HqTeam, Round } from '../../lib/mod-console';
 
 const team: HqTeam = { id: 't1', name: '1조', subgroup: '교육', capacity: 14, status: 'active' };
@@ -105,5 +111,21 @@ describe('teamMatchesFilters', () => {
     expect(teamMatchesFilters(team, cell, '투표중', '교육')).toBe(true);
     expect(teamMatchesFilters(team, cell, '마감', '교육')).toBe(false);
     expect(teamMatchesFilters(team, cell, '투표중', '전환')).toBe(false);
+  });
+});
+
+describe('hqConnectionState', () => {
+  const base = { nowMs: 70_000, staleAfterMs: 65_000 };
+
+  it('첫 로딩과 첫 연결 실패를 구분한다', () => {
+    expect(hqConnectionState({ ...base, updatedAtMs: null, refreshing: true, hasError: false })).toBe('loading');
+    expect(hqConnectionState({ ...base, updatedAtMs: null, refreshing: false, hasError: true })).toBe('failed');
+  });
+
+  it('성공 데이터가 있으면 실시간·갱신중·지연·성능저하를 구분한다', () => {
+    expect(hqConnectionState({ ...base, updatedAtMs: 60_000, refreshing: false, hasError: false })).toBe('live');
+    expect(hqConnectionState({ ...base, updatedAtMs: 60_000, refreshing: true, hasError: false })).toBe('refreshing');
+    expect(hqConnectionState({ ...base, updatedAtMs: 0, refreshing: false, hasError: false })).toBe('stale');
+    expect(hqConnectionState({ ...base, updatedAtMs: 60_000, refreshing: false, hasError: true })).toBe('degraded');
   });
 });

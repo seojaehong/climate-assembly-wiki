@@ -44,8 +44,8 @@
       "id": "H2",
       "title": "Expose connection, loading, stale, and retry states",
       "priority": 3,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "acceptance": [
         "Fetch failures show a recoverable error instead of an endless loading state",
         "Last successful data remains visible during a refresh failure",
