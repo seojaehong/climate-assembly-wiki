@@ -162,6 +162,27 @@ export async function proxyVote(code: string, roundId: string, choice: unknown, 
   return data as number;
 }
 
+/**
+ * 타이머 시작/종료 로그를 남긴다(분석코어의 발언 배분 지표 원천). timer_log는
+ * RLS enable + anon 정책이 없어 직접 insert가 불가능하므로 mod_log_timer RPC를 경유한다.
+ * 호출부는 fire-and-forget(void logTimer(...).catch(() => {}))으로 써서 실패해도
+ * 타이머 UX는 절대 막지 않는다.
+ */
+export async function logTimer(
+  code: string,
+  entry: { kind: 'speech' | 'session'; duration_s: number; started_at: string; ended_at?: string | null },
+): Promise<void> {
+  const sb = client();
+  const { error } = await sb.schema('climate_vote').rpc('mod_log_timer', {
+    p_code: code,
+    p_kind: entry.kind,
+    p_duration_s: entry.duration_s,
+    p_started_at: entry.started_at,
+    p_ended_at: entry.ended_at ?? null,
+  });
+  if (error) throw error;
+}
+
 /** 라운드의 표(soft-delete 포함)를 전부 가져온다. */
 export async function fetchVotes(roundId: string): Promise<Vote[]> {
   const sb = client();

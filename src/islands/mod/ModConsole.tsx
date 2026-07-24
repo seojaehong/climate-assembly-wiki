@@ -9,10 +9,12 @@ import {
   fetchVotes,
   fetchActiveRound,
   subscribeRound,
+  proxyVote,
   type Round,
   type Vote,
 } from '../../lib/mod-console';
 import { modReducer, initialModState } from './mod-state';
+import Timer from './Timer';
 
 const CODE_KEY = 'mod_code';
 const OPTION_COLORS = ['#23B2C3', '#2E75B6', '#4F9D3A', '#F5A623', '#135C73', '#1F4E79'];
@@ -154,10 +156,12 @@ function JoinScreen({
 
 function HomeScreen({
   teamName,
+  code,
   onCreatePoll,
   creating,
 }: {
   teamName: string;
+  code: string | null;
   onCreatePoll: (input: { title: string; type: 'RADIO' | 'CHECKBOX'; options: string[] }) => void;
   creating: boolean;
 }) {
@@ -280,22 +284,8 @@ function HomeScreen({
             </div>
           </section>
 
-          {/* 타이머 카드 — Task 5 placeholder */}
-          <section className="rounded-2xl border border-[#DCE7EE] bg-white overflow-hidden shadow-sm">
-            <div className="flex items-center gap-3 px-6 py-4 bg-[#2E75B6]/8 border-b border-[#DCE7EE]">
-              <span className="w-11 h-11 rounded-xl bg-[#2E75B6] grid place-items-center text-white text-2xl" aria-hidden="true">
-                ⏱️
-              </span>
-              <h3 className="text-[22px] font-extrabold text-[#1F4E79]" style={{ letterSpacing: '-.01em' }}>
-                타이머
-              </h3>
-            </div>
-            <div className="p-10 flex flex-col items-center justify-center text-center min-h-[300px]">
-              <p className="text-[#5A6B73] text-[16px] leading-relaxed">
-                발언·세션 타이머는 다음 단계(Task 5)에서 연결됩니다.
-              </p>
-            </div>
-          </section>
+          {/* 타이머 카드 */}
+          <Timer code={code} teamName={teamName} />
         </div>
       </div>
     </div>
@@ -340,6 +330,7 @@ function TeamBadge({ name, live }: { name: string; live?: boolean }) {
 
 function PollingScreen({
   teamName,
+  code,
   capacity,
   round,
   votes,
@@ -348,6 +339,7 @@ function PollingScreen({
   restoreNotice,
 }: {
   teamName: string;
+  code: string | null;
   capacity: number;
   round: Round;
   votes: Vote[];
@@ -462,12 +454,182 @@ function PollingScreen({
               >
                 <span aria-hidden="true">⛔</span> {closing ? '마감 중…' : '투표 마감'}
               </button>
-              {/* 대리 입력 — Task 5 범위 */}
+              {code ? <ProxyVoteControl code={code} round={round} /> : null}
             </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+// ============================================================
+// 대리 입력 — 보기+매수 선택 → 확인 다이얼로그 → proxyVote
+// ============================================================
+
+function ProxyVoteControl({ code, round }: { code: string; round: Round }) {
+  const [step, setStep] = useState<'closed' | 'pick' | 'confirm'>('closed');
+  const [choice, setChoice] = useState<string>(round.options?.[0] ?? '');
+  const [n, setN] = useState(1);
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const openPicker = () => {
+    setChoice(round.options?.[0] ?? '');
+    setN(1);
+    setStep('pick');
+  };
+
+  const confirmProxy = async () => {
+    setBusy(true);
+    try {
+      await proxyVote(code, round.id, choice, n);
+      setToast(`대리 ${n}표 입력됨`);
+      setStep('closed');
+    } catch {
+      setToast('대리 입력 실패 — 다시 시도해 주세요');
+      setStep('closed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const options = round.options ?? [];
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={openPicker}
+        className="w-full h-[52px] rounded-2xl border border-[#C4D8E4] bg-white text-[#1F4E79] text-[18px] font-bold"
+      >
+        대리 입력
+      </button>
+      <p className="text-[14px] text-[#5A6B73] text-center">
+        대리 입력: 휴대폰이 없는 참가자의 표를 진행자가 대신 넣습니다.
+      </p>
+
+      {toast ? (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#1F4E79] text-white text-[16px] font-bold rounded-full px-5 py-3 shadow-lg">
+          {toast}
+        </div>
+      ) : null}
+
+      {step === 'pick' ? (
+        <div className="fixed inset-0 z-40 bg-[#1F4E79]/55 backdrop-blur-[1px] flex items-center justify-center p-5">
+          <div className="w-full max-w-md bg-white rounded-2xl border border-[#DCE7EE] overflow-hidden">
+            <div className="px-6 pt-6 pb-5">
+              <Eyebrow className="text-[#5A6B73] mb-2">대리 입력</Eyebrow>
+              <h4 className="text-[22px] font-extrabold text-[#1F4E79] leading-snug mb-4" style={{ letterSpacing: '-.01em' }}>
+                누구에게 몇 표를 넣을까요?
+              </h4>
+
+              <Eyebrow className="text-[#5A6B73] mb-2">보기</Eyebrow>
+              <div className="grid grid-cols-1 gap-2 mb-5">
+                {options.map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setChoice(opt)}
+                    className={`h-14 rounded-xl border text-[18px] font-bold px-4 text-left ${
+                      choice === opt ? 'border-[#23B2C3] bg-[#23B2C3]/8 text-[#1F4E79]' : 'border-[#C4D8E4] text-[#1F2933]'
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+
+              <Eyebrow className="text-[#5A6B73] mb-2">매수 (1~5)</Eyebrow>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="flex items-center rounded-xl border border-[#C4D8E4] overflow-hidden">
+                  <button
+                    type="button"
+                    aria-label="매수 감소"
+                    onClick={() => setN((v) => Math.max(1, v - 1))}
+                    className="w-14 h-16 text-3xl text-[#5A6B73] bg-[#F1F7FA]"
+                  >
+                    −
+                  </button>
+                  <div className="w-24 h-16 grid place-items-center text-[30px] font-extrabold text-[#1F4E79] tr-num">{n}</div>
+                  <button
+                    type="button"
+                    aria-label="매수 증가"
+                    onClick={() => setN((v) => Math.min(5, v + 1))}
+                    className="w-14 h-16 text-3xl text-[#5A6B73] bg-[#F1F7FA]"
+                  >
+                    ＋
+                  </button>
+                </div>
+                <span className="text-[18px] text-[#5A6B73] font-semibold">표</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 p-5 pt-2">
+              <button
+                type="button"
+                onClick={() => setStep('closed')}
+                className="h-14 rounded-2xl border border-[#C4D8E4] bg-white text-[#1F4E79] text-[19px] font-bold"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                disabled={!choice}
+                onClick={() => setStep('confirm')}
+                className="h-14 rounded-2xl bg-[#1F4E79] text-white text-[19px] font-bold disabled:opacity-40"
+              >
+                다음
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {step === 'confirm' ? (
+        <div className="fixed inset-0 z-40 bg-[#1F4E79]/55 backdrop-blur-[1px] flex items-center justify-center p-5">
+          <div className="w-full max-w-md bg-white rounded-2xl border border-[#DCE7EE] overflow-hidden">
+            <div className="px-6 pt-6 pb-5 text-center">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-[#F5A623]/15 border border-[#F5A623]/40 grid place-items-center text-3xl mb-4" aria-hidden="true">
+                🗳️
+              </div>
+              <Eyebrow className="text-[#B5651D] mb-2">Confirm</Eyebrow>
+              <h4 className="text-[22px] font-extrabold text-[#1F4E79] leading-snug mb-3" style={{ letterSpacing: '-.01em' }}>
+                대리 입력을 진행할까요?
+              </h4>
+              <p className="text-[17px] text-[#1F2933] leading-relaxed">
+                무기명 투표에 <b className="text-[#1F4E79]">{choice}</b>
+                <b className="text-[#1F4E79] tr-num"> {n}표</b>를 대리 입력합니다.
+              </p>
+              <p className="text-[14px] text-[#5A6B73] mt-3">확정 후에는 되돌릴 수 없습니다. 참가자 수를 다시 확인하세요.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 p-5 pt-0">
+              <button
+                type="button"
+                onClick={() => setStep('closed')}
+                disabled={busy}
+                className="h-[56px] rounded-2xl border border-[#C4D8E4] bg-white text-[#1F4E79] text-[19px] font-bold disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={confirmProxy}
+                disabled={busy}
+                className="h-[56px] rounded-2xl bg-[#1F4E79] text-white text-[19px] font-bold shadow-sm disabled:opacity-50"
+              >
+                {busy ? '입력 중…' : '확인'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -811,13 +973,16 @@ export default function ModConsole() {
   }
 
   if (state.screen === 'home') {
-    return <HomeScreen teamName={teamName} onCreatePoll={handleCreatePoll} creating={creating} />;
+    return (
+      <HomeScreen teamName={teamName} code={codeRef.current} onCreatePoll={handleCreatePoll} creating={creating} />
+    );
   }
 
   if (state.screen === 'polling' && state.round) {
     return (
       <PollingScreen
         teamName={teamName}
+        code={codeRef.current}
         capacity={state.team?.capacity ?? 0}
         round={state.round}
         votes={votes}
