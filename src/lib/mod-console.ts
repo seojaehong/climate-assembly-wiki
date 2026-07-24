@@ -92,13 +92,20 @@ export async function castBallot(roundId: string, choice: unknown): Promise<'ok'
   const sb = client();
   const clientId = getDeviceToken();
 
-  const { data: existing } = await sb
+  // 중복 체크(select)와 등록(insert) 사이에는 TOCTOU 레이스 윈도우가 존재한다(동일 client_id가
+  // 거의 동시에 두 번 castBallot을 호출하면 둘 다 select를 통과할 수 있음). 1차 방어는 UI 단일-탭
+  // 비활성화(Task 4)이고, 최종 백스톱은 DB에 이미 존재하는 부분 유니크 인덱스
+  // uniq_votes_round_client_active (round_id, client_id) where client_id is not null and
+  // archived_at is null — 아래 insert의 23505 처리가 그 신호를 받는다. (신규 인덱스 추가를
+  // 검토했으나 이 기존 인덱스와 완전히 중복되어 폐기함 — task-2-report.md Fix 2 참고.)
+  const { data: existing, error: selectError } = await sb
     .schema('climate_vote')
     .from('votes')
     .select('id')
     .eq('round_id', roundId)
     .eq('client_id', clientId)
     .is('archived_at', null);
+  if (selectError) throw selectError;
   if (existing && existing.length > 0) return 'duplicate';
 
   const { error } = await sb.schema('climate_vote').from('votes').insert({
@@ -106,7 +113,10 @@ export async function castBallot(roundId: string, choice: unknown): Promise<'ok'
     choice,
     client_id: clientId,
   });
-  if (error) throw error;
+  if (error) {
+    if ((error as { code?: string }).code === '23505') return 'duplicate';
+    throw error;
+  }
   return 'ok';
 }
 
