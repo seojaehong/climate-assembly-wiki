@@ -95,6 +95,7 @@ declare v_team climate_vote.team; v_row climate_vote.rounds;
 begin
   select * into v_team from climate_vote.team where join_code = p_code and status='active';
   if not found then raise exception 'invalid join code'; end if;
+  if p_status not in ('active','closed') then raise exception 'invalid status: %', p_status; end if;
   update climate_vote.rounds set status = p_status, updated_at = now()
    where id = p_round_id and team_id = v_team.id
   returning * into v_row;

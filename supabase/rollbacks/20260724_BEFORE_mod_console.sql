@@ -57,9 +57,19 @@ END $function$;
 -- ⚠️ DESTRUCTIVE — only run if you intend to fully undo the mod-console
 -- migration. Drops all team/timer_log/module_state/chat_message data.
 -- ─────────────────────────────────────────────────────────────────────────
--- 1) Realtime publication membership
-ALTER PUBLICATION supabase_realtime DROP TABLE climate_vote.votes;
-ALTER PUBLICATION supabase_realtime DROP TABLE climate_vote.rounds;
+-- 1) Realtime publication membership — INTENTIONALLY NOT DE-REGISTERED.
+-- The forward migration's ADD TABLE calls were idempotent (wrapped in
+-- `exception when duplicate_object then null`), so we do not know whether
+-- climate_vote.rounds/votes were already members of supabase_realtime
+-- BEFORE this migration ran — pre-migration publication membership was
+-- never recorded. Unconditionally dropping them here could silently break
+-- existing live dashboards that already depend on this realtime feed,
+-- independent of the mod-console feature. If de-registration is ever
+-- actually needed, first check current membership:
+--   select * from pg_publication_tables
+--    where pubname = 'supabase_realtime' and schemaname = 'climate_vote';
+-- and only DROP TABLE for rows confirmed to have been added by the
+-- mod-console migration (not present before it).
 
 -- 2) RPC functions
 DROP FUNCTION IF EXISTS climate_vote.hq_teams();
