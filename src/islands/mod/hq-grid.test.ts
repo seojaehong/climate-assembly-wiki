@@ -15,7 +15,7 @@ import {
 } from './hq-grid-logic';
 import type { HqTeam, Round, Vote } from '../../lib/mod-console';
 
-const team: HqTeam = { id: 't1', name: '1조', subgroup: '교육', capacity: 14, status: 'active' };
+const team: HqTeam = { id: 't1', name: '1조', subgroup: '교육', capacity: 14, status: 'active' , table_no: null };
 
 function round(overrides: Partial<Round> & { id: string }): Round {
   return {
@@ -77,8 +77,8 @@ describe('relevantRoundIds', () => {
   it('활성/마감 라운드가 있는 팀만 id를 반환한다', () => {
     const teams: HqTeam[] = [
       team,
-      { id: 't2', name: '2조', subgroup: null, capacity: 10, status: 'active' },
-      { id: 't3', name: '3조', subgroup: null, capacity: 10, status: 'active' },
+      { id: 't2', name: '2조', subgroup: null, capacity: 10, status: 'active' , table_no: null },
+      { id: 't3', name: '3조', subgroup: null, capacity: 10, status: 'active' , table_no: null },
     ];
     const rounds = [
       round({ id: 'r1', status: 'active', team_id: 't1', created_at: '2026-07-24T01:00:00Z' }),
@@ -135,8 +135,8 @@ describe('summarizeTeamCells', () => {
   it('대기·투표중·마감 상태를 전체 조 기준으로 집계한다', () => {
     const teams: HqTeam[] = [
       team,
-      { id: 't2', name: '2조', subgroup: '전환', capacity: 10, status: 'active' },
-      { id: 't3', name: '3조', subgroup: '전환', capacity: 10, status: 'active' },
+      { id: 't2', name: '2조', subgroup: '전환', capacity: 10, status: 'active' , table_no: null },
+      { id: 't3', name: '3조', subgroup: '전환', capacity: 10, status: 'active' , table_no: null },
     ];
     const rounds = [
       round({ id: 'r1', status: 'active', team_id: 't1', created_at: '2026-07-24T03:00:00Z' }),
@@ -271,8 +271,8 @@ describe('teamRoundHistoryWithResults', () => {
 describe('teamCellForRoundView / roundIdsForSequence', () => {
   // 1조는 1차(a1 마감)·2차(a2 진행 중)를 했고, 2조는 1차(b1 마감)만 했다.
   // 즉 '2차' 보기에서 2조는 '0표'가 아니라 '미실시'다 — 본부가 이 둘을 섞으면 진행 상황을 오판한다.
-  const teamA: HqTeam = { id: 't1', name: '1조', subgroup: '교육', capacity: 12, status: 'active' };
-  const teamB: HqTeam = { id: 't2', name: '2조', subgroup: '교육', capacity: 10, status: 'active' };
+  const teamA: HqTeam = { id: 't1', name: '1조', subgroup: '교육', capacity: 12, status: 'active' , table_no: null };
+  const teamB: HqTeam = { id: 't2', name: '2조', subgroup: '교육', capacity: 10, status: 'active' , table_no: null };
   const viewRounds = [
     round({ id: 'a1', team_id: 't1', status: 'closed', created_at: '2026-08-29T01:00:00Z' }),
     round({ id: 'a2', team_id: 't1', status: 'active', created_at: '2026-08-29T02:00:00Z' }),
@@ -373,8 +373,8 @@ describe('resultExportJobs', () => {
     return { id, round_id: roundId, choice, archived_at: null };
   }
 
-  const teamA: HqTeam = { id: 't1', name: '1분과 1조', subgroup: '1분과', capacity: 12, status: 'active' };
-  const teamB: HqTeam = { id: 't2', name: '2분과 3조', subgroup: '2분과', capacity: 12, status: 'active' };
+  const teamA: HqTeam = { id: 't1', name: '1분과 1조', subgroup: '1분과', capacity: 12, status: 'active' , table_no: null };
+  const teamB: HqTeam = { id: 't2', name: '2분과 3조', subgroup: '2분과', capacity: 12, status: 'active' , table_no: null };
 
   /** 실제 화면과 같은 시각 문구를 쓰되, 테스트가 타임존에 흔들리지 않게 고정 문자열을 돌려준다. */
   const clock = () => '14:32';

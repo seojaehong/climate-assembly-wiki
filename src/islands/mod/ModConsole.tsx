@@ -28,6 +28,7 @@ import { roundSequence, teamRoundHistory, type TeamRoundHistoryItem } from './ro
 import { renderResultSvg, type ResultImageInput } from './result-image';
 import { downloadBlob, resultImageFileName, svgToPngBlob, RESULT_IMAGE_SCALE } from './svg-to-png';
 import AttendancePanel from './AttendancePanel';
+import { tableNoLabel } from './table-no';
 import Timer from './Timer';
 
 const CODE_KEY = 'mod_code';
@@ -475,12 +476,14 @@ function PastRoundsCard({ teamId, teamName }: { teamId: string; teamName: string
 function HomeScreen({
   teamId,
   teamName,
+  tableNo,
   code,
   onCreatePoll,
   creating,
 }: {
   teamId: string;
   teamName: string;
+  tableNo?: string | null;
   code: string | null;
   onCreatePoll: (input: { title: string; type: 'RADIO' | 'CHECKBOX'; options: string[] }) => void;
   creating: boolean;
@@ -500,7 +503,7 @@ function HomeScreen({
 
   return (
     <div className="min-h-screen bg-[#F5F8FB]">
-      <TopBar right={<TeamBadge name={teamName} live />} />
+      <TopBar right={<TeamBadge name={teamName} tableNo={tableNo} live />} />
 
       <div className="max-w-5xl mx-auto p-6 sm:p-8">
         <h2 className="text-[24px] font-extrabold text-[#1F4E79] mb-1" style={{ letterSpacing: '-.01em' }}>
@@ -633,12 +636,19 @@ function TopBar({ right, live }: { right: React.ReactNode; live?: boolean }) {
   );
 }
 
-function TeamBadge({ name, live }: { name: string; live?: boolean }) {
+function TeamBadge({ name, tableNo, live }: { name: string; tableNo?: string | null; live?: boolean }) {
+  // 번호가 없으면 아무것도 렌더하지 않는다 — 빈 칩이 생기면 "번호를 못 받았다"로 읽힌다.
+  const tableLabel = tableNoLabel(tableNo);
   return (
     <div className="flex items-center gap-2 bg-[#1F4E79] text-white rounded-full pl-4 pr-3 py-2">
       <span className="text-[19px] font-bold" style={{ letterSpacing: '-.01em' }}>
         {name}
       </span>
+      {tableLabel ? (
+        <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[17px] font-extrabold whitespace-nowrap">
+          {tableLabel}
+        </span>
+      ) : null}
       {live !== undefined && (
         <span className={`w-2.5 h-2.5 rounded-full ${live ? 'bg-[#4F9D3A]' : 'bg-[#5A6B73]'}`} title="접속됨" />
       )}
@@ -652,6 +662,7 @@ function TeamBadge({ name, live }: { name: string; live?: boolean }) {
 
 function PollingScreen({
   teamName,
+  tableNo,
   code,
   capacity,
   round,
@@ -661,6 +672,7 @@ function PollingScreen({
   restoreNotice,
 }: {
   teamName: string;
+  tableNo?: string | null;
   code: string | null;
   capacity: number;
   round: Round;
@@ -708,7 +720,7 @@ function PollingScreen({
 
   return (
     <div className="min-h-screen bg-[#F5F8FB]">
-      <TopBar right={<TeamBadge name={teamName} />} live />
+      <TopBar right={<TeamBadge name={teamName} tableNo={tableNo} />} live />
 
       <div className="max-w-6xl mx-auto p-6 sm:p-8">
         {restoreNotice ? (
@@ -1026,6 +1038,7 @@ function ProxyVoteControl({ code, round }: { code: string; round: Round }) {
 
 function ResultsScreen({
   teamName,
+  tableNo,
   sequence,
   round,
   votes,
@@ -1036,6 +1049,7 @@ function ResultsScreen({
   reopening,
 }: {
   teamName: string;
+  tableNo?: string | null;
   /** 이 조에서 몇 번째 투표인가. 조회 전이거나 실패하면 0이고, 그때는 회차 없이 저장한다. */
   sequence: number;
   round: Round;
@@ -1074,7 +1088,7 @@ function ResultsScreen({
 
   return (
     <div className="min-h-screen bg-[#F5F8FB]">
-      <TopBar right={<TeamBadge name={teamName} />} />
+      <TopBar right={<TeamBadge name={teamName} tableNo={tableNo} />} />
 
       <div className="max-w-2xl mx-auto p-6 sm:p-8">
         <div className="bg-white rounded-3xl border border-[#DCE7EE] overflow-hidden shadow-sm">
@@ -1468,6 +1482,8 @@ export default function ModConsole() {
   };
 
   const teamName = state.team?.name ?? '';
+  // mod_join이 team 행을 통째로 돌려주므로 별도 조회가 없다. 값이 없으면 배지가 알아서 비운다.
+  const tableNo = state.team?.table_no ?? null;
 
   let screenEl: React.ReactNode;
 
@@ -1476,6 +1492,7 @@ export default function ModConsole() {
       <HomeScreen
         teamId={state.team?.id ?? ''}
         teamName={teamName}
+        tableNo={tableNo}
         code={codeRef.current}
         onCreatePoll={handleCreatePoll}
         creating={creating}
@@ -1485,6 +1502,7 @@ export default function ModConsole() {
     screenEl = (
       <PollingScreen
         teamName={teamName}
+        tableNo={tableNo}
         code={codeRef.current}
         capacity={state.team?.capacity ?? 0}
         round={state.round}
@@ -1500,6 +1518,7 @@ export default function ModConsole() {
     screenEl = (
       <ResultsScreen
         teamName={teamName}
+        tableNo={tableNo}
         sequence={resultsSequence?.roundId === state.round.id ? resultsSequence.sequence : 0}
         round={state.round}
         votes={votes}

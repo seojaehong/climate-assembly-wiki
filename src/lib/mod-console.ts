@@ -1,7 +1,11 @@
 import { getSupabase } from './supabase';
 import { sortTeamsStandard } from './team-order';
 
-export type Team = { id: string; name: string; subgroup: string | null; join_code: string; capacity: number };
+/**
+ * table_no는 20260726_team_table_no.sql이 추가한 열이다. mod_join은 `select *`라 열이 그대로 실려 온다.
+ * 이 타입은 손으로 유지하므로(Round와 동일) 마이그레이션 미적용 DB에서도 깨지지 않게 optional로 둔다.
+ */
+export type Team = { id: string; name: string; subgroup: string | null; join_code: string; capacity: number; table_no?: string | null };
 /**
  * updated_at은 mod_set_round_status가 상태를 바꿀 때마다 now()로 갱신한다
  * (20260724_mod_console_core.sql:99). 마감된 라운드에서는 사실상 '마감 시각'이다.
@@ -11,8 +15,14 @@ export type Team = { id: string; name: string; subgroup: string | null; join_cod
 export type Round = { id: string; title: string; type: 'RADIO' | 'CHECKBOX' | 'SCALE'; options: string[] | null; status: 'pending' | 'active' | 'closed'; team_id: string | null; created_at?: string; updated_at?: string };
 export type Vote = { id: number; round_id: string; choice: unknown; archived_at: string | null };
 export type Tally = { total: number; byOption: Record<string, number> };
-/** /hq 읽기전용: join_code 제외 팀 정보(hq_teams RPC 반환). */
-export type HqTeam = { id: string; name: string; subgroup: string | null; capacity: number; status: string };
+/**
+ * /hq 읽기전용: join_code 제외 팀 정보(hq_teams RPC 반환).
+ *
+ * table_no는 hq_teams()가 돌려주는 6번째 열이다(20260726_team_table_no.sql).
+ * 손유지 타입이라 타입체커는 DB와의 일치를 검증하지 못한다 — 마이그레이션이 적용되지 않은
+ * 환경에서는 런타임 값이 undefined일 수 있으므로 표시부(tableNoLabel)가 그 경우를 흡수한다.
+ */
+export type HqTeam = { id: string; name: string; subgroup: string | null; capacity: number; status: string; table_no: string | null };
 
 /** 6자리 숫자 조인코드만 허용 (앞뒤 공백 포함 불허). */
 export function isValidJoinCode(code: string): boolean {

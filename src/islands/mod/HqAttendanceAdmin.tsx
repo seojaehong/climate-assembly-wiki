@@ -4,11 +4,13 @@ import {
   fetchAttendanceRoster,
   saveRosterMember,
   setTeamAttendancePin,
+  setTeamTableNo,
   unlockHqAttendance,
   type AttendanceAuditRow,
   type AttendanceRosterRow,
 } from '../../lib/attendance';
 import type { HqTeam } from '../../lib/mod-console';
+import { TABLE_NO_MAX_LENGTH, normalizeTableNo, tableNoLabel } from './table-no';
 
 const TOKEN_KEY = 'climate_vote_hq_attendance_token';
 
@@ -82,6 +84,12 @@ export default function HqAttendanceAdmin({ teams }: { teams: HqTeam[] }) {
   const [newMember, setNewMember] = useState({ officialId: '', name: '', teamId: teams[0]?.id ?? '' });
   const [pinTeamId, setPinTeamId] = useState(teams[0]?.id ?? '');
   const [newPin, setNewPin] = useState('');
+  // 조별 테이블 번호 초안. 키가 없는 조는 teams prop의 값을 그대로 읽는다(아래 tableValue).
+  // 30초마다 갱신되는 prop이 사용자가 치고 있는 값을 덮지 않게 하는 유일한 방법이다.
+  const [tableDrafts, setTableDrafts] = useState<Record<string, string>>({});
+  const [tableSavingId, setTableSavingId] = useState<string | null>(null);
+  // 저장 실패는 조별로 남긴다 — 공용 message 채널은 15초 폴링 성공이 지워 버린다.
+  const [tableErrors, setTableErrors] = useState<Record<string, string>>({});
 
   const load = useCallback(async (sessionToken: string) => {
     try {
@@ -224,6 +232,37 @@ export default function HqAttendanceAdmin({ teams }: { teams: HqTeam[] }) {
     }
   };
 
+  const tableValue = (team: HqTeam): string => tableDrafts[team.id] ?? team.table_no ?? '';
+
+  const saveTableNo = async (team: HqTeam) => {
+    if (!token) return;
+    const value = normalizeTableNo(tableValue(team));
+    setTableSavingId(team.id);
+    setTableErrors((current) => {
+      const { [team.id]: _removed, ...rest } = current;
+      return rest;
+    });
+    try {
+      await setTeamTableNo(token, team.id, value);
+      // 초안을 지우지 않는다. teams prop은 /hq 폴링(최대 30초) 뒤에야 새 값을 싣고 오므로,
+      // 여기서 지우면 입력창이 옛 값으로 되돌아가 저장이 실패한 것처럼 보인다.
+      setTableDrafts((current) => ({ ...current, [team.id]: value ?? '' }));
+      setMessage(
+        value
+          ? `${team.name} 좌석을 ${tableNoLabel(value)}로 저장했습니다. 대형 화면에는 30초 안에 반영됩니다.`
+          : `${team.name} 테이블 번호를 지웠습니다.`,
+      );
+    } catch (error) {
+      console.error('[HQ attendance] table number save failed', error);
+      setTableErrors((current) => ({
+        ...current,
+        [team.id]: '저장하지 못했습니다. 연결을 확인한 뒤 저장을 다시 눌러 주세요.',
+      }));
+    } finally {
+      setTableSavingId(null);
+    }
+  };
+
   if (!token) {
     return (
       <section className="rounded-2xl border border-[#C4D8E4] bg-white p-5 shadow-sm" aria-labelledby="hq-admin-title">
@@ -341,6 +380,49 @@ export default function HqAttendanceAdmin({ teams }: { teams: HqTeam[] }) {
             <input aria-label="새 조 운영 PIN" type="password" inputMode="numeric" value={newPin} onChange={(event) => setNewPin(event.target.value.replace(/\D/g, ''))} placeholder="새 숫자 PIN 6~12자리" className="min-h-11 rounded-lg border border-[#D8BE79] px-3" />
             <button disabled={busy} className="min-h-11 rounded-lg bg-[#6B4B00] px-4 font-bold text-white disabled:opacity-50">PIN 교체</button>
           </form>
+
+          <section className="rounded-xl border border-[#C4D8E4] bg-[#F8FAFC] p-3" aria-labelledby="hq-table-no-title">
+            <h3 id="hq-table-no-title" className="text-[16px] font-extrabold text-[#1F2933]">조 테이블 번호</h3>
+            <p className="mt-1 text-[13px] font-bold text-[#5A6B73]">
+              현장 좌석 번호입니다. 숫자가 아니어도 됩니다(예: A-3). 비우고 저장하면 번호가 지워집니다.
+              저장한 값은 대형 화면과 각 조 화면에 30초 안에 반영됩니다.
+            </p>
+            <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+              {teams.map((team) => (
+                <li key={team.id} className="flex flex-wrap items-center gap-2">
+                  <span className="min-w-[92px] text-[14px] font-bold text-[#33393F]">{team.name}</span>
+                  <input
+                    aria-label={`${team.name} 테이블 번호`}
+                    value={tableValue(team)}
+                    maxLength={TABLE_NO_MAX_LENGTH}
+                    placeholder="예: 15"
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      setTableDrafts((current) => ({ ...current, [team.id]: next }));
+                      setTableErrors((current) => {
+                        const { [team.id]: _removed, ...rest } = current;
+                        return rest;
+                      });
+                    }}
+                    className="min-h-11 min-w-[80px] flex-1 rounded-lg border border-[#C4D8E4] px-3 text-[15px]"
+                  />
+                  <button
+                    type="button"
+                    disabled={tableSavingId === team.id}
+                    onClick={() => void saveTableNo(team)}
+                    className="min-h-11 shrink-0 rounded-lg border-2 border-[#1F4E79] px-3 text-[14px] font-bold text-[#1F4E79] disabled:opacity-50"
+                  >
+                    {tableSavingId === team.id ? '저장 중…' : '저장'}
+                  </button>
+                  {tableErrors[team.id] ? (
+                    <p className="w-full rounded-lg border-2 border-[#F5A623] bg-[#F5A623]/10 px-3 py-2 text-[13px] font-extrabold text-[#B5651D]">
+                      {tableErrors[team.id]}
+                    </p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </section>
 
           <div className="overflow-x-auto rounded-xl border border-[#DCE7EE]">
             <table className="min-w-[920px] w-full text-left text-[14px]">

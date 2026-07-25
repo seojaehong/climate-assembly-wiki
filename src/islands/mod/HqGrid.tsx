@@ -36,6 +36,7 @@ import { isOpsMode, participationParts, BROADCAST_STATUS_STYLE } from './hq-broa
 import { renderResultSvg } from './result-image';
 import { downloadBlob, resultZipFileName, svgToPngBlob, RESULT_IMAGE_SCALE } from './svg-to-png';
 import { buildZipArchive, type ZipEntry } from './zip-store';
+import { tableNoLabel } from './table-no';
 
 const POLL_MS = 30000;
 const STALE_AFTER_MS = 65000;
@@ -136,6 +137,8 @@ function TeamCard({
   const participation = participationParts(cell);
   // 보조 텍스트: 송출은 흰 배경 대비 11.5:1(#33393F), 운영은 기존 색 유지(AC #5).
   const mutedText = opsMode ? 'text-[#5A6B73]' : 'text-[#33393F]';
+  // 번호가 없는 조는 null — 빈 자리(빈 줄·자리표시자)를 만들지 않는다.
+  const tableLabel = tableNoLabel(team.table_no);
   return (
     <button
       type="button"
@@ -146,7 +149,7 @@ function TeamCard({
             ? `${team.name} 비교 ${comparisonSelected ? '선택 해제' : '선택'}, ${cell.label}, 참여 ${cell.participation}`
             : opsMode
               ? `${team.name} 상세 보기, ${cell.label}, 참여 ${cell.participation}`
-              : `${team.name}, ${cell.label}, 참여 ${cell.participation}`
+              : `${team.name}${tableLabel ? `, ${tableLabel}` : ''}, ${cell.label}, 참여 ${cell.participation}`
       }
       aria-pressed={compareMode ? comparisonSelected : selected}
       onClick={onSelect}
@@ -174,7 +177,9 @@ function TeamCard({
             : 'flex flex-col items-start gap-2 shrink-0'
         }
       >
-        <div>
+        {/* 송출에서만 w-full — 아래 truncate가 카드 내용 폭(223px)을 기준으로 잘리게 한다.
+            ops(가로 justify-between)에서 w-full을 주면 배지가 밀려 회귀가 난다. */}
+        <div className={opsMode ? undefined : 'w-full min-w-0'}>
           <div
             className={`${
               opsMode ? 'text-[22px] sm:text-[24px]' : 'text-[40px]'
@@ -183,6 +188,15 @@ function TeamCard({
           >
             {team.name}
           </div>
+          {tableLabel ? (
+            <div
+              className={`${
+                opsMode ? 'text-[13px] mt-0.5' : 'text-[28px] mt-1 truncate'
+              } font-bold leading-tight text-[#1F4E79]`}
+            >
+              {tableLabel}
+            </div>
+          ) : null}
         </div>
         <div
           className={`flex items-center rounded-full shrink-0 ${

@@ -156,6 +156,21 @@ export async function setTeamAttendancePin(token: string, teamId: string, pin: s
   if (error) throw error;
 }
 
+/**
+ * 조 테이블 번호(현장 좌석 번호)를 저장한다. 빈 문자열·null은 번호 지움이다.
+ *
+ * RPC는 scope='hq' 토큰만 받는다 — 조 모더레이터가 자기 조 번호를 바꾸면 좌석표와 어긋나기 때문이다.
+ * 20자를 넘기면 'table number too long' 예외가 난다(TABLE_NO_MAX_LENGTH).
+ */
+export async function setTeamTableNo(token: string, teamId: string, tableNo: string | null): Promise<void> {
+  const { error } = await client().schema('climate_vote').rpc('attendance_hq_set_table_no', {
+    p_token: token,
+    p_team_id: teamId,
+    p_table_no: tableNo,
+  });
+  if (error) throw error;
+}
+
 export async function fetchRoundEligibleCount(roundId: string): Promise<number> {
   const { data, error } = await client().schema('climate_vote').rpc('attendance_round_eligible_count', {
     p_round_id: roundId,
