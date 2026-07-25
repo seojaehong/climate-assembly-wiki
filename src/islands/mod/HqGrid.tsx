@@ -131,7 +131,7 @@ function TeamCard({
           />
           <span
             className={`${
-              opsMode ? 'text-[14px]' : 'text-[32px] leading-none'
+              opsMode ? 'text-[14px]' : 'text-[32px] leading-tight'
             } font-bold whitespace-nowrap`}
           >
             {cell.label}
