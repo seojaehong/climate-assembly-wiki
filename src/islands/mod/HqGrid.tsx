@@ -197,6 +197,16 @@ const ROUND_STATUS_LABEL: Record<Round['status'], string> = {
   closed: '마감',
 };
 
+/**
+ * 라운드 상태 → 카드 상태 팔레트 키. 세 상태를 모두 적어 라벨과 색이 어긋나지 않게 한다
+ * (2분기로 쓰면 pending이 '대기' 글자에 '마감' 네이비를 입는다 — 타입체커는 유효한 키라 통과시킨다).
+ */
+const ROUND_STATUS_TONE: Record<Round['status'], TeamCellResult['label']> = {
+  pending: '대기',
+  active: '투표중',
+  closed: '마감',
+};
+
 /** 이력 한 줄의 총 표수·선두 표기. 조회 전('불러오는 중')과 조회 실패('—')를 반드시 가른다. */
 function historyFigures(
   entry: TeamRoundHistoryEntry,
@@ -339,7 +349,10 @@ function TeamDetailPanel({
                           <span className="flex-1 text-[16px] font-bold leading-snug text-[#1F2933]">{entry.title}</span>
                           <span
                             className="shrink-0 rounded-full px-2.5 py-1 text-[13px] font-bold"
-                            style={{ background: STATUS_STYLE[entry.status === 'active' ? '투표중' : '마감'].bg, color: STATUS_STYLE[entry.status === 'active' ? '투표중' : '마감'].text }}
+                            style={{
+                              background: STATUS_STYLE[ROUND_STATUS_TONE[entry.status]].bg,
+                              color: STATUS_STYLE[ROUND_STATUS_TONE[entry.status]].text,
+                            }}
                           >
                             {ROUND_STATUS_LABEL[entry.status]}
                           </span>
@@ -660,8 +673,11 @@ export default function HqGrid() {
   }, [historyRoundKey, historyReloadKey, selectedTeamId]);
 
   // 다른 조를 열면 회차 선택은 기본값(현재 라운드)으로 돌아간다.
+  // historyState도 함께 되돌린다 — 안 그러면 A조에서 조회에 실패한 뒤 B조를 열 때
+  // 아직 시도조차 안 한 B조 화면에 실패 배너가 한 프레임 스친다.
   useEffect(() => {
     setHistoryRoundId(null);
+    setHistoryState('loading');
   }, [selectedTeamId]);
 
   const historyEntries = useMemo(
