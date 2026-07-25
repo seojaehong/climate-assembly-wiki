@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   attendanceSummary,
+  classifyAttendanceError,
   isEligibleDuringRound,
   nextAttendanceValue,
   type AttendanceValue,
@@ -98,5 +99,47 @@ describe('isEligibleDuringRound', () => {
     const absent = nextAttendanceValue(unconfirmed, 'absent', '2026-08-29T01:00:00.000Z');
     expect(isEligibleDuringRound(present, '2026-08-29T01:00:00.000Z', '2026-08-29T02:00:00.000Z')).toBe(false);
     expect(isEligibleDuringRound(absent, '2026-08-29T01:00:00.000Z', '2026-08-29T02:00:00.000Z')).toBe(false);
+  });
+});
+
+describe('classifyAttendanceError', () => {
+  it('토큰 만료 RPC 예외는 expired로 분류한다', () => {
+    expect(classifyAttendanceError({ message: 'attendance authorization expired', code: 'P0001' })).toBe('expired');
+  });
+
+  it('토큰 누락 RPC 예외도 expired로 분류한다', () => {
+    expect(classifyAttendanceError({ message: 'attendance authorization required', code: 'P0001' })).toBe('expired');
+  });
+
+  it('권한 거부 계열 코드는 expired로 분류한다', () => {
+    expect(classifyAttendanceError({ message: 'permission denied for function', code: '42501' })).toBe('expired');
+    expect(classifyAttendanceError({ message: 'JWT expired', code: 'PGRST301' })).toBe('expired');
+    expect(classifyAttendanceError({ message: 'Forbidden', status: 403 })).toBe('expired');
+  });
+
+  it('같은 P0001이라도 인증과 무관한 예외는 transient다', () => {
+    expect(classifyAttendanceError({ message: 'assignment outside attendance scope', code: 'P0001' })).toBe('transient');
+    expect(classifyAttendanceError({ message: 'invalid attendance action', code: 'P0001' })).toBe('transient');
+  });
+
+  it('네트워크·타임아웃 오류는 transient다', () => {
+    expect(classifyAttendanceError(new TypeError('Failed to fetch'))).toBe('transient');
+    expect(classifyAttendanceError({ message: 'AbortError: signal timed out', name: 'AbortError' })).toBe('transient');
+  });
+
+  it('5xx 응답은 transient다', () => {
+    expect(classifyAttendanceError({ message: 'Bad Gateway', status: 502 })).toBe('transient');
+    expect(classifyAttendanceError({ message: 'Service Unavailable', status: 503 })).toBe('transient');
+  });
+
+  it('env 누락 오류는 transient다', () => {
+    expect(classifyAttendanceError(new Error('Supabase client unavailable (missing env)'))).toBe('transient');
+  });
+
+  it('알 수 없는 형태는 안전한 쪽(transient)으로 떨어진다', () => {
+    expect(classifyAttendanceError(null)).toBe('transient');
+    expect(classifyAttendanceError(undefined)).toBe('transient');
+    expect(classifyAttendanceError('attendance authorization expired')).toBe('transient');
+    expect(classifyAttendanceError({})).toBe('transient');
   });
 });

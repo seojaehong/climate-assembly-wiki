@@ -8,7 +8,7 @@ import {
   unlockTeamAttendance,
   type AttendanceRosterRow,
 } from '../../lib/attendance';
-import { attendanceSummary, type AttendanceAction } from './attendance-logic';
+import { attendanceSummary, classifyAttendanceError, type AttendanceAction } from './attendance-logic';
 
 function localDateTimeNow(): string {
   const now = new Date();
@@ -43,6 +43,7 @@ export default function AttendancePanel({
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [timeEdit, setTimeEdit] = useState<{ row: AttendanceRosterRow; action: 'late' | 'early_leave' } | null>(null);
   const [timeValue, setTimeValue] = useState(localDateTimeNow);
   const [memberEdit, setMemberEdit] = useState<AttendanceRosterRow | null>(null);
@@ -55,11 +56,18 @@ export default function AttendancePanel({
       const next = await fetchAttendanceRoster(token);
       setRows(next);
       setMessage(null);
+      setLoadError(null);
     } catch (error) {
       console.error('[attendance] team roster load failed', error);
+      if (classifyAttendanceError(error) === 'transient') {
+        // 네트워크 순단·5xx: 토큰과 기존 명단을 그대로 두고 15초 뒤 자동 재시도한다.
+        setLoadError('연결이 잠시 끊겼습니다. 출석부는 그대로 유지됩니다. 15초마다 자동으로 다시 연결하니 그대로 계속 체크하세요.');
+        return;
+      }
       sessionStorage.removeItem(tokenKey);
       setToken(null);
       setRows([]);
+      setLoadError(null);
       setMessage('출석부 잠금이 만료되었습니다. PIN을 다시 입력해 주세요.');
     }
   }, [token, tokenKey]);
@@ -254,6 +262,19 @@ export default function AttendancePanel({
             명단 추가
           </button>
         </div>
+
+        {loadError ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border-2 border-[#F5A623] bg-[#F5A623]/10 px-4 py-3" role="status">
+            <span className="text-[16px] font-extrabold text-[#B5651D] flex-1 min-w-[200px]">{loadError}</span>
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="min-h-11 rounded-lg border-2 border-[#B5651D] px-4 text-[15px] font-bold text-[#B5651D]"
+            >
+              지금 다시 시도
+            </button>
+          </div>
+        ) : null}
 
         {message ? <div className="rounded-lg bg-[#F1F7FA] px-3 py-2 text-[14px] font-semibold text-[#135C73]" role="status">{message}</div> : null}
 

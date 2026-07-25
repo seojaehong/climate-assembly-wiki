@@ -18,6 +18,29 @@ export type AttendanceSummary = {
   unconfirmed: number;
 };
 
+export type AttendanceErrorKind = 'expired' | 'transient';
+
+/** 인증 만료로 확정할 수 있는 코드만 나열한다. 나머지는 전부 transient(토큰 유지). */
+const AUTH_DENIED_CODES = new Set(['42501', 'PGRST301', 'PGRST302', '401', '403']);
+
+/**
+ * 출석부 RPC 실패를 '토큰을 버려야 하는 만료'와 '재시도하면 되는 일시 장애'로 가른다.
+ * 인증 신호가 확실할 때만 'expired'. 네트워크·타임아웃·5xx·env 누락·알 수 없는 형태는
+ * 모두 'transient'로 떨어져 sessionStorage 토큰과 기존 명단을 지킨다.
+ * (SQLSTATE P0001은 'assignment outside attendance scope' 같은 업무 예외와 공유되므로 근거로 쓰지 않는다.)
+ */
+export function classifyAttendanceError(error: unknown): AttendanceErrorKind {
+  if (error == null || typeof error !== 'object') return 'transient';
+  const source = error as { message?: unknown; code?: unknown; status?: unknown };
+  const message = typeof source.message === 'string' ? source.message.toLowerCase() : '';
+  if (message.includes('attendance authorization')) return 'expired';
+  const code = source.code == null ? '' : String(source.code).toUpperCase();
+  if (AUTH_DENIED_CODES.has(code)) return 'expired';
+  const status = Number(source.status);
+  if (status === 401 || status === 403) return 'expired';
+  return 'transient';
+}
+
 export function nextAttendanceValue(
   current: AttendanceValue,
   action: AttendanceAction,
