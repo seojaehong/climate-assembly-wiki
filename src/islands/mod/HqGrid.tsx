@@ -80,7 +80,9 @@ function TeamCard({
       }
       aria-pressed={compareMode ? comparisonSelected : selected}
       onClick={onSelect}
-      className={`min-h-[158px] w-full rounded-2xl border bg-white p-4 flex flex-col gap-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#23B2C3]/40 ${
+      className={`${
+        opsMode ? 'min-h-[158px]' : 'h-full min-h-0 overflow-hidden'
+      } w-full rounded-2xl border bg-white p-4 flex flex-col gap-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#23B2C3]/40 ${
         selected || comparisonSelected ? 'border-[#1F4E79] ring-2 ring-[#1F4E79]/20' : 'border-[#DCE7EE]'
       }`}
     >
@@ -494,8 +496,8 @@ export default function HqGrid() {
   }[connectionState];
 
   return (
-    <div className="min-h-screen bg-[#F5F8FB] px-4 sm:px-6 py-5 sm:py-6">
-      <div className="flex items-end justify-between mb-4 flex-wrap gap-3">
+    <div className={`min-h-screen bg-[#F5F8FB] px-4 sm:px-6 ${opsMode ? 'py-5 sm:py-6' : 'py-3'}`}>
+      <div className={`flex items-end justify-between ${opsMode ? 'mb-4' : 'mb-3'} flex-wrap gap-3`}>
         <div>
           <Eyebrow className="text-[#5A6B73]">Headquarters · Read-only</Eyebrow>
           <h1
@@ -650,7 +652,13 @@ export default function HqGrid() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+      <div
+        className={
+          opsMode
+            ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3'
+            : 'grid grid-cols-5 grid-rows-3 gap-3 h-[calc(100vh-160px)] min-h-0'
+        }
+      >
         {visibleTeams.map((team) => (
           <TeamCard
             key={team.id}
