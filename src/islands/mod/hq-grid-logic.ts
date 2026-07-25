@@ -1,5 +1,5 @@
 import { tallyVotes, type HqTeam, type Round, type Vote } from '../../lib/mod-console';
-import { teamRoundHistory, type TeamRoundHistoryItem } from './round-sequence';
+import { roundSequence, teamRoundHistory, type TeamRoundHistoryItem } from './round-sequence';
 
 export type TeamCellResult = { label: '대기' | '투표중' | '마감'; participation: string };
 export type HqSummary = { total: number; waiting: number; polling: number; closed: number };
@@ -78,6 +78,66 @@ export function leadingResult(round: Round | null, votes: Vote[]): LeadingResult
     count: ranked[0][1],
     tied: ranked.length > 1 && ranked[1][1] === ranked[0][1],
   };
+}
+
+/** /hq 회차별 보기의 선택값. 'current'는 기존 동작(활성 라운드 → 없으면 최신 마감)이다. */
+export type RoundView = 'current' | number;
+
+/**
+ * 회차별 보기에서 카드 한 장이 보여줄 값.
+ *
+ * - label이 '미실시'면 그 조에 해당 회차 라운드가 **아예 없다**(participation은 항상 null).
+ * - label이 실제 상태인데 participation이 null이면 라운드는 있고 **표를 아직 못 받았다**.
+ *
+ * '미실시'와 '0표'는 화면에서 반드시 다르게 보여야 한다 — 같은 표기를 쓰면 본부가
+ * "그 조는 투표했는데 아무도 안 찍었다"로 오판한다. 상태 배지는 rounds에서 바로 나오므로
+ * 표 조회가 실패해도 정확하다(부분 열화).
+ */
+export type RoundViewCell = { label: TeamCellResult['label'] | '미실시'; participation: string | null };
+
+const SEQUENCE_CELL_LABEL: Record<Round['status'], TeamCellResult['label']> = {
+  pending: '대기',
+  active: '투표중',
+  closed: '마감',
+};
+
+/** 그 조의 N차 라운드. 회차 번호는 roundSequence(조별 created_at 오름차순)에서 나온다. */
+function teamRoundAtSequence(teamId: string, rounds: Round[], sequence: number): Round | null {
+  const numbers = roundSequence(teamId, rounds);
+  return rounds.find((round) => round.team_id === teamId && numbers.get(round.id) === sequence) ?? null;
+}
+
+/**
+ * 회차별 보기에서 한 조의 카드 값을 구한다.
+ * 'current'는 기존 teamCell 그대로이고, 숫자를 주면 그 조의 N차 라운드를 기준으로 계산한다.
+ */
+export function teamCellForRoundView(
+  team: HqTeam,
+  rounds: Round[],
+  voteCounts: Record<string, number>,
+  view: RoundView,
+): RoundViewCell {
+  if (view === 'current') return teamCell(team, rounds, voteCounts);
+  const round = teamRoundAtSequence(team.id, rounds, view);
+  if (!round) return { label: '미실시', participation: null };
+  const count = voteCounts[round.id];
+  return {
+    label: SEQUENCE_CELL_LABEL[round.status],
+    participation: count == null ? null : `${count}/${team.capacity}`,
+  };
+}
+
+/**
+ * N차 표를 조회해야 할 라운드 id — 각 조의 N차 라운드 하나씩(그 회차가 없는 조는 제외).
+ * relevantRoundIds의 회차판이며, teamCellForRoundView가 찾는 라운드와 **같은 것**을 골라야 한다.
+ */
+export function roundIdsForSequence(teams: HqTeam[], rounds: Round[], sequence: number): string[] {
+  const ids: string[] = [];
+  for (const team of teams) {
+    const round = teamRoundAtSequence(team.id, rounds, sequence);
+    if (round) ids.push(round.id);
+  }
+  return ids;
 }
 
 /** 조 상세의 라운드 이력 한 줄. teamRoundHistory에 그 회차의 선두 선택지를 얹은 것이다. */

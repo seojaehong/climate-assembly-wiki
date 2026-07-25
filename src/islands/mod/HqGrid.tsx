@@ -21,11 +21,16 @@ import {
   relevantRoundIds,
   summarizeTeamCells,
   teamMatchesFilters,
+  teamCellForRoundView,
   teamRoundHistoryWithResults,
   toggleComparisonSelection,
+  roundIdsForSequence,
+  type RoundView,
+  type RoundViewCell,
   type TeamCellResult,
   type TeamRoundHistoryEntry,
 } from './hq-grid-logic';
+import { maxRoundSequence } from './round-sequence';
 import { isOpsMode, participationParts, BROADCAST_STATUS_STYLE } from './hq-broadcast-logic';
 
 const POLL_MS = 30000;
@@ -37,6 +42,26 @@ const STATUS_STYLE: Record<TeamCellResult['label'], { bg: string; text: string; 
   투표중: { bg: '#DFF6F8', text: '#0A4A52', dot: '#1B9CAD' },
   마감: { bg: '#E6EBF3', text: '#132646', dot: '#1F4E79' },
 };
+
+/**
+ * 회차별 보기에서 그 회차를 진행하지 않은 조. '대기'(=회차는 있는데 아직 안 열림)와
+ * 같은 화면에 함께 뜨므로 회색 계열을 또 쓰지 않는다 — 색·점선 테두리로 한눈에 갈리게 한다.
+ */
+const UNHELD_STYLE = { bg: '#FFF4D6', text: '#6B4B00', dot: '#D97706' };
+
+/** 카드가 실제로 그리는 값. participation 문구('미실시'·'집계 중')는 호출부에서 확정한다. */
+type TeamCardCell = { label: RoundViewCell['label']; participation: string };
+
+/**
+ * 회차별 보기 셀을 카드 문구로 확정한다.
+ * 회차를 하지 않은 조는 배지가 '미실시'라 '0/12'와 섞이지 않고, 표를 아직 못 받은 조는
+ * 상태 배지는 그대로 둔 채 숫자만 낮춘다(부분 열화). 문구는 짧게 — 44px에서 카드를 넘친다.
+ */
+function roundViewCardCell(cell: RoundViewCell, state: 'loading' | 'failed' | 'loaded'): TeamCardCell {
+  if (cell.participation != null) return { label: cell.label, participation: cell.participation };
+  if (cell.label === '미실시') return { label: '미실시', participation: '—' };
+  return { label: cell.label, participation: state === 'failed' ? '—' : '집계 중' };
+}
 
 function formatTime(d: Date): string {
   return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -61,7 +86,7 @@ function TeamCard({
   opsMode,
 }: {
   team: HqTeam;
-  cell: TeamCellResult;
+  cell: TeamCardCell;
   selected: boolean;
   compareMode: boolean;
   comparisonSelected: boolean;
@@ -70,8 +95,10 @@ function TeamCard({
   opsMode: boolean;
 }) {
   // 운영 노트북은 기존 파스텔 팔레트, 송출은 고채도 팔레트 + 좌측 색 띠.
-  const style = opsMode ? STATUS_STYLE[cell.label] : BROADCAST_STATUS_STYLE[cell.label];
-  const band = opsMode ? null : BROADCAST_STATUS_STYLE[cell.label].band;
+  // '미실시'는 회차별 보기(운영 모드)에서만 나온다 — 송출 경로의 색은 그대로다.
+  const style =
+    cell.label === '미실시' ? UNHELD_STYLE : opsMode ? STATUS_STYLE[cell.label] : BROADCAST_STATUS_STYLE[cell.label];
+  const band = opsMode || cell.label === '미실시' ? null : BROADCAST_STATUS_STYLE[cell.label].band;
   const participation = participationParts(cell);
   // 보조 텍스트: 송출은 흰 배경 대비 11.5:1(#33393F), 운영은 기존 색 유지(AC #5).
   const mutedText = opsMode ? 'text-[#5A6B73]' : 'text-[#33393F]';
@@ -79,11 +106,13 @@ function TeamCard({
     <button
       type="button"
       aria-label={
-        compareMode
-          ? `${team.name} 비교 ${comparisonSelected ? '선택 해제' : '선택'}, ${cell.label}, 참여 ${cell.participation}`
-          : opsMode
-            ? `${team.name} 상세 보기, ${cell.label}, 참여 ${cell.participation}`
-            : `${team.name}, ${cell.label}, 참여 ${cell.participation}`
+        cell.label === '미실시'
+          ? `${team.name}, 이 회차 미실시`
+          : compareMode
+            ? `${team.name} 비교 ${comparisonSelected ? '선택 해제' : '선택'}, ${cell.label}, 참여 ${cell.participation}`
+            : opsMode
+              ? `${team.name} 상세 보기, ${cell.label}, 참여 ${cell.participation}`
+              : `${team.name}, ${cell.label}, 참여 ${cell.participation}`
       }
       aria-pressed={compareMode ? comparisonSelected : selected}
       onClick={onSelect}
@@ -94,9 +123,12 @@ function TeamCard({
       } text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#23B2C3]/40 ${
         selected || comparisonSelected
           ? 'border-[#1F4E79] ring-2 ring-[#1F4E79]/20'
-          : opsMode
-            ? 'border-[#DCE7EE]'
-            : /* = BROADCAST_BORDER_COLOR */ 'border-[#7A9AAF]'
+          : cell.label === '미실시'
+            ? // 색만이 아니라 선 모양으로도 갈린다 — 15장을 훑을 때 '대기'와 헷갈리지 않게.
+              'border-dashed border-[#D97706]'
+            : opsMode
+              ? 'border-[#DCE7EE]'
+              : /* = BROADCAST_BORDER_COLOR */ 'border-[#7A9AAF]'
       }`}
       // 좌측 띠만 인라인으로 덮는다(border-color 단축 속성을 쓰지 않아 순서 의존이 없다).
       style={band ? { borderLeftColor: band } : undefined}
@@ -552,6 +584,11 @@ export default function HqGrid() {
   const [historyState, setHistoryState] = useState<'loading' | 'failed' | 'loaded'>('loading');
   const [historyRoundId, setHistoryRoundId] = useState<string | null>(null);
   const [historyReloadKey, setHistoryReloadKey] = useState(0);
+  // 회차별 보기(운영 모드 전용). 송출 모드에는 선택 UI가 없어 항상 'current'로 남는다.
+  const [roundView, setRoundView] = useState<RoundView>('current');
+  const [sequenceCounts, setSequenceCounts] = useState<Record<string, number>>({});
+  const [sequenceState, setSequenceState] = useState<'loading' | 'failed' | 'loaded'>('loaded');
+  const [sequenceReloadKey, setSequenceReloadKey] = useState(0);
   const [compareMode, setCompareMode] = useState(false);
   const [comparisonTeamIds, setComparisonTeamIds] = useState<string[]>([]);
   const [comparisonMessage, setComparisonMessage] = useState<string | null>(null);
@@ -622,6 +659,56 @@ export default function HqGrid() {
     [rounds, teams, voteCounts],
   );
   const summary = useMemo(() => summarizeTeamCells(teams, rounds, voteCounts), [rounds, teams, voteCounts]);
+  const maxSequence = useMemo(() => maxRoundSequence(rounds), [rounds]);
+  // 회차별 보기에서 조회할 라운드 집합을 문자열 키로 좁힌다(US-012와 같은 idiom).
+  // 전역 갱신 시각을 deps에 함께 넣어 **진행 중인 회차**를 보는 동안 숫자가 얼어붙지 않게 한다.
+  // 재조회 중에도 sequenceCounts를 비우지 않으므로 카드에는 마지막 숫자가 계속 남는다.
+  const lastRefreshMs = updatedAt?.getTime() ?? 0;
+  const sequenceRoundKey = useMemo(
+    () => (roundView === 'current' ? '' : [...roundIdsForSequence(teams, rounds, roundView)].sort().join(',')),
+    [rounds, roundView, teams],
+  );
+
+  useEffect(() => {
+    if (!sequenceRoundKey) {
+      setSequenceCounts((prev) => (Object.keys(prev).length === 0 ? prev : {}));
+      setSequenceState('loaded');
+      return;
+    }
+    const ids = sequenceRoundKey.split(',');
+    let cancelled = false;
+    setSequenceState('loading');
+    fetchVotesForRounds(ids)
+      .then((votesByRoundId) => {
+        if (cancelled) return;
+        setSequenceCounts(
+          Object.fromEntries(Object.entries(votesByRoundId).map(([roundId, votes]) => [roundId, votes.length])),
+        );
+        setSequenceState('loaded');
+      })
+      .catch((error) => {
+        console.error('[HQ] round view counts failed', error);
+        if (!cancelled) setSequenceState('failed');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [lastRefreshMs, sequenceReloadKey, sequenceRoundKey]);
+
+  // 카드에 그릴 값. '현재'와 N차가 같은 함수를 지나므로 두 경로가 서로 어긋날 수 없다.
+  const cardCells = useMemo(
+    () =>
+      new Map<string, TeamCardCell>(
+        teams.map((team) => [
+          team.id,
+          roundViewCardCell(
+            teamCellForRoundView(team, rounds, roundView === 'current' ? voteCounts : sequenceCounts, roundView),
+            sequenceState,
+          ),
+        ]),
+      ),
+    [rounds, roundView, sequenceCounts, sequenceState, teams, voteCounts],
+  );
   // 조 도착 순서가 아니라 분과 번호 순으로 고정한다(전체 → 1분과 → 2분과 → 3분과).
   const subgroups = useMemo(() => subgroupFilterOptions(teams), [teams]);
   const visibleTeams = useMemo(
@@ -885,6 +972,53 @@ export default function HqGrid() {
               </button>
             ))}
           </div>
+
+          {/* 회차별 보기 — 운영 모드 전용(AC #5). 라운드가 하나도 없으면 고를 것이 없어 감춘다. */}
+          {maxSequence > 0 ? (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2" aria-label="회차 보기 선택">
+                <span className="text-[14px] font-extrabold text-[#1F2933]">회차 보기</span>
+                {(['current', ...Array.from({ length: maxSequence }, (_, index) => index + 1)] as RoundView[]).map(
+                  (option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      aria-pressed={roundView === option}
+                      onClick={() => setRoundView(option)}
+                      className={`min-h-11 rounded-full border px-4 text-[14px] font-bold transition ${
+                        roundView === option
+                          ? 'border-[#1F4E79] bg-[#E6EBF3] text-[#132646]'
+                          : 'border-[#DCE7EE] bg-white text-[#5A6B73] hover:border-[#9CB7C8]'
+                      }`}
+                    >
+                      {option === 'current' ? '현재' : `${option}차`}
+                    </button>
+                  ),
+                )}
+              </div>
+              {roundView !== 'current' ? (
+                <div className="rounded-lg border border-[#C4D8E4] bg-[#EEF4F8] px-3 py-2 text-[13px] font-bold text-[#1F4E79]">
+                  카드가 <span className="tr-num">{roundView}</span>차 투표 기준으로 표시되고 있습니다. 그 회차를
+                  진행하지 않은 조는 주황 점선 테두리에 '미실시'로 표시됩니다. 지금 상황을 보려면 '현재'를 누르세요.
+                </div>
+              ) : null}
+              {roundView !== 'current' && sequenceState === 'failed' ? (
+                <div className="flex flex-wrap items-center gap-3 rounded-xl border-2 border-[#F5A623] bg-[#F5A623]/10 px-4 py-3">
+                  <span className="text-[14px] font-bold leading-relaxed text-[#B5651D]">
+                    <span className="tr-num">{roundView}</span>차 표수를 불러오지 못했습니다. 조 이름과 회차 상태는
+                    그대로 볼 수 있습니다.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSequenceReloadKey((key) => key + 1)}
+                    className="min-h-11 rounded-xl border-2 border-[#B5651D] bg-white px-4 text-[14px] font-extrabold text-[#B5651D] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#23B2C3]/40"
+                  >
+                    지금 다시 시도
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -899,7 +1033,7 @@ export default function HqGrid() {
           <TeamCard
             key={team.id}
             team={team}
-            cell={cells.get(team.id) ?? { label: '대기', participation: `0/${team.capacity}` }}
+            cell={cardCells.get(team.id) ?? { label: '대기', participation: `0/${team.capacity}` }}
             selected={selectedTeamId === team.id}
             compareMode={compareMode}
             comparisonSelected={comparisonTeamIds.includes(team.id)}

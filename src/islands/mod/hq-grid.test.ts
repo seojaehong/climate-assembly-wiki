@@ -9,6 +9,8 @@ import {
   summarizeTeamCells,
   teamMatchesFilters,
   teamRoundHistoryWithResults,
+  teamCellForRoundView,
+  roundIdsForSequence,
 } from './hq-grid-logic';
 import type { HqTeam, Round, Vote } from '../../lib/mod-console';
 
@@ -262,5 +264,105 @@ describe('teamRoundHistoryWithResults', () => {
 
   it('라운드가 없는 조는 빈 배열이다', () => {
     expect(teamRoundHistoryWithResults('t1', [], {})).toEqual([]);
+  });
+});
+
+describe('teamCellForRoundView / roundIdsForSequence', () => {
+  // 1조는 1차(a1 마감)·2차(a2 진행 중)를 했고, 2조는 1차(b1 마감)만 했다.
+  // 즉 '2차' 보기에서 2조는 '0표'가 아니라 '미실시'다 — 본부가 이 둘을 섞으면 진행 상황을 오판한다.
+  const teamA: HqTeam = { id: 't1', name: '1조', subgroup: '교육', capacity: 12, status: 'active' };
+  const teamB: HqTeam = { id: 't2', name: '2조', subgroup: '교육', capacity: 10, status: 'active' };
+  const viewRounds = [
+    round({ id: 'a1', team_id: 't1', status: 'closed', created_at: '2026-08-29T01:00:00Z' }),
+    round({ id: 'a2', team_id: 't1', status: 'active', created_at: '2026-08-29T02:00:00Z' }),
+    round({ id: 'b1', team_id: 't2', status: 'closed', created_at: '2026-08-29T01:30:00Z' }),
+  ];
+
+  it("'현재'는 기존 teamCell과 같은 값이다", () => {
+    const counts = { a2: 5, b1: 4 };
+    expect(teamCellForRoundView(teamA, viewRounds, counts, 'current')).toEqual(teamCell(teamA, viewRounds, counts));
+    expect(teamCellForRoundView(teamA, viewRounds, counts, 'current')).toEqual({
+      label: '투표중',
+      participation: '5/12',
+    });
+  });
+
+  it('N차를 고르면 그 조의 N차 라운드 상태와 표수가 나온다', () => {
+    expect(teamCellForRoundView(teamA, viewRounds, { a1: 7, a2: 3 }, 1)).toEqual({
+      label: '마감',
+      participation: '7/12',
+    });
+    expect(teamCellForRoundView(teamA, viewRounds, { a1: 7, a2: 3 }, 2)).toEqual({
+      label: '투표중',
+      participation: '3/12',
+    });
+  });
+
+  it("'미실시'와 '0표'는 같은 화면에서 서로 다른 값으로 나온다", () => {
+    // 같은 회차·같은 counts로 두 조를 함께 본다 — 이 구분이 깨지면 둘 다 '0/N'이 된다.
+    const counts = { a2: 0 };
+    expect(teamCellForRoundView(teamA, viewRounds, counts, 2)).toEqual({ label: '투표중', participation: '0/12' });
+    expect(teamCellForRoundView(teamB, viewRounds, counts, 2)).toEqual({ label: '미실시', participation: null });
+  });
+
+  it('라운드는 있는데 표를 아직 못 받았으면 상태는 그대로 두고 참여만 null이다', () => {
+    // 부분 열화 — 배지는 rounds에서 나오므로 조회 실패·조회 전에도 정확하다.
+    expect(teamCellForRoundView(teamA, viewRounds, {}, 2)).toEqual({ label: '투표중', participation: null });
+  });
+
+  it('그 조가 진행하지 않은 회차는 전부 미실시다', () => {
+    expect(teamCellForRoundView(teamB, viewRounds, { b1: 4 }, 2)).toEqual({ label: '미실시', participation: null });
+    expect(teamCellForRoundView(teamA, viewRounds, { a1: 7, a2: 3 }, 5)).toEqual({
+      label: '미실시',
+      participation: null,
+    });
+  });
+
+  it('회차는 조별로 센다 — 다른 조의 라운드는 번호에 끼어들지 않는다', () => {
+    // b1(01:30)은 a1(01:00)보다 늦지만 2조 기준으로는 1차다.
+    expect(teamCellForRoundView(teamB, viewRounds, { b1: 4 }, 1)).toEqual({ label: '마감', participation: '4/10' });
+  });
+
+  it('pending 라운드도 회차 번호를 받고 대기로 표시된다', () => {
+    const withPending = [
+      ...viewRounds,
+      round({ id: 'b2', team_id: 't2', status: 'pending', created_at: '2026-08-29T03:00:00Z' }),
+    ];
+    expect(teamCellForRoundView(teamB, withPending, {}, 2)).toEqual({ label: '대기', participation: null });
+  });
+
+  it('입력 배열 순서에 의존하지 않는다 (원본·역순·셔플)', () => {
+    const counts = { a1: 7, a2: 3, b1: 4 };
+    const expected = teamCellForRoundView(teamA, viewRounds, counts, 2);
+    expect(teamCellForRoundView(teamA, [...viewRounds].reverse(), counts, 2)).toEqual(expected);
+    expect(teamCellForRoundView(teamA, [viewRounds[1], viewRounds[2], viewRounds[0]], counts, 2)).toEqual(expected);
+    expect(expected).toEqual({ label: '투표중', participation: '3/12' });
+  });
+
+  it('roundIdsForSequence는 그 회차를 진행한 조의 라운드 id만 준다', () => {
+    expect(roundIdsForSequence([teamA, teamB], viewRounds, 1).sort()).toEqual(['a1', 'b1']);
+    expect(roundIdsForSequence([teamA, teamB], viewRounds, 2)).toEqual(['a2']);
+  });
+
+  it('없는 회차·라운드 없는 조에서는 빈 배열이다', () => {
+    expect(roundIdsForSequence([teamA, teamB], viewRounds, 3)).toEqual([]);
+    expect(roundIdsForSequence([teamA, teamB], [], 1)).toEqual([]);
+    expect(roundIdsForSequence([], viewRounds, 1)).toEqual([]);
+  });
+
+  it('roundIdsForSequence가 조회한 id로 모든 진행 조의 참여 수치가 채워진다', () => {
+    // 두 함수가 서로 다른 라운드를 고르면 카드가 영원히 '집계 중'에 머문다.
+    // 컴포넌트 테스트가 없어 이 어긋남을 잡을 수 있는 곳은 여기뿐이다.
+    const teams = [teamA, teamB];
+    for (const sequence of [1, 2, 3]) {
+      const ids = roundIdsForSequence(teams, viewRounds, sequence);
+      const counts = Object.fromEntries(ids.map((id, index) => [id, index + 1]));
+      const cells = teams.map((team) => teamCellForRoundView(team, viewRounds, counts, sequence));
+      for (const cell of cells) {
+        if (cell.label === '미실시') expect(cell.participation).toBeNull();
+        else expect(cell.participation).not.toBeNull();
+      }
+      expect(cells.filter((cell) => cell.label !== '미실시')).toHaveLength(ids.length);
+    }
   });
 });

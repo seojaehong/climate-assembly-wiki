@@ -16,8 +16,11 @@ export function isOpsMode(search: string): boolean {
  * 카드의 참여 표기('9/12')를 득표수와 전체로 분해한다.
  * 송출 카드에서 득표수만 88px로 키우고 '/12'는 보조 크기로 내리기 위한 분해다.
  * 슬래시가 없으면 원문 전체가 votes이고 total은 빈 문자열이다.
+ *
+ * label은 보지 않으므로 참여 표기만 있으면 받는다 — 회차별 보기의 카드 값(label에 '미실시'가
+ * 들어갈 수 있다)도 그대로 넘길 수 있게 하기 위한 것이다.
  */
-export function participationParts(cell: TeamCellResult): ParticipationParts {
+export function participationParts(cell: Pick<TeamCellResult, 'participation'>): ParticipationParts {
   const raw = cell.participation ?? '';
   const slash = raw.indexOf('/');
   if (slash === -1) return { votes: raw.trim(), total: '' };
