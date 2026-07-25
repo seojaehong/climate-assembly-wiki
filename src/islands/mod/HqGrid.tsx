@@ -1243,9 +1243,9 @@ export default function HqGrid() {
             ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3'
             : // min-h/min-w = 하한 글자 크기가 요구하는 최소 칸 크기(US-019).
               // 화면이 그보다 작으면 카드가 조용히 잘리는 대신 **스크롤바가 생겨 사람이 알아챈다.**
-              // 두 숫자는 BROADCAST_GRID_MIN_HEIGHT(792) · BROADCAST_GRID_MIN_WIDTH(1268)이고
+              // 두 숫자는 BROADCAST_GRID_MIN_HEIGHT(792) · BROADCAST_GRID_MIN_WIDTH(1288)이고
               // hq-broadcast.test.ts가 그 값을 고정한다(토큰을 바꾸면 테스트가 먼저 깨진다).
-              'grid grid-cols-5 grid-rows-3 gap-3 h-[calc(100vh-160px)] min-h-[792px] min-w-[1268px]'
+              'grid grid-cols-5 grid-rows-3 gap-3 h-[calc(100vh-160px)] min-h-[792px] min-w-[1288px]'
         }
       >
         {visibleTeams.map((team) => (

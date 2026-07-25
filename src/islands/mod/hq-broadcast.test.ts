@@ -11,6 +11,7 @@ import {
   BROADCAST_GRID_GAP_PX,
   BROADCAST_GRID_MIN_HEIGHT,
   BROADCAST_GRID_MIN_WIDTH,
+  BROADCAST_PAGE_PADDING_X,
   BROADCAST_ROW_MIN_HEIGHT,
   broadcastFontSize,
   broadcastFontCss,
@@ -288,7 +289,9 @@ describe('송출 카드 폭 예산', () => {
   });
 
   it('좁은 화면에서도 폭이 모자라지 않는다 — min-w가 가로 스크롤로 바꾼다', () => {
-    for (const w of [390, 1024, 1280, 1440]) {
+    // min-w가 막 풀리는 폭이 전 구간에서 가장 빡빡하다 — 반드시 그 경계를 넣는다.
+    const edge = BROADCAST_GRID_MIN_WIDTH + BROADCAST_PAGE_PADDING_X;
+    for (const w of [390, 1024, 1280, edge - 1, edge, edge + 1, 1440]) {
       expect(broadcastCardRequiredWidth(w, 900), String(w)).toBeLessThanOrEqual(broadcastCardAvailableWidth(w));
     }
   });
@@ -297,7 +300,7 @@ describe('송출 카드 폭 예산', () => {
     // 클래스 문자열은 purge 때문에 리터럴이어야 해서 숫자가 두 곳에 산다.
     // 토큰을 바꾸면 여기가 먼저 깨지고, 그때 min-h-[…]/min-w-[…]를 함께 고치라는 뜻이다.
     expect(BROADCAST_GRID_MIN_HEIGHT).toBe(792); // HqGrid.tsx: min-h-[792px]
-    expect(BROADCAST_GRID_MIN_WIDTH).toBe(1268); // HqGrid.tsx: min-w-[1268px]
+    expect(BROADCAST_GRID_MIN_WIDTH).toBe(1288); // HqGrid.tsx: min-w-[1288px]
   });
 
   it('그리드 최소 폭이 하한 조합에서 유도된다', () => {

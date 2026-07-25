@@ -142,6 +142,7 @@ const BADGE_PX = 24; // 배지 px-3
 const BADGE_GAP = 8; // 배지 gap-2 (도트 ↔ 글자)
 const BOTTOM_SEPARATOR = 5; // 하단 행 border-t 1 + pt-1 4
 const BOTTOM_COL_GAP = 12; // 하단 행 gap-3 (참여 ↔ 출석)
+const NUMBER_GAP = 4; // 큰 숫자 ↔ '/전체' gap-1 (두 열에 각각 있다)
 const TIGHT = 1.25; // leading-tight
 const NUMBER_LINE = 1.1; // 숫자 줄 (leading-none은 한글에서 위험해 쓰지 않는다)
 
@@ -200,13 +201,13 @@ export function broadcastCardAvailableHeight(viewportHeight: number): number {
 export function broadcastCardRequiredWidth(viewportWidth: number, viewportHeight: number): number {
   const size = (k: BroadcastTypeKey) => broadcastFontSize(k, viewportWidth, viewportHeight);
   const badge = BADGE_PX + STATUS_DOT_PX + BADGE_GAP + textEm(WIDEST_STATUS) * size('statusBadge');
-  // '12'(두 자리) + '/12' — 조 정원이 두 자리라 이보다 길어지지 않는다.
+  // '12'(두 자리) + gap-1 + '/12' — 조 정원이 두 자리라 이보다 길어지지 않는다.
   const participation = Math.max(
-    textEm('12') * size('votes') + textEm('/12') * size('votesTotal'),
+    textEm('12') * size('votes') + NUMBER_GAP + textEm('/12') * size('votesTotal'),
     textEm('참여') * size('blockLabel'),
   );
   const attendance = Math.max(
-    textEm('12') * size('attendanceValue') + textEm('/12') * size('votesTotal'),
+    textEm('12') * size('attendanceValue') + NUMBER_GAP + textEm('/12') * size('votesTotal'),
     textEm('현재/전체') * size('blockLabel'),
   );
   return Math.max(badge, participation + BOTTOM_COL_GAP + attendance);
