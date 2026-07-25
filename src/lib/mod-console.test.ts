@@ -199,6 +199,23 @@ describe('fetchHqTeams', () => {
     expect(rpc).toHaveBeenCalledWith('hq_teams');
   });
 
+  it('RPC가 임의 순서로 반환해도 표준 조 순서로 정렬한다', async () => {
+    // hq_teams()에는 order by가 없고 Postgres는 행 순서를 보장하지 않는다.
+    // 렌더 순서를 결정적으로 만드는 책임은 이 fetch 경로에 있다.
+    const rows = ['2분과 5조', '1분과 3조', '3분과 1조', '1분과 1조'].map((name, i) => ({
+      id: `t${i}`,
+      name,
+      subgroup: name.slice(0, 3),
+      capacity: 12,
+      status: 'active',
+    }));
+    mockRpc({ data: rows, error: null });
+
+    const result = await fetchHqTeams();
+
+    expect(result.map((t) => t.name)).toEqual(['1분과 1조', '1분과 3조', '2분과 5조', '3분과 1조']);
+  });
+
   it('data 없으면 빈 배열', async () => {
     mockRpc({ data: null, error: null });
 

@@ -11,6 +11,7 @@ import {
   type Vote,
 } from '../../lib/mod-console';
 import { fetchHqAttendanceSummaries, type HqAttendanceSummary } from '../../lib/attendance';
+import { subgroupFilterOptions } from '../../lib/team-order';
 import HqAttendanceAdmin from './HqAttendanceAdmin';
 import {
   teamCell,
@@ -430,10 +431,8 @@ export default function HqGrid() {
     [rounds, teams, voteCounts],
   );
   const summary = useMemo(() => summarizeTeamCells(teams, rounds, voteCounts), [rounds, teams, voteCounts]);
-  const subgroups = useMemo(
-    () => ['전체', ...Array.from(new Set(teams.map((team) => team.subgroup).filter((value): value is string => Boolean(value))))],
-    [teams],
-  );
+  // 조 도착 순서가 아니라 분과 번호 순으로 고정한다(전체 → 1분과 → 2분과 → 3분과).
+  const subgroups = useMemo(() => subgroupFilterOptions(teams), [teams]);
   const visibleTeams = useMemo(
     () =>
       teams.filter((team) =>

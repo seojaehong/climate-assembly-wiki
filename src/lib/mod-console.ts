@@ -1,4 +1,5 @@
 import { getSupabase } from './supabase';
+import { sortTeamsStandard } from './team-order';
 
 export type Team = { id: string; name: string; subgroup: string | null; join_code: string; capacity: number };
 export type Round = { id: string; title: string; type: 'RADIO' | 'CHECKBOX' | 'SCALE'; options: string[] | null; status: 'pending' | 'active' | 'closed'; team_id: string | null; created_at?: string };
@@ -228,13 +229,19 @@ export function subscribeRound(roundId: string, onChange: () => void): () => voi
 // /hq — 본부 읽기전용 그리드. 쓰기 경로 없음(전부 SELECT/RPC-읽기).
 // ============================================================
 
-/** 활성 팀 목록(join_code 제외, hq_teams RPC 경유). status='active'만 반환한다. */
+/**
+ * 활성 팀 목록(join_code 제외, hq_teams RPC 경유). status='active'만 반환한다.
+ *
+ * hq_teams()에는 order by가 없고 Postgres는 order by 없는 결과의 행 순서를 보장하지 않는다.
+ * 그래서 표준 조 순서(1분과 1~5조 → 2분과 1~5조 → 3분과 1~5조) 정렬을 여기서 걸어,
+ * 이 함수를 쓰는 모든 화면(/hq 그리드·분과 필터·비교·출석 관리)이 같은 순서를 물려받게 한다.
+ */
 export async function fetchHqTeams(): Promise<HqTeam[]> {
   const sb = client();
   const { data, error } = await sb.schema('climate_vote').rpc('hq_teams');
   if (error) throw error;
   const rows = (data ?? []) as HqTeam[];
-  return rows.filter((t) => t.status === 'active');
+  return sortTeamsStandard(rows.filter((t) => t.status === 'active'));
 }
 
 /** team_id가 있는 전체 라운드(팀 스코프)를 최신순으로 가져온다. rounds SELECT는 공개(anon) 정책이다. */
