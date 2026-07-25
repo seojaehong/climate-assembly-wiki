@@ -24,7 +24,9 @@ import {
   participationBase,
   REOPEN_WINDOW_MS,
 } from './mod-state';
-import { teamRoundHistory, type TeamRoundHistoryItem } from './round-sequence';
+import { roundSequence, teamRoundHistory, type TeamRoundHistoryItem } from './round-sequence';
+import { renderResultSvg, type ResultImageInput } from './result-image';
+import { downloadBlob, resultImageFileName, svgToPngBlob, RESULT_IMAGE_SCALE } from './svg-to-png';
 import AttendancePanel from './AttendancePanel';
 import Timer from './Timer';
 
@@ -198,10 +200,67 @@ function formatClock(iso: string | null): string {
 }
 
 /**
+ * 결과 한 장을 PNG로 내려받는 버튼. 결과 화면과 지난 투표 다시보기가 같은 것을 쓴다.
+ *
+ * 저장에 실패해도 화면은 그대로 두고 **다음에 할 일**을 알린다 — 현장에서 한 번 막히면
+ * 되돌릴 시간이 없다. 브라우저가 canvas를 지원하지 않는 경우도 같은 경로로 떨어진다
+ * (svgToPngBlob이 실패를 전부 문구 있는 예외로 모아 준다).
+ */
+function SaveResultImageButton({ input, className }: { input: ResultImageInput; className: string }) {
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setFailed(false);
+    try {
+      const blob = await svgToPngBlob(renderResultSvg(input), RESULT_IMAGE_SCALE);
+      downloadBlob(
+        blob,
+        // 파일명 시각은 '저장한 때'다. 마감 시각은 그림 안에 이미 들어 있고,
+        // 같은 회차를 두 번 저장해도 파일이 서로 덮어쓰지 않는다.
+        resultImageFileName({ teamName: input.teamName, sequence: input.sequence, at: new Date() }),
+      );
+    } catch {
+      setFailed(true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={saving}
+        className={`${className} disabled:opacity-50`}
+      >
+        <span aria-hidden="true">⬇</span> {saving ? '저장 중…' : '이미지 저장'}
+      </button>
+      {failed ? (
+        <p className="rounded-xl border-2 border-[#F5A623] bg-[#F5A623]/10 px-4 py-3 text-[16px] font-extrabold text-[#B5651D]">
+          이미지 저장에 실패했습니다 — 이 화면을 휴대폰으로 찍어 두세요. 결과는 남아 있어 본부에서
+          나중에 다시 뽑을 수 있습니다.
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+/**
  * 지난 라운드 하나의 결과를 다시 보여주는 읽기 전용 오버레이.
  * 마감·다시 열기 버튼은 넣지 않는다 — 여기서 현재 진행 중인 투표를 건드릴 수 있으면 안 된다.
  */
-function PastRoundDetail({ item, onClose }: { item: TeamRoundHistoryItem; onClose: () => void }) {
+function PastRoundDetail({
+  item,
+  teamName,
+  onClose,
+}: {
+  item: TeamRoundHistoryItem;
+  teamName: string;
+  onClose: () => void;
+}) {
   const [votes, setVotes] = useState<Vote[] | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -228,6 +287,20 @@ function PastRoundDetail({ item, onClose }: { item: TeamRoundHistoryItem; onClos
         .map(([opt, count]) => ({ opt, count }))
         .sort((a, b) => b.count - a.count)
     : [];
+
+  // 표를 아직 못 받았거나(로딩) 조회에 실패한 상태에서는 저장 버튼을 내지 않는다 —
+  // 그 상태로 뽑으면 '표 없음'이라고 적힌 가짜 기록물이 남는다.
+  const imageInput: ResultImageInput | null =
+    tally && !failed
+      ? {
+          teamName,
+          sequence: item.sequence,
+          title: item.title,
+          closedAtLabel: item.status === 'closed' && item.closedAt ? formatClock(item.closedAt) : null,
+          total: tally.total,
+          results: ranked.map(({ opt, count }) => ({ option: opt, count })),
+        }
+      : null;
 
   return (
     <div className="fixed inset-0 z-40 bg-[#1F4E79]/55 backdrop-blur-[1px] flex items-center justify-center p-5">
@@ -276,7 +349,13 @@ function PastRoundDetail({ item, onClose }: { item: TeamRoundHistoryItem; onClos
           )}
         </div>
 
-        <div className="p-5 pt-0">
+        <div className="p-5 pt-0 space-y-3">
+          {imageInput ? (
+            <SaveResultImageButton
+              input={imageInput}
+              className="w-full h-[56px] rounded-2xl border-2 border-[#1F4E79] bg-white text-[#1F4E79] text-[19px] font-bold flex items-center justify-center gap-2"
+            />
+          ) : null}
           <button
             type="button"
             onClick={onClose}
@@ -294,7 +373,7 @@ function PastRoundDetail({ item, onClose }: { item: TeamRoundHistoryItem; onClos
  * 우리 조의 지난 투표 목록. 라운드가 하나도 없으면 아무것도 렌더하지 않는다
  * (첫 투표 전 홈 화면에 빈 카드를 띄우지 않기 위해서다).
  */
-function PastRoundsCard({ teamId }: { teamId: string }) {
+function PastRoundsCard({ teamId, teamName }: { teamId: string; teamName: string }) {
   const [items, setItems] = useState<TeamRoundHistoryItem[]>([]);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -382,7 +461,9 @@ function PastRoundsCard({ teamId }: { teamId: string }) {
         ))}
       </div>
 
-      {selected ? <PastRoundDetail item={selected} onClose={() => setSelected(null)} /> : null}
+      {selected ? (
+        <PastRoundDetail item={selected} teamName={teamName} onClose={() => setSelected(null)} />
+      ) : null}
     </section>
   );
 }
@@ -526,7 +607,7 @@ function HomeScreen({
           {/* 타이머 카드 */}
           <Timer code={code} teamName={teamName} />
           <AttendancePanel teamId={teamId} teamName={teamName} joinCode={code} />
-          <PastRoundsCard teamId={teamId} />
+          <PastRoundsCard teamId={teamId} teamName={teamName} />
         </div>
       </div>
     </div>
@@ -945,6 +1026,7 @@ function ProxyVoteControl({ code, round }: { code: string; round: Round }) {
 
 function ResultsScreen({
   teamName,
+  sequence,
   round,
   votes,
   onNewPoll,
@@ -954,6 +1036,8 @@ function ResultsScreen({
   reopening,
 }: {
   teamName: string;
+  /** 이 조에서 몇 번째 투표인가. 조회 전이거나 실패하면 0이고, 그때는 회차 없이 저장한다. */
+  sequence: number;
   round: Round;
   votes: Vote[];
   onNewPoll: () => void;
@@ -966,6 +1050,16 @@ function ResultsScreen({
   const ranked = (round.options ?? [])
     .map((opt) => ({ opt, count: tally.byOption[opt] ?? 0 }))
     .sort((a, b) => b.count - a.count);
+
+  // 그림은 화면과 **같은 목록**을 그대로 쓴다 — 따로 만들면 저장본과 화면이 어긋난다.
+  const imageInput: ResultImageInput = {
+    teamName,
+    sequence,
+    title: round.title,
+    closedAtLabel: round.updated_at ? formatClock(round.updated_at) : null,
+    total: tally.total,
+    results: ranked.map(({ opt, count }) => ({ option: opt, count })),
+  };
 
   // 되돌리기 창(60초)을 1초마다 다시 판정한다 — 틱이 없으면 버튼이 제때 사라지지 않는다.
   const [now, setNow] = useState(() => Date.now());
@@ -1044,6 +1138,12 @@ function ResultsScreen({
                 </p>
               </>
             ) : null}
+
+            {/* '다시 열기'(60초) 아래에 둔다 — 되돌리기가 시간에 쫓기는 버튼이라 위로 밀지 않는다. */}
+            <SaveResultImageButton
+              input={imageInput}
+              className="w-full h-16 rounded-2xl border-2 border-[#1F4E79] bg-white text-[#1F4E79] text-[20px] font-bold flex items-center justify-center gap-2"
+            />
 
             <button
               type="button"
@@ -1172,6 +1272,9 @@ export default function ModConsole() {
   const [fullscreen, setFullscreen] = useState(false);
   const [restoreNotice, setRestoreNotice] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  // 회차는 **라운드 id와 함께** 들고 있는다. 숫자만 두면 다음 라운드의 조회가 실패했을 때
+  // 앞 라운드의 회차가 그대로 남아 2차 결과가 '1차'로 저장된다(조용히 틀린 기록물이 된다).
+  const [resultsSequence, setResultsSequence] = useState<{ roundId: string; sequence: number } | null>(null);
   const codeRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -1234,6 +1337,25 @@ export default function ModConsole() {
       .then(setVotes)
       .catch(() => {});
   }, [state.screen, state.round]);
+
+  // 결과 화면에 들어오면 이 라운드가 이 조의 몇 차인지 도출한다(이미지 저장의 회차 표기용).
+  // 실패하면 그대로 둔다 — 회차 없이 저장될 뿐, 저장 자체를 막지 않는다.
+  useEffect(() => {
+    if (state.screen !== 'results' || !state.round || !state.team) return;
+    const teamId = state.team.id;
+    const roundId = state.round.id;
+    let cancelled = false;
+    fetchTeamRounds()
+      .then((rounds) => {
+        if (!cancelled) {
+          setResultsSequence({ roundId, sequence: roundSequence(teamId, rounds).get(roundId) ?? 0 });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [state.screen, state.round, state.team]);
 
   useEffect(() => {
     const onFsChange = () => {
@@ -1378,6 +1500,7 @@ export default function ModConsole() {
     screenEl = (
       <ResultsScreen
         teamName={teamName}
+        sequence={resultsSequence?.roundId === state.round.id ? resultsSequence.sequence : 0}
         round={state.round}
         votes={votes}
         onNewPoll={() => {
