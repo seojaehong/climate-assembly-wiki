@@ -30,6 +30,52 @@ export function roundSequence(teamId: string, rounds: Round[]): Map<string, numb
   return sequence;
 }
 
+/** 한 조의 지난 투표 한 줄. /mod 홈의 '지난 투표' 목록과 /hq 조 상세 이력이 함께 쓴다. */
+export interface TeamRoundHistoryItem {
+  id: string;
+  /** 이 조에서 몇 번째 투표인가(1부터). */
+  sequence: number;
+  title: string;
+  status: Round['status'];
+  /**
+   * 마감 시각(ISO). 마감된 라운드에만 붙고, 그 외에는 null이다.
+   * 값이 없는 마감 라운드도 null 그대로 둔다 — created_at으로 대체하면 가짜 마감 시각이 된다.
+   * 표시용 포맷(로컬 시:분)은 이 저장소 관례대로 컴포넌트에서 한다(테스트가 타임존에 흔들리지 않게).
+   */
+  closedAt: string | null;
+  /** 총 표수. 조회하지 못한 라운드는 null이다 — '0표'와 반드시 구분한다. */
+  total: number | null;
+  /** 결과 다시보기에 그대로 넘길 원본 라운드. */
+  round: Round;
+}
+
+/**
+ * 한 조의 라운드 이력을 화면에 뿌릴 순서(최신 회차가 먼저)로 만든다.
+ * 회차 번호는 roundSequence와 같은 전순서에서 나오므로 두 화면의 '2차'가 항상 같은 라운드를 가리킨다.
+ *
+ * status로 거르지 않는다 — 진행 중 라운드도 목록에 '진행 중'으로 남아야 하고,
+ * 무엇을 어떻게 라벨할지는 호출부가 정한다.
+ */
+export function teamRoundHistory(
+  teamId: string,
+  rounds: Round[],
+  counts: Record<string, number> = {},
+): TeamRoundHistoryItem[] {
+  const sequence = roundSequence(teamId, rounds);
+  return rounds
+    .filter((round) => round.team_id === teamId)
+    .map((round) => ({
+      id: round.id,
+      sequence: sequence.get(round.id) ?? 0,
+      title: round.title,
+      status: round.status,
+      closedAt: round.status === 'closed' ? round.updated_at ?? null : null,
+      total: counts[round.id] ?? null,
+      round,
+    }))
+    .sort((a, b) => b.sequence - a.sequence);
+}
+
 /**
  * 전체 조 중 가장 큰 회차 번호. 회차 필터 옵션('1차'~'N차')을 만들 때 쓴다.
  * team_id가 없는 라운드(조 스코프가 아닌 전체 투표)는 세지 않고, 대상이 없으면 0이다.

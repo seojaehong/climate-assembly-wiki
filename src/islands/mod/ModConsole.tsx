@@ -8,6 +8,8 @@ import {
   setPollStatus,
   fetchVotes,
   fetchActiveRound,
+  fetchTeamRounds,
+  fetchVoteCounts,
   subscribeRound,
   proxyVote,
   type Round,
@@ -22,6 +24,7 @@ import {
   participationBase,
   REOPEN_WINDOW_MS,
 } from './mod-state';
+import { teamRoundHistory, type TeamRoundHistoryItem } from './round-sequence';
 import AttendancePanel from './AttendancePanel';
 import Timer from './Timer';
 
@@ -183,6 +186,208 @@ function JoinScreen({
 }
 
 // ============================================================
+// 지난 투표 — 홈에서 우리 조가 오늘 한 투표를 회차별로 다시 본다 (읽기 전용)
+// ============================================================
+
+/** ISO 시각을 시:분으로. 값이 없거나 깨졌으면 '—'. (HqGrid.formatTime과 같은 관례) */
+function formatClock(iso: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+}
+
+/**
+ * 지난 라운드 하나의 결과를 다시 보여주는 읽기 전용 오버레이.
+ * 마감·다시 열기 버튼은 넣지 않는다 — 여기서 현재 진행 중인 투표를 건드릴 수 있으면 안 된다.
+ */
+function PastRoundDetail({ item, onClose }: { item: TeamRoundHistoryItem; onClose: () => void }) {
+  const [votes, setVotes] = useState<Vote[] | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setVotes(null);
+    setFailed(false);
+    fetchVotes(item.id)
+      .then((v) => {
+        if (!cancelled) setVotes(v);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [item.id]);
+
+  const tally = votes ? tallyVotes(item.round, votes) : null;
+  // options가 없는 라운드(SCALE)도 집계는 나오므로 보기 목록이 아니라 집계 키를 기준으로 줄을 만든다.
+  const ranked = tally
+    ? Object.entries(tally.byOption)
+        .map(([opt, count]) => ({ opt, count }))
+        .sort((a, b) => b.count - a.count)
+    : [];
+
+  return (
+    <div className="fixed inset-0 z-40 bg-[#1F4E79]/55 backdrop-blur-[1px] flex items-center justify-center p-5">
+      <div className="w-full max-w-md bg-white rounded-2xl border border-[#DCE7EE] overflow-hidden">
+        <div className="px-6 pt-6 pb-4">
+          <Eyebrow className="text-[#5A6B73] mb-2">
+            {item.sequence}차 투표 · {item.status === 'closed' ? `마감 ${formatClock(item.closedAt)}` : '진행 중'}
+          </Eyebrow>
+          <h4 className="text-[22px] font-extrabold text-[#1F4E79] leading-snug" style={{ letterSpacing: '-.01em' }}>
+            {item.title}
+          </h4>
+        </div>
+
+        <div className="px-6 pb-5 space-y-3 max-h-[50vh] overflow-y-auto">
+          {failed ? (
+            <p className="text-[17px] font-bold text-[#B5651D]">
+              결과를 불러오지 못했습니다 — 네트워크를 확인하고 목록에서 다시 눌러 주세요.
+            </p>
+          ) : tally == null ? (
+            <p className="text-[17px] text-[#5A6B73]">불러오는 중…</p>
+          ) : ranked.length === 0 || tally.total === 0 ? (
+            <p className="text-[17px] font-bold text-[#5A6B73]">표가 없습니다.</p>
+          ) : (
+            <>
+              <p className="text-[17px] font-extrabold text-[#1F4E79] tr-num">총 {tally.total}표</p>
+              {ranked.map(({ opt, count }, i) => {
+                const pct = tally.total > 0 ? Math.round((count / tally.total) * 100) : 0;
+                return (
+                  <div key={opt}>
+                    <div className="flex justify-between items-baseline mb-1.5 gap-3">
+                      <span className="text-[18px] font-bold text-[#1F2933] min-w-0 break-words">{opt}</span>
+                      <span className="text-[18px] font-extrabold text-[#1F4E79] tr-num shrink-0">
+                        {count}표 <span className="text-[#5A6B73] text-[15px] font-semibold">{pct}%</span>
+                      </span>
+                    </div>
+                    <div className="h-8 rounded-lg bg-[#F1F7FA] overflow-hidden">
+                      <div
+                        className="h-full rounded-lg"
+                        style={{ width: `${pct}%`, background: OPTION_COLORS[i % OPTION_COLORS.length] }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </div>
+
+        <div className="p-5 pt-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full h-[56px] rounded-2xl bg-[#1F4E79] text-white text-[19px] font-bold shadow-sm"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 우리 조의 지난 투표 목록. 라운드가 하나도 없으면 아무것도 렌더하지 않는다
+ * (첫 투표 전 홈 화면에 빈 카드를 띄우지 않기 위해서다).
+ */
+function PastRoundsCard({ teamId }: { teamId: string }) {
+  const [items, setItems] = useState<TeamRoundHistoryItem[]>([]);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [selected, setSelected] = useState<TeamRoundHistoryItem | null>(null);
+
+  useEffect(() => {
+    if (!teamId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const all = await fetchTeamRounds();
+        const mine = all.filter((r) => r.team_id === teamId);
+        // 표수는 라운드당 요청 1건이고 하나라도 실패하면 전부 throw한다 —
+        // 목록 자체를 잃지 않도록 여기서 격리하고, 실패하면 표수만 '—'로 둔다.
+        const counts =
+          mine.length > 0 ? await fetchVoteCounts(mine.map((r) => r.id)).catch(() => ({})) : {};
+        if (cancelled) return;
+        setItems(teamRoundHistory(teamId, mine, counts));
+        setLoadFailed(false);
+      } catch {
+        if (!cancelled) setLoadFailed(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [teamId, reloadKey]);
+
+  // 라운드가 없고 오류도 없으면 목록 영역을 통째로 렌더하지 않는다.
+  if (items.length === 0 && !loadFailed) return null;
+
+  return (
+    <section className="rounded-2xl border border-[#DCE7EE] bg-white overflow-hidden shadow-sm">
+      <div className="flex items-center gap-3 px-6 py-4 bg-[#1F4E79]/8 border-b border-[#DCE7EE]">
+        <span className="w-11 h-11 rounded-xl bg-[#1F4E79] grid place-items-center text-white text-2xl" aria-hidden="true">
+          🗂️
+        </span>
+        <h3 className="text-[22px] font-extrabold text-[#1F4E79]" style={{ letterSpacing: '-.01em' }}>
+          지난 투표
+        </h3>
+      </div>
+      <div className="p-4 sm:p-6 space-y-3">
+        {loadFailed ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border-2 border-[#F5A623] bg-[#F5A623]/10 px-4 py-3">
+            <span className="text-[16px] font-extrabold text-[#B5651D] flex-1 min-w-[200px]">
+              지난 투표를 불러오지 못했습니다 — 네트워크를 확인해 주세요.
+            </span>
+            <button
+              type="button"
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="min-h-11 rounded-lg border-2 border-[#B5651D] px-4 text-[15px] font-bold text-[#B5651D]"
+            >
+              지금 다시 시도
+            </button>
+          </div>
+        ) : null}
+
+        {items.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setSelected(item)}
+            className="w-full rounded-xl border border-[#C4D8E4] bg-white px-4 py-3 text-left flex items-center gap-3 active:scale-[.99] transition"
+          >
+            <span className="shrink-0 w-14 h-14 rounded-xl bg-[#F1F7FA] border border-[#DCE7EE] grid place-items-center text-[18px] font-extrabold text-[#1F4E79] tr-num">
+              {item.sequence}차
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[18px] font-bold text-[#1F2933] truncate">{item.title}</span>
+              <span className="mt-1 flex flex-wrap items-center gap-2 text-[15px] font-semibold text-[#5A6B73] tr-num">
+                {item.status === 'closed' ? (
+                  <span>마감 {formatClock(item.closedAt)}</span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#23B2C3] px-2.5 py-0.5 text-[14px] font-bold text-white">
+                    <span className="w-2 h-2 rounded-full bg-white animate-pulse" aria-hidden="true" />
+                    진행 중
+                  </span>
+                )}
+                <span aria-hidden="true">·</span>
+                <span>{item.total == null ? '표수 확인 안 됨' : `총 ${item.total}표`}</span>
+              </span>
+            </span>
+            <span className="shrink-0 text-[16px] font-bold text-[#1F4E79]">결과 보기 →</span>
+          </button>
+        ))}
+      </div>
+
+      {selected ? <PastRoundDetail item={selected} onClose={() => setSelected(null)} /> : null}
+    </section>
+  );
+}
+
+// ============================================================
 // State 02 — 홈 (투표 만들기)  * 타이머 카드는 Task 5 placeholder
 // ============================================================
 
@@ -321,6 +526,7 @@ function HomeScreen({
           {/* 타이머 카드 */}
           <Timer code={code} teamName={teamName} />
           <AttendancePanel teamId={teamId} teamName={teamName} joinCode={code} />
+          <PastRoundsCard teamId={teamId} />
         </div>
       </div>
     </div>

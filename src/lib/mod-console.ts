@@ -2,7 +2,13 @@ import { getSupabase } from './supabase';
 import { sortTeamsStandard } from './team-order';
 
 export type Team = { id: string; name: string; subgroup: string | null; join_code: string; capacity: number };
-export type Round = { id: string; title: string; type: 'RADIO' | 'CHECKBOX' | 'SCALE'; options: string[] | null; status: 'pending' | 'active' | 'closed'; team_id: string | null; created_at?: string };
+/**
+ * updated_at은 mod_set_round_status가 상태를 바꿀 때마다 now()로 갱신한다
+ * (20260724_mod_console_core.sql:99). 마감된 라운드에서는 사실상 '마감 시각'이다.
+ * 이 타입은 DB에서 생성된 것이 아니라 손으로 유지하는 타입이므로 optional로 둔다 —
+ * 컬럼이 없거나 이름이 바뀌어도 타입체커는 알려주지 않는다.
+ */
+export type Round = { id: string; title: string; type: 'RADIO' | 'CHECKBOX' | 'SCALE'; options: string[] | null; status: 'pending' | 'active' | 'closed'; team_id: string | null; created_at?: string; updated_at?: string };
 export type Vote = { id: number; round_id: string; choice: unknown; archived_at: string | null };
 export type Tally = { total: number; byOption: Record<string, number> };
 /** /hq 읽기전용: join_code 제외 팀 정보(hq_teams RPC 반환). */
