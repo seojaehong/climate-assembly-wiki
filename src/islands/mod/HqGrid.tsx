@@ -32,7 +32,8 @@ import {
   type TeamRoundHistoryEntry,
 } from './hq-grid-logic';
 import { maxRoundSequence } from './round-sequence';
-import { isOpsMode, participationParts, BROADCAST_STATUS_STYLE } from './hq-broadcast-logic';
+import { isOpsMode, participationParts, BROADCAST_STATUS_STYLE, broadcastFontCss } from './hq-broadcast-logic';
+import type { BroadcastTypeKey } from './hq-broadcast-logic';
 import { renderResultSvg } from './result-image';
 import { downloadBlob, resultZipFileName, svgToPngBlob, RESULT_IMAGE_SCALE } from './svg-to-png';
 import { buildZipArchive, type ZipEntry } from './zip-store';
@@ -110,6 +111,22 @@ function Eyebrow({ children, className = '' }: { children: React.ReactNode; clas
   );
 }
 
+/**
+ * 송출 카드 글자 크기(US-019). 값은 `clamp(min, min(Xvh, Yvw), max)`라 브라우저가 뷰포트에 맞춰
+ * 스스로 줄인다 — 리사이즈 리스너도 hydration 깜빡임도 없다.
+ * Tailwind 임의값으로는 쉼표·괄호 때문에 못 쓰므로 인라인 style로 나간다
+ * (덕분에 BROADCAST_STATUS_STYLE과 같은 이유로 단위테스트가 실제 DOM 값을 지킨다).
+ */
+const BROADCAST_FONT: Record<BroadcastTypeKey, string> = {
+  teamName: broadcastFontCss('teamName'),
+  tableNo: broadcastFontCss('tableNo'),
+  statusBadge: broadcastFontCss('statusBadge'),
+  blockLabel: broadcastFontCss('blockLabel'),
+  votes: broadcastFontCss('votes'),
+  votesTotal: broadcastFontCss('votesTotal'),
+  attendanceValue: broadcastFontCss('attendanceValue'),
+};
+
 function TeamCard({
   team,
   cell,
@@ -180,19 +197,25 @@ function TeamCard({
         {/* 송출에서만 w-full — 아래 truncate가 카드 내용 폭(223px)을 기준으로 잘리게 한다.
             ops(가로 justify-between)에서 w-full을 주면 배지가 밀려 회귀가 난다. */}
         <div className={opsMode ? undefined : 'w-full min-w-0'}>
+          {/* 송출은 truncate — 폭이 모자라면 하드 컷 대신 말줄임표로 눈에 보이게 실패한다. */}
           <div
             className={`${
-              opsMode ? 'text-[22px] sm:text-[24px]' : 'text-[40px]'
+              opsMode ? 'text-[22px] sm:text-[24px]' : 'truncate'
             } font-extrabold text-[#1F2933] leading-tight whitespace-nowrap`}
-            style={{ letterSpacing: '-.01em' }}
+            style={
+              opsMode
+                ? { letterSpacing: '-.01em' }
+                : { letterSpacing: '-.01em', fontSize: BROADCAST_FONT.teamName }
+            }
           >
             {team.name}
           </div>
           {tableLabel ? (
             <div
               className={`${
-                opsMode ? 'text-[13px] mt-0.5' : 'text-[28px] mt-1 truncate'
+                opsMode ? 'text-[13px] mt-0.5' : 'mt-1 truncate'
               } font-bold leading-tight text-[#1F4E79]`}
+              style={opsMode ? undefined : { fontSize: BROADCAST_FONT.tableNo }}
             >
               {tableLabel}
             </div>
@@ -212,56 +235,90 @@ function TeamCard({
             aria-hidden="true"
           />
           <span
-            className={`${
-              opsMode ? 'text-[14px]' : 'text-[32px] leading-tight'
-            } font-bold whitespace-nowrap`}
+            className={`${opsMode ? 'text-[14px]' : 'leading-tight'} font-bold whitespace-nowrap`}
+            style={opsMode ? undefined : { fontSize: BROADCAST_FONT.statusBadge }}
           >
             {cell.label}
           </span>
         </div>
       </div>
-      <div className={opsMode ? 'mt-auto' : 'mt-auto shrink-0'}>
-        <div className="flex items-end justify-between gap-3">
-          <Eyebrow className={`${mutedText} pb-1`}>참여</Eyebrow>
-          {team.subgroup ? <span className={`text-[12px] font-semibold ${mutedText}`}>{team.subgroup}</span> : null}
-        </div>
-        {opsMode ? (
-          <div className="text-[44px] sm:text-[48px] font-extrabold text-[#1F4E79] leading-none tr-num whitespace-nowrap">
-            {cell.participation}
-          </div>
-        ) : (
-          <div className="flex items-baseline gap-1 leading-none whitespace-nowrap">
-            <span className="text-[88px] font-extrabold text-[#1F4E79] leading-none tr-num">
-              {participation.votes}
-            </span>
-            {participation.total ? (
-              <span className="text-[32px] font-extrabold text-[#33393F] leading-none tr-num">
-                /{participation.total}
-              </span>
-            ) : null}
-          </div>
-        )}
-      </div>
-      {attendance ? (
-        opsMode ? (
-          <div className="grid grid-cols-3 gap-1.5 border-t pt-3 text-center border-[#DCE7EE]">
-            <div><div className={`text-[11px] font-bold ${mutedText}`}>현재/전체</div><div className="font-extrabold text-[#1F4E79]">{attendance.current_present}/{attendance.roster_total}</div></div>
-            <div><div className={`text-[11px] font-bold ${mutedText}`}>지각</div><div className="font-extrabold text-[#6B4B00]">{attendance.late}</div></div>
-            <div><div className={`text-[11px] font-bold ${mutedText}`}>결석</div><div className="font-extrabold text-[#8B1A1A]">{attendance.absent}</div></div>
-            <div><div className={`text-[11px] font-bold ${mutedText}`}>조퇴</div><div className="font-extrabold text-[#6B4B00]">{attendance.early_leave}</div></div>
-            <div className="col-span-2"><div className={`text-[11px] font-bold ${mutedText}`}>미확인</div><div className={`font-extrabold ${mutedText}`}>{attendance.unconfirmed}</div></div>
-          </div>
-        ) : (
-          // 송출: '현재/전체' 한 항목만. 라벨과 숫자를 세로로 쌓는다 — 한 줄로 두면
-          // 28px 라벨(≈140px) + 64px 숫자(≈160px)가 카드 내용 폭 223px을 넘어 무성 클리핑이 난다.
-          <div className="border-t border-[#7A9AAF] pt-2">
-            <div className={`text-[28px] font-bold leading-none whitespace-nowrap ${mutedText}`}>현재/전체</div>
-            <div className="text-[64px] font-extrabold leading-none tr-num whitespace-nowrap text-[#1F4E79]">
-              {attendance.current_present}/{attendance.roster_total}
+      {opsMode ? (
+        <>
+          <div className="mt-auto">
+            <div className="flex items-end justify-between gap-3">
+              <Eyebrow className={`${mutedText} pb-1`}>참여</Eyebrow>
+              {team.subgroup ? <span className={`text-[12px] font-semibold ${mutedText}`}>{team.subgroup}</span> : null}
+            </div>
+            <div className="text-[44px] sm:text-[48px] font-extrabold text-[#1F4E79] leading-none tr-num whitespace-nowrap">
+              {cell.participation}
             </div>
           </div>
-        )
-      ) : null}
+          {attendance ? (
+            <div className="grid grid-cols-3 gap-1.5 border-t pt-3 text-center border-[#DCE7EE]">
+              <div><div className={`text-[11px] font-bold ${mutedText}`}>현재/전체</div><div className="font-extrabold text-[#1F4E79]">{attendance.current_present}/{attendance.roster_total}</div></div>
+              <div><div className={`text-[11px] font-bold ${mutedText}`}>지각</div><div className="font-extrabold text-[#6B4B00]">{attendance.late}</div></div>
+              <div><div className={`text-[11px] font-bold ${mutedText}`}>결석</div><div className="font-extrabold text-[#8B1A1A]">{attendance.absent}</div></div>
+              <div><div className={`text-[11px] font-bold ${mutedText}`}>조퇴</div><div className="font-extrabold text-[#6B4B00]">{attendance.early_leave}</div></div>
+              <div className="col-span-2"><div className={`text-[11px] font-bold ${mutedText}`}>미확인</div><div className={`font-extrabold ${mutedText}`}>{attendance.unconfirmed}</div></div>
+            </div>
+          ) : null}
+        </>
+      ) : (
+        // 송출: 참여와 출석을 **한 행에 나란히** 둔다. 세로로 쌓으면 1080p에서 산술적으로
+        // 들어가지 않는다(evaluation §4). 나란히 두면 두 블록이 높이를 공유해 잔여높이가
+        // 살아나고, 그 여유만큼 숫자를 키울 수 있다. 조 이름에 분과가 이미 들어 있어
+        // 12px subgroup 배지는 송출에서 렌더하지 않는다(대전제상 읽히지도 않는다).
+        <div className="mt-auto shrink-0 flex items-end justify-between gap-3 border-t border-[#7A9AAF] pt-1">
+          <div className="min-w-0">
+            <div
+              className={`font-bold leading-tight whitespace-nowrap ${mutedText}`}
+              style={{ fontSize: BROADCAST_FONT.blockLabel }}
+            >
+              참여
+            </div>
+            <div className="flex items-baseline gap-1 whitespace-nowrap">
+              <span
+                className="font-extrabold text-[#1F4E79] tr-num"
+                style={{ fontSize: BROADCAST_FONT.votes, lineHeight: 1.1 }}
+              >
+                {participation.votes}
+              </span>
+              {participation.total ? (
+                <span
+                  className="font-extrabold text-[#33393F] tr-num"
+                  style={{ fontSize: BROADCAST_FONT.votesTotal, lineHeight: 1.1 }}
+                >
+                  /{participation.total}
+                </span>
+              ) : null}
+            </div>
+          </div>
+          {attendance ? (
+            <div className="min-w-0 text-right">
+              <div
+                className={`font-bold leading-tight whitespace-nowrap ${mutedText}`}
+                style={{ fontSize: BROADCAST_FONT.blockLabel }}
+              >
+                현재/전체
+              </div>
+              <div className="flex items-baseline justify-end gap-1 whitespace-nowrap">
+                <span
+                  className="font-extrabold text-[#1F4E79] tr-num"
+                  style={{ fontSize: BROADCAST_FONT.attendanceValue, lineHeight: 1.1 }}
+                >
+                  {attendance.current_present}
+                </span>
+                <span
+                  className="font-extrabold text-[#33393F] tr-num"
+                  style={{ fontSize: BROADCAST_FONT.votesTotal, lineHeight: 1.1 }}
+                >
+                  /{attendance.roster_total}
+                </span>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
       {opsMode ? (
         <span className="text-[12px] font-bold text-[#1F4E79]">
           {compareMode ? (comparisonSelected ? '비교 선택됨 ✓' : '비교에 추가 +') : '상세 보기 →'}
@@ -1184,7 +1241,11 @@ export default function HqGrid() {
         className={
           opsMode
             ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3'
-            : 'grid grid-cols-5 grid-rows-3 gap-3 h-[calc(100vh-160px)] min-h-0'
+            : // min-h/min-w = 하한 글자 크기가 요구하는 최소 칸 크기(US-019).
+              // 화면이 그보다 작으면 카드가 조용히 잘리는 대신 **스크롤바가 생겨 사람이 알아챈다.**
+              // 두 숫자는 BROADCAST_GRID_MIN_HEIGHT(792) · BROADCAST_GRID_MIN_WIDTH(1268)이고
+              // hq-broadcast.test.ts가 그 값을 고정한다(토큰을 바꾸면 테스트가 먼저 깨진다).
+              'grid grid-cols-5 grid-rows-3 gap-3 h-[calc(100vh-160px)] min-h-[792px] min-w-[1268px]'
         }
       >
         {visibleTeams.map((team) => (
