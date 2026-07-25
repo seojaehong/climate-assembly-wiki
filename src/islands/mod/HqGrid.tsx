@@ -87,7 +87,9 @@ function TeamCard({
       onClick={onSelect}
       className={`${
         opsMode ? 'min-h-[158px] border' : 'h-full min-h-0 overflow-hidden border-2 border-l-[12px]'
-      } w-full rounded-2xl bg-white p-4 flex flex-col gap-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#23B2C3]/40 ${
+      } w-full rounded-2xl bg-white p-4 flex flex-col ${
+        opsMode ? 'gap-3' : 'gap-2'
+      } text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#23B2C3]/40 ${
         selected || comparisonSelected
           ? 'border-[#1F4E79] ring-2 ring-[#1F4E79]/20'
           : opsMode
@@ -127,7 +129,11 @@ function TeamCard({
             style={{ background: style.dot }}
             aria-hidden="true"
           />
-          <span className={`${opsMode ? 'text-[14px]' : 'text-[32px]'} font-bold whitespace-nowrap`}>
+          <span
+            className={`${
+              opsMode ? 'text-[14px]' : 'text-[32px] leading-none'
+            } font-bold whitespace-nowrap`}
+          >
             {cell.label}
           </span>
         </div>
@@ -155,13 +161,24 @@ function TeamCard({
         )}
       </div>
       {attendance ? (
-        <div className={`grid grid-cols-3 gap-1.5 border-t pt-3 text-center ${opsMode ? 'border-[#DCE7EE]' : 'border-[#7A9AAF]'}`}>
-          <div><div className={`text-[11px] font-bold ${mutedText}`}>현재/전체</div><div className="font-extrabold text-[#1F4E79]">{attendance.current_present}/{attendance.roster_total}</div></div>
-          <div><div className={`text-[11px] font-bold ${mutedText}`}>지각</div><div className="font-extrabold text-[#6B4B00]">{attendance.late}</div></div>
-          <div><div className={`text-[11px] font-bold ${mutedText}`}>결석</div><div className="font-extrabold text-[#8B1A1A]">{attendance.absent}</div></div>
-          <div><div className={`text-[11px] font-bold ${mutedText}`}>조퇴</div><div className="font-extrabold text-[#6B4B00]">{attendance.early_leave}</div></div>
-          <div className="col-span-2"><div className={`text-[11px] font-bold ${mutedText}`}>미확인</div><div className={`font-extrabold ${mutedText}`}>{attendance.unconfirmed}</div></div>
-        </div>
+        opsMode ? (
+          <div className="grid grid-cols-3 gap-1.5 border-t pt-3 text-center border-[#DCE7EE]">
+            <div><div className={`text-[11px] font-bold ${mutedText}`}>현재/전체</div><div className="font-extrabold text-[#1F4E79]">{attendance.current_present}/{attendance.roster_total}</div></div>
+            <div><div className={`text-[11px] font-bold ${mutedText}`}>지각</div><div className="font-extrabold text-[#6B4B00]">{attendance.late}</div></div>
+            <div><div className={`text-[11px] font-bold ${mutedText}`}>결석</div><div className="font-extrabold text-[#8B1A1A]">{attendance.absent}</div></div>
+            <div><div className={`text-[11px] font-bold ${mutedText}`}>조퇴</div><div className="font-extrabold text-[#6B4B00]">{attendance.early_leave}</div></div>
+            <div className="col-span-2"><div className={`text-[11px] font-bold ${mutedText}`}>미확인</div><div className={`font-extrabold ${mutedText}`}>{attendance.unconfirmed}</div></div>
+          </div>
+        ) : (
+          // 송출: '현재/전체' 한 항목만. 라벨과 숫자를 세로로 쌓는다 — 한 줄로 두면
+          // 28px 라벨(≈140px) + 64px 숫자(≈160px)가 카드 내용 폭 223px을 넘어 무성 클리핑이 난다.
+          <div className="border-t border-[#7A9AAF] pt-2">
+            <div className={`text-[28px] font-bold leading-none whitespace-nowrap ${mutedText}`}>현재/전체</div>
+            <div className="text-[64px] font-extrabold leading-none tr-num whitespace-nowrap text-[#1F4E79]">
+              {attendance.current_present}/{attendance.roster_total}
+            </div>
+          </div>
+        )
       ) : null}
       {opsMode ? (
         <span className="text-[12px] font-bold text-[#1F4E79]">
