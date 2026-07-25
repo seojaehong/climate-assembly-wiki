@@ -111,6 +111,8 @@ describe('date-based join codes', () => {
     expect(sql).toMatch(/commit;$/);
     expect(sql).toContain("values ('0829-deliberation', '8/29 숙의'");
     expect(sql).toContain("'1분과 1조', '1분과', 1, '082901'");
+    expect(sql).toContain('and not exists');
+    expect(sql).not.toContain('on conflict (session_id, name)');
     expect(sql).toContain('session seed verification failed');
   });
 
@@ -120,6 +122,7 @@ describe('date-based join codes', () => {
     expect(sql).toMatch(/commit;$/);
     expect(sql).toContain("t.name = '1분과 1조'");
     expect(sql).toContain("set join_code = '654321'");
+    expect(sql).toContain("t.join_code is distinct from '654321'");
     expect(() => formatJoinCodeRotationSql('없는 조', '654321')).toThrow();
     expect(() => formatJoinCodeRotationSql('1분과 1조', '12345')).toThrow();
   });

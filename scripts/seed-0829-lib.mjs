@@ -231,7 +231,12 @@ cross join (values
 ${values}
 ) as expected(name, subgroup, ordinal, join_code)
 where s.slug = '${SESSION_SLUG}'
-on conflict (session_id, name) do nothing;
+  and not exists (
+    select 1
+    from climate_vote.team existing
+    where existing.session_id = s.id
+      and existing.name = expected.name
+  );
 
 do $verify$
 declare
@@ -278,7 +283,8 @@ begin
   from climate_vote.session s
   where s.id = t.session_id
     and s.slug = '${SESSION_SLUG}'
-    and t.name = '${escapedTeamName}';
+    and t.name = '${escapedTeamName}'
+    and t.join_code is distinct from '${newCode}';
 
   get diagnostics updated_count = row_count;
   if updated_count <> 1 then
