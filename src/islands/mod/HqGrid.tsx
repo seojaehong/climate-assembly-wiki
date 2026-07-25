@@ -89,7 +89,9 @@ function TeamCard({
     >
       <div
         className={
-          opsMode ? 'flex items-start justify-between gap-2' : 'flex flex-col items-start gap-2'
+          opsMode
+            ? 'flex items-start justify-between gap-2'
+            : 'flex flex-col items-start gap-2 shrink-0'
         }
       >
         <div>
@@ -118,7 +120,7 @@ function TeamCard({
           </span>
         </div>
       </div>
-      <div className="mt-auto">
+      <div className={opsMode ? 'mt-auto' : 'mt-auto shrink-0'}>
         <div className="flex items-end justify-between gap-3">
           <Eyebrow className="text-[#5A6B73] pb-1">참여</Eyebrow>
           {team.subgroup ? <span className="text-[12px] font-semibold text-[#5A6B73]">{team.subgroup}</span> : null}
