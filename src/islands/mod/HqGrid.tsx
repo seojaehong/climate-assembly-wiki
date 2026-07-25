@@ -24,7 +24,7 @@ import {
   toggleComparisonSelection,
   type TeamCellResult,
 } from './hq-grid-logic';
-import { isOpsMode, participationParts } from './hq-broadcast-logic';
+import { isOpsMode, participationParts, BROADCAST_STATUS_STYLE } from './hq-broadcast-logic';
 
 const POLL_MS = 30000;
 const STALE_AFTER_MS = 65000;
@@ -67,8 +67,12 @@ function TeamCard({
   attendance: HqAttendanceSummary | undefined;
   opsMode: boolean;
 }) {
-  const style = STATUS_STYLE[cell.label];
+  // 운영 노트북은 기존 파스텔 팔레트, 송출은 고채도 팔레트 + 좌측 색 띠.
+  const style = opsMode ? STATUS_STYLE[cell.label] : BROADCAST_STATUS_STYLE[cell.label];
+  const band = opsMode ? null : BROADCAST_STATUS_STYLE[cell.label].band;
   const participation = participationParts(cell);
+  // 보조 텍스트: 송출은 흰 배경 대비 11.5:1(#33393F), 운영은 기존 색 유지(AC #5).
+  const mutedText = opsMode ? 'text-[#5A6B73]' : 'text-[#33393F]';
   return (
     <button
       type="button"
@@ -82,10 +86,16 @@ function TeamCard({
       aria-pressed={compareMode ? comparisonSelected : selected}
       onClick={onSelect}
       className={`${
-        opsMode ? 'min-h-[158px]' : 'h-full min-h-0 overflow-hidden'
-      } w-full rounded-2xl border bg-white p-4 flex flex-col gap-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#23B2C3]/40 ${
-        selected || comparisonSelected ? 'border-[#1F4E79] ring-2 ring-[#1F4E79]/20' : 'border-[#DCE7EE]'
+        opsMode ? 'min-h-[158px] border' : 'h-full min-h-0 overflow-hidden border-2 border-l-[12px]'
+      } w-full rounded-2xl bg-white p-4 flex flex-col gap-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#23B2C3]/40 ${
+        selected || comparisonSelected
+          ? 'border-[#1F4E79] ring-2 ring-[#1F4E79]/20'
+          : opsMode
+            ? 'border-[#DCE7EE]'
+            : /* = BROADCAST_BORDER_COLOR */ 'border-[#7A9AAF]'
       }`}
+      // 좌측 띠만 인라인으로 덮는다(border-color 단축 속성을 쓰지 않아 순서 의존이 없다).
+      style={band ? { borderLeftColor: band } : undefined}
     >
       <div
         className={
@@ -111,7 +121,9 @@ function TeamCard({
           style={{ background: style.bg, color: style.text }}
         >
           <span
-            className={`${opsMode ? 'w-2.5 h-2.5' : 'w-5 h-5'} rounded-full shrink-0`}
+            className={`${opsMode ? 'w-2.5 h-2.5' : 'w-5 h-5'} rounded-full shrink-0 ${
+              !opsMode && cell.label === '투표중' ? 'animate-pulse' : ''
+            }`}
             style={{ background: style.dot }}
             aria-hidden="true"
           />
@@ -122,8 +134,8 @@ function TeamCard({
       </div>
       <div className={opsMode ? 'mt-auto' : 'mt-auto shrink-0'}>
         <div className="flex items-end justify-between gap-3">
-          <Eyebrow className="text-[#5A6B73] pb-1">참여</Eyebrow>
-          {team.subgroup ? <span className="text-[12px] font-semibold text-[#5A6B73]">{team.subgroup}</span> : null}
+          <Eyebrow className={`${mutedText} pb-1`}>참여</Eyebrow>
+          {team.subgroup ? <span className={`text-[12px] font-semibold ${mutedText}`}>{team.subgroup}</span> : null}
         </div>
         {opsMode ? (
           <div className="text-[44px] sm:text-[48px] font-extrabold text-[#1F4E79] leading-none tr-num whitespace-nowrap">
@@ -135,7 +147,7 @@ function TeamCard({
               {participation.votes}
             </span>
             {participation.total ? (
-              <span className="text-[32px] font-extrabold text-[#5A6B73] leading-none tr-num">
+              <span className="text-[32px] font-extrabold text-[#33393F] leading-none tr-num">
                 /{participation.total}
               </span>
             ) : null}
@@ -143,12 +155,12 @@ function TeamCard({
         )}
       </div>
       {attendance ? (
-        <div className="grid grid-cols-3 gap-1.5 border-t border-[#DCE7EE] pt-3 text-center">
-          <div><div className="text-[11px] font-bold text-[#5A6B73]">현재/전체</div><div className="font-extrabold text-[#1F4E79]">{attendance.current_present}/{attendance.roster_total}</div></div>
-          <div><div className="text-[11px] font-bold text-[#5A6B73]">지각</div><div className="font-extrabold text-[#6B4B00]">{attendance.late}</div></div>
-          <div><div className="text-[11px] font-bold text-[#5A6B73]">결석</div><div className="font-extrabold text-[#8B1A1A]">{attendance.absent}</div></div>
-          <div><div className="text-[11px] font-bold text-[#5A6B73]">조퇴</div><div className="font-extrabold text-[#6B4B00]">{attendance.early_leave}</div></div>
-          <div className="col-span-2"><div className="text-[11px] font-bold text-[#5A6B73]">미확인</div><div className="font-extrabold text-[#5A6B73]">{attendance.unconfirmed}</div></div>
+        <div className={`grid grid-cols-3 gap-1.5 border-t pt-3 text-center ${opsMode ? 'border-[#DCE7EE]' : 'border-[#7A9AAF]'}`}>
+          <div><div className={`text-[11px] font-bold ${mutedText}`}>현재/전체</div><div className="font-extrabold text-[#1F4E79]">{attendance.current_present}/{attendance.roster_total}</div></div>
+          <div><div className={`text-[11px] font-bold ${mutedText}`}>지각</div><div className="font-extrabold text-[#6B4B00]">{attendance.late}</div></div>
+          <div><div className={`text-[11px] font-bold ${mutedText}`}>결석</div><div className="font-extrabold text-[#8B1A1A]">{attendance.absent}</div></div>
+          <div><div className={`text-[11px] font-bold ${mutedText}`}>조퇴</div><div className="font-extrabold text-[#6B4B00]">{attendance.early_leave}</div></div>
+          <div className="col-span-2"><div className={`text-[11px] font-bold ${mutedText}`}>미확인</div><div className={`font-extrabold ${mutedText}`}>{attendance.unconfirmed}</div></div>
         </div>
       ) : null}
       {opsMode ? (

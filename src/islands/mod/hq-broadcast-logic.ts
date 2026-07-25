@@ -23,3 +23,23 @@ export function participationParts(cell: TeamCellResult): ParticipationParts {
   if (slash === -1) return { votes: raw.trim(), total: '' };
   return { votes: raw.slice(0, slash).trim(), total: raw.slice(slash + 1).trim() };
 }
+
+export type BroadcastStatusStyle = { bg: string; text: string; dot: string; band: string };
+
+/**
+ * 송출 모드(대형 스크린) 전용 상태 색. 운영 노트북용 STATUS_STYLE(HqGrid.tsx)은 건드리지 않는다.
+ * 파스텔 배경을 채도 높은 값으로 올리고, 카드 좌측 색 띠(band)를 함께 준다.
+ * 값은 전부 인라인 `style`로 DOM에 들어가므로 Tailwind purge와 무관하다 —
+ * 그래서 클래스 문자열과 달리 여기서 단위 테스트로 지킬 수 있다.
+ */
+export const BROADCAST_STATUS_STYLE: Record<TeamCellResult['label'], BroadcastStatusStyle> = {
+  대기: { bg: '#E2E8EC', text: '#1F2933', dot: '#4A5560', band: '#6B7683' },
+  투표중: { bg: '#0E7C8A', text: '#FFFFFF', dot: '#FFFFFF', band: '#0E7C8A' },
+  마감: { bg: '#1F4E79', text: '#FFFFFF', dot: '#FFFFFF', band: '#1F4E79' },
+};
+
+/**
+ * 송출 카드 테두리 색. 페이지 배경 #F5F8FB 대비 2.78:1, 흰 카드 대비 2.96:1.
+ * (AC 예시값 #9CB7C8은 배경 대비 1.97:1로 AC가 요구한 2.5:1을 못 넘겨 임계값 쪽을 따랐다.)
+ */
+export const BROADCAST_BORDER_COLOR = '#7A9AAF';
