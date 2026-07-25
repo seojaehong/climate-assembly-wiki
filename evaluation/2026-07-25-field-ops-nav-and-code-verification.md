@@ -32,9 +32,14 @@
 
 ## DB 반영 상태
 
-기존 DB의 15개 코드는 이번 검증에서 변경하지 않았다.
+Supabase SQL Editor의 `postgres` 역할로 `--print-sync-sql`이 생성한 단일 트랜잭션을 실행했다.
 
-서비스 역할 키로 `climate_vote.session`을 조회했을 때 `permission denied for table session`이 발생했다. 이 실패는 첫 조회에서 발생해 변경 건수는 0건이다. 스키마 권한을 임의로 추가하지 않고, `--print-sync-sql`이 출력하는 사전검사·갱신·사후검증 단일 트랜잭션을 Supabase SQL Editor에서 실행하는 운영 경로로 정리했다.
+- 실행 결과: `Success. No rows returned`
+- 사후 조회: 15행
+- 코드 범위: `082901`~`082915`
+- 매핑 확인: 1분과 1조~5조 `01`~`05`, 2분과 1조~5조 `06`~`10`, 3분과 1조~5조 `11`~`15`
+
+서비스 역할 키로 처음 시도했을 때는 `climate_vote.session` 조회에서 `permission denied for table session`이 발생했다. 이 실패는 첫 조회에서 발생해 변경 건수는 0건이었다. 스키마 권한은 변경하지 않았으며, 관리자 트랜잭션 실행으로 기존 15개 코드를 원자적으로 변경·검증했다.
 
 실행 로그:
 
