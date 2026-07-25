@@ -194,6 +194,19 @@ describe('resultZipEntryName', () => {
     expect(resultZipEntryName({ teamName: '1분과 1조', sequence: 0, title: '질문' })).toBe('1분과_1조/질문.png');
   });
 
+  it('긴 제목을 잘라 경로 길이를 묶는다 — Windows 탐색기가 260자에서 압축 해제를 거부한다', () => {
+    // 제목은 모더레이터가 현장에서 자유롭게 입력한다(입력창에도 DB에도 길이 제한이 없다).
+    // 그대로 파일명에 넣으면 압축을 푸는 도구에 따라 열리고 안 열리는 아카이브가 된다.
+    const long = '석탄 발전 감축 속도를 어느 정도로 할 것인가에 대한 우리 조의 의견'.repeat(4);
+    const name = resultZipEntryName({ teamName: '1분과 1조', sequence: 2, title: long });
+
+    expect(name.length).toBeLessThanOrEqual(80);
+    expect(name.startsWith('1분과_1조/2차_')).toBe(true);
+    expect(name.endsWith('.png')).toBe(true);
+    // 자른 자리가 밑줄이면 '..._.png'가 된다.
+    expect(name.endsWith('_.png')).toBe(false);
+  });
+
   it('제목이 비어도 파일명이 비지 않는다', () => {
     expect(resultZipEntryName({ teamName: '1분과 1조', sequence: 3, title: '   ' })).toBe('1분과_1조/3차.png');
     expect(resultZipEntryName({ teamName: '1분과 1조', sequence: 0, title: '' })).toBe('1분과_1조/투표결과.png');

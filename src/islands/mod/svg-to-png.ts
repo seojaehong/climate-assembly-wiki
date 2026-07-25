@@ -70,6 +70,23 @@ export function resultImageFileName(input: { teamName: string; sequence: number;
 }
 
 /**
+ * ZIP 경로에 넣을 제목의 최대 길이(문자 수).
+ *
+ * 제목은 모더레이터가 현장에서 자유롭게 입력한다 — 입력창에도(`ModConsole.tsx`) DB에도
+ * (`mod_create_round`의 `p_title text`) 길이 제한이 없다. 그대로 파일명에 넣으면
+ * `Downloads/조별_투표결과_.../1분과_1조/...` 경로가 Windows의 260자 한계를 넘어
+ * **탐색기에서는 압축 해제가 거부되고 7-Zip에서는 열리는** 도구별 사고가 난다.
+ */
+const MAX_TITLE_CHARS = 60;
+
+/** 코드포인트 단위로 자른다 — UTF-16 인덱스로 자르면 서러게이트 쌍이 쪼개져 깨진 문자가 남는다. */
+function capSegment(value: string, max: number): string {
+  const chars = Array.from(value);
+  if (chars.length <= max) return value;
+  return chars.slice(0, max).join('').replace(/[_.]+$/, '');
+}
+
+/**
  * ZIP 안에 놓을 경로. `<조이름>/<회차>차_<제목>.png`.
  *
  * **각 조각을 따로 정리한 뒤 `/`로 잇는다** — 제목을 그대로 넣으면 제목 안의 슬래시('A/B 안')가
@@ -83,7 +100,9 @@ export function resultZipEntryName(input: { teamName: string; sequence: number; 
   const folder = safeSegment(input.teamName) || FALLBACK_TEAM_NAME;
   const parts: string[] = [];
   if (input.sequence >= 1) parts.push(`${Math.floor(input.sequence)}차`);
-  const title = safeSegment(input.title);
+  // 자르기는 치환 **뒤**에 한다 — 먼저 자르면 잘린 자리의 공백이 밑줄로 바뀌어 길이가 다시 는다.
+  // 회차(`N차_`)가 조 안에서 유일하므로 제목이 잘려도 두 항목이 같은 이름으로 합쳐지지 않는다.
+  const title = capSegment(safeSegment(input.title), MAX_TITLE_CHARS);
   if (title) parts.push(title);
   const file = parts.join('_') || FALLBACK_TEAM_NAME;
   return `${folder}/${file}.png`;

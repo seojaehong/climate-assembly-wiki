@@ -865,7 +865,15 @@ export default function HqGrid() {
         // 한 장을 끝낸 **뒤에** 올린다 — 먼저 올리면 마지막이 45/45에 닿지 않는다.
         setExportState((prev) => ({ ...prev, done: prev.done + 1 }));
       }
-      if (entries.length === 0) throw new Error('이미지를 한 장도 만들지 못했습니다.');
+      if (entries.length === 0) {
+        // 바깥 catch로 넘기지 않는다 — 그 문구는 "연결을 확인하라"인데 여기서 막힌 것은
+        // 연결이 아니라 이미지 변환이다. 오류 문구는 **다음에 할 일**을 정확히 가리켜야 한다.
+        setExportState({
+          ...IDLE_EXPORT,
+          error: '이미지를 한 장도 만들지 못했습니다. 다른 브라우저(크롬·엣지)에서 다시 시도해 주세요.',
+        });
+        return;
+      }
 
       const at = new Date();
       downloadBlob(
