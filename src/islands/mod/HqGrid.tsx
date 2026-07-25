@@ -24,7 +24,7 @@ import {
   toggleComparisonSelection,
   type TeamCellResult,
 } from './hq-grid-logic';
-import { isOpsMode } from './hq-broadcast-logic';
+import { isOpsMode, participationParts } from './hq-broadcast-logic';
 
 const POLL_MS = 30000;
 const STALE_AFTER_MS = 65000;
@@ -68,6 +68,7 @@ function TeamCard({
   opsMode: boolean;
 }) {
   const style = STATUS_STYLE[cell.label];
+  const participation = participationParts(cell);
   return (
     <button
       type="button"
@@ -86,21 +87,35 @@ function TeamCard({
         selected || comparisonSelected ? 'border-[#1F4E79] ring-2 ring-[#1F4E79]/20' : 'border-[#DCE7EE]'
       }`}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div
+        className={
+          opsMode ? 'flex items-start justify-between gap-2' : 'flex flex-col items-start gap-2'
+        }
+      >
         <div>
           <div
-            className="text-[22px] sm:text-[24px] font-extrabold text-[#1F2933] leading-tight whitespace-nowrap"
+            className={`${
+              opsMode ? 'text-[22px] sm:text-[24px]' : 'text-[40px]'
+            } font-extrabold text-[#1F2933] leading-tight whitespace-nowrap`}
             style={{ letterSpacing: '-.01em' }}
           >
             {team.name}
           </div>
         </div>
         <div
-          className="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 shrink-0"
+          className={`flex items-center rounded-full shrink-0 ${
+            opsMode ? 'gap-1.5 px-2.5 py-1.5' : 'gap-2 px-3 py-1'
+          }`}
           style={{ background: style.bg, color: style.text }}
         >
-          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: style.dot }} aria-hidden="true" />
-          <span className="text-[14px] font-bold whitespace-nowrap">{cell.label}</span>
+          <span
+            className={`${opsMode ? 'w-2.5 h-2.5' : 'w-5 h-5'} rounded-full shrink-0`}
+            style={{ background: style.dot }}
+            aria-hidden="true"
+          />
+          <span className={`${opsMode ? 'text-[14px]' : 'text-[32px]'} font-bold whitespace-nowrap`}>
+            {cell.label}
+          </span>
         </div>
       </div>
       <div className="mt-auto">
@@ -108,9 +123,22 @@ function TeamCard({
           <Eyebrow className="text-[#5A6B73] pb-1">참여</Eyebrow>
           {team.subgroup ? <span className="text-[12px] font-semibold text-[#5A6B73]">{team.subgroup}</span> : null}
         </div>
-        <div className="text-[44px] sm:text-[48px] font-extrabold text-[#1F4E79] leading-none tr-num whitespace-nowrap">
-          {cell.participation}
-        </div>
+        {opsMode ? (
+          <div className="text-[44px] sm:text-[48px] font-extrabold text-[#1F4E79] leading-none tr-num whitespace-nowrap">
+            {cell.participation}
+          </div>
+        ) : (
+          <div className="flex items-baseline gap-1 leading-none whitespace-nowrap">
+            <span className="text-[88px] font-extrabold text-[#1F4E79] leading-none tr-num">
+              {participation.votes}
+            </span>
+            {participation.total ? (
+              <span className="text-[32px] font-extrabold text-[#5A6B73] leading-none tr-num">
+                /{participation.total}
+              </span>
+            ) : null}
+          </div>
+        )}
       </div>
       {attendance ? (
         <div className="grid grid-cols-3 gap-1.5 border-t border-[#DCE7EE] pt-3 text-center">
