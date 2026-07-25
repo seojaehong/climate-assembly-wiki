@@ -14,7 +14,14 @@ import {
   type Vote,
 } from '../../lib/mod-console';
 import { fetchRoundEligibleCount } from '../../lib/attendance';
-import { modReducer, initialModState } from './mod-state';
+import {
+  modReducer,
+  initialModState,
+  canReopen,
+  closeConfirmMessage,
+  participationBase,
+  REOPEN_WINDOW_MS,
+} from './mod-state';
 import AttendancePanel from './AttendancePanel';
 import Timer from './Timer';
 
@@ -377,6 +384,8 @@ function PollingScreen({
 }) {
   const [qr, setQr] = useState<string | null>(null);
   const [eligibleCount, setEligibleCount] = useState<number | null>(null);
+  // 마감 확인 다이얼로그 — 열린 시점의 수치를 스냅샷해 5초 폴링에 숫자가 흔들리지 않게 한다.
+  const [confirmClose, setConfirmClose] = useState<{ voted: number; base: number } | null>(null);
   const participantUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/v?r=${round.id}`;
   const participantUrlDisplay = participantUrl.replace(/^https?:\/\//, '');
 
@@ -408,7 +417,7 @@ function PollingScreen({
 
   const tally = tallyVotes(round, votes);
   const options = round.options ?? [];
-  const participationBase = eligibleCount ?? capacity;
+  const voterBase = participationBase(eligibleCount, capacity);
 
   return (
     <div className="min-h-screen bg-[#F5F8FB]">
@@ -460,13 +469,13 @@ function PollingScreen({
                 <Eyebrow className="text-[#5A6B73] mb-1.5">참여 현황</Eyebrow>
                 <div className="text-[46px] font-extrabold text-[#1F4E79] leading-none tr-num">
                   {tally.total}
-                  <span className="text-[#5A6B73] text-[26px] font-bold"> / {participationBase}명</span>
+                  <span className="text-[#5A6B73] text-[26px] font-bold"> / {voterBase}명</span>
                 </div>
               </div>
               <div className="text-right">
                 <Eyebrow className="text-[#5A6B73] mb-1.5">진행률</Eyebrow>
                 <div className="text-[28px] font-extrabold text-[#135C73] leading-none tr-num">
-                  {participationBase > 0 ? Math.min(100, Math.round((tally.total / participationBase) * 100)) : 0}%
+                  {voterBase > 0 ? Math.min(100, Math.round((tally.total / voterBase) * 100)) : 0}%
                 </div>
               </div>
             </div>
@@ -497,7 +506,7 @@ function PollingScreen({
             <div className="mt-7 space-y-3">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={() => setConfirmClose({ voted: tally.total, base: voterBase })}
                 disabled={closing}
                 className="w-full h-16 rounded-2xl bg-[#DC2626] text-white text-[22px] font-bold shadow-sm active:scale-[.99] transition flex items-center justify-center gap-2 disabled:opacity-50"
               >
@@ -508,6 +517,48 @@ function PollingScreen({
           </div>
         </div>
       </div>
+
+      {confirmClose ? (
+        <div className="fixed inset-0 z-40 bg-[#1F4E79]/55 backdrop-blur-[1px] flex items-center justify-center p-5">
+          <div className="w-full max-w-md bg-white rounded-2xl border border-[#DCE7EE] overflow-hidden">
+            <div className="px-6 pt-6 pb-5 text-center">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-[#DC2626]/12 border border-[#DC2626]/40 grid place-items-center text-3xl mb-4" aria-hidden="true">
+                ⛔
+              </div>
+              <Eyebrow className="text-[#B91C1C] mb-2">Confirm</Eyebrow>
+              <h4 className="text-[22px] font-extrabold text-[#1F4E79] leading-snug mb-3" style={{ letterSpacing: '-.01em' }}>
+                투표를 마감할까요?
+              </h4>
+              <p className="text-[19px] font-bold text-[#1F2933] leading-relaxed tr-num">
+                {closeConfirmMessage(confirmClose.voted, confirmClose.base)}
+              </p>
+              <p className="text-[15px] text-[#5A6B73] mt-3">
+                마감 후 60초 동안은 결과 화면에서 <b className="text-[#1F4E79]">다시 열기</b>로 되돌릴 수 있습니다.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 p-5 pt-0">
+              <button
+                type="button"
+                onClick={() => setConfirmClose(null)}
+                className="h-[56px] rounded-2xl border border-[#C4D8E4] bg-white text-[#1F4E79] text-[19px] font-bold"
+              >
+                더 기다리기
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmClose(null);
+                  onClose();
+                }}
+                disabled={closing}
+                className="h-[56px] rounded-2xl bg-[#DC2626] text-white text-[19px] font-bold shadow-sm disabled:opacity-50"
+              >
+                마감하기
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -692,17 +743,34 @@ function ResultsScreen({
   votes,
   onNewPoll,
   onEnterFullscreen,
+  onReopen,
+  closedAt,
+  reopening,
 }: {
   teamName: string;
   round: Round;
   votes: Vote[];
   onNewPoll: () => void;
   onEnterFullscreen: () => void;
+  onReopen: () => void;
+  closedAt: number | null;
+  reopening: boolean;
 }) {
   const tally = tallyVotes(round, votes);
   const ranked = (round.options ?? [])
     .map((opt) => ({ opt, count: tally.byOption[opt] ?? 0 }))
     .sort((a, b) => b.count - a.count);
+
+  // 되돌리기 창(60초)을 1초마다 다시 판정한다 — 틱이 없으면 버튼이 제때 사라지지 않는다.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (closedAt == null) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [closedAt]);
+  const showReopen = canReopen(closedAt, now);
+  const reopenSecondsLeft =
+    closedAt == null ? 0 : Math.max(0, Math.ceil((closedAt + REOPEN_WINDOW_MS - now) / 1000));
 
   return (
     <div className="min-h-screen bg-[#F5F8FB]">
@@ -753,6 +821,23 @@ function ResultsScreen({
               <span aria-hidden="true">🖥️</span> 결과 크게 보기
             </button>
             <p className="text-[13px] text-[#5A6B73] text-center">대형 스크린(빔프로젝터)으로 결과를 송출합니다.</p>
+
+            {showReopen ? (
+              <>
+                <button
+                  type="button"
+                  onClick={onReopen}
+                  disabled={reopening}
+                  className="w-full h-16 rounded-2xl border-2 border-[#F5A623] bg-[#F5A623]/10 text-[#B5651D] text-[20px] font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <span aria-hidden="true">↩</span>{' '}
+                  {reopening ? '다시 여는 중…' : `다시 열기 (${reopenSecondsLeft}초)`}
+                </button>
+                <p className="text-[14px] text-[#5A6B73] text-center">
+                  실수로 마감했다면 지금 되돌릴 수 있습니다. 표는 그대로 유지됩니다.
+                </p>
+              </>
+            ) : null}
 
             <button
               type="button"
@@ -875,6 +960,8 @@ export default function ModConsole() {
   const [joinBusy, setJoinBusy] = useState(false);
   const [creating, setCreating] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [reopening, setReopening] = useState(false);
+  const [closedAt, setClosedAt] = useState<number | null>(null);
   const [votes, setVotes] = useState<Vote[]>([]);
   const [fullscreen, setFullscreen] = useState(false);
   const [restoreNotice, setRestoreNotice] = useState(false);
@@ -1002,12 +1089,30 @@ export default function ModConsole() {
     try {
       const closed = await setPollStatus(code, state.round.id, 'closed');
       setRestoreNotice(false);
+      setClosedAt(Date.now());
       dispatch({ type: 'CLOSE_POLL', round: closed });
     } catch {
       // 마감 실패 — 진행 화면에 머무름, 토스트로 재시도를 안내한다.
       setToast('투표 마감에 실패했습니다 — 다시 시도해 주세요.');
     } finally {
       setClosing(false);
+    }
+  };
+
+  // 마감을 잘못 눌렀을 때의 되돌리기 — 라운드를 active로 되돌리고 진행 화면으로 복귀한다.
+  // 마감은 표를 보관(archive)하지 않으므로 기존 표는 그대로 남는다.
+  const handleReopenPoll = async () => {
+    const code = codeRef.current;
+    if (!code || !state.round) return;
+    setReopening(true);
+    try {
+      const reopened = await setPollStatus(code, state.round.id, 'active');
+      setClosedAt(null);
+      dispatch({ type: 'REOPEN_POLL', round: reopened });
+    } catch {
+      setToast('다시 열기에 실패했습니다 — 네트워크를 확인하고 다시 시도해 주세요.');
+    } finally {
+      setReopening(false);
     }
   };
 
@@ -1069,8 +1174,14 @@ export default function ModConsole() {
         teamName={teamName}
         round={state.round}
         votes={votes}
-        onNewPoll={() => dispatch({ type: 'NEW_POLL' })}
+        onNewPoll={() => {
+          setClosedAt(null);
+          dispatch({ type: 'NEW_POLL' });
+        }}
         onEnterFullscreen={enterFullscreen}
+        onReopen={handleReopenPoll}
+        closedAt={closedAt}
+        reopening={reopening}
       />
     );
   } else {
