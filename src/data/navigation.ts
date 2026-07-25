@@ -82,6 +82,17 @@ export const TOP_NAV_ITEMS: NavItem[] = [
     href: '/workshop-graph/',
     external: true,
   },
+  {
+    section: 'field-ops',
+    labelKo: '현장 운영',
+    labelEn: 'Field Ops',
+    href: '/mod/',
+    children: [
+      { labelKo: '모더레이터 콘솔', labelEn: 'Moderator Console', href: '/mod/' },
+      { labelKo: '본부 현황', labelEn: 'Headquarters', href: '/hq/' },
+      { labelKo: '사용법', labelEn: 'Console Guide', href: '/mod-help/' },
+    ],
+  },
   // 2026-06-13: '운영규정 의견' — 3교시 A조/B조 시민 포스트잇 의견 시각화
   // 2026-06-22: 탭 숨김 — 6/13 일회성 시각화라 일반 탐색에 노출 불필요. 직접 URL(/ko/regulation-feedback/) 보존
   // { section: 'regulation-feedback', labelKo: '운영규정 의견', labelEn: 'Regulation Feedback' },

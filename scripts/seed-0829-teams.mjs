@@ -1,18 +1,22 @@
 #!/usr/bin/env node
-// 8/29 숙의 세션 시드: session upsert(slug=0829-deliberation) + 15팀(1~3분과 x 1~5조) 생성.
-// 기존 팀은 skip(idempotent), join_code는 crypto.randomInt(100000,999999) 유니크.
-// --dry-run: DB 연결 없이 계획된 연산과 코드표만 stdout에 출력.
-import { randomInt } from 'node:crypto';
+// Seed the 8/29 deliberation session and its 15-team official roster.
+// Normal join codes use MMDD + the canonical global team ordinal (082901..082915).
+// --print-seed-sql emits an atomic admin transaction for a new session.
+// --print-sync-sql emits an atomic admin transaction for an existing roster.
+// --dry-run prints planned operations and the code table without a DB connection.
 import { fileURLToPath } from 'node:url';
 import {
   SESSION_SLUG,
   SESSION_TITLE,
+  SESSION_DATE_MMDD,
   SESSION_CONFIG,
   TEAM_CAPACITY,
   fullTeamRoster,
   buildTeamPlan,
-  genUniqueCodes,
+  joinCodeForTeamName,
   formatCodeTable,
+  formatSessionSeedSql,
+  formatJoinCodeSyncSql,
   sessionAction,
 } from './seed-0829-lib.mjs';
 
@@ -26,12 +30,9 @@ function checkEnvOrExit() {
   }
 }
 
-const cliRandomInt = () => randomInt(100000, 1000000); // 100000-999999 inclusive
-
 async function runDryRun() {
   const plan = buildTeamPlan([]); // dry-run assumes a clean slate for display purposes
-  const codes = genUniqueCodes(plan.length, [], cliRandomInt);
-  const rows = plan.map((team, i) => ({ ...team, code: codes[i] }));
+  const rows = plan.map((team) => ({ ...team, code: joinCodeForTeamName(team.name) }));
 
   console.log('[DRY RUN] no DB connection made. Planned operations:');
   console.log('');
@@ -43,6 +44,7 @@ async function runDryRun() {
   console.log('');
   console.log(`2) team insert (skip if (session_id, name) already exists) — ${rows.length} rows`);
   console.log(`   capacity: ${TEAM_CAPACITY} each`);
+  console.log(`   code rule: ${SESSION_DATE_MMDD} + global team ordinal 01..15`);
   console.log('');
   console.log(formatCodeTable(rows));
   console.log('');
@@ -88,7 +90,7 @@ async function runLive() {
   // 2) find existing teams for this session (idempotency)
   const { data: existingTeams, error: existingErr } = await client
     .from('team')
-    .select('name')
+    .select('id, name, join_code')
     .eq('session_id', session.id);
   if (existingErr) {
     console.error('failed to load existing teams:', existingErr.message);
@@ -102,38 +104,25 @@ async function runLive() {
   }
 
   const rows = [];
-  const taken = new Set(); // codes generated this run — avoid in-run collisions before DB roundtrip
   for (const team of plan) {
-    let inserted = null;
-    let lastErr = null;
-    for (let attempt = 0; attempt < 5 && !inserted; attempt++) {
-      const [code] = genUniqueCodes(1, taken, cliRandomInt);
-      taken.add(code);
-      const { data, error } = await client
-        .from('team')
-        .insert({
-          session_id: session.id,
-          name: team.name,
-          subgroup: team.subgroup,
-          join_code: code,
-          capacity: TEAM_CAPACITY,
-          status: 'active',
-        })
-        .select()
-        .single();
-      if (!error) {
-        inserted = data;
-      } else if (error.code === '23505') {
-        // unique violation on join_code (DB-level backstop) — regenerate and retry
-        lastErr = error;
-        continue;
-      } else {
-        console.error(`team insert failed for ${team.name}:`, error.message);
-        process.exit(1);
-      }
-    }
-    if (!inserted) {
-      console.error(`team insert failed for ${team.name} after retries:`, lastErr?.message);
+    const code = joinCodeForTeamName(team.name);
+    const { data: inserted, error } = await client
+      .from('team')
+      .insert({
+        session_id: session.id,
+        name: team.name,
+        subgroup: team.subgroup,
+        join_code: code,
+        capacity: TEAM_CAPACITY,
+        status: 'active',
+      })
+      .select()
+      .single();
+    if (error) {
+      const detail = error.code === '23505'
+        ? `deterministic code ${code} is already in use`
+        : error.message;
+      console.error(`team insert failed for ${team.name}:`, detail);
       process.exit(1);
     }
     rows.push({ name: inserted.name, code: inserted.join_code });
@@ -147,7 +136,13 @@ async function runLive() {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const dryRun = process.argv.includes('--dry-run');
-  if (dryRun) {
+  const printSeedSql = process.argv.includes('--print-seed-sql');
+  const printSyncSql = process.argv.includes('--print-sync-sql');
+  if (printSyncSql) {
+    console.log(formatJoinCodeSyncSql());
+  } else if (printSeedSql) {
+    console.log(formatSessionSeedSql());
+  } else if (dryRun) {
     await runDryRun();
   } else {
     await runLive();

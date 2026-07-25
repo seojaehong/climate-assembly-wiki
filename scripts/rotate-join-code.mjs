@@ -1,9 +1,13 @@
 #!/usr/bin/env node
-// 코드 유출 시 재발급: 8/29 세션(slug=0829-deliberation) 내 특정 조의 join_code를 새로 갱신.
-// 사용: node scripts/rotate-join-code.mjs "1분과 1조" [--dry-run]
+// Emergency reissue for leaked codes: update one team with a random exception to the MMDD rule.
+// Usage: node scripts/rotate-join-code.mjs "1분과 1조" [--dry-run|--print-sql]
 import { randomInt } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { SESSION_SLUG, genUniqueCodes } from './seed-0829-lib.mjs';
+import {
+  SESSION_SLUG,
+  genUniqueCodes,
+  formatJoinCodeRotationSql,
+} from './seed-0829-lib.mjs';
 
 const cliRandomInt = () => randomInt(100000, 1000000);
 
@@ -20,8 +24,9 @@ function checkEnvOrExit() {
 function parseArgs(argv) {
   const args = argv.slice(2);
   const dryRun = args.includes('--dry-run');
+  const printSql = args.includes('--print-sql');
   const teamName = args.find((a) => !a.startsWith('--'));
-  return { teamName, dryRun };
+  return { teamName, dryRun, printSql };
 }
 
 async function runDryRun(teamName) {
@@ -97,12 +102,15 @@ async function runLive(teamName) {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const { teamName, dryRun } = parseArgs(process.argv);
+  const { teamName, dryRun, printSql } = parseArgs(process.argv);
   if (!teamName) {
-    console.error('사용: node scripts/rotate-join-code.mjs "<조이름>" [--dry-run]');
+    console.error('사용: node scripts/rotate-join-code.mjs "<조이름>" [--dry-run|--print-sql]');
     process.exit(1);
   }
-  if (dryRun) {
+  if (printSql) {
+    const [newCode] = genUniqueCodes(1, [], cliRandomInt);
+    console.log(formatJoinCodeRotationSql(teamName, newCode));
+  } else if (dryRun) {
     await runDryRun(teamName);
   } else {
     await runLive(teamName);

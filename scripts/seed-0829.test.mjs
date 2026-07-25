@@ -7,8 +7,15 @@ import {
   sessionAction,
   SESSION_SLUG,
   SESSION_TITLE,
+  SESSION_DATE,
+  SESSION_DATE_MMDD,
   SESSION_CONFIG,
   TEAM_CAPACITY,
+  joinCodeForTeam,
+  joinCodeForTeamName,
+  formatSessionSeedSql,
+  formatJoinCodeSyncSql,
+  formatJoinCodeRotationSql,
 } from './seed-0829-lib.mjs';
 
 describe('fullTeamRoster', () => {
@@ -18,8 +25,8 @@ describe('fullTeamRoster', () => {
     expect(roster.filter((t) => t.subgroup === '1분과')).toHaveLength(5);
     expect(roster.filter((t) => t.subgroup === '2분과')).toHaveLength(5);
     expect(roster.filter((t) => t.subgroup === '3분과')).toHaveLength(5);
-    expect(roster[0]).toEqual({ name: '1분과 1조', subgroup: '1분과' });
-    expect(roster.at(-1)).toEqual({ name: '3분과 5조', subgroup: '3분과' });
+    expect(roster[0]).toEqual({ name: '1분과 1조', subgroup: '1분과', ordinal: 1 });
+    expect(roster.at(-1)).toEqual({ name: '3분과 5조', subgroup: '3분과', ordinal: 15 });
     expect(new Set(roster.map((t) => t.name)).size).toBe(15);
   });
 });
@@ -66,6 +73,64 @@ describe('genUniqueCodes', () => {
   });
 });
 
+describe('date-based join codes', () => {
+  test('formats MMDD + two-digit global team ordinal', () => {
+    expect(joinCodeForTeam('0725', 1)).toBe('072501');
+    expect(joinCodeForTeam('0829', 15)).toBe('082915');
+  });
+
+  test('maps the 8/29 roster to unique 082901..082915 codes', () => {
+    const codes = fullTeamRoster().map((team) => joinCodeForTeamName(team.name));
+    expect(codes[0]).toBe('082901');
+    expect(codes.at(-1)).toBe('082915');
+    expect(new Set(codes).size).toBe(15);
+  });
+
+  test('locks every official team name to an explicit global ordinal', () => {
+    expect(fullTeamRoster().map(({ name, ordinal }) => [name, ordinal])).toEqual([
+      ['1분과 1조', 1], ['1분과 2조', 2], ['1분과 3조', 3], ['1분과 4조', 4], ['1분과 5조', 5],
+      ['2분과 1조', 6], ['2분과 2조', 7], ['2분과 3조', 8], ['2분과 4조', 9], ['2분과 5조', 10],
+      ['3분과 1조', 11], ['3분과 2조', 12], ['3분과 3조', 13], ['3분과 4조', 14], ['3분과 5조', 15],
+    ]);
+  });
+
+  test('emits an atomic admin transaction for syncing an existing roster', () => {
+    const sql = formatJoinCodeSyncSql();
+    expect(sql).toMatch(/^begin;/);
+    expect(sql).toMatch(/commit;$/);
+    expect(sql).toContain("'1분과 1조', '082901'");
+    expect(sql).toContain("'3분과 5조', '082915'");
+    expect(sql).toContain('complete official 15-team roster is required');
+    expect(sql).toContain('join-code collision detected');
+    expect(sql).toContain('join-code verification failed');
+  });
+
+  test('emits an atomic admin transaction for a new session roster', () => {
+    const sql = formatSessionSeedSql();
+    expect(sql).toMatch(/^begin;/);
+    expect(sql).toMatch(/commit;$/);
+    expect(sql).toContain("values ('0829-deliberation', '8/29 숙의'");
+    expect(sql).toContain("'1분과 1조', '1분과', 1, '082901'");
+    expect(sql).toContain('session seed verification failed');
+  });
+
+  test('emits an atomic admin transaction for emergency code rotation', () => {
+    const sql = formatJoinCodeRotationSql('1분과 1조', '654321');
+    expect(sql).toMatch(/^begin;/);
+    expect(sql).toMatch(/commit;$/);
+    expect(sql).toContain("t.name = '1분과 1조'");
+    expect(sql).toContain("set join_code = '654321'");
+    expect(() => formatJoinCodeRotationSql('없는 조', '654321')).toThrow();
+    expect(() => formatJoinCodeRotationSql('1분과 1조', '12345')).toThrow();
+  });
+
+  test('rejects malformed dates, ordinals, and unknown teams', () => {
+    expect(() => joinCodeForTeam('725', 1)).toThrow();
+    expect(() => joinCodeForTeam('0725', 0)).toThrow();
+    expect(() => joinCodeForTeamName('없는 조')).toThrow();
+  });
+});
+
 describe('formatCodeTable', () => {
   test('renders an aligned two-column table with header and rule', () => {
     const table = formatCodeTable([
@@ -95,8 +160,10 @@ describe('sessionAction', () => {
 
 describe('seed constants', () => {
   test('match the 0829 session spec', () => {
+    expect(SESSION_DATE).toBe('2026-08-29');
     expect(SESSION_SLUG).toBe('0829-deliberation');
     expect(SESSION_TITLE).toBe('8/29 숙의');
+    expect(SESSION_DATE_MMDD).toBe('0829');
     expect(SESSION_CONFIG).toEqual({ modules: ['poll', 'timer'] });
     expect(TEAM_CAPACITY).toBe(20);
   });
