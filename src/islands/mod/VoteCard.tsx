@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { castBallot, fetchRound, fetchVotes, tallyVotes, type Round, type Vote } from '../../lib/mod-console';
-import { parseVoteUrl, nextCastState, resolveVoteScreen, type CastState } from './vote-card-logic';
+import {
+  parseVoteUrl,
+  nextCastState,
+  refreshStatusMessage,
+  resolveVoteScreen,
+  type CastState,
+} from './vote-card-logic';
 
 const OPTION_COLORS = ['#23B2C3', '#2E75B6', '#4F9D3A', '#F5A623', '#135C73', '#1F4E79'];
 
@@ -107,32 +113,102 @@ function PendingScreen({ title }: { title: string }) {
   );
 }
 
-function VotedScreen({ onRefresh, refreshing }: { onRefresh: () => void; refreshing: boolean }) {
+function ResultPendingPanel() {
   return (
-    <CenterMessage icon="✓" eyebrow="완료" title="투표 완료 ✓" body="참여해 주셔서 감사합니다." color="#4F9D3A">
-      <RefreshButton onRefresh={onRefresh} refreshing={refreshing} />
-    </CenterMessage>
+    <div className="mt-6 rounded-2xl border border-[#C4D8E4] bg-[#F1F7FA] px-4 py-4 text-left">
+      <div className="flex items-center gap-3 text-[#1F4E79] font-bold">
+        <span className="w-7 h-7 rounded-full bg-[#4F9D3A] text-white grid place-items-center text-[14px]" aria-hidden="true">
+          1
+        </span>
+        <span>투표 제출 완료</span>
+      </div>
+      <div className="ml-3.5 h-4 border-l-2 border-dashed border-[#9BBBCB]" aria-hidden="true" />
+      <div className="flex items-center gap-3 text-[#1F4E79] font-bold">
+        <span className="w-7 h-7 rounded-full border-2 border-[#2E75B6] bg-white text-[#2E75B6] grid place-items-center text-[14px]" aria-hidden="true">
+          2
+        </span>
+        <span>투표 마감 후 결과 공개</span>
+      </div>
+      <p className="mt-3 text-[14px] leading-relaxed text-[#5A6B73]">
+        모더레이터가 투표를 마감하면 결과를 확인할 수 있습니다.
+      </p>
+    </div>
   );
 }
 
-function DuplicateScreen({ onRefresh, refreshing }: { onRefresh: () => void; refreshing: boolean }) {
+export function VotedScreen({
+  onRefresh,
+  refreshing,
+  refreshNotice,
+}: {
+  onRefresh: () => void;
+  refreshing: boolean;
+  refreshNotice: string | null;
+}) {
   return (
-    <CenterMessage icon="⚠" eyebrow="안내" title="이미 참여하셨습니다" body="이 기기로는 이미 한 번 투표했습니다." color="#F5A623">
-      <RefreshButton onRefresh={onRefresh} refreshing={refreshing} />
-    </CenterMessage>
-  );
-}
-
-function RefreshButton({ onRefresh, refreshing }: { onRefresh: () => void; refreshing: boolean }) {
-  return (
-    <button
-      type="button"
-      onClick={onRefresh}
-      disabled={refreshing}
-      className="mt-7 w-full h-14 rounded-2xl border border-[#C4D8E4] bg-white text-[#1F4E79] text-[18px] font-bold disabled:opacity-50"
+    <CenterMessage
+      icon="✓"
+      eyebrow="제출 완료"
+      title="투표가 제출되었습니다"
+      body="결과는 투표가 마감된 뒤 공개됩니다."
+      color="#4F9D3A"
     >
-      {refreshing ? '확인 중…' : '결과 보기'}
-    </button>
+      <ResultPendingPanel />
+      <RefreshButton onRefresh={onRefresh} refreshing={refreshing} refreshNotice={refreshNotice} />
+    </CenterMessage>
+  );
+}
+
+function DuplicateScreen({
+  onRefresh,
+  refreshing,
+  refreshNotice,
+}: {
+  onRefresh: () => void;
+  refreshing: boolean;
+  refreshNotice: string | null;
+}) {
+  return (
+    <CenterMessage
+      icon="!"
+      eyebrow="제출 완료"
+      title="이미 참여하셨습니다"
+      body="이 기기의 투표는 정상적으로 제출되어 있습니다."
+      color="#F5A623"
+    >
+      <ResultPendingPanel />
+      <RefreshButton onRefresh={onRefresh} refreshing={refreshing} refreshNotice={refreshNotice} />
+    </CenterMessage>
+  );
+}
+
+function RefreshButton({
+  onRefresh,
+  refreshing,
+  refreshNotice,
+}: {
+  onRefresh: () => void;
+  refreshing: boolean;
+  refreshNotice: string | null;
+}) {
+  return (
+    <>
+      <button
+        type="button"
+        onClick={onRefresh}
+        disabled={refreshing}
+        className="mt-5 w-full h-14 rounded-2xl border border-[#C4D8E4] bg-white text-[#1F4E79] text-[17px] font-bold disabled:opacity-50"
+      >
+        {refreshing ? '마감 여부 확인 중…' : '투표 마감 여부 확인'}
+      </button>
+      <p
+        className="min-h-6 mt-3 text-[14px] leading-relaxed text-[#5A6B73]"
+        role="status"
+        aria-live="polite"
+      >
+        {refreshNotice}
+      </p>
+    </>
   );
 }
 
@@ -287,15 +363,19 @@ export default function VoteCard() {
   const [castState, setCastState] = useState<CastState>('idle');
   const [submitting, setSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = async () => {
-    if (!roundId) return;
+  const load = async ({ preserveCurrent = false }: { preserveCurrent?: boolean } = {}): Promise<Round | null> => {
+    if (!roundId) return null;
     try {
       const r = await fetchRound(roundId);
       setRound(r);
-    } catch {
-      setRound(null);
+      return r;
+    } catch (loadError) {
+      console.error('투표 상태를 불러오지 못했습니다.', loadError);
+      if (!preserveCurrent) setRound(null);
+      return null;
     }
   };
 
@@ -332,8 +412,14 @@ export default function VoteCard() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    setRefreshNotice(null);
     try {
-      await load();
+      const refreshedRound = await load({ preserveCurrent: true });
+      setRefreshNotice(
+        refreshedRound
+          ? refreshStatusMessage(refreshedRound)
+          : '마감 여부를 확인하지 못했습니다. 네트워크를 확인하고 다시 시도해 주세요.',
+      );
     } finally {
       setRefreshing(false);
     }
@@ -342,8 +428,12 @@ export default function VoteCard() {
   if (screen === 'invalid') return <InvalidScreen />;
   if (screen === 'loading') return <LoadingScreen />;
   if (screen === 'pending') return <PendingScreen title={round?.title ?? ''} />;
-  if (screen === 'voted') return <VotedScreen onRefresh={handleRefresh} refreshing={refreshing} />;
-  if (screen === 'duplicate') return <DuplicateScreen onRefresh={handleRefresh} refreshing={refreshing} />;
+  if (screen === 'voted') {
+    return <VotedScreen onRefresh={handleRefresh} refreshing={refreshing} refreshNotice={refreshNotice} />;
+  }
+  if (screen === 'duplicate') {
+    return <DuplicateScreen onRefresh={handleRefresh} refreshing={refreshing} refreshNotice={refreshNotice} />;
+  }
   if (screen === 'closed' && round) return <ClosedScreen round={round} votes={votes} />;
   if (screen === 'active' && round) {
     return <ActiveScreen round={round} onSubmit={handleSubmit} submitting={submitting} error={error} />;

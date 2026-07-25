@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { parseVoteUrl, nextCastState, resolveVoteScreen } from './vote-card-logic';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { parseVoteUrl, nextCastState, refreshStatusMessage, resolveVoteScreen } from './vote-card-logic';
+import { VotedScreen } from './VoteCard';
 import type { Round } from '../../lib/mod-console';
 
 const activeRound: Round = {
@@ -68,5 +71,48 @@ describe('resolveVoteScreen', () => {
   });
   it('castState closed → closed (round가 아직 갱신 전 active여도)', () => {
     expect(resolveVoteScreen({ hasRoundId: true, round: activeRound, castState: 'closed' })).toBe('closed');
+  });
+});
+
+describe('refreshStatusMessage', () => {
+  it('진행 중이면 결과가 아직 공개되지 않았음을 안내한다', () => {
+    expect(refreshStatusMessage(activeRound)).toBe('아직 투표가 진행 중입니다. 마감 후 다시 확인해 주세요.');
+  });
+
+  it('마감됐으면 별도 대기 안내를 표시하지 않는다', () => {
+    expect(refreshStatusMessage({ ...activeRound, status: 'closed' })).toBeNull();
+  });
+});
+
+describe('VotedScreen participant copy', () => {
+  it('제출 완료와 마감 후 결과 공개를 서로 다른 단계로 안내한다', () => {
+    const html = renderToStaticMarkup(
+      createElement(VotedScreen, {
+        onRefresh: () => undefined,
+        refreshing: false,
+        refreshNotice: null,
+      }),
+    );
+
+    expect(html).toContain('투표가 제출되었습니다');
+    expect(html).toContain('투표 제출 완료');
+    expect(html).toContain('투표 마감 후 결과 공개');
+    expect(html).toContain('투표 마감 여부 확인');
+    expect(html).not.toContain('결과 보기');
+    expect(html).toContain('aria-live="polite"');
+  });
+
+  it('마감 확인 중에는 버튼을 비활성화하고 진행 상태를 표시한다', () => {
+    const html = renderToStaticMarkup(
+      createElement(VotedScreen, {
+        onRefresh: () => undefined,
+        refreshing: true,
+        refreshNotice: '아직 투표가 진행 중입니다. 마감 후 다시 확인해 주세요.',
+      }),
+    );
+
+    expect(html).toContain('disabled=""');
+    expect(html).toContain('마감 여부 확인 중…');
+    expect(html).toContain('아직 투표가 진행 중입니다.');
   });
 });

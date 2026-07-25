@@ -23,6 +23,12 @@ export function nextCastState(result: 'ok' | 'duplicate' | 'closed'): CastState 
   return 'duplicate';
 }
 
+/** Manual refresh feedback while the participant waits for result publication. */
+export function refreshStatusMessage(round: Round): string | null {
+  if (round.status === 'closed') return null;
+  return '아직 투표가 진행 중입니다. 마감 후 다시 확인해 주세요.';
+}
+
 /** 화면에 표시할 상태. round는 로딩 중이면 undefined, 존재하지 않으면 null. */
 export type VoteScreen = 'invalid' | 'loading' | 'pending' | 'active' | 'voted' | 'duplicate' | 'closed';
 
