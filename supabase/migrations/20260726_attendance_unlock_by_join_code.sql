@@ -12,9 +12,12 @@
 -- 권한 범위는 바뀌지 않는다. 발급되는 토큰은 기존 PIN 경로와 동일한 scope='team' 토큰이며,
 -- 조 밖의 배정에는 여전히 접근할 수 없다(attendance_* 함수의 team 스코프 검사 그대로).
 --
--- 부수 효과 하나: 유효한 코드는 이제 항상 성공하므로 실패 카운터에 행을 남기지 않는다.
--- 기존 PIN 경로에 있던 "남이 그 조 PIN을 5번 틀려 조 모더레이터를 15분 잠근다" DoS가
--- 이 경로에서는 성립하지 않는다. 실패 기록은 존재하지 않는 코드에만 쌓인다.
+-- 실패 카운터에 대하여(정정): 이 경로만 보면 유효 코드가 항상 성공하므로 실패행이 쌓이지
+-- 않는다. 그러나 카운터는 scope='team' + subject=<조 코드>로 **PIN 경로와 공유**된다.
+-- 기존 attendance_team_unlock이 anon에 grant된 채로 남아 있으면, 누구든 유효한 조 코드에
+-- 틀린 PIN으로 5회 호출해 실패행을 심을 수 있고 그러면 이 함수도 15분간 null을 반환한다.
+-- 즉 PIN 경로를 열어둔 채로는 DoS가 사라지지 않는다 — 20260726_revoke_pin_unlock.sql에서
+-- PIN 경로의 anon/PUBLIC 실행 권한을 회수해 닫는다(함수 자체는 남기므로 되돌리기는 재-grant 한 줄).
 
 create or replace function climate_vote.attendance_team_unlock_by_code(p_join_code text)
 returns text

@@ -1159,12 +1159,18 @@ function ResultsScreen({
               className="w-full h-16 rounded-2xl border-2 border-[#1F4E79] bg-white text-[#1F4E79] text-[20px] font-bold flex items-center justify-center gap-2"
             />
 
+            {/*
+              '다시 열기' 요청이 날아가 있는 동안은 잠근다. 그 사이 '새 투표'를 누르면
+              화면은 홈으로 가는데 서버 라운드는 active로 되살아나, 다음 투표를 열 때
+              옛 질문이 함께 살아 있는 상태가 된다(리듀서 가드가 REOPEN을 버려도 DB는 이미 바뀜).
+            */}
             <button
               type="button"
               onClick={onNewPoll}
-              className="w-full h-[52px] rounded-2xl border border-[#C4D8E4] bg-white text-[#1F4E79] text-[18px] font-bold"
+              disabled={reopening}
+              className="w-full h-[52px] rounded-2xl border border-[#C4D8E4] bg-white text-[#1F4E79] text-[18px] font-bold disabled:opacity-50"
             >
-              새 투표
+              {reopening ? '다시 여는 중…' : '새 투표'}
             </button>
           </div>
         </div>

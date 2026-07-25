@@ -218,3 +218,17 @@ describe('resultZipFileName', () => {
     expect(resultZipFileName(new Date(2026, 7, 29, 14, 32))).toBe('조별_투표결과_20260829-1432.zip');
   });
 });
+
+describe('resultZipEntryName — 경로 분리자 봉쇄 (리뷰 지적)', () => {
+  it('제목 안의 역슬래시가 ZIP 안에 하위 폴더를 만들지 않는다', () => {
+    // U+005C는 Windows 경로 분리자다. 한국어 자판에서 ₩ 글리프로 보이지만 값은 역슬래시라
+    // 모더레이터가 '재생에너지\\원자력'처럼 무심코 입력할 수 있다. 슬래시만 막으면 새는 구멍.
+    const name = resultZipEntryName({
+      teamName: '1분과 1조',
+      sequence: 2,
+      title: '재생에너지\\원자력 중 우선순위',
+    });
+    expect(name.split('/')).toHaveLength(2);
+    expect(name.includes(String.fromCharCode(92))).toBe(false);
+  });
+});

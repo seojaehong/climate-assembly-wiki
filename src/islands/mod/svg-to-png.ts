@@ -27,9 +27,11 @@ const FALLBACK_TEAM_NAME = '투표결과';
 /**
  * 파일명에 쓸 수 없는 문자. **거부목록으로 적는다** — `[^\w]` 같은 허용목록을 쓰면
  * 한글이 통째로 밑줄로 바뀌어 '1분과 1조'가 '_____'가 된다.
- * 포함: 모든 공백류, Windows 금지 문자, 경로 분리자, C0 제어문자.
+ * 포함: 모든 공백류, Windows 금지 문자, 경로 분리자 **양쪽(/ 와 \\)**, C0 제어문자.
+ * 역슬래시를 빠뜨리면 ZIP 엔트리 이름에 그대로 실려 Windows에서 하위 폴더가 하나 더 생긴다
+ * (한국어 자판의 ₩ 글리프가 실제로는 U+005C라 모더레이터가 제목에 넣기 쉽다).
  */
-const UNSAFE_FILENAME_CHARS = /[\s\/:*?"<>|\u0000-\u001F\u007F]/g;
+const UNSAFE_FILENAME_CHARS = /[\s\\\/:*?"<>|\u0000-\u001F\u007F]/g;
 
 function pad2(value: number): string {
   return String(value).padStart(2, '0');

@@ -369,7 +369,8 @@ function TeamDetailPanel({
   onClose,
 }: {
   team: HqTeam;
-  cell: TeamCellResult;
+  // 회차 보기 중에는 '미실시'가 올 수 있다 — 라벨·참여를 문자열로만 그리므로 그대로 받는다.
+  cell: TeamCardCell;
   round: Round | null;
   votes: Vote[];
   entries: TeamRoundHistoryEntry[];
@@ -1124,8 +1125,10 @@ export default function HqGrid() {
                 key={option.label}
                 type="button"
                 aria-pressed={statusFilter === option.label}
+                disabled={roundView !== 'current'}
+                title={roundView !== 'current' ? '회차 보기 중에는 상태 필터를 쓸 수 없습니다' : undefined}
                 onClick={() => setStatusFilter(option.label)}
-                className={`min-h-11 rounded-xl border px-3 py-2 text-left transition ${
+                className={`min-h-11 rounded-xl border px-3 py-2 text-left transition disabled:opacity-40 ${
                   statusFilter === option.label
                     ? 'border-[#1F4E79] bg-[#E6EBF3] text-[#132646]'
                     : 'border-[#DCE7EE] bg-white text-[#5A6B73] hover:border-[#9CB7C8]'
@@ -1155,7 +1158,10 @@ export default function HqGrid() {
           </div>
 
           {/* 회차별 보기 — 운영 모드 전용(AC #5). 라운드가 하나도 없으면 고를 것이 없어 감춘다. */}
-          {maxSequence > 0 ? (
+          {/* 비교 모드에서는 감춘다 — 비교 패널은 '현재' 기준으로만 계산돼,
+              회차 칩을 함께 열어두면 한 화면에서 같은 조가 두 숫자로 보인다.
+              (비교 진입 시 setRoundView('current')로 되돌리는 처리와 짝을 이룬다.) */}
+          {maxSequence > 0 && !compareMode ? (
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2" aria-label="회차 보기 선택">
                 <span className="text-[14px] font-extrabold text-[#1F2933]">회차 보기</span>
@@ -1165,7 +1171,13 @@ export default function HqGrid() {
                       key={option}
                       type="button"
                       aria-pressed={roundView === option}
-                      onClick={() => setRoundView(option)}
+                      onClick={() => {
+                        // 상태 필터·요약 칩은 '현재' 기준(teamCell)으로만 계산된다.
+                        // N차 화면에 '현재' 기준 필터가 남으면 3차를 마감한 조가
+                        // 현재 4차 진행 중이라는 이유로 그리드에서 사라진다.
+                        setStatusFilter('전체');
+                        setRoundView(option);
+                      }}
                       className={`min-h-11 rounded-full border px-4 text-[14px] font-bold transition ${
                         roundView === option
                           ? 'border-[#1F4E79] bg-[#E6EBF3] text-[#132646]'
@@ -1288,7 +1300,8 @@ export default function HqGrid() {
       {selectedTeam ? (
         <TeamDetailPanel
           team={selectedTeam}
-          cell={cells.get(selectedTeam.id) ?? { label: '대기', participation: `0/${selectedTeam.capacity}` }}
+          // 2차를 보는 중에 헤더만 3차(현재) 숫자를 보여주면 운영자가 그 숫자를 소리 내어 읽는다.
+          cell={cardCells.get(selectedTeam.id) ?? cells.get(selectedTeam.id) ?? { label: '대기', participation: `0/${selectedTeam.capacity}` }}
           round={detailRound}
           votes={detailVotes}
           entries={historyEntries}
