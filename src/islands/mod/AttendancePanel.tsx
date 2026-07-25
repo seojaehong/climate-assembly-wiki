@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   bulkPresent,
   fetchAttendanceRoster,
   finalizeAbsent,
   saveRosterMember,
   setAttendance,
-  unlockTeamAttendance,
+  unlockTeamAttendanceByCode,
   type AttendanceRosterRow,
 } from '../../lib/attendance';
 import { attendanceSummary, classifyAttendanceError, type AttendanceAction } from './attendance-logic';
@@ -37,7 +37,6 @@ export default function AttendancePanel({
   const [token, setToken] = useState<string | null>(() =>
     typeof sessionStorage === 'undefined' ? null : sessionStorage.getItem(tokenKey),
   );
-  const [pin, setPin] = useState('');
   const [rows, setRows] = useState<AttendanceRosterRow[]>([]);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
@@ -68,7 +67,7 @@ export default function AttendancePanel({
       setToken(null);
       setRows([]);
       setLoadError(null);
-      setMessage('출석부 잠금이 만료되었습니다. PIN을 다시 입력해 주세요.');
+      setMessage('출석부 연결이 만료되었습니다. 아래 버튼으로 다시 열어 주세요.');
     }
   }, [token, tokenKey]);
 
@@ -89,26 +88,38 @@ export default function AttendancePanel({
     );
   }, [activeRows, search]);
 
-  const unlock = async () => {
-    if (!joinCode || !/^\d{6,10}$/.test(pin)) return;
+  /**
+   * 조 접속코드로 출석부를 연다. 모더레이터는 /mod 입장에서 이미 같은 코드를 입력했으므로
+   * 추가 입력이 없다 — 이 화면에 도달하면 자동으로 호출된다.
+   */
+  const unlock = useCallback(async () => {
+    if (!joinCode) return;
     setBusy(true);
     try {
-      const nextToken = await unlockTeamAttendance(joinCode, pin);
+      const nextToken = await unlockTeamAttendanceByCode(joinCode);
       if (!nextToken) {
-        setMessage('PIN이 올바르지 않거나 잠시 잠겼습니다.');
+        setMessage('출석부를 열지 못했습니다. 조 코드를 확인하고 다시 시도해 주세요.');
         return;
       }
       sessionStorage.setItem(tokenKey, nextToken);
       setToken(nextToken);
-      setPin('');
-      setMessage('출석부 잠금이 해제되었습니다.');
+      setMessage(null);
     } catch (error) {
       console.error('[attendance] team unlock failed', error);
-      setMessage('출석부 연결에 실패했습니다.');
+      setMessage('연결에 실패했습니다. 잠시 후 다시 시도해 주세요.');
     } finally {
       setBusy(false);
     }
-  };
+  }, [joinCode, tokenKey]);
+
+  // 토큰이 없으면(첫 진입 또는 만료) 조 코드로 한 번 자동 개방한다.
+  // 실패 시에는 재시도 버튼으로 넘겨 무한 재시도를 만들지 않는다.
+  const autoUnlockTried = useRef(false);
+  useEffect(() => {
+    if (token || !joinCode || autoUnlockTried.current) return;
+    autoUnlockTried.current = true;
+    void unlock();
+  }, [joinCode, token, unlock]);
 
   const runAction = async (row: AttendanceRosterRow, action: AttendanceAction, occurredAt?: string) => {
     if (!token) return;
@@ -161,29 +172,27 @@ export default function AttendancePanel({
           <span className="w-11 h-11 rounded-xl bg-[#4F9D3A] grid place-items-center text-white text-xl" aria-hidden="true">✓</span>
           <div>
             <h3 className="text-[22px] font-extrabold text-[#1F4E79]">출석 체크</h3>
-            <p className="text-[13px] text-[#5A6B73]">{teamName} 실명 명단은 별도 PIN으로 보호됩니다.</p>
+            <p className="text-[13px] text-[#5A6B73]">{teamName} 명단을 여는 중입니다.</p>
           </div>
         </div>
         <div className="p-6">
-          <label htmlFor="attendance-pin" className="block text-[13px] font-bold text-[#5A6B73] mb-2">출석부 운영 PIN</label>
-          <div className="flex gap-2">
-            <input
-              id="attendance-pin"
-              type="password"
-              inputMode="numeric"
-              autoComplete="off"
-              value={pin}
-              onChange={(event) => setPin(event.target.value.replace(/\D/g, '').slice(0, 10))}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') void unlock();
-              }}
-              className="min-w-0 flex-1 h-14 rounded-xl border border-[#C4D8E4] px-4 text-[20px] tracking-[.2em] outline-none focus:border-[#4F9D3A]"
-            />
-            <button type="button" onClick={() => void unlock()} disabled={busy || pin.length < 6} className="min-h-14 rounded-xl bg-[#1F4E79] px-5 text-white font-bold disabled:opacity-40">
-              열기
-            </button>
-          </div>
-          {message ? <p className="mt-3 text-[14px] text-[#8B1A1A]" role="status">{message}</p> : null}
+          {busy ? (
+            <p className="text-[16px] font-bold text-[#1F4E79]" role="status">출석부를 여는 중…</p>
+          ) : (
+            <>
+              <p className="text-[16px] text-[#33393F]" role="status">
+                {message ?? '출석부를 열 준비가 되었습니다.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => void unlock()}
+                disabled={!joinCode}
+                className="mt-4 min-h-14 w-full rounded-xl bg-[#1F4E79] px-5 text-white text-[18px] font-bold disabled:opacity-40"
+              >
+                {joinCode ? '출석부 열기' : '조 코드가 없어 열 수 없습니다'}
+              </button>
+            </>
+          )}
         </div>
       </section>
     );

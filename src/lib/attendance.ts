@@ -46,6 +46,23 @@ export async function unlockTeamAttendance(joinCode: string, pin: string): Promi
   return typeof data === 'string' ? data : null;
 }
 
+/**
+ * 조 접속코드만으로 출석부 토큰을 받는다(출석 PIN 없음).
+ *
+ * 모더레이터는 /mod 입장에서 이미 같은 코드를 입력했으므로, 출석부를 열 때 추가 입력이 없다.
+ * 코드가 없거나 비활성 조면 null이다. 발급되는 토큰의 권한 범위는 PIN 경로와 동일한
+ * scope='team'이며, 자기 조 밖의 배정에는 접근할 수 없다.
+ *
+ * PIN 경로(unlockTeamAttendance)는 되돌릴 수 있도록 남겨 둔다.
+ */
+export async function unlockTeamAttendanceByCode(joinCode: string): Promise<string | null> {
+  const { data, error } = await client().schema('climate_vote').rpc('attendance_team_unlock_by_code', {
+    p_join_code: joinCode,
+  });
+  if (error) throw error;
+  return typeof data === 'string' ? data : null;
+}
+
 export async function unlockHqAttendance(password: string, actorLabel: string): Promise<string | null> {
   const { data, error } = await client().schema('climate_vote').rpc('attendance_hq_unlock', {
     p_password: password,
