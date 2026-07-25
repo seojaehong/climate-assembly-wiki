@@ -4,7 +4,9 @@
 
 - 책임자: 행사 전 세션을 준비하는 본부 운영 담당자
 - 생성 위치: `scripts/seed-0829-teams.mjs`
-- 조 번호 기준: `scripts/seed-0829-lib.mjs`의 `OFFICIAL_TEAM_ROSTER`
+- 조 번호 기준: `scripts/session-rosters.mjs`의 `SESSION_ROSTERS[<세션 슬러그>].teams` (회차별 정의)
+  - 회차가 바뀌면 이 파일에 정의 한 항목을 추가하고 `ACTIVE_SESSION_SLUG`만 바꾼다. 시드 코드는 고치지 않는다.
+  - `scripts/seed-0829-lib.mjs`의 `OFFICIAL_TEAM_ROSTER`는 활성 회차 정의에서 파생된 값이다.
 - 브라우저 역할: `/mod/`와 `/v/`는 이미 발급된 코드를 입력할 뿐 코드를 만들지 않는다.
 
 ## 정상 발급 규칙

@@ -1,39 +1,32 @@
-export const SESSION_DATE = '2026-08-29';
+// 조 구성은 회차마다 다르므로 이 파일이 아니라 scripts/session-rosters.mjs에 정의한다.
+// 여기 있는 것은 회차와 무관한 규칙(접속코드 생성·SQL 포맷)뿐이다.
+import { ACTIVE_SESSION_SLUG, sessionRoster } from './session-rosters.mjs';
 
-const sessionDateParts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(SESSION_DATE);
-if (!sessionDateParts) throw new Error('SESSION_DATE must use YYYY-MM-DD');
-const [, , sessionMonth, sessionDay] = sessionDateParts;
+/** 활성 회차의 정규화된 정의. 정의가 잘못돼 있으면 import 시점에 바로 터진다. */
+const ACTIVE_ROSTER = sessionRoster(ACTIVE_SESSION_SLUG);
 
-export const SESSION_DATE_MMDD = `${sessionMonth}${sessionDay}`;
-export const SESSION_SLUG = `${SESSION_DATE_MMDD}-deliberation`;
-export const SESSION_TITLE = `${Number(sessionMonth)}/${Number(sessionDay)} 숙의`;
+export const SESSION_DATE = ACTIVE_ROSTER.date;
+export const SESSION_DATE_MMDD = ACTIVE_ROSTER.mmdd;
+export const SESSION_SLUG = ACTIVE_ROSTER.slug;
+export const SESSION_TITLE = ACTIVE_ROSTER.title;
 export const SESSION_CONFIG = { modules: ['poll', 'timer'] };
 export const TEAM_CAPACITY = 20;
 
-export const OFFICIAL_TEAM_ROSTER = Object.freeze([
-  { name: '1분과 1조', subgroup: '1분과', ordinal: 1 },
-  { name: '1분과 2조', subgroup: '1분과', ordinal: 2 },
-  { name: '1분과 3조', subgroup: '1분과', ordinal: 3 },
-  { name: '1분과 4조', subgroup: '1분과', ordinal: 4 },
-  { name: '1분과 5조', subgroup: '1분과', ordinal: 5 },
-  { name: '2분과 1조', subgroup: '2분과', ordinal: 6 },
-  { name: '2분과 2조', subgroup: '2분과', ordinal: 7 },
-  { name: '2분과 3조', subgroup: '2분과', ordinal: 8 },
-  { name: '2분과 4조', subgroup: '2분과', ordinal: 9 },
-  { name: '2분과 5조', subgroup: '2분과', ordinal: 10 },
-  { name: '3분과 1조', subgroup: '3분과', ordinal: 11 },
-  { name: '3분과 2조', subgroup: '3분과', ordinal: 12 },
-  { name: '3분과 3조', subgroup: '3분과', ordinal: 13 },
-  { name: '3분과 4조', subgroup: '3분과', ordinal: 14 },
-  { name: '3분과 5조', subgroup: '3분과', ordinal: 15 },
-]);
+export const OFFICIAL_TEAM_ROSTER = Object.freeze(
+  ACTIVE_ROSTER.teams.map((team) => Object.freeze({ ...team }))
+);
 
 /**
- * Full target roster of 15 teams. `ordinal` is the canonical all-session team number
- * used by the join-code generator: 1분과 1조=01 ... 3분과 5조=15.
+ * Full target roster of the active session. `ordinal` is the canonical all-session team
+ * number used by the join-code generator: 1분과 1조=01 ... 3분과 5조=15.
  */
 export function fullTeamRoster() {
   return OFFICIAL_TEAM_ROSTER.map((team) => ({ ...team }));
+}
+
+/** 정규화된 회차 정의에서 조별 접속코드까지 붙인 행을 만든다. */
+function rosterCodeRows(roster) {
+  return roster.teams.map((team) => ({ ...team, code: joinCodeForTeam(roster.mmdd, team.ordinal) }));
 }
 
 /**
@@ -124,12 +117,10 @@ export function formatCodeTable(rows) {
 /**
  * Build one transaction for an administrator to align an existing session roster.
  * The SQL validates the full roster and code collisions before updating any row.
+ * @param {ReturnType<import('./session-rosters.mjs').sessionRoster>} [roster] 생략하면 활성 회차.
  */
-export function formatJoinCodeSyncSql() {
-  const rows = fullTeamRoster().map((team) => ({
-    ...team,
-    code: joinCodeForTeamName(team.name),
-  }));
+export function formatJoinCodeSyncSql(roster = ACTIVE_ROSTER) {
+  const rows = rosterCodeRows(roster);
   const values = rows
     .map((row) => `    ('${row.name.replaceAll("'", "''")}', '${row.code}')`)
     .join(',\n');
@@ -142,10 +133,10 @@ declare
 begin
   select id into target_session_id
   from climate_vote.session
-  where slug = '${SESSION_SLUG}';
+  where slug = '${roster.slug}';
 
   if target_session_id is null then
-    raise exception 'session not found: ${SESSION_SLUG}';
+    raise exception 'session not found: ${roster.slug}';
   end if;
 
   if (
@@ -179,7 +170,7 @@ from climate_vote.session s,
   (values
 ${values}
   ) as expected(name, join_code)
-where s.slug = '${SESSION_SLUG}'
+where s.slug = '${roster.slug}'
   and t.session_id = s.id
   and t.name = expected.name
   and t.join_code is distinct from expected.join_code;
@@ -196,7 +187,7 @@ ${values}
   ) as expected(name, join_code)
     on expected.name = t.name
    and expected.join_code = t.join_code
-  where s.slug = '${SESSION_SLUG}';
+  where s.slug = '${roster.slug}';
 
   if verified_count <> ${rows.length} then
     raise exception 'join-code verification failed: % of ${rows.length}', verified_count;
@@ -207,21 +198,21 @@ $verify$;
 commit;`;
 }
 
-/** Build one transaction for an administrator to create a new session and its roster. */
-export function formatSessionSeedSql() {
-  const rows = fullTeamRoster().map((team) => ({
-    ...team,
-    code: joinCodeForTeamName(team.name),
-  }));
+/**
+ * Build one transaction for an administrator to create a new session and its roster.
+ * @param {ReturnType<import('./session-rosters.mjs').sessionRoster>} [roster] 생략하면 활성 회차.
+ */
+export function formatSessionSeedSql(roster = ACTIVE_ROSTER) {
+  const rows = rosterCodeRows(roster);
   const values = rows
     .map((row) => `  ('${row.name}', '${row.subgroup}', ${row.ordinal}, '${row.code}')`)
     .join(',\n');
-  const escapedTitle = SESSION_TITLE.replaceAll("'", "''");
+  const escapedTitle = roster.title.replaceAll("'", "''");
 
   return `begin;
 
 insert into climate_vote.session (slug, title, config, status)
-values ('${SESSION_SLUG}', '${escapedTitle}', '${JSON.stringify(SESSION_CONFIG)}'::jsonb, 'active')
+values ('${roster.slug}', '${escapedTitle}', '${JSON.stringify(SESSION_CONFIG)}'::jsonb, 'active')
 on conflict (slug) do nothing;
 
 insert into climate_vote.team (session_id, name, subgroup, join_code, capacity, status)
@@ -230,7 +221,7 @@ from climate_vote.session s
 cross join (values
 ${values}
 ) as expected(name, subgroup, ordinal, join_code)
-where s.slug = '${SESSION_SLUG}'
+where s.slug = '${roster.slug}'
   and not exists (
     select 1
     from climate_vote.team existing
@@ -251,7 +242,7 @@ ${values}
     on expected.name = t.name
    and expected.subgroup = t.subgroup
    and expected.join_code = t.join_code
-  where s.slug = '${SESSION_SLUG}';
+  where s.slug = '${roster.slug}';
 
   if verified_count <> ${rows.length} then
     raise exception 'session seed verification failed: % of ${rows.length}', verified_count;
@@ -262,9 +253,12 @@ $verify$;
 commit;`;
 }
 
-/** Build one transaction for an administrator to replace a leaked team code. */
-export function formatJoinCodeRotationSql(teamName, newCode) {
-  if (!fullTeamRoster().some((team) => team.name === teamName)) {
+/**
+ * Build one transaction for an administrator to replace a leaked team code.
+ * @param {ReturnType<import('./session-rosters.mjs').sessionRoster>} [roster] 생략하면 활성 회차.
+ */
+export function formatJoinCodeRotationSql(teamName, newCode, roster = ACTIVE_ROSTER) {
+  if (!roster.teams.some((team) => team.name === teamName)) {
     throw new Error(`formatJoinCodeRotationSql: unknown team "${teamName}"`);
   }
   if (!/^\d{6}$/.test(newCode)) {
@@ -282,7 +276,7 @@ begin
   set join_code = '${newCode}'
   from climate_vote.session s
   where s.id = t.session_id
-    and s.slug = '${SESSION_SLUG}'
+    and s.slug = '${roster.slug}'
     and t.name = '${escapedTeamName}'
     and t.join_code is distinct from '${newCode}';
 
