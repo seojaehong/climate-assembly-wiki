@@ -24,6 +24,7 @@ import {
   toggleComparisonSelection,
   type TeamCellResult,
 } from './hq-grid-logic';
+import { isOpsMode } from './hq-broadcast-logic';
 
 const POLL_MS = 30000;
 const STALE_AFTER_MS = 65000;
@@ -55,6 +56,7 @@ function TeamCard({
   comparisonSelected,
   onSelect,
   attendance,
+  opsMode,
 }: {
   team: HqTeam;
   cell: TeamCellResult;
@@ -63,6 +65,7 @@ function TeamCard({
   comparisonSelected: boolean;
   onSelect: () => void;
   attendance: HqAttendanceSummary | undefined;
+  opsMode: boolean;
 }) {
   const style = STATUS_STYLE[cell.label];
   return (
@@ -71,7 +74,9 @@ function TeamCard({
       aria-label={
         compareMode
           ? `${team.name} 비교 ${comparisonSelected ? '선택 해제' : '선택'}, ${cell.label}, 참여 ${cell.participation}`
-          : `${team.name} 상세 보기, ${cell.label}, 참여 ${cell.participation}`
+          : opsMode
+            ? `${team.name} 상세 보기, ${cell.label}, 참여 ${cell.participation}`
+            : `${team.name}, ${cell.label}, 참여 ${cell.participation}`
       }
       aria-pressed={compareMode ? comparisonSelected : selected}
       onClick={onSelect}
@@ -114,9 +119,11 @@ function TeamCard({
           <div className="col-span-2"><div className="text-[11px] font-bold text-[#5A6B73]">미확인</div><div className="font-extrabold text-[#5A6B73]">{attendance.unconfirmed}</div></div>
         </div>
       ) : null}
-      <span className="text-[12px] font-bold text-[#1F4E79]">
-        {compareMode ? (comparisonSelected ? '비교 선택됨 ✓' : '비교에 추가 +') : '상세 보기 →'}
-      </span>
+      {opsMode ? (
+        <span className="text-[12px] font-bold text-[#1F4E79]">
+          {compareMode ? (comparisonSelected ? '비교 선택됨 ✓' : '비교에 추가 +') : '상세 보기 →'}
+        </span>
+      ) : null}
     </button>
   );
 }
@@ -349,6 +356,10 @@ function TeamComparisonPanel({
 
 /** /hq 본부용 15조 읽기전용 현황 그리드. */
 export default function HqGrid() {
+  // 기본은 송출 모드(false). SSR/hydration 시점에 대형 스크린으로 조작 UI가 새지 않게 한다.
+  const [opsMode] = useState(() =>
+    typeof window === 'undefined' ? false : isOpsMode(window.location.search),
+  );
   const [teams, setTeams] = useState<HqTeam[]>([]);
   const [rounds, setRounds] = useState<Round[]>([]);
   const [voteCounts, setVoteCounts] = useState<Record<string, number>>({});
@@ -530,7 +541,7 @@ export default function HqGrid() {
         </div>
       ) : null}
 
-      {teams.length > 0 ? (
+      {opsMode && teams.length > 0 ? (
         <div className="mb-4 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -649,6 +660,7 @@ export default function HqGrid() {
             compareMode={compareMode}
             comparisonSelected={comparisonTeamIds.includes(team.id)}
             attendance={attendanceByTeam[team.id]}
+            opsMode={opsMode}
             onSelect={() => (compareMode ? toggleComparisonTeam(team.id) : setTeamSelection(team.id))}
           />
         ))}
@@ -658,9 +670,11 @@ export default function HqGrid() {
         지각 후 조퇴한 참여자는 지각과 조퇴 집계에 모두 포함될 수 있습니다. 공개 HQ에는 개인 이름이 표시되지 않습니다.
       </p>
 
-      <div className="mt-6">
-        <HqAttendanceAdmin teams={teams} />
-      </div>
+      {opsMode ? (
+        <div className="mt-6">
+          <HqAttendanceAdmin teams={teams} />
+        </div>
+      ) : null}
 
       {teams.length === 0 && !refreshError ? (
         <div className="text-center text-[#5A6B73] text-[18px] mt-16">조 정보를 불러오는 중입니다…</div>
