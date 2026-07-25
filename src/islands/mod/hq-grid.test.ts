@@ -8,8 +8,9 @@ import {
   relevantRoundIds,
   summarizeTeamCells,
   teamMatchesFilters,
+  teamRoundHistoryWithResults,
 } from './hq-grid-logic';
-import type { HqTeam, Round } from '../../lib/mod-console';
+import type { HqTeam, Round, Vote } from '../../lib/mod-console';
 
 const team: HqTeam = { id: 't1', name: '1조', subgroup: '교육', capacity: 14, status: 'active' };
 
@@ -171,5 +172,95 @@ describe('hqConnectionState', () => {
     expect(hqConnectionState({ ...base, updatedAtMs: 60_000, refreshing: true, hasError: false })).toBe('refreshing');
     expect(hqConnectionState({ ...base, updatedAtMs: 0, refreshing: false, hasError: false })).toBe('stale');
     expect(hqConnectionState({ ...base, updatedAtMs: 60_000, refreshing: false, hasError: true })).toBe('degraded');
+  });
+});
+
+describe('teamRoundHistoryWithResults', () => {
+  function vote(id: number, roundId: string, choice: unknown, archivedAt: string | null = null): Vote {
+    return { id, round_id: roundId, choice, archived_at: archivedAt };
+  }
+
+  const first = round({
+    id: 'r1',
+    title: '1차 질문',
+    status: 'closed',
+    created_at: '2026-08-29T09:00:00Z',
+    updated_at: '2026-08-29T09:20:00Z',
+  });
+  const second = round({ id: 'r2', title: '2차 질문', status: 'active', created_at: '2026-08-29T10:00:00Z' });
+
+  it('최신 회차가 먼저 나오고 회차·제목·상태·마감 시각이 붙는다', () => {
+    const entries = teamRoundHistoryWithResults('t1', [second, first], {});
+    expect(entries.map((entry) => [entry.sequence, entry.title, entry.status, entry.closedAt])).toEqual([
+      [2, '2차 질문', 'active', null],
+      [1, '1차 질문', 'closed', '2026-08-29T09:20:00Z'],
+    ]);
+  });
+
+  it('표를 아직 받아오지 못한 라운드는 총 표수가 null이다 — 0표와 구분된다', () => {
+    const [entry] = teamRoundHistoryWithResults('t1', [first], {});
+    expect(entry.total).toBeNull();
+    expect(entry.leader).toBeNull();
+  });
+
+  it('키가 있고 표가 0건이면 총 표수는 0이다', () => {
+    const [entry] = teamRoundHistoryWithResults('t1', [first], { r1: [] });
+    expect(entry.total).toBe(0);
+    expect(entry.leader).toBeNull();
+  });
+
+  it('전역(실시간) 표가 이력 조회분을 이긴다 — 진행 중 라운드가 스테일해지지 않게', () => {
+    const entries = teamRoundHistoryWithResults(
+      't1',
+      [second],
+      { r2: [vote(1, 'r2', 'A')] },
+      { r2: [vote(1, 'r2', 'A'), vote(2, 'r2', 'A'), vote(3, 'r2', 'B')] },
+    );
+    expect(entries[0].total).toBe(3);
+    expect(entries[0].leader).toEqual({ option: 'A', count: 2, tied: false });
+  });
+
+  it('보관된(archived) 표는 총 표수에서 제외한다', () => {
+    const [entry] = teamRoundHistoryWithResults('t1', [first], {
+      r1: [vote(1, 'r1', 'A'), vote(2, 'r1', 'B', '2026-08-29T09:10:00Z')],
+    });
+    expect(entry.total).toBe(1);
+    expect(entry.leader).toEqual({ option: 'A', count: 1, tied: false });
+  });
+
+  it('공동 선두를 tied로 표시한다', () => {
+    const [entry] = teamRoundHistoryWithResults('t1', [first], {
+      r1: [vote(1, 'r1', 'A'), vote(2, 'r1', 'B')],
+    });
+    expect(entry.leader?.tied).toBe(true);
+  });
+
+  it('다른 팀의 라운드는 이력에 넣지 않는다', () => {
+    const other = round({ id: 'rx', team_id: 't2', created_at: '2026-08-29T11:00:00Z' });
+    const entries = teamRoundHistoryWithResults('t1', [other, first, second], { rx: [vote(9, 'rx', 'A')] });
+    expect(entries.map((entry) => entry.id)).toEqual(['r2', 'r1']);
+  });
+
+  it('입력 배열 순서에 의존하지 않는다 (원본·역순·셔플)', () => {
+    const third = round({ id: 'r3', title: '3차 질문', status: 'closed', created_at: '2026-08-29T11:00:00Z' });
+    const votes = { r1: [vote(1, 'r1', 'A')], r2: [vote(2, 'r2', 'B')], r3: [] };
+    const expected = teamRoundHistoryWithResults('t1', [first, second, third], votes);
+    expect(teamRoundHistoryWithResults('t1', [third, second, first], votes)).toEqual(expected);
+    expect(teamRoundHistoryWithResults('t1', [second, third, first], votes)).toEqual(expected);
+    expect(expected.map((entry) => entry.sequence)).toEqual([3, 2, 1]);
+  });
+
+  it('현재 라운드의 총 표수는 카드 참여 표기의 분자와 같다', () => {
+    const rounds = [first, second];
+    const votes = { r2: [vote(1, 'r2', 'A'), vote(2, 'r2', 'B'), vote(3, 'r2', 'A')] };
+    const current = latestTeamRound('t1', rounds);
+    const entries = teamRoundHistoryWithResults('t1', rounds, votes);
+    const currentEntry = entries.find((entry) => entry.id === current?.id);
+    const numerator = Number(teamCell(team, rounds, { r2: 3 }).participation.split('/')[0]);
+    expect(currentEntry?.total).toBe(numerator);
+  });
+
+  it('라운드가 없는 조는 빈 배열이다', () => {
+    expect(teamRoundHistoryWithResults('t1', [], {})).toEqual([]);
   });
 });

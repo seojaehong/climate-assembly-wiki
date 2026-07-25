@@ -21,8 +21,10 @@ import {
   relevantRoundIds,
   summarizeTeamCells,
   teamMatchesFilters,
+  teamRoundHistoryWithResults,
   toggleComparisonSelection,
   type TeamCellResult,
+  type TeamRoundHistoryEntry,
 } from './hq-grid-logic';
 import { isOpsMode, participationParts, BROADCAST_STATUS_STYLE } from './hq-broadcast-logic';
 
@@ -189,23 +191,52 @@ function TeamCard({
   );
 }
 
+const ROUND_STATUS_LABEL: Record<Round['status'], string> = {
+  pending: '대기',
+  active: '진행 중',
+  closed: '마감',
+};
+
+/** 이력 한 줄의 총 표수·선두 표기. 조회 전('불러오는 중')과 조회 실패('—')를 반드시 가른다. */
+function historyFigures(
+  entry: TeamRoundHistoryEntry,
+  historyState: 'loading' | 'failed' | 'loaded',
+): { total: string; leader: string } {
+  if (entry.total == null) {
+    return { total: historyState === 'loading' ? '불러오는 중' : '—', leader: '—' };
+  }
+  if (entry.leader == null) return { total: `${entry.total}표`, leader: '표 없음' };
+  return { total: `${entry.total}표`, leader: `${entry.leader.option}${entry.leader.tied ? ' (공동)' : ''}` };
+}
+
 function TeamDetailPanel({
   team,
   cell,
   round,
   votes,
+  entries,
+  historyState,
   updatedAt,
+  onSelectRound,
+  onRetryHistory,
   onClose,
 }: {
   team: HqTeam;
   cell: TeamCellResult;
   round: Round | null;
   votes: Vote[];
+  entries: TeamRoundHistoryEntry[];
+  historyState: 'loading' | 'failed' | 'loaded';
   updatedAt: Date | null;
+  onSelectRound: (roundId: string) => void;
+  onRetryHistory: () => void;
   onClose: () => void;
 }) {
   const tally = round ? tallyVotes(round, votes) : null;
   const leader = leadingResult(round, votes);
+  const selectedEntry = round ? (entries.find((entry) => entry.id === round.id) ?? null) : null;
+  // 표를 못 받아온 회차에서 빈 막대를 그리면 '0표'로 읽힌다 — 결과 대신 실패 안내를 낸다.
+  const resultsKnown = selectedEntry == null || selectedEntry.total != null;
   const options = round
     ? Object.entries(tally?.byOption ?? {}).sort(
         ([optionA, countA], [optionB, countB]) => countB - countA || optionA.localeCompare(optionB, 'ko-KR'),
@@ -265,19 +296,85 @@ function TeamDetailPanel({
         </header>
 
         <div className="space-y-5 p-5 sm:p-7">
+          {/* 회차가 하나뿐인 조에서는 목록을 그리지 않는다 — 고를 것이 없으면 화면만 어지럽다. */}
+          {entries.length > 1 ? (
+            <div className="rounded-2xl border border-[#DCE7EE] bg-white p-5">
+              <div className="flex items-end justify-between gap-3">
+                <h3 className="text-[19px] font-extrabold text-[#1F2933]">이 조의 투표 이력</h3>
+                <span className="text-[13px] font-bold text-[#5A6B73] tr-num">총 {entries.length}회</span>
+              </div>
+              {historyState === 'failed' ? (
+                <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border-2 border-[#F5A623] bg-[#F5A623]/10 px-4 py-3">
+                  <span className="text-[14px] font-bold leading-relaxed text-[#B5651D]">
+                    지난 회차의 표수를 불러오지 못했습니다. 회차와 제목은 그대로 볼 수 있습니다.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={onRetryHistory}
+                    className="min-h-11 rounded-xl border-2 border-[#B5651D] bg-white px-4 text-[14px] font-extrabold text-[#B5651D] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#23B2C3]/40"
+                  >
+                    지금 다시 시도
+                  </button>
+                </div>
+              ) : null}
+              <ul className="mt-3 space-y-2">
+                {entries.map((entry) => {
+                  const current = entry.id === round?.id;
+                  const figures = historyFigures(entry, historyState);
+                  return (
+                    <li key={entry.id}>
+                      <button
+                        type="button"
+                        onClick={() => onSelectRound(entry.id)}
+                        aria-current={current ? 'true' : undefined}
+                        aria-label={`${entry.sequence}차 ${entry.title}, ${ROUND_STATUS_LABEL[entry.status]}, 총 ${figures.total}, 선두 ${figures.leader}`}
+                        className={`w-full rounded-xl border-2 px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#23B2C3]/40 ${
+                          current ? 'border-[#1F4E79] bg-[#EEF4F8]' : 'border-[#DCE7EE] bg-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="shrink-0 rounded-lg border border-[#DCE7EE] bg-[#F1F7FA] px-2.5 py-1 text-[15px] font-extrabold text-[#1F4E79] tr-num">
+                            {entry.sequence}차
+                          </span>
+                          <span className="flex-1 text-[16px] font-bold leading-snug text-[#1F2933]">{entry.title}</span>
+                          <span
+                            className="shrink-0 rounded-full px-2.5 py-1 text-[13px] font-bold"
+                            style={{ background: STATUS_STYLE[entry.status === 'active' ? '투표중' : '마감'].bg, color: STATUS_STYLE[entry.status === 'active' ? '투표중' : '마감'].text }}
+                          >
+                            {ROUND_STATUS_LABEL[entry.status]}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[14px] font-semibold text-[#33393F]">
+                          <span className="tr-num">총 {figures.total}</span>
+                          <span>선두 {figures.leader}</span>
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
+
           {round ? (
             <>
               <div className="rounded-2xl border border-[#DCE7EE] bg-white p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Eyebrow className="text-[#5A6B73]">최근 투표 질문</Eyebrow>
+                  <Eyebrow className="text-[#5A6B73]">
+                    {selectedEntry ? `${selectedEntry.sequence}차 투표 질문` : '최근 투표 질문'}
+                  </Eyebrow>
                   <span className="rounded-full bg-[#E6EBF3] px-3 py-1 text-[12px] font-bold text-[#132646]">
                     {round.status === 'active' ? '투표 진행 중' : '투표 마감'}
                   </span>
                 </div>
                 <h3 className="mt-3 text-[23px] font-extrabold leading-snug text-[#1F2933]">{round.title}</h3>
-                {leader ? (
+                {!resultsKnown ? (
+                  <div className="mt-4 rounded-xl border-2 border-[#F5A623] bg-[#F5A623]/10 px-4 py-3 text-[14px] font-bold leading-relaxed text-[#B5651D]">
+                    이 회차의 표를 아직 불러오지 못했습니다. 위 '지금 다시 시도'를 눌러 주세요.
+                  </div>
+                ) : leader ? (
                   <div className="mt-4 rounded-xl bg-[#DFF6F8] px-4 py-3 text-[#0A4A52]">
-                    <div className="text-[12px] font-bold">현재 선두 선택지{leader.tied ? ' · 공동 선두' : ''}</div>
+                    <div className="text-[13px] font-bold">선두 선택지{leader.tied ? ' · 공동 선두' : ''}</div>
                     <div className="mt-1 text-[18px] font-extrabold">{leader.option}</div>
                   </div>
                 ) : (
@@ -287,37 +384,40 @@ function TeamDetailPanel({
                 )}
               </div>
 
-              <div className="rounded-2xl border border-[#DCE7EE] bg-white p-5">
-                <div className="flex items-end justify-between gap-3">
-                  <h3 className="text-[19px] font-extrabold text-[#1F2933]">선택지별 결과</h3>
-                  <span className="text-[13px] font-bold text-[#5A6B73]">참여 {tally?.total ?? 0}명</span>
-                </div>
-                <div className="mt-4 space-y-4">
-                  {options.map(([option, count]) => {
-                    const percentage = tally && tally.total > 0 ? Math.round((count / tally.total) * 100) : 0;
-                    return (
-                      <div key={option}>
-                        <div className="flex items-start justify-between gap-4 text-[15px]">
-                          <span className="font-bold text-[#1F2933]">{option}</span>
-                          <span className="shrink-0 font-extrabold text-[#1F4E79] tr-num">
-                            {count}표 · {percentage}%
-                          </span>
+              {/* 표를 못 받아온 회차에서는 0% 막대를 그리지 않는다 — '전원 기권'으로 오독된다. */}
+              {resultsKnown ? (
+                <div className="rounded-2xl border border-[#DCE7EE] bg-white p-5">
+                  <div className="flex items-end justify-between gap-3">
+                    <h3 className="text-[19px] font-extrabold text-[#1F2933]">선택지별 결과</h3>
+                    <span className="text-[13px] font-bold text-[#5A6B73]">참여 {tally?.total ?? 0}명</span>
+                  </div>
+                  <div className="mt-4 space-y-4">
+                    {options.map(([option, count]) => {
+                      const percentage = tally && tally.total > 0 ? Math.round((count / tally.total) * 100) : 0;
+                      return (
+                        <div key={option}>
+                          <div className="flex items-start justify-between gap-4 text-[15px]">
+                            <span className="font-bold text-[#1F2933]">{option}</span>
+                            <span className="shrink-0 font-extrabold text-[#1F4E79] tr-num">
+                              {count}표 · {percentage}%
+                            </span>
+                          </div>
+                          <div className="mt-2 h-3 overflow-hidden rounded-full bg-[#E6EBF3]">
+                            <div
+                              className="h-full rounded-full bg-[#23B2C3]"
+                              style={{ width: `${Math.min(percentage, 100)}%` }}
+                              aria-hidden="true"
+                            />
+                          </div>
                         </div>
-                        <div className="mt-2 h-3 overflow-hidden rounded-full bg-[#E6EBF3]">
-                          <div
-                            className="h-full rounded-full bg-[#23B2C3]"
-                            style={{ width: `${Math.min(percentage, 100)}%` }}
-                            aria-hidden="true"
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              ) : null}
 
               <div className="rounded-2xl border border-[#F0D28A] bg-[#FFF9E8] p-4 text-[14px] leading-relaxed text-[#5B450B]">
-                <strong className="block text-[#6B4B00]">운영 참고용 최근 투표 결과</strong>
+                <strong className="block text-[#6B4B00]">운영 참고용 조별 투표 결과</strong>
                 이 결과는 조별 논의 흐름을 확인하기 위한 것이며, 공식 권고안으로 확정된 내용이 아닙니다.
               </div>
             </>
@@ -433,6 +533,12 @@ export default function HqGrid() {
   const [statusFilter, setStatusFilter] = useState<'전체' | TeamCellResult['label']>('전체');
   const [subgroupFilter, setSubgroupFilter] = useState('전체');
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  // 지난 회차 표는 상세 패널을 열 때만 조회한다 — 전역 폴링(30초)에 얹으면 송출 화면까지
+  // 매번 전 회차 표를 받게 된다. 진행 중 라운드는 계속 votesByRound(전역)가 최신값을 준다.
+  const [historyVotesByRound, setHistoryVotesByRound] = useState<Record<string, Vote[]>>({});
+  const [historyState, setHistoryState] = useState<'loading' | 'failed' | 'loaded'>('loading');
+  const [historyRoundId, setHistoryRoundId] = useState<string | null>(null);
+  const [historyReloadKey, setHistoryReloadKey] = useState(0);
   const [compareMode, setCompareMode] = useState(false);
   const [comparisonTeamIds, setComparisonTeamIds] = useState<string[]>([]);
   const [comparisonMessage, setComparisonMessage] = useState<string | null>(null);
@@ -514,6 +620,61 @@ export default function HqGrid() {
   );
   const selectedTeam = teams.find((team) => team.id === selectedTeamId) ?? null;
   const selectedRound = selectedTeam ? latestTeamRound(selectedTeam.id, rounds) : null;
+  // 조회할 라운드 집합을 문자열 키로 좁힌다 — rounds는 30초마다 새 배열이 되지만
+  // 내용이 그대로면 지난 회차를 다시 받아올 이유가 없다(마감된 표는 변하지 않는다).
+  const historyRoundKey = useMemo(
+    () =>
+      selectedTeamId
+        ? rounds
+            .filter((round) => round.team_id === selectedTeamId)
+            .map((round) => round.id)
+            .sort()
+            .join(',')
+        : '',
+    [rounds, selectedTeamId],
+  );
+
+  useEffect(() => {
+    if (!selectedTeamId) return;
+    const ids = historyRoundKey ? historyRoundKey.split(',') : [];
+    if (ids.length === 0) {
+      setHistoryVotesByRound({});
+      setHistoryState('loaded');
+      return;
+    }
+    let cancelled = false;
+    setHistoryState('loading');
+    fetchVotesForRounds(ids)
+      .then((next) => {
+        if (cancelled) return;
+        setHistoryVotesByRound(next);
+        setHistoryState('loaded');
+      })
+      .catch((error) => {
+        console.error('[HQ] round history votes failed', error);
+        if (!cancelled) setHistoryState('failed');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [historyRoundKey, historyReloadKey, selectedTeamId]);
+
+  // 다른 조를 열면 회차 선택은 기본값(현재 라운드)으로 돌아간다.
+  useEffect(() => {
+    setHistoryRoundId(null);
+  }, [selectedTeamId]);
+
+  const historyEntries = useMemo(
+    () =>
+      selectedTeam ? teamRoundHistoryWithResults(selectedTeam.id, rounds, historyVotesByRound, votesByRound) : [],
+    [historyVotesByRound, rounds, selectedTeam, votesByRound],
+  );
+  // 기본 선택은 기존 동작 그대로(활성 라운드 → 없으면 최신 마감). 고른 회차가 사라지면 기본값으로 되돌아간다.
+  const detailRound =
+    (historyRoundId ? (rounds.find((round) => round.id === historyRoundId) ?? null) : null) ?? selectedRound;
+  const detailVotes = detailRound
+    ? (votesByRound[detailRound.id] ?? historyVotesByRound[detailRound.id] ?? [])
+    : [];
   const comparisonTeams = comparisonTeamIds
     .map((teamId) => teams.find((team) => team.id === teamId))
     .filter((team): team is HqTeam => team != null);
@@ -759,9 +920,13 @@ export default function HqGrid() {
         <TeamDetailPanel
           team={selectedTeam}
           cell={cells.get(selectedTeam.id) ?? { label: '대기', participation: `0/${selectedTeam.capacity}` }}
-          round={selectedRound}
-          votes={selectedRound ? (votesByRound[selectedRound.id] ?? []) : []}
+          round={detailRound}
+          votes={detailVotes}
+          entries={historyEntries}
+          historyState={historyState}
           updatedAt={updatedAt}
+          onSelectRound={setHistoryRoundId}
+          onRetryHistory={() => setHistoryReloadKey((key) => key + 1)}
           onClose={() => setTeamSelection(null)}
         />
       ) : null}

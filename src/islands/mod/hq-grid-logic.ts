@@ -1,4 +1,5 @@
 import { tallyVotes, type HqTeam, type Round, type Vote } from '../../lib/mod-console';
+import { teamRoundHistory, type TeamRoundHistoryItem } from './round-sequence';
 
 export type TeamCellResult = { label: '대기' | '투표중' | '마감'; participation: string };
 export type HqSummary = { total: number; waiting: number; polling: number; closed: number };
@@ -77,6 +78,33 @@ export function leadingResult(round: Round | null, votes: Vote[]): LeadingResult
     count: ranked[0][1],
     tied: ranked.length > 1 && ranked[1][1] === ranked[0][1],
   };
+}
+
+/** 조 상세의 라운드 이력 한 줄. teamRoundHistory에 그 회차의 선두 선택지를 얹은 것이다. */
+export type TeamRoundHistoryEntry = TeamRoundHistoryItem & { leader: LeadingResult };
+
+/**
+ * 한 조의 라운드 이력을 최신 회차부터 만들고, 각 줄에 총 표수와 선두 선택지를 붙인다.
+ *
+ * 표 맵을 **두 개** 받는다. /hq는 전체 조의 '현재 라운드'만 주기적으로 새로 받아오고(liveVotesByRound),
+ * 지난 회차 표는 상세 패널을 열 때 한 번만 조회하기(historyVotesByRound) 때문이다.
+ * 같은 라운드가 양쪽에 있으면 **전역(live) 쪽이 이긴다** — 진행 중 라운드가 패널을 연 시점 값으로
+ * 얼어붙지 않게 하려는 것이다. 이 방향이 뒤집히면 카드의 참여 숫자와 이력의 총 표수가 어긋난다.
+ *
+ * total은 키가 없으면 null(아직 조회하지 못함), 빈 배열이면 0(정말 0표)이다 — 화면에서 반드시
+ * 구분해야 한다. 조회 실패와 조회 전을 가르는 것은 이 함수가 아니라 호출부의 로드 상태다.
+ */
+export function teamRoundHistoryWithResults(
+  teamId: string,
+  rounds: Round[],
+  historyVotesByRound: Record<string, Vote[]>,
+  liveVotesByRound: Record<string, Vote[]> = {},
+): TeamRoundHistoryEntry[] {
+  return teamRoundHistory(teamId, rounds).map((item) => {
+    const votes = liveVotesByRound[item.id] ?? historyVotesByRound[item.id];
+    if (votes == null) return { ...item, total: null, leader: null };
+    return { ...item, total: tallyVotes(item.round, votes).total, leader: leadingResult(item.round, votes) };
+  });
 }
 
 /** 비교 선택을 토글한다. 이미 선택된 조는 해제하고, 최대치에서는 기존 선택을 보존한다. */
