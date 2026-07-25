@@ -10,6 +10,8 @@ import {
   type Round,
   type Vote,
 } from '../../lib/mod-console';
+import { fetchHqAttendanceSummaries, type HqAttendanceSummary } from '../../lib/attendance';
+import HqAttendanceAdmin from './HqAttendanceAdmin';
 import {
   teamCell,
   hqConnectionState,
@@ -51,6 +53,7 @@ function TeamCard({
   compareMode,
   comparisonSelected,
   onSelect,
+  attendance,
 }: {
   team: HqTeam;
   cell: TeamCellResult;
@@ -58,6 +61,7 @@ function TeamCard({
   compareMode: boolean;
   comparisonSelected: boolean;
   onSelect: () => void;
+  attendance: HqAttendanceSummary | undefined;
 }) {
   const style = STATUS_STYLE[cell.label];
   return (
@@ -100,6 +104,15 @@ function TeamCard({
           {cell.participation}
         </div>
       </div>
+      {attendance ? (
+        <div className="grid grid-cols-3 gap-1.5 border-t border-[#DCE7EE] pt-3 text-center">
+          <div><div className="text-[11px] font-bold text-[#5A6B73]">현재/전체</div><div className="font-extrabold text-[#1F4E79]">{attendance.current_present}/{attendance.roster_total}</div></div>
+          <div><div className="text-[11px] font-bold text-[#5A6B73]">지각</div><div className="font-extrabold text-[#6B4B00]">{attendance.late}</div></div>
+          <div><div className="text-[11px] font-bold text-[#5A6B73]">결석</div><div className="font-extrabold text-[#8B1A1A]">{attendance.absent}</div></div>
+          <div><div className="text-[11px] font-bold text-[#5A6B73]">조퇴</div><div className="font-extrabold text-[#6B4B00]">{attendance.early_leave}</div></div>
+          <div className="col-span-2"><div className="text-[11px] font-bold text-[#5A6B73]">미확인</div><div className="font-extrabold text-[#5A6B73]">{attendance.unconfirmed}</div></div>
+        </div>
+      ) : null}
       <span className="text-[12px] font-bold text-[#1F4E79]">
         {compareMode ? (comparisonSelected ? '비교 선택됨 ✓' : '비교에 추가 +') : '상세 보기 →'}
       </span>
@@ -339,6 +352,7 @@ export default function HqGrid() {
   const [rounds, setRounds] = useState<Round[]>([]);
   const [voteCounts, setVoteCounts] = useState<Record<string, number>>({});
   const [votesByRound, setVotesByRound] = useState<Record<string, Vote[]>>({});
+  const [attendanceByTeam, setAttendanceByTeam] = useState<Record<string, HqAttendanceSummary>>({});
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
@@ -356,7 +370,11 @@ export default function HqGrid() {
     loadingRef.current = true;
     setRefreshing(true);
     try {
-      const [nextTeams, nextRounds] = await Promise.all([fetchHqTeams(), fetchTeamRounds()]);
+      const [nextTeams, nextRounds, attendanceSummaries] = await Promise.all([
+        fetchHqTeams(),
+        fetchTeamRounds(),
+        fetchHqAttendanceSummaries(),
+      ]);
       const ids = relevantRoundIds(nextTeams, nextRounds);
       const [counts, nextVotesByRound] = await Promise.all([fetchVoteCounts(ids), fetchVotesForRounds(ids)]);
       const completedAt = new Date();
@@ -364,6 +382,7 @@ export default function HqGrid() {
       setRounds(nextRounds);
       setVoteCounts(counts);
       setVotesByRound(nextVotesByRound);
+      setAttendanceByTeam(Object.fromEntries(attendanceSummaries.map((item) => [item.team_id, item])));
       setUpdatedAt(completedAt);
       setNowMs(completedAt.getTime());
       setRefreshError(null);
@@ -630,9 +649,18 @@ export default function HqGrid() {
             selected={selectedTeamId === team.id}
             compareMode={compareMode}
             comparisonSelected={comparisonTeamIds.includes(team.id)}
+            attendance={attendanceByTeam[team.id]}
             onSelect={() => (compareMode ? toggleComparisonTeam(team.id) : setTeamSelection(team.id))}
           />
         ))}
+      </div>
+
+      <p className="mt-4 text-[12px] font-semibold text-[#5A6B73]">
+        지각 후 조퇴한 참여자는 지각과 조퇴 집계에 모두 포함될 수 있습니다. 공개 HQ에는 개인 이름이 표시되지 않습니다.
+      </p>
+
+      <div className="mt-6">
+        <HqAttendanceAdmin teams={teams} />
       </div>
 
       {teams.length === 0 && !refreshError ? (

@@ -13,7 +13,9 @@ import {
   type Round,
   type Vote,
 } from '../../lib/mod-console';
+import { fetchRoundEligibleCount } from '../../lib/attendance';
 import { modReducer, initialModState } from './mod-state';
+import AttendancePanel from './AttendancePanel';
 import Timer from './Timer';
 
 const CODE_KEY = 'mod_code';
@@ -178,11 +180,13 @@ function JoinScreen({
 // ============================================================
 
 function HomeScreen({
+  teamId,
   teamName,
   code,
   onCreatePoll,
   creating,
 }: {
+  teamId: string;
   teamName: string;
   code: string | null;
   onCreatePoll: (input: { title: string; type: 'RADIO' | 'CHECKBOX'; options: string[] }) => void;
@@ -309,6 +313,7 @@ function HomeScreen({
 
           {/* 타이머 카드 */}
           <Timer code={code} teamName={teamName} />
+          <AttendancePanel teamId={teamId} teamName={teamName} joinCode={code} />
         </div>
       </div>
     </div>
@@ -371,6 +376,7 @@ function PollingScreen({
   restoreNotice?: boolean;
 }) {
   const [qr, setQr] = useState<string | null>(null);
+  const [eligibleCount, setEligibleCount] = useState<number | null>(null);
   const participantUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/v?r=${round.id}`;
   const participantUrlDisplay = participantUrl.replace(/^https?:\/\//, '');
 
@@ -381,8 +387,28 @@ function PollingScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round.id]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const refreshEligible = () => {
+      fetchRoundEligibleCount(round.id)
+        .then((count) => {
+          if (!cancelled) setEligibleCount(count);
+        })
+        .catch((error) => {
+          console.error('[attendance] eligible count refresh failed', error);
+        });
+    };
+    refreshEligible();
+    const interval = setInterval(refreshEligible, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [round.id]);
+
   const tally = tallyVotes(round, votes);
   const options = round.options ?? [];
+  const participationBase = eligibleCount ?? capacity;
 
   return (
     <div className="min-h-screen bg-[#F5F8FB]">
@@ -434,13 +460,13 @@ function PollingScreen({
                 <Eyebrow className="text-[#5A6B73] mb-1.5">참여 현황</Eyebrow>
                 <div className="text-[46px] font-extrabold text-[#1F4E79] leading-none tr-num">
                   {tally.total}
-                  <span className="text-[#5A6B73] text-[26px] font-bold"> / {capacity}명</span>
+                  <span className="text-[#5A6B73] text-[26px] font-bold"> / {participationBase}명</span>
                 </div>
               </div>
               <div className="text-right">
                 <Eyebrow className="text-[#5A6B73] mb-1.5">진행률</Eyebrow>
                 <div className="text-[28px] font-extrabold text-[#135C73] leading-none tr-num">
-                  {capacity > 0 ? Math.min(100, Math.round((tally.total / capacity) * 100)) : 0}%
+                  {participationBase > 0 ? Math.min(100, Math.round((tally.total / participationBase) * 100)) : 0}%
                 </div>
               </div>
             </div>
@@ -1014,7 +1040,13 @@ export default function ModConsole() {
 
   if (state.screen === 'home') {
     screenEl = (
-      <HomeScreen teamName={teamName} code={codeRef.current} onCreatePoll={handleCreatePoll} creating={creating} />
+      <HomeScreen
+        teamId={state.team?.id ?? ''}
+        teamName={teamName}
+        code={codeRef.current}
+        onCreatePoll={handleCreatePoll}
+        creating={creating}
+      />
     );
   } else if (state.screen === 'polling' && state.round) {
     screenEl = (

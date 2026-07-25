@@ -1,0 +1,30 @@
+{
+  "source_file": "20260704 시민참여단 참석명단.hwpx",
+  "source_sha256": "7D486447CA6873C94F99E401A87E939E164EC3C15126E91E1E6F2D67958E7BD3",
+  "item_count": 174,
+  "team_count": 15,
+  "group_counts": {
+    "1분과 1조": 12,
+    "1분과 2조": 12,
+    "1분과 3조": 12,
+    "1분과 4조": 12,
+    "1분과 5조": 12,
+    "2분과 1조": 9,
+    "2분과 2조": 12,
+    "2분과 3조": 12,
+    "2분과 4조": 12,
+    "2분과 5조": 12,
+    "3분과 1조": 9,
+    "3분과 2조": 12,
+    "3분과 3조": 12,
+    "3분과 4조": 12,
+    "3분과 5조": 12
+  },
+  "blank_id_count": 0,
+  "blank_name_count": 0,
+  "duplicate_id_count": 0,
+  "duplicate_name_count": 0,
+  "excluded_planning_and_advisory": true,
+  "historical_notes_imported": false,
+  "status": "verified"
+}
