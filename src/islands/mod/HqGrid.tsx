@@ -25,6 +25,7 @@ import {
   teamRoundHistoryWithResults,
   toggleComparisonSelection,
   roundIdsForSequence,
+  resultExportJobs,
   type RoundView,
   type RoundViewCell,
   type TeamCellResult,
@@ -32,9 +33,42 @@ import {
 } from './hq-grid-logic';
 import { maxRoundSequence } from './round-sequence';
 import { isOpsMode, participationParts, BROADCAST_STATUS_STYLE } from './hq-broadcast-logic';
+import { renderResultSvg } from './result-image';
+import { downloadBlob, resultZipFileName, svgToPngBlob, RESULT_IMAGE_SCALE } from './svg-to-png';
+import { buildZipArchive, type ZipEntry } from './zip-store';
 
 const POLL_MS = 30000;
 const STALE_AFTER_MS = 65000;
+
+/**
+ * 전수 내려받기에서 표를 한 번에 받아올 라운드 수. 45개를 한 요청에 담으면 PostgREST의
+ * 행 상한(호스팅 기본 1000행)에 걸려 **조용히 잘린 결과**가 돌아온다 — 뒤쪽 조의 그림이
+ * 실제보다 적은 표로 저장되는데 typecheck·vitest·빌드 어느 것도 잡지 못한다.
+ * 10개면 한 요청이 150행 안쪽이라 상한에 닿지 않는다.
+ */
+const VOTE_FETCH_CHUNK = 10;
+
+/** 라운드를 나눠 표를 받아 하나의 맵으로 합친다. 한 조각이라도 실패하면 전체가 실패한다(부분 집계 금지). */
+async function fetchVotesInChunks(roundIds: string[]): Promise<Record<string, Vote[]>> {
+  const merged: Record<string, Vote[]> = {};
+  for (let index = 0; index < roundIds.length; index += VOTE_FETCH_CHUNK) {
+    Object.assign(merged, await fetchVotesForRounds(roundIds.slice(index, index + VOTE_FETCH_CHUNK)));
+  }
+  return merged;
+}
+
+/**
+ * 그림에 넣을 마감 시각 문구. 읽을 수 없으면 **null**을 돌려준다 —
+ * '—' 같은 자리표시자를 넘기면 아카이브에 '마감 —'이라고 영구히 남는다(그때는 '진행 중'이 맞다).
+ */
+function formatClosedClock(iso: string): string | null {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return null;
+  return at.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+}
+
+type ExportState = { running: boolean; done: number; total: number; message: string | null; error: string | null };
+const IDLE_EXPORT: ExportState = { running: false, done: 0, total: 0, message: null, error: null };
 
 // 대형 스크린(8~15m) 가시성 — 색+텍스트 병기, hover 비의존, 고대비.
 const STATUS_STYLE: Record<TeamCellResult['label'], { bg: string; text: string; dot: string }> = {
@@ -592,7 +626,10 @@ export default function HqGrid() {
   const [compareMode, setCompareMode] = useState(false);
   const [comparisonTeamIds, setComparisonTeamIds] = useState<string[]>([]);
   const [comparisonMessage, setComparisonMessage] = useState<string | null>(null);
+  const [exportState, setExportState] = useState<ExportState>(IDLE_EXPORT);
   const loadingRef = useRef(false);
+  // 버튼 disabled와 별개로 ref를 둔다 — 리렌더 전에 두 번째 클릭이 들어오면 disabled만으로는 못 막는다.
+  const exportingRef = useRef(false);
 
   const refresh = useCallback(async () => {
     if (loadingRef.current) return;
@@ -789,6 +826,68 @@ export default function HqGrid() {
       return next.ids;
     });
   }, []);
+
+  // 내려받을 대상 라운드. 조에 속하지 않은 라운드(전체 투표)는 조별 폴더에 넣을 자리가 없어 뺀다.
+  const exportRoundIds = useMemo(() => {
+    const teamIds = new Set(teams.map((team) => team.id));
+    return rounds.filter((round) => round.team_id != null && teamIds.has(round.team_id)).map((round) => round.id);
+  }, [rounds, teams]);
+
+  /**
+   * 전 조 · 전 회차 결과를 PNG로 만들어 ZIP 한 개로 내려받는다.
+   *
+   * 한 장이 실패해도 **멈추지 않고 계속 만든다** — 45장짜리 작업이 40번째에서 죽어 아무것도
+   * 남지 않는 것이 현장에서 가장 나쁜 결과다. 실패한 장수는 끝에 한 줄로 알린다.
+   */
+  const handleExportAll = useCallback(async () => {
+    if (exportingRef.current) return;
+    exportingRef.current = true;
+    setExportState({ ...IDLE_EXPORT, running: true });
+    try {
+      const votesByRoundId = await fetchVotesInChunks(exportRoundIds);
+      const jobs = resultExportJobs(teams, rounds, votesByRoundId, formatClosedClock);
+      if (jobs.length === 0) {
+        setExportState({ ...IDLE_EXPORT, error: '내려받을 투표 결과가 없습니다.' });
+        return;
+      }
+      setExportState({ ...IDLE_EXPORT, running: true, total: jobs.length });
+
+      const entries: ZipEntry[] = [];
+      let failedCount = 0;
+      for (const job of jobs) {
+        try {
+          const blob = await svgToPngBlob(renderResultSvg(job.image), RESULT_IMAGE_SCALE);
+          entries.push({ name: job.path, data: new Uint8Array(await blob.arrayBuffer()) });
+        } catch (error) {
+          console.error('[HQ] result image failed', job.path, error);
+          failedCount += 1;
+        }
+        // 한 장을 끝낸 **뒤에** 올린다 — 먼저 올리면 마지막이 45/45에 닿지 않는다.
+        setExportState((prev) => ({ ...prev, done: prev.done + 1 }));
+      }
+      if (entries.length === 0) throw new Error('이미지를 한 장도 만들지 못했습니다.');
+
+      const at = new Date();
+      downloadBlob(
+        new Blob([buildZipArchive(entries, at)], { type: 'application/zip' }),
+        resultZipFileName(at),
+      );
+      setExportState({
+        ...IDLE_EXPORT,
+        done: jobs.length,
+        total: jobs.length,
+        message:
+          failedCount === 0
+            ? `${entries.length}장을 내려받았습니다.`
+            : `${entries.length}장을 내려받았습니다. ${failedCount}장은 만들지 못했습니다.`,
+      });
+    } catch (error) {
+      console.error('[HQ] export failed', error);
+      setExportState({ ...IDLE_EXPORT, error: '결과를 내려받지 못했습니다. 연결을 확인한 뒤 다시 눌러 주세요.' });
+    } finally {
+      exportingRef.current = false;
+    }
+  }, [exportRoundIds, rounds, teams]);
 
   const exitCompareMode = useCallback(() => {
     setCompareMode(false);
@@ -1022,6 +1121,40 @@ export default function HqGrid() {
               ) : null}
             </div>
           ) : null}
+
+          {/*
+            전수 내려받기 — 회차 칩(maxSequence > 0)과 **같은 조건에 두지 않는다.**
+            라운드가 하나도 없을 때도 버튼은 보이되 비활성 + 이유 문구여야 한다(AC #5).
+          */}
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => void handleExportAll()}
+                disabled={exportState.running || exportRoundIds.length === 0}
+                aria-busy={exportState.running}
+                className="min-h-11 rounded-xl border-2 border-[#1F4E79] bg-white px-4 text-[14px] font-extrabold text-[#1F4E79] disabled:border-[#C4D8E4] disabled:text-[#5A6B73] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#23B2C3]/40"
+              >
+                {exportState.running
+                  ? exportState.total > 0
+                    ? `이미지 만드는 중 ${exportState.done}/${exportState.total}`
+                    : '표를 불러오는 중…'
+                  : '전체 결과 내려받기'}
+              </button>
+              <span className="text-[13px] font-bold text-[#33393F]" aria-live="polite">
+                {exportRoundIds.length === 0
+                  ? '아직 진행된 투표가 없어 내려받을 결과가 없습니다.'
+                  : exportState.running
+                    ? '창을 닫지 마세요. 다 만들면 zip 파일 하나로 저장됩니다.'
+                    : (exportState.message ?? `조별 폴더에 회차별 PNG ${exportRoundIds.length}장이 담깁니다.`)}
+              </span>
+            </div>
+            {exportState.error ? (
+              <div className="rounded-xl border-2 border-[#F5A623] bg-[#F5A623]/10 px-4 py-3 text-[14px] font-extrabold text-[#B5651D]" role="alert">
+                {exportState.error}
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : null}
 

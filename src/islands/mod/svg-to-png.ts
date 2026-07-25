@@ -2,7 +2,11 @@
  * 결과 SVG(result-image.ts)를 PNG 파일로 내려받기 위한 브라우저 어댑터.
  * 외부 라이브러리를 쓰지 않고 `Image` + `canvas`만 쓴다.
  *
- * 이 모듈에서 순수한 부분(`resultImageFileName` · `svgPixelSize`)만 테스트할 수 있다.
+ * 결과물의 **이름 짓기도 여기서 한다**(`resultImageFileName` · `resultZipEntryName` ·
+ * `resultZipFileName`). 치환 규칙을 한 곳에 모아 두려는 것이다 — 두 벌로 나뉘면 한쪽만 고쳐져
+ * 한글이 사라지는 사고가 난다(US-015에서 실제로 밟은 함정).
+ *
+ * 이 모듈에서 순수한 부분(이름 짓기 3종 · `svgPixelSize`)만 테스트할 수 있다.
  * 나머지는 브라우저가 없으면 검증이 불가능하므로, 실패 경로를 전부 **문구가 있는 예외**로 모아
  * 호출부가 화면을 깨뜨리지 않고 안내할 수 있게 한다(`Image.onerror`는 예외를 던지지 않는다).
  *
@@ -63,6 +67,31 @@ export function resultImageFileName(input: { teamName: string; sequence: number;
   if (input.sequence >= 1) parts.push(`${Math.floor(input.sequence)}차`);
   parts.push(stamp(input.at));
   return `${parts.join('_')}.png`;
+}
+
+/**
+ * ZIP 안에 놓을 경로. `<조이름>/<회차>차_<제목>.png`.
+ *
+ * **각 조각을 따로 정리한 뒤 `/`로 잇는다** — 제목을 그대로 넣으면 제목 안의 슬래시('A/B 안')가
+ * 폴더를 하나 더 만들어 조별 폴더 구조가 무너진다. 조 이름이 전부 걸러지는 경우에도 폴백을 써서
+ * 앞이 비지 않게 한다(`/파일.png`는 절대 경로로 읽혀 아카이브를 통째로 거부하는 도구가 있다).
+ *
+ * 파일명 규칙은 `resultImageFileName`과 같은 치환기(`safeSegment`)를 쓴다 — 두 벌로 나뉘면
+ * 한쪽만 고쳐져 한글이 사라지는 사고가 난다.
+ */
+export function resultZipEntryName(input: { teamName: string; sequence: number; title: string }): string {
+  const folder = safeSegment(input.teamName) || FALLBACK_TEAM_NAME;
+  const parts: string[] = [];
+  if (input.sequence >= 1) parts.push(`${Math.floor(input.sequence)}차`);
+  const title = safeSegment(input.title);
+  if (title) parts.push(title);
+  const file = parts.join('_') || FALLBACK_TEAM_NAME;
+  return `${folder}/${file}.png`;
+}
+
+/** 전수 내려받기 ZIP의 파일명. 시각은 `resultImageFileName`과 같이 **저장한 때**다. */
+export function resultZipFileName(at: Date): string {
+  return `조별_투표결과_${stamp(at)}.zip`;
 }
 
 function pixelAttr(tag: string, name: string): number | null {

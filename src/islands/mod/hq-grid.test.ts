@@ -11,6 +11,7 @@ import {
   teamRoundHistoryWithResults,
   teamCellForRoundView,
   roundIdsForSequence,
+  resultExportJobs,
 } from './hq-grid-logic';
 import type { HqTeam, Round, Vote } from '../../lib/mod-console';
 
@@ -364,5 +365,121 @@ describe('teamCellForRoundView / roundIdsForSequence', () => {
       }
       expect(cells.filter((cell) => cell.label !== '미실시')).toHaveLength(ids.length);
     }
+  });
+});
+
+describe('resultExportJobs', () => {
+  function vote(id: number, roundId: string, choice: unknown): Vote {
+    return { id, round_id: roundId, choice, archived_at: null };
+  }
+
+  const teamA: HqTeam = { id: 't1', name: '1분과 1조', subgroup: '1분과', capacity: 12, status: 'active' };
+  const teamB: HqTeam = { id: 't2', name: '2분과 3조', subgroup: '2분과', capacity: 12, status: 'active' };
+
+  /** 실제 화면과 같은 시각 문구를 쓰되, 테스트가 타임존에 흔들리지 않게 고정 문자열을 돌려준다. */
+  const clock = () => '14:32';
+
+  it('조별 폴더 · 회차 오름차순으로 내보낼 목록을 만든다', () => {
+    const rounds = [
+      round({ id: 'r2', team_id: 't1', title: '두 번째', created_at: '2026-08-29T02:00:00Z' }),
+      round({ id: 'r1', team_id: 't1', title: '첫 번째', created_at: '2026-08-29T01:00:00Z' }),
+      round({ id: 'r3', team_id: 't2', title: '다른 조', created_at: '2026-08-29T01:30:00Z' }),
+    ];
+    const jobs = resultExportJobs([teamA, teamB], rounds, { r1: [], r2: [], r3: [] }, clock);
+
+    expect(jobs.map((job) => job.path)).toEqual([
+      '1분과_1조/1차_첫_번째.png',
+      '1분과_1조/2차_두_번째.png',
+      '2분과_3조/1차_다른_조.png',
+    ]);
+    expect(jobs.map((job) => job.image.sequence)).toEqual([1, 2, 1]);
+    expect(jobs[2].image.teamName).toBe('2분과 3조');
+  });
+
+  it('선택지 순서를 round.options 그대로 두고 득표를 채운다', () => {
+    const rounds = [round({ id: 'r1', options: ['찬성', '반대', '유보'], status: 'closed' })];
+    const votes = { r1: [vote(1, 'r1', '반대'), vote(2, 'r1', '반대'), vote(3, 'r1', '찬성')] };
+    const [job] = resultExportJobs([teamA], rounds, votes, clock);
+
+    expect(job.image.total).toBe(3);
+    expect(job.image.results).toEqual([
+      { option: '찬성', count: 1 },
+      { option: '반대', count: 2 },
+      { option: '유보', count: 0 },
+    ]);
+  });
+
+  it('options가 null인 SCALE 라운드는 집계 키로 선택지를 만든다', () => {
+    // options만 믿으면 SCALE 라운드의 선택지 목록이 통째로 비어 '표 없음' 그림이 나온다.
+    const rounds = [round({ id: 'r1', type: 'SCALE', options: null, status: 'closed' })];
+    const votes = { r1: [vote(1, 'r1', 3), vote(2, 'r1', 5), vote(3, 'r1', 3)] };
+    const [job] = resultExportJobs([teamA], rounds, votes, clock);
+
+    expect(job.image.results).toEqual([
+      { option: '3', count: 2 },
+      { option: '5', count: 1 },
+    ]);
+  });
+
+  it('마감 라운드만 마감 시각 문구를 받고 진행 중은 null이다', () => {
+    const rounds = [
+      round({
+        id: 'r1',
+        status: 'closed',
+        updated_at: '2026-08-29T05:32:00Z',
+        created_at: '2026-08-29T01:00:00Z',
+      }),
+      round({ id: 'r2', status: 'active', updated_at: '2026-08-29T06:00:00Z', created_at: '2026-08-29T02:00:00Z' }),
+    ];
+    const jobs = resultExportJobs([teamA], rounds, { r1: [], r2: [] }, clock);
+
+    expect(jobs[0].image.closedAtLabel).toBe('14:32');
+    // 진행 중 라운드에 마감 시각을 붙이면 아카이브가 거짓말을 한다.
+    expect(jobs[1].image.closedAtLabel).toBeNull();
+  });
+
+  it('표를 못 받은 라운드는 건너뛰고, 정말 0표인 라운드는 담는다', () => {
+    // 두 경우를 한 fixture에서 함께 단언한다 — 따로 쓰면 둘 다 통과하면서
+    // 실제로는 '조회 안 됨'이 '0표'라 적힌 가짜 기록물로 나갈 수 있다.
+    const rounds = [
+      round({ id: 'r1', title: '0표 라운드', created_at: '2026-08-29T01:00:00Z' }),
+      round({ id: 'r2', title: '미조회 라운드', created_at: '2026-08-29T02:00:00Z' }),
+    ];
+    const jobs = resultExportJobs([teamA], rounds, { r1: [] }, clock);
+
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0].image.title).toBe('0표 라운드');
+    expect(jobs[0].image.total).toBe(0);
+  });
+
+  it('CHECKBOX의 선택지 득표 합이 총 표수를 넘어도 그대로 넘긴다', () => {
+    // tallyVotes의 total은 '투표한 사람 수'다. 여기서 깎으면 그림의 숫자가 사실과 달라진다.
+    const rounds = [round({ id: 'r1', type: 'CHECKBOX', options: ['A', 'B'], status: 'closed' })];
+    const votes = { r1: [vote(1, 'r1', ['A', 'B']), vote(2, 'r1', ['A'])] };
+    const [job] = resultExportJobs([teamA], rounds, votes, clock);
+
+    expect(job.image.total).toBe(2);
+    expect(job.image.results).toEqual([
+      { option: 'A', count: 2 },
+      { option: 'B', count: 1 },
+    ]);
+  });
+
+  it('조가 없거나 라운드가 없으면 빈 목록이다', () => {
+    expect(resultExportJobs([], [round({ id: 'r1' })], { r1: [] }, clock)).toEqual([]);
+    expect(resultExportJobs([teamA], [], {}, clock)).toEqual([]);
+  });
+
+  it('입력 배열 순서가 달라도 같은 회차 번호가 나온다', () => {
+    const rounds = [
+      round({ id: 'rb', title: '두 번째', created_at: '2026-08-29T02:00:00Z' }),
+      round({ id: 'ra', title: '첫 번째', created_at: '2026-08-29T01:00:00Z' }),
+    ];
+    const votes = { ra: [], rb: [] };
+    const forward = resultExportJobs([teamA], rounds, votes, clock).map((job) => job.path);
+    const reversed = resultExportJobs([teamA], [...rounds].reverse(), votes, clock).map((job) => job.path);
+
+    expect(forward).toEqual(['1분과_1조/1차_첫_번째.png', '1분과_1조/2차_두_번째.png']);
+    expect(reversed).toEqual(forward);
   });
 });

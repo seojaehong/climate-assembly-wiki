@@ -1,5 +1,9 @@
 import { tallyVotes, type HqTeam, type Round, type Vote } from '../../lib/mod-console';
 import { roundSequence, teamRoundHistory, type TeamRoundHistoryItem } from './round-sequence';
+import type { ResultImageInput } from './result-image';
+// svg-to-png.ts는 모듈 최상단에서 DOM을 만지지 않는다(그 파일의 주석 참조) — 순수 함수만 가져온다.
+// 파일명 치환 규칙을 여기서 다시 쓰지 않는 이유: 두 벌로 나뉘면 한쪽만 고쳐져 한글이 사라진다.
+import { resultZipEntryName } from './svg-to-png';
 
 export type TeamCellResult = { label: '대기' | '투표중' | '마감'; participation: string };
 export type HqSummary = { total: number; waiting: number; polling: number; closed: number };
@@ -165,6 +169,58 @@ export function teamRoundHistoryWithResults(
     if (votes == null) return { ...item, total: null, leader: null };
     return { ...item, total: tallyVotes(item.round, votes).total, leader: leadingResult(item.round, votes) };
   });
+}
+
+/** 전수 내려받기의 한 장. `path`는 ZIP 안의 경로이고, `image`는 renderResultSvg에 그대로 넘긴다. */
+export interface ResultExportJob {
+  path: string;
+  image: ResultImageInput;
+}
+
+/**
+ * 모든 조 · 모든 회차의 결과 이미지 목록을 만든다(전수 내려받기용).
+ *
+ * 그림을 여기서 그리지 않고 **입력값만** 만든다 — 문자열 SVG를 반환하면 테스트가 거대해지고,
+ * 렌더러 교체가 이 함수를 흔든다. 실제 렌더·PNG 변환은 브라우저 쪽 호출부가 한다.
+ *
+ * - 회차 번호는 `teamRoundHistory`에서 나온다. 그래야 ZIP의 '2차'가 사람이 /hq·/mod 화면에서
+ *   본 그 2차와 **같은 라운드**다(회차를 여기서 다시 세면 두 기준이 조용히 갈라진다).
+ * - 목록은 조 순서 → 회차 오름차순이다(사람이 폴더를 열었을 때 1차부터 보이게).
+ * - `votesByRound`에 **키가 없는 라운드는 건너뛴다.** 없는 것을 0표로 그리면 '표 없음'이라
+ *   적힌 가짜 기록물이 남는다 — 없느니만 못하다. 빈 배열(정말 0표)은 그대로 담는다.
+ * - status로 거르지 않는다. pending 라운드도 '표 없음' 한 장으로 남는다 — '전수'의 뜻대로다.
+ * - `formatClosedAt`을 인자로 받는 이유: 시각 포맷은 실행 환경 타임존에 의존해서 순수 함수가
+ *   될 수 없다(이 저장소 관례 — result-image.ts는 이미 포맷된 문자열을 받는다).
+ */
+export function resultExportJobs(
+  teams: HqTeam[],
+  rounds: Round[],
+  votesByRound: Record<string, Vote[]>,
+  formatClosedAt: (iso: string) => string | null,
+): ResultExportJob[] {
+  const jobs: ResultExportJob[] = [];
+  for (const team of teams) {
+    const history = [...teamRoundHistory(team.id, rounds)].sort((a, b) => a.sequence - b.sequence);
+    for (const item of history) {
+      const votes = votesByRound[item.id];
+      if (votes == null) continue;
+      const tally = tallyVotes(item.round, votes);
+      // options가 null인 라운드(SCALE)는 집계 키가 유일한 선택지 목록이다.
+      const options = item.round.options ?? Object.keys(tally.byOption);
+      jobs.push({
+        path: resultZipEntryName({ teamName: team.name, sequence: item.sequence, title: item.title }),
+        image: {
+          teamName: team.name,
+          sequence: item.sequence,
+          title: item.title,
+          closedAtLabel: item.closedAt ? formatClosedAt(item.closedAt) : null,
+          total: tally.total,
+          results: options.map((option) => ({ option, count: tally.byOption[option] ?? 0 })),
+        },
+      });
+    }
+  }
+  return jobs;
 }
 
 /** 비교 선택을 토글한다. 이미 선택된 조는 해제하고, 최대치에서는 기존 선택을 보존한다. */

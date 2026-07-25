@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resultImageFileName, svgPixelSize } from './svg-to-png';
+import { resultImageFileName, resultZipEntryName, resultZipFileName, svgPixelSize } from './svg-to-png';
 import { renderResultSvg } from './result-image';
 
 /**
@@ -166,5 +166,42 @@ describe('svgPixelSize', () => {
   it('내부 요소의 stroke-width를 폭으로 착각하지 않는다', () => {
     const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><line stroke-width="2" /></svg>';
     expect(svgPixelSize(svg)).toEqual({ width: 800, height: 600 });
+  });
+});
+
+describe('resultZipEntryName', () => {
+  it('조별 폴더 아래에 회차·제목으로 파일을 놓는다', () => {
+    expect(
+      resultZipEntryName({ teamName: '1분과 1조', sequence: 2, title: '석탄 발전 감축 속도' }),
+    ).toBe('1분과_1조/2차_석탄_발전_감축_속도.png');
+  });
+
+  it('폴더와 파일 이름을 각각 정리한 뒤 슬래시로 잇는다 — 제목의 경로 문자가 폴더를 새로 만들면 안 된다', () => {
+    const name = resultZipEntryName({ teamName: '2분과 3조', sequence: 1, title: 'A/B 안 비교' });
+    expect(name).toBe('2분과_3조/1차_A_B_안_비교.png');
+    // 슬래시는 폴더 구분자 하나뿐이어야 한다.
+    expect(name.split('/').length).toBe(2);
+  });
+
+  it('조 이름이 전부 걸러지는 문자여도 절대 경로가 되지 않는다', () => {
+    // 앞이 비면 '/파일.png'가 되어 절대 경로로 읽히고, 압축 해제를 통째로 거부하는 도구가 있다.
+    const name = resultZipEntryName({ teamName: '///', sequence: 1, title: '질문' });
+    expect(name.startsWith('/')).toBe(false);
+    expect(name).toBe('투표결과/1차_질문.png');
+  });
+
+  it('회차가 1보다 작으면 회차 조각을 빼고 제목만 쓴다', () => {
+    expect(resultZipEntryName({ teamName: '1분과 1조', sequence: 0, title: '질문' })).toBe('1분과_1조/질문.png');
+  });
+
+  it('제목이 비어도 파일명이 비지 않는다', () => {
+    expect(resultZipEntryName({ teamName: '1분과 1조', sequence: 3, title: '   ' })).toBe('1분과_1조/3차.png');
+    expect(resultZipEntryName({ teamName: '1분과 1조', sequence: 0, title: '' })).toBe('1분과_1조/투표결과.png');
+  });
+});
+
+describe('resultZipFileName', () => {
+  it('저장 시각을 붙인 zip 이름을 만든다', () => {
+    expect(resultZipFileName(new Date(2026, 7, 29, 14, 32))).toBe('조별_투표결과_20260829-1432.zip');
   });
 });
