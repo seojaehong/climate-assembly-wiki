@@ -880,6 +880,9 @@ export default function HqGrid() {
                 type="button"
                 onClick={() => {
                   setTeamSelection(null);
+                  // 비교 패널은 '현재' 기준으로만 계산된다(teamCell/latestTeamRound).
+                  // N차 보기를 켠 채 비교에 들어가면 한 화면에서 같은 조가 두 숫자로 보인다.
+                  setRoundView('current');
                   setCompareMode(true);
                 }}
                 className="min-h-11 rounded-xl border border-[#1F4E79] bg-white px-4 text-[14px] font-extrabold text-[#1F4E79] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#23B2C3]/40"
