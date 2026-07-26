@@ -169,7 +169,7 @@ function TeamCard({
             ? `${team.name} 비교 ${comparisonSelected ? '선택 해제' : '선택'}, ${cell.label}, 참여 ${cell.participation}`
             : opsMode
               ? `${team.name} 상세 보기, ${cell.label}, 참여 ${cell.participation}`
-              : `${team.name}${tableLabel ? `, ${tableLabel}` : ''}, ${cell.label}, 참여 ${cell.participation}`
+              : `${team.name}${tableLabel ? `, ${tableLabel}` : ''}, ${cell.label}, 투표 ${cell.participation}`
       }
       aria-pressed={compareMode ? comparisonSelected : selected}
       onClick={onSelect}
@@ -208,7 +208,9 @@ function TeamCard({
             style={
               opsMode
                 ? { letterSpacing: '-.01em' }
-                : { letterSpacing: '-.01em', fontSize: BROADCAST_FONT.teamName }
+                : // 굵은 한글 대문자급 크기에서는 -.02em까지 조여야 낱글자가 아니라
+                  // 한 덩어리(=조 식별자)로 읽힌다. 행간은 1.15로 붙여 배지와의 간격을 벌린다.
+                  { letterSpacing: '-.02em', lineHeight: 1.15, fontSize: BROADCAST_FONT.teamName }
             }
           >
             {team.name}
@@ -274,22 +276,22 @@ function TeamCard({
         <div className="mt-auto shrink-0 flex items-end justify-between gap-3 border-t border-[#7A9AAF] pt-1">
           <div className="min-w-0">
             <div
-              className={`font-bold leading-tight whitespace-nowrap ${mutedText}`}
-              style={{ fontSize: BROADCAST_FONT.blockLabel }}
+              className="font-bold whitespace-nowrap text-[#33393F]"
+              style={{ fontSize: BROADCAST_FONT.blockLabel, letterSpacing: '.06em', lineHeight: 1.2 }}
             >
-              참여
+              투표
             </div>
             <div className="flex items-baseline gap-1 whitespace-nowrap">
               <span
                 className="font-extrabold text-[#1F4E79] tr-num"
-                style={{ fontSize: BROADCAST_FONT.votes, lineHeight: 1.1 }}
+                style={{ fontSize: BROADCAST_FONT.votes, lineHeight: 1 }}
               >
                 {participation.votes}
               </span>
               {participation.total ? (
                 <span
                   className="font-extrabold text-[#33393F] tr-num"
-                  style={{ fontSize: BROADCAST_FONT.votesTotal, lineHeight: 1.1 }}
+                  style={{ fontSize: BROADCAST_FONT.votesTotal, lineHeight: 1 }}
                 >
                   /{participation.total}
                 </span>
@@ -297,23 +299,23 @@ function TeamCard({
             </div>
           </div>
           {attendance ? (
-            <div className="min-w-0 text-right">
+            <div className="min-w-0 text-right border-l-2 border-[#DCE7EE] pl-3">
               <div
-                className={`font-bold leading-tight whitespace-nowrap ${mutedText}`}
-                style={{ fontSize: BROADCAST_FONT.blockLabel }}
+                className="font-bold whitespace-nowrap text-[#5A6B73]"
+                style={{ fontSize: BROADCAST_FONT.blockLabel, letterSpacing: '.06em', lineHeight: 1.2 }}
               >
-                현재/전체
+                출석
               </div>
               <div className="flex items-baseline justify-end gap-1 whitespace-nowrap">
                 <span
-                  className="font-extrabold text-[#1F4E79] tr-num"
-                  style={{ fontSize: BROADCAST_FONT.attendanceValue, lineHeight: 1.1 }}
+                  className="font-extrabold text-[#33393F] tr-num"
+                  style={{ fontSize: BROADCAST_FONT.attendanceValue, lineHeight: 1 }}
                 >
                   {attendance.current_present}
                 </span>
                 <span
-                  className="font-extrabold text-[#33393F] tr-num"
-                  style={{ fontSize: BROADCAST_FONT.votesTotal, lineHeight: 1.1 }}
+                  className="font-bold text-[#5A6B73] tr-num"
+                  style={{ fontSize: BROADCAST_FONT.votesTotal, lineHeight: 1 }}
                 >
                   /{attendance.roster_total}
                 </span>
@@ -1179,31 +1181,44 @@ export default function HqGrid() {
               (비교 진입 시 setRoundView('current')로 되돌리는 처리와 짝을 이룬다.) */}
           {maxSequence > 0 && !compareMode ? (
             <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2" aria-label="회차 보기 선택">
-                <span className="text-[14px] font-extrabold text-[#1F2933]">회차 보기</span>
-                {(['current', ...Array.from({ length: maxSequence }, (_, index) => index + 1)] as RoundView[]).map(
-                  (option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      aria-pressed={roundView === option}
-                      onClick={() => {
-                        // 상태 필터·요약 칩은 '현재' 기준(teamCell)으로만 계산된다.
-                        // N차 화면에 '현재' 기준 필터가 남으면 3차를 마감한 조가
-                        // 현재 4차 진행 중이라는 이유로 그리드에서 사라진다.
-                        setStatusFilter('전체');
-                        setRoundView(option);
-                      }}
-                      className={`min-h-11 rounded-full border px-4 text-[14px] font-bold transition ${
-                        roundView === option
-                          ? 'border-[#1F4E79] bg-[#E6EBF3] text-[#132646]'
-                          : 'border-[#DCE7EE] bg-white text-[#5A6B73] hover:border-[#9CB7C8]'
-                      }`}
-                    >
-                      {option === 'current' ? '현재' : `${option}차`}
-                    </button>
-                  ),
-                )}
+              <div className="flex flex-wrap items-center gap-2">
+                <label htmlFor="hq-round-view" className="text-[14px] font-extrabold text-[#1F2933]">
+                  회차 보기
+                </label>
+                {/*
+                  칩을 나열하면 회차가 쌓일수록 화면을 잠식한다(라이브에 이미 17차까지 있었다).
+                  드롭다운은 회차 수와 무관하게 한 줄을 차지하고, 현재 선택도 항상 보인다.
+                */}
+                <select
+                  id="hq-round-view"
+                  value={roundView === 'current' ? 'current' : String(roundView)}
+                  onChange={(event) => {
+                    const raw = event.target.value;
+                    // 상태 필터·요약 칩은 '현재' 기준(teamCell)으로만 계산된다.
+                    // N차 화면에 '현재' 기준 필터가 남으면 3차를 마감한 조가
+                    // 현재 4차 진행 중이라는 이유로 그리드에서 사라진다.
+                    setStatusFilter('전체');
+                    setRoundView(raw === 'current' ? 'current' : (Number(raw) as RoundView));
+                  }}
+                  className="min-h-11 rounded-xl border-2 border-[#C4D8E4] bg-white px-3 text-[16px] font-bold text-[#1F4E79] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#23B2C3]/40"
+                >
+                  <option value="current">현재</option>
+                  {Array.from({ length: maxSequence }, (_, index) => index + 1).map((n) => (
+                    <option key={n} value={String(n)}>{`${n}차`}</option>
+                  ))}
+                </select>
+                {roundView !== 'current' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter('전체');
+                      setRoundView('current');
+                    }}
+                    className="min-h-11 rounded-xl border border-[#C4D8E4] bg-white px-3 text-[14px] font-bold text-[#5A6B73]"
+                  >
+                    현재로
+                  </button>
+                ) : null}
               </div>
               {roundView !== 'current' ? (
                 <div className="rounded-lg border border-[#C4D8E4] bg-[#EEF4F8] px-3 py-2 text-[13px] font-bold text-[#1F4E79]">
@@ -1304,9 +1319,15 @@ export default function HqGrid() {
         ))}
       </div>
 
-      <p className="mt-4 text-[12px] font-semibold text-[#5A6B73]">
-        지각 후 조퇴한 참여자는 지각과 조퇴 집계에 모두 포함될 수 있습니다. 공개 HQ에는 개인 이름이 표시되지 않습니다.
-      </p>
+      {/*
+        운영 모드에서만 남긴다. 송출 화면에서 12px 각주는 8~15m에서 읽히지 않으므로
+        정보가 아니라 노이즈이고, 그 자리는 카드가 쓸 세로 예산을 잠식한다.
+      */}
+      {opsMode ? (
+        <p className="mt-4 text-[12px] font-semibold text-[#5A6B73]">
+          지각 후 조퇴한 참여자는 지각과 조퇴 집계에 모두 포함될 수 있습니다. 공개 HQ에는 개인 이름이 표시되지 않습니다.
+        </p>
+      ) : null}
 
       {opsMode ? (
         <div className="mt-6">
