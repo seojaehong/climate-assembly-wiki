@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyAttendanceAction,
+  formatCheckTime,
   attendanceSummary,
   classifyAttendanceError,
   isEligibleDuringRound,
@@ -205,5 +206,22 @@ describe('applyAttendanceAction — 낙관적 반영 (서버 attendance_set과 �
     applyAttendanceAction(original, 'present', AT);
     expect(original.base_status).toBe('unconfirmed');
     expect(original.checked_in_at).toBeNull();
+  });
+});
+
+describe('formatCheckTime — 행에 붙는 시각 표기', () => {
+  it('오전·오후와 분을 사람이 읽는 형태로 낸다', () => {
+    expect(formatCheckTime(new Date(2026, 7, 29, 15, 52).toISOString())).toBe('오후 3:52');
+    expect(formatCheckTime(new Date(2026, 7, 29, 9, 5).toISOString())).toBe('오전 9:05');
+  });
+
+  it('자정과 정오를 12시로 쓴다 — 0시로 쓰면 현장에서 오독한다', () => {
+    expect(formatCheckTime(new Date(2026, 7, 29, 0, 30).toISOString())).toBe('오전 12:30');
+    expect(formatCheckTime(new Date(2026, 7, 29, 12, 0).toISOString())).toBe('오후 12:00');
+  });
+
+  it('값이 없거나 깨졌으면 빈 문자열 — 화면에 Invalid Date를 띄우지 않는다', () => {
+    expect(formatCheckTime(null)).toBe('');
+    expect(formatCheckTime('not-a-date')).toBe('');
   });
 });

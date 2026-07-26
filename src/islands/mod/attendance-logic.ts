@@ -145,3 +145,20 @@ export function applyAttendanceAction<T extends AttendanceStateFields>(
   // present · late: 입장 시각을 새로 찍고 조퇴 표시를 지운다. 지각 여부만 갈린다.
   return { ...row, base_status: 'present', checked_in_at: occurredAt, is_late: action === 'late', checked_out_at: null, is_early_leave: false };
 }
+
+/**
+ * 행에 붙는 입실·퇴실 시각 표기. `오후 3:52` 형태.
+ *
+ * `toLocaleTimeString`을 쓰지 않는다 — 환경마다 '오후 3:52:00'·'3:52 PM'으로 갈린다.
+ * 12시 표기를 0시로 쓰면 현장에서 오독하므로 12로 쓴다.
+ * 값이 없거나 깨졌으면 빈 문자열이다(화면에 Invalid Date를 띄우지 않는다).
+ */
+export function formatCheckTime(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return '';
+  const h24 = at.getHours();
+  const meridiem = h24 < 12 ? '오전' : '오후';
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${meridiem} ${h12}:${String(at.getMinutes()).padStart(2, '0')}`;
+}

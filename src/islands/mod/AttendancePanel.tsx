@@ -9,8 +9,16 @@ import {
   type AttendanceRosterRow,
 } from '../../lib/attendance';
 import {
-  applyAttendanceAction, attendanceSummary, classifyAttendanceError, type AttendanceAction,
+  applyAttendanceAction, attendanceSummary, classifyAttendanceError, formatCheckTime,
+  type AttendanceAction,
 } from './attendance-logic';
+
+/** ISO 문자열을 datetime-local 입력이 받는 로컬 시각 문자열로 바꾼다. */
+function toLocalInputValue(iso: string): string {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return localDateTimeNow();
+  return new Date(at.getTime() - at.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
 
 function localDateTimeNow(): string {
   const now = new Date();
@@ -319,21 +327,11 @@ export default function AttendancePanel({
           </div>
         </div>
 
-        {timeEdit ? (
-          <div className="rounded-xl border-2 border-[#23B2C3] bg-[#F2FCFD] p-4">
-            <div className="font-extrabold text-[#1F4E79]">{timeEdit.row.member_name} · {timeEdit.action === 'late' ? '입실' : '퇴실'} 시각</div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <input type="datetime-local" value={timeValue} onChange={(event) => setTimeValue(event.target.value)} className="min-h-12 rounded-lg border border-[#9CB7C8] px-3" />
-              <button type="button" onClick={() => void saveTimeAction()} className="min-h-12 rounded-lg bg-[#23B2C3] px-4 text-white font-bold">저장</button>
-              <button type="button" onClick={() => setTimeEdit(null)} className="min-h-12 rounded-lg border border-[#9CB7C8] px-4 font-bold">취소</button>
-            </div>
-          </div>
-        ) : null}
-
         <div className="max-h-[520px] overflow-y-auto rounded-xl border border-[#DCE7EE]">
           {visibleRows.map((row) => {
             // 이 행만 잠근다. 다른 행은 그대로 눌러 다음 사람을 계속 찍을 수 있다.
             const rowPending = Boolean(pendingRows[row.assignment_id]);
+            const isEditingRow = timeEdit?.row.assignment_id === row.assignment_id;
             return (
             <div
               key={row.assignment_id}
@@ -361,10 +359,71 @@ export default function AttendancePanel({
               </div>
               <div className="mt-2 flex flex-wrap gap-2 pl-7">
                 <button type="button" onClick={() => void runAction(row, 'present')} disabled={rowPending} className="min-h-11 rounded-lg bg-[#4F9D3A] px-4 text-[15px] font-bold text-white active:scale-95 transition-transform duration-75 disabled:opacity-45">출석</button>
-                <button type="button" onClick={() => { setTimeEdit({ row, action: 'late' }); setTimeValue(localDateTimeNow()); }} disabled={rowPending} className="min-h-11 rounded-lg bg-[#F5A623] px-4 text-[15px] font-bold text-white active:scale-95 transition-transform duration-75 disabled:opacity-45">지각</button>
+                <button type="button" onClick={() => void runAction(row, 'late')} disabled={rowPending} className="min-h-11 rounded-lg bg-[#F5A623] px-4 text-[15px] font-bold text-white active:scale-95 transition-transform duration-75 disabled:opacity-45">지각</button>
                 <button type="button" onClick={() => void runAction(row, 'absent')} disabled={rowPending} className="min-h-11 rounded-lg bg-[#DC2626] px-4 text-[15px] font-bold text-white active:scale-95 transition-transform duration-75 disabled:opacity-45">결석</button>
-                <button type="button" onClick={() => { setTimeEdit({ row, action: 'early_leave' }); setTimeValue(localDateTimeNow()); }} disabled={rowPending} className="min-h-11 rounded-lg bg-[#2E75B6] px-4 text-[15px] font-bold text-white active:scale-95 transition-transform duration-75 disabled:opacity-45">조퇴</button>
+                <button type="button" onClick={() => void runAction(row, 'early_leave')} disabled={rowPending} className="min-h-11 rounded-lg bg-[#2E75B6] px-4 text-[15px] font-bold text-white active:scale-95 transition-transform duration-75 disabled:opacity-45">조퇴</button>
                 <button type="button" onClick={() => { setMemberEdit(row); setMemberId(row.official_id); setMemberName(row.member_name); }} className="min-h-11 rounded-lg border border-[#9CB7C8] px-4 text-[15px] font-bold text-[#1F4E79] active:scale-95 transition-transform duration-75">명단 정정</button>
+              </div>
+
+              {/* 기록된 시각은 그 행에서 바로 보이고, 고칠 때만 편집기가 이 자리에 열린다.
+                  목록 맨 위 고정 패널은 누른 행에서 멀어 누구 것인지 잃게 만들었다. */}
+              {(row.is_late || row.is_early_leave) && !isEditingRow ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2 pl-7 text-[14px]">
+                  {row.is_late && row.checked_in_at ? (
+                    <span className="font-bold text-[#6B4B00]">입실 {formatCheckTime(row.checked_in_at)}</span>
+                  ) : null}
+                  {row.is_early_leave && row.checked_out_at ? (
+                    <span className="font-bold text-[#1F4E79]">퇴실 {formatCheckTime(row.checked_out_at)}</span>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const action = row.is_early_leave ? 'early_leave' : 'late';
+                      const current = action === 'early_leave' ? row.checked_out_at : row.checked_in_at;
+                      setTimeEdit({ row, action });
+                      setTimeValue(current ? toLocalInputValue(current) : localDateTimeNow());
+                    }}
+                    className="min-h-11 rounded-lg border border-[#9CB7C8] px-3 font-bold text-[#1F4E79] active:scale-95 transition-transform duration-75"
+                  >
+                    시각 수정
+                  </button>
+                </div>
+              ) : null}
+
+              {isEditingRow ? (
+                <div className="mt-2 ml-7 rounded-xl border-2 border-[#23B2C3] bg-[#F2FCFD] p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-extrabold text-[#1F4E79]">
+                      {timeEdit?.action === 'late' ? '입실' : '퇴실'} 시각 수정
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="시각 수정 닫기"
+                      onClick={() => setTimeEdit(null)}
+                      className="min-h-11 min-w-11 rounded-lg text-[22px] font-bold text-[#5A6B73]"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <input
+                      type="datetime-local"
+                      autoFocus
+                      value={timeValue}
+                      onChange={(event) => setTimeValue(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Escape') setTimeEdit(null);
+                        if (event.key === 'Enter') void saveTimeAction();
+                      }}
+                      className="min-h-12 rounded-lg border border-[#9CB7C8] px-3"
+                    />
+                    <button type="button" onClick={() => void saveTimeAction()} className="min-h-12 rounded-lg bg-[#23B2C3] px-4 font-bold text-white active:scale-95 transition-transform duration-75">저장</button>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* 비활성화는 파괴적 조작이라 상태 버튼들과 한 줄에 두지 않는다. */}
+              <div className="mt-2 pl-7">
                 <button
                   type="button"
                   onClick={async () => {
