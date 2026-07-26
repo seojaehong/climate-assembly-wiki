@@ -1,5 +1,12 @@
 # 운영 DB 적용 런북 — 2026-07-26 미적용 마이그레이션 2건
 
+> ## ✅ 2026-07-26 적용 완료
+> §1·§2 모두 실행됐고 §3 검증을 anon 키로 교차 확인했다.
+> `hq_teams()` 6열(`table_no` 포함) · 16행 유지 · `table_no` 전부 null(입력 전 정상) ·
+> `attendance_team_unlock` → `42501 permission denied` · `attendance_team_unlock_by_code` 정상 ·
+> `attendance_hq_set_table_no` 무효 토큰에 `P0001 attendance authorization required`.
+> **이 문서는 이후 같은 상황의 참고용으로 남긴다. 다시 실행할 필요 없다.**
+
 **대상**: 운영 Supabase (`PUBLIC_SUPABASE_URL`이 가리키는 프로젝트)
 **실행 위치**: Supabase 대시보드 → SQL Editor
 **소요**: 1분. 다운타임 없음. 단 §2 실행 중 `hq_teams()`가 **수 밀리초간 존재하지 않는다** — 행사 중에는 하지 말 것.
@@ -13,8 +20,8 @@ anon 키로 운영 DB에 직접 확인한 결과다.
 |---|---|---|
 | `20260726_attendance_unlock_by_join_code.sql` | ✅ 적용됨 | `attendance_team_unlock_by_code` 정상 응답 |
 | `20260726_revoke_public_execute_attendance.sql` | ✅ 적용됨 | `attendance_token_row` → `42501 permission denied` |
-| **`20260726_revoke_pin_unlock.sql`** | ❌ **미적용** | `attendance_team_unlock(p_join_code, p_pin)`이 anon 키로 **실행됨**(권한 오류 없음) |
-| **`20260726_team_table_no.sql`** | ❌ **미적용** | `hq_teams()`가 5열만 반환(`table_no` 없음), `attendance_hq_set_table_no` → `PGRST202` |
+| `20260726_revoke_pin_unlock.sql` | ❌ 미적용 → **✅ 2026-07-26 적용** | (적용 전) `attendance_team_unlock`이 anon 키로 실행됨 → (적용 후) `42501` |
+| `20260726_team_table_no.sql` | ❌ 미적용 → **✅ 2026-07-26 적용** | (적용 전) `hq_teams()` 5열, `attendance_hq_set_table_no` → `PGRST202` → (적용 후) 6열, `P0001` |
 
 **미적용 상태로 두면**
 

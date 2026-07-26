@@ -366,10 +366,12 @@ ZIP 형식 자체는 python `zipfile`로 저장소 밖에서 확인했다(`testz
 
 ### 조 테이블 번호 (US-017)
 
-- [ ] ★ **가장 먼저 — `supabase/migrations/20260726_team_table_no.sql`이 배포 DB에 실제로
-      적용돼 있는지 확인할 것.** 적용되지 않았으면 저장 버튼이 항상 실패하고 카드에는
-      번호가 영원히 뜨지 않는다. check·vitest·빌드 어느 것도 이것을 알려주지 못한다
-      (§6과 같은 이유 — `HqTeam`은 손유지 타입이다).
+- [x] ★ ~~가장 먼저 — `supabase/migrations/20260726_team_table_no.sql`이 배포 DB에 실제로
+      적용돼 있는지 확인할 것.~~ **2026-07-26 적용 완료.** 실제로 미적용 상태였고
+      (`hq_teams()` 5열 · `attendance_hq_set_table_no` → `PGRST202`), 같은 날 SQL Editor로
+      적용한 뒤 anon 키로 6열·16행·`P0001` 인가거부를 교차 확인했다. 경위는
+      `docs/db-runbook-2026-07-26.md`. 경고대로 check·vitest·빌드 어느 것도
+      이것을 잡지 못했다 (§6과 같은 이유 — `HqTeam`은 손유지 타입이다).
       확인: `select table_no from climate_vote.team limit 1;` / `select * from climate_vote.hq_teams() limit 1;`(6열)
 - [ ] ★ **이 story 이후 송출 카드에서 88px 득표수 아래가 잘리는지 확인할 것.**
       테이블 번호 줄(28px)이 들어가면서 고정 소비가 265px가 됐는데 1080p 트랙내부는 262px다 —
