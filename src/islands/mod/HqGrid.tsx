@@ -364,6 +364,7 @@ function historyFigures(
 function TeamDetailPanel({
   team,
   cell,
+  attendance,
   round,
   votes,
   entries,
@@ -376,6 +377,7 @@ function TeamDetailPanel({
   team: HqTeam;
   // 회차 보기 중에는 '미실시'가 올 수 있다 — 라벨·참여를 문자열로만 그리므로 그대로 받는다.
   cell: TeamCardCell;
+  attendance: HqAttendanceSummary | undefined;
   round: Round | null;
   votes: Vote[];
   entries: TeamRoundHistoryEntry[];
@@ -442,13 +444,54 @@ function TeamDetailPanel({
               <div className="mt-1 text-[20px] font-extrabold text-[#1F2933]">{cell.label}</div>
             </div>
             <div className="rounded-xl bg-[#EEF4F8] px-4 py-3">
-              <div className="text-[12px] font-bold text-[#5A6B73]">참여</div>
+              {/* '참여'만 쓰면 아래 출석 숫자와 같은 /12라 운영자가 소리 내어 읽을 때 뒤섞인다. */}
+              <div className="text-[12px] font-bold text-[#5A6B73]">투표 참여</div>
               <div className="mt-1 text-[20px] font-extrabold text-[#1F4E79] tr-num">{cell.participation}</div>
             </div>
           </div>
         </header>
 
         <div className="space-y-5 p-5 sm:p-7">
+          {/* 출석은 투표보다 먼저 본다 — 조에 사람이 몇인지가 결과를 읽는 전제다.
+              불러오지 못했을 때 블록을 지우면 '출석 0'이나 '기능 없음'으로 읽히므로 사유를 남긴다. */}
+          <div className="rounded-2xl border border-[#DCE7EE] bg-white p-5">
+            <h3 className="text-[19px] font-extrabold text-[#1F2933]">이 조의 출석 현황</h3>
+            {attendance ? (
+              <>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-[34px] font-extrabold leading-none text-[#1F4E79] tr-num">
+                    {attendance.current_present}
+                  </span>
+                  <span className="text-[20px] font-bold text-[#5A6B73] tr-num">/{attendance.roster_total}명 현재 참석</span>
+                </div>
+                <dl className="mt-4 grid grid-cols-4 gap-2 text-center">
+                  {[
+                    { label: '지각', value: attendance.late, color: '#6B4B00' },
+                    { label: '조퇴', value: attendance.early_leave, color: '#6B4B00' },
+                    { label: '결석', value: attendance.absent, color: '#8B1A1A' },
+                    { label: '미확인', value: attendance.unconfirmed, color: '#5A6B73' },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-xl bg-[#EEF4F8] px-2 py-3">
+                      <dt className="text-[13px] font-bold text-[#5A6B73]">{item.label}</dt>
+                      <dd className="mt-1 text-[22px] font-extrabold tr-num" style={{ color: item.color }}>
+                        {item.value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                {attendance.roster_total === 0 ? (
+                  <p className="mt-3 text-[14px] font-semibold text-[#5A6B73]">
+                    이 조에 배정된 명단이 아직 없습니다.
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <div className="mt-3 rounded-xl bg-[#EEF1F3] px-4 py-3 text-[14px] font-semibold text-[#5A6B73]">
+                출석 정보를 불러오지 못했습니다. 화면 상단의 새로고침으로 다시 시도해 주세요.
+              </div>
+            )}
+          </div>
+
           {/* 회차가 하나뿐인 조에서는 목록을 그리지 않는다 — 고를 것이 없으면 화면만 어지럽다. */}
           {entries.length > 1 ? (
             <div className="rounded-2xl border border-[#DCE7EE] bg-white p-5">
@@ -572,10 +615,6 @@ function TeamDetailPanel({
                 </div>
               ) : null}
 
-              <div className="rounded-2xl border border-[#F0D28A] bg-[#FFF9E8] p-4 text-[14px] leading-relaxed text-[#5B450B]">
-                <strong className="block text-[#6B4B00]">운영 참고용 조별 투표 결과</strong>
-                이 결과는 조별 논의 흐름을 확인하기 위한 것이며, 공식 권고안으로 확정된 내용이 아닙니다.
-              </div>
             </>
           ) : (
             <div className="rounded-2xl border border-[#DCE7EE] bg-white p-8 text-center">
@@ -1352,6 +1391,7 @@ export default function HqGrid() {
           team={selectedTeam}
           // 2차를 보는 중에 헤더만 3차(현재) 숫자를 보여주면 운영자가 그 숫자를 소리 내어 읽는다.
           cell={cardCells.get(selectedTeam.id) ?? cells.get(selectedTeam.id) ?? { label: '대기', participation: `0/${selectedTeam.capacity}` }}
+          attendance={attendanceByTeam[selectedTeam.id]}
           round={detailRound}
           votes={detailVotes}
           entries={historyEntries}
