@@ -227,3 +227,21 @@ export function broadcastCardAvailableWidth(viewportWidth: number): number {
   const card = (grid - BROADCAST_GRID_GAP_PX * (BROADCAST_GRID_COLS - 1)) / BROADCAST_GRID_COLS;
   return card - BROADCAST_CARD_BOX_X;
 }
+
+/**
+ * 송출 모드가 15조를 한 화면에 넣으려면 필요한 최소 뷰포트 높이.
+ * 그리드 바닥값(BROADCAST_GRID_MIN_HEIGHT) + 헤더·푸터(BROADCAST_GRID_CHROME_PX).
+ */
+export const BROADCAST_REQUIRED_VIEWPORT_HEIGHT = BROADCAST_GRID_MIN_HEIGHT + BROADCAST_GRID_CHROME_PX;
+
+/**
+ * 화면이 낮아 아래 조가 잘리는 픽셀 수. 충분하면 0이다.
+ *
+ * 바닥값을 없애 글자를 더 줄이는 대신 **부족하다는 사실을 드러내는** 쪽을 택했다.
+ * 무인 송출 화면에는 스크롤할 사람이 없어서, 조용히 잘리면 3분과가 행사 내내 안 보인다.
+ * 측정 전(0)·음수에서는 0을 돌려준다 — SSR과 첫 렌더에서 오경보를 내지 않기 위함이다.
+ */
+export function broadcastViewportShortfall(viewportHeight: number): number {
+  if (!Number.isFinite(viewportHeight) || viewportHeight <= 0) return 0;
+  return Math.max(0, Math.ceil(BROADCAST_REQUIRED_VIEWPORT_HEIGHT - viewportHeight));
+}

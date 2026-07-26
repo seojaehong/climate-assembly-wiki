@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   isOpsMode,
   participationParts,
+  broadcastViewportShortfall,
   BROADCAST_STATUS_STYLE,
   BROADCAST_BORDER_COLOR,
   BROADCAST_TYPE_TOKENS,
@@ -308,5 +309,25 @@ describe('송출 카드 폭 예산', () => {
     expect(BROADCAST_GRID_MIN_WIDTH).toBeGreaterThanOrEqual(
       (floorWidth + BROADCAST_CARD_BOX_X) * 5 + BROADCAST_GRID_GAP_PX * 4,
     );
+  });
+});
+
+describe('broadcastViewportShortfall — 송출 화면이 너무 낮을 때', () => {
+  it('1080p 이상에서는 부족분이 없다', () => {
+    expect(broadcastViewportShortfall(1080)).toBe(0);
+    expect(broadcastViewportShortfall(1440)).toBe(0);
+  });
+
+  it('952px 미만에서는 부족한 픽셀 수를 그대로 알려준다', () => {
+    // 그리드 바닥값(792) + 헤더·푸터(160) = 952. 이 아래로는 3행이 뷰포트를 넘는다.
+    expect(broadcastViewportShortfall(768)).toBe(184);
+    expect(broadcastViewportShortfall(900)).toBe(52);
+    expect(broadcastViewportShortfall(951)).toBe(1);
+    expect(broadcastViewportShortfall(952)).toBe(0);
+  });
+
+  it('측정 전(0)이나 음수 입력에서는 경고하지 않는다 — SSR·초기 렌더에서 오경보를 내지 않기 위함', () => {
+    expect(broadcastViewportShortfall(0)).toBe(0);
+    expect(broadcastViewportShortfall(-100)).toBe(0);
   });
 });

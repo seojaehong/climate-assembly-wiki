@@ -32,7 +32,10 @@ import {
   type TeamRoundHistoryEntry,
 } from './hq-grid-logic';
 import { maxRoundSequence } from './round-sequence';
-import { isOpsMode, participationParts, BROADCAST_STATUS_STYLE, broadcastFontCss } from './hq-broadcast-logic';
+import {
+  isOpsMode, participationParts, BROADCAST_STATUS_STYLE, broadcastFontCss,
+  broadcastViewportShortfall, BROADCAST_REQUIRED_VIEWPORT_HEIGHT,
+} from './hq-broadcast-logic';
 import type { BroadcastTypeKey } from './hq-broadcast-logic';
 import { renderResultSvg } from './result-image';
 import { downloadBlob, resultZipFileName, svgToPngBlob, RESULT_IMAGE_SCALE } from './svg-to-png';
@@ -672,6 +675,10 @@ export default function HqGrid() {
   const [opsMode] = useState(() =>
     typeof window === 'undefined' ? false : isOpsMode(window.location.search),
   );
+  // 송출 화면 높이를 실제로 잰다. 스크롤바가 생겨도 무인 화면에는 알아챌 사람이 없다.
+  const [viewportHeight, setViewportHeight] = useState(
+    typeof window === 'undefined' ? 0 : window.innerHeight,
+  );
   const [teams, setTeams] = useState<HqTeam[]>([]);
   const [rounds, setRounds] = useState<Round[]>([]);
   const [voteCounts, setVoteCounts] = useState<Record<string, number>>({});
@@ -818,6 +825,15 @@ export default function HqGrid() {
       ),
     [rounds, roundView, sequenceCounts, sequenceState, teams, voteCounts],
   );
+  useEffect(() => {
+    if (opsMode) return;
+    const onResize = () => setViewportHeight(window.innerHeight);
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [opsMode]);
+  const shortfall = opsMode ? 0 : broadcastViewportShortfall(viewportHeight);
+
   // 조 도착 순서가 아니라 분과 번호 순으로 고정한다(전체 → 1분과 → 2분과 → 3분과).
   const subgroups = useMemo(() => subgroupFilterOptions(teams), [teams]);
   const visibleTeams = useMemo(
@@ -1245,6 +1261,19 @@ export default function HqGrid() {
                 {exportState.error}
               </div>
             ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {!opsMode && shortfall > 0 ? (
+        <div
+          role="alert"
+          className="mb-3 rounded-2xl border-2 border-[#B45309] bg-[#FEF3C7] px-5 py-4 text-[#7C2D12]"
+        >
+          <div className="text-[28px] font-extrabold leading-tight">화면이 {shortfall}px 낮아 아래 조가 보이지 않습니다</div>
+          <div className="mt-1 text-[20px] font-bold">
+            송출에는 세로 {BROADCAST_REQUIRED_VIEWPORT_HEIGHT}px 이상이 필요합니다 (현재 {viewportHeight}px).
+            브라우저를 전체화면(F11)으로 바꾸거나 해상도를 높여 주세요.
           </div>
         </div>
       ) : null}
