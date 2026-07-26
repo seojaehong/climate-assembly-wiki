@@ -109,3 +109,39 @@ export function isEligibleDuringRound(
   const closed = new Date(roundClosedAt).getTime();
   return checkedIn <= closed && checkedOut >= opened;
 }
+
+/** 낙관적 반영이 다룰 최소 형태. AttendanceRosterRow가 이 모양을 만족한다. */
+export type AttendanceStateFields = {
+  base_status: AttendanceBaseStatus;
+  checked_in_at: string | null;
+  is_late: boolean;
+  checked_out_at: string | null;
+  is_early_leave: boolean;
+};
+
+/**
+ * 탭한 즉시 화면에 반영할 상태를 만든다. **서버 attendance_set과 규칙이 같아야 한다**
+ * (20260725_attendance_roster_hq.sql:283~305). 어긋나면 화면이 잠깐 거짓말을 하고
+ * 다음 폴링에서 값이 튄다.
+ *
+ * 왜 필요한가: 탭 → RPC 왕복 → 명단 전체 재조회까지 기다리면 현장 와이파이에서
+ * 수백 ms 동안 아무 변화가 없어 모더레이터가 두 번 누른다. 즉시 반영하고
+ * 실패 시 되돌리는 편이 체감도 정확도도 낫다.
+ *
+ * 원본을 변형하지 않는다 — 실패했을 때 되돌릴 원본이 필요하기 때문이다.
+ */
+export function applyAttendanceAction<T extends AttendanceStateFields>(
+  row: T,
+  action: AttendanceAction,
+  occurredAt: string,
+): T {
+  if (action === 'absent') {
+    return { ...row, base_status: 'absent', checked_in_at: null, is_late: false, checked_out_at: null, is_early_leave: false };
+  }
+  if (action === 'early_leave') {
+    // 서버는 checked_in_at을 coalesce로 보존한다 — 입장 기록이 없으면 조퇴 시각을 함께 쓴다.
+    return { ...row, base_status: 'present', checked_in_at: row.checked_in_at ?? occurredAt, checked_out_at: occurredAt, is_early_leave: true };
+  }
+  // present · late: 입장 시각을 새로 찍고 조퇴 표시를 지운다. 지각 여부만 갈린다.
+  return { ...row, base_status: 'present', checked_in_at: occurredAt, is_late: action === 'late', checked_out_at: null, is_early_leave: false };
+}

@@ -36,7 +36,11 @@ export type BroadcastStatusStyle = { bg: string; text: string; dot: string; band
  * 그래서 클래스 문자열과 달리 여기서 단위 테스트로 지킬 수 있다.
  */
 export const BROADCAST_STATUS_STYLE: Record<TeamCellResult['label'], BroadcastStatusStyle> = {
-  대기: { bg: '#E2E8EC', text: '#1F2933', dot: '#4A5560', band: '#6B7683' },
+  // 세 상태를 하나의 색 여정으로 잇는다: 옅은 청록(대기) → 진한 청록(투표중) → 네이비(마감).
+  // 대기를 무채색 회색으로 두면 행사 시작 전 15개 카드가 전부 회색이라 화면이 죽어 보이고,
+  // 투표중과 계열이 끊겨 "곧 저 상태가 된다"는 연속성도 사라진다.
+  // 조용함(낮은 채도·명도차)은 유지하되 계열은 같게 가져간다.
+  대기: { bg: '#DCE9EB', text: '#1F2933', dot: '#4A6B70', band: '#6E969E' },
   투표중: { bg: '#0E7C8A', text: '#FFFFFF', dot: '#FFFFFF', band: '#0E7C8A' },
   마감: { bg: '#1F4E79', text: '#FFFFFF', dot: '#FFFFFF', band: '#1F4E79' },
 };

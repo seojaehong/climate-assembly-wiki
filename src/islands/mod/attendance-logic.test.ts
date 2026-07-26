@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyAttendanceAction,
   attendanceSummary,
   classifyAttendanceError,
   isEligibleDuringRound,
@@ -141,5 +142,68 @@ describe('classifyAttendanceError', () => {
     expect(classifyAttendanceError(undefined)).toBe('transient');
     expect(classifyAttendanceError('attendance authorization expired')).toBe('transient');
     expect(classifyAttendanceError({})).toBe('transient');
+  });
+});
+
+describe('applyAttendanceAction — 낙관적 반영 (서버 attendance_set과 같은 규칙)', () => {
+  const base = {
+    assignment_id: 'a1', member_id: 'm1', official_id: 'C-001', member_name: 'X',
+    team_id: 't1', team_name: '1분과 1조', active: true,
+    base_status: 'unconfirmed' as const, checked_in_at: null, is_late: false,
+    checked_out_at: null, is_early_leave: false, updated_at: '2026-08-29T00:00:00Z',
+  };
+  const AT = '2026-08-29T01:00:00Z';
+
+  it('출석은 지각·조퇴 표시를 모두 지우고 입장 시각을 새로 찍는다', () => {
+    const r = applyAttendanceAction({ ...base, is_late: true, is_early_leave: true, checked_out_at: AT }, 'present', AT);
+    expect(r.base_status).toBe('present');
+    expect(r.checked_in_at).toBe(AT);
+    expect(r.is_late).toBe(false);
+    expect(r.checked_out_at).toBeNull();
+    expect(r.is_early_leave).toBe(false);
+  });
+
+  it('지각은 출석과 같되 is_late만 켠다', () => {
+    const r = applyAttendanceAction(base, 'late', AT);
+    expect(r.base_status).toBe('present');
+    expect(r.is_late).toBe(true);
+    expect(r.checked_in_at).toBe(AT);
+  });
+
+  it('결석은 모든 시각·표시를 지운다', () => {
+    const r = applyAttendanceAction({ ...base, base_status: 'present', checked_in_at: AT, is_late: true }, 'absent', AT);
+    expect(r.base_status).toBe('absent');
+    expect(r.checked_in_at).toBeNull();
+    expect(r.is_late).toBe(false);
+    expect(r.is_early_leave).toBe(false);
+  });
+
+  it('조퇴는 present를 유지하고 기존 입장 시각을 보존한다(coalesce)', () => {
+    const earlier = '2026-08-29T00:30:00Z';
+    const r = applyAttendanceAction({ ...base, base_status: 'present', checked_in_at: earlier }, 'early_leave', AT);
+    expect(r.base_status).toBe('present');
+    expect(r.checked_in_at).toBe(earlier);
+    expect(r.checked_out_at).toBe(AT);
+    expect(r.is_early_leave).toBe(true);
+  });
+
+  it('입장 기록 없이 조퇴하면 조퇴 시각이 입장 시각으로도 들어간다', () => {
+    const r = applyAttendanceAction(base, 'early_leave', AT);
+    expect(r.checked_in_at).toBe(AT);
+    expect(r.checked_out_at).toBe(AT);
+  });
+
+  it('지각 후 조퇴는 두 표시가 함께 남는다 — 서버와 같은 동작', () => {
+    const late = applyAttendanceAction(base, 'late', '2026-08-29T00:30:00Z');
+    const r = applyAttendanceAction(late, 'early_leave', AT);
+    expect(r.is_late).toBe(true);
+    expect(r.is_early_leave).toBe(true);
+  });
+
+  it('원본 객체를 변형하지 않는다 — 실패 시 되돌릴 원본이 필요하다', () => {
+    const original = { ...base };
+    applyAttendanceAction(original, 'present', AT);
+    expect(original.base_status).toBe('unconfirmed');
+    expect(original.checked_in_at).toBeNull();
   });
 });

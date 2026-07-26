@@ -8,7 +8,9 @@ import {
   unlockTeamAttendanceByCode,
   type AttendanceRosterRow,
 } from '../../lib/attendance';
-import { attendanceSummary, classifyAttendanceError, type AttendanceAction } from './attendance-logic';
+import {
+  applyAttendanceAction, attendanceSummary, classifyAttendanceError, type AttendanceAction,
+} from './attendance-logic';
 
 function localDateTimeNow(): string {
   const now = new Date();
@@ -48,6 +50,8 @@ export default function AttendancePanel({
   const [memberEdit, setMemberEdit] = useState<AttendanceRosterRow | null>(null);
   const [memberId, setMemberId] = useState('');
   const [memberName, setMemberName] = useState('');
+  // 지금 서버 응답을 기다리는 행. 전역 busy로 목록 전체를 얼리면 다음 사람을 못 찍는다.
+  const [pendingRows, setPendingRows] = useState<Record<string, true>>({});
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -121,18 +125,36 @@ export default function AttendancePanel({
     void unlock();
   }, [joinCode, token, unlock]);
 
+  /**
+   * 탭한 즉시 화면을 바꾸고 서버에는 뒤이어 보낸다.
+   *
+   * 이전에는 RPC 왕복 + 명단 전체 재조회를 기다린 뒤에야 화면이 바뀌어, 현장 와이파이에서
+   * 수백 ms 동안 아무 반응이 없었다. 그 침묵이 "두 번 누르게" 만든다.
+   * 실패하면 원본 행으로 정확히 되돌리고 사유를 남긴다.
+   *
+   * 성공 후 전체 재조회를 하지 않는다 — 15초 폴링이 어차피 정본으로 맞춘다.
+   */
   const runAction = async (row: AttendanceRosterRow, action: AttendanceAction, occurredAt?: string) => {
-    if (!token) return;
-    setBusy(true);
+    if (!token || pendingRows[row.assignment_id]) return;
+    const at = occurredAt ?? new Date().toISOString();
+    const before = row;
+    setRows((current) =>
+      current.map((r) => (r.assignment_id === row.assignment_id ? applyAttendanceAction(r, action, at) : r)),
+    );
+    setPendingRows((current) => ({ ...current, [row.assignment_id]: true }));
+    setMessage(null);
     try {
-      await setAttendance(token, row.assignment_id, action, occurredAt);
-      await load();
-      setMessage(`${row.member_name} · ${action === 'present' ? '출석' : action === 'absent' ? '결석' : action === 'late' ? '지각' : '조퇴'} 저장`);
+      await setAttendance(token, row.assignment_id, action, at);
     } catch (error) {
       console.error('[attendance] status update failed', error);
-      setMessage('출석 상태를 저장하지 못했습니다.');
+      setRows((current) => current.map((r) => (r.assignment_id === before.assignment_id ? before : r)));
+      setMessage(`${before.member_name} 님 저장에 실패했습니다. 다시 눌러 주세요.`);
     } finally {
-      setBusy(false);
+      setPendingRows((current) => {
+        const next = { ...current };
+        delete next[row.assignment_id];
+        return next;
+      });
     }
   };
 
@@ -309,8 +331,14 @@ export default function AttendancePanel({
         ) : null}
 
         <div className="max-h-[520px] overflow-y-auto rounded-xl border border-[#DCE7EE]">
-          {visibleRows.map((row) => (
-            <div key={row.assignment_id} className="border-b border-[#E6EBF3] p-3 last:border-0">
+          {visibleRows.map((row) => {
+            // 이 행만 잠근다. 다른 행은 그대로 눌러 다음 사람을 계속 찍을 수 있다.
+            const rowPending = Boolean(pendingRows[row.assignment_id]);
+            return (
+            <div
+              key={row.assignment_id}
+              className={`border-b border-[#E6EBF3] p-3 last:border-0 transition-opacity ${rowPending ? 'opacity-60' : ''}`}
+            >
               <div className="flex flex-wrap items-center gap-2">
                 <input
                   type="checkbox"
@@ -331,12 +359,12 @@ export default function AttendancePanel({
                 </div>
                 <span className="rounded-full bg-[#EEF4F8] px-3 py-1 text-[13px] font-bold text-[#1F4E79]">{statusLabel(row)}</span>
               </div>
-              <div className="mt-2 flex flex-wrap gap-1.5 pl-7">
-                <button type="button" onClick={() => void runAction(row, 'present')} className="min-h-10 rounded-lg bg-[#4F9D3A] px-3 text-[13px] font-bold text-white">출석</button>
-                <button type="button" onClick={() => { setTimeEdit({ row, action: 'late' }); setTimeValue(localDateTimeNow()); }} className="min-h-10 rounded-lg bg-[#F5A623] px-3 text-[13px] font-bold text-white">지각</button>
-                <button type="button" onClick={() => void runAction(row, 'absent')} className="min-h-10 rounded-lg bg-[#DC2626] px-3 text-[13px] font-bold text-white">결석</button>
-                <button type="button" onClick={() => { setTimeEdit({ row, action: 'early_leave' }); setTimeValue(localDateTimeNow()); }} className="min-h-10 rounded-lg bg-[#2E75B6] px-3 text-[13px] font-bold text-white">조퇴</button>
-                <button type="button" onClick={() => { setMemberEdit(row); setMemberId(row.official_id); setMemberName(row.member_name); }} className="min-h-10 rounded-lg border border-[#9CB7C8] px-3 text-[13px] font-bold text-[#1F4E79]">명단 정정</button>
+              <div className="mt-2 flex flex-wrap gap-2 pl-7">
+                <button type="button" onClick={() => void runAction(row, 'present')} disabled={rowPending} className="min-h-11 rounded-lg bg-[#4F9D3A] px-4 text-[15px] font-bold text-white active:scale-95 transition-transform duration-75 disabled:opacity-45">출석</button>
+                <button type="button" onClick={() => { setTimeEdit({ row, action: 'late' }); setTimeValue(localDateTimeNow()); }} disabled={rowPending} className="min-h-11 rounded-lg bg-[#F5A623] px-4 text-[15px] font-bold text-white active:scale-95 transition-transform duration-75 disabled:opacity-45">지각</button>
+                <button type="button" onClick={() => void runAction(row, 'absent')} disabled={rowPending} className="min-h-11 rounded-lg bg-[#DC2626] px-4 text-[15px] font-bold text-white active:scale-95 transition-transform duration-75 disabled:opacity-45">결석</button>
+                <button type="button" onClick={() => { setTimeEdit({ row, action: 'early_leave' }); setTimeValue(localDateTimeNow()); }} disabled={rowPending} className="min-h-11 rounded-lg bg-[#2E75B6] px-4 text-[15px] font-bold text-white active:scale-95 transition-transform duration-75 disabled:opacity-45">조퇴</button>
+                <button type="button" onClick={() => { setMemberEdit(row); setMemberId(row.official_id); setMemberName(row.member_name); }} className="min-h-11 rounded-lg border border-[#9CB7C8] px-4 text-[15px] font-bold text-[#1F4E79] active:scale-95 transition-transform duration-75">명단 정정</button>
                 <button
                   type="button"
                   onClick={async () => {
@@ -354,13 +382,14 @@ export default function AttendancePanel({
                     }
                   }}
                   disabled={busy}
-                  className="min-h-10 rounded-lg border border-[#DC2626] px-3 text-[13px] font-bold text-[#B91C1C]"
+                  className="min-h-11 rounded-lg border border-[#DC2626] px-4 text-[15px] font-bold text-[#B91C1C] active:scale-95 transition-transform duration-75"
                 >
                   비활성화
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <button
