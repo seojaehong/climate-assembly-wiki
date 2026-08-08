@@ -1,5 +1,16 @@
 ---
 import '../styles/global.css';
+
+// 역할별 사용 가이드 허브 — 큰 그림(6단계) → 역할 선택 → 공통 원칙.
+// 기존 조 모더레이터 조작법(라운드 투표·타이머·대리 입력)은 /mod-help/team 으로 이동했다.
+const steps = [
+  { no: 1, title: '조 코드 입장', body: '6자리 조 접속코드로 콘솔에 들어갑니다.' },
+  { no: 2, title: '조별 기록 (저장)', body: '주제별 핵심의견과 근거를 적고 중간중간 저장합니다.' },
+  { no: 3, title: '최종 제출 (잠금)', body: '완성되면 최종 제출합니다. 이후에는 본부만 다시 엽니다.' },
+  { no: 4, title: '분과·전체 투표 (QR)', body: '참여자가 QR을 스캔해 모든 의제에 무기명으로 응답합니다.' },
+  { no: 5, title: '결과 공개', body: '운영진이 집계를 확인한 뒤 결과를 공개합니다.' },
+  { no: 6, title: '이미지·보고서 내보내기', body: '결과 이미지(PNG)와 결과보고서(DOCX)를 저장합니다.' },
+];
 ---
 <!doctype html>
 <html lang="ko" class="light" data-theme="light"><head>
@@ -7,7 +18,7 @@ import '../styles/global.css';
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="robots" content="noindex,nofollow" />
   <meta name="color-scheme" content="light" />
-  <title>모더레이터 콘솔 사용법 [/mod-help]</title>
+  <title>사용 가이드 [/mod-help]</title>
   <style is:global>
     body { font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif; }
   </style>
@@ -15,121 +26,156 @@ import '../styles/global.css';
   <main class="max-w-3xl mx-auto px-6 py-10 print:py-0 print:px-0">
     <header class="mb-8 print:mb-4">
       <p class="font-mono text-[12px] font-semibold uppercase text-[#23B2C3] mb-2" style="letter-spacing:.14em">
-        기후시민회의 · Moderator Console
+        기후시민회의 · User Guide
       </p>
       <h1 class="text-[28px] font-extrabold text-[#1F4E79] leading-snug mb-2" style="letter-spacing:-.02em">
-        모더레이터 콘솔 사용법
+        회의 시스템 사용 가이드
       </h1>
-      <p class="text-[#5A6B73] text-[15px]">
-        조별 진행을 맡은 모더레이터를 위한 4단계 안내입니다. 이 페이지는 인쇄해서 현장에 비치할 수 있습니다.
+      <p class="text-[#5A6B73] text-[16px] leading-relaxed">
+        조별 기록부터 투표·결과 공개까지, 회의가 흘러가는 전체 순서를 먼저 보고
+        아래에서 자신의 역할 가이드를 선택하세요.
       </p>
     </header>
 
-    <!-- 4-step guide -->
-    <section class="grid sm:grid-cols-2 gap-4 mb-8 print:gap-3 print:mb-4 print:break-inside-avoid">
-      <!-- Step 1: 코드 입장 -->
-      <div class="rounded-2xl border border-[#DCE7EE] bg-white p-5 print:border print:rounded-lg">
-        <p class="font-mono text-[11px] font-semibold uppercase text-[#5A6B73] mb-2" style="letter-spacing:.14em">Step 1</p>
-        <h2 class="text-[17px] font-extrabold text-[#1F4E79] mb-3">코드로 입장하기</h2>
-        <!-- mini wireframe: join screen -->
-        <svg viewBox="0 0 260 120" class="w-full h-auto mb-3" role="img" aria-label="6자리 코드 입력 화면 미니 미리보기">
-          <rect x="0" y="0" width="260" height="120" rx="10" fill="#F1F7FA" stroke="#DCE7EE"/>
-          <rect x="20" y="16" width="60" height="10" rx="3" fill="#23B2C3" opacity="0.5"/>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <rect x={20 + i * 37} y="38" width="30" height="40" rx="6" fill="#fff" stroke="#C4D8E4" stroke-width="2"/>
-          ))}
-          <rect x="20" y="92" width="220" height="16" rx="8" fill="#23B2C3"/>
-        </svg>
-        <p class="text-[14px] text-[#374151] leading-relaxed">
-          운영진에게 받은 <b>6자리 조 접속코드</b>를 입력하면 바로 조 화면으로 들어갑니다. 코드를 모르면 운영 데스크에 문의하세요.
-        </p>
-      </div>
+    <!-- 큰 그림: 6단계 개념도 -->
+    <section class="mb-10 print:mb-5 print:break-inside-avoid" aria-label="전체 6단계 흐름">
+      <h2 class="text-[20px] font-extrabold text-[#1F4E79] mb-4">한눈에 보는 전체 흐름</h2>
+      <ol class="grid sm:grid-cols-3 gap-3 list-none p-0 m-0">
+        {steps.map((s) => (
+          <li class="relative rounded-2xl border border-[#DCE7EE] bg-white p-4 flex flex-col gap-2">
+            <span class="w-9 h-9 rounded-xl bg-[#1F4E79] text-white grid place-items-center text-[17px] font-extrabold" aria-hidden="true">
+              {s.no}
+            </span>
+            <p class="text-[16px] font-extrabold text-[#1F4E79] leading-snug">{s.title}</p>
+            <p class="text-[14px] text-[#374151] leading-relaxed">{s.body}</p>
+            {s.no < 6 ? (
+              <span class="step-arrow" aria-hidden="true">→</span>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+    </section>
 
-      <!-- Step 2: 투표 만들기 -->
-      <div class="rounded-2xl border border-[#DCE7EE] bg-white p-5 print:border print:rounded-lg">
-        <p class="font-mono text-[11px] font-semibold uppercase text-[#5A6B73] mb-2" style="letter-spacing:.14em">Step 2</p>
-        <h2 class="text-[17px] font-extrabold text-[#1F4E79] mb-3">투표 만들기</h2>
-        <svg viewBox="0 0 260 120" class="w-full h-auto mb-3" role="img" aria-label="투표 만들기 화면 미니 미리보기">
-          <rect x="0" y="0" width="260" height="120" rx="10" fill="#fff" stroke="#DCE7EE"/>
-          <rect x="16" y="14" width="228" height="14" rx="4" fill="#EEF3F7" stroke="#DCE7EE"/>
-          <rect x="16" y="38" width="228" height="16" rx="8" fill="#F1F7FA" stroke="#C4D8E4"/>
-          <rect x="16" y="62" width="228" height="16" rx="8" fill="#F1F7FA" stroke="#C4D8E4"/>
-          <rect x="16" y="92" width="228" height="18" rx="9" fill="#23B2C3"/>
-        </svg>
-        <p class="text-[14px] text-[#374151] leading-relaxed">
-          질문과 보기(2~6개)를 입력하고 <b>단일선택/복수선택</b>을 고른 뒤 <b>'투표 열기'</b>를 누릅니다. 누르는 즉시 조원 화면에 투표가 뜹니다.
-        </p>
-      </div>
-
-      <!-- Step 3: QR 안내·마감 -->
-      <div class="rounded-2xl border border-[#DCE7EE] bg-white p-5 print:border print:rounded-lg">
-        <p class="font-mono text-[11px] font-semibold uppercase text-[#5A6B73] mb-2" style="letter-spacing:.14em">Step 3</p>
-        <h2 class="text-[17px] font-extrabold text-[#1F4E79] mb-3">QR 안내 · 실시간 집계 · 마감</h2>
-        <svg viewBox="0 0 260 120" class="w-full h-auto mb-3" role="img" aria-label="QR 및 실시간 집계 화면 미니 미리보기">
-          <rect x="0" y="0" width="260" height="120" rx="10" fill="#F1F7FA" stroke="#DCE7EE"/>
-          <rect x="16" y="14" width="60" height="60" rx="6" fill="#fff" stroke="#C4D8E4" stroke-width="2"/>
-          <rect x="26" y="24" width="10" height="10" fill="#1F4E79"/>
-          <rect x="46" y="24" width="10" height="10" fill="#1F4E79"/>
-          <rect x="26" y="54" width="10" height="10" fill="#1F4E79"/>
-          <rect x="90" y="18" width="150" height="10" rx="3" fill="#DCE7EE"/>
-          <rect x="90" y="36" width="150" height="10" rx="3" fill="#23B2C3" opacity="0.6"/>
-          <rect x="90" y="54" width="100" height="10" rx="3" fill="#23B2C3" opacity="0.3"/>
-          <rect x="16" y="92" width="228" height="18" rx="9" fill="#B5651D" opacity="0.85"/>
-        </svg>
-        <p class="text-[14px] text-[#374151] leading-relaxed">
-          화면의 <b>QR코드</b>를 조원에게 보여주면 폰으로 <code>/v</code>에서 원탭 투표합니다. 참여 인원·진행률이 실시간으로 올라가며, 다 모이면 <b>투표 마감</b> 버튼을 누릅니다.
-        </p>
-      </div>
-
-      <!-- Step 4: 결과 크게 보기 -->
-      <div class="rounded-2xl border border-[#DCE7EE] bg-white p-5 print:border print:rounded-lg">
-        <p class="font-mono text-[11px] font-semibold uppercase text-[#5A6B73] mb-2" style="letter-spacing:.14em">Step 4</p>
-        <h2 class="text-[17px] font-extrabold text-[#1F4E79] mb-3">결과 크게 보기</h2>
-        <svg viewBox="0 0 260 120" class="w-full h-auto mb-3" role="img" aria-label="풀스크린 결과 화면 미니 미리보기">
-          <rect x="0" y="0" width="260" height="120" rx="10" fill="#1F4E79"/>
-          <rect x="16" y="16" width="120" height="10" rx="3" fill="#23B2C3"/>
-          <rect x="16" y="40" width="228" height="16" rx="4" fill="#fff" opacity="0.9"/>
-          <rect x="16" y="62" width="170" height="16" rx="4" fill="#fff" opacity="0.55"/>
-          <rect x="16" y="84" width="90" height="16" rx="4" fill="#fff" opacity="0.35"/>
-        </svg>
-        <p class="text-[14px] text-[#374151] leading-relaxed">
-          마감 후 자동으로 <b>풀스크린 결과</b>가 큰 글씨로 표시됩니다. 프로젝터·TV에 띄워 조원들과 함께 확인하세요.
-        </p>
+    <!-- 역할 선택 -->
+    <section class="mb-10 print:mb-5" aria-label="역할별 가이드 선택">
+      <h2 class="text-[20px] font-extrabold text-[#1F4E79] mb-4">내 역할 가이드로 바로 가기</h2>
+      <div class="grid gap-4">
+        <a href="/mod-help/lead/" class="role-card group">
+          <span class="role-icon bg-[#1F4E79]" aria-hidden="true">🎛️</span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-[19px] font-extrabold text-[#1F4E79] mb-1">총괄 모더레이터</span>
+            <span class="block text-[15px] text-[#5A6B73] leading-relaxed">
+              분과·전체 투표를 미리 만들고, 세 장소의 QR 배포와 시작·마감·결과 공개를
+              콘솔 하나로 원격 제어합니다. 제출 현황 확인·재오픈, PNG·DOCX 내보내기까지.
+            </span>
+          </span>
+          <span class="role-go" aria-hidden="true">→</span>
+        </a>
+        <a href="/mod-help/team/" class="role-card group">
+          <span class="role-icon bg-[#4F9D3A]" aria-hidden="true">📝</span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-[19px] font-extrabold text-[#1F4E79] mb-1">조 모더레이터</span>
+            <span class="block text-[15px] text-[#5A6B73] leading-relaxed">
+              6자리 코드로 입장해 주제별 핵심의견·근거를 기록하고 저장 → 최종 제출합니다.
+              조별 라운드 투표·타이머·대리 입력도 여기서 다룹니다.
+            </span>
+          </span>
+          <span class="role-go" aria-hidden="true">→</span>
+        </a>
+        <a href="/mod-help/vote/" class="role-card group">
+          <span class="role-icon bg-[#23B2C3]" aria-hidden="true">📮</span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-[19px] font-extrabold text-[#1F4E79] mb-1">참여자 (투표하기)</span>
+            <span class="block text-[15px] text-[#5A6B73] leading-relaxed">
+              QR을 스캔해 모든 의제에 응답하고 한 번에 제출합니다.
+              무기명 투표이며, 결과는 운영진 공개 후 확인할 수 있습니다.
+            </span>
+          </span>
+          <span class="role-go" aria-hidden="true">→</span>
+        </a>
       </div>
     </section>
 
-    <!-- 타이머 · 대리입력 -->
-    <section class="grid sm:grid-cols-2 gap-4 mb-8 print:gap-3 print:mb-4 print:break-inside-avoid">
-      <div class="rounded-2xl border border-[#DCE7EE] bg-white p-5 print:border print:rounded-lg">
-        <p class="font-mono text-[11px] font-semibold uppercase text-[#5A6B73] mb-2" style="letter-spacing:.14em">타이머</p>
-        <p class="text-[14px] text-[#374151] leading-relaxed">
-          발언(1분 / 2분 / 3분) 또는 세션(1~180분, 기본 15분) 타이머를 설정할 수 있습니다. 시간이 다 되면 소리와 화면 알림이 울립니다. 타이머는 발언·세션 시간 관리용이며 투표와는 무관합니다 — 투표 마감은 투표 화면의 <b>'투표 마감'</b> 버튼으로만 합니다.
-        </p>
-      </div>
-      <div class="rounded-2xl border border-[#DCE7EE] bg-white p-5 print:border print:rounded-lg">
-        <p class="font-mono text-[11px] font-semibold uppercase text-[#5A6B73] mb-2" style="letter-spacing:.14em">대리 입력</p>
-        <p class="text-[14px] text-[#374151] leading-relaxed">
-          폰이 없거나 투표에 익숙하지 않은 조원을 위해 모더레이터가 <b>대신 입력</b>할 수 있습니다. 매수(1~5)를 지정하고 확인 다이얼로그에서 한 번 더 확인한 뒤 반영되므로, 실수로 여러 번 누를 걱정은 없습니다.
-        </p>
-      </div>
+    <!-- 공통 원칙 -->
+    <section class="rounded-2xl border-2 border-[#1F4E79]/25 bg-white p-5 mb-8 print:break-inside-avoid" aria-label="기억할 원칙">
+      <p class="font-mono text-[12px] font-semibold uppercase text-[#1F4E79] mb-3" style="letter-spacing:.14em">
+        기억할 원칙
+      </p>
+      <ul class="text-[16px] text-[#374151] leading-relaxed space-y-2.5 list-disc pl-5">
+        <li><b>저장은 중간 보관, 최종 제출은 잠금</b>입니다 — 최종 제출 이후에는 본부(HQ)만 다시 엽니다.</li>
+        <li><b>AI 요약과 집계는 초안</b>입니다 — 공개 여부와 최종 표현은 운영진이 결정합니다.</li>
+        <li>투표 상태는 앞으로만 갑니다 — <b>초안 → 진행 중 → 마감됨 → 결과 공개됨</b>. 마감·공개는 되돌릴 수 없습니다.</li>
+        <li>투표는 <b>무기명</b>입니다 — 이름·개인정보를 수집하지 않습니다.</li>
+      </ul>
     </section>
 
-    <!-- 문제 해결 -->
+    <!-- 문제 해결 (공통) -->
     <section class="rounded-2xl border border-[#DCE7EE] bg-white p-5 mb-10 print:border print:rounded-lg print:mb-4 print:break-inside-avoid">
       <p class="font-mono text-[11px] font-semibold uppercase text-[#5A6B73] mb-3" style="letter-spacing:.14em">문제 해결</p>
-      <ul class="text-[14px] text-[#374151] leading-relaxed space-y-2 list-disc pl-5">
-        <li><b>화면이 새로고침됐어요</b> — 걱정하지 마세요. 진행 중이던 투표는 서버에 저장되어 있어 새로고침해도 그대로 이어집니다.</li>
+      <ul class="text-[15px] text-[#374151] leading-relaxed space-y-2 list-disc pl-5">
+        <li><b>화면이 새로고침됐어요</b> — 진행 중이던 투표는 서버에 저장되어 있어 새로고침해도 그대로 이어집니다. 단, 조별 산출물 편집 중이라면 <b>저장하지 않은 내용은 사라질 수 있으니</b> 수시로 저장하세요.</li>
         <li><b>QR 스캔이 안 돼요</b> — QR 아래 표시된 <b>URL과 코드</b>를 직접 입력하도록 안내하세요.</li>
         <li><b>코드가 유출된 것 같아요</b> — 즉시 운영 본부에 연락하세요. 새 코드로 재발급해드립니다.</li>
       </ul>
     </section>
 
-    <footer class="text-center text-[13px] text-[#5A6B73] print:hidden">
-      <a href="/mod" class="text-[#23B2C3] font-semibold underline underline-offset-2">← 모더레이터 콘솔로 돌아가기</a>
+    <footer class="text-center text-[14px] text-[#5A6B73] print:hidden">
+      <a href="/mod" class="text-[#23B2C3] font-semibold underline underline-offset-2">← 모더레이터 콘솔(/mod)로 가기</a>
     </footer>
   </main>
 
   <style>
+    .role-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      border: 1px solid #dce7ee;
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px;
+      text-decoration: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .role-card:hover, .role-card:focus-visible {
+      border-color: #23b2c3;
+      box-shadow: 0 8px 24px -16px rgba(31, 78, 121, 0.35);
+    }
+    .role-icon {
+      flex-shrink: 0;
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      font-size: 24px;
+      color: #fff;
+    }
+    .role-go {
+      flex-shrink: 0;
+      align-self: center;
+      font-size: 22px;
+      font-weight: 800;
+      color: #23b2c3;
+    }
+    .step-arrow {
+      position: absolute;
+      top: 50%;
+      right: -13px;
+      transform: translateY(-50%);
+      z-index: 1;
+      font-size: 15px;
+      font-weight: 800;
+      color: #23b2c3;
+      background: #f5f8fb;
+      border-radius: 999px;
+      line-height: 1;
+      display: none;
+    }
+    @media (min-width: 640px) {
+      .step-arrow { display: block; }
+      /* 3열 그리드의 행 끝(3·6번째)에는 화살표를 내지 않는다 */
+      ol > li:nth-child(3n) .step-arrow { display: none; }
+    }
     @media print {
       @page { size: A4; margin: 12mm; }
       body { background: #fff !important; }

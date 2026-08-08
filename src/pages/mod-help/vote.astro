@@ -1,0 +1,193 @@
+---
+import '../../styles/global.css';
+// 참여자 가이드 — QR 스캔 → 모든 의제 응답 → 1회 제출(수정 불가) → 운영진 공개 후 결과 확인.
+// 문구는 BallotCard.tsx / ballot-logic.ts 실제 화면 문구와 일치시킨다.
+---
+<!doctype html>
+<html lang="ko" class="light" data-theme="light"><head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="color-scheme" content="light" />
+  <title>참여자 투표 안내 [/mod-help/vote]</title>
+  <style is:global>
+    body { font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif; }
+  </style>
+</head><body class="bg-[#F5F8FB] text-[#1F2933]">
+  <main class="max-w-3xl mx-auto px-6 py-10 print:py-0 print:px-0">
+    <nav class="mb-6 print:hidden">
+      <a href="/mod-help/" class="text-[14px] text-[#23B2C3] font-semibold underline underline-offset-2">← 가이드 허브</a>
+    </nav>
+    <header class="mb-6">
+      <p class="font-mono text-[12px] font-semibold uppercase text-[#23B2C3] mb-2" style="letter-spacing:.14em">
+        기후시민회의 · 참여자
+      </p>
+      <h1 class="text-[28px] font-extrabold text-[#1F4E79] leading-snug mb-2" style="letter-spacing:-.02em">
+        투표 참여 안내
+      </h1>
+      <p class="text-[#5A6B73] text-[16px] leading-relaxed">
+        앱 설치도, 로그인도 필요 없습니다. 휴대폰 카메라로 QR을 찍는 것으로 시작합니다.
+      </p>
+    </header>
+
+    <!-- 시작 위치 -->
+    <div class="start-box" role="note">
+      <b>시작 위치</b> — 현장 화면(프로젝터·TV)에 뜬 <b>QR 코드를 휴대폰 카메라로 스캔</b>하면
+      투표 화면이 바로 열립니다. 스캔이 안 되면 QR 아래의 주소를 브라우저에 직접 입력하세요.
+    </div>
+
+    <!-- 무기명 안내 -->
+    <div class="anon-box" role="note">
+      <span aria-hidden="true">🔏</span>
+      <span>이 투표는 <b>무기명</b>입니다. 이름·전화번호 등 개인정보를 입력받지 않고, 저장하지도 않습니다.</span>
+    </div>
+
+    <!-- Step 1 -->
+    <section class="step">
+      <div class="step-head"><span class="step-no">1</span><h2>QR 스캔으로 입장하기</h2></div>
+      <ul>
+        <li>휴대폰 기본 카메라로 현장 화면의 QR을 비추고, 뜨는 링크를 누릅니다.</li>
+        <li>분과별 투표라면 화면 상단에 <b>「N분과 투표」</b> 배지가 보입니다 — 내 분과가 맞는지 확인하세요.</li>
+        <li>"안내된 QR을 다시 스캔해 주세요"가 뜨면 링크가 잘못되었거나 아직 투표가 열리지 않은 것입니다 — 현장 화면의 QR을 다시 스캔하세요.</li>
+      </ul>
+    </section>
+
+    <!-- Step 2 -->
+    <section class="step">
+      <div class="step-head"><span class="step-no">2</span><h2>모든 의제에 응답하기</h2></div>
+      <!-- 미니 목업: 선택 버튼 -->
+      <div class="mockup" aria-hidden="true">
+        <span class="mock-opt on"><span class="dot on"></span>동의합니다</span>
+        <span class="mock-opt"><span class="dot"></span>보통입니다</span>
+        <span class="mock-opt"><span class="dot"></span>동의하지 않습니다</span>
+      </div>
+      <ul>
+        <li>의제마다 보기 중 하나를 눌러 선택합니다. 제출 전에는 <b>다시 눌러 얼마든지 바꿀 수 있습니다</b>.</li>
+        <li>화면 상단의 진행률(예: 3/10 응답)로 남은 문항을 확인합니다.</li>
+        <li><b>모든 문항에 답해야 제출할 수 있습니다.</b> 남은 문항이 있으면 맨 아래 버튼에 "남은 문항 N개에 답해 주세요"라고 표시됩니다.</li>
+      </ul>
+      <div class="done-box">
+        <p class="done-title">완료 기준</p>
+        <p>진행률이 <b>전체/전체</b>가 되고, 맨 아래 버튼이 <b>「제출하기」</b>로 바뀌어 있습니다.</p>
+      </div>
+    </section>
+
+    <!-- Step 3 -->
+    <section class="step">
+      <div class="step-head"><span class="step-no">3</span><h2>한 번에 제출하기 — 제출 후에는 수정할 수 없습니다</h2></div>
+      <ul>
+        <li><b>제출하기</b>를 누르면 확인 창이 뜹니다 — <i>"답변을 제출할까요?"</i> / <i>"제출 후에는 수정할 수 없습니다."</i></li>
+        <li>더 살펴보려면 <b>다시 살펴보기</b>를, 확정이면 <b>제출하기</b>를 누릅니다. 제출은 <b>1인(1기기) 1회</b>입니다.</li>
+        <li>"투표가 제출되었습니다" 화면이 뜨면 끝입니다. QR을 다시 스캔해도 "이미 제출하셨습니다"가 뜰 뿐 두 번 제출되지 않습니다.</li>
+      </ul>
+      <div class="done-box">
+        <p class="done-title">완료 기준</p>
+        <p><b>「투표가 제출되었습니다」</b> 화면을 확인했습니다.</p>
+      </div>
+    </section>
+
+    <!-- Step 4 -->
+    <section class="step">
+      <div class="step-head"><span class="step-no">4</span><h2>결과 확인 — 운영진 공개 후에 보입니다</h2></div>
+      <ul>
+        <li>결과는 투표가 마감되고 <b>운영진이 집계를 확인해 공개한 뒤</b>에 볼 수 있습니다. 마감 직후에는 아직 보이지 않는 것이 정상입니다.</li>
+        <li>제출 완료·마감 화면의 <b>「결과 공개 여부 확인」</b> 버튼을 누르면 공개되었는지 확인할 수 있습니다.</li>
+        <li>공개되면 같은 화면에서 문항별 집계(응답 수·평균·분포)를 볼 수 있습니다.</li>
+      </ul>
+    </section>
+
+    <!-- 헷갈리기 쉬운 점 -->
+    <section class="warn-box" aria-label="헷갈리기 쉬운 점">
+      <p class="warn-title">헷갈리기 쉬운 점</p>
+      <ul>
+        <li>제출 전에는 답을 바꿀 수 있지만, <b>제출 후에는 수정할 수 없습니다.</b></li>
+        <li>결과가 바로 안 보이는 것은 오류가 아닙니다 — <b>집계는 운영진 확인을 거쳐 공개됩니다.</b></li>
+        <li>분과별 투표는 <b>내 분과 장소의 QR</b>로 참여하세요. 화면 상단의 「N분과 투표」 배지로 확인할 수 있습니다.</li>
+        <li>휴대폰이 없거나 조작이 어려우면 진행자(모더레이터)에게 말씀하세요 — 도와드립니다.</li>
+      </ul>
+    </section>
+
+    <footer class="text-center text-[14px] text-[#5A6B73] print:hidden mt-10">
+      <a href="/mod-help/" class="text-[#23B2C3] font-semibold underline underline-offset-2">← 가이드 허브로 돌아가기</a>
+    </footer>
+  </main>
+
+  <style>
+    .start-box {
+      border: 2px solid rgba(35, 178, 195, 0.45);
+      background: rgba(35, 178, 195, 0.07);
+      border-radius: 16px;
+      padding: 16px 20px;
+      font-size: 16px;
+      line-height: 1.65;
+      color: #1f2933;
+      margin-bottom: 14px;
+    }
+    .anon-box {
+      display: flex; align-items: flex-start; gap: 10px;
+      border: 1.5px solid rgba(31, 78, 121, 0.3); background: rgba(31, 78, 121, 0.05);
+      border-radius: 14px; padding: 14px 18px; font-size: 16px; line-height: 1.6;
+      color: #1f2933; margin-bottom: 28px;
+    }
+    .step {
+      background: #fff;
+      border: 1px solid #dce7ee;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      break-inside: avoid;
+    }
+    .step-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .step-no {
+      flex-shrink: 0; width: 36px; height: 36px; border-radius: 12px;
+      background: #23b2c3; color: #fff; display: grid; place-items: center;
+      font-size: 17px; font-weight: 800;
+    }
+    .step-head h2 { font-size: 18px; font-weight: 800; color: #1f4e79; line-height: 1.4; margin: 0; }
+    .step ul { list-style: disc; padding-left: 22px; margin: 0; display: grid; gap: 8px; }
+    .step li { font-size: 16px; color: #374151; line-height: 1.65; }
+    .step li i { color: #135c73; font-style: normal; font-weight: 600; }
+    .done-box {
+      margin-top: 14px; border: 1.5px solid rgba(79, 157, 58, 0.5);
+      background: rgba(79, 157, 58, 0.07); border-radius: 12px; padding: 12px 16px;
+    }
+    .done-title {
+      font-family: ui-monospace, monospace; font-size: 12px; font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase; color: #2f6322; margin: 0 0 4px;
+    }
+    .done-title::before { content: "✓ "; }
+    .done-box p:not(.done-title) { font-size: 15px; color: #1f2933; line-height: 1.6; margin: 0; }
+    .warn-box {
+      border: 2px solid rgba(245, 166, 35, 0.55); background: rgba(245, 166, 35, 0.08);
+      border-radius: 16px; padding: 18px 20px; margin-top: 8px;
+    }
+    .warn-title {
+      font-family: ui-monospace, monospace; font-size: 12px; font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase; color: #b5651d; margin: 0 0 10px;
+    }
+    .warn-box ul { list-style: disc; padding-left: 22px; margin: 0; display: grid; gap: 8px; }
+    .warn-box li { font-size: 16px; color: #374151; line-height: 1.65; }
+    .mockup {
+      display: grid; gap: 8px;
+      border: 1px dashed #c4d8e4; background: #f5f8fb; border-radius: 12px;
+      padding: 12px 14px; margin-bottom: 12px; max-width: 340px;
+    }
+    .mock-opt {
+      display: flex; align-items: center; gap: 10px;
+      border: 2px solid #dce7ee; background: #fff; color: #1f2933;
+      border-radius: 14px; padding: 10px 14px; font-size: 15px; font-weight: 700;
+    }
+    .mock-opt.on { border-color: #23b2c3; background: rgba(35, 178, 195, 0.08); color: #135c73; }
+    .dot {
+      width: 20px; height: 20px; border-radius: 999px; border: 2px solid #c4d8e4; background: #fff;
+      display: inline-grid; place-items: center; flex-shrink: 0;
+    }
+    .dot.on { border-color: #23b2c3; background: #23b2c3; }
+    .dot.on::after { content: ""; width: 7px; height: 7px; border-radius: 999px; background: #fff; }
+    @media print {
+      @page { size: A4; margin: 12mm; }
+      body { background: #fff !important; }
+      a[href]::after { content: ""; }
+    }
+  </style>
+</body></html>

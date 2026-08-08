@@ -1,0 +1,222 @@
+---
+import '../../styles/global.css';
+// 총괄 모더레이터 가이드 — 투표 사전 생성(분과별), 세 장소 QR 배포 모델,
+// 시작·마감·결과 공개 원격 제어, 제출 현황·재오픈(HQ), PNG·DOCX 내보내기.
+// 버튼 문구·확인 다이얼로그는 BallotPanel.tsx / ballot-panel-logic.ts 실제 문구와 일치시킨다.
+---
+<!doctype html>
+<html lang="ko" class="light" data-theme="light"><head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="color-scheme" content="light" />
+  <title>총괄 모더레이터 가이드 [/mod-help/lead]</title>
+  <style is:global>
+    body { font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif; }
+  </style>
+</head><body class="bg-[#F5F8FB] text-[#1F2933]">
+  <main class="max-w-3xl mx-auto px-6 py-10 print:py-0 print:px-0">
+    <nav class="mb-6 print:hidden">
+      <a href="/mod-help/" class="text-[14px] text-[#23B2C3] font-semibold underline underline-offset-2">← 가이드 허브</a>
+    </nav>
+    <header class="mb-6">
+      <p class="font-mono text-[12px] font-semibold uppercase text-[#23B2C3] mb-2" style="letter-spacing:.14em">
+        기후시민회의 · 총괄 모더레이터
+      </p>
+      <h1 class="text-[28px] font-extrabold text-[#1F4E79] leading-snug mb-2" style="letter-spacing:-.02em">
+        총괄 모더레이터 가이드
+      </h1>
+      <p class="text-[#5A6B73] text-[16px] leading-relaxed">
+        분과·전체 투표의 생성부터 결과 공개, 산출물 관리와 내보내기까지 — 콘솔 하나로 전 과정을 제어합니다.
+      </p>
+    </header>
+
+    <!-- 시작 위치 -->
+    <div class="start-box" role="note">
+      <b>시작 위치</b> — 브라우저에서 <code>/mod</code>에 접속해 운영진용 <b>6자리 접속코드</b>로 입장합니다.
+      「다의제 투표」 패널이 작업 화면입니다. 제출 현황판은 <code>/hq</code>입니다.
+    </div>
+
+    <!-- Step 1 -->
+    <section class="step">
+      <div class="step-head"><span class="step-no">1</span><h2>사전 준비 — 투표 3건을 분과별로 만들어 둡니다</h2></div>
+      <ul>
+        <li>「다의제 투표」 패널에서 <b>＋ 새 다의제 투표</b>를 누릅니다.</li>
+        <li>제목·안내문(선택)을 적고 의제를 1~20개 입력합니다. 의제마다 척도를 고릅니다 — <b>찬반(2점) · 4점 · 5점 · 7점</b>.</li>
+        <li><b>「대상」</b>에서 <b>세션 전체</b> 또는 특정 분과(1분과·2분과·3분과…)를 고릅니다. 한 콘솔에서 <b>모든 분과의 투표를 전부</b> 만들 수 있습니다.</li>
+        <li><b>초안 만들기</b>를 누릅니다. 분과별 투표가 필요하면 이 과정을 분과 수만큼 반복합니다.</li>
+      </ul>
+      <!-- 미니 목업: 대상 선택 -->
+      <div class="mockup" aria-hidden="true">
+        <span class="mockup-label">대상</span>
+        <span class="mock-chip on">세션 전체</span>
+        <span class="mock-chip">1분과</span>
+        <span class="mock-chip">2분과</span>
+        <span class="mock-chip">3분과</span>
+      </div>
+      <div class="done-box">
+        <p class="done-title">완료 기준</p>
+        <p>목록에 투표 3건이 <b>「초안」</b> 배지와 함께 보이고, 각 카드의 분과 배지(「1분과 한정」 등)가 계획과 일치합니다. 초안 상태에서는 참가자에게 보이지 않습니다.</p>
+      </div>
+    </section>
+
+    <!-- Step 2 -->
+    <section class="step">
+      <div class="step-head"><span class="step-no">2</span><h2>투표 시작 — 세 장소 QR 배포 모델</h2></div>
+      <p class="step-note">각 장소(분과장)에는 <b>QR 화면만</b> 띄워 둡니다. 시작·마감·공개는 전부 총괄 콘솔 1개에서 원격으로 제어합니다.</p>
+      <ul>
+        <li>시작할 투표 카드에서 <b>투표 시작</b>을 누릅니다. 확인 다이얼로그 문구 — <i>"투표를 시작할까요? 시작하면 참가자가 QR로 접속해 제출할 수 있습니다."</i></li>
+        <li>시작하면 바로 QR 풀스크린이 뜹니다. 이 화면을 해당 장소의 프로젝터·TV에 띄웁니다. (목록의 <b>QR 크게 보기</b>로 언제든 다시 열 수 있습니다.)</li>
+        <li>분과 한정 투표의 QR 화면에는 <b>「이 QR은 N분과 전용입니다」</b> 배너가 크게 표시됩니다 — 장소에 띄우기 전에 <b>배너의 분과명이 그 장소와 맞는지</b> 반드시 확인합니다.</li>
+        <li>QR 아래의 URL은 스캔이 안 되는 참여자를 위한 수기 입력용입니다.</li>
+      </ul>
+      <div class="done-box">
+        <p class="done-title">완료 기준</p>
+        <p>세 장소 화면에 각자 자기 분과의 QR이 떠 있고, QR 화면 하단의 <b>「제출 N명」</b> 숫자가 올라가기 시작합니다.</p>
+      </div>
+    </section>
+
+    <!-- Step 3 -->
+    <section class="step">
+      <div class="step-head"><span class="step-no">3</span><h2>진행 확인과 마감</h2></div>
+      <ul>
+        <li>진행 중에는 <b>잠정 결과</b> 버튼으로 집계를 미리 볼 수 있습니다. 화면에 <b>「잠정 결과 · 운영진 전용」</b>이라고 표시되며, 참가자에게는 보이지 않습니다.</li>
+        <li>제출이 충분히 모이면 <b>투표 마감</b>을 누릅니다. 확인 다이얼로그 문구 — <i>"투표를 마감할까요? 마감 후 재개할 수 없습니다."</i></li>
+        <li>마감 후 참가자 화면은 "투표가 마감되었습니다"로 바뀝니다. 결과는 아직 공개되지 않습니다.</li>
+      </ul>
+      <div class="done-box">
+        <p class="done-title">완료 기준</p>
+        <p>투표 카드의 배지가 <b>「마감됨」</b>으로 바뀌었습니다.</p>
+      </div>
+    </section>
+
+    <!-- Step 4 -->
+    <section class="step">
+      <div class="step-head"><span class="step-no">4</span><h2>결과 공개 게이트 — 사람이 확인한 뒤 엽니다</h2></div>
+      <ul>
+        <li>마감 후 <b>잠정 결과</b>로 집계를 먼저 검토합니다. 집계는 초안입니다 — <b>공개 여부와 공개 시점은 운영진이 결정</b>합니다.</li>
+        <li>공개하기로 결정되면 <b>결과 공개</b>를 누릅니다. 확인 다이얼로그 문구 — <i>"결과를 공개할까요? 공개 후에는 참가자 화면에도 결과가 보이며 되돌릴 수 없습니다."</i></li>
+        <li>공개 후 <b>결과 크게 보기</b>로 풀스크린 결과를 장내 화면에 띄웁니다.</li>
+      </ul>
+      <div class="done-box">
+        <p class="done-title">완료 기준</p>
+        <p>투표 카드의 배지가 <b>「결과 공개됨」</b>이고, 참가자 폰에서도 같은 결과가 보입니다.</p>
+      </div>
+    </section>
+
+    <!-- Step 5 -->
+    <section class="step">
+      <div class="step-head"><span class="step-no">5</span><h2>조별 산출물 — 제출 현황 확인과 재오픈 (HQ)</h2></div>
+      <ul>
+        <li><code>/hq</code> 운영 현황판에서 조별 산출물 제출 상태를 확인합니다.</li>
+        <li>조 모더레이터가 <b>최종 제출(잠금)</b>한 산출물은 조에서 스스로 고칠 수 없습니다 — 수정 요청이 오면 <b>본부(HQ)에서 재오픈</b>해 줍니다.</li>
+        <li>재오픈된 조의 화면에는 「재오픈됨 · 다시 편집 가능」 배지가 뜨고, 수정 후 다시 최종 제출해야 잠깁니다.</li>
+      </ul>
+      <div class="done-box">
+        <p class="done-title">완료 기준</p>
+        <p>모든 조의 산출물이 다시 <b>최종 제출(잠금)</b> 상태입니다. 재오픈 후 잠그지 않은 조가 없는지 확인합니다.</p>
+      </div>
+    </section>
+
+    <!-- Step 6 -->
+    <section class="step">
+      <div class="step-head"><span class="step-no">6</span><h2>내보내기 — 결과 이미지(PNG)·결과보고서(DOCX)</h2></div>
+      <ul>
+        <li>결과 풀스크린 화면 상단의 <b>결과 이미지 저장(PNG)</b> — 문항별 결과 카드를 이미지로 내려받습니다. 브라우저가 다중 다운로드 허용을 물으면 허용합니다.</li>
+        <li><b>보고서 다운로드(DOCX)</b> — 개요·문항별 집계에 조별 산출물까지 담은 결과보고서를 내려받습니다.</li>
+        <li>내려받은 파일은 정해진 공유 폴더에 정리해 아카이빙합니다.</li>
+      </ul>
+      <div class="done-box">
+        <p class="done-title">완료 기준</p>
+        <p>투표별로 PNG(문항 수만큼)와 DOCX 1건이 저장되어 있습니다.</p>
+      </div>
+    </section>
+
+    <!-- 헷갈리기 쉬운 점 -->
+    <section class="warn-box" aria-label="헷갈리기 쉬운 점">
+      <p class="warn-title">헷갈리기 쉬운 점</p>
+      <ul>
+        <li>투표 상태는 <b>초안 → 진행 중 → 마감됨 → 결과 공개됨</b> 순서로 <b>앞으로만</b> 갑니다. 마감·공개를 되돌리는 버튼은 없습니다 — 누르기 전 확인 다이얼로그에서 한 번 더 생각하세요.</li>
+        <li><b>잠정 결과</b>는 운영진 전용 미리보기이고, <b>결과 공개</b>를 눌러야 참가자에게 보입니다.</li>
+        <li>분과 한정 투표를 <b>다른 분과 장소의 QR로 배포하지 않도록</b> 주의하세요. QR 화면의 「이 QR은 N분과 전용입니다」 배너가 확인 장치입니다.</li>
+        <li>AI 요약·집계는 초안입니다 — 공개 여부와 최종 표현은 운영진이 결정합니다.</li>
+      </ul>
+    </section>
+
+    <footer class="text-center text-[14px] text-[#5A6B73] print:hidden mt-10">
+      <a href="/mod-help/" class="text-[#23B2C3] font-semibold underline underline-offset-2">← 가이드 허브로 돌아가기</a>
+    </footer>
+  </main>
+
+  <style>
+    .start-box {
+      border: 2px solid rgba(35, 178, 195, 0.45);
+      background: rgba(35, 178, 195, 0.07);
+      border-radius: 16px;
+      padding: 16px 20px;
+      font-size: 16px;
+      line-height: 1.65;
+      color: #1f2933;
+      margin-bottom: 28px;
+    }
+    .start-box code { font-weight: 700; color: #135c73; }
+    .step {
+      background: #fff;
+      border: 1px solid #dce7ee;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      break-inside: avoid;
+    }
+    .step-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .step-no {
+      flex-shrink: 0; width: 36px; height: 36px; border-radius: 12px;
+      background: #1f4e79; color: #fff; display: grid; place-items: center;
+      font-size: 17px; font-weight: 800;
+    }
+    .step-head h2 { font-size: 18px; font-weight: 800; color: #1f4e79; line-height: 1.4; margin: 0; }
+    .step-note { font-size: 15px; color: #374151; line-height: 1.65; margin: 0 0 10px; }
+    .step ul { list-style: disc; padding-left: 22px; margin: 0; display: grid; gap: 8px; }
+    .step li { font-size: 16px; color: #374151; line-height: 1.65; }
+    .step li i { color: #135c73; font-style: normal; font-weight: 600; }
+    .done-box {
+      margin-top: 14px; border: 1.5px solid rgba(79, 157, 58, 0.5);
+      background: rgba(79, 157, 58, 0.07); border-radius: 12px; padding: 12px 16px;
+    }
+    .done-title {
+      font-family: ui-monospace, monospace; font-size: 12px; font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase; color: #2f6322; margin: 0 0 4px;
+    }
+    .done-title::before { content: "✓ "; }
+    .done-box p:not(.done-title) { font-size: 15px; color: #1f2933; line-height: 1.6; margin: 0; }
+    .warn-box {
+      border: 2px solid rgba(245, 166, 35, 0.55); background: rgba(245, 166, 35, 0.08);
+      border-radius: 16px; padding: 18px 20px; margin-top: 8px;
+    }
+    .warn-title {
+      font-family: ui-monospace, monospace; font-size: 12px; font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase; color: #b5651d; margin: 0 0 10px;
+    }
+    .warn-box ul { list-style: disc; padding-left: 22px; margin: 0; display: grid; gap: 8px; }
+    .warn-box li { font-size: 16px; color: #374151; line-height: 1.65; }
+    .mockup {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+      border: 1px dashed #c4d8e4; background: #f5f8fb; border-radius: 12px;
+      padding: 10px 14px; margin-top: 12px;
+    }
+    .mockup-label {
+      font-family: ui-monospace, monospace; font-size: 11px; font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase; color: #5a6b73; margin-right: 4px;
+    }
+    .mock-chip {
+      border: 1.5px solid #c4d8e4; background: #fff; color: #5a6b73;
+      border-radius: 10px; padding: 6px 12px; font-size: 14px; font-weight: 700;
+    }
+    .mock-chip.on { border-color: #23b2c3; background: rgba(35, 178, 195, 0.1); color: #135c73; }
+    @media print {
+      @page { size: A4; margin: 12mm; }
+      body { background: #fff !important; }
+      a[href]::after { content: ""; }
+    }
+  </style>
+</body></html>

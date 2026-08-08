@@ -13,6 +13,7 @@ import {
   type SubmissionGetResult,
   type Topic,
 } from '../../lib/deliberation';
+import { fetchHqTeams } from '../../lib/mod-console';
 import { renderBallotItemSvg } from './ballot-result-image';
 import { RESULT_IMAGE_SCALE, ballotImageFileName, downloadBlob, svgToPngBlob } from './svg-to-png';
 import {
@@ -25,6 +26,7 @@ import {
   primaryAction,
   qrSubgroupNotice,
   scaleLabel,
+  sessionSubgroups,
   subgroupBadgeLabel,
   validateBallotForm,
   type BallotAction,
@@ -388,7 +390,7 @@ function CreateForm({
   onCancel,
 }: {
   submitting: boolean;
-  /** 내 조의 분과(mod_join team.subgroup). null이면 「내 분과」 옵션을 숨긴다. */
+  /** 내 조의 분과(mod_join team.subgroup). 「(내 분과)」 표기·확인 문구 분기에 쓴다. */
   subgroup: string | null;
   onCreate: (
     title: string,
@@ -401,9 +403,32 @@ function CreateForm({
   const [title, setTitle] = useState('');
   const [instructions, setInstructions] = useState('');
   const [items, setItems] = useState<BallotFormItem[]>([emptyBallotFormItem()]);
-  // 대상: 세션 전체(기본) / 내 분과 한정. 분과 정보가 없는 팀은 전체 고정.
-  const [scope, setScope] = useState<'all' | 'subgroup'>('all');
+  // 대상: null=세션 전체(기본), 분과명=해당 분과 한정.
+  // 총괄 모더레이터가 한 콘솔에서 1·2·3분과 투표를 전부 만들 수 있게 세션의 모든 분과를 선택지로 낸다.
+  const [target, setTarget] = useState<string | null>(null);
+  // 세션 분과 목록 — 폼 오픈 시 hq_teams를 1회 조회. null=아직(또는 실패)이라 폴백 사용.
+  const [subgroupOptions, setSubgroupOptions] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const mySubgroup = subgroup?.trim() || null;
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchHqTeams()
+      .then((teams) => {
+        if (!cancelled) setSubgroupOptions(sessionSubgroups(teams, mySubgroup));
+      })
+      .catch(() => {
+        // 조회 실패 시 기존 동작 폴백: 전체/내 분과만.
+        if (!cancelled) setSubgroupOptions(mySubgroup ? [mySubgroup] : []);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mySubgroup]);
+
+  // 조회 완료 전에도 기존 선택지(전체/내 분과)는 바로 쓸 수 있게 한다.
+  const targetOptions = subgroupOptions ?? (mySubgroup ? [mySubgroup] : []);
 
   const setStatement = (index: number, statement: string) =>
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, statement } : item)));
@@ -421,12 +446,7 @@ function CreateForm({
       return;
     }
     setError(null);
-    onCreate(
-      title,
-      instructions.trim() ? instructions.trim() : null,
-      items,
-      scope === 'subgroup' && subgroup ? subgroup : null,
-    );
+    onCreate(title, instructions.trim() ? instructions.trim() : null, items, target);
   };
 
   return (
@@ -463,7 +483,7 @@ function CreateForm({
         />
       </div>
 
-      {subgroup ? (
+      {targetOptions.length > 0 ? (
         <div>
           <label
             className="block text-[#5A6B73] font-mono text-[12px] font-semibold uppercase mb-2"
@@ -474,33 +494,42 @@ function CreateForm({
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => setScope('all')}
-              aria-pressed={scope === 'all'}
+              onClick={() => setTarget(null)}
+              aria-pressed={target == null}
               className={`h-12 rounded-xl border px-3 text-[16px] font-bold ${
-                scope === 'all'
+                target == null
                   ? 'border-[#23B2C3] bg-[#23B2C3]/10 text-[#135C73]'
                   : 'border-[#C4D8E4] bg-white text-[#5A6B73]'
               }`}
             >
               세션 전체
             </button>
-            <button
-              type="button"
-              onClick={() => setScope('subgroup')}
-              aria-pressed={scope === 'subgroup'}
-              className={`h-12 rounded-xl border px-3 text-[16px] font-bold ${
-                scope === 'subgroup'
-                  ? 'border-[#23B2C3] bg-[#23B2C3]/10 text-[#135C73]'
-                  : 'border-[#C4D8E4] bg-white text-[#5A6B73]'
-              }`}
-            >
-              내 분과 ({subgroup})
-            </button>
+            {targetOptions.map((sg) => (
+              <button
+                key={sg}
+                type="button"
+                onClick={() => setTarget(sg)}
+                aria-pressed={target === sg}
+                className={`h-12 rounded-xl border px-3 text-[16px] font-bold ${
+                  target === sg
+                    ? 'border-[#23B2C3] bg-[#23B2C3]/10 text-[#135C73]'
+                    : 'border-[#C4D8E4] bg-white text-[#5A6B73]'
+                }`}
+              >
+                {sg === mySubgroup ? `${sg} (내 분과)` : sg}
+              </button>
+            ))}
           </div>
-          {scope === 'subgroup' ? (
-            <p className="mt-2 text-[14px] text-[#5A6B73]">
-              이 투표는 <b className="text-[#135C73]">{subgroup}</b> 장소의 QR로만 배포하세요.
-            </p>
+          {target != null ? (
+            target === mySubgroup ? (
+              <p className="mt-2 text-[14px] text-[#5A6B73]">
+                이 투표는 <b className="text-[#135C73]">{target}</b> 장소의 QR로만 배포하세요.
+              </p>
+            ) : (
+              <p className="mt-2 text-[14px] font-bold text-[#B5651D]">
+                다른 분과 대상 투표입니다. 해당 장소 QR로 배포하세요.
+              </p>
+            )
           ) : null}
         </div>
       ) : null}

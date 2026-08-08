@@ -11,6 +11,7 @@ import {
   primaryAction,
   qrSubgroupNotice,
   scaleLabel,
+  sessionSubgroups,
   subgroupBadgeLabel,
   subgroupTargetLabel,
   validateBallotForm,
@@ -190,6 +191,48 @@ describe('분과 스코프(S4) — 라벨', () => {
     expect(qrSubgroupNotice('3분과')).toBe('이 QR은 3분과 전용입니다');
     expect(qrSubgroupNotice(null)).toBeNull();
     expect(qrSubgroupNotice(undefined)).toBeNull();
+  });
+});
+
+describe('sessionSubgroups — 세션 분과 선택지(총괄 모더레이터 확장)', () => {
+  const team = (name: string, subgroup: string | null | undefined) => ({ name, subgroup });
+
+  it('팀 배열에서 고유 분과만 뽑아 정렬한다 (null·공백 분과 제외)', () => {
+    const teams = [
+      team('2분과 1조', '2분과'),
+      team('1분과 1조', '1분과'),
+      team('운영팀', null),
+      team('공백팀', '  '),
+      team('1분과 2조', '1분과'),
+      team('3분과 1조', '3분과'),
+    ];
+    expect(sessionSubgroups(teams, null)).toEqual(['1분과', '2분과', '3분과']);
+  });
+
+  it('자연 정렬 — 10분과는 2분과 뒤에 온다', () => {
+    const teams = [team('a', '10분과'), team('b', '2분과'), team('c', '1분과')];
+    expect(sessionSubgroups(teams, null)).toEqual(['1분과', '2분과', '10분과']);
+  });
+
+  it('내 분과를 맨 앞에 둔다', () => {
+    const teams = [team('a', '1분과'), team('b', '2분과'), team('c', '3분과')];
+    expect(sessionSubgroups(teams, '2분과')).toEqual(['2분과', '1분과', '3분과']);
+  });
+
+  it('내 분과가 팀 목록에 없어도 포함한다 — 「내 분과」 옵션은 사라지지 않는다', () => {
+    const teams = [team('a', '1분과'), team('b', '3분과')];
+    expect(sessionSubgroups(teams, '2분과')).toEqual(['2분과', '1분과', '3분과']);
+  });
+
+  it('내 분과는 trim해서 비교한다 (중복 없이 맨 앞)', () => {
+    const teams = [team('a', '1분과'), team('b', '2분과')];
+    expect(sessionSubgroups(teams, ' 2분과 ')).toEqual(['2분과', '1분과']);
+  });
+
+  it('빈 팀 배열 — 내 분과 없으면 [], 있으면 내 분과만', () => {
+    expect(sessionSubgroups([], null)).toEqual([]);
+    expect(sessionSubgroups([], undefined)).toEqual([]);
+    expect(sessionSubgroups([], '1분과')).toEqual(['1분과']);
   });
 });
 

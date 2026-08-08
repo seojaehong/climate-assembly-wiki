@@ -166,6 +166,31 @@ export function qrSubgroupNotice(subgroup: string | null | undefined): string | 
   return s ? `이 QR은 ${s} 전용입니다` : null;
 }
 
+/**
+ * 세션 팀 목록(hq_teams)에서 고유 분과 목록을 뽑는다 — 생성 폼 「대상」 선택지.
+ * 총괄 모더레이터 1명이 한 콘솔에서 1·2·3분과 투표를 전부 만들 수 있어야 하므로,
+ * 내 분과만이 아니라 세션의 모든 분과를 낸다.
+ *
+ * - subgroup이 null/공백인 팀은 제외한다(분과 없는 운영 팀).
+ * - '1분과' < '2분과' < '10분과' 자연 정렬(숫자 비교).
+ * - 내 분과(mySubgroup)는 맨 앞에 둔다 — 목록에 없어도(팀 데이터가 어긋나도) 포함해,
+ *   기존 「내 분과」 옵션이 절대 사라지지 않게 한다.
+ */
+export function sessionSubgroups(
+  teams: ReadonlyArray<{ name: string; subgroup: string | null | undefined }>,
+  mySubgroup: string | null | undefined,
+): string[] {
+  const seen = new Set<string>();
+  for (const team of teams) {
+    const s = team.subgroup?.trim();
+    if (s) seen.add(s);
+  }
+  const sorted = [...seen].sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
+  const mine = mySubgroup?.trim();
+  if (!mine) return sorted;
+  return [mine, ...sorted.filter((s) => s !== mine)];
+}
+
 // ── 참가자 URL·결과 분포 ─────────────────────────────────────
 
 /** 참가자 진입 URL. QR과 수기 입력 안내가 같은 문자열을 쓴다. */
