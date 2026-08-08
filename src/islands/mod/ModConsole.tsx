@@ -479,6 +479,7 @@ function HomeScreen({
   teamId,
   teamName,
   tableNo,
+  subgroup,
   code,
   onCreatePoll,
   creating,
@@ -486,6 +487,8 @@ function HomeScreen({
   teamId: string;
   teamName: string;
   tableNo?: string | null;
+  /** mod_join team.subgroup — BallotPanel의 분과 한정 투표 옵션에 쓴다. */
+  subgroup?: string | null;
   code: string | null;
   onCreatePoll: (input: { title: string; type: 'RADIO' | 'CHECKBOX'; options: string[] }) => void;
   creating: boolean;
@@ -612,7 +615,7 @@ function HomeScreen({
           {/* 타이머 카드 */}
           <Timer code={code} teamName={teamName} />
           <AttendancePanel teamId={teamId} teamName={teamName} joinCode={code} />
-          <BallotPanel code={code} />
+          <BallotPanel code={code} subgroup={subgroup ?? null} />
           <SubmissionPanel code={code} />
           <PastRoundsCard teamId={teamId} teamName={teamName} />
         </div>
@@ -1503,6 +1506,7 @@ export default function ModConsole() {
         teamId={state.team?.id ?? ''}
         teamName={teamName}
         tableNo={tableNo}
+        subgroup={state.team?.subgroup ?? null}
         code={codeRef.current}
         onCreatePoll={handleCreatePoll}
         creating={creating}

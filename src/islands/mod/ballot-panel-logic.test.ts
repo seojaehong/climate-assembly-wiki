@@ -9,11 +9,14 @@ import {
   canTransition,
   distRows,
   primaryAction,
+  qrSubgroupNotice,
   scaleLabel,
+  subgroupBadgeLabel,
+  subgroupTargetLabel,
   validateBallotForm,
   type BallotFormItem,
 } from './ballot-panel-logic';
-import type { BallotStatus } from '../../lib/deliberation';
+import { ballotCreateParams, type BallotItemInput, type BallotStatus } from '../../lib/deliberation';
 
 const ALL_STATUSES: BallotStatus[] = ['draft', 'open', 'closed', 'published', 'archived'];
 
@@ -166,6 +169,65 @@ describe('distRows — 결과 분포 완결성', () => {
     const rows = distRows(2, { '1': 1, '9': 100 });
     expect(rows.map((r) => r.count)).toEqual([1, 0]);
     expect(rows[0].pct).toBe(100);
+  });
+});
+
+describe('분과 스코프(S4) — 라벨', () => {
+  it('배지: 분과 있으면 「N분과 한정」, null/undefined(미적용 DB)는 「전체」', () => {
+    expect(subgroupBadgeLabel('1분과')).toBe('1분과 한정');
+    expect(subgroupBadgeLabel(null)).toBe('전체');
+    expect(subgroupBadgeLabel(undefined)).toBe('전체');
+    expect(subgroupBadgeLabel('  ')).toBe('전체');
+  });
+
+  it('보고서 대상: 분과명 그대로, 없으면 「세션 전체」', () => {
+    expect(subgroupTargetLabel('2분과')).toBe('2분과');
+    expect(subgroupTargetLabel(null)).toBe('세션 전체');
+    expect(subgroupTargetLabel(undefined)).toBe('세션 전체');
+  });
+
+  it('QR 배너: 분과 한정에만 전용 문구, 전체 투표는 null(배너 없음)', () => {
+    expect(qrSubgroupNotice('3분과')).toBe('이 QR은 3분과 전용입니다');
+    expect(qrSubgroupNotice(null)).toBeNull();
+    expect(qrSubgroupNotice(undefined)).toBeNull();
+  });
+});
+
+describe('ballotCreateParams — 조건부 p_subgroup 전달(배포 순서 제약)', () => {
+  const items: BallotItemInput[] = [{ ordinal: 1, statement: '의제 A', scale: 5, required: true }];
+
+  it('대상=전체면 p_subgroup 키 자체를 넣지 않는다 — S4 미적용 DB의 4인자 함수 매칭 보존', () => {
+    for (const subgroup of [null, undefined, '', '  '] as const) {
+      const params = ballotCreateParams('123456', { title: '제목', items, subgroup });
+      expect('p_subgroup' in params).toBe(false);
+      expect(params).toEqual({
+        p_code: '123456',
+        p_title: '제목',
+        p_instructions: null,
+        p_items: items,
+      });
+    }
+  });
+
+  it('subgroup 옵션을 아예 주지 않아도(기존 호출부) 키가 없다', () => {
+    const params = ballotCreateParams('123456', { title: '제목', items });
+    expect('p_subgroup' in params).toBe(false);
+  });
+
+  it('분과 선택 시에만 p_subgroup을 포함한다(trim 적용)', () => {
+    const params = ballotCreateParams('123456', {
+      title: '제목',
+      instructions: '안내',
+      items,
+      subgroup: ' 1분과 ',
+    });
+    expect(params).toEqual({
+      p_code: '123456',
+      p_title: '제목',
+      p_instructions: '안내',
+      p_items: items,
+      p_subgroup: '1분과',
+    });
   });
 });
 

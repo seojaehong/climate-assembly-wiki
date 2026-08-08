@@ -17,6 +17,7 @@ import {
   refreshNoticeMessage,
   resolveBallotScreen,
   scaleLabels,
+  subgroupVoteBadge,
 } from './ballot-logic';
 
 // VoteCard.tsx의 Shell/CenterMessage/Eyebrow 패턴·색상을 그대로 따른다(수정 금지라 로컬 재정의).
@@ -328,7 +329,14 @@ function VotingScreen({
       {/* 진행률 상단 고정 */}
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-[#DCE7EE] px-6 py-3">
         <div className="flex items-baseline justify-between mb-1.5">
-          <Eyebrow className="text-[#5A6B73]">다의제 투표</Eyebrow>
+          <span className="flex items-center gap-2">
+            <Eyebrow className="text-[#5A6B73]">다의제 투표</Eyebrow>
+            {subgroupVoteBadge(ballot.subgroup) ? (
+              <span className="rounded-full bg-[#135C73] px-2.5 py-0.5 text-[13px] font-bold text-white">
+                {subgroupVoteBadge(ballot.subgroup)}
+              </span>
+            ) : null}
+          </span>
           <span className="text-[15px] font-extrabold text-[#1F4E79] tr-num" role="status" aria-live="polite">
             {answered}/{total} 응답
           </span>
@@ -394,7 +402,14 @@ function ResultsScreen({ results }: { results: BallotResults | null }) {
   return (
     <Shell align="top">
       <div className="px-6 pt-8 pb-8">
-        <Eyebrow className="text-[#5A6B73] mb-2">투표 마감됨 · 결과</Eyebrow>
+        <div className="flex items-center gap-2 mb-2">
+          <Eyebrow className="text-[#5A6B73]">투표 마감됨 · 결과</Eyebrow>
+          {subgroupVoteBadge(results.subgroup) ? (
+            <span className="rounded-full bg-[#135C73] px-2.5 py-0.5 text-[13px] font-bold text-white">
+              {subgroupVoteBadge(results.subgroup)}
+            </span>
+          ) : null}
+        </div>
         <h1 className="text-[24px] font-extrabold text-[#1F4E79] leading-snug mb-1" style={{ letterSpacing: '-.022em' }}>
           {results.title}
         </h1>

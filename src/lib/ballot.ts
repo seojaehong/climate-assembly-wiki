@@ -24,6 +24,8 @@ export type Ballot = {
   instructions: string | null;
   /** ballot_get은 draft·archived를 null로 숨기므로 이 세 값만 온다. */
   status: 'open' | 'closed' | 'published';
+  /** 분과 스코프(20260808_s4). null=세션 전체. S4 미적용 DB는 키가 없다(undefined) — 전체로 간주. */
+  subgroup?: string | null;
   items: BallotItem[];
 };
 
@@ -43,6 +45,8 @@ export type BallotResults = {
   id: string;
   title: string;
   status: string;
+  /** 분과 스코프(20260808_s4). null=세션 전체. S4 미적용 DB는 키가 없다(undefined) — 전체로 간주. */
+  subgroup?: string | null;
   /** 제출(디바이스) 수. */
   responses: number;
   items: BallotResultItem[];

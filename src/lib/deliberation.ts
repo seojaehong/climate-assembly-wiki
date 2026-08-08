@@ -125,7 +125,14 @@ export type BallotItemInput = {
   required?: boolean;
 };
 
-export type BallotCreateResult = { id: string; token: string; status: BallotStatus; items: number };
+export type BallotCreateResult = {
+  id: string;
+  token: string;
+  status: BallotStatus;
+  items: number;
+  /** S4(20260808_s4) 이후에만 온다. 미적용 DB는 키 자체가 없다 — undefined=전체로 해석. */
+  subgroup?: string | null;
+};
 export type BallotSetStatusResult = { id: string; status: BallotStatus };
 
 /** ballot_list 반환 행(archived 제외, 최신순). count류는 bigint지만 JSON 숫자로 온다. */
@@ -134,6 +141,8 @@ export type BallotListRow = {
   title: string;
   status: BallotStatus;
   token: string;
+  /** 분과 스코프(S4). null=세션 전체. S4 미적용 DB는 키가 없다(undefined) — 전체로 간주. */
+  subgroup?: string | null;
   item_count: number;
   response_count: number;
   created_at: string;
@@ -154,22 +163,52 @@ export type BallotResults = {
   id: string;
   title: string;
   status: BallotStatus;
+  /** 분과 스코프(S4). null=세션 전체. S4 미적용 DB는 키가 없다(undefined) — 전체로 간주. */
+  subgroup?: string | null;
   responses: number;
   items: BallotResultItem[];
 };
 
-/** 다의제 투표 생성(초안). 의제 1~20개, 척도 2/4/5/7. */
-export async function ballotCreate(
-  code: string,
-  input: { title: string; instructions?: string | null; items: BallotItemInput[] },
-): Promise<BallotCreateResult> {
-  const sb = client();
-  const { data, error } = await sb.schema('climate_vote').rpc('ballot_create', {
+export type BallotCreateInput = {
+  title: string;
+  instructions?: string | null;
+  items: BallotItemInput[];
+  /** 분과 한정 투표(S4). null/undefined=세션 전체. */
+  subgroup?: string | null;
+};
+
+export type BallotCreateParams = {
+  p_code: string;
+  p_title: string;
+  p_instructions: string | null;
+  p_items: BallotItemInput[];
+  /** 분과 선택 시에만 존재한다 — 키 자체를 조건부로 넣는다(아래 주석 참조). */
+  p_subgroup?: string;
+};
+
+/**
+ * ballot_create RPC 파라미터(순수 — 테스트 대상). 대상=전체면 **p_subgroup 키 자체를
+ * 넣지 않는다**: S4 미적용 DB에는 4인자 함수만 있어서, 키를 보내면(값이 null이어도)
+ * PostgREST 함수 매칭에 실패한다. 코드가 DB보다 먼저 배포돼도 기존 동작이 깨지지 않게 한다.
+ */
+export function ballotCreateParams(code: string, input: BallotCreateInput): BallotCreateParams {
+  const params: BallotCreateParams = {
     p_code: code,
     p_title: input.title,
     p_instructions: input.instructions ?? null,
     p_items: input.items,
-  });
+  };
+  const subgroup = input.subgroup?.trim();
+  if (subgroup) params.p_subgroup = subgroup;
+  return params;
+}
+
+/** 다의제 투표 생성(초안). 의제 1~20개, 척도 2/4/5/7. subgroup 지정 시 그 분과 한정. */
+export async function ballotCreate(code: string, input: BallotCreateInput): Promise<BallotCreateResult> {
+  const sb = client();
+  const { data, error } = await sb
+    .schema('climate_vote')
+    .rpc('ballot_create', ballotCreateParams(code, input));
   if (error) throw error;
   return data as BallotCreateResult;
 }

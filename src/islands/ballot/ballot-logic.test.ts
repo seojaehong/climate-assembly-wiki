@@ -8,6 +8,7 @@ import {
   refreshNoticeMessage,
   resolveBallotScreen,
   scaleLabels,
+  subgroupVoteBadge,
 } from './ballot-logic';
 import type { Ballot, BallotItem } from '../../lib/ballot';
 
@@ -30,6 +31,21 @@ const openBallot: Ballot = {
   status: 'open',
   items: [item()],
 };
+
+describe('subgroupVoteBadge — /b 헤더 분과 뱃지(S4)', () => {
+  it('분과 한정 투표면 「N분과 투표」', () => {
+    expect(subgroupVoteBadge('1분과')).toBe('1분과 투표');
+    expect(subgroupVoteBadge(' 2분과 ')).toBe('2분과 투표');
+  });
+
+  it('전체 투표(null)·S4 미적용 DB(키 없음=undefined)는 null — 표시 없음', () => {
+    expect(subgroupVoteBadge(null)).toBeNull();
+    expect(subgroupVoteBadge(undefined)).toBeNull();
+    expect(subgroupVoteBadge('')).toBeNull();
+    // openBallot에는 subgroup 키가 없다 — 미적용 DB 응답 형태 그대로 안전해야 한다.
+    expect(subgroupVoteBadge(openBallot.subgroup)).toBeNull();
+  });
+});
 
 describe('parseBallotUrl', () => {
   it('?t=<token> 파싱', () => {

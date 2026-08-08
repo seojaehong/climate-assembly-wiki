@@ -141,6 +141,31 @@ export function validateBallotForm(title: string, items: BallotFormItem[]): Ball
   };
 }
 
+// ── 분과 스코프(S4) 라벨 ─────────────────────────────────────
+// subgroup은 null(=세션 전체)일 수도, S4 미적용 DB라 키 자체가 없을 수도(undefined) 있다.
+// 두 경우 모두 '전체'로 간주한다 — 코드가 DB보다 먼저 배포돼도 표시가 깨지지 않는다.
+
+/** 목록·초안 카드·결과 화면의 분과 배지. 예: '1분과 한정' / '전체'. */
+export function subgroupBadgeLabel(subgroup: string | null | undefined): string {
+  const s = subgroup?.trim();
+  return s ? `${s} 한정` : '전체';
+}
+
+/** §1 개요 「대상」 값·표지 병기용. 예: '1분과' / '세션 전체'. */
+export function subgroupTargetLabel(subgroup: string | null | undefined): string {
+  const s = subgroup?.trim();
+  return s ? s : '세션 전체';
+}
+
+/**
+ * QR 풀스크린의 오배포 방지 배너. 분과 한정 투표에만 문구를 낸다 —
+ * 세 분과가 세 장소에서 동시에 QR을 띄우므로, 화면만 보고 어느 분과 QR인지 알 수 있어야 한다.
+ */
+export function qrSubgroupNotice(subgroup: string | null | undefined): string | null {
+  const s = subgroup?.trim();
+  return s ? `이 QR은 ${s} 전용입니다` : null;
+}
+
 // ── 참가자 URL·결과 분포 ─────────────────────────────────────
 
 /** 참가자 진입 URL. QR과 수기 입력 안내가 같은 문자열을 쓴다. */

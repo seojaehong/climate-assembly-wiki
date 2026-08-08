@@ -45,7 +45,8 @@ function stamp(at: Date): string {
   return `${at.getFullYear()}${pad2(at.getMonth() + 1)}${pad2(at.getDate())}-${pad2(at.getHours())}${pad2(at.getMinutes())}`;
 }
 
-function safeSegment(value: string): string {
+/** 파일명 조각 정리기. 다의제 투표 보고서(ballot-report-docx.ts)도 같은 치환기를 쓴다. */
+export function safeSegment(value: string): string {
   return value
     .replace(UNSAFE_FILENAME_CHARS, '_')
     .replace(/_{2,}/g, '_')
@@ -113,6 +114,18 @@ export function resultZipEntryName(input: { teamName: string; sequence: number; 
 /** 전수 내려받기 ZIP의 파일명. 시각은 `resultImageFileName`과 같이 **저장한 때**다. */
 export function resultZipFileName(at: Date): string {
   return `조별_투표결과_${stamp(at)}.zip`;
+}
+
+/**
+ * 다의제 투표(ballot) 문항 이미지의 파일명. `<투표제목>_의제N_<YYYYMMDD-HHmm>.png`.
+ * `at`은 저장한 시각(호출부가 `new Date()`를 넘긴다) — 같은 문항을 두 번 저장해도 덮어쓰지 않는다.
+ * 제목은 `resultZipEntryName`과 같은 길이 상한을 둔다(모더레이터 자유 입력 → 260자 경로 사고 방지).
+ */
+export function ballotImageFileName(input: { title: string; ordinal: number; at: Date }): string {
+  const parts = [capSegment(safeSegment(input.title), MAX_TITLE_CHARS) || FALLBACK_TEAM_NAME];
+  if (input.ordinal >= 1) parts.push(`의제${Math.floor(input.ordinal)}`);
+  parts.push(stamp(input.at));
+  return `${parts.join('_')}.png`;
 }
 
 function pixelAttr(tag: string, name: string): number | null {

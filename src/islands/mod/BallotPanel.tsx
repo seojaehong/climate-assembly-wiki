@@ -5,10 +5,16 @@ import {
   ballotList,
   ballotResults,
   ballotSetStatus,
+  submissionGet,
+  topicList,
   type BallotListRow,
   type BallotResults,
   type BallotScale,
+  type SubmissionGetResult,
+  type Topic,
 } from '../../lib/deliberation';
+import { renderBallotItemSvg } from './ballot-result-image';
+import { RESULT_IMAGE_SCALE, ballotImageFileName, downloadBlob, svgToPngBlob } from './svg-to-png';
 import {
   BALLOT_SCALES,
   MAX_BALLOT_ITEMS,
@@ -17,7 +23,9 @@ import {
   distRows,
   emptyBallotFormItem,
   primaryAction,
+  qrSubgroupNotice,
   scaleLabel,
+  subgroupBadgeLabel,
   validateBallotForm,
   type BallotAction,
   type BallotFormItem,
@@ -81,11 +89,16 @@ function BallotQrFullscreen({
     return () => window.removeEventListener('keydown', onKey);
   }, [onExit]);
 
+  // 세 분과가 세 장소에서 동시에 QR을 띄운다 — 오배포 방지용 분과 라벨을 크게 박는다.
+  const subgroupNotice = qrSubgroupNotice(ballot.subgroup);
+
   return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col items-center px-6 py-6 sm:py-8">
       <div className="w-full flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <Eyebrow className="text-[#135C73] mb-1">다의제 투표</Eyebrow>
+          <Eyebrow className="text-[#135C73] mb-1">
+            다의제 투표 · {subgroupBadgeLabel(ballot.subgroup)}
+          </Eyebrow>
           <h1
             className="text-[clamp(24px,3vw,44px)] font-extrabold text-[#1F4E79] leading-tight truncate"
             style={{ letterSpacing: '-.022em' }}
@@ -102,6 +115,12 @@ function BallotQrFullscreen({
           나가기 (ESC)
         </button>
       </div>
+
+      {subgroupNotice ? (
+        <p className="mt-3 w-full rounded-2xl bg-[#135C73] px-6 py-3 text-center text-[clamp(24px,2.8vw,44px)] font-extrabold text-white">
+          {subgroupNotice}
+        </p>
+      ) : null}
 
       {/* QR — 뷰포트를 최대한 차지한다 */}
       <div className="flex-1 min-h-0 w-full grid place-items-center py-4">
@@ -142,13 +161,17 @@ function BallotResultsFullscreen({
   ballot,
   code,
   onExit,
+  onNotify,
 }: {
   ballot: BallotListRow;
   code: string;
   onExit: () => void;
+  /** 내보내기 결과 안내(토스트). 패널 본체의 setToast를 받는다. */
+  onNotify: (message: string) => void;
 }) {
   const [results, setResults] = useState<BallotResults | null>(null);
   const [failed, setFailed] = useState(false);
+  const [exporting, setExporting] = useState<'png' | 'docx' | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -185,12 +208,71 @@ function BallotResultsFullscreen({
 
   const provisional = results != null && results.status !== 'published';
 
+  /** 문항별 카드 PNG를 순서대로 내려받는다. 브라우저가 다중 다운로드 허용을 물을 수 있다. */
+  const savePng = async () => {
+    if (results == null || exporting != null) return;
+    setExporting('png');
+    try {
+      const at = new Date();
+      for (const item of results.items) {
+        const svg = renderBallotItemSvg({
+          ballotTitle: results.title,
+          ordinal: item.ordinal,
+          statement: item.statement,
+          scale: item.scale,
+          n: item.n,
+          avg: item.avg,
+          dist: item.dist,
+        });
+        const blob = await svgToPngBlob(svg, RESULT_IMAGE_SCALE);
+        downloadBlob(blob, ballotImageFileName({ title: results.title, ordinal: item.ordinal, at }));
+      }
+      onNotify(`결과 이미지 ${results.items.length}장을 저장했습니다.`);
+    } catch (err) {
+      onNotify(err instanceof Error ? err.message : '이미지 저장에 실패했습니다.');
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  /** 결과보고서 DOCX. docx 모듈은 무겁다 — 눌렀을 때만 동적 로드해 콘솔 초기 로드를 지킨다. */
+  const saveDocx = async () => {
+    if (results == null || exporting != null) return;
+    setExporting('docx');
+    try {
+      const docxMod = await import('./ballot-report-docx');
+      // §3 내 조 산출물은 선택 데이터 — 조회에 실패해도 보고서는 §1·§2만으로 나간다.
+      let topics: Array<{ topic: Topic; submission: SubmissionGetResult }> | null = null;
+      try {
+        const list = await topicList(code);
+        topics = await Promise.all(
+          list.map(async (t) => ({ topic: t, submission: await submissionGet(code, t.id) })),
+        );
+      } catch {
+        topics = null;
+      }
+      const model = docxMod.buildBallotReportModel({
+        results,
+        generatedAtLabel: docxMod.formatGeneratedAt(new Date()),
+        topics,
+      });
+      const blob = await docxMod.ballotReportBlob(model);
+      downloadBlob(blob, docxMod.ballotReportFileName({ title: results.title, at: new Date() }));
+      onNotify('결과보고서(DOCX)를 저장했습니다.');
+    } catch {
+      onNotify('보고서 저장에 실패했습니다 — 다시 시도해 주세요.');
+    } finally {
+      setExporting(null);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col px-6 sm:px-14 py-8 sm:py-10">
       <div className="flex items-start justify-between gap-4 mb-6">
         <div className="min-w-0">
           <Eyebrow className="text-[#135C73] mb-2">
-            {provisional ? '잠정 결과 · 운영진 전용' : '최종 결과'}
+            {provisional ? '잠정 결과 · 운영진 전용' : '최종 결과'} ·{' '}
+            {subgroupBadgeLabel(results?.subgroup ?? ballot.subgroup)}
           </Eyebrow>
           <h1
             className="text-[clamp(28px,3.4vw,50px)] font-extrabold text-[#1F4E79] leading-tight"
@@ -216,6 +298,25 @@ function BallotResultsFullscreen({
             나가기 (ESC)
           </button>
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2 mb-5">
+        <button
+          type="button"
+          onClick={() => void savePng()}
+          disabled={results == null || exporting != null}
+          className="h-12 rounded-xl border border-[#1F4E79] px-4 text-[16px] font-bold text-[#1F4E79] disabled:opacity-40"
+        >
+          {exporting === 'png' ? '이미지 저장 중…' : '결과 이미지 저장(PNG)'}
+        </button>
+        <button
+          type="button"
+          onClick={() => void saveDocx()}
+          disabled={results == null || exporting != null}
+          className="h-12 rounded-xl border border-[#1F4E79] px-4 text-[16px] font-bold text-[#1F4E79] disabled:opacity-40"
+        >
+          {exporting === 'docx' ? '보고서 만드는 중…' : '보고서 다운로드(DOCX)'}
+        </button>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto space-y-6 pr-1">
@@ -282,16 +383,26 @@ function BallotResultsFullscreen({
 
 function CreateForm({
   submitting,
+  subgroup,
   onCreate,
   onCancel,
 }: {
   submitting: boolean;
-  onCreate: (title: string, instructions: string | null, items: BallotFormItem[]) => void;
+  /** 내 조의 분과(mod_join team.subgroup). null이면 「내 분과」 옵션을 숨긴다. */
+  subgroup: string | null;
+  onCreate: (
+    title: string,
+    instructions: string | null,
+    items: BallotFormItem[],
+    subgroup: string | null,
+  ) => void;
   onCancel: () => void;
 }) {
   const [title, setTitle] = useState('');
   const [instructions, setInstructions] = useState('');
   const [items, setItems] = useState<BallotFormItem[]>([emptyBallotFormItem()]);
+  // 대상: 세션 전체(기본) / 내 분과 한정. 분과 정보가 없는 팀은 전체 고정.
+  const [scope, setScope] = useState<'all' | 'subgroup'>('all');
   const [error, setError] = useState<string | null>(null);
 
   const setStatement = (index: number, statement: string) =>
@@ -310,7 +421,12 @@ function CreateForm({
       return;
     }
     setError(null);
-    onCreate(title, instructions.trim() ? instructions.trim() : null, items);
+    onCreate(
+      title,
+      instructions.trim() ? instructions.trim() : null,
+      items,
+      scope === 'subgroup' && subgroup ? subgroup : null,
+    );
   };
 
   return (
@@ -346,6 +462,48 @@ function CreateForm({
           className="w-full min-w-0 rounded-xl border border-[#C4D8E4] focus:border-[#23B2C3] px-4 py-3 text-[17px] text-[#1F2933] outline-none resize-y"
         />
       </div>
+
+      {subgroup ? (
+        <div>
+          <label
+            className="block text-[#5A6B73] font-mono text-[12px] font-semibold uppercase mb-2"
+            style={{ letterSpacing: '.14em' }}
+          >
+            대상
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setScope('all')}
+              aria-pressed={scope === 'all'}
+              className={`h-12 rounded-xl border px-3 text-[16px] font-bold ${
+                scope === 'all'
+                  ? 'border-[#23B2C3] bg-[#23B2C3]/10 text-[#135C73]'
+                  : 'border-[#C4D8E4] bg-white text-[#5A6B73]'
+              }`}
+            >
+              세션 전체
+            </button>
+            <button
+              type="button"
+              onClick={() => setScope('subgroup')}
+              aria-pressed={scope === 'subgroup'}
+              className={`h-12 rounded-xl border px-3 text-[16px] font-bold ${
+                scope === 'subgroup'
+                  ? 'border-[#23B2C3] bg-[#23B2C3]/10 text-[#135C73]'
+                  : 'border-[#C4D8E4] bg-white text-[#5A6B73]'
+              }`}
+            >
+              내 분과 ({subgroup})
+            </button>
+          </div>
+          {scope === 'subgroup' ? (
+            <p className="mt-2 text-[14px] text-[#5A6B73]">
+              이 투표는 <b className="text-[#135C73]">{subgroup}</b> 장소의 QR로만 배포하세요.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div>
         <label
@@ -443,7 +601,14 @@ function CreateForm({
 // 패널 본체 — 목록(3초 폴링) + 생성 + 상태 전이 + 풀스크린 진입
 // ============================================================
 
-export default function BallotPanel({ code }: { code: string | null }) {
+export default function BallotPanel({
+  code,
+  subgroup = null,
+}: {
+  code: string | null;
+  /** 내 조의 분과(mod_join team.subgroup). 없으면 분과 한정 투표를 만들 수 없다. */
+  subgroup?: string | null;
+}) {
   const [ballots, setBallots] = useState<BallotListRow[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -495,13 +660,24 @@ export default function BallotPanel({ code }: { code: string | null }) {
     };
   }, [code]);
 
-  const handleCreate = async (title: string, instructions: string | null, items: BallotFormItem[]) => {
+  const handleCreate = async (
+    title: string,
+    instructions: string | null,
+    items: BallotFormItem[],
+    ballotSubgroup: string | null,
+  ) => {
     if (!code) return;
     const checked = validateBallotForm(title, items);
     if (!checked.ok) return;
     setSubmitting(true);
     try {
-      await ballotCreate(code, { title: checked.title, instructions, items: checked.items });
+      // 대상=전체면 deliberation.ballotCreateParams가 p_subgroup 키 자체를 빼고 보낸다(S4 미적용 DB 호환).
+      await ballotCreate(code, {
+        title: checked.title,
+        instructions,
+        items: checked.items,
+        subgroup: ballotSubgroup,
+      });
       setShowForm(false);
       setToast('투표 초안이 만들어졌습니다. 준비되면 투표 시작을 누르세요.');
       await refresh();
@@ -559,6 +735,7 @@ export default function BallotPanel({ code }: { code: string | null }) {
         ) : showForm ? (
           <CreateForm
             submitting={submitting}
+            subgroup={subgroup}
             onCreate={handleCreate}
             onCancel={() => setShowForm(false)}
           />
@@ -582,10 +759,21 @@ export default function BallotPanel({ code }: { code: string | null }) {
                         의제 {ballot.item_count}개 · 제출 {ballot.response_count}명 · {formatClock(ballot.created_at)}
                       </p>
                     </div>
-                    <span
-                      className={`shrink-0 rounded-full px-3 py-1 text-[14px] font-bold ${statusBadgeClass(ballot.status)}`}
-                    >
-                      {ballotStatusLabel(ballot.status)}
+                    <span className="shrink-0 flex flex-col items-end gap-1.5">
+                      <span
+                        className={`rounded-full px-3 py-1 text-[14px] font-bold ${statusBadgeClass(ballot.status)}`}
+                      >
+                        {ballotStatusLabel(ballot.status)}
+                      </span>
+                      <span
+                        className={`rounded-full px-3 py-1 text-[14px] font-bold ${
+                          ballot.subgroup
+                            ? 'bg-[#135C73] text-white'
+                            : 'bg-[#F1F7FA] text-[#5A6B73] border border-[#DCE7EE]'
+                        }`}
+                      >
+                        {subgroupBadgeLabel(ballot.subgroup)}
+                      </span>
                     </span>
                   </div>
 
@@ -702,7 +890,12 @@ export default function BallotPanel({ code }: { code: string | null }) {
 
       {qrBallot ? <BallotQrFullscreen ballot={qrBallot} onExit={() => setQrId(null)} /> : null}
       {resultsBallot && code ? (
-        <BallotResultsFullscreen ballot={resultsBallot} code={code} onExit={() => setResultsId(null)} />
+        <BallotResultsFullscreen
+          ballot={resultsBallot}
+          code={code}
+          onExit={() => setResultsId(null)}
+          onNotify={setToast}
+        />
       ) : null}
 
       {toast ? (

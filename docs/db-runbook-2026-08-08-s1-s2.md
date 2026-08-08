@@ -15,6 +15,9 @@ Supabase 대시보드 → SQL Editor에서 순서대로:
 | 1 | `supabase/migrations/20260808_s1_assembly_topic_submission.sql` | 위계+산출물+잠금 | `supabase/rollbacks/20260808_BEFORE_s1.sql` |
 | 2 | `supabase/migrations/20260808_s2_ballot_multi_agenda.sql` | 다의제 투표 | `supabase/rollbacks/20260808_BEFORE_s2.sql` |
 | 3 | `supabase/migrations/20260808_s3_seed_0829.sql` | assembly·backfill·주제 시드(멱등) | 시드만 실패 시 재실행 가능 |
+| 4 | `supabase/migrations/20260808_s4_ballot_subgroup.sql` | **분과별 투표 스코프** (ballot.subgroup + RPC 개정) | `supabase/rollbacks/20260808_BEFORE_s4.sql` + S2 RPC 섹션 재실행 |
+
+> S4는 함수 drop→재생성 구간이 있어 **반드시 통째로 실행**. 1~3 적용 후 언제든 단독 적용 가능.
 
 ⚠️ **각 파일을 통째로 실행** — 중간에 끊기면 함수가 없는 채로 남는다(7/26 hq_teams 교훈).
 ⚠️ 3번 시드의 토론 주제 2건은 `[확정 전]` 문안 + `draft` 상태로 심어진다. **세부실행계획 확정 후 prompt UPDATE + `status='open'` 전환**해야 조 콘솔에 노출된다.

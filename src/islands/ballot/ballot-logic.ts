@@ -41,6 +41,15 @@ export function scaleLabels(scale: number): string[] {
   }
 }
 
+/**
+ * /b 참여자 헤더의 분과 뱃지 문구. subgroup 있으면 '1분과 투표', 없으면 null(표시 없음).
+ * S4 미적용 DB에서는 subgroup 키 자체가 없다(undefined) — 그때도 null이라 기존 화면 그대로다.
+ */
+export function subgroupVoteBadge(subgroup: string | null | undefined): string | null {
+  const s = subgroup?.trim();
+  return s ? `${s} 투표` : null;
+}
+
 /** 유효 범위(1..scale) 안의 답변인지. */
 function hasValidAnswer(item: BallotItem, answers: Record<string, number>): boolean {
   const v = answers[item.id];
