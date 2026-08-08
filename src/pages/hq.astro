@@ -1,6 +1,6 @@
 ---
 import '../styles/global.css';
-import HqGrid from '../islands/mod/HqGrid';
+import HqGate from '../islands/mod/HqGate';
 ---
 <!doctype html>
 <html lang="ko" class="light" data-theme="light"><head>
@@ -14,5 +14,6 @@ import HqGrid from '../islands/mod/HqGrid';
     .tr-num { letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
   </style>
 </head><body>
-  <HqGrid client:only="react" />
+  <!-- 본부 비밀번호 게이트가 내부에서 HqGrid를 렌더한다(아일랜드 중첩 회피). -->
+  <HqGate client:only="react" />
 </body></html>
