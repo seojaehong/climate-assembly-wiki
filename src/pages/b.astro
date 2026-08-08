@@ -1,0 +1,18 @@
+---
+import '../styles/global.css';
+import BallotCard from '../islands/ballot/BallotCard';
+---
+<!doctype html>
+<html lang="ko" class="light" data-theme="light"><head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="color-scheme" content="light" />
+  <title>기후시민회의 다의제 투표 [/b]</title>
+  <style is:global>
+    body { font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif; }
+    .tr-num { letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  </style>
+</head><body>
+  <BallotCard client:only="react" />
+</body></html>

@@ -12,6 +12,7 @@ Disallow: /event-vote/
 Disallow: /vote-614/
 Disallow: /vote-admin-614/
 Disallow: /v/
+Disallow: /b/
 Disallow: /mod/
 Disallow: /hq/
 Disallow: /mod-help/

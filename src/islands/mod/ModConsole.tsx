@@ -28,6 +28,8 @@ import { roundSequence, teamRoundHistory, type TeamRoundHistoryItem } from './ro
 import { renderResultSvg, type ResultImageInput } from './result-image';
 import { downloadBlob, resultImageFileName, svgToPngBlob, RESULT_IMAGE_SCALE } from './svg-to-png';
 import AttendancePanel from './AttendancePanel';
+import BallotPanel from './BallotPanel';
+import SubmissionPanel from './SubmissionPanel';
 import { tableNoLabel } from './table-no';
 import Timer from './Timer';
 
@@ -610,6 +612,8 @@ function HomeScreen({
           {/* 타이머 카드 */}
           <Timer code={code} teamName={teamName} />
           <AttendancePanel teamId={teamId} teamName={teamName} joinCode={code} />
+          <BallotPanel code={code} />
+          <SubmissionPanel code={code} />
           <PastRoundsCard teamId={teamId} teamName={teamName} />
         </div>
       </div>
