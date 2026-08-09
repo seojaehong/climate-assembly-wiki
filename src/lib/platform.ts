@@ -353,16 +353,17 @@ export async function issueReview(code: string, issueId: string): Promise<Platfo
   });
 }
 
-/** 공개(P2 result_publish) — 스코프 내 reviewed ≥1 필수. token 반환. */
+/** 공개(P2 result_publish) — ★ G2: HQ 토큰 서명(조 코드 아님). 스코프 내 reviewed ≥1 필수. token 반환.
+ *  hqToken = attendance HQ 인증 토큰(scope='hq'). publish는 HQ/org_admin 권한(플랜 §2-3). */
 export async function resultPublish(
-  code: string,
+  hqToken: string,
   scope: 'topic' | 'session' | 'assembly',
   scopeId: string,
   title: string,
 ): Promise<PlatformResult<{ id: string; token: string; published_at: string; reviewed_count: number }>> {
   return guard(async (sb) => {
     const { data, error } = await sb.schema(SCHEMA).rpc('result_publish', {
-      p_code: code,
+      p_token: hqToken,
       p_scope: scope,
       p_scope_id: scopeId,
       p_title: title,
@@ -372,10 +373,10 @@ export async function resultPublish(
   });
 }
 
-/** 공개 해제(P2 result_unpublish). */
-export async function resultUnpublish(code: string, resultId: string): Promise<PlatformResult<{ id: string; published_at: null }>> {
+/** 공개 해제(P2 result_unpublish) — ★ G2: HQ 토큰 서명. */
+export async function resultUnpublish(hqToken: string, resultId: string): Promise<PlatformResult<{ id: string; published_at: null }>> {
   return guard(async (sb) => {
-    const { data, error } = await sb.schema(SCHEMA).rpc('result_unpublish', { p_code: code, p_result_id: resultId });
+    const { data, error } = await sb.schema(SCHEMA).rpc('result_unpublish', { p_token: hqToken, p_result_id: resultId });
     if (error) throw error;
     return data as { id: string; published_at: null };
   });

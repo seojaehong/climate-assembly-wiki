@@ -62,7 +62,7 @@ create table if not exists climate_vote.invitation (
   org_id uuid not null references climate_vote.org(id),
   email text not null check (length(trim(email)) between 3 and 200),
   role text not null check (role in ('org_admin','operator','hq','facilitator')),
-  token text not null unique default encode(gen_random_bytes(16),'hex'),
+  token text not null unique default encode(extensions.gen_random_bytes(16),'hex'),
   invited_by uuid not null,              -- auth.users(id)
   accepted_at timestamptz,
   expires_at timestamptz not null default (now() + interval '14 days'),

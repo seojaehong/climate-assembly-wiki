@@ -442,22 +442,35 @@ end $fn$;
 -- 7-1. 공개 — 스코프 내 reviewed issue ≥1 필수(0이면 예외=공허참 방지).
 --   body에 검수 스냅샷(issue·조×쟁점 매트릭스·미분류 count·분모 규칙·HITL) 적재. token 반환.
 --   스코프당 live(비archive) result_page 1행 upsert(select for update 후 분기).
+-- ★ G2 (2026-08-09): publish 권한 = HQ 토큰 서명(조 코드 아님).
+-- 이전엔 임의의 조 join_code가 scope='assembly'로 공론화 전체를 공개할 수 있었다(권한 격상).
+-- 이제 submission_reopen과 동일하게 attendance HQ 토큰(scope='hq')을 요구한다.
+-- 공개는 결과를 대외 노출하는 고권한 행위 → HQ/org_admin(플랜 §2-3). 조 코드로는 실패.
+-- (Phase 2: HQ 공유비밀 → membership 인증 + org_of_token으로 org 일치 검사 추가)
 create or replace function climate_vote.result_publish(
-  p_code text, p_scope text, p_scope_id uuid, p_title text)
+  p_token text, p_scope text, p_scope_id uuid, p_title text)
 returns jsonb language plpgsql security definer
-set search_path = climate_vote, pg_temp as $fn$
+set search_path = climate_vote, extensions, pg_temp as $fn$
 declare
-  v_team climate_vote.team; v_org uuid; v_title text;
+  v_auth climate_vote.attendance_auth_session; v_org uuid; v_title text; v_actor text;
+  v_exists boolean;
   v_topic_ids uuid[]; v_issues jsonb; v_unclassified int; v_reviewed int;
   v_body jsonb; v_page climate_vote.result_page;
 begin
-  select * into v_team from climate_vote.team where join_code = p_code and status = 'active';
-  if not found then raise exception 'invalid join code'; end if;
+  v_auth := climate_vote.attendance_token_row(p_token);
+  if v_auth.scope <> 'hq' then raise exception 'hq authorization required to publish'; end if;
+  v_actor := coalesce(v_auth.actor_label, 'hq');
   if p_scope not in ('topic','session','assembly') then raise exception 'invalid scope: %', p_scope; end if;
-  if not climate_vote.platform_scope_belongs(p_scope, p_scope_id, v_team.session_id) then
-    raise exception 'scope not in your session';
+  -- scope_id 실재 확인(Phase 2: org 일치까지). 존재하지 않으면 거부.
+  if p_scope = 'topic' then
+    select exists(select 1 from climate_vote.discussion_topic where id = p_scope_id) into v_exists;
+  elsif p_scope = 'session' then
+    select exists(select 1 from climate_vote.session where id = p_scope_id) into v_exists;
+  else
+    select exists(select 1 from climate_vote.assembly where id = p_scope_id) into v_exists;
   end if;
-  v_org := climate_vote.platform_org_of_code(p_code);
+  if not v_exists then raise exception 'scope target not found'; end if;
+  v_org := v_auth.org_id;   -- Phase 2 이후 non-null. 현재 레거시 HQ 토큰은 null 가능
   v_title := nullif(trim(coalesce(p_title,'')),'');
   if v_title is null then raise exception 'title required'; end if;
 
@@ -522,14 +535,14 @@ begin
   if found then
     update climate_vote.result_page
        set title = v_title, body = v_body, published_at = now(),
-           published_by = 'mod:' || v_team.name, org_id = coalesce(org_id, v_org)
+           published_by = 'hq:' || v_actor, org_id = coalesce(org_id, v_org)
      where id = v_page.id
      returning * into v_page;
   else
     insert into climate_vote.result_page
       (scope, scope_id, title, body, published_at, published_by, org_id)
     values
-      (p_scope, p_scope_id, v_title, v_body, now(), 'mod:' || v_team.name, v_org)
+      (p_scope, p_scope_id, v_title, v_body, now(), 'hq:' || v_actor, v_org)
     returning * into v_page;
   end if;
   return jsonb_build_object('id', v_page.id, 'token', v_page.token,
@@ -537,18 +550,16 @@ begin
 end $fn$;
 
 -- 7-2. 공개 해제 — published_at = null
-create or replace function climate_vote.result_unpublish(p_code text, p_result_id uuid)
+-- 공개 해제도 HQ 토큰 서명(G2 — publish와 동일 권한)
+create or replace function climate_vote.result_unpublish(p_token text, p_result_id uuid)
 returns jsonb language plpgsql security definer
-set search_path = climate_vote, pg_temp as $fn$
-declare v_team climate_vote.team; v_page climate_vote.result_page;
+set search_path = climate_vote, extensions, pg_temp as $fn$
+declare v_auth climate_vote.attendance_auth_session; v_page climate_vote.result_page;
 begin
-  select * into v_team from climate_vote.team where join_code = p_code and status = 'active';
-  if not found then raise exception 'invalid join code'; end if;
+  v_auth := climate_vote.attendance_token_row(p_token);
+  if v_auth.scope <> 'hq' then raise exception 'hq authorization required to unpublish'; end if;
   select * into v_page from climate_vote.result_page where id = p_result_id for update;
   if not found then raise exception 'result page not found'; end if;
-  if not climate_vote.platform_scope_belongs(v_page.scope, v_page.scope_id, v_team.session_id) then
-    raise exception 'result page not in your session';
-  end if;
   update climate_vote.result_page set published_at = null where id = p_result_id;
   return jsonb_build_object('id', p_result_id, 'published_at', null);
 end $fn$;
