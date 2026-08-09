@@ -1,8 +1,13 @@
 # 플랫폼 트랙 — 상태·병합 전 게이트
 
-- 갱신: 2026-08-09
+- 갱신: 2026-08-10
 - 브랜치: `feat/deliberation-saas-platform` (워크트리 `C:/Users/iceam/dev/climate-saas-platform`)
-- 8/29 라이브(main)와 **완전 격리**. 프로덕션 DB 미적용.
+- 8/29 라이브(main)와 격리. **백엔드 스키마는 2026-08-10 사용자 승인으로 프로덕션(labor_money)에 적용됨(§프로덕션 배포 참조). 프론트엔드는 아직 이 브랜치에만.**
+
+## ✅ 프로덕션 배포 (2026-08-10) — labor_money, 8/29 무영향
+사용자 명시 승인 후 Management API 적용. P1·P2 적용(HTTP 201). anon 검증: result_get→200 null·issue_list/items→invalid join code·result_publish→hq 인증 요구(G2). 신규 테이블(org·membership·invitation·issue·issue_link·result_page)·RPC 존재 확인.
+- **8/29 무영향 보장**: 순수 additive(신규 테이블·함수·nullable 컬럼, 기존 s1~s5 무변경) · P1 RLS 휴면(활성화 GRANT 미실행) · **issue_invalidate_guard 트리거는 submission_item에 부착 제외**(검수 단계 시작 시 부착) · p1b backfill/NOT NULL 미적용 · 기존 mod_join·ballot_list 정상 · 테스트 데이터 0건.
+- 후속: (검수 시작 시) issue_invalidate_guard 트리거 부착 + 필요시 p1b backfill. 프론트엔드 라이브 배포는 타이밍 확인 후.
 
 ## 구현 완료 (코드 완성 · 빌드/테스트 통과)
 
