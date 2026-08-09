@@ -31,3 +31,14 @@ throwaway 스택으로 그대로 재현. psql 파싱검증(G1)을 넘어 **실 �
 ## 남은 것(프로덕션 런칭)
 실제 Supabase 프로젝트(사용자 계정) + Auth(GoTrue) + 배포. = 배포 행위이지 구현 갭 아님.
 런북: `docs/platform/PROVISIONING.md`.
+
+## 실제 프론트엔드 라이브 구동 (2026-08-09)
+스택에 nginx 게이트웨이(`/rest/v1/`→PostgREST) + 정적 서버(SPA fallback)를 붙이고,
+**실제 빌드된 프론트엔드**(PUBLIC_SUPABASE_URL=localhost 게이트웨이, anon=서명 JWT)를
+브라우저로 열어 `/r/<token>` 결과 페이지를 구동.
+- supabase-js → `/rest/v1/rpc/result_get` → PostgREST → RLS → 실 데이터 렌더 확인.
+- 렌더된 것: 제목("2026 기후시민회의·고령자 계속고용 결과")·검수완료 1/1·HITL 카피·
+  쟁점 랭킹(4×6 배지 다수의견/찬성/검수완료)·쟁점 요약·**원문 군집 1건(cluster 분모)**·
+  함께확인/더논의/다음단계·접근성 표대체본.
+- = React 프론트엔드 + supabase-js + PostgREST + RLS + RPC + Postgres **전 스택 실제 구동**.
+- 데모 임시변경(getStaticPaths 1경로·로컬 .env)은 스크린샷 후 원복. 프로덕션은 SSR/rewrite.
