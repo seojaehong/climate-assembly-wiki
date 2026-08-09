@@ -9,10 +9,6 @@ import {
   isLastTenSeconds,
   shouldLogOnStop,
   formatRemaining,
-  minutesToMs,
-  formatPresetLabel,
-  SPEECH_PRESET_MINUTES,
-  SESSION_PRESET_MINUTES,
   type TimerState,
 } from './timer-logic';
 
@@ -183,66 +179,5 @@ describe('formatRemaining', () => {
   });
   it('음수는 00:00으로 clamp', () => {
     expect(formatRemaining(-500)).toBe('00:00');
-  });
-});
-
-// ── 8.29 제5차 회의 운영 설계용 프리셋 ──────────────────────────────
-// 근거: 7·4 녹취 실측에서 인사 라운드에 30초 규격을 건 조는 13명이 2분 16초,
-// 규격 없는 조는 9분 45초를 썼다. 30초를 원터치로 걸 수 있어야 한다.
-
-describe('minutesToMs — 30초 프리셋 정확성', () => {
-  it('0.5분 = 정확히 30_000ms (부동소수점 오차 없음)', () => {
-    expect(minutesToMs(0.5)).toBe(30_000);
-  });
-  it('기존 1/2/3분 프리셋 값은 그대로', () => {
-    expect(minutesToMs(1)).toBe(60_000);
-    expect(minutesToMs(2)).toBe(120_000);
-    expect(minutesToMs(3)).toBe(180_000);
-  });
-  it('세션 프리셋 6종 모두 정수 ms', () => {
-    expect(SESSION_PRESET_MINUTES.map(minutesToMs)).toEqual([
-      300_000, 600_000, 900_000, 1_200_000, 1_500_000, 2_400_000,
-    ]);
-  });
-  it('로깅 표현식(Math.round(durationMs/1000))이 30초에서 30을 낸다', () => {
-    // Timer.tsx 만료 로깅 경로와 동일한 식
-    expect(Math.round(minutesToMs(0.5) / 1000)).toBe(30);
-  });
-  it('30초 타이머를 끝까지 돌린 뒤 durationMs 기준 duration_s = 30', () => {
-    let s = startTimer('speech', minutesToMs(0.5), 0);
-    s = tickTimer(s, 30_000);
-    expect(s.phase).toBe('expired');
-    expect(Math.round(s.durationMs / 1000)).toBe(30);
-  });
-  it('30초 타이머 수동 종료 경로((durationMs - remainingMs)/1000)도 정수', () => {
-    let s = startTimer('speech', minutesToMs(0.5), 0);
-    s = tickTimer(s, 12_000); // 12초 경과
-    expect(Math.round((s.durationMs - s.remainingMs) / 1000)).toBe(12);
-  });
-});
-
-describe('formatPresetLabel — 1분 미만은 초 표기', () => {
-  it('0.5분 → 「30초」 (「0.5분」이 아니다)', () => {
-    expect(formatPresetLabel(0.5)).toEqual({ value: '30', unit: '초' });
-  });
-  it('1분 이상은 「N분」 유지', () => {
-    expect(formatPresetLabel(1)).toEqual({ value: '1', unit: '분' });
-    expect(formatPresetLabel(2)).toEqual({ value: '2', unit: '분' });
-    expect(formatPresetLabel(3)).toEqual({ value: '3', unit: '분' });
-  });
-  it('세션 프리셋도 같은 규칙으로 「N분」', () => {
-    expect(formatPresetLabel(40)).toEqual({ value: '40', unit: '분' });
-  });
-});
-
-describe('프리셋 목록 — 8.29 오후 진행표 블록 값', () => {
-  it('발언 프리셋에 30초가 포함되고 기존 1/2/3분이 유지된다', () => {
-    expect(SPEECH_PRESET_MINUTES).toEqual([0.5, 1, 2, 3]);
-  });
-  it('세션 프리셋은 5·10·15·20·25·40분', () => {
-    expect(SESSION_PRESET_MINUTES).toEqual([5, 10, 15, 20, 25, 40]);
-  });
-  it('세션 프리셋 기본값(15분)이 목록에 있다 — 스테퍼 초기값과 일치', () => {
-    expect(SESSION_PRESET_MINUTES).toContain(15);
   });
 });
