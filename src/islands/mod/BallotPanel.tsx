@@ -103,7 +103,7 @@ function BallotQrFullscreen({
 
   return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col items-center px-6 py-6 sm:py-8">
-      <div className="w-full flex items-start justify-between gap-4">
+      <div className="w-full shrink-0 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <Eyebrow className="text-[#135C73] mb-1">
             다의제 투표 · {subgroupBadgeLabel(ballot.subgroup)}
@@ -126,25 +126,28 @@ function BallotQrFullscreen({
       </div>
 
       {subgroupNotice ? (
-        <p className="mt-3 w-full rounded-2xl bg-[#135C73] px-6 py-3 text-center text-[clamp(24px,2.8vw,44px)] font-extrabold text-white">
+        <p className="mt-3 w-full shrink-0 rounded-2xl bg-[#135C73] px-6 py-3 text-center text-[clamp(24px,2.8vw,44px)] font-extrabold text-white">
           {subgroupNotice}
         </p>
       ) : null}
 
-      {/* QR — 뷰포트를 최대한 차지한다 */}
+      {/* QR — 남는 세로를 먹되(flex-1), 정사각 상한(min(58vh,80vw))을 넘지 않아 하단 안내와
+          절대 겹치지 않는다. 세로가 짧은 프로젝터는 vh, 세로가 긴 폰은 vw가 상한을 잡는다. */}
       <div className="flex-1 min-h-0 w-full grid place-items-center py-4">
         {qr ? (
-          <img
-            src={qr}
-            alt="참가용 QR 코드"
-            className="h-full w-auto max-w-full max-h-full object-contain rounded-2xl border border-[#DCE7EE]"
-          />
+          <div className="h-full max-h-[min(58vh,80vw)] aspect-square">
+            <img
+              src={qr}
+              alt="참가용 QR 코드"
+              className="h-full w-full object-contain rounded-2xl border border-[#DCE7EE]"
+            />
+          </div>
         ) : (
-          <div className="w-[min(70vh,90vw)] aspect-square bg-[#F1F7FA] rounded-2xl animate-pulse" />
+          <div className="h-full max-h-[min(58vh,80vw)] aspect-square bg-[#F1F7FA] rounded-2xl animate-pulse" />
         )}
       </div>
 
-      <div className="w-full flex flex-col items-center text-center gap-2 pb-1">
+      <div className="w-full shrink-0 flex flex-col items-center text-center gap-2 pb-1">
         <p className="text-[clamp(24px,2.6vw,40px)] font-extrabold text-[#1F4E79]">
           <span aria-hidden="true">📷</span> 휴대폰 카메라로 QR을 스캔하세요
         </p>
