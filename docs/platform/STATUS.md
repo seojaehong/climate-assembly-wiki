@@ -29,8 +29,14 @@ throwaway Postgres16(Docker)로 **실제 파싱 + 함수 본문 검증 + 계약 
 `result_publish`/`result_unpublish`를 조 join_code → **HQ 토큰(attendance scope='hq') 서명**으로 상향. 조 코드 publish 차단(컨테이너 검증: "attendance authorization required"), HQ 토큰만 성공(`published_by=hq:actor`). 플랜 §2-3 부합.
 - Phase 2: HQ 공유비밀 → membership 인증 + `org_of_token` org 일치 검사 추가(현재 레거시 HQ 토큰은 org null 가능).
 
-### G3. org_id NOT NULL 전환
-P1이 15테이블에 org_id nullable 부착. **영구 nullable = 격리 구멍**(정책이 NULL 행을 조용히 포함/누락). backfill(기본 org 생성 후 UPDATE) → NOT NULL 전환 필요.
+### ✅ 라이브 HTTP E2E — 통과 (2026-08-09)
+PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js→PostgREST→RLS/RPC)** 재현. issue_upsert/items/link/review·**RLS 테넌트 격리(자기 org만)**·anon 401·**G2 조코드 거부/HQ토큰 성공**·result_get body(ResultView 계약 일치) 전부 통과. 상세 `supabase/verify/e2e_http.md`. **= "빌드된다"를 넘어 "실 HTTP로 돌아간다" 증명.**
+
+### G3. org_id NOT NULL 전환 — 마이그레이션 작성됨
+`platform_p1b_backfill.sql`(기본 org + backfill + NOT NULL). 단일 테넌트 가정. **데이터 있는 실 프로젝트 적용 시 실행**(빈 상태에선 NOT NULL만).
+
+### 프로덕션 런칭 = 배포 행위 (구현 갭 아님)
+전용 Supabase 프로젝트(사용자 계정) + Auth + Cloudflare SPA rewrite. **턴키 런북 `docs/platform/PROVISIONING.md`.** 스키마·RLS·파이프라인·보안은 검증 완료.
 
 ## Phase 2 진입 전 사용자 결정 (플랜 §5)
 
