@@ -9,7 +9,10 @@ import ResultView from '../../islands/result/ResultView';
 // 토큰은 런타임에 window.location.pathname 에서 읽어 client:only 아일랜드가 result_get 을 페치한다.
 // 실토큰 서빙은 SSR 어댑터 또는 호스트 레벨 rewrite(예: Cloudflare _routes/fallback)가 필요 — 라이브 이후.
 export function getStaticPaths() {
-  return [];
+  // SPA 호스트 1개(`/r/_/`)만 emit. 실 토큰은 절대 열거하지 않는다(접근통제 유지).
+  // Cloudflare _redirects 가 `/r/* → /r/_/index.html 200` 으로 rewrite → 클라이언트가
+  // window.location.pathname 에서 실제 토큰을 읽어 result_get 을 페치한다.
+  return [{ params: { token: '_' } }];
 }
 ---
 <!doctype html>
