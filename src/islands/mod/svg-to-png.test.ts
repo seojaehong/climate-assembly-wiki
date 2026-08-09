@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { resultImageFileName, resultZipEntryName, resultZipFileName, svgPixelSize } from './svg-to-png';
+import {
+  ballotImageZipFileName,
+  resultImageFileName,
+  resultZipEntryName,
+  resultZipFileName,
+  svgPixelSize,
+} from './svg-to-png';
 import { renderResultSvg } from './result-image';
 
 /**
@@ -230,5 +236,31 @@ describe('resultZipEntryName — 경로 분리자 봉쇄 (리뷰 지적)', () =>
     });
     expect(name.split('/')).toHaveLength(2);
     expect(name.includes(String.fromCharCode(92))).toBe(false);
+  });
+});
+
+describe('ballotImageZipFileName — 문항 PNG 묶음 ZIP', () => {
+  it('투표결과이미지_<제목>_<YYYYMMDD>.zip 꼴로 만든다 (날짜만 · 시각 없음)', () => {
+    expect(ballotImageZipFileName({ title: '폐회 일괄 투표', at: new Date(2026, 7, 29, 14, 32) })).toBe(
+      '투표결과이미지_폐회_일괄_투표_20260829.zip',
+    );
+  });
+
+  it('경로 분리자·Windows 금지 문자를 걸러낸다', () => {
+    const name = ballotImageZipFileName({ title: 'A/B: "안"?', at: new Date(2026, 7, 29) });
+    expect(name).not.toMatch(/[\/:*?"<>|]/);
+    expect(name.endsWith('_20260829.zip')).toBe(true);
+  });
+
+  it('제목이 전부 걸러지면 폴백을 쓴다', () => {
+    expect(ballotImageZipFileName({ title: '///', at: new Date(2026, 7, 29) })).toBe(
+      '투표결과이미지_투표결과_20260829.zip',
+    );
+  });
+
+  it('아주 긴 제목은 60자에서 자른다 (Windows 260자 경로 방지)', () => {
+    const name = ballotImageZipFileName({ title: '가'.repeat(200), at: new Date(2026, 7, 29) });
+    expect(name).toContain('가'.repeat(60));
+    expect(name).not.toContain('가'.repeat(61));
   });
 });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { Packer } from 'docx';
 import {
   REPORT_HOLD_NOTICE,
   REPORT_TITLE,
@@ -6,8 +7,29 @@ import {
   buildBallotReportDoc,
   buildBallotReportModel,
   formatGeneratedAt,
+  pngPixelSize,
 } from './ballot-report-docx';
 import type { BallotResults, SubmissionGetResult, Topic } from '../../lib/deliberation';
+
+/** 유효한 1x1 PNG(투명) — pngPixelSize와 docx 임베드가 모두 받아들이는 최소 픽스처. */
+const PNG_1x1_B64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+function png1x1(): ArrayBuffer {
+  const buf = Buffer.from(PNG_1x1_B64, 'base64');
+  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+}
+
+/** 임의 크기의 PNG 헤더(서명 + IHDR 24바이트)를 만든다 — 크기 파싱만 검증할 때 쓴다. */
+function pngHeader(width: number, height: number): Uint8Array {
+  const bytes = new Uint8Array(24);
+  bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+  bytes.set([0x49, 0x48, 0x44, 0x52], 12);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(16, width, false);
+  view.setUint32(20, height, false);
+  return bytes;
+}
 
 function results(overrides: Partial<BallotResults> = {}): BallotResults {
   return {
@@ -198,7 +220,35 @@ describe('buildBallotReportModel', () => {
   });
 });
 
-describe('buildBallotReportDoc — docx 스모크(브라우저 없이 생성 가능해야 한다)', () => {
+describe('buildBallotReportModel — 문항 id를 이미지 맵 키로 싣는다', () => {
+  it('각 §2 섹션에 results item id를 그대로 담는다', () => {
+    const model = buildBallotReportModel({ results: results(), generatedAtLabel: 'x' });
+    expect(model.items.map((i) => i.id)).toEqual(['i-1', 'i-2']);
+  });
+});
+
+describe('pngPixelSize — IHDR에서 픽셀 크기를 읽는다', () => {
+  it('빅엔디안 width/height를 그대로 읽는다', () => {
+    expect(pngPixelSize(pngHeader(2400, 1600))).toEqual({ width: 2400, height: 1600 });
+  });
+
+  it('실제 1x1 PNG도 읽는다', () => {
+    expect(pngPixelSize(new Uint8Array(png1x1()))).toEqual({ width: 1, height: 1 });
+  });
+
+  it('24바이트 미만·서명 불일치·IHDR 아님·0 이하 크기는 null(표만 폴백)', () => {
+    expect(pngPixelSize(new Uint8Array(23))).toBeNull();
+    const badSig = pngHeader(10, 10);
+    badSig[0] = 0x00;
+    expect(pngPixelSize(badSig)).toBeNull();
+    const badType = pngHeader(10, 10);
+    badType[12] = 0x00; // 'I' → 0 : IHDR 아님
+    expect(pngPixelSize(badType)).toBeNull();
+    expect(pngPixelSize(pngHeader(0, 10))).toBeNull();
+  });
+});
+
+describe('buildBallotReportDoc — 결과 이미지 임베드(word/media 포함 분기)', () => {
   it('§3 포함/미포함 모델 모두 Document를 던지지 않고 만든다', () => {
     const base = buildBallotReportModel({ results: results(), generatedAtLabel: '2026-08-08 14:00' });
     expect(() => buildBallotReportDoc(base)).not.toThrow();
@@ -208,5 +258,26 @@ describe('buildBallotReportDoc — docx 스모크(브라우저 없이 생성 가
       topics: [{ topic: topic(), submission: submission() }],
     });
     expect(() => buildBallotReportDoc(withTopics)).not.toThrow();
+  });
+
+  it('이미지 맵이 없으면 패키지에 word/media가 없다 (표만)', async () => {
+    const model = buildBallotReportModel({ results: results(), generatedAtLabel: 'x' });
+    const buf = await Packer.toBuffer(buildBallotReportDoc(model));
+    expect(buf.includes('word/media/')).toBe(false);
+  });
+
+  it('이미지 맵이 있으면 패키지에 word/media 이미지가 들어간다', async () => {
+    const model = buildBallotReportModel({ results: results(), generatedAtLabel: 'x' });
+    const itemImages = new Map<string, ArrayBuffer>([['i-1', png1x1()]]);
+    const buf = await Packer.toBuffer(buildBallotReportDoc(model, { itemImages }));
+    expect(buf.includes('word/media/')).toBe(true);
+  });
+
+  it('맵에 있어도 PNG가 아니면(크기 파싱 실패) 그 문항은 표만 — 이미지가 안 들어간다', async () => {
+    const model = buildBallotReportModel({ results: results(), generatedAtLabel: 'x' });
+    const notPng = new Uint8Array([1, 2, 3, 4]).buffer;
+    const itemImages = new Map<string, ArrayBuffer>([['i-1', notPng]]);
+    const buf = await Packer.toBuffer(buildBallotReportDoc(model, { itemImages }));
+    expect(buf.includes('word/media/')).toBe(false);
   });
 });

@@ -15,7 +15,14 @@ import {
 } from '../../lib/deliberation';
 import { fetchHqTeams } from '../../lib/mod-console';
 import { renderBallotItemSvg } from './ballot-result-image';
-import { RESULT_IMAGE_SCALE, ballotImageFileName, downloadBlob, svgToPngBlob } from './svg-to-png';
+import {
+  RESULT_IMAGE_SCALE,
+  ballotImageFileName,
+  ballotImageZipFileName,
+  downloadBlob,
+  svgToPngBlob,
+} from './svg-to-png';
+import { buildZipArchive } from './zip-store';
 import {
   BALLOT_SCALES,
   MAX_BALLOT_ITEMS,
@@ -210,26 +217,55 @@ function BallotResultsFullscreen({
 
   const provisional = results != null && results.status !== 'published';
 
-  /** 문항별 카드 PNG를 순서대로 내려받는다. 브라우저가 다중 다운로드 허용을 물을 수 있다. */
+  /**
+   * 문항별 결과 카드를 렌더→래스터화해 PNG 바이트로 만든다(순서 = 문항 순서).
+   * PNG/DOCX 두 내보내기가 같은 그림을 쓰도록 한곳에 둔다 — 순수 모듈은 canvas를 만지지 않는
+   * 관례를 지키려 컴포넌트 안에 둔다. `new Uint8Array(await blob.arrayBuffer())`는 버퍼 전체 뷰라
+   * `.buffer`를 그대로 ImageRun에 넘길 수 있다.
+   */
+  const renderItemPngs = async (
+    r: BallotResults,
+  ): Promise<Array<{ item: BallotResults['items'][number]; bytes: Uint8Array }>> => {
+    const out: Array<{ item: BallotResults['items'][number]; bytes: Uint8Array }> = [];
+    for (const item of r.items) {
+      const svg = renderBallotItemSvg({
+        ballotTitle: r.title,
+        ordinal: item.ordinal,
+        statement: item.statement,
+        scale: item.scale,
+        n: item.n,
+        avg: item.avg,
+        dist: item.dist,
+      });
+      const blob = await svgToPngBlob(svg, RESULT_IMAGE_SCALE);
+      out.push({ item, bytes: new Uint8Array(await blob.arrayBuffer()) });
+    }
+    return out;
+  };
+
+  /**
+   * 문항별 카드 PNG를 **하나의 ZIP**으로 묶어 단일 다운로드한다. 문항 수만큼 개별 다운로드하면
+   * Chrome이 다중 자동 다운로드를 차단해 첫 1장만 저장되므로(E2E 실측) ZIP 한 파일로 우회한다.
+   */
   const savePng = async () => {
     if (results == null || exporting != null) return;
+    if (results.items.length === 0) {
+      onNotify('저장할 결과 이미지가 없습니다.');
+      return;
+    }
     setExporting('png');
     try {
       const at = new Date();
-      for (const item of results.items) {
-        const svg = renderBallotItemSvg({
-          ballotTitle: results.title,
-          ordinal: item.ordinal,
-          statement: item.statement,
-          scale: item.scale,
-          n: item.n,
-          avg: item.avg,
-          dist: item.dist,
-        });
-        const blob = await svgToPngBlob(svg, RESULT_IMAGE_SCALE);
-        downloadBlob(blob, ballotImageFileName({ title: results.title, ordinal: item.ordinal, at }));
-      }
-      onNotify(`결과 이미지 ${results.items.length}장을 저장했습니다.`);
+      const pngs = await renderItemPngs(results);
+      const archive = buildZipArchive(
+        pngs.map(({ item, bytes }) => ({
+          name: ballotImageFileName({ title: results.title, ordinal: item.ordinal, at }),
+          data: bytes,
+        })),
+        at,
+      );
+      downloadBlob(new Blob([archive], { type: 'application/zip' }), ballotImageZipFileName({ title: results.title, at }));
+      onNotify(`결과 이미지 ${pngs.length}장을 ZIP으로 저장했습니다.`);
     } catch (err) {
       onNotify(err instanceof Error ? err.message : '이미지 저장에 실패했습니다.');
     } finally {
@@ -258,7 +294,15 @@ function BallotResultsFullscreen({
         generatedAtLabel: docxMod.formatGeneratedAt(new Date()),
         topics,
       });
-      const blob = await docxMod.ballotReportBlob(model);
+      // 문항별 결과 이미지 임베드 — 래스터화(canvas)에 실패하면 표만 있는 보고서로 폴백한다.
+      let itemImages: Map<string, ArrayBuffer> | undefined;
+      try {
+        const pngs = await renderItemPngs(results);
+        itemImages = new Map(pngs.map(({ item, bytes }) => [item.id, bytes.buffer as ArrayBuffer]));
+      } catch {
+        itemImages = undefined;
+      }
+      const blob = await docxMod.ballotReportBlob(model, { itemImages });
       downloadBlob(blob, docxMod.ballotReportFileName({ title: results.title, at: new Date() }));
       onNotify('결과보고서(DOCX)를 저장했습니다.');
     } catch {

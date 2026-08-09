@@ -128,6 +128,17 @@ export function ballotImageFileName(input: { title: string; ordinal: number; at:
   return `${parts.join('_')}.png`;
 }
 
+/**
+ * 문항별 PNG를 한 파일로 묶는 ZIP의 파일명. `투표결과이미지_<제목>_<YYYYMMDD>.zip`.
+ * 보고서(`ballotReportFileName`)와 같은 **날짜만**(시각 없음) 규칙을 쓴다 — 파일 하나뿐이라
+ * 초 단위 충돌을 걱정할 필요가 없고, 사용자가 날짜로 찾기 쉽다. 제목 상한도 동일(260자 경로 방지).
+ */
+export function ballotImageZipFileName(input: { title: string; at: Date }): string {
+  const title = capSegment(safeSegment(input.title), MAX_TITLE_CHARS) || FALLBACK_TEAM_NAME;
+  const date = `${input.at.getFullYear()}${pad2(input.at.getMonth() + 1)}${pad2(input.at.getDate())}`;
+  return `투표결과이미지_${title}_${date}.zip`;
+}
+
 function pixelAttr(tag: string, name: string): number | null {
   // 앞의 `\s`가 `stroke-width="2"`를 `width`로 오인하는 것을 막는다.
   const matched = new RegExp(`\\s${name}="([^"]*)"`).exec(tag);

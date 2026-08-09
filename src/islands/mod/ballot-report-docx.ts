@@ -14,6 +14,7 @@ import {
   AlignmentType,
   BorderStyle,
   Document,
+  ImageRun,
   Packer,
   Paragraph,
   Table,
@@ -73,6 +74,8 @@ export type ReportOverviewRow = { label: string; value: string };
 export type ReportTableRow = { label: string; count: string; pct: string; emphasis?: boolean };
 
 export type ReportItemSection = {
+  /** `ballot_results`의 item id — 결과 이미지 맵(itemImages)을 이 키로 찾는다. */
+  id: string;
   /** '의제 1. 문장' */
   heading: string;
   /** '5점 척도 · 응답 12건 · 평균 4.25' */
@@ -162,6 +165,7 @@ export function buildBallotReportModel(input: {
       emphasis: true,
     });
     return {
+      id: item.id,
       heading: `의제 ${item.ordinal}. ${item.statement}`,
       meta: `${item.scale}점 척도 · 응답 ${item.n}건 · 평균 ${formatAvg(item.n > 0 ? item.avg : null)}`,
       rows,
@@ -190,6 +194,33 @@ export function buildBallotReportModel(input: {
     topics: topicSections.length > 0 ? topicSections : null,
     footer: REPORT_HOLD_NOTICE,
   };
+}
+
+/**
+ * PNG 바이트에서 픽셀 크기를 읽는다(IHDR). 결과 이미지를 문서 폭에 맞춰 넣을 때
+ * **세로 비율을 유지**하려면 원본 크기가 필요하다 — 브라우저 canvas 없이(순수 모듈에서)
+ * 구할 수 있게 헤더만 파싱한다.
+ *
+ * 세 겹으로 방어한다(어긋나면 크기 계산이 조용히 망가진다):
+ *  - 24바이트(서명 8 + IHDR 청크 헤더 8 + width/height 8) 미만이면 null.
+ *  - 8바이트 PNG 서명(`89 50 4E 47 0D 0A 1A 0A`)이 아니면 null.
+ *  - 첫 청크 타입이 `IHDR`(오프셋 12~15)가 아니면 null.
+ * width/height는 **빅엔디안** 32비트다(오프셋 16·20) — 엔디안을 뒤집으면 2400이 0x60090000이 돼
+ * 크래시 없이 말도 안 되는 크기가 나온다.
+ */
+export function pngPixelSize(bytes: Uint8Array): { width: number; height: number } | null {
+  if (bytes.length < 24) return null;
+  const SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  for (let i = 0; i < SIG.length; i += 1) {
+    if (bytes[i] !== SIG[i]) return null;
+  }
+  // IHDR: 오프셋 8~11 = 청크 길이, 12~15 = 타입("IHDR").
+  if (bytes[12] !== 0x49 || bytes[13] !== 0x48 || bytes[14] !== 0x44 || bytes[15] !== 0x52) return null;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const width = view.getUint32(16, false);
+  const height = view.getUint32(20, false);
+  if (width <= 0 || height <= 0) return null;
+  return { width, height };
 }
 
 // ============================================================
@@ -267,8 +298,39 @@ function table(rows: TableRow[]): Table {
   });
 }
 
+/** 문서 본문 폭에 맞춘 결과 이미지의 가로 크기(px 상당). A4/Letter 1인치 여백 기준 ≈ 6.5in. */
+const IMAGE_WIDTH_PX = 600;
+
+/** 결과 이미지 임베드 옵션. `itemImages`는 itemId → PNG ArrayBuffer. 없으면 표만(하위호환). */
+export type BallotReportDocOptions = {
+  itemImages?: Map<string, ArrayBuffer>;
+};
+
+/**
+ * itemId의 결과 이미지를 담은 Paragraph를 만든다. 이미지가 없거나 PNG 크기를 못 읽으면 null —
+ * 호출부는 그 문항의 표만 낸다(크기를 추측하지 않는다).
+ */
+function itemImagePara(id: string, images: Map<string, ArrayBuffer> | undefined): Paragraph | null {
+  const data = images?.get(id);
+  if (!data) return null;
+  const size = pngPixelSize(new Uint8Array(data));
+  if (!size) return null;
+  const width = IMAGE_WIDTH_PX;
+  const height = Math.round((IMAGE_WIDTH_PX * size.height) / size.width);
+  return new Paragraph({
+    spacing: { after: 120 },
+    children: [
+      new ImageRun({
+        type: 'png',
+        data,
+        transformation: { width, height },
+      }),
+    ],
+  });
+}
+
 /** 모델 → docx Document. 내용은 모델이 확정한 문자열 그대로다(여기서 가공하지 않는다). */
-export function buildBallotReportDoc(model: BallotReportModel): Document {
+export function buildBallotReportDoc(model: BallotReportModel, options: BallotReportDocOptions = {}): Document {
   const children: Array<Paragraph | Table> = [
     para(model.title, { bold: true, size: 36, color: NAVY, align: AlignmentType.CENTER, after: 80 }),
     para(model.ballotTitle, { bold: true, size: 26, align: AlignmentType.CENTER, after: 40 }),
@@ -292,6 +354,11 @@ export function buildBallotReportDoc(model: BallotReportModel): Document {
     children.push(
       para(item.heading, { bold: true, size: 24, before: 200, after: 40 }),
       para(item.meta, { size: 20, color: MUTED, after: 120 }),
+    );
+    // 표 위에 그 문항의 결과 이미지(있을 때만) — 접근성·정확 수치를 위해 표는 그대로 병행한다.
+    const imagePara = itemImagePara(item.id, options.itemImages);
+    if (imagePara) children.push(imagePara);
+    children.push(
       table([
         new TableRow({
           tableHeader: true,
@@ -353,6 +420,6 @@ export function buildBallotReportDoc(model: BallotReportModel): Document {
 }
 
 /** 모델 → DOCX Blob. 실패는 호출부가 잡아 안내한다(화면을 멈추지 않는다). */
-export function ballotReportBlob(model: BallotReportModel): Promise<Blob> {
-  return Packer.toBlob(buildBallotReportDoc(model));
+export function ballotReportBlob(model: BallotReportModel, options: BallotReportDocOptions = {}): Promise<Blob> {
+  return Packer.toBlob(buildBallotReportDoc(model, options));
 }
