@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { type Scope, type ViewName, deepestScopeLevel, VIEWS_FOR_LEVEL } from './platform-nav-logic';
+import ReviewConsole from './review/ReviewConsole';
 
 const NAVY = '#1F4E79';
 const TEAL = '#23B2C3';
@@ -72,6 +73,12 @@ function ViewPanel({ view, scope }: { view: ViewName; scope: Scope }) {
   const meta = VIEW_META[view];
   const { level, id } = deepestScopeLevel(scope);
 
+  // 검수 뷰는 주제(topic) 스코프에서 실제 검수 콘솔을 마운트한다(핵심 화면).
+  // 그 외 레벨에서는 placeholder 를 유지한다(검수는 주제 스코프 전용 — VIEWS_FOR_LEVEL).
+  if (view === 'review') {
+    return <ReviewConsole topicId={level === 'topic' ? id : null} />;
+  }
+
   // 데이터 로드 골격 — 마운트 시 "이 스코프의 무엇을 로드할지"만 확정한다.
   // 실제 RPC 페치(issueList 등)는 후속 검수 콘솔/결과 슬라이스가 이 자리에서 연결한다.
   const [mountedAt] = useState(() => Date.now());
@@ -97,9 +104,9 @@ function ViewPanel({ view, scope }: { view: ViewName; scope: Scope }) {
           <li>스코프 id: <code style={{ color: NAVY }}>{id ?? '—'}</code></li>
           <li>연결 예정 래퍼: <code style={{ color: NAVY }}>{wrapperHint(view)}</code></li>
         </ul>
-        {(view === 'review' || view === 'publish') ? (
+        {view === 'publish' ? (
           <p style={{ marginTop: 12, marginBottom: 0, fontSize: 13, color: '#B5651D' }}>
-            ※ 미결: {meta.title} RPC 는 조 <code>join_code</code>(운영자) 서명입니다. staff Auth 셸에서도 code 입력 자리가 필요합니다(Phase 2 에서 HQ 토큰 전환).
+            ※ 미결: {meta.title} RPC 는 조 <code>join_code</code>(운영자) 서명입니다. staff Auth 셸에서도 code 입력 자리가 필요합니다(Phase 2 에서 HQ 토큰 전환). 검수(review)는 주제 스코프에서 검수 콘솔로 대체되었습니다.
           </p>
         ) : null}
       </div>

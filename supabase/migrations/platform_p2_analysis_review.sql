@@ -608,6 +608,44 @@ begin
                            'bytes', length(v_payload::text));
 end $fn$;
 
+-- ── 8b. 검수용 주제 횡단 원문 조회 (검수 콘솔 미분류함·재분류의 데이터 소스) ──
+-- issue_list는 카운트만 준다. 검수 콘솔의 미분류함 본문 노출(B11 전수 역추적)과
+-- 원문 재분류(issue_link_set)는 주제의 전 submission_item 본문 + 현재 링크가 필요하다.
+-- operator join_code capability로 org/session 파생(org_id 인자 금지 불변식 유지).
+create or replace function climate_vote.issue_items(p_code text, p_topic_id uuid)
+returns jsonb language plpgsql security definer
+set search_path = climate_vote, pg_temp as $fn$
+declare v_team climate_vote.team; v_items jsonb;
+begin
+  select * into v_team from climate_vote.team where join_code = p_code and status = 'active';
+  if not found then raise exception 'invalid join code'; end if;
+  perform 1 from climate_vote.discussion_topic
+   where id = p_topic_id and session_id = v_team.session_id;
+  if not found then raise exception 'topic not in your session'; end if;
+
+  -- 주제의 전 조 submission_item + 팀명 + 현재 issue_link(issue_id·cluster_id).
+  -- 한 item이 복수 issue에 링크될 수 있으므로(multi-label) links 배열로 반환.
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'id', si.id, 'content', si.content, 'rationale', si.rationale,
+           'kind', si.kind, 'ordinal', si.ordinal,
+           'team_id', su.team_id, 'team_name', tm.name,
+           'submission_id', su.id,
+           'links', (select coalesce(jsonb_agg(jsonb_build_object(
+                        'issue_id', il.issue_id, 'cluster_id', il.cluster_id,
+                        'linked_by', il.linked_by)), '[]'::jsonb)
+                     from climate_vote.issue_link il where il.item_id = si.id),
+           'unclassified', not exists
+             (select 1 from climate_vote.issue_link il where il.item_id = si.id))
+           order by tm.name, su.id, si.ordinal), '[]'::jsonb)
+    into v_items
+  from climate_vote.submission_item si
+  join climate_vote.submission su on su.id = si.submission_id
+  left join climate_vote.team tm on tm.id = su.team_id
+  where su.topic_id = p_topic_id;
+
+  return jsonb_build_object('topic_id', p_topic_id, 'items', v_items);
+end $fn$;
+
 -- ── 9. 권한: PUBLIC 회수 → 대상 role grant ─────────────────────────
 
 revoke execute on function
@@ -616,6 +654,7 @@ revoke execute on function
   climate_vote.issue_invalidate_guard(),
   climate_vote.issue_org_derive(),
   climate_vote.submission_save_v2(text, uuid, jsonb),
+  climate_vote.issue_items(text, uuid),
   climate_vote.issue_list(text, uuid),
   climate_vote.issue_upsert(text, uuid, jsonb),
   climate_vote.issue_link_set(text, uuid, uuid[], uuid),
@@ -630,6 +669,7 @@ from public;
 -- 공개/검수 RPC — anon + authenticated (capability는 함수 본문에서 강제)
 grant execute on function
   climate_vote.submission_save_v2(text, uuid, jsonb),
+  climate_vote.issue_items(text, uuid),
   climate_vote.issue_list(text, uuid),
   climate_vote.issue_upsert(text, uuid, jsonb),
   climate_vote.issue_link_set(text, uuid, uuid[], uuid),

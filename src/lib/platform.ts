@@ -254,6 +254,43 @@ export async function issueList(code: string, topicId: string): Promise<Platform
   });
 }
 
+// ── 검수용 주제 횡단 원문(P2 issue_items) — 미분류함 본문·재분류의 데이터 소스 ──
+// issue_list 는 카운트만 준다. 검수 콘솔의 본문 노출·재분류는 주제의 전 submission_item 본문 +
+// 현재 issue_link 가 필요하다. 한 원문이 복수 issue 에 링크될 수 있어 links 는 배열(multi-label).
+
+export interface IssueItemLink {
+  issue_id: string;
+  cluster_id: string | null;
+  linked_by: string;
+}
+
+export interface IssueItemRow {
+  id: string;
+  content: string;
+  rationale: string | null;
+  kind: string;
+  ordinal: number;
+  team_id: string;
+  team_name: string | null;
+  submission_id: string;
+  links: IssueItemLink[];
+  unclassified: boolean;
+}
+
+export interface IssueItemsResult {
+  topic_id: string;
+  items: IssueItemRow[];
+}
+
+/** 주제의 전 조 원문 + 현재 링크(P2 issue_items). 검수 콘솔의 미분류함·재분류 데이터 소스. */
+export async function issueItems(code: string, topicId: string): Promise<PlatformResult<IssueItemsResult>> {
+  return guard(async (sb) => {
+    const { data, error } = await sb.schema(SCHEMA).rpc('issue_items', { p_code: code, p_topic_id: topicId });
+    if (error) throw error;
+    return data as IssueItemsResult;
+  });
+}
+
 /** issue 생성/수정(P2 issue_upsert). id 있으면 수정, 없으면 생성. */
 export async function issueUpsert(
   code: string,
