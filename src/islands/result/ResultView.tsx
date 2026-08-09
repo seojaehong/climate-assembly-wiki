@@ -23,6 +23,52 @@ const FREQ_COLOR: Record<string, string> = {
   mixed: '#5A6B73',
 };
 
+// ── 보고서(DOCX) 내려받기 ──
+// docx·result-report-docx 는 무겁고 브라우저 전용이라, 클릭 시점에 동적 import 한다
+// (초기 로딩엔 싣지 않는다). 실패(import·Packer)는 삼키지 않고 문구로 안내한다.
+function ReportDownloadButton({ view }: { view: ResultViewModel }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const onDownload = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const [{ buildResultReportModel, resultReportBlob, resultReportFileName, formatGeneratedAt }, { downloadBlob }] =
+        await Promise.all([import('./result-report-docx'), import('../mod/svg-to-png')]);
+      const now = new Date();
+      const model = buildResultReportModel({ view, generatedAtLabel: formatGeneratedAt(now) });
+      const blob = await resultReportBlob(model);
+      downloadBlob(blob, resultReportFileName({ title: view.title, at: now }));
+    } catch {
+      setError('보고서를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <button
+        type="button"
+        onClick={onDownload}
+        disabled={busy}
+        className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-[clamp(16px,1.7vw,20px)] font-extrabold text-white shadow-sm disabled:opacity-60"
+        style={{ background: NAVY }}
+      >
+        <span aria-hidden="true">⬇</span>
+        {busy ? '보고서 만드는 중…' : '보고서 다운로드(DOCX)'}
+      </button>
+      {error ? (
+        <span className="text-[15px] font-semibold" style={{ color: '#B5651D' }}>
+          {error}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function Eyebrow({
   children,
   className = '',
@@ -463,10 +509,13 @@ export default function ResultView() {
           <h1 className="text-[clamp(28px,4vw,52px)] font-extrabold leading-tight" style={{ color: NAVY, letterSpacing: '-.022em' }}>
             {view.title}
           </h1>
-          <p className="mt-2 text-[16px]" style={{ color: GRAY }}>
-            공개일 {formatDate(view.publishedAt)}
-            {view.generatedAt ? ` · 분석 시점 ${formatDate(view.generatedAt)}` : ''}
-          </p>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[16px]" style={{ color: GRAY }}>
+              공개일 {formatDate(view.publishedAt)}
+              {view.generatedAt ? ` · 분석 시점 ${formatDate(view.generatedAt)}` : ''}
+            </p>
+            <ReportDownloadButton view={view} />
+          </div>
         </header>
 
         {/* 스탯 */}
