@@ -19,15 +19,15 @@
 
 **누적 검증:** vitest 59, astro check 0, Node20 빌드 7911페이지. 격리 불변식(RPC org_id 미전달) 관철.
 
-## ★★★ 병합 전 하드 게이트 (반드시)
+## 병합 전 게이트
 
-### G1. SQL 라이브 파싱 미검증 — 최우선
-P1+P2(~1400줄, 다수 함수)는 **아직 Postgres로 파싱된 적이 없다.** 로컬에 psql/supabase CLI 없고, 스펙상 프로덕션 미적용이라 미검증. 정적 점검(dollar-quote·paren 균형·컬럼 교차참조)만 통과.
-- **조치**: 병합 결정 시 **전용 스크래치 DB 또는 climate_vote에 additive 적용**해 파싱 확인 → anon RPC로 계약 검증(`result_get`→200 null=적용됨). 그 전엔 어떤 라이브 주장도 금물.
+### ✅ G1. SQL 파싱·계약 검증 — 종료 (2026-08-09)
+throwaway Postgres16(Docker)로 **실제 파싱 + 함수 본문 검증 + 계약 스모크 + negative** 전부 통과. 재현 하네스 `supabase/verify/`. 발견된 이식성 이슈 1건(P1 gen_random_bytes 미한정) 정정. 상세 `supabase/verify/README.md`.
+- 남은 라이브 확인: 실제 Supabase(전용 DB/병합)에 적용 시 anon RPC 계약 재확인(`result_get`→200 null=적용됨).
 
-### G2. publish 권한 상향 — 보안 구멍
-`result_publish(p_code, p_scope, p_scope_id, p_title)`가 **운영자 join_code 서명**이다. `p_scope='assembly'`면 **한 조의 조 코드가 공론화 전체 결과를 공개**할 수 있다(권한 격상). 플랜 §2-3은 publish=HQ/org_admin 전용.
-- **조치**: Phase 2 HQ 토큰→membership 전환 시 `result_publish`를 HQ/org_admin 서명으로 교체. **병합 전 반드시 상향.** (현재 플랫폼 미가동이라 실피해 없음)
+### ✅ G2. publish 권한 상향 — 종료 (2026-08-09)
+`result_publish`/`result_unpublish`를 조 join_code → **HQ 토큰(attendance scope='hq') 서명**으로 상향. 조 코드 publish 차단(컨테이너 검증: "attendance authorization required"), HQ 토큰만 성공(`published_by=hq:actor`). 플랜 §2-3 부합.
+- Phase 2: HQ 공유비밀 → membership 인증 + `org_of_token` org 일치 검사 추가(현재 레거시 HQ 토큰은 org null 가능).
 
 ### G3. org_id NOT NULL 전환
 P1이 15테이블에 org_id nullable 부착. **영구 nullable = 격리 구멍**(정책이 NULL 행을 조용히 포함/누락). backfill(기본 org 생성 후 UPDATE) → NOT NULL 전환 필요.
