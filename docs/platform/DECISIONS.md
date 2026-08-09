@@ -14,7 +14,7 @@
 - RLS 정책 11종은 `revoke all` 때문에 휴면 — 활성화 GRANT(+Supabase Auth)까지 무동작(의도적)
 
 ## P2(분석·검수·공개) divergence — ★ 사용자 결정 필요
-1. **publish 권한**: `result_publish`가 join_code(운영자) 서명 → 한 조 코드가 공론화 전체 공개 가능. 플랜 §2-3은 publish=HQ/org_admin. **HQ 토큰 전환은 Phase 2 과제**로 미룸. 병합 전 권한 상향 필요.
+1. **★★★ publish 권한 (하드 게이트 G2, `STATUS.md` 참조)**: `result_publish`가 join_code(운영자) 서명 → `p_scope='assembly'`면 **한 조의 조 코드가 공론화 전체 결과를 공개**할 수 있음(권한 격상 구멍). 플랜 §2-3은 publish=HQ/org_admin. **병합 전 반드시 HQ/org_admin 서명으로 상향.** Phase 2 HQ토큰→membership 전환과 동시.
 2. **미분류 원문**: body에 count만 적재. spec B11은 본문까지 공개 원함 → 축약. (전수 역추적 원칙과 절충 재확인)
 3. **공개 게이트 임계**: ≥1 reviewed(BUILD_SPEC advisor 확정). spec §3-5 "전부 reviewed"보다 완화.
 4. **result_page 동시성**: (scope,scope_id) 유니크 없음, select-for-update만 → 동시 publish 2건 가능. 단일 운영자 트랙 허용 범위.
