@@ -1,0 +1,513 @@
+import { useEffect, useState } from 'react';
+import { fetchResult } from '../../lib/result-page';
+import {
+  buildResultView,
+  ratioToPercent,
+  tokenFromPath,
+  HITL_RATIO_NOTICE,
+  type ResultView as ResultViewModel,
+  type ViewIssue,
+} from './result-view-logic';
+
+// BallotPanel과 동일 팔레트(현장 톤 일관).
+const NAVY = '#1F4E79';
+const TEAL = '#135C73';
+const INK = '#1F2933';
+const GRAY = '#5A6B73';
+const BORDER = '#DCE7EE';
+
+const FREQ_COLOR: Record<string, string> = {
+  consensus: '#4F9D3A',
+  majority: '#2E75B6',
+  minority: '#F5A623',
+  mixed: '#5A6B73',
+};
+
+function Eyebrow({
+  children,
+  className = '',
+  style,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div
+      className={`font-mono text-[13px] font-semibold uppercase ${className}`}
+      style={{ letterSpacing: '.14em', ...style }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function formatDate(iso: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+// ── 상태 화면(로딩·오류·미공개) — 시민에게 미공개와 일시 오류를 구분해 보인다 ──
+
+function Centered({ children }: { children: React.ReactNode }) {
+  return (
+    <main className="min-h-screen flex items-center justify-center px-6 py-16">
+      <div className="w-full max-w-xl text-center">{children}</div>
+    </main>
+  );
+}
+
+function StanceBadge({ issue }: { issue: ViewIssue }) {
+  if (!issue.frequencyLabel && !issue.stanceLabel) return null;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      {issue.frequencyLabel ? (
+        <span
+          className="rounded-full px-3 py-1 text-[15px] font-bold text-white"
+          style={{ background: FREQ_COLOR[issue.frequency ?? ''] ?? GRAY }}
+        >
+          {issue.frequencyLabel}
+        </span>
+      ) : null}
+      {issue.stanceLabel ? (
+        <span
+          className="rounded-full border px-3 py-1 text-[15px] font-bold"
+          style={{ borderColor: BORDER, color: TEAL }}
+        >
+          {issue.stanceLabel}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function ReviewMark({ reviewed }: { reviewed: boolean }) {
+  if (reviewed) {
+    return (
+      <span className="rounded-full px-2.5 py-0.5 text-[13px] font-bold text-white" style={{ background: '#4F9D3A' }}>
+        검수 완료
+      </span>
+    );
+  }
+  // 미검수 AI 초안은 눈에 띄게 표시한다(HITL의 핵심 구분).
+  return (
+    <span
+      className="rounded-full border-2 px-2.5 py-0.5 text-[13px] font-extrabold"
+      style={{ borderColor: '#F5A623', color: '#B5651D', background: '#FEF6E7' }}
+    >
+      검수 대기 · AI 초안
+    </span>
+  );
+}
+
+function StatTile({
+  label,
+  value,
+  unit,
+  accent = NAVY,
+}: {
+  label: string;
+  value: string;
+  unit?: string;
+  accent?: string;
+}) {
+  return (
+    <div className="rounded-2xl border bg-white px-5 py-4" style={{ borderColor: BORDER }}>
+      <Eyebrow className="mb-1" style={{ color: GRAY }}>
+        {label}
+      </Eyebrow>
+      <div className="text-[clamp(40px,5vw,68px)] font-extrabold leading-none tr-num" style={{ color: accent }}>
+        {value}
+        {unit ? <span className="text-[0.36em] font-bold" style={{ color: GRAY }}>{unit}</span> : null}
+      </div>
+    </div>
+  );
+}
+
+// ── 조×쟁점 커버리지 매트릭스 ──
+
+function CoverageMatrix({ view }: { view: ResultViewModel }) {
+  const { matrix } = view;
+  if (matrix.teams.length === 0 || matrix.rows.length === 0) return null;
+  return (
+    <section className="rounded-2xl border bg-white p-5 sm:p-6" style={{ borderColor: BORDER }}>
+      <Eyebrow className="mb-1" style={{ color: TEAL }}>
+        조 × 쟁점 커버리지
+      </Eyebrow>
+      <h2 className="text-[clamp(20px,2.2vw,30px)] font-extrabold mb-1" style={{ color: NAVY }}>
+        어느 조가 무엇을 제기했는가
+      </h2>
+      <p className="text-[16px] mb-4" style={{ color: GRAY }}>
+        세로 = 쟁점, 가로 = 조. ● 제기 · · 미제기
+      </p>
+      <div className="overflow-x-auto">
+        <table className="border-collapse text-left" style={{ minWidth: '100%' }}>
+          <thead>
+            <tr>
+              <th
+                className="sticky left-0 z-10 bg-white px-3 py-2 text-[15px] font-bold align-bottom"
+                style={{ color: GRAY, minWidth: 220 }}
+              >
+                쟁점
+              </th>
+              {matrix.teams.map((t) => (
+                <th key={t} className="px-2 py-2 text-[14px] font-bold text-center whitespace-nowrap" style={{ color: NAVY }}>
+                  {t}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {matrix.rows.map(({ issue, cells }) => (
+              <tr key={issue.id} className="border-t" style={{ borderColor: BORDER }}>
+                <th
+                  scope="row"
+                  className="sticky left-0 z-10 bg-white px-3 py-2 text-[16px] font-bold text-left align-middle"
+                  style={{ color: INK, minWidth: 220 }}
+                >
+                  {issue.label}
+                </th>
+                {cells.map((raised, i) => (
+                  <td key={matrix.teams[i]} className="px-2 py-2 text-center align-middle">
+                    {raised ? (
+                      <span aria-label={`${matrix.teams[i]} 제기`} className="text-[22px]" style={{ color: '#2E75B6' }}>
+                        ●
+                      </span>
+                    ) : (
+                      <span aria-label={`${matrix.teams[i]} 미제기`} className="text-[18px]" style={{ color: '#C4D8E4' }}>
+                        ·
+                      </span>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+// ── 쟁점 랭킹(제기 조 수 막대) ──
+
+function RankingChart({ view }: { view: ResultViewModel }) {
+  const max = Math.max(1, ...view.ranking.map((i) => i.teamCount));
+  return (
+    <section className="rounded-2xl border bg-white p-5 sm:p-6" style={{ borderColor: BORDER }}>
+      <Eyebrow className="mb-1" style={{ color: TEAL }}>
+        쟁점 랭킹
+      </Eyebrow>
+      <h2 className="text-[clamp(20px,2.2vw,30px)] font-extrabold mb-4" style={{ color: NAVY }}>
+        제기한 조가 많은 순
+      </h2>
+      <div className="space-y-4">
+        {view.ranking.map((issue) => (
+          <div key={issue.id}>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+              <div className="flex flex-wrap items-center gap-2 min-w-0">
+                <span className="text-[clamp(17px,1.8vw,22px)] font-extrabold break-words" style={{ color: INK }}>
+                  {issue.label}
+                </span>
+                <StanceBadge issue={issue} />
+                <ReviewMark reviewed={issue.isReviewed} />
+              </div>
+              <span className="shrink-0 text-[clamp(20px,2vw,28px)] font-extrabold tr-num" style={{ color: NAVY }}>
+                {issue.teamCount}
+                <span className="text-[0.6em] font-bold" style={{ color: GRAY }}>개 조</span>
+              </span>
+            </div>
+            <div className="h-[clamp(20px,2.6vh,32px)] rounded-lg overflow-hidden border" style={{ background: '#F1F7FA', borderColor: BORDER }}>
+              <div
+                className="h-full rounded-lg"
+                style={{ width: `${(issue.teamCount / max) * 100}%`, background: FREQ_COLOR[issue.frequency ?? ''] ?? '#2E75B6' }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ── 쟁점별 요약 + 연결 근거 ──
+
+function IssueSummaries({ view }: { view: ResultViewModel }) {
+  return (
+    <section className="space-y-4">
+      <Eyebrow style={{ color: TEAL }}>쟁점별 요약</Eyebrow>
+      {view.issues.map((issue) => (
+        <article key={issue.id} className="rounded-2xl border bg-white p-5 sm:p-6" style={{ borderColor: BORDER }}>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <h3 className="text-[clamp(19px,2vw,26px)] font-extrabold break-words" style={{ color: NAVY }}>
+              {issue.label}
+            </h3>
+            <StanceBadge issue={issue} />
+            <ReviewMark reviewed={issue.isReviewed} />
+          </div>
+          {issue.summary ? (
+            <p className="text-[clamp(17px,1.6vw,20px)] leading-relaxed mb-3" style={{ color: INK }}>
+              {issue.summary}
+            </p>
+          ) : (
+            <p className="text-[16px] italic mb-3" style={{ color: GRAY }}>
+              요약이 아직 작성되지 않았습니다.
+            </p>
+          )}
+          <p className="text-[15px] font-semibold tr-num" style={{ color: GRAY }}>
+            제기 {issue.teamCount}개 조
+            {issue.teams.length > 0 ? ` · ${issue.teams.join(', ')}` : ''}
+            {issue.consensusDenominator != null ? ` · 원문 군집 ${issue.consensusDenominator}건` : ''}
+          </p>
+        </article>
+      ))}
+      {view.stats.unclassifiedCount > 0 ? (
+        <p
+          className="rounded-2xl border px-5 py-4 text-[16px] font-bold"
+          style={{ borderColor: BORDER, background: '#F1F7FA', color: TEAL }}
+        >
+          기타 {view.stats.unclassifiedCount}건은 특정 쟁점으로 분류되지 않았습니다.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+// ── 함께 확인된 것 / 더 논의할 것 / 다음 단계 ──
+
+function TakeawaysBlock({ view }: { view: ResultViewModel }) {
+  const consensus = view.issues.filter((i) => i.isConsensus);
+  const further = view.issues.filter((i) => !i.isConsensus);
+  const col = (title: string, accent: string, items: ViewIssue[], empty: string) => (
+    <div className="rounded-2xl border bg-white p-5" style={{ borderColor: BORDER }}>
+      <h3 className="text-[clamp(18px,1.9vw,24px)] font-extrabold mb-3" style={{ color: accent }}>
+        {title}
+      </h3>
+      {items.length > 0 ? (
+        <ul className="space-y-2">
+          {items.map((i) => (
+            <li key={i.id} className="text-[clamp(16px,1.5vw,19px)] font-semibold leading-snug" style={{ color: INK }}>
+              · {i.label}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-[16px]" style={{ color: GRAY }}>{empty}</p>
+      )}
+    </div>
+  );
+  return (
+    <section className="grid gap-4 sm:grid-cols-3">
+      {col('함께 확인된 것', '#4F9D3A', consensus, '합의로 분류된 쟁점이 아직 없습니다.')}
+      {col('더 논의할 것', '#B5651D', further, '추가 논의가 필요한 쟁점이 없습니다.')}
+      <div className="rounded-2xl border bg-white p-5" style={{ borderColor: BORDER }}>
+        <h3 className="text-[clamp(18px,1.9vw,24px)] font-extrabold mb-3" style={{ color: NAVY }}>
+          다음 단계
+        </h3>
+        <p className="text-[clamp(16px,1.5vw,19px)] leading-relaxed" style={{ color: INK }}>
+          이 결과는 숙의 과정의 중간 정리입니다. 더 논의할 쟁점은 다음 회차에서 이어 다루며,
+          정리된 내용은 권고안 심의의 근거 자료로 쓰입니다.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+// ── 차트 '표로 보기' 대체본(접근성) ──
+
+function DataTable({ view }: { view: ResultViewModel }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="rounded-2xl border bg-white p-5 sm:p-6" style={{ borderColor: BORDER }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="w-full flex items-center justify-between gap-3 text-left"
+      >
+        <span>
+          <Eyebrow style={{ color: TEAL }}>접근성</Eyebrow>
+          <span className="block text-[clamp(18px,1.9vw,24px)] font-extrabold" style={{ color: NAVY }}>
+            분석 데이터를 표로 보기
+          </span>
+          <span className="block text-[15px]" style={{ color: GRAY }}>
+            스크린리더·정확한 수치 확인용
+          </span>
+        </span>
+        <span className="shrink-0 text-[22px]" style={{ color: TEAL }} aria-hidden="true">
+          {open ? '▲' : '▼'}
+        </span>
+      </button>
+      {open ? (
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full border-collapse text-left text-[15px]">
+            <caption className="sr-only">쟁점별 방향·빈도·제기 조 수·원문 군집·검수 상태</caption>
+            <thead>
+              <tr className="border-b-2" style={{ borderColor: BORDER, color: GRAY }}>
+                <th className="px-3 py-2">쟁점</th>
+                <th className="px-3 py-2">빈도</th>
+                <th className="px-3 py-2">방향</th>
+                <th className="px-3 py-2 text-right">제기 조</th>
+                <th className="px-3 py-2 text-right">원문 군집</th>
+                <th className="px-3 py-2">검수</th>
+              </tr>
+            </thead>
+            <tbody>
+              {view.ranking.map((i) => (
+                <tr key={i.id} className="border-b" style={{ borderColor: BORDER, color: INK }}>
+                  <th scope="row" className="px-3 py-2 font-bold text-left">{i.label}</th>
+                  <td className="px-3 py-2">{i.frequencyLabel ?? '—'}</td>
+                  <td className="px-3 py-2">{i.stanceLabel ?? '—'}</td>
+                  <td className="px-3 py-2 text-right tr-num font-bold">{i.teamCount}</td>
+                  <td className="px-3 py-2 text-right tr-num">{i.consensusDenominator ?? '—'}</td>
+                  <td className="px-3 py-2">{i.isReviewed ? '완료' : '대기(AI 초안)'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+// ── 본체 ──
+
+export default function ResultView() {
+  const [state, setState] = useState<
+    { kind: 'loading' } | { kind: 'error' } | { kind: 'unpublished' } | { kind: 'ready'; view: ResultViewModel }
+  >({ kind: 'loading' });
+
+  useEffect(() => {
+    const token = tokenFromPath(typeof window !== 'undefined' ? window.location.pathname : null);
+    if (!token) {
+      setState({ kind: 'unpublished' });
+      return;
+    }
+    let cancelled = false;
+    fetchResult(token)
+      .then((res) => {
+        if (cancelled) return;
+        const view = buildResultView(res);
+        setState(view ? { kind: 'ready', view } : { kind: 'unpublished' });
+      })
+      .catch(() => {
+        if (!cancelled) setState({ kind: 'error' });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (state.kind === 'loading') {
+    return (
+      <Centered>
+        <p className="text-[22px] font-bold" style={{ color: GRAY }}>불러오는 중…</p>
+      </Centered>
+    );
+  }
+  if (state.kind === 'error') {
+    return (
+      <Centered>
+        <div className="text-5xl mb-4" aria-hidden="true">⚠️</div>
+        <h1 className="text-[26px] font-extrabold mb-2" style={{ color: '#B5651D' }}>
+          결과를 불러오지 못했습니다
+        </h1>
+        <p className="text-[18px]" style={{ color: GRAY }}>
+          네트워크 상태를 확인한 뒤 페이지를 새로고침해 주세요.
+        </p>
+      </Centered>
+    );
+  }
+  if (state.kind === 'unpublished') {
+    return (
+      <Centered>
+        <div className="text-5xl mb-4" aria-hidden="true">🔒</div>
+        <h1 className="text-[26px] font-extrabold mb-2" style={{ color: NAVY }}>
+          공개되지 않은 결과입니다
+        </h1>
+        <p className="text-[18px]" style={{ color: GRAY }}>
+          링크가 올바른지 확인해 주세요. 아직 공개 전이거나 공개가 해제된 결과일 수 있습니다.
+        </p>
+      </Centered>
+    );
+  }
+
+  const { view } = state;
+  const pct = ratioToPercent(view.stats.consensusRatio);
+
+  return (
+    <main className="min-h-screen px-4 sm:px-8 py-8 sm:py-12">
+      <div className="mx-auto w-full max-w-5xl space-y-6">
+        {/* 헤더 */}
+        <header className="rounded-2xl border bg-white p-6 sm:p-8" style={{ borderColor: BORDER }}>
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <Eyebrow style={{ color: TEAL }}>기후시민회의 · 숙의 결과</Eyebrow>
+            {view.scopeLabel ? (
+              <span className="rounded-full px-3 py-1 text-[14px] font-bold text-white" style={{ background: TEAL }}>
+                {view.scopeLabel} 단위
+              </span>
+            ) : null}
+            <span
+              className="rounded-full border px-3 py-1 text-[14px] font-bold"
+              style={{ borderColor: BORDER, color: GRAY }}
+            >
+              조 단위 분포 기준
+            </span>
+            <span className="rounded-full px-3 py-1 text-[14px] font-bold text-white" style={{ background: '#4F9D3A' }}>
+              검수 완료 {view.stats.reviewedCount} / 전체 {view.stats.issueCount}
+            </span>
+          </div>
+          <h1 className="text-[clamp(28px,4vw,52px)] font-extrabold leading-tight" style={{ color: NAVY, letterSpacing: '-.022em' }}>
+            {view.title}
+          </h1>
+          <p className="mt-2 text-[16px]" style={{ color: GRAY }}>
+            공개일 {formatDate(view.publishedAt)}
+            {view.generatedAt ? ` · 분석 시점 ${formatDate(view.generatedAt)}` : ''}
+          </p>
+        </header>
+
+        {/* 스탯 */}
+        <section className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+          <StatTile label="합의 비율" value={String(pct)} unit="%" accent="#4F9D3A" />
+          <StatTile label="쟁점 수" value={String(view.stats.issueCount)} unit="개" />
+          <StatTile label="참여 조" value={String(view.stats.participatingTeams)} unit="개" accent={TEAL} />
+          <StatTile label="추가 숙의" value={String(view.stats.furtherCount)} unit="개" accent="#B5651D" />
+        </section>
+
+        {/* HITL 고정 카피 */}
+        <section
+          className="rounded-2xl border-2 px-5 py-4"
+          style={{ borderColor: '#F5A623', background: '#FEF6E7' }}
+        >
+          <p className="text-[clamp(16px,1.6vw,20px)] font-extrabold" style={{ color: '#B5651D' }}>
+            {view.hitlNotice}
+          </p>
+          <p className="mt-1 text-[clamp(15px,1.5vw,18px)] font-semibold" style={{ color: '#8A5A15' }}>
+            {HITL_RATIO_NOTICE}
+          </p>
+        </section>
+
+        <CoverageMatrix view={view} />
+        <RankingChart view={view} />
+        <IssueSummaries view={view} />
+        <TakeawaysBlock view={view} />
+        <DataTable view={view} />
+
+        {/* 분모 규칙 주석 + HITL 푸터 */}
+        <footer className="rounded-2xl border bg-white p-5 sm:p-6 space-y-2" style={{ borderColor: BORDER }}>
+          <Eyebrow style={{ color: GRAY }}>산정 기준</Eyebrow>
+          <p className="text-[15px] leading-relaxed" style={{ color: GRAY }}>
+            합의 비율은 <b style={{ color: INK }}>합의로 분류된 쟁점 수 ÷ 전체 쟁점 수</b>로 산정합니다
+            (조 단위 분포 기준). {view.consensusRule}
+          </p>
+          <p className="text-[15px] leading-relaxed" style={{ color: GRAY }}>
+            {view.hitlNotice} {HITL_RATIO_NOTICE}
+          </p>
+        </footer>
+      </div>
+    </main>
+  );
+}

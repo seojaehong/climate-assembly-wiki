@@ -1,0 +1,21 @@
+---
+// 공론화 플랫폼 진입점 — /platform (BUILD_SPEC §4-1)
+// 로그인(Supabase Auth) → org 파생 → 데이터 트리 셸. 얇은 셸일 뿐, 상태·라우팅은
+// PlatformShell 아일랜드가 client:only(rolldown .tsx 트랩 회피)로 전담한다.
+// 8/29 라이브(/mod·/b·/hq·/v)와 무관한 신규 네임스페이스.
+import '../../styles/global.css';
+import PlatformShell from '../../islands/platform/PlatformShell';
+---
+<!doctype html>
+<html lang="ko" class="light" data-theme="light"><head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="color-scheme" content="light" />
+  <title>공론화 SaaS 플랫폼 [/platform]</title>
+  <style is:global>
+    body { font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif; margin: 0; }
+  </style>
+</head><body>
+  <PlatformShell client:only="react" />
+</body></html>

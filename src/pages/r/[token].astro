@@ -1,0 +1,28 @@
+---
+import '../../styles/global.css';
+import ResultView from '../../islands/result/ResultView';
+
+// ── 정적 라우트 전략(근거) ──
+// 이 프로젝트는 SSR 어댑터가 없는 static output 이다. /r/<token> 의 token은 추측 불가 32hex라
+// 빌드 시점에 전량 프리렌더할 수 없다(getStaticPaths 로 열거 불가 + 열거하면 토큰 공개 = 접근통제 붕괴).
+// 따라서 getStaticPaths 는 []를 반환하고(빌드 통과, dist/r/ 미생성은 의도된 것),
+// 토큰은 런타임에 window.location.pathname 에서 읽어 client:only 아일랜드가 result_get 을 페치한다.
+// 실토큰 서빙은 SSR 어댑터 또는 호스트 레벨 rewrite(예: Cloudflare _routes/fallback)가 필요 — 라이브 이후.
+export function getStaticPaths() {
+  return [];
+}
+---
+<!doctype html>
+<html lang="ko" class="light" data-theme="light"><head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="color-scheme" content="light" />
+  <title>숙의 결과 [/r]</title>
+  <style is:global>
+    body { font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif; background:#F1F7FA; }
+    .tr-num { letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  </style>
+</head><body>
+  <ResultView client:only="react" />
+</body></html>

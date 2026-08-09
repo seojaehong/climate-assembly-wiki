@@ -1,0 +1,32 @@
+---
+// 공론화 플랫폼 SPA 캐치올 — /platform/o/<org>/c/<campaign>/f/<forum>/s/<session>/t/<topic>/<view>
+//
+// 라우팅 방식 = 캐치올 + 클라이언트 라우팅 (BUILD_SPEC §4-1 산출물 1의 택1 근거):
+//   이 트랙은 정적 빌드(SSR 어댑터 없음 — output/astro.config 를 건드리면 8/29 라이브 빌드가
+//   위험해진다). 데이터 경로는 org·공론화·주제 id 로 조합돼 빌드시 열거 불가하므로, 서버가
+//   각 경로를 프리렌더할 수 없다. 대신 단 하나의 셸을 방출하고, PlatformShell 이 런타임에
+//   window.location 을 parseScopePath 로 파싱해 스코프를 그린다(pushState/popstate 로 내부 이동).
+//   → getStaticPaths 는 대표 경로 'app' 하나만 방출한다(dist/platform/app/ 생성, index.astro 와 비충돌).
+//
+// ★ 미결(딥링크 새로고침): /platform/o/... 를 주소창으로 직접 열면(또는 새로고침) 정적 파일이
+//   없어 호스트가 404 를 낸다. 프로덕션에선 Cloudflare Pages SPA fallback(=/platform/* → 셸)
+//   rewrite 가 필요하다. 이 트랙은 라이브 미가동이라 후속 과제로 둔다.
+export function getStaticPaths() {
+  return [{ params: { path: 'app' } }];
+}
+import '../../styles/global.css';
+import PlatformShell from '../../islands/platform/PlatformShell';
+---
+<!doctype html>
+<html lang="ko" class="light" data-theme="light"><head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="color-scheme" content="light" />
+  <title>공론화 SaaS 플랫폼 [/platform]</title>
+  <style is:global>
+    body { font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif; margin: 0; }
+  </style>
+</head><body>
+  <PlatformShell client:only="react" />
+</body></html>
