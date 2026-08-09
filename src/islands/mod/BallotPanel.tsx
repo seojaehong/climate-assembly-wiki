@@ -131,19 +131,19 @@ function BallotQrFullscreen({
         </p>
       ) : null}
 
-      {/* QR — 남는 세로를 먹되(flex-1), 정사각 상한(min(58vh,80vw))을 넘지 않아 하단 안내와
-          절대 겹치지 않는다. 세로가 짧은 프로젝터는 vh, 세로가 긴 폰은 vw가 상한을 잡는다. */}
-      <div className="flex-1 min-h-0 w-full grid place-items-center py-4">
+      {/* QR — flex-1 영역에 이미지를 양방향(max-h/max-w-full)으로 가둬 실제 남은 공간에 맞춰
+          축소시킨다. grid place-items-center는 자식을 컨테이너에 제약하지 못해(내용크기 렌더)
+          QR이 하단을 침범했다 → flex items-center + 이미지 자체 상한으로 교체. object-contain이
+          비율을 지키므로 정사각 강제 없이도 항상 flex 영역 안에 들어간다. */}
+      <div className="flex-1 min-h-0 w-full flex items-center justify-center py-2">
         {qr ? (
-          <div className="h-full max-h-[min(58vh,80vw)] aspect-square">
-            <img
-              src={qr}
-              alt="참가용 QR 코드"
-              className="h-full w-full object-contain rounded-2xl border border-[#DCE7EE]"
-            />
-          </div>
+          <img
+            src={qr}
+            alt="참가용 QR 코드"
+            className="max-h-full max-w-full w-auto h-auto object-contain rounded-2xl border border-[#DCE7EE]"
+          />
         ) : (
-          <div className="h-full max-h-[min(58vh,80vw)] aspect-square bg-[#F1F7FA] rounded-2xl animate-pulse" />
+          <div className="h-full max-h-full aspect-square bg-[#F1F7FA] rounded-2xl animate-pulse" />
         )}
       </div>
 
