@@ -12,6 +12,7 @@
 
 import { getSupabase } from './supabase';
 import { type TreeNode } from '../islands/platform/platform-nav-logic';
+import type { BallotListRow, BallotResults } from './deliberation';
 
 const SCHEMA = 'climate_vote';
 
@@ -291,6 +292,30 @@ export async function issueItems(code: string, topicId: string): Promise<Platfor
     const { data, error } = await sb.schema(SCHEMA).rpc('issue_items', { p_code: code, p_topic_id: topicId });
     if (error) throw error;
     return data as IssueItemsResult;
+  });
+}
+
+/** Session ballot list through the existing join-code scoped RPC. */
+export async function platformBallotList(code: string): Promise<PlatformResult<BallotListRow[]>> {
+  return guard(async (sb) => {
+    const { data, error } = await sb.schema(SCHEMA).rpc('ballot_list', { p_code: code });
+    if (error) throw error;
+    return (data ?? []) as BallotListRow[];
+  });
+}
+
+/** Aggregate ballot result available to operators regardless of ballot status. */
+export async function platformBallotResults(
+  token: string,
+  code: string,
+): Promise<PlatformResult<BallotResults | null>> {
+  return guard(async (sb) => {
+    const { data, error } = await sb.schema(SCHEMA).rpc('ballot_results', {
+      p_token: token,
+      p_code: code,
+    });
+    if (error) throw error;
+    return (data as BallotResults | null) ?? null;
   });
 }
 

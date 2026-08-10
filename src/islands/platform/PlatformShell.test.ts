@@ -93,6 +93,18 @@ describe('PlatformShell accessibility', () => {
     expect(sessionHtml).not.toContain('데이터 로드 골격');
   });
 
+  it('회차 투표 보기가 플레이스홀더 대신 실제 집계 콘솔을 연다', () => {
+    const html = renderToStaticMarkup(createElement(ScopeOutlet, {
+      scope: { o: 'org', c: 'assembly', s: 'session', view: 'vote' },
+      scopedTopics: [{ id: 'topic-1', label: '에너지 전환' }],
+    }));
+
+    expect(html).toContain('이 회차의 투표 집계');
+    expect(html).toContain('회차 투표 불러오기');
+    expect(html).toContain('vote-join-code');
+    expect(html).not.toContain('데이터 로드 골격');
+  });
+
   it('검수 콘솔이 고대비 색·2px 경계·브라우저 포커스 표시를 유지한다', () => {
     const html = renderToStaticMarkup(createElement(ReviewConsole, { topicId: null }));
     const formHtml = renderToStaticMarkup(createElement(ReviewConsole, { topicId: 'topic-1', items: [] }));

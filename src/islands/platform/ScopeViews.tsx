@@ -6,6 +6,7 @@ import ReviewConsole from './review/ReviewConsole';
 import PublishConsole from './publish/PublishConsole';
 import AnalyzeConsole from './analyze/AnalyzeConsole';
 import RecordConsole from './record/RecordConsole';
+import VoteConsole from './vote/VoteConsole';
 import { buildPublicationScopeKey } from './publish/publish-console-logic';
 
 const NAVY = '#1F4E79';
@@ -117,6 +118,15 @@ function ViewPanel({
     );
   }
 
+  if (view === 'vote' && level === 'session') {
+    return (
+      <VoteConsole
+        key={`session:${scopedTopics.map((topic) => topic.id).join(',')}`}
+        topics={scopedTopics}
+      />
+    );
+  }
+
   if (view === 'analyze' && (level === 'topic' || level === 'session')) {
     return (
       <AnalyzeConsole
@@ -176,7 +186,7 @@ function PlaceholderView({
 function wrapperHint(view: ViewName): string {
   switch (view) {
     case 'record': return 'assembly record RPC (not available)';
-    case 'vote': return 'ballot RPC (P2 이후)';
+    case 'vote': return 'platformBallotList / platformBallotResults';
     case 'analyze': return 'assembly analysis RPC (not available)';
     case 'review': return 'issueList / issueUpsert / issueLinkSet / issueMerge / issueReview';
     case 'publish': return 'resultPublish / resultUnpublish / resultGet';
