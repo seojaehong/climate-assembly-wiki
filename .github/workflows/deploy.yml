@@ -35,4 +35,12 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=climate-assembly-wiki --branch=main
+          command: pages deploy dist --project-name=climate-assembly-wiki --branch=main --skip-caching
+
+      - name: Purge audited entry assets from Cloudflare cache
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ZONE_NAME: climate-assembly.org
+          CLOUDFLARE_PUBLIC_ORIGIN: https://climate-assembly.org
+        run: node automation/purge-cloudflare-assets.mjs
