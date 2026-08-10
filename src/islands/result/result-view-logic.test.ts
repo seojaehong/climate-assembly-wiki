@@ -112,7 +112,7 @@ describe('buildResultView — 합의 비율(분모=전체 쟁점 수)', () => {
 });
 
 describe('buildResultView — 검수 상태(draft 섞임)', () => {
-  it('draft 2 + reviewed 1 → reviewedCount=1, issueCount=3, isReviewed 정확', () => {
+  it('draft 2 + reviewed 1 → reviewedCount=1, issueCount=3, HITL 상태 정확', () => {
     const view = buildResultView(
       response(
         [
@@ -125,7 +125,7 @@ describe('buildResultView — 검수 상태(draft 섞임)', () => {
     )!;
     expect(view.stats.issueCount).toBe(3);
     expect(view.stats.reviewedCount).toBe(1);
-    expect(view.issues.map((i) => i.isReviewed)).toEqual([false, false, true]);
+    expect(view.issues.map((i) => i.hitl.state)).toEqual(['draft', 'draft', 'reviewed']);
     // 검수 대기가 다수여도 합의 비율 분모는 전체 쟁점(3) — reviewed-only로 좁히지 않는다.
     expect(view.stats.issueCount).toBe(3);
   });

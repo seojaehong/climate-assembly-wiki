@@ -48,8 +48,6 @@ export const NEXT_STEPS_COPY =
   '이 결과는 숙의 과정의 중간 정리입니다. 더 논의할 쟁점은 다음 회차에서 이어 다루며, 정리된 내용은 권고안 심의의 근거 자료로 쓰입니다.';
 
 const SUMMARY_EMPTY = '요약이 아직 작성되지 않았습니다.';
-const REVIEWED_LABEL = '검수 완료';
-const DRAFT_LABEL = '검수 대기 · AI 초안';
 
 function pad2(value: number): string {
   return String(value).padStart(2, '0');
@@ -98,8 +96,12 @@ export type ResultIssueSection = {
   teamCount: number;
   /** '원문 군집 N건' 또는 '—'. */
   clusterLabel: string;
-  /** '검수 완료' 또는 '검수 대기 · AI 초안'. */
+  /** Shared HITL status label from the result view model. */
   reviewLabel: string;
+  reviewDescription: string;
+  reviewForeground: string;
+  reviewBackground: string;
+  reviewBorder: string;
 };
 
 /** §3 조×쟁점 매트릭스 모델. cells[i] = 세로 쟁점을 teams[i] 조가 제기했는가. */
@@ -147,7 +149,11 @@ function issueSection(issue: ViewIssue): ResultIssueSection {
     teams: issue.teams,
     teamCount: issue.teamCount,
     clusterLabel: issue.consensusDenominator != null ? `원문 군집 ${issue.consensusDenominator}건` : '—',
-    reviewLabel: issue.isReviewed ? REVIEWED_LABEL : DRAFT_LABEL,
+    reviewLabel: issue.hitl.label,
+    reviewDescription: issue.hitl.description,
+    reviewForeground: issue.hitl.foreground,
+    reviewBackground: issue.hitl.background,
+    reviewBorder: issue.hitl.border,
   };
 }
 
@@ -277,15 +283,25 @@ function cell(
     widthPct?: number;
     shaded?: boolean;
     color?: string;
+    fill?: string;
+    borderColor?: string;
     align?: (typeof AlignmentType)[keyof typeof AlignmentType];
   } = {},
 ): TableCell {
+  const border = opts.borderColor
+    ? { style: BorderStyle.SINGLE, size: 4, color: opts.borderColor }
+    : undefined;
   return new TableCell({
     width: opts.widthPct != null ? { size: opts.widthPct, type: WidthType.PERCENTAGE } : undefined,
-    shading: opts.shaded ? { fill: HEAD_FILL } : undefined,
+    shading: opts.fill ? { fill: opts.fill } : opts.shaded ? { fill: HEAD_FILL } : undefined,
+    borders: border ? { top: border, bottom: border, left: border, right: border } : undefined,
     margins: { top: 60, bottom: 60, left: 100, right: 100 },
     children: [cellPara(text, { bold: opts.bold, color: opts.color, align: opts.align })],
   });
+}
+
+function docxColor(color: string): string {
+  return color.replace(/^#/, '');
 }
 
 function table(rows: TableRow[]): Table {
@@ -298,20 +314,30 @@ function table(rows: TableRow[]): Table {
 
 /** §2 한 쟁점의 메타 표(빈도·방향·검수·제기 조·원문 군집)를 만든다. */
 function issueMetaTable(issue: ResultIssueSection): Table {
-  const kv = (label: string, value: string, valueColor?: string): TableRow =>
+  const kv = (
+    label: string,
+    value: string,
+    valueStyle: { color?: string; fill?: string; borderColor?: string } = {},
+  ): TableRow =>
     new TableRow({
       children: [
         cell(label, { bold: true, widthPct: 22, shaded: true }),
-        cell(value, { widthPct: 78, color: valueColor }),
+        cell(value, { widthPct: 78, ...valueStyle }),
       ],
     });
   const teamsValue = issue.teamCount > 0 ? `${issue.teamCount}개 조 · ${issue.teams.join(', ')}` : `${issue.teamCount}개 조`;
+  const reviewStyle = {
+    color: docxColor(issue.reviewForeground),
+    fill: docxColor(issue.reviewBackground),
+    borderColor: docxColor(issue.reviewBorder),
+  };
   return table([
     kv('빈도', issue.frequencyLabel),
     kv('방향', issue.stanceLabel),
     kv('제기 조', teamsValue),
     kv('원문 군집', issue.clusterLabel),
-    kv('검수', issue.reviewLabel, issue.reviewLabel === REVIEWED_LABEL ? GREEN : AMBER),
+    kv('검수', issue.reviewLabel, reviewStyle),
+    kv('검수 설명', issue.reviewDescription, reviewStyle),
   ]);
 }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Packer } from 'docx';
+import JSZip from 'jszip';
 import {
   RESULT_REPORT_TITLE,
   buildResultReportDoc,
@@ -20,6 +21,7 @@ function issue(over: Partial<ResultIssueRaw> = {}): ResultIssueRaw {
     frequency_class: over.frequency_class ?? null,
     summary: over.summary ?? null,
     review_status: over.review_status ?? 'reviewed',
+    origin: over.origin ?? undefined,
     topic_id: over.topic_id ?? 't1',
     consensus_denominator: 'consensus_denominator' in over ? over.consensus_denominator : 0,
     teams: over.teams ?? [],
@@ -149,6 +151,10 @@ describe('buildResultReportModel — §2 쟁점별', () => {
     expect(sec.teams).toEqual(['1분과 1조', '1분과 2조']);
     expect(sec.clusterLabel).toBe('원문 군집 4건');
     expect(sec.reviewLabel).toBe('검수 완료');
+    expect(sec.reviewDescription).toBe('운영진이 원문과 대조해 공개 가능한 표현으로 확정했습니다.');
+    expect(sec.reviewForeground).toBe('#2F6F25');
+    expect(sec.reviewBackground).toBe('#E3F1E6');
+    expect(sec.reviewBorder).toBe('#2F6F25');
   });
 
   it('요약 없음·미검수 AI 초안·빈도/방향 없음은 폴백 라벨로 적는다', () => {
@@ -161,7 +167,38 @@ describe('buildResultReportModel — §2 쟁점별', () => {
     expect(sec.stanceLabel).toBe('—');
     expect(sec.summary).toBe('요약이 아직 작성되지 않았습니다.');
     expect(sec.clusterLabel).toBe('—');
-    expect(sec.reviewLabel).toBe('검수 대기 · AI 초안');
+    expect(sec.reviewLabel).toBe('검수 대기 · 초안');
+    expect(sec.reviewDescription).toContain('출처 정보가 없는 초안');
+    expect(sec.reviewForeground).toBe('#8A4F08');
+    expect(sec.reviewBackground).toBe('#FEF6E7');
+    expect(sec.reviewBorder).toBe('#F5A623');
+  });
+
+  it('사람 수정본과 보관 상태의 설명·톤을 공용 계약 그대로 보존한다', () => {
+    const model = buildResultReportModel({
+      view: view([
+        issue({ id: 'human', review_status: 'draft', origin: 'human' }),
+        issue({ id: 'archived', review_status: 'archived', origin: 'ai' }),
+      ]),
+      generatedAtLabel: 'x',
+    });
+    const human = model.issues.find((item) => item.label === '쟁점' && item.reviewLabel.includes('사람'));
+    const archived = model.issues.find((item) => item.reviewLabel === '보관');
+
+    expect(human).toMatchObject({
+      reviewLabel: '검수 대기 · 사람 수정본',
+      reviewDescription: '사람이 수정했지만 변경 후 원문 재검수가 필요한 초안입니다.',
+      reviewForeground: '#B91C1C',
+      reviewBackground: '#FDECEC',
+      reviewBorder: '#B91C1C',
+    });
+    expect(archived).toMatchObject({
+      reviewLabel: '보관',
+      reviewDescription: '현재 공개 및 검수 대상에서 제외된 쟁점입니다.',
+      reviewForeground: '#5A6B73',
+      reviewBackground: '#ECEFF1',
+      reviewBorder: '#6B7D88',
+    });
   });
 
   it('§2는 랭킹 순서(제기 조 많은 순)로 싣는다', () => {
@@ -241,6 +278,22 @@ describe('buildResultReportDoc — 문서 생성(이미지 없이 표만)', () =
     });
     const buf = await Packer.toBuffer(buildResultReportDoc(model));
     expect(buf.includes('word/media/')).toBe(false);
+  });
+
+  it('공용 HITL 설명과 상태별 글자·배경·경계 색상을 document.xml에 직렬화한다', async () => {
+    const model = buildResultReportModel({
+      view: view([issue({ id: 'archived', review_status: 'archived', origin: 'ai' })]),
+      generatedAtLabel: 'x',
+    });
+    const buf = await Packer.toBuffer(buildResultReportDoc(model));
+    const zip = await JSZip.loadAsync(buf);
+    const documentXml = await zip.file('word/document.xml')?.async('string');
+
+    expect(documentXml).toBeDefined();
+    expect(documentXml).toContain('현재 공개 및 검수 대상에서 제외된 쟁점입니다.');
+    expect(documentXml).toContain('w:color w:val="5A6B73"');
+    expect(documentXml).toContain('w:shd w:fill="ECEFF1"');
+    expect(documentXml).toContain('w:color="6B7D88"');
   });
 
   it('퇴화 모델(쟁점 0·조 0·공개일 null·요약 없음)도 표만으로 정상 생성된다', async () => {

@@ -14,6 +14,7 @@
 // 호출하면 기존 링크를 **파괴**한다. gap 을 빈 패널이 아니라 데이터 유실 버그로 만들지 않기 위한 게이트.
 
 import type { IssueRow, IssueListResult, IssueItemRow, IssueItemsResult } from '../../../lib/platform';
+import { resolveHitlStatus, type HitlStatus } from '../../../lib/hitl-status';
 
 // ── 4×6 코딩 스킴 (gongron 채택분 그대로) ──────────────────────────────
 
@@ -59,23 +60,6 @@ export function stanceLabel(st: string | null | undefined): string {
 
 export type ReviewStatus = 'draft' | 'reviewed' | 'archived';
 
-/**
- * 검수 상태 라벨. draft 는 origin 으로 갈라 표시한다 —
- *   origin='ai'  + draft → 'AI 초안'  (분석코어가 만든 미검수 쟁점)
- *   origin='human'+ draft → '검수 대기' (사람이 편집해 재검수 필요)
- *   reviewed → '검수 완료' · archived → '보관'
- */
-export function reviewStatusLabel(status: string, origin: string): string {
-  if (status === 'reviewed') return '검수 완료';
-  if (status === 'archived') return '보관';
-  return origin === 'ai' ? 'AI 초안' : '검수 대기';
-}
-
-/** draft 이며 AI 출처인가 — 화면에서 'AI 초안'을 눈에 띄게 표시(HITL 게이트 안내)하기 위한 판정. */
-export function isAiDraft(status: string, origin: string): boolean {
-  return status === 'draft' && origin === 'ai';
-}
-
 // ── issue 뷰모델 (issue_list body → 화면용) ────────────────────────────
 
 export interface IssueViewModel {
@@ -90,8 +74,7 @@ export interface IssueViewModel {
   /** 4×6 배지 한국어 라벨. */
   frequencyBadge: string;
   stanceBadge: string;
-  statusBadge: string;
-  aiDraft: boolean;
+  hitl: HitlStatus;
   /** 연결 원문 수(issue_list linked_item_count). */
   linkedItemCount: number;
   /** 합의도 분모(cluster 보정, issue_list consensus_denominator). */
@@ -113,8 +96,7 @@ export function toIssueViewModel(row: IssueRow): IssueViewModel {
     reviewedBy: row.reviewed_by,
     frequencyBadge: frequencyLabel(row.frequency_class),
     stanceBadge: stanceLabel(row.stance),
-    statusBadge: reviewStatusLabel(status, row.origin),
-    aiDraft: isAiDraft(status, row.origin),
+    hitl: resolveHitlStatus({ reviewStatus: status, origin: row.origin }),
     linkedItemCount: row.linked_item_count ?? 0,
     consensusDenominator: row.consensus_denominator ?? 0,
     reviewable: canReview(status),

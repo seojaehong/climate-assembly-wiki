@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import HitlBadge from '../../components/HitlBadge';
 import { fetchResult } from '../../lib/result-page';
 import {
   buildResultView,
@@ -132,25 +133,6 @@ function StanceBadge({ issue }: { issue: ViewIssue }) {
   );
 }
 
-function ReviewMark({ reviewed }: { reviewed: boolean }) {
-  if (reviewed) {
-    return (
-      <span className="rounded-full px-2.5 py-0.5 text-[13px] font-bold text-white" style={{ background: RESULT_STATUS_GREEN }}>
-        검수 완료
-      </span>
-    );
-  }
-  // 미검수 AI 초안은 눈에 띄게 표시한다(HITL의 핵심 구분).
-  return (
-    <span
-      className="rounded-full border-2 px-2.5 py-0.5 text-[13px] font-extrabold"
-      style={{ borderColor: '#F5A623', color: RESULT_STATUS_AMBER, background: '#FEF6E7' }}
-    >
-      검수 대기 · AI 초안
-    </span>
-  );
-}
-
 function StatTile({
   label,
   value,
@@ -263,7 +245,7 @@ function RankingChart({ view }: { view: ResultViewModel }) {
                   {issue.label}
                 </span>
                 <StanceBadge issue={issue} />
-                <ReviewMark reviewed={issue.isReviewed} />
+                <HitlBadge status={issue.hitl} />
               </div>
               <span className="shrink-0 text-[clamp(20px,2vw,28px)] font-extrabold tr-num" style={{ color: NAVY }}>
                 {issue.teamCount}
@@ -296,7 +278,7 @@ function IssueSummaries({ view }: { view: ResultViewModel }) {
               {issue.label}
             </h3>
             <StanceBadge issue={issue} />
-            <ReviewMark reviewed={issue.isReviewed} />
+            <HitlBadge status={issue.hitl} />
           </div>
           {issue.summary ? (
             <p className="text-[clamp(17px,1.6vw,20px)] leading-relaxed mb-3" style={{ color: INK }}>
@@ -404,7 +386,7 @@ function DataTable({ view }: { view: ResultViewModel }) {
                 <td className="px-3 py-2">{issue.stanceLabel ?? '—'}</td>
                 <td className="px-3 py-2 text-right tr-num font-bold">{issue.teamCount}</td>
                 <td className="px-3 py-2 text-right tr-num">{issue.consensusDenominator ?? '—'}</td>
-                <td className="px-3 py-2">{issue.isReviewed ? '완료' : '대기(AI 초안)'}</td>
+                <td className="px-3 py-2">{issue.hitl.label}</td>
               </tr>
             ))}
           </tbody>

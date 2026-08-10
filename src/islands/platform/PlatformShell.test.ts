@@ -7,6 +7,7 @@ import type { TreeNode } from './platform-nav-logic';
 import ScopeOutlet from './ScopeViews';
 import ReviewConsole, { REVIEW_STATUS_GREEN, ReviewIssueChoice, ReviewSourceCard, SourceReferenceList } from './review/ReviewConsole';
 import type { IssueViewModel, ReviewItem } from './review/review-console-logic';
+import { resolveHitlStatus } from '../../lib/hitl-status';
 
 const tree: TreeNode = {
   kind: 'org',
@@ -72,7 +73,7 @@ describe('PlatformShell accessibility', () => {
     const vm: IssueViewModel = {
       id: 'issue-1', label: '재생에너지 확대', stance: 'proposal', frequencyClass: 'consensus',
       summary: null, origin: 'human', reviewStatus: 'reviewed', reviewedBy: 'operator',
-      frequencyBadge: '합의', stanceBadge: '대안·제안', statusBadge: '검수 완료', aiDraft: false,
+      frequencyBadge: '합의', stanceBadge: '대안·제안', hitl: resolveHitlStatus({ reviewStatus: 'reviewed', origin: 'human' }),
       linkedItemCount: 2, consensusDenominator: 2, reviewable: false,
     };
     const activeHtml = renderToStaticMarkup(createElement(ReviewIssueChoice, { vm, active: true, onSelect: () => undefined }));
@@ -80,6 +81,8 @@ describe('PlatformShell accessibility', () => {
 
     expect(activeHtml).toContain('aria-pressed="true"');
     expect(activeHtml).toContain('선택됨');
+    expect(activeHtml).toContain('검수 완료');
+    expect(activeHtml).toContain('aria-label="검수 완료: 운영진이 원문과 대조해 공개 가능한 표현으로 확정했습니다."');
     expect(inactiveHtml).toContain('aria-pressed="false"');
     expect(inactiveHtml).not.toContain('선택됨');
   });

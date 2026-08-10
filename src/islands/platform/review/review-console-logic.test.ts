@@ -5,8 +5,6 @@ import {
   STANCE_OPTIONS,
   frequencyLabel,
   stanceLabel,
-  reviewStatusLabel,
-  isAiDraft,
   toIssueViewModel,
   toIssueViewModels,
   toReviewItem,
@@ -97,22 +95,6 @@ describe('4×6 코딩 스킴 라벨', () => {
 
 // ── 검수 상태 라벨 ─────────────────────────────────────────────────────
 
-describe('reviewStatusLabel / isAiDraft', () => {
-  it('draft 는 origin 으로 갈린다', () => {
-    expect(reviewStatusLabel('draft', 'ai')).toBe('AI 초안');
-    expect(reviewStatusLabel('draft', 'human')).toBe('검수 대기');
-  });
-  it('reviewed·archived', () => {
-    expect(reviewStatusLabel('reviewed', 'ai')).toBe('검수 완료');
-    expect(reviewStatusLabel('archived', 'human')).toBe('보관');
-  });
-  it('isAiDraft 는 draft+ai 만 true', () => {
-    expect(isAiDraft('draft', 'ai')).toBe(true);
-    expect(isAiDraft('draft', 'human')).toBe(false);
-    expect(isAiDraft('reviewed', 'ai')).toBe(false);
-  });
-});
-
 // ── issue 뷰모델 ───────────────────────────────────────────────────────
 
 describe('toIssueViewModel', () => {
@@ -120,8 +102,8 @@ describe('toIssueViewModel', () => {
     const vm = toIssueViewModel(issueRow());
     expect(vm.frequencyBadge).toBe('다수의견');
     expect(vm.stanceBadge).toBe('찬성');
-    expect(vm.statusBadge).toBe('AI 초안');
-    expect(vm.aiDraft).toBe(true);
+    expect(vm.hitl.state).toBe('ai-draft');
+    expect(vm.hitl.label).toBe('검수 대기 · AI 초안');
     expect(vm.reviewable).toBe(true);
     expect(vm.linkedItemCount).toBe(3);
     expect(vm.consensusDenominator).toBe(2);
@@ -130,7 +112,7 @@ describe('toIssueViewModel', () => {
   it('reviewed 는 검수 불가', () => {
     const vm = toIssueViewModel(issueRow({ review_status: 'reviewed', origin: 'human' }));
     expect(vm.reviewable).toBe(false);
-    expect(vm.statusBadge).toBe('검수 완료');
+    expect(vm.hitl.label).toBe('검수 완료');
   });
 
   it('toIssueViewModels 는 null/누락을 빈 배열로 흡수', () => {

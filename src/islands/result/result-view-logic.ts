@@ -14,9 +14,11 @@
  *   합의 비율 = 합의(consensus)로 분류된 쟁점 수 / 전체 쟁점 수(= issues.length). 이는 body가 제공하는
  *   유일한 집계 분모다. per-issue consensus_denominator 는 "이 쟁점 하나에 연결된 원문 군집 수"이므로
  *   합산하면 R2(멀티라벨 중복 계상)를 오히려 재현한다 → 집계 분모로 쓰지 않는다.
- * ★ body.issues 에는 review_status='draft'(미검수 AI 초안)도 섞인다. 게이트는 "reviewed ≥ 1"이지
- *   "전부 reviewed"가 아니다. 따라서 쟁점별 isReviewed 를 유지해 화면에서 검수 대기를 명시한다.
+ * The body may mix draft and reviewed issues because publication requires at least one reviewed issue,
+ * not that every issue is reviewed. Keep each issue's HITL contract intact in every output.
  */
+
+import { resolveHitlStatus, type HitlStatus } from '../../lib/hitl-status';
 
 export const STANCE_LABEL: Record<string, string> = {
   pro: '찬성',
@@ -49,6 +51,7 @@ export type ResultIssueRaw = {
   frequency_class?: string | null;
   summary?: string | null;
   review_status?: string | null;
+  origin?: string | null;
   topic_id?: string | null;
   consensus_denominator?: number | null;
   teams?: string[] | null;
@@ -90,7 +93,7 @@ export type ViewIssue = {
   teamCount: number;
   consensusDenominator: number | null;
   isConsensus: boolean;
-  isReviewed: boolean;
+  hitl: HitlStatus;
 };
 
 export type ResultMatrix = {
@@ -177,7 +180,7 @@ export function toViewIssue(raw: ResultIssueRaw): ViewIssue {
     teamCount: teams.length,
     consensusDenominator: denom,
     isConsensus: frequency === 'consensus',
-    isReviewed: (raw.review_status ?? '') === 'reviewed',
+    hitl: resolveHitlStatus({ reviewStatus: raw.review_status, origin: raw.origin }),
   };
 }
 
@@ -266,7 +269,7 @@ export function buildResultView(res: ResultGetResponse): ResultView | null {
       reviewedCount:
         typeof body.reviewed_count === 'number'
           ? body.reviewed_count
-          : issues.filter((i) => i.isReviewed).length,
+          : issues.filter((i) => i.hitl.reviewed).length,
       unclassifiedCount: typeof body.unclassified_count === 'number' ? body.unclassified_count : 0,
       participatingTeams: teamSet.size,
     },

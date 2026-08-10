@@ -15,7 +15,7 @@ function contrastRatio(a: string, b: string): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-function readyView() {
+function readyView(reviewStatus: 'reviewed' | 'draft' = 'reviewed') {
   const response: ResultGetResponse = {
     scope: 'session',
     scope_id: 'session-1',
@@ -25,7 +25,7 @@ function readyView() {
       scope: 'session',
       scope_id: 'session-1',
       title: '제5차 회의 결과',
-      reviewed_count: 1,
+      reviewed_count: reviewStatus === 'reviewed' ? 1 : 0,
       unclassified_count: 0,
       generated_at: '2026-08-10T00:00:00Z',
       issues: [{
@@ -33,7 +33,7 @@ function readyView() {
         label: '대중교통 확대',
         frequency_class: 'consensus',
         stance: 'proposal',
-        review_status: 'reviewed',
+        review_status: reviewStatus,
         consensus_denominator: 2,
         teams: ['1분과 1조', '1분과 2조'],
       }],
@@ -82,5 +82,13 @@ describe('ResultView accessibility', () => {
     expect(contrastRatio(RESULT_STATUS_AMBER, '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(RESULT_STATUS_AMBER, '#FEF6E7')).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(RESULT_CONTROL_BORDER, '#FFFFFF')).toBeGreaterThanOrEqual(3);
+  });
+
+  it('미검수 쟁점의 배지와 표 대체본이 같은 HITL 상태 계약을 사용한다', () => {
+    const html = renderToStaticMarkup(createElement(ResultContent, { view: readyView('draft') }));
+
+    expect(html).toContain('검수 대기 · 초안');
+    expect(html).toContain('aria-label="검수 대기 · 초안: 출처 정보가 없는 초안이며 운영진의 원문 대조와 확정이 필요합니다."');
+    expect(html).not.toContain('>대기(AI 초안)<');
   });
 });

@@ -9,6 +9,7 @@
 //   실패(스키마 미적용·코드 무효) → items 미로드로 남아 재분류/끌어오기 **비활성**(replace-all 파괴 방지).
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import HitlBadge from '../../../components/HitlBadge';
 import {
   issueList,
   issueItems,
@@ -66,12 +67,6 @@ function Badge({ children, bg, fg }: { children: React.ReactNode; bg: string; fg
   );
 }
 
-function statusTone(vm: IssueViewModel): { bg: string; fg: string } {
-  if (vm.reviewStatus === 'reviewed') return { bg: '#E3F1E6', fg: GREEN };
-  if (vm.reviewStatus === 'archived') return { bg: '#ECEFF1', fg: MUTED };
-  return vm.aiDraft ? { bg: '#FBEEDD', fg: AMBER } : { bg: '#FDECEC', fg: RED };
-}
-
 export function ReviewIssueChoice({
   vm,
   active,
@@ -81,7 +76,6 @@ export function ReviewIssueChoice({
   active: boolean;
   onSelect: () => void;
 }) {
-  const tone = statusTone(vm);
   return (
     <button
       onClick={onSelect}
@@ -95,7 +89,7 @@ export function ReviewIssueChoice({
       <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
         <Badge bg="#E7F0FA" fg={NAVY}>{vm.frequencyBadge}</Badge>
         <Badge bg="#F0EAF7" fg="#6B3FA0">{vm.stanceBadge}</Badge>
-        <Badge bg={tone.bg} fg={tone.fg}>{vm.statusBadge}</Badge>
+        <HitlBadge status={vm.hitl} />
         {active ? <Badge bg="#E4F2F6" fg={TEAL}>선택됨</Badge> : null}
       </span>
       <span style={{ display: 'block', fontSize: 15, fontWeight: 700, color: INK, lineHeight: 1.4 }}>{vm.label}</span>
