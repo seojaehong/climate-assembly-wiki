@@ -32,7 +32,7 @@
 | 공개 결과 페이지 | `/r/<token>` 매트릭스·랭킹·4×6·표대체본·HITL | 2af1ce2 |
 | 검수 콘솔 | 4×6 코딩·재분류·병합·미분류함 본문·게이트 | 62aabfc |
 
-**최근 검증(2026-08-11):** src Vitest 734건·automation Vitest 67건, Astro check 오류 0, Node20 정적 빌드 통과. 커밋 `5e5406d`의 수동 Cloudflare Pages 배포([run 31427305710](https://github.com/seojaehong/climate-assembly-wiki/actions/runs/31427305710))에서 강제 자산 업로드와 사용자 도메인 ResultView JS 자산 12회 검증이 통과했다. 배포 후 `https://climate-assembly.org` 자동감사 대상 5경로도 모두 통과했고 위반·미완료 판정은 0건이다. 스크린리더·모바일 보조기기 수동평가는 남아 전체 상태는 `needs_review`다. 격리 불변식(RPC org_id 미전달)은 유지한다.
+**최근 검증(2026-08-11):** src Vitest 734건·automation Vitest 70건, Astro check 오류 0, Node20 정적 빌드 통과. 커밋 `5e5406d`의 수동 Cloudflare Pages 배포([run 31427305710](https://github.com/seojaehong/climate-assembly-wiki/actions/runs/31427305710))에서 강제 자산 업로드와 사용자 도메인 ResultView JS 자산 12회 검증이 통과했다. 배포 후 `https://climate-assembly.org` 자동감사 대상 5경로도 모두 통과했고 위반·미완료 판정은 0건이다. 스크린리더·모바일 보조기기 수동평가는 남아 전체 상태는 `needs_review`다. 격리 불변식(RPC org_id 미전달)은 유지한다.
 
 ### Phase A 점진 구현 (2026-08-11)
 
@@ -72,7 +72,7 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 - **설계 마법사(Phase 3)**: assembly/session/topic 생성 UI + assembly 스코프 준비도. 플랜상 Phase 2(tenancy) 이후. §5-4 결정 필요.
 - **분석코어 어댑터**: consensus/DQI Python 산출 → issue 적재(service_role). issue_org_derive 트리거로 org 파생 준비됨. 8/29 산출물 확보 후 첫 실전.
 - **라이브 프로비저닝**: 전용 DB + Supabase Auth + Cloudflare Pages SPA fallback rewrite(딥링크). 병합 결정 시.
-- **A6 자동 export 훅**: 행사일 snapshot workflow에 승인 게이트와 off-DB Drive payload export 경로를 구현했다. repository variable `PLATFORM_SNAPSHOT_ENABLED`는 기본 `false`라 현재 동작과 Drive JSON 형상은 기존 `cv_snapshot_now` 그대로다. 승인 후 정확히 `true`로 켜면 기존 snapshot을 먼저 보존하고 `platform_snapshot_now` 행의 실제 payload를 재조회해 같은 Drive JSON에 담는다. 실행당 DB 행이 1개에서 2개로 늘기 때문에 활성화는 계속 사용자 승인 대상이다. PITR/WAL 설정과 별도 감사로그는 아직 미구현이며, 기록 화면 CSV도 이를 대체하지 않는다.
+- **A6 자동 export 훅**: 행사일 snapshot workflow에 승인 게이트와 off-DB Drive payload export 경로를 구현했다. repository variable `PLATFORM_SNAPSHOT_ENABLED`는 기본 `false`라 현재 동작과 Drive JSON 형상은 기존 `cv_snapshot_now` 그대로다. 승인 후 정확히 `true`로 켜면 기존 snapshot을 먼저 보존하고 `platform_snapshot_now` 행의 실제 payload를 재조회해 같은 Drive JSON에 담는다. 활성 export에는 GitHub run·commit·snapshot ID·key ID와 platform 행을 외부 secret 기반 HMAC-SHA256으로 결속한 audit manifest가 붙으며, 키·key ID·필수 provenance 누락 시 platform RPC 전에 실패한다. 과거 archive 검증을 위한 키 외부 백업·회전·폐기 절차도 RUNBOOK에 고정했다. 실행당 DB 행이 1개에서 2개로 늘기 때문에 secret 구성과 활성화는 계속 사용자 승인 대상이다. PITR/WAL 설정과 사용자 행위용 별도 운영 감사로그는 아직 미구현이며, 기록 화면 CSV도 이를 대체하지 않는다.
 
 ## 다음 액션 (권장 순서)
 1. Supabase Auth 운영자 계정과 membership을 승인된 운영 절차로 프로비저닝

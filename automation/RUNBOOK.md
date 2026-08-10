@@ -26,10 +26,19 @@
 
 - GitHub Actions repository variable `PLATFORM_SNAPSHOT_ENABLED`가 없거나 `false`이면 기존 `cv_snapshot_now`만 호출한다. 현재 기본값이다.
 - 승인 후 값을 정확히 `true`로 설정하면 각 실행에서 기존 snapshot을 먼저 보존하고 `platform_snapshot_now`를 추가 호출한다. 기존 투표·의제 payload를 플랫폼 snapshot으로 대체하지 않는다.
-- 비활성 상태의 Drive JSON은 기존 `cv_snapshot_now` 반환 형상을 그대로 유지한다. 활성화 상태에서는 생성된 platform snapshot 행을 ID로 다시 읽어 실제 `payload`를 포함한 `{ legacy, platform }` JSON으로 Drive에 올린다.
+- 비활성 상태의 Drive JSON은 기존 `cv_snapshot_now` 반환 형상을 그대로 유지한다. 활성화 상태에서는 생성된 platform snapshot 행을 ID로 다시 읽어 실제 `payload`를 포함한 `{ legacy, platform, audit }` JSON으로 Drive에 올린다.
+- `audit` manifest는 GitHub run ID·repository·commit SHA·workflow ref·export 시각·snapshot ID·`keyId`와 `platform` 전체 행을 HMAC-SHA256으로 결속한다. 복구 시 `audit.keyId`에 해당하며 Drive 파일 밖에 보관한 키를 `verifySnapshotArchiveIntegrity()`에 전달해 provenance·payload 서명을 확인한다.
 - 활성화하면 `climate_vote.snapshots`에 실행당 행이 1개에서 2개로 늘고 Drive 저장량도 증가한다. 프로덕션 행 증가와 저장량을 승인한 뒤에만 켠다.
-- `platform_p2_analysis_review.sql` 적용, service role의 `platform_snapshot_now(text)` 실행 권한, `climate_vote.snapshots` SELECT 권한을 먼저 확인한다. 플랫폼 생성 또는 payload 조회 실패는 기존 snapshot을 지우지 않지만 workflow를 실패 처리하고 Discord 경보 대상으로 남긴다.
-- 이 훅은 append-only Drive payload 사본을 추가할 뿐 PITR/WAL 설정이나 별도 감사로그를 구현하지 않는다. 두 운영 통제는 계속 별도 작업이다.
+- `platform_p2_analysis_review.sql` 적용, service role의 `platform_snapshot_now(text)` 실행 권한, `climate_vote.snapshots` SELECT 권한을 먼저 확인한다. GitHub Actions secret `SNAPSHOT_AUDIT_HMAC_KEY`에는 32자 이상의 무작위 키를 두고 Drive JSON·로그·저장소에는 기록하지 않는다. repository variable `SNAPSHOT_AUDIT_KEY_ID`에는 비밀값이 아닌 불변 키 버전을 둔다. 키·key ID·GitHub provenance 중 하나라도 없으면 platform RPC 전에 실패한다.
+- 플랫폼 생성 또는 payload 조회 실패는 기존 snapshot을 지우지 않지만 workflow를 실패 처리하고 Discord 경보 대상으로 남긴다.
+- 이 manifest는 개별 export의 provenance·무결성 증거다. PITR/WAL 설정이나 사용자 행위까지 기록하는 별도 운영 감사로그를 구현하지 않으며, 두 운영 통제는 계속 별도 작업이다.
+
+#### HMAC 키 수명주기
+
+1. 키 생성 시 `snapshot-audit-YYYY-MM-vN` 형식의 새 key ID를 부여하고, 실제 키는 GitHub 밖의 승인된 비밀관리 저장소에 같은 ID로 백업한다. GitHub Actions secret 값은 설정 후 다시 읽을 수 없으므로 GitHub만 유일한 보관처로 두지 않는다.
+2. 교체 전 `PLATFORM_SNAPSHOT_ENABLED=false`로 추가 snapshot 생성을 멈추고, 최근 Drive archive가 기존 키로 검증되는지 확인한다.
+3. 새 키를 `SNAPSHOT_AUDIT_HMAC_KEY`에, 대응 ID를 `SNAPSHOT_AUDIT_KEY_ID`에 설정한 뒤 함께 활성화한다. 키와 ID가 어긋난 기간에는 export를 실행하지 않는다.
+4. 과거 키는 해당 key ID의 archive 보존기간이 끝날 때까지 읽기 전용으로 보관한다. 폐기 시 대상 key ID·보존기간 종료 근거·승인자를 운영 감사기록에 남긴다.
 
 ## D-30 — `workshop-schedule.yml` 잠금
 
@@ -109,7 +118,8 @@ gh workflow run finalize.yml -f workshop=test-dry-run
 - [ ] schedule.yml 파싱 OK — capture.out.json 안에 workshop 필드 존재
 - [ ] Drive SA 인증 OK — `test-dry-run` 폴더가 Drive 부모 폴더 안에 생성됨
 - [ ] Supabase RPC OK — `snapshot.out.json` 안에 `outPath` 존재
-- [ ] 플랫폼 export 승인 시에만 `PLATFORM_SNAPSHOT_ENABLED=true`이고, Drive JSON의 `platform.payload`와 `legacy` 결과가 모두 존재
+- [ ] 플랫폼 export 승인 시에만 `PLATFORM_SNAPSHOT_ENABLED=true`이고, Drive JSON의 `platform.payload`·`legacy`·`audit` 결과가 모두 존재
+- [ ] `audit.keyId`로 선택한 Drive 밖의 과거/현재 HMAC 키로 `verifySnapshotArchiveIntegrity()`가 내려받은 JSON에 `true`를 반환하고 run ID·commit SHA가 실행 기록과 일치
 - [ ] Playwright 4페이지 모두 PNG 생성 — Drive `test-dry-run/{ts}/`에 page-{board,event,race-40,event-bar}.png
 - [ ] PNG Drive 업로드 OK — UI에서 4 파일 직접 확인
 - [ ] Sheets `워크숍_아카이브!A:E`에 test-dry-run row append

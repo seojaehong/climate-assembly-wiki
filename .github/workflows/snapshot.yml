@@ -30,6 +30,8 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
           PLATFORM_SNAPSHOT_ENABLED: ${{ vars.PLATFORM_SNAPSHOT_ENABLED || 'false' }}
+          SNAPSHOT_AUDIT_HMAC_KEY: ${{ secrets.SNAPSHOT_AUDIT_HMAC_KEY }}
+          SNAPSHOT_AUDIT_KEY_ID: ${{ vars.SNAPSHOT_AUDIT_KEY_ID }}
         run: node snapshot-db.mjs > snapshot.out.json
       - name: Upload to Drive
         env:

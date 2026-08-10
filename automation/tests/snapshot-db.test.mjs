@@ -1,6 +1,12 @@
 import { readFileSync } from 'node:fs';
+import { createHmac } from 'node:crypto';
 import { test, expect, vi } from 'vitest';
-import { snapshotArchive, snapshotRound } from '../snapshot-db.mjs';
+import {
+  snapshotArchive,
+  snapshotRound,
+  verifySnapshotArchiveIntegrity,
+  workflowAuditContext,
+} from '../snapshot-db.mjs';
 
 /**
  * Factory that produces a mock supabase client with .schema() chain.
@@ -15,6 +21,17 @@ function makeClient(rpc, snapshotResponse = { data: null, error: null }) {
   const schema = vi.fn(() => ({ rpc, from }));
   return { schema, snapshotQuery: { from, select, eq, single } };
 }
+
+const TEST_AUDIT_KEY = 'test-only-audit-key-with-at-least-32-characters';
+const TEST_AUDIT_CONTEXT = {
+  exportedAt: '2026-08-11T05:30:00.000Z',
+  repository: 'seojaehong/climate-assembly-wiki',
+  runId: '31429231374',
+  commitSha: 'bd84e27462e4eac7b7a96dbef40fca4c628e9740',
+  workflowRef: 'seojaehong/climate-assembly-wiki/.github/workflows/snapshot.yml@refs/heads/main',
+  keyId: 'snapshot-audit-2026-08-v1',
+};
+const TEST_AUDIT_OPTIONS = { auditKey: TEST_AUDIT_KEY, auditContext: TEST_AUDIT_CONTEXT };
 
 test('calls .schema("climate_vote").rpc("cv_snapshot_now", p_label+p_source) — regression guard', async () => {
   const rpc = vi.fn().mockResolvedValue({ data: { snapshot_id: 42, votes: 126 }, error: null });
@@ -75,6 +92,7 @@ test('adds the platform snapshot after the legacy snapshot when platform export 
     roundId: 8,
     label: '8차_전체법정의결-r8',
     includePlatformSnapshot: true,
+    ...TEST_AUDIT_OPTIONS,
   });
 
   expect(rpc).toHaveBeenCalledTimes(2);
@@ -92,6 +110,33 @@ test('adds the platform snapshot after the legacy snapshot when platform export 
   expect(out).toEqual({
     legacy: { snapshot_id: 42, source: 'cron' },
     platform: platformRow,
+    audit: {
+      schemaVersion: 1,
+      event: 'platform_snapshot_export',
+      exportedAt: '2026-08-11T05:30:00.000Z',
+      repository: 'seojaehong/climate-assembly-wiki',
+      runId: '31429231374',
+      commitSha: 'bd84e27462e4eac7b7a96dbef40fca4c628e9740',
+      workflowRef: 'seojaehong/climate-assembly-wiki/.github/workflows/snapshot.yml@refs/heads/main',
+      keyId: 'snapshot-audit-2026-08-v1',
+      snapshotId: 77,
+      integrity: {
+        algorithm: 'hmac-sha256',
+        target: 'platform+provenance',
+        digest: createHmac('sha256', TEST_AUDIT_KEY).update(JSON.stringify({
+          schemaVersion: 1,
+          event: 'platform_snapshot_export',
+          exportedAt: TEST_AUDIT_CONTEXT.exportedAt,
+          repository: TEST_AUDIT_CONTEXT.repository,
+          runId: TEST_AUDIT_CONTEXT.runId,
+          commitSha: TEST_AUDIT_CONTEXT.commitSha,
+          workflowRef: TEST_AUDIT_CONTEXT.workflowRef,
+          keyId: TEST_AUDIT_CONTEXT.keyId,
+          snapshotId: 77,
+          platform: platformRow,
+        })).digest('hex'),
+      },
+    },
   });
 });
 
@@ -122,6 +167,7 @@ test('fails visibly when the created platform snapshot payload cannot be exporte
     client: makeClient(rpc, { data: null, error: { message: 'snapshot read denied' } }),
     roundId: 8,
     includePlatformSnapshot: true,
+    ...TEST_AUDIT_OPTIONS,
     maxRetries: 2,
     baseDelayMs: 1,
     alert,
@@ -144,6 +190,7 @@ test('fails closed before querying when the platform receipt has no valid snapsh
     client,
     roundId: 8,
     includePlatformSnapshot: true,
+    ...TEST_AUDIT_OPTIONS,
     alert,
   })).rejects.toThrow('platform snapshot receipt did not include a valid id');
 
@@ -164,6 +211,7 @@ test('fails visibly without falling back when the enabled platform snapshot cann
     roundId: 8,
     label: '8차_전체법정의결-r8',
     includePlatformSnapshot: true,
+    ...TEST_AUDIT_OPTIONS,
     maxRetries: 2,
     baseDelayMs: 1,
     alert,
@@ -185,9 +233,99 @@ test('snapshot workflow keeps platform export disabled until the repository vari
     new URL('../../.github/workflows/snapshot.yml', import.meta.url),
     'utf8',
   );
+  const source = readFileSync(new URL('../snapshot-db.mjs', import.meta.url), 'utf8');
 
   expect(workflow).toContain("PLATFORM_SNAPSHOT_ENABLED: ${{ vars.PLATFORM_SNAPSHOT_ENABLED || 'false' }}");
+  expect(workflow).toContain('SNAPSHOT_AUDIT_HMAC_KEY: ${{ secrets.SNAPSHOT_AUDIT_HMAC_KEY }}');
+  expect(workflow).toContain('SNAPSHOT_AUDIT_KEY_ID: ${{ vars.SNAPSHOT_AUDIT_KEY_ID }}');
   expect(workflow.indexOf('PLATFORM_SNAPSHOT_ENABLED:')).toBeLessThan(
     workflow.indexOf('run: node snapshot-db.mjs > snapshot.out.json'),
   );
+  expect(source).toContain('auditContext: workflowAuditContext(process.env)');
+  expect(source).toContain('auditKey: process.env.SNAPSHOT_AUDIT_HMAC_KEY');
+});
+
+test('maps GitHub workflow provenance into the platform export audit context', () => {
+  expect(workflowAuditContext({
+    GITHUB_REPOSITORY: 'seojaehong/climate-assembly-wiki',
+    GITHUB_RUN_ID: '31429231374',
+    GITHUB_SHA: 'bd84e27462e4eac7b7a96dbef40fca4c628e9740',
+    GITHUB_WORKFLOW_REF: 'seojaehong/climate-assembly-wiki/.github/workflows/snapshot.yml@refs/heads/main',
+    SNAPSHOT_AUDIT_KEY_ID: 'snapshot-audit-2026-08-v1',
+  }, '2026-08-11T05:30:00.000Z')).toEqual({
+    exportedAt: '2026-08-11T05:30:00.000Z',
+    repository: 'seojaehong/climate-assembly-wiki',
+    runId: '31429231374',
+    commitSha: 'bd84e27462e4eac7b7a96dbef40fca4c628e9740',
+    workflowRef: 'seojaehong/climate-assembly-wiki/.github/workflows/snapshot.yml@refs/heads/main',
+    keyId: 'snapshot-audit-2026-08-v1',
+  });
+});
+
+test('verifies the exported platform row and rejects payload tampering', async () => {
+  const rpc = vi.fn()
+    .mockResolvedValueOnce({ data: { snapshot_id: 42 }, error: null })
+    .mockResolvedValueOnce({ data: { id: 77 }, error: null });
+  const platformRow = { id: 77, source: 'platform', payload: { issue: [{ id: 'issue-1' }] } };
+  const archive = await snapshotArchive({
+    client: makeClient(rpc, { data: platformRow, error: null }),
+    roundId: 8,
+    includePlatformSnapshot: true,
+    ...TEST_AUDIT_OPTIONS,
+  });
+
+  expect(verifySnapshotArchiveIntegrity(archive, TEST_AUDIT_KEY)).toBe(true);
+  expect(verifySnapshotArchiveIntegrity({
+    ...archive,
+    platform: { ...archive.platform, payload: { issue: [] } },
+  }, TEST_AUDIT_KEY)).toBe(false);
+  expect(verifySnapshotArchiveIntegrity({
+    ...archive,
+    audit: { ...archive.audit, commitSha: 'attacker-controlled-sha' },
+  }, TEST_AUDIT_KEY)).toBe(false);
+  const attackerKey = 'attacker-key-with-at-least-32-characters';
+  const forgedPlatform = { ...archive.platform, payload: { issue: [] } };
+  const forgedAudit = { ...archive.audit, commitSha: 'attacker-controlled-sha' };
+  const forgedRecord = {
+    schemaVersion: forgedAudit.schemaVersion,
+    event: forgedAudit.event,
+    exportedAt: forgedAudit.exportedAt,
+    repository: forgedAudit.repository,
+    runId: forgedAudit.runId,
+    commitSha: forgedAudit.commitSha,
+    workflowRef: forgedAudit.workflowRef,
+    keyId: forgedAudit.keyId,
+    snapshotId: forgedAudit.snapshotId,
+    platform: forgedPlatform,
+  };
+  const forgedArchive = {
+    ...archive,
+    platform: forgedPlatform,
+    audit: {
+      ...forgedAudit,
+      integrity: {
+        ...forgedAudit.integrity,
+        digest: createHmac('sha256', attackerKey).update(JSON.stringify(forgedRecord)).digest('hex'),
+      },
+    },
+  };
+  expect(verifySnapshotArchiveIntegrity(forgedArchive, TEST_AUDIT_KEY)).toBe(false);
+});
+
+test('fails closed before the platform RPC when audit signing configuration is incomplete', async () => {
+  for (const options of [
+    { auditKey: '', auditContext: TEST_AUDIT_CONTEXT },
+    { auditKey: TEST_AUDIT_KEY, auditContext: { ...TEST_AUDIT_CONTEXT, runId: null } },
+    { auditKey: TEST_AUDIT_KEY, auditContext: { ...TEST_AUDIT_CONTEXT, keyId: null } },
+  ]) {
+    const rpc = vi.fn().mockResolvedValue({ data: { snapshot_id: 42 }, error: null });
+    await expect(snapshotArchive({
+      client: makeClient(rpc),
+      roundId: 8,
+      includePlatformSnapshot: true,
+      ...options,
+    })).rejects.toThrow('platform snapshot audit configuration is incomplete');
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith('cv_snapshot_now', expect.any(Object));
+  }
 });
