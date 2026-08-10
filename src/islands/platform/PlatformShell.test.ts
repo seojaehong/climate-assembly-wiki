@@ -38,6 +38,16 @@ function contrastRatio(a: string, b: string): number {
 }
 
 describe('PlatformShell accessibility', () => {
+  it('회차 설계 뷰를 canonical 회차 대상으로 연결한다', () => {
+    const html = renderToStaticMarkup(createElement(ScopeOutlet, {
+      scope: { c: 'assembly-1', s: 'session-1', view: 'design' },
+      scopedSessions: [{ id: 'session-uuid-1', label: '제1차 회의' }],
+    }));
+
+    expect(html).toContain('운영 준비도');
+    expect(html).not.toContain('데이터 로드 골격');
+  });
+
   it('스코프 개요가 고대비 액센트와 2px 경계만 사용한다', () => {
     const html = renderToStaticMarkup(createElement(ScopeOutlet, { scope: { c: 'assembly-1' } }));
 

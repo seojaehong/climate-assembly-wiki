@@ -10,6 +10,7 @@ import {
   deepestScopeLevel,
   deepestDataScopeTarget,
   topicTargetsForScope,
+  sessionTargetsForScope,
   SCOPE_KEYS,
   VIEWS,
   VIEWS_FOR_LEVEL,
@@ -107,6 +108,7 @@ describe('buildScopePath', () => {
       { o: 'kcrc', c: 'climate-2026' },
       { o: 'kcrc', c: 'climate-2026', s: 'r5', t: 't-uuid-2' },
       { o: 'kcrc', c: 'climate-2026', s: 'r5', t: 't-uuid-2', view: 'publish' },
+      { o: 'kcrc', c: 'climate-2026', s: 'r5', view: 'design' },
     ];
     for (const s of cases) expect(parseScopePath(buildScopePath(s))).toEqual(s);
   });
@@ -229,6 +231,21 @@ describe('topicTargetsForScope', () => {
   });
 });
 
+describe('sessionTargetsForScope', () => {
+  it('선택한 회차를 표시명과 canonical UUID로 반환한다', () => {
+    expect(sessionTargetsForScope(tree, { o: 'kcrc', c: 'climate-2026', s: 'r5' })).toEqual([
+      { id: 'session-uuid-5', label: '제5차 회의' },
+    ]);
+  });
+
+  it('선택한 공론화의 직속 회차를 트리 순서대로 반환한다', () => {
+    expect(sessionTargetsForScope(tree, { o: 'kcrc', c: 'climate-2026' })).toEqual([
+      { id: 'session-uuid-5', label: '제5차 회의' },
+      { id: 'session-uuid-6', label: '제6차 회의' },
+    ]);
+  });
+});
+
 describe('VIEWS_FOR_LEVEL (단일 원천)', () => {
   it('모든 레벨의 뷰가 VIEWS 부분집합이다(오타 뷰명 차단)', () => {
     for (const level of ['topic', 'session', 'assembly'] as const) {
@@ -244,6 +261,9 @@ describe('VIEWS_FOR_LEVEL (단일 원천)', () => {
     expect(VIEWS_FOR_LEVEL.topic).toContain('publish');
     expect(VIEWS_FOR_LEVEL.session).toContain('publish');
     expect(VIEWS_FOR_LEVEL.assembly).toContain('publish');
+    expect(VIEWS_FOR_LEVEL.topic).not.toContain('design');
+    expect(VIEWS_FOR_LEVEL.session).toContain('design');
+    expect(VIEWS_FOR_LEVEL.assembly).toContain('design');
   });
 });
 
@@ -251,6 +271,7 @@ describe('isView / SCOPE_KEYS', () => {
   it('알려진 view 만 인정', () => {
     expect(isView('review')).toBe(true);
     expect(isView('publish')).toBe(true);
+    expect(isView('design')).toBe(true);
     expect(isView('nope')).toBe(false);
   });
   it('사다리 키 순서 고정', () => {

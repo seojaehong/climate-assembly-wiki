@@ -22,7 +22,7 @@ export const SCOPE_KEYS = ['o', 'c', 'f', 's', 't'] as const;
 export type ScopeKey = (typeof SCOPE_KEYS)[number];
 
 /** 스코프별 뷰(아웃렛). 라우트 말미의 단일 세그먼트. */
-export const VIEWS = ['record', 'vote', 'analyze', 'review', 'publish'] as const;
+export const VIEWS = ['design', 'record', 'vote', 'analyze', 'review', 'publish'] as const;
 export type ViewName = (typeof VIEWS)[number];
 
 /** 공개 게이트·검수를 여는 스코프 레벨(가장 깊은 선택). */
@@ -37,8 +37,8 @@ export type ScopeLevel = 'topic' | 'session' | 'assembly';
  */
 export const VIEWS_FOR_LEVEL: Record<ScopeLevel, readonly ViewName[]> = {
   topic: ['record', 'analyze', 'review', 'publish'],
-  session: ['record', 'vote', 'analyze', 'publish'],
-  assembly: ['analyze', 'publish'],
+  session: ['design', 'record', 'vote', 'analyze', 'publish'],
+  assembly: ['design', 'analyze', 'publish'],
 };
 
 /** 라우트 기저 접두사 — 정적 wiki와 네임스페이스 분리(BUILD_SPEC §4-3). */
@@ -215,6 +215,11 @@ export interface TopicTarget {
   label: string;
 }
 
+export interface SessionTarget {
+  id: string;
+  label: string;
+}
+
 /** Resolves topic RPC targets for the selected topic or session scope. */
 export function topicTargetsForScope(tree: TreeNode | null, scope: Scope): TopicTarget[] {
   const { level } = deepestScopeLevel(scope);
@@ -227,6 +232,23 @@ export function topicTargetsForScope(tree: TreeNode | null, scope: Scope): Topic
     const session = path.find((node) => node.kind === 'session');
     return (session?.children ?? [])
       .filter((node) => node.kind === 'topic')
+      .map((node) => ({ id: node.dataId ?? node.id, label: node.label }));
+  }
+  return [];
+}
+
+/** Resolves readiness RPC targets for the selected session or assembly scope. */
+export function sessionTargetsForScope(tree: TreeNode | null, scope: Scope): SessionTarget[] {
+  const { level } = deepestScopeLevel(scope);
+  const path = activePath(tree, scope);
+  if (level === 'session') {
+    const session = path.find((node) => node.kind === 'session');
+    return session ? [{ id: session.dataId ?? session.id, label: session.label }] : [];
+  }
+  if (level === 'assembly') {
+    const assembly = path.find((node) => node.kind === 'assembly');
+    return (assembly?.children ?? [])
+      .filter((node) => node.kind === 'session')
       .map((node) => ({ id: node.dataId ?? node.id, label: node.label }));
   }
   return [];

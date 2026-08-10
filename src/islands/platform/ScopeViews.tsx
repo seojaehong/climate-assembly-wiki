@@ -1,12 +1,13 @@
 // Scope outlet for implemented consoles and the remaining vote/assembly-analysis placeholders.
 
 import { useEffect, useState } from 'react';
-import { type TopicTarget, type Scope, type ViewName, deepestScopeLevel, VIEWS_FOR_LEVEL } from './platform-nav-logic';
+import { type SessionTarget, type TopicTarget, type Scope, type ViewName, deepestScopeLevel, VIEWS_FOR_LEVEL } from './platform-nav-logic';
 import ReviewConsole from './review/ReviewConsole';
 import PublishConsole from './publish/PublishConsole';
 import AnalyzeConsole from './analyze/AnalyzeConsole';
 import RecordConsole from './record/RecordConsole';
 import VoteConsole from './vote/VoteConsole';
+import DesignConsole from './design/DesignConsole';
 import { buildPublicationScopeKey } from './publish/publish-console-logic';
 
 const NAVY = '#1F4E79';
@@ -15,6 +16,7 @@ const MUTED = '#5A6B73';
 const LINE = '#6B7D88';
 
 const VIEW_META: Record<ViewName, { title: string; noun: string; icon: string; hint: string }> = {
+  design: { title: '설계', noun: '운영 준비도', icon: '🧭', hint: '회차별 공개 주제·활성 조·참여자 배정 준비도를 확인합니다.' },
   record: { title: '기록', noun: '조별 산출물·발언', icon: '📝', hint: '조 콘솔 제출물(submission)을 이 스코프에서 모아 봅니다.' },
   vote: { title: '투표', noun: '회차 투표(ballot)', icon: '🗳️', hint: '회차 단위 무기명 투표 집계를 이 스코프에서 봅니다.' },
   analyze: { title: '분석', noun: '쟁점(issue)·합의도', icon: '📊', hint: '분석코어가 적재한 쟁점과 cluster 분모를 이 스코프에서 봅니다.' },
@@ -38,14 +40,16 @@ export default function ScopeOutlet({
   scope,
   publishScopeId,
   scopedTopics = [],
+  scopedSessions = [],
 }: {
   scope: Scope;
   publishScopeId?: string | null;
   scopedTopics?: readonly TopicTarget[];
+  scopedSessions?: readonly SessionTarget[];
 }) {
   const view = scope.view;
   if (!view) return <ScopeOverview scope={scope} />;
-  return <ViewPanel view={view} scope={scope} publishScopeId={publishScopeId} scopedTopics={scopedTopics} />;
+  return <ViewPanel view={view} scope={scope} publishScopeId={publishScopeId} scopedTopics={scopedTopics} scopedSessions={scopedSessions} />;
 }
 
 function ScopeOverview({ scope }: { scope: Scope }) {
@@ -83,14 +87,26 @@ function ViewPanel({
   scope,
   publishScopeId,
   scopedTopics,
+  scopedSessions,
 }: {
   view: ViewName;
   scope: Scope;
   publishScopeId?: string | null;
   scopedTopics: readonly TopicTarget[];
+  scopedSessions: readonly SessionTarget[];
 }) {
   const meta = VIEW_META[view];
   const { level, id } = deepestScopeLevel(scope);
+
+  if (view === 'design' && (level === 'session' || level === 'assembly')) {
+    return (
+      <DesignConsole
+        key={`${level}:${scopedSessions.map((session) => session.id).join(',')}`}
+        scope={level}
+        sessions={scopedSessions}
+      />
+    );
+  }
 
   // Review remains topic-only, as defined by VIEWS_FOR_LEVEL.
   if (view === 'review') {
@@ -185,6 +201,7 @@ function PlaceholderView({
 
 function wrapperHint(view: ViewName): string {
   switch (view) {
+    case 'design': return 'readinessCheck';
     case 'record': return 'assembly record RPC (not available)';
     case 'vote': return 'platformBallotList / platformBallotResults';
     case 'analyze': return 'assembly analysis RPC (not available)';

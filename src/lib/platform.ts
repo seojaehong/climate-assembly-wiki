@@ -221,6 +221,26 @@ export async function orgTree(orgId: string): Promise<PlatformResult<TreeNode>> 
   });
 }
 
+export interface ReadinessCheck {
+  key: string;
+  pass: boolean;
+  detail: string;
+}
+
+export interface ReadinessResult {
+  ok: boolean;
+  checks: ReadinessCheck[];
+}
+
+/** Read-only session readiness through the existing staff-accessible RPC. */
+export async function readinessCheck(sessionId: string): Promise<PlatformResult<ReadinessResult>> {
+  return guard(async (sb) => {
+    const { data, error } = await sb.schema(SCHEMA).rpc('readiness_check', { p_session: sessionId });
+    if (error) throw error;
+    return data as ReadinessResult;
+  });
+}
+
 // ── P2 검수·공개 RPC 래퍼 (전부 p_code = join_code capability) ──────────
 // ★ org_id 를 받는 래퍼는 하나도 없다(불변식). ★ 병합 시 재확인 미결:
 //   P2 헤더의 DIVERGENCE — 검수/공개가 join_code(운영자) 서명이다. Auth 셸이라도
