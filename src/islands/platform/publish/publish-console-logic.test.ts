@@ -1,5 +1,40 @@
 import { describe, expect, it } from 'vitest';
-import { buildPublicationScopeKey, buildPublicResultUrl, validatePublishInput, verifyPublishedResult } from './publish-console-logic';
+import { HQ_TOKEN_KEY } from '../../mod/hq-gate-logic';
+import {
+  buildPublicationScopeKey,
+  buildPublicResultUrl,
+  readStoredHqToken,
+  validatePublishInput,
+  verifyPublishedResult,
+} from './publish-console-logic';
+
+describe('readStoredHqToken', () => {
+  it('동일 브라우저의 HQ 세션 저장소에서 유효한 토큰을 복원한다', () => {
+    const requestedKeys: string[] = [];
+    const storage = {
+      getItem(key: string) {
+        requestedKeys.push(key);
+        return 'hq-session-token';
+      },
+    };
+
+    expect(readStoredHqToken(() => storage, () => undefined)).toBe('hq-session-token');
+    expect(requestedKeys).toEqual([HQ_TOKEN_KEY]);
+    expect(readStoredHqToken(() => ({ getItem: () => '   ' }), () => undefined)).toBe('');
+    expect(readStoredHqToken(() => null, () => undefined)).toBe('');
+  });
+
+  it('storage getter 또는 getItem 실패를 기록하고 빈 토큰으로 대체한다', () => {
+    const errors: unknown[] = [];
+    const recordError = (error: unknown) => errors.push(error);
+    const getterError = new DOMException('Storage blocked', 'SecurityError');
+    const itemError = new DOMException('Storage read blocked', 'SecurityError');
+
+    expect(readStoredHqToken(() => { throw getterError; }, recordError)).toBe('');
+    expect(readStoredHqToken(() => ({ getItem: () => { throw itemError; } }), recordError)).toBe('');
+    expect(errors).toEqual([getterError, itemError]);
+  });
+});
 
 describe('validatePublishInput', () => {
   it('HQ 토큰·제목·스코프가 모두 유효해야 공개 요청을 허용한다', () => {

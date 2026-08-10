@@ -1,5 +1,26 @@
 import type { ScopeLevel } from '../platform-nav-logic';
 import type { ResultPageView } from '../../../lib/platform';
+import { HQ_TOKEN_KEY, isValidHqToken } from '../../mod/hq-gate-logic';
+
+export interface TokenStorage {
+  getItem(key: string): string | null;
+}
+
+/** Reads the active HQ token and reports storage access failures without exposing the token. */
+export function readStoredHqToken(
+  getStorage: () => TokenStorage | null | undefined,
+  onError: (error: unknown) => void,
+): string {
+  try {
+    const storage = getStorage();
+    if (!storage) return '';
+    const saved = storage.getItem(HQ_TOKEN_KEY);
+    return isValidHqToken(saved) ? saved : '';
+  } catch (storageError) {
+    onError(storageError);
+    return '';
+  }
+}
 
 export interface PublishInput {
   hqToken: string;

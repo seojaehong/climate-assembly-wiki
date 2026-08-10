@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { resultGet, resultPublish, resultUnpublish } from '../../../lib/platform';
 import type { ScopeLevel } from '../platform-nav-logic';
-import { buildPublicResultUrl, validatePublishInput, verifyPublishedResult } from './publish-console-logic';
+import {
+  buildPublicResultUrl,
+  readStoredHqToken,
+  validatePublishInput,
+  verifyPublishedResult,
+} from './publish-console-logic';
 
 const NAVY = '#1F4E79';
 const TEAL = '#135C73';
@@ -41,8 +46,15 @@ function formatPublishedAt(iso: string): string {
   return date.toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
+function initialHqToken(): string {
+  return readStoredHqToken(
+    () => (typeof window === 'undefined' ? null : window.sessionStorage),
+    (storageError) => console.error('Failed to read stored HQ token', storageError),
+  );
+}
+
 export default function PublishConsole({ scope, scopeId }: Props) {
-  const [hqToken, setHqToken] = useState('');
+  const [hqToken, setHqToken] = useState(initialHqToken);
   const [title, setTitle] = useState('');
   const [publication, setPublication] = useState<Publication | null>(null);
   const [busy, setBusy] = useState(false);
@@ -185,6 +197,9 @@ export default function PublishConsole({ scope, scopeId }: Props) {
               placeholder="HQ 로그인 후 발급된 토큰"
               style={inputStyle}
             />
+            <small style={{ display: 'block', color: MUTED, fontSize: 12, lineHeight: 1.5, marginTop: 5 }}>
+              현재 브라우저의 /hq 세션 토큰을 자동으로 불러옵니다. 없거나 만료된 경우에만 직접 입력하세요.
+            </small>
           </label>
           <label>
             <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: NAVY, marginBottom: 5 }}>공개 결과 제목</span>
