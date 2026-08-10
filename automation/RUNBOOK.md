@@ -162,16 +162,19 @@ gh workflow run snapshot.yml
 
 ```bash
 cd automation
-DRIVE_SA_JSON=$(cat /secure/sa.json) node scripts/verify-drive.mjs <workshop-name> 108
+DRIVE_SA_JSON=$(cat /secure/sa.json) DRIVE_PARENT_ID=<archive-root-id> \
+  node scripts/verify-drive.mjs <workshop-name> 109
 ```
 
 결과:
-- `status: ok` → 회고에 "108/108 set 캡쳐 성공" 기록 (드물게 over-capture도 ok로 분류됨)
+- `status: ok` → `actual/expected`와 `snapshotCount`를 회고에 기록 (드물게 over-capture도 ok로 분류됨)
 - `status: issue` → `missing` 수 확인 + GHA Actions 탭에서 실패 시간대 분석 → BACKLOG에 회고 항목 추가
+- `finalize-report.mjs`도 같은 Drive 실측 경로를 사용한다. KST 행사 일자·시작·종료와 5분 간격으로 기대 UTC timestamp 집합을 만들고, 범위 밖 capture는 누락을 상쇄하지 못하도록 Sheets 기록 전에 실패한다. 각 기대 timestamp 폴더의 schedule상 필수 페이지 PNG가 모두 1개씩 있는지 확인하며, capture/snapshot timestamp 중복과 snapshot JSON 0건도 실패한다. 기대 timestamp 누락이 5%를 넘으면 경고 알림을 보낸 뒤 workflow를 실패 처리한다. finalize workflow concurrency group은 워크숍 이름별로 분리한다. 동일 워크숍의 중복 대기 실행은 최신 실행으로 합쳐질 수 있지만 서로 다른 워크숍 실행은 취소하지 않으며, 같은 일자·워크숍 Sheets 행은 append하지 않고 update한다. 기존 중복 행이 이미 있으면 자동 선택하지 않고 실패한다.
+- 최종 표 수는 회차별 정본 집계가 연결될 때까지 `미집계`/빈 Sheets 셀로 남긴다. 전역 votes 수를 회차 최종 표로 오인하지 않는다.
 
 ## GHA cron drift 캐비엇
 
-GitHub Actions schedules는 트래픽 폭주 시 5~15분 지연될 수 있다. 9h 워크숍 × 12 set/h = 108 expected지만 실제 95~108 사이가 정상 범위다. 5% threshold가 종종 false alarm 낼 수 있으니 issue 발생 시:
+GitHub Actions schedules는 트래픽 폭주 시 5~15분 지연될 수 있다. 현재 시작·종료 시각을 모두 포함하므로 09:00~18:00 워크숍은 109 set, 09:00~21:00 워크숍은 145 set이 기준이다. 5% threshold가 종종 false alarm 낼 수 있으니 issue 발생 시:
 
 1. Actions 탭에서 capture workflow의 실제 발화 간격 확인
 2. 누락 set의 timestamp가 연속 구간(>3개 연속)이면 진짜 장애
@@ -274,4 +277,4 @@ admin 기능을 재활성화하기 전에 다음 조건을 **모두** 충족해�
 
 - 시민 모바일 디바이스 화면 캡쳐 → B-008b (별도 spec)
 - 회의장 전체 영상 (OBS·카메라) → B-008c (별도 spec)
-- finalize-report의 captureSets/snapshotCount 실시간 카운트 → 현재 placeholder 0. D+1에 verify-drive로 수동 보완. 다음 iteration에서 finalize-report가 verify-drive를 호출하도록 통합.
+- finalize-report의 `captureSets`·`snapshotCount`는 Drive 실측으로 전환했다. `finalVotes`는 회차별 정본 집계 seam이 없어 의도적으로 `미집계`로 남긴다.

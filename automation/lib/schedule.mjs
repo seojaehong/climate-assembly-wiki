@@ -1,9 +1,31 @@
 import { readFile } from 'node:fs/promises';
 import yaml from 'js-yaml';
 
-function normalizeDate(d) {
+export function normalizeDate(d) {
   if (d instanceof Date) return d.toISOString().slice(0, 10);
   return String(d);
+}
+
+function workshopInstant(date, time) {
+  if (!/^\d{2}:\d{2}$/.test(time)) throw new Error(`invalid workshop time: ${time}`);
+  const instant = Date.parse(`${normalizeDate(date)}T${time}:00+09:00`);
+  if (!Number.isFinite(instant)) throw new Error(`invalid workshop time: ${time}`);
+  return instant;
+}
+
+export function expectedCaptureTimestamps(workshop, intervalMinutes = 5) {
+  if (!Number.isSafeInteger(intervalMinutes) || intervalMinutes <= 0) {
+    throw new Error(`invalid capture interval: ${intervalMinutes}`);
+  }
+  const start = workshopInstant(workshop.date, workshop.start_kst);
+  const end = workshopInstant(workshop.date, workshop.end_kst);
+  if (end < start) throw new Error('workshop end time precedes start time');
+  const intervalMs = intervalMinutes * 60_000;
+  const timestamps = [];
+  for (let instant = start; instant <= end; instant += intervalMs) {
+    timestamps.push(new Date(instant).toISOString().slice(0, 16).replace(/:/g, '-'));
+  }
+  return timestamps;
 }
 
 export function findActiveWorkshop(schedule, now = new Date()) {

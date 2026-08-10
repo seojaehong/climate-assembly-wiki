@@ -9,6 +9,10 @@ on:
     # 워크숍 당일 1회. UTC 13:00 = KST 22:00 (end_kst 18:00 + 4h). KST 22시는 UTC 동일 날짜.
     - cron: '0 13 4 7 *'    # 2026-07-04 (7월_행사)
     - cron: '0 13 29 8 *'   # 2026-08-29 (2차_의제선정)
+concurrency:
+  # Coalesce only redundant runs for the same workshop. Scheduled names must match workshop-schedule.yml.
+  group: finalize-${{ github.event.inputs.workshop || (github.event.schedule == '0 13 4 7 *' && '7월_행사') || (github.event.schedule == '0 13 29 8 *' && '2차_의제선정') || github.run_id }}
+  cancel-in-progress: false
 jobs:
   finalize:
     runs-on: ubuntu-latest
@@ -29,3 +33,12 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           WORKSHOP: ${{ github.event.inputs.workshop }}
         run: node finalize-report.mjs
+      - name: Discord alert on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          curl --fail --silent --show-error --connect-timeout 20 --max-time 20 --retry 1 --retry-all-errors \
+            -X POST -H 'Content-Type: application/json' \
+            -d "{\"content\":\"⚠️ finalize failed run=${{ github.run_id }}\"}" \
+            "$DISCORD_WEBHOOK"
