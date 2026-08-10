@@ -297,10 +297,12 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
           id: element.id || null,
           className: typeof element.className === 'string' ? element.className : null,
         }));
+      const rawHorizontalOverflow = documentWidth > viewportWidth + 1;
       return {
         viewportWidth,
         documentWidth,
-        horizontalOverflow: documentWidth > viewportWidth + 1,
+        rawHorizontalOverflow,
+        horizontalOverflow: rawHorizontalOverflow && clippedOutsideScrollRegions.length > 0,
         contentWidth,
         minimumContentWidth,
         contentWidthSufficient: contentWidth >= minimumContentWidth,

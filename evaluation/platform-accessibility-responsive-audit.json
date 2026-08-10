@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-10T22:30:27.827Z",
+  "generatedAt": "2026-08-10T22:36:02.911Z",
   "baseUrl": "http://127.0.0.1:4321",
   "standard": "WCAG 2.2 AA automated subset + skip-link focus + responsive overflow",
   "engine": {
@@ -86,6 +86,7 @@
       "layout": {
         "viewportWidth": 1440,
         "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
         "horizontalOverflow": false,
         "contentWidth": 420,
         "minimumContentWidth": 0,
@@ -119,6 +120,7 @@
       "layout": {
         "viewportWidth": 360,
         "documentWidth": 360,
+        "rawHorizontalOverflow": false,
         "horizontalOverflow": false,
         "contentWidth": 312,
         "minimumContentWidth": 280,
@@ -155,6 +157,7 @@
       "layout": {
         "viewportWidth": 1440,
         "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
         "horizontalOverflow": false,
         "contentWidth": 1152,
         "minimumContentWidth": 0,
@@ -191,6 +194,7 @@
       "layout": {
         "viewportWidth": 360,
         "documentWidth": 360,
+        "rawHorizontalOverflow": false,
         "horizontalOverflow": false,
         "contentWidth": 360,
         "minimumContentWidth": 280,
@@ -224,6 +228,7 @@
       "layout": {
         "viewportWidth": 1440,
         "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
         "horizontalOverflow": false,
         "contentWidth": 880,
         "minimumContentWidth": 0,
@@ -257,6 +262,7 @@
       "layout": {
         "viewportWidth": 360,
         "documentWidth": 360,
+        "rawHorizontalOverflow": false,
         "horizontalOverflow": false,
         "contentWidth": 328,
         "minimumContentWidth": 280,
@@ -290,6 +296,7 @@
       "layout": {
         "viewportWidth": 1440,
         "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
         "horizontalOverflow": false,
         "contentWidth": 1440,
         "minimumContentWidth": 0,
@@ -323,6 +330,7 @@
       "layout": {
         "viewportWidth": 360,
         "documentWidth": 360,
+        "rawHorizontalOverflow": false,
         "horizontalOverflow": false,
         "contentWidth": 360,
         "minimumContentWidth": 280,
@@ -359,6 +367,7 @@
       "layout": {
         "viewportWidth": 1440,
         "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
         "horizontalOverflow": false,
         "contentWidth": 1440,
         "minimumContentWidth": 0,
@@ -414,6 +423,7 @@
       "layout": {
         "viewportWidth": 360,
         "documentWidth": 360,
+        "rawHorizontalOverflow": false,
         "horizontalOverflow": false,
         "contentWidth": 360,
         "minimumContentWidth": 280,

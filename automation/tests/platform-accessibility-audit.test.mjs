@@ -235,6 +235,7 @@ test('fails a mobile audit case when the document has horizontal overflow', asyn
     passed: false,
     layout: {
       viewportWidth: 360,
+      rawHorizontalOverflow: true,
       horizontalOverflow: true,
     },
   });
@@ -285,6 +286,7 @@ test('verifies keyboard scrolling without treating region content as document cl
     }),
   ]);
   expect(report.routes[0].layout.clippedOutsideScrollRegions).toEqual([]);
+  expect(report.routes[0].layout).toMatchObject({ rawHorizontalOverflow: false, horizontalOverflow: false });
 });
 
 test('installs root dependencies without requiring an ignored lockfile', () => {
