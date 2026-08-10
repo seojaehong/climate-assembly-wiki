@@ -1,0 +1,144 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, expect, it, vi } from 'vitest';
+import { BreadcrumbNav, completeSignOut, DataTreeNavigation, LoginCard, LogoutNotice, PLATFORM_ACCENT, PLATFORM_CONTROL_BORDER, ViewTabs } from './PlatformShell';
+import type { TreeNode } from './platform-nav-logic';
+
+const tree: TreeNode = {
+  kind: 'org',
+  id: 'org',
+  label: '기관',
+  children: [{
+    kind: 'assembly',
+    id: 'assembly',
+    label: '공론화',
+    children: [{ kind: 'session', id: 'session', label: '1회차', children: [] }],
+  }],
+};
+
+function channel(hex: string, start: number): number {
+  return Number.parseInt(hex.slice(start, start + 2), 16) / 255;
+}
+
+function luminance(hex: string): number {
+  const linear = [channel(hex, 1), channel(hex, 3), channel(hex, 5)].map((value) =>
+    value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4,
+  );
+  return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+}
+
+function contrastRatio(a: string, b: string): number {
+  const [lighter, darker] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+describe('PlatformShell accessibility', () => {
+  it('로그인 폼이 입력 이름과 상태 메시지를 보조기기에 제공한다', () => {
+    const html = renderToStaticMarkup(createElement(LoginCard, {
+      notice: '인증 설정을 확인해 주세요.',
+      onSignedIn: () => undefined,
+    }));
+
+    expect(html).toContain('<form');
+    expect(html).toContain('aria-label="운영진 로그인"');
+    expect(html).toContain('for="platform-email"');
+    expect(html).toContain('id="platform-email"');
+    expect(html).toContain('for="platform-password"');
+    expect(html).toContain('id="platform-password"');
+    expect(html).toContain('role="status"');
+    expect(html).toContain('aria-live="polite"');
+    expect(html).toContain('type="submit"');
+    expect(html).not.toContain('outline:none');
+    expect(html).toContain('border:2px solid #6B7D88');
+    expect(html).not.toContain('border:1px');
+  });
+
+  it('스코프 보기 내비게이션이 현재 보기를 한 곳에서만 표시한다', () => {
+    const html = renderToStaticMarkup(createElement(ViewTabs, {
+      scope: { o: 'org', c: 'assembly', s: 'session', t: 'topic', view: 'review' },
+      navigate: () => undefined,
+    }));
+
+    expect(html).toContain('<nav');
+    expect(html).toContain('aria-label="스코프 보기"');
+    expect(html.match(/aria-current="page"/g)).toHaveLength(1);
+    expect(html).toContain('검수');
+    expect(html).toContain('border:2px solid #6B7D88');
+    expect(html).not.toContain('border:1px');
+  });
+
+  it('주요 액센트 위 흰색 일반 텍스트가 AA 명암비를 충족한다', () => {
+    expect(contrastRatio(PLATFORM_ACCENT, '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(PLATFORM_ACCENT, '#F1F7FA')).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(PLATFORM_CONTROL_BORDER, '#FFFFFF')).toBeGreaterThanOrEqual(3);
+  });
+
+  it('브레드크럼과 데이터 트리가 현재 위치를 각각 한 곳에서 알린다', () => {
+    const scope = { o: 'org', c: 'assembly', s: 'session' };
+    const breadcrumbHtml = renderToStaticMarkup(createElement(BreadcrumbNav, { tree, scope, navigate: () => undefined }));
+    const treeHtml = renderToStaticMarkup(createElement(DataTreeNavigation, {
+      tree,
+      scope,
+      loading: false,
+      notice: null,
+      navigate: () => undefined,
+    }));
+
+    expect(breadcrumbHtml).toContain('aria-label="브레드크럼"');
+    expect(breadcrumbHtml.match(/aria-current="location"/g)).toHaveLength(1);
+    expect(treeHtml.match(/aria-current="location"/g)).toHaveLength(1);
+  });
+
+  it('데이터 트리 로딩과 빈 상태를 live region으로 알린다', () => {
+    const loadingHtml = renderToStaticMarkup(createElement(DataTreeNavigation, {
+      tree: null,
+      scope: {},
+      loading: true,
+      notice: null,
+      navigate: () => undefined,
+    }));
+    const emptyHtml = renderToStaticMarkup(createElement(DataTreeNavigation, {
+      tree: null,
+      scope: {},
+      loading: false,
+      notice: '소속 기관이 없습니다.',
+      navigate: () => undefined,
+    }));
+
+    expect(loadingHtml).toContain('role="status"');
+    expect(loadingHtml).toContain('aria-live="polite"');
+    expect(emptyHtml).toContain('role="status"');
+    expect(emptyHtml).toContain('aria-live="polite"');
+  });
+
+  it('로그아웃 실패를 알리고 busy 상태를 항상 해제한다', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const busyChanges: boolean[] = [];
+    const notices: Array<string | null> = [];
+
+    try {
+      await completeSignOut(
+        async () => ({ data: null, notice: '로그아웃에 실패했습니다.' }),
+        (busy) => busyChanges.push(busy),
+        (notice) => notices.push(notice),
+      );
+      await completeSignOut(
+        async () => { throw new Error('network'); },
+        (busy) => busyChanges.push(busy),
+        (notice) => notices.push(notice),
+      );
+    } finally {
+      errorLog.mockRestore();
+    }
+
+    const alertHtml = renderToStaticMarkup(createElement(LogoutNotice, { notice: notices.at(-1) ?? null }));
+    expect(busyChanges).toEqual([true, false, true, false]);
+    expect(notices).toEqual([
+      null,
+      '로그아웃에 실패했습니다.',
+      null,
+      '로그아웃 중 예상하지 못한 오류가 발생했습니다.',
+    ]);
+    expect(alertHtml).toContain('role="alert"');
+  });
+});
