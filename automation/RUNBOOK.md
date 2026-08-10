@@ -22,6 +22,15 @@
 | `SHEETS_ID` | "워크숍 아카이브" Sheets 문서 ID | `워크숍_아카이브` 탭 + A~E 열 헤더 (date / workshop / captureSets / snapshotCount / finalVotes) |
 | `DISCORD_WEBHOOK` | 알림 채널 webhook URL | critical/warning/info 동일 채널 사용 |
 
+### 플랫폼 스냅샷 자동 export 활성화 게이트
+
+- GitHub Actions repository variable `PLATFORM_SNAPSHOT_ENABLED`가 없거나 `false`이면 기존 `cv_snapshot_now`만 호출한다. 현재 기본값이다.
+- 승인 후 값을 정확히 `true`로 설정하면 각 실행에서 기존 snapshot을 먼저 보존하고 `platform_snapshot_now`를 추가 호출한다. 기존 투표·의제 payload를 플랫폼 snapshot으로 대체하지 않는다.
+- 비활성 상태의 Drive JSON은 기존 `cv_snapshot_now` 반환 형상을 그대로 유지한다. 활성화 상태에서는 생성된 platform snapshot 행을 ID로 다시 읽어 실제 `payload`를 포함한 `{ legacy, platform }` JSON으로 Drive에 올린다.
+- 활성화하면 `climate_vote.snapshots`에 실행당 행이 1개에서 2개로 늘고 Drive 저장량도 증가한다. 프로덕션 행 증가와 저장량을 승인한 뒤에만 켠다.
+- `platform_p2_analysis_review.sql` 적용, service role의 `platform_snapshot_now(text)` 실행 권한, `climate_vote.snapshots` SELECT 권한을 먼저 확인한다. 플랫폼 생성 또는 payload 조회 실패는 기존 snapshot을 지우지 않지만 workflow를 실패 처리하고 Discord 경보 대상으로 남긴다.
+- 이 훅은 append-only Drive payload 사본을 추가할 뿐 PITR/WAL 설정이나 별도 감사로그를 구현하지 않는다. 두 운영 통제는 계속 별도 작업이다.
+
 ## D-30 — `workshop-schedule.yml` 잠금
 
 - `automation/workshop-schedule.yml`에서 `drive_folder_root: REPLACE_WITH_DRIVE_PARENT_ID` placeholder를 실제 ID로 치환
@@ -100,6 +109,7 @@ gh workflow run finalize.yml -f workshop=test-dry-run
 - [ ] schedule.yml 파싱 OK — capture.out.json 안에 workshop 필드 존재
 - [ ] Drive SA 인증 OK — `test-dry-run` 폴더가 Drive 부모 폴더 안에 생성됨
 - [ ] Supabase RPC OK — `snapshot.out.json` 안에 `outPath` 존재
+- [ ] 플랫폼 export 승인 시에만 `PLATFORM_SNAPSHOT_ENABLED=true`이고, Drive JSON의 `platform.payload`와 `legacy` 결과가 모두 존재
 - [ ] Playwright 4페이지 모두 PNG 생성 — Drive `test-dry-run/{ts}/`에 page-{board,event,race-40,event-bar}.png
 - [ ] PNG Drive 업로드 OK — UI에서 4 파일 직접 확인
 - [ ] Sheets `워크숍_아카이브!A:E`에 test-dry-run row append
