@@ -9,6 +9,7 @@ import {
   isView,
   deepestScopeLevel,
   deepestDataScopeTarget,
+  analysisTopicTargets,
   SCOPE_KEYS,
   VIEWS,
   VIEWS_FOR_LEVEL,
@@ -216,6 +217,15 @@ describe('deepestDataScopeTarget', () => {
   it('트리가 아직 없으면 slug를 UUID로 오인하지 않는다', () => {
     expect(deepestDataScopeTarget(null, { o: 'kcrc', c: 'climate-2026', s: 'r5' }))
       .toEqual({ level: 'session', id: null });
+  });
+});
+
+describe('analysisTopicTargets', () => {
+  it('선택한 회차의 주제를 표시명과 canonical UUID로 반환한다', () => {
+    expect(analysisTopicTargets(tree, { o: 'kcrc', c: 'climate-2026', s: 'r5' })).toEqual([
+      { id: 't-uuid-1', label: '에너지 전환' },
+      { id: 't-uuid-2', label: '수송 부문' },
+    ]);
   });
 });
 

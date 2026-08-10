@@ -209,3 +209,25 @@ export function deepestDataScopeTarget(
   const node = activePath(tree, scope).find((candidate) => candidate.kind === expectedKind);
   return { level, id: node?.dataId ?? null };
 }
+
+export interface AnalysisTopicTarget {
+  id: string;
+  label: string;
+}
+
+/** Resolves topic RPC targets for the selected topic or session scope. */
+export function analysisTopicTargets(tree: TreeNode | null, scope: Scope): AnalysisTopicTarget[] {
+  const { level } = deepestScopeLevel(scope);
+  const path = activePath(tree, scope);
+  if (level === 'topic') {
+    const topic = path.find((node) => node.kind === 'topic');
+    return topic ? [{ id: topic.dataId ?? topic.id, label: topic.label }] : [];
+  }
+  if (level === 'session') {
+    const session = path.find((node) => node.kind === 'session');
+    return (session?.children ?? [])
+      .filter((node) => node.kind === 'topic')
+      .map((node) => ({ id: node.dataId ?? node.id, label: node.label }));
+  }
+  return [];
+}

@@ -17,6 +17,7 @@ import {
   isNodeOnPath,
   deepestScopeLevel,
   deepestDataScopeTarget,
+  analysisTopicTargets,
   VIEWS_FOR_LEVEL,
   type Scope,
   type TreeNode,
@@ -191,6 +192,7 @@ function AppShell({ session, scope, navigate }: { session: AuthSessionInfo; scop
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [logoutNotice, setLogoutNotice] = useState<string | null>(null);
   const publishTarget = deepestDataScopeTarget(tree, scope);
+  const analysisTopics = analysisTopicTargets(tree, scope);
 
   // org 파생(org_of_uid) → orgTree. org_id 는 클라이언트가 주장하지 않는다(서버 파생).
   useEffect(() => {
@@ -259,7 +261,7 @@ function AppShell({ session, scope, navigate }: { session: AuthSessionInfo; scop
         {/* 우: 스코프 콘텐츠 아웃렛 + 뷰 전환 탭 */}
         <main id="platform-scope-content" tabIndex={-1} style={{ flex: 1, minWidth: 0, padding: '24px 28px', overflowY: 'auto' }}>
           <ViewTabs scope={scope} navigate={navigate} />
-          <ScopeOutlet scope={scope} publishScopeId={publishTarget.id} />
+          <ScopeOutlet scope={scope} publishScopeId={publishTarget.id} analysisTopics={analysisTopics} />
         </main>
       </div>
     </div>

@@ -2,8 +2,9 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { IssueListResult, PlatformResult } from '../../../lib/platform';
-import AnalyzeConsole, { AnalysisResults, completeAnalysisLoad } from './AnalyzeConsole';
-import { buildAnalysisView } from './analyze-console-logic';
+import AnalyzeConsole, { AnalysisResults, completeAnalysisLoad, loadScopedAnalysis } from './AnalyzeConsole';
+import { buildAnalysisView, buildScopedAnalysisView } from './analyze-console-logic';
+import type { AnalysisView } from './analyze-console-logic';
 
 const result: IssueListResult = {
   topic_id: 'topic-1',
@@ -59,14 +60,29 @@ describe('AnalysisResults', () => {
     expect(html).toContain('분석할 쟁점이 없습니다.');
     expect(html).not.toContain('<table');
   });
+
+  it('회차 분석 표에서 각 쟁점의 출처 주제를 함께 보여준다', () => {
+    const view = buildScopedAnalysisView('session', [
+      { target: { id: 'topic-1', label: '에너지 전환' }, result },
+    ]);
+    const html = renderToStaticMarkup(createElement(AnalysisResults, { view }));
+
+    expect(html).toContain('<th scope="col"');
+    expect(html).toContain('출처 주제');
+    expect(html).toContain('에너지 전환');
+    expect(html).toContain('회차 쟁점별 빈도·방향·검수·원문 연결 분석');
+  });
 });
 
 describe('AnalyzeConsole', () => {
   it('주제 미선택과 로드 전 입력 상태를 명확히 구분한다', () => {
-    const noTopicHtml = renderToStaticMarkup(createElement(AnalyzeConsole, { topicId: null }));
-    const formHtml = renderToStaticMarkup(createElement(AnalyzeConsole, { topicId: 'topic-1' }));
+    const noTopicHtml = renderToStaticMarkup(createElement(AnalyzeConsole, { scope: null, topics: [] }));
+    const formHtml = renderToStaticMarkup(createElement(AnalyzeConsole, {
+      scope: 'topic',
+      topics: [{ id: 'topic-1', label: '에너지 전환' }],
+    }));
 
-    expect(noTopicHtml).toContain('주제(topic) 스코프를 먼저 선택하세요.');
+    expect(noTopicHtml).toContain('주제(topic) 또는 회차(session) 스코프를 먼저 선택하세요.');
     expect(noTopicHtml).toContain('role="status"');
     expect(formHtml).toContain('<form');
     expect(formHtml).toContain('aria-label="주제 분석 불러오기"');
@@ -77,6 +93,63 @@ describe('AnalyzeConsole', () => {
     expect(formHtml).toContain('분석 불러오기');
     expect(formHtml).toContain('쟁점 목록을 불러오면');
   });
+
+  it('회차 스코프는 포함된 주제 수와 회차 분석 입력을 표시한다', () => {
+    const html = renderToStaticMarkup(createElement(AnalyzeConsole, {
+      scope: 'session',
+      topics: [
+        { id: 'topic-1', label: '에너지 전환' },
+        { id: 'topic-2', label: '수송 부문' },
+      ],
+    }));
+
+    expect(html).toContain('이 회차의 쟁점 분석');
+    expect(html).toContain('2개 주제');
+    expect(html).toContain('aria-label="회차 분석 불러오기"');
+    expect(html).not.toContain('주제(topic) 스코프를 먼저 선택하세요.');
+  });
+});
+
+describe('loadScopedAnalysis', () => {
+  it('회차의 모든 주제를 같은 참여 코드로 조회해 집계한다', async () => {
+    const loader = vi.fn(async (_code: string, topicId: string): Promise<PlatformResult<IssueListResult>> => ({
+      data: {
+        ...result,
+        topic_id: topicId,
+        issues: result.issues.map((item) => ({ ...item, id: `issue-${topicId}` })),
+      },
+      notice: null,
+    }));
+
+    const loaded = await loadScopedAnalysis('team-code', 'session', [
+      { id: 'topic-1', label: '에너지 전환' },
+      { id: 'topic-2', label: '수송 부문' },
+    ], loader);
+
+    expect(loader.mock.calls).toEqual([
+      ['team-code', 'topic-1'],
+      ['team-code', 'topic-2'],
+    ]);
+    expect(loaded.notice).toBeNull();
+    expect(loaded.data?.scope).toBe('session');
+    expect(loaded.data?.stats.issueCount).toBe(2);
+    expect(loaded.data?.issues.map((item) => item.topicLabel)).toEqual(['에너지 전환', '수송 부문']);
+  });
+
+  it('일부 주제 조회 실패를 불완전한 회차 분석으로 표시하지 않는다', async () => {
+    const loader = vi.fn(async (_code: string, topicId: string): Promise<PlatformResult<IssueListResult>> =>
+      topicId === 'topic-2'
+        ? { data: null, notice: '참여 코드 범위를 확인하세요.' }
+        : { data: result, notice: null });
+
+    const loaded = await loadScopedAnalysis('team-code', 'session', [
+      { id: 'topic-1', label: '에너지 전환' },
+      { id: 'topic-2', label: '수송 부문' },
+    ], loader);
+
+    expect(loaded.data).toBeNull();
+    expect(loaded.notice).toBe('수송 부문: 참여 코드 범위를 확인하세요.');
+  });
 });
 
 describe('completeAnalysisLoad', () => {
@@ -84,8 +157,8 @@ describe('completeAnalysisLoad', () => {
     const busy: boolean[] = [];
     const views: Array<ReturnType<typeof buildAnalysisView> | null> = [];
     const notices: Array<string | null> = [];
-    const action = vi.fn<() => Promise<PlatformResult<IssueListResult>>>().mockResolvedValue({
-      data: result,
+    const action = vi.fn<() => Promise<PlatformResult<AnalysisView>>>().mockResolvedValue({
+      data: buildAnalysisView(result),
       notice: null,
     });
 
@@ -128,7 +201,7 @@ describe('completeAnalysisLoad', () => {
       (value) => notices.push(value),
     );
 
-    expect(log).toHaveBeenCalledWith('Failed to load topic analysis', error);
+    expect(log).toHaveBeenCalledWith('Failed to load scoped analysis', error);
     expect(busy).toEqual([true, false]);
     expect(notices.at(-1)).toContain('예상하지 못한 오류');
     log.mockRestore();
@@ -153,8 +226,8 @@ describe('completeAnalysisLoad', () => {
 
   it('더 이상 현재 요청이 아니면 늦은 응답을 화면 상태에 반영하지 않는다', async () => {
     let current = true;
-    let resolveResult!: (value: PlatformResult<IssueListResult>) => void;
-    const action = () => new Promise<PlatformResult<IssueListResult>>((resolve) => { resolveResult = resolve; });
+    let resolveResult!: (value: PlatformResult<AnalysisView>) => void;
+    const action = () => new Promise<PlatformResult<AnalysisView>>((resolve) => { resolveResult = resolve; });
     const busy: boolean[] = [];
     const views: Array<ReturnType<typeof buildAnalysisView> | null> = [];
     const notices: Array<string | null> = [];
@@ -167,7 +240,7 @@ describe('completeAnalysisLoad', () => {
       () => current,
     );
     current = false;
-    resolveResult({ data: result, notice: null });
+    resolveResult({ data: buildAnalysisView(result), notice: null });
     const loaded = await pending;
 
     expect(loaded).toBe(false);

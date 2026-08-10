@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import HitlBadge from '../../../components/HitlBadge';
 import { issueList, type IssueListResult, type PlatformResult } from '../../../lib/platform';
-import { buildAnalysisView } from './analyze-console-logic';
-import type { AnalysisView, DistributionItem } from './analyze-console-logic';
+import { buildScopedAnalysisView } from './analyze-console-logic';
+import type { AnalysisScope, AnalysisView, DistributionItem } from './analyze-console-logic';
+import type { AnalysisTopicTarget } from '../platform-nav-logic';
 
 const NAVY = '#1F4E79';
 const TEAL = '#135C73';
@@ -11,8 +12,41 @@ const MUTED = '#5A6B73';
 const LINE = '#6B7D88';
 const PANEL = '#F1F7FA';
 
+type IssueListLoader = (code: string, topicId: string) => Promise<PlatformResult<IssueListResult>>;
+
+export async function loadScopedAnalysis(
+  code: string,
+  scope: AnalysisScope,
+  topics: readonly AnalysisTopicTarget[],
+  loader: IssueListLoader = issueList,
+): Promise<PlatformResult<AnalysisView>> {
+  const responses = await Promise.all(topics.map(async (target) => ({
+    target,
+    response: await loader(code, target.id),
+  })));
+  const topicResults = [];
+  for (const { target, response } of responses) {
+    if (!response.data) {
+      if (!response.notice) {
+        console.error('Analysis topic request returned no data or notice', target.id);
+      }
+      return {
+        data: null,
+        notice: response.notice
+          ? `${target.label}: ${response.notice}`
+          : `${target.label}: 분석 데이터를 불러오지 못했습니다.`,
+      };
+    }
+    topicResults.push({ target, result: response.data });
+  }
+  return {
+    data: buildScopedAnalysisView(scope, topicResults),
+    notice: null,
+  };
+}
+
 export async function completeAnalysisLoad(
-  action: () => Promise<PlatformResult<IssueListResult>>,
+  action: () => Promise<PlatformResult<AnalysisView>>,
   onBusyChange: (busy: boolean) => void,
   onViewChange: (view: AnalysisView | null) => void,
   onNoticeChange: (notice: string | null) => void,
@@ -24,7 +58,7 @@ export async function completeAnalysisLoad(
   try {
     const result = await action();
     if (!isCurrent()) return false;
-    if (result.data) onViewChange(buildAnalysisView(result.data));
+    if (result.data) onViewChange(result.data);
     if (result.notice) onNoticeChange(result.notice);
     if (!result.data && !result.notice) {
       console.error('Analysis request returned no data or notice');
@@ -33,7 +67,7 @@ export async function completeAnalysisLoad(
     return Boolean(result.data);
   } catch (error: unknown) {
     if (!isCurrent()) return false;
-    console.error('Failed to load topic analysis', error);
+    console.error('Failed to load scoped analysis', error);
     onNoticeChange('분석 데이터를 불러오는 중 예상하지 못한 오류가 발생했습니다.');
     return false;
   } finally {
@@ -97,13 +131,15 @@ export function AnalysisResults({ view }: { view: AnalysisView }) {
           </div>
 
           <div style={{ overflowX: 'auto', border: `2px solid ${LINE}`, borderRadius: 16, background: '#fff' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: view.scope === 'session' ? 900 : 760 }}>
               <caption style={{ textAlign: 'left', color: NAVY, fontSize: 18, fontWeight: 800, padding: '16px 18px' }}>
-                쟁점별 빈도·방향·검수·원문 연결 분석
+                {view.scope === 'session' ? '회차 ' : ''}쟁점별 빈도·방향·검수·원문 연결 분석
               </caption>
               <thead style={{ background: PANEL }}>
                 <tr>
-                  {['쟁점', '빈도', '방향', '검수', '연결 근거'].map((label) => (
+                  {(view.scope === 'session'
+                    ? ['출처 주제', '쟁점', '빈도', '방향', '검수', '연결 근거']
+                    : ['쟁점', '빈도', '방향', '검수', '연결 근거']).map((label) => (
                     <th key={label} scope="col" style={{ color: NAVY, fontSize: 13, textAlign: 'left', padding: '10px 12px', borderTop: `2px solid ${LINE}`, borderBottom: `2px solid ${LINE}` }}>{label}</th>
                   ))}
                 </tr>
@@ -111,6 +147,11 @@ export function AnalysisResults({ view }: { view: AnalysisView }) {
               <tbody>
                 {view.issues.map((issue) => (
                   <tr key={issue.id}>
+                    {view.scope === 'session' ? (
+                      <td style={{ color: MUTED, fontSize: 13, fontWeight: 700, padding: 12, borderBottom: `2px solid ${PANEL}` }}>
+                        {issue.topicLabel}
+                      </td>
+                    ) : null}
                     <th scope="row" style={{ color: INK, fontSize: 14, textAlign: 'left', padding: 12, borderBottom: `2px solid ${PANEL}` }}>
                       <span style={{ display: 'block', fontWeight: 800 }}>{issue.label}</span>
                       {issue.summary ? <span style={{ display: 'block', color: MUTED, fontSize: 12, fontWeight: 500, marginTop: 4 }}>{issue.summary}</span> : null}
@@ -132,12 +173,19 @@ export function AnalysisResults({ view }: { view: AnalysisView }) {
   );
 }
 
-export default function AnalyzeConsole({ topicId }: { topicId: string | null }) {
+export default function AnalyzeConsole({
+  scope,
+  topics,
+}: {
+  scope: AnalysisScope | null;
+  topics: readonly AnalysisTopicTarget[];
+}) {
   const [code, setCode] = useState('');
   const [view, setView] = useState<AnalysisView | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const requestGeneration = useRef(0);
+  const scopeKey = `${scope ?? 'none'}:${topics.map((topic) => topic.id).join(',')}`;
 
   useEffect(() => {
     requestGeneration.current += 1;
@@ -146,12 +194,20 @@ export default function AnalyzeConsole({ topicId }: { topicId: string | null }) 
     setNotice(null);
     setBusy(false);
     return () => { requestGeneration.current += 1; };
-  }, [topicId]);
+  }, [scopeKey]);
 
-  if (!topicId) {
+  if (!scope) {
     return (
       <div role="status" aria-live="polite" style={{ border: `2px dashed ${TEAL}`, borderRadius: 14, background: PANEL, padding: 20, color: MUTED }}>
-        주제(topic) 스코프를 먼저 선택하세요. 분석은 하나의 주제에 연결된 쟁점을 기준으로 계산합니다.
+        주제(topic) 또는 회차(session) 스코프를 먼저 선택하세요.
+      </div>
+    );
+  }
+
+  if (topics.length === 0) {
+    return (
+      <div role="status" aria-live="polite" style={{ border: `2px dashed ${TEAL}`, borderRadius: 14, background: PANEL, padding: 20, color: MUTED }}>
+        이 {scope === 'session' ? '회차' : '주제'}에 분석할 주제가 등록되지 않았습니다.
       </div>
     );
   }
@@ -166,7 +222,7 @@ export default function AnalyzeConsole({ topicId }: { topicId: string | null }) 
     const generation = requestGeneration.current + 1;
     requestGeneration.current = generation;
     await completeAnalysisLoad(
-      () => issueList(trimmedCode, topicId),
+      () => loadScopedAnalysis(trimmedCode, scope, topics),
       setBusy,
       setView,
       setNotice,
@@ -175,20 +231,22 @@ export default function AnalyzeConsole({ topicId }: { topicId: string | null }) 
     if (requestGeneration.current === generation) setCode('');
   };
 
+  const scopeLabel = scope === 'session' ? '회차' : '주제';
+
   return (
     <div style={{ display: 'grid', gap: 18 }}>
       <header>
         <div style={{ fontFamily: 'monospace', fontSize: 12, letterSpacing: '.14em', color: TEAL, textTransform: 'uppercase' }}>
-          Topic · Analysis
+          {scope === 'session' ? 'Session' : 'Topic'} · Analysis
         </div>
-        <h2 style={{ color: NAVY, fontSize: 24, fontWeight: 800, margin: '6px 0' }}>이 주제의 쟁점 분석</h2>
+        <h2 style={{ color: NAVY, fontSize: 24, fontWeight: 800, margin: '6px 0' }}>이 {scopeLabel}의 쟁점 분석</h2>
         <p style={{ color: MUTED, fontSize: 15, margin: 0 }}>
-          4×6 코딩 분포, 검수 상태, 미분류 원문과 쟁점별 연결 근거를 읽기 전용으로 확인합니다.
+          {scope === 'session' ? `${topics.length}개 주제를 합산해 ` : ''}4×6 코딩 분포, 검수 상태, 미분류 원문과 쟁점별 연결 근거를 읽기 전용으로 확인합니다.
         </p>
       </header>
 
       <form
-        aria-label="주제 분석 불러오기"
+        aria-label={`${scopeLabel} 분석 불러오기`}
         aria-busy={busy}
         onSubmit={load}
         style={{ border: `2px solid ${LINE}`, borderRadius: 16, background: PANEL, padding: 18 }}

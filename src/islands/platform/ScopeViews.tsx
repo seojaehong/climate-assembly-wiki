@@ -1,11 +1,7 @@
-// 스코프별 뷰 플레이스홀더 — record·vote·analyze·review·publish
-//
-// BUILD_SPEC §4 산출물 5: "검수/결과의 실제 구현은 후속 슬라이스가 채운다 — 여기선
-// 라우팅·마운트 지점만." 각 패널은 제목 + "이 스코프의 <X>" + 데이터 로드 골격만 둔다.
-// 실제 issue CRUD·공개는 후속 검수 콘솔/결과 페이지 슬라이스(BUILD_SPEC §5 4·5단계).
+// Scope outlet for implemented consoles and the remaining record/vote placeholders.
 
 import { useEffect, useState } from 'react';
-import { type Scope, type ViewName, deepestScopeLevel, VIEWS_FOR_LEVEL } from './platform-nav-logic';
+import { type AnalysisTopicTarget, type Scope, type ViewName, deepestScopeLevel, VIEWS_FOR_LEVEL } from './platform-nav-logic';
 import ReviewConsole from './review/ReviewConsole';
 import PublishConsole from './publish/PublishConsole';
 import AnalyzeConsole from './analyze/AnalyzeConsole';
@@ -36,10 +32,18 @@ function scopeLabel(scope: Scope): string {
  * 스코프 뷰 아웃렛. view 가 없으면 스코프 개요(자식 안내), 있으면 해당 패널.
  * 데이터 로드 골격: 마운트 시 "로드 대상 스코프"를 표시하고, 실제 페치는 후속 구현.
  */
-export default function ScopeOutlet({ scope, publishScopeId }: { scope: Scope; publishScopeId?: string | null }) {
+export default function ScopeOutlet({
+  scope,
+  publishScopeId,
+  analysisTopics = [],
+}: {
+  scope: Scope;
+  publishScopeId?: string | null;
+  analysisTopics?: readonly AnalysisTopicTarget[];
+}) {
   const view = scope.view;
   if (!view) return <ScopeOverview scope={scope} />;
-  return <ViewPanel view={view} scope={scope} publishScopeId={publishScopeId} />;
+  return <ViewPanel view={view} scope={scope} publishScopeId={publishScopeId} analysisTopics={analysisTopics} />;
 }
 
 function ScopeOverview({ scope }: { scope: Scope }) {
@@ -72,12 +76,21 @@ function ScopeOverview({ scope }: { scope: Scope }) {
   );
 }
 
-function ViewPanel({ view, scope, publishScopeId }: { view: ViewName; scope: Scope; publishScopeId?: string | null }) {
+function ViewPanel({
+  view,
+  scope,
+  publishScopeId,
+  analysisTopics,
+}: {
+  view: ViewName;
+  scope: Scope;
+  publishScopeId?: string | null;
+  analysisTopics: readonly AnalysisTopicTarget[];
+}) {
   const meta = VIEW_META[view];
   const { level, id } = deepestScopeLevel(scope);
 
-  // 검수 뷰는 주제(topic) 스코프에서 실제 검수 콘솔을 마운트한다(핵심 화면).
-  // 그 외 레벨에서는 placeholder 를 유지한다(검수는 주제 스코프 전용 — VIEWS_FOR_LEVEL).
+  // Review remains topic-only, as defined by VIEWS_FOR_LEVEL.
   if (view === 'review') {
     return <ReviewConsole topicId={level === 'topic' ? id : null} />;
   }
@@ -93,8 +106,14 @@ function ViewPanel({ view, scope, publishScopeId }: { view: ViewName; scope: Sco
     );
   }
 
-  if (view === 'analyze' && level === 'topic') {
-    return <AnalyzeConsole key={id} topicId={id} />;
+  if (view === 'analyze' && (level === 'topic' || level === 'session')) {
+    return (
+      <AnalyzeConsole
+        key={`${level}:${analysisTopics.map((topic) => topic.id).join(',')}`}
+        scope={level}
+        topics={analysisTopics}
+      />
+    );
   }
 
   return <PlaceholderView view={view} scope={scope} level={level} id={id} meta={meta} />;
@@ -113,8 +132,7 @@ function PlaceholderView({
   id: string | null;
   meta: (typeof VIEW_META)[ViewName];
 }) {
-  // 데이터 로드 골격 — 마운트 시 "이 스코프의 무엇을 로드할지"만 확정한다.
-  // 실제 RPC 페치(issueList 등)는 후속 검수 콘솔/결과 슬라이스가 이 자리에서 연결한다.
+  // Keep a visible mount contract for views whose data interface does not exist yet.
   const [mountedAt] = useState(() => Date.now());
   useEffect(() => {
     // no-op: 마운트 지점 표식. 후속 슬라이스가 이 effect 에서 platform.ts 래퍼를 호출한다.
@@ -148,7 +166,7 @@ function wrapperHint(view: ViewName): string {
   switch (view) {
     case 'record': return 'submission_get / topic_list';
     case 'vote': return 'ballot RPC (P2 이후)';
-    case 'analyze': return 'issueList(code, topicId)';
+    case 'analyze': return 'assembly analysis RPC (not available)';
     case 'review': return 'issueList / issueUpsert / issueLinkSet / issueMerge / issueReview';
     case 'publish': return 'resultPublish / resultUnpublish / resultGet';
   }

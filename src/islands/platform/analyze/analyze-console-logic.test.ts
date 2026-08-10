@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { IssueListResult, IssueRow } from '../../../lib/platform';
-import { buildAnalysisView } from './analyze-console-logic';
+import { buildAnalysisView, buildScopedAnalysisView } from './analyze-console-logic';
 
 function issue(overrides: Partial<IssueRow> = {}): IssueRow {
   return {
@@ -62,5 +62,33 @@ describe('buildAnalysisView', () => {
     expect(view.stanceDistribution.find((item) => item.key === 'concern')?.count).toBe(1);
     expect(view.stanceDistribution.find((item) => item.key === 'unassigned')?.count).toBe(1);
     expect(view.stanceDistribution).toHaveLength(7);
+  });
+});
+
+describe('buildScopedAnalysisView', () => {
+  it('회차의 여러 주제를 하나의 4×6 분석으로 합치고 출처 주제를 보존한다', () => {
+    const view = buildScopedAnalysisView('session', [
+      {
+        target: { id: 'topic-1', label: '에너지 전환' },
+        result: result([issue({ id: 'a', review_status: 'reviewed', origin: 'human' })]),
+      },
+      {
+        target: { id: 'topic-2', label: '수송 부문' },
+        result: { ...result([issue({ id: 'b', stance: 'concern' })]), topic_id: 'topic-2', unclassified_count: 4 },
+      },
+    ]);
+
+    expect(view.scope).toBe('session');
+    expect(view.stats).toEqual({
+      issueCount: 2,
+      reviewedCount: 1,
+      unclassifiedCount: 7,
+      linkedRelationshipCount: 4,
+    });
+    expect(view.issues.map((item) => [item.id, item.topicId, item.topicLabel])).toEqual([
+      ['a', 'topic-1', '에너지 전환'],
+      ['b', 'topic-2', '수송 부문'],
+    ]);
+    expect(view.stanceDistribution.find((item) => item.key === 'concern')?.count).toBe(1);
   });
 });

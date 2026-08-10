@@ -5,6 +5,9 @@ import {
   toIssueViewModels,
   type IssueViewModel,
 } from '../review/review-console-logic';
+import type { AnalysisTopicTarget } from '../platform-nav-logic';
+
+export type AnalysisScope = 'topic' | 'session';
 
 export interface AnalysisStats {
   issueCount: number;
@@ -14,10 +17,21 @@ export interface AnalysisStats {
 }
 
 export interface AnalysisView {
-  issues: IssueViewModel[];
+  scope: AnalysisScope;
+  issues: AnalysisIssueView[];
   stats: AnalysisStats;
   frequencyDistribution: DistributionItem[];
   stanceDistribution: DistributionItem[];
+}
+
+export interface AnalysisIssueView extends IssueViewModel {
+  topicId: string;
+  topicLabel: string;
+}
+
+export interface AnalysisTopicResult {
+  target: AnalysisTopicTarget;
+  result: IssueListResult;
 }
 
 export interface DistributionItem {
@@ -51,13 +65,34 @@ function distribution(
 
 /** Builds the read-only topic analysis model from the issue_list contract. */
 export function buildAnalysisView(result: IssueListResult): AnalysisView {
-  const issues = toIssueViewModels(result);
+  return buildScopedAnalysisView('topic', [{
+    target: { id: result.topic_id, label: '현재 주제' },
+    result,
+  }]);
+}
+
+/** Builds one traceable analysis model from one or more topic results. */
+export function buildScopedAnalysisView(
+  scope: AnalysisScope,
+  topicResults: readonly AnalysisTopicResult[],
+): AnalysisView {
+  const issues = topicResults.flatMap(({ target, result }) =>
+    toIssueViewModels(result).map((issue) => ({
+      ...issue,
+      topicId: target.id,
+      topicLabel: target.label,
+    })),
+  );
   return {
+    scope,
     issues,
     stats: {
       issueCount: issues.length,
       reviewedCount: issues.filter((issue) => issue.hitl.reviewed).length,
-      unclassifiedCount: result.unclassified_count ?? 0,
+      unclassifiedCount: topicResults.reduce(
+        (total, { result }) => total + (result.unclassified_count ?? 0),
+        0,
+      ),
       linkedRelationshipCount: issues.reduce((total, issue) => total + issue.linkedItemCount, 0),
     },
     frequencyDistribution: distribution(issues, FREQUENCY_OPTIONS, (issue) => issue.frequencyClass),
