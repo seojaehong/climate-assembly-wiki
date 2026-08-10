@@ -5,6 +5,10 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+export const DEFAULT_AUDIT_PROFILES = [
+  { id: 'desktop', viewport: { width: 1440, height: 1000 } },
+  { id: 'mobile', viewport: { width: 360, height: 800 }, minimumContentWidth: 280 },
+];
 
 const SUPABASE_ORIGIN = 'https://pleyuknjnprsckssxvrh.supabase.co';
 const AUTH_STORAGE_KEY = 'sb-pleyuknjnprsckssxvrh-auth-token';
@@ -216,8 +220,8 @@ async function inspectSkipLink(page, expectedTarget) {
   return { found: true, target: expectedTarget, focusMoved };
 }
 
-async function auditRoute(browser, baseUrl, route, settleMs) {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+async function auditRoute(browser, baseUrl, route, profile, settleMs) {
+  const context = await browser.newContext({ viewport: profile.viewport });
   const page = await context.newPage();
   const readiness = route.readySelector
     ? { selector: route.readySelector, reached: false }
@@ -237,13 +241,36 @@ async function auditRoute(browser, baseUrl, route, settleMs) {
       resultTypes: ['violations', 'incomplete'],
     }), WCAG_TAGS);
     const skipLink = await inspectSkipLink(page, route.skipTarget);
+    const layout = await page.evaluate(({ targetId, minimumContentWidth }) => {
+      const viewportWidth = document.documentElement.clientWidth;
+      const documentWidth = Math.max(
+        document.documentElement.scrollWidth,
+        document.body?.scrollWidth ?? 0,
+      );
+      const contentWidth = document.getElementById(targetId)?.getBoundingClientRect().width ?? 0;
+      return {
+        viewportWidth,
+        documentWidth,
+        horizontalOverflow: documentWidth > viewportWidth + 1,
+        contentWidth,
+        minimumContentWidth,
+        contentWidthSufficient: contentWidth >= minimumContentWidth,
+      };
+    }, { targetId: route.skipTarget, minimumContentWidth: profile.minimumContentWidth ?? 0 });
     const violations = axeResult.violations.map(violationEvidence);
     const incomplete = axeResult.incomplete.map(violationEvidence);
     const httpStatus = response?.status() ?? null;
     const httpOk = httpStatus === null || (httpStatus >= 200 && httpStatus < 400);
-    const passed = httpOk && violations.length === 0 && skipLink.focusMoved;
+    const passed = httpOk
+      && violations.length === 0
+      && skipLink.focusMoved
+      && !layout.horizontalOverflow
+      && layout.contentWidthSufficient;
     return {
-      id: route.id,
+      id: `${route.id}:${profile.id}`,
+      routeId: route.id,
+      profile: profile.id,
+      viewport: profile.viewport,
       path: route.path,
       url,
       fixture: route.fixture ?? null,
@@ -251,14 +278,18 @@ async function auditRoute(browser, baseUrl, route, settleMs) {
       httpStatus,
       passed,
       skipLink,
+      layout,
       violations,
       incomplete,
       error: null,
     };
   } catch (error) {
-    console.error(`Accessibility audit failed for route ${route.id}`, error);
+    console.error(`Accessibility audit failed for route ${route.id} profile ${profile.id}`, error);
     return {
-      id: route.id,
+      id: `${route.id}:${profile.id}`,
+      routeId: route.id,
+      profile: profile.id,
+      viewport: profile.viewport,
       path: route.path,
       url: routeUrl(baseUrl, route.path),
       fixture: route.fixture ?? null,
@@ -266,6 +297,7 @@ async function auditRoute(browser, baseUrl, route, settleMs) {
       httpStatus: null,
       passed: false,
       skipLink: { found: false, target: route.skipTarget, focusMoved: false },
+      layout: null,
       violations: [],
       incomplete: [],
       error: error instanceof Error ? error.message : String(error),
@@ -283,6 +315,7 @@ export async function auditPlatformAccessibility({
   generatedAt = new Date(),
   settleMs = 0,
   excludedSurfaces = [],
+  profiles = DEFAULT_AUDIT_PROFILES,
 }) {
   if (!Array.isArray(routes) || routes.length === 0) {
     throw new Error('At least one accessibility audit route is required.');
@@ -290,13 +323,23 @@ export async function auditPlatformAccessibility({
   for (const route of routes) {
     if (!route.skipTarget) throw new Error(`Route ${route.id} requires an expected skip target.`);
   }
+  if (!Array.isArray(profiles) || profiles.length === 0) {
+    throw new Error('At least one accessibility audit profile is required.');
+  }
+  for (const profile of profiles) {
+    if (!profile.id || !Number.isSafeInteger(profile.viewport?.width) || !Number.isSafeInteger(profile.viewport?.height)) {
+      throw new Error('Accessibility audit profiles require an id and integer viewport dimensions.');
+    }
+  }
 
   const browser = await chromium.launch();
   let auditedRoutes;
   try {
     auditedRoutes = [];
     for (const route of routes) {
-      auditedRoutes.push(await auditRoute(browser, baseUrl, route, settleMs));
+      for (const profile of profiles) {
+        auditedRoutes.push(await auditRoute(browser, baseUrl, route, profile, settleMs));
+      }
     }
   } finally {
     await browser.close();
@@ -304,24 +347,31 @@ export async function auditPlatformAccessibility({
 
   const violationCount = auditedRoutes.reduce((total, route) => total + route.violations.length, 0);
   const incompleteCount = auditedRoutes.reduce((total, route) => total + route.incomplete.length, 0);
-  const passedRoutes = auditedRoutes.filter((route) => route.passed).length;
-  const failed = passedRoutes !== auditedRoutes.length;
+  const passedCases = auditedRoutes.filter((route) => route.passed).length;
+  const passedRoutes = routes.filter((route) => (
+    auditedRoutes.filter((result) => result.routeId === route.id).every((result) => result.passed)
+  )).length;
+  const failed = passedCases !== auditedRoutes.length;
   const needsReview = !failed && (incompleteCount > 0 || excludedSurfaces.length > 0);
   const report = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAt: generatedAt.toISOString(),
     baseUrl,
-    standard: 'WCAG 2.2 AA automated subset + skip-link focus',
+    standard: 'WCAG 2.2 AA automated subset + skip-link focus + responsive overflow',
     engine: { name: 'axe-core', version: axe.version, tags: WCAG_TAGS },
     status: failed ? 'fail' : needsReview ? 'needs_review' : 'pass',
     summary: {
-      routeCount: auditedRoutes.length,
+      routeCount: routes.length,
+      profileCount: profiles.length,
+      auditCaseCount: auditedRoutes.length,
       passedRoutes,
+      passedCases,
       violationCount,
       incompleteCount,
       excludedSurfaceCount: excludedSurfaces.length,
     },
     coverage: {
+      profiles,
       audited: auditedRoutes.map((route) => route.id),
       excluded: excludedSurfaces,
     },

@@ -175,7 +175,7 @@ function CoverageMatrix({ view }: { view: ResultViewModel }) {
       <p className="text-[16px] mb-4" style={{ color: GRAY }}>
         세로 = 쟁점, 가로 = 조. ● 제기 · · 미제기
       </p>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" role="region" aria-label="조별 쟁점 커버리지 표" tabIndex={0}>
         <table className="border-collapse text-left" style={{ minWidth: '100%' }}>
           <caption className="sr-only">쟁점별 조 제기 여부</caption>
           <thead>
@@ -372,7 +372,7 @@ function DataTable({ view }: { view: ResultViewModel }) {
         </span>
         <span className="shrink-0 text-[22px]" style={{ color: TEAL }} aria-hidden="true">↕</span>
       </summary>
-      <div className="mt-4 overflow-x-auto">
+      <div className="mt-4 overflow-x-auto" role="region" aria-label="쟁점 분석 데이터 표" tabIndex={0}>
         <table className="w-full border-collapse text-left text-[15px]">
           <caption className="sr-only">쟁점별 방향·빈도·제기 조 수·원문 군집·검수 상태</caption>
           <thead>

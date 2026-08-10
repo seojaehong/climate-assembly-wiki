@@ -262,3 +262,41 @@ code, pre, kbd {
 .dark .header-scrolled {
   background-color: rgba(10, 10, 10, 0.85) !important;
 }
+
+@media (max-width: 720px) {
+  .platform-shell-header {
+    flex-wrap: wrap;
+  }
+
+  .platform-shell-brand {
+    min-width: 0;
+  }
+
+  .platform-shell-actions {
+    width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .platform-shell-breadcrumb {
+    order: 3;
+    flex: 1 0 100% !important;
+  }
+
+  .platform-shell-body {
+    flex-direction: column;
+  }
+
+  .platform-shell-tree {
+    width: 100% !important;
+    max-height: 240px;
+    border-right: 0 !important;
+    border-bottom: 2px solid #6b7d88;
+  }
+
+  .platform-shell-content {
+    width: 100%;
+    padding: 20px 16px !important;
+  }
+}

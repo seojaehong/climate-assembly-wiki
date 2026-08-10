@@ -32,12 +32,12 @@
 | 공개 결과 페이지 | `/r/<token>` 매트릭스·랭킹·4×6·표대체본·HITL | 2af1ce2 |
 | 검수 콘솔 | 4×6 코딩·재분류·병합·미분류함 본문·게이트 | 62aabfc |
 
-**최근 검증(2026-08-11):** src Vitest 734건·automation Vitest 99건, Astro check 오류 0, Node20 정적 빌드 통과. 커밋 `5e5406d`의 수동 Cloudflare Pages 배포([run 31427305710](https://github.com/seojaehong/climate-assembly-wiki/actions/runs/31427305710))에서 강제 자산 업로드와 사용자 도메인 ResultView JS 자산 12회 검증이 통과했다. 배포 후 `https://climate-assembly.org` 자동감사 대상 5경로도 모두 통과했고 위반·미완료 판정은 0건이다. 스크린리더·모바일 보조기기 수동평가는 남아 전체 상태는 `needs_review`다. 격리 불변식(RPC org_id 미전달)은 유지한다.
+**최근 검증(2026-08-11):** src Vitest 736건·automation Vitest 101건, Astro check 오류 0, Node20 정적 빌드 7,913페이지 통과. 격리 정적 빌드에서 5경로를 데스크톱·모바일 두 뷰포트로 감사한 10개 케이스가 모두 통과했고 자동 위반은 0건이었다. 자동 판정 불가 1건과 스크린리더·실제 모바일 보조기기 수동평가는 남아 전체 상태는 `needs_review`다. 기존 사용자 도메인 증거는 커밋 `5e5406d`의 수동 Cloudflare Pages 배포([run 31427305710](https://github.com/seojaehong/climate-assembly-wiki/actions/runs/31427305710)) 후 5경로 통과 결과이며, 이번 반응형 수정의 사용자 도메인 재검증은 재배포 승인 뒤 수행한다. 격리 불변식(RPC org_id 미전달)은 유지한다.
 
 ### Phase A 점진 구현 (2026-08-11)
 
-- **A5 자동 감사 기반**: `automation/platform-accessibility-audit.mjs`가 실제 Chromium에서 axe-core WCAG 2.2 AA 태그와 건너뛰기 링크 포커스를 검사한다. 플랫폼 로그인·인증 후 셸·접근성 성명·미공개/공개 결과 5경로의 증거는 `evaluation/platform-accessibility-audit.json`에 저장하며, `.github/workflows/platform-accessibility.yml`이 관련 변경마다 같은 검사를 재실행한다.
-- 인증 셸과 공개 결과는 실제 production 컴포넌트에 CI 전용 읽기 응답을 주입하고 readiness selector 도달을 필수로 한다. fixture 이름·준비 상태·axe `incomplete`를 JSON에 보존한다. 스크린리더·모바일 보조기기 전수 수동평가와 공식 품질인증은 완료로 간주하지 않는다.
+- **A5 자동 감사 기반**: `automation/platform-accessibility-audit.mjs`가 실제 Chromium에서 axe-core WCAG 2.2 AA 태그, 건너뛰기 링크 포커스와 수평 넘침을 데스크톱 1440×1000·모바일 360×800 뷰포트로 검사한다. 플랫폼 로그인·인증 후 셸·접근성 성명·미공개/공개 결과 5경로의 사용자 도메인 증거는 `evaluation/platform-accessibility-audit.json`, 이번 로컬 정적 빌드 10케이스 증거는 `evaluation/platform-accessibility-responsive-audit.json`에 분리해 저장한다. `.github/workflows/platform-accessibility.yml`은 관련 변경마다 동일한 2개 뷰포트 감사를 재실행한다.
+- 인증 셸과 공개 결과는 실제 production 컴포넌트에 CI 전용 읽기 응답을 주입하고 readiness selector 도달을 필수로 한다. fixture 이름·준비 상태·axe `incomplete`·뷰포트·문서 폭을 JSON에 보존한다. 스크린리더·실제 모바일 보조기기 전수 수동평가와 공식 품질인증은 완료로 간주하지 않는다.
 
 ## 병합 전 게이트
 

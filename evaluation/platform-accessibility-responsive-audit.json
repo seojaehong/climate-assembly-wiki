@@ -1,0 +1,416 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-10T22:01:08.621Z",
+  "baseUrl": "http://127.0.0.1:4321",
+  "standard": "WCAG 2.2 AA automated subset + skip-link focus + responsive overflow",
+  "engine": {
+    "name": "axe-core",
+    "version": "4.12.1",
+    "tags": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag21a",
+      "wcag21aa",
+      "wcag22aa"
+    ]
+  },
+  "status": "needs_review",
+  "summary": {
+    "routeCount": 5,
+    "profileCount": 2,
+    "auditCaseCount": 10,
+    "passedRoutes": 5,
+    "passedCases": 10,
+    "violationCount": 0,
+    "incompleteCount": 1,
+    "excludedSurfaceCount": 1
+  },
+  "coverage": {
+    "profiles": [
+      {
+        "id": "desktop",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        }
+      },
+      {
+        "id": "mobile",
+        "viewport": {
+          "width": 360,
+          "height": 800
+        },
+        "minimumContentWidth": 280
+      }
+    ],
+    "audited": [
+      "platform-login:desktop",
+      "platform-login:mobile",
+      "authenticated-platform:desktop",
+      "authenticated-platform:mobile",
+      "accessibility-statement:desktop",
+      "accessibility-statement:mobile",
+      "public-result-unpublished:desktop",
+      "public-result-unpublished:mobile",
+      "published-result:desktop",
+      "published-result:mobile"
+    ],
+    "excluded": [
+      {
+        "id": "assistive-technology-manual-evaluation",
+        "reason": "Screen reader and mobile assistive-technology evaluation requires manual testing."
+      }
+    ]
+  },
+  "routes": [
+    {
+      "id": "platform-login:desktop",
+      "routeId": "platform-login",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/platform/",
+      "url": "http://127.0.0.1:4321/platform/",
+      "fixture": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "platform-scope-content",
+        "focusMoved": true
+      },
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "horizontalOverflow": false,
+        "contentWidth": 420,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "platform-login:mobile",
+      "routeId": "platform-login",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/platform/",
+      "url": "http://127.0.0.1:4321/platform/",
+      "fixture": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "platform-scope-content",
+        "focusMoved": true
+      },
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "horizontalOverflow": false,
+        "contentWidth": 312,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "authenticated-platform:desktop",
+      "routeId": "authenticated-platform",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/platform/",
+      "url": "http://127.0.0.1:4321/platform/",
+      "fixture": "ci-staff-read-fixture-v1",
+      "readiness": {
+        "selector": "aside button[aria-current=\"location\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "platform-scope-content",
+        "focusMoved": true
+      },
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "horizontalOverflow": false,
+        "contentWidth": 1152,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "authenticated-platform:mobile",
+      "routeId": "authenticated-platform",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/platform/",
+      "url": "http://127.0.0.1:4321/platform/",
+      "fixture": "ci-staff-read-fixture-v1",
+      "readiness": {
+        "selector": "aside button[aria-current=\"location\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "platform-scope-content",
+        "focusMoved": true
+      },
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "accessibility-statement:desktop",
+      "routeId": "accessibility-statement",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/platform/accessibility/",
+      "url": "http://127.0.0.1:4321/platform/accessibility/",
+      "fixture": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "horizontalOverflow": false,
+        "contentWidth": 880,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "accessibility-statement:mobile",
+      "routeId": "accessibility-statement",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/platform/accessibility/",
+      "url": "http://127.0.0.1:4321/platform/accessibility/",
+      "fixture": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "horizontalOverflow": false,
+        "contentWidth": 328,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-result-unpublished:desktop",
+      "routeId": "public-result-unpublished",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/r/_/",
+      "url": "http://127.0.0.1:4321/r/_/",
+      "fixture": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-result-unpublished:mobile",
+      "routeId": "public-result-unpublished",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/r/_/",
+      "url": "http://127.0.0.1:4321/r/_/",
+      "fixture": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "published-result:desktop",
+      "routeId": "published-result",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/r/_/",
+      "url": "http://127.0.0.1:4321/r/_/",
+      "fixture": "ci-published-result-read-fixture-v1",
+      "readiness": {
+        "selector": "main#main-content header h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "published-result:mobile",
+      "routeId": "published-result",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/r/_/",
+      "url": "http://127.0.0.1:4321/r/_/",
+      "fixture": "ci-published-result-read-fixture-v1",
+      "readiness": {
+        "selector": "main#main-content header h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true
+      },
+      "violations": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/color-contrast?application=axeAPI",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodes": [
+            {
+              "target": [
+                ".whitespace-nowrap.text-\\[14px\\].px-2:nth-child(3)"
+              ],
+              "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it's partially obscured by another element"
+            }
+          ]
+        }
+      ],
+      "error": null
+    }
+  ]
+}

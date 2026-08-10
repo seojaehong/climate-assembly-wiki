@@ -31,6 +31,9 @@ const incompletePage = `<!doctype html><html lang="ko"><head><title>수동 확�
   <a href="#main-content">본문 바로가기</a><main id="main-content" tabindex="-1"><h1>수동 확인</h1>
   <div style="background:linear-gradient(90deg,#fff,#000)"><span style="color:#777">배경 대비 확인</span></div>
   </main></body></html>`;
+const overflowPage = `<!doctype html><html lang="ko"><head><title>모바일 넘침</title></head><body>
+  <a href="#main-content">본문 바로가기</a><main id="main-content" tabindex="-1"><h1>모바일 넘침</h1>
+  <div style="width:500px">고정 폭 콘텐츠</div></main></body></html>`;
 const preparedPage = `<!doctype html><html lang="ko"><head><title>Fixture 준비</title></head><body>
   <a href="#main-content">본문 바로가기</a><main id="main-content" tabindex="-1">
   <h1>불러오는 중</h1></main><script>
@@ -51,6 +54,8 @@ beforeAll(async () => {
           ? wrongSkipPage
           : request.url === '/incomplete'
             ? incompletePage
+            : request.url === '/overflow'
+              ? overflowPage
             : request.url === '/prepared'
               ? preparedPage
             : validPage,
@@ -79,7 +84,10 @@ test('audits WCAG 2.2 AA and skip-link focus through a real browser', async () =
   expect(report.status).toBe('pass');
   expect(report.summary).toEqual({
     routeCount: 1,
+    profileCount: 2,
+    auditCaseCount: 2,
     passedRoutes: 1,
+    passedCases: 2,
     violationCount: 0,
     incompleteCount: 0,
     excludedSurfaceCount: 0,
@@ -111,7 +119,9 @@ test('waits for a fixture-backed production surface before auditing it', async (
 
   expect(report.status).toBe('pass');
   expect(report.routes[0]).toMatchObject({
-    id: 'prepared',
+    id: 'prepared:desktop',
+    routeId: 'prepared',
+    profile: 'desktop',
     passed: true,
     fixture: 'read-only-browser-fixture',
     readiness: { selector: 'main[data-ready="true"]', reached: true },
@@ -187,7 +197,7 @@ test('preserves axe incomplete evidence and promotes the report to needs_review'
   });
 
   expect(report.status).toBe('needs_review');
-  expect(report.summary).toMatchObject({ violationCount: 0, incompleteCount: 1 });
+  expect(report.summary).toMatchObject({ violationCount: 0, incompleteCount: 2 });
   expect(report.routes[0].incomplete).toEqual([
     expect.objectContaining({
       id: 'color-contrast',
@@ -195,7 +205,53 @@ test('preserves axe incomplete evidence and promotes the report to needs_review'
       nodes: [expect.objectContaining({ target: ['span'] })],
     }),
   ]);
-  expect(JSON.parse(readFileSync(reportPath, 'utf8')).routes[0].incomplete).toHaveLength(1);
+  expect(JSON.parse(readFileSync(reportPath, 'utf8')).routes).toEqual([
+    expect.objectContaining({ profile: 'desktop', incomplete: [expect.objectContaining({ id: 'color-contrast' })] }),
+    expect.objectContaining({ profile: 'mobile', incomplete: [expect.objectContaining({ id: 'color-contrast' })] }),
+  ]);
+});
+
+test('fails a mobile audit case when the document has horizontal overflow', async () => {
+  const report = await auditPlatformAccessibility({
+    baseUrl,
+    routes: [{ id: 'overflow', path: '/overflow', skipTarget: 'main-content' }],
+    profiles: [{ id: 'mobile', viewport: { width: 360, height: 800 } }],
+    reportPath: join(outDir, 'mobile-overflow.json'),
+  });
+
+  expect(report.status).toBe('fail');
+  expect(report.summary).toMatchObject({ routeCount: 1, profileCount: 1, auditCaseCount: 1, passedCases: 0 });
+  expect(report.routes[0]).toMatchObject({
+    routeId: 'overflow',
+    profile: 'mobile',
+    viewport: { width: 360, height: 800 },
+    passed: false,
+    layout: {
+      viewportWidth: 360,
+      horizontalOverflow: true,
+    },
+  });
+  expect(report.routes[0].layout.documentWidth).toBeGreaterThan(360);
+});
+
+test('fails a mobile audit case when the target content is compressed', async () => {
+  const report = await auditPlatformAccessibility({
+    baseUrl,
+    routes: [{ id: 'compressed', path: '/', skipTarget: 'main-content' }],
+    profiles: [{ id: 'mobile', viewport: { width: 360, height: 800 }, minimumContentWidth: 400 }],
+    reportPath: join(outDir, 'mobile-compressed.json'),
+  });
+
+  expect(report.status).toBe('fail');
+  expect(report.routes[0]).toMatchObject({
+    passed: false,
+    layout: {
+      horizontalOverflow: false,
+      minimumContentWidth: 400,
+      contentWidthSufficient: false,
+    },
+  });
+  expect(report.routes[0].layout.contentWidth).toBeLessThan(400);
 });
 
 test('installs root dependencies without requiring an ignored lockfile', () => {

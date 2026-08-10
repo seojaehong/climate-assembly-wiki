@@ -80,6 +80,13 @@ describe('ResultView accessibility', () => {
     expect(html).not.toContain('aria-label="1분과 1조 제기"');
   });
 
+  it('모바일 가로 스크롤 표를 키보드로 탐색할 수 있다', () => {
+    const html = renderToStaticMarkup(createElement(ResultContent, { view: readyView() }));
+
+    expect(html).toContain('role="region" aria-label="조별 쟁점 커버리지 표" tabindex="0"');
+    expect(html).toContain('role="region" aria-label="쟁점 분석 데이터 표" tabindex="0"');
+  });
+
   it('공개 결과에서 본문과 접근성 성명으로 이동할 수 있고 얇은 경계를 쓰지 않는다', () => {
     const html = renderToStaticMarkup(createElement(ResultContent, { view: readyView() }));
 

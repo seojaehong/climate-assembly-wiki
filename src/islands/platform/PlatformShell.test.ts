@@ -262,9 +262,11 @@ describe('PlatformShell accessibility', () => {
     expect(source).toContain('<main id="main-content" tabindex="-1">');
     expect(source).toContain('axe-core 기반 WCAG 2.2 AA 자동검사');
     expect(source).toContain('evaluation/platform-accessibility-audit.json');
+    expect(source).toContain('evaluation/platform-accessibility-responsive-audit.json');
+    expect(source).toContain('데스크톱 1440×1000과 모바일 360×800 뷰포트에서 가로 넘침도 함께 검사합니다.');
     expect(source).toContain('자동검사는 공식 품질인증이나 전수 수동평가를 대체하지 않습니다.');
     expect(source).toContain('인증 셸과 공개 결과의 자동감사는 읽기 전용 브라우저 fixture를 사용');
-    expect(source).toContain('스크린리더와 모바일 보조기기 평가는 수동 확인이 필요합니다.');
+    expect(source).toContain('스크린리더와 실제 모바일 보조기기 평가는 수동 확인이 필요합니다.');
   });
 
   it('스코프 보기 내비게이션이 현재 보기를 한 곳에서만 표시한다', () => {
@@ -301,6 +303,30 @@ describe('PlatformShell accessibility', () => {
     expect(breadcrumbHtml).toContain('aria-label="브레드크럼"');
     expect(breadcrumbHtml.match(/aria-current="location"/g)).toHaveLength(1);
     expect(treeHtml.match(/aria-current="location"/g)).toHaveLength(1);
+  });
+
+  it('모바일 셸을 단일 열로 재배치하고 터치 높이를 보장한다', () => {
+    const shellSource = readFileSync(new URL('./PlatformShell.tsx', import.meta.url), 'utf8');
+    const globalStyles = readFileSync(new URL('../../styles/global.css', import.meta.url), 'utf8');
+    const loginHtml = renderToStaticMarkup(createElement(LoginCard, { notice: null, onSignedIn: () => undefined }));
+    const breadcrumbHtml = renderToStaticMarkup(createElement(BreadcrumbNav, {
+      tree,
+      scope: { o: 'org', c: 'assembly', s: 'session' },
+      navigate: () => undefined,
+    }));
+
+    expect(loginHtml).toMatch(/href="\/platform\/accessibility\/"[^>]*min-height:24px/);
+    expect(breadcrumbHtml.match(/min-height:24px/g)).toHaveLength(3);
+    expect(breadcrumbHtml).toContain('class="platform-shell-breadcrumb"');
+    expect(shellSource).toContain('className="platform-shell-actions"');
+    expect(shellSource).toContain('className="platform-shell-body"');
+    expect(shellSource).toContain('className="platform-shell-tree"');
+    expect(shellSource).toContain('className="platform-shell-content"');
+    expect(globalStyles).toContain('@media (max-width: 720px)');
+    expect(globalStyles).toContain('flex: 1 0 100% !important;');
+    expect(globalStyles).toContain('flex-direction: column;');
+    expect(globalStyles).toContain('width: 100% !important;');
+    expect(globalStyles).toContain('padding: 20px 16px !important;');
   });
 
   it('데이터 트리 로딩과 빈 상태를 live region으로 알린다', () => {

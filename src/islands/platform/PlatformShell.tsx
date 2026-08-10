@@ -47,6 +47,15 @@ const MUTED = '#5A6B73';
 const LINE = '#DCE7EE';
 const BG = '#F5F8FB';
 const PANEL = '#F1F7FA';
+const ACCESSIBILITY_LINK_STYLE: React.CSSProperties = {
+  display: 'inline-flex',
+  minHeight: 24,
+  alignItems: 'center',
+  color: PLATFORM_ACCENT,
+  fontWeight: 700,
+  textDecoration: 'underline',
+  textUnderlineOffset: 3,
+};
 
 function currentScope(): Scope {
   if (typeof window === 'undefined') return {};
@@ -178,7 +187,7 @@ export function LoginCard({ notice, onSignedIn }: { notice: string | null; onSig
           플랫폼 스키마 미적용 상태에서는 로그인이 동작하지 않을 수 있습니다(빌드·마운트는 정상).
         </p>
         <p style={{ fontSize: 13, textAlign: 'center', margin: '10px 0 0' }}>
-          <a href="/platform/accessibility/" style={{ color: PLATFORM_ACCENT, fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 3 }}>
+          <a href="/platform/accessibility/" style={ACCESSIBILITY_LINK_STYLE}>
             접근성 성명 및 피드백
           </a>
         </p>
@@ -235,15 +244,15 @@ function AppShell({ session, scope, navigate }: { session: AuthSessionInfo; scop
   return (
     <div style={{ minHeight: '100vh', background: BG, display: 'flex', flexDirection: 'column', fontFamily: "Pretendard, system-ui, sans-serif" }}>
       {/* 상단 바 + 브레드크럼(=데이터 경로) */}
-      <header style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 20px', borderBottom: `2px solid ${LINE}`, background: PANEL }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <header className="platform-shell-header" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 20px', borderBottom: `2px solid ${LINE}`, background: PANEL }}>
+        <div className="platform-shell-brand" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: TEAL, display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800 }}>P</div>
           <span style={{ fontFamily: 'monospace', fontSize: 12, letterSpacing: '.14em', color: MUTED, textTransform: 'uppercase' }}>공론화 플랫폼</span>
         </div>
         <BreadcrumbNav tree={tree} scope={scope} navigate={navigate} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <a href="/platform/accessibility/" style={{ fontSize: 13, fontWeight: 700, color: PLATFORM_ACCENT, textDecoration: 'underline', textUnderlineOffset: 3 }}>접근성</a>
-          <span style={{ fontSize: 13, color: MUTED }}>{session.email ?? session.userId.slice(0, 8)}</span>
+        <div className="platform-shell-actions" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <a href="/platform/accessibility/" style={{ ...ACCESSIBILITY_LINK_STYLE, fontSize: 13 }}>접근성</a>
+          <span style={{ minWidth: 0, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: MUTED }}>{session.email ?? session.userId.slice(0, 8)}</span>
           <button
             type="button"
             onClick={() => void logout()}
@@ -258,15 +267,15 @@ function AppShell({ session, scope, navigate }: { session: AuthSessionInfo; scop
 
       <LogoutNotice notice={logoutNotice} />
 
-      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+      <div className="platform-shell-body" style={{ display: 'flex', flex: 1, minHeight: 0 }}>
         {/* 좌: 데이터 트리 네비 */}
-        <aside style={{ width: 288, borderRight: `2px solid ${LINE}`, background: '#fff', padding: '16px 10px', overflowY: 'auto' }}>
+        <aside className="platform-shell-tree" style={{ width: 288, borderRight: `2px solid ${LINE}`, background: '#fff', padding: '16px 10px', overflowY: 'auto' }}>
           <div style={{ fontFamily: 'monospace', fontSize: 11, letterSpacing: '.14em', color: MUTED, textTransform: 'uppercase', padding: '0 8px 10px' }}>데이터 트리</div>
           <DataTreeNavigation tree={tree} scope={scope} loading={loadingTree} notice={treeNotice} navigate={navigate} />
         </aside>
 
         {/* 우: 스코프 콘텐츠 아웃렛 + 뷰 전환 탭 */}
-        <main id="platform-scope-content" tabIndex={-1} style={{ flex: 1, minWidth: 0, padding: '24px 28px', overflowY: 'auto' }}>
+        <main className="platform-shell-content" id="platform-scope-content" tabIndex={-1} style={{ flex: 1, minWidth: 0, padding: '24px 28px', overflowY: 'auto' }}>
           <ViewTabs scope={scope} navigate={navigate} />
           <ScopeOutlet
             scope={scope}
@@ -312,7 +321,7 @@ export function LogoutNotice({ notice }: { notice: string | null }) {
 export function BreadcrumbNav({ tree, scope, navigate }: { tree: TreeNode | null; scope: Scope; navigate: (s: Scope) => void }) {
   const crumbs = breadcrumb(tree, scope);
   return (
-    <nav aria-label="브레드크럼" style={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
+    <nav className="platform-shell-breadcrumb" aria-label="브레드크럼" style={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
       {crumbs.length === 0 ? (
         <span style={{ color: MUTED, fontSize: 14 }}>데이터 경로 없음</span>
       ) : crumbs.map((crumb, index) => (
@@ -322,7 +331,7 @@ export function BreadcrumbNav({ tree, scope, navigate }: { tree: TreeNode | null
             type="button"
             aria-current={index === crumbs.length - 1 ? 'location' : undefined}
             onClick={() => navigate(scopeWithValidView(crumb.scope, scope.view))}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: index === crumbs.length - 1 ? 800 : 600, color: index === crumbs.length - 1 ? NAVY : PLATFORM_ACCENT, padding: '2px 4px' }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', minHeight: 24, fontSize: 14, fontWeight: index === crumbs.length - 1 ? 800 : 600, color: index === crumbs.length - 1 ? NAVY : PLATFORM_ACCENT, padding: '2px 4px' }}
           >
             {crumb.label}
           </button>

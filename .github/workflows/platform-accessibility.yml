@@ -9,6 +9,7 @@ on:
       - 'src/pages/r/**'
       - 'src/styles/**'
       - 'automation/platform-accessibility-audit.mjs'
+      - 'automation/tests/platform-accessibility-audit.test.mjs'
       - 'automation/package*.json'
       - '.github/workflows/platform-accessibility.yml'
   pull_request:
@@ -19,6 +20,7 @@ on:
       - 'src/pages/r/**'
       - 'src/styles/**'
       - 'automation/platform-accessibility-audit.mjs'
+      - 'automation/tests/platform-accessibility-audit.test.mjs'
       - 'automation/package*.json'
       - '.github/workflows/platform-accessibility.yml'
   workflow_dispatch:
@@ -55,7 +57,7 @@ jobs:
           done
           cat /tmp/platform-preview.log
           exit 1
-      - name: Audit WCAG 2.2 AA subset and skip links
+      - name: Audit WCAG 2.2 AA subset, skip links, and responsive overflow
         working-directory: automation
         env:
           PLATFORM_A11Y_BASE_URL: http://127.0.0.1:4321
