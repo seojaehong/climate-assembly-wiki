@@ -67,6 +67,7 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 - **설계 마법사(Phase 3)**: assembly/session/topic 생성 UI + assembly 스코프 준비도. 플랜상 Phase 2(tenancy) 이후. §5-4 결정 필요.
 - **분석코어 어댑터**: consensus/DQI Python 산출 → issue 적재(service_role). issue_org_derive 트리거로 org 파생 준비됨. 8/29 산출물 확보 후 첫 실전.
 - **라이브 프로비저닝**: 전용 DB + Supabase Auth + Cloudflare Pages SPA fallback rewrite(딥링크). 병합 결정 시.
+- **A6 자동 export 연결**: `platform_snapshot_now` RPC는 준비됐지만 행사일 `.github/workflows/snapshot.yml`은 아직 `cv_snapshot_now`만 호출한다. 플랫폼 RPC를 분당 스케줄에 추가하면 프로덕션 snapshot 행과 Drive 업로드가 대량 증가하므로 사용자 승인 후 연결한다. 기록 화면의 CSV는 provenance를 보존하는 수동 아카이브 보조이며 PITR/WAL·서버 자동보존을 대체하지 않는다.
 
 ## 다음 액션 (권장 순서)
 1. G1 파싱 검증(스크래치 DB) — 이후 UI 라이브 E2E 가능

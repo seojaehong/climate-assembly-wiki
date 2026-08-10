@@ -149,6 +149,15 @@ describe('PlatformShell accessibility', () => {
     expect(sessionHtml).not.toContain('데이터 로드 골격');
   });
 
+  it('활성 canonical 경로를 모든 기록 콘솔의 export context로 전달한다', () => {
+    const shellSource = readFileSync(new URL('./PlatformShell.tsx', import.meta.url), 'utf8');
+    const outletSource = readFileSync(new URL('./ScopeViews.tsx', import.meta.url), 'utf8');
+
+    expect(shellSource).toContain('const scopedPath = scopePathContext(tree, scope);');
+    expect(shellSource).toContain('scopeContext={scopedPath}');
+    expect(outletSource.match(/context=\{scopeContext\}/g)).toHaveLength(2);
+  });
+
   it('회차 투표 보기가 플레이스홀더 대신 실제 집계 콘솔을 연다', () => {
     const html = renderToStaticMarkup(createElement(ScopeOutlet, {
       navigate,

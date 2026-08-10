@@ -20,6 +20,7 @@ import {
   topicTargetsForScope,
   sessionTargetsForScope,
   sessionTopicGroupsForScope,
+  scopePathContext,
   scopeWithValidView,
   VIEWS_FOR_LEVEL,
   type Scope,
@@ -198,6 +199,7 @@ function AppShell({ session, scope, navigate }: { session: AuthSessionInfo; scop
   const scopedTopics = topicTargetsForScope(tree, scope);
   const scopedSessions = sessionTargetsForScope(tree, scope);
   const scopedSessionTopics = sessionTopicGroupsForScope(tree, scope);
+  const scopedPath = scopePathContext(tree, scope);
 
   // org 파생(org_of_uid) → orgTree. org_id 는 클라이언트가 주장하지 않는다(서버 파생).
   useEffect(() => {
@@ -273,6 +275,7 @@ function AppShell({ session, scope, navigate }: { session: AuthSessionInfo; scop
             scopedTopics={scopedTopics}
             scopedSessions={scopedSessions}
             scopedSessionTopics={scopedSessionTopics}
+            scopeContext={scopedPath}
           />
         </main>
       </div>

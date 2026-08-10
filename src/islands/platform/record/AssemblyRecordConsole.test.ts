@@ -39,11 +39,19 @@ describe('loadAssemblyRecords', () => {
     const loaded = await loadAssemblyRecords(
       { 'session-1': 'code-one', 'session-2': 'code-two' },
       groups,
+      {
+        org: { id: 'org-1', label: '한국갈등해결센터' },
+        assembly: { id: 'assembly-1', label: '2026 기후시민회의' },
+      },
       loader,
     );
 
     expect(loader.mock.calls).toEqual([['code-one', 'topic-1'], ['code-two', 'topic-2']]);
     expect(loaded.notice).toBeNull();
+    expect(loaded.data?.context).toEqual({
+      org: { id: 'org-1', label: '한국갈등해결센터' },
+      assembly: { id: 'assembly-1', label: '2026 기후시민회의' },
+    });
     expect(loaded.data?.items.map((item) => ({
       sessionId: item.sessionId,
       sessionLabel: item.sessionLabel,
@@ -74,7 +82,7 @@ describe('loadAssemblyRecords', () => {
       notice: null,
     }));
 
-    const loaded = await loadAssemblyRecords({ 'session-1': 'code-one' }, groups, loader);
+    const loaded = await loadAssemblyRecords({ 'session-1': 'code-one' }, groups, {}, loader);
 
     expect(loaded).toEqual({ data: null, notice: '제2차 회의의 조 참여 코드를 입력하세요.' });
     expect(loader).not.toHaveBeenCalled();
@@ -89,6 +97,7 @@ describe('loadAssemblyRecords', () => {
     const loaded = await loadAssemblyRecords(
       { 'session-1': 'code-one', 'session-2': 'code-two' },
       groups,
+      {},
       loader,
     );
 
@@ -104,6 +113,7 @@ describe('loadAssemblyRecords', () => {
       const loaded = await loadAssemblyRecords(
         { 'session-1': 'code-one' },
         [groups[0]],
+        {},
         async () => ({ data: null, notice: null }),
       );
 

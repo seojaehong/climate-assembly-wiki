@@ -1,7 +1,7 @@
 // Scope outlet for implemented platform consoles and invalid-route fallback states.
 
 import { useEffect, useState } from 'react';
-import { type SessionTarget, type SessionTopicGroup, type TopicTarget, type Scope, type ViewName, buildScopePath, deepestScopeLevel, VIEWS_FOR_LEVEL } from './platform-nav-logic';
+import { type ScopePathContext, type SessionTarget, type SessionTopicGroup, type TopicTarget, type Scope, type ViewName, buildScopePath, deepestScopeLevel, VIEWS_FOR_LEVEL } from './platform-nav-logic';
 import ReviewConsole from './review/ReviewConsole';
 import PublishConsole from './publish/PublishConsole';
 import AnalyzeConsole from './analyze/AnalyzeConsole';
@@ -45,6 +45,7 @@ export default function ScopeOutlet({
   scopedTopics = [],
   scopedSessions = [],
   scopedSessionTopics = [],
+  scopeContext = {},
 }: {
   scope: Scope;
   navigate: (scope: Scope) => void;
@@ -52,10 +53,11 @@ export default function ScopeOutlet({
   scopedTopics?: readonly TopicTarget[];
   scopedSessions?: readonly SessionTarget[];
   scopedSessionTopics?: readonly SessionTopicGroup[];
+  scopeContext?: ScopePathContext;
 }) {
   const view = scope.view;
   if (!view) return <ScopeOverview scope={scope} navigate={navigate} />;
-  return <ViewPanel view={view} scope={scope} publishScopeId={publishScopeId} scopedTopics={scopedTopics} scopedSessions={scopedSessions} scopedSessionTopics={scopedSessionTopics} />;
+  return <ViewPanel view={view} scope={scope} publishScopeId={publishScopeId} scopedTopics={scopedTopics} scopedSessions={scopedSessions} scopedSessionTopics={scopedSessionTopics} scopeContext={scopeContext} />;
 }
 
 function ScopeOverview({ scope, navigate }: { scope: Scope; navigate: (scope: Scope) => void }) {
@@ -104,6 +106,7 @@ function ViewPanel({
   scopedTopics,
   scopedSessions,
   scopedSessionTopics,
+  scopeContext,
 }: {
   view: ViewName;
   scope: Scope;
@@ -111,6 +114,7 @@ function ViewPanel({
   scopedTopics: readonly TopicTarget[];
   scopedSessions: readonly SessionTarget[];
   scopedSessionTopics: readonly SessionTopicGroup[];
+  scopeContext: ScopePathContext;
 }) {
   const meta = VIEW_META[view];
   const { level, id } = deepestScopeLevel(scope);
@@ -147,6 +151,7 @@ function ViewPanel({
         key={`${level}:${scopedTopics.map((topic) => topic.id).join(',')}`}
         scope={level}
         topics={scopedTopics}
+        context={scopeContext}
       />
     );
   }
@@ -156,6 +161,7 @@ function ViewPanel({
       <AssemblyRecordConsole
         key={`assembly:${scopedSessionTopics.map((group) => `${group.id}:${group.topics.map((topic) => topic.id).join(',')}`).join('|')}`}
         groups={scopedSessionTopics}
+        context={scopeContext}
       />
     );
   }

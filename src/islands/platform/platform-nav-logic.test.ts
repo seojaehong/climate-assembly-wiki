@@ -12,6 +12,7 @@ import {
   topicTargetsForScope,
   sessionTargetsForScope,
   sessionTopicGroupsForScope,
+  scopePathContext,
   scopeWithValidView,
   SCOPE_KEYS,
   VIEWS,
@@ -205,6 +206,19 @@ describe('deepestScopeLevel', () => {
     expect(deepestScopeLevel({ o: 'k', c: 'a', s: 'r5' })).toEqual({ level: 'session', id: 'r5' });
     expect(deepestScopeLevel({ o: 'k', c: 'a' })).toEqual({ level: 'assembly', id: 'a' });
     expect(deepestScopeLevel({ o: 'k' })).toEqual({ level: null, id: null });
+  });
+});
+
+describe('scopePathContext', () => {
+  it('활성 데이터 경로의 canonical ID와 표시명을 계층별로 보존한다', () => {
+    expect(scopePathContext(tree, {
+      o: 'kcrc', c: 'climate-2026', s: 'r5', t: 't-uuid-1',
+    })).toEqual({
+      org: { id: 'org-uuid', label: '한국갈등해결센터' },
+      assembly: { id: 'assembly-uuid', label: '2026 기후시민회의' },
+      session: { id: 'session-uuid-5', label: '제5차 회의' },
+      topic: { id: 't-uuid-1', label: '에너지 전환' },
+    });
   });
 });
 

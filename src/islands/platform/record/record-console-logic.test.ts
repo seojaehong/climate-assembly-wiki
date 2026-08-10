@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { IssueItemsResult } from '../../../lib/platform';
-import { buildRecordView } from './record-console-logic';
+import { buildRecordCsv, buildRecordView, recordCsvFileName } from './record-console-logic';
 
 const firstTopic: IssueItemsResult = {
   topic_id: 'topic-1',
@@ -83,5 +83,51 @@ describe('buildRecordView', () => {
       topicId: 'topic-1',
       topicLabel: '에너지 전환',
     });
+  });
+});
+
+describe('record CSV export', () => {
+  it('원문별 canonical 출처와 M:N 쟁점 연결 provenance를 보존한다', () => {
+    const formulaSafeFixture: IssueItemsResult = {
+      ...firstTopic,
+      items: firstTopic.items.map((item, index) => ({
+        ...item,
+        content: index === 0 ? '=HYPERLINK("https://example.org")' : item.content,
+      })),
+    };
+    const view = buildRecordView('assembly', [{
+      target: {
+        id: 'topic-1',
+        label: '에너지 전환',
+        sessionId: 'session-1',
+        sessionLabel: '제1차 회의',
+      },
+      result: formulaSafeFixture,
+    }], {
+      org: { id: 'org-1', label: '한국갈등해결센터' },
+      assembly: { id: 'assembly-1', label: '2026 기후시민회의' },
+      session: { id: 'session-1', label: '제1차 회의' },
+    });
+
+    const csv = buildRecordCsv(view);
+
+    expect(csv.startsWith('\uFEFF')).toBe(true);
+    expect(csv).toContain('"기관 ID","기관명","공론화 ID","공론화명","회차 ID","회차명","주제 ID","주제명"');
+    expect(csv).toContain('"org-1","한국갈등해결센터","assembly-1","2026 기후시민회의"');
+    expect(csv).toContain('"session-1","제1차 회의","topic-1","에너지 전환"');
+    expect(csv).toContain('"team-1","1분과 1조","submission-1","item-1"');
+    expect(csv).toContain(`"'=HYPERLINK(""https://example.org"")"`);
+    expect(csv).toContain('"issue_id""');
+    expect(csv).toContain('"cluster-1"');
+    expect(csv).toContain('"linked_by""');
+    expect(csv).toContain('\r\n');
+  });
+
+  it('스코프와 로컬 날짜를 포함한 안정된 파일명을 만든다', () => {
+    const view = buildRecordView('assembly', [], {
+      assembly: { id: 'assembly-1', label: '2026 기후시민회의' },
+    });
+    expect(recordCsvFileName({ view, at: new Date(2026, 7, 11) }))
+      .toBe('공론화_2026_기후시민회의_assembly-1_기록_20260811.csv');
   });
 });

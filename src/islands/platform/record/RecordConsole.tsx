@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { issueItems, type IssueItemsResult, type PlatformResult } from '../../../lib/platform';
-import type { TopicTarget } from '../platform-nav-logic';
+import { downloadBlob } from '../../mod/svg-to-png';
+import type { ScopePathContext, TopicTarget } from '../platform-nav-logic';
 import { itemKindLabel, sourceReference } from '../review/review-console-logic';
-import { buildRecordView, type RecordScope, type RecordView } from './record-console-logic';
+import { buildRecordCsv, buildRecordView, recordCsvFileName, type RecordScope, type RecordView } from './record-console-logic';
 
 const NAVY = '#1F4E79';
 const TEAL = '#135C73';
@@ -17,6 +18,7 @@ export async function loadScopedRecords(
   code: string,
   scope: RecordScope,
   topics: readonly TopicTarget[],
+  context: ScopePathContext = {},
   loader: IssueItemsLoader = issueItems,
 ): Promise<PlatformResult<RecordView>> {
   const responses = await Promise.all(topics.map(async (target) => ({
@@ -38,7 +40,7 @@ export async function loadScopedRecords(
     }
     topicResults.push({ target, result: response.data });
   }
-  return { data: buildRecordView(scope, topicResults), notice: null };
+  return { data: buildRecordView(scope, topicResults, context), notice: null };
 }
 
 export async function completeRecordLoad(
@@ -80,6 +82,72 @@ function StatCard({ label, value }: { label: string; value: number }) {
   );
 }
 
+type RecordCsvDownloader = (blob: Blob, fileName: string) => void;
+export type RecordExportState = { kind: 'status' | 'error'; text: string } | null;
+
+export function downloadRecordCsv(
+  view: RecordView,
+  at: Date,
+  downloader: RecordCsvDownloader = downloadBlob,
+): void {
+  downloader(
+    new Blob([buildRecordCsv(view)], { type: 'text/csv;charset=utf-8' }),
+    recordCsvFileName({ view, at }),
+  );
+}
+
+export function completeRecordExport(
+  action: () => void,
+  onStateChange: (state: Exclude<RecordExportState, null>) => void,
+): boolean {
+  try {
+    action();
+    onStateChange({ kind: 'status', text: '기록 CSV 파일을 내려받았습니다.' });
+    return true;
+  } catch (error: unknown) {
+    console.error('Failed to download record CSV', error);
+    onStateChange({ kind: 'error', text: '기록 CSV 파일을 만들지 못했습니다. 다시 시도해 주세요.' });
+    return false;
+  }
+}
+
+export function RecordExportNotice({ state }: { state: RecordExportState }) {
+  return (
+    <p
+      id="record-export-status"
+      role={state?.kind === 'error' ? 'alert' : 'status'}
+      aria-live="polite"
+      aria-atomic="true"
+      className="sr-only"
+    >
+      {state?.text ?? ''}
+    </p>
+  );
+}
+
+export function RecordExportButton({ view }: { view: RecordView }) {
+  const [state, setState] = useState<RecordExportState>(null);
+
+  const onDownload = () => {
+    completeRecordExport(() => downloadRecordCsv(view, new Date()), setState);
+  };
+
+  return (
+    <div>
+      <button
+        type="button"
+        aria-label="기록 CSV 내려받기"
+        aria-describedby="record-export-status"
+        onClick={onDownload}
+        style={{ minHeight: 44, border: `2px solid ${TEAL}`, borderRadius: 10, background: TEAL, color: '#fff', padding: '8px 16px', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}
+      >
+        기록 CSV 내려받기
+      </button>
+      <RecordExportNotice state={state} />
+    </div>
+  );
+}
+
 export function RecordResults({ view }: { view: RecordView }) {
   const showTopicSource = view.scope !== 'topic';
   const showSessionSource = view.scope === 'assembly';
@@ -101,6 +169,8 @@ export function RecordResults({ view }: { view: RecordView }) {
         <StatCard label="쟁점 연결" value={view.stats.classifiedCount} />
         <StatCard label="미분류" value={view.stats.unclassifiedCount} />
       </section>
+
+      {view.items.length > 0 ? <RecordExportButton view={view} /> : null}
 
       {view.items.length === 0 ? (
         <p role="status" aria-live="polite" style={{ color: MUTED, margin: 0 }}>등록된 조별 기록이 없습니다.</p>
@@ -162,9 +232,11 @@ export function RecordResults({ view }: { view: RecordView }) {
 export default function RecordConsole({
   scope,
   topics,
+  context = {},
 }: {
   scope: RecordScope | null;
   topics: readonly TopicTarget[];
+  context?: ScopePathContext;
 }) {
   const [code, setCode] = useState('');
   const [view, setView] = useState<RecordView | null>(null);
@@ -207,7 +279,7 @@ export default function RecordConsole({
     const generation = requestGeneration.current + 1;
     requestGeneration.current = generation;
     await completeRecordLoad(
-      () => loadScopedRecords(trimmedCode, scope, topics),
+      () => loadScopedRecords(trimmedCode, scope, topics, context),
       setBusy,
       setView,
       setNotice,

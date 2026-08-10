@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { issueItems, type IssueItemsResult, type PlatformResult } from '../../../lib/platform';
-import type { SessionTopicGroup } from '../platform-nav-logic';
+import type { ScopePathContext, SessionTopicGroup } from '../platform-nav-logic';
 import { buildRecordView, type RecordView } from './record-console-logic';
 import { completeRecordLoad, RecordResults } from './RecordConsole';
 
@@ -16,6 +16,7 @@ type IssueItemsLoader = (code: string, topicId: string) => Promise<PlatformResul
 export async function loadAssemblyRecords(
   codes: Readonly<Record<string, string>>,
   groups: readonly SessionTopicGroup[],
+  context: ScopePathContext = {},
   loader: IssueItemsLoader = issueItems,
 ): Promise<PlatformResult<RecordView>> {
   const missingCode = groups.find((group) => group.topics.length > 0 && !codes[group.id]?.trim());
@@ -43,10 +44,16 @@ export async function loadAssemblyRecords(
       result: response.data,
     });
   }
-  return { data: buildRecordView('assembly', topicResults), notice: null };
+  return { data: buildRecordView('assembly', topicResults, context), notice: null };
 }
 
-export default function AssemblyRecordConsole({ groups }: { groups: readonly SessionTopicGroup[] }) {
+export default function AssemblyRecordConsole({
+  groups,
+  context = {},
+}: {
+  groups: readonly SessionTopicGroup[];
+  context?: ScopePathContext;
+}) {
   const [codes, setCodes] = useState<Record<string, string>>({});
   const [view, setView] = useState<RecordView | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -91,7 +98,7 @@ export default function AssemblyRecordConsole({ groups }: { groups: readonly Ses
     const generation = requestGeneration.current + 1;
     requestGeneration.current = generation;
     await completeRecordLoad(
-      () => loadAssemblyRecords(codes, groups),
+      () => loadAssemblyRecords(codes, groups, context),
       setBusy,
       setView,
       setNotice,

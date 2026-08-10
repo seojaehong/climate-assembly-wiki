@@ -2,7 +2,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { IssueItemsResult, PlatformResult } from '../../../lib/platform';
-import RecordConsole, { RecordResults, completeRecordLoad, loadScopedRecords } from './RecordConsole';
+import RecordConsole, { RecordExportNotice, RecordResults, completeRecordExport, completeRecordLoad, downloadRecordCsv, loadScopedRecords } from './RecordConsole';
 import { buildRecordView } from './record-console-logic';
 import type { RecordView } from './record-console-logic';
 
@@ -34,7 +34,7 @@ describe('loadScopedRecords', () => {
     const loaded = await loadScopedRecords('team-code', 'session', [
       { id: 'topic-1', label: '에너지 전환' },
       { id: 'topic-2', label: '수송 부문' },
-    ], loader);
+    ], { session: { id: 'session-1', label: '제1차 회의' } }, loader);
 
     expect(loader.mock.calls).toEqual([
       ['team-code', 'topic-1'],
@@ -43,6 +43,7 @@ describe('loadScopedRecords', () => {
     expect(loaded.notice).toBeNull();
     expect(loaded.data?.stats).toMatchObject({ topicCount: 2, submissionCount: 2, itemCount: 2 });
     expect(loaded.data?.items.map((item) => item.topicLabel)).toEqual(['에너지 전환', '수송 부문']);
+    expect(loaded.data?.context.session).toEqual({ id: 'session-1', label: '제1차 회의' });
   });
 
   it('일부 주제 실패를 불완전한 회차 기록으로 표시하지 않는다', async () => {
@@ -54,7 +55,7 @@ describe('loadScopedRecords', () => {
     const loaded = await loadScopedRecords('team-code', 'session', [
       { id: 'topic-1', label: '에너지 전환' },
       { id: 'topic-2', label: '수송 부문' },
-    ], loader);
+    ], {}, loader);
 
     expect(loaded.data).toBeNull();
     expect(loaded.notice).toBe('수송 부문: 참여 코드 범위를 확인하세요.');
@@ -94,6 +95,10 @@ describe('RecordResults', () => {
     expect(html).toContain('id="source-item-item-topic-1"');
     expect(html).toContain('tabindex="-1"');
     expect(html).toContain('<caption');
+    expect(html).toContain('기록 CSV 내려받기');
+    expect(html).toContain('aria-label="기록 CSV 내려받기"');
+    expect(html).toContain('role="status"');
+    expect(html).toContain('aria-live="polite"');
   });
 
   it('공론화 기록 표에서 출처 회차와 주제를 분리해 제공한다', () => {
@@ -125,6 +130,54 @@ describe('RecordResults', () => {
     expect(html).toContain('aria-label="기록 원문 0건"');
     expect(html).toContain('등록된 조별 기록이 없습니다.');
     expect(html).not.toContain('<table');
+  });
+});
+
+describe('downloadRecordCsv', () => {
+  it('현재 기록 모델을 UTF-8 CSV Blob과 스코프 파일명으로 전달한다', async () => {
+    const view = buildRecordView('session', [{
+      target: { id: 'topic-1', label: '에너지 전환' },
+      result: result('topic-1', 'item-topic-1'),
+    }], {
+      org: { id: 'org-1', label: '한국갈등해결센터' },
+      assembly: { id: 'assembly-1', label: '2026 기후시민회의' },
+      session: { id: 'session-1', label: '제1차 회의' },
+    });
+    const saved: Array<{ blob: Blob; fileName: string }> = [];
+
+    downloadRecordCsv(view, new Date(2026, 7, 11), (blob, fileName) => {
+      saved.push({ blob, fileName });
+    });
+
+    expect(saved[0].fileName).toBe('회차_제1차_회의_session-1_기록_20260811.csv');
+    expect(saved[0].blob.type).toBe('text/csv;charset=utf-8');
+    expect(await saved[0].blob.text()).toContain('topic-1 시민 원문');
+  });
+
+  it('성공과 예외를 각각 live status와 로그·alert 상태로 변환한다', () => {
+    const states: Parameters<typeof RecordExportNotice>[0]['state'][] = [];
+    const error = new Error('download blocked');
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const succeeded = completeRecordExport(
+      () => undefined,
+      (state) => states.push(state),
+    );
+    const failed = completeRecordExport(
+      () => { throw error; },
+      (state) => states.push(state),
+    );
+
+    const successHtml = renderToStaticMarkup(createElement(RecordExportNotice, { state: states[0] }));
+    const errorHtml = renderToStaticMarkup(createElement(RecordExportNotice, { state: states[1] }));
+    expect(succeeded).toBe(true);
+    expect(failed).toBe(false);
+    expect(successHtml).toContain('role="status"');
+    expect(successHtml).toContain('기록 CSV 파일을 내려받았습니다.');
+    expect(errorHtml).toContain('role="alert"');
+    expect(errorHtml).toContain('기록 CSV 파일을 만들지 못했습니다. 다시 시도해 주세요.');
+    expect(log).toHaveBeenCalledWith('Failed to download record CSV', error);
+    log.mockRestore();
   });
 });
 

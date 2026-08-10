@@ -69,6 +69,13 @@ export interface TreeNode {
   children: TreeNode[];
 }
 
+export interface ScopePathRef {
+  id: string;
+  label: string;
+}
+
+export type ScopePathContext = Partial<Record<TreeNodeKind, ScopePathRef>>;
+
 /** 평탄화 결과 — 좌측 트리를 depth 들여쓰기로 렌더하고, 클릭 시 scope 로 이동한다. */
 export interface FlatNode {
   node: TreeNode;
@@ -162,6 +169,15 @@ export function activePath(tree: TreeNode | null, scope: Scope): TreeNode[] {
     node = node.children.find((c) => isNodeOnPath(c, scope));
   }
   return path;
+}
+
+/** Preserves the canonical identifiers and labels along the active domain path. */
+export function scopePathContext(tree: TreeNode | null, scope: Scope): ScopePathContext {
+  const context: ScopePathContext = {};
+  for (const node of activePath(tree, scope)) {
+    context[node.kind] = { id: node.dataId ?? node.id, label: node.label };
+  }
+  return context;
 }
 
 export interface Crumb {
