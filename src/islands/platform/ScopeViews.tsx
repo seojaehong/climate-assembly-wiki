@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { type Scope, type ViewName, deepestScopeLevel, VIEWS_FOR_LEVEL } from './platform-nav-logic';
 import ReviewConsole from './review/ReviewConsole';
 import PublishConsole from './publish/PublishConsole';
+import AnalyzeConsole from './analyze/AnalyzeConsole';
 import { buildPublicationScopeKey } from './publish/publish-console-logic';
 
 const NAVY = '#1F4E79';
@@ -19,7 +20,7 @@ const VIEW_META: Record<ViewName, { title: string; noun: string; icon: string; h
   record: { title: '기록', noun: '조별 산출물·발언', icon: '📝', hint: '조 콘솔 제출물(submission)을 이 스코프에서 모아 봅니다.' },
   vote: { title: '투표', noun: '회차 투표(ballot)', icon: '🗳️', hint: '회차 단위 무기명 투표 집계를 이 스코프에서 봅니다.' },
   analyze: { title: '분석', noun: '쟁점(issue)·합의도', icon: '📊', hint: '분석코어가 적재한 쟁점과 cluster 분모를 이 스코프에서 봅니다.' },
-  review: { title: '검수', noun: '쟁점 4×6·링크·병합', icon: '🔎', hint: '사람 검수(HITL): issue 확정·원문 연결·병합. 후속 슬라이스가 채웁니다.' },
+  review: { title: '검수', noun: '쟁점 4×6·링크·병합', icon: '🔎', hint: '사람 검수(HITL): 쟁점을 원문과 대조해 확정하고 연결·병합합니다.' },
   publish: { title: '공개', noun: '결과 페이지(/r/token)', icon: '📢', hint: '검수 완료(reviewed ≥1) 스코프를 발행하고 공개 조회를 재검증합니다.' },
 };
 
@@ -92,6 +93,26 @@ function ViewPanel({ view, scope, publishScopeId }: { view: ViewName; scope: Sco
     );
   }
 
+  if (view === 'analyze' && level === 'topic') {
+    return <AnalyzeConsole key={id} topicId={id} />;
+  }
+
+  return <PlaceholderView view={view} scope={scope} level={level} id={id} meta={meta} />;
+}
+
+function PlaceholderView({
+  view,
+  scope,
+  level,
+  id,
+  meta,
+}: {
+  view: ViewName;
+  scope: Scope;
+  level: ReturnType<typeof deepestScopeLevel>['level'];
+  id: string | null;
+  meta: (typeof VIEW_META)[ViewName];
+}) {
   // 데이터 로드 골격 — 마운트 시 "이 스코프의 무엇을 로드할지"만 확정한다.
   // 실제 RPC 페치(issueList 등)는 후속 검수 콘솔/결과 슬라이스가 이 자리에서 연결한다.
   const [mountedAt] = useState(() => Date.now());

@@ -46,6 +46,27 @@ describe('PlatformShell accessibility', () => {
     expect(html).not.toMatch(/border:(?:1|1\.5)px/);
   });
 
+  it('주제 분석 보기가 플레이스홀더 대신 실제 분석 콘솔을 연다', () => {
+    const html = renderToStaticMarkup(createElement(ScopeOutlet, {
+      scope: { o: 'org', c: 'assembly', s: 'session', t: 'topic-1', view: 'analyze' },
+    }));
+
+    expect(html).toContain('이 주제의 쟁점 분석');
+    expect(html).toContain('주제 분석 불러오기');
+    expect(html).toContain('analysis-join-code');
+    expect(html).not.toContain('데이터 로드 골격');
+  });
+
+  it('집계 계약이 없는 회차 분석은 기존 마운트 지점을 유지한다', () => {
+    const html = renderToStaticMarkup(createElement(ScopeOutlet, {
+      scope: { o: 'org', c: 'assembly', s: 'session', view: 'analyze' },
+    }));
+
+    expect(html).toContain('이 회차의 쟁점(issue)·합의도');
+    expect(html).toContain('데이터 로드 골격');
+    expect(html).not.toContain('analysis-join-code');
+  });
+
   it('검수 콘솔이 고대비 색·2px 경계·브라우저 포커스 표시를 유지한다', () => {
     const html = renderToStaticMarkup(createElement(ReviewConsole, { topicId: null }));
     const formHtml = renderToStaticMarkup(createElement(ReviewConsole, { topicId: 'topic-1', items: [] }));
