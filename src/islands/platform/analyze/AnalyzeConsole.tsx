@@ -3,7 +3,7 @@ import HitlBadge from '../../../components/HitlBadge';
 import { issueList, type IssueListResult, type PlatformResult } from '../../../lib/platform';
 import { buildScopedAnalysisView } from './analyze-console-logic';
 import type { AnalysisScope, AnalysisView, DistributionItem } from './analyze-console-logic';
-import type { AnalysisTopicTarget } from '../platform-nav-logic';
+import type { TopicTarget } from '../platform-nav-logic';
 
 const NAVY = '#1F4E79';
 const TEAL = '#135C73';
@@ -17,7 +17,7 @@ type IssueListLoader = (code: string, topicId: string) => Promise<PlatformResult
 export async function loadScopedAnalysis(
   code: string,
   scope: AnalysisScope,
-  topics: readonly AnalysisTopicTarget[],
+  topics: readonly TopicTarget[],
   loader: IssueListLoader = issueList,
 ): Promise<PlatformResult<AnalysisView>> {
   const responses = await Promise.all(topics.map(async (target) => ({
@@ -178,7 +178,7 @@ export default function AnalyzeConsole({
   topics,
 }: {
   scope: AnalysisScope | null;
-  topics: readonly AnalysisTopicTarget[];
+  topics: readonly TopicTarget[];
 }) {
   const [code, setCode] = useState('');
   const [view, setView] = useState<AnalysisView | null>(null);

@@ -1,10 +1,11 @@
-// Scope outlet for implemented consoles and the remaining record/vote placeholders.
+// Scope outlet for implemented consoles and the remaining vote/assembly-analysis placeholders.
 
 import { useEffect, useState } from 'react';
-import { type AnalysisTopicTarget, type Scope, type ViewName, deepestScopeLevel, VIEWS_FOR_LEVEL } from './platform-nav-logic';
+import { type TopicTarget, type Scope, type ViewName, deepestScopeLevel, VIEWS_FOR_LEVEL } from './platform-nav-logic';
 import ReviewConsole from './review/ReviewConsole';
 import PublishConsole from './publish/PublishConsole';
 import AnalyzeConsole from './analyze/AnalyzeConsole';
+import RecordConsole from './record/RecordConsole';
 import { buildPublicationScopeKey } from './publish/publish-console-logic';
 
 const NAVY = '#1F4E79';
@@ -35,15 +36,15 @@ function scopeLabel(scope: Scope): string {
 export default function ScopeOutlet({
   scope,
   publishScopeId,
-  analysisTopics = [],
+  scopedTopics = [],
 }: {
   scope: Scope;
   publishScopeId?: string | null;
-  analysisTopics?: readonly AnalysisTopicTarget[];
+  scopedTopics?: readonly TopicTarget[];
 }) {
   const view = scope.view;
   if (!view) return <ScopeOverview scope={scope} />;
-  return <ViewPanel view={view} scope={scope} publishScopeId={publishScopeId} analysisTopics={analysisTopics} />;
+  return <ViewPanel view={view} scope={scope} publishScopeId={publishScopeId} scopedTopics={scopedTopics} />;
 }
 
 function ScopeOverview({ scope }: { scope: Scope }) {
@@ -80,12 +81,12 @@ function ViewPanel({
   view,
   scope,
   publishScopeId,
-  analysisTopics,
+  scopedTopics,
 }: {
   view: ViewName;
   scope: Scope;
   publishScopeId?: string | null;
-  analysisTopics: readonly AnalysisTopicTarget[];
+  scopedTopics: readonly TopicTarget[];
 }) {
   const meta = VIEW_META[view];
   const { level, id } = deepestScopeLevel(scope);
@@ -106,12 +107,22 @@ function ViewPanel({
     );
   }
 
+  if (view === 'record' && (level === 'topic' || level === 'session')) {
+    return (
+      <RecordConsole
+        key={`${level}:${scopedTopics.map((topic) => topic.id).join(',')}`}
+        scope={level}
+        topics={scopedTopics}
+      />
+    );
+  }
+
   if (view === 'analyze' && (level === 'topic' || level === 'session')) {
     return (
       <AnalyzeConsole
-        key={`${level}:${analysisTopics.map((topic) => topic.id).join(',')}`}
+        key={`${level}:${scopedTopics.map((topic) => topic.id).join(',')}`}
         scope={level}
-        topics={analysisTopics}
+        topics={scopedTopics}
       />
     );
   }
@@ -164,7 +175,7 @@ function PlaceholderView({
 
 function wrapperHint(view: ViewName): string {
   switch (view) {
-    case 'record': return 'submission_get / topic_list';
+    case 'record': return 'assembly record RPC (not available)';
     case 'vote': return 'ballot RPC (P2 이후)';
     case 'analyze': return 'assembly analysis RPC (not available)';
     case 'review': return 'issueList / issueUpsert / issueLinkSet / issueMerge / issueReview';

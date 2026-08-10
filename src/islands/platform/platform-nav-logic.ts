@@ -210,13 +210,13 @@ export function deepestDataScopeTarget(
   return { level, id: node?.dataId ?? null };
 }
 
-export interface AnalysisTopicTarget {
+export interface TopicTarget {
   id: string;
   label: string;
 }
 
 /** Resolves topic RPC targets for the selected topic or session scope. */
-export function analysisTopicTargets(tree: TreeNode | null, scope: Scope): AnalysisTopicTarget[] {
+export function topicTargetsForScope(tree: TreeNode | null, scope: Scope): TopicTarget[] {
   const { level } = deepestScopeLevel(scope);
   const path = activePath(tree, scope);
   if (level === 'topic') {

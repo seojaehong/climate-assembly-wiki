@@ -5,7 +5,7 @@ import {
   toIssueViewModels,
   type IssueViewModel,
 } from '../review/review-console-logic';
-import type { AnalysisTopicTarget } from '../platform-nav-logic';
+import type { TopicTarget } from '../platform-nav-logic';
 
 export type AnalysisScope = 'topic' | 'session';
 
@@ -30,7 +30,7 @@ export interface AnalysisIssueView extends IssueViewModel {
 }
 
 export interface AnalysisTopicResult {
-  target: AnalysisTopicTarget;
+  target: TopicTarget;
   result: IssueListResult;
 }
 

@@ -131,10 +131,7 @@ export function publishGateNotice(reviewedCount: number): string {
 
 // ── 원문(submission_item) 뷰 + 미분류/재분류 로직 ──────────────────────
 
-/**
- * 검수용 원문 카드. **P2 에 주제 횡단 item RPC 가 없어** 라이브 로드 경로는 미결(콘솔은 items 를
- * 주입받는다). 링크는 M:N 이므로 issueIds 는 배열(한 원문이 여러 쟁점에 연결될 수 있다).
- */
+/** Review source item loaded through issue_items; issue links remain multi-label. */
 export interface ReviewItem {
   itemId: string;
   submissionId: string;
