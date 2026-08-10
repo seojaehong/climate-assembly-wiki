@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-10T19:23:10.926Z",
-  "baseUrl": "https://0f1ef7fe.climate-assembly-wiki.pages.dev",
+  "generatedAt": "2026-08-10T20:08:18.602Z",
+  "baseUrl": "https://climate-assembly.org",
   "standard": "WCAG 2.2 AA automated subset + skip-link focus",
   "engine": {
     "name": "axe-core",
@@ -41,7 +41,7 @@
     {
       "id": "platform-login",
       "path": "/platform/",
-      "url": "https://0f1ef7fe.climate-assembly-wiki.pages.dev/platform/",
+      "url": "https://climate-assembly.org/platform/",
       "fixture": null,
       "readiness": null,
       "httpStatus": 200,
@@ -58,7 +58,7 @@
     {
       "id": "authenticated-platform",
       "path": "/platform/",
-      "url": "https://0f1ef7fe.climate-assembly-wiki.pages.dev/platform/",
+      "url": "https://climate-assembly.org/platform/",
       "fixture": "ci-staff-read-fixture-v1",
       "readiness": {
         "selector": "aside button[aria-current=\"location\"]",
@@ -78,7 +78,7 @@
     {
       "id": "accessibility-statement",
       "path": "/platform/accessibility/",
-      "url": "https://0f1ef7fe.climate-assembly-wiki.pages.dev/platform/accessibility/",
+      "url": "https://climate-assembly.org/platform/accessibility/",
       "fixture": null,
       "readiness": null,
       "httpStatus": 200,
@@ -95,7 +95,7 @@
     {
       "id": "public-result-unpublished",
       "path": "/r/_/",
-      "url": "https://0f1ef7fe.climate-assembly-wiki.pages.dev/r/_/",
+      "url": "https://climate-assembly.org/r/_/",
       "fixture": null,
       "readiness": null,
       "httpStatus": 200,
@@ -112,7 +112,7 @@
     {
       "id": "published-result",
       "path": "/r/_/",
-      "url": "https://0f1ef7fe.climate-assembly-wiki.pages.dev/r/_/",
+      "url": "https://climate-assembly.org/r/_/",
       "fixture": "ci-published-result-read-fixture-v1",
       "readiness": {
         "selector": "main#main-content header h1",

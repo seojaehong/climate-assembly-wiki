@@ -32,7 +32,7 @@
 | 공개 결과 페이지 | `/r/<token>` 매트릭스·랭킹·4×6·표대체본·HITL | 2af1ce2 |
 | 검수 콘솔 | 4×6 코딩·재분류·병합·미분류함 본문·게이트 | 62aabfc |
 
-**최근 검증(2026-08-11):** src Vitest 734건·automation Vitest 54건, Astro check 오류 0, Node20 정적 빌드 통과. 커밋 `f7a1933`의 고정 Cloudflare Pages 배포에서 자동감사 대상 5경로가 통과했고 위반·미완료 판정은 0건이다. 사용자 도메인은 Workers 자산 라우팅 전파 중 `/r/_/`의 새 JS 모듈에 HTML fallback을 반환해 공개 결과 hydration 재검증이 남아 있다. 스크린리더·모바일 보조기기 수동평가도 남아 전체 상태는 `needs_review`다. 격리 불변식(RPC org_id 미전달)은 유지한다.
+**최근 검증(2026-08-11):** src Vitest 734건·automation Vitest 59건, Astro check 오류 0, Node20 정적 빌드 통과. 커밋 `5e5406d`의 수동 Cloudflare Pages 배포([run 31427305710](https://github.com/seojaehong/climate-assembly-wiki/actions/runs/31427305710))에서 강제 자산 업로드와 사용자 도메인 ResultView JS 자산 12회 검증이 통과했다. 배포 후 `https://climate-assembly.org` 자동감사 대상 5경로도 모두 통과했고 위반·미완료 판정은 0건이다. 스크린리더·모바일 보조기기 수동평가는 남아 전체 상태는 `needs_review`다. 격리 불변식(RPC org_id 미전달)은 유지한다.
 
 ### Phase A 점진 구현 (2026-08-11)
 
