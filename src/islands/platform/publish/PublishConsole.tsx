@@ -15,7 +15,7 @@ const AMBER = '#9A5B00';
 const RED = '#B42318';
 const INK = '#1F2933';
 const MUTED = '#5A6B73';
-const LINE = '#DCE7EE';
+const LINE = '#6B7D88';
 const PANEL = '#F5F9FB';
 
 interface Publication {
@@ -31,6 +31,14 @@ interface Publication {
 interface Props {
   scope: ScopeLevel | null;
   scopeId: string | null;
+}
+
+export function CopyAnnouncement({ copied }: { copied: boolean }) {
+  return (
+    <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+      {copied ? '공개 결과 URL을 클립보드에 복사했습니다.' : ''}
+    </p>
+  );
 }
 
 function scopeLabel(scope: ScopeLevel | null): string {
@@ -171,12 +179,12 @@ export default function PublishConsole({ scope, scopeId }: Props) {
   };
 
   const inputStyle: React.CSSProperties = {
-    width: '100%', boxSizing: 'border-box', border: `1px solid ${LINE}`, borderRadius: 10,
+    width: '100%', boxSizing: 'border-box', border: `2px solid ${LINE}`, borderRadius: 10,
     padding: '11px 12px', color: INK, background: '#fff', font: 'inherit', fontSize: 15,
   };
 
   return (
-    <div style={{ maxWidth: 860 }}>
+    <div aria-busy={busy} style={{ maxWidth: 860 }}>
       <div style={{ fontFamily: 'monospace', fontSize: 12, letterSpacing: '.14em', color: TEAL, textTransform: 'uppercase', marginBottom: 8 }}>
         {scopeLabel(scope)} · 공개 운영
       </div>
@@ -185,7 +193,7 @@ export default function PublishConsole({ scope, scopeId }: Props) {
         검수 완료 쟁점이 있는 현재 스코프를 스냅샷으로 발행합니다. AI는 초안을 만들고, 공개 여부와 최종 표현은 운영진이 결정합니다.
       </p>
 
-      <section aria-label="공개 설정" style={{ border: `1px solid ${LINE}`, borderRadius: 16, background: '#fff', padding: 20 }}>
+      <section aria-label="공개 설정" style={{ border: `2px solid ${LINE}`, borderRadius: 16, background: '#fff', padding: 20 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14 }}>
           <label>
             <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: NAVY, marginBottom: 5 }}>HQ 인증 토큰</span>
@@ -229,6 +237,7 @@ export default function PublishConsole({ scope, scopeId }: Props) {
 
       {error ? <p role="alert" style={{ color: RED, fontWeight: 700, margin: '14px 0 0' }}>{error}</p> : null}
       {notice ? <p role="status" aria-live="polite" style={{ color: notice.includes('못') || notice.includes('완료되지') ? AMBER : GREEN, fontWeight: 700, margin: '14px 0 0' }}>{notice}</p> : null}
+      <CopyAnnouncement copied={copied} />
 
       {publication ? (
         <section aria-label="발행된 결과" style={{ marginTop: 18, border: `2px solid ${publication.verified ? GREEN : AMBER}`, borderRadius: 16, background: '#fff', padding: 20 }}>
@@ -243,13 +252,13 @@ export default function PublishConsole({ scope, scopeId }: Props) {
           </p>
           <input aria-label="공개 결과 URL" readOnly value={publication.url} onFocus={(event) => event.currentTarget.select()} style={{ ...inputStyle, fontFamily: 'monospace' }} />
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-            <button type="button" onClick={copyUrl} style={{ border: `1px solid ${TEAL}`, borderRadius: 9, background: '#fff', color: TEAL, padding: '9px 13px', fontWeight: 800, cursor: 'pointer' }}>
+            <button type="button" onClick={copyUrl} style={{ border: `2px solid ${TEAL}`, borderRadius: 9, background: '#fff', color: TEAL, padding: '9px 13px', fontWeight: 800, cursor: 'pointer' }}>
               {copied ? '복사됨' : '링크 복사'}
             </button>
             <a href={publication.url} target="_blank" rel="noreferrer" style={{ borderRadius: 9, background: TEAL, color: '#fff', padding: '9px 13px', fontWeight: 800, textDecoration: 'none' }}>
               새 창에서 공개 페이지 확인
             </a>
-            <button type="button" onClick={unpublish} disabled={busy} style={{ border: `1px solid ${RED}`, borderRadius: 9, background: '#fff', color: RED, padding: '9px 13px', fontWeight: 800, cursor: busy ? 'wait' : 'pointer' }}>
+            <button type="button" onClick={unpublish} disabled={busy} style={{ border: `2px solid ${RED}`, borderRadius: 9, background: '#fff', color: RED, padding: '9px 13px', fontWeight: 800, cursor: busy ? 'wait' : 'pointer' }}>
               공개 해제
             </button>
           </div>

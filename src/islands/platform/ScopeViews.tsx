@@ -11,9 +11,9 @@ import PublishConsole from './publish/PublishConsole';
 import { buildPublicationScopeKey } from './publish/publish-console-logic';
 
 const NAVY = '#1F4E79';
-const TEAL = '#23B2C3';
+const TEAL = '#135C73';
 const MUTED = '#5A6B73';
-const LINE = '#DCE7EE';
+const LINE = '#6B7D88';
 
 const VIEW_META: Record<ViewName, { title: string; noun: string; icon: string; hint: string }> = {
   record: { title: '기록', noun: '조별 산출물·발언', icon: '📝', hint: '조 콘솔 제출물(submission)을 이 스코프에서 모아 봅니다.' },
@@ -59,7 +59,7 @@ function ScopeOverview({ scope }: { scope: Scope }) {
       {views.length > 0 ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))', gap: 12 }}>
           {views.map((v) => (
-            <div key={v} style={{ border: `1px solid ${LINE}`, borderRadius: 14, padding: '16px 18px', background: '#fff' }}>
+            <div key={v} style={{ border: `2px solid ${LINE}`, borderRadius: 14, padding: '16px 18px', background: '#fff' }}>
               <div style={{ fontSize: 26, marginBottom: 6 }} aria-hidden="true">{VIEW_META[v].icon}</div>
               <div style={{ fontSize: 18, fontWeight: 800, color: NAVY }}>{VIEW_META[v].title}</div>
               <div style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{VIEW_META[v].noun}</div>
@@ -110,7 +110,7 @@ function ViewPanel({ view, scope, publishScopeId }: { view: ViewName; scope: Sco
       </h2>
       <p style={{ color: MUTED, fontSize: 15, margin: '0 0 18px' }}>{meta.hint}</p>
 
-      <div style={{ border: `1px dashed ${TEAL}`, borderRadius: 14, padding: '22px 20px', background: '#F1F7FA' }}>
+      <div style={{ border: `2px dashed ${TEAL}`, borderRadius: 14, padding: '22px 20px', background: '#F1F7FA' }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: NAVY, marginBottom: 8 }}>데이터 로드 골격 (마운트 지점)</div>
         <ul style={{ margin: 0, paddingLeft: 18, color: MUTED, fontSize: 14, lineHeight: 1.7 }}>
           <li>스코프 레벨: <b style={{ color: NAVY }}>{level ?? '(미선택)'}</b></li>

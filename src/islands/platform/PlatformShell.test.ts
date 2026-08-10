@@ -4,6 +4,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { BreadcrumbNav, completeSignOut, DataTreeNavigation, LoginCard, LogoutNotice, PLATFORM_ACCENT, PLATFORM_CONTROL_BORDER, ViewTabs } from './PlatformShell';
 import type { TreeNode } from './platform-nav-logic';
+import ScopeOutlet from './ScopeViews';
+import ReviewConsole, { REVIEW_STATUS_GREEN, ReviewIssueChoice } from './review/ReviewConsole';
+import type { IssueViewModel } from './review/review-console-logic';
 
 const tree: TreeNode = {
   kind: 'org',
@@ -34,6 +37,53 @@ function contrastRatio(a: string, b: string): number {
 }
 
 describe('PlatformShell accessibility', () => {
+  it('스코프 개요가 고대비 액센트와 2px 경계만 사용한다', () => {
+    const html = renderToStaticMarkup(createElement(ScopeOutlet, { scope: { c: 'assembly-1' } }));
+
+    expect(html).toContain('color:#135C73');
+    expect(html).toContain('border:2px solid #6B7D88');
+    expect(html).not.toMatch(/border:(?:1|1\.5)px/);
+  });
+
+  it('검수 콘솔이 고대비 색·2px 경계·브라우저 포커스 표시를 유지한다', () => {
+    const html = renderToStaticMarkup(createElement(ReviewConsole, { topicId: null }));
+    const formHtml = renderToStaticMarkup(createElement(ReviewConsole, { topicId: 'topic-1', items: [] }));
+    const source = readFileSync(new URL('./review/ReviewConsole.tsx', import.meta.url), 'utf8');
+
+    expect(html).toContain('border:2px dashed #135C73');
+    expect(formHtml).toContain('aria-busy="false"');
+    expect(formHtml).toContain('for="review-join-code"');
+    expect(formHtml).toContain('id="review-join-code"');
+    for (const controlId of ['review-issue-label', 'review-frequency', 'review-stance', 'review-summary', 'review-cluster-id']) {
+      expect(source).toContain(`htmlFor="${controlId}"`);
+      expect(source).toContain(`id="${controlId}"`);
+    }
+    expect(source).toContain('aria-label="병합할 원본 쟁점"');
+    expect(source).toContain('aria-label="병합 대상 쟁점"');
+    expect(source).toContain('aria-label="선택 원문을 이동할 대상 쟁점"');
+    expect(source).not.toMatch(/border:\s*['`]?1(?:\.5)?px/);
+    expect(source).not.toContain("outline: 'none'");
+    expect(source).not.toContain('#23B2C3');
+    expect(source).not.toContain('#B5651D');
+    expect(contrastRatio(REVIEW_STATUS_GREEN, '#E3F1E6')).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('쟁점 선택 상태를 보조기기와 화면에 함께 표시한다', () => {
+    const vm: IssueViewModel = {
+      id: 'issue-1', label: '재생에너지 확대', stance: 'proposal', frequencyClass: 'consensus',
+      summary: null, origin: 'human', reviewStatus: 'reviewed', reviewedBy: 'operator',
+      frequencyBadge: '합의', stanceBadge: '대안·제안', statusBadge: '검수 완료', aiDraft: false,
+      linkedItemCount: 2, consensusDenominator: 2, reviewable: false,
+    };
+    const activeHtml = renderToStaticMarkup(createElement(ReviewIssueChoice, { vm, active: true, onSelect: () => undefined }));
+    const inactiveHtml = renderToStaticMarkup(createElement(ReviewIssueChoice, { vm, active: false, onSelect: () => undefined }));
+
+    expect(activeHtml).toContain('aria-pressed="true"');
+    expect(activeHtml).toContain('선택됨');
+    expect(inactiveHtml).toContain('aria-pressed="false"');
+    expect(inactiveHtml).not.toContain('선택됨');
+  });
+
   it('로그인 폼이 입력 이름과 상태 메시지를 보조기기에 제공한다', () => {
     const html = renderToStaticMarkup(createElement(LoginCard, {
       notice: '인증 설정을 확인해 주세요.',
