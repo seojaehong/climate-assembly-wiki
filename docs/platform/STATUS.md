@@ -32,7 +32,7 @@
 | 공개 결과 페이지 | `/r/<token>` 매트릭스·랭킹·4×6·표대체본·HITL | 2af1ce2 |
 | 검수 콘솔 | 4×6 코딩·재분류·병합·미분류함 본문·게이트 | 62aabfc |
 
-**최근 검증(2026-08-11):** src Vitest 734건·automation Vitest 51건, Astro check 오류 0, Node20 정적 빌드 통과. 라이브와 로컬 preview의 자동감사 대상 3경로는 통과했으며, 인증 후 콘솔·실제 공개 결과는 `needs_review` 제외 표면으로 기록한다. 격리 불변식(RPC org_id 미전달)은 유지한다.
+**최근 검증(2026-08-11):** src Vitest 734건·automation Vitest 52건, Astro check 오류 0, Node20 정적 빌드 통과. 라이브와 로컬 preview의 자동감사 대상 3경로는 통과했으며, 인증 후 콘솔·실제 공개 결과는 `needs_review` 제외 표면으로 기록한다. 격리 불변식(RPC org_id 미전달)은 유지한다.
 
 ### Phase A 점진 구현 (2026-08-11)
 

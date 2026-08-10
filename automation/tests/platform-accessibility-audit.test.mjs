@@ -156,3 +156,15 @@ test('preserves axe incomplete evidence and promotes the report to needs_review'
   ]);
   expect(JSON.parse(readFileSync(reportPath, 'utf8')).routes[0].incomplete).toHaveLength(1);
 });
+
+test('installs root dependencies without requiring an ignored lockfile', () => {
+  const workflow = readFileSync(
+    new URL('../../.github/workflows/platform-accessibility.yml', import.meta.url),
+    'utf8',
+  );
+
+  expect(workflow).toContain('cache-dependency-path: automation/package-lock.json');
+  expect(workflow).toContain('run: npm install --no-package-lock');
+  expect(workflow).toContain('working-directory: automation\n        run: npm ci');
+  expect(workflow).not.toContain('run: npm ci\n      - name: Install audit dependencies');
+});
