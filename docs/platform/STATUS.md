@@ -32,12 +32,12 @@
 | 공개 결과 페이지 | `/r/<token>` 매트릭스·랭킹·4×6·표대체본·HITL | 2af1ce2 |
 | 검수 콘솔 | 4×6 코딩·재분류·병합·미분류함 본문·게이트 | 62aabfc |
 
-**최근 검증(2026-08-11):** src Vitest 734건·automation Vitest 52건, Astro check 오류 0, Node20 정적 빌드 통과. 라이브와 로컬 preview의 자동감사 대상 3경로는 통과했으며, 인증 후 콘솔·실제 공개 결과는 `needs_review` 제외 표면으로 기록한다. 격리 불변식(RPC org_id 미전달)은 유지한다.
+**최근 검증(2026-08-11):** src Vitest 734건·automation Vitest 54건, Astro check 오류 0, Node20 정적 빌드 통과. 로컬 preview의 자동감사 대상 5경로는 통과했고 위반·미완료 판정 0건이다. 스크린리더·모바일 보조기기 수동평가가 남아 전체 상태는 `needs_review`다. 격리 불변식(RPC org_id 미전달)은 유지한다.
 
 ### Phase A 점진 구현 (2026-08-11)
 
-- **A5 자동 감사 기반**: `automation/platform-accessibility-audit.mjs`가 실제 Chromium에서 axe-core WCAG 2.2 AA 태그와 건너뛰기 링크 포커스를 검사한다. 플랫폼 로그인·접근성 성명·공개 결과 상태 경로의 라이브 증거는 `evaluation/platform-accessibility-audit.json`에 저장하며, `.github/workflows/platform-accessibility.yml`이 관련 변경마다 같은 검사를 재실행한다.
-- 이 결과는 자동화 가능한 범위의 증거다. axe `incomplete`와 인증 fixture·고정 공개 snapshot이 없어 제외한 표면도 JSON에 보존한다. 스크린리더·모바일 보조기기 전수 수동평가와 공식 품질인증은 완료로 간주하지 않는다.
+- **A5 자동 감사 기반**: `automation/platform-accessibility-audit.mjs`가 실제 Chromium에서 axe-core WCAG 2.2 AA 태그와 건너뛰기 링크 포커스를 검사한다. 플랫폼 로그인·인증 후 셸·접근성 성명·미공개/공개 결과 5경로의 증거는 `evaluation/platform-accessibility-audit.json`에 저장하며, `.github/workflows/platform-accessibility.yml`이 관련 변경마다 같은 검사를 재실행한다.
+- 인증 셸과 공개 결과는 실제 production 컴포넌트에 CI 전용 읽기 응답을 주입하고 readiness selector 도달을 필수로 한다. fixture 이름·준비 상태·axe `incomplete`를 JSON에 보존한다. 스크린리더·모바일 보조기기 전수 수동평가와 공식 품질인증은 완료로 간주하지 않는다.
 
 ## 병합 전 게이트
 

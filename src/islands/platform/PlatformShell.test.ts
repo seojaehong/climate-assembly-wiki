@@ -207,7 +207,8 @@ describe('PlatformShell accessibility', () => {
     expect(activeHtml).toContain('aria-pressed="true"');
     expect(activeHtml).toContain('선택됨');
     expect(activeHtml).toContain('검수 완료');
-    expect(activeHtml).toContain('aria-label="검수 완료: 운영진이 원문과 대조해 공개 가능한 표현으로 확정했습니다."');
+    expect(activeHtml).toContain('class="sr-only">: 운영진이 원문과 대조해 공개 가능한 표현으로 확정했습니다.</span>');
+    expect(activeHtml).not.toContain('aria-label="검수 완료');
     expect(inactiveHtml).toContain('aria-pressed="false"');
     expect(inactiveHtml).not.toContain('선택됨');
   });
@@ -262,7 +263,8 @@ describe('PlatformShell accessibility', () => {
     expect(source).toContain('axe-core 기반 WCAG 2.2 AA 자동검사');
     expect(source).toContain('evaluation/platform-accessibility-audit.json');
     expect(source).toContain('자동검사는 공식 품질인증이나 전수 수동평가를 대체하지 않습니다.');
-    expect(source).toContain('인증 후 운영 콘솔과 실제 공개 결과의 동적 상태는 현재 자동감사에서 제외');
+    expect(source).toContain('인증 셸과 공개 결과의 자동감사는 읽기 전용 브라우저 fixture를 사용');
+    expect(source).toContain('스크린리더와 모바일 보조기기 평가는 수동 확인이 필요합니다.');
   });
 
   it('스코프 보기 내비게이션이 현재 보기를 한 곳에서만 표시한다', () => {

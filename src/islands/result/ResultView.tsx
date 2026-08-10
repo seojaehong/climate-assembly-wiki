@@ -19,6 +19,8 @@ const BORDER = '#DCE7EE';
 export const RESULT_CONTROL_BORDER = '#6B7D88';
 export const RESULT_STATUS_GREEN = '#2F6F25';
 export const RESULT_STATUS_AMBER = '#8A4F08';
+export const RESULT_MATRIX_RAISED = '#2E75B6';
+export const RESULT_MATRIX_NOT_RAISED = '#6B7D88';
 
 const FREQ_COLOR: Record<string, string> = {
   consensus: RESULT_STATUS_GREEN,
@@ -204,14 +206,19 @@ function CoverageMatrix({ view }: { view: ResultViewModel }) {
                 </th>
                 {cells.map((raised, i) => (
                   <td key={matrix.teams[i]} className="px-2 py-2 text-center align-middle">
+                    <span className="sr-only">{matrix.teams[i]} {raised ? '제기' : '미제기'}</span>
                     {raised ? (
-                      <span aria-label={`${matrix.teams[i]} 제기`} className="text-[22px]" style={{ color: '#2E75B6' }}>
-                        ●
-                      </span>
+                      <span
+                        aria-hidden="true"
+                        className="inline-block h-3 w-3 rounded-full"
+                        style={{ background: RESULT_MATRIX_RAISED }}
+                      />
                     ) : (
-                      <span aria-label={`${matrix.teams[i]} 미제기`} className="text-[18px]" style={{ color: '#C4D8E4' }}>
-                        ·
-                      </span>
+                      <span
+                        aria-hidden="true"
+                        className="inline-block h-1.5 w-1.5 rounded-full"
+                        style={{ background: RESULT_MATRIX_NOT_RAISED }}
+                      />
                     )}
                   </td>
                 ))}

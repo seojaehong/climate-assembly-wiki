@@ -10,7 +10,8 @@ describe('HitlBadge', () => {
     const html = renderToStaticMarkup(createElement(HitlBadge, { status }));
 
     expect(html).toContain('검수 대기 · AI 초안');
-    expect(html).toContain(`aria-label="${status.label}: ${status.description}"`);
+    expect(html).toContain(`class="sr-only">: ${status.description}</span>`);
+    expect(html).not.toContain('aria-label=');
     expect(html).toContain('border:2px solid #F5A623');
     expect(html).toContain('color:#8A4F08');
   });

@@ -2,7 +2,15 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { buildResultView, type ResultGetResponse } from './result-view-logic';
-import { RESULT_CONTROL_BORDER, RESULT_STATUS_AMBER, RESULT_STATUS_GREEN, ResultContent, ResultStatusScreen } from './ResultView';
+import {
+  RESULT_CONTROL_BORDER,
+  RESULT_MATRIX_NOT_RAISED,
+  RESULT_MATRIX_RAISED,
+  RESULT_STATUS_AMBER,
+  RESULT_STATUS_GREEN,
+  ResultContent,
+  ResultStatusScreen,
+} from './ResultView';
 
 function luminance(hex: string): number {
   const channels = [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16) / 255);
@@ -66,6 +74,10 @@ describe('ResultView accessibility', () => {
     expect(html).toContain('쟁점별 방향·빈도·제기 조 수·원문 군집·검수 상태');
     expect(html).toContain('scope="col"');
     expect(html).toContain('aria-hidden="true"');
+    expect(html).toContain('class="sr-only">1분과 1조 제기</span>');
+    expect(html).toContain('aria-hidden="true" class="inline-block h-3 w-3 rounded-full"');
+    expect(html).not.toContain('>●</span>');
+    expect(html).not.toContain('aria-label="1분과 1조 제기"');
   });
 
   it('공개 결과에서 본문과 접근성 성명으로 이동할 수 있고 얇은 경계를 쓰지 않는다', () => {
@@ -82,13 +94,16 @@ describe('ResultView accessibility', () => {
     expect(contrastRatio(RESULT_STATUS_AMBER, '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(RESULT_STATUS_AMBER, '#FEF6E7')).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(RESULT_CONTROL_BORDER, '#FFFFFF')).toBeGreaterThanOrEqual(3);
+    expect(contrastRatio(RESULT_MATRIX_RAISED, '#FFFFFF')).toBeGreaterThanOrEqual(3);
+    expect(contrastRatio(RESULT_MATRIX_NOT_RAISED, '#FFFFFF')).toBeGreaterThanOrEqual(3);
   });
 
   it('미검수 쟁점의 배지와 표 대체본이 같은 HITL 상태 계약을 사용한다', () => {
     const html = renderToStaticMarkup(createElement(ResultContent, { view: readyView('draft') }));
 
     expect(html).toContain('검수 대기 · 초안');
-    expect(html).toContain('aria-label="검수 대기 · 초안: 출처 정보가 없는 초안이며 운영진의 원문 대조와 확정이 필요합니다."');
+    expect(html).toContain('class="sr-only">: 출처 정보가 없는 초안이며 운영진의 원문 대조와 확정이 필요합니다.</span>');
+    expect(html).not.toContain('aria-label="검수 대기 · 초안');
     expect(html).not.toContain('>대기(AI 초안)<');
   });
 });

@@ -8,7 +8,6 @@ export interface HitlBadgeProps {
 export default function HitlBadge({ status }: HitlBadgeProps) {
   return (
     <span
-      aria-label={`${status.label}: ${status.description}`}
       style={{
         display: 'inline-block',
         border: `2px solid ${status.border}`,
@@ -23,6 +22,7 @@ export default function HitlBadge({ status }: HitlBadgeProps) {
       }}
     >
       {status.label}
+      <span className="sr-only">: {status.description}</span>
     </span>
   );
 }

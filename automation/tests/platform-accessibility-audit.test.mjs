@@ -3,7 +3,11 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { auditPlatformAccessibility } from '../platform-accessibility-audit.mjs';
+import {
+  DEFAULT_AUDIT_ROUTES,
+  DEFAULT_EXCLUDED_SURFACES,
+  auditPlatformAccessibility,
+} from '../platform-accessibility-audit.mjs';
 
 let outDir;
 let server;
@@ -27,6 +31,14 @@ const incompletePage = `<!doctype html><html lang="ko"><head><title>수동 확�
   <a href="#main-content">본문 바로가기</a><main id="main-content" tabindex="-1"><h1>수동 확인</h1>
   <div style="background:linear-gradient(90deg,#fff,#000)"><span style="color:#777">배경 대비 확인</span></div>
   </main></body></html>`;
+const preparedPage = `<!doctype html><html lang="ko"><head><title>Fixture 준비</title></head><body>
+  <a href="#main-content">본문 바로가기</a><main id="main-content" tabindex="-1">
+  <h1>불러오는 중</h1></main><script>
+  fetch('/fixture-data').then((response) => response.json()).then((data) => {
+    document.querySelector('h1').textContent = data.title;
+    document.querySelector('main').dataset.ready = 'true';
+  });
+  </script></body></html>`;
 
 beforeAll(async () => {
   outDir = mkdtempSync(join(tmpdir(), 'platform-a11y-'));
@@ -39,6 +51,8 @@ beforeAll(async () => {
           ? wrongSkipPage
           : request.url === '/incomplete'
             ? incompletePage
+            : request.url === '/prepared'
+              ? preparedPage
             : validPage,
     );
   });
@@ -75,6 +89,33 @@ test('audits WCAG 2.2 AA and skip-link focus through a real browser', async () =
   expect(report.routes[0].incomplete).toEqual([]);
   expect(existsSync(reportPath)).toBe(true);
   expect(JSON.parse(readFileSync(reportPath, 'utf8'))).toEqual(report);
+}, 60_000);
+
+test('waits for a fixture-backed production surface before auditing it', async () => {
+  const report = await auditPlatformAccessibility({
+    baseUrl,
+    routes: [{
+      id: 'prepared',
+      path: '/prepared',
+      skipTarget: 'main-content',
+      fixture: 'read-only-browser-fixture',
+      readySelector: 'main[data-ready="true"]',
+      prepare: async ({ page }) => {
+        await page.route('**/fixture-data', async (route) => {
+          await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ title: '준비 완료' }) });
+        });
+      },
+    }],
+    reportPath: join(outDir, 'prepared.json'),
+  });
+
+  expect(report.status).toBe('pass');
+  expect(report.routes[0]).toMatchObject({
+    id: 'prepared',
+    passed: true,
+    fixture: 'read-only-browser-fixture',
+    readiness: { selector: 'main[data-ready="true"]', reached: true },
+  });
 }, 60_000);
 
 test('preserves actionable violation evidence for a failing route', async () => {
@@ -167,4 +208,27 @@ test('installs root dependencies without requiring an ignored lockfile', () => {
   expect(workflow).toContain('run: npm install --no-package-lock');
   expect(workflow).toContain('working-directory: automation\n        run: npm ci');
   expect(workflow).not.toContain('run: npm ci\n      - name: Install audit dependencies');
+});
+
+test('covers authenticated and published production surfaces with read-only browser fixtures', () => {
+  expect(DEFAULT_AUDIT_ROUTES.map((route) => route.id)).toEqual([
+    'platform-login',
+    'authenticated-platform',
+    'accessibility-statement',
+    'public-result-unpublished',
+    'published-result',
+  ]);
+  expect(DEFAULT_AUDIT_ROUTES.find((route) => route.id === 'authenticated-platform')).toMatchObject({
+    path: '/platform/',
+    fixture: 'ci-staff-read-fixture-v1',
+    readySelector: 'aside button[aria-current="location"]',
+  });
+  expect(DEFAULT_AUDIT_ROUTES.find((route) => route.id === 'published-result')).toMatchObject({
+    path: '/r/_/',
+    fixture: 'ci-published-result-read-fixture-v1',
+    readySelector: 'main#main-content header h1',
+  });
+  expect(DEFAULT_EXCLUDED_SURFACES).toEqual([
+    expect.objectContaining({ id: 'assistive-technology-manual-evaluation' }),
+  ]);
 });

@@ -6,6 +6,175 @@ import { fileURLToPath } from 'node:url';
 
 export const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
+const SUPABASE_ORIGIN = 'https://pleyuknjnprsckssxvrh.supabase.co';
+const AUTH_STORAGE_KEY = 'sb-pleyuknjnprsckssxvrh-auth-token';
+const FIXTURE_IDS = {
+  user: '00000000-0000-4000-8000-000000000001',
+  org: '00000000-0000-4000-8000-000000000002',
+  assembly: '00000000-0000-4000-8000-000000000003',
+  session: '00000000-0000-4000-8000-000000000004',
+  topic: '00000000-0000-4000-8000-000000000005',
+};
+
+function jsonResponse(route, body, status = 200) {
+  return route.fulfill({
+    status,
+    contentType: 'application/json; charset=utf-8',
+    headers: { 'access-control-allow-origin': '*' },
+    body: JSON.stringify(body),
+  });
+}
+
+function auditUser() {
+  return {
+    id: FIXTURE_IDS.user,
+    aud: 'authenticated',
+    role: 'authenticated',
+    email: 'accessibility-audit@example.invalid',
+    email_confirmed_at: '2026-08-11T00:00:00.000Z',
+    app_metadata: { provider: 'email', providers: ['email'] },
+    user_metadata: {},
+    identities: [],
+    created_at: '2026-08-11T00:00:00.000Z',
+  };
+}
+
+function auditSession() {
+  const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({
+    aud: 'authenticated',
+    exp: 4_102_444_800,
+    role: 'authenticated',
+    sub: FIXTURE_IDS.user,
+    email: 'accessibility-audit@example.invalid',
+  })).toString('base64url');
+  return {
+    access_token: `${header}.${payload}.audit-fixture`,
+    token_type: 'bearer',
+    expires_in: 3600,
+    expires_at: 4_102_444_800,
+    refresh_token: 'audit-fixture-refresh-token',
+    user: auditUser(),
+  };
+}
+
+async function prepareAuthenticatedPlatform({ context, page }) {
+  const session = auditSession();
+  await context.addInitScript(({ key, value }) => {
+    localStorage.setItem(key, JSON.stringify(value));
+  }, { key: AUTH_STORAGE_KEY, value: session });
+  await page.route(`${SUPABASE_ORIGIN}/**`, async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/auth/v1/user') return jsonResponse(route, auditUser());
+    if (path === '/auth/v1/token') return jsonResponse(route, session);
+    if (path === '/rest/v1/rpc/org_of_uid') return jsonResponse(route, FIXTURE_IDS.org);
+    if (path === '/rest/v1/assembly') {
+      return jsonResponse(route, [{
+        id: FIXTURE_IDS.assembly,
+        slug: 'audit-assembly',
+        title: '접근성 감사 공론화',
+        archived_at: null,
+        org_id: FIXTURE_IDS.org,
+      }]);
+    }
+    if (path === '/rest/v1/session') {
+      return jsonResponse(route, [{
+        id: FIXTURE_IDS.session,
+        slug: 'audit-session',
+        ordinal: 1,
+        held_on: '2026-08-11',
+        assembly_id: FIXTURE_IDS.assembly,
+      }]);
+    }
+    if (path === '/rest/v1/discussion_topic') {
+      return jsonResponse(route, [{
+        id: FIXTURE_IDS.topic,
+        ordinal: 1,
+        prompt: '접근성 감사 주제',
+        session_id: FIXTURE_IDS.session,
+        archived_at: null,
+      }]);
+    }
+    return jsonResponse(route, { message: `Unexpected audit fixture request: ${path}` }, 500);
+  });
+}
+
+function publishedResultFixture() {
+  return {
+    scope: 'session',
+    scope_id: FIXTURE_IDS.session,
+    title: '접근성 감사 회차 결과',
+    published_at: '2026-08-11T00:00:00.000Z',
+    hitl_notice: 'AI는 초안을 만들고, 공개 여부와 최종 표현은 운영진이 결정합니다.',
+    body: {
+      scope: 'session',
+      scope_id: FIXTURE_IDS.session,
+      title: '접근성 감사 회차 결과',
+      generated_at: '2026-08-11T00:00:00.000Z',
+      reviewed_count: 1,
+      unclassified_count: 0,
+      issues: [
+        {
+          id: 'audit-issue-reviewed',
+          label: '대중교통 접근성 확대',
+          summary: '참여 조가 대중교통 접근성 확대를 공통 제안했습니다.',
+          stance: 'proposal',
+          frequency_class: 'consensus',
+          review_status: 'reviewed',
+          consensus_denominator: 2,
+          teams: ['1분과 1조', '1분과 2조'],
+        },
+        {
+          id: 'audit-issue-draft',
+          label: '지역별 이동 여건 보완',
+          summary: '사람이 작성한 초안으로 원문 대조가 필요합니다.',
+          stance: 'condition',
+          frequency_class: 'majority',
+          review_status: 'draft',
+          origin: 'human',
+          consensus_denominator: 2,
+          teams: ['1분과 1조'],
+        },
+      ],
+    },
+  };
+}
+
+async function preparePublishedResult({ page }) {
+  await page.route(`${SUPABASE_ORIGIN}/rest/v1/rpc/result_get`, async (route) => {
+    await jsonResponse(route, publishedResultFixture());
+  });
+}
+
+export const DEFAULT_AUDIT_ROUTES = [
+  { id: 'platform-login', path: '/platform/', skipTarget: 'platform-scope-content' },
+  {
+    id: 'authenticated-platform',
+    path: '/platform/',
+    skipTarget: 'platform-scope-content',
+    fixture: 'ci-staff-read-fixture-v1',
+    readySelector: 'aside button[aria-current="location"]',
+    prepare: prepareAuthenticatedPlatform,
+  },
+  { id: 'accessibility-statement', path: '/platform/accessibility/', skipTarget: 'main-content' },
+  { id: 'public-result-unpublished', path: '/r/_/', skipTarget: 'main-content' },
+  {
+    id: 'published-result',
+    path: '/r/_/',
+    skipTarget: 'main-content',
+    fixture: 'ci-published-result-read-fixture-v1',
+    readySelector: 'main#main-content header h1',
+    prepare: preparePublishedResult,
+  },
+];
+
+export const DEFAULT_EXCLUDED_SURFACES = [
+  {
+    id: 'assistive-technology-manual-evaluation',
+    reason: 'Screen reader and mobile assistive-technology evaluation requires manual testing.',
+  },
+];
+
 function routeUrl(baseUrl, path) {
   return path.startsWith('data:') ? path : new URL(path, baseUrl).toString();
 }
@@ -50,9 +219,17 @@ async function inspectSkipLink(page, expectedTarget) {
 async function auditRoute(browser, baseUrl, route, settleMs) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const page = await context.newPage();
+  const readiness = route.readySelector
+    ? { selector: route.readySelector, reached: false }
+    : null;
   try {
+    if (route.prepare) await route.prepare({ context, page, baseUrl });
     const url = routeUrl(baseUrl, route.path);
     const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    if (route.readySelector) {
+      await page.waitForSelector(route.readySelector, { state: 'attached', timeout: 10_000 });
+      readiness.reached = true;
+    }
     if (settleMs > 0) await page.waitForTimeout(settleMs);
     await page.addScriptTag({ content: axe.source });
     const axeResult = await page.evaluate(async (tags) => globalThis.axe.run(document, {
@@ -69,6 +246,8 @@ async function auditRoute(browser, baseUrl, route, settleMs) {
       id: route.id,
       path: route.path,
       url,
+      fixture: route.fixture ?? null,
+      readiness,
       httpStatus,
       passed,
       skipLink,
@@ -82,6 +261,8 @@ async function auditRoute(browser, baseUrl, route, settleMs) {
       id: route.id,
       path: route.path,
       url: routeUrl(baseUrl, route.path),
+      fixture: route.fixture ?? null,
+      readiness,
       httpStatus: null,
       passed: false,
       skipLink: { found: false, target: route.skipTarget, focusMoved: false },
@@ -163,21 +344,8 @@ if (isCli) {
     baseUrl,
     reportPath,
     settleMs: 1_500,
-    excludedSurfaces: [
-      {
-        id: 'authenticated-platform',
-        reason: 'A CI-safe authenticated staff fixture is not provisioned.',
-      },
-      {
-        id: 'published-result',
-        reason: 'A stable public result fixture is not provisioned without exposing a result token.',
-      },
-    ],
-    routes: [
-      { id: 'platform-login', path: '/platform/', skipTarget: 'platform-scope-content' },
-      { id: 'accessibility-statement', path: '/platform/accessibility/', skipTarget: 'main-content' },
-      { id: 'public-result-unpublished', path: '/r/_/', skipTarget: 'main-content' },
-    ],
+    excludedSurfaces: DEFAULT_EXCLUDED_SURFACES,
+    routes: DEFAULT_AUDIT_ROUTES,
   });
   console.log(JSON.stringify({ reportPath, status: report.status, summary: report.summary }));
   if (report.status === 'fail') process.exitCode = 1;
