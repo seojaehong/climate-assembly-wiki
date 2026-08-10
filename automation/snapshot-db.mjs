@@ -1,7 +1,19 @@
 import { fileURLToPath } from 'node:url';
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const PLATFORM_PAYLOAD_COLLECTIONS = [
+  'submission',
+  'submission_item',
+  'issue',
+  'issue_link',
+  'result_page',
+  'ballot',
+  'ballot_item',
+  'ballot_response',
+];
+const DECLARED_PLATFORM_COUNTS = ['submission', 'issue', 'issue_link', 'result_page', 'ballot'];
 
 /** Maps non-secret GitHub workflow provenance into the export audit manifest. */
 export function workflowAuditContext(environment, exportedAt = new Date().toISOString()) {
@@ -132,6 +144,53 @@ export function verifySnapshotArchiveIntegrity(archive, auditKey) {
   return timingSafeEqual(actual, expected);
 }
 
+/** Verifies a signed archive file and returns metadata plus collection counts only. */
+export function verifySnapshotArchiveFile({ filePath, auditKey }) {
+  let archive;
+  try {
+    archive = JSON.parse(readFileSync(filePath, 'utf8'));
+  } catch {
+    throw new Error('snapshot archive JSON is invalid');
+  }
+  if (!verifySnapshotArchiveIntegrity(archive, auditKey)) {
+    throw new Error('snapshot archive integrity verification failed');
+  }
+  if (archive.platform.source !== 'platform') {
+    throw new Error('snapshot archive platform source is invalid');
+  }
+  const payload = archive.platform?.payload;
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('snapshot archive platform payload is missing');
+  }
+  const counts = {};
+  for (const key of PLATFORM_PAYLOAD_COLLECTIONS) {
+    if (!Array.isArray(payload[key])) {
+      throw new Error(`snapshot archive collection is missing: ${key}`);
+    }
+    counts[key] = payload[key].length;
+  }
+  if (!payload.counts || typeof payload.counts !== 'object' || Array.isArray(payload.counts)) {
+    throw new Error('snapshot archive declared counts are missing');
+  }
+  for (const key of DECLARED_PLATFORM_COUNTS) {
+    if (payload.counts[key] !== counts[key]) {
+      throw new Error(`snapshot archive count mismatch: ${key}`);
+    }
+  }
+  return {
+    status: 'verified',
+    snapshotId: archive.platform.id,
+    source: archive.platform.source,
+    keyId: archive.audit.keyId,
+    exportedAt: archive.audit.exportedAt,
+    repository: archive.audit.repository,
+    runId: archive.audit.runId,
+    commitSha: archive.audit.commitSha,
+    workflowRef: archive.audit.workflowRef,
+    counts,
+  };
+}
+
 async function readSnapshotRow({
   client,
   roundId,
@@ -192,6 +251,16 @@ async function runSnapshotRpc({
 
 // CLI mode
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  if (process.argv[2] === '--verify') {
+    const filePath = process.argv[3];
+    if (!filePath) throw new Error('snapshot archive path is required');
+    const result = verifySnapshotArchiveFile({
+      filePath,
+      auditKey: process.env.SNAPSHOT_AUDIT_HMAC_KEY,
+    });
+    console.log(JSON.stringify(result));
+    process.exit(0);
+  }
   const { createClient } = await import('@supabase/supabase-js');
   const { loadSchedule, findActiveWorkshop } = await import('./lib/schedule.mjs');
   const { writeFileSync, mkdirSync } = await import('node:fs');

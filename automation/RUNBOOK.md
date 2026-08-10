@@ -40,6 +40,22 @@
 3. 새 키를 `SNAPSHOT_AUDIT_HMAC_KEY`에, 대응 ID를 `SNAPSHOT_AUDIT_KEY_ID`에 설정한 뒤 함께 활성화한다. 키와 ID가 어긋난 기간에는 export를 실행하지 않는다.
 4. 과거 키는 해당 key ID의 archive 보존기간이 끝날 때까지 읽기 전용으로 보관한다. 폐기 시 대상 key ID·보존기간 종료 근거·승인자를 운영 감사기록에 남긴다.
 
+#### 내려받은 archive 읽기 전용 복구 점검
+
+Drive에서 내려받은 활성화 상태의 `{ legacy, platform, audit }` JSON은 DB나 Drive에 연결하지 않고 로컬에서 먼저 검증한다. `audit.keyId`를 확인해 외부 비밀관리 저장소에서 대응 키를 선택한 뒤 PowerShell에서 실행한다.
+
+```powershell
+Set-Location automation
+$env:SNAPSHOT_AUDIT_HMAC_KEY = Read-Host -MaskInput 'HMAC key for audit.keyId'
+node snapshot-db.mjs --verify 'C:\secure\snapshots\archive.json'
+Remove-Item Env:SNAPSHOT_AUDIT_HMAC_KEY
+```
+
+- 성공 시 snapshot ID·source·key ID·GitHub provenance와 collection별 건수만 JSON으로 출력한다. 제출 원문이나 참여 데이터는 출력하지 않는다.
+- HMAC이 다르거나 JSON이 손상됐거나 `platform` source가 아니거나 필수 collection이 빠졌거나 선언 건수와 실제 배열 길이가 다르면 nonzero로 종료한다.
+- 필수 collection은 `submission`, `submission_item`, `issue`, `issue_link`, `result_page`, `ballot`, `ballot_item`, `ballot_response`다.
+- 이 명령은 archive의 서명·구조·기본 건수 정합성을 읽기 전용으로 확인한다. DB 복원, FK/업무 규칙 전수 검증, 실제 복구 rehearsal, PITR/WAL, 사용자 행위 감사로그를 수행하거나 대체하지 않는다.
+
 ## D-30 — `workshop-schedule.yml` 잠금
 
 - `automation/workshop-schedule.yml`에서 `drive_folder_root: REPLACE_WITH_DRIVE_PARENT_ID` placeholder를 실제 ID로 치환

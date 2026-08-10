@@ -1,9 +1,14 @@
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createHmac } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { test, expect, vi } from 'vitest';
 import {
   snapshotArchive,
   snapshotRound,
+  verifySnapshotArchiveFile,
   verifySnapshotArchiveIntegrity,
   workflowAuditContext,
 } from '../snapshot-db.mjs';
@@ -32,6 +37,44 @@ const TEST_AUDIT_CONTEXT = {
   keyId: 'snapshot-audit-2026-08-v1',
 };
 const TEST_AUDIT_OPTIONS = { auditKey: TEST_AUDIT_KEY, auditContext: TEST_AUDIT_CONTEXT };
+
+function platformPayloadFixture(overrides = {}) {
+  return {
+    submission: [{ id: 'submission-1' }],
+    submission_item: [{ id: 'item-1' }],
+    issue: [{ id: 'issue-1' }],
+    issue_link: [],
+    result_page: [],
+    ballot: [{ id: 'ballot-1' }],
+    ballot_item: [{ id: 'ballot-item-1' }],
+    ballot_response: [],
+    counts: { issue: 1, issue_link: 0, result_page: 0, submission: 1, ballot: 1 },
+    ...overrides,
+  };
+}
+
+async function signedArchiveFixture(payload = platformPayloadFixture()) {
+  const rpc = vi.fn()
+    .mockResolvedValueOnce({ data: { snapshot_id: 42 }, error: null })
+    .mockResolvedValueOnce({ data: { id: 77 }, error: null });
+  return snapshotArchive({
+    client: makeClient(rpc, { data: { id: 77, source: 'platform', payload }, error: null }),
+    roundId: 8,
+    includePlatformSnapshot: true,
+    ...TEST_AUDIT_OPTIONS,
+  });
+}
+
+function withSnapshotFile(archive, callback) {
+  const tempDir = mkdtempSync(join(tmpdir(), 'snapshot-verify-'));
+  const filePath = join(tempDir, 'snapshot.json');
+  writeFileSync(filePath, typeof archive === 'string' ? archive : JSON.stringify(archive), 'utf8');
+  try {
+    return callback(filePath);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+}
 
 test('calls .schema("climate_vote").rpc("cv_snapshot_now", p_label+p_source) — regression guard', async () => {
   const rpc = vi.fn().mockResolvedValue({ data: { snapshot_id: 42, votes: 126 }, error: null });
@@ -328,4 +371,128 @@ test('fails closed before the platform RPC when audit signing configuration is i
     expect(rpc).toHaveBeenCalledTimes(1);
     expect(rpc).toHaveBeenCalledWith('cv_snapshot_now', expect.any(Object));
   }
+});
+
+test('verifies a signed archive file and returns a non-sensitive recovery summary', async () => {
+  const archive = await signedArchiveFixture();
+  withSnapshotFile(archive, (filePath) => {
+    expect(verifySnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY })).toEqual({
+      status: 'verified',
+      snapshotId: 77,
+      source: 'platform',
+      keyId: TEST_AUDIT_CONTEXT.keyId,
+      exportedAt: TEST_AUDIT_CONTEXT.exportedAt,
+      repository: TEST_AUDIT_CONTEXT.repository,
+      runId: TEST_AUDIT_CONTEXT.runId,
+      commitSha: TEST_AUDIT_CONTEXT.commitSha,
+      workflowRef: TEST_AUDIT_CONTEXT.workflowRef,
+      counts: {
+        submission: 1,
+        submission_item: 1,
+        issue: 1,
+        issue_link: 0,
+        result_page: 0,
+        ballot: 1,
+        ballot_item: 1,
+        ballot_response: 0,
+      },
+    });
+  });
+});
+
+test('rejects a signed archive file whose platform payload was changed', async () => {
+  const archive = await signedArchiveFixture();
+  const tampered = {
+    ...archive,
+    platform: { ...archive.platform, payload: { ...archive.platform.payload, issue: [] } },
+  };
+
+  withSnapshotFile(tampered, (filePath) => {
+    expect(() => verifySnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toThrow('snapshot archive integrity verification failed');
+  });
+});
+
+test('rejects a validly signed archive that is missing a required recovery collection', async () => {
+  const archive = await signedArchiveFixture(platformPayloadFixture({ ballot_response: undefined }));
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(() => verifySnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toThrow('snapshot archive collection is missing: ballot_response');
+  });
+});
+
+test('rejects a validly signed archive whose declared counts disagree with its payload', async () => {
+  const archive = await signedArchiveFixture(platformPayloadFixture({
+    counts: { issue: 9, issue_link: 0, result_page: 0, submission: 1, ballot: 1 },
+  }));
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(() => verifySnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toThrow('snapshot archive count mismatch: issue');
+  });
+});
+
+test('rejects a validly signed archive whose row is not a platform snapshot', async () => {
+  const archive = await signedArchiveFixture();
+  const platform = { ...archive.platform, source: 'legacy' };
+  const audit = {
+    ...archive.audit,
+    integrity: {
+      ...archive.audit.integrity,
+      digest: createHmac('sha256', TEST_AUDIT_KEY)
+        .update(JSON.stringify({
+          schemaVersion: archive.audit.schemaVersion,
+          event: archive.audit.event,
+          exportedAt: archive.audit.exportedAt,
+          repository: archive.audit.repository,
+          runId: archive.audit.runId,
+          commitSha: archive.audit.commitSha,
+          workflowRef: archive.audit.workflowRef,
+          keyId: archive.audit.keyId,
+          snapshotId: archive.audit.snapshotId,
+          platform,
+        }))
+        .digest('hex'),
+    },
+  };
+
+  withSnapshotFile({ ...archive, platform, audit }, (filePath) => {
+    expect(() => verifySnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toThrow('snapshot archive platform source is invalid');
+  });
+});
+
+test('rejects malformed archive JSON without echoing archive content', () => {
+  const sensitiveFragment = 'citizen-name-sensitive';
+  withSnapshotFile(`{"platform":"${sensitiveFragment}",`, (filePath) => {
+    try {
+      verifySnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY });
+      throw new Error('expected malformed archive rejection');
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect(error.message).toBe('snapshot archive JSON is invalid');
+      expect(error.message).not.toContain(sensitiveFragment);
+    }
+  });
+});
+
+test('verifies an archive through the read-only CLI without loading the snapshot schedule', async () => {
+  const archive = await signedArchiveFixture();
+  withSnapshotFile(archive, (filePath) => {
+    const output = execFileSync(
+      process.execPath,
+      [fileURLToPath(new URL('../snapshot-db.mjs', import.meta.url)), '--verify', filePath],
+      {
+        encoding: 'utf8',
+        env: { ...process.env, SNAPSHOT_AUDIT_HMAC_KEY: TEST_AUDIT_KEY },
+      },
+    );
+    expect(JSON.parse(output)).toEqual(expect.objectContaining({
+      status: 'verified',
+      snapshotId: 77,
+      keyId: TEST_AUDIT_CONTEXT.keyId,
+      counts: expect.objectContaining({ issue: 1, submission: 1, ballot: 1 }),
+    }));
+  });
 });
