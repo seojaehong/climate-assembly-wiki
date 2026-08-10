@@ -8,6 +8,7 @@ import {
   isNodeOnPath,
   isView,
   deepestScopeLevel,
+  deepestDataScopeTarget,
   SCOPE_KEYS,
   VIEWS,
   VIEWS_FOR_LEVEL,
@@ -20,23 +21,26 @@ import {
 const tree: TreeNode = {
   kind: 'org',
   id: 'kcrc',
+  dataId: 'org-uuid',
   label: '한국갈등해결센터',
   children: [
     {
       kind: 'assembly',
       id: 'climate-2026',
+      dataId: 'assembly-uuid',
       label: '2026 기후시민회의',
       children: [
         {
           kind: 'session',
           id: 'r5',
+          dataId: 'session-uuid-5',
           label: '제5차 회의',
           children: [
-            { kind: 'topic', id: 't-uuid-1', label: '에너지 전환', children: [] },
-            { kind: 'topic', id: 't-uuid-2', label: '수송 부문', children: [] },
+            { kind: 'topic', id: 't-uuid-1', dataId: 't-uuid-1', label: '에너지 전환', children: [] },
+            { kind: 'topic', id: 't-uuid-2', dataId: 't-uuid-2', label: '수송 부문', children: [] },
           ],
         },
-        { kind: 'session', id: 'r6', label: '제6차 회의', children: [] },
+        { kind: 'session', id: 'r6', dataId: 'session-uuid-6', label: '제6차 회의', children: [] },
       ],
     },
   ],
@@ -196,6 +200,22 @@ describe('deepestScopeLevel', () => {
     expect(deepestScopeLevel({ o: 'k', c: 'a', s: 'r5' })).toEqual({ level: 'session', id: 'r5' });
     expect(deepestScopeLevel({ o: 'k', c: 'a' })).toEqual({ level: 'assembly', id: 'a' });
     expect(deepestScopeLevel({ o: 'k' })).toEqual({ level: null, id: null });
+  });
+});
+
+describe('deepestDataScopeTarget', () => {
+  it('라우트 slug 대신 RPC가 요구하는 DB UUID를 반환한다', () => {
+    expect(deepestDataScopeTarget(tree, { o: 'kcrc', c: 'climate-2026' }))
+      .toEqual({ level: 'assembly', id: 'assembly-uuid' });
+    expect(deepestDataScopeTarget(tree, { o: 'kcrc', c: 'climate-2026', s: 'r5' }))
+      .toEqual({ level: 'session', id: 'session-uuid-5' });
+    expect(deepestDataScopeTarget(tree, { o: 'kcrc', c: 'climate-2026', s: 'r5', t: 't-uuid-1' }))
+      .toEqual({ level: 'topic', id: 't-uuid-1' });
+  });
+
+  it('트리가 아직 없으면 slug를 UUID로 오인하지 않는다', () => {
+    expect(deepestDataScopeTarget(null, { o: 'kcrc', c: 'climate-2026', s: 'r5' }))
+      .toEqual({ level: 'session', id: null });
   });
 });
 

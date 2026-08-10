@@ -188,7 +188,7 @@ export async function orgTree(orgId: string): Promise<PlatformResult<TreeNode>> 
       topics
         .filter((t) => t.session_id === sessionId)
         .sort((a, b) => a.ordinal - b.ordinal)
-        .map((t) => ({ kind: 'topic' as const, id: t.id, label: t.prompt, children: [] }));
+        .map((t) => ({ kind: 'topic' as const, id: t.id, dataId: t.id, label: t.prompt, children: [] }));
 
     const sessionNodes = (assemblyId: string): TreeNode[] =>
       sessions
@@ -197,6 +197,7 @@ export async function orgTree(orgId: string): Promise<PlatformResult<TreeNode>> 
         .map((s) => ({
           kind: 'session' as const,
           id: s.slug ?? s.id,
+          dataId: s.id,
           label: sessionLabel(s),
           children: topicNodes(s.id),
         }));
@@ -204,6 +205,7 @@ export async function orgTree(orgId: string): Promise<PlatformResult<TreeNode>> 
     const assemblyNodes: TreeNode[] = assemblies.map((a) => ({
       kind: 'assembly' as const,
       id: a.slug ?? a.id,
+      dataId: a.id,
       label: a.title,
       children: sessionNodes(a.id),
     }));
@@ -211,6 +213,7 @@ export async function orgTree(orgId: string): Promise<PlatformResult<TreeNode>> 
     return {
       kind: 'org',
       id: orgId,
+      dataId: orgId,
       label: '내 기관',
       children: assemblyNodes,
     };

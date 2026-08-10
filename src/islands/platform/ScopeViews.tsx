@@ -7,6 +7,8 @@
 import { useEffect, useState } from 'react';
 import { type Scope, type ViewName, deepestScopeLevel, VIEWS_FOR_LEVEL } from './platform-nav-logic';
 import ReviewConsole from './review/ReviewConsole';
+import PublishConsole from './publish/PublishConsole';
+import { buildPublicationScopeKey } from './publish/publish-console-logic';
 
 const NAVY = '#1F4E79';
 const TEAL = '#23B2C3';
@@ -18,7 +20,7 @@ const VIEW_META: Record<ViewName, { title: string; noun: string; icon: string; h
   vote: { title: '투표', noun: '회차 투표(ballot)', icon: '🗳️', hint: '회차 단위 무기명 투표 집계를 이 스코프에서 봅니다.' },
   analyze: { title: '분석', noun: '쟁점(issue)·합의도', icon: '📊', hint: '분석코어가 적재한 쟁점과 cluster 분모를 이 스코프에서 봅니다.' },
   review: { title: '검수', noun: '쟁점 4×6·링크·병합', icon: '🔎', hint: '사람 검수(HITL): issue 확정·원문 연결·병합. 후속 슬라이스가 채웁니다.' },
-  publish: { title: '공개', noun: '결과 페이지(/r/token)', icon: '📢', hint: '검수 완료(reviewed ≥1) 스코프만 공개 게이트를 엽니다.' },
+  publish: { title: '공개', noun: '결과 페이지(/r/token)', icon: '📢', hint: '검수 완료(reviewed ≥1) 스코프를 발행하고 공개 조회를 재검증합니다.' },
 };
 
 function scopeLabel(scope: Scope): string {
@@ -33,10 +35,10 @@ function scopeLabel(scope: Scope): string {
  * 스코프 뷰 아웃렛. view 가 없으면 스코프 개요(자식 안내), 있으면 해당 패널.
  * 데이터 로드 골격: 마운트 시 "로드 대상 스코프"를 표시하고, 실제 페치는 후속 구현.
  */
-export default function ScopeOutlet({ scope }: { scope: Scope }) {
+export default function ScopeOutlet({ scope, publishScopeId }: { scope: Scope; publishScopeId?: string | null }) {
   const view = scope.view;
   if (!view) return <ScopeOverview scope={scope} />;
-  return <ViewPanel view={view} scope={scope} />;
+  return <ViewPanel view={view} scope={scope} publishScopeId={publishScopeId} />;
 }
 
 function ScopeOverview({ scope }: { scope: Scope }) {
@@ -69,7 +71,7 @@ function ScopeOverview({ scope }: { scope: Scope }) {
   );
 }
 
-function ViewPanel({ view, scope }: { view: ViewName; scope: Scope }) {
+function ViewPanel({ view, scope, publishScopeId }: { view: ViewName; scope: Scope; publishScopeId?: string | null }) {
   const meta = VIEW_META[view];
   const { level, id } = deepestScopeLevel(scope);
 
@@ -77,6 +79,17 @@ function ViewPanel({ view, scope }: { view: ViewName; scope: Scope }) {
   // 그 외 레벨에서는 placeholder 를 유지한다(검수는 주제 스코프 전용 — VIEWS_FOR_LEVEL).
   if (view === 'review') {
     return <ReviewConsole topicId={level === 'topic' ? id : null} />;
+  }
+
+  if (view === 'publish') {
+    const resolvedScopeId = publishScopeId === undefined ? id : publishScopeId;
+    return (
+      <PublishConsole
+        key={buildPublicationScopeKey(level, resolvedScopeId)}
+        scope={level}
+        scopeId={resolvedScopeId}
+      />
+    );
   }
 
   // 데이터 로드 골격 — 마운트 시 "이 스코프의 무엇을 로드할지"만 확정한다.
@@ -104,11 +117,6 @@ function ViewPanel({ view, scope }: { view: ViewName; scope: Scope }) {
           <li>스코프 id: <code style={{ color: NAVY }}>{id ?? '—'}</code></li>
           <li>연결 예정 래퍼: <code style={{ color: NAVY }}>{wrapperHint(view)}</code></li>
         </ul>
-        {view === 'publish' ? (
-          <p style={{ marginTop: 12, marginBottom: 0, fontSize: 13, color: '#B5651D' }}>
-            ※ 미결: {meta.title} RPC 는 조 <code>join_code</code>(운영자) 서명입니다. staff Auth 셸에서도 code 입력 자리가 필요합니다(Phase 2 에서 HQ 토큰 전환). 검수(review)는 주제 스코프에서 검수 콘솔로 대체되었습니다.
-          </p>
-        ) : null}
       </div>
       <p style={{ marginTop: 12, fontSize: 12, color: '#9ca3af' }} aria-hidden="true">mounted {new Date(mountedAt).toLocaleTimeString('ko-KR')}</p>
     </div>

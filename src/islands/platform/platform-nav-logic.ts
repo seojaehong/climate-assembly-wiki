@@ -63,6 +63,8 @@ export interface TreeNode {
   kind: TreeNodeKind;
   /** DB 식별자 — slug 또는 uuid. 파서는 불투명 문자열로만 다룬다(discussion_topic엔 slug 없음). */
   id: string;
+  /** Canonical database UUID used by RPCs when the route id is a human-readable slug. */
+  dataId?: string;
   label: string;
   children: TreeNode[];
 }
@@ -193,4 +195,17 @@ export function deepestScopeLevel(scope: Scope): { level: ScopeLevel | null; id:
   if (scope.s) return { level: 'session', id: scope.s };
   if (scope.c) return { level: 'assembly', id: scope.c };
   return { level: null, id: null };
+}
+
+/** Resolves the selected route node to the canonical database id required by scoped RPCs. */
+export function deepestDataScopeTarget(
+  tree: TreeNode | null,
+  scope: Scope,
+): { level: ScopeLevel | null; id: string | null } {
+  const { level } = deepestScopeLevel(scope);
+  if (!level) return { level: null, id: null };
+
+  const expectedKind: TreeNodeKind = level === 'assembly' ? 'assembly' : level;
+  const node = activePath(tree, scope).find((candidate) => candidate.kind === expectedKind);
+  return { level, id: node?.dataId ?? null };
 }
