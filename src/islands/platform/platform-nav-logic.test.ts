@@ -281,6 +281,7 @@ describe('VIEWS_FOR_LEVEL (단일 원천)', () => {
     expect(VIEWS_FOR_LEVEL.topic).not.toContain('design');
     expect(VIEWS_FOR_LEVEL.session).toContain('design');
     expect(VIEWS_FOR_LEVEL.assembly).toContain('design');
+    expect(VIEWS_FOR_LEVEL.assembly).toContain('record');
   });
 });
 

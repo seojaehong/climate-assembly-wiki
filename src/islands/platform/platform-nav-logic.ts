@@ -33,12 +33,12 @@ export type ScopeLevel = 'topic' | 'session' | 'assembly';
  * (하드코딩 메뉴 금지 대전제의 구체화). 후속 슬라이스는 여기만 고치면 화면 전체가 따라온다.
  *   topic  : 산출물·분석·검수·공개
  *   session: 산출물·회차투표·분석·공개(검수는 주제 스코프)
- *   assembly: 분석·공개(집계 스코프)
+ *   assembly: design, records, analysis, and publishing across sessions
  */
 export const VIEWS_FOR_LEVEL: Record<ScopeLevel, readonly ViewName[]> = {
   topic: ['record', 'analyze', 'review', 'publish'],
   session: ['design', 'record', 'vote', 'analyze', 'publish'],
-  assembly: ['design', 'analyze', 'publish'],
+  assembly: ['design', 'record', 'analyze', 'publish'],
 };
 
 /** 라우트 기저 접두사 — 정적 wiki와 네임스페이스 분리(BUILD_SPEC §4-3). */

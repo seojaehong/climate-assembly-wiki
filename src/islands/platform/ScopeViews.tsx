@@ -9,6 +9,7 @@ import RecordConsole from './record/RecordConsole';
 import VoteConsole from './vote/VoteConsole';
 import DesignConsole from './design/DesignConsole';
 import AssemblyAnalyzeConsole from './analyze/AssemblyAnalyzeConsole';
+import AssemblyRecordConsole from './record/AssemblyRecordConsole';
 import { buildPublicationScopeKey } from './publish/publish-console-logic';
 
 const NAVY = '#1F4E79';
@@ -139,6 +140,15 @@ function ViewPanel({
     );
   }
 
+  if (view === 'record' && level === 'assembly') {
+    return (
+      <AssemblyRecordConsole
+        key={`assembly:${scopedSessionTopics.map((group) => `${group.id}:${group.topics.map((topic) => topic.id).join(',')}`).join('|')}`}
+        groups={scopedSessionTopics}
+      />
+    );
+  }
+
   if (view === 'vote' && level === 'session') {
     return (
       <VoteConsole
@@ -216,7 +226,7 @@ function PlaceholderView({
 function wrapperHint(view: ViewName): string {
   switch (view) {
     case 'design': return 'readinessCheck';
-    case 'record': return 'assembly record RPC (not available)';
+    case 'record': return 'issueItems';
     case 'vote': return 'platformBallotList / platformBallotResults';
     case 'analyze': return 'issueList';
     case 'review': return 'issueList / issueUpsert / issueLinkSet / issueMerge / issueReview';

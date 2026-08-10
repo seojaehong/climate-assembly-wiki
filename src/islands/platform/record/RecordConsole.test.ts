@@ -96,6 +96,25 @@ describe('RecordResults', () => {
     expect(html).toContain('<caption');
   });
 
+  it('공론화 기록 표에서 출처 회차와 주제를 분리해 제공한다', () => {
+    const view = buildRecordView('assembly', [{
+      target: {
+        id: 'topic-1',
+        label: '에너지 전환',
+        sessionId: 'session-1',
+        sessionLabel: '제1차 회의',
+      },
+      result: result('topic-1', 'item-topic-1'),
+    }]);
+    const html = renderToStaticMarkup(createElement(RecordResults, { view }));
+
+    expect(html).toContain('공론화 조별 기록 원문과 쟁점 연결 상태');
+    expect(html).toContain('출처 회차');
+    expect(html).toContain('출처 주제');
+    expect(html).toContain('제1차 회의');
+    expect(html).toContain('에너지 전환');
+  });
+
   it('원문이 없어도 0건 요약과 빈 상태를 함께 제공한다', () => {
     const view = buildRecordView('topic', [{
       target: { id: 'topic-1', label: '에너지 전환' },

@@ -2,10 +2,10 @@ import type { IssueItemLink, IssueItemsResult } from '../../../lib/platform';
 import type { TopicTarget } from '../platform-nav-logic';
 import { toReviewItem, type ReviewItem } from '../review/review-console-logic';
 
-export type RecordScope = 'topic' | 'session';
+export type RecordScope = 'topic' | 'session' | 'assembly';
 
 export interface RecordTopicResult {
-  target: TopicTarget;
+  target: TopicTarget & { sessionId?: string; sessionLabel?: string };
   result: IssueItemsResult;
 }
 
@@ -14,6 +14,8 @@ export interface RecordItem extends ReviewItem {
   topicLabel: string;
   teamId: string;
   links: IssueItemLink[];
+  sessionId?: string;
+  sessionLabel?: string;
 }
 
 export interface RecordStats {
@@ -43,6 +45,8 @@ export function buildRecordView(
       topicLabel: target.label,
       teamId: row.team_id,
       links: Array.isArray(row.links) ? row.links.map((link) => ({ ...link })) : [],
+      sessionId: target.sessionId,
+      sessionLabel: target.sessionLabel,
     })),
   );
   const classifiedCount = items.filter((item) => item.issueIds.length > 0).length;

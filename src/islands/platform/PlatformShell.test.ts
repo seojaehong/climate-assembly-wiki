@@ -98,6 +98,21 @@ describe('PlatformShell accessibility', () => {
     expect(html).not.toContain('데이터 로드 골격');
   });
 
+  it('공론화 기록이 회차별 코드 입력을 갖춘 실제 기록 콘솔을 연다', () => {
+    const html = renderToStaticMarkup(createElement(ScopeOutlet, {
+      scope: { o: 'org', c: 'assembly', view: 'record' },
+      scopedSessionTopics: [{
+        id: 'session-1',
+        label: '제1차 회의',
+        topics: [{ id: 'topic-1', label: '에너지 전환' }],
+      }],
+    }));
+
+    expect(html).toContain('이 공론화의 조별 기록');
+    expect(html).toContain('제1차 회의 참여 코드');
+    expect(html).not.toContain('데이터 로드 골격');
+  });
+
   it('주제와 회차 기록 보기가 실제 원문 기록 콘솔을 연다', () => {
     const topicHtml = renderToStaticMarkup(createElement(ScopeOutlet, {
       scope: { o: 'org', c: 'assembly', s: 'session', t: 'topic-1', view: 'record' },

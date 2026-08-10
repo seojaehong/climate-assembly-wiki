@@ -81,7 +81,14 @@ function StatCard({ label, value }: { label: string; value: number }) {
 }
 
 export function RecordResults({ view }: { view: RecordView }) {
-  const session = view.scope === 'session';
+  const showTopicSource = view.scope !== 'topic';
+  const showSessionSource = view.scope === 'assembly';
+  const scopePrefix = view.scope === 'assembly' ? '공론화 ' : view.scope === 'session' ? '회차 ' : '';
+  const columns = [
+    ...(showSessionSource ? ['출처 회차'] : []),
+    ...(showTopicSource ? ['출처 주제'] : []),
+    '조', '항목', '원문', '분류 상태', '제출 참조',
+  ];
   return (
     <div style={{ display: 'grid', gap: 18 }}>
       <p role="status" aria-live="polite" className="sr-only">
@@ -99,15 +106,13 @@ export function RecordResults({ view }: { view: RecordView }) {
         <p role="status" aria-live="polite" style={{ color: MUTED, margin: 0 }}>등록된 조별 기록이 없습니다.</p>
       ) : (
         <div style={{ overflowX: 'auto', border: `2px solid ${LINE}`, borderRadius: 16, background: '#fff' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: session ? 980 : 840 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: view.scope === 'assembly' ? 1120 : view.scope === 'session' ? 980 : 840 }}>
             <caption style={{ textAlign: 'left', color: NAVY, fontSize: 18, fontWeight: 800, padding: '16px 18px' }}>
-              {session ? '회차 ' : ''}조별 기록 원문과 쟁점 연결 상태
+              {scopePrefix}조별 기록 원문과 쟁점 연결 상태
             </caption>
             <thead style={{ background: PANEL }}>
               <tr>
-                {(session
-                  ? ['출처 주제', '조', '항목', '원문', '분류 상태', '제출 참조']
-                  : ['조', '항목', '원문', '분류 상태', '제출 참조']).map((label) => (
+                {columns.map((label) => (
                   <th key={label} scope="col" style={{ color: NAVY, fontSize: 13, textAlign: 'left', padding: '10px 12px', borderTop: `2px solid ${LINE}`, borderBottom: `2px solid ${LINE}` }}>{label}</th>
                 ))}
               </tr>
@@ -118,7 +123,8 @@ export function RecordResults({ view }: { view: RecordView }) {
                 const reference = sourceReference(item);
                 return (
                   <tr key={item.itemId} id={reference.id} tabIndex={-1}>
-                    {session ? <td style={{ color: MUTED, fontSize: 13, fontWeight: 700, padding: 12, borderBottom: `2px solid ${PANEL}` }}>{item.topicLabel}</td> : null}
+                    {showSessionSource ? <td style={{ color: MUTED, fontSize: 13, fontWeight: 700, padding: 12, borderBottom: `2px solid ${PANEL}` }}>{item.sessionLabel ?? '—'}</td> : null}
+                    {showTopicSource ? <td style={{ color: MUTED, fontSize: 13, fontWeight: 700, padding: 12, borderBottom: `2px solid ${PANEL}` }}>{item.topicLabel}</td> : null}
                     <td style={{ color: INK, fontSize: 13, fontWeight: 700, padding: 12, borderBottom: `2px solid ${PANEL}` }}>{item.teamName}</td>
                     <td style={{ color: MUTED, fontSize: 13, padding: 12, borderBottom: `2px solid ${PANEL}` }}>{itemKindLabel(item.kind)} {item.ordinal}번</td>
                     <th scope="row" style={{ color: INK, fontSize: 14, fontWeight: 600, lineHeight: 1.55, textAlign: 'left', padding: 12, borderBottom: `2px solid ${PANEL}` }}>

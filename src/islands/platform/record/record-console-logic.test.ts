@@ -64,4 +64,24 @@ describe('buildRecordView', () => {
       ],
     });
   });
+
+  it('공론화 기록에서 원문의 출처 회차와 주제를 보존한다', () => {
+    const view = buildRecordView('assembly', [{
+      target: {
+        id: 'topic-1',
+        label: '에너지 전환',
+        sessionId: 'session-1',
+        sessionLabel: '제1차 회의',
+      },
+      result: firstTopic,
+    }]);
+
+    expect(view.scope).toBe('assembly');
+    expect(view.items[0]).toMatchObject({
+      sessionId: 'session-1',
+      sessionLabel: '제1차 회의',
+      topicId: 'topic-1',
+      topicLabel: '에너지 전환',
+    });
+  });
 });
