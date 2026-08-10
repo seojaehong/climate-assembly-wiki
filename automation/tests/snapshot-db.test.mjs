@@ -8,6 +8,7 @@ import { test, expect, vi } from 'vitest';
 import {
   snapshotArchive,
   snapshotRound,
+  rehearseSnapshotArchiveFile,
   verifySnapshotArchiveFile,
   verifySnapshotArchiveIntegrity,
   workflowAuditContext,
@@ -40,14 +41,14 @@ const TEST_AUDIT_OPTIONS = { auditKey: TEST_AUDIT_KEY, auditContext: TEST_AUDIT_
 
 function platformPayloadFixture(overrides = {}) {
   return {
-    submission: [{ id: 'submission-1' }],
-    submission_item: [{ id: 'item-1' }],
-    issue: [{ id: 'issue-1' }],
+    submission: [{ id: 'submission-1', topic_id: 'topic-1', team_id: 'team-1', org_id: 'org-1' }],
+    submission_item: [{ id: 'item-1', submission_id: 'submission-1', ordinal: 1 }],
+    issue: [{ id: 'issue-1', topic_id: 'topic-1', org_id: 'org-1' }],
     issue_link: [],
     result_page: [],
-    ballot: [{ id: 'ballot-1' }],
-    ballot_item: [{ id: 'ballot-item-1' }],
-    ballot_response: [],
+    ballot: [{ id: 'ballot-1', session_id: 'session-1', token: 'ballot-token-1', org_id: 'org-1' }],
+    ballot_item: [{ id: 'ballot-item-1', ballot_id: 'ballot-1', ordinal: 1, scale: 5, required: true }],
+    ballot_response: [{ id: 'response-1', ballot_id: 'ballot-1', client_id: 'client-0001', answers: { 'ballot-item-1': 3 } }],
     counts: { issue: 1, issue_link: 0, result_page: 0, submission: 1, ballot: 1 },
     ...overrides,
   };
@@ -394,8 +395,147 @@ test('verifies a signed archive file and returns a non-sensitive recovery summar
         result_page: 0,
         ballot: 1,
         ballot_item: 1,
-        ballot_response: 0,
+        ballot_response: 1,
       },
+    });
+  });
+});
+
+test('rehearses internal restore relationships and reports unavailable parent dependencies without exposing row data', async () => {
+  const archive = await signedArchiveFixture();
+  withSnapshotFile(archive, (filePath) => {
+    expect(rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY })).toEqual({
+      status: 'preflight_passed',
+      snapshotId: 77,
+      keyId: TEST_AUDIT_CONTEXT.keyId,
+      databaseRestoreExecuted: false,
+      archiveRestoreOrder: [
+        'submission',
+        'submission_item',
+        'issue',
+        'issue_link',
+        'result_page',
+        'ballot',
+        'ballot_item',
+        'ballot_response',
+      ],
+      checkedInternalReferences: 3,
+      checkedBallotAnswers: 1,
+      externalDependencies: {
+        org: 1,
+        discussion_topic: 1,
+        team: 1,
+        session: 1,
+        assembly: 0,
+      },
+      counts: expect.objectContaining({
+        submission: 1,
+        submission_item: 1,
+        issue: 1,
+        ballot: 1,
+        ballot_item: 1,
+        ballot_response: 1,
+      }),
+    });
+  });
+});
+
+test('rejects duplicate composite keys that would make an isolated restore fail', async () => {
+  const duplicateLink = { issue_id: 'issue-1', item_id: 'item-1', cluster_id: null, linked_by: 'human' };
+  const archive = await signedArchiveFixture(platformPayloadFixture({
+    issue_link: [duplicateLink, { ...duplicateLink }],
+    counts: { issue: 1, issue_link: 2, result_page: 0, submission: 1, ballot: 1 },
+  }));
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toThrow('snapshot archive duplicate key: issue_link.issue_id+item_id');
+  });
+});
+
+test('rejects duplicate child ordinals even when row ids are distinct', async () => {
+  const archive = await signedArchiveFixture(platformPayloadFixture({
+    submission_item: [
+      { id: 'item-1', submission_id: 'submission-1', ordinal: 1 },
+      { id: 'item-2', submission_id: 'submission-1', ordinal: 1 },
+    ],
+  }));
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toThrow('snapshot archive duplicate key: submission_item.submission_id+ordinal');
+  });
+});
+
+test('rejects an orphaned internal reference before any database restore is attempted', async () => {
+  const archive = await signedArchiveFixture(platformPayloadFixture({
+    submission_item: [{ id: 'item-1', submission_id: 'missing-submission', ordinal: 1 }],
+  }));
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toThrow('snapshot archive broken reference: submission_item.submission_id');
+  });
+});
+
+test('rejects a response that omits an answer required by the archived ballot item', async () => {
+  const archive = await signedArchiveFixture(platformPayloadFixture({
+    ballot_response: [{
+      id: 'response-1',
+      ballot_id: 'ballot-1',
+      client_id: 'client-0001',
+      answers: {},
+    }],
+  }));
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toThrow('snapshot archive required ballot answer is missing');
+  });
+});
+
+test('rejects an unsupported ballot scale even when the ballot has no responses', async () => {
+  const archive = await signedArchiveFixture(platformPayloadFixture({
+    ballot_item: [{
+      id: 'ballot-item-1',
+      ballot_id: 'ballot-1',
+      ordinal: 1,
+      scale: 3,
+      required: true,
+    }],
+    ballot_response: [],
+  }));
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toThrow('snapshot archive ballot item scale is invalid');
+  });
+});
+
+test('reports organization and polymorphic result parents as distinct external dependencies', async () => {
+  const archive = await signedArchiveFixture(platformPayloadFixture({
+    result_page: [
+      { id: 'result-topic', scope: 'topic', scope_id: 'topic-2', token: 'token-topic', org_id: 'org-1' },
+      { id: 'result-session', scope: 'session', scope_id: 'session-2', token: 'token-session', org_id: 'org-1' },
+      { id: 'result-assembly', scope: 'assembly', scope_id: 'assembly-1', token: 'token-assembly', org_id: 'org-1' },
+    ],
+    ballot_response: [{
+      id: 'response-1',
+      ballot_id: 'ballot-1',
+      client_id: 'client-0001',
+      answers: { 'ballot-item-1': 3 },
+      org_id: 'org-2',
+    }],
+    counts: { issue: 1, issue_link: 0, result_page: 3, submission: 1, ballot: 1 },
+  }));
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }).externalDependencies).toEqual({
+      org: 2,
+      discussion_topic: 2,
+      team: 1,
+      session: 2,
+      assembly: 1,
     });
   });
 });
@@ -493,6 +633,27 @@ test('verifies an archive through the read-only CLI without loading the snapshot
       snapshotId: 77,
       keyId: TEST_AUDIT_CONTEXT.keyId,
       counts: expect.objectContaining({ issue: 1, submission: 1, ballot: 1 }),
+    }));
+  });
+});
+
+test('runs the read-only recovery preflight CLI without loading the snapshot schedule', async () => {
+  const archive = await signedArchiveFixture();
+  withSnapshotFile(archive, (filePath) => {
+    const output = execFileSync(
+      process.execPath,
+      [fileURLToPath(new URL('../snapshot-db.mjs', import.meta.url)), '--rehearse', filePath],
+      {
+        encoding: 'utf8',
+        env: { ...process.env, SNAPSHOT_AUDIT_HMAC_KEY: TEST_AUDIT_KEY },
+      },
+    );
+    expect(JSON.parse(output)).toEqual(expect.objectContaining({
+      status: 'preflight_passed',
+      snapshotId: 77,
+      databaseRestoreExecuted: false,
+      checkedInternalReferences: 3,
+      checkedBallotAnswers: 1,
     }));
   });
 });

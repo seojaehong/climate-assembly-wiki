@@ -48,13 +48,16 @@ Drive에서 내려받은 활성화 상태의 `{ legacy, platform, audit }` JSON�
 Set-Location automation
 $env:SNAPSHOT_AUDIT_HMAC_KEY = Read-Host -MaskInput 'HMAC key for audit.keyId'
 node snapshot-db.mjs --verify 'C:\secure\snapshots\archive.json'
+node snapshot-db.mjs --rehearse 'C:\secure\snapshots\archive.json'
 Remove-Item Env:SNAPSHOT_AUDIT_HMAC_KEY
 ```
 
-- 성공 시 snapshot ID·source·key ID·GitHub provenance와 collection별 건수만 JSON으로 출력한다. 제출 원문이나 참여 데이터는 출력하지 않는다.
+- `--verify` 성공 시 snapshot ID·source·key ID·GitHub provenance와 collection별 건수만 JSON으로 출력한다. 제출 원문이나 참여 데이터는 출력하지 않는다.
 - HMAC이 다르거나 JSON이 손상됐거나 `platform` source가 아니거나 필수 collection이 빠졌거나 선언 건수와 실제 배열 길이가 다르면 nonzero로 종료한다.
 - 필수 collection은 `submission`, `submission_item`, `issue`, `issue_link`, `result_page`, `ballot`, `ballot_item`, `ballot_response`다.
-- 이 명령은 archive의 서명·구조·기본 건수 정합성을 읽기 전용으로 확인한다. DB 복원, FK/업무 규칙 전수 검증, 실제 복구 rehearsal, PITR/WAL, 사용자 행위 감사로그를 수행하거나 대체하지 않는다.
+- `--rehearse`는 위 검증 후 archive 내부 ID·FK(외래키: 다른 행을 가리키는 값), DB 고유키, 투표 문항의 허용 척도와 필수 응답 범위를 읽기 전용으로 점검한다. 성공 요약에는 내부 참조·응답 점검 건수, 복원 순서, archive 밖 `org`·`discussion_topic`·`team`·`session`·`assembly` 부모의 중복 제거 건수와 `databaseRestoreExecuted: false`만 남기며 원문·ID·응답 값은 출력하지 않는다. nullable인 `ballot_response.org_id`도 값이 있으면 조직 부모 집합에 포함하고 형식을 검사한다. `result_page.scope`는 `topic`·`session`·`assembly`별 부모 건수에 합산하고 다른 값은 거부한다.
+- 현재 platform payload에는 `discussion_topic`, `team`, `session`과 공론화·조직 상위 경로가 포함되지 않는다. 따라서 `--rehearse`는 이 외부 의존을 건수로 드러내는 복구 preflight이며 독립 복원이 가능한 archive라는 뜻이 아니다. 부모 collection 추가는 snapshot DB 계약 변경이므로 별도 승인·migration 검토가 필요하다.
+- 두 명령은 DB나 Drive에 연결하지 않는다. 실제 격리 DB 복원 rehearsal, FK·업무 규칙 전수 검증, PITR/WAL, 사용자 행위 감사로그를 수행하거나 대체하지 않는다.
 
 ## D-30 — `workshop-schedule.yml` 잠금
 

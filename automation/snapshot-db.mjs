@@ -14,6 +14,27 @@ const PLATFORM_PAYLOAD_COLLECTIONS = [
   'ballot_response',
 ];
 const DECLARED_PLATFORM_COUNTS = ['submission', 'issue', 'issue_link', 'result_page', 'ballot'];
+const ARCHIVE_RESTORE_ORDER = [
+  'submission',
+  'submission_item',
+  'issue',
+  'issue_link',
+  'result_page',
+  'ballot',
+  'ballot_item',
+  'ballot_response',
+];
+const ID_COLLECTIONS = ARCHIVE_RESTORE_ORDER.filter((key) => key !== 'issue_link');
+const UNIQUE_KEYS = [
+  ['submission', ['topic_id', 'team_id']],
+  ['submission_item', ['submission_id', 'ordinal']],
+  ['issue_link', ['issue_id', 'item_id']],
+  ['result_page', ['token']],
+  ['ballot', ['token']],
+  ['ballot_item', ['ballot_id', 'ordinal']],
+  ['ballot_response', ['ballot_id', 'client_id']],
+];
+const VALID_BALLOT_SCALES = new Set([2, 4, 5, 7]);
 
 /** Maps non-secret GitHub workflow provenance into the export audit manifest. */
 export function workflowAuditContext(environment, exportedAt = new Date().toISOString()) {
@@ -144,8 +165,7 @@ export function verifySnapshotArchiveIntegrity(archive, auditKey) {
   return timingSafeEqual(actual, expected);
 }
 
-/** Verifies a signed archive file and returns metadata plus collection counts only. */
-export function verifySnapshotArchiveFile({ filePath, auditKey }) {
+function readVerifiedSnapshotArchive({ filePath, auditKey }) {
   let archive;
   try {
     archive = JSON.parse(readFileSync(filePath, 'utf8'));
@@ -177,6 +197,12 @@ export function verifySnapshotArchiveFile({ filePath, auditKey }) {
       throw new Error(`snapshot archive count mismatch: ${key}`);
     }
   }
+  return { archive, payload, counts };
+}
+
+/** Verifies a signed archive file and returns metadata plus collection counts only. */
+export function verifySnapshotArchiveFile({ filePath, auditKey }) {
+  const { archive, counts } = readVerifiedSnapshotArchive({ filePath, auditKey });
   return {
     status: 'verified',
     snapshotId: archive.platform.id,
@@ -187,6 +213,165 @@ export function verifySnapshotArchiveFile({ filePath, auditKey }) {
     runId: archive.audit.runId,
     commitSha: archive.audit.commitSha,
     workflowRef: archive.audit.workflowRef,
+    counts,
+  };
+}
+
+function collectionIds(payload, collection) {
+  const ids = new Set();
+  for (const row of payload[collection]) {
+    if (!row || typeof row !== 'object' || Array.isArray(row) || typeof row.id !== 'string' || row.id.length === 0) {
+      throw new Error(`snapshot archive row id is missing: ${collection}`);
+    }
+    if (ids.has(row.id)) throw new Error(`snapshot archive duplicate id: ${collection}`);
+    ids.add(row.id);
+  }
+  return ids;
+}
+
+function validateReference(payload, childCollection, field, parentIds) {
+  let checked = 0;
+  for (const row of payload[childCollection]) {
+    if (typeof row?.[field] !== 'string' || !parentIds.has(row[field])) {
+      throw new Error(`snapshot archive broken reference: ${childCollection}.${field}`);
+    }
+    checked += 1;
+  }
+  return checked;
+}
+
+function validateUniqueKey(payload, collection, fields) {
+  const keys = new Set();
+  for (const row of payload[collection]) {
+    const values = fields.map((field) => row?.[field]);
+    if (values.some((value) => value === null || value === undefined || value === '')) {
+      throw new Error(`snapshot archive unique key is missing: ${collection}.${fields.join('+')}`);
+    }
+    const key = JSON.stringify(values);
+    if (keys.has(key)) {
+      throw new Error(`snapshot archive duplicate key: ${collection}.${fields.join('+')}`);
+    }
+    keys.add(key);
+  }
+}
+
+function validateBallotAnswers(payload) {
+  const itemsByBallot = new Map();
+  for (const item of payload.ballot_item) {
+    if (!VALID_BALLOT_SCALES.has(item.scale)) {
+      throw new Error('snapshot archive ballot item scale is invalid');
+    }
+    const items = itemsByBallot.get(item.ballot_id) ?? [];
+    items.push(item);
+    itemsByBallot.set(item.ballot_id, items);
+  }
+  let checked = 0;
+  for (const response of payload.ballot_response) {
+    const answers = response.answers;
+    if (!answers || typeof answers !== 'object' || Array.isArray(answers)) {
+      throw new Error('snapshot archive ballot answers are invalid');
+    }
+    for (const item of itemsByBallot.get(response.ballot_id) ?? []) {
+      const hasAnswer = Object.hasOwn(answers, item.id);
+      if (item.required === true && !hasAnswer) {
+        throw new Error('snapshot archive required ballot answer is missing');
+      }
+      if (!hasAnswer) continue;
+      const value = answers[item.id];
+      if (!Number.isInteger(value) || value < 1 || value > item.scale) {
+        throw new Error('snapshot archive ballot answer is out of scale');
+      }
+      checked += 1;
+    }
+  }
+  return checked;
+}
+
+function externalDependencyIds(rows, field, label) {
+  const ids = new Set();
+  for (const row of rows) {
+    const id = row?.[field];
+    if (typeof id !== 'string' || id.length === 0) {
+      throw new Error(`snapshot archive external reference is missing: ${label}.${field}`);
+    }
+    ids.add(id);
+  }
+  return ids;
+}
+
+function externalDependencyCount(rows, field, label) {
+  return externalDependencyIds(rows, field, label).size;
+}
+
+function optionalExternalDependencyIds(rows, field, label) {
+  const ids = new Set();
+  for (const row of rows) {
+    const id = row?.[field];
+    if (id === null || id === undefined) continue;
+    if (typeof id !== 'string' || id.length === 0) {
+      throw new Error(`snapshot archive external reference is invalid: ${label}.${field}`);
+    }
+    ids.add(id);
+  }
+  return ids;
+}
+
+function resultScopeDependencies(rows) {
+  const ids = {
+    topic: new Set(),
+    session: new Set(),
+    assembly: new Set(),
+  };
+  for (const row of rows) {
+    if (!Object.hasOwn(ids, row?.scope)) {
+      throw new Error('snapshot archive result page scope is invalid');
+    }
+    if (typeof row.scope_id !== 'string' || row.scope_id.length === 0) {
+      throw new Error('snapshot archive external reference is missing: result_page.scope_id');
+    }
+    ids[row.scope].add(row.scope_id);
+  }
+  return ids;
+}
+
+function unionSize(...sets) {
+  return new Set(sets.flatMap((set) => [...set])).size;
+}
+
+/** Runs a read-only restore preflight without connecting to a database. */
+export function rehearseSnapshotArchiveFile({ filePath, auditKey }) {
+  const { archive, payload, counts } = readVerifiedSnapshotArchive({ filePath, auditKey });
+  const ids = Object.fromEntries(ID_COLLECTIONS.map((collection) => [collection, collectionIds(payload, collection)]));
+  for (const [collection, fields] of UNIQUE_KEYS) validateUniqueKey(payload, collection, fields);
+  const checkedInternalReferences = [
+    validateReference(payload, 'submission_item', 'submission_id', ids.submission),
+    validateReference(payload, 'issue_link', 'issue_id', ids.issue),
+    validateReference(payload, 'issue_link', 'item_id', ids.submission_item),
+    validateReference(payload, 'ballot_item', 'ballot_id', ids.ballot),
+    validateReference(payload, 'ballot_response', 'ballot_id', ids.ballot),
+  ].reduce((total, value) => total + value, 0);
+  const topicRows = [...payload.submission, ...payload.issue];
+  const resultScopes = resultScopeDependencies(payload.result_page);
+  const topicIds = externalDependencyIds(topicRows, 'topic_id', 'submission_or_issue');
+  const sessionIds = externalDependencyIds(payload.ballot, 'session_id', 'ballot');
+  const orgRows = [...payload.submission, ...payload.issue, ...payload.result_page, ...payload.ballot];
+  const requiredOrgIds = externalDependencyIds(orgRows, 'org_id', 'platform_row');
+  const responseOrgIds = optionalExternalDependencyIds(payload.ballot_response, 'org_id', 'ballot_response');
+  return {
+    status: 'preflight_passed',
+    snapshotId: archive.platform.id,
+    keyId: archive.audit.keyId,
+    databaseRestoreExecuted: false,
+    archiveRestoreOrder: [...ARCHIVE_RESTORE_ORDER],
+    checkedInternalReferences,
+    checkedBallotAnswers: validateBallotAnswers(payload),
+    externalDependencies: {
+      org: unionSize(requiredOrgIds, responseOrgIds),
+      discussion_topic: unionSize(topicIds, resultScopes.topic),
+      team: externalDependencyCount(payload.submission, 'team_id', 'submission'),
+      session: unionSize(sessionIds, resultScopes.session),
+      assembly: resultScopes.assembly.size,
+    },
     counts,
   };
 }
@@ -251,10 +436,14 @@ async function runSnapshotRpc({
 
 // CLI mode
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  if (process.argv[2] === '--verify') {
+  const command = process.argv[2];
+  if (command === '--verify' || command === '--rehearse') {
     const filePath = process.argv[3];
     if (!filePath) throw new Error('snapshot archive path is required');
-    const result = verifySnapshotArchiveFile({
+    const inspectArchive = command === '--rehearse'
+      ? rehearseSnapshotArchiveFile
+      : verifySnapshotArchiveFile;
+    const result = inspectArchive({
       filePath,
       auditKey: process.env.SNAPSHOT_AUDIT_HMAC_KEY,
     });
