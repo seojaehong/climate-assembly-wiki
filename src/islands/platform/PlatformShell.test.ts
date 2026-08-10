@@ -21,6 +21,8 @@ const tree: TreeNode = {
   }],
 };
 
+const navigate = () => undefined;
+
 function channel(hex: string, start: number): number {
   return Number.parseInt(hex.slice(start, start + 2), 16) / 255;
 }
@@ -40,6 +42,7 @@ function contrastRatio(a: string, b: string): number {
 describe('PlatformShell accessibility', () => {
   it('회차 설계 뷰를 canonical 회차 대상으로 연결한다', () => {
     const html = renderToStaticMarkup(createElement(ScopeOutlet, {
+      navigate,
       scope: { c: 'assembly-1', s: 'session-1', view: 'design' },
       scopedSessions: [{ id: 'session-uuid-1', label: '제1차 회의' }],
     }));
@@ -48,16 +51,24 @@ describe('PlatformShell accessibility', () => {
     expect(html).not.toContain('데이터 로드 골격');
   });
 
-  it('스코프 개요가 고대비 액센트와 2px 경계만 사용한다', () => {
-    const html = renderToStaticMarkup(createElement(ScopeOutlet, { scope: { c: 'assembly-1' } }));
+  it('스코프 개요가 키보드 링크와 고대비 2px 경계를 제공한다', () => {
+    const html = renderToStaticMarkup(createElement(ScopeOutlet, {
+      scope: { o: 'org-1', c: 'assembly-1' },
+      navigate,
+    }));
 
     expect(html).toContain('color:#135C73');
     expect(html).toContain('border:2px solid #6B7D88');
+    expect(html).toContain('href="/platform/o/org-1/c/assembly-1/design"');
+    expect(html).toContain('href="/platform/o/org-1/c/assembly-1/record"');
+    expect(html).toContain('href="/platform/o/org-1/c/assembly-1/analyze"');
+    expect(html).toContain('href="/platform/o/org-1/c/assembly-1/publish"');
     expect(html).not.toMatch(/border:(?:1|1\.5)px/);
   });
 
   it('주제 분석 보기가 플레이스홀더 대신 실제 분석 콘솔을 연다', () => {
     const html = renderToStaticMarkup(createElement(ScopeOutlet, {
+      navigate,
       scope: { o: 'org', c: 'assembly', s: 'session', t: 'topic-1', view: 'analyze' },
       scopedTopics: [{ id: 'topic-1', label: '에너지 전환' }],
     }));
@@ -70,6 +81,7 @@ describe('PlatformShell accessibility', () => {
 
   it('회차 분석이 포함 주제를 집계하는 실제 분석 콘솔을 연다', () => {
     const html = renderToStaticMarkup(createElement(ScopeOutlet, {
+      navigate,
       scope: { o: 'org', c: 'assembly', s: 'session', view: 'analyze' },
       scopedTopics: [
         { id: 'topic-1', label: '에너지 전환' },
@@ -85,6 +97,7 @@ describe('PlatformShell accessibility', () => {
 
   it('공론화 분석이 회차별 코드 입력을 갖춘 실제 분석 콘솔을 연다', () => {
     const html = renderToStaticMarkup(createElement(ScopeOutlet, {
+      navigate,
       scope: { o: 'org', c: 'assembly', view: 'analyze' },
       scopedSessionTopics: [{
         id: 'session-1',
@@ -100,6 +113,7 @@ describe('PlatformShell accessibility', () => {
 
   it('공론화 기록이 회차별 코드 입력을 갖춘 실제 기록 콘솔을 연다', () => {
     const html = renderToStaticMarkup(createElement(ScopeOutlet, {
+      navigate,
       scope: { o: 'org', c: 'assembly', view: 'record' },
       scopedSessionTopics: [{
         id: 'session-1',
@@ -115,10 +129,12 @@ describe('PlatformShell accessibility', () => {
 
   it('주제와 회차 기록 보기가 실제 원문 기록 콘솔을 연다', () => {
     const topicHtml = renderToStaticMarkup(createElement(ScopeOutlet, {
+      navigate,
       scope: { o: 'org', c: 'assembly', s: 'session', t: 'topic-1', view: 'record' },
       scopedTopics: [{ id: 'topic-1', label: '에너지 전환' }],
     }));
     const sessionHtml = renderToStaticMarkup(createElement(ScopeOutlet, {
+      navigate,
       scope: { o: 'org', c: 'assembly', s: 'session', view: 'record' },
       scopedTopics: [
         { id: 'topic-1', label: '에너지 전환' },
@@ -135,6 +151,7 @@ describe('PlatformShell accessibility', () => {
 
   it('회차 투표 보기가 플레이스홀더 대신 실제 집계 콘솔을 연다', () => {
     const html = renderToStaticMarkup(createElement(ScopeOutlet, {
+      navigate,
       scope: { o: 'org', c: 'assembly', s: 'session', view: 'vote' },
       scopedTopics: [{ id: 'topic-1', label: '에너지 전환' }],
     }));

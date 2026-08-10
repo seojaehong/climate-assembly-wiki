@@ -20,6 +20,7 @@ import {
   topicTargetsForScope,
   sessionTargetsForScope,
   sessionTopicGroupsForScope,
+  scopeWithValidView,
   VIEWS_FOR_LEVEL,
   type Scope,
   type TreeNode,
@@ -267,6 +268,7 @@ function AppShell({ session, scope, navigate }: { session: AuthSessionInfo; scop
           <ViewTabs scope={scope} navigate={navigate} />
           <ScopeOutlet
             scope={scope}
+            navigate={navigate}
             publishScopeId={publishTarget.id}
             scopedTopics={scopedTopics}
             scopedSessions={scopedSessions}
@@ -316,7 +318,7 @@ export function BreadcrumbNav({ tree, scope, navigate }: { tree: TreeNode | null
           <button
             type="button"
             aria-current={index === crumbs.length - 1 ? 'location' : undefined}
-            onClick={() => navigate(scope.view ? { ...crumb.scope, view: scope.view } : crumb.scope)}
+            onClick={() => navigate(scopeWithValidView(crumb.scope, scope.view))}
             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: index === crumbs.length - 1 ? 800 : 600, color: index === crumbs.length - 1 ? NAVY : PLATFORM_ACCENT, padding: '2px 4px' }}
           >
             {crumb.label}
@@ -352,7 +354,7 @@ export function DataTreeNavigation({ tree, scope, loading, notice, navigate }: {
               <button
                 type="button"
                 aria-current={isLeafSelected ? 'location' : undefined}
-                onClick={() => navigate(scope.view ? { ...nodeScope, view: scope.view } : nodeScope)}
+                onClick={() => navigate(scopeWithValidView(nodeScope, scope.view))}
                 style={{
                   width: '100%', textAlign: 'left', cursor: 'pointer',
                   padding: '8px 10px', paddingLeft: 10 + depth * 16,

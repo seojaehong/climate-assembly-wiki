@@ -12,6 +12,7 @@ import {
   topicTargetsForScope,
   sessionTargetsForScope,
   sessionTopicGroupsForScope,
+  scopeWithValidView,
   SCOPE_KEYS,
   VIEWS,
   VIEWS_FOR_LEVEL,
@@ -204,6 +205,21 @@ describe('deepestScopeLevel', () => {
     expect(deepestScopeLevel({ o: 'k', c: 'a', s: 'r5' })).toEqual({ level: 'session', id: 'r5' });
     expect(deepestScopeLevel({ o: 'k', c: 'a' })).toEqual({ level: 'assembly', id: 'a' });
     expect(deepestScopeLevel({ o: 'k' })).toEqual({ level: null, id: null });
+  });
+});
+
+describe('scopeWithValidView', () => {
+  it('대상 스코프가 지원하는 현재 보기는 보존한다', () => {
+    expect(scopeWithValidView({ o: 'k', c: 'a', s: 'r5' }, 'publish')).toEqual({
+      o: 'k', c: 'a', s: 'r5', view: 'publish',
+    });
+  });
+
+  it('대상 스코프가 지원하지 않는 보기와 기관 루트의 보기는 제거한다', () => {
+    expect(scopeWithValidView({ o: 'k', c: 'a', s: 'r5' }, 'review')).toEqual({
+      o: 'k', c: 'a', s: 'r5',
+    });
+    expect(scopeWithValidView({ o: 'k' }, 'publish')).toEqual({ o: 'k' });
   });
 });
 

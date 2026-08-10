@@ -197,6 +197,17 @@ export function deepestScopeLevel(scope: Scope): { level: ScopeLevel | null; id:
   return { level: null, id: null };
 }
 
+/** Keeps a preferred view only when the destination scope supports it. */
+export function scopeWithValidView(target: Scope, preferredView?: ViewName): Scope {
+  const next: Scope = { ...target };
+  delete next.view;
+  const { level } = deepestScopeLevel(next);
+  if (level && preferredView && VIEWS_FOR_LEVEL[level].includes(preferredView)) {
+    next.view = preferredView;
+  }
+  return next;
+}
+
 /** Resolves the selected route node to the canonical database id required by scoped RPCs. */
 export function deepestDataScopeTarget(
   tree: TreeNode | null,

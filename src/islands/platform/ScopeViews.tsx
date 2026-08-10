@@ -1,7 +1,7 @@
 // Scope outlet for implemented platform consoles and invalid-route fallback states.
 
 import { useEffect, useState } from 'react';
-import { type SessionTarget, type SessionTopicGroup, type TopicTarget, type Scope, type ViewName, deepestScopeLevel, VIEWS_FOR_LEVEL } from './platform-nav-logic';
+import { type SessionTarget, type SessionTopicGroup, type TopicTarget, type Scope, type ViewName, buildScopePath, deepestScopeLevel, VIEWS_FOR_LEVEL } from './platform-nav-logic';
 import ReviewConsole from './review/ReviewConsole';
 import PublishConsole from './publish/PublishConsole';
 import AnalyzeConsole from './analyze/AnalyzeConsole';
@@ -40,23 +40,25 @@ function scopeLabel(scope: Scope): string {
  */
 export default function ScopeOutlet({
   scope,
+  navigate,
   publishScopeId,
   scopedTopics = [],
   scopedSessions = [],
   scopedSessionTopics = [],
 }: {
   scope: Scope;
+  navigate: (scope: Scope) => void;
   publishScopeId?: string | null;
   scopedTopics?: readonly TopicTarget[];
   scopedSessions?: readonly SessionTarget[];
   scopedSessionTopics?: readonly SessionTopicGroup[];
 }) {
   const view = scope.view;
-  if (!view) return <ScopeOverview scope={scope} />;
+  if (!view) return <ScopeOverview scope={scope} navigate={navigate} />;
   return <ViewPanel view={view} scope={scope} publishScopeId={publishScopeId} scopedTopics={scopedTopics} scopedSessions={scopedSessions} scopedSessionTopics={scopedSessionTopics} />;
 }
 
-function ScopeOverview({ scope }: { scope: Scope }) {
+function ScopeOverview({ scope, navigate }: { scope: Scope; navigate: (scope: Scope) => void }) {
   const { level } = deepestScopeLevel(scope);
   const views: readonly ViewName[] = level ? VIEWS_FOR_LEVEL[level] : [];
 
@@ -74,11 +76,20 @@ function ScopeOverview({ scope }: { scope: Scope }) {
       {views.length > 0 ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))', gap: 12 }}>
           {views.map((v) => (
-            <div key={v} style={{ border: `2px solid ${LINE}`, borderRadius: 14, padding: '16px 18px', background: '#fff' }}>
+            <a
+              key={v}
+              href={buildScopePath({ ...scope, view: v })}
+              onClick={(event) => {
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                event.preventDefault();
+                navigate({ ...scope, view: v });
+              }}
+              style={{ border: `2px solid ${LINE}`, borderRadius: 14, padding: '16px 18px', background: '#fff', color: 'inherit', textDecoration: 'none' }}
+            >
               <div style={{ fontSize: 26, marginBottom: 6 }} aria-hidden="true">{VIEW_META[v].icon}</div>
               <div style={{ fontSize: 18, fontWeight: 800, color: NAVY }}>{VIEW_META[v].title}</div>
               <div style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{VIEW_META[v].noun}</div>
-            </div>
+            </a>
           ))}
         </div>
       ) : null}
