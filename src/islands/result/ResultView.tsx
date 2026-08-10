@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type KeyboardEvent } from 'react';
 import HitlBadge from '../../components/HitlBadge';
 import { fetchResult } from '../../lib/result-page';
 import {
@@ -16,6 +16,16 @@ const TEAL = '#135C73';
 const INK = '#1F2933';
 const GRAY = '#5A6B73';
 const BORDER = '#DCE7EE';
+
+function handleHorizontalScrollKey(event: KeyboardEvent<HTMLDivElement>) {
+  const region = event.currentTarget;
+  if (event.key === 'ArrowRight') region.scrollLeft += 40;
+  else if (event.key === 'ArrowLeft') region.scrollLeft -= 40;
+  else if (event.key === 'End') region.scrollLeft = region.scrollWidth;
+  else if (event.key === 'Home') region.scrollLeft = 0;
+  else return;
+  event.preventDefault();
+}
 export const RESULT_CONTROL_BORDER = '#6B7D88';
 export const RESULT_STATUS_GREEN = '#2F6F25';
 export const RESULT_STATUS_AMBER = '#8A4F08';
@@ -175,7 +185,7 @@ function CoverageMatrix({ view }: { view: ResultViewModel }) {
       <p className="text-[16px] mb-4" style={{ color: GRAY }}>
         세로 = 쟁점, 가로 = 조. ● 제기 · · 미제기
       </p>
-      <div className="overflow-x-auto" role="region" aria-label="조별 쟁점 커버리지 표" tabIndex={0}>
+      <div className="overflow-x-auto" role="region" aria-label="조별 쟁점 커버리지 표" tabIndex={0} onKeyDown={handleHorizontalScrollKey}>
         <table className="border-collapse text-left" style={{ minWidth: '100%' }}>
           <caption className="sr-only">쟁점별 조 제기 여부</caption>
           <thead>
@@ -372,8 +382,8 @@ function DataTable({ view }: { view: ResultViewModel }) {
         </span>
         <span className="shrink-0 text-[22px]" style={{ color: TEAL }} aria-hidden="true">↕</span>
       </summary>
-      <div className="mt-4 overflow-x-auto" role="region" aria-label="쟁점 분석 데이터 표" tabIndex={0}>
-        <table className="w-full border-collapse text-left text-[15px]">
+      <div className="mt-4 overflow-x-auto" role="region" aria-label="쟁점 분석 데이터 표" tabIndex={0} onKeyDown={handleHorizontalScrollKey}>
+        <table className="w-full border-collapse text-left text-[15px]" style={{ minWidth: 720 }}>
           <caption className="sr-only">쟁점별 방향·빈도·제기 조 수·원문 군집·검수 상태</caption>
           <thead>
             <tr className="border-b-2" style={{ borderColor: BORDER, color: GRAY }}>
@@ -477,7 +487,7 @@ export function ResultContent({ view }: { view: ResultViewModel }) {
   const pct = ratioToPercent(view.stats.consensusRatio);
 
   return (
-    <main id="main-content" tabIndex={-1} className="min-h-screen px-4 sm:px-8 py-8 sm:py-12">
+    <main id="main-content" tabIndex={-1} className="min-h-screen overflow-x-hidden px-4 sm:px-8 py-8 sm:py-12">
       <div className="mx-auto w-full max-w-5xl space-y-6">
         {/* 헤더 */}
         <header className="rounded-2xl border-2 bg-white p-6 sm:p-8" style={{ borderColor: BORDER }}>

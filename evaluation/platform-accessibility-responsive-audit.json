@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-10T22:01:08.621Z",
+  "generatedAt": "2026-08-10T22:23:54.539Z",
   "baseUrl": "http://127.0.0.1:4321",
   "standard": "WCAG 2.2 AA automated subset + skip-link focus + responsive overflow",
   "engine": {
@@ -82,13 +82,15 @@
         "target": "platform-scope-content",
         "focusMoved": true
       },
+      "requiredScrollRegions": [],
       "layout": {
         "viewportWidth": 1440,
         "documentWidth": 1440,
         "horizontalOverflow": false,
         "contentWidth": 420,
         "minimumContentWidth": 0,
-        "contentWidthSufficient": true
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
       },
       "violations": [],
       "incomplete": [],
@@ -113,13 +115,15 @@
         "target": "platform-scope-content",
         "focusMoved": true
       },
+      "requiredScrollRegions": [],
       "layout": {
         "viewportWidth": 360,
         "documentWidth": 360,
         "horizontalOverflow": false,
         "contentWidth": 312,
         "minimumContentWidth": 280,
-        "contentWidthSufficient": true
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
       },
       "violations": [],
       "incomplete": [],
@@ -147,13 +151,15 @@
         "target": "platform-scope-content",
         "focusMoved": true
       },
+      "requiredScrollRegions": [],
       "layout": {
         "viewportWidth": 1440,
         "documentWidth": 1440,
         "horizontalOverflow": false,
         "contentWidth": 1152,
         "minimumContentWidth": 0,
-        "contentWidthSufficient": true
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
       },
       "violations": [],
       "incomplete": [],
@@ -181,13 +187,15 @@
         "target": "platform-scope-content",
         "focusMoved": true
       },
+      "requiredScrollRegions": [],
       "layout": {
         "viewportWidth": 360,
         "documentWidth": 360,
         "horizontalOverflow": false,
         "contentWidth": 360,
         "minimumContentWidth": 280,
-        "contentWidthSufficient": true
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
       },
       "violations": [],
       "incomplete": [],
@@ -212,13 +220,15 @@
         "target": "main-content",
         "focusMoved": true
       },
+      "requiredScrollRegions": [],
       "layout": {
         "viewportWidth": 1440,
         "documentWidth": 1440,
         "horizontalOverflow": false,
         "contentWidth": 880,
         "minimumContentWidth": 0,
-        "contentWidthSufficient": true
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
       },
       "violations": [],
       "incomplete": [],
@@ -243,13 +253,15 @@
         "target": "main-content",
         "focusMoved": true
       },
+      "requiredScrollRegions": [],
       "layout": {
         "viewportWidth": 360,
         "documentWidth": 360,
         "horizontalOverflow": false,
         "contentWidth": 328,
         "minimumContentWidth": 280,
-        "contentWidthSufficient": true
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
       },
       "violations": [],
       "incomplete": [],
@@ -274,13 +286,15 @@
         "target": "main-content",
         "focusMoved": true
       },
+      "requiredScrollRegions": [],
       "layout": {
         "viewportWidth": 1440,
         "documentWidth": 1440,
         "horizontalOverflow": false,
         "contentWidth": 1440,
         "minimumContentWidth": 0,
-        "contentWidthSufficient": true
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
       },
       "violations": [],
       "incomplete": [],
@@ -305,13 +319,15 @@
         "target": "main-content",
         "focusMoved": true
       },
+      "requiredScrollRegions": [],
       "layout": {
         "viewportWidth": 360,
         "documentWidth": 360,
         "horizontalOverflow": false,
         "contentWidth": 360,
         "minimumContentWidth": 280,
-        "contentWidthSufficient": true
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
       },
       "violations": [],
       "incomplete": [],
@@ -339,13 +355,15 @@
         "target": "main-content",
         "focusMoved": true
       },
+      "requiredScrollRegions": [],
       "layout": {
         "viewportWidth": 1440,
         "documentWidth": 1440,
         "horizontalOverflow": false,
         "contentWidth": 1440,
         "minimumContentWidth": 0,
-        "contentWidthSufficient": true
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
       },
       "violations": [],
       "incomplete": [],
@@ -373,13 +391,34 @@
         "target": "main-content",
         "focusMoved": true
       },
+      "requiredScrollRegions": [
+        {
+          "label": "조별 쟁점 커버리지 표",
+          "found": true,
+          "clientWidth": 284,
+          "scrollWidth": 357,
+          "scrollable": true,
+          "focused": true,
+          "keyboardScrolled": true
+        },
+        {
+          "label": "쟁점 분석 데이터 표",
+          "found": true,
+          "clientWidth": 284,
+          "scrollWidth": 720,
+          "scrollable": true,
+          "focused": true,
+          "keyboardScrolled": true
+        }
+      ],
       "layout": {
         "viewportWidth": 360,
         "documentWidth": 360,
         "horizontalOverflow": false,
         "contentWidth": 360,
         "minimumContentWidth": 280,
-        "contentWidthSufficient": true
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
       },
       "violations": [],
       "incomplete": [
@@ -404,6 +443,72 @@
             {
               "target": [
                 ".whitespace-nowrap.text-\\[14px\\].px-2:nth-child(3)"
+              ],
+              "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it's partially obscured by another element"
+            },
+            {
+              "target": [
+                ".text-right[scope=\"col\"]:nth-child(4)"
+              ],
+              "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it's partially obscured by another element"
+            },
+            {
+              "target": [
+                ".text-right[scope=\"col\"]:nth-child(5)"
+              ],
+              "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it's partially obscured by another element"
+            },
+            {
+              "target": [
+                "th[scope=\"col\"]:nth-child(6)"
+              ],
+              "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it's partially obscured by another element"
+            },
+            {
+              "target": [
+                ".border-b-2:nth-child(1) > td:nth-child(3)"
+              ],
+              "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it's partially obscured by another element"
+            },
+            {
+              "target": [
+                ".border-b-2:nth-child(1) > .text-right.tr-num:nth-child(4)"
+              ],
+              "failureSummary": "Fix any of the following:\n  Element content is too short to determine if it is actual text content"
+            },
+            {
+              "target": [
+                ".border-b-2:nth-child(1) > .text-right.tr-num:nth-child(5)"
+              ],
+              "failureSummary": "Fix any of the following:\n  Element content is too short to determine if it is actual text content"
+            },
+            {
+              "target": [
+                ".border-b-2:nth-child(1) > td:nth-child(6)"
+              ],
+              "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it's partially obscured by another element"
+            },
+            {
+              "target": [
+                ".border-b-2:nth-child(2) > td:nth-child(3)"
+              ],
+              "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it's partially obscured by another element"
+            },
+            {
+              "target": [
+                ".border-b-2:nth-child(2) > .text-right.tr-num:nth-child(4)"
+              ],
+              "failureSummary": "Fix any of the following:\n  Element content is too short to determine if it is actual text content"
+            },
+            {
+              "target": [
+                ".border-b-2:nth-child(2) > .text-right.tr-num:nth-child(5)"
+              ],
+              "failureSummary": "Fix any of the following:\n  Element content is too short to determine if it is actual text content"
+            },
+            {
+              "target": [
+                ".border-b-2:nth-child(2) > td:nth-child(6)"
               ],
               "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it's partially obscured by another element"
             }

@@ -34,6 +34,11 @@ const incompletePage = `<!doctype html><html lang="ko"><head><title>수동 확�
 const overflowPage = `<!doctype html><html lang="ko"><head><title>모바일 넘침</title></head><body>
   <a href="#main-content">본문 바로가기</a><main id="main-content" tabindex="-1"><h1>모바일 넘침</h1>
   <div style="width:500px">고정 폭 콘텐츠</div></main></body></html>`;
+const scrollRegionPage = `<!doctype html><html lang="ko"><head><title>스크롤 영역</title></head><body>
+  <a href="#main-content">본문 바로가기</a><main id="main-content" tabindex="-1">
+  <div role="region" aria-label="넓은 표" tabindex="0" style="width:300px;overflow-x:auto"
+    onkeydown="if(event.key==='End'){this.scrollLeft=this.scrollWidth;event.preventDefault()}">
+  <div style="width:500px">가로 스크롤 콘텐츠</div></div></main></body></html>`;
 const preparedPage = `<!doctype html><html lang="ko"><head><title>Fixture 준비</title></head><body>
   <a href="#main-content">본문 바로가기</a><main id="main-content" tabindex="-1">
   <h1>불러오는 중</h1></main><script>
@@ -56,6 +61,8 @@ beforeAll(async () => {
             ? incompletePage
             : request.url === '/overflow'
               ? overflowPage
+            : request.url === '/scroll-region'
+              ? scrollRegionPage
             : request.url === '/prepared'
               ? preparedPage
             : validPage,
@@ -254,6 +261,32 @@ test('fails a mobile audit case when the target content is compressed', async ()
   expect(report.routes[0].layout.contentWidth).toBeLessThan(400);
 });
 
+test('verifies keyboard scrolling without treating region content as document clipping', async () => {
+  const report = await auditPlatformAccessibility({
+    baseUrl,
+    routes: [{
+      id: 'scroll-region',
+      path: '/scroll-region',
+      skipTarget: 'main-content',
+      requiredMobileScrollRegions: ['넓은 표'],
+    }],
+    profiles: [{ id: 'mobile', viewport: { width: 360, height: 800 }, minimumContentWidth: 280 }],
+    reportPath: join(outDir, 'mobile-scroll-region.json'),
+  });
+
+  expect(report.status).toBe('pass');
+  expect(report.routes[0].requiredScrollRegions).toEqual([
+    expect.objectContaining({
+      label: '넓은 표',
+      found: true,
+      scrollable: true,
+      focused: true,
+      keyboardScrolled: true,
+    }),
+  ]);
+  expect(report.routes[0].layout.clippedOutsideScrollRegions).toEqual([]);
+});
+
 test('installs root dependencies without requiring an ignored lockfile', () => {
   const workflow = readFileSync(
     new URL('../../.github/workflows/platform-accessibility.yml', import.meta.url),
@@ -283,6 +316,8 @@ test('covers authenticated and published production surfaces with read-only brow
     path: '/r/_/',
     fixture: 'ci-published-result-read-fixture-v1',
     readySelector: 'main#main-content header h1',
+    openDetailsBeforeAudit: true,
+    requiredMobileScrollRegions: ['조별 쟁점 커버리지 표', '쟁점 분석 데이터 표'],
   });
   expect(DEFAULT_EXCLUDED_SURFACES).toEqual([
     expect.objectContaining({ id: 'assistive-technology-manual-evaluation' }),

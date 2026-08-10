@@ -168,6 +168,8 @@ export const DEFAULT_AUDIT_ROUTES = [
     skipTarget: 'main-content',
     fixture: 'ci-published-result-read-fixture-v1',
     readySelector: 'main#main-content header h1',
+    openDetailsBeforeAudit: true,
+    requiredMobileScrollRegions: ['조별 쟁점 커버리지 표', '쟁점 분석 데이터 표'],
     prepare: preparePublishedResult,
   },
 ];
@@ -220,6 +222,36 @@ async function inspectSkipLink(page, expectedTarget) {
   return { found: true, target: expectedTarget, focusMoved };
 }
 
+async function inspectRequiredScrollRegions(page, labels) {
+  const results = [];
+  for (const label of labels) {
+    const region = page.getByRole('region', { name: label, exact: true });
+    if (await region.count() !== 1) {
+      results.push({ label, found: false, scrollable: false, focused: false, keyboardScrolled: false });
+      continue;
+    }
+    const initial = await region.evaluate((element) => ({
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+    }));
+    await region.focus();
+    const focused = await region.evaluate((element) => document.activeElement === element);
+    await region.press('End');
+    await page.waitForTimeout(50);
+    const scrollLeft = await region.evaluate((element) => element.scrollLeft);
+    await region.evaluate((element) => { element.scrollLeft = 0; });
+    results.push({
+      label,
+      found: true,
+      ...initial,
+      scrollable: initial.scrollWidth > initial.clientWidth + 1,
+      focused,
+      keyboardScrolled: scrollLeft > 0,
+    });
+  }
+  return results;
+}
+
 async function auditRoute(browser, baseUrl, route, profile, settleMs) {
   const context = await browser.newContext({ viewport: profile.viewport });
   const page = await context.newPage();
@@ -234,6 +266,11 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
       await page.waitForSelector(route.readySelector, { state: 'attached', timeout: 10_000 });
       readiness.reached = true;
     }
+    if (route.openDetailsBeforeAudit) {
+      await page.locator('details').evaluateAll((elements) => {
+        for (const element of elements) element.open = true;
+      });
+    }
     if (settleMs > 0) await page.waitForTimeout(settleMs);
     await page.addScriptTag({ content: axe.source });
     const axeResult = await page.evaluate(async (tags) => globalThis.axe.run(document, {
@@ -241,6 +278,9 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
       resultTypes: ['violations', 'incomplete'],
     }), WCAG_TAGS);
     const skipLink = await inspectSkipLink(page, route.skipTarget);
+    const requiredScrollRegions = profile.id === 'mobile'
+      ? await inspectRequiredScrollRegions(page, route.requiredMobileScrollRegions ?? [])
+      : [];
     const layout = await page.evaluate(({ targetId, minimumContentWidth }) => {
       const viewportWidth = document.documentElement.clientWidth;
       const documentWidth = Math.max(
@@ -248,6 +288,19 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
         document.body?.scrollWidth ?? 0,
       );
       const contentWidth = document.getElementById(targetId)?.getBoundingClientRect().width ?? 0;
+      const clippedOutsideScrollRegions = Array.from(document.body.querySelectorAll('*'))
+        .filter((element) => {
+          const scrollRegion = element.closest('[role="region"][tabindex="0"]');
+          if (scrollRegion && ['auto', 'scroll'].includes(getComputedStyle(scrollRegion).overflowX)) return false;
+          const rect = element.getBoundingClientRect();
+          return rect.left < -1 || rect.right > viewportWidth + 1;
+        })
+        .slice(0, 10)
+        .map((element) => ({
+          tag: element.tagName.toLowerCase(),
+          id: element.id || null,
+          className: typeof element.className === 'string' ? element.className : null,
+        }));
       return {
         viewportWidth,
         documentWidth,
@@ -255,6 +308,7 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
         contentWidth,
         minimumContentWidth,
         contentWidthSufficient: contentWidth >= minimumContentWidth,
+        clippedOutsideScrollRegions,
       };
     }, { targetId: route.skipTarget, minimumContentWidth: profile.minimumContentWidth ?? 0 });
     const violations = axeResult.violations.map(violationEvidence);
@@ -265,7 +319,9 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
       && violations.length === 0
       && skipLink.focusMoved
       && !layout.horizontalOverflow
-      && layout.contentWidthSufficient;
+      && layout.contentWidthSufficient
+      && layout.clippedOutsideScrollRegions.length === 0
+      && requiredScrollRegions.every((region) => region.found && region.scrollable && region.focused && region.keyboardScrolled);
     return {
       id: `${route.id}:${profile.id}`,
       routeId: route.id,
@@ -278,6 +334,7 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
       httpStatus,
       passed,
       skipLink,
+      requiredScrollRegions,
       layout,
       violations,
       incomplete,
@@ -297,6 +354,7 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
       httpStatus: null,
       passed: false,
       skipLink: { found: false, target: route.skipTarget, focusMoved: false },
+      requiredScrollRegions: [],
       layout: null,
       violations: [],
       incomplete: [],
