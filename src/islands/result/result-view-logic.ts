@@ -126,6 +126,11 @@ export type ResultView = {
   stats: ResultStats;
 };
 
+export type ResultExplanationStep = {
+  label: string;
+  detail: string;
+};
+
 // HITL 고정 카피(스키마 body에도 실리지만, 누락 대비 폴백 상수로 보관한다).
 export const HITL_NOTICE_FALLBACK =
   'AI는 초안을 만들고, 공개 여부와 최종 표현은 운영진이 결정합니다.';
@@ -274,6 +279,28 @@ export function buildResultView(res: ResultGetResponse): ResultView | null {
       participatingTeams: teamSet.size,
     },
   };
+}
+
+export function buildResultExplanation(view: ResultView): ResultExplanationStep[] {
+  const { stats } = view;
+  return [
+    {
+      label: '공개 범위',
+      detail: `공개 스냅샷의 쟁점 ${stats.issueCount}개를 분석하고, 특정 쟁점에 연결되지 않은 원문 ${stats.unclassifiedCount}건은 별도로 알립니다.`,
+    },
+    {
+      label: '조 단위 집계',
+      detail: `쟁점을 제기한 조의 중복 없는 합집합은 ${stats.participatingTeams}개 조이며, 각 쟁점의 조 수를 비교합니다.`,
+    },
+    {
+      label: '합의 분류',
+      detail: `합의로 분류된 쟁점 ${stats.consensusCount}개를 전체 쟁점 ${stats.issueCount}개로 나눠 합의 비율을 산정합니다.`,
+    },
+    {
+      label: '사람 검수',
+      detail: `전체 쟁점 ${stats.issueCount}개 중 ${stats.reviewedCount}개가 검수 완료 상태입니다. 초안은 확정 결과와 구분해 표시합니다.`,
+    },
+  ];
 }
 
 /** 합의 비율을 정수 %로. */

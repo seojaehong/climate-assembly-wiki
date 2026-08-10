@@ -2,6 +2,7 @@ import { useEffect, useState, type KeyboardEvent } from 'react';
 import HitlBadge from '../../components/HitlBadge';
 import { fetchResult } from '../../lib/result-page';
 import {
+  buildResultExplanation,
   buildResultView,
   ratioToPercent,
   tokenFromPath,
@@ -365,6 +366,43 @@ function TakeawaysBlock({ view }: { view: ResultViewModel }) {
   );
 }
 
+function ResultExplanationPanel({ view }: { view: ResultViewModel }) {
+  const steps = buildResultExplanation(view);
+  return (
+    <details className="rounded-2xl border-2 bg-white p-5 sm:p-6" style={{ borderColor: RESULT_CONTROL_BORDER }}>
+      <summary className="cursor-pointer text-left">
+        <Eyebrow style={{ color: TEAL }}>XAI · 산정 설명</Eyebrow>
+        <span className="mt-1 block text-[clamp(20px,2.2vw,30px)] font-extrabold" style={{ color: NAVY }}>
+          결과가 만들어진 과정
+        </span>
+        <span className="mt-1 block text-[15px]" style={{ color: GRAY }}>
+          공개된 수치의 범위·집계·분류·검수 기준을 확인합니다.
+        </span>
+      </summary>
+      <ol className="mt-5 grid gap-3 sm:grid-cols-2">
+        {steps.map((step, index) => (
+          <li key={step.label} className="rounded-xl border-2 p-4" style={{ borderColor: BORDER }}>
+            <div className="flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[14px] font-extrabold text-white"
+                style={{ background: TEAL }}
+              >
+                {index + 1}
+              </span>
+              <h3 className="text-[17px] font-extrabold" style={{ color: NAVY }}>{step.label}</h3>
+            </div>
+            <p className="mt-2 text-[15px] leading-relaxed" style={{ color: INK }}>{step.detail}</p>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-4 text-[14px] leading-relaxed" style={{ color: GRAY }}>
+        이 설명은 현재 공개 스냅샷에서 확인 가능한 집계 근거입니다. 개별 원문 인용과 이행 상태는 해당 데이터가 공개 계약에 포함된 뒤 별도 제공합니다.
+      </p>
+    </details>
+  );
+}
+
 // ── 차트 '표로 보기' 대체본(접근성) ──
 
 function DataTable({ view }: { view: ResultViewModel }) {
@@ -545,6 +583,7 @@ export function ResultContent({ view }: { view: ResultViewModel }) {
         <RankingChart view={view} />
         <IssueSummaries view={view} />
         <TakeawaysBlock view={view} />
+        <ResultExplanationPanel view={view} />
         <DataTable view={view} />
 
         {/* 분모 규칙 주석 + HITL 푸터 */}

@@ -115,4 +115,16 @@ describe('ResultView accessibility', () => {
     expect(html).not.toContain('aria-label="검수 대기 · 초안');
     expect(html).not.toContain('>대기(AI 초안)<');
   });
+
+  it('공개 결과의 산정·검수 과정을 수치 기반 XAI 설명 패널로 제공한다', () => {
+    const html = renderToStaticMarkup(createElement(ResultContent, { view: readyView() }));
+
+    expect(html).toContain('결과가 만들어진 과정');
+    expect(html).toContain('공개 범위');
+    expect(html).toContain('조 단위 집계');
+    expect(html).toContain('합의 분류');
+    expect(html).toContain('사람 검수');
+    expect(html).toContain('쟁점 1개를 분석하고');
+    expect(html).toContain('전체 쟁점 1개 중 1개가 검수 완료 상태');
+  });
 });

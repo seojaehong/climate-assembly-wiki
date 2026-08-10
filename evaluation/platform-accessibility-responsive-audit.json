@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-10T22:36:02.911Z",
+  "generatedAt": "2026-08-10T22:58:08.432Z",
   "baseUrl": "http://127.0.0.1:4321",
   "standard": "WCAG 2.2 AA automated subset + skip-link focus + responsive overflow",
   "engine": {
@@ -452,7 +452,7 @@
           "nodes": [
             {
               "target": [
-                ".whitespace-nowrap.text-\\[14px\\].px-2:nth-child(3)"
+                ".whitespace-nowrap.px-2.text-center:nth-child(3)"
               ],
               "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it's partially obscured by another element"
             },

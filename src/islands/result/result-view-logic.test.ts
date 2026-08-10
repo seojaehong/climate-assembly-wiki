@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   buildResultView,
   buildMatrix,
+  buildResultExplanation,
   rankIssues,
   sortTeams,
   toViewIssue,
@@ -108,6 +109,38 @@ describe('buildResultView — 합의 비율(분모=전체 쟁점 수)', () => {
     )!;
     expect(view.stats.consensusCount).toBe(1);
     expect(view.stats.furtherCount).toBe(1);
+  });
+});
+
+describe('buildResultExplanation — 공개 결과 산정 설명', () => {
+  it('현재 공개 스냅샷의 분모·조·검수·미분류 근거를 수치와 함께 설명한다', () => {
+    const view = buildResultView(
+      response([
+        issue({ id: 'a', frequency_class: 'consensus', review_status: 'draft', teams: ['1분과 1조', '1분과 2조'] }),
+        issue({ id: 'b', frequency_class: 'minority', review_status: 'reviewed', teams: ['1분과 2조'] }),
+      ], { reviewed_count: 1, unclassified_count: 3 }),
+    )!;
+
+    const explanation = buildResultExplanation(view);
+    expect(explanation).toEqual([
+      {
+        label: '공개 범위',
+        detail: '공개 스냅샷의 쟁점 2개를 분석하고, 특정 쟁점에 연결되지 않은 원문 3건은 별도로 알립니다.',
+      },
+      {
+        label: '조 단위 집계',
+        detail: '쟁점을 제기한 조의 중복 없는 합집합은 2개 조이며, 각 쟁점의 조 수를 비교합니다.',
+      },
+      {
+        label: '합의 분류',
+        detail: '합의로 분류된 쟁점 1개를 전체 쟁점 2개로 나눠 합의 비율을 산정합니다.',
+      },
+      {
+        label: '사람 검수',
+        detail: '전체 쟁점 2개 중 1개가 검수 완료 상태입니다. 초안은 확정 결과와 구분해 표시합니다.',
+      },
+    ]);
+    expect(explanation[2].detail).not.toContain('검수');
   });
 });
 
