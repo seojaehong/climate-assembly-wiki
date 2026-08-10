@@ -8,6 +8,8 @@
 
 # 플랫폼 SPA fallback (2026-08-10) — 클라이언트 라우팅. /mod·/b·/hq·/v 는 무관(별도 정적 경로).
 # 반드시 아래 /* 404 catch-all 보다 앞에 둔다(먼저 매치 = 우선).
+/platform/accessibility   /platform/accessibility/index.html  200
+/platform/accessibility/  /platform/accessibility/index.html  200
 /platform/*  /platform/app/index.html  200
 /r/*         /r/_/index.html           200
 

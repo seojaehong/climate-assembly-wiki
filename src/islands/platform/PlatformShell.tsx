@@ -118,6 +118,8 @@ export function LoginCard({ notice, onSignedIn }: { notice: string | null; onSig
   return (
     <Centered>
       <form
+        id="platform-scope-content"
+        tabIndex={-1}
         aria-label="운영진 로그인"
         aria-busy={busy}
         onSubmit={submit}
@@ -169,6 +171,11 @@ export function LoginCard({ notice, onSignedIn }: { notice: string | null; onSig
         </button>
         <p style={{ fontSize: 12, color: MUTED, textAlign: 'center', marginTop: 16 }}>
           플랫폼 스키마 미적용 상태에서는 로그인이 동작하지 않을 수 있습니다(빌드·마운트는 정상).
+        </p>
+        <p style={{ fontSize: 13, textAlign: 'center', margin: '10px 0 0' }}>
+          <a href="/platform/accessibility/" style={{ color: PLATFORM_ACCENT, fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 3 }}>
+            접근성 성명 및 피드백
+          </a>
         </p>
       </form>
     </Centered>
@@ -226,6 +233,7 @@ function AppShell({ session, scope, navigate }: { session: AuthSessionInfo; scop
         </div>
         <BreadcrumbNav tree={tree} scope={scope} navigate={navigate} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <a href="/platform/accessibility/" style={{ fontSize: 13, fontWeight: 700, color: PLATFORM_ACCENT, textDecoration: 'underline', textUnderlineOffset: 3 }}>접근성</a>
           <span style={{ fontSize: 13, color: MUTED }}>{session.email ?? session.userId.slice(0, 8)}</span>
           <button
             type="button"
@@ -249,7 +257,7 @@ function AppShell({ session, scope, navigate }: { session: AuthSessionInfo; scop
         </aside>
 
         {/* 우: 스코프 콘텐츠 아웃렛 + 뷰 전환 탭 */}
-        <main style={{ flex: 1, minWidth: 0, padding: '24px 28px', overflowY: 'auto' }}>
+        <main id="platform-scope-content" tabIndex={-1} style={{ flex: 1, minWidth: 0, padding: '24px 28px', overflowY: 'auto' }}>
           <ViewTabs scope={scope} navigate={navigate} />
           <ScopeOutlet scope={scope} publishScopeId={publishTarget.id} />
         </main>

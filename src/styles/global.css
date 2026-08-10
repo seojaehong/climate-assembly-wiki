@@ -131,6 +131,23 @@ code, pre, kbd {
   border-radius: var(--radius-xs);
 }
 
+.platform-skip-link {
+  position: fixed;
+  top: -80px;
+  left: 12px;
+  z-index: 100;
+  padding: 10px 14px;
+  border: 2px solid #135c73;
+  border-radius: 8px;
+  background: #fff;
+  color: #135c73;
+  font-weight: 800;
+}
+
+.platform-skip-link:focus {
+  top: 12px;
+}
+
 /* ============================================================
    Selection
    ============================================================ */

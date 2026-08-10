@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
@@ -40,6 +41,8 @@ describe('PlatformShell accessibility', () => {
     }));
 
     expect(html).toContain('<form');
+    expect(html).toContain('id="platform-scope-content"');
+    expect(html).toContain('tabindex="-1"');
     expect(html).toContain('aria-label="운영진 로그인"');
     expect(html).toContain('for="platform-email"');
     expect(html).toContain('id="platform-email"');
@@ -51,6 +54,12 @@ describe('PlatformShell accessibility', () => {
     expect(html).not.toContain('outline:none');
     expect(html).toContain('border:2px solid #6B7D88');
     expect(html).not.toContain('border:1px');
+  });
+
+  it('접근성 성명의 건너뛰기 대상이 프로그램 방식으로 초점을 받을 수 있다', () => {
+    const source = readFileSync(new URL('../../pages/platform/accessibility.astro', import.meta.url), 'utf8');
+
+    expect(source).toContain('<main id="main-content" tabindex="-1">');
   });
 
   it('스코프 보기 내비게이션이 현재 보기를 한 곳에서만 표시한다', () => {

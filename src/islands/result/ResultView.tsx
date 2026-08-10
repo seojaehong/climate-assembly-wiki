@@ -15,11 +15,14 @@ const TEAL = '#135C73';
 const INK = '#1F2933';
 const GRAY = '#5A6B73';
 const BORDER = '#DCE7EE';
+export const RESULT_CONTROL_BORDER = '#6B7D88';
+export const RESULT_STATUS_GREEN = '#2F6F25';
+export const RESULT_STATUS_AMBER = '#8A4F08';
 
 const FREQ_COLOR: Record<string, string> = {
-  consensus: '#4F9D3A',
+  consensus: RESULT_STATUS_GREEN,
   majority: '#2E75B6',
-  minority: '#F5A623',
+  minority: RESULT_STATUS_AMBER,
   mixed: '#5A6B73',
 };
 
@@ -61,7 +64,7 @@ function ReportDownloadButton({ view }: { view: ResultViewModel }) {
         {busy ? '보고서 만드는 중…' : '보고서 다운로드(DOCX)'}
       </button>
       {error ? (
-        <span className="text-[15px] font-semibold" style={{ color: '#B5651D' }}>
+        <span role="alert" className="text-[15px] font-semibold" style={{ color: RESULT_STATUS_AMBER }}>
           {error}
         </span>
       ) : null}
@@ -99,7 +102,7 @@ function formatDate(iso: string | null): string {
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-screen flex items-center justify-center px-6 py-16">
+    <main id="main-content" tabIndex={-1} className="min-h-screen flex items-center justify-center px-6 py-16">
       <div className="w-full max-w-xl text-center">{children}</div>
     </main>
   );
@@ -119,7 +122,7 @@ function StanceBadge({ issue }: { issue: ViewIssue }) {
       ) : null}
       {issue.stanceLabel ? (
         <span
-          className="rounded-full border px-3 py-1 text-[15px] font-bold"
+          className="rounded-full border-2 px-3 py-1 text-[15px] font-bold"
           style={{ borderColor: BORDER, color: TEAL }}
         >
           {issue.stanceLabel}
@@ -132,7 +135,7 @@ function StanceBadge({ issue }: { issue: ViewIssue }) {
 function ReviewMark({ reviewed }: { reviewed: boolean }) {
   if (reviewed) {
     return (
-      <span className="rounded-full px-2.5 py-0.5 text-[13px] font-bold text-white" style={{ background: '#4F9D3A' }}>
+      <span className="rounded-full px-2.5 py-0.5 text-[13px] font-bold text-white" style={{ background: RESULT_STATUS_GREEN }}>
         검수 완료
       </span>
     );
@@ -141,7 +144,7 @@ function ReviewMark({ reviewed }: { reviewed: boolean }) {
   return (
     <span
       className="rounded-full border-2 px-2.5 py-0.5 text-[13px] font-extrabold"
-      style={{ borderColor: '#F5A623', color: '#B5651D', background: '#FEF6E7' }}
+      style={{ borderColor: '#F5A623', color: RESULT_STATUS_AMBER, background: '#FEF6E7' }}
     >
       검수 대기 · AI 초안
     </span>
@@ -160,7 +163,7 @@ function StatTile({
   accent?: string;
 }) {
   return (
-    <div className="rounded-2xl border bg-white px-5 py-4" style={{ borderColor: BORDER }}>
+    <div className="rounded-2xl border-2 bg-white px-5 py-4" style={{ borderColor: BORDER }}>
       <Eyebrow className="mb-1" style={{ color: GRAY }}>
         {label}
       </Eyebrow>
@@ -178,7 +181,7 @@ function CoverageMatrix({ view }: { view: ResultViewModel }) {
   const { matrix } = view;
   if (matrix.teams.length === 0 || matrix.rows.length === 0) return null;
   return (
-    <section className="rounded-2xl border bg-white p-5 sm:p-6" style={{ borderColor: BORDER }}>
+    <section className="rounded-2xl border-2 bg-white p-5 sm:p-6" style={{ borderColor: BORDER }}>
       <Eyebrow className="mb-1" style={{ color: TEAL }}>
         조 × 쟁점 커버리지
       </Eyebrow>
@@ -190,16 +193,18 @@ function CoverageMatrix({ view }: { view: ResultViewModel }) {
       </p>
       <div className="overflow-x-auto">
         <table className="border-collapse text-left" style={{ minWidth: '100%' }}>
+          <caption className="sr-only">쟁점별 조 제기 여부</caption>
           <thead>
             <tr>
               <th
+                scope="col"
                 className="sticky left-0 z-10 bg-white px-3 py-2 text-[15px] font-bold align-bottom"
                 style={{ color: GRAY, minWidth: 220 }}
               >
                 쟁점
               </th>
               {matrix.teams.map((t) => (
-                <th key={t} className="px-2 py-2 text-[14px] font-bold text-center whitespace-nowrap" style={{ color: NAVY }}>
+                <th scope="col" key={t} className="px-2 py-2 text-[14px] font-bold text-center whitespace-nowrap" style={{ color: NAVY }}>
                   {t}
                 </th>
               ))}
@@ -207,7 +212,7 @@ function CoverageMatrix({ view }: { view: ResultViewModel }) {
           </thead>
           <tbody>
             {matrix.rows.map(({ issue, cells }) => (
-              <tr key={issue.id} className="border-t" style={{ borderColor: BORDER }}>
+              <tr key={issue.id} className="border-t-2" style={{ borderColor: BORDER }}>
                 <th
                   scope="row"
                   className="sticky left-0 z-10 bg-white px-3 py-2 text-[16px] font-bold text-left align-middle"
@@ -242,7 +247,7 @@ function CoverageMatrix({ view }: { view: ResultViewModel }) {
 function RankingChart({ view }: { view: ResultViewModel }) {
   const max = Math.max(1, ...view.ranking.map((i) => i.teamCount));
   return (
-    <section className="rounded-2xl border bg-white p-5 sm:p-6" style={{ borderColor: BORDER }}>
+    <section className="rounded-2xl border-2 bg-white p-5 sm:p-6" style={{ borderColor: BORDER }}>
       <Eyebrow className="mb-1" style={{ color: TEAL }}>
         쟁점 랭킹
       </Eyebrow>
@@ -265,7 +270,7 @@ function RankingChart({ view }: { view: ResultViewModel }) {
                 <span className="text-[0.6em] font-bold" style={{ color: GRAY }}>개 조</span>
               </span>
             </div>
-            <div className="h-[clamp(20px,2.6vh,32px)] rounded-lg overflow-hidden border" style={{ background: '#F1F7FA', borderColor: BORDER }}>
+            <div aria-hidden="true" className="h-[clamp(20px,2.6vh,32px)] rounded-lg overflow-hidden border-2" style={{ background: '#F1F7FA', borderColor: BORDER }}>
               <div
                 className="h-full rounded-lg"
                 style={{ width: `${(issue.teamCount / max) * 100}%`, background: FREQ_COLOR[issue.frequency ?? ''] ?? '#2E75B6' }}
@@ -285,7 +290,7 @@ function IssueSummaries({ view }: { view: ResultViewModel }) {
     <section className="space-y-4">
       <Eyebrow style={{ color: TEAL }}>쟁점별 요약</Eyebrow>
       {view.issues.map((issue) => (
-        <article key={issue.id} className="rounded-2xl border bg-white p-5 sm:p-6" style={{ borderColor: BORDER }}>
+        <article key={issue.id} className="rounded-2xl border-2 bg-white p-5 sm:p-6" style={{ borderColor: BORDER }}>
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <h3 className="text-[clamp(19px,2vw,26px)] font-extrabold break-words" style={{ color: NAVY }}>
               {issue.label}
@@ -311,7 +316,7 @@ function IssueSummaries({ view }: { view: ResultViewModel }) {
       ))}
       {view.stats.unclassifiedCount > 0 ? (
         <p
-          className="rounded-2xl border px-5 py-4 text-[16px] font-bold"
+          className="rounded-2xl border-2 px-5 py-4 text-[16px] font-bold"
           style={{ borderColor: BORDER, background: '#F1F7FA', color: TEAL }}
         >
           기타 {view.stats.unclassifiedCount}건은 특정 쟁점으로 분류되지 않았습니다.
@@ -327,7 +332,7 @@ function TakeawaysBlock({ view }: { view: ResultViewModel }) {
   const consensus = view.issues.filter((i) => i.isConsensus);
   const further = view.issues.filter((i) => !i.isConsensus);
   const col = (title: string, accent: string, items: ViewIssue[], empty: string) => (
-    <div className="rounded-2xl border bg-white p-5" style={{ borderColor: BORDER }}>
+    <div className="rounded-2xl border-2 bg-white p-5" style={{ borderColor: BORDER }}>
       <h3 className="text-[clamp(18px,1.9vw,24px)] font-extrabold mb-3" style={{ color: accent }}>
         {title}
       </h3>
@@ -346,9 +351,9 @@ function TakeawaysBlock({ view }: { view: ResultViewModel }) {
   );
   return (
     <section className="grid gap-4 sm:grid-cols-3">
-      {col('함께 확인된 것', '#4F9D3A', consensus, '합의로 분류된 쟁점이 아직 없습니다.')}
-      {col('더 논의할 것', '#B5651D', further, '추가 논의가 필요한 쟁점이 없습니다.')}
-      <div className="rounded-2xl border bg-white p-5" style={{ borderColor: BORDER }}>
+      {col('함께 확인된 것', RESULT_STATUS_GREEN, consensus, '합의로 분류된 쟁점이 아직 없습니다.')}
+      {col('더 논의할 것', RESULT_STATUS_AMBER, further, '추가 논의가 필요한 쟁점이 없습니다.')}
+      <div className="rounded-2xl border-2 bg-white p-5" style={{ borderColor: BORDER }}>
         <h3 className="text-[clamp(18px,1.9vw,24px)] font-extrabold mb-3" style={{ color: NAVY }}>
           다음 단계
         </h3>
@@ -364,15 +369,9 @@ function TakeawaysBlock({ view }: { view: ResultViewModel }) {
 // ── 차트 '표로 보기' 대체본(접근성) ──
 
 function DataTable({ view }: { view: ResultViewModel }) {
-  const [open, setOpen] = useState(false);
   return (
-    <section className="rounded-2xl border bg-white p-5 sm:p-6" style={{ borderColor: BORDER }}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="w-full flex items-center justify-between gap-3 text-left"
-      >
+    <details className="rounded-2xl border-2 bg-white p-5 sm:p-6" style={{ borderColor: RESULT_CONTROL_BORDER }}>
+      <summary className="flex cursor-pointer items-center justify-between gap-3 text-left">
         <span>
           <Eyebrow style={{ color: TEAL }}>접근성</Eyebrow>
           <span className="block text-[clamp(18px,1.9vw,24px)] font-extrabold" style={{ color: NAVY }}>
@@ -382,44 +381,78 @@ function DataTable({ view }: { view: ResultViewModel }) {
             스크린리더·정확한 수치 확인용
           </span>
         </span>
-        <span className="shrink-0 text-[22px]" style={{ color: TEAL }} aria-hidden="true">
-          {open ? '▲' : '▼'}
-        </span>
-      </button>
-      {open ? (
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full border-collapse text-left text-[15px]">
-            <caption className="sr-only">쟁점별 방향·빈도·제기 조 수·원문 군집·검수 상태</caption>
-            <thead>
-              <tr className="border-b-2" style={{ borderColor: BORDER, color: GRAY }}>
-                <th className="px-3 py-2">쟁점</th>
-                <th className="px-3 py-2">빈도</th>
-                <th className="px-3 py-2">방향</th>
-                <th className="px-3 py-2 text-right">제기 조</th>
-                <th className="px-3 py-2 text-right">원문 군집</th>
-                <th className="px-3 py-2">검수</th>
+        <span className="shrink-0 text-[22px]" style={{ color: TEAL }} aria-hidden="true">↕</span>
+      </summary>
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full border-collapse text-left text-[15px]">
+          <caption className="sr-only">쟁점별 방향·빈도·제기 조 수·원문 군집·검수 상태</caption>
+          <thead>
+            <tr className="border-b-2" style={{ borderColor: BORDER, color: GRAY }}>
+              <th scope="col" className="px-3 py-2">쟁점</th>
+              <th scope="col" className="px-3 py-2">빈도</th>
+              <th scope="col" className="px-3 py-2">방향</th>
+              <th scope="col" className="px-3 py-2 text-right">제기 조</th>
+              <th scope="col" className="px-3 py-2 text-right">원문 군집</th>
+              <th scope="col" className="px-3 py-2">검수</th>
+            </tr>
+          </thead>
+          <tbody>
+            {view.ranking.map((issue) => (
+              <tr key={issue.id} className="border-b-2" style={{ borderColor: BORDER, color: INK }}>
+                <th scope="row" className="px-3 py-2 font-bold text-left">{issue.label}</th>
+                <td className="px-3 py-2">{issue.frequencyLabel ?? '—'}</td>
+                <td className="px-3 py-2">{issue.stanceLabel ?? '—'}</td>
+                <td className="px-3 py-2 text-right tr-num font-bold">{issue.teamCount}</td>
+                <td className="px-3 py-2 text-right tr-num">{issue.consensusDenominator ?? '—'}</td>
+                <td className="px-3 py-2">{issue.isReviewed ? '완료' : '대기(AI 초안)'}</td>
               </tr>
-            </thead>
-            <tbody>
-              {view.ranking.map((i) => (
-                <tr key={i.id} className="border-b" style={{ borderColor: BORDER, color: INK }}>
-                  <th scope="row" className="px-3 py-2 font-bold text-left">{i.label}</th>
-                  <td className="px-3 py-2">{i.frequencyLabel ?? '—'}</td>
-                  <td className="px-3 py-2">{i.stanceLabel ?? '—'}</td>
-                  <td className="px-3 py-2 text-right tr-num font-bold">{i.teamCount}</td>
-                  <td className="px-3 py-2 text-right tr-num">{i.consensusDenominator ?? '—'}</td>
-                  <td className="px-3 py-2">{i.isReviewed ? '완료' : '대기(AI 초안)'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-    </section>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
   );
 }
 
 // ── 본체 ──
+
+export function ResultStatusScreen({ kind }: { kind: 'loading' | 'error' | 'unpublished' }) {
+  if (kind === 'loading') {
+    return (
+      <Centered>
+        <p role="status" aria-live="polite" className="text-[22px] font-bold" style={{ color: GRAY }}>불러오는 중…</p>
+      </Centered>
+    );
+  }
+  if (kind === 'error') {
+    return (
+      <Centered>
+        <div role="alert">
+          <div className="text-5xl mb-4" aria-hidden="true">⚠️</div>
+          <h1 className="text-[26px] font-extrabold mb-2" style={{ color: RESULT_STATUS_AMBER }}>
+            결과를 불러오지 못했습니다
+          </h1>
+          <p className="text-[18px]" style={{ color: GRAY }}>
+            네트워크 상태를 확인한 뒤 페이지를 새로고침해 주세요.
+          </p>
+        </div>
+      </Centered>
+    );
+  }
+  return (
+    <Centered>
+      <div role="status">
+        <div className="text-5xl mb-4" aria-hidden="true">🔒</div>
+        <h1 className="text-[26px] font-extrabold mb-2" style={{ color: NAVY }}>
+          공개되지 않은 결과입니다
+        </h1>
+        <p className="text-[18px]" style={{ color: GRAY }}>
+          링크가 올바른지 확인해 주세요. 아직 공개 전이거나 공개가 해제된 결과일 수 있습니다.
+        </p>
+      </div>
+    </Centered>
+  );
+}
 
 export default function ResultView() {
   const [state, setState] = useState<
@@ -447,48 +480,18 @@ export default function ResultView() {
     };
   }, []);
 
-  if (state.kind === 'loading') {
-    return (
-      <Centered>
-        <p className="text-[22px] font-bold" style={{ color: GRAY }}>불러오는 중…</p>
-      </Centered>
-    );
-  }
-  if (state.kind === 'error') {
-    return (
-      <Centered>
-        <div className="text-5xl mb-4" aria-hidden="true">⚠️</div>
-        <h1 className="text-[26px] font-extrabold mb-2" style={{ color: '#B5651D' }}>
-          결과를 불러오지 못했습니다
-        </h1>
-        <p className="text-[18px]" style={{ color: GRAY }}>
-          네트워크 상태를 확인한 뒤 페이지를 새로고침해 주세요.
-        </p>
-      </Centered>
-    );
-  }
-  if (state.kind === 'unpublished') {
-    return (
-      <Centered>
-        <div className="text-5xl mb-4" aria-hidden="true">🔒</div>
-        <h1 className="text-[26px] font-extrabold mb-2" style={{ color: NAVY }}>
-          공개되지 않은 결과입니다
-        </h1>
-        <p className="text-[18px]" style={{ color: GRAY }}>
-          링크가 올바른지 확인해 주세요. 아직 공개 전이거나 공개가 해제된 결과일 수 있습니다.
-        </p>
-      </Centered>
-    );
-  }
+  if (state.kind !== 'ready') return <ResultStatusScreen kind={state.kind} />;
+  return <ResultContent view={state.view} />;
+}
 
-  const { view } = state;
+export function ResultContent({ view }: { view: ResultViewModel }) {
   const pct = ratioToPercent(view.stats.consensusRatio);
 
   return (
-    <main className="min-h-screen px-4 sm:px-8 py-8 sm:py-12">
+    <main id="main-content" tabIndex={-1} className="min-h-screen px-4 sm:px-8 py-8 sm:py-12">
       <div className="mx-auto w-full max-w-5xl space-y-6">
         {/* 헤더 */}
-        <header className="rounded-2xl border bg-white p-6 sm:p-8" style={{ borderColor: BORDER }}>
+        <header className="rounded-2xl border-2 bg-white p-6 sm:p-8" style={{ borderColor: BORDER }}>
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <Eyebrow style={{ color: TEAL }}>기후시민회의 · 숙의 결과</Eyebrow>
             {view.scopeLabel ? (
@@ -497,12 +500,12 @@ export default function ResultView() {
               </span>
             ) : null}
             <span
-              className="rounded-full border px-3 py-1 text-[14px] font-bold"
+              className="rounded-full border-2 px-3 py-1 text-[14px] font-bold"
               style={{ borderColor: BORDER, color: GRAY }}
             >
               조 단위 분포 기준
             </span>
-            <span className="rounded-full px-3 py-1 text-[14px] font-bold text-white" style={{ background: '#4F9D3A' }}>
+            <span className="rounded-full px-3 py-1 text-[14px] font-bold text-white" style={{ background: RESULT_STATUS_GREEN }}>
               검수 완료 {view.stats.reviewedCount} / 전체 {view.stats.issueCount}
             </span>
           </div>
@@ -520,10 +523,10 @@ export default function ResultView() {
 
         {/* 스탯 */}
         <section className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-          <StatTile label="합의 비율" value={String(pct)} unit="%" accent="#4F9D3A" />
+          <StatTile label="합의 비율" value={String(pct)} unit="%" accent={RESULT_STATUS_GREEN} />
           <StatTile label="쟁점 수" value={String(view.stats.issueCount)} unit="개" />
           <StatTile label="참여 조" value={String(view.stats.participatingTeams)} unit="개" accent={TEAL} />
-          <StatTile label="추가 숙의" value={String(view.stats.furtherCount)} unit="개" accent="#B5651D" />
+          <StatTile label="추가 숙의" value={String(view.stats.furtherCount)} unit="개" accent={RESULT_STATUS_AMBER} />
         </section>
 
         {/* HITL 고정 카피 */}
@@ -531,7 +534,7 @@ export default function ResultView() {
           className="rounded-2xl border-2 px-5 py-4"
           style={{ borderColor: '#F5A623', background: '#FEF6E7' }}
         >
-          <p className="text-[clamp(16px,1.6vw,20px)] font-extrabold" style={{ color: '#B5651D' }}>
+          <p className="text-[clamp(16px,1.6vw,20px)] font-extrabold" style={{ color: RESULT_STATUS_AMBER }}>
             {view.hitlNotice}
           </p>
           <p className="mt-1 text-[clamp(15px,1.5vw,18px)] font-semibold" style={{ color: '#8A5A15' }}>
@@ -546,7 +549,7 @@ export default function ResultView() {
         <DataTable view={view} />
 
         {/* 분모 규칙 주석 + HITL 푸터 */}
-        <footer className="rounded-2xl border bg-white p-5 sm:p-6 space-y-2" style={{ borderColor: BORDER }}>
+        <footer className="rounded-2xl border-2 bg-white p-5 sm:p-6 space-y-2" style={{ borderColor: BORDER }}>
           <Eyebrow style={{ color: GRAY }}>산정 기준</Eyebrow>
           <p className="text-[15px] leading-relaxed" style={{ color: GRAY }}>
             합의 비율은 <b style={{ color: INK }}>합의로 분류된 쟁점 수 ÷ 전체 쟁점 수</b>로 산정합니다
@@ -554,6 +557,11 @@ export default function ResultView() {
           </p>
           <p className="text-[15px] leading-relaxed" style={{ color: GRAY }}>
             {view.hitlNotice} {HITL_RATIO_NOTICE}
+          </p>
+          <p className="text-[15px] leading-relaxed">
+            <a className="font-bold underline underline-offset-4" style={{ color: TEAL }} href="/platform/accessibility/">
+              접근성 성명 및 피드백
+            </a>
           </p>
         </footer>
       </div>
