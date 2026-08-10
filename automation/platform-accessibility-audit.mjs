@@ -277,10 +277,6 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
       runOnly: { type: 'tag', values: tags },
       resultTypes: ['violations', 'incomplete'],
     }), WCAG_TAGS);
-    const skipLink = await inspectSkipLink(page, route.skipTarget);
-    const requiredScrollRegions = profile.id === 'mobile'
-      ? await inspectRequiredScrollRegions(page, route.requiredMobileScrollRegions ?? [])
-      : [];
     const layout = await page.evaluate(({ targetId, minimumContentWidth }) => {
       const viewportWidth = document.documentElement.clientWidth;
       const documentWidth = Math.max(
@@ -311,6 +307,10 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
         clippedOutsideScrollRegions,
       };
     }, { targetId: route.skipTarget, minimumContentWidth: profile.minimumContentWidth ?? 0 });
+    const skipLink = await inspectSkipLink(page, route.skipTarget);
+    const requiredScrollRegions = profile.id === 'mobile'
+      ? await inspectRequiredScrollRegions(page, route.requiredMobileScrollRegions ?? [])
+      : [];
     const violations = axeResult.violations.map(violationEvidence);
     const incomplete = axeResult.incomplete.map(violationEvidence);
     const httpStatus = response?.status() ?? null;

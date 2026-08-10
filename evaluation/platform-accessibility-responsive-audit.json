@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-10T22:23:54.539Z",
+  "generatedAt": "2026-08-10T22:30:27.827Z",
   "baseUrl": "http://127.0.0.1:4321",
   "standard": "WCAG 2.2 AA automated subset + skip-link focus + responsive overflow",
   "engine": {
