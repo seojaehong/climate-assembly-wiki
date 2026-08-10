@@ -5,8 +5,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { BreadcrumbNav, completeSignOut, DataTreeNavigation, LoginCard, LogoutNotice, PLATFORM_ACCENT, PLATFORM_CONTROL_BORDER, ViewTabs } from './PlatformShell';
 import type { TreeNode } from './platform-nav-logic';
 import ScopeOutlet from './ScopeViews';
-import ReviewConsole, { REVIEW_STATUS_GREEN, ReviewIssueChoice } from './review/ReviewConsole';
-import type { IssueViewModel } from './review/review-console-logic';
+import ReviewConsole, { REVIEW_STATUS_GREEN, ReviewIssueChoice, ReviewSourceCard, SourceReferenceList } from './review/ReviewConsole';
+import type { IssueViewModel, ReviewItem } from './review/review-console-logic';
 
 const tree: TreeNode = {
   kind: 'org',
@@ -82,6 +82,27 @@ describe('PlatformShell accessibility', () => {
     expect(activeHtml).toContain('선택됨');
     expect(inactiveHtml).toContain('aria-pressed="false"');
     expect(inactiveHtml).not.toContain('선택됨');
+  });
+
+  it('선택 쟁점에서 연결 원문의 안정된 앵커로 이동한다', () => {
+    const source: ReviewItem = {
+      itemId: 'item-1', submissionId: 'submission-1', ordinal: 2, teamName: '1분과 2조',
+      kind: 'core', content: '지역 주도 전환이 필요하다', rationale: '실행력 확보',
+      issueIds: ['issue-1'], clusterId: null,
+    };
+    const linksHtml = renderToStaticMarkup(createElement(SourceReferenceList, { items: [source] }));
+    const cardHtml = renderToStaticMarkup(createElement(ReviewSourceCard, {
+      item: source,
+      checked: false,
+      onToggle: () => undefined,
+    }));
+
+    expect(linksHtml).toContain('aria-label="연결 원문 바로가기"');
+    expect(linksHtml).toContain('href="#source-item-item-1"');
+    expect(linksHtml).toContain('1분과 2조 · 핵심 2번 원문');
+    expect(cardHtml).toContain('id="source-item-item-1"');
+    expect(cardHtml).toContain('tabindex="-1"');
+    expect(cardHtml).toContain('aria-label="1분과 2조 · 핵심 2번 원문 선택"');
   });
 
   it('로그인 폼이 입력 이름과 상태 메시지를 보조기기에 제공한다', () => {

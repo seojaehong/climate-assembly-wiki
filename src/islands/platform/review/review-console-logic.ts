@@ -155,6 +155,7 @@ export function publishGateNotice(reviewedCount: number): string {
  */
 export interface ReviewItem {
   itemId: string;
+  submissionId: string;
   ordinal: number;
   teamName: string;
   kind: 'core' | 'extra';
@@ -174,6 +175,7 @@ export function toReviewItem(row: IssueItemRow): ReviewItem {
   const firstCluster = links.map((l) => l.cluster_id).find((c) => c != null) ?? null;
   return {
     itemId: row.id,
+    submissionId: row.submission_id,
     ordinal: row.ordinal,
     teamName: row.team_name ?? '(미상 조)',
     kind: row.kind === 'extra' ? 'extra' : 'core',
@@ -206,6 +208,24 @@ export function partitionItems(items: ReviewItem[]): { classified: ReviewItem[];
 /** 특정 issue 에 연결된 원문들(선택 issue 의 연결 원문 카드 목록). */
 export function itemsForIssue(items: ReviewItem[], issueId: string): ReviewItem[] {
   return items.filter((it) => it.issueIds.includes(issueId));
+}
+
+export interface SourceReference {
+  id: string;
+  href: string;
+  label: string;
+  submissionId: string;
+}
+
+/** Builds the stable review-console reference shared by a source link and its source card. */
+export function sourceReference(item: ReviewItem): SourceReference {
+  const id = `source-item-${item.itemId}`;
+  return {
+    id,
+    href: `#${id}`,
+    label: `${item.teamName} · ${itemKindLabel(item.kind)} ${item.ordinal}번 원문`,
+    submissionId: item.submissionId,
+  };
 }
 
 /** 특정 issue 의 **전체** item id 집합(replace-all 호출용). 순서 안정(items 순). */

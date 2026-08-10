@@ -31,6 +31,7 @@ import {
   planUnlink,
   validateMerge,
   itemKindLabel,
+  sourceReference,
   type IssueViewModel,
   type ReviewItem,
   type ReclassifyPlan,
@@ -468,9 +469,10 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
                   <p style={{ fontSize: 14, color: MUTED, margin: '10px 0 0' }}>연결된 원문이 없습니다. 아래 미분류함에서 끌어오세요.</p>
                 ) : (
                   <>
+                    <SourceReferenceList items={linkedItems} />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, margin: '12px 0' }}>
                       {linkedItems.map((it) => (
-                        <ItemCard key={it.itemId} it={it} checked={checked.has(it.itemId)} onToggle={() => toggleCheck(it.itemId)} />
+                        <ReviewSourceCard key={it.itemId} item={it} checked={checked.has(it.itemId)} onToggle={() => toggleCheck(it.itemId)} />
                       ))}
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', borderTop: `2px solid ${LINE}`, paddingTop: 12 }}>
@@ -529,15 +531,34 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
   );
 }
 
-// 연결 원문 카드(체크 선택 가능) — 본문 전수 노출.
-function ItemCard({ it, checked, onToggle }: { it: ReviewItem; checked: boolean; onToggle: () => void }) {
+export function SourceReferenceList({ items }: { items: ReviewItem[] }) {
   return (
-    <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', border: `2px solid ${checked ? TEAL : LINE}`, borderRadius: 12, padding: '10px 12px', background: checked ? '#F1FAFB' : '#fff', cursor: 'pointer' }}>
-      <input type="checkbox" checked={checked} onChange={onToggle} style={{ marginTop: 3, width: 16, height: 16, accentColor: TEAL }} />
+    <nav aria-label="연결 원문 바로가기" style={{ marginTop: 12 }}>
+      <ul style={{ display: 'flex', flexWrap: 'wrap', gap: 8, listStyle: 'none', margin: 0, padding: 0 }}>
+        {items.map((item) => {
+          const reference = sourceReference(item);
+          return (
+            <li key={item.itemId}>
+              <a href={reference.href} style={{ color: TEAL, fontSize: 13, fontWeight: 700, textDecoration: 'underline' }}>
+                {reference.label}
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
+export function ReviewSourceCard({ item, checked, onToggle }: { item: ReviewItem; checked: boolean; onToggle: () => void }) {
+  const reference = sourceReference(item);
+  return (
+    <label id={reference.id} tabIndex={-1} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', border: `2px solid ${checked ? TEAL : LINE}`, borderRadius: 12, padding: '10px 12px', background: checked ? '#F1FAFB' : '#fff', cursor: 'pointer' }}>
+      <input aria-label={`${reference.label} 선택`} type="checkbox" checked={checked} onChange={onToggle} style={{ marginTop: 3, width: 16, height: 16, accentColor: TEAL }} />
       <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: 'block', fontSize: 12, color: MUTED, marginBottom: 3 }}>{it.teamName} · {itemKindLabel(it.kind)}</span>
-        <span style={{ display: 'block', fontSize: 14, color: INK, lineHeight: 1.5 }}>{it.content}</span>
-        {it.rationale ? <span style={{ display: 'block', fontSize: 12, color: MUTED, marginTop: 4 }}>근거: {it.rationale}</span> : null}
+        <span style={{ display: 'block', fontSize: 12, color: MUTED, marginBottom: 3 }}>{reference.label}</span>
+        <span style={{ display: 'block', fontSize: 14, color: INK, lineHeight: 1.5 }}>{item.content}</span>
+        {item.rationale ? <span style={{ display: 'block', fontSize: 12, color: MUTED, marginTop: 4 }}>근거: {item.rationale}</span> : null}
       </span>
     </label>
   );

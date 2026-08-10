@@ -23,6 +23,7 @@ import {
   planUnlink,
   validateMerge,
   itemKindLabel,
+  sourceReference,
   type ReviewItem,
   type IssueViewModel,
 } from './review-console-logic';
@@ -50,6 +51,7 @@ function issueRow(over: Partial<IssueRow> = {}): IssueRow {
 function item(over: Partial<ReviewItem> = {}): ReviewItem {
   return {
     itemId: 'it1',
+    submissionId: 'su1',
     ordinal: 1,
     teamName: '1분과 1조',
     kind: 'core',
@@ -187,12 +189,24 @@ describe('toReviewItem / toReviewItems', () => {
       unclassified: false,
     }));
     expect(vm.itemId).toBe('si1');
+    expect(vm.submissionId).toBe('su1');
     expect(vm.teamName).toBe('1분과 1조');
     expect(vm.kind).toBe('core');
     expect(vm.content).toContain('재생에너지');
     expect(vm.issueIds).toEqual(['i1', 'i2']);
     // 최초 non-null cluster 를 취한다
     expect(vm.clusterId).toBe('k9');
+  });
+
+  it('원문 참조가 제출 맥락을 보존하고 카드 앵커를 가리킨다', () => {
+    const reference = sourceReference(toReviewItem(itemRow()));
+
+    expect(reference).toEqual({
+      id: 'source-item-si1',
+      href: '#source-item-si1',
+      label: '1분과 1조 · 핵심 1번 원문',
+      submissionId: 'su1',
+    });
   });
 
   it('링크 없으면 미분류(issueIds 빈 배열)', () => {
