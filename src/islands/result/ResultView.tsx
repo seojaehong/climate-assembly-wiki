@@ -17,6 +17,7 @@ const TEAL = '#135C73';
 const INK = '#1F2933';
 const GRAY = '#5A6B73';
 const BORDER = '#DCE7EE';
+const TABLE_BACKGROUND = '#FFFFFF';
 
 function handleHorizontalScrollKey(event: KeyboardEvent<HTMLDivElement>) {
   const region = event.currentTarget;
@@ -194,12 +195,17 @@ function CoverageMatrix({ view }: { view: ResultViewModel }) {
               <th
                 scope="col"
                 className="sticky left-0 z-10 bg-white px-3 py-2 text-[15px] font-bold align-bottom"
-                style={{ color: GRAY, minWidth: 220 }}
+                style={{ background: TABLE_BACKGROUND, color: GRAY, minWidth: 220 }}
               >
                 쟁점
               </th>
               {matrix.teams.map((t) => (
-                <th scope="col" key={t} className="px-2 py-2 text-[14px] font-bold text-center whitespace-nowrap" style={{ color: NAVY }}>
+                <th
+                  scope="col"
+                  key={t}
+                  className="px-2 py-2 text-[14px] font-bold text-center whitespace-nowrap"
+                  style={{ background: TABLE_BACKGROUND, color: NAVY }}
+                >
                   {t}
                 </th>
               ))}
@@ -211,12 +217,16 @@ function CoverageMatrix({ view }: { view: ResultViewModel }) {
                 <th
                   scope="row"
                   className="sticky left-0 z-10 bg-white px-3 py-2 text-[16px] font-bold text-left align-middle"
-                  style={{ color: INK, minWidth: 220 }}
+                  style={{ background: TABLE_BACKGROUND, color: INK, minWidth: 220 }}
                 >
                   {issue.label}
                 </th>
                 {cells.map((raised, i) => (
-                  <td key={matrix.teams[i]} className="px-2 py-2 text-center align-middle">
+                  <td
+                    key={matrix.teams[i]}
+                    className="px-2 py-2 text-center align-middle"
+                    style={{ background: TABLE_BACKGROUND, color: INK }}
+                  >
                     <span className="sr-only">{matrix.teams[i]} {raised ? '제기' : '미제기'}</span>
                     {raised ? (
                       <span
@@ -425,23 +435,23 @@ function DataTable({ view }: { view: ResultViewModel }) {
           <caption className="sr-only">쟁점별 방향·빈도·제기 조 수·원문 군집·검수 상태</caption>
           <thead>
             <tr className="border-b-2" style={{ borderColor: BORDER, color: GRAY }}>
-              <th scope="col" className="px-3 py-2">쟁점</th>
-              <th scope="col" className="px-3 py-2">빈도</th>
-              <th scope="col" className="px-3 py-2">방향</th>
-              <th scope="col" className="px-3 py-2 text-right">제기 조</th>
-              <th scope="col" className="px-3 py-2 text-right">원문 군집</th>
-              <th scope="col" className="px-3 py-2">검수</th>
+              <th scope="col" className="px-3 py-2" style={{ background: TABLE_BACKGROUND, color: GRAY }}>쟁점</th>
+              <th scope="col" className="px-3 py-2" style={{ background: TABLE_BACKGROUND, color: GRAY }}>빈도</th>
+              <th scope="col" className="px-3 py-2" style={{ background: TABLE_BACKGROUND, color: GRAY }}>방향</th>
+              <th scope="col" className="px-3 py-2 text-right" style={{ background: TABLE_BACKGROUND, color: GRAY }}>제기 조</th>
+              <th scope="col" className="px-3 py-2 text-right" style={{ background: TABLE_BACKGROUND, color: GRAY }}>원문 군집</th>
+              <th scope="col" className="px-3 py-2" style={{ background: TABLE_BACKGROUND, color: GRAY }}>검수</th>
             </tr>
           </thead>
           <tbody>
             {view.ranking.map((issue) => (
               <tr key={issue.id} className="border-b-2" style={{ borderColor: BORDER, color: INK }}>
-                <th scope="row" className="px-3 py-2 font-bold text-left">{issue.label}</th>
-                <td className="px-3 py-2">{issue.frequencyLabel ?? '—'}</td>
-                <td className="px-3 py-2">{issue.stanceLabel ?? '—'}</td>
-                <td className="px-3 py-2 text-right tr-num font-bold">{issue.teamCount}</td>
-                <td className="px-3 py-2 text-right tr-num">{issue.consensusDenominator ?? '—'}</td>
-                <td className="px-3 py-2">{issue.hitl.label}</td>
+                <th scope="row" className="px-3 py-2 font-bold text-left" style={{ background: TABLE_BACKGROUND, color: INK }}>{issue.label}</th>
+                <td className="px-3 py-2" style={{ background: TABLE_BACKGROUND, color: INK }}>{issue.frequencyLabel ?? '—'}</td>
+                <td className="px-3 py-2" style={{ background: TABLE_BACKGROUND, color: INK }}>{issue.stanceLabel ?? '—'}</td>
+                <td className="px-3 py-2 text-right tr-num font-bold" style={{ background: TABLE_BACKGROUND, color: INK }}>{issue.teamCount}</td>
+                <td className="px-3 py-2 text-right tr-num" style={{ background: TABLE_BACKGROUND, color: INK }}>{issue.consensusDenominator ?? '—'}</td>
+                <td className="px-3 py-2" style={{ background: TABLE_BACKGROUND, color: INK }}>{issue.hitl.label}</td>
               </tr>
             ))}
           </tbody>

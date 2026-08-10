@@ -89,6 +89,21 @@ describe('ResultView accessibility', () => {
     expect(html).toContain('style="min-width:720px"');
   });
 
+  it('표의 모든 데이터 셀이 불투명 배경과 명시적 전경색을 제공한다', () => {
+    const html = renderToStaticMarkup(createElement(ResultContent, { view: readyView() }));
+    const cells = html.match(/<(?:th|td)\b[^>]*>/g) ?? [];
+
+    expect(cells.length).toBeGreaterThan(0);
+    for (const cell of cells) {
+      const background = cell.match(/background:(#[0-9A-F]{6})/)?.[1];
+      const foreground = cell.match(/(?:^|;)color:(#[0-9A-F]{6})/)?.[1];
+
+      expect(background).toBe('#FFFFFF');
+      expect(foreground).toBeDefined();
+      expect(contrastRatio(foreground ?? '#FFFFFF', background ?? '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   it('공개 결과에서 본문과 접근성 성명으로 이동할 수 있고 얇은 경계를 쓰지 않는다', () => {
     const html = renderToStaticMarkup(createElement(ResultContent, { view: readyView() }));
 

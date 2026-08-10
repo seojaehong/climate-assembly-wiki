@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-10T22:58:08.432Z",
+  "generatedAt": "2026-08-10T23:28:44.213Z",
   "baseUrl": "http://127.0.0.1:4321",
   "standard": "WCAG 2.2 AA automated subset + skip-link focus + responsive overflow",
   "engine": {
@@ -22,7 +22,7 @@
     "passedRoutes": 5,
     "passedCases": 10,
     "violationCount": 0,
-    "incompleteCount": 1,
+    "incompleteCount": 0,
     "excludedSurfaceCount": 1
   },
   "coverage": {
@@ -431,100 +431,7 @@
         "clippedOutsideScrollRegions": []
       },
       "violations": [],
-      "incomplete": [
-        {
-          "id": "color-contrast",
-          "impact": "serious",
-          "help": "Elements must meet minimum color contrast ratio thresholds",
-          "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/color-contrast?application=axeAPI",
-          "tags": [
-            "cat.color",
-            "wcag2aa",
-            "wcag143",
-            "TTv5",
-            "TT13.c",
-            "EN-301-549",
-            "EN-9.1.4.3",
-            "ACT",
-            "RGAAv4",
-            "RGAA-3.2.1"
-          ],
-          "nodes": [
-            {
-              "target": [
-                ".whitespace-nowrap.px-2.text-center:nth-child(3)"
-              ],
-              "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it's partially obscured by another element"
-            },
-            {
-              "target": [
-                ".text-right[scope=\"col\"]:nth-child(4)"
-              ],
-              "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it's partially obscured by another element"
-            },
-            {
-              "target": [
-                ".text-right[scope=\"col\"]:nth-child(5)"
-              ],
-              "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it's partially obscured by another element"
-            },
-            {
-              "target": [
-                "th[scope=\"col\"]:nth-child(6)"
-              ],
-              "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it's partially obscured by another element"
-            },
-            {
-              "target": [
-                ".border-b-2:nth-child(1) > td:nth-child(3)"
-              ],
-              "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it's partially obscured by another element"
-            },
-            {
-              "target": [
-                ".border-b-2:nth-child(1) > .text-right.tr-num:nth-child(4)"
-              ],
-              "failureSummary": "Fix any of the following:\n  Element content is too short to determine if it is actual text content"
-            },
-            {
-              "target": [
-                ".border-b-2:nth-child(1) > .text-right.tr-num:nth-child(5)"
-              ],
-              "failureSummary": "Fix any of the following:\n  Element content is too short to determine if it is actual text content"
-            },
-            {
-              "target": [
-                ".border-b-2:nth-child(1) > td:nth-child(6)"
-              ],
-              "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it's partially obscured by another element"
-            },
-            {
-              "target": [
-                ".border-b-2:nth-child(2) > td:nth-child(3)"
-              ],
-              "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it's partially obscured by another element"
-            },
-            {
-              "target": [
-                ".border-b-2:nth-child(2) > .text-right.tr-num:nth-child(4)"
-              ],
-              "failureSummary": "Fix any of the following:\n  Element content is too short to determine if it is actual text content"
-            },
-            {
-              "target": [
-                ".border-b-2:nth-child(2) > .text-right.tr-num:nth-child(5)"
-              ],
-              "failureSummary": "Fix any of the following:\n  Element content is too short to determine if it is actual text content"
-            },
-            {
-              "target": [
-                ".border-b-2:nth-child(2) > td:nth-child(6)"
-              ],
-              "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it's partially obscured by another element"
-            }
-          ]
-        }
-      ],
+      "incomplete": [],
       "error": null
     }
   ]
