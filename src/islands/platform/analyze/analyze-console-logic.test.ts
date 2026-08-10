@@ -91,4 +91,24 @@ describe('buildScopedAnalysisView', () => {
     ]);
     expect(view.stanceDistribution.find((item) => item.key === 'concern')?.count).toBe(1);
   });
+
+  it('공론화 집계에서 출처 회차와 주제를 쟁점마다 보존한다', () => {
+    const view = buildScopedAnalysisView('assembly', [{
+      target: {
+        id: 'topic-1',
+        label: '에너지 전환',
+        sessionId: 'session-1',
+        sessionLabel: '제1차 회의',
+      },
+      result: result([issue({ id: 'a' })]),
+    }]);
+
+    expect(view.scope).toBe('assembly');
+    expect(view.issues[0]).toMatchObject({
+      topicId: 'topic-1',
+      topicLabel: '에너지 전환',
+      sessionId: 'session-1',
+      sessionLabel: '제1차 회의',
+    });
+  });
 });

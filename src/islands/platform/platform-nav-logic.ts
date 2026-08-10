@@ -220,6 +220,10 @@ export interface SessionTarget {
   label: string;
 }
 
+export interface SessionTopicGroup extends SessionTarget {
+  topics: TopicTarget[];
+}
+
 /** Resolves topic RPC targets for the selected topic or session scope. */
 export function topicTargetsForScope(tree: TreeNode | null, scope: Scope): TopicTarget[] {
   const { level } = deepestScopeLevel(scope);
@@ -252,4 +256,20 @@ export function sessionTargetsForScope(tree: TreeNode | null, scope: Scope): Ses
       .map((node) => ({ id: node.dataId ?? node.id, label: node.label }));
   }
   return [];
+}
+
+/** Resolves the assembly's session/topic hierarchy for cross-session read models. */
+export function sessionTopicGroupsForScope(tree: TreeNode | null, scope: Scope): SessionTopicGroup[] {
+  const { level } = deepestScopeLevel(scope);
+  if (level !== 'assembly') return [];
+  const assembly = activePath(tree, scope).find((node) => node.kind === 'assembly');
+  return (assembly?.children ?? [])
+    .filter((node) => node.kind === 'session')
+    .map((session) => ({
+      id: session.dataId ?? session.id,
+      label: session.label,
+      topics: session.children
+        .filter((node) => node.kind === 'topic')
+        .map((topic) => ({ id: topic.dataId ?? topic.id, label: topic.label })),
+    }));
 }

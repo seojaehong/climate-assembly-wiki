@@ -7,7 +7,7 @@ import {
 } from '../review/review-console-logic';
 import type { TopicTarget } from '../platform-nav-logic';
 
-export type AnalysisScope = 'topic' | 'session';
+export type AnalysisScope = 'topic' | 'session' | 'assembly';
 
 export interface AnalysisStats {
   issueCount: number;
@@ -27,10 +27,12 @@ export interface AnalysisView {
 export interface AnalysisIssueView extends IssueViewModel {
   topicId: string;
   topicLabel: string;
+  sessionId?: string;
+  sessionLabel?: string;
 }
 
 export interface AnalysisTopicResult {
-  target: TopicTarget;
+  target: TopicTarget & { sessionId?: string; sessionLabel?: string };
   result: IssueListResult;
 }
 
@@ -81,6 +83,8 @@ export function buildScopedAnalysisView(
       ...issue,
       topicId: target.id,
       topicLabel: target.label,
+      sessionId: target.sessionId,
+      sessionLabel: target.sessionLabel,
     })),
   );
   return {

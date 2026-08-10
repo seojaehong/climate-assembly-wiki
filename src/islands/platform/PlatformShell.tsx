@@ -19,6 +19,7 @@ import {
   deepestDataScopeTarget,
   topicTargetsForScope,
   sessionTargetsForScope,
+  sessionTopicGroupsForScope,
   VIEWS_FOR_LEVEL,
   type Scope,
   type TreeNode,
@@ -195,6 +196,7 @@ function AppShell({ session, scope, navigate }: { session: AuthSessionInfo; scop
   const publishTarget = deepestDataScopeTarget(tree, scope);
   const scopedTopics = topicTargetsForScope(tree, scope);
   const scopedSessions = sessionTargetsForScope(tree, scope);
+  const scopedSessionTopics = sessionTopicGroupsForScope(tree, scope);
 
   // org 파생(org_of_uid) → orgTree. org_id 는 클라이언트가 주장하지 않는다(서버 파생).
   useEffect(() => {
@@ -268,6 +270,7 @@ function AppShell({ session, scope, navigate }: { session: AuthSessionInfo; scop
             publishScopeId={publishTarget.id}
             scopedTopics={scopedTopics}
             scopedSessions={scopedSessions}
+            scopedSessionTopics={scopedSessionTopics}
           />
         </main>
       </div>

@@ -109,6 +109,14 @@ function DistributionPanel({ id, title, items, total }: { id: string; title: str
 }
 
 export function AnalysisResults({ view }: { view: AnalysisView }) {
+  const showTopicSource = view.scope !== 'topic';
+  const showSessionSource = view.scope === 'assembly';
+  const sourcePrefix = view.scope === 'assembly' ? '공론화 ' : view.scope === 'session' ? '회차 ' : '';
+  const columns = [
+    ...(showSessionSource ? ['출처 회차'] : []),
+    ...(showTopicSource ? ['출처 주제'] : []),
+    '쟁점', '빈도', '방향', '검수', '연결 근거',
+  ];
   return (
     <div style={{ display: 'grid', gap: 18 }}>
       <p role="status" aria-live="polite" className="sr-only">
@@ -131,15 +139,13 @@ export function AnalysisResults({ view }: { view: AnalysisView }) {
           </div>
 
           <div style={{ overflowX: 'auto', border: `2px solid ${LINE}`, borderRadius: 16, background: '#fff' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: view.scope === 'session' ? 900 : 760 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: view.scope === 'assembly' ? 1040 : view.scope === 'session' ? 900 : 760 }}>
               <caption style={{ textAlign: 'left', color: NAVY, fontSize: 18, fontWeight: 800, padding: '16px 18px' }}>
-                {view.scope === 'session' ? '회차 ' : ''}쟁점별 빈도·방향·검수·원문 연결 분석
+                {sourcePrefix}쟁점별 빈도·방향·검수·원문 연결 분석
               </caption>
               <thead style={{ background: PANEL }}>
                 <tr>
-                  {(view.scope === 'session'
-                    ? ['출처 주제', '쟁점', '빈도', '방향', '검수', '연결 근거']
-                    : ['쟁점', '빈도', '방향', '검수', '연결 근거']).map((label) => (
+                  {columns.map((label) => (
                     <th key={label} scope="col" style={{ color: NAVY, fontSize: 13, textAlign: 'left', padding: '10px 12px', borderTop: `2px solid ${LINE}`, borderBottom: `2px solid ${LINE}` }}>{label}</th>
                   ))}
                 </tr>
@@ -147,7 +153,12 @@ export function AnalysisResults({ view }: { view: AnalysisView }) {
               <tbody>
                 {view.issues.map((issue) => (
                   <tr key={issue.id}>
-                    {view.scope === 'session' ? (
+                    {showSessionSource ? (
+                      <td style={{ color: MUTED, fontSize: 13, fontWeight: 700, padding: 12, borderBottom: `2px solid ${PANEL}` }}>
+                        {issue.sessionLabel ?? '—'}
+                      </td>
+                    ) : null}
+                    {showTopicSource ? (
                       <td style={{ color: MUTED, fontSize: 13, fontWeight: 700, padding: 12, borderBottom: `2px solid ${PANEL}` }}>
                         {issue.topicLabel}
                       </td>

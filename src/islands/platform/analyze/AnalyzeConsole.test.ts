@@ -72,6 +72,25 @@ describe('AnalysisResults', () => {
     expect(html).toContain('에너지 전환');
     expect(html).toContain('회차 쟁점별 빈도·방향·검수·원문 연결 분석');
   });
+
+  it('공론화 분석 표에서 출처 회차와 주제를 분리해 보여준다', () => {
+    const view = buildScopedAnalysisView('assembly', [{
+      target: {
+        id: 'topic-1',
+        label: '에너지 전환',
+        sessionId: 'session-1',
+        sessionLabel: '제1차 회의',
+      },
+      result,
+    }]);
+    const html = renderToStaticMarkup(createElement(AnalysisResults, { view }));
+
+    expect(html).toContain('출처 회차');
+    expect(html).toContain('출처 주제');
+    expect(html).toContain('제1차 회의');
+    expect(html).toContain('에너지 전환');
+    expect(html).toContain('공론화 쟁점별 빈도·방향·검수·원문 연결 분석');
+  });
 });
 
 describe('AnalyzeConsole', () => {

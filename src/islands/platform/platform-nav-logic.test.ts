@@ -11,6 +11,7 @@ import {
   deepestDataScopeTarget,
   topicTargetsForScope,
   sessionTargetsForScope,
+  sessionTopicGroupsForScope,
   SCOPE_KEYS,
   VIEWS,
   VIEWS_FOR_LEVEL,
@@ -242,6 +243,22 @@ describe('sessionTargetsForScope', () => {
     expect(sessionTargetsForScope(tree, { o: 'kcrc', c: 'climate-2026' })).toEqual([
       { id: 'session-uuid-5', label: '제5차 회의' },
       { id: 'session-uuid-6', label: '제6차 회의' },
+    ]);
+  });
+});
+
+describe('sessionTopicGroupsForScope', () => {
+  it('공론화의 회차와 주제를 canonical UUID·표시명으로 보존한다', () => {
+    expect(sessionTopicGroupsForScope(tree, { o: 'kcrc', c: 'climate-2026' })).toEqual([
+      {
+        id: 'session-uuid-5',
+        label: '제5차 회의',
+        topics: [
+          { id: 't-uuid-1', label: '에너지 전환' },
+          { id: 't-uuid-2', label: '수송 부문' },
+        ],
+      },
+      { id: 'session-uuid-6', label: '제6차 회의', topics: [] },
     ]);
   });
 });

@@ -1,13 +1,14 @@
-// Scope outlet for implemented consoles and the remaining vote/assembly-analysis placeholders.
+// Scope outlet for implemented platform consoles and invalid-route fallback states.
 
 import { useEffect, useState } from 'react';
-import { type SessionTarget, type TopicTarget, type Scope, type ViewName, deepestScopeLevel, VIEWS_FOR_LEVEL } from './platform-nav-logic';
+import { type SessionTarget, type SessionTopicGroup, type TopicTarget, type Scope, type ViewName, deepestScopeLevel, VIEWS_FOR_LEVEL } from './platform-nav-logic';
 import ReviewConsole from './review/ReviewConsole';
 import PublishConsole from './publish/PublishConsole';
 import AnalyzeConsole from './analyze/AnalyzeConsole';
 import RecordConsole from './record/RecordConsole';
 import VoteConsole from './vote/VoteConsole';
 import DesignConsole from './design/DesignConsole';
+import AssemblyAnalyzeConsole from './analyze/AssemblyAnalyzeConsole';
 import { buildPublicationScopeKey } from './publish/publish-console-logic';
 
 const NAVY = '#1F4E79';
@@ -34,22 +35,24 @@ function scopeLabel(scope: Scope): string {
 
 /**
  * 스코프 뷰 아웃렛. view 가 없으면 스코프 개요(자식 안내), 있으면 해당 패널.
- * 데이터 로드 골격: 마운트 시 "로드 대상 스코프"를 표시하고, 실제 페치는 후속 구현.
+ * Invalid direct routes retain a visible fallback instead of throwing during client navigation.
  */
 export default function ScopeOutlet({
   scope,
   publishScopeId,
   scopedTopics = [],
   scopedSessions = [],
+  scopedSessionTopics = [],
 }: {
   scope: Scope;
   publishScopeId?: string | null;
   scopedTopics?: readonly TopicTarget[];
   scopedSessions?: readonly SessionTarget[];
+  scopedSessionTopics?: readonly SessionTopicGroup[];
 }) {
   const view = scope.view;
   if (!view) return <ScopeOverview scope={scope} />;
-  return <ViewPanel view={view} scope={scope} publishScopeId={publishScopeId} scopedTopics={scopedTopics} scopedSessions={scopedSessions} />;
+  return <ViewPanel view={view} scope={scope} publishScopeId={publishScopeId} scopedTopics={scopedTopics} scopedSessions={scopedSessions} scopedSessionTopics={scopedSessionTopics} />;
 }
 
 function ScopeOverview({ scope }: { scope: Scope }) {
@@ -88,12 +91,14 @@ function ViewPanel({
   publishScopeId,
   scopedTopics,
   scopedSessions,
+  scopedSessionTopics,
 }: {
   view: ViewName;
   scope: Scope;
   publishScopeId?: string | null;
   scopedTopics: readonly TopicTarget[];
   scopedSessions: readonly SessionTarget[];
+  scopedSessionTopics: readonly SessionTopicGroup[];
 }) {
   const meta = VIEW_META[view];
   const { level, id } = deepestScopeLevel(scope);
@@ -153,6 +158,15 @@ function ViewPanel({
     );
   }
 
+  if (view === 'analyze' && level === 'assembly') {
+    return (
+      <AssemblyAnalyzeConsole
+        key={`assembly:${scopedSessionTopics.map((group) => `${group.id}:${group.topics.map((topic) => topic.id).join(',')}`).join('|')}`}
+        groups={scopedSessionTopics}
+      />
+    );
+  }
+
   return <PlaceholderView view={view} scope={scope} level={level} id={id} meta={meta} />;
 }
 
@@ -204,7 +218,7 @@ function wrapperHint(view: ViewName): string {
     case 'design': return 'readinessCheck';
     case 'record': return 'assembly record RPC (not available)';
     case 'vote': return 'platformBallotList / platformBallotResults';
-    case 'analyze': return 'assembly analysis RPC (not available)';
+    case 'analyze': return 'issueList';
     case 'review': return 'issueList / issueUpsert / issueLinkSet / issueMerge / issueReview';
     case 'publish': return 'resultPublish / resultUnpublish / resultGet';
   }
