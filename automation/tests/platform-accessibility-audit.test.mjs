@@ -1,0 +1,158 @@
+import { afterAll, beforeAll, expect, test } from 'vitest';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { createServer } from 'node:http';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { auditPlatformAccessibility } from '../platform-accessibility-audit.mjs';
+
+let outDir;
+let server;
+let baseUrl;
+
+const validPage = `<!doctype html>
+  <html lang="ko"><head><title>접근성 테스트</title></head><body>
+    <a href="#main-content">본문 바로가기</a>
+    <main id="main-content" tabindex="-1">
+      <h1>접근성 테스트</h1>
+      <label for="query">검색</label><input id="query" autocomplete="off">
+    </main>
+  </body></html>`;
+
+const invalidPage =
+  '<!doctype html><html><head></head><body><main><h1>결함 화면</h1><img src="missing.png"><input></main></body></html>';
+const wrongSkipPage = `<!doctype html><html lang="ko"><head><title>잘못된 링크</title></head><body>
+  <a href="#details">세부 내용</a><main id="main-content" tabindex="-1"><h1>본문</h1>
+  <section id="details" tabindex="-1"><h2>세부 내용</h2></section></main></body></html>`;
+const incompletePage = `<!doctype html><html lang="ko"><head><title>수동 확인</title></head><body>
+  <a href="#main-content">본문 바로가기</a><main id="main-content" tabindex="-1"><h1>수동 확인</h1>
+  <div style="background:linear-gradient(90deg,#fff,#000)"><span style="color:#777">배경 대비 확인</span></div>
+  </main></body></html>`;
+
+beforeAll(async () => {
+  outDir = mkdtempSync(join(tmpdir(), 'platform-a11y-'));
+  server = createServer((request, response) => {
+    response.writeHead(request.url === '/missing' ? 404 : 200, { 'content-type': 'text/html; charset=utf-8' });
+    response.end(
+      request.url === '/invalid'
+        ? invalidPage
+        : request.url === '/wrong-skip'
+          ? wrongSkipPage
+          : request.url === '/incomplete'
+            ? incompletePage
+            : validPage,
+    );
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  baseUrl = `http://127.0.0.1:${address.port}`;
+});
+
+afterAll(async () => {
+  await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  rmSync(outDir, { recursive: true, force: true });
+});
+
+test('audits WCAG 2.2 AA and skip-link focus through a real browser', async () => {
+  const reportPath = join(outDir, 'report.json');
+
+  const report = await auditPlatformAccessibility({
+    baseUrl,
+    routes: [{ id: 'valid', path: '/valid', skipTarget: 'main-content' }],
+    reportPath,
+    generatedAt: new Date('2026-08-11T00:00:00.000Z'),
+  });
+
+  expect(report.status).toBe('pass');
+  expect(report.summary).toEqual({
+    routeCount: 1,
+    passedRoutes: 1,
+    violationCount: 0,
+    incompleteCount: 0,
+    excludedSurfaceCount: 0,
+  });
+  expect(report.routes[0].skipLink).toMatchObject({ target: 'main-content', focusMoved: true });
+  expect(report.routes[0].violations).toEqual([]);
+  expect(report.routes[0].incomplete).toEqual([]);
+  expect(existsSync(reportPath)).toBe(true);
+  expect(JSON.parse(readFileSync(reportPath, 'utf8'))).toEqual(report);
+}, 60_000);
+
+test('preserves actionable violation evidence for a failing route', async () => {
+  const report = await auditPlatformAccessibility({
+    baseUrl,
+    routes: [{ id: 'invalid', path: '/invalid', skipTarget: 'main-content' }],
+    reportPath: join(outDir, 'invalid.json'),
+    generatedAt: new Date('2026-08-11T00:00:00.000Z'),
+  });
+
+  expect(report.status).toBe('fail');
+  expect(report.summary.violationCount).toBeGreaterThan(0);
+  expect(report.routes[0].violations).toEqual(expect.arrayContaining([
+    expect.objectContaining({ id: 'document-title', impact: 'serious' }),
+    expect.objectContaining({ id: 'html-has-lang' }),
+    expect.objectContaining({ id: 'image-alt' }),
+    expect.objectContaining({ id: 'label' }),
+  ]));
+  expect(report.routes[0].skipLink).toMatchObject({ focusMoved: false });
+});
+
+test('fails an accessible error document when the route itself is unavailable', async () => {
+  const report = await auditPlatformAccessibility({
+    baseUrl,
+    routes: [{ id: 'missing', path: '/missing', skipTarget: 'main-content' }],
+    reportPath: join(outDir, 'missing.json'),
+  });
+
+  expect(report.status).toBe('fail');
+  expect(report.routes[0]).toMatchObject({ httpStatus: 404, passed: false, violations: [] });
+});
+
+test('distinguishes passing checks from unaudited product surfaces', async () => {
+  const report = await auditPlatformAccessibility({
+    baseUrl,
+    routes: [{ id: 'valid', path: '/valid', skipTarget: 'main-content' }],
+    excludedSurfaces: [{ id: 'authenticated-platform', reason: 'fixture unavailable' }],
+    reportPath: join(outDir, 'needs-review.json'),
+  });
+
+  expect(report.status).toBe('needs_review');
+  expect(report.summary).toMatchObject({ incompleteCount: 0, excludedSurfaceCount: 1 });
+  expect(report.coverage.excluded).toEqual([
+    { id: 'authenticated-platform', reason: 'fixture unavailable' },
+  ]);
+});
+
+test('does not mistake another same-page link for the expected skip link', async () => {
+  const report = await auditPlatformAccessibility({
+    baseUrl,
+    routes: [{ id: 'wrong-skip', path: '/wrong-skip', skipTarget: 'main-content' }],
+    reportPath: join(outDir, 'wrong-skip.json'),
+  });
+
+  expect(report.status).toBe('fail');
+  expect(report.routes[0].skipLink).toEqual({
+    found: false,
+    target: 'main-content',
+    focusMoved: false,
+  });
+});
+
+test('preserves axe incomplete evidence and promotes the report to needs_review', async () => {
+  const reportPath = join(outDir, 'incomplete.json');
+  const report = await auditPlatformAccessibility({
+    baseUrl,
+    routes: [{ id: 'incomplete', path: '/incomplete', skipTarget: 'main-content' }],
+    reportPath,
+  });
+
+  expect(report.status).toBe('needs_review');
+  expect(report.summary).toMatchObject({ violationCount: 0, incompleteCount: 1 });
+  expect(report.routes[0].incomplete).toEqual([
+    expect.objectContaining({
+      id: 'color-contrast',
+      impact: 'serious',
+      nodes: [expect.objectContaining({ target: ['span'] })],
+    }),
+  ]);
+  expect(JSON.parse(readFileSync(reportPath, 'utf8')).routes[0].incomplete).toHaveLength(1);
+});

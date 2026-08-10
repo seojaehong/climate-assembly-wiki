@@ -10,7 +10,8 @@
     "upload": "node upload-to-drive.mjs",
     "finalize": "node finalize-report.mjs",
     "verify-drive": "node scripts/verify-drive.mjs",
-    "export-snapshots": "node export-snapshots-onedrive.mjs"
+    "export-snapshots": "node export-snapshots-onedrive.mjs",
+    "audit:platform-accessibility": "node platform-accessibility-audit.mjs"
   },
   "dependencies": {
     "playwright": "^1.49.0",
@@ -19,6 +20,7 @@
     "js-yaml": "^4.1.0"
   },
   "devDependencies": {
+    "axe-core": "^4.12.1",
     "vitest": "^2.1.5"
   }
 }

@@ -1,8 +1,8 @@
 # 플랫폼 트랙 — 상태·병합 전 게이트
 
-- 갱신: 2026-08-10
-- 브랜치: `feat/deliberation-saas-platform` (워크트리 `C:/Users/iceam/dev/climate-saas-platform`)
-- 8/29 라이브(main)와 격리. **백엔드 스키마는 2026-08-10 사용자 승인으로 프로덕션(labor_money)에 적용됨(§프로덕션 배포 참조). 프론트엔드는 아직 이 브랜치에만.**
+- 갱신: 2026-08-11
+- 브랜치: `main`
+- **백엔드 스키마와 프론트엔드는 2026-08-10 사용자 승인으로 프로덕션에 배포됨.** 기존 `/mod`·`/b`·`/hq`·`/v` 경로는 유지한다.
 
 ## ✅ 프로덕션 배포 (2026-08-10) — labor_money, 8/29 무영향
 사용자 명시 승인 후 Management API 적용. P1·P2 적용(HTTP 201). anon 검증: result_get→200 null·issue_list/items→invalid join code·result_publish→hq 인증 요구(G2). 신규 테이블(org·membership·invitation·issue·issue_link·result_page)·RPC 존재 확인.
@@ -32,7 +32,12 @@
 | 공개 결과 페이지 | `/r/<token>` 매트릭스·랭킹·4×6·표대체본·HITL | 2af1ce2 |
 | 검수 콘솔 | 4×6 코딩·재분류·병합·미분류함 본문·게이트 | 62aabfc |
 
-**누적 검증:** vitest 59, astro check 0, Node20 빌드 7911페이지. 격리 불변식(RPC org_id 미전달) 관철.
+**최근 검증(2026-08-11):** src Vitest 734건·automation Vitest 51건, Astro check 오류 0, Node20 정적 빌드 통과. 라이브와 로컬 preview의 자동감사 대상 3경로는 통과했으며, 인증 후 콘솔·실제 공개 결과는 `needs_review` 제외 표면으로 기록한다. 격리 불변식(RPC org_id 미전달)은 유지한다.
+
+### Phase A 점진 구현 (2026-08-11)
+
+- **A5 자동 감사 기반**: `automation/platform-accessibility-audit.mjs`가 실제 Chromium에서 axe-core WCAG 2.2 AA 태그와 건너뛰기 링크 포커스를 검사한다. 플랫폼 로그인·접근성 성명·공개 결과 상태 경로의 라이브 증거는 `evaluation/platform-accessibility-audit.json`에 저장하며, `.github/workflows/platform-accessibility.yml`이 관련 변경마다 같은 검사를 재실행한다.
+- 이 결과는 자동화 가능한 범위의 증거다. axe `incomplete`와 인증 fixture·고정 공개 snapshot이 없어 제외한 표면도 JSON에 보존한다. 스크린리더·모바일 보조기기 전수 수동평가와 공식 품질인증은 완료로 간주하지 않는다.
 
 ## 병합 전 게이트
 
@@ -70,7 +75,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 - **A6 자동 export 연결**: `platform_snapshot_now` RPC는 준비됐지만 행사일 `.github/workflows/snapshot.yml`은 아직 `cv_snapshot_now`만 호출한다. 플랫폼 RPC를 분당 스케줄에 추가하면 프로덕션 snapshot 행과 Drive 업로드가 대량 증가하므로 사용자 승인 후 연결한다. 기록 화면의 CSV는 provenance를 보존하는 수동 아카이브 보조이며 PITR/WAL·서버 자동보존을 대체하지 않는다.
 
 ## 다음 액션 (권장 순서)
-1. G1 파싱 검증(스크래치 DB) — 이후 UI 라이브 E2E 가능
-2. §5 결정 1·2·3·6 — Phase 2 진입 여부
-3. (진행 시) G2·G3 반영 + Phase 2 활성화 GRANT + backfill
-4. 분석코어 어댑터 → 8/29 산출물로 검수 콘솔 첫 실전
+1. Supabase Auth 운영자 계정과 membership을 승인된 운영 절차로 프로비저닝
+2. §5 결정 1·2·3·4·6 — A1~A4 활성화 범위 확정
+3. (승인 시) G3·RLS 활성화 GRANT·HQ membership 전환·자동 export 연결
+4. 스크린리더·모바일 보조기기 수동 접근성 평가
+5. 분석코어 어댑터 → 8/29 산출물로 검수 콘솔 첫 실전

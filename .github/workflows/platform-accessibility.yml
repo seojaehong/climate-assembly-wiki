@@ -1,0 +1,74 @@
+name: Platform accessibility audit
+
+on:
+  push:
+    paths:
+      - 'src/islands/platform/**'
+      - 'src/islands/result/**'
+      - 'src/pages/platform/**'
+      - 'src/pages/r/**'
+      - 'src/styles/**'
+      - 'automation/platform-accessibility-audit.mjs'
+      - 'automation/package*.json'
+      - '.github/workflows/platform-accessibility.yml'
+  pull_request:
+    paths:
+      - 'src/islands/platform/**'
+      - 'src/islands/result/**'
+      - 'src/pages/platform/**'
+      - 'src/pages/r/**'
+      - 'src/styles/**'
+      - 'automation/platform-accessibility-audit.mjs'
+      - 'automation/package*.json'
+      - '.github/workflows/platform-accessibility.yml'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            automation/package-lock.json
+      - name: Install site dependencies
+        run: npm ci
+      - name: Install audit dependencies
+        working-directory: automation
+        run: npm ci
+      - name: Install Chromium
+        working-directory: automation
+        run: npx playwright install --with-deps chromium
+      - name: Build static site
+        run: npm run build
+      - name: Start preview server
+        run: |
+          npm run preview -- --host 127.0.0.1 > /tmp/platform-preview.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4321/platform/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/platform-preview.log
+          exit 1
+      - name: Audit WCAG 2.2 AA subset and skip links
+        working-directory: automation
+        env:
+          PLATFORM_A11Y_BASE_URL: http://127.0.0.1:4321
+          PLATFORM_A11Y_REPORT: ../.artifacts/platform-accessibility-audit.json
+        run: |
+          rm -f ../.artifacts/platform-accessibility-audit.json
+          npm run audit:platform-accessibility
+      - name: Upload audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: platform-accessibility-audit
+          path: .artifacts/platform-accessibility-audit.json
+          if-no-files-found: error

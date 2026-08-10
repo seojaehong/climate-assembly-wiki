@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-10T18:18:44.987Z",
+  "baseUrl": "https://climate-assembly.org",
+  "standard": "WCAG 2.2 AA automated subset + skip-link focus",
+  "engine": {
+    "name": "axe-core",
+    "version": "4.12.1",
+    "tags": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag21a",
+      "wcag21aa",
+      "wcag22aa"
+    ]
+  },
+  "status": "needs_review",
+  "summary": {
+    "routeCount": 3,
+    "passedRoutes": 3,
+    "violationCount": 0,
+    "incompleteCount": 0,
+    "excludedSurfaceCount": 2
+  },
+  "coverage": {
+    "audited": [
+      "platform-login",
+      "accessibility-statement",
+      "public-result-unpublished"
+    ],
+    "excluded": [
+      {
+        "id": "authenticated-platform",
+        "reason": "A CI-safe authenticated staff fixture is not provisioned."
+      },
+      {
+        "id": "published-result",
+        "reason": "A stable public result fixture is not provisioned without exposing a result token."
+      }
+    ]
+  },
+  "routes": [
+    {
+      "id": "platform-login",
+      "path": "/platform/",
+      "url": "https://climate-assembly.org/platform/",
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "platform-scope-content",
+        "focusMoved": true
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "accessibility-statement",
+      "path": "/platform/accessibility/",
+      "url": "https://climate-assembly.org/platform/accessibility/",
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-result-unpublished",
+      "path": "/r/_/",
+      "url": "https://climate-assembly.org/r/_/",
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    }
+  ]
+}

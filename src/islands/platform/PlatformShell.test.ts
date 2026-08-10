@@ -259,6 +259,10 @@ describe('PlatformShell accessibility', () => {
     const source = readFileSync(new URL('../../pages/platform/accessibility.astro', import.meta.url), 'utf8');
 
     expect(source).toContain('<main id="main-content" tabindex="-1">');
+    expect(source).toContain('axe-core 기반 WCAG 2.2 AA 자동검사');
+    expect(source).toContain('evaluation/platform-accessibility-audit.json');
+    expect(source).toContain('자동검사는 공식 품질인증이나 전수 수동평가를 대체하지 않습니다.');
+    expect(source).toContain('인증 후 운영 콘솔과 실제 공개 결과의 동적 상태는 현재 자동감사에서 제외');
   });
 
   it('스코프 보기 내비게이션이 현재 보기를 한 곳에서만 표시한다', () => {
