@@ -1,42 +1,83 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { AgendaNode as TNode } from './agenda-sync';
 import { getSupabase } from '../../lib/supabase';
 import { joColor } from './palette';
+import {
+  executeCanvasOperation,
+  createCanvasAuditedEditOperation,
+  reconcileCommittedCanvasInsert,
+  useCanvasOperationRunner,
+  type CanvasOperationOptions,
+  type CanvasOperationResult,
+  type CanvasWriteResponse,
+} from './canvas-operation';
 
 const ZONES = ['감축', '적응', '미분류'] as const;
 const EMOJIS = ['🌱', '♻️', '🚌', '⚡', '🏭', '💧', '🌳', '☀️', '🔋', '🚲'];
 
-async function saveEdit(id: string, before: string, after: string) {
-  if (after.trim() === before.trim()) return;
+type CanvasClient = NonNullable<ReturnType<typeof getSupabase>>;
+
+function runNodeWrite(
+  label: string,
+  write: (client: CanvasClient) => PromiseLike<CanvasWriteResponse>,
+  options: CanvasOperationOptions = {},
+): Promise<CanvasOperationResult> {
   const sb = getSupabase();
-  if (!sb) return;
-  await sb.schema('climate_vote').from('agenda')
-    .update({ text: after, updated_at: new Date().toISOString() })
-    .eq('id', id);
-  await sb.schema('climate_vote').from('agenda_edit_log')
-    .insert({ agenda_id: id, before, after, editor: 'moderator' });
+  return executeCanvasOperation(label, sb ? () => write(sb) : null, undefined, options);
 }
 
-async function saveField(id: string, patch: Record<string, unknown>) {
+function saveEdit(id: string, before: string, after: string) {
+  const auditId = crypto.randomUUID();
   const sb = getSupabase();
-  if (!sb) return;
-  await sb.schema('climate_vote').from('agenda')
-    .update({ ...patch, updated_at: new Date().toISOString() })
-    .eq('id', id);
-}
-
-// 확정 의제 아래 실천과제(action) 카드 추가
-async function addAction(parentId: string, sessionId: string, px: number, py: number) {
-  const sb = getSupabase();
-  if (!sb) return;
-  await sb.schema('climate_vote').from('agenda').insert({
-    session_id: sessionId, text: '새 실천과제', kind: 'action', parent_id: parentId,
-    status: 'active', x: px + 40, y: py + 170, created_by: 'moderator',
+  if (!sb) return executeCanvasOperation('의제 내용 저장', null);
+  const auditRow = { id: auditId, agenda_id: id, before, after, editor: 'moderator' };
+  const operation = createCanvasAuditedEditOperation(before, after, {
+    readCurrent: () => sb.schema('climate_vote').from('agenda')
+      .select('text').eq('id', id).maybeSingle(),
+    updateIfUnchanged: () => sb.schema('climate_vote').from('agenda')
+      .update({ text: after, updated_at: new Date().toISOString() })
+      .eq('id', id).eq('text', before).select('id').maybeSingle(),
+    writeAudit: async () => {
+      const editLog = await sb.schema('climate_vote').from('agenda_edit_log').insert(auditRow);
+      return reconcileCommittedCanvasInsert<Record<string, unknown>>(
+        editLog,
+        () => sb.schema('climate_vote').from('agenda_edit_log')
+          .select('id,agenda_id,before,after,editor').eq('id', auditId).maybeSingle(),
+        (existing) => Object.entries(auditRow).every(([key, value]) => existing[key] === value),
+      );
+    },
+  });
+  return executeCanvasOperation('의제 내용 저장', operation, undefined, {
+    failureMessage: '의제 내용 또는 변경 이력 저장을 완료하지 못했습니다. 다시 시도하면 동일 작업을 안전하게 이어갑니다.',
   });
 }
 
+function saveField(id: string, patch: Record<string, unknown>) {
+  return runNodeWrite('의제 속성 저장', (sb) => sb.schema('climate_vote').from('agenda')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', id), {
+    retryable: false,
+    failureMessage: '의제 속성 저장 결과를 확인하지 못했습니다. 상태를 새로고침한 뒤 다시 조정해 주세요.',
+  });
+}
+
+function addAction(parentId: string, sessionId: string, px: number, py: number) {
+  const id = crypto.randomUUID();
+  const row = {
+    id, session_id: sessionId, text: '새 실천과제', kind: 'action', parent_id: parentId,
+    status: 'active', x: px + 40, y: py + 170, created_by: 'moderator',
+  };
+  return runNodeWrite('실천과제 추가', async (sb) => reconcileCommittedCanvasInsert<Record<string, unknown>>(
+    await sb.schema('climate_vote').from('agenda').insert(row),
+    () => sb.schema('climate_vote').from('agenda')
+      .select('id,session_id,text,kind,parent_id,status,x,y,created_by').eq('id', id).maybeSingle(),
+    (existing) => Object.entries(row).every(([key, value]) => existing[key] === value),
+  ));
+}
+
 export default function AgendaNode({ id, data }: NodeProps<TNode>) {
+  const runOperation = useCanvasOperationRunner();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(data.label);
   const [joDraft, setJoDraft] = useState(data.jo ?? '');
@@ -47,6 +88,11 @@ export default function AgendaNode({ id, data }: NodeProps<TNode>) {
   const groupOutline = (data as { groupOutline?: string | null }).groupOutline ?? null;
   const isAction = (data as { kind?: string | null }).kind === 'action';
   const sessionId = (data as { session_id?: string }).session_id ?? '';
+  const writable = (data as { writable?: boolean }).writable === true;
+
+  useEffect(() => {
+    if (!writable) setEditing(false);
+  }, [writable]);
 
   const keepFocus = (e: React.MouseEvent) => e.preventDefault();
 
@@ -62,8 +108,8 @@ export default function AgendaNode({ id, data }: NodeProps<TNode>) {
       outlineOffset: groupOutline ? 3 : undefined,
     }}>
       {/* 연결선 핸들 — 점을 드래그해 다른 카드에 놓으면 선으로 연결 */}
-      <Handle type="target" position={Position.Left} title="여기로 연결" style={{ width: 18, height: 18, background: '#7c3aed', border: '3px solid #fff', boxShadow: '0 1px 4px rgba(0,0,0,.3)' }} />
-      <Handle type="source" position={Position.Right} title="여기서 끌어 연결" style={{ width: 18, height: 18, background: '#7c3aed', border: '3px solid #fff', boxShadow: '0 1px 4px rgba(0,0,0,.3)' }} />
+      <Handle type="target" position={Position.Left} title="여기로 연결" isConnectable={writable} style={{ width: 18, height: 18, background: '#7c3aed', border: '3px solid #fff', boxShadow: '0 1px 4px rgba(0,0,0,.3)' }} />
+      <Handle type="source" position={Position.Right} title="여기서 끌어 연결" isConnectable={writable} style={{ width: 18, height: 18, background: '#7c3aed', border: '3px solid #fff', boxShadow: '0 1px 4px rgba(0,0,0,.3)' }} />
       <div style={{ fontSize: isAction ? 12 : 14, opacity: .7, fontWeight: 800, color: isAction ? '#7c3aed' : undefined }}>
         {isAction ? '🛠 실천과제' : `${data.jo ?? ''}${data.zone ? ` · ${data.zone}` : ''}`}
       </div>
@@ -73,7 +119,6 @@ export default function AgendaNode({ id, data }: NodeProps<TNode>) {
             autoFocus
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            onBlur={() => saveEdit(id, data.label, draft)}
             style={{
               width: '100%', boxSizing: 'border-box', minHeight: 60, fontSize: 22, fontWeight: 800,
               fontFamily: 'inherit', color: '#1f2937', background: 'rgba(255,255,255,.92)',
@@ -85,7 +130,11 @@ export default function AgendaNode({ id, data }: NodeProps<TNode>) {
           <input
             value={joDraft}
             onChange={(e) => setJoDraft(e.target.value)}
-            onBlur={() => saveField(id, { jo: joDraft.trim() || null })}
+            onBlur={() => {
+              if (joDraft.trim() !== (data.jo ?? '').trim()) {
+                void runOperation(() => saveField(id, { jo: joDraft.trim() || null }));
+              }
+            }}
             placeholder="조 (예: A조, 3조)"
             style={{
               width: '100%', boxSizing: 'border-box', marginTop: 8, padding: '6px 10px',
@@ -101,7 +150,7 @@ export default function AgendaNode({ id, data }: NodeProps<TNode>) {
                 <button
                   key={z}
                   onMouseDown={keepFocus}
-                  onClick={() => saveField(id, { zone: z })}
+                  onClick={() => { if (!active) void runOperation(() => saveField(id, { zone: z })); }}
                   style={{
                     flex: 1, padding: '6px 4px', fontSize: 14, fontWeight: 800, borderRadius: 8,
                     cursor: 'pointer', border: active ? '2px solid #2563eb' : '1px solid #cbd5e1',
@@ -133,7 +182,12 @@ export default function AgendaNode({ id, data }: NodeProps<TNode>) {
           {!isAction && sessionId && (
             <button
               onMouseDown={keepFocus}
-              onClick={() => addAction(id, sessionId, (data as { x?: number }).x ?? 0, (data as { y?: number }).y ?? 0)}
+              onClick={() => void runOperation(() => addAction(
+                id,
+                sessionId,
+                (data as { x?: number }).x ?? 0,
+                (data as { y?: number }).y ?? 0,
+              ))}
               style={{
                 width: '100%', marginTop: 8, padding: '8px', fontSize: 14, fontWeight: 800,
                 borderRadius: 8, border: '2px dashed #7c3aed', background: '#faf5ff', color: '#7c3aed', cursor: 'pointer',
@@ -146,7 +200,7 @@ export default function AgendaNode({ id, data }: NodeProps<TNode>) {
           {isAction && (
             <button
               onMouseDown={keepFocus}
-              onClick={() => saveField(id, { kind: 'agenda', parent_id: null })}
+              onClick={() => void runOperation(() => saveField(id, { kind: 'agenda', parent_id: null }))}
               style={{
                 width: '100%', marginTop: 8, padding: '8px', fontSize: 14, fontWeight: 800,
                 borderRadius: 8, border: '2px solid #2563eb', background: '#eff6ff', color: '#2563eb', cursor: 'pointer',
@@ -158,7 +212,12 @@ export default function AgendaNode({ id, data }: NodeProps<TNode>) {
           {/* 완료 (멀티 컨트롤이라 명시적 닫기) */}
           <button
             onMouseDown={keepFocus}
-            onClick={() => { saveEdit(id, data.label, draft); setEditing(false); }}
+            onClick={() => {
+              if (draft.trim() !== data.label.trim()) {
+                void runOperation(() => saveEdit(id, data.label, draft));
+              }
+              setEditing(false);
+            }}
             style={{
               width: '100%', marginTop: 8, padding: '8px', fontSize: 15, fontWeight: 800,
               borderRadius: 8, border: 'none', background: '#16a34a', color: '#fff', cursor: 'pointer',
@@ -168,7 +227,12 @@ export default function AgendaNode({ id, data }: NodeProps<TNode>) {
           </button>
         </div>
       ) : (
-        <div onDoubleClick={() => { setDraft(data.label); setJoDraft(data.jo ?? ''); setEditing(true); }}>{data.label}</div>
+        <div onDoubleClick={() => {
+          if (!writable) return;
+          setDraft(data.label);
+          setJoDraft(data.jo ?? '');
+          setEditing(true);
+        }}>{data.label}</div>
       )}
     </div>
   );

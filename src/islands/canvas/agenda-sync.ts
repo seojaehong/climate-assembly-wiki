@@ -28,20 +28,83 @@ export function linksToEdges(links: AgendaLink[]): Edge[] {
   }));
 }
 
-interface LinkChange { eventType: 'INSERT' | 'UPDATE' | 'DELETE'; new?: AgendaLink; old?: { id: string }; }
+export type LinkChange =
+  | { eventType: 'INSERT' | 'UPDATE'; new: AgendaLink }
+  | { eventType: 'DELETE'; old: { id: string } };
+
 export function mergeLinkChange(edges: Edge[], change: LinkChange): Edge[] {
-  if (change.eventType === 'DELETE') return edges.filter((e) => e.id !== change.old?.id);
-  const [edge] = linksToEdges([change.new!]);
+  if (change.eventType === 'DELETE') return edges.filter((edge) => edge.id !== change.old.id);
+  const [edge] = linksToEdges([change.new]);
   return [...edges.filter((e) => e.id !== edge.id), edge];
 }
 
-interface Change { eventType: 'INSERT' | 'UPDATE' | 'DELETE'; new?: AgendaRow; old?: { id: string }; }
+export type AgendaChange =
+  | { eventType: 'INSERT' | 'UPDATE'; new: AgendaRow }
+  | { eventType: 'DELETE'; old: { id: string } };
 
-export function mergeRealtimeChange(nodes: AgendaNode[], change: Change): AgendaNode[] {
-  if (change.eventType === 'DELETE') return nodes.filter(n => n.id !== change.old?.id);
-  const row = change.new!;
+export function mergeRealtimeChange(nodes: AgendaNode[], change: AgendaChange): AgendaNode[] {
+  if (change.eventType === 'DELETE') return nodes.filter((node) => node.id !== change.old.id);
+  const row = change.new;
   const without = nodes.filter(n => n.id !== row.id);
   if (row.status === 'archived') return without;
   const [node] = agendasToNodes([row]);
   return [...without, node];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isAgendaRow(value: unknown): value is AgendaRow {
+  if (!isRecord(value)) return false;
+  return typeof value.id === 'string'
+    && typeof value.text === 'string'
+    && (value.jo === null || typeof value.jo === 'string')
+    && (value.zone === null || typeof value.zone === 'string')
+    && (value.status === 'active' || value.status === 'archived')
+    && typeof value.x === 'number'
+    && typeof value.y === 'number';
+}
+
+function isAgendaLink(value: unknown): value is AgendaLink {
+  return isRecord(value)
+    && typeof value.id === 'string'
+    && typeof value.source_id === 'string'
+    && typeof value.target_id === 'string';
+}
+
+export function parseAgendaRows(value: unknown): AgendaRow[] | null {
+  return Array.isArray(value) && value.every(isAgendaRow) ? value : null;
+}
+
+export function parseAgendaLinks(value: unknown): AgendaLink[] | null {
+  return Array.isArray(value) && value.every(isAgendaLink) ? value : null;
+}
+
+function deletedId(value: unknown): { id: string } | null {
+  return isRecord(value) && typeof value.id === 'string' ? { id: value.id } : null;
+}
+
+export function parseAgendaRealtimePayload(payload: unknown): AgendaChange | null {
+  if (!isRecord(payload)) return null;
+  if (payload.eventType === 'DELETE') {
+    const old = deletedId(payload.old);
+    return old ? { eventType: 'DELETE', old } : null;
+  }
+  if ((payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') && isAgendaRow(payload.new)) {
+    return { eventType: payload.eventType, new: payload.new };
+  }
+  return null;
+}
+
+export function parseLinkRealtimePayload(payload: unknown): LinkChange | null {
+  if (!isRecord(payload)) return null;
+  if (payload.eventType === 'DELETE') {
+    const old = deletedId(payload.old);
+    return old ? { eventType: 'DELETE', old } : null;
+  }
+  if ((payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') && isAgendaLink(payload.new)) {
+    return { eventType: payload.eventType, new: payload.new };
+  }
+  return null;
 }

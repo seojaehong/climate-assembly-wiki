@@ -9,6 +9,15 @@ import { useAuth } from './canvas/useAuth';
 import { getSupabase } from '../lib/supabase';
 import { BG_PRESETS, joColor, readableInk, groupColor } from './canvas/palette';
 import { ZONE_FRAMES, FRAME_Y, FRAME_H, zoneForX } from './canvas/zones';
+import {
+  executeCanvasOperation,
+  reconcileCommittedCanvasInsert,
+  CanvasOperationProvider,
+  type CanvasOperationResult,
+  type CanvasOperationOptions,
+  type CanvasWriteResponse,
+} from './canvas/canvas-operation';
+import type { CanvasConnectionState, CanvasConnectionStatus } from './canvas/canvas-connection';
 
 const nodeTypes = { agenda: AgendaNode, zoneFrame: ZoneFrameNode };
 
@@ -23,79 +32,181 @@ const FRAME_NODES = ZONE_FRAMES.map((f) => ({
 const BG_KEY = 'canvas-bg-hex';
 const JO_KEY = 'canvas-jo-colors';
 
-function onNodeDragStop(_: unknown, node: { id: string; position: { x: number; y: number } }) {
-  if (node.id.startsWith('frame-')) return; // 프레임은 고정
+export function CanvasOperationNotice({
+  result,
+  retrying,
+  retryAllowed,
+  onRetry,
+  onRefresh,
+  onDismiss,
+}: {
+  result: CanvasOperationResult;
+  retrying: boolean;
+  retryAllowed: boolean;
+  onRetry: () => void;
+  onRefresh: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      role={result.kind}
+      aria-live={result.kind === 'alert' ? 'assertive' : 'polite'}
+      aria-atomic="true"
+      style={{
+        position: 'absolute', top: 72, left: '50%', transform: 'translateX(-50%)', zIndex: 50,
+        display: 'flex', alignItems: 'center', gap: 10, maxWidth: 'min(92vw, 680px)',
+        padding: '12px 16px', borderRadius: 12,
+        border: `2px solid ${result.ok ? '#2f6f25' : '#b42318'}`,
+        background: result.ok ? '#e3f1e6' : '#fff1f0',
+        color: result.ok ? '#24591d' : '#8f1d13', fontWeight: 800,
+        boxShadow: '0 6px 18px rgba(0,0,0,.2)',
+      }}
+    >
+      <span>{result.message}</span>
+      {result.retry && (
+        <button type="button" onClick={onRetry} disabled={retrying || !retryAllowed}>
+          {retrying ? '재시도 중…' : retryAllowed ? '다시 시도' : '연결 후 재시도'}
+        </button>
+      )}
+      {!result.ok && !result.retry && (
+        <button type="button" onClick={onRefresh}>상태 새로고침</button>
+      )}
+      <button type="button" onClick={onDismiss} aria-label="알림 닫기">×</button>
+    </div>
+  );
+}
+
+export function CanvasConnectionNotice({
+  connection,
+  onRetry,
+}: {
+  connection: CanvasConnectionState;
+  onRetry: () => void;
+}) {
+  const requiresAttention = connection.status === 'error' || connection.status === 'degraded';
+  return (
+    <div
+      role={requiresAttention ? 'alert' : 'status'}
+      aria-live={requiresAttention ? 'assertive' : 'polite'}
+      aria-atomic="true"
+      style={{
+        position: 'absolute', bottom: 20, right: 16, zIndex: 30,
+        display: 'flex', alignItems: 'center', gap: 8,
+        maxWidth: 'min(88vw, 520px)', padding: '9px 12px', borderRadius: 10,
+        border: `2px solid ${requiresAttention ? '#b42318' : '#2f6f25'}`,
+        background: requiresAttention ? '#fff1f0' : '#e3f1e6',
+        color: requiresAttention ? '#8f1d13' : '#24591d',
+        fontSize: 13, fontWeight: 800, boxShadow: '0 4px 12px rgba(0,0,0,.18)',
+      }}
+    >
+      <span>{connection.message}</span>
+      {connection.status === 'error' && (
+        <button type="button" onClick={onRetry}>다시 연결</button>
+      )}
+    </div>
+  );
+}
+
+export function canWriteCanvas(authenticated: boolean, status: CanvasConnectionStatus): boolean {
+  return authenticated && status === 'ready';
+}
+
+export function retainCanvasOperationNotice(
+  current: CanvasOperationResult | null,
+  incoming: CanvasOperationResult,
+): CanvasOperationResult {
+  return current && !current.ok && incoming.ok ? current : incoming;
+}
+
+type CanvasClient = NonNullable<ReturnType<typeof getSupabase>>;
+
+function runCanvasWrite(
+  label: string,
+  write: (client: CanvasClient) => PromiseLike<CanvasWriteResponse>,
+  options: CanvasOperationOptions = {},
+): Promise<CanvasOperationResult> {
   const sb = getSupabase();
-  if (!sb) return;
-  // 드롭한 프레임 영역이 곧 zone — x좌표로 판정해 zone도 함께 저장
-  sb.schema('climate_vote').from('agenda')
+  return executeCanvasOperation(label, sb ? () => write(sb) : null, undefined, options);
+}
+
+function moveAgenda(node: { id: string; position: { x: number; y: number } }) {
+  return runCanvasWrite('의제 이동', (sb) => sb.schema('climate_vote').from('agenda')
     .update({ x: node.position.x, y: node.position.y, zone: zoneForX(node.position.x), updated_at: new Date().toISOString() })
-    .eq('id', node.id)
-    .then(() => {});
+    .eq('id', node.id), {
+    retryable: false,
+    failureMessage: '의제 이동 결과를 확인하지 못했습니다. 상태를 새로고침한 뒤 다시 조정해 주세요.',
+  });
 }
 
-async function addAgenda(sessionId: string) {
-  const sb = getSupabase();
-  if (!sb) return;
-  await sb.schema('climate_vote').from('agenda')
-    .insert({ session_id: sessionId, text: '새 의제', status: 'active', x: 80, y: 80, created_by: 'moderator' });
+function addAgenda(sessionId: string) {
+  const id = crypto.randomUUID();
+  const row = { id, session_id: sessionId, text: '새 의제', status: 'active', x: 80, y: 80, created_by: 'moderator' };
+  return runCanvasWrite('의제 추가', async (sb) => reconcileCommittedCanvasInsert<Record<string, unknown>>(
+    await sb.schema('climate_vote').from('agenda').insert(row),
+    () => sb.schema('climate_vote').from('agenda')
+      .select('id,session_id,text,status,x,y,created_by').eq('id', id).maybeSingle(),
+    (existing) => Object.entries(row).every(([key, value]) => existing[key] === value),
+  ));
 }
 
-function archiveAgenda(id: string) {
-  const sb = getSupabase();
-  if (!sb) return;
-  sb.schema('climate_vote').from('agenda')
+function archiveAgendas(ids: string[]) {
+  return runCanvasWrite('의제 보관', (sb) => sb.schema('climate_vote').from('agenda')
     .update({ status: 'archived', updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .then(() => {});
+    .in('id', ids));
 }
 
-// 연결선 — 관련 의견끼리 잇기/끊기
 function linkAgendas(sessionId: string, source: string, target: string) {
-  const sb = getSupabase();
-  if (!sb) return;
-  sb.schema('climate_vote').from('agenda_link')
-    .insert({ session_id: sessionId, source_id: source, target_id: target, created_by: 'moderator' })
-    .then(() => {});
+  const id = crypto.randomUUID();
+  const row = { id, session_id: sessionId, source_id: source, target_id: target, created_by: 'moderator' };
+  return runCanvasWrite('의제 연결', async (sb) => reconcileCommittedCanvasInsert<Record<string, unknown>>(
+    await sb.schema('climate_vote').from('agenda_link').insert(row),
+    () => sb.schema('climate_vote').from('agenda_link')
+      .select('id,session_id,source_id,target_id,created_by').eq('id', id).maybeSingle(),
+    (existing) => Object.entries(row).every(([key, value]) => existing[key] === value),
+  ));
 }
-function unlink(id: string) {
-  const sb = getSupabase();
-  if (!sb) return;
-  sb.schema('climate_vote').from('agenda_link').delete().eq('id', id).then(() => {});
+function unlinkAgendas(ids: string[]) {
+  return runCanvasWrite('의제 연결 해제', (sb) => sb.schema('climate_vote').from('agenda_link').delete().in('id', ids));
 }
 
-// 채택 → cv 투표 생성: 선택 의제들로 SCALE_MULTI 라운드 insert (기존 cv 투표 프론트가 받음)
-async function createVoteRound(agendaTexts: string[]): Promise<string | null> {
-  const sb = getSupabase();
-  if (!sb || agendaTexts.length === 0) return null;
-  const id = 'AGV-' + crypto.randomUUID().slice(0, 8);
-  const { error } = await sb.schema('climate_vote').from('rounds').insert({
+async function createVoteRound(agendaTexts: string[]): Promise<{ id: string | null; result: CanvasOperationResult }> {
+  const id = `AGV-${crypto.randomUUID()}`;
+  const row = {
     id, title: '의제 평가 투표', description: '각 의제의 중요도를 5점 척도로 평가해 주세요.',
     type: 'SCALE_MULTI', options: agendaTexts,
     scale_low: 1, scale_high: 5, scale_low_label: '낮음', scale_high_label: '높음',
     status: 'pending', sort_order: 100,
-  });
-  return error ? null : id;
+  };
+  const result = await runCanvasWrite('투표 생성', async (sb) => reconcileCommittedCanvasInsert<Record<string, unknown>>(
+    await sb.schema('climate_vote').from('rounds').insert(row),
+    () => sb.schema('climate_vote').from('rounds')
+      .select('id,title,description,type,options,scale_low,scale_high,scale_low_label,scale_high_label,status,sort_order')
+      .eq('id', id).maybeSingle(),
+    (existing) => Object.entries(row).every(([key, value]) => (
+      key === 'options'
+        ? JSON.stringify(existing[key]) === JSON.stringify(value)
+        : existing[key] === value
+    )),
+  ));
+  return { id: result.ok ? id : null, result };
 }
 
-// 관련 의제 묶기/풀기 — 선택 카드들에 공통 group_id 부여/해제
 function setGroup(ids: string[], groupId: string | null) {
-  const sb = getSupabase();
-  if (!sb || ids.length === 0) return;
-  sb.schema('climate_vote').from('agenda')
+  return runCanvasWrite(groupId ? '의제 묶기' : '의제 묶음 해제', (sb) => sb.schema('climate_vote').from('agenda')
     .update({ group_id: groupId, updated_at: new Date().toISOString() })
-    .in('id', ids)
-    .then(() => {});
+    .in('id', ids), {
+    retryable: false,
+    failureMessage: '의제 묶음 결과를 확인하지 못했습니다. 상태를 새로고침한 뒤 다시 조정해 주세요.',
+  });
 }
 
-// 선택 카드를 특정 의제의 실천과제로 붙이기 — kind=action + parent_id 지정
 function setParent(id: string, parentId: string) {
-  const sb = getSupabase();
-  if (!sb) return;
-  sb.schema('climate_vote').from('agenda')
+  return runCanvasWrite('실천과제 연결', (sb) => sb.schema('climate_vote').from('agenda')
     .update({ kind: 'action', parent_id: parentId, updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .then(() => {});
+    .eq('id', id), {
+    retryable: false,
+    failureMessage: '실천과제 연결 결과를 확인하지 못했습니다. 상태를 새로고침한 뒤 다시 조정해 주세요.',
+  });
 }
 
 // 배경 휘도에 맞는 그리드 점색.
@@ -104,11 +215,28 @@ function dotFor(bg: string): string {
 }
 
 export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
-  const { nodes, setNodes, edges, sessionId } = useRealtimeAgendas(sessionSlug);
+  const { nodes, setNodes, edges, sessionId, connection, retry: retryConnection } = useRealtimeAgendas(sessionSlug);
+  const [operationResult, setOperationResult] = useState<CanvasOperationResult | null>(null);
+  const [retryingOperation, setRetryingOperation] = useState(false);
+
+  const completeOperation = async (operation: Promise<CanvasOperationResult>) => {
+    const result = await operation;
+    setOperationResult((current) => retainCanvasOperationNotice(current, result));
+    return result;
+  };
+
+  const retryOperation = async () => {
+    if (!writable || !operationResult?.retry || retryingOperation) return;
+    setRetryingOperation(true);
+    const result = await operationResult.retry();
+    setOperationResult(result);
+    setRetryingOperation(false);
+  };
 
   // 진행자 인증 — 미인증 시 읽기전용(로그인 패널), 인증 시 쓰기 허용
-  const { session, email, signIn, signOut } = useAuth();
+  const { session, email, initializationError, signIn, signOut } = useAuth();
   const authed = !!session;
+  const writable = canWriteCanvas(authed, connection.status);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPw, setLoginPw] = useState('');
   const [loginErr, setLoginErr] = useState<string | null>(null);
@@ -117,29 +245,42 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
     if (!loginEmail.trim() || !loginPw) return;
     setLoginErr(null);
     setLoggingIn(true);
-    const { error } = await signIn(loginEmail.trim(), loginPw);
-    setLoggingIn(false);
-    if (error) setLoginErr(error.message);
+    try {
+      const { error } = await signIn(loginEmail.trim(), loginPw);
+      if (error) setLoginErr(error.message);
+    } finally {
+      setLoggingIn(false);
+    }
     // 성공 시 onAuthStateChange가 session을 채워 모달이 자동으로 사라짐
   };
 
   // 배경색 (프리셋 또는 커스텀 hex), localStorage 기억
   const [bgHex, setBgHex] = useState<string>(() => {
-    try { return localStorage.getItem(BG_KEY) || BG_PRESETS[0].bg; } catch { return BG_PRESETS[0].bg; }
+    try { return localStorage.getItem(BG_KEY) || BG_PRESETS[0].bg; } catch (error: unknown) {
+      console.error('Canvas background preference load failed', error);
+      return BG_PRESETS[0].bg;
+    }
   });
   const setBg = (hex: string) => {
     setBgHex(hex);
-    try { localStorage.setItem(BG_KEY, hex); } catch { /* noop */ }
+    try { localStorage.setItem(BG_KEY, hex); } catch (error: unknown) {
+      console.error('Canvas background preference save failed', error);
+    }
   };
 
   // 조별 커스텀 색 override, localStorage 기억
   const [joColors, setJoColors] = useState<Record<string, string>>(() => {
-    try { return JSON.parse(localStorage.getItem(JO_KEY) || '{}'); } catch { return {}; }
+    try { return JSON.parse(localStorage.getItem(JO_KEY) || '{}'); } catch (error: unknown) {
+      console.error('Canvas team color preference load failed', error);
+      return {};
+    }
   });
   const setJo = (jo: string, hex: string) => {
     setJoColors((prev) => {
       const next = { ...prev, [jo]: hex };
-      try { localStorage.setItem(JO_KEY, JSON.stringify(next)); } catch { /* noop */ }
+      try { localStorage.setItem(JO_KEY, JSON.stringify(next)); } catch (error: unknown) {
+        console.error('Canvas team color preference save failed', error);
+      }
       return next;
     });
   };
@@ -162,9 +303,15 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
     return {
       ...n,
       hidden: focusJo ? jo !== focusJo : false,
-      data: { ...n.data, cardBg, cardInk: readableInk(cardBg), groupOutline: gid ? groupColor(gid) : null },
+      data: {
+        ...n.data,
+        cardBg,
+        cardInk: readableInk(cardBg),
+        groupOutline: gid ? groupColor(gid) : null,
+        writable,
+      },
     };
-  }), [nodes, joColors, focusJo]);
+  }), [nodes, joColors, focusJo, writable]);
 
   // 실천과제(action) → 부모 의제 점선 엣지
   const parentEdges = useMemo(() => nodes
@@ -186,12 +333,18 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
   const [suggesting, setSuggesting] = useState(false);
   const [simThreshold, setSimThreshold] = useState(0.88); // 짧은 한국어 baseline 높아 보수적 기본값
   const suggestMerges = async () => {
-    const sb = getSupabase(); if (!sb) return;
     setSuggesting(true);
     const agendas = nodes.map((n) => ({ id: n.id, text: (n.data as { label: string }).label }));
-    const { data } = await sb.functions.invoke('suggest-merges', { body: { agendas, threshold: simThreshold } });
+    let pairs: typeof suggestions = [];
+    const result = await completeOperation(runCanvasWrite('유사 의제 분석', async (sb) => {
+      const response = await sb.functions.invoke('suggest-merges', {
+        body: { agendas, threshold: simThreshold },
+      });
+      pairs = (response.data as { pairs?: typeof suggestions } | null)?.pairs ?? [];
+      return { error: response.error };
+    }));
     setSuggesting(false);
-    setSuggestions((data as { pairs?: typeof suggestions })?.pairs ?? []);
+    if (result.ok) setSuggestions(pairs);
   };
 
   // 🔍 앵커 KNN — 카드 1개만 선택 시, 그 카드 기준 최근접. 토글: 전수 코퍼스(173) | 현재 의제(부모추천)
@@ -207,39 +360,68 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
   const [knnLoading, setKnnLoading] = useState(false);
   const runKnn = async () => {
     if (!anchor) return;
-    const sb = getSupabase(); if (!sb) return;
     const query = (anchor.data as { label: string }).label;
     setKnnLoading(true);
+    let corpusMatches: typeof knnCorpus = [];
+    let agendaMatches: typeof knnAgenda = [];
+    let result: CanvasOperationResult;
     if (knnTarget === 'corpus') {
-      const { data } = await sb.functions.invoke('corpus-search', { body: { query, k: 8 } });
-      setKnnCorpus((data as { matches?: typeof knnCorpus })?.matches ?? []);
+      result = await completeOperation(runCanvasWrite('코퍼스 유사도 분석', async (sb) => {
+        const response = await sb.functions.invoke('corpus-search', { body: { query, k: 8 } });
+        corpusMatches = (response.data as { matches?: typeof knnCorpus } | null)?.matches ?? [];
+        return { error: response.error };
+      }));
     } else {
       // 후보 = 현재 캔버스의 의제(kind!=action) 중 자기 자신 제외 → 부모 후보
       const candidates = nodes
         .filter((n) => (n.data as { kind?: string | null }).kind !== 'action' && n.id !== anchor.id)
         .map((n) => ({ id: n.id, text: (n.data as { label: string }).label }));
-      const { data } = await sb.functions.invoke('agenda-knn', { body: { query, candidates, k: 6 } });
-      setKnnAgenda((data as { matches?: typeof knnAgenda })?.matches ?? []);
+      result = await completeOperation(runCanvasWrite('의제 유사도 분석', async (sb) => {
+        const response = await sb.functions.invoke('agenda-knn', { body: { query, candidates, k: 6 } });
+        agendaMatches = (response.data as { matches?: typeof knnAgenda } | null)?.matches ?? [];
+        return { error: response.error };
+      }));
     }
-    setKnnFor(anchor.id);
     setKnnLoading(false);
+    if (!result.ok) return;
+    if (knnTarget === 'corpus') setKnnCorpus(corpusMatches);
+    else setKnnAgenda(agendaMatches);
+    setKnnFor(anchor.id);
   };
 
   const [voteQr, setVoteQr] = useState<string | null>(null);
   const makeVote = async () => {
     const texts = selectedNodes.map((n) => (n.data as { label: string }).label);
-    const id = await createVoteRound(texts);
+    const { id, result } = await createVoteRound(texts);
+    setOperationResult(result);
     if (id) {
       const u = `${window.location.origin}/v/?round=${id}`;
       setVoteUrl(u);
-      QRCode.toDataURL(u, { width: 200, margin: 1 }).then(setVoteQr).catch(() => setVoteQr(null));
+      await completeOperation(executeCanvasOperation('투표 QR 생성', async () => {
+        const qr = await QRCode.toDataURL(u, { width: 200, margin: 1 });
+        setVoteQr(qr);
+        return { error: null };
+      }));
     }
   };
   // 📲 참여 QR — 180명이 폰으로 /join 접속해 의제 제출
   const [joinQr, setJoinQr] = useState<string | null>(null);
-  const showJoinQr = () => {
+  const showJoinQr = async () => {
     const u = `${window.location.origin}/ko/join?s=${sessionSlug}`;
-    QRCode.toDataURL(u, { width: 240, margin: 1 }).then(setJoinQr).catch(() => setJoinQr(null));
+    await completeOperation(executeCanvasOperation('참여 QR 생성', async () => {
+      const qr = await QRCode.toDataURL(u, { width: 240, margin: 1 });
+      setJoinQr(qr);
+      return { error: null };
+    }));
+  };
+  const copyVoteLink = async () => {
+    const operation = navigator.clipboard
+      ? async () => {
+        await navigator.clipboard.writeText(voteUrl ?? '');
+        return { error: null };
+      }
+      : null;
+    await completeOperation(executeCanvasOperation('투표 링크 복사', operation));
   };
 
   const sharedGroup = selectedNodes.length >= 2
@@ -253,9 +435,9 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', background: bgHex }}>
-      {authed && (
+      {writable && (
         <button
-          onClick={() => sessionId && addAgenda(sessionId)}
+          onClick={() => { if (sessionId) void completeOperation(addAgenda(sessionId)); }}
           disabled={!sessionId}
           style={{
             position: 'absolute', top: 16, left: 16, zIndex: 10,
@@ -269,10 +451,26 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
         </button>
       )}
 
+      {operationResult && (
+        <CanvasOperationNotice
+          result={operationResult}
+          retrying={retryingOperation}
+          retryAllowed={writable}
+          onRetry={() => void retryOperation()}
+          onRefresh={() => {
+            setOperationResult(null);
+            retryConnection();
+          }}
+          onDismiss={() => setOperationResult(null)}
+        />
+      )}
+
+      <CanvasConnectionNotice connection={connection} onRetry={retryConnection} />
+
       {/* 📲 참여 QR — 시민 폰 입력(/join) 배포 */}
-      {authed && (
+      {writable && (
         <button
-          onClick={showJoinQr}
+          onClick={() => void showJoinQr()}
           style={{
             position: 'absolute', bottom: 20, left: 16, zIndex: 10,
             padding: '12px 18px', fontSize: 15, fontWeight: 800, borderRadius: 12,
@@ -285,9 +483,9 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
       )}
 
       {/* 관련 의제 묶기/해제 — 카드 2개 이상 선택 시 (Shift+클릭 다중선택) */}
-      {authed && selectedIds.length >= 2 && (
+      {writable && selectedIds.length >= 2 && (
         <button
-          onClick={() => setGroup(selectedIds, sharedGroup ? null : crypto.randomUUID())}
+          onClick={() => void completeOperation(setGroup(selectedIds, sharedGroup ? null : crypto.randomUUID()))}
           style={{
             position: 'absolute', top: 16, left: 128, zIndex: 10,
             padding: '12px 18px', fontSize: 16, fontWeight: 800, borderRadius: 12,
@@ -300,7 +498,7 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
       )}
 
       {/* 채택 → cv 투표 생성: 선택 의제로 모바일 투표(SCALE_MULTI) 라운드 만들기 */}
-      {authed && selectedIds.length >= 1 && (
+      {writable && selectedIds.length >= 1 && (
         <button
           onClick={makeVote}
           style={{
@@ -325,7 +523,7 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
           {voteQr && <img src={voteQr} alt="투표 QR" style={{ width: 200, height: 200 }} />}
           <div style={{ marginTop: 10, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
             <a href={voteUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#6b7280', wordBreak: 'break-all', maxWidth: 240 }}>{voteUrl}</a>
-            <button onClick={() => { navigator.clipboard?.writeText(voteUrl); }} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', cursor: 'pointer', fontWeight: 800 }}>복사</button>
+            <button onClick={() => void copyVoteLink()} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', cursor: 'pointer', fontWeight: 800 }}>복사</button>
             <button onClick={() => { setVoteUrl(null); setVoteQr(null); }} style={{ padding: '6px 10px', borderRadius: 8, border: 'none', background: '#e5e7eb', cursor: 'pointer' }}>✕</button>
           </div>
         </div>
@@ -387,7 +585,7 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
       <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
         {authed && (
           <button
-            onClick={signOut}
+            onClick={() => void completeOperation(executeCanvasOperation('로그아웃', signOut))}
             title="로그아웃"
             style={{
               padding: '6px 12px', borderRadius: 999, border: 'none', cursor: 'pointer',
@@ -423,7 +621,7 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
       </div>
 
       {/* ✨ 임베딩 추천 패널 — 카드 1개 선택=앵커 KNN(코퍼스/현재의제 토글), 그 외=pairwise 유사쌍 */}
-      {authed && (
+      {writable && (
         <div style={{ position: 'absolute', top: 64, right: 16, zIndex: 10, width: 312, maxHeight: '76vh', overflowY: 'auto' }}>
           {anchor ? (
             /* ── 앵커 모드: 선택한 1개 카드 기준 최근접 ── */
@@ -465,7 +663,10 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
                   <div style={{ display: 'flex', alignItems: 'center', marginTop: 6, gap: 8 }}>
                     <span style={{ fontSize: 12, fontWeight: 800, color: '#9333ea' }}>유사도 {m.sim.toFixed(2)}</span>
                     <button
-                      onClick={() => { setParent(anchor.id, m.id); setKnnAgenda([]); setKnnFor(null); }}
+                      onClick={async () => {
+                        const result = await completeOperation(setParent(anchor.id, m.id));
+                        if (result.ok) { setKnnAgenda([]); setKnnFor(null); }
+                      }}
                       disabled={anchorHasChildren}
                       title={anchorHasChildren ? '이 카드에 이미 실천과제가 달려 있어 붙일 수 없습니다' : '이 의제의 실천과제로 붙이기'}
                       style={{ marginLeft: 'auto', padding: '5px 11px', borderRadius: 8, border: 'none', background: anchorHasChildren ? '#d1d5db' : '#7c3aed', color: '#fff', fontWeight: 800, cursor: anchorHasChildren ? 'not-allowed' : 'pointer' }}
@@ -510,7 +711,10 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
                     <span style={{ fontSize: 12, fontWeight: 800, color: '#9333ea' }}>유사도 {s.sim}</span>
                     <button
-                      onClick={() => { setGroup([s.a, s.b], crypto.randomUUID()); setSuggestions((prev) => prev.filter((x) => x !== s)); }}
+                      onClick={async () => {
+                        const result = await completeOperation(setGroup([s.a, s.b], crypto.randomUUID()));
+                        if (result.ok) setSuggestions((prev) => prev.filter((x) => x !== s));
+                      }}
                       style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: '#7c3aed', color: '#fff', fontWeight: 800, cursor: 'pointer' }}
                     >
                       🔗 묶기
@@ -523,22 +727,46 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
         </div>
       )}
 
+      <CanvasOperationProvider run={(operation) => {
+        if (writable) return completeOperation(operation());
+        const result: CanvasOperationResult = {
+          ok: false,
+          kind: 'alert',
+          message: '실시간 연결과 인증을 확인한 뒤 다시 시도해 주세요.',
+        };
+        setOperationResult(result);
+        return Promise.resolve(result);
+      }}>
       <ReactFlow
         nodes={[...FRAME_NODES, ...displayNodes]}
         edges={[...edges, ...parentEdges]}
         nodeTypes={nodeTypes}
-        nodesDraggable
+        nodesDraggable={writable}
+        nodesConnectable={writable}
         onNodesChange={(changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds) as typeof nds)}
-        onNodeDragStop={onNodeDragStop}
-        onNodesDelete={(deleted) => deleted.forEach((n) => archiveAgenda(n.id))}
-        onConnect={(c) => { if (sessionId && c.source && c.target) linkAgendas(sessionId, c.source, c.target); }}
-        onEdgesDelete={(deleted) => deleted.forEach((e) => unlink(e.id))}
-        deleteKeyCode={['Delete', 'Backspace']}
+        onNodeDragStop={(_, node) => {
+          if (writable && !node.id.startsWith('frame-')) void completeOperation(moveAgenda(node));
+        }}
+        onNodesDelete={(deleted) => {
+          const ids = deleted.filter((node) => !node.id.startsWith('frame-')).map((node) => node.id);
+          if (writable && ids.length > 0) void completeOperation(archiveAgendas(ids));
+        }}
+        onConnect={(connection) => {
+          if (writable && sessionId && connection.source && connection.target) {
+            void completeOperation(linkAgendas(sessionId, connection.source, connection.target));
+          }
+        }}
+        onEdgesDelete={(deleted) => {
+          const ids = deleted.filter((edge) => !edge.id.startsWith('pe-')).map((edge) => edge.id);
+          if (writable && ids.length > 0) void completeOperation(unlinkAgendas(ids));
+        }}
+        deleteKeyCode={writable ? ['Delete', 'Backspace'] : null}
         multiSelectionKeyCode={['Shift', 'Control', 'Meta']}
         fitView
       >
         <Background color={dotFor(bgHex)} /><Controls />
       </ReactFlow>
+      </CanvasOperationProvider>
 
       {/* 진행자 로그인 패널 — 미인증 시 캔버스 위 중앙 오버레이 (뒤 캔버스는 읽기전용 노출) */}
       {!authed && (
@@ -588,8 +816,10 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
             >
               {loggingIn ? '로그인 중…' : '로그인'}
             </button>
-            {loginErr && (
-              <p style={{ fontSize: 14, color: '#dc2626', margin: '12px 0 0' }}>{loginErr}</p>
+            {(loginErr || initializationError) && (
+              <p role="alert" style={{ fontSize: 14, color: '#b42318', margin: '12px 0 0' }}>
+                {loginErr ?? initializationError}
+              </p>
             )}
           </div>
         </div>
