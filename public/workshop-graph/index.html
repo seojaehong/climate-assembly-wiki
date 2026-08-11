@@ -213,6 +213,9 @@
 
 <script type="module">
 import { OntologyChrome } from '/_ontology-chrome/chrome.js';
+import { createWorkshopGraphSourceAdapter } from './graph-source-adapter.js';
+
+const graphSourceAdapter = createWorkshopGraphSourceAdapter();
 
 const PREFIX_META = {
   'A_t21':{day:'6/14',jo:'A조',round:'토론2-1',label:'6/14 A조 토론2-1'},
@@ -238,7 +241,9 @@ const PREFIX_META = {
 
 let cy, graph3d, ALL_NODES = [], ALL_EDGES = [], curFilter = { kind:new Set(Object.keys(OntologyChrome.KIND_DEFAULT)) };
 let isoShown = false;
-let sources = null, curSource = null, curView = '2d', pollTimer = null;
+let sources = null, curSource = null, displayedSource = null, curView = '2d', pollTimer = null;
+let sourceLoadGeneration = 0;
+let displayedSourceState = null;
 let currentMetaAssets = null;
 let agendaSurface = null, agendaSurfacePromise = null;
 let gyeonggiAgendaSurface = null, gyeonggiAgendaSurfacePromise = null;
@@ -349,33 +354,67 @@ function isPublicSourceId(sourceId) {
   return getPublicSources().some((source) => source.id === sourceId);
 }
 
-(async function init() {
-  sources = await fetch('sources.json').then(r => r.json());
-  curSource = params.get('source') || sources.default;
-  if (!isPublicSourceId(curSource)) curSource = sources.default;
-  const finalSourceDefault = isFinalSourceId(curSource) && !params.has('mode');
-  curView = params.get('view') || '2d';
-  presentMode = params.get('mode') === 'present';
-  showcaseMode = params.get('mode') === 'showcase' || finalSourceDefault;
-  presentLevel = ['chapter','brief','full'].includes(params.get('level')) ? params.get('level') : 'chapter';
-  showcaseCount = [50,75,100].includes(Number(params.get('count'))) ? Number(params.get('count')) : (finalSourceDefault ? 100 : 50);
-  showcaseTheme = ['light','dark'].includes(params.get('theme')) ? params.get('theme') : 'light';
-  showcaseEdgeLabels = params.get('edgeLabels') !== 'off';
-  groupMode = ['present','brief','issue','session','none'].includes(params.get('group'))
-    ? params.get('group')
-    : (presentMode ? groupForPresentLevel(presentLevel) : 'none');
-  if ((presentMode || showcaseMode) && !params.has('view')) curView = '2d';
-  if (showcaseMode) groupMode = 'none';
-  buildSourceDropdown();
-  OntologyChrome.init({ activeId: 'workshop', title: '숙의 온톨로지', meta: '로딩 중…' });
-  bindGlobalEvents();
+function stopPolling() {
+  if (pollTimer) {
+    clearTimeout(pollTimer);
+    pollTimer = null;
+  }
+}
+
+function captureSourceState() {
+  return {
+    curSource, fixedNodeId, presentMode, presentLevel, showcaseMode, showcaseCount,
+    showcaseTheme, showcaseEdgeLabels, groupMode, curView,
+  };
+}
+
+function restoreSourceState(state) {
+  curSource = state.curSource;
+  fixedNodeId = state.fixedNodeId;
+  presentMode = state.presentMode;
+  presentLevel = state.presentLevel;
+  showcaseMode = state.showcaseMode;
+  showcaseCount = state.showcaseCount;
+  showcaseTheme = state.showcaseTheme;
+  showcaseEdgeLabels = state.showcaseEdgeLabels;
+  groupMode = state.groupMode;
+  curView = state.curView;
   syncPresentationBody();
-  if (curView === '3d') applyView('3d');
-  loadAgendaSurface();
-  loadGyeonggiAgendaSurface();
-  loadSupabaseAgendaSurface();
-  loadKbAgendaSurface();
-  loadSource(curSource);
+  applyView(curView);
+}
+
+(async function init() {
+  OntologyChrome.init({ activeId: 'workshop', title: '숙의 온톨로지', meta: '로딩 중…' });
+  try {
+    const sourceCatalog = await graphSourceAdapter.loadCatalog('sources.json');
+    sources = sourceCatalog.manifest;
+    curSource = params.get('source') || sources.default;
+    if (!isPublicSourceId(curSource)) curSource = sources.default;
+    const finalSourceDefault = isFinalSourceId(curSource) && !params.has('mode');
+    curView = params.get('view') || '2d';
+    presentMode = params.get('mode') === 'present';
+    showcaseMode = params.get('mode') === 'showcase' || finalSourceDefault;
+    presentLevel = ['chapter','brief','full'].includes(params.get('level')) ? params.get('level') : 'chapter';
+    showcaseCount = [50,75,100].includes(Number(params.get('count'))) ? Number(params.get('count')) : (finalSourceDefault ? 100 : 50);
+    showcaseTheme = ['light','dark'].includes(params.get('theme')) ? params.get('theme') : 'light';
+    showcaseEdgeLabels = params.get('edgeLabels') !== 'off';
+    groupMode = ['present','brief','issue','session','none'].includes(params.get('group'))
+      ? params.get('group')
+      : (presentMode ? groupForPresentLevel(presentLevel) : 'none');
+    if ((presentMode || showcaseMode) && !params.has('view')) curView = '2d';
+    if (showcaseMode) groupMode = 'none';
+    buildSourceDropdown();
+    bindGlobalEvents();
+    syncPresentationBody();
+    if (curView === '3d') applyView('3d');
+    loadAgendaSurface();
+    loadGyeonggiAgendaSurface();
+    loadSupabaseAgendaSurface();
+    loadKbAgendaSurface();
+    await safelyLoadSource(curSource);
+  } catch (error) {
+    reportGraphLoadFailure('그래프 source 목록 로드 실패 · 화면을 시작할 수 없습니다.', error);
+  }
 })();
 
 function buildSourceDropdown() {
@@ -390,17 +429,18 @@ function buildSourceDropdown() {
     og.label = sources.categories[cat];
     for (const s of list) {
       const o = document.createElement('option');
-      o.value = s.id; o.textContent = s.label;
+      o.value = s.id; o.textContent = s.adapter === 'database' ? `${s.label} · DB` : s.label;
       if (s.id === curSource) o.selected = true;
       og.appendChild(o);
     }
     sel.appendChild(og);
   }
   sel.onchange = () => {
+    stopPolling();
     curSource = sel.value;
     applyFinalSourceShowcaseDefaults();
     updateUrl();
-    loadSource(curSource);
+    void safelyLoadSource(curSource);
   };
 }
 
@@ -512,9 +552,12 @@ function buildShowcaseElements(limit = showcaseCount) {
   return { nodes, edges };
 }
 
-async function loadSource(srcId) {
+async function loadSource(srcId, isCurrent = () => true) {
   const meta = getPublicSources().find(s => s.id === srcId);
-  if (!meta) return;
+  if (!meta) throw new Error('Graph source is not available');
+
+  const { payload, diagnostics } = await graphSourceAdapter.loadSource(meta);
+  if (!isCurrent()) return false;
   // view 지원 여부
   const supportsView = meta.supportsView || ['2d'];
   document.getElementById('og-view-3d').disabled = !supportsView.includes('3d');
@@ -523,8 +566,6 @@ async function loadSource(srcId) {
   // polling UI: live category만
   const isLive = meta.category === 'live';
   document.getElementById('og-poll-ui').style.display = isLive ? '' : 'none';
-
-  const payload = await fetch(meta.data + '?_=' + Date.now()).then(r => r.json());
   const { elements, meta: mt } = payload;
   const maxDeg = Math.max(0, ...elements.nodes.map(n => Number(n.data?.deg || 0)));
   ALL_NODES = elements.nodes.map(n => {
@@ -547,14 +588,22 @@ async function loadSource(srcId) {
   const _extra = [];
   if (Array.isArray(mt.recommendations) && mt.recommendations.length) _extra.push(`합의·권고 ${mt.recommendations.length}건`);
   if (mt.quality) _extra.push('DQI 지표');
-  OntologyChrome.updateMeta(`노드 ${mt.counts.nodes || ALL_NODES.length} · 엣지 ${mt.counts.edges || ALL_EDGES.length}${_extra.length ? ' · ' + _extra.join(' · ') : ''}`);
-  OntologyChrome.updateAdvisory(mt.advisory_notice || (isLive ? '🔴 LIVE 미검증 초안 · 시민 비노출' : ''));
+  const rowSummary = diagnostics.rowCount === null ? '' : `스냅샷 행 ${diagnostics.rowCount} · `;
+  const provenanceWarning = diagnostics.missingCitedNodeIds.length
+    ? `출처 ID 누락 노드 ${diagnostics.missingCitedNodeIds.length}건`
+    : '';
+  OntologyChrome.updateMeta(`${rowSummary}노드 ${diagnostics.nodeCount} · 엣지 ${diagnostics.edgeCount}${_extra.length ? ' · ' + _extra.join(' · ') : ''}`);
+  OntologyChrome.updateAdvisory([
+    mt.advisory_notice || (isLive ? '🔴 LIVE 미검증 초안 · 시민 비노출' : ''),
+    provenanceWarning,
+  ].filter(Boolean).join(' · '));
   const footerNote = document.getElementById('og-footer-note');
   if (footerNote) {
     const isFinalDecision = String(mt.variant || '').startsWith('final-');
-    footerNote.textContent = mt.variant === 'source-coverage'
+    const footerSummary = mt.variant === 'source-coverage'
       ? '원본-전사-그래프 연결상태 · 내용판단 아님'
       : (isFinalDecision ? '검증 산출물 기반 · 미완/갭 항목 별도 표시' : (isLive ? 'LIVE 미검증 초안 · 시민 비노출' : 'LLM 추출 · 인간 검증 전'));
+    footerNote.textContent = [footerSummary, provenanceWarning].filter(Boolean).join(' · ');
   }
   updateAssetsButton(mt);
 
@@ -571,7 +620,42 @@ async function loadSource(srcId) {
   renderOverviewSurface(meta, mt);
 
   if (isLive) setupPolling(meta);
-  else { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+  else stopPolling();
+  return true;
+}
+
+function reportGraphLoadFailure(message, error) {
+  console.error('Failed to load workshop graph source.', error);
+  OntologyChrome.updateAdvisory(message);
+  const footerNote = document.getElementById('og-footer-note');
+  if (footerNote) footerNote.textContent = message;
+}
+
+async function safelyLoadSource(srcId) {
+  sourceLoadGeneration += 1;
+  const generation = sourceLoadGeneration;
+  try {
+    const loaded = await loadSource(srcId, () => sourceLoadGeneration === generation);
+    if (!loaded) return false;
+    displayedSource = srcId;
+    displayedSourceState = captureSourceState();
+    return true;
+  } catch (error) {
+    if (sourceLoadGeneration !== generation) return false;
+    if (displayedSource && displayedSourceState && curSource === srcId) {
+      restoreSourceState(displayedSourceState);
+      const sourceSelect = document.getElementById('og-source');
+      if (sourceSelect) sourceSelect.value = displayedSource;
+      updateUrl();
+      const restoredMeta = getPublicSources().find(source => source.id === displayedSource);
+      if (restoredMeta?.category === 'live') setupPolling(restoredMeta, false);
+    }
+    const message = displayedSource
+      ? '새 source 로드 실패 · 기존 화면 유지'
+      : '그래프 source 로드 실패 · 표시할 수 없습니다.';
+    reportGraphLoadFailure(message, error);
+    return false;
+  }
 }
 
 function fmtTime(sec) {
@@ -1029,12 +1113,13 @@ function renderHubRail() {
 
 function setSourceFromPanel(srcId) {
   if (!srcId || srcId === curSource || !isPublicSourceId(srcId)) return;
+  stopPolling();
   curSource = srcId;
   fixedNodeId = null;
   const sel = document.getElementById('og-source');
   if (sel) sel.value = srcId;
   updateUrl();
-  loadSource(srcId);
+  void safelyLoadSource(srcId);
 }
 
 function renderFinalLineageIntro(graphMeta) {
@@ -2293,17 +2378,26 @@ function bindGlobalEvents() {
       });
     });
   };
-  document.getElementById('og-poll-now').onclick = () => loadSource(curSource);
+  document.getElementById('og-poll-now').onclick = () => {
+    stopPolling();
+    void safelyLoadSource(curSource);
+  };
   document.getElementById('og-poll-interval').onchange = () => {
     const meta = getPublicSources().find(s => s.id === curSource);
     if (meta) setupPolling(meta);
   };
 }
 
-function setupPolling(meta) {
-  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+function setupPolling(meta, markFresh = true) {
+  stopPolling();
   const sec = parseInt(document.getElementById('og-poll-interval').value, 10) || 0;
-  if (sec > 0) pollTimer = setInterval(() => loadSource(meta.id), sec * 1000);
+  if (sec > 0) {
+    pollTimer = setTimeout(async () => {
+      pollTimer = null;
+      await safelyLoadSource(meta.id);
+    }, sec * 1000);
+  }
+  if (!markFresh) return;
   const stat = document.getElementById('og-poll-status');
   stat.textContent = `갱신 ${new Date().toLocaleTimeString('ko')}`;
   stat.classList.add('fresh');

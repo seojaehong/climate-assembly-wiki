@@ -52,10 +52,10 @@ function renderChrome({ activeId, title, meta, advisory, live }) {
   header.innerHTML = `
     <div class="og-h-top">
       <h1>${escapeHtml(title)}</h1>
-      <span class="og-stat" id="og-stat">${escapeHtml(meta || '')}</span>
+      <span class="og-stat" id="og-stat" role="status" aria-live="polite" aria-atomic="true">${escapeHtml(meta || '')}</span>
       <span class="${pillClass}">${escapeHtml(pillText)}</span>
     </div>
-    ${advisory ? `<div class="og-advisory" id="og-advisory">${escapeHtml(advisory)}</div>` : '<div class="og-advisory" id="og-advisory" style="display:none"></div>'}
+    ${advisory ? `<div class="og-advisory" id="og-advisory" role="status" aria-live="polite" aria-atomic="true">${escapeHtml(advisory)}</div>` : '<div class="og-advisory" id="og-advisory" role="status" aria-live="polite" aria-atomic="true" style="display:none"></div>'}
   `;
   // 탭바
   const tabs = document.createElement('div');

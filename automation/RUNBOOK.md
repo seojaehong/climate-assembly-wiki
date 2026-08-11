@@ -276,6 +276,47 @@ npm.cmd run bridge:canvas-ontology -- --snapshot 'C:\approved\snapshot_42.json' 
 - self-checksum은 우발 변경 탐지용이며 외부 서명·작성자 진위·검수자 인증을 제공하지 않는다. reviewer에는 비식별 역할 ID를 사용하고 시민 실명·연락처를 기록하지 않는다.
 - 명령은 Supabase/API/환경변수에 접근하지 않으며 `databaseMutationExecuted: false`, `publicGraphWritten: false`를 유지한다.
 
+## M5 workshop graph 읽기 어댑터
+
+`/workshop-graph/`는 `public/workshop-graph/sources.json`의 정적 source를 항상 정본 fallback으로 먼저 읽는다.
+승인된 공개 graph snapshot API가 마련된 뒤에만 manifest에 다음 선택 항목을 추가한다.
+
+```json
+{
+  "database": {
+    "endpoint": "https://approved.example/rest/v1/rpc/approved_graph_snapshots"
+  }
+}
+```
+
+endpoint는 공개 읽기 전용이어야 하며 URL query, 응답, 브라우저 저장소에 service-role key·개인 token을 넣지 않는다.
+응답 계약은 다음과 같다.
+
+```json
+{
+  "sources": [
+    {
+      "id": "immutable-snapshot-id",
+      "label": "사람 검수 완료 snapshot",
+      "review_state": "approved",
+      "is_public": true,
+      "row_count": 1,
+      "snapshot": {
+        "elements": { "nodes": [], "edges": [] },
+        "meta": {}
+      }
+    }
+  ]
+}
+```
+
+- `review_state=approved`이면서 `is_public=true`인 row만 `DB` source로 dropdown에 추가한다.
+- DB catalog 요청은 20초 timeout과 1회 retry를 사용한다. 양의 정수 `row_count`, 허용 node 역할, 비어 있지 않은 node label·edge relation, 고유 node/edge ID 또는 존재하는 endpoint 계약을 위반하면 로그를 남기고 DB catalog 전체를 거부한 뒤 정적 source만 유지한다. DB node는 모두 `is_public=true`와 사람 검수 상태(`accepted` 또는 `edited`)여야 한다.
+- endpoint는 same-origin 상대경로 또는 HTTPS만 허용한다. query·credential·fragment가 있거나 평문 HTTP인 URL은 adapter가 네트워크 요청 전에 거부한다.
+- 선택 source는 실제 node/edge 수를 다시 세고 DB source에는 `row_count`도 표시한다. node의 `cited`와 `cited_uids`에 공백이 아닌 출처 ID가 없으면 화면 advisory와 footer에 누락 건수를 표시한다.
+- source 전환·즉시 갱신은 기존 polling을 먼저 중단하고 generation guard로 늦은 응답을 폐기한다. 자동갱신은 이전 요청 완료 뒤 다음 회차를 예약해 요청이 겹치지 않는다. 최신 요청 실패는 console error와 live 안내로 노출하고, 마지막 정상 source의 선택값·URL·그래프와 기존 live polling을 복구한다.
+- 현재는 승인 graph snapshot RPC/table과 공개 RLS 계약이 없으므로 `sources.json`에 `database.endpoint`를 설정하지 않았다. 정적 fallback만 활성 상태이며 DB endpoint·RLS·schema 생성은 별도 사용자 승인 대상이다.
+
 ## A5 자동 Chromium 접근성 증거
 
 사용자 도메인 재검증은 실제 배포가 성공한 checkout에서 실행한다.

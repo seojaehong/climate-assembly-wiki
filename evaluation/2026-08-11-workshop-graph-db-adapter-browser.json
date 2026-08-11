@@ -1,0 +1,38 @@
+{
+  "checkedAt": "2026-08-11T12:11:13.461Z",
+  "httpStatus": 200,
+  "initial": {
+    "url": "http://127.0.0.1:4322/workshop-graph/",
+    "title": "숙의 온톨로지 — 통합 그래프",
+    "alternateSource": "final-agenda-decisions-0704",
+    "sourceOptionCount": 2,
+    "databaseOptionCount": 0,
+    "canvasCount": 3,
+    "sourceStatusLiveRegion": true,
+    "advisoryLiveRegion": true,
+    "surface": {
+      "selectedSource": "final-regulation-decisions-0704",
+      "metadata": "노드 47 · 엣지 56 · DQI 지표",
+      "advisory": "",
+      "footer": "검증 산출물 기반 · 미완/갭 항목 별도 표시",
+      "view3dDisabled": true,
+      "pollingDisplay": "none"
+    }
+  },
+  "failureRecovery": {
+    "selectedSource": "final-regulation-decisions-0704",
+    "metadata": "노드 47 · 엣지 56 · DQI 지표",
+    "advisory": "새 source 로드 실패 · 기존 화면 유지",
+    "footer": "새 source 로드 실패 · 기존 화면 유지",
+    "view3dDisabled": true,
+    "pollingDisplay": "none",
+    "url": "http://127.0.0.1:4322/workshop-graph/?source=final-regulation-decisions-0704&mode=showcase&count=100&edgeLabels=on"
+  },
+  "pageErrors": [],
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "Failed to load workshop graph source. Error: Graph source request failed\n    at fetchJson (http://127.0.0.1:4322/workshop-graph/graph-source-adapter.js:25:31)\n    at async Object.loadSource (http://127.0.0.1:4322/workshop-graph/graph-source-adapter.js:203:43)\n    at async loadSource (http://127.0.0.1:4322/workshop-graph/:559:36)\n    at async safelyLoadSource (http://127.0.0.1:4322/workshop-graph/:638:20)"
+  ],
+  "passed": true
+}
