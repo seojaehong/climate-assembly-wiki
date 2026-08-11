@@ -49,6 +49,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Local browser and generated verification artifacts
+output/
+
 # Editor / IDE
 .vscode/
 .idea/

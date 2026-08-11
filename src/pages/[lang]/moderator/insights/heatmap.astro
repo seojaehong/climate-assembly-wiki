@@ -4,7 +4,7 @@
  * /ko/moderator/insights/heatmap — 의제 영역 × 키워드 히트맵 (모더레이터 전용)
  *
  * PRIVACY: KO-only, noindex, not in sitemap, not in pagefind, no nav links.
- * RENDER:  Frontmatter-thin pattern — all SVG generation in client <script>.
+ * RENDER:  Frontmatter-thin pattern — all SVG generation in a client-side script.
  *          Validated POC against Astro 5.18.2 compiler regression.
  */
 
@@ -325,8 +325,8 @@ export async function getStaticPaths() {
   <div class="tooltip" id="tooltip" role="tooltip"></div>
 
   <!-- Embedded data (is:inline prevents Vite processing, matches live.astro pattern) -->
-  <script id="hm-agendas" type="application/json" set:html={JSON.stringify(agendasRaw)}></script>
-  <script id="hm-matrix" type="application/json" set:html={JSON.stringify(matrixDataRaw)}></script>
+  <script is:inline id="hm-agendas" type="application/json" set:html={JSON.stringify(agendasRaw)}></script>
+  <script is:inline id="hm-matrix" type="application/json" set:html={JSON.stringify(matrixDataRaw)}></script>
 
   <script is:inline>
     /* ====================================================================

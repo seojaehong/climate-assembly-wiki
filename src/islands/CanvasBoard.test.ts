@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
@@ -136,5 +137,42 @@ describe('CanvasConnectionNotice', () => {
     expect(canWriteCanvas(true, 'loading')).toBe(false);
     expect(canWriteCanvas(true, 'degraded')).toBe(false);
     expect(canWriteCanvas(true, 'error')).toBe(false);
+  });
+});
+
+describe('CanvasBoard development runtime', () => {
+  it('pins the Astro integrations to the shared Vite 6 runtime', () => {
+    const packageJson = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as {
+      dependencies: Record<string, string>;
+    };
+
+    expect(packageJson.dependencies.astro).toBe('5.18.2');
+    expect(packageJson.dependencies['@astrojs/react']).toBe('4.4.2');
+    expect(packageJson.dependencies['@tailwindcss/vite']).toBe('4.1.6');
+  });
+
+  it('keeps JSON data islands out of the Vite dependency scanner', () => {
+    const groups = readFileSync(
+      new URL('../pages/[lang]/moderator/insights/groups.astro', import.meta.url),
+      'utf8',
+    );
+    const heatmap = readFileSync(
+      new URL('../pages/[lang]/moderator/insights/heatmap.astro', import.meta.url),
+      'utf8',
+    );
+
+    expect(groups).toContain('<script is:inline id="groups-viz-data" type="application/json"');
+    expect(groups).toContain('<script is:inline id="groups-agendas-data" type="application/json"');
+    expect(groups).not.toContain('client <script>');
+    expect(heatmap).toContain('<script is:inline id="hm-agendas" type="application/json"');
+    expect(heatmap).toContain('<script is:inline id="hm-matrix" type="application/json"');
+    expect(heatmap).not.toContain('client <script>');
+  });
+
+  it('loads the official Pretendard subset stylesheet instead of a missing font file', () => {
+    const globalStyles = readFileSync(new URL('../styles/global.css', import.meta.url), 'utf8');
+
+    expect(globalStyles).toContain('pretendardvariable-dynamic-subset.min.css');
+    expect(globalStyles).not.toContain('pretendardvariable-dynamic-subset.woff2');
   });
 });

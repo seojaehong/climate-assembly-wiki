@@ -7,7 +7,7 @@
  *
  * RENDER: Frontmatter-thin pattern (heatmap POC efd18a6 + groups build-trigger fix).
  *   - Tab A (table) and Tab B (group cards): Astro template (no SVG, builds fine)
- *   - Tab C (Coverage Heatmap): SVG generation in client <script>
+ *   - Tab C (Coverage Heatmap): SVG generation in a client-side script
  *   - Frontmatter template-literal SVG strings trip esbuild ("Unexpected export"
  *     at groups.astro:62:0). Confirmed by isolating discriminating experiment.
  *
@@ -455,8 +455,8 @@ const vizData = {
   <div class="tooltip" id="tooltip" role="tooltip"></div>
 
   <!-- Data islands -->
-  <script id="groups-viz-data" type="application/json" set:html={JSON.stringify(vizData)}></script>
-  <script id="groups-agendas-data" type="application/json" set:html={JSON.stringify(agendas)}></script>
+  <script is:inline id="groups-viz-data" type="application/json" set:html={JSON.stringify(vizData)}></script>
+  <script is:inline id="groups-agendas-data" type="application/json" set:html={JSON.stringify(agendas)}></script>
 
   <script is:inline>
     /* ======================================================================
