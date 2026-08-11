@@ -13,6 +13,7 @@ describe('OntologyReviewConsole', () => {
     expect(html).toContain('검수 계획 JSON');
     expect(html).toContain('Canvas snapshot JSON');
     expect(html).toContain('검수자 역할 ID');
+    expect(html).toContain('type="submit" disabled=""');
     expect(html).toContain('DB에 저장하지 않습니다.');
     expect(html).toContain('공개 그래프에 반영하지 않습니다.');
     expect(html).toContain('aria-live="polite"');

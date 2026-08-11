@@ -280,7 +280,7 @@ export default function OntologyReviewConsole() {
           <label>검수자 역할 ID
             <input value={reviewer} onChange={(event) => setReviewer(event.currentTarget.value)} minLength={3} maxLength={80} pattern="[a-zA-Z][a-zA-Z0-9._:-]{2,79}" autoComplete="off" placeholder="예: moderator-role-1" style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />
           </label>
-          <button type="submit" disabled={busy} style={{ ...controlStyle, background: '#0B4F6C', color: '#FFFFFF', fontWeight: 800 }}>
+          <button type="submit" disabled={busy || planFile === null || snapshotFile === null || reviewer.trim().length < 3} style={{ ...controlStyle, background: '#0B4F6C', color: '#FFFFFF', fontWeight: 800 }}>
             {busy ? '검증 중…' : '로컬 검수 시작'}
           </button>
         </form>

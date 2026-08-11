@@ -100,6 +100,15 @@ async function downloadText(download) {
   return Buffer.concat(chunks).toString('utf8');
 }
 
+async function waitForReviewProgress(page, progressText, timeoutMs) {
+  const progress = page.getByText(progressText, { exact: true });
+  const alert = page.getByRole('alert');
+  await progress.or(alert).first().waitFor({ timeout: timeoutMs });
+  if (await alert.isVisible()) {
+    throw new Error(`Ontology review load failed: ${await alert.innerText()}`);
+  }
+}
+
 function requireHttpUrl(value, label) {
   const url = new URL(value);
   if (!['http:', 'https:'].includes(url.protocol)) {
@@ -287,7 +296,7 @@ export async function verifyCanvasBrowser({
     await reviewPage.getByLabel('Canvas snapshot JSON').setInputFiles(reviewFiles.snapshot);
     await reviewPage.getByLabel('검수자 역할 ID').fill('browser-verifier-role');
     await reviewPage.getByRole('button', { name: '로컬 검수 시작' }).click();
-    await reviewPage.getByText('진행 0/5', { exact: true }).waitFor({ timeout: timeoutMs });
+    await waitForReviewProgress(reviewPage, '진행 0/5', timeoutMs);
 
     let nodeCards = reviewPage.locator('article[aria-label^="노드 검수"]');
     await nodeCards.nth(0).getByLabel('표시 이름').fill('이전 plan의 임시 입력');
@@ -331,7 +340,7 @@ export async function verifyCanvasBrowser({
     await reviewPage.getByLabel('검수 계획 JSON').setInputFiles(reloadFiles.plan);
     await reviewPage.getByLabel('Canvas snapshot JSON').setInputFiles(reloadFiles.snapshot);
     await reviewPage.getByRole('button', { name: '로컬 검수 시작' }).click();
-    await reviewPage.getByText('진행 0/5', { exact: true }).waitFor({ timeout: timeoutMs });
+    await waitForReviewProgress(reviewPage, '진행 0/5', timeoutMs);
     await reviewPage.waitForFunction((expectedLabel) => (
       document.querySelector('article[aria-label^="노드 검수"] input')?.value === expectedLabel
     ), REVIEW_RELOAD_SNAPSHOT.payload.agenda[0].text, { timeout: timeoutMs });
