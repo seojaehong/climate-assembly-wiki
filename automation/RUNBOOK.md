@@ -183,6 +183,36 @@ GitHub Actions schedules는 트래픽 폭주 시 5~15분 지연될 수 있다. �
 2. 누락 set의 timestamp가 연속 구간(>3개 연속)이면 진짜 장애
 3. 흩어져 있으면 GHA drift — 회고에 "drift {N분}" 기록하고 다음 워크숍은 cron 빈도 검토
 
+## A5 수동 보조기술 평가 증거
+
+자동 axe/Chromium 감사는 스크린리더와 실제 모바일 보조기기 평가를 대체하지 않는다.
+추적 파일 `evaluation/platform-accessibility-manual-evaluation.json`은 데스크톱·모바일 프로필과
+로그인·인증 셸·접근성 성명·미공개 결과·공개 결과의 10개 케이스, 40개 필수 검사를 정의한다.
+초기값은 모두 `not_run`이며 전체 상태는 `needs_review`다. 이 파일은 품질인증 완료 증거가 아니다.
+
+평가자는 각 실행 케이스에 다음을 기록한다.
+
+- 프로필의 보조기술·브라우저·운영체제 이름과 버전, 기기
+- 평가자 실명 대신 승인된 역할 ID 또는 비식별 별칭과 ISO 8601 UTC 형식의 평가 시각
+- 각 검사의 `pass`, `fail`, `blocked`, `not_run` 상태
+- `fail` 또는 `blocked`일 때 재현 가능한 설명. 공개 결과 토큰·참여 코드·개인정보는 기록하지 않는다.
+
+검증 명령:
+
+```powershell
+cd automation
+npm.cmd run audit:platform-accessibility-manual -- --verify ../evaluation/platform-accessibility-manual-evaluation.json --expected-base-url https://climate-assembly.org --repo-root ..
+```
+
+검증기는 누락·중복 케이스, 필수 검사 누락, 실행 환경 정보 누락, 설명 없는 실패를 거부한다.
+한 건이라도 `fail`이면 종료 코드 1, `blocked` 또는 `not_run`이 남으면 종료 코드 0과
+`needs_review`, 모든 필수 검사가 통과해야만 `pass`를 출력한다. CI는 추적 파일의 구조와
+판정 일관성을 확인하지만 실제 사람 평가를 대신하지 않는다. 새 템플릿 생성은 기존 평가 기록을
+기본적으로 덮어쓰지 않는다. 별도 경로에서 생성해 사람이 diff를 확인하고 백업한 경우에만
+명시적 `--force`를 사용한다. `pass` 증거는 기록된 커밋이 현재 HEAD의 조상이고 그 이후 접근성
+대상 소스가 바뀌지 않았을 때만 유효하다. 승인된 사용자 도메인과 다르거나 대상 소스가 바뀌면
+CI가 stale 증거를 거부하므로 해당 커밋을 기준으로 수동평가를 다시 수행한다.
+
 ## 알림 레벨 정책
 
 | 레벨 | 상황 | 대응 |

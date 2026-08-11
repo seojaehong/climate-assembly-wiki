@@ -5,22 +5,32 @@ on:
     paths:
       - 'src/islands/platform/**'
       - 'src/islands/result/**'
+      - 'src/components/**'
+      - 'src/lib/**'
       - 'src/pages/platform/**'
       - 'src/pages/r/**'
       - 'src/styles/**'
       - 'automation/platform-accessibility-audit.mjs'
       - 'automation/tests/platform-accessibility-audit.test.mjs'
+      - 'automation/platform-accessibility-manual-evidence.mjs'
+      - 'automation/tests/platform-accessibility-manual-evidence.test.mjs'
+      - 'evaluation/platform-accessibility-manual-evaluation.json'
       - 'automation/package*.json'
       - '.github/workflows/platform-accessibility.yml'
   pull_request:
     paths:
       - 'src/islands/platform/**'
       - 'src/islands/result/**'
+      - 'src/components/**'
+      - 'src/lib/**'
       - 'src/pages/platform/**'
       - 'src/pages/r/**'
       - 'src/styles/**'
       - 'automation/platform-accessibility-audit.mjs'
       - 'automation/tests/platform-accessibility-audit.test.mjs'
+      - 'automation/platform-accessibility-manual-evidence.mjs'
+      - 'automation/tests/platform-accessibility-manual-evidence.test.mjs'
+      - 'evaluation/platform-accessibility-manual-evaluation.json'
       - 'automation/package*.json'
       - '.github/workflows/platform-accessibility.yml'
   workflow_dispatch:
@@ -44,6 +54,9 @@ jobs:
       - name: Install Chromium
         working-directory: automation
         run: npx playwright install --with-deps chromium
+      - name: Validate tracked manual evaluation evidence
+        working-directory: automation
+        run: npm run audit:platform-accessibility-manual -- --verify ../evaluation/platform-accessibility-manual-evaluation.json --expected-base-url https://climate-assembly.org --repo-root ..
       - name: Build static site
         run: npm run build
       - name: Start preview server

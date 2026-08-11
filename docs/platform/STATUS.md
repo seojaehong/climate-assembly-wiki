@@ -32,11 +32,12 @@
 | 공개 결과 페이지 | `/r/<token>` 매트릭스·랭킹·4×6·표대체본·HITL | 2af1ce2 |
 | 검수 콘솔 | 4×6 코딩·재분류·병합·미분류함 본문·게이트 | 62aabfc |
 
-**최근 검증(2026-08-11):** src Vitest 739건·automation Vitest 110건, Astro check 오류 0, Node20 정적 빌드 7,913페이지 통과. 격리 정적 빌드에서 5경로를 데스크톱·모바일 두 뷰포트로 감사한 10개 케이스가 모두 통과했고 자동 위반·자동 판정 불가는 각각 0건이었다. 공개 결과 표의 모든 데이터 셀은 불투명 배경과 명시적 전경색을 사용해 대비 판정 근거를 고정한다. 스크린리더·실제 모바일 보조기기 수동평가는 남아 전체 상태는 `needs_review`다. 기존 사용자 도메인 증거는 커밋 `5e5406d`의 수동 Cloudflare Pages 배포([run 31427305710](https://github.com/seojaehong/climate-assembly-wiki/actions/runs/31427305710)) 후 5경로 통과 결과이며, 이번 변경의 사용자 도메인 재검증은 재배포 승인 뒤 수행한다. 격리 불변식(RPC org_id 미전달)은 유지한다.
+**최근 검증(2026-08-11):** 플랫폼·결과 집중 Vitest 28건과 automation Vitest 122건 통과, Astro check 오류 0, Node20 정적 빌드 7,913페이지 통과. 전체 src Vitest는 804건 중 803건 통과하고 기존 0704 의제 보드 문구 계약 1건이 실패해 별도 레거시 공백으로 남는다. 격리 정적 빌드에서 5경로를 데스크톱·모바일 두 뷰포트로 감사한 10개 케이스가 모두 통과했고 자동 위반·자동 판정 불가는 각각 0건이었다. 공개 결과 표의 모든 데이터 셀은 불투명 배경과 명시적 전경색을 사용해 대비 판정 근거를 고정한다. 수동 보조기술 평가 템플릿은 10개 케이스·40개 필수 검사를 정의하며 현재 40개 모두 `not_run`이라 전체 상태는 `needs_review`다. 기존 사용자 도메인 증거는 커밋 `5e5406d`의 수동 Cloudflare Pages 배포([run 31427305710](https://github.com/seojaehong/climate-assembly-wiki/actions/runs/31427305710)) 후 5경로 통과 결과이며, 이번 변경의 사용자 도메인 재검증은 재배포 승인 뒤 수행한다. 격리 불변식(RPC org_id 미전달)은 유지한다.
 
 ### Phase A 점진 구현 (2026-08-11)
 
 - **A5 자동 감사 기반**: `automation/platform-accessibility-audit.mjs`가 실제 Chromium에서 axe-core WCAG 2.2 AA 태그, 건너뛰기 링크 포커스와 수평 넘침을 데스크톱 1440×1000·모바일 360×800 뷰포트로 검사한다. 플랫폼 로그인·인증 후 셸·접근성 성명·미공개/공개 결과 5경로의 사용자 도메인 증거는 `evaluation/platform-accessibility-audit.json`, 이번 로컬 정적 빌드 10케이스 증거는 `evaluation/platform-accessibility-responsive-audit.json`에 분리해 저장한다. `.github/workflows/platform-accessibility.yml`은 관련 변경마다 동일한 2개 뷰포트 감사를 재실행한다.
+- **A5 수동 평가 증거 게이트**: `evaluation/platform-accessibility-manual-evaluation.json`은 같은 5개 표면을 데스크톱·모바일 스크린리더 프로필로 평가하는 10개 케이스와 40개 필수 검사를 추적한다. `automation/platform-accessibility-manual-evidence.mjs`는 누락·중복·불완전 환경정보·설명 없는 실패를 거부하고, 모든 검사가 `pass`가 되기 전에는 `needs_review` 또는 `fail`을 유지한다. 현재는 실제 수동 평가 전이라 40개 모두 `not_run`이며 품질인증 완료를 주장하지 않는다.
 - 인증 셸과 공개 결과는 실제 production 컴포넌트에 CI 전용 읽기 응답을 주입하고 readiness selector 도달을 필수로 한다. fixture 이름·준비 상태·axe `incomplete`·뷰포트·문서 폭을 JSON에 보존한다. 스크린리더·실제 모바일 보조기기 전수 수동평가와 공식 품질인증은 완료로 간주하지 않는다.
 - **A7 XAI 산정 설명**: 공개 결과가 현재 스냅샷의 쟁점·미분류 원문·참여 조·합의 분모·HITL 검수 건수를 사용해 범위→집계→분류→검수 과정을 수치로 설명한다. 개별 원문 역링크와 이행추적은 공개 payload에 근거 데이터가 없어 완료로 간주하지 않으며, 데이터 계약과 DB 변경 승인 뒤 별도 구현한다.
 

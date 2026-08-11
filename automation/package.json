@@ -11,7 +11,8 @@
     "finalize": "node finalize-report.mjs",
     "verify-drive": "node scripts/verify-drive.mjs",
     "export-snapshots": "node export-snapshots-onedrive.mjs",
-    "audit:platform-accessibility": "node platform-accessibility-audit.mjs"
+    "audit:platform-accessibility": "node platform-accessibility-audit.mjs",
+    "audit:platform-accessibility-manual": "node platform-accessibility-manual-evidence.mjs"
   },
   "dependencies": {
     "playwright": "^1.49.0",

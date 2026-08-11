@@ -1,0 +1,450 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-11T00:00:00.000Z",
+  "baseUrl": "https://climate-assembly.org",
+  "commitSha": "9310d14",
+  "certificationClaimed": false,
+  "status": "needs_review",
+  "profiles": [
+    {
+      "id": "desktop-screen-reader",
+      "label": "데스크톱 스크린리더",
+      "environment": {
+        "assistiveTechnology": {
+          "name": null,
+          "version": null
+        },
+        "browser": {
+          "name": null,
+          "version": null
+        },
+        "operatingSystem": {
+          "name": null,
+          "version": null
+        },
+        "device": null
+      }
+    },
+    {
+      "id": "mobile-screen-reader",
+      "label": "모바일 스크린리더",
+      "environment": {
+        "assistiveTechnology": {
+          "name": null,
+          "version": null
+        },
+        "browser": {
+          "name": null,
+          "version": null
+        },
+        "operatingSystem": {
+          "name": null,
+          "version": null
+        },
+        "device": null
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "platform-login:desktop-screen-reader",
+      "surfaceId": "platform-login",
+      "surfaceLabel": "플랫폼 로그인",
+      "path": "/platform/",
+      "setup": "로그아웃 상태에서 연다. 실제 자격증명은 증거 파일에 기록하지 않는다.",
+      "profileId": "desktop-screen-reader",
+      "evaluator": null,
+      "testedAt": null,
+      "checks": [
+        {
+          "id": "skip-focus",
+          "procedure": "페이지 첫 포커스에서 본문 바로가기를 실행한다.",
+          "expected": "포커스가 로그인 폼으로 이동하고 스크린리더가 로그인 영역을 알린다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "form-labels",
+          "procedure": "아이디와 비밀번호 입력란을 탐색하고 이름·역할·값을 확인한다.",
+          "expected": "각 입력란의 보이는 레이블과 접근 가능한 이름이 일치하고 비밀번호 값은 읽히지 않는다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "error-announcement",
+          "procedure": "승인된 잘못된 테스트 값으로 로그인을 한 번 시도한다.",
+          "expected": "오류가 포커스 이동 없이 즉시 안내되고 다시 입력할 수 있다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "focus-order",
+          "procedure": "Tab과 Shift+Tab으로 로그인 폼 전체를 왕복한다.",
+          "expected": "포커스 순서가 시각 순서와 일치하고 키보드 포커스가 갇히지 않는다.",
+          "status": "not_run",
+          "notes": null
+        }
+      ]
+    },
+    {
+      "id": "authenticated-platform:desktop-screen-reader",
+      "surfaceId": "authenticated-platform",
+      "surfaceLabel": "인증 후 플랫폼",
+      "path": "/platform/",
+      "setup": "승인된 접근성 평가 계정으로 로그인한다. 계정·토큰은 승인된 비밀 채널로 받고 증거 파일에 기록하지 않는다.",
+      "profileId": "desktop-screen-reader",
+      "evaluator": null,
+      "testedAt": null,
+      "checks": [
+        {
+          "id": "skip-focus",
+          "procedure": "페이지 첫 포커스에서 본문 바로가기를 실행한다.",
+          "expected": "포커스가 현재 스코프 본문으로 이동하고 현재 화면 제목이 안내된다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "tree-current-location",
+          "procedure": "조직 트리와 브레드크럼을 탐색한 뒤 다른 스코프로 이동한다.",
+          "expected": "현재 위치가 한 곳으로만 안내되고 이동 후 제목·현재 위치가 함께 갱신된다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "async-announcements",
+          "procedure": "읽기 전용 조회 탭을 열어 로딩과 완료 또는 빈 상태를 기다린다.",
+          "expected": "로딩과 완료·빈 상태가 중복 없이 안내되고 결과 건수를 인지할 수 있다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "controls-and-forms",
+          "procedure": "지원되는 탭·버튼·입력·선택 컨트롤을 키보드로 순서대로 조작한다.",
+          "expected": "각 컨트롤의 이름·역할·선택·busy 상태가 안내되고 모든 기능을 키보드로 실행할 수 있다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "logout-alert",
+          "procedure": "정상 로그아웃을 확인한다. 실패 경로는 승인된 격리 fixture에서만 실행한다.",
+          "expected": "정상 시 로그인 화면으로 돌아가고 fixture 실패 시 오류 alert가 안내되며 재시도할 수 있다.",
+          "status": "not_run",
+          "notes": null
+        }
+      ]
+    },
+    {
+      "id": "accessibility-statement:desktop-screen-reader",
+      "surfaceId": "accessibility-statement",
+      "surfaceLabel": "접근성 성명",
+      "path": "/platform/accessibility/",
+      "setup": "로그인 없이 사용자 도메인의 접근성 성명을 연다.",
+      "profileId": "desktop-screen-reader",
+      "evaluator": null,
+      "testedAt": null,
+      "checks": [
+        {
+          "id": "skip-focus",
+          "procedure": "페이지 첫 포커스에서 본문 바로가기를 실행한다.",
+          "expected": "포커스가 main으로 이동하고 접근성 성명 제목이 안내된다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "landmarks-and-headings",
+          "procedure": "랜드마크와 제목 목록으로 문서 전체를 탐색한다.",
+          "expected": "main이 하나이고 제목 단계와 섹션 이름만으로 문서 구조를 이해할 수 있다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "link-purpose",
+          "procedure": "기준 원문·증거·제보 링크를 링크 목록과 본문에서 확인한다.",
+          "expected": "각 링크 목적과 새 탭 여부를 링크 이름만으로 알 수 있다.",
+          "status": "not_run",
+          "notes": null
+        }
+      ]
+    },
+    {
+      "id": "public-result-unpublished:desktop-screen-reader",
+      "surfaceId": "public-result-unpublished",
+      "surfaceLabel": "미공개 결과",
+      "path": "/r/<approved-unpublished-token>/",
+      "setup": "승인된 미공개 테스트 결과 토큰을 비밀 채널로 받아 연다. 토큰은 증거 파일에 기록하지 않는다.",
+      "profileId": "desktop-screen-reader",
+      "evaluator": null,
+      "testedAt": null,
+      "checks": [
+        {
+          "id": "skip-focus",
+          "procedure": "페이지 첫 포커스에서 본문 바로가기를 실행한다.",
+          "expected": "포커스가 결과 상태 main으로 이동한다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "status-announcement",
+          "procedure": "페이지 로드가 끝날 때까지 결과 상태 안내를 듣는다.",
+          "expected": "미공개 상태와 다음 행동이 한 번 명확히 안내되고 공개 결과로 오인되지 않는다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "focus-order",
+          "procedure": "Tab과 Shift+Tab으로 제공된 상호작용 요소를 왕복한다.",
+          "expected": "포커스가 보이고 논리적 순서를 따르며 갇히지 않는다.",
+          "status": "not_run",
+          "notes": null
+        }
+      ]
+    },
+    {
+      "id": "published-result:desktop-screen-reader",
+      "surfaceId": "published-result",
+      "surfaceLabel": "공개 결과",
+      "path": "/r/<approved-published-token>/",
+      "setup": "개인정보가 없는 승인된 공개 테스트 snapshot 토큰을 비밀 채널로 받아 연다. 토큰은 증거 파일에 기록하지 않는다.",
+      "profileId": "desktop-screen-reader",
+      "evaluator": null,
+      "testedAt": null,
+      "checks": [
+        {
+          "id": "skip-focus",
+          "procedure": "페이지 첫 포커스에서 본문 바로가기를 실행한다.",
+          "expected": "포커스가 공개 결과 main으로 이동하고 결과 제목이 안내된다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "landmarks-and-headings",
+          "procedure": "랜드마크와 제목 목록으로 결과 전체를 탐색한다.",
+          "expected": "결과 범위·요약·쟁점·대체표·다운로드 구조를 제목만으로 찾을 수 있다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "hitl-meaning",
+          "procedure": "검수 완료·초안·보관 상태가 섞인 쟁점을 읽는다.",
+          "expected": "각 상태의 보이는 라벨과 설명이 함께 안내되어 색상이나 AI 출처를 추정할 필요가 없다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "table-navigation",
+          "procedure": "쟁점 표와 커버리지 표를 표 탐색 명령으로 행·열 이동한다.",
+          "expected": "caption과 행·열 머리글이 각 데이터 셀에 연결되고 현재 셀의 의미를 이해할 수 있다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "details-and-scroll",
+          "procedure": "두 표 대체본을 펼치고 각 명명된 영역에 포커스한 뒤 방향키·Home·End로 가로 이동한다.",
+          "expected": "펼침 상태가 안내되고 표 영역만 스크롤되며 포커스가 사라지거나 문서 내용이 잘리지 않는다.",
+          "status": "not_run",
+          "notes": null
+        }
+      ]
+    },
+    {
+      "id": "platform-login:mobile-screen-reader",
+      "surfaceId": "platform-login",
+      "surfaceLabel": "플랫폼 로그인",
+      "path": "/platform/",
+      "setup": "로그아웃 상태에서 연다. 실제 자격증명은 증거 파일에 기록하지 않는다.",
+      "profileId": "mobile-screen-reader",
+      "evaluator": null,
+      "testedAt": null,
+      "checks": [
+        {
+          "id": "skip-focus",
+          "procedure": "페이지 첫 포커스에서 본문 바로가기를 실행한다.",
+          "expected": "포커스가 로그인 폼으로 이동하고 스크린리더가 로그인 영역을 알린다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "form-labels",
+          "procedure": "아이디와 비밀번호 입력란을 탐색하고 이름·역할·값을 확인한다.",
+          "expected": "각 입력란의 보이는 레이블과 접근 가능한 이름이 일치하고 비밀번호 값은 읽히지 않는다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "error-announcement",
+          "procedure": "승인된 잘못된 테스트 값으로 로그인을 한 번 시도한다.",
+          "expected": "오류가 포커스 이동 없이 즉시 안내되고 다시 입력할 수 있다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "focus-order",
+          "procedure": "Tab과 Shift+Tab으로 로그인 폼 전체를 왕복한다.",
+          "expected": "포커스 순서가 시각 순서와 일치하고 키보드 포커스가 갇히지 않는다.",
+          "status": "not_run",
+          "notes": null
+        }
+      ]
+    },
+    {
+      "id": "authenticated-platform:mobile-screen-reader",
+      "surfaceId": "authenticated-platform",
+      "surfaceLabel": "인증 후 플랫폼",
+      "path": "/platform/",
+      "setup": "승인된 접근성 평가 계정으로 로그인한다. 계정·토큰은 승인된 비밀 채널로 받고 증거 파일에 기록하지 않는다.",
+      "profileId": "mobile-screen-reader",
+      "evaluator": null,
+      "testedAt": null,
+      "checks": [
+        {
+          "id": "skip-focus",
+          "procedure": "페이지 첫 포커스에서 본문 바로가기를 실행한다.",
+          "expected": "포커스가 현재 스코프 본문으로 이동하고 현재 화면 제목이 안내된다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "tree-current-location",
+          "procedure": "조직 트리와 브레드크럼을 탐색한 뒤 다른 스코프로 이동한다.",
+          "expected": "현재 위치가 한 곳으로만 안내되고 이동 후 제목·현재 위치가 함께 갱신된다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "async-announcements",
+          "procedure": "읽기 전용 조회 탭을 열어 로딩과 완료 또는 빈 상태를 기다린다.",
+          "expected": "로딩과 완료·빈 상태가 중복 없이 안내되고 결과 건수를 인지할 수 있다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "controls-and-forms",
+          "procedure": "지원되는 탭·버튼·입력·선택 컨트롤을 키보드로 순서대로 조작한다.",
+          "expected": "각 컨트롤의 이름·역할·선택·busy 상태가 안내되고 모든 기능을 키보드로 실행할 수 있다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "logout-alert",
+          "procedure": "정상 로그아웃을 확인한다. 실패 경로는 승인된 격리 fixture에서만 실행한다.",
+          "expected": "정상 시 로그인 화면으로 돌아가고 fixture 실패 시 오류 alert가 안내되며 재시도할 수 있다.",
+          "status": "not_run",
+          "notes": null
+        }
+      ]
+    },
+    {
+      "id": "accessibility-statement:mobile-screen-reader",
+      "surfaceId": "accessibility-statement",
+      "surfaceLabel": "접근성 성명",
+      "path": "/platform/accessibility/",
+      "setup": "로그인 없이 사용자 도메인의 접근성 성명을 연다.",
+      "profileId": "mobile-screen-reader",
+      "evaluator": null,
+      "testedAt": null,
+      "checks": [
+        {
+          "id": "skip-focus",
+          "procedure": "페이지 첫 포커스에서 본문 바로가기를 실행한다.",
+          "expected": "포커스가 main으로 이동하고 접근성 성명 제목이 안내된다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "landmarks-and-headings",
+          "procedure": "랜드마크와 제목 목록으로 문서 전체를 탐색한다.",
+          "expected": "main이 하나이고 제목 단계와 섹션 이름만으로 문서 구조를 이해할 수 있다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "link-purpose",
+          "procedure": "기준 원문·증거·제보 링크를 링크 목록과 본문에서 확인한다.",
+          "expected": "각 링크 목적과 새 탭 여부를 링크 이름만으로 알 수 있다.",
+          "status": "not_run",
+          "notes": null
+        }
+      ]
+    },
+    {
+      "id": "public-result-unpublished:mobile-screen-reader",
+      "surfaceId": "public-result-unpublished",
+      "surfaceLabel": "미공개 결과",
+      "path": "/r/<approved-unpublished-token>/",
+      "setup": "승인된 미공개 테스트 결과 토큰을 비밀 채널로 받아 연다. 토큰은 증거 파일에 기록하지 않는다.",
+      "profileId": "mobile-screen-reader",
+      "evaluator": null,
+      "testedAt": null,
+      "checks": [
+        {
+          "id": "skip-focus",
+          "procedure": "페이지 첫 포커스에서 본문 바로가기를 실행한다.",
+          "expected": "포커스가 결과 상태 main으로 이동한다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "status-announcement",
+          "procedure": "페이지 로드가 끝날 때까지 결과 상태 안내를 듣는다.",
+          "expected": "미공개 상태와 다음 행동이 한 번 명확히 안내되고 공개 결과로 오인되지 않는다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "focus-order",
+          "procedure": "Tab과 Shift+Tab으로 제공된 상호작용 요소를 왕복한다.",
+          "expected": "포커스가 보이고 논리적 순서를 따르며 갇히지 않는다.",
+          "status": "not_run",
+          "notes": null
+        }
+      ]
+    },
+    {
+      "id": "published-result:mobile-screen-reader",
+      "surfaceId": "published-result",
+      "surfaceLabel": "공개 결과",
+      "path": "/r/<approved-published-token>/",
+      "setup": "개인정보가 없는 승인된 공개 테스트 snapshot 토큰을 비밀 채널로 받아 연다. 토큰은 증거 파일에 기록하지 않는다.",
+      "profileId": "mobile-screen-reader",
+      "evaluator": null,
+      "testedAt": null,
+      "checks": [
+        {
+          "id": "skip-focus",
+          "procedure": "페이지 첫 포커스에서 본문 바로가기를 실행한다.",
+          "expected": "포커스가 공개 결과 main으로 이동하고 결과 제목이 안내된다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "landmarks-and-headings",
+          "procedure": "랜드마크와 제목 목록으로 결과 전체를 탐색한다.",
+          "expected": "결과 범위·요약·쟁점·대체표·다운로드 구조를 제목만으로 찾을 수 있다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "hitl-meaning",
+          "procedure": "검수 완료·초안·보관 상태가 섞인 쟁점을 읽는다.",
+          "expected": "각 상태의 보이는 라벨과 설명이 함께 안내되어 색상이나 AI 출처를 추정할 필요가 없다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "table-navigation",
+          "procedure": "쟁점 표와 커버리지 표를 표 탐색 명령으로 행·열 이동한다.",
+          "expected": "caption과 행·열 머리글이 각 데이터 셀에 연결되고 현재 셀의 의미를 이해할 수 있다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "details-and-scroll",
+          "procedure": "두 표 대체본을 펼치고 각 명명된 영역에 포커스한 뒤 방향키·Home·End로 가로 이동한다.",
+          "expected": "펼침 상태가 안내되고 표 영역만 스크롤되며 포커스가 사라지거나 문서 내용이 잘리지 않는다.",
+          "status": "not_run",
+          "notes": null
+        }
+      ]
+    }
+  ]
+}
