@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 
-type ModeratorPlatformSurface = 'live' | 'canvas' | 'graph' | 'guide';
+type ModeratorPlatformSurface = 'live' | 'canvas' | 'review' | 'graph' | 'guide';
 
 interface ModeratorPlatformNavProps {
   current: ModeratorPlatformSurface;
@@ -13,6 +13,7 @@ const SURFACES: ReadonlyArray<{
 }> = [
   { id: 'live', href: '/ko/moderator/live/', label: '라이브 입력' },
   { id: 'canvas', href: '/ko/moderator/canvas/', label: '캔버스 작업대' },
+  { id: 'review', href: '/ko/moderator/ontology-review/', label: '온톨로지 검수 큐' },
   { id: 'graph', href: '/workshop-graph/', label: '온톨로지 그래프' },
   { id: 'guide', href: '/workshop-graph/guide/', label: '그래프 사용설명서' },
 ];

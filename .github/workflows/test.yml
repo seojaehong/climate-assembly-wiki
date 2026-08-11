@@ -11,10 +11,13 @@ on:
       - 'src/components/ModeratorPlatformNav.tsx'
       - 'src/components/ModeratorPlatformNav.test.ts'
       - 'src/islands/CanvasBoard.tsx'
+      - 'src/islands/OntologyReviewConsole.tsx'
+      - 'src/islands/OntologyReviewConsole.test.ts'
       - 'src/islands/canvas/**'
       - 'src/lib/supabase.ts'
       - 'src/pages/**/moderator/canvas.astro'
       - 'src/pages/**/moderator/live.astro'
+      - 'src/pages/**/moderator/ontology-review.astro'
       - 'src/pages/**/moderator/insights/groups.astro'
       - 'src/pages/**/moderator/insights/heatmap.astro'
       - 'src/styles/**'
@@ -29,10 +32,13 @@ on:
       - 'src/components/ModeratorPlatformNav.tsx'
       - 'src/components/ModeratorPlatformNav.test.ts'
       - 'src/islands/CanvasBoard.tsx'
+      - 'src/islands/OntologyReviewConsole.tsx'
+      - 'src/islands/OntologyReviewConsole.test.ts'
       - 'src/islands/canvas/**'
       - 'src/lib/supabase.ts'
       - 'src/pages/**/moderator/canvas.astro'
       - 'src/pages/**/moderator/live.astro'
+      - 'src/pages/**/moderator/ontology-review.astro'
       - 'src/pages/**/moderator/insights/groups.astro'
       - 'src/pages/**/moderator/insights/heatmap.astro'
       - 'src/styles/**'
@@ -54,7 +60,12 @@ jobs:
         run: npm ci
         working-directory: .
       - name: Run root Canvas navigation tests
-        run: npm exec vitest -- run src/components/ModeratorPlatformNav.test.ts src/islands/CanvasBoard.test.ts
+        run: >-
+          npm exec vitest -- run
+          src/components/ModeratorPlatformNav.test.ts
+          src/islands/CanvasBoard.test.ts
+          src/islands/OntologyReviewConsole.test.ts
+          src/islands/canvas/ontology-review-workspace.test.ts
         working-directory: .
       - run: npm ci
       - name: Cache Playwright browsers

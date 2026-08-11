@@ -1,0 +1,40 @@
+---
+import '../../../styles/global.css';
+import ModeratorPlatformNav from '../../../components/ModeratorPlatformNav';
+import OntologyReviewConsole from '../../../islands/OntologyReviewConsole';
+
+export async function getStaticPaths() {
+  return [{ params: { lang: 'ko' } }];
+}
+---
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="description" content="Canvas 온톨로지 로컬 검수 큐" />
+  <title>Canvas 온톨로지 검수 큐</title>
+  <style is:inline>
+    html, body { margin: 0; min-height: 100%; }
+    body { background: #E9F1F5; }
+    .review-skip-link {
+      background: #FFFFFF;
+      border: 2px solid #0B4F6C;
+      border-radius: 8px;
+      color: #0B4F6C;
+      left: 12px;
+      padding: 10px 14px;
+      position: fixed;
+      top: -80px;
+      z-index: 1000;
+    }
+    .review-skip-link:focus { top: 12px; }
+  </style>
+</head>
+<body>
+  <a class="review-skip-link" href="#ontology-review-content">본문 바로가기</a>
+  <ModeratorPlatformNav current="review" />
+  <OntologyReviewConsole client:load />
+</body>
+</html>

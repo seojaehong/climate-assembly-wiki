@@ -362,6 +362,18 @@ npm.cmd run bridge:canvas-ontology -- --snapshot 'C:\approved\snapshot_42.json' 
 - relation: `relation`, `reviewStatus`, `reviewer`, `reviewedAt`
 - cluster: `reviewStatus`, `issueNodeId`, `reviewer`, `reviewedAt`
 
+직접 JSON을 편집하는 대신 로컬 검수 작업대를 사용할 수 있다.
+
+1. 위 명령으로 sealed `canvas-review-plan.json`과 그 plan을 만든 원 `snapshot_42.json`을 준비한다.
+2. `/ko/moderator/ontology-review/`를 열어 두 파일을 각각 선택한다.
+3. 실명·연락처가 아닌 비식별 검수자 역할 ID를 입력하고 `로컬 검수 시작`을 누른다.
+4. node를 먼저 판단하고, 승인된 `Issue` node를 대표로 골라 relation과 cluster까지 모두 판단한다.
+5. `검수 완료 plan 다운로드`로 reviewed plan을 내려받은 뒤 아래 `--reviewed-plan` 명령으로 다시 검증한다.
+
+이 화면은 파일을 브라우저 메모리에서만 처리하고 browser storage, Supabase, 공개 graph에 쓰지 않는다.
+`noindex`와 운영 메뉴는 접근통제가 아니므로 승인된 운영 장치·입력만 사용한다. plan self-checksum은
+우발 변경 탐지용이며 작성자 인증이나 외부 서명을 제공하지 않는다.
+
 node는 `accepted`, `edited`(label/text 수정), 또는 `rejected`, relation과 cluster는 `accepted` 또는 `rejected`로 끝나야 한다. 수정된 node는 반드시 `edited`를 사용한다. 승인 node는 허용된 온톨로지 kind,
 승인 relation은 허용된 관계와 승인된 양 끝 node를 가져야 한다. cluster 승인은 같은 group의
 승인된 `Issue` node를 지정해야 한다. 보관 의제와 보관 endpoint를 가진 연결은 조용히 삭제하지

@@ -83,6 +83,20 @@ npm.cmd run bridge:canvas-ontology -- --snapshot 'C:\approved\snapshot_42.json' 
 canonical self-checksum과 같은 snapshot·plan에서 재생성한 전체 seed가 일치하는지 확인한다.
 self-checksum은 우발 변경 탐지용이며 외부 서명, 작성자 진위, 외부 시점 또는 승인자 인증을 제공하지 않는다.
 
+## Local browser review workspace
+
+`/ko/moderator/ontology-review/`는 DB contract 승인 전에도 sealed review plan과 그 plan이 가리키는
+정확한 Canvas snapshot을 사람이 검수할 수 있는 로컬 작업대다. 두 JSON은 브라우저 메모리에서만
+읽고 browser storage, Supabase, 공개 graph에는 쓰지 않는다. plan self-checksum, snapshot exact-byte
+SHA-256, snapshot ID/source/timestamp, agenda ID/session/text를 모두 확인한 뒤에만 검수 카드를 연다.
+
+검수자는 비식별 역할 ID를 입력하고 node의 역할·표시명·내용, relation의 유형, cluster의 대표
+Issue를 각각 승인·수정 승인·반려한다. 승인 relation은 승인된 두 endpoint를, 승인 cluster는 같은
+군집에서 승인된 `Issue` node를 요구한다. 모든 항목에 명시적 판단이 있어야 reviewed plan JSON을
+내려받을 수 있다. 이 다운로드는 `databaseMutationExecuted:false`, `publicGraphWritten:false`를
+유지하는 내부 검수 결과이며 승인·게시 증거가 아니다. 최종 graph 변환은 같은 snapshot과 기존
+CLI `--reviewed-plan` 경로에서 source 불변식을 다시 검증해야 한다.
+
 ## Failure modes
 
 | Failure | Required behavior |

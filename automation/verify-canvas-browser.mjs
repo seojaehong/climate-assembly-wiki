@@ -4,14 +4,20 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import {
+  buildCanvasOntologyReviewPlan,
+  sealCanvasOntologyReviewPlan,
+} from './canvas-ontology-bridge.mjs';
 
 const DEFAULT_PATH = '/ko/moderator/canvas/';
 const DEFAULT_LIVE_PATH = '/ko/moderator/live/';
+const DEFAULT_REVIEW_PATH = '/ko/moderator/ontology-review/';
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const EXPECTED_READ_PATHS = ['/rest/v1/session', '/rest/v1/agenda', '/rest/v1/agenda_link'];
 const EXPECTED_PLATFORM_PATHS = [
   '/ko/moderator/live/',
   '/ko/moderator/canvas/',
+  '/ko/moderator/ontology-review/',
   '/workshop-graph/',
   '/workshop-graph/guide/',
 ];
@@ -24,20 +30,75 @@ const AUDITED_SOURCE_PATHS = [
   'automation/package-lock.json',
   'automation/tests/verify-canvas-browser.test.mjs',
   'automation/verify-canvas-browser.mjs',
+  'automation/canvas-ontology-bridge.mjs',
+  'automation/ontology-review-queue.mjs',
   'astro.config.mjs',
   'package.json',
   'package-lock.json',
   'src/components/ModeratorPlatformNav.tsx',
   'src/components/ModeratorPlatformNav.test.ts',
   'src/islands/CanvasBoard.tsx',
+  'src/islands/OntologyReviewConsole.tsx',
+  'src/islands/OntologyReviewConsole.test.ts',
   'src/islands/canvas',
   'src/lib/supabase.ts',
   'src/pages/[lang]/moderator/canvas.astro',
   'src/pages/[lang]/moderator/live.astro',
+  'src/pages/[lang]/moderator/ontology-review.astro',
   'src/pages/[lang]/moderator/insights/groups.astro',
   'src/pages/[lang]/moderator/insights/heatmap.astro',
   'src/styles/global.css',
 ];
+
+const REVIEW_SNAPSHOT = {
+  id: 42,
+  source: 'browser-verifier-fixture',
+  taken_at: '2026-08-29T00:00:00.000Z',
+  payload: {
+    agenda: [
+      {
+        id: 'agenda-1', session_id: 'session-1', text: '지역 에너지 자립을 논의한다.',
+        jo: 'A조', zone: '감축', status: 'active', kind: 'agenda', group_id: 'group-1',
+        parent_id: null, x: 10, y: 20,
+      },
+      {
+        id: 'action-1', session_id: 'session-1', text: '공공건물 태양광을 확대한다.',
+        jo: 'A조', zone: '감축', status: 'active', kind: 'action', group_id: 'group-1',
+        parent_id: 'agenda-1', x: 30, y: 40,
+      },
+    ],
+    agenda_link: [
+      { id: 'link-1', session_id: 'session-1', source_id: 'agenda-1', target_id: 'action-1' },
+    ],
+  },
+};
+
+const REVIEW_RELOAD_SNAPSHOT = {
+  ...structuredClone(REVIEW_SNAPSHOT),
+  id: 43,
+};
+REVIEW_RELOAD_SNAPSHOT.payload.agenda[0].text = '지역 에너지 자립의 실행 조건을 다시 논의한다.';
+REVIEW_RELOAD_SNAPSHOT.payload.agenda[1].text = '공공건물 태양광 확대 순서를 다시 검토한다.';
+
+function reviewUploadPayloads(snapshot = REVIEW_SNAPSHOT) {
+  const snapshotText = JSON.stringify(snapshot);
+  const plan = sealCanvasOntologyReviewPlan({
+    plan: buildCanvasOntologyReviewPlan(snapshot),
+    snapshotSource: snapshotText,
+  });
+  return {
+    plan: { name: 'canvas-review-plan.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(plan)) },
+    snapshot: { name: 'canvas-snapshot.json', mimeType: 'application/json', buffer: Buffer.from(snapshotText) },
+  };
+}
+
+async function downloadText(download) {
+  const stream = await download.createReadStream();
+  if (!stream) throw new Error('Ontology reviewed plan download stream is unavailable');
+  const chunks = [];
+  for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+  return Buffer.concat(chunks).toString('utf8');
+}
 
 function requireHttpUrl(value, label) {
   const url = new URL(value);
@@ -94,6 +155,7 @@ export async function verifyCanvasBrowser({
   baseUrl,
   path = DEFAULT_PATH,
   livePath = DEFAULT_LIVE_PATH,
+  reviewPath = DEFAULT_REVIEW_PATH,
   outputJson,
   screenshot,
   timeoutMs = 60_000,
@@ -102,6 +164,7 @@ export async function verifyCanvasBrowser({
   const origin = requireHttpUrl(baseUrl, 'baseUrl');
   const pageUrl = new URL(path, origin);
   const liveUrl = new URL(livePath, origin);
+  const reviewUrl = new URL(reviewPath, origin);
   const viteUrl = new URL('/@vite/client', origin);
   const browser = await chromium.launch();
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
@@ -203,6 +266,134 @@ export async function verifyCanvasBrowser({
     if (browserErrors.length > 0) throw new Error('Moderator platform verification observed a browser page error');
     await livePage.close();
 
+    const reviewPage = await context.newPage();
+    reviewPage.on('pageerror', (error) => browserErrors.push(error.message));
+    const reviewDocumentResponse = await reviewPage.goto(reviewUrl.toString(), {
+      timeout: timeoutMs,
+      waitUntil: 'domcontentloaded',
+    });
+    if (!reviewDocumentResponse?.ok()) {
+      throw new Error(`Ontology review document returned HTTP ${reviewDocumentResponse?.status() ?? 'unknown'}`);
+    }
+    const reviewNavigation = await platformNavigationEvidence(reviewPage, reviewUrl.pathname, timeoutMs);
+    await reviewPage.getByRole('heading', { name: 'Canvas 온톨로지 검수 큐' }).waitFor({ timeout: timeoutMs });
+    await reviewPage.getByLabel('검수 계획 JSON').waitFor({ timeout: timeoutMs });
+    await reviewPage.getByLabel('Canvas snapshot JSON').waitFor({ timeout: timeoutMs });
+    const reviewLocalOnlyBoundaryVisible = await reviewPage
+      .getByText('DB에 저장하지 않습니다.', { exact: false })
+      .isVisible();
+    const reviewFiles = reviewUploadPayloads();
+    await reviewPage.getByLabel('검수 계획 JSON').setInputFiles(reviewFiles.plan);
+    await reviewPage.getByLabel('Canvas snapshot JSON').setInputFiles(reviewFiles.snapshot);
+    await reviewPage.getByLabel('검수자 역할 ID').fill('browser-verifier-role');
+    await reviewPage.getByRole('button', { name: '로컬 검수 시작' }).click();
+    await reviewPage.getByText('진행 0/5', { exact: true }).waitFor({ timeout: timeoutMs });
+
+    let nodeCards = reviewPage.locator('article[aria-label^="노드 검수"]');
+    await nodeCards.nth(0).getByLabel('표시 이름').fill('이전 plan의 임시 입력');
+    await nodeCards.nth(0).getByRole('button', { name: /승인/ }).click();
+    await nodeCards.nth(1).getByRole('button', { name: '반려' }).click();
+    let relationCards = reviewPage.locator('article[aria-label^="관계 검수"]');
+    await relationCards.nth(0).getByRole('button', { name: '반려' }).click();
+    await relationCards.nth(1).getByRole('button', { name: '반려' }).click();
+    await reviewPage.locator('article[aria-label^="군집 검수"]')
+      .getByRole('button', { name: '반려' }).click();
+    await reviewPage.getByText('진행 5/5', { exact: true }).waitFor({ timeout: timeoutMs });
+    const mixedDownloadPromise = reviewPage.waitForEvent('download', { timeout: timeoutMs });
+    await reviewPage.getByRole('button', { name: '검수 완료 plan 다운로드' }).click();
+    const mixedReviewedPlan = JSON.parse(await downloadText(await mixedDownloadPromise));
+    const mixedReviewedItems = [
+      ...(Array.isArray(mixedReviewedPlan.nodes) ? mixedReviewedPlan.nodes : []),
+      ...(Array.isArray(mixedReviewedPlan.relations) ? mixedReviewedPlan.relations : []),
+      ...(Array.isArray(mixedReviewedPlan.clusters) ? mixedReviewedPlan.clusters : []),
+    ];
+    const validReviewAudit = (item, expectedStatus) => item.reviewStatus === expectedStatus
+      && item.reviewer === 'browser-verifier-role'
+      && typeof item.reviewedAt === 'string'
+      && new Date(item.reviewedAt).toISOString() === item.reviewedAt;
+    const reviewMixedDecisionStatesVerified = mixedReviewedItems.length === 5
+      && validReviewAudit(mixedReviewedPlan.nodes?.[0], 'edited')
+      && mixedReviewedPlan.nodes?.[0]?.label === '이전 plan의 임시 입력'
+      && validReviewAudit(mixedReviewedPlan.nodes?.[1], 'rejected')
+      && mixedReviewedPlan.nodes?.[1]?.kind === null
+      && mixedReviewedPlan.nodes?.[1]?.label === mixedReviewedPlan.nodes?.[1]?.sourceText
+      && mixedReviewedPlan.nodes?.[1]?.text === mixedReviewedPlan.nodes?.[1]?.sourceText
+      && mixedReviewedPlan.relations?.every((relation) => (
+        validReviewAudit(relation, 'rejected') && relation.relation === null
+      ))
+      && validReviewAudit(mixedReviewedPlan.clusters?.[0], 'rejected')
+      && mixedReviewedPlan.clusters?.[0]?.issueNodeId === null;
+    if (!reviewMixedDecisionStatesVerified) {
+      throw new Error('Ontology review mixed decision serialization contract is invalid');
+    }
+
+    const reloadFiles = reviewUploadPayloads(REVIEW_RELOAD_SNAPSHOT);
+    await reviewPage.getByLabel('검수 계획 JSON').setInputFiles(reloadFiles.plan);
+    await reviewPage.getByLabel('Canvas snapshot JSON').setInputFiles(reloadFiles.snapshot);
+    await reviewPage.getByRole('button', { name: '로컬 검수 시작' }).click();
+    await reviewPage.getByText('진행 0/5', { exact: true }).waitFor({ timeout: timeoutMs });
+    await reviewPage.waitForFunction((expectedLabel) => (
+      document.querySelector('article[aria-label^="노드 검수"] input')?.value === expectedLabel
+    ), REVIEW_RELOAD_SNAPSHOT.payload.agenda[0].text, { timeout: timeoutMs });
+    nodeCards = reviewPage.locator('article[aria-label^="노드 검수"]');
+    const reviewReloadIsolationVerified = await nodeCards.nth(0).getByLabel('표시 이름').inputValue()
+      === REVIEW_RELOAD_SNAPSHOT.payload.agenda[0].text;
+    if (!reviewReloadIsolationVerified) throw new Error('Ontology review retained input from a previous plan');
+
+    await nodeCards.nth(0).getByLabel('온톨로지 역할').selectOption('Issue');
+    await nodeCards.nth(0).getByRole('button', { name: '원문 승인' }).click();
+    await nodeCards.nth(1).getByLabel('온톨로지 역할').selectOption('Proposal');
+    await nodeCards.nth(1).getByRole('button', { name: '원문 승인' }).click();
+    relationCards = reviewPage.locator('article[aria-label^="관계 검수"]');
+    await relationCards.nth(0).getByLabel('관계 유형').selectOption('supports');
+    await relationCards.nth(0).getByRole('button', { name: '승인' }).click();
+    await relationCards.nth(1).getByLabel('관계 유형').selectOption('implements');
+    await relationCards.nth(1).getByRole('button', { name: '승인' }).click();
+    await reviewPage.locator('article[aria-label^="군집 검수"]')
+      .getByRole('button', { name: '승인' }).click();
+    await reviewPage.getByText('진행 5/5', { exact: true }).waitFor({ timeout: timeoutMs });
+    const downloadPromise = reviewPage.waitForEvent('download', { timeout: timeoutMs });
+    await reviewPage.getByRole('button', { name: '검수 완료 plan 다운로드' }).click();
+    const reviewedPlan = JSON.parse(await downloadText(await downloadPromise));
+    const reviewedItems = [
+      ...(Array.isArray(reviewedPlan.nodes) ? reviewedPlan.nodes : []),
+      ...(Array.isArray(reviewedPlan.relations) ? reviewedPlan.relations : []),
+      ...(Array.isArray(reviewedPlan.clusters) ? reviewedPlan.clusters : []),
+    ];
+    const reviewedPlanDecisionCount = reviewedItems.filter((item) => item.reviewStatus === 'accepted').length;
+    const reviewedPlanAuditFieldsValid = reviewedItems.every((item) => (
+      item.reviewStatus === 'accepted'
+      && item.reviewer === 'browser-verifier-role'
+      && typeof item.reviewedAt === 'string'
+      && new Date(item.reviewedAt).toISOString() === item.reviewedAt
+    ));
+    const expectedReloadPlan = JSON.parse(reloadFiles.plan.buffer.toString('utf8'));
+    const reviewedPlanDownloaded = reviewedPlanDecisionCount === 5
+      && reviewedPlan.databaseMutationExecuted === false
+      && reviewedPlan.publicGraphWritten === false
+      && reviewedPlanAuditFieldsValid
+      && reviewedPlan.source?.snapshotId === REVIEW_RELOAD_SNAPSHOT.id
+      && reviewedPlan.integrity?.snapshotSha256 === expectedReloadPlan.integrity.snapshotSha256
+      && reviewedPlan.nodes?.[0]?.kind === 'Issue'
+      && reviewedPlan.nodes?.[0]?.sourceText === REVIEW_RELOAD_SNAPSHOT.payload.agenda[0].text
+      && reviewedPlan.nodes?.[0]?.label === REVIEW_RELOAD_SNAPSHOT.payload.agenda[0].text
+      && reviewedPlan.nodes?.[1]?.kind === 'Proposal'
+      && reviewedPlan.nodes?.every((node) => node.reviewer === 'browser-verifier-role')
+      && reviewedPlan.relations?.[0]?.relation === 'supports'
+      && reviewedPlan.relations?.[1]?.relation === 'implements'
+      && reviewedPlan.relations?.every((relation) => relation.reviewer === 'browser-verifier-role')
+      && reviewedPlan.clusters?.[0]?.issueNodeId === 'canvas-agenda:agenda-1'
+      && reviewedPlan.clusters?.[0]?.reviewer === 'browser-verifier-role';
+    await reviewPage.waitForTimeout(500);
+    if (!reviewNavigation.connected || reviewNavigation.currentPath !== reviewUrl.pathname) {
+      throw new Error('Ontology review platform navigation is incomplete or has the wrong current page');
+    }
+    if (!reviewLocalOnlyBoundaryVisible) throw new Error('Ontology review local-only boundary is not visible');
+    if (!reviewedPlanDownloaded) throw new Error('Ontology reviewed plan download contract is invalid');
+    if (writeRequests.length > 0) throw new Error('Ontology review verification attempted a blocked write request');
+    if (browserErrors.length > 0) throw new Error('Ontology review verification observed a browser page error');
+    await reviewPage.close();
+
     const linkedSurfaceStatuses = [];
     for (const linkedPath of ['/workshop-graph/', '/workshop-graph/guide/']) {
       const assetPath = `${linkedPath}index.html`;
@@ -239,6 +430,14 @@ export async function verifyCanvasBrowser({
         nonDecisionCopyVisible: canvasNavigation.nonDecisionCopyVisible,
         liveDocumentStatus: liveDocumentResponse.status(),
         livePlatformNavigationConnected: liveNavigation.connected,
+        reviewDocumentStatus: reviewDocumentResponse.status(),
+        reviewPlatformNavigationConnected: reviewNavigation.connected,
+        reviewLocalOnlyBoundaryVisible,
+        reviewInteractionCompleted: reviewedPlanDecisionCount === 5,
+        reviewMixedDecisionStatesVerified,
+        reviewReloadIsolationVerified,
+        reviewedPlanDownloaded,
+        reviewedPlanDecisionCount,
         linkedSurfaceStatuses,
         agendaNodeCount: nodeCount,
         unauthenticatedNodeDraggable: draggable,

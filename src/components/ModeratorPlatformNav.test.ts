@@ -4,12 +4,13 @@ import { describe, expect, it } from 'vitest';
 import ModeratorPlatformNav from './ModeratorPlatformNav';
 
 describe('ModeratorPlatformNav', () => {
-  it('connects the four M0 operator surfaces and marks the current page', () => {
+  it('connects the operator surfaces and marks the current page', () => {
     const html = renderToStaticMarkup(createElement(ModeratorPlatformNav, { current: 'live' }));
 
     expect(html).toContain('aria-label="숙의 모더레이션 플랫폼"');
     expect(html).toContain('href="/ko/moderator/live/" aria-current="page"');
     expect(html).toContain('href="/ko/moderator/canvas/"');
+    expect(html).toContain('href="/ko/moderator/ontology-review/"');
     expect(html).toContain('href="/workshop-graph/"');
     expect(html).toContain('href="/workshop-graph/guide/"');
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
