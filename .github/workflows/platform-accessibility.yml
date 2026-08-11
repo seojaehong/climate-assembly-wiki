@@ -6,6 +6,7 @@ on:
       - 'src/islands/platform/**'
       - 'src/islands/result/**'
       - 'src/components/**'
+      - 'src/layouts/**'
       - 'src/lib/**'
       - 'src/pages/platform/**'
       - 'src/pages/r/**'
@@ -16,12 +17,16 @@ on:
       - 'automation/tests/platform-accessibility-manual-evidence.test.mjs'
       - 'evaluation/platform-accessibility-manual-evaluation.json'
       - 'automation/package*.json'
+      - 'package*.json'
+      - 'astro.config.mjs'
+      - 'tsconfig.json'
       - '.github/workflows/platform-accessibility.yml'
   pull_request:
     paths:
       - 'src/islands/platform/**'
       - 'src/islands/result/**'
       - 'src/components/**'
+      - 'src/layouts/**'
       - 'src/lib/**'
       - 'src/pages/platform/**'
       - 'src/pages/r/**'
@@ -32,6 +37,9 @@ on:
       - 'automation/tests/platform-accessibility-manual-evidence.test.mjs'
       - 'evaluation/platform-accessibility-manual-evaluation.json'
       - 'automation/package*.json'
+      - 'package*.json'
+      - 'astro.config.mjs'
+      - 'tsconfig.json'
       - '.github/workflows/platform-accessibility.yml'
   workflow_dispatch:
 

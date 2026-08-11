@@ -232,6 +232,22 @@ npm.cmd run plan:platform-analysis-import -- --verify-plan 'C:\approved\import-p
 - 기존 출력 파일은 기본적으로 덮어쓰지 않는다. 검토 후 의도적으로 교체할 때만 `--force`를 사용한다.
 - 이 명령은 Supabase client, service role key, 환경변수 또는 DB RPC를 사용하지 않는다. 실제 적재는 8/29 산출물과 사용자 승인을 받은 별도 단계다.
 
+## A5 자동 Chromium 접근성 증거
+
+사용자 도메인 재검증은 실제 배포가 성공한 checkout에서 실행한다.
+
+```powershell
+cd automation
+$env:PLATFORM_A11Y_BASE_URL='https://climate-assembly.org'
+$env:PLATFORM_A11Y_REPORT='..\evaluation\platform-accessibility-audit.json'
+npm.cmd run audit:platform-accessibility
+```
+
+- 보고서는 실제 `git rev-parse HEAD`의 전체 commit을 감사기·UI `sourceCommit`으로 기록한다. 감사 대상 소스 경로에 미커밋 변경이 있거나 GitHub Actions의 `GITHUB_SHA`가 실제 checkout과 다르면 감사 전에 실패한다.
+- 사용자 도메인이 배포 revision을 기계 판독 가능한 형태로 노출하지 않으므로 `targetRevision.status`는 `not_verified`로 보존한다. 배포 성공·ResultView 자산 probe와 이 자동감사는 별도 증거이며, 보고서의 `sourceCommit`을 원격 배포 commit 증명으로 해석하지 않는다.
+- 로그인·인증 셸·접근성 성명·미공개/공개 결과 5개 표면을 데스크톱·모바일로 나눠 HTTP 상태, axe 자동 규칙, 건너뛰기 링크 포커스, 콘텐츠 폭과 내부 표 키보드 스크롤을 검사한다.
+- 인증 셸과 공개 결과의 데이터는 production 컴포넌트에 격리된 읽기 fixture를 주입한다. 따라서 이 결과는 배포된 UI 코드의 자동 회귀 증거이며 실제 운영 계정·공개 토큰이나 수동 보조기술 평가를 대신하지 않는다.
+
 ## A5 수동 보조기술 평가 증거
 
 자동 axe/Chromium 감사는 스크린리더와 실제 모바일 보조기기 평가를 대체하지 않는다.

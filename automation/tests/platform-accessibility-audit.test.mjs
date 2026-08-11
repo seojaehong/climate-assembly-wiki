@@ -1,17 +1,23 @@
 import { afterAll, beforeAll, expect, test } from 'vitest';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_AUDIT_ROUTES,
   DEFAULT_EXCLUDED_SURFACES,
+  AUDITED_SOURCE_PATHS,
   auditPlatformAccessibility,
+  readAuditSourceStatus,
+  validateAuditSourceState,
 } from '../platform-accessibility-audit.mjs';
 
 let outDir;
 let server;
 let baseUrl;
+const TEST_SOURCE_COMMIT = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
 const validPage = `<!doctype html>
   <html lang="ko"><head><title>접근성 테스트</title></head><body>
@@ -83,12 +89,22 @@ test('audits WCAG 2.2 AA and skip-link focus through a real browser', async () =
 
   const report = await auditPlatformAccessibility({
     baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
     routes: [{ id: 'valid', path: '/valid', skipTarget: 'main-content' }],
     reportPath,
     generatedAt: new Date('2026-08-11T00:00:00.000Z'),
   });
 
   expect(report.status).toBe('pass');
+  expect(report.schemaVersion).toBe(3);
+  expect(report.sourceCommit).toBe(TEST_SOURCE_COMMIT);
+  expect(report.sourceTreeClean).toBe(true);
+  expect(report.targetRevision).toEqual({
+    status: 'not_verified',
+    sourceCommit: null,
+    reason: 'The audited origin does not expose a machine-verifiable deployment revision.',
+  });
   expect(report.summary).toEqual({
     routeCount: 1,
     profileCount: 2,
@@ -109,6 +125,8 @@ test('audits WCAG 2.2 AA and skip-link focus through a real browser', async () =
 test('waits for a fixture-backed production surface before auditing it', async () => {
   const report = await auditPlatformAccessibility({
     baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
     routes: [{
       id: 'prepared',
       path: '/prepared',
@@ -138,6 +156,8 @@ test('waits for a fixture-backed production surface before auditing it', async (
 test('preserves actionable violation evidence for a failing route', async () => {
   const report = await auditPlatformAccessibility({
     baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
     routes: [{ id: 'invalid', path: '/invalid', skipTarget: 'main-content' }],
     reportPath: join(outDir, 'invalid.json'),
     generatedAt: new Date('2026-08-11T00:00:00.000Z'),
@@ -157,6 +177,8 @@ test('preserves actionable violation evidence for a failing route', async () => 
 test('fails an accessible error document when the route itself is unavailable', async () => {
   const report = await auditPlatformAccessibility({
     baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
     routes: [{ id: 'missing', path: '/missing', skipTarget: 'main-content' }],
     reportPath: join(outDir, 'missing.json'),
   });
@@ -168,6 +190,8 @@ test('fails an accessible error document when the route itself is unavailable', 
 test('distinguishes passing checks from unaudited product surfaces', async () => {
   const report = await auditPlatformAccessibility({
     baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
     routes: [{ id: 'valid', path: '/valid', skipTarget: 'main-content' }],
     excludedSurfaces: [{ id: 'authenticated-platform', reason: 'fixture unavailable' }],
     reportPath: join(outDir, 'needs-review.json'),
@@ -183,6 +207,8 @@ test('distinguishes passing checks from unaudited product surfaces', async () =>
 test('does not mistake another same-page link for the expected skip link', async () => {
   const report = await auditPlatformAccessibility({
     baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
     routes: [{ id: 'wrong-skip', path: '/wrong-skip', skipTarget: 'main-content' }],
     reportPath: join(outDir, 'wrong-skip.json'),
   });
@@ -199,6 +225,8 @@ test('preserves axe incomplete evidence and promotes the report to needs_review'
   const reportPath = join(outDir, 'incomplete.json');
   const report = await auditPlatformAccessibility({
     baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
     routes: [{ id: 'incomplete', path: '/incomplete', skipTarget: 'main-content' }],
     reportPath,
   });
@@ -221,6 +249,8 @@ test('preserves axe incomplete evidence and promotes the report to needs_review'
 test('fails a mobile audit case when the document has horizontal overflow', async () => {
   const report = await auditPlatformAccessibility({
     baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
     routes: [{ id: 'overflow', path: '/overflow', skipTarget: 'main-content' }],
     profiles: [{ id: 'mobile', viewport: { width: 360, height: 800 } }],
     reportPath: join(outDir, 'mobile-overflow.json'),
@@ -245,6 +275,8 @@ test('fails a mobile audit case when the document has horizontal overflow', asyn
 test('fails a mobile audit case when the target content is compressed', async () => {
   const report = await auditPlatformAccessibility({
     baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
     routes: [{ id: 'compressed', path: '/', skipTarget: 'main-content' }],
     profiles: [{ id: 'mobile', viewport: { width: 360, height: 800 }, minimumContentWidth: 400 }],
     reportPath: join(outDir, 'mobile-compressed.json'),
@@ -265,6 +297,8 @@ test('fails a mobile audit case when the target content is compressed', async ()
 test('verifies keyboard scrolling without treating region content as document clipping', async () => {
   const report = await auditPlatformAccessibility({
     baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
     routes: [{
       id: 'scroll-region',
       path: '/scroll-region',
@@ -299,6 +333,46 @@ test('installs root dependencies without requiring an ignored lockfile', () => {
   expect(workflow).toContain('run: npm install --no-package-lock');
   expect(workflow).toContain('working-directory: automation\n        run: npm ci');
   expect(workflow).not.toContain('run: npm ci\n      - name: Install audit dependencies');
+});
+
+test('refuses to audit when the workflow commit differs from the checkout', () => {
+  const modulePath = fileURLToPath(new URL('../platform-accessibility-audit.mjs', import.meta.url));
+  const result = spawnSync(process.execPath, [modulePath], {
+    cwd: fileURLToPath(new URL('../..', import.meta.url)),
+    env: { ...process.env, GITHUB_SHA: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' },
+    encoding: 'utf8',
+  });
+
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain('Accessibility audit checkout does not match workflow commit.');
+});
+
+test('refuses evidence when audited source paths have uncommitted changes', () => {
+  expect(() => validateAuditSourceState({
+    sourceCommit: TEST_SOURCE_COMMIT,
+    workflowCommit: TEST_SOURCE_COMMIT,
+    statusOutput: ' M src/islands/result/ResultView.tsx\n',
+  })).toThrow('Accessibility audit source paths contain uncommitted changes.');
+});
+
+test('detects untracked audited source and includes build and auditor dependencies', () => {
+  const repoDir = mkdtempSync(join(tmpdir(), 'platform-a11y-git-'));
+  try {
+    execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+    mkdirSync(join(repoDir, 'src', 'layouts'), { recursive: true });
+    writeFileSync(join(repoDir, 'src', 'layouts', 'NewLayout.astro'), '<main />');
+
+    expect(readAuditSourceStatus(repoDir)).toContain('?? src/layouts/NewLayout.astro');
+    expect(AUDITED_SOURCE_PATHS).toEqual(expect.arrayContaining([
+      '.github/workflows/platform-accessibility.yml',
+      'astro.config.mjs',
+      'package-lock.json',
+      'automation/package-lock.json',
+      'src/layouts',
+    ]));
+  } finally {
+    rmSync(repoDir, { recursive: true, force: true });
+  }
 });
 
 test('covers authenticated and published production surfaces with read-only browser fixtures', () => {

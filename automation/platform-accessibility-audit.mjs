@@ -1,8 +1,37 @@
 import { chromium } from 'playwright';
 import axe from 'axe-core';
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+export const AUDITED_SOURCE_PATHS = [
+  '.github/workflows/platform-accessibility.yml',
+  'astro.config.mjs',
+  'package-lock.json',
+  'package.json',
+  'tsconfig.json',
+  'automation/package-lock.json',
+  'automation/package.json',
+  'automation/platform-accessibility-audit.mjs',
+  'src/components',
+  'src/islands/platform',
+  'src/islands/result',
+  'src/layouts',
+  'src/lib',
+  'src/pages/platform',
+  'src/pages/r',
+  'src/styles',
+];
+
+/** Reads tracked and untracked changes that can affect the audited UI or auditor. */
+export function readAuditSourceStatus(projectRoot) {
+  return execFileSync(
+    'git',
+    ['status', '--porcelain', '--untracked-files=all', '--', ...AUDITED_SOURCE_PATHS],
+    { cwd: projectRoot, encoding: 'utf8' },
+  );
+}
 
 export const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 export const DEFAULT_AUDIT_PROFILES = [
@@ -370,6 +399,8 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
 /** Runs reproducible browser checks and writes one machine-readable evidence artifact. */
 export async function auditPlatformAccessibility({
   baseUrl,
+  sourceCommit,
+  sourceTreeClean,
   routes,
   reportPath,
   generatedAt = new Date(),
@@ -377,6 +408,12 @@ export async function auditPlatformAccessibility({
   excludedSurfaces = [],
   profiles = DEFAULT_AUDIT_PROFILES,
 }) {
+  if (!/^[0-9a-f]{40}$/.test(sourceCommit)) {
+    throw new Error('A full source commit is required for accessibility evidence.');
+  }
+  if (sourceTreeClean !== true) {
+    throw new Error('Accessibility evidence requires a clean audited source tree.');
+  }
   if (!Array.isArray(routes) || routes.length === 0) {
     throw new Error('At least one accessibility audit route is required.');
   }
@@ -414,8 +451,15 @@ export async function auditPlatformAccessibility({
   const failed = passedCases !== auditedRoutes.length;
   const needsReview = !failed && (incompleteCount > 0 || excludedSurfaces.length > 0);
   const report = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     generatedAt: generatedAt.toISOString(),
+    sourceCommit,
+    sourceTreeClean,
+    targetRevision: {
+      status: 'not_verified',
+      sourceCommit: null,
+      reason: 'The audited origin does not expose a machine-verifiable deployment revision.',
+    },
     baseUrl,
     standard: 'WCAG 2.2 AA automated subset + skip-link focus + responsive overflow',
     engine: { name: 'axe-core', version: axe.version, tags: WCAG_TAGS },
@@ -443,15 +487,40 @@ export async function auditPlatformAccessibility({
   return report;
 }
 
+/** Validates that evidence is generated from the exact committed auditor and UI source. */
+export function validateAuditSourceState({ sourceCommit, workflowCommit, statusOutput }) {
+  if (!/^[0-9a-f]{40}$/.test(sourceCommit)) {
+    throw new Error('Accessibility audit checkout does not have a full source commit.');
+  }
+  if (workflowCommit && workflowCommit !== sourceCommit) {
+    throw new Error('Accessibility audit checkout does not match workflow commit.');
+  }
+  if (statusOutput.trim()) {
+    throw new Error('Accessibility audit source paths contain uncommitted changes.');
+  }
+}
+
 const isCli = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (isCli) {
   const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
+    cwd: projectRoot,
+    encoding: 'utf8',
+  }).trim();
+  const statusOutput = readAuditSourceStatus(projectRoot);
+  validateAuditSourceState({
+    sourceCommit,
+    workflowCommit: process.env.GITHUB_SHA,
+    statusOutput,
+  });
   const baseUrl = process.env.PLATFORM_A11Y_BASE_URL ?? 'http://127.0.0.1:4321';
   const reportPath = process.env.PLATFORM_A11Y_REPORT
     ? resolve(process.env.PLATFORM_A11Y_REPORT)
     : resolve(projectRoot, 'evaluation', 'platform-accessibility-audit.json');
   const report = await auditPlatformAccessibility({
     baseUrl,
+    sourceCommit,
+    sourceTreeClean: true,
     reportPath,
     settleMs: 1_500,
     excludedSurfaces: DEFAULT_EXCLUDED_SURFACES,
