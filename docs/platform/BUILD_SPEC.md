@@ -121,7 +121,7 @@ schema/database-per-tenant 기각. 근거: additive 경로·단일 RPC 자산·�
 4. **검수 콘솔** — issue CRUD·링크·4×6·병합·cluster·review
 5. **결과 페이지** `/r/<token>` — 공개 게이트·매트릭스·HITL
 6. **설계 마법사** (P3) — assembly/session/topic 생성 + 준비도 게이트
-7. **분석코어 어댑터** — consensus/DQI 산출 → issue 적재(service_role)
+7. **분석코어 어댑터** — consensus/DQI 산출 → 검수 전용 issue import plan(dry-run)까지 구현. 실제 issue 적재(service_role)는 8/29 산출물 확보와 별도 승인 후 수행
 
 1~2는 병행, 3 이후 UI는 스키마 검증 후 착수. 각 슬라이스 vitest + Node20 빌드 게이트.
 

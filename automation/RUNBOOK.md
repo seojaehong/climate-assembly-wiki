@@ -183,6 +183,43 @@ GitHub Actions schedules는 트래픽 폭주 시 5~15분 지연될 수 있다. �
 2. 누락 set의 timestamp가 연속 구간(>3개 연속)이면 진짜 장애
 3. 흩어져 있으면 GHA drift — 회고에 "drift {N분}" 기록하고 다음 워크숍은 cron 빈도 검토
 
+## 분석코어 import plan dry-run
+
+`platform-analysis-import.mjs`는 분석 산출을 DB에 쓰지 않고 사람 검수 전용 계획 JSON으로만 변환한다.
+분석의 `meta.recommendations`(또는 최상위 `recommendations`)와 `meta.quality`를 읽으며,
+recommendation은 결정이 아닌 후보, quality는 진실 점수가 아닌 검토 신호로만 취급한다.
+소수 우려는 부모 recommendation과 분리된 `minority` 초안으로 보존한다.
+
+provenance map 형식:
+
+```json
+{
+  "schemaVersion": 1,
+  "topicId": "주제 UUID",
+  "sourceMappings": [
+    {
+      "sourceUid": "분석 산출의 원문 UID",
+      "transcriptChunkId": "원문 chunk ID(생략 시 sourceUid와 동일)",
+      "itemId": "submission item UUID",
+      "clusterId": "cluster UUID 또는 null"
+    }
+  ]
+}
+```
+
+실행:
+
+```powershell
+cd automation
+npm.cmd run plan:platform-analysis-import -- --analysis 'C:\approved\analysis.json' --provenance-map 'C:\approved\provenance.json' --output 'C:\approved\import-plan.json'
+```
+
+- 출력은 항상 `dryRun: true`, `databaseMutationExecuted: false`, `requiresHumanReview: true`다.
+- 모든 후보는 `origin: ai`, `reviewStatus: draft`이며 원문 인용이 하나 이상 있어야 한다. 각 인용의 source UID·transcript chunk ID·submission item UUID·cluster UUID를 provenance에 함께 남긴다.
+- source UID 매핑 누락·중복, 후보 ID 중복, 허용되지 않은 stance/frequency, reviewed/decision 주장, 빈 후보 집합은 파일 생성 전에 실패한다.
+- 기존 출력 파일은 기본적으로 덮어쓰지 않는다. 검토 후 의도적으로 교체할 때만 `--force`를 사용한다.
+- 이 명령은 Supabase client, service role key, 환경변수 또는 DB RPC를 사용하지 않는다. 실제 적재는 8/29 산출물과 사용자 승인을 받은 별도 단계다.
+
 ## A5 수동 보조기술 평가 증거
 
 자동 axe/Chromium 감사는 스크린리더와 실제 모바일 보조기기 평가를 대체하지 않는다.
