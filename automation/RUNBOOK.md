@@ -232,6 +232,50 @@ npm.cmd run plan:platform-analysis-import -- --verify-plan 'C:\approved\import-p
 - 기존 출력 파일은 기본적으로 덮어쓰지 않는다. 검토 후 의도적으로 교체할 때만 `--force`를 사용한다.
 - 이 명령은 Supabase client, service role key, 환경변수 또는 DB RPC를 사용하지 않는다. 실제 적재는 8/29 산출물과 사용자 승인을 받은 별도 단계다.
 
+## Canvas ontology review bridge
+
+`canvas-ontology-bridge.mjs`는 `cv_snapshot_now`로 보존된 snapshot JSON의
+`payload.agenda`·`payload.agenda_link`를 DB에 쓰지 않고 온톨로지 검수 계획으로 변환한다.
+일반 의제 카드를 `Issue`·`Claim`·`Proposal` 등으로 자동 단정하지 않으며,
+action→parent와 일반 연결도 사람이 관계 종류를 고르기 전에는 `relation: null`이다.
+
+검수 계획 생성:
+
+```powershell
+cd automation
+npm.cmd run bridge:canvas-ontology -- --snapshot 'C:\approved\snapshot_42.json' --output-plan 'C:\approved\canvas-review-plan.json'
+```
+
+같은 snapshot 원본으로 계획의 exact-byte hash와 canonical self-checksum 재검증:
+
+```powershell
+npm.cmd run bridge:canvas-ontology -- --snapshot 'C:\approved\snapshot_42.json' --verify-plan 'C:\approved\canvas-review-plan.json'
+```
+
+검수자는 계획 JSON에서 다음 결정 필드만 수정한다.
+
+- node: `kind`, `label`, `text`, `reviewStatus`, `reviewer`, `reviewedAt`
+- relation: `relation`, `reviewStatus`, `reviewer`, `reviewedAt`
+- cluster: `reviewStatus`, `issueNodeId`, `reviewer`, `reviewedAt`
+
+node는 `accepted`, `edited`(label/text 수정), 또는 `rejected`, relation과 cluster는 `accepted` 또는 `rejected`로 끝나야 한다. 수정된 node는 반드시 `edited`를 사용한다. 승인 node는 허용된 온톨로지 kind,
+승인 relation은 허용된 관계와 승인된 양 끝 node를 가져야 한다. cluster 승인은 같은 group의
+승인된 `Issue` node를 지정해야 한다. 보관 의제와 보관 endpoint를 가진 연결은 조용히 삭제하지
+않고 계획의 `excluded`에 사유와 원 ID를 남긴다.
+
+사람 검수가 끝난 계획을 현재 workshop graph JSON 스키마의 내부 export로 변환:
+
+```powershell
+npm.cmd run bridge:canvas-ontology -- --snapshot 'C:\approved\snapshot_42.json' --reviewed-plan 'C:\approved\canvas-review-plan.json' --output-graph 'C:\approved\canvas-reviewed-graph.json'
+```
+
+- 출력 node는 `review_state: accepted|edited`, `is_public: false`이고 원 snapshot·agenda ID와 원문 hash, 수정 여부를 `cited`와 `meta`에 보존한다.
+- 출력 meta는 `publication_status: internal_reviewed_export`, `requires_publication_review: true`다.
+- CLI는 저장소 `public` 아래 어디에도 직접 쓰는 것을 거부한다. 공개 반영은 별도 사람 검토와 승인 절차다.
+- 검수 결정 필드를 편집하면 최초 plan self-checksum은 의도대로 달라진다. reviewed export는 같은 snapshot의 exact-byte hash를 확인한 뒤, 편집 불가 source 부분을 snapshot에서 재구성해 전부 대조하고 허용된 검수 필드만 소비한다.
+- self-checksum은 우발 변경 탐지용이며 외부 서명·작성자 진위·검수자 인증을 제공하지 않는다. reviewer에는 비식별 역할 ID를 사용하고 시민 실명·연락처를 기록하지 않는다.
+- 명령은 Supabase/API/환경변수에 접근하지 않으며 `databaseMutationExecuted: false`, `publicGraphWritten: false`를 유지한다.
+
 ## A5 자동 Chromium 접근성 증거
 
 사용자 도메인 재검증은 실제 배포가 성공한 checkout에서 실행한다.

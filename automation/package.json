@@ -13,6 +13,7 @@
     "export-snapshots": "node export-snapshots-onedrive.mjs",
     "audit:platform-accessibility": "node platform-accessibility-audit.mjs",
     "audit:platform-accessibility-manual": "node platform-accessibility-manual-evidence.mjs",
+    "bridge:canvas-ontology": "node canvas-ontology-bridge.mjs",
     "plan:platform-analysis-import": "node platform-analysis-import.mjs",
     "preflight:platform-activation": "node platform-activation-preflight.mjs",
     "verify:platform-activation": "node platform-activation-preflight.mjs --verify-evidence",
