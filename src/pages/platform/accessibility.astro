@@ -63,9 +63,10 @@ const manualEvaluationEvidenceUrl = 'https://github.com/seojaehong/climate-assem
           `/platform` 운영 화면과 `/r` 공개 결과 화면을 우선 범위로 개선하고 있습니다.
           axe-core 기반 WCAG 2.2 AA 자동검사와 실제 Chromium 건너뛰기 링크 포커스 검증을 지속 실행합니다.
           데스크톱 1440×1000과 모바일 360×800 뷰포트에서 가로 넘침도 함께 검사합니다.
-          현재 자동 범위는 로그인 진입, 읽기 전용 fixture로 렌더한 인증 후 운영 셸, 접근성 성명,
-          미공개 결과 상태, 읽기 전용 fixture로 렌더한 공개 결과입니다. fixture 사용 여부와 화면 준비 상태는
-          JSON 증거에 함께 기록합니다.
+          아래 연결된 마지막 완료 증거는 로그인 진입, 읽기 전용 fixture로 렌더한 인증 후 운영 셸,
+          접근성 성명, 미공개 결과 상태, 읽기 전용 fixture로 렌더한 공개 결과를 포함합니다.
+          로컬 온톨로지 검수 큐의 초기 업로드 화면은 다음 증거 생성부터 자동 범위에 추가되며,
+          fixture 사용 여부와 화면 준비 상태는 JSON 증거에 함께 기록됩니다.
         </p>
         <p>
           <a href={auditEvidenceUrl} target="_blank" rel="noopener noreferrer">
@@ -99,6 +100,7 @@ const manualEvaluationEvidenceUrl = 'https://github.com/seojaehong/climate-assem
         <ul>
           <li>기존 `/mod`, `/hq`, `/b`, `/v` 현장 운영 화면은 이번 성명의 우선 평가 범위에 포함되지 않습니다.</li>
           <li>인증 셸과 공개 결과의 자동감사는 읽기 전용 브라우저 fixture를 사용하므로 실제 운영 데이터·권한 조합의 전수 검증을 대체하지 않습니다.</li>
+          <li>온톨로지 검수 큐 자동감사는 초기 업로드 화면만 포함하며, 실제 보조기술을 이용한 파일 업로드·검수 결정·다운로드 흐름은 수동 평가가 필요합니다.</li>
           <li>모바일 뷰포트 자동검사는 포함하지만 스크린리더와 실제 모바일 보조기기 평가는 수동 확인이 필요합니다.</li>
           <li>다운로드되는 DOCX 보고서는 문서 구조 검사를 거치지만, 사용하는 뷰어에 따라 읽기 순서가 달라질 수 있습니다.</li>
           <li>자동검사는 공식 품질인증이나 전수 수동평가를 대체하지 않습니다.</li>

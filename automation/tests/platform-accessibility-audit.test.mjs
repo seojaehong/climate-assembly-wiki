@@ -9,6 +9,7 @@ import {
   DEFAULT_AUDIT_ROUTES,
   DEFAULT_EXCLUDED_SURFACES,
   AUDITED_SOURCE_PATHS,
+  accessibilityAuditExitCode,
   auditPlatformAccessibility,
   readAuditSourceStatus,
   validateAuditSourceState,
@@ -221,7 +222,7 @@ test('does not mistake another same-page link for the expected skip link', async
   });
 });
 
-test('preserves axe incomplete evidence and promotes the report to needs_review', async () => {
+test('preserves axe incomplete evidence and fails the automated audit', async () => {
   const reportPath = join(outDir, 'incomplete.json');
   const report = await auditPlatformAccessibility({
     baseUrl,
@@ -231,8 +232,10 @@ test('preserves axe incomplete evidence and promotes the report to needs_review'
     reportPath,
   });
 
-  expect(report.status).toBe('needs_review');
-  expect(report.summary).toMatchObject({ violationCount: 0, incompleteCount: 2 });
+  expect(report.status).toBe('fail');
+  expect(report.summary).toMatchObject({ violationCount: 0, incompleteCount: 2, passedCases: 0 });
+  expect(accessibilityAuditExitCode(report)).toBe(1);
+  expect(accessibilityAuditExitCode({ status: 'unexpected' })).toBe(1);
   expect(report.routes[0].incomplete).toEqual([
     expect.objectContaining({
       id: 'color-contrast',
@@ -368,7 +371,10 @@ test('detects untracked audited source and includes build and auditor dependenci
       'astro.config.mjs',
       'package-lock.json',
       'automation/package-lock.json',
+      'src/islands/OntologyReviewConsole.tsx',
+      'src/islands/canvas/ontology-review-workspace.ts',
       'src/layouts',
+      'src/pages',
     ]));
   } finally {
     rmSync(repoDir, { recursive: true, force: true });
@@ -382,6 +388,7 @@ test('covers authenticated and published production surfaces with read-only brow
     'accessibility-statement',
     'public-result-unpublished',
     'published-result',
+    'ontology-review',
   ]);
   expect(DEFAULT_AUDIT_ROUTES.find((route) => route.id === 'authenticated-platform')).toMatchObject({
     path: '/platform/',
@@ -394,6 +401,11 @@ test('covers authenticated and published production surfaces with read-only brow
     readySelector: 'main#main-content header h1',
     openDetailsBeforeAudit: true,
     requiredMobileScrollRegions: ['조별 쟁점 커버리지 표', '쟁점 분석 데이터 표'],
+  });
+  expect(DEFAULT_AUDIT_ROUTES.find((route) => route.id === 'ontology-review')).toMatchObject({
+    path: '/ko/moderator/ontology-review/',
+    skipTarget: 'ontology-review-content',
+    readySelector: 'main[data-ontology-review-ready="true"]',
   });
   expect(DEFAULT_EXCLUDED_SURFACES).toEqual([
     expect.objectContaining({ id: 'assistive-technology-manual-evaluation' }),

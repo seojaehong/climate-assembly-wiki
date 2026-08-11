@@ -22,6 +22,17 @@ describe('OntologyReviewConsole', () => {
     expect(html).toContain('aria-live="polite"');
   });
 
+  it('renders every upload and reviewer input on an explicit opaque high-contrast surface', () => {
+    const html = renderToStaticMarkup(createElement(OntologyReviewConsole));
+    const inputTags = html.match(/<input\b[^>]*>/g) ?? [];
+
+    expect(inputTags).toHaveLength(3);
+    for (const input of inputTags) {
+      expect(input).toContain('background:#FFFFFF');
+      expect(input).toContain('color:#102A43');
+    }
+  });
+
   it('renders advisory facilitation questions with provenance and a live count', () => {
     const html = renderToStaticMarkup(createElement(FacilitationPromptPanel, { prompts: [{
       id: 'missing-condition:node-1',

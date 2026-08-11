@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-11T00:00:00.000Z",
+  "generatedAt": "2026-08-11T18:52:17.901Z",
   "baseUrl": "https://climate-assembly.org",
-  "commitSha": "9310d14",
+  "commitSha": "6a86996",
   "certificationClaimed": false,
   "status": "needs_review",
   "profiles": [
@@ -247,6 +247,46 @@
       ]
     },
     {
+      "id": "ontology-review:desktop-screen-reader",
+      "surfaceId": "ontology-review",
+      "surfaceLabel": "온톨로지 검수 큐",
+      "path": "/ko/moderator/ontology-review/",
+      "setup": "승인된 비식별 Canvas snapshot과 sealed review plan을 준비하고 검수자에는 실명 대신 역할 ID를 사용한다. 파일 내용과 역할 ID는 증거 JSON에 기록하지 않는다.",
+      "profileId": "desktop-screen-reader",
+      "evaluator": null,
+      "testedAt": null,
+      "checks": [
+        {
+          "id": "skip-focus",
+          "procedure": "페이지 첫 포커스에서 본문 바로가기를 실행한다.",
+          "expected": "포커스가 온톨로지 검수 main으로 이동하고 화면 제목이 안내된다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "upload-controls",
+          "procedure": "plan 파일, snapshot 파일, 검수자 역할 ID 입력을 탐색하고 키보드로 값을 지정한다.",
+          "expected": "세 입력의 보이는 레이블과 접근 가능한 이름이 일치하고 필수 입력 전에는 검수 시작이 비활성 상태로 안내된다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "review-status",
+          "procedure": "로컬 검수를 시작하고 노드·관계·군집 결정을 하나씩 수행한다.",
+          "expected": "진행 건수와 진행 질문 건수가 갱신될 때 상태 메시지로 안내되고 승인·수정·반려 상태를 색상 없이 구분할 수 있다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "decision-and-download",
+          "procedure": "모든 항목을 키보드로 검수한 뒤 완료 plan 다운로드를 실행한다.",
+          "expected": "모든 필수 결정 전에는 다운로드가 비활성이고 완료 후 파일을 내려받을 수 있으며 DB·공개 그래프 미반영 경계가 안내된다.",
+          "status": "not_run",
+          "notes": null
+        }
+      ]
+    },
+    {
       "id": "platform-login:mobile-screen-reader",
       "surfaceId": "platform-login",
       "surfaceLabel": "플랫폼 로그인",
@@ -441,6 +481,46 @@
           "id": "details-and-scroll",
           "procedure": "두 표 대체본을 펼치고 각 명명된 영역에 포커스한 뒤 방향키·Home·End로 가로 이동한다.",
           "expected": "펼침 상태가 안내되고 표 영역만 스크롤되며 포커스가 사라지거나 문서 내용이 잘리지 않는다.",
+          "status": "not_run",
+          "notes": null
+        }
+      ]
+    },
+    {
+      "id": "ontology-review:mobile-screen-reader",
+      "surfaceId": "ontology-review",
+      "surfaceLabel": "온톨로지 검수 큐",
+      "path": "/ko/moderator/ontology-review/",
+      "setup": "승인된 비식별 Canvas snapshot과 sealed review plan을 준비하고 검수자에는 실명 대신 역할 ID를 사용한다. 파일 내용과 역할 ID는 증거 JSON에 기록하지 않는다.",
+      "profileId": "mobile-screen-reader",
+      "evaluator": null,
+      "testedAt": null,
+      "checks": [
+        {
+          "id": "skip-focus",
+          "procedure": "페이지 첫 포커스에서 본문 바로가기를 실행한다.",
+          "expected": "포커스가 온톨로지 검수 main으로 이동하고 화면 제목이 안내된다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "upload-controls",
+          "procedure": "plan 파일, snapshot 파일, 검수자 역할 ID 입력을 탐색하고 키보드로 값을 지정한다.",
+          "expected": "세 입력의 보이는 레이블과 접근 가능한 이름이 일치하고 필수 입력 전에는 검수 시작이 비활성 상태로 안내된다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "review-status",
+          "procedure": "로컬 검수를 시작하고 노드·관계·군집 결정을 하나씩 수행한다.",
+          "expected": "진행 건수와 진행 질문 건수가 갱신될 때 상태 메시지로 안내되고 승인·수정·반려 상태를 색상 없이 구분할 수 있다.",
+          "status": "not_run",
+          "notes": null
+        },
+        {
+          "id": "decision-and-download",
+          "procedure": "모든 항목을 키보드로 검수한 뒤 완료 plan 다운로드를 실행한다.",
+          "expected": "모든 필수 결정 전에는 다운로드가 비활성이고 완료 후 파일을 내려받을 수 있으며 DB·공개 그래프 미반영 경계가 안내된다.",
           "status": "not_run",
           "notes": null
         }

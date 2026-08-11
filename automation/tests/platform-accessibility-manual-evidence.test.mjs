@@ -23,13 +23,14 @@ test('creates the complete manual accessibility evaluation matrix as not run', (
     'desktop-screen-reader',
     'mobile-screen-reader',
   ]);
-  expect(evidence.cases).toHaveLength(10);
+  expect(evidence.cases).toHaveLength(12);
   expect(new Set(evidence.cases.map((item) => item.surfaceId))).toEqual(new Set([
     'platform-login',
     'authenticated-platform',
     'accessibility-statement',
     'public-result-unpublished',
     'published-result',
+    'ontology-review',
   ]));
   expect(evidence.cases.every((item) => item.path && item.setup)).toBe(true);
   expect(evidence.cases.every((item) => item.checks.every((check) => check.procedure && check.expected))).toBe(true);
@@ -45,12 +46,12 @@ test('keeps an untouched template in needs review with exact counts', () => {
 
   expect(evaluateManualAccessibilityEvidence(evidence)).toEqual({
     status: 'needs_review',
-    caseCount: 10,
-    checkCount: 40,
+    caseCount: 12,
+    checkCount: 48,
     passCount: 0,
     failCount: 0,
     blockedCount: 0,
-    notRunCount: 40,
+    notRunCount: 48,
   });
 });
 
@@ -159,7 +160,7 @@ test('CLI verifies valid evidence and does not echo malformed source data', () =
       evidencePath,
     ], { encoding: 'utf8' });
     expect(verified.status).toBe(0);
-    expect(JSON.parse(verified.stdout)).toMatchObject({ status: 'needs_review', caseCount: 10, notRunCount: 40 });
+    expect(JSON.parse(verified.stdout)).toMatchObject({ status: 'needs_review', caseCount: 12, notRunCount: 48 });
 
     writeFileSync(malformedPath, '{"secret":"must-not-echo"', 'utf8');
     const malformed = spawnSync(process.execPath, [
@@ -256,10 +257,14 @@ test('workflow watches every source path that can stale manual evidence', () => 
   const workflow = readFileSync(join(process.cwd(), '..', '.github', 'workflows', 'platform-accessibility.yml'), 'utf8');
   expect(workflow).toContain('fetch-depth: 0');
   for (const path of MANUAL_ACCESSIBILITY_TARGET_PATHS) {
-    expect(workflow).toContain(`- '${path}/**'`);
+    const workflowPath = /\.[a-z]+$/i.test(path) ? path : `${path}/**`;
+    expect(workflow).toContain(`- '${workflowPath}'`);
   }
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/components');
+  expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/islands/OntologyReviewConsole.tsx');
+  expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/islands/canvas/ontology-review-workspace.ts');
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/lib');
+  expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/pages');
 });
 
 test('CLI accepts an evidence-only commit and rejects a later shared dependency change', () => {

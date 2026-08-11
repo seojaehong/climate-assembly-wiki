@@ -19,8 +19,11 @@ const INK = '#102A43';
 const MUTED = '#526777';
 
 const controlStyle: CSSProperties = {
+  background: '#FFFFFF',
   border: `2px solid ${CONTROL_BORDER}`,
   borderRadius: 8,
+  color: INK,
+  colorScheme: 'light',
   minHeight: 44,
   padding: '8px 10px',
 };
@@ -310,10 +313,10 @@ export default function OntologyReviewConsole() {
 
         <form onSubmit={(event) => { event.preventDefault(); void loadWorkspace(); }} aria-busy={busy} style={{ ...cardStyle, background: PANEL, marginBottom: 20 }}>
           <label>검수 계획 JSON
-            <input type="file" accept="application/json,.json" onChange={(event) => replaceInputFile('plan', event.currentTarget.files?.[0] ?? null)} style={{ display: 'block', marginTop: 6 }} />
+            <input type="file" accept="application/json,.json" onChange={(event) => replaceInputFile('plan', event.currentTarget.files?.[0] ?? null)} style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />
           </label>
           <label>Canvas snapshot JSON
-            <input type="file" accept="application/json,.json" onChange={(event) => replaceInputFile('snapshot', event.currentTarget.files?.[0] ?? null)} style={{ display: 'block', marginTop: 6 }} />
+            <input type="file" accept="application/json,.json" onChange={(event) => replaceInputFile('snapshot', event.currentTarget.files?.[0] ?? null)} style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />
           </label>
           <label>검수자 역할 ID
             <input value={reviewer} onChange={(event) => setReviewer(event.currentTarget.value)} minLength={3} maxLength={80} pattern="[a-zA-Z][a-zA-Z0-9._:-]{2,79}" autoComplete="off" placeholder="예: moderator-role-1" style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />

@@ -17,12 +17,15 @@ export const AUDITED_SOURCE_PATHS = [
   'automation/tests/verify-platform-design-blueprint.test.mjs',
   'automation/verify-platform-design-blueprint.mjs',
   'src/components',
+  'src/islands/OntologyReviewConsole.tsx',
+  'src/islands/OntologyReviewConsole.test.ts',
+  'src/islands/canvas/ontology-review-workspace.ts',
+  'src/islands/canvas/ontology-review-workspace.test.ts',
   'src/islands/platform',
   'src/islands/result',
   'src/layouts',
   'src/lib',
-  'src/pages/platform',
-  'src/pages/r',
+  'src/pages',
   'src/styles',
 ];
 
@@ -214,6 +217,12 @@ export const DEFAULT_AUDIT_ROUTES = [
     requiredMobileScrollRegions: ['조별 쟁점 커버리지 표', '쟁점 분석 데이터 표'],
     prepare: preparePublishedResult,
   },
+  {
+    id: 'ontology-review',
+    path: '/ko/moderator/ontology-review/',
+    skipTarget: 'ontology-review-content',
+    readySelector: 'main[data-ontology-review-ready="true"]',
+  },
 ];
 
 export const DEFAULT_EXCLUDED_SURFACES = [
@@ -361,6 +370,7 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
     const httpOk = httpStatus === null || (httpStatus >= 200 && httpStatus < 400);
     const passed = httpOk
       && violations.length === 0
+      && incomplete.length === 0
       && skipLink.focusMoved
       && !layout.horizontalOverflow
       && layout.contentWidthSufficient
@@ -513,6 +523,11 @@ export function validateAuditSourceState({ sourceCommit, workflowCommit, statusO
   }
 }
 
+/** Maps the audit report status to the CLI process exit code. */
+export function accessibilityAuditExitCode(report) {
+  return report.status === 'pass' || report.status === 'needs_review' ? 0 : 1;
+}
+
 const isCli = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (isCli) {
   const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -540,5 +555,5 @@ if (isCli) {
     routes: DEFAULT_AUDIT_ROUTES,
   });
   console.log(JSON.stringify({ reportPath, status: report.status, summary: report.summary }));
-  if (report.status === 'fail') process.exitCode = 1;
+  process.exitCode = accessibilityAuditExitCode(report);
 }
