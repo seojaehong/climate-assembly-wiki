@@ -1,4 +1,10 @@
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
+import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+
+const ACTIVATION_EVIDENCE_EVENT = 'platform_activation_preflight';
+const ACTIVATION_EVIDENCE_TOOL_VERSION = 1;
 
 export const REQUIRED_ORG_ID_TABLES = [
   'assembly',
@@ -29,6 +35,212 @@ const HIERARCHY_TABLE_COLUMNS = {
   attendance: 'id,assignment_id,org_id',
   attendance_auth_session: 'token_hash,scope,team_id,expires_at,org_id',
 };
+
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]),
+    );
+  }
+  return value;
+}
+
+function activationEvidenceDigest(report, audit, key) {
+  return createHmac('sha256', key)
+    .update(JSON.stringify(canonicalize({ report, audit })))
+    .digest('hex');
+}
+
+function validateActivationEvidenceConfiguration(provenance, key) {
+  if (typeof key !== 'string' || key.length < 32) {
+    throw new Error('activation evidence trusted key is invalid');
+  }
+  if (!/^[0-9a-f]{40}$/.test(provenance.sourceCommit)
+    || !/^[0-9a-f]{64}$/.test(provenance.scriptSha256)
+    || typeof provenance.runId !== 'string'
+    || provenance.runId.length === 0
+    || typeof provenance.keyId !== 'string'
+    || provenance.keyId.length === 0) {
+    throw new Error('activation evidence provenance is incomplete');
+  }
+}
+
+export function sealActivationPreflightEvidence(report, provenance, key) {
+  validateActivationEvidenceConfiguration(provenance, key);
+  if (report.status !== 'ready'
+    || report.evidenceComplete !== true
+    || report.databaseMutationExecuted !== false
+    || report.readConsistency !== 'multi_request'
+    || report.requiresImmediateRecheckBeforeActivation !== true
+    || !Array.isArray(report.blockers)
+    || report.blockers.length !== 0) {
+    throw new Error('activation evidence can only seal a complete ready report');
+  }
+  const audit = {
+    schemaVersion: 1,
+    event: ACTIVATION_EVIDENCE_EVENT,
+    toolVersion: ACTIVATION_EVIDENCE_TOOL_VERSION,
+    sourceCommit: provenance.sourceCommit,
+    scriptSha256: provenance.scriptSha256,
+    runId: provenance.runId,
+    keyId: provenance.keyId,
+  };
+  return {
+    ...report,
+    approvalEvidence: {
+      ...audit,
+      integrity: {
+        algorithm: 'hmac-sha256',
+        target: 'preflight-report+provenance',
+        digest: activationEvidenceDigest(report, audit, key),
+      },
+    },
+  };
+}
+
+export function verifyActivationPreflightEvidence(evidence, {
+  trustedKey,
+  expectedKeyId,
+  currentCommit,
+  currentScriptSha256,
+  expectedTargetHost,
+  now = new Date().toISOString(),
+  maxAgeMs = 10 * 60 * 1000,
+}) {
+  const audit = evidence?.approvalEvidence;
+  validateActivationEvidenceConfiguration({
+    sourceCommit: audit?.sourceCommit,
+    scriptSha256: audit?.scriptSha256,
+    runId: audit?.runId,
+    keyId: audit?.keyId,
+  }, trustedKey);
+  if (typeof expectedKeyId !== 'string' || expectedKeyId.length === 0
+    || !/^[0-9a-f]{40}$/.test(currentCommit)
+    || !/^[0-9a-f]{64}$/.test(currentScriptSha256)
+    || typeof expectedTargetHost !== 'string'
+    || expectedTargetHost.length === 0
+    || !Number.isSafeInteger(maxAgeMs)
+    || maxAgeMs <= 0) {
+    throw new Error('activation evidence verification configuration is invalid');
+  }
+  if (audit.schemaVersion !== 1
+    || audit.event !== ACTIVATION_EVIDENCE_EVENT
+    || audit.toolVersion !== ACTIVATION_EVIDENCE_TOOL_VERSION
+    || audit.keyId !== expectedKeyId
+    || audit.sourceCommit !== currentCommit
+    || audit.scriptSha256 !== currentScriptSha256
+    || audit.integrity?.algorithm !== 'hmac-sha256'
+    || audit.integrity?.target !== 'preflight-report+provenance'
+    || !/^[0-9a-f]{64}$/.test(audit.integrity?.digest ?? '')) {
+    throw new Error('activation evidence provenance does not match the trusted target');
+  }
+  const { approvalEvidence: _approvalEvidence, ...report } = evidence;
+  const { integrity: _integrity, ...signedAudit } = audit;
+  const expectedDigest = activationEvidenceDigest(report, signedAudit, trustedKey);
+  const actualBuffer = Buffer.from(audit.integrity.digest, 'hex');
+  const expectedBuffer = Buffer.from(expectedDigest, 'hex');
+  if (actualBuffer.length !== expectedBuffer.length || !timingSafeEqual(actualBuffer, expectedBuffer)) {
+    throw new Error('activation evidence integrity verification failed');
+  }
+  if (report.status !== 'ready'
+    || report.evidenceComplete !== true
+    || report.databaseMutationExecuted !== false
+    || report.readConsistency !== 'multi_request'
+    || report.requiresImmediateRecheckBeforeActivation !== true
+    || !Array.isArray(report.blockers)
+    || report.blockers.length !== 0
+    || report.targetHost !== expectedTargetHost) {
+    throw new Error('activation evidence is not an approvable ready report');
+  }
+  const checkedAt = new Date(report.checkedAt);
+  const nowDate = new Date(now);
+  if (Number.isNaN(checkedAt.valueOf())
+    || checkedAt.toISOString() !== report.checkedAt
+    || Number.isNaN(nowDate.valueOf())
+    || nowDate.toISOString() !== now) {
+    throw new Error('activation evidence time is invalid');
+  }
+  const ageMs = nowDate.valueOf() - checkedAt.valueOf();
+  if (ageMs < 0 || ageMs > maxAgeMs) {
+    throw new Error('activation evidence is stale');
+  }
+  return {
+    status: 'verified',
+    checkedAt: report.checkedAt,
+    targetHost: report.targetHost,
+    sourceCommit: audit.sourceCommit,
+    runId: audit.runId,
+    ageSeconds: Math.floor(ageMs / 1000),
+  };
+}
+
+function currentSourceCommit(environment) {
+  const checkoutCommit = execFileSync(
+    'git',
+    ['rev-parse', 'HEAD'],
+    { cwd: fileURLToPath(new URL('..', import.meta.url)), encoding: 'utf8' },
+  ).trim();
+  if (environment.GITHUB_SHA && environment.GITHUB_SHA !== checkoutCommit) {
+    throw new Error('activation evidence checkout does not match workflow commit');
+  }
+  return checkoutCommit;
+}
+
+function currentScriptSha256() {
+  return createHash('sha256')
+    .update(readFileSync(fileURLToPath(import.meta.url)))
+    .digest('hex');
+}
+
+function currentActivationPreflightProvenance(environment) {
+  return {
+    sourceCommit: currentSourceCommit(environment),
+    scriptSha256: currentScriptSha256(),
+    runId: environment.GITHUB_RUN_ID ?? environment.ACTIVATION_PREFLIGHT_RUN_ID ?? randomUUID(),
+    keyId: environment.ACTIVATION_PREFLIGHT_AUDIT_KEY_ID ?? '',
+  };
+}
+
+function optionValue(args, option) {
+  const index = args.indexOf(option);
+  return index >= 0 ? args[index + 1] : undefined;
+}
+
+export function runActivationPreflightEvidenceCli({
+  args,
+  environment,
+  now = new Date().toISOString(),
+  stdout = console.log,
+}) {
+  const evidencePath = optionValue(args, '--verify-evidence');
+  const expectedTargetHost = optionValue(args, '--expected-host');
+  const maxAgeSecondsText = optionValue(args, '--max-age-seconds') ?? '600';
+  const maxAgeSeconds = Number(maxAgeSecondsText);
+  if (!evidencePath
+    || !expectedTargetHost
+    || !Number.isSafeInteger(maxAgeSeconds)
+    || maxAgeSeconds <= 0) {
+    throw new Error('activation evidence verification arguments are invalid');
+  }
+  let evidence;
+  try {
+    evidence = JSON.parse(readFileSync(evidencePath, 'utf8'));
+  } catch {
+    throw new Error('activation evidence file could not be parsed');
+  }
+  const result = verifyActivationPreflightEvidence(evidence, {
+    trustedKey: environment.ACTIVATION_PREFLIGHT_AUDIT_HMAC_KEY,
+    expectedKeyId: environment.ACTIVATION_PREFLIGHT_AUDIT_KEY_ID,
+    currentCommit: currentSourceCommit(environment),
+    currentScriptSha256: currentScriptSha256(),
+    expectedTargetHost,
+    now,
+    maxAgeMs: maxAgeSeconds * 1000,
+  });
+  stdout(JSON.stringify(result));
+  return 0;
+}
 
 function applyFilters(query, filters) {
   return filters.reduce((current, filter) => current[filter.kind](filter.column, filter.value), query);
@@ -159,6 +371,7 @@ export async function runActivationPreflightCli({
   environment,
   createClient,
   checkedAt = new Date().toISOString(),
+  provenance,
   stdout = console.log,
 }) {
   const url = environment.SUPABASE_URL;
@@ -196,6 +409,13 @@ export async function runActivationPreflightCli({
     targetHost,
     accessMethod: 'postgrest_and_auth_admin_service_role_read_only',
   };
+  if (report.status === 'ready') {
+    report = sealActivationPreflightEvidence(
+      report,
+      provenance ?? currentActivationPreflightProvenance(environment),
+      environment.ACTIVATION_PREFLIGHT_AUDIT_HMAC_KEY,
+    );
+  }
   stdout(JSON.stringify(report, null, 2));
   return report.status === 'ready' ? 0 : 2;
 }
@@ -379,11 +599,16 @@ export function evaluateActivationReadiness(inventory, checkedAt = new Date().to
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   try {
-    const { createClient } = await import('@supabase/supabase-js');
-    process.exitCode = await runActivationPreflightCli({
-      environment: process.env,
-      createClient,
-    });
+    const args = process.argv.slice(2);
+    if (args.includes('--verify-evidence')) {
+      process.exitCode = runActivationPreflightEvidenceCli({ args, environment: process.env });
+    } else {
+      const { createClient } = await import('@supabase/supabase-js');
+      process.exitCode = await runActivationPreflightCli({
+        environment: process.env,
+        createClient,
+      });
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'unknown error';
     console.error(`platform activation preflight failed: ${message}`);

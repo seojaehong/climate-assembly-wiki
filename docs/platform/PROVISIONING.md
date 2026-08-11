@@ -27,7 +27,16 @@ npm.cmd run preflight:platform-activation
 - 종료 상태는 `ready`만 성공이다. `not_ready`는 실제 데이터 blocker, `not_verified`는 읽기 증거 자체가 불완전한 상태다. 두 상태 모두 활성화를 중단한다.
 - 현재 프로덕션의 custom schema 원시 테이블은 service role에도 SELECT가 열려 있지 않아 실측 결과가 `not_verified / read_access_unavailable`이다. 이를 우회하려고 임의 GRANT를 추가하지 않는다. 전용 읽기 함수 또는 일시적 감사 권한은 사용자 승인 후 별도 변경으로 다룬다.
 - 이 도구는 여러 읽기 요청의 결과를 합치는 preflight이며 단일 DB transaction snapshot은 아니다. 승인된 활성화 직전 쓰기를 잠시 멈춘 상태에서 다시 실행해야 하며, transactionally consistent 전용 읽기 함수가 필요하면 별도 DB 변경 승인을 받는다.
-- 현재 `ready`는 관측 시점의 데이터 점검 결과일 뿐 활성화 승인 artifact가 아니다. 향후 승인 증거로 사용하려면 source commit·정확한 스크립트 hash·실행 ID를 기록하고 현재 HEAD/hash·허용 freshness를 재검증하는 별도 fail-closed verifier가 먼저 필요하다.
+- `ready` 결과는 `ACTIVATION_PREFLIGHT_AUDIT_HMAC_KEY`(32자 이상)와 `ACTIVATION_PREFLIGHT_AUDIT_KEY_ID`가 모두 있을 때만 생성된다. report 전체와 source commit·정확한 스크립트 SHA-256·실행 ID·key ID를 외부 키 기반 HMAC-SHA256으로 결속하며 키는 JSON·stdout·오류에 포함하지 않는다.
+- 활성화 직전 아래 검증을 같은 checkout에서 실행한다. 현재 HEAD·스크립트 hash·승인 대상 host·key ID·HMAC·미래 시각·기본 10분 freshness 중 하나라도 다르면 실패한다. `--max-age-seconds` 완화는 승인 기록이 있을 때만 사용한다.
+
+```powershell
+cd automation
+npm.cmd run verify:platform-activation -- ..\evaluation\platform-activation-preflight.json --expected-host pleyuknjnprsckssxvrh.supabase.co
+```
+
+- HMAC 키는 GitHub secret 한 곳에만 두지 말고 key ID별 외부 보안 저장소에 별도 백업한다. 회전은 활성화를 중단한 상태에서 과거 evidence 검증→새 key ID 발급→새 evidence 생성 순서로 진행하며, 과거 키 폐기는 별도 승인 기록 뒤 수행한다.
+- `ready` + 검증 성공도 활성화 행위를 자동 승인하지 않는다. 쓰기 동결 상태의 즉시 재실행 결과와 사용자의 DB·권한 변경 승인이 모두 필요하다.
 - 최신 비식별 실행 증거: `evaluation/platform-activation-preflight.json`.
 > Supabase는 pgcrypto가 `extensions`에 있고 search_path에 포함 → 마이그레이션 그대로 동작.
 > 적용 검증: anon 키로 `POST /rest/v1/rpc/result_get {"p_token":"0..0"}` → `200 null` = 적용됨.

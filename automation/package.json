@@ -14,7 +14,8 @@
     "audit:platform-accessibility": "node platform-accessibility-audit.mjs",
     "audit:platform-accessibility-manual": "node platform-accessibility-manual-evidence.mjs",
     "plan:platform-analysis-import": "node platform-analysis-import.mjs",
-    "preflight:platform-activation": "node platform-activation-preflight.mjs"
+    "preflight:platform-activation": "node platform-activation-preflight.mjs",
+    "verify:platform-activation": "node platform-activation-preflight.mjs --verify-evidence"
   },
   "dependencies": {
     "playwright": "^1.49.0",

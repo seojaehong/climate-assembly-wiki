@@ -1,8 +1,16 @@
+import { createHash } from 'node:crypto';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
 import {
   evaluateActivationReadiness,
   runActivationPreflight,
   runActivationPreflightCli,
+  sealActivationPreflightEvidence,
+  verifyActivationPreflightEvidence,
 } from '../platform-activation-preflight.mjs';
 
 const REQUIRED_TABLES = [
@@ -368,9 +376,16 @@ test('CLI writes a count-only report and never persists an auth session', async 
     environment: {
       SUPABASE_URL: 'https://example.supabase.co',
       SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-secret',
+      ACTIVATION_PREFLIGHT_AUDIT_HMAC_KEY: 'test-activation-audit-key-32-bytes-minimum',
     },
     createClient,
     checkedAt: '2026-08-11T07:00:00.000Z',
+    provenance: {
+      sourceCommit: 'a'.repeat(40),
+      scriptSha256: 'b'.repeat(64),
+      runId: 'activation-local-1',
+      keyId: 'activation-audit-2026-08-v1',
+    },
     stdout: (line) => output.push(line),
   });
 
@@ -384,9 +399,39 @@ test('CLI writes a count-only report and never persists an auth session', async 
   expect(JSON.parse(output[0])).toMatchObject({
     targetHost: 'example.supabase.co',
     accessMethod: 'postgrest_and_auth_admin_service_role_read_only',
+    approvalEvidence: {
+      event: 'platform_activation_preflight',
+      sourceCommit: 'a'.repeat(40),
+      scriptSha256: 'b'.repeat(64),
+      runId: 'activation-local-1',
+      keyId: 'activation-audit-2026-08-v1',
+      integrity: { algorithm: 'hmac-sha256' },
+    },
   });
   expect(output[0]).not.toContain('test-service-role-secret');
   expect(output[0]).not.toContain('user-admin');
+});
+
+test('CLI refuses an unsigned ready report when approval evidence configuration is missing', async () => {
+  const output = [];
+
+  await expect(runActivationPreflightCli({
+    environment: {
+      SUPABASE_URL: 'https://example.supabase.co',
+      SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-secret',
+    },
+    createClient: () => makeReadOnlyClient(readyFixtures()),
+    checkedAt: '2026-08-11T07:00:00.000Z',
+    provenance: {
+      sourceCommit: 'a'.repeat(40),
+      scriptSha256: 'b'.repeat(64),
+      runId: 'activation-local-1',
+      keyId: '',
+    },
+    stdout: (line) => output.push(line),
+  })).rejects.toThrow('activation evidence trusted key is invalid');
+
+  expect(output).toEqual([]);
 });
 
 test('CLI returns a distinct nonzero code when activation is not ready', async () => {
@@ -440,4 +485,224 @@ test('CLI emits a sanitized not-verified report when read access is unavailable'
   });
   expect(output[0]).not.toContain('secret-row-value');
   expect(output[0]).not.toContain('test-service-role-secret');
+});
+
+test('verifies a fresh ready report bound to the current commit, script, host, and trusted key', () => {
+  const report = {
+    ...evaluateActivationReadiness(readyInventory(), '2026-08-11T07:00:00.000Z'),
+    targetHost: 'example.supabase.co',
+    accessMethod: 'postgrest_and_auth_admin_service_role_read_only',
+  };
+  const evidence = sealActivationPreflightEvidence(report, {
+    sourceCommit: 'a'.repeat(40),
+    scriptSha256: 'b'.repeat(64),
+    runId: 'activation-local-1',
+    keyId: 'activation-audit-2026-08-v1',
+  }, 'test-activation-audit-key-32-bytes-minimum');
+
+  expect(verifyActivationPreflightEvidence(evidence, {
+    trustedKey: 'test-activation-audit-key-32-bytes-minimum',
+    expectedKeyId: 'activation-audit-2026-08-v1',
+    currentCommit: 'a'.repeat(40),
+    currentScriptSha256: 'b'.repeat(64),
+    expectedTargetHost: 'example.supabase.co',
+    now: '2026-08-11T07:05:00.000Z',
+    maxAgeMs: 10 * 60 * 1000,
+  })).toEqual({
+    status: 'verified',
+    checkedAt: '2026-08-11T07:00:00.000Z',
+    targetHost: 'example.supabase.co',
+    sourceCommit: 'a'.repeat(40),
+    runId: 'activation-local-1',
+    ageSeconds: 300,
+  });
+});
+
+test('rejects a ready report whose signed counts were edited after generation', () => {
+  const report = {
+    ...evaluateActivationReadiness(readyInventory(), '2026-08-11T07:00:00.000Z'),
+    targetHost: 'example.supabase.co',
+    accessMethod: 'postgrest_and_auth_admin_service_role_read_only',
+  };
+  const evidence = sealActivationPreflightEvidence(report, {
+    sourceCommit: 'a'.repeat(40),
+    scriptSha256: 'b'.repeat(64),
+    runId: 'activation-local-1',
+    keyId: 'activation-audit-2026-08-v1',
+  }, 'test-activation-audit-key-32-bytes-minimum');
+  evidence.summary.activeOrganizationCount = 99;
+
+  expect(() => verifyActivationPreflightEvidence(evidence, {
+    trustedKey: 'test-activation-audit-key-32-bytes-minimum',
+    expectedKeyId: 'activation-audit-2026-08-v1',
+    currentCommit: 'a'.repeat(40),
+    currentScriptSha256: 'b'.repeat(64),
+    expectedTargetHost: 'example.supabase.co',
+    now: '2026-08-11T07:05:00.000Z',
+    maxAgeMs: 10 * 60 * 1000,
+  })).toThrow('activation evidence integrity verification failed');
+});
+
+test.each([
+  ['stale timestamp', { now: '2026-08-11T07:11:00.000Z' }, 'activation evidence is stale'],
+  ['future timestamp', { now: '2026-08-11T06:59:00.000Z' }, 'activation evidence is stale'],
+  ['different commit', { currentCommit: 'c'.repeat(40) }, 'activation evidence provenance does not match the trusted target'],
+  ['different script', { currentScriptSha256: 'c'.repeat(64) }, 'activation evidence provenance does not match the trusted target'],
+  ['different host', { expectedTargetHost: 'other.supabase.co' }, 'activation evidence is not an approvable ready report'],
+  ['untrusted key', { trustedKey: 'different-activation-audit-key-32-bytes' }, 'activation evidence integrity verification failed'],
+])('rejects approval evidence with %s', (_label, override, expectedError) => {
+  const report = {
+    ...evaluateActivationReadiness(readyInventory(), '2026-08-11T07:00:00.000Z'),
+    targetHost: 'example.supabase.co',
+    accessMethod: 'postgrest_and_auth_admin_service_role_read_only',
+  };
+  const evidence = sealActivationPreflightEvidence(report, {
+    sourceCommit: 'a'.repeat(40),
+    scriptSha256: 'b'.repeat(64),
+    runId: 'activation-local-1',
+    keyId: 'activation-audit-2026-08-v1',
+  }, 'test-activation-audit-key-32-bytes-minimum');
+  const options = {
+    trustedKey: 'test-activation-audit-key-32-bytes-minimum',
+    expectedKeyId: 'activation-audit-2026-08-v1',
+    currentCommit: 'a'.repeat(40),
+    currentScriptSha256: 'b'.repeat(64),
+    expectedTargetHost: 'example.supabase.co',
+    now: '2026-08-11T07:05:00.000Z',
+    maxAgeMs: 10 * 60 * 1000,
+    ...override,
+  };
+
+  expect(() => verifyActivationPreflightEvidence(evidence, options)).toThrow(expectedError);
+});
+
+test('verification CLI validates signed evidence without loading database credentials', () => {
+  const temporaryDirectory = mkdtempSync(join(tmpdir(), 'activation-preflight-'));
+  const evidencePath = join(temporaryDirectory, 'ready.json');
+  const modulePath = fileURLToPath(new URL('../platform-activation-preflight.mjs', import.meta.url));
+  const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
+  const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  }).trim();
+  const scriptSha256 = createHash('sha256').update(readFileSync(modulePath)).digest('hex');
+  const checkedAt = new Date().toISOString();
+  const report = {
+    ...evaluateActivationReadiness(readyInventory(), checkedAt),
+    targetHost: 'example.supabase.co',
+    accessMethod: 'postgrest_and_auth_admin_service_role_read_only',
+  };
+  const evidence = sealActivationPreflightEvidence(report, {
+    sourceCommit,
+    scriptSha256,
+    runId: 'activation-cli-1',
+    keyId: 'activation-audit-2026-08-v1',
+  }, 'test-activation-audit-key-32-bytes-minimum');
+  writeFileSync(evidencePath, `${JSON.stringify(evidence)}\n`, 'utf8');
+
+  try {
+    const result = spawnSync(process.execPath, [
+      modulePath,
+      '--verify-evidence', evidencePath,
+      '--expected-host', 'example.supabase.co',
+      '--max-age-seconds', '600',
+    ], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        SUPABASE_URL: '',
+        SUPABASE_SERVICE_ROLE_KEY: '',
+        SUPABASE_SERVICE_ROLE: '',
+        ACTIVATION_PREFLIGHT_AUDIT_HMAC_KEY: 'test-activation-audit-key-32-bytes-minimum',
+        ACTIVATION_PREFLIGHT_AUDIT_KEY_ID: 'activation-audit-2026-08-v1',
+      },
+    });
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      status: 'verified',
+      targetHost: 'example.supabase.co',
+      sourceCommit,
+      runId: 'activation-cli-1',
+    });
+    expect(result.stderr).not.toContain('test-activation-audit-key-32-bytes-minimum');
+  } finally {
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('verification CLI rejects a workflow SHA that differs from the actual checkout HEAD', () => {
+  const temporaryDirectory = mkdtempSync(join(tmpdir(), 'activation-preflight-head-'));
+  const evidencePath = join(temporaryDirectory, 'stale-checkout.json');
+  const modulePath = fileURLToPath(new URL('../platform-activation-preflight.mjs', import.meta.url));
+  const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
+  const scriptSha256 = createHash('sha256').update(readFileSync(modulePath)).digest('hex');
+  const staleCommit = 'c'.repeat(40);
+  const report = {
+    ...evaluateActivationReadiness(readyInventory(), new Date().toISOString()),
+    targetHost: 'example.supabase.co',
+    accessMethod: 'postgrest_and_auth_admin_service_role_read_only',
+  };
+  const evidence = sealActivationPreflightEvidence(report, {
+    sourceCommit: staleCommit,
+    scriptSha256,
+    runId: 'activation-stale-checkout-1',
+    keyId: 'activation-audit-2026-08-v1',
+  }, 'test-activation-audit-key-32-bytes-minimum');
+  writeFileSync(evidencePath, `${JSON.stringify(evidence)}\n`, 'utf8');
+
+  try {
+    const result = spawnSync(process.execPath, [
+      modulePath,
+      '--verify-evidence', evidencePath,
+      '--expected-host', 'example.supabase.co',
+    ], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        GITHUB_SHA: staleCommit,
+        ACTIVATION_PREFLIGHT_AUDIT_HMAC_KEY: 'test-activation-audit-key-32-bytes-minimum',
+        ACTIVATION_PREFLIGHT_AUDIT_KEY_ID: 'activation-audit-2026-08-v1',
+      },
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('activation evidence checkout does not match workflow commit');
+  } finally {
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('verification CLI does not echo malformed evidence or the trusted key', () => {
+  const temporaryDirectory = mkdtempSync(join(tmpdir(), 'activation-preflight-malformed-'));
+  const evidencePath = join(temporaryDirectory, 'malformed.json');
+  const modulePath = fileURLToPath(new URL('../platform-activation-preflight.mjs', import.meta.url));
+  writeFileSync(evidencePath, '{"secret":"malformed-sensitive-value"', 'utf8');
+
+  try {
+    const result = spawnSync(process.execPath, [
+      modulePath,
+      '--verify-evidence', evidencePath,
+      '--expected-host', 'example.supabase.co',
+    ], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        SUPABASE_URL: '',
+        SUPABASE_SERVICE_ROLE_KEY: '',
+        SUPABASE_SERVICE_ROLE: '',
+        ACTIVATION_PREFLIGHT_AUDIT_HMAC_KEY: 'test-activation-audit-key-32-bytes-minimum',
+        ACTIVATION_PREFLIGHT_AUDIT_KEY_ID: 'activation-audit-2026-08-v1',
+      },
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('activation evidence file could not be parsed');
+    expect(result.stderr).not.toContain('malformed-sensitive-value');
+    expect(result.stderr).not.toContain('test-activation-audit-key-32-bytes-minimum');
+  } finally {
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
 });
