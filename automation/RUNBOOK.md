@@ -187,6 +187,45 @@ GitHub Actions schedules는 트래픽 폭주 시 5~15분 지연될 수 있다. �
 2. 누락 set의 timestamp가 연속 구간(>3개 연속)이면 진짜 장애
 3. 흩어져 있으면 GHA drift — 회고에 "drift {N분}" 기록하고 다음 워크숍은 cron 빈도 검토
 
+## M1 Canvas DB contract preflight
+
+`canvas-db-contract.mjs`는 실제 DB나 환경변수에 접근하지 않고 production Canvas source와
+`supabase/migrations/*.sql`과 `docs/platform/CANVAS_DB_CONTRACT.md`만 읽어 durable platform의
+저장 계약이 저장소에 완전히 표현됐는지 검사한다. `supabase/verify/00_prelude.sql`의 base table
+stub은 migration이 아니므로 증거에서 의도적으로 제외한다.
+
+```powershell
+cd automation
+npm.cmd run audit:canvas-db-contract -- --output-json ../evaluation/canvas-db-contract.json
+```
+
+- 대상은 `session`, `participant`, `agenda`, `agenda_link`, `agenda_edit_log`, `rounds`,
+  `attendance`다.
+- browser source의 select/insert/update/delete/upsert와 attendance RPC, agenda realtime 구독을
+  migration-owned table column/FK, 최종 RLS/policy/GRANT 상태, realtime publication과 대조한다.
+- policy는 operation·role별 `USING`/`WITH CHECK`, table GRANT와 조직/세션 경계를 함께 요구하며
+  `true` 전면 허용을 거부한다. 뒤 migration의 DROP/REVOKE/RLS disable/publication drop도 최종
+  상태에 반영한다.
+- attendance는 RLS + anon/authenticated table 권한 회수뿐 아니라 production에서 호출하는 각
+  RPC의 SECURITY DEFINER, 고정 search_path, PUBLIC EXECUTE 회수와 허용 role grant를 확인한다.
+- 누락이 있으면 JSON을 먼저 저장하고 `not_ready`와 종료 코드 1을 반환한다. 이는 diagnostic
+  blocker 증거이며 schema 적용 실패나 live DB 상태를 뜻하지 않는다.
+- 이 정적 검사는 SQL·RLS·함수 본문의 의미를 증명하지 않으며 어떤 입력에도 M1 `ready`를
+  발급하지 않는다. `verification.semantic_review_required`는 승인된 migration SQL 리뷰,
+  rollback stage rehearsal, 실제 role별 권한 테스트가 별도 필요하다는 영구 경계다.
+- source inventory는 literal Supabase `.from('table')` builder만 탐지한다. wrapper나 변수 보관
+  query가 추가되면 matrix와 verifier를 함께 갱신해야 하며, report의 `staticAccessPattern`과
+  `staticPatternComplete`는 의미 검증이 아니라 정규식 패턴 일치만 뜻한다.
+- 현재 20개 migration에는 6개 Canvas base table의 저장소 소유 DDL·정책이 없고, 일부 기존
+  attendance RPC도 explicit PUBLIC 회수 증거가 부족하다. contract 문서는 draft이며 사용자 승인,
+  rollback SQL과 stage rehearsal이 없어 M1 완료로 승격하지 않는다. 정확한 blocker 수는 JSON을
+  정본으로 삼는다.
+- 로컬 미커밋 source에서 증거를 재생성할 때만 `--allow-dirty-source`를 쓰며 보고서에는
+  `sourceTreeClean:false`가 남는다. 승인 근거로 사용할 clean 증거는 커밋 뒤 다시 생성해야 한다.
+- 이 명령은 migration을 생성·적용하지 않는다. 정책 초안과 write failure/rollback 경계는
+  `docs/platform/CANVAS_DB_CONTRACT.md`에 정리했지만 승인·rollback SQL·stage rehearsal은 미완료다.
+  migration 작성·실 DB 적용은 별도 사용자 승인과 live preflight 이후에만 진행한다.
+
 ## 분석코어 import plan dry-run
 
 `platform-analysis-import.mjs`는 분석 산출을 DB에 쓰지 않고 사람 검수 전용 계획 JSON으로만 변환한다.

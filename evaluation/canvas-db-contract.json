@@ -1,0 +1,599 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-11T15:36:59.963Z",
+  "sourceCommit": "0c80d85e6609b9279cfef3278d658e15624d0904",
+  "sourceTreeClean": false,
+  "sourceTreeSha256": "bf6bb80fc146ce309a226432a46958b5e92a4f13c4153ea53c3d4880555c55cf",
+  "sourcePaths": [
+    "src/islands/CanvasBoard.tsx",
+    "src/islands/JoinForm.tsx",
+    "src/islands/canvas/AgendaNode.tsx",
+    "src/islands/canvas/ZoneFrameNode.tsx",
+    "src/islands/canvas/agenda-sync.ts",
+    "src/islands/canvas/canvas-connection.ts",
+    "src/islands/canvas/canvas-operation.ts",
+    "src/islands/canvas/palette.ts",
+    "src/islands/canvas/use-realtime-agendas.ts",
+    "src/islands/canvas/useAuth.ts",
+    "src/islands/canvas/zones.ts",
+    "src/lib/attendance.ts"
+  ],
+  "contractDocumentPath": "docs/platform/CANVAS_DB_CONTRACT.md",
+  "migrationDirectory": "supabase/migrations",
+  "migrationFileCount": 20,
+  "blockerCount": 54,
+  "status": "not_ready",
+  "m1Complete": false,
+  "staticAnalysisOnly": true,
+  "canApproveM1": false,
+  "analysisLimitations": [
+    "SQL and RLS semantics require manual and stage verification.",
+    "Source inventory recognizes literal Supabase table builders only.",
+    "RPC body pattern matches do not prove authorization or mutation behavior."
+  ],
+  "databaseAccess": false,
+  "databaseMutationExecuted": false,
+  "contractDocument": {
+    "approved": false,
+    "rollbackPlan": false,
+    "failureModeMatrix": false
+  },
+  "sourceInventory": [
+    {
+      "table": "agenda",
+      "operation": "update"
+    },
+    {
+      "table": "agenda",
+      "operation": "insert"
+    },
+    {
+      "table": "agenda",
+      "operation": "select"
+    },
+    {
+      "table": "agenda",
+      "operation": "update"
+    },
+    {
+      "table": "agenda_link",
+      "operation": "insert"
+    },
+    {
+      "table": "agenda_link",
+      "operation": "select"
+    },
+    {
+      "table": "agenda_link",
+      "operation": "delete"
+    },
+    {
+      "table": "rounds",
+      "operation": "insert"
+    },
+    {
+      "table": "rounds",
+      "operation": "select"
+    },
+    {
+      "table": "agenda",
+      "operation": "update"
+    },
+    {
+      "table": "session",
+      "operation": "select"
+    },
+    {
+      "table": "participant",
+      "operation": "upsert"
+    },
+    {
+      "table": "agenda",
+      "operation": "select"
+    },
+    {
+      "table": "agenda",
+      "operation": "update"
+    },
+    {
+      "table": "agenda_edit_log",
+      "operation": "insert"
+    },
+    {
+      "table": "agenda_edit_log",
+      "operation": "select"
+    },
+    {
+      "table": "agenda",
+      "operation": "update"
+    },
+    {
+      "table": "agenda",
+      "operation": "insert"
+    },
+    {
+      "table": "session",
+      "operation": "select"
+    },
+    {
+      "table": "agenda",
+      "operation": "select"
+    }
+  ],
+  "tables": [
+    {
+      "table": "session",
+      "requiredSourceOperations": [
+        "select"
+      ],
+      "sourceOperations": [
+        "select"
+      ],
+      "sourceRealtime": null,
+      "migrationDefinition": false,
+      "missingColumns": [
+        "id:uuid",
+        "slug:text"
+      ],
+      "missingConstraints": [
+        "id_primary_key",
+        "slug_unique"
+      ],
+      "missingForeignKeys": [],
+      "rlsEnabled": false,
+      "staticAccessPattern": false,
+      "missingAccess": [
+        "anon.select",
+        "authenticated.select"
+      ],
+      "realtimePublished": null,
+      "realtimeReplicaIdentity": null
+    },
+    {
+      "table": "participant",
+      "requiredSourceOperations": [
+        "upsert"
+      ],
+      "sourceOperations": [
+        "upsert"
+      ],
+      "sourceRealtime": null,
+      "migrationDefinition": false,
+      "missingColumns": [
+        "id:uuid",
+        "token:text",
+        "session_id:uuid",
+        "org_id:uuid",
+        "name:text",
+        "group_label:text"
+      ],
+      "missingConstraints": [
+        "id_primary_key",
+        "token_unique"
+      ],
+      "missingForeignKeys": [
+        "session_id->session",
+        "org_id->org"
+      ],
+      "rlsEnabled": false,
+      "staticAccessPattern": false,
+      "missingAccess": [
+        "anon.insert",
+        "anon.update"
+      ],
+      "realtimePublished": null,
+      "realtimeReplicaIdentity": null
+    },
+    {
+      "table": "agenda",
+      "requiredSourceOperations": [
+        "select",
+        "insert",
+        "update"
+      ],
+      "sourceOperations": [
+        "select",
+        "insert",
+        "update"
+      ],
+      "sourceRealtime": true,
+      "migrationDefinition": false,
+      "missingColumns": [
+        "id:uuid",
+        "session_id:uuid",
+        "org_id:uuid",
+        "text:text",
+        "status:text",
+        "x:(?:integer|int|numeric|double\\s+precision)",
+        "y:(?:integer|int|numeric|double\\s+precision)",
+        "created_by:text",
+        "updated_at:timestamptz"
+      ],
+      "missingConstraints": [
+        "id_primary_key"
+      ],
+      "missingForeignKeys": [
+        "session_id->session",
+        "org_id->org"
+      ],
+      "rlsEnabled": false,
+      "staticAccessPattern": false,
+      "missingAccess": [
+        "authenticated.select",
+        "anon.insert",
+        "authenticated.insert",
+        "authenticated.update"
+      ],
+      "realtimePublished": false,
+      "realtimeReplicaIdentity": false
+    },
+    {
+      "table": "agenda_link",
+      "requiredSourceOperations": [
+        "select",
+        "insert",
+        "delete"
+      ],
+      "sourceOperations": [
+        "select",
+        "insert",
+        "delete"
+      ],
+      "sourceRealtime": true,
+      "migrationDefinition": false,
+      "missingColumns": [
+        "id:uuid",
+        "session_id:uuid",
+        "org_id:uuid",
+        "source_id:uuid",
+        "target_id:uuid",
+        "created_by:text"
+      ],
+      "missingConstraints": [
+        "id_primary_key"
+      ],
+      "missingForeignKeys": [
+        "session_id->session",
+        "org_id->org",
+        "source_id->agenda",
+        "target_id->agenda"
+      ],
+      "rlsEnabled": false,
+      "staticAccessPattern": false,
+      "missingAccess": [
+        "authenticated.select",
+        "authenticated.insert",
+        "authenticated.delete"
+      ],
+      "realtimePublished": false,
+      "realtimeReplicaIdentity": false
+    },
+    {
+      "table": "agenda_edit_log",
+      "requiredSourceOperations": [
+        "select",
+        "insert"
+      ],
+      "sourceOperations": [
+        "select",
+        "insert"
+      ],
+      "sourceRealtime": null,
+      "migrationDefinition": false,
+      "missingColumns": [
+        "id:uuid",
+        "agenda_id:uuid",
+        "org_id:uuid",
+        "before:text",
+        "after:text",
+        "editor:text"
+      ],
+      "missingConstraints": [
+        "id_primary_key"
+      ],
+      "missingForeignKeys": [
+        "agenda_id->agenda",
+        "org_id->org"
+      ],
+      "rlsEnabled": false,
+      "staticAccessPattern": false,
+      "missingAccess": [
+        "authenticated.select",
+        "authenticated.insert"
+      ],
+      "realtimePublished": null,
+      "realtimeReplicaIdentity": null
+    },
+    {
+      "table": "rounds",
+      "requiredSourceOperations": [
+        "select",
+        "insert"
+      ],
+      "sourceOperations": [
+        "select",
+        "insert"
+      ],
+      "sourceRealtime": null,
+      "migrationDefinition": false,
+      "missingColumns": [
+        "id:text",
+        "session_id:uuid",
+        "org_id:uuid",
+        "title:text",
+        "type:text",
+        "status:text"
+      ],
+      "missingConstraints": [
+        "id_primary_key"
+      ],
+      "missingForeignKeys": [
+        "session_id->session",
+        "org_id->org"
+      ],
+      "rlsEnabled": false,
+      "staticAccessPattern": false,
+      "missingAccess": [
+        "authenticated.select",
+        "authenticated.insert"
+      ],
+      "realtimePublished": null,
+      "realtimeReplicaIdentity": null
+    },
+    {
+      "table": "attendance",
+      "requiredSourceOperations": [],
+      "sourceOperations": [],
+      "sourceRealtime": null,
+      "migrationDefinition": true,
+      "missingColumns": [],
+      "missingConstraints": [],
+      "missingForeignKeys": [],
+      "rlsEnabled": true,
+      "staticAccessPattern": true,
+      "missingAccess": [],
+      "realtimePublished": true,
+      "realtimeReplicaIdentity": null
+    }
+  ],
+  "rpcs": [
+    {
+      "name": "attendance_team_unlock",
+      "sourceCall": true,
+      "staticPatternComplete": false,
+      "definition": true,
+      "signatureMatches": true,
+      "returnMatches": true,
+      "scopeMatches": true,
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "publicRevoked": true,
+      "allowedRoleGranted": false
+    },
+    {
+      "name": "attendance_team_unlock_by_code",
+      "sourceCall": true,
+      "staticPatternComplete": true,
+      "definition": true,
+      "signatureMatches": true,
+      "returnMatches": true,
+      "scopeMatches": true,
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "publicRevoked": true,
+      "allowedRoleGranted": true
+    },
+    {
+      "name": "attendance_hq_unlock",
+      "sourceCall": true,
+      "staticPatternComplete": false,
+      "definition": true,
+      "signatureMatches": true,
+      "returnMatches": true,
+      "scopeMatches": true,
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "publicRevoked": false,
+      "allowedRoleGranted": true
+    },
+    {
+      "name": "attendance_roster",
+      "sourceCall": true,
+      "staticPatternComplete": false,
+      "definition": true,
+      "signatureMatches": true,
+      "returnMatches": true,
+      "scopeMatches": true,
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "publicRevoked": false,
+      "allowedRoleGranted": true
+    },
+    {
+      "name": "attendance_hq_summary",
+      "sourceCall": true,
+      "staticPatternComplete": false,
+      "definition": true,
+      "signatureMatches": true,
+      "returnMatches": true,
+      "scopeMatches": true,
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "publicRevoked": false,
+      "allowedRoleGranted": true
+    },
+    {
+      "name": "attendance_set",
+      "sourceCall": true,
+      "staticPatternComplete": false,
+      "definition": true,
+      "signatureMatches": true,
+      "returnMatches": true,
+      "scopeMatches": true,
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "publicRevoked": false,
+      "allowedRoleGranted": true
+    },
+    {
+      "name": "attendance_bulk_present",
+      "sourceCall": true,
+      "staticPatternComplete": false,
+      "definition": true,
+      "signatureMatches": true,
+      "returnMatches": true,
+      "scopeMatches": true,
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "publicRevoked": false,
+      "allowedRoleGranted": true
+    },
+    {
+      "name": "attendance_finalize_absent",
+      "sourceCall": true,
+      "staticPatternComplete": false,
+      "definition": true,
+      "signatureMatches": true,
+      "returnMatches": true,
+      "scopeMatches": true,
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "publicRevoked": false,
+      "allowedRoleGranted": true
+    },
+    {
+      "name": "attendance_member_save",
+      "sourceCall": true,
+      "staticPatternComplete": false,
+      "definition": true,
+      "signatureMatches": true,
+      "returnMatches": true,
+      "scopeMatches": true,
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "publicRevoked": false,
+      "allowedRoleGranted": true
+    },
+    {
+      "name": "attendance_hq_audit",
+      "sourceCall": true,
+      "staticPatternComplete": false,
+      "definition": true,
+      "signatureMatches": true,
+      "returnMatches": true,
+      "scopeMatches": true,
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "publicRevoked": false,
+      "allowedRoleGranted": true
+    },
+    {
+      "name": "attendance_hq_set_team_pin",
+      "sourceCall": true,
+      "staticPatternComplete": false,
+      "definition": true,
+      "signatureMatches": true,
+      "returnMatches": true,
+      "scopeMatches": true,
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "publicRevoked": false,
+      "allowedRoleGranted": true
+    },
+    {
+      "name": "attendance_hq_set_table_no",
+      "sourceCall": true,
+      "staticPatternComplete": true,
+      "definition": true,
+      "signatureMatches": true,
+      "returnMatches": true,
+      "scopeMatches": true,
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "publicRevoked": true,
+      "allowedRoleGranted": true
+    },
+    {
+      "name": "attendance_round_eligible_count",
+      "sourceCall": true,
+      "staticPatternComplete": false,
+      "definition": true,
+      "signatureMatches": true,
+      "returnMatches": true,
+      "scopeMatches": true,
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "publicRevoked": false,
+      "allowedRoleGranted": true
+    },
+    {
+      "name": "attendance_token_row",
+      "sourceCall": null,
+      "staticPatternComplete": true,
+      "definition": true,
+      "signatureMatches": true,
+      "returnMatches": true,
+      "scopeMatches": true,
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "publicRevoked": true,
+      "allowedRoleGranted": true
+    }
+  ],
+  "blockers": [
+    "migration.session.definition_missing",
+    "migration.session.columns_missing",
+    "migration.session.constraints_missing",
+    "migration.session.rls_missing",
+    "migration.session.access_missing",
+    "migration.participant.definition_missing",
+    "migration.participant.columns_missing",
+    "migration.participant.constraints_missing",
+    "migration.participant.foreign_keys_missing",
+    "migration.participant.rls_missing",
+    "migration.participant.access_missing",
+    "migration.agenda.definition_missing",
+    "migration.agenda.columns_missing",
+    "migration.agenda.constraints_missing",
+    "migration.agenda.foreign_keys_missing",
+    "migration.agenda.rls_missing",
+    "migration.agenda.access_missing",
+    "migration.agenda.realtime_missing",
+    "migration.agenda.replica_identity_missing",
+    "migration.agenda_link.definition_missing",
+    "migration.agenda_link.columns_missing",
+    "migration.agenda_link.constraints_missing",
+    "migration.agenda_link.foreign_keys_missing",
+    "migration.agenda_link.rls_missing",
+    "migration.agenda_link.access_missing",
+    "migration.agenda_link.realtime_missing",
+    "migration.agenda_link.replica_identity_missing",
+    "migration.agenda_edit_log.definition_missing",
+    "migration.agenda_edit_log.columns_missing",
+    "migration.agenda_edit_log.constraints_missing",
+    "migration.agenda_edit_log.foreign_keys_missing",
+    "migration.agenda_edit_log.rls_missing",
+    "migration.agenda_edit_log.access_missing",
+    "migration.rounds.definition_missing",
+    "migration.rounds.columns_missing",
+    "migration.rounds.constraints_missing",
+    "migration.rounds.foreign_keys_missing",
+    "migration.rounds.rls_missing",
+    "migration.rounds.access_missing",
+    "migration.rpc.attendance_team_unlock.contract_missing",
+    "migration.rpc.attendance_hq_unlock.contract_missing",
+    "migration.rpc.attendance_roster.contract_missing",
+    "migration.rpc.attendance_hq_summary.contract_missing",
+    "migration.rpc.attendance_set.contract_missing",
+    "migration.rpc.attendance_bulk_present.contract_missing",
+    "migration.rpc.attendance_finalize_absent.contract_missing",
+    "migration.rpc.attendance_member_save.contract_missing",
+    "migration.rpc.attendance_hq_audit.contract_missing",
+    "migration.rpc.attendance_hq_set_team_pin.contract_missing",
+    "migration.rpc.attendance_round_eligible_count.contract_missing",
+    "approval.m1_contract_missing",
+    "contract.rollback_plan_missing",
+    "contract.failure_mode_matrix_missing",
+    "verification.semantic_review_required"
+  ]
+}
