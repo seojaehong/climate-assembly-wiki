@@ -10,7 +10,12 @@ afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => new Promise((resolve) => server.close(resolve))));
 });
 
-async function fixtureServer({ draggable = false, write = false } = {}) {
+async function fixtureServer({
+  draggable = false,
+  write = false,
+  liveDelayedWrite = false,
+  liveDelayedError = false,
+} = {}) {
   let receivedWriteCount = 0;
   const server = createServer((request, response) => {
     if (request.url === '/@vite/client') {
@@ -29,13 +34,25 @@ async function fixtureServer({ draggable = false, write = false } = {}) {
       response.end();
       return;
     }
+    const currentSurface = request.url?.startsWith('/ko/moderator/live') ? 'live' : 'canvas';
     response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-    response.end(`<!doctype html><html><body>
-      <p>실시간 연결됨</p><h2>진행자 로그인</h2>
-      <div class="react-flow__node-agenda${draggable ? ' draggable' : ''}">의제</div>
+    response.end(`<!doctype html><html><body style="margin:0"${currentSurface === 'live' ? ' data-moderator-live-ready="true"' : ''}>
+      <nav aria-label="숙의 모더레이션 플랫폼">
+        <a href="/ko/moderator/live/" ${currentSurface === 'live' ? 'aria-current="page"' : ''}>라이브 입력</a>
+        <a href="/ko/moderator/canvas/" ${currentSurface === 'canvas' ? 'aria-current="page"' : ''}>캔버스 작업대</a>
+        <a href="/workshop-graph/">온톨로지 그래프</a>
+        <a href="/workshop-graph/guide/">그래프 사용설명서</a>
+        <p>시민 발언과 논증 관계를 보존해 숙의·모더레이션을 지원합니다. <strong>회의의 결정을 대신하지 않습니다.</strong></p>
+      </nav>
+      <main id="canvas-workbench" style="width:1440px;height:800px">
+        <p>실시간 연결됨</p><h2>진행자 로그인</h2>
+        <div class="react-flow__node-agenda${draggable ? ' draggable' : ''}">의제</div>
+      </main>
       <script>
         fetch('/rest/v1/session');fetch('/rest/v1/agenda');fetch('/rest/v1/agenda_link');
         ${write ? "fetch('/write',{method:'POST'}).catch(() => {})" : ''}
+        ${currentSurface === 'live' && liveDelayedWrite ? "setTimeout(() => fetch('/write',{method:'POST'}).catch(() => {}), 100)" : ''}
+        ${currentSurface === 'live' && liveDelayedError ? "setTimeout(() => { throw new Error('delayed live failure'); }, 100)" : ''}
       </script>
     </body></html>`);
   });
@@ -62,6 +79,16 @@ describe('verifyCanvasBrowser', () => {
     expect(report.checks.agendaNodeCount).toBe(1);
     expect(report.checks.blockedWriteRequestCount).toBe(0);
     expect(report.checks.canvasHydrated).toBe(true);
+    expect(report.checks.canvasWorkbenchUsable).toBe(true);
+    expect(report.checks.canvasWorkbenchSize).toEqual({ width: 1440, height: 800 });
+    expect(report.checks.platformNavigationConnected).toBe(true);
+    expect(report.checks.platformNavigationLinkCount).toBe(4);
+    expect(report.checks.nonDecisionCopyVisible).toBe(true);
+    expect(report.checks.livePlatformNavigationConnected).toBe(true);
+    expect(report.checks.linkedSurfaceStatuses).toEqual([
+      { path: '/workshop-graph/', assetPath: '/workshop-graph/index.html', status: 200 },
+      { path: '/workshop-graph/guide/', assetPath: '/workshop-graph/guide/index.html', status: 200 },
+    ]);
     expect(report.sourceProvenance).toEqual(sourceProvenance);
     expect(report.runtime.node).toMatch(/^v\d+\./);
     expect(report.checks.supabaseReadResponses).toHaveLength(3);
@@ -75,7 +102,14 @@ describe('verifyCanvasBrowser', () => {
     await expect(verifyCanvasBrowser({ baseUrl: writeFixture.baseUrl }))
       .rejects.toThrow('Canvas verification attempted a blocked write request');
     expect(writeFixture.receivedWriteCount()).toBe(0);
-  });
+    const delayedLiveWriteFixture = await fixtureServer({ liveDelayedWrite: true });
+    await expect(verifyCanvasBrowser({ baseUrl: delayedLiveWriteFixture.baseUrl }))
+      .rejects.toThrow('Moderator platform verification attempted a blocked write request');
+    expect(delayedLiveWriteFixture.receivedWriteCount()).toBe(0);
+    const delayedLiveErrorFixture = await fixtureServer({ liveDelayedError: true });
+    await expect(verifyCanvasBrowser({ baseUrl: delayedLiveErrorFixture.baseUrl }))
+      .rejects.toThrow('Moderator platform verification observed a browser page error');
+  }, 15_000);
 });
 
 describe('Canvas browser CI contract', () => {
@@ -88,13 +122,20 @@ describe('Canvas browser CI contract', () => {
     expect(workflow).toContain("- '.gitignore'");
     expect(workflow).toContain('working-directory: .');
     expect(workflow).toContain('npm ci');
+    expect(workflow).toContain('npm exec vitest -- run src/components/ModeratorPlatformNav.test.ts src/islands/CanvasBoard.test.ts');
     expect(workflow).toContain("'src/lib/supabase.ts'");
+    expect(workflow).toContain("'src/components/ModeratorPlatformNav.tsx'");
+    expect(workflow).toContain("'src/components/ModeratorPlatformNav.test.ts'");
     expect(workflow).toContain("'src/pages/**/moderator/canvas.astro'");
+    expect(workflow).toContain("'src/pages/**/moderator/live.astro'");
     expect(workflow).toContain('curl --fail --silent --max-time 2');
     expect(workflow).toContain('node automation/verify-canvas-browser.mjs');
     expect(workflow.indexOf('npm ci')).toBeLessThan(workflow.indexOf('node automation/verify-canvas-browser.mjs'));
     const verifier = readFileSync(new URL('../verify-canvas-browser.mjs', import.meta.url), 'utf8');
     expect(verifier).toContain("'package-lock.json'");
+    expect(verifier).toContain("'src/components/ModeratorPlatformNav.tsx'");
+    expect(verifier).toContain("'src/components/ModeratorPlatformNav.test.ts'");
+    expect(verifier).toContain("'src/pages/[lang]/moderator/live.astro'");
     expect(verifier.indexOf('const moderatorLoginBoundary = await')).toBeLessThan(
       verifier.indexOf("if (writeRequests.length > 0)"),
     );

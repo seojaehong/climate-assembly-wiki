@@ -434,7 +434,7 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
     : null;
 
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative', background: bgHex }}>
+    <div style={{ width: '100%', height: '100%', position: 'relative', background: bgHex }}>
       {writable && (
         <button
           onClick={() => { if (sessionId) void completeOperation(addAgenda(sessionId)); }}

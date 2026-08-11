@@ -8,7 +8,7 @@
  *   - robots noindex,nofollow
  *   - NOT in sitemap (sitemap filter is whitelist: only /agenda + locale home)
  *   - NOT in pagefind (no data-pagefind-body)
- *   - No nav links to this page anywhere
+ *   - Linked only from the private operator platform navigation
  *
  * DATA SOURCES (user-selectable):
  *   - "더미 데이터 (104행)" → sim-questions.json (shipped at build time)
@@ -25,6 +25,7 @@
 import simQuestions from '../../../data/sim-questions.json';
 import sampleQuestions from '../../../data/sample-agenda-questions.json';
 import sample15Groups from '../../../data/sample-agenda-15groups.json';
+import ModeratorPlatformNav from '../../../components/ModeratorPlatformNav';
 import '../../../styles/global.css';
 
 export async function getStaticPaths() {
@@ -714,6 +715,8 @@ const sheetCsvUrl = (import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '').trim();
   <div class="privacy-banner">
     모더레이터 운영 페이지 · 외부 공개 금지 · 시뮬레이션 데이터
   </div>
+
+  <ModeratorPlatformNav current="live" />
 
   <!-- Sub-nav: [모더레이터 도구] 라이브 · 보드 · 히트맵 · 클러스터 · 의제연결 -->
   <nav class="subnav" aria-label="모더레이터 도구 네비게이션">
@@ -1456,6 +1459,7 @@ const sheetCsvUrl = (import.meta.env.PUBLIC_LIVE_SHEET_CSV_URL ?? '').trim();
     selChannel.value = state.filterChannel;
     state.playing = false;
     render();
+    document.body.dataset.moderatorLiveReady = 'true';
   </script>
 </body>
 </html>

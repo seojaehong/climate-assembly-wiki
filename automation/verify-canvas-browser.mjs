@@ -6,8 +6,15 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const DEFAULT_PATH = '/ko/moderator/canvas/';
+const DEFAULT_LIVE_PATH = '/ko/moderator/live/';
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const EXPECTED_READ_PATHS = ['/rest/v1/session', '/rest/v1/agenda', '/rest/v1/agenda_link'];
+const EXPECTED_PLATFORM_PATHS = [
+  '/ko/moderator/live/',
+  '/ko/moderator/canvas/',
+  '/workshop-graph/',
+  '/workshop-graph/guide/',
+];
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const VERIFIER_PATH = fileURLToPath(import.meta.url);
 const AUDITED_SOURCE_PATHS = [
@@ -20,10 +27,13 @@ const AUDITED_SOURCE_PATHS = [
   'astro.config.mjs',
   'package.json',
   'package-lock.json',
+  'src/components/ModeratorPlatformNav.tsx',
+  'src/components/ModeratorPlatformNav.test.ts',
   'src/islands/CanvasBoard.tsx',
   'src/islands/canvas',
   'src/lib/supabase.ts',
   'src/pages/[lang]/moderator/canvas.astro',
+  'src/pages/[lang]/moderator/live.astro',
   'src/pages/[lang]/moderator/insights/groups.astro',
   'src/pages/[lang]/moderator/insights/heatmap.astro',
   'src/styles/global.css',
@@ -35,6 +45,29 @@ function requireHttpUrl(value, label) {
     throw new Error(`${label} must use HTTP or HTTPS`);
   }
   return url;
+}
+
+async function platformNavigationEvidence(page, expectedPath, timeoutMs) {
+  const navigation = page.getByRole('navigation', { name: '숙의 모더레이션 플랫폼' });
+  await navigation.waitFor({ timeout: timeoutMs });
+  const paths = await navigation.locator('a').evaluateAll((links) => links.map((link) => {
+    const href = link.getAttribute('href');
+    return href ? new URL(href, window.location.href).pathname : null;
+  }));
+  const connected = EXPECTED_PLATFORM_PATHS.every((path) => paths.includes(path));
+  const currentPath = await navigation.locator('[aria-current="page"]').evaluate((link) => (
+    new URL(link.getAttribute('href') ?? '', window.location.href).pathname
+  ));
+  const nonDecisionCopyVisible = await navigation
+    .getByText('회의의 결정을 대신하지 않습니다.', { exact: true })
+    .isVisible();
+  return {
+    connected,
+    currentPath,
+    expectedPath,
+    linkCount: paths.length,
+    nonDecisionCopyVisible,
+  };
 }
 
 /** Binds CLI evidence to a committed, clean verifier and Canvas source tree. */
@@ -60,6 +93,7 @@ export function readCanvasSourceProvenance() {
 export async function verifyCanvasBrowser({
   baseUrl,
   path = DEFAULT_PATH,
+  livePath = DEFAULT_LIVE_PATH,
   outputJson,
   screenshot,
   timeoutMs = 60_000,
@@ -67,6 +101,7 @@ export async function verifyCanvasBrowser({
 }) {
   const origin = requireHttpUrl(baseUrl, 'baseUrl');
   const pageUrl = new URL(path, origin);
+  const liveUrl = new URL(livePath, origin);
   const viteUrl = new URL('/@vite/client', origin);
   const browser = await chromium.launch();
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
@@ -75,7 +110,7 @@ export async function verifyCanvasBrowser({
   const readResponses = [];
   const browserErrors = [];
 
-  await page.route('**/*', async (route) => {
+  await context.route('**/*', async (route) => {
     const request = route.request();
     if (!WRITE_METHODS.has(request.method())) {
       await route.continue();
@@ -108,6 +143,13 @@ export async function verifyCanvasBrowser({
 
     await page.getByText('실시간 연결됨', { exact: true }).waitFor({ timeout: timeoutMs });
     await page.getByRole('heading', { name: '진행자 로그인' }).waitFor({ timeout: timeoutMs });
+    const canvasNavigation = await platformNavigationEvidence(page, pageUrl.pathname, timeoutMs);
+    const canvasWorkbenchSize = await page.locator('#canvas-workbench').evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      return { width: Math.round(bounds.width), height: Math.round(bounds.height) };
+    });
+    const canvasWorkbenchUsable = canvasWorkbenchSize.width >= 1_000
+      && canvasWorkbenchSize.height >= 600;
     const nodes = page.locator('.react-flow__node-agenda');
     await nodes.first().waitFor({ timeout: timeoutMs });
 
@@ -130,9 +172,48 @@ export async function verifyCanvasBrowser({
 
     if (draggable) throw new Error('Unauthenticated agenda node is draggable');
     if (!moderatorLoginBoundary) throw new Error('Moderator login boundary is not visible');
+    if (!canvasNavigation.connected || canvasNavigation.currentPath !== pageUrl.pathname) {
+      throw new Error('Canvas platform navigation is incomplete or has the wrong current page');
+    }
+    if (!canvasNavigation.nonDecisionCopyVisible) throw new Error('Canvas non-decision explanation is not visible');
+    if (!canvasWorkbenchUsable) throw new Error('Canvas workbench is too small for the operator surface');
     if (writeRequests.length > 0) throw new Error('Canvas verification attempted a blocked write request');
     if (browserErrors.length > 0) throw new Error('Canvas verification observed a browser page error');
     if (missingReads.length > 0) throw new Error('Canvas verification did not complete all expected reads');
+
+    const livePage = await context.newPage();
+    livePage.on('pageerror', (error) => browserErrors.push(error.message));
+    const liveDocumentResponse = await livePage.goto(liveUrl.toString(), {
+      timeout: timeoutMs,
+      waitUntil: 'domcontentloaded',
+    });
+    if (!liveDocumentResponse?.ok()) {
+      throw new Error(`Moderator live document returned HTTP ${liveDocumentResponse?.status() ?? 'unknown'}`);
+    }
+    const liveNavigation = await platformNavigationEvidence(livePage, liveUrl.pathname, timeoutMs);
+    await livePage.locator('body[data-moderator-live-ready="true"]').waitFor({ timeout: timeoutMs });
+    await livePage.waitForTimeout(500);
+    if (!liveNavigation.connected || liveNavigation.currentPath !== liveUrl.pathname) {
+      throw new Error('Moderator live platform navigation is incomplete or has the wrong current page');
+    }
+    if (!liveNavigation.nonDecisionCopyVisible) {
+      throw new Error('Moderator live non-decision explanation is not visible');
+    }
+    if (writeRequests.length > 0) throw new Error('Moderator platform verification attempted a blocked write request');
+    if (browserErrors.length > 0) throw new Error('Moderator platform verification observed a browser page error');
+    await livePage.close();
+
+    const linkedSurfaceStatuses = [];
+    for (const linkedPath of ['/workshop-graph/', '/workshop-graph/guide/']) {
+      const assetPath = `${linkedPath}index.html`;
+      const linkedUrl = new URL(assetPath, origin);
+      const linkedResponse = await context.request.get(linkedUrl.toString(), { timeout: timeoutMs });
+      const finalPath = new URL(linkedResponse.url()).pathname;
+      if (!linkedResponse.ok() || finalPath !== assetPath) {
+        throw new Error(`Moderator platform linked surface is unavailable: ${linkedPath}`);
+      }
+      linkedSurfaceStatuses.push({ path: linkedPath, assetPath, status: linkedResponse.status() });
+    }
 
     const report = {
       schemaVersion: 1,
@@ -151,6 +232,14 @@ export async function verifyCanvasBrowser({
         realtimeReady: readPathStatuses.has('/rest/v1/agenda'),
         moderatorLoginBoundary,
         canvasHydrated: nodeCount > 0,
+        canvasWorkbenchUsable,
+        canvasWorkbenchSize,
+        platformNavigationConnected: canvasNavigation.connected,
+        platformNavigationLinkCount: canvasNavigation.linkCount,
+        nonDecisionCopyVisible: canvasNavigation.nonDecisionCopyVisible,
+        liveDocumentStatus: liveDocumentResponse.status(),
+        livePlatformNavigationConnected: liveNavigation.connected,
+        linkedSurfaceStatuses,
         agendaNodeCount: nodeCount,
         unauthenticatedNodeDraggable: draggable,
         blockedWriteRequestCount: writeRequests.length,

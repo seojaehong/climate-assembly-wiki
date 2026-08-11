@@ -1,6 +1,6 @@
 # 플랫폼 트랙 — 상태·병합 전 게이트
 
-- 갱신: 2026-08-11
+- 갱신: 2026-08-12
 - 브랜치: `main`
 - **백엔드 스키마와 프론트엔드는 2026-08-10 사용자 승인으로 프로덕션에 배포됨.** 기존 `/mod`·`/b`·`/hq`·`/v` 경로는 유지한다.
 
@@ -39,6 +39,8 @@
 **M1 추가 검증(2026-08-12):** Canvas DB contract preflight 집중 Vitest 8건과 automation 전체 Vitest 17개 파일·199건이 통과했고 Astro check 오류는 0건(기존 hint 49건)이다. synthetic 구조 fixture로 column/type/FK/constraint·operation/role RLS·GRANT·realtime/replica identity·RPC 보안 패턴을 검증하지만, 정적 분석은 SQL 의미를 승인하지 않으며 항상 `not_ready`와 `verification.semantic_review_required`를 남긴다. 현재 저장소에서도 DB/API를 호출하지 않고 종료 코드 1을 반환한다. `evaluation/canvas-db-contract.json`은 source commit·대상 트리 SHA-256·20개 migration·blocker 54건을 보존한다. 이 working-tree 증거는 `sourceTreeClean:false`이며 migration 적용, live DB 상태 또는 M1 승인 완료 증거가 아니다.
 
 **M3 추가 검증(2026-08-12):** Canvas bridge·검수 큐 seed 집중 Vitest 15건, automation 전체 18개 파일·205건, 전체 src·scripts Vitest 57개 파일·868건이 통과했다. Astro check는 오류 0건·기존 hint 49건이다. 첫 병렬 전체 실행에서 기존 Canvas browser 정상 케이스가 5초 제한을 넘겼지만 단독 재실행 3건과 automation 단독 전체 205건은 모두 통과했다. 검증은 local dry-run·plan/seed checksum fail-closed·source plan 재생성 대조·public 출력 거부·검수 선확정 차단·다회차 provenance를 포함하며 DB/API/migration 적용은 포함하지 않는다.
+
+**M0 운영 표면 연결 검증(2026-08-12):** 진행자 라이브와 캔버스 상단에 공용 플랫폼 내비게이션을 연결해 라이브 입력·캔버스 작업대·온톨로지 그래프·그래프 사용설명서 4개 표면을 한 경로로 묶고 현재 위치를 `aria-current`로 표시한다. 안내 문구는 시민 발언과 논증 관계를 보존해 숙의·모더레이션을 지원하지만 회의의 결정을 대신하지 않는다는 경계를 명시한다. 실제 Chromium 읽기 전용 검증에서 캔버스 4개 노드 hydration, 작업대 1440×934, 라이브 초기화 완료와 안정화 이후의 오류·쓰기 차단, 라이브·캔버스 내비게이션 연결, 그래프·가이드 backing asset 2건, Supabase 예상 GET 3건을 확인했고 쓰기 요청·브라우저 오류는 0건이었다. 전체 src·scripts Vitest 58개 파일·870건, automation Vitest 18개 파일·205건과 Astro check 오류 0건(기존 hint 49건)이 통과했다. 이 결과는 로컬 working tree의 동작 증거이며 사용자 도메인 배포 확인은 push 뒤 별도 수행한다. `noindex`와 운영 메뉴는 접근통제가 아니므로 Auth 적용 전 live 입력은 계속 비식별 simulation·승인된 공개 가능 source에만 한정해야 한다. DB/API 데이터와 migration은 변경하지 않았다.
 
 ### Phase A 점진 구현 (2026-08-11)
 

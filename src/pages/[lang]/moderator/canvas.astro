@@ -1,6 +1,7 @@
 ---
 import '../../../styles/global.css';
 import CanvasBoard from '../../../islands/CanvasBoard';
+import ModeratorPlatformNav from '../../../components/ModeratorPlatformNav';
 export async function getStaticPaths() { return [{ params: { lang: 'ko' } }]; }
 const sessionSlug = Astro.url.searchParams.get('s') ?? '7.4';
 ---
@@ -8,6 +9,14 @@ const sessionSlug = Astro.url.searchParams.get('s') ?? '7.4';
 <html lang="ko"><head>
   <meta charset="UTF-8" /><meta name="robots" content="noindex,nofollow" />
   <title>기후시민회의 모더레이션 캔버스 [캔버스]</title>
+  <style is:inline>
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body { display: flex; flex-direction: column; }
+    .canvas-workbench { flex: 1; min-height: 0; overflow: hidden; }
+  </style>
 </head><body>
-  <CanvasBoard client:only="react" sessionSlug={sessionSlug} />
+  <ModeratorPlatformNav current="canvas" />
+  <main id="canvas-workbench" class="canvas-workbench">
+    <CanvasBoard client:only="react" sessionSlug={sessionSlug} />
+  </main>
 </body></html>

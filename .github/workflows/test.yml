@@ -8,10 +8,13 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'astro.config.mjs'
+      - 'src/components/ModeratorPlatformNav.tsx'
+      - 'src/components/ModeratorPlatformNav.test.ts'
       - 'src/islands/CanvasBoard.tsx'
       - 'src/islands/canvas/**'
       - 'src/lib/supabase.ts'
       - 'src/pages/**/moderator/canvas.astro'
+      - 'src/pages/**/moderator/live.astro'
       - 'src/pages/**/moderator/insights/groups.astro'
       - 'src/pages/**/moderator/insights/heatmap.astro'
       - 'src/styles/**'
@@ -23,10 +26,13 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'astro.config.mjs'
+      - 'src/components/ModeratorPlatformNav.tsx'
+      - 'src/components/ModeratorPlatformNav.test.ts'
       - 'src/islands/CanvasBoard.tsx'
       - 'src/islands/canvas/**'
       - 'src/lib/supabase.ts'
       - 'src/pages/**/moderator/canvas.astro'
+      - 'src/pages/**/moderator/live.astro'
       - 'src/pages/**/moderator/insights/groups.astro'
       - 'src/pages/**/moderator/insights/heatmap.astro'
       - 'src/styles/**'
@@ -46,6 +52,9 @@ jobs:
             automation/package-lock.json
       - name: Install root runtime
         run: npm ci
+        working-directory: .
+      - name: Run root Canvas navigation tests
+        run: npm exec vitest -- run src/components/ModeratorPlatformNav.test.ts src/islands/CanvasBoard.test.ts
         working-directory: .
       - run: npm ci
       - name: Cache Playwright browsers
