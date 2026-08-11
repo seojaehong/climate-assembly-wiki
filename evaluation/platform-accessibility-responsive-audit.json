@@ -1,6 +1,13 @@
 {
-  "schemaVersion": 2,
-  "generatedAt": "2026-08-10T23:28:44.213Z",
+  "schemaVersion": 3,
+  "generatedAt": "2026-08-11T08:43:42.583Z",
+  "sourceCommit": "801a454183e650829b5d8462caadc621e732cc98",
+  "sourceTreeClean": true,
+  "targetRevision": {
+    "status": "not_verified",
+    "sourceCommit": null,
+    "reason": "The audited origin does not expose a machine-verifiable deployment revision."
+  },
   "baseUrl": "http://127.0.0.1:4321",
   "standard": "WCAG 2.2 AA automated subset + skip-link focus + responsive overflow",
   "engine": {

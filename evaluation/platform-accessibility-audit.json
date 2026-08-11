@@ -1,8 +1,15 @@
 {
-  "schemaVersion": 1,
-  "generatedAt": "2026-08-10T20:08:18.602Z",
+  "schemaVersion": 3,
+  "generatedAt": "2026-08-11T08:44:10.591Z",
+  "sourceCommit": "801a454183e650829b5d8462caadc621e732cc98",
+  "sourceTreeClean": true,
+  "targetRevision": {
+    "status": "not_verified",
+    "sourceCommit": null,
+    "reason": "The audited origin does not expose a machine-verifiable deployment revision."
+  },
   "baseUrl": "https://climate-assembly.org",
-  "standard": "WCAG 2.2 AA automated subset + skip-link focus",
+  "standard": "WCAG 2.2 AA automated subset + skip-link focus + responsive overflow",
   "engine": {
     "name": "axe-core",
     "version": "4.12.1",
@@ -17,18 +24,43 @@
   "status": "needs_review",
   "summary": {
     "routeCount": 5,
+    "profileCount": 2,
+    "auditCaseCount": 10,
     "passedRoutes": 5,
+    "passedCases": 10,
     "violationCount": 0,
     "incompleteCount": 0,
     "excludedSurfaceCount": 1
   },
   "coverage": {
+    "profiles": [
+      {
+        "id": "desktop",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        }
+      },
+      {
+        "id": "mobile",
+        "viewport": {
+          "width": 360,
+          "height": 800
+        },
+        "minimumContentWidth": 280
+      }
+    ],
     "audited": [
-      "platform-login",
-      "authenticated-platform",
-      "accessibility-statement",
-      "public-result-unpublished",
-      "published-result"
+      "platform-login:desktop",
+      "platform-login:mobile",
+      "authenticated-platform:desktop",
+      "authenticated-platform:mobile",
+      "accessibility-statement:desktop",
+      "accessibility-statement:mobile",
+      "public-result-unpublished:desktop",
+      "public-result-unpublished:mobile",
+      "published-result:desktop",
+      "published-result:mobile"
     ],
     "excluded": [
       {
@@ -39,7 +71,13 @@
   },
   "routes": [
     {
-      "id": "platform-login",
+      "id": "platform-login:desktop",
+      "routeId": "platform-login",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
       "path": "/platform/",
       "url": "https://climate-assembly.org/platform/",
       "fixture": null,
@@ -51,12 +89,63 @@
         "target": "platform-scope-content",
         "focusMoved": true
       },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 420,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
       "violations": [],
       "incomplete": [],
       "error": null
     },
     {
-      "id": "authenticated-platform",
+      "id": "platform-login:mobile",
+      "routeId": "platform-login",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/platform/",
+      "url": "https://climate-assembly.org/platform/",
+      "fixture": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "platform-scope-content",
+        "focusMoved": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 312,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "authenticated-platform:desktop",
+      "routeId": "authenticated-platform",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
       "path": "/platform/",
       "url": "https://climate-assembly.org/platform/",
       "fixture": "ci-staff-read-fixture-v1",
@@ -71,12 +160,66 @@
         "target": "platform-scope-content",
         "focusMoved": true
       },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1152,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
       "violations": [],
       "incomplete": [],
       "error": null
     },
     {
-      "id": "accessibility-statement",
+      "id": "authenticated-platform:mobile",
+      "routeId": "authenticated-platform",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/platform/",
+      "url": "https://climate-assembly.org/platform/",
+      "fixture": "ci-staff-read-fixture-v1",
+      "readiness": {
+        "selector": "aside button[aria-current=\"location\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "platform-scope-content",
+        "focusMoved": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "accessibility-statement:desktop",
+      "routeId": "accessibility-statement",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
       "path": "/platform/accessibility/",
       "url": "https://climate-assembly.org/platform/accessibility/",
       "fixture": null,
@@ -88,12 +231,63 @@
         "target": "main-content",
         "focusMoved": true
       },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 880,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
       "violations": [],
       "incomplete": [],
       "error": null
     },
     {
-      "id": "public-result-unpublished",
+      "id": "accessibility-statement:mobile",
+      "routeId": "accessibility-statement",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/platform/accessibility/",
+      "url": "https://climate-assembly.org/platform/accessibility/",
+      "fixture": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 328,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-result-unpublished:desktop",
+      "routeId": "public-result-unpublished",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
       "path": "/r/_/",
       "url": "https://climate-assembly.org/r/_/",
       "fixture": null,
@@ -105,12 +299,63 @@
         "target": "main-content",
         "focusMoved": true
       },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
       "violations": [],
       "incomplete": [],
       "error": null
     },
     {
-      "id": "published-result",
+      "id": "public-result-unpublished:mobile",
+      "routeId": "public-result-unpublished",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/r/_/",
+      "url": "https://climate-assembly.org/r/_/",
+      "fixture": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "published-result:desktop",
+      "routeId": "published-result",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
       "path": "/r/_/",
       "url": "https://climate-assembly.org/r/_/",
       "fixture": "ci-published-result-read-fixture-v1",
@@ -124,6 +369,73 @@
         "found": true,
         "target": "main-content",
         "focusMoved": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "published-result:mobile",
+      "routeId": "published-result",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/r/_/",
+      "url": "https://climate-assembly.org/r/_/",
+      "fixture": "ci-published-result-read-fixture-v1",
+      "readiness": {
+        "selector": "main#main-content header h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "requiredScrollRegions": [
+        {
+          "label": "조별 쟁점 커버리지 표",
+          "found": true,
+          "clientWidth": 284,
+          "scrollWidth": 357,
+          "scrollable": true,
+          "focused": true,
+          "keyboardScrolled": true
+        },
+        {
+          "label": "쟁점 분석 데이터 표",
+          "found": true,
+          "clientWidth": 284,
+          "scrollWidth": 720,
+          "scrollable": true,
+          "focused": true,
+          "keyboardScrolled": true
+        }
+      ],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
       },
       "violations": [],
       "incomplete": [],
