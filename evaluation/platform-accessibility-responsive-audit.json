@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
-  "generatedAt": "2026-08-11T08:43:42.583Z",
-  "sourceCommit": "801a454183e650829b5d8462caadc621e732cc98",
+  "generatedAt": "2026-08-11T19:08:44.755Z",
+  "sourceCommit": "bdb66322d48082c6f6c2c849345721268e9ae26a",
   "sourceTreeClean": true,
   "targetRevision": {
     "status": "not_verified",
@@ -23,11 +23,11 @@
   },
   "status": "needs_review",
   "summary": {
-    "routeCount": 5,
+    "routeCount": 6,
     "profileCount": 2,
-    "auditCaseCount": 10,
-    "passedRoutes": 5,
-    "passedCases": 10,
+    "auditCaseCount": 12,
+    "passedRoutes": 6,
+    "passedCases": 12,
     "violationCount": 0,
     "incompleteCount": 0,
     "excludedSurfaceCount": 1
@@ -60,7 +60,9 @@
       "public-result-unpublished:desktop",
       "public-result-unpublished:mobile",
       "published-result:desktop",
-      "published-result:mobile"
+      "published-result:mobile",
+      "ontology-review:desktop",
+      "ontology-review:mobile"
     ],
     "excluded": [
       {
@@ -427,6 +429,80 @@
           "keyboardScrolled": true
         }
       ],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "ontology-review:desktop",
+      "routeId": "ontology-review",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/ko/moderator/ontology-review/",
+      "url": "http://127.0.0.1:4321/ko/moderator/ontology-review/",
+      "fixture": null,
+      "readiness": {
+        "selector": "main[data-ontology-review-ready=\"true\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "ontology-review-content",
+        "focusMoved": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "ontology-review:mobile",
+      "routeId": "ontology-review",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/ko/moderator/ontology-review/",
+      "url": "http://127.0.0.1:4321/ko/moderator/ontology-review/",
+      "fixture": null,
+      "readiness": {
+        "selector": "main[data-ontology-review-ready=\"true\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "ontology-review-content",
+        "focusMoved": true
+      },
+      "requiredScrollRegions": [],
       "layout": {
         "viewportWidth": 360,
         "documentWidth": 360,
