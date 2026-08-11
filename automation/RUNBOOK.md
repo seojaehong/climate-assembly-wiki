@@ -479,6 +479,24 @@ npm.cmd run audit:platform-accessibility-manual -- --verify ../evaluation/platfo
 대상 소스가 바뀌지 않았을 때만 유효하다. 승인된 사용자 도메인과 다르거나 대상 소스가 바뀌면
 CI가 stale 증거를 거부하므로 해당 커밋을 기준으로 수동평가를 다시 수행한다.
 
+## R0 전사 fixture → 내부 온톨로지 graph
+
+실제 음성·원문 전사·개인정보·DB를 사용하기 전에, 비식별 synthetic fixture로 시간 구간과 사람이 검수한 온톨로지 후보의 연결을 확인한다.
+
+```powershell
+cd automation
+npm.cmd run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology-reviewed.example.json --output-graph ../evaluation/transcript-ontology-r0-graph.json
+npm.cmd run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology-reviewed.example.json --verify-graph ../evaluation/transcript-ontology-r0-graph.json
+```
+
+- chunk에는 stable opaque UID, millisecond time range, `speaker-a` 같은 짧은 synthetic 화자 표기와 text가 필요하다. 실제 이름·전화번호·계정은 허용하지 않는다.
+- node/relation 후보는 허용된 온톨로지 vocabulary와 존재하는 chunk UID를 인용해야 한다. 관계 endpoint도 같은 fixture의 node 후보여야 한다.
+- 출력 ID는 후보 UID에서 결정적으로 생성되며 현재 workshop graph의 `elements.nodes`/`elements.edges` 형식과 `cited`/`cited_uids` 역추적 계약을 따른다.
+- `reviewedBy`는 개인 이름이 아닌 `moderator-fixture`, `reviewer-test` 같은 R0 synthetic 역할 alias만 허용한다.
+- graph source에는 전체 fixture canonical SHA-256을 넣고 verifier는 fixture에서 graph 전체를 다시 만들어 비교한다. 출력은 source 변경 검출을 위한 self-contained 재현성 점검이며 외부 서명·작성자 진위 증거가 아니다.
+- CLI는 기존 파일을 덮어쓰지 않고 저장소 `public` 아래 출력을 거부한다. 생성물은 `is_public:false`이고 별도 공개 검토가 필요하다.
+- 실제 마이크/STT, 원문 보관, 브라우저 공개, API/DB 쓰기, retention 정책과 사람 reviewer 인증은 R0 범위 밖이며 별도 승인 뒤 진행한다.
+
 ## 알림 레벨 정책
 
 | 레벨 | 상황 | 대응 |

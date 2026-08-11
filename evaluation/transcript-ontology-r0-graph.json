@@ -1,0 +1,109 @@
+{
+  "elements": {
+    "nodes": [
+      {
+        "data": {
+          "id": "transcript-node:candidate-issue",
+          "node_id": "transcript-node:candidate-issue",
+          "label": "재생에너지 전환 속도",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "재생에너지 전환 속도와 지역별 전력망 여건을 함께 논의한다.",
+          "cited": [
+            "chunk-001",
+            "chunk-002"
+          ],
+          "cited_uids": [
+            "chunk-001",
+            "chunk-002"
+          ],
+          "session": "session-1",
+          "review_state": "reviewed",
+          "is_public": false,
+          "synthesized": false,
+          "meta": {
+            "source_uid": "candidate-issue",
+            "source_chunk_uids": [
+              "chunk-001",
+              "chunk-002"
+            ],
+            "reviewer": "moderator-fixture",
+            "reviewed_at": "2026-08-29T01:00:00.000Z"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "transcript-node:candidate-claim",
+          "node_id": "transcript-node:candidate-claim",
+          "label": "전환 속도를 높여야 한다",
+          "kind": "Claim",
+          "kindKo": "주장",
+          "text": "재생에너지 전환 속도를 높여야 한다.",
+          "cited": [
+            "chunk-001"
+          ],
+          "cited_uids": [
+            "chunk-001"
+          ],
+          "session": "session-1",
+          "review_state": "reviewed",
+          "is_public": false,
+          "synthesized": false,
+          "meta": {
+            "source_uid": "candidate-claim",
+            "source_chunk_uids": [
+              "chunk-001"
+            ],
+            "reviewer": "moderator-fixture",
+            "reviewed_at": "2026-08-29T01:00:00.000Z"
+          }
+        }
+      }
+    ],
+    "edges": [
+      {
+        "data": {
+          "id": "transcript-edge:candidate-relation-1",
+          "source": "transcript-node:candidate-claim",
+          "target": "transcript-node:candidate-issue",
+          "rel": "isAbout",
+          "relKo": "관련",
+          "cited": [
+            "chunk-001"
+          ],
+          "cited_uids": [
+            "chunk-001"
+          ],
+          "meta": {
+            "source_uid": "candidate-relation-1",
+            "source_chunk_uids": [
+              "chunk-001"
+            ],
+            "reviewer": "moderator-fixture",
+            "reviewed_at": "2026-08-29T01:00:00.000Z"
+          }
+        }
+      }
+    ]
+  },
+  "meta": {
+    "variant": "transcript-reviewed-fixture",
+    "fixture_reviewed_at": "2026-08-29T01:00:00.000Z",
+    "counts": {
+      "nodes": 2,
+      "edges": 1
+    },
+    "advisory_notice": "사람이 검수한 비식별 fixture이며 공개 승인을 뜻하지 않습니다.",
+    "live": false,
+    "publication_status": "internal_reviewed_fixture",
+    "requires_publication_review": true,
+    "source": {
+      "fixture_id": "session-1-run-1",
+      "session_id": "session-1",
+      "language": "ko",
+      "chunk_count": 2,
+      "fixture_checksum_sha256": "5fe62abb7f6edd7835a7533cc4bdabc3c234b5c48b1dbf3249d2122e5a289275"
+    }
+  }
+}

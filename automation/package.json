@@ -19,7 +19,8 @@
     "preflight:platform-activation": "node platform-activation-preflight.mjs",
     "verify:platform-activation": "node platform-activation-preflight.mjs --verify-evidence",
     "verify:canvas-browser": "node verify-canvas-browser.mjs",
-    "verify:platform-design-blueprint": "node verify-platform-design-blueprint.mjs"
+    "verify:platform-design-blueprint": "node verify-platform-design-blueprint.mjs",
+    "bridge:transcript-ontology": "node transcript-ontology-fixture.mjs"
   },
   "dependencies": {
     "playwright": "^1.49.0",
