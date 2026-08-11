@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import {
   canvasFacilitationPrompts,
   createCanvasOntologyReviewWorkspace,
@@ -220,6 +220,7 @@ function ClusterReviewCard({ cluster, nodes, reviewer, onDecision }: {
 }
 
 export default function OntologyReviewConsole() {
+  const [hydrated, setHydrated] = useState(false);
   const [planFile, setPlanFile] = useState<File | null>(null);
   const [snapshotFile, setSnapshotFile] = useState<File | null>(null);
   const [reviewer, setReviewer] = useState('');
@@ -228,6 +229,8 @@ export default function OntologyReviewConsole() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const requestGeneration = useRef(0);
+
+  useEffect(() => setHydrated(true), []);
 
   const loadWorkspace = async () => {
     const generation = requestGeneration.current + 1;
@@ -290,7 +293,12 @@ export default function OntologyReviewConsole() {
   };
 
   return (
-    <main id="ontology-review-content" tabIndex={-1} style={{ background: '#E9F1F5', color: INK, minHeight: '100%', padding: 24 }}>
+    <main
+      id="ontology-review-content"
+      data-ontology-review-ready={hydrated ? 'true' : undefined}
+      tabIndex={-1}
+      style={{ background: '#E9F1F5', color: INK, minHeight: '100%', padding: 24 }}
+    >
       <div style={{ margin: '0 auto', maxWidth: 1180 }}>
         <header style={{ marginBottom: 20 }}>
           <h1 style={{ marginBottom: 8 }}>Canvas 온톨로지 검수 큐</h1>

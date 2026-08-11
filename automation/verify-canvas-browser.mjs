@@ -286,6 +286,7 @@ export async function verifyCanvasBrowser({
     }
     const reviewNavigation = await platformNavigationEvidence(reviewPage, reviewUrl.pathname, timeoutMs);
     await reviewPage.getByRole('heading', { name: 'Canvas 온톨로지 검수 큐' }).waitFor({ timeout: timeoutMs });
+    await reviewPage.locator('main[data-ontology-review-ready="true"]').waitFor({ timeout: timeoutMs });
     await reviewPage.getByLabel('검수 계획 JSON').waitFor({ timeout: timeoutMs });
     await reviewPage.getByLabel('Canvas snapshot JSON').waitFor({ timeout: timeoutMs });
     const reviewLocalOnlyBoundaryVisible = await reviewPage
@@ -295,7 +296,14 @@ export async function verifyCanvasBrowser({
     await reviewPage.getByLabel('검수 계획 JSON').setInputFiles(reviewFiles.plan);
     await reviewPage.getByLabel('Canvas snapshot JSON').setInputFiles(reviewFiles.snapshot);
     await reviewPage.getByLabel('검수자 역할 ID').fill('browser-verifier-role');
-    await reviewPage.getByRole('button', { name: '로컬 검수 시작' }).click();
+    const startReviewButton = reviewPage.getByRole('button', { name: '로컬 검수 시작' });
+    await startReviewButton.waitFor({ state: 'visible', timeout: timeoutMs });
+    await reviewPage.waitForFunction(() => {
+      const button = [...document.querySelectorAll('button')]
+        .find((candidate) => candidate.textContent?.trim() === '로컬 검수 시작');
+      return button instanceof HTMLButtonElement && !button.disabled;
+    }, undefined, { timeout: timeoutMs });
+    await startReviewButton.click();
     await waitForReviewProgress(reviewPage, '진행 0/5', timeoutMs);
 
     let nodeCards = reviewPage.locator('article[aria-label^="노드 검수"]');

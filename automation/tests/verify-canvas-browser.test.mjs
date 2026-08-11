@@ -15,6 +15,7 @@ async function fixtureServer({
   write = false,
   liveDelayedWrite = false,
   liveDelayedError = false,
+  reviewReady = true,
 } = {}) {
   let receivedWriteCount = 0;
   const server = createServer((request, response) => {
@@ -78,6 +79,9 @@ async function fixtureServer({
           <button type="button" id="download-plan" disabled>검수 완료 plan 다운로드</button>
         </section>
         <script>
+          ${reviewReady ? `setTimeout(() => {
+            document.querySelector('#canvas-workbench')?.setAttribute('data-ontology-review-ready', 'true');
+          }, 100);` : ''}
           const progress = document.querySelector('#review-progress');
           const reviewItems = document.querySelector('#review-items');
           const downloadButton = document.querySelector('#download-plan');
@@ -246,6 +250,13 @@ describe('verifyCanvasBrowser', () => {
     await expect(verifyCanvasBrowser({ baseUrl: delayedLiveErrorFixture.baseUrl }))
       .rejects.toThrow('Moderator platform verification observed a browser page error');
   }, 15_000);
+
+  it('fails when review hydration readiness never arrives', async () => {
+    const fixture = await fixtureServer({ reviewReady: false });
+
+    await expect(verifyCanvasBrowser({ baseUrl: fixture.baseUrl, timeoutMs: 2_000 }))
+      .rejects.toThrow(/Timeout/i);
+  }, 10_000);
 });
 
 describe('Canvas browser CI contract', () => {
