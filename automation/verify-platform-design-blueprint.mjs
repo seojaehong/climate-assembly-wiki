@@ -192,16 +192,91 @@ export async function verifyPlatformDesignBlueprint({
     const exportedStats = validateDownloadedBlueprint(downloadJson);
     const filename = download.suggestedFilename();
 
+    await page.getByLabel('공론화 이름').fill('임시 변경');
+    await topics.nth(1).fill('임시 주제');
+    const importInput = page.getByLabel('청사진 JSON 불러오기');
+    await importInput.setInputFiles({
+      name: 'malformed-blueprint.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from('{"secret":"unfinished"', 'utf8'),
+    });
+    const importError = page.getByRole('alert').filter({ hasText: '청사진 JSON 형식 또는 내용이 올바르지 않습니다.' });
+    await importError.waitFor({ timeout: timeoutMs });
+    const malformedImportRejected = await importError.isVisible();
+    const malformedImportPreservedDraft = await page.getByLabel('공론화 이름').inputValue() === '임시 변경'
+      && await topics.nth(1).inputValue() === '임시 주제';
+
+    await importInput.setInputFiles({
+      name: 'climate-2026_design_blueprint.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(downloadJson), 'utf8'),
+    });
+    const importStatus = page.getByRole('status').filter({ hasText: '청사진 JSON을 불러왔습니다. 내용을 확인하고 편집을 이어가세요.' });
+    await importStatus.waitFor({ timeout: timeoutMs });
+    const validImportRestoredHierarchy = await page.getByLabel('공론화 이름').inputValue() === '기후 공론화 2026'
+      && await page.getByLabel('공론화 slug').inputValue() === 'climate-2026'
+      && await dates.count() === 2
+      && await topics.count() === 2
+      && await teams.count() === 2
+      && await participants.count() === 2
+      && await dates.nth(0).inputValue() === '2026-09-12'
+      && await dates.nth(1).inputValue() === '2026-09-13'
+      && await topics.nth(0).inputValue() === '감축 경로'
+      && await topics.nth(1).inputValue() === '적응 정책'
+      && await teams.nth(0).inputValue() === '1'
+      && await teams.nth(1).inputValue() === '1'
+      && await participants.nth(0).inputValue() === '12'
+      && await participants.nth(1).inputValue() === '10';
+    const importedPreviewReady = await page.getByRole('heading', { name: '승인 검토용 미리보기' }).isVisible()
+      && await page.getByRole('button', { name: 'JSON 내려받기' }).isVisible();
+    await topics.nth(1).fill('복원 후 편집');
+    const importEditInvalidated = await page.getByRole('heading', { name: '승인 검토용 미리보기' }).count() === 0
+      && await page.getByRole('button', { name: 'JSON 내려받기' }).count() === 0;
+    await page.getByLabel('공론화 이름').fill('큰 파일 전 편집');
+    await importInput.setInputFiles({
+      name: 'oversized-blueprint.json',
+      mimeType: 'application/json',
+      buffer: Buffer.alloc(1_000_001, 0x78),
+    });
+    await importError.waitFor({ timeout: timeoutMs });
+    const oversizedImportRejected = await importError.isVisible()
+      && await page.getByLabel('공론화 이름').inputValue() === '큰 파일 전 편집';
+    await page.evaluate(() => {
+      const originalText = File.prototype.text;
+      File.prototype.text = async function delayedBlueprintText() {
+        if (this.name === 'slow-blueprint.json') {
+          await new Promise((resolveDelay) => window.setTimeout(resolveDelay, 150));
+        }
+        return originalText.call(this);
+      };
+    });
+    await importInput.setInputFiles({
+      name: 'slow-blueprint.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(downloadJson), 'utf8'),
+    });
+    await page.getByLabel('공론화 이름').fill('최신 편집 유지');
+    await page.waitForTimeout(250);
+    const staleImportIgnored = await page.getByLabel('공론화 이름').inputValue() === '최신 편집 유지'
+      && await page.getByRole('heading', { name: '승인 검토용 미리보기' }).count() === 0;
+
     if (!invalidDateRejected) throw new Error('Design blueprint did not reject reversed session dates');
     if (!previewSummary) throw new Error('Design blueprint preview summary is missing');
     if (!previewInvalidated) throw new Error('Editing did not invalidate the blueprint preview');
     if (filename !== 'climate-2026_design_blueprint.json') throw new Error('Design blueprint filename is invalid');
+    if (!malformedImportRejected) throw new Error('Design blueprint did not reject malformed import content');
+    if (!malformedImportPreservedDraft) throw new Error('Malformed import replaced the current draft');
+    if (!validImportRestoredHierarchy) throw new Error('Valid import did not restore the blueprint hierarchy');
+    if (!importedPreviewReady) throw new Error('Valid import did not restore the verified preview');
+    if (!importEditInvalidated) throw new Error('Editing the imported blueprint did not invalidate the preview');
+    if (!oversizedImportRejected) throw new Error('Oversized import was not rejected without replacing the current draft');
+    if (!staleImportIgnored) throw new Error('A stale import replaced newer blueprint edits');
     if (browserErrors.length > 0) throw new Error('Design blueprint verification observed a browser error');
     if (fixtureFailures.length > 0) throw new Error('Design blueprint verification observed an unexpected fixture request');
     if (mutationAttempts.length > 0) throw new Error('Design blueprint verification observed a database mutation attempt');
 
     const report = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       generatedAt: new Date().toISOString(),
       baseUrl: origin.origin,
       path: DESIGN_BLUEPRINT_ROUTE,
@@ -220,6 +295,13 @@ export async function verifyPlatformDesignBlueprint({
         previewInvalidated,
         downloadedFilename: filename,
         exportedStats,
+        malformedImportRejected,
+        malformedImportPreservedDraft,
+        validImportRestoredHierarchy,
+        importedPreviewReady,
+        importEditInvalidated,
+        oversizedImportRejected,
+        staleImportIgnored,
         approvalBoundary: {
           dryRun: downloadJson.dryRun,
           databaseMutationExecuted: downloadJson.databaseMutationExecuted,

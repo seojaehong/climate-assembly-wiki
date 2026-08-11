@@ -79,6 +79,8 @@ describe('DesignConsole', () => {
     expect(html).toContain('조 수');
     expect(html).toContain('예상 참여자 수');
     expect(html).toContain('회차 추가');
+    expect(html).toContain('청사진 JSON 불러오기');
+    expect(html).toContain('accept="application/json,.json"');
     expect(html).toContain('청사진 검증');
     expect(html).toContain('DB를 변경하지 않으며 실제 생성에는 별도 승인이 필요합니다.');
     expect(html).toContain('max="500"');

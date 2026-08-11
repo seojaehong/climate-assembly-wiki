@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildDesignBlueprint, buildDesignView, serializeDesignBlueprint } from './design-console-logic';
+import {
+  buildDesignBlueprint,
+  buildDesignView,
+  parseDesignBlueprintImport,
+  serializeDesignBlueprint,
+} from './design-console-logic';
 
 describe('buildDesignBlueprint', () => {
   it('공론화·회차·주제·조 정원을 순서가 고정된 비저장 청사진으로 만든다', () => {
@@ -164,6 +169,79 @@ describe('buildDesignBlueprint', () => {
     expect(download.content.endsWith('\n')).toBe(true);
     expect(JSON.parse(download.content)).toEqual(result.blueprint);
     expect(download.content).toContain('"databaseMutationExecuted": false');
+  });
+
+  it('내려받은 청사진 JSON을 같은 편집 입력과 미리보기로 복원한다', () => {
+    const built = buildDesignBlueprint({
+      assemblyTitle: '기후시민회의',
+      assemblySlug: 'climate-2026',
+      sessions: [
+        { heldOn: '2026-08-29', topics: ['비용 우려', '수송 전환'], teamCount: 2, participantCount: 9 },
+        { heldOn: '2026-08-30', topics: ['지역 적응'], teamCount: 3, participantCount: 10 },
+      ],
+    });
+    if (!built.ok) throw new Error('Expected a valid blueprint');
+
+    expect(parseDesignBlueprintImport(serializeDesignBlueprint(built.blueprint).content)).toEqual({
+      ok: true,
+      input: {
+        assemblyTitle: '기후시민회의',
+        assemblySlug: 'climate-2026',
+        sessions: [
+          { heldOn: '2026-08-29', topics: ['비용 우려', '수송 전환'], teamCount: 2, participantCount: 9 },
+          { heldOn: '2026-08-30', topics: ['지역 적응'], teamCount: 3, participantCount: 10 },
+        ],
+      },
+      blueprint: built.blueprint,
+    });
+  });
+
+  it('변조되거나 과도한 청사진 파일을 원문 비노출 오류로 거부한다', () => {
+    const built = buildDesignBlueprint({
+      assemblyTitle: '기후시민회의',
+      assemblySlug: 'climate-2026',
+      sessions: [{ heldOn: '2026-08-29', topics: ['수송 전환'], teamCount: 2, participantCount: 9 }],
+    });
+    if (!built.ok) throw new Error('Expected a valid blueprint');
+    const tampered = structuredClone(built.blueprint);
+    tampered.sessions[0].teams[0].plannedCapacity = 99;
+
+    const invalidBlueprints: unknown[] = [
+      tampered,
+      { ...built.blueprint, unexpected: true },
+      { ...built.blueprint, requiresApproval: false },
+      (() => {
+        const value = structuredClone(built.blueprint);
+        value.sessions[0].ordinal = 2;
+        return value;
+      })(),
+      (() => {
+        const value = structuredClone(built.blueprint);
+        value.sessions[0].topics[0].ordinal = 2;
+        return value;
+      })(),
+      (() => {
+        const value = structuredClone(built.blueprint);
+        value.sessions[0].teams[0].ordinal = 2;
+        return value;
+      })(),
+      { ...built.blueprint, stats: { ...built.blueprint.stats, topicCount: 2 } },
+    ];
+
+    for (const invalid of invalidBlueprints) {
+      expect(parseDesignBlueprintImport(JSON.stringify(invalid))).toEqual({
+        ok: false,
+        error: '청사진 JSON 형식 또는 내용이 올바르지 않습니다.',
+      });
+    }
+    expect(parseDesignBlueprintImport('{"secret":"unfinished"')).toEqual({
+      ok: false,
+      error: '청사진 JSON 형식 또는 내용이 올바르지 않습니다.',
+    });
+    expect(parseDesignBlueprintImport('x'.repeat(1_000_001))).toEqual({
+      ok: false,
+      error: '청사진 JSON 형식 또는 내용이 올바르지 않습니다.',
+    });
   });
 });
 

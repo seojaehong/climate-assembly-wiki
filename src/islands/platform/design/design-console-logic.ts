@@ -75,6 +75,10 @@ export interface DesignBlueprintDownload {
   content: string;
 }
 
+export type DesignBlueprintImportResult =
+  | { ok: true; input: DesignBlueprintInput; blueprint: DesignBlueprint }
+  | { ok: false; error: string };
+
 const ASSEMBLY_SLUG_PATTERN = /^[a-z0-9-]{3,40}$/;
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 export const DESIGN_BLUEPRINT_LIMITS = {
@@ -86,7 +90,25 @@ export const DESIGN_BLUEPRINT_LIMITS = {
   teamsPerSession: 500,
   participantsPerSession: 100_000,
   generatedItems: 10_000,
+  importChars: 1_000_000,
+  importBytes: 1_000_000,
 } as const;
+
+const BLUEPRINT_IMPORT_ERROR = '청사진 JSON 형식 또는 내용이 올바르지 않습니다.';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+}
+
+function importFailure(): DesignBlueprintImportResult {
+  return { ok: false, error: BLUEPRINT_IMPORT_ERROR };
+}
 
 function isCalendarDate(value: string): boolean {
   const match = DATE_PATTERN.exec(value);
@@ -202,6 +224,119 @@ export function serializeDesignBlueprint(blueprint: DesignBlueprint): DesignBlue
     filename: `${blueprint.assembly.slug}_design_blueprint.json`,
     content: `${JSON.stringify(blueprint, null, 2)}\n`,
   };
+}
+
+/** Restores editable input only when the exported hierarchy is still canonical and non-mutating. */
+export function parseDesignBlueprintImport(content: string): DesignBlueprintImportResult {
+  if (content.length === 0 || content.length > DESIGN_BLUEPRINT_LIMITS.importChars) return importFailure();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content) as unknown;
+  } catch {
+    return importFailure();
+  }
+  if (!isRecord(parsed)
+    || !hasExactKeys(parsed, ['schemaVersion', 'kind', 'dryRun', 'databaseMutationExecuted', 'requiresApproval', 'assembly', 'sessions', 'stats'])
+    || parsed.schemaVersion !== 1
+    || parsed.kind !== 'platform-design-blueprint'
+    || parsed.dryRun !== true
+    || parsed.databaseMutationExecuted !== false
+    || parsed.requiresApproval !== true
+    || !isRecord(parsed.assembly)
+    || !hasExactKeys(parsed.assembly, ['title', 'slug'])
+    || typeof parsed.assembly.title !== 'string'
+    || typeof parsed.assembly.slug !== 'string'
+    || !Array.isArray(parsed.sessions)
+    || !isRecord(parsed.stats)) {
+    return importFailure();
+  }
+
+  const sessions: DesignBlueprintInput['sessions'][number][] = [];
+  const normalizedSessions: DesignBlueprint['sessions'] = [];
+  for (let sessionIndex = 0; sessionIndex < parsed.sessions.length; sessionIndex += 1) {
+    const session = parsed.sessions[sessionIndex];
+    if (!isRecord(session)
+      || !hasExactKeys(session, ['ordinal', 'heldOn', 'topics', 'teams'])
+      || session.ordinal !== sessionIndex + 1
+      || typeof session.heldOn !== 'string'
+      || !Array.isArray(session.topics)
+      || !Array.isArray(session.teams)) {
+      return importFailure();
+    }
+    const topics: string[] = [];
+    const normalizedTopics: DesignBlueprint['sessions'][number]['topics'] = [];
+    for (let topicIndex = 0; topicIndex < session.topics.length; topicIndex += 1) {
+      const topic = session.topics[topicIndex];
+      if (!isRecord(topic)
+        || !hasExactKeys(topic, ['ordinal', 'prompt'])
+        || topic.ordinal !== topicIndex + 1
+        || typeof topic.prompt !== 'string') {
+        return importFailure();
+      }
+      topics.push(topic.prompt);
+      normalizedTopics.push({ ordinal: topicIndex + 1, prompt: topic.prompt });
+    }
+    let participantCount = 0;
+    const normalizedTeams: DesignBlueprint['sessions'][number]['teams'] = [];
+    for (let teamIndex = 0; teamIndex < session.teams.length; teamIndex += 1) {
+      const team = session.teams[teamIndex];
+      if (!isRecord(team)
+        || !hasExactKeys(team, ['ordinal', 'plannedCapacity'])
+        || team.ordinal !== teamIndex + 1
+        || typeof team.plannedCapacity !== 'number'
+        || !Number.isSafeInteger(team.plannedCapacity)
+        || team.plannedCapacity < 1) {
+        return importFailure();
+      }
+      participantCount += team.plannedCapacity;
+      if (!Number.isSafeInteger(participantCount)) return importFailure();
+      normalizedTeams.push({ ordinal: teamIndex + 1, plannedCapacity: team.plannedCapacity });
+    }
+    sessions.push({
+      heldOn: session.heldOn,
+      topics,
+      teamCount: normalizedTeams.length,
+      participantCount,
+    });
+    normalizedSessions.push({
+      ordinal: sessionIndex + 1,
+      heldOn: session.heldOn,
+      topics: normalizedTopics,
+      teams: normalizedTeams,
+    });
+  }
+
+  const input: DesignBlueprintInput = {
+    assemblyTitle: parsed.assembly.title,
+    assemblySlug: parsed.assembly.slug,
+    sessions,
+  };
+  const rebuilt = buildDesignBlueprint(input);
+  if (!rebuilt.ok) return importFailure();
+  if (!hasExactKeys(parsed.stats, ['sessionCount', 'topicCount', 'teamCount', 'participantCount'])
+    || typeof parsed.stats.sessionCount !== 'number'
+    || typeof parsed.stats.topicCount !== 'number'
+    || typeof parsed.stats.teamCount !== 'number'
+    || typeof parsed.stats.participantCount !== 'number') {
+    return importFailure();
+  }
+  const normalizedBlueprint: DesignBlueprint = {
+    schemaVersion: 1,
+    kind: 'platform-design-blueprint',
+    dryRun: true,
+    databaseMutationExecuted: false,
+    requiresApproval: true,
+    assembly: { title: parsed.assembly.title, slug: parsed.assembly.slug },
+    sessions: normalizedSessions,
+    stats: {
+      sessionCount: parsed.stats.sessionCount,
+      topicCount: parsed.stats.topicCount,
+      teamCount: parsed.stats.teamCount,
+      participantCount: parsed.stats.participantCount,
+    },
+  };
+  if (JSON.stringify(normalizedBlueprint) !== JSON.stringify(rebuilt.blueprint)) return importFailure();
+  return { ok: true, input, blueprint: rebuilt.blueprint };
 }
 
 const CHECK_LABELS: Readonly<Record<string, string>> = {

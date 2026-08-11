@@ -10,6 +10,7 @@ import {
   buildDesignBlueprint,
   buildDesignView,
   DESIGN_BLUEPRINT_LIMITS,
+  parseDesignBlueprintImport,
   serializeDesignBlueprint,
   type DesignBlueprint,
   type DesignBlueprintDownload,
@@ -150,7 +151,7 @@ interface DesignSessionDraft {
 }
 
 type BlueprintDownloader = (blob: Blob, fileName: string) => void;
-export type DesignBlueprintExportState = { kind: 'status' | 'error'; text: string } | null;
+export type DesignBlueprintTransferState = { kind: 'status' | 'error'; text: string } | null;
 
 const EMPTY_SESSION: DesignSessionDraft = {
   heldOn: '',
@@ -168,7 +169,7 @@ export function downloadDesignBlueprint(
 
 export function completeDesignBlueprintExport(
   action: () => void,
-  onStateChange: (state: Exclude<DesignBlueprintExportState, null>) => void,
+  onStateChange: (state: Exclude<DesignBlueprintTransferState, null>) => void,
 ): boolean {
   try {
     action();
@@ -229,12 +230,14 @@ export function DesignBlueprintBuilder() {
   const [sessions, setSessions] = useState<DesignSessionDraft[]>([{ ...EMPTY_SESSION }]);
   const [errors, setErrors] = useState<string[]>([]);
   const [blueprint, setBlueprint] = useState<DesignBlueprint | null>(null);
-  const [exportState, setExportState] = useState<DesignBlueprintExportState>(null);
+  const [transferState, setTransferState] = useState<DesignBlueprintTransferState>(null);
+  const importGeneration = useRef(0);
 
   const invalidatePreview = () => {
+    importGeneration.current += 1;
     setBlueprint(null);
     setErrors([]);
-    setExportState(null);
+    setTransferState(null);
   };
 
   const updateSession = (index: number, patch: Partial<DesignSessionDraft>) => {
@@ -245,12 +248,13 @@ export function DesignBlueprintBuilder() {
   };
 
   const validate = () => {
+    importGeneration.current += 1;
     const result = buildDesignBlueprint({
       assemblyTitle,
       assemblySlug,
       sessions: sessions.map(toSessionInput),
     });
-    setExportState(null);
+    setTransferState(null);
     if (!result.ok) {
       setBlueprint(null);
       setErrors(result.errors);
@@ -264,8 +268,43 @@ export function DesignBlueprintBuilder() {
     if (!blueprint) return;
     completeDesignBlueprintExport(
       () => downloadDesignBlueprint(serializeDesignBlueprint(blueprint)),
-      setExportState,
+      setTransferState,
     );
+  };
+
+  const onImport = async (file: File) => {
+    const generation = importGeneration.current + 1;
+    importGeneration.current = generation;
+    try {
+      if (file.size > DESIGN_BLUEPRINT_LIMITS.importBytes) {
+        console.error('Failed to import design blueprint: file exceeds the safe size limit');
+        setTransferState({ kind: 'error', text: '청사진 JSON 형식 또는 내용이 올바르지 않습니다.' });
+        return;
+      }
+      const content = await file.text();
+      if (importGeneration.current !== generation) return;
+      const imported = parseDesignBlueprintImport(content);
+      if (!imported.ok) {
+        console.error('Failed to import design blueprint: validation rejected the file');
+        setTransferState({ kind: 'error', text: imported.error });
+        return;
+      }
+      setAssemblyTitle(imported.input.assemblyTitle);
+      setAssemblySlug(imported.input.assemblySlug);
+      setSessions(imported.input.sessions.map((session) => ({
+        heldOn: session.heldOn,
+        topicsText: session.topics.join('\n'),
+        teamCount: String(session.teamCount),
+        participantCount: String(session.participantCount),
+      })));
+      setErrors([]);
+      setBlueprint(imported.blueprint);
+      setTransferState({ kind: 'status', text: '청사진 JSON을 불러왔습니다. 내용을 확인하고 편집을 이어가세요.' });
+    } catch (error: unknown) {
+      if (importGeneration.current !== generation) return;
+      console.error('Failed to import design blueprint', error);
+      setTransferState({ kind: 'error', text: '청사진 파일을 읽지 못했습니다. 다시 시도해 주세요.' });
+    }
   };
 
   const inputStyle = { minHeight: 44, width: '100%', border: `2px solid ${LINE}`, borderRadius: 8, padding: '8px 10px', color: INK, background: '#fff' };
@@ -309,9 +348,22 @@ export function DesignBlueprintBuilder() {
       ))}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+        <label style={{ display: 'grid', gap: 4, color: INK, fontWeight: 700 }}>
+          청사진 JSON 불러오기
+          <input
+            type="file"
+            accept="application/json,.json"
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              event.currentTarget.value = '';
+              if (file) void onImport(file);
+            }}
+            style={{ color: MUTED, minHeight: 44, maxWidth: 320 }}
+          />
+        </label>
         <button type="button" disabled={sessions.length >= DESIGN_BLUEPRINT_LIMITS.sessions} onClick={() => { setSessions((current) => [...current, { ...EMPTY_SESSION }]); invalidatePreview(); }} style={{ minHeight: 44, border: `2px solid ${TEAL}`, borderRadius: 9, background: '#fff', color: TEAL, padding: '8px 14px', fontWeight: 800 }}>회차 추가</button>
         <button type="button" onClick={validate} style={{ minHeight: 44, border: `2px solid ${TEAL}`, borderRadius: 9, background: TEAL, color: '#fff', padding: '8px 14px', fontWeight: 800 }}>청사진 검증</button>
-        {blueprint ? <button type="button" onClick={onDownload} aria-describedby="design-blueprint-export-status" style={{ minHeight: 44, border: `2px solid ${GREEN}`, borderRadius: 9, background: GREEN, color: '#fff', padding: '8px 14px', fontWeight: 800 }}>JSON 내려받기</button> : null}
+        {blueprint ? <button type="button" onClick={onDownload} aria-describedby="design-blueprint-transfer-status" style={{ minHeight: 44, border: `2px solid ${GREEN}`, borderRadius: 9, background: GREEN, color: '#fff', padding: '8px 14px', fontWeight: 800 }}>JSON 내려받기</button> : null}
       </div>
 
       {errors.length > 0 ? (
@@ -321,7 +373,7 @@ export function DesignBlueprintBuilder() {
         </div>
       ) : null}
       {blueprint ? <BlueprintPreview blueprint={blueprint} /> : null}
-      <p id="design-blueprint-export-status" role={exportState?.kind === 'error' ? 'alert' : 'status'} aria-live="polite" aria-atomic="true" className="sr-only">{exportState?.text ?? ''}</p>
+      <p id="design-blueprint-transfer-status" role={transferState?.kind === 'error' ? 'alert' : 'status'} aria-live="polite" aria-atomic="true" style={{ color: transferState?.kind === 'error' ? RED : GREEN, fontWeight: 700, margin: 0 }}>{transferState?.text ?? ''}</p>
     </section>
   );
 }
