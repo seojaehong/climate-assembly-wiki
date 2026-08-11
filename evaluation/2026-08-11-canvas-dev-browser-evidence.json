@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-11T10:20:38.491Z",
+  "generatedAt": "2026-08-11T10:24:18.179Z",
   "baseUrl": "http://127.0.0.1:4328",
   "path": "/ko/moderator/canvas/",
   "readOnly": true,
   "sourceProvenance": {
-    "sourceCommit": "4446833eab9a55c04f718cd178c693d4886575eb",
+    "sourceCommit": "fa168e1f100e73fade7c2c36b6bb8aac06186d46",
     "sourceTreeClean": true,
-    "verifierSha256": "7cc9beb65f5dea7fbfd42160b33b3ad3e2f7899ef58f637fc2b86f81b598d4d8"
+    "verifierSha256": "0fab597c9f0f06489305b567b1bba4268ae3d90125c0855730e9b7b5a8c05d77"
   },
   "runtime": {
     "node": "v20.19.5",

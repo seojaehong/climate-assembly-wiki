@@ -44,4 +44,4 @@ The only remaining browser console error was the repository-wide missing `/favic
 - Machine-readable evidence: `evaluation/2026-08-11-canvas-dev-browser-evidence.json`
 - Screenshot: `evaluation/2026-08-11-canvas-dev-browser.png`
 - Reusable verifier: `automation/verify-canvas-browser.mjs`
-- Audited source commit: `4446833eab9a55c04f718cd178c693d4886575eb` (the following evidence-only commit does not change the audited source)
+- Audited source commit: `fa168e1f100e73fade7c2c36b6bb8aac06186d46` (the following evidence-only commit does not change the audited source)
