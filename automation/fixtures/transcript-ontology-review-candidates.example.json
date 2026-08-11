@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "kind": "transcript-ontology-fixture",
+  "fixtureId": "session-1-review-candidates",
+  "sessionId": "session-1",
+  "language": "ko",
+  "reviewedBy": "reviewer-fixture",
+  "reviewedAt": "2026-08-01T01:00:00.000Z",
+  "chunks": [
+    {
+      "uid": "chunk-001",
+      "startMs": 0,
+      "endMs": 4000,
+      "speakerLabelPseudonym": "speaker-a",
+      "text": "재생에너지 전환 속도를 높여야 합니다."
+    },
+    {
+      "uid": "chunk-002",
+      "startMs": 4000,
+      "endMs": 8000,
+      "speakerLabelPseudonym": "speaker-b",
+      "text": "지역별 전력망 여건도 함께 살펴야 합니다."
+    }
+  ],
+  "expected": {
+    "nodes": [
+      {
+        "uid": "candidate-issue",
+        "kind": "Issue",
+        "label": "재생에너지 전환 속도",
+        "text": "재생에너지 전환 속도와 지역별 전력망 여건을 함께 논의한다.",
+        "citedUids": ["chunk-001", "chunk-002"]
+      },
+      {
+        "uid": "candidate-claim",
+        "kind": "Claim",
+        "label": "전환 속도를 높여야 한다",
+        "text": "재생에너지 전환 속도를 높여야 한다.",
+        "citedUids": ["chunk-001"]
+      }
+    ],
+    "relations": [
+      {
+        "uid": "candidate-relation-1",
+        "sourceUid": "candidate-claim",
+        "targetUid": "candidate-issue",
+        "relation": "isAbout",
+        "citedUids": ["chunk-001"]
+      }
+    ]
+  }
+}

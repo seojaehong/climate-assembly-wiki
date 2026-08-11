@@ -513,6 +513,17 @@ npm.cmd run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology
 - `sources.json`의 `live-transcript-reviewed-fixture`는 15초 기본 polling source다. adapter는 재요청마다 cache-busting URL을 만들고, 화면은 합성 데모를 미검수 시민 발언으로 표시하지 않는다.
 - 이는 synthetic 정적 JSON polling prototype이다. 실제 음성/STT, 실제 시민 발언, reviewer 계정 인증, 자동 publication, API/DB 쓰기와 retention 정책은 구현하거나 승인하지 않았다.
 
+## R2 합성 전사 후보 → 비공개 moderator 검수 plan
+
+`/ko/moderator/ontology-review`의 `합성 전사 후보 검수` 영역은 R2 전용 fixture를 브라우저 메모리에서만 열어 node/relation 후보를 검수한다.
+
+- 입력 예제는 `automation/fixtures/transcript-ontology-review-candidates.example.json`이다. R0와 같은 time-coded chunk·opaque UID·synthetic speaker·역할형 fixture reviewer·허용 ontology vocabulary를 다시 fail-closed 검증한다.
+- candidate node 카드는 인용 전사 구간, speaker pseudonym, millisecond range, Habermas 역할, 표시 이름과 검수 내용을 함께 보여 준다. relation 카드도 인용 전사와 endpoint, 논증 관계를 함께 보여 준다.
+- node/relation은 각각 승인·수정 승인·반려할 수 있다. 반려 node를 endpoint로 둔 relation 승인은 거부하고, 이미 승인한 relation의 endpoint node 반려도 거부한다. 판단 뒤 입력을 다시 바꾸면 해당 항목을 `proposed`로 되돌리고 재판단 전까지 다운로드를 잠근다.
+- 모든 후보를 판단한 경우에만 `transcript-ontology-reviewed-plan`을 로컬 다운로드한다. export는 원 fixture에서 workspace를 다시 만들어 exact SHA-256, 원 chunk 인용, source text, 판단 audit, summary와 safety를 대조한다. plan은 `databaseMutationExecuted:false`, `publicGraphWritten:false`, `requiresPublicationReview:true`를 명시한다.
+- 브라우저 verifier는 실제 production 페이지에서 fixture 업로드, 원문·역할 표시, node 수정 승인, node/relation 반려와 private plan 직렬화를 실행한다. Canvas 검수 흐름과 별개로 같은 페이지에서 두 기능을 모두 검증한다.
+- 실제 시민 발언·음성/STT·reviewer 계정 인증·DB/API 저장·R3 graph export/publication은 포함하지 않는다. 이 prototype에 실제 시민 발언 파일을 넣지 않는다.
+
 ## 알림 레벨 정책
 
 | 레벨 | 상황 | 대응 |

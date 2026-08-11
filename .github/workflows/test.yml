@@ -66,6 +66,7 @@ jobs:
           src/islands/CanvasBoard.test.ts
           src/islands/OntologyReviewConsole.test.ts
           src/islands/canvas/ontology-review-workspace.test.ts
+          src/islands/canvas/transcript-ontology-review-workspace.test.ts
         working-directory: .
       - run: npm ci
       - name: Cache Playwright browsers

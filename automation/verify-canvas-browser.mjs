@@ -80,6 +80,14 @@ const REVIEW_RELOAD_SNAPSHOT = {
 REVIEW_RELOAD_SNAPSHOT.payload.agenda[0].text = '지역 에너지 자립의 실행 조건을 다시 논의한다.';
 REVIEW_RELOAD_SNAPSHOT.payload.agenda[1].text = '공공건물 태양광 확대 순서를 다시 검토한다.';
 
+const TRANSCRIPT_REVIEW_FIXTURE_TEXT = readFileSync(resolve(
+  REPOSITORY_ROOT,
+  'automation/fixtures/transcript-ontology-review-candidates.example.json',
+), 'utf8');
+const TRANSCRIPT_REVIEW_FIXTURE_SHA256 = createHash('sha256')
+  .update(TRANSCRIPT_REVIEW_FIXTURE_TEXT, 'utf8')
+  .digest('hex');
+
 function reviewUploadPayloads(snapshot = REVIEW_SNAPSHOT) {
   const snapshotText = JSON.stringify(snapshot);
   const plan = sealCanvasOntologyReviewPlan({
@@ -89,6 +97,14 @@ function reviewUploadPayloads(snapshot = REVIEW_SNAPSHOT) {
   return {
     plan: { name: 'canvas-review-plan.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(plan)) },
     snapshot: { name: 'canvas-snapshot.json', mimeType: 'application/json', buffer: Buffer.from(snapshotText) },
+  };
+}
+
+function transcriptReviewUploadPayload() {
+  return {
+    name: 'transcript-ontology-review-candidates.example.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(TRANSCRIPT_REVIEW_FIXTURE_TEXT),
   };
 }
 
@@ -292,11 +308,70 @@ export async function verifyCanvasBrowser({
     const reviewLocalOnlyBoundaryVisible = await reviewPage
       .getByText('DB에 저장하지 않습니다.', { exact: false })
       .isVisible();
+    const transcriptReviewPanel = reviewPage.getByRole('region', { name: '합성 전사 후보 검수' });
+    await transcriptReviewPanel.waitFor({ timeout: timeoutMs });
+    const transcriptLocalOnlyBoundaryVisible = await transcriptReviewPanel
+      .getByText('실제 시민 발언 파일은 이 prototype에 넣지 마세요.', { exact: false })
+      .isVisible();
+    await transcriptReviewPanel.getByLabel('전사 ontology fixture JSON')
+      .setInputFiles(transcriptReviewUploadPayload());
+    await transcriptReviewPanel.getByLabel('검수자 역할 ID').fill('browser-verifier-role');
+    const startTranscriptReview = transcriptReviewPanel.getByRole('button', { name: '전사 후보 로컬 검수 시작' });
+    await startTranscriptReview.waitFor({ state: 'visible', timeout: timeoutMs });
+    await reviewPage.waitForFunction(() => {
+      const button = [...document.querySelectorAll('button')]
+        .find((candidate) => candidate.textContent?.trim() === '전사 후보 로컬 검수 시작');
+      return button instanceof HTMLButtonElement && !button.disabled;
+    }, undefined, { timeout: timeoutMs });
+    await startTranscriptReview.click();
+    await transcriptReviewPanel.getByText('진행 0/3', { exact: true }).waitFor({ timeout: timeoutMs });
+    const transcriptNodeCards = transcriptReviewPanel.locator('article[aria-label^="전사 노드 후보 검수"]');
+    const transcriptRelationCards = transcriptReviewPanel.locator('article[aria-label^="전사 관계 후보 검수"]');
+    const transcriptCandidateEvidenceVisible = await transcriptNodeCards.nth(0)
+      .getByText('재생에너지 전환 속도를 높여야 합니다.', { exact: true }).isVisible()
+      && await transcriptNodeCards.nth(0).getByLabel('Habermas 발화 역할').inputValue() === 'Issue'
+      && await transcriptRelationCards.nth(0).getByLabel('논증 관계').inputValue() === 'isAbout';
+    await transcriptNodeCards.nth(0).getByLabel('표시 이름').fill('재생에너지 전환의 속도와 조건');
+    await transcriptNodeCards.nth(0).getByRole('button', { name: '수정 승인' }).click();
+    await transcriptNodeCards.nth(1).getByRole('button', { name: '반려' }).click();
+    await transcriptRelationCards.nth(0).getByRole('button', { name: '반려' }).click();
+    await transcriptReviewPanel.getByText('진행 3/3', { exact: true }).waitFor({ timeout: timeoutMs });
+    const transcriptDownloadButton = transcriptReviewPanel
+      .getByRole('button', { name: '전사 후보 검수 plan 다운로드' });
+    await transcriptNodeCards.nth(0).getByLabel('표시 이름').fill('재생에너지 전환의 최종 속도와 조건');
+    await transcriptReviewPanel.getByText('진행 2/3', { exact: true }).waitFor({ timeout: timeoutMs });
+    const transcriptRedecisionGateVerified = await transcriptDownloadButton.isDisabled();
+    await transcriptNodeCards.nth(0).getByRole('button', { name: '수정 승인' }).click();
+    await transcriptReviewPanel.getByText('진행 3/3', { exact: true }).waitFor({ timeout: timeoutMs });
+    const transcriptDownloadPromise = reviewPage.waitForEvent('download', { timeout: timeoutMs });
+    await transcriptDownloadButton.click();
+    const transcriptReviewedPlan = JSON.parse(await downloadText(await transcriptDownloadPromise));
+    const transcriptReviewDownloaded = transcriptReviewedPlan.kind === 'transcript-ontology-reviewed-plan'
+      && transcriptReviewedPlan.databaseMutationExecuted === false
+      && transcriptReviewedPlan.publicGraphWritten === false
+      && transcriptReviewedPlan.requiresPublicationReview === true
+      && transcriptReviewedPlan.dryRun === true
+      && transcriptReviewedPlan.source?.fixtureSha256 === TRANSCRIPT_REVIEW_FIXTURE_SHA256
+      && transcriptReviewedPlan.nodes?.[0]?.reviewStatus === 'edited'
+      && transcriptReviewedPlan.nodes?.[0]?.kind === 'Issue'
+      && transcriptReviewedPlan.nodes?.[0]?.label === '재생에너지 전환의 최종 속도와 조건'
+      && transcriptReviewedPlan.nodes?.[0]?.reviewer === 'browser-verifier-role'
+      && transcriptReviewedPlan.nodes?.[0]?.citedUids?.join(',') === 'chunk-001,chunk-002'
+      && transcriptReviewedPlan.nodes?.[0]?.transcript?.[0]?.text === '재생에너지 전환 속도를 높여야 합니다.'
+      && transcriptReviewedPlan.nodes?.[1]?.reviewStatus === 'rejected'
+      && transcriptReviewedPlan.nodes?.[1]?.kind === null
+      && transcriptReviewedPlan.relations?.[0]?.reviewStatus === 'rejected'
+      && transcriptReviewedPlan.relations?.[0]?.relation === null;
+    if (!transcriptLocalOnlyBoundaryVisible || !transcriptCandidateEvidenceVisible
+      || !transcriptRedecisionGateVerified || !transcriptReviewDownloaded) {
+      throw new Error('Transcript ontology review browser contract is incomplete');
+    }
+    const canvasReviewPanel = reviewPage.getByRole('region', { name: 'Canvas 검수 계획' });
     const reviewFiles = reviewUploadPayloads();
-    await reviewPage.getByLabel('검수 계획 JSON').setInputFiles(reviewFiles.plan);
-    await reviewPage.getByLabel('Canvas snapshot JSON').setInputFiles(reviewFiles.snapshot);
-    await reviewPage.getByLabel('검수자 역할 ID').fill('browser-verifier-role');
-    const startReviewButton = reviewPage.getByRole('button', { name: '로컬 검수 시작' });
+    await canvasReviewPanel.getByLabel('검수 계획 JSON').setInputFiles(reviewFiles.plan);
+    await canvasReviewPanel.getByLabel('Canvas snapshot JSON').setInputFiles(reviewFiles.snapshot);
+    await canvasReviewPanel.getByLabel('검수자 역할 ID').fill('browser-verifier-role');
+    const startReviewButton = canvasReviewPanel.getByRole('button', { name: '로컬 검수 시작' });
     await startReviewButton.waitFor({ state: 'visible', timeout: timeoutMs });
     await reviewPage.waitForFunction(() => {
       const button = [...document.querySelectorAll('button')]
@@ -345,9 +420,9 @@ export async function verifyCanvasBrowser({
     }
 
     const reloadFiles = reviewUploadPayloads(REVIEW_RELOAD_SNAPSHOT);
-    await reviewPage.getByLabel('검수 계획 JSON').setInputFiles(reloadFiles.plan);
-    await reviewPage.getByLabel('Canvas snapshot JSON').setInputFiles(reloadFiles.snapshot);
-    await reviewPage.getByRole('button', { name: '로컬 검수 시작' }).click();
+    await canvasReviewPanel.getByLabel('검수 계획 JSON').setInputFiles(reloadFiles.plan);
+    await canvasReviewPanel.getByLabel('Canvas snapshot JSON').setInputFiles(reloadFiles.snapshot);
+    await canvasReviewPanel.getByRole('button', { name: '로컬 검수 시작' }).click();
     await waitForReviewProgress(reviewPage, '진행 0/5', timeoutMs);
     await reviewPage.waitForFunction((expectedLabel) => (
       document.querySelector('article[aria-label^="노드 검수"] input')?.value === expectedLabel
@@ -478,6 +553,10 @@ export async function verifyCanvasBrowser({
         reviewDocumentStatus: reviewDocumentResponse.status(),
         reviewPlatformNavigationConnected: reviewNavigation.connected,
         reviewLocalOnlyBoundaryVisible,
+        transcriptReviewLocalOnlyBoundaryVisible: transcriptLocalOnlyBoundaryVisible,
+        transcriptCandidateEvidenceVisible,
+        transcriptRedecisionGateVerified,
+        transcriptReviewDownloaded,
         reviewInteractionCompleted: reviewedPlanDecisionCount === 5,
         reviewMixedDecisionStatesVerified,
         reviewReloadIsolationVerified,

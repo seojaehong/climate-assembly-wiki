@@ -1,10 +1,14 @@
 import { createServer } from 'node:http';
 import { once } from 'node:events';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { verifyCanvasBrowser } from '../verify-canvas-browser.mjs';
 
 const servers = [];
+const transcriptFixtureSha256 = createHash('sha256')
+  .update(readFileSync(new URL('../fixtures/transcript-ontology-review-candidates.example.json', import.meta.url)), 'utf8')
+  .digest('hex');
 
 afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => new Promise((resolve) => server.close(resolve))));
@@ -39,6 +43,8 @@ async function fixtureServer({
       ? 'live'
       : request.url?.startsWith('/ko/moderator/ontology-review') ? 'review' : 'canvas';
     const reviewFixture = currentSurface === 'review' ? `
+        <section aria-labelledby="canvas-review-heading">
+        <h2 id="canvas-review-heading">Canvas 검수 계획</h2>
         <label>검수 계획 JSON<input type="file"></label>
         <label>Canvas snapshot JSON<input type="file"></label>
         <label>검수자 역할 ID<input type="text"></label>
@@ -78,6 +84,35 @@ async function fixtureServer({
           </article>
           <button type="button" id="download-plan" disabled>검수 완료 plan 다운로드</button>
         </section>
+        </section>
+        <section aria-labelledby="transcript-review-heading">
+          <h2 id="transcript-review-heading">합성 전사 후보 검수</h2>
+          <p>실제 시민 발언 파일은 이 prototype에 넣지 마세요.</p>
+          <label>전사 ontology fixture JSON<input id="transcript-fixture" type="file"></label>
+          <label>검수자 역할 ID<input id="transcript-reviewer" type="text"></label>
+          <button type="button" id="start-transcript-review" disabled>전사 후보 로컬 검수 시작</button>
+          <p id="transcript-progress" hidden>진행 0/3</p>
+          <section id="transcript-items" hidden>
+            <article aria-label="전사 노드 후보 검수 transcript-node:candidate-issue">
+              <p>재생에너지 전환 속도를 높여야 합니다.</p>
+              <label>Habermas 발화 역할<select><option>Issue</option></select></label>
+              <label>표시 이름<input id="transcript-first-label" type="text"></label>
+              <button type="button" data-transcript-decision="first">수정 승인</button>
+            </article>
+            <article aria-label="전사 노드 후보 검수 transcript-node:candidate-claim">
+              <p>재생에너지 전환 속도를 높여야 합니다.</p>
+              <label>Habermas 발화 역할<select><option>Claim</option></select></label>
+              <label>표시 이름<input id="transcript-second-label" type="text"></label>
+              <button type="button" data-transcript-decision="second">반려</button>
+            </article>
+            <article aria-label="전사 관계 후보 검수 transcript-edge:candidate-relation-1">
+              <p>재생에너지 전환 속도를 높여야 합니다.</p>
+              <label>논증 관계<select><option>isAbout</option></select></label>
+              <button type="button" data-transcript-decision="relation">반려</button>
+            </article>
+            <button type="button" id="download-transcript-plan" disabled>전사 후보 검수 plan 다운로드</button>
+          </section>
+        </section>
         <script>
           ${reviewReady ? `setTimeout(() => {
             document.querySelector('#canvas-workbench')?.setAttribute('data-ontology-review-ready', 'true');
@@ -89,6 +124,99 @@ async function fixtureServer({
           const promptList = document.querySelector('#facilitation-prompt-list');
           let decisionCount = 0;
           let activePlan = null;
+          let transcriptFixture = null;
+          const transcriptFixtureInput = document.querySelector('#transcript-fixture');
+          const transcriptReviewerInput = document.querySelector('#transcript-reviewer');
+          const transcriptStartButton = document.querySelector('#start-transcript-review');
+          const transcriptProgress = document.querySelector('#transcript-progress');
+          const transcriptItems = document.querySelector('#transcript-items');
+          const transcriptDownloadButton = document.querySelector('#download-transcript-plan');
+          const transcriptDecisions = new Set();
+          const refreshTranscriptStart = () => {
+            transcriptStartButton.disabled = !transcriptFixtureInput.files[0]
+              || transcriptReviewerInput.value.trim().length < 3;
+          };
+          transcriptFixtureInput.addEventListener('change', refreshTranscriptStart);
+          transcriptReviewerInput.addEventListener('input', refreshTranscriptStart);
+          transcriptStartButton.addEventListener('click', async () => {
+            transcriptFixture = JSON.parse(await transcriptFixtureInput.files[0].text());
+            document.querySelector('#transcript-first-label').value = transcriptFixture.expected.nodes[0].label;
+            document.querySelector('#transcript-second-label').value = transcriptFixture.expected.nodes[1].label;
+            transcriptDecisions.clear();
+            transcriptProgress.textContent = '진행 0/3';
+            transcriptProgress.hidden = false;
+            transcriptItems.hidden = false;
+            transcriptDownloadButton.disabled = true;
+          });
+          document.querySelectorAll('[data-transcript-decision]').forEach((button) => {
+            button.addEventListener('click', () => {
+              transcriptDecisions.add(button.dataset.transcriptDecision);
+              transcriptProgress.textContent = \`진행 \${transcriptDecisions.size}/3\`;
+              transcriptDownloadButton.disabled = transcriptDecisions.size !== 3;
+            });
+          });
+          document.querySelector('#transcript-first-label').addEventListener('input', () => {
+            if (!transcriptDecisions.delete('first')) return;
+            transcriptProgress.textContent = \`진행 \${transcriptDecisions.size}/3\`;
+            transcriptDownloadButton.disabled = true;
+          });
+          transcriptDownloadButton.addEventListener('click', () => {
+            const reviewer = transcriptReviewerInput.value;
+            const reviewedAt = '2026-08-29T02:00:00.000Z';
+            const first = transcriptFixture.expected.nodes[0];
+            const second = transcriptFixture.expected.nodes[1];
+            const relation = transcriptFixture.expected.relations[0];
+            const plan = {
+              schemaVersion: 1,
+              kind: 'transcript-ontology-reviewed-plan',
+              dryRun: true,
+              databaseMutationExecuted: false,
+              publicGraphWritten: false,
+              requiresPublicationReview: true,
+              source: {
+                fixtureId: transcriptFixture.fixtureId,
+                sessionId: transcriptFixture.sessionId,
+                language: transcriptFixture.language,
+                reviewedBy: transcriptFixture.reviewedBy,
+                reviewedAt: transcriptFixture.reviewedAt,
+                fixtureSha256: '${transcriptFixtureSha256}',
+              },
+              nodes: [
+                {
+                  id: \`transcript-node:\${first.uid}\`, sourceUid: first.uid,
+                  kindCandidate: first.kind, kind: first.kind,
+                  sourceLabel: first.label, sourceText: first.text,
+                  label: document.querySelector('#transcript-first-label').value,
+                  text: first.text, citedUids: first.citedUids,
+                  transcript: transcriptFixture.chunks.filter((chunk) => first.citedUids.includes(chunk.uid)),
+                  reviewStatus: 'edited', reviewer, reviewedAt,
+                },
+                {
+                  id: \`transcript-node:\${second.uid}\`, sourceUid: second.uid,
+                  kindCandidate: second.kind, kind: null,
+                  sourceLabel: second.label, sourceText: second.text,
+                  label: second.label, text: second.text, citedUids: second.citedUids,
+                  transcript: transcriptFixture.chunks.filter((chunk) => second.citedUids.includes(chunk.uid)),
+                  reviewStatus: 'rejected', reviewer, reviewedAt,
+                },
+              ],
+              relations: [{
+                id: \`transcript-edge:\${relation.uid}\`, sourceUid: relation.uid,
+                source: \`transcript-node:\${relation.sourceUid}\`,
+                target: \`transcript-node:\${relation.targetUid}\`,
+                relationCandidate: relation.relation, relation: null,
+                citedUids: relation.citedUids,
+                transcript: transcriptFixture.chunks.filter((chunk) => relation.citedUids.includes(chunk.uid)),
+                reviewStatus: 'rejected', reviewer, reviewedAt,
+              }],
+            };
+            const href = URL.createObjectURL(new Blob([JSON.stringify(plan)], { type: 'application/json' }));
+            const anchor = document.createElement('a');
+            anchor.href = href;
+            anchor.download = 'transcript-reviewed-plan.json';
+            anchor.click();
+            URL.revokeObjectURL(href);
+          });
           document.querySelector('#start-review').addEventListener('click', async () => {
             const planFile = document.querySelector('input[type="file"]').files[0];
             activePlan = JSON.parse(await planFile.text());
@@ -220,6 +348,10 @@ describe('verifyCanvasBrowser', () => {
     expect(report.checks.reviewDocumentStatus).toBe(200);
     expect(report.checks.reviewPlatformNavigationConnected).toBe(true);
     expect(report.checks.reviewLocalOnlyBoundaryVisible).toBe(true);
+    expect(report.checks.transcriptReviewLocalOnlyBoundaryVisible).toBe(true);
+    expect(report.checks.transcriptCandidateEvidenceVisible).toBe(true);
+    expect(report.checks.transcriptRedecisionGateVerified).toBe(true);
+    expect(report.checks.transcriptReviewDownloaded).toBe(true);
     expect(report.checks.reviewInteractionCompleted).toBe(true);
     expect(report.checks.reviewMixedDecisionStatesVerified).toBe(true);
     expect(report.checks.reviewReloadIsolationVerified).toBe(true);
@@ -232,7 +364,7 @@ describe('verifyCanvasBrowser', () => {
     expect(report.sourceProvenance).toEqual(sourceProvenance);
     expect(report.runtime.node).toMatch(/^v\d+\./);
     expect(report.checks.supabaseReadResponses).toHaveLength(3);
-  }, 30_000);
+  }, 60_000);
 
   it('fails when the unauthenticated canvas can drag or write', async () => {
     const draggableFixture = await fixtureServer({ draggable: true });
@@ -271,6 +403,7 @@ describe('Canvas browser CI contract', () => {
     expect(workflow).toContain('npm ci');
     expect(workflow).toContain('src/islands/OntologyReviewConsole.test.ts');
     expect(workflow).toContain('src/islands/canvas/ontology-review-workspace.test.ts');
+    expect(workflow).toContain('src/islands/canvas/transcript-ontology-review-workspace.test.ts');
     expect(workflow).toContain("'src/lib/supabase.ts'");
     expect(workflow).toContain("'src/components/ModeratorPlatformNav.tsx'");
     expect(workflow).toContain("'src/components/ModeratorPlatformNav.test.ts'");

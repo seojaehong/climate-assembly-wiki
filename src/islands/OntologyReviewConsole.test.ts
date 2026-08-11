@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import OntologyReviewConsole, {
   completeOntologyWorkspaceLoad,
+  completeTranscriptOntologyExport,
   FacilitationPromptPanel,
 } from './OntologyReviewConsole';
 import type { CanvasOntologyReviewWorkspace } from './canvas/ontology-review-workspace';
@@ -20,13 +21,17 @@ describe('OntologyReviewConsole', () => {
     expect(html).toContain('DB에 저장하지 않습니다.');
     expect(html).toContain('공개 그래프에 반영하지 않습니다.');
     expect(html).toContain('aria-live="polite"');
+    expect(html).toContain('합성 전사 후보 검수');
+    expect(html).toContain('전사 ontology fixture JSON');
+    expect(html).toContain('candidate node와 relation을 브라우저 메모리에서만 검수합니다.');
+    expect(html).toContain('실제 시민 발언 파일은 이 prototype에 넣지 마세요.');
   });
 
   it('renders every upload and reviewer input on an explicit opaque high-contrast surface', () => {
     const html = renderToStaticMarkup(createElement(OntologyReviewConsole));
     const inputTags = html.match(/<input\b[^>]*>/g) ?? [];
 
-    expect(inputTags).toHaveLength(3);
+    expect(inputTags).toHaveLength(5);
     for (const input of inputTags) {
       expect(input).toContain('background:#FFFFFF');
       expect(input).toContain('color:#102A43');
@@ -81,5 +86,34 @@ describe('OntologyReviewConsole', () => {
     expect(notices).toEqual([]);
     expect(errors).toEqual([]);
     expect(busyChanges).toEqual([]);
+  });
+
+  it('discards a transcript export when the reviewed workspace changes while rebuilding', async () => {
+    const downloads: string[] = [];
+    const notices: string[] = [];
+    const errors: Array<string | null> = [];
+    const busyChanges: boolean[] = [];
+    let current = true;
+    let resolveBuild: () => void = () => { throw new Error('Deferred export was not initialized'); };
+    const build = new Promise<string>((resolve) => {
+      resolveBuild = () => resolve('{"schemaVersion":2}');
+    });
+    const completion = completeTranscriptOntologyExport({
+      build: () => build,
+      isCurrent: () => current,
+      download: (content) => downloads.push(content),
+      setNotice: (notice) => notices.push(notice),
+      setError: (error) => errors.push(error),
+      setBusy: (busy) => busyChanges.push(busy),
+    });
+
+    current = false;
+    resolveBuild();
+    await completion;
+
+    expect(downloads).toEqual([]);
+    expect(notices).toEqual(['검수 입력이 바뀌어 이전 plan 다운로드를 취소했습니다.']);
+    expect(errors).toEqual([]);
+    expect(busyChanges).toEqual([false]);
   });
 });

@@ -11,6 +11,20 @@ import {
   type CanvasOntologyReviewDecision,
   type CanvasOntologyReviewWorkspace,
 } from './canvas/ontology-review-workspace';
+import {
+  createTranscriptOntologyReviewWorkspace,
+  exportTranscriptOntologyReviewedPlan,
+  reviewTranscriptOntologyCandidate,
+  updateTranscriptOntologyCandidateDraft,
+  TRANSCRIPT_ONTOLOGY_NODE_KINDS,
+  TRANSCRIPT_ONTOLOGY_RELATIONS,
+  type TranscriptCitation,
+  type TranscriptOntologyReviewDecision,
+  type TranscriptOntologyReviewDraft,
+  type TranscriptOntologyReviewNode,
+  type TranscriptOntologyReviewRelation,
+  type TranscriptOntologyReviewWorkspace,
+} from './canvas/transcript-ontology-review-workspace';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const CONTROL_BORDER = '#2F6F7E';
@@ -64,6 +78,32 @@ export async function completeOntologyWorkspaceLoad(input: {
   }
 }
 
+export async function completeTranscriptOntologyExport(input: {
+  build: () => Promise<string>;
+  isCurrent: () => boolean;
+  download: (content: string) => void;
+  setNotice: (notice: string) => void;
+  setError: (error: string | null) => void;
+  setBusy: (busy: boolean) => void;
+}): Promise<void> {
+  try {
+    const content = await input.build();
+    if (!input.isCurrent()) {
+      input.setNotice('검수 입력이 바뀌어 이전 plan 다운로드를 취소했습니다.');
+      return;
+    }
+    input.download(content);
+    input.setError(null);
+    input.setNotice('전사 후보 검수 plan을 내려받았습니다. 공개 반영은 수행하지 않았습니다.');
+  } catch (caught: unknown) {
+    if (!input.isCurrent()) return;
+    console.error('Failed to export the local transcript ontology reviewed plan', caught);
+    input.setError(errorMessage(caught));
+  } finally {
+    input.setBusy(false);
+  }
+}
+
 async function readLocalJson(file: File | null, label: string): Promise<string> {
   if (!file) throw new Error(`${label}을 선택해 주세요.`);
   if (file.size > MAX_FILE_BYTES) throw new Error(`${label}은 5MB 이하여야 합니다.`);
@@ -76,6 +116,16 @@ function downloadReviewedPlan(content: string, snapshotId: string | number): voi
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = `canvas-ontology-reviewed-${safeId}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadTranscriptReviewedPlan(content: string, fixtureId: string): void {
+  const safeId = fixtureId.replaceAll(/[^a-zA-Z0-9_-]/g, '_');
+  const url = URL.createObjectURL(new Blob([content], { type: 'application/json;charset=utf-8' }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `transcript-ontology-reviewed-${safeId}.json`;
   anchor.click();
   URL.revokeObjectURL(url);
 }
@@ -222,6 +272,227 @@ function ClusterReviewCard({ cluster, nodes, reviewer, onDecision }: {
   );
 }
 
+function TranscriptEvidence({ transcript }: { transcript: TranscriptCitation[] }) {
+  return (
+    <section aria-label="인용 전사 구간" style={{ background: PANEL, borderRadius: 8, display: 'grid', gap: 8, padding: 12 }}>
+      <strong>인용 전사 구간</strong>
+      {transcript.map((chunk) => (
+        <blockquote key={chunk.uid} style={{ borderLeft: `4px solid ${CONTROL_BORDER}`, margin: 0, paddingLeft: 12 }}>
+          <div>{chunk.text}</div>
+          <footer style={{ color: MUTED, fontSize: 13, marginTop: 4 }}>
+            {chunk.uid} · {chunk.speakerLabelPseudonym} · {chunk.startMs}–{chunk.endMs}ms
+          </footer>
+        </blockquote>
+      ))}
+    </section>
+  );
+}
+
+function TranscriptNodeReviewCard({ node, reviewer, onDecision, onDraft }: {
+  node: TranscriptOntologyReviewNode;
+  reviewer: string;
+  onDecision: (decision: TranscriptOntologyReviewDecision) => void;
+  onDraft: (draft: TranscriptOntologyReviewDraft) => void;
+}) {
+  const kind = node.kind ?? node.kindCandidate;
+  const edited = kind !== node.kindCandidate || node.label !== node.sourceLabel || node.text !== node.sourceText;
+  const decide = (status: 'accepted' | 'edited' | 'rejected') => onDecision({
+    itemType: 'node', id: node.id, status, kind, label: node.label, text: node.text, reviewer,
+    reviewedAt: new Date().toISOString(),
+  });
+  return (
+    <article style={cardStyle} aria-label={`전사 노드 후보 검수 ${node.id}`}>
+      <header>
+        <strong>candidate node · {node.reviewStatus === 'proposed' ? '미검수' : node.reviewStatus}</strong>
+        <div style={{ color: MUTED, fontSize: 13, overflowWrap: 'anywhere' }}>{node.sourceUid}</div>
+      </header>
+      <TranscriptEvidence transcript={node.transcript} />
+      <label>Habermas 발화 역할
+        <select value={kind} onChange={(event) => onDraft({ itemType: 'node', id: node.id, kind: event.currentTarget.value })} style={{ ...controlStyle, display: 'block', width: '100%' }}>
+          {TRANSCRIPT_ONTOLOGY_NODE_KINDS.map((candidate) => <option key={candidate}>{candidate}</option>)}
+        </select>
+      </label>
+      <label>표시 이름
+        <input value={node.label} onChange={(event) => onDraft({ itemType: 'node', id: node.id, label: event.currentTarget.value })} style={{ ...controlStyle, display: 'block', width: '100%' }} />
+      </label>
+      <label>검수 내용
+        <textarea value={node.text} onChange={(event) => onDraft({ itemType: 'node', id: node.id, text: event.currentTarget.value })} rows={4} style={{ ...controlStyle, display: 'block', resize: 'vertical', width: '100%' }} />
+      </label>
+      <DecisionButtons
+        acceptLabel={edited ? '수정 승인' : '원문 승인'}
+        onAccept={() => decide(edited ? 'edited' : 'accepted')}
+        onReject={() => decide('rejected')}
+      />
+    </article>
+  );
+}
+
+function TranscriptRelationReviewCard({ relation, reviewer, onDecision, onDraft }: {
+  relation: TranscriptOntologyReviewRelation;
+  reviewer: string;
+  onDecision: (decision: TranscriptOntologyReviewDecision) => void;
+  onDraft: (draft: TranscriptOntologyReviewDraft) => void;
+}) {
+  const relationType = relation.relation ?? relation.relationCandidate;
+  const edited = relationType !== relation.relationCandidate;
+  const decide = (status: 'accepted' | 'edited' | 'rejected') => onDecision({
+    itemType: 'relation', id: relation.id, status, relation: relationType, reviewer,
+    reviewedAt: new Date().toISOString(),
+  });
+  return (
+    <article style={cardStyle} aria-label={`전사 관계 후보 검수 ${relation.id}`}>
+      <header><strong>candidate relation · {relation.reviewStatus === 'proposed' ? '미검수' : relation.reviewStatus}</strong></header>
+      <p style={{ color: MUTED, margin: 0, overflowWrap: 'anywhere' }}>{relation.source} → {relation.target}</p>
+      <TranscriptEvidence transcript={relation.transcript} />
+      <label>논증 관계
+        <select value={relationType} onChange={(event) => {
+          onDraft({ itemType: 'relation', id: relation.id, relation: event.currentTarget.value });
+        }} style={{ ...controlStyle, display: 'block', width: '100%' }}>
+          {TRANSCRIPT_ONTOLOGY_RELATIONS.map((candidate) => <option key={candidate}>{candidate}</option>)}
+        </select>
+      </label>
+      <DecisionButtons
+        acceptLabel={edited ? '수정 승인' : '승인'}
+        onAccept={() => decide(edited ? 'edited' : 'accepted')}
+        onReject={() => decide('rejected')}
+      />
+    </article>
+  );
+}
+
+export function TranscriptOntologyReviewPanel() {
+  const [fixtureFile, setFixtureFile] = useState<File | null>(null);
+  const [reviewer, setReviewer] = useState('');
+  const [workspace, setWorkspace] = useState<TranscriptOntologyReviewWorkspace | null>(null);
+  const [notice, setNotice] = useState('합성 전사 fixture를 선택해 주세요.');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const requestGeneration = useRef(0);
+  const workspaceRef = useRef<TranscriptOntologyReviewWorkspace | null>(null);
+
+  const replaceFixture = (file: File | null) => {
+    requestGeneration.current += 1;
+    setFixtureFile(file);
+    workspaceRef.current = null;
+    setWorkspace(null);
+    setBusy(false);
+    setError(null);
+    setNotice('입력 fixture가 바뀌었습니다. 다시 검증해 주세요.');
+  };
+
+  const loadWorkspace = async () => {
+    const generation = requestGeneration.current + 1;
+    requestGeneration.current = generation;
+    setBusy(true);
+    setError(null);
+    try {
+      const fixtureText = await readLocalJson(fixtureFile, '전사 ontology fixture JSON');
+      const next = await createTranscriptOntologyReviewWorkspace(fixtureText);
+      if (requestGeneration.current !== generation) return;
+      workspaceRef.current = next;
+      setWorkspace(next);
+      setNotice(`전사 후보 ${next.summary.total}개를 불러왔습니다.`);
+    } catch (caught: unknown) {
+      if (requestGeneration.current !== generation) return;
+      console.error('Failed to load the local transcript ontology review workspace', caught);
+      setError(errorMessage(caught));
+    } finally {
+      if (requestGeneration.current === generation) setBusy(false);
+    }
+  };
+
+  const decide = (decision: TranscriptOntologyReviewDecision) => {
+    if (!workspace) return;
+    try {
+      const next = reviewTranscriptOntologyCandidate(workspace, decision);
+      workspaceRef.current = next;
+      setWorkspace(next);
+      setError(null);
+      setNotice(`전사 후보 검수 진행 ${next.summary.decided}/${next.summary.total}`);
+    } catch (caught: unknown) {
+      console.error('Failed to apply a local transcript ontology review decision', caught);
+      setError(errorMessage(caught));
+    }
+  };
+
+  const updateDraft = (draft: TranscriptOntologyReviewDraft) => {
+    if (!workspace) return;
+    try {
+      const next = updateTranscriptOntologyCandidateDraft(workspace, draft);
+      workspaceRef.current = next;
+      setWorkspace(next);
+      setError(null);
+      setNotice('화면 입력이 바뀌어 해당 판단을 다시 열었습니다. 현재 내용을 재판단해 주세요.');
+    } catch (caught: unknown) {
+      console.error('Failed to update a local transcript ontology review draft', caught);
+      setError(errorMessage(caught));
+    }
+  };
+
+  const exportPlan = async () => {
+    if (!workspace) return;
+    const target = workspace;
+    setExporting(true);
+    await completeTranscriptOntologyExport({
+      build: () => exportTranscriptOntologyReviewedPlan(target),
+      isCurrent: () => workspaceRef.current === target,
+      download: (content) => downloadTranscriptReviewedPlan(content, target.source.fixtureId),
+      setNotice,
+      setError,
+      setBusy: setExporting,
+    });
+  };
+
+  return (
+    <section aria-labelledby="transcript-review-heading" style={{ marginBottom: 36 }}>
+      <header style={{ marginBottom: 12 }}>
+        <h2 id="transcript-review-heading">합성 전사 후보 검수</h2>
+        <p style={{ color: MUTED, lineHeight: 1.6 }}>
+          candidate node와 relation을 브라우저 메모리에서만 검수합니다. DB 저장·공개 graph 반영은 없습니다.
+          {' '}실제 시민 발언 파일은 이 prototype에 넣지 마세요.
+        </p>
+      </header>
+      <form onSubmit={(event) => { event.preventDefault(); void loadWorkspace(); }} aria-busy={busy} style={{ ...cardStyle, background: PANEL, marginBottom: 16 }}>
+        <label>전사 ontology fixture JSON
+          <input type="file" accept="application/json,.json" onChange={(event) => replaceFixture(event.currentTarget.files?.[0] ?? null)} style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />
+        </label>
+        <label>검수자 역할 ID
+          <input value={reviewer} onChange={(event) => setReviewer(event.currentTarget.value)} minLength={3} maxLength={80} pattern="[a-zA-Z][a-zA-Z0-9._:-]{2,79}" autoComplete="off" placeholder="예: moderator-role-1" style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />
+        </label>
+        <button type="submit" disabled={busy || fixtureFile === null || reviewer.trim().length < 3} style={{ ...controlStyle, background: '#0B4F6C', color: '#FFFFFF', fontWeight: 800 }}>
+          {busy ? '검증 중…' : '전사 후보 로컬 검수 시작'}
+        </button>
+      </form>
+      <p role="status" aria-live="polite" aria-atomic="true" style={{ color: '#174A36' }}>{notice}</p>
+      {error ? <p role="alert" style={{ color: '#8A1C1C', fontWeight: 700 }}>{error}</p> : null}
+      {workspace ? (
+        <>
+          <section aria-label="전사 후보 검수 진행 요약" style={{ ...cardStyle, marginBottom: 20 }}>
+            <strong>진행 {workspace.summary.decided}/{workspace.summary.total}</strong>
+            <span>candidate node {workspace.summary.nodes} · relation {workspace.summary.relations}</span>
+            <button type="button" onClick={() => { void exportPlan(); }} disabled={exporting || workspace.summary.decided !== workspace.summary.total} style={{ ...controlStyle, background: '#553C9A', color: '#FFFFFF', fontWeight: 800 }}>
+              {exporting ? 'plan 검증 중…' : '전사 후보 검수 plan 다운로드'}
+            </button>
+          </section>
+          <section aria-labelledby="transcript-node-heading" style={{ display: 'grid', gap: 14, marginBottom: 28 }}>
+            <h3 id="transcript-node-heading">1. candidate node · 전사·Habermas 역할 검수</h3>
+            {workspace.nodes.map((node) => (
+              <TranscriptNodeReviewCard key={`${workspace.source.fixtureSha256}:${node.id}`} node={node} reviewer={reviewer} onDecision={decide} onDraft={updateDraft} />
+            ))}
+          </section>
+          <section aria-labelledby="transcript-relation-heading" style={{ display: 'grid', gap: 14, marginBottom: 28 }}>
+            <h3 id="transcript-relation-heading">2. candidate relation · 전사·논증 관계 검수</h3>
+            {workspace.relations.map((relation) => (
+              <TranscriptRelationReviewCard key={`${workspace.source.fixtureSha256}:${relation.id}`} relation={relation} reviewer={reviewer} onDecision={decide} onDraft={updateDraft} />
+            ))}
+          </section>
+        </>
+      ) : null}
+    </section>
+  );
+}
+
 export default function OntologyReviewConsole() {
   const [hydrated, setHydrated] = useState(false);
   const [planFile, setPlanFile] = useState<File | null>(null);
@@ -311,6 +582,11 @@ export default function OntologyReviewConsole() {
           </p>
         </header>
 
+        <TranscriptOntologyReviewPanel />
+
+        <section aria-labelledby="canvas-review-heading">
+          <h2 id="canvas-review-heading">Canvas 검수 계획</h2>
+
         <form onSubmit={(event) => { event.preventDefault(); void loadWorkspace(); }} aria-busy={busy} style={{ ...cardStyle, background: PANEL, marginBottom: 20 }}>
           <label>검수 계획 JSON
             <input type="file" accept="application/json,.json" onChange={(event) => replaceInputFile('plan', event.currentTarget.files?.[0] ?? null)} style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />
@@ -357,6 +633,7 @@ export default function OntologyReviewConsole() {
             </section>
           </>
         ) : null}
+        </section>
       </div>
     </main>
   );
