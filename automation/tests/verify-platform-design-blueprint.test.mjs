@@ -1,0 +1,86 @@
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import {
+  DESIGN_BLUEPRINT_ROUTE,
+  isDatabaseMutationRequest,
+  validateDownloadedBlueprint,
+} from '../verify-platform-design-blueprint.mjs';
+
+const validBlueprint = {
+  schemaVersion: 1,
+  kind: 'platform-design-blueprint',
+  dryRun: true,
+  databaseMutationExecuted: false,
+  requiresApproval: true,
+  assembly: { title: '기후 공론화 2026', slug: 'climate-2026' },
+  sessions: [
+    {
+      ordinal: 1,
+      heldOn: '2026-09-12',
+      topics: [{ ordinal: 1, prompt: '감축 경로' }],
+      teams: [{ ordinal: 1, plannedCapacity: 12 }],
+    },
+    {
+      ordinal: 2,
+      heldOn: '2026-09-13',
+      topics: [{ ordinal: 1, prompt: '적응 정책' }],
+      teams: [{ ordinal: 1, plannedCapacity: 10 }],
+    },
+  ],
+  stats: { sessionCount: 2, topicCount: 2, teamCount: 2, participantCount: 22 },
+};
+
+describe('validateDownloadedBlueprint', () => {
+  it('accepts the production multi-session dry-run contract', () => {
+    expect(validateDownloadedBlueprint(validBlueprint)).toEqual({
+      sessionCount: 2,
+      topicCount: 2,
+      teamCount: 2,
+      participantCount: 22,
+    });
+  });
+
+  it('rejects an export that can mutate data or bypass approval', () => {
+    expect(() => validateDownloadedBlueprint({
+      ...validBlueprint,
+      databaseMutationExecuted: true,
+    })).toThrow('Downloaded blueprint violates the approval boundary');
+    expect(() => validateDownloadedBlueprint({
+      ...validBlueprint,
+      requiresApproval: false,
+    })).toThrow('Downloaded blueprint violates the approval boundary');
+  });
+
+  it('rejects hierarchy damage even when the declared stats are unchanged', () => {
+    const damaged = structuredClone(validBlueprint);
+    damaged.sessions[1].topics = [];
+    expect(() => validateDownloadedBlueprint(damaged)).toThrow('Downloaded blueprint hierarchy does not match the verified input');
+  });
+});
+
+describe('isDatabaseMutationRequest', () => {
+  it('allows fixture read RPCs but blocks REST mutations', () => {
+    expect(isDatabaseMutationRequest('POST', '/rest/v1/rpc/org_of_uid')).toBe(false);
+    expect(isDatabaseMutationRequest('POST', '/rest/v1/rpc/readiness_check')).toBe(false);
+    expect(isDatabaseMutationRequest('DELETE', '/rest/v1/rpc/readiness_check')).toBe(true);
+    expect(isDatabaseMutationRequest('GET', '/rest/v1/assembly')).toBe(false);
+    expect(isDatabaseMutationRequest('POST', '/rest/v1/assembly')).toBe(true);
+    expect(isDatabaseMutationRequest('PATCH', '/rest/v1/session')).toBe(true);
+    expect(isDatabaseMutationRequest('DELETE', '/rest/v1/discussion_topic')).toBe(true);
+  });
+});
+
+describe('design blueprint browser CI contract', () => {
+  it('runs the real authenticated interaction after the preview is ready', () => {
+    const workflow = readFileSync(
+      new URL('../../.github/workflows/platform-accessibility.yml', import.meta.url),
+      'utf8',
+    );
+    expect(DESIGN_BLUEPRINT_ROUTE).toBe('/platform/o/00000000-0000-4000-8000-000000000002/c/audit-assembly/design');
+    expect(workflow).toContain('node verify-platform-design-blueprint.mjs');
+    expect(workflow).toContain('.artifacts/platform-design-blueprint-browser.json');
+    expect(workflow.indexOf('Start preview server')).toBeLessThan(
+      workflow.indexOf('node verify-platform-design-blueprint.mjs'),
+    );
+  });
+});

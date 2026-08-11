@@ -17,7 +17,8 @@
     "plan:platform-analysis-import": "node platform-analysis-import.mjs",
     "preflight:platform-activation": "node platform-activation-preflight.mjs",
     "verify:platform-activation": "node platform-activation-preflight.mjs --verify-evidence",
-    "verify:canvas-browser": "node verify-canvas-browser.mjs"
+    "verify:canvas-browser": "node verify-canvas-browser.mjs",
+    "verify:platform-design-blueprint": "node verify-platform-design-blueprint.mjs"
   },
   "dependencies": {
     "playwright": "^1.49.0",

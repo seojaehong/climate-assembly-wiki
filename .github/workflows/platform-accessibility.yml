@@ -13,6 +13,8 @@ on:
       - 'src/styles/**'
       - 'automation/platform-accessibility-audit.mjs'
       - 'automation/tests/platform-accessibility-audit.test.mjs'
+      - 'automation/verify-platform-design-blueprint.mjs'
+      - 'automation/tests/verify-platform-design-blueprint.test.mjs'
       - 'automation/platform-accessibility-manual-evidence.mjs'
       - 'automation/tests/platform-accessibility-manual-evidence.test.mjs'
       - 'evaluation/platform-accessibility-manual-evaluation.json'
@@ -33,6 +35,8 @@ on:
       - 'src/styles/**'
       - 'automation/platform-accessibility-audit.mjs'
       - 'automation/tests/platform-accessibility-audit.test.mjs'
+      - 'automation/verify-platform-design-blueprint.mjs'
+      - 'automation/tests/verify-platform-design-blueprint.test.mjs'
       - 'automation/platform-accessibility-manual-evidence.mjs'
       - 'automation/tests/platform-accessibility-manual-evidence.test.mjs'
       - 'evaluation/platform-accessibility-manual-evaluation.json'
@@ -88,10 +92,20 @@ jobs:
         run: |
           rm -f ../.artifacts/platform-accessibility-audit.json
           npm run audit:platform-accessibility
+      - name: Verify authenticated design blueprint interaction
+        working-directory: automation
+        env:
+          PLATFORM_A11Y_BASE_URL: http://127.0.0.1:4321
+          PLATFORM_DESIGN_REPORT: ../.artifacts/platform-design-blueprint-browser.json
+        run: |
+          rm -f ../.artifacts/platform-design-blueprint-browser.json
+          node verify-platform-design-blueprint.mjs
       - name: Upload audit evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: platform-accessibility-audit
-          path: .artifacts/platform-accessibility-audit.json
+          path: |
+            .artifacts/platform-accessibility-audit.json
+            .artifacts/platform-design-blueprint-browser.json
           if-no-files-found: error

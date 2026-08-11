@@ -14,6 +14,8 @@ export const AUDITED_SOURCE_PATHS = [
   'automation/package-lock.json',
   'automation/package.json',
   'automation/platform-accessibility-audit.mjs',
+  'automation/tests/verify-platform-design-blueprint.test.mjs',
+  'automation/verify-platform-design-blueprint.mjs',
   'src/components',
   'src/islands/platform',
   'src/islands/result',
@@ -41,7 +43,7 @@ export const DEFAULT_AUDIT_PROFILES = [
 
 const SUPABASE_ORIGIN = 'https://pleyuknjnprsckssxvrh.supabase.co';
 const AUTH_STORAGE_KEY = 'sb-pleyuknjnprsckssxvrh-auth-token';
-const FIXTURE_IDS = {
+export const FIXTURE_IDS = {
   user: '00000000-0000-4000-8000-000000000001',
   org: '00000000-0000-4000-8000-000000000002',
   assembly: '00000000-0000-4000-8000-000000000003',
@@ -91,7 +93,7 @@ function auditSession() {
   };
 }
 
-async function prepareAuthenticatedPlatform({ context, page }) {
+export async function prepareAuthenticatedPlatform({ context, page }) {
   const session = auditSession();
   await context.addInitScript(({ key, value }) => {
     localStorage.setItem(key, JSON.stringify(value));
@@ -101,6 +103,17 @@ async function prepareAuthenticatedPlatform({ context, page }) {
     if (path === '/auth/v1/user') return jsonResponse(route, auditUser());
     if (path === '/auth/v1/token') return jsonResponse(route, session);
     if (path === '/rest/v1/rpc/org_of_uid') return jsonResponse(route, FIXTURE_IDS.org);
+    if (path === '/rest/v1/rpc/readiness_check') {
+      return jsonResponse(route, {
+        ok: true,
+        checks: [
+          { key: 'topics_open', pass: true, detail: '1개 주제 open' },
+          { key: 'teams_active', pass: true, detail: '1개 조 active' },
+          { key: 'roster_loaded', pass: true, detail: '12명 배정' },
+          { key: 'submissions', pass: true, detail: '1/1 최종 제출' },
+        ],
+      });
+    }
     if (path === '/rest/v1/assembly') {
       return jsonResponse(route, [{
         id: FIXTURE_IDS.assembly,

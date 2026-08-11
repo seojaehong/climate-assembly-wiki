@@ -1,0 +1,271 @@
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
+import {
+  AUDITED_SOURCE_PATHS,
+  FIXTURE_IDS,
+  prepareAuthenticatedPlatform,
+  readAuditSourceStatus,
+} from './platform-accessibility-audit.mjs';
+
+const PLATFORM_ENTRY_ROUTE = '/platform/';
+export const DESIGN_BLUEPRINT_ROUTE = `/platform/o/${FIXTURE_IDS.org}/c/audit-assembly/design`;
+const READ_RPCS = new Set(['/rest/v1/rpc/org_of_uid', '/rest/v1/rpc/readiness_check']);
+
+function requireRecord(value, label) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`${label} must be an object`);
+  }
+  return value;
+}
+
+/** Validates the downloaded, non-mutating blueprint contract used by the browser verifier. */
+export function validateDownloadedBlueprint(value) {
+  const blueprint = requireRecord(value, 'Downloaded blueprint');
+  if (
+    blueprint.schemaVersion !== 1
+    || blueprint.kind !== 'platform-design-blueprint'
+    || blueprint.dryRun !== true
+    || blueprint.databaseMutationExecuted !== false
+    || blueprint.requiresApproval !== true
+  ) {
+    throw new Error('Downloaded blueprint violates the approval boundary');
+  }
+  if (!Array.isArray(blueprint.sessions) || blueprint.sessions.length !== 2) {
+    throw new Error('Downloaded blueprint must contain the two verified sessions');
+  }
+  const assembly = requireRecord(blueprint.assembly, 'Downloaded blueprint assembly');
+  const projectedHierarchy = blueprint.sessions.map((sessionValue) => {
+    const session = requireRecord(sessionValue, 'Downloaded blueprint session');
+    if (!Array.isArray(session.topics) || !Array.isArray(session.teams)) {
+      throw new Error('Downloaded blueprint hierarchy does not match the verified input');
+    }
+    return {
+      ordinal: session.ordinal,
+      heldOn: session.heldOn,
+      topics: session.topics.map((topicValue) => {
+        const topic = requireRecord(topicValue, 'Downloaded blueprint topic');
+        return { ordinal: topic.ordinal, prompt: topic.prompt };
+      }),
+      teams: session.teams.map((teamValue) => {
+        const team = requireRecord(teamValue, 'Downloaded blueprint team');
+        return { ordinal: team.ordinal, plannedCapacity: team.plannedCapacity };
+      }),
+    };
+  });
+  const expectedHierarchy = [
+    { ordinal: 1, heldOn: '2026-09-12', topics: [{ ordinal: 1, prompt: '감축 경로' }], teams: [{ ordinal: 1, plannedCapacity: 12 }] },
+    { ordinal: 2, heldOn: '2026-09-13', topics: [{ ordinal: 1, prompt: '적응 정책' }], teams: [{ ordinal: 1, plannedCapacity: 10 }] },
+  ];
+  if (
+    assembly.title !== '기후 공론화 2026'
+    || assembly.slug !== 'climate-2026'
+    || JSON.stringify(projectedHierarchy) !== JSON.stringify(expectedHierarchy)
+  ) {
+    throw new Error('Downloaded blueprint hierarchy does not match the verified input');
+  }
+  const stats = requireRecord(blueprint.stats, 'Downloaded blueprint stats');
+  const expectedStats = {
+    sessionCount: projectedHierarchy.length,
+    topicCount: projectedHierarchy.reduce((sum, session) => sum + session.topics.length, 0),
+    teamCount: projectedHierarchy.reduce((sum, session) => sum + session.teams.length, 0),
+    participantCount: projectedHierarchy.reduce((sum, session) => (
+      sum + session.teams.reduce((sessionSum, team) => sessionSum + team.plannedCapacity, 0)
+    ), 0),
+  };
+  for (const [key, expected] of Object.entries(expectedStats)) {
+    if (stats[key] !== expected) throw new Error(`Downloaded blueprint has invalid ${key}`);
+  }
+  return expectedStats;
+}
+
+/** Distinguishes read-only fixture RPCs from any REST mutation attempt. */
+export function isDatabaseMutationRequest(method, path) {
+  if (!path.startsWith('/rest/v1/')) return false;
+  const normalizedMethod = method.toUpperCase();
+  if (READ_RPCS.has(path) && normalizedMethod === 'POST') return false;
+  return !['GET', 'HEAD', 'OPTIONS'].includes(normalizedMethod);
+}
+
+function readSourceTreeSha256(projectRoot) {
+  const files = execFileSync(
+    'git',
+    ['ls-files', '--cached', '--others', '--exclude-standard', '--', ...AUDITED_SOURCE_PATHS],
+    { cwd: projectRoot, encoding: 'utf8' },
+  ).split(/\r?\n/).filter(Boolean).sort();
+  const hash = createHash('sha256');
+  for (const file of files) {
+    hash.update(file);
+    hash.update('\0');
+    hash.update(readFileSync(resolve(projectRoot, file)));
+    hash.update('\0');
+  }
+  return hash.digest('hex');
+}
+
+async function readDownloadJson(download) {
+  const stream = await download.createReadStream();
+  const chunks = [];
+  for await (const chunk of stream) chunks.push(chunk);
+  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+}
+
+/** Exercises the authenticated production component while all Supabase traffic is fixture-bound. */
+export async function verifyPlatformDesignBlueprint({
+  baseUrl,
+  reportPath,
+  sourceCommit,
+  sourceTreeClean,
+  sourceTreeSha256,
+  timeoutMs = 60_000,
+}) {
+  const origin = new URL(baseUrl);
+  if (!['http:', 'https:'].includes(origin.protocol)) throw new Error('baseUrl must use HTTP or HTTPS');
+  const browser = await chromium.launch();
+  const context = await browser.newContext({ acceptDownloads: true, viewport: { width: 1440, height: 1000 } });
+  const page = await context.newPage();
+  const browserErrors = [];
+  const fixtureFailures = [];
+  const mutationAttempts = [];
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.hostname === 'pleyuknjnprsckssxvrh.supabase.co'
+      && isDatabaseMutationRequest(request.method(), url.pathname)) {
+      mutationAttempts.push({ method: request.method(), path: url.pathname });
+    }
+  });
+  page.on('pageerror', (error) => browserErrors.push(error.message));
+  page.on('response', (response) => {
+    if (response.url().includes('pleyuknjnprsckssxvrh.supabase.co') && response.status() >= 400) {
+      fixtureFailures.push({ status: response.status(), path: new URL(response.url()).pathname });
+    }
+  });
+
+  try {
+    await prepareAuthenticatedPlatform({ context, page });
+    const pageUrl = new URL(PLATFORM_ENTRY_ROUTE, origin);
+    const response = await page.goto(pageUrl.toString(), { waitUntil: 'domcontentloaded', timeout: timeoutMs });
+    if (!response?.ok()) throw new Error(`Design blueprint page returned HTTP ${response?.status() ?? 'unknown'}`);
+    await page.getByRole('button', { name: '접근성 감사 공론화', exact: true }).click();
+    await page.getByRole('button', { name: 'design', exact: true }).click();
+    await page.waitForURL((url) => url.pathname === DESIGN_BLUEPRINT_ROUTE, { timeout: timeoutMs });
+    await page.getByRole('heading', { name: '설계 청사진' }).waitFor({ timeout: timeoutMs });
+
+    await page.getByLabel('공론화 이름').fill('기후 공론화 2026');
+    await page.getByLabel('공론화 slug').fill('climate-2026');
+    await page.getByLabel('회차 날짜').fill('2026-09-12');
+    await page.getByLabel('주제 (한 줄에 하나)').fill('감축 경로');
+    await page.getByLabel('조 수').fill('1');
+    await page.getByLabel('예상 참여자 수').fill('12');
+    await page.getByRole('button', { name: '회차 추가' }).click();
+
+    const dates = page.getByLabel('회차 날짜');
+    const topics = page.getByLabel('주제 (한 줄에 하나)');
+    const teams = page.getByLabel('조 수');
+    const participants = page.getByLabel('예상 참여자 수');
+    await dates.nth(1).fill('2026-09-11');
+    await topics.nth(1).fill('적응 정책');
+    await teams.nth(1).fill('1');
+    await participants.nth(1).fill('10');
+    await page.getByRole('button', { name: '청사진 검증' }).click();
+    const dateError = page.getByText('회차 날짜는 앞 회차보다 이르지 않아야 합니다.', { exact: true });
+    await dateError.waitFor({ timeout: timeoutMs });
+    const invalidDateRejected = await dateError.isVisible();
+
+    await dates.nth(1).fill('2026-09-13');
+    await page.getByRole('button', { name: '청사진 검증' }).click();
+    await page.getByRole('heading', { name: '승인 검토용 미리보기' }).waitFor({ timeout: timeoutMs });
+    const previewSummary = await page.getByText('회차 2개 · 주제 2개 · 조 2개 · 예상 참여자 22명').isVisible();
+
+    await topics.nth(1).fill('적응 정책 보완');
+    const previewInvalidated = await page.getByRole('heading', { name: '승인 검토용 미리보기' }).count() === 0
+      && await page.getByRole('button', { name: 'JSON 내려받기' }).count() === 0;
+    await topics.nth(1).fill('적응 정책');
+    await page.getByRole('button', { name: '청사진 검증' }).click();
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'JSON 내려받기' }).click();
+    const download = await downloadPromise;
+    const downloadJson = await readDownloadJson(download);
+    const exportedStats = validateDownloadedBlueprint(downloadJson);
+    const filename = download.suggestedFilename();
+
+    if (!invalidDateRejected) throw new Error('Design blueprint did not reject reversed session dates');
+    if (!previewSummary) throw new Error('Design blueprint preview summary is missing');
+    if (!previewInvalidated) throw new Error('Editing did not invalidate the blueprint preview');
+    if (filename !== 'climate-2026_design_blueprint.json') throw new Error('Design blueprint filename is invalid');
+    if (browserErrors.length > 0) throw new Error('Design blueprint verification observed a browser error');
+    if (fixtureFailures.length > 0) throw new Error('Design blueprint verification observed an unexpected fixture request');
+    if (mutationAttempts.length > 0) throw new Error('Design blueprint verification observed a database mutation attempt');
+
+    const report = {
+      schemaVersion: 1,
+      generatedAt: new Date().toISOString(),
+      baseUrl: origin.origin,
+      path: DESIGN_BLUEPRINT_ROUTE,
+      sourceCommit,
+      sourceTreeClean,
+      sourceTreeSha256,
+      fixture: 'ci-staff-read-fixture-v1',
+      productionDatabaseAccess: false,
+      runtime: { node: process.version, chromium: browser.version() },
+      status: 'pass',
+      checks: {
+        documentStatus: response.status(),
+        multiSessionInput: true,
+        invalidDateRejected,
+        previewSummary,
+        previewInvalidated,
+        downloadedFilename: filename,
+        exportedStats,
+        approvalBoundary: {
+          dryRun: downloadJson.dryRun,
+          databaseMutationExecuted: downloadJson.databaseMutationExecuted,
+          requiresApproval: downloadJson.requiresApproval,
+        },
+        browserPageErrorCount: browserErrors.length,
+        fixtureFailureCount: fixtureFailures.length,
+        databaseMutationAttemptCount: mutationAttempts.length,
+      },
+    };
+    if (reportPath) {
+      mkdirSync(dirname(reportPath), { recursive: true });
+      writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+    }
+    return report;
+  } finally {
+    await context.close();
+    await browser.close();
+  }
+}
+
+function optionValue(name) {
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1] : undefined;
+}
+
+const isCli = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+if (isCli) {
+  const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: projectRoot, encoding: 'utf8' }).trim();
+  const statusOutput = readAuditSourceStatus(projectRoot);
+  const sourceTreeSha256 = readSourceTreeSha256(projectRoot);
+  const allowDirtySource = process.argv.includes('--allow-dirty-source');
+  if (statusOutput.trim() && !allowDirtySource) throw new Error('Design blueprint verification source tree is dirty');
+  const baseUrl = optionValue('--base-url') ?? process.env.PLATFORM_A11Y_BASE_URL ?? 'http://127.0.0.1:4321';
+  const reportPath = resolve(
+    optionValue('--output-json')
+      ?? process.env.PLATFORM_DESIGN_REPORT
+      ?? resolve(projectRoot, 'evaluation', '2026-08-11-platform-design-blueprint-browser.json'),
+  );
+  const report = await verifyPlatformDesignBlueprint({
+    baseUrl,
+    reportPath,
+    sourceCommit,
+    sourceTreeClean: !statusOutput.trim(),
+    sourceTreeSha256,
+  });
+  console.log(JSON.stringify({ reportPath, status: report.status, checks: report.checks }));
+}

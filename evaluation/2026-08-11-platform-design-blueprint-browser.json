@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-11T14:31:07.579Z",
+  "baseUrl": "http://127.0.0.1:4321",
+  "path": "/platform/o/00000000-0000-4000-8000-000000000002/c/audit-assembly/design",
+  "sourceCommit": "1192e131f13fb2dfdd0e89d150ce7cddc83ec71b",
+  "sourceTreeClean": false,
+  "sourceTreeSha256": "4f4271ccb5ec5a9fab93325e8a0a8df630d7dc98357a4b9bf72d85739e67e652",
+  "fixture": "ci-staff-read-fixture-v1",
+  "productionDatabaseAccess": false,
+  "runtime": {
+    "node": "v24.12.0",
+    "chromium": "149.0.7827.55"
+  },
+  "status": "pass",
+  "checks": {
+    "documentStatus": 200,
+    "multiSessionInput": true,
+    "invalidDateRejected": true,
+    "previewSummary": true,
+    "previewInvalidated": true,
+    "downloadedFilename": "climate-2026_design_blueprint.json",
+    "exportedStats": {
+      "sessionCount": 2,
+      "topicCount": 2,
+      "teamCount": 2,
+      "participantCount": 22
+    },
+    "approvalBoundary": {
+      "dryRun": true,
+      "databaseMutationExecuted": false,
+      "requiresApproval": true
+    },
+    "browserPageErrorCount": 0,
+    "fixtureFailureCount": 0,
+    "databaseMutationAttemptCount": 0
+  }
+}
