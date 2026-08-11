@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-11T10:20:38.491Z",
+  "baseUrl": "http://127.0.0.1:4328",
+  "path": "/ko/moderator/canvas/",
+  "readOnly": true,
+  "sourceProvenance": {
+    "sourceCommit": "4446833eab9a55c04f718cd178c693d4886575eb",
+    "sourceTreeClean": true,
+    "verifierSha256": "7cc9beb65f5dea7fbfd42160b33b3ad3e2f7899ef58f637fc2b86f81b598d4d8"
+  },
+  "runtime": {
+    "node": "v20.19.5",
+    "chromium": "149.0.7827.55"
+  },
+  "checks": {
+    "viteClientStatus": 200,
+    "documentStatus": 200,
+    "realtimeReady": true,
+    "moderatorLoginBoundary": true,
+    "canvasHydrated": true,
+    "agendaNodeCount": 4,
+    "unauthenticatedNodeDraggable": false,
+    "blockedWriteRequestCount": 0,
+    "browserPageErrorCount": 0,
+    "supabaseReadResponses": [
+      {
+        "status": 200,
+        "url": "/rest/v1/session"
+      },
+      {
+        "status": 200,
+        "url": "/rest/v1/agenda"
+      },
+      {
+        "status": 200,
+        "url": "/rest/v1/agenda_link"
+      }
+    ]
+  },
+  "screenshot": "evaluation/2026-08-11-canvas-dev-browser.png",
+  "status": "pass"
+}
