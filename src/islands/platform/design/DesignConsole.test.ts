@@ -3,8 +3,15 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import type { PlatformResult, ReadinessResult } from '../../../lib/platform';
-import DesignConsole, { DesignResults, completeReadinessLoad, loadScopedReadiness } from './DesignConsole';
-import { buildDesignView, type DesignView } from './design-console-logic';
+import DesignConsole, {
+  DesignBlueprintBuilder,
+  DesignResults,
+  completeDesignBlueprintExport,
+  completeReadinessLoad,
+  downloadDesignBlueprint,
+  loadScopedReadiness,
+} from './DesignConsole';
+import { buildDesignBlueprint, serializeDesignBlueprint, buildDesignView, type DesignView } from './design-console-logic';
 
 const readiness: ReadinessResult = {
   ok: true,
@@ -61,9 +68,64 @@ describe('DesignResults', () => {
 });
 
 describe('DesignConsole', () => {
+  it('공론화 설계 청사진 입력과 승인 전 비저장 경계를 제공한다', () => {
+    const html = renderToStaticMarkup(createElement(DesignBlueprintBuilder));
+
+    expect(html).toContain('설계 청사진');
+    expect(html).toContain('공론화 이름');
+    expect(html).toContain('공론화 slug');
+    expect(html).toContain('회차 날짜');
+    expect(html).toContain('주제 (한 줄에 하나)');
+    expect(html).toContain('조 수');
+    expect(html).toContain('예상 참여자 수');
+    expect(html).toContain('회차 추가');
+    expect(html).toContain('청사진 검증');
+    expect(html).toContain('DB를 변경하지 않으며 실제 생성에는 별도 승인이 필요합니다.');
+    expect(html).toContain('max="500"');
+    expect(html).toContain('max="100000"');
+    expect(html).toContain('aria-live="polite"');
+    expect(html).not.toMatch(/border:(?:1|1\.5)px/);
+  });
+
+  it('검증된 청사진을 JSON Blob으로 내려받고 완료 상태를 알린다', () => {
+    const result = buildDesignBlueprint({
+      assemblyTitle: '기후 공론화',
+      assemblySlug: 'climate-2026',
+      sessions: [{ heldOn: '2026-08-29', topics: ['수송'], teamCount: 2, participantCount: 7 }],
+    });
+    if (!result.ok) throw new Error('Expected a valid blueprint');
+    const downloader = vi.fn();
+    const setState = vi.fn();
+
+    const completed = completeDesignBlueprintExport(
+      () => downloadDesignBlueprint(serializeDesignBlueprint(result.blueprint), downloader),
+      setState,
+    );
+
+    expect(completed).toBe(true);
+    expect(downloader).toHaveBeenCalledOnce();
+    expect(downloader.mock.calls[0]?.[0]).toBeInstanceOf(Blob);
+    expect(downloader.mock.calls[0]?.[1]).toBe('climate-2026_design_blueprint.json');
+    expect(setState).toHaveBeenCalledWith({ kind: 'status', text: '설계 청사진 JSON 파일을 내려받았습니다.' });
+  });
+
+  it('청사진 다운로드 실패를 로그와 접근 가능한 오류 상태로 전환한다', () => {
+    const failure = new Error('download failed');
+    const setState = vi.fn();
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const completed = completeDesignBlueprintExport(() => { throw failure; }, setState);
+
+    expect(completed).toBe(false);
+    expect(consoleError).toHaveBeenCalledWith('Failed to download design blueprint', failure);
+    expect(setState).toHaveBeenCalledWith({ kind: 'error', text: '설계 청사진 파일을 만들지 못했습니다. 다시 시도해 주세요.' });
+    consoleError.mockRestore();
+  });
+
   it('회차가 없을 때 명시적 빈 상태를 제공한다', () => {
     const html = renderToStaticMarkup(createElement(DesignConsole, { scope: 'assembly', sessions: [] }));
     expect(html).toContain('이 공론화에 준비도를 확인할 회차가 없습니다.');
+    expect(html).toContain('설계 청사진');
     expect(html).toContain('role="status"');
   });
 

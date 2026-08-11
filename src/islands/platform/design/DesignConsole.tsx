@@ -5,8 +5,14 @@ import {
   type ReadinessResult,
 } from '../../../lib/platform';
 import type { SessionTarget } from '../platform-nav-logic';
+import { downloadBlob } from '../../mod/svg-to-png';
 import {
+  buildDesignBlueprint,
   buildDesignView,
+  DESIGN_BLUEPRINT_LIMITS,
+  serializeDesignBlueprint,
+  type DesignBlueprint,
+  type DesignBlueprintDownload,
   type DesignScope,
   type DesignView,
 } from './design-console-logic';
@@ -21,6 +27,8 @@ const GREEN = '#2F6F25';
 const GREEN_BG = '#E3F1E6';
 const AMBER = '#7A4500';
 const AMBER_BG = '#FFF1D6';
+const RED = '#9B2C2C';
+const RED_BG = '#FDECEC';
 
 type ReadinessLoader = (sessionId: string) => Promise<PlatformResult<ReadinessResult>>;
 
@@ -134,6 +142,190 @@ export function DesignResults({ view }: { view: DesignView }) {
   );
 }
 
+interface DesignSessionDraft {
+  heldOn: string;
+  topicsText: string;
+  teamCount: string;
+  participantCount: string;
+}
+
+type BlueprintDownloader = (blob: Blob, fileName: string) => void;
+export type DesignBlueprintExportState = { kind: 'status' | 'error'; text: string } | null;
+
+const EMPTY_SESSION: DesignSessionDraft = {
+  heldOn: '',
+  topicsText: '',
+  teamCount: '',
+  participantCount: '',
+};
+
+export function downloadDesignBlueprint(
+  download: DesignBlueprintDownload,
+  downloader: BlueprintDownloader = downloadBlob,
+): void {
+  downloader(new Blob([download.content], { type: 'application/json;charset=utf-8' }), download.filename);
+}
+
+export function completeDesignBlueprintExport(
+  action: () => void,
+  onStateChange: (state: Exclude<DesignBlueprintExportState, null>) => void,
+): boolean {
+  try {
+    action();
+    onStateChange({ kind: 'status', text: '설계 청사진 JSON 파일을 내려받았습니다.' });
+    return true;
+  } catch (error: unknown) {
+    console.error('Failed to download design blueprint', error);
+    onStateChange({ kind: 'error', text: '설계 청사진 파일을 만들지 못했습니다. 다시 시도해 주세요.' });
+    return false;
+  }
+}
+
+function toSessionInput(session: DesignSessionDraft) {
+  return {
+    heldOn: session.heldOn,
+    topics: session.topicsText.trim() ? session.topicsText.split(/\r?\n/) : [],
+    teamCount: Number(session.teamCount),
+    participantCount: Number(session.participantCount),
+  };
+}
+
+function BlueprintPreview({ blueprint }: { blueprint: DesignBlueprint }) {
+  return (
+    <section aria-labelledby="design-blueprint-preview" style={{ display: 'grid', gap: 12, border: `2px solid ${TEAL}`, borderRadius: 16, background: PANEL, padding: 16 }}>
+      <h4 id="design-blueprint-preview" style={{ color: NAVY, fontSize: 18, margin: 0 }}>승인 검토용 미리보기</h4>
+      <p style={{ color: MUTED, margin: 0 }}>
+        회차 {blueprint.stats.sessionCount}개 · 주제 {blueprint.stats.topicCount}개 · 조 {blueprint.stats.teamCount}개 · 예상 참여자 {blueprint.stats.participantCount}명
+      </p>
+      <div style={{ overflowX: 'auto', background: '#fff', border: `2px solid ${LINE}`, borderRadius: 12 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 620 }}>
+          <caption className="sr-only">설계 청사진 회차별 구성</caption>
+          <thead>
+            <tr>
+              {['회차', '날짜', '주제', '조별 계획 인원'].map((label) => (
+                <th key={label} scope="col" style={{ color: NAVY, textAlign: 'left', padding: 10, borderBottom: `2px solid ${LINE}` }}>{label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {blueprint.sessions.map((session) => (
+              <tr key={session.ordinal}>
+                <th scope="row" style={{ color: INK, textAlign: 'left', padding: 10, borderBottom: `2px solid ${PANEL}` }}>제{session.ordinal}회차</th>
+                <td style={{ color: INK, padding: 10, borderBottom: `2px solid ${PANEL}` }}>{session.heldOn}</td>
+                <td style={{ color: INK, padding: 10, borderBottom: `2px solid ${PANEL}` }}>{session.topics.map((topic) => topic.prompt).join(' / ')}</td>
+                <td style={{ color: INK, padding: 10, borderBottom: `2px solid ${PANEL}` }}>{session.teams.map((team) => `${team.ordinal}조 ${team.plannedCapacity}명`).join(' / ')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+export function DesignBlueprintBuilder() {
+  const [assemblyTitle, setAssemblyTitle] = useState('');
+  const [assemblySlug, setAssemblySlug] = useState('');
+  const [sessions, setSessions] = useState<DesignSessionDraft[]>([{ ...EMPTY_SESSION }]);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [blueprint, setBlueprint] = useState<DesignBlueprint | null>(null);
+  const [exportState, setExportState] = useState<DesignBlueprintExportState>(null);
+
+  const invalidatePreview = () => {
+    setBlueprint(null);
+    setErrors([]);
+    setExportState(null);
+  };
+
+  const updateSession = (index: number, patch: Partial<DesignSessionDraft>) => {
+    setSessions((current) => current.map((session, sessionIndex) => (
+      sessionIndex === index ? { ...session, ...patch } : session
+    )));
+    invalidatePreview();
+  };
+
+  const validate = () => {
+    const result = buildDesignBlueprint({
+      assemblyTitle,
+      assemblySlug,
+      sessions: sessions.map(toSessionInput),
+    });
+    setExportState(null);
+    if (!result.ok) {
+      setBlueprint(null);
+      setErrors(result.errors);
+      return;
+    }
+    setErrors([]);
+    setBlueprint(result.blueprint);
+  };
+
+  const onDownload = () => {
+    if (!blueprint) return;
+    completeDesignBlueprintExport(
+      () => downloadDesignBlueprint(serializeDesignBlueprint(blueprint)),
+      setExportState,
+    );
+  };
+
+  const inputStyle = { minHeight: 44, width: '100%', border: `2px solid ${LINE}`, borderRadius: 8, padding: '8px 10px', color: INK, background: '#fff' };
+
+  return (
+    <section aria-labelledby="design-blueprint-title" style={{ display: 'grid', gap: 16, border: `2px solid ${LINE}`, borderRadius: 16, background: '#fff', padding: 18 }}>
+      <header>
+        <h3 id="design-blueprint-title" style={{ color: NAVY, fontSize: 20, margin: 0 }}>설계 청사진</h3>
+        <p style={{ color: MUTED, margin: '6px 0 0' }}>DB를 변경하지 않으며 실제 생성에는 별도 승인이 필요합니다.</p>
+      </header>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12 }}>
+        <label style={{ color: INK, fontWeight: 700 }}>공론화 이름
+          <input value={assemblyTitle} maxLength={DESIGN_BLUEPRINT_LIMITS.assemblyTitleChars} onChange={(event) => { setAssemblyTitle(event.target.value); invalidatePreview(); }} style={inputStyle} />
+        </label>
+        <label style={{ color: INK, fontWeight: 700 }}>공론화 slug
+          <input value={assemblySlug} maxLength={40} onChange={(event) => { setAssemblySlug(event.target.value); invalidatePreview(); }} placeholder="climate-2026" style={inputStyle} />
+        </label>
+      </div>
+
+      {sessions.map((session, index) => (
+        <fieldset key={index} style={{ display: 'grid', gap: 12, border: `2px solid ${LINE}`, borderRadius: 12, padding: 14 }}>
+          <legend style={{ color: NAVY, fontWeight: 800, padding: '0 6px' }}>제{index + 1}회차</legend>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12 }}>
+            <label style={{ color: INK, fontWeight: 700 }}>회차 날짜
+              <input type="date" value={session.heldOn} onChange={(event) => updateSession(index, { heldOn: event.target.value })} style={inputStyle} />
+            </label>
+            <label style={{ color: INK, fontWeight: 700 }}>조 수
+              <input type="number" min="1" max={DESIGN_BLUEPRINT_LIMITS.teamsPerSession} step="1" value={session.teamCount} onChange={(event) => updateSession(index, { teamCount: event.target.value })} style={inputStyle} />
+            </label>
+            <label style={{ color: INK, fontWeight: 700 }}>예상 참여자 수
+              <input type="number" min="1" max={DESIGN_BLUEPRINT_LIMITS.participantsPerSession} step="1" value={session.participantCount} onChange={(event) => updateSession(index, { participantCount: event.target.value })} style={inputStyle} />
+            </label>
+          </div>
+          <label style={{ color: INK, fontWeight: 700 }}>주제 (한 줄에 하나)
+            <textarea value={session.topicsText} maxLength={DESIGN_BLUEPRINT_LIMITS.topicsTextChars} onChange={(event) => updateSession(index, { topicsText: event.target.value })} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+          </label>
+          {sessions.length > 1 ? (
+            <button type="button" onClick={() => { setSessions((current) => current.filter((_, sessionIndex) => sessionIndex !== index)); invalidatePreview(); }} style={{ justifySelf: 'start', minHeight: 40, border: `2px solid ${RED}`, borderRadius: 8, background: '#fff', color: RED, padding: '6px 12px', fontWeight: 800 }}>이 회차 삭제</button>
+          ) : null}
+        </fieldset>
+      ))}
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+        <button type="button" disabled={sessions.length >= DESIGN_BLUEPRINT_LIMITS.sessions} onClick={() => { setSessions((current) => [...current, { ...EMPTY_SESSION }]); invalidatePreview(); }} style={{ minHeight: 44, border: `2px solid ${TEAL}`, borderRadius: 9, background: '#fff', color: TEAL, padding: '8px 14px', fontWeight: 800 }}>회차 추가</button>
+        <button type="button" onClick={validate} style={{ minHeight: 44, border: `2px solid ${TEAL}`, borderRadius: 9, background: TEAL, color: '#fff', padding: '8px 14px', fontWeight: 800 }}>청사진 검증</button>
+        {blueprint ? <button type="button" onClick={onDownload} aria-describedby="design-blueprint-export-status" style={{ minHeight: 44, border: `2px solid ${GREEN}`, borderRadius: 9, background: GREEN, color: '#fff', padding: '8px 14px', fontWeight: 800 }}>JSON 내려받기</button> : null}
+      </div>
+
+      {errors.length > 0 ? (
+        <div role="alert" style={{ border: `2px solid ${RED}`, borderRadius: 12, background: RED_BG, color: RED, padding: 14 }}>
+          <strong>청사진을 확인해 주세요.</strong>
+          <ul>{errors.map((error) => <li key={error}>{error}</li>)}</ul>
+        </div>
+      ) : null}
+      {blueprint ? <BlueprintPreview blueprint={blueprint} /> : null}
+      <p id="design-blueprint-export-status" role={exportState?.kind === 'error' ? 'alert' : 'status'} aria-live="polite" aria-atomic="true" className="sr-only">{exportState?.text ?? ''}</p>
+    </section>
+  );
+}
+
 export default function DesignConsole({
   scope,
   sessions,
@@ -167,14 +359,6 @@ export default function DesignConsole({
     return () => { requestGeneration.current += 1; };
   }, [scopeKey, retry]);
 
-  if (sessions.length === 0) {
-    return (
-      <div role="status" aria-live="polite" style={{ border: `2px dashed ${TEAL}`, borderRadius: 14, background: PANEL, padding: 20, color: MUTED }}>
-        이 {scope === 'assembly' ? '공론화' : '회차'}에 준비도를 확인할 회차가 없습니다.
-      </div>
-    );
-  }
-
   return (
     <div style={{ display: 'grid', gap: 18 }} aria-busy={busy}>
       <header>
@@ -183,6 +367,13 @@ export default function DesignConsole({
         <p style={{ color: MUTED, fontSize: 15, margin: 0 }}>공개 주제, 활성 조, 참여자 배정 상태를 읽기 전용으로 확인합니다.</p>
       </header>
 
+      {scope === 'assembly' ? <DesignBlueprintBuilder /> : null}
+
+      {sessions.length === 0 ? (
+        <div role="status" aria-live="polite" style={{ border: `2px dashed ${TEAL}`, borderRadius: 14, background: PANEL, padding: 20, color: MUTED }}>
+          이 {scope === 'assembly' ? '공론화' : '회차'}에 준비도를 확인할 회차가 없습니다.
+        </div>
+      ) : null}
       {busy ? <p role="status" aria-live="polite" style={{ color: MUTED, margin: 0 }}>준비도를 확인하는 중…</p> : null}
       {notice ? (
         <div role="alert" style={{ border: `2px solid ${AMBER}`, borderRadius: 14, background: AMBER_BG, color: AMBER, padding: 16 }}>
@@ -191,7 +382,7 @@ export default function DesignConsole({
         </div>
       ) : null}
       {view ? <DesignResults view={view} /> : null}
-      <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>공론화·회차·주제 생성은 P3 데이터 모델 활성화 후 제공됩니다.</p>
+      <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>청사진은 승인 검토용 JSON만 만들며 공론화·회차·주제의 실제 생성은 P3 데이터 모델 활성화 후 제공됩니다.</p>
     </div>
   );
 }
