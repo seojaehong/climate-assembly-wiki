@@ -2,6 +2,10 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  buildOntologyReviewQueueSeed,
+  verifyOntologyReviewQueueSeed,
+} from './ontology-review-queue.mjs';
 
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC_ROOT = resolve(REPOSITORY_ROOT, 'public');
@@ -158,6 +162,7 @@ export function buildCanvasOntologyReviewPlan(input) {
       throw new Error('Non-action agenda must not have a parent');
     }
     if (row.parent_id) {
+      if (row.parent_id === row.id) throw new Error('Action agenda must not reference itself as parent');
       const parent = agendaById.get(row.parent_id);
       if (!parent) throw new Error('Action parent references a missing agenda');
       if (parent.session_id !== row.session_id) throw new Error('Cross-session agenda relation is not allowed');
@@ -183,7 +188,9 @@ export function buildCanvasOntologyReviewPlan(input) {
     if (row.source_id === row.target_id) throw new Error('Self-referencing agenda link is not allowed');
     if (!nodeIds.has(source) || !nodeIds.has(target)) {
       excludedRelations.push({
+        sourceType: 'agenda_link',
         sourceLinkId: row.id,
+        sourceSessionId: row.session_id,
         sourceAgendaId: row.source_id,
         targetAgendaId: row.target_id,
         reason: 'inactive_endpoint',
@@ -191,6 +198,18 @@ export function buildCanvasOntologyReviewPlan(input) {
       continue;
     }
     relations.push(reviewLink(row, nodeIds));
+  }
+
+  for (const row of agendaRows) {
+    if (row.status !== 'archived' || row.kind !== 'action' || !row.parent_id) continue;
+    excludedRelations.push({
+      sourceType: 'action_parent',
+      sourceLinkId: null,
+      sourceSessionId: row.session_id,
+      sourceAgendaId: row.parent_id,
+      targetAgendaId: row.id,
+      reason: 'inactive_endpoint',
+    });
   }
 
   for (const node of nodes) {
@@ -231,7 +250,7 @@ export function buildCanvasOntologyReviewPlan(input) {
       reviewedAt: null,
     };
   });
-  const sessionIds = [...new Set(nodes.map((node) => node.sourceSessionId))].sort();
+  const sessionIds = [...new Set(agendaRows.map((row) => row.session_id))].sort();
 
   return {
     schemaVersion: 1,
@@ -549,7 +568,10 @@ function writeJsonFile(path, value, force) {
 function parseCliArgs(argv) {
   const values = new Map();
   let force = false;
-  const valueOptions = new Set(['--snapshot', '--output-plan', '--verify-plan', '--reviewed-plan', '--output-graph']);
+  const valueOptions = new Set([
+    '--snapshot', '--output-plan', '--verify-plan', '--seed-plan', '--output-seed', '--verify-seed',
+    '--reviewed-plan', '--output-graph',
+  ]);
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === '--force') {
@@ -565,18 +587,27 @@ function parseCliArgs(argv) {
   if (!values.has('--snapshot')) throw new Error('Missing required argument: --snapshot');
   const create = values.has('--output-plan');
   const verify = values.has('--verify-plan');
+  const createSeed = values.has('--output-seed');
+  const verifySeed = values.has('--verify-seed');
+  const seed = values.has('--seed-plan') || createSeed || verifySeed;
   const exportGraph = values.has('--reviewed-plan') || values.has('--output-graph');
-  if ([create, verify, exportGraph].filter(Boolean).length !== 1) {
+  if ([create, verify, seed, exportGraph].filter(Boolean).length !== 1) {
     throw new Error('Select exactly one Canvas ontology bridge mode');
+  }
+  if (seed && (!values.has('--seed-plan') || [createSeed, verifySeed].filter(Boolean).length !== 1)) {
+    throw new Error('Review queue seed requires --seed-plan and exactly one of --output-seed or --verify-seed');
   }
   if (exportGraph && (!values.has('--reviewed-plan') || !values.has('--output-graph'))) {
     throw new Error('Reviewed export requires --reviewed-plan and --output-graph');
   }
-  if (verify && force) throw new Error('--force is not valid when verifying a plan');
+  if ((verify || verifySeed) && force) throw new Error('--force is not valid when verifying an artifact');
   return {
     snapshotPath: values.get('--snapshot'),
     outputPlanPath: values.get('--output-plan'),
     verifyPlanPath: values.get('--verify-plan'),
+    seedPlanPath: values.get('--seed-plan'),
+    outputSeedPath: values.get('--output-seed'),
+    verifySeedPath: values.get('--verify-seed'),
     reviewedPlanPath: values.get('--reviewed-plan'),
     outputGraphPath: values.get('--output-graph'),
     force,
@@ -591,7 +622,7 @@ function isInsidePublicDirectory(path) {
 
 export function runCanvasOntologyBridgeCli(argv) {
   const options = parseCliArgs(argv);
-  const outputPath = options.outputPlanPath ?? options.outputGraphPath;
+  const outputPath = options.outputPlanPath ?? options.outputSeedPath ?? options.outputGraphPath;
   if (outputPath && isInsidePublicDirectory(outputPath)) {
     throw new Error('Canvas ontology output must stay outside the repository public directory');
   }
@@ -612,6 +643,25 @@ export function runCanvasOntologyBridgeCli(argv) {
       snapshotSource: snapshotFile.source,
     });
     return `Canvas ontology review plan verified (${result.nodeCount} nodes; ${result.relationCount} relations; database mutation: false)`;
+  }
+  if (options.outputSeedPath || options.verifySeedPath) {
+    const planFile = readJsonFile(options.seedPlanPath, 'Canvas ontology review plan');
+    verifyCanvasOntologyReviewPlan({
+      plan: planFile.data,
+      snapshot: snapshotFile.data,
+      snapshotSource: snapshotFile.source,
+    });
+    const seed = buildOntologyReviewQueueSeed(planFile.data);
+    if (options.outputSeedPath) {
+      writeJsonFile(options.outputSeedPath, seed, options.force);
+      return `${seed.counts.total} review queue items; database mutation: false; approval required: true`;
+    }
+    const seedFile = readJsonFile(options.verifySeedPath, 'ontology review queue seed');
+    const result = verifyOntologyReviewQueueSeed(seedFile.data);
+    if (canonicalJson(seedFile.data) !== canonicalJson(seed)) {
+      throw new Error('Ontology review queue seed does not match its source plan');
+    }
+    return `Ontology review queue seed verified (${result.itemCount} items; database mutation: false)`;
   }
   const reviewedPlanFile = readJsonFile(options.reviewedPlanPath, 'reviewed Canvas ontology plan');
   const graph = exportReviewedCanvasOntology({

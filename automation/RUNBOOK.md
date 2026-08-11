@@ -330,6 +330,32 @@ npm.cmd run bridge:canvas-ontology -- --snapshot 'C:\approved\snapshot_42.json' 
 npm.cmd run bridge:canvas-ontology -- --snapshot 'C:\approved\snapshot_42.json' --verify-plan 'C:\approved\canvas-review-plan.json'
 ```
 
+M3 DB 적재 전에 검수 큐 행 형상만 만드는 local seed dry-run:
+
+```powershell
+npm.cmd run bridge:canvas-ontology -- --snapshot 'C:\approved\snapshot_42.json' --seed-plan 'C:\approved\canvas-review-plan.json' --output-seed 'C:\approved\ontology-review-seed.json'
+```
+
+생성된 seed를 같은 snapshot·plan에서 다시 만들 수 있는지와 canonical self-checksum을 확인:
+
+```powershell
+npm.cmd run bridge:canvas-ontology -- --snapshot 'C:\approved\snapshot_42.json' --seed-plan 'C:\approved\canvas-review-plan.json' --verify-seed 'C:\approved\ontology-review-seed.json'
+```
+
+- seed mode는 먼저 같은 snapshot으로 plan checksum과 source 재구성을 검증한다. 변조되거나 다른
+  snapshot의 plan이면 출력 파일을 만들지 않는다.
+- batch 후보 source는 `sourceKind: canvas_snapshot`, `sourceUid: canvas-snapshot:<snapshotId>`,
+  `snapshotSha256`으로 고정해 승인 후 같은 source의 중복 적재를 식별할 수 있게 한다.
+- node/relation/cluster를 `sourceUid`, nullable `transcriptChunkId`, node kind/label, relation type,
+  cited UID 목록, moderator-only metadata, review status, reviewer/timestamp 필드로 정규화한다.
+- source가 kind·relation·검수 결과를 선결정한 plan은 거부하며 모든 seed item은 `proposed`로 시작한다.
+- 보관 의제와 비활성 endpoint 관계는 queue item으로 만들지 않고 `excluded` provenance에 보존한다.
+- 결과는 `dryRun:true`, `databaseMutationExecuted:false`, `requiresApproval:true`, contract `draft`다.
+  DB table/RLS/RPC 초안과 승인·rollback 경계는 `docs/platform/ONTOLOGY_REVIEW_QUEUE_CONTRACT.md`가
+  정본이며 migration은 아직 만들거나 적용하지 않았다.
+- seed self-checksum과 `--verify-seed`는 우발 변경과 source plan 불일치를 탐지한다. 같은 seed와
+  checksum을 함께 의도적으로 다시 만든 경우, 작성자 진위, 외부 시점 또는 승인자 인증은 증명하지 않는다.
+
 검수자는 계획 JSON에서 다음 결정 필드만 수정한다.
 
 - node: `kind`, `label`, `text`, `reviewStatus`, `reviewer`, `reviewedAt`

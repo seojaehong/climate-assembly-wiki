@@ -12,6 +12,12 @@ import {
   verifyCanvasOntologyReviewPlan,
 } from '../canvas-ontology-bridge.mjs';
 
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (typeof value !== 'object' || value === null) return value;
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]));
+}
+
 const SNAPSHOT = {
   id: 42,
   source: 'cron',
@@ -222,6 +228,10 @@ test('records archived Canvas rows and their links as explicit exclusions', () =
     id: 'agenda-archived', session_id: 'session-1', text: '이전 검토안', jo: 'A조', zone: '감축',
     status: 'archived', kind: 'agenda', group_id: null, parent_id: null, x: 0, y: 0,
   });
+  snapshot.payload.agenda.push({
+    id: 'action-archived', session_id: 'session-1', text: '이전 실천안', jo: 'A조', zone: '감축',
+    status: 'archived', kind: 'action', group_id: null, parent_id: 'agenda-1', x: 0, y: 0,
+  });
   snapshot.payload.agenda_link.push({
     id: 'link-archived', session_id: 'session-1', source_id: 'agenda-archived', target_id: 'agenda-1',
   });
@@ -231,18 +241,38 @@ test('records archived Canvas rows and their links as explicit exclusions', () =
   expect(plan.nodes).toHaveLength(2);
   expect(plan.relations).toHaveLength(2);
   expect(plan.excluded).toEqual({
-    agendas: [{
-      sourceAgendaId: 'agenda-archived',
-      sourceSessionId: 'session-1',
-      sourceStatus: 'archived',
-      reason: 'archived_agenda',
-    }],
-    relations: [{
-      sourceLinkId: 'link-archived',
-      sourceAgendaId: 'agenda-archived',
-      targetAgendaId: 'agenda-1',
-      reason: 'inactive_endpoint',
-    }],
+    agendas: [
+      {
+        sourceAgendaId: 'agenda-archived',
+        sourceSessionId: 'session-1',
+        sourceStatus: 'archived',
+        reason: 'archived_agenda',
+      },
+      {
+        sourceAgendaId: 'action-archived',
+        sourceSessionId: 'session-1',
+        sourceStatus: 'archived',
+        reason: 'archived_agenda',
+      },
+    ],
+    relations: [
+      {
+        sourceType: 'agenda_link',
+        sourceLinkId: 'link-archived',
+        sourceSessionId: 'session-1',
+        sourceAgendaId: 'agenda-archived',
+        targetAgendaId: 'agenda-1',
+        reason: 'inactive_endpoint',
+      },
+      {
+        sourceType: 'action_parent',
+        sourceLinkId: null,
+        sourceSessionId: 'session-1',
+        sourceAgendaId: 'agenda-1',
+        targetAgendaId: 'action-archived',
+        reason: 'inactive_endpoint',
+      },
+    ],
   });
 });
 
@@ -283,6 +313,20 @@ test('fails closed on invalid action parent topology', () => {
   const nonActionParent = structuredClone(SNAPSHOT);
   nonActionParent.payload.agenda[0].parent_id = 'action-1';
   expect(() => buildCanvasOntologyReviewPlan(nonActionParent)).toThrow('Non-action agenda must not have a parent');
+
+  const selfParent = structuredClone(SNAPSHOT);
+  selfParent.payload.agenda[1].parent_id = 'action-1';
+  expect(() => buildCanvasOntologyReviewPlan(selfParent)).toThrow('Action agenda must not reference itself as parent');
+
+  const archivedSelfParent = structuredClone(SNAPSHOT);
+  archivedSelfParent.payload.agenda[1] = {
+    ...archivedSelfParent.payload.agenda[1],
+    status: 'archived',
+    parent_id: 'action-1',
+  };
+  expect(() => buildCanvasOntologyReviewPlan(archivedSelfParent)).toThrow(
+    'Action agenda must not reference itself as parent',
+  );
 });
 
 test('rejects an empty active Canvas instead of producing an empty success plan', () => {
@@ -298,12 +342,16 @@ test('runs the local create, verify, and reviewed graph export CLI without datab
   try {
     const snapshotPath = join(directory, 'snapshot.json');
     const planPath = join(directory, 'review-plan.json');
+    const seedPath = join(directory, 'review-seed.json');
     const graphPath = join(directory, 'reviewed-graph.json');
     const publicGraphPath = fileURLToPath(new URL(
       '../../public/__canvas_bridge_test_output__.json', import.meta.url,
     ));
     const publicPlanPath = fileURLToPath(new URL(
       '../../public/__canvas_bridge_test_plan__.json', import.meta.url,
+    ));
+    const publicSeedPath = fileURLToPath(new URL(
+      '../../public/__canvas_bridge_test_seed__.json', import.meta.url,
     ));
     writeFileSync(snapshotPath, JSON.stringify(SNAPSHOT), 'utf8');
     const modulePath = fileURLToPath(new URL('../canvas-ontology-bridge.mjs', import.meta.url));
@@ -319,6 +367,66 @@ test('runs the local create, verify, and reviewed graph export CLI without datab
     ], { encoding: 'utf8', env: {} });
     expect(verified.status).toBe(0);
     expect(verified.stdout).toContain('Canvas ontology review plan verified');
+
+    const seeded = spawnSync(process.execPath, [
+      modulePath, '--snapshot', snapshotPath, '--seed-plan', planPath, '--output-seed', seedPath,
+    ], { encoding: 'utf8', env: {} });
+    expect(seeded.status).toBe(0);
+    expect(seeded.stdout).toContain('5 review queue items; database mutation: false; approval required: true');
+    expect(JSON.parse(readFileSync(seedPath, 'utf8'))).toMatchObject({
+      kind: 'ontology-review-queue-seed-plan',
+      counts: { node: 2, relation: 2, cluster: 1, total: 5 },
+      databaseMutationExecuted: false,
+      requiresApproval: true,
+    });
+
+    const verifiedSeed = spawnSync(process.execPath, [
+      modulePath, '--snapshot', snapshotPath, '--seed-plan', planPath, '--verify-seed', seedPath,
+    ], { encoding: 'utf8', env: {} });
+    expect(verifiedSeed.status).toBe(0);
+    expect(verifiedSeed.stdout).toContain('Ontology review queue seed verified (5 items; database mutation: false)');
+
+    const tamperedSeedFile = JSON.parse(readFileSync(seedPath, 'utf8'));
+    tamperedSeedFile.items[0].label = '변조된 seed 파일';
+    writeFileSync(seedPath, JSON.stringify(tamperedSeedFile), 'utf8');
+    const invalidSeed = spawnSync(process.execPath, [
+      modulePath, '--snapshot', snapshotPath, '--seed-plan', planPath, '--verify-seed', seedPath,
+    ], { encoding: 'utf8', env: {} });
+    expect(invalidSeed.status).toBe(1);
+    expect(invalidSeed.stderr).toContain('Ontology review queue seed checksum mismatch');
+
+    const resealedDifferentSeed = JSON.parse(readFileSync(seedPath, 'utf8'));
+    resealedDifferentSeed.items[0].label = '재서명했지만 source plan과 다른 seed';
+    const { integrity: _seedIntegrity, ...unsignedDifferentSeed } = resealedDifferentSeed;
+    resealedDifferentSeed.integrity.seedSha256 = createHash('sha256')
+      .update(JSON.stringify(canonicalize(unsignedDifferentSeed)))
+      .digest('hex');
+    writeFileSync(seedPath, JSON.stringify(resealedDifferentSeed), 'utf8');
+    const mismatchedSeed = spawnSync(process.execPath, [
+      modulePath, '--snapshot', snapshotPath, '--seed-plan', planPath, '--verify-seed', seedPath,
+    ], { encoding: 'utf8', env: {} });
+    expect(mismatchedSeed.status).toBe(1);
+    expect(mismatchedSeed.stderr).toContain('Ontology review queue seed does not match its source plan');
+
+    const restoredSeed = spawnSync(process.execPath, [
+      modulePath, '--snapshot', snapshotPath, '--seed-plan', planPath, '--output-seed', seedPath, '--force',
+    ], { encoding: 'utf8', env: {} });
+    expect(restoredSeed.status).toBe(0);
+
+    const tamperedPlan = JSON.parse(readFileSync(planPath, 'utf8'));
+    tamperedPlan.nodes[0].label = '검수 계획 변조값';
+    writeFileSync(planPath, JSON.stringify(tamperedPlan), 'utf8');
+    const tamperedSeedPath = join(directory, 'tampered-seed.json');
+    const tamperedSeed = spawnSync(process.execPath, [
+      modulePath, '--snapshot', snapshotPath, '--seed-plan', planPath, '--output-seed', tamperedSeedPath,
+    ], { encoding: 'utf8', env: {} });
+    expect(tamperedSeed.status).toBe(1);
+    expect(tamperedSeed.stderr).toContain('Canvas ontology review plan checksum mismatch');
+    expect(existsSync(tamperedSeedPath)).toBe(false);
+    writeFileSync(planPath, JSON.stringify(sealCanvasOntologyReviewPlan({
+      plan: buildCanvasOntologyReviewPlan(SNAPSHOT),
+      snapshotSource: JSON.stringify(SNAPSHOT),
+    })), 'utf8');
 
     const reviewedPlan = JSON.parse(readFileSync(planPath, 'utf8'));
     const reviewedAt = '2026-08-29T01:00:00.000Z';
@@ -357,6 +465,13 @@ test('runs the local create, verify, and reviewed graph export CLI without datab
     expect(publicPlanOutput.status).toBe(1);
     expect(publicPlanOutput.stderr).toContain('must stay outside the repository public directory');
     expect(existsSync(publicPlanPath)).toBe(false);
+
+    const publicSeedOutput = spawnSync(process.execPath, [
+      modulePath, '--snapshot', snapshotPath, '--seed-plan', planPath, '--output-seed', publicSeedPath,
+    ], { encoding: 'utf8', env: {} });
+    expect(publicSeedOutput.status).toBe(1);
+    expect(publicSeedOutput.stderr).toContain('must stay outside the repository public directory');
+    expect(existsSync(publicSeedPath)).toBe(false);
 
     const overwrite = spawnSync(process.execPath, [
       modulePath, '--snapshot', snapshotPath, '--output-plan', planPath,
