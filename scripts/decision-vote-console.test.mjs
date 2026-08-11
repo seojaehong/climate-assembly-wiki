@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 
 const readText = (path) => readFileSync(path, 'utf8');
+const readJson = (path) => JSON.parse(readText(path));
 
 describe('0704 conditional vote console', () => {
   test('offers projector-sized QR and gated result views for every conditional vote', () => {
@@ -280,17 +281,27 @@ describe('0704 conditional vote console', () => {
     expect(exportScript).toContain('-Watch and -SendEmail cannot be used together');
   });
 
-  test('agenda candidates have a Miro-style board before voting', () => {
+  test('agenda candidates preserve full and selected Miro-style board modes before voting', () => {
     const admin = readText('public/0704-admin/index.html');
     const manual = readText('public/0704-admin/operator-manual.html');
     const exportScript = readText('scripts/export-0704-live-sheet-packets.ps1');
     const board = readText('public/agenda-board-0704/index.html');
+    const boardData = readJson('public/agenda-board-0704/data.json');
+    const selectedNote = /선정|1위|2위|1순위|2순위/;
+    const selectedAgendas = boardData.agendas.filter((item) => selectedNote.test(item.note));
 
     expect(admin).toContain('/agenda-board-0704/index.html');
     expect(manual).toContain('https://climate-assembly.org/agenda-board-0704/');
     expect(exportScript).toContain('AgendaBoardData');
     expect(exportScript).toContain('public/agenda-board-0704/data.json');
-    expect(board).toContain('투표 전 조별 의제 후보 보드');
+    expect(board).toContain("const SHOW_ALL = new URLSearchParams(location.search).get('view') === 'all'");
+    expect(board).toContain("SHOW_ALL ? '투표 전 조별 의제 후보 17개' : '투표 대상 선정 의제 4개'");
+    expect(board).toContain("SHOW_ALL ? '전체 후보' : '선정 의제'");
+    expect(board.match(/SHOW_ALL \|\| SELECTED_NOTE_RE\.test/g)).toHaveLength(2);
+    expect(boardData.agendas).toHaveLength(17);
+    expect(selectedAgendas).toHaveLength(4);
+    expect(selectedAgendas.filter((item) => item.group === 'A조')).toHaveLength(2);
+    expect(selectedAgendas.filter((item) => item.group === 'B조')).toHaveLength(2);
     expect(board).toContain('/agenda-board-0704/data.json');
     expect(board).toContain('renderLane');
     expect(board).toContain("const POLL_MS = 5000");
