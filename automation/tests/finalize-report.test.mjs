@@ -283,9 +283,30 @@ test('does not flag when missing is within 5% threshold', () => {
 });
 
 test('resolveWorkshop uses explicit name when provided', () => {
-  const schedule = { workshops: [{ date: '2026-08-29', name: '2차' }] };
+  const schedule = { workshops: [
+    { date: '2026-08-29', name: '2차' },
+    { date: '2026-08-30', name: '3차' },
+  ] };
   const out = resolveWorkshop({ schedule, explicitName: '2차', now: new Date('2026-08-30T13:00:00Z') });
   expect(out?.name).toBe('2차');
+  expect(resolveWorkshop({
+    schedule,
+    explicitName: '2차',
+    scheduled: true,
+    now: new Date('2026-08-29T16:00:00Z'),
+  })?.name).toBe('2차');
+  expect(resolveWorkshop({
+    schedule,
+    explicitName: '3차',
+    scheduled: true,
+    now: new Date('2026-08-30T13:00:00Z'),
+  })?.name).toBe('3차');
+  expect(resolveWorkshop({
+    schedule,
+    explicitName: '2차',
+    scheduled: true,
+    now: new Date('2027-08-29T13:00:00Z'),
+  })).toBeNull();
 });
 
 test('resolveWorkshop auto-detects yesterday-KST workshop when name not given', () => {

@@ -8,8 +8,11 @@
 | --- | --- | --- | --- |
 | 2026-07-04 | 7월_행사 | 09:00 ~ 18:00 | 2 |
 | 2026-08-29 | 2차_의제선정 | 09:00 ~ 18:00 | 3 |
+| 2026-09-12 | 6차_분과권고안의결_경주합숙1일차 | 09:00 ~ 21:00 | 6 (행사 전 확인) |
+| 2026-09-13 | 7차_분과권고안의결_경주합숙2일차 | 09:00 ~ 18:00 | 7 (행사 전 확인) |
+| 2026-10-17 | 8차_전체법정의결 | 09:00 ~ 18:00 | 8 (행사 전 확인) |
 
-신규 워크숍 추가 시: `automation/workshop-schedule.yml`의 `workshops:` 배열에 row 추가 + `drive_folder_root`·`supabase_round_id` 채우기 → PR 머지.
+신규 워크숍 추가 시: `automation/workshop-schedule.yml`의 `workshops:` 배열에 날짜순 row를 추가하고 고유한 이름·`supabase_round_id`를 확인한 뒤 capture·snapshot·finalize workflow의 정적 cron을 함께 추가해 PR로 머지한다. capture·snapshot은 GitHub Actions가 지원하는 5분 간격을 사용하며 각 시점이 별도 증거이므로 concurrency coalescing을 사용하지 않는다. automation 테스트는 정본 일정에서 파생한 세 workflow cron과 scheduled finalize의 실제 `WORKSHOP` 전달이 정확히 일치하는지 검사한다. cron에는 연도가 없으므로 scheduled finalize는 해당 정본 일자의 KST 당일 또는 종료 직후 다음 날에만 실행하고, 다른 연도 재발화는 건너뛴다.
 
 ## D-30 — Secrets 등록 (GitHub repo Settings → Secrets and variables → Actions)
 
@@ -61,8 +64,9 @@ Remove-Item Env:SNAPSHOT_AUDIT_HMAC_KEY
 
 ## D-30 — `workshop-schedule.yml` 잠금
 
-- `automation/workshop-schedule.yml`에서 `drive_folder_root: REPLACE_WITH_DRIVE_PARENT_ID` placeholder를 실제 ID로 치환
+- Drive 부모 폴더는 일정 파일에 중복 저장하지 않고 GitHub Actions secret `DRIVE_PARENT_ID` 한 곳에서 주입한다. secret이 실제 폴더를 가리키고 SA에 Editor 권한이 있는지 확인
 - `supabase_round_id`가 climate_vote.rounds의 실제 round_id와 일치하는지 확인 (현재 7월=2, 8월=3 가정)
+- 정본 일정의 날짜순·고유 이름·양의 round ID와 capture·snapshot·finalize workflow의 5분/종료+4시간 cron, capture·snapshot 비병합, finalize concurrency/job 이름·scheduled 날짜 게이트가 automation 테스트를 통과하는지 확인
 - PR로 머지 → main에 cron이 발화하기 시작
 
 ## 수동 dry-run 실행법 (로컬 / env 없는 환경)

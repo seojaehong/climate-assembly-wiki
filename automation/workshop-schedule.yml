@@ -9,31 +9,26 @@ workshops:
     name: 7월_행사
     start_kst: "09:00"
     end_kst: "18:00"
-    drive_folder_root: REPLACE_WITH_DRIVE_PARENT_ID
     supabase_round_id: 2
   - date: 2026-08-29
     name: 2차_의제선정
     start_kst: "09:00"
     end_kst: "18:00"
-    drive_folder_root: REPLACE_WITH_DRIVE_PARENT_ID
     supabase_round_id: 3
   # 경주 합숙 2일 (6차·7차 분과권고안 의결) — ★ supabase_round_id 행사 전 확인
   - date: 2026-09-12
     name: 6차_분과권고안의결_경주합숙1일차
     start_kst: "09:00"
     end_kst: "21:00"
-    drive_folder_root: REPLACE_WITH_DRIVE_PARENT_ID
     supabase_round_id: 6  # ★ 행사 전 실제 round_id 확인 필요
   - date: 2026-09-13
     name: 7차_분과권고안의결_경주합숙2일차
     start_kst: "09:00"
     end_kst: "18:00"
-    drive_folder_root: REPLACE_WITH_DRIVE_PARENT_ID
     supabase_round_id: 7  # ★ 행사 전 실제 round_id 확인 필요
   # 전체 법정 의결일 (기후위기대응법 §19의2④ — 가장 중요한 감사 대상)
   - date: 2026-10-17
     name: 8차_전체법정의결
     start_kst: "09:00"
     end_kst: "18:00"
-    drive_folder_root: REPLACE_WITH_DRIVE_PARENT_ID
     supabase_round_id: 8  # ★ 행사 전 실제 round_id 확인 필요

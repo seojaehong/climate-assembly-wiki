@@ -30,12 +30,15 @@ export function expectedCaptureSets(workshop, intervalMinutes = 5) {
 
 export { expectedCaptureTimestamps };
 
-export function resolveWorkshop({ schedule, explicitName, now = new Date() }) {
-  if (explicitName) {
-    return schedule.workshops.find(w => w.name === explicitName) ?? null;
-  }
+export function resolveWorkshop({ schedule, explicitName, scheduled = false, now = new Date() }) {
   const today = kstDate(now, 0);
   const yesterday = kstDate(now, -1);
+  if (explicitName) {
+    const workshop = schedule.workshops.find(w => w.name === explicitName) ?? null;
+    if (!workshop || !scheduled) return workshop;
+    const date = normalizeDate(workshop.date);
+    return date === today || date === yesterday ? workshop : null;
+  }
   return schedule.workshops.find(w => {
     const d = normalizeDate(w.date);
     return d === today || d === yesterday;
@@ -168,7 +171,11 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
 
   const schedule = await loadSchedule();
   const explicitName = process.env.WORKSHOP || null;
-  const ws = resolveWorkshop({ schedule, explicitName });
+  const ws = resolveWorkshop({
+    schedule,
+    explicitName,
+    scheduled: process.env.SCHEDULED === 'true',
+  });
   if (!ws) {
     console.log(JSON.stringify({ skipped: 'no workshop to finalize' }));
     process.exit(0);

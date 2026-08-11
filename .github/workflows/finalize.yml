@@ -6,12 +6,15 @@ on:
         type: string
         required: true
   schedule:
-    # 워크숍 당일 1회. UTC 13:00 = KST 22:00 (end_kst 18:00 + 4h). KST 22시는 UTC 동일 날짜.
+    # Run once four hours after each workshop ends.
     - cron: '0 13 4 7 *'    # 2026-07-04 (7월_행사)
     - cron: '0 13 29 8 *'   # 2026-08-29 (2차_의제선정)
+    - cron: '0 16 12 9 *'
+    - cron: '0 13 13 9 *'
+    - cron: '0 13 17 10 *'
 concurrency:
   # Coalesce only redundant runs for the same workshop. Scheduled names must match workshop-schedule.yml.
-  group: finalize-${{ github.event.inputs.workshop || (github.event.schedule == '0 13 4 7 *' && '7월_행사') || (github.event.schedule == '0 13 29 8 *' && '2차_의제선정') || github.run_id }}
+  group: finalize-${{ github.event.inputs.workshop || (github.event.schedule == '0 13 4 7 *' && '7월_행사') || (github.event.schedule == '0 13 29 8 *' && '2차_의제선정') || (github.event.schedule == '0 16 12 9 *' && '6차_분과권고안의결_경주합숙1일차') || (github.event.schedule == '0 13 13 9 *' && '7차_분과권고안의결_경주합숙2일차') || (github.event.schedule == '0 13 17 10 *' && '8차_전체법정의결') || github.run_id }}
   cancel-in-progress: false
 jobs:
   finalize:
@@ -31,7 +34,8 @@ jobs:
           DRIVE_PARENT_ID: ${{ secrets.DRIVE_PARENT_ID }}
           SHEETS_ID: ${{ secrets.SHEETS_ID }}
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          WORKSHOP: ${{ github.event.inputs.workshop }}
+          SCHEDULED: ${{ github.event_name == 'schedule' }}
+          WORKSHOP: ${{ github.event.inputs.workshop || (github.event.schedule == '0 13 4 7 *' && '7월_행사') || (github.event.schedule == '0 13 29 8 *' && '2차_의제선정') || (github.event.schedule == '0 16 12 9 *' && '6차_분과권고안의결_경주합숙1일차') || (github.event.schedule == '0 13 13 9 *' && '7차_분과권고안의결_경주합숙2일차') || (github.event.schedule == '0 13 17 10 *' && '8차_전체법정의결') }}
         run: node finalize-report.mjs
       - name: Discord alert on failure
         if: failure()

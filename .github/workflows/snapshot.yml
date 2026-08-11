@@ -1,18 +1,13 @@
 name: snapshot
 on:
   schedule:
-    # 워크숍 당일에만 발화 (date-gated). UTC 0-9시 = KST 09:00~18:59. KST 주간은 UTC 동일 날짜.
-    - cron: '* 0-9 4 7 *'    # 2026-07-04 (7월_행사) 매분
-    - cron: '* 0-9 29 8 *'   # 2026-08-29 (2차_의제선정) 매분
-    # 경주 합숙 (6·7차 분과권고안 의결). 9/12 end_kst=21:00 → UTC 0-12
-    - cron: '* 0-12 12 9 *'  # 2026-09-12 (6차_분과권고안의결_경주합숙1일차) 매분
-    - cron: '* 0-9 13 9 *'   # 2026-09-13 (7차_분과권고안의결_경주합숙2일차) 매분
-    # 전체 법정 의결일 (기후위기대응법 §19의2④ — 감사 P0)
-    - cron: '* 0-9 17 10 *'  # 2026-10-17 (8차_전체법정의결) 매분
+    # Run every five minutes during each workshop window; the CLI enforces the exact date and end minute.
+    - cron: '*/5 0-9 4 7 *'
+    - cron: '*/5 0-9 29 8 *'
+    - cron: '*/5 0-12 12 9 *'
+    - cron: '*/5 0-9 13 9 *'
+    - cron: '*/5 0-9 17 10 *'
   workflow_dispatch:
-concurrency:
-  group: snapshot-cron
-  cancel-in-progress: false
 jobs:
   snapshot:
     runs-on: ubuntu-latest

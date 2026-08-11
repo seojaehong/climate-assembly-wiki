@@ -1,9 +1,12 @@
 name: capture
 on:
   schedule:
-    # 워크숍 당일에만 발화 (date-gated). UTC 0-9시 = KST 09:00~18:55, 5분 간격.
+    # Run every five minutes during each workshop window; the CLI enforces the exact date and end minute.
     - cron: '*/5 0-9 4 7 *'    # 2026-07-04 (7월_행사)
     - cron: '*/5 0-9 29 8 *'   # 2026-08-29 (2차_의제선정)
+    - cron: '*/5 0-12 12 9 *'
+    - cron: '*/5 0-9 13 9 *'
+    - cron: '*/5 0-9 17 10 *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -12,9 +15,6 @@ on:
       workshop:
         type: string
         required: false
-concurrency:
-  group: capture-${{ github.event.inputs.workshop || 'cron' }}
-  cancel-in-progress: false
 jobs:
   capture:
     runs-on: ubuntu-latest
