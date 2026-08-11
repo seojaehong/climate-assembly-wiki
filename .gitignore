@@ -79,10 +79,7 @@ scripts/.cache/
 # Internal subagent memory (not public)
 .claude/
 build_output.txt
-# 2026-06-21: lockfile 추적 복원 — 빌드 재현성 (npm ci 가능)
-# (이전 우려였던 sharp/@emnapi cross-platform 충돌은 npm install + 로컬 ci 검증으로 해소 확인)
-# Cloudflare 빌드 깨지면 본 line 재활성화 + package-lock.json 다시 untrack
-package-lock.json
+# Root package-lock.json is tracked for reproducible Node 20 installs.
 dist_backup_tmp
 dist_backup2
 # 2026-06-22: 모든 dist_*·dist.bak.* 패턴 일괄 차단 (재발 방지)

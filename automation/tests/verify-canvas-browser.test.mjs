@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { once } from 'node:events';
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { verifyCanvasBrowser } from '../verify-canvas-browser.mjs';
 
@@ -74,5 +75,28 @@ describe('verifyCanvasBrowser', () => {
     await expect(verifyCanvasBrowser({ baseUrl: writeFixture.baseUrl }))
       .rejects.toThrow('Canvas verification attempted a blocked write request');
     expect(writeFixture.receivedWriteCount()).toBe(0);
+  });
+});
+
+describe('Canvas browser CI contract', () => {
+  it('installs the reproducible root runtime before the cold browser gate', () => {
+    const workflow = readFileSync(new URL('../../.github/workflows/test.yml', import.meta.url), 'utf8');
+    const gitignore = readFileSync(new URL('../../.gitignore', import.meta.url), 'utf8');
+
+    expect(gitignore.split(/\r?\n/)).not.toContain('package-lock.json');
+    expect(workflow).toContain("'package-lock.json'");
+    expect(workflow).toContain("- '.gitignore'");
+    expect(workflow).toContain('working-directory: .');
+    expect(workflow).toContain('npm ci');
+    expect(workflow).toContain("'src/lib/supabase.ts'");
+    expect(workflow).toContain("'src/pages/**/moderator/canvas.astro'");
+    expect(workflow).toContain('curl --fail --silent --max-time 2');
+    expect(workflow).toContain('node automation/verify-canvas-browser.mjs');
+    expect(workflow.indexOf('npm ci')).toBeLessThan(workflow.indexOf('node automation/verify-canvas-browser.mjs'));
+    const verifier = readFileSync(new URL('../verify-canvas-browser.mjs', import.meta.url), 'utf8');
+    expect(verifier).toContain("'package-lock.json'");
+    expect(verifier.indexOf('const moderatorLoginBoundary = await')).toBeLessThan(
+      verifier.indexOf("if (writeRequests.length > 0)"),
+    );
   });
 });

@@ -1,23 +1,92 @@
-# automation/ 변경 시에만 실행 (wiki 사이트 커밋마다 도는 것 방지)
 name: test
 on:
   push:
-    paths: ['automation/**', '.github/workflows/test.yml']
+    paths:
+      - 'automation/**'
+      - '.github/workflows/test.yml'
+      - '.gitignore'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'astro.config.mjs'
+      - 'src/islands/CanvasBoard.tsx'
+      - 'src/islands/canvas/**'
+      - 'src/lib/supabase.ts'
+      - 'src/pages/**/moderator/canvas.astro'
+      - 'src/pages/**/moderator/insights/groups.astro'
+      - 'src/pages/**/moderator/insights/heatmap.astro'
+      - 'src/styles/**'
   pull_request:
-    paths: ['automation/**', '.github/workflows/test.yml']
+    paths:
+      - 'automation/**'
+      - '.github/workflows/test.yml'
+      - '.gitignore'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'astro.config.mjs'
+      - 'src/islands/CanvasBoard.tsx'
+      - 'src/islands/canvas/**'
+      - 'src/lib/supabase.ts'
+      - 'src/pages/**/moderator/canvas.astro'
+      - 'src/pages/**/moderator/insights/groups.astro'
+      - 'src/pages/**/moderator/insights/heatmap.astro'
+      - 'src/styles/**'
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults: { run: { working-directory: automation } }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            automation/package-lock.json
+      - name: Install root runtime
+        run: npm ci
+        working-directory: .
       - run: npm ci
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('automation/package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('automation/package-lock.json', 'package-lock.json') }}
       - run: npx playwright install --with-deps chromium
       - run: npm test
+      - name: Verify cold Canvas browser runtime
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_path="$RUNNER_TEMP/canvas-dev.log"
+          npm run dev -- --force --host 127.0.0.1 --port 4328 >"$log_path" 2>&1 &
+          server_pid=$!
+          cleanup() {
+            status=$?
+            trap - EXIT
+            if [ "$status" -ne 0 ]; then
+              cat "$log_path"
+            fi
+            kill "$server_pid" 2>/dev/null || true
+            exit "$status"
+          }
+          trap cleanup EXIT
+          ready=false
+          for _ in $(seq 1 120); do
+            if curl --fail --silent --max-time 2 http://127.0.0.1:4328/@vite/client >/dev/null; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              cat "$log_path"
+              exit 1
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            cat "$log_path"
+            exit 1
+          fi
+          node automation/verify-canvas-browser.mjs --base-url http://127.0.0.1:4328

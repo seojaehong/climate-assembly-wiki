@@ -11,13 +11,18 @@ const EXPECTED_READ_PATHS = ['/rest/v1/session', '/rest/v1/agenda', '/rest/v1/ag
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const VERIFIER_PATH = fileURLToPath(import.meta.url);
 const AUDITED_SOURCE_PATHS = [
+  '.github/workflows/test.yml',
+  '.gitignore',
   'automation/package.json',
   'automation/package-lock.json',
+  'automation/tests/verify-canvas-browser.test.mjs',
   'automation/verify-canvas-browser.mjs',
   'astro.config.mjs',
   'package.json',
+  'package-lock.json',
   'src/islands/CanvasBoard.tsx',
   'src/islands/canvas',
+  'src/lib/supabase.ts',
   'src/pages/[lang]/moderator/canvas.astro',
   'src/pages/[lang]/moderator/insights/groups.astro',
   'src/pages/[lang]/moderator/insights/heatmap.astro',
@@ -119,8 +124,12 @@ export async function verifyCanvasBrowser({
       mkdirSync(dirname(screenshot), { recursive: true });
       await page.screenshot({ path: screenshot, fullPage: true });
     }
+    const moderatorLoginBoundary = await page
+      .getByRole('heading', { name: '진행자 로그인' })
+      .isVisible();
 
     if (draggable) throw new Error('Unauthenticated agenda node is draggable');
+    if (!moderatorLoginBoundary) throw new Error('Moderator login boundary is not visible');
     if (writeRequests.length > 0) throw new Error('Canvas verification attempted a blocked write request');
     if (browserErrors.length > 0) throw new Error('Canvas verification observed a browser page error');
     if (missingReads.length > 0) throw new Error('Canvas verification did not complete all expected reads');
@@ -140,7 +149,7 @@ export async function verifyCanvasBrowser({
         viteClientStatus: viteResponse.status(),
         documentStatus: documentResponse.status(),
         realtimeReady: readPathStatuses.has('/rest/v1/agenda'),
-        moderatorLoginBoundary: await page.getByRole('heading', { name: '진행자 로그인' }).isVisible(),
+        moderatorLoginBoundary,
         canvasHydrated: nodeCount > 0,
         agendaNodeCount: nodeCount,
         unauthenticatedNodeDraggable: draggable,
