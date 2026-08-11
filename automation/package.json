@@ -13,7 +13,8 @@
     "export-snapshots": "node export-snapshots-onedrive.mjs",
     "audit:platform-accessibility": "node platform-accessibility-audit.mjs",
     "audit:platform-accessibility-manual": "node platform-accessibility-manual-evidence.mjs",
-    "plan:platform-analysis-import": "node platform-analysis-import.mjs"
+    "plan:platform-analysis-import": "node platform-analysis-import.mjs",
+    "preflight:platform-activation": "node platform-activation-preflight.mjs"
   },
   "dependencies": {
     "playwright": "^1.49.0",

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "status": "not_verified",
+  "checkedAt": "2026-08-11T05:34:38.744Z",
+  "databaseMutationExecuted": false,
+  "evidenceComplete": false,
+  "readConsistency": "multi_request",
+  "requiresImmediateRecheckBeforeActivation": true,
+  "blockers": [
+    {
+      "code": "read_access_unavailable",
+      "resource": "org"
+    }
+  ],
+  "targetHost": "pleyuknjnprsckssxvrh.supabase.co",
+  "accessMethod": "postgrest_and_auth_admin_service_role_read_only"
+}

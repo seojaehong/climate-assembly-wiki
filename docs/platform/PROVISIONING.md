@@ -11,6 +11,24 @@
 1. `platform_p1_tenancy.sql` — org·membership·invitation·org_id·헬퍼·RLS
 2. `platform_p2_analysis_review.sql` — issue·result_page·검수/공개 RPC
 3. (데이터 있으면) `platform_p1b_backfill.sql` — 기본 org backfill + NOT NULL(G3)
+
+### 1-1. A1·A2 활성화 전 읽기 전용 점검
+
+`platform_p1b_backfill.sql` 또는 staff용 GRANT를 실행하기 전에 현재 데이터 준비도를 비식별 집계로 확인한다.
+
+```powershell
+cd automation
+npm.cmd run preflight:platform-activation
+```
+
+- 입력은 `SUPABASE_URL`과 `SUPABASE_SERVICE_ROLE_KEY`(또는 `SUPABASE_SERVICE_ROLE`)다. Auth 세션은 저장하지 않는다.
+- 12개 NOT NULL 대상 테이블의 전체 행·`org_id IS NULL` 건수와 assembly→session→topic→하위 행의 권위 있는 조직 경로 일치 여부를 점검한다. 활성 조직별 `org_admin`·`hq` 커버리지, 활성 membership의 활성 조직 귀속, 다중 조직 활성 사용자, membership이 가리키는 이메일 확인 완료·비익명 Supabase Auth 사용자의 존재·비활성 여부, 만료 전 HQ 세션의 활성 조직 바인딩도 확인한다.
+- 출력은 집계와 blocker 코드만 포함하며 조직·사용자 UUID, 토큰, 원문을 포함하지 않는다. `databaseMutationExecuted`는 항상 `false`다.
+- 종료 상태는 `ready`만 성공이다. `not_ready`는 실제 데이터 blocker, `not_verified`는 읽기 증거 자체가 불완전한 상태다. 두 상태 모두 활성화를 중단한다.
+- 현재 프로덕션의 custom schema 원시 테이블은 service role에도 SELECT가 열려 있지 않아 실측 결과가 `not_verified / read_access_unavailable`이다. 이를 우회하려고 임의 GRANT를 추가하지 않는다. 전용 읽기 함수 또는 일시적 감사 권한은 사용자 승인 후 별도 변경으로 다룬다.
+- 이 도구는 여러 읽기 요청의 결과를 합치는 preflight이며 단일 DB transaction snapshot은 아니다. 승인된 활성화 직전 쓰기를 잠시 멈춘 상태에서 다시 실행해야 하며, transactionally consistent 전용 읽기 함수가 필요하면 별도 DB 변경 승인을 받는다.
+- 현재 `ready`는 관측 시점의 데이터 점검 결과일 뿐 활성화 승인 artifact가 아니다. 향후 승인 증거로 사용하려면 source commit·정확한 스크립트 hash·실행 ID를 기록하고 현재 HEAD/hash·허용 freshness를 재검증하는 별도 fail-closed verifier가 먼저 필요하다.
+- 최신 비식별 실행 증거: `evaluation/platform-activation-preflight.json`.
 > Supabase는 pgcrypto가 `extensions`에 있고 search_path에 포함 → 마이그레이션 그대로 동작.
 > 적용 검증: anon 키로 `POST /rest/v1/rpc/result_get {"p_token":"0..0"}` → `200 null` = 적용됨.
 
