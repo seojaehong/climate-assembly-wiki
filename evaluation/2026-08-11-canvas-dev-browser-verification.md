@@ -44,4 +44,5 @@ The only remaining browser console error was the repository-wide missing `/favic
 - Machine-readable evidence: `evaluation/2026-08-11-canvas-dev-browser-evidence.json`
 - Screenshot: `evaluation/2026-08-11-canvas-dev-browser.png`
 - Reusable verifier: `automation/verify-canvas-browser.mjs`
-- Audited source commit: `fa168e1f100e73fade7c2c36b6bb8aac06186d46` (the following evidence-only commit does not change the audited source)
+- Audited source commit: `e40cfa94dce11cff4614e60b3af361e54bfab02f` (the following evidence-only commit does not change the audited source)
+- CI contract: the root dependency graph is locked in `package-lock.json`, and the GitHub test workflow performs a Node 20 `npm ci`, forced cold Astro startup, and this browser verifier for Canvas-related changes.
