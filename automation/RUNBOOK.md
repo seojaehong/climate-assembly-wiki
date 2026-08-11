@@ -211,6 +211,44 @@ provenance map 형식:
 }
 ```
 
+분석코어 `recommendation_pipeline.py`의 실제 산출은 최종 문안 자동생성을 막기 위해
+recommendation `title`이 비어 있을 수 있고, `minority`가 인용 ID 없는 문자열 배열일 수 있다.
+이 형상을 가져올 때는 원문→submission item 매핑과 별도로 사람이 준비한 후보 표시명 및
+소수 우려별 provenance를 schema version 2 `candidateMappings`에 명시해야 한다. importer는
+이 overlay가 없거나 index가 남거나 모자라면 계획 생성을 중단하며, overlay 적용 뒤에도
+모든 issue는 `origin: ai`, `reviewStatus: draft`, `requiresHumanReview: true`다.
+
+```json
+{
+  "schemaVersion": 2,
+  "topicId": "주제 UUID",
+  "sourceMappings": [
+    {
+      "sourceUid": "260829/A조/토론1/c000s0000",
+      "transcriptChunkId": "chunk-main",
+      "itemId": "submission item UUID",
+      "clusterId": null
+    }
+  ],
+  "candidateMappings": [
+    {
+      "recommendationId": "rec_0",
+      "title": "사람이 준비한 검토용 후보 표시명",
+      "sourceRecommendationSha256": "88b7c0cde3192f97dd3eb657a554170a4068eb225f78b05a3ff566e652e67705",
+      "minorityMappings": [
+        {
+          "index": 0,
+          "minorityId": "minority-cost",
+          "title": "사람이 준비한 소수 우려 표시명",
+          "sourceTextSha256": "be4ed6b8ed40828ead890e204a37cdd8f27497f377ce67d841c9bbda36424621",
+          "citedUids": ["소수 우려 근거 source UID"]
+        }
+      ]
+    }
+  ]
+}
+```
+
 실행:
 
 ```powershell
@@ -225,10 +263,11 @@ npm.cmd run plan:platform-analysis-import -- --verify-plan 'C:\approved\import-p
 ```
 
 - 출력은 항상 `dryRun: true`, `databaseMutationExecuted: false`, `requiresHumanReview: true`다.
-- schema version 2 출력은 analysis·provenance map 원본 파일의 정확한 바이트 SHA-256과 canonical plan self-checksum을 포함한다. `--verify-plan`은 로컬 파일 3개만 읽어 입력 해시와 self-checksum을 확인하고, 같은 입력으로 계획을 다시 만들어 전체 canonical 내용이 일치하는지 검사한다.
+- import plan schema version 2 출력은 analysis·provenance map 원본 파일의 정확한 바이트 SHA-256과 canonical plan self-checksum을 포함한다. provenance map은 기존 구조의 schema version 1과 분석코어 호환 overlay가 있는 schema version 2를 지원한다. `--verify-plan`은 로컬 파일 3개만 읽어 입력 해시와 self-checksum을 확인하고, 같은 입력으로 계획을 다시 만들어 전체 canonical 내용이 일치하는지 검사한다.
 - 이 해시들은 오래되거나 서로 맞지 않는 입력, 우발적인 파일 변경을 탐지하기 위한 내부 일관성 증거다. 해시와 계획이 같은 수정 가능한 파일에 있고 외부 secret·서명이 없으므로 작성자 진위, 외부 시점 증명 또는 의도적 재생성에 대한 tamper-evident 증거가 아니다.
 - 모든 후보는 `origin: ai`, `reviewStatus: draft`이며 원문 인용이 하나 이상 있어야 한다. 각 인용의 source UID·transcript chunk ID·submission item UUID·cluster UUID를 provenance에 함께 남긴다.
-- source UID 매핑 누락·중복, 후보 ID 중복, 허용되지 않은 stance/frequency, reviewed/decision 주장, 빈 후보 집합은 파일 생성 전에 실패한다.
+- schema version 2에서는 모든 source mapping에 실제 transcript chunk ID가 있어야 하고, candidate mapping은 원 recommendation canonical JSON SHA-256에 결속된다. source UID를 transcript chunk ID로 대체 추정하지 않는다.
+- source UID 매핑 누락·중복, 후보 ID 중복, 허용되지 않은 stance/frequency, reviewed/decision 주장, 빈 후보 집합, 빈 문자열 소수의견, candidate mapping 누락·중복·미사용 index, recommendation·소수의견 원문 SHA-256 불일치는 파일 생성 전에 실패한다. 두 원문 해시는 오래된 overlay가 변경된 recommendation 또는 같은 index의 다른 소수의견에 잘못 결합되는 것을 막는다.
 - 기존 출력 파일은 기본적으로 덮어쓰지 않는다. 검토 후 의도적으로 교체할 때만 `--force`를 사용한다.
 - 이 명령은 Supabase client, service role key, 환경변수 또는 DB RPC를 사용하지 않는다. 실제 적재는 8/29 산출물과 사용자 승인을 받은 별도 단계다.
 

@@ -12,6 +12,15 @@ import {
 } from '../platform-analysis-import.mjs';
 
 const TOPIC_ID = '11111111-1111-4111-8111-111111111111';
+const minoritySourceHash = (value) => createHash('sha256').update(value, 'utf8').digest('hex');
+const canonicalValue = (value) => {
+  if (Array.isArray(value)) return value.map(canonicalValue);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalValue(value[key])]));
+  }
+  return value;
+};
+const recommendationSourceHash = (value) => minoritySourceHash(JSON.stringify(canonicalValue(value)));
 
 test('builds review-required issue drafts with source provenance and minority concerns', () => {
   const plan = buildPlatformAnalysisImportPlan({
@@ -84,6 +93,311 @@ test('builds review-required issue drafts with source provenance and minority co
     },
     provenance: { citedUids: ['utterance-3'] },
   });
+});
+
+test('adapts the real analysis-core recommendation shape only with explicit candidate mappings', () => {
+  const recommendation = {
+    rec_id: 'rec_0',
+    title: '',
+    proposal_id: 'Proposal_000',
+    was_derived_from: ['260829/A조/토론1/c000s0000'],
+    time_span: { start: 12.5, end: 30.0 },
+    minority: ['전환 비용과 지역 부담을 함께 검토해야 합니다.'],
+  };
+  const plan = buildPlatformAnalysisImportPlan({
+    topicId: TOPIC_ID,
+    analysis: { recommendations: [recommendation] },
+    sourceMappings: [
+      {
+        sourceUid: '260829/A조/토론1/c000s0000',
+        transcriptChunkId: 'chunk-main',
+        itemId: '21111111-1111-4111-8111-111111111111',
+        clusterId: null,
+      },
+      {
+        sourceUid: '260829/A조/토론1/c001s0000',
+        transcriptChunkId: 'chunk-minority',
+        itemId: '22111111-1111-4111-8111-111111111111',
+        clusterId: null,
+      },
+    ],
+    provenanceSchemaVersion: 2,
+    candidateMappings: [{
+      recommendationId: 'rec_0',
+      title: '재생에너지 전환 조건 검토',
+      sourceRecommendationSha256: recommendationSourceHash(recommendation),
+      minorityMappings: [{
+        index: 0,
+        minorityId: 'minority-cost',
+        title: '전환 비용·지역 부담 우려',
+        sourceTextSha256: minoritySourceHash('전환 비용과 지역 부담을 함께 검토해야 합니다.'),
+        citedUids: ['260829/A조/토론1/c001s0000'],
+      }],
+    }],
+  });
+
+  expect(plan.candidates).toHaveLength(2);
+  expect(plan.candidates[0]).toMatchObject({
+    externalId: 'rec_0',
+    issue: { label: '재생에너지 전환 조건 검토', reviewStatus: 'draft' },
+    provenance: {
+      citedUids: ['260829/A조/토론1/c000s0000'],
+      timeSpan: { start: 12.5, end: 30.0 },
+      candidateMappingApplied: true,
+      sourceRecommendationSha256: recommendationSourceHash(recommendation),
+    },
+  });
+  expect(plan.candidates[1]).toMatchObject({
+    externalId: 'rec_0:minority-cost',
+    issue: {
+      label: '전환 비용·지역 부담 우려',
+      summary: '전환 비용과 지역 부담을 함께 검토해야 합니다.',
+      stance: 'concern',
+      frequencyClass: 'minority',
+      reviewStatus: 'draft',
+    },
+    provenance: {
+      citedUids: ['260829/A조/토론1/c001s0000'],
+      candidateMappingApplied: true,
+      minoritySourceTextSha256: minoritySourceHash('전환 비용과 지역 부담을 함께 검토해야 합니다.'),
+    },
+  });
+});
+
+test('creates and verifies an analysis-core import plan through provenance map schema v2', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'platform-analysis-core-import-'));
+  try {
+    const analysisPath = join(directory, 'analysis.json');
+    const mappingPath = join(directory, 'provenance.json');
+    const outputPath = join(directory, 'plan.json');
+    const recommendation = {
+      rec_id: 'rec_0', title: '', was_derived_from: ['source-main'],
+      time_span: { start: 1.0, end: 4.0 }, minority: ['비용 우려'],
+    };
+    writeFileSync(analysisPath, JSON.stringify({ recommendations: [recommendation] }), 'utf8');
+    writeFileSync(mappingPath, JSON.stringify({
+      schemaVersion: 2,
+      topicId: TOPIC_ID,
+      sourceMappings: [
+        {
+          sourceUid: 'source-main', transcriptChunkId: 'chunk-main',
+          itemId: '21111111-1111-4111-8111-111111111111', clusterId: null,
+        },
+        {
+          sourceUid: 'source-minority', transcriptChunkId: 'chunk-minority',
+          itemId: '22111111-1111-4111-8111-111111111111', clusterId: null,
+        },
+      ],
+      candidateMappings: [{
+        recommendationId: 'rec_0', title: '재생에너지 조건 검토',
+        sourceRecommendationSha256: recommendationSourceHash(recommendation),
+        minorityMappings: [{
+          index: 0,
+          minorityId: 'minority-cost',
+          title: '비용 우려',
+          sourceTextSha256: minoritySourceHash('비용 우려'),
+          citedUids: ['source-minority'],
+        }],
+      }],
+    }), 'utf8');
+
+    const modulePath = fileURLToPath(new URL('../platform-analysis-import.mjs', import.meta.url));
+    const created = spawnSync(process.execPath, [
+      modulePath, '--analysis', analysisPath, '--provenance-map', mappingPath, '--output', outputPath,
+    ], { encoding: 'utf8' });
+    expect(created.status).toBe(0);
+    expect(created.stdout).toContain('2 candidates; database mutation: false');
+    const verified = spawnSync(process.execPath, [
+      modulePath, '--analysis', analysisPath, '--provenance-map', mappingPath, '--verify-plan', outputPath,
+    ], { encoding: 'utf8' });
+    expect(verified.status).toBe(0);
+    expect(verified.stdout).toContain('2 candidates; database mutation: false');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('applies schema v2 provenance rules even when candidate mappings are empty', () => {
+  const analysis = {
+    recommendations: [{
+      rec_id: 'rec-titled',
+      title: '기존 제목 후보',
+      cited_uids: ['source-main'],
+      time_span: { start: 2, end: 5 },
+      minority: [{
+        minority_id: 'minority-1',
+        title: '기존 소수 우려',
+        cited_uids: ['source-minority'],
+      }],
+    }],
+  };
+  const withoutChunks = [
+    { sourceUid: 'source-main', itemId: '21111111-1111-4111-8111-111111111111', clusterId: null },
+    { sourceUid: 'source-minority', itemId: '22111111-1111-4111-8111-111111111111', clusterId: null },
+  ];
+  expect(() => buildPlatformAnalysisImportPlan({
+    topicId: TOPIC_ID,
+    analysis,
+    sourceMappings: withoutChunks,
+    candidateMappings: [],
+    provenanceSchemaVersion: 2,
+  })).toThrow('Invalid transcriptChunkId');
+
+  const plan = buildPlatformAnalysisImportPlan({
+    topicId: TOPIC_ID,
+    analysis,
+    sourceMappings: withoutChunks.map((mapping, index) => ({
+      ...mapping,
+      transcriptChunkId: index === 0 ? 'chunk-main' : 'chunk-minority',
+    })),
+    candidateMappings: [],
+    provenanceSchemaVersion: 2,
+  });
+  expect(plan.candidates[0].provenance).toMatchObject({ timeSpan: { start: 2, end: 5 } });
+  expect(plan.candidates[0].provenance.sources[0].transcriptChunkId).toBe('chunk-main');
+});
+
+test('fails closed when analysis-core candidate mappings are missing or do not match', () => {
+  const sourceMappings = [
+    {
+      sourceUid: 'source-main', transcriptChunkId: 'chunk-main',
+      itemId: '21111111-1111-4111-8111-111111111111', clusterId: null,
+    },
+    {
+      sourceUid: 'source-minority', transcriptChunkId: 'chunk-minority',
+      itemId: '22111111-1111-4111-8111-111111111111', clusterId: null,
+    },
+  ];
+  const recommendation = {
+    rec_id: 'rec_0', title: '', was_derived_from: ['source-main'], minority: ['비용 우려'],
+  };
+  expect(() => buildPlatformAnalysisImportPlan({
+    topicId: TOPIC_ID, analysis: { recommendations: [recommendation] }, sourceMappings,
+  })).toThrow('Invalid issue label');
+  expect(() => buildPlatformAnalysisImportPlan({
+    topicId: TOPIC_ID,
+    analysis: { recommendations: [{ ...recommendation, title: '검토 후보' }] },
+    sourceMappings,
+  })).toThrow('String minority concern requires a candidate mapping');
+  expect(() => buildPlatformAnalysisImportPlan({
+    topicId: TOPIC_ID,
+    analysis: { recommendations: [recommendation] },
+    sourceMappings,
+    provenanceSchemaVersion: 2,
+    candidateMappings: [{
+      recommendationId: 'rec_0', title: '검토 후보',
+      sourceRecommendationSha256: recommendationSourceHash(recommendation),
+      minorityMappings: [
+        {
+          index: 0,
+          minorityId: 'minority-cost',
+          title: '비용 우려',
+          sourceTextSha256: minoritySourceHash('비용 우려'),
+          citedUids: ['source-minority'],
+        },
+        {
+          index: 1,
+          minorityId: 'minority-unused',
+          title: '없는 우려',
+          sourceTextSha256: minoritySourceHash('없는 우려'),
+          citedUids: ['source-minority'],
+        },
+      ],
+    }],
+  })).toThrow('Unused minority mapping');
+  expect(() => buildPlatformAnalysisImportPlan({
+    topicId: TOPIC_ID,
+    analysis: { recommendations: [recommendation] },
+    sourceMappings,
+    provenanceSchemaVersion: 2,
+    candidateMappings: [{
+      recommendationId: 'rec_0',
+      title: '검토 후보',
+      sourceRecommendationSha256: recommendationSourceHash(recommendation),
+      minorityMappings: [{
+        index: 0,
+        minorityId: 'minority-cost',
+        title: '비용 우려',
+        sourceTextSha256: minoritySourceHash('다른 우려'),
+        citedUids: ['source-minority'],
+      }],
+    }],
+  })).toThrow('Minority mapping source text mismatch');
+  expect(() => buildPlatformAnalysisImportPlan({
+    topicId: TOPIC_ID,
+    analysis: { recommendations: [{ ...recommendation, time_span: { start: 3, end: 2 } }] },
+    sourceMappings,
+    provenanceSchemaVersion: 2,
+    candidateMappings: [{
+      recommendationId: 'rec_0',
+      title: '검토 후보',
+      sourceRecommendationSha256: recommendationSourceHash({ ...recommendation, time_span: { start: 3, end: 2 } }),
+      minorityMappings: [{
+        index: 0,
+        minorityId: 'minority-cost',
+        title: '비용 우려',
+        sourceTextSha256: minoritySourceHash('비용 우려'),
+        citedUids: ['source-minority'],
+      }],
+    }],
+  })).toThrow('Invalid recommendation time span');
+  expect(() => buildPlatformAnalysisImportPlan({
+    topicId: TOPIC_ID,
+    analysis: { recommendations: [{ ...recommendation, time_span: { start: 1, end: 2 } }] },
+    sourceMappings,
+    provenanceSchemaVersion: 2,
+    candidateMappings: [{
+      recommendationId: 'rec_0',
+      title: '검토 후보',
+      sourceRecommendationSha256: recommendationSourceHash(recommendation),
+      minorityMappings: [{
+        index: 0,
+        minorityId: 'minority-cost',
+        title: '비용 우려',
+        sourceTextSha256: minoritySourceHash('비용 우려'),
+        citedUids: ['source-minority'],
+      }],
+    }],
+  })).toThrow('Candidate mapping source recommendation mismatch');
+  const blankMinorityRecommendation = { ...recommendation, minority: ['   '] };
+  expect(() => buildPlatformAnalysisImportPlan({
+    topicId: TOPIC_ID,
+    analysis: { recommendations: [blankMinorityRecommendation] },
+    sourceMappings,
+    provenanceSchemaVersion: 2,
+    candidateMappings: [{
+      recommendationId: 'rec_0',
+      title: '검토 후보',
+      sourceRecommendationSha256: recommendationSourceHash(blankMinorityRecommendation),
+      minorityMappings: [{
+        index: 0,
+        minorityId: 'minority-cost',
+        title: '비용 우려',
+        sourceTextSha256: minoritySourceHash('   '),
+        citedUids: ['source-minority'],
+      }],
+    }],
+  })).toThrow('Invalid minority concern');
+  expect(() => buildPlatformAnalysisImportPlan({
+    topicId: TOPIC_ID,
+    analysis: { recommendations: [recommendation] },
+    sourceMappings: sourceMappings.map(({ transcriptChunkId, ...mapping }, index) => (
+      index === 0 ? mapping : { transcriptChunkId, ...mapping }
+    )),
+    provenanceSchemaVersion: 2,
+    candidateMappings: [{
+      recommendationId: 'rec_0',
+      title: '검토 후보',
+      sourceRecommendationSha256: recommendationSourceHash(recommendation),
+      minorityMappings: [{
+        index: 0,
+        minorityId: 'minority-cost',
+        title: '비용 우려',
+        sourceTextSha256: minoritySourceHash('비용 우려'),
+        citedUids: ['source-minority'],
+      }],
+    }],
+  })).toThrow('Invalid transcriptChunkId');
 });
 
 test('rejects missing citation mappings instead of producing a partial import plan', () => {
@@ -230,6 +544,7 @@ test('writes a dry-run plan through the CLI without database credentials or muta
           rec_id: 'rec-cli',
           title: 'CLI 초안 후보',
           cited_uids: ['utterance-cli'],
+          time_span: { start: 1, end: 2 },
         }],
       },
     });
@@ -269,6 +584,7 @@ test('writes a dry-run plan through the CLI without database credentials or muta
       },
     });
     expect(plan.integrity.planSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(plan.candidates[0].provenance).not.toHaveProperty('timeSpan');
     expect(JSON.stringify(plan)).not.toMatch(/service.role|token|credential/i);
 
     const verification = spawnSync(process.execPath, [

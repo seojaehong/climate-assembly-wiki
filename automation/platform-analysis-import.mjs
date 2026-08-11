@@ -9,6 +9,7 @@ function analysisMeta(analysis) {
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const ISSUE_STANCES = new Set(['pro', 'con', 'conditional', 'concern', 'proposal', 'neutral']);
 const FREQUENCY_CLASSES = new Set(['consensus', 'majority', 'minority', 'mixed']);
 
@@ -36,6 +37,22 @@ function optionalEnum(value, allowed, label) {
   if (value == null || value === '') return null;
   if (typeof value !== 'string' || !allowed.has(value)) throw new Error(`Invalid ${label}`);
   return value;
+}
+
+function optionalTimeSpan(value) {
+  if (value == null) return null;
+  if (typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid recommendation time span');
+  const boundary = (item) => {
+    if (item == null) return null;
+    if (typeof item !== 'number' || !Number.isFinite(item) || item < 0) {
+      throw new Error('Invalid recommendation time span');
+    }
+    return item;
+  };
+  const start = boundary(value.start);
+  const end = boundary(value.end);
+  if (start != null && end != null && start > end) throw new Error('Invalid recommendation time span');
+  return { start, end };
 }
 
 function citedUids(value) {
@@ -89,7 +106,11 @@ function mappedLinks(sources) {
   return [...byItem.values()];
 }
 
-function candidate({ externalId, parentExternalId, title, summary, stance, frequencyClass, citations, mappings }) {
+function candidate({
+  externalId, parentExternalId, title, summary, stance, frequencyClass, citations, mappings,
+  timeSpan = null, candidateMappingApplied = false, minoritySourceTextSha256 = null,
+  sourceRecommendationSha256 = null,
+}) {
   if (citations.length === 0) throw new Error('Every analysis candidate requires at least one cited source');
   const provenanceUids = uniqueCitations(citations);
   const provenanceSources = mappedSources(provenanceUids, mappings);
@@ -105,13 +126,74 @@ function candidate({ externalId, parentExternalId, title, summary, stance, frequ
       reviewStatus: 'draft',
     },
     links: mappedLinks(provenanceSources),
-    provenance: { citedUids: provenanceUids, sources: provenanceSources },
+    provenance: {
+      citedUids: provenanceUids,
+      sources: provenanceSources,
+      ...(timeSpan == null ? {} : { timeSpan: optionalTimeSpan(timeSpan) }),
+      ...(candidateMappingApplied ? { candidateMappingApplied: true } : {}),
+      ...(minoritySourceTextSha256 == null ? {} : { minoritySourceTextSha256 }),
+      ...(sourceRecommendationSha256 == null ? {} : { sourceRecommendationSha256 }),
+    },
   };
 }
 
-export function buildPlatformAnalysisImportPlan({ topicId, analysis, sourceMappings }) {
+function normalizeCandidateMappings(value) {
+  if (value == null) return new Map();
+  if (!Array.isArray(value)) throw new Error('Invalid candidateMappings');
+  const mappings = new Map();
+  for (const candidateMapping of value) {
+    if (!candidateMapping || typeof candidateMapping !== 'object' || Array.isArray(candidateMapping)) {
+      throw new Error('Invalid candidate mapping');
+    }
+    const recommendationId = requireText(candidateMapping.recommendationId, 'candidate mapping recommendationId');
+    if (mappings.has(recommendationId)) throw new Error('Duplicate candidate mapping');
+    if (typeof candidateMapping.sourceRecommendationSha256 !== 'string'
+      || !SHA256_PATTERN.test(candidateMapping.sourceRecommendationSha256)) {
+      throw new Error('Invalid candidate mapping source hash');
+    }
+    const minorityMappings = candidateMapping.minorityMappings ?? [];
+    if (!Array.isArray(minorityMappings)) throw new Error('Invalid minority mappings');
+    const minorityByIndex = new Map();
+    for (const minorityMapping of minorityMappings) {
+      if (!minorityMapping || typeof minorityMapping !== 'object' || Array.isArray(minorityMapping)
+        || !Number.isInteger(minorityMapping.index) || minorityMapping.index < 0) {
+        throw new Error('Invalid minority mapping');
+      }
+      if (minorityByIndex.has(minorityMapping.index)) throw new Error('Duplicate minority mapping index');
+      if (!Array.isArray(minorityMapping.citedUids)) throw new Error('Invalid minority mapping citations');
+      if (typeof minorityMapping.sourceTextSha256 !== 'string'
+        || !SHA256_PATTERN.test(minorityMapping.sourceTextSha256)) {
+        throw new Error('Invalid minority mapping source hash');
+      }
+      minorityByIndex.set(minorityMapping.index, {
+        minorityId: requireText(minorityMapping.minorityId, 'minority mapping id'),
+        title: issueLabel(minorityMapping.title),
+        sourceTextSha256: minorityMapping.sourceTextSha256,
+        citedUids: minorityMapping.citedUids,
+      });
+    }
+    mappings.set(recommendationId, {
+      title: issueLabel(candidateMapping.title),
+      summary: optionalText(candidateMapping.summary, 'candidate mapping summary'),
+      sourceRecommendationSha256: candidateMapping.sourceRecommendationSha256,
+      minorityByIndex,
+    });
+  }
+  return mappings;
+}
+
+export function buildPlatformAnalysisImportPlan({
+  topicId, analysis, sourceMappings, candidateMappings = [], provenanceSchemaVersion = 1,
+}) {
   requireUuid(topicId, 'topicId');
   if (!Array.isArray(sourceMappings)) throw new Error('Invalid sourceMappings');
+  const effectiveProvenanceSchemaVersion = provenanceSchemaVersion;
+  if (effectiveProvenanceSchemaVersion !== 1 && effectiveProvenanceSchemaVersion !== 2) {
+    throw new Error('Unsupported provenance map schemaVersion');
+  }
+  if (effectiveProvenanceSchemaVersion === 1 && candidateMappings.length > 0) {
+    throw new Error('Candidate mappings require provenance map schemaVersion 2');
+  }
   const sourceIds = new Set();
   for (const mapping of sourceMappings) {
     const sourceUid = requireText(mapping.sourceUid, 'sourceUid');
@@ -122,6 +204,11 @@ export function buildPlatformAnalysisImportPlan({ topicId, analysis, sourceMappi
     if (mapping.transcriptChunkId != null) requireText(mapping.transcriptChunkId, 'transcriptChunkId');
   }
   const meta = analysisMeta(analysis);
+  const candidateMappingById = normalizeCandidateMappings(candidateMappings);
+  if (effectiveProvenanceSchemaVersion === 2) {
+    for (const mapping of sourceMappings) requireText(mapping.transcriptChunkId, 'transcriptChunkId');
+  }
+  const consumedCandidateMappings = new Set();
   const candidates = [];
   const candidateIds = new Set();
   const recommendationIds = new Set();
@@ -141,34 +228,64 @@ export function buildPlatformAnalysisImportPlan({ topicId, analysis, sourceMappi
     const externalId = requireText(recommendation.rec_id, 'recommendation id');
     if (recommendationIds.has(externalId)) throw new Error('Duplicate recommendation id');
     recommendationIds.add(externalId);
+    const mapping = candidateMappingById.get(externalId) ?? null;
+    if (mapping) consumedCandidateMappings.add(externalId);
+    if (mapping && sha256(canonicalJson(recommendation)) !== mapping.sourceRecommendationSha256) {
+      throw new Error('Candidate mapping source recommendation mismatch');
+    }
     const citations = citedUids(recommendation);
+    const recommendationTitle = typeof recommendation.title === 'string' && recommendation.title.trim().length > 0
+      ? recommendation.title
+      : mapping?.title;
     addCandidate(candidate({
       externalId,
       parentExternalId: null,
-      title: recommendation.title,
-      summary: recommendation.summary,
+      title: recommendationTitle,
+      summary: recommendation.summary ?? mapping?.summary,
       stance: recommendation.stance,
       frequencyClass: recommendation.frequency_class,
       citations,
       mappings: sourceMappings,
+      timeSpan: effectiveProvenanceSchemaVersion === 2 ? recommendation.time_span : null,
+      candidateMappingApplied: mapping !== null,
+      sourceRecommendationSha256: mapping?.sourceRecommendationSha256 ?? null,
     }));
     const minorityConcerns = recommendation.minority ?? [];
     if (!Array.isArray(minorityConcerns)) throw new Error('Invalid minority concerns');
+    const consumedMinorityMappings = new Set();
     for (const [index, minority] of minorityConcerns.entries()) {
-      const minorityId = minority.minority_id == null
-        ? `minority-${index + 1}`
-        : requireText(minority.minority_id, 'minority id');
+      const stringMinority = typeof minority === 'string';
+      const minorityMapping = mapping?.minorityByIndex.get(index) ?? null;
+      if (stringMinority && !minorityMapping) throw new Error('String minority concern requires a candidate mapping');
+      if (stringMinority) requireText(minority, 'minority concern');
+      if (stringMinority && sha256(minority) !== minorityMapping.sourceTextSha256) {
+        throw new Error('Minority mapping source text mismatch');
+      }
+      if (stringMinority) consumedMinorityMappings.add(index);
+      const minorityId = stringMinority
+        ? minorityMapping.minorityId
+        : (minority.minority_id == null ? `minority-${index + 1}` : requireText(minority.minority_id, 'minority id'));
       addCandidate(candidate({
         externalId: `${externalId}:${minorityId}`,
         parentExternalId: externalId,
-        title: minority.title,
-        summary: minority.text ?? minority.summary,
+        title: stringMinority ? minorityMapping.title : minority.title,
+        summary: stringMinority ? minority : (minority.text ?? minority.summary),
         stance: 'concern',
         frequencyClass: 'minority',
-        citations: citedUids(minority),
+        citations: stringMinority ? minorityMapping.citedUids : citedUids(minority),
         mappings: sourceMappings,
+        candidateMappingApplied: stringMinority,
+        minoritySourceTextSha256: stringMinority ? minorityMapping.sourceTextSha256 : null,
       }));
     }
+    if (mapping) {
+      for (const index of mapping.minorityByIndex.keys()) {
+        if (!consumedMinorityMappings.has(index)) throw new Error('Unused minority mapping');
+      }
+    }
+  }
+  for (const recommendationId of candidateMappingById.keys()) {
+    if (!consumedCandidateMappings.has(recommendationId)) throw new Error('Unused candidate mapping');
   }
   const quality = meta.quality ?? null;
   return {
@@ -224,6 +341,15 @@ export function sealPlatformAnalysisImportPlan({ plan, analysisSource, provenanc
   };
 }
 
+function provenanceCandidateMappings(provenanceMap) {
+  if (provenanceMap?.schemaVersion === 1) return [];
+  if (provenanceMap?.schemaVersion === 2) {
+    if (!Array.isArray(provenanceMap.candidateMappings)) throw new Error('Invalid candidateMappings');
+    return provenanceMap.candidateMappings;
+  }
+  throw new Error('Unsupported provenance map schemaVersion');
+}
+
 export function verifyPlatformAnalysisImportPlan({
   plan,
   analysis,
@@ -250,12 +376,14 @@ export function verifyPlatformAnalysisImportPlan({
   if (plan.integrity.provenanceMapSha256 !== sha256(provenanceMapSource)) {
     throw new Error('Provenance map hash mismatch');
   }
-  if (provenanceMap?.schemaVersion !== 1) throw new Error('Unsupported provenance map schemaVersion');
+  const candidateMappings = provenanceCandidateMappings(provenanceMap);
   const expected = sealPlatformAnalysisImportPlan({
     plan: buildPlatformAnalysisImportPlan({
       topicId: provenanceMap.topicId,
       analysis,
       sourceMappings: provenanceMap.sourceMappings,
+      candidateMappings,
+      provenanceSchemaVersion: provenanceMap.schemaVersion,
     }),
     analysisSource,
     provenanceMapSource,
@@ -323,12 +451,14 @@ export function runPlatformAnalysisImportCli(argv) {
     });
     return { mode: 'verify', ...verification };
   }
-  if (provenanceFile.data?.schemaVersion !== 1) throw new Error('Unsupported provenance map schemaVersion');
+  const candidateMappings = provenanceCandidateMappings(provenanceFile.data);
   const plan = sealPlatformAnalysisImportPlan({
     plan: buildPlatformAnalysisImportPlan({
       topicId: provenanceFile.data.topicId,
       analysis: analysisFile.data,
       sourceMappings: provenanceFile.data.sourceMappings,
+      candidateMappings,
+      provenanceSchemaVersion: provenanceFile.data.schemaVersion,
     }),
     analysisSource: analysisFile.source,
     provenanceMapSource: provenanceFile.source,
