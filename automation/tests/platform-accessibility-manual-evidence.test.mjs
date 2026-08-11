@@ -254,6 +254,7 @@ test('rejects an unapproved origin and stale passed surface evidence', () => {
 
 test('workflow watches every source path that can stale manual evidence', () => {
   const workflow = readFileSync(join(process.cwd(), '..', '.github', 'workflows', 'platform-accessibility.yml'), 'utf8');
+  expect(workflow).toContain('fetch-depth: 0');
   for (const path of MANUAL_ACCESSIBILITY_TARGET_PATHS) {
     expect(workflow).toContain(`- '${path}/**'`);
   }
