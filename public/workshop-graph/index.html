@@ -568,6 +568,9 @@ async function loadSource(srcId, isCurrent = () => true) {
   const isLive = meta.category === 'live';
   document.getElementById('og-poll-ui').style.display = isLive ? '' : 'none';
   const { elements, meta: mt } = payload;
+  const isReviewedSyntheticLive = isLive
+    && mt.publication_status === 'synthetic_reviewed_demo'
+    && mt.requires_publication_review === false;
   const maxDeg = Math.max(0, ...elements.nodes.map(n => Number(n.data?.deg || 0)));
   ALL_NODES = elements.nodes.map(n => {
     const deg = Number(n.data?.deg || 0);
@@ -609,7 +612,11 @@ async function loadSource(srcId, isCurrent = () => true) {
     const isFinalDecision = String(mt.variant || '').startsWith('final-');
     const footerSummary = mt.variant === 'source-coverage'
       ? '원본-전사-그래프 연결상태 · 내용판단 아님'
-      : (isFinalDecision ? '검증 산출물 기반 · 미완/갭 항목 별도 표시' : (isLive ? 'LIVE 미검증 초안 · 시민 비노출' : 'LLM 추출 · 인간 검증 전'));
+      : (isFinalDecision
+        ? '검증 산출물 기반 · 미완/갭 항목 별도 표시'
+        : (isReviewedSyntheticLive
+          ? '합성 전사 검수 데모 · 실제 시민 발언 아님'
+          : (isLive ? 'LIVE 미검증 초안 · 시민 비노출' : 'LLM 추출 · 인간 검증 전')));
     footerNote.textContent = [footerSummary, provenanceWarning].filter(Boolean).join(' · ');
   }
   updateAssetsButton(advisoryAssets);

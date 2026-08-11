@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC_ROOT = resolve(REPOSITORY_ROOT, 'public');
+const PUBLIC_GRAPH_DATA_ROOT = resolve(PUBLIC_ROOT, 'workshop-graph', 'data');
+const LIVE_GRAPH_FILENAME_PATTERN = /^live-[a-z0-9][a-z0-9._-]*\.json$/;
 const NODE_KINDS = ['Issue', 'Claim', 'Proposal', 'Concern', 'Condition', 'Value', 'Evidence'];
 const RELATIONS = [
   'supports', 'opposes', 'hasConcern', 'requiresCondition', 'hasEvidence',
@@ -188,6 +190,68 @@ export function buildReviewedTranscriptGraph(input) {
   };
 }
 
+function reviewedPublication(input) {
+  if (!isRecord(input.publication) || input.publication.mode !== 'synthetic-reviewed-demo') {
+    throw new Error('Synthetic live graph publication approval is required');
+  }
+  const approvedBy = nonemptyString(input.publication.approvedBy, 'publication reviewer');
+  if (!REVIEWER_ALIAS_PATTERN.test(approvedBy)) throw new Error('Invalid publication reviewer alias');
+  const approvedAt = canonicalIsoInstant(input.publication.approvedAt, 'publication approvedAt');
+  const reviewedAt = canonicalIsoInstant(input.reviewedAt, 'fixture reviewedAt');
+  if (approvedAt <= reviewedAt) throw new Error('Publication approval must follow fixture review');
+  return { mode: input.publication.mode, approvedBy, approvedAt };
+}
+
+/** Builds a public synthetic live graph after explicit fixture publication approval. */
+export function buildLiveTranscriptGraph(input) {
+  const graph = buildReviewedTranscriptGraph(input);
+  const publication = reviewedPublication(input);
+  return {
+    ...graph,
+    elements: {
+      nodes: graph.elements.nodes.map((node) => ({
+        ...node,
+        data: {
+          ...node.data,
+          review_state: 'accepted',
+          is_public: true,
+          meta: {
+            ...node.data.meta,
+            publication_reviewer: publication.approvedBy,
+            published_at: publication.approvedAt,
+          },
+        },
+      })),
+      edges: graph.elements.edges.map((edge) => ({
+        ...edge,
+        data: {
+          ...edge.data,
+          review_state: 'accepted',
+          is_public: true,
+          meta: {
+            ...edge.data.meta,
+            publication_reviewer: publication.approvedBy,
+            published_at: publication.approvedAt,
+          },
+        },
+      })),
+    },
+    meta: {
+      ...graph.meta,
+      variant: 'transcript-live-reviewed-fixture',
+      advisory_notice: '합성 전사 검수 데모 · 실제 시민 발언이나 회의 결과가 아닙니다.',
+      live: true,
+      publication_status: 'synthetic_reviewed_demo',
+      requires_publication_review: false,
+      publication: {
+        mode: publication.mode,
+        approved_by: publication.approvedBy,
+        approved_at: publication.approvedAt,
+      },
+    },
+  };
+}
+
 /** Verifies a graph by rebuilding the complete deterministic payload from its fixture. */
 export function verifyReviewedTranscriptGraph({ fixture, graph }) {
   const expected = buildReviewedTranscriptGraph(fixture);
@@ -197,6 +261,20 @@ export function verifyReviewedTranscriptGraph({ fixture, graph }) {
   return {
     nodeCount: expected.elements.nodes.length,
     edgeCount: expected.elements.edges.length,
+    databaseMutationExecuted: false,
+  };
+}
+
+/** Verifies a public live graph by rebuilding it from the approved synthetic fixture. */
+export function verifyLiveTranscriptGraph({ fixture, graph }) {
+  const expected = buildLiveTranscriptGraph(fixture);
+  if (canonicalJson(graph) !== canonicalJson(expected)) {
+    throw new Error('Live transcript ontology graph does not match its approved fixture');
+  }
+  return {
+    nodeCount: expected.elements.nodes.length,
+    edgeCount: expected.elements.edges.length,
+    publicGraphVerified: true,
     databaseMutationExecuted: false,
   };
 }
@@ -219,18 +297,19 @@ function writeJson(path, value) {
 }
 
 function parseCliArgs(argv) {
+  const operations = ['--output-graph', '--verify-graph', '--output-live-graph', '--verify-live-graph'];
   const values = new Map();
   for (let index = 0; index < argv.length; index += 2) {
     const key = argv[index];
     const value = argv[index + 1];
-    if (!['--fixture', '--output-graph', '--verify-graph'].includes(key) || !value) {
-      throw new Error('Usage: --fixture <path> (--output-graph <path> | --verify-graph <path>)');
+    if (!['--fixture', ...operations].includes(key) || !value) {
+      throw new Error('Usage: --fixture <path> <graph operation> <path>');
     }
     if (values.has(key)) throw new Error('Duplicate CLI option');
     values.set(key, value);
   }
-  if (!values.has('--fixture') || Number(values.has('--output-graph')) + Number(values.has('--verify-graph')) !== 1) {
-    throw new Error('Usage: --fixture <path> (--output-graph <path> | --verify-graph <path>)');
+  if (!values.has('--fixture') || operations.filter((operation) => values.has(operation)).length !== 1) {
+    throw new Error('Usage: --fixture <path> <graph operation> <path>');
   }
   return values;
 }
@@ -243,6 +322,15 @@ function isInside(parent, child) {
 function resolvedOutputPath(path) {
   const parent = realpathSync.native(dirname(path));
   return resolve(parent, basename(path));
+}
+
+function publicLiveGraphPath(path) {
+  const resolved = resolvedOutputPath(path);
+  const dataRoot = realpathSync.native(PUBLIC_GRAPH_DATA_ROOT);
+  if (dirname(resolved) !== dataRoot || !LIVE_GRAPH_FILENAME_PATTERN.test(basename(resolved))) {
+    throw new Error('Live graph output must be a live-*.json file in public/workshop-graph/data');
+  }
+  return resolved;
 }
 
 async function runCli(argv) {
@@ -261,6 +349,22 @@ async function runCli(argv) {
       databaseMutationExecuted: false,
       publicGraphWritten: false,
     };
+  }
+  if (values.has('--output-live-graph')) {
+    const outputPath = publicLiveGraphPath(resolve(values.get('--output-live-graph')));
+    const graph = buildLiveTranscriptGraph(fixture);
+    writeJson(outputPath, graph);
+    return {
+      nodeCount: graph.elements.nodes.length,
+      edgeCount: graph.elements.edges.length,
+      databaseMutationExecuted: false,
+      publicGraphWritten: true,
+    };
+  }
+  if (values.has('--verify-live-graph')) {
+    const graphPath = publicLiveGraphPath(resolve(values.get('--verify-live-graph')));
+    const graph = readJson(graphPath, 'live transcript graph');
+    return verifyLiveTranscriptGraph({ fixture, graph });
   }
   const graph = readJson(resolve(values.get('--verify-graph')), 'transcript graph');
   return verifyReviewedTranscriptGraph({ fixture, graph });

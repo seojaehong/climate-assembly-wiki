@@ -148,6 +148,9 @@ describe('workshop graph source adapter', () => {
     expect(html).toContain('pollTimer = setTimeout(async () =>');
     expect(html).toContain('await safelyLoadSource(meta.id)');
     expect(html).toContain("if (restoredMeta?.category === 'live') setupPolling(restoredMeta, false)");
+    expect(html).toContain("mt.publication_status === 'synthetic_reviewed_demo'");
+    expect(html).toContain("mt.requires_publication_review === false");
+    expect(html).toContain('합성 전사 검수 데모 · 실제 시민 발언 아님');
     expect(html).toContain('displayedSourceState = captureSourceState()');
     expect(html).toContain('restoreSourceState(displayedSourceState)');
     expect(html).toContain('diagnostics.rowCount');

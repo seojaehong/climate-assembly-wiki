@@ -497,6 +497,22 @@ npm.cmd run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology
 - CLI는 기존 파일을 덮어쓰지 않고 저장소 `public` 아래 출력을 거부한다. 생성물은 `is_public:false`이고 별도 공개 검토가 필요하다.
 - 실제 마이크/STT, 원문 보관, 브라우저 공개, API/DB 쓰기, retention 정책과 사람 reviewer 인증은 R0 범위 밖이며 별도 승인 뒤 진행한다.
 
+## R1 합성 검수 fixture → 공개 live graph
+
+실제 회의 데이터 없이 현재 graph source adapter와 polling UI를 검증하려면 별도 publication metadata가 있는 synthetic fixture만 공개 live graph로 생성한다.
+
+```powershell
+cd automation
+npm.cmd run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology-live-reviewed.example.json --output-live-graph ../public/workshop-graph/data/live-transcript-reviewed-fixture.json
+npm.cmd run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology-live-reviewed.example.json --verify-live-graph ../public/workshop-graph/data/live-transcript-reviewed-fixture.json
+```
+
+- publication mode는 정확히 `synthetic-reviewed-demo`여야 하고 역할형 `approvedBy`와 검수 이후 canonical `approvedAt`이 필요하다.
+- 공개 출력은 실제 경로 기준 `public/workshop-graph/data/live-*.json`만 허용하며 기존 파일을 덮어쓰지 않는다.
+- 생성 graph는 검수·공개 승인된 node/edge와 chunk UID 인용만 포함한다. time-coded chunk table, 화자 pseudonym, 시작·종료 시각은 공개 payload에 넣지 않는다.
+- `sources.json`의 `live-transcript-reviewed-fixture`는 15초 기본 polling source다. adapter는 재요청마다 cache-busting URL을 만들고, 화면은 합성 데모를 미검수 시민 발언으로 표시하지 않는다.
+- 이는 synthetic 정적 JSON polling prototype이다. 실제 음성/STT, 실제 시민 발언, reviewer 계정 인증, 자동 publication, API/DB 쓰기와 retention 정책은 구현하거나 승인하지 않았다.
+
 ## 알림 레벨 정책
 
 | 레벨 | 상황 | 대응 |

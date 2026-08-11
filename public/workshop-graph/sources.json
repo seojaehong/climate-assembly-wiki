@@ -4,7 +4,8 @@
     "final": "결론 도출과정",
     "workshop": "워크숍 통합",
     "audit": "전체 데이터 반영상태",
-    "regulation": "운영규정"
+    "regulation": "운영규정",
+    "live": "실시간 검수 데모"
   },
   "sources": [
     {
@@ -52,6 +53,14 @@
       "data": "data/regulation-2026-06-13.json",
       "supportsView": ["2d"],
       "menu": false
+    },
+    {
+      "id": "live-transcript-reviewed-fixture",
+      "category": "live",
+      "label": "합성 전사 검수 데모 (실제 회의 아님)",
+      "data": "data/live-transcript-reviewed-fixture.json",
+      "supportsView": ["2d"],
+      "polling_default_sec": 15
     }
   ]
 }
