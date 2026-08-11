@@ -1,0 +1,50 @@
+{
+  "checkedAt": "2026-08-11T13:06:25.180Z",
+  "url": "http://127.0.0.1:4323/workshop-graph/?source=workshop-2026-06-13",
+  "verifier": "automation/verify-workshop-graph-advisory.mjs",
+  "sourceCommit": "c6f022471bf9e7c662d96b51ae5ac7bc593e79bf",
+  "chromiumVersion": "149.0.7827.55",
+  "sourceHashes": {
+    "public/workshop-graph/index.html": "9454d9d5f104dc37a1d2d65622c16d76ef5830c195ca980a647a0ea92495d95c",
+    "public/workshop-graph/graph-advisory-assets.js": "4419b64f268a3274021bc4ac2e4da60fd6f5ee199ebbb026cc3d14423fbd8a43",
+    "automation/verify-workshop-graph-advisory.mjs": "2ab57eaadb421b8bfd09c74f19f43c4e7c98f9dc651e5efdf4f720e0016bad31"
+  },
+  "servedHashesMatch": true,
+  "fixtures": {
+    "sourceA": "workshop-2026-06-13",
+    "candidateA": "candidate-a-rec",
+    "sourceB": "regulation-2026-06-13",
+    "candidateB": "candidate-b-rec",
+    "invalidSource": "source-coverage-2026-06-13"
+  },
+  "validCandidate": {
+    "metadata": "노드 613 · 엣지 491 · 권고 후보 1건 · 품질 신호",
+    "humanReviewRequired": true,
+    "recommendationCandidateVisible": true,
+    "qualitySignalVisible": true,
+    "minorityConcernVisible": true,
+    "sourceUidVisible": true,
+    "transcriptChunkIdVisible": true,
+    "citedUidVisible": true,
+    "qualityProvenanceVisible": true,
+    "decisionClaimAbsent": true
+  },
+  "validToValidTransition": {
+    "panelRemainedOpen": true,
+    "candidateBVisible": true,
+    "candidateAAbsent": true
+  },
+  "invalidAssetTransition": {
+    "advisory": "원본-전사-그래프 연결상태 표시용입니다. 내용 판단이나 합의 생성이 아니라 누락/부분반영 점검을 돕습니다. · 출처 ID 누락 노드 46건 · 분석 보조 자산 형식 오류 · 표시 차단",
+    "formatErrorVisible": true,
+    "advisoryContentAbsent": true,
+    "overviewRestored": true
+  },
+  "unrelatedNodePanel": {
+    "label": "6/13-14 원본자료 연결상태",
+    "preservedAcrossSourceChange": true
+  },
+  "pageErrors": [],
+  "consoleErrorCount": 1,
+  "passed": true
+}

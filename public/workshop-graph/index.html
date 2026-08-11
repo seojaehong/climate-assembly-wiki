@@ -156,7 +156,7 @@
       <button data-group="session">세션</button>
     </div>
     <input id="og-search" type="search" placeholder="검색…" autocomplete="off" style="width:160px">
-    <button class="og-btn" id="og-assets-btn" style="display:none" title="합의·권고와 DQI 품질 지표를 읽기전용으로 봅니다">합의·DQI</button>
+    <button class="og-btn" id="og-assets-btn" style="display:none" title="권고 후보와 품질 신호를 읽기전용으로 봅니다">분석 보조 자산</button>
     <span class="og-spacer"></span>
     <div class="og-poll-ctl" id="og-poll-ui" style="display:none">
       <span>🔄</span>
@@ -214,6 +214,7 @@
 <script type="module">
 import { OntologyChrome } from '/_ontology-chrome/chrome.js';
 import { createWorkshopGraphSourceAdapter } from './graph-source-adapter.js';
+import { advisoryAssetSummary, parseGraphAdvisoryAssets, renderGraphAdvisoryAssets } from './graph-advisory-assets.js';
 
 const graphSourceAdapter = createWorkshopGraphSourceAdapter();
 
@@ -584,18 +585,24 @@ async function loadSource(srcId, isCurrent = () => true) {
   });
   ALL_EDGES = elements.edges;
 
-  // A-6: 기존 자산(합의·DQI)이 데이터에 있으면 읽기전용으로만 노출 (없으면 무표시 — 방어적)
-  const _extra = [];
-  if (Array.isArray(mt.recommendations) && mt.recommendations.length) _extra.push(`합의·권고 ${mt.recommendations.length}건`);
-  if (mt.quality) _extra.push('DQI 지표');
+  let advisoryAssets = { recommendations: [], quality: null, requiresHumanReview: false };
+  let advisoryAssetError = '';
+  try {
+    advisoryAssets = parseGraphAdvisoryAssets(mt);
+  } catch (error) {
+    console.error('Failed to parse graph advisory assets', error);
+    advisoryAssetError = '분석 보조 자산 형식 오류 · 표시 차단';
+  }
+  const { metaLabels } = advisoryAssetSummary(advisoryAssets);
   const rowSummary = diagnostics.rowCount === null ? '' : `스냅샷 행 ${diagnostics.rowCount} · `;
   const provenanceWarning = diagnostics.missingCitedNodeIds.length
     ? `출처 ID 누락 노드 ${diagnostics.missingCitedNodeIds.length}건`
     : '';
-  OntologyChrome.updateMeta(`${rowSummary}노드 ${diagnostics.nodeCount} · 엣지 ${diagnostics.edgeCount}${_extra.length ? ' · ' + _extra.join(' · ') : ''}`);
+  OntologyChrome.updateMeta(`${rowSummary}노드 ${diagnostics.nodeCount} · 엣지 ${diagnostics.edgeCount}${metaLabels.length ? ' · ' + metaLabels.join(' · ') : ''}`);
   OntologyChrome.updateAdvisory([
     mt.advisory_notice || (isLive ? '🔴 LIVE 미검증 초안 · 시민 비노출' : ''),
     provenanceWarning,
+    advisoryAssetError,
   ].filter(Boolean).join(' · '));
   const footerNote = document.getElementById('og-footer-note');
   if (footerNote) {
@@ -605,7 +612,7 @@ async function loadSource(srcId, isCurrent = () => true) {
       : (isFinalDecision ? '검증 산출물 기반 · 미완/갭 항목 별도 표시' : (isLive ? 'LIVE 미검증 초안 · 시민 비노출' : 'LLM 추출 · 인간 검증 전'));
     footerNote.textContent = [footerSummary, provenanceWarning].filter(Boolean).join(' · ');
   }
-  updateAssetsButton(mt);
+  updateAssetsButton(advisoryAssets);
 
   // 헤더 pill 색 동기화 (LIVE면 빨강)
   const pill = document.querySelector('.og-pill');
@@ -666,69 +673,34 @@ function fmtTime(sec) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-function fmtSpan(span) {
-  if (!span || (span.start == null && span.end == null)) return '시간 미상';
-  return `${fmtTime(span.start)}~${fmtTime(span.end)}`;
-}
-
-function qualityLabel(q) {
-  if (!q) return '';
-  const label = q.validity_label || q.label || 'quality';
-  if (label === 'official-5indicators') return 'DQI 공식 5지표';
-  if (label === 'exploratory-text-metric') return 'DQI 탐색적 지표';
-  return `DQI ${label}`;
-}
-
-function renderSourceAssets(mt) {
-  const recs = Array.isArray(mt.recommendations) ? mt.recommendations : [];
-  const quality = mt.quality || null;
+function renderSourceAssets(assets) {
   const side = document.getElementById('og-side');
-  if (!side || (!recs.length && !quality)) {
+  if (!side || (!assets.recommendations.length && !assets.quality)) {
     if (side && !side.querySelector('.og-s-label')) side.classList.add('collapsed');
     return;
   }
-  const q = quality ? `
-    <div class="og-s-sec">
-      <h4>DQI 품질 지표</h4>
-      <div class="og-s-text">
-        <b>${qualityLabel(quality)}</b><br>
-        ${quality.reliability ? `신뢰도 검토 있음<br>` : ''}
-        ${quality.limitations_notice ? `${escapeHtml(quality.limitations_notice)}` : '읽기전용 메타데이터입니다. 공식 판단은 모더레이터 검토 후 확정됩니다.'}
-      </div>
-    </div>` : '';
-  const r = recs.length ? `
-    <div class="og-s-sec">
-      <h4>권고안 추적</h4>
-      <div class="og-s-rel">
-        ${recs.map((rec, i) => `
-          <div class="og-r">
-            <b>${escapeHtml(rec.title || rec.rec_id || `권고안 ${i + 1}`)}</b><br>
-            <span style="color:#9aa7b8">논의 시각 ${escapeHtml(fmtSpan(rec.time_span))}</span>
-            ${Array.isArray(rec.minority) && rec.minority.length ? `<br><span style="color:#ffd43b">소수의견 ${rec.minority.length}건 별도 보존</span>` : ''}
-            ${Array.isArray(rec.was_derived_from) ? `<br><span style="color:#9aa7b8">출처 ${rec.was_derived_from.length}건</span>` : ''}
-          </div>`).join('')}
-      </div>
-    </div>` : '';
-  side.innerHTML = `
-    <button class="og-s-close" data-side-close>✕</button>
-    <div>
-      <span class="og-s-badge" style="background:#7048e8;color:#fff">읽기전용</span>
-      <div class="og-s-label">합의·DQI 자산</div>
-      ${q}${r}
-    </div>`;
+  side.innerHTML = renderGraphAdvisoryAssets(assets);
+  side.dataset.content = 'advisory';
   side.classList.remove('collapsed');
   side.querySelector('[data-side-close]').onclick = () => side.classList.add('collapsed');
 }
 
-function updateAssetsButton(mt) {
-  currentMetaAssets = mt || null;
+function updateAssetsButton(assets) {
   const btn = document.getElementById('og-assets-btn');
   if (!btn) return;
-  const recs = Array.isArray(mt?.recommendations) ? mt.recommendations : [];
-  const hasAssets = recs.length > 0 || !!mt?.quality;
+  const hasAssets = assets.recommendations.length > 0 || !!assets.quality;
+  currentMetaAssets = hasAssets ? assets : null;
+  const { buttonLabel } = advisoryAssetSummary(assets);
   btn.style.display = hasAssets ? '' : 'none';
-  btn.textContent = recs.length && mt?.quality ? `합의·DQI ${recs.length}` :
-    recs.length ? `합의 ${recs.length}` : 'DQI';
+  btn.textContent = buttonLabel || '분석 보조 자산';
+  const side = document.getElementById('og-side');
+  if (hasAssets && side?.dataset.content === 'advisory' && !side.classList.contains('collapsed')) {
+    renderSourceAssets(assets);
+  } else if (!hasAssets && side?.dataset.content === 'advisory') {
+    side.replaceChildren();
+    delete side.dataset.content;
+    side.classList.add('collapsed');
+  }
 }
 
 function escapeHtml(s) {
@@ -1159,8 +1131,10 @@ function renderOverviewSurface(sourceMeta, graphMeta) {
   if (showcaseMode) {
     side.classList.add('collapsed');
     side.innerHTML = '';
+    delete side.dataset.content;
     return;
   }
+  if (side.dataset.content === 'advisory' && !side.classList.contains('collapsed')) return;
   const hubs = topHubNodes(7);
   const kinds = graphMeta?.kinds || {};
   side.innerHTML = `
@@ -1187,6 +1161,7 @@ function renderOverviewSurface(sourceMeta, graphMeta) {
         <div class="og-s-text">AI가 합의를 만드는 것이 아니라, 주장·근거·가치·우려·조건을 분리해 숙의를 돕고 소수의견이 사라지지 않게 보여주는 보조 화면입니다.</div>
       </div>
     </div>`;
+  side.dataset.content = 'overview';
   side.classList.remove('collapsed');
   side.querySelectorAll('[data-source-id]').forEach(btn => {
     btn.onclick = () => setSourceFromPanel(btn.dataset.sourceId);
@@ -1289,6 +1264,7 @@ function renderNodeSurface(ctx, mode = 'hover') {
         ${renderRelationList('나가는 관계', ctx.outgoing)}
         ${renderAgendaWikiCards(ctx.agendas)}
       </div>`;
+    side.dataset.content = 'node';
     side.classList.remove('collapsed');
     side.querySelector('[data-side-close]').onclick = () => {
       fixedNodeId = null;
