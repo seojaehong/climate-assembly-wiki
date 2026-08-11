@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
@@ -33,7 +34,7 @@ function optionalText(value, label) {
 
 function optionalEnum(value, allowed, label) {
   if (value == null || value === '') return null;
-  if (typeof value !== 'string' || !allowed.has(value)) throw new Error(`Invalid ${label}: ${value}`);
+  if (typeof value !== 'string' || !allowed.has(value)) throw new Error(`Invalid ${label}`);
   return value;
 }
 
@@ -47,7 +48,7 @@ function uniqueCitations(citations) {
   const seen = new Set();
   for (const sourceUid of citations) {
     requireText(sourceUid, 'cited source');
-    if (seen.has(sourceUid)) throw new Error(`Duplicate cited source: ${sourceUid}`);
+    if (seen.has(sourceUid)) throw new Error('Duplicate cited source');
     seen.add(sourceUid);
   }
   return citations;
@@ -57,7 +58,7 @@ function mappedSources(uids, mappings) {
   const byUid = new Map(mappings.map((mapping) => [mapping.sourceUid, mapping]));
   return uids.map((sourceUid) => {
     const mapping = byUid.get(sourceUid);
-    if (!mapping) throw new Error(`Missing source mapping: ${sourceUid}`);
+    if (!mapping) throw new Error('Missing source mapping for cited source');
     return {
       sourceUid,
       transcriptChunkId: mapping.transcriptChunkId ?? sourceUid,
@@ -73,7 +74,7 @@ function mappedLinks(sources) {
     const existing = byItem.get(source.itemId);
     if (existing) {
       if (existing.clusterId !== source.clusterId) {
-        throw new Error(`Conflicting cluster mappings for item: ${source.itemId}`);
+        throw new Error('Conflicting cluster mappings for cited item');
       }
       existing.sourceUids.push(source.sourceUid);
       continue;
@@ -114,7 +115,7 @@ export function buildPlatformAnalysisImportPlan({ topicId, analysis, sourceMappi
   const sourceIds = new Set();
   for (const mapping of sourceMappings) {
     const sourceUid = requireText(mapping.sourceUid, 'sourceUid');
-    if (sourceIds.has(sourceUid)) throw new Error(`Duplicate source mapping: ${sourceUid}`);
+    if (sourceIds.has(sourceUid)) throw new Error('Duplicate source mapping');
     sourceIds.add(sourceUid);
     requireUuid(mapping.itemId, 'itemId');
     if (mapping.clusterId != null) requireUuid(mapping.clusterId, 'clusterId');
@@ -128,7 +129,7 @@ export function buildPlatformAnalysisImportPlan({ topicId, analysis, sourceMappi
   if (!Array.isArray(recommendations)) throw new Error('Invalid recommendations');
   if (recommendations.length === 0) throw new Error('Analysis contains no recommendation candidates');
   const addCandidate = (value) => {
-    if (candidateIds.has(value.externalId)) throw new Error(`Duplicate candidate id: ${value.externalId}`);
+    if (candidateIds.has(value.externalId)) throw new Error('Duplicate candidate id');
     candidateIds.add(value.externalId);
     candidates.push(value);
   };
@@ -138,7 +139,7 @@ export function buildPlatformAnalysisImportPlan({ topicId, analysis, sourceMappi
       throw new Error('Analysis import accepts recommendation candidates only');
     }
     const externalId = requireText(recommendation.rec_id, 'recommendation id');
-    if (recommendationIds.has(externalId)) throw new Error(`Duplicate recommendation id: ${externalId}`);
+    if (recommendationIds.has(externalId)) throw new Error('Duplicate recommendation id');
     recommendationIds.add(externalId);
     const citations = citedUids(recommendation);
     addCandidate(candidate({
@@ -185,9 +186,90 @@ export function buildPlatformAnalysisImportPlan({ topicId, analysis, sourceMappi
   };
 }
 
-function parseJsonFile(path, label) {
+function sha256(value) {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function canonicalValue(value) {
+  if (Array.isArray(value)) return value.map(canonicalValue);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.keys(value).sort().map((key) => [key, canonicalValue(value[key])]),
+    );
+  }
+  return value;
+}
+
+function canonicalJson(value) {
+  return JSON.stringify(canonicalValue(value));
+}
+
+export function sealPlatformAnalysisImportPlan({ plan, analysisSource, provenanceMapSource }) {
+  const unsigned = {
+    ...plan,
+    schemaVersion: 2,
+    integrity: {
+      kind: 'self-checksum',
+      algorithm: 'sha256',
+      analysisSha256: sha256(analysisSource),
+      provenanceMapSha256: sha256(provenanceMapSource),
+    },
+  };
+  return {
+    ...unsigned,
+    integrity: {
+      ...unsigned.integrity,
+      planSha256: sha256(canonicalJson(unsigned)),
+    },
+  };
+}
+
+export function verifyPlatformAnalysisImportPlan({
+  plan,
+  analysis,
+  provenanceMap,
+  analysisSource,
+  provenanceMapSource,
+}) {
+  if (plan?.schemaVersion !== 2
+    || plan?.integrity?.kind !== 'self-checksum'
+    || plan?.integrity?.algorithm !== 'sha256') {
+    throw new Error('Unsupported analysis import plan integrity contract');
+  }
+  const { planSha256, ...integrityWithoutPlanHash } = plan.integrity;
+  if (typeof planSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(planSha256)) {
+    throw new Error('Invalid analysis import plan checksum');
+  }
+  const unsigned = { ...plan, integrity: integrityWithoutPlanHash };
+  if (sha256(canonicalJson(unsigned)) !== planSha256) {
+    throw new Error('Analysis import plan checksum mismatch');
+  }
+  if (plan.integrity.analysisSha256 !== sha256(analysisSource)) {
+    throw new Error('Analysis input hash mismatch');
+  }
+  if (plan.integrity.provenanceMapSha256 !== sha256(provenanceMapSource)) {
+    throw new Error('Provenance map hash mismatch');
+  }
+  if (provenanceMap?.schemaVersion !== 1) throw new Error('Unsupported provenance map schemaVersion');
+  const expected = sealPlatformAnalysisImportPlan({
+    plan: buildPlatformAnalysisImportPlan({
+      topicId: provenanceMap.topicId,
+      analysis,
+      sourceMappings: provenanceMap.sourceMappings,
+    }),
+    analysisSource,
+    provenanceMapSource,
+  });
+  if (canonicalJson(plan) !== canonicalJson(expected)) {
+    throw new Error('Analysis import plan does not match its inputs');
+  }
+  return { candidateCount: plan.candidates.length, databaseMutationExecuted: false };
+}
+
+function readJsonFile(path, label) {
   try {
-    return JSON.parse(readFileSync(path, 'utf8'));
+    const source = readFileSync(path);
+    return { source, data: JSON.parse(source.toString('utf8')) };
   } catch (error) {
     throw new Error(`Cannot parse ${label} JSON`, { cause: error });
   }
@@ -202,7 +284,7 @@ function parseCliArgs(argv) {
       force = true;
       continue;
     }
-    if (!['--analysis', '--provenance-map', '--output'].includes(argument)) {
+    if (!['--analysis', '--provenance-map', '--output', '--verify-plan'].includes(argument)) {
       throw new Error(`Unknown argument: ${argument}`);
     }
     const value = argv[index + 1];
@@ -210,26 +292,46 @@ function parseCliArgs(argv) {
     values.set(argument, value);
     index += 1;
   }
-  for (const required of ['--analysis', '--provenance-map', '--output']) {
+  for (const required of ['--analysis', '--provenance-map']) {
     if (!values.has(required)) throw new Error(`Missing required argument: ${required}`);
   }
+  const verifyPlanPath = values.get('--verify-plan');
+  if (verifyPlanPath && values.has('--output')) throw new Error('--verify-plan cannot be combined with --output');
+  if (verifyPlanPath && force) throw new Error('--force is only valid when creating a plan');
+  if (!verifyPlanPath && !values.has('--output')) throw new Error('Missing required argument: --output');
   return {
     analysisPath: values.get('--analysis'),
     provenanceMapPath: values.get('--provenance-map'),
     outputPath: values.get('--output'),
+    verifyPlanPath,
     force,
   };
 }
 
 export function runPlatformAnalysisImportCli(argv) {
   const options = parseCliArgs(argv);
-  const analysis = parseJsonFile(options.analysisPath, 'analysis');
-  const provenanceMap = parseJsonFile(options.provenanceMapPath, 'provenance map');
-  if (provenanceMap?.schemaVersion !== 1) throw new Error('Unsupported provenance map schemaVersion');
-  const plan = buildPlatformAnalysisImportPlan({
-    topicId: provenanceMap.topicId,
-    analysis,
-    sourceMappings: provenanceMap.sourceMappings,
+  const analysisFile = readJsonFile(options.analysisPath, 'analysis');
+  const provenanceFile = readJsonFile(options.provenanceMapPath, 'provenance map');
+  if (options.verifyPlanPath) {
+    const planFile = readJsonFile(options.verifyPlanPath, 'analysis import plan');
+    const verification = verifyPlatformAnalysisImportPlan({
+      plan: planFile.data,
+      analysis: analysisFile.data,
+      provenanceMap: provenanceFile.data,
+      analysisSource: analysisFile.source,
+      provenanceMapSource: provenanceFile.source,
+    });
+    return { mode: 'verify', ...verification };
+  }
+  if (provenanceFile.data?.schemaVersion !== 1) throw new Error('Unsupported provenance map schemaVersion');
+  const plan = sealPlatformAnalysisImportPlan({
+    plan: buildPlatformAnalysisImportPlan({
+      topicId: provenanceFile.data.topicId,
+      analysis: analysisFile.data,
+      sourceMappings: provenanceFile.data.sourceMappings,
+    }),
+    analysisSource: analysisFile.source,
+    provenanceMapSource: provenanceFile.source,
   });
   try {
     writeFileSync(options.outputPath, `${JSON.stringify(plan, null, 2)}\n`, {
@@ -242,13 +344,17 @@ export function runPlatformAnalysisImportCli(argv) {
     }
     throw error;
   }
-  return { outputPath: options.outputPath, candidateCount: plan.candidates.length };
+  return { mode: 'create', outputPath: options.outputPath, candidateCount: plan.candidates.length };
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
   try {
     const result = runPlatformAnalysisImportCli(process.argv.slice(2));
-    console.log(`Analysis import plan written (${result.candidateCount} candidates; database mutation: false)`);
+    if (result.mode === 'verify') {
+      console.log(`Analysis import plan verified (${result.candidateCount} candidates; database mutation: false)`);
+    } else {
+      console.log(`Analysis import plan written (${result.candidateCount} candidates; database mutation: false)`);
+    }
   } catch (error) {
     console.error(error instanceof Error ? error.message : 'Analysis import planning failed');
     process.exitCode = 1;
