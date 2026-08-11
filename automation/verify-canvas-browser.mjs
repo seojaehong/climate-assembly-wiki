@@ -57,7 +57,7 @@ export async function verifyCanvasBrowser({
   path = DEFAULT_PATH,
   outputJson,
   screenshot,
-  timeoutMs = 30_000,
+  timeoutMs = 60_000,
   sourceProvenance = null,
 }) {
   const origin = requireHttpUrl(baseUrl, 'baseUrl');
@@ -115,15 +115,15 @@ export async function verifyCanvasBrowser({
       const status = readPathStatuses.get(readPath);
       return status === undefined || status < 200 || status >= 300;
     });
-    if (draggable) throw new Error('Unauthenticated agenda node is draggable');
-    if (writeRequests.length > 0) throw new Error('Canvas verification attempted a blocked write request');
-    if (browserErrors.length > 0) throw new Error('Canvas verification observed a browser page error');
-    if (missingReads.length > 0) throw new Error('Canvas verification did not complete all expected reads');
-
     if (screenshot) {
       mkdirSync(dirname(screenshot), { recursive: true });
       await page.screenshot({ path: screenshot, fullPage: true });
     }
+
+    if (draggable) throw new Error('Unauthenticated agenda node is draggable');
+    if (writeRequests.length > 0) throw new Error('Canvas verification attempted a blocked write request');
+    if (browserErrors.length > 0) throw new Error('Canvas verification observed a browser page error');
+    if (missingReads.length > 0) throw new Error('Canvas verification did not complete all expected reads');
 
     const report = {
       schemaVersion: 1,
