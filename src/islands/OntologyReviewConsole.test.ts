@@ -1,7 +1,10 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import OntologyReviewConsole, { completeOntologyWorkspaceLoad } from './OntologyReviewConsole';
+import OntologyReviewConsole, {
+  completeOntologyWorkspaceLoad,
+  FacilitationPromptPanel,
+} from './OntologyReviewConsole';
 import type { CanvasOntologyReviewWorkspace } from './canvas/ontology-review-workspace';
 
 describe('OntologyReviewConsole', () => {
@@ -17,6 +20,27 @@ describe('OntologyReviewConsole', () => {
     expect(html).toContain('DB에 저장하지 않습니다.');
     expect(html).toContain('공개 그래프에 반영하지 않습니다.');
     expect(html).toContain('aria-live="polite"');
+  });
+
+  it('renders advisory facilitation questions with provenance and a live count', () => {
+    const html = renderToStaticMarkup(createElement(FacilitationPromptPanel, { prompts: [{
+      id: 'missing-condition:node-1',
+      nodeId: 'node-1',
+      sourceAgendaId: 'agenda-1',
+      sourceSessionId: 'session-1',
+      sourceText: '원래 제안 문구',
+      kind: 'missing-condition',
+      question: '이 제안을 실행하려면 어떤 조건이 필요한가요?',
+      reason: '검수된 Proposal에 연결된 Condition이 없습니다.',
+    }] }));
+
+    expect(html).toContain('진행 질문');
+    expect(html).toContain('현재 규칙으로 확인된 진행 질문 1개');
+    expect(html).toContain('role="status"');
+    expect(html).toContain('aria-live="polite"');
+    expect(html).toContain('출처 세션 session-1 · 원 agenda agenda-1 · 노드 node-1');
+    expect(html).toContain('원문: 원래 제안 문구');
+    expect(html).toContain('회의의 결정이나 진실 판정을 대신하지 않습니다.');
   });
 
   it('discards a stale asynchronous workspace load without changing visible state', async () => {

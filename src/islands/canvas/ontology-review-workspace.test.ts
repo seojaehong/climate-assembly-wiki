@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canvasFacilitationPrompts,
   createCanvasOntologyReviewWorkspace,
   exportCanvasOntologyReviewedPlan,
   reviewCanvasOntologyItem,
@@ -126,6 +127,95 @@ async function fixture() {
 }
 
 describe('Canvas ontology review workspace', () => {
+  it('derives advisory questions only from reviewed nodes without required support', async () => {
+    const workspace = await createCanvasOntologyReviewWorkspace(await fixture());
+    const reviewedAt = '2026-08-29T01:00:00.000Z';
+    const reviewer = 'moderator-role-1';
+    let reviewed = reviewCanvasOntologyItem(workspace, {
+      itemType: 'node', id: 'canvas-agenda:agenda-1', status: 'accepted', kind: 'Claim', reviewer, reviewedAt,
+    });
+    reviewed = reviewCanvasOntologyItem(reviewed, {
+      itemType: 'node', id: 'canvas-agenda:action-1', status: 'accepted', kind: 'Proposal', reviewer, reviewedAt,
+    });
+    reviewed.plan.nodes.push({
+      ...reviewed.plan.nodes[0],
+      id: 'canvas-agenda:concern-1',
+      sourceAgendaId: 'concern-1',
+      sourceText: '비용 부담이 커질 수 있다.',
+      label: '비용 부담',
+      text: '비용 부담이 커질 수 있다.',
+      kind: 'Concern',
+    });
+
+    expect(canvasFacilitationPrompts(reviewed)).toEqual([
+      expect.objectContaining({ kind: 'missing-evidence', nodeId: 'canvas-agenda:agenda-1' }),
+      expect.objectContaining({ kind: 'missing-condition', nodeId: 'canvas-agenda:action-1' }),
+      expect.objectContaining({ kind: 'isolated-concern', nodeId: 'canvas-agenda:concern-1' }),
+    ]);
+    expect(canvasFacilitationPrompts(workspace)).toEqual([]);
+  });
+
+  it('removes prompts only when accepted reviewed support is connected', async () => {
+    const workspace = await createCanvasOntologyReviewWorkspace(await fixture());
+    const reviewedAt = '2026-08-29T01:00:00.000Z';
+    const reviewer = 'moderator-role-1';
+    let reviewed = reviewCanvasOntologyItem(workspace, {
+      itemType: 'node', id: 'canvas-agenda:agenda-1', status: 'accepted', kind: 'Claim', reviewer, reviewedAt,
+    });
+    reviewed = reviewCanvasOntologyItem(reviewed, {
+      itemType: 'node', id: 'canvas-agenda:action-1', status: 'accepted', kind: 'Proposal', reviewer, reviewedAt,
+    });
+    reviewed.plan.nodes.push(
+      {
+        ...reviewed.plan.nodes[0], id: 'canvas-agenda:evidence-1', sourceAgendaId: 'evidence-1',
+        sourceText: '전환 사례 자료', label: '전환 사례 자료', text: '전환 사례 자료', kind: 'Evidence',
+      },
+      {
+        ...reviewed.plan.nodes[0], id: 'canvas-agenda:condition-1', sourceAgendaId: 'condition-1',
+        sourceText: '예산 확보', label: '예산 확보', text: '예산 확보', kind: 'Condition',
+      },
+    );
+    reviewed.plan.relations.push(
+      {
+        ...reviewed.plan.relations[0], id: 'relation:evidence',
+        source: 'canvas-agenda:evidence-1', target: 'canvas-agenda:agenda-1', relation: 'hasEvidence',
+        reviewStatus: 'accepted', reviewer, reviewedAt,
+      },
+      {
+        ...reviewed.plan.relations[0], id: 'relation:condition',
+        source: 'canvas-agenda:action-1', target: 'canvas-agenda:condition-1', relation: 'requiresCondition',
+        reviewStatus: 'rejected', reviewer, reviewedAt,
+      },
+    );
+
+    expect(canvasFacilitationPrompts(reviewed).map((prompt) => prompt.kind)).toEqual(['missing-condition']);
+    reviewed.plan.relations[reviewed.plan.relations.length - 1].reviewStatus = 'accepted';
+    expect(canvasFacilitationPrompts(reviewed)).toEqual([]);
+
+    reviewed.plan.nodes.push(
+      {
+        ...reviewed.plan.nodes[0], id: 'canvas-agenda:concern-1', sourceAgendaId: 'concern-1',
+        sourceText: '비용 부담 우려', label: '비용 부담 우려', text: '비용 부담 우려', kind: 'Concern',
+      },
+      {
+        ...reviewed.plan.nodes[0], id: 'canvas-agenda:issue-1', sourceAgendaId: 'issue-1',
+        sourceText: '비용 쟁점', label: '비용 쟁점', text: '비용 쟁점', kind: 'Issue',
+      },
+    );
+    reviewed.plan.relations.push({
+      ...reviewed.plan.relations[0], id: 'relation:concern-evidence',
+      source: 'canvas-agenda:concern-1', target: 'canvas-agenda:evidence-1', relation: 'hasEvidence',
+      reviewStatus: 'accepted', reviewer, reviewedAt,
+    });
+    expect(canvasFacilitationPrompts(reviewed).map((prompt) => prompt.kind)).toEqual(['isolated-concern']);
+    reviewed.plan.relations.push({
+      ...reviewed.plan.relations[0], id: 'relation:concern-issue',
+      source: 'canvas-agenda:issue-1', target: 'canvas-agenda:concern-1', relation: 'hasConcern',
+      reviewStatus: 'accepted', reviewer, reviewedAt,
+    });
+    expect(canvasFacilitationPrompts(reviewed)).toEqual([]);
+  });
+
   it('opens only a sealed plan that matches the exact Canvas snapshot bytes', async () => {
     const input = await fixture();
     const workspace = await createCanvasOntologyReviewWorkspace(input);

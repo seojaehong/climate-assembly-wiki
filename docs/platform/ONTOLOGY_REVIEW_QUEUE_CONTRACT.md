@@ -97,6 +97,15 @@ Issue를 각각 승인·수정 승인·반려한다. 승인 relation은 승인�
 유지하는 내부 검수 결과이며 승인·게시 증거가 아니다. 최종 graph 변환은 같은 snapshot과 기존
 CLI `--reviewed-plan` 경로에서 source 불변식을 다시 검증해야 한다.
 
+검수 작업대의 `진행 질문`은 확정된 결론이 아니라 현재 사람 검수 상태에서 빠진 연결을 살피는
+진행자 보조 규칙이다. 승인·수정 승인된 `Claim`에 승인된 `hasEvidence` 관계로 연결된 `Evidence`가
+없으면 근거 질문을, 승인·수정 승인된 `Proposal`에 승인된 `requiresCondition` 관계로 연결된
+`Condition`이 없으면 실행 조건 질문을 제시한다. 승인·수정 승인된 `Concern`이 승인 관계로 검수된
+`Issue`와 연결되지 않았으면 어떤 쟁점과 함께 검토할지 묻는다. 관계 방향은 Canvas 원본 링크 방향을 의미 방향으로
+확정하지 않으므로 두 endpoint 역할을 대조한다. 제안·반려·미검수 node/relation은 질문 근거에서
+제외하며, 각 질문은 source session·agenda·node ID와 원문을 표시한다. 질문은 브라우저 메모리에서 계산할 뿐
+review plan, DB, browser storage 또는 공개 graph에 쓰지 않는다.
+
 ## Failure modes
 
 | Failure | Required behavior |

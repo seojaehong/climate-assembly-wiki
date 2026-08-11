@@ -1,9 +1,11 @@
 import { useRef, useState, type CSSProperties } from 'react';
 import {
+  canvasFacilitationPrompts,
   createCanvasOntologyReviewWorkspace,
   exportCanvasOntologyReviewedPlan,
   reviewCanvasOntologyItem,
   type CanvasOntologyCluster,
+  type CanvasFacilitationPrompt,
   type CanvasOntologyNode,
   type CanvasOntologyRelation,
   type CanvasOntologyReviewDecision,
@@ -89,6 +91,34 @@ function DecisionButtons({ onAccept, onReject, acceptLabel = '승인' }: {
         반려
       </button>
     </div>
+  );
+}
+
+export function FacilitationPromptPanel({ prompts }: { prompts: CanvasFacilitationPrompt[] }) {
+  return (
+    <section aria-labelledby="facilitation-prompt-heading" style={{ ...cardStyle, marginBottom: 28 }}>
+      <h2 id="facilitation-prompt-heading" style={{ margin: 0 }}>진행 질문</h2>
+      <p style={{ color: MUTED, lineHeight: 1.6, margin: 0 }}>
+        사람 검수 결과에서 빠진 연결을 확인하기 위한 진행 보조 질문입니다. 회의의 결정이나 진실 판정을 대신하지 않습니다.
+      </p>
+      <p role="status" aria-live="polite" aria-atomic="true" style={{ margin: 0 }}>
+        현재 규칙으로 확인된 진행 질문 {prompts.length}개
+      </p>
+      {prompts.length > 0 ? (
+        <ol style={{ display: 'grid', gap: 12, margin: 0, paddingLeft: 24 }}>
+          {prompts.map((prompt) => (
+            <li key={prompt.id}>
+              <strong>{prompt.question}</strong>
+              <div style={{ color: MUTED, lineHeight: 1.5, marginTop: 4 }}>{prompt.reason}</div>
+              <div style={{ color: MUTED, fontSize: 13, overflowWrap: 'anywhere' }}>
+                출처 세션 {prompt.sourceSessionId} · 원 agenda {prompt.sourceAgendaId} · 노드 {prompt.nodeId}
+              </div>
+              <div style={{ color: MUTED, fontSize: 13, marginTop: 2 }}>원문: {prompt.sourceText}</div>
+            </li>
+          ))}
+        </ol>
+      ) : <p style={{ margin: 0 }}>현재 검수 상태에서 추가 진행 질문이 없습니다.</p>}
+    </section>
   );
 }
 
@@ -297,6 +327,8 @@ export default function OntologyReviewConsole() {
                 검수 완료 plan 다운로드
               </button>
             </section>
+
+            <FacilitationPromptPanel prompts={canvasFacilitationPrompts(workspace)} />
 
             <section aria-labelledby="node-review-heading" style={{ display: 'grid', gap: 14, marginBottom: 28 }}>
               <h2 id="node-review-heading">1. 노드 역할·문구 검수</h2>

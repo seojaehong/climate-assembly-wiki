@@ -69,6 +69,17 @@ export interface CanvasOntologyReviewWorkspace {
   };
 }
 
+export interface CanvasFacilitationPrompt {
+  id: string;
+  nodeId: string;
+  sourceAgendaId: string;
+  sourceSessionId: string;
+  sourceText: string;
+  kind: 'missing-evidence' | 'missing-condition' | 'isolated-concern';
+  question: string;
+  reason: string;
+}
+
 interface ReviewAuditInput {
   reviewer: string;
   reviewedAt: string;
@@ -285,6 +296,73 @@ function summarize(plan: CanvasOntologyReviewPlan): CanvasOntologyReviewWorkspac
     decided: items.filter((item) => item.reviewStatus !== 'proposed').length,
     total: items.length,
   };
+}
+
+/** Derives advisory moderator questions from explicit human review decisions only. */
+export function canvasFacilitationPrompts(
+  workspace: CanvasOntologyReviewWorkspace,
+): CanvasFacilitationPrompt[] {
+  const acceptedNodes = workspace.plan.nodes.filter(
+    (node) => node.reviewStatus === 'accepted' || node.reviewStatus === 'edited',
+  );
+  const acceptedNodeById = new Map(acceptedNodes.map((node) => [node.id, node]));
+  const acceptedRelations = workspace.plan.relations.filter(
+    (relation) => relation.reviewStatus === 'accepted',
+  );
+  const connectsKind = (nodeId: string, relationType: string, otherKind: string): boolean => (
+    acceptedRelations.some((relation) => {
+      if (relation.relation !== relationType) return false;
+      const otherId = relation.source === nodeId
+        ? relation.target
+        : (relation.target === nodeId ? relation.source : null);
+      return otherId !== null && acceptedNodeById.get(otherId)?.kind === otherKind;
+    })
+  );
+  const connectsNodeKind = (nodeId: string, otherKind: string): boolean => (
+    acceptedRelations.some((relation) => {
+      const otherId = relation.source === nodeId
+        ? relation.target
+        : (relation.target === nodeId ? relation.source : null);
+      return otherId !== null && acceptedNodeById.get(otherId)?.kind === otherKind;
+    })
+  );
+  const provenance = (node: CanvasOntologyNode) => ({
+    nodeId: node.id,
+    sourceAgendaId: node.sourceAgendaId,
+    sourceSessionId: node.sourceSessionId,
+    sourceText: node.sourceText,
+  });
+
+  return acceptedNodes.flatMap((node): CanvasFacilitationPrompt[] => {
+    if (node.kind === 'Claim' && !connectsKind(node.id, 'hasEvidence', 'Evidence')) {
+      return [{
+        id: `missing-evidence:${node.id}`,
+        ...provenance(node),
+        kind: 'missing-evidence',
+        question: `“${node.label}”을 뒷받침하는 자료·경험·사례는 무엇인가요?`,
+        reason: '검수된 Claim에 연결된 Evidence가 없습니다.',
+      }];
+    }
+    if (node.kind === 'Proposal' && !connectsKind(node.id, 'requiresCondition', 'Condition')) {
+      return [{
+        id: `missing-condition:${node.id}`,
+        ...provenance(node),
+        kind: 'missing-condition',
+        question: `“${node.label}”을 실행하려면 어떤 조건이 먼저 충족되어야 하나요?`,
+        reason: '검수된 Proposal에 연결된 Condition이 없습니다.',
+      }];
+    }
+    if (node.kind === 'Concern' && !connectsNodeKind(node.id, 'Issue')) {
+      return [{
+        id: `isolated-concern:${node.id}`,
+        ...provenance(node),
+        kind: 'isolated-concern',
+        question: `“${node.label}” 우려는 어떤 쟁점과 연결해 함께 검토해야 하나요?`,
+        reason: '검수된 Concern이 Issue와 연결되지 않았습니다.',
+      }];
+    }
+    return [];
+  });
 }
 
 function optionalSnapshotString(value: unknown, label: string): string | null {

@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-11T10:41:07.622Z",
-  "baseUrl": "http://127.0.0.1:4328",
+  "generatedAt": "2026-08-11T18:28:03.643Z",
+  "baseUrl": "http://127.0.0.1:4321",
   "path": "/ko/moderator/canvas/",
   "readOnly": true,
   "sourceProvenance": {
-    "sourceCommit": "e40cfa94dce11cff4614e60b3af361e54bfab02f",
-    "sourceTreeClean": true,
-    "verifierSha256": "b32bec69d9a2a66c1b94b446abf868a5ef1a98268b35bacb893cf2e33b957ae6"
+    "sourceCommit": "9c1f38efc83675f515afc22a2167b1f7d434e9ae",
+    "sourceTreeClean": false,
+    "verifierSha256": "9e2030abde0dc9f697410cbb305e4001d6050fd473aa5c9f7022b26f4f53e470"
   },
   "runtime": {
-    "node": "v20.19.5",
+    "node": "v24.12.0",
     "chromium": "149.0.7827.55"
   },
   "checks": {
@@ -19,6 +19,40 @@
     "realtimeReady": true,
     "moderatorLoginBoundary": true,
     "canvasHydrated": true,
+    "canvasWorkbenchUsable": true,
+    "canvasWorkbenchSize": {
+      "width": 1440,
+      "height": 934
+    },
+    "platformNavigationConnected": true,
+    "platformNavigationLinkCount": 5,
+    "nonDecisionCopyVisible": true,
+    "liveDocumentStatus": 200,
+    "livePlatformNavigationConnected": true,
+    "reviewDocumentStatus": 200,
+    "reviewPlatformNavigationConnected": true,
+    "reviewLocalOnlyBoundaryVisible": true,
+    "reviewInteractionCompleted": true,
+    "reviewMixedDecisionStatesVerified": true,
+    "reviewReloadIsolationVerified": true,
+    "reviewFacilitationPromptVerified": true,
+    "reviewFacilitationPromptCount": 1,
+    "reviewFacilitationLiveCountVerified": true,
+    "reviewFacilitationProvenanceVerified": true,
+    "reviewedPlanDownloaded": true,
+    "reviewedPlanDecisionCount": 5,
+    "linkedSurfaceStatuses": [
+      {
+        "path": "/workshop-graph/",
+        "assetPath": "/workshop-graph/index.html",
+        "status": 200
+      },
+      {
+        "path": "/workshop-graph/guide/",
+        "assetPath": "/workshop-graph/guide/index.html",
+        "status": 200
+      }
+    ],
     "agendaNodeCount": 4,
     "unauthenticatedNodeDraggable": false,
     "blockedWriteRequestCount": 0,

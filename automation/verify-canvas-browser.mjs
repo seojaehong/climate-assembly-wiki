@@ -361,6 +361,34 @@ export async function verifyCanvasBrowser({
     await reviewPage.locator('article[aria-label^="군집 검수"]')
       .getByRole('button', { name: '승인' }).click();
     await reviewPage.getByText('진행 5/5', { exact: true }).waitFor({ timeout: timeoutMs });
+    const reviewFacilitationPromptCount = await reviewPage
+      .getByRole('region', { name: '진행 질문' })
+      .getByRole('listitem')
+      .count();
+    const reviewFacilitationPromptVerified = reviewFacilitationPromptCount === 1
+      && await reviewPage.getByText(
+        `“${REVIEW_RELOAD_SNAPSHOT.payload.agenda[1].text}”을 실행하려면 어떤 조건이 먼저 충족되어야 하나요?`,
+        { exact: true },
+      ).isVisible();
+    const reviewFacilitationLiveCountVerified = await reviewPage
+      .getByRole('region', { name: '진행 질문' })
+      .getByRole('status')
+      .getByText('현재 규칙으로 확인된 진행 질문 1개', { exact: true })
+      .isVisible();
+    const reviewFacilitationProvenanceVerified = await reviewPage.getByText(
+      '출처 세션 session-1 · 원 agenda action-1 · 노드 canvas-agenda:action-1',
+      { exact: true },
+    ).isVisible() && await reviewPage.getByText(
+      `원문: ${REVIEW_RELOAD_SNAPSHOT.payload.agenda[1].text}`,
+      { exact: true },
+    ).isVisible();
+    if (!reviewFacilitationPromptVerified) {
+      throw new Error('Ontology review facilitation prompt contract is invalid');
+    }
+    if (!reviewFacilitationLiveCountVerified || !reviewFacilitationProvenanceVerified) {
+      throw new Error('Ontology review facilitation prompt evidence is incomplete');
+    }
+    if (screenshot) await reviewPage.screenshot({ path: screenshot, fullPage: true });
     const downloadPromise = reviewPage.waitForEvent('download', { timeout: timeoutMs });
     await reviewPage.getByRole('button', { name: '검수 완료 plan 다운로드' }).click();
     const reviewedPlan = JSON.parse(await downloadText(await downloadPromise));
@@ -445,6 +473,10 @@ export async function verifyCanvasBrowser({
         reviewInteractionCompleted: reviewedPlanDecisionCount === 5,
         reviewMixedDecisionStatesVerified,
         reviewReloadIsolationVerified,
+        reviewFacilitationPromptVerified,
+        reviewFacilitationPromptCount,
+        reviewFacilitationLiveCountVerified,
+        reviewFacilitationProvenanceVerified,
         reviewedPlanDownloaded,
         reviewedPlanDecisionCount,
         linkedSurfaceStatuses,

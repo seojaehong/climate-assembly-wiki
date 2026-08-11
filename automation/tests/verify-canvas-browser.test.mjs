@@ -44,6 +44,11 @@ async function fixtureServer({
         <button type="button" id="start-review">로컬 검수 시작</button>
         <p id="review-progress" hidden>진행 0/5</p>
         <section id="review-items" hidden>
+          <section aria-labelledby="facilitation-prompt-heading">
+            <h2 id="facilitation-prompt-heading">진행 질문</h2>
+            <p id="facilitation-prompt-count" role="status" aria-live="polite">현재 규칙으로 확인된 진행 질문 0개</p>
+            <ol id="facilitation-prompt-list"></ol>
+          </section>
           <article aria-label="노드 검수 1">
             <label>온톨로지 역할<select><option>Issue</option><option>Proposal</option></select></label>
             <label>표시 이름<input type="text"></label>
@@ -76,6 +81,8 @@ async function fixtureServer({
           const progress = document.querySelector('#review-progress');
           const reviewItems = document.querySelector('#review-items');
           const downloadButton = document.querySelector('#download-plan');
+          const promptCount = document.querySelector('#facilitation-prompt-count');
+          const promptList = document.querySelector('#facilitation-prompt-list');
           let decisionCount = 0;
           let activePlan = null;
           document.querySelector('#start-review').addEventListener('click', async () => {
@@ -88,6 +95,8 @@ async function fixtureServer({
             decisionCount = 0;
             progress.textContent = '진행 0/5';
             downloadButton.disabled = true;
+            promptCount.textContent = '현재 규칙으로 확인된 진행 질문 0개';
+            promptList.replaceChildren();
             progress.hidden = false;
             reviewItems.hidden = false;
           });
@@ -127,6 +136,18 @@ async function fixtureServer({
               decisionCount += 1;
               progress.textContent = \`진행 \${decisionCount}/5\`;
               downloadButton.disabled = decisionCount !== 5;
+              if (decisionCount === 5 && activePlan.nodes[1].reviewStatus === 'accepted') {
+                const item = document.createElement('li');
+                const question = document.createElement('strong');
+                question.textContent = \`“\${activePlan.nodes[1].label}”을 실행하려면 어떤 조건이 먼저 충족되어야 하나요?\`;
+                const provenance = document.createElement('div');
+                provenance.textContent = \`출처 세션 \${activePlan.nodes[1].sourceSessionId} · 원 agenda \${activePlan.nodes[1].sourceAgendaId} · 노드 \${activePlan.nodes[1].id}\`;
+                const source = document.createElement('div');
+                source.textContent = \`원문: \${activePlan.nodes[1].sourceText}\`;
+                item.append(question, provenance, source);
+                promptList.replaceChildren(item);
+                promptCount.textContent = '현재 규칙으로 확인된 진행 질문 1개';
+              }
             });
           });
           downloadButton.addEventListener('click', () => {
