@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'automation/**'
+      - 'public/workshop-graph/**'
       - '.github/workflows/test.yml'
       - '.gitignore'
       - 'package.json'
@@ -24,6 +25,7 @@ on:
   pull_request:
     paths:
       - 'automation/**'
+      - 'public/workshop-graph/**'
       - '.github/workflows/test.yml'
       - '.gitignore'
       - 'package.json'

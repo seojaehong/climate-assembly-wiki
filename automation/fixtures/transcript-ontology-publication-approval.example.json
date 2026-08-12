@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "kind": "transcript-ontology-publication-approval",
+  "mode": "synthetic-reviewed-demo",
+  "sourceId": "live-transcript-r2-reviewed",
+  "reviewedPlanSha256": "2c3e2019ed04f39c8a612c3e14696649b216a1de67d1941bf1a738c9bbab7dab",
+  "approvedBy": "reviewer-test",
+  "approvedAt": "2026-08-01T01:20:00.000Z"
+}

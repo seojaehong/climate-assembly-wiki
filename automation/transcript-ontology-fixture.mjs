@@ -46,6 +46,14 @@ function sha256(value) {
   return createHash('sha256').update(canonicalJson(value), 'utf8').digest('hex');
 }
 
+function rawSha256(value) {
+  return createHash('sha256').update(value, 'utf8').digest('hex');
+}
+
+export function reviewedTranscriptPlanSha256(reviewedPlan) {
+  return sha256(reviewedPlan);
+}
+
 function nonemptyString(value, label) {
   if (typeof value !== 'string' || value.trim().length === 0) throw new Error(`Invalid ${label}`);
   return value;
@@ -252,6 +260,228 @@ export function buildLiveTranscriptGraph(input) {
   };
 }
 
+function reviewedPlanSource(fixture, fixtureText, reviewedPlan) {
+  if (!isRecord(reviewedPlan)
+    || reviewedPlan.schemaVersion !== 1
+    || reviewedPlan.kind !== 'transcript-ontology-reviewed-plan'
+    || reviewedPlan.dryRun !== true
+    || reviewedPlan.databaseMutationExecuted !== false
+    || reviewedPlan.publicGraphWritten !== false
+    || reviewedPlan.requiresPublicationReview !== true
+    || !isRecord(reviewedPlan.source)) {
+    throw new Error('Invalid transcript ontology reviewed plan');
+  }
+  const source = reviewedPlan.source;
+  const expected = {
+    fixtureId: opaqueId(fixture.fixtureId, 'fixture id'),
+    sessionId: opaqueId(fixture.sessionId, 'session id'),
+    language: nonemptyString(fixture.language, 'fixture language'),
+    reviewedBy: nonemptyString(fixture.reviewedBy, 'fixture reviewer'),
+    reviewedAt: canonicalIsoInstant(fixture.reviewedAt, 'fixture reviewedAt'),
+    fixtureSha256: rawSha256(fixtureText),
+  };
+  if (canonicalJson(source) !== canonicalJson(expected)) {
+    throw new Error('Reviewed plan source does not match its transcript fixture');
+  }
+  return expected;
+}
+
+function reviewAudit(item, sourceReviewedAt) {
+  if (!['accepted', 'edited', 'rejected'].includes(item.reviewStatus)) {
+    throw new Error('Invalid reviewed plan item status');
+  }
+  const reviewer = nonemptyString(item.reviewer, 'reviewed plan reviewer');
+  if (!/^[a-zA-Z][a-zA-Z0-9._:-]{2,79}$/.test(reviewer)) {
+    throw new Error('Invalid reviewed plan reviewer');
+  }
+  const reviewedAt = canonicalIsoInstant(item.reviewedAt, 'reviewed plan reviewedAt');
+  if (reviewedAt < sourceReviewedAt) throw new Error('Reviewed plan decision predates fixture review');
+  return { reviewStatus: item.reviewStatus, reviewer, reviewedAt };
+}
+
+function expectedTranscript(cited, chunks) {
+  return cited.map((uid) => chunks.get(uid));
+}
+
+/** Builds a public synthetic graph from a complete R2 reviewed plan and explicit publication approval. */
+export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan, publication }) {
+  if (typeof fixtureText !== 'string') throw new Error('Invalid transcript fixture text');
+  let fixture;
+  try {
+    fixture = JSON.parse(fixtureText);
+  } catch (error) {
+    throw new Error('Cannot parse transcript fixture JSON', { cause: error });
+  }
+  const baseGraph = buildReviewedTranscriptGraph(fixture);
+  const source = reviewedPlanSource(fixture, fixtureText, reviewedPlan);
+  if (!Array.isArray(reviewedPlan.nodes)
+    || reviewedPlan.nodes.length !== fixture.expected.nodes.length
+    || !Array.isArray(reviewedPlan.relations)
+    || reviewedPlan.relations.length !== fixture.expected.relations.length) {
+    throw new Error('Reviewed plan item set does not match its transcript fixture');
+  }
+  const planNodeUids = reviewedPlan.nodes.map((node) => isRecord(node) ? node.sourceUid : null);
+  const planRelationUids = reviewedPlan.relations.map((relation) => isRecord(relation) ? relation.sourceUid : null);
+  const fixtureNodeUids = fixture.expected.nodes.map((node) => node.uid);
+  const fixtureRelationUids = fixture.expected.relations.map((relation) => relation.uid);
+  if (new Set(planNodeUids).size !== planNodeUids.length
+    || new Set(planRelationUids).size !== planRelationUids.length
+    || canonicalJson([...planNodeUids].sort()) !== canonicalJson([...fixtureNodeUids].sort())
+    || canonicalJson([...planRelationUids].sort()) !== canonicalJson([...fixtureRelationUids].sort())) {
+    throw new Error('Reviewed plan item set does not match its transcript fixture');
+  }
+  if (!isRecord(publication)
+    || publication.schemaVersion !== 1
+    || publication.kind !== 'transcript-ontology-publication-approval'
+    || publication.mode !== 'synthetic-reviewed-demo') {
+    throw new Error('Synthetic reviewed plan publication approval is required');
+  }
+  const sourceId = opaqueId(publication.sourceId, 'publication source id');
+  if (!/^live-[a-z0-9][a-z0-9._-]*$/.test(sourceId)) throw new Error('Invalid publication source id');
+  if (publication.reviewedPlanSha256 !== reviewedTranscriptPlanSha256(reviewedPlan)) {
+    throw new Error('Publication approval does not match the reviewed plan');
+  }
+  const approvedBy = nonemptyString(publication.approvedBy, 'publication reviewer');
+  if (!REVIEWER_ALIAS_PATTERN.test(approvedBy)) throw new Error('Invalid publication reviewer alias');
+  const approvedAt = canonicalIsoInstant(publication.approvedAt, 'publication approvedAt');
+  const chunks = new Map(fixture.chunks.map((chunk) => [chunk.uid, chunk]));
+  const fixtureNodes = new Map(fixture.expected.nodes.map((node) => [node.uid, node]));
+  const baseNodes = new Map(baseGraph.elements.nodes.map((node) => [node.data.id, node]));
+  const activeNodeIds = new Set();
+  let rejectedNodeCount = 0;
+  let latestReviewedAt = source.reviewedAt;
+  const nodes = reviewedPlan.nodes.map((node) => {
+    if (!isRecord(node)) throw new Error('Invalid reviewed plan node');
+    const sourceUid = opaqueId(node.sourceUid, 'reviewed plan node source uid');
+    const fixtureNode = fixtureNodes.get(sourceUid);
+    const baseNode = baseNodes.get(node.id);
+    if (!fixtureNode || !baseNode
+      || node.id !== `transcript-node:${sourceUid}`
+      || node.kindCandidate !== fixtureNode.kind
+      || node.sourceLabel !== fixtureNode.label
+      || node.sourceText !== fixtureNode.text
+      || canonicalJson(node.citedUids) !== canonicalJson(fixtureNode.citedUids)
+      || canonicalJson(node.transcript) !== canonicalJson(expectedTranscript(fixtureNode.citedUids, chunks))) {
+      throw new Error('Reviewed plan node provenance does not match its transcript fixture');
+    }
+    const audit = reviewAudit(node, source.reviewedAt);
+    if (audit.reviewedAt > latestReviewedAt) latestReviewedAt = audit.reviewedAt;
+    if (audit.reviewStatus === 'rejected') {
+      rejectedNodeCount += 1;
+      if (node.kind !== null || node.label !== fixtureNode.label || node.text !== fixtureNode.text) {
+        throw new Error('Rejected reviewed plan node must preserve source content');
+      }
+      return null;
+    }
+    if (!NODE_KINDS.includes(node.kind)) throw new Error('Invalid reviewed plan node kind');
+    const label = nonemptyString(node.label, 'reviewed plan node label');
+    const nodeText = nonemptyString(node.text, 'reviewed plan node text');
+    const changed = node.kind !== fixtureNode.kind || label !== fixtureNode.label || nodeText !== fixtureNode.text;
+    if ((audit.reviewStatus === 'accepted' && changed) || (audit.reviewStatus === 'edited' && !changed)) {
+      throw new Error('Reviewed plan node status does not match its content');
+    }
+    activeNodeIds.add(node.id);
+    return {
+      data: {
+        ...baseNode.data,
+        label,
+        kind: node.kind,
+        kindKo: KIND_KO[node.kind],
+        text: nodeText,
+        review_state: audit.reviewStatus,
+        is_public: true,
+        meta: {
+          ...baseNode.data.meta,
+          reviewer: audit.reviewer,
+          reviewed_at: audit.reviewedAt,
+          publication_reviewer: approvedBy,
+          published_at: approvedAt,
+        },
+      },
+    };
+  }).filter(Boolean);
+  const fixtureRelations = new Map(fixture.expected.relations.map((relation) => [relation.uid, relation]));
+  const baseEdges = new Map(baseGraph.elements.edges.map((edge) => [edge.data.id, edge]));
+  let rejectedEdgeCount = 0;
+  const edges = reviewedPlan.relations.map((relation) => {
+    if (!isRecord(relation)) throw new Error('Invalid reviewed plan relation');
+    const sourceUid = opaqueId(relation.sourceUid, 'reviewed plan relation source uid');
+    const fixtureRelation = fixtureRelations.get(sourceUid);
+    const baseEdge = baseEdges.get(relation.id);
+    if (!fixtureRelation || !baseEdge
+      || relation.id !== `transcript-edge:${sourceUid}`
+      || relation.source !== `transcript-node:${fixtureRelation.sourceUid}`
+      || relation.target !== `transcript-node:${fixtureRelation.targetUid}`
+      || relation.relationCandidate !== fixtureRelation.relation
+      || canonicalJson(relation.citedUids) !== canonicalJson(fixtureRelation.citedUids)
+      || canonicalJson(relation.transcript) !== canonicalJson(expectedTranscript(fixtureRelation.citedUids, chunks))) {
+      throw new Error('Reviewed plan relation provenance does not match its transcript fixture');
+    }
+    const audit = reviewAudit(relation, source.reviewedAt);
+    if (audit.reviewedAt > latestReviewedAt) latestReviewedAt = audit.reviewedAt;
+    if (audit.reviewStatus === 'rejected') {
+      rejectedEdgeCount += 1;
+      if (relation.relation !== null) throw new Error('Rejected reviewed plan relation must clear its type');
+      return null;
+    }
+    if (!activeNodeIds.has(relation.source) || !activeNodeIds.has(relation.target)) {
+      throw new Error('Published reviewed relation requires published endpoint nodes');
+    }
+    if (!RELATIONS.includes(relation.relation)) throw new Error('Invalid reviewed plan relation type');
+    const changed = relation.relation !== fixtureRelation.relation;
+    if ((audit.reviewStatus === 'accepted' && changed) || (audit.reviewStatus === 'edited' && !changed)) {
+      throw new Error('Reviewed plan relation status does not match its type');
+    }
+    return {
+      data: {
+        ...baseEdge.data,
+        rel: relation.relation,
+        relKo: RELATION_KO[relation.relation],
+        review_state: audit.reviewStatus,
+        is_public: true,
+        meta: {
+          ...baseEdge.data.meta,
+          reviewer: audit.reviewer,
+          reviewed_at: audit.reviewedAt,
+          publication_reviewer: approvedBy,
+          published_at: approvedAt,
+        },
+      },
+    };
+  }).filter(Boolean);
+  if (approvedAt <= latestReviewedAt) throw new Error('Publication approval must follow all review decisions');
+  return {
+    elements: { nodes, edges },
+    meta: {
+      variant: 'transcript-live-reviewed-plan',
+      advisory_notice: '합성 전사 사람 검수 결과 · 실제 시민 발언이나 회의 결과가 아닙니다.',
+      live: true,
+      publication_status: 'synthetic_reviewed_demo',
+      source_review_status: 'reviewed',
+      requires_publication_review: false,
+      counts: { nodes: nodes.length, edges: edges.length },
+      dropped: {
+        rejected_nodes: rejectedNodeCount,
+        rejected_edges: rejectedEdgeCount,
+        uncited_candidates: 0,
+      },
+      source: {
+        fixture_id: source.fixtureId,
+        session_id: source.sessionId,
+        language: source.language,
+        chunk_count: chunks.size,
+        fixture_checksum_sha256: source.fixtureSha256,
+        source_id: sourceId,
+      },
+      publication: {
+        mode: publication.mode,
+        approved_by: approvedBy,
+        approved_at: approvedAt,
+      },
+    },
+  };
+}
+
 /** Verifies a graph by rebuilding the complete deterministic payload from its fixture. */
 export function verifyReviewedTranscriptGraph({ fixture, graph }) {
   const expected = buildReviewedTranscriptGraph(fixture);
@@ -279,11 +509,34 @@ export function verifyLiveTranscriptGraph({ fixture, graph }) {
   };
 }
 
+/** Verifies a published R2 graph by rebuilding it from the exact fixture, plan, and approval. */
+export function verifyPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan, publication, graph }) {
+  const expected = buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan, publication });
+  if (canonicalJson(graph) !== canonicalJson(expected)) {
+    throw new Error('Published transcript review graph does not match its approved plan');
+  }
+  return {
+    nodeCount: expected.elements.nodes.length,
+    edgeCount: expected.elements.edges.length,
+    dropped: expected.meta.dropped,
+    publicGraphVerified: true,
+    databaseMutationExecuted: false,
+  };
+}
+
 function readJson(path, label) {
   try {
     return JSON.parse(readFileSync(path, 'utf8'));
   } catch (error) {
     throw new Error(`Cannot parse ${label} JSON`, { cause: error });
+  }
+}
+
+function readText(path, label) {
+  try {
+    return readFileSync(path, 'utf8');
+  } catch (error) {
+    throw new Error(`Cannot read ${label}`, { cause: error });
   }
 }
 
@@ -297,12 +550,16 @@ function writeJson(path, value) {
 }
 
 function parseCliArgs(argv) {
-  const operations = ['--output-graph', '--verify-graph', '--output-live-graph', '--verify-live-graph'];
+  const operations = [
+    '--output-graph', '--verify-graph', '--output-live-graph', '--verify-live-graph',
+    '--output-reviewed-live-graph', '--verify-reviewed-live-graph',
+  ];
+  const inputs = ['--fixture', '--reviewed-plan', '--publication'];
   const values = new Map();
   for (let index = 0; index < argv.length; index += 2) {
     const key = argv[index];
     const value = argv[index + 1];
-    if (!['--fixture', ...operations].includes(key) || !value) {
+    if (![...inputs, ...operations].includes(key) || !value) {
       throw new Error('Usage: --fixture <path> <graph operation> <path>');
     }
     if (values.has(key)) throw new Error('Duplicate CLI option');
@@ -335,7 +592,38 @@ function publicLiveGraphPath(path) {
 
 async function runCli(argv) {
   const values = parseCliArgs(argv);
-  const fixture = readJson(resolve(values.get('--fixture')), 'transcript fixture');
+  const fixturePath = resolve(values.get('--fixture'));
+  const fixture = readJson(fixturePath, 'transcript fixture');
+  const reviewedOperation = values.has('--output-reviewed-live-graph')
+    || values.has('--verify-reviewed-live-graph');
+  if (reviewedOperation) {
+    if (!values.has('--reviewed-plan') || !values.has('--publication')) {
+      throw new Error('Reviewed live graph requires --reviewed-plan and --publication');
+    }
+    const fixtureText = readText(fixturePath, 'transcript fixture');
+    const reviewedPlan = readJson(resolve(values.get('--reviewed-plan')), 'reviewed transcript plan');
+    const publication = readJson(resolve(values.get('--publication')), 'publication approval');
+    const operation = values.has('--output-reviewed-live-graph')
+      ? '--output-reviewed-live-graph'
+      : '--verify-reviewed-live-graph';
+    const graphPath = publicLiveGraphPath(resolve(values.get(operation)));
+    if (basename(graphPath, '.json') !== publication.sourceId) {
+      throw new Error('Live graph filename must match its approved source id');
+    }
+    if (operation === '--output-reviewed-live-graph') {
+      const graph = buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan, publication });
+      writeJson(graphPath, graph);
+      return {
+        nodeCount: graph.elements.nodes.length,
+        edgeCount: graph.elements.edges.length,
+        dropped: graph.meta.dropped,
+        databaseMutationExecuted: false,
+        publicGraphWritten: true,
+      };
+    }
+    const graph = readJson(graphPath, 'published transcript review graph');
+    return verifyPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan, publication, graph });
+  }
   if (values.has('--output-graph')) {
     const outputPath = resolve(values.get('--output-graph'));
     if (isInside(realpathSync.native(PUBLIC_ROOT), resolvedOutputPath(outputPath))) {

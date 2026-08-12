@@ -61,6 +61,14 @@
       "data": "data/live-transcript-reviewed-fixture.json",
       "supportsView": ["2d"],
       "polling_default_sec": 15
+    },
+    {
+      "id": "live-transcript-r2-reviewed",
+      "category": "live",
+      "label": "합성 전사 R2 사람 검수 결과 (실제 회의 아님)",
+      "data": "data/live-transcript-r2-reviewed.json",
+      "supportsView": ["2d"],
+      "polling_default_sec": 15
     }
   ]
 }

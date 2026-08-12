@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "kind": "transcript-ontology-reviewed-plan",
+  "dryRun": true,
+  "databaseMutationExecuted": false,
+  "publicGraphWritten": false,
+  "requiresPublicationReview": true,
+  "source": {
+    "fixtureId": "session-1-review-candidates",
+    "sessionId": "session-1",
+    "language": "ko",
+    "reviewedBy": "reviewer-fixture",
+    "reviewedAt": "2026-08-01T01:00:00.000Z",
+    "fixtureSha256": "9fc80b19b62ce2424ff7150b2b0c8cd9d6a3cf73407ceefb44224b1894730a94"
+  },
+  "nodes": [
+    {
+      "id": "transcript-node:candidate-issue",
+      "sourceUid": "candidate-issue",
+      "kindCandidate": "Issue",
+      "kind": "Issue",
+      "sourceLabel": "재생에너지 전환 속도",
+      "sourceText": "재생에너지 전환 속도와 지역별 전력망 여건을 함께 논의한다.",
+      "label": "재생에너지 전환 속도와 전력망 여건",
+      "text": "재생에너지 전환 속도와 지역별 전력망 여건을 함께 논의한다.",
+      "citedUids": ["chunk-001", "chunk-002"],
+      "transcript": [
+        {
+          "uid": "chunk-001",
+          "startMs": 0,
+          "endMs": 4000,
+          "speakerLabelPseudonym": "speaker-a",
+          "text": "재생에너지 전환 속도를 높여야 합니다."
+        },
+        {
+          "uid": "chunk-002",
+          "startMs": 4000,
+          "endMs": 8000,
+          "speakerLabelPseudonym": "speaker-b",
+          "text": "지역별 전력망 여건도 함께 살펴야 합니다."
+        }
+      ],
+      "reviewStatus": "edited",
+      "reviewer": "moderator-r2-test",
+      "reviewedAt": "2026-08-01T01:10:00.000Z"
+    },
+    {
+      "id": "transcript-node:candidate-claim",
+      "sourceUid": "candidate-claim",
+      "kindCandidate": "Claim",
+      "kind": "Claim",
+      "sourceLabel": "전환 속도를 높여야 한다",
+      "sourceText": "재생에너지 전환 속도를 높여야 한다.",
+      "label": "전환 속도를 높여야 한다",
+      "text": "재생에너지 전환 속도를 높여야 한다.",
+      "citedUids": ["chunk-001"],
+      "transcript": [
+        {
+          "uid": "chunk-001",
+          "startMs": 0,
+          "endMs": 4000,
+          "speakerLabelPseudonym": "speaker-a",
+          "text": "재생에너지 전환 속도를 높여야 합니다."
+        }
+      ],
+      "reviewStatus": "accepted",
+      "reviewer": "moderator-r2-test",
+      "reviewedAt": "2026-08-01T01:11:00.000Z"
+    }
+  ],
+  "relations": [
+    {
+      "id": "transcript-edge:candidate-relation-1",
+      "sourceUid": "candidate-relation-1",
+      "source": "transcript-node:candidate-claim",
+      "target": "transcript-node:candidate-issue",
+      "relationCandidate": "isAbout",
+      "relation": "isAbout",
+      "citedUids": ["chunk-001"],
+      "transcript": [
+        {
+          "uid": "chunk-001",
+          "startMs": 0,
+          "endMs": 4000,
+          "speakerLabelPseudonym": "speaker-a",
+          "text": "재생에너지 전환 속도를 높여야 합니다."
+        }
+      ],
+      "reviewStatus": "accepted",
+      "reviewer": "moderator-r2-test",
+      "reviewedAt": "2026-08-01T01:12:00.000Z"
+    }
+  ]
+}

@@ -1,0 +1,128 @@
+{
+  "elements": {
+    "nodes": [
+      {
+        "data": {
+          "id": "transcript-node:candidate-issue",
+          "node_id": "transcript-node:candidate-issue",
+          "label": "재생에너지 전환 속도와 전력망 여건",
+          "kind": "Issue",
+          "kindKo": "쟁점",
+          "text": "재생에너지 전환 속도와 지역별 전력망 여건을 함께 논의한다.",
+          "cited": [
+            "chunk-001",
+            "chunk-002"
+          ],
+          "cited_uids": [
+            "chunk-001",
+            "chunk-002"
+          ],
+          "session": "session-1",
+          "review_state": "edited",
+          "is_public": true,
+          "synthesized": false,
+          "meta": {
+            "source_uid": "candidate-issue",
+            "source_chunk_uids": [
+              "chunk-001",
+              "chunk-002"
+            ],
+            "reviewer": "moderator-r2-test",
+            "reviewed_at": "2026-08-01T01:10:00.000Z",
+            "publication_reviewer": "reviewer-test",
+            "published_at": "2026-08-01T01:20:00.000Z"
+          }
+        }
+      },
+      {
+        "data": {
+          "id": "transcript-node:candidate-claim",
+          "node_id": "transcript-node:candidate-claim",
+          "label": "전환 속도를 높여야 한다",
+          "kind": "Claim",
+          "kindKo": "주장",
+          "text": "재생에너지 전환 속도를 높여야 한다.",
+          "cited": [
+            "chunk-001"
+          ],
+          "cited_uids": [
+            "chunk-001"
+          ],
+          "session": "session-1",
+          "review_state": "accepted",
+          "is_public": true,
+          "synthesized": false,
+          "meta": {
+            "source_uid": "candidate-claim",
+            "source_chunk_uids": [
+              "chunk-001"
+            ],
+            "reviewer": "moderator-r2-test",
+            "reviewed_at": "2026-08-01T01:11:00.000Z",
+            "publication_reviewer": "reviewer-test",
+            "published_at": "2026-08-01T01:20:00.000Z"
+          }
+        }
+      }
+    ],
+    "edges": [
+      {
+        "data": {
+          "id": "transcript-edge:candidate-relation-1",
+          "source": "transcript-node:candidate-claim",
+          "target": "transcript-node:candidate-issue",
+          "rel": "isAbout",
+          "relKo": "관련",
+          "cited": [
+            "chunk-001"
+          ],
+          "cited_uids": [
+            "chunk-001"
+          ],
+          "meta": {
+            "source_uid": "candidate-relation-1",
+            "source_chunk_uids": [
+              "chunk-001"
+            ],
+            "reviewer": "moderator-r2-test",
+            "reviewed_at": "2026-08-01T01:12:00.000Z",
+            "publication_reviewer": "reviewer-test",
+            "published_at": "2026-08-01T01:20:00.000Z"
+          },
+          "review_state": "accepted",
+          "is_public": true
+        }
+      }
+    ]
+  },
+  "meta": {
+    "variant": "transcript-live-reviewed-plan",
+    "advisory_notice": "합성 전사 사람 검수 결과 · 실제 시민 발언이나 회의 결과가 아닙니다.",
+    "live": true,
+    "publication_status": "synthetic_reviewed_demo",
+    "source_review_status": "reviewed",
+    "requires_publication_review": false,
+    "counts": {
+      "nodes": 2,
+      "edges": 1
+    },
+    "dropped": {
+      "rejected_nodes": 0,
+      "rejected_edges": 0,
+      "uncited_candidates": 0
+    },
+    "source": {
+      "fixture_id": "session-1-review-candidates",
+      "session_id": "session-1",
+      "language": "ko",
+      "chunk_count": 2,
+      "fixture_checksum_sha256": "9fc80b19b62ce2424ff7150b2b0c8cd9d6a3cf73407ceefb44224b1894730a94",
+      "source_id": "live-transcript-r2-reviewed"
+    },
+    "publication": {
+      "mode": "synthetic-reviewed-demo",
+      "approved_by": "reviewer-test",
+      "approved_at": "2026-08-01T01:20:00.000Z"
+    }
+  }
+}

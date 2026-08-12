@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
@@ -9,8 +10,11 @@ import { expect, test } from 'vitest';
 import { chromium } from 'playwright';
 import {
   buildLiveTranscriptGraph,
+  buildPublishedTranscriptReviewGraph,
   buildReviewedTranscriptGraph,
+  reviewedTranscriptPlanSha256,
   verifyLiveTranscriptGraph,
+  verifyPublishedTranscriptReviewGraph,
   verifyReviewedTranscriptGraph,
 } from '../transcript-ontology-fixture.mjs';
 import { createWorkshopGraphSourceAdapter } from '../../public/workshop-graph/graph-source-adapter.js';
@@ -28,6 +32,140 @@ const LIVE_FIXTURE = {
     approvedAt: '2026-08-29T01:05:00.000Z',
   },
 };
+
+const R2_FIXTURE_TEXT = readFileSync(
+  fileURLToPath(new URL('../fixtures/transcript-ontology-review-candidates.example.json', import.meta.url)),
+  'utf8',
+);
+const R2_FIXTURE = JSON.parse(R2_FIXTURE_TEXT);
+
+function reviewedR2Plan() {
+  const fixtureSha256 = createHash('sha256').update(R2_FIXTURE_TEXT, 'utf8').digest('hex');
+  return {
+    schemaVersion: 1,
+    kind: 'transcript-ontology-reviewed-plan',
+    dryRun: true,
+    databaseMutationExecuted: false,
+    publicGraphWritten: false,
+    requiresPublicationReview: true,
+    source: {
+      fixtureId: R2_FIXTURE.fixtureId,
+      sessionId: R2_FIXTURE.sessionId,
+      language: R2_FIXTURE.language,
+      reviewedBy: R2_FIXTURE.reviewedBy,
+      reviewedAt: R2_FIXTURE.reviewedAt,
+      fixtureSha256,
+    },
+    nodes: R2_FIXTURE.expected.nodes.map((node, index) => ({
+      id: `transcript-node:${node.uid}`,
+      sourceUid: node.uid,
+      kindCandidate: node.kind,
+      kind: node.kind,
+      sourceLabel: node.label,
+      sourceText: node.text,
+      label: index === 0 ? `${node.label} 검수본` : node.label,
+      text: node.text,
+      citedUids: node.citedUids,
+      transcript: node.citedUids.map((uid) => R2_FIXTURE.chunks.find((chunk) => chunk.uid === uid)),
+      reviewStatus: index === 0 ? 'edited' : 'accepted',
+      reviewer: 'moderator-r2-test',
+      reviewedAt: '2026-08-01T01:10:00.000Z',
+    })),
+    relations: R2_FIXTURE.expected.relations.map((relation) => ({
+      id: `transcript-edge:${relation.uid}`,
+      sourceUid: relation.uid,
+      source: `transcript-node:${relation.sourceUid}`,
+      target: `transcript-node:${relation.targetUid}`,
+      relationCandidate: relation.relation,
+      relation: relation.relation,
+      citedUids: relation.citedUids,
+      transcript: relation.citedUids.map((uid) => R2_FIXTURE.chunks.find((chunk) => chunk.uid === uid)),
+      reviewStatus: 'accepted',
+      reviewer: 'moderator-r2-test',
+      reviewedAt: '2026-08-01T01:11:00.000Z',
+    })),
+  };
+}
+
+test('publishes only accepted R2 review items with reviewed state and cited chunk details', () => {
+  const plan = reviewedR2Plan();
+  plan.nodes[1].reviewStatus = 'rejected';
+  plan.nodes[1].kind = null;
+  plan.nodes[1].reviewer = 'moderator-r2-test';
+  plan.relations[0].reviewStatus = 'rejected';
+  plan.relations[0].relation = null;
+  const graph = buildPublishedTranscriptReviewGraph({
+    fixtureText: R2_FIXTURE_TEXT,
+    reviewedPlan: plan,
+    publication: {
+      schemaVersion: 1,
+      kind: 'transcript-ontology-publication-approval',
+      mode: 'synthetic-reviewed-demo',
+      sourceId: 'live-transcript-r2-reviewed',
+      reviewedPlanSha256: reviewedTranscriptPlanSha256(plan),
+      approvedBy: 'reviewer-test',
+      approvedAt: '2026-08-01T01:20:00.000Z',
+    },
+  });
+
+  expect(graph.elements.nodes).toHaveLength(1);
+  expect(graph.elements.edges).toHaveLength(0);
+  expect(graph.elements.nodes[0].data).toMatchObject({
+    id: 'transcript-node:candidate-issue',
+    label: '재생에너지 전환 속도 검수본',
+    review_state: 'edited',
+    is_public: true,
+    cited_uids: ['chunk-001', 'chunk-002'],
+  });
+  expect(graph.meta).toMatchObject({
+    variant: 'transcript-live-reviewed-plan',
+    publication_status: 'synthetic_reviewed_demo',
+    source_review_status: 'reviewed',
+    dropped: { rejected_nodes: 1, rejected_edges: 1, uncited_candidates: 0 },
+  });
+  expect(JSON.stringify(graph)).not.toContain('speakerLabelPseudonym');
+  expect(JSON.stringify(graph)).not.toContain('startMs');
+});
+
+test('rejects an R2 plan changed after publication approval', () => {
+  const plan = reviewedR2Plan();
+  const publication = {
+    schemaVersion: 1,
+    kind: 'transcript-ontology-publication-approval',
+    mode: 'synthetic-reviewed-demo',
+    sourceId: 'live-transcript-r2-reviewed',
+    reviewedPlanSha256: reviewedTranscriptPlanSha256(plan),
+    approvedBy: 'reviewer-test',
+    approvedAt: '2026-08-01T01:20:00.000Z',
+  };
+  plan.nodes[0].label = '승인 뒤 바뀐 표시명';
+
+  expect(() => buildPublishedTranscriptReviewGraph({
+    fixtureText: R2_FIXTURE_TEXT,
+    reviewedPlan: plan,
+    publication,
+  })).toThrow('Publication approval does not match the reviewed plan');
+});
+
+test('rejects a reviewed plan that duplicates one item while omitting another', () => {
+  const plan = reviewedR2Plan();
+  plan.nodes[1] = structuredClone(plan.nodes[0]);
+  const publication = {
+    schemaVersion: 1,
+    kind: 'transcript-ontology-publication-approval',
+    mode: 'synthetic-reviewed-demo',
+    sourceId: 'live-transcript-r2-reviewed',
+    reviewedPlanSha256: reviewedTranscriptPlanSha256(plan),
+    approvedBy: 'reviewer-test',
+    approvedAt: '2026-08-01T01:20:00.000Z',
+  };
+
+  expect(() => buildPublishedTranscriptReviewGraph({
+    fixtureText: R2_FIXTURE_TEXT,
+    reviewedPlan: plan,
+    publication,
+  })).toThrow('Reviewed plan item set does not match its transcript fixture');
+});
 
 test('exports only explicitly approved synthetic fixtures as a public live graph', () => {
   const graph = buildLiveTranscriptGraph(LIVE_FIXTURE);
@@ -172,6 +310,42 @@ test('binds the tracked live graph to its approved fixture', () => {
   });
 });
 
+test('binds the tracked R2 live graph to its exact fixture, reviewed plan, and approval', () => {
+  const manifest = JSON.parse(readFileSync(
+    fileURLToPath(new URL('../../public/workshop-graph/sources.json', import.meta.url)),
+    'utf8',
+  ));
+  const reviewedPlan = JSON.parse(readFileSync(
+    fileURLToPath(new URL('../fixtures/transcript-ontology-reviewed-plan.example.json', import.meta.url)),
+    'utf8',
+  ));
+  const publication = JSON.parse(readFileSync(
+    fileURLToPath(new URL('../fixtures/transcript-ontology-publication-approval.example.json', import.meta.url)),
+    'utf8',
+  ));
+  const graph = JSON.parse(readFileSync(
+    fileURLToPath(new URL('../../public/workshop-graph/data/live-transcript-r2-reviewed.json', import.meta.url)),
+    'utf8',
+  ));
+
+  expect(verifyPublishedTranscriptReviewGraph({
+    fixtureText: R2_FIXTURE_TEXT,
+    reviewedPlan,
+    publication,
+    graph,
+  })).toMatchObject({
+    publicGraphVerified: true,
+    nodeCount: 2,
+    edgeCount: 1,
+    dropped: { rejected_nodes: 0, rejected_edges: 0, uncited_candidates: 0 },
+  });
+  expect(manifest.sources.find((source) => source.id === 'live-transcript-r2-reviewed')).toMatchObject({
+    category: 'live',
+    label: '합성 전사 R2 사람 검수 결과 (실제 회의 아님)',
+    data: 'data/live-transcript-r2-reviewed.json',
+  });
+});
+
 test('polls the production live graph surface and applies the next payload', async () => {
   const publicRoot = fileURLToPath(new URL('../../public/', import.meta.url));
   const trackedGraph = JSON.parse(readFileSync(join(
@@ -245,12 +419,23 @@ test('polls the production live graph surface and applies the next payload', asy
     });
     await page.waitForFunction(() => document.querySelector('#og-advisory')?.textContent?.includes('polling 갱신 확인'));
     expect(graphRequestCount).toBeGreaterThanOrEqual(2);
+    await page.goto(
+      `http://127.0.0.1:${address.port}/workshop-graph/?source=live-transcript-r2-reviewed`,
+      { waitUntil: 'domcontentloaded' },
+    );
+    await page.waitForFunction(() => document.querySelector('#og-stat')?.textContent?.includes('노드 2'));
+    expect(await page.locator('#og-source').inputValue()).toBe('live-transcript-r2-reviewed');
+    expect(await page.locator('#og-source option:checked').textContent()).toContain('사람 검수 결과');
+    await page.locator('[data-node-id="transcript-node:candidate-issue"]').first().click();
+    await expect.poll(() => page.locator('#og-side').textContent()).toContain('chunk-001');
+    expect(await page.locator('#og-side').textContent()).toContain('chunk-002');
+    expect(await page.locator('#og-advisory').textContent()).toContain('합성 전사 사람 검수 결과');
     expect(pageErrors).toEqual([]);
   } finally {
     await browser.close();
     await new Promise((resolve) => server.close(resolve));
   }
-});
+}, 15_000);
 
 test('rejects transcript chunks with an invalid time range before graph export', () => {
   const fixture = structuredClone(FIXTURE);
@@ -378,6 +563,62 @@ test('publishes and verifies an approved synthetic live graph through the CLI', 
       modulePath,
       '--fixture', fixturePath,
       '--verify-live-graph', livePath,
+    ], { encoding: 'utf8' });
+    expect(verified.status).toBe(0);
+    expect(JSON.parse(verified.stdout)).toMatchObject({ publicGraphVerified: true });
+  } finally {
+    try {
+      unlinkSync(livePath);
+    } catch (error) {
+      if (!(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')) throw error;
+    }
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('publishes and verifies an approved R2 reviewed plan through the CLI', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'transcript-ontology-r3-'));
+  const fixturePath = join(directory, 'fixture.json');
+  const planPath = join(directory, 'plan.json');
+  const publicationPath = join(directory, 'publication.json');
+  const modulePath = fileURLToPath(new URL('../transcript-ontology-fixture.mjs', import.meta.url));
+  const sourceId = `live-r3-test-${process.pid}`;
+  const livePath = fileURLToPath(new URL(`../../public/workshop-graph/data/${sourceId}.json`, import.meta.url));
+  const plan = reviewedR2Plan();
+  const publication = {
+    schemaVersion: 1,
+    kind: 'transcript-ontology-publication-approval',
+    mode: 'synthetic-reviewed-demo',
+    sourceId,
+    reviewedPlanSha256: reviewedTranscriptPlanSha256(plan),
+    approvedBy: 'reviewer-test',
+    approvedAt: '2026-08-01T01:20:00.000Z',
+  };
+  try {
+    writeFileSync(fixturePath, R2_FIXTURE_TEXT);
+    writeFileSync(planPath, JSON.stringify(plan));
+    writeFileSync(publicationPath, JSON.stringify(publication));
+    const common = [
+      modulePath,
+      '--fixture', fixturePath,
+      '--reviewed-plan', planPath,
+      '--publication', publicationPath,
+    ];
+    const published = spawnSync(process.execPath, [
+      ...common,
+      '--output-reviewed-live-graph', livePath,
+    ], { encoding: 'utf8' });
+    expect(published.status).toBe(0);
+    expect(JSON.parse(published.stdout)).toMatchObject({
+      nodeCount: 2,
+      edgeCount: 1,
+      publicGraphWritten: true,
+      databaseMutationExecuted: false,
+    });
+
+    const verified = spawnSync(process.execPath, [
+      ...common,
+      '--verify-reviewed-live-graph', livePath,
     ], { encoding: 'utf8' });
     expect(verified.status).toBe(0);
     expect(JSON.parse(verified.stdout)).toMatchObject({ publicGraphVerified: true });

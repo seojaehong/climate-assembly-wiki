@@ -524,6 +524,20 @@ npm.cmd run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology
 - 브라우저 verifier는 실제 production 페이지에서 fixture 업로드, 원문·역할 표시, node 수정 승인, node/relation 반려와 private plan 직렬화를 실행한다. Canvas 검수 흐름과 별개로 같은 페이지에서 두 기능을 모두 검증한다.
 - 실제 시민 발언·음성/STT·reviewer 계정 인증·DB/API 저장·R3 graph export/publication은 포함하지 않는다. 이 prototype에 실제 시민 발언 파일을 넣지 않는다.
 
+## R3 검수 plan → 합성 live graph source
+
+R2의 complete reviewed plan을 공개 graph source로 바꾸려면 원 synthetic fixture, reviewed plan, 별도 publication approval 세 파일을 함께 검증한다. 예제는 실제 시민 발언이 아닌 synthetic 데이터다.
+
+```powershell
+npm.cmd --prefix automation run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology-review-candidates.example.json --reviewed-plan fixtures/transcript-ontology-reviewed-plan.example.json --publication fixtures/transcript-ontology-publication-approval.example.json --verify-reviewed-live-graph ../public/workshop-graph/data/live-transcript-r2-reviewed.json
+```
+
+- publication approval은 canonical reviewed plan SHA-256, `live-*` source ID, 역할형 승인자와 모든 item 판단 이후 시각을 결속한다. 이 값은 승인 파일과 plan의 우발 불일치를 막지만 외부 서명이나 승인자 계정 인증을 대신하지 않는다.
+- exporter는 원 fixture exact-byte SHA-256, node/relation 전체 source UID 집합, 원문·인용·endpoint·판단 상태를 다시 대조한다. `accepted`와 `edited`만 내보내고 rejected 건수와 uncited 후보 건수를 `meta.dropped`에 남긴다.
+- 공개 payload에는 time-coded chunk table, speaker pseudonym, 시작·종료 시각을 넣지 않는다. 모든 node detail은 `cited`/`cited_uids`로 원 chunk UID를 표시한다.
+- `sources.json`의 `live-transcript-r2-reviewed`는 `/workshop-graph/?source=live-transcript-r2-reviewed`에서 로드되며 label과 meta 모두 synthetic 사람 검수 결과임을 표시한다.
+- 이번 R3는 추적 synthetic JSON export다. 실제 시민 발언, reviewer 인증, 자동 publication, DB snapshot adapter/API 쓰기와 retention 정책은 포함하거나 승인하지 않았다.
+
 ## 알림 레벨 정책
 
 | 레벨 | 상황 | 대응 |
