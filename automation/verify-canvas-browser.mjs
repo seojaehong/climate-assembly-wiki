@@ -193,6 +193,33 @@ export async function verifyCanvasBrowser({
   const viteUrl = new URL('/@vite/client', origin);
   const browser = await chromium.launch();
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  await context.addInitScript(() => {
+    class MemoryMediaRecorder extends EventTarget {
+      state = 'inactive';
+      mimeType = 'audio/webm;codecs=opus';
+
+      start() {
+        this.state = 'recording';
+      }
+
+      stop() {
+        this.state = 'inactive';
+        const dataEvent = new Event('dataavailable');
+        Object.defineProperty(dataEvent, 'data', {
+          value: new Blob(['synthetic-browser-audio'], { type: this.mimeType }),
+        });
+        this.dispatchEvent(dataEvent);
+        this.dispatchEvent(new Event('stop'));
+      }
+    }
+    Object.defineProperty(window, 'MediaRecorder', { configurable: true, value: MemoryMediaRecorder });
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: {
+        getUserMedia: async () => ({ getTracks: () => [{ stop: () => undefined }] }),
+      },
+    });
+  });
   const page = await context.newPage();
   const writeRequests = [];
   const readResponses = [];
@@ -308,6 +335,58 @@ export async function verifyCanvasBrowser({
     const reviewLocalOnlyBoundaryVisible = await reviewPage
       .getByText('DB에 저장하지 않습니다.', { exact: false })
       .isVisible();
+    const privateCapturePanel = reviewPage.getByRole('region', { name: 'R4 로컬 음성·전사 검수' });
+    await privateCapturePanel.waitFor({ timeout: timeoutMs });
+    const privateMediaRecorderAvailable = await reviewPage.evaluate(() => (
+      typeof MediaRecorder !== 'undefined' && typeof navigator.mediaDevices?.getUserMedia === 'function'
+    ));
+    const privateRecordingMemoryBoundaryVisible = await privateCapturePanel
+      .getByText('브라우저 세션 메모리에만', { exact: false })
+      .isVisible()
+      && await privateCapturePanel.getByText('DB·서버·public 경로로 전송하지 않습니다.', { exact: false }).isVisible();
+    await privateCapturePanel.getByLabel('마이크 사용과 로컬 메모리 처리에 동의합니다.').check();
+    await privateCapturePanel.getByLabel('회차 ID').fill('session-browser-r4');
+    await privateCapturePanel.getByRole('button', { name: '녹음 시작' }).click();
+    const privateSessionLockedWhileRecording = await privateCapturePanel.getByLabel('회차 ID').isDisabled();
+    await privateCapturePanel.getByText('녹음 중입니다. 음성은 서버로 전송되지 않습니다.', { exact: true })
+      .waitFor({ timeout: timeoutMs });
+    await reviewPage.waitForTimeout(25);
+    await privateCapturePanel.getByRole('button', { name: '녹음 정지' }).click();
+    await privateCapturePanel.getByText(/audio SHA-256 [a-f0-9]{64}/).waitFor({ timeout: timeoutMs });
+    await privateCapturePanel.getByLabel('검수자 역할 ID').fill('browser-r4-reviewer');
+    await privateCapturePanel.getByLabel('수동 전사 원문').fill('합성 음성 전사 원문입니다.');
+    await privateCapturePanel.getByRole('button', { name: '전사 chunk 추가' }).click();
+    const privateChunkCard = privateCapturePanel.locator('article[aria-label^="전사 chunk 검수"]');
+    await privateChunkCard.waitFor({ timeout: timeoutMs });
+    const privateBatchDownloadButton = privateCapturePanel
+      .getByRole('button', { name: '검수 완료 전사 batch 다운로드' });
+    const privateTranscriptReviewGateVerified = await privateBatchDownloadButton.isDisabled();
+    await privateChunkCard.getByLabel('검수 전사').fill('합성 음성의 검수된 전사입니다.');
+    await privateChunkCard.getByRole('button', { name: '수정 승인' }).click();
+    await privateCapturePanel.getByText('검수 진행 1/1', { exact: true }).waitFor({ timeout: timeoutMs });
+    await privateChunkCard.getByLabel('검수 전사').fill('합성 음성의 최종 검수 전사입니다.');
+    await privateCapturePanel.getByText('검수 진행 0/1', { exact: true }).waitFor({ timeout: timeoutMs });
+    const privateTranscriptRedecisionGateVerified = await privateBatchDownloadButton.isDisabled();
+    await privateChunkCard.getByRole('button', { name: '수정 승인' }).click();
+    await privateCapturePanel.getByText('검수 진행 1/1', { exact: true }).waitFor({ timeout: timeoutMs });
+    const privateDownloadPromise = reviewPage.waitForEvent('download', { timeout: timeoutMs });
+    await privateBatchDownloadButton.click();
+    const privateTranscriptBatch = JSON.parse(await downloadText(await privateDownloadPromise));
+    const privateTranscriptBatchDownloaded = privateTranscriptBatch.kind === 'private-transcript-review-batch'
+      && privateTranscriptBatch.source?.sessionId === 'session-browser-r4'
+      && privateTranscriptBatch.source?.storage === 'browser-memory'
+      && /^[a-f0-9]{64}$/.test(privateTranscriptBatch.source?.audioSha256 ?? '')
+      && privateTranscriptBatch.chunks?.[0]?.reviewStatus === 'edited'
+      && privateTranscriptBatch.chunks?.[0]?.text === '합성 음성의 최종 검수 전사입니다.'
+      && privateTranscriptBatch.safety?.localOnly === true
+      && privateTranscriptBatch.safety?.audioIncluded === false
+      && privateTranscriptBatch.safety?.extractionExecuted === false
+      && !JSON.stringify(privateTranscriptBatch).includes('synthetic-browser-audio');
+    if (!privateMediaRecorderAvailable || !privateRecordingMemoryBoundaryVisible || !privateSessionLockedWhileRecording
+      || !privateTranscriptReviewGateVerified || !privateTranscriptRedecisionGateVerified
+      || !privateTranscriptBatchDownloaded) {
+      throw new Error('Private MediaRecorder transcript review contract is incomplete');
+    }
     const transcriptReviewPanel = reviewPage.getByRole('region', { name: '합성 전사 후보 검수' });
     await transcriptReviewPanel.waitFor({ timeout: timeoutMs });
     const transcriptLocalOnlyBoundaryVisible = await transcriptReviewPanel
@@ -557,6 +636,12 @@ export async function verifyCanvasBrowser({
         transcriptCandidateEvidenceVisible,
         transcriptRedecisionGateVerified,
         transcriptReviewDownloaded,
+        privateMediaRecorderAvailable,
+        privateRecordingMemoryBoundaryVisible,
+        privateSessionLockedWhileRecording,
+        privateTranscriptReviewGateVerified,
+        privateTranscriptRedecisionGateVerified,
+        privateTranscriptBatchDownloaded,
         reviewInteractionCompleted: reviewedPlanDecisionCount === 5,
         reviewMixedDecisionStatesVerified,
         reviewReloadIsolationVerified,

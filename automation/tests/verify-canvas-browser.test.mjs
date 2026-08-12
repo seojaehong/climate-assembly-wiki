@@ -43,6 +43,30 @@ async function fixtureServer({
       ? 'live'
       : request.url?.startsWith('/ko/moderator/ontology-review') ? 'review' : 'canvas';
     const reviewFixture = currentSurface === 'review' ? `
+        <section aria-labelledby="private-transcript-capture-heading">
+          <h2 id="private-transcript-capture-heading">R4 로컬 음성·전사 검수</h2>
+          <p>녹음은 브라우저 세션 메모리에만 두며 DB·서버·public 경로로 전송하지 않습니다.</p>
+          <label><input id="private-consent" type="checkbox">마이크 사용과 로컬 메모리 처리에 동의합니다.</label>
+          <label>회차 ID<input id="private-session" type="text"></label>
+          <button id="private-start" type="button" disabled>녹음 시작</button>
+          <button id="private-stop" type="button" disabled>녹음 정지</button>
+          <p id="private-status" role="status" aria-live="polite">동의 후 합성 음성으로 브라우저 녹음 proof of concept를 시작하세요.</p>
+          <section id="private-capture" hidden>
+            <strong>로컬 녹음 1000ms · 16 bytes</strong>
+            <span>audio SHA-256 ${'b'.repeat(64)}</span>
+            <label>검수자 역할 ID<input id="private-reviewer" type="text"></label>
+            <label>시작 ms<input id="private-start-ms" type="number" value="0"></label>
+            <label>종료 ms<input id="private-end-ms" type="number" value="1000"></label>
+            <label>화자 가명<input id="private-speaker" type="text" value="speaker-a"></label>
+            <label>수동 전사 원문<textarea id="private-source-text"></textarea></label>
+            <button id="private-add" type="button">전사 chunk 추가</button>
+            <section id="private-chunks" aria-label="전사 chunk 검수 목록"></section>
+            <section aria-label="전사 검수 extraction handoff">
+              <strong id="private-progress">검수 진행 0/0</strong>
+              <button id="private-download" type="button" disabled>검수 완료 전사 batch 다운로드</button>
+            </section>
+          </section>
+        </section>
         <section aria-labelledby="canvas-review-heading">
         <h2 id="canvas-review-heading">Canvas 검수 계획</h2>
         <label>검수 계획 JSON<input type="file"></label>
@@ -132,6 +156,79 @@ async function fixtureServer({
           const transcriptItems = document.querySelector('#transcript-items');
           const transcriptDownloadButton = document.querySelector('#download-transcript-plan');
           const transcriptDecisions = new Set();
+          const privateConsent = document.querySelector('#private-consent');
+          const privateSession = document.querySelector('#private-session');
+          const privateStart = document.querySelector('#private-start');
+          const privateStop = document.querySelector('#private-stop');
+          const privateCapture = document.querySelector('#private-capture');
+          const privateStatus = document.querySelector('#private-status');
+          const privateProgress = document.querySelector('#private-progress');
+          const privateDownload = document.querySelector('#private-download');
+          const refreshPrivateStart = () => {
+            privateStart.disabled = !privateConsent.checked || !privateSession.value.trim();
+          };
+          privateConsent.addEventListener('change', refreshPrivateStart);
+          privateSession.addEventListener('input', refreshPrivateStart);
+          privateStart.addEventListener('click', () => {
+            privateStart.disabled = true;
+            privateStop.disabled = false;
+            privateSession.disabled = true;
+            privateStatus.textContent = '녹음 중입니다. 음성은 서버로 전송되지 않습니다.';
+          });
+          privateStop.addEventListener('click', () => {
+            privateStop.disabled = true;
+            privateSession.disabled = false;
+            privateCapture.hidden = false;
+            privateStatus.textContent = '녹음은 이 브라우저 세션 메모리에만 있습니다. 전사 chunk를 작성하고 전부 검수하세요.';
+          });
+          document.querySelector('#private-add').addEventListener('click', () => {
+            const sourceText = document.querySelector('#private-source-text').value;
+            const article = document.createElement('article');
+            article.setAttribute('aria-label', '전사 chunk 검수 capture-browser:chunk:1');
+            article.innerHTML = '<label>검수 전사<textarea></textarea></label><button type="button">원문 승인</button><button type="button">반려</button>';
+            article.querySelector('textarea').value = sourceText;
+            const accept = article.querySelector('button');
+            article.querySelector('textarea').addEventListener('input', () => {
+              accept.textContent = '수정 승인';
+              if (!privateDownload.disabled) {
+                privateProgress.textContent = '검수 진행 0/1';
+                privateDownload.disabled = true;
+              }
+            });
+            accept.addEventListener('click', () => {
+              privateProgress.textContent = '검수 진행 1/1';
+              privateDownload.disabled = false;
+            });
+            document.querySelector('#private-chunks').replaceChildren(article);
+            privateProgress.textContent = '검수 진행 0/1';
+          });
+          privateDownload.addEventListener('click', () => {
+            const sourceText = document.querySelector('#private-source-text').value;
+            const reviewedText = document.querySelector('#private-chunks textarea').value;
+            const batch = {
+              schemaVersion: 1,
+              kind: 'private-transcript-review-batch',
+              source: {
+                captureId: 'capture-browser', sessionId: privateSession.value,
+                audioSha256: '${'b'.repeat(64)}', byteLength: 16, storage: 'browser-memory',
+              },
+              chunks: [{
+                uid: 'capture-browser:chunk:1', sourceText, text: reviewedText,
+                reviewStatus: reviewedText === sourceText ? 'accepted' : 'edited',
+                reviewer: document.querySelector('#private-reviewer').value,
+              }],
+              safety: {
+                localOnly: true, audioIncluded: false, databaseMutationExecuted: false,
+                publicGraphWritten: false, extractionExecuted: false, requiresExtractionReview: true,
+              },
+            };
+            const href = URL.createObjectURL(new Blob([JSON.stringify(batch)], { type: 'application/json' }));
+            const anchor = document.createElement('a');
+            anchor.href = href;
+            anchor.download = 'capture-browser-reviewed-transcript.json';
+            anchor.click();
+            URL.revokeObjectURL(href);
+          });
           const refreshTranscriptStart = () => {
             transcriptStartButton.disabled = !transcriptFixtureInput.files[0]
               || transcriptReviewerInput.value.trim().length < 3;
@@ -239,7 +336,7 @@ async function fixtureServer({
               const articles = [...document.querySelectorAll('#review-items article')];
               const index = articles.indexOf(article);
               article.querySelectorAll('[data-decision]').forEach((candidate) => { candidate.disabled = true; });
-              const reviewer = document.querySelector('input[type="text"]').value;
+              const reviewer = document.querySelector('[aria-labelledby="canvas-review-heading"] input[type="text"]').value;
               const reviewedAt = new Date().toISOString();
               const rejected = button.dataset.action === 'reject';
               if (index < 2) {
@@ -352,6 +449,12 @@ describe('verifyCanvasBrowser', () => {
     expect(report.checks.transcriptCandidateEvidenceVisible).toBe(true);
     expect(report.checks.transcriptRedecisionGateVerified).toBe(true);
     expect(report.checks.transcriptReviewDownloaded).toBe(true);
+    expect(report.checks.privateMediaRecorderAvailable).toBe(true);
+    expect(report.checks.privateRecordingMemoryBoundaryVisible).toBe(true);
+    expect(report.checks.privateSessionLockedWhileRecording).toBe(true);
+    expect(report.checks.privateTranscriptReviewGateVerified).toBe(true);
+    expect(report.checks.privateTranscriptRedecisionGateVerified).toBe(true);
+    expect(report.checks.privateTranscriptBatchDownloaded).toBe(true);
     expect(report.checks.reviewInteractionCompleted).toBe(true);
     expect(report.checks.reviewMixedDecisionStatesVerified).toBe(true);
     expect(report.checks.reviewReloadIsolationVerified).toBe(true);

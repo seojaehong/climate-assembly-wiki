@@ -25,14 +25,18 @@ describe('OntologyReviewConsole', () => {
     expect(html).toContain('전사 ontology fixture JSON');
     expect(html).toContain('candidate node와 relation을 브라우저 메모리에서만 검수합니다.');
     expect(html).toContain('실제 시민 발언 파일은 이 prototype에 넣지 마세요.');
+    expect(html).toContain('R4 로컬 음성·전사 검수');
+    expect(html).toContain('MediaRecorder proof of concept');
+    expect(html).toContain('브라우저 세션 메모리에만');
+    expect(html).toContain('전사 chunk 검수 완료 전에는 extraction handoff를 만들 수 없습니다.');
   });
 
   it('renders every upload and reviewer input on an explicit opaque high-contrast surface', () => {
     const html = renderToStaticMarkup(createElement(OntologyReviewConsole));
     const inputTags = html.match(/<input\b[^>]*>/g) ?? [];
 
-    expect(inputTags).toHaveLength(5);
-    for (const input of inputTags) {
+    expect(inputTags).toHaveLength(7);
+    for (const input of inputTags.filter((input) => !input.includes('type="checkbox"'))) {
       expect(input).toContain('background:#FFFFFF');
       expect(input).toContain('color:#102A43');
     }

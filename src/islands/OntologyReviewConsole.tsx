@@ -25,6 +25,7 @@ import {
   type TranscriptOntologyReviewRelation,
   type TranscriptOntologyReviewWorkspace,
 } from './canvas/transcript-ontology-review-workspace';
+import { PrivateTranscriptCapturePanel } from './canvas/PrivateTranscriptCapturePanel';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const CONTROL_BORDER = '#2F6F7E';
@@ -581,6 +582,8 @@ export default function OntologyReviewConsole() {
             {' '}공개 그래프에 반영하지 않습니다.
           </p>
         </header>
+
+        <PrivateTranscriptCapturePanel />
 
         <TranscriptOntologyReviewPanel />
 
