@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-13T21:16:49.493Z",
+  "baseUrl": "http://127.0.0.1:4336",
+  "path": "/ko/moderator/canvas/",
+  "readOnly": true,
+  "sourceProvenance": {
+    "sourceCommit": "a86af5afd766467c58660438c7d5770b9ea0fbfc",
+    "sourceTreeClean": true,
+    "verifierSha256": "8383bf01b8a35f62a5bc8e0bb053fb7a9f15966e40d086c39861285165a9c613"
+  },
+  "runtime": {
+    "node": "v24.12.0",
+    "chromium": "149.0.7827.55"
+  },
+  "checks": {
+    "viteClientStatus": 200,
+    "documentStatus": 200,
+    "realtimeReady": true,
+    "moderatorLoginBoundary": true,
+    "canvasAuthInputsLocked": true,
+    "canvasAuthDuplicateSubmissionBlocked": true,
+    "canvasAuthRetryAvailable": true,
+    "canvasAuthRequestCount": 1,
+    "canvasHydrated": true,
+    "canvasWorkbenchUsable": true,
+    "canvasWorkbenchSize": {
+      "width": 1440,
+      "height": 934
+    },
+    "platformNavigationConnected": true,
+    "platformNavigationLinkCount": 5,
+    "nonDecisionCopyVisible": true,
+    "liveDocumentStatus": 200,
+    "livePlatformNavigationConnected": true,
+    "reviewDocumentStatus": 200,
+    "reviewPlatformNavigationConnected": true,
+    "reviewUnauthenticatedWorkspaceHidden": true,
+    "reviewAuthInputsLocked": true,
+    "reviewAuthDuplicateSubmissionBlocked": true,
+    "reviewAuthIdentityBound": true,
+    "reviewAuthRequestCount": 1,
+    "reviewLogoutRequestCount": 1,
+    "reviewSessionIsolationVerified": true,
+    "reviewLocalOnlyBoundaryVisible": true,
+    "transcriptReviewLocalOnlyBoundaryVisible": true,
+    "transcriptCandidateEvidenceVisible": true,
+    "transcriptCandidatePromptVisible": true,
+    "transcriptFollowUpGateVerified": true,
+    "transcriptDeferGateVerified": true,
+    "transcriptRedecisionGateVerified": true,
+    "transcriptHandoffFixtureDownloaded": true,
+    "transcriptHandoffFixtureSha256": "713422f5971926cf31c8f62988ee06a05dd45da596e6fd085c09cbb613be8494",
+    "transcriptReviewDownloaded": true,
+    "transcriptMinorityConcernMarked": true,
+    "transcriptMergeGateVerified": true,
+    "transcriptPublicationApprovalDownloaded": true,
+    "transcriptPublicationHandoffVerified": true,
+    "privateTranscriptReviewBatchSha256": "1c7a8ef58dfbeafb564d263b0c87b72a7264f62b645b2e31d9f6a0f89c4e4334",
+    "privateTranscriptOntologyCandidateSetId": "browser-r4-ontology-candidates-1",
+    "privateMediaRecorderAvailable": true,
+    "privateRecordingMemoryBoundaryVisible": true,
+    "privateRecorderConstructionFailureRecovered": true,
+    "privateDuplicateRecordingStartBlocked": true,
+    "privateStalePermissionFailureDiscarded": true,
+    "privateConsentWithdrawalDiscarded": true,
+    "privateAudioFileImported": true,
+    "privateTranscriptSourceContextVerified": true,
+    "privateUnknownSpeakerVisible": true,
+    "privateSessionLockedWhileRecording": true,
+    "privateTranscriptReviewGateVerified": true,
+    "privateTranscriptRedecisionGateVerified": true,
+    "privateTranscriptBatchDownloaded": true,
+    "reviewInteractionCompleted": true,
+    "reviewMixedDecisionStatesVerified": true,
+    "reviewReloadIsolationVerified": true,
+    "reviewFacilitationPromptVerified": true,
+    "reviewFacilitationPromptCount": 1,
+    "reviewFacilitationLiveCountVerified": true,
+    "reviewFacilitationRuleCatalogVerified": true,
+    "reviewFacilitationProvenanceVerified": true,
+    "reviewFacilitationSourceFocusVerified": true,
+    "reviewedPlanDownloaded": true,
+    "reviewedPlanDecisionCount": 5,
+    "linkedSurfaceStatuses": [
+      {
+        "path": "/workshop-graph/",
+        "assetPath": "/workshop-graph/index.html",
+        "status": 200
+      },
+      {
+        "path": "/workshop-graph/guide/",
+        "assetPath": "/workshop-graph/guide/index.html",
+        "status": 200
+      }
+    ],
+    "agendaNodeCount": 4,
+    "unauthenticatedNodeDraggable": false,
+    "blockedWriteRequestCount": 0,
+    "browserPageErrorCount": 0,
+    "supabaseReadResponses": [
+      {
+        "status": 200,
+        "url": "/rest/v1/session"
+      },
+      {
+        "status": 200,
+        "url": "/rest/v1/agenda"
+      },
+      {
+        "status": 200,
+        "url": "/rest/v1/agenda_link"
+      }
+    ]
+  },
+  "screenshot": "evaluation/2026-08-14-transcript-candidate-merge-browser.png",
+  "status": "pass"
+}
