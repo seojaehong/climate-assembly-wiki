@@ -1,0 +1,66 @@
+{
+  "checkedAt": "2026-08-13T21:54:14.344Z",
+  "url": "http://127.0.0.1:4323/workshop-graph/?source=live-transcript-r2-reviewed",
+  "verifier": "automation/verify-workshop-graph-advisory.mjs",
+  "sourceCommit": "e923e520f4a44d9423c67cc4be7e5cc7ff62635b",
+  "chromiumVersion": "149.0.7827.55",
+  "sourceHashes": {
+    "public/workshop-graph/index.html": "3a60ad0aa2804e472beba3013fed2e78f3100bf803ba2075585619af66dbf2ec",
+    "public/workshop-graph/graph-advisory-assets.js": "4419b64f268a3274021bc4ac2e4da60fd6f5ee199ebbb026cc3d14423fbd8a43",
+    "public/workshop-graph/graph-source-adapter.js": "f9ca2ea2ecdf2df7cb9c1903fc37db0357148a56a6d220879a647c2ac19aebb9",
+    "public/workshop-graph/sources.json": "b0e1ab5fb3f57283b37d56dd080bf335b1503abe697948624fae272be12e47e2",
+    "public/workshop-graph/data/live-transcript-r2-reviewed.json": "e0b4bf192736c240836e1ebdf07aba2e175c8ff4ff382f17cd0f02a6d2e36a4d",
+    "automation/verify-workshop-graph-advisory.mjs": "3f86e657c8efdb4417e452f5978dd81605581959c767ccbd35c761d3e04ea7f6"
+  },
+  "servedHashesMatch": true,
+  "fixtures": {
+    "sourceA": "workshop-2026-06-13",
+    "candidateA": "candidate-a-rec",
+    "sourceB": "regulation-2026-06-13",
+    "candidateB": "candidate-b-rec",
+    "invalidSource": "source-coverage-2026-06-13"
+  },
+  "reviewedPublicSnapshot": {
+    "sourceId": "live-transcript-r2-reviewed",
+    "manifestPublicationMode": "reviewed_snapshot",
+    "nodeCount": 2,
+    "edgeCount": 1,
+    "allItemsPublic": true,
+    "allItemsReviewed": true,
+    "footer": "합성 전사 검수 데모 · 실제 시민 발언 아님",
+    "advisory": "합성 전사 사람 검수 결과 · 실제 시민 발언이나 회의 결과가 아닙니다."
+  },
+  "validCandidate": {
+    "metadata": "노드 613 · 엣지 491 · 권고 후보 1건 · 품질 신호",
+    "humanReviewRequired": true,
+    "recommendationCandidateVisible": true,
+    "qualitySignalVisible": true,
+    "minorityConcernVisible": true,
+    "sourceUidVisible": true,
+    "transcriptChunkIdVisible": true,
+    "citedUidVisible": true,
+    "qualityProvenanceVisible": true,
+    "decisionClaimAbsent": true
+  },
+  "validToValidTransition": {
+    "panelRemainedOpen": true,
+    "candidateBVisible": true,
+    "candidateAAbsent": true
+  },
+  "invalidAssetTransition": {
+    "advisory": "원본-전사-그래프 연결상태 표시용입니다. 내용 판단이나 합의 생성이 아니라 누락/부분반영 점검을 돕습니다. · 출처 ID 누락 노드 46건 · 분석 보조 자산 형식 오류 · 표시 차단",
+    "formatErrorVisible": true,
+    "advisoryContentAbsent": true,
+    "overviewRestored": true
+  },
+  "unrelatedNodePanel": {
+    "label": "6/13-14 원본자료 연결상태",
+    "preservedAcrossSourceChange": true
+  },
+  "pageErrors": [],
+  "consoleErrors": [
+    "Failed to parse graph advisory assets Error: Invalid quality signal\n    at normalizeQuality (http://127.0.0.1:4323/workshop-graph/graph-advisory-assets.js:102:69)\n    at parseGraphAdvisoryAssets (http://127.0.0.1:4323/workshop-graph/graph-advisory-assets.js:124:19)\n    at loadSource (http://127.0.0.1:4323/workshop-graph/?mode=normal:594:22)\n    at async safelyLoadSource (http://127.0.0.1:4323/workshop-graph/?mode=normal:652:20)"
+  ],
+  "consoleErrorCount": 1,
+  "passed": true
+}
