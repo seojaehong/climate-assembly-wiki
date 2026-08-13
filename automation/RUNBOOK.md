@@ -530,9 +530,12 @@ npm.cmd run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology
 R2의 complete reviewed plan을 공개 graph source로 바꾸려면 원 synthetic fixture, reviewed plan, 별도 publication approval 세 파일을 함께 검증한다. 예제는 실제 시민 발언이 아닌 synthetic 데이터다.
 
 ```powershell
+npm.cmd --prefix automation run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology-review-candidates.example.json --reviewed-plan fixtures/transcript-ontology-reviewed-plan.example.json --publication fixtures/transcript-ontology-publication-approval.example.json --output-reviewed-preview ../evaluation/live-transcript-r2-reviewed.preview.json
+npm.cmd --prefix automation run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology-review-candidates.example.json --reviewed-plan fixtures/transcript-ontology-reviewed-plan.example.json --publication fixtures/transcript-ontology-publication-approval.example.json --verify-reviewed-preview ../evaluation/live-transcript-r2-reviewed.preview.json
 npm.cmd --prefix automation run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology-review-candidates.example.json --reviewed-plan fixtures/transcript-ontology-reviewed-plan.example.json --publication fixtures/transcript-ontology-publication-approval.example.json --verify-reviewed-live-graph ../public/workshop-graph/data/live-transcript-r2-reviewed.json
 ```
 
+- `--output-reviewed-preview`는 동일 R3 builder의 exact 공개 후보를 `public` 밖에 no-overwrite로 기록하고 결과에 `publicGraphWritten:false`를 남긴다. `--verify-reviewed-preview`가 원 세 파일에서 전체 payload를 재생성해 일치해야 명시적인 live graph output/verification 단계로 넘어간다. preview operation은 symlink/junction을 포함해 `public` 아래 경로를 거부한다.
 - publication approval은 canonical reviewed plan SHA-256, `live-*` source ID, 역할형 승인자와 모든 item 판단 이후 시각을 결속한다. moderator UI가 만든 artifact는 현재 Auth reviewer를 사용하지만 외부 서명이나 다운로드 이후 계정 소유의 독립 검증을 대신하지 않으며, CLI 실행·public 파일 생성은 별도 명시 작업이다.
 - exporter는 원 fixture exact-byte SHA-256, node/relation 전체 source UID 집합, 원문·인용·endpoint·판단 상태를 다시 대조한다. `accepted`와 `edited`만 내보내고 rejected 건수와 uncited 후보 건수를 `meta.dropped`에 남긴다.
 - 공개 payload에는 time-coded chunk table, speaker pseudonym, 시작·종료 시각을 넣지 않는다. 모든 node detail은 `cited`/`cited_uids`로 원 chunk UID를 표시한다.

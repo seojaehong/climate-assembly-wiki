@@ -705,6 +705,11 @@ test('publishes and verifies an approved R2 reviewed plan through the CLI', () =
   const modulePath = fileURLToPath(new URL('../transcript-ontology-fixture.mjs', import.meta.url));
   const sourceId = `live-r3-test-${process.pid}`;
   const livePath = fileURLToPath(new URL(`../../public/workshop-graph/data/${sourceId}.json`, import.meta.url));
+  const publicPreviewPath = fileURLToPath(new URL(
+    `../../public/workshop-graph/data/${sourceId}.preview.json`,
+    import.meta.url,
+  ));
+  const previewPath = join(directory, `${sourceId}.preview.json`);
   const plan = reviewedR2Plan();
   const publication = {
     schemaVersion: 1,
@@ -725,6 +730,55 @@ test('publishes and verifies an approved R2 reviewed plan through the CLI', () =
       '--reviewed-plan', planPath,
       '--publication', publicationPath,
     ];
+    const previewed = spawnSync(process.execPath, [
+      ...common,
+      '--output-reviewed-preview', previewPath,
+    ], { encoding: 'utf8' });
+    expect(previewed.status).toBe(0);
+    expect(JSON.parse(previewed.stdout)).toMatchObject({
+      nodeCount: 2,
+      edgeCount: 1,
+      publicGraphWritten: false,
+      previewWritten: true,
+      databaseMutationExecuted: false,
+    });
+    expect(JSON.parse(readFileSync(previewPath, 'utf8')).meta.source.source_id).toBe(sourceId);
+
+    const previewVerified = spawnSync(process.execPath, [
+      ...common,
+      '--verify-reviewed-preview', previewPath,
+    ], { encoding: 'utf8' });
+    expect(previewVerified.status).toBe(0);
+    expect(JSON.parse(previewVerified.stdout)).toMatchObject({
+      publicGraphVerified: true,
+      publicGraphWritten: false,
+      previewVerified: true,
+    });
+
+    const changedPreview = JSON.parse(readFileSync(previewPath, 'utf8'));
+    changedPreview.elements.nodes[0].data.label = 'changed preview label';
+    writeFileSync(previewPath, JSON.stringify(changedPreview));
+    const changedPreviewVerification = spawnSync(process.execPath, [
+      ...common,
+      '--verify-reviewed-preview', previewPath,
+    ], { encoding: 'utf8' });
+    expect(changedPreviewVerification.status).toBe(1);
+    expect(changedPreviewVerification.stderr).toContain('does not match its approved plan');
+
+    const previewOverwrite = spawnSync(process.execPath, [
+      ...common,
+      '--output-reviewed-preview', previewPath,
+    ], { encoding: 'utf8' });
+    expect(previewOverwrite.status).toBe(1);
+    expect(previewOverwrite.stderr).toContain('Output already exists');
+
+    const publicPreview = spawnSync(process.execPath, [
+      ...common,
+      '--output-reviewed-preview', publicPreviewPath,
+    ], { encoding: 'utf8' });
+    expect(publicPreview.status).toBe(1);
+    expect(publicPreview.stderr).toContain('must not be written or verified under public');
+
     const published = spawnSync(process.execPath, [
       ...common,
       '--output-reviewed-live-graph', livePath,
@@ -746,6 +800,11 @@ test('publishes and verifies an approved R2 reviewed plan through the CLI', () =
   } finally {
     try {
       unlinkSync(livePath);
+    } catch (error) {
+      if (!(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')) throw error;
+    }
+    try {
+      unlinkSync(publicPreviewPath);
     } catch (error) {
       if (!(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')) throw error;
     }

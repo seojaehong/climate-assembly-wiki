@@ -578,6 +578,7 @@ function parseCliArgs(argv) {
   const operations = [
     '--output-graph', '--verify-graph', '--output-live-graph', '--verify-live-graph',
     '--output-reviewed-live-graph', '--verify-reviewed-live-graph',
+    '--output-reviewed-preview', '--verify-reviewed-preview',
   ];
   const inputs = ['--fixture', '--reviewed-plan', '--publication'];
   const values = new Map();
@@ -620,7 +621,9 @@ async function runCli(argv) {
   const fixturePath = resolve(values.get('--fixture'));
   const fixture = readJson(fixturePath, 'transcript fixture');
   const reviewedOperation = values.has('--output-reviewed-live-graph')
-    || values.has('--verify-reviewed-live-graph');
+    || values.has('--verify-reviewed-live-graph')
+    || values.has('--output-reviewed-preview')
+    || values.has('--verify-reviewed-preview');
   if (reviewedOperation) {
     if (!values.has('--reviewed-plan') || !values.has('--publication')) {
       throw new Error('Reviewed live graph requires --reviewed-plan and --publication');
@@ -628,14 +631,24 @@ async function runCli(argv) {
     const fixtureText = readText(fixturePath, 'transcript fixture');
     const reviewedPlan = readJson(resolve(values.get('--reviewed-plan')), 'reviewed transcript plan');
     const publication = readJson(resolve(values.get('--publication')), 'publication approval');
-    const operation = values.has('--output-reviewed-live-graph')
-      ? '--output-reviewed-live-graph'
-      : '--verify-reviewed-live-graph';
-    const graphPath = publicLiveGraphPath(resolve(values.get(operation)));
-    if (basename(graphPath, '.json') !== publication.sourceId) {
+    const operation = [
+      '--output-reviewed-live-graph', '--verify-reviewed-live-graph',
+      '--output-reviewed-preview', '--verify-reviewed-preview',
+    ].find((candidate) => values.has(candidate));
+    const writesPublicGraph = operation === '--output-reviewed-live-graph';
+    const verifiesPublicGraph = operation === '--verify-reviewed-live-graph';
+    const requestedPath = resolve(values.get(operation));
+    const graphPath = writesPublicGraph || verifiesPublicGraph
+      ? publicLiveGraphPath(requestedPath)
+      : resolvedOutputPath(requestedPath);
+    if ((writesPublicGraph || verifiesPublicGraph) && basename(graphPath, '.json') !== publication.sourceId) {
       throw new Error('Live graph filename must match its approved source id');
     }
-    if (operation === '--output-reviewed-live-graph') {
+    if (!writesPublicGraph && !verifiesPublicGraph
+      && isInside(realpathSync.native(PUBLIC_ROOT), graphPath)) {
+      throw new Error('Reviewed graph preview must not be written or verified under public');
+    }
+    if (writesPublicGraph || operation === '--output-reviewed-preview') {
       const graph = buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan, publication });
       writeJson(graphPath, graph);
       return {
@@ -643,11 +656,16 @@ async function runCli(argv) {
         edgeCount: graph.elements.edges.length,
         dropped: graph.meta.dropped,
         databaseMutationExecuted: false,
-        publicGraphWritten: true,
+        publicGraphWritten: writesPublicGraph,
+        previewWritten: !writesPublicGraph,
       };
     }
     const graph = readJson(graphPath, 'published transcript review graph');
-    return verifyPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan, publication, graph });
+    return {
+      ...verifyPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan, publication, graph }),
+      publicGraphWritten: false,
+      previewVerified: !verifiesPublicGraph,
+    };
   }
   if (values.has('--output-graph')) {
     const outputPath = resolve(values.get('--output-graph'));
