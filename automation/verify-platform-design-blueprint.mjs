@@ -269,9 +269,17 @@ export async function verifyReviewConsoleRace({ browser, origin, timeoutMs = 60_
     const secondaryPath = `/t/${FIXTURE_IDS.topicSecondary}/review`;
     await page.waitForURL((url) => url.pathname.endsWith(secondaryPath), { timeout: timeoutMs });
     await joinCode.waitFor({ state: 'visible', timeout: timeoutMs });
-    const topicResetBeforeRelease = await joinCode.isEnabled() && await joinCode.inputValue() === '';
+    await page.waitForFunction(() => {
+      const input = document.querySelector('input#review-join-code');
+      return input instanceof HTMLInputElement && !input.disabled && input.value === '';
+    }, undefined, { timeout: timeoutMs });
+    const topicResetBeforeRelease = true;
+    const reviewResponse = page.waitForResponse((candidate) => (
+      new URL(candidate.url()).pathname === '/rest/v1/rpc/issue_review'
+    ), { timeout: timeoutMs });
     releaseReview();
-    await page.waitForTimeout(150);
+    await reviewResponse;
+    await page.waitForTimeout(50);
     const staleCompletionIgnored = await page.getByText('검수 완료로 확정했습니다.', { exact: true }).count() === 0
       && await page.getByText('지연 검수 대상 쟁점', { exact: true }).count() === 0
       && await joinCode.isEnabled()
