@@ -5,9 +5,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { BreadcrumbNav, completeSignOut, DataTreeNavigation, LoginCard, LogoutNotice, PLATFORM_ACCENT, PLATFORM_CONTROL_BORDER, ViewTabs } from './PlatformShell';
 import type { TreeNode } from './platform-nav-logic';
 import ScopeOutlet from './ScopeViews';
-import ReviewConsole, { REVIEW_STATUS_GREEN, ReviewIssueChoice, ReviewSourceCard, SourceReferenceList } from './review/ReviewConsole';
+import ReviewConsole, { completeReviewLoad, loadReviewData, REVIEW_STATUS_GREEN, ReviewIssueChoice, ReviewSourceCard, SourceReferenceList } from './review/ReviewConsole';
 import type { IssueViewModel, ReviewItem } from './review/review-console-logic';
 import { resolveHitlStatus } from '../../lib/hitl-status';
+import type { IssueItemsResult, IssueListResult, PlatformResult } from '../../lib/platform';
 
 const tree: TreeNode = {
   kind: 'org',
@@ -193,6 +194,11 @@ describe('PlatformShell accessibility', () => {
     expect(source).not.toContain("outline: 'none'");
     expect(source).not.toContain('#23B2C3');
     expect(source).not.toContain('#B5651D');
+    expect(source).toContain('const generation = requestGeneration.current + 1;');
+    expect(source).toContain('requestGeneration.current = generation;');
+    expect(source).toContain('() => requestGeneration.current === generation && currentTopicId.current === topicId');
+    expect(source).toContain("if (requestGeneration.current === generation && currentTopicId.current === topicId) setCode('');");
+    expect(source).toContain('return () => { requestGeneration.current += 1; };');
     expect(contrastRatio(REVIEW_STATUS_GREEN, '#E3F1E6')).toBeGreaterThanOrEqual(4.5);
   });
 
@@ -383,5 +389,106 @@ describe('PlatformShell accessibility', () => {
       '로그아웃 중 예상하지 못한 오류가 발생했습니다.',
     ]);
     expect(alertHtml).toContain('role="alert"');
+  });
+});
+
+describe('ReviewConsole loading', () => {
+  const listResult: IssueListResult = {
+    topic_id: 'topic-1',
+    issues: [],
+    unclassified_count: 1,
+    reviewed_count: 0,
+  };
+  const itemsResult: IssueItemsResult = {
+    topic_id: 'topic-1',
+    items: [{
+      id: 'item-1',
+      content: '지역 주도 전환이 필요하다',
+      rationale: null,
+      kind: 'core',
+      ordinal: 1,
+      team_id: 'team-1',
+      team_name: '1분과 1조',
+      submission_id: 'submission-1',
+      links: [],
+      unclassified: true,
+    }],
+  };
+
+  it('쟁점과 원문을 같은 주제·참여 코드 범위에서 함께 불러온다', async () => {
+    const listLoader = vi.fn().mockResolvedValue({ data: listResult, notice: null });
+    const itemsLoader = vi.fn().mockResolvedValue({ data: itemsResult, notice: null });
+
+    const loaded = await loadReviewData('JOIN-1', 'topic-1', listLoader, itemsLoader);
+
+    expect(listLoader).toHaveBeenCalledWith('JOIN-1', 'topic-1');
+    expect(itemsLoader).toHaveBeenCalledWith('JOIN-1', 'topic-1');
+    expect(loaded.notice).toBeNull();
+    expect(loaded.data?.list).toEqual(listResult);
+    expect(loaded.data?.items?.[0]?.itemId).toBe('item-1');
+  });
+
+  it('한 응답이 data와 notice를 모두 누락하면 로그하고 부분 결과만 표시한다', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const loaded = await loadReviewData(
+      'JOIN-1',
+      'topic-1',
+      async () => ({ data: listResult, notice: null }),
+      async () => ({ data: null, notice: null }),
+    );
+
+    expect(log).toHaveBeenCalledWith('Review issue items request returned no data or notice');
+    expect(loaded.data?.list).toEqual(listResult);
+    expect(loaded.data?.items).toBeNull();
+    expect(loaded.notice).toBe('원문 목록을 불러오지 못했습니다.');
+    log.mockRestore();
+  });
+
+  it('더 이상 현재 요청이 아니면 늦은 응답과 busy 해제를 반영하지 않는다', async () => {
+    let current = true;
+    let resolveResult!: (value: PlatformResult<{ list: IssueListResult | null; items: ReviewItem[] | null }>) => void;
+    const action = () => new Promise<PlatformResult<{ list: IssueListResult | null; items: ReviewItem[] | null }>>((resolve) => {
+      resolveResult = resolve;
+    });
+    const busy: boolean[] = [];
+    const data: Array<{ list: IssueListResult | null; items: ReviewItem[] | null } | null> = [];
+    const notices: Array<string | null> = [];
+
+    const pending = completeReviewLoad(
+      action,
+      (value) => busy.push(value),
+      (value) => data.push(value),
+      (value) => notices.push(value),
+      () => current,
+    );
+    current = false;
+    resolveResult({ data: { list: listResult, items: [] }, notice: null });
+    const loaded = await pending;
+
+    expect(loaded).toBe(false);
+    expect(busy).toEqual([true]);
+    expect(data).toEqual([null]);
+    expect(notices).toEqual([null]);
+  });
+
+  it('예상하지 못한 예외를 로그하고 alert용 notice로 바꾼다', async () => {
+    const error = new Error('network down');
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const busy: boolean[] = [];
+    const notices: Array<string | null> = [];
+
+    const loaded = await completeReviewLoad(
+      async () => { throw error; },
+      (value) => busy.push(value),
+      () => undefined,
+      (value) => notices.push(value),
+    );
+
+    expect(loaded).toBe(false);
+    expect(log).toHaveBeenCalledWith('Failed to load review data', error);
+    expect(busy).toEqual([true, false]);
+    expect(notices.at(-1)).toContain('예상하지 못한 오류');
+    log.mockRestore();
   });
 });

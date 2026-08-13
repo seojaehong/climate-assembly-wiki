@@ -8,7 +8,7 @@
 //   issue_items 성공 → 연결 원문 카드·미분류함 본문·재분류/끌어오기 **활성**.
 //   실패(스키마 미적용·코드 무효) → items 미로드로 남아 재분류/끌어오기 **비활성**(replace-all 파괴 방지).
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import HitlBadge from '../../../components/HitlBadge';
 import {
   issueList,
@@ -18,6 +18,8 @@ import {
   issueMerge,
   issueReview,
   type IssueListResult,
+  type IssueItemsResult,
+  type PlatformResult,
 } from '../../../lib/platform';
 import {
   FREQUENCY_OPTIONS,
@@ -48,6 +50,72 @@ const AMBER = '#8A4F08';
 const RED = '#B91C1C';
 export const REVIEW_STATUS_GREEN = '#2F6F25';
 const GREEN = REVIEW_STATUS_GREEN;
+
+type IssueListLoader = (code: string, topicId: string) => Promise<PlatformResult<IssueListResult>>;
+type IssueItemsLoader = (code: string, topicId: string) => Promise<PlatformResult<IssueItemsResult>>;
+
+export interface ReviewLoadData {
+  list: IssueListResult | null;
+  items: ReviewItem[] | null;
+}
+
+export async function loadReviewData(
+  code: string,
+  topicId: string,
+  listLoader: IssueListLoader = issueList,
+  itemsLoader: IssueItemsLoader = issueItems,
+): Promise<PlatformResult<ReviewLoadData>> {
+  const [listResult, itemsResult] = await Promise.all([
+    listLoader(code, topicId),
+    itemsLoader(code, topicId),
+  ]);
+  const notices: string[] = [];
+  if (!listResult.data) {
+    if (!listResult.notice) console.error('Review issue list request returned no data or notice');
+    notices.push(listResult.notice ?? '쟁점 목록을 불러오지 못했습니다.');
+  }
+  if (!itemsResult.data) {
+    if (!itemsResult.notice) console.error('Review issue items request returned no data or notice');
+    notices.push(itemsResult.notice ?? '원문 목록을 불러오지 못했습니다.');
+  }
+  const data = listResult.data || itemsResult.data
+    ? {
+        list: listResult.data,
+        items: itemsResult.data ? toReviewItems(itemsResult.data) : null,
+      }
+    : null;
+  return { data, notice: notices.length > 0 ? notices.join(' ') : null };
+}
+
+export async function completeReviewLoad(
+  action: () => Promise<PlatformResult<ReviewLoadData>>,
+  onBusyChange: (busy: boolean) => void,
+  onDataChange: (data: ReviewLoadData | null) => void,
+  onNoticeChange: (notice: string | null) => void,
+  isCurrent: () => boolean = () => true,
+): Promise<boolean> {
+  onBusyChange(true);
+  onDataChange(null);
+  onNoticeChange(null);
+  try {
+    const result = await action();
+    if (!isCurrent()) return false;
+    if (result.data) onDataChange(result.data);
+    if (result.notice) onNoticeChange(result.notice);
+    if (!result.data && !result.notice) {
+      console.error('Review request returned no data or notice');
+      onNoticeChange('검수 데이터를 불러오지 못했습니다.');
+    }
+    return Boolean(result.data?.list);
+  } catch (error: unknown) {
+    if (!isCurrent()) return false;
+    console.error('Failed to load review data', error);
+    onNoticeChange('검수 데이터를 불러오는 중 예상하지 못한 오류가 발생했습니다.');
+    return false;
+  } finally {
+    if (isCurrent()) onBusyChange(false);
+  }
+}
 
 // ── 작은 프리미티브 ────────────────────────────────────────────────────
 
@@ -163,25 +231,49 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
   const [mergeSrc, setMergeSrc] = useState<string>('');
   const [mergeDst, setMergeDst] = useState<string>('');
   const [flash, setFlash] = useState<string | null>(null);
+  const requestGeneration = useRef(0);
+  const currentTopicId = useRef(topicId);
+  currentTopicId.current = topicId;
 
   // 유효 items = override(테스트 주입) 우선, 없으면 자체 조회분. null = 미로드(재분류 비활성).
   const items = itemsOverride !== undefined ? itemsOverride : fetchedItems;
   const itemsLoaded = items !== null;
 
-  // issue_list(쟁점·카운트)와 issue_items(원문 본문·링크)를 함께 조회한다.
-  // 어느 한쪽이 실패해도 나머지는 표시하고, items 미로드면 재분류만 비활성된다.
-  const reload = useCallback(async (theCode: string) => {
-    if (!topicId) { setNotice('주제(topic) 스코프를 먼저 선택하세요.'); return; }
-    setBusy(true);
-    const [listRes, itemsRes] = await Promise.all([
-      issueList(theCode, topicId),
-      issueItems(theCode, topicId),
-    ]);
+  useEffect(() => {
+    requestGeneration.current += 1;
+    setCode('');
+    setActiveCode(null);
+    setList(null);
+    setFetchedItems(null);
+    setNotice(null);
     setBusy(false);
-    setNotice(listRes.notice ?? itemsRes.notice);
-    setList(listRes.data);
-    setFetchedItems(itemsRes.data ? toReviewItems(itemsRes.data) : null);
-    setActiveCode(listRes.data ? theCode : null);
+    setSelectedId(null);
+    setForm(emptyForm);
+    setChecked(new Set());
+    return () => { requestGeneration.current += 1; };
+  }, [topicId]);
+
+  const reload = useCallback(async (theCode: string): Promise<boolean> => {
+    if (!topicId) {
+      setNotice('주제(topic) 스코프를 먼저 선택하세요.');
+      return false;
+    }
+    if (currentTopicId.current !== topicId) return false;
+    const generation = requestGeneration.current + 1;
+    requestGeneration.current = generation;
+    const loaded = await completeReviewLoad(
+      () => loadReviewData(theCode, topicId),
+      setBusy,
+      (data) => {
+        setList(data?.list ?? null);
+        setFetchedItems(data?.items ?? null);
+        setActiveCode(data?.list ? theCode : null);
+      },
+      setNotice,
+      () => requestGeneration.current === generation && currentTopicId.current === topicId,
+    );
+    if (requestGeneration.current === generation && currentTopicId.current === topicId) setCode('');
+    return loaded;
   }, [topicId]);
 
   // 코드가 바뀌면 선택·체크 초기화(다른 세션일 수 있음).
@@ -234,8 +326,8 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
     if (r.notice) { showFlash(r.notice); return; }
     showFlash(r.data?.created ? '쟁점을 만들었습니다(검수 대기).' : '쟁점을 수정했습니다 — 재검수가 필요합니다.');
     const savedId = r.data?.id ?? null;
-    await reload(activeCode);
-    if (savedId) setSelectedId(savedId);
+    const loaded = await reload(activeCode);
+    if (loaded && savedId) setSelectedId(savedId);
   };
 
   // ── 검수 확정 ──
