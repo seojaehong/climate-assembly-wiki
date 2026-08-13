@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { BreadcrumbNav, completeAuthSessionLoad, completeSignOut, DataTreeNavigation, LoginCard, LogoutNotice, PLATFORM_ACCENT, PLATFORM_CONTROL_BORDER, runExclusivePlatformOperation, ViewTabs } from './PlatformShell';
+import { BreadcrumbNav, completeAuthSessionLoad, completeOrganizationTreeLoad, completeSignOut, DataTreeNavigation, LoginCard, LogoutNotice, PLATFORM_ACCENT, PLATFORM_CONTROL_BORDER, runExclusivePlatformOperation, ViewTabs } from './PlatformShell';
 import type { TreeNode } from './platform-nav-logic';
 import ScopeOutlet from './ScopeViews';
 import ReviewConsole, { completeReviewLoad, completeReviewMutation, loadReviewData, REVIEW_STATUS_GREEN, ReviewFlashNotice, ReviewIssueChoice, ReviewSourceCard, SourceReferenceList } from './review/ReviewConsole';
@@ -445,6 +445,96 @@ describe('PlatformShell accessibility', () => {
     expect(notices).toEqual(['인증 세션을 확인하는 중 예상하지 못한 오류가 발생했습니다.']);
   });
 
+  it('늦은 이전 사용자 기관 트리가 최신 사용자 트리와 스코프를 덮지 못하게 한다', async () => {
+    const oldTreeGate = deferred<PlatformResult<TreeNode>>();
+    const oldTreeAction = vi.fn(() => oldTreeGate.promise);
+    const trees: Array<TreeNode | null> = [];
+    const notices: Array<string | null> = [];
+    const loadingChanges: boolean[] = [];
+    const navigations: Array<{ o?: string }> = [];
+    let generation = 1;
+    const oldTree: TreeNode = { kind: 'org', id: 'org-a', label: '이전 기관', children: [] };
+    const latestTree: TreeNode = { kind: 'org', id: 'org-b', label: '최신 기관', children: [] };
+
+    const first = completeOrganizationTreeLoad(
+      async () => ({ data: [{ id: 'org-a', name: '이전 기관', slug: 'old-org' }], notice: null }),
+      oldTreeAction,
+      () => generation === 1,
+      'org-a',
+      (nextTree) => trees.push(nextTree),
+      (notice) => notices.push(notice),
+      (loading) => loadingChanges.push(loading),
+      (scope) => navigations.push(scope),
+    );
+    await vi.waitFor(() => expect(oldTreeAction).toHaveBeenCalledOnce());
+
+    generation = 2;
+    await completeOrganizationTreeLoad(
+      async () => ({ data: [{ id: 'org-b', name: '최신 기관', slug: 'latest-org' }], notice: null }),
+      async () => ({ data: latestTree, notice: null }),
+      () => generation === 2,
+      'org-a',
+      (nextTree) => trees.push(nextTree),
+      (notice) => notices.push(notice),
+      (loading) => loadingChanges.push(loading),
+      (scope) => navigations.push(scope),
+    );
+    oldTreeGate.resolve({ data: oldTree, notice: null });
+    await first;
+
+    expect(trees).toEqual([null, null, latestTree]);
+    expect(trees).not.toContain(oldTree);
+    expect(notices).toEqual([null, null, null]);
+    expect(loadingChanges).toEqual([true, true, false]);
+    expect(navigations).toEqual([{ o: 'org-b' }]);
+  });
+
+  it('기관 트리 null 응답을 성공으로 오인하지 않고 안내 상태로 닫는다', async () => {
+    const trees: Array<TreeNode | null> = [];
+    const notices: Array<string | null> = [];
+    const loadingChanges: boolean[] = [];
+
+    await completeOrganizationTreeLoad(
+      async () => ({ data: [{ id: 'org-a', name: '기관', slug: 'org' }], notice: null }),
+      async () => ({ data: null, notice: null }),
+      () => true,
+      'org-a',
+      (nextTree) => trees.push(nextTree),
+      (notice) => notices.push(notice),
+      (loading) => loadingChanges.push(loading),
+      () => undefined,
+    );
+
+    expect(trees).toEqual([null]);
+    expect(notices).toEqual([null, '기관 데이터 트리를 확인하지 못했습니다.']);
+    expect(loadingChanges).toEqual([true, false]);
+  });
+
+  it('현재 기관 트리 조회 예외를 로그하고 화면 안내로 닫는다', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const notices: Array<string | null> = [];
+    const loadingChanges: boolean[] = [];
+
+    try {
+      await completeOrganizationTreeLoad(
+        async () => { throw new Error('fixture organization failure'); },
+        async () => ({ data: tree, notice: null }),
+        () => true,
+        'org',
+        () => undefined,
+        (notice) => notices.push(notice),
+        (loading) => loadingChanges.push(loading),
+        () => undefined,
+      );
+      expect(errorLog).toHaveBeenCalledOnce();
+    } finally {
+      errorLog.mockRestore();
+    }
+
+    expect(notices).toEqual([null, '기관 데이터 트리를 불러오는 중 예상하지 못한 오류가 발생했습니다.']);
+    expect(loadingChanges).toEqual([true, false]);
+  });
+
   it('PlatformShell이 Auth 이벤트마다 generation을 교체하고 cleanup에서 무효화한다', () => {
     const source = readFileSync(new URL('./PlatformShell.tsx', import.meta.url), 'utf8');
 
@@ -453,6 +543,15 @@ describe('PlatformShell accessibility', () => {
     expect(source).toContain('() => authGeneration.current === generation');
     expect(source).toContain('authGeneration.current += 1;');
     expect(source).toContain('const off = onAuthChange(refreshSession);');
+  });
+
+  it('AppShell이 사용자 변경 때 기관 트리를 다시 읽고 서버 기관 스코프로 재결속한다', () => {
+    const source = readFileSync(new URL('./PlatformShell.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('void completeOrganizationTreeLoad(');
+    expect(source).toContain('currentScopeOrgId !== organization.id');
+    expect(source).toContain('onNavigate({ o: organization.id })');
+    expect(source).toContain('}, [session.userId, navigate]);');
   });
 
   it('인증 작업 예외 뒤에도 lock과 busy를 해제한다', async () => {

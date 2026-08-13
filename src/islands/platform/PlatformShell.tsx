@@ -257,6 +257,51 @@ export function LoginCard({ notice, onSignedIn }: { notice: string | null; onSig
 
 // ── 앱 셸(로그인 후) ────────────────────────────────────────────────────
 
+/** Reloads the organization tree for the current user and rejects stale cross-user responses. */
+export async function completeOrganizationTreeLoad(
+  organizationsAction: () => ReturnType<typeof myOrgs>,
+  treeAction: (orgId: string) => ReturnType<typeof orgTree>,
+  isCurrent: () => boolean,
+  currentScopeOrgId: string | null | undefined,
+  onTree: (tree: TreeNode | null) => void,
+  onNotice: (notice: string | null) => void,
+  onLoadingChange: (loading: boolean) => void,
+  onNavigate: (scope: Scope) => void,
+): Promise<void> {
+  onTree(null);
+  onNotice(null);
+  onLoadingChange(true);
+  try {
+    const organizations = await organizationsAction();
+    if (!isCurrent()) return;
+    if (organizations.notice || !organizations.data || organizations.data.length === 0) {
+      onNotice(organizations.notice ?? '소속 기관이 없습니다.');
+      onLoadingChange(false);
+      return;
+    }
+
+    const organization = organizations.data[0];
+    const treeResult = await treeAction(organization.id);
+    if (!isCurrent()) return;
+    if (treeResult.notice || !treeResult.data) {
+      onNotice(treeResult.notice ?? '기관 데이터 트리를 확인하지 못했습니다.');
+      onLoadingChange(false);
+      return;
+    }
+
+    onTree(treeResult.data);
+    onNotice(null);
+    onLoadingChange(false);
+    if (currentScopeOrgId !== organization.id) onNavigate({ o: organization.id });
+  } catch (error: unknown) {
+    if (!isCurrent()) return;
+    console.error('Failed to load platform organization tree', error);
+    onTree(null);
+    onNotice('기관 데이터 트리를 불러오는 중 예상하지 못한 오류가 발생했습니다.');
+    onLoadingChange(false);
+  }
+}
+
 function AppShell({ session, scope, navigate }: { session: AuthSessionInfo; scope: Scope; navigate: (s: Scope) => void }) {
   const [tree, setTree] = useState<TreeNode | null>(null);
   const [treeNotice, setTreeNotice] = useState<string | null>(null);
@@ -273,28 +318,20 @@ function AppShell({ session, scope, navigate }: { session: AuthSessionInfo; scop
   // org 파생(org_of_uid) → orgTree. org_id 는 클라이언트가 주장하지 않는다(서버 파생).
   useEffect(() => {
     let alive = true;
-    setLoadingTree(true);
-    (async () => {
-      const orgs = await myOrgs();
-      if (!alive) return;
-      if (!orgs.data || orgs.data.length === 0) {
-        setTreeNotice(orgs.notice ?? '소속 기관이 없습니다.');
-        setLoadingTree(false);
-        return;
-      }
-      const org = orgs.data[0];
-      const t = await orgTree(org.id);
-      if (!alive) return;
-      setTree(t.data);
-      setTreeNotice(t.notice);
-      setLoadingTree(false);
-      // URL 에 org 스코프가 없으면 기본으로 org 루트를 채운다(데이터 경로 시작점).
-      if (!scope.o) navigate({ o: org.id });
-    })();
+    void completeOrganizationTreeLoad(
+      myOrgs,
+      orgTree,
+      () => alive,
+      scope.o,
+      setTree,
+      setTreeNotice,
+      setLoadingTree,
+      navigate,
+    );
     return () => { alive = false; };
-    // scope.o 변화로 재실행하지 않도록 마운트 1회만.
+    // Reload for an authenticated user change, but not for navigation within that user's tree.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [session.userId, navigate]);
 
   const logout = async () => {
     if (logoutBusy || logoutLock.current) return;
