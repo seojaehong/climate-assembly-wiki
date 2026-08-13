@@ -1242,7 +1242,7 @@ function renderNodeSurface(ctx, mode = 'hover') {
   const palette = OntologyChrome.getPalette();
   const color = palette[ctx.node.kind] || '#888';
   const kindLabel = OntologyChrome.KIND_KO[ctx.node.kind] || ctx.node.kind;
-  const isLiveSnapshot = getPublicSources().find(source => source.id === curSource)?.category === 'live';
+  const isReviewedSummary = ctx.node.content_mode === 'reviewed_summary';
   if (mode === 'fixed') {
     const side = document.getElementById('og-side');
     side.innerHTML = `
@@ -1260,7 +1260,7 @@ function renderNodeSurface(ctx, mode = 'hover') {
           <h4>요약</h4>
           <div class="og-s-text">${escapeHtml(shortText(ctx.node.text || '요약할 원문이 없습니다.', 220))}</div>
         </div>
-        ${isLiveSnapshot ? `
+        ${isReviewedSummary ? `
           <div class="og-s-sec">
             <h4>공개 원문 미포함</h4>
             <div class="og-s-text">검수된 요약과 출처 UID만 표시합니다. 원문 전사와 음성은 이 공개 snapshot에 포함하지 않습니다.</div>

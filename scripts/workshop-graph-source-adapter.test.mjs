@@ -33,7 +33,7 @@ function reviewedLiveSnapshot() {
     elements: {
       nodes: [{ data: {
         id: 'issue-1', kind: 'Issue', label: '검수 완료 쟁점', cited_uids: ['chunk-1'],
-        review_state: 'accepted', is_public: true,
+        content_mode: 'reviewed_summary', review_state: 'accepted', is_public: true,
       } }],
       edges: [],
     },
@@ -46,6 +46,9 @@ function reviewedLiveSnapshot() {
       source: { source_id: REVIEWED_LIVE_SOURCE.id },
       publication: {
         mode: 'synthetic-reviewed-demo',
+        content_mode: 'reviewed-summary-only',
+        raw_transcript_included: false,
+        audio_included: false,
         approved_identity_kind: 'synthetic_fixture',
         approved_at: '2026-08-14T01:00:00.000Z',
       },
@@ -81,11 +84,11 @@ describe('workshop graph source adapter', () => {
         nodes: [
           { data: {
             id: 'issue-1', kind: 'Issue', label: '검수된 쟁점', cited_uids: ['item-1'],
-            review_state: 'accepted', is_public: true,
+            content_mode: 'reviewed_summary', review_state: 'accepted', is_public: true,
           } },
           { data: {
             id: 'claim-1', kind: 'Claim', label: '출처 확인이 필요한 주장', cited_uids: ['   '],
-            review_state: 'edited', is_public: true,
+            content_mode: 'reviewed_summary', review_state: 'edited', is_public: true,
           } },
         ],
         edges: [{ data: {
@@ -93,7 +96,14 @@ describe('workshop graph source adapter', () => {
           review_state: 'accepted', is_public: true,
         } }],
       },
-      meta: { advisory_notice: '사람 검수 완료 snapshot' },
+      meta: {
+        advisory_notice: '사람 검수 완료 snapshot',
+        publication: {
+          content_mode: 'reviewed-summary-only',
+          raw_transcript_included: false,
+          audio_included: false,
+        },
+      },
     };
     const databaseCatalog = {
       sources: [
@@ -326,7 +336,8 @@ describe('workshop graph source adapter', () => {
     ['unreviewed node', (snapshot) => { snapshot.elements.nodes[0].data.review_state = 'proposed'; }],
     ['private edge', (snapshot) => {
       snapshot.elements.nodes.push({ data: {
-        id: 'claim-1', kind: 'Claim', label: '주장', review_state: 'accepted', is_public: true,
+        id: 'claim-1', kind: 'Claim', label: '주장', content_mode: 'reviewed_summary',
+        review_state: 'accepted', is_public: true,
       } });
       snapshot.elements.edges.push({ data: {
         id: 'edge-1', source: 'claim-1', target: 'issue-1', rel: 'isAbout',
@@ -336,7 +347,8 @@ describe('workshop graph source adapter', () => {
     }],
     ['unreviewed edge', (snapshot) => {
       snapshot.elements.nodes.push({ data: {
-        id: 'claim-1', kind: 'Claim', label: '주장', review_state: 'accepted', is_public: true,
+        id: 'claim-1', kind: 'Claim', label: '주장', content_mode: 'reviewed_summary',
+        review_state: 'accepted', is_public: true,
       } });
       snapshot.elements.edges.push({ data: {
         id: 'edge-1', source: 'claim-1', target: 'issue-1', rel: 'isAbout',
@@ -350,6 +362,16 @@ describe('workshop graph source adapter', () => {
     ['noncanonical approval time', (snapshot) => { snapshot.meta.publication.approved_at = '2026-08-14T01:00:00Z'; }],
     ['mismatched source identity', (snapshot) => { snapshot.meta.source.source_id = 'live-other'; }],
     ['mismatched element counts', (snapshot) => { snapshot.meta.counts.nodes = 2; }],
+    ['missing public content mode', (snapshot) => { delete snapshot.meta.publication.content_mode; }],
+    ['raw transcript policy enabled', (snapshot) => { snapshot.meta.publication.raw_transcript_included = true; }],
+    ['audio policy enabled', (snapshot) => { snapshot.meta.publication.audio_included = true; }],
+    ['node without reviewed summary mode', (snapshot) => { delete snapshot.elements.nodes[0].data.content_mode; }],
+    ['embedded transcript rows', (snapshot) => {
+      snapshot.elements.nodes[0].data.transcript = [{ text: 'private transcript' }];
+    }],
+    ['embedded speaker metadata', (snapshot) => {
+      snapshot.elements.nodes[0].data.meta = { speakerLabelPseudonym: 'speaker-a' };
+    }],
     ['missing node provenance', (snapshot) => { snapshot.elements.nodes[0].data.cited_uids = []; }],
     ['blank node provenance', (snapshot) => { snapshot.elements.nodes[0].data.cited_uids = ['   ']; }],
     ['noncanonical node provenance', (snapshot) => { snapshot.elements.nodes[0].data.cited_uids = [' chunk-1']; }],
@@ -358,7 +380,7 @@ describe('workshop graph source adapter', () => {
     ['missing edge provenance', (snapshot) => {
       snapshot.elements.nodes.push({ data: {
         id: 'claim-1', kind: 'Claim', label: '주장', cited_uids: ['chunk-1'],
-        review_state: 'accepted', is_public: true,
+        content_mode: 'reviewed_summary', review_state: 'accepted', is_public: true,
       } });
       snapshot.elements.edges.push({ data: {
         id: 'edge-1', source: 'claim-1', target: 'issue-1', rel: 'isAbout',
@@ -446,6 +468,14 @@ describe('workshop graph source adapter', () => {
     ['blank node label', 1, { id: 'node-1', kind: 'Issue', label: '   ', review_state: 'accepted', is_public: true }, null],
     ['private node', 1, { id: 'node-1', kind: 'Issue', label: '쟁점', review_state: 'accepted', is_public: false }, null],
     ['unreviewed node', 1, { id: 'node-1', kind: 'Issue', label: '쟁점', review_state: 'proposed', is_public: true }, null],
+    ['embedded raw transcript', 1, {
+      id: 'node-1', kind: 'Issue', label: '쟁점', review_state: 'accepted', is_public: true,
+      transcript: [{ text: 'private transcript' }],
+    }, null],
+    ['embedded audio URL', 1, {
+      id: 'node-1', kind: 'Issue', label: '쟁점', review_state: 'accepted', is_public: true,
+      meta: { audio_url: 'https://private.example/audio.wav' },
+    }, null],
     ['private edge', 1, { id: 'node-1', kind: 'Issue', label: '쟁점', review_state: 'accepted', is_public: true }, {
       id: 'edge-1', source: 'node-1', target: 'node-1', rel: 'isAbout', review_state: 'accepted', is_public: false,
     }],
@@ -461,10 +491,16 @@ describe('workshop graph source adapter', () => {
       id: 'invalid', label: '잘못된 승인 snapshot', review_state: 'approved', is_public: true,
       snapshot: {
         elements: {
-          nodes: [{ data: nodeData }],
+          nodes: [{ data: { content_mode: 'reviewed_summary', ...nodeData } }],
           edges: edgeData ? [{ data: edgeData }] : [],
         },
-        meta: {},
+        meta: {
+          publication: {
+            content_mode: 'reviewed-summary-only',
+            raw_transcript_included: false,
+            audio_included: false,
+          },
+        },
       },
     };
     if (rowCount !== undefined) row.row_count = rowCount;

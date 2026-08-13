@@ -11,6 +11,13 @@ const LIVE_PUBLICATION_MODES = new Map([
 ]);
 const STATIC_GRAPH_DATA_PATH = /^data\/[A-Za-z0-9][A-Za-z0-9._-]*\.json$/;
 const STATIC_SOURCE_VIEWS = new Set(['2d', '3d']);
+const PUBLIC_CONTENT_MODE = 'reviewed-summary-only';
+const PUBLIC_NODE_CONTENT_MODE = 'reviewed_summary';
+const FORBIDDEN_PUBLIC_CONTENT_KEYS = new Set([
+  'audio', 'audiobytes', 'audiourl', 'chunks', 'endms', 'rawchunks', 'rawtext',
+  'rawtranscript', 'sourcetext', 'speaker', 'speakerlabel', 'speakerlabelpseudonym',
+  'startms', 'transcript', 'transcriptchunks', 'transcripttext',
+]);
 
 function isRecord(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -95,7 +102,10 @@ function reviewedLivePublicationMode(meta) {
     || meta.requires_publication_review !== false) return null;
   const expectedPublicationMode = LIVE_PUBLICATION_MODES.get(meta.publication_status);
   if (!expectedPublicationMode || !isRecord(meta.publication)
-    || meta.publication.mode !== expectedPublicationMode) return null;
+    || meta.publication.mode !== expectedPublicationMode
+    || meta.publication.content_mode !== PUBLIC_CONTENT_MODE
+    || meta.publication.raw_transcript_included !== false
+    || meta.publication.audio_included !== false) return null;
   return expectedPublicationMode;
 }
 
@@ -150,6 +160,7 @@ function validateGraphSnapshot(value) {
 
 function validatePublishedDatabaseSnapshot(value) {
   const snapshot = validateGraphSnapshot(value);
+  validatePublicContentPolicy(snapshot);
   for (const item of [...snapshot.elements.nodes, ...snapshot.elements.edges]) {
     if (item.data.is_public !== true) throw new Error('Database graph item is not public');
     if (!REVIEWED_ITEM_STATES.has(item.data.review_state)) {
@@ -157,6 +168,32 @@ function validatePublishedDatabaseSnapshot(value) {
     }
   }
   return snapshot;
+}
+
+function hasForbiddenPublicContent(value) {
+  if (Array.isArray(value)) return value.some(hasForbiddenPublicContent);
+  if (!isRecord(value)) return false;
+  return Object.entries(value).some(([key, child]) => {
+    const normalizedKey = key.replace(/[^A-Za-z0-9]/g, '').toLowerCase();
+    return FORBIDDEN_PUBLIC_CONTENT_KEYS.has(normalizedKey) || hasForbiddenPublicContent(child);
+  });
+}
+
+function validatePublicContentPolicy(snapshot) {
+  const publication = snapshot.meta.publication;
+  if (!isRecord(publication)
+    || publication.content_mode !== PUBLIC_CONTENT_MODE
+    || publication.raw_transcript_included !== false
+    || publication.audio_included !== false) {
+    throw new Error('Invalid public graph content policy');
+  }
+  if ([...snapshot.elements.nodes, ...snapshot.elements.edges]
+    .some((item) => hasForbiddenPublicContent(item.data))) {
+    throw new Error('Public graph contains private transcript content');
+  }
+  if (snapshot.elements.nodes.some((node) => node.data.content_mode !== PUBLIC_NODE_CONTENT_MODE)) {
+    throw new Error('Public graph node is not a reviewed summary');
+  }
 }
 
 function validatePublicationProvenance(data, label) {
@@ -181,6 +218,7 @@ function validatePublicationProvenance(data, label) {
 
 function validatePublishedLiveSnapshot(value, source) {
   const snapshot = validateGraphSnapshot(value);
+  validatePublicContentPolicy(snapshot);
   for (const [collection, label] of [[snapshot.elements.nodes, 'live graph node'], [snapshot.elements.edges, 'live graph edge']]) {
     for (const item of collection) {
       if (item.data.is_public !== true) throw new Error('Live graph item is not public');

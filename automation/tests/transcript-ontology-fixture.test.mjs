@@ -117,15 +117,23 @@ test('publishes only accepted R2 review items with reviewed state and cited chun
   expect(graph.elements.nodes[0].data).toMatchObject({
     id: 'transcript-node:candidate-issue',
     label: '재생에너지 전환 속도 검수본',
+    content_mode: 'reviewed_summary',
     review_state: 'edited',
     is_public: true,
     cited_uids: ['chunk-001', 'chunk-002'],
     meta: { review_identity_kind: 'synthetic_fixture' },
   });
+  expect(graph.elements.nodes[0].data).not.toHaveProperty('sourceText');
+  expect(graph.elements.nodes[0].data).not.toHaveProperty('transcript');
   expect(graph.meta).toMatchObject({
     variant: 'transcript-live-reviewed-plan',
     publication_status: 'synthetic_reviewed_demo',
     source_review_status: 'reviewed',
+    publication: {
+      content_mode: 'reviewed-summary-only',
+      raw_transcript_included: false,
+      audio_included: false,
+    },
     dropped: { rejected_nodes: 1, rejected_edges: 1, uncited_candidates: 0 },
   });
   expect(JSON.stringify(graph)).not.toContain('speakerLabelPseudonym');

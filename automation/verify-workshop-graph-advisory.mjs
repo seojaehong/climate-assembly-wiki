@@ -11,6 +11,11 @@ const SOURCE_B = 'regulation-2026-06-13';
 const SOURCE_INVALID = 'source-coverage-2026-06-13';
 const SOURCE_REVIEWED = 'live-transcript-r2-reviewed';
 const SOURCE_REVIEWED_STANDARD = 'live-reviewed-snapshot-ui-fixture';
+const PRIVATE_TRANSCRIPT_KEYS = new Set([
+  'audio', 'audiobytes', 'audiourl', 'chunks', 'endms', 'rawchunks', 'rawtext',
+  'rawtranscript', 'sourcetext', 'speaker', 'speakerlabel', 'speakerlabelpseudonym',
+  'startms', 'transcript', 'transcriptchunks', 'transcripttext',
+]);
 const SOURCE_FILES = [
   'public/workshop-graph/index.html',
   'public/workshop-graph/graph-advisory-assets.js',
@@ -22,6 +27,15 @@ const SOURCE_FILES = [
 
 function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
+}
+
+function hasPrivateTranscriptField(value) {
+  if (Array.isArray(value)) return value.some(hasPrivateTranscriptField);
+  if (!value || typeof value !== 'object') return false;
+  return Object.entries(value).some(([key, child]) => {
+    const normalizedKey = key.replace(/[^A-Za-z0-9]/g, '').toLowerCase();
+    return PRIVATE_TRANSCRIPT_KEYS.has(normalizedKey) || hasPrivateTranscriptField(child);
+  });
 }
 
 function graphFixture(name, advisory) {
@@ -69,6 +83,14 @@ const fixtures = new Map([
   [`${SOURCE_INVALID}.json`, graphFixture(SOURCE_INVALID, { quality: { conclusion: 'legacy quality note' } })],
 ]);
 const reviewedStandardGraph = JSON.parse(readFileSync('public/workshop-graph/data/live-transcript-r2-reviewed.json', 'utf8'));
+const reviewedPublicContentPolicy = {
+  contentMode: reviewedStandardGraph.meta.publication.content_mode,
+  rawTranscriptIncluded: reviewedStandardGraph.meta.publication.raw_transcript_included,
+  audioIncluded: reviewedStandardGraph.meta.publication.audio_included,
+  allNodesReviewedSummaries: reviewedStandardGraph.elements.nodes
+    .every(node => node.data.content_mode === 'reviewed_summary'),
+  privateTranscriptFieldsAbsent: !hasPrivateTranscriptField(reviewedStandardGraph.elements),
+};
 reviewedStandardGraph.meta.publication_status = 'reviewed_snapshot';
 reviewedStandardGraph.meta.publication.mode = 'reviewed-snapshot';
 reviewedStandardGraph.meta.source.source_id = SOURCE_REVIEWED_STANDARD;
@@ -150,6 +172,7 @@ try {
       edgeCount: edges.length,
       allItemsPublic: [...nodes, ...edges].every(item => item.is_public === true),
       allItemsReviewed: [...nodes, ...edges].every(item => ['accepted', 'edited'].includes(item.review_state)),
+      allNodesReviewedSummaries: nodes.every(item => item.content_mode === 'reviewed_summary'),
       footer: document.querySelector('#og-footer-note')?.textContent || '',
       advisory: document.querySelector('#og-advisory')?.textContent || '',
     };
@@ -186,6 +209,7 @@ try {
     standardReviewedPresentation,
     liveCategoryLabel,
     publicTranscriptBoundary,
+    publicContentPolicy: reviewedPublicContentPolicy,
     validCandidate: {
       metadata: firstMetadata, humanReviewRequired: firstPanel.includes('사람 검수 필요'),
       recommendationCandidateVisible: firstPanel.includes('첫 번째 권고 후보'), qualitySignalVisible: firstPanel.includes('품질 신호'),
@@ -211,12 +235,18 @@ try {
     && result.reviewedPublicSnapshot.manifestPublicationMode === 'reviewed_snapshot'
     && result.reviewedPublicSnapshot.nodeCount > 0 && result.reviewedPublicSnapshot.edgeCount > 0
     && result.reviewedPublicSnapshot.allItemsPublic && result.reviewedPublicSnapshot.allItemsReviewed
+    && result.reviewedPublicSnapshot.allNodesReviewedSummaries
     && result.reviewedPublicSnapshot.footer.includes('합성 전사 검수 데모')
     && result.standardReviewedPresentation.footer.includes('사람 검수 완료 스냅샷')
     && result.standardReviewedPresentation.advisory.includes('사람 검수 완료 스냅샷')
     && result.standardReviewedPresentation.pill.includes('LIVE · 검수 완료')
     && result.liveCategoryLabel === '검수 완료 스냅샷'
     && Object.values(result.publicTranscriptBoundary).every(Boolean)
+    && result.publicContentPolicy.contentMode === 'reviewed-summary-only'
+    && result.publicContentPolicy.rawTranscriptIncluded === false
+    && result.publicContentPolicy.audioIncluded === false
+    && result.publicContentPolicy.allNodesReviewedSummaries
+    && result.publicContentPolicy.privateTranscriptFieldsAbsent
     && result.servedHashesMatch && result.pageErrors.length === 0 && result.consoleErrorCount === 1;
   writeFileSync(OUTPUT_PATH, `${JSON.stringify(result, null, 2)}\n`);
   if (!result.passed) throw new Error('Workshop graph advisory browser verification failed');
