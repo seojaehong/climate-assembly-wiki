@@ -78,6 +78,11 @@ async function fixtureServer({
           <section aria-labelledby="facilitation-prompt-heading">
             <h2 id="facilitation-prompt-heading">진행 질문</h2>
             <p id="facilitation-prompt-count" role="status" aria-live="polite">현재 규칙으로 확인된 진행 질문 0개</p>
+            <details><summary>적용 중인 질문 규칙 5개</summary><ul aria-label="R5 진행 질문 규칙">
+              <li>근거가 연결되지 않은 주장</li><li>조건이 연결되지 않은 제안</li>
+              <li>쟁점과 연결되지 않은 우려</li><li>대상이 불명확한 근거 군집</li>
+              <li>이름 붙이지 않은 가치 긴장</li>
+            </ul></details>
             <ol id="facilitation-prompt-list"></ol>
           </section>
           <article aria-label="노드 검수 1">
@@ -458,6 +463,7 @@ describe('verifyCanvasBrowser', () => {
     expect(report.checks.reviewInteractionCompleted).toBe(true);
     expect(report.checks.reviewMixedDecisionStatesVerified).toBe(true);
     expect(report.checks.reviewReloadIsolationVerified).toBe(true);
+    expect(report.checks.reviewFacilitationRuleCatalogVerified).toBe(true);
     expect(report.checks.reviewedPlanDownloaded).toBe(true);
     expect(report.checks.reviewedPlanDecisionCount).toBe(5);
     expect(report.checks.linkedSurfaceStatuses).toEqual([

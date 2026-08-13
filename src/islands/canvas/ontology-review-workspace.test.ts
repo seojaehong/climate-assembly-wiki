@@ -216,6 +216,94 @@ describe('Canvas ontology review workspace', () => {
     expect(canvasFacilitationPrompts(reviewed)).toEqual([]);
   });
 
+  it('asks to clarify a reviewed evidence cluster until every Evidence is connected to a Claim or Issue', async () => {
+    const workspace = await createCanvasOntologyReviewWorkspace(await fixture());
+    const reviewedAt = '2026-08-29T01:00:00.000Z';
+    const reviewer = 'moderator-role-1';
+    let reviewed = reviewCanvasOntologyItem(workspace, {
+      itemType: 'node', id: 'canvas-agenda:agenda-1', status: 'accepted', kind: 'Issue', reviewer, reviewedAt,
+    });
+    reviewed = reviewCanvasOntologyItem(reviewed, {
+      itemType: 'node', id: 'canvas-agenda:action-1', status: 'accepted', kind: 'Issue', reviewer, reviewedAt,
+    });
+    reviewed.plan.nodes.push(
+      {
+        ...reviewed.plan.nodes[0], id: 'canvas-agenda:evidence-a', sourceAgendaId: 'evidence-a',
+        sourceText: '지역 사례 A', label: '지역 사례 A', text: '지역 사례 A', kind: 'Evidence',
+      },
+      {
+        ...reviewed.plan.nodes[0], id: 'canvas-agenda:evidence-b', sourceAgendaId: 'evidence-b',
+        sourceText: '지역 사례 B', label: '지역 사례 B', text: '지역 사례 B', kind: 'Evidence',
+      },
+    );
+    reviewed.plan.clusters[0] = {
+      ...reviewed.plan.clusters[0],
+      memberNodeIds: ['canvas-agenda:agenda-1', 'canvas-agenda:evidence-a', 'canvas-agenda:evidence-b'],
+      issueNodeId: 'canvas-agenda:agenda-1', reviewStatus: 'accepted', reviewer, reviewedAt,
+    };
+
+    expect(canvasFacilitationPrompts(reviewed)).toEqual([
+      expect.objectContaining({
+        kind: 'evidence-cluster-clarification',
+        nodeId: 'canvas-agenda:evidence-a',
+        relatedNodeIds: ['canvas-agenda:evidence-a', 'canvas-agenda:evidence-b'],
+      }),
+    ]);
+
+    reviewed.plan.relations.push(
+      {
+        ...reviewed.plan.relations[0], id: 'relation:evidence-a',
+        source: 'canvas-agenda:evidence-a', target: 'canvas-agenda:agenda-1', relation: 'hasEvidence',
+        reviewStatus: 'accepted', reviewer, reviewedAt,
+      },
+      {
+        ...reviewed.plan.relations[0], id: 'relation:evidence-b',
+        source: 'canvas-agenda:evidence-b', target: 'canvas-agenda:agenda-1', relation: 'hasEvidence',
+        reviewStatus: 'accepted', reviewer, reviewedAt,
+      },
+    );
+    expect(canvasFacilitationPrompts(reviewed)).toEqual([]);
+  });
+
+  it('suggests naming a reviewed value tension without deciding how it should be resolved', async () => {
+    const workspace = await createCanvasOntologyReviewWorkspace(await fixture());
+    const reviewedAt = '2026-08-29T01:00:00.000Z';
+    const reviewer = 'moderator-role-1';
+    let reviewed = reviewCanvasOntologyItem(workspace, {
+      itemType: 'node', id: 'canvas-agenda:agenda-1', status: 'edited', kind: 'Value',
+      label: '형평성', text: '전환 비용의 형평성을 우선한다.', reviewer, reviewedAt,
+    });
+    reviewed = reviewCanvasOntologyItem(reviewed, {
+      itemType: 'node', id: 'canvas-agenda:action-1', status: 'edited', kind: 'Value',
+      label: '속도', text: '배출 감축 속도를 우선한다.', reviewer, reviewedAt,
+    });
+    reviewed = reviewCanvasOntologyItem(reviewed, {
+      itemType: 'relation', id: 'canvas-link:link-1', status: 'accepted', relation: 'opposes', reviewer, reviewedAt,
+    });
+    reviewed.plan.relations.push({
+      ...reviewed.plan.relations[0], id: 'relation:duplicate-value-conflict',
+      source: 'canvas-agenda:action-1', target: 'canvas-agenda:agenda-1', relation: 'opposes',
+      reviewStatus: 'accepted', reviewer, reviewedAt,
+    });
+
+    expect(canvasFacilitationPrompts(reviewed)).toEqual([
+      expect.objectContaining({
+        kind: 'value-conflict',
+        nodeId: 'canvas-agenda:agenda-1',
+        relatedNodeIds: ['canvas-agenda:agenda-1', 'canvas-agenda:action-1'],
+        question: expect.stringContaining('형평성'),
+      }),
+    ]);
+
+    reviewed = reviewCanvasOntologyItem(reviewed, {
+      itemType: 'relation', id: 'canvas-link:link-1', status: 'rejected', reviewer, reviewedAt,
+    });
+    reviewed.plan.relations = reviewed.plan.relations.map((relation) => relation.id === 'relation:duplicate-value-conflict'
+      ? { ...relation, reviewStatus: 'rejected', reviewer, reviewedAt }
+      : relation);
+    expect(canvasFacilitationPrompts(reviewed)).toEqual([]);
+  });
+
   it('opens only a sealed plan that matches the exact Canvas snapshot bytes', async () => {
     const input = await fixture();
     const workspace = await createCanvasOntologyReviewWorkspace(input);

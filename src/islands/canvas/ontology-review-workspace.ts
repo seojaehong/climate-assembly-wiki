@@ -75,10 +75,20 @@ export interface CanvasFacilitationPrompt {
   sourceAgendaId: string;
   sourceSessionId: string;
   sourceText: string;
-  kind: 'missing-evidence' | 'missing-condition' | 'isolated-concern';
+  relatedNodeIds: string[];
+  kind: 'missing-evidence' | 'missing-condition' | 'isolated-concern'
+    | 'evidence-cluster-clarification' | 'value-conflict';
   question: string;
   reason: string;
 }
+
+export const CANVAS_FACILITATION_RULES = [
+  { kind: 'missing-evidence', label: '근거가 연결되지 않은 주장' },
+  { kind: 'missing-condition', label: '조건이 연결되지 않은 제안' },
+  { kind: 'isolated-concern', label: '쟁점과 연결되지 않은 우려' },
+  { kind: 'evidence-cluster-clarification', label: '대상이 불명확한 근거 군집' },
+  { kind: 'value-conflict', label: '이름 붙이지 않은 가치 긴장' },
+] as const satisfies ReadonlyArray<{ kind: CanvasFacilitationPrompt['kind']; label: string }>;
 
 interface ReviewAuditInput {
   reviewer: string;
@@ -328,12 +338,13 @@ export function canvasFacilitationPrompts(
   );
   const provenance = (node: CanvasOntologyNode) => ({
     nodeId: node.id,
+    relatedNodeIds: [] as string[],
     sourceAgendaId: node.sourceAgendaId,
     sourceSessionId: node.sourceSessionId,
     sourceText: node.sourceText,
   });
 
-  return acceptedNodes.flatMap((node): CanvasFacilitationPrompt[] => {
+  const nodePrompts = acceptedNodes.flatMap((node): CanvasFacilitationPrompt[] => {
     if (node.kind === 'Claim' && !connectsKind(node.id, 'hasEvidence', 'Evidence')) {
       return [{
         id: `missing-evidence:${node.id}`,
@@ -363,6 +374,50 @@ export function canvasFacilitationPrompts(
     }
     return [];
   });
+  const evidenceClusterPrompts = workspace.plan.clusters.flatMap((cluster): CanvasFacilitationPrompt[] => {
+    if (cluster.reviewStatus !== 'accepted') return [];
+    const evidenceNodes = cluster.memberNodeIds
+      .map((nodeId) => acceptedNodeById.get(nodeId))
+      .filter((node): node is CanvasOntologyNode => node?.kind === 'Evidence');
+    if (evidenceNodes.length < 2) return [];
+    const unlinkedEvidence = evidenceNodes.filter((evidence) => !acceptedRelations.some((relation) => {
+      if (relation.relation !== 'hasEvidence') return false;
+      const otherId = relation.source === evidence.id
+        ? relation.target
+        : (relation.target === evidence.id ? relation.source : null);
+      const otherKind = otherId === null ? null : acceptedNodeById.get(otherId)?.kind;
+      return otherKind === 'Claim' || otherKind === 'Issue';
+    }));
+    if (unlinkedEvidence.length === 0) return [];
+    const anchor = unlinkedEvidence[0];
+    return [{
+      id: `evidence-cluster-clarification:${cluster.sourceSessionId}:${cluster.groupId}`,
+      ...provenance(anchor),
+      relatedNodeIds: evidenceNodes.map((node) => node.id),
+      kind: 'evidence-cluster-clarification',
+      question: `“${evidenceNodes.map((node) => node.label).join('”, “')}” 근거는 각각 어떤 주장·쟁점을 뒷받침하며, 공통점과 차이는 무엇인가요?`,
+      reason: '검수된 Evidence 군집에 Claim 또는 Issue와 의미 연결되지 않은 근거가 있습니다.',
+    }];
+  });
+  const valueConflictPairs = new Set<string>();
+  const valueConflictPrompts = acceptedRelations.flatMap((relation): CanvasFacilitationPrompt[] => {
+    if (relation.relation !== 'opposes') return [];
+    const source = acceptedNodeById.get(relation.source);
+    const target = acceptedNodeById.get(relation.target);
+    if (source?.kind !== 'Value' || target?.kind !== 'Value') return [];
+    const pairKey = [source.id, target.id].sort().join('\u0000');
+    if (valueConflictPairs.has(pairKey)) return [];
+    valueConflictPairs.add(pairKey);
+    return [{
+      id: `value-conflict:${relation.id}`,
+      ...provenance(source),
+      relatedNodeIds: [source.id, target.id],
+      kind: 'value-conflict',
+      question: `“${source.label}”과 “${target.label}” 사이에서 드러난 가치 긴장을 어떤 말로 함께 이름 붙이면 좋을까요?`,
+      reason: '검수된 두 Value가 opposes 관계로 연결되어 있습니다. 선호로 축약하지 않고 가치 긴장을 확인합니다.',
+    }];
+  });
+  return [...nodePrompts, ...evidenceClusterPrompts, ...valueConflictPrompts];
 }
 
 function optionalSnapshotString(value: unknown, label: string): string | null {

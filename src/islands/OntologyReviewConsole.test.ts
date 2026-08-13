@@ -49,6 +49,7 @@ describe('OntologyReviewConsole', () => {
       sourceAgendaId: 'agenda-1',
       sourceSessionId: 'session-1',
       sourceText: '원래 제안 문구',
+      relatedNodeIds: ['condition-1'],
       kind: 'missing-condition',
       question: '이 제안을 실행하려면 어떤 조건이 필요한가요?',
       reason: '검수된 Proposal에 연결된 Condition이 없습니다.',
@@ -59,8 +60,40 @@ describe('OntologyReviewConsole', () => {
     expect(html).toContain('role="status"');
     expect(html).toContain('aria-live="polite"');
     expect(html).toContain('출처 세션 session-1 · 원 agenda agenda-1 · 노드 node-1');
+    expect(html).toContain('관련 노드 condition-1');
     expect(html).toContain('원문: 원래 제안 문구');
     expect(html).toContain('회의의 결정이나 진실 판정을 대신하지 않습니다.');
+    expect(html).toContain('적용 중인 질문 규칙 5개');
+    expect(html).toContain('근거가 연결되지 않은 주장');
+    expect(html).toContain('이름 붙이지 않은 가치 긴장');
+  });
+
+  it('renders all five R5 facilitation prompt kinds as questions rather than decisions', () => {
+    const promptKinds = [
+      'missing-evidence',
+      'missing-condition',
+      'isolated-concern',
+      'evidence-cluster-clarification',
+      'value-conflict',
+    ] as const;
+    const html = renderToStaticMarkup(createElement(FacilitationPromptPanel, {
+      prompts: promptKinds.map((kind, index) => ({
+        id: `${kind}:node-${index}`,
+        nodeId: `node-${index}`,
+        relatedNodeIds: [`related-${index}`],
+        sourceAgendaId: `agenda-${index}`,
+        sourceSessionId: 'session-1',
+        sourceText: `원문 ${index}`,
+        kind,
+        question: `${kind}을 함께 확인해 보면 어떨까요?`,
+        reason: `${kind} 검토 근거`,
+      })),
+    }));
+
+    expect(html.match(/<li>/g)).toHaveLength(10);
+    expect(html).toContain('현재 규칙으로 확인된 진행 질문 5개');
+    for (const kind of promptKinds) expect(html).toContain(`${kind}을 함께 확인해 보면 어떨까요?`);
+    expect(html).not.toContain('자동 확정');
   });
 
   it('discards a stale asynchronous workspace load without changing visible state', async () => {

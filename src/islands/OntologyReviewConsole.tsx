@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import {
   canvasFacilitationPrompts,
+  CANVAS_FACILITATION_RULES,
   createCanvasOntologyReviewWorkspace,
   exportCanvasOntologyReviewedPlan,
   reviewCanvasOntologyItem,
@@ -158,6 +159,12 @@ export function FacilitationPromptPanel({ prompts }: { prompts: CanvasFacilitati
       <p role="status" aria-live="polite" aria-atomic="true" style={{ margin: 0 }}>
         현재 규칙으로 확인된 진행 질문 {prompts.length}개
       </p>
+      <details>
+        <summary>적용 중인 질문 규칙 5개</summary>
+        <ul aria-label="R5 진행 질문 규칙" style={{ marginBottom: 0 }}>
+          {CANVAS_FACILITATION_RULES.map((rule) => <li key={rule.kind}>{rule.label}</li>)}
+        </ul>
+      </details>
       {prompts.length > 0 ? (
         <ol style={{ display: 'grid', gap: 12, margin: 0, paddingLeft: 24 }}>
           {prompts.map((prompt) => (
@@ -167,6 +174,11 @@ export function FacilitationPromptPanel({ prompts }: { prompts: CanvasFacilitati
               <div style={{ color: MUTED, fontSize: 13, overflowWrap: 'anywhere' }}>
                 출처 세션 {prompt.sourceSessionId} · 원 agenda {prompt.sourceAgendaId} · 노드 {prompt.nodeId}
               </div>
+              {prompt.relatedNodeIds.length > 0 ? (
+                <div style={{ color: MUTED, fontSize: 13, overflowWrap: 'anywhere' }}>
+                  관련 노드 {prompt.relatedNodeIds.join(' · ')}
+                </div>
+              ) : null}
               <div style={{ color: MUTED, fontSize: 13, marginTop: 2 }}>원문: {prompt.sourceText}</div>
             </li>
           ))}

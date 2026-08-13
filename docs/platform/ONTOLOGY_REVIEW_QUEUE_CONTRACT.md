@@ -102,8 +102,11 @@ CLI `--reviewed-plan` 경로에서 source 불변식을 다시 검증해야 한�
 없으면 근거 질문을, 승인·수정 승인된 `Proposal`에 승인된 `requiresCondition` 관계로 연결된
 `Condition`이 없으면 실행 조건 질문을 제시한다. 승인·수정 승인된 `Concern`이 승인 관계로 검수된
 `Issue`와 연결되지 않았으면 어떤 쟁점과 함께 검토할지 묻는다. 관계 방향은 Canvas 원본 링크 방향을 의미 방향으로
-확정하지 않으므로 두 endpoint 역할을 대조한다. 제안·반려·미검수 node/relation은 질문 근거에서
-제외하며, 각 질문은 source session·agenda·node ID와 원문을 표시한다. 질문은 브라우저 메모리에서 계산할 뿐
+확정하지 않으므로 두 endpoint 역할을 대조한다. 승인된 군집에 검수된 `Evidence`가 둘 이상 있으면서 일부가
+`hasEvidence`로 `Claim` 또는 `Issue`에 연결되지 않았으면 각 근거가 무엇을 뒷받침하고 공통점·차이가 무엇인지
+명료화를 제안한다. 승인된 두 `Value`가 `opposes` 관계로 연결되면 어느 한쪽을 선호로 축약하지 않고 가치 긴장을
+함께 이름 붙일 것을 제안한다. 제안·반려·미검수 node/relation/cluster는 질문 근거에서 제외하며, 각 질문은
+source session·agenda·node ID, 관련 node ID와 원문을 표시한다. 질문은 브라우저 메모리에서 계산할 뿐
 review plan, DB, browser storage 또는 공개 graph에 쓰지 않는다.
 
 ## Failure modes

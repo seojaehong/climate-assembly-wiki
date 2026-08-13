@@ -549,6 +549,18 @@ npm.cmd --prefix automation run bridge:transcript-ontology -- --fixture fixtures
 - 브라우저 verifier는 synthetic MediaRecorder adapter로 동의→녹음→정지→chunk 작성→검수 전 차단→수정 승인→재편집 차단→재판단→download를 실제 production React 화면에서 실행하고 write request가 없음을 확인한다.
 - 실제 시민 발언·지속 저장·외부 STT webhook/provider·음성 retention·reviewer 인증·DB/API·자동 extraction/publication은 구현하거나 승인하지 않았다. 실제 운영 전에는 별도 승인된 consent·보존·삭제·접근 정책이 필요하다.
 
+## R5 검수 온톨로지 기반 진행 제안
+
+`/ko/moderator/ontology-review`의 `진행 질문`은 현재 브라우저 메모리의 사람 검수 결과만 읽어 다음 다섯 검토 지점을 즉시 계산한다.
+
+- `Claim`에 검수된 `Evidence` 연결이 없으면 뒷받침 자료·경험·사례를 물어볼 것을 제안한다.
+- `Proposal`에 검수된 `Condition` 연결이 없으면 실행 전제 조건을 물어볼 것을 제안한다.
+- `Concern`이 검수된 `Issue`와 연결되지 않으면 소수 우려를 보존한 채 어느 쟁점과 함께 검토할지 제안한다.
+- 승인된 근거 군집의 `Evidence` 일부가 `Claim`/`Issue`와 연결되지 않으면 각 근거의 대상과 공통점·차이를 명료화할 것을 제안한다.
+- 검수된 두 `Value`가 `opposes` 관계이면 어느 하나를 선택하라고 지시하지 않고 가치 긴장을 함께 이름 붙일 것을 제안한다.
+
+모든 제안은 질문형이며 이유, source session·agenda·node ID, 관련 node ID와 원문을 함께 표시한다. 미검수·반려 상태는 근거로 쓰지 않고, 질문은 review plan·DB·browser storage·public graph에 저장하지 않는다. 이는 moderator 지원 규칙이며 합의문·진실·우선순위를 자동 결정하지 않는다.
+
 ## 알림 레벨 정책
 
 | 레벨 | 상황 | 대응 |

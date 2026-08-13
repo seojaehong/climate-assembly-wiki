@@ -537,6 +537,13 @@ export async function verifyCanvasBrowser({
       .getByRole('status')
       .getByText('현재 규칙으로 확인된 진행 질문 1개', { exact: true })
       .isVisible();
+    await reviewPage.getByText('적용 중인 질문 규칙 5개', { exact: true }).click();
+    const reviewFacilitationRuleCatalogVerified = await reviewPage
+      .getByRole('list', { name: 'R5 진행 질문 규칙' })
+      .getByRole('listitem')
+      .count() === 5
+      && await reviewPage.getByText('근거가 연결되지 않은 주장', { exact: true }).isVisible()
+      && await reviewPage.getByText('이름 붙이지 않은 가치 긴장', { exact: true }).isVisible();
     const reviewFacilitationProvenanceVerified = await reviewPage.getByText(
       '출처 세션 session-1 · 원 agenda action-1 · 노드 canvas-agenda:action-1',
       { exact: true },
@@ -547,7 +554,8 @@ export async function verifyCanvasBrowser({
     if (!reviewFacilitationPromptVerified) {
       throw new Error('Ontology review facilitation prompt contract is invalid');
     }
-    if (!reviewFacilitationLiveCountVerified || !reviewFacilitationProvenanceVerified) {
+    if (!reviewFacilitationLiveCountVerified || !reviewFacilitationRuleCatalogVerified
+      || !reviewFacilitationProvenanceVerified) {
       throw new Error('Ontology review facilitation prompt evidence is incomplete');
     }
     if (screenshot) await reviewPage.screenshot({ path: screenshot, fullPage: true });
@@ -648,6 +656,7 @@ export async function verifyCanvasBrowser({
         reviewFacilitationPromptVerified,
         reviewFacilitationPromptCount,
         reviewFacilitationLiveCountVerified,
+        reviewFacilitationRuleCatalogVerified,
         reviewFacilitationProvenanceVerified,
         reviewedPlanDownloaded,
         reviewedPlanDecisionCount,
