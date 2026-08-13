@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "states": {
+    "not_reported": {
+      "label": "이행 정보 미등록",
+      "description": "공개된 이행 상태가 아직 없습니다.",
+      "foreground": "#5A6B73",
+      "background": "#ECEFF1",
+      "border": "#6B7D88",
+      "tracked": false,
+      "evidenceRequired": false
+    },
+    "invalid": {
+      "label": "이행 정보 확인 필요",
+      "description": "공개된 이행 정보의 형식을 확인해야 합니다.",
+      "foreground": "#B91C1C",
+      "background": "#FDECEC",
+      "border": "#B91C1C",
+      "tracked": false,
+      "evidenceRequired": false
+    },
+    "under_review": {
+      "label": "기관 검토 중",
+      "description": "관계 기관이 권고 내용을 검토하고 있습니다.",
+      "foreground": "#135C73",
+      "background": "#E7F3F7",
+      "border": "#135C73",
+      "tracked": true,
+      "evidenceRequired": false
+    },
+    "planned": {
+      "label": "이행 계획 수립",
+      "description": "관계 기관이 공개한 이행 계획이 있습니다.",
+      "foreground": "#6B4F00",
+      "background": "#FFF4CC",
+      "border": "#8A6500",
+      "tracked": true,
+      "evidenceRequired": false
+    },
+    "in_progress": {
+      "label": "이행 중",
+      "description": "공개된 계획에 따라 이행이 진행 중입니다.",
+      "foreground": "#1F4E79",
+      "background": "#E8F1F8",
+      "border": "#1F4E79",
+      "tracked": true,
+      "evidenceRequired": false
+    },
+    "implemented": {
+      "label": "이행 완료",
+      "description": "관계 기관의 공개 근거에서 이행 완료를 확인했습니다.",
+      "foreground": "#2F6F25",
+      "background": "#E3F1E6",
+      "border": "#2F6F25",
+      "tracked": true,
+      "evidenceRequired": true
+    },
+    "not_pursued": {
+      "label": "미이행 사유 공개",
+      "description": "관계 기관이 이행하지 않는 사유를 공개했습니다.",
+      "foreground": "#8A4F08",
+      "background": "#FEF6E7",
+      "border": "#8A4F08",
+      "tracked": true,
+      "evidenceRequired": true
+    }
+  }
+}

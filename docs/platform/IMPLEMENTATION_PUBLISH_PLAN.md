@@ -19,6 +19,8 @@
 
 관찰 시각은 공개 시각보다 빠를 수 없고, `updated_at <= reviewed_at <= observed_at` 순서를 지켜야 한다. 중복·범위 밖 쟁점, 잘못된 상태·URL·검수자, 잘못된 시각 순서는 plan 생성 전에 거부한다.
 
+허용 상태와 완료 상태의 근거 필수 규칙은 웹 표시와 같은 `src/islands/result/implementation-status-contract.json`에서 읽는다. preflight는 계약 schema·fallback·메타데이터·색상 형식도 시작 시 검증한다.
+
 ## 출력
 
 schema-v1 plan은 현재 body와 다음 body의 SHA-256, 변경 쟁점별 전후 이행값 SHA-256, 역할형 검수자·시각, 전체 `atomicResultBody`를 보존한다. 갱신하지 않은 쟁점은 현재 snapshot에서 그대로 복사하되, 최종 body의 모든 기존 이행값도 동일 공개 계약으로 다시 검증한다.

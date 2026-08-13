@@ -19,6 +19,7 @@
  */
 
 import { resolveHitlStatus, type HitlStatus } from '../../lib/hitl-status';
+import implementationStatusContract from './implementation-status-contract.json';
 
 export const STANCE_LABEL: Record<string, string> = {
   pro: '찬성',
@@ -106,14 +107,8 @@ export type ViewIssue = {
   implementation: ImplementationView;
 };
 
-export type ImplementationState =
-  | 'not_reported'
-  | 'invalid'
-  | 'under_review'
-  | 'planned'
-  | 'in_progress'
-  | 'implemented'
-  | 'not_pursued';
+export type ImplementationState = keyof typeof implementationStatusContract.states;
+type TrackedImplementationState = Exclude<ImplementationState, 'not_reported' | 'invalid'>;
 
 export type ImplementationView = {
   state: ImplementationState;
@@ -132,43 +127,17 @@ export type ImplementationView = {
 
 type ImplementationMeta = Pick<ImplementationView, 'label' | 'description' | 'foreground' | 'background' | 'border'>;
 
-export const IMPLEMENTATION_STATUS_META: Record<ImplementationState, ImplementationMeta> = {
-  not_reported: {
-    label: '이행 정보 미등록',
-    description: '공개된 이행 상태가 아직 없습니다.',
-    foreground: '#5A6B73', background: '#ECEFF1', border: '#6B7D88',
-  },
-  invalid: {
-    label: '이행 정보 확인 필요',
-    description: '공개된 이행 정보의 형식을 확인해야 합니다.',
-    foreground: '#B91C1C', background: '#FDECEC', border: '#B91C1C',
-  },
-  under_review: {
-    label: '기관 검토 중',
-    description: '관계 기관이 권고 내용을 검토하고 있습니다.',
-    foreground: '#135C73', background: '#E7F3F7', border: '#135C73',
-  },
-  planned: {
-    label: '이행 계획 수립',
-    description: '관계 기관이 공개한 이행 계획이 있습니다.',
-    foreground: '#6B4F00', background: '#FFF4CC', border: '#8A6500',
-  },
-  in_progress: {
-    label: '이행 중',
-    description: '공개된 계획에 따라 이행이 진행 중입니다.',
-    foreground: '#1F4E79', background: '#E8F1F8', border: '#1F4E79',
-  },
-  implemented: {
-    label: '이행 완료',
-    description: '관계 기관의 공개 근거에서 이행 완료를 확인했습니다.',
-    foreground: '#2F6F25', background: '#E3F1E6', border: '#2F6F25',
-  },
-  not_pursued: {
-    label: '미이행 사유 공개',
-    description: '관계 기관이 이행하지 않는 사유를 공개했습니다.',
-    foreground: '#8A4F08', background: '#FEF6E7', border: '#8A4F08',
-  },
-};
+export const IMPLEMENTATION_STATUS_META: Record<ImplementationState, ImplementationMeta> = implementationStatusContract.states;
+
+const TRACKED_IMPLEMENTATION_STATES = new Set<string>(
+  Object.entries(implementationStatusContract.states)
+    .filter(([, meta]) => meta.tracked)
+    .map(([state]) => state),
+);
+
+function isTrackedImplementationState(value: string): value is TrackedImplementationState {
+  return TRACKED_IMPLEMENTATION_STATES.has(value);
+}
 
 export type ResultMatrix = {
   teams: string[];
@@ -271,15 +240,15 @@ function normalizedEvidenceUrl(value: unknown): string | null {
 export function toImplementation(raw: ResultImplementationRaw | null | undefined): ImplementationView {
   if (raw == null) return implementationFallback('not_reported');
   if (typeof raw !== 'object' || Array.isArray(raw)) return implementationFallback('invalid');
-  const state = typeof raw.status === 'string' ? raw.status.trim() as ImplementationState : 'invalid';
-  if (!['under_review', 'planned', 'in_progress', 'implemented', 'not_pursued'].includes(state)) {
+  const state = typeof raw.status === 'string' ? raw.status.trim() : '';
+  if (!isTrackedImplementationState(state)) {
     return implementationFallback('invalid');
   }
   const responsibleBody = normalizedImplementationText(raw.responsible_body, 200);
   const updatedAt = normalizedImplementationText(raw.updated_at, 80);
   const summary = normalizedImplementationText(raw.summary, 1000);
   const evidenceUrl = normalizedEvidenceUrl(raw.evidence_url);
-  const evidenceRequired = state === 'implemented' || state === 'not_pursued';
+  const evidenceRequired = implementationStatusContract.states[state].evidenceRequired;
   if (!responsibleBody || !updatedAt || Number.isNaN(Date.parse(updatedAt)) || !summary
     || (evidenceRequired && !evidenceUrl)) {
     return implementationFallback('invalid');

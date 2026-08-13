@@ -7,14 +7,7 @@ const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const ISO_UTC_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 const REVIEWER_PATTERN = /^[a-z][a-z0-9-]{2,39}$/;
 const RESULT_SCOPES = new Set(['topic', 'session', 'assembly']);
-const IMPLEMENTATION_STATES = new Set([
-  'under_review',
-  'planned',
-  'in_progress',
-  'implemented',
-  'not_pursued',
-]);
-const EVIDENCE_REQUIRED_STATES = new Set(['implemented', 'not_pursued']);
+const STATUS_CONTRACT_PATH = new URL('../src/islands/result/implementation-status-contract.json', import.meta.url);
 
 function canonicalValue(value) {
   if (Array.isArray(value)) return value.map(canonicalValue);
@@ -45,6 +38,59 @@ function requireArray(value, label) {
 function requireExactKeys(value, allowedKeys, label) {
   if (Object.keys(value).some((key) => !allowedKeys.has(key))) throw new Error(`Unexpected ${label} field`);
 }
+
+function loadImplementationStatusContract() {
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(STATUS_CONTRACT_PATH, 'utf8'));
+  } catch {
+    throw new Error('Unable to read implementation status contract');
+  }
+  const root = requireObject(parsed, 'implementation status contract');
+  requireExactKeys(root, new Set(['schemaVersion', 'states']), 'implementation status contract');
+  if (root.schemaVersion !== 1) throw new Error('Unsupported implementation status contract version');
+  const states = requireObject(root.states, 'implementation status states');
+  const fallbackStates = new Set(['not_reported', 'invalid']);
+  for (const fallback of fallbackStates) {
+    if (!(fallback in states)) throw new Error('Implementation status contract is missing a fallback state');
+  }
+  const entries = Object.entries(states);
+  for (const [state, rawMeta] of entries) {
+    if (!/^[a-z][a-z0-9_]{1,39}$/.test(state)) throw new Error('Invalid implementation contract state');
+    const meta = requireObject(rawMeta, 'implementation status metadata');
+    requireExactKeys(meta, new Set([
+      'label', 'description', 'foreground', 'background', 'border', 'tracked', 'evidenceRequired',
+    ]), 'implementation status metadata');
+    requireText(meta.label, 'implementation status label', 80);
+    requireText(meta.description, 'implementation status description', 300);
+    for (const colorKey of ['foreground', 'background', 'border']) {
+      if (typeof meta[colorKey] !== 'string' || !/^#[0-9A-F]{6}$/.test(meta[colorKey])) {
+        throw new Error('Invalid implementation status color');
+      }
+    }
+    if (typeof meta.tracked !== 'boolean' || typeof meta.evidenceRequired !== 'boolean') {
+      throw new Error('Invalid implementation status behavior');
+    }
+    if (fallbackStates.has(state)) {
+      if (meta.tracked || meta.evidenceRequired) {
+        throw new Error('Implementation fallback states cannot be tracked or require evidence');
+      }
+    } else if (!meta.tracked) {
+      throw new Error('Non-fallback implementation status must be tracked');
+    }
+  }
+  if (!entries.some(([state, meta]) => !fallbackStates.has(state) && meta.tracked)) {
+    throw new Error('Implementation status contract has no tracked state');
+  }
+  return states;
+}
+
+export const IMPLEMENTATION_STATUS_CONTRACT = loadImplementationStatusContract();
+export const IMPLEMENTATION_STATES = new Set(
+  Object.entries(IMPLEMENTATION_STATUS_CONTRACT)
+    .filter(([, meta]) => meta.tracked)
+    .map(([state]) => state),
+);
 
 function requireText(value, label, maxLength = 1000) {
   if (typeof value !== 'string') throw new Error(`Invalid ${label}`);
@@ -93,7 +139,7 @@ function validatePublicImplementation(rawImplementation) {
   requireText(implementation.responsible_body, 'implementation responsible body', 200);
   requireTimestamp(implementation.updated_at, 'implementation update timestamp');
   requireText(implementation.summary, 'implementation summary', 1000);
-  requireEvidenceUrl(implementation.evidence_url, EVIDENCE_REQUIRED_STATES.has(status));
+  requireEvidenceUrl(implementation.evidence_url, IMPLEMENTATION_STATUS_CONTRACT[status].evidenceRequired);
 }
 
 function parseResultSnapshot(input) {
@@ -161,7 +207,7 @@ function parseImplementationResponses(input, result) {
         responsible_body: requireText(response.responsible_body, 'implementation responsible body', 200),
         updated_at: updatedAt.text,
         summary: requireText(response.summary, 'implementation summary', 1000),
-        evidence_url: requireEvidenceUrl(response.evidence_url, EVIDENCE_REQUIRED_STATES.has(status)),
+        evidence_url: requireEvidenceUrl(response.evidence_url, IMPLEMENTATION_STATUS_CONTRACT[status].evidenceRequired),
       },
       reviewer,
       reviewedAt: reviewedAt.text,

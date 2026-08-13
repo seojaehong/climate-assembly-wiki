@@ -11,6 +11,7 @@ import {
   ratioToPercent,
   HITL_NOTICE_FALLBACK,
   CONSENSUS_RULE_FALLBACK,
+  IMPLEMENTATION_STATUS_META,
   type ResultGetResponse,
   type ResultIssueRaw,
 } from './result-view-logic';
@@ -236,6 +237,12 @@ describe('toImplementation — 이행추적 공개 계약', () => {
       issue({ id: 'invalid', implementation: { status: 'implemented', ...tracked } }),
     ]));
     expect(view?.stats.implementationTrackedCount).toBe(1);
+  });
+
+  it('공용 계약은 fallback 두 상태와 추적 다섯 상태를 완전하게 제공한다', () => {
+    expect(Object.keys(IMPLEMENTATION_STATUS_META).sort()).toEqual([
+      'implemented', 'in_progress', 'invalid', 'not_pursued', 'not_reported', 'planned', 'under_review',
+    ]);
   });
 });
 

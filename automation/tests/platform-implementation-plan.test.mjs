@@ -6,6 +6,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
 import {
+  IMPLEMENTATION_STATES,
+  IMPLEMENTATION_STATUS_CONTRACT,
   buildPlatformImplementationPlan,
   verifyPlatformImplementationPlan,
 } from '../platform-implementation-plan.mjs';
@@ -87,6 +89,25 @@ test('builds a sealed atomic body plan while retaining untouched issues', () => 
   expect(plan.patches[0]).toMatchObject({ issueId: ISSUE_1, reviewer: 'platform-reviewer' });
   expect(plan.beforeBodySha256).not.toBe(plan.afterBodySha256);
   expect(verifyPlatformImplementationPlan(plan, result, responses)).toBe(true);
+});
+
+test('accepts every tracked state from the shared UI contract and rejects fallback states', () => {
+  expect([...IMPLEMENTATION_STATES].sort()).toEqual([
+    'implemented', 'in_progress', 'not_pursued', 'planned', 'under_review',
+  ]);
+  for (const state of IMPLEMENTATION_STATES) {
+    const value = inputs();
+    value.responses.responses[0].status = state;
+    value.responses.responses[0].evidence_url = IMPLEMENTATION_STATUS_CONTRACT[state].evidenceRequired
+      ? 'https://example.org/required-evidence'
+      : null;
+    expect(buildPlatformImplementationPlan(value.result, value.responses).atomicResultBody.issues[0].implementation.status).toBe(state);
+  }
+  for (const state of ['not_reported', 'invalid']) {
+    const value = inputs();
+    value.responses.responses[0].status = state;
+    expect(() => buildPlatformImplementationPlan(value.result, value.responses)).toThrow('status');
+  }
 });
 
 test.each([
