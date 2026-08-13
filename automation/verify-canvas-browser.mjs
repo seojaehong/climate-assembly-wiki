@@ -198,6 +198,14 @@ export async function verifyCanvasBrowser({
       state = 'inactive';
       mimeType = 'audio/webm;codecs=opus';
 
+      constructor() {
+        super();
+        if (window.__failPrivateRecorderConstruction) {
+          window.__failPrivateRecorderConstruction = false;
+          throw new Error('synthetic recorder construction failure');
+        }
+      }
+
       start() {
         this.state = 'recording';
       }
@@ -213,10 +221,20 @@ export async function verifyCanvasBrowser({
       }
     }
     Object.defineProperty(window, 'MediaRecorder', { configurable: true, value: MemoryMediaRecorder });
+    window.__privateGetUserMediaCount = 0;
+    window.__privateMediaTrackStopCount = 0;
+    window.__failPrivateRecorderConstruction = false;
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
       value: {
-        getUserMedia: async () => ({ getTracks: () => [{ stop: () => undefined }] }),
+        getUserMedia: async () => {
+          window.__privateGetUserMediaCount += 1;
+          return {
+            getTracks: () => [{
+              stop: () => { window.__privateMediaTrackStopCount += 1; },
+            }],
+          };
+        },
       },
     });
   });
@@ -346,10 +364,25 @@ export async function verifyCanvasBrowser({
       && await privateCapturePanel.getByText('DB·서버·public 경로로 전송하지 않습니다.', { exact: false }).isVisible();
     await privateCapturePanel.getByLabel('마이크 사용과 로컬 메모리 처리에 동의합니다.').check();
     await privateCapturePanel.getByLabel('회차 ID').fill('session-browser-r4');
+    await reviewPage.evaluate(() => { window.__failPrivateRecorderConstruction = true; });
     await privateCapturePanel.getByRole('button', { name: '녹음 시작' }).click();
+    await privateCapturePanel.getByRole('alert')
+      .filter({ hasText: 'synthetic recorder construction failure' })
+      .waitFor({ timeout: timeoutMs });
+    const privateRecorderConstructionFailureRecovered = await reviewPage.evaluate(() => (
+      window.__privateMediaTrackStopCount === 1
+    )) && await privateCapturePanel.getByRole('button', { name: '녹음 시작' }).isEnabled();
+    await privateCapturePanel.getByRole('button', { name: '녹음 시작' }).evaluate((button) => {
+      if (!(button instanceof HTMLButtonElement)) throw new Error('Private recording start control is not a button');
+      button.click();
+      button.click();
+    });
     const privateSessionLockedWhileRecording = await privateCapturePanel.getByLabel('회차 ID').isDisabled();
     await privateCapturePanel.getByText('녹음 중입니다. 음성은 서버로 전송되지 않습니다.', { exact: true })
       .waitFor({ timeout: timeoutMs });
+    const privateDuplicateRecordingStartBlocked = await reviewPage.evaluate(() => (
+      window.__privateGetUserMediaCount === 2
+    ));
     await reviewPage.waitForTimeout(25);
     await privateCapturePanel.getByRole('button', { name: '녹음 정지' }).click();
     await privateCapturePanel.getByText(/audio SHA-256 [a-f0-9]{64}/).waitFor({ timeout: timeoutMs });
@@ -382,7 +415,9 @@ export async function verifyCanvasBrowser({
       && privateTranscriptBatch.safety?.audioIncluded === false
       && privateTranscriptBatch.safety?.extractionExecuted === false
       && !JSON.stringify(privateTranscriptBatch).includes('synthetic-browser-audio');
-    if (!privateMediaRecorderAvailable || !privateRecordingMemoryBoundaryVisible || !privateSessionLockedWhileRecording
+    if (!privateMediaRecorderAvailable || !privateRecordingMemoryBoundaryVisible
+      || !privateRecorderConstructionFailureRecovered || !privateSessionLockedWhileRecording
+      || !privateDuplicateRecordingStartBlocked
       || !privateTranscriptReviewGateVerified || !privateTranscriptRedecisionGateVerified
       || !privateTranscriptBatchDownloaded) {
       throw new Error('Private MediaRecorder transcript review contract is incomplete');
@@ -650,6 +685,8 @@ export async function verifyCanvasBrowser({
         transcriptReviewDownloaded,
         privateMediaRecorderAvailable,
         privateRecordingMemoryBoundaryVisible,
+        privateRecorderConstructionFailureRecovered,
+        privateDuplicateRecordingStartBlocked,
         privateSessionLockedWhileRecording,
         privateTranscriptReviewGateVerified,
         privateTranscriptRedecisionGateVerified,

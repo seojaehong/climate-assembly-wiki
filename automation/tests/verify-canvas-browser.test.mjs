@@ -177,6 +177,20 @@ async function fixtureServer({
           privateConsent.addEventListener('change', refreshPrivateStart);
           privateSession.addEventListener('input', refreshPrivateStart);
           privateStart.addEventListener('click', () => {
+            window.__privateGetUserMediaCount += 1;
+            if (window.__failPrivateRecorderConstruction) {
+              window.__failPrivateRecorderConstruction = false;
+              window.__privateMediaTrackStopCount += 1;
+              document.querySelector('#private-construction-error')?.remove();
+              const error = document.createElement('p');
+              error.id = 'private-construction-error';
+              error.setAttribute('role', 'alert');
+              error.textContent = 'synthetic recorder construction failure';
+              privateStatus.after(error);
+              refreshPrivateStart();
+              return;
+            }
+            document.querySelector('#private-construction-error')?.remove();
             privateStart.disabled = true;
             privateStop.disabled = false;
             privateSession.disabled = true;
@@ -475,6 +489,8 @@ describe('verifyCanvasBrowser', () => {
     expect(report.checks.transcriptReviewDownloaded).toBe(true);
     expect(report.checks.privateMediaRecorderAvailable).toBe(true);
     expect(report.checks.privateRecordingMemoryBoundaryVisible).toBe(true);
+    expect(report.checks.privateRecorderConstructionFailureRecovered).toBe(true);
+    expect(report.checks.privateDuplicateRecordingStartBlocked).toBe(true);
     expect(report.checks.privateSessionLockedWhileRecording).toBe(true);
     expect(report.checks.privateTranscriptReviewGateVerified).toBe(true);
     expect(report.checks.privateTranscriptRedecisionGateVerified).toBe(true);

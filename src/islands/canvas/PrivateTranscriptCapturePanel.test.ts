@@ -1,7 +1,11 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { PrivateTranscriptCapturePanel } from './PrivateTranscriptCapturePanel';
+import {
+  createPrivateMediaRecorder,
+  PrivateTranscriptCapturePanel,
+  stopPrivateMediaStream,
+} from './PrivateTranscriptCapturePanel';
 
 describe('PrivateTranscriptCapturePanel', () => {
   it('starts as a consent-gated, session-memory-only MediaRecorder surface', () => {
@@ -18,5 +22,34 @@ describe('PrivateTranscriptCapturePanel', () => {
     expect(html).toContain('disabled=""');
     expect(html).toContain('전사 chunk 검수 완료 전에는 extraction handoff를 만들 수 없습니다.');
     expect(html).toContain('aria-live="polite"');
+  });
+
+  it('stops every microphone track when recorder construction fails', () => {
+    const stopped: string[] = [];
+    const stream = {
+      getTracks: () => [
+        { stop: () => stopped.push('audio-1') },
+        { stop: () => stopped.push('audio-2') },
+      ],
+    } as unknown as MediaStream;
+
+    expect(() => createPrivateMediaRecorder(stream, () => {
+      throw new Error('synthetic recorder construction failure');
+    })).toThrow('synthetic recorder construction failure');
+    expect(stopped).toEqual(['audio-1', 'audio-2']);
+  });
+
+  it('does not stop a stream after successful recorder construction', () => {
+    let stopCount = 0;
+    const stream = {
+      getTracks: () => [{ stop: () => { stopCount += 1; } }],
+    } as unknown as MediaStream;
+    const recorder = { state: 'inactive' } as unknown as MediaRecorder;
+
+    expect(createPrivateMediaRecorder(stream, () => recorder)).toBe(recorder);
+    expect(stopCount).toBe(0);
+
+    stopPrivateMediaStream(stream);
+    expect(stopCount).toBe(1);
   });
 });

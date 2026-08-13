@@ -41,6 +41,28 @@ async function blobSha256(blob: Blob): Promise<string> {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+interface PrivateMediaStream {
+  getTracks(): Array<{ stop(): void }>;
+}
+
+/** Stops every acquired media track, including streams that fail before recorder setup completes. */
+export function stopPrivateMediaStream(stream: PrivateMediaStream | null): void {
+  stream?.getTracks().forEach((track) => track.stop());
+}
+
+/** Creates a recorder without leaking the acquired microphone stream if construction fails. */
+export function createPrivateMediaRecorder(
+  stream: MediaStream,
+  factory: (source: MediaStream) => MediaRecorder = (source) => new MediaRecorder(source),
+): MediaRecorder {
+  try {
+    return factory(stream);
+  } catch (error: unknown) {
+    stopPrivateMediaStream(stream);
+    throw error;
+  }
+}
+
 function downloadReviewBatch(session: PrivateTranscriptCaptureSession): void {
   const batch = exportPrivateTranscriptReviewBatch(session);
   const url = URL.createObjectURL(new Blob([`${JSON.stringify(batch, null, 2)}\n`], {
@@ -74,6 +96,7 @@ export function PrivateTranscriptCapturePanel() {
   const captureSessionIdRef = useRef<string | null>(null);
   const generationRef = useRef(0);
   const audioUrlRef = useRef<string | null>(null);
+  const recordingLockRef = useRef(false);
 
   const replaceAudioUrl = (next: string | null) => {
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
@@ -81,20 +104,26 @@ export function PrivateTranscriptCapturePanel() {
     setAudioUrl(next);
   };
 
-  const stopTracks = () => {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
+  const stopCurrentStream = () => {
+    stopPrivateMediaStream(streamRef.current);
     streamRef.current = null;
   };
 
   useEffect(() => () => {
     generationRef.current += 1;
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
-    stopTracks();
+    stopCurrentStream();
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
   }, []);
 
-  const finalizeRecording = async (recorder: MediaRecorder, generation: number, stoppedAt: string) => {
+  const finalizeRecording = async (
+    recorder: MediaRecorder,
+    stream: MediaStream,
+    generation: number,
+    stoppedAt: string,
+  ) => {
     try {
+      if (generationRef.current !== generation) return;
       const mimeType = recorder.mimeType || partsRef.current[0]?.type || 'audio/webm';
       const blob = new Blob(partsRef.current, { type: mimeType });
       const startedAt = startedAtRef.current;
@@ -123,16 +152,21 @@ export function PrivateTranscriptCapturePanel() {
       if (generationRef.current === generation) {
         setRecording(false);
         setFinalizing(false);
+        recordingLockRef.current = false;
       }
-      stopTracks();
-      recorderRef.current = null;
+      stopPrivateMediaStream(stream);
+      if (streamRef.current === stream) streamRef.current = null;
+      if (recorderRef.current === recorder) recorderRef.current = null;
     }
   };
 
   const startRecording = async () => {
-    if (!consented || sessionId.trim().length === 0) return;
+    if (!consented || sessionId.trim().length === 0 || recordingLockRef.current) return;
+    recordingLockRef.current = true;
     const generation = generationRef.current + 1;
     generationRef.current = generation;
+    let acquiredStream: MediaStream | null = null;
+    let recorderCreated = false;
     setError(null);
     setFinalizing(true);
     try {
@@ -140,11 +174,13 @@ export function PrivateTranscriptCapturePanel() {
         throw new Error('이 브라우저는 MediaRecorder 음성 캡처를 지원하지 않습니다.');
       }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      acquiredStream = stream;
       if (generationRef.current !== generation) {
-        stream.getTracks().forEach((track) => track.stop());
+        stopPrivateMediaStream(stream);
         return;
       }
-      const recorder = new MediaRecorder(stream);
+      const recorder = createPrivateMediaRecorder(stream);
+      recorderCreated = true;
       streamRef.current = stream;
       recorderRef.current = recorder;
       partsRef.current = [];
@@ -153,14 +189,23 @@ export function PrivateTranscriptCapturePanel() {
       setCapture(null);
       replaceAudioUrl(null);
       recorder.addEventListener('dataavailable', (event) => {
-        if (event.data.size > 0) partsRef.current.push(event.data);
+        if (generationRef.current === generation && event.data.size > 0) partsRef.current.push(event.data);
       });
       recorder.addEventListener('error', (event) => {
         console.error('Private browser MediaRecorder failed', event.error);
-        if (generationRef.current === generation) setError('브라우저 녹음 중 오류가 발생했습니다.');
+        if (generationRef.current !== generation) return;
+        generationRef.current += 1;
+        stopPrivateMediaStream(stream);
+        if (streamRef.current === stream) streamRef.current = null;
+        if (recorderRef.current === recorder) recorderRef.current = null;
+        recordingLockRef.current = false;
+        setRecording(false);
+        setFinalizing(false);
+        setError('브라우저 녹음 중 오류가 발생했습니다.');
+        setNotice('녹음을 중단하고 마이크를 해제했습니다. 다시 시도해 주세요.');
       });
       recorder.addEventListener('stop', () => {
-        void finalizeRecording(recorder, generation, new Date().toISOString());
+        void finalizeRecording(recorder, stream, generation, new Date().toISOString());
       }, { once: true });
       recorder.start();
       setRecording(true);
@@ -168,9 +213,12 @@ export function PrivateTranscriptCapturePanel() {
       setNotice('녹음 중입니다. 음성은 서버로 전송되지 않습니다.');
     } catch (caught: unknown) {
       console.error('Failed to start the private browser recording', caught);
+      if (recorderCreated) stopPrivateMediaStream(acquiredStream);
+      if (streamRef.current === acquiredStream) streamRef.current = null;
+      recorderRef.current = null;
+      recordingLockRef.current = false;
       setError(errorMessage(caught));
       setFinalizing(false);
-      stopTracks();
     }
   };
 
