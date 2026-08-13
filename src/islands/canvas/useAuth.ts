@@ -1,6 +1,37 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { getSupabase } from '../../lib/supabase';
+
+interface CanvasAuthSessionResult {
+  data: { session: Session | null };
+  error: Error | null;
+}
+
+/** Applies an initial Canvas auth read only while it is still the latest auth operation. */
+export async function completeCanvasAuthSessionLoad(
+  action: () => PromiseLike<CanvasAuthSessionResult>,
+  isCurrent: () => boolean,
+  onSession: (session: Session | null) => void,
+  onError: (message: string | null) => void,
+): Promise<void> {
+  try {
+    const { data, error } = await action();
+    if (!isCurrent()) return;
+    if (error) {
+      console.error('Canvas auth session load failed', error);
+      onSession(null);
+      onError('로그인 상태를 확인하지 못했습니다. 다시 로그인해 주세요.');
+      return;
+    }
+    onSession(data.session);
+    onError(null);
+  } catch (error: unknown) {
+    if (!isCurrent()) return;
+    console.error('Canvas auth session load failed', error);
+    onSession(null);
+    onError('로그인 상태를 확인하지 못했습니다. 다시 로그인해 주세요.');
+  }
+}
 
 /**
  * 진행자 이메일+비밀번호 인증 훅.
@@ -12,6 +43,7 @@ import { getSupabase } from '../../lib/supabase';
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [initializationError, setInitializationError] = useState<string | null>(null);
+  const authGeneration = useRef(0);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -20,26 +52,28 @@ export function useAuth() {
       return;
     }
 
-    void sb.auth.getSession()
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('Canvas auth session load failed', error);
-          setInitializationError('로그인 상태를 확인하지 못했습니다. 다시 로그인해 주세요.');
-          return;
-        }
-        setInitializationError(null);
-        setSession(data.session);
-      })
-      .catch((error: unknown) => {
-        console.error('Canvas auth session load failed', error);
-        setInitializationError('로그인 상태를 확인하지 못했습니다. 다시 로그인해 주세요.');
-      });
+    let active = true;
+    const generation = authGeneration.current + 1;
+    authGeneration.current = generation;
+    void completeCanvasAuthSessionLoad(
+      () => sb.auth.getSession(),
+      () => active && authGeneration.current === generation,
+      setSession,
+      setInitializationError,
+    );
 
     const { data: sub } = sb.auth.onAuthStateChange((_event, s) => {
+      if (!active) return;
+      authGeneration.current += 1;
       setSession(s);
+      setInitializationError(null);
     });
 
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      active = false;
+      authGeneration.current += 1;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   async function signIn(email: string, password: string): Promise<{ error: Error | null }> {

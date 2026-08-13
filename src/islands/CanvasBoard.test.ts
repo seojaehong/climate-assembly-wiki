@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
+import type { Session } from '@supabase/supabase-js';
 import {
   canWriteCanvas,
   CanvasConnectionNotice,
@@ -9,6 +10,9 @@ import {
   retainCanvasOperationNotice,
 } from './CanvasBoard';
 import type { CanvasOperationResult } from './canvas/canvas-operation';
+import { completeCanvasAuthSessionLoad } from './canvas/useAuth';
+
+const authSession = (id: string) => ({ user: { id, email: `${id}@example.test` } }) as Session;
 
 describe('CanvasOperationNotice', () => {
   it('announces failures and exposes the failed operation retry', () => {
@@ -137,6 +141,89 @@ describe('CanvasConnectionNotice', () => {
     expect(canWriteCanvas(true, 'loading')).toBe(false);
     expect(canWriteCanvas(true, 'degraded')).toBe(false);
     expect(canWriteCanvas(true, 'error')).toBe(false);
+  });
+});
+
+describe('Canvas auth session freshness', () => {
+  it('discards an initial session response after a newer auth event invalidates it', async () => {
+    let resolveSession!: (value: { data: { session: Session | null }; error: Error | null }) => void;
+    const pending = new Promise<{ data: { session: Session | null }; error: Error | null }>((resolve) => {
+      resolveSession = resolve;
+    });
+    const sessions: Array<Session | null> = [];
+    const errors: Array<string | null> = [];
+    let generation = 1;
+    const load = completeCanvasAuthSessionLoad(
+      () => pending,
+      () => generation === 1,
+      (session) => sessions.push(session),
+      (error) => errors.push(error),
+    );
+
+    generation = 2;
+    resolveSession({ data: { session: authSession('stale-user') }, error: null });
+    await load;
+
+    expect(sessions).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
+  it('applies the current session and exposes current load failures', async () => {
+    const sessions: Array<Session | null> = [];
+    const errors: Array<string | null> = [];
+    const current = authSession('current-user');
+
+    await completeCanvasAuthSessionLoad(
+      async () => ({ data: { session: current }, error: null }),
+      () => true,
+      (session) => sessions.push(session),
+      (error) => errors.push(error),
+    );
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      await completeCanvasAuthSessionLoad(
+        async () => ({ data: { session: null }, error: new Error('fixture auth failure') }),
+        () => true,
+        (session) => sessions.push(session),
+        (error) => errors.push(error),
+      );
+      expect(errorLog).toHaveBeenCalledOnce();
+    } finally {
+      errorLog.mockRestore();
+    }
+
+    expect(sessions).toEqual([current, null]);
+    expect(errors).toEqual([null, '로그인 상태를 확인하지 못했습니다. 다시 로그인해 주세요.']);
+  });
+
+  it('does not surface an obsolete initial session failure after auth changes', async () => {
+    const sessions: Array<Session | null> = [];
+    const errors: Array<string | null> = [];
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      await completeCanvasAuthSessionLoad(
+        async () => { throw new Error('stale fixture auth failure'); },
+        () => false,
+        (session) => sessions.push(session),
+        (error) => errors.push(error),
+      );
+      expect(errorLog).not.toHaveBeenCalled();
+    } finally {
+      errorLog.mockRestore();
+    }
+
+    expect(sessions).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
+  it('invalidates the initial read on auth events and unmount cleanup', () => {
+    const source = readFileSync(new URL('./canvas/useAuth.ts', import.meta.url), 'utf8');
+
+    expect(source).toContain('const generation = authGeneration.current + 1;');
+    expect(source).toContain('() => active && authGeneration.current === generation');
+    expect(source).toContain("sb.auth.onAuthStateChange((_event, s) => {");
+    expect(source).toContain('authGeneration.current += 1;');
+    expect(source).toContain('active = false;');
   });
 });
 
