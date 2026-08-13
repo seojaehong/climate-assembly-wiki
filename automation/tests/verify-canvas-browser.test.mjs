@@ -49,13 +49,18 @@ async function fixtureServer({
           <h2 id="private-transcript-capture-heading">R4 로컬 음성·전사 검수</h2>
           <p>녹음은 브라우저 세션 메모리에만 두며 DB·서버·public 경로로 전송하지 않습니다.</p>
           <p>인증 검수자 ID <code>${authReviewerId}</code></p>
-          <label><input id="private-consent" type="checkbox">마이크 사용과 로컬 메모리 처리에 동의합니다.</label>
+          <label><input id="private-consent" type="checkbox">마이크 또는 로컬 녹음 파일의 세션 메모리 처리에 동의합니다.</label>
           <label>회차 ID<input id="private-session" type="text"></label>
+          <section aria-label="테이블 녹음 파일 로컬 가져오기">
+            <label>로컬 녹음 파일<input id="private-audio-file" type="file" accept="audio/*"></label>
+            <label>파일 녹음 시작 시각 (이 장치의 현지 시각)<input id="private-audio-started" type="datetime-local"></label>
+            <button id="private-import-audio" type="button" disabled>녹음 파일 로컬 가져오기</button>
+          </section>
           <button id="private-start" type="button" disabled>녹음 시작</button>
           <button id="private-stop" type="button" disabled>녹음 정지</button>
           <p id="private-status" role="status" aria-live="polite">동의 후 합성 음성으로 브라우저 녹음 proof of concept를 시작하세요.</p>
           <section id="private-capture" hidden>
-            <strong>로컬 녹음 1000ms · 16 bytes</strong>
+            <strong id="private-capture-summary">로컬 음성 1000ms · 16 bytes</strong>
             <span>capture ID <code data-private-capture-id>capture-browser</code></span>
             <span>audio SHA-256 ${'b'.repeat(64)}</span>
             <label>provider-neutral STT 후보 JSON<input id="private-stt-candidates" type="file"></label>
@@ -179,6 +184,9 @@ async function fixtureServer({
           const privateStatus = document.querySelector('#private-status');
           const privateProgress = document.querySelector('#private-progress');
           const privateDownload = document.querySelector('#private-download');
+          const privateAudioFile = document.querySelector('#private-audio-file');
+          const privateAudioStarted = document.querySelector('#private-audio-started');
+          const privateImportAudio = document.querySelector('#private-import-audio');
           const privateSttCandidates = document.querySelector('#private-stt-candidates');
           const privateImportStt = document.querySelector('#private-import-stt');
           let privatePermissionPending = false;
@@ -197,6 +205,27 @@ async function fixtureServer({
             refreshPrivateStart();
           });
           privateSession.addEventListener('input', refreshPrivateStart);
+          const refreshPrivateAudioImport = () => {
+            privateImportAudio.disabled = !privateConsent.checked || !privateSession.value.trim()
+              || !privateAudioFile.files[0] || !privateAudioStarted.value;
+          };
+          privateConsent.addEventListener('change', refreshPrivateAudioImport);
+          privateSession.addEventListener('input', refreshPrivateAudioImport);
+          privateAudioFile.addEventListener('change', refreshPrivateAudioImport);
+          privateAudioStarted.addEventListener('input', refreshPrivateAudioImport);
+          privateImportAudio.addEventListener('click', () => {
+            privateCapture.hidden = false;
+            document.querySelector('#private-capture-summary').textContent = '로컬 음성 1000ms · 16044 bytes';
+            privateStatus.textContent = '녹음 파일은 브라우저 세션 메모리에만 있습니다. 전사 chunk를 작성하고 전부 검수하세요.';
+            let preview = document.querySelector('#private-audio-preview');
+            if (!preview) {
+              preview = document.createElement('audio');
+              preview.id = 'private-audio-preview';
+              preview.controls = true;
+              preview.setAttribute('aria-label', '세션 메모리 녹음 미리듣기');
+              privateCapture.before(preview);
+            }
+          });
           privateStart.addEventListener('click', () => {
             window.__privateGetUserMediaCount += 1;
             if (window.__failPrivateRecorderConstruction) {
@@ -295,7 +324,7 @@ async function fixtureServer({
               kind: 'private-transcript-review-batch',
               source: {
                 captureId: 'capture-browser', sessionId: privateSession.value,
-                audioSha256: '${'b'.repeat(64)}', mimeType: 'audio/webm', byteLength: 16,
+                audioSha256: '${'b'.repeat(64)}', mimeType: 'audio/wav', byteLength: 16044,
                 startedAt: '2026-08-29T01:00:00.000Z', stoppedAt: '2026-08-29T01:00:01.000Z',
                 durationMs: 1000, storage: 'browser-memory',
               },
@@ -659,6 +688,7 @@ describe('verifyCanvasBrowser', () => {
     expect(report.checks.privateDuplicateRecordingStartBlocked).toBe(true);
     expect(report.checks.privateStalePermissionFailureDiscarded).toBe(true);
     expect(report.checks.privateConsentWithdrawalDiscarded).toBe(true);
+    expect(report.checks.privateAudioFileImported).toBe(true);
     expect(report.checks.privateSessionLockedWhileRecording).toBe(true);
     expect(report.checks.privateTranscriptReviewGateVerified).toBe(true);
     expect(report.checks.privateTranscriptRedecisionGateVerified).toBe(true);

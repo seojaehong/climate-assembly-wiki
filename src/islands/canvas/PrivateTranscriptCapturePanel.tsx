@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import {
   appendPrivateTranscriptChunk,
+  createPrivateTranscriptFileCaptureSession,
   createPrivateTranscriptCaptureSession,
   exportPrivateTranscriptReviewBatch,
   importPrivateSttCandidates,
@@ -14,6 +15,7 @@ const BORDER = '#2F6F7E';
 const INK = '#102A43';
 const MUTED = '#526777';
 const PANEL = '#F3F8FA';
+const MAX_PRIVATE_AUDIO_BYTES = 256 * 1024 * 1024;
 
 const controlStyle: CSSProperties = {
   background: '#FFFFFF',
@@ -56,6 +58,20 @@ interface PrivateSttImportCallbacks {
   onBusyChange: (busy: boolean) => void;
 }
 
+interface PrivateAudioFileImportCallbacks {
+  blob: Blob;
+  captureId: string;
+  sessionId: string;
+  startedAt: string;
+  readImportedAt: () => string;
+  readDurationMs: () => Promise<number>;
+  readSha256: () => Promise<string>;
+  isCurrent: () => boolean;
+  onImported: (capture: PrivateTranscriptCaptureSession) => void;
+  onError: (message: string) => void;
+  onBusyChange: (busy: boolean) => void;
+}
+
 /** Reads and validates a local STT candidate file without applying stale async results. */
 export async function completePrivateSttCandidateImport(callbacks: PrivateSttImportCallbacks): Promise<void> {
   try {
@@ -71,6 +87,75 @@ export async function completePrivateSttCandidateImport(callbacks: PrivateSttImp
   } finally {
     if (callbacks.isCurrent()) callbacks.onBusyChange(false);
   }
+}
+
+/** Reads local audio metadata without retaining its file name or bytes in the capture contract. */
+export async function completePrivateAudioFileImport(callbacks: PrivateAudioFileImportCallbacks): Promise<void> {
+  try {
+    if (callbacks.blob.size <= 0 || callbacks.blob.size > MAX_PRIVATE_AUDIO_BYTES) {
+      throw new Error('로컬 녹음 파일은 비어 있지 않은 256MB 이하 파일이어야 합니다.');
+    }
+    if (!callbacks.blob.type.startsWith('audio/')) {
+      throw new Error('브라우저가 음성 형식으로 확인한 로컬 파일만 가져올 수 있습니다.');
+    }
+    const durationMs = await callbacks.readDurationMs();
+    if (!callbacks.isCurrent()) return;
+    const audioSha256 = await callbacks.readSha256();
+    if (!callbacks.isCurrent()) return;
+    const capture = createPrivateTranscriptFileCaptureSession({
+      captureId: callbacks.captureId,
+      sessionId: callbacks.sessionId,
+      audioSha256,
+      mimeType: callbacks.blob.type,
+      byteLength: callbacks.blob.size,
+      startedAt: callbacks.startedAt,
+      durationMs,
+      importedAt: callbacks.readImportedAt(),
+    });
+    if (callbacks.isCurrent()) callbacks.onImported(capture);
+  } catch (error: unknown) {
+    if (!callbacks.isCurrent()) return;
+    console.error('Failed to import a private local audio file', error);
+    callbacks.onError(errorMessage(error));
+  } finally {
+    if (callbacks.isCurrent()) callbacks.onBusyChange(false);
+  }
+}
+
+/** Resolves local audio duration from browser metadata with a bounded wait. */
+export function readPrivateAudioDurationMs(blob: Blob, timeoutMs = 20_000): Promise<number> {
+  return new Promise((resolveDuration, rejectDuration) => {
+    const url = URL.createObjectURL(blob);
+    const audio = document.createElement('audio');
+    let settled = false;
+    const settle = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      audio.removeAttribute('src');
+      audio.load();
+      URL.revokeObjectURL(url);
+      callback();
+    };
+    const timeout = window.setTimeout(() => settle(() => {
+      rejectDuration(new Error('로컬 녹음 파일의 재생 길이를 20초 안에 확인하지 못했습니다.'));
+    }), timeoutMs);
+    audio.preload = 'metadata';
+    audio.addEventListener('loadedmetadata', () => {
+      const durationMs = Math.round(audio.duration * 1_000);
+      settle(() => {
+        if (!Number.isSafeInteger(durationMs) || durationMs <= 0) {
+          rejectDuration(new Error('로컬 녹음 파일의 재생 길이가 올바르지 않습니다.'));
+          return;
+        }
+        resolveDuration(durationMs);
+      });
+    }, { once: true });
+    audio.addEventListener('error', () => settle(() => {
+      rejectDuration(new Error('로컬 녹음 파일의 음성 메타데이터를 읽지 못했습니다.'));
+    }), { once: true });
+    audio.src = url;
+  });
 }
 
 /** Stops every acquired media track, including streams that fail before recorder setup completes. */
@@ -114,6 +199,9 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
   const [endMs, setEndMs] = useState('');
   const [speaker, setSpeaker] = useState('speaker-a');
   const [chunkText, setChunkText] = useState('');
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [recordedStartedAt, setRecordedStartedAt] = useState('');
+  const [importingAudio, setImportingAudio] = useState(false);
   const [sttCandidateFile, setSttCandidateFile] = useState<File | null>(null);
   const [importingStt, setImportingStt] = useState(false);
   const [notice, setNotice] = useState('동의 후 합성 음성으로 브라우저 녹음 proof of concept를 시작하세요.');
@@ -129,6 +217,9 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
   const captureRef = useRef<PrivateTranscriptCaptureSession | null>(null);
   const sttImportGenerationRef = useRef(0);
   const sttInputRef = useRef<HTMLInputElement | null>(null);
+  const audioImportGenerationRef = useRef(0);
+  const audioImportLockRef = useRef(false);
+  const audioInputRef = useRef<HTMLInputElement | null>(null);
   captureRef.current = capture;
 
   const replaceAudioUrl = (next: string | null) => {
@@ -145,6 +236,8 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
   useEffect(() => () => {
     generationRef.current += 1;
     sttImportGenerationRef.current += 1;
+    audioImportGenerationRef.current += 1;
+    audioImportLockRef.current = false;
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
     stopCurrentStream();
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
@@ -197,7 +290,7 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
   };
 
   const startRecording = async () => {
-    if (!consented || sessionId.trim().length === 0 || recordingLockRef.current) return;
+    if (!consented || sessionId.trim().length === 0 || recordingLockRef.current || audioImportLockRef.current) return;
     recordingLockRef.current = true;
     const generation = generationRef.current + 1;
     generationRef.current = generation;
@@ -223,6 +316,12 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
       startedAtRef.current = new Date().toISOString();
       captureSessionIdRef.current = sessionId.trim();
       setCapture(null);
+      audioImportGenerationRef.current += 1;
+      audioImportLockRef.current = false;
+      setImportingAudio(false);
+      setAudioFile(null);
+      setRecordedStartedAt('');
+      if (audioInputRef.current) audioInputRef.current.value = '';
       sttImportGenerationRef.current += 1;
       setSttCandidateFile(null);
       if (sttInputRef.current) sttInputRef.current.value = '';
@@ -293,6 +392,12 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
     setRecording(false);
     setFinalizing(false);
     setCapture(null);
+    audioImportGenerationRef.current += 1;
+    audioImportLockRef.current = false;
+    setImportingAudio(false);
+    setAudioFile(null);
+    setRecordedStartedAt('');
+    if (audioInputRef.current) audioInputRef.current.value = '';
     sttImportGenerationRef.current += 1;
     setImportingStt(false);
     setSttCandidateFile(null);
@@ -308,6 +413,59 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
   const updateConsent = (next: boolean) => {
     setConsented(next);
     if (!next) discardPrivateCapture();
+  };
+
+  const importAudioFile = async () => {
+    const file = audioFile;
+    if (!consented || !file || sessionId.trim().length === 0 || recordedStartedAt.length === 0
+      || audioImportLockRef.current || recording || finalizing) return;
+    let startedAt: string;
+    try {
+      startedAt = new Date(recordedStartedAt).toISOString();
+    } catch (caught: unknown) {
+      console.error('Failed to parse the private local audio start time', caught);
+      setError('녹음 시작 시각을 확인해 주세요.');
+      return;
+    }
+    audioImportLockRef.current = true;
+    const generation = audioImportGenerationRef.current + 1;
+    audioImportGenerationRef.current = generation;
+    const captureId = `capture-${crypto.randomUUID()}`;
+    const currentSessionId = sessionId.trim();
+    setImportingAudio(true);
+    setError(null);
+    setNotice('로컬 녹음 파일의 길이와 SHA-256을 브라우저에서 확인하고 있습니다.');
+    await completePrivateAudioFileImport({
+      blob: file,
+      captureId,
+      sessionId: currentSessionId,
+      startedAt,
+      readImportedAt: () => new Date().toISOString(),
+      readDurationMs: () => readPrivateAudioDurationMs(file),
+      readSha256: () => blobSha256(file),
+      isCurrent: () => audioImportGenerationRef.current === generation,
+      onImported: (next) => {
+        generationRef.current += 1;
+        sttImportGenerationRef.current += 1;
+        setCapture(next);
+        setSttCandidateFile(null);
+        if (sttInputRef.current) sttInputRef.current.value = '';
+        setStartMs('0');
+        setEndMs(String(next.source.durationMs));
+        setChunkText('');
+        replaceAudioUrl(URL.createObjectURL(file));
+        setAudioFile(null);
+        setRecordedStartedAt('');
+        if (audioInputRef.current) audioInputRef.current.value = '';
+        setError(null);
+        setNotice('녹음 파일은 브라우저 세션 메모리에만 있습니다. 전사 chunk를 작성하고 전부 검수하세요.');
+      },
+      onError: setError,
+      onBusyChange: (busy) => {
+        audioImportLockRef.current = busy;
+        setImportingAudio(busy);
+      },
+    });
   };
 
   const appendChunk = () => {
@@ -419,8 +577,8 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
       <header style={{ marginBottom: 12 }}>
         <h2 id="private-transcript-capture-heading">R4 로컬 음성·전사 검수</h2>
         <p style={{ color: MUTED, lineHeight: 1.6 }}>
-          MediaRecorder proof of concept입니다. 녹음은 브라우저 세션 메모리에만 두며 DB·서버·public 경로로 전송하지 않습니다.
-          {' '}새 녹음을 시작하거나 페이지를 닫으면 기존 음성은 폐기됩니다. 실제 시민 발언을 녹음하지 마세요.
+          MediaRecorder와 테이블 녹음 파일의 local-only proof of concept입니다. 음성은 브라우저 세션 메모리에만 두며 DB·서버·public 경로로 전송하지 않습니다.
+          {' '}새 녹음·파일을 가져오거나 페이지를 닫으면 기존 음성은 폐기됩니다. 승인된 consent·retention 정책 전에는 실제 시민 발언을 사용하지 마세요.
         </p>
         <p style={{ color: MUTED, lineHeight: 1.6 }}>
           전사 chunk 검수 완료 전에는 extraction handoff를 만들 수 없습니다. 외부 STT 호출과 extraction은 실행하지 않으며,
@@ -433,13 +591,34 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
       <div style={{ ...cardStyle, background: PANEL, marginBottom: 16 }}>
         <label style={{ alignItems: 'center', display: 'flex', gap: 8 }}>
           <input type="checkbox" checked={consented} onChange={(event) => updateConsent(event.currentTarget.checked)} />
-          마이크 사용과 로컬 메모리 처리에 동의합니다.
+          마이크 또는 로컬 녹음 파일의 세션 메모리 처리에 동의합니다.
         </label>
         <label>회차 ID
-          <input value={sessionId} onChange={(event) => setSessionId(event.currentTarget.value)} disabled={recording || finalizing} autoComplete="off" placeholder="예: session-20260829" style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />
+          <input value={sessionId} onChange={(event) => setSessionId(event.currentTarget.value)} disabled={recording || finalizing || importingAudio} autoComplete="off" placeholder="예: session-20260829" style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />
         </label>
+        <section aria-label="테이블 녹음 파일 로컬 가져오기" style={{ display: 'grid', gap: 8 }}>
+          <p style={{ color: MUTED, margin: 0 }}>
+            파일명·경로·음성 bytes는 검수 batch에 넣지 않습니다. 운영자가 확인한 녹음 시작 시각과 브라우저가 읽은 길이·SHA-256만 결속합니다. 최대 256MB입니다.
+          </p>
+          <label>로컬 녹음 파일
+            <input
+              ref={audioInputRef}
+              type="file"
+              accept="audio/*,.wav,.mp3,.m4a,.webm,.ogg"
+              onChange={(event) => setAudioFile(event.currentTarget.files?.[0] ?? null)}
+              disabled={recording || finalizing || importingAudio}
+              style={{ ...controlStyle, display: 'block', width: '100%' }}
+            />
+          </label>
+          <label>파일 녹음 시작 시각 (이 장치의 현지 시각)
+            <input type="datetime-local" value={recordedStartedAt} onChange={(event) => setRecordedStartedAt(event.currentTarget.value)} disabled={recording || finalizing || importingAudio} style={{ ...controlStyle, display: 'block', width: '100%' }} />
+          </label>
+          <button type="button" onClick={() => { void importAudioFile(); }} disabled={!consented || !audioFile || sessionId.trim().length === 0 || recordedStartedAt.length === 0 || recording || finalizing || importingAudio} style={{ ...controlStyle, fontWeight: 800 }}>
+            {importingAudio ? '녹음 파일 확인 중…' : '녹음 파일 로컬 가져오기'}
+          </button>
+        </section>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <button type="button" onClick={() => { void startRecording(); }} disabled={!consented || sessionId.trim().length === 0 || recording || finalizing} style={{ ...controlStyle, background: '#0B4F6C', color: '#FFFFFF', fontWeight: 800 }}>
+          <button type="button" onClick={() => { void startRecording(); }} disabled={!consented || sessionId.trim().length === 0 || recording || finalizing || importingAudio} style={{ ...controlStyle, background: '#0B4F6C', color: '#FFFFFF', fontWeight: 800 }}>
             녹음 시작
           </button>
           <button type="button" onClick={stopRecording} disabled={!recording || finalizing} style={{ ...controlStyle, background: '#8A1C1C', color: '#FFFFFF', fontWeight: 800 }}>
@@ -453,7 +632,7 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
       {capture ? (
         <>
           <section aria-label="로컬 전사 chunk 작성" style={{ ...cardStyle, marginBottom: 16 }}>
-            <strong>로컬 녹음 {capture.source.durationMs}ms · {capture.source.byteLength} bytes</strong>
+            <strong>로컬 음성 {capture.source.durationMs}ms · {capture.source.byteLength} bytes</strong>
             <span style={{ color: MUTED, overflowWrap: 'anywhere' }}>capture ID <code data-private-capture-id>{capture.source.captureId}</code></span>
             <span style={{ color: MUTED, overflowWrap: 'anywhere' }}>audio SHA-256 {capture.source.audioSha256}</span>
             <p style={{ color: MUTED, margin: 0, overflowWrap: 'anywhere' }}>

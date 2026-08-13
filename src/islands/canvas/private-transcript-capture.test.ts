@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   appendPrivateTranscriptChunk,
   createPrivateTranscriptCaptureSession,
+  createPrivateTranscriptFileCaptureSession,
   exportPrivateTranscriptReviewBatch,
   importPrivateSttCandidates,
   reviewPrivateTranscriptChunk,
@@ -37,6 +38,59 @@ const sttCandidates = () => ({
 });
 
 describe('private transcript capture', () => {
+  it('creates an exact browser-memory capture from a local recorder file without retaining its name or bytes', () => {
+    const session = createPrivateTranscriptFileCaptureSession({
+      captureId: 'capture-file-20260829-a',
+      sessionId: 'session-20260829',
+      audioSha256: 'c'.repeat(64),
+      mimeType: 'audio/wav',
+      byteLength: 16_044,
+      startedAt: '2026-08-29T01:10:00.000Z',
+      durationMs: 1_000,
+      importedAt: '2026-08-29T01:10:02.000Z',
+    });
+
+    expect(session.source).toEqual({
+      captureId: 'capture-file-20260829-a',
+      sessionId: 'session-20260829',
+      audioSha256: 'c'.repeat(64),
+      mimeType: 'audio/wav',
+      byteLength: 16_044,
+      startedAt: '2026-08-29T01:10:00.000Z',
+      stoppedAt: '2026-08-29T01:10:01.000Z',
+      durationMs: 1_000,
+      storage: 'browser-memory',
+    });
+    expect(JSON.stringify(session)).not.toContain('filename');
+    expect(JSON.stringify(session)).not.toContain('audioBytes');
+  });
+
+  it('rejects invalid local recorder duration before creating a capture', () => {
+    expect(() => createPrivateTranscriptFileCaptureSession({
+      captureId: 'capture-file-20260829-a',
+      sessionId: 'session-20260829',
+      audioSha256: 'c'.repeat(64),
+      mimeType: 'audio/wav',
+      byteLength: 16_044,
+      startedAt: '2026-08-29T01:10:00.000Z',
+      durationMs: 0,
+      importedAt: '2026-08-29T01:10:02.000Z',
+    })).toThrow('Invalid audio duration');
+  });
+
+  it('rejects a local recorder timeline that ends after the file import', () => {
+    expect(() => createPrivateTranscriptFileCaptureSession({
+      captureId: 'capture-file-20260829-a',
+      sessionId: 'session-20260829',
+      audioSha256: 'c'.repeat(64),
+      mimeType: 'audio/wav',
+      byteLength: 16_044,
+      startedAt: '2026-08-29T01:10:00.000Z',
+      durationMs: 2_000,
+      importedAt: '2026-08-29T01:10:01.999Z',
+    })).toThrow('Local audio capture cannot end in the future');
+  });
+
   it('replaces local drafts with audio-bound provider-neutral STT candidates that still require review', () => {
     const imported = importPrivateSttCandidates(capture(), sttCandidates());
 

@@ -77,6 +77,11 @@ interface CaptureInput {
   stoppedAt: string;
 }
 
+interface FileCaptureInput extends Omit<CaptureInput, 'stoppedAt'> {
+  durationMs: number;
+  importedAt: string;
+}
+
 interface AppendChunkInput {
   startMs: number;
   endMs: number;
@@ -228,6 +233,33 @@ export function createPrivateTranscriptCaptureSession(input: CaptureInput): Priv
     chunks: [],
     summary: { chunks: 0, decided: 0 },
   };
+}
+
+/** Creates the same private capture contract from a local recorder file and its operator-confirmed start time. */
+export function createPrivateTranscriptFileCaptureSession(input: FileCaptureInput): PrivateTranscriptCaptureSession {
+  if (!Number.isSafeInteger(input.durationMs) || input.durationMs <= 0) {
+    throw new Error('Invalid audio duration');
+  }
+  const startedAt = canonicalInstant(input.startedAt, 'capture startedAt');
+  const stoppedAtValue = new Date(startedAt).valueOf() + input.durationMs;
+  if (!Number.isSafeInteger(stoppedAtValue)) throw new Error('Invalid audio duration');
+  let stoppedAt: string;
+  try {
+    stoppedAt = new Date(stoppedAtValue).toISOString();
+  } catch (error: unknown) {
+    throw new Error('Invalid audio duration', { cause: error });
+  }
+  const importedAt = canonicalInstant(input.importedAt, 'capture importedAt');
+  if (stoppedAt > importedAt) throw new Error('Local audio capture cannot end in the future');
+  return createPrivateTranscriptCaptureSession({
+    captureId: input.captureId,
+    sessionId: input.sessionId,
+    audioSha256: input.audioSha256,
+    mimeType: input.mimeType,
+    byteLength: input.byteLength,
+    startedAt,
+    stoppedAt,
+  });
 }
 
 export function appendPrivateTranscriptChunk(

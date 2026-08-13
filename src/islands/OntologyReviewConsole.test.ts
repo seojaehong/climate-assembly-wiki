@@ -60,7 +60,7 @@ describe('OntologyReviewConsole', () => {
     expect(html).toContain('candidate node와 relation을 브라우저 메모리에서만 검수합니다.');
     expect(html).toContain('승인된 consent·retention 정책 전에는 실제 시민 발언 파일을 넣지 마세요.');
     expect(html).toContain('R4 로컬 음성·전사 검수');
-    expect(html).toContain('MediaRecorder proof of concept');
+    expect(html).toContain('MediaRecorder와 테이블 녹음 파일의 local-only proof of concept');
     expect(html).toContain('브라우저 세션 메모리에만');
     expect(html).toContain('전사 chunk 검수 완료 전에는 extraction handoff를 만들 수 없습니다.');
   });
@@ -75,7 +75,7 @@ describe('OntologyReviewConsole', () => {
     }));
     const inputTags = html.match(/<input\b[^>]*>/g) ?? [];
 
-    expect(inputTags).toHaveLength(7);
+    expect(inputTags).toHaveLength(9);
     for (const input of inputTags.filter((input) => !input.includes('type="checkbox"'))) {
       expect(input).toContain('background:#FFFFFF');
       expect(input).toContain('color:#102A43');

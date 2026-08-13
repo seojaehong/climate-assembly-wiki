@@ -93,6 +93,26 @@ const REVIEW_AUTH_EMAIL = 'synthetic-review@example.invalid';
 const REVIEW_AUTH_USER_ID = '00000000-0000-4000-8000-000000000091';
 const REVIEW_AUTH_REVIEWER_ID = `auth-user:${REVIEW_AUTH_USER_ID}`;
 
+function syntheticWavBuffer(durationMs = 1_000, sampleRate = 8_000) {
+  const sampleCount = Math.round((durationMs / 1_000) * sampleRate);
+  const dataBytes = sampleCount * 2;
+  const wav = Buffer.alloc(44 + dataBytes);
+  wav.write('RIFF', 0, 'ascii');
+  wav.writeUInt32LE(36 + dataBytes, 4);
+  wav.write('WAVE', 8, 'ascii');
+  wav.write('fmt ', 12, 'ascii');
+  wav.writeUInt32LE(16, 16);
+  wav.writeUInt16LE(1, 20);
+  wav.writeUInt16LE(1, 22);
+  wav.writeUInt32LE(sampleRate, 24);
+  wav.writeUInt32LE(sampleRate * 2, 28);
+  wav.writeUInt16LE(2, 32);
+  wav.writeUInt16LE(16, 34);
+  wav.write('data', 36, 'ascii');
+  wav.writeUInt32LE(dataBytes, 40);
+  return wav;
+}
+
 function syntheticReviewAuthSession() {
   const now = Math.floor(Date.now() / 1_000);
   const encode = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -560,7 +580,9 @@ export async function verifyCanvasBrowser({
       .getByText('브라우저 세션 메모리에만', { exact: false })
       .isVisible()
       && await privateCapturePanel.getByText('DB·서버·public 경로로 전송하지 않습니다.', { exact: false }).isVisible();
-    await privateCapturePanel.getByLabel('마이크 사용과 로컬 메모리 처리에 동의합니다.').check();
+    const privateConsent = privateCapturePanel
+      .getByLabel('마이크 또는 로컬 녹음 파일의 세션 메모리 처리에 동의합니다.');
+    await privateConsent.check();
     await privateCapturePanel.getByLabel('회차 ID').fill('session-browser-r4');
     await reviewPage.evaluate(() => { window.__failPrivateRecorderConstruction = true; });
     await privateCapturePanel.getByRole('button', { name: '녹음 시작' }).click();
@@ -573,10 +595,10 @@ export async function verifyCanvasBrowser({
     await reviewPage.evaluate(() => { window.__delayPrivateGetUserMedia = true; });
     await privateCapturePanel.getByRole('button', { name: '녹음 시작' }).click();
     await reviewPage.waitForFunction(() => window.__privateGetUserMediaCount === 2, undefined, { timeout: timeoutMs });
-    await privateCapturePanel.getByLabel('마이크 사용과 로컬 메모리 처리에 동의합니다.').uncheck();
+    await privateConsent.uncheck();
     await privateCapturePanel.getByText('동의를 철회해 마이크와 로컬 음성·전사 초안을 폐기했습니다.', { exact: true })
       .waitFor({ timeout: timeoutMs });
-    await privateCapturePanel.getByLabel('마이크 사용과 로컬 메모리 처리에 동의합니다.').check();
+    await privateConsent.check();
     await privateCapturePanel.getByRole('button', { name: '녹음 시작' }).evaluate((button) => {
       if (!(button instanceof HTMLButtonElement)) throw new Error('Private recording start control is not a button');
       button.click();
@@ -593,7 +615,7 @@ export async function verifyCanvasBrowser({
     const privateStalePermissionFailureDiscarded = await privateCapturePanel.getByLabel('회차 ID').isDisabled()
       && await privateCapturePanel.getByRole('button', { name: '녹음 정지' }).isEnabled()
       && await privateCapturePanel.getByText('녹음 중입니다. 음성은 서버로 전송되지 않습니다.', { exact: true }).isVisible();
-    await privateCapturePanel.getByLabel('마이크 사용과 로컬 메모리 처리에 동의합니다.').uncheck();
+    await privateConsent.uncheck();
     await privateCapturePanel.getByText('동의를 철회해 마이크와 로컬 음성·전사 초안을 폐기했습니다.', { exact: true })
       .waitFor({ timeout: timeoutMs });
     const privateConsentWithdrawalDiscarded = await reviewPage.evaluate(() => (
@@ -601,17 +623,31 @@ export async function verifyCanvasBrowser({
     ))
       && await privateCapturePanel.getByRole('button', { name: '녹음 시작' }).isDisabled()
       && !await privateCapturePanel.getByText(/audio SHA-256 [a-f0-9]{64}/).isVisible();
-    await privateCapturePanel.getByLabel('마이크 사용과 로컬 메모리 처리에 동의합니다.').check();
+    await privateConsent.check();
     await privateCapturePanel.getByRole('button', { name: '녹음 시작' }).click();
     await privateCapturePanel.getByText('녹음 중입니다. 음성은 서버로 전송되지 않습니다.', { exact: true })
       .waitFor({ timeout: timeoutMs });
     await reviewPage.waitForTimeout(25);
     await privateCapturePanel.getByRole('button', { name: '녹음 정지' }).click();
     await privateCapturePanel.getByText(/audio SHA-256 [a-f0-9]{64}/).waitFor({ timeout: timeoutMs });
+    await privateCapturePanel.getByLabel('로컬 녹음 파일', { exact: true }).setInputFiles({
+      name: 'synthetic-table-recorder.wav',
+      mimeType: 'audio/wav',
+      buffer: syntheticWavBuffer(),
+    });
+    await privateCapturePanel.getByLabel('파일 녹음 시작 시각 (이 장치의 현지 시각)').fill('2026-08-01T10:00');
+    await privateCapturePanel.getByRole('button', { name: '녹음 파일 로컬 가져오기' }).click();
+    await privateCapturePanel
+      .getByText('녹음 파일은 브라우저 세션 메모리에만 있습니다. 전사 chunk를 작성하고 전부 검수하세요.', { exact: true })
+      .waitFor({ timeout: timeoutMs });
+    const privateAudioFileImported = await privateCapturePanel
+      .getByText('로컬 음성 1000ms · 16044 bytes', { exact: true })
+      .isVisible()
+      && await privateCapturePanel.getByLabel('세션 메모리 녹음 미리듣기').isVisible();
     const privateCaptureId = await privateCapturePanel.locator('[data-private-capture-id]').textContent();
-    const privateCaptureSummary = await privateCapturePanel.getByText(/로컬 녹음 \d+ms · \d+ bytes/).textContent();
+    const privateCaptureSummary = await privateCapturePanel.getByText(/로컬 음성 \d+ms · \d+ bytes/).textContent();
     const privateAudioShaText = await privateCapturePanel.getByText(/audio SHA-256 [a-f0-9]{64}/).textContent();
-    const privateDurationMs = Number(privateCaptureSummary?.match(/로컬 녹음 (\d+)ms/)?.[1]);
+    const privateDurationMs = Number(privateCaptureSummary?.match(/로컬 음성 (\d+)ms/)?.[1]);
     const privateAudioSha256 = privateAudioShaText?.match(/audio SHA-256 ([a-f0-9]{64})/)?.[1];
     if (!privateCaptureId || !Number.isSafeInteger(privateDurationMs) || !privateAudioSha256) {
       throw new Error('Private capture source could not be read for the local STT candidate fixture');
@@ -668,6 +704,8 @@ export async function verifyCanvasBrowser({
       && privateTranscriptBatch.kind === 'private-transcript-review-batch'
       && privateTranscriptBatch.source?.sessionId === 'session-browser-r4'
       && privateTranscriptBatch.source?.storage === 'browser-memory'
+      && privateTranscriptBatch.source?.mimeType === 'audio/wav'
+      && privateTranscriptBatch.source?.byteLength === 16_044
       && /^[a-f0-9]{64}$/.test(privateTranscriptBatch.source?.audioSha256 ?? '')
       && privateTranscriptBatch.source?.mimeType.startsWith('audio/')
       && Number.isSafeInteger(privateTranscriptBatch.source?.byteLength)
@@ -707,6 +745,7 @@ export async function verifyCanvasBrowser({
       privateDuplicateRecordingStartBlocked,
       privateStalePermissionFailureDiscarded,
       privateConsentWithdrawalDiscarded,
+      privateAudioFileImported,
       privateTranscriptReviewGateVerified,
       privateTranscriptRedecisionGateVerified,
       privateTranscriptBatchDownloaded,
@@ -1093,6 +1132,7 @@ export async function verifyCanvasBrowser({
         privateDuplicateRecordingStartBlocked,
         privateStalePermissionFailureDiscarded,
         privateConsentWithdrawalDiscarded,
+        privateAudioFileImported,
         privateSessionLockedWhileRecording,
         privateTranscriptReviewGateVerified,
         privateTranscriptRedecisionGateVerified,
