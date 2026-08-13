@@ -1101,6 +1101,8 @@ export async function verifyCanvasBrowser({
         transcriptReviewDownloaded,
         transcriptPublicationApprovalDownloaded,
         transcriptPublicationHandoffVerified,
+        privateTranscriptReviewBatchSha256: privateOntologyHandoff.reviewBatchSha256,
+        privateTranscriptOntologyCandidateSetId: 'browser-r4-ontology-candidates-1',
         privateMediaRecorderAvailable,
         privateRecordingMemoryBoundaryVisible,
         privateRecorderConstructionFailureRecovered,
