@@ -10,10 +10,12 @@ import {
   buildDesignBlueprint,
   buildDesignView,
   DESIGN_BLUEPRINT_LIMITS,
+  DESIGN_READINESS_CHECKS,
   parseDesignBlueprintImport,
   serializeDesignBlueprint,
   type DesignBlueprint,
   type DesignBlueprintDownload,
+  type DesignReadinessKey,
   type DesignScope,
   type DesignView,
 } from './design-console-logic';
@@ -30,6 +32,11 @@ const AMBER = '#7A4500';
 const AMBER_BG = '#FFF1D6';
 const RED = '#9B2C2C';
 const RED_BG = '#FDECEC';
+const READINESS_LABELS: Readonly<Record<DesignReadinessKey, string>> = {
+  topics_open: '공개 주제',
+  teams_active: '활성 조',
+  roster_loaded: '참여자 배정',
+};
 
 type ReadinessLoader = (sessionId: string) => Promise<PlatformResult<ReadinessResult>>;
 
@@ -218,6 +225,9 @@ export function BlueprintPreview({ blueprint }: { blueprint: DesignBlueprint }) 
         운영 방식: <strong>{blueprint.assembly.mode === 'consensus' ? '합의형' : '투표형'}</strong>
         {' · '}목적: {blueprint.assembly.purpose ?? '미지정'}
       </p>
+      <p style={{ color: INK, margin: 0 }}>
+        개회 전 필수 준비도: <strong>{blueprint.assembly.config.readiness.map((key) => READINESS_LABELS[key]).join(' · ')}</strong>
+      </p>
       <div
         role="region"
         aria-label="설계 청사진 회차별 구성 표"
@@ -256,6 +266,7 @@ export function DesignBlueprintBuilder() {
   const [assemblySlug, setAssemblySlug] = useState('');
   const [assemblyPurpose, setAssemblyPurpose] = useState('');
   const [assemblyMode, setAssemblyMode] = useState<'consensus' | 'vote'>('consensus');
+  const [readinessChecks, setReadinessChecks] = useState<DesignReadinessKey[]>([...DESIGN_READINESS_CHECKS]);
   const [sessions, setSessions] = useState<DesignSessionDraft[]>([{ ...EMPTY_SESSION }]);
   const [errors, setErrors] = useState<string[]>([]);
   const [blueprint, setBlueprint] = useState<DesignBlueprint | null>(null);
@@ -283,6 +294,7 @@ export function DesignBlueprintBuilder() {
       assemblySlug,
       assemblyPurpose,
       assemblyMode,
+      readinessChecks,
       sessions: sessions.map(toSessionInput),
     });
     setTransferState(null);
@@ -324,6 +336,7 @@ export function DesignBlueprintBuilder() {
       setAssemblySlug(imported.input.assemblySlug);
       setAssemblyPurpose(imported.input.assemblyPurpose ?? '');
       setAssemblyMode(imported.input.assemblyMode ?? 'consensus');
+      setReadinessChecks([...(imported.input.readinessChecks ?? DESIGN_READINESS_CHECKS)]);
       setSessions(imported.input.sessions.map((session) => ({
         title: session.title ?? '',
         slug: session.slug ?? '',
@@ -367,6 +380,27 @@ export function DesignBlueprintBuilder() {
       <label style={{ color: INK, fontWeight: 700 }}>공론화 목적 (선택)
         <textarea value={assemblyPurpose} maxLength={DESIGN_BLUEPRINT_LIMITS.assemblyPurposeChars} onChange={(event) => { setAssemblyPurpose(event.target.value); invalidatePreview(); }} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
       </label>
+      <fieldset style={{ display: 'grid', gap: 8, border: `2px solid ${LINE}`, borderRadius: 12, padding: 14 }}>
+        <legend style={{ color: NAVY, fontWeight: 800, padding: '0 6px' }}>개회 전 필수 준비도</legend>
+        <p style={{ color: MUTED, margin: 0 }}>선택한 항목을 모두 충족해야 회차를 준비 완료로 판단하는 정책입니다.</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+          {DESIGN_READINESS_CHECKS.map((key) => (
+            <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, color: INK, fontWeight: 700 }}>
+              <input
+                type="checkbox"
+                checked={readinessChecks.includes(key)}
+                onChange={(event) => {
+                  setReadinessChecks((current) => event.target.checked
+                    ? DESIGN_READINESS_CHECKS.filter((candidate) => candidate === key || current.includes(candidate))
+                    : current.filter((candidate) => candidate !== key));
+                  invalidatePreview();
+                }}
+              />
+              {READINESS_LABELS[key]}
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       {sessions.map((session, index) => (
         <fieldset key={index} style={{ display: 'grid', gap: 12, border: `2px solid ${LINE}`, borderRadius: 12, padding: 14 }}>

@@ -51,18 +51,31 @@ export interface DesignBlueprintInput {
   assemblySlug: string;
   assemblyPurpose?: string;
   assemblyMode?: DesignAssemblyMode;
+  readinessChecks?: readonly DesignReadinessKey[];
   sessions: readonly DesignBlueprintSessionInput[];
 }
 
 export type DesignAssemblyMode = 'consensus' | 'vote';
+export type DesignReadinessKey = 'topics_open' | 'teams_active' | 'roster_loaded';
+export const DESIGN_READINESS_CHECKS: readonly DesignReadinessKey[] = [
+  'topics_open',
+  'teams_active',
+  'roster_loaded',
+];
 
 export interface DesignBlueprint {
-  schemaVersion: 3;
+  schemaVersion: 4;
   kind: 'platform-design-blueprint';
   dryRun: true;
   databaseMutationExecuted: false;
   requiresApproval: true;
-  assembly: { title: string; slug: string; purpose: string | null; mode: DesignAssemblyMode };
+  assembly: {
+    title: string;
+    slug: string;
+    purpose: string | null;
+    mode: DesignAssemblyMode;
+    config: { readiness: DesignReadinessKey[] };
+  };
   sessions: Array<{
     ordinal: number;
     title: string;
@@ -141,6 +154,7 @@ export function buildDesignBlueprint(input: DesignBlueprintInput): DesignBluepri
   const assemblySlug = input.assemblySlug.trim();
   const assemblyPurpose = (input.assemblyPurpose ?? '').trim();
   const assemblyMode = input.assemblyMode ?? 'consensus';
+  const readinessChecks = input.readinessChecks ?? DESIGN_READINESS_CHECKS;
   const errors: string[] = [];
   if (!assemblyTitle) errors.push('공론화 이름을 입력하세요.');
   if (assemblyTitle.length > DESIGN_BLUEPRINT_LIMITS.assemblyTitleChars) {
@@ -151,6 +165,15 @@ export function buildDesignBlueprint(input: DesignBlueprintInput): DesignBluepri
   }
   if (assemblyMode !== 'consensus' && assemblyMode !== 'vote') {
     errors.push('운영 방식은 합의형 또는 투표형이어야 합니다.');
+  }
+  if (readinessChecks.length === 0) {
+    errors.push('준비도 필수 항목을 하나 이상 선택하세요.');
+  }
+  if (readinessChecks.some((key) => !DESIGN_READINESS_CHECKS.includes(key))) {
+    errors.push('준비도 필수 항목에 지원하지 않는 값이 있습니다.');
+  }
+  if (new Set(readinessChecks).size !== readinessChecks.length) {
+    errors.push('준비도 필수 항목은 중복될 수 없습니다.');
   }
   if (!ASSEMBLY_SLUG_PATTERN.test(assemblySlug)) {
     errors.push('slug는 영문 소문자·숫자·하이픈 3~40자로 입력하세요.');
@@ -242,7 +265,7 @@ export function buildDesignBlueprint(input: DesignBlueprintInput): DesignBluepri
   return {
     ok: true,
     blueprint: {
-      schemaVersion: 3,
+      schemaVersion: 4,
       kind: 'platform-design-blueprint',
       dryRun: true,
       databaseMutationExecuted: false,
@@ -252,6 +275,9 @@ export function buildDesignBlueprint(input: DesignBlueprintInput): DesignBluepri
         slug: assemblySlug,
         purpose: assemblyPurpose || null,
         mode: assemblyMode,
+        config: {
+          readiness: DESIGN_READINESS_CHECKS.filter((key) => readinessChecks.includes(key)),
+        },
       },
       sessions,
       stats: {
@@ -283,23 +309,31 @@ export function parseDesignBlueprintImport(content: string): DesignBlueprintImpo
   }
   if (!isRecord(parsed)
     || !hasExactKeys(parsed, ['schemaVersion', 'kind', 'dryRun', 'databaseMutationExecuted', 'requiresApproval', 'assembly', 'sessions', 'stats'])
-    || (parsed.schemaVersion !== 1 && parsed.schemaVersion !== 2 && parsed.schemaVersion !== 3)
+    || (parsed.schemaVersion !== 1 && parsed.schemaVersion !== 2 && parsed.schemaVersion !== 3 && parsed.schemaVersion !== 4)
     || parsed.kind !== 'platform-design-blueprint'
     || parsed.dryRun !== true
     || parsed.databaseMutationExecuted !== false
     || parsed.requiresApproval !== true
     || !isRecord(parsed.assembly)
-    || !hasExactKeys(parsed.assembly, parsed.schemaVersion === 3
-      ? ['title', 'slug', 'purpose', 'mode']
-      : ['title', 'slug'])
+    || !hasExactKeys(parsed.assembly, parsed.schemaVersion === 4
+      ? ['title', 'slug', 'purpose', 'mode', 'config']
+      : parsed.schemaVersion === 3
+        ? ['title', 'slug', 'purpose', 'mode']
+        : ['title', 'slug'])
     || typeof parsed.assembly.title !== 'string'
     || typeof parsed.assembly.slug !== 'string'
-    || (parsed.schemaVersion === 3
+    || ((parsed.schemaVersion === 3 || parsed.schemaVersion === 4)
       && parsed.assembly.purpose !== null
       && typeof parsed.assembly.purpose !== 'string')
-    || (parsed.schemaVersion === 3
+    || ((parsed.schemaVersion === 3 || parsed.schemaVersion === 4)
       && parsed.assembly.mode !== 'consensus'
       && parsed.assembly.mode !== 'vote')
+    || (parsed.schemaVersion === 4 && !isRecord(parsed.assembly.config))
+    || (parsed.schemaVersion === 4
+      && isRecord(parsed.assembly.config)
+      && (!hasExactKeys(parsed.assembly.config, ['readiness'])
+        || !Array.isArray(parsed.assembly.config.readiness)
+        || parsed.assembly.config.readiness.some((key) => typeof key !== 'string')))
     || !Array.isArray(parsed.sessions)
     || !isRecord(parsed.stats)) {
     return importFailure();
@@ -379,10 +413,14 @@ export function parseDesignBlueprintImport(content: string): DesignBlueprintImpo
   const input: DesignBlueprintInput = {
     assemblyTitle: parsed.assembly.title,
     assemblySlug: parsed.assembly.slug,
-    assemblyPurpose: parsed.schemaVersion === 3 && typeof parsed.assembly.purpose === 'string'
+    assemblyPurpose: (parsed.schemaVersion === 3 || parsed.schemaVersion === 4) && typeof parsed.assembly.purpose === 'string'
       ? parsed.assembly.purpose
       : '',
-    assemblyMode: parsed.schemaVersion === 3 && parsed.assembly.mode === 'vote' ? 'vote' : 'consensus',
+    assemblyMode: (parsed.schemaVersion === 3 || parsed.schemaVersion === 4) && parsed.assembly.mode === 'vote' ? 'vote' : 'consensus',
+    readinessChecks: parsed.schemaVersion === 4 && isRecord(parsed.assembly.config)
+      && Array.isArray(parsed.assembly.config.readiness)
+      ? parsed.assembly.config.readiness as DesignReadinessKey[]
+      : [...DESIGN_READINESS_CHECKS],
     sessions,
   };
   const rebuilt = buildDesignBlueprint(input);
@@ -395,7 +433,7 @@ export function parseDesignBlueprintImport(content: string): DesignBlueprintImpo
     return importFailure();
   }
   const normalizedBlueprint: DesignBlueprint = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     kind: 'platform-design-blueprint',
     dryRun: true,
     databaseMutationExecuted: false,
@@ -403,10 +441,16 @@ export function parseDesignBlueprintImport(content: string): DesignBlueprintImpo
     assembly: {
       title: parsed.assembly.title,
       slug: parsed.assembly.slug,
-      purpose: parsed.schemaVersion === 3 && typeof parsed.assembly.purpose === 'string'
+      purpose: (parsed.schemaVersion === 3 || parsed.schemaVersion === 4) && typeof parsed.assembly.purpose === 'string'
         ? parsed.assembly.purpose
         : null,
-      mode: parsed.schemaVersion === 3 && parsed.assembly.mode === 'vote' ? 'vote' : 'consensus',
+      mode: (parsed.schemaVersion === 3 || parsed.schemaVersion === 4) && parsed.assembly.mode === 'vote' ? 'vote' : 'consensus',
+      config: {
+        readiness: parsed.schemaVersion === 4 && isRecord(parsed.assembly.config)
+          && Array.isArray(parsed.assembly.config.readiness)
+          ? parsed.assembly.config.readiness as DesignReadinessKey[]
+          : [...DESIGN_READINESS_CHECKS],
+      },
     },
     sessions: normalizedSessions,
     stats: {

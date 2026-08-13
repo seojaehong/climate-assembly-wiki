@@ -7,7 +7,7 @@ import {
 } from '../verify-platform-design-blueprint.mjs';
 
 const validBlueprint = {
-  schemaVersion: 3,
+  schemaVersion: 4,
   kind: 'platform-design-blueprint',
   dryRun: true,
   databaseMutationExecuted: false,
@@ -17,6 +17,7 @@ const validBlueprint = {
     slug: 'climate-2026',
     purpose: '감축과 적응의 실행 조건을 시민과 함께 검토한다.',
     mode: 'vote',
+    config: { readiness: ['topics_open', 'teams_active'] },
   },
   sessions: [
     {
@@ -63,6 +64,12 @@ describe('validateDownloadedBlueprint', () => {
   it('rejects hierarchy damage even when the declared stats are unchanged', () => {
     const damaged = structuredClone(validBlueprint);
     damaged.sessions[1].topics = [];
+    expect(() => validateDownloadedBlueprint(damaged)).toThrow('Downloaded blueprint hierarchy does not match the verified input');
+  });
+
+  it('rejects readiness policy damage even when the hierarchy is unchanged', () => {
+    const damaged = structuredClone(validBlueprint);
+    damaged.assembly.config.readiness = ['topics_open', 'roster_loaded'];
     expect(() => validateDownloadedBlueprint(damaged)).toThrow('Downloaded blueprint hierarchy does not match the verified input');
   });
 });

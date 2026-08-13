@@ -13,6 +13,7 @@ describe('buildDesignBlueprint', () => {
       assemblySlug: 'climate-2026',
       assemblyPurpose: '  지역 전환 조건을 함께 검토한다.  ',
       assemblyMode: 'vote',
+      readinessChecks: ['topics_open', 'teams_active'],
       sessions: [{
         heldOn: '2026-08-29',
         topics: ['에너지 전환 조건', '지역 비용 우려'],
@@ -24,7 +25,7 @@ describe('buildDesignBlueprint', () => {
     expect(result).toEqual({
       ok: true,
       blueprint: {
-        schemaVersion: 3,
+        schemaVersion: 4,
         kind: 'platform-design-blueprint',
         dryRun: true,
         databaseMutationExecuted: false,
@@ -34,6 +35,7 @@ describe('buildDesignBlueprint', () => {
           slug: 'climate-2026',
           purpose: '지역 전환 조건을 함께 검토한다.',
           mode: 'vote',
+          config: { readiness: ['topics_open', 'teams_active'] },
         },
         sessions: [{
           ordinal: 1,
@@ -128,6 +130,35 @@ describe('buildDesignBlueprint', () => {
       errors: [
         '공론화 목적은 1000자 이하여야 합니다.',
         '운영 방식은 합의형 또는 투표형이어야 합니다.',
+      ],
+    });
+  });
+
+  it('준비도 정책을 정본 순서로 보존하고 빈·미지원·중복 항목을 거부한다', () => {
+    const base = {
+      assemblyTitle: '기후시민회의',
+      assemblySlug: 'climate-2026',
+      sessions: [{ heldOn: '2026-08-29', topics: ['수송'], teamCount: 1, participantCount: 4 }],
+    };
+    expect(buildDesignBlueprint({
+      ...base,
+      readinessChecks: ['roster_loaded', 'topics_open'],
+    })).toMatchObject({
+      ok: true,
+      blueprint: { assembly: { config: { readiness: ['topics_open', 'roster_loaded'] } } },
+    });
+    expect(buildDesignBlueprint({ ...base, readinessChecks: [] })).toEqual({
+      ok: false,
+      errors: ['준비도 필수 항목을 하나 이상 선택하세요.'],
+    });
+    expect(buildDesignBlueprint({
+      ...base,
+      readinessChecks: ['topics_open', 'unsupported' as never, 'topics_open'],
+    })).toEqual({
+      ok: false,
+      errors: [
+        '준비도 필수 항목에 지원하지 않는 값이 있습니다.',
+        '준비도 필수 항목은 중복될 수 없습니다.',
       ],
     });
   });
@@ -248,6 +279,7 @@ describe('buildDesignBlueprint', () => {
       assemblySlug: 'climate-2026',
       assemblyPurpose: '감축과 적응의 실행 조건 검토',
       assemblyMode: 'vote',
+      readinessChecks: ['topics_open', 'roster_loaded'],
       sessions: [
         { heldOn: '2026-08-29', topics: ['비용 우려', '수송 전환'], teamCount: 2, participantCount: 9 },
         { heldOn: '2026-08-30', topics: ['지역 적응'], teamCount: 3, participantCount: 10 },
@@ -262,6 +294,7 @@ describe('buildDesignBlueprint', () => {
         assemblySlug: 'climate-2026',
         assemblyPurpose: '감축과 적응의 실행 조건 검토',
         assemblyMode: 'vote',
+        readinessChecks: ['topics_open', 'roster_loaded'],
         sessions: [
           { title: '제1회차', slug: 'climate-2026-session-1', heldOn: '2026-08-29', topics: ['비용 우려', '수송 전환'], teamCount: 2, participantCount: 9 },
           { title: '제2회차', slug: 'climate-2026-session-2', heldOn: '2026-08-30', topics: ['지역 적응'], teamCount: 3, participantCount: 10 },
@@ -271,7 +304,7 @@ describe('buildDesignBlueprint', () => {
     });
   });
 
-  it('schema v1 청사진을 목적·방식과 회차·조 식별정보가 있는 v3로 안전하게 복원한다', () => {
+  it('schema v1 청사진을 목적·방식·준비도와 회차·조 식별정보가 있는 v4로 안전하게 복원한다', () => {
     const legacy = {
       schemaVersion: 1,
       kind: 'platform-design-blueprint',
@@ -294,8 +327,8 @@ describe('buildDesignBlueprint', () => {
         sessions: [{ title: '제1회차', slug: 'climate-2026-session-1' }],
       },
       blueprint: {
-        schemaVersion: 3,
-        assembly: { purpose: null, mode: 'consensus' },
+        schemaVersion: 4,
+        assembly: { purpose: null, mode: 'consensus', config: { readiness: ['topics_open', 'teams_active', 'roster_loaded'] } },
         sessions: [{
           title: '제1회차',
           slug: 'climate-2026-session-1',
@@ -305,7 +338,7 @@ describe('buildDesignBlueprint', () => {
     });
   });
 
-  it('schema v2 청사진도 기존 의미를 보존해 합의형 v3로 승격한다', () => {
+  it('schema v2 청사진도 기존 의미를 보존해 합의형 v4로 승격한다', () => {
     const legacy = {
       schemaVersion: 2,
       kind: 'platform-design-blueprint',
@@ -326,11 +359,37 @@ describe('buildDesignBlueprint', () => {
 
     expect(parseDesignBlueprintImport(JSON.stringify(legacy))).toMatchObject({
       ok: true,
-      input: { assemblyPurpose: '', assemblyMode: 'consensus' },
+      input: {
+        assemblyPurpose: '',
+        assemblyMode: 'consensus',
+        readinessChecks: ['topics_open', 'teams_active', 'roster_loaded'],
+      },
       blueprint: {
-        schemaVersion: 3,
-        assembly: { purpose: null, mode: 'consensus' },
+        schemaVersion: 4,
+        assembly: { purpose: null, mode: 'consensus', config: { readiness: ['topics_open', 'teams_active', 'roster_loaded'] } },
         sessions: [{ title: '감축 숙의', slug: 'mitigation-session' }],
+      },
+    });
+  });
+
+  it('schema v3 청사진은 기본 준비도 정책을 붙여 v4로 승격한다', () => {
+    const built = buildDesignBlueprint({
+      assemblyTitle: '기후시민회의',
+      assemblySlug: 'climate-2026',
+      sessions: [{ heldOn: '2026-08-29', topics: ['수송'], teamCount: 1, participantCount: 4 }],
+    });
+    if (!built.ok) throw new Error('Expected a valid blueprint');
+    const legacy = structuredClone(built.blueprint) as unknown as Record<string, unknown>;
+    legacy.schemaVersion = 3;
+    const assembly = legacy.assembly as Record<string, unknown>;
+    delete assembly.config;
+
+    expect(parseDesignBlueprintImport(JSON.stringify(legacy))).toMatchObject({
+      ok: true,
+      input: { readinessChecks: ['topics_open', 'teams_active', 'roster_loaded'] },
+      blueprint: {
+        schemaVersion: 4,
+        assembly: { config: { readiness: ['topics_open', 'teams_active', 'roster_loaded'] } },
       },
     });
   });

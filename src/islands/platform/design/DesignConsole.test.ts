@@ -77,6 +77,11 @@ describe('DesignConsole', () => {
     expect(html).toContain('공론화 slug');
     expect(html).toContain('공론화 목적 (선택)');
     expect(html).toContain('운영 방식');
+    expect(html).toContain('개회 전 필수 준비도');
+    expect(html).toContain('공개 주제');
+    expect(html).toContain('활성 조');
+    expect(html).toContain('참여자 배정');
+    expect(html.match(/type="checkbox" checked=""/g)).toHaveLength(3);
     expect(html).toContain('value="consensus"');
     expect(html).toContain('value="vote"');
     expect(html).toContain('회차 이름');
@@ -102,6 +107,7 @@ describe('DesignConsole', () => {
       assemblySlug: 'climate-2026',
       assemblyPurpose: '지역 전환 조건 검토',
       assemblyMode: 'vote',
+      readinessChecks: ['topics_open', 'teams_active'],
       sessions: [{ heldOn: '2026-08-29', topics: ['수송'], teamCount: 2, participantCount: 7 }],
     });
     if (!result.ok) throw new Error('Expected a valid blueprint');
@@ -126,6 +132,7 @@ describe('DesignConsole', () => {
       assemblySlug: 'climate-2026',
       assemblyPurpose: '지역 전환 조건 검토',
       assemblyMode: 'vote',
+      readinessChecks: ['topics_open', 'teams_active'],
       sessions: [{ heldOn: '2026-08-29', topics: ['수송'], teamCount: 2, participantCount: 7 }],
     });
     if (!result.ok) throw new Error('Expected a valid blueprint');
@@ -140,6 +147,8 @@ describe('DesignConsole', () => {
     expect(html).toContain('운영 방식:');
     expect(html).toContain('투표형');
     expect(html).toContain('지역 전환 조건 검토');
+    expect(html).toContain('개회 전 필수 준비도:');
+    expect(html).toContain('공개 주제 · 활성 조');
   });
 
   it('청사진 다운로드 실패를 로그와 접근 가능한 오류 상태로 전환한다', () => {
