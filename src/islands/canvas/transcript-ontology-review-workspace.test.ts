@@ -343,6 +343,62 @@ describe('transcript ontology review workspace', () => {
     expect(workspace.summary).toMatchObject({ decided: 2, followUp: 1, total: 3 });
   });
 
+  it('preserves an explicit minority concern only after a fresh human decision', async () => {
+    let workspace = await createTranscriptOntologyReviewWorkspace(fixtureText);
+    const nodeId = workspace.nodes[0].id;
+    workspace = updateTranscriptOntologyCandidateDraft(workspace, {
+      itemType: 'node', id: nodeId, kind: 'Concern', minorityConcern: true,
+    });
+
+    expect(workspace.nodes[0]).toMatchObject({
+      kind: 'Concern', minorityConcern: true, reviewStatus: 'proposed', reviewer: null, reviewedAt: null,
+    });
+    expect(() => reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'node', id: nodeId, status: 'accepted', kind: 'Concern', minorityConcern: true,
+      label: workspace.nodes[0].label, text: workspace.nodes[0].text,
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(0),
+    })).toThrow('Edited node content requires edited status');
+
+    workspace = reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'node', id: nodeId, status: 'edited', kind: 'Concern', minorityConcern: true,
+      label: workspace.nodes[0].label, text: workspace.nodes[0].text,
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(0),
+    });
+    expect(workspace.nodes[0]).toMatchObject({
+      kind: 'Concern', minorityConcern: true, reviewStatus: 'edited',
+    });
+
+    workspace = reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'node', id: workspace.nodes[1].id, status: 'accepted',
+      kind: workspace.nodes[1].kindCandidate, label: workspace.nodes[1].sourceLabel,
+      text: workspace.nodes[1].sourceText,
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(1),
+    });
+    workspace = reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'relation', id: workspace.relations[0].id, status: 'accepted',
+      relation: workspace.relations[0].relationCandidate,
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(2),
+    });
+    const reviewedPlan = JSON.parse(await exportTranscriptOntologyReviewedPlan(workspace)) as {
+      nodes: Array<{ id: string; kind: string | null; minorityConcern: boolean }>;
+    };
+    expect(reviewedPlan.nodes[0]).toMatchObject({
+      id: nodeId, kind: 'Concern', minorityConcern: true,
+    });
+
+    const invalidKind = structuredClone(workspace);
+    expect(() => updateTranscriptOntologyCandidateDraft(invalidKind, {
+      itemType: 'node', id: nodeId, kind: 'Issue', minorityConcern: true,
+    })).toThrow('Minority concern marker requires Concern node kind');
+
+    workspace = updateTranscriptOntologyCandidateDraft(workspace, {
+      itemType: 'node', id: nodeId, minorityConcern: false,
+    });
+    expect(workspace.nodes[0]).toMatchObject({
+      kind: 'Concern', minorityConcern: false, reviewStatus: 'proposed', reviewer: null, reviewedAt: null,
+    });
+  });
+
   it('keeps accept edit and reject decisions local and exports only a completed private review plan', async () => {
     let workspace = await createTranscriptOntologyReviewWorkspace(fixtureText);
     await expect(exportTranscriptOntologyReviewedPlan(workspace)).rejects.toThrow('Transcript ontology review is incomplete');
@@ -387,6 +443,7 @@ describe('transcript ontology review workspace', () => {
           reviewStatus: 'edited',
           kind: 'Issue',
           label: '재생에너지 전환의 속도와 조건',
+          minorityConcern: false,
           citedUids: ['chunk-001', 'chunk-002'],
         },
         {

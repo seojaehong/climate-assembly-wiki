@@ -1250,6 +1250,7 @@ function renderNodeSurface(ctx, mode = 'hover') {
       <button class="og-s-close" data-side-close>✕</button>
       <div>
         <span class="og-s-badge" style="background:${color}">${escapeHtml(kindLabel)}</span>
+        ${ctx.node.minority_concern === true ? '<span class="og-s-badge" style="background:#7a3e00;color:#fff;margin-left:5px">소수 우려 보존</span>' : ''}
         ${ctx.node.session ? `<span class="og-s-badge" style="background:#2c3848;color:#9aa7b8;margin-left:5px" title="${escapeHtml(ctx.node.session)}">${escapeHtml(sessionLabel(ctx.node.session))}</span>` : ''}
         ${ctx.node.synthesized ? '<div class="og-s-synth">합성 노드 — 원천 추출 아님</div>' : ''}
         <div class="og-s-label">${escapeHtml(ctx.node.label || '')}</div>

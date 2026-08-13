@@ -446,9 +446,11 @@ export function TranscriptNodeReviewCard({ node, reviewer, onDecision, onDraft }
   onDraft: (draft: TranscriptOntologyReviewDraft) => void;
 }) {
   const kind = node.kind ?? node.kindCandidate;
-  const edited = kind !== node.kindCandidate || node.label !== node.sourceLabel || node.text !== node.sourceText;
+  const edited = kind !== node.kindCandidate || node.label !== node.sourceLabel
+    || node.text !== node.sourceText || node.minorityConcern;
   const decide = (status: 'deferred' | 'accepted' | 'edited' | 'rejected') => onDecision({
-    itemType: 'node', id: node.id, status, kind, label: node.label, text: node.text, reviewer,
+    itemType: 'node', id: node.id, status, kind, label: node.label, text: node.text,
+    minorityConcern: node.minorityConcern, reviewer,
     reviewedAt: new Date().toISOString(),
   });
   const requestFollowUp = () => onDecision({
@@ -470,6 +472,17 @@ export function TranscriptNodeReviewCard({ node, reviewer, onDecision, onDraft }
       </label>
       <TranscriptCandidatePrompt kind={kind} />
       <FollowUpRequest question={node.followUpQuestion} />
+      <section aria-label="소수 우려 보존" style={{ background: node.minorityConcern ? '#FFF2E8' : '#F6F8FA', border: `2px solid ${CONTROL_BORDER}`, borderRadius: 8, padding: 12 }}>
+        <strong>{node.minorityConcern ? '소수 우려로 표시됨' : '소수 우려 표시 안 됨'}</strong>
+        <p style={{ color: MUTED, margin: '6px 0' }}>다수 의견에 흡수하지 않고 별도 Concern 신호로 보존합니다.</p>
+        <button type="button" onClick={() => onDraft({
+          itemType: 'node', id: node.id,
+          kind: node.minorityConcern ? kind : 'Concern',
+          minorityConcern: !node.minorityConcern,
+        })} style={controlStyle}>
+          {node.minorityConcern ? '소수 우려 표시 해제' : '소수 우려로 표시'}
+        </button>
+      </section>
       <label>표시 이름
         <input value={node.label} onChange={(event) => onDraft({ itemType: 'node', id: node.id, label: event.currentTarget.value })} style={{ ...controlStyle, display: 'block', width: '100%' }} />
       </label>

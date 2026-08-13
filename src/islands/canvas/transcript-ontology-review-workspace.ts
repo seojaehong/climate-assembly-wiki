@@ -49,6 +49,7 @@ export interface TranscriptOntologyReviewNode extends ReviewAudit {
   citedUids: string[];
   transcript: TranscriptCitation[];
   followUpQuestion: string | null;
+  minorityConcern: boolean;
 }
 
 export interface TranscriptOntologyReviewRelation extends ReviewAudit {
@@ -111,6 +112,7 @@ export type TranscriptOntologyReviewDecision = DecisionAudit & (
     kind?: string;
     label?: string;
     text?: string;
+    minorityConcern?: boolean;
   }
   | {
     itemType: 'relation';
@@ -127,7 +129,7 @@ export type TranscriptOntologyReviewDecision = DecisionAudit & (
 );
 
 export type TranscriptOntologyReviewDraft =
-  | { itemType: 'node'; id: string; kind?: string; label?: string; text?: string }
+  | { itemType: 'node'; id: string; kind?: string; label?: string; text?: string; minorityConcern?: boolean }
   | { itemType: 'relation'; id: string; relation?: string };
 
 export const TRANSCRIPT_ONTOLOGY_NODE_KINDS = [
@@ -530,6 +532,7 @@ export async function createTranscriptOntologyReviewWorkspace(
       text: sourceText,
       ...citations(value.citedUids, chunks, 'node candidate'),
       followUpQuestion: null,
+      minorityConcern: false,
       reviewStatus: 'proposed',
       reviewer: null,
       reviewedAt: null,
@@ -667,6 +670,7 @@ export function reviewTranscriptOntologyCandidate(
         kind: null,
         label: target.sourceLabel,
         text: target.sourceText,
+        minorityConcern: false,
         reviewStatus: 'rejected',
         followUpQuestion: null,
         ...audit,
@@ -676,7 +680,13 @@ export function reviewTranscriptOntologyCandidate(
       if (!NODE_KINDS.has(kind)) throw new Error('Invalid reviewed node kind');
       const label = text(decision.label, 'reviewed node label');
       const reviewedText = text(decision.text, 'reviewed node text');
-      const changed = label !== target.sourceLabel || reviewedText !== target.sourceText || kind !== target.kindCandidate;
+      const minorityConcern = decision.minorityConcern ?? target.minorityConcern;
+      if (typeof minorityConcern !== 'boolean') throw new Error('Invalid minority concern marker');
+      if (minorityConcern && kind !== 'Concern') {
+        throw new Error('Minority concern marker requires Concern node kind');
+      }
+      const changed = label !== target.sourceLabel || reviewedText !== target.sourceText
+        || kind !== target.kindCandidate || minorityConcern;
       if (decision.status === 'accepted' && changed) throw new Error('Edited node content requires edited status');
       if (decision.status === 'edited' && !changed) throw new Error('Edited node decision requires a change');
       replacement = {
@@ -684,6 +694,7 @@ export function reviewTranscriptOntologyCandidate(
         kind,
         label,
         text: reviewedText,
+        minorityConcern,
         reviewStatus: decision.status,
         followUpQuestion: null,
         ...audit,
@@ -755,7 +766,12 @@ export function updateTranscriptOntologyCandidateDraft(
     const kind = item.kind ?? target.kind ?? target.kindCandidate;
     const label = item.label ?? target.label;
     const draftText = item.text ?? target.text;
+    const minorityConcern = item.minorityConcern ?? target.minorityConcern;
     if (!NODE_KINDS.has(kind)) throw new Error('Invalid reviewed node kind');
+    if (typeof minorityConcern !== 'boolean') throw new Error('Invalid minority concern marker');
+    if (minorityConcern && kind !== 'Concern') {
+      throw new Error('Minority concern marker requires Concern node kind');
+    }
     text(label, 'reviewed node label');
     text(draftText, 'reviewed node text');
     const nodes = workspace.nodes.map((node) => node.id === target.id ? {
@@ -763,6 +779,7 @@ export function updateTranscriptOntologyCandidateDraft(
       kind,
       label,
       text: draftText,
+      minorityConcern,
       reviewStatus: 'proposed' as const,
       reviewer: null,
       reviewedAt: null,
@@ -804,6 +821,7 @@ export async function exportTranscriptOntologyReviewedPlan(
     rebuilt = reviewTranscriptOntologyCandidate(rebuilt, {
       itemType: 'node', id: node.id, status: node.reviewStatus,
       kind: node.kind ?? undefined, label: node.label, text: node.text,
+      minorityConcern: node.minorityConcern,
       reviewer: node.reviewer, reviewedAt: node.reviewedAt,
     });
   }

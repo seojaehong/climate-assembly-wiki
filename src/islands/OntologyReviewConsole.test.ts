@@ -197,6 +197,7 @@ describe('OntologyReviewConsole', () => {
       label: '전환 속도', text: '전환 속도를 논의합니다.', citedUids: ['chunk-1'],
       transcript: [{ uid: 'chunk-1', startMs: 0, endMs: 1000, speakerLabelPseudonym: 'speaker-unknown', text: '전환 속도를 논의합니다.' }],
       followUpQuestion: null,
+      minorityConcern: false,
       reviewStatus: 'deferred', reviewer: AUTH_REVIEWER_ID, reviewedAt: '2026-08-29T01:00:00.000Z',
     };
     const html = renderToStaticMarkup(createElement(TranscriptNodeReviewCard, {
@@ -217,6 +218,7 @@ describe('OntologyReviewConsole', () => {
       label: '전환 속도', text: '전환 속도를 논의합니다.', citedUids: ['chunk-1'],
       transcript: [{ uid: 'chunk-1', startMs: 0, endMs: 1000, speakerLabelPseudonym: 'speaker-unknown', text: '전환 속도를 논의합니다.' }],
       followUpQuestion: question,
+      minorityConcern: false,
       reviewStatus: 'follow_up', reviewer: AUTH_REVIEWER_ID, reviewedAt: '2026-08-29T01:00:00.000Z',
     };
     const html = renderToStaticMarkup(createElement(TranscriptNodeReviewCard, {
@@ -227,6 +229,26 @@ describe('OntologyReviewConsole', () => {
     expect(html).toContain('aria-label="요청한 후속 확인"');
     expect(html).toContain(question);
     expect(html).toContain('응답이나 추가 근거를 확인한 뒤 이 후보를 다시 판단해야 합니다.');
+  });
+
+  it('renders an explicit minority concern action and preserved-state notice', () => {
+    const node: TranscriptOntologyReviewNode = {
+      id: 'transcript-node:candidate-concern', sourceUid: 'candidate-concern',
+      kindCandidate: 'Claim', kind: 'Concern', sourceLabel: '지역 우려', sourceText: '지역 부담을 살펴야 합니다.',
+      label: '지역 우려', text: '지역 부담을 살펴야 합니다.', citedUids: ['chunk-1'],
+      transcript: [{ uid: 'chunk-1', startMs: 0, endMs: 1000, speakerLabelPseudonym: 'speaker-unknown', text: '지역 부담을 살펴야 합니다.' }],
+      followUpQuestion: null, minorityConcern: true,
+      reviewStatus: 'proposed', reviewer: null, reviewedAt: null,
+    };
+    const html = renderToStaticMarkup(createElement(TranscriptNodeReviewCard, {
+      node, reviewer: AUTH_REVIEWER_ID, onDecision: () => undefined, onDraft: () => undefined,
+    }));
+
+    expect(html).toContain('aria-label="소수 우려 보존"');
+    expect(html).toContain('소수 우려로 표시됨');
+    expect(html).toContain('다수 의견에 흡수하지 않고 별도 Concern 신호로 보존합니다.');
+    expect(html).toContain('소수 우려 표시 해제');
+    expect(html).toContain('수정 승인');
   });
 
   it('renders a relation follow-up request with its exact pending question', () => {

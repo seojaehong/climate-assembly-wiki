@@ -415,9 +415,14 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
     }
     const audit = reviewAudit(node, source.reviewedAt);
     if (audit.reviewedAt > latestReviewedAt) latestReviewedAt = audit.reviewedAt;
+    const minorityConcern = node.minorityConcern ?? false;
+    if (typeof minorityConcern !== 'boolean' || (minorityConcern && node.kind !== 'Concern')) {
+      throw new Error('Invalid reviewed plan minority concern marker');
+    }
     if (audit.reviewStatus === 'rejected') {
       rejectedNodeCount += 1;
-      if (node.kind !== null || node.label !== fixtureNode.label || node.text !== fixtureNode.text) {
+      if (node.kind !== null || node.label !== fixtureNode.label || node.text !== fixtureNode.text
+        || node.minorityConcern === true) {
         throw new Error('Rejected reviewed plan node must preserve source content');
       }
       return null;
@@ -425,7 +430,8 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
     if (!NODE_KINDS.includes(node.kind)) throw new Error('Invalid reviewed plan node kind');
     const label = nonemptyString(node.label, 'reviewed plan node label');
     const nodeText = nonemptyString(node.text, 'reviewed plan node text');
-    const changed = node.kind !== fixtureNode.kind || label !== fixtureNode.label || nodeText !== fixtureNode.text;
+    const changed = node.kind !== fixtureNode.kind || label !== fixtureNode.label
+      || nodeText !== fixtureNode.text || minorityConcern;
     if ((audit.reviewStatus === 'accepted' && changed) || (audit.reviewStatus === 'edited' && !changed)) {
       throw new Error('Reviewed plan node status does not match its content');
     }
@@ -439,6 +445,7 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
         kind: node.kind,
         kindKo: KIND_KO[node.kind],
         text: nodeText,
+        ...(minorityConcern ? { minority_concern: true } : {}),
         review_state: audit.reviewStatus,
         is_public: true,
         meta: {
@@ -513,6 +520,9 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
       source_review_status: 'reviewed',
       requires_publication_review: false,
       counts: { nodes: nodes.length, edges: edges.length },
+      ...(nodes.some((node) => node.data.minority_concern === true)
+        ? { minority_concerns: nodes.filter((node) => node.data.minority_concern === true).length }
+        : {}),
       dropped: {
         rejected_nodes: rejectedNodeCount,
         rejected_edges: rejectedEdgeCount,

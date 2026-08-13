@@ -848,6 +848,12 @@ export async function verifyCanvasBrowser({
     await transcriptReviewPanel.getByText('진행 0/3 · 후속 확인 0 · 보류 1', { exact: true }).waitFor({ timeout: timeoutMs });
     const transcriptDeferGateVerified = await transcriptDownloadButton.isDisabled()
       && await transcriptNodeCards.nth(0).getByText('candidate node · 보류', { exact: true }).isVisible();
+    await transcriptNodeCards.nth(0).getByRole('button', { name: '소수 우려로 표시' }).click();
+    const transcriptMinorityConcernMarked = await transcriptNodeCards.nth(0)
+      .getByRole('region', { name: '소수 우려 보존' })
+      .getByText('소수 우려로 표시됨', { exact: true }).isVisible()
+      && await transcriptNodeCards.nth(0).getByLabel('Habermas 발화 역할').inputValue() === 'Concern'
+      && await transcriptDownloadButton.isDisabled();
     await transcriptNodeCards.nth(0).getByLabel('표시 이름').fill('재생에너지 전환의 속도와 조건');
     await transcriptReviewPanel.getByText('진행 0/3 · 후속 확인 0 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
     await transcriptNodeCards.nth(0).getByRole('button', { name: '수정 승인' }).click();
@@ -876,7 +882,8 @@ export async function verifyCanvasBrowser({
         && transcriptReviewedPlan.source?.handoff?.candidateSetId === 'browser-r4-ontology-candidates-1'
       ))
       && transcriptReviewedPlan.nodes?.[0]?.reviewStatus === 'edited'
-      && transcriptReviewedPlan.nodes?.[0]?.kind === 'Issue'
+      && transcriptReviewedPlan.nodes?.[0]?.kind === 'Concern'
+      && transcriptReviewedPlan.nodes?.[0]?.minorityConcern === true
       && transcriptReviewedPlan.nodes?.[0]?.label === '재생에너지 전환의 최종 속도와 조건'
       && transcriptReviewedPlan.nodes?.[0]?.reviewer === REVIEW_AUTH_REVIEWER_ID
       && transcriptReviewedPlan.nodes?.[0]?.citedUids?.join(',') === (hasHandoffInputs
@@ -923,6 +930,9 @@ export async function verifyCanvasBrowser({
       && publicationGraph.meta?.dropped?.rejected_nodes === 1
       && publicationGraph.meta?.dropped?.rejected_edges === 1
       && publicationGraph.elements.nodes[0]?.data?.label === '재생에너지 전환의 최종 속도와 조건'
+      && publicationGraph.elements.nodes[0]?.data?.kind === 'Concern'
+      && publicationGraph.elements.nodes[0]?.data?.minority_concern === true
+      && publicationGraph.meta?.minority_concerns === 1
       && publicationGraph.elements.nodes[0]?.data?.meta?.review_identity_kind === 'authenticated_user'
       && publicationGraph.meta?.publication?.approved_identity_kind === 'authenticated_user'
       && publicationGraph.meta?.publication?.approved_at === publicationApproval.approvedAt
@@ -931,7 +941,7 @@ export async function verifyCanvasBrowser({
       && !publicationGraphText.includes('startMs')
       && !publicationGraphText.includes('endMs');
     if (!transcriptLocalOnlyBoundaryVisible || !transcriptCandidateEvidenceVisible || !transcriptCandidatePromptVisible
-      || !transcriptFollowUpGateVerified || !transcriptDeferGateVerified
+      || !transcriptFollowUpGateVerified || !transcriptDeferGateVerified || !transcriptMinorityConcernMarked
       || !transcriptRedecisionGateVerified || !transcriptHandoffFixtureDownloaded || !transcriptReviewDownloaded
       || !transcriptPublicationApprovalDownloaded || !transcriptPublicationHandoffVerified) {
       throw new Error('Transcript ontology review browser contract is incomplete');
@@ -1162,6 +1172,7 @@ export async function verifyCanvasBrowser({
         transcriptHandoffFixtureDownloaded,
         transcriptHandoffFixtureSha256: downloadedHandoffFixtureSha256,
         transcriptReviewDownloaded,
+        transcriptMinorityConcernMarked,
         transcriptPublicationApprovalDownloaded,
         transcriptPublicationHandoffVerified,
         privateTranscriptReviewBatchSha256: privateOntologyHandoff.reviewBatchSha256,

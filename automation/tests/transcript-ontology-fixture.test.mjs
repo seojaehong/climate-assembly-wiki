@@ -69,6 +69,7 @@ function reviewedR2Plan() {
       text: node.text,
       citedUids: node.citedUids,
       transcript: node.citedUids.map((uid) => R2_FIXTURE.chunks.find((chunk) => chunk.uid === uid)),
+      minorityConcern: false,
       reviewStatus: index === 0 ? 'edited' : 'accepted',
       reviewer: 'moderator-r2-test',
       reviewedAt: '2026-08-01T01:10:00.000Z',
@@ -128,6 +129,48 @@ test('publishes only accepted R2 review items with reviewed state and cited chun
   });
   expect(JSON.stringify(graph)).not.toContain('speakerLabelPseudonym');
   expect(JSON.stringify(graph)).not.toContain('startMs');
+});
+
+test('preserves an approved minority concern marker in the public R3 graph', () => {
+  const plan = reviewedR2Plan();
+  plan.nodes[0].kind = 'Concern';
+  plan.nodes[0].minorityConcern = true;
+  const graph = buildPublishedTranscriptReviewGraph({
+    fixtureText: R2_FIXTURE_TEXT,
+    reviewedPlan: plan,
+    publication: {
+      schemaVersion: 1,
+      kind: 'transcript-ontology-publication-approval',
+      mode: 'synthetic-reviewed-demo',
+      sourceId: 'live-transcript-r2-reviewed',
+      reviewedPlanSha256: reviewedTranscriptPlanSha256(plan),
+      approvedBy: 'reviewer-test',
+      approvedAt: '2026-08-01T01:20:00.000Z',
+    },
+  });
+
+  expect(graph.elements.nodes[0].data).toMatchObject({
+    kind: 'Concern', minority_concern: true, review_state: 'edited',
+  });
+  expect(graph.meta.minority_concerns).toBe(1);
+});
+
+test('rejects a minority concern marker on a non-Concern node', () => {
+  const plan = reviewedR2Plan();
+  plan.nodes[0].minorityConcern = true;
+  expect(() => buildPublishedTranscriptReviewGraph({
+    fixtureText: R2_FIXTURE_TEXT,
+    reviewedPlan: plan,
+    publication: {
+      schemaVersion: 1,
+      kind: 'transcript-ontology-publication-approval',
+      mode: 'synthetic-reviewed-demo',
+      sourceId: 'live-transcript-r2-reviewed',
+      reviewedPlanSha256: reviewedTranscriptPlanSha256(plan),
+      approvedBy: 'reviewer-test',
+      approvedAt: '2026-08-01T01:20:00.000Z',
+    },
+  })).toThrow('Invalid reviewed plan minority concern marker');
 });
 
 test('keeps an authenticated reviewer ID in the private plan but redacts it from the public graph', () => {

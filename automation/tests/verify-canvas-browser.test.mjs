@@ -137,7 +137,7 @@ async function fixtureServer({
             <article aria-label="전사 노드 후보 검수 transcript-node:candidate-issue">
               <strong id="transcript-first-status">candidate node · 미검수</strong>
               <p>재생에너지 전환 속도를 높여야 합니다.</p>
-              <label>Habermas 발화 역할<select><option>Issue</option></select></label>
+              <label>Habermas 발화 역할<select id="transcript-first-kind"><option>Issue</option><option>Concern</option></select></label>
               <section aria-label="후보 진행 질문 제안">
                 <strong>함께 확인할 진행 질문</strong>
                 <p>이 쟁점의 범위와 서로 다른 관점을 함께 확인해 보세요.</p>
@@ -146,6 +146,10 @@ async function fixtureServer({
               <section id="transcript-follow-up-request" role="region" aria-label="요청한 후속 확인" hidden>
                 <strong>요청한 후속 확인</strong>
                 <p>이 쟁점의 범위와 서로 다른 관점을 함께 확인해 보세요.</p>
+              </section>
+              <section role="region" aria-label="소수 우려 보존">
+                <strong id="transcript-minority-status">소수 우려 표시 안 됨</strong>
+                <button type="button" id="transcript-minority">소수 우려로 표시</button>
               </section>
               <label>표시 이름<input id="transcript-first-label" type="text"></label>
               <button type="button" data-transcript-decision="first">수정 승인</button>
@@ -189,6 +193,7 @@ async function fixtureServer({
           const transcriptDownloadButton = document.querySelector('#download-transcript-plan');
           const transcriptApprovalButton = document.querySelector('#download-transcript-approval');
           const transcriptDecisions = new Set();
+          let transcriptMinorityConcern = false;
           let exportedTranscriptPlan = null;
           const privateConsent = document.querySelector('#private-consent');
           const privateSession = document.querySelector('#private-session');
@@ -394,6 +399,10 @@ async function fixtureServer({
             document.querySelector('#transcript-first-label').value = transcriptFixture.expected.nodes[0].label;
             document.querySelector('#transcript-second-label').value = transcriptFixture.expected.nodes[1].label;
             transcriptDecisions.clear();
+            transcriptMinorityConcern = false;
+            document.querySelector('#transcript-first-kind').value = 'Issue';
+            document.querySelector('#transcript-minority-status').textContent = '소수 우려 표시 안 됨';
+            document.querySelector('#transcript-minority').textContent = '소수 우려로 표시';
             transcriptProgress.textContent = '진행 0/3 · 후속 확인 0 · 보류 0';
             transcriptProgress.hidden = false;
             transcriptItems.hidden = false;
@@ -420,6 +429,16 @@ async function fixtureServer({
             document.querySelector('#transcript-first-status').textContent = 'candidate node · 보류';
             document.querySelector('#transcript-follow-up-request').hidden = true;
             transcriptProgress.textContent = \`진행 \${transcriptDecisions.size}/3 · 후속 확인 0 · 보류 1\`;
+            transcriptDownloadButton.disabled = true;
+          });
+          document.querySelector('#transcript-minority').addEventListener('click', () => {
+            transcriptMinorityConcern = !transcriptMinorityConcern;
+            document.querySelector('#transcript-first-kind').value = 'Concern';
+            document.querySelector('#transcript-minority-status').textContent = transcriptMinorityConcern
+              ? '소수 우려로 표시됨' : '소수 우려 표시 안 됨';
+            document.querySelector('#transcript-minority').textContent = transcriptMinorityConcern
+              ? '소수 우려 표시 해제' : '소수 우려로 표시';
+            transcriptDecisions.delete('first');
             transcriptDownloadButton.disabled = true;
           });
           document.querySelector('#transcript-first-label').addEventListener('input', () => {
@@ -453,11 +472,12 @@ async function fixtureServer({
               nodes: [
                 {
                   id: \`transcript-node:\${first.uid}\`, sourceUid: first.uid,
-                  kindCandidate: first.kind, kind: first.kind,
+                  kindCandidate: first.kind, kind: transcriptMinorityConcern ? 'Concern' : first.kind,
                   sourceLabel: first.label, sourceText: first.text,
                   label: document.querySelector('#transcript-first-label').value,
                   text: first.text, citedUids: first.citedUids,
                   transcript: transcriptFixture.chunks.filter((chunk) => first.citedUids.includes(chunk.uid)),
+                  minorityConcern: transcriptMinorityConcern,
                   reviewStatus: 'edited', reviewer, reviewedAt,
                 },
                 {
