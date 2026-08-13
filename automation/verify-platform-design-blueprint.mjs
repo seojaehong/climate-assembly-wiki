@@ -187,6 +187,17 @@ export async function verifyPlatformDesignBlueprint({
     await page.getByRole('button', { name: '청사진 검증' }).click();
     await page.getByRole('heading', { name: '승인 검토용 미리보기' }).waitFor({ timeout: timeoutMs });
     const previewSummary = await page.getByText('회차 2개 · 주제 2개 · 조 2개 · 예상 참여자 22명').isVisible();
+    await page.setViewportSize({ width: 360, height: 800 });
+    const blueprintTableRegion = page.getByRole('region', { name: '설계 청사진 회차별 구성 표' });
+    await blueprintTableRegion.focus();
+    const blueprintTableScroll = await blueprintTableRegion.evaluate((region) => ({
+      clientWidth: region.clientWidth,
+      scrollWidth: region.scrollWidth,
+      focused: document.activeElement === region,
+    }));
+    await blueprintTableRegion.press('End');
+    const blueprintTableKeyboardScrolled = await blueprintTableRegion.evaluate((region) => region.scrollLeft > 0);
+    await page.setViewportSize({ width: 1440, height: 1000 });
 
     await topics.nth(1).fill('적응 정책 보완');
     const previewInvalidated = await page.getByRole('heading', { name: '승인 검토용 미리보기' }).count() === 0
@@ -274,6 +285,11 @@ export async function verifyPlatformDesignBlueprint({
 
     if (!invalidDateRejected) throw new Error('Design blueprint did not reject reversed session dates');
     if (!previewSummary) throw new Error('Design blueprint preview summary is missing');
+    if (blueprintTableScroll.scrollWidth <= blueprintTableScroll.clientWidth
+      || !blueprintTableScroll.focused
+      || !blueprintTableKeyboardScrolled) {
+      throw new Error('Design blueprint table is not keyboard-scrollable on mobile');
+    }
     if (!previewInvalidated) throw new Error('Editing did not invalidate the blueprint preview');
     if (filename !== 'climate-2026_design_blueprint.json') throw new Error('Design blueprint filename is invalid');
     if (!malformedImportRejected) throw new Error('Design blueprint did not reject malformed import content');
@@ -304,6 +320,10 @@ export async function verifyPlatformDesignBlueprint({
         multiSessionInput: true,
         invalidDateRejected,
         previewSummary,
+        blueprintTableScroll: {
+          ...blueprintTableScroll,
+          keyboardScrolled: blueprintTableKeyboardScrolled,
+        },
         previewInvalidated,
         downloadedFilename: filename,
         blueprintSchemaVersion: downloadJson.schemaVersion,

@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { PlatformResult, ReadinessResult } from '../../../lib/platform';
 import DesignConsole, {
   DesignBlueprintBuilder,
+  BlueprintPreview,
   DesignResults,
   completeDesignBlueprintExport,
   completeReadinessLoad,
@@ -111,6 +112,23 @@ describe('DesignConsole', () => {
     expect(downloader.mock.calls[0]?.[0]).toBeInstanceOf(Blob);
     expect(downloader.mock.calls[0]?.[1]).toBe('climate-2026_design_blueprint.json');
     expect(setState).toHaveBeenCalledWith({ kind: 'status', text: '설계 청사진 JSON 파일을 내려받았습니다.' });
+  });
+
+  it('청사진 표를 이름 있는 키보드 가로 스크롤 영역으로 제공한다', () => {
+    const result = buildDesignBlueprint({
+      assemblyTitle: '기후 공론화',
+      assemblySlug: 'climate-2026',
+      sessions: [{ heldOn: '2026-08-29', topics: ['수송'], teamCount: 2, participantCount: 7 }],
+    });
+    if (!result.ok) throw new Error('Expected a valid blueprint');
+
+    const html = renderToStaticMarkup(createElement(BlueprintPreview, { blueprint: result.blueprint }));
+
+    expect(html).toContain('role="region"');
+    expect(html).toContain('aria-label="설계 청사진 회차별 구성 표"');
+    expect(html).toContain('tabindex="0"');
+    expect(html).toContain('overflow-x:auto');
+    expect(html).toContain('min-width:620px');
   });
 
   it('청사진 다운로드 실패를 로그와 접근 가능한 오류 상태로 전환한다', () => {

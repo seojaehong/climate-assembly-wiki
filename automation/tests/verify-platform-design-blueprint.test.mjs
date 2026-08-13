@@ -86,5 +86,12 @@ describe('design blueprint browser CI contract', () => {
     expect(workflow.indexOf('Start preview server')).toBeLessThan(
       workflow.indexOf('node verify-platform-design-blueprint.mjs'),
     );
+    const verifier = readFileSync(
+      new URL('../verify-platform-design-blueprint.mjs', import.meta.url),
+      'utf8',
+    );
+    expect(verifier).toContain("page.setViewportSize({ width: 360, height: 800 })");
+    expect(verifier).toContain("getByRole('region', { name: '설계 청사진 회차별 구성 표' })");
+    expect(verifier).toContain("blueprintTableRegion.press('End')");
   });
 });

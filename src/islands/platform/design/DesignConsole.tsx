@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import {
   readinessCheck,
   type PlatformResult,
@@ -197,14 +197,30 @@ function toSessionInput(session: DesignSessionDraft) {
   };
 }
 
-function BlueprintPreview({ blueprint }: { blueprint: DesignBlueprint }) {
+function handleBlueprintTableKey(event: KeyboardEvent<HTMLDivElement>) {
+  const region = event.currentTarget;
+  if (event.key === 'ArrowRight') region.scrollLeft += 40;
+  else if (event.key === 'ArrowLeft') region.scrollLeft -= 40;
+  else if (event.key === 'End') region.scrollLeft = region.scrollWidth;
+  else if (event.key === 'Home') region.scrollLeft = 0;
+  else return;
+  event.preventDefault();
+}
+
+export function BlueprintPreview({ blueprint }: { blueprint: DesignBlueprint }) {
   return (
     <section aria-labelledby="design-blueprint-preview" style={{ display: 'grid', gap: 12, border: `2px solid ${TEAL}`, borderRadius: 16, background: PANEL, padding: 16 }}>
       <h4 id="design-blueprint-preview" style={{ color: NAVY, fontSize: 18, margin: 0 }}>승인 검토용 미리보기</h4>
       <p style={{ color: MUTED, margin: 0 }}>
         회차 {blueprint.stats.sessionCount}개 · 주제 {blueprint.stats.topicCount}개 · 조 {blueprint.stats.teamCount}개 · 예상 참여자 {blueprint.stats.participantCount}명
       </p>
-      <div style={{ overflowX: 'auto', background: '#fff', border: `2px solid ${LINE}`, borderRadius: 12 }}>
+      <div
+        role="region"
+        aria-label="설계 청사진 회차별 구성 표"
+        tabIndex={0}
+        onKeyDown={handleBlueprintTableKey}
+        style={{ overflowX: 'auto', background: '#fff', border: `2px solid ${LINE}`, borderRadius: 12 }}
+      >
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 620 }}>
           <caption className="sr-only">설계 청사진 회차별 구성</caption>
           <thead>
