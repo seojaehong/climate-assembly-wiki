@@ -470,9 +470,36 @@ async function fixtureServer({
         ${reviewFixture}
         <p>DB에 저장하지 않습니다. 공개 그래프에 반영하지 않습니다.</p>
         <p>실시간 연결됨</p><h2>진행자 로그인</h2>
+        <label>이메일 주소<input id="canvas-login-email" aria-label="이메일 주소" type="email"></label>
+        <label>비밀번호<input id="canvas-login-password" aria-label="비밀번호" type="password"></label>
+        <button id="canvas-login-button" type="button">로그인</button>
+        <p id="canvas-login-error" role="alert" hidden></p>
         <div class="react-flow__node-agenda${draggable ? ' draggable' : ''}">의제</div>
       </main>
       <script>
+        let canvasAuthBusy = false;
+        document.getElementById('canvas-login-button').addEventListener('click', async () => {
+          if (canvasAuthBusy) return;
+          canvasAuthBusy = true;
+          const email = document.getElementById('canvas-login-email');
+          const password = document.getElementById('canvas-login-password');
+          const button = document.getElementById('canvas-login-button');
+          email.disabled = true;
+          password.disabled = true;
+          button.disabled = true;
+          try {
+            const response = await fetch('/auth/v1/token?grant_type=password', { method: 'POST' });
+            const result = await response.json();
+            const error = document.getElementById('canvas-login-error');
+            error.textContent = result.error_description;
+            error.hidden = false;
+          } finally {
+            canvasAuthBusy = false;
+            email.disabled = false;
+            password.disabled = false;
+            button.disabled = false;
+          }
+        });
         fetch('/rest/v1/session');fetch('/rest/v1/agenda');fetch('/rest/v1/agenda_link');
         ${write ? "fetch('/write',{method:'POST'}).catch(() => {})" : ''}
         ${currentSurface === 'live' && liveDelayedWrite ? "setTimeout(() => fetch('/write',{method:'POST'}).catch(() => {}), 100)" : ''}
@@ -501,6 +528,10 @@ describe('verifyCanvasBrowser', () => {
     expect(report.status).toBe('pass');
     expect(report.checks.viteClientStatus).toBe(200);
     expect(report.checks.agendaNodeCount).toBe(1);
+    expect(report.checks.canvasAuthInputsLocked).toBe(true);
+    expect(report.checks.canvasAuthDuplicateSubmissionBlocked).toBe(true);
+    expect(report.checks.canvasAuthRetryAvailable).toBe(true);
+    expect(report.checks.canvasAuthRequestCount).toBe(1);
     expect(report.checks.blockedWriteRequestCount).toBe(0);
     expect(report.checks.canvasHydrated).toBe(true);
     expect(report.checks.canvasWorkbenchUsable).toBe(true);
@@ -557,14 +588,14 @@ describe('verifyCanvasBrowser', () => {
     const delayedLiveErrorFixture = await fixtureServer({ liveDelayedError: true });
     await expect(verifyCanvasBrowser({ baseUrl: delayedLiveErrorFixture.baseUrl }))
       .rejects.toThrow('Moderator platform verification observed a browser page error');
-  }, 15_000);
+  }, 60_000);
 
   it('fails when review hydration readiness never arrives', async () => {
     const fixture = await fixtureServer({ reviewReady: false });
 
     await expect(verifyCanvasBrowser({ baseUrl: fixture.baseUrl, timeoutMs: 2_000 }))
       .rejects.toThrow(/Timeout/i);
-  }, 10_000);
+  }, 15_000);
 });
 
 describe('Canvas browser CI contract', () => {
@@ -578,6 +609,7 @@ describe('Canvas browser CI contract', () => {
     expect(workflow).toContain('working-directory: .');
     expect(workflow).toContain('npm ci');
     expect(workflow).toContain('src/islands/OntologyReviewConsole.test.ts');
+    expect(workflow).toContain('src/islands/CanvasBoard.test.ts');
     expect(workflow).toContain('src/islands/canvas/ontology-review-workspace.test.ts');
     expect(workflow).toContain('src/islands/canvas/transcript-ontology-review-workspace.test.ts');
     expect(workflow).toContain("'src/lib/supabase.ts'");
@@ -593,6 +625,7 @@ describe('Canvas browser CI contract', () => {
     expect(verifier).toContain("'package-lock.json'");
     expect(verifier).toContain("'src/components/ModeratorPlatformNav.tsx'");
     expect(verifier).toContain("'src/components/ModeratorPlatformNav.test.ts'");
+    expect(verifier).toContain("'src/islands/CanvasBoard.test.ts'");
     expect(verifier).toContain("'src/pages/[lang]/moderator/live.astro'");
     expect(verifier).toContain("'src/pages/[lang]/moderator/ontology-review.astro'");
     expect(verifier.indexOf('const moderatorLoginBoundary = await')).toBeLessThan(

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { ReactFlow, Background, Controls, applyNodeChanges, type NodeChange } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -116,6 +116,23 @@ export function retainCanvasOperationNotice(
   incoming: CanvasOperationResult,
 ): CanvasOperationResult {
   return current && !current.ok && incoming.ok ? current : incoming;
+}
+
+export async function runExclusiveCanvasAuthOperation(
+  lock: { current: boolean },
+  action: () => Promise<void>,
+  onBusyChange: (busy: boolean) => void,
+): Promise<boolean> {
+  if (lock.current) return false;
+  lock.current = true;
+  onBusyChange(true);
+  try {
+    await action();
+    return true;
+  } finally {
+    lock.current = false;
+    onBusyChange(false);
+  }
 }
 
 type CanvasClient = NonNullable<ReturnType<typeof getSupabase>>;
@@ -241,17 +258,22 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
   const [loginPw, setLoginPw] = useState('');
   const [loginErr, setLoginErr] = useState<string | null>(null);
   const [loggingIn, setLoggingIn] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const authOperationLock = useRef(false);
   const submitLogin = async () => {
-    if (!loginEmail.trim() || !loginPw) return;
-    setLoginErr(null);
-    setLoggingIn(true);
-    try {
+    if (!loginEmail.trim() || !loginPw || authOperationLock.current) return;
+    await runExclusiveCanvasAuthOperation(authOperationLock, async () => {
+      setLoginErr(null);
       const { error } = await signIn(loginEmail.trim(), loginPw);
       if (error) setLoginErr(error.message);
-    } finally {
-      setLoggingIn(false);
-    }
+    }, setLoggingIn);
     // 성공 시 onAuthStateChange가 session을 채워 모달이 자동으로 사라짐
+  };
+  const submitLogout = async () => {
+    if (authOperationLock.current) return;
+    await runExclusiveCanvasAuthOperation(authOperationLock, async () => {
+      await completeOperation(executeCanvasOperation('로그아웃', signOut));
+    }, setLoggingOut);
   };
 
   // 배경색 (프리셋 또는 커스텀 hex), localStorage 기억
@@ -585,16 +607,17 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
       <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
         {authed && (
           <button
-            onClick={() => void completeOperation(executeCanvasOperation('로그아웃', signOut))}
+            onClick={() => void submitLogout()}
+            disabled={loggingOut}
             title="로그아웃"
             style={{
-              padding: '6px 12px', borderRadius: 999, border: 'none', cursor: 'pointer',
+              padding: '6px 12px', borderRadius: 999, border: 'none', cursor: loggingOut ? 'wait' : 'pointer',
               background: 'rgba(0,0,0,.55)', color: '#fff', fontSize: 13, fontWeight: 800,
               maxWidth: 260, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               boxShadow: '0 2px 6px rgba(0,0,0,.25)',
             }}
           >
-            ✓ {email} · 로그아웃
+            ✓ {email} · {loggingOut ? '로그아웃 중…' : '로그아웃'}
           </button>
         )}
         {BG_PRESETS.map((p) => (
@@ -782,9 +805,11 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
             <h2 style={{ margin: '0 0 16px', fontSize: 24, fontWeight: 900, color: '#1f2937' }}>진행자 로그인</h2>
             <input
               type="email"
+              aria-label="이메일 주소"
               value={loginEmail}
               onChange={(e) => setLoginEmail(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') submitLogin(); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') void submitLogin(); }}
+              disabled={loggingIn}
               placeholder="이메일 주소"
               autoComplete="username"
               style={{
@@ -794,9 +819,11 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
             />
             <input
               type="password"
+              aria-label="비밀번호"
               value={loginPw}
               onChange={(e) => setLoginPw(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') submitLogin(); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') void submitLogin(); }}
+              disabled={loggingIn}
               placeholder="비밀번호"
               autoComplete="current-password"
               style={{
@@ -805,7 +832,7 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
               }}
             />
             <button
-              onClick={submitLogin}
+              onClick={() => void submitLogin()}
               disabled={!loginEmail.trim() || !loginPw || loggingIn}
               style={{
                 width: '100%', padding: '12px 16px', fontSize: 17, fontWeight: 800, borderRadius: 10,

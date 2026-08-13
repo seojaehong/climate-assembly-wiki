@@ -8,11 +8,22 @@ import {
   CanvasConnectionNotice,
   CanvasOperationNotice,
   retainCanvasOperationNotice,
+  runExclusiveCanvasAuthOperation,
 } from './CanvasBoard';
 import type { CanvasOperationResult } from './canvas/canvas-operation';
 import { completeCanvasAuthSessionLoad } from './canvas/useAuth';
 
 const authSession = (id: string) => ({ user: { id, email: `${id}@example.test` } }) as Session;
+
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
 
 describe('CanvasOperationNotice', () => {
   it('announces failures and exposes the failed operation retry', () => {
@@ -145,6 +156,53 @@ describe('CanvasConnectionNotice', () => {
 });
 
 describe('Canvas auth session freshness', () => {
+  it('locks an auth operation before the first await and rejects a duplicate submission', async () => {
+    const lock = { current: false };
+    const gate = deferred<void>();
+    const busyChanges: boolean[] = [];
+    let actionCount = 0;
+    const action = async () => {
+      actionCount += 1;
+      await gate.promise;
+    };
+
+    const first = runExclusiveCanvasAuthOperation(lock, action, (busy) => busyChanges.push(busy));
+    const duplicate = await runExclusiveCanvasAuthOperation(lock, action, (busy) => busyChanges.push(busy));
+
+    expect(duplicate).toBe(false);
+    expect(actionCount).toBe(1);
+    expect(lock.current).toBe(true);
+    expect(busyChanges).toEqual([true]);
+
+    gate.resolve();
+    await expect(first).resolves.toBe(true);
+    expect(lock.current).toBe(false);
+    expect(busyChanges).toEqual([true, false]);
+  });
+
+  it('releases the auth operation lock after an unexpected failure', async () => {
+    const lock = { current: false };
+    const busyChanges: boolean[] = [];
+
+    await expect(runExclusiveCanvasAuthOperation(
+      lock,
+      async () => { throw new Error('synthetic auth failure'); },
+      (busy) => busyChanges.push(busy),
+    )).rejects.toThrow('synthetic auth failure');
+
+    expect(lock.current).toBe(false);
+    expect(busyChanges).toEqual([true, false]);
+  });
+
+  it('wires login and logout to the shared synchronous auth lock', () => {
+    const source = readFileSync(new URL('./CanvasBoard.tsx', import.meta.url), 'utf8');
+
+    expect(source.match(/runExclusiveCanvasAuthOperation\(authOperationLock/g)).toHaveLength(2);
+    expect(source).toContain('disabled={loggingIn}');
+    expect(source).toContain('disabled={loggingOut}');
+    expect(source).toContain("loggingOut ? '로그아웃 중…' : '로그아웃'");
+  });
+
   it('discards an initial session response after a newer auth event invalidates it', async () => {
     let resolveSession!: (value: { data: { session: Session | null }; error: Error | null }) => void;
     const pending = new Promise<{ data: { session: Session | null }; error: Error | null }>((resolve) => {

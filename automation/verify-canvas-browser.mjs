@@ -38,6 +38,7 @@ const AUDITED_SOURCE_PATHS = [
   'src/components/ModeratorPlatformNav.tsx',
   'src/components/ModeratorPlatformNav.test.ts',
   'src/islands/CanvasBoard.tsx',
+  'src/islands/CanvasBoard.test.ts',
   'src/islands/OntologyReviewConsole.tsx',
   'src/islands/OntologyReviewConsole.test.ts',
   'src/islands/canvas',
@@ -256,11 +257,22 @@ export async function verifyCanvasBrowser({
   });
   const page = await context.newPage();
   const writeRequests = [];
+  let canvasAuthRequestCount = 0;
   const readResponses = [];
   const browserErrors = [];
 
   await context.route('**/*', async (route) => {
     const request = route.request();
+    if (request.method() === 'POST' && request.url().includes('/auth/v1/token')) {
+      canvasAuthRequestCount += 1;
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 75));
+      await route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'invalid_grant', error_description: 'Synthetic invalid login' }),
+      });
+      return;
+    }
     if (!WRITE_METHODS.has(request.method())) {
       await route.continue();
       return;
@@ -292,6 +304,32 @@ export async function verifyCanvasBrowser({
 
     await page.getByText('실시간 연결됨', { exact: true }).waitFor({ timeout: timeoutMs });
     await page.getByRole('heading', { name: '진행자 로그인' }).waitFor({ timeout: timeoutMs });
+    const canvasLoginEmail = page.getByLabel('이메일 주소');
+    const canvasLoginPassword = page.getByLabel('비밀번호');
+    const canvasLoginButton = page.getByRole('button', { name: '로그인', exact: true });
+    await canvasLoginEmail.fill('synthetic-canvas@example.invalid');
+    await canvasLoginPassword.fill('synthetic-password');
+    await canvasLoginButton.evaluate((button) => {
+      if (!(button instanceof HTMLButtonElement)) throw new Error('Canvas login control is not a button');
+      button.click();
+      button.click();
+    });
+    await page.waitForFunction(() => {
+      const email = document.querySelector('input[aria-label="이메일 주소"]');
+      const password = document.querySelector('input[aria-label="비밀번호"]');
+      return email instanceof HTMLInputElement && email.disabled
+        && password instanceof HTMLInputElement && password.disabled;
+    }, undefined, { timeout: timeoutMs });
+    const canvasAuthInputsLocked = await canvasLoginEmail.isDisabled()
+      && await canvasLoginPassword.isDisabled();
+    await page.getByRole('alert').filter({ hasText: 'Synthetic invalid login' }).waitFor({ timeout: timeoutMs });
+    const canvasAuthDuplicateSubmissionBlocked = canvasAuthRequestCount === 1;
+    const canvasAuthRetryAvailable = await canvasLoginButton.isEnabled()
+      && await canvasLoginEmail.isEnabled()
+      && await canvasLoginPassword.isEnabled();
+    if (!canvasAuthInputsLocked || !canvasAuthDuplicateSubmissionBlocked || !canvasAuthRetryAvailable) {
+      throw new Error('Canvas authentication operation lock is incomplete');
+    }
     const canvasNavigation = await platformNavigationEvidence(page, pageUrl.pathname, timeoutMs);
     const canvasWorkbenchSize = await page.locator('#canvas-workbench').evaluate((element) => {
       const bounds = element.getBoundingClientRect();
@@ -747,6 +785,10 @@ export async function verifyCanvasBrowser({
         documentStatus: documentResponse.status(),
         realtimeReady: readPathStatuses.has('/rest/v1/agenda'),
         moderatorLoginBoundary,
+        canvasAuthInputsLocked,
+        canvasAuthDuplicateSubmissionBlocked,
+        canvasAuthRetryAvailable,
+        canvasAuthRequestCount,
         canvasHydrated: nodeCount > 0,
         canvasWorkbenchUsable,
         canvasWorkbenchSize,
