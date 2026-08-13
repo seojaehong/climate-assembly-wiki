@@ -27,9 +27,9 @@
               "chunk-001",
               "chunk-002"
             ],
-            "reviewer": "moderator-fixture",
+            "review_identity_kind": "synthetic_fixture",
             "reviewed_at": "2026-08-29T01:00:00.000Z",
-            "publication_reviewer": "reviewer-fixture",
+            "publication_identity_kind": "synthetic_fixture",
             "published_at": "2026-08-29T01:05:00.000Z"
           }
         }
@@ -57,9 +57,9 @@
             "source_chunk_uids": [
               "chunk-001"
             ],
-            "reviewer": "moderator-fixture",
+            "review_identity_kind": "synthetic_fixture",
             "reviewed_at": "2026-08-29T01:00:00.000Z",
-            "publication_reviewer": "reviewer-fixture",
+            "publication_identity_kind": "synthetic_fixture",
             "published_at": "2026-08-29T01:05:00.000Z"
           }
         }
@@ -84,9 +84,9 @@
             "source_chunk_uids": [
               "chunk-001"
             ],
-            "reviewer": "moderator-fixture",
+            "review_identity_kind": "synthetic_fixture",
             "reviewed_at": "2026-08-29T01:00:00.000Z",
-            "publication_reviewer": "reviewer-fixture",
+            "publication_identity_kind": "synthetic_fixture",
             "published_at": "2026-08-29T01:05:00.000Z"
           },
           "review_state": "accepted",
@@ -115,7 +115,7 @@
     },
     "publication": {
       "mode": "synthetic-reviewed-demo",
-      "approved_by": "reviewer-fixture",
+      "approved_identity_kind": "synthetic_fixture",
       "approved_at": "2026-08-29T01:05:00.000Z"
     }
   }

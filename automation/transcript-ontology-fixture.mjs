@@ -15,6 +15,7 @@ const RELATIONS = [
 const SPEAKER_PSEUDONYM_PATTERN = /^speaker-[a-z]{1,3}$/;
 const OPAQUE_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,127}$/i;
 const REVIEWER_ALIAS_PATTERN = /^(moderator|reviewer)-(fixture|test)$/;
+const AUTH_REVIEWER_ID_PATTERN = /^auth-user:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const REVIEW_DECISION_ID_PATTERN = /^(?:auth-user:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|moderator-r2-test)$/;
 const LANGUAGE_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i;
 
@@ -203,12 +204,28 @@ function reviewedPublication(input) {
   if (!isRecord(input.publication) || input.publication.mode !== 'synthetic-reviewed-demo') {
     throw new Error('Synthetic live graph publication approval is required');
   }
-  const approvedBy = nonemptyString(input.publication.approvedBy, 'publication reviewer');
-  if (!REVIEWER_ALIAS_PATTERN.test(approvedBy)) throw new Error('Invalid publication reviewer alias');
+  const { identity: approvedBy, kind: identityKind } = publicationIdentity(input.publication.approvedBy);
   const approvedAt = canonicalIsoInstant(input.publication.approvedAt, 'publication approvedAt');
   const reviewedAt = canonicalIsoInstant(input.reviewedAt, 'fixture reviewedAt');
   if (approvedAt <= reviewedAt) throw new Error('Publication approval must follow fixture review');
-  return { mode: input.publication.mode, approvedBy, approvedAt };
+  return {
+    mode: input.publication.mode,
+    approvedBy,
+    approvedAt,
+    identityKind,
+  };
+}
+
+function publicFixtureAuditMeta(meta, publication) {
+  const reviewer = nonemptyString(meta.reviewer, 'fixture reviewer');
+  const result = { ...meta };
+  delete result.reviewer;
+  return {
+    ...result,
+    review_identity_kind: publicIdentityKind(reviewer),
+    publication_identity_kind: publication.identityKind,
+    published_at: publication.approvedAt,
+  };
 }
 
 /** Builds a public synthetic live graph after explicit fixture publication approval. */
@@ -224,11 +241,7 @@ export function buildLiveTranscriptGraph(input) {
           ...node.data,
           review_state: 'accepted',
           is_public: true,
-          meta: {
-            ...node.data.meta,
-            publication_reviewer: publication.approvedBy,
-            published_at: publication.approvedAt,
-          },
+          meta: publicFixtureAuditMeta(node.data.meta, publication),
         },
       })),
       edges: graph.elements.edges.map((edge) => ({
@@ -237,11 +250,7 @@ export function buildLiveTranscriptGraph(input) {
           ...edge.data,
           review_state: 'accepted',
           is_public: true,
-          meta: {
-            ...edge.data.meta,
-            publication_reviewer: publication.approvedBy,
-            published_at: publication.approvedAt,
-          },
+          meta: publicFixtureAuditMeta(edge.data.meta, publication),
         },
       })),
     },
@@ -254,7 +263,7 @@ export function buildLiveTranscriptGraph(input) {
       requires_publication_review: false,
       publication: {
         mode: publication.mode,
-        approved_by: publication.approvedBy,
+        approved_identity_kind: publication.identityKind,
         approved_at: publication.approvedAt,
       },
     },
@@ -300,8 +309,16 @@ function reviewAudit(item, sourceReviewedAt) {
   return { reviewStatus: item.reviewStatus, reviewer, reviewedAt };
 }
 
-function publicReviewIdentityKind(reviewer) {
-  return reviewer.startsWith('auth-user:') ? 'authenticated_user' : 'synthetic_fixture';
+function publicIdentityKind(identity) {
+  return identity.startsWith('auth-user:') ? 'authenticated_user' : 'synthetic_fixture';
+}
+
+function publicationIdentity(value) {
+  const identity = nonemptyString(value, 'publication reviewer');
+  if (!REVIEWER_ALIAS_PATTERN.test(identity) && !AUTH_REVIEWER_ID_PATTERN.test(identity)) {
+    throw new Error('Invalid publication reviewer identity');
+  }
+  return { identity, kind: publicIdentityKind(identity) };
 }
 
 function expectedTranscript(cited, chunks) {
@@ -346,8 +363,7 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
   if (publication.reviewedPlanSha256 !== reviewedTranscriptPlanSha256(reviewedPlan)) {
     throw new Error('Publication approval does not match the reviewed plan');
   }
-  const approvedBy = nonemptyString(publication.approvedBy, 'publication reviewer');
-  if (!REVIEWER_ALIAS_PATTERN.test(approvedBy)) throw new Error('Invalid publication reviewer alias');
+  const { identity: approvedBy, kind: publicationIdentityKind } = publicationIdentity(publication.approvedBy);
   const approvedAt = canonicalIsoInstant(publication.approvedAt, 'publication approvedAt');
   const chunks = new Map(fixture.chunks.map((chunk) => [chunk.uid, chunk]));
   const fixtureNodes = new Map(fixture.expected.nodes.map((node) => [node.uid, node]));
@@ -399,9 +415,9 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
         is_public: true,
         meta: {
           ...publicMeta,
-          review_identity_kind: publicReviewIdentityKind(audit.reviewer),
+          review_identity_kind: publicIdentityKind(audit.reviewer),
           reviewed_at: audit.reviewedAt,
-          publication_reviewer: approvedBy,
+          publication_identity_kind: publicationIdentityKind,
           published_at: approvedAt,
         },
       },
@@ -450,9 +466,9 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
         is_public: true,
         meta: {
           ...publicMeta,
-          review_identity_kind: publicReviewIdentityKind(audit.reviewer),
+          review_identity_kind: publicIdentityKind(audit.reviewer),
           reviewed_at: audit.reviewedAt,
-          publication_reviewer: approvedBy,
+          publication_identity_kind: publicationIdentityKind,
           published_at: approvedAt,
         },
       },
@@ -484,7 +500,7 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
       },
       publication: {
         mode: publication.mode,
-        approved_by: approvedBy,
+        approved_identity_kind: publicationIdentityKind,
         approved_at: approvedAt,
       },
     },

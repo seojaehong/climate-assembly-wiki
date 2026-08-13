@@ -535,7 +535,7 @@ npm.cmd --prefix automation run bridge:transcript-ontology -- --fixture fixtures
 - exporter는 원 fixture exact-byte SHA-256, node/relation 전체 source UID 집합, 원문·인용·endpoint·판단 상태를 다시 대조한다. `accepted`와 `edited`만 내보내고 rejected 건수와 uncited 후보 건수를 `meta.dropped`에 남긴다.
 - 공개 payload에는 time-coded chunk table, speaker pseudonym, 시작·종료 시각을 넣지 않는다. 모든 node detail은 `cited`/`cited_uids`로 원 chunk UID를 표시한다.
 - `sources.json`의 `live-transcript-r2-reviewed`는 `/workshop-graph/?source=live-transcript-r2-reviewed`에서 로드되며 label과 meta 모두 synthetic 사람 검수 결과임을 표시한다.
-- 이번 R3는 추적 synthetic JSON export다. 예제 plan의 정확한 legacy synthetic reviewer `moderator-r2-test`와 운영 Auth reviewer ID만 입력으로 허용하며, 공개 graph에는 원시 reviewer 값을 싣지 않고 `authenticated_user` 또는 `synthetic_fixture` identity kind만 남긴다. 이는 실제 시민 발언, reviewer 진위 인증, 자동 publication, DB snapshot adapter/API 쓰기와 retention 정책을 포함하거나 승인한 것이 아니다.
+- 이번 R3는 추적 synthetic JSON export다. 검수 결정은 예제 plan의 정확한 legacy synthetic reviewer `moderator-r2-test` 또는 운영 Auth reviewer ID만 허용하고, 공개 승인자는 제한된 synthetic 역할 alias 또는 canonical Auth reviewer ID만 허용한다. 공개 graph에는 두 원시 값을 모두 싣지 않고 각각 `authenticated_user` 또는 `synthetic_fixture` identity kind만 남긴다. 원 승인 artifact에는 승인자가 보존되지만 외부 서명이나 Auth 서버 재조회는 하지 않으므로 실제 계정 소유 진위를 독립 증명하지 않는다. 이는 실제 시민 발언, 자동 publication, DB snapshot adapter/API 쓰기와 retention 정책을 포함하거나 승인한 것이 아니다.
 
 ## R4 브라우저 MediaRecorder·전사 chunk 검수 proof of concept
 

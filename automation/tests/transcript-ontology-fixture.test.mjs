@@ -156,6 +156,50 @@ test('keeps an authenticated reviewer ID in the private plan but redacts it from
   ))).toBe(true);
 });
 
+test('accepts an authenticated publication approver but redacts the UUID from the public graph', () => {
+  const plan = reviewedR2Plan();
+  const approvedBy = 'auth-user:00000000-0000-4000-8000-000000000092';
+  const graph = buildPublishedTranscriptReviewGraph({
+    fixtureText: R2_FIXTURE_TEXT,
+    reviewedPlan: plan,
+    publication: {
+      schemaVersion: 1,
+      kind: 'transcript-ontology-publication-approval',
+      mode: 'synthetic-reviewed-demo',
+      sourceId: 'live-transcript-r2-reviewed',
+      reviewedPlanSha256: reviewedTranscriptPlanSha256(plan),
+      approvedBy,
+      approvedAt: '2026-08-01T01:20:00.000Z',
+    },
+  });
+
+  expect(JSON.stringify(graph)).not.toContain(approvedBy);
+  expect(graph.meta.publication.approved_identity_kind).toBe('authenticated_user');
+  expect(graph.elements.nodes.every((node) => (
+    node.data.meta.publication_identity_kind === 'authenticated_user'
+  ))).toBe(true);
+  expect(graph.elements.edges.every((edge) => (
+    edge.data.meta.publication_identity_kind === 'authenticated_user'
+  ))).toBe(true);
+});
+
+test('rejects an arbitrary publication approver identity', () => {
+  const plan = reviewedR2Plan();
+  expect(() => buildPublishedTranscriptReviewGraph({
+    fixtureText: R2_FIXTURE_TEXT,
+    reviewedPlan: plan,
+    publication: {
+      schemaVersion: 1,
+      kind: 'transcript-ontology-publication-approval',
+      mode: 'synthetic-reviewed-demo',
+      sourceId: 'live-transcript-r2-reviewed',
+      reviewedPlanSha256: reviewedTranscriptPlanSha256(plan),
+      approvedBy: 'release-manager-1',
+      approvedAt: '2026-08-01T01:20:00.000Z',
+    },
+  })).toThrow('Invalid publication reviewer identity');
+});
+
 test('rejects an R2 plan changed after publication approval', () => {
   const plan = reviewedR2Plan();
   const publication = {
@@ -232,19 +276,47 @@ test('exports only explicitly approved synthetic fixtures as a public live graph
     requires_publication_review: false,
     publication: {
       mode: 'synthetic-reviewed-demo',
-      approved_by: 'reviewer-test',
+      approved_identity_kind: 'synthetic_fixture',
       approved_at: '2026-08-29T01:05:00.000Z',
     },
   });
   expect(JSON.stringify(graph)).not.toContain('speakerLabelPseudonym');
   expect(JSON.stringify(graph)).not.toContain('startMs');
   expect(JSON.stringify(graph)).not.toContain('endMs');
+  expect(JSON.stringify(graph)).not.toContain(FIXTURE.reviewedBy);
+  expect(graph.elements.nodes.every((node) => (
+    node.data.meta.review_identity_kind === 'synthetic_fixture'
+  ))).toBe(true);
   expect(verifyLiveTranscriptGraph({ fixture: LIVE_FIXTURE, graph })).toMatchObject({
     nodeCount: 2,
     edgeCount: 1,
     publicGraphVerified: true,
     databaseMutationExecuted: false,
   });
+});
+
+test('redacts an authenticated approver from the direct live fixture graph', () => {
+  const approvedBy = 'auth-user:00000000-0000-4000-8000-000000000092';
+  const graph = buildLiveTranscriptGraph({
+    ...structuredClone(LIVE_FIXTURE),
+    publication: { ...LIVE_FIXTURE.publication, approvedBy },
+  });
+
+  expect(JSON.stringify(graph)).not.toContain(approvedBy);
+  expect(graph.meta.publication.approved_identity_kind).toBe('authenticated_user');
+  expect(graph.elements.nodes.every((node) => (
+    node.data.meta.publication_identity_kind === 'authenticated_user'
+  ))).toBe(true);
+  expect(graph.elements.edges.every((edge) => (
+    edge.data.meta.publication_identity_kind === 'authenticated_user'
+  ))).toBe(true);
+});
+
+test('rejects an arbitrary approver from the direct live fixture graph', () => {
+  expect(() => buildLiveTranscriptGraph({
+    ...structuredClone(LIVE_FIXTURE),
+    publication: { ...LIVE_FIXTURE.publication, approvedBy: 'release-manager-1' },
+  })).toThrow('Invalid publication reviewer identity');
 });
 
 test('maps reviewed transcript candidates to stable graph ids and preserves cited chunk uids', () => {
