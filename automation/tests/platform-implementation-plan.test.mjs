@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
 import {
+  IMPLEMENTATION_RECORD_CONTRACT,
   IMPLEMENTATION_STATES,
   IMPLEMENTATION_STATUS_CONTRACT,
   buildPlatformImplementationPlan,
@@ -92,6 +93,14 @@ test('builds a sealed atomic body plan while retaining untouched issues', () => 
 });
 
 test('accepts every tracked state from the shared UI contract and rejects fallback states', () => {
+  expect(IMPLEMENTATION_RECORD_CONTRACT).toMatchObject({
+    responsibleBodyMaxLength: 200,
+    summaryMaxLength: 1000,
+    timestampMaxLength: 80,
+    evidenceUrlMaxLength: 2000,
+    evidenceProtocol: 'https:',
+    evidenceCredentialsAllowed: false,
+  });
   expect([...IMPLEMENTATION_STATES].sort()).toEqual([
     'implemented', 'in_progress', 'not_pursued', 'planned', 'under_review',
   ]);
@@ -139,6 +148,22 @@ test('rejects duplicate issue responses and invalid timestamp chronology', () =>
   const invalidCalendar = inputs();
   invalidCalendar.responses.responses[0].updated_at = '2026-02-30T08:00:00.000Z';
   expect(() => buildPlatformImplementationPlan(invalidCalendar.result, invalidCalendar.responses)).toThrow('timestamp');
+
+  const nonCanonical = inputs();
+  nonCanonical.responses.responses[0].updated_at = 'August 13, 2026';
+  expect(() => buildPlatformImplementationPlan(nonCanonical.result, nonCanonical.responses)).toThrow('timestamp');
+});
+
+test('enforces shared implementation record length boundaries', () => {
+  const responsibleBody = inputs();
+  responsibleBody.responses.responses[0].responsible_body = '기'.repeat(
+    IMPLEMENTATION_RECORD_CONTRACT.responsibleBodyMaxLength + 1,
+  );
+  expect(() => buildPlatformImplementationPlan(responsibleBody.result, responsibleBody.responses)).toThrow('responsible body');
+
+  const summary = inputs();
+  summary.responses.responses[0].summary = '가'.repeat(IMPLEMENTATION_RECORD_CONTRACT.summaryMaxLength + 1);
+  expect(() => buildPlatformImplementationPlan(summary.result, summary.responses)).toThrow('summary');
 });
 
 test('allows non-final states without evidence but rejects malformed optional evidence', () => {

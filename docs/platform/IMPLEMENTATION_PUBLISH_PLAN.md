@@ -19,7 +19,7 @@
 
 관찰 시각은 공개 시각보다 빠를 수 없고, `updated_at <= reviewed_at <= observed_at` 순서를 지켜야 한다. 중복·범위 밖 쟁점, 잘못된 상태·URL·검수자, 잘못된 시각 순서는 plan 생성 전에 거부한다.
 
-허용 상태와 완료 상태의 근거 필수 규칙은 웹 표시와 같은 `src/islands/result/implementation-status-contract.json`에서 읽는다. preflight는 계약 schema·fallback·메타데이터·색상 형식도 시작 시 검증한다.
+허용 상태와 완료 상태의 근거 필수 규칙은 웹 표시와 같은 `src/islands/result/implementation-status-contract.json`에서 읽는다. preflight는 계약 schema·fallback·메타데이터·색상 형식뿐 아니라 책임 기관·설명·시각·근거 URL의 공용 record 제약도 시작 시 검증한다. 웹과 preflight는 canonical UTC 시각과 credential 없는 HTTPS 근거 URL만 유효한 이행 정보로 인정한다.
 
 ## 출력
 

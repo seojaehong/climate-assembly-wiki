@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import implementationStatusContract from './implementation-status-contract.json';
 import {
   buildResultView,
   buildMatrix,
@@ -218,6 +219,8 @@ describe('toImplementation — 이행추적 공개 계약', () => {
     { status: 'planned', ...tracked, evidence_url: 'http://example.org/evidence' },
     { status: 'unknown', ...tracked },
     { status: 'in_progress', ...tracked, updated_at: 'not-a-date' },
+    { status: 'in_progress', ...tracked, updated_at: 'August 12, 2026' },
+    { status: 'in_progress', ...tracked, updated_at: '2026-02-30T00:00:00.000Z' },
   ])('잘못되거나 근거 없는 확정 상태를 확인 필요로 fail-closed한다', (raw) => {
     expect(toImplementation(raw)).toMatchObject({
       state: 'invalid',
@@ -237,6 +240,19 @@ describe('toImplementation — 이행추적 공개 계약', () => {
       issue({ id: 'invalid', implementation: { status: 'implemented', ...tracked } }),
     ]));
     expect(view?.stats.implementationTrackedCount).toBe(1);
+  });
+
+  it('공개 뷰도 공용 record 길이 경계를 적용한다', () => {
+    expect(toImplementation({
+      status: 'planned',
+      ...tracked,
+      responsible_body: '기'.repeat(implementationStatusContract.record.responsibleBodyMaxLength + 1),
+    })).toMatchObject({ state: 'invalid', valid: false });
+    expect(toImplementation({
+      status: 'planned',
+      ...tracked,
+      summary: '가'.repeat(implementationStatusContract.record.summaryMaxLength + 1),
+    })).toMatchObject({ state: 'invalid', valid: false });
   });
 
   it('공용 계약은 fallback 두 상태와 추적 다섯 상태를 완전하게 제공한다', () => {

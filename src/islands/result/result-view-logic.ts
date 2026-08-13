@@ -134,6 +134,7 @@ const TRACKED_IMPLEMENTATION_STATES = new Set<string>(
     .filter(([, meta]) => meta.tracked)
     .map(([state]) => state),
 );
+const IMPLEMENTATION_TIMESTAMP_PATTERN = new RegExp(implementationStatusContract.record.timestampPattern);
 
 function isTrackedImplementationState(value: string): value is TrackedImplementationState {
   return TRACKED_IMPLEMENTATION_STATES.has(value);
@@ -225,12 +226,24 @@ function normalizedImplementationText(value: unknown, maxLength: number): string
   return text.length > 0 && text.length <= maxLength ? text : null;
 }
 
+function normalizedImplementationTimestamp(value: unknown): string | null {
+  const text = normalizedImplementationText(value, implementationStatusContract.record.timestampMaxLength);
+  if (!text || !IMPLEMENTATION_TIMESTAMP_PATTERN.test(text)) return null;
+  const timestamp = Date.parse(text);
+  const normalized = text.includes('.') ? text : text.replace(/Z$/, '.000Z');
+  if (Number.isNaN(timestamp) || new Date(timestamp).toISOString() !== normalized) return null;
+  return text;
+}
+
 function normalizedEvidenceUrl(value: unknown): string | null {
   if (value == null || value === '') return null;
-  if (typeof value !== 'string') return null;
+  const text = normalizedImplementationText(value, implementationStatusContract.record.evidenceUrlMaxLength);
+  if (!text) return null;
   try {
-    const url = new URL(value);
-    if (url.protocol !== 'https:' || url.username || url.password) return null;
+    const url = new URL(text);
+    const hasCredentials = Boolean(url.username || url.password);
+    if (url.protocol !== implementationStatusContract.record.evidenceProtocol
+      || (!implementationStatusContract.record.evidenceCredentialsAllowed && hasCredentials)) return null;
     return url.toString();
   } catch {
     return null;
@@ -244,12 +257,18 @@ export function toImplementation(raw: ResultImplementationRaw | null | undefined
   if (!isTrackedImplementationState(state)) {
     return implementationFallback('invalid');
   }
-  const responsibleBody = normalizedImplementationText(raw.responsible_body, 200);
-  const updatedAt = normalizedImplementationText(raw.updated_at, 80);
-  const summary = normalizedImplementationText(raw.summary, 1000);
+  const responsibleBody = normalizedImplementationText(
+    raw.responsible_body,
+    implementationStatusContract.record.responsibleBodyMaxLength,
+  );
+  const updatedAt = normalizedImplementationTimestamp(raw.updated_at);
+  const summary = normalizedImplementationText(
+    raw.summary,
+    implementationStatusContract.record.summaryMaxLength,
+  );
   const evidenceUrl = normalizedEvidenceUrl(raw.evidence_url);
   const evidenceRequired = implementationStatusContract.states[state].evidenceRequired;
-  if (!responsibleBody || !updatedAt || Number.isNaN(Date.parse(updatedAt)) || !summary
+  if (!responsibleBody || !updatedAt || !summary
     || (evidenceRequired && !evidenceUrl)) {
     return implementationFallback('invalid');
   }

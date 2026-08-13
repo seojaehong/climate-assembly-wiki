@@ -20,7 +20,7 @@
 
 허용 상태는 `under_review`, `planned`, `in_progress`, `implemented`, `not_pursued`다. 모든 등록 상태에는 책임 기관, 유효한 갱신 시각, 공개 설명이 필요하다. `implemented`와 `not_pursued`에는 HTTPS 근거 URL이 필수다. URL이 제공되면 사용자 정보가 없는 HTTPS URL이어야 한다.
 
-상태 label·설명·색상·추적 여부·근거 필수 여부의 단일 정본은 `src/islands/result/implementation-status-contract.json`이다. 웹 뷰 모델과 승인 전 publish plan은 이 파일을 함께 소비한다.
+상태 label·설명·색상·추적 여부·근거 필수 여부의 단일 정본은 `src/islands/result/implementation-status-contract.json`이다. schema v2는 책임 기관·공개 설명·시각·근거 URL의 길이 경계, canonical UTC 시각 형식, HTTPS 전용 및 URL credential 금지도 함께 정의한다. 웹 뷰 모델과 승인 전 publish plan은 이 파일을 함께 소비한다.
 
 ## Fail-closed 표시
 

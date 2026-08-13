@@ -1,5 +1,14 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "record": {
+    "responsibleBodyMaxLength": 200,
+    "summaryMaxLength": 1000,
+    "timestampMaxLength": 80,
+    "timestampPattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+    "evidenceUrlMaxLength": 2000,
+    "evidenceProtocol": "https:",
+    "evidenceCredentialsAllowed": false
+  },
   "states": {
     "not_reported": {
       "label": "이행 정보 미등록",

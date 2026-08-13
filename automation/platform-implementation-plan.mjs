@@ -4,7 +4,6 @@ import { pathToFileURL } from 'node:url';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
-const ISO_UTC_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 const REVIEWER_PATTERN = /^[a-z][a-z0-9-]{2,39}$/;
 const RESULT_SCOPES = new Set(['topic', 'session', 'assembly']);
 const STATUS_CONTRACT_PATH = new URL('../src/islands/result/implementation-status-contract.json', import.meta.url);
@@ -47,8 +46,36 @@ function loadImplementationStatusContract() {
     throw new Error('Unable to read implementation status contract');
   }
   const root = requireObject(parsed, 'implementation status contract');
-  requireExactKeys(root, new Set(['schemaVersion', 'states']), 'implementation status contract');
-  if (root.schemaVersion !== 1) throw new Error('Unsupported implementation status contract version');
+  requireExactKeys(root, new Set(['schemaVersion', 'record', 'states']), 'implementation status contract');
+  if (root.schemaVersion !== 2) throw new Error('Unsupported implementation status contract version');
+  const record = requireObject(root.record, 'implementation record contract');
+  requireExactKeys(record, new Set([
+    'responsibleBodyMaxLength', 'summaryMaxLength', 'timestampMaxLength', 'timestampPattern',
+    'evidenceUrlMaxLength', 'evidenceProtocol', 'evidenceCredentialsAllowed',
+  ]), 'implementation record contract');
+  for (const key of [
+    'responsibleBodyMaxLength', 'summaryMaxLength', 'timestampMaxLength', 'evidenceUrlMaxLength',
+  ]) {
+    if (!Number.isInteger(record[key]) || record[key] <= 0 || record[key] > 10_000) {
+      throw new Error('Invalid implementation record length');
+    }
+  }
+  if (record.evidenceProtocol !== 'https:' || record.evidenceCredentialsAllowed !== false) {
+    throw new Error('Unsafe implementation evidence contract');
+  }
+  if (typeof record.timestampPattern !== 'string') {
+    throw new Error('Invalid implementation timestamp contract');
+  }
+  let timestampPattern;
+  try {
+    timestampPattern = new RegExp(record.timestampPattern);
+  } catch {
+    throw new Error('Invalid implementation timestamp contract');
+  }
+  if (!timestampPattern.test('2026-08-13T00:00:00.000Z')
+    || timestampPattern.test('August 13, 2026')) {
+    throw new Error('Invalid implementation timestamp contract');
+  }
   const states = requireObject(root.states, 'implementation status states');
   const fallbackStates = new Set(['not_reported', 'invalid']);
   for (const fallback of fallbackStates) {
@@ -82,15 +109,18 @@ function loadImplementationStatusContract() {
   if (!entries.some(([state, meta]) => !fallbackStates.has(state) && meta.tracked)) {
     throw new Error('Implementation status contract has no tracked state');
   }
-  return states;
+  return { record, states };
 }
 
-export const IMPLEMENTATION_STATUS_CONTRACT = loadImplementationStatusContract();
+const implementationContract = loadImplementationStatusContract();
+export const IMPLEMENTATION_RECORD_CONTRACT = implementationContract.record;
+export const IMPLEMENTATION_STATUS_CONTRACT = implementationContract.states;
 export const IMPLEMENTATION_STATES = new Set(
   Object.entries(IMPLEMENTATION_STATUS_CONTRACT)
     .filter(([, meta]) => meta.tracked)
     .map(([state]) => state),
 );
+const IMPLEMENTATION_TIMESTAMP_PATTERN = new RegExp(IMPLEMENTATION_RECORD_CONTRACT.timestampPattern);
 
 function requireText(value, label, maxLength = 1000) {
   if (typeof value !== 'string') throw new Error(`Invalid ${label}`);
@@ -105,8 +135,10 @@ function requireUuid(value, label) {
 }
 
 function requireTimestamp(value, label) {
-  const text = requireText(value, label, 80);
-  if (!ISO_UTC_PATTERN.test(text)) throw new Error(`Invalid ${label}`);
+  const text = requireText(value, label, IMPLEMENTATION_RECORD_CONTRACT.timestampMaxLength);
+  if (!IMPLEMENTATION_TIMESTAMP_PATTERN.test(text)) {
+    throw new Error(`Invalid ${label}`);
+  }
   const timestamp = Date.parse(text);
   const normalized = text.includes('.') ? text : text.replace(/Z$/, '.000Z');
   if (Number.isNaN(timestamp) || new Date(timestamp).toISOString() !== normalized) {
@@ -120,10 +152,18 @@ function requireEvidenceUrl(value, required) {
     if (required) throw new Error('Implementation evidence is required');
     return null;
   }
-  const text = requireText(value, 'implementation evidence URL', 2000);
+  const text = requireText(
+    value,
+    'implementation evidence URL',
+    IMPLEMENTATION_RECORD_CONTRACT.evidenceUrlMaxLength,
+  );
   try {
     const url = new URL(text);
-    if (url.protocol !== 'https:' || url.username || url.password) throw new Error('unsafe');
+    const hasCredentials = Boolean(url.username || url.password);
+    if (url.protocol !== IMPLEMENTATION_RECORD_CONTRACT.evidenceProtocol
+      || (!IMPLEMENTATION_RECORD_CONTRACT.evidenceCredentialsAllowed && hasCredentials)) {
+      throw new Error('unsafe');
+    }
     return url.toString();
   } catch {
     throw new Error('Invalid implementation evidence URL');
@@ -136,9 +176,17 @@ function validatePublicImplementation(rawImplementation) {
   requireExactKeys(implementation, new Set(['status', 'responsible_body', 'updated_at', 'summary', 'evidence_url']), 'public implementation');
   const status = requireText(implementation.status, 'implementation status', 40);
   if (!IMPLEMENTATION_STATES.has(status)) throw new Error('Invalid implementation status');
-  requireText(implementation.responsible_body, 'implementation responsible body', 200);
+  requireText(
+    implementation.responsible_body,
+    'implementation responsible body',
+    IMPLEMENTATION_RECORD_CONTRACT.responsibleBodyMaxLength,
+  );
   requireTimestamp(implementation.updated_at, 'implementation update timestamp');
-  requireText(implementation.summary, 'implementation summary', 1000);
+  requireText(
+    implementation.summary,
+    'implementation summary',
+    IMPLEMENTATION_RECORD_CONTRACT.summaryMaxLength,
+  );
   requireEvidenceUrl(implementation.evidence_url, IMPLEMENTATION_STATUS_CONTRACT[status].evidenceRequired);
 }
 
@@ -204,9 +252,17 @@ function parseImplementationResponses(input, result) {
       issueId,
       implementation: {
         status,
-        responsible_body: requireText(response.responsible_body, 'implementation responsible body', 200),
+        responsible_body: requireText(
+          response.responsible_body,
+          'implementation responsible body',
+          IMPLEMENTATION_RECORD_CONTRACT.responsibleBodyMaxLength,
+        ),
         updated_at: updatedAt.text,
-        summary: requireText(response.summary, 'implementation summary', 1000),
+        summary: requireText(
+          response.summary,
+          'implementation summary',
+          IMPLEMENTATION_RECORD_CONTRACT.summaryMaxLength,
+        ),
         evidence_url: requireEvidenceUrl(response.evidence_url, IMPLEMENTATION_STATUS_CONTRACT[status].evidenceRequired),
       },
       reviewer,
