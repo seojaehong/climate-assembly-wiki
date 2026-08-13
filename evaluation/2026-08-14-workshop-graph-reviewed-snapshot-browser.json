@@ -1,16 +1,16 @@
 {
-  "checkedAt": "2026-08-13T22:24:12.191Z",
+  "checkedAt": "2026-08-13T22:34:48.096Z",
   "url": "http://127.0.0.1:4323/workshop-graph/?source=live-transcript-r2-reviewed",
   "verifier": "automation/verify-workshop-graph-advisory.mjs",
-  "sourceCommit": "e4a6272134e549b219c1d666e7e7fbf4434f0da7",
+  "sourceCommit": "1a516a1334a3ac171b29a040f511e3090d2114c0",
   "chromiumVersion": "149.0.7827.55",
   "sourceHashes": {
-    "public/workshop-graph/index.html": "bff547acbcf8a829ef396a4e5991a843410e70d529c721adb1a3b375cd48fe6a",
+    "public/workshop-graph/index.html": "7685a978e775e1d9c45f37c79db47b944edf6de41c478604dd8f922928fcd094",
     "public/workshop-graph/graph-advisory-assets.js": "4419b64f268a3274021bc4ac2e4da60fd6f5ee199ebbb026cc3d14423fbd8a43",
-    "public/workshop-graph/graph-source-adapter.js": "70531c590d186f52d6d2d0b059ce37ebc06af7159e397e4849d3ee3a89eeba03",
+    "public/workshop-graph/graph-source-adapter.js": "292aa54484aa373823ca03f4282f0fc8064173dbcdb1b701066fe56cbc6c6503",
     "public/workshop-graph/sources.json": "17210dee975359b5bf17d183df4ae6746632714b70103bbe11b929f0e5117329",
-    "public/workshop-graph/data/live-transcript-r2-reviewed.json": "e0b4bf192736c240836e1ebdf07aba2e175c8ff4ff382f17cd0f02a6d2e36a4d",
-    "automation/verify-workshop-graph-advisory.mjs": "e2337afda081a665f9ed2369a40e0320fd72eba1fb14e7b5ca6ce32d9e84d431"
+    "public/workshop-graph/data/live-transcript-r2-reviewed.json": "76b75cc67e527badfdd9690713d386a4957fa200204ce1f3e447af795a2c6e0d",
+    "automation/verify-workshop-graph-advisory.mjs": "5c767b9e0fbc506030d234a1dc46f36d7427a7c359091b7657f565a071e948f4"
   },
   "servedHashesMatch": true,
   "fixtures": {
@@ -27,6 +27,7 @@
     "edgeCount": 1,
     "allItemsPublic": true,
     "allItemsReviewed": true,
+    "allNodesReviewedSummaries": true,
     "footer": "합성 전사 검수 데모 · 실제 시민 발언 아님",
     "advisory": "합성 전사 사람 검수 결과 · 실제 시민 발언이나 회의 결과가 아닙니다."
   },
@@ -41,6 +42,13 @@
     "citedUidVisible": true,
     "publicRawTranscriptNoticeVisible": true,
     "rawTranscriptLabelAbsent": true
+  },
+  "publicContentPolicy": {
+    "contentMode": "reviewed-summary-only",
+    "rawTranscriptIncluded": false,
+    "audioIncluded": false,
+    "allNodesReviewedSummaries": true,
+    "privateTranscriptFieldsAbsent": true
   },
   "validCandidate": {
     "metadata": "노드 613 · 엣지 491 · 권고 후보 1건 · 품질 신호",
