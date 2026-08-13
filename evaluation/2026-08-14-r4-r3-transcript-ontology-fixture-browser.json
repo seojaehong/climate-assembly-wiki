@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-13T18:35:44.523Z",
+  "baseUrl": "http://127.0.0.1:4321",
+  "path": "/ko/moderator/canvas/",
+  "readOnly": true,
+  "sourceProvenance": {
+    "sourceCommit": "5c18c1209e73e193bf42e851be53f5c0f39bd0ec",
+    "sourceTreeClean": true,
+    "verifierSha256": "48f8cf055fca1fd3327e4254f403d4b47837014531a603710f4218d3e295d8c9"
+  },
+  "runtime": {
+    "node": "v24.12.0",
+    "chromium": "149.0.7827.55"
+  },
+  "checks": {
+    "viteClientStatus": 200,
+    "documentStatus": 200,
+    "realtimeReady": true,
+    "moderatorLoginBoundary": true,
+    "canvasAuthInputsLocked": true,
+    "canvasAuthDuplicateSubmissionBlocked": true,
+    "canvasAuthRetryAvailable": true,
+    "canvasAuthRequestCount": 1,
+    "canvasHydrated": true,
+    "canvasWorkbenchUsable": true,
+    "canvasWorkbenchSize": {
+      "width": 1440,
+      "height": 934
+    },
+    "platformNavigationConnected": true,
+    "platformNavigationLinkCount": 5,
+    "nonDecisionCopyVisible": true,
+    "liveDocumentStatus": 200,
+    "livePlatformNavigationConnected": true,
+    "reviewDocumentStatus": 200,
+    "reviewPlatformNavigationConnected": true,
+    "reviewUnauthenticatedWorkspaceHidden": true,
+    "reviewAuthInputsLocked": true,
+    "reviewAuthDuplicateSubmissionBlocked": true,
+    "reviewAuthIdentityBound": true,
+    "reviewAuthRequestCount": 1,
+    "reviewLogoutRequestCount": 1,
+    "reviewSessionIsolationVerified": true,
+    "reviewLocalOnlyBoundaryVisible": true,
+    "transcriptReviewLocalOnlyBoundaryVisible": true,
+    "transcriptCandidateEvidenceVisible": true,
+    "transcriptRedecisionGateVerified": true,
+    "transcriptHandoffFixtureDownloaded": true,
+    "transcriptHandoffFixtureSha256": "c5eb1f10ab76206862e95853d2084dd71014dcdab9a7087276c78fd2bd115248",
+    "transcriptReviewDownloaded": true,
+    "transcriptPublicationApprovalDownloaded": true,
+    "transcriptPublicationHandoffVerified": true,
+    "privateTranscriptReviewBatchSha256": "53d3286ce0a1b3b8b418ddadfc897bf4b925b5c499f0c45fd20e4b9f39ede667",
+    "privateTranscriptOntologyCandidateSetId": "browser-r4-ontology-candidates-1",
+    "privateMediaRecorderAvailable": true,
+    "privateRecordingMemoryBoundaryVisible": true,
+    "privateRecorderConstructionFailureRecovered": true,
+    "privateDuplicateRecordingStartBlocked": true,
+    "privateStalePermissionFailureDiscarded": true,
+    "privateConsentWithdrawalDiscarded": true,
+    "privateSessionLockedWhileRecording": true,
+    "privateTranscriptReviewGateVerified": true,
+    "privateTranscriptRedecisionGateVerified": true,
+    "privateTranscriptBatchDownloaded": true,
+    "reviewInteractionCompleted": true,
+    "reviewMixedDecisionStatesVerified": true,
+    "reviewReloadIsolationVerified": true,
+    "reviewFacilitationPromptVerified": true,
+    "reviewFacilitationPromptCount": 1,
+    "reviewFacilitationLiveCountVerified": true,
+    "reviewFacilitationRuleCatalogVerified": true,
+    "reviewFacilitationProvenanceVerified": true,
+    "reviewFacilitationSourceFocusVerified": true,
+    "reviewedPlanDownloaded": true,
+    "reviewedPlanDecisionCount": 5,
+    "linkedSurfaceStatuses": [
+      {
+        "path": "/workshop-graph/",
+        "assetPath": "/workshop-graph/index.html",
+        "status": 200
+      },
+      {
+        "path": "/workshop-graph/guide/",
+        "assetPath": "/workshop-graph/guide/index.html",
+        "status": 200
+      }
+    ],
+    "agendaNodeCount": 4,
+    "unauthenticatedNodeDraggable": false,
+    "blockedWriteRequestCount": 0,
+    "browserPageErrorCount": 0,
+    "supabaseReadResponses": [
+      {
+        "status": 200,
+        "url": "/rest/v1/session"
+      },
+      {
+        "status": 200,
+        "url": "/rest/v1/agenda"
+      },
+      {
+        "status": 200,
+        "url": "/rest/v1/agenda_link"
+      }
+    ]
+  },
+  "screenshot": "evaluation/2026-08-14-r4-r3-transcript-ontology-fixture-browser.png",
+  "status": "pass"
+}
