@@ -15,7 +15,7 @@ import {
   flattenTree,
   breadcrumb,
   isNodeOnPath,
-  deepestScopeLevel,
+  deepestViewScopeLevel,
   deepestDataScopeTarget,
   topicTargetsForScope,
   sessionTargetsForScope,
@@ -556,7 +556,7 @@ export function DataTreeNavigation({ tree, scope, loading, notice, navigate }: {
 // 스코프에 맞춘 뷰 전환 탭 — 선택 노드의 레벨에 따라 가능한 뷰만 노출.
 // 레벨→뷰 표는 nav-logic 의 VIEWS_FOR_LEVEL 단일 원천을 읽는다(개요 카드와 동일 표).
 export function ViewTabs({ scope, navigate }: { scope: Scope; navigate: (s: Scope) => void }) {
-  const { level } = deepestScopeLevel(scope);
+  const { level } = deepestViewScopeLevel(scope);
   if (!level) return null;
   const views = VIEWS_FOR_LEVEL[level];
   const base: Scope = { ...scope };
@@ -594,7 +594,7 @@ function tabStyle(active: boolean): React.CSSProperties {
 }
 
 function viewLabel(v: string): string {
-  return ({ record: '기록', vote: '투표', analyze: '분석', review: '검수', publish: '공개' } as Record<string, string>)[v] ?? v;
+  return ({ access: '접근 관리', design: '설계', record: '기록', vote: '투표', analyze: '분석', review: '검수', publish: '공개' } as Record<string, string>)[v] ?? v;
 }
 
 function kindIcon(kind: TreeNode['kind']): string {

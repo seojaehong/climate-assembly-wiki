@@ -50,6 +50,19 @@ function contrastRatio(a: string, b: string): number {
 }
 
 describe('PlatformShell accessibility', () => {
+  it('기관 루트에서 canonical 기관 context를 접근 관리 화면에 전달한다', () => {
+    const html = renderToStaticMarkup(createElement(ScopeOutlet, {
+      scope: { o: 'org', view: 'access' },
+      scopeContext: { org: { id: '11111111-1111-4111-8111-111111111111', label: '기관' } },
+      navigate,
+    }));
+    expect(html).toContain('기관 역할·초대 계획');
+    expect(html).toContain('이메일 초대 계획');
+    expect(html).toContain('기존 Auth 계정 역할 계획');
+    expect(html).toContain('서버로 전송하지 않습니다');
+    expect(html).toContain('disabled=""');
+  });
+
   it('회차 설계 뷰를 canonical 회차 대상으로 연결한다', () => {
     const html = renderToStaticMarkup(createElement(ScopeOutlet, {
       navigate,

@@ -8,6 +8,7 @@ import {
   isNodeOnPath,
   isView,
   deepestScopeLevel,
+  deepestViewScopeLevel,
   deepestDataScopeTarget,
   topicTargetsForScope,
   sessionTargetsForScope,
@@ -108,6 +109,7 @@ describe('buildScopePath', () => {
   it('parse ∘ build 왕복이 스코프를 보존한다', () => {
     const cases: Scope[] = [
       { o: 'kcrc' },
+      { o: 'kcrc', view: 'access' },
       { o: 'kcrc', c: 'climate-2026' },
       { o: 'kcrc', c: 'climate-2026', s: 'r5', t: 't-uuid-2' },
       { o: 'kcrc', c: 'climate-2026', s: 'r5', t: 't-uuid-2', view: 'publish' },
@@ -209,6 +211,13 @@ describe('deepestScopeLevel', () => {
   });
 });
 
+describe('deepestViewScopeLevel', () => {
+  it('기관 루트만 접근 관리 navigation scope로 판정한다', () => {
+    expect(deepestViewScopeLevel({ o: 'k' })).toEqual({ level: 'org', id: 'k' });
+    expect(deepestViewScopeLevel({})).toEqual({ level: null, id: null });
+  });
+});
+
 describe('scopePathContext', () => {
   it('활성 데이터 경로의 canonical ID와 표시명을 계층별로 보존한다', () => {
     expect(scopePathContext(tree, {
@@ -234,6 +243,11 @@ describe('scopeWithValidView', () => {
       o: 'k', c: 'a', s: 'r5',
     });
     expect(scopeWithValidView({ o: 'k' }, 'publish')).toEqual({ o: 'k' });
+  });
+
+  it('기관 루트의 접근 관리만 보존한다', () => {
+    expect(scopeWithValidView({ o: 'k' }, 'access')).toEqual({ o: 'k', view: 'access' });
+    expect(scopeWithValidView({ o: 'k', c: 'a' }, 'access')).toEqual({ o: 'k', c: 'a' });
   });
 });
 
@@ -295,13 +309,14 @@ describe('sessionTopicGroupsForScope', () => {
 
 describe('VIEWS_FOR_LEVEL (단일 원천)', () => {
   it('모든 레벨의 뷰가 VIEWS 부분집합이다(오타 뷰명 차단)', () => {
-    for (const level of ['topic', 'session', 'assembly'] as const) {
+    for (const level of ['org', 'topic', 'session', 'assembly'] as const) {
       for (const v of VIEWS_FOR_LEVEL[level]) {
         expect(VIEWS).toContain(v);
       }
     }
   });
   it('검수(review)는 주제 스코프에만, 공개(publish)는 전 레벨에 있다', () => {
+    expect(VIEWS_FOR_LEVEL.org).toEqual(['access']);
     expect(VIEWS_FOR_LEVEL.topic).toContain('review');
     expect(VIEWS_FOR_LEVEL.session).not.toContain('review');
     expect(VIEWS_FOR_LEVEL.assembly).not.toContain('review');
@@ -320,6 +335,7 @@ describe('isView / SCOPE_KEYS', () => {
     expect(isView('review')).toBe(true);
     expect(isView('publish')).toBe(true);
     expect(isView('design')).toBe(true);
+    expect(isView('access')).toBe(true);
     expect(isView('nope')).toBe(false);
   });
   it('사다리 키 순서 고정', () => {

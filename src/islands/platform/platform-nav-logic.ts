@@ -22,11 +22,12 @@ export const SCOPE_KEYS = ['o', 'c', 'f', 's', 't'] as const;
 export type ScopeKey = (typeof SCOPE_KEYS)[number];
 
 /** 스코프별 뷰(아웃렛). 라우트 말미의 단일 세그먼트. */
-export const VIEWS = ['design', 'record', 'vote', 'analyze', 'review', 'publish'] as const;
+export const VIEWS = ['access', 'design', 'record', 'vote', 'analyze', 'review', 'publish'] as const;
 export type ViewName = (typeof VIEWS)[number];
 
 /** 공개 게이트·검수를 여는 스코프 레벨(가장 깊은 선택). */
 export type ScopeLevel = 'topic' | 'session' | 'assembly';
+export type ViewScopeLevel = ScopeLevel | 'org';
 
 /**
  * 레벨 → 가능한 뷰 — **유일한 원천**. 좌측 트리·개요 카드·상단 탭이 전부 이 표를 읽는다
@@ -35,7 +36,8 @@ export type ScopeLevel = 'topic' | 'session' | 'assembly';
  *   session: 산출물·회차투표·분석·공개(검수는 주제 스코프)
  *   assembly: design, records, analysis, and publishing across sessions
  */
-export const VIEWS_FOR_LEVEL: Record<ScopeLevel, readonly ViewName[]> = {
+export const VIEWS_FOR_LEVEL: Record<ViewScopeLevel, readonly ViewName[]> = {
+  org: ['access'],
   topic: ['record', 'analyze', 'review', 'publish'],
   session: ['design', 'record', 'vote', 'analyze', 'publish'],
   assembly: ['design', 'record', 'analyze', 'publish'],
@@ -213,11 +215,19 @@ export function deepestScopeLevel(scope: Scope): { level: ScopeLevel | null; id:
   return { level: null, id: null };
 }
 
+/** Resolves the navigation level, including the organization root that has no public-result RPC scope. */
+export function deepestViewScopeLevel(scope: Scope): { level: ViewScopeLevel | null; id: string | null } {
+  const scoped = deepestScopeLevel(scope);
+  if (scoped.level) return scoped;
+  if (scope.o) return { level: 'org', id: scope.o };
+  return { level: null, id: null };
+}
+
 /** Keeps a preferred view only when the destination scope supports it. */
 export function scopeWithValidView(target: Scope, preferredView?: ViewName): Scope {
   const next: Scope = { ...target };
   delete next.view;
-  const { level } = deepestScopeLevel(next);
+  const { level } = deepestViewScopeLevel(next);
   if (level && preferredView && VIEWS_FOR_LEVEL[level].includes(preferredView)) {
     next.view = preferredView;
   }

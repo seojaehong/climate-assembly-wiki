@@ -51,6 +51,16 @@ grant select on climate_vote.assembly, climate_vote.session, climate_vote.discus
 - Supabase Auth로 운영자 계정 생성 → `climate_vote.membership(org_id,user_id,role)` 행 삽입(초대 플로우 `invitation` 활용).
 - `auth.uid()`는 Supabase 기본 제공(JWT sub). 우리 정책이 이를 membership과 대조.
 
+### 2-1. 기관 접근 계획 파일
+
+기관 루트의 `/platform/o/<기관>/access` 화면은 실제 계정이나 권한을 만들지 않는 로컬 사전 점검 도구다. 이메일 초대와 기존 Auth 사용자 UUID의 역할 계획을 추가한 뒤 `계획 검증`을 실행하고 JSON을 내려받는다.
+
+- 허용 역할은 migration 정본과 같은 `org_admin`, `operator`, `hq`, `facilitator`다.
+- 파일의 canonical 기관 UUID가 승인 대상 기관과 같은지, 이메일·사용자 UUID·중복 역할이 유효한지 다시 확인한다.
+- `dryRun:true`, `authAccountsCreated:false`, `invitationsSent:false`, `databaseMutationExecuted:false`, `requiresApproval:true`가 하나라도 다르면 적용 자료로 사용하지 않는다.
+- 파일에는 이메일과 Auth 사용자 UUID가 포함되므로 승인 담당자에게만 전달하고 공개 저장소·브라우저 저장소에 보관하지 않는다.
+- 이 파일은 실행 명령이 아니다. 실제 Auth 계정 생성, invitation/membership 추가, 메일 발송, RLS/GRANT 변경은 별도 사용자 승인과 감사 가능한 서버 작업으로 수행한다.
+
 ## 3. 프론트 배포
 - `/platform/*`·`/r/*` 라우트는 정적 빌드 + 클라이언트 라우팅. **딥링크 새로고침** 위해 Cloudflare Pages SPA fallback rewrite 필요:
   - `_redirects`에 `/platform/* /platform/app/index.html 200`, `/r/* /r/[token] 200` (또는 SSR 어댑터 도입).

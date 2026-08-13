@@ -1,7 +1,7 @@
 // Scope outlet for implemented platform consoles and invalid-route fallback states.
 
 import { useEffect, useState } from 'react';
-import { type ScopePathContext, type SessionTarget, type SessionTopicGroup, type TopicTarget, type Scope, type ViewName, buildScopePath, deepestScopeLevel, VIEWS_FOR_LEVEL } from './platform-nav-logic';
+import { type ScopePathContext, type SessionTarget, type SessionTopicGroup, type TopicTarget, type Scope, type ViewName, buildScopePath, deepestScopeLevel, deepestViewScopeLevel, VIEWS_FOR_LEVEL } from './platform-nav-logic';
 import ReviewConsole from './review/ReviewConsole';
 import PublishConsole from './publish/PublishConsole';
 import AnalyzeConsole from './analyze/AnalyzeConsole';
@@ -11,6 +11,7 @@ import DesignConsole from './design/DesignConsole';
 import AssemblyAnalyzeConsole from './analyze/AssemblyAnalyzeConsole';
 import AssemblyRecordConsole from './record/AssemblyRecordConsole';
 import { buildPublicationScopeKey } from './publish/publish-console-logic';
+import AccessConsole from './access/AccessConsole';
 
 const NAVY = '#1F4E79';
 const TEAL = '#135C73';
@@ -18,6 +19,7 @@ const MUTED = '#5A6B73';
 const LINE = '#6B7D88';
 
 const VIEW_META: Record<ViewName, { title: string; noun: string; icon: string; hint: string }> = {
+  access: { title: '접근 관리', noun: '기관 역할·초대 계획', icon: '🔐', hint: '승인 전 초대와 기존 Auth 계정의 역할 부여 계획을 로컬에서 검증합니다.' },
   design: { title: '설계', noun: '운영 준비도', icon: '🧭', hint: '회차별 공개 주제·활성 조·참여자 배정 준비도를 확인합니다.' },
   record: { title: '기록', noun: '조별 산출물·발언', icon: '📝', hint: '조 콘솔 제출물(submission)을 이 스코프에서 모아 봅니다.' },
   vote: { title: '투표', noun: '회차 투표(ballot)', icon: '🗳️', hint: '회차 단위 무기명 투표 집계를 이 스코프에서 봅니다.' },
@@ -27,7 +29,7 @@ const VIEW_META: Record<ViewName, { title: string; noun: string; icon: string; h
 };
 
 function scopeLabel(scope: Scope): string {
-  const { level } = deepestScopeLevel(scope);
+  const { level } = deepestViewScopeLevel(scope);
   if (level === 'topic') return '주제';
   if (level === 'session') return '회차';
   if (level === 'assembly') return '공론화';
@@ -61,7 +63,7 @@ export default function ScopeOutlet({
 }
 
 function ScopeOverview({ scope, navigate }: { scope: Scope; navigate: (scope: Scope) => void }) {
-  const { level } = deepestScopeLevel(scope);
+  const { level } = deepestViewScopeLevel(scope);
   const views: readonly ViewName[] = level ? VIEWS_FOR_LEVEL[level] : [];
 
   return (
@@ -118,6 +120,11 @@ function ViewPanel({
 }) {
   const meta = VIEW_META[view];
   const { level, id } = deepestScopeLevel(scope);
+
+  if (view === 'access') {
+    const org = scopeContext.org;
+    return <AccessConsole key={org?.id ?? 'missing-org'} organization={org ?? null} />;
+  }
 
   if (view === 'design' && (level === 'session' || level === 'assembly')) {
     return (
@@ -242,6 +249,7 @@ function PlaceholderView({
 
 function wrapperHint(view: ViewName): string {
   switch (view) {
+    case 'access': return 'local approval plan only';
     case 'design': return 'readinessCheck';
     case 'record': return 'issueItems';
     case 'vote': return 'platformBallotList / platformBallotResults';
