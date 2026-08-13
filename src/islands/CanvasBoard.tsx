@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { ReactFlow, Background, Controls, applyNodeChanges, type NodeChange } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -118,6 +118,16 @@ export function retainCanvasOperationNotice(
   return current && !current.ok && incoming.ok ? current : incoming;
 }
 
+export async function completeCanvasOperationForGeneration(
+  operation: Promise<CanvasOperationResult>,
+  isCurrent: () => boolean,
+  onCurrentResult: (result: CanvasOperationResult) => void,
+): Promise<CanvasOperationResult> {
+  const result = await operation;
+  if (isCurrent()) onCurrentResult(result);
+  return result;
+}
+
 export async function runExclusiveCanvasAuthOperation(
   lock: { current: boolean },
   action: () => Promise<void>,
@@ -233,25 +243,52 @@ function dotFor(bg: string): string {
 
 export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
   const { nodes, setNodes, edges, sessionId, connection, retry: retryConnection } = useRealtimeAgendas(sessionSlug);
-  const [operationResult, setOperationResult] = useState<CanvasOperationResult | null>(null);
-  const [retryingOperation, setRetryingOperation] = useState(false);
+  const { session, generation: authGeneration, email, initializationError, signIn, signOut } = useAuth();
+  const authGenerationRef = useRef(authGeneration);
+  authGenerationRef.current = authGeneration;
+  const [operationState, setOperationState] = useState<{
+    generation: number;
+    result: CanvasOperationResult;
+  } | null>(null);
+  const [retryingGeneration, setRetryingGeneration] = useState<number | null>(null);
+  const operationResult = operationState?.generation === authGeneration ? operationState.result : null;
+  const retryingOperation = retryingGeneration === authGeneration;
+
+  const applyOperationResult = (generation: number, result: CanvasOperationResult) => {
+    setOperationState((current) => ({
+      generation,
+      result: retainCanvasOperationNotice(
+        current?.generation === generation ? current.result : null,
+        result,
+      ),
+    }));
+  };
 
   const completeOperation = async (operation: Promise<CanvasOperationResult>) => {
-    const result = await operation;
-    setOperationResult((current) => retainCanvasOperationNotice(current, result));
-    return result;
+    const generation = authGenerationRef.current;
+    return completeCanvasOperationForGeneration(
+      operation,
+      () => authGenerationRef.current === generation,
+      (result) => applyOperationResult(generation, result),
+    );
   };
 
   const retryOperation = async () => {
     if (!writable || !operationResult?.retry || retryingOperation) return;
-    setRetryingOperation(true);
-    const result = await operationResult.retry();
-    setOperationResult(result);
-    setRetryingOperation(false);
+    const generation = authGenerationRef.current;
+    setRetryingGeneration(generation);
+    try {
+      await completeCanvasOperationForGeneration(
+        operationResult.retry(),
+        () => authGenerationRef.current === generation,
+        (result) => setOperationState({ generation, result }),
+      );
+    } finally {
+      setRetryingGeneration((current) => current === generation ? null : current);
+    }
   };
 
   // 진행자 인증 — 미인증 시 읽기전용(로그인 패널), 인증 시 쓰기 허용
-  const { session, email, initializationError, signIn, signOut } = useAuth();
   const authed = !!session;
   const writable = canWriteCanvas(authed, connection.status);
   const [loginEmail, setLoginEmail] = useState('');
@@ -266,6 +303,10 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
       setLoginErr(null);
       const { error } = await signIn(loginEmail.trim(), loginPw);
       if (error) setLoginErr(error.message);
+      else {
+        setLoginEmail('');
+        setLoginPw('');
+      }
     }, setLoggingIn);
     // 성공 시 onAuthStateChange가 session을 채워 모달이 자동으로 사라짐
   };
@@ -355,6 +396,7 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
   const [suggesting, setSuggesting] = useState(false);
   const [simThreshold, setSimThreshold] = useState(0.88); // 짧은 한국어 baseline 높아 보수적 기본값
   const suggestMerges = async () => {
+    const generation = authGenerationRef.current;
     setSuggesting(true);
     const agendas = nodes.map((n) => ({ id: n.id, text: (n.data as { label: string }).label }));
     let pairs: typeof suggestions = [];
@@ -365,6 +407,7 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
       pairs = (response.data as { pairs?: typeof suggestions } | null)?.pairs ?? [];
       return { error: response.error };
     }));
+    if (authGenerationRef.current !== generation) return;
     setSuggesting(false);
     if (result.ok) setSuggestions(pairs);
   };
@@ -382,6 +425,7 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
   const [knnLoading, setKnnLoading] = useState(false);
   const runKnn = async () => {
     if (!anchor) return;
+    const generation = authGenerationRef.current;
     const query = (anchor.data as { label: string }).label;
     setKnnLoading(true);
     let corpusMatches: typeof knnCorpus = [];
@@ -404,6 +448,7 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
         return { error: response.error };
       }));
     }
+    if (authGenerationRef.current !== generation) return;
     setKnnLoading(false);
     if (!result.ok) return;
     if (knnTarget === 'corpus') setKnnCorpus(corpusMatches);
@@ -413,15 +458,17 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
 
   const [voteQr, setVoteQr] = useState<string | null>(null);
   const makeVote = async () => {
+    const generation = authGenerationRef.current;
     const texts = selectedNodes.map((n) => (n.data as { label: string }).label);
     const { id, result } = await createVoteRound(texts);
-    setOperationResult(result);
+    if (authGenerationRef.current !== generation) return;
+    applyOperationResult(generation, result);
     if (id) {
       const u = `${window.location.origin}/v/?round=${id}`;
       setVoteUrl(u);
       await completeOperation(executeCanvasOperation('투표 QR 생성', async () => {
         const qr = await QRCode.toDataURL(u, { width: 200, margin: 1 });
-        setVoteQr(qr);
+        if (authGenerationRef.current === generation) setVoteQr(qr);
         return { error: null };
       }));
     }
@@ -429,10 +476,11 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
   // 📲 참여 QR — 180명이 폰으로 /join 접속해 의제 제출
   const [joinQr, setJoinQr] = useState<string | null>(null);
   const showJoinQr = async () => {
+    const generation = authGenerationRef.current;
     const u = `${window.location.origin}/ko/join?s=${sessionSlug}`;
     await completeOperation(executeCanvasOperation('참여 QR 생성', async () => {
       const qr = await QRCode.toDataURL(u, { width: 240, margin: 1 });
-      setJoinQr(qr);
+      if (authGenerationRef.current === generation) setJoinQr(qr);
       return { error: null };
     }));
   };
@@ -445,6 +493,28 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
       : null;
     await completeOperation(executeCanvasOperation('투표 링크 복사', operation));
   };
+
+  useEffect(() => {
+    setOperationState(null);
+    setRetryingGeneration(null);
+    setLoginEmail('');
+    setLoginPw('');
+    setLoginErr(null);
+    setFocusJo(null);
+    setVoteUrl(null);
+    setVoteQr(null);
+    setJoinQr(null);
+    setSuggestions([]);
+    setSuggesting(false);
+    setKnnTarget('corpus');
+    setKnnCorpus([]);
+    setKnnAgenda([]);
+    setKnnFor(null);
+    setKnnLoading(false);
+    setNodes((current) => current.some((node) => node.selected)
+      ? current.map((node) => node.selected ? { ...node, selected: false } : node)
+      : current);
+  }, [authGeneration, setNodes]);
 
   const sharedGroup = selectedNodes.length >= 2
     && selectedNodes.every((n) => {
@@ -480,10 +550,10 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
           retryAllowed={writable}
           onRetry={() => void retryOperation()}
           onRefresh={() => {
-            setOperationResult(null);
+            setOperationState(null);
             retryConnection();
           }}
-          onDismiss={() => setOperationResult(null)}
+          onDismiss={() => setOperationState(null)}
         />
       )}
 
@@ -757,7 +827,7 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
           kind: 'alert',
           message: '실시간 연결과 인증을 확인한 뒤 다시 시도해 주세요.',
         };
-        setOperationResult(result);
+        applyOperationResult(authGenerationRef.current, result);
         return Promise.resolve(result);
       }}>
       <ReactFlow

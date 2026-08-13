@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Session } from '@supabase/supabase-js';
 import {
   canWriteCanvas,
+  completeCanvasOperationForGeneration,
   CanvasConnectionNotice,
   CanvasOperationNotice,
   retainCanvasOperationNotice,
@@ -156,6 +157,42 @@ describe('CanvasConnectionNotice', () => {
 });
 
 describe('Canvas auth session freshness', () => {
+  it('discards an operation result after the auth generation changes', async () => {
+    const gate = deferred<CanvasOperationResult>();
+    const applied: CanvasOperationResult[] = [];
+    let generation = 1;
+    const pending = completeCanvasOperationForGeneration(
+      gate.promise,
+      () => generation === 1,
+      (result) => applied.push(result),
+    );
+
+    generation = 2;
+    const staleResult: CanvasOperationResult = {
+      ok: false,
+      kind: 'alert',
+      message: 'stale canvas write failure',
+      retry: async () => ({ ok: true, kind: 'status', message: 'stale retry' }),
+    };
+    gate.resolve(staleResult);
+
+    await expect(pending).resolves.toBe(staleResult);
+    expect(applied).toEqual([]);
+  });
+
+  it('applies an operation result while the auth generation is current', async () => {
+    const applied: CanvasOperationResult[] = [];
+    const result: CanvasOperationResult = { ok: true, kind: 'status', message: 'current write' };
+
+    await expect(completeCanvasOperationForGeneration(
+      Promise.resolve(result),
+      () => true,
+      (current) => applied.push(current),
+    )).resolves.toBe(result);
+
+    expect(applied).toEqual([result]);
+  });
+
   it('locks an auth operation before the first await and rejects a duplicate submission', async () => {
     const lock = { current: false };
     const gate = deferred<void>();
@@ -198,9 +235,14 @@ describe('Canvas auth session freshness', () => {
     const source = readFileSync(new URL('./CanvasBoard.tsx', import.meta.url), 'utf8');
 
     expect(source.match(/runExclusiveCanvasAuthOperation\(authOperationLock/g)).toHaveLength(2);
+    expect(source).toContain('operationState?.generation === authGeneration');
+    expect(source).toContain('authGenerationRef.current === generation');
+    expect(source).toContain('}, [authGeneration, setNodes]);');
     expect(source).toContain('disabled={loggingIn}');
     expect(source).toContain('disabled={loggingOut}');
     expect(source).toContain("loggingOut ? '로그아웃 중…' : '로그아웃'");
+    expect(source).toContain("setLoginEmail('');");
+    expect(source).toContain("setLoginPw('');");
   });
 
   it('discards an initial session response after a newer auth event invalidates it', async () => {
@@ -281,6 +323,7 @@ describe('Canvas auth session freshness', () => {
     expect(source).toContain('() => active && authGeneration.current === generation');
     expect(source).toContain("sb.auth.onAuthStateChange((_event, s) => {");
     expect(source).toContain('authGeneration.current += 1;');
+    expect(source).toContain('setSessionGeneration(authGeneration.current);');
     expect(source).toContain('active = false;');
   });
 });

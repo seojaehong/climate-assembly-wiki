@@ -42,6 +42,7 @@ export async function completeCanvasAuthSessionLoad(
  */
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
+  const [sessionGeneration, setSessionGeneration] = useState(0);
   const [initializationError, setInitializationError] = useState<string | null>(null);
   const authGeneration = useRef(0);
 
@@ -58,13 +59,17 @@ export function useAuth() {
     void completeCanvasAuthSessionLoad(
       () => sb.auth.getSession(),
       () => active && authGeneration.current === generation,
-      setSession,
+      (nextSession) => {
+        setSessionGeneration(generation);
+        setSession(nextSession);
+      },
       setInitializationError,
     );
 
     const { data: sub } = sb.auth.onAuthStateChange((_event, s) => {
       if (!active) return;
       authGeneration.current += 1;
+      setSessionGeneration(authGeneration.current);
       setSession(s);
       setInitializationError(null);
     });
@@ -102,6 +107,7 @@ export function useAuth() {
 
   return {
     session,
+    generation: sessionGeneration,
     email: session?.user?.email ?? null,
     initializationError,
     signIn,
