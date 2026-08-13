@@ -1,4 +1,4 @@
-# Review console load race guard
+# Review console async race guard
 
 ## Scope
 
@@ -6,14 +6,17 @@
 - Discard stale success, notice, exception, and busy completion updates.
 - Clear join-code input and topic-bound selection state at the appropriate lifecycle boundary.
 - Convert missing data/notice and unexpected exceptions into logged, accessible failure notices.
+- Bound issue save, review, reclassification, unlink, pull, and merge completion to the current request generation, topic, and mutation serial.
+- Reject duplicate writes synchronously before the first asynchronous boundary and prevent join-code reloads while a write is busy.
+- Render write failures as alerts and successes as polite statuses without allowing an older timeout to clear a newer notice.
 - No database, RPC, migration, permission, or production data change.
 
 ## Evidence
 
 | Check | Result |
 |---|---|
-| `npm.cmd exec vitest -- run src/islands/platform/PlatformShell.test.ts` | 1 file, 24 tests passed |
-| `npm.cmd exec vitest -- run` | 63 files, 929 tests passed |
+| `npm.cmd exec vitest -- run src/islands/platform/PlatformShell.test.ts` | 1 file, 30 tests passed |
+| `npm.cmd exec vitest -- run` | 63 files, 935 tests passed |
 | `npm.cmd run check` | 314 files, 0 errors, 0 warnings, 49 existing hints |
 | `git diff --check` | Passed; Windows LF to CRLF warnings only |
 

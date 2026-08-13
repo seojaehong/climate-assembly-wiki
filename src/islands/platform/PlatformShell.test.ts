@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { BreadcrumbNav, completeSignOut, DataTreeNavigation, LoginCard, LogoutNotice, PLATFORM_ACCENT, PLATFORM_CONTROL_BORDER, ViewTabs } from './PlatformShell';
 import type { TreeNode } from './platform-nav-logic';
 import ScopeOutlet from './ScopeViews';
-import ReviewConsole, { completeReviewLoad, loadReviewData, REVIEW_STATUS_GREEN, ReviewIssueChoice, ReviewSourceCard, SourceReferenceList } from './review/ReviewConsole';
+import ReviewConsole, { completeReviewLoad, completeReviewMutation, loadReviewData, REVIEW_STATUS_GREEN, ReviewFlashNotice, ReviewIssueChoice, ReviewSourceCard, SourceReferenceList } from './review/ReviewConsole';
 import type { IssueViewModel, ReviewItem } from './review/review-console-logic';
 import { resolveHitlStatus } from '../../lib/hitl-status';
 import type { IssueItemsResult, IssueListResult, PlatformResult } from '../../lib/platform';
@@ -198,7 +198,14 @@ describe('PlatformShell accessibility', () => {
     expect(source).toContain('requestGeneration.current = generation;');
     expect(source).toContain('() => requestGeneration.current === generation && currentTopicId.current === topicId');
     expect(source).toContain("if (requestGeneration.current === generation && currentTopicId.current === topicId) setCode('');");
-    expect(source).toContain('return () => { requestGeneration.current += 1; };');
+    expect(source).toContain('return () => {');
+    expect(source).toContain('requestGeneration.current += 1;');
+    expect(source).toContain('flashGeneration.current += 1;');
+    expect(source).toContain('if (!topicId || mutationInFlight.current) return null;');
+    expect(source).toContain('mutationInFlight.current = true;');
+    expect(source).toContain('mutationSerial.current === context.serial');
+    expect(source).toContain('currentTopicId.current === context.topicId');
+    expect(source).toContain('disabled={busy}');
     expect(contrastRatio(REVIEW_STATUS_GREEN, '#E3F1E6')).toBeGreaterThanOrEqual(4.5);
   });
 
@@ -490,5 +497,108 @@ describe('ReviewConsole loading', () => {
     expect(busy).toEqual([true, false]);
     expect(notices.at(-1)).toContain('예상하지 못한 오류');
     log.mockRestore();
+  });
+});
+
+describe('ReviewConsole mutations', () => {
+  it('성공 결과를 반환하고 busy를 해제한다', async () => {
+    const busy: boolean[] = [];
+    const errors: string[] = [];
+
+    const result = await completeReviewMutation(
+      async () => ({ data: { id: 'issue-1' }, notice: null }),
+      (value) => busy.push(value),
+      (message) => errors.push(message),
+    );
+
+    expect(result).toEqual({ id: 'issue-1' });
+    expect(busy).toEqual([true, false]);
+    expect(errors).toEqual([]);
+  });
+
+  it('data와 notice가 모두 없는 응답을 로그하고 오류로 표시한다', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const errors: string[] = [];
+
+    const result = await completeReviewMutation(
+      async () => ({ data: null, notice: null }),
+      () => undefined,
+      (message) => errors.push(message),
+    );
+
+    expect(result).toBeNull();
+    expect(log).toHaveBeenCalledWith('Review mutation returned no data or notice');
+    expect(errors.at(-1)).toContain('현재 데이터를 다시 불러오세요');
+    log.mockRestore();
+  });
+
+  it('데이터 계층 notice를 오류 상태로 전달한다', async () => {
+    const errors: string[] = [];
+
+    const result = await completeReviewMutation(
+      async () => ({ data: null, notice: '검수 권한을 확인하세요.' }),
+      () => undefined,
+      (message) => errors.push(message),
+    );
+
+    expect(result).toBeNull();
+    expect(errors).toEqual(['검수 권한을 확인하세요.']);
+  });
+
+  it('더 이상 현재 작업이 아니면 늦은 결과와 busy 해제를 반영하지 않는다', async () => {
+    let current = true;
+    let resolveResult!: (value: PlatformResult<{ id: string }>) => void;
+    const busy: boolean[] = [];
+    const errors: string[] = [];
+    const action = () => new Promise<PlatformResult<{ id: string }>>((resolve) => {
+      resolveResult = resolve;
+    });
+
+    const pending = completeReviewMutation(
+      action,
+      (value) => busy.push(value),
+      (message) => errors.push(message),
+      () => current,
+    );
+    current = false;
+    resolveResult({ data: { id: 'issue-1' }, notice: null });
+    const result = await pending;
+
+    expect(result).toBeNull();
+    expect(busy).toEqual([true]);
+    expect(errors).toEqual([]);
+  });
+
+  it('예상하지 못한 예외를 로그하고 사용자 오류로 바꾼다', async () => {
+    const error = new Error('network down');
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const busy: boolean[] = [];
+    const errors: string[] = [];
+
+    const result = await completeReviewMutation(
+      async () => { throw error; },
+      (value) => busy.push(value),
+      (message) => errors.push(message),
+    );
+
+    expect(result).toBeNull();
+    expect(log).toHaveBeenCalledWith('Failed to complete review mutation', error);
+    expect(busy).toEqual([true, false]);
+    expect(errors.at(-1)).toContain('예상하지 못한 오류');
+    log.mockRestore();
+  });
+
+  it('실패와 성공 notice를 alert와 polite status로 구분한다', () => {
+    const errorHtml = renderToStaticMarkup(createElement(ReviewFlashNotice, {
+      flash: { kind: 'error', text: '저장하지 못했습니다.' },
+    }));
+    const statusHtml = renderToStaticMarkup(createElement(ReviewFlashNotice, {
+      flash: { kind: 'status', text: '저장했습니다.' },
+    }));
+
+    expect(errorHtml).toContain('role="alert"');
+    expect(errorHtml).not.toContain('aria-live="polite"');
+    expect(statusHtml).toContain('role="status"');
+    expect(statusHtml).toContain('aria-live="polite"');
   });
 });

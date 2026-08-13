@@ -117,6 +117,36 @@ export async function completeReviewLoad(
   }
 }
 
+export async function completeReviewMutation<T>(
+  action: () => Promise<PlatformResult<T>>,
+  onBusyChange: (busy: boolean) => void,
+  onError: (notice: string) => void,
+  isCurrent: () => boolean = () => true,
+): Promise<T | null> {
+  onBusyChange(true);
+  try {
+    const result = await action();
+    if (!isCurrent()) return null;
+    if (result.notice) {
+      onError(result.notice);
+      return null;
+    }
+    if (result.data === null) {
+      console.error('Review mutation returned no data or notice');
+      onError('검수 작업 결과를 확인하지 못했습니다. 현재 데이터를 다시 불러오세요.');
+      return null;
+    }
+    return result.data;
+  } catch (error: unknown) {
+    if (!isCurrent()) return null;
+    console.error('Failed to complete review mutation', error);
+    onError('검수 작업 중 예상하지 못한 오류가 발생했습니다. 현재 데이터를 다시 불러오세요.');
+    return null;
+  } finally {
+    if (isCurrent()) onBusyChange(false);
+  }
+}
+
 // ── 작은 프리미티브 ────────────────────────────────────────────────────
 
 function Eyebrow({ children, color = TEAL }: { children: React.ReactNode; color?: string }) {
@@ -191,7 +221,30 @@ interface EditForm {
   summary: string;
 }
 
+export interface ReviewFlash {
+  kind: 'status' | 'error';
+  text: string;
+}
+
+interface ReviewMutationContext {
+  requestGeneration: number;
+  serial: number;
+  topicId: string;
+}
+
 const emptyForm: EditForm = { id: null, label: '', stance: '', frequency: '', summary: '' };
+
+export function ReviewFlashNotice({ flash }: { flash: ReviewFlash }) {
+  return (
+    <p
+      role={flash.kind === 'error' ? 'alert' : 'status'}
+      aria-live={flash.kind === 'status' ? 'polite' : undefined}
+      style={{ fontSize: 14, fontWeight: 600, color: flash.kind === 'error' ? RED : NAVY, background: flash.kind === 'error' ? '#FDECEC' : '#E4F2F6', borderRadius: 10, padding: '10px 14px', margin: '0 0 14px' }}
+    >
+      {flash.text}
+    </p>
+  );
+}
 
 function formFrom(vm: IssueViewModel): EditForm {
   return {
@@ -230,9 +283,12 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
   const [clusterId, setClusterId] = useState<string>('');
   const [mergeSrc, setMergeSrc] = useState<string>('');
   const [mergeDst, setMergeDst] = useState<string>('');
-  const [flash, setFlash] = useState<string | null>(null);
+  const [flash, setFlash] = useState<ReviewFlash | null>(null);
   const requestGeneration = useRef(0);
   const currentTopicId = useRef(topicId);
+  const mutationSerial = useRef(0);
+  const mutationInFlight = useRef(false);
+  const flashGeneration = useRef(0);
   currentTopicId.current = topicId;
 
   // 유효 items = override(테스트 주입) 우선, 없으면 자체 조회분. null = 미로드(재분류 비활성).
@@ -250,7 +306,16 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
     setSelectedId(null);
     setForm(emptyForm);
     setChecked(new Set());
-    return () => { requestGeneration.current += 1; };
+    setFlash(null);
+    mutationSerial.current += 1;
+    mutationInFlight.current = false;
+    flashGeneration.current += 1;
+    return () => {
+      requestGeneration.current += 1;
+      mutationSerial.current += 1;
+      mutationInFlight.current = false;
+      flashGeneration.current += 1;
+    };
   }, [topicId]);
 
   const reload = useCallback(async (theCode: string): Promise<boolean> => {
@@ -278,13 +343,14 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
 
   // 코드가 바뀌면 선택·체크 초기화(다른 세션일 수 있음).
   const load = useCallback(() => {
+    if (busy) return;
     const c = code.trim();
     if (!c) { setNotice('조 참여 코드(join_code)를 입력하세요.'); return; }
     setSelectedId(null);
     setForm(emptyForm);
     setChecked(new Set());
     void reload(c);
-  }, [code, reload]);
+  }, [busy, code, reload]);
 
   const issues = useMemo(() => toIssueViewModels(list), [list]);
   const selected = useMemo(() => issues.find((i) => i.id === selectedId) ?? null, [issues, selectedId]);
@@ -305,7 +371,41 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
     [items, selected],
   );
 
-  const showFlash = (m: string) => { setFlash(m); window.setTimeout(() => setFlash(null), 2600); };
+  const showFlash = (text: string, kind: ReviewFlash['kind'] = 'error') => {
+    const generation = flashGeneration.current + 1;
+    flashGeneration.current = generation;
+    setFlash({ kind, text });
+    window.setTimeout(() => {
+      if (flashGeneration.current === generation) setFlash(null);
+    }, 2600);
+  };
+
+  const isMutationCurrent = (context: ReviewMutationContext): boolean => (
+    requestGeneration.current === context.requestGeneration
+    && mutationSerial.current === context.serial
+    && currentTopicId.current === context.topicId
+  );
+
+  const runMutation = async <T,>(action: () => Promise<PlatformResult<T>>): Promise<T | null> => {
+    if (!topicId || mutationInFlight.current) return null;
+    mutationInFlight.current = true;
+    const context: ReviewMutationContext = {
+      requestGeneration: requestGeneration.current,
+      serial: mutationSerial.current + 1,
+      topicId,
+    };
+    mutationSerial.current = context.serial;
+    try {
+      return await completeReviewMutation(
+        action,
+        setBusy,
+        (message) => showFlash(message, 'error'),
+        () => isMutationCurrent(context),
+      );
+    } finally {
+      if (mutationSerial.current === context.serial) mutationInFlight.current = false;
+    }
+  };
 
   // ── 편집 저장 ──
   const selectIssue = (vm: IssueViewModel) => { setSelectedId(vm.id); setForm(formFrom(vm)); setChecked(new Set()); setReclassTarget(''); };
@@ -314,18 +414,16 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
   const saveIssue = async () => {
     if (!activeCode || !topicId) return;
     if (!form.label.trim()) { showFlash('쟁점명을 입력하세요.'); return; }
-    setBusy(true);
-    const r = await issueUpsert(activeCode, topicId, {
+    const result = await runMutation(() => issueUpsert(activeCode, topicId, {
       id: form.id ?? undefined,
       label: form.label.trim(),
       stance: form.stance || undefined,
       frequency: form.frequency || undefined,
       summary: form.summary || undefined,
-    });
-    setBusy(false);
-    if (r.notice) { showFlash(r.notice); return; }
-    showFlash(r.data?.created ? '쟁점을 만들었습니다(검수 대기).' : '쟁점을 수정했습니다 — 재검수가 필요합니다.');
-    const savedId = r.data?.id ?? null;
+    }));
+    if (!result) return;
+    showFlash(result.created ? '쟁점을 만들었습니다(검수 대기).' : '쟁점을 수정했습니다 — 재검수가 필요합니다.', 'status');
+    const savedId = result.id;
     const loaded = await reload(activeCode);
     if (loaded && savedId) setSelectedId(savedId);
   };
@@ -333,11 +431,9 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
   // ── 검수 확정 ──
   const doReview = async (issueId: string) => {
     if (!activeCode) return;
-    setBusy(true);
-    const r = await issueReview(activeCode, issueId);
-    setBusy(false);
-    if (r.notice) { showFlash(r.notice); return; }
-    showFlash('검수 완료로 확정했습니다.');
+    const result = await runMutation(() => issueReview(activeCode, issueId));
+    if (!result) return;
+    showFlash('검수 완료로 확정했습니다.', 'status');
     await reload(activeCode);
   };
 
@@ -345,13 +441,15 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
   const runPlan = async (plan: ReclassifyPlan, okMsg: string) => {
     if (plan.error) { showFlash(plan.error); return; }
     if (!activeCode) return;
-    setBusy(true);
-    for (const call of plan.calls) {
-      const r = await issueLinkSet(activeCode, call.issueId, call.itemIds, call.clusterId);
-      if (r.notice) { setBusy(false); showFlash(r.notice); return; }
-    }
-    setBusy(false);
-    showFlash(okMsg);
+    const result = await runMutation(async () => {
+      for (const call of plan.calls) {
+        const response = await issueLinkSet(activeCode, call.issueId, call.itemIds, call.clusterId);
+        if (response.notice || !response.data) return { data: null, notice: response.notice };
+      }
+      return { data: true, notice: null };
+    });
+    if (!result) return;
+    showFlash(okMsg, 'status');
     setChecked(new Set());
     await reload(activeCode);
   };
@@ -379,11 +477,9 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
     if (!activeCode) return;
     const v = validateMerge(mergeSrc || null, mergeDst || null, issues);
     if (!v.ok) { showFlash(v.reason ?? '병합할 수 없습니다.'); return; }
-    setBusy(true);
-    const r = await issueMerge(activeCode, mergeSrc, mergeDst);
-    setBusy(false);
-    if (r.notice) { showFlash(r.notice); return; }
-    showFlash(`병합 완료 — 원문 ${r.data?.moved ?? 0}건 이전, 원본은 보관되었습니다.`);
+    const result = await runMutation(() => issueMerge(activeCode, mergeSrc, mergeDst));
+    if (!result) return;
+    showFlash(`병합 완료 — 원문 ${result.moved}건 이전, 원본은 보관되었습니다.`, 'status');
     setMergeSrc(''); setMergeDst('');
     await reload(activeCode);
   };
@@ -426,6 +522,7 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
               value={code}
               onChange={(e) => setCode(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && load()}
+              disabled={busy}
               placeholder="예: 3F7K2P"
               style={{ ...field, width: 160, fontFamily: 'monospace', letterSpacing: '.08em' }}
             />
@@ -445,7 +542,7 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
         <p role="alert" style={{ fontSize: 14, color: AMBER, background: '#FBF3E6', borderRadius: 10, padding: '10px 14px', margin: '0 0 14px' }}>{notice}</p>
       ) : null}
       {flash ? (
-        <p role="status" aria-live="polite" style={{ fontSize: 14, fontWeight: 600, color: NAVY, background: '#E4F2F6', borderRadius: 10, padding: '10px 14px', margin: '0 0 14px' }}>{flash}</p>
+        <ReviewFlashNotice flash={flash} />
       ) : null}
 
       {/* 공개 게이트 안내 */}
