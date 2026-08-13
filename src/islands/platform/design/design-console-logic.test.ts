@@ -22,7 +22,7 @@ describe('buildDesignBlueprint', () => {
     expect(result).toEqual({
       ok: true,
       blueprint: {
-        schemaVersion: 1,
+        schemaVersion: 2,
         kind: 'platform-design-blueprint',
         dryRun: true,
         databaseMutationExecuted: false,
@@ -30,20 +30,68 @@ describe('buildDesignBlueprint', () => {
         assembly: { title: '기후시민회의', slug: 'climate-2026' },
         sessions: [{
           ordinal: 1,
+          title: '제1회차',
+          slug: 'climate-2026-session-1',
           heldOn: '2026-08-29',
           topics: [
             { ordinal: 1, prompt: '에너지 전환 조건' },
             { ordinal: 2, prompt: '지역 비용 우려' },
           ],
           teams: [
-            { ordinal: 1, plannedCapacity: 4 },
-            { ordinal: 2, plannedCapacity: 3 },
-            { ordinal: 3, plannedCapacity: 3 },
+            { ordinal: 1, name: '1조', plannedCapacity: 4 },
+            { ordinal: 2, name: '2조', plannedCapacity: 3 },
+            { ordinal: 3, name: '3조', plannedCapacity: 3 },
           ],
         }],
         stats: { sessionCount: 1, topicCount: 2, teamCount: 3, participantCount: 10 },
       },
     });
+  });
+
+  it('회차 생성에 필요한 이름·slug와 표준 조 이름을 보존하고 중복 slug를 거부한다', () => {
+    const result = buildDesignBlueprint({
+      assemblyTitle: '기후시민회의',
+      assemblySlug: 'climate-2026',
+      sessions: [{
+        title: '감축 숙의',
+        slug: 'mitigation-session',
+        heldOn: '2026-08-29',
+        topics: ['수송 전환'],
+        teamCount: 2,
+        participantCount: 9,
+      }],
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      blueprint: {
+        sessions: [{
+          title: '감축 숙의',
+          slug: 'mitigation-session',
+          teams: [{ name: '1조' }, { name: '2조' }],
+        }],
+      },
+    });
+
+    expect(buildDesignBlueprint({
+      assemblyTitle: '기후시민회의',
+      assemblySlug: 'climate-2026',
+      sessions: [
+        { title: '첫 회차', slug: 'same-session', heldOn: '2026-08-29', topics: ['수송'], teamCount: 1, participantCount: 4 },
+        { title: '둘째 회차', slug: 'same-session', heldOn: '2026-08-30', topics: ['적응'], teamCount: 1, participantCount: 4 },
+      ],
+    })).toEqual({ ok: false, errors: ['회차 slug는 중복될 수 없습니다.'] });
+  });
+
+  it('최대 길이 공론화 slug에서도 기본 회차 slug를 40자 안에서 결정적으로 만든다', () => {
+    const result = buildDesignBlueprint({
+      assemblyTitle: '기후시민회의',
+      assemblySlug: 'a'.repeat(40),
+      sessions: [{ heldOn: '2026-08-29', topics: ['수송'], teamCount: 1, participantCount: 4 }],
+    });
+    if (!result.ok) throw new Error('Expected a valid blueprint');
+
+    expect(result.blueprint.sessions[0].slug).toHaveLength(40);
+    expect(result.blueprint.sessions[0].slug).toMatch(/-session-1$/);
   });
 
   it('공론화 식별정보와 회차가 없으면 적용 가능한 청사진으로 표시하지 않는다', () => {
@@ -188,11 +236,44 @@ describe('buildDesignBlueprint', () => {
         assemblyTitle: '기후시민회의',
         assemblySlug: 'climate-2026',
         sessions: [
-          { heldOn: '2026-08-29', topics: ['비용 우려', '수송 전환'], teamCount: 2, participantCount: 9 },
-          { heldOn: '2026-08-30', topics: ['지역 적응'], teamCount: 3, participantCount: 10 },
+          { title: '제1회차', slug: 'climate-2026-session-1', heldOn: '2026-08-29', topics: ['비용 우려', '수송 전환'], teamCount: 2, participantCount: 9 },
+          { title: '제2회차', slug: 'climate-2026-session-2', heldOn: '2026-08-30', topics: ['지역 적응'], teamCount: 3, participantCount: 10 },
         ],
       },
       blueprint: built.blueprint,
+    });
+  });
+
+  it('schema v1 청사진을 결정적인 회차·조 식별정보가 있는 v2로 안전하게 복원한다', () => {
+    const legacy = {
+      schemaVersion: 1,
+      kind: 'platform-design-blueprint',
+      dryRun: true,
+      databaseMutationExecuted: false,
+      requiresApproval: true,
+      assembly: { title: '기후시민회의', slug: 'climate-2026' },
+      sessions: [{
+        ordinal: 1,
+        heldOn: '2026-08-29',
+        topics: [{ ordinal: 1, prompt: '수송 전환' }],
+        teams: [{ ordinal: 1, plannedCapacity: 5 }, { ordinal: 2, plannedCapacity: 4 }],
+      }],
+      stats: { sessionCount: 1, topicCount: 1, teamCount: 2, participantCount: 9 },
+    };
+
+    expect(parseDesignBlueprintImport(JSON.stringify(legacy))).toMatchObject({
+      ok: true,
+      input: {
+        sessions: [{ title: '제1회차', slug: 'climate-2026-session-1' }],
+      },
+      blueprint: {
+        schemaVersion: 2,
+        sessions: [{
+          title: '제1회차',
+          slug: 'climate-2026-session-1',
+          teams: [{ name: '1조' }, { name: '2조' }],
+        }],
+      },
     });
   });
 

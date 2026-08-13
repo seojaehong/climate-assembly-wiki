@@ -26,7 +26,7 @@ function requireRecord(value, label) {
 export function validateDownloadedBlueprint(value) {
   const blueprint = requireRecord(value, 'Downloaded blueprint');
   if (
-    blueprint.schemaVersion !== 1
+    blueprint.schemaVersion !== 2
     || blueprint.kind !== 'platform-design-blueprint'
     || blueprint.dryRun !== true
     || blueprint.databaseMutationExecuted !== false
@@ -45,6 +45,8 @@ export function validateDownloadedBlueprint(value) {
     }
     return {
       ordinal: session.ordinal,
+      title: session.title,
+      slug: session.slug,
       heldOn: session.heldOn,
       topics: session.topics.map((topicValue) => {
         const topic = requireRecord(topicValue, 'Downloaded blueprint topic');
@@ -52,13 +54,13 @@ export function validateDownloadedBlueprint(value) {
       }),
       teams: session.teams.map((teamValue) => {
         const team = requireRecord(teamValue, 'Downloaded blueprint team');
-        return { ordinal: team.ordinal, plannedCapacity: team.plannedCapacity };
+        return { ordinal: team.ordinal, name: team.name, plannedCapacity: team.plannedCapacity };
       }),
     };
   });
   const expectedHierarchy = [
-    { ordinal: 1, heldOn: '2026-09-12', topics: [{ ordinal: 1, prompt: '감축 경로' }], teams: [{ ordinal: 1, plannedCapacity: 12 }] },
-    { ordinal: 2, heldOn: '2026-09-13', topics: [{ ordinal: 1, prompt: '적응 정책' }], teams: [{ ordinal: 1, plannedCapacity: 10 }] },
+    { ordinal: 1, title: '감축 숙의', slug: 'mitigation-session', heldOn: '2026-09-12', topics: [{ ordinal: 1, prompt: '감축 경로' }], teams: [{ ordinal: 1, name: '1조', plannedCapacity: 12 }] },
+    { ordinal: 2, title: '적응 숙의', slug: 'adaptation-session', heldOn: '2026-09-13', topics: [{ ordinal: 1, prompt: '적응 정책' }], teams: [{ ordinal: 1, name: '1조', plannedCapacity: 10 }] },
   ];
   if (
     assembly.title !== '기후 공론화 2026'
@@ -156,6 +158,8 @@ export async function verifyPlatformDesignBlueprint({
 
     await page.getByLabel('공론화 이름').fill('기후 공론화 2026');
     await page.getByLabel('공론화 slug').fill('climate-2026');
+    await page.getByLabel('회차 이름').fill('감축 숙의');
+    await page.getByLabel('회차 slug').fill('mitigation-session');
     await page.getByLabel('회차 날짜').fill('2026-09-12');
     await page.getByLabel('주제 (한 줄에 하나)').fill('감축 경로');
     await page.getByLabel('조 수').fill('1');
@@ -163,9 +167,13 @@ export async function verifyPlatformDesignBlueprint({
     await page.getByRole('button', { name: '회차 추가' }).click();
 
     const dates = page.getByLabel('회차 날짜');
+    const sessionTitles = page.getByLabel('회차 이름');
+    const sessionSlugs = page.getByLabel('회차 slug');
     const topics = page.getByLabel('주제 (한 줄에 하나)');
     const teams = page.getByLabel('조 수');
     const participants = page.getByLabel('예상 참여자 수');
+    await sessionTitles.nth(1).fill('적응 숙의');
+    await sessionSlugs.nth(1).fill('adaptation-session');
     await dates.nth(1).fill('2026-09-11');
     await topics.nth(1).fill('적응 정책');
     await teams.nth(1).fill('1');
@@ -215,6 +223,10 @@ export async function verifyPlatformDesignBlueprint({
     await importStatus.waitFor({ timeout: timeoutMs });
     const validImportRestoredHierarchy = await page.getByLabel('공론화 이름').inputValue() === '기후 공론화 2026'
       && await page.getByLabel('공론화 slug').inputValue() === 'climate-2026'
+      && await sessionTitles.nth(0).inputValue() === '감축 숙의'
+      && await sessionSlugs.nth(0).inputValue() === 'mitigation-session'
+      && await sessionTitles.nth(1).inputValue() === '적응 숙의'
+      && await sessionSlugs.nth(1).inputValue() === 'adaptation-session'
       && await dates.count() === 2
       && await topics.count() === 2
       && await teams.count() === 2
@@ -294,6 +306,8 @@ export async function verifyPlatformDesignBlueprint({
         previewSummary,
         previewInvalidated,
         downloadedFilename: filename,
+        blueprintSchemaVersion: downloadJson.schemaVersion,
+        sessionIdentities: downloadJson.sessions.map((session) => ({ title: session.title, slug: session.slug })),
         exportedStats,
         malformedImportRejected,
         malformedImportPreservedDraft,

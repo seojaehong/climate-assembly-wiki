@@ -38,6 +38,8 @@ export interface DesignView {
 }
 
 export interface DesignBlueprintSessionInput {
+  title?: string;
+  slug?: string;
   heldOn: string;
   topics: readonly string[];
   teamCount: number;
@@ -51,7 +53,7 @@ export interface DesignBlueprintInput {
 }
 
 export interface DesignBlueprint {
-  schemaVersion: 1;
+  schemaVersion: 2;
   kind: 'platform-design-blueprint';
   dryRun: true;
   databaseMutationExecuted: false;
@@ -59,9 +61,11 @@ export interface DesignBlueprint {
   assembly: { title: string; slug: string };
   sessions: Array<{
     ordinal: number;
+    title: string;
+    slug: string;
     heldOn: string;
     topics: Array<{ ordinal: number; prompt: string }>;
-    teams: Array<{ ordinal: number; plannedCapacity: number }>;
+    teams: Array<{ ordinal: number; name: string; plannedCapacity: number }>;
   }>;
   stats: { sessionCount: number; topicCount: number; teamCount: number; participantCount: number };
 }
@@ -83,6 +87,7 @@ const ASSEMBLY_SLUG_PATTERN = /^[a-z0-9-]{3,40}$/;
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 export const DESIGN_BLUEPRINT_LIMITS = {
   assemblyTitleChars: 200,
+  sessionTitleChars: 200,
   sessions: 24,
   topicsPerSession: 50,
   topicChars: 500,
@@ -120,6 +125,11 @@ function isCalendarDate(value: string): boolean {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
+function defaultSessionSlug(assemblySlug: string, ordinal: number): string {
+  const suffix = `-session-${ordinal}`;
+  return `${assemblySlug.slice(0, 40 - suffix.length)}${suffix}`;
+}
+
 /** Builds a deterministic, non-mutating blueprint for a future approved design RPC. */
 export function buildDesignBlueprint(input: DesignBlueprintInput): DesignBlueprintResult {
   const assemblyTitle = input.assemblyTitle.trim();
@@ -139,6 +149,15 @@ export function buildDesignBlueprint(input: DesignBlueprintInput): DesignBluepri
   const sessionsToValidate = input.sessions.slice(0, DESIGN_BLUEPRINT_LIMITS.sessions);
   sessionsToValidate.forEach((session, index) => {
     const label = `제${index + 1}회차`;
+    const sessionTitle = (session.title ?? `제${index + 1}회차`).trim();
+    const sessionSlug = (session.slug ?? defaultSessionSlug(assemblySlug, index + 1)).trim();
+    if (!sessionTitle) errors.push(`${label} 이름을 입력하세요.`);
+    if (sessionTitle.length > DESIGN_BLUEPRINT_LIMITS.sessionTitleChars) {
+      errors.push(`${label} 이름은 ${DESIGN_BLUEPRINT_LIMITS.sessionTitleChars}자 이하여야 합니다.`);
+    }
+    if (!ASSEMBLY_SLUG_PATTERN.test(sessionSlug)) {
+      errors.push(`${label} slug는 영문 소문자·숫자·하이픈 3~40자로 입력하세요.`);
+    }
     if (session.topics.length > DESIGN_BLUEPRINT_LIMITS.topicsPerSession) {
       errors.push(`${label} 주제는 최대 ${DESIGN_BLUEPRINT_LIMITS.topicsPerSession}개까지 입력할 수 있습니다.`);
     }
@@ -161,6 +180,12 @@ export function buildDesignBlueprint(input: DesignBlueprintInput): DesignBluepri
       errors.push(`${label} 참여자 수는 조 수 이상이어야 합니다.`);
     }
   });
+  const sessionSlugs = sessionsToValidate.map((session, index) => (
+    session.slug ?? defaultSessionSlug(assemblySlug, index + 1)
+  ).trim()).filter(Boolean);
+  if (new Set(sessionSlugs).size !== sessionSlugs.length) {
+    errors.push('회차 slug는 중복될 수 없습니다.');
+  }
   if (sessionsToValidate.some((session, index) => (
     index > 0
     && isCalendarDate(session.heldOn)
@@ -190,10 +215,13 @@ export function buildDesignBlueprint(input: DesignBlueprintInput): DesignBluepri
     const remainder = session.participantCount % session.teamCount;
     return {
       ordinal: sessionIndex + 1,
+      title: (session.title ?? `제${sessionIndex + 1}회차`).trim(),
+      slug: (session.slug ?? defaultSessionSlug(assemblySlug, sessionIndex + 1)).trim(),
       heldOn: session.heldOn,
       topics: session.topics.map((prompt, topicIndex) => ({ ordinal: topicIndex + 1, prompt: prompt.trim() })),
       teams: Array.from({ length: session.teamCount }, (_, teamIndex) => ({
         ordinal: teamIndex + 1,
+        name: `${teamIndex + 1}조`,
         plannedCapacity: baseCapacity + (teamIndex < remainder ? 1 : 0),
       })),
     };
@@ -201,7 +229,7 @@ export function buildDesignBlueprint(input: DesignBlueprintInput): DesignBluepri
   return {
     ok: true,
     blueprint: {
-      schemaVersion: 1,
+      schemaVersion: 2,
       kind: 'platform-design-blueprint',
       dryRun: true,
       databaseMutationExecuted: false,
@@ -237,7 +265,7 @@ export function parseDesignBlueprintImport(content: string): DesignBlueprintImpo
   }
   if (!isRecord(parsed)
     || !hasExactKeys(parsed, ['schemaVersion', 'kind', 'dryRun', 'databaseMutationExecuted', 'requiresApproval', 'assembly', 'sessions', 'stats'])
-    || parsed.schemaVersion !== 1
+    || (parsed.schemaVersion !== 1 && parsed.schemaVersion !== 2)
     || parsed.kind !== 'platform-design-blueprint'
     || parsed.dryRun !== true
     || parsed.databaseMutationExecuted !== false
@@ -255,9 +283,14 @@ export function parseDesignBlueprintImport(content: string): DesignBlueprintImpo
   const normalizedSessions: DesignBlueprint['sessions'] = [];
   for (let sessionIndex = 0; sessionIndex < parsed.sessions.length; sessionIndex += 1) {
     const session = parsed.sessions[sessionIndex];
+    const isLegacySession = parsed.schemaVersion === 1;
     if (!isRecord(session)
-      || !hasExactKeys(session, ['ordinal', 'heldOn', 'topics', 'teams'])
+      || !hasExactKeys(session, isLegacySession
+        ? ['ordinal', 'heldOn', 'topics', 'teams']
+        : ['ordinal', 'title', 'slug', 'heldOn', 'topics', 'teams'])
       || session.ordinal !== sessionIndex + 1
+      || (!isLegacySession && typeof session.title !== 'string')
+      || (!isLegacySession && typeof session.slug !== 'string')
       || typeof session.heldOn !== 'string'
       || !Array.isArray(session.topics)
       || !Array.isArray(session.teams)) {
@@ -281,8 +314,11 @@ export function parseDesignBlueprintImport(content: string): DesignBlueprintImpo
     for (let teamIndex = 0; teamIndex < session.teams.length; teamIndex += 1) {
       const team = session.teams[teamIndex];
       if (!isRecord(team)
-        || !hasExactKeys(team, ['ordinal', 'plannedCapacity'])
+        || !hasExactKeys(team, isLegacySession
+          ? ['ordinal', 'plannedCapacity']
+          : ['ordinal', 'name', 'plannedCapacity'])
         || team.ordinal !== teamIndex + 1
+        || (!isLegacySession && typeof team.name !== 'string')
         || typeof team.plannedCapacity !== 'number'
         || !Number.isSafeInteger(team.plannedCapacity)
         || team.plannedCapacity < 1) {
@@ -290,9 +326,15 @@ export function parseDesignBlueprintImport(content: string): DesignBlueprintImpo
       }
       participantCount += team.plannedCapacity;
       if (!Number.isSafeInteger(participantCount)) return importFailure();
-      normalizedTeams.push({ ordinal: teamIndex + 1, plannedCapacity: team.plannedCapacity });
+      normalizedTeams.push({
+        ordinal: teamIndex + 1,
+        name: isLegacySession ? `${teamIndex + 1}조` : team.name as string,
+        plannedCapacity: team.plannedCapacity,
+      });
     }
     sessions.push({
+      title: isLegacySession ? `제${sessionIndex + 1}회차` : session.title as string,
+      slug: isLegacySession ? defaultSessionSlug(parsed.assembly.slug, sessionIndex + 1) : session.slug as string,
       heldOn: session.heldOn,
       topics,
       teamCount: normalizedTeams.length,
@@ -300,6 +342,8 @@ export function parseDesignBlueprintImport(content: string): DesignBlueprintImpo
     });
     normalizedSessions.push({
       ordinal: sessionIndex + 1,
+      title: isLegacySession ? `제${sessionIndex + 1}회차` : session.title as string,
+      slug: isLegacySession ? defaultSessionSlug(parsed.assembly.slug, sessionIndex + 1) : session.slug as string,
       heldOn: session.heldOn,
       topics: normalizedTopics,
       teams: normalizedTeams,
@@ -321,7 +365,7 @@ export function parseDesignBlueprintImport(content: string): DesignBlueprintImpo
     return importFailure();
   }
   const normalizedBlueprint: DesignBlueprint = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: 'platform-design-blueprint',
     dryRun: true,
     databaseMutationExecuted: false,

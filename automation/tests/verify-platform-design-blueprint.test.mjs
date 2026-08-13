@@ -7,7 +7,7 @@ import {
 } from '../verify-platform-design-blueprint.mjs';
 
 const validBlueprint = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   kind: 'platform-design-blueprint',
   dryRun: true,
   databaseMutationExecuted: false,
@@ -16,15 +16,19 @@ const validBlueprint = {
   sessions: [
     {
       ordinal: 1,
+      title: '감축 숙의',
+      slug: 'mitigation-session',
       heldOn: '2026-09-12',
       topics: [{ ordinal: 1, prompt: '감축 경로' }],
-      teams: [{ ordinal: 1, plannedCapacity: 12 }],
+      teams: [{ ordinal: 1, name: '1조', plannedCapacity: 12 }],
     },
     {
       ordinal: 2,
+      title: '적응 숙의',
+      slug: 'adaptation-session',
       heldOn: '2026-09-13',
       topics: [{ ordinal: 1, prompt: '적응 정책' }],
-      teams: [{ ordinal: 1, plannedCapacity: 10 }],
+      teams: [{ ordinal: 1, name: '1조', plannedCapacity: 10 }],
     },
   ],
   stats: { sessionCount: 2, topicCount: 2, teamCount: 2, participantCount: 22 },

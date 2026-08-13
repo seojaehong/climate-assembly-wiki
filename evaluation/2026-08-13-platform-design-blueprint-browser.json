@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-13T09:47:34.700Z",
+  "baseUrl": "http://127.0.0.1:4321",
+  "path": "/platform/o/00000000-0000-4000-8000-000000000002/c/audit-assembly/design",
+  "sourceCommit": "f86e10d7ad7bbec7aece7e2576f7264787d974d0",
+  "sourceTreeClean": false,
+  "sourceTreeSha256": "5a2b6d79ef3baa73968ff884ce05a5a0771f5b9f2b0b06394be53c2fdec8ea80",
+  "fixture": "ci-staff-read-fixture-v1",
+  "productionDatabaseAccess": false,
+  "runtime": {
+    "node": "v24.12.0",
+    "chromium": "149.0.7827.55"
+  },
+  "status": "pass",
+  "checks": {
+    "documentStatus": 200,
+    "multiSessionInput": true,
+    "invalidDateRejected": true,
+    "previewSummary": true,
+    "previewInvalidated": true,
+    "downloadedFilename": "climate-2026_design_blueprint.json",
+    "blueprintSchemaVersion": 2,
+    "sessionIdentities": [
+      {
+        "title": "감축 숙의",
+        "slug": "mitigation-session"
+      },
+      {
+        "title": "적응 숙의",
+        "slug": "adaptation-session"
+      }
+    ],
+    "exportedStats": {
+      "sessionCount": 2,
+      "topicCount": 2,
+      "teamCount": 2,
+      "participantCount": 22
+    },
+    "malformedImportRejected": true,
+    "malformedImportPreservedDraft": true,
+    "validImportRestoredHierarchy": true,
+    "importedPreviewReady": true,
+    "importEditInvalidated": true,
+    "oversizedImportRejected": true,
+    "staleImportIgnored": true,
+    "approvalBoundary": {
+      "dryRun": true,
+      "databaseMutationExecuted": false,
+      "requiresApproval": true
+    },
+    "browserPageErrorCount": 0,
+    "fixtureFailureCount": 0,
+    "databaseMutationAttemptCount": 0
+  }
+}

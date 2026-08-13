@@ -74,6 +74,8 @@ describe('DesignConsole', () => {
     expect(html).toContain('설계 청사진');
     expect(html).toContain('공론화 이름');
     expect(html).toContain('공론화 slug');
+    expect(html).toContain('회차 이름');
+    expect(html).toContain('회차 slug');
     expect(html).toContain('회차 날짜');
     expect(html).toContain('주제 (한 줄에 하나)');
     expect(html).toContain('조 수');

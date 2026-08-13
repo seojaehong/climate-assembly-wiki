@@ -144,6 +144,8 @@ export function DesignResults({ view }: { view: DesignView }) {
 }
 
 interface DesignSessionDraft {
+  title: string;
+  slug: string;
   heldOn: string;
   topicsText: string;
   teamCount: string;
@@ -154,6 +156,8 @@ type BlueprintDownloader = (blob: Blob, fileName: string) => void;
 export type DesignBlueprintTransferState = { kind: 'status' | 'error'; text: string } | null;
 
 const EMPTY_SESSION: DesignSessionDraft = {
+  title: '',
+  slug: '',
   heldOn: '',
   topicsText: '',
   teamCount: '',
@@ -184,6 +188,8 @@ export function completeDesignBlueprintExport(
 
 function toSessionInput(session: DesignSessionDraft) {
   return {
+    title: session.title,
+    slug: session.slug,
     heldOn: session.heldOn,
     topics: session.topicsText.trim() ? session.topicsText.split(/\r?\n/) : [],
     teamCount: Number(session.teamCount),
@@ -203,7 +209,7 @@ function BlueprintPreview({ blueprint }: { blueprint: DesignBlueprint }) {
           <caption className="sr-only">설계 청사진 회차별 구성</caption>
           <thead>
             <tr>
-              {['회차', '날짜', '주제', '조별 계획 인원'].map((label) => (
+              {['회차', '식별자', '날짜', '주제', '조별 계획 인원'].map((label) => (
                 <th key={label} scope="col" style={{ color: NAVY, textAlign: 'left', padding: 10, borderBottom: `2px solid ${LINE}` }}>{label}</th>
               ))}
             </tr>
@@ -211,10 +217,11 @@ function BlueprintPreview({ blueprint }: { blueprint: DesignBlueprint }) {
           <tbody>
             {blueprint.sessions.map((session) => (
               <tr key={session.ordinal}>
-                <th scope="row" style={{ color: INK, textAlign: 'left', padding: 10, borderBottom: `2px solid ${PANEL}` }}>제{session.ordinal}회차</th>
+                <th scope="row" style={{ color: INK, textAlign: 'left', padding: 10, borderBottom: `2px solid ${PANEL}` }}>{session.title}</th>
+                <td style={{ color: INK, padding: 10, borderBottom: `2px solid ${PANEL}` }}><code>{session.slug}</code></td>
                 <td style={{ color: INK, padding: 10, borderBottom: `2px solid ${PANEL}` }}>{session.heldOn}</td>
                 <td style={{ color: INK, padding: 10, borderBottom: `2px solid ${PANEL}` }}>{session.topics.map((topic) => topic.prompt).join(' / ')}</td>
-                <td style={{ color: INK, padding: 10, borderBottom: `2px solid ${PANEL}` }}>{session.teams.map((team) => `${team.ordinal}조 ${team.plannedCapacity}명`).join(' / ')}</td>
+                <td style={{ color: INK, padding: 10, borderBottom: `2px solid ${PANEL}` }}>{session.teams.map((team) => `${team.name} ${team.plannedCapacity}명`).join(' / ')}</td>
               </tr>
             ))}
           </tbody>
@@ -292,6 +299,8 @@ export function DesignBlueprintBuilder() {
       setAssemblyTitle(imported.input.assemblyTitle);
       setAssemblySlug(imported.input.assemblySlug);
       setSessions(imported.input.sessions.map((session) => ({
+        title: session.title ?? '',
+        slug: session.slug ?? '',
         heldOn: session.heldOn,
         topicsText: session.topics.join('\n'),
         teamCount: String(session.teamCount),
@@ -328,6 +337,12 @@ export function DesignBlueprintBuilder() {
         <fieldset key={index} style={{ display: 'grid', gap: 12, border: `2px solid ${LINE}`, borderRadius: 12, padding: 14 }}>
           <legend style={{ color: NAVY, fontWeight: 800, padding: '0 6px' }}>제{index + 1}회차</legend>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12 }}>
+            <label style={{ color: INK, fontWeight: 700 }}>회차 이름
+              <input value={session.title} maxLength={DESIGN_BLUEPRINT_LIMITS.sessionTitleChars} onChange={(event) => updateSession(index, { title: event.target.value })} placeholder={`제${index + 1}회차`} style={inputStyle} />
+            </label>
+            <label style={{ color: INK, fontWeight: 700 }}>회차 slug
+              <input value={session.slug} maxLength={40} onChange={(event) => updateSession(index, { slug: event.target.value })} placeholder={`${assemblySlug || 'assembly'}-session-${index + 1}`} style={inputStyle} />
+            </label>
             <label style={{ color: INK, fontWeight: 700 }}>회차 날짜
               <input type="date" value={session.heldOn} onChange={(event) => updateSession(index, { heldOn: event.target.value })} style={inputStyle} />
             </label>
