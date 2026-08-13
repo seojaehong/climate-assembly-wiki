@@ -17,6 +17,7 @@
     "audit:canvas-db-contract": "node canvas-db-contract.mjs",
     "plan:platform-analysis-import": "node platform-analysis-import.mjs",
     "plan:platform-result-sources": "node platform-result-source-plan.mjs",
+    "plan:platform-implementations": "node platform-implementation-plan.mjs",
     "preflight:platform-activation": "node platform-activation-preflight.mjs",
     "verify:platform-activation": "node platform-activation-preflight.mjs --verify-evidence",
     "verify:canvas-browser": "node verify-canvas-browser.mjs",
