@@ -230,6 +230,39 @@ export function PrivateTranscriptCapturePanel() {
     recorder.stop();
   };
 
+  const discardPrivateCapture = () => {
+    const recorder = recorderRef.current;
+    generationRef.current += 1;
+    recordingLockRef.current = false;
+    recorderRef.current = null;
+    if (recorder?.state === 'recording') {
+      try {
+        recorder.stop();
+      } catch (caught: unknown) {
+        console.error('Failed to stop private browser recorder after consent withdrawal', caught);
+      }
+    }
+    stopCurrentStream();
+    partsRef.current = [];
+    startedAtRef.current = null;
+    captureSessionIdRef.current = null;
+    setRecording(false);
+    setFinalizing(false);
+    setCapture(null);
+    setReviewer('');
+    setChunkText('');
+    setStartMs('0');
+    setEndMs('');
+    replaceAudioUrl(null);
+    setError(null);
+    setNotice('동의를 철회해 마이크와 로컬 음성·전사 초안을 폐기했습니다.');
+  };
+
+  const updateConsent = (next: boolean) => {
+    setConsented(next);
+    if (!next) discardPrivateCapture();
+  };
+
   const appendChunk = () => {
     if (!capture) return;
     try {
@@ -320,7 +353,7 @@ export function PrivateTranscriptCapturePanel() {
       </header>
       <div style={{ ...cardStyle, background: PANEL, marginBottom: 16 }}>
         <label style={{ alignItems: 'center', display: 'flex', gap: 8 }}>
-          <input type="checkbox" checked={consented} onChange={(event) => setConsented(event.currentTarget.checked)} />
+          <input type="checkbox" checked={consented} onChange={(event) => updateConsent(event.currentTarget.checked)} />
           마이크 사용과 로컬 메모리 처리에 동의합니다.
         </label>
         <label>회차 ID

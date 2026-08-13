@@ -229,9 +229,14 @@ export async function verifyCanvasBrowser({
       value: {
         getUserMedia: async () => {
           window.__privateGetUserMediaCount += 1;
+          let stopped = false;
           return {
             getTracks: () => [{
-              stop: () => { window.__privateMediaTrackStopCount += 1; },
+              stop: () => {
+                if (stopped) return;
+                stopped = true;
+                window.__privateMediaTrackStopCount += 1;
+              },
             }],
           };
         },
@@ -383,6 +388,18 @@ export async function verifyCanvasBrowser({
     const privateDuplicateRecordingStartBlocked = await reviewPage.evaluate(() => (
       window.__privateGetUserMediaCount === 2
     ));
+    await privateCapturePanel.getByLabel('마이크 사용과 로컬 메모리 처리에 동의합니다.').uncheck();
+    await privateCapturePanel.getByText('동의를 철회해 마이크와 로컬 음성·전사 초안을 폐기했습니다.', { exact: true })
+      .waitFor({ timeout: timeoutMs });
+    const privateConsentWithdrawalDiscarded = await reviewPage.evaluate(() => (
+      window.__privateMediaTrackStopCount === 2
+    ))
+      && await privateCapturePanel.getByRole('button', { name: '녹음 시작' }).isDisabled()
+      && !await privateCapturePanel.getByText(/audio SHA-256 [a-f0-9]{64}/).isVisible();
+    await privateCapturePanel.getByLabel('마이크 사용과 로컬 메모리 처리에 동의합니다.').check();
+    await privateCapturePanel.getByRole('button', { name: '녹음 시작' }).click();
+    await privateCapturePanel.getByText('녹음 중입니다. 음성은 서버로 전송되지 않습니다.', { exact: true })
+      .waitFor({ timeout: timeoutMs });
     await reviewPage.waitForTimeout(25);
     await privateCapturePanel.getByRole('button', { name: '녹음 정지' }).click();
     await privateCapturePanel.getByText(/audio SHA-256 [a-f0-9]{64}/).waitFor({ timeout: timeoutMs });
@@ -415,12 +432,22 @@ export async function verifyCanvasBrowser({
       && privateTranscriptBatch.safety?.audioIncluded === false
       && privateTranscriptBatch.safety?.extractionExecuted === false
       && !JSON.stringify(privateTranscriptBatch).includes('synthetic-browser-audio');
-    if (!privateMediaRecorderAvailable || !privateRecordingMemoryBoundaryVisible
-      || !privateRecorderConstructionFailureRecovered || !privateSessionLockedWhileRecording
-      || !privateDuplicateRecordingStartBlocked
-      || !privateTranscriptReviewGateVerified || !privateTranscriptRedecisionGateVerified
-      || !privateTranscriptBatchDownloaded) {
-      throw new Error('Private MediaRecorder transcript review contract is incomplete');
+    const privateCaptureChecks = {
+      privateMediaRecorderAvailable,
+      privateRecordingMemoryBoundaryVisible,
+      privateRecorderConstructionFailureRecovered,
+      privateSessionLockedWhileRecording,
+      privateDuplicateRecordingStartBlocked,
+      privateConsentWithdrawalDiscarded,
+      privateTranscriptReviewGateVerified,
+      privateTranscriptRedecisionGateVerified,
+      privateTranscriptBatchDownloaded,
+    };
+    const failedPrivateCaptureChecks = Object.entries(privateCaptureChecks)
+      .filter(([, passed]) => !passed)
+      .map(([name]) => name);
+    if (failedPrivateCaptureChecks.length > 0) {
+      throw new Error(`Private MediaRecorder transcript review contract is incomplete: ${failedPrivateCaptureChecks.join(', ')}`);
     }
     const transcriptReviewPanel = reviewPage.getByRole('region', { name: '합성 전사 후보 검수' });
     await transcriptReviewPanel.waitFor({ timeout: timeoutMs });
@@ -687,6 +714,7 @@ export async function verifyCanvasBrowser({
         privateRecordingMemoryBoundaryVisible,
         privateRecorderConstructionFailureRecovered,
         privateDuplicateRecordingStartBlocked,
+        privateConsentWithdrawalDiscarded,
         privateSessionLockedWhileRecording,
         privateTranscriptReviewGateVerified,
         privateTranscriptRedecisionGateVerified,

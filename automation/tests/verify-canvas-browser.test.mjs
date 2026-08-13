@@ -174,7 +174,16 @@ async function fixtureServer({
           const refreshPrivateStart = () => {
             privateStart.disabled = !privateConsent.checked || !privateSession.value.trim();
           };
-          privateConsent.addEventListener('change', refreshPrivateStart);
+          privateConsent.addEventListener('change', () => {
+            if (!privateConsent.checked && !privateStop.disabled) {
+              window.__privateMediaTrackStopCount += 1;
+              privateStop.disabled = true;
+              privateSession.disabled = false;
+              privateCapture.hidden = true;
+              privateStatus.textContent = '동의를 철회해 마이크와 로컬 음성·전사 초안을 폐기했습니다.';
+            }
+            refreshPrivateStart();
+          });
           privateSession.addEventListener('input', refreshPrivateStart);
           privateStart.addEventListener('click', () => {
             window.__privateGetUserMediaCount += 1;
@@ -197,6 +206,7 @@ async function fixtureServer({
             privateStatus.textContent = '녹음 중입니다. 음성은 서버로 전송되지 않습니다.';
           });
           privateStop.addEventListener('click', () => {
+            window.__privateMediaTrackStopCount += 1;
             privateStop.disabled = true;
             privateSession.disabled = false;
             privateCapture.hidden = false;
@@ -491,6 +501,7 @@ describe('verifyCanvasBrowser', () => {
     expect(report.checks.privateRecordingMemoryBoundaryVisible).toBe(true);
     expect(report.checks.privateRecorderConstructionFailureRecovered).toBe(true);
     expect(report.checks.privateDuplicateRecordingStartBlocked).toBe(true);
+    expect(report.checks.privateConsentWithdrawalDiscarded).toBe(true);
     expect(report.checks.privateSessionLockedWhileRecording).toBe(true);
     expect(report.checks.privateTranscriptReviewGateVerified).toBe(true);
     expect(report.checks.privateTranscriptRedecisionGateVerified).toBe(true);
