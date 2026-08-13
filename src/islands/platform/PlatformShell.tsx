@@ -178,6 +178,7 @@ export function LoginCard({ notice, onSignedIn }: { notice: string | null; onSig
         <input
           id="platform-email"
           type="email"
+          disabled={busy}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="operator@example.org"
@@ -192,6 +193,7 @@ export function LoginCard({ notice, onSignedIn }: { notice: string | null; onSig
         <input
           id="platform-password"
           type="password"
+          disabled={busy}
           value={pw}
           onChange={(e) => setPw(e.target.value)}
           placeholder="비밀번호"

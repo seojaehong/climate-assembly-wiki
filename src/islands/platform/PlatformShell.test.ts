@@ -421,6 +421,7 @@ describe('PlatformShell accessibility', () => {
     expect(source).toContain('busy || operationLock.current');
     expect(source).toContain('logoutBusy || logoutLock.current');
     expect(source).toContain('runExclusivePlatformOperation(\n      logoutLock,');
+    expect(source.match(/disabled=\{busy\}/g)).toHaveLength(2);
   });
 
   it('로그아웃 실패와 비어 있는 응답을 알린다', async () => {
