@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   DESIGN_BLUEPRINT_ROUTE,
+  REVIEW_CONSOLE_ROUTE,
   isDatabaseMutationRequest,
   validateDownloadedBlueprint,
 } from '../verify-platform-design-blueprint.mjs';
@@ -93,7 +94,9 @@ describe('design blueprint browser CI contract', () => {
       'utf8',
     );
     expect(DESIGN_BLUEPRINT_ROUTE).toBe('/platform/o/00000000-0000-4000-8000-000000000002/c/audit-assembly/design');
+    expect(REVIEW_CONSOLE_ROUTE).toContain('/t/00000000-0000-4000-8000-000000000005/review');
     expect(workflow).toContain('node verify-platform-design-blueprint.mjs');
+    expect(workflow).toContain('Verify authenticated design and review interactions');
     expect(workflow).toContain('.artifacts/platform-design-blueprint-browser.json');
     expect(workflow.indexOf('Start preview server')).toBeLessThan(
       workflow.indexOf('node verify-platform-design-blueprint.mjs'),
@@ -105,5 +108,9 @@ describe('design blueprint browser CI contract', () => {
     expect(verifier).toContain("page.setViewportSize({ width: 360, height: 800 })");
     expect(verifier).toContain("getByRole('region', { name: '설계 청사진 회차별 구성 표' })");
     expect(verifier).toContain("blueprintTableRegion.press('End')");
+    expect(verifier).toContain('button.click();\n      button.click();');
+    expect(verifier).toContain("getByRole('button', { name: '검수 경합 주제 B', exact: true })");
+    expect(verifier).toContain('reviewRequests.length === 1');
+    expect(verifier).toContain("getByText('검수 완료로 확정했습니다.', { exact: true }).count() === 0");
   });
 });

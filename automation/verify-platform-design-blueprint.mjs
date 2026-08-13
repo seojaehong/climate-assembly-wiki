@@ -13,7 +13,78 @@ import {
 
 const PLATFORM_ENTRY_ROUTE = '/platform/';
 export const DESIGN_BLUEPRINT_ROUTE = `/platform/o/${FIXTURE_IDS.org}/c/audit-assembly/design`;
+export const REVIEW_CONSOLE_ROUTE = `/platform/o/${FIXTURE_IDS.org}/c/audit-assembly/s/audit-session/t/${FIXTURE_IDS.topic}/review`;
 const READ_RPCS = new Set(['/rest/v1/rpc/org_of_uid', '/rest/v1/rpc/readiness_check']);
+
+const REVIEW_TOPICS = [
+  {
+    id: FIXTURE_IDS.topic,
+    ordinal: 1,
+    prompt: '검수 경합 주제 A',
+    session_id: FIXTURE_IDS.session,
+    archived_at: null,
+  },
+  {
+    id: FIXTURE_IDS.topicSecondary,
+    ordinal: 2,
+    prompt: '검수 경합 주제 B',
+    session_id: FIXTURE_IDS.session,
+    archived_at: null,
+  },
+];
+
+function reviewList(topicId) {
+  return {
+    topic_id: topicId,
+    issues: topicId === FIXTURE_IDS.topic ? [{
+      id: '00000000-0000-4000-8000-000000000101',
+      label: '지연 검수 대상 쟁점',
+      stance: 'proposal',
+      frequency_class: 'majority',
+      summary: '지연된 검수 응답이 다른 주제를 덮지 않아야 합니다.',
+      origin: 'ai',
+      review_status: 'draft',
+      reviewed_by: null,
+      reviewed_at: null,
+      archived_at: null,
+      linked_item_count: 1,
+      consensus_denominator: 1,
+    }] : [],
+    unclassified_count: 0,
+    reviewed_count: 0,
+  };
+}
+
+function reviewItems(topicId) {
+  return {
+    topic_id: topicId,
+    items: topicId === FIXTURE_IDS.topic ? [{
+      id: '00000000-0000-4000-8000-000000000201',
+      content: '검수 경합을 확인하는 시민 원문입니다.',
+      rationale: null,
+      kind: 'core',
+      ordinal: 1,
+      team_id: '00000000-0000-4000-8000-000000000301',
+      team_name: '검수 fixture 조',
+      submission_id: '00000000-0000-4000-8000-000000000401',
+      links: [{
+        issue_id: '00000000-0000-4000-8000-000000000101',
+        cluster_id: null,
+        linked_by: 'fixture-reviewer',
+      }],
+      unclassified: false,
+    }] : [],
+  };
+}
+
+async function fulfillJson(route, body, status = 200) {
+  await route.fulfill({
+    status,
+    contentType: 'application/json; charset=utf-8',
+    headers: { 'access-control-allow-origin': '*' },
+    body: JSON.stringify(body),
+  });
+}
 
 function requireRecord(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -116,6 +187,121 @@ async function readDownloadJson(download) {
   const chunks = [];
   for await (const chunk of stream) chunks.push(chunk);
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+}
+
+/** Exercises duplicate-write and stale-topic guards through the production review console. */
+export async function verifyReviewConsoleRace({ browser, origin, timeoutMs = 60_000 }) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  const page = await context.newPage();
+  const browserErrors = [];
+  const fixtureFailures = [];
+  const reviewRequests = [];
+  const observedRpcPaths = [];
+  let releaseReview;
+  const reviewGate = new Promise((resolveGate) => {
+    releaseReview = resolveGate;
+  });
+  page.on('pageerror', (error) => browserErrors.push(error.message));
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.hostname === 'pleyuknjnprsckssxvrh.supabase.co' && url.pathname.startsWith('/rest/v1/rpc/')) {
+      observedRpcPaths.push(url.pathname);
+    }
+  });
+  page.on('response', (response) => {
+    if (response.url().includes('pleyuknjnprsckssxvrh.supabase.co') && response.status() >= 400) {
+      fixtureFailures.push({ status: response.status(), path: new URL(response.url()).pathname });
+    }
+  });
+
+  try {
+    await prepareAuthenticatedPlatform({
+      context,
+      page,
+      topics: REVIEW_TOPICS,
+      handleRequest: async ({ route, path, request }) => {
+        if (path === '/rest/v1/rpc/issue_list' || path === '/rest/v1/rpc/issue_items') {
+          const body = request.postDataJSON();
+          const topicId = typeof body?.p_topic_id === 'string' ? body.p_topic_id : '';
+          await fulfillJson(route, path.endsWith('issue_list') ? reviewList(topicId) : reviewItems(topicId));
+          return true;
+        }
+        if (path === '/rest/v1/rpc/issue_review') {
+          reviewRequests.push(request.postDataJSON());
+          await reviewGate;
+          await fulfillJson(route, {
+            id: '00000000-0000-4000-8000-000000000101',
+            review_status: 'reviewed',
+          });
+          return true;
+        }
+        return false;
+      },
+    });
+    const response = await page.goto(new URL(PLATFORM_ENTRY_ROUTE, origin).toString(), {
+      waitUntil: 'domcontentloaded',
+      timeout: timeoutMs,
+    });
+    if (!response?.ok()) throw new Error(`Review console page returned HTTP ${response?.status() ?? 'unknown'}`);
+    await page.getByRole('button', { name: '접근성 감사 공론화', exact: true }).click();
+    await page.getByRole('button', { name: '제1차 회의', exact: true }).click();
+    await page.getByRole('button', { name: '검수 경합 주제 A', exact: true }).click();
+    await page.getByRole('button', { name: '검수', exact: true }).click();
+    await page.waitForURL((url) => url.pathname === REVIEW_CONSOLE_ROUTE, { timeout: timeoutMs });
+    await page.getByRole('heading', { name: /쟁점 검수/ }).waitFor({ timeout: timeoutMs });
+    const joinCode = page.getByLabel('조 참여 코드(join_code)');
+    await joinCode.fill(' RACE01 ');
+    await page.getByRole('button', { name: '불러오기', exact: true }).click();
+    const issueChoice = page.getByRole('button', { name: /지연 검수 대상 쟁점/ });
+    await issueChoice.waitFor({ timeout: timeoutMs });
+    await issueChoice.click();
+    const reviewButton = page.getByRole('button', { name: '✓ 검수 완료', exact: true });
+    await reviewButton.evaluate((button) => {
+      button.click();
+      button.click();
+    });
+    await page.waitForTimeout(100);
+    if (!await joinCode.isDisabled()) {
+      throw new Error(`Review mutation did not enter the busy state: ${observedRpcPaths.join(', ')}`);
+    }
+    await page.waitForFunction(() => window.location.pathname.includes('/review'), undefined, { timeout: timeoutMs });
+    await page.getByRole('button', { name: '검수 경합 주제 B', exact: true }).click();
+    const secondaryPath = `/t/${FIXTURE_IDS.topicSecondary}/review`;
+    await page.waitForURL((url) => url.pathname.endsWith(secondaryPath), { timeout: timeoutMs });
+    await joinCode.waitFor({ state: 'visible', timeout: timeoutMs });
+    const topicResetBeforeRelease = await joinCode.isEnabled() && await joinCode.inputValue() === '';
+    releaseReview();
+    await page.waitForTimeout(150);
+    const staleCompletionIgnored = await page.getByText('검수 완료로 확정했습니다.', { exact: true }).count() === 0
+      && await page.getByText('지연 검수 대상 쟁점', { exact: true }).count() === 0
+      && await joinCode.isEnabled()
+      && await joinCode.inputValue() === '';
+    const duplicateWriteBlocked = reviewRequests.length === 1;
+    const requestBoundToLoadedCode = reviewRequests[0]?.p_code === 'RACE01'
+      && reviewRequests[0]?.p_issue_id === '00000000-0000-4000-8000-000000000101';
+
+    if (!topicResetBeforeRelease) throw new Error('Review topic change did not reset the in-flight mutation state');
+    if (!staleCompletionIgnored) throw new Error('A stale review mutation changed the current topic UI');
+    if (!duplicateWriteBlocked) throw new Error('Review console sent a duplicate mutation request');
+    if (!requestBoundToLoadedCode) throw new Error('Review mutation was not bound to the loaded join code and issue');
+    if (browserErrors.length > 0) throw new Error('Review console verification observed a browser error');
+    if (fixtureFailures.length > 0) throw new Error('Review console verification observed an unexpected fixture request');
+
+    return {
+      path: REVIEW_CONSOLE_ROUTE,
+      fixture: 'ci-review-race-fixture-v1',
+      topicResetBeforeRelease,
+      staleCompletionIgnored,
+      duplicateWriteBlocked,
+      requestBoundToLoadedCode,
+      reviewMutationRequestCount: reviewRequests.length,
+      browserPageErrorCount: browserErrors.length,
+      fixtureFailureCount: fixtureFailures.length,
+    };
+  } finally {
+    releaseReview?.();
+    await context.close();
+  }
 }
 
 /** Exercises the authenticated production component while all Supabase traffic is fixture-bound. */
@@ -314,8 +500,10 @@ export async function verifyPlatformDesignBlueprint({
     if (fixtureFailures.length > 0) throw new Error('Design blueprint verification observed an unexpected fixture request');
     if (mutationAttempts.length > 0) throw new Error('Design blueprint verification observed a database mutation attempt');
 
+    const reviewRace = await verifyReviewConsoleRace({ browser, origin, timeoutMs });
+
     const report = {
-      schemaVersion: 4,
+      schemaVersion: 5,
       generatedAt: new Date().toISOString(),
       baseUrl: origin.origin,
       path: DESIGN_BLUEPRINT_ROUTE,
@@ -360,6 +548,7 @@ export async function verifyPlatformDesignBlueprint({
         browserPageErrorCount: browserErrors.length,
         fixtureFailureCount: fixtureFailures.length,
         databaseMutationAttemptCount: mutationAttempts.length,
+        reviewRace,
       },
     };
     if (reportPath) {

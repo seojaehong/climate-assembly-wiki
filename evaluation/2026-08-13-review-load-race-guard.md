@@ -20,6 +20,14 @@
 | `npm.cmd run check` | 314 files, 0 errors, 0 warnings, 49 existing hints |
 | `git diff --check` | Passed; Windows LF to CRLF warnings only |
 
+## Browser regression gate
+
+- The authenticated Chromium verifier now opens the production review console through the real platform tree and view tabs.
+- It loads a topic through fixture-bound `issue_list` and `issue_items`, invokes the review button twice in one browser task, and requires exactly one `issue_review` request.
+- While that fixture mutation is delayed, it navigates to a second topic and requires the join-code state to reset. The late response must not restore the previous issue, busy state, or success notice.
+- All Supabase requests remain intercepted synthetic fixture traffic. The verifier does not access or mutate the production database.
+- The existing local `dist` bundle predates the source guard and was intentionally rejected because it emitted two mutation requests. The clean Linux workflow rebuild is the authoritative current-source Chromium evidence.
+
 ## Build boundary
 
 - Node 20.20.2 reached the existing `build:kb-agenda-source` prebuild step and stopped because the installed Supabase Realtime package requires an explicit WebSocket transport on Node versions below 22.

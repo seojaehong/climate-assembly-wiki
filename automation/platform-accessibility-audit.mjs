@@ -56,6 +56,7 @@ export const FIXTURE_IDS = {
   assembly: '00000000-0000-4000-8000-000000000003',
   session: '00000000-0000-4000-8000-000000000004',
   topic: '00000000-0000-4000-8000-000000000005',
+  topicSecondary: '00000000-0000-4000-8000-000000000006',
 };
 
 function jsonResponse(route, body, status = 200) {
@@ -100,13 +101,14 @@ function auditSession() {
   };
 }
 
-export async function prepareAuthenticatedPlatform({ context, page }) {
+export async function prepareAuthenticatedPlatform({ context, page, topics, handleRequest }) {
   const session = auditSession();
   await context.addInitScript(({ key, value }) => {
     localStorage.setItem(key, JSON.stringify(value));
   }, { key: AUTH_STORAGE_KEY, value: session });
   await page.route(`${SUPABASE_ORIGIN}/**`, async (route) => {
     const path = new URL(route.request().url()).pathname;
+    if (handleRequest && await handleRequest({ route, path, request: route.request() })) return;
     if (path === '/auth/v1/user') return jsonResponse(route, auditUser());
     if (path === '/auth/v1/token') return jsonResponse(route, session);
     if (path === '/rest/v1/rpc/org_of_uid') return jsonResponse(route, FIXTURE_IDS.org);
@@ -140,7 +142,7 @@ export async function prepareAuthenticatedPlatform({ context, page }) {
       }]);
     }
     if (path === '/rest/v1/discussion_topic') {
-      return jsonResponse(route, [{
+      return jsonResponse(route, topics ?? [{
         id: FIXTURE_IDS.topic,
         ordinal: 1,
         prompt: '접근성 감사 주제',
