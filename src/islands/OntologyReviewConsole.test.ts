@@ -12,10 +12,11 @@ import OntologyReviewConsole, {
   OntologyReviewLoginBoundary,
   ontologyReviewNodeAnchorId,
   TranscriptCandidatePrompt,
+  TranscriptNodeReviewCard,
   transcriptHandoffFixtureArtifact,
 } from './OntologyReviewConsole';
 import type { CanvasOntologyNode, CanvasOntologyReviewWorkspace } from './canvas/ontology-review-workspace';
-import type { TranscriptOntologyReviewWorkspace } from './canvas/transcript-ontology-review-workspace';
+import type { TranscriptOntologyReviewNode, TranscriptOntologyReviewWorkspace } from './canvas/transcript-ontology-review-workspace';
 import { authenticatedReviewerId } from './canvas/useAuth';
 
 const AUTH_REVIEWER_ID = 'auth-user:00000000-0000-4000-8000-000000000091';
@@ -182,6 +183,23 @@ describe('OntologyReviewConsole', () => {
     expect(html).toContain('함께 확인할 진행 질문');
     expect(html).toContain('이 주장에 연결할 근거나 경험이 있는지 함께 확인해 보세요.');
     expect(html).toContain('회의의 결정이나 진실 판정을 대신하지 않습니다.');
+  });
+
+  it('offers a defer action without presenting it as a completed transcript decision', () => {
+    const node: TranscriptOntologyReviewNode = {
+      id: 'transcript-node:candidate-issue', sourceUid: 'candidate-issue',
+      kindCandidate: 'Issue', kind: 'Issue', sourceLabel: '전환 속도', sourceText: '전환 속도를 논의합니다.',
+      label: '전환 속도', text: '전환 속도를 논의합니다.', citedUids: ['chunk-1'],
+      transcript: [{ uid: 'chunk-1', startMs: 0, endMs: 1000, speakerLabelPseudonym: 'speaker-unknown', text: '전환 속도를 논의합니다.' }],
+      reviewStatus: 'deferred', reviewer: AUTH_REVIEWER_ID, reviewedAt: '2026-08-29T01:00:00.000Z',
+    };
+    const html = renderToStaticMarkup(createElement(TranscriptNodeReviewCard, {
+      node, reviewer: AUTH_REVIEWER_ID, onDecision: () => undefined, onDraft: () => undefined,
+    }));
+
+    expect(html).toContain('candidate node · 보류');
+    expect(html).toContain('나중에 검수');
+    expect(html).toContain('원문 승인');
   });
 
   it('links every facilitation prompt provenance node to a focusable review card', () => {

@@ -1,6 +1,7 @@
 import { isAuthenticatedReviewerId } from './useAuth';
 
-type ReviewStatus = 'proposed' | 'accepted' | 'edited' | 'rejected';
+type DecidedReviewStatus = 'accepted' | 'edited' | 'rejected';
+type ReviewStatus = 'proposed' | 'deferred' | DecidedReviewStatus;
 
 export interface TranscriptCitation {
   uid: string;
@@ -76,6 +77,7 @@ export interface TranscriptOntologyReviewWorkspace {
     nodes: number;
     relations: number;
     decided: number;
+    deferred: number;
     total: number;
   };
   safety: {
@@ -95,7 +97,7 @@ export type TranscriptOntologyReviewDecision = DecisionAudit & (
   | {
     itemType: 'node';
     id: string;
-    status: 'accepted' | 'edited' | 'rejected';
+    status: 'deferred' | DecidedReviewStatus;
     kind?: string;
     label?: string;
     text?: string;
@@ -103,7 +105,7 @@ export type TranscriptOntologyReviewDecision = DecisionAudit & (
   | {
     itemType: 'relation';
     id: string;
-    status: 'accepted' | 'edited' | 'rejected';
+    status: 'deferred' | DecidedReviewStatus;
     relation?: string;
   }
 );
@@ -131,6 +133,8 @@ const TRANSCRIPT_CANDIDATE_FACILITATION_PROMPTS: Record<string, string> = {
 const NODE_KINDS = new Set<string>(TRANSCRIPT_ONTOLOGY_NODE_KINDS);
 const RELATIONS = new Set<string>(TRANSCRIPT_ONTOLOGY_RELATIONS);
 const DECISION_STATUSES = new Set<string>(['accepted', 'edited', 'rejected']);
+const REVIEW_STATUSES = new Set<string>(['deferred', ...DECISION_STATUSES]);
+const WORKSPACE_REVIEW_STATUSES = new Set<string>(['proposed', ...REVIEW_STATUSES]);
 const OPAQUE_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,127}$/i;
 const SPEAKER_PATTERN = /^speaker-(?:[a-z]{1,3}|unknown)$/;
 const FIXTURE_REVIEWER_PATTERN = /^(moderator|reviewer)-(fixture|test)$/;
@@ -142,6 +146,10 @@ export function transcriptCandidateFacilitationPrompt(kind: string): string {
   const prompt = TRANSCRIPT_CANDIDATE_FACILITATION_PROMPTS[kind];
   if (!prompt) throw new Error('Invalid transcript ontology node kind');
   return prompt;
+}
+
+function isDecidedReviewStatus(status: string): status is DecidedReviewStatus {
+  return DECISION_STATUSES.has(status);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -536,7 +544,7 @@ export async function createTranscriptOntologyReviewWorkspace(
     },
     nodes,
     relations,
-    summary: { nodes: nodes.length, relations: relations.length, decided: 0, total: nodes.length + relations.length },
+    summary: { nodes: nodes.length, relations: relations.length, decided: 0, deferred: 0, total: nodes.length + relations.length },
     safety: {
       localOnly: true,
       databaseMutationExecuted: false,
@@ -564,9 +572,22 @@ function summarize(
   return {
     nodes: nodes.length,
     relations: relations.length,
-    decided: [...nodes, ...relations].filter((item) => DECISION_STATUSES.has(item.reviewStatus)).length,
+    decided: [...nodes, ...relations].filter((item) => isDecidedReviewStatus(item.reviewStatus)).length,
+    deferred: [...nodes, ...relations].filter((item) => item.reviewStatus === 'deferred').length,
     total: nodes.length + relations.length,
   };
+}
+
+function invalidateReviewedRelationsForNode(
+  relations: TranscriptOntologyReviewRelation[],
+  nodeId: string,
+): TranscriptOntologyReviewRelation[] {
+  return relations.map((relation) => (
+    (relation.source === nodeId || relation.target === nodeId)
+    && (relation.reviewStatus === 'accepted' || relation.reviewStatus === 'edited')
+      ? { ...relation, reviewStatus: 'proposed' as const, reviewer: null, reviewedAt: null }
+      : relation
+  ));
 }
 
 /** Applies one local human decision without persistence or publication. */
@@ -577,13 +598,19 @@ export function reviewTranscriptOntologyCandidate(
   if (decision.itemType !== 'node' && decision.itemType !== 'relation') {
     throw new Error('Invalid transcript ontology review item type');
   }
-  if (!DECISION_STATUSES.has(decision.status)) throw new Error('Invalid transcript ontology review status');
+  if (!REVIEW_STATUSES.has(decision.status)) throw new Error('Invalid transcript ontology review status');
   const audit = decisionAudit(workspace, decision);
   if (decision.itemType === 'node') {
     const target = workspace.nodes.find((node) => node.id === decision.id);
     if (!target) throw new Error('Transcript ontology node candidate was not found');
     let replacement: TranscriptOntologyReviewNode;
-    if (decision.status === 'rejected') {
+    if (decision.status === 'deferred') {
+      replacement = {
+        ...target,
+        reviewStatus: 'deferred',
+        ...audit,
+      };
+    } else if (decision.status === 'rejected') {
       if (workspace.relations.some((relation) => (
         (relation.source === target.id || relation.target === target.id)
         && (relation.reviewStatus === 'accepted' || relation.reviewStatus === 'edited')
@@ -616,17 +643,33 @@ export function reviewTranscriptOntologyCandidate(
       };
     }
     const nodes = workspace.nodes.map((node) => node.id === target.id ? replacement : node);
-    return { ...workspace, nodes, summary: summarize(nodes, workspace.relations) };
+    const relations = decision.status === 'deferred'
+      ? invalidateReviewedRelationsForNode(workspace.relations, target.id)
+      : workspace.relations;
+    return { ...workspace, nodes, relations, summary: summarize(nodes, relations) };
   }
   const target = workspace.relations.find((relation) => relation.id === decision.id);
   if (!target) throw new Error('Transcript ontology relation candidate was not found');
+  if (decision.status === 'deferred') {
+    const replacement: TranscriptOntologyReviewRelation = {
+      ...target,
+      reviewStatus: 'deferred',
+      ...audit,
+    };
+    const relations = workspace.relations.map((item) => item.id === target.id ? replacement : item);
+    return { ...workspace, relations, summary: summarize(workspace.nodes, relations) };
+  }
   const relation = decision.status === 'rejected' ? null : text(decision.relation, 'reviewed relation type');
   if (relation !== null && !RELATIONS.has(relation)) throw new Error('Invalid reviewed relation type');
   if (decision.status !== 'rejected') {
     const source = workspace.nodes.find((node) => node.id === target.source);
     const destination = workspace.nodes.find((node) => node.id === target.target);
-    if (!source || !destination || source.reviewStatus === 'rejected' || destination.reviewStatus === 'rejected') {
-      throw new Error('Reviewed relation requires non-rejected endpoint nodes');
+    if (!source || !destination
+      || !isDecidedReviewStatus(source.reviewStatus)
+      || !isDecidedReviewStatus(destination.reviewStatus)
+      || source.reviewStatus === 'rejected'
+      || destination.reviewStatus === 'rejected') {
+      throw new Error('Reviewed relation requires accepted or edited endpoint nodes');
     }
     const changed = relation !== target.relationCandidate;
     if (decision.status === 'accepted' && changed) throw new Error('Edited relation requires edited status');
@@ -665,7 +708,8 @@ export function updateTranscriptOntologyCandidateDraft(
       reviewer: null,
       reviewedAt: null,
     } : node);
-    return { ...workspace, nodes, summary: summarize(nodes, workspace.relations) };
+    const relations = invalidateReviewedRelationsForNode(workspace.relations, target.id);
+    return { ...workspace, nodes, relations, summary: summarize(nodes, relations) };
   }
   const target = workspace.relations.find((relation) => relation.id === item.id);
   if (!target) throw new Error('Transcript ontology relation candidate was not found');
@@ -690,7 +734,10 @@ export async function exportTranscriptOntologyReviewedPlan(
   }
   let rebuilt = await createTranscriptOntologyReviewWorkspace(workspace.source.fixtureText);
   for (const node of workspace.nodes) {
-    if (node.reviewStatus === 'proposed' || !node.reviewer || !node.reviewedAt) {
+    if (!WORKSPACE_REVIEW_STATUSES.has(node.reviewStatus)) {
+      throw new Error('Invalid transcript ontology review status');
+    }
+    if (!isDecidedReviewStatus(node.reviewStatus) || !node.reviewer || !node.reviewedAt) {
       throw new Error('Transcript ontology review is incomplete');
     }
     rebuilt = reviewTranscriptOntologyCandidate(rebuilt, {
@@ -700,7 +747,10 @@ export async function exportTranscriptOntologyReviewedPlan(
     });
   }
   for (const relation of workspace.relations) {
-    if (relation.reviewStatus === 'proposed' || !relation.reviewer || !relation.reviewedAt) {
+    if (!WORKSPACE_REVIEW_STATUSES.has(relation.reviewStatus)) {
+      throw new Error('Invalid transcript ontology review status');
+    }
+    if (!isDecidedReviewStatus(relation.reviewStatus) || !relation.reviewer || !relation.reviewedAt) {
       throw new Error('Transcript ontology review is incomplete');
     }
     rebuilt = reviewTranscriptOntologyCandidate(rebuilt, {

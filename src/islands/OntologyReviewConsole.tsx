@@ -196,9 +196,10 @@ function downloadTranscriptPublicationApproval(content: string, sourceId: string
   URL.revokeObjectURL(url);
 }
 
-function DecisionButtons({ onAccept, onReject, acceptLabel = '승인' }: {
+function DecisionButtons({ onAccept, onReject, onDefer, acceptLabel = '승인' }: {
   onAccept: () => void;
   onReject: () => void;
+  onDefer?: () => void;
   acceptLabel?: string;
 }) {
   return (
@@ -209,6 +210,11 @@ function DecisionButtons({ onAccept, onReject, acceptLabel = '승인' }: {
       <button type="button" onClick={onReject} style={{ ...controlStyle, background: '#FFFFFF', color: '#8A1C1C', fontWeight: 800 }}>
         반려
       </button>
+      {onDefer ? (
+        <button type="button" onClick={onDefer} style={{ ...controlStyle, background: '#FFFFFF', color: '#5F4B00', fontWeight: 800 }}>
+          나중에 검수
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -409,7 +415,7 @@ export function TranscriptCandidatePrompt({ kind }: { kind: string }) {
   );
 }
 
-function TranscriptNodeReviewCard({ node, reviewer, onDecision, onDraft }: {
+export function TranscriptNodeReviewCard({ node, reviewer, onDecision, onDraft }: {
   node: TranscriptOntologyReviewNode;
   reviewer: string;
   onDecision: (decision: TranscriptOntologyReviewDecision) => void;
@@ -417,14 +423,14 @@ function TranscriptNodeReviewCard({ node, reviewer, onDecision, onDraft }: {
 }) {
   const kind = node.kind ?? node.kindCandidate;
   const edited = kind !== node.kindCandidate || node.label !== node.sourceLabel || node.text !== node.sourceText;
-  const decide = (status: 'accepted' | 'edited' | 'rejected') => onDecision({
+  const decide = (status: 'deferred' | 'accepted' | 'edited' | 'rejected') => onDecision({
     itemType: 'node', id: node.id, status, kind, label: node.label, text: node.text, reviewer,
     reviewedAt: new Date().toISOString(),
   });
   return (
     <article style={cardStyle} aria-label={`전사 노드 후보 검수 ${node.id}`}>
       <header>
-        <strong>candidate node · {node.reviewStatus === 'proposed' ? '미검수' : node.reviewStatus}</strong>
+        <strong>candidate node · {node.reviewStatus === 'proposed' ? '미검수' : node.reviewStatus === 'deferred' ? '보류' : node.reviewStatus}</strong>
         <div style={{ color: MUTED, fontSize: 13, overflowWrap: 'anywhere' }}>{node.sourceUid}</div>
       </header>
       <TranscriptEvidence transcript={node.transcript} />
@@ -444,12 +450,13 @@ function TranscriptNodeReviewCard({ node, reviewer, onDecision, onDraft }: {
         acceptLabel={edited ? '수정 승인' : '원문 승인'}
         onAccept={() => decide(edited ? 'edited' : 'accepted')}
         onReject={() => decide('rejected')}
+        onDefer={() => decide('deferred')}
       />
     </article>
   );
 }
 
-function TranscriptRelationReviewCard({ relation, reviewer, onDecision, onDraft }: {
+export function TranscriptRelationReviewCard({ relation, reviewer, onDecision, onDraft }: {
   relation: TranscriptOntologyReviewRelation;
   reviewer: string;
   onDecision: (decision: TranscriptOntologyReviewDecision) => void;
@@ -457,13 +464,13 @@ function TranscriptRelationReviewCard({ relation, reviewer, onDecision, onDraft 
 }) {
   const relationType = relation.relation ?? relation.relationCandidate;
   const edited = relationType !== relation.relationCandidate;
-  const decide = (status: 'accepted' | 'edited' | 'rejected') => onDecision({
+  const decide = (status: 'deferred' | 'accepted' | 'edited' | 'rejected') => onDecision({
     itemType: 'relation', id: relation.id, status, relation: relationType, reviewer,
     reviewedAt: new Date().toISOString(),
   });
   return (
     <article style={cardStyle} aria-label={`전사 관계 후보 검수 ${relation.id}`}>
-      <header><strong>candidate relation · {relation.reviewStatus === 'proposed' ? '미검수' : relation.reviewStatus}</strong></header>
+      <header><strong>candidate relation · {relation.reviewStatus === 'proposed' ? '미검수' : relation.reviewStatus === 'deferred' ? '보류' : relation.reviewStatus}</strong></header>
       <p style={{ color: MUTED, margin: 0, overflowWrap: 'anywhere' }}>{relation.source} → {relation.target}</p>
       <TranscriptEvidence transcript={relation.transcript} />
       <label>논증 관계
@@ -477,6 +484,7 @@ function TranscriptRelationReviewCard({ relation, reviewer, onDecision, onDraft 
         acceptLabel={edited ? '수정 승인' : '승인'}
         onAccept={() => decide(edited ? 'edited' : 'accepted')}
         onReject={() => decide('rejected')}
+        onDefer={() => decide('deferred')}
       />
     </article>
   );
@@ -702,7 +710,7 @@ export function TranscriptOntologyReviewPanel({ reviewerId }: { reviewerId: stri
       {workspace ? (
         <>
           <section aria-label="전사 후보 검수 진행 요약" style={{ ...cardStyle, marginBottom: 20 }}>
-            <strong>진행 {workspace.summary.decided}/{workspace.summary.total}</strong>
+            <strong>진행 {workspace.summary.decided}/{workspace.summary.total} · 보류 {workspace.summary.deferred}</strong>
             <span>candidate node {workspace.summary.nodes} · relation {workspace.summary.relations}</span>
             {workspace.source.handoff ? (
               <>

@@ -217,7 +217,7 @@ describe('transcript ontology review workspace', () => {
   it('opens candidate nodes and relations with their cited transcript text and Habermas role', async () => {
     const workspace = await createTranscriptOntologyReviewWorkspace(fixtureText);
 
-    expect(workspace.summary).toEqual({ nodes: 2, relations: 1, decided: 0, total: 3 });
+    expect(workspace.summary).toEqual({ nodes: 2, relations: 1, decided: 0, deferred: 0, total: 3 });
     expect(workspace.nodes[0]).toMatchObject({
       id: 'transcript-node:candidate-issue',
       sourceUid: 'candidate-issue',
@@ -243,6 +243,49 @@ describe('transcript ontology review workspace', () => {
       publicGraphWritten: false,
       requiresHumanReview: true,
     });
+  });
+
+  it('keeps deferred candidates audited but outside completed review and publication', async () => {
+    let workspace = await createTranscriptOntologyReviewWorkspace(fixtureText);
+    workspace = reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'node', id: workspace.nodes[0].id, status: 'deferred',
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(0),
+    });
+
+    expect(workspace.nodes[0]).toMatchObject({
+      reviewStatus: 'deferred',
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091',
+      reviewedAt: decisionAt(0),
+    });
+    expect(workspace.summary).toMatchObject({ decided: 0, deferred: 1, total: 3 });
+    await expect(exportTranscriptOntologyReviewedPlan(workspace))
+      .rejects.toThrow('Transcript ontology review is incomplete');
+    expect(() => reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'relation', id: workspace.relations[0].id, status: 'accepted',
+      relation: workspace.relations[0].relationCandidate,
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(1),
+    })).toThrow('Reviewed relation requires accepted or edited endpoint nodes');
+
+    workspace = updateTranscriptOntologyCandidateDraft(workspace, {
+      itemType: 'node', id: workspace.nodes[0].id, label: workspace.nodes[0].label,
+    });
+    expect(workspace.nodes[0]).toMatchObject({ reviewStatus: 'proposed', reviewer: null, reviewedAt: null });
+    expect(workspace.summary.deferred).toBe(0);
+
+    for (const [index, node] of workspace.nodes.entries()) {
+      workspace = reviewTranscriptOntologyCandidate(workspace, {
+        itemType: 'node', id: node.id, status: 'accepted', kind: node.kindCandidate,
+        label: node.sourceLabel, text: node.sourceText,
+        reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(index + 2),
+      });
+    }
+    workspace = reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'relation', id: workspace.relations[0].id, status: 'deferred',
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(4),
+    });
+    expect(workspace.summary).toMatchObject({ decided: 2, deferred: 1, total: 3 });
+    await expect(exportTranscriptOntologyReviewedPlan(workspace))
+      .rejects.toThrow('Transcript ontology review is incomplete');
   });
 
   it('keeps accept edit and reject decisions local and exports only a completed private review plan', async () => {
@@ -401,6 +444,21 @@ describe('transcript ontology review workspace', () => {
       relation: workspace.relations[0].relationCandidate, reviewer: 'auth-user:00000000-0000-4000-8000-000000000091',
       reviewedAt: decisionAt(2),
     });
+    const deferredEndpoint = reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'node', id: workspace.nodes[0].id, status: 'deferred',
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(3),
+    });
+    expect(deferredEndpoint.relations[0]).toMatchObject({
+      reviewStatus: 'proposed', reviewer: null, reviewedAt: null,
+    });
+    expect(deferredEndpoint.summary).toMatchObject({ decided: 1, deferred: 1, total: 3 });
+    const revisedEndpoint = updateTranscriptOntologyCandidateDraft(workspace, {
+      itemType: 'node', id: workspace.nodes[0].id, label: '관계 검수 뒤 바뀐 쟁점 이름',
+    });
+    expect(revisedEndpoint.relations[0]).toMatchObject({
+      reviewStatus: 'proposed', reviewer: null, reviewedAt: null,
+    });
+    expect(revisedEndpoint.summary).toMatchObject({ decided: 1, deferred: 0, total: 3 });
     expect(() => reviewTranscriptOntologyCandidate(workspace, {
       itemType: 'node', id: workspace.nodes[0].id, status: 'rejected',
       reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(3),
@@ -414,7 +472,7 @@ describe('transcript ontology review workspace', () => {
     expect(() => reviewTranscriptOntologyCandidate(rejectedEndpoint, {
       itemType: 'relation', id: rejectedEndpoint.relations[0].id, status: 'edited',
       relation: 'supports', reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(5),
-    })).toThrow('Reviewed relation requires non-rejected endpoint nodes');
+    })).toThrow('Reviewed relation requires accepted or edited endpoint nodes');
   });
 
   it('rejects non-synthetic fixture provenance before opening the workspace', async () => {
