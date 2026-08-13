@@ -1,6 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test, vi } from 'vitest';
-import { createWorkshopGraphSourceAdapter } from '../public/workshop-graph/graph-source-adapter.js';
+import {
+  createWorkshopGraphSourceAdapter,
+  liveGraphStatusPresentation,
+} from '../public/workshop-graph/graph-source-adapter.js';
 
 const STATIC_MANIFEST = {
   default: 'static-final',
@@ -172,7 +175,7 @@ describe('workshop graph source adapter', () => {
     const html = readFileSync('public/workshop-graph/index.html', 'utf8');
     const chrome = readFileSync('public/_ontology-chrome/chrome.js', 'utf8');
 
-    expect(html).toContain("import { createWorkshopGraphSourceAdapter } from './graph-source-adapter.js';");
+    expect(html).toContain("import { createWorkshopGraphSourceAdapter, liveGraphStatusPresentation } from './graph-source-adapter.js';");
     expect(html).toContain("await graphSourceAdapter.loadCatalog('sources.json')");
     expect(html).toContain('await graphSourceAdapter.loadSource(meta)');
     expect(html).toContain('safelyLoadSource(curSource)');
@@ -185,9 +188,7 @@ describe('workshop graph source adapter', () => {
     expect(html).toContain('pollTimer = setTimeout(async () =>');
     expect(html).toContain('await safelyLoadSource(meta.id)');
     expect(html).toContain("if (restoredMeta?.category === 'live') setupPolling(restoredMeta, false)");
-    expect(html).toContain("mt.publication_status === 'synthetic_reviewed_demo'");
-    expect(html).toContain("mt.requires_publication_review === false");
-    expect(html).toContain('합성 전사 검수 데모 · 실제 시민 발언 아님');
+    expect(html).toContain('const liveStatus = isLive ? liveGraphStatusPresentation(mt) : null');
     expect(html).toContain('displayedSourceState = captureSourceState()');
     expect(html).toContain('restoreSourceState(displayedSourceState)');
     expect(html).toContain('diagnostics.rowCount');
@@ -257,6 +258,33 @@ describe('workshop graph source adapter', () => {
       'Live graph source must declare reviewed snapshot publication',
     );
     expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  test('distinguishes synthetic and ordinary reviewed snapshot presentation states', () => {
+    const synthetic = reviewedLiveSnapshot().meta;
+    const reviewed = structuredClone(synthetic);
+    reviewed.publication_status = 'reviewed_snapshot';
+    reviewed.publication.mode = 'reviewed-snapshot';
+    const draft = structuredClone(reviewed);
+    draft.source_review_status = 'draft';
+
+    expect(liveGraphStatusPresentation(synthetic)).toEqual({
+      reviewed: true,
+      advisoryFallback: '합성 전사 검수 데모 · 실제 시민 발언 아님',
+      footerSummary: '합성 전사 검수 데모 · 실제 시민 발언 아님',
+      pillText: 'LIVE · 검수 완료',
+    });
+    expect(liveGraphStatusPresentation(reviewed)).toEqual({
+      reviewed: true,
+      advisoryFallback: '사람 검수 완료 스냅샷',
+      footerSummary: '사람 검수 완료 스냅샷',
+      pillText: 'LIVE · 검수 완료',
+    });
+    expect(liveGraphStatusPresentation(draft)).toMatchObject({
+      reviewed: false,
+      advisoryFallback: '🔴 LIVE 미검증 초안 · 시민 비노출',
+      pillText: 'LIVE · 미검수',
+    });
   });
 
   test.each([

@@ -213,7 +213,7 @@
 
 <script type="module">
 import { OntologyChrome } from '/_ontology-chrome/chrome.js';
-import { createWorkshopGraphSourceAdapter } from './graph-source-adapter.js';
+import { createWorkshopGraphSourceAdapter, liveGraphStatusPresentation } from './graph-source-adapter.js';
 import { advisoryAssetSummary, parseGraphAdvisoryAssets, renderGraphAdvisoryAssets } from './graph-advisory-assets.js';
 
 const graphSourceAdapter = createWorkshopGraphSourceAdapter();
@@ -568,9 +568,7 @@ async function loadSource(srcId, isCurrent = () => true) {
   const isLive = meta.category === 'live';
   document.getElementById('og-poll-ui').style.display = isLive ? '' : 'none';
   const { elements, meta: mt } = payload;
-  const isReviewedSyntheticLive = isLive
-    && mt.publication_status === 'synthetic_reviewed_demo'
-    && mt.requires_publication_review === false;
+  const liveStatus = isLive ? liveGraphStatusPresentation(mt) : null;
   const maxDeg = Math.max(0, ...elements.nodes.map(n => Number(n.data?.deg || 0)));
   ALL_NODES = elements.nodes.map(n => {
     const deg = Number(n.data?.deg || 0);
@@ -603,7 +601,7 @@ async function loadSource(srcId, isCurrent = () => true) {
     : '';
   OntologyChrome.updateMeta(`${rowSummary}노드 ${diagnostics.nodeCount} · 엣지 ${diagnostics.edgeCount}${metaLabels.length ? ' · ' + metaLabels.join(' · ') : ''}`);
   OntologyChrome.updateAdvisory([
-    mt.advisory_notice || (isLive ? '🔴 LIVE 미검증 초안 · 시민 비노출' : ''),
+    mt.advisory_notice || liveStatus?.advisoryFallback || '',
     provenanceWarning,
     advisoryAssetError,
   ].filter(Boolean).join(' · '));
@@ -614,9 +612,7 @@ async function loadSource(srcId, isCurrent = () => true) {
       ? '원본-전사-그래프 연결상태 · 내용판단 아님'
       : (isFinalDecision
         ? '검증 산출물 기반 · 미완/갭 항목 별도 표시'
-        : (isReviewedSyntheticLive
-          ? '합성 전사 검수 데모 · 실제 시민 발언 아님'
-          : (isLive ? 'LIVE 미검증 초안 · 시민 비노출' : 'LLM 추출 · 인간 검증 전')));
+        : (liveStatus?.footerSummary || 'LLM 추출 · 인간 검증 전'));
     footerNote.textContent = [footerSummary, provenanceWarning].filter(Boolean).join(' · ');
   }
   updateAssetsButton(advisoryAssets);
@@ -625,7 +621,7 @@ async function loadSource(srcId, isCurrent = () => true) {
   const pill = document.querySelector('.og-pill');
   if (pill) {
     pill.classList.toggle('og-live', !!mt.live);
-    pill.textContent = mt.live ? 'LIVE' : 'advisory · uid 역추적';
+    pill.textContent = mt.live ? (liveStatus?.pillText || 'LIVE') : 'advisory · uid 역추적';
   }
 
   if (curView === '2d') renderCy();

@@ -10,6 +10,7 @@ const SOURCE_A = 'workshop-2026-06-13';
 const SOURCE_B = 'regulation-2026-06-13';
 const SOURCE_INVALID = 'source-coverage-2026-06-13';
 const SOURCE_REVIEWED = 'live-transcript-r2-reviewed';
+const SOURCE_REVIEWED_STANDARD = 'live-reviewed-snapshot-ui-fixture';
 const SOURCE_FILES = [
   'public/workshop-graph/index.html',
   'public/workshop-graph/graph-advisory-assets.js',
@@ -50,6 +51,15 @@ function advisoryFixture(prefix, title) {
 
 const catalog = JSON.parse(readFileSync('public/workshop-graph/sources.json', 'utf8'));
 catalog.default = SOURCE_A;
+catalog.sources.push({
+  id: SOURCE_REVIEWED_STANDARD,
+  category: 'live',
+  label: '검수 완료 snapshot UI fixture',
+  data: `data/${SOURCE_REVIEWED_STANDARD}.json`,
+  publicationMode: 'reviewed_snapshot',
+  supportsView: ['2d'],
+  polling_default_sec: 15,
+});
 for (const source of catalog.sources) {
   if ([SOURCE_A, SOURCE_B, SOURCE_INVALID].includes(source.id)) source.menu = true;
 }
@@ -58,6 +68,12 @@ const fixtures = new Map([
   [`${SOURCE_B}.json`, graphFixture(SOURCE_B, advisoryFixture('candidate-b', '두 번째 권고 후보'))],
   [`${SOURCE_INVALID}.json`, graphFixture(SOURCE_INVALID, { quality: { conclusion: 'legacy quality note' } })],
 ]);
+const reviewedStandardGraph = JSON.parse(readFileSync('public/workshop-graph/data/live-transcript-r2-reviewed.json', 'utf8'));
+reviewedStandardGraph.meta.publication_status = 'reviewed_snapshot';
+reviewedStandardGraph.meta.publication.mode = 'reviewed-snapshot';
+reviewedStandardGraph.meta.source.source_id = SOURCE_REVIEWED_STANDARD;
+delete reviewedStandardGraph.meta.advisory_notice;
+fixtures.set(`${SOURCE_REVIEWED_STANDARD}.json`, reviewedStandardGraph);
 
 const browser = await chromium.launch({ headless: true });
 const chromiumVersion = browser.version();
@@ -111,6 +127,15 @@ try {
     element.dataset.content === 'node' && !element.classList.contains('collapsed') && element.textContent.includes(label)
   ), fixedNodeLabel);
 
+  await page.locator('#og-source').selectOption(SOURCE_REVIEWED_STANDARD);
+  await page.waitForFunction(source => window.__ontologyGraphDebug?.getState().curSource === source, SOURCE_REVIEWED_STANDARD);
+  await page.waitForFunction(() => document.querySelector('#og-footer-note')?.textContent?.includes('사람 검수 완료 스냅샷'));
+  const standardReviewedPresentation = await page.evaluate(() => ({
+    footer: document.querySelector('#og-footer-note')?.textContent || '',
+    advisory: document.querySelector('#og-advisory')?.textContent || '',
+    pill: document.querySelector('.og-pill')?.textContent || '',
+  }));
+
   await page.locator('#og-source').selectOption(SOURCE_REVIEWED);
   await page.waitForFunction(source => window.__ontologyGraphDebug?.getState().curSource === source, SOURCE_REVIEWED);
   await page.waitForFunction(() => document.querySelector('#og-footer-note')?.textContent?.includes('합성 전사 검수 데모'));
@@ -148,6 +173,7 @@ try {
       manifestPublicationMode: reviewedSource?.publicationMode || null,
       ...reviewedSnapshot,
     },
+    standardReviewedPresentation,
     validCandidate: {
       metadata: firstMetadata, humanReviewRequired: firstPanel.includes('사람 검수 필요'),
       recommendationCandidateVisible: firstPanel.includes('첫 번째 권고 후보'), qualitySignalVisible: firstPanel.includes('품질 신호'),
@@ -174,6 +200,9 @@ try {
     && result.reviewedPublicSnapshot.nodeCount > 0 && result.reviewedPublicSnapshot.edgeCount > 0
     && result.reviewedPublicSnapshot.allItemsPublic && result.reviewedPublicSnapshot.allItemsReviewed
     && result.reviewedPublicSnapshot.footer.includes('합성 전사 검수 데모')
+    && result.standardReviewedPresentation.footer.includes('사람 검수 완료 스냅샷')
+    && result.standardReviewedPresentation.advisory.includes('사람 검수 완료 스냅샷')
+    && result.standardReviewedPresentation.pill.includes('LIVE · 검수 완료')
     && result.servedHashesMatch && result.pageErrors.length === 0 && result.consoleErrorCount === 1;
   writeFileSync(OUTPUT_PATH, `${JSON.stringify(result, null, 2)}\n`);
   if (!result.passed) throw new Error('Workshop graph advisory browser verification failed');

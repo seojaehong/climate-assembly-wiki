@@ -70,6 +70,37 @@ function canonicalInstant(value, label) {
   return instant;
 }
 
+function reviewedLivePublicationMode(meta) {
+  if (!isRecord(meta) || meta.live !== true || meta.source_review_status !== 'reviewed'
+    || meta.requires_publication_review !== false) return null;
+  const expectedPublicationMode = LIVE_PUBLICATION_MODES.get(meta.publication_status);
+  if (!expectedPublicationMode || !isRecord(meta.publication)
+    || meta.publication.mode !== expectedPublicationMode) return null;
+  return expectedPublicationMode;
+}
+
+export function liveGraphStatusPresentation(meta) {
+  const reviewed = reviewedLivePublicationMode(meta) !== null;
+  if (!reviewed) {
+    return {
+      reviewed: false,
+      advisoryFallback: '🔴 LIVE 미검증 초안 · 시민 비노출',
+      footerSummary: 'LIVE 미검증 초안 · 시민 비노출',
+      pillText: 'LIVE · 미검수',
+    };
+  }
+  const synthetic = meta.publication_status === 'synthetic_reviewed_demo';
+  const summary = synthetic
+    ? '합성 전사 검수 데모 · 실제 시민 발언 아님'
+    : '사람 검수 완료 스냅샷';
+  return {
+    reviewed: true,
+    advisoryFallback: summary,
+    footerSummary: summary,
+    pillText: 'LIVE · 검수 완료',
+  };
+}
+
 function validateGraphSnapshot(value) {
   if (!isRecord(value) || !isRecord(value.elements) || !Array.isArray(value.elements.nodes)
     || !Array.isArray(value.elements.edges) || !isRecord(value.meta)) {
@@ -116,14 +147,8 @@ function validatePublishedLiveSnapshot(value, source) {
       throw new Error('Live graph item is not reviewed');
     }
   }
-  if (snapshot.meta.live !== true || snapshot.meta.source_review_status !== 'reviewed'
-    || snapshot.meta.requires_publication_review !== false) {
+  if (reviewedLivePublicationMode(snapshot.meta) === null) {
     throw new Error('Live graph snapshot is not publication-ready');
-  }
-  const expectedPublicationMode = LIVE_PUBLICATION_MODES.get(snapshot.meta.publication_status);
-  if (!expectedPublicationMode || !isRecord(snapshot.meta.publication)
-    || snapshot.meta.publication.mode !== expectedPublicationMode) {
-    throw new Error('Live graph publication metadata is invalid');
   }
   nonemptyString(snapshot.meta.publication.approved_identity_kind, 'live graph approval identity kind');
   canonicalInstant(snapshot.meta.publication.approved_at, 'live graph approval time');

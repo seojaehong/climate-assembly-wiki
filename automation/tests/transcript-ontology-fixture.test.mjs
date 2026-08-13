@@ -564,19 +564,41 @@ test('binds the tracked R2 live graph to its exact fixture, reviewed plan, and a
 
 test('polls the production live graph surface and applies the next payload', async () => {
   const publicRoot = fileURLToPath(new URL('../../public/', import.meta.url));
+  const reviewedSnapshotId = 'live-reviewed-snapshot-ui-test';
+  const manifest = JSON.parse(readFileSync(join(publicRoot, 'workshop-graph', 'sources.json'), 'utf8'));
   const trackedGraph = JSON.parse(readFileSync(join(
     publicRoot,
     'workshop-graph',
     'data',
     'live-transcript-reviewed-fixture.json',
   ), 'utf8'));
+  manifest.sources.push({
+    id: reviewedSnapshotId,
+    category: 'live',
+    label: '검수 완료 snapshot UI fixture',
+    data: `data/${reviewedSnapshotId}.json`,
+    publicationMode: 'reviewed_snapshot',
+    supportsView: ['2d'],
+    polling_default_sec: 15,
+  });
+  const reviewedSnapshotGraph = structuredClone(trackedGraph);
+  reviewedSnapshotGraph.meta.publication_status = 'reviewed_snapshot';
+  reviewedSnapshotGraph.meta.publication.mode = 'reviewed-snapshot';
+  reviewedSnapshotGraph.meta.source.source_id = reviewedSnapshotId;
+  delete reviewedSnapshotGraph.meta.advisory_notice;
   let graphRequestCount = 0;
   const server = createServer((request, response) => {
     const url = new URL(request.url ?? '/', 'http://127.0.0.1');
     try {
       let body;
       let contentType = 'application/octet-stream';
-      if (url.pathname === '/workshop-graph/data/live-transcript-reviewed-fixture.json') {
+      if (url.pathname === '/workshop-graph/sources.json') {
+        body = JSON.stringify(manifest);
+        contentType = 'application/json';
+      } else if (url.pathname === `/workshop-graph/data/${reviewedSnapshotId}.json`) {
+        body = JSON.stringify(reviewedSnapshotGraph);
+        contentType = 'application/json';
+      } else if (url.pathname === '/workshop-graph/data/live-transcript-reviewed-fixture.json') {
         graphRequestCount += 1;
         const graph = structuredClone(trackedGraph);
         if (graphRequestCount > 1) graph.meta.advisory_notice = '합성 전사 검수 데모 · polling 갱신 확인';
@@ -635,6 +657,11 @@ test('polls the production live graph surface and applies the next payload', asy
     });
     await page.waitForFunction(() => document.querySelector('#og-advisory')?.textContent?.includes('polling 갱신 확인'));
     expect(graphRequestCount).toBeGreaterThanOrEqual(2);
+    await page.locator('#og-source').selectOption(reviewedSnapshotId);
+    await page.waitForFunction(source => window.__ontologyGraphDebug?.getState().curSource === source, reviewedSnapshotId);
+    await page.waitForFunction(() => document.querySelector('#og-footer-note')?.textContent?.includes('사람 검수 완료 스냅샷'));
+    expect(await page.locator('#og-advisory').textContent()).toContain('사람 검수 완료 스냅샷');
+    expect(await page.locator('.og-pill').textContent()).toContain('LIVE · 검수 완료');
     await page.goto(
       `http://127.0.0.1:${address.port}/workshop-graph/?source=live-transcript-r2-reviewed`,
       { waitUntil: 'domcontentloaded' },
@@ -651,7 +678,7 @@ test('polls the production live graph surface and applies the next payload', asy
     await browser.close();
     await new Promise((resolve) => server.close(resolve));
   }
-}, 15_000);
+}, 20_000);
 
 test('rejects transcript chunks with an invalid time range before graph export', () => {
   const fixture = structuredClone(FIXTURE);
