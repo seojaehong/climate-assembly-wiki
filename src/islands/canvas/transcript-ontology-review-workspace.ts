@@ -106,6 +106,7 @@ const OPAQUE_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,127}$/i;
 const SPEAKER_PATTERN = /^speaker-[a-z]{1,3}$/;
 const FIXTURE_REVIEWER_PATTERN = /^(moderator|reviewer)-(fixture|test)$/;
 const LANGUAGE_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i;
+export const TRANSCRIPT_PUBLICATION_SOURCE_PATTERN = /^live-[a-z0-9][a-z0-9._-]*$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -152,6 +153,16 @@ function citations(value: unknown, chunks: Map<string, TranscriptCitation>, labe
 async function sha256(value: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (!isRecord(value)) return value;
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]));
+}
+
+async function canonicalSha256(value: unknown): Promise<string> {
+  return sha256(JSON.stringify(canonicalize(value)));
 }
 
 /** Opens a local-only review workspace from a synthetic transcript ontology fixture. */
@@ -444,5 +455,57 @@ export async function exportTranscriptOntologyReviewedPlan(
     source,
     nodes: workspace.nodes,
     relations: workspace.relations,
+  }, null, 2)}\n`;
+}
+
+/** Builds a local approval artifact without publishing or persisting the reviewed plan. */
+export async function buildTranscriptOntologyPublicationApproval(input: {
+  reviewedPlanText: string;
+  sourceId: string;
+  approvedBy: string;
+  approvedAt: string;
+}): Promise<string> {
+  const reviewedPlan = parseJson(input.reviewedPlanText);
+  if (!isRecord(reviewedPlan)
+    || reviewedPlan.schemaVersion !== 1
+    || reviewedPlan.kind !== 'transcript-ontology-reviewed-plan'
+    || reviewedPlan.dryRun !== true
+    || reviewedPlan.databaseMutationExecuted !== false
+    || reviewedPlan.publicGraphWritten !== false
+    || reviewedPlan.requiresPublicationReview !== true
+    || !Array.isArray(reviewedPlan.nodes)
+    || !Array.isArray(reviewedPlan.relations)) {
+    throw new Error('Invalid transcript ontology reviewed plan');
+  }
+  const sourceId = text(input.sourceId, 'publication source id');
+  if (!TRANSCRIPT_PUBLICATION_SOURCE_PATTERN.test(sourceId)) {
+    throw new Error('Invalid publication source id');
+  }
+  const approvedBy = text(input.approvedBy, 'publication approver id');
+  if (!isAuthenticatedReviewerId(approvedBy)) throw new Error('Invalid publication approver id');
+  const approvedAt = canonicalInstant(input.approvedAt, 'publication approvedAt');
+  if (!isRecord(reviewedPlan.source)) throw new Error('Invalid reviewed plan source');
+  let latestReviewedAt = canonicalInstant(reviewedPlan.source.reviewedAt, 'reviewed plan source reviewedAt');
+  for (const item of [...reviewedPlan.nodes, ...reviewedPlan.relations]) {
+    if (!isRecord(item)
+      || !DECISION_STATUSES.has(String(item.reviewStatus))
+      || typeof item.reviewer !== 'string'
+      || !isAuthenticatedReviewerId(item.reviewer)) {
+      throw new Error('Invalid reviewed plan decision audit');
+    }
+    const reviewedAt = canonicalInstant(item.reviewedAt, 'reviewed plan decision reviewedAt');
+    if (reviewedAt > latestReviewedAt) latestReviewedAt = reviewedAt;
+  }
+  if (approvedAt <= latestReviewedAt) {
+    throw new Error('Publication approval must follow every review decision');
+  }
+  return `${JSON.stringify({
+    schemaVersion: 1,
+    kind: 'transcript-ontology-publication-approval',
+    mode: 'synthetic-reviewed-demo',
+    sourceId,
+    reviewedPlanSha256: await canonicalSha256(reviewedPlan),
+    approvedBy,
+    approvedAt,
   }, null, 2)}\n`;
 }

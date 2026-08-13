@@ -142,6 +142,8 @@ async function fixtureServer({
               <button type="button" data-transcript-decision="relation">반려</button>
             </article>
             <button type="button" id="download-transcript-plan" disabled>전사 후보 검수 plan 다운로드</button>
+            <label>공개 source ID<input id="transcript-publication-source" type="text" value="live-transcript-r2-reviewed"></label>
+            <button type="button" id="download-transcript-approval" disabled>공개 승인 artifact 다운로드</button>
           </section>
         </section>
         <script>
@@ -163,7 +165,9 @@ async function fixtureServer({
           const transcriptProgress = document.querySelector('#transcript-progress');
           const transcriptItems = document.querySelector('#transcript-items');
           const transcriptDownloadButton = document.querySelector('#download-transcript-plan');
+          const transcriptApprovalButton = document.querySelector('#download-transcript-approval');
           const transcriptDecisions = new Set();
+          let exportedTranscriptPlan = null;
           const privateConsent = document.querySelector('#private-consent');
           const privateSession = document.querySelector('#private-session');
           const privateStart = document.querySelector('#private-start');
@@ -293,6 +297,8 @@ async function fixtureServer({
             transcriptProgress.hidden = false;
             transcriptItems.hidden = false;
             transcriptDownloadButton.disabled = true;
+            transcriptApprovalButton.disabled = true;
+            exportedTranscriptPlan = null;
           });
           document.querySelectorAll('[data-transcript-decision]').forEach((button) => {
             button.addEventListener('click', () => {
@@ -356,10 +362,38 @@ async function fixtureServer({
                 reviewStatus: 'rejected', reviewer, reviewedAt,
               }],
             };
+            exportedTranscriptPlan = plan;
+            transcriptApprovalButton.disabled = false;
             const href = URL.createObjectURL(new Blob([JSON.stringify(plan)], { type: 'application/json' }));
             const anchor = document.createElement('a');
             anchor.href = href;
             anchor.download = 'transcript-reviewed-plan.json';
+            anchor.click();
+            URL.revokeObjectURL(href);
+          });
+          const canonicalize = (value) => {
+            if (Array.isArray(value)) return value.map(canonicalize);
+            if (typeof value !== 'object' || value === null) return value;
+            return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]));
+          };
+          transcriptApprovalButton.addEventListener('click', async () => {
+            const bytes = new TextEncoder().encode(JSON.stringify(canonicalize(exportedTranscriptPlan)));
+            const digest = await crypto.subtle.digest('SHA-256', bytes);
+            const reviewedPlanSha256 = Array.from(new Uint8Array(digest))
+              .map((byte) => byte.toString(16).padStart(2, '0')).join('');
+            const approval = {
+              schemaVersion: 1,
+              kind: 'transcript-ontology-publication-approval',
+              mode: 'synthetic-reviewed-demo',
+              sourceId: document.querySelector('#transcript-publication-source').value,
+              reviewedPlanSha256,
+              approvedBy: '${authReviewerId}',
+              approvedAt: '2026-08-29T02:01:00.000Z',
+            };
+            const href = URL.createObjectURL(new Blob([JSON.stringify(approval)], { type: 'application/json' }));
+            const anchor = document.createElement('a');
+            anchor.href = href;
+            anchor.download = 'transcript-publication-approval.json';
             anchor.click();
             URL.revokeObjectURL(href);
           });
@@ -580,6 +614,7 @@ describe('verifyCanvasBrowser', () => {
     expect(report.checks.transcriptCandidateEvidenceVisible).toBe(true);
     expect(report.checks.transcriptRedecisionGateVerified).toBe(true);
     expect(report.checks.transcriptReviewDownloaded).toBe(true);
+    expect(report.checks.transcriptPublicationApprovalDownloaded).toBe(true);
     expect(report.checks.privateMediaRecorderAvailable).toBe(true);
     expect(report.checks.privateRecordingMemoryBoundaryVisible).toBe(true);
     expect(report.checks.privateRecorderConstructionFailureRecovered).toBe(true);

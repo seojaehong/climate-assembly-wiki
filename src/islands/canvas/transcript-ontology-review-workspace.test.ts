@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
+  buildTranscriptOntologyPublicationApproval,
   createTranscriptOntologyReviewWorkspace,
   exportTranscriptOntologyReviewedPlan,
   reviewTranscriptOntologyCandidate,
@@ -12,6 +14,30 @@ const fixture = JSON.parse(fixtureText) as Record<string, unknown>;
 
 function decisionAt(minutes: number) {
   return `2026-08-01T02:${String(minutes).padStart(2, '0')}:00.000Z`;
+}
+
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (typeof value !== 'object' || value === null) return value;
+  const record = value as Record<string, unknown>;
+  return Object.fromEntries(Object.keys(record).sort().map((key) => [key, canonicalize(record[key])]));
+}
+
+async function completedWorkspace() {
+  let workspace = await createTranscriptOntologyReviewWorkspace(fixtureText);
+  for (const [index, node] of workspace.nodes.entries()) {
+    workspace = reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'node', id: node.id, status: 'accepted', kind: node.kindCandidate,
+      label: node.sourceLabel, text: node.sourceText,
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(index),
+    });
+  }
+  workspace = reviewTranscriptOntologyCandidate(workspace, {
+    itemType: 'relation', id: workspace.relations[0].id, status: 'accepted',
+    relation: workspace.relations[0].relationCandidate,
+    reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(2),
+  });
+  return workspace;
 }
 
 describe('transcript ontology review workspace', () => {
@@ -139,6 +165,53 @@ describe('transcript ontology review workspace', () => {
       kind: workspace.nodes[0].kindCandidate, label: workspace.nodes[0].sourceLabel,
       text: workspace.nodes[0].sourceText, reviewer: 'moderator-role-1', reviewedAt: decisionAt(0),
     })).toThrow('Invalid authenticated reviewer id');
+  });
+
+  it('binds a completed reviewed plan to an authenticated local publication approval artifact', async () => {
+    const reviewedPlanText = await exportTranscriptOntologyReviewedPlan(await completedWorkspace());
+    const reviewedPlan = JSON.parse(reviewedPlanText) as unknown;
+    const approval = JSON.parse(await buildTranscriptOntologyPublicationApproval({
+      reviewedPlanText,
+      sourceId: 'live-browser-reviewed',
+      approvedBy: 'auth-user:00000000-0000-4000-8000-000000000091',
+      approvedAt: decisionAt(3),
+    })) as Record<string, unknown>;
+    const expectedSha256 = createHash('sha256')
+      .update(JSON.stringify(canonicalize(reviewedPlan)), 'utf8')
+      .digest('hex');
+
+    expect(approval).toEqual({
+      schemaVersion: 1,
+      kind: 'transcript-ontology-publication-approval',
+      mode: 'synthetic-reviewed-demo',
+      sourceId: 'live-browser-reviewed',
+      reviewedPlanSha256: expectedSha256,
+      approvedBy: 'auth-user:00000000-0000-4000-8000-000000000091',
+      approvedAt: decisionAt(3),
+    });
+  });
+
+  it('rejects incomplete, unauthenticated, invalid-source, and premature publication approvals', async () => {
+    const incompletePlan = await createTranscriptOntologyReviewWorkspace(fixtureText);
+    await expect(buildTranscriptOntologyPublicationApproval({
+      reviewedPlanText: JSON.stringify({
+        schemaVersion: 1, kind: 'transcript-ontology-reviewed-plan', dryRun: true,
+        databaseMutationExecuted: false, publicGraphWritten: false, requiresPublicationReview: true,
+        source: { reviewedAt: fixture.reviewedAt }, nodes: incompletePlan.nodes, relations: incompletePlan.relations,
+      }),
+      sourceId: 'live-incomplete',
+      approvedBy: 'auth-user:00000000-0000-4000-8000-000000000091',
+      approvedAt: decisionAt(3),
+    })).rejects.toThrow('Invalid reviewed plan decision audit');
+
+    const reviewedPlanText = await exportTranscriptOntologyReviewedPlan(await completedWorkspace());
+    const base = { reviewedPlanText, sourceId: 'live-reviewed', approvedAt: decisionAt(3) };
+    await expect(buildTranscriptOntologyPublicationApproval({ ...base, sourceId: 'public-reviewed', approvedBy: 'auth-user:00000000-0000-4000-8000-000000000091' }))
+      .rejects.toThrow('Invalid publication source id');
+    await expect(buildTranscriptOntologyPublicationApproval({ ...base, approvedBy: 'moderator-role-1' }))
+      .rejects.toThrow('Invalid publication approver id');
+    await expect(buildTranscriptOntologyPublicationApproval({ ...base, approvedBy: 'auth-user:00000000-0000-4000-8000-000000000091', approvedAt: decisionAt(2) }))
+      .rejects.toThrow('Publication approval must follow every review decision');
   });
 
   it('enforces relation endpoint decisions in either review order', async () => {

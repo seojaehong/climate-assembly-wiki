@@ -170,6 +170,16 @@ function requireHttpUrl(value, label) {
   return url;
 }
 
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (typeof value !== 'object' || value === null) return value;
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]));
+}
+
+function canonicalSha256(value) {
+  return createHash('sha256').update(JSON.stringify(canonicalize(value)), 'utf8').digest('hex');
+}
+
 async function platformNavigationEvidence(page, expectedPath, timeoutMs) {
   const navigation = page.getByRole('navigation', { name: '숙의 모더레이션 플랫폼' });
   await navigation.waitFor({ timeout: timeoutMs });
@@ -675,8 +685,29 @@ export async function verifyCanvasBrowser({
       && transcriptReviewedPlan.nodes?.[1]?.kind === null
       && transcriptReviewedPlan.relations?.[0]?.reviewStatus === 'rejected'
       && transcriptReviewedPlan.relations?.[0]?.relation === null;
+    const publicationApprovalButton = transcriptReviewPanel
+      .getByRole('button', { name: '공개 승인 artifact 다운로드' });
+    await publicationApprovalButton.waitFor({ state: 'visible', timeout: timeoutMs });
+    const publicationApprovalPromise = reviewPage.waitForEvent('download', { timeout: timeoutMs });
+    await publicationApprovalButton.click();
+    const publicationApproval = JSON.parse(await downloadText(await publicationApprovalPromise));
+    const reviewedAtValues = [
+      ...(transcriptReviewedPlan.nodes ?? []),
+      ...(transcriptReviewedPlan.relations ?? []),
+    ].map((item) => item.reviewedAt);
+    const latestReviewedAt = reviewedAtValues.sort().at(-1);
+    const transcriptPublicationApprovalDownloaded = publicationApproval.schemaVersion === 1
+      && publicationApproval.kind === 'transcript-ontology-publication-approval'
+      && publicationApproval.mode === 'synthetic-reviewed-demo'
+      && publicationApproval.sourceId === 'live-transcript-r2-reviewed'
+      && publicationApproval.reviewedPlanSha256 === canonicalSha256(transcriptReviewedPlan)
+      && publicationApproval.approvedBy === REVIEW_AUTH_REVIEWER_ID
+      && new Date(publicationApproval.approvedAt).toISOString() === publicationApproval.approvedAt
+      && typeof latestReviewedAt === 'string'
+      && publicationApproval.approvedAt > latestReviewedAt;
     if (!transcriptLocalOnlyBoundaryVisible || !transcriptCandidateEvidenceVisible
-      || !transcriptRedecisionGateVerified || !transcriptReviewDownloaded) {
+      || !transcriptRedecisionGateVerified || !transcriptReviewDownloaded
+      || !transcriptPublicationApprovalDownloaded) {
       throw new Error('Transcript ontology review browser contract is incomplete');
     }
     const canvasReviewPanel = reviewPage.getByRole('region', { name: 'Canvas 검수 계획' });
@@ -900,6 +931,7 @@ export async function verifyCanvasBrowser({
         transcriptCandidateEvidenceVisible,
         transcriptRedecisionGateVerified,
         transcriptReviewDownloaded,
+        transcriptPublicationApprovalDownloaded,
         privateMediaRecorderAvailable,
         privateRecordingMemoryBoundaryVisible,
         privateRecorderConstructionFailureRecovered,

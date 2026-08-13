@@ -520,6 +520,7 @@ npm.cmd run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology
 - candidate node 카드는 인용 전사 구간, speaker pseudonym, millisecond range, Habermas 역할, 표시 이름과 검수 내용을 함께 보여 준다. relation 카드도 인용 전사와 endpoint, 논증 관계를 함께 보여 준다.
 - node/relation은 각각 승인·수정 승인·반려할 수 있다. 반려 node를 endpoint로 둔 relation 승인은 거부하고, 이미 승인한 relation의 endpoint node 반려도 거부한다. 판단 뒤 입력을 다시 바꾸면 해당 항목을 `proposed`로 되돌리고 재판단 전까지 다운로드를 잠근다.
 - 모든 후보를 판단한 경우에만 `transcript-ontology-reviewed-plan`을 로컬 다운로드한다. export는 원 fixture에서 workspace를 다시 만들어 exact SHA-256, 원 chunk 인용, source text, 판단 audit, summary와 safety를 대조한다. plan은 `databaseMutationExecuted:false`, `publicGraphWritten:false`, `requiresPublicationReview:true`를 명시한다.
+- 같은 Auth 세션에서 현재 plan 다운로드가 성공한 뒤에만 `live-*` source ID를 입력해 별도 `transcript-ontology-publication-approval` artifact를 내려받을 수 있다. artifact는 exact canonical plan SHA-256, canonical Auth reviewer ID와 모든 판단 이후 승인 시각을 결속하며, plan·fixture·source ID가 바뀐 비동기 결과는 폐기한다. 이 단계도 브라우저 로컬 다운로드일 뿐 DB나 public graph를 쓰지 않는다.
 - 브라우저 verifier는 실제 production 페이지에서 fixture 업로드, 원문·역할 표시, node 수정 승인, node/relation 반려와 private plan 직렬화를 실행한다. Canvas 검수 흐름과 별개로 같은 페이지에서 두 기능을 모두 검증한다.
 - 실제 시민 발언·음성/STT·DB/API 저장·R3 graph export/publication은 포함하지 않는다. 검수 결정과 private plan exporter는 현재 Supabase Auth 사용자 UUID에서 파생한 canonical reviewer ID만 허용하지만 다운로드 plan의 외부 서명이나 독립 신원 검증은 포함하지 않는다. 이 prototype에 실제 시민 발언 파일을 넣지 않는다.
 
@@ -531,7 +532,7 @@ R2의 complete reviewed plan을 공개 graph source로 바꾸려면 원 syntheti
 npm.cmd --prefix automation run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology-review-candidates.example.json --reviewed-plan fixtures/transcript-ontology-reviewed-plan.example.json --publication fixtures/transcript-ontology-publication-approval.example.json --verify-reviewed-live-graph ../public/workshop-graph/data/live-transcript-r2-reviewed.json
 ```
 
-- publication approval은 canonical reviewed plan SHA-256, `live-*` source ID, 역할형 승인자와 모든 item 판단 이후 시각을 결속한다. 이 값은 승인 파일과 plan의 우발 불일치를 막지만 외부 서명이나 승인자 계정 인증을 대신하지 않는다.
+- publication approval은 canonical reviewed plan SHA-256, `live-*` source ID, 역할형 승인자와 모든 item 판단 이후 시각을 결속한다. moderator UI가 만든 artifact는 현재 Auth reviewer를 사용하지만 외부 서명이나 다운로드 이후 계정 소유의 독립 검증을 대신하지 않으며, CLI 실행·public 파일 생성은 별도 명시 작업이다.
 - exporter는 원 fixture exact-byte SHA-256, node/relation 전체 source UID 집합, 원문·인용·endpoint·판단 상태를 다시 대조한다. `accepted`와 `edited`만 내보내고 rejected 건수와 uncited 후보 건수를 `meta.dropped`에 남긴다.
 - 공개 payload에는 time-coded chunk table, speaker pseudonym, 시작·종료 시각을 넣지 않는다. 모든 node detail은 `cited`/`cited_uids`로 원 chunk UID를 표시한다.
 - `sources.json`의 `live-transcript-r2-reviewed`는 `/workshop-graph/?source=live-transcript-r2-reviewed`에서 로드되며 label과 meta 모두 synthetic 사람 검수 결과임을 표시한다.

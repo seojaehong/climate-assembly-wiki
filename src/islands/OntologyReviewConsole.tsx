@@ -13,12 +13,14 @@ import {
   type CanvasOntologyReviewWorkspace,
 } from './canvas/ontology-review-workspace';
 import {
+  buildTranscriptOntologyPublicationApproval,
   createTranscriptOntologyReviewWorkspace,
   exportTranscriptOntologyReviewedPlan,
   reviewTranscriptOntologyCandidate,
   updateTranscriptOntologyCandidateDraft,
   TRANSCRIPT_ONTOLOGY_NODE_KINDS,
   TRANSCRIPT_ONTOLOGY_RELATIONS,
+  TRANSCRIPT_PUBLICATION_SOURCE_PATTERN,
   type TranscriptCitation,
   type TranscriptOntologyReviewDecision,
   type TranscriptOntologyReviewDraft,
@@ -108,6 +110,32 @@ export async function completeTranscriptOntologyExport(input: {
   }
 }
 
+export async function completeTranscriptPublicationApprovalExport(input: {
+  build: () => Promise<string>;
+  isCurrent: () => boolean;
+  download: (content: string) => void;
+  setNotice: (notice: string) => void;
+  setError: (error: string | null) => void;
+  setBusy: (busy: boolean) => void;
+}): Promise<void> {
+  try {
+    const content = await input.build();
+    if (!input.isCurrent()) {
+      input.setNotice('검수 plan 또는 공개 source ID가 바뀌어 이전 승인 파일 다운로드를 취소했습니다.');
+      return;
+    }
+    input.download(content);
+    input.setError(null);
+    input.setNotice('공개 승인 artifact를 내려받았습니다. DB 저장과 공개 graph 반영은 수행하지 않았습니다.');
+  } catch (caught: unknown) {
+    if (!input.isCurrent()) return;
+    console.error('Failed to export the local transcript publication approval artifact', caught);
+    input.setError(errorMessage(caught));
+  } finally {
+    input.setBusy(false);
+  }
+}
+
 async function readLocalJson(file: File | null, label: string): Promise<string> {
   if (!file) throw new Error(`${label}을 선택해 주세요.`);
   if (file.size > MAX_FILE_BYTES) throw new Error(`${label}은 5MB 이하여야 합니다.`);
@@ -130,6 +158,16 @@ function downloadTranscriptReviewedPlan(content: string, fixtureId: string): voi
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = `transcript-ontology-reviewed-${safeId}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadTranscriptPublicationApproval(content: string, sourceId: string): void {
+  const safeId = sourceId.replaceAll(/[^a-zA-Z0-9_-]/g, '_');
+  const url = URL.createObjectURL(new Blob([content], { type: 'application/json;charset=utf-8' }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `transcript-ontology-publication-approval-${safeId}.json`;
   anchor.click();
   URL.revokeObjectURL(url);
 }
@@ -416,13 +454,27 @@ export function TranscriptOntologyReviewPanel({ reviewerId }: { reviewerId: stri
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const [publicationSourceId, setPublicationSourceId] = useState('live-transcript-r2-reviewed');
+  const [exportedPlan, setExportedPlan] = useState<{
+    workspace: TranscriptOntologyReviewWorkspace;
+    content: string;
+  } | null>(null);
   const requestGeneration = useRef(0);
   const workspaceRef = useRef<TranscriptOntologyReviewWorkspace | null>(null);
+  const exportedPlanRef = useRef<typeof exportedPlan>(null);
+  const publicationSourceIdRef = useRef(publicationSourceId);
+
+  const invalidateExportedPlan = () => {
+    exportedPlanRef.current = null;
+    setExportedPlan(null);
+  };
 
   const replaceFixture = (file: File | null) => {
     requestGeneration.current += 1;
     setFixtureFile(file);
     workspaceRef.current = null;
+    invalidateExportedPlan();
     setWorkspace(null);
     setBusy(false);
     setError(null);
@@ -439,6 +491,7 @@ export function TranscriptOntologyReviewPanel({ reviewerId }: { reviewerId: stri
       const next = await createTranscriptOntologyReviewWorkspace(fixtureText);
       if (requestGeneration.current !== generation) return;
       workspaceRef.current = next;
+      invalidateExportedPlan();
       setWorkspace(next);
       setNotice(`전사 후보 ${next.summary.total}개를 불러왔습니다.`);
     } catch (caught: unknown) {
@@ -455,6 +508,7 @@ export function TranscriptOntologyReviewPanel({ reviewerId }: { reviewerId: stri
     try {
       const next = reviewTranscriptOntologyCandidate(workspace, decision);
       workspaceRef.current = next;
+      invalidateExportedPlan();
       setWorkspace(next);
       setError(null);
       setNotice(`전사 후보 검수 진행 ${next.summary.decided}/${next.summary.total}`);
@@ -469,6 +523,7 @@ export function TranscriptOntologyReviewPanel({ reviewerId }: { reviewerId: stri
     try {
       const next = updateTranscriptOntologyCandidateDraft(workspace, draft);
       workspaceRef.current = next;
+      invalidateExportedPlan();
       setWorkspace(next);
       setError(null);
       setNotice('화면 입력이 바뀌어 해당 판단을 다시 열었습니다. 현재 내용을 재판단해 주세요.');
@@ -485,10 +540,37 @@ export function TranscriptOntologyReviewPanel({ reviewerId }: { reviewerId: stri
     await completeTranscriptOntologyExport({
       build: () => exportTranscriptOntologyReviewedPlan(target),
       isCurrent: () => workspaceRef.current === target,
-      download: (content) => downloadTranscriptReviewedPlan(content, target.source.fixtureId),
+      download: (content) => {
+        const exported = { workspace: target, content };
+        exportedPlanRef.current = exported;
+        setExportedPlan(exported);
+        downloadTranscriptReviewedPlan(content, target.source.fixtureId);
+      },
       setNotice,
       setError,
       setBusy: setExporting,
+    });
+  };
+
+  const exportPublicationApproval = async () => {
+    const target = exportedPlanRef.current;
+    if (!target) return;
+    const sourceId = publicationSourceId.trim();
+    setApproving(true);
+    await completeTranscriptPublicationApprovalExport({
+      build: () => buildTranscriptOntologyPublicationApproval({
+        reviewedPlanText: target.content,
+        sourceId,
+        approvedBy: reviewerId,
+        approvedAt: new Date().toISOString(),
+      }),
+      isCurrent: () => exportedPlanRef.current === target
+        && workspaceRef.current === target.workspace
+        && publicationSourceIdRef.current.trim() === sourceId,
+      download: (content) => downloadTranscriptPublicationApproval(content, sourceId),
+      setNotice,
+      setError,
+      setBusy: setApproving,
     });
   };
 
@@ -521,6 +603,30 @@ export function TranscriptOntologyReviewPanel({ reviewerId }: { reviewerId: stri
             <span>candidate node {workspace.summary.nodes} · relation {workspace.summary.relations}</span>
             <button type="button" onClick={() => { void exportPlan(); }} disabled={exporting || workspace.summary.decided !== workspace.summary.total} style={{ ...controlStyle, background: '#553C9A', color: '#FFFFFF', fontWeight: 800 }}>
               {exporting ? 'plan 검증 중…' : '전사 후보 검수 plan 다운로드'}
+            </button>
+            <label>공개 source ID
+              <input
+                type="text"
+                value={publicationSourceId}
+                pattern="live-[a-z0-9][a-z0-9._-]*"
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
+                  publicationSourceIdRef.current = value;
+                  setPublicationSourceId(value);
+                }}
+                style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }}
+              />
+            </label>
+            <p style={{ color: MUTED, margin: 0 }}>
+              먼저 현재 검수 plan을 내려받아 고정한 뒤 승인 artifact를 만듭니다. 이 작업은 DB와 공개 graph를 쓰지 않습니다.
+            </p>
+            <button
+              type="button"
+              onClick={() => { void exportPublicationApproval(); }}
+              disabled={approving || exportedPlan === null || !TRANSCRIPT_PUBLICATION_SOURCE_PATTERN.test(publicationSourceId.trim())}
+              style={{ ...controlStyle, background: '#165B33', color: '#FFFFFF', fontWeight: 800 }}
+            >
+              {approving ? '승인 artifact 검증 중…' : '공개 승인 artifact 다운로드'}
             </button>
           </section>
           <section aria-labelledby="transcript-node-heading" style={{ display: 'grid', gap: 14, marginBottom: 28 }}>

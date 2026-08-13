@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import OntologyReviewConsole, {
   AuthenticatedOntologyReviewWorkspace,
   completeOntologyWorkspaceLoad,
+  completeTranscriptPublicationApprovalExport,
   completeTranscriptOntologyExport,
   FacilitationPromptPanel,
   NodeReviewCard,
@@ -262,6 +263,33 @@ describe('OntologyReviewConsole', () => {
     expect(downloads).toEqual([]);
     expect(notices).toEqual(['검수 입력이 바뀌어 이전 plan 다운로드를 취소했습니다.']);
     expect(errors).toEqual([]);
+    expect(busyChanges).toEqual([false]);
+  });
+
+  it('discards a publication approval download when its reviewed plan or source changes', async () => {
+    const downloads: string[] = [];
+    const notices: string[] = [];
+    const busyChanges: boolean[] = [];
+    let current = true;
+    let resolveBuild: () => void = () => { throw new Error('Deferred approval export was not initialized'); };
+    const build = new Promise<string>((resolve) => {
+      resolveBuild = () => resolve('{"kind":"transcript-ontology-publication-approval"}');
+    });
+    const completion = completeTranscriptPublicationApprovalExport({
+      build: () => build,
+      isCurrent: () => current,
+      download: (content) => downloads.push(content),
+      setNotice: (notice) => notices.push(notice),
+      setError: () => undefined,
+      setBusy: (busy) => busyChanges.push(busy),
+    });
+
+    current = false;
+    resolveBuild();
+    await completion;
+
+    expect(downloads).toEqual([]);
+    expect(notices).toEqual(['검수 plan 또는 공개 source ID가 바뀌어 이전 승인 파일 다운로드를 취소했습니다.']);
     expect(busyChanges).toEqual([false]);
   });
 });
