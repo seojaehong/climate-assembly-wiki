@@ -16,7 +16,6 @@ import {
   partitionItems,
   itemsForIssue,
   issueItemIds,
-  dominantCluster,
   planReclassify,
   planUnlink,
   validateMerge,
@@ -47,6 +46,11 @@ function issueRow(over: Partial<IssueRow> = {}): IssueRow {
 }
 
 function item(over: Partial<ReviewItem> = {}): ReviewItem {
+  const links = over.links ?? (over.issueIds ?? []).map((issueId) => ({
+    issueId,
+    clusterId: null,
+    linkedBy: 'ai',
+  }));
   return {
     itemId: 'it1',
     submissionId: 'su1',
@@ -55,8 +59,8 @@ function item(over: Partial<ReviewItem> = {}): ReviewItem {
     kind: 'core',
     content: '재생에너지를 늘려야 한다',
     rationale: null,
-    issueIds: [],
-    clusterId: null,
+    issueIds: over.issueIds ?? links.map((link) => link.issueId),
+    links,
     ...over,
   };
 }
@@ -162,7 +166,7 @@ function itemRow(over: Partial<IssueItemRow> = {}): IssueItemRow {
 }
 
 describe('toReviewItem / toReviewItems', () => {
-  it('링크를 issueIds 로 평탄화(multi-label)', () => {
+  it('링크별 cluster와 linkedBy provenance를 보존한다', () => {
     const vm = toReviewItem(itemRow({
       links: [
         { issue_id: 'i1', cluster_id: null, linked_by: 'ai' },
@@ -176,8 +180,10 @@ describe('toReviewItem / toReviewItems', () => {
     expect(vm.kind).toBe('core');
     expect(vm.content).toContain('재생에너지');
     expect(vm.issueIds).toEqual(['i1', 'i2']);
-    // 최초 non-null cluster 를 취한다
-    expect(vm.clusterId).toBe('k9');
+    expect(vm.links).toEqual([
+      { issueId: 'i1', clusterId: null, linkedBy: 'ai' },
+      { issueId: 'i2', clusterId: 'k9', linkedBy: 'human' },
+    ]);
   });
 
   it('원문 참조가 제출 맥락을 보존하고 카드 앵커를 가리킨다', () => {
@@ -194,7 +200,7 @@ describe('toReviewItem / toReviewItems', () => {
   it('링크 없으면 미분류(issueIds 빈 배열)', () => {
     const vm = toReviewItem(itemRow({ links: [], unclassified: true }));
     expect(vm.issueIds).toEqual([]);
-    expect(vm.clusterId).toBeNull();
+    expect(vm.links).toEqual([]);
     expect(isUnclassified(vm)).toBe(true);
   });
 
@@ -254,22 +260,6 @@ describe('미분류 판정·파티션', () => {
   });
 });
 
-// ── cluster 보존 ───────────────────────────────────────────────────────
-
-describe('dominantCluster', () => {
-  it('전부 같은 cluster 면 그 값', () => {
-    const items = [item({ itemId: 'a', clusterId: 'k1' }), item({ itemId: 'b', clusterId: 'k1' })];
-    expect(dominantCluster(items, ['a', 'b'])).toBe('k1');
-  });
-  it('섞이면 null', () => {
-    const items = [item({ itemId: 'a', clusterId: 'k1' }), item({ itemId: 'b', clusterId: 'k2' })];
-    expect(dominantCluster(items, ['a', 'b'])).toBeNull();
-  });
-  it('빈 집합은 null', () => {
-    expect(dominantCluster([], [])).toBeNull();
-  });
-});
-
 // ── 재분류 계획 (replace-all 안전) ─────────────────────────────────────
 
 describe('planReclassify', () => {
@@ -300,6 +290,64 @@ describe('planReclassify', () => {
     expect(target.itemIds.sort()).toEqual(['a', 'c']); // 기존 c 를 파괴하지 않음
     expect(source.issueId).toBe('i1');
     expect(source.itemIds).toEqual(['b']); // a 만 빠지고 b 는 남음
+    expect(target.clusterId).toBeNull();
+    expect(source.clusterId).toBeNull();
+  });
+
+  it('대상 결과의 cluster가 다르면 명시적 값 없이는 전체 계획을 거부', () => {
+    const mixed = [
+      item({ itemId: 'a', links: [{ issueId: 'i1', clusterId: 'k2', linkedBy: 'ai' }] }),
+      item({ itemId: 'b', links: [{ issueId: 'i1', clusterId: 'k2', linkedBy: 'ai' }] }),
+      item({ itemId: 'c', links: [{ issueId: 'i2', clusterId: 'k1', linkedBy: 'human' }] }),
+    ];
+    const plan = planReclassify(mixed, ['a'], 'i2', 'i1', null);
+    expect(plan.calls).toEqual([]);
+    expect(plan.error).toContain('대상 원문');
+    expect(plan.error).toContain('cluster_id');
+  });
+
+  it('명시적 cluster는 대상 전체를 덮되 원본의 uniform cluster는 보존', () => {
+    const mixed = [
+      item({ itemId: 'a', links: [{ issueId: 'i1', clusterId: 'k2', linkedBy: 'ai' }] }),
+      item({ itemId: 'b', links: [{ issueId: 'i1', clusterId: 'k2', linkedBy: 'human' }] }),
+      item({ itemId: 'c', links: [{ issueId: 'i2', clusterId: 'k1', linkedBy: 'human' }] }),
+    ];
+    const plan = planReclassify(mixed, ['a'], 'i2', 'i1', 'k9');
+    expect(plan.error).toBeNull();
+    expect(plan.calls).toEqual([
+      { issueId: 'i2', itemIds: ['c', 'a'], clusterId: 'k9', role: 'target' },
+      { issueId: 'i1', itemIds: ['b'], clusterId: 'k2', role: 'source' },
+    ]);
+  });
+
+  it('이미 대상에 연결된 null cluster는 원본의 non-null cluster보다 우선 보존', () => {
+    const multiLabel = [
+      item({
+        itemId: 'a',
+        links: [
+          { issueId: 'i1', clusterId: 'k2', linkedBy: 'ai' },
+          { issueId: 'i2', clusterId: null, linkedBy: 'human' },
+        ],
+      }),
+      item({ itemId: 'b', links: [{ issueId: 'i1', clusterId: 'k2', linkedBy: 'ai' }] }),
+      item({ itemId: 'c', links: [{ issueId: 'i2', clusterId: null, linkedBy: 'human' }] }),
+    ];
+    const plan = planReclassify(multiLabel, ['a'], 'i2', 'i1', null);
+    expect(plan.error).toBeNull();
+    expect(plan.calls[0].clusterId).toBeNull();
+    expect(plan.calls[1].clusterId).toBe('k2');
+  });
+
+  it('원본에 남는 per-link cluster가 다르면 RPC 호출 전에 전체 계획을 거부', () => {
+    const mixed = [
+      item({ itemId: 'a', links: [{ issueId: 'i1', clusterId: 'k1', linkedBy: 'ai' }] }),
+      item({ itemId: 'b', links: [{ issueId: 'i1', clusterId: 'k1', linkedBy: 'ai' }] }),
+      item({ itemId: 'c', links: [{ issueId: 'i1', clusterId: 'k2', linkedBy: 'human' }] }),
+      item({ itemId: 'd', links: [{ issueId: 'i2', clusterId: 'k1', linkedBy: 'human' }] }),
+    ];
+    const plan = planReclassify(mixed, ['a'], 'i2', 'i1', 'k1');
+    expect(plan.calls).toEqual([]);
+    expect(plan.error).toContain('replace-all RPC');
   });
 
   it('빈 선택·대상 없음·같은 쟁점·미지의 item 을 거부', () => {
@@ -315,6 +363,23 @@ describe('planReclassify', () => {
     expect(plan.calls[0].issueId).toBe('i1');
     expect(plan.calls[0].itemIds).toEqual([]);
     expect(planUnlink(items, 'i1', []).error).toContain('선택');
+  });
+
+  it('planUnlink는 남은 원문의 cluster가 다르면 전체 계획을 거부', () => {
+    const mixed = [
+      item({ itemId: 'a', links: [{ issueId: 'i1', clusterId: null, linkedBy: 'ai' }] }),
+      item({ itemId: 'b', links: [{ issueId: 'i1', clusterId: 'k1', linkedBy: 'ai' }] }),
+      item({ itemId: 'c', links: [{ issueId: 'i1', clusterId: 'k2', linkedBy: 'human' }] }),
+    ];
+    const plan = planUnlink(mixed, 'i1', ['a']);
+    expect(plan.calls).toEqual([]);
+    expect(plan.error).toContain('replace-all RPC');
+  });
+
+  it('planUnlink는 stale하거나 다른 쟁점의 선택을 거부', () => {
+    const plan = planUnlink(items, 'i1', ['c']);
+    expect(plan.calls).toEqual([]);
+    expect(plan.error).toContain('쟁점 연결');
   });
 });
 

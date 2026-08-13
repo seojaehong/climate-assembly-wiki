@@ -142,16 +142,23 @@ export interface ReviewItem {
   rationale: string | null;
   /** 이 원문이 연결된 issue id 들(issue_link). 비어 있으면 미분류. */
   issueIds: string[];
-  clusterId: string | null;
+  links: ReviewItemLink[];
 }
 
-/**
- * issue_items 원소(IssueItemRow) → ReviewItem 뷰모델. 링크는 multi-label 이므로 issueIds 로 평탄화.
- * clusterId 는 링크 중 최초의 non-null(원문 군집 식별자 — 실무상 item 단위로 일관, per-link 편차는 미결).
- */
+export interface ReviewItemLink {
+  issueId: string;
+  clusterId: string | null;
+  linkedBy: string;
+}
+
+/** Maps an issue_items row without flattening per-link provenance. */
 export function toReviewItem(row: IssueItemRow): ReviewItem {
   const links = Array.isArray(row.links) ? row.links : [];
-  const firstCluster = links.map((l) => l.cluster_id).find((c) => c != null) ?? null;
+  const reviewLinks = links.map((link) => ({
+    issueId: link.issue_id,
+    clusterId: link.cluster_id,
+    linkedBy: link.linked_by,
+  }));
   return {
     itemId: row.id,
     submissionId: row.submission_id,
@@ -160,8 +167,8 @@ export function toReviewItem(row: IssueItemRow): ReviewItem {
     kind: row.kind === 'extra' ? 'extra' : 'core',
     content: row.content,
     rationale: row.rationale,
-    issueIds: links.map((l) => l.issue_id),
-    clusterId: firstCluster,
+    issueIds: reviewLinks.map((link) => link.issueId),
+    links: reviewLinks,
   };
 }
 
@@ -212,13 +219,64 @@ export function issueItemIds(items: ReviewItem[], issueId: string): string[] {
   return items.filter((it) => it.issueIds.includes(issueId)).map((it) => it.itemId);
 }
 
-/** 주어진 item 집합이 공유하는 cluster_id — 전부 같으면 그 값, 아니면 null(재분류 시 보존 판정). */
-export function dominantCluster(items: ReviewItem[], itemIds: string[]): string | null {
-  const set = new Set(itemIds);
-  const clusters = items.filter((it) => set.has(it.itemId)).map((it) => it.clusterId);
-  if (clusters.length === 0) return null;
+interface ClusterResolution {
+  clusterId: string | null;
+  error: string | null;
+}
+
+function itemLink(item: ReviewItem, issueId: string): ReviewItemLink | null {
+  const matches = item.links.filter((link) => link.issueId === issueId);
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function uniformIssueCluster(items: ReviewItem[], issueId: string, itemIds: string[]): ClusterResolution {
+  if (itemIds.length === 0) return { clusterId: null, error: null };
+  const byId = new Map(items.map((item) => [item.itemId, item]));
+  const clusters: Array<string | null> = [];
+  for (const itemId of itemIds) {
+    const item = byId.get(itemId);
+    const link = item ? itemLink(item, issueId) : null;
+    if (!link) {
+      return { clusterId: null, error: '쟁점 연결 정보를 정확히 확인할 수 없습니다. 원문을 다시 불러오세요.' };
+    }
+    clusters.push(link.clusterId);
+  }
   const first = clusters[0];
-  return clusters.every((c) => c === first) ? first : null;
+  if (!clusters.every((cluster) => cluster === first)) {
+    return {
+      clusterId: null,
+      error: '원문별 cluster_id가 서로 달라 현재 replace-all RPC로 안전하게 보존할 수 없습니다.',
+    };
+  }
+  return { clusterId: first, error: null };
+}
+
+function plannedTargetCluster(
+  items: ReviewItem[],
+  targetIssueId: string,
+  sourceIssueId: string | null,
+  itemIds: string[],
+): ClusterResolution {
+  const byId = new Map(items.map((item) => [item.itemId, item]));
+  const clusters: Array<string | null> = [];
+  for (const itemId of itemIds) {
+    const item = byId.get(itemId);
+    if (!item) {
+      return { clusterId: null, error: '원문 연결 정보를 정확히 확인할 수 없습니다. 원문을 다시 불러오세요.' };
+    }
+    const targetLink = itemLink(item, targetIssueId);
+    const sourceLink = sourceIssueId ? itemLink(item, sourceIssueId) : null;
+    clusters.push(targetLink ? targetLink.clusterId : sourceLink ? sourceLink.clusterId : null);
+  }
+  if (clusters.length === 0) return { clusterId: null, error: null };
+  const first = clusters[0];
+  if (!clusters.every((cluster) => cluster === first)) {
+    return {
+      clusterId: null,
+      error: '대상 원문의 cluster_id가 서로 다릅니다. 대상 전체에 적용할 cluster_id를 명시하세요.',
+    };
+  }
+  return { clusterId: first, error: null };
 }
 
 /** issue_link_set 한 번의 호출(replace-all: issueId 의 링크를 itemIds 로 통째 교체). */
@@ -241,8 +299,7 @@ export interface ReclassifyPlan {
  *   · targetIssueId 로 이동(∪ selected)
  *   · sourceIssueId 가 있으면 원본에서 뺀 나머지(\ selected)로 원본 재기록
  * 미분류에서 끌어오기는 sourceIssueId 를 비운다(target 한 번).
- * clusterId: RPC 는 한 호출의 모든 item 에 같은 값을 건다 → target 은 요청값을,
- *   source 재기록은 남은 item 이 공유하던 cluster 를 보존(uniform 아니면 null). ★ per-item cluster 보존 불가(미결).
+ * A replace-all call can preserve an implicit cluster only when every resulting link shares it.
  */
 export function planReclassify(
   items: ReviewItem[],
@@ -260,20 +317,39 @@ export function planReclassify(
   const known = new Set(items.map((it) => it.itemId));
   const missing = selected.filter((id) => !known.has(id));
   if (missing.length > 0) return { calls: [], error: `원문 ${missing.length}건을 찾을 수 없습니다(재로드 필요).` };
+  if (sourceIssueId) {
+    const sourceMismatch = selected.some((id) => {
+      const sourceItem = items.find((item) => item.itemId === id);
+      return !sourceItem || !itemLink(sourceItem, sourceIssueId);
+    });
+    if (sourceMismatch) {
+      return { calls: [], error: '선택 원문의 원본 쟁점 연결을 확인할 수 없습니다. 원문을 다시 불러오세요.' };
+    }
+  }
 
   const targetSet = Array.from(new Set([...issueItemIds(items, targetIssueId), ...selected]));
-  const calls: LinkSetCall[] = [
-    { issueId: targetIssueId, itemIds: targetSet, clusterId: requestedClusterId, role: 'target' },
-  ];
+  const targetCluster = requestedClusterId === null
+    ? plannedTargetCluster(items, targetIssueId, sourceIssueId, targetSet)
+    : { clusterId: requestedClusterId, error: null };
+  if (targetCluster.error) return { calls: [], error: targetCluster.error };
+
+  let sourceCall: LinkSetCall | null = null;
   if (sourceIssueId) {
     const remaining = issueItemIds(items, sourceIssueId).filter((id) => !selected.includes(id));
-    calls.push({
+    const sourceCluster = uniformIssueCluster(items, sourceIssueId, remaining);
+    if (sourceCluster.error) return { calls: [], error: sourceCluster.error };
+    sourceCall = {
       issueId: sourceIssueId,
       itemIds: remaining,
-      clusterId: dominantCluster(items, remaining),
+      clusterId: sourceCluster.clusterId,
       role: 'source',
-    });
+    };
   }
+
+  const calls: LinkSetCall[] = [
+    { issueId: targetIssueId, itemIds: targetSet, clusterId: targetCluster.clusterId, role: 'target' },
+  ];
+  if (sourceCall) calls.push(sourceCall);
   return { calls, error: null };
 }
 
@@ -282,10 +358,20 @@ export function planReclassify(
  * 되돌아간 원문은 미분류함으로 떨어진다. 빈 배열도 유효(전체 해제).
  */
 export function planUnlink(items: ReviewItem[], issueId: string, removeItemIds: string[]): ReclassifyPlan {
-  if (removeItemIds.length === 0) return { calls: [], error: '해제할 원문을 선택하세요.' };
-  const remaining = issueItemIds(items, issueId).filter((id) => !removeItemIds.includes(id));
+  const remove = Array.from(new Set(removeItemIds));
+  if (remove.length === 0) return { calls: [], error: '해제할 원문을 선택하세요.' };
+  const byId = new Map(items.map((item) => [item.itemId, item]));
+  if (remove.some((itemId) => {
+    const item = byId.get(itemId);
+    return !item || !itemLink(item, issueId);
+  })) {
+    return { calls: [], error: '선택 원문의 쟁점 연결을 확인할 수 없습니다. 원문을 다시 불러오세요.' };
+  }
+  const remaining = issueItemIds(items, issueId).filter((id) => !remove.includes(id));
+  const sourceCluster = uniformIssueCluster(items, issueId, remaining);
+  if (sourceCluster.error) return { calls: [], error: sourceCluster.error };
   return {
-    calls: [{ issueId, itemIds: remaining, clusterId: dominantCluster(items, remaining), role: 'source' }],
+    calls: [{ issueId, itemIds: remaining, clusterId: sourceCluster.clusterId, role: 'source' }],
     error: null,
   };
 }

@@ -187,6 +187,8 @@ describe('PlatformShell accessibility', () => {
     expect(source).toContain('aria-label="병합할 원본 쟁점"');
     expect(source).toContain('aria-label="병합 대상 쟁점"');
     expect(source).toContain('aria-label="선택 원문을 이동할 대상 쟁점"');
+    expect(source).toContain('서로 다르면 데이터 손실을 막기 위해 이동을 차단합니다.');
+    expect(source).not.toContain('원문별 cluster 개별 보존은 불가(미결)');
     expect(source).not.toMatch(/border:\s*['`]?1(?:\.5)?px/);
     expect(source).not.toContain("outline: 'none'");
     expect(source).not.toContain('#23B2C3');
@@ -217,7 +219,8 @@ describe('PlatformShell accessibility', () => {
     const source: ReviewItem = {
       itemId: 'item-1', submissionId: 'submission-1', ordinal: 2, teamName: '1분과 2조',
       kind: 'core', content: '지역 주도 전환이 필요하다', rationale: '실행력 확보',
-      issueIds: ['issue-1'], clusterId: null,
+      issueIds: ['issue-1'],
+      links: [{ issueId: 'issue-1', clusterId: null, linkedBy: 'ai' }],
     };
     const linksHtml = renderToStaticMarkup(createElement(SourceReferenceList, { items: [source] }));
     const cardHtml = renderToStaticMarkup(createElement(ReviewSourceCard, {

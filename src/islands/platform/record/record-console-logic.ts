@@ -1,4 +1,4 @@
-import type { IssueItemLink, IssueItemsResult } from '../../../lib/platform';
+import type { IssueItemsResult } from '../../../lib/platform';
 import { safeSegment } from '../../mod/svg-to-png';
 import type { ScopePathContext, TopicTarget, TreeNodeKind } from '../platform-nav-logic';
 import { toReviewItem, type ReviewItem } from '../review/review-console-logic';
@@ -14,7 +14,6 @@ export interface RecordItem extends ReviewItem {
   topicId: string;
   topicLabel: string;
   teamId: string;
-  links: IssueItemLink[];
   sessionId?: string;
   sessionLabel?: string;
 }
@@ -58,7 +57,6 @@ export function buildRecordView(
       topicId: target.id,
       topicLabel: target.label,
       teamId: row.team_id,
-      links: Array.isArray(row.links) ? row.links.map((link) => ({ ...link })) : [],
       sessionId: target.sessionId,
       sessionLabel: target.sessionLabel,
     })),
@@ -136,7 +134,11 @@ export function buildRecordCsv(view: RecordView): string {
     item.rationale ?? '',
     item.issueIds.length > 0 ? '쟁점 연결' : '미분류',
     item.issueIds.length,
-    JSON.stringify(item.links),
+    JSON.stringify(item.links.map((link) => ({
+      issue_id: link.issueId,
+      cluster_id: link.clusterId,
+      linked_by: link.linkedBy,
+    }))),
   ]);
   return `\uFEFF${RECORD_CSV_HEADERS.map(csvCell).join(',')}\r\n${rows
     .map((row) => row.map(csvCell).join(','))

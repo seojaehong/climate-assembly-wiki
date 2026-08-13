@@ -59,8 +59,8 @@ describe('buildRecordView', () => {
       teamName: '1분과 1조',
       issueIds: ['issue-1', 'issue-2'],
       links: [
-        { issue_id: 'issue-1', cluster_id: 'cluster-1', linked_by: 'operator' },
-        { issue_id: 'issue-2', cluster_id: null, linked_by: 'assistant' },
+        { issueId: 'issue-1', clusterId: 'cluster-1', linkedBy: 'operator' },
+        { issueId: 'issue-2', clusterId: null, linkedBy: 'assistant' },
       ],
     });
   });

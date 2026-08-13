@@ -208,8 +208,8 @@ export function RecordResults({ view }: { view: RecordView }) {
                       {linked ? (
                         <ul aria-label="쟁점 연결 상세" style={{ color: MUTED, fontSize: 12, lineHeight: 1.5, margin: '8px 0 0', paddingLeft: 18 }}>
                           {item.links.map((link, index) => (
-                            <li key={`${link.issue_id}:${link.cluster_id ?? ''}:${index}`}>
-                              쟁점 {link.issue_id} · 군집 {link.cluster_id ?? '없음'} · 연결자 {link.linked_by}
+                            <li key={`${link.issueId}:${link.clusterId ?? ''}:${index}`}>
+                              쟁점 {link.issueId} · 군집 {link.clusterId ?? '없음'} · 연결자 {link.linkedBy}
                             </li>
                           ))}
                         </ul>

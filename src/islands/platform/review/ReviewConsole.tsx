@@ -478,9 +478,9 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
                       <button onClick={unlinkChecked} disabled={busy || checked.size === 0} style={busy || checked.size === 0 ? btn('disabled') : btn('danger')}>연결 해제</button>
                     </div>
                     <div style={{ marginTop: 10 }}>
-                      <label htmlFor="review-cluster-id" style={{ fontSize: 12, color: MUTED }}>cluster_id(합의도 분모 보정, 이동 시 대상 원문에 일괄 적용)</label>
+                      <label htmlFor="review-cluster-id" style={{ fontSize: 12, color: MUTED }}>cluster_id(합의도 분모 보정, 입력 시 대상 원문 전체에 적용)</label>
                       <input id="review-cluster-id" value={clusterId} onChange={(e) => setClusterId(e.target.value)} placeholder="선택 — 같은 원문 군집 uuid" style={{ ...field, marginTop: 4, fontFamily: 'monospace', fontSize: 13 }} />
-                      <p style={{ fontSize: 11, color: MUTED, margin: '4px 0 0' }}>※ RPC는 한 호출의 모든 원문에 같은 cluster를 겁니다 — 원문별 cluster 개별 보존은 불가(미결).</p>
+                      <p style={{ fontSize: 11, color: MUTED, margin: '4px 0 0' }}>비워 두면 결과 원문의 cluster가 모두 같을 때만 기존 값을 보존합니다. 서로 다르면 데이터 손실을 막기 위해 이동을 차단합니다.</p>
                     </div>
                   </>
                 )}
