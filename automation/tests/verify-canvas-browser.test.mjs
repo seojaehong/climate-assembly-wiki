@@ -171,12 +171,14 @@ async function fixtureServer({
           const privateStatus = document.querySelector('#private-status');
           const privateProgress = document.querySelector('#private-progress');
           const privateDownload = document.querySelector('#private-download');
+          let privatePermissionPending = false;
           const refreshPrivateStart = () => {
             privateStart.disabled = !privateConsent.checked || !privateSession.value.trim();
           };
           privateConsent.addEventListener('change', () => {
-            if (!privateConsent.checked && !privateStop.disabled) {
-              window.__privateMediaTrackStopCount += 1;
+            if (!privateConsent.checked && (!privateStop.disabled || privatePermissionPending)) {
+              if (!privateStop.disabled) window.__privateMediaTrackStopCount += 1;
+              privatePermissionPending = false;
               privateStop.disabled = true;
               privateSession.disabled = false;
               privateCapture.hidden = true;
@@ -197,6 +199,18 @@ async function fixtureServer({
               error.textContent = 'synthetic recorder construction failure';
               privateStatus.after(error);
               refreshPrivateStart();
+              return;
+            }
+            if (window.__delayPrivateGetUserMedia) {
+              window.__delayPrivateGetUserMedia = false;
+              privatePermissionPending = true;
+              privateStart.disabled = true;
+              privateSession.disabled = true;
+              window.__rejectPendingPrivateGetUserMedia = () => {
+                window.__rejectPendingPrivateGetUserMedia = null;
+                if (!privatePermissionPending) return;
+                privatePermissionPending = false;
+              };
               return;
             }
             document.querySelector('#private-construction-error')?.remove();
@@ -501,6 +515,7 @@ describe('verifyCanvasBrowser', () => {
     expect(report.checks.privateRecordingMemoryBoundaryVisible).toBe(true);
     expect(report.checks.privateRecorderConstructionFailureRecovered).toBe(true);
     expect(report.checks.privateDuplicateRecordingStartBlocked).toBe(true);
+    expect(report.checks.privateStalePermissionFailureDiscarded).toBe(true);
     expect(report.checks.privateConsentWithdrawalDiscarded).toBe(true);
     expect(report.checks.privateSessionLockedWhileRecording).toBe(true);
     expect(report.checks.privateTranscriptReviewGateVerified).toBe(true);

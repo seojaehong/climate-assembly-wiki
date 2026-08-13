@@ -224,11 +224,22 @@ export async function verifyCanvasBrowser({
     window.__privateGetUserMediaCount = 0;
     window.__privateMediaTrackStopCount = 0;
     window.__failPrivateRecorderConstruction = false;
+    window.__delayPrivateGetUserMedia = false;
+    window.__rejectPendingPrivateGetUserMedia = null;
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
       value: {
         getUserMedia: async () => {
           window.__privateGetUserMediaCount += 1;
+          if (window.__delayPrivateGetUserMedia) {
+            window.__delayPrivateGetUserMedia = false;
+            return new Promise((_, reject) => {
+              window.__rejectPendingPrivateGetUserMedia = () => {
+                window.__rejectPendingPrivateGetUserMedia = null;
+                reject(new DOMException('synthetic stale permission rejection', 'NotAllowedError'));
+              };
+            });
+          }
           let stopped = false;
           return {
             getTracks: () => [{
@@ -377,6 +388,13 @@ export async function verifyCanvasBrowser({
     const privateRecorderConstructionFailureRecovered = await reviewPage.evaluate(() => (
       window.__privateMediaTrackStopCount === 1
     )) && await privateCapturePanel.getByRole('button', { name: '녹음 시작' }).isEnabled();
+    await reviewPage.evaluate(() => { window.__delayPrivateGetUserMedia = true; });
+    await privateCapturePanel.getByRole('button', { name: '녹음 시작' }).click();
+    await reviewPage.waitForFunction(() => window.__privateGetUserMediaCount === 2, undefined, { timeout: timeoutMs });
+    await privateCapturePanel.getByLabel('마이크 사용과 로컬 메모리 처리에 동의합니다.').uncheck();
+    await privateCapturePanel.getByText('동의를 철회해 마이크와 로컬 음성·전사 초안을 폐기했습니다.', { exact: true })
+      .waitFor({ timeout: timeoutMs });
+    await privateCapturePanel.getByLabel('마이크 사용과 로컬 메모리 처리에 동의합니다.').check();
     await privateCapturePanel.getByRole('button', { name: '녹음 시작' }).evaluate((button) => {
       if (!(button instanceof HTMLButtonElement)) throw new Error('Private recording start control is not a button');
       button.click();
@@ -386,8 +404,13 @@ export async function verifyCanvasBrowser({
     await privateCapturePanel.getByText('녹음 중입니다. 음성은 서버로 전송되지 않습니다.', { exact: true })
       .waitFor({ timeout: timeoutMs });
     const privateDuplicateRecordingStartBlocked = await reviewPage.evaluate(() => (
-      window.__privateGetUserMediaCount === 2
+      window.__privateGetUserMediaCount === 3
     ));
+    await reviewPage.evaluate(() => window.__rejectPendingPrivateGetUserMedia?.());
+    await reviewPage.waitForTimeout(25);
+    const privateStalePermissionFailureDiscarded = await privateCapturePanel.getByLabel('회차 ID').isDisabled()
+      && await privateCapturePanel.getByRole('button', { name: '녹음 정지' }).isEnabled()
+      && await privateCapturePanel.getByText('녹음 중입니다. 음성은 서버로 전송되지 않습니다.', { exact: true }).isVisible();
     await privateCapturePanel.getByLabel('마이크 사용과 로컬 메모리 처리에 동의합니다.').uncheck();
     await privateCapturePanel.getByText('동의를 철회해 마이크와 로컬 음성·전사 초안을 폐기했습니다.', { exact: true })
       .waitFor({ timeout: timeoutMs });
@@ -438,6 +461,7 @@ export async function verifyCanvasBrowser({
       privateRecorderConstructionFailureRecovered,
       privateSessionLockedWhileRecording,
       privateDuplicateRecordingStartBlocked,
+      privateStalePermissionFailureDiscarded,
       privateConsentWithdrawalDiscarded,
       privateTranscriptReviewGateVerified,
       privateTranscriptRedecisionGateVerified,
@@ -714,6 +738,7 @@ export async function verifyCanvasBrowser({
         privateRecordingMemoryBoundaryVisible,
         privateRecorderConstructionFailureRecovered,
         privateDuplicateRecordingStartBlocked,
+        privateStalePermissionFailureDiscarded,
         privateConsentWithdrawalDiscarded,
         privateSessionLockedWhileRecording,
         privateTranscriptReviewGateVerified,

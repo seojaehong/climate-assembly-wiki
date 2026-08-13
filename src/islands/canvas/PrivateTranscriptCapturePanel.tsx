@@ -212,6 +212,11 @@ export function PrivateTranscriptCapturePanel() {
       setFinalizing(false);
       setNotice('녹음 중입니다. 음성은 서버로 전송되지 않습니다.');
     } catch (caught: unknown) {
+      if (generationRef.current !== generation) {
+        if (recorderCreated) stopPrivateMediaStream(acquiredStream);
+        console.info('Ignored stale private browser recording start failure');
+        return;
+      }
       console.error('Failed to start the private browser recording', caught);
       if (recorderCreated) stopPrivateMediaStream(acquiredStream);
       if (streamRef.current === acquiredStream) streamRef.current = null;
