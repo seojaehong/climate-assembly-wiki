@@ -4,6 +4,8 @@ export type PrivateTranscriptReviewStatus = 'proposed' | 'accepted' | 'edited' |
 
 export interface PrivateTranscriptChunk {
   uid: string;
+  candidateSetId: string | null;
+  candidateSourceUid: string | null;
   startMs: number;
   endMs: number;
   speakerLabelPseudonym: string;
@@ -12,6 +14,25 @@ export interface PrivateTranscriptChunk {
   reviewStatus: PrivateTranscriptReviewStatus;
   reviewer: string | null;
   reviewedAt: string | null;
+}
+
+export interface PrivateSttCandidateFile {
+  schemaVersion: 1;
+  kind: 'private-stt-candidates';
+  candidateSetId: string;
+  source: Pick<PrivateTranscriptCaptureSession['source'], 'captureId' | 'sessionId' | 'audioSha256' | 'durationMs'>;
+  chunks: Array<{
+    sourceUid: string;
+    startMs: number;
+    endMs: number;
+    speakerLabelPseudonym: string;
+    text: string;
+  }>;
+  safety: {
+    localOnly: true;
+    audioIncluded: false;
+    databaseMutationExecuted: false;
+  };
 }
 
 export interface PrivateTranscriptCaptureSession {
@@ -102,6 +123,31 @@ function summarize(chunks: PrivateTranscriptChunk[]): PrivateTranscriptCaptureSe
   };
 }
 
+function record(value: unknown, label: string): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error(`Invalid ${label}`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function exactKeys(value: Record<string, unknown>, keys: string[], label: string): void {
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) {
+    throw new Error(`Invalid ${label} fields`);
+  }
+}
+
+function stringField(value: unknown, label: string): string {
+  if (typeof value !== 'string') throw new Error(`Invalid ${label}`);
+  return value;
+}
+
+function safeIntegerField(value: unknown, label: string): number {
+  if (!Number.isSafeInteger(value)) throw new Error(`Invalid ${label}`);
+  return value as number;
+}
+
 function validatePrivateTranscriptCaptureSession(session: PrivateTranscriptCaptureSession): void {
   const expectedSource = createPrivateTranscriptCaptureSession({
     captureId: session.source.captureId,
@@ -123,6 +169,9 @@ function validatePrivateTranscriptCaptureSession(session: PrivateTranscriptCaptu
       || chunk.endMs <= chunk.startMs
       || chunk.endMs > expectedSource.durationMs
       || !SPEAKER.test(chunk.speakerLabelPseudonym)
+      || ((chunk.candidateSetId === null) !== (chunk.candidateSourceUid === null))
+      || (chunk.candidateSetId !== null && !OPAQUE_ID.test(chunk.candidateSetId))
+      || (chunk.candidateSourceUid !== null && !OPAQUE_ID.test(chunk.candidateSourceUid))
       || chunk.sourceText.trim().length === 0
       || chunk.text.trim().length === 0) {
       throw new Error('Invalid private transcript chunk');
@@ -196,6 +245,8 @@ export function appendPrivateTranscriptChunk(
   const uid = `${session.source.captureId}:chunk:${session.chunks.length + 1}`;
   const chunks = [...session.chunks, {
     uid,
+    candidateSetId: null,
+    candidateSourceUid: null,
     startMs: input.startMs,
     endMs: input.endMs,
     speakerLabelPseudonym,
@@ -205,6 +256,68 @@ export function appendPrivateTranscriptChunk(
     reviewer: null,
     reviewedAt: null,
   }];
+  return { ...session, chunks, summary: summarize(chunks) };
+}
+
+export function importPrivateSttCandidates(
+  session: PrivateTranscriptCaptureSession,
+  input: unknown,
+): PrivateTranscriptCaptureSession {
+  validatePrivateTranscriptCaptureSession(session);
+  const root = record(input, 'STT candidate file');
+  exactKeys(root, ['schemaVersion', 'kind', 'candidateSetId', 'source', 'chunks', 'safety'], 'STT candidate file');
+  if (root.schemaVersion !== 1 || root.kind !== 'private-stt-candidates') {
+    throw new Error('Invalid STT candidate file contract');
+  }
+  const candidateSetId = opaqueId(stringField(root.candidateSetId, 'candidate set id'), 'candidate set id');
+  const source = record(root.source, 'STT candidate source');
+  exactKeys(source, ['captureId', 'sessionId', 'audioSha256', 'durationMs'], 'STT candidate source');
+  if (source.captureId !== session.source.captureId
+    || source.sessionId !== session.source.sessionId
+    || source.audioSha256 !== session.source.audioSha256
+    || source.durationMs !== session.source.durationMs) {
+    throw new Error('STT candidates do not match the current private capture');
+  }
+  const safety = record(root.safety, 'STT candidate safety');
+  exactKeys(safety, ['localOnly', 'audioIncluded', 'databaseMutationExecuted'], 'STT candidate safety');
+  if (safety.localOnly !== true || safety.audioIncluded !== false || safety.databaseMutationExecuted !== false) {
+    throw new Error('Invalid STT candidate safety boundary');
+  }
+  if (!Array.isArray(root.chunks) || root.chunks.length === 0) {
+    throw new Error('STT candidate file requires chunks');
+  }
+  const sourceUids = new Set<string>();
+  const chunks = root.chunks.map((value, index): PrivateTranscriptChunk => {
+    const candidate = record(value, 'STT candidate chunk');
+    exactKeys(candidate, ['sourceUid', 'startMs', 'endMs', 'speakerLabelPseudonym', 'text'], 'STT candidate chunk');
+    const sourceUid = opaqueId(stringField(candidate.sourceUid, 'STT candidate source uid'), 'STT candidate source uid');
+    if (sourceUids.has(sourceUid)) throw new Error('Duplicate STT candidate source uid');
+    sourceUids.add(sourceUid);
+    const startMs = safeIntegerField(candidate.startMs, 'STT candidate start');
+    const endMs = safeIntegerField(candidate.endMs, 'STT candidate end');
+    if (startMs < 0 || endMs <= startMs || endMs > session.source.durationMs) {
+      throw new Error('Invalid STT candidate time range');
+    }
+    const speakerLabelPseudonym = nonempty(
+      stringField(candidate.speakerLabelPseudonym, 'STT candidate speaker pseudonym'),
+      'STT candidate speaker pseudonym',
+    );
+    if (!SPEAKER.test(speakerLabelPseudonym)) throw new Error('Invalid STT candidate speaker pseudonym');
+    const sourceText = nonempty(stringField(candidate.text, 'STT candidate text'), 'STT candidate text');
+    return {
+      uid: `${session.source.captureId}:chunk:${index + 1}`,
+      candidateSetId,
+      candidateSourceUid: sourceUid,
+      startMs,
+      endMs,
+      speakerLabelPseudonym,
+      sourceText,
+      text: sourceText,
+      reviewStatus: 'proposed',
+      reviewer: null,
+      reviewedAt: null,
+    };
+  });
   return { ...session, chunks, summary: summarize(chunks) };
 }
 

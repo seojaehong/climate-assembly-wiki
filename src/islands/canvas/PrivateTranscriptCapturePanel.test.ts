@@ -2,10 +2,12 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import {
+  completePrivateSttCandidateImport,
   createPrivateMediaRecorder,
   PrivateTranscriptCapturePanel,
   stopPrivateMediaStream,
 } from './PrivateTranscriptCapturePanel';
+import { createPrivateTranscriptCaptureSession } from './private-transcript-capture';
 
 describe('PrivateTranscriptCapturePanel', () => {
   it('starts as a consent-gated, session-memory-only MediaRecorder surface', () => {
@@ -26,7 +28,40 @@ describe('PrivateTranscriptCapturePanel', () => {
     expect(html).toContain('녹음 시작');
     expect(html).toContain('disabled=""');
     expect(html).toContain('전사 chunk 검수 완료 전에는 extraction handoff를 만들 수 없습니다.');
+    expect(html).toContain('provider-neutral 후보 JSON');
     expect(html).toContain('aria-live="polite"');
+  });
+
+  it('discards an STT file result when its capture becomes stale during the local read', async () => {
+    const imported: string[] = [];
+    const errors: string[] = [];
+    const busy: boolean[] = [];
+    let current = true;
+    const capture = createPrivateTranscriptCaptureSession({
+      captureId: 'capture-stale',
+      sessionId: 'session-stale',
+      audioSha256: 'a'.repeat(64),
+      mimeType: 'audio/webm',
+      byteLength: 16,
+      startedAt: '2026-08-29T01:00:00.000Z',
+      stoppedAt: '2026-08-29T01:00:01.000Z',
+    });
+
+    await completePrivateSttCandidateImport({
+      capture,
+      readText: async () => {
+        current = false;
+        return '{}';
+      },
+      isCurrent: () => current,
+      onImported: (next) => imported.push(next.source.captureId),
+      onError: (message) => errors.push(message),
+      onBusyChange: (value) => busy.push(value),
+    });
+
+    expect(imported).toEqual([]);
+    expect(errors).toEqual([]);
+    expect(busy).toEqual([]);
   });
 
   it('stops every microphone track when recorder construction fails', () => {

@@ -56,7 +56,10 @@ async function fixtureServer({
           <p id="private-status" role="status" aria-live="polite">동의 후 합성 음성으로 브라우저 녹음 proof of concept를 시작하세요.</p>
           <section id="private-capture" hidden>
             <strong>로컬 녹음 1000ms · 16 bytes</strong>
+            <span>capture ID <code data-private-capture-id>capture-browser</code></span>
             <span>audio SHA-256 ${'b'.repeat(64)}</span>
+            <label>provider-neutral STT 후보 JSON<input id="private-stt-candidates" type="file"></label>
+            <button id="private-import-stt" type="button" disabled>STT 후보 로컬 가져오기</button>
             <label>시작 ms<input id="private-start-ms" type="number" value="0"></label>
             <label>종료 ms<input id="private-end-ms" type="number" value="1000"></label>
             <label>화자 가명<input id="private-speaker" type="text" value="speaker-a"></label>
@@ -71,8 +74,8 @@ async function fixtureServer({
         </section>
         <section aria-labelledby="canvas-review-heading">
         <h2 id="canvas-review-heading">Canvas 검수 계획</h2>
-        <label>검수 계획 JSON<input type="file"></label>
-        <label>Canvas snapshot JSON<input type="file"></label>
+        <label>검수 계획 JSON<input id="canvas-review-plan" type="file"></label>
+        <label>Canvas snapshot JSON<input id="canvas-review-snapshot" type="file"></label>
         <p>인증 검수자 ID <code>${authReviewerId}</code></p>
         <button type="button" id="start-review">로컬 검수 시작</button>
         <p id="review-progress" hidden>진행 0/5</p>
@@ -176,6 +179,8 @@ async function fixtureServer({
           const privateStatus = document.querySelector('#private-status');
           const privateProgress = document.querySelector('#private-progress');
           const privateDownload = document.querySelector('#private-download');
+          const privateSttCandidates = document.querySelector('#private-stt-candidates');
+          const privateImportStt = document.querySelector('#private-import-stt');
           let privatePermissionPending = false;
           const refreshPrivateStart = () => {
             privateStart.disabled = !privateConsent.checked || !privateSession.value.trim();
@@ -231,6 +236,35 @@ async function fixtureServer({
             privateCapture.hidden = false;
             privateStatus.textContent = '녹음은 이 브라우저 세션 메모리에만 있습니다. 전사 chunk를 작성하고 전부 검수하세요.';
           });
+          privateSttCandidates.addEventListener('change', () => {
+            privateImportStt.disabled = !privateSttCandidates.files[0];
+          });
+          privateImportStt.addEventListener('click', async () => {
+            const candidates = JSON.parse(await privateSttCandidates.files[0].text());
+            const candidate = candidates.chunks[0];
+            document.querySelector('#private-source-text').value = candidate.text;
+            const article = document.createElement('article');
+            article.dataset.candidateSetId = candidates.candidateSetId;
+            article.dataset.candidateSourceUid = candidate.sourceUid;
+            article.setAttribute('aria-label', '전사 chunk 검수 capture-browser:chunk:1');
+            article.innerHTML = '<label>검수 전사<textarea></textarea></label><button type="button">원문 승인</button><button type="button">반려</button>';
+            article.querySelector('textarea').value = candidate.text;
+            const accept = article.querySelector('button');
+            article.querySelector('textarea').addEventListener('input', () => {
+              accept.textContent = '수정 승인';
+              if (!privateDownload.disabled) {
+                privateProgress.textContent = '검수 진행 0/1';
+                privateDownload.disabled = true;
+              }
+            });
+            accept.addEventListener('click', () => {
+              privateProgress.textContent = '검수 진행 1/1';
+              privateDownload.disabled = false;
+            });
+            document.querySelector('#private-chunks').replaceChildren(article);
+            privateProgress.textContent = '검수 진행 0/1';
+            privateStatus.textContent = '로컬 STT 후보 1개를 가져왔습니다. 모든 후보를 사람 검수하세요.';
+          });
           document.querySelector('#private-add').addEventListener('click', () => {
             const sourceText = document.querySelector('#private-source-text').value;
             const article = document.createElement('article');
@@ -255,6 +289,7 @@ async function fixtureServer({
           privateDownload.addEventListener('click', () => {
             const sourceText = document.querySelector('#private-source-text').value;
             const reviewedText = document.querySelector('#private-chunks textarea').value;
+            const reviewedArticle = document.querySelector('#private-chunks article');
             const batch = {
               schemaVersion: 1,
               kind: 'private-transcript-review-batch',
@@ -266,6 +301,8 @@ async function fixtureServer({
               },
               chunks: [{
                 uid: 'capture-browser:chunk:1', sourceText, text: reviewedText,
+                candidateSetId: reviewedArticle.dataset.candidateSetId,
+                candidateSourceUid: reviewedArticle.dataset.candidateSourceUid,
                 startMs: 0, endMs: 1000, speakerLabelPseudonym: 'speaker-a',
                 reviewStatus: reviewedText === sourceText ? 'accepted' : 'edited',
                 reviewer: '${authReviewerId}',
@@ -398,7 +435,7 @@ async function fixtureServer({
             URL.revokeObjectURL(href);
           });
           document.querySelector('#start-review').addEventListener('click', async () => {
-            const planFile = document.querySelector('input[type="file"]').files[0];
+            const planFile = document.querySelector('#canvas-review-plan').files[0];
             activePlan = JSON.parse(await planFile.text());
             document.querySelectorAll('article[aria-label^="노드 검수"] input').forEach((input, index) => {
               input.value = activePlan.nodes[index].label;
@@ -583,7 +620,7 @@ describe('verifyCanvasBrowser', () => {
       sourceTreeClean: true,
       verifierSha256: 'b'.repeat(64),
     };
-    const report = await verifyCanvasBrowser({ baseUrl: fixture.baseUrl, sourceProvenance });
+    const report = await verifyCanvasBrowser({ baseUrl: fixture.baseUrl, sourceProvenance, timeoutMs: 10_000 });
 
     expect(report.status).toBe('pass');
     expect(report.checks.viteClientStatus).toBe(200);

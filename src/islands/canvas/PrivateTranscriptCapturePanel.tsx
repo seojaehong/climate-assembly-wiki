@@ -3,6 +3,7 @@ import {
   appendPrivateTranscriptChunk,
   createPrivateTranscriptCaptureSession,
   exportPrivateTranscriptReviewBatch,
+  importPrivateSttCandidates,
   reviewPrivateTranscriptChunk,
   updatePrivateTranscriptChunkDraft,
   type PrivateTranscriptCaptureSession,
@@ -46,6 +47,32 @@ interface PrivateMediaStream {
   getTracks(): Array<{ stop(): void }>;
 }
 
+interface PrivateSttImportCallbacks {
+  capture: PrivateTranscriptCaptureSession;
+  readText: () => Promise<string>;
+  isCurrent: () => boolean;
+  onImported: (capture: PrivateTranscriptCaptureSession) => void;
+  onError: (message: string) => void;
+  onBusyChange: (busy: boolean) => void;
+}
+
+/** Reads and validates a local STT candidate file without applying stale async results. */
+export async function completePrivateSttCandidateImport(callbacks: PrivateSttImportCallbacks): Promise<void> {
+  try {
+    const text = await callbacks.readText();
+    if (!callbacks.isCurrent()) return;
+    const parsed: unknown = JSON.parse(text);
+    const imported = importPrivateSttCandidates(callbacks.capture, parsed);
+    if (callbacks.isCurrent()) callbacks.onImported(imported);
+  } catch (error: unknown) {
+    if (!callbacks.isCurrent()) return;
+    console.error('Failed to import private STT candidates', error);
+    callbacks.onError(errorMessage(error));
+  } finally {
+    if (callbacks.isCurrent()) callbacks.onBusyChange(false);
+  }
+}
+
 /** Stops every acquired media track, including streams that fail before recorder setup completes. */
 export function stopPrivateMediaStream(stream: PrivateMediaStream | null): void {
   stream?.getTracks().forEach((track) => track.stop());
@@ -87,6 +114,8 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
   const [endMs, setEndMs] = useState('');
   const [speaker, setSpeaker] = useState('speaker-a');
   const [chunkText, setChunkText] = useState('');
+  const [sttCandidateFile, setSttCandidateFile] = useState<File | null>(null);
+  const [importingStt, setImportingStt] = useState(false);
   const [notice, setNotice] = useState('동의 후 합성 음성으로 브라우저 녹음 proof of concept를 시작하세요.');
   const [error, setError] = useState<string | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -97,6 +126,10 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
   const generationRef = useRef(0);
   const audioUrlRef = useRef<string | null>(null);
   const recordingLockRef = useRef(false);
+  const captureRef = useRef<PrivateTranscriptCaptureSession | null>(null);
+  const sttImportGenerationRef = useRef(0);
+  const sttInputRef = useRef<HTMLInputElement | null>(null);
+  captureRef.current = capture;
 
   const replaceAudioUrl = (next: string | null) => {
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
@@ -111,6 +144,7 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
 
   useEffect(() => () => {
     generationRef.current += 1;
+    sttImportGenerationRef.current += 1;
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
     stopCurrentStream();
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
@@ -139,6 +173,8 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
       });
       if (generationRef.current !== generation) return;
       setCapture(next);
+      setSttCandidateFile(null);
+      if (sttInputRef.current) sttInputRef.current.value = '';
       setStartMs('0');
       setEndMs(String(next.source.durationMs));
       replaceAudioUrl(URL.createObjectURL(blob));
@@ -187,6 +223,9 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
       startedAtRef.current = new Date().toISOString();
       captureSessionIdRef.current = sessionId.trim();
       setCapture(null);
+      sttImportGenerationRef.current += 1;
+      setSttCandidateFile(null);
+      if (sttInputRef.current) sttInputRef.current.value = '';
       replaceAudioUrl(null);
       recorder.addEventListener('dataavailable', (event) => {
         if (generationRef.current === generation && event.data.size > 0) partsRef.current.push(event.data);
@@ -254,6 +293,10 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
     setRecording(false);
     setFinalizing(false);
     setCapture(null);
+    sttImportGenerationRef.current += 1;
+    setImportingStt(false);
+    setSttCandidateFile(null);
+    if (sttInputRef.current) sttInputRef.current.value = '';
     setChunkText('');
     setStartMs('0');
     setEndMs('');
@@ -287,6 +330,34 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
       console.error('Failed to append a private transcript chunk', caught);
       setError(errorMessage(caught));
     }
+  };
+
+  const importSttCandidates = async () => {
+    const currentCapture = captureRef.current;
+    const file = sttCandidateFile;
+    if (!currentCapture || !file || importingStt) return;
+    if (file.size > 1_000_000) {
+      const message = 'STT 후보 JSON은 1MB 이하여야 합니다.';
+      console.error('Failed to import private STT candidates', new Error(message));
+      setError(message);
+      return;
+    }
+    const generation = sttImportGenerationRef.current + 1;
+    sttImportGenerationRef.current = generation;
+    setImportingStt(true);
+    setError(null);
+    await completePrivateSttCandidateImport({
+      capture: currentCapture,
+      readText: () => file.text(),
+      isCurrent: () => sttImportGenerationRef.current === generation && captureRef.current === currentCapture,
+      onImported: (next) => {
+        setCapture(next);
+        setNotice(`로컬 STT 후보 ${next.summary.chunks}개를 가져왔습니다. 모든 후보를 사람 검수하세요.`);
+        setError(null);
+      },
+      onError: setError,
+      onBusyChange: setImportingStt,
+    });
   };
 
   const decideChunk = (uid: string, status: 'accepted' | 'edited' | 'rejected') => {
@@ -352,7 +423,8 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
           {' '}새 녹음을 시작하거나 페이지를 닫으면 기존 음성은 폐기됩니다. 실제 시민 발언을 녹음하지 마세요.
         </p>
         <p style={{ color: MUTED, lineHeight: 1.6 }}>
-          전사 chunk 검수 완료 전에는 extraction handoff를 만들 수 없습니다. 자동 STT와 extraction은 아직 실행하지 않습니다.
+          전사 chunk 검수 완료 전에는 extraction handoff를 만들 수 없습니다. 외부 STT 호출과 extraction은 실행하지 않으며,
+          {' '}현재 녹음에 결속된 provider-neutral 후보 JSON만 로컬에서 가져올 수 있습니다.
         </p>
         <p style={{ color: MUTED, lineHeight: 1.6, overflowWrap: 'anywhere' }}>
           인증 검수자 ID <code>{reviewerId}</code>
@@ -382,10 +454,29 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
         <>
           <section aria-label="로컬 전사 chunk 작성" style={{ ...cardStyle, marginBottom: 16 }}>
             <strong>로컬 녹음 {capture.source.durationMs}ms · {capture.source.byteLength} bytes</strong>
+            <span style={{ color: MUTED, overflowWrap: 'anywhere' }}>capture ID <code data-private-capture-id>{capture.source.captureId}</code></span>
             <span style={{ color: MUTED, overflowWrap: 'anywhere' }}>audio SHA-256 {capture.source.audioSha256}</span>
             <p style={{ color: MUTED, margin: 0, overflowWrap: 'anywhere' }}>
               인증 검수자 ID <code>{reviewerId}</code>
             </p>
+            <section aria-label="로컬 STT 후보 가져오기" style={{ display: 'grid', gap: 8 }}>
+              <p style={{ color: MUTED, margin: 0 }}>
+                현재 capture ID·회차·audio SHA-256·길이가 모두 일치하는 JSON만 기존 전사 초안을 교체합니다. 파일은 업로드하거나 저장하지 않습니다.
+              </p>
+              <label>provider-neutral STT 후보 JSON
+                <input
+                  ref={sttInputRef}
+                  type="file"
+                  accept="application/json,.json"
+                  onChange={(event) => setSttCandidateFile(event.currentTarget.files?.[0] ?? null)}
+                  disabled={importingStt}
+                  style={{ ...controlStyle, display: 'block', width: '100%' }}
+                />
+              </label>
+              <button type="button" onClick={() => { void importSttCandidates(); }} disabled={!sttCandidateFile || importingStt} style={{ ...controlStyle, fontWeight: 800 }}>
+                {importingStt ? 'STT 후보 확인 중…' : 'STT 후보 로컬 가져오기'}
+              </button>
+            </section>
             <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
               <label>시작 ms<input type="number" min="0" value={startMs} onChange={(event) => setStartMs(event.currentTarget.value)} style={{ ...controlStyle, display: 'block', width: '100%' }} /></label>
               <label>종료 ms<input type="number" min="1" value={endMs} onChange={(event) => setEndMs(event.currentTarget.value)} style={{ ...controlStyle, display: 'block', width: '100%' }} /></label>

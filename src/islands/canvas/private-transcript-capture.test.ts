@@ -3,6 +3,7 @@ import {
   appendPrivateTranscriptChunk,
   createPrivateTranscriptCaptureSession,
   exportPrivateTranscriptReviewBatch,
+  importPrivateSttCandidates,
   reviewPrivateTranscriptChunk,
   updatePrivateTranscriptChunkDraft,
   type PrivateTranscriptCaptureSession,
@@ -18,7 +19,68 @@ const capture = () => createPrivateTranscriptCaptureSession({
   stoppedAt: '2026-08-29T01:00:12.000Z',
 });
 
+const sttCandidates = () => ({
+  schemaVersion: 1,
+  kind: 'private-stt-candidates',
+  candidateSetId: 'stt-candidates-browser-1',
+  source: {
+    captureId: 'capture-20260829-a',
+    sessionId: 'session-20260829',
+    audioSha256: 'a'.repeat(64),
+    durationMs: 12_000,
+  },
+  chunks: [
+    { sourceUid: 'stt-1', startMs: 0, endMs: 5_000, speakerLabelPseudonym: 'speaker-a', text: '첫 번째 STT 후보입니다.' },
+    { sourceUid: 'stt-2', startMs: 5_000, endMs: 12_000, speakerLabelPseudonym: 'speaker-b', text: '두 번째 STT 후보입니다.' },
+  ],
+  safety: { localOnly: true, audioIncluded: false, databaseMutationExecuted: false },
+});
+
 describe('private transcript capture', () => {
+  it('replaces local drafts with audio-bound provider-neutral STT candidates that still require review', () => {
+    const imported = importPrivateSttCandidates(capture(), sttCandidates());
+
+    expect(imported.summary).toEqual({ chunks: 2, decided: 0 });
+    expect(imported.chunks).toEqual([
+      expect.objectContaining({
+        uid: 'capture-20260829-a:chunk:1',
+        candidateSetId: 'stt-candidates-browser-1',
+        candidateSourceUid: 'stt-1',
+        sourceText: '첫 번째 STT 후보입니다.',
+        reviewStatus: 'proposed',
+        reviewer: null,
+      }),
+      expect.objectContaining({
+        uid: 'capture-20260829-a:chunk:2',
+        candidateSourceUid: 'stt-2',
+      }),
+    ]);
+    expect(() => exportPrivateTranscriptReviewBatch(imported)).toThrow(
+      'Every transcript chunk must be reviewed before extraction handoff',
+    );
+  });
+
+  it('rejects STT candidates bound to another capture and raw audio or unknown metadata fields', () => {
+    const wrongCapture = sttCandidates();
+    wrongCapture.source.captureId = 'capture-other';
+    expect(() => importPrivateSttCandidates(capture(), wrongCapture)).toThrow(
+      'STT candidates do not match the current private capture',
+    );
+
+    const rawAudio = { ...sttCandidates(), audioBytes: 'not-allowed' };
+    expect(() => importPrivateSttCandidates(capture(), rawAudio)).toThrow('Invalid STT candidate file fields');
+  });
+
+  it('rejects duplicate source IDs and invalid candidate ranges before replacing local drafts', () => {
+    const duplicate = sttCandidates();
+    duplicate.chunks[1].sourceUid = 'stt-1';
+    expect(() => importPrivateSttCandidates(capture(), duplicate)).toThrow('Duplicate STT candidate source uid');
+
+    const outsideAudio = sttCandidates();
+    outsideAudio.chunks[1].endMs = 12_001;
+    expect(() => importPrivateSttCandidates(capture(), outsideAudio)).toThrow('Invalid STT candidate time range');
+  });
+
   it('blocks extraction handoff until every local transcript chunk is reviewed', () => {
     const session = appendPrivateTranscriptChunk(capture(), {
       startMs: 0,

@@ -559,8 +559,40 @@ export async function verifyCanvasBrowser({
     await reviewPage.waitForTimeout(25);
     await privateCapturePanel.getByRole('button', { name: '녹음 정지' }).click();
     await privateCapturePanel.getByText(/audio SHA-256 [a-f0-9]{64}/).waitFor({ timeout: timeoutMs });
-    await privateCapturePanel.getByLabel('수동 전사 원문').fill('합성 음성 전사 원문입니다.');
-    await privateCapturePanel.getByRole('button', { name: '전사 chunk 추가' }).click();
+    const privateCaptureId = await privateCapturePanel.locator('[data-private-capture-id]').textContent();
+    const privateCaptureSummary = await privateCapturePanel.getByText(/로컬 녹음 \d+ms · \d+ bytes/).textContent();
+    const privateAudioShaText = await privateCapturePanel.getByText(/audio SHA-256 [a-f0-9]{64}/).textContent();
+    const privateDurationMs = Number(privateCaptureSummary?.match(/로컬 녹음 (\d+)ms/)?.[1]);
+    const privateAudioSha256 = privateAudioShaText?.match(/audio SHA-256 ([a-f0-9]{64})/)?.[1];
+    if (!privateCaptureId || !Number.isSafeInteger(privateDurationMs) || !privateAudioSha256) {
+      throw new Error('Private capture source could not be read for the local STT candidate fixture');
+    }
+    await privateCapturePanel.getByLabel('provider-neutral STT 후보 JSON').setInputFiles({
+      name: 'private-stt-candidates.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({
+        schemaVersion: 1,
+        kind: 'private-stt-candidates',
+        candidateSetId: 'browser-stt-candidates-1',
+        source: {
+          captureId: privateCaptureId,
+          sessionId: 'session-browser-r4',
+          audioSha256: privateAudioSha256,
+          durationMs: privateDurationMs,
+        },
+        chunks: [{
+          sourceUid: 'browser-stt-source-1',
+          startMs: 0,
+          endMs: privateDurationMs,
+          speakerLabelPseudonym: 'speaker-a',
+          text: '합성 음성 STT 후보 원문입니다.',
+        }],
+        safety: { localOnly: true, audioIncluded: false, databaseMutationExecuted: false },
+      })),
+    });
+    await privateCapturePanel.getByRole('button', { name: 'STT 후보 로컬 가져오기' }).click();
+    await privateCapturePanel.getByText('로컬 STT 후보 1개를 가져왔습니다. 모든 후보를 사람 검수하세요.', { exact: true })
+      .waitFor({ timeout: timeoutMs });
     const privateChunkCard = privateCapturePanel.locator('article[aria-label^="전사 chunk 검수"]');
     await privateChunkCard.waitFor({ timeout: timeoutMs });
     const privateBatchDownloadButton = privateCapturePanel
@@ -599,7 +631,9 @@ export async function verifyCanvasBrowser({
       && privateTranscriptChunk?.startMs === 0
       && privateTranscriptChunk?.endMs === privateTranscriptBatch.source?.durationMs
       && privateTranscriptChunk?.speakerLabelPseudonym === 'speaker-a'
-      && privateTranscriptChunk?.sourceText === '합성 음성 전사 원문입니다.'
+      && privateTranscriptChunk?.candidateSetId === 'browser-stt-candidates-1'
+      && privateTranscriptChunk?.candidateSourceUid === 'browser-stt-source-1'
+      && privateTranscriptChunk?.sourceText === '합성 음성 STT 후보 원문입니다.'
       && privateTranscriptChunk?.reviewStatus === 'edited'
       && privateTranscriptChunk?.text === '합성 음성의 최종 검수 전사입니다.'
       && privateTranscriptChunk?.reviewer === REVIEW_AUTH_REVIEWER_ID

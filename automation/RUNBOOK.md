@@ -545,15 +545,16 @@ npm.cmd --prefix automation run bridge:transcript-ontology -- --fixture fixtures
 
 ## R4 브라우저 MediaRecorder·전사 chunk 검수 proof of concept
 
-`/ko/moderator/ontology-review`의 R4 패널은 명시적 마이크 동의와 회차 ID가 있을 때만 `MediaRecorder`를 시작한다. 이 단계는 실제 STT provider 연동이 아니라 브라우저 녹음과 검수 순서를 확인하는 synthetic proof of concept다.
+`/ko/moderator/ontology-review`의 R4 패널은 명시적 마이크 동의와 회차 ID가 있을 때만 `MediaRecorder`를 시작한다. 이 단계는 실제 STT provider 연동이 아니라 브라우저 녹음, provider-neutral 후보 import, 사람 검수 순서를 확인하는 synthetic proof of concept다.
 
 - 녹음 Blob은 현재 페이지의 메모리와 local object URL에만 존재한다. 새 녹음을 시작하거나 페이지를 닫으면 폐기하며, DB·서버·public 경로·`localStorage`·IndexedDB로 보내거나 보존하지 않는다.
 - 녹음이 끝나면 exact audio SHA-256, MIME type, byte length, 시작·종료 시각만 local capture session에 결속한다. 내려받는 전사 batch에는 음성 bytes/object URL을 포함하지 않는다.
+- 선택적인 `private-stt-candidates` schema v1 JSON은 현재 capture ID·session ID·audio SHA-256·duration과 모두 일치할 때만 기존 local draft를 교체한다. 파일은 1MB 이하이며 exact-key 계약을 사용해 raw audio/object URL/임의 provider metadata를 거부한다. `candidateSetId`와 각 `sourceUid`는 provider-neutral provenance로 batch까지 보존하며 모든 imported chunk는 `proposed`에서 시작한다.
 - moderator가 time-coded chunk, speaker pseudonym, 전사 원문을 수동 입력하고 각 chunk를 승인·수정 승인·반려해야 한다. 화면 문구를 다시 바꾸면 해당 판단을 `proposed`로 되돌리고 extraction handoff 다운로드를 다시 잠근다.
 - 모든 chunk가 결정되고 승인 또는 수정 승인된 chunk가 하나 이상 있을 때만 `private-transcript-review-batch`를 내려받는다. 이 batch는 `localOnly:true`, `extractionExecuted:false`, `requiresExtractionReview:true`이며 candidate extraction을 자동 실행하지 않는다.
 - 내려받기 직전 capture source, chunk 순서·시간·화자 가명, 판단 상태·검수자·검수 시각, 원문 보존 규칙과 summary를 실제 chunk에서 다시 검증한다. 캐시된 summary만 바꾸거나 판단 뒤 원문·audit metadata를 바꾼 session은 fail-closed한다.
-- 브라우저 verifier는 synthetic MediaRecorder adapter로 동의→녹음→정지→chunk 작성→검수 전 차단→수정 승인→재편집 차단→재판단→download를 실제 production React 화면에서 실행하고 write request가 없음을 확인한다.
-- 실제 시민 발언·지속 저장·외부 STT webhook/provider·음성 retention·DB/API·자동 extraction/publication은 구현하거나 승인하지 않았다. 검수 결정과 batch exporter는 현재 Supabase Auth 사용자 UUID에서 파생한 canonical reviewer ID만 허용하지만 다운로드 batch의 외부 서명이나 독립 신원 검증은 포함하지 않는다. 실제 운영 전에는 별도 승인된 consent·보존·삭제·접근 정책이 필요하다.
+- 브라우저 verifier는 synthetic MediaRecorder adapter로 동의→녹음→정지→현재 audio-bound STT 후보 import→검수 전 차단→수정 승인→재편집 차단→재판단→download를 실제 production React 화면에서 실행하고 candidate provenance와 write request 0건을 확인한다.
+- 실제 시민 발언·지속 저장·외부 STT webhook/provider 호출·provider credential·음성 retention·DB/API·자동 extraction/publication은 구현하거나 승인하지 않았다. 검수 결정과 batch exporter는 현재 Supabase Auth 사용자 UUID에서 파생한 canonical reviewer ID만 허용하지만 다운로드 batch의 외부 서명이나 독립 신원 검증은 포함하지 않는다. 실제 운영 전에는 별도 승인된 consent·보존·삭제·접근 정책이 필요하다.
 
 ## R5 검수 온톨로지 기반 진행 제안
 
