@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { BreadcrumbNav, completeSignOut, DataTreeNavigation, LoginCard, LogoutNotice, PLATFORM_ACCENT, PLATFORM_CONTROL_BORDER, runExclusivePlatformOperation, ViewTabs } from './PlatformShell';
+import { BreadcrumbNav, completeAuthSessionLoad, completeSignOut, DataTreeNavigation, LoginCard, LogoutNotice, PLATFORM_ACCENT, PLATFORM_CONTROL_BORDER, runExclusivePlatformOperation, ViewTabs } from './PlatformShell';
 import type { TreeNode } from './platform-nav-logic';
 import ScopeOutlet from './ScopeViews';
 import ReviewConsole, { completeReviewLoad, completeReviewMutation, loadReviewData, REVIEW_STATUS_GREEN, ReviewFlashNotice, ReviewIssueChoice, ReviewSourceCard, SourceReferenceList } from './review/ReviewConsole';
@@ -397,6 +397,62 @@ describe('PlatformShell accessibility', () => {
     await expect(first).resolves.toBe(true);
     expect(lock.current).toBe(false);
     expect(busyChanges).toEqual([true, false]);
+  });
+
+  it('늦은 이전 세션 조회가 최신 로그인 상태를 덮지 못하게 한다', async () => {
+    const firstGate = deferred<PlatformResult<{ userId: string; email: string | null } | null>>();
+    const sessions: Array<{ userId: string; email: string | null } | null> = [];
+    const notices: Array<string | null> = [];
+    let generation = 1;
+    const first = completeAuthSessionLoad(
+      () => firstGate.promise,
+      () => generation === 1,
+      (session) => sessions.push(session),
+      (notice) => notices.push(notice),
+    );
+
+    generation = 2;
+    await completeAuthSessionLoad(
+      async () => ({ data: { userId: 'latest-user', email: 'latest@example.invalid' }, notice: null }),
+      () => generation === 2,
+      (session) => sessions.push(session),
+      (notice) => notices.push(notice),
+    );
+    firstGate.resolve({ data: null, notice: null });
+    await first;
+
+    expect(sessions).toEqual([{ userId: 'latest-user', email: 'latest@example.invalid' }]);
+    expect(notices).toEqual([null]);
+  });
+
+  it('현재 세션 조회 예외를 로그하고 미인증 안내 상태로 닫는다', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const sessions: Array<{ userId: string; email: string | null } | null> = [];
+    const notices: Array<string | null> = [];
+
+    try {
+      await completeAuthSessionLoad(
+        async () => { throw new Error('fixture session failure'); },
+        () => true,
+        (session) => sessions.push(session),
+        (notice) => notices.push(notice),
+      );
+    } finally {
+      errorLog.mockRestore();
+    }
+
+    expect(sessions).toEqual([null]);
+    expect(notices).toEqual(['인증 세션을 확인하는 중 예상하지 못한 오류가 발생했습니다.']);
+  });
+
+  it('PlatformShell이 Auth 이벤트마다 generation을 교체하고 cleanup에서 무효화한다', () => {
+    const source = readFileSync(new URL('./PlatformShell.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('const generation = authGeneration.current + 1;');
+    expect(source).toContain('authGeneration.current = generation;');
+    expect(source).toContain('() => authGeneration.current === generation');
+    expect(source).toContain('authGeneration.current += 1;');
+    expect(source).toContain('const off = onAuthChange(refreshSession);');
   });
 
   it('인증 작업 예외 뒤에도 lock과 busy를 해제한다', async () => {

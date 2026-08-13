@@ -84,28 +84,57 @@ function currentScope(): Scope {
   return parseScopePath(window.location.pathname);
 }
 
+/** Applies only the latest session read so an older auth response cannot replace a newer state. */
+export async function completeAuthSessionLoad(
+  action: () => Promise<PlatformResult<AuthSessionInfo | null>>,
+  isCurrent: () => boolean,
+  onSession: (session: AuthSessionInfo | null) => void,
+  onNotice: (notice: string | null) => void,
+): Promise<void> {
+  try {
+    const result = await action();
+    if (!isCurrent()) return;
+    if (result.notice) {
+      onSession(null);
+      onNotice(result.notice);
+      return;
+    }
+    onSession(result.data ?? null);
+    onNotice(null);
+  } catch (error: unknown) {
+    if (!isCurrent()) return;
+    console.error('Failed to load platform auth session', error);
+    onSession(null);
+    onNotice('인증 세션을 확인하는 중 예상하지 못한 오류가 발생했습니다.');
+  }
+}
+
 export default function PlatformShell() {
   // undefined = 확인 중, null = 미로그인, 값 = 로그인됨
   const [session, setSession] = useState<AuthSessionInfo | null | undefined>(undefined);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [scope, setScope] = useState<Scope>({});
+  const authGeneration = useRef(0);
 
   // 세션 확인 + 변화 구독. 마운트 시 현재 URL 로 스코프 초기화.
   useEffect(() => {
     setScope(currentScope());
-    let alive = true;
-    getSession().then((r) => {
-      if (!alive) return;
-      setSession(r.data ?? null);
-      if (r.notice) setAuthNotice(r.notice);
-    });
-    const off = onAuthChange(() => {
-      getSession().then((r) => alive && setSession(r.data ?? null));
-    });
+    const refreshSession = () => {
+      const generation = authGeneration.current + 1;
+      authGeneration.current = generation;
+      void completeAuthSessionLoad(
+        getSession,
+        () => authGeneration.current === generation,
+        setSession,
+        setAuthNotice,
+      );
+    };
+    refreshSession();
+    const off = onAuthChange(refreshSession);
     const onPop = () => setScope(currentScope());
     window.addEventListener('popstate', onPop);
     return () => {
-      alive = false;
+      authGeneration.current += 1;
       off();
       window.removeEventListener('popstate', onPop);
     };
