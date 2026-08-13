@@ -15,6 +15,40 @@ const STATIC_MANIFEST = {
   database: { endpoint: '/rest/v1/rpc/approved_graph_snapshots' },
 };
 
+const REVIEWED_LIVE_SOURCE = {
+  id: 'live-reviewed',
+  category: 'live',
+  label: '검수 완료 live graph',
+  data: 'data/live-reviewed.json',
+  publicationMode: 'reviewed_snapshot',
+  supportsView: ['2d'],
+};
+
+function reviewedLiveSnapshot() {
+  return {
+    elements: {
+      nodes: [{ data: {
+        id: 'issue-1', kind: 'Issue', label: '검수 완료 쟁점', cited_uids: ['chunk-1'],
+        review_state: 'accepted', is_public: true,
+      } }],
+      edges: [],
+    },
+    meta: {
+      live: true,
+      publication_status: 'synthetic_reviewed_demo',
+      source_review_status: 'reviewed',
+      requires_publication_review: false,
+      counts: { nodes: 1, edges: 0 },
+      source: { source_id: REVIEWED_LIVE_SOURCE.id },
+      publication: {
+        mode: 'synthetic-reviewed-demo',
+        approved_identity_kind: 'synthetic_fixture',
+        approved_at: '2026-08-14T01:00:00.000Z',
+      },
+    },
+  };
+}
+
 function jsonResponse(data, ok = true) {
   return { ok, status: ok ? 200 : 503, json: async () => data };
 }
@@ -50,7 +84,10 @@ describe('workshop graph source adapter', () => {
             review_state: 'edited', is_public: true,
           } },
         ],
-        edges: [{ data: { id: 'edge-1', source: 'claim-1', target: 'issue-1', rel: 'isAbout' } }],
+        edges: [{ data: {
+          id: 'edge-1', source: 'claim-1', target: 'issue-1', rel: 'isAbout',
+          review_state: 'accepted', is_public: true,
+        } }],
       },
       meta: { advisory_notice: '사람 검수 완료 snapshot' },
     };
@@ -182,6 +219,93 @@ describe('workshop graph source adapter', () => {
     }
   });
 
+  test('loads a manifest-declared reviewed live snapshot', async () => {
+    const manifest = {
+      default: REVIEWED_LIVE_SOURCE.id,
+      categories: { live: '실시간' },
+      sources: [REVIEWED_LIVE_SOURCE],
+    };
+    const snapshot = reviewedLiveSnapshot();
+    const fetchImpl = vi.fn(async (url) => {
+      if (url === 'sources.json') return jsonResponse(manifest);
+      if (url === 'data/live-reviewed.json?_=1234') return jsonResponse(snapshot);
+      throw new Error('Unexpected request');
+    });
+    const adapter = createWorkshopGraphSourceAdapter({ fetchImpl, now: () => 1234, retryDelayMs: 0 });
+
+    const catalog = await adapter.loadCatalog('sources.json');
+    const loaded = await adapter.loadSource(catalog.manifest.sources[0]);
+
+    expect(loaded.payload).toEqual(snapshot);
+    expect(loaded.diagnostics).toEqual({
+      origin: 'static', rowCount: null, nodeCount: 1, edgeCount: 0, missingCitedNodeIds: [],
+    });
+  });
+
+  test('rejects a live source without an explicit reviewed-snapshot manifest contract', async () => {
+    const source = { ...REVIEWED_LIVE_SOURCE };
+    delete source.publicationMode;
+    const manifest = {
+      default: source.id,
+      categories: { live: '실시간' },
+      sources: [source],
+    };
+    const fetchImpl = vi.fn(async () => jsonResponse(manifest));
+    const adapter = createWorkshopGraphSourceAdapter({ fetchImpl, retryDelayMs: 0 });
+
+    await expect(adapter.loadCatalog('sources.json')).rejects.toThrow(
+      'Live graph source must declare reviewed snapshot publication',
+    );
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  test.each([
+    ['private node', (snapshot) => { snapshot.elements.nodes[0].data.is_public = false; }],
+    ['unreviewed node', (snapshot) => { snapshot.elements.nodes[0].data.review_state = 'proposed'; }],
+    ['private edge', (snapshot) => {
+      snapshot.elements.nodes.push({ data: {
+        id: 'claim-1', kind: 'Claim', label: '주장', review_state: 'accepted', is_public: true,
+      } });
+      snapshot.elements.edges.push({ data: {
+        id: 'edge-1', source: 'claim-1', target: 'issue-1', rel: 'isAbout',
+        review_state: 'accepted', is_public: false,
+      } });
+      snapshot.meta.counts = { nodes: 2, edges: 1 };
+    }],
+    ['unreviewed edge', (snapshot) => {
+      snapshot.elements.nodes.push({ data: {
+        id: 'claim-1', kind: 'Claim', label: '주장', review_state: 'accepted', is_public: true,
+      } });
+      snapshot.elements.edges.push({ data: {
+        id: 'edge-1', source: 'claim-1', target: 'issue-1', rel: 'isAbout',
+        review_state: 'proposed', is_public: true,
+      } });
+      snapshot.meta.counts = { nodes: 2, edges: 1 };
+    }],
+    ['draft source status', (snapshot) => { snapshot.meta.source_review_status = 'draft'; }],
+    ['pending publication review', (snapshot) => { snapshot.meta.requires_publication_review = true; }],
+    ['mismatched publication mode', (snapshot) => { snapshot.meta.publication.mode = 'reviewed-snapshot'; }],
+    ['noncanonical approval time', (snapshot) => { snapshot.meta.publication.approved_at = '2026-08-14T01:00:00Z'; }],
+    ['mismatched source identity', (snapshot) => { snapshot.meta.source.source_id = 'live-other'; }],
+    ['mismatched element counts', (snapshot) => { snapshot.meta.counts.nodes = 2; }],
+  ])('rejects a live graph snapshot with %s', async (_caseName, mutate) => {
+    const manifest = {
+      default: REVIEWED_LIVE_SOURCE.id,
+      categories: { live: '실시간' },
+      sources: [REVIEWED_LIVE_SOURCE],
+    };
+    const snapshot = reviewedLiveSnapshot();
+    mutate(snapshot);
+    const fetchImpl = vi.fn(async (url) => (
+      url === 'sources.json' ? jsonResponse(manifest) : jsonResponse(snapshot)
+    ));
+    const adapter = createWorkshopGraphSourceAdapter({ fetchImpl, now: () => 1234, retryDelayMs: 0 });
+
+    const catalog = await adapter.loadCatalog('sources.json');
+
+    await expect(adapter.loadSource(catalog.manifest.sources[0])).rejects.toThrow();
+  });
+
   test('fails the optional database catalog closed when an approved snapshot is malformed', async () => {
     const onError = vi.fn();
     const malformedCatalog = {
@@ -223,6 +347,12 @@ describe('workshop graph source adapter', () => {
     ['blank node label', 1, { id: 'node-1', kind: 'Issue', label: '   ', review_state: 'accepted', is_public: true }, null],
     ['private node', 1, { id: 'node-1', kind: 'Issue', label: '쟁점', review_state: 'accepted', is_public: false }, null],
     ['unreviewed node', 1, { id: 'node-1', kind: 'Issue', label: '쟁점', review_state: 'proposed', is_public: true }, null],
+    ['private edge', 1, { id: 'node-1', kind: 'Issue', label: '쟁점', review_state: 'accepted', is_public: true }, {
+      id: 'edge-1', source: 'node-1', target: 'node-1', rel: 'isAbout', review_state: 'accepted', is_public: false,
+    }],
+    ['unreviewed edge', 1, { id: 'node-1', kind: 'Issue', label: '쟁점', review_state: 'accepted', is_public: true }, {
+      id: 'edge-1', source: 'node-1', target: 'node-1', rel: 'isAbout', review_state: 'proposed', is_public: true,
+    }],
     ['blank edge relation', 1, { id: 'node-1', kind: 'Issue', label: '쟁점', review_state: 'accepted', is_public: true }, {
       id: 'edge-1', source: 'node-1', target: 'node-1', rel: '   ',
     }],

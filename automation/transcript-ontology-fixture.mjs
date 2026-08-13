@@ -231,12 +231,14 @@ function reviewedPublication(input) {
   if (!isRecord(input.publication) || input.publication.mode !== 'synthetic-reviewed-demo') {
     throw new Error('Synthetic live graph publication approval is required');
   }
+  const sourceId = opaqueId(input.publication.sourceId, 'publication source id');
   const { identity: approvedBy, kind: identityKind } = publicationIdentity(input.publication.approvedBy);
   const approvedAt = canonicalIsoInstant(input.publication.approvedAt, 'publication approvedAt');
   const reviewedAt = canonicalIsoInstant(input.reviewedAt, 'fixture reviewedAt');
   if (approvedAt <= reviewedAt) throw new Error('Publication approval must follow fixture review');
   return {
     mode: input.publication.mode,
+    sourceId,
     approvedBy,
     approvedAt,
     identityKind,
@@ -287,7 +289,12 @@ export function buildLiveTranscriptGraph(input) {
       advisory_notice: '합성 전사 검수 데모 · 실제 시민 발언이나 회의 결과가 아닙니다.',
       live: true,
       publication_status: 'synthetic_reviewed_demo',
+      source_review_status: 'reviewed',
       requires_publication_review: false,
+      source: {
+        ...graph.meta.source,
+        source_id: publication.sourceId,
+      },
       publication: {
         mode: publication.mode,
         approved_identity_kind: publication.identityKind,

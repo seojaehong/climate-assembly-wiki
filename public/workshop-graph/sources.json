@@ -59,6 +59,7 @@
       "category": "live",
       "label": "합성 전사 검수 데모 (실제 회의 아님)",
       "data": "data/live-transcript-reviewed-fixture.json",
+      "publicationMode": "reviewed_snapshot",
       "supportsView": ["2d"],
       "polling_default_sec": 15
     },
@@ -67,6 +68,7 @@
       "category": "live",
       "label": "합성 전사 R2 사람 검수 결과 (실제 회의 아님)",
       "data": "data/live-transcript-r2-reviewed.json",
+      "publicationMode": "reviewed_snapshot",
       "supportsView": ["2d"],
       "polling_default_sec": 15
     }

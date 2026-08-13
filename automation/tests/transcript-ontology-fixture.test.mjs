@@ -30,6 +30,7 @@ const LIVE_FIXTURE = {
   ...structuredClone(FIXTURE),
   publication: {
     mode: 'synthetic-reviewed-demo',
+    sourceId: 'live-transcript-reviewed-fixture',
     approvedBy: 'reviewer-test',
     approvedAt: '2026-08-29T01:05:00.000Z',
   },
@@ -365,7 +366,9 @@ test('exports only explicitly approved synthetic fixtures as a public live graph
     variant: 'transcript-live-reviewed-fixture',
     live: true,
     publication_status: 'synthetic_reviewed_demo',
+    source_review_status: 'reviewed',
     requires_publication_review: false,
+    source: { source_id: 'live-transcript-reviewed-fixture' },
     publication: {
       mode: 'synthetic-reviewed-demo',
       approved_identity_kind: 'synthetic_fixture',

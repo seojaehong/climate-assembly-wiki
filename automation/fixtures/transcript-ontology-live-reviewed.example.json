@@ -8,6 +8,7 @@
   "reviewedAt": "2026-08-29T01:00:00.000Z",
   "publication": {
     "mode": "synthetic-reviewed-demo",
+    "sourceId": "live-transcript-reviewed-fixture",
     "approvedBy": "reviewer-fixture",
     "approvedAt": "2026-08-29T01:05:00.000Z"
   },

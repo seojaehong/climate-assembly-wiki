@@ -111,8 +111,10 @@
       "session_id": "session-1",
       "language": "ko",
       "chunk_count": 2,
-      "fixture_checksum_sha256": "371d6be38ef08b869a0ca06509b52c4a704898683b8dc71ee57c45e1bd2e3bc0"
+      "fixture_checksum_sha256": "9adb3b225426e3afc2ccce83aff88ec7aac683c87af340aaae84e594a4db5900",
+      "source_id": "live-transcript-reviewed-fixture"
     },
+    "source_review_status": "reviewed",
     "publication": {
       "mode": "synthetic-reviewed-demo",
       "approved_identity_kind": "synthetic_fixture",

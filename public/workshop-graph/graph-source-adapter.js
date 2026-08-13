@@ -4,6 +4,11 @@ const GRAPH_NODE_KINDS = new Set([
   'Issue', 'Claim', 'Proposal', 'Concern', 'Condition',
   'Value', 'Evidence', 'Group', 'Clause', 'Decision',
 ]);
+const REVIEWED_ITEM_STATES = new Set(['accepted', 'edited']);
+const LIVE_PUBLICATION_MODES = new Map([
+  ['synthetic_reviewed_demo', 'synthetic-reviewed-demo'],
+  ['reviewed_snapshot', 'reviewed-snapshot'],
+]);
 
 function isRecord(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -36,12 +41,33 @@ function validateStaticManifest(value) {
   if (!isRecord(value) || typeof value.default !== 'string' || !isRecord(value.categories) || !Array.isArray(value.sources)) {
     throw new Error('Invalid static graph source manifest');
   }
+  const sourceIds = new Set();
+  for (const source of value.sources) {
+    if (!isRecord(source)) throw new Error('Invalid static graph source');
+    const sourceId = nonemptyString(source.id, 'static graph source id');
+    const category = nonemptyString(source.category, 'static graph source category');
+    if (sourceIds.has(sourceId)) throw new Error('Duplicate static graph source id');
+    sourceIds.add(sourceId);
+    if (!Object.hasOwn(value.categories, category)) throw new Error('Unknown static graph source category');
+    const isLiveSource = sourceId.startsWith('live-') || category === 'live';
+    if (isLiveSource && (category !== 'live' || source.publicationMode !== 'reviewed_snapshot')) {
+      throw new Error('Live graph source must declare reviewed snapshot publication');
+    }
+  }
+  if (!sourceIds.has(value.default)) throw new Error('Default static graph source is missing');
   return value;
 }
 
 function nonemptyString(value, label) {
   if (typeof value !== 'string' || value.trim().length === 0) throw new Error(`Invalid ${label}`);
   return value;
+}
+
+function canonicalInstant(value, label) {
+  const instant = nonemptyString(value, label);
+  const parsed = new Date(instant);
+  if (Number.isNaN(parsed.valueOf()) || parsed.toISOString() !== instant) throw new Error(`Invalid ${label}`);
+  return instant;
 }
 
 function validateGraphSnapshot(value) {
@@ -73,11 +99,41 @@ function validateGraphSnapshot(value) {
 
 function validatePublishedDatabaseSnapshot(value) {
   const snapshot = validateGraphSnapshot(value);
-  for (const node of snapshot.elements.nodes) {
-    if (node.data.is_public !== true) throw new Error('Database graph node is not public');
-    if (!['accepted', 'edited'].includes(node.data.review_state)) {
-      throw new Error('Database graph node is not reviewed');
+  for (const item of [...snapshot.elements.nodes, ...snapshot.elements.edges]) {
+    if (item.data.is_public !== true) throw new Error('Database graph item is not public');
+    if (!REVIEWED_ITEM_STATES.has(item.data.review_state)) {
+      throw new Error('Database graph item is not reviewed');
     }
+  }
+  return snapshot;
+}
+
+function validatePublishedLiveSnapshot(value, source) {
+  const snapshot = validateGraphSnapshot(value);
+  for (const item of [...snapshot.elements.nodes, ...snapshot.elements.edges]) {
+    if (item.data.is_public !== true) throw new Error('Live graph item is not public');
+    if (!REVIEWED_ITEM_STATES.has(item.data.review_state)) {
+      throw new Error('Live graph item is not reviewed');
+    }
+  }
+  if (snapshot.meta.live !== true || snapshot.meta.source_review_status !== 'reviewed'
+    || snapshot.meta.requires_publication_review !== false) {
+    throw new Error('Live graph snapshot is not publication-ready');
+  }
+  const expectedPublicationMode = LIVE_PUBLICATION_MODES.get(snapshot.meta.publication_status);
+  if (!expectedPublicationMode || !isRecord(snapshot.meta.publication)
+    || snapshot.meta.publication.mode !== expectedPublicationMode) {
+    throw new Error('Live graph publication metadata is invalid');
+  }
+  nonemptyString(snapshot.meta.publication.approved_identity_kind, 'live graph approval identity kind');
+  canonicalInstant(snapshot.meta.publication.approved_at, 'live graph approval time');
+  if (!isRecord(snapshot.meta.source) || snapshot.meta.source.source_id !== source.id) {
+    throw new Error('Live graph source identity does not match the manifest');
+  }
+  if (!isRecord(snapshot.meta.counts)
+    || snapshot.meta.counts.nodes !== snapshot.elements.nodes.length
+    || snapshot.meta.counts.edges !== snapshot.elements.edges.length) {
+    throw new Error('Live graph snapshot counts do not match its elements');
   }
   return snapshot;
 }
@@ -200,13 +256,16 @@ export function createWorkshopGraphSourceAdapter({
     }
     const dataPath = nonemptyString(source.data, 'static graph source path');
     const separator = dataPath.includes('?') ? '&' : '?';
-    const payload = validateGraphSnapshot(await fetchJson({
+    const fetched = await fetchJson({
       fetchImpl,
       url: `${dataPath}${separator}_=${now()}`,
       attempts: 2,
       timeoutMs,
       retryDelayMs,
-    }));
+    });
+    const payload = source.category === 'live'
+      ? validatePublishedLiveSnapshot(fetched, source)
+      : validateGraphSnapshot(fetched);
     return { payload, diagnostics: graphDiagnostics(payload, 'static', null) };
   }
 

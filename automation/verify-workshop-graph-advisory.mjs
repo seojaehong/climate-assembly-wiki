@@ -3,15 +3,19 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { chromium } from 'playwright';
 
-const OUTPUT_PATH = 'evaluation/2026-08-11-workshop-graph-advisory-browser.json';
-const SCREENSHOT_PATH = 'evaluation/2026-08-11-workshop-graph-advisory-browser.png';
+const OUTPUT_PATH = 'evaluation/2026-08-14-workshop-graph-reviewed-snapshot-browser.json';
+const SCREENSHOT_PATH = 'evaluation/2026-08-14-workshop-graph-reviewed-snapshot-browser.png';
 const BASE_URL = 'http://127.0.0.1:4323';
 const SOURCE_A = 'workshop-2026-06-13';
 const SOURCE_B = 'regulation-2026-06-13';
 const SOURCE_INVALID = 'source-coverage-2026-06-13';
+const SOURCE_REVIEWED = 'live-transcript-r2-reviewed';
 const SOURCE_FILES = [
   'public/workshop-graph/index.html',
   'public/workshop-graph/graph-advisory-assets.js',
+  'public/workshop-graph/graph-source-adapter.js',
+  'public/workshop-graph/sources.json',
+  'public/workshop-graph/data/live-transcript-r2-reviewed.json',
   'automation/verify-workshop-graph-advisory.mjs',
 ];
 
@@ -82,8 +86,6 @@ try {
   await page.waitForFunction(() => document.querySelector('#og-side')?.textContent?.includes('두 번째 권고 후보'));
   const secondPanel = await side.textContent();
   const secondPanelOpen = !(await side.evaluate(element => element.classList.contains('collapsed')));
-  await page.screenshot({ path: SCREENSHOT_PATH, fullPage: true });
-
   await page.locator('#og-source').selectOption(SOURCE_INVALID);
   await page.waitForFunction(source => window.__ontologyGraphDebug?.getState().curSource === source, SOURCE_INVALID);
   await page.waitForFunction(() => document.querySelector('#og-assets-btn')?.style.display === 'none');
@@ -109,16 +111,43 @@ try {
     element.dataset.content === 'node' && !element.classList.contains('collapsed') && element.textContent.includes(label)
   ), fixedNodeLabel);
 
+  await page.locator('#og-source').selectOption(SOURCE_REVIEWED);
+  await page.waitForFunction(source => window.__ontologyGraphDebug?.getState().curSource === source, SOURCE_REVIEWED);
+  await page.waitForFunction(() => document.querySelector('#og-footer-note')?.textContent?.includes('합성 전사 검수 데모'));
+  const reviewedSnapshot = await page.evaluate(() => {
+    const cy = window.__ontologyGraphDebug.getCy();
+    const nodes = cy.nodes().filter(node => !node.data('isGroup')).map(node => node.data());
+    const edges = cy.edges().map(edge => edge.data());
+    return {
+      nodeCount: nodes.length,
+      edgeCount: edges.length,
+      allItemsPublic: [...nodes, ...edges].every(item => item.is_public === true),
+      allItemsReviewed: [...nodes, ...edges].every(item => ['accepted', 'edited'].includes(item.review_state)),
+      footer: document.querySelector('#og-footer-note')?.textContent || '',
+      advisory: document.querySelector('#og-advisory')?.textContent || '',
+    };
+  });
+  const reviewedSource = catalog.sources.find(source => source.id === SOURCE_REVIEWED);
+  await page.screenshot({ path: SCREENSHOT_PATH, fullPage: true });
+
   const localHashes = Object.fromEntries(SOURCE_FILES.map(path => [path, sha256(readFileSync(path))]));
-  const servedIndex = await (await page.request.get(`${BASE_URL}/workshop-graph/index.html`)).body();
-  const servedAdvisory = await (await page.request.get(`${BASE_URL}/workshop-graph/graph-advisory-assets.js`)).body();
-  const servedHashesMatch = sha256(servedIndex) === localHashes['public/workshop-graph/index.html']
-    && sha256(servedAdvisory) === localHashes['public/workshop-graph/graph-advisory-assets.js'];
+  const servedPaths = SOURCE_FILES.filter(path => path.startsWith('public/workshop-graph/'));
+  const servedHashes = Object.fromEntries(await Promise.all(servedPaths.map(async path => {
+    const publicPath = path.replace(/^public/, '');
+    const body = await (await page.request.get(`${BASE_URL}${publicPath}`)).body();
+    return [path, sha256(body)];
+  })));
+  const servedHashesMatch = servedPaths.every(path => servedHashes[path] === localHashes[path]);
   const result = {
     checkedAt: new Date().toISOString(), url: page.url(), verifier: 'automation/verify-workshop-graph-advisory.mjs',
     sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
     chromiumVersion, sourceHashes: localHashes, servedHashesMatch,
     fixtures: { sourceA: SOURCE_A, candidateA: 'candidate-a-rec', sourceB: SOURCE_B, candidateB: 'candidate-b-rec', invalidSource: SOURCE_INVALID },
+    reviewedPublicSnapshot: {
+      sourceId: SOURCE_REVIEWED,
+      manifestPublicationMode: reviewedSource?.publicationMode || null,
+      ...reviewedSnapshot,
+    },
     validCandidate: {
       metadata: firstMetadata, humanReviewRequired: firstPanel.includes('사람 검수 필요'),
       recommendationCandidateVisible: firstPanel.includes('첫 번째 권고 후보'), qualitySignalVisible: firstPanel.includes('품질 신호'),
@@ -135,12 +164,16 @@ try {
       advisoryContentAbsent: !invalidPanel.includes('두 번째 권고 후보'), overviewRestored: stalePanelCleared,
     },
     unrelatedNodePanel: { label: fixedNodeLabel, preservedAcrossSourceChange: nodePanelPreserved },
-    pageErrors, consoleErrorCount: consoleErrors.length,
+    pageErrors, consoleErrors, consoleErrorCount: consoleErrors.length,
   };
   result.passed = Object.values(result.validCandidate).every(Boolean)
     && Object.values(result.validToValidTransition).every(Boolean)
     && result.invalidAssetTransition.formatErrorVisible && result.invalidAssetTransition.advisoryContentAbsent
     && result.invalidAssetTransition.overviewRestored && result.unrelatedNodePanel.preservedAcrossSourceChange
+    && result.reviewedPublicSnapshot.manifestPublicationMode === 'reviewed_snapshot'
+    && result.reviewedPublicSnapshot.nodeCount > 0 && result.reviewedPublicSnapshot.edgeCount > 0
+    && result.reviewedPublicSnapshot.allItemsPublic && result.reviewedPublicSnapshot.allItemsReviewed
+    && result.reviewedPublicSnapshot.footer.includes('합성 전사 검수 데모')
     && result.servedHashesMatch && result.pageErrors.length === 0 && result.consoleErrorCount === 1;
   writeFileSync(OUTPUT_PATH, `${JSON.stringify(result, null, 2)}\n`);
   if (!result.passed) throw new Error('Workshop graph advisory browser verification failed');
