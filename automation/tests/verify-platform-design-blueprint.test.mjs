@@ -1,12 +1,27 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
+  ACCESS_PLAN_ROUTE,
   DESIGN_BLUEPRINT_ROUTE,
   PUBLISH_CONSOLE_ROUTE,
   REVIEW_CONSOLE_ROUTE,
   isDatabaseMutationRequest,
+  validateDownloadedAccessPlan,
   validateDownloadedBlueprint,
 } from '../verify-platform-design-blueprint.mjs';
+
+const validAccessPlan = {
+  schemaVersion: 1,
+  kind: 'platform-organization-access-plan',
+  organization: { id: '00000000-0000-4000-8000-000000000002', label: '내 기관' },
+  invitations: [{ email: 'staff@example.invalid', role: 'org_admin' }],
+  memberships: [{ userId: '00000000-0000-4000-8000-000000000001', role: 'hq' }],
+  dryRun: true,
+  authAccountsCreated: false,
+  invitationsSent: false,
+  databaseMutationExecuted: false,
+  requiresApproval: true,
+};
 
 const validBlueprint = {
   schemaVersion: 4,
@@ -76,6 +91,25 @@ describe('validateDownloadedBlueprint', () => {
   });
 });
 
+describe('validateDownloadedAccessPlan', () => {
+  it('accepts the organization-bound non-mutating plan', () => {
+    expect(validateDownloadedAccessPlan(validAccessPlan)).toEqual({ invitationCount: 1, membershipCount: 1 });
+  });
+
+  it('rejects mutation, delivery, organization, and payload drift', () => {
+    expect(() => validateDownloadedAccessPlan({ ...validAccessPlan, invitationsSent: true }))
+      .toThrow('Downloaded access plan violates the approval boundary');
+    expect(() => validateDownloadedAccessPlan({
+      ...validAccessPlan,
+      organization: { ...validAccessPlan.organization, id: '00000000-0000-4000-8000-000000000099' },
+    })).toThrow('Downloaded access plan organization does not match the authenticated fixture');
+    expect(() => validateDownloadedAccessPlan({
+      ...validAccessPlan,
+      memberships: [{ ...validAccessPlan.memberships[0], role: 'operator' }],
+    })).toThrow('Downloaded access plan membership does not match the verified input');
+  });
+});
+
 describe('isDatabaseMutationRequest', () => {
   it('allows fixture read RPCs but blocks REST mutations', () => {
     expect(isDatabaseMutationRequest('POST', '/rest/v1/rpc/org_of_uid')).toBe(false);
@@ -95,10 +129,11 @@ describe('design blueprint browser CI contract', () => {
       'utf8',
     );
     expect(DESIGN_BLUEPRINT_ROUTE).toBe('/platform/o/00000000-0000-4000-8000-000000000002/c/audit-assembly/design');
+    expect(ACCESS_PLAN_ROUTE).toBe('/platform/o/00000000-0000-4000-8000-000000000002/access');
     expect(REVIEW_CONSOLE_ROUTE).toContain('/t/00000000-0000-4000-8000-000000000005/review');
     expect(PUBLISH_CONSOLE_ROUTE).toContain('/t/00000000-0000-4000-8000-000000000005/publish');
     expect(workflow).toContain('node verify-platform-design-blueprint.mjs');
-    expect(workflow).toContain('Verify auth, design, review, and publish interactions');
+    expect(workflow).toContain('Verify auth, access, design, review, and publish interactions');
     expect(workflow).toContain('.artifacts/platform-design-blueprint-browser.json');
     expect(workflow.indexOf('Start preview server')).toBeLessThan(
       workflow.indexOf('node verify-platform-design-blueprint.mjs'),
@@ -121,12 +156,16 @@ describe('design blueprint browser CI contract', () => {
     expect(verifier).toContain("getByRole('form', { name: '운영진 로그인' })");
     expect(verifier).toContain('element.requestSubmit();');
     expect(verifier).toContain('verifyPlatformSessionIsolation({ browser, origin, timeoutMs })');
+    expect(verifier).toContain('verifyPlatformAccessPlan({ browser, origin, timeoutMs })');
+    expect(verifier).toContain("getByRole('heading', { name: '승인 전 접근 계획' })");
+    expect(verifier).toContain("getByRole('alert').filter({ hasText: '같은 이메일과 역할의 초대가 중복되었습니다.' })");
+    expect(verifier).toContain('localDraftClearedOnReload');
     expect(verifier).toContain("getByLabel('HQ 인증 토큰').count() === 0");
     expect(verifier).toContain("getByLabel('공개 결과 제목').count() === 0");
     expect(verifier).toContain("sessionStorage.getItem('climate_vote_hq_attendance_token') === null");
     expect(verifier).toContain("sessionStorage.getItem('climate_vote_hq_gate_actor') === null");
     expect(verifier).toContain("pathname.replace(/\\/+$/, '') === '/platform'");
     expect(verifier).toContain('logoutRequests.length !== 1');
-    expect(verifier).toContain('schemaVersion: 8');
+    expect(verifier).toContain('schemaVersion: 9');
   });
 });

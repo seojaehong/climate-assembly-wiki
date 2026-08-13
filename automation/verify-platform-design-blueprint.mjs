@@ -14,6 +14,7 @@ import {
 const PLATFORM_ENTRY_ROUTE = '/platform/';
 const FIXTURE_SUPABASE_ORIGIN = 'https://pleyuknjnprsckssxvrh.supabase.co';
 export const DESIGN_BLUEPRINT_ROUTE = `/platform/o/${FIXTURE_IDS.org}/c/audit-assembly/design`;
+export const ACCESS_PLAN_ROUTE = `/platform/o/${FIXTURE_IDS.org}/access`;
 export const REVIEW_CONSOLE_ROUTE = `/platform/o/${FIXTURE_IDS.org}/c/audit-assembly/s/audit-session/t/${FIXTURE_IDS.topic}/review`;
 export const PUBLISH_CONSOLE_ROUTE = `/platform/o/${FIXTURE_IDS.org}/c/audit-assembly/s/audit-session/t/${FIXTURE_IDS.topic}/publish`;
 const READ_RPCS = new Set(['/rest/v1/rpc/org_of_uid', '/rest/v1/rpc/readiness_check']);
@@ -158,6 +159,43 @@ export function validateDownloadedBlueprint(value) {
     if (stats[key] !== expected) throw new Error(`Downloaded blueprint has invalid ${key}`);
   }
   return expectedStats;
+}
+
+/** Validates the downloaded, non-mutating organization access plan used by the browser verifier. */
+export function validateDownloadedAccessPlan(value) {
+  const plan = requireRecord(value, 'Downloaded access plan');
+  if (
+    plan.schemaVersion !== 1
+    || plan.kind !== 'platform-organization-access-plan'
+    || plan.dryRun !== true
+    || plan.authAccountsCreated !== false
+    || plan.invitationsSent !== false
+    || plan.databaseMutationExecuted !== false
+    || plan.requiresApproval !== true
+  ) {
+    throw new Error('Downloaded access plan violates the approval boundary');
+  }
+  const organization = requireRecord(plan.organization, 'Downloaded access plan organization');
+  if (organization.id !== FIXTURE_IDS.org || organization.label !== '내 기관') {
+    throw new Error('Downloaded access plan organization does not match the authenticated fixture');
+  }
+  if (
+    !Array.isArray(plan.invitations)
+    || plan.invitations.length !== 1
+    || plan.invitations[0]?.email !== 'staff@example.invalid'
+    || plan.invitations[0]?.role !== 'org_admin'
+  ) {
+    throw new Error('Downloaded access plan invitation does not match the verified input');
+  }
+  if (
+    !Array.isArray(plan.memberships)
+    || plan.memberships.length !== 1
+    || plan.memberships[0]?.userId !== FIXTURE_IDS.user
+    || plan.memberships[0]?.role !== 'hq'
+  ) {
+    throw new Error('Downloaded access plan membership does not match the verified input');
+  }
+  return { invitationCount: plan.invitations.length, membershipCount: plan.memberships.length };
 }
 
 /** Distinguishes read-only fixture RPCs from any REST mutation attempt. */
@@ -594,6 +632,144 @@ export async function verifyPublishConsoleLock({ browser, origin, timeoutMs = 60
   }
 }
 
+/** Exercises the organization-root access plan without sending credentials, email, or database mutations. */
+export async function verifyPlatformAccessPlan({ browser, origin, timeoutMs = 60_000 }) {
+  const context = await browser.newContext({ acceptDownloads: true, viewport: { width: 1280, height: 900 } });
+  const page = await context.newPage();
+  const browserErrors = [];
+  const fixtureFailures = [];
+  const mutationAttempts = [];
+  page.on('pageerror', (error) => browserErrors.push(error.message));
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.hostname === 'pleyuknjnprsckssxvrh.supabase.co'
+      && isDatabaseMutationRequest(request.method(), url.pathname)) {
+      mutationAttempts.push({ method: request.method(), path: url.pathname });
+    }
+  });
+  page.on('response', (response) => {
+    if (response.url().includes('pleyuknjnprsckssxvrh.supabase.co') && response.status() >= 400) {
+      fixtureFailures.push({ status: response.status(), path: new URL(response.url()).pathname });
+    }
+  });
+
+  try {
+    await prepareAuthenticatedPlatform({ context, page });
+    const response = await page.goto(new URL(PLATFORM_ENTRY_ROUTE, origin).toString(), {
+      waitUntil: 'domcontentloaded',
+      timeout: timeoutMs,
+    });
+    if (!response?.ok()) throw new Error(`Access plan page returned HTTP ${response?.status() ?? 'unknown'}`);
+    await page.getByRole('button', { name: '접근 관리', exact: true }).click();
+    await page.waitForURL((url) => url.pathname === ACCESS_PLAN_ROUTE, { timeout: timeoutMs });
+    await page.getByRole('heading', { name: '기관 역할·초대 계획' }).waitFor({ timeout: timeoutMs });
+
+    const invitationEmail = page.getByLabel('초대 이메일');
+    const invitationRole = page.getByLabel('초대 역할');
+    const membershipUserId = page.getByLabel('Auth 사용자 UUID');
+    const membershipRole = page.getByLabel('membership 역할');
+    const validateButton = page.getByRole('button', { name: '계획 검증', exact: true });
+    const downloadButton = page.getByRole('button', { name: '검증된 JSON 다운로드', exact: true });
+
+    await invitationEmail.fill('not-an-email');
+    await page.getByRole('button', { name: '초대 계획 추가', exact: true }).click();
+    await validateButton.click();
+    const invalidInputAlert = page.getByRole('alert').filter({ hasText: '초대 이메일과 역할을 확인하세요.' });
+    await invalidInputAlert.waitFor({ timeout: timeoutMs });
+    const invalidInputRejected = await invalidInputAlert.isVisible() && await downloadButton.isDisabled();
+    await page.getByRole('list', { name: '추가한 이메일 초대' }).getByRole('button', { name: '제거' }).click();
+
+    for (let index = 0; index < 2; index += 1) {
+      await invitationEmail.fill(' Staff@Example.Invalid ');
+      await invitationRole.selectOption('org_admin');
+      await page.getByRole('button', { name: '초대 계획 추가', exact: true }).click();
+    }
+    await validateButton.click();
+    const duplicateAlert = page.getByRole('alert').filter({ hasText: '같은 이메일과 역할의 초대가 중복되었습니다.' });
+    await duplicateAlert.waitFor({ timeout: timeoutMs });
+    const duplicateRejected = await duplicateAlert.isVisible() && await downloadButton.isDisabled();
+    const invitationList = page.getByRole('list', { name: '추가한 이메일 초대' });
+    await invitationList.getByRole('button', { name: '제거' }).last().click();
+
+    await membershipUserId.fill(FIXTURE_IDS.user);
+    await membershipRole.selectOption('hq');
+    await page.getByRole('button', { name: 'membership 계획 추가', exact: true }).click();
+    await validateButton.click();
+    await page.getByRole('heading', { name: '승인 전 접근 계획' }).waitFor({ timeout: timeoutMs });
+    const previewReady = await page.getByText('초대 1건 · 기존 계정 역할 부여 1건', { exact: true }).isVisible()
+      && await page.getByText('아직 Auth 계정 생성·초대 발송·DB 변경을 수행하지 않았습니다.', { exact: true }).isVisible()
+      && !await downloadButton.isDisabled();
+
+    await invitationEmail.fill('temporary@example.invalid');
+    const editInvalidated = await page.getByRole('heading', { name: '승인 전 접근 계획' }).count() === 0
+      && await downloadButton.isDisabled();
+    await invitationEmail.fill('');
+    await validateButton.click();
+    await page.getByRole('heading', { name: '승인 전 접근 계획' }).waitFor({ timeout: timeoutMs });
+
+    const downloadPromise = page.waitForEvent('download');
+    await downloadButton.click();
+    const download = await downloadPromise;
+    const downloadJson = await readDownloadJson(download);
+    const exportedStats = validateDownloadedAccessPlan(downloadJson);
+    const filename = download.suggestedFilename();
+    const storageBeforeReload = await page.evaluate(() => ({
+      local: Object.keys(localStorage).sort(),
+      session: Object.keys(sessionStorage).sort(),
+    }));
+
+    await page.goto(new URL(PLATFORM_ENTRY_ROUTE, origin).toString(), { waitUntil: 'domcontentloaded', timeout: timeoutMs });
+    await page.getByRole('button', { name: '접근 관리', exact: true }).click();
+    await page.waitForURL((url) => url.pathname === ACCESS_PLAN_ROUTE, { timeout: timeoutMs });
+    await page.getByRole('heading', { name: '기관 역할·초대 계획' }).waitFor({ timeout: timeoutMs });
+    const localDraftClearedOnReload = await page.getByLabel('초대 이메일').inputValue() === ''
+      && await page.getByLabel('Auth 사용자 UUID').inputValue() === ''
+      && await page.getByRole('list', { name: '추가한 이메일 초대' }).count() === 0
+      && await page.getByRole('list', { name: '추가한 기존 계정 역할' }).count() === 0;
+
+    if (!invalidInputRejected) throw new Error('Access plan did not reject an invalid invitation email');
+    if (!duplicateRejected) throw new Error('Access plan did not reject a duplicate invitation');
+    if (!previewReady) throw new Error('Access plan preview did not expose the approval boundary');
+    if (!editInvalidated) throw new Error('Editing did not invalidate the access plan preview');
+    if (filename !== `내-기관_${FIXTURE_IDS.org}_access-plan.json`) throw new Error('Access plan filename is invalid');
+    if (storageBeforeReload.local.length !== 1
+      || storageBeforeReload.local[0] !== 'sb-pleyuknjnprsckssxvrh-auth-token'
+      || storageBeforeReload.session.length !== 0) {
+      throw new Error('Access plan persisted draft data in browser storage');
+    }
+    if (!localDraftClearedOnReload) throw new Error('Access plan retained local draft state after reload');
+    if (browserErrors.length > 0) throw new Error('Access plan verification observed a browser error');
+    if (fixtureFailures.length > 0) throw new Error('Access plan verification observed an unexpected fixture request');
+    if (mutationAttempts.length > 0) throw new Error('Access plan verification observed a database mutation attempt');
+
+    return {
+      path: ACCESS_PLAN_ROUTE,
+      fixture: 'ci-staff-read-fixture-v1',
+      documentStatus: response.status(),
+      invalidInputRejected,
+      duplicateRejected,
+      previewReady,
+      editInvalidated,
+      downloadedFilename: filename,
+      exportedStats,
+      approvalBoundary: {
+        dryRun: downloadJson.dryRun,
+        authAccountsCreated: downloadJson.authAccountsCreated,
+        invitationsSent: downloadJson.invitationsSent,
+        databaseMutationExecuted: downloadJson.databaseMutationExecuted,
+        requiresApproval: downloadJson.requiresApproval,
+      },
+      browserStorageKeys: storageBeforeReload,
+      localDraftClearedOnReload,
+      browserPageErrorCount: browserErrors.length,
+      fixtureFailureCount: fixtureFailures.length,
+      databaseMutationAttemptCount: mutationAttempts.length,
+    };
+  } finally {
+    await context.close();
+  }
+}
+
 /** Exercises the authenticated production component while all Supabase traffic is fixture-bound. */
 export async function verifyPlatformDesignBlueprint({
   baseUrl,
@@ -790,13 +966,14 @@ export async function verifyPlatformDesignBlueprint({
     if (fixtureFailures.length > 0) throw new Error('Design blueprint verification observed an unexpected fixture request');
     if (mutationAttempts.length > 0) throw new Error('Design blueprint verification observed a database mutation attempt');
 
+    const accessPlan = await verifyPlatformAccessPlan({ browser, origin, timeoutMs });
     const authLock = await verifyPlatformAuthLock({ browser, origin, timeoutMs });
     const sessionIsolation = await verifyPlatformSessionIsolation({ browser, origin, timeoutMs });
     const reviewRace = await verifyReviewConsoleRace({ browser, origin, timeoutMs });
     const publishLock = await verifyPublishConsoleLock({ browser, origin, timeoutMs });
 
     const report = {
-      schemaVersion: 8,
+      schemaVersion: 9,
       generatedAt: new Date().toISOString(),
       baseUrl: origin.origin,
       path: DESIGN_BLUEPRINT_ROUTE,
@@ -841,6 +1018,7 @@ export async function verifyPlatformDesignBlueprint({
         browserPageErrorCount: browserErrors.length,
         fixtureFailureCount: fixtureFailures.length,
         databaseMutationAttemptCount: mutationAttempts.length,
+        accessPlan,
         authLock,
         sessionIsolation,
         reviewRace,

@@ -96,7 +96,7 @@ jobs:
         run: |
           rm -f ../.artifacts/platform-accessibility-audit.json
           npm run audit:platform-accessibility
-      - name: Verify auth, design, review, and publish interactions
+      - name: Verify auth, access, design, review, and publish interactions
         working-directory: automation
         env:
           PLATFORM_A11Y_BASE_URL: http://127.0.0.1:4321
