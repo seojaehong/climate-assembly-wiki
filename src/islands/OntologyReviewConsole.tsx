@@ -167,28 +167,62 @@ export function FacilitationPromptPanel({ prompts }: { prompts: CanvasFacilitati
       </details>
       {prompts.length > 0 ? (
         <ol style={{ display: 'grid', gap: 12, margin: 0, paddingLeft: 24 }}>
-          {prompts.map((prompt) => (
-            <li key={prompt.id}>
-              <strong>{prompt.question}</strong>
-              <div style={{ color: MUTED, lineHeight: 1.5, marginTop: 4 }}>{prompt.reason}</div>
-              <div style={{ color: MUTED, fontSize: 13, overflowWrap: 'anywhere' }}>
-                출처 세션 {prompt.sourceSessionId} · 원 agenda {prompt.sourceAgendaId} · 노드 {prompt.nodeId}
-              </div>
-              {prompt.relatedNodeIds.length > 0 ? (
+          {prompts.map((prompt) => {
+            const relatedNodeIds = [...new Set(prompt.relatedNodeIds.filter((nodeId) => nodeId !== prompt.nodeId))];
+            return (
+              <li key={prompt.id}>
+                <strong>{prompt.question}</strong>
+                <div style={{ color: MUTED, lineHeight: 1.5, marginTop: 4 }}>{prompt.reason}</div>
                 <div style={{ color: MUTED, fontSize: 13, overflowWrap: 'anywhere' }}>
-                  관련 노드 {prompt.relatedNodeIds.join(' · ')}
+                  출처 세션 {prompt.sourceSessionId} · 원 agenda {prompt.sourceAgendaId} · 노드 {prompt.nodeId}
                 </div>
-              ) : null}
-              <div style={{ color: MUTED, fontSize: 13, marginTop: 2 }}>원문: {prompt.sourceText}</div>
-            </li>
-          ))}
+                {prompt.relatedNodeIds.length > 0 ? (
+                  <div style={{ color: MUTED, fontSize: 13, overflowWrap: 'anywhere' }}>
+                    관련 노드 {prompt.relatedNodeIds.join(' · ')}
+                  </div>
+                ) : null}
+                <div style={{ color: MUTED, fontSize: 13, marginTop: 2 }}>원문: {prompt.sourceText}</div>
+                <div aria-label="진행 질문 관련 검수 카드" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 8 }}>
+                  {[prompt.nodeId, ...relatedNodeIds].map((nodeId, index) => {
+                    const anchorId = ontologyReviewNodeAnchorId(nodeId);
+                    return (
+                      <a
+                        key={nodeId}
+                        href={`#${anchorId}`}
+                        onClick={(event) => {
+                          const target = document.getElementById(anchorId);
+                          if (!target) {
+                            console.error('Ontology review node anchor is missing', { nodeId, anchorId });
+                            return;
+                          }
+                          event.preventDefault();
+                          target.focus();
+                          target.scrollIntoView({ block: 'center' });
+                          window.history.replaceState(null, '', `#${anchorId}`);
+                        }}
+                        style={{ color: '#0B4F6C', fontWeight: 800, textDecoration: 'underline', textUnderlineOffset: 3 }}
+                      >
+                        {index === 0 ? '출처 노드 보기' : `관련 노드 ${index} 보기`}
+                      </a>
+                    );
+                  })}
+                </div>
+              </li>
+            );
+          })}
         </ol>
       ) : <p style={{ margin: 0 }}>현재 검수 상태에서 추가 진행 질문이 없습니다.</p>}
     </section>
   );
 }
 
-function NodeReviewCard({ node, reviewer, onDecision }: {
+export function ontologyReviewNodeAnchorId(nodeId: string): string {
+  const encodedNodeId = Array.from(nodeId, (character) =>
+    (character.codePointAt(0) ?? 0).toString(16).padStart(6, '0')).join('');
+  return `ontology-review-node-${encodedNodeId}`;
+}
+
+export function NodeReviewCard({ node, reviewer, onDecision }: {
   node: CanvasOntologyNode;
   reviewer: string;
   onDecision: (decision: CanvasOntologyReviewDecision) => void;
@@ -202,7 +236,7 @@ function NodeReviewCard({ node, reviewer, onDecision }: {
   });
   const edited = label !== node.sourceText || text !== node.sourceText;
   return (
-    <article style={cardStyle} aria-label={`노드 검수 ${node.id}`}>
+    <article id={ontologyReviewNodeAnchorId(node.id)} tabIndex={-1} style={cardStyle} aria-label={`노드 검수 ${node.id}`}>
       <header>
         <strong>노드 · {node.reviewStatus === 'proposed' ? '미검수' : node.reviewStatus}</strong>
         <div style={{ color: MUTED, fontSize: 13, overflowWrap: 'anywhere' }}>{node.id}</div>

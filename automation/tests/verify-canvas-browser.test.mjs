@@ -151,6 +151,8 @@ async function fixtureServer({
           const downloadButton = document.querySelector('#download-plan');
           const promptCount = document.querySelector('#facilitation-prompt-count');
           const promptList = document.querySelector('#facilitation-prompt-list');
+          const nodeAnchorId = (nodeId) => \`ontology-review-node-\${Array.from(nodeId, (character) =>
+            character.codePointAt(0).toString(16).padStart(6, '0')).join('')}\`;
           let decisionCount = 0;
           let activePlan = null;
           let transcriptFixture = null;
@@ -325,6 +327,11 @@ async function fixtureServer({
             document.querySelectorAll('article[aria-label^="노드 검수"] input').forEach((input, index) => {
               input.value = activePlan.nodes[index].label;
             });
+            document.querySelectorAll('article[aria-label^="노드 검수"]').forEach((article, index) => {
+              article.id = nodeAnchorId(activePlan.nodes[index].id);
+              article.tabIndex = -1;
+              article.setAttribute('aria-label', \`노드 검수 \${activePlan.nodes[index].id}\`);
+            });
             document.querySelectorAll('[data-decision]').forEach((button) => { button.disabled = false; });
             decisionCount = 0;
             progress.textContent = '진행 0/5';
@@ -378,7 +385,19 @@ async function fixtureServer({
                 provenance.textContent = \`출처 세션 \${activePlan.nodes[1].sourceSessionId} · 원 agenda \${activePlan.nodes[1].sourceAgendaId} · 노드 \${activePlan.nodes[1].id}\`;
                 const source = document.createElement('div');
                 source.textContent = \`원문: \${activePlan.nodes[1].sourceText}\`;
-                item.append(question, provenance, source);
+                const sourceLink = document.createElement('a');
+                sourceLink.href = \`#\${nodeAnchorId(activePlan.nodes[1].id)}\`;
+                sourceLink.textContent = '출처 노드 보기';
+                sourceLink.addEventListener('click', (event) => {
+                  const target = document.getElementById(nodeAnchorId(activePlan.nodes[1].id));
+                  if (!target) {
+                    console.error('Ontology review node anchor is missing');
+                    return;
+                  }
+                  event.preventDefault();
+                  target.focus();
+                });
+                item.append(question, provenance, source, sourceLink);
                 promptList.replaceChildren(item);
                 promptCount.textContent = '현재 규칙으로 확인된 진행 질문 1개';
               }
@@ -464,6 +483,7 @@ describe('verifyCanvasBrowser', () => {
     expect(report.checks.reviewMixedDecisionStatesVerified).toBe(true);
     expect(report.checks.reviewReloadIsolationVerified).toBe(true);
     expect(report.checks.reviewFacilitationRuleCatalogVerified).toBe(true);
+    expect(report.checks.reviewFacilitationSourceFocusVerified).toBe(true);
     expect(report.checks.reviewedPlanDownloaded).toBe(true);
     expect(report.checks.reviewedPlanDecisionCount).toBe(5);
     expect(report.checks.linkedSurfaceStatuses).toEqual([

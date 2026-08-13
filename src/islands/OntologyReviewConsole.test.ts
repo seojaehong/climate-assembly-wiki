@@ -5,8 +5,10 @@ import OntologyReviewConsole, {
   completeOntologyWorkspaceLoad,
   completeTranscriptOntologyExport,
   FacilitationPromptPanel,
+  NodeReviewCard,
+  ontologyReviewNodeAnchorId,
 } from './OntologyReviewConsole';
-import type { CanvasOntologyReviewWorkspace } from './canvas/ontology-review-workspace';
+import type { CanvasOntologyNode, CanvasOntologyReviewWorkspace } from './canvas/ontology-review-workspace';
 
 describe('OntologyReviewConsole', () => {
   it('starts as a local-only review import surface with explicit safety boundaries', () => {
@@ -66,6 +68,48 @@ describe('OntologyReviewConsole', () => {
     expect(html).toContain('적용 중인 질문 규칙 5개');
     expect(html).toContain('근거가 연결되지 않은 주장');
     expect(html).toContain('이름 붙이지 않은 가치 긴장');
+  });
+
+  it('links every facilitation prompt provenance node to a focusable review card', () => {
+    const promptHtml = renderToStaticMarkup(createElement(FacilitationPromptPanel, { prompts: [{
+      id: 'value-conflict:relation-1',
+      nodeId: 'canvas-agenda:value-a',
+      sourceAgendaId: 'value-a',
+      sourceSessionId: 'session-1',
+      sourceText: '형평성을 우선한다.',
+      relatedNodeIds: ['canvas-agenda:value-a', 'canvas-agenda:value-b', 'canvas-agenda:value-b'],
+      kind: 'value-conflict',
+      question: '두 가치의 긴장을 어떤 말로 이름 붙이면 좋을까요?',
+      reason: '검수된 Value가 opposes 관계입니다.',
+    }] }));
+    const node: CanvasOntologyNode = {
+      id: 'canvas-agenda:value-a',
+      sourceAgendaId: 'value-a',
+      sourceSessionId: 'session-1',
+      sourceText: '형평성을 우선한다.',
+      label: '형평성',
+      text: '형평성을 우선한다.',
+      kind: 'Value',
+      kindCandidates: ['Value'],
+      reviewStatus: 'accepted',
+      reviewer: 'moderator-role-1',
+      reviewedAt: '2026-08-29T01:00:00.000Z',
+    };
+    const cardHtml = renderToStaticMarkup(createElement(NodeReviewCard, {
+      node,
+      reviewer: 'moderator-role-1',
+      onDecision: () => undefined,
+    }));
+    const sourceAnchor = ontologyReviewNodeAnchorId(node.id);
+    const relatedAnchor = ontologyReviewNodeAnchorId('canvas-agenda:value-b');
+
+    expect(promptHtml).toContain(`href="#${sourceAnchor}"`);
+    expect(promptHtml).toContain(`href="#${relatedAnchor}"`);
+    expect(promptHtml.match(new RegExp(`href="#${relatedAnchor}"`, 'g'))).toHaveLength(1);
+    expect(promptHtml).toContain('출처 노드 보기');
+    expect(promptHtml).toContain('관련 노드 1 보기');
+    expect(cardHtml).toContain(`id="${sourceAnchor}"`);
+    expect(cardHtml).toContain('tabindex="-1"');
   });
 
   it('renders all five R5 facilitation prompt kinds as questions rather than decisions', () => {

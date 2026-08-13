@@ -559,7 +559,7 @@ npm.cmd --prefix automation run bridge:transcript-ontology -- --fixture fixtures
 - 승인된 근거 군집의 `Evidence` 일부가 `Claim`/`Issue`와 연결되지 않으면 각 근거의 대상과 공통점·차이를 명료화할 것을 제안한다.
 - 검수된 두 `Value`가 `opposes` 관계이면 어느 하나를 선택하라고 지시하지 않고 가치 긴장을 함께 이름 붙일 것을 제안한다.
 
-모든 제안은 질문형이며 이유, source session·agenda·node ID, 관련 node ID와 원문을 함께 표시한다. 미검수·반려 상태는 근거로 쓰지 않고, 질문은 review plan·DB·browser storage·public graph에 저장하지 않는다. 이는 moderator 지원 규칙이며 합의문·진실·우선순위를 자동 결정하지 않는다.
+모든 제안은 질문형이며 이유, source session·agenda·node ID, 관련 node ID와 원문을 함께 표시한다. 출처·관련 node 링크는 결정적 fragment를 사용해 같은 페이지의 focusable 검수 카드로 이동하며 중복 node ID는 한 번만 노출한다. 브라우저 verifier는 질문 출처 링크를 실행한 뒤 정확한 node 검수 카드가 포커스를 받는지 확인한다. 미검수·반려 상태는 근거로 쓰지 않고, 질문은 review plan·DB·browser storage·public graph에 저장하지 않는다. 이는 moderator 지원 규칙이며 합의문·진실·우선순위를 자동 결정하지 않는다.
 
 ## 알림 레벨 정책
 

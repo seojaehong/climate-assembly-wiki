@@ -107,7 +107,9 @@ CLI `--reviewed-plan` 경로에서 source 불변식을 다시 검증해야 한�
 명료화를 제안한다. 승인된 두 `Value`가 `opposes` 관계로 연결되면 어느 한쪽을 선호로 축약하지 않고 가치 긴장을
 함께 이름 붙일 것을 제안한다. 제안·반려·미검수 node/relation/cluster는 질문 근거에서 제외하며, 각 질문은
 source session·agenda·node ID, 관련 node ID와 원문을 표시한다. 질문은 브라우저 메모리에서 계산할 뿐
-review plan, DB, browser storage 또는 공개 graph에 쓰지 않는다.
+review plan, DB, browser storage 또는 공개 graph에 쓰지 않는다. 표시된 출처 node와 관련 node는
+각 검수 카드의 결정적 fragment로 연결하며, 링크를 실행하면 해당 카드를 키보드 포커스로 이동한다.
+같은 node ID가 출처와 관련 목록에 중복되어도 링크는 한 번만 표시한다.
 
 ## Failure modes
 

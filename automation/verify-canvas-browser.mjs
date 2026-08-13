@@ -551,11 +551,15 @@ export async function verifyCanvasBrowser({
       `원문: ${REVIEW_RELOAD_SNAPSHOT.payload.agenda[1].text}`,
       { exact: true },
     ).isVisible();
+    await reviewPage.getByRole('link', { name: '출처 노드 보기', exact: true }).click();
+    const reviewFacilitationSourceFocusVerified = await reviewPage.evaluate(() => (
+      document.activeElement?.getAttribute('aria-label') === '노드 검수 canvas-agenda:action-1'
+    ));
     if (!reviewFacilitationPromptVerified) {
       throw new Error('Ontology review facilitation prompt contract is invalid');
     }
     if (!reviewFacilitationLiveCountVerified || !reviewFacilitationRuleCatalogVerified
-      || !reviewFacilitationProvenanceVerified) {
+      || !reviewFacilitationProvenanceVerified || !reviewFacilitationSourceFocusVerified) {
       throw new Error('Ontology review facilitation prompt evidence is incomplete');
     }
     if (screenshot) await reviewPage.screenshot({ path: screenshot, fullPage: true });
@@ -658,6 +662,7 @@ export async function verifyCanvasBrowser({
         reviewFacilitationLiveCountVerified,
         reviewFacilitationRuleCatalogVerified,
         reviewFacilitationProvenanceVerified,
+        reviewFacilitationSourceFocusVerified,
         reviewedPlanDownloaded,
         reviewedPlanDecisionCount,
         linkedSurfaceStatuses,
