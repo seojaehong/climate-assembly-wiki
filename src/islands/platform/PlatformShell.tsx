@@ -594,7 +594,7 @@ function tabStyle(active: boolean): React.CSSProperties {
 }
 
 function viewLabel(v: string): string {
-  return ({ access: '접근 관리', design: '설계', record: '기록', vote: '투표', analyze: '분석', review: '검수', publish: '공개' } as Record<string, string>)[v] ?? v;
+  return ({ access: '접근 관리', record: '기록', vote: '투표', analyze: '분석', review: '검수', publish: '공개' } as Record<string, string>)[v] ?? v;
 }
 
 function kindIcon(kind: TreeNode['kind']): string {
