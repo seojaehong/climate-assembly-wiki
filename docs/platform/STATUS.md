@@ -67,6 +67,7 @@
 - **A5 수동 평가 증거 게이트**: `evaluation/platform-accessibility-manual-evaluation.json`은 같은 6개 표면을 데스크톱·모바일 스크린리더 프로필로 평가하는 12개 케이스와 48개 필수 검사를 추적한다. `automation/platform-accessibility-manual-evidence.mjs`는 누락·중복·불완전 환경정보·설명 없는 실패를 거부하고, 모든 검사가 `pass`가 되기 전에는 `needs_review` 또는 `fail`을 유지한다. 현재는 실제 수동 평가 전이라 48개 모두 `not_run`이며 품질인증 완료를 주장하지 않는다.
 - 인증 셸과 공개 결과는 실제 production 컴포넌트에 CI 전용 읽기 응답을 주입하고 readiness selector 도달을 필수로 한다. fixture 이름·준비 상태·axe `incomplete`·뷰포트·문서 폭을 JSON에 보존한다. 스크린리더·실제 모바일 보조기기 전수 수동평가와 공식 품질인증은 완료로 간주하지 않는다.
 - **A7 XAI 산정 설명**: 공개 결과가 현재 스냅샷의 쟁점·미분류 원문·참여 조·합의 분모·HITL 검수 건수를 사용해 범위→집계→분류→검수 과정을 수치로 설명한다. 개별 원문 역링크와 이행추적은 공개 payload에 근거 데이터가 없어 완료로 간주하지 않으며, 데이터 계약과 DB 변경 승인 뒤 별도 구현한다.
+- **A7 공개 출처 plan preflight**: `platform-result-source-plan.mjs`가 캡처된 `result_get`과 스코프 내 `issue_items`를 로컬에서 대조해 쟁점별 조 집합·cluster 보정 분모·전체 미분류 건수를 재계산한다. 불일치·주제 누락·중복 링크·교차 주제 연결·DB vocabulary 밖 값을 plan 생성 전에 fail-closed하고, 출력에는 원문 대신 issue/item/submission/cluster 안정 ID와 content SHA-256만 보존한다. plan은 canonical self-checksum과 전체 재생성 검증을 제공하지만 `dryRun:true`, `databaseMutationExecuted:false`, `publicPayloadWritten:false`, `requiresApproval:true`이며 외부 서명·검수자 인증·공개 승인 증거가 아니다. 집중 10건, Windows browser 두 파일을 제외한 automation 222건, 루트 전체 904건과 Astro check 오류 0건이 통과했다. 무필터 Windows automation에서는 기존 Playwright 제한 10건이 timeout되어 별도 경계로 기록했다. 실제 시민 데이터 캡처, `result_page` 변경, 공개 역링크와 이행추적은 수행하지 않았고 atomic publish payload·public read route·DB/RPC 변경은 계속 사용자 승인 대상이다.
 
 ## 병합 전 게이트
 
