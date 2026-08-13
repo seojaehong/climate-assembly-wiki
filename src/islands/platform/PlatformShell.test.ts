@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { BreadcrumbNav, completeSignOut, DataTreeNavigation, LoginCard, LogoutNotice, PLATFORM_ACCENT, PLATFORM_CONTROL_BORDER, ViewTabs } from './PlatformShell';
+import { BreadcrumbNav, completeSignOut, DataTreeNavigation, LoginCard, LogoutNotice, PLATFORM_ACCENT, PLATFORM_CONTROL_BORDER, runExclusivePlatformOperation, ViewTabs } from './PlatformShell';
 import type { TreeNode } from './platform-nav-logic';
 import ScopeOutlet from './ScopeViews';
 import ReviewConsole, { completeReviewLoad, completeReviewMutation, loadReviewData, REVIEW_STATUS_GREEN, ReviewFlashNotice, ReviewIssueChoice, ReviewSourceCard, SourceReferenceList } from './review/ReviewConsole';
@@ -23,6 +23,14 @@ const tree: TreeNode = {
 };
 
 const navigate = () => undefined;
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
 
 function channel(hex: string, start: number): number {
   return Number.parseInt(hex.slice(start, start + 2), 16) / 255;
@@ -367,20 +375,69 @@ describe('PlatformShell accessibility', () => {
     expect(emptyHtml).toContain('aria-live="polite"');
   });
 
-  it('로그아웃 실패를 알리고 busy 상태를 항상 해제한다', async () => {
-    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  it('첫 await 전에 인증 작업을 잠가 같은 이벤트 루프의 중복 요청을 차단한다', async () => {
+    const lock = { current: false };
+    const gate = deferred<void>();
     const busyChanges: boolean[] = [];
+    let actionCount = 0;
+    const action = async () => {
+      actionCount += 1;
+      await gate.promise;
+    };
+
+    const first = runExclusivePlatformOperation(lock, action, (busy) => busyChanges.push(busy));
+    const duplicate = await runExclusivePlatformOperation(lock, action, (busy) => busyChanges.push(busy));
+
+    expect(duplicate).toBe(false);
+    expect(actionCount).toBe(1);
+    expect(lock.current).toBe(true);
+    expect(busyChanges).toEqual([true]);
+
+    gate.resolve();
+    await expect(first).resolves.toBe(true);
+    expect(lock.current).toBe(false);
+    expect(busyChanges).toEqual([true, false]);
+  });
+
+  it('인증 작업 예외 뒤에도 lock과 busy를 해제한다', async () => {
+    const lock = { current: false };
+    const busyChanges: boolean[] = [];
+
+    await expect(runExclusivePlatformOperation(
+      lock,
+      async () => { throw new Error('fixture auth failure'); },
+      (busy) => busyChanges.push(busy),
+    )).rejects.toThrow('fixture auth failure');
+
+    expect(lock.current).toBe(false);
+    expect(busyChanges).toEqual([true, false]);
+  });
+
+  it('로그인과 로그아웃이 각각 지속되는 동기 lock을 사용한다', () => {
+    const source = readFileSync(new URL('./PlatformShell.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('const operationLock = useRef(false);');
+    expect(source).toContain('const logoutLock = useRef(false);');
+    expect(source).toContain('busy || operationLock.current');
+    expect(source).toContain('logoutBusy || logoutLock.current');
+    expect(source).toContain('runExclusivePlatformOperation(\n      logoutLock,');
+  });
+
+  it('로그아웃 실패와 비어 있는 응답을 알린다', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const notices: Array<string | null> = [];
 
     try {
       await completeSignOut(
         async () => ({ data: null, notice: '로그아웃에 실패했습니다.' }),
-        (busy) => busyChanges.push(busy),
+        (notice) => notices.push(notice),
+      );
+      await completeSignOut(
+        async () => ({ data: null, notice: null }),
         (notice) => notices.push(notice),
       );
       await completeSignOut(
         async () => { throw new Error('network'); },
-        (busy) => busyChanges.push(busy),
         (notice) => notices.push(notice),
       );
     } finally {
@@ -388,10 +445,11 @@ describe('PlatformShell accessibility', () => {
     }
 
     const alertHtml = renderToStaticMarkup(createElement(LogoutNotice, { notice: notices.at(-1) ?? null }));
-    expect(busyChanges).toEqual([true, false, true, false]);
     expect(notices).toEqual([
       null,
       '로그아웃에 실패했습니다.',
+      null,
+      '로그아웃 응답을 확인하지 못했습니다.',
       null,
       '로그아웃 중 예상하지 못한 오류가 발생했습니다.',
     ]);

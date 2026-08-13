@@ -98,7 +98,7 @@ describe('design blueprint browser CI contract', () => {
     expect(REVIEW_CONSOLE_ROUTE).toContain('/t/00000000-0000-4000-8000-000000000005/review');
     expect(PUBLISH_CONSOLE_ROUTE).toContain('/t/00000000-0000-4000-8000-000000000005/publish');
     expect(workflow).toContain('node verify-platform-design-blueprint.mjs');
-    expect(workflow).toContain('Verify authenticated design, review, and publish interactions');
+    expect(workflow).toContain('Verify auth, design, review, and publish interactions');
     expect(workflow).toContain('.artifacts/platform-design-blueprint-browser.json');
     expect(workflow.indexOf('Start preview server')).toBeLessThan(
       workflow.indexOf('node verify-platform-design-blueprint.mjs'),
@@ -117,5 +117,8 @@ describe('design blueprint browser CI contract', () => {
     expect(verifier).toContain('publishRequests.length === 1');
     expect(verifier).toContain('unpublishRequests.length === 1');
     expect(verifier).toContain("getByLabel('공개 결과 제목').isDisabled()");
+    expect(verifier).toContain('loginRequests.length === 1');
+    expect(verifier).toContain("getByRole('form', { name: '운영진 로그인' })");
+    expect(verifier).toContain('element.requestSubmit();');
   });
 });

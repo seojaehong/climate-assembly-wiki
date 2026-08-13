@@ -8,7 +8,7 @@
 // 런타임 실패는 전부 notice 문구로 흡수한다(예외를 화면 밖으로 던지지 않는다).
 // 색·타이포는 /mod 콘솔 톤 준용.
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   parseScopePath,
   buildScopePath,
@@ -56,6 +56,28 @@ const ACCESSIBILITY_LINK_STYLE: React.CSSProperties = {
   textDecoration: 'underline',
   textUnderlineOffset: 3,
 };
+
+export interface PlatformOperationLock {
+  current: boolean;
+}
+
+/** Acquires a synchronous lock before the first await so one auth action cannot be submitted twice. */
+export async function runExclusivePlatformOperation(
+  lock: PlatformOperationLock,
+  action: () => Promise<void>,
+  onBusyChange: (busy: boolean) => void,
+): Promise<boolean> {
+  if (lock.current) return false;
+  lock.current = true;
+  onBusyChange(true);
+  try {
+    await action();
+    return true;
+  } finally {
+    lock.current = false;
+    onBusyChange(false);
+  }
+}
 
 function currentScope(): Scope {
   if (typeof window === 'undefined') return {};
@@ -112,16 +134,22 @@ export function LoginCard({ notice, onSignedIn }: { notice: string | null; onSig
   const [pw, setPw] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const operationLock = useRef(false);
 
   const submit = async (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!email.trim() || !pw) return;
-    setBusy(true);
-    setErr(null);
-    const r = await platformSignIn(email.trim(), pw);
-    setBusy(false);
-    if (r.data) onSignedIn(r.data);
-    else setErr(r.notice ?? '로그인에 실패했습니다.');
+    if (!email.trim() || !pw || busy || operationLock.current) return;
+    await runExclusivePlatformOperation(operationLock, async () => {
+      setErr(null);
+      try {
+        const r = await platformSignIn(email.trim(), pw);
+        if (r.data) onSignedIn(r.data);
+        else setErr(r.notice ?? '로그인에 실패했습니다.');
+      } catch (error: unknown) {
+        console.error('Failed to sign in', error);
+        setErr('로그인 중 예상하지 못한 오류가 발생했습니다.');
+      }
+    }, setBusy);
   };
 
   const field: React.CSSProperties = {
@@ -204,6 +232,7 @@ function AppShell({ session, scope, navigate }: { session: AuthSessionInfo; scop
   const [loadingTree, setLoadingTree] = useState(true);
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [logoutNotice, setLogoutNotice] = useState<string | null>(null);
+  const logoutLock = useRef(false);
   const publishTarget = deepestDataScopeTarget(tree, scope);
   const scopedTopics = topicTargetsForScope(tree, scope);
   const scopedSessions = sessionTargetsForScope(tree, scope);
@@ -237,8 +266,12 @@ function AppShell({ session, scope, navigate }: { session: AuthSessionInfo; scop
   }, []);
 
   const logout = async () => {
-    if (logoutBusy) return;
-    await completeSignOut(signOut, setLogoutBusy, setLogoutNotice);
+    if (logoutBusy || logoutLock.current) return;
+    await runExclusivePlatformOperation(
+      logoutLock,
+      () => completeSignOut(signOut, setLogoutNotice),
+      setLogoutBusy,
+    );
   };
 
   return (
@@ -294,22 +327,19 @@ function AppShell({ session, scope, navigate }: { session: AuthSessionInfo; scop
 
 export async function completeSignOut(
   action: () => Promise<PlatformResult<true>>,
-  onBusyChange: (busy: boolean) => void,
   onNotice: (notice: string | null) => void,
 ): Promise<void> {
-  onBusyChange(true);
   onNotice(null);
   try {
     const result = await action();
-    if (result.notice) {
-      console.error('Failed to sign out', result.notice);
-      onNotice(result.notice);
+    if (result.notice || result.data !== true) {
+      const failureNotice = result.notice ?? '로그아웃 응답을 확인하지 못했습니다.';
+      console.error('Failed to sign out', failureNotice);
+      onNotice(failureNotice);
     }
   } catch (error: unknown) {
     console.error('Failed to sign out', error);
     onNotice('로그아웃 중 예상하지 못한 오류가 발생했습니다.');
-  } finally {
-    onBusyChange(false);
   }
 }
 

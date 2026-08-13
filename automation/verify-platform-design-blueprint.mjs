@@ -12,6 +12,7 @@ import {
 } from './platform-accessibility-audit.mjs';
 
 const PLATFORM_ENTRY_ROUTE = '/platform/';
+const FIXTURE_SUPABASE_ORIGIN = 'https://pleyuknjnprsckssxvrh.supabase.co';
 export const DESIGN_BLUEPRINT_ROUTE = `/platform/o/${FIXTURE_IDS.org}/c/audit-assembly/design`;
 export const REVIEW_CONSOLE_ROUTE = `/platform/o/${FIXTURE_IDS.org}/c/audit-assembly/s/audit-session/t/${FIXTURE_IDS.topic}/review`;
 export const PUBLISH_CONSOLE_ROUTE = `/platform/o/${FIXTURE_IDS.org}/c/audit-assembly/s/audit-session/t/${FIXTURE_IDS.topic}/publish`;
@@ -188,6 +189,76 @@ async function readDownloadJson(download) {
   const chunks = [];
   for await (const chunk of stream) chunks.push(chunk);
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+}
+
+/** Exercises the production login form's synchronous request lock with a delayed fixture response. */
+export async function verifyPlatformAuthLock({ browser, origin, timeoutMs = 60_000 }) {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await context.newPage();
+  const browserErrors = [];
+  const unexpectedRequests = [];
+  const loginRequests = [];
+  let releaseLogin;
+  const loginGate = new Promise((resolveGate) => { releaseLogin = resolveGate; });
+  page.on('pageerror', (error) => browserErrors.push(error.message));
+
+  try {
+    await page.route(`${FIXTURE_SUPABASE_ORIGIN}/**`, async (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname;
+      if (path === '/auth/v1/token') {
+        loginRequests.push(request.postDataJSON());
+        await loginGate;
+        await fulfillJson(route, { message: 'Fixture login rejected' }, 400);
+        return;
+      }
+      unexpectedRequests.push({ method: request.method(), path });
+      await fulfillJson(route, { message: 'Unexpected auth lock fixture request' }, 500);
+    });
+
+    const response = await page.goto(new URL(PLATFORM_ENTRY_ROUTE, origin).toString(), {
+      waitUntil: 'domcontentloaded',
+      timeout: timeoutMs,
+    });
+    if (!response?.ok()) throw new Error(`Platform login page returned HTTP ${response?.status() ?? 'unknown'}`);
+    const form = page.getByRole('form', { name: '운영진 로그인' });
+    await form.waitFor({ timeout: timeoutMs });
+    const email = page.getByLabel('이메일');
+    const password = page.getByLabel('비밀번호');
+    await email.fill('fixture-operator@example.invalid');
+    await password.fill('fixture-password');
+    await form.evaluate((element) => {
+      if (!(element instanceof HTMLFormElement)) throw new Error('Login fixture target is not a form');
+      element.requestSubmit();
+      element.requestSubmit();
+    });
+    await page.waitForTimeout(100);
+    const inputsLocked = await email.isDisabled() && await password.isDisabled();
+    const duplicateLoginBlocked = loginRequests.length === 1;
+    releaseLogin();
+    await page.getByRole('alert').waitFor({ timeout: timeoutMs });
+    const retryEnabled = await email.isEnabled() && await password.isEnabled();
+
+    if (!inputsLocked) throw new Error('Platform login inputs were not locked during authentication');
+    if (!duplicateLoginBlocked) throw new Error('Platform login sent a duplicate authentication request');
+    if (!retryEnabled) throw new Error('Platform login did not release its controls after failure');
+    if (browserErrors.length > 0) throw new Error('Platform login verification observed a browser error');
+    if (unexpectedRequests.length > 0) throw new Error('Platform login verification observed an unexpected fixture request');
+
+    return {
+      path: PLATFORM_ENTRY_ROUTE,
+      fixture: 'ci-platform-auth-lock-fixture-v1',
+      inputsLocked,
+      duplicateLoginBlocked,
+      loginRequestCount: loginRequests.length,
+      retryEnabled,
+      browserPageErrorCount: browserErrors.length,
+      unexpectedRequestCount: unexpectedRequests.length,
+    };
+  } finally {
+    releaseLogin?.();
+    await context.close();
+  }
 }
 
 /** Exercises duplicate-write and stale-topic guards through the production review console. */
@@ -635,11 +706,12 @@ export async function verifyPlatformDesignBlueprint({
     if (fixtureFailures.length > 0) throw new Error('Design blueprint verification observed an unexpected fixture request');
     if (mutationAttempts.length > 0) throw new Error('Design blueprint verification observed a database mutation attempt');
 
+    const authLock = await verifyPlatformAuthLock({ browser, origin, timeoutMs });
     const reviewRace = await verifyReviewConsoleRace({ browser, origin, timeoutMs });
     const publishLock = await verifyPublishConsoleLock({ browser, origin, timeoutMs });
 
     const report = {
-      schemaVersion: 6,
+      schemaVersion: 7,
       generatedAt: new Date().toISOString(),
       baseUrl: origin.origin,
       path: DESIGN_BLUEPRINT_ROUTE,
@@ -684,6 +756,7 @@ export async function verifyPlatformDesignBlueprint({
         browserPageErrorCount: browserErrors.length,
         fixtureFailureCount: fixtureFailures.length,
         databaseMutationAttemptCount: mutationAttempts.length,
+        authLock,
         reviewRace,
         publishLock,
       },
