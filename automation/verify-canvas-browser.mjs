@@ -802,7 +802,7 @@ export async function verifyCanvasBrowser({
       return button instanceof HTMLButtonElement && !button.disabled;
     }, startTranscriptReviewName, { timeout: timeoutMs });
     await startTranscriptReview.click();
-    await transcriptReviewPanel.getByText('진행 0/3 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
+    await transcriptReviewPanel.getByText('진행 0/3 · 후속 확인 0 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
     let downloadedHandoffFixtureText = TRANSCRIPT_REVIEW_FIXTURE_TEXT;
     let downloadedHandoffFixture = null;
     let downloadedHandoffFixtureSha256 = TRANSCRIPT_REVIEW_FIXTURE_SHA256;
@@ -838,21 +838,27 @@ export async function verifyCanvasBrowser({
         .isVisible();
     const transcriptDownloadButton = transcriptReviewPanel
       .getByRole('button', { name: '전사 후보 검수 plan 다운로드' });
+    await transcriptNodeCards.nth(0).getByRole('button', { name: '후속 확인 요청' }).click();
+    await transcriptReviewPanel.getByText('진행 0/3 · 후속 확인 1 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
+    const transcriptFollowUpGateVerified = await transcriptDownloadButton.isDisabled()
+      && await transcriptNodeCards.nth(0).getByText('candidate node · 후속 확인 중', { exact: true }).isVisible()
+      && await transcriptNodeCards.nth(0).getByRole('region', { name: '요청한 후속 확인' })
+        .getByText('이 쟁점의 범위와 서로 다른 관점을 함께 확인해 보세요.', { exact: true }).isVisible();
     await transcriptNodeCards.nth(0).getByRole('button', { name: '나중에 검수' }).click();
-    await transcriptReviewPanel.getByText('진행 0/3 · 보류 1', { exact: true }).waitFor({ timeout: timeoutMs });
+    await transcriptReviewPanel.getByText('진행 0/3 · 후속 확인 0 · 보류 1', { exact: true }).waitFor({ timeout: timeoutMs });
     const transcriptDeferGateVerified = await transcriptDownloadButton.isDisabled()
       && await transcriptNodeCards.nth(0).getByText('candidate node · 보류', { exact: true }).isVisible();
     await transcriptNodeCards.nth(0).getByLabel('표시 이름').fill('재생에너지 전환의 속도와 조건');
-    await transcriptReviewPanel.getByText('진행 0/3 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
+    await transcriptReviewPanel.getByText('진행 0/3 · 후속 확인 0 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
     await transcriptNodeCards.nth(0).getByRole('button', { name: '수정 승인' }).click();
     await transcriptNodeCards.nth(1).getByRole('button', { name: '반려' }).click();
     await transcriptRelationCards.nth(0).getByRole('button', { name: '반려' }).click();
-    await transcriptReviewPanel.getByText('진행 3/3 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
+    await transcriptReviewPanel.getByText('진행 3/3 · 후속 확인 0 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
     await transcriptNodeCards.nth(0).getByLabel('표시 이름').fill('재생에너지 전환의 최종 속도와 조건');
-    await transcriptReviewPanel.getByText('진행 2/3 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
+    await transcriptReviewPanel.getByText('진행 2/3 · 후속 확인 0 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
     const transcriptRedecisionGateVerified = await transcriptDownloadButton.isDisabled();
     await transcriptNodeCards.nth(0).getByRole('button', { name: '수정 승인' }).click();
-    await transcriptReviewPanel.getByText('진행 3/3 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
+    await transcriptReviewPanel.getByText('진행 3/3 · 후속 확인 0 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
     const transcriptDownloadPromise = reviewPage.waitForEvent('download', { timeout: timeoutMs });
     await transcriptDownloadButton.click();
     const transcriptReviewedPlan = JSON.parse(await downloadText(await transcriptDownloadPromise));
@@ -862,6 +868,8 @@ export async function verifyCanvasBrowser({
       && transcriptReviewedPlan.requiresPublicationReview === true
       && transcriptReviewedPlan.dryRun === true
       && transcriptReviewedPlan.source?.fixtureSha256 === downloadedHandoffFixtureSha256
+      && transcriptReviewedPlan.nodes?.every((node) => !Object.hasOwn(node, 'followUpQuestion'))
+      && transcriptReviewedPlan.relations?.every((relation) => !Object.hasOwn(relation, 'followUpQuestion'))
       && (!hasHandoffInputs || (
         transcriptHandoffFixtureDownloaded
         && transcriptReviewedPlan.source?.handoff?.reviewBatchSha256 === privateOntologyHandoff.reviewBatchSha256
@@ -923,7 +931,7 @@ export async function verifyCanvasBrowser({
       && !publicationGraphText.includes('startMs')
       && !publicationGraphText.includes('endMs');
     if (!transcriptLocalOnlyBoundaryVisible || !transcriptCandidateEvidenceVisible || !transcriptCandidatePromptVisible
-      || !transcriptDeferGateVerified
+      || !transcriptFollowUpGateVerified || !transcriptDeferGateVerified
       || !transcriptRedecisionGateVerified || !transcriptHandoffFixtureDownloaded || !transcriptReviewDownloaded
       || !transcriptPublicationApprovalDownloaded || !transcriptPublicationHandoffVerified) {
       throw new Error('Transcript ontology review browser contract is incomplete');
@@ -1148,6 +1156,7 @@ export async function verifyCanvasBrowser({
         transcriptReviewLocalOnlyBoundaryVisible: transcriptLocalOnlyBoundaryVisible,
         transcriptCandidateEvidenceVisible,
         transcriptCandidatePromptVisible,
+        transcriptFollowUpGateVerified,
         transcriptDeferGateVerified,
         transcriptRedecisionGateVerified,
         transcriptHandoffFixtureDownloaded,

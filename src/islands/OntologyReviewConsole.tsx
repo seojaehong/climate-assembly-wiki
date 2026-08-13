@@ -29,6 +29,7 @@ import {
   type TranscriptOntologyReviewRelation,
   type TranscriptOntologyReviewWorkspace,
   transcriptCandidateFacilitationPrompt,
+  transcriptRelationFollowUpPrompt,
 } from './canvas/transcript-ontology-review-workspace';
 import { PrivateTranscriptCapturePanel } from './canvas/PrivateTranscriptCapturePanel';
 import { authenticatedReviewerId, runExclusiveCanvasAuthOperation, useAuth } from './canvas/useAuth';
@@ -196,9 +197,10 @@ function downloadTranscriptPublicationApproval(content: string, sourceId: string
   URL.revokeObjectURL(url);
 }
 
-function DecisionButtons({ onAccept, onReject, onDefer, acceptLabel = '승인' }: {
+function DecisionButtons({ onAccept, onReject, onFollowUp, onDefer, acceptLabel = '승인' }: {
   onAccept: () => void;
   onReject: () => void;
+  onFollowUp?: () => void;
   onDefer?: () => void;
   acceptLabel?: string;
 }) {
@@ -210,6 +212,11 @@ function DecisionButtons({ onAccept, onReject, onDefer, acceptLabel = '승인' }
       <button type="button" onClick={onReject} style={{ ...controlStyle, background: '#FFFFFF', color: '#8A1C1C', fontWeight: 800 }}>
         반려
       </button>
+      {onFollowUp ? (
+        <button type="button" onClick={onFollowUp} style={{ ...controlStyle, background: '#FFF8E7', color: '#5F4B00', fontWeight: 800 }}>
+          후속 확인 요청
+        </button>
+      ) : null}
       {onDefer ? (
         <button type="button" onClick={onDefer} style={{ ...controlStyle, background: '#FFFFFF', color: '#5F4B00', fontWeight: 800 }}>
           나중에 검수
@@ -415,6 +422,23 @@ export function TranscriptCandidatePrompt({ kind }: { kind: string }) {
   );
 }
 
+function transcriptReviewStatusLabel(status: TranscriptOntologyReviewNode['reviewStatus']): string {
+  if (status === 'proposed') return '미검수';
+  if (status === 'deferred') return '보류';
+  if (status === 'follow_up') return '후속 확인 중';
+  return status;
+}
+
+function FollowUpRequest({ question }: { question: string | null }) {
+  return question ? (
+    <section aria-label="요청한 후속 확인" style={{ background: '#FFF8E7', border: `2px solid ${CONTROL_BORDER}`, borderRadius: 8, padding: 12 }}>
+      <strong>요청한 후속 확인</strong>
+      <p style={{ margin: '6px 0 0' }}>{question}</p>
+      <small style={{ color: MUTED }}>응답이나 추가 근거를 확인한 뒤 이 후보를 다시 판단해야 합니다.</small>
+    </section>
+  ) : null;
+}
+
 export function TranscriptNodeReviewCard({ node, reviewer, onDecision, onDraft }: {
   node: TranscriptOntologyReviewNode;
   reviewer: string;
@@ -427,10 +451,15 @@ export function TranscriptNodeReviewCard({ node, reviewer, onDecision, onDraft }
     itemType: 'node', id: node.id, status, kind, label: node.label, text: node.text, reviewer,
     reviewedAt: new Date().toISOString(),
   });
+  const requestFollowUp = () => onDecision({
+    itemType: 'node', id: node.id, status: 'follow_up',
+    followUpQuestion: transcriptCandidateFacilitationPrompt(kind), reviewer,
+    reviewedAt: new Date().toISOString(),
+  });
   return (
     <article style={cardStyle} aria-label={`전사 노드 후보 검수 ${node.id}`}>
       <header>
-        <strong>candidate node · {node.reviewStatus === 'proposed' ? '미검수' : node.reviewStatus === 'deferred' ? '보류' : node.reviewStatus}</strong>
+        <strong>candidate node · {transcriptReviewStatusLabel(node.reviewStatus)}</strong>
         <div style={{ color: MUTED, fontSize: 13, overflowWrap: 'anywhere' }}>{node.sourceUid}</div>
       </header>
       <TranscriptEvidence transcript={node.transcript} />
@@ -440,6 +469,7 @@ export function TranscriptNodeReviewCard({ node, reviewer, onDecision, onDraft }
         </select>
       </label>
       <TranscriptCandidatePrompt kind={kind} />
+      <FollowUpRequest question={node.followUpQuestion} />
       <label>표시 이름
         <input value={node.label} onChange={(event) => onDraft({ itemType: 'node', id: node.id, label: event.currentTarget.value })} style={{ ...controlStyle, display: 'block', width: '100%' }} />
       </label>
@@ -450,6 +480,7 @@ export function TranscriptNodeReviewCard({ node, reviewer, onDecision, onDraft }
         acceptLabel={edited ? '수정 승인' : '원문 승인'}
         onAccept={() => decide(edited ? 'edited' : 'accepted')}
         onReject={() => decide('rejected')}
+        onFollowUp={requestFollowUp}
         onDefer={() => decide('deferred')}
       />
     </article>
@@ -468,11 +499,17 @@ export function TranscriptRelationReviewCard({ relation, reviewer, onDecision, o
     itemType: 'relation', id: relation.id, status, relation: relationType, reviewer,
     reviewedAt: new Date().toISOString(),
   });
+  const requestFollowUp = () => onDecision({
+    itemType: 'relation', id: relation.id, status: 'follow_up',
+    followUpQuestion: transcriptRelationFollowUpPrompt(relationType), reviewer,
+    reviewedAt: new Date().toISOString(),
+  });
   return (
     <article style={cardStyle} aria-label={`전사 관계 후보 검수 ${relation.id}`}>
-      <header><strong>candidate relation · {relation.reviewStatus === 'proposed' ? '미검수' : relation.reviewStatus === 'deferred' ? '보류' : relation.reviewStatus}</strong></header>
+      <header><strong>candidate relation · {transcriptReviewStatusLabel(relation.reviewStatus)}</strong></header>
       <p style={{ color: MUTED, margin: 0, overflowWrap: 'anywhere' }}>{relation.source} → {relation.target}</p>
       <TranscriptEvidence transcript={relation.transcript} />
+      <FollowUpRequest question={relation.followUpQuestion} />
       <label>논증 관계
         <select value={relationType} onChange={(event) => {
           onDraft({ itemType: 'relation', id: relation.id, relation: event.currentTarget.value });
@@ -484,6 +521,7 @@ export function TranscriptRelationReviewCard({ relation, reviewer, onDecision, o
         acceptLabel={edited ? '수정 승인' : '승인'}
         onAccept={() => decide(edited ? 'edited' : 'accepted')}
         onReject={() => decide('rejected')}
+        onFollowUp={requestFollowUp}
         onDefer={() => decide('deferred')}
       />
     </article>
@@ -709,8 +747,8 @@ export function TranscriptOntologyReviewPanel({ reviewerId }: { reviewerId: stri
       {error ? <p role="alert" style={{ color: '#8A1C1C', fontWeight: 700 }}>{error}</p> : null}
       {workspace ? (
         <>
-          <section aria-label="전사 후보 검수 진행 요약" style={{ ...cardStyle, marginBottom: 20 }}>
-            <strong>진행 {workspace.summary.decided}/{workspace.summary.total} · 보류 {workspace.summary.deferred}</strong>
+          <section aria-label="전사 후보 검수 진행 요약" role="status" aria-live="polite" aria-atomic="true" style={{ ...cardStyle, marginBottom: 20 }}>
+            <strong>진행 {workspace.summary.decided}/{workspace.summary.total} · 후속 확인 {workspace.summary.followUp} · 보류 {workspace.summary.deferred}</strong>
             <span>candidate node {workspace.summary.nodes} · relation {workspace.summary.relations}</span>
             {workspace.source.handoff ? (
               <>

@@ -13,10 +13,15 @@ import OntologyReviewConsole, {
   ontologyReviewNodeAnchorId,
   TranscriptCandidatePrompt,
   TranscriptNodeReviewCard,
+  TranscriptRelationReviewCard,
   transcriptHandoffFixtureArtifact,
 } from './OntologyReviewConsole';
 import type { CanvasOntologyNode, CanvasOntologyReviewWorkspace } from './canvas/ontology-review-workspace';
-import type { TranscriptOntologyReviewNode, TranscriptOntologyReviewWorkspace } from './canvas/transcript-ontology-review-workspace';
+import type {
+  TranscriptOntologyReviewNode,
+  TranscriptOntologyReviewRelation,
+  TranscriptOntologyReviewWorkspace,
+} from './canvas/transcript-ontology-review-workspace';
 import { authenticatedReviewerId } from './canvas/useAuth';
 
 const AUTH_REVIEWER_ID = 'auth-user:00000000-0000-4000-8000-000000000091';
@@ -191,6 +196,7 @@ describe('OntologyReviewConsole', () => {
       kindCandidate: 'Issue', kind: 'Issue', sourceLabel: '전환 속도', sourceText: '전환 속도를 논의합니다.',
       label: '전환 속도', text: '전환 속도를 논의합니다.', citedUids: ['chunk-1'],
       transcript: [{ uid: 'chunk-1', startMs: 0, endMs: 1000, speakerLabelPseudonym: 'speaker-unknown', text: '전환 속도를 논의합니다.' }],
+      followUpQuestion: null,
       reviewStatus: 'deferred', reviewer: AUTH_REVIEWER_ID, reviewedAt: '2026-08-29T01:00:00.000Z',
     };
     const html = renderToStaticMarkup(createElement(TranscriptNodeReviewCard, {
@@ -199,7 +205,48 @@ describe('OntologyReviewConsole', () => {
 
     expect(html).toContain('candidate node · 보류');
     expect(html).toContain('나중에 검수');
+    expect(html).toContain('후속 확인 요청');
     expect(html).toContain('원문 승인');
+  });
+
+  it('renders an audited follow-up request as incomplete moderator work', () => {
+    const question = '이 쟁점의 범위와 서로 다른 관점을 함께 확인해 보세요.';
+    const node: TranscriptOntologyReviewNode = {
+      id: 'transcript-node:candidate-issue', sourceUid: 'candidate-issue',
+      kindCandidate: 'Issue', kind: 'Issue', sourceLabel: '전환 속도', sourceText: '전환 속도를 논의합니다.',
+      label: '전환 속도', text: '전환 속도를 논의합니다.', citedUids: ['chunk-1'],
+      transcript: [{ uid: 'chunk-1', startMs: 0, endMs: 1000, speakerLabelPseudonym: 'speaker-unknown', text: '전환 속도를 논의합니다.' }],
+      followUpQuestion: question,
+      reviewStatus: 'follow_up', reviewer: AUTH_REVIEWER_ID, reviewedAt: '2026-08-29T01:00:00.000Z',
+    };
+    const html = renderToStaticMarkup(createElement(TranscriptNodeReviewCard, {
+      node, reviewer: AUTH_REVIEWER_ID, onDecision: () => undefined, onDraft: () => undefined,
+    }));
+
+    expect(html).toContain('candidate node · 후속 확인 중');
+    expect(html).toContain('aria-label="요청한 후속 확인"');
+    expect(html).toContain(question);
+    expect(html).toContain('응답이나 추가 근거를 확인한 뒤 이 후보를 다시 판단해야 합니다.');
+  });
+
+  it('renders a relation follow-up request with its exact pending question', () => {
+    const question = '두 후보 사이 supports 연결의 근거와 성립 조건을 함께 확인해 보세요.';
+    const relation: TranscriptOntologyReviewRelation = {
+      id: 'transcript-edge:candidate-relation', sourceUid: 'candidate-relation',
+      source: 'transcript-node:claim', target: 'transcript-node:issue',
+      relationCandidate: 'supports', relation: 'supports', citedUids: ['chunk-1'],
+      transcript: [{ uid: 'chunk-1', startMs: 0, endMs: 1000, speakerLabelPseudonym: 'speaker-unknown', text: '근거를 확인합니다.' }],
+      followUpQuestion: question,
+      reviewStatus: 'follow_up', reviewer: AUTH_REVIEWER_ID, reviewedAt: '2026-08-29T01:00:00.000Z',
+    };
+    const html = renderToStaticMarkup(createElement(TranscriptRelationReviewCard, {
+      relation, reviewer: AUTH_REVIEWER_ID, onDecision: () => undefined, onDraft: () => undefined,
+    }));
+
+    expect(html).toContain('candidate relation · 후속 확인 중');
+    expect(html).toContain(question);
+    expect(html).toContain('후속 확인 요청');
+    expect(html).toContain('나중에 검수');
   });
 
   it('links every facilitation prompt provenance node to a focusable review card', () => {

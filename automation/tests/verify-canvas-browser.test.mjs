@@ -132,7 +132,7 @@ async function fixtureServer({
           <label>전사 ontology fixture JSON<input id="transcript-fixture" type="file"></label>
           <p>인증 검수자 ID <code>${authReviewerId}</code></p>
           <button type="button" id="start-transcript-review" disabled>전사 후보 로컬 검수 시작</button>
-          <p id="transcript-progress" hidden>진행 0/3 · 보류 0</p>
+          <p id="transcript-progress" hidden>진행 0/3 · 후속 확인 0 · 보류 0</p>
           <section id="transcript-items" hidden>
             <article aria-label="전사 노드 후보 검수 transcript-node:candidate-issue">
               <strong id="transcript-first-status">candidate node · 미검수</strong>
@@ -143,8 +143,13 @@ async function fixtureServer({
                 <p>이 쟁점의 범위와 서로 다른 관점을 함께 확인해 보세요.</p>
                 <small>검수 전 확인을 돕는 제안이며 회의의 결정이나 진실 판정을 대신하지 않습니다.</small>
               </section>
+              <section id="transcript-follow-up-request" role="region" aria-label="요청한 후속 확인" hidden>
+                <strong>요청한 후속 확인</strong>
+                <p>이 쟁점의 범위와 서로 다른 관점을 함께 확인해 보세요.</p>
+              </section>
               <label>표시 이름<input id="transcript-first-label" type="text"></label>
               <button type="button" data-transcript-decision="first">수정 승인</button>
+              <button type="button" id="transcript-first-follow-up">후속 확인 요청</button>
               <button type="button" id="transcript-first-defer">나중에 검수</button>
             </article>
             <article aria-label="전사 노드 후보 검수 transcript-node:candidate-claim">
@@ -389,7 +394,7 @@ async function fixtureServer({
             document.querySelector('#transcript-first-label').value = transcriptFixture.expected.nodes[0].label;
             document.querySelector('#transcript-second-label').value = transcriptFixture.expected.nodes[1].label;
             transcriptDecisions.clear();
-            transcriptProgress.textContent = '진행 0/3 · 보류 0';
+            transcriptProgress.textContent = '진행 0/3 · 후속 확인 0 · 보류 0';
             transcriptProgress.hidden = false;
             transcriptItems.hidden = false;
             transcriptDownloadButton.disabled = true;
@@ -399,20 +404,29 @@ async function fixtureServer({
           document.querySelectorAll('[data-transcript-decision]').forEach((button) => {
             button.addEventListener('click', () => {
               transcriptDecisions.add(button.dataset.transcriptDecision);
-              transcriptProgress.textContent = \`진행 \${transcriptDecisions.size}/3 · 보류 0\`;
+              transcriptProgress.textContent = \`진행 \${transcriptDecisions.size}/3 · 후속 확인 0 · 보류 0\`;
               transcriptDownloadButton.disabled = transcriptDecisions.size !== 3;
             });
+          });
+          document.querySelector('#transcript-first-follow-up').addEventListener('click', () => {
+            transcriptDecisions.delete('first');
+            document.querySelector('#transcript-first-status').textContent = 'candidate node · 후속 확인 중';
+            document.querySelector('#transcript-follow-up-request').hidden = false;
+            transcriptProgress.textContent = '진행 0/3 · 후속 확인 1 · 보류 0';
+            transcriptDownloadButton.disabled = true;
           });
           document.querySelector('#transcript-first-defer').addEventListener('click', () => {
             transcriptDecisions.delete('first');
             document.querySelector('#transcript-first-status').textContent = 'candidate node · 보류';
-            transcriptProgress.textContent = \`진행 \${transcriptDecisions.size}/3 · 보류 1\`;
+            document.querySelector('#transcript-follow-up-request').hidden = true;
+            transcriptProgress.textContent = \`진행 \${transcriptDecisions.size}/3 · 후속 확인 0 · 보류 1\`;
             transcriptDownloadButton.disabled = true;
           });
           document.querySelector('#transcript-first-label').addEventListener('input', () => {
             transcriptDecisions.delete('first');
             document.querySelector('#transcript-first-status').textContent = 'candidate node · 미검수';
-            transcriptProgress.textContent = \`진행 \${transcriptDecisions.size}/3 · 보류 0\`;
+            document.querySelector('#transcript-follow-up-request').hidden = true;
+            transcriptProgress.textContent = \`진행 \${transcriptDecisions.size}/3 · 후속 확인 0 · 보류 0\`;
             transcriptDownloadButton.disabled = true;
           });
           transcriptDownloadButton.addEventListener('click', () => {

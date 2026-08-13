@@ -1,7 +1,8 @@
 import { isAuthenticatedReviewerId } from './useAuth';
 
 type DecidedReviewStatus = 'accepted' | 'edited' | 'rejected';
-type ReviewStatus = 'proposed' | 'deferred' | DecidedReviewStatus;
+type PendingReviewStatus = 'deferred' | 'follow_up';
+type ReviewStatus = 'proposed' | PendingReviewStatus | DecidedReviewStatus;
 
 export interface TranscriptCitation {
   uid: string;
@@ -47,6 +48,7 @@ export interface TranscriptOntologyReviewNode extends ReviewAudit {
   text: string;
   citedUids: string[];
   transcript: TranscriptCitation[];
+  followUpQuestion: string | null;
 }
 
 export interface TranscriptOntologyReviewRelation extends ReviewAudit {
@@ -58,6 +60,7 @@ export interface TranscriptOntologyReviewRelation extends ReviewAudit {
   relation: string | null;
   citedUids: string[];
   transcript: TranscriptCitation[];
+  followUpQuestion: string | null;
 }
 
 export interface TranscriptOntologyReviewWorkspace {
@@ -78,6 +81,7 @@ export interface TranscriptOntologyReviewWorkspace {
     relations: number;
     decided: number;
     deferred: number;
+    followUp: number;
     total: number;
   };
   safety: {
@@ -97,10 +101,22 @@ export type TranscriptOntologyReviewDecision = DecisionAudit & (
   | {
     itemType: 'node';
     id: string;
+    status: 'follow_up';
+    followUpQuestion: string;
+  }
+  | {
+    itemType: 'node';
+    id: string;
     status: 'deferred' | DecidedReviewStatus;
     kind?: string;
     label?: string;
     text?: string;
+  }
+  | {
+    itemType: 'relation';
+    id: string;
+    status: 'follow_up';
+    followUpQuestion: string;
   }
   | {
     itemType: 'relation';
@@ -133,7 +149,7 @@ const TRANSCRIPT_CANDIDATE_FACILITATION_PROMPTS: Record<string, string> = {
 const NODE_KINDS = new Set<string>(TRANSCRIPT_ONTOLOGY_NODE_KINDS);
 const RELATIONS = new Set<string>(TRANSCRIPT_ONTOLOGY_RELATIONS);
 const DECISION_STATUSES = new Set<string>(['accepted', 'edited', 'rejected']);
-const REVIEW_STATUSES = new Set<string>(['deferred', ...DECISION_STATUSES]);
+const REVIEW_STATUSES = new Set<string>(['deferred', 'follow_up', ...DECISION_STATUSES]);
 const WORKSPACE_REVIEW_STATUSES = new Set<string>(['proposed', ...REVIEW_STATUSES]);
 const OPAQUE_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,127}$/i;
 const SPEAKER_PATTERN = /^speaker-(?:[a-z]{1,3}|unknown)$/;
@@ -146,6 +162,11 @@ export function transcriptCandidateFacilitationPrompt(kind: string): string {
   const prompt = TRANSCRIPT_CANDIDATE_FACILITATION_PROMPTS[kind];
   if (!prompt) throw new Error('Invalid transcript ontology node kind');
   return prompt;
+}
+
+export function transcriptRelationFollowUpPrompt(relation: string): string {
+  if (!RELATIONS.has(relation)) throw new Error('Invalid transcript ontology relation type');
+  return `두 후보 사이 ${relation} 연결의 근거와 성립 조건을 함께 확인해 보세요.`;
 }
 
 function isDecidedReviewStatus(status: string): status is DecidedReviewStatus {
@@ -508,6 +529,7 @@ export async function createTranscriptOntologyReviewWorkspace(
       label: sourceLabel,
       text: sourceText,
       ...citations(value.citedUids, chunks, 'node candidate'),
+      followUpQuestion: null,
       reviewStatus: 'proposed',
       reviewer: null,
       reviewedAt: null,
@@ -532,6 +554,7 @@ export async function createTranscriptOntologyReviewWorkspace(
       relationCandidate,
       relation: relationCandidate,
       ...citations(value.citedUids, chunks, 'relation candidate'),
+      followUpQuestion: null,
       reviewStatus: 'proposed',
       reviewer: null,
       reviewedAt: null,
@@ -544,7 +567,14 @@ export async function createTranscriptOntologyReviewWorkspace(
     },
     nodes,
     relations,
-    summary: { nodes: nodes.length, relations: relations.length, decided: 0, deferred: 0, total: nodes.length + relations.length },
+    summary: {
+      nodes: nodes.length,
+      relations: relations.length,
+      decided: 0,
+      deferred: 0,
+      followUp: 0,
+      total: nodes.length + relations.length,
+    },
     safety: {
       localOnly: true,
       databaseMutationExecuted: false,
@@ -574,6 +604,7 @@ function summarize(
     relations: relations.length,
     decided: [...nodes, ...relations].filter((item) => isDecidedReviewStatus(item.reviewStatus)).length,
     deferred: [...nodes, ...relations].filter((item) => item.reviewStatus === 'deferred').length,
+    followUp: [...nodes, ...relations].filter((item) => item.reviewStatus === 'follow_up').length,
     total: nodes.length + relations.length,
   };
 }
@@ -584,8 +615,14 @@ function invalidateReviewedRelationsForNode(
 ): TranscriptOntologyReviewRelation[] {
   return relations.map((relation) => (
     (relation.source === nodeId || relation.target === nodeId)
-    && (relation.reviewStatus === 'accepted' || relation.reviewStatus === 'edited')
-      ? { ...relation, reviewStatus: 'proposed' as const, reviewer: null, reviewedAt: null }
+    && (relation.reviewStatus === 'accepted' || relation.reviewStatus === 'edited' || relation.reviewStatus === 'follow_up')
+      ? {
+        ...relation,
+        reviewStatus: 'proposed' as const,
+        reviewer: null,
+        reviewedAt: null,
+        followUpQuestion: null,
+      }
       : relation
   ));
 }
@@ -604,10 +641,18 @@ export function reviewTranscriptOntologyCandidate(
     const target = workspace.nodes.find((node) => node.id === decision.id);
     if (!target) throw new Error('Transcript ontology node candidate was not found');
     let replacement: TranscriptOntologyReviewNode;
-    if (decision.status === 'deferred') {
+    if (decision.status === 'follow_up') {
+      replacement = {
+        ...target,
+        reviewStatus: 'follow_up',
+        followUpQuestion: text(decision.followUpQuestion, 'follow-up question'),
+        ...audit,
+      };
+    } else if (decision.status === 'deferred') {
       replacement = {
         ...target,
         reviewStatus: 'deferred',
+        followUpQuestion: null,
         ...audit,
       };
     } else if (decision.status === 'rejected') {
@@ -623,6 +668,7 @@ export function reviewTranscriptOntologyCandidate(
         label: target.sourceLabel,
         text: target.sourceText,
         reviewStatus: 'rejected',
+        followUpQuestion: null,
         ...audit,
       };
     } else {
@@ -639,21 +685,33 @@ export function reviewTranscriptOntologyCandidate(
         label,
         text: reviewedText,
         reviewStatus: decision.status,
+        followUpQuestion: null,
         ...audit,
       };
     }
     const nodes = workspace.nodes.map((node) => node.id === target.id ? replacement : node);
-    const relations = decision.status === 'deferred'
+    const relations = decision.status === 'deferred' || decision.status === 'follow_up'
       ? invalidateReviewedRelationsForNode(workspace.relations, target.id)
       : workspace.relations;
     return { ...workspace, nodes, relations, summary: summarize(nodes, relations) };
   }
   const target = workspace.relations.find((relation) => relation.id === decision.id);
   if (!target) throw new Error('Transcript ontology relation candidate was not found');
+  if (decision.status === 'follow_up') {
+    const replacement: TranscriptOntologyReviewRelation = {
+      ...target,
+      reviewStatus: 'follow_up',
+      followUpQuestion: text(decision.followUpQuestion, 'follow-up question'),
+      ...audit,
+    };
+    const relations = workspace.relations.map((item) => item.id === target.id ? replacement : item);
+    return { ...workspace, relations, summary: summarize(workspace.nodes, relations) };
+  }
   if (decision.status === 'deferred') {
     const replacement: TranscriptOntologyReviewRelation = {
       ...target,
       reviewStatus: 'deferred',
+      followUpQuestion: null,
       ...audit,
     };
     const relations = workspace.relations.map((item) => item.id === target.id ? replacement : item);
@@ -679,6 +737,7 @@ export function reviewTranscriptOntologyCandidate(
     ...target,
     relation,
     reviewStatus: decision.status,
+    followUpQuestion: null,
     ...audit,
   };
   const relations = workspace.relations.map((item) => item.id === target.id ? replacement : item);
@@ -707,6 +766,7 @@ export function updateTranscriptOntologyCandidateDraft(
       reviewStatus: 'proposed' as const,
       reviewer: null,
       reviewedAt: null,
+      followUpQuestion: null,
     } : node);
     const relations = invalidateReviewedRelationsForNode(workspace.relations, target.id);
     return { ...workspace, nodes, relations, summary: summarize(nodes, relations) };
@@ -721,6 +781,7 @@ export function updateTranscriptOntologyCandidateDraft(
     reviewStatus: 'proposed' as const,
     reviewer: null,
     reviewedAt: null,
+    followUpQuestion: null,
   } : relation);
   return { ...workspace, relations, summary: summarize(workspace.nodes, relations) };
 }
@@ -771,6 +832,8 @@ export async function exportTranscriptOntologyReviewedPlan(
     fixtureSha256: workspace.source.fixtureSha256,
     ...(workspace.source.handoff ? { handoff: workspace.source.handoff } : {}),
   };
+  const nodes = workspace.nodes.map(({ followUpQuestion: _followUpQuestion, ...node }) => node);
+  const relations = workspace.relations.map(({ followUpQuestion: _followUpQuestion, ...relation }) => relation);
   return `${JSON.stringify({
     schemaVersion: 1,
     kind: 'transcript-ontology-reviewed-plan',
@@ -779,8 +842,8 @@ export async function exportTranscriptOntologyReviewedPlan(
     publicGraphWritten: false,
     requiresPublicationReview: true,
     source,
-    nodes: workspace.nodes,
-    relations: workspace.relations,
+    nodes,
+    relations,
   }, null, 2)}\n`;
 }
 
