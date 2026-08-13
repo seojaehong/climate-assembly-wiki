@@ -92,6 +92,8 @@ await page.route(/\/workshop-graph\/data\/.*\.json(?:\?.*)?$/, route => {
 try {
   await page.goto(`${BASE_URL}/workshop-graph/?mode=normal`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.__ontologyGraphDebug?.getCy()?.nodes().length > 0);
+  const liveCategoryLabel = await page.locator(`#og-source option[value="${SOURCE_REVIEWED_STANDARD}"]`)
+    .evaluate(option => option.parentElement?.label || '');
   await page.locator('#og-assets-btn').click();
   const side = page.locator('#og-side');
   const firstPanel = await side.textContent();
@@ -174,6 +176,7 @@ try {
       ...reviewedSnapshot,
     },
     standardReviewedPresentation,
+    liveCategoryLabel,
     validCandidate: {
       metadata: firstMetadata, humanReviewRequired: firstPanel.includes('사람 검수 필요'),
       recommendationCandidateVisible: firstPanel.includes('첫 번째 권고 후보'), qualitySignalVisible: firstPanel.includes('품질 신호'),
@@ -203,6 +206,7 @@ try {
     && result.standardReviewedPresentation.footer.includes('사람 검수 완료 스냅샷')
     && result.standardReviewedPresentation.advisory.includes('사람 검수 완료 스냅샷')
     && result.standardReviewedPresentation.pill.includes('LIVE · 검수 완료')
+    && result.liveCategoryLabel === '검수 완료 스냅샷'
     && result.servedHashesMatch && result.pageErrors.length === 0 && result.consoleErrorCount === 1;
   writeFileSync(OUTPUT_PATH, `${JSON.stringify(result, null, 2)}\n`);
   if (!result.passed) throw new Error('Workshop graph advisory browser verification failed');

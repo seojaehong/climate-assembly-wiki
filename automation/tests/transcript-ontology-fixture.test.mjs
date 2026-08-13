@@ -647,6 +647,7 @@ test('polls the production live graph surface and applies the next payload', asy
       { waitUntil: 'domcontentloaded' },
     );
     await page.waitForFunction(() => document.querySelector('#og-stat')?.textContent?.includes('노드 2'));
+    expect(await page.locator('#og-source optgroup[label="검수 완료 스냅샷"] option').count()).toBe(3);
     expect(await page.locator('#og-footer-note').textContent()).toContain('합성 전사 검수 데모 · 실제 시민 발언 아님');
     await page.evaluate(() => {
       const select = document.querySelector('#og-poll-interval');

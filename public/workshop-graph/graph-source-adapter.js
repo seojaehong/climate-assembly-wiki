@@ -9,6 +9,8 @@ const LIVE_PUBLICATION_MODES = new Map([
   ['synthetic_reviewed_demo', 'synthetic-reviewed-demo'],
   ['reviewed_snapshot', 'reviewed-snapshot'],
 ]);
+const STATIC_GRAPH_DATA_PATH = /^data\/[A-Za-z0-9][A-Za-z0-9._-]*\.json$/;
+const STATIC_SOURCE_VIEWS = new Set(['2d', '3d']);
 
 function isRecord(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -46,12 +48,30 @@ function validateStaticManifest(value) {
     if (!isRecord(source)) throw new Error('Invalid static graph source');
     const sourceId = nonemptyString(source.id, 'static graph source id');
     const category = nonemptyString(source.category, 'static graph source category');
+    nonemptyString(source.label, 'static graph source label');
+    const dataPath = nonemptyString(source.data, 'static graph source path');
+    if (!STATIC_GRAPH_DATA_PATH.test(dataPath)) throw new Error('Invalid static graph source path');
+    if (!Array.isArray(source.supportsView) || !source.supportsView.includes('2d')
+      || new Set(source.supportsView).size !== source.supportsView.length
+      || source.supportsView.some((view) => !STATIC_SOURCE_VIEWS.has(view))) {
+      throw new Error('Invalid static graph source views');
+    }
+    if (source.hidden !== undefined && typeof source.hidden !== 'boolean') {
+      throw new Error('Invalid static graph source visibility');
+    }
+    if (source.menu !== undefined && typeof source.menu !== 'boolean') {
+      throw new Error('Invalid static graph source menu state');
+    }
     if (sourceIds.has(sourceId)) throw new Error('Duplicate static graph source id');
     sourceIds.add(sourceId);
     if (!Object.hasOwn(value.categories, category)) throw new Error('Unknown static graph source category');
     const isLiveSource = sourceId.startsWith('live-') || category === 'live';
     if (isLiveSource && (category !== 'live' || source.publicationMode !== 'reviewed_snapshot')) {
       throw new Error('Live graph source must declare reviewed snapshot publication');
+    }
+    if (isLiveSource && (dataPath !== `data/${sourceId}.json`
+      || !Number.isInteger(source.polling_default_sec) || source.polling_default_sec <= 0)) {
+      throw new Error('Invalid live graph source contract');
     }
   }
   if (!sourceIds.has(value.default)) throw new Error('Default static graph source is missing');

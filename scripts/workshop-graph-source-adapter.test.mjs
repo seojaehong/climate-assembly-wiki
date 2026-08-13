@@ -25,6 +25,7 @@ const REVIEWED_LIVE_SOURCE = {
   data: 'data/live-reviewed.json',
   publicationMode: 'reviewed_snapshot',
   supportsView: ['2d'],
+  polling_default_sec: 15,
 };
 
 function reviewedLiveSnapshot() {
@@ -258,6 +259,39 @@ describe('workshop graph source adapter', () => {
       'Live graph source must declare reviewed snapshot publication',
     );
     expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  test.each([
+    ['external data URL', (source) => { source.data = 'https://example.com/live.json'; }, 'Invalid static graph source path'],
+    ['parent data path', (source) => { source.data = '../private/transcript.json'; }, 'Invalid static graph source path'],
+    ['mismatched live filename', (source) => { source.data = 'data/live-other.json'; }, 'Invalid live graph source contract'],
+    ['missing 2d view', (source) => { source.supportsView = ['3d']; }, 'Invalid static graph source views'],
+    ['duplicate view', (source) => { source.supportsView = ['2d', '2d']; }, 'Invalid static graph source views'],
+    ['unsupported view', (source) => { source.supportsView = ['2d', 'table']; }, 'Invalid static graph source views'],
+    ['zero poll interval', (source) => { source.polling_default_sec = 0; }, 'Invalid live graph source contract'],
+    ['nonboolean menu state', (source) => { source.menu = 'true'; }, 'Invalid static graph source menu state'],
+  ])('rejects a live manifest with %s', async (_caseName, mutate, message) => {
+    const source = { ...REVIEWED_LIVE_SOURCE, polling_default_sec: 15 };
+    mutate(source);
+    const manifest = {
+      default: source.id,
+      categories: { live: '검수 완료 스냅샷' },
+      sources: [source],
+    };
+    const fetchImpl = vi.fn(async () => jsonResponse(manifest));
+    const adapter = createWorkshopGraphSourceAdapter({ fetchImpl, retryDelayMs: 0 });
+
+    await expect(adapter.loadCatalog('sources.json')).rejects.toThrow(message);
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  test('uses a neutral reviewed-snapshot category for synthetic and ordinary live sources', () => {
+    const manifest = JSON.parse(readFileSync('public/workshop-graph/sources.json', 'utf8'));
+    const liveSources = manifest.sources.filter((source) => source.category === 'live');
+
+    expect(manifest.categories.live).toBe('검수 완료 스냅샷');
+    expect(liveSources.length).toBeGreaterThan(0);
+    expect(liveSources.every((source) => source.publicationMode === 'reviewed_snapshot')).toBe(true);
   });
 
   test('distinguishes synthetic and ordinary reviewed snapshot presentation states', () => {

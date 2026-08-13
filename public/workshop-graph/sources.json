@@ -5,7 +5,7 @@
     "workshop": "워크숍 통합",
     "audit": "전체 데이터 반영상태",
     "regulation": "운영규정",
-    "live": "실시간 검수 데모"
+    "live": "검수 완료 스냅샷"
   },
   "sources": [
     {
