@@ -25,6 +25,7 @@ export const AUDITED_SOURCE_PATHS = [
   'src/islands/canvas/ontology-review-workspace.test.ts',
   'src/islands/canvas/private-transcript-capture.ts',
   'src/islands/canvas/private-transcript-capture.test.ts',
+  'src/islands/canvas/useAuth.ts',
   'src/islands/platform',
   'src/islands/result',
   'src/layouts',
@@ -234,7 +235,9 @@ export const DEFAULT_AUDIT_ROUTES = [
     id: 'ontology-review',
     path: '/ko/moderator/ontology-review/',
     skipTarget: 'ontology-review-content',
+    fixture: 'ci-staff-read-fixture-v1',
     readySelector: 'main[data-ontology-review-ready="true"]',
+    prepare: prepareAuthenticatedPlatform,
   },
 ];
 

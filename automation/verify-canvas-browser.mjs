@@ -88,6 +88,41 @@ const TRANSCRIPT_REVIEW_FIXTURE_TEXT = readFileSync(resolve(
 const TRANSCRIPT_REVIEW_FIXTURE_SHA256 = createHash('sha256')
   .update(TRANSCRIPT_REVIEW_FIXTURE_TEXT, 'utf8')
   .digest('hex');
+const REVIEW_AUTH_EMAIL = 'synthetic-review@example.invalid';
+const REVIEW_AUTH_USER_ID = '00000000-0000-4000-8000-000000000091';
+
+function syntheticReviewAuthSession() {
+  const now = Math.floor(Date.now() / 1_000);
+  const encode = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
+  const accessToken = `${encode({ alg: 'none', typ: 'JWT' })}.${encode({
+    aud: 'authenticated',
+    email: REVIEW_AUTH_EMAIL,
+    exp: now + 3_600,
+    iat: now,
+    role: 'authenticated',
+    sub: REVIEW_AUTH_USER_ID,
+  })}.synthetic-review`;
+  const user = {
+    id: REVIEW_AUTH_USER_ID,
+    aud: 'authenticated',
+    role: 'authenticated',
+    email: REVIEW_AUTH_EMAIL,
+    email_confirmed_at: new Date(now * 1_000).toISOString(),
+    app_metadata: { provider: 'email', providers: ['email'] },
+    user_metadata: {},
+    identities: [],
+    created_at: new Date(now * 1_000).toISOString(),
+    updated_at: new Date(now * 1_000).toISOString(),
+  };
+  return {
+    access_token: accessToken,
+    expires_at: now + 3_600,
+    expires_in: 3_600,
+    refresh_token: 'synthetic-review-refresh-token',
+    token_type: 'bearer',
+    user,
+  };
+}
 
 function reviewUploadPayloads(snapshot = REVIEW_SNAPSHOT) {
   const snapshotText = JSON.stringify(snapshot);
@@ -258,19 +293,37 @@ export async function verifyCanvasBrowser({
   const page = await context.newPage();
   const writeRequests = [];
   let canvasAuthRequestCount = 0;
+  let reviewAuthRequestCount = 0;
+  let reviewLogoutRequestCount = 0;
   const readResponses = [];
   const browserErrors = [];
 
   await context.route('**/*', async (route) => {
     const request = route.request();
     if (request.method() === 'POST' && request.url().includes('/auth/v1/token')) {
-      canvasAuthRequestCount += 1;
-      await new Promise((resolveDelay) => setTimeout(resolveDelay, 75));
+      const isReviewLogin = request.frame().url().includes(reviewUrl.pathname)
+        || (request.postData()?.includes(REVIEW_AUTH_EMAIL) ?? false);
+      if (isReviewLogin) reviewAuthRequestCount += 1;
+      else canvasAuthRequestCount += 1;
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 250));
+      if (isReviewLogin) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(syntheticReviewAuthSession()),
+        });
+        return;
+      }
       await route.fulfill({
         status: 400,
         contentType: 'application/json',
         body: JSON.stringify({ error: 'invalid_grant', error_description: 'Synthetic invalid login' }),
       });
+      return;
+    }
+    if (request.method() === 'POST' && request.url().includes('/auth/v1/logout')) {
+      reviewLogoutRequestCount += 1;
+      await route.fulfill({ status: 204, body: '' });
       return;
     }
     if (!WRITE_METHODS.has(request.method())) {
@@ -400,8 +453,35 @@ export async function verifyCanvasBrowser({
       throw new Error(`Ontology review document returned HTTP ${reviewDocumentResponse?.status() ?? 'unknown'}`);
     }
     const reviewNavigation = await platformNavigationEvidence(reviewPage, reviewUrl.pathname, timeoutMs);
+    await reviewPage.getByRole('heading', { name: '온톨로지 검수 진행자 로그인' }).waitFor({ timeout: timeoutMs });
+    await reviewPage.locator('[data-ontology-review-auth-ready="true"]').waitFor({ timeout: timeoutMs });
+    const reviewUnauthenticatedWorkspaceHidden = !await reviewPage
+      .getByRole('region', { name: 'R4 로컬 음성·전사 검수' })
+      .isVisible()
+      && await reviewPage.locator('input[type="file"]:visible').count() === 0;
+    const reviewLoginEmail = reviewPage.getByLabel('온톨로지 검수 이메일 주소');
+    const reviewLoginPassword = reviewPage.getByLabel('온톨로지 검수 비밀번호');
+    const reviewLoginButton = reviewPage.getByRole('button', { name: '로그인', exact: true });
+    await reviewLoginEmail.fill(REVIEW_AUTH_EMAIL);
+    await reviewLoginPassword.fill('synthetic-review-password');
+    const reviewAuthInputsLockedPromise = reviewPage.waitForFunction(() => {
+      const email = document.querySelector('input[aria-label="온톨로지 검수 이메일 주소"]');
+      const password = document.querySelector('input[aria-label="온톨로지 검수 비밀번호"]');
+      return email instanceof HTMLInputElement && email.disabled
+        && password instanceof HTMLInputElement && password.disabled;
+    }, undefined, { timeout: timeoutMs }).then(() => true);
+    await reviewLoginButton.evaluate((button) => {
+      if (!(button instanceof HTMLButtonElement)) throw new Error('Ontology review login control is not a button');
+      button.click();
+      button.click();
+    });
+    const reviewAuthInputsLocked = await reviewAuthInputsLockedPromise;
     await reviewPage.getByRole('heading', { name: 'Canvas 온톨로지 검수 큐' }).waitFor({ timeout: timeoutMs });
     await reviewPage.locator('main[data-ontology-review-ready="true"]').waitFor({ timeout: timeoutMs });
+    const reviewAuthDuplicateSubmissionBlocked = reviewAuthRequestCount === 1;
+    if (!reviewUnauthenticatedWorkspaceHidden || !reviewAuthInputsLocked || !reviewAuthDuplicateSubmissionBlocked) {
+      throw new Error('Ontology review authentication boundary is incomplete');
+    }
     await reviewPage.getByLabel('검수 계획 JSON').waitFor({ timeout: timeoutMs });
     await reviewPage.getByLabel('Canvas snapshot JSON').waitFor({ timeout: timeoutMs });
     const reviewLocalOnlyBoundaryVisible = await reviewPage
@@ -753,6 +833,14 @@ export async function verifyCanvasBrowser({
     }
     if (!reviewLocalOnlyBoundaryVisible) throw new Error('Ontology review local-only boundary is not visible');
     if (!reviewedPlanDownloaded) throw new Error('Ontology reviewed plan download contract is invalid');
+    await reviewPage.getByRole('button', { name: '로그아웃', exact: true }).click();
+    await reviewPage.getByRole('heading', { name: '온톨로지 검수 진행자 로그인' }).waitFor({ timeout: timeoutMs });
+    const reviewSessionIsolationVerified = reviewLogoutRequestCount === 1
+      && !await reviewPage.getByRole('region', { name: 'R4 로컬 음성·전사 검수' }).isVisible()
+      && await reviewPage.locator('input[type="file"]:visible').count() === 0;
+    if (!reviewSessionIsolationVerified) {
+      throw new Error('Ontology review local state survived the authenticated session boundary');
+    }
     if (writeRequests.length > 0) throw new Error('Ontology review verification attempted a blocked write request');
     if (browserErrors.length > 0) throw new Error('Ontology review verification observed a browser page error');
     await reviewPage.close();
@@ -799,6 +887,12 @@ export async function verifyCanvasBrowser({
         livePlatformNavigationConnected: liveNavigation.connected,
         reviewDocumentStatus: reviewDocumentResponse.status(),
         reviewPlatformNavigationConnected: reviewNavigation.connected,
+        reviewUnauthenticatedWorkspaceHidden,
+        reviewAuthInputsLocked,
+        reviewAuthDuplicateSubmissionBlocked,
+        reviewAuthRequestCount,
+        reviewLogoutRequestCount,
+        reviewSessionIsolationVerified,
         reviewLocalOnlyBoundaryVisible,
         transcriptReviewLocalOnlyBoundaryVisible: transcriptLocalOnlyBoundaryVisible,
         transcriptCandidateEvidenceVisible,

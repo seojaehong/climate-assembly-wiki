@@ -20,6 +20,7 @@ async function fixtureServer({
   liveDelayedWrite = false,
   liveDelayedError = false,
   reviewReady = true,
+  reviewWorkspaceExposedBeforeLogin = false,
 } = {}) {
   let receivedWriteCount = 0;
   const server = createServer((request, response) => {
@@ -454,7 +455,15 @@ async function fixtureServer({
             anchor.click();
             URL.revokeObjectURL(href);
           });
-        </script>` : '';
+      </script>` : '';
+    const reviewWorkspace = currentSurface === 'review' ? `
+      <section id="fixture-review-workspace" ${reviewWorkspaceExposedBeforeLogin ? '' : 'hidden'}>
+        <h1>Canvas 온톨로지 검수 큐</h1>
+        ${reviewFixture}
+        <p>DB에 저장하지 않습니다. 공개 그래프에 반영하지 않습니다.</p>
+        <button id="fixture-review-logout" type="button">로그아웃</button>
+      </section>` : '<h1>Canvas 온톨로지 검수 큐</h1>';
+    const reviewLogin = currentSurface === 'review';
     response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
     response.end(`<!doctype html><html><body style="margin:0"${currentSurface === 'live' ? ' data-moderator-live-ready="true"' : ''}>
       <nav aria-label="숙의 모더레이션 플랫폼">
@@ -466,14 +475,15 @@ async function fixtureServer({
         <p>시민 발언과 논증 관계를 보존해 숙의·모더레이션을 지원합니다. <strong>회의의 결정을 대신하지 않습니다.</strong></p>
       </nav>
       <main id="canvas-workbench" style="width:1440px;height:800px">
-        <h1>Canvas 온톨로지 검수 큐</h1>
-        ${reviewFixture}
-        <p>DB에 저장하지 않습니다. 공개 그래프에 반영하지 않습니다.</p>
-        <p>실시간 연결됨</p><h2>진행자 로그인</h2>
-        <label>이메일 주소<input id="canvas-login-email" aria-label="이메일 주소" type="email"></label>
-        <label>비밀번호<input id="canvas-login-password" aria-label="비밀번호" type="password"></label>
-        <button id="canvas-login-button" type="button">로그인</button>
-        <p id="canvas-login-error" role="alert" hidden></p>
+        ${reviewWorkspace}
+        <p>실시간 연결됨</p>
+        <section id="fixture-auth-panel"${reviewLogin ? ' data-ontology-review-auth-ready="true"' : ''}>
+          <h2>${reviewLogin ? '온톨로지 검수 진행자 로그인' : '진행자 로그인'}</h2>
+          <label>이메일 주소<input id="canvas-login-email" aria-label="${reviewLogin ? '온톨로지 검수 이메일 주소' : '이메일 주소'}" type="email"></label>
+          <label>비밀번호<input id="canvas-login-password" aria-label="${reviewLogin ? '온톨로지 검수 비밀번호' : '비밀번호'}" type="password"></label>
+          <button id="canvas-login-button" type="button">로그인</button>
+          <p id="canvas-login-error" role="alert" hidden></p>
+        </section>
         <div class="react-flow__node-agenda${draggable ? ' draggable' : ''}">의제</div>
       </main>
       <script>
@@ -488,17 +498,34 @@ async function fixtureServer({
           password.disabled = true;
           button.disabled = true;
           try {
-            const response = await fetch('/auth/v1/token?grant_type=password', { method: 'POST' });
+            const response = await fetch('/auth/v1/token?grant_type=password', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ email: email.value, password: password.value }),
+            });
             const result = await response.json();
             const error = document.getElementById('canvas-login-error');
-            error.textContent = result.error_description;
-            error.hidden = false;
+            if (response.ok && ${reviewLogin}) {
+              document.getElementById('fixture-auth-panel').hidden = true;
+              document.getElementById('fixture-review-workspace').hidden = false;
+              error.hidden = true;
+            } else {
+              error.textContent = result.error_description;
+              error.hidden = false;
+            }
           } finally {
             canvasAuthBusy = false;
             email.disabled = false;
             password.disabled = false;
             button.disabled = false;
           }
+        });
+        document.getElementById('fixture-review-logout')?.addEventListener('click', async () => {
+          await fetch('/auth/v1/logout', { method: 'POST' });
+          document.getElementById('fixture-review-workspace').hidden = true;
+          document.getElementById('fixture-auth-panel').hidden = false;
+          document.getElementById('canvas-login-email').value = '';
+          document.getElementById('canvas-login-password').value = '';
         });
         fetch('/rest/v1/session');fetch('/rest/v1/agenda');fetch('/rest/v1/agenda_link');
         ${write ? "fetch('/write',{method:'POST'}).catch(() => {})" : ''}
@@ -542,6 +569,12 @@ describe('verifyCanvasBrowser', () => {
     expect(report.checks.livePlatformNavigationConnected).toBe(true);
     expect(report.checks.reviewDocumentStatus).toBe(200);
     expect(report.checks.reviewPlatformNavigationConnected).toBe(true);
+    expect(report.checks.reviewUnauthenticatedWorkspaceHidden).toBe(true);
+    expect(report.checks.reviewAuthInputsLocked).toBe(true);
+    expect(report.checks.reviewAuthDuplicateSubmissionBlocked).toBe(true);
+    expect(report.checks.reviewAuthRequestCount).toBe(1);
+    expect(report.checks.reviewLogoutRequestCount).toBe(1);
+    expect(report.checks.reviewSessionIsolationVerified).toBe(true);
     expect(report.checks.reviewLocalOnlyBoundaryVisible).toBe(true);
     expect(report.checks.transcriptReviewLocalOnlyBoundaryVisible).toBe(true);
     expect(report.checks.transcriptCandidateEvidenceVisible).toBe(true);
@@ -596,6 +629,13 @@ describe('verifyCanvasBrowser', () => {
     await expect(verifyCanvasBrowser({ baseUrl: fixture.baseUrl, timeoutMs: 2_000 }))
       .rejects.toThrow(/Timeout/i);
   }, 15_000);
+
+  it('fails when local review controls are exposed before authentication', async () => {
+    const fixture = await fixtureServer({ reviewWorkspaceExposedBeforeLogin: true });
+
+    await expect(verifyCanvasBrowser({ baseUrl: fixture.baseUrl }))
+      .rejects.toThrow('Ontology review authentication boundary is incomplete');
+  }, 60_000);
 });
 
 describe('Canvas browser CI contract', () => {

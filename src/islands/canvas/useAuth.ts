@@ -7,6 +7,24 @@ interface CanvasAuthSessionResult {
   error: Error | null;
 }
 
+/** Acquires an auth action lock synchronously so duplicate UI events cannot race React state. */
+export async function runExclusiveCanvasAuthOperation(
+  lock: { current: boolean },
+  action: () => Promise<void>,
+  onBusyChange: (busy: boolean) => void,
+): Promise<boolean> {
+  if (lock.current) return false;
+  lock.current = true;
+  onBusyChange(true);
+  try {
+    await action();
+    return true;
+  } finally {
+    lock.current = false;
+    onBusyChange(false);
+  }
+}
+
 /** Applies an initial Canvas auth read only while it is still the latest auth operation. */
 export async function completeCanvasAuthSessionLoad(
   action: () => PromiseLike<CanvasAuthSessionResult>,

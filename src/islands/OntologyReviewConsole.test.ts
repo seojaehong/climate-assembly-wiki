@@ -1,20 +1,41 @@
+import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import OntologyReviewConsole, {
+  AuthenticatedOntologyReviewWorkspace,
   completeOntologyWorkspaceLoad,
   completeTranscriptOntologyExport,
   FacilitationPromptPanel,
   NodeReviewCard,
+  OntologyReviewLoginBoundary,
   ontologyReviewNodeAnchorId,
 } from './OntologyReviewConsole';
 import type { CanvasOntologyNode, CanvasOntologyReviewWorkspace } from './canvas/ontology-review-workspace';
 
 describe('OntologyReviewConsole', () => {
-  it('starts as a local-only review import surface with explicit safety boundaries', () => {
+  it('keeps microphone and review-file controls behind the moderator auth boundary', () => {
     const html = renderToStaticMarkup(createElement(OntologyReviewConsole));
 
+    expect(html).toContain('온톨로지 검수 진행자 로그인');
+    expect(html).toContain('마이크·전사·검수 파일은 인증 후에만');
+    expect(html).toContain('온톨로지 검수 이메일 주소');
+    expect(html).toContain('온톨로지 검수 비밀번호');
+    expect(html).not.toContain('type="file"');
+    expect(html).not.toContain('R4 로컬 음성·전사 검수');
+  });
+
+  it('renders the local-only workspace only for an authenticated moderator', () => {
+    const html = renderToStaticMarkup(createElement(AuthenticatedOntologyReviewWorkspace, {
+      email: 'moderator@example.test',
+      loggingOut: false,
+      logoutError: null,
+      onLogout: () => undefined,
+    }));
+
     expect(html).toContain('Canvas 온톨로지 검수 큐');
+    expect(html).toContain('인증된 진행자 moderator@example.test');
+    expect(html).toContain('로그아웃');
     expect(html).toContain('type="file"');
     expect(html).toContain('검수 계획 JSON');
     expect(html).toContain('Canvas snapshot JSON');
@@ -34,7 +55,12 @@ describe('OntologyReviewConsole', () => {
   });
 
   it('renders every upload and reviewer input on an explicit opaque high-contrast surface', () => {
-    const html = renderToStaticMarkup(createElement(OntologyReviewConsole));
+    const html = renderToStaticMarkup(createElement(AuthenticatedOntologyReviewWorkspace, {
+      email: 'moderator@example.test',
+      loggingOut: false,
+      logoutError: null,
+      onLogout: () => undefined,
+    }));
     const inputTags = html.match(/<input\b[^>]*>/g) ?? [];
 
     expect(inputTags).toHaveLength(7);
@@ -42,6 +68,35 @@ describe('OntologyReviewConsole', () => {
       expect(input).toContain('background:#FFFFFF');
       expect(input).toContain('color:#102A43');
     }
+  });
+
+  it('announces auth failures and locks the login form while a request is running', () => {
+    const html = renderToStaticMarkup(createElement(OntologyReviewLoginBoundary, {
+      email: 'moderator@example.test',
+      password: 'synthetic-password',
+      busy: true,
+      error: 'Synthetic authentication failure',
+      hydrated: true,
+      onEmailChange: () => undefined,
+      onPasswordChange: () => undefined,
+      onSubmit: () => undefined,
+    }));
+
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain('data-ontology-review-auth-ready="true"');
+    expect(html.match(/disabled=""/g)).toHaveLength(3);
+    expect(html).toContain('로그인 중…');
+    expect(html).toContain('role="alert"');
+    expect(html).toContain('Synthetic authentication failure');
+  });
+
+  it('keys the authenticated workspace by user identity so local files and audio unmount at session boundaries', () => {
+    const source = readFileSync(new URL('./OntologyReviewConsole.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('key={session.user.id}');
+    expect(source.match(/runExclusiveCanvasAuthOperation\(authOperationLock/g)).toHaveLength(2);
+    expect(source).toContain("setEmail('');");
+    expect(source).toContain("setPassword('');");
   });
 
   it('renders advisory facilitation questions with provenance and a live count', () => {

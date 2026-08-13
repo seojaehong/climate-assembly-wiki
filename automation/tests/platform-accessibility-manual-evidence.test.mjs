@@ -47,11 +47,11 @@ test('keeps an untouched template in needs review with exact counts', () => {
   expect(evaluateManualAccessibilityEvidence(evidence)).toEqual({
     status: 'needs_review',
     caseCount: 12,
-    checkCount: 48,
+    checkCount: 50,
     passCount: 0,
     failCount: 0,
     blockedCount: 0,
-    notRunCount: 48,
+    notRunCount: 50,
   });
 });
 
@@ -160,7 +160,7 @@ test('CLI verifies valid evidence and does not echo malformed source data', () =
       evidencePath,
     ], { encoding: 'utf8' });
     expect(verified.status).toBe(0);
-    expect(JSON.parse(verified.stdout)).toMatchObject({ status: 'needs_review', caseCount: 12, notRunCount: 48 });
+    expect(JSON.parse(verified.stdout)).toMatchObject({ status: 'needs_review', caseCount: 12, notRunCount: 50 });
 
     writeFileSync(malformedPath, '{"secret":"must-not-echo"', 'utf8');
     const malformed = spawnSync(process.execPath, [
@@ -263,6 +263,7 @@ test('workflow watches every source path that can stale manual evidence', () => 
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/components');
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/islands/OntologyReviewConsole.tsx');
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/islands/canvas/ontology-review-workspace.ts');
+  expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/islands/canvas/useAuth.ts');
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/lib');
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/pages');
 });

@@ -371,7 +371,7 @@ npm.cmd run bridge:canvas-ontology -- --snapshot 'C:\approved\snapshot_42.json' 
 5. `검수 완료 plan 다운로드`로 reviewed plan을 내려받은 뒤 아래 `--reviewed-plan` 명령으로 다시 검증한다.
 
 이 화면은 파일을 브라우저 메모리에서만 처리하고 browser storage, Supabase, 공개 graph에 쓰지 않는다.
-`noindex`와 운영 메뉴는 접근통제가 아니므로 승인된 운영 장치·입력만 사용한다. plan self-checksum은
+화면은 Supabase Auth 세션이 있어야 마이크·파일·검수 작업대를 마운트하고 로그아웃 시 로컬 state를 폐기한다. `noindex`와 운영 메뉴 자체는 접근통제가 아니며, 자유입력 reviewer 역할 ID는 현재 Auth 사용자와 암호학적으로 결속되지 않으므로 승인된 운영 계정·장치·입력만 사용한다. plan self-checksum은
 우발 변경 탐지용이며 작성자 인증이나 외부 서명을 제공하지 않는다.
 
 node는 `accepted`, `edited`(label/text 수정), 또는 `rejected`, relation과 cluster는 `accepted` 또는 `rejected`로 끝나야 한다. 수정된 node는 반드시 `edited`를 사용한다. 승인 node는 허용된 온톨로지 kind,

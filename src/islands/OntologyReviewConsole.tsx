@@ -27,6 +27,7 @@ import {
   type TranscriptOntologyReviewWorkspace,
 } from './canvas/transcript-ontology-review-workspace';
 import { PrivateTranscriptCapturePanel } from './canvas/PrivateTranscriptCapturePanel';
+import { runExclusiveCanvasAuthOperation, useAuth } from './canvas/useAuth';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const CONTROL_BORDER = '#2F6F7E';
@@ -38,6 +39,7 @@ const controlStyle: CSSProperties = {
   background: '#FFFFFF',
   border: `2px solid ${CONTROL_BORDER}`,
   borderRadius: 8,
+  boxSizing: 'border-box',
   color: INK,
   colorScheme: 'light',
   minHeight: 44,
@@ -540,7 +542,17 @@ export function TranscriptOntologyReviewPanel() {
   );
 }
 
-export default function OntologyReviewConsole() {
+export function AuthenticatedOntologyReviewWorkspace({
+  email,
+  loggingOut,
+  logoutError,
+  onLogout,
+}: {
+  email: string | null;
+  loggingOut: boolean;
+  logoutError: string | null;
+  onLogout: () => void;
+}) {
   const [hydrated, setHydrated] = useState(false);
   const [planFile, setPlanFile] = useState<File | null>(null);
   const [snapshotFile, setSnapshotFile] = useState<File | null>(null);
@@ -627,6 +639,15 @@ export default function OntologyReviewConsole() {
             sealed 검수 계획과 원 snapshot을 브라우저 메모리에서만 대조합니다. DB에 저장하지 않습니다.
             {' '}공개 그래프에 반영하지 않습니다.
           </p>
+          <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between', marginTop: 12 }}>
+            <span style={{ color: MUTED, fontSize: 14, overflowWrap: 'anywhere' }}>
+              인증된 진행자 {email ?? '이메일 미표시 계정'}
+            </span>
+            <button type="button" onClick={onLogout} disabled={loggingOut} style={{ ...controlStyle, fontWeight: 800 }}>
+              {loggingOut ? '로그아웃 중…' : '로그아웃'}
+            </button>
+          </div>
+          {logoutError ? <p role="alert" style={{ color: '#8A1C1C', fontWeight: 700 }}>{logoutError}</p> : null}
         </header>
 
         <PrivateTranscriptCapturePanel />
@@ -685,5 +706,131 @@ export default function OntologyReviewConsole() {
         </section>
       </div>
     </main>
+  );
+}
+
+export function OntologyReviewLoginBoundary({
+  email,
+  password,
+  busy,
+  error,
+  hydrated,
+  onEmailChange,
+  onPasswordChange,
+  onSubmit,
+}: {
+  email: string;
+  password: string;
+  busy: boolean;
+  error: string | null;
+  hydrated: boolean;
+  onEmailChange: (value: string) => void;
+  onPasswordChange: (value: string) => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <main data-ontology-review-auth-ready={hydrated ? 'true' : 'false'} id="ontology-review-content" tabIndex={-1} style={{ alignItems: 'center', background: '#E9F1F5', color: INK, display: 'flex', minHeight: '70vh', padding: 24 }}>
+      <form
+        aria-busy={busy}
+        onSubmit={(event) => { event.preventDefault(); onSubmit(); }}
+        style={{ ...cardStyle, margin: '0 auto', maxWidth: 440, width: '100%' }}
+      >
+        <h1 style={{ margin: 0 }}>온톨로지 검수 진행자 로그인</h1>
+        <p style={{ color: MUTED, lineHeight: 1.6, margin: 0 }}>
+          마이크·전사·검수 파일은 인증 후에만 브라우저 메모리에서 처리합니다.
+        </p>
+        <label>이메일 주소
+          <input
+            aria-label="온톨로지 검수 이메일 주소"
+            autoComplete="username"
+            disabled={busy}
+            onChange={(event) => onEmailChange(event.currentTarget.value)}
+            type="email"
+            value={email}
+            style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }}
+          />
+        </label>
+        <label>비밀번호
+          <input
+            aria-label="온톨로지 검수 비밀번호"
+            autoComplete="current-password"
+            disabled={busy}
+            onChange={(event) => onPasswordChange(event.currentTarget.value)}
+            type="password"
+            value={password}
+            style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }}
+          />
+        </label>
+        <button type="submit" disabled={busy || email.trim().length === 0 || password.length === 0} style={{ ...controlStyle, background: '#0B4F6C', color: '#FFFFFF', fontWeight: 800 }}>
+          {busy ? '로그인 중…' : '로그인'}
+        </button>
+        {error ? <p role="alert" style={{ color: '#8A1C1C', fontWeight: 700, margin: 0 }}>{error}</p> : null}
+      </form>
+    </main>
+  );
+}
+
+export default function OntologyReviewConsole() {
+  const { session, email: authenticatedEmail, initializationError, signIn, signOut } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authHydrated, setAuthHydrated] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const authOperationLock = useRef(false);
+
+  useEffect(() => { setAuthHydrated(true); }, []);
+
+  const submitLogin = async () => {
+    if (email.trim().length === 0 || password.length === 0 || authOperationLock.current) return;
+    await runExclusiveCanvasAuthOperation(authOperationLock, async () => {
+      setAuthError(null);
+      const { error } = await signIn(email.trim(), password);
+      if (error) {
+        console.error('Ontology review sign-in failed', error);
+        setAuthError(error.message);
+        return;
+      }
+      setEmail('');
+      setPassword('');
+    }, setLoggingIn);
+  };
+
+  const submitLogout = async () => {
+    if (authOperationLock.current) return;
+    await runExclusiveCanvasAuthOperation(authOperationLock, async () => {
+      setAuthError(null);
+      const { error } = await signOut();
+      if (error) {
+        console.error('Ontology review sign-out failed', error);
+        setAuthError(error.message);
+      }
+    }, setLoggingOut);
+  };
+
+  if (!session) {
+    return (
+      <OntologyReviewLoginBoundary
+        email={email}
+        password={password}
+        busy={loggingIn}
+        error={authError ?? initializationError}
+        hydrated={authHydrated}
+        onEmailChange={setEmail}
+        onPasswordChange={setPassword}
+        onSubmit={() => void submitLogin()}
+      />
+    );
+  }
+
+  return (
+    <AuthenticatedOntologyReviewWorkspace
+      key={session.user.id}
+      email={authenticatedEmail}
+      loggingOut={loggingOut}
+      logoutError={authError}
+      onLogout={() => void submitLogout()}
+    />
   );
 }

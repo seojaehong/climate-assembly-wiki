@@ -375,6 +375,7 @@ test('detects untracked audited source and includes build and auditor dependenci
       'src/islands/canvas/PrivateTranscriptCapturePanel.tsx',
       'src/islands/canvas/ontology-review-workspace.ts',
       'src/islands/canvas/private-transcript-capture.ts',
+      'src/islands/canvas/useAuth.ts',
       'src/layouts',
       'src/pages',
     ]));
@@ -407,7 +408,9 @@ test('covers authenticated and published production surfaces with read-only brow
   expect(DEFAULT_AUDIT_ROUTES.find((route) => route.id === 'ontology-review')).toMatchObject({
     path: '/ko/moderator/ontology-review/',
     skipTarget: 'ontology-review-content',
+    fixture: 'ci-staff-read-fixture-v1',
     readySelector: 'main[data-ontology-review-ready="true"]',
+    prepare: expect.any(Function),
   });
   expect(DEFAULT_EXCLUDED_SURFACES).toEqual([
     expect.objectContaining({ id: 'assistive-technology-manual-evaluation' }),

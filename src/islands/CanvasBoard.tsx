@@ -5,7 +5,7 @@ import '@xyflow/react/dist/style.css';
 import AgendaNode from './canvas/AgendaNode';
 import ZoneFrameNode from './canvas/ZoneFrameNode';
 import { useRealtimeAgendas } from './canvas/use-realtime-agendas';
-import { useAuth } from './canvas/useAuth';
+import { runExclusiveCanvasAuthOperation, useAuth } from './canvas/useAuth';
 import { getSupabase } from '../lib/supabase';
 import { BG_PRESETS, joColor, readableInk, groupColor } from './canvas/palette';
 import { ZONE_FRAMES, FRAME_Y, FRAME_H, zoneForX } from './canvas/zones';
@@ -126,23 +126,6 @@ export async function completeCanvasOperationForGeneration(
   const result = await operation;
   if (isCurrent()) onCurrentResult(result);
   return result;
-}
-
-export async function runExclusiveCanvasAuthOperation(
-  lock: { current: boolean },
-  action: () => Promise<void>,
-  onBusyChange: (busy: boolean) => void,
-): Promise<boolean> {
-  if (lock.current) return false;
-  lock.current = true;
-  onBusyChange(true);
-  try {
-    await action();
-    return true;
-  } finally {
-    lock.current = false;
-    onBusyChange(false);
-  }
 }
 
 type CanvasClient = NonNullable<ReturnType<typeof getSupabase>>;

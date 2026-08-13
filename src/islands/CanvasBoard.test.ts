@@ -9,10 +9,9 @@ import {
   CanvasConnectionNotice,
   CanvasOperationNotice,
   retainCanvasOperationNotice,
-  runExclusiveCanvasAuthOperation,
 } from './CanvasBoard';
 import type { CanvasOperationResult } from './canvas/canvas-operation';
-import { completeCanvasAuthSessionLoad } from './canvas/useAuth';
+import { completeCanvasAuthSessionLoad, runExclusiveCanvasAuthOperation } from './canvas/useAuth';
 
 const authSession = (id: string) => ({ user: { id, email: `${id}@example.test` } }) as Session;
 
