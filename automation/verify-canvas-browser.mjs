@@ -8,6 +8,7 @@ import {
   buildCanvasOntologyReviewPlan,
   sealCanvasOntologyReviewPlan,
 } from './canvas-ontology-bridge.mjs';
+import { buildPublishedTranscriptReviewGraph } from './transcript-ontology-fixture.mjs';
 
 const DEFAULT_PATH = '/ko/moderator/canvas/';
 const DEFAULT_LIVE_PATH = '/ko/moderator/live/';
@@ -705,9 +706,30 @@ export async function verifyCanvasBrowser({
       && new Date(publicationApproval.approvedAt).toISOString() === publicationApproval.approvedAt
       && typeof latestReviewedAt === 'string'
       && publicationApproval.approvedAt > latestReviewedAt;
+    const publicationGraph = buildPublishedTranscriptReviewGraph({
+      fixtureText: TRANSCRIPT_REVIEW_FIXTURE_TEXT,
+      reviewedPlan: transcriptReviewedPlan,
+      publication: publicationApproval,
+    });
+    const publicationGraphText = JSON.stringify(publicationGraph);
+    const transcriptPublicationHandoffVerified = publicationGraph.elements.nodes.length === 1
+      && publicationGraph.elements.edges.length === 0
+      && publicationGraph.meta?.source?.source_id === 'live-transcript-r2-reviewed'
+      && publicationGraph.meta?.counts?.nodes === 1
+      && publicationGraph.meta?.counts?.edges === 0
+      && publicationGraph.meta?.dropped?.rejected_nodes === 1
+      && publicationGraph.meta?.dropped?.rejected_edges === 1
+      && publicationGraph.elements.nodes[0]?.data?.label === '재생에너지 전환의 최종 속도와 조건'
+      && publicationGraph.elements.nodes[0]?.data?.meta?.review_identity_kind === 'authenticated_user'
+      && publicationGraph.meta?.publication?.approved_identity_kind === 'authenticated_user'
+      && publicationGraph.meta?.publication?.approved_at === publicationApproval.approvedAt
+      && !publicationGraphText.includes(REVIEW_AUTH_REVIEWER_ID)
+      && !publicationGraphText.includes('speaker-a')
+      && !publicationGraphText.includes('startMs')
+      && !publicationGraphText.includes('endMs');
     if (!transcriptLocalOnlyBoundaryVisible || !transcriptCandidateEvidenceVisible
       || !transcriptRedecisionGateVerified || !transcriptReviewDownloaded
-      || !transcriptPublicationApprovalDownloaded) {
+      || !transcriptPublicationApprovalDownloaded || !transcriptPublicationHandoffVerified) {
       throw new Error('Transcript ontology review browser contract is incomplete');
     }
     const canvasReviewPanel = reviewPage.getByRole('region', { name: 'Canvas 검수 계획' });
@@ -932,6 +954,7 @@ export async function verifyCanvasBrowser({
         transcriptRedecisionGateVerified,
         transcriptReviewDownloaded,
         transcriptPublicationApprovalDownloaded,
+        transcriptPublicationHandoffVerified,
         privateMediaRecorderAvailable,
         privateRecordingMemoryBoundaryVisible,
         privateRecorderConstructionFailureRecovered,

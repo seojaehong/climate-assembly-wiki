@@ -522,6 +522,7 @@ npm.cmd run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology
 - 모든 후보를 판단한 경우에만 `transcript-ontology-reviewed-plan`을 로컬 다운로드한다. export는 원 fixture에서 workspace를 다시 만들어 exact SHA-256, 원 chunk 인용, source text, 판단 audit, summary와 safety를 대조한다. plan은 `databaseMutationExecuted:false`, `publicGraphWritten:false`, `requiresPublicationReview:true`를 명시한다.
 - 같은 Auth 세션에서 현재 plan 다운로드가 성공한 뒤에만 `live-*` source ID를 입력해 별도 `transcript-ontology-publication-approval` artifact를 내려받을 수 있다. artifact는 exact canonical plan SHA-256, canonical Auth reviewer ID와 모든 판단 이후 승인 시각을 결속하며, plan·fixture·source ID가 바뀐 비동기 결과는 폐기한다. 이 단계도 브라우저 로컬 다운로드일 뿐 DB나 public graph를 쓰지 않는다.
 - 브라우저 verifier는 실제 production 페이지에서 fixture 업로드, 원문·역할 표시, node 수정 승인, node/relation 반려와 private plan 직렬화를 실행한다. Canvas 검수 흐름과 별개로 같은 페이지에서 두 기능을 모두 검증한다.
+- 같은 Chromium 실행에서 다운로드한 private plan과 publication approval을 R3 `buildPublishedTranscriptReviewGraph()`에 직접 전달한다. builder가 원 fixture provenance와 두 artifact를 전수 대조하고 승인 node만 남긴 graph, 반려 건수, 신원 종류 비식별화와 raw 전사 시각·speaker 비노출을 모두 만족해야 browser verifier가 통과한다. graph는 메모리에서만 만들며 public 파일을 쓰지 않는다.
 - 실제 시민 발언·음성/STT·DB/API 저장·R3 graph export/publication은 포함하지 않는다. 검수 결정과 private plan exporter는 현재 Supabase Auth 사용자 UUID에서 파생한 canonical reviewer ID만 허용하지만 다운로드 plan의 외부 서명이나 독립 신원 검증은 포함하지 않는다. 이 prototype에 실제 시민 발언 파일을 넣지 않는다.
 
 ## R3 검수 plan → 합성 live graph source

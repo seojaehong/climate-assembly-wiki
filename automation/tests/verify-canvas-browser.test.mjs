@@ -615,6 +615,7 @@ describe('verifyCanvasBrowser', () => {
     expect(report.checks.transcriptRedecisionGateVerified).toBe(true);
     expect(report.checks.transcriptReviewDownloaded).toBe(true);
     expect(report.checks.transcriptPublicationApprovalDownloaded).toBe(true);
+    expect(report.checks.transcriptPublicationHandoffVerified).toBe(true);
     expect(report.checks.privateMediaRecorderAvailable).toBe(true);
     expect(report.checks.privateRecordingMemoryBoundaryVisible).toBe(true);
     expect(report.checks.privateRecorderConstructionFailureRecovered).toBe(true);
