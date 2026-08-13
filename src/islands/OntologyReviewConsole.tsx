@@ -28,6 +28,7 @@ import {
   type TranscriptOntologyReviewNode,
   type TranscriptOntologyReviewRelation,
   type TranscriptOntologyReviewWorkspace,
+  transcriptCandidateFacilitationPrompt,
 } from './canvas/transcript-ontology-review-workspace';
 import { PrivateTranscriptCapturePanel } from './canvas/PrivateTranscriptCapturePanel';
 import { authenticatedReviewerId, runExclusiveCanvasAuthOperation, useAuth } from './canvas/useAuth';
@@ -398,6 +399,16 @@ function TranscriptEvidence({ transcript }: { transcript: TranscriptCitation[] }
   );
 }
 
+export function TranscriptCandidatePrompt({ kind }: { kind: string }) {
+  return (
+    <section aria-label="후보 진행 질문 제안" style={{ background: '#FFF8E7', border: `2px solid ${CONTROL_BORDER}`, borderRadius: 8, padding: 12 }}>
+      <strong>함께 확인할 진행 질문</strong>
+      <p style={{ margin: '6px 0 0' }}>{transcriptCandidateFacilitationPrompt(kind)}</p>
+      <small style={{ color: MUTED }}>검수 전 확인을 돕는 제안이며 회의의 결정이나 진실 판정을 대신하지 않습니다.</small>
+    </section>
+  );
+}
+
 function TranscriptNodeReviewCard({ node, reviewer, onDecision, onDraft }: {
   node: TranscriptOntologyReviewNode;
   reviewer: string;
@@ -422,6 +433,7 @@ function TranscriptNodeReviewCard({ node, reviewer, onDecision, onDraft }: {
           {TRANSCRIPT_ONTOLOGY_NODE_KINDS.map((candidate) => <option key={candidate}>{candidate}</option>)}
         </select>
       </label>
+      <TranscriptCandidatePrompt kind={kind} />
       <label>표시 이름
         <input value={node.label} onChange={(event) => onDraft({ itemType: 'node', id: node.id, label: event.currentTarget.value })} style={{ ...controlStyle, display: 'block', width: '100%' }} />
       </label>

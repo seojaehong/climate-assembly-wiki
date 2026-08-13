@@ -11,6 +11,7 @@ import OntologyReviewConsole, {
   NodeReviewCard,
   OntologyReviewLoginBoundary,
   ontologyReviewNodeAnchorId,
+  TranscriptCandidatePrompt,
   transcriptHandoffFixtureArtifact,
 } from './OntologyReviewConsole';
 import type { CanvasOntologyNode, CanvasOntologyReviewWorkspace } from './canvas/ontology-review-workspace';
@@ -172,6 +173,15 @@ describe('OntologyReviewConsole', () => {
     expect(html).toContain('적용 중인 질문 규칙 5개');
     expect(html).toContain('근거가 연결되지 않은 주장');
     expect(html).toContain('이름 붙이지 않은 가치 긴장');
+  });
+
+  it('renders a non-decision facilitation suggestion inside a transcript candidate card', () => {
+    const html = renderToStaticMarkup(createElement(TranscriptCandidatePrompt, { kind: 'Claim' }));
+
+    expect(html).toContain('aria-label="후보 진행 질문 제안"');
+    expect(html).toContain('함께 확인할 진행 질문');
+    expect(html).toContain('이 주장에 연결할 근거나 경험이 있는지 함께 확인해 보세요.');
+    expect(html).toContain('회의의 결정이나 진실 판정을 대신하지 않습니다.');
   });
 
   it('links every facilitation prompt provenance node to a focusable review card', () => {

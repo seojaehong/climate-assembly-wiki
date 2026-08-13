@@ -7,6 +7,8 @@ import {
   createTranscriptOntologyReviewWorkspace,
   exportTranscriptOntologyReviewedPlan,
   reviewTranscriptOntologyCandidate,
+  transcriptCandidateFacilitationPrompt,
+  TRANSCRIPT_ONTOLOGY_NODE_KINDS,
   updateTranscriptOntologyCandidateDraft,
 } from './transcript-ontology-review-workspace';
 
@@ -111,6 +113,20 @@ async function completedWorkspace() {
 }
 
 describe('transcript ontology review workspace', () => {
+  it('provides a non-decision facilitation question for every candidate node kind', () => {
+    expect(TRANSCRIPT_ONTOLOGY_NODE_KINDS.map((kind) => transcriptCandidateFacilitationPrompt(kind))).toEqual([
+      '이 쟁점의 범위와 서로 다른 관점을 함께 확인해 보세요.',
+      '이 주장에 연결할 근거나 경험이 있는지 함께 확인해 보세요.',
+      '이 제안이 성립하려면 필요한 조건이 무엇인지 함께 확인해 보세요.',
+      '이 우려가 어떤 쟁점과 연결되는지 함께 확인해 보세요.',
+      '이 조건을 실제로 확인할 기준이 무엇인지 함께 확인해 보세요.',
+      '이 발화가 드러내는 가치와 다른 가치 사이의 긴장을 함께 확인해 보세요.',
+      '이 근거가 뒷받침하는 주장과 추가 확인이 필요한 부분을 함께 확인해 보세요.',
+    ]);
+    expect(() => transcriptCandidateFacilitationPrompt('Decision')).toThrow(
+      'Invalid transcript ontology node kind',
+    );
+  });
   it('binds a reviewed R4 batch to provider-neutral candidates and preserves chunk audit provenance', async () => {
     const batchText = privateReviewBatchText();
     const generatedFixtureText = await buildPrivateTranscriptOntologyFixture({

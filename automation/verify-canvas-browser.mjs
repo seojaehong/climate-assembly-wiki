@@ -829,6 +829,13 @@ export async function verifyCanvasBrowser({
         : '재생에너지 전환 속도를 높여야 합니다.', { exact: true }).isVisible()
       && await transcriptNodeCards.nth(0).getByLabel('Habermas 발화 역할').inputValue() === 'Issue'
       && await transcriptRelationCards.nth(0).getByLabel('논증 관계').inputValue() === 'isAbout';
+    const transcriptCandidatePromptVisible = await transcriptNodeCards.nth(0)
+      .getByRole('region', { name: '후보 진행 질문 제안' })
+      .getByText('이 쟁점의 범위와 서로 다른 관점을 함께 확인해 보세요.', { exact: true })
+      .isVisible()
+      && await transcriptNodeCards.nth(0)
+        .getByText('검수 전 확인을 돕는 제안이며 회의의 결정이나 진실 판정을 대신하지 않습니다.', { exact: true })
+        .isVisible();
     await transcriptNodeCards.nth(0).getByLabel('표시 이름').fill('재생에너지 전환의 속도와 조건');
     await transcriptNodeCards.nth(0).getByRole('button', { name: '수정 승인' }).click();
     await transcriptNodeCards.nth(1).getByRole('button', { name: '반려' }).click();
@@ -910,7 +917,7 @@ export async function verifyCanvasBrowser({
       && !publicationGraphText.includes('speaker-unknown')
       && !publicationGraphText.includes('startMs')
       && !publicationGraphText.includes('endMs');
-    if (!transcriptLocalOnlyBoundaryVisible || !transcriptCandidateEvidenceVisible
+    if (!transcriptLocalOnlyBoundaryVisible || !transcriptCandidateEvidenceVisible || !transcriptCandidatePromptVisible
       || !transcriptRedecisionGateVerified || !transcriptHandoffFixtureDownloaded || !transcriptReviewDownloaded
       || !transcriptPublicationApprovalDownloaded || !transcriptPublicationHandoffVerified) {
       throw new Error('Transcript ontology review browser contract is incomplete');
@@ -1134,6 +1141,7 @@ export async function verifyCanvasBrowser({
         reviewLocalOnlyBoundaryVisible,
         transcriptReviewLocalOnlyBoundaryVisible: transcriptLocalOnlyBoundaryVisible,
         transcriptCandidateEvidenceVisible,
+        transcriptCandidatePromptVisible,
         transcriptRedecisionGateVerified,
         transcriptHandoffFixtureDownloaded,
         transcriptHandoffFixtureSha256: downloadedHandoffFixtureSha256,

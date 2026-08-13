@@ -137,6 +137,11 @@ async function fixtureServer({
             <article aria-label="전사 노드 후보 검수 transcript-node:candidate-issue">
               <p>재생에너지 전환 속도를 높여야 합니다.</p>
               <label>Habermas 발화 역할<select><option>Issue</option></select></label>
+              <section aria-label="후보 진행 질문 제안">
+                <strong>함께 확인할 진행 질문</strong>
+                <p>이 쟁점의 범위와 서로 다른 관점을 함께 확인해 보세요.</p>
+                <small>검수 전 확인을 돕는 제안이며 회의의 결정이나 진실 판정을 대신하지 않습니다.</small>
+              </section>
               <label>표시 이름<input id="transcript-first-label" type="text"></label>
               <button type="button" data-transcript-decision="first">수정 승인</button>
             </article>
@@ -701,6 +706,7 @@ describe('verifyCanvasBrowser', () => {
     expect(report.checks.reviewLocalOnlyBoundaryVisible).toBe(true);
     expect(report.checks.transcriptReviewLocalOnlyBoundaryVisible).toBe(true);
     expect(report.checks.transcriptCandidateEvidenceVisible).toBe(true);
+    expect(report.checks.transcriptCandidatePromptVisible).toBe(true);
     expect(report.checks.transcriptRedecisionGateVerified).toBe(true);
     expect(report.checks.transcriptReviewDownloaded).toBe(true);
     expect(report.checks.transcriptPublicationApprovalDownloaded).toBe(true);

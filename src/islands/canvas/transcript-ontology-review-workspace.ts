@@ -119,6 +119,15 @@ export const TRANSCRIPT_ONTOLOGY_RELATIONS = [
   'supports', 'opposes', 'hasConcern', 'requiresCondition', 'hasEvidence',
   'modifies', 'isAbout', 'raisesIssue', 'impacts',
 ] as const;
+const TRANSCRIPT_CANDIDATE_FACILITATION_PROMPTS: Record<string, string> = {
+  Issue: '이 쟁점의 범위와 서로 다른 관점을 함께 확인해 보세요.',
+  Claim: '이 주장에 연결할 근거나 경험이 있는지 함께 확인해 보세요.',
+  Proposal: '이 제안이 성립하려면 필요한 조건이 무엇인지 함께 확인해 보세요.',
+  Concern: '이 우려가 어떤 쟁점과 연결되는지 함께 확인해 보세요.',
+  Condition: '이 조건을 실제로 확인할 기준이 무엇인지 함께 확인해 보세요.',
+  Value: '이 발화가 드러내는 가치와 다른 가치 사이의 긴장을 함께 확인해 보세요.',
+  Evidence: '이 근거가 뒷받침하는 주장과 추가 확인이 필요한 부분을 함께 확인해 보세요.',
+};
 const NODE_KINDS = new Set<string>(TRANSCRIPT_ONTOLOGY_NODE_KINDS);
 const RELATIONS = new Set<string>(TRANSCRIPT_ONTOLOGY_RELATIONS);
 const DECISION_STATUSES = new Set<string>(['accepted', 'edited', 'rejected']);
@@ -128,6 +137,12 @@ const FIXTURE_REVIEWER_PATTERN = /^(moderator|reviewer)-(fixture|test)$/;
 const LANGUAGE_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 export const TRANSCRIPT_PUBLICATION_SOURCE_PATTERN = /^live-[a-z0-9][a-z0-9._-]*$/;
+
+export function transcriptCandidateFacilitationPrompt(kind: string): string {
+  const prompt = TRANSCRIPT_CANDIDATE_FACILITATION_PROMPTS[kind];
+  if (!prompt) throw new Error('Invalid transcript ontology node kind');
+  return prompt;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
