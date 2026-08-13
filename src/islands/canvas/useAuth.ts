@@ -7,6 +7,14 @@ interface CanvasAuthSessionResult {
   error: Error | null;
 }
 
+const AUTH_USER_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Derives a non-email review audit identity from the authenticated Supabase user UUID. */
+export function authenticatedReviewerId(userId: string): string | null {
+  const normalized = userId.trim().toLowerCase();
+  return AUTH_USER_UUID.test(normalized) ? `auth-user:${normalized}` : null;
+}
+
 /** Acquires an auth action lock synchronously so duplicate UI events cannot race React state. */
 export async function runExclusiveCanvasAuthOperation(
   lock: { current: boolean },

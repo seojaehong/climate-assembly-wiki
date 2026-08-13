@@ -73,11 +73,11 @@ export const MANUAL_ACCESSIBILITY_SURFACES = [
     id: 'ontology-review',
     label: '온톨로지 검수 큐',
     path: '/ko/moderator/ontology-review/',
-    setup: '승인된 접근성 평가 계정으로 로그인한 뒤 비식별 Canvas snapshot과 sealed review plan을 준비하고 검수자에는 실명 대신 역할 ID를 사용한다. 계정·토큰·파일 내용·역할 ID는 증거 JSON에 기록하지 않는다.',
+    setup: '승인된 접근성 평가 계정으로 로그인한 뒤 비식별 Canvas snapshot과 sealed review plan을 준비한다. 화면의 인증 검수자 ID는 Auth 사용자 UUID에서 파생되며 계정·토큰·파일 내용·검수자 ID는 증거 JSON에 기록하지 않는다.',
     checks: [
       { id: 'skip-focus', procedure: '페이지 첫 포커스에서 본문 바로가기를 실행한다.', expected: '포커스가 온톨로지 검수 main으로 이동하고 화면 제목이 안내된다.' },
-      { id: 'auth-boundary', procedure: '로그인 전 검수 파일·마이크 컨트롤이 없는지 확인하고 승인된 계정으로 로그인한 뒤 로그아웃한다.', expected: '인증 전에는 로그인 폼만 제공되고 인증 후에만 로컬 검수 작업대가 나타나며 로그아웃 즉시 파일·음성·전사 초안이 제거된다.' },
-      { id: 'upload-controls', procedure: 'plan 파일, snapshot 파일, 검수자 역할 ID 입력을 탐색하고 키보드로 값을 지정한다.', expected: '세 입력의 보이는 레이블과 접근 가능한 이름이 일치하고 필수 입력 전에는 검수 시작이 비활성 상태로 안내된다.' },
+      { id: 'auth-boundary', procedure: '로그인 전 검수 파일·마이크 컨트롤이 없는지 확인하고 승인된 계정으로 로그인한 뒤 로그아웃한다.', expected: '인증 전에는 로그인 폼만 제공되고 인증 후에만 로컬 검수 작업대가 나타난다. 세 검수 패널은 같은 읽기 전용 인증 검수자 ID를 표시하고 로그아웃 즉시 파일·음성·전사 초안이 제거된다.' },
+      { id: 'upload-controls', procedure: 'plan 파일과 snapshot 파일 입력을 탐색하고 키보드로 값을 지정한 뒤 인증 검수자 ID가 편집 불가능한 텍스트인지 확인한다.', expected: '두 파일 입력의 보이는 레이블과 접근 가능한 이름이 일치하고 인증 검수자 ID는 별도 입력 없이 표시되며 필수 파일 전에는 검수 시작이 비활성 상태로 안내된다.' },
       { id: 'review-status', procedure: '로컬 검수를 시작하고 노드·관계·군집 결정을 하나씩 수행한다.', expected: '진행 건수와 진행 질문 건수가 갱신될 때 상태 메시지로 안내되고 승인·수정·반려 상태를 색상 없이 구분할 수 있다.' },
       { id: 'decision-and-download', procedure: '모든 항목을 키보드로 검수한 뒤 완료 plan 다운로드를 실행한다.', expected: '모든 필수 결정 전에는 다운로드가 비활성이고 완료 후 파일을 내려받을 수 있으며 DB·공개 그래프 미반영 경계가 안내된다.' },
     ],
@@ -252,8 +252,7 @@ export function validateManualAccessibilityTarget(evidence, {
 
 export const MANUAL_ACCESSIBILITY_TARGET_PATHS = [
   'src/islands/OntologyReviewConsole.tsx',
-  'src/islands/canvas/useAuth.ts',
-  'src/islands/canvas/ontology-review-workspace.ts',
+  'src/islands/canvas',
   'src/islands/platform',
   'src/islands/result',
   'src/pages',

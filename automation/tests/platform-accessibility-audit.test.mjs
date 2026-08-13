@@ -372,10 +372,7 @@ test('detects untracked audited source and includes build and auditor dependenci
       'package-lock.json',
       'automation/package-lock.json',
       'src/islands/OntologyReviewConsole.tsx',
-      'src/islands/canvas/PrivateTranscriptCapturePanel.tsx',
-      'src/islands/canvas/ontology-review-workspace.ts',
-      'src/islands/canvas/private-transcript-capture.ts',
-      'src/islands/canvas/useAuth.ts',
+      'src/islands/canvas',
       'src/layouts',
       'src/pages',
     ]));

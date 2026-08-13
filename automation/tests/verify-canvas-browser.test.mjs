@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { verifyCanvasBrowser } from '../verify-canvas-browser.mjs';
 
 const servers = [];
+const authReviewerId = 'auth-user:00000000-0000-4000-8000-000000000091';
 const transcriptFixtureSha256 = createHash('sha256')
   .update(readFileSync(new URL('../fixtures/transcript-ontology-review-candidates.example.json', import.meta.url)), 'utf8')
   .digest('hex');
@@ -47,6 +48,7 @@ async function fixtureServer({
         <section aria-labelledby="private-transcript-capture-heading">
           <h2 id="private-transcript-capture-heading">R4 로컬 음성·전사 검수</h2>
           <p>녹음은 브라우저 세션 메모리에만 두며 DB·서버·public 경로로 전송하지 않습니다.</p>
+          <p>인증 검수자 ID <code>${authReviewerId}</code></p>
           <label><input id="private-consent" type="checkbox">마이크 사용과 로컬 메모리 처리에 동의합니다.</label>
           <label>회차 ID<input id="private-session" type="text"></label>
           <button id="private-start" type="button" disabled>녹음 시작</button>
@@ -55,7 +57,6 @@ async function fixtureServer({
           <section id="private-capture" hidden>
             <strong>로컬 녹음 1000ms · 16 bytes</strong>
             <span>audio SHA-256 ${'b'.repeat(64)}</span>
-            <label>검수자 역할 ID<input id="private-reviewer" type="text"></label>
             <label>시작 ms<input id="private-start-ms" type="number" value="0"></label>
             <label>종료 ms<input id="private-end-ms" type="number" value="1000"></label>
             <label>화자 가명<input id="private-speaker" type="text" value="speaker-a"></label>
@@ -72,7 +73,7 @@ async function fixtureServer({
         <h2 id="canvas-review-heading">Canvas 검수 계획</h2>
         <label>검수 계획 JSON<input type="file"></label>
         <label>Canvas snapshot JSON<input type="file"></label>
-        <label>검수자 역할 ID<input type="text"></label>
+        <p>인증 검수자 ID <code>${authReviewerId}</code></p>
         <button type="button" id="start-review">로컬 검수 시작</button>
         <p id="review-progress" hidden>진행 0/5</p>
         <section id="review-items" hidden>
@@ -119,7 +120,7 @@ async function fixtureServer({
           <h2 id="transcript-review-heading">합성 전사 후보 검수</h2>
           <p>실제 시민 발언 파일은 이 prototype에 넣지 마세요.</p>
           <label>전사 ontology fixture JSON<input id="transcript-fixture" type="file"></label>
-          <label>검수자 역할 ID<input id="transcript-reviewer" type="text"></label>
+          <p>인증 검수자 ID <code>${authReviewerId}</code></p>
           <button type="button" id="start-transcript-review" disabled>전사 후보 로컬 검수 시작</button>
           <p id="transcript-progress" hidden>진행 0/3</p>
           <section id="transcript-items" hidden>
@@ -158,7 +159,6 @@ async function fixtureServer({
           let activePlan = null;
           let transcriptFixture = null;
           const transcriptFixtureInput = document.querySelector('#transcript-fixture');
-          const transcriptReviewerInput = document.querySelector('#transcript-reviewer');
           const transcriptStartButton = document.querySelector('#start-transcript-review');
           const transcriptProgress = document.querySelector('#transcript-progress');
           const transcriptItems = document.querySelector('#transcript-items');
@@ -264,7 +264,7 @@ async function fixtureServer({
                 uid: 'capture-browser:chunk:1', sourceText, text: reviewedText,
                 startMs: 0, endMs: 1000, speakerLabelPseudonym: 'speaker-a',
                 reviewStatus: reviewedText === sourceText ? 'accepted' : 'edited',
-                reviewer: document.querySelector('#private-reviewer').value,
+                reviewer: '${authReviewerId}',
                 reviewedAt: '2026-08-29T01:05:00.000Z',
               }],
               summary: { included: 1, rejected: 0, total: 1 },
@@ -281,11 +281,9 @@ async function fixtureServer({
             URL.revokeObjectURL(href);
           });
           const refreshTranscriptStart = () => {
-            transcriptStartButton.disabled = !transcriptFixtureInput.files[0]
-              || transcriptReviewerInput.value.trim().length < 3;
+            transcriptStartButton.disabled = !transcriptFixtureInput.files[0];
           };
           transcriptFixtureInput.addEventListener('change', refreshTranscriptStart);
-          transcriptReviewerInput.addEventListener('input', refreshTranscriptStart);
           transcriptStartButton.addEventListener('click', async () => {
             transcriptFixture = JSON.parse(await transcriptFixtureInput.files[0].text());
             document.querySelector('#transcript-first-label').value = transcriptFixture.expected.nodes[0].label;
@@ -309,7 +307,7 @@ async function fixtureServer({
             transcriptDownloadButton.disabled = true;
           });
           transcriptDownloadButton.addEventListener('click', () => {
-            const reviewer = transcriptReviewerInput.value;
+            const reviewer = '${authReviewerId}';
             const reviewedAt = '2026-08-29T02:00:00.000Z';
             const first = transcriptFixture.expected.nodes[0];
             const second = transcriptFixture.expected.nodes[1];
@@ -392,7 +390,7 @@ async function fixtureServer({
               const articles = [...document.querySelectorAll('#review-items article')];
               const index = articles.indexOf(article);
               article.querySelectorAll('[data-decision]').forEach((candidate) => { candidate.disabled = true; });
-              const reviewer = document.querySelector('[aria-labelledby="canvas-review-heading"] input[type="text"]').value;
+              const reviewer = '${authReviewerId}';
               const reviewedAt = new Date().toISOString();
               const rejected = button.dataset.action === 'reject';
               if (index < 2) {
@@ -459,6 +457,7 @@ async function fixtureServer({
     const reviewWorkspace = currentSurface === 'review' ? `
       <section id="fixture-review-workspace" ${reviewWorkspaceExposedBeforeLogin ? '' : 'hidden'}>
         <h1>Canvas 온톨로지 검수 큐</h1>
+        <p>검수 기록 <code>${authReviewerId}</code></p>
         ${reviewFixture}
         <p>DB에 저장하지 않습니다. 공개 그래프에 반영하지 않습니다.</p>
         <button id="fixture-review-logout" type="button">로그아웃</button>
@@ -572,6 +571,7 @@ describe('verifyCanvasBrowser', () => {
     expect(report.checks.reviewUnauthenticatedWorkspaceHidden).toBe(true);
     expect(report.checks.reviewAuthInputsLocked).toBe(true);
     expect(report.checks.reviewAuthDuplicateSubmissionBlocked).toBe(true);
+    expect(report.checks.reviewAuthIdentityBound).toBe(true);
     expect(report.checks.reviewAuthRequestCount).toBe(1);
     expect(report.checks.reviewLogoutRequestCount).toBe(1);
     expect(report.checks.reviewSessionIsolationVerified).toBe(true);

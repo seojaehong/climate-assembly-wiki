@@ -9,10 +9,15 @@ import {
 
 describe('PrivateTranscriptCapturePanel', () => {
   it('starts as a consent-gated, session-memory-only MediaRecorder surface', () => {
-    const html = renderToStaticMarkup(createElement(PrivateTranscriptCapturePanel));
+    const reviewerId = 'auth-user:00000000-0000-4000-8000-000000000091';
+    const html = renderToStaticMarkup(createElement(PrivateTranscriptCapturePanel, {
+      reviewerId,
+    }));
 
     expect(html).toContain('R4 로컬 음성·전사 검수');
     expect(html).toContain('브라우저 세션 메모리에만');
+    expect(html).toContain(`인증 검수자 ID <code>${reviewerId}</code>`);
+    expect(html).not.toContain('검수자 역할 ID');
     expect(html).toContain('DB·서버·public 경로로 전송하지 않습니다.');
     expect(html).toContain('새 녹음을 시작하거나 페이지를 닫으면 기존 음성은 폐기됩니다.');
     expect(html).toContain('실제 시민 발언을 녹음하지 마세요.');

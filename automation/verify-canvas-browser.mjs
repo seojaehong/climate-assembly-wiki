@@ -90,6 +90,7 @@ const TRANSCRIPT_REVIEW_FIXTURE_SHA256 = createHash('sha256')
   .digest('hex');
 const REVIEW_AUTH_EMAIL = 'synthetic-review@example.invalid';
 const REVIEW_AUTH_USER_ID = '00000000-0000-4000-8000-000000000091';
+const REVIEW_AUTH_REVIEWER_ID = `auth-user:${REVIEW_AUTH_USER_ID}`;
 
 function syntheticReviewAuthSession() {
   const now = Math.floor(Date.now() / 1_000);
@@ -479,7 +480,10 @@ export async function verifyCanvasBrowser({
     await reviewPage.getByRole('heading', { name: 'Canvas 온톨로지 검수 큐' }).waitFor({ timeout: timeoutMs });
     await reviewPage.locator('main[data-ontology-review-ready="true"]').waitFor({ timeout: timeoutMs });
     const reviewAuthDuplicateSubmissionBlocked = reviewAuthRequestCount === 1;
-    if (!reviewUnauthenticatedWorkspaceHidden || !reviewAuthInputsLocked || !reviewAuthDuplicateSubmissionBlocked) {
+    const reviewAuthIdentityBound = await reviewPage.getByText(REVIEW_AUTH_REVIEWER_ID, { exact: true }).count() === 4
+      && await reviewPage.getByLabel('검수자 역할 ID').count() === 0;
+    if (!reviewUnauthenticatedWorkspaceHidden || !reviewAuthInputsLocked
+      || !reviewAuthDuplicateSubmissionBlocked || !reviewAuthIdentityBound) {
       throw new Error('Ontology review authentication boundary is incomplete');
     }
     await reviewPage.getByLabel('검수 계획 JSON').waitFor({ timeout: timeoutMs });
@@ -544,7 +548,6 @@ export async function verifyCanvasBrowser({
     await reviewPage.waitForTimeout(25);
     await privateCapturePanel.getByRole('button', { name: '녹음 정지' }).click();
     await privateCapturePanel.getByText(/audio SHA-256 [a-f0-9]{64}/).waitFor({ timeout: timeoutMs });
-    await privateCapturePanel.getByLabel('검수자 역할 ID').fill('browser-r4-reviewer');
     await privateCapturePanel.getByLabel('수동 전사 원문').fill('합성 음성 전사 원문입니다.');
     await privateCapturePanel.getByRole('button', { name: '전사 chunk 추가' }).click();
     const privateChunkCard = privateCapturePanel.locator('article[aria-label^="전사 chunk 검수"]');
@@ -588,7 +591,7 @@ export async function verifyCanvasBrowser({
       && privateTranscriptChunk?.sourceText === '합성 음성 전사 원문입니다.'
       && privateTranscriptChunk?.reviewStatus === 'edited'
       && privateTranscriptChunk?.text === '합성 음성의 최종 검수 전사입니다.'
-      && privateTranscriptChunk?.reviewer === 'browser-r4-reviewer'
+      && privateTranscriptChunk?.reviewer === REVIEW_AUTH_REVIEWER_ID
       && privateTranscriptReviewedAt.toISOString() === privateTranscriptChunk?.reviewedAt
       && privateTranscriptReviewedAt >= privateTranscriptStoppedAt
       && privateTranscriptBatch.summary?.included === 1
@@ -626,7 +629,6 @@ export async function verifyCanvasBrowser({
       .isVisible();
     await transcriptReviewPanel.getByLabel('전사 ontology fixture JSON')
       .setInputFiles(transcriptReviewUploadPayload());
-    await transcriptReviewPanel.getByLabel('검수자 역할 ID').fill('browser-verifier-role');
     const startTranscriptReview = transcriptReviewPanel.getByRole('button', { name: '전사 후보 로컬 검수 시작' });
     await startTranscriptReview.waitFor({ state: 'visible', timeout: timeoutMs });
     await reviewPage.waitForFunction(() => {
@@ -666,7 +668,7 @@ export async function verifyCanvasBrowser({
       && transcriptReviewedPlan.nodes?.[0]?.reviewStatus === 'edited'
       && transcriptReviewedPlan.nodes?.[0]?.kind === 'Issue'
       && transcriptReviewedPlan.nodes?.[0]?.label === '재생에너지 전환의 최종 속도와 조건'
-      && transcriptReviewedPlan.nodes?.[0]?.reviewer === 'browser-verifier-role'
+      && transcriptReviewedPlan.nodes?.[0]?.reviewer === REVIEW_AUTH_REVIEWER_ID
       && transcriptReviewedPlan.nodes?.[0]?.citedUids?.join(',') === 'chunk-001,chunk-002'
       && transcriptReviewedPlan.nodes?.[0]?.transcript?.[0]?.text === '재생에너지 전환 속도를 높여야 합니다.'
       && transcriptReviewedPlan.nodes?.[1]?.reviewStatus === 'rejected'
@@ -681,7 +683,6 @@ export async function verifyCanvasBrowser({
     const reviewFiles = reviewUploadPayloads();
     await canvasReviewPanel.getByLabel('검수 계획 JSON').setInputFiles(reviewFiles.plan);
     await canvasReviewPanel.getByLabel('Canvas snapshot JSON').setInputFiles(reviewFiles.snapshot);
-    await canvasReviewPanel.getByLabel('검수자 역할 ID').fill('browser-verifier-role');
     const startReviewButton = canvasReviewPanel.getByRole('button', { name: '로컬 검수 시작' });
     await startReviewButton.waitFor({ state: 'visible', timeout: timeoutMs });
     await reviewPage.waitForFunction(() => {
@@ -711,7 +712,7 @@ export async function verifyCanvasBrowser({
       ...(Array.isArray(mixedReviewedPlan.clusters) ? mixedReviewedPlan.clusters : []),
     ];
     const validReviewAudit = (item, expectedStatus) => item.reviewStatus === expectedStatus
-      && item.reviewer === 'browser-verifier-role'
+      && item.reviewer === REVIEW_AUTH_REVIEWER_ID
       && typeof item.reviewedAt === 'string'
       && new Date(item.reviewedAt).toISOString() === item.reviewedAt;
     const reviewMixedDecisionStatesVerified = mixedReviewedItems.length === 5
@@ -806,7 +807,7 @@ export async function verifyCanvasBrowser({
     const reviewedPlanDecisionCount = reviewedItems.filter((item) => item.reviewStatus === 'accepted').length;
     const reviewedPlanAuditFieldsValid = reviewedItems.every((item) => (
       item.reviewStatus === 'accepted'
-      && item.reviewer === 'browser-verifier-role'
+      && item.reviewer === REVIEW_AUTH_REVIEWER_ID
       && typeof item.reviewedAt === 'string'
       && new Date(item.reviewedAt).toISOString() === item.reviewedAt
     ));
@@ -821,12 +822,12 @@ export async function verifyCanvasBrowser({
       && reviewedPlan.nodes?.[0]?.sourceText === REVIEW_RELOAD_SNAPSHOT.payload.agenda[0].text
       && reviewedPlan.nodes?.[0]?.label === REVIEW_RELOAD_SNAPSHOT.payload.agenda[0].text
       && reviewedPlan.nodes?.[1]?.kind === 'Proposal'
-      && reviewedPlan.nodes?.every((node) => node.reviewer === 'browser-verifier-role')
+      && reviewedPlan.nodes?.every((node) => node.reviewer === REVIEW_AUTH_REVIEWER_ID)
       && reviewedPlan.relations?.[0]?.relation === 'supports'
       && reviewedPlan.relations?.[1]?.relation === 'implements'
-      && reviewedPlan.relations?.every((relation) => relation.reviewer === 'browser-verifier-role')
+      && reviewedPlan.relations?.every((relation) => relation.reviewer === REVIEW_AUTH_REVIEWER_ID)
       && reviewedPlan.clusters?.[0]?.issueNodeId === 'canvas-agenda:agenda-1'
-      && reviewedPlan.clusters?.[0]?.reviewer === 'browser-verifier-role';
+      && reviewedPlan.clusters?.[0]?.reviewer === REVIEW_AUTH_REVIEWER_ID;
     await reviewPage.waitForTimeout(500);
     if (!reviewNavigation.connected || reviewNavigation.currentPath !== reviewUrl.pathname) {
       throw new Error('Ontology review platform navigation is incomplete or has the wrong current page');
@@ -890,6 +891,7 @@ export async function verifyCanvasBrowser({
         reviewUnauthenticatedWorkspaceHidden,
         reviewAuthInputsLocked,
         reviewAuthDuplicateSubmissionBlocked,
+        reviewAuthIdentityBound,
         reviewAuthRequestCount,
         reviewLogoutRequestCount,
         reviewSessionIsolationVerified,

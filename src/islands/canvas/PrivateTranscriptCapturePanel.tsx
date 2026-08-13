@@ -75,10 +75,9 @@ function downloadReviewBatch(session: PrivateTranscriptCaptureSession): void {
   URL.revokeObjectURL(url);
 }
 
-export function PrivateTranscriptCapturePanel() {
+export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: string }) {
   const [consented, setConsented] = useState(false);
   const [sessionId, setSessionId] = useState('');
-  const [reviewer, setReviewer] = useState('');
   const [recording, setRecording] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [capture, setCapture] = useState<PrivateTranscriptCaptureSession | null>(null);
@@ -254,7 +253,6 @@ export function PrivateTranscriptCapturePanel() {
     setRecording(false);
     setFinalizing(false);
     setCapture(null);
-    setReviewer('');
     setChunkText('');
     setStartMs('0');
     setEndMs('');
@@ -299,7 +297,7 @@ export function PrivateTranscriptCapturePanel() {
         uid,
         status,
         text: status === 'rejected' ? current.sourceText : current.text,
-        reviewer,
+        reviewer: reviewerId,
         reviewedAt: new Date().toISOString(),
       });
       setCapture(next);
@@ -338,7 +336,7 @@ export function PrivateTranscriptCapturePanel() {
     }
   };
 
-  const reviewerValid = /^[a-zA-Z][a-zA-Z0-9._:-]{2,79}$/.test(reviewer);
+  const reviewerValid = /^[a-zA-Z][a-zA-Z0-9._:-]{2,79}$/.test(reviewerId);
   const exportReady = capture !== null
     && capture.summary.chunks > 0
     && capture.summary.decided === capture.summary.chunks
@@ -354,6 +352,9 @@ export function PrivateTranscriptCapturePanel() {
         </p>
         <p style={{ color: MUTED, lineHeight: 1.6 }}>
           전사 chunk 검수 완료 전에는 extraction handoff를 만들 수 없습니다. 자동 STT와 extraction은 아직 실행하지 않습니다.
+        </p>
+        <p style={{ color: MUTED, lineHeight: 1.6, overflowWrap: 'anywhere' }}>
+          인증 검수자 ID <code>{reviewerId}</code>
         </p>
       </header>
       <div style={{ ...cardStyle, background: PANEL, marginBottom: 16 }}>
@@ -381,9 +382,9 @@ export function PrivateTranscriptCapturePanel() {
           <section aria-label="로컬 전사 chunk 작성" style={{ ...cardStyle, marginBottom: 16 }}>
             <strong>로컬 녹음 {capture.source.durationMs}ms · {capture.source.byteLength} bytes</strong>
             <span style={{ color: MUTED, overflowWrap: 'anywhere' }}>audio SHA-256 {capture.source.audioSha256}</span>
-            <label>검수자 역할 ID
-              <input value={reviewer} onChange={(event) => setReviewer(event.currentTarget.value)} pattern="[a-zA-Z][a-zA-Z0-9._:-]{2,79}" autoComplete="off" placeholder="예: moderator-r4-test" style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />
-            </label>
+            <p style={{ color: MUTED, margin: 0, overflowWrap: 'anywhere' }}>
+              인증 검수자 ID <code>{reviewerId}</code>
+            </p>
             <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
               <label>시작 ms<input type="number" min="0" value={startMs} onChange={(event) => setStartMs(event.currentTarget.value)} style={{ ...controlStyle, display: 'block', width: '100%' }} /></label>
               <label>종료 ms<input type="number" min="1" value={endMs} onChange={(event) => setEndMs(event.currentTarget.value)} style={{ ...controlStyle, display: 'block', width: '100%' }} /></label>

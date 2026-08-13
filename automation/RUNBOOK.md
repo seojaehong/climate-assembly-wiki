@@ -366,13 +366,12 @@ npm.cmd run bridge:canvas-ontology -- --snapshot 'C:\approved\snapshot_42.json' 
 
 1. 위 명령으로 sealed `canvas-review-plan.json`과 그 plan을 만든 원 `snapshot_42.json`을 준비한다.
 2. `/ko/moderator/ontology-review/`를 열어 두 파일을 각각 선택한다.
-3. 실명·연락처가 아닌 비식별 검수자 역할 ID를 입력하고 `로컬 검수 시작`을 누른다.
+3. 화면에 표시된 `auth-user:<Supabase 사용자 UUID>` 인증 검수자 ID를 확인하고 `로컬 검수 시작`을 누른다.
 4. node를 먼저 판단하고, 승인된 `Issue` node를 대표로 골라 relation과 cluster까지 모두 판단한다.
 5. `검수 완료 plan 다운로드`로 reviewed plan을 내려받은 뒤 아래 `--reviewed-plan` 명령으로 다시 검증한다.
 
 이 화면은 파일을 브라우저 메모리에서만 처리하고 browser storage, Supabase, 공개 graph에 쓰지 않는다.
-화면은 Supabase Auth 세션이 있어야 마이크·파일·검수 작업대를 마운트하고 로그아웃 시 로컬 state를 폐기한다. `noindex`와 운영 메뉴 자체는 접근통제가 아니며, 자유입력 reviewer 역할 ID는 현재 Auth 사용자와 암호학적으로 결속되지 않으므로 승인된 운영 계정·장치·입력만 사용한다. plan self-checksum은
-우발 변경 탐지용이며 작성자 인증이나 외부 서명을 제공하지 않는다.
+화면은 Supabase Auth 세션이 있어야 마이크·파일·검수 작업대를 마운트하고 로그아웃 시 로컬 state를 폐기한다. 세 검수 흐름의 reviewer는 현재 세션 사용자 UUID에서 `auth-user:<uuid>`로 파생되며 이메일은 내보내지 않는다. 유효한 UUID를 얻지 못하면 작업대를 열지 않고 fail-closed한다. `noindex`와 운영 메뉴 자체는 접근통제가 아니며, 다운로드 파일은 외부 서명된 신원 증명이 아니므로 승인된 운영 계정과 장치만 사용한다. plan self-checksum은 우발 변경 탐지용이며 작성자 인증이나 외부 서명을 제공하지 않는다.
 
 node는 `accepted`, `edited`(label/text 수정), 또는 `rejected`, relation과 cluster는 `accepted` 또는 `rejected`로 끝나야 한다. 수정된 node는 반드시 `edited`를 사용한다. 승인 node는 허용된 온톨로지 kind,
 승인 relation은 허용된 관계와 승인된 양 끝 node를 가져야 한다. cluster 승인은 같은 group의
@@ -389,7 +388,7 @@ npm.cmd run bridge:canvas-ontology -- --snapshot 'C:\approved\snapshot_42.json' 
 - 출력 meta는 `publication_status: internal_reviewed_export`, `requires_publication_review: true`다.
 - CLI는 저장소 `public` 아래 어디에도 직접 쓰는 것을 거부한다. 공개 반영은 별도 사람 검토와 승인 절차다.
 - 검수 결정 필드를 편집하면 최초 plan self-checksum은 의도대로 달라진다. reviewed export는 같은 snapshot의 exact-byte hash를 확인한 뒤, 편집 불가 source 부분을 snapshot에서 재구성해 전부 대조하고 허용된 검수 필드만 소비한다.
-- self-checksum은 우발 변경 탐지용이며 외부 서명·작성자 진위·검수자 인증을 제공하지 않는다. reviewer에는 비식별 역할 ID를 사용하고 시민 실명·연락처를 기록하지 않는다.
+- self-checksum은 우발 변경 탐지용이며 외부 서명·작성자 진위를 제공하지 않는다. 웹 작업대에서 내려받은 reviewer는 현재 Supabase Auth 사용자 UUID에서 파생한 `auth-user:<uuid>`이며 이메일·시민 실명·연락처를 기록하지 않는다. CLI가 임의 파일의 reviewer 진위를 독립 검증하는 것은 아니다.
 - 명령은 Supabase/API/환경변수에 접근하지 않으며 `databaseMutationExecuted: false`, `publicGraphWritten: false`를 유지한다.
 
 ## M5 workshop graph 읽기 어댑터
@@ -522,7 +521,7 @@ npm.cmd run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology
 - node/relation은 각각 승인·수정 승인·반려할 수 있다. 반려 node를 endpoint로 둔 relation 승인은 거부하고, 이미 승인한 relation의 endpoint node 반려도 거부한다. 판단 뒤 입력을 다시 바꾸면 해당 항목을 `proposed`로 되돌리고 재판단 전까지 다운로드를 잠근다.
 - 모든 후보를 판단한 경우에만 `transcript-ontology-reviewed-plan`을 로컬 다운로드한다. export는 원 fixture에서 workspace를 다시 만들어 exact SHA-256, 원 chunk 인용, source text, 판단 audit, summary와 safety를 대조한다. plan은 `databaseMutationExecuted:false`, `publicGraphWritten:false`, `requiresPublicationReview:true`를 명시한다.
 - 브라우저 verifier는 실제 production 페이지에서 fixture 업로드, 원문·역할 표시, node 수정 승인, node/relation 반려와 private plan 직렬화를 실행한다. Canvas 검수 흐름과 별개로 같은 페이지에서 두 기능을 모두 검증한다.
-- 실제 시민 발언·음성/STT·reviewer 계정 인증·DB/API 저장·R3 graph export/publication은 포함하지 않는다. 이 prototype에 실제 시민 발언 파일을 넣지 않는다.
+- 실제 시민 발언·음성/STT·DB/API 저장·R3 graph export/publication은 포함하지 않는다. 검수 결정은 현재 Supabase Auth 사용자 UUID에서 파생한 reviewer ID를 사용하지만 다운로드 plan의 외부 서명이나 독립 신원 검증은 포함하지 않는다. 이 prototype에 실제 시민 발언 파일을 넣지 않는다.
 
 ## R3 검수 plan → 합성 live graph source
 
@@ -548,7 +547,7 @@ npm.cmd --prefix automation run bridge:transcript-ontology -- --fixture fixtures
 - 모든 chunk가 결정되고 승인 또는 수정 승인된 chunk가 하나 이상 있을 때만 `private-transcript-review-batch`를 내려받는다. 이 batch는 `localOnly:true`, `extractionExecuted:false`, `requiresExtractionReview:true`이며 candidate extraction을 자동 실행하지 않는다.
 - 내려받기 직전 capture source, chunk 순서·시간·화자 가명, 판단 상태·검수자·검수 시각, 원문 보존 규칙과 summary를 실제 chunk에서 다시 검증한다. 캐시된 summary만 바꾸거나 판단 뒤 원문·audit metadata를 바꾼 session은 fail-closed한다.
 - 브라우저 verifier는 synthetic MediaRecorder adapter로 동의→녹음→정지→chunk 작성→검수 전 차단→수정 승인→재편집 차단→재판단→download를 실제 production React 화면에서 실행하고 write request가 없음을 확인한다.
-- 실제 시민 발언·지속 저장·외부 STT webhook/provider·음성 retention·reviewer 인증·DB/API·자동 extraction/publication은 구현하거나 승인하지 않았다. 실제 운영 전에는 별도 승인된 consent·보존·삭제·접근 정책이 필요하다.
+- 실제 시민 발언·지속 저장·외부 STT webhook/provider·음성 retention·DB/API·자동 extraction/publication은 구현하거나 승인하지 않았다. 검수 결정은 현재 Supabase Auth 사용자 UUID에서 파생한 reviewer ID를 사용하지만 다운로드 batch의 외부 서명이나 독립 신원 검증은 포함하지 않는다. 실제 운영 전에는 별도 승인된 consent·보존·삭제·접근 정책이 필요하다.
 
 ## R5 검수 온톨로지 기반 진행 제안
 

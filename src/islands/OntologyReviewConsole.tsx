@@ -27,7 +27,7 @@ import {
   type TranscriptOntologyReviewWorkspace,
 } from './canvas/transcript-ontology-review-workspace';
 import { PrivateTranscriptCapturePanel } from './canvas/PrivateTranscriptCapturePanel';
-import { runExclusiveCanvasAuthOperation, useAuth } from './canvas/useAuth';
+import { authenticatedReviewerId, runExclusiveCanvasAuthOperation, useAuth } from './canvas/useAuth';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const CONTROL_BORDER = '#2F6F7E';
@@ -409,9 +409,8 @@ function TranscriptRelationReviewCard({ relation, reviewer, onDecision, onDraft 
   );
 }
 
-export function TranscriptOntologyReviewPanel() {
+export function TranscriptOntologyReviewPanel({ reviewerId }: { reviewerId: string }) {
   const [fixtureFile, setFixtureFile] = useState<File | null>(null);
-  const [reviewer, setReviewer] = useState('');
   const [workspace, setWorkspace] = useState<TranscriptOntologyReviewWorkspace | null>(null);
   const [notice, setNotice] = useState('합성 전사 fixture를 선택해 주세요.');
   const [error, setError] = useState<string | null>(null);
@@ -506,10 +505,10 @@ export function TranscriptOntologyReviewPanel() {
         <label>전사 ontology fixture JSON
           <input type="file" accept="application/json,.json" onChange={(event) => replaceFixture(event.currentTarget.files?.[0] ?? null)} style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />
         </label>
-        <label>검수자 역할 ID
-          <input value={reviewer} onChange={(event) => setReviewer(event.currentTarget.value)} minLength={3} maxLength={80} pattern="[a-zA-Z][a-zA-Z0-9._:-]{2,79}" autoComplete="off" placeholder="예: moderator-role-1" style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />
-        </label>
-        <button type="submit" disabled={busy || fixtureFile === null || reviewer.trim().length < 3} style={{ ...controlStyle, background: '#0B4F6C', color: '#FFFFFF', fontWeight: 800 }}>
+        <p style={{ color: MUTED, margin: 0, overflowWrap: 'anywhere' }}>
+          인증 검수자 ID <code>{reviewerId}</code>
+        </p>
+        <button type="submit" disabled={busy || fixtureFile === null} style={{ ...controlStyle, background: '#0B4F6C', color: '#FFFFFF', fontWeight: 800 }}>
           {busy ? '검증 중…' : '전사 후보 로컬 검수 시작'}
         </button>
       </form>
@@ -527,13 +526,13 @@ export function TranscriptOntologyReviewPanel() {
           <section aria-labelledby="transcript-node-heading" style={{ display: 'grid', gap: 14, marginBottom: 28 }}>
             <h3 id="transcript-node-heading">1. candidate node · 전사·Habermas 역할 검수</h3>
             {workspace.nodes.map((node) => (
-              <TranscriptNodeReviewCard key={`${workspace.source.fixtureSha256}:${node.id}`} node={node} reviewer={reviewer} onDecision={decide} onDraft={updateDraft} />
+              <TranscriptNodeReviewCard key={`${workspace.source.fixtureSha256}:${node.id}`} node={node} reviewer={reviewerId} onDecision={decide} onDraft={updateDraft} />
             ))}
           </section>
           <section aria-labelledby="transcript-relation-heading" style={{ display: 'grid', gap: 14, marginBottom: 28 }}>
             <h3 id="transcript-relation-heading">2. candidate relation · 전사·논증 관계 검수</h3>
             {workspace.relations.map((relation) => (
-              <TranscriptRelationReviewCard key={`${workspace.source.fixtureSha256}:${relation.id}`} relation={relation} reviewer={reviewer} onDecision={decide} onDraft={updateDraft} />
+              <TranscriptRelationReviewCard key={`${workspace.source.fixtureSha256}:${relation.id}`} relation={relation} reviewer={reviewerId} onDecision={decide} onDraft={updateDraft} />
             ))}
           </section>
         </>
@@ -544,11 +543,13 @@ export function TranscriptOntologyReviewPanel() {
 
 export function AuthenticatedOntologyReviewWorkspace({
   email,
+  reviewerId,
   loggingOut,
   logoutError,
   onLogout,
 }: {
   email: string | null;
+  reviewerId: string;
   loggingOut: boolean;
   logoutError: string | null;
   onLogout: () => void;
@@ -556,7 +557,6 @@ export function AuthenticatedOntologyReviewWorkspace({
   const [hydrated, setHydrated] = useState(false);
   const [planFile, setPlanFile] = useState<File | null>(null);
   const [snapshotFile, setSnapshotFile] = useState<File | null>(null);
-  const [reviewer, setReviewer] = useState('');
   const [workspace, setWorkspace] = useState<CanvasOntologyReviewWorkspace | null>(null);
   const [notice, setNotice] = useState('검수 계획과 원 snapshot을 선택해 주세요.');
   const [error, setError] = useState<string | null>(null);
@@ -598,10 +598,6 @@ export function AuthenticatedOntologyReviewWorkspace({
 
   const decide = (decision: CanvasOntologyReviewDecision) => {
     if (!workspace) return;
-    if (reviewer.trim().length === 0) {
-      setError('검수자 역할 ID를 먼저 입력해 주세요.');
-      return;
-    }
     try {
       const next = reviewCanvasOntologyItem(workspace, decision);
       setWorkspace(next);
@@ -641,7 +637,7 @@ export function AuthenticatedOntologyReviewWorkspace({
           </p>
           <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between', marginTop: 12 }}>
             <span style={{ color: MUTED, fontSize: 14, overflowWrap: 'anywhere' }}>
-              인증된 진행자 {email ?? '이메일 미표시 계정'}
+              인증된 진행자 {email ?? '이메일 미표시 계정'} · 검수 기록 <code>{reviewerId}</code>
             </span>
             <button type="button" onClick={onLogout} disabled={loggingOut} style={{ ...controlStyle, fontWeight: 800 }}>
               {loggingOut ? '로그아웃 중…' : '로그아웃'}
@@ -650,9 +646,9 @@ export function AuthenticatedOntologyReviewWorkspace({
           {logoutError ? <p role="alert" style={{ color: '#8A1C1C', fontWeight: 700 }}>{logoutError}</p> : null}
         </header>
 
-        <PrivateTranscriptCapturePanel />
+        <PrivateTranscriptCapturePanel reviewerId={reviewerId} />
 
-        <TranscriptOntologyReviewPanel />
+        <TranscriptOntologyReviewPanel reviewerId={reviewerId} />
 
         <section aria-labelledby="canvas-review-heading">
           <h2 id="canvas-review-heading">Canvas 검수 계획</h2>
@@ -664,10 +660,10 @@ export function AuthenticatedOntologyReviewWorkspace({
           <label>Canvas snapshot JSON
             <input type="file" accept="application/json,.json" onChange={(event) => replaceInputFile('snapshot', event.currentTarget.files?.[0] ?? null)} style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />
           </label>
-          <label>검수자 역할 ID
-            <input value={reviewer} onChange={(event) => setReviewer(event.currentTarget.value)} minLength={3} maxLength={80} pattern="[a-zA-Z][a-zA-Z0-9._:-]{2,79}" autoComplete="off" placeholder="예: moderator-role-1" style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />
-          </label>
-          <button type="submit" disabled={busy || planFile === null || snapshotFile === null || reviewer.trim().length < 3} style={{ ...controlStyle, background: '#0B4F6C', color: '#FFFFFF', fontWeight: 800 }}>
+          <p style={{ color: MUTED, margin: 0, overflowWrap: 'anywhere' }}>
+            인증 검수자 ID <code>{reviewerId}</code>
+          </p>
+          <button type="submit" disabled={busy || planFile === null || snapshotFile === null} style={{ ...controlStyle, background: '#0B4F6C', color: '#FFFFFF', fontWeight: 800 }}>
             {busy ? '검증 중…' : '로컬 검수 시작'}
           </button>
         </form>
@@ -689,16 +685,16 @@ export function AuthenticatedOntologyReviewWorkspace({
 
             <section aria-labelledby="node-review-heading" style={{ display: 'grid', gap: 14, marginBottom: 28 }}>
               <h2 id="node-review-heading">1. 노드 역할·문구 검수</h2>
-              {workspace.plan.nodes.map((node) => <NodeReviewCard key={`${workspace.plan.integrity.planSha256}:${node.id}`} node={node} reviewer={reviewer} onDecision={decide} />)}
+              {workspace.plan.nodes.map((node) => <NodeReviewCard key={`${workspace.plan.integrity.planSha256}:${node.id}`} node={node} reviewer={reviewerId} onDecision={decide} />)}
             </section>
             <section aria-labelledby="relation-review-heading" style={{ display: 'grid', gap: 14, marginBottom: 28 }}>
               <h2 id="relation-review-heading">2. 관계 검수</h2>
-              {workspace.plan.relations.map((relation) => <RelationReviewCard key={`${workspace.plan.integrity.planSha256}:${relation.id}`} relation={relation} reviewer={reviewer} onDecision={decide} />)}
+              {workspace.plan.relations.map((relation) => <RelationReviewCard key={`${workspace.plan.integrity.planSha256}:${relation.id}`} relation={relation} reviewer={reviewerId} onDecision={decide} />)}
             </section>
             <section aria-labelledby="cluster-review-heading" style={{ display: 'grid', gap: 14, marginBottom: 28 }}>
               <h2 id="cluster-review-heading">3. 군집 대표 Issue 검수</h2>
               {workspace.plan.clusters.map((cluster) => (
-                <ClusterReviewCard key={`${workspace.plan.integrity.planSha256}:${cluster.sourceSessionId}:${cluster.groupId}`} cluster={cluster} nodes={workspace.plan.nodes} reviewer={reviewer} onDecision={decide} />
+                <ClusterReviewCard key={`${workspace.plan.integrity.planSha256}:${cluster.sourceSessionId}:${cluster.groupId}`} cluster={cluster} nodes={workspace.plan.nodes} reviewer={reviewerId} onDecision={decide} />
               ))}
             </section>
           </>
@@ -824,10 +820,23 @@ export default function OntologyReviewConsole() {
     );
   }
 
+  const reviewerId = authenticatedReviewerId(session.user.id);
+  if (reviewerId === null) {
+    console.error('Ontology review auth user ID is not a valid Supabase UUID');
+    return (
+      <main id="ontology-review-content" tabIndex={-1} style={{ background: '#E9F1F5', color: INK, minHeight: '70vh', padding: 24 }}>
+        <h1>온톨로지 검수 사용자 확인 실패</h1>
+        <p role="alert">인증 사용자 식별자를 확인할 수 없습니다. 로그아웃 후 승인된 계정으로 다시 로그인해 주세요.</p>
+        <button type="button" onClick={() => void submitLogout()} disabled={loggingOut} style={{ ...controlStyle, fontWeight: 800 }}>로그아웃</button>
+      </main>
+    );
+  }
+
   return (
     <AuthenticatedOntologyReviewWorkspace
       key={session.user.id}
       email={authenticatedEmail}
+      reviewerId={reviewerId}
       loggingOut={loggingOut}
       logoutError={authError}
       onLogout={() => void submitLogout()}

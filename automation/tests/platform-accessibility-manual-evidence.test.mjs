@@ -262,8 +262,7 @@ test('workflow watches every source path that can stale manual evidence', () => 
   }
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/components');
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/islands/OntologyReviewConsole.tsx');
-  expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/islands/canvas/ontology-review-workspace.ts');
-  expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/islands/canvas/useAuth.ts');
+  expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/islands/canvas');
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/lib');
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/pages');
 });

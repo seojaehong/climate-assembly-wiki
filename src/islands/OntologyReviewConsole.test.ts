@@ -12,6 +12,9 @@ import OntologyReviewConsole, {
   ontologyReviewNodeAnchorId,
 } from './OntologyReviewConsole';
 import type { CanvasOntologyNode, CanvasOntologyReviewWorkspace } from './canvas/ontology-review-workspace';
+import { authenticatedReviewerId } from './canvas/useAuth';
+
+const AUTH_REVIEWER_ID = 'auth-user:00000000-0000-4000-8000-000000000091';
 
 describe('OntologyReviewConsole', () => {
   it('keeps microphone and review-file controls behind the moderator auth boundary', () => {
@@ -28,6 +31,7 @@ describe('OntologyReviewConsole', () => {
   it('renders the local-only workspace only for an authenticated moderator', () => {
     const html = renderToStaticMarkup(createElement(AuthenticatedOntologyReviewWorkspace, {
       email: 'moderator@example.test',
+      reviewerId: AUTH_REVIEWER_ID,
       loggingOut: false,
       logoutError: null,
       onLogout: () => undefined,
@@ -39,7 +43,8 @@ describe('OntologyReviewConsole', () => {
     expect(html).toContain('type="file"');
     expect(html).toContain('검수 계획 JSON');
     expect(html).toContain('Canvas snapshot JSON');
-    expect(html).toContain('검수자 역할 ID');
+    expect(html).toContain('인증 검수자 ID');
+    expect(html.match(new RegExp(AUTH_REVIEWER_ID, 'g'))).toHaveLength(4);
     expect(html).toContain('type="submit" disabled=""');
     expect(html).toContain('DB에 저장하지 않습니다.');
     expect(html).toContain('공개 그래프에 반영하지 않습니다.');
@@ -54,20 +59,27 @@ describe('OntologyReviewConsole', () => {
     expect(html).toContain('전사 chunk 검수 완료 전에는 extraction handoff를 만들 수 없습니다.');
   });
 
-  it('renders every upload and reviewer input on an explicit opaque high-contrast surface', () => {
+  it('renders every upload control on an explicit opaque high-contrast surface', () => {
     const html = renderToStaticMarkup(createElement(AuthenticatedOntologyReviewWorkspace, {
       email: 'moderator@example.test',
+      reviewerId: AUTH_REVIEWER_ID,
       loggingOut: false,
       logoutError: null,
       onLogout: () => undefined,
     }));
     const inputTags = html.match(/<input\b[^>]*>/g) ?? [];
 
-    expect(inputTags).toHaveLength(7);
+    expect(inputTags).toHaveLength(5);
     for (const input of inputTags.filter((input) => !input.includes('type="checkbox"'))) {
       expect(input).toContain('background:#FFFFFF');
       expect(input).toContain('color:#102A43');
     }
+  });
+
+  it('derives the private review audit identity from a valid authenticated user UUID only', () => {
+    expect(authenticatedReviewerId('00000000-0000-4000-8000-000000000091')).toBe(AUTH_REVIEWER_ID);
+    expect(authenticatedReviewerId('NOT-A-UUID')).toBeNull();
+    expect(authenticatedReviewerId('')).toBeNull();
   });
 
   it('announces auth failures and locks the login form while a request is running', () => {
