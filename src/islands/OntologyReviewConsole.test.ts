@@ -75,7 +75,7 @@ describe('OntologyReviewConsole', () => {
     }));
     const inputTags = html.match(/<input\b[^>]*>/g) ?? [];
 
-    expect(inputTags).toHaveLength(9);
+    expect(inputTags).toHaveLength(11);
     for (const input of inputTags.filter((input) => !input.includes('type="checkbox"'))) {
       expect(input).toContain('background:#FFFFFF');
       expect(input).toContain('color:#102A43');
@@ -102,6 +102,9 @@ describe('OntologyReviewConsole', () => {
         kind: 'private-transcript-extraction-handoff',
         reviewBatchSha256: 'b'.repeat(64),
         captureId: 'capture-1',
+        roomId: 'table-a',
+        language: 'ko-KR',
+        captureMethod: 'table-recorder-file',
         audioSha256: 'c'.repeat(64),
         candidateSetId: 'candidate/set 1',
       },

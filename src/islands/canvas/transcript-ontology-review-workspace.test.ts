@@ -14,11 +14,14 @@ const fixtureText = readFileSync('automation/fixtures/transcript-ontology-review
 const fixture = JSON.parse(fixtureText) as Record<string, unknown>;
 
 const privateReviewBatchText = () => `${JSON.stringify({
-  schemaVersion: 1,
+  schemaVersion: 2,
   kind: 'private-transcript-review-batch',
   source: {
     captureId: 'capture-r4-handoff',
     sessionId: 'session-r4-handoff',
+    roomId: 'table-a',
+    language: 'ko-KR',
+    captureMethod: 'table-recorder-file',
     audioSha256: 'a'.repeat(64),
     mimeType: 'audio/webm',
     byteLength: 128,
@@ -62,7 +65,7 @@ const privateCandidatesText = (reviewBatchText: string, reviewBatchSha256 = crea
     sessionId: 'session-r4-handoff',
     audioSha256: 'a'.repeat(64),
   },
-  language: 'ko',
+  language: 'ko-KR',
   nodes: [{
     uid: 'candidate-r4-issue',
     kind: 'Issue',
@@ -125,6 +128,9 @@ describe('transcript ontology review workspace', () => {
         kind: 'private-transcript-extraction-handoff',
         reviewBatchSha256: createHash('sha256').update(batchText, 'utf8').digest('hex'),
         captureId: 'capture-r4-handoff',
+        roomId: 'table-a',
+        language: 'ko-KR',
+        captureMethod: 'table-recorder-file',
       },
     });
     expect(workspace.source.handoff).toMatchObject({
@@ -156,6 +162,13 @@ describe('transcript ontology review workspace', () => {
       reviewBatchText: batchText,
       extractionCandidatesText: JSON.stringify(wrongSource),
     })).rejects.toThrow('Extraction candidates do not match the reviewed transcript batch');
+
+    const wrongLanguage = JSON.parse(privateCandidatesText(batchText)) as Record<string, unknown>;
+    wrongLanguage.language = 'en-US';
+    await expect(buildPrivateTranscriptOntologyFixture({
+      reviewBatchText: batchText,
+      extractionCandidatesText: JSON.stringify(wrongLanguage),
+    })).rejects.toThrow('Extraction candidate language does not match the reviewed transcript batch');
   });
 
   it('rejects a forged handoff fixture whose source review no longer matches its audit', async () => {
@@ -170,6 +183,18 @@ describe('transcript ontology review workspace', () => {
 
     await expect(createTranscriptOntologyReviewWorkspace(JSON.stringify(generatedFixture)))
       .rejects.toThrow('Transcript source review does not match the fixture audit');
+  });
+
+  it('rejects a private handoff whose language differs from the fixture', async () => {
+    const batchText = privateReviewBatchText();
+    const generatedFixture = JSON.parse(await buildPrivateTranscriptOntologyFixture({
+      reviewBatchText: batchText,
+      extractionCandidatesText: privateCandidatesText(batchText),
+    })) as Record<string, unknown>;
+    generatedFixture.language = 'en-US';
+
+    await expect(createTranscriptOntologyReviewWorkspace(JSON.stringify(generatedFixture)))
+      .rejects.toThrow('Transcript extraction handoff language does not match fixture');
   });
 
   it('opens candidate nodes and relations with their cited transcript text and Habermas role', async () => {

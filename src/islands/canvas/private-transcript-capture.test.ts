@@ -10,9 +10,16 @@ import {
   type PrivateTranscriptCaptureSession,
 } from './private-transcript-capture';
 
+const sourceContext = {
+  roomId: 'table-a',
+  language: 'ko-KR',
+} as const;
+
 const capture = () => createPrivateTranscriptCaptureSession({
   captureId: 'capture-20260829-a',
   sessionId: 'session-20260829',
+  ...sourceContext,
+  captureMethod: 'browser-media-recorder',
   audioSha256: 'a'.repeat(64),
   mimeType: 'audio/webm;codecs=opus',
   byteLength: 2048,
@@ -21,12 +28,14 @@ const capture = () => createPrivateTranscriptCaptureSession({
 });
 
 const sttCandidates = () => ({
-  schemaVersion: 1,
+  schemaVersion: 2,
   kind: 'private-stt-candidates',
   candidateSetId: 'stt-candidates-browser-1',
   source: {
     captureId: 'capture-20260829-a',
     sessionId: 'session-20260829',
+    ...sourceContext,
+    captureMethod: 'browser-media-recorder',
     audioSha256: 'a'.repeat(64),
     durationMs: 12_000,
   },
@@ -42,6 +51,7 @@ describe('private transcript capture', () => {
     const session = createPrivateTranscriptFileCaptureSession({
       captureId: 'capture-file-20260829-a',
       sessionId: 'session-20260829',
+      ...sourceContext,
       audioSha256: 'c'.repeat(64),
       mimeType: 'audio/wav',
       byteLength: 16_044,
@@ -53,6 +63,8 @@ describe('private transcript capture', () => {
     expect(session.source).toEqual({
       captureId: 'capture-file-20260829-a',
       sessionId: 'session-20260829',
+      ...sourceContext,
+      captureMethod: 'table-recorder-file',
       audioSha256: 'c'.repeat(64),
       mimeType: 'audio/wav',
       byteLength: 16_044,
@@ -69,6 +81,7 @@ describe('private transcript capture', () => {
     expect(() => createPrivateTranscriptFileCaptureSession({
       captureId: 'capture-file-20260829-a',
       sessionId: 'session-20260829',
+      ...sourceContext,
       audioSha256: 'c'.repeat(64),
       mimeType: 'audio/wav',
       byteLength: 16_044,
@@ -78,10 +91,32 @@ describe('private transcript capture', () => {
     })).toThrow('Invalid audio duration');
   });
 
+  it('rejects missing source context and unapproved capture methods', () => {
+    const base = {
+      captureId: 'capture-context-invalid',
+      sessionId: 'session-20260829',
+      roomId: 'table-a',
+      language: 'ko-KR',
+      captureMethod: 'browser-media-recorder' as const,
+      audioSha256: 'c'.repeat(64),
+      mimeType: 'audio/wav',
+      byteLength: 16_044,
+      startedAt: '2026-08-29T01:10:00.000Z',
+      stoppedAt: '2026-08-29T01:10:01.000Z',
+    };
+    expect(() => createPrivateTranscriptCaptureSession({ ...base, roomId: '' })).toThrow('Invalid room id');
+    expect(() => createPrivateTranscriptCaptureSession({ ...base, language: 'korean' })).toThrow('Invalid capture language');
+    expect(() => createPrivateTranscriptCaptureSession({
+      ...base,
+      captureMethod: 'external-webhook' as unknown as 'browser-media-recorder',
+    })).toThrow('Invalid capture method');
+  });
+
   it('rejects a local recorder timeline that ends after the file import', () => {
     expect(() => createPrivateTranscriptFileCaptureSession({
       captureId: 'capture-file-20260829-a',
       sessionId: 'session-20260829',
+      ...sourceContext,
       audioSha256: 'c'.repeat(64),
       mimeType: 'audio/wav',
       byteLength: 16_044,
@@ -123,6 +158,18 @@ describe('private transcript capture', () => {
 
     const rawAudio = { ...sttCandidates(), audioBytes: 'not-allowed' };
     expect(() => importPrivateSttCandidates(capture(), rawAudio)).toThrow('Invalid STT candidate file fields');
+
+    const wrongRoom = sttCandidates();
+    wrongRoom.source.roomId = 'table-b';
+    expect(() => importPrivateSttCandidates(capture(), wrongRoom)).toThrow(
+      'STT candidates do not match the current private capture',
+    );
+
+    const wrongLanguage = sttCandidates();
+    wrongLanguage.source.language = 'en-US';
+    expect(() => importPrivateSttCandidates(capture(), wrongLanguage)).toThrow(
+      'STT candidates do not match the current private capture',
+    );
   });
 
   it('rejects duplicate source IDs and invalid candidate ranges before replacing local drafts', () => {
@@ -203,6 +250,9 @@ describe('private transcript capture', () => {
     const batch = exportPrivateTranscriptReviewBatch(session);
 
     expect(batch.source).toMatchObject({
+      roomId: 'table-a',
+      language: 'ko-KR',
+      captureMethod: 'browser-media-recorder',
       audioSha256: 'a'.repeat(64),
       byteLength: 2048,
       storage: 'browser-memory',

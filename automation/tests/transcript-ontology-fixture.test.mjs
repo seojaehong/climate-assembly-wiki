@@ -842,6 +842,9 @@ test('writes and re-verifies a non-identifying report for an exact R4-to-R3 arti
     kind: 'private-transcript-extraction-handoff',
     reviewBatchSha256: 'a'.repeat(64),
     captureId: 'capture-bundle-1',
+    roomId: 'table-a',
+    language: 'ko-KR',
+    captureMethod: 'table-recorder-file',
     audioSha256: 'b'.repeat(64),
     candidateSetId: 'candidate-set-bundle-1',
   };
@@ -873,6 +876,9 @@ test('writes and re-verifies a non-identifying report for an exact R4-to-R3 arti
         sourceId: 'live-r4-r3-bundle-test',
         reviewBatchSha256: 'a'.repeat(64),
         candidateSetId: 'candidate-set-bundle-1',
+        roomId: 'table-a',
+        language: 'ko-KR',
+        captureMethod: 'table-recorder-file',
       },
       counts: { nodes: 2, edges: 1 },
       safety: {

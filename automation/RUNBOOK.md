@@ -517,7 +517,7 @@ npm.cmd run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology
 `/ko/moderator/ontology-review`의 `전사 ontology 후보 검수` 영역은 R2 전용 fixture 또는 R4 검수 batch에 결속된 provider-neutral 후보를 브라우저 메모리에서만 열어 node/relation 후보를 검수한다.
 
 - 입력 예제는 `automation/fixtures/transcript-ontology-review-candidates.example.json`이다. R0와 같은 time-coded chunk·opaque UID·synthetic speaker·역할형 fixture reviewer·허용 ontology vocabulary를 다시 fail-closed 검증한다.
-- R4 연결 입력은 `private-transcript-review-batch` 원문 bytes와 `private-transcript-ontology-candidates` JSON 두 파일이다. 후보 파일의 `reviewBatchSha256`은 batch exact bytes, capture/session/audio SHA는 batch source와 모두 같아야 하며 candidate node/relation의 모든 인용은 검수 완료 chunk UID를 가리켜야 한다. batch의 Auth reviewer·검수 시각·원 STT provenance는 생성 fixture와 reviewed plan에 보존한다.
+- R4 연결 입력은 `private-transcript-review-batch` 원문 bytes와 `private-transcript-ontology-candidates` JSON 두 파일이다. 후보 파일의 `reviewBatchSha256`은 batch exact bytes, capture/session/audio SHA는 batch source와 모두 같아야 하고 후보 언어도 batch 언어와 일치해야 하며 candidate node/relation의 모든 인용은 검수 완료 chunk UID를 가리켜야 한다. batch의 room·language·capture method, Auth reviewer·검수 시각·원 STT provenance는 생성 fixture와 reviewed plan에 보존한다.
 - R4 handoff 검증이 끝나면 화면의 `R4 결속 fixture 다운로드`로 생성 당시 exact fixture bytes를 로컬에 보존한다. 이 파일은 R3 CLI의 `--fixture` 입력이며, reviewed plan의 `source.fixtureSha256`과 일치해야 한다. 다운로드는 DB·서버·public graph를 쓰지 않는다.
 - candidate node 카드는 인용 전사 구간, speaker pseudonym, millisecond range, Habermas 역할, 표시 이름과 검수 내용을 함께 보여 준다. relation 카드도 인용 전사와 endpoint, 논증 관계를 함께 보여 준다.
 - node/relation은 각각 승인·수정 승인·반려할 수 있다. 반려 node를 endpoint로 둔 relation 승인은 거부하고, 이미 승인한 relation의 endpoint node 반려도 거부한다. 판단 뒤 입력을 다시 바꾸면 해당 항목을 `proposed`로 되돌리고 재판단 전까지 다운로드를 잠근다.
@@ -550,16 +550,16 @@ npm.cmd --prefix automation run bridge:transcript-ontology -- --fixture fixtures
 
 ## R4 브라우저 MediaRecorder·테이블 녹음 파일·전사 chunk 검수 proof of concept
 
-`/ko/moderator/ontology-review`의 R4 패널은 명시적 세션 메모리 처리 동의와 회차 ID가 있을 때만 `MediaRecorder`를 시작하거나 로컬 테이블 녹음 파일을 읽는다. 이 단계는 실제 STT provider 연동이 아니라 브라우저 녹음 또는 운영자 파일 선택, provider-neutral 후보 import, 사람 검수 순서를 확인하는 synthetic proof of concept다.
+`/ko/moderator/ontology-review`의 R4 패널은 명시적 세션 메모리 처리 동의와 회차 ID, 테이블·분과 ID, 전사 언어가 있을 때만 `MediaRecorder`를 시작하거나 로컬 테이블 녹음 파일을 읽는다. 이 단계는 실제 STT provider 연동이 아니라 브라우저 녹음 또는 운영자 파일 선택, provider-neutral 후보 import, 사람 검수 순서를 확인하는 synthetic proof of concept다.
 
 - 녹음 Blob과 선택한 로컬 파일은 현재 페이지의 메모리와 local object URL에만 존재한다. 새 녹음·파일을 가져오거나 동의를 철회하거나 페이지를 닫으면 폐기하며, DB·서버·public 경로·`localStorage`·IndexedDB로 보내거나 보존하지 않는다.
 - 테이블 녹음 파일은 브라우저가 `audio/*`로 확인한 비어 있지 않은 256MB 이하 파일만 받는다. 파일명·경로·bytes는 capture/batch에 넣지 않고, 운영자가 확인해 입력한 녹음 시작 시각과 브라우저가 metadata에서 읽은 길이로 종료 시각을 계산한다. metadata 읽기는 20초 안에 끝나야 하며 늦은 파일 결과는 generation guard로 폐기한다.
-- 녹음 또는 파일 처리가 끝나면 exact audio SHA-256, MIME type, byte length, 시작·종료 시각만 local capture session에 결속한다. 내려받는 전사 batch에는 음성 bytes/object URL을 포함하지 않는다.
-- 선택적인 `private-stt-candidates` schema v1 JSON은 현재 capture ID·session ID·audio SHA-256·duration과 모두 일치할 때만 기존 local draft를 교체한다. 파일은 1MB 이하이며 exact-key 계약을 사용해 raw audio/object URL/임의 provider metadata를 거부한다. `candidateSetId`와 각 `sourceUid`는 provider-neutral provenance로 batch까지 보존하며 모든 imported chunk는 `proposed`에서 시작한다.
+- 녹음 또는 파일 처리가 끝나면 exact audio SHA-256, MIME type, byte length, 시작·종료 시각과 `sessionId`·`roomId`·`language`·`captureMethod`를 local capture session에 결속한다. `captureMethod`는 브라우저 녹음과 테이블 파일 가져오기를 구분한다. 내려받는 전사 batch에는 음성 bytes/object URL을 포함하지 않는다.
+- 선택적인 `private-stt-candidates` schema v2 JSON은 현재 capture ID·session ID·room ID·language·capture method·audio SHA-256·duration과 모두 일치할 때만 기존 local draft를 교체한다. 파일은 1MB 이하이며 exact-key 계약을 사용해 raw audio/object URL/임의 provider metadata를 거부한다. `candidateSetId`와 각 `sourceUid`는 provider-neutral provenance로 schema v2 review batch까지 보존하며 모든 imported chunk는 `proposed`에서 시작한다.
 - moderator가 time-coded chunk, speaker pseudonym, 전사 원문을 수동 입력하고 각 chunk를 승인·수정 승인·반려해야 한다. 화면 문구를 다시 바꾸면 해당 판단을 `proposed`로 되돌리고 extraction handoff 다운로드를 다시 잠근다.
 - 모든 chunk가 결정되고 승인 또는 수정 승인된 chunk가 하나 이상 있을 때만 `private-transcript-review-batch`를 내려받는다. 이 batch는 `localOnly:true`, `extractionExecuted:false`, `requiresExtractionReview:true`이며 candidate extraction을 자동 실행하지 않는다.
 - 내려받기 직전 capture source, chunk 순서·시간·화자 가명, 판단 상태·검수자·검수 시각, 원문 보존 규칙과 summary를 실제 chunk에서 다시 검증한다. 캐시된 summary만 바꾸거나 판단 뒤 원문·audit metadata를 바꾼 session은 fail-closed한다.
-- 내려받은 batch는 R2 패널에서 provider-neutral ontology 후보와 함께 다시 열 수 있다. 후보 파일은 batch exact-byte SHA-256과 capture/session/audio SHA를 모두 선언하며, 일치할 때만 R4 source audit가 보존된 R2 사람 검수 workspace를 만든다. 이 단계는 extraction provider를 호출하지 않는다.
+- 내려받은 batch는 R2 패널에서 provider-neutral ontology 후보와 함께 다시 열 수 있다. 후보 파일은 batch exact-byte SHA-256과 capture/session/audio SHA를 모두 선언하며, 후보 언어는 batch 언어와 같아야 한다. 일치할 때만 room·language·capture method를 포함한 R4 source audit가 R2 handoff와 R3 bundle report까지 보존된다. 이 단계는 extraction provider를 호출하지 않는다.
 - 브라우저 verifier는 synthetic MediaRecorder adapter로 동의→녹음→정지를 먼저 검증한 뒤 실제 1초 WAV 파일을 production React 파일 input으로 가져와 metadata·16,044 bytes·SHA-bound capture를 만든다. 이어 현재 audio-bound STT 후보 import→검수 전 차단→수정 승인→재편집 차단→재판단→download를 실행하고 candidate provenance와 write request 0건을 확인한다.
 - 실제 시민 발언·지속 저장·외부 STT webhook/provider 호출·provider credential·음성 retention·DB/API·자동 extraction/publication은 구현하거나 승인하지 않았다. 검수 결정과 batch exporter는 현재 Supabase Auth 사용자 UUID에서 파생한 canonical reviewer ID만 허용하지만 다운로드 batch의 외부 서명이나 독립 신원 검증은 포함하지 않는다. 실제 운영 전에는 별도 승인된 consent·보존·삭제·접근 정책이 필요하다.
 

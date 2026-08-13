@@ -12,7 +12,10 @@
     "fixtureId": "session-1-review-candidates",
     "sessionId": "session-1",
     "reviewBatchSha256": null,
-    "candidateSetId": null
+    "candidateSetId": null,
+    "roomId": null,
+    "language": null,
+    "captureMethod": null
   },
   "counts": {
     "nodes": 2,

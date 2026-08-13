@@ -1,6 +1,7 @@
 import { isAuthenticatedReviewerId } from './useAuth';
 
 export type PrivateTranscriptReviewStatus = 'proposed' | 'accepted' | 'edited' | 'rejected';
+export type PrivateTranscriptCaptureMethod = 'browser-media-recorder' | 'table-recorder-file';
 
 export interface PrivateTranscriptChunk {
   uid: string;
@@ -17,10 +18,11 @@ export interface PrivateTranscriptChunk {
 }
 
 export interface PrivateSttCandidateFile {
-  schemaVersion: 1;
+  schemaVersion: 2;
   kind: 'private-stt-candidates';
   candidateSetId: string;
-  source: Pick<PrivateTranscriptCaptureSession['source'], 'captureId' | 'sessionId' | 'audioSha256' | 'durationMs'>;
+  source: Pick<PrivateTranscriptCaptureSession['source'],
+    'captureId' | 'sessionId' | 'roomId' | 'language' | 'captureMethod' | 'audioSha256' | 'durationMs'>;
   chunks: Array<{
     sourceUid: string;
     startMs: number;
@@ -39,6 +41,9 @@ export interface PrivateTranscriptCaptureSession {
   source: {
     captureId: string;
     sessionId: string;
+    roomId: string;
+    language: string;
+    captureMethod: PrivateTranscriptCaptureMethod;
     audioSha256: string;
     mimeType: string;
     byteLength: number;
@@ -52,7 +57,7 @@ export interface PrivateTranscriptCaptureSession {
 }
 
 export interface PrivateTranscriptReviewBatch {
-  schemaVersion: 1;
+  schemaVersion: 2;
   kind: 'private-transcript-review-batch';
   source: PrivateTranscriptCaptureSession['source'];
   chunks: Array<Omit<PrivateTranscriptChunk, 'sourceText'> & { sourceText: string }>;
@@ -70,6 +75,9 @@ export interface PrivateTranscriptReviewBatch {
 interface CaptureInput {
   captureId: string;
   sessionId: string;
+  roomId: string;
+  language: string;
+  captureMethod: PrivateTranscriptCaptureMethod;
   audioSha256: string;
   mimeType: string;
   byteLength: number;
@@ -77,7 +85,7 @@ interface CaptureInput {
   stoppedAt: string;
 }
 
-interface FileCaptureInput extends Omit<CaptureInput, 'stoppedAt'> {
+interface FileCaptureInput extends Omit<CaptureInput, 'stoppedAt' | 'captureMethod'> {
   durationMs: number;
   importedAt: string;
 }
@@ -99,6 +107,7 @@ interface ReviewChunkInput {
 
 const OPAQUE_ID = /^[a-z0-9][a-z0-9._:-]{0,127}$/i;
 const SPEAKER = /^speaker-[a-z]{1,3}$/;
+const LANGUAGE = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i;
 const SHA256 = /^[a-f0-9]{64}$/;
 
 function nonempty(value: string, label: string): string {
@@ -157,6 +166,9 @@ function validatePrivateTranscriptCaptureSession(session: PrivateTranscriptCaptu
   const expectedSource = createPrivateTranscriptCaptureSession({
     captureId: session.source.captureId,
     sessionId: session.source.sessionId,
+    roomId: session.source.roomId,
+    language: session.source.language,
+    captureMethod: session.source.captureMethod,
     audioSha256: session.source.audioSha256,
     mimeType: session.source.mimeType,
     byteLength: session.source.byteLength,
@@ -211,6 +223,12 @@ function validatePrivateTranscriptCaptureSession(session: PrivateTranscriptCaptu
 export function createPrivateTranscriptCaptureSession(input: CaptureInput): PrivateTranscriptCaptureSession {
   const captureId = opaqueId(input.captureId, 'capture id');
   const sessionId = opaqueId(input.sessionId, 'session id');
+  const roomId = opaqueId(input.roomId, 'room id');
+  const language = nonempty(input.language, 'capture language');
+  if (!LANGUAGE.test(language)) throw new Error('Invalid capture language');
+  if (!['browser-media-recorder', 'table-recorder-file'].includes(input.captureMethod)) {
+    throw new Error('Invalid capture method');
+  }
   if (!SHA256.test(input.audioSha256)) throw new Error('Invalid audio SHA-256');
   if (!input.mimeType.startsWith('audio/')) throw new Error('Invalid audio MIME type');
   if (!Number.isSafeInteger(input.byteLength) || input.byteLength <= 0) throw new Error('Invalid audio byte length');
@@ -222,6 +240,9 @@ export function createPrivateTranscriptCaptureSession(input: CaptureInput): Priv
     source: {
       captureId,
       sessionId,
+      roomId,
+      language,
+      captureMethod: input.captureMethod,
       audioSha256: input.audioSha256,
       mimeType: input.mimeType,
       byteLength: input.byteLength,
@@ -254,6 +275,9 @@ export function createPrivateTranscriptFileCaptureSession(input: FileCaptureInpu
   return createPrivateTranscriptCaptureSession({
     captureId: input.captureId,
     sessionId: input.sessionId,
+    roomId: input.roomId,
+    language: input.language,
+    captureMethod: 'table-recorder-file',
     audioSha256: input.audioSha256,
     mimeType: input.mimeType,
     byteLength: input.byteLength,
@@ -298,14 +322,17 @@ export function importPrivateSttCandidates(
   validatePrivateTranscriptCaptureSession(session);
   const root = record(input, 'STT candidate file');
   exactKeys(root, ['schemaVersion', 'kind', 'candidateSetId', 'source', 'chunks', 'safety'], 'STT candidate file');
-  if (root.schemaVersion !== 1 || root.kind !== 'private-stt-candidates') {
+  if (root.schemaVersion !== 2 || root.kind !== 'private-stt-candidates') {
     throw new Error('Invalid STT candidate file contract');
   }
   const candidateSetId = opaqueId(stringField(root.candidateSetId, 'candidate set id'), 'candidate set id');
   const source = record(root.source, 'STT candidate source');
-  exactKeys(source, ['captureId', 'sessionId', 'audioSha256', 'durationMs'], 'STT candidate source');
+  exactKeys(source, ['captureId', 'sessionId', 'roomId', 'language', 'captureMethod', 'audioSha256', 'durationMs'], 'STT candidate source');
   if (source.captureId !== session.source.captureId
     || source.sessionId !== session.source.sessionId
+    || source.roomId !== session.source.roomId
+    || source.language !== session.source.language
+    || source.captureMethod !== session.source.captureMethod
     || source.audioSha256 !== session.source.audioSha256
     || source.durationMs !== session.source.durationMs) {
     throw new Error('STT candidates do not match the current private capture');
@@ -414,7 +441,7 @@ export function exportPrivateTranscriptReviewBatch(
   const chunks = session.chunks.filter((chunk) => chunk.reviewStatus !== 'rejected');
   if (chunks.length === 0) throw new Error('Extraction handoff requires a reviewed transcript chunk');
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: 'private-transcript-review-batch',
     source: session.source,
     chunks,

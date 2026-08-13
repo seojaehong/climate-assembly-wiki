@@ -26,6 +26,8 @@ describe('PrivateTranscriptCapturePanel', () => {
     expect(html).toContain('승인된 consent·retention 정책 전에는 실제 시민 발언을 사용하지 마세요.');
     expect(html).toContain('type="checkbox"');
     expect(html).toContain('마이크 또는 로컬 녹음 파일의 세션 메모리 처리에 동의합니다.');
+    expect(html).toContain('테이블·분과 ID');
+    expect(html).toContain('전사 언어');
     expect(html).toContain('테이블 녹음 파일 로컬 가져오기');
     expect(html).toContain('파일명·경로·음성 bytes는 검수 batch에 넣지 않습니다.');
     expect(html).toContain('로컬 녹음 파일');
@@ -46,6 +48,8 @@ describe('PrivateTranscriptCapturePanel', () => {
       blob: new Blob(['synthetic-audio'], { type: 'audio/wav' }),
       captureId: 'capture-file-browser',
       sessionId: 'session-file-browser',
+      roomId: 'table-a',
+      language: 'ko-KR',
       startedAt: '2026-08-29T01:00:00.000Z',
       readImportedAt: () => '2026-08-29T01:00:02.000Z',
       readDurationMs: async () => 1_250,
@@ -60,6 +64,9 @@ describe('PrivateTranscriptCapturePanel', () => {
     expect(imported[0].source).toMatchObject({
       captureId: 'capture-file-browser',
       sessionId: 'session-file-browser',
+      roomId: 'table-a',
+      language: 'ko-KR',
+      captureMethod: 'table-recorder-file',
       audioSha256: 'd'.repeat(64),
       mimeType: 'audio/wav',
       byteLength: 15,
@@ -82,6 +89,8 @@ describe('PrivateTranscriptCapturePanel', () => {
       blob: new Blob(['synthetic-audio'], { type: 'audio/wav' }),
       captureId: 'capture-file-stale',
       sessionId: 'session-file-stale',
+      roomId: 'table-a',
+      language: 'ko-KR',
       startedAt: '2026-08-29T01:00:00.000Z',
       readImportedAt: () => '2026-08-29T01:00:02.000Z',
       readDurationMs: async () => {
@@ -112,6 +121,8 @@ describe('PrivateTranscriptCapturePanel', () => {
       blob: new Blob(['private text'], { type: 'text/plain' }),
       captureId: 'capture-file-invalid',
       sessionId: 'session-file-invalid',
+      roomId: 'table-a',
+      language: 'ko-KR',
       startedAt: '2026-08-29T01:00:00.000Z',
       readImportedAt: () => '2026-08-29T01:00:02.000Z',
       readDurationMs: async () => {
@@ -138,6 +149,9 @@ describe('PrivateTranscriptCapturePanel', () => {
     const capture = createPrivateTranscriptCaptureSession({
       captureId: 'capture-stale',
       sessionId: 'session-stale',
+      roomId: 'table-a',
+      language: 'ko-KR',
+      captureMethod: 'browser-media-recorder',
       audioSha256: 'a'.repeat(64),
       mimeType: 'audio/webm',
       byteLength: 16,

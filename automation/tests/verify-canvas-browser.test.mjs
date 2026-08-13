@@ -49,8 +49,10 @@ async function fixtureServer({
           <h2 id="private-transcript-capture-heading">R4 로컬 음성·전사 검수</h2>
           <p>녹음은 브라우저 세션 메모리에만 두며 DB·서버·public 경로로 전송하지 않습니다.</p>
           <p>인증 검수자 ID <code>${authReviewerId}</code></p>
-          <label><input id="private-consent" type="checkbox">마이크 또는 로컬 녹음 파일의 세션 메모리 처리에 동의합니다.</label>
-          <label>회차 ID<input id="private-session" type="text"></label>
+           <label><input id="private-consent" type="checkbox">마이크 또는 로컬 녹음 파일의 세션 메모리 처리에 동의합니다.</label>
+           <label>회차 ID<input id="private-session" type="text"></label>
+           <label>테이블·분과 ID<input id="private-room" type="text"></label>
+           <label>전사 언어<input id="private-language" type="text" value="ko-KR"></label>
           <section aria-label="테이블 녹음 파일 로컬 가져오기">
             <label>로컬 녹음 파일<input id="private-audio-file" type="file" accept="audio/*"></label>
             <label>파일 녹음 시작 시각 (이 장치의 현지 시각)<input id="private-audio-started" type="datetime-local"></label>
@@ -178,6 +180,8 @@ async function fixtureServer({
           let exportedTranscriptPlan = null;
           const privateConsent = document.querySelector('#private-consent');
           const privateSession = document.querySelector('#private-session');
+          const privateRoom = document.querySelector('#private-room');
+          const privateLanguage = document.querySelector('#private-language');
           const privateStart = document.querySelector('#private-start');
           const privateStop = document.querySelector('#private-stop');
           const privateCapture = document.querySelector('#private-capture');
@@ -191,26 +195,34 @@ async function fixtureServer({
           const privateImportStt = document.querySelector('#private-import-stt');
           let privatePermissionPending = false;
           const refreshPrivateStart = () => {
-            privateStart.disabled = !privateConsent.checked || !privateSession.value.trim();
+            privateStart.disabled = !privateConsent.checked || !privateSession.value.trim()
+              || !privateRoom.value.trim() || !privateLanguage.value.trim();
           };
           privateConsent.addEventListener('change', () => {
             if (!privateConsent.checked && (!privateStop.disabled || privatePermissionPending)) {
               if (!privateStop.disabled) window.__privateMediaTrackStopCount += 1;
               privatePermissionPending = false;
-              privateStop.disabled = true;
-              privateSession.disabled = false;
+               privateStop.disabled = true;
+               privateSession.disabled = false;
+               privateRoom.disabled = false;
+               privateLanguage.disabled = false;
               privateCapture.hidden = true;
               privateStatus.textContent = '동의를 철회해 마이크와 로컬 음성·전사 초안을 폐기했습니다.';
             }
             refreshPrivateStart();
           });
           privateSession.addEventListener('input', refreshPrivateStart);
+          privateRoom.addEventListener('input', refreshPrivateStart);
+          privateLanguage.addEventListener('input', refreshPrivateStart);
           const refreshPrivateAudioImport = () => {
             privateImportAudio.disabled = !privateConsent.checked || !privateSession.value.trim()
+              || !privateRoom.value.trim() || !privateLanguage.value.trim()
               || !privateAudioFile.files[0] || !privateAudioStarted.value;
           };
           privateConsent.addEventListener('change', refreshPrivateAudioImport);
           privateSession.addEventListener('input', refreshPrivateAudioImport);
+          privateRoom.addEventListener('input', refreshPrivateAudioImport);
+          privateLanguage.addEventListener('input', refreshPrivateAudioImport);
           privateAudioFile.addEventListener('change', refreshPrivateAudioImport);
           privateAudioStarted.addEventListener('input', refreshPrivateAudioImport);
           privateImportAudio.addEventListener('click', () => {
@@ -243,8 +255,10 @@ async function fixtureServer({
             if (window.__delayPrivateGetUserMedia) {
               window.__delayPrivateGetUserMedia = false;
               privatePermissionPending = true;
-              privateStart.disabled = true;
-              privateSession.disabled = true;
+               privateStart.disabled = true;
+               privateSession.disabled = true;
+               privateRoom.disabled = true;
+               privateLanguage.disabled = true;
               window.__rejectPendingPrivateGetUserMedia = () => {
                 window.__rejectPendingPrivateGetUserMedia = null;
                 if (!privatePermissionPending) return;
@@ -256,12 +270,16 @@ async function fixtureServer({
             privateStart.disabled = true;
             privateStop.disabled = false;
             privateSession.disabled = true;
+            privateRoom.disabled = true;
+            privateLanguage.disabled = true;
             privateStatus.textContent = '녹음 중입니다. 음성은 서버로 전송되지 않습니다.';
           });
           privateStop.addEventListener('click', () => {
             window.__privateMediaTrackStopCount += 1;
             privateStop.disabled = true;
             privateSession.disabled = false;
+            privateRoom.disabled = false;
+            privateLanguage.disabled = false;
             privateCapture.hidden = false;
             privateStatus.textContent = '녹음은 이 브라우저 세션 메모리에만 있습니다. 전사 chunk를 작성하고 전부 검수하세요.';
           });
@@ -320,10 +338,12 @@ async function fixtureServer({
             const reviewedText = document.querySelector('#private-chunks textarea').value;
             const reviewedArticle = document.querySelector('#private-chunks article');
             const batch = {
-              schemaVersion: 1,
+              schemaVersion: 2,
               kind: 'private-transcript-review-batch',
               source: {
                 captureId: 'capture-browser', sessionId: privateSession.value,
+                roomId: privateRoom.value, language: privateLanguage.value,
+                captureMethod: 'table-recorder-file',
                 audioSha256: '${'b'.repeat(64)}', mimeType: 'audio/wav', byteLength: 16044,
                 startedAt: '2026-08-29T01:00:00.000Z', stoppedAt: '2026-08-29T01:00:01.000Z',
                 durationMs: 1000, storage: 'browser-memory',
@@ -689,6 +709,7 @@ describe('verifyCanvasBrowser', () => {
     expect(report.checks.privateStalePermissionFailureDiscarded).toBe(true);
     expect(report.checks.privateConsentWithdrawalDiscarded).toBe(true);
     expect(report.checks.privateAudioFileImported).toBe(true);
+    expect(report.checks.privateTranscriptSourceContextVerified).toBe(true);
     expect(report.checks.privateSessionLockedWhileRecording).toBe(true);
     expect(report.checks.privateTranscriptReviewGateVerified).toBe(true);
     expect(report.checks.privateTranscriptRedecisionGateVerified).toBe(true);

@@ -62,6 +62,8 @@ interface PrivateAudioFileImportCallbacks {
   blob: Blob;
   captureId: string;
   sessionId: string;
+  roomId: string;
+  language: string;
   startedAt: string;
   readImportedAt: () => string;
   readDurationMs: () => Promise<number>;
@@ -105,6 +107,8 @@ export async function completePrivateAudioFileImport(callbacks: PrivateAudioFile
     const capture = createPrivateTranscriptFileCaptureSession({
       captureId: callbacks.captureId,
       sessionId: callbacks.sessionId,
+      roomId: callbacks.roomId,
+      language: callbacks.language,
       audioSha256,
       mimeType: callbacks.blob.type,
       byteLength: callbacks.blob.size,
@@ -191,6 +195,8 @@ function downloadReviewBatch(session: PrivateTranscriptCaptureSession): void {
 export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: string }) {
   const [consented, setConsented] = useState(false);
   const [sessionId, setSessionId] = useState('');
+  const [roomId, setRoomId] = useState('');
+  const [language, setLanguage] = useState('ko-KR');
   const [recording, setRecording] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [capture, setCapture] = useState<PrivateTranscriptCaptureSession | null>(null);
@@ -211,6 +217,8 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
   const partsRef = useRef<Blob[]>([]);
   const startedAtRef = useRef<string | null>(null);
   const captureSessionIdRef = useRef<string | null>(null);
+  const captureRoomIdRef = useRef<string | null>(null);
+  const captureLanguageRef = useRef<string | null>(null);
   const generationRef = useRef(0);
   const audioUrlRef = useRef<string | null>(null);
   const recordingLockRef = useRef(false);
@@ -258,6 +266,9 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
       const next = createPrivateTranscriptCaptureSession({
         captureId: `capture-${crypto.randomUUID()}`,
         sessionId: captureSessionIdRef.current ?? '',
+        roomId: captureRoomIdRef.current ?? '',
+        language: captureLanguageRef.current ?? '',
+        captureMethod: 'browser-media-recorder',
         audioSha256: await blobSha256(blob),
         mimeType,
         byteLength: blob.size,
@@ -290,7 +301,8 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
   };
 
   const startRecording = async () => {
-    if (!consented || sessionId.trim().length === 0 || recordingLockRef.current || audioImportLockRef.current) return;
+    if (!consented || sessionId.trim().length === 0 || roomId.trim().length === 0 || language.trim().length === 0
+      || recordingLockRef.current || audioImportLockRef.current) return;
     recordingLockRef.current = true;
     const generation = generationRef.current + 1;
     generationRef.current = generation;
@@ -315,6 +327,8 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
       partsRef.current = [];
       startedAtRef.current = new Date().toISOString();
       captureSessionIdRef.current = sessionId.trim();
+      captureRoomIdRef.current = roomId.trim();
+      captureLanguageRef.current = language.trim();
       setCapture(null);
       audioImportGenerationRef.current += 1;
       audioImportLockRef.current = false;
@@ -389,6 +403,8 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
     partsRef.current = [];
     startedAtRef.current = null;
     captureSessionIdRef.current = null;
+    captureRoomIdRef.current = null;
+    captureLanguageRef.current = null;
     setRecording(false);
     setFinalizing(false);
     setCapture(null);
@@ -417,7 +433,8 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
 
   const importAudioFile = async () => {
     const file = audioFile;
-    if (!consented || !file || sessionId.trim().length === 0 || recordedStartedAt.length === 0
+    if (!consented || !file || sessionId.trim().length === 0 || roomId.trim().length === 0
+      || language.trim().length === 0 || recordedStartedAt.length === 0
       || audioImportLockRef.current || recording || finalizing) return;
     let startedAt: string;
     try {
@@ -432,6 +449,8 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
     audioImportGenerationRef.current = generation;
     const captureId = `capture-${crypto.randomUUID()}`;
     const currentSessionId = sessionId.trim();
+    const currentRoomId = roomId.trim();
+    const currentLanguage = language.trim();
     setImportingAudio(true);
     setError(null);
     setNotice('로컬 녹음 파일의 길이와 SHA-256을 브라우저에서 확인하고 있습니다.');
@@ -439,6 +458,8 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
       blob: file,
       captureId,
       sessionId: currentSessionId,
+      roomId: currentRoomId,
+      language: currentLanguage,
       startedAt,
       readImportedAt: () => new Date().toISOString(),
       readDurationMs: () => readPrivateAudioDurationMs(file),
@@ -596,6 +617,14 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
         <label>회차 ID
           <input value={sessionId} onChange={(event) => setSessionId(event.currentTarget.value)} disabled={recording || finalizing || importingAudio} autoComplete="off" placeholder="예: session-20260829" style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />
         </label>
+        <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+          <label>테이블·분과 ID
+            <input value={roomId} onChange={(event) => setRoomId(event.currentTarget.value)} disabled={recording || finalizing || importingAudio} autoComplete="off" placeholder="예: table-a" pattern="[A-Za-z0-9][A-Za-z0-9._:-]{0,127}" style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />
+          </label>
+          <label>전사 언어
+            <input value={language} onChange={(event) => setLanguage(event.currentTarget.value)} disabled={recording || finalizing || importingAudio} autoComplete="off" placeholder="예: ko-KR" pattern="[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*" style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />
+          </label>
+        </div>
         <section aria-label="테이블 녹음 파일 로컬 가져오기" style={{ display: 'grid', gap: 8 }}>
           <p style={{ color: MUTED, margin: 0 }}>
             파일명·경로·음성 bytes는 검수 batch에 넣지 않습니다. 운영자가 확인한 녹음 시작 시각과 브라우저가 읽은 길이·SHA-256만 결속합니다. 최대 256MB입니다.
@@ -613,12 +642,12 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
           <label>파일 녹음 시작 시각 (이 장치의 현지 시각)
             <input type="datetime-local" value={recordedStartedAt} onChange={(event) => setRecordedStartedAt(event.currentTarget.value)} disabled={recording || finalizing || importingAudio} style={{ ...controlStyle, display: 'block', width: '100%' }} />
           </label>
-          <button type="button" onClick={() => { void importAudioFile(); }} disabled={!consented || !audioFile || sessionId.trim().length === 0 || recordedStartedAt.length === 0 || recording || finalizing || importingAudio} style={{ ...controlStyle, fontWeight: 800 }}>
+          <button type="button" onClick={() => { void importAudioFile(); }} disabled={!consented || !audioFile || sessionId.trim().length === 0 || roomId.trim().length === 0 || language.trim().length === 0 || recordedStartedAt.length === 0 || recording || finalizing || importingAudio} style={{ ...controlStyle, fontWeight: 800 }}>
             {importingAudio ? '녹음 파일 확인 중…' : '녹음 파일 로컬 가져오기'}
           </button>
         </section>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <button type="button" onClick={() => { void startRecording(); }} disabled={!consented || sessionId.trim().length === 0 || recording || finalizing || importingAudio} style={{ ...controlStyle, background: '#0B4F6C', color: '#FFFFFF', fontWeight: 800 }}>
+          <button type="button" onClick={() => { void startRecording(); }} disabled={!consented || sessionId.trim().length === 0 || roomId.trim().length === 0 || language.trim().length === 0 || recording || finalizing || importingAudio} style={{ ...controlStyle, background: '#0B4F6C', color: '#FFFFFF', fontWeight: 800 }}>
             녹음 시작
           </button>
           <button type="button" onClick={stopRecording} disabled={!recording || finalizing} style={{ ...controlStyle, background: '#8A1C1C', color: '#FFFFFF', fontWeight: 800 }}>
@@ -634,6 +663,7 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
           <section aria-label="로컬 전사 chunk 작성" style={{ ...cardStyle, marginBottom: 16 }}>
             <strong>로컬 음성 {capture.source.durationMs}ms · {capture.source.byteLength} bytes</strong>
             <span style={{ color: MUTED, overflowWrap: 'anywhere' }}>capture ID <code data-private-capture-id>{capture.source.captureId}</code></span>
+            <span style={{ color: MUTED, overflowWrap: 'anywhere' }}>출처 {capture.source.sessionId} · {capture.source.roomId} · {capture.source.language} · {capture.source.captureMethod}</span>
             <span style={{ color: MUTED, overflowWrap: 'anywhere' }}>audio SHA-256 {capture.source.audioSha256}</span>
             <p style={{ color: MUTED, margin: 0, overflowWrap: 'anywhere' }}>
               인증 검수자 ID <code>{reviewerId}</code>

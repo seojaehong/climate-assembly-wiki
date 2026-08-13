@@ -78,17 +78,22 @@ function privateExtractionHandoff(value) {
   if (value === undefined) return null;
   if (!isRecord(value)
     || canonicalJson(Object.keys(value).sort()) !== canonicalJson([
-      'audioSha256', 'candidateSetId', 'captureId', 'kind', 'reviewBatchSha256',
+      'audioSha256', 'candidateSetId', 'captureId', 'captureMethod', 'kind', 'language', 'reviewBatchSha256', 'roomId',
     ].sort())
     || value.kind !== 'private-transcript-extraction-handoff'
     || !/^[a-f0-9]{64}$/.test(String(value.reviewBatchSha256 ?? ''))
-    || !/^[a-f0-9]{64}$/.test(String(value.audioSha256 ?? ''))) {
+    || !/^[a-f0-9]{64}$/.test(String(value.audioSha256 ?? ''))
+    || !/^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i.test(String(value.language ?? ''))
+    || !['browser-media-recorder', 'table-recorder-file'].includes(value.captureMethod)) {
     throw new Error('Invalid private transcript extraction handoff');
   }
   return {
     kind: 'private-transcript-extraction-handoff',
     reviewBatchSha256: value.reviewBatchSha256,
     captureId: opaqueId(value.captureId, 'capture id'),
+    roomId: opaqueId(value.roomId, 'room id'),
+    language: value.language,
+    captureMethod: value.captureMethod,
     audioSha256: value.audioSha256,
     candidateSetId: opaqueId(value.candidateSetId, 'candidate set id'),
   };
@@ -601,6 +606,9 @@ export function buildReviewedTranscriptBundleReport({ fixtureText, reviewedPlanT
       sourceId: graph.meta.source.source_id,
       fixtureId: graph.meta.source.fixture_id,
       sessionId: graph.meta.source.session_id,
+      roomId: handoff?.roomId ?? null,
+      language: handoff?.language ?? null,
+      captureMethod: handoff?.captureMethod ?? null,
       reviewBatchSha256: handoff?.reviewBatchSha256 ?? null,
       candidateSetId: handoff?.candidateSetId ?? null,
     },

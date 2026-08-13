@@ -180,7 +180,7 @@ function privateTranscriptOntologyHandoff(privateTranscriptBatchText, privateTra
       sessionId: privateTranscriptBatch.source.sessionId,
       audioSha256: privateTranscriptBatch.source.audioSha256,
     },
-    language: 'ko',
+    language: privateTranscriptBatch.source.language,
     nodes: [
       {
         uid: 'candidate-issue', kind: 'Issue', label: '재생에너지 전환 속도',
@@ -584,6 +584,8 @@ export async function verifyCanvasBrowser({
       .getByLabel('마이크 또는 로컬 녹음 파일의 세션 메모리 처리에 동의합니다.');
     await privateConsent.check();
     await privateCapturePanel.getByLabel('회차 ID').fill('session-browser-r4');
+    await privateCapturePanel.getByLabel('테이블·분과 ID').fill('table-browser-a');
+    await privateCapturePanel.getByLabel('전사 언어').fill('ko-KR');
     await reviewPage.evaluate(() => { window.__failPrivateRecorderConstruction = true; });
     await privateCapturePanel.getByRole('button', { name: '녹음 시작' }).click();
     await privateCapturePanel.getByRole('alert')
@@ -604,7 +606,9 @@ export async function verifyCanvasBrowser({
       button.click();
       button.click();
     });
-    const privateSessionLockedWhileRecording = await privateCapturePanel.getByLabel('회차 ID').isDisabled();
+    const privateSessionLockedWhileRecording = await privateCapturePanel.getByLabel('회차 ID').isDisabled()
+      && await privateCapturePanel.getByLabel('테이블·분과 ID').isDisabled()
+      && await privateCapturePanel.getByLabel('전사 언어').isDisabled();
     await privateCapturePanel.getByText('녹음 중입니다. 음성은 서버로 전송되지 않습니다.', { exact: true })
       .waitFor({ timeout: timeoutMs });
     const privateDuplicateRecordingStartBlocked = await reviewPage.evaluate(() => (
@@ -656,12 +660,15 @@ export async function verifyCanvasBrowser({
       name: 'private-stt-candidates.json',
       mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 2,
         kind: 'private-stt-candidates',
         candidateSetId: 'browser-stt-candidates-1',
         source: {
           captureId: privateCaptureId,
           sessionId: 'session-browser-r4',
+          roomId: 'table-browser-a',
+          language: 'ko-KR',
+          captureMethod: 'table-recorder-file',
           audioSha256: privateAudioSha256,
           durationMs: privateDurationMs,
         },
@@ -700,9 +707,13 @@ export async function verifyCanvasBrowser({
     const privateTranscriptStartedAt = new Date(privateTranscriptSource?.startedAt ?? '');
     const privateTranscriptStoppedAt = new Date(privateTranscriptSource?.stoppedAt ?? '');
     const privateTranscriptReviewedAt = new Date(privateTranscriptChunk?.reviewedAt ?? '');
-    const privateTranscriptBatchDownloaded = privateTranscriptBatch.schemaVersion === 1
+    const privateTranscriptSourceContextVerified = privateTranscriptSource?.sessionId === 'session-browser-r4'
+      && privateTranscriptSource?.roomId === 'table-browser-a'
+      && privateTranscriptSource?.language === 'ko-KR'
+      && privateTranscriptSource?.captureMethod === 'table-recorder-file';
+    const privateTranscriptBatchDownloaded = privateTranscriptBatch.schemaVersion === 2
       && privateTranscriptBatch.kind === 'private-transcript-review-batch'
-      && privateTranscriptBatch.source?.sessionId === 'session-browser-r4'
+      && privateTranscriptSourceContextVerified
       && privateTranscriptBatch.source?.storage === 'browser-memory'
       && privateTranscriptBatch.source?.mimeType === 'audio/wav'
       && privateTranscriptBatch.source?.byteLength === 16_044
@@ -746,6 +757,7 @@ export async function verifyCanvasBrowser({
       privateStalePermissionFailureDiscarded,
       privateConsentWithdrawalDiscarded,
       privateAudioFileImported,
+      privateTranscriptSourceContextVerified,
       privateTranscriptReviewGateVerified,
       privateTranscriptRedecisionGateVerified,
       privateTranscriptBatchDownloaded,
@@ -1133,6 +1145,7 @@ export async function verifyCanvasBrowser({
         privateStalePermissionFailureDiscarded,
         privateConsentWithdrawalDiscarded,
         privateAudioFileImported,
+        privateTranscriptSourceContextVerified,
         privateSessionLockedWhileRecording,
         privateTranscriptReviewGateVerified,
         privateTranscriptRedecisionGateVerified,

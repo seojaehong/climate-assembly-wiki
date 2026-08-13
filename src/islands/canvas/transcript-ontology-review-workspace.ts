@@ -22,6 +22,9 @@ export interface PrivateTranscriptExtractionHandoff {
   kind: 'private-transcript-extraction-handoff';
   reviewBatchSha256: string;
   captureId: string;
+  roomId: string;
+  language: string;
+  captureMethod: 'browser-media-recorder' | 'table-recorder-file';
   audioSha256: string;
   candidateSetId: string;
 }
@@ -164,6 +167,13 @@ function canonicalInstant(value: unknown, label: string): string {
   return result;
 }
 
+function privateCaptureMethod(value: unknown): PrivateTranscriptExtractionHandoff['captureMethod'] {
+  if (value !== 'browser-media-recorder' && value !== 'table-recorder-file') {
+    throw new Error('Invalid capture method');
+  }
+  return value;
+}
+
 function citations(value: unknown, chunks: Map<string, TranscriptCitation>, label: string): {
   citedUids: string[];
   transcript: TranscriptCitation[];
@@ -194,7 +204,7 @@ async function canonicalSha256(value: unknown): Promise<string> {
 function privateHandoff(value: unknown): PrivateTranscriptExtractionHandoff | null {
   if (value === undefined) return null;
   if (!isRecord(value)) throw new Error('Invalid private transcript extraction handoff');
-  exactKeys(value, ['kind', 'reviewBatchSha256', 'captureId', 'audioSha256', 'candidateSetId'], 'private transcript extraction handoff');
+  exactKeys(value, ['kind', 'reviewBatchSha256', 'captureId', 'roomId', 'language', 'captureMethod', 'audioSha256', 'candidateSetId'], 'private transcript extraction handoff');
   if (value.kind !== 'private-transcript-extraction-handoff') {
     throw new Error('Invalid private transcript extraction handoff');
   }
@@ -207,6 +217,9 @@ function privateHandoff(value: unknown): PrivateTranscriptExtractionHandoff | nu
     kind: 'private-transcript-extraction-handoff',
     reviewBatchSha256,
     captureId: opaqueId(value.captureId, 'capture id'),
+    roomId: opaqueId(value.roomId, 'room id'),
+    language: text(value.language, 'capture language'),
+    captureMethod: privateCaptureMethod(value.captureMethod),
     audioSha256,
     candidateSetId: opaqueId(value.candidateSetId, 'candidate set id'),
   };
@@ -221,15 +234,22 @@ export async function buildPrivateTranscriptOntologyFixture(input: {
   const candidates = parseJson(input.extractionCandidatesText);
   if (!isRecord(reviewBatch)) throw new Error('Invalid private transcript review batch');
   exactKeys(reviewBatch, ['schemaVersion', 'kind', 'source', 'chunks', 'summary', 'safety'], 'private transcript review batch');
-  if (reviewBatch.schemaVersion !== 1 || reviewBatch.kind !== 'private-transcript-review-batch'
+  if (reviewBatch.schemaVersion !== 2 || reviewBatch.kind !== 'private-transcript-review-batch'
     || !isRecord(reviewBatch.source) || !Array.isArray(reviewBatch.chunks)
     || reviewBatch.chunks.length === 0 || !isRecord(reviewBatch.summary) || !isRecord(reviewBatch.safety)) {
     throw new Error('Invalid private transcript review batch');
   }
   const source = reviewBatch.source;
-  exactKeys(source, ['captureId', 'sessionId', 'audioSha256', 'mimeType', 'byteLength', 'startedAt', 'stoppedAt', 'durationMs', 'storage'], 'private transcript source');
+  exactKeys(source, ['captureId', 'sessionId', 'roomId', 'language', 'captureMethod', 'audioSha256', 'mimeType', 'byteLength', 'startedAt', 'stoppedAt', 'durationMs', 'storage'], 'private transcript source');
   const captureId = opaqueId(source.captureId, 'capture id');
   const sessionId = opaqueId(source.sessionId, 'session id');
+  const roomId = opaqueId(source.roomId, 'room id');
+  const captureLanguage = text(source.language, 'capture language');
+  if (!LANGUAGE_PATTERN.test(captureLanguage)) throw new Error('Invalid capture language');
+  const captureMethod = source.captureMethod;
+  if (captureMethod !== 'browser-media-recorder' && captureMethod !== 'table-recorder-file') {
+    throw new Error('Invalid capture method');
+  }
   const audioSha256 = text(source.audioSha256, 'audio SHA-256');
   if (!SHA256_PATTERN.test(audioSha256) || source.storage !== 'browser-memory'
     || typeof source.mimeType !== 'string' || !source.mimeType.startsWith('audio/')
@@ -315,7 +335,9 @@ export async function buildPrivateTranscriptOntologyFixture(input: {
   }
   const candidateSetId = opaqueId(candidates.candidateSetId, 'candidate set id');
   const language = text(candidates.language, 'candidate language');
-  if (!LANGUAGE_PATTERN.test(language)) throw new Error('Invalid candidate language');
+  if (!LANGUAGE_PATTERN.test(language) || language !== captureLanguage) {
+    throw new Error('Extraction candidate language does not match the reviewed transcript batch');
+  }
   exactKeys(candidates.source, ['reviewBatchSha256', 'captureId', 'sessionId', 'audioSha256'], 'private extraction source');
   const reviewBatchSha256 = await sha256(input.reviewBatchText);
   if (candidates.source.reviewBatchSha256 !== reviewBatchSha256
@@ -350,6 +372,9 @@ export async function buildPrivateTranscriptOntologyFixture(input: {
       kind: 'private-transcript-extraction-handoff',
       reviewBatchSha256,
       captureId,
+      roomId,
+      language: captureLanguage,
+      captureMethod,
       audioSha256,
       candidateSetId,
     },
@@ -379,6 +404,9 @@ export async function createTranscriptOntologyReviewWorkspace(
     throw new Error('Invalid fixture reviewer identity');
   }
   const handoff = privateHandoff(input.source);
+  if (handoff !== null && handoff.language !== language) {
+    throw new Error('Transcript extraction handoff language does not match fixture');
+  }
   if (!Array.isArray(input.chunks) || input.chunks.length === 0) throw new Error('Invalid transcript chunks');
   const chunks = new Map<string, TranscriptCitation>();
   for (const value of input.chunks) {
