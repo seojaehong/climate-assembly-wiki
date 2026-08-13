@@ -1,16 +1,16 @@
 {
-  "checkedAt": "2026-08-13T21:54:14.344Z",
+  "checkedAt": "2026-08-13T22:07:12.249Z",
   "url": "http://127.0.0.1:4323/workshop-graph/?source=live-transcript-r2-reviewed",
   "verifier": "automation/verify-workshop-graph-advisory.mjs",
-  "sourceCommit": "e923e520f4a44d9423c67cc4be7e5cc7ff62635b",
+  "sourceCommit": "ba1ff99fc68e25d2dbb3833f7262fde0dc39ecd2",
   "chromiumVersion": "149.0.7827.55",
   "sourceHashes": {
-    "public/workshop-graph/index.html": "3a60ad0aa2804e472beba3013fed2e78f3100bf803ba2075585619af66dbf2ec",
+    "public/workshop-graph/index.html": "63e39a9a61e3e4a074ab0d67acbfe13370ac6b7e0f56c5ddc60ea0189395ea98",
     "public/workshop-graph/graph-advisory-assets.js": "4419b64f268a3274021bc4ac2e4da60fd6f5ee199ebbb026cc3d14423fbd8a43",
-    "public/workshop-graph/graph-source-adapter.js": "f9ca2ea2ecdf2df7cb9c1903fc37db0357148a56a6d220879a647c2ac19aebb9",
+    "public/workshop-graph/graph-source-adapter.js": "11460a8de401c358d32176ff95cc8be1ec4cb5dc63c615587161dc107bf50fd8",
     "public/workshop-graph/sources.json": "b0e1ab5fb3f57283b37d56dd080bf335b1503abe697948624fae272be12e47e2",
     "public/workshop-graph/data/live-transcript-r2-reviewed.json": "e0b4bf192736c240836e1ebdf07aba2e175c8ff4ff382f17cd0f02a6d2e36a4d",
-    "automation/verify-workshop-graph-advisory.mjs": "3f86e657c8efdb4417e452f5978dd81605581959c767ccbd35c761d3e04ea7f6"
+    "automation/verify-workshop-graph-advisory.mjs": "ef2431f2b911b2c0370bbc13af6a8839dfb424a06064675dab931fdcafe39137"
   },
   "servedHashesMatch": true,
   "fixtures": {
@@ -29,6 +29,11 @@
     "allItemsReviewed": true,
     "footer": "합성 전사 검수 데모 · 실제 시민 발언 아님",
     "advisory": "합성 전사 사람 검수 결과 · 실제 시민 발언이나 회의 결과가 아닙니다."
+  },
+  "standardReviewedPresentation": {
+    "footer": "사람 검수 완료 스냅샷",
+    "advisory": "사람 검수 완료 스냅샷",
+    "pill": "LIVE · 검수 완료"
   },
   "validCandidate": {
     "metadata": "노드 613 · 엣지 491 · 권고 후보 1건 · 품질 신호",
@@ -59,7 +64,7 @@
   },
   "pageErrors": [],
   "consoleErrors": [
-    "Failed to parse graph advisory assets Error: Invalid quality signal\n    at normalizeQuality (http://127.0.0.1:4323/workshop-graph/graph-advisory-assets.js:102:69)\n    at parseGraphAdvisoryAssets (http://127.0.0.1:4323/workshop-graph/graph-advisory-assets.js:124:19)\n    at loadSource (http://127.0.0.1:4323/workshop-graph/?mode=normal:594:22)\n    at async safelyLoadSource (http://127.0.0.1:4323/workshop-graph/?mode=normal:652:20)"
+    "Failed to parse graph advisory assets Error: Invalid quality signal\n    at normalizeQuality (http://127.0.0.1:4323/workshop-graph/graph-advisory-assets.js:102:69)\n    at parseGraphAdvisoryAssets (http://127.0.0.1:4323/workshop-graph/graph-advisory-assets.js:124:19)\n    at loadSource (http://127.0.0.1:4323/workshop-graph/?mode=normal:592:22)\n    at async safelyLoadSource (http://127.0.0.1:4323/workshop-graph/?mode=normal:648:20)"
   ],
   "consoleErrorCount": 1,
   "passed": true
