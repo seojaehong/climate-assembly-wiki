@@ -154,6 +154,14 @@ try {
       advisory: document.querySelector('#og-advisory')?.textContent || '',
     };
   });
+  await page.locator('[data-node-id="transcript-node:candidate-issue"]').first().click();
+  await page.waitForFunction(() => document.querySelector('#og-side')?.textContent?.includes('chunk-001'));
+  const publicTranscriptBoundary = await page.locator('#og-side').evaluate(side => ({
+    reviewedSummaryVisible: side.textContent?.includes('재생에너지 전환 속도와 지역별 전력망 여건을 함께 논의한다.') || false,
+    citedUidVisible: side.textContent?.includes('chunk-001') || false,
+    publicRawTranscriptNoticeVisible: side.textContent?.includes('공개 원문 미포함') || false,
+    rawTranscriptLabelAbsent: !side.textContent?.includes('실제 대화 전사 원문'),
+  }));
   const reviewedSource = catalog.sources.find(source => source.id === SOURCE_REVIEWED);
   await page.screenshot({ path: SCREENSHOT_PATH, fullPage: true });
 
@@ -177,6 +185,7 @@ try {
     },
     standardReviewedPresentation,
     liveCategoryLabel,
+    publicTranscriptBoundary,
     validCandidate: {
       metadata: firstMetadata, humanReviewRequired: firstPanel.includes('사람 검수 필요'),
       recommendationCandidateVisible: firstPanel.includes('첫 번째 권고 후보'), qualitySignalVisible: firstPanel.includes('품질 신호'),
@@ -207,6 +216,7 @@ try {
     && result.standardReviewedPresentation.advisory.includes('사람 검수 완료 스냅샷')
     && result.standardReviewedPresentation.pill.includes('LIVE · 검수 완료')
     && result.liveCategoryLabel === '검수 완료 스냅샷'
+    && Object.values(result.publicTranscriptBoundary).every(Boolean)
     && result.servedHashesMatch && result.pageErrors.length === 0 && result.consoleErrorCount === 1;
   writeFileSync(OUTPUT_PATH, `${JSON.stringify(result, null, 2)}\n`);
   if (!result.passed) throw new Error('Workshop graph advisory browser verification failed');

@@ -350,6 +350,22 @@ describe('workshop graph source adapter', () => {
     ['noncanonical approval time', (snapshot) => { snapshot.meta.publication.approved_at = '2026-08-14T01:00:00Z'; }],
     ['mismatched source identity', (snapshot) => { snapshot.meta.source.source_id = 'live-other'; }],
     ['mismatched element counts', (snapshot) => { snapshot.meta.counts.nodes = 2; }],
+    ['missing node provenance', (snapshot) => { snapshot.elements.nodes[0].data.cited_uids = []; }],
+    ['blank node provenance', (snapshot) => { snapshot.elements.nodes[0].data.cited_uids = ['   ']; }],
+    ['noncanonical node provenance', (snapshot) => { snapshot.elements.nodes[0].data.cited_uids = [' chunk-1']; }],
+    ['duplicate node provenance', (snapshot) => { snapshot.elements.nodes[0].data.cited_uids = ['chunk-1', 'chunk-1']; }],
+    ['invalid moderator-created marker', (snapshot) => { snapshot.elements.nodes[0].data.moderator_created = 'true'; }],
+    ['missing edge provenance', (snapshot) => {
+      snapshot.elements.nodes.push({ data: {
+        id: 'claim-1', kind: 'Claim', label: '주장', cited_uids: ['chunk-1'],
+        review_state: 'accepted', is_public: true,
+      } });
+      snapshot.elements.edges.push({ data: {
+        id: 'edge-1', source: 'claim-1', target: 'issue-1', rel: 'isAbout',
+        review_state: 'accepted', is_public: true,
+      } });
+      snapshot.meta.counts = { nodes: 2, edges: 1 };
+    }],
   ])('rejects a live graph snapshot with %s', async (_caseName, mutate) => {
     const manifest = {
       default: REVIEWED_LIVE_SOURCE.id,
@@ -366,6 +382,27 @@ describe('workshop graph source adapter', () => {
     const catalog = await adapter.loadCatalog('sources.json');
 
     await expect(adapter.loadSource(catalog.manifest.sources[0])).rejects.toThrow();
+  });
+
+  test('accepts an explicitly moderator-created live item without transcript citations', async () => {
+    const manifest = {
+      default: REVIEWED_LIVE_SOURCE.id,
+      categories: { live: '검수 완료 스냅샷' },
+      sources: [REVIEWED_LIVE_SOURCE],
+    };
+    const snapshot = reviewedLiveSnapshot();
+    snapshot.elements.nodes[0].data.cited_uids = [];
+    snapshot.elements.nodes[0].data.moderator_created = true;
+    const fetchImpl = vi.fn(async (url) => (
+      url === 'sources.json' ? jsonResponse(manifest) : jsonResponse(snapshot)
+    ));
+    const adapter = createWorkshopGraphSourceAdapter({ fetchImpl, now: () => 1234, retryDelayMs: 0 });
+
+    const catalog = await adapter.loadCatalog('sources.json');
+    const loaded = await adapter.loadSource(catalog.manifest.sources[0]);
+
+    expect(loaded.payload.elements.nodes[0].data.moderator_created).toBe(true);
+    expect(loaded.diagnostics.missingCitedNodeIds).toEqual([]);
   });
 
   test('fails the optional database catalog closed when an approved snapshot is malformed', async () => {

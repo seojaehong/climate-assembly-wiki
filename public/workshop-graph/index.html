@@ -1145,7 +1145,9 @@ function renderOverviewSurface(sourceMeta, graphMeta) {
       <span class="og-s-badge" style="background:#228be6">데이터 로드됨</span>
       <span class="og-s-badge" style="background:#2c3848;color:#9aa7b8;margin-left:5px">${escapeHtml(sourceMeta?.label || curSource || '')}</span>
       <div class="og-s-label">숙의 온톨로지 개요</div>
-      <div class="og-surface-role"><b>화면을 어떻게 읽나</b><span>색은 발언 역할, 선은 논증 관계, 큰 노드는 논의가 모인 허브입니다. 노드를 올리면 1-hop 관계가 보이고, 클릭하면 원문과 출처가 고정됩니다.</span></div>
+      <div class="og-surface-role"><b>화면을 어떻게 읽나</b><span>${sourceMeta?.category === 'live'
+        ? '색은 발언 역할, 선은 논증 관계, 큰 노드는 논의가 모인 허브입니다. 노드를 클릭하면 사람 검수 요약과 출처 UID가 고정됩니다. 원문 전사와 음성은 이 공개 snapshot에 포함하지 않습니다.'
+        : '색은 발언 역할, 선은 논증 관계, 큰 노드는 논의가 모인 허브입니다. 노드를 올리면 1-hop 관계가 보이고, 클릭하면 원문과 출처가 고정됩니다.'}</span></div>
       ${renderFinalLineageIntro(graphMeta)}
       <div class="og-surface-chips">
         <span class="og-surface-chip"><b>${ALL_NODES.length}</b>노드</span>
@@ -1240,6 +1242,7 @@ function renderNodeSurface(ctx, mode = 'hover') {
   const palette = OntologyChrome.getPalette();
   const color = palette[ctx.node.kind] || '#888';
   const kindLabel = OntologyChrome.KIND_KO[ctx.node.kind] || ctx.node.kind;
+  const isLiveSnapshot = getPublicSources().find(source => source.id === curSource)?.category === 'live';
   if (mode === 'fixed') {
     const side = document.getElementById('og-side');
     side.innerHTML = `
@@ -1247,6 +1250,7 @@ function renderNodeSurface(ctx, mode = 'hover') {
       <div>
         <span class="og-s-badge" style="background:${color}">${escapeHtml(kindLabel)}</span>
         ${ctx.node.minority_concern === true ? '<span class="og-s-badge" style="background:#7a3e00;color:#fff;margin-left:5px">소수 우려 보존</span>' : ''}
+        ${ctx.node.moderator_created === true ? '<span class="og-s-badge" style="background:#35546f;color:#fff;margin-left:5px">모더레이터 생성</span>' : ''}
         ${ctx.node.session ? `<span class="og-s-badge" style="background:#2c3848;color:#9aa7b8;margin-left:5px" title="${escapeHtml(ctx.node.session)}">${escapeHtml(sessionLabel(ctx.node.session))}</span>` : ''}
         ${ctx.node.synthesized ? '<div class="og-s-synth">합성 노드 — 원천 추출 아님</div>' : ''}
         <div class="og-s-label">${escapeHtml(ctx.node.label || '')}</div>
@@ -1256,13 +1260,20 @@ function renderNodeSurface(ctx, mode = 'hover') {
           <h4>요약</h4>
           <div class="og-s-text">${escapeHtml(shortText(ctx.node.text || '요약할 원문이 없습니다.', 220))}</div>
         </div>
-        <details class="og-s-details" ${ctx.node.text ? '' : 'open'}>
-          <summary>실제 대화 전사 원문</summary>
-          <div class="og-s-text">${escapeHtml(ctx.node.text || '원문 전사 없음')}</div>
-        </details>
+        ${isLiveSnapshot ? `
+          <div class="og-s-sec">
+            <h4>공개 원문 미포함</h4>
+            <div class="og-s-text">검수된 요약과 출처 UID만 표시합니다. 원문 전사와 음성은 이 공개 snapshot에 포함하지 않습니다.</div>
+          </div>` : `
+          <details class="og-s-details" ${ctx.node.text ? '' : 'open'}>
+            <summary>실제 대화 전사 원문</summary>
+            <div class="og-s-text">${escapeHtml(ctx.node.text || '원문 전사 없음')}</div>
+          </details>`}
         <div class="og-s-sec">
           <h4>출처 uid</h4>
-          ${ctx.sourceIds.length ? ctx.sourceIds.map(c => `<div class="og-s-cite">${escapeHtml(c)}</div>`).join('') : '<div class="og-s-cite">출처 uid 없음 · 현재 노드 원문 텍스트 기반</div>'}
+          ${ctx.sourceIds.length ? ctx.sourceIds.map(c => `<div class="og-s-cite">${escapeHtml(c)}</div>`).join('') : (ctx.node.moderator_created === true
+            ? '<div class="og-s-cite">모더레이터 생성 노드 · 전사 인용 없음</div>'
+            : '<div class="og-s-cite">출처 uid 없음 · 현재 노드 원문 텍스트 기반</div>')}
         </div>
         ${renderRelationList('들어오는 관계', ctx.incoming)}
         ${renderRelationList('나가는 관계', ctx.outgoing)}

@@ -673,6 +673,8 @@ test('polls the production live graph surface and applies the next payload', asy
     await page.locator('[data-node-id="transcript-node:candidate-issue"]').first().click();
     await expect.poll(() => page.locator('#og-side').textContent()).toContain('chunk-001');
     expect(await page.locator('#og-side').textContent()).toContain('chunk-002');
+    expect(await page.locator('#og-side').textContent()).toContain('공개 원문 미포함');
+    expect(await page.locator('#og-side').textContent()).not.toContain('실제 대화 전사 원문');
     expect(await page.locator('#og-advisory').textContent()).toContain('합성 전사 사람 검수 결과');
     expect(pageErrors).toEqual([]);
   } finally {

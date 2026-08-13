@@ -159,12 +159,35 @@ function validatePublishedDatabaseSnapshot(value) {
   return snapshot;
 }
 
+function validatePublicationProvenance(data, label) {
+  const citations = new Set();
+  for (const field of ['cited', 'cited_uids']) {
+    const values = data[field];
+    if (values === undefined) continue;
+    if (!Array.isArray(values) || values.some((value) => typeof value !== 'string'
+      || value.trim().length === 0 || value.trim() !== value)
+      || new Set(values).size !== values.length) {
+      throw new Error(`Invalid ${label} provenance`);
+    }
+    for (const value of values) citations.add(value);
+  }
+  if (data.moderator_created !== undefined && typeof data.moderator_created !== 'boolean') {
+    throw new Error(`Invalid ${label} provenance`);
+  }
+  if (citations.size === 0 && data.moderator_created !== true) {
+    throw new Error(`Missing ${label} provenance`);
+  }
+}
+
 function validatePublishedLiveSnapshot(value, source) {
   const snapshot = validateGraphSnapshot(value);
-  for (const item of [...snapshot.elements.nodes, ...snapshot.elements.edges]) {
-    if (item.data.is_public !== true) throw new Error('Live graph item is not public');
-    if (!REVIEWED_ITEM_STATES.has(item.data.review_state)) {
-      throw new Error('Live graph item is not reviewed');
+  for (const [collection, label] of [[snapshot.elements.nodes, 'live graph node'], [snapshot.elements.edges, 'live graph edge']]) {
+    for (const item of collection) {
+      if (item.data.is_public !== true) throw new Error('Live graph item is not public');
+      if (!REVIEWED_ITEM_STATES.has(item.data.review_state)) {
+        throw new Error('Live graph item is not reviewed');
+      }
+      validatePublicationProvenance(item.data, label);
     }
   }
   if (reviewedLivePublicationMode(snapshot.meta) === null) {
@@ -186,6 +209,7 @@ function validatePublishedLiveSnapshot(value, source) {
 function graphDiagnostics(payload, origin, rowCount) {
   const missingCitedNodeIds = payload.elements.nodes
     .filter((node) => {
+      if (node.data?.moderator_created === true) return false;
       const citations = [...(Array.isArray(node.data?.cited) ? node.data.cited : []),
         ...(Array.isArray(node.data?.cited_uids) ? node.data.cited_uids : [])];
       return !citations.some((citation) => typeof citation === 'string' && citation.trim().length > 0);
