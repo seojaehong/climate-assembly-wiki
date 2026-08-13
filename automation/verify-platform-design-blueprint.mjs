@@ -14,6 +14,7 @@ import {
 const PLATFORM_ENTRY_ROUTE = '/platform/';
 export const DESIGN_BLUEPRINT_ROUTE = `/platform/o/${FIXTURE_IDS.org}/c/audit-assembly/design`;
 export const REVIEW_CONSOLE_ROUTE = `/platform/o/${FIXTURE_IDS.org}/c/audit-assembly/s/audit-session/t/${FIXTURE_IDS.topic}/review`;
+export const PUBLISH_CONSOLE_ROUTE = `/platform/o/${FIXTURE_IDS.org}/c/audit-assembly/s/audit-session/t/${FIXTURE_IDS.topic}/publish`;
 const READ_RPCS = new Set(['/rest/v1/rpc/org_of_uid', '/rest/v1/rpc/readiness_check']);
 
 const REVIEW_TOPICS = [
@@ -312,6 +313,132 @@ export async function verifyReviewConsoleRace({ browser, origin, timeoutMs = 60_
   }
 }
 
+/** Exercises the production publish console's synchronous mutation lock with fixture-only RPCs. */
+export async function verifyPublishConsoleLock({ browser, origin, timeoutMs = 60_000 }) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  const page = await context.newPage();
+  const browserErrors = [];
+  const fixtureFailures = [];
+  const publishRequests = [];
+  const unpublishRequests = [];
+  let published = false;
+  let releasePublish;
+  let releaseUnpublish;
+  const publishGate = new Promise((resolveGate) => { releasePublish = resolveGate; });
+  const unpublishGate = new Promise((resolveGate) => { releaseUnpublish = resolveGate; });
+  page.on('pageerror', (error) => browserErrors.push(error.message));
+  page.on('response', (response) => {
+    if (response.url().includes('pleyuknjnprsckssxvrh.supabase.co') && response.status() >= 400) {
+      fixtureFailures.push({ status: response.status(), path: new URL(response.url()).pathname });
+    }
+  });
+
+  try {
+    await prepareAuthenticatedPlatform({
+      context,
+      page,
+      handleRequest: async ({ route, path, request }) => {
+        if (path === '/rest/v1/rpc/result_publish') {
+          publishRequests.push(request.postDataJSON());
+          await publishGate;
+          published = true;
+          await fulfillJson(route, {
+            id: '00000000-0000-4000-8000-000000000501',
+            token: 'fixture-public-token',
+            published_at: '2026-08-13T12:00:00.000Z',
+            reviewed_count: 1,
+          });
+          return true;
+        }
+        if (path === '/rest/v1/rpc/result_unpublish') {
+          unpublishRequests.push(request.postDataJSON());
+          await unpublishGate;
+          published = false;
+          await fulfillJson(route, {
+            id: '00000000-0000-4000-8000-000000000501',
+            published_at: null,
+          });
+          return true;
+        }
+        if (path === '/rest/v1/rpc/result_get') {
+          await fulfillJson(route, published ? {
+            scope: 'topic',
+            scope_id: FIXTURE_IDS.topic,
+            title: '검수 경합 공개 결과',
+            published_at: '2026-08-13T12:00:00.000Z',
+            body: {},
+            hitl_notice: 'fixture review notice',
+          } : null);
+          return true;
+        }
+        return false;
+      },
+    });
+    const response = await page.goto(new URL(PLATFORM_ENTRY_ROUTE, origin).toString(), {
+      waitUntil: 'domcontentloaded',
+      timeout: timeoutMs,
+    });
+    if (!response?.ok()) throw new Error(`Publish console page returned HTTP ${response?.status() ?? 'unknown'}`);
+    await page.getByRole('button', { name: '접근성 감사 공론화', exact: true }).click();
+    await page.getByRole('button', { name: '제1차 회의', exact: true }).click();
+    await page.getByRole('button', { name: '접근성 감사 주제', exact: true }).click();
+    await page.getByRole('button', { name: '공개', exact: true }).click();
+    await page.waitForURL((url) => url.pathname === PUBLISH_CONSOLE_ROUTE, { timeout: timeoutMs });
+    await page.getByRole('heading', { name: '검수 결과 발행' }).waitFor({ timeout: timeoutMs });
+    await page.getByLabel('HQ 인증 토큰').fill('fixture-hq-token');
+    await page.getByLabel('공개 결과 제목').fill('검수 경합 공개 결과');
+    const publishButton = page.getByRole('button', { name: '검수 결과 발행', exact: true });
+    await publishButton.evaluate((button) => {
+      button.click();
+      button.click();
+    });
+    await page.waitForTimeout(100);
+    const publishBusyLocked = await page.getByLabel('HQ 인증 토큰').isDisabled()
+      && await page.getByLabel('공개 결과 제목').isDisabled();
+    const duplicatePublishBlocked = publishRequests.length === 1;
+    releasePublish();
+    await page.getByRole('status').filter({ hasText: '공개 완료·재조회 검증 완료' }).waitFor({ timeout: timeoutMs });
+
+    const unpublishButton = page.getByRole('button', { name: '공개 해제', exact: true });
+    await unpublishButton.evaluate((button) => {
+      button.click();
+      button.click();
+    });
+    await page.waitForTimeout(100);
+    const duplicateUnpublishBlocked = unpublishRequests.length === 1;
+    const unpublishBusyLocked = await unpublishButton.isDisabled();
+    releaseUnpublish();
+    await page.getByRole('status').filter({ hasText: '공개 해제·비공개 재조회 검증을 완료했습니다.' }).waitFor({ timeout: timeoutMs });
+    const publicationCleared = await page.getByRole('region', { name: '발행된 결과' }).count() === 0;
+
+    if (!publishBusyLocked) throw new Error('Publish inputs were not locked during the mutation');
+    if (!duplicatePublishBlocked) throw new Error('Publish console sent a duplicate publish mutation');
+    if (!unpublishBusyLocked) throw new Error('Unpublish control was not locked during the mutation');
+    if (!duplicateUnpublishBlocked) throw new Error('Publish console sent a duplicate unpublish mutation');
+    if (!publicationCleared) throw new Error('Publish console retained a result after verified unpublish');
+    if (browserErrors.length > 0) throw new Error('Publish console verification observed a browser error');
+    if (fixtureFailures.length > 0) throw new Error('Publish console verification observed an unexpected fixture request');
+
+    return {
+      path: PUBLISH_CONSOLE_ROUTE,
+      fixture: 'ci-publish-lock-fixture-v1',
+      publishBusyLocked,
+      duplicatePublishBlocked,
+      publishMutationRequestCount: publishRequests.length,
+      unpublishBusyLocked,
+      duplicateUnpublishBlocked,
+      unpublishMutationRequestCount: unpublishRequests.length,
+      publicationCleared,
+      browserPageErrorCount: browserErrors.length,
+      fixtureFailureCount: fixtureFailures.length,
+    };
+  } finally {
+    releasePublish?.();
+    releaseUnpublish?.();
+    await context.close();
+  }
+}
+
 /** Exercises the authenticated production component while all Supabase traffic is fixture-bound. */
 export async function verifyPlatformDesignBlueprint({
   baseUrl,
@@ -509,9 +636,10 @@ export async function verifyPlatformDesignBlueprint({
     if (mutationAttempts.length > 0) throw new Error('Design blueprint verification observed a database mutation attempt');
 
     const reviewRace = await verifyReviewConsoleRace({ browser, origin, timeoutMs });
+    const publishLock = await verifyPublishConsoleLock({ browser, origin, timeoutMs });
 
     const report = {
-      schemaVersion: 5,
+      schemaVersion: 6,
       generatedAt: new Date().toISOString(),
       baseUrl: origin.origin,
       path: DESIGN_BLUEPRINT_ROUTE,
@@ -557,6 +685,7 @@ export async function verifyPlatformDesignBlueprint({
         fixtureFailureCount: fixtureFailures.length,
         databaseMutationAttemptCount: mutationAttempts.length,
         reviewRace,
+        publishLock,
       },
     };
     if (reportPath) {

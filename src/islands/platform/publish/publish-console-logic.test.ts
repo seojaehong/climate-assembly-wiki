@@ -4,9 +4,60 @@ import {
   buildPublicationScopeKey,
   buildPublicResultUrl,
   readStoredHqToken,
+  runExclusivePublicationOperation,
   validatePublishInput,
   verifyPublishedResult,
 } from './publish-console-logic';
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
+describe('runExclusivePublicationOperation', () => {
+  it('첫 await 전에 lock을 잡아 같은 이벤트 루프의 중복 mutation을 차단한다', async () => {
+    const lock = { current: false };
+    const busy: boolean[] = [];
+    const gate = deferred<string>();
+    let actionCount = 0;
+    const action = async () => {
+      actionCount += 1;
+      return gate.promise;
+    };
+
+    const first = runExclusivePublicationOperation(lock, action, (value) => busy.push(value));
+    const duplicate = await runExclusivePublicationOperation(lock, action, (value) => busy.push(value));
+
+    expect(lock.current).toBe(true);
+    expect(actionCount).toBe(1);
+    expect(duplicate).toEqual({ started: false, value: null });
+    expect(busy).toEqual([true]);
+
+    gate.resolve('published');
+    await expect(first).resolves.toEqual({ started: true, value: 'published' });
+    expect(lock.current).toBe(false);
+    expect(busy).toEqual([true, false]);
+  });
+
+  it('예외가 발생해도 lock과 busy를 해제해 운영자가 다시 시도할 수 있다', async () => {
+    const lock = { current: false };
+    const busy: boolean[] = [];
+
+    await expect(runExclusivePublicationOperation(
+      lock,
+      async () => { throw new Error('fixture failure'); },
+      (value) => busy.push(value),
+    )).rejects.toThrow('fixture failure');
+
+    expect(lock.current).toBe(false);
+    expect(busy).toEqual([true, false]);
+    await expect(runExclusivePublicationOperation(lock, async () => 'retry', () => undefined))
+      .resolves.toEqual({ started: true, value: 'retry' });
+  });
+});
 
 describe('readStoredHqToken', () => {
   it('동일 브라우저의 HQ 세션 저장소에서 유효한 토큰을 복원한다', () => {

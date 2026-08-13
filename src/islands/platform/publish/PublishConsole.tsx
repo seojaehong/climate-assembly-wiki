@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { resultGet, resultPublish, resultUnpublish } from '../../../lib/platform';
 import type { ScopeLevel } from '../platform-nav-logic';
 import {
   buildPublicResultUrl,
   readStoredHqToken,
+  runExclusivePublicationOperation,
   validatePublishInput,
   verifyPublishedResult,
 } from './publish-console-logic';
@@ -69,9 +70,10 @@ export default function PublishConsole({ scope, scopeId }: Props) {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const operationLock = useRef(false);
 
   const publish = async () => {
-    if (busy) return;
+    if (busy || operationLock.current) return;
     setError(null);
     setNotice(null);
     setCopied(false);
@@ -82,87 +84,86 @@ export default function PublishConsole({ scope, scopeId }: Props) {
       return;
     }
 
-    setBusy(true);
     try {
-      const input = validation.value;
-      const published = await resultPublish(input.hqToken, input.scope, input.scopeId, input.title);
-      if (published.notice || !published.data) {
-        setError(published.notice ?? '발행 응답을 확인하지 못했습니다.');
-        return;
-      }
+      await runExclusivePublicationOperation(operationLock, async () => {
+        const input = validation.value;
+        const published = await resultPublish(input.hqToken, input.scope, input.scopeId, input.title);
+        if (published.notice || !published.data) {
+          setError(published.notice ?? '발행 응답을 확인하지 못했습니다.');
+          return;
+        }
 
-      const origin = window.location.origin;
-      const nextPublication: Publication = {
-        id: published.data.id,
-        token: published.data.token,
-        title: input.title,
-        url: buildPublicResultUrl(published.data.token, origin),
-        publishedAt: published.data.published_at,
-        reviewedCount: published.data.reviewed_count,
-        verified: false,
-      };
-      setPublication(nextPublication);
+        const origin = window.location.origin;
+        const nextPublication: Publication = {
+          id: published.data.id,
+          token: published.data.token,
+          title: input.title,
+          url: buildPublicResultUrl(published.data.token, origin),
+          publishedAt: published.data.published_at,
+          reviewedCount: published.data.reviewed_count,
+          verified: false,
+        };
+        setPublication(nextPublication);
 
-      const fetched = await resultGet(published.data.token);
-      if (fetched.notice) {
-        setNotice(`발행 응답은 받았지만 공개 조회를 재확인하지 못했습니다: ${fetched.notice}`);
-        return;
-      }
+        const fetched = await resultGet(published.data.token);
+        if (fetched.notice) {
+          setNotice(`발행 응답은 받았지만 공개 조회를 재확인하지 못했습니다: ${fetched.notice}`);
+          return;
+        }
 
-      const verification = verifyPublishedResult(
-        { scope: input.scope, scopeId: input.scopeId, title: input.title },
-        fetched.data,
-      );
-      if (!verification.ok) {
-        setNotice(`발행 응답은 받았지만 공개 조회 검증이 완료되지 않았습니다: ${verification.error}`);
-        return;
-      }
+        const verification = verifyPublishedResult(
+          { scope: input.scope, scopeId: input.scopeId, title: input.title },
+          fetched.data,
+        );
+        if (!verification.ok) {
+          setNotice(`발행 응답은 받았지만 공개 조회 검증이 완료되지 않았습니다: ${verification.error}`);
+          return;
+        }
 
-      setPublication({ ...nextPublication, verified: true });
-      setNotice(`공개 완료·재조회 검증 완료 · 검수 완료 쟁점 ${published.data.reviewed_count}건`);
+        setPublication({ ...nextPublication, verified: true });
+        setNotice(`공개 완료·재조회 검증 완료 · 검수 완료 쟁점 ${published.data.reviewed_count}건`);
+      }, setBusy);
     } catch (requestError) {
       console.error('Failed to publish result', requestError);
       setError('결과 발행 중 예상하지 못한 오류가 발생했습니다.');
-    } finally {
-      setBusy(false);
     }
   };
 
   const unpublish = async () => {
-    if (busy || !publication) return;
+    if (busy || operationLock.current || !publication) return;
     const token = hqToken.trim();
     if (!token) {
       setError('공개 해제에도 HQ 인증 토큰이 필요합니다.');
       return;
     }
 
-    setBusy(true);
     setError(null);
     setNotice(null);
+    setCopied(false);
     try {
-      const unpublished = await resultUnpublish(token, publication.id);
-      if (unpublished.notice || !unpublished.data) {
-        setError(unpublished.notice ?? '공개 해제 응답을 확인하지 못했습니다.');
-        return;
-      }
+      await runExclusivePublicationOperation(operationLock, async () => {
+        const unpublished = await resultUnpublish(token, publication.id);
+        if (unpublished.notice || !unpublished.data) {
+          setError(unpublished.notice ?? '공개 해제 응답을 확인하지 못했습니다.');
+          return;
+        }
 
-      const fetched = await resultGet(publication.token);
-      if (fetched.notice) {
-        setNotice(`공개 해제 응답은 받았지만 비공개 상태를 재확인하지 못했습니다: ${fetched.notice}`);
-        return;
-      }
-      if (fetched.data !== null) {
-        setError('공개 해제 후에도 결과가 조회됩니다. 운영자가 상태를 확인해 주세요.');
-        return;
-      }
+        const fetched = await resultGet(publication.token);
+        if (fetched.notice) {
+          setNotice(`공개 해제 응답은 받았지만 비공개 상태를 재확인하지 못했습니다: ${fetched.notice}`);
+          return;
+        }
+        if (fetched.data !== null) {
+          setError('공개 해제 후에도 결과가 조회됩니다. 운영자가 상태를 확인해 주세요.');
+          return;
+        }
 
-      setPublication(null);
-      setNotice('공개 해제·비공개 재조회 검증을 완료했습니다.');
+        setPublication(null);
+        setNotice('공개 해제·비공개 재조회 검증을 완료했습니다.');
+      }, setBusy);
     } catch (requestError) {
       console.error('Failed to unpublish result', requestError);
       setError('공개 해제 중 예상하지 못한 오류가 발생했습니다.');
-    } finally {
-      setBusy(false);
     }
   };
 
@@ -200,6 +201,7 @@ export default function PublishConsole({ scope, scopeId }: Props) {
             <input
               type="password"
               autoComplete="off"
+              disabled={busy}
               value={hqToken}
               onChange={(event) => setHqToken(event.target.value)}
               placeholder="HQ 로그인 후 발급된 토큰"
@@ -213,6 +215,7 @@ export default function PublishConsole({ scope, scopeId }: Props) {
             <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: NAVY, marginBottom: 5 }}>공개 결과 제목</span>
             <input
               value={title}
+              disabled={busy}
               onChange={(event) => setTitle(event.target.value)}
               placeholder="예: 2026 기후시민회의 5차 주제별 결과"
               style={inputStyle}

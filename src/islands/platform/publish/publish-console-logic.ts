@@ -6,6 +6,31 @@ export interface TokenStorage {
   getItem(key: string): string | null;
 }
 
+export interface PublicationOperationLock {
+  current: boolean;
+}
+
+export type PublicationOperationResult<T> =
+  | { started: false; value: null }
+  | { started: true; value: T };
+
+/** Acquires a synchronous lock before the first await so rapid clicks cannot duplicate a mutation. */
+export async function runExclusivePublicationOperation<T>(
+  lock: PublicationOperationLock,
+  action: () => Promise<T>,
+  onBusyChange: (busy: boolean) => void,
+): Promise<PublicationOperationResult<T>> {
+  if (lock.current) return { started: false, value: null };
+  lock.current = true;
+  onBusyChange(true);
+  try {
+    return { started: true, value: await action() };
+  } finally {
+    lock.current = false;
+    onBusyChange(false);
+  }
+}
+
 /** Reads the active HQ token and reports storage access failures without exposing the token. */
 export function readStoredHqToken(
   getStorage: () => TokenStorage | null | undefined,

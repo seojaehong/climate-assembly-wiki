@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
@@ -25,5 +26,13 @@ describe('PublishConsole', () => {
     expect(html).toContain('aria-live="polite"');
     expect(copiedHtml).toContain('aria-atomic="true"');
     expect(copiedHtml).toContain('공개 결과 URL을 클립보드에 복사했습니다.');
+  });
+
+  it('발행과 공개 해제가 같은 동기 operation lock을 공유한다', () => {
+    const source = readFileSync(new URL('./PublishConsole.tsx', import.meta.url), 'utf8');
+
+    expect(source.match(/runExclusivePublicationOperation\(operationLock/g)).toHaveLength(2);
+    expect(source.match(/operationLock\.current/g)).toHaveLength(2);
+    expect(source).toContain('disabled={busy}');
   });
 });
