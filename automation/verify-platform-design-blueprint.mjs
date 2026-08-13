@@ -307,7 +307,7 @@ export async function verifyPlatformSessionIsolation({ browser, origin, timeoutM
     await page.getByRole('button', { name: '로그아웃', exact: true }).click();
     await page.getByRole('form', { name: '운영진 로그인' }).waitFor({ timeout: timeoutMs });
 
-    const rootRouteRestored = new URL(page.url()).pathname === PLATFORM_ENTRY_ROUTE;
+    const rootRouteRestored = new URL(page.url()).pathname.replace(/\/+$/, '') === '/platform';
     const priorCredentialRemoved = await page.getByLabel('HQ 인증 토큰').count() === 0;
     const priorDraftRemoved = await page.getByLabel('공개 결과 제목').count() === 0;
     const priorTreeRemoved = await page.getByRole('button', { name: '접근성 감사 공론화', exact: true }).count() === 0;

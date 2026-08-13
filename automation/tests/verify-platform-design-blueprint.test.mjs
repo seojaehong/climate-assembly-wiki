@@ -125,6 +125,7 @@ describe('design blueprint browser CI contract', () => {
     expect(verifier).toContain("getByLabel('공개 결과 제목').count() === 0");
     expect(verifier).toContain("sessionStorage.getItem('climate_vote_hq_attendance_token') === null");
     expect(verifier).toContain("sessionStorage.getItem('climate_vote_hq_gate_actor') === null");
+    expect(verifier).toContain("pathname.replace(/\\/+$/, '') === '/platform'");
     expect(verifier).toContain('logoutRequests.length !== 1');
     expect(verifier).toContain('schemaVersion: 8');
   });

@@ -3,7 +3,7 @@
 ## Scope
 
 - Key the authenticated AppShell by user ID so a direct Auth user change cannot reuse the previous shell state for its first render.
-- Close the authenticated shell and restore `/platform/` immediately after a confirmed sign-out instead of waiting for a later Auth session read.
+- Close the authenticated shell and restore the canonical `/platform` root immediately after a confirmed sign-out instead of waiting for a later Auth session read.
 - Remove the legacy HQ token and actor label from session storage on confirmed sign-out.
 - Surface storage cleanup failure without exposing credential values.
 
@@ -20,7 +20,7 @@
 
 - Load a synthetic stored HQ token into the production publish console.
 - Enter a prior-user publication draft, then execute the production sign-out button.
-- Require exactly one Auth logout request and the login form at `/platform/`.
+- Require exactly one Auth logout request and the login form at the canonical `/platform` root, accepting an equivalent trailing slash.
 - Require removal of the token and actor storage keys, credential and draft inputs, prior data tree, and prior publish console.
 - Require zero browser errors and zero unexpected fixture failures.
 
