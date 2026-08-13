@@ -26,7 +26,7 @@ function requireRecord(value, label) {
 export function validateDownloadedBlueprint(value) {
   const blueprint = requireRecord(value, 'Downloaded blueprint');
   if (
-    blueprint.schemaVersion !== 2
+    blueprint.schemaVersion !== 3
     || blueprint.kind !== 'platform-design-blueprint'
     || blueprint.dryRun !== true
     || blueprint.databaseMutationExecuted !== false
@@ -65,6 +65,8 @@ export function validateDownloadedBlueprint(value) {
   if (
     assembly.title !== '기후 공론화 2026'
     || assembly.slug !== 'climate-2026'
+    || assembly.purpose !== '감축과 적응의 실행 조건을 시민과 함께 검토한다.'
+    || assembly.mode !== 'vote'
     || JSON.stringify(projectedHierarchy) !== JSON.stringify(expectedHierarchy)
   ) {
     throw new Error('Downloaded blueprint hierarchy does not match the verified input');
@@ -158,6 +160,8 @@ export async function verifyPlatformDesignBlueprint({
 
     await page.getByLabel('공론화 이름').fill('기후 공론화 2026');
     await page.getByLabel('공론화 slug').fill('climate-2026');
+    await page.getByLabel('공론화 목적 (선택)').fill('감축과 적응의 실행 조건을 시민과 함께 검토한다.');
+    await page.getByLabel('운영 방식').selectOption('vote');
     await page.getByLabel('회차 이름').fill('감축 숙의');
     await page.getByLabel('회차 slug').fill('mitigation-session');
     await page.getByLabel('회차 날짜').fill('2026-09-12');
@@ -234,6 +238,8 @@ export async function verifyPlatformDesignBlueprint({
     await importStatus.waitFor({ timeout: timeoutMs });
     const validImportRestoredHierarchy = await page.getByLabel('공론화 이름').inputValue() === '기후 공론화 2026'
       && await page.getByLabel('공론화 slug').inputValue() === 'climate-2026'
+      && await page.getByLabel('공론화 목적 (선택)').inputValue() === '감축과 적응의 실행 조건을 시민과 함께 검토한다.'
+      && await page.getByLabel('운영 방식').inputValue() === 'vote'
       && await sessionTitles.nth(0).inputValue() === '감축 숙의'
       && await sessionSlugs.nth(0).inputValue() === 'mitigation-session'
       && await sessionTitles.nth(1).inputValue() === '적응 숙의'
@@ -304,7 +310,7 @@ export async function verifyPlatformDesignBlueprint({
     if (mutationAttempts.length > 0) throw new Error('Design blueprint verification observed a database mutation attempt');
 
     const report = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       generatedAt: new Date().toISOString(),
       baseUrl: origin.origin,
       path: DESIGN_BLUEPRINT_ROUTE,
@@ -327,6 +333,10 @@ export async function verifyPlatformDesignBlueprint({
         previewInvalidated,
         downloadedFilename: filename,
         blueprintSchemaVersion: downloadJson.schemaVersion,
+        assemblyIntent: {
+          purpose: downloadJson.assembly.purpose,
+          mode: downloadJson.assembly.mode,
+        },
         sessionIdentities: downloadJson.sessions.map((session) => ({ title: session.title, slug: session.slug })),
         exportedStats,
         malformedImportRejected,

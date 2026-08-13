@@ -11,6 +11,8 @@ describe('buildDesignBlueprint', () => {
     const result = buildDesignBlueprint({
       assemblyTitle: '  기후시민회의  ',
       assemblySlug: 'climate-2026',
+      assemblyPurpose: '  지역 전환 조건을 함께 검토한다.  ',
+      assemblyMode: 'vote',
       sessions: [{
         heldOn: '2026-08-29',
         topics: ['에너지 전환 조건', '지역 비용 우려'],
@@ -22,12 +24,17 @@ describe('buildDesignBlueprint', () => {
     expect(result).toEqual({
       ok: true,
       blueprint: {
-        schemaVersion: 2,
+        schemaVersion: 3,
         kind: 'platform-design-blueprint',
         dryRun: true,
         databaseMutationExecuted: false,
         requiresApproval: true,
-        assembly: { title: '기후시민회의', slug: 'climate-2026' },
+        assembly: {
+          title: '기후시민회의',
+          slug: 'climate-2026',
+          purpose: '지역 전환 조건을 함께 검토한다.',
+          mode: 'vote',
+        },
         sessions: [{
           ordinal: 1,
           title: '제1회차',
@@ -105,6 +112,22 @@ describe('buildDesignBlueprint', () => {
         '공론화 이름을 입력하세요.',
         'slug는 영문 소문자·숫자·하이픈 3~40자로 입력하세요.',
         '회차를 하나 이상 추가하세요.',
+      ],
+    });
+  });
+
+  it('공론화 목적 길이와 운영 방식 vocabulary를 fail-closed한다', () => {
+    expect(buildDesignBlueprint({
+      assemblyTitle: '기후시민회의',
+      assemblySlug: 'climate-2026',
+      assemblyPurpose: '가'.repeat(1_001),
+      assemblyMode: 'ranking' as never,
+      sessions: [{ heldOn: '2026-08-29', topics: ['수송'], teamCount: 1, participantCount: 4 }],
+    })).toEqual({
+      ok: false,
+      errors: [
+        '공론화 목적은 1000자 이하여야 합니다.',
+        '운영 방식은 합의형 또는 투표형이어야 합니다.',
       ],
     });
   });
@@ -223,6 +246,8 @@ describe('buildDesignBlueprint', () => {
     const built = buildDesignBlueprint({
       assemblyTitle: '기후시민회의',
       assemblySlug: 'climate-2026',
+      assemblyPurpose: '감축과 적응의 실행 조건 검토',
+      assemblyMode: 'vote',
       sessions: [
         { heldOn: '2026-08-29', topics: ['비용 우려', '수송 전환'], teamCount: 2, participantCount: 9 },
         { heldOn: '2026-08-30', topics: ['지역 적응'], teamCount: 3, participantCount: 10 },
@@ -235,6 +260,8 @@ describe('buildDesignBlueprint', () => {
       input: {
         assemblyTitle: '기후시민회의',
         assemblySlug: 'climate-2026',
+        assemblyPurpose: '감축과 적응의 실행 조건 검토',
+        assemblyMode: 'vote',
         sessions: [
           { title: '제1회차', slug: 'climate-2026-session-1', heldOn: '2026-08-29', topics: ['비용 우려', '수송 전환'], teamCount: 2, participantCount: 9 },
           { title: '제2회차', slug: 'climate-2026-session-2', heldOn: '2026-08-30', topics: ['지역 적응'], teamCount: 3, participantCount: 10 },
@@ -244,7 +271,7 @@ describe('buildDesignBlueprint', () => {
     });
   });
 
-  it('schema v1 청사진을 결정적인 회차·조 식별정보가 있는 v2로 안전하게 복원한다', () => {
+  it('schema v1 청사진을 목적·방식과 회차·조 식별정보가 있는 v3로 안전하게 복원한다', () => {
     const legacy = {
       schemaVersion: 1,
       kind: 'platform-design-blueprint',
@@ -267,12 +294,43 @@ describe('buildDesignBlueprint', () => {
         sessions: [{ title: '제1회차', slug: 'climate-2026-session-1' }],
       },
       blueprint: {
-        schemaVersion: 2,
+        schemaVersion: 3,
+        assembly: { purpose: null, mode: 'consensus' },
         sessions: [{
           title: '제1회차',
           slug: 'climate-2026-session-1',
           teams: [{ name: '1조' }, { name: '2조' }],
         }],
+      },
+    });
+  });
+
+  it('schema v2 청사진도 기존 의미를 보존해 합의형 v3로 승격한다', () => {
+    const legacy = {
+      schemaVersion: 2,
+      kind: 'platform-design-blueprint',
+      dryRun: true,
+      databaseMutationExecuted: false,
+      requiresApproval: true,
+      assembly: { title: '기후시민회의', slug: 'climate-2026' },
+      sessions: [{
+        ordinal: 1,
+        title: '감축 숙의',
+        slug: 'mitigation-session',
+        heldOn: '2026-08-29',
+        topics: [{ ordinal: 1, prompt: '수송 전환' }],
+        teams: [{ ordinal: 1, name: '1조', plannedCapacity: 5 }],
+      }],
+      stats: { sessionCount: 1, topicCount: 1, teamCount: 1, participantCount: 5 },
+    };
+
+    expect(parseDesignBlueprintImport(JSON.stringify(legacy))).toMatchObject({
+      ok: true,
+      input: { assemblyPurpose: '', assemblyMode: 'consensus' },
+      blueprint: {
+        schemaVersion: 3,
+        assembly: { purpose: null, mode: 'consensus' },
+        sessions: [{ title: '감축 숙의', slug: 'mitigation-session' }],
       },
     });
   });

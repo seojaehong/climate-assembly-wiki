@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 2,
-  "generatedAt": "2026-08-13T09:59:14.291Z",
+  "schemaVersion": 3,
+  "generatedAt": "2026-08-13T10:11:54.059Z",
   "baseUrl": "http://127.0.0.1:4321",
   "path": "/platform/o/00000000-0000-4000-8000-000000000002/c/audit-assembly/design",
-  "sourceCommit": "e9152058b19e9e656d9d9774bc69eac5b48e7792",
+  "sourceCommit": "6a03470721c3d310e245fd1ef1fcfe22a95221fc",
   "sourceTreeClean": false,
-  "sourceTreeSha256": "f37386b55ae3b6ad82fb64e993861f04a05ab86e6fec294692a06ac489fa1baf",
+  "sourceTreeSha256": "d7e8b54f41d0072f4daed52cf76129b66e5989fcc3ce2c02abee47dc1049c633",
   "fixture": "ci-staff-read-fixture-v1",
   "productionDatabaseAccess": false,
   "runtime": {
@@ -26,7 +26,11 @@
     },
     "previewInvalidated": true,
     "downloadedFilename": "climate-2026_design_blueprint.json",
-    "blueprintSchemaVersion": 2,
+    "blueprintSchemaVersion": 3,
+    "assemblyIntent": {
+      "purpose": "감축과 적응의 실행 조건을 시민과 함께 검토한다.",
+      "mode": "vote"
+    },
     "sessionIdentities": [
       {
         "title": "감축 숙의",

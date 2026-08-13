@@ -214,6 +214,10 @@ export function BlueprintPreview({ blueprint }: { blueprint: DesignBlueprint }) 
       <p style={{ color: MUTED, margin: 0 }}>
         회차 {blueprint.stats.sessionCount}개 · 주제 {blueprint.stats.topicCount}개 · 조 {blueprint.stats.teamCount}개 · 예상 참여자 {blueprint.stats.participantCount}명
       </p>
+      <p style={{ color: INK, margin: 0 }}>
+        운영 방식: <strong>{blueprint.assembly.mode === 'consensus' ? '합의형' : '투표형'}</strong>
+        {' · '}목적: {blueprint.assembly.purpose ?? '미지정'}
+      </p>
       <div
         role="region"
         aria-label="설계 청사진 회차별 구성 표"
@@ -250,6 +254,8 @@ export function BlueprintPreview({ blueprint }: { blueprint: DesignBlueprint }) 
 export function DesignBlueprintBuilder() {
   const [assemblyTitle, setAssemblyTitle] = useState('');
   const [assemblySlug, setAssemblySlug] = useState('');
+  const [assemblyPurpose, setAssemblyPurpose] = useState('');
+  const [assemblyMode, setAssemblyMode] = useState<'consensus' | 'vote'>('consensus');
   const [sessions, setSessions] = useState<DesignSessionDraft[]>([{ ...EMPTY_SESSION }]);
   const [errors, setErrors] = useState<string[]>([]);
   const [blueprint, setBlueprint] = useState<DesignBlueprint | null>(null);
@@ -275,6 +281,8 @@ export function DesignBlueprintBuilder() {
     const result = buildDesignBlueprint({
       assemblyTitle,
       assemblySlug,
+      assemblyPurpose,
+      assemblyMode,
       sessions: sessions.map(toSessionInput),
     });
     setTransferState(null);
@@ -314,6 +322,8 @@ export function DesignBlueprintBuilder() {
       }
       setAssemblyTitle(imported.input.assemblyTitle);
       setAssemblySlug(imported.input.assemblySlug);
+      setAssemblyPurpose(imported.input.assemblyPurpose ?? '');
+      setAssemblyMode(imported.input.assemblyMode ?? 'consensus');
       setSessions(imported.input.sessions.map((session) => ({
         title: session.title ?? '',
         slug: session.slug ?? '',
@@ -347,7 +357,16 @@ export function DesignBlueprintBuilder() {
         <label style={{ color: INK, fontWeight: 700 }}>공론화 slug
           <input value={assemblySlug} maxLength={40} onChange={(event) => { setAssemblySlug(event.target.value); invalidatePreview(); }} placeholder="climate-2026" style={inputStyle} />
         </label>
+        <label style={{ color: INK, fontWeight: 700 }}>운영 방식
+          <select value={assemblyMode} onChange={(event) => { setAssemblyMode(event.target.value as 'consensus' | 'vote'); invalidatePreview(); }} style={inputStyle}>
+            <option value="consensus">합의형</option>
+            <option value="vote">투표형</option>
+          </select>
+        </label>
       </div>
+      <label style={{ color: INK, fontWeight: 700 }}>공론화 목적 (선택)
+        <textarea value={assemblyPurpose} maxLength={DESIGN_BLUEPRINT_LIMITS.assemblyPurposeChars} onChange={(event) => { setAssemblyPurpose(event.target.value); invalidatePreview(); }} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+      </label>
 
       {sessions.map((session, index) => (
         <fieldset key={index} style={{ display: 'grid', gap: 12, border: `2px solid ${LINE}`, borderRadius: 12, padding: 14 }}>

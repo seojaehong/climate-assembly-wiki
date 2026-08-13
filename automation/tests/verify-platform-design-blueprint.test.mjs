@@ -7,12 +7,17 @@ import {
 } from '../verify-platform-design-blueprint.mjs';
 
 const validBlueprint = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   kind: 'platform-design-blueprint',
   dryRun: true,
   databaseMutationExecuted: false,
   requiresApproval: true,
-  assembly: { title: '기후 공론화 2026', slug: 'climate-2026' },
+  assembly: {
+    title: '기후 공론화 2026',
+    slug: 'climate-2026',
+    purpose: '감축과 적응의 실행 조건을 시민과 함께 검토한다.',
+    mode: 'vote',
+  },
   sessions: [
     {
       ordinal: 1,

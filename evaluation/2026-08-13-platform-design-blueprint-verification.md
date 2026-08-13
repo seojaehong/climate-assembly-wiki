@@ -1,4 +1,4 @@
-# Platform design blueprint v2 verification
+# Platform design blueprint v3 verification
 
 - Date: 2026-08-13 KST
 - Scope: local, non-mutating A4 design blueprint
@@ -9,9 +9,9 @@
 
 | Check | Command | Result |
 | --- | --- | --- |
-| Focused source tests | `npm.cmd exec vitest -- run src/islands/platform/design/design-console-logic.test.ts src/islands/platform/design/DesignConsole.test.ts` | 2 files, 25 passed |
+| Focused source tests | `npm.cmd exec vitest -- run src/islands/platform/design/design-console-logic.test.ts src/islands/platform/design/DesignConsole.test.ts` | 2 files, 27 passed |
 | Browser verifier contract | `npm.cmd test -- --run tests/verify-platform-design-blueprint.test.mjs` in `automation/` | 1 file, 5 passed |
-| Full source tests | `npm.cmd exec vitest -- run` | 63 files, 900 passed |
+| Full source tests | `npm.cmd exec vitest -- run` | 63 files, 902 passed |
 | Strict check | `npm.cmd run check` | 0 errors, 49 existing hints |
 | Static build | Node 20.20.2 running `node_modules/astro/astro.js build` through `npm.cmd exec --package=node@20` | 7,914 pages, exit 0 |
 | Chromium interaction | `node automation/verify-platform-design-blueprint.mjs --allow-dirty-source ...` | pass, mobile table 280px client / 620px scroll, focus and End-key scroll pass, 0 page errors, 0 fixture failures, 0 database mutation attempts |
@@ -20,4 +20,4 @@ The Windows automation full suite completed 220 of 230 tests. Ten existing Playw
 
 ## Browser evidence
 
-See `evaluation/2026-08-13-platform-design-blueprint-browser.json`. The report records a local authenticated fixture flow, `sourceTreeClean: false`, the source tree SHA-256, Chromium version, restored session title/slug values, deterministic team names, a named and focusable mobile table region with actual End-key scrolling, approval boundary flags, and zero database mutation attempts.
+See `evaluation/2026-08-13-platform-design-blueprint-browser.json`. The report records a local authenticated fixture flow, `sourceTreeClean: false`, the source tree SHA-256, Chromium version, schema v3 assembly purpose/mode, restored session title/slug values, deterministic team names, a named and focusable mobile table region with actual End-key scrolling, approval boundary flags, and zero database mutation attempts.
