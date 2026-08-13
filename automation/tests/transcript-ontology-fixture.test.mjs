@@ -755,16 +755,6 @@ test('publishes and verifies an approved R2 reviewed plan through the CLI', () =
       previewVerified: true,
     });
 
-    const changedPreview = JSON.parse(readFileSync(previewPath, 'utf8'));
-    changedPreview.elements.nodes[0].data.label = 'changed preview label';
-    writeFileSync(previewPath, JSON.stringify(changedPreview));
-    const changedPreviewVerification = spawnSync(process.execPath, [
-      ...common,
-      '--verify-reviewed-preview', previewPath,
-    ], { encoding: 'utf8' });
-    expect(changedPreviewVerification.status).toBe(1);
-    expect(changedPreviewVerification.stderr).toContain('does not match its approved plan');
-
     const previewOverwrite = spawnSync(process.execPath, [
       ...common,
       '--output-reviewed-preview', previewPath,
@@ -779,8 +769,16 @@ test('publishes and verifies an approved R2 reviewed plan through the CLI', () =
     expect(publicPreview.status).toBe(1);
     expect(publicPreview.stderr).toContain('must not be written or verified under public');
 
+    const bypassedPreview = spawnSync(process.execPath, [
+      ...common,
+      '--output-reviewed-live-graph', livePath,
+    ], { encoding: 'utf8' });
+    expect(bypassedPreview.status).toBe(1);
+    expect(bypassedPreview.stderr).toContain('requires exactly one --reviewed-preview input');
+
     const published = spawnSync(process.execPath, [
       ...common,
+      '--reviewed-preview', previewPath,
       '--output-reviewed-live-graph', livePath,
     ], { encoding: 'utf8' });
     expect(published.status).toBe(0);
@@ -788,6 +786,7 @@ test('publishes and verifies an approved R2 reviewed plan through the CLI', () =
       nodeCount: 2,
       edgeCount: 1,
       publicGraphWritten: true,
+      previewVerified: true,
       databaseMutationExecuted: false,
     });
 
@@ -797,6 +796,23 @@ test('publishes and verifies an approved R2 reviewed plan through the CLI', () =
     ], { encoding: 'utf8' });
     expect(verified.status).toBe(0);
     expect(JSON.parse(verified.stdout)).toMatchObject({ publicGraphVerified: true });
+
+    const changedPreview = JSON.parse(readFileSync(previewPath, 'utf8'));
+    changedPreview.elements.nodes[0].data.label = 'changed preview label';
+    writeFileSync(previewPath, JSON.stringify(changedPreview));
+    const changedPreviewVerification = spawnSync(process.execPath, [
+      ...common,
+      '--verify-reviewed-preview', previewPath,
+    ], { encoding: 'utf8' });
+    expect(changedPreviewVerification.status).toBe(1);
+    expect(changedPreviewVerification.stderr).toContain('does not match its approved plan');
+    const changedPreviewPromotion = spawnSync(process.execPath, [
+      ...common,
+      '--reviewed-preview', previewPath,
+      '--output-reviewed-live-graph', livePath,
+    ], { encoding: 'utf8' });
+    expect(changedPreviewPromotion.status).toBe(1);
+    expect(changedPreviewPromotion.stderr).toContain('does not match its approved plan');
   } finally {
     try {
       unlinkSync(livePath);

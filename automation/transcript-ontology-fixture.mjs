@@ -580,7 +580,7 @@ function parseCliArgs(argv) {
     '--output-reviewed-live-graph', '--verify-reviewed-live-graph',
     '--output-reviewed-preview', '--verify-reviewed-preview',
   ];
-  const inputs = ['--fixture', '--reviewed-plan', '--publication'];
+  const inputs = ['--fixture', '--reviewed-plan', '--publication', '--reviewed-preview'];
   const values = new Map();
   for (let index = 0; index < argv.length; index += 2) {
     const key = argv[index];
@@ -637,6 +637,9 @@ async function runCli(argv) {
     ].find((candidate) => values.has(candidate));
     const writesPublicGraph = operation === '--output-reviewed-live-graph';
     const verifiesPublicGraph = operation === '--verify-reviewed-live-graph';
+    if (writesPublicGraph !== values.has('--reviewed-preview')) {
+      throw new Error('Reviewed live graph output requires exactly one --reviewed-preview input');
+    }
     const requestedPath = resolve(values.get(operation));
     const graphPath = writesPublicGraph || verifiesPublicGraph
       ? publicLiveGraphPath(requestedPath)
@@ -648,7 +651,23 @@ async function runCli(argv) {
       && isInside(realpathSync.native(PUBLIC_ROOT), graphPath)) {
       throw new Error('Reviewed graph preview must not be written or verified under public');
     }
-    if (writesPublicGraph || operation === '--output-reviewed-preview') {
+    if (writesPublicGraph) {
+      const previewPath = resolvedOutputPath(resolve(values.get('--reviewed-preview')));
+      if (isInside(realpathSync.native(PUBLIC_ROOT), previewPath)) {
+        throw new Error('Reviewed graph preview input must remain outside public');
+      }
+      const graph = readJson(previewPath, 'reviewed transcript graph preview');
+      const verification = verifyPublishedTranscriptReviewGraph({
+        fixtureText, reviewedPlan, publication, graph,
+      });
+      writeJson(graphPath, graph);
+      return {
+        ...verification,
+        publicGraphWritten: true,
+        previewVerified: true,
+      };
+    }
+    if (operation === '--output-reviewed-preview') {
       const graph = buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan, publication });
       writeJson(graphPath, graph);
       return {
@@ -656,8 +675,8 @@ async function runCli(argv) {
         edgeCount: graph.elements.edges.length,
         dropped: graph.meta.dropped,
         databaseMutationExecuted: false,
-        publicGraphWritten: writesPublicGraph,
-        previewWritten: !writesPublicGraph,
+        publicGraphWritten: false,
+        previewWritten: true,
       };
     }
     const graph = readJson(graphPath, 'published transcript review graph');
