@@ -11,10 +11,12 @@ import { chromium } from 'playwright';
 import {
   buildLiveTranscriptGraph,
   buildPublishedTranscriptReviewGraph,
+  buildReviewedTranscriptBundleReport,
   buildReviewedTranscriptGraph,
   reviewedTranscriptPlanSha256,
   verifyLiveTranscriptGraph,
   verifyPublishedTranscriptReviewGraph,
+  verifyReviewedTranscriptBundleReport,
   verifyReviewedTranscriptGraph,
 } from '../transcript-ontology-fixture.mjs';
 import { createWorkshopGraphSourceAdapter } from '../../public/workshop-graph/graph-source-adapter.js';
@@ -821,6 +823,127 @@ test('publishes and verifies an approved R2 reviewed plan through the CLI', () =
     }
     try {
       unlinkSync(publicPreviewPath);
+    } catch (error) {
+      if (!(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')) throw error;
+    }
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('writes and re-verifies a non-identifying report for an exact R4-to-R3 artifact bundle', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'transcript-ontology-bundle-'));
+  const fixturePath = join(directory, 'handoff-fixture.json');
+  const planPath = join(directory, 'reviewed-plan.json');
+  const publicationPath = join(directory, 'publication.json');
+  const reportPath = join(directory, 'bundle-report.json');
+  const modulePath = fileURLToPath(new URL('../transcript-ontology-fixture.mjs', import.meta.url));
+  const fixture = structuredClone(R2_FIXTURE);
+  fixture.source = {
+    kind: 'private-transcript-extraction-handoff',
+    reviewBatchSha256: 'a'.repeat(64),
+    captureId: 'capture-bundle-1',
+    audioSha256: 'b'.repeat(64),
+    candidateSetId: 'candidate-set-bundle-1',
+  };
+  const fixtureText = `${JSON.stringify(fixture, null, 2)}\n`;
+  const plan = reviewedR2Plan();
+  plan.source.fixtureSha256 = createHash('sha256').update(fixtureText, 'utf8').digest('hex');
+  plan.source.handoff = fixture.source;
+  const planText = `${JSON.stringify(plan, null, 2)}\n`;
+  const publication = {
+    schemaVersion: 1,
+    kind: 'transcript-ontology-publication-approval',
+    mode: 'synthetic-reviewed-demo',
+    sourceId: 'live-r4-r3-bundle-test',
+    reviewedPlanSha256: reviewedTranscriptPlanSha256(plan),
+    approvedBy: 'reviewer-test',
+    approvedAt: '2026-08-01T01:20:00.000Z',
+  };
+  const publicationText = `${JSON.stringify(publication, null, 2)}\n`;
+  const publicReportPath = fileURLToPath(new URL(
+    `../../public/workshop-graph/data/${publication.sourceId}.bundle-report.json`,
+    import.meta.url,
+  ));
+  const reportInput = { fixtureText, reviewedPlanText: planText, publicationText };
+  try {
+    const report = buildReviewedTranscriptBundleReport(reportInput);
+    expect(report).toMatchObject({
+      kind: 'transcript-ontology-reviewed-bundle-report',
+      binding: {
+        sourceId: 'live-r4-r3-bundle-test',
+        reviewBatchSha256: 'a'.repeat(64),
+        candidateSetId: 'candidate-set-bundle-1',
+      },
+      counts: { nodes: 2, edges: 1 },
+      safety: {
+        databaseMutationExecuted: false,
+        publicGraphWritten: false,
+        bundleVerified: true,
+      },
+    });
+    expect(JSON.stringify(report)).not.toContain(fixture.reviewedBy);
+    expect(verifyReviewedTranscriptBundleReport({ ...reportInput, report })).toMatchObject({
+      sourceId: 'live-r4-r3-bundle-test',
+      bundleReportVerified: true,
+      publicGraphWritten: false,
+    });
+
+    writeFileSync(fixturePath, fixtureText);
+    writeFileSync(planPath, planText);
+    writeFileSync(publicationPath, publicationText);
+    const common = [
+      modulePath,
+      '--fixture', fixturePath,
+      '--reviewed-plan', planPath,
+      '--publication', publicationPath,
+    ];
+    const written = spawnSync(process.execPath, [
+      ...common,
+      '--output-reviewed-bundle-report', reportPath,
+    ], { encoding: 'utf8' });
+    expect(written.status).toBe(0);
+    expect(JSON.parse(written.stdout)).toMatchObject({
+      sourceId: 'live-r4-r3-bundle-test',
+      nodeCount: 2,
+      edgeCount: 1,
+      bundleReportWritten: true,
+      databaseMutationExecuted: false,
+      publicGraphWritten: false,
+    });
+    const overwrite = spawnSync(process.execPath, [
+      ...common,
+      '--output-reviewed-bundle-report', reportPath,
+    ], { encoding: 'utf8' });
+    expect(overwrite.status).toBe(1);
+    expect(overwrite.stderr).toContain('Output already exists');
+    const publicReport = spawnSync(process.execPath, [
+      ...common,
+      '--output-reviewed-bundle-report', publicReportPath,
+    ], { encoding: 'utf8' });
+    expect(publicReport.status).toBe(1);
+    expect(publicReport.stderr).toContain('bundle report must remain outside public');
+    const verified = spawnSync(process.execPath, [
+      ...common,
+      '--verify-reviewed-bundle-report', reportPath,
+    ], { encoding: 'utf8' });
+    expect(verified.status).toBe(0);
+    expect(JSON.parse(verified.stdout)).toMatchObject({
+      sourceId: 'live-r4-r3-bundle-test',
+      bundleReportVerified: true,
+    });
+
+    const changedReport = JSON.parse(readFileSync(reportPath, 'utf8'));
+    changedReport.binding.reviewBatchSha256 = 'c'.repeat(64);
+    writeFileSync(reportPath, JSON.stringify(changedReport));
+    const changed = spawnSync(process.execPath, [
+      ...common,
+      '--verify-reviewed-bundle-report', reportPath,
+    ], { encoding: 'utf8' });
+    expect(changed.status).toBe(1);
+    expect(changed.stderr).toContain('bundle report does not match its artifacts');
+  } finally {
+    try {
+      unlinkSync(publicReportPath);
     } catch (error) {
       if (!(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')) throw error;
     }

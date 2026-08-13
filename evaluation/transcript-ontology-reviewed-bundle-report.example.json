@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "kind": "transcript-ontology-reviewed-bundle-report",
+  "artifacts": {
+    "fixtureBytesSha256": "9fc80b19b62ce2424ff7150b2b0c8cd9d6a3cf73407ceefb44224b1894730a94",
+    "reviewedPlanBytesSha256": "25de478be7b4bc2c945011ba6b42f291f883762979226d183aaf32ee2ed248ac",
+    "reviewedPlanCanonicalSha256": "2c3e2019ed04f39c8a612c3e14696649b216a1de67d1941bf1a738c9bbab7dab",
+    "publicationBytesSha256": "89a2592cf12bc4946880fd1ee4ffc4e7e2ee2e3b93feed2a22f9d8cb0487dfbc"
+  },
+  "binding": {
+    "sourceId": "live-transcript-r2-reviewed",
+    "fixtureId": "session-1-review-candidates",
+    "sessionId": "session-1",
+    "reviewBatchSha256": null,
+    "candidateSetId": null
+  },
+  "counts": {
+    "nodes": 2,
+    "edges": 1
+  },
+  "dropped": {
+    "rejected_nodes": 0,
+    "rejected_edges": 0,
+    "uncited_candidates": 0
+  },
+  "safety": {
+    "databaseMutationExecuted": false,
+    "publicGraphWritten": false,
+    "bundleVerified": true
+  }
+}

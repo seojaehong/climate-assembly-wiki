@@ -386,7 +386,7 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
   if (publication.reviewedPlanSha256 !== reviewedTranscriptPlanSha256(reviewedPlan)) {
     throw new Error('Publication approval does not match the reviewed plan');
   }
-  const { identity: approvedBy, kind: publicationIdentityKind } = publicationIdentity(publication.approvedBy);
+  const { kind: publicationIdentityKind } = publicationIdentity(publication.approvedBy);
   const approvedAt = canonicalIsoInstant(publication.approvedAt, 'publication approvedAt');
   const chunks = new Map(fixture.chunks.map((chunk) => [chunk.uid, chunk]));
   const fixtureNodes = new Map(fixture.expected.nodes.map((node) => [node.uid, node]));
@@ -572,6 +572,66 @@ export function verifyPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan
   };
 }
 
+function parseJsonText(value, label) {
+  if (typeof value !== 'string') throw new Error(`Cannot parse ${label} JSON`);
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    throw new Error(`Cannot parse ${label} JSON`, { cause: error });
+  }
+}
+
+/** Builds a non-identifying verification report for the exact R2-to-R3 operator artifact bundle. */
+export function buildReviewedTranscriptBundleReport({ fixtureText, reviewedPlanText, publicationText }) {
+  const fixture = parseJsonText(fixtureText, 'transcript fixture');
+  const reviewedPlan = parseJsonText(reviewedPlanText, 'reviewed transcript plan');
+  const publication = parseJsonText(publicationText, 'publication approval');
+  const graph = buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan, publication });
+  const handoff = fixture.source === undefined ? null : privateExtractionHandoff(fixture.source);
+  return {
+    schemaVersion: 1,
+    kind: 'transcript-ontology-reviewed-bundle-report',
+    artifacts: {
+      fixtureBytesSha256: rawSha256(fixtureText),
+      reviewedPlanBytesSha256: rawSha256(reviewedPlanText),
+      reviewedPlanCanonicalSha256: reviewedTranscriptPlanSha256(reviewedPlan),
+      publicationBytesSha256: rawSha256(publicationText),
+    },
+    binding: {
+      sourceId: graph.meta.source.source_id,
+      fixtureId: graph.meta.source.fixture_id,
+      sessionId: graph.meta.source.session_id,
+      reviewBatchSha256: handoff?.reviewBatchSha256 ?? null,
+      candidateSetId: handoff?.candidateSetId ?? null,
+    },
+    counts: graph.meta.counts,
+    dropped: graph.meta.dropped,
+    safety: {
+      databaseMutationExecuted: false,
+      publicGraphWritten: false,
+      bundleVerified: true,
+    },
+  };
+}
+
+export function verifyReviewedTranscriptBundleReport(input) {
+  const expected = buildReviewedTranscriptBundleReport(input);
+  if (canonicalJson(input.report) !== canonicalJson(expected)) {
+    throw new Error('Transcript ontology reviewed bundle report does not match its artifacts');
+  }
+  return {
+    fixtureBytesSha256: expected.artifacts.fixtureBytesSha256,
+    reviewedPlanCanonicalSha256: expected.artifacts.reviewedPlanCanonicalSha256,
+    publicationBytesSha256: expected.artifacts.publicationBytesSha256,
+    sourceId: expected.binding.sourceId,
+    nodeCount: expected.counts.nodes,
+    edgeCount: expected.counts.edges,
+    bundleReportVerified: true,
+    databaseMutationExecuted: false,
+    publicGraphWritten: false,
+  };
+}
+
 function readJson(path, label) {
   try {
     return JSON.parse(readFileSync(path, 'utf8'));
@@ -602,6 +662,7 @@ function parseCliArgs(argv) {
     '--output-graph', '--verify-graph', '--output-live-graph', '--verify-live-graph',
     '--output-reviewed-live-graph', '--verify-reviewed-live-graph',
     '--output-reviewed-preview', '--verify-reviewed-preview',
+    '--output-reviewed-bundle-report', '--verify-reviewed-bundle-report',
   ];
   const inputs = ['--fixture', '--reviewed-plan', '--publication', '--reviewed-preview'];
   const values = new Map();
@@ -646,18 +707,49 @@ async function runCli(argv) {
   const reviewedOperation = values.has('--output-reviewed-live-graph')
     || values.has('--verify-reviewed-live-graph')
     || values.has('--output-reviewed-preview')
-    || values.has('--verify-reviewed-preview');
+    || values.has('--verify-reviewed-preview')
+    || values.has('--output-reviewed-bundle-report')
+    || values.has('--verify-reviewed-bundle-report');
   if (reviewedOperation) {
     if (!values.has('--reviewed-plan') || !values.has('--publication')) {
       throw new Error('Reviewed live graph requires --reviewed-plan and --publication');
     }
     const fixtureText = readText(fixturePath, 'transcript fixture');
-    const reviewedPlan = readJson(resolve(values.get('--reviewed-plan')), 'reviewed transcript plan');
-    const publication = readJson(resolve(values.get('--publication')), 'publication approval');
+    const reviewedPlanPath = resolve(values.get('--reviewed-plan'));
+    const publicationPath = resolve(values.get('--publication'));
+    const reviewedPlanText = readText(reviewedPlanPath, 'reviewed transcript plan');
+    const publicationText = readText(publicationPath, 'publication approval');
+    const reviewedPlan = parseJsonText(reviewedPlanText, 'reviewed transcript plan');
+    const publication = parseJsonText(publicationText, 'publication approval');
     const operation = [
       '--output-reviewed-live-graph', '--verify-reviewed-live-graph',
       '--output-reviewed-preview', '--verify-reviewed-preview',
+      '--output-reviewed-bundle-report', '--verify-reviewed-bundle-report',
     ].find((candidate) => values.has(candidate));
+    if (operation === '--output-reviewed-bundle-report' || operation === '--verify-reviewed-bundle-report') {
+      const reportPath = resolvedOutputPath(resolve(values.get(operation)));
+      if (isInside(realpathSync.native(PUBLIC_ROOT), reportPath)) {
+        throw new Error('Reviewed bundle report must remain outside public');
+      }
+      const reportInput = { fixtureText, reviewedPlanText, publicationText };
+      if (operation === '--output-reviewed-bundle-report') {
+        const report = buildReviewedTranscriptBundleReport(reportInput);
+        writeJson(reportPath, report);
+        return {
+          fixtureBytesSha256: report.artifacts.fixtureBytesSha256,
+          reviewedPlanCanonicalSha256: report.artifacts.reviewedPlanCanonicalSha256,
+          publicationBytesSha256: report.artifacts.publicationBytesSha256,
+          sourceId: report.binding.sourceId,
+          nodeCount: report.counts.nodes,
+          edgeCount: report.counts.edges,
+          bundleReportWritten: true,
+          databaseMutationExecuted: false,
+          publicGraphWritten: false,
+        };
+      }
+      const report = readJson(reportPath, 'reviewed transcript bundle report');
+      return verifyReviewedTranscriptBundleReport({ ...reportInput, report });
+    }
     const writesPublicGraph = operation === '--output-reviewed-live-graph';
     const verifiesPublicGraph = operation === '--verify-reviewed-live-graph';
     if (writesPublicGraph !== values.has('--reviewed-preview')) {
