@@ -25,6 +25,7 @@ function issue(over: Partial<ResultIssueRaw> = {}): ResultIssueRaw {
     topic_id: over.topic_id ?? 't1',
     consensus_denominator: 'consensus_denominator' in over ? over.consensus_denominator : 0,
     teams: over.teams ?? [],
+    implementation: over.implementation ?? undefined,
   };
 }
 
@@ -122,6 +123,7 @@ describe('buildResultReportModel — 표지·§1 개요', () => {
       { label: '참여 조', value: '2개' },
       { label: '합의 쟁점 수', value: '1개' },
       { label: '미분류 수', value: '3건' },
+      { label: '이행 정보 등록', value: '0 / 2' },
     ]);
   });
 });
@@ -199,6 +201,30 @@ describe('buildResultReportModel — §2 쟁점별', () => {
       reviewBackground: '#ECEFF1',
       reviewBorder: '#6B7D88',
     });
+  });
+
+  it('이행 상태·설명·책임기관·갱신일·근거 URL을 공용 모델에 보존한다', () => {
+    const model = buildResultReportModel({
+      view: view([issue({
+        implementation: {
+          status: 'implemented',
+          responsible_body: '기후정책 담당기관',
+          updated_at: '2026-08-12T00:00:00.000Z',
+          summary: '관계 기관이 이행 완료 근거를 공개했습니다.',
+          evidence_url: 'https://example.org/implementation-evidence',
+        },
+      })]),
+      generatedAtLabel: 'x',
+    });
+
+    expect(model.issues[0]).toMatchObject({
+      implementationLabel: '이행 완료',
+      implementationDescription: '관계 기관의 공개 근거에서 이행 완료를 확인했습니다.',
+      implementationResponsibleBody: '기후정책 담당기관',
+      implementationSummary: '관계 기관이 이행 완료 근거를 공개했습니다.',
+      implementationEvidenceUrl: 'https://example.org/implementation-evidence',
+    });
+    expect(model.issues[0].implementationUpdatedAtLabel).toMatch(/^2026-08-\d{2}$/);
   });
 
   it('§2는 랭킹 순서(제기 조 많은 순)로 싣는다', () => {
@@ -294,6 +320,28 @@ describe('buildResultReportDoc — 문서 생성(이미지 없이 표만)', () =
     expect(documentXml).toContain('w:color w:val="5A6B73"');
     expect(documentXml).toContain('w:shd w:fill="ECEFF1"');
     expect(documentXml).toContain('w:color="6B7D88"');
+  });
+
+  it('이행 상태와 공개 근거를 document.xml에 직렬화한다', async () => {
+    const model = buildResultReportModel({
+      view: view([issue({
+        implementation: {
+          status: 'not_pursued',
+          responsible_body: '기후정책 담당기관',
+          updated_at: '2026-08-12T00:00:00.000Z',
+          summary: '대안 정책을 우선 추진한다는 사유를 공개했습니다.',
+          evidence_url: 'https://example.org/not-pursued-evidence',
+        },
+      })]),
+      generatedAtLabel: 'x',
+    });
+    const buf = await Packer.toBuffer(buildResultReportDoc(model));
+    const zip = await JSZip.loadAsync(buf);
+    const documentXml = await zip.file('word/document.xml')?.async('string');
+
+    expect(documentXml).toContain('미이행 사유 공개');
+    expect(documentXml).toContain('대안 정책을 우선 추진한다는 사유를 공개했습니다.');
+    expect(documentXml).toContain('https://example.org/not-pursued-evidence');
   });
 
   it('퇴화 모델(쟁점 0·조 0·공개일 null·요약 없음)도 표만으로 정상 생성된다', async () => {

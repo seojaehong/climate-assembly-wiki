@@ -376,6 +376,66 @@ function TakeawaysBlock({ view }: { view: ResultViewModel }) {
   );
 }
 
+function ImplementationTracking({ view }: { view: ResultViewModel }) {
+  return (
+    <section
+      className="rounded-2xl border-2 bg-white p-5 sm:p-6"
+      style={{ borderColor: BORDER }}
+      data-implementation-tracking-ready="true"
+    >
+      <Eyebrow className="mb-1" style={{ color: TEAL }}>Accountability · 이행추적</Eyebrow>
+      <h2 className="text-[clamp(20px,2.2vw,30px)] font-extrabold" style={{ color: NAVY }}>
+        권고 이행 현황
+      </h2>
+      <p className="mt-1 text-[15px] leading-relaxed" style={{ color: GRAY }}>
+        관계 기관이 공개한 응답과 근거를 운영진이 확인한 시점 기준입니다. 시민회의의 권고는 자문이며, 상태 표시는 정책 효과를 판정하지 않습니다.
+      </p>
+      <p className="mt-2 text-[15px] font-bold" style={{ color: TEAL }}>
+        이행 정보 등록 {view.stats.implementationTrackedCount} / 전체 {view.stats.issueCount}
+      </p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        {view.issues.map((issue) => {
+          const status = issue.implementation;
+          return (
+            <article key={issue.id} className="rounded-xl border-2 p-4" style={{ borderColor: status.border, background: status.background }}>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <h3 className="text-[17px] font-extrabold" style={{ color: NAVY }}>{issue.label}</h3>
+                <ImplementationBadge issue={issue} />
+              </div>
+              <p className="mt-2 text-[14px] leading-relaxed" style={{ color: status.foreground }}>
+                {status.description}
+              </p>
+              {status.tracked ? (
+                <dl className="mt-3 grid gap-2 text-[14px]" style={{ color: INK }}>
+                  <div><dt className="inline font-bold">책임 기관</dt><dd className="inline"> · {status.responsibleBody}</dd></div>
+                  <div><dt className="inline font-bold">갱신일</dt><dd className="inline"> · {formatDate(status.updatedAt)}</dd></div>
+                  <div><dt className="font-bold">공개 설명</dt><dd className="mt-0.5 leading-relaxed">{status.summary}</dd></div>
+                  {status.evidenceUrl ? (
+                    <div>
+                      <dt className="sr-only">이행 근거</dt>
+                      <dd>
+                        <a
+                          className="font-bold underline underline-offset-4"
+                          style={{ color: TEAL }}
+                          href={status.evidenceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          근거 자료 열기 (새 창)
+                        </a>
+                      </dd>
+                    </div>
+                  ) : null}
+                </dl>
+              ) : null}
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function ResultExplanationPanel({ view }: { view: ResultViewModel }) {
   const steps = buildResultExplanation(view);
   return (
@@ -407,9 +467,21 @@ function ResultExplanationPanel({ view }: { view: ResultViewModel }) {
         ))}
       </ol>
       <p className="mt-4 text-[14px] leading-relaxed" style={{ color: GRAY }}>
-        이 설명은 현재 공개 스냅샷에서 확인 가능한 집계 근거입니다. 개별 원문 인용과 이행 상태는 해당 데이터가 공개 계약에 포함된 뒤 별도 제공합니다.
+        이 설명은 현재 공개 스냅샷에서 확인 가능한 집계 근거입니다. 개별 원문 인용은 해당 데이터가 공개 계약에 포함된 뒤 별도 제공합니다. 이행 상태는 등록된 공개 근거가 있을 때만 아래에 표시합니다.
       </p>
     </details>
+  );
+}
+
+function ImplementationBadge({ issue }: { issue: ViewIssue }) {
+  const status = issue.implementation;
+  return (
+    <span
+      className="inline-flex rounded-full border-2 px-3 py-1 text-[15px] font-bold"
+      style={{ color: status.foreground, background: status.background, borderColor: status.border }}
+    >
+      {status.label}
+    </span>
   );
 }
 
@@ -432,7 +504,7 @@ function DataTable({ view }: { view: ResultViewModel }) {
       </summary>
       <div className="mt-4 overflow-x-auto" role="region" aria-label="쟁점 분석 데이터 표" tabIndex={0} onKeyDown={handleHorizontalScrollKey}>
         <table className="w-full border-collapse text-left text-[15px]" style={{ minWidth: 720 }}>
-          <caption className="sr-only">쟁점별 방향·빈도·제기 조 수·원문 군집·검수 상태</caption>
+          <caption className="sr-only">쟁점별 방향·빈도·제기 조 수·원문 군집·검수·이행 상태</caption>
           <thead>
             <tr className="border-b-2" style={{ borderColor: BORDER, color: GRAY }}>
               <th scope="col" className="px-3 py-2" style={{ background: TABLE_BACKGROUND, color: GRAY }}>쟁점</th>
@@ -441,6 +513,7 @@ function DataTable({ view }: { view: ResultViewModel }) {
               <th scope="col" className="px-3 py-2 text-right" style={{ background: TABLE_BACKGROUND, color: GRAY }}>제기 조</th>
               <th scope="col" className="px-3 py-2 text-right" style={{ background: TABLE_BACKGROUND, color: GRAY }}>원문 군집</th>
               <th scope="col" className="px-3 py-2" style={{ background: TABLE_BACKGROUND, color: GRAY }}>검수</th>
+              <th scope="col" className="px-3 py-2" style={{ background: TABLE_BACKGROUND, color: GRAY }}>이행</th>
             </tr>
           </thead>
           <tbody>
@@ -452,6 +525,7 @@ function DataTable({ view }: { view: ResultViewModel }) {
                 <td className="px-3 py-2 text-right tr-num font-bold" style={{ background: TABLE_BACKGROUND, color: INK }}>{issue.teamCount}</td>
                 <td className="px-3 py-2 text-right tr-num" style={{ background: TABLE_BACKGROUND, color: INK }}>{issue.consensusDenominator ?? '—'}</td>
                 <td className="px-3 py-2" style={{ background: TABLE_BACKGROUND, color: INK }}>{issue.hitl.label}</td>
+                <td className="px-3 py-2" style={{ background: TABLE_BACKGROUND, color: INK }}>{issue.implementation.label}</td>
               </tr>
             ))}
           </tbody>
@@ -593,6 +667,7 @@ export function ResultContent({ view }: { view: ResultViewModel }) {
         <RankingChart view={view} />
         <IssueSummaries view={view} />
         <TakeawaysBlock view={view} />
+        <ImplementationTracking view={view} />
         <ResultExplanationPanel view={view} />
         <DataTable view={view} />
 

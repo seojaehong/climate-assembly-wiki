@@ -102,6 +102,12 @@ export type ResultIssueSection = {
   reviewForeground: string;
   reviewBackground: string;
   reviewBorder: string;
+  implementationLabel: string;
+  implementationDescription: string;
+  implementationResponsibleBody: string;
+  implementationUpdatedAtLabel: string;
+  implementationSummary: string;
+  implementationEvidenceUrl: string;
 };
 
 /** §3 조×쟁점 매트릭스 모델. cells[i] = 세로 쟁점을 teams[i] 조가 제기했는가. */
@@ -154,6 +160,12 @@ function issueSection(issue: ViewIssue): ResultIssueSection {
     reviewForeground: issue.hitl.foreground,
     reviewBackground: issue.hitl.background,
     reviewBorder: issue.hitl.border,
+    implementationLabel: issue.implementation.label,
+    implementationDescription: issue.implementation.description,
+    implementationResponsibleBody: issue.implementation.responsibleBody ?? '—',
+    implementationUpdatedAtLabel: formatPublishedDate(issue.implementation.updatedAt),
+    implementationSummary: issue.implementation.summary ?? '—',
+    implementationEvidenceUrl: issue.implementation.evidenceUrl ?? '—',
   };
 }
 
@@ -178,6 +190,7 @@ export function buildResultReportModel(input: {
     { label: '참여 조', value: `${stats.participatingTeams}개` },
     { label: '합의 쟁점 수', value: `${stats.consensusCount}개` },
     { label: '미분류 수', value: `${stats.unclassifiedCount}건` },
+    { label: '이행 정보 등록', value: `${stats.implementationTrackedCount} / ${stats.issueCount}` },
   ];
 
   // §2는 화면과 같은 랭킹 순서(제기 조 많은 순)로 싣는다.
@@ -338,6 +351,12 @@ function issueMetaTable(issue: ResultIssueSection): Table {
     kv('원문 군집', issue.clusterLabel),
     kv('검수', issue.reviewLabel, reviewStyle),
     kv('검수 설명', issue.reviewDescription, reviewStyle),
+    kv('이행 상태', issue.implementationLabel),
+    kv('이행 설명', issue.implementationDescription),
+    kv('책임 기관', issue.implementationResponsibleBody),
+    kv('이행 갱신일', issue.implementationUpdatedAtLabel),
+    kv('이행 메모', issue.implementationSummary),
+    kv('이행 근거 URL', issue.implementationEvidenceUrl),
   ]);
 }
 

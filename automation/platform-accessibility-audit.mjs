@@ -176,6 +176,13 @@ function publishedResultFixture() {
           review_status: 'reviewed',
           consensus_denominator: 2,
           teams: ['1분과 1조', '1분과 2조'],
+          implementation: {
+            status: 'in_progress',
+            responsible_body: '교통정책 담당기관',
+            updated_at: '2026-08-12T00:00:00.000Z',
+            summary: '대중교통 접근성 개선 계획을 공개하고 세부 이행을 진행 중입니다.',
+            evidence_url: 'https://example.invalid/implementation-evidence',
+          },
         },
         {
           id: 'audit-issue-draft',
@@ -216,7 +223,7 @@ export const DEFAULT_AUDIT_ROUTES = [
     path: '/r/_/',
     skipTarget: 'main-content',
     fixture: 'ci-published-result-read-fixture-v1',
-    readySelector: 'main#main-content header h1',
+    readySelector: 'main#main-content [data-implementation-tracking-ready="true"]',
     openDetailsBeforeAudit: true,
     requiredMobileScrollRegions: ['조별 쟁점 커버리지 표', '쟁점 분석 데이터 표'],
     prepare: preparePublishedResult,

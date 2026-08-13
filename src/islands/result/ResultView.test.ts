@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { buildResultView, type ResultGetResponse } from './result-view-logic';
+import { IMPLEMENTATION_STATUS_META, buildResultView, type ResultGetResponse } from './result-view-logic';
 import {
   RESULT_CONTROL_BORDER,
   RESULT_MATRIX_NOT_RAISED,
@@ -44,6 +44,13 @@ function readyView(reviewStatus: 'reviewed' | 'draft' = 'reviewed') {
         review_status: reviewStatus,
         consensus_denominator: 2,
         teams: ['1분과 1조', '1분과 2조'],
+        implementation: {
+          status: 'in_progress',
+          responsible_body: '교통정책 담당기관',
+          updated_at: '2026-08-12T00:00:00.000Z',
+          summary: '대중교통 접근성 개선 계획에 따라 세부 이행을 진행 중입니다.',
+          evidence_url: 'https://example.org/implementation-evidence',
+        },
       }],
     },
   };
@@ -71,7 +78,7 @@ describe('ResultView accessibility', () => {
     expect(html).toContain('분석 데이터를 표로 보기');
     expect(html.match(/<table/g)).toHaveLength(2);
     expect(html).toContain('<caption');
-    expect(html).toContain('쟁점별 방향·빈도·제기 조 수·원문 군집·검수 상태');
+    expect(html).toContain('쟁점별 방향·빈도·제기 조 수·원문 군집·검수·이행 상태');
     expect(html).toContain('scope="col"');
     expect(html).toContain('aria-hidden="true"');
     expect(html).toContain('class="sr-only">1분과 1조 제기</span>');
@@ -120,6 +127,25 @@ describe('ResultView accessibility', () => {
     expect(contrastRatio(RESULT_CONTROL_BORDER, '#FFFFFF')).toBeGreaterThanOrEqual(3);
     expect(contrastRatio(RESULT_MATRIX_RAISED, '#FFFFFF')).toBeGreaterThanOrEqual(3);
     expect(contrastRatio(RESULT_MATRIX_NOT_RAISED, '#FFFFFF')).toBeGreaterThanOrEqual(3);
+    for (const status of Object.values(IMPLEMENTATION_STATUS_META)) {
+      expect(contrastRatio(status.foreground, status.background)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(status.border, status.background)).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it('이행 상태·책임기관·갱신일·공개 설명과 근거 링크를 같은 패널과 표에 제공한다', () => {
+    const html = renderToStaticMarkup(createElement(ResultContent, { view: readyView() }));
+
+    expect(html).toContain('Accountability · 이행추적');
+    expect(html).toContain('권고 이행 현황');
+    expect(html).toContain('이행 정보 등록 1 / 전체 1');
+    expect(html).toContain('이행 중');
+    expect(html).toContain('교통정책 담당기관');
+    expect(html).toContain('대중교통 접근성 개선 계획에 따라 세부 이행을 진행 중입니다.');
+    expect(html).toContain('href="https://example.org/implementation-evidence"');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener noreferrer"');
+    expect(html).toContain('근거 자료 열기 (새 창)');
   });
 
   it('미검수 쟁점의 배지와 표 대체본이 같은 HITL 상태 계약을 사용한다', () => {

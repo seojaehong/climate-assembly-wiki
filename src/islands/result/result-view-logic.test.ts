@@ -6,6 +6,7 @@ import {
   rankIssues,
   sortTeams,
   toViewIssue,
+  toImplementation,
   tokenFromPath,
   ratioToPercent,
   HITL_NOTICE_FALLBACK,
@@ -25,6 +26,7 @@ function issue(over: Partial<ResultIssueRaw> = {}): ResultIssueRaw {
     topic_id: over.topic_id ?? 't1',
     consensus_denominator: over.consensus_denominator ?? 0,
     teams: over.teams ?? [],
+    implementation: over.implementation ?? undefined,
   };
 }
 
@@ -161,6 +163,79 @@ describe('buildResultView — 검수 상태(draft 섞임)', () => {
     expect(view.issues.map((i) => i.hitl.state)).toEqual(['draft', 'draft', 'reviewed']);
     // 검수 대기가 다수여도 합의 비율 분모는 전체 쟁점(3) — reviewed-only로 좁히지 않는다.
     expect(view.stats.issueCount).toBe(3);
+  });
+});
+
+describe('toImplementation — 이행추적 공개 계약', () => {
+  const tracked = {
+    responsible_body: '기후정책 담당기관',
+    updated_at: '2026-08-12T00:00:00.000Z',
+    summary: '관계 기관이 공개한 진행 상황입니다.',
+  };
+
+  it.each([
+    ['under_review', '기관 검토 중'],
+    ['planned', '이행 계획 수립'],
+    ['in_progress', '이행 중'],
+  ])('%s 상태를 책임기관·시각·설명과 함께 보존한다', (status, label) => {
+    expect(toImplementation({ status, ...tracked })).toMatchObject({
+      state: status,
+      label,
+      tracked: true,
+      valid: true,
+      responsibleBody: '기후정책 담당기관',
+      updatedAt: '2026-08-12T00:00:00.000Z',
+      summary: '관계 기관이 공개한 진행 상황입니다.',
+      evidenceUrl: null,
+    });
+  });
+
+  it.each([
+    ['implemented', '이행 완료'],
+    ['not_pursued', '미이행 사유 공개'],
+  ])('%s 확정 상태는 HTTPS 근거가 있을 때만 보존한다', (status, label) => {
+    const result = toImplementation({
+      status,
+      ...tracked,
+      evidence_url: 'https://example.org/evidence',
+    });
+    expect(result).toMatchObject({ state: status, label, tracked: true, valid: true });
+    expect(result.evidenceUrl).toBe('https://example.org/evidence');
+  });
+
+  it('미등록은 별도 상태로 표시하고 집계에는 넣지 않는다', () => {
+    expect(toImplementation(null)).toMatchObject({
+      state: 'not_reported',
+      label: '이행 정보 미등록',
+      tracked: false,
+      valid: true,
+    });
+  });
+
+  it.each([
+    { status: 'implemented', ...tracked },
+    { status: 'planned', ...tracked, evidence_url: 'http://example.org/evidence' },
+    { status: 'unknown', ...tracked },
+    { status: 'in_progress', ...tracked, updated_at: 'not-a-date' },
+  ])('잘못되거나 근거 없는 확정 상태를 확인 필요로 fail-closed한다', (raw) => {
+    expect(toImplementation(raw)).toMatchObject({
+      state: 'invalid',
+      label: '이행 정보 확인 필요',
+      tracked: false,
+      valid: false,
+      responsibleBody: null,
+      summary: null,
+      evidenceUrl: null,
+    });
+  });
+
+  it('공개 뷰 통계는 유효하게 등록된 이행 정보만 센다', () => {
+    const view = buildResultView(response([
+      issue({ id: 'tracked', implementation: { status: 'planned', ...tracked } }),
+      issue({ id: 'missing' }),
+      issue({ id: 'invalid', implementation: { status: 'implemented', ...tracked } }),
+    ]));
+    expect(view?.stats.implementationTrackedCount).toBe(1);
   });
 });
 

@@ -7,7 +7,7 @@
  *       { scope, scope_id, title, hitl_notice, consensus_rule,
  *         issues[], reviewed_count, unclassified_count, generated_at }
  *     issue = { id, label, stance?, frequency_class?, summary?, review_status,
- *               topic_id, consensus_denominator, teams[] }
+ *               topic_id, consensus_denominator, teams[], implementation? }
  * 와 1:1이다(손유지 타입 — 타입체커가 DB와의 일치를 검증하지 못하므로 스키마 변경 시 여기부터 맞출 것).
  *
  * ★ 설계 결정(합의 비율 분모): body.issues 는 archived_at is null 인 쟁점 전부(draft+reviewed)를 담는다.
@@ -55,6 +55,15 @@ export type ResultIssueRaw = {
   topic_id?: string | null;
   consensus_denominator?: number | null;
   teams?: string[] | null;
+  implementation?: ResultImplementationRaw | null;
+};
+
+export type ResultImplementationRaw = {
+  status?: string | null;
+  responsible_body?: string | null;
+  updated_at?: string | null;
+  summary?: string | null;
+  evidence_url?: string | null;
 };
 
 export type ResultBody = {
@@ -94,6 +103,71 @@ export type ViewIssue = {
   consensusDenominator: number | null;
   isConsensus: boolean;
   hitl: HitlStatus;
+  implementation: ImplementationView;
+};
+
+export type ImplementationState =
+  | 'not_reported'
+  | 'invalid'
+  | 'under_review'
+  | 'planned'
+  | 'in_progress'
+  | 'implemented'
+  | 'not_pursued';
+
+export type ImplementationView = {
+  state: ImplementationState;
+  label: string;
+  description: string;
+  foreground: string;
+  background: string;
+  border: string;
+  tracked: boolean;
+  valid: boolean;
+  responsibleBody: string | null;
+  updatedAt: string | null;
+  summary: string | null;
+  evidenceUrl: string | null;
+};
+
+type ImplementationMeta = Pick<ImplementationView, 'label' | 'description' | 'foreground' | 'background' | 'border'>;
+
+export const IMPLEMENTATION_STATUS_META: Record<ImplementationState, ImplementationMeta> = {
+  not_reported: {
+    label: '이행 정보 미등록',
+    description: '공개된 이행 상태가 아직 없습니다.',
+    foreground: '#5A6B73', background: '#ECEFF1', border: '#6B7D88',
+  },
+  invalid: {
+    label: '이행 정보 확인 필요',
+    description: '공개된 이행 정보의 형식을 확인해야 합니다.',
+    foreground: '#B91C1C', background: '#FDECEC', border: '#B91C1C',
+  },
+  under_review: {
+    label: '기관 검토 중',
+    description: '관계 기관이 권고 내용을 검토하고 있습니다.',
+    foreground: '#135C73', background: '#E7F3F7', border: '#135C73',
+  },
+  planned: {
+    label: '이행 계획 수립',
+    description: '관계 기관이 공개한 이행 계획이 있습니다.',
+    foreground: '#6B4F00', background: '#FFF4CC', border: '#8A6500',
+  },
+  in_progress: {
+    label: '이행 중',
+    description: '공개된 계획에 따라 이행이 진행 중입니다.',
+    foreground: '#1F4E79', background: '#E8F1F8', border: '#1F4E79',
+  },
+  implemented: {
+    label: '이행 완료',
+    description: '관계 기관의 공개 근거에서 이행 완료를 확인했습니다.',
+    foreground: '#2F6F25', background: '#E3F1E6', border: '#2F6F25',
+  },
+  not_pursued: {
+    label: '미이행 사유 공개',
+    description: '관계 기관이 이행하지 않는 사유를 공개했습니다.',
+    foreground: '#8A4F08', background: '#FEF6E7', border: '#8A4F08',
+  },
 };
 
 export type ResultMatrix = {
@@ -110,6 +184,7 @@ export type ResultStats = {
   reviewedCount: number;
   unclassifiedCount: number;
   participatingTeams: number;
+  implementationTrackedCount: number;
 };
 
 export type ResultView = {
@@ -162,6 +237,68 @@ function normFrequency(freq: string | null | undefined): string | null {
   return f.length > 0 ? f : null;
 }
 
+function implementationFallback(state: 'not_reported' | 'invalid'): ImplementationView {
+  return {
+    state,
+    ...IMPLEMENTATION_STATUS_META[state],
+    tracked: false,
+    valid: state === 'not_reported',
+    responsibleBody: null,
+    updatedAt: null,
+    summary: null,
+    evidenceUrl: null,
+  };
+}
+
+function normalizedImplementationText(value: unknown, maxLength: number): string | null {
+  if (typeof value !== 'string') return null;
+  const text = value.trim();
+  return text.length > 0 && text.length <= maxLength ? text : null;
+}
+
+function normalizedEvidenceUrl(value: unknown): string | null {
+  if (value == null || value === '') return null;
+  if (typeof value !== 'string') return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+export function toImplementation(raw: ResultImplementationRaw | null | undefined): ImplementationView {
+  if (raw == null) return implementationFallback('not_reported');
+  if (typeof raw !== 'object' || Array.isArray(raw)) return implementationFallback('invalid');
+  const state = typeof raw.status === 'string' ? raw.status.trim() as ImplementationState : 'invalid';
+  if (!['under_review', 'planned', 'in_progress', 'implemented', 'not_pursued'].includes(state)) {
+    return implementationFallback('invalid');
+  }
+  const responsibleBody = normalizedImplementationText(raw.responsible_body, 200);
+  const updatedAt = normalizedImplementationText(raw.updated_at, 80);
+  const summary = normalizedImplementationText(raw.summary, 1000);
+  const evidenceUrl = normalizedEvidenceUrl(raw.evidence_url);
+  const evidenceRequired = state === 'implemented' || state === 'not_pursued';
+  if (!responsibleBody || !updatedAt || Number.isNaN(Date.parse(updatedAt)) || !summary
+    || (evidenceRequired && !evidenceUrl)) {
+    return implementationFallback('invalid');
+  }
+  if (raw.evidence_url != null && raw.evidence_url !== '' && !evidenceUrl) {
+    return implementationFallback('invalid');
+  }
+  return {
+    state,
+    ...IMPLEMENTATION_STATUS_META[state],
+    tracked: true,
+    valid: true,
+    responsibleBody,
+    updatedAt,
+    summary,
+    evidenceUrl,
+  };
+}
+
 /** 쟁점 원시 데이터 → 뷰 쟁점. label 없으면 '(제목 없음)' 폴백. */
 export function toViewIssue(raw: ResultIssueRaw): ViewIssue {
   const teams = Array.isArray(raw.teams)
@@ -186,6 +323,7 @@ export function toViewIssue(raw: ResultIssueRaw): ViewIssue {
     consensusDenominator: denom,
     isConsensus: frequency === 'consensus',
     hitl: resolveHitlStatus({ reviewStatus: raw.review_status, origin: raw.origin }),
+    implementation: toImplementation(raw.implementation),
   };
 }
 
@@ -277,6 +415,7 @@ export function buildResultView(res: ResultGetResponse): ResultView | null {
           : issues.filter((i) => i.hitl.reviewed).length,
       unclassifiedCount: typeof body.unclassified_count === 'number' ? body.unclassified_count : 0,
       participatingTeams: teamSet.size,
+      implementationTrackedCount: issues.filter((issue) => issue.implementation.tracked).length,
     },
   };
 }
