@@ -1,6 +1,6 @@
 import { isAuthenticatedReviewerId } from './useAuth';
 
-type DecidedReviewStatus = 'accepted' | 'edited' | 'rejected';
+type DecidedReviewStatus = 'accepted' | 'edited' | 'merged' | 'rejected';
 type PendingReviewStatus = 'deferred' | 'follow_up';
 type ReviewStatus = 'proposed' | PendingReviewStatus | DecidedReviewStatus;
 
@@ -50,6 +50,7 @@ export interface TranscriptOntologyReviewNode extends ReviewAudit {
   transcript: TranscriptCitation[];
   followUpQuestion: string | null;
   minorityConcern: boolean;
+  mergeTargetId: string | null;
 }
 
 export interface TranscriptOntologyReviewRelation extends ReviewAudit {
@@ -108,7 +109,13 @@ export type TranscriptOntologyReviewDecision = DecisionAudit & (
   | {
     itemType: 'node';
     id: string;
-    status: 'deferred' | DecidedReviewStatus;
+    status: 'merged';
+    mergeTargetId: string;
+  }
+  | {
+    itemType: 'node';
+    id: string;
+    status: 'deferred' | Exclude<DecidedReviewStatus, 'merged'>;
     kind?: string;
     label?: string;
     text?: string;
@@ -123,7 +130,7 @@ export type TranscriptOntologyReviewDecision = DecisionAudit & (
   | {
     itemType: 'relation';
     id: string;
-    status: 'deferred' | DecidedReviewStatus;
+    status: 'deferred' | Exclude<DecidedReviewStatus, 'merged'>;
     relation?: string;
   }
 );
@@ -150,7 +157,7 @@ const TRANSCRIPT_CANDIDATE_FACILITATION_PROMPTS: Record<string, string> = {
 };
 const NODE_KINDS = new Set<string>(TRANSCRIPT_ONTOLOGY_NODE_KINDS);
 const RELATIONS = new Set<string>(TRANSCRIPT_ONTOLOGY_RELATIONS);
-const DECISION_STATUSES = new Set<string>(['accepted', 'edited', 'rejected']);
+const DECISION_STATUSES = new Set<string>(['accepted', 'edited', 'merged', 'rejected']);
 const REVIEW_STATUSES = new Set<string>(['deferred', 'follow_up', ...DECISION_STATUSES]);
 const WORKSPACE_REVIEW_STATUSES = new Set<string>(['proposed', ...REVIEW_STATUSES]);
 const OPAQUE_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,127}$/i;
@@ -533,6 +540,7 @@ export async function createTranscriptOntologyReviewWorkspace(
       ...citations(value.citedUids, chunks, 'node candidate'),
       followUpQuestion: null,
       minorityConcern: false,
+      mergeTargetId: null,
       reviewStatus: 'proposed',
       reviewer: null,
       reviewedAt: null,
@@ -630,6 +638,42 @@ function invalidateReviewedRelationsForNode(
   ));
 }
 
+function resolvedTranscriptNode(
+  nodes: TranscriptOntologyReviewNode[],
+  nodeId: string,
+): TranscriptOntologyReviewNode | null {
+  const node = nodes.find((candidate) => candidate.id === nodeId);
+  if (!node) return null;
+  if (node.reviewStatus !== 'merged') return node;
+  if (!node.mergeTargetId) return null;
+  const target = nodes.find((candidate) => candidate.id === node.mergeTargetId);
+  return target?.reviewStatus === 'accepted' || target?.reviewStatus === 'edited' ? target : null;
+}
+
+function invalidateMergedNodesForTarget(
+  nodes: TranscriptOntologyReviewNode[],
+  targetId: string,
+): { nodes: TranscriptOntologyReviewNode[]; invalidatedIds: string[] } {
+  const invalidatedIds: string[] = [];
+  const next = nodes.map((node) => {
+    if (node.reviewStatus !== 'merged' || node.mergeTargetId !== targetId) return node;
+    invalidatedIds.push(node.id);
+    return {
+      ...node,
+      kind: node.kindCandidate,
+      label: node.sourceLabel,
+      text: node.sourceText,
+      minorityConcern: false,
+      mergeTargetId: null,
+      reviewStatus: 'proposed' as const,
+      reviewer: null,
+      reviewedAt: null,
+      followUpQuestion: null,
+    };
+  });
+  return { nodes: next, invalidatedIds };
+}
+
 /** Applies one local human decision without persistence or publication. */
 export function reviewTranscriptOntologyCandidate(
   workspace: TranscriptOntologyReviewWorkspace,
@@ -649,6 +693,7 @@ export function reviewTranscriptOntologyCandidate(
         ...target,
         reviewStatus: 'follow_up',
         followUpQuestion: text(decision.followUpQuestion, 'follow-up question'),
+        mergeTargetId: null,
         ...audit,
       };
     } else if (decision.status === 'deferred') {
@@ -656,9 +701,32 @@ export function reviewTranscriptOntologyCandidate(
         ...target,
         reviewStatus: 'deferred',
         followUpQuestion: null,
+        mergeTargetId: null,
+        ...audit,
+      };
+    } else if (decision.status === 'merged') {
+      const mergeTarget = workspace.nodes.find((node) => node.id === decision.mergeTargetId);
+      const sourceKind = target.kind ?? target.kindCandidate;
+      if (!mergeTarget || mergeTarget.id === target.id
+        || (mergeTarget.reviewStatus !== 'accepted' && mergeTarget.reviewStatus !== 'edited')
+        || mergeTarget.kind !== sourceKind) {
+        throw new Error('Merge target must be a reviewed node with the same kind');
+      }
+      replacement = {
+        ...target,
+        kind: sourceKind,
+        label: target.sourceLabel,
+        text: target.sourceText,
+        minorityConcern: false,
+        mergeTargetId: mergeTarget.id,
+        reviewStatus: 'merged',
+        followUpQuestion: null,
         ...audit,
       };
     } else if (decision.status === 'rejected') {
+      if (workspace.nodes.some((node) => node.reviewStatus === 'merged' && node.mergeTargetId === target.id)) {
+        throw new Error('Unmerge dependent nodes before rejecting this node');
+      }
       if (workspace.relations.some((relation) => (
         (relation.source === target.id || relation.target === target.id)
         && (relation.reviewStatus === 'accepted' || relation.reviewStatus === 'edited')
@@ -671,6 +739,7 @@ export function reviewTranscriptOntologyCandidate(
         label: target.sourceLabel,
         text: target.sourceText,
         minorityConcern: false,
+        mergeTargetId: null,
         reviewStatus: 'rejected',
         followUpQuestion: null,
         ...audit,
@@ -695,14 +764,29 @@ export function reviewTranscriptOntologyCandidate(
         label,
         text: reviewedText,
         minorityConcern,
+        mergeTargetId: null,
         reviewStatus: decision.status,
         followUpQuestion: null,
         ...audit,
       };
     }
-    const nodes = workspace.nodes.map((node) => node.id === target.id ? replacement : node);
-    const relations = decision.status === 'deferred' || decision.status === 'follow_up'
-      ? invalidateReviewedRelationsForNode(workspace.relations, target.id)
+    let nodes = workspace.nodes.map((node) => node.id === target.id ? replacement : node);
+    let invalidatedIds: string[] = [];
+    const mergeMeaningChanged = target.reviewStatus === 'merged'
+      || replacement.kind !== target.kind
+      || replacement.label !== target.label
+      || replacement.text !== target.text
+      || replacement.reviewStatus === 'deferred'
+      || replacement.reviewStatus === 'follow_up';
+    if (mergeMeaningChanged) {
+      const invalidated = invalidateMergedNodesForTarget(nodes, target.id);
+      nodes = invalidated.nodes;
+      invalidatedIds = invalidated.invalidatedIds;
+    }
+    const relations = mergeMeaningChanged || decision.status === 'merged'
+      ? [target.id, ...invalidatedIds].reduce(
+        (items, id) => invalidateReviewedRelationsForNode(items, id), workspace.relations,
+      )
       : workspace.relations;
     return { ...workspace, nodes, relations, summary: summarize(nodes, relations) };
   }
@@ -731,8 +815,8 @@ export function reviewTranscriptOntologyCandidate(
   const relation = decision.status === 'rejected' ? null : text(decision.relation, 'reviewed relation type');
   if (relation !== null && !RELATIONS.has(relation)) throw new Error('Invalid reviewed relation type');
   if (decision.status !== 'rejected') {
-    const source = workspace.nodes.find((node) => node.id === target.source);
-    const destination = workspace.nodes.find((node) => node.id === target.target);
+    const source = resolvedTranscriptNode(workspace.nodes, target.source);
+    const destination = resolvedTranscriptNode(workspace.nodes, target.target);
     if (!source || !destination
       || !isDecidedReviewStatus(source.reviewStatus)
       || !isDecidedReviewStatus(destination.reviewStatus)
@@ -740,6 +824,7 @@ export function reviewTranscriptOntologyCandidate(
       || destination.reviewStatus === 'rejected') {
       throw new Error('Reviewed relation requires accepted or edited endpoint nodes');
     }
+    if (source.id === destination.id) throw new Error('Reviewed relation cannot become a self-loop after merge');
     const changed = relation !== target.relationCandidate;
     if (decision.status === 'accepted' && changed) throw new Error('Edited relation requires edited status');
     if (decision.status === 'edited' && !changed) throw new Error('Edited relation decision requires a change');
@@ -774,18 +859,23 @@ export function updateTranscriptOntologyCandidateDraft(
     }
     text(label, 'reviewed node label');
     text(draftText, 'reviewed node text');
-    const nodes = workspace.nodes.map((node) => node.id === target.id ? {
+    let nodes = workspace.nodes.map((node) => node.id === target.id ? {
       ...node,
       kind,
       label,
       text: draftText,
       minorityConcern,
+      mergeTargetId: null,
       reviewStatus: 'proposed' as const,
       reviewer: null,
       reviewedAt: null,
       followUpQuestion: null,
     } : node);
-    const relations = invalidateReviewedRelationsForNode(workspace.relations, target.id);
+    const invalidated = invalidateMergedNodesForTarget(nodes, target.id);
+    nodes = invalidated.nodes;
+    const relations = [target.id, ...invalidated.invalidatedIds].reduce(
+      (items, id) => invalidateReviewedRelationsForNode(items, id), workspace.relations,
+    );
     return { ...workspace, nodes, relations, summary: summarize(nodes, relations) };
   }
   const target = workspace.relations.find((relation) => relation.id === item.id);
@@ -811,19 +901,33 @@ export async function exportTranscriptOntologyReviewedPlan(
     throw new Error('Transcript ontology review is incomplete');
   }
   let rebuilt = await createTranscriptOntologyReviewWorkspace(workspace.source.fixtureText);
-  for (const node of workspace.nodes) {
+  const replayNodes = [
+    ...workspace.nodes.filter((node) => node.reviewStatus !== 'merged'),
+    ...workspace.nodes.filter((node) => node.reviewStatus === 'merged'),
+  ];
+  for (const node of replayNodes) {
     if (!WORKSPACE_REVIEW_STATUSES.has(node.reviewStatus)) {
       throw new Error('Invalid transcript ontology review status');
     }
     if (!isDecidedReviewStatus(node.reviewStatus) || !node.reviewer || !node.reviewedAt) {
       throw new Error('Transcript ontology review is incomplete');
     }
-    rebuilt = reviewTranscriptOntologyCandidate(rebuilt, {
-      itemType: 'node', id: node.id, status: node.reviewStatus,
-      kind: node.kind ?? undefined, label: node.label, text: node.text,
-      minorityConcern: node.minorityConcern,
-      reviewer: node.reviewer, reviewedAt: node.reviewedAt,
-    });
+    if (node.reviewStatus === 'merged') {
+      rebuilt = updateTranscriptOntologyCandidateDraft(rebuilt, {
+        itemType: 'node', id: node.id, kind: node.kind ?? undefined,
+      });
+      rebuilt = reviewTranscriptOntologyCandidate(rebuilt, {
+        itemType: 'node', id: node.id, status: 'merged',
+        mergeTargetId: node.mergeTargetId ?? '', reviewer: node.reviewer, reviewedAt: node.reviewedAt,
+      });
+    } else {
+      rebuilt = reviewTranscriptOntologyCandidate(rebuilt, {
+        itemType: 'node', id: node.id, status: node.reviewStatus,
+        kind: node.kind ?? undefined, label: node.label, text: node.text,
+        minorityConcern: node.minorityConcern,
+        reviewer: node.reviewer, reviewedAt: node.reviewedAt,
+      });
+    }
   }
   for (const relation of workspace.relations) {
     if (!WORKSPACE_REVIEW_STATUSES.has(relation.reviewStatus)) {
@@ -832,6 +936,7 @@ export async function exportTranscriptOntologyReviewedPlan(
     if (!isDecidedReviewStatus(relation.reviewStatus) || !relation.reviewer || !relation.reviewedAt) {
       throw new Error('Transcript ontology review is incomplete');
     }
+    if (relation.reviewStatus === 'merged') throw new Error('Relations cannot be merged into nodes');
     rebuilt = reviewTranscriptOntologyCandidate(rebuilt, {
       itemType: 'relation', id: relation.id, status: relation.reviewStatus,
       relation: relation.relation ?? undefined,

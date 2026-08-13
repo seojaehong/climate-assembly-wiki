@@ -196,8 +196,7 @@ describe('OntologyReviewConsole', () => {
       kindCandidate: 'Issue', kind: 'Issue', sourceLabel: '전환 속도', sourceText: '전환 속도를 논의합니다.',
       label: '전환 속도', text: '전환 속도를 논의합니다.', citedUids: ['chunk-1'],
       transcript: [{ uid: 'chunk-1', startMs: 0, endMs: 1000, speakerLabelPseudonym: 'speaker-unknown', text: '전환 속도를 논의합니다.' }],
-      followUpQuestion: null,
-      minorityConcern: false,
+      followUpQuestion: null, minorityConcern: false, mergeTargetId: null,
       reviewStatus: 'deferred', reviewer: AUTH_REVIEWER_ID, reviewedAt: '2026-08-29T01:00:00.000Z',
     };
     const html = renderToStaticMarkup(createElement(TranscriptNodeReviewCard, {
@@ -217,8 +216,7 @@ describe('OntologyReviewConsole', () => {
       kindCandidate: 'Issue', kind: 'Issue', sourceLabel: '전환 속도', sourceText: '전환 속도를 논의합니다.',
       label: '전환 속도', text: '전환 속도를 논의합니다.', citedUids: ['chunk-1'],
       transcript: [{ uid: 'chunk-1', startMs: 0, endMs: 1000, speakerLabelPseudonym: 'speaker-unknown', text: '전환 속도를 논의합니다.' }],
-      followUpQuestion: question,
-      minorityConcern: false,
+      followUpQuestion: question, minorityConcern: false, mergeTargetId: null,
       reviewStatus: 'follow_up', reviewer: AUTH_REVIEWER_ID, reviewedAt: '2026-08-29T01:00:00.000Z',
     };
     const html = renderToStaticMarkup(createElement(TranscriptNodeReviewCard, {
@@ -237,7 +235,7 @@ describe('OntologyReviewConsole', () => {
       kindCandidate: 'Claim', kind: 'Concern', sourceLabel: '지역 우려', sourceText: '지역 부담을 살펴야 합니다.',
       label: '지역 우려', text: '지역 부담을 살펴야 합니다.', citedUids: ['chunk-1'],
       transcript: [{ uid: 'chunk-1', startMs: 0, endMs: 1000, speakerLabelPseudonym: 'speaker-unknown', text: '지역 부담을 살펴야 합니다.' }],
-      followUpQuestion: null, minorityConcern: true,
+      followUpQuestion: null, minorityConcern: true, mergeTargetId: null,
       reviewStatus: 'proposed', reviewer: null, reviewedAt: null,
     };
     const html = renderToStaticMarkup(createElement(TranscriptNodeReviewCard, {
@@ -249,6 +247,30 @@ describe('OntologyReviewConsole', () => {
     expect(html).toContain('다수 의견에 흡수하지 않고 별도 Concern 신호로 보존합니다.');
     expect(html).toContain('소수 우려 표시 해제');
     expect(html).toContain('수정 승인');
+  });
+
+  it('offers a reviewed same-kind node as an explicit merge target', () => {
+    const source: TranscriptOntologyReviewNode = {
+      id: 'transcript-node:repeat', sourceUid: 'repeat', kindCandidate: 'Issue', kind: 'Issue',
+      sourceLabel: '반복 쟁점', sourceText: '같은 쟁점을 다시 말했습니다.',
+      label: '반복 쟁점', text: '같은 쟁점을 다시 말했습니다.', citedUids: ['chunk-2'],
+      transcript: [{ uid: 'chunk-2', startMs: 1000, endMs: 2000, speakerLabelPseudonym: 'speaker-b', text: '같은 쟁점을 다시 말했습니다.' }],
+      followUpQuestion: null, minorityConcern: false, mergeTargetId: null,
+      reviewStatus: 'proposed', reviewer: null, reviewedAt: null,
+    };
+    const target: TranscriptOntologyReviewNode = {
+      ...source, id: 'transcript-node:existing', sourceUid: 'existing', sourceLabel: '기존 쟁점',
+      sourceText: '먼저 검수한 쟁점입니다.', label: '기존 쟁점', text: '먼저 검수한 쟁점입니다.',
+      reviewStatus: 'accepted', reviewer: AUTH_REVIEWER_ID, reviewedAt: '2026-08-29T01:00:00.000Z',
+    };
+    const html = renderToStaticMarkup(createElement(TranscriptNodeReviewCard, {
+      node: source, mergeTargets: [source, target], reviewer: AUTH_REVIEWER_ID,
+      onDecision: () => undefined, onDraft: () => undefined,
+    }));
+
+    expect(html).toContain('aria-label="기존 node 병합"');
+    expect(html).toContain('기존 쟁점에 병합');
+    expect(html).toContain('원 발화와 인용을 보존해 합칩니다.');
   });
 
   it('renders a relation follow-up request with its exact pending question', () => {

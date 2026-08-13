@@ -173,6 +173,53 @@ test('rejects a minority concern marker on a non-Concern node', () => {
   })).toThrow('Invalid reviewed plan minority concern marker');
 });
 
+test('merges a repeated node into a reviewed target and unions its source citations', () => {
+  const plan = reviewedR2Plan();
+  plan.nodes[0].kind = 'Claim';
+  plan.nodes[0].label = R2_FIXTURE.expected.nodes[0].label;
+  plan.nodes[0].reviewStatus = 'merged';
+  plan.nodes[0].mergeTargetId = plan.nodes[1].id;
+  plan.relations[0].reviewStatus = 'rejected';
+  plan.relations[0].relation = null;
+  const graph = buildPublishedTranscriptReviewGraph({
+    fixtureText: R2_FIXTURE_TEXT,
+    reviewedPlan: plan,
+    publication: {
+      schemaVersion: 1, kind: 'transcript-ontology-publication-approval',
+      mode: 'synthetic-reviewed-demo', sourceId: 'live-transcript-r2-reviewed',
+      reviewedPlanSha256: reviewedTranscriptPlanSha256(plan), approvedBy: 'reviewer-test',
+      approvedAt: '2026-08-01T01:20:00.000Z',
+    },
+  });
+
+  expect(graph.elements.nodes).toHaveLength(1);
+  expect(graph.elements.nodes[0].data).toMatchObject({
+    id: 'transcript-node:candidate-claim',
+    cited_uids: ['chunk-001', 'chunk-002'],
+    meta: { merged_source_uids: ['candidate-issue'], source_chunk_uids: ['chunk-001', 'chunk-002'] },
+  });
+  expect(graph.elements.edges).toHaveLength(0);
+  expect(graph.meta).toMatchObject({ merged_nodes: 1, dropped: { rejected_edges: 1 } });
+});
+
+test('rejects a reviewed relation that becomes a self-loop after node merge', () => {
+  const plan = reviewedR2Plan();
+  plan.nodes[0].kind = 'Claim';
+  plan.nodes[0].label = R2_FIXTURE.expected.nodes[0].label;
+  plan.nodes[0].reviewStatus = 'merged';
+  plan.nodes[0].mergeTargetId = plan.nodes[1].id;
+  expect(() => buildPublishedTranscriptReviewGraph({
+    fixtureText: R2_FIXTURE_TEXT,
+    reviewedPlan: plan,
+    publication: {
+      schemaVersion: 1, kind: 'transcript-ontology-publication-approval',
+      mode: 'synthetic-reviewed-demo', sourceId: 'live-transcript-r2-reviewed',
+      reviewedPlanSha256: reviewedTranscriptPlanSha256(plan), approvedBy: 'reviewer-test',
+      approvedAt: '2026-08-01T01:20:00.000Z',
+    },
+  })).toThrow('Published reviewed relation cannot become a self-loop after merge');
+});
+
 test('keeps an authenticated reviewer ID in the private plan but redacts it from the public graph', () => {
   const plan = reviewedR2Plan();
   const reviewer = 'auth-user:00000000-0000-4000-8000-000000000091';

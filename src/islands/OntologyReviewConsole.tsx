@@ -426,6 +426,7 @@ function transcriptReviewStatusLabel(status: TranscriptOntologyReviewNode['revie
   if (status === 'proposed') return '미검수';
   if (status === 'deferred') return '보류';
   if (status === 'follow_up') return '후속 확인 중';
+  if (status === 'merged') return '기존 node에 병합됨';
   return status;
 }
 
@@ -439,8 +440,9 @@ function FollowUpRequest({ question }: { question: string | null }) {
   ) : null;
 }
 
-export function TranscriptNodeReviewCard({ node, reviewer, onDecision, onDraft }: {
+export function TranscriptNodeReviewCard({ node, mergeTargets = [], reviewer, onDecision, onDraft }: {
   node: TranscriptOntologyReviewNode;
+  mergeTargets?: TranscriptOntologyReviewNode[];
   reviewer: string;
   onDecision: (decision: TranscriptOntologyReviewDecision) => void;
   onDraft: (draft: TranscriptOntologyReviewDraft) => void;
@@ -458,6 +460,11 @@ export function TranscriptNodeReviewCard({ node, reviewer, onDecision, onDraft }
     followUpQuestion: transcriptCandidateFacilitationPrompt(kind), reviewer,
     reviewedAt: new Date().toISOString(),
   });
+  const eligibleMergeTargets = mergeTargets.filter((target) => (
+    target.id !== node.id
+    && (target.reviewStatus === 'accepted' || target.reviewStatus === 'edited')
+    && target.kind === kind
+  ));
   return (
     <article style={cardStyle} aria-label={`전사 노드 후보 검수 ${node.id}`}>
       <header>
@@ -482,6 +489,22 @@ export function TranscriptNodeReviewCard({ node, reviewer, onDecision, onDraft }
         })} style={controlStyle}>
           {node.minorityConcern ? '소수 우려 표시 해제' : '소수 우려로 표시'}
         </button>
+      </section>
+      <section aria-label="기존 node 병합" style={{ background: '#F6F8FA', border: `2px solid ${CONTROL_BORDER}`, borderRadius: 8, padding: 12 }}>
+        <strong>{node.reviewStatus === 'merged' ? `병합 대상 ${node.mergeTargetId}` : '중복 후보 병합'}</strong>
+        <p style={{ color: MUTED, margin: '6px 0' }}>같은 역할로 먼저 검수한 node에 원 발화와 인용을 보존해 합칩니다.</p>
+        {node.reviewStatus === 'merged' ? (
+          <button type="button" onClick={() => onDraft({ itemType: 'node', id: node.id, kind })} style={controlStyle}>
+            병합 해제 후 재검수
+          </button>
+        ) : eligibleMergeTargets.length ? eligibleMergeTargets.map((target) => (
+          <button key={target.id} type="button" onClick={() => onDecision({
+            itemType: 'node', id: node.id, status: 'merged', mergeTargetId: target.id,
+            reviewer, reviewedAt: new Date().toISOString(),
+          })} style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }}>
+            {target.label}에 병합
+          </button>
+        )) : <small style={{ color: MUTED }}>먼저 같은 역할의 다른 node를 승인해 주세요.</small>}
       </section>
       <label>표시 이름
         <input value={node.label} onChange={(event) => onDraft({ itemType: 'node', id: node.id, label: event.currentTarget.value })} style={{ ...controlStyle, display: 'block', width: '100%' }} />
@@ -804,7 +827,7 @@ export function TranscriptOntologyReviewPanel({ reviewerId }: { reviewerId: stri
           <section aria-labelledby="transcript-node-heading" style={{ display: 'grid', gap: 14, marginBottom: 28 }}>
             <h3 id="transcript-node-heading">1. candidate node · 전사·Habermas 역할 검수</h3>
             {workspace.nodes.map((node) => (
-              <TranscriptNodeReviewCard key={`${workspace.source.fixtureSha256}:${node.id}`} node={node} reviewer={reviewerId} onDecision={decide} onDraft={updateDraft} />
+              <TranscriptNodeReviewCard key={`${workspace.source.fixtureSha256}:${node.id}`} node={node} mergeTargets={workspace.nodes} reviewer={reviewerId} onDecision={decide} onDraft={updateDraft} />
             ))}
           </section>
           <section aria-labelledby="transcript-relation-heading" style={{ display: 'grid', gap: 14, marginBottom: 28 }}>

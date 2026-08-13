@@ -157,10 +157,14 @@ async function fixtureServer({
               <button type="button" id="transcript-first-defer">나중에 검수</button>
             </article>
             <article aria-label="전사 노드 후보 검수 transcript-node:candidate-claim">
+              <strong id="transcript-second-status">candidate node · 미검수</strong>
               <p>재생에너지 전환 속도를 높여야 합니다.</p>
-              <label>Habermas 발화 역할<select><option>Claim</option></select></label>
+              <label>Habermas 발화 역할<select id="transcript-second-kind"><option>Claim</option><option>Concern</option></select></label>
               <label>표시 이름<input id="transcript-second-label" type="text"></label>
-              <button type="button" data-transcript-decision="second">반려</button>
+              <section role="region" aria-label="기존 node 병합">
+                <strong id="transcript-merge-status">중복 후보 병합</strong>
+                <button type="button" id="transcript-second-merge" disabled>기존 node에 병합</button>
+              </section>
             </article>
             <article aria-label="전사 관계 후보 검수 transcript-edge:candidate-relation-1">
               <p>재생에너지 전환 속도를 높여야 합니다.</p>
@@ -194,6 +198,7 @@ async function fixtureServer({
           const transcriptApprovalButton = document.querySelector('#download-transcript-approval');
           const transcriptDecisions = new Set();
           let transcriptMinorityConcern = false;
+          let transcriptMerged = false;
           let exportedTranscriptPlan = null;
           const privateConsent = document.querySelector('#private-consent');
           const privateSession = document.querySelector('#private-session');
@@ -400,7 +405,12 @@ async function fixtureServer({
             document.querySelector('#transcript-second-label').value = transcriptFixture.expected.nodes[1].label;
             transcriptDecisions.clear();
             transcriptMinorityConcern = false;
+            transcriptMerged = false;
             document.querySelector('#transcript-first-kind').value = 'Issue';
+            document.querySelector('#transcript-second-kind').value = 'Claim';
+            document.querySelector('#transcript-second-status').textContent = 'candidate node · 미검수';
+            document.querySelector('#transcript-merge-status').textContent = '중복 후보 병합';
+            document.querySelector('#transcript-second-merge').disabled = true;
             document.querySelector('#transcript-minority-status').textContent = '소수 우려 표시 안 됨';
             document.querySelector('#transcript-minority').textContent = '소수 우려로 표시';
             transcriptProgress.textContent = '진행 0/3 · 후속 확인 0 · 보류 0';
@@ -413,6 +423,10 @@ async function fixtureServer({
           document.querySelectorAll('[data-transcript-decision]').forEach((button) => {
             button.addEventListener('click', () => {
               transcriptDecisions.add(button.dataset.transcriptDecision);
+              if (button.dataset.transcriptDecision === 'first') {
+                document.querySelector('#transcript-second-merge').disabled = document.querySelector('#transcript-second-kind').value !== 'Concern';
+                document.querySelector('#transcript-second-merge').textContent = \`\${document.querySelector('#transcript-first-label').value}에 병합\`;
+              }
               transcriptProgress.textContent = \`진행 \${transcriptDecisions.size}/3 · 후속 확인 0 · 보류 0\`;
               transcriptDownloadButton.disabled = transcriptDecisions.size !== 3;
             });
@@ -441,9 +455,32 @@ async function fixtureServer({
             transcriptDecisions.delete('first');
             transcriptDownloadButton.disabled = true;
           });
+          document.querySelector('#transcript-second-kind').addEventListener('change', () => {
+            transcriptMerged = false;
+            transcriptDecisions.delete('second');
+            document.querySelector('#transcript-second-status').textContent = 'candidate node · 미검수';
+            document.querySelector('#transcript-second-merge').disabled = !transcriptDecisions.has('first')
+              || document.querySelector('#transcript-second-kind').value !== 'Concern';
+            document.querySelector('#transcript-second-merge').textContent = \`\${document.querySelector('#transcript-first-label').value}에 병합\`;
+            transcriptDownloadButton.disabled = true;
+          });
+          document.querySelector('#transcript-second-merge').addEventListener('click', () => {
+            transcriptMerged = true;
+            transcriptDecisions.add('second');
+            document.querySelector('#transcript-second-status').textContent = 'candidate node · 기존 node에 병합됨';
+            document.querySelector('#transcript-merge-status').textContent = '병합 대상 transcript-node:candidate-issue';
+            transcriptProgress.textContent = \`진행 \${transcriptDecisions.size}/3 · 후속 확인 0 · 보류 0\`;
+            transcriptDownloadButton.disabled = transcriptDecisions.size !== 3;
+          });
           document.querySelector('#transcript-first-label').addEventListener('input', () => {
             transcriptDecisions.delete('first');
+            if (transcriptMerged) transcriptDecisions.delete('second');
+            transcriptMerged = false;
             document.querySelector('#transcript-first-status').textContent = 'candidate node · 미검수';
+            document.querySelector('#transcript-second-kind').value = 'Claim';
+            document.querySelector('#transcript-second-status').textContent = 'candidate node · 미검수';
+            document.querySelector('#transcript-merge-status').textContent = '중복 후보 병합';
+            document.querySelector('#transcript-second-merge').disabled = true;
             document.querySelector('#transcript-follow-up-request').hidden = true;
             transcriptProgress.textContent = \`진행 \${transcriptDecisions.size}/3 · 후속 확인 0 · 보류 0\`;
             transcriptDownloadButton.disabled = true;
@@ -478,15 +515,17 @@ async function fixtureServer({
                   text: first.text, citedUids: first.citedUids,
                   transcript: transcriptFixture.chunks.filter((chunk) => first.citedUids.includes(chunk.uid)),
                   minorityConcern: transcriptMinorityConcern,
+                  mergeTargetId: null,
                   reviewStatus: 'edited', reviewer, reviewedAt,
                 },
                 {
                   id: \`transcript-node:\${second.uid}\`, sourceUid: second.uid,
-                  kindCandidate: second.kind, kind: null,
+                  kindCandidate: second.kind, kind: 'Concern',
                   sourceLabel: second.label, sourceText: second.text,
                   label: second.label, text: second.text, citedUids: second.citedUids,
                   transcript: transcriptFixture.chunks.filter((chunk) => second.citedUids.includes(chunk.uid)),
-                  reviewStatus: 'rejected', reviewer, reviewedAt,
+                  minorityConcern: false, mergeTargetId: \`transcript-node:\${first.uid}\`,
+                  reviewStatus: 'merged', reviewer, reviewedAt,
                 },
               ],
               relations: [{

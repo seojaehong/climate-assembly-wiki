@@ -857,13 +857,20 @@ export async function verifyCanvasBrowser({
     await transcriptNodeCards.nth(0).getByLabel('표시 이름').fill('재생에너지 전환의 속도와 조건');
     await transcriptReviewPanel.getByText('진행 0/3 · 후속 확인 0 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
     await transcriptNodeCards.nth(0).getByRole('button', { name: '수정 승인' }).click();
-    await transcriptNodeCards.nth(1).getByRole('button', { name: '반려' }).click();
+    await transcriptNodeCards.nth(1).getByLabel('Habermas 발화 역할').selectOption('Concern');
+    await transcriptNodeCards.nth(1).getByRole('button', { name: '재생에너지 전환의 속도와 조건에 병합' }).click();
     await transcriptRelationCards.nth(0).getByRole('button', { name: '반려' }).click();
     await transcriptReviewPanel.getByText('진행 3/3 · 후속 확인 0 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
+    const transcriptMergeGateVerified = await transcriptNodeCards.nth(1)
+      .getByText('candidate node · 기존 node에 병합됨', { exact: true }).isVisible()
+      && await transcriptNodeCards.nth(1).getByText('병합 대상 transcript-node:candidate-issue', { exact: true }).isVisible();
     await transcriptNodeCards.nth(0).getByLabel('표시 이름').fill('재생에너지 전환의 최종 속도와 조건');
-    await transcriptReviewPanel.getByText('진행 2/3 · 후속 확인 0 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
-    const transcriptRedecisionGateVerified = await transcriptDownloadButton.isDisabled();
+    await transcriptReviewPanel.getByText('진행 1/3 · 후속 확인 0 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
+    const transcriptRedecisionGateVerified = await transcriptDownloadButton.isDisabled()
+      && await transcriptNodeCards.nth(1).getByText('candidate node · 미검수', { exact: true }).isVisible();
     await transcriptNodeCards.nth(0).getByRole('button', { name: '수정 승인' }).click();
+    await transcriptNodeCards.nth(1).getByLabel('Habermas 발화 역할').selectOption('Concern');
+    await transcriptNodeCards.nth(1).getByRole('button', { name: '재생에너지 전환의 최종 속도와 조건에 병합' }).click();
     await transcriptReviewPanel.getByText('진행 3/3 · 후속 확인 0 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
     const transcriptDownloadPromise = reviewPage.waitForEvent('download', { timeout: timeoutMs });
     await transcriptDownloadButton.click();
@@ -884,6 +891,7 @@ export async function verifyCanvasBrowser({
       && transcriptReviewedPlan.nodes?.[0]?.reviewStatus === 'edited'
       && transcriptReviewedPlan.nodes?.[0]?.kind === 'Concern'
       && transcriptReviewedPlan.nodes?.[0]?.minorityConcern === true
+      && transcriptReviewedPlan.nodes?.[0]?.mergeTargetId === null
       && transcriptReviewedPlan.nodes?.[0]?.label === '재생에너지 전환의 최종 속도와 조건'
       && transcriptReviewedPlan.nodes?.[0]?.reviewer === REVIEW_AUTH_REVIEWER_ID
       && transcriptReviewedPlan.nodes?.[0]?.citedUids?.join(',') === (hasHandoffInputs
@@ -892,8 +900,11 @@ export async function verifyCanvasBrowser({
       && transcriptReviewedPlan.nodes?.[0]?.transcript?.[0]?.text === (hasHandoffInputs
         ? '합성 음성의 최종 검수 전사입니다.'
         : '재생에너지 전환 속도를 높여야 합니다.')
-      && transcriptReviewedPlan.nodes?.[1]?.reviewStatus === 'rejected'
-      && transcriptReviewedPlan.nodes?.[1]?.kind === null
+      && transcriptReviewedPlan.nodes?.[1]?.reviewStatus === 'merged'
+      && transcriptReviewedPlan.nodes?.[1]?.kind === 'Concern'
+      && transcriptReviewedPlan.nodes?.[1]?.mergeTargetId === 'transcript-node:candidate-issue'
+      && transcriptReviewedPlan.nodes?.[1]?.label === transcriptReviewedPlan.nodes?.[1]?.sourceLabel
+      && transcriptReviewedPlan.nodes?.[1]?.text === transcriptReviewedPlan.nodes?.[1]?.sourceText
       && transcriptReviewedPlan.relations?.[0]?.reviewStatus === 'rejected'
       && transcriptReviewedPlan.relations?.[0]?.relation === null;
     const publicationApprovalButton = transcriptReviewPanel
@@ -927,11 +938,13 @@ export async function verifyCanvasBrowser({
       && publicationGraph.meta?.source?.source_id === 'live-transcript-r2-reviewed'
       && publicationGraph.meta?.counts?.nodes === 1
       && publicationGraph.meta?.counts?.edges === 0
-      && publicationGraph.meta?.dropped?.rejected_nodes === 1
+      && publicationGraph.meta?.dropped?.rejected_nodes === 0
       && publicationGraph.meta?.dropped?.rejected_edges === 1
+      && publicationGraph.meta?.merged_nodes === 1
       && publicationGraph.elements.nodes[0]?.data?.label === '재생에너지 전환의 최종 속도와 조건'
       && publicationGraph.elements.nodes[0]?.data?.kind === 'Concern'
       && publicationGraph.elements.nodes[0]?.data?.minority_concern === true
+      && publicationGraph.elements.nodes[0]?.data?.meta?.merged_source_uids?.join(',') === 'candidate-claim'
       && publicationGraph.meta?.minority_concerns === 1
       && publicationGraph.elements.nodes[0]?.data?.meta?.review_identity_kind === 'authenticated_user'
       && publicationGraph.meta?.publication?.approved_identity_kind === 'authenticated_user'
@@ -942,6 +955,7 @@ export async function verifyCanvasBrowser({
       && !publicationGraphText.includes('endMs');
     if (!transcriptLocalOnlyBoundaryVisible || !transcriptCandidateEvidenceVisible || !transcriptCandidatePromptVisible
       || !transcriptFollowUpGateVerified || !transcriptDeferGateVerified || !transcriptMinorityConcernMarked
+      || !transcriptMergeGateVerified
       || !transcriptRedecisionGateVerified || !transcriptHandoffFixtureDownloaded || !transcriptReviewDownloaded
       || !transcriptPublicationApprovalDownloaded || !transcriptPublicationHandoffVerified) {
       throw new Error('Transcript ontology review browser contract is incomplete');
@@ -1173,6 +1187,7 @@ export async function verifyCanvasBrowser({
         transcriptHandoffFixtureSha256: downloadedHandoffFixtureSha256,
         transcriptReviewDownloaded,
         transcriptMinorityConcernMarked,
+        transcriptMergeGateVerified,
         transcriptPublicationApprovalDownloaded,
         transcriptPublicationHandoffVerified,
         privateTranscriptReviewBatchSha256: privateOntologyHandoff.reviewBatchSha256,

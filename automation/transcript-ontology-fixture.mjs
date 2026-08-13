@@ -325,7 +325,7 @@ function reviewedPlanSource(fixture, fixtureText, reviewedPlan) {
 }
 
 function reviewAudit(item, sourceReviewedAt) {
-  if (!['accepted', 'edited', 'rejected'].includes(item.reviewStatus)) {
+  if (!['accepted', 'edited', 'merged', 'rejected'].includes(item.reviewStatus)) {
     throw new Error('Invalid reviewed plan item status');
   }
   const reviewer = nonemptyString(item.reviewer, 'reviewed plan reviewer');
@@ -396,8 +396,32 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
   const chunks = new Map(fixture.chunks.map((chunk) => [chunk.uid, chunk]));
   const fixtureNodes = new Map(fixture.expected.nodes.map((node) => [node.uid, node]));
   const baseNodes = new Map(baseGraph.elements.nodes.map((node) => [node.data.id, node]));
+  const reviewedNodesById = new Map(reviewedPlan.nodes.map((node) => {
+    if (!isRecord(node)) throw new Error('Invalid reviewed plan node');
+    return [node.id, node];
+  }));
+  const nodeAudits = new Map(reviewedPlan.nodes.map((node) => [node.id, reviewAudit(node, source.reviewedAt)]));
+  const mergeTargets = new Map();
+  const mergedByTarget = new Map();
+  for (const node of reviewedPlan.nodes) {
+    const audit = nodeAudits.get(node?.id);
+    if (audit?.reviewStatus !== 'merged') continue;
+    const mergeTargetId = opaqueId(node.mergeTargetId, 'reviewed plan merge target id');
+    const mergeTarget = reviewedNodesById.get(mergeTargetId);
+    const mergeTargetAudit = nodeAudits.get(mergeTargetId);
+    if (!mergeTarget || mergeTargetId === node.id
+      || !['accepted', 'edited'].includes(mergeTargetAudit?.reviewStatus)
+      || node.kind !== mergeTarget.kind) {
+      throw new Error('Invalid reviewed plan node merge target');
+    }
+    mergeTargets.set(node.id, mergeTargetId);
+    const sources = mergedByTarget.get(mergeTargetId) ?? [];
+    sources.push(node);
+    mergedByTarget.set(mergeTargetId, sources);
+  }
   const activeNodeIds = new Set();
   let rejectedNodeCount = 0;
+  let mergedNodeCount = 0;
   let latestReviewedAt = source.reviewedAt;
   const nodes = reviewedPlan.nodes.map((node) => {
     if (!isRecord(node)) throw new Error('Invalid reviewed plan node');
@@ -413,11 +437,23 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
       || canonicalJson(node.transcript) !== canonicalJson(expectedTranscript(fixtureNode.citedUids, chunks))) {
       throw new Error('Reviewed plan node provenance does not match its transcript fixture');
     }
-    const audit = reviewAudit(node, source.reviewedAt);
+    const audit = nodeAudits.get(node.id);
+    if (!audit) throw new Error('Invalid reviewed plan node audit');
     if (audit.reviewedAt > latestReviewedAt) latestReviewedAt = audit.reviewedAt;
     const minorityConcern = node.minorityConcern ?? false;
     if (typeof minorityConcern !== 'boolean' || (minorityConcern && node.kind !== 'Concern')) {
       throw new Error('Invalid reviewed plan minority concern marker');
+    }
+    if (audit.reviewStatus === 'merged') {
+      mergedNodeCount += 1;
+      if (!mergeTargets.has(node.id) || node.label !== fixtureNode.label || node.text !== fixtureNode.text
+        || node.minorityConcern === true) {
+        throw new Error('Merged reviewed plan node must preserve source content');
+      }
+      return null;
+    }
+    if (node.mergeTargetId !== undefined && node.mergeTargetId !== null) {
+      throw new Error('Only merged reviewed plan nodes may declare a merge target');
     }
     if (audit.reviewStatus === 'rejected') {
       rejectedNodeCount += 1;
@@ -436,6 +472,12 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
       throw new Error('Reviewed plan node status does not match its content');
     }
     activeNodeIds.add(node.id);
+    const mergedSources = mergedByTarget.get(node.id) ?? [];
+    const mergedSourceUids = mergedSources.map((sourceNode) => sourceNode.sourceUid);
+    const publicCitations = [...new Set([
+      ...fixtureNode.citedUids,
+      ...mergedSources.flatMap((sourceNode) => fixtureNodes.get(sourceNode.sourceUid)?.citedUids ?? []),
+    ])];
     const publicMeta = { ...baseNode.data.meta };
     delete publicMeta.reviewer;
     return {
@@ -445,11 +487,15 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
         kind: node.kind,
         kindKo: KIND_KO[node.kind],
         text: nodeText,
+        cited: publicCitations,
+        cited_uids: publicCitations,
         ...(minorityConcern ? { minority_concern: true } : {}),
         review_state: audit.reviewStatus,
         is_public: true,
         meta: {
           ...publicMeta,
+          source_chunk_uids: publicCitations,
+          ...(mergedSourceUids.length ? { merged_source_uids: mergedSourceUids } : {}),
           review_identity_kind: publicIdentityKind(audit.reviewer),
           reviewed_at: audit.reviewedAt,
           publication_identity_kind: publicationIdentityKind,
@@ -482,8 +528,13 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
       if (relation.relation !== null) throw new Error('Rejected reviewed plan relation must clear its type');
       return null;
     }
-    if (!activeNodeIds.has(relation.source) || !activeNodeIds.has(relation.target)) {
+    const publishedSource = mergeTargets.get(relation.source) ?? relation.source;
+    const publishedTarget = mergeTargets.get(relation.target) ?? relation.target;
+    if (!activeNodeIds.has(publishedSource) || !activeNodeIds.has(publishedTarget)) {
       throw new Error('Published reviewed relation requires published endpoint nodes');
+    }
+    if (publishedSource === publishedTarget) {
+      throw new Error('Published reviewed relation cannot become a self-loop after merge');
     }
     if (!RELATIONS.includes(relation.relation)) throw new Error('Invalid reviewed plan relation type');
     const changed = relation.relation !== fixtureRelation.relation;
@@ -495,6 +546,8 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
     return {
       data: {
         ...baseEdge.data,
+        source: publishedSource,
+        target: publishedTarget,
         rel: relation.relation,
         relKo: RELATION_KO[relation.relation],
         review_state: audit.reviewStatus,
@@ -520,6 +573,7 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
       source_review_status: 'reviewed',
       requires_publication_review: false,
       counts: { nodes: nodes.length, edges: edges.length },
+      ...(mergedNodeCount ? { merged_nodes: mergedNodeCount } : {}),
       ...(nodes.some((node) => node.data.minority_concern === true)
         ? { minority_concerns: nodes.filter((node) => node.data.minority_concern === true).length }
         : {}),

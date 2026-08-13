@@ -399,6 +399,78 @@ describe('transcript ontology review workspace', () => {
     });
   });
 
+  it('merges a repeated candidate into a reviewed node while preserving source provenance', async () => {
+    let workspace = await createTranscriptOntologyReviewWorkspace(fixtureText);
+    const targetId = workspace.nodes[0].id;
+    const sourceId = workspace.nodes[1].id;
+    workspace = reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'node', id: targetId, status: 'accepted', kind: 'Issue',
+      label: workspace.nodes[0].sourceLabel, text: workspace.nodes[0].sourceText,
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(0),
+    });
+    workspace = updateTranscriptOntologyCandidateDraft(workspace, {
+      itemType: 'node', id: sourceId, kind: 'Issue',
+    });
+    expect(() => reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'node', id: sourceId, status: 'merged', mergeTargetId: sourceId,
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(1),
+    })).toThrow('Merge target must be a reviewed node with the same kind');
+
+    workspace = reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'node', id: sourceId, status: 'edited', kind: 'Issue',
+      label: workspace.nodes[1].sourceLabel, text: workspace.nodes[1].sourceText,
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(1),
+    });
+    workspace = reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'relation', id: workspace.relations[0].id, status: 'accepted',
+      relation: workspace.relations[0].relationCandidate,
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(2),
+    });
+
+    workspace = reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'node', id: sourceId, status: 'merged', mergeTargetId: targetId,
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(3),
+    });
+    expect(workspace.nodes[1]).toMatchObject({
+      kind: 'Issue', label: workspace.nodes[1].sourceLabel, text: workspace.nodes[1].sourceText,
+      reviewStatus: 'merged', mergeTargetId: targetId, minorityConcern: false,
+    });
+    expect(workspace.summary.decided).toBe(2);
+    expect(workspace.relations[0]).toMatchObject({ reviewStatus: 'proposed', reviewer: null, reviewedAt: null });
+    expect(() => reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'relation', id: workspace.relations[0].id, status: 'accepted',
+      relation: workspace.relations[0].relationCandidate,
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(2),
+    })).toThrow('Reviewed relation cannot become a self-loop after merge');
+    expect(() => reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'node', id: targetId, status: 'rejected',
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(2),
+    })).toThrow('Unmerge dependent nodes before rejecting this node');
+
+    workspace = reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'relation', id: workspace.relations[0].id, status: 'rejected',
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(2),
+    });
+    const plan = JSON.parse(await exportTranscriptOntologyReviewedPlan(workspace)) as {
+      nodes: Array<Record<string, unknown>>;
+    };
+    expect(plan.nodes[1]).toMatchObject({
+      id: sourceId, reviewStatus: 'merged', mergeTargetId: targetId,
+      sourceLabel: workspace.nodes[1].sourceLabel, sourceText: workspace.nodes[1].sourceText,
+    });
+
+    workspace = updateTranscriptOntologyCandidateDraft(workspace, {
+      itemType: 'node', id: targetId, label: '병합 뒤 바뀐 대상',
+    });
+    expect(workspace.nodes[1]).toMatchObject({
+      reviewStatus: 'proposed', mergeTargetId: null, reviewer: null, reviewedAt: null,
+      kind: workspace.nodes[1].kindCandidate,
+    });
+    expect(workspace.relations[0]).toMatchObject({
+      reviewStatus: 'rejected',
+    });
+  });
+
   it('keeps accept edit and reject decisions local and exports only a completed private review plan', async () => {
     let workspace = await createTranscriptOntologyReviewWorkspace(fixtureText);
     await expect(exportTranscriptOntologyReviewedPlan(workspace)).rejects.toThrow('Transcript ontology review is incomplete');
