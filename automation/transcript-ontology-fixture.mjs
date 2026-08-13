@@ -15,6 +15,7 @@ const RELATIONS = [
 const SPEAKER_PSEUDONYM_PATTERN = /^speaker-[a-z]{1,3}$/;
 const OPAQUE_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,127}$/i;
 const REVIEWER_ALIAS_PATTERN = /^(moderator|reviewer)-(fixture|test)$/;
+const REVIEW_DECISION_ID_PATTERN = /^(?:auth-user:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|moderator-r2-test)$/;
 const LANGUAGE_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i;
 
 const KIND_KO = {
@@ -291,12 +292,16 @@ function reviewAudit(item, sourceReviewedAt) {
     throw new Error('Invalid reviewed plan item status');
   }
   const reviewer = nonemptyString(item.reviewer, 'reviewed plan reviewer');
-  if (!/^[a-zA-Z][a-zA-Z0-9._:-]{2,79}$/.test(reviewer)) {
+  if (!REVIEW_DECISION_ID_PATTERN.test(reviewer)) {
     throw new Error('Invalid reviewed plan reviewer');
   }
   const reviewedAt = canonicalIsoInstant(item.reviewedAt, 'reviewed plan reviewedAt');
   if (reviewedAt < sourceReviewedAt) throw new Error('Reviewed plan decision predates fixture review');
   return { reviewStatus: item.reviewStatus, reviewer, reviewedAt };
+}
+
+function publicReviewIdentityKind(reviewer) {
+  return reviewer.startsWith('auth-user:') ? 'authenticated_user' : 'synthetic_fixture';
 }
 
 function expectedTranscript(cited, chunks) {
@@ -381,6 +386,8 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
       throw new Error('Reviewed plan node status does not match its content');
     }
     activeNodeIds.add(node.id);
+    const publicMeta = { ...baseNode.data.meta };
+    delete publicMeta.reviewer;
     return {
       data: {
         ...baseNode.data,
@@ -391,8 +398,8 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
         review_state: audit.reviewStatus,
         is_public: true,
         meta: {
-          ...baseNode.data.meta,
-          reviewer: audit.reviewer,
+          ...publicMeta,
+          review_identity_kind: publicReviewIdentityKind(audit.reviewer),
           reviewed_at: audit.reviewedAt,
           publication_reviewer: approvedBy,
           published_at: approvedAt,
@@ -432,6 +439,8 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
     if ((audit.reviewStatus === 'accepted' && changed) || (audit.reviewStatus === 'edited' && !changed)) {
       throw new Error('Reviewed plan relation status does not match its type');
     }
+    const publicMeta = { ...baseEdge.data.meta };
+    delete publicMeta.reviewer;
     return {
       data: {
         ...baseEdge.data,
@@ -440,8 +449,8 @@ export function buildPublishedTranscriptReviewGraph({ fixtureText, reviewedPlan,
         review_state: audit.reviewStatus,
         is_public: true,
         meta: {
-          ...baseEdge.data.meta,
-          reviewer: audit.reviewer,
+          ...publicMeta,
+          review_identity_kind: publicReviewIdentityKind(audit.reviewer),
           reviewed_at: audit.reviewedAt,
           publication_reviewer: approvedBy,
           published_at: approvedAt,

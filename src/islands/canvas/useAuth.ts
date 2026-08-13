@@ -8,6 +8,12 @@ interface CanvasAuthSessionResult {
 }
 
 const AUTH_USER_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const AUTH_REVIEWER_ID = /^auth-user:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+/** Checks the canonical non-email reviewer identity emitted by the authenticated UI. */
+export function isAuthenticatedReviewerId(value: string): boolean {
+  return AUTH_REVIEWER_ID.test(value);
+}
 
 /** Derives a non-email review audit identity from the authenticated Supabase user UUID. */
 export function authenticatedReviewerId(userId: string): string | null {

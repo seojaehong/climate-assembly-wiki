@@ -27,7 +27,7 @@
               "chunk-001",
               "chunk-002"
             ],
-            "reviewer": "moderator-r2-test",
+            "review_identity_kind": "synthetic_fixture",
             "reviewed_at": "2026-08-01T01:10:00.000Z",
             "publication_reviewer": "reviewer-test",
             "published_at": "2026-08-01T01:20:00.000Z"
@@ -57,7 +57,7 @@
             "source_chunk_uids": [
               "chunk-001"
             ],
-            "reviewer": "moderator-r2-test",
+            "review_identity_kind": "synthetic_fixture",
             "reviewed_at": "2026-08-01T01:11:00.000Z",
             "publication_reviewer": "reviewer-test",
             "published_at": "2026-08-01T01:20:00.000Z"
@@ -84,7 +84,7 @@
             "source_chunk_uids": [
               "chunk-001"
             ],
-            "reviewer": "moderator-r2-test",
+            "review_identity_kind": "synthetic_fixture",
             "reviewed_at": "2026-08-01T01:12:00.000Z",
             "publication_reviewer": "reviewer-test",
             "published_at": "2026-08-01T01:20:00.000Z"

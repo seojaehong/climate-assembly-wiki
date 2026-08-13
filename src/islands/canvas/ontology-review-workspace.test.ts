@@ -130,7 +130,7 @@ describe('Canvas ontology review workspace', () => {
   it('derives advisory questions only from reviewed nodes without required support', async () => {
     const workspace = await createCanvasOntologyReviewWorkspace(await fixture());
     const reviewedAt = '2026-08-29T01:00:00.000Z';
-    const reviewer = 'moderator-role-1';
+    const reviewer = 'auth-user:00000000-0000-4000-8000-000000000091';
     let reviewed = reviewCanvasOntologyItem(workspace, {
       itemType: 'node', id: 'canvas-agenda:agenda-1', status: 'accepted', kind: 'Claim', reviewer, reviewedAt,
     });
@@ -158,7 +158,7 @@ describe('Canvas ontology review workspace', () => {
   it('removes prompts only when accepted reviewed support is connected', async () => {
     const workspace = await createCanvasOntologyReviewWorkspace(await fixture());
     const reviewedAt = '2026-08-29T01:00:00.000Z';
-    const reviewer = 'moderator-role-1';
+    const reviewer = 'auth-user:00000000-0000-4000-8000-000000000091';
     let reviewed = reviewCanvasOntologyItem(workspace, {
       itemType: 'node', id: 'canvas-agenda:agenda-1', status: 'accepted', kind: 'Claim', reviewer, reviewedAt,
     });
@@ -219,7 +219,7 @@ describe('Canvas ontology review workspace', () => {
   it('asks to clarify a reviewed evidence cluster until every Evidence is connected to a Claim or Issue', async () => {
     const workspace = await createCanvasOntologyReviewWorkspace(await fixture());
     const reviewedAt = '2026-08-29T01:00:00.000Z';
-    const reviewer = 'moderator-role-1';
+    const reviewer = 'auth-user:00000000-0000-4000-8000-000000000091';
     let reviewed = reviewCanvasOntologyItem(workspace, {
       itemType: 'node', id: 'canvas-agenda:agenda-1', status: 'accepted', kind: 'Issue', reviewer, reviewedAt,
     });
@@ -268,7 +268,7 @@ describe('Canvas ontology review workspace', () => {
   it('suggests naming a reviewed value tension without deciding how it should be resolved', async () => {
     const workspace = await createCanvasOntologyReviewWorkspace(await fixture());
     const reviewedAt = '2026-08-29T01:00:00.000Z';
-    const reviewer = 'moderator-role-1';
+    const reviewer = 'auth-user:00000000-0000-4000-8000-000000000091';
     let reviewed = reviewCanvasOntologyItem(workspace, {
       itemType: 'node', id: 'canvas-agenda:agenda-1', status: 'edited', kind: 'Value',
       label: '형평성', text: '전환 비용의 형평성을 우선한다.', reviewer, reviewedAt,
@@ -364,22 +364,22 @@ describe('Canvas ontology review workspace', () => {
     const workspace = await createCanvasOntologyReviewWorkspace(await fixture());
     expect(() => reviewCanvasOntologyItem(workspace, {
       itemType: 'node', id: 'canvas-agenda:agenda-1', status: 'accepted', kind: 'Issue',
-      text: '변경된 내용', reviewer: 'moderator-role-1', reviewedAt: '2026-08-29T01:00:00.000Z',
+      text: '변경된 내용', reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: '2026-08-29T01:00:00.000Z',
     })).toThrow('Edited Canvas ontology content requires edited review status');
     expect(() => reviewCanvasOntologyItem(workspace, {
       itemType: 'node', id: 'canvas-agenda:agenda-1', status: 'accepted', kind: 'Issue',
-      reviewer: 'moderator-role-1', reviewedAt: '2026-08-29 10:00:00',
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: '2026-08-29 10:00:00',
     })).toThrow('Invalid review timestamp');
     expect(() => reviewCanvasOntologyItem(workspace, {
       itemType: 'node', id: 'canvas-agenda:agenda-1', status: 'accepted', kind: 'Issue',
-      reviewer: '010-1234-5678', reviewedAt: '2026-08-29T01:00:00.000Z',
-    })).toThrow('Reviewer alias format is invalid');
+      reviewer: 'moderator-role-1', reviewedAt: '2026-08-29T01:00:00.000Z',
+    })).toThrow('Authenticated reviewer ID is invalid');
   });
 
   it('requires explicit human decisions and preserves edited node semantics', async () => {
     let workspace = await createCanvasOntologyReviewWorkspace(await fixture());
     const reviewedAt = '2026-08-29T01:00:00.000Z';
-    const reviewer = 'moderator-role-1';
+    const reviewer = 'auth-user:00000000-0000-4000-8000-000000000091';
 
     workspace = reviewCanvasOntologyItem(workspace, {
       itemType: 'node', id: 'canvas-agenda:agenda-1', status: 'edited', kind: 'Issue',
@@ -416,7 +416,7 @@ describe('Canvas ontology review workspace', () => {
     expect(() => exportCanvasOntologyReviewedPlan(workspace)).toThrow('Canvas ontology review is incomplete');
 
     const reviewedAt = '2026-08-29T01:00:00.000Z';
-    const reviewer = 'moderator-role-1';
+    const reviewer = 'auth-user:00000000-0000-4000-8000-000000000091';
     workspace = reviewCanvasOntologyItem(workspace, {
       itemType: 'node', id: 'canvas-agenda:agenda-1', status: 'rejected', reviewer, reviewedAt,
     });
@@ -436,7 +436,7 @@ describe('Canvas ontology review workspace', () => {
   it('requires accepted dependencies to be rejected before changing their node', async () => {
     let workspace = await createCanvasOntologyReviewWorkspace(await fixture());
     const reviewedAt = '2026-08-29T01:00:00.000Z';
-    const reviewer = 'moderator-role-1';
+    const reviewer = 'auth-user:00000000-0000-4000-8000-000000000091';
     workspace = reviewCanvasOntologyItem(workspace, {
       itemType: 'node', id: 'canvas-agenda:agenda-1', status: 'accepted', kind: 'Issue', reviewer, reviewedAt,
     });

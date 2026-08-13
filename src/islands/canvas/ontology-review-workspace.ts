@@ -1,3 +1,5 @@
+import { isAuthenticatedReviewerId } from './useAuth';
+
 type ReviewStatus = 'proposed' | 'accepted' | 'edited' | 'rejected';
 type DecidedStatus = Exclude<ReviewStatus, 'proposed'>;
 
@@ -118,7 +120,6 @@ export type CanvasOntologyReviewDecision =
   });
 
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
-const REVIEWER_ALIAS_PATTERN = /^[a-zA-Z][a-zA-Z0-9._:-]{2,79}$/;
 const CANVAS_ONTOLOGY_NODE_KINDS = [
   'Issue', 'Claim', 'Proposal', 'Concern', 'Condition', 'Value', 'Evidence',
 ];
@@ -613,8 +614,8 @@ export async function createCanvasOntologyReviewWorkspace(input: {
 }
 
 function validateReviewAuditInput(input: ReviewAuditInput): void {
-  const reviewer = nonemptyString(input.reviewer, 'reviewer alias');
-  if (!REVIEWER_ALIAS_PATTERN.test(reviewer)) throw new Error('Reviewer alias format is invalid');
+  const reviewer = nonemptyString(input.reviewer, 'authenticated reviewer id');
+  if (!isAuthenticatedReviewerId(reviewer)) throw new Error('Authenticated reviewer ID is invalid');
   const reviewedAt = nonemptyString(input.reviewedAt, 'review timestamp');
   if (new Date(reviewedAt).toISOString() !== reviewedAt) throw new Error('Invalid review timestamp');
 }
@@ -717,6 +718,10 @@ export function reviewCanvasOntologyItem(
 export function exportCanvasOntologyReviewedPlan(workspace: CanvasOntologyReviewWorkspace): string {
   const { plan } = workspace;
   if (summarize(plan).decided !== summarize(plan).total) throw new Error('Canvas ontology review is incomplete');
+  for (const item of [...plan.nodes, ...plan.relations, ...plan.clusters]) {
+    if (item.reviewer === null || item.reviewedAt === null) throw new Error('Canvas ontology review audit is incomplete');
+    validateReviewAuditInput({ reviewer: item.reviewer, reviewedAt: item.reviewedAt });
+  }
   const acceptedNodeIds = new Set(
     plan.nodes.filter((node) => node.reviewStatus === 'accepted' || node.reviewStatus === 'edited')
       .map((node) => node.id),

@@ -1,3 +1,5 @@
+import { isAuthenticatedReviewerId } from './useAuth';
+
 export type PrivateTranscriptReviewStatus = 'proposed' | 'accepted' | 'edited' | 'rejected';
 
 export interface PrivateTranscriptChunk {
@@ -71,7 +73,6 @@ interface ReviewChunkInput {
 
 const OPAQUE_ID = /^[a-z0-9][a-z0-9._:-]{0,127}$/i;
 const SPEAKER = /^speaker-[a-z]{1,3}$/;
-const REVIEWER = /^[a-zA-Z][a-zA-Z0-9._:-]{2,79}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
 
 function nonempty(value: string, label: string): string {
@@ -134,7 +135,7 @@ function validatePrivateTranscriptCaptureSession(session: PrivateTranscriptCaptu
     }
     if (!['accepted', 'edited', 'rejected'].includes(chunk.reviewStatus)
       || chunk.reviewer === null
-      || !REVIEWER.test(chunk.reviewer)
+      || !isAuthenticatedReviewerId(chunk.reviewer)
       || chunk.reviewedAt === null
       || canonicalInstant(chunk.reviewedAt, 'transcript reviewedAt') < expectedSource.stoppedAt) {
       throw new Error('Invalid reviewed transcript metadata');
@@ -214,7 +215,7 @@ export function reviewPrivateTranscriptChunk(
   const index = session.chunks.findIndex((chunk) => chunk.uid === input.uid);
   if (index < 0) throw new Error('Unknown transcript chunk');
   const reviewer = nonempty(input.reviewer, 'transcript reviewer');
-  if (!REVIEWER.test(reviewer)) throw new Error('Invalid transcript reviewer');
+  if (!isAuthenticatedReviewerId(reviewer)) throw new Error('Invalid authenticated transcript reviewer');
   const reviewedAt = canonicalInstant(input.reviewedAt, 'transcript reviewedAt');
   if (reviewedAt < session.source.stoppedAt) throw new Error('Transcript review predates capture completion');
   const current = session.chunks[index];

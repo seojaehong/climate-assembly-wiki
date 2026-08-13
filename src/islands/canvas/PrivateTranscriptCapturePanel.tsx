@@ -7,6 +7,7 @@ import {
   updatePrivateTranscriptChunkDraft,
   type PrivateTranscriptCaptureSession,
 } from './private-transcript-capture';
+import { isAuthenticatedReviewerId } from './useAuth';
 
 const BORDER = '#2F6F7E';
 const INK = '#102A43';
@@ -336,7 +337,7 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
     }
   };
 
-  const reviewerValid = /^[a-zA-Z][a-zA-Z0-9._:-]{2,79}$/.test(reviewerId);
+  const reviewerValid = isAuthenticatedReviewerId(reviewerId);
   const exportReady = capture !== null
     && capture.summary.chunks > 0
     && capture.summary.decided === capture.summary.chunks

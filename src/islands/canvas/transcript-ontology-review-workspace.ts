@@ -1,3 +1,5 @@
+import { isAuthenticatedReviewerId } from './useAuth';
+
 type ReviewStatus = 'proposed' | 'accepted' | 'edited' | 'rejected';
 
 export interface TranscriptCitation {
@@ -262,8 +264,8 @@ function decisionAudit(
   workspace: TranscriptOntologyReviewWorkspace,
   decision: DecisionAudit,
 ): Pick<ReviewAudit, 'reviewer' | 'reviewedAt'> {
-  const reviewer = text(decision.reviewer, 'reviewer role id');
-  if (!/^[a-zA-Z][a-zA-Z0-9._:-]{2,79}$/.test(reviewer)) throw new Error('Invalid reviewer role id');
+  const reviewer = text(decision.reviewer, 'authenticated reviewer id');
+  if (!isAuthenticatedReviewerId(reviewer)) throw new Error('Invalid authenticated reviewer id');
   const reviewedAt = canonicalInstant(decision.reviewedAt, 'decision reviewedAt');
   if (reviewedAt < workspace.source.reviewedAt) throw new Error('Decision predates fixture review');
   return { reviewer, reviewedAt };

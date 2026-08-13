@@ -36,7 +36,7 @@ describe('private transcript capture', () => {
       uid: 'capture-20260829-a:chunk:1',
       status: 'accepted',
       text: '재생에너지 전환 속도를 높여야 합니다.',
-      reviewer: 'moderator-r4-test',
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091',
       reviewedAt: '2026-08-29T01:05:00.000Z',
     });
     const batch = exportPrivateTranscriptReviewBatch(reviewed);
@@ -73,14 +73,14 @@ describe('private transcript capture', () => {
       uid: 'capture-20260829-a:chunk:1',
       status: 'edited',
       text: '전환 속도를 높여야 합니다.',
-      reviewer: 'moderator-r4-test',
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091',
       reviewedAt: '2026-08-29T01:05:00.000Z',
     });
     session = reviewPrivateTranscriptChunk(session, {
       uid: 'capture-20260829-a:chunk:2',
       status: 'rejected',
       text: '검증하지 않을 구간입니다.',
-      reviewer: 'moderator-r4-test',
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091',
       reviewedAt: '2026-08-29T01:06:00.000Z',
     });
 
@@ -112,7 +112,7 @@ describe('private transcript capture', () => {
       uid: 'capture-20260829-a:chunk:1',
       status: 'accepted',
       text: '최초 전사입니다.',
-      reviewer: 'moderator-r4-test',
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091',
       reviewedAt: '2026-08-29T01:05:00.000Z',
     });
 
@@ -151,6 +151,35 @@ describe('private transcript capture', () => {
     );
   });
 
+  it('rejects free-form reviewer aliases in decisions and tampered exports', () => {
+    const proposed = appendPrivateTranscriptChunk(capture(), {
+      startMs: 0,
+      endMs: 12_000,
+      speakerLabelPseudonym: 'speaker-a',
+      text: '검수할 전사입니다.',
+    });
+    expect(() => reviewPrivateTranscriptChunk(proposed, {
+      uid: 'capture-20260829-a:chunk:1',
+      status: 'accepted',
+      text: '검수할 전사입니다.',
+      reviewer: 'moderator-r4-test',
+      reviewedAt: '2026-08-29T01:05:00.000Z',
+    })).toThrow('Invalid authenticated transcript reviewer');
+
+    const reviewed = reviewPrivateTranscriptChunk(proposed, {
+      uid: 'capture-20260829-a:chunk:1',
+      status: 'accepted',
+      text: '검수할 전사입니다.',
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091',
+      reviewedAt: '2026-08-29T01:05:00.000Z',
+    });
+    const tampered = structuredClone(reviewed);
+    tampered.chunks[0].reviewer = 'moderator-r4-test';
+    expect(() => exportPrivateTranscriptReviewBatch(tampered)).toThrow(
+      'Invalid reviewed transcript metadata',
+    );
+  });
+
   it('rejects changed accepted text and invalid review audit metadata at export time', () => {
     const proposed = appendPrivateTranscriptChunk(capture(), {
       startMs: 0,
@@ -162,7 +191,7 @@ describe('private transcript capture', () => {
       uid: 'capture-20260829-a:chunk:1',
       status: 'accepted',
       text: '검수할 전사입니다.',
-      reviewer: 'moderator-r4-test',
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091',
       reviewedAt: '2026-08-29T01:05:00.000Z',
     });
     const changedText = structuredClone(reviewed);
@@ -188,7 +217,7 @@ describe('private transcript capture', () => {
       uid: 'capture-20260829-a:chunk:1',
       status: 'accepted',
       text: '검수 완료 전사입니다.',
-      reviewer: 'moderator-r4-test',
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091',
       reviewedAt: '2026-08-29T01:05:00.000Z',
     });
     const wrongStorage = {

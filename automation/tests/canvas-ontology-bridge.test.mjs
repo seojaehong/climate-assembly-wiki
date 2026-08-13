@@ -115,14 +115,14 @@ test('exports only fully reviewed items to the current graph schema without publ
   const reviewedAt = '2026-08-29T01:00:00.000Z';
   plan.nodes[0] = {
     ...plan.nodes[0], kind: 'Issue', label: '지역 에너지 자립', text: '지역 에너지 자립의 조건을 논의한다.',
-    reviewStatus: 'edited', reviewer: 'moderator-1', reviewedAt,
+    reviewStatus: 'edited', reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt,
   };
-  plan.nodes[1] = { ...plan.nodes[1], kind: 'Proposal', reviewStatus: 'accepted', reviewer: 'moderator-1', reviewedAt };
-  plan.relations[0] = { ...plan.relations[0], relation: 'supports', reviewStatus: 'accepted', reviewer: 'moderator-1', reviewedAt };
-  plan.relations[1] = { ...plan.relations[1], relation: 'implements', reviewStatus: 'accepted', reviewer: 'moderator-1', reviewedAt };
+  plan.nodes[1] = { ...plan.nodes[1], kind: 'Proposal', reviewStatus: 'accepted', reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt };
+  plan.relations[0] = { ...plan.relations[0], relation: 'supports', reviewStatus: 'accepted', reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt };
+  plan.relations[1] = { ...plan.relations[1], relation: 'implements', reviewStatus: 'accepted', reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt };
   plan.clusters[0] = {
     ...plan.clusters[0], reviewStatus: 'accepted', issueNodeId: 'canvas-agenda:agenda-1',
-    reviewer: 'moderator-1', reviewedAt,
+    reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt,
   };
 
   const graph = exportReviewedCanvasOntology({
@@ -170,6 +170,16 @@ test('exports only fully reviewed items to the current graph schema without publ
     },
   });
   expect(graph.elements.edges.map((edge) => edge.data.rel)).toEqual(['supports', 'implements']);
+
+  plan.nodes[0] = { ...plan.nodes[0], reviewer: 'moderator-1' };
+  expect(() => exportReviewedCanvasOntology({
+    reviewedPlan: plan,
+    snapshot: SNAPSHOT,
+    snapshotSource,
+  })).toThrow('Invalid authenticated reviewer id');
+  plan.nodes[0] = {
+    ...plan.nodes[0], reviewer: 'auth-user:00000000-0000-4000-8000-000000000091',
+  };
 
   plan.nodes[0] = { ...plan.nodes[0], reviewStatus: 'accepted' };
   expect(() => exportReviewedCanvasOntology({
@@ -430,18 +440,18 @@ test('runs the local create, verify, and reviewed graph export CLI without datab
 
     const reviewedPlan = JSON.parse(readFileSync(planPath, 'utf8'));
     const reviewedAt = '2026-08-29T01:00:00.000Z';
-    reviewedPlan.nodes[0] = { ...reviewedPlan.nodes[0], kind: 'Issue', reviewStatus: 'accepted', reviewer: 'moderator-1', reviewedAt };
-    reviewedPlan.nodes[1] = { ...reviewedPlan.nodes[1], kind: 'Proposal', reviewStatus: 'accepted', reviewer: 'moderator-1', reviewedAt };
+    reviewedPlan.nodes[0] = { ...reviewedPlan.nodes[0], kind: 'Issue', reviewStatus: 'accepted', reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt };
+    reviewedPlan.nodes[1] = { ...reviewedPlan.nodes[1], kind: 'Proposal', reviewStatus: 'accepted', reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt };
     reviewedPlan.relations = reviewedPlan.relations.map((relation, index) => ({
       ...relation,
       relation: index === 0 ? 'supports' : 'implements',
       reviewStatus: 'accepted',
-      reviewer: 'moderator-1',
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091',
       reviewedAt,
     }));
     reviewedPlan.clusters[0] = {
       ...reviewedPlan.clusters[0], reviewStatus: 'accepted', issueNodeId: reviewedPlan.nodes[0].id,
-      reviewer: 'moderator-1', reviewedAt,
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt,
     };
     writeFileSync(planPath, JSON.stringify(reviewedPlan), 'utf8');
 

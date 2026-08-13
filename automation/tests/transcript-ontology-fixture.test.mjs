@@ -116,6 +116,7 @@ test('publishes only accepted R2 review items with reviewed state and cited chun
     review_state: 'edited',
     is_public: true,
     cited_uids: ['chunk-001', 'chunk-002'],
+    meta: { review_identity_kind: 'synthetic_fixture' },
   });
   expect(graph.meta).toMatchObject({
     variant: 'transcript-live-reviewed-plan',
@@ -125,6 +126,34 @@ test('publishes only accepted R2 review items with reviewed state and cited chun
   });
   expect(JSON.stringify(graph)).not.toContain('speakerLabelPseudonym');
   expect(JSON.stringify(graph)).not.toContain('startMs');
+});
+
+test('keeps an authenticated reviewer ID in the private plan but redacts it from the public graph', () => {
+  const plan = reviewedR2Plan();
+  const reviewer = 'auth-user:00000000-0000-4000-8000-000000000091';
+  for (const item of [...plan.nodes, ...plan.relations]) item.reviewer = reviewer;
+  const graph = buildPublishedTranscriptReviewGraph({
+    fixtureText: R2_FIXTURE_TEXT,
+    reviewedPlan: plan,
+    publication: {
+      schemaVersion: 1,
+      kind: 'transcript-ontology-publication-approval',
+      mode: 'synthetic-reviewed-demo',
+      sourceId: 'live-transcript-r2-reviewed',
+      reviewedPlanSha256: reviewedTranscriptPlanSha256(plan),
+      approvedBy: 'reviewer-test',
+      approvedAt: '2026-08-01T01:20:00.000Z',
+    },
+  });
+
+  expect(JSON.stringify(plan)).toContain(reviewer);
+  expect(JSON.stringify(graph)).not.toContain(reviewer);
+  expect(graph.elements.nodes.every((node) => (
+    node.data.meta.review_identity_kind === 'authenticated_user'
+  ))).toBe(true);
+  expect(graph.elements.edges.every((edge) => (
+    edge.data.meta.review_identity_kind === 'authenticated_user'
+  ))).toBe(true);
 });
 
 test('rejects an R2 plan changed after publication approval', () => {
@@ -165,6 +194,26 @@ test('rejects a reviewed plan that duplicates one item while omitting another', 
     reviewedPlan: plan,
     publication,
   })).toThrow('Reviewed plan item set does not match its transcript fixture');
+});
+
+test('rejects arbitrary reviewed plan identities while retaining the explicit synthetic alias', () => {
+  const plan = reviewedR2Plan();
+  const publication = {
+    schemaVersion: 1,
+    kind: 'transcript-ontology-publication-approval',
+    mode: 'synthetic-reviewed-demo',
+    sourceId: 'live-transcript-r2-reviewed',
+    approvedBy: 'reviewer-test',
+    approvedAt: '2026-08-01T01:20:00.000Z',
+  };
+  plan.nodes[0].reviewer = 'moderator-role-1';
+  publication.reviewedPlanSha256 = reviewedTranscriptPlanSha256(plan);
+
+  expect(() => buildPublishedTranscriptReviewGraph({
+    fixtureText: R2_FIXTURE_TEXT,
+    reviewedPlan: plan,
+    publication,
+  })).toThrow('Invalid reviewed plan reviewer');
 });
 
 test('exports only explicitly approved synthetic fixtures as a public live graph', () => {

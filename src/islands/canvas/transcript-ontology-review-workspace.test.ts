@@ -57,21 +57,21 @@ describe('transcript ontology review workspace', () => {
       kind: 'Issue',
       label: '재생에너지 전환의 속도와 조건',
       text: '전환 속도와 지역 전력망 조건을 함께 검토한다.',
-      reviewer: 'moderator-role-1',
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091',
       reviewedAt: '2026-08-01T02:00:00.000Z',
     });
     workspace = reviewTranscriptOntologyCandidate(workspace, {
       itemType: 'node',
       id: 'transcript-node:candidate-claim',
       status: 'rejected',
-      reviewer: 'moderator-role-1',
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091',
       reviewedAt: '2026-08-01T02:01:00.000Z',
     });
     workspace = reviewTranscriptOntologyCandidate(workspace, {
       itemType: 'relation',
       id: 'transcript-edge:candidate-relation-1',
       status: 'rejected',
-      reviewer: 'moderator-role-1',
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091',
       reviewedAt: '2026-08-01T02:02:00.000Z',
     });
 
@@ -131,33 +131,43 @@ describe('transcript ontology review workspace', () => {
       .rejects.toThrow('Transcript ontology review is incomplete');
   });
 
+  it('rejects a free-form reviewer alias before applying a transcript decision', async () => {
+    const workspace = await createTranscriptOntologyReviewWorkspace(fixtureText);
+
+    expect(() => reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'node', id: workspace.nodes[0].id, status: 'accepted',
+      kind: workspace.nodes[0].kindCandidate, label: workspace.nodes[0].sourceLabel,
+      text: workspace.nodes[0].sourceText, reviewer: 'moderator-role-1', reviewedAt: decisionAt(0),
+    })).toThrow('Invalid authenticated reviewer id');
+  });
+
   it('enforces relation endpoint decisions in either review order', async () => {
     let workspace = await createTranscriptOntologyReviewWorkspace(fixtureText);
     for (const [index, node] of workspace.nodes.entries()) {
       workspace = reviewTranscriptOntologyCandidate(workspace, {
         itemType: 'node', id: node.id, status: 'accepted', kind: node.kindCandidate,
-        label: node.sourceLabel, text: node.sourceText, reviewer: 'moderator-role-1',
+        label: node.sourceLabel, text: node.sourceText, reviewer: 'auth-user:00000000-0000-4000-8000-000000000091',
         reviewedAt: decisionAt(index),
       });
     }
     workspace = reviewTranscriptOntologyCandidate(workspace, {
       itemType: 'relation', id: workspace.relations[0].id, status: 'accepted',
-      relation: workspace.relations[0].relationCandidate, reviewer: 'moderator-role-1',
+      relation: workspace.relations[0].relationCandidate, reviewer: 'auth-user:00000000-0000-4000-8000-000000000091',
       reviewedAt: decisionAt(2),
     });
     expect(() => reviewTranscriptOntologyCandidate(workspace, {
       itemType: 'node', id: workspace.nodes[0].id, status: 'rejected',
-      reviewer: 'moderator-role-1', reviewedAt: decisionAt(3),
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(3),
     })).toThrow('Reject dependent reviewed relations before rejecting this node');
 
     let rejectedEndpoint = await createTranscriptOntologyReviewWorkspace(fixtureText);
     rejectedEndpoint = reviewTranscriptOntologyCandidate(rejectedEndpoint, {
       itemType: 'node', id: rejectedEndpoint.nodes[0].id, status: 'rejected',
-      reviewer: 'moderator-role-1', reviewedAt: decisionAt(4),
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(4),
     });
     expect(() => reviewTranscriptOntologyCandidate(rejectedEndpoint, {
       itemType: 'relation', id: rejectedEndpoint.relations[0].id, status: 'edited',
-      relation: 'supports', reviewer: 'moderator-role-1', reviewedAt: decisionAt(5),
+      relation: 'supports', reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(5),
     })).toThrow('Reviewed relation requires non-rejected endpoint nodes');
   });
 

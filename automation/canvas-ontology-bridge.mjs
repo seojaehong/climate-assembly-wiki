@@ -9,6 +9,7 @@ import {
 
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC_ROOT = resolve(REPOSITORY_ROOT, 'public');
+const AUTH_REVIEWER_ID = /^auth-user:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 export const CANVAS_ONTOLOGY_NODE_KINDS = [
   'Issue', 'Claim', 'Proposal', 'Concern', 'Condition', 'Value', 'Evidence',
@@ -363,7 +364,8 @@ function proposedSourceShape(plan) {
 }
 
 function validateReviewAudit(item) {
-  nonemptyString(item.reviewer, 'reviewer');
+  const reviewer = nonemptyString(item.reviewer, 'authenticated reviewer id');
+  if (!AUTH_REVIEWER_ID.test(reviewer)) throw new Error('Invalid authenticated reviewer id');
   const reviewedAt = nonemptyString(item.reviewedAt, 'reviewedAt');
   if (new Date(reviewedAt).toISOString() !== reviewedAt) throw new Error('Invalid reviewedAt');
 }
