@@ -37,6 +37,7 @@ import {
   type PlatformResult,
 } from '../../lib/platform';
 import ScopeOutlet from './ScopeViews';
+import { HQ_ACTOR_KEY, HQ_TOKEN_KEY } from '../mod/hq-gate-logic';
 
 const NAVY = '#1F4E79';
 export const PLATFORM_ACCENT = '#135C73';
@@ -59,6 +60,26 @@ const ACCESSIBILITY_LINK_STYLE: React.CSSProperties = {
 
 export interface PlatformOperationLock {
   current: boolean;
+}
+
+export interface PlatformSessionStorage {
+  removeItem(key: string): void;
+}
+
+/** Clears legacy HQ credentials when the authenticated platform user signs out. */
+export function clearPlatformSessionCredentials(
+  storage: PlatformSessionStorage | null | undefined,
+  onError: (error: unknown) => void,
+): boolean {
+  if (!storage) return true;
+  try {
+    storage.removeItem(HQ_TOKEN_KEY);
+    storage.removeItem(HQ_ACTOR_KEY);
+    return true;
+  } catch (error: unknown) {
+    onError(error);
+    return false;
+  }
 }
 
 /** Acquires a synchronous lock before the first await so one auth action cannot be submitted twice. */
@@ -115,6 +136,7 @@ export default function PlatformShell() {
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [scope, setScope] = useState<Scope>({});
   const authGeneration = useRef(0);
+  const signOutBoundaryNotice = useRef<string | null>(null);
 
   // 세션 확인 + 변화 구독. 마운트 시 현재 URL 로 스코프 초기화.
   useEffect(() => {
@@ -125,8 +147,11 @@ export default function PlatformShell() {
       void completeAuthSessionLoad(
         getSession,
         () => authGeneration.current === generation,
-        setSession,
-        setAuthNotice,
+        (nextSession) => {
+          if (nextSession) signOutBoundaryNotice.current = null;
+          setSession(nextSession);
+        },
+        (notice) => setAuthNotice(notice ?? signOutBoundaryNotice.current),
       );
     };
     refreshSession();
@@ -151,9 +176,28 @@ export default function PlatformShell() {
     return <Centered><p role="status" aria-live="polite" style={{ color: MUTED, fontSize: 16 }}>불러오는 중…</p></Centered>;
   }
   if (session === null) {
-    return <LoginCard notice={authNotice} onSignedIn={(s) => { setSession(s); setAuthNotice(null); }} />;
+    return <LoginCard notice={authNotice} onSignedIn={(s) => {
+      authGeneration.current += 1;
+      signOutBoundaryNotice.current = null;
+      setSession(s);
+      setAuthNotice(null);
+    }} />;
   }
-  return <AppShell session={session} scope={scope} navigate={navigate} />;
+  return (
+    <AppShell
+      key={session.userId}
+      session={session}
+      scope={scope}
+      navigate={navigate}
+      onSignedOut={(notice) => {
+        authGeneration.current += 1;
+        signOutBoundaryNotice.current = notice;
+        setSession(null);
+        setAuthNotice(notice);
+        navigate({});
+      }}
+    />
+  );
 }
 
 // ── 로그인 카드 ─────────────────────────────────────────────────────────
@@ -302,7 +346,17 @@ export async function completeOrganizationTreeLoad(
   }
 }
 
-function AppShell({ session, scope, navigate }: { session: AuthSessionInfo; scope: Scope; navigate: (s: Scope) => void }) {
+function AppShell({
+  session,
+  scope,
+  navigate,
+  onSignedOut,
+}: {
+  session: AuthSessionInfo;
+  scope: Scope;
+  navigate: (s: Scope) => void;
+  onSignedOut: (notice: string | null) => void;
+}) {
   const [tree, setTree] = useState<TreeNode | null>(null);
   const [treeNotice, setTreeNotice] = useState<string | null>(null);
   const [loadingTree, setLoadingTree] = useState(true);
@@ -337,7 +391,16 @@ function AppShell({ session, scope, navigate }: { session: AuthSessionInfo; scop
     if (logoutBusy || logoutLock.current) return;
     await runExclusivePlatformOperation(
       logoutLock,
-      () => completeSignOut(signOut, setLogoutNotice),
+      async () => {
+        const signedOut = await completeSignOut(signOut, setLogoutNotice);
+        if (signedOut) {
+          const credentialsCleared = clearPlatformSessionCredentials(
+            typeof window === 'undefined' ? null : window.sessionStorage,
+            (error) => console.error('Failed to clear platform session credentials', error),
+          );
+          onSignedOut(credentialsCleared ? null : '로그아웃했지만 브라우저의 HQ 인증 정보를 지우지 못했습니다. 이 탭을 닫아 주세요.');
+        }
+      },
       setLogoutBusy,
     );
   };
@@ -396,7 +459,7 @@ function AppShell({ session, scope, navigate }: { session: AuthSessionInfo; scop
 export async function completeSignOut(
   action: () => Promise<PlatformResult<true>>,
   onNotice: (notice: string | null) => void,
-): Promise<void> {
+): Promise<boolean> {
   onNotice(null);
   try {
     const result = await action();
@@ -404,10 +467,13 @@ export async function completeSignOut(
       const failureNotice = result.notice ?? '로그아웃 응답을 확인하지 못했습니다.';
       console.error('Failed to sign out', failureNotice);
       onNotice(failureNotice);
+      return false;
     }
+    return true;
   } catch (error: unknown) {
     console.error('Failed to sign out', error);
     onNotice('로그아웃 중 예상하지 못한 오류가 발생했습니다.');
+    return false;
   }
 }
 

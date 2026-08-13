@@ -120,5 +120,12 @@ describe('design blueprint browser CI contract', () => {
     expect(verifier).toContain('loginRequests.length === 1');
     expect(verifier).toContain("getByRole('form', { name: '운영진 로그인' })");
     expect(verifier).toContain('element.requestSubmit();');
+    expect(verifier).toContain('verifyPlatformSessionIsolation({ browser, origin, timeoutMs })');
+    expect(verifier).toContain("getByDisplayValue('previous-user-sensitive-token').count() === 0");
+    expect(verifier).toContain("getByDisplayValue('이전 사용자 공개 초안').count() === 0");
+    expect(verifier).toContain("sessionStorage.getItem('climate_vote_hq_attendance_token') === null");
+    expect(verifier).toContain("sessionStorage.getItem('climate_vote_hq_gate_actor') === null");
+    expect(verifier).toContain('logoutRequests.length !== 1');
+    expect(verifier).toContain('schemaVersion: 8');
   });
 });

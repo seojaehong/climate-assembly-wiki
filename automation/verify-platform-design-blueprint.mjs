@@ -261,6 +261,90 @@ export async function verifyPlatformAuthLock({ browser, origin, timeoutMs = 60_0
   }
 }
 
+/** Verifies that a successful sign-out synchronously removes the prior user's shell state and route scope. */
+export async function verifyPlatformSessionIsolation({ browser, origin, timeoutMs = 60_000 }) {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await context.newPage();
+  const browserErrors = [];
+  const fixtureFailures = [];
+  const logoutRequests = [];
+  page.on('pageerror', (error) => browserErrors.push(error.message));
+  page.on('response', (response) => {
+    if (response.url().includes(FIXTURE_SUPABASE_ORIGIN) && response.status() >= 400) {
+      fixtureFailures.push({ status: response.status(), path: new URL(response.url()).pathname });
+    }
+  });
+
+  try {
+    await context.addInitScript(() => {
+      sessionStorage.setItem('climate_vote_hq_attendance_token', 'previous-user-sensitive-token');
+      sessionStorage.setItem('climate_vote_hq_gate_actor', 'previous-user-actor');
+    });
+    await prepareAuthenticatedPlatform({
+      context,
+      page,
+      topics: REVIEW_TOPICS,
+      handleRequest: async ({ route, path, request }) => {
+        if (path !== '/auth/v1/logout') return false;
+        logoutRequests.push({ method: request.method(), path });
+        await fulfillJson(route, {});
+        return true;
+      },
+    });
+    const response = await page.goto(new URL(PLATFORM_ENTRY_ROUTE, origin).toString(), {
+      waitUntil: 'domcontentloaded',
+      timeout: timeoutMs,
+    });
+    if (!response?.ok()) throw new Error(`Platform session isolation page returned HTTP ${response?.status() ?? 'unknown'}`);
+
+    await page.getByRole('button', { name: '접근성 감사 공론화', exact: true }).click();
+    await page.getByRole('button', { name: '제1차 회의', exact: true }).click();
+    await page.getByRole('button', { name: '검수 경합 주제 A', exact: true }).click();
+    await page.getByRole('button', { name: '공개', exact: true }).click();
+    await page.waitForURL((url) => url.pathname === PUBLISH_CONSOLE_ROUTE, { timeout: timeoutMs });
+    const storedCredentialLoaded = await page.getByLabel('HQ 인증 토큰').inputValue() === 'previous-user-sensitive-token';
+    await page.getByLabel('공개 결과 제목').fill('이전 사용자 공개 초안');
+    await page.getByRole('button', { name: '로그아웃', exact: true }).click();
+    await page.getByRole('form', { name: '운영진 로그인' }).waitFor({ timeout: timeoutMs });
+
+    const rootRouteRestored = new URL(page.url()).pathname === PLATFORM_ENTRY_ROUTE;
+    const priorCredentialRemoved = await page.getByDisplayValue('previous-user-sensitive-token').count() === 0;
+    const priorDraftRemoved = await page.getByDisplayValue('이전 사용자 공개 초안').count() === 0;
+    const priorTreeRemoved = await page.getByRole('button', { name: '접근성 감사 공론화', exact: true }).count() === 0;
+    const priorConsoleRemoved = await page.getByRole('heading', { name: '검수 결과 발행', exact: true }).count() === 0;
+    const storedCredentialsRemoved = await page.evaluate(() => (
+      sessionStorage.getItem('climate_vote_hq_attendance_token') === null
+      && sessionStorage.getItem('climate_vote_hq_gate_actor') === null
+    ));
+
+    if (!storedCredentialLoaded) throw new Error('Platform session isolation fixture did not load the stored credential');
+    if (!rootRouteRestored) throw new Error('Platform sign-out retained the prior user route scope');
+    if (!priorCredentialRemoved || !priorDraftRemoved || !priorTreeRemoved || !priorConsoleRemoved || !storedCredentialsRemoved) {
+      throw new Error('Platform sign-out retained prior user shell state');
+    }
+    if (logoutRequests.length !== 1) throw new Error('Platform sign-out did not issue exactly one auth request');
+    if (browserErrors.length > 0) throw new Error('Platform session isolation verification observed a browser error');
+    if (fixtureFailures.length > 0) throw new Error('Platform session isolation verification observed an unexpected fixture failure');
+
+    return {
+      path: PUBLISH_CONSOLE_ROUTE,
+      fixture: 'ci-platform-session-isolation-fixture-v1',
+      storedCredentialLoaded,
+      rootRouteRestored,
+      priorCredentialRemoved,
+      priorDraftRemoved,
+      priorTreeRemoved,
+      priorConsoleRemoved,
+      storedCredentialsRemoved,
+      logoutRequestCount: logoutRequests.length,
+      browserPageErrorCount: browserErrors.length,
+      fixtureFailureCount: fixtureFailures.length,
+    };
+  } finally {
+    await context.close();
+  }
+}
+
 /** Exercises duplicate-write and stale-topic guards through the production review console. */
 export async function verifyReviewConsoleRace({ browser, origin, timeoutMs = 60_000 }) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
@@ -707,11 +791,12 @@ export async function verifyPlatformDesignBlueprint({
     if (mutationAttempts.length > 0) throw new Error('Design blueprint verification observed a database mutation attempt');
 
     const authLock = await verifyPlatformAuthLock({ browser, origin, timeoutMs });
+    const sessionIsolation = await verifyPlatformSessionIsolation({ browser, origin, timeoutMs });
     const reviewRace = await verifyReviewConsoleRace({ browser, origin, timeoutMs });
     const publishLock = await verifyPublishConsoleLock({ browser, origin, timeoutMs });
 
     const report = {
-      schemaVersion: 7,
+      schemaVersion: 8,
       generatedAt: new Date().toISOString(),
       baseUrl: origin.origin,
       path: DESIGN_BLUEPRINT_ROUTE,
@@ -757,6 +842,7 @@ export async function verifyPlatformDesignBlueprint({
         fixtureFailureCount: fixtureFailures.length,
         databaseMutationAttemptCount: mutationAttempts.length,
         authLock,
+        sessionIsolation,
         reviewRace,
         publishLock,
       },

@@ -2,8 +2,9 @@ import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { BreadcrumbNav, completeAuthSessionLoad, completeOrganizationTreeLoad, completeSignOut, DataTreeNavigation, LoginCard, LogoutNotice, PLATFORM_ACCENT, PLATFORM_CONTROL_BORDER, runExclusivePlatformOperation, ViewTabs } from './PlatformShell';
+import { BreadcrumbNav, clearPlatformSessionCredentials, completeAuthSessionLoad, completeOrganizationTreeLoad, completeSignOut, DataTreeNavigation, LoginCard, LogoutNotice, PLATFORM_ACCENT, PLATFORM_CONTROL_BORDER, runExclusivePlatformOperation, ViewTabs } from './PlatformShell';
 import type { TreeNode } from './platform-nav-logic';
+import { HQ_ACTOR_KEY, HQ_TOKEN_KEY } from '../mod/hq-gate-logic';
 import ScopeOutlet from './ScopeViews';
 import ReviewConsole, { completeReviewLoad, completeReviewMutation, loadReviewData, REVIEW_STATUS_GREEN, ReviewFlashNotice, ReviewIssueChoice, ReviewSourceCard, SourceReferenceList } from './review/ReviewConsole';
 import type { IssueViewModel, ReviewItem } from './review/review-console-logic';
@@ -548,10 +549,50 @@ describe('PlatformShell accessibility', () => {
   it('AppShell이 사용자 변경 때 기관 트리를 다시 읽고 서버 기관 스코프로 재결속한다', () => {
     const source = readFileSync(new URL('./PlatformShell.tsx', import.meta.url), 'utf8');
 
+    expect(source).toContain('key={session.userId}');
     expect(source).toContain('void completeOrganizationTreeLoad(');
     expect(source).toContain('currentScopeOrgId !== organization.id');
     expect(source).toContain('onNavigate({ o: organization.id })');
     expect(source).toContain('}, [session.userId, navigate]);');
+  });
+
+  it('성공한 로그아웃만 즉시 AppShell을 닫고 루트 스코프로 이동한다', async () => {
+    const notices: Array<string | null> = [];
+
+    await expect(completeSignOut(
+      async () => ({ data: true, notice: null }),
+      (notice) => notices.push(notice),
+    )).resolves.toBe(true);
+
+    const source = readFileSync(new URL('./PlatformShell.tsx', import.meta.url), 'utf8');
+    expect(notices).toEqual([null]);
+    expect(source).toContain('if (signedOut) {');
+    expect(source).toContain('onSignedOut(credentialsCleared ? null');
+    expect(source).toContain('onSignedIn={(s) => {\n      authGeneration.current += 1;');
+    expect(source).toContain('onSignedOut={(notice) => {\n        authGeneration.current += 1;');
+    expect(source).toContain('signOutBoundaryNotice.current = notice;');
+    expect(source).toContain('notice ?? signOutBoundaryNotice.current');
+    expect(source).toContain('setSession(null);');
+    expect(source).toContain('navigate({});');
+  });
+
+  it('성공 로그아웃에서 legacy HQ 토큰과 운영자 표시명을 함께 제거한다', () => {
+    const removedKeys: string[] = [];
+    const errors: unknown[] = [];
+
+    expect(clearPlatformSessionCredentials(
+      { removeItem: (key) => removedKeys.push(key) },
+      (error) => errors.push(error),
+    )).toBe(true);
+    expect(removedKeys).toEqual([HQ_TOKEN_KEY, HQ_ACTOR_KEY]);
+    expect(errors).toEqual([]);
+
+    const storageError = new Error('fixture storage failure');
+    expect(clearPlatformSessionCredentials(
+      { removeItem: () => { throw storageError; } },
+      (error) => errors.push(error),
+    )).toBe(false);
+    expect(errors).toEqual([storageError]);
   });
 
   it('인증 작업 예외 뒤에도 lock과 busy를 해제한다', async () => {
@@ -582,20 +623,21 @@ describe('PlatformShell accessibility', () => {
   it('로그아웃 실패와 비어 있는 응답을 알린다', async () => {
     const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const notices: Array<string | null> = [];
+    const outcomes: boolean[] = [];
 
     try {
-      await completeSignOut(
+      outcomes.push(await completeSignOut(
         async () => ({ data: null, notice: '로그아웃에 실패했습니다.' }),
         (notice) => notices.push(notice),
-      );
-      await completeSignOut(
+      ));
+      outcomes.push(await completeSignOut(
         async () => ({ data: null, notice: null }),
         (notice) => notices.push(notice),
-      );
-      await completeSignOut(
+      ));
+      outcomes.push(await completeSignOut(
         async () => { throw new Error('network'); },
         (notice) => notices.push(notice),
-      );
+      ));
     } finally {
       errorLog.mockRestore();
     }
@@ -609,6 +651,7 @@ describe('PlatformShell accessibility', () => {
       null,
       '로그아웃 중 예상하지 못한 오류가 발생했습니다.',
     ]);
+    expect(outcomes).toEqual([false, false, false]);
     expect(alertHtml).toContain('role="alert"');
   });
 });
