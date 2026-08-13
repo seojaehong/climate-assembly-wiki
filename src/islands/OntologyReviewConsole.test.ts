@@ -12,6 +12,7 @@ import OntologyReviewConsole, {
   OntologyReviewLoginBoundary,
   ontologyReviewNodeAnchorId,
   TranscriptCandidatePrompt,
+  TranscriptModeratorDraftView,
   TranscriptNodeReviewCard,
   TranscriptRelationReviewCard,
   transcriptHandoffFixtureArtifact,
@@ -271,6 +272,36 @@ describe('OntologyReviewConsole', () => {
     expect(html).toContain('aria-label="기존 node 병합"');
     expect(html).toContain('기존 쟁점에 병합');
     expect(html).toContain('원 발화와 인용을 보존해 합칩니다.');
+  });
+
+  it('marks the fast moderator graph view as a local unpublished draft', () => {
+    const node: TranscriptOntologyReviewNode = {
+      id: 'transcript-node:issue', sourceUid: 'candidate-issue', kindCandidate: 'Issue', kind: 'Issue',
+      sourceLabel: '전환 쟁점', sourceText: '전환 속도를 논의합니다.', label: '전환 쟁점', text: '전환 속도를 논의합니다.',
+      citedUids: ['chunk-1'], transcript: [{
+        uid: 'chunk-1', startMs: 0, endMs: 1000, speakerLabelPseudonym: 'speaker-unknown', text: '전환 속도를 논의합니다.',
+      }], followUpQuestion: null, minorityConcern: false, mergeTargetId: null,
+      reviewStatus: 'accepted', reviewer: AUTH_REVIEWER_ID, reviewedAt: '2026-08-29T01:00:00.000Z',
+    };
+    const workspace: TranscriptOntologyReviewWorkspace = {
+      source: {
+        fixtureId: 'fixture-draft', sessionId: 'session-draft', language: 'ko-KR', reviewedBy: AUTH_REVIEWER_ID,
+        reviewedAt: '2026-08-29T00:59:00.000Z', fixtureSha256: 'a'.repeat(64), fixtureText: '{}', handoff: null,
+      },
+      nodes: [node], relations: [],
+      summary: { nodes: 1, relations: 0, decided: 1, deferred: 0, followUp: 0, total: 1 },
+      safety: { localOnly: true, databaseMutationExecuted: false, publicGraphWritten: false, requiresHumanReview: true },
+    };
+    const html = renderToStaticMarkup(createElement(TranscriptModeratorDraftView, { workspace }));
+
+    expect(html).toContain('data-transcript-draft-view="true"');
+    expect(html).toContain('data-draft-node-count="1"');
+    expect(html).toContain('data-draft-relation-count="0"');
+    expect(html).toContain('검수 중 초안 · 공개 아님 · 1초 갱신');
+    expect(html).toContain('초안 node 1개 · relation 0개 · 미완료 후보 0개');
+    expect(html).toContain('data-draft-node-id="transcript-node:issue"');
+    expect(html).toContain('출처 candidate-issue · 인용 chunk-1');
+    expect(html).toContain('공개 snapshot과 public 파일을 만들지 않습니다.');
   });
 
   it('renders a relation follow-up request with its exact pending question', () => {

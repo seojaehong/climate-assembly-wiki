@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
+  buildTranscriptOntologyModeratorDraftGraph,
   buildTranscriptOntologyPublicationApproval,
   buildPrivateTranscriptOntologyFixture,
   createTranscriptOntologyReviewWorkspace,
@@ -249,6 +250,70 @@ describe('transcript ontology review workspace', () => {
       databaseMutationExecuted: false,
       publicGraphWritten: false,
       requiresHumanReview: true,
+    });
+  });
+
+  it('builds a clearly marked partial moderator graph without publishing pending candidates', async () => {
+    let workspace = await createTranscriptOntologyReviewWorkspace(fixtureText);
+    expect(buildTranscriptOntologyModeratorDraftGraph(workspace)).toMatchObject({
+      mode: 'moderator_draft',
+      markedDraft: true,
+      nodes: [],
+      relations: [],
+      summary: { nodes: 0, relations: 0, pending: 3 },
+      safety: {
+        localOnly: true,
+        databaseMutationExecuted: false,
+        publicGraphWritten: false,
+        requiresPublicationReview: true,
+      },
+    });
+
+    const targetId = workspace.nodes[0].id;
+    const sourceId = workspace.nodes[1].id;
+    workspace = reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'node', id: targetId, status: 'accepted', kind: workspace.nodes[0].kindCandidate,
+      label: workspace.nodes[0].sourceLabel, text: workspace.nodes[0].sourceText,
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(0),
+    });
+    let draft = buildTranscriptOntologyModeratorDraftGraph(workspace);
+    expect(draft).toMatchObject({
+      nodes: [{ id: targetId, sourceUid: 'candidate-issue', mergedSourceUids: [] }],
+      relations: [],
+      summary: { nodes: 1, relations: 0, pending: 2 },
+    });
+
+    workspace = updateTranscriptOntologyCandidateDraft(workspace, {
+      itemType: 'node', id: sourceId, kind: 'Issue',
+    });
+    workspace = reviewTranscriptOntologyCandidate(workspace, {
+      itemType: 'node', id: sourceId, status: 'merged', mergeTargetId: targetId,
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091', reviewedAt: decisionAt(1),
+    });
+    draft = buildTranscriptOntologyModeratorDraftGraph(workspace);
+    expect(draft.nodes).toEqual([expect.objectContaining({
+      id: targetId,
+      mergedSourceUids: ['candidate-claim'],
+      citedUids: ['chunk-001', 'chunk-002'],
+    })]);
+    expect(draft.summary).toEqual({ nodes: 1, relations: 0, pending: 1 });
+
+    const forged = structuredClone(workspace);
+    forged.relations[0] = {
+      ...forged.relations[0],
+      relation: forged.relations[0].relationCandidate,
+      reviewStatus: 'accepted',
+      reviewer: 'auth-user:00000000-0000-4000-8000-000000000091',
+      reviewedAt: decisionAt(2),
+    };
+    expect(() => buildTranscriptOntologyModeratorDraftGraph(forged))
+      .toThrow('Merged draft relation cannot become a self-loop');
+
+    workspace = updateTranscriptOntologyCandidateDraft(workspace, {
+      itemType: 'node', id: targetId, label: '다시 검수할 대상',
+    });
+    expect(buildTranscriptOntologyModeratorDraftGraph(workspace)).toMatchObject({
+      nodes: [], relations: [], summary: { nodes: 0, relations: 0, pending: 3 },
     });
   });
 

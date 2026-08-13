@@ -94,6 +94,50 @@ export interface TranscriptOntologyReviewWorkspace {
   };
 }
 
+export interface TranscriptOntologyModeratorDraftNode {
+  id: string;
+  kind: string;
+  label: string;
+  text: string;
+  sourceUid: string;
+  mergedSourceUids: string[];
+  citedUids: string[];
+  minorityConcern: boolean;
+}
+
+export interface TranscriptOntologyModeratorDraftRelation {
+  id: string;
+  source: string;
+  target: string;
+  relation: string;
+  sourceUid: string;
+  citedUids: string[];
+}
+
+export interface TranscriptOntologyModeratorDraftGraph {
+  schemaVersion: 1;
+  mode: 'moderator_draft';
+  markedDraft: true;
+  source: {
+    fixtureId: string;
+    fixtureSha256: string;
+    sessionId: string;
+  };
+  nodes: TranscriptOntologyModeratorDraftNode[];
+  relations: TranscriptOntologyModeratorDraftRelation[];
+  summary: {
+    nodes: number;
+    relations: number;
+    pending: number;
+  };
+  safety: {
+    localOnly: true;
+    databaseMutationExecuted: false;
+    publicGraphWritten: false;
+    requiresPublicationReview: true;
+  };
+}
+
 interface DecisionAudit {
   reviewer: string;
   reviewedAt: string;
@@ -648,6 +692,83 @@ function resolvedTranscriptNode(
   if (!node.mergeTargetId) return null;
   const target = nodes.find((candidate) => candidate.id === node.mergeTargetId);
   return target?.reviewStatus === 'accepted' || target?.reviewStatus === 'edited' ? target : null;
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
+/** Builds the moderator-only partial graph shown during review. */
+export function buildTranscriptOntologyModeratorDraftGraph(
+  workspace: TranscriptOntologyReviewWorkspace,
+): TranscriptOntologyModeratorDraftGraph {
+  const reviewedNodes = workspace.nodes.filter((node) => (
+    node.reviewStatus === 'accepted' || node.reviewStatus === 'edited'
+  ));
+  const nodes = reviewedNodes.map((node) => {
+    if (!node.kind || !NODE_KINDS.has(node.kind)) throw new Error('Reviewed draft node is missing a valid kind');
+    const mergedNodes = workspace.nodes.filter((candidate) => (
+      candidate.reviewStatus === 'merged' && candidate.mergeTargetId === node.id
+    ));
+    for (const merged of mergedNodes) {
+      if (merged.kind !== node.kind) throw new Error('Merged draft node kind does not match its target');
+    }
+    return {
+      id: node.id,
+      kind: node.kind,
+      label: node.label,
+      text: node.text,
+      sourceUid: node.sourceUid,
+      mergedSourceUids: mergedNodes.map((candidate) => candidate.sourceUid),
+      citedUids: uniqueStrings([...node.citedUids, ...mergedNodes.flatMap((candidate) => candidate.citedUids)]),
+      minorityConcern: node.minorityConcern,
+    };
+  });
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const relations = workspace.relations
+    .filter((relation) => relation.reviewStatus === 'accepted' || relation.reviewStatus === 'edited')
+    .map((relation) => {
+      const source = resolvedTranscriptNode(workspace.nodes, relation.source);
+      const target = resolvedTranscriptNode(workspace.nodes, relation.target);
+      if (!source || !target || !nodeIds.has(source.id) || !nodeIds.has(target.id)) {
+        throw new Error('Reviewed draft relation requires reviewed node endpoints');
+      }
+      if (source.id === target.id) throw new Error('Merged draft relation cannot become a self-loop');
+      if (!relation.relation || !RELATIONS.has(relation.relation)) {
+        throw new Error('Reviewed draft relation is missing a valid relation type');
+      }
+      return {
+        id: relation.id,
+        source: source.id,
+        target: target.id,
+        relation: relation.relation,
+        sourceUid: relation.sourceUid,
+        citedUids: uniqueStrings(relation.citedUids),
+      };
+    });
+  return {
+    schemaVersion: 1,
+    mode: 'moderator_draft',
+    markedDraft: true,
+    source: {
+      fixtureId: workspace.source.fixtureId,
+      fixtureSha256: workspace.source.fixtureSha256,
+      sessionId: workspace.source.sessionId,
+    },
+    nodes,
+    relations,
+    summary: {
+      nodes: nodes.length,
+      relations: relations.length,
+      pending: workspace.summary.total - workspace.summary.decided,
+    },
+    safety: {
+      localOnly: true,
+      databaseMutationExecuted: false,
+      publicGraphWritten: false,
+      requiresPublicationReview: true,
+    },
+  };
 }
 
 function invalidateMergedNodesForTarget(

@@ -13,6 +13,7 @@ import {
   type CanvasOntologyReviewWorkspace,
 } from './canvas/ontology-review-workspace';
 import {
+  buildTranscriptOntologyModeratorDraftGraph,
   buildTranscriptOntologyPublicationApproval,
   buildPrivateTranscriptOntologyFixture,
   createTranscriptOntologyReviewWorkspace,
@@ -28,6 +29,7 @@ import {
   type TranscriptOntologyReviewNode,
   type TranscriptOntologyReviewRelation,
   type TranscriptOntologyReviewWorkspace,
+  type TranscriptOntologyModeratorDraftGraph,
   transcriptCandidateFacilitationPrompt,
   transcriptRelationFollowUpPrompt,
 } from './canvas/transcript-ontology-review-workspace';
@@ -564,6 +566,90 @@ export function TranscriptRelationReviewCard({ relation, reviewer, onDecision, o
   );
 }
 
+export function TranscriptModeratorDraftView({ workspace }: {
+  workspace: TranscriptOntologyReviewWorkspace;
+}) {
+  const workspaceRef = useRef(workspace);
+  const [draft, setDraft] = useState<TranscriptOntologyModeratorDraftGraph>(() => (
+    buildTranscriptOntologyModeratorDraftGraph(workspace)
+  ));
+  const [error, setError] = useState<string | null>(null);
+  const draftRef = useRef(JSON.stringify(draft));
+  const errorRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    workspaceRef.current = workspace;
+  }, [workspace]);
+
+  useEffect(() => {
+    const poll = () => {
+      try {
+        const next = buildTranscriptOntologyModeratorDraftGraph(workspaceRef.current);
+        const serialized = JSON.stringify(next);
+        if (serialized !== draftRef.current) {
+          draftRef.current = serialized;
+          setDraft(next);
+        }
+        errorRef.current = null;
+        setError(null);
+      } catch (caught: unknown) {
+        const message = errorMessage(caught);
+        if (errorRef.current !== message) {
+          console.error('Failed to refresh the moderator transcript draft graph', caught);
+          errorRef.current = message;
+        }
+        setError(message);
+      }
+    };
+    poll();
+    const interval = window.setInterval(poll, 1_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  return (
+    <section
+      aria-labelledby="transcript-moderator-draft-heading"
+      data-transcript-draft-view="true"
+      data-draft-node-count={draft.summary.nodes}
+      data-draft-relation-count={draft.summary.relations}
+      style={{ ...cardStyle, background: '#FFF8E7', marginBottom: 24 }}
+    >
+      <h3 id="transcript-moderator-draft-heading" style={{ margin: 0 }}>운영자용 graph 초안 보기</h3>
+      <strong style={{ color: '#7A3E00' }}>검수 중 초안 · 공개 아님 · 1초 갱신</strong>
+      <p style={{ color: MUTED, lineHeight: 1.6, margin: 0 }}>
+        현재 승인·수정 승인·병합 판단만 모아 보는 운영자 전용 부분 graph입니다. 공개 snapshot과 public 파일을 만들지 않습니다.
+      </p>
+      <p role="status" aria-live="polite" aria-atomic="true" style={{ margin: 0 }}>
+        초안 node {draft.summary.nodes}개 · relation {draft.summary.relations}개 · 미완료 후보 {draft.summary.pending}개
+      </p>
+      {error ? <p role="alert" style={{ color: '#8A1C1C', fontWeight: 700 }}>{error}</p> : null}
+      {draft.nodes.length ? (
+        <ol aria-label="운영자용 graph 초안 node" style={{ display: 'grid', gap: 8, margin: 0, paddingLeft: 24 }}>
+          {draft.nodes.map((node) => (
+            <li key={node.id} data-draft-node-id={node.id}>
+              <strong>{node.kind} · {node.label}</strong>
+              <div style={{ color: MUTED }}>{node.text}</div>
+              <div style={{ color: MUTED, fontSize: 13, overflowWrap: 'anywhere' }}>
+                출처 {node.sourceUid} · 인용 {node.citedUids.join(' · ')}
+                {node.mergedSourceUids.length ? ` · 병합 출처 ${node.mergedSourceUids.join(' · ')}` : ''}
+              </div>
+            </li>
+          ))}
+        </ol>
+      ) : <p style={{ margin: 0 }}>아직 승인된 node가 없습니다.</p>}
+      {draft.relations.length ? (
+        <ul aria-label="운영자용 graph 초안 relation" style={{ display: 'grid', gap: 6, margin: 0, paddingLeft: 24 }}>
+          {draft.relations.map((relation) => (
+            <li key={relation.id} data-draft-relation-id={relation.id} style={{ overflowWrap: 'anywhere' }}>
+              {relation.source} —{relation.relation}→ {relation.target}
+            </li>
+          ))}
+        </ul>
+      ) : <p style={{ margin: 0 }}>아직 승인된 relation이 없습니다.</p>}
+    </section>
+  );
+}
+
 export function TranscriptOntologyReviewPanel({ reviewerId }: { reviewerId: string }) {
   const [fixtureFile, setFixtureFile] = useState<File | null>(null);
   const [reviewBatchFile, setReviewBatchFile] = useState<File | null>(null);
@@ -824,6 +910,7 @@ export function TranscriptOntologyReviewPanel({ reviewerId }: { reviewerId: stri
               {approving ? '승인 artifact 검증 중…' : '공개 승인 artifact 다운로드'}
             </button>
           </section>
+          <TranscriptModeratorDraftView key={workspace.source.fixtureSha256} workspace={workspace} />
           <section aria-labelledby="transcript-node-heading" style={{ display: 'grid', gap: 14, marginBottom: 28 }}>
             <h3 id="transcript-node-heading">1. candidate node · 전사·Habermas 역할 검수</h3>
             {workspace.nodes.map((node) => (

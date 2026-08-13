@@ -803,6 +803,11 @@ export async function verifyCanvasBrowser({
     }, startTranscriptReviewName, { timeout: timeoutMs });
     await startTranscriptReview.click();
     await transcriptReviewPanel.getByText('진행 0/3 · 후속 확인 0 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
+    const transcriptDraftView = transcriptReviewPanel.getByRole('region', { name: '운영자용 graph 초안 보기' });
+    await transcriptDraftView.waitFor({ timeout: timeoutMs });
+    const transcriptDraftInitiallyEmpty = await transcriptDraftView.getAttribute('data-draft-node-count') === '0'
+      && await transcriptDraftView.getAttribute('data-draft-relation-count') === '0'
+      && await transcriptDraftView.getByText('검수 중 초안 · 공개 아님 · 1초 갱신', { exact: true }).isVisible();
     let downloadedHandoffFixtureText = TRANSCRIPT_REVIEW_FIXTURE_TEXT;
     let downloadedHandoffFixture = null;
     let downloadedHandoffFixtureSha256 = TRANSCRIPT_REVIEW_FIXTURE_SHA256;
@@ -861,17 +866,38 @@ export async function verifyCanvasBrowser({
     await transcriptNodeCards.nth(1).getByRole('button', { name: '재생에너지 전환의 속도와 조건에 병합' }).click();
     await transcriptRelationCards.nth(0).getByRole('button', { name: '반려' }).click();
     await transcriptReviewPanel.getByText('진행 3/3 · 후속 확인 0 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
+    await reviewPage.waitForFunction(() => {
+      const draft = document.querySelector('[data-transcript-draft-view="true"]');
+      return draft?.getAttribute('data-draft-node-count') === '1'
+        && draft?.getAttribute('data-draft-relation-count') === '0'
+        && draft.textContent?.includes('병합 출처 candidate-claim');
+    }, undefined, { timeout: timeoutMs });
+    const transcriptDraftMerged = await transcriptDraftView.getAttribute('data-draft-node-count') === '1'
+      && await transcriptDraftView.getByText(/병합 출처 candidate-claim/).isVisible();
     const transcriptMergeGateVerified = await transcriptNodeCards.nth(1)
       .getByText('candidate node · 기존 node에 병합됨', { exact: true }).isVisible()
       && await transcriptNodeCards.nth(1).getByText('병합 대상 transcript-node:candidate-issue', { exact: true }).isVisible();
     await transcriptNodeCards.nth(0).getByLabel('표시 이름').fill('재생에너지 전환의 최종 속도와 조건');
     await transcriptReviewPanel.getByText('진행 1/3 · 후속 확인 0 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
+    await reviewPage.waitForFunction(() => document
+      .querySelector('[data-transcript-draft-view="true"]')
+      ?.getAttribute('data-draft-node-count') === '0', undefined, { timeout: timeoutMs });
+    const transcriptDraftInvalidated = await transcriptDraftView.getAttribute('data-draft-node-count') === '0';
     const transcriptRedecisionGateVerified = await transcriptDownloadButton.isDisabled()
       && await transcriptNodeCards.nth(1).getByText('candidate node · 미검수', { exact: true }).isVisible();
     await transcriptNodeCards.nth(0).getByRole('button', { name: '수정 승인' }).click();
     await transcriptNodeCards.nth(1).getByLabel('Habermas 발화 역할').selectOption('Concern');
     await transcriptNodeCards.nth(1).getByRole('button', { name: '재생에너지 전환의 최종 속도와 조건에 병합' }).click();
     await transcriptReviewPanel.getByText('진행 3/3 · 후속 확인 0 · 보류 0', { exact: true }).waitFor({ timeout: timeoutMs });
+    await reviewPage.waitForFunction(() => {
+      const draft = document.querySelector('[data-transcript-draft-view="true"]');
+      return draft?.getAttribute('data-draft-node-count') === '1'
+        && draft.textContent?.includes('재생에너지 전환의 최종 속도와 조건')
+        && draft.textContent?.includes('병합 출처 candidate-claim');
+    }, undefined, { timeout: timeoutMs });
+    const transcriptModeratorDraftPollingVerified = transcriptDraftInitiallyEmpty
+      && transcriptDraftMerged
+      && transcriptDraftInvalidated;
     const transcriptDownloadPromise = reviewPage.waitForEvent('download', { timeout: timeoutMs });
     await transcriptDownloadButton.click();
     const transcriptReviewedPlan = JSON.parse(await downloadText(await transcriptDownloadPromise));
@@ -956,6 +982,7 @@ export async function verifyCanvasBrowser({
     if (!transcriptLocalOnlyBoundaryVisible || !transcriptCandidateEvidenceVisible || !transcriptCandidatePromptVisible
       || !transcriptFollowUpGateVerified || !transcriptDeferGateVerified || !transcriptMinorityConcernMarked
       || !transcriptMergeGateVerified
+      || !transcriptModeratorDraftPollingVerified
       || !transcriptRedecisionGateVerified || !transcriptHandoffFixtureDownloaded || !transcriptReviewDownloaded
       || !transcriptPublicationApprovalDownloaded || !transcriptPublicationHandoffVerified) {
       throw new Error('Transcript ontology review browser contract is incomplete');
@@ -1188,6 +1215,7 @@ export async function verifyCanvasBrowser({
         transcriptReviewDownloaded,
         transcriptMinorityConcernMarked,
         transcriptMergeGateVerified,
+        transcriptModeratorDraftPollingVerified,
         transcriptPublicationApprovalDownloaded,
         transcriptPublicationHandoffVerified,
         privateTranscriptReviewBatchSha256: privateOntologyHandoff.reviewBatchSha256,

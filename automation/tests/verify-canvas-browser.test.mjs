@@ -134,6 +134,12 @@ async function fixtureServer({
           <button type="button" id="start-transcript-review" disabled>전사 후보 로컬 검수 시작</button>
           <p id="transcript-progress" hidden>진행 0/3 · 후속 확인 0 · 보류 0</p>
           <section id="transcript-items" hidden>
+            <section aria-labelledby="transcript-moderator-draft-heading" data-transcript-draft-view="true" data-draft-node-count="0" data-draft-relation-count="0">
+              <h3 id="transcript-moderator-draft-heading">운영자용 graph 초안 보기</h3>
+              <strong>검수 중 초안 · 공개 아님 · 1초 갱신</strong>
+              <p id="transcript-draft-summary" role="status">초안 node 0개 · relation 0개 · 미완료 후보 3개</p>
+              <ol id="transcript-draft-nodes" aria-label="운영자용 graph 초안 node"></ol>
+            </section>
             <article aria-label="전사 노드 후보 검수 transcript-node:candidate-issue">
               <strong id="transcript-first-status">candidate node · 미검수</strong>
               <p>재생에너지 전환 속도를 높여야 합니다.</p>
@@ -200,6 +206,28 @@ async function fixtureServer({
           let transcriptMinorityConcern = false;
           let transcriptMerged = false;
           let exportedTranscriptPlan = null;
+          let transcriptDraftTimer = null;
+          const scheduleTranscriptDraft = () => {
+            clearTimeout(transcriptDraftTimer);
+            transcriptDraftTimer = setTimeout(() => {
+              const draft = document.querySelector('[data-transcript-draft-view="true"]');
+              const firstAccepted = transcriptDecisions.has('first');
+              const nodeCount = firstAccepted ? 1 : 0;
+              draft.dataset.draftNodeCount = String(nodeCount);
+              draft.dataset.draftRelationCount = '0';
+              document.querySelector('#transcript-draft-summary').textContent =
+                \`초안 node \${nodeCount}개 · relation 0개 · 미완료 후보 \${3 - transcriptDecisions.size}개\`;
+              const list = document.querySelector('#transcript-draft-nodes');
+              list.replaceChildren();
+              if (firstAccepted) {
+                const item = document.createElement('li');
+                item.dataset.draftNodeId = 'transcript-node:candidate-issue';
+                const mergedSource = transcriptMerged ? ' · 병합 출처 candidate-claim' : '';
+                item.textContent = \`Concern · \${document.querySelector('#transcript-first-label').value} · 출처 candidate-issue · 인용 chunk-001\${mergedSource}\`;
+                list.append(item);
+              }
+            }, 100);
+          };
           const privateConsent = document.querySelector('#private-consent');
           const privateSession = document.querySelector('#private-session');
           const privateRoom = document.querySelector('#private-room');
@@ -419,6 +447,7 @@ async function fixtureServer({
             transcriptDownloadButton.disabled = true;
             transcriptApprovalButton.disabled = true;
             exportedTranscriptPlan = null;
+            scheduleTranscriptDraft();
           });
           document.querySelectorAll('[data-transcript-decision]').forEach((button) => {
             button.addEventListener('click', () => {
@@ -429,6 +458,7 @@ async function fixtureServer({
               }
               transcriptProgress.textContent = \`진행 \${transcriptDecisions.size}/3 · 후속 확인 0 · 보류 0\`;
               transcriptDownloadButton.disabled = transcriptDecisions.size !== 3;
+              scheduleTranscriptDraft();
             });
           });
           document.querySelector('#transcript-first-follow-up').addEventListener('click', () => {
@@ -437,6 +467,7 @@ async function fixtureServer({
             document.querySelector('#transcript-follow-up-request').hidden = false;
             transcriptProgress.textContent = '진행 0/3 · 후속 확인 1 · 보류 0';
             transcriptDownloadButton.disabled = true;
+            scheduleTranscriptDraft();
           });
           document.querySelector('#transcript-first-defer').addEventListener('click', () => {
             transcriptDecisions.delete('first');
@@ -444,6 +475,7 @@ async function fixtureServer({
             document.querySelector('#transcript-follow-up-request').hidden = true;
             transcriptProgress.textContent = \`진행 \${transcriptDecisions.size}/3 · 후속 확인 0 · 보류 1\`;
             transcriptDownloadButton.disabled = true;
+            scheduleTranscriptDraft();
           });
           document.querySelector('#transcript-minority').addEventListener('click', () => {
             transcriptMinorityConcern = !transcriptMinorityConcern;
@@ -454,6 +486,7 @@ async function fixtureServer({
               ? '소수 우려 표시 해제' : '소수 우려로 표시';
             transcriptDecisions.delete('first');
             transcriptDownloadButton.disabled = true;
+            scheduleTranscriptDraft();
           });
           document.querySelector('#transcript-second-kind').addEventListener('change', () => {
             transcriptMerged = false;
@@ -463,6 +496,7 @@ async function fixtureServer({
               || document.querySelector('#transcript-second-kind').value !== 'Concern';
             document.querySelector('#transcript-second-merge').textContent = \`\${document.querySelector('#transcript-first-label').value}에 병합\`;
             transcriptDownloadButton.disabled = true;
+            scheduleTranscriptDraft();
           });
           document.querySelector('#transcript-second-merge').addEventListener('click', () => {
             transcriptMerged = true;
@@ -471,6 +505,7 @@ async function fixtureServer({
             document.querySelector('#transcript-merge-status').textContent = '병합 대상 transcript-node:candidate-issue';
             transcriptProgress.textContent = \`진행 \${transcriptDecisions.size}/3 · 후속 확인 0 · 보류 0\`;
             transcriptDownloadButton.disabled = transcriptDecisions.size !== 3;
+            scheduleTranscriptDraft();
           });
           document.querySelector('#transcript-first-label').addEventListener('input', () => {
             transcriptDecisions.delete('first');
@@ -484,6 +519,7 @@ async function fixtureServer({
             document.querySelector('#transcript-follow-up-request').hidden = true;
             transcriptProgress.textContent = \`진행 \${transcriptDecisions.size}/3 · 후속 확인 0 · 보류 0\`;
             transcriptDownloadButton.disabled = true;
+            scheduleTranscriptDraft();
           });
           transcriptDownloadButton.addEventListener('click', () => {
             const reviewer = '${authReviewerId}';
@@ -792,6 +828,7 @@ describe('verifyCanvasBrowser', () => {
     expect(report.checks.transcriptDeferGateVerified).toBe(true);
     expect(report.checks.transcriptRedecisionGateVerified).toBe(true);
     expect(report.checks.transcriptReviewDownloaded).toBe(true);
+    expect(report.checks.transcriptModeratorDraftPollingVerified).toBe(true);
     expect(report.checks.transcriptPublicationApprovalDownloaded).toBe(true);
     expect(report.checks.transcriptPublicationHandoffVerified).toBe(true);
     expect(report.checks.privateMediaRecorderAvailable).toBe(true);
