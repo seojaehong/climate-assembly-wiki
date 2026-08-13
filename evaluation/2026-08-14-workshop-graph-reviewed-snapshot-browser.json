@@ -1,16 +1,16 @@
 {
-  "checkedAt": "2026-08-13T22:14:02.295Z",
+  "checkedAt": "2026-08-13T22:24:12.191Z",
   "url": "http://127.0.0.1:4323/workshop-graph/?source=live-transcript-r2-reviewed",
   "verifier": "automation/verify-workshop-graph-advisory.mjs",
-  "sourceCommit": "b48b32e686f2c9adee31d63811d2075d8ee50fb8",
+  "sourceCommit": "e4a6272134e549b219c1d666e7e7fbf4434f0da7",
   "chromiumVersion": "149.0.7827.55",
   "sourceHashes": {
-    "public/workshop-graph/index.html": "63e39a9a61e3e4a074ab0d67acbfe13370ac6b7e0f56c5ddc60ea0189395ea98",
+    "public/workshop-graph/index.html": "bff547acbcf8a829ef396a4e5991a843410e70d529c721adb1a3b375cd48fe6a",
     "public/workshop-graph/graph-advisory-assets.js": "4419b64f268a3274021bc4ac2e4da60fd6f5ee199ebbb026cc3d14423fbd8a43",
-    "public/workshop-graph/graph-source-adapter.js": "731cd472a8334e5131382fc5b4ad32ac6bcdb0637680bd29e63bde301445fa49",
+    "public/workshop-graph/graph-source-adapter.js": "70531c590d186f52d6d2d0b059ce37ebc06af7159e397e4849d3ee3a89eeba03",
     "public/workshop-graph/sources.json": "17210dee975359b5bf17d183df4ae6746632714b70103bbe11b929f0e5117329",
     "public/workshop-graph/data/live-transcript-r2-reviewed.json": "e0b4bf192736c240836e1ebdf07aba2e175c8ff4ff382f17cd0f02a6d2e36a4d",
-    "automation/verify-workshop-graph-advisory.mjs": "e2cfbca7ceaf2c5b221a84f3edccb96ce6b499970039bc8f5618586ee400ae80"
+    "automation/verify-workshop-graph-advisory.mjs": "e2337afda081a665f9ed2369a40e0320fd72eba1fb14e7b5ca6ce32d9e84d431"
   },
   "servedHashesMatch": true,
   "fixtures": {
@@ -36,6 +36,12 @@
     "pill": "LIVE · 검수 완료"
   },
   "liveCategoryLabel": "검수 완료 스냅샷",
+  "publicTranscriptBoundary": {
+    "reviewedSummaryVisible": true,
+    "citedUidVisible": true,
+    "publicRawTranscriptNoticeVisible": true,
+    "rawTranscriptLabelAbsent": true
+  },
   "validCandidate": {
     "metadata": "노드 613 · 엣지 491 · 권고 후보 1건 · 품질 신호",
     "humanReviewRequired": true,
