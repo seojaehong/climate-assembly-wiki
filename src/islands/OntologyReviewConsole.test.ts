@@ -11,8 +11,10 @@ import OntologyReviewConsole, {
   NodeReviewCard,
   OntologyReviewLoginBoundary,
   ontologyReviewNodeAnchorId,
+  transcriptHandoffFixtureArtifact,
 } from './OntologyReviewConsole';
 import type { CanvasOntologyNode, CanvasOntologyReviewWorkspace } from './canvas/ontology-review-workspace';
+import type { TranscriptOntologyReviewWorkspace } from './canvas/transcript-ontology-review-workspace';
 import { authenticatedReviewerId } from './canvas/useAuth';
 
 const AUTH_REVIEWER_ID = 'auth-user:00000000-0000-4000-8000-000000000091';
@@ -84,6 +86,34 @@ describe('OntologyReviewConsole', () => {
     expect(authenticatedReviewerId('00000000-0000-4000-8000-000000000091')).toBe(AUTH_REVIEWER_ID);
     expect(authenticatedReviewerId('NOT-A-UUID')).toBeNull();
     expect(authenticatedReviewerId('')).toBeNull();
+  });
+
+  it('preserves the exact generated R4 handoff fixture as a local operator artifact', () => {
+    const fixtureText = '{"kind":"transcript-ontology-fixture"}\n';
+    const source: TranscriptOntologyReviewWorkspace['source'] = {
+      fixtureId: 'candidate-set-1',
+      sessionId: 'session-1',
+      language: 'ko',
+      reviewedBy: AUTH_REVIEWER_ID,
+      reviewedAt: '2026-08-14T01:00:00.000Z',
+      fixtureSha256: 'a'.repeat(64),
+      fixtureText,
+      handoff: {
+        kind: 'private-transcript-extraction-handoff',
+        reviewBatchSha256: 'b'.repeat(64),
+        captureId: 'capture-1',
+        audioSha256: 'c'.repeat(64),
+        candidateSetId: 'candidate/set 1',
+      },
+    };
+
+    expect(transcriptHandoffFixtureArtifact(source)).toEqual({
+      content: fixtureText,
+      fileName: 'private-transcript-ontology-fixture-candidate_set_1.json',
+    });
+    expect(() => transcriptHandoffFixtureArtifact({ ...source, handoff: null })).toThrow(
+      'R4 extraction handoff fixture is unavailable',
+    );
   });
 
   it('announces auth failures and locks the login form while a request is running', () => {

@@ -182,39 +182,6 @@ function privateTranscriptOntologyHandoff(privateTranscriptBatchText, privateTra
       requiresHumanReview: true,
     },
   };
-  const fixture = {
-    schemaVersion: 1,
-    kind: 'transcript-ontology-fixture',
-    fixtureId: candidateSetId,
-    sessionId: privateTranscriptBatch.source.sessionId,
-    language: 'ko',
-    reviewedBy: sourceChunk.reviewer,
-    reviewedAt: sourceChunk.reviewedAt,
-    source: {
-      kind: 'private-transcript-extraction-handoff',
-      reviewBatchSha256,
-      captureId: privateTranscriptBatch.source.captureId,
-      audioSha256: privateTranscriptBatch.source.audioSha256,
-      candidateSetId,
-    },
-    chunks: [{
-      uid: sourceChunk.uid,
-      startMs: sourceChunk.startMs,
-      endMs: sourceChunk.endMs,
-      speakerLabelPseudonym: sourceChunk.speakerLabelPseudonym,
-      text: sourceChunk.text,
-      sourceReview: {
-        reviewStatus: sourceChunk.reviewStatus,
-        reviewer: sourceChunk.reviewer,
-        reviewedAt: sourceChunk.reviewedAt,
-        sourceText: sourceChunk.sourceText,
-        candidateSetId: sourceChunk.candidateSetId,
-        candidateSourceUid: sourceChunk.candidateSourceUid,
-      },
-    }],
-    expected: { nodes: candidates.nodes, relations: candidates.relations },
-  };
-  const fixtureText = `${JSON.stringify(fixture, null, 2)}\n`;
   return {
     reviewBatch: {
       name: 'private-transcript-review-batch.json', mimeType: 'application/json',
@@ -224,8 +191,6 @@ function privateTranscriptOntologyHandoff(privateTranscriptBatchText, privateTra
       name: 'private-transcript-ontology-candidates.json', mimeType: 'application/json',
       buffer: Buffer.from(`${JSON.stringify(candidates, null, 2)}\n`),
     },
-    fixtureText,
-    fixtureSha256: createHash('sha256').update(fixtureText, 'utf8').digest('hex'),
     reviewBatchSha256,
   };
 }
@@ -783,6 +748,24 @@ export async function verifyCanvasBrowser({
     }, startTranscriptReviewName, { timeout: timeoutMs });
     await startTranscriptReview.click();
     await transcriptReviewPanel.getByText('진행 0/3', { exact: true }).waitFor({ timeout: timeoutMs });
+    let downloadedHandoffFixtureText = TRANSCRIPT_REVIEW_FIXTURE_TEXT;
+    let downloadedHandoffFixture = null;
+    let downloadedHandoffFixtureSha256 = TRANSCRIPT_REVIEW_FIXTURE_SHA256;
+    if (hasHandoffInputs) {
+      const handoffFixtureDownloadPromise = reviewPage.waitForEvent('download', { timeout: timeoutMs });
+      await transcriptReviewPanel.getByRole('button', { name: 'R4 결속 fixture 다운로드' }).click();
+      downloadedHandoffFixtureText = await downloadText(await handoffFixtureDownloadPromise);
+      downloadedHandoffFixture = JSON.parse(downloadedHandoffFixtureText);
+      downloadedHandoffFixtureSha256 = createHash('sha256')
+        .update(downloadedHandoffFixtureText, 'utf8')
+        .digest('hex');
+    }
+    const transcriptHandoffFixtureDownloaded = !hasHandoffInputs || (
+      downloadedHandoffFixture?.kind === 'transcript-ontology-fixture'
+      && downloadedHandoffFixture?.source?.kind === 'private-transcript-extraction-handoff'
+      && downloadedHandoffFixture?.source?.reviewBatchSha256 === privateOntologyHandoff.reviewBatchSha256
+      && downloadedHandoffFixture?.source?.candidateSetId === 'browser-r4-ontology-candidates-1'
+    );
     const transcriptNodeCards = transcriptReviewPanel.locator('article[aria-label^="전사 노드 후보 검수"]');
     const transcriptRelationCards = transcriptReviewPanel.locator('article[aria-label^="전사 관계 후보 검수"]');
     const transcriptCandidateEvidenceVisible = await transcriptNodeCards.nth(0)
@@ -811,11 +794,10 @@ export async function verifyCanvasBrowser({
       && transcriptReviewedPlan.publicGraphWritten === false
       && transcriptReviewedPlan.requiresPublicationReview === true
       && transcriptReviewedPlan.dryRun === true
-      && transcriptReviewedPlan.source?.fixtureSha256 === (hasHandoffInputs
-        ? privateOntologyHandoff.fixtureSha256
-        : TRANSCRIPT_REVIEW_FIXTURE_SHA256)
+      && transcriptReviewedPlan.source?.fixtureSha256 === downloadedHandoffFixtureSha256
       && (!hasHandoffInputs || (
-        transcriptReviewedPlan.source?.handoff?.reviewBatchSha256 === privateOntologyHandoff.reviewBatchSha256
+        transcriptHandoffFixtureDownloaded
+        && transcriptReviewedPlan.source?.handoff?.reviewBatchSha256 === privateOntologyHandoff.reviewBatchSha256
         && transcriptReviewedPlan.source?.handoff?.candidateSetId === 'browser-r4-ontology-candidates-1'
       ))
       && transcriptReviewedPlan.nodes?.[0]?.reviewStatus === 'edited'
@@ -853,7 +835,7 @@ export async function verifyCanvasBrowser({
       && typeof latestReviewedAt === 'string'
       && publicationApproval.approvedAt > latestReviewedAt;
     const publicationGraph = buildPublishedTranscriptReviewGraph({
-      fixtureText: hasHandoffInputs ? privateOntologyHandoff.fixtureText : TRANSCRIPT_REVIEW_FIXTURE_TEXT,
+      fixtureText: downloadedHandoffFixtureText,
       reviewedPlan: transcriptReviewedPlan,
       publication: publicationApproval,
     });
@@ -874,7 +856,7 @@ export async function verifyCanvasBrowser({
       && !publicationGraphText.includes('startMs')
       && !publicationGraphText.includes('endMs');
     if (!transcriptLocalOnlyBoundaryVisible || !transcriptCandidateEvidenceVisible
-      || !transcriptRedecisionGateVerified || !transcriptReviewDownloaded
+      || !transcriptRedecisionGateVerified || !transcriptHandoffFixtureDownloaded || !transcriptReviewDownloaded
       || !transcriptPublicationApprovalDownloaded || !transcriptPublicationHandoffVerified) {
       throw new Error('Transcript ontology review browser contract is incomplete');
     }
@@ -1098,6 +1080,8 @@ export async function verifyCanvasBrowser({
         transcriptReviewLocalOnlyBoundaryVisible: transcriptLocalOnlyBoundaryVisible,
         transcriptCandidateEvidenceVisible,
         transcriptRedecisionGateVerified,
+        transcriptHandoffFixtureDownloaded,
+        transcriptHandoffFixtureSha256: downloadedHandoffFixtureSha256,
         transcriptReviewDownloaded,
         transcriptPublicationApprovalDownloaded,
         transcriptPublicationHandoffVerified,

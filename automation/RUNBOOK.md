@@ -518,12 +518,13 @@ npm.cmd run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology
 
 - 입력 예제는 `automation/fixtures/transcript-ontology-review-candidates.example.json`이다. R0와 같은 time-coded chunk·opaque UID·synthetic speaker·역할형 fixture reviewer·허용 ontology vocabulary를 다시 fail-closed 검증한다.
 - R4 연결 입력은 `private-transcript-review-batch` 원문 bytes와 `private-transcript-ontology-candidates` JSON 두 파일이다. 후보 파일의 `reviewBatchSha256`은 batch exact bytes, capture/session/audio SHA는 batch source와 모두 같아야 하며 candidate node/relation의 모든 인용은 검수 완료 chunk UID를 가리켜야 한다. batch의 Auth reviewer·검수 시각·원 STT provenance는 생성 fixture와 reviewed plan에 보존한다.
+- R4 handoff 검증이 끝나면 화면의 `R4 결속 fixture 다운로드`로 생성 당시 exact fixture bytes를 로컬에 보존한다. 이 파일은 R3 CLI의 `--fixture` 입력이며, reviewed plan의 `source.fixtureSha256`과 일치해야 한다. 다운로드는 DB·서버·public graph를 쓰지 않는다.
 - candidate node 카드는 인용 전사 구간, speaker pseudonym, millisecond range, Habermas 역할, 표시 이름과 검수 내용을 함께 보여 준다. relation 카드도 인용 전사와 endpoint, 논증 관계를 함께 보여 준다.
 - node/relation은 각각 승인·수정 승인·반려할 수 있다. 반려 node를 endpoint로 둔 relation 승인은 거부하고, 이미 승인한 relation의 endpoint node 반려도 거부한다. 판단 뒤 입력을 다시 바꾸면 해당 항목을 `proposed`로 되돌리고 재판단 전까지 다운로드를 잠근다.
 - 모든 후보를 판단한 경우에만 `transcript-ontology-reviewed-plan`을 로컬 다운로드한다. export는 원 fixture에서 workspace를 다시 만들어 exact SHA-256, 원 chunk 인용, source text, 판단 audit, summary와 safety를 대조한다. plan은 `databaseMutationExecuted:false`, `publicGraphWritten:false`, `requiresPublicationReview:true`를 명시한다.
 - 같은 Auth 세션에서 현재 plan 다운로드가 성공한 뒤에만 `live-*` source ID를 입력해 별도 `transcript-ontology-publication-approval` artifact를 내려받을 수 있다. artifact는 exact canonical plan SHA-256, canonical Auth reviewer ID와 모든 판단 이후 승인 시각을 결속하며, plan·fixture·source ID가 바뀐 비동기 결과는 폐기한다. 이 단계도 브라우저 로컬 다운로드일 뿐 DB나 public graph를 쓰지 않는다.
 - 브라우저 verifier는 실제 production 페이지에서 R4 검수 batch를 먼저 내려받고 그 exact SHA에 결속한 provider-neutral 후보를 업로드한 뒤, 원문·역할 표시, node 수정 승인, node/relation 반려와 private plan 직렬화를 실행한다. Canvas 검수 흐름과 별개로 같은 페이지에서 두 기능을 모두 검증한다.
-- 같은 Chromium 실행에서 다운로드한 private plan과 publication approval을 R3 `buildPublishedTranscriptReviewGraph()`에 직접 전달한다. builder가 원 fixture provenance와 두 artifact를 전수 대조하고 승인 node만 남긴 graph, 반려 건수, 신원 종류 비식별화와 raw 전사 시각·speaker 비노출을 모두 만족해야 browser verifier가 통과한다. graph는 메모리에서만 만들며 public 파일을 쓰지 않는다.
+- 같은 Chromium 실행에서 다운로드한 R4 결속 fixture, private plan과 publication approval을 R3 `buildPublishedTranscriptReviewGraph()`에 직접 전달한다. verifier가 fixture exact bytes SHA-256과 plan source를 먼저 결속하고, builder가 세 artifact를 전수 대조해 승인 node만 남긴 graph, 반려 건수, 신원 종류 비식별화와 raw 전사 시각·speaker 비노출을 모두 만족해야 통과한다. graph는 메모리에서만 만들며 public 파일을 쓰지 않는다.
 - 실제 시민 발언·음성/STT·DB/API 저장·R3 graph export/publication은 포함하지 않는다. 검수 결정과 private plan exporter는 현재 Supabase Auth 사용자 UUID에서 파생한 canonical reviewer ID만 허용하지만 다운로드 plan의 외부 서명이나 독립 신원 검증은 포함하지 않는다. 이 prototype에 실제 시민 발언 파일을 넣지 않는다.
 
 ## R3 검수 plan → 합성 live graph source

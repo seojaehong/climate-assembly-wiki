@@ -163,6 +163,28 @@ function downloadTranscriptReviewedPlan(content: string, fixtureId: string): voi
   URL.revokeObjectURL(url);
 }
 
+export function transcriptHandoffFixtureArtifact(source: TranscriptOntologyReviewWorkspace['source']): {
+  content: string;
+  fileName: string;
+} {
+  if (!source.handoff) throw new Error('R4 extraction handoff fixture is unavailable');
+  const safeId = source.handoff.candidateSetId.replaceAll(/[^a-zA-Z0-9_-]/g, '_');
+  return {
+    content: source.fixtureText,
+    fileName: `private-transcript-ontology-fixture-${safeId}.json`,
+  };
+}
+
+function downloadTranscriptHandoffFixture(source: TranscriptOntologyReviewWorkspace['source']): void {
+  const artifact = transcriptHandoffFixtureArtifact(source);
+  const url = URL.createObjectURL(new Blob([artifact.content], { type: 'application/json;charset=utf-8' }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = artifact.fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 function downloadTranscriptPublicationApproval(content: string, sourceId: string): void {
   const safeId = sourceId.replaceAll(/[^a-zA-Z0-9_-]/g, '_');
   const url = URL.createObjectURL(new Blob([content], { type: 'application/json;charset=utf-8' }));
@@ -593,6 +615,18 @@ export function TranscriptOntologyReviewPanel({ reviewerId }: { reviewerId: stri
     });
   };
 
+  const exportHandoffFixture = () => {
+    if (!workspace?.source.handoff) return;
+    try {
+      downloadTranscriptHandoffFixture(workspace.source);
+      setError(null);
+      setNotice('R4 provenance에 결속된 R2 입력 fixture를 내려받았습니다. DB와 공개 graph는 변경하지 않았습니다.');
+    } catch (caught: unknown) {
+      console.error('Failed to download the private transcript ontology handoff fixture', caught);
+      setError(errorMessage(caught));
+    }
+  };
+
   const exportPublicationApproval = async () => {
     const target = exportedPlanRef.current;
     if (!target) return;
@@ -659,9 +693,14 @@ export function TranscriptOntologyReviewPanel({ reviewerId }: { reviewerId: stri
             <strong>진행 {workspace.summary.decided}/{workspace.summary.total}</strong>
             <span>candidate node {workspace.summary.nodes} · relation {workspace.summary.relations}</span>
             {workspace.source.handoff ? (
-              <span style={{ color: MUTED, overflowWrap: 'anywhere' }}>
-                R4 batch SHA-256 {workspace.source.handoff.reviewBatchSha256} · candidate set {workspace.source.handoff.candidateSetId}
-              </span>
+              <>
+                <span style={{ color: MUTED, overflowWrap: 'anywhere' }}>
+                  R4 batch SHA-256 {workspace.source.handoff.reviewBatchSha256} · candidate set {workspace.source.handoff.candidateSetId}
+                </span>
+                <button type="button" onClick={exportHandoffFixture} style={{ ...controlStyle, background: '#FFFFFF', color: '#0B4F6C', fontWeight: 800 }}>
+                  R4 결속 fixture 다운로드
+                </button>
+              </>
             ) : null}
             <button type="button" onClick={() => { void exportPlan(); }} disabled={exporting || workspace.summary.decided !== workspace.summary.total} style={{ ...controlStyle, background: '#553C9A', color: '#FFFFFF', fontWeight: 800 }}>
               {exporting ? 'plan 검증 중…' : '전사 후보 검수 plan 다운로드'}
