@@ -69,7 +69,7 @@ async function fixtureServer({
             <button id="private-import-stt" type="button" disabled>STT 후보 로컬 가져오기</button>
             <label>시작 ms<input id="private-start-ms" type="number" value="0"></label>
             <label>종료 ms<input id="private-end-ms" type="number" value="1000"></label>
-            <label>화자 가명<input id="private-speaker" type="text" value="speaker-a"></label>
+            <label>화자 가명 또는 미식별 표기<input id="private-speaker" type="text" value="speaker-unknown"></label>
             <label>수동 전사 원문<textarea id="private-source-text"></textarea></label>
             <button id="private-add" type="button">전사 chunk 추가</button>
             <section id="private-chunks" aria-label="전사 chunk 검수 목록"></section>
@@ -295,6 +295,9 @@ async function fixtureServer({
             article.dataset.candidateSourceUid = candidate.sourceUid;
             article.setAttribute('aria-label', '전사 chunk 검수 capture-browser:chunk:1');
             article.innerHTML = '<label>검수 전사<textarea></textarea></label><button type="button">원문 승인</button><button type="button">반려</button>';
+            const speakerMeta = document.createElement('span');
+            speakerMeta.textContent = candidate.speakerLabelPseudonym;
+            article.prepend(speakerMeta);
             article.querySelector('textarea').value = candidate.text;
             const accept = article.querySelector('button');
             article.querySelector('textarea').addEventListener('input', () => {
@@ -352,7 +355,7 @@ async function fixtureServer({
                 uid: 'capture-browser:chunk:1', sourceText, text: reviewedText,
                 candidateSetId: reviewedArticle.dataset.candidateSetId,
                 candidateSourceUid: reviewedArticle.dataset.candidateSourceUid,
-                startMs: 0, endMs: 1000, speakerLabelPseudonym: 'speaker-a',
+                startMs: 0, endMs: 1000, speakerLabelPseudonym: 'speaker-unknown',
                 reviewStatus: reviewedText === sourceText ? 'accepted' : 'edited',
                 reviewer: '${authReviewerId}',
                 reviewedAt: '2026-08-29T01:05:00.000Z',
@@ -710,6 +713,7 @@ describe('verifyCanvasBrowser', () => {
     expect(report.checks.privateConsentWithdrawalDiscarded).toBe(true);
     expect(report.checks.privateAudioFileImported).toBe(true);
     expect(report.checks.privateTranscriptSourceContextVerified).toBe(true);
+    expect(report.checks.privateUnknownSpeakerVisible).toBe(true);
     expect(report.checks.privateSessionLockedWhileRecording).toBe(true);
     expect(report.checks.privateTranscriptReviewGateVerified).toBe(true);
     expect(report.checks.privateTranscriptRedecisionGateVerified).toBe(true);

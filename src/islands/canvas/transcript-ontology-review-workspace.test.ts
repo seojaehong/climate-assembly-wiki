@@ -36,7 +36,7 @@ const privateReviewBatchText = () => `${JSON.stringify({
     candidateSourceUid: 'stt-source-1',
     startMs: 0,
     endMs: 4_000,
-    speakerLabelPseudonym: 'speaker-a',
+    speakerLabelPseudonym: 'speaker-unknown',
     sourceText: '전환 속도를 높여야 합니다.',
     text: '전환 속도를 높여야 합니다.',
     reviewStatus: 'accepted',
@@ -139,6 +139,7 @@ describe('transcript ontology review workspace', () => {
     });
     expect(workspace.nodes[0].transcript[0]).toMatchObject({
       uid: 'capture-r4-handoff:chunk:1',
+      speakerLabelPseudonym: 'speaker-unknown',
       text: '전환 속도를 높여야 합니다.',
       sourceReview: {
         reviewStatus: 'accepted',

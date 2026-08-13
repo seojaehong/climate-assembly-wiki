@@ -203,7 +203,7 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [startMs, setStartMs] = useState('0');
   const [endMs, setEndMs] = useState('');
-  const [speaker, setSpeaker] = useState('speaker-a');
+  const [speaker, setSpeaker] = useState('speaker-unknown');
   const [chunkText, setChunkText] = useState('');
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [recordedStartedAt, setRecordedStartedAt] = useState('');
@@ -689,7 +689,10 @@ export function PrivateTranscriptCapturePanel({ reviewerId }: { reviewerId: stri
             <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
               <label>시작 ms<input type="number" min="0" value={startMs} onChange={(event) => setStartMs(event.currentTarget.value)} style={{ ...controlStyle, display: 'block', width: '100%' }} /></label>
               <label>종료 ms<input type="number" min="1" value={endMs} onChange={(event) => setEndMs(event.currentTarget.value)} style={{ ...controlStyle, display: 'block', width: '100%' }} /></label>
-              <label>화자 가명<input value={speaker} onChange={(event) => setSpeaker(event.currentTarget.value)} pattern="speaker-[a-z]{1,3}" style={{ ...controlStyle, display: 'block', width: '100%' }} /></label>
+              <label>화자 가명 또는 미식별 표기
+                <input value={speaker} onChange={(event) => setSpeaker(event.currentTarget.value)} pattern="speaker-([a-z]{1,3}|unknown)" aria-describedby="private-speaker-help" style={{ ...controlStyle, display: 'block', width: '100%' }} />
+              </label>
+              <small id="private-speaker-help" style={{ color: MUTED }}>화자를 구분할 수 없으면 speaker-unknown을 유지하세요.</small>
             </div>
             <label>수동 전사 원문
               <textarea value={chunkText} onChange={(event) => setChunkText(event.currentTarget.value)} rows={3} style={{ ...controlStyle, display: 'block', resize: 'vertical', width: '100%' }} />

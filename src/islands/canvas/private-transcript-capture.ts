@@ -106,7 +106,7 @@ interface ReviewChunkInput {
 }
 
 const OPAQUE_ID = /^[a-z0-9][a-z0-9._:-]{0,127}$/i;
-const SPEAKER = /^speaker-[a-z]{1,3}$/;
+const SPEAKER = /^speaker-(?:[a-z]{1,3}|unknown)$/;
 const LANGUAGE = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i;
 const SHA256 = /^[a-f0-9]{64}$/;
 

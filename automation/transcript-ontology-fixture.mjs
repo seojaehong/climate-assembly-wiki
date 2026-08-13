@@ -12,7 +12,7 @@ const RELATIONS = [
   'supports', 'opposes', 'hasConcern', 'requiresCondition', 'hasEvidence',
   'modifies', 'isAbout', 'raisesIssue', 'impacts',
 ];
-const SPEAKER_PSEUDONYM_PATTERN = /^speaker-[a-z]{1,3}$/;
+const SPEAKER_PSEUDONYM_PATTERN = /^speaker-(?:[a-z]{1,3}|unknown)$/;
 const OPAQUE_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,127}$/i;
 const REVIEWER_ALIAS_PATTERN = /^(moderator|reviewer)-(fixture|test)$/;
 const AUTH_REVIEWER_ID_PATTERN = /^auth-user:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;

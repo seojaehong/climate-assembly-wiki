@@ -597,6 +597,15 @@ test('requires a pseudonymous speaker label for every transcript chunk', () => {
   expect(() => buildReviewedTranscriptGraph(fixture)).toThrow('Invalid transcript speaker pseudonym');
 });
 
+test('accepts the explicit unknown speaker marker without exposing it publicly', () => {
+  const fixture = structuredClone(FIXTURE);
+  fixture.chunks[0].speakerLabelPseudonym = 'speaker-unknown';
+  const graph = buildReviewedTranscriptGraph(fixture);
+
+  expect(graph.elements.nodes).toHaveLength(2);
+  expect(JSON.stringify(graph)).not.toContain('speaker-unknown');
+});
+
 test('rejects unknown citations and relation endpoints before graph export', () => {
   const unknownCitation = structuredClone(FIXTURE);
   unknownCitation.expected.nodes[0].citedUids = ['chunk-missing'];

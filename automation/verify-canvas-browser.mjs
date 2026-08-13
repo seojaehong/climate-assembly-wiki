@@ -676,7 +676,7 @@ export async function verifyCanvasBrowser({
           sourceUid: 'browser-stt-source-1',
           startMs: 0,
           endMs: privateDurationMs,
-          speakerLabelPseudonym: 'speaker-a',
+          speakerLabelPseudonym: 'speaker-unknown',
           text: '합성 음성 STT 후보 원문입니다.',
         }],
         safety: { localOnly: true, audioIncluded: false, databaseMutationExecuted: false },
@@ -687,6 +687,9 @@ export async function verifyCanvasBrowser({
       .waitFor({ timeout: timeoutMs });
     const privateChunkCard = privateCapturePanel.locator('article[aria-label^="전사 chunk 검수"]');
     await privateChunkCard.waitFor({ timeout: timeoutMs });
+    const privateUnknownSpeakerVisible = await privateChunkCard
+      .getByText(/speaker-unknown/, { exact: false })
+      .isVisible();
     const privateBatchDownloadButton = privateCapturePanel
       .getByRole('button', { name: '검수 완료 전사 batch 다운로드' });
     const privateTranscriptReviewGateVerified = await privateBatchDownloadButton.isDisabled();
@@ -729,7 +732,7 @@ export async function verifyCanvasBrowser({
       && privateTranscriptChunk?.uid === `${privateTranscriptBatch.source?.captureId}:chunk:1`
       && privateTranscriptChunk?.startMs === 0
       && privateTranscriptChunk?.endMs === privateTranscriptBatch.source?.durationMs
-      && privateTranscriptChunk?.speakerLabelPseudonym === 'speaker-a'
+      && privateTranscriptChunk?.speakerLabelPseudonym === 'speaker-unknown'
       && privateTranscriptChunk?.candidateSetId === 'browser-stt-candidates-1'
       && privateTranscriptChunk?.candidateSourceUid === 'browser-stt-source-1'
       && privateTranscriptChunk?.sourceText === '합성 음성 STT 후보 원문입니다.'
@@ -758,6 +761,7 @@ export async function verifyCanvasBrowser({
       privateConsentWithdrawalDiscarded,
       privateAudioFileImported,
       privateTranscriptSourceContextVerified,
+      privateUnknownSpeakerVisible,
       privateTranscriptReviewGateVerified,
       privateTranscriptRedecisionGateVerified,
       privateTranscriptBatchDownloaded,
@@ -903,7 +907,7 @@ export async function verifyCanvasBrowser({
       && publicationGraph.meta?.publication?.approved_identity_kind === 'authenticated_user'
       && publicationGraph.meta?.publication?.approved_at === publicationApproval.approvedAt
       && !publicationGraphText.includes(REVIEW_AUTH_REVIEWER_ID)
-      && !publicationGraphText.includes('speaker-a')
+      && !publicationGraphText.includes('speaker-unknown')
       && !publicationGraphText.includes('startMs')
       && !publicationGraphText.includes('endMs');
     if (!transcriptLocalOnlyBoundaryVisible || !transcriptCandidateEvidenceVisible
@@ -1146,6 +1150,7 @@ export async function verifyCanvasBrowser({
         privateConsentWithdrawalDiscarded,
         privateAudioFileImported,
         privateTranscriptSourceContextVerified,
+        privateUnknownSpeakerVisible,
         privateSessionLockedWhileRecording,
         privateTranscriptReviewGateVerified,
         privateTranscriptRedecisionGateVerified,

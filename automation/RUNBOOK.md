@@ -488,7 +488,7 @@ npm.cmd run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology
 npm.cmd run bridge:transcript-ontology -- --fixture fixtures/transcript-ontology-reviewed.example.json --verify-graph ../evaluation/transcript-ontology-r0-graph.json
 ```
 
-- chunk에는 stable opaque UID, millisecond time range, `speaker-a` 같은 짧은 synthetic 화자 표기와 text가 필요하다. 실제 이름·전화번호·계정은 허용하지 않는다.
+- chunk에는 stable opaque UID, millisecond time range, `speaker-a` 같은 짧은 synthetic 화자 표기 또는 화자 미식별을 뜻하는 정확한 `speaker-unknown`, text가 필요하다. 실제 이름·전화번호·계정은 허용하지 않는다.
 - node/relation 후보는 허용된 온톨로지 vocabulary와 존재하는 chunk UID를 인용해야 한다. 관계 endpoint도 같은 fixture의 node 후보여야 한다.
 - 출력 ID는 후보 UID에서 결정적으로 생성되며 현재 workshop graph의 `elements.nodes`/`elements.edges` 형식과 `cited`/`cited_uids` 역추적 계약을 따른다.
 - `reviewedBy`는 개인 이름이 아닌 `moderator-fixture`, `reviewer-test` 같은 R0 synthetic 역할 alias만 허용한다.
@@ -556,7 +556,7 @@ npm.cmd --prefix automation run bridge:transcript-ontology -- --fixture fixtures
 - 테이블 녹음 파일은 브라우저가 `audio/*`로 확인한 비어 있지 않은 256MB 이하 파일만 받는다. 파일명·경로·bytes는 capture/batch에 넣지 않고, 운영자가 확인해 입력한 녹음 시작 시각과 브라우저가 metadata에서 읽은 길이로 종료 시각을 계산한다. metadata 읽기는 20초 안에 끝나야 하며 늦은 파일 결과는 generation guard로 폐기한다.
 - 녹음 또는 파일 처리가 끝나면 exact audio SHA-256, MIME type, byte length, 시작·종료 시각과 `sessionId`·`roomId`·`language`·`captureMethod`를 local capture session에 결속한다. `captureMethod`는 브라우저 녹음과 테이블 파일 가져오기를 구분한다. 내려받는 전사 batch에는 음성 bytes/object URL을 포함하지 않는다.
 - 선택적인 `private-stt-candidates` schema v2 JSON은 현재 capture ID·session ID·room ID·language·capture method·audio SHA-256·duration과 모두 일치할 때만 기존 local draft를 교체한다. 파일은 1MB 이하이며 exact-key 계약을 사용해 raw audio/object URL/임의 provider metadata를 거부한다. `candidateSetId`와 각 `sourceUid`는 provider-neutral provenance로 schema v2 review batch까지 보존하며 모든 imported chunk는 `proposed`에서 시작한다.
-- moderator가 time-coded chunk, speaker pseudonym, 전사 원문을 수동 입력하고 각 chunk를 승인·수정 승인·반려해야 한다. 화면 문구를 다시 바꾸면 해당 판단을 `proposed`로 되돌리고 extraction handoff 다운로드를 다시 잠근다.
+- moderator가 time-coded chunk, speaker pseudonym 또는 `speaker-unknown`, 전사 원문을 수동 입력하고 각 chunk를 승인·수정 승인·반려해야 한다. 화자를 구분할 수 없을 때 UI 기본값은 `speaker-unknown`이며 임의 이름을 추정하지 않는다. 화면 문구를 다시 바꾸면 해당 판단을 `proposed`로 되돌리고 extraction handoff 다운로드를 다시 잠근다.
 - 모든 chunk가 결정되고 승인 또는 수정 승인된 chunk가 하나 이상 있을 때만 `private-transcript-review-batch`를 내려받는다. 이 batch는 `localOnly:true`, `extractionExecuted:false`, `requiresExtractionReview:true`이며 candidate extraction을 자동 실행하지 않는다.
 - 내려받기 직전 capture source, chunk 순서·시간·화자 가명, 판단 상태·검수자·검수 시각, 원문 보존 규칙과 summary를 실제 chunk에서 다시 검증한다. 캐시된 summary만 바꾸거나 판단 뒤 원문·audit metadata를 바꾼 session은 fail-closed한다.
 - 내려받은 batch는 R2 패널에서 provider-neutral ontology 후보와 함께 다시 열 수 있다. 후보 파일은 batch exact-byte SHA-256과 capture/session/audio SHA를 모두 선언하며, 후보 언어는 batch 언어와 같아야 한다. 일치할 때만 room·language·capture method를 포함한 R4 source audit가 R2 handoff와 R3 bundle report까지 보존된다. 이 단계는 extraction provider를 호출하지 않는다.

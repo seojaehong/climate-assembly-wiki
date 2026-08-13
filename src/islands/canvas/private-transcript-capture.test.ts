@@ -13,7 +13,7 @@ import {
 const sourceContext = {
   roomId: 'table-a',
   language: 'ko-KR',
-} as const;
+};
 
 const capture = () => createPrivateTranscriptCaptureSession({
   captureId: 'capture-20260829-a',
@@ -40,7 +40,7 @@ const sttCandidates = () => ({
     durationMs: 12_000,
   },
   chunks: [
-    { sourceUid: 'stt-1', startMs: 0, endMs: 5_000, speakerLabelPseudonym: 'speaker-a', text: '첫 번째 STT 후보입니다.' },
+    { sourceUid: 'stt-1', startMs: 0, endMs: 5_000, speakerLabelPseudonym: 'speaker-unknown', text: '첫 번째 STT 후보입니다.' },
     { sourceUid: 'stt-2', startMs: 5_000, endMs: 12_000, speakerLabelPseudonym: 'speaker-b', text: '두 번째 STT 후보입니다.' },
   ],
   safety: { localOnly: true, audioIncluded: false, databaseMutationExecuted: false },
@@ -186,7 +186,7 @@ describe('private transcript capture', () => {
     const session = appendPrivateTranscriptChunk(capture(), {
       startMs: 0,
       endMs: 12_000,
-      speakerLabelPseudonym: 'speaker-a',
+      speakerLabelPseudonym: 'speaker-unknown',
       text: '재생에너지 전환 속도를 높여야 합니다.',
     });
 
@@ -206,6 +206,7 @@ describe('private transcript capture', () => {
 
     expect(batch.chunks).toEqual([expect.objectContaining({
       uid: 'capture-20260829-a:chunk:1',
+      speakerLabelPseudonym: 'speaker-unknown',
       reviewStatus: 'accepted',
       text: '재생에너지 전환 속도를 높여야 합니다.',
     })]);
@@ -217,6 +218,22 @@ describe('private transcript capture', () => {
       extractionExecuted: false,
       requiresExtractionReview: true,
     });
+  });
+
+  it('accepts only short pseudonyms or the explicit unknown speaker marker', () => {
+    expect(appendPrivateTranscriptChunk(capture(), {
+      startMs: 0,
+      endMs: 1_000,
+      speakerLabelPseudonym: 'speaker-unknown',
+      text: '화자를 구분할 수 없는 전사입니다.',
+    }).chunks[0].speakerLabelPseudonym).toBe('speaker-unknown');
+
+    expect(() => appendPrivateTranscriptChunk(capture(), {
+      startMs: 0,
+      endMs: 1_000,
+      speakerLabelPseudonym: 'unknown',
+      text: '허용되지 않은 화자 표기입니다.',
+    })).toThrow('Invalid speaker pseudonym');
   });
 
   it('exports edited chunks, drops rejected chunks, and binds the in-memory audio hash without audio bytes', () => {
