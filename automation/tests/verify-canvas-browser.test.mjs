@@ -120,8 +120,8 @@ async function fixtureServer({
         </section>
         </section>
         <section aria-labelledby="transcript-review-heading">
-          <h2 id="transcript-review-heading">합성 전사 후보 검수</h2>
-          <p>실제 시민 발언 파일은 이 prototype에 넣지 마세요.</p>
+          <h2 id="transcript-review-heading">전사 ontology 후보 검수</h2>
+          <p>승인된 consent·retention 정책 전에는 실제 시민 발언 파일을 넣지 마세요.</p>
           <label>전사 ontology fixture JSON<input id="transcript-fixture" type="file"></label>
           <p>인증 검수자 ID <code>${authReviewerId}</code></p>
           <button type="button" id="start-transcript-review" disabled>전사 후보 로컬 검수 시작</button>

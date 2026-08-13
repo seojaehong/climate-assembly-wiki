@@ -146,6 +146,90 @@ function transcriptReviewUploadPayload() {
   };
 }
 
+function privateTranscriptOntologyHandoff(privateTranscriptBatchText, privateTranscriptBatch) {
+  const reviewBatchSha256 = createHash('sha256').update(privateTranscriptBatchText, 'utf8').digest('hex');
+  const sourceChunk = privateTranscriptBatch.chunks[0];
+  const candidateSetId = 'browser-r4-ontology-candidates-1';
+  const candidates = {
+    schemaVersion: 1,
+    kind: 'private-transcript-ontology-candidates',
+    candidateSetId,
+    source: {
+      reviewBatchSha256,
+      captureId: privateTranscriptBatch.source.captureId,
+      sessionId: privateTranscriptBatch.source.sessionId,
+      audioSha256: privateTranscriptBatch.source.audioSha256,
+    },
+    language: 'ko',
+    nodes: [
+      {
+        uid: 'candidate-issue', kind: 'Issue', label: '재생에너지 전환 속도',
+        text: '재생에너지 전환 속도를 검토한다.', citedUids: [sourceChunk.uid],
+      },
+      {
+        uid: 'candidate-claim', kind: 'Claim', label: '전환 가속 주장',
+        text: '재생에너지 전환 속도를 높여야 한다.', citedUids: [sourceChunk.uid],
+      },
+    ],
+    relations: [{
+      uid: 'candidate-relation-1', sourceUid: 'candidate-claim', targetUid: 'candidate-issue',
+      relation: 'isAbout', citedUids: [sourceChunk.uid],
+    }],
+    safety: {
+      localOnly: true,
+      databaseMutationExecuted: false,
+      publicGraphWritten: false,
+      requiresHumanReview: true,
+    },
+  };
+  const fixture = {
+    schemaVersion: 1,
+    kind: 'transcript-ontology-fixture',
+    fixtureId: candidateSetId,
+    sessionId: privateTranscriptBatch.source.sessionId,
+    language: 'ko',
+    reviewedBy: sourceChunk.reviewer,
+    reviewedAt: sourceChunk.reviewedAt,
+    source: {
+      kind: 'private-transcript-extraction-handoff',
+      reviewBatchSha256,
+      captureId: privateTranscriptBatch.source.captureId,
+      audioSha256: privateTranscriptBatch.source.audioSha256,
+      candidateSetId,
+    },
+    chunks: [{
+      uid: sourceChunk.uid,
+      startMs: sourceChunk.startMs,
+      endMs: sourceChunk.endMs,
+      speakerLabelPseudonym: sourceChunk.speakerLabelPseudonym,
+      text: sourceChunk.text,
+      sourceReview: {
+        reviewStatus: sourceChunk.reviewStatus,
+        reviewer: sourceChunk.reviewer,
+        reviewedAt: sourceChunk.reviewedAt,
+        sourceText: sourceChunk.sourceText,
+        candidateSetId: sourceChunk.candidateSetId,
+        candidateSourceUid: sourceChunk.candidateSourceUid,
+      },
+    }],
+    expected: { nodes: candidates.nodes, relations: candidates.relations },
+  };
+  const fixtureText = `${JSON.stringify(fixture, null, 2)}\n`;
+  return {
+    reviewBatch: {
+      name: 'private-transcript-review-batch.json', mimeType: 'application/json',
+      buffer: Buffer.from(privateTranscriptBatchText),
+    },
+    candidates: {
+      name: 'private-transcript-ontology-candidates.json', mimeType: 'application/json',
+      buffer: Buffer.from(`${JSON.stringify(candidates, null, 2)}\n`),
+    },
+    fixtureText,
+    fixtureSha256: createHash('sha256').update(fixtureText, 'utf8').digest('hex'),
+    reviewBatchSha256,
+  };
+}
+
 async function downloadText(download) {
   const stream = await download.createReadStream();
   if (!stream) throw new Error('Ontology reviewed plan download stream is unavailable');
@@ -608,7 +692,8 @@ export async function verifyCanvasBrowser({
     await privateCapturePanel.getByText('검수 진행 1/1', { exact: true }).waitFor({ timeout: timeoutMs });
     const privateDownloadPromise = reviewPage.waitForEvent('download', { timeout: timeoutMs });
     await privateBatchDownloadButton.click();
-    const privateTranscriptBatch = JSON.parse(await downloadText(await privateDownloadPromise));
+    const privateTranscriptBatchText = await downloadText(await privateDownloadPromise);
+    const privateTranscriptBatch = JSON.parse(privateTranscriptBatchText);
     const privateTranscriptSource = privateTranscriptBatch.source;
     const privateTranscriptChunk = privateTranscriptBatch.chunks?.[0];
     const privateTranscriptStartedAt = new Date(privateTranscriptSource?.startedAt ?? '');
@@ -667,26 +752,43 @@ export async function verifyCanvasBrowser({
     if (failedPrivateCaptureChecks.length > 0) {
       throw new Error(`Private MediaRecorder transcript review contract is incomplete: ${failedPrivateCaptureChecks.join(', ')}`);
     }
-    const transcriptReviewPanel = reviewPage.getByRole('region', { name: '합성 전사 후보 검수' });
+    const transcriptReviewPanel = reviewPage.getByRole('region', { name: '전사 ontology 후보 검수' });
     await transcriptReviewPanel.waitFor({ timeout: timeoutMs });
     const transcriptLocalOnlyBoundaryVisible = await transcriptReviewPanel
-      .getByText('실제 시민 발언 파일은 이 prototype에 넣지 마세요.', { exact: false })
+      .getByText('승인된 consent·retention 정책 전에는 실제 시민 발언 파일을 넣지 마세요.', { exact: false })
       .isVisible();
-    await transcriptReviewPanel.getByLabel('전사 ontology fixture JSON')
-      .setInputFiles(transcriptReviewUploadPayload());
-    const startTranscriptReview = transcriptReviewPanel.getByRole('button', { name: '전사 후보 로컬 검수 시작' });
+    const privateOntologyHandoff = privateTranscriptOntologyHandoff(
+      privateTranscriptBatchText,
+      privateTranscriptBatch,
+    );
+    const handoffBatchInput = transcriptReviewPanel.getByLabel('R4 검수 완료 전사 batch JSON');
+    const hasHandoffInputs = await handoffBatchInput.count() > 0;
+    if (hasHandoffInputs) {
+      await handoffBatchInput.setInputFiles(privateOntologyHandoff.reviewBatch);
+      await transcriptReviewPanel.getByLabel('provider-neutral ontology 후보 JSON')
+        .setInputFiles(privateOntologyHandoff.candidates);
+    } else {
+      await transcriptReviewPanel.getByLabel('전사 ontology fixture JSON')
+        .setInputFiles(transcriptReviewUploadPayload());
+    }
+    const startTranscriptReviewName = hasHandoffInputs
+      ? 'R4 handoff 로컬 검수 시작'
+      : '전사 후보 로컬 검수 시작';
+    const startTranscriptReview = transcriptReviewPanel.getByRole('button', { name: startTranscriptReviewName });
     await startTranscriptReview.waitFor({ state: 'visible', timeout: timeoutMs });
-    await reviewPage.waitForFunction(() => {
+    await reviewPage.waitForFunction((expectedName) => {
       const button = [...document.querySelectorAll('button')]
-        .find((candidate) => candidate.textContent?.trim() === '전사 후보 로컬 검수 시작');
+        .find((candidate) => candidate.textContent?.trim() === expectedName);
       return button instanceof HTMLButtonElement && !button.disabled;
-    }, undefined, { timeout: timeoutMs });
+    }, startTranscriptReviewName, { timeout: timeoutMs });
     await startTranscriptReview.click();
     await transcriptReviewPanel.getByText('진행 0/3', { exact: true }).waitFor({ timeout: timeoutMs });
     const transcriptNodeCards = transcriptReviewPanel.locator('article[aria-label^="전사 노드 후보 검수"]');
     const transcriptRelationCards = transcriptReviewPanel.locator('article[aria-label^="전사 관계 후보 검수"]');
     const transcriptCandidateEvidenceVisible = await transcriptNodeCards.nth(0)
-      .getByText('재생에너지 전환 속도를 높여야 합니다.', { exact: true }).isVisible()
+      .getByText(hasHandoffInputs
+        ? '합성 음성의 최종 검수 전사입니다.'
+        : '재생에너지 전환 속도를 높여야 합니다.', { exact: true }).isVisible()
       && await transcriptNodeCards.nth(0).getByLabel('Habermas 발화 역할').inputValue() === 'Issue'
       && await transcriptRelationCards.nth(0).getByLabel('논증 관계').inputValue() === 'isAbout';
     await transcriptNodeCards.nth(0).getByLabel('표시 이름').fill('재생에너지 전환의 속도와 조건');
@@ -709,13 +811,23 @@ export async function verifyCanvasBrowser({
       && transcriptReviewedPlan.publicGraphWritten === false
       && transcriptReviewedPlan.requiresPublicationReview === true
       && transcriptReviewedPlan.dryRun === true
-      && transcriptReviewedPlan.source?.fixtureSha256 === TRANSCRIPT_REVIEW_FIXTURE_SHA256
+      && transcriptReviewedPlan.source?.fixtureSha256 === (hasHandoffInputs
+        ? privateOntologyHandoff.fixtureSha256
+        : TRANSCRIPT_REVIEW_FIXTURE_SHA256)
+      && (!hasHandoffInputs || (
+        transcriptReviewedPlan.source?.handoff?.reviewBatchSha256 === privateOntologyHandoff.reviewBatchSha256
+        && transcriptReviewedPlan.source?.handoff?.candidateSetId === 'browser-r4-ontology-candidates-1'
+      ))
       && transcriptReviewedPlan.nodes?.[0]?.reviewStatus === 'edited'
       && transcriptReviewedPlan.nodes?.[0]?.kind === 'Issue'
       && transcriptReviewedPlan.nodes?.[0]?.label === '재생에너지 전환의 최종 속도와 조건'
       && transcriptReviewedPlan.nodes?.[0]?.reviewer === REVIEW_AUTH_REVIEWER_ID
-      && transcriptReviewedPlan.nodes?.[0]?.citedUids?.join(',') === 'chunk-001,chunk-002'
-      && transcriptReviewedPlan.nodes?.[0]?.transcript?.[0]?.text === '재생에너지 전환 속도를 높여야 합니다.'
+      && transcriptReviewedPlan.nodes?.[0]?.citedUids?.join(',') === (hasHandoffInputs
+        ? privateTranscriptChunk.uid
+        : 'chunk-001,chunk-002')
+      && transcriptReviewedPlan.nodes?.[0]?.transcript?.[0]?.text === (hasHandoffInputs
+        ? '합성 음성의 최종 검수 전사입니다.'
+        : '재생에너지 전환 속도를 높여야 합니다.')
       && transcriptReviewedPlan.nodes?.[1]?.reviewStatus === 'rejected'
       && transcriptReviewedPlan.nodes?.[1]?.kind === null
       && transcriptReviewedPlan.relations?.[0]?.reviewStatus === 'rejected'
@@ -741,7 +853,7 @@ export async function verifyCanvasBrowser({
       && typeof latestReviewedAt === 'string'
       && publicationApproval.approvedAt > latestReviewedAt;
     const publicationGraph = buildPublishedTranscriptReviewGraph({
-      fixtureText: TRANSCRIPT_REVIEW_FIXTURE_TEXT,
+      fixtureText: hasHandoffInputs ? privateOntologyHandoff.fixtureText : TRANSCRIPT_REVIEW_FIXTURE_TEXT,
       reviewedPlan: transcriptReviewedPlan,
       publication: publicationApproval,
     });

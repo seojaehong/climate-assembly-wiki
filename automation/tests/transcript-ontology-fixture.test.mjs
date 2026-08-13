@@ -624,7 +624,7 @@ test('requires canonical review metadata and an opaque reviewer alias', () => {
 
   const identifyingReviewer = structuredClone(FIXTURE);
   identifyingReviewer.reviewedBy = '홍길동';
-  expect(() => buildReviewedTranscriptGraph(identifyingReviewer)).toThrow('Invalid fixture reviewer alias');
+  expect(() => buildReviewedTranscriptGraph(identifyingReviewer)).toThrow('Invalid fixture reviewer identity');
 });
 
 test('creates and verifies a graph through the read-only CLI without overwriting evidence', () => {

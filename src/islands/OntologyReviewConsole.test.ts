@@ -50,10 +50,13 @@ describe('OntologyReviewConsole', () => {
     expect(html).toContain('DB에 저장하지 않습니다.');
     expect(html).toContain('공개 그래프에 반영하지 않습니다.');
     expect(html).toContain('aria-live="polite"');
-    expect(html).toContain('합성 전사 후보 검수');
+    expect(html).toContain('전사 ontology 후보 검수');
+    expect(html).toContain('R4 검수 완료 전사 batch JSON');
+    expect(html).toContain('provider-neutral ontology 후보 JSON');
+    expect(html).toContain('R4 handoff 로컬 검수 시작');
     expect(html).toContain('전사 ontology fixture JSON');
     expect(html).toContain('candidate node와 relation을 브라우저 메모리에서만 검수합니다.');
-    expect(html).toContain('실제 시민 발언 파일은 이 prototype에 넣지 마세요.');
+    expect(html).toContain('승인된 consent·retention 정책 전에는 실제 시민 발언 파일을 넣지 마세요.');
     expect(html).toContain('R4 로컬 음성·전사 검수');
     expect(html).toContain('MediaRecorder proof of concept');
     expect(html).toContain('브라우저 세션 메모리에만');
@@ -70,7 +73,7 @@ describe('OntologyReviewConsole', () => {
     }));
     const inputTags = html.match(/<input\b[^>]*>/g) ?? [];
 
-    expect(inputTags).toHaveLength(5);
+    expect(inputTags).toHaveLength(7);
     for (const input of inputTags.filter((input) => !input.includes('type="checkbox"'))) {
       expect(input).toContain('background:#FFFFFF');
       expect(input).toContain('color:#102A43');

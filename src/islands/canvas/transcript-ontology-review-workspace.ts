@@ -8,6 +8,22 @@ export interface TranscriptCitation {
   endMs: number;
   speakerLabelPseudonym: string;
   text: string;
+  sourceReview?: {
+    reviewStatus: 'accepted' | 'edited';
+    reviewer: string;
+    reviewedAt: string;
+    sourceText: string;
+    candidateSetId: string | null;
+    candidateSourceUid: string | null;
+  };
+}
+
+export interface PrivateTranscriptExtractionHandoff {
+  kind: 'private-transcript-extraction-handoff';
+  reviewBatchSha256: string;
+  captureId: string;
+  audioSha256: string;
+  candidateSetId: string;
 }
 
 interface ReviewAudit {
@@ -49,6 +65,7 @@ export interface TranscriptOntologyReviewWorkspace {
     reviewedAt: string;
     fixtureSha256: string;
     fixtureText: string;
+    handoff: PrivateTranscriptExtractionHandoff | null;
   };
   nodes: TranscriptOntologyReviewNode[];
   relations: TranscriptOntologyReviewRelation[];
@@ -106,6 +123,7 @@ const OPAQUE_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,127}$/i;
 const SPEAKER_PATTERN = /^speaker-[a-z]{1,3}$/;
 const FIXTURE_REVIEWER_PATTERN = /^(moderator|reviewer)-(fixture|test)$/;
 const LANGUAGE_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i;
+const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 export const TRANSCRIPT_PUBLICATION_SOURCE_PATTERN = /^live-[a-z0-9][a-z0-9._-]*$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -117,6 +135,14 @@ function parseJson(value: string): unknown {
     return JSON.parse(value) as unknown;
   } catch {
     throw new Error('Transcript ontology fixture is not valid JSON');
+  }
+}
+
+function exactKeys(value: Record<string, unknown>, keys: string[], label: string): void {
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) {
+    throw new Error(`Invalid ${label} fields`);
   }
 }
 
@@ -165,6 +191,176 @@ async function canonicalSha256(value: unknown): Promise<string> {
   return sha256(JSON.stringify(canonicalize(value)));
 }
 
+function privateHandoff(value: unknown): PrivateTranscriptExtractionHandoff | null {
+  if (value === undefined) return null;
+  if (!isRecord(value)) throw new Error('Invalid private transcript extraction handoff');
+  exactKeys(value, ['kind', 'reviewBatchSha256', 'captureId', 'audioSha256', 'candidateSetId'], 'private transcript extraction handoff');
+  if (value.kind !== 'private-transcript-extraction-handoff') {
+    throw new Error('Invalid private transcript extraction handoff');
+  }
+  const reviewBatchSha256 = text(value.reviewBatchSha256, 'review batch SHA-256');
+  const audioSha256 = text(value.audioSha256, 'audio SHA-256');
+  if (!SHA256_PATTERN.test(reviewBatchSha256) || !SHA256_PATTERN.test(audioSha256)) {
+    throw new Error('Invalid private transcript extraction hash');
+  }
+  return {
+    kind: 'private-transcript-extraction-handoff',
+    reviewBatchSha256,
+    captureId: opaqueId(value.captureId, 'capture id'),
+    audioSha256,
+    candidateSetId: opaqueId(value.candidateSetId, 'candidate set id'),
+  };
+}
+
+/** Binds a reviewed private transcript batch to provider-neutral ontology candidates. */
+export async function buildPrivateTranscriptOntologyFixture(input: {
+  reviewBatchText: string;
+  extractionCandidatesText: string;
+}): Promise<string> {
+  const reviewBatch = parseJson(input.reviewBatchText);
+  const candidates = parseJson(input.extractionCandidatesText);
+  if (!isRecord(reviewBatch)) throw new Error('Invalid private transcript review batch');
+  exactKeys(reviewBatch, ['schemaVersion', 'kind', 'source', 'chunks', 'summary', 'safety'], 'private transcript review batch');
+  if (reviewBatch.schemaVersion !== 1 || reviewBatch.kind !== 'private-transcript-review-batch'
+    || !isRecord(reviewBatch.source) || !Array.isArray(reviewBatch.chunks)
+    || reviewBatch.chunks.length === 0 || !isRecord(reviewBatch.summary) || !isRecord(reviewBatch.safety)) {
+    throw new Error('Invalid private transcript review batch');
+  }
+  const source = reviewBatch.source;
+  exactKeys(source, ['captureId', 'sessionId', 'audioSha256', 'mimeType', 'byteLength', 'startedAt', 'stoppedAt', 'durationMs', 'storage'], 'private transcript source');
+  const captureId = opaqueId(source.captureId, 'capture id');
+  const sessionId = opaqueId(source.sessionId, 'session id');
+  const audioSha256 = text(source.audioSha256, 'audio SHA-256');
+  if (!SHA256_PATTERN.test(audioSha256) || source.storage !== 'browser-memory'
+    || typeof source.mimeType !== 'string' || !source.mimeType.startsWith('audio/')
+    || !Number.isSafeInteger(source.byteLength) || Number(source.byteLength) <= 0
+    || !Number.isSafeInteger(source.durationMs) || Number(source.durationMs) <= 0) {
+    throw new Error('Invalid private transcript source');
+  }
+  const startedAt = canonicalInstant(source.startedAt, 'capture startedAt');
+  const stoppedAt = canonicalInstant(source.stoppedAt, 'capture stoppedAt');
+  if (new Date(stoppedAt).valueOf() - new Date(startedAt).valueOf() !== source.durationMs) {
+    throw new Error('Invalid private transcript duration');
+  }
+  exactKeys(reviewBatch.safety, ['localOnly', 'audioIncluded', 'databaseMutationExecuted', 'publicGraphWritten', 'extractionExecuted', 'requiresExtractionReview'], 'private transcript safety');
+  if (reviewBatch.safety.localOnly !== true || reviewBatch.safety.audioIncluded !== false
+    || reviewBatch.safety.databaseMutationExecuted !== false || reviewBatch.safety.publicGraphWritten !== false
+    || reviewBatch.safety.extractionExecuted !== false || reviewBatch.safety.requiresExtractionReview !== true) {
+    throw new Error('Invalid private transcript safety boundary');
+  }
+  exactKeys(reviewBatch.summary, ['included', 'rejected', 'total'], 'private transcript summary');
+  if (reviewBatch.summary.included !== reviewBatch.chunks.length
+    || !Number.isSafeInteger(reviewBatch.summary.rejected) || Number(reviewBatch.summary.rejected) < 0
+    || reviewBatch.summary.total !== Number(reviewBatch.summary.included) + Number(reviewBatch.summary.rejected)) {
+    throw new Error('Invalid private transcript summary');
+  }
+  const chunkIds = new Set<string>();
+  let reviewedBy: string | null = null;
+  let reviewedAt = stoppedAt;
+  const chunks = reviewBatch.chunks.map((value): Record<string, unknown> => {
+    if (!isRecord(value)) throw new Error('Invalid reviewed transcript chunk');
+    exactKeys(value, ['uid', 'candidateSetId', 'candidateSourceUid', 'startMs', 'endMs', 'speakerLabelPseudonym', 'sourceText', 'text', 'reviewStatus', 'reviewer', 'reviewedAt'], 'reviewed transcript chunk');
+    const uid = opaqueId(value.uid, 'reviewed transcript chunk uid');
+    if (chunkIds.has(uid) || !uid.startsWith(`${captureId}:chunk:`)) throw new Error('Invalid reviewed transcript chunk uid');
+    chunkIds.add(uid);
+    if (!Number.isSafeInteger(value.startMs) || !Number.isSafeInteger(value.endMs)
+      || Number(value.startMs) < 0 || Number(value.endMs) <= Number(value.startMs)
+      || Number(value.endMs) > Number(source.durationMs)) {
+      throw new Error('Invalid reviewed transcript chunk time range');
+    }
+    const speakerLabelPseudonym = text(value.speakerLabelPseudonym, 'speaker pseudonym');
+    if (!SPEAKER_PATTERN.test(speakerLabelPseudonym)) throw new Error('Invalid speaker pseudonym');
+    const sourceText = text(value.sourceText, 'reviewed transcript source text');
+    const reviewedText = text(value.text, 'reviewed transcript text');
+    if (!['accepted', 'edited'].includes(String(value.reviewStatus))
+      || (value.reviewStatus === 'accepted' && reviewedText !== sourceText)
+      || (value.reviewStatus === 'edited' && reviewedText === sourceText)
+      || typeof value.reviewer !== 'string' || !isAuthenticatedReviewerId(value.reviewer)) {
+      throw new Error('Invalid reviewed transcript decision');
+    }
+    const chunkReviewedAt = canonicalInstant(value.reviewedAt, 'transcript reviewedAt');
+    if (chunkReviewedAt < stoppedAt) throw new Error('Transcript review predates capture completion');
+    if (reviewedBy !== null && reviewedBy !== value.reviewer) {
+      throw new Error('Private transcript handoff requires one authenticated reviewer');
+    }
+    reviewedBy = value.reviewer;
+    if (chunkReviewedAt > reviewedAt) reviewedAt = chunkReviewedAt;
+    const candidateSetId = value.candidateSetId === null ? null : opaqueId(value.candidateSetId, 'STT candidate set id');
+    const candidateSourceUid = value.candidateSourceUid === null ? null : opaqueId(value.candidateSourceUid, 'STT candidate source uid');
+    if ((candidateSetId === null) !== (candidateSourceUid === null)) throw new Error('Invalid STT candidate provenance');
+    return {
+      uid,
+      startMs: value.startMs,
+      endMs: value.endMs,
+      speakerLabelPseudonym,
+      text: reviewedText,
+      sourceReview: {
+        reviewStatus: value.reviewStatus,
+        reviewer: value.reviewer,
+        reviewedAt: chunkReviewedAt,
+        sourceText,
+        candidateSetId,
+        candidateSourceUid,
+      },
+    };
+  });
+  if (reviewedBy === null) throw new Error('Private transcript review batch has no reviewer');
+
+  if (!isRecord(candidates)) throw new Error('Invalid private transcript ontology candidates');
+  exactKeys(candidates, ['schemaVersion', 'kind', 'candidateSetId', 'source', 'language', 'nodes', 'relations', 'safety'], 'private transcript ontology candidates');
+  if (candidates.schemaVersion !== 1 || candidates.kind !== 'private-transcript-ontology-candidates'
+    || !isRecord(candidates.source) || !Array.isArray(candidates.nodes) || candidates.nodes.length === 0
+    || !Array.isArray(candidates.relations) || !isRecord(candidates.safety)) {
+    throw new Error('Invalid private transcript ontology candidates');
+  }
+  const candidateSetId = opaqueId(candidates.candidateSetId, 'candidate set id');
+  const language = text(candidates.language, 'candidate language');
+  if (!LANGUAGE_PATTERN.test(language)) throw new Error('Invalid candidate language');
+  exactKeys(candidates.source, ['reviewBatchSha256', 'captureId', 'sessionId', 'audioSha256'], 'private extraction source');
+  const reviewBatchSha256 = await sha256(input.reviewBatchText);
+  if (candidates.source.reviewBatchSha256 !== reviewBatchSha256
+    || candidates.source.captureId !== captureId || candidates.source.sessionId !== sessionId
+    || candidates.source.audioSha256 !== audioSha256) {
+    throw new Error('Extraction candidates do not match the reviewed transcript batch');
+  }
+  exactKeys(candidates.safety, ['localOnly', 'databaseMutationExecuted', 'publicGraphWritten', 'requiresHumanReview'], 'private extraction safety');
+  if (candidates.safety.localOnly !== true || candidates.safety.databaseMutationExecuted !== false
+    || candidates.safety.publicGraphWritten !== false || candidates.safety.requiresHumanReview !== true) {
+    throw new Error('Invalid private extraction safety boundary');
+  }
+  const nodes = candidates.nodes.map((value) => {
+    if (!isRecord(value)) throw new Error('Invalid private ontology node candidate');
+    exactKeys(value, ['uid', 'kind', 'label', 'text', 'citedUids'], 'private ontology node candidate');
+    return value;
+  });
+  const relations = candidates.relations.map((value) => {
+    if (!isRecord(value)) throw new Error('Invalid private ontology relation candidate');
+    exactKeys(value, ['uid', 'sourceUid', 'targetUid', 'relation', 'citedUids'], 'private ontology relation candidate');
+    return value;
+  });
+  const fixture = {
+    schemaVersion: 1,
+    kind: 'transcript-ontology-fixture',
+    fixtureId: candidateSetId,
+    sessionId,
+    language,
+    reviewedBy,
+    reviewedAt,
+    source: {
+      kind: 'private-transcript-extraction-handoff',
+      reviewBatchSha256,
+      captureId,
+      audioSha256,
+      candidateSetId,
+    },
+    chunks,
+    expected: { nodes, relations },
+  };
+  const fixtureText = `${JSON.stringify(fixture, null, 2)}\n`;
+  await createTranscriptOntologyReviewWorkspace(fixtureText);
+  return fixtureText;
+}
+
 /** Opens a local-only review workspace from a synthetic transcript ontology fixture. */
 export async function createTranscriptOntologyReviewWorkspace(
   fixtureText: string,
@@ -179,7 +375,10 @@ export async function createTranscriptOntologyReviewWorkspace(
   const reviewedBy = text(input.reviewedBy, 'fixture reviewer');
   const reviewedAt = canonicalInstant(input.reviewedAt, 'fixture reviewedAt');
   if (!LANGUAGE_PATTERN.test(language)) throw new Error('Invalid fixture language');
-  if (!FIXTURE_REVIEWER_PATTERN.test(reviewedBy)) throw new Error('Invalid fixture reviewer alias');
+  if (!FIXTURE_REVIEWER_PATTERN.test(reviewedBy) && !isAuthenticatedReviewerId(reviewedBy)) {
+    throw new Error('Invalid fixture reviewer identity');
+  }
+  const handoff = privateHandoff(input.source);
   if (!Array.isArray(input.chunks) || input.chunks.length === 0) throw new Error('Invalid transcript chunks');
   const chunks = new Map<string, TranscriptCitation>();
   for (const value of input.chunks) {
@@ -192,13 +391,46 @@ export async function createTranscriptOntologyReviewWorkspace(
     }
     const speakerLabelPseudonym = text(value.speakerLabelPseudonym, 'speaker pseudonym');
     if (!SPEAKER_PATTERN.test(speakerLabelPseudonym)) throw new Error('Invalid speaker pseudonym');
-    chunks.set(uid, {
+    const citation: TranscriptCitation = {
       uid,
       startMs: Number(value.startMs),
       endMs: Number(value.endMs),
       speakerLabelPseudonym,
       text: text(value.text, 'transcript chunk text'),
-    });
+    };
+    if (value.sourceReview !== undefined) {
+      if (!isRecord(value.sourceReview)) throw new Error('Invalid transcript source review');
+      exactKeys(value.sourceReview, ['reviewStatus', 'reviewer', 'reviewedAt', 'sourceText', 'candidateSetId', 'candidateSourceUid'], 'transcript source review');
+      if (!['accepted', 'edited'].includes(String(value.sourceReview.reviewStatus))
+        || typeof value.sourceReview.reviewer !== 'string'
+        || !isAuthenticatedReviewerId(value.sourceReview.reviewer)) {
+        throw new Error('Invalid transcript source review');
+      }
+      citation.sourceReview = {
+        reviewStatus: value.sourceReview.reviewStatus as 'accepted' | 'edited',
+        reviewer: value.sourceReview.reviewer,
+        reviewedAt: canonicalInstant(value.sourceReview.reviewedAt, 'transcript source reviewedAt'),
+        sourceText: text(value.sourceReview.sourceText, 'transcript source text'),
+        candidateSetId: value.sourceReview.candidateSetId === null ? null : opaqueId(value.sourceReview.candidateSetId, 'STT candidate set id'),
+        candidateSourceUid: value.sourceReview.candidateSourceUid === null ? null : opaqueId(value.sourceReview.candidateSourceUid, 'STT candidate source uid'),
+      };
+      if ((citation.sourceReview.candidateSetId === null) !== (citation.sourceReview.candidateSourceUid === null)) {
+        throw new Error('Invalid STT candidate provenance');
+      }
+      if (citation.sourceReview.reviewer !== reviewedBy
+        || citation.sourceReview.reviewedAt > reviewedAt
+        || (citation.sourceReview.reviewStatus === 'accepted' && citation.text !== citation.sourceReview.sourceText)
+        || (citation.sourceReview.reviewStatus === 'edited' && citation.text === citation.sourceReview.sourceText)) {
+        throw new Error('Transcript source review does not match the fixture audit');
+      }
+    }
+    chunks.set(uid, citation);
+  }
+  const reviewedChunks = [...chunks.values()].filter((chunk) => chunk.sourceReview !== undefined);
+  if ((handoff === null && reviewedChunks.length > 0)
+    || (handoff !== null && reviewedChunks.length !== chunks.size)
+    || (handoff !== null && reviewedChunks.every((chunk) => chunk.sourceReview?.reviewedAt !== reviewedAt))) {
+    throw new Error('Transcript source review does not match the extraction handoff');
   }
   if (!isRecord(input.expected) || !Array.isArray(input.expected.nodes)
     || !Array.isArray(input.expected.relations) || input.expected.nodes.length === 0) {
@@ -257,7 +489,7 @@ export async function createTranscriptOntologyReviewWorkspace(
   return {
     source: {
       fixtureId, sessionId, language, reviewedBy, reviewedAt,
-      fixtureSha256: await sha256(fixtureText), fixtureText,
+      fixtureSha256: await sha256(fixtureText), fixtureText, handoff,
     },
     nodes,
     relations,
@@ -444,6 +676,7 @@ export async function exportTranscriptOntologyReviewedPlan(
     reviewedBy: workspace.source.reviewedBy,
     reviewedAt: workspace.source.reviewedAt,
     fixtureSha256: workspace.source.fixtureSha256,
+    ...(workspace.source.handoff ? { handoff: workspace.source.handoff } : {}),
   };
   return `${JSON.stringify({
     schemaVersion: 1,

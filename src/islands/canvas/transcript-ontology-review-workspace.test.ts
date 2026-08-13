@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   buildTranscriptOntologyPublicationApproval,
+  buildPrivateTranscriptOntologyFixture,
   createTranscriptOntologyReviewWorkspace,
   exportTranscriptOntologyReviewedPlan,
   reviewTranscriptOntologyCandidate,
@@ -11,6 +12,72 @@ import {
 
 const fixtureText = readFileSync('automation/fixtures/transcript-ontology-review-candidates.example.json', 'utf8');
 const fixture = JSON.parse(fixtureText) as Record<string, unknown>;
+
+const privateReviewBatchText = () => `${JSON.stringify({
+  schemaVersion: 1,
+  kind: 'private-transcript-review-batch',
+  source: {
+    captureId: 'capture-r4-handoff',
+    sessionId: 'session-r4-handoff',
+    audioSha256: 'a'.repeat(64),
+    mimeType: 'audio/webm',
+    byteLength: 128,
+    startedAt: '2026-08-29T01:00:00.000Z',
+    stoppedAt: '2026-08-29T01:00:04.000Z',
+    durationMs: 4_000,
+    storage: 'browser-memory',
+  },
+  chunks: [{
+    uid: 'capture-r4-handoff:chunk:1',
+    candidateSetId: 'stt-set-1',
+    candidateSourceUid: 'stt-source-1',
+    startMs: 0,
+    endMs: 4_000,
+    speakerLabelPseudonym: 'speaker-a',
+    sourceText: '전환 속도를 높여야 합니다.',
+    text: '전환 속도를 높여야 합니다.',
+    reviewStatus: 'accepted',
+    reviewer: 'auth-user:00000000-0000-4000-8000-000000000091',
+    reviewedAt: '2026-08-29T01:05:00.000Z',
+  }],
+  summary: { included: 1, rejected: 0, total: 1 },
+  safety: {
+    localOnly: true,
+    audioIncluded: false,
+    databaseMutationExecuted: false,
+    publicGraphWritten: false,
+    extractionExecuted: false,
+    requiresExtractionReview: true,
+  },
+}, null, 2)}\n`;
+
+const privateCandidatesText = (reviewBatchText: string, reviewBatchSha256 = createHash('sha256')
+  .update(reviewBatchText, 'utf8').digest('hex')) => `${JSON.stringify({
+  schemaVersion: 1,
+  kind: 'private-transcript-ontology-candidates',
+  candidateSetId: 'ontology-candidates-r4-1',
+  source: {
+    reviewBatchSha256,
+    captureId: 'capture-r4-handoff',
+    sessionId: 'session-r4-handoff',
+    audioSha256: 'a'.repeat(64),
+  },
+  language: 'ko',
+  nodes: [{
+    uid: 'candidate-r4-issue',
+    kind: 'Issue',
+    label: '전환 속도',
+    text: '전환 속도를 논의한다.',
+    citedUids: ['capture-r4-handoff:chunk:1'],
+  }],
+  relations: [],
+  safety: {
+    localOnly: true,
+    databaseMutationExecuted: false,
+    publicGraphWritten: false,
+    requiresHumanReview: true,
+  },
+}, null, 2)}\n`;
 
 function decisionAt(minutes: number) {
   return `2026-08-01T02:${String(minutes).padStart(2, '0')}:00.000Z`;
@@ -41,6 +108,70 @@ async function completedWorkspace() {
 }
 
 describe('transcript ontology review workspace', () => {
+  it('binds a reviewed R4 batch to provider-neutral candidates and preserves chunk audit provenance', async () => {
+    const batchText = privateReviewBatchText();
+    const generatedFixtureText = await buildPrivateTranscriptOntologyFixture({
+      reviewBatchText: batchText,
+      extractionCandidatesText: privateCandidatesText(batchText),
+    });
+    const generatedFixture = JSON.parse(generatedFixtureText) as Record<string, unknown>;
+    const workspace = await createTranscriptOntologyReviewWorkspace(generatedFixtureText);
+
+    expect(generatedFixture).toMatchObject({
+      fixtureId: 'ontology-candidates-r4-1',
+      sessionId: 'session-r4-handoff',
+      reviewedBy: 'auth-user:00000000-0000-4000-8000-000000000091',
+      source: {
+        kind: 'private-transcript-extraction-handoff',
+        reviewBatchSha256: createHash('sha256').update(batchText, 'utf8').digest('hex'),
+        captureId: 'capture-r4-handoff',
+      },
+    });
+    expect(workspace.source.handoff).toMatchObject({
+      candidateSetId: 'ontology-candidates-r4-1',
+      audioSha256: 'a'.repeat(64),
+    });
+    expect(workspace.nodes[0].transcript[0]).toMatchObject({
+      uid: 'capture-r4-handoff:chunk:1',
+      text: '전환 속도를 높여야 합니다.',
+      sourceReview: {
+        reviewStatus: 'accepted',
+        reviewer: 'auth-user:00000000-0000-4000-8000-000000000091',
+        candidateSetId: 'stt-set-1',
+        candidateSourceUid: 'stt-source-1',
+      },
+    });
+  });
+
+  it('rejects extraction candidates when the reviewed batch bytes or source binding changes', async () => {
+    const batchText = privateReviewBatchText();
+    await expect(buildPrivateTranscriptOntologyFixture({
+      reviewBatchText: `${batchText.trimEnd()} `,
+      extractionCandidatesText: privateCandidatesText(batchText),
+    })).rejects.toThrow('Extraction candidates do not match the reviewed transcript batch');
+
+    const wrongSource = JSON.parse(privateCandidatesText(batchText)) as Record<string, unknown>;
+    (wrongSource.source as Record<string, unknown>).audioSha256 = 'b'.repeat(64);
+    await expect(buildPrivateTranscriptOntologyFixture({
+      reviewBatchText: batchText,
+      extractionCandidatesText: JSON.stringify(wrongSource),
+    })).rejects.toThrow('Extraction candidates do not match the reviewed transcript batch');
+  });
+
+  it('rejects a forged handoff fixture whose source review no longer matches its audit', async () => {
+    const batchText = privateReviewBatchText();
+    const generatedFixture = JSON.parse(await buildPrivateTranscriptOntologyFixture({
+      reviewBatchText: batchText,
+      extractionCandidatesText: privateCandidatesText(batchText),
+    })) as Record<string, unknown>;
+    const chunks = generatedFixture.chunks as Array<Record<string, unknown>>;
+    const sourceReview = chunks[0].sourceReview as Record<string, unknown>;
+    sourceReview.reviewStatus = 'edited';
+
+    await expect(createTranscriptOntologyReviewWorkspace(JSON.stringify(generatedFixture)))
+      .rejects.toThrow('Transcript source review does not match the fixture audit');
+  });
+
   it('opens candidate nodes and relations with their cited transcript text and Habermas role', async () => {
     const workspace = await createTranscriptOntologyReviewWorkspace(fixtureText);
 
@@ -248,7 +379,7 @@ describe('transcript ontology review workspace', () => {
     const identifyingReviewer = structuredClone(fixture);
     identifyingReviewer.reviewedBy = 'person-name';
     await expect(createTranscriptOntologyReviewWorkspace(JSON.stringify(identifyingReviewer)))
-      .rejects.toThrow('Invalid fixture reviewer alias');
+      .rejects.toThrow('Invalid fixture reviewer identity');
 
     const invalidLanguage = structuredClone(fixture);
     invalidLanguage.language = '한국어';

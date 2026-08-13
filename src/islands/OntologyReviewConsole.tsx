@@ -14,6 +14,7 @@ import {
 } from './canvas/ontology-review-workspace';
 import {
   buildTranscriptOntologyPublicationApproval,
+  buildPrivateTranscriptOntologyFixture,
   createTranscriptOntologyReviewWorkspace,
   exportTranscriptOntologyReviewedPlan,
   reviewTranscriptOntologyCandidate,
@@ -449,6 +450,8 @@ function TranscriptRelationReviewCard({ relation, reviewer, onDecision, onDraft 
 
 export function TranscriptOntologyReviewPanel({ reviewerId }: { reviewerId: string }) {
   const [fixtureFile, setFixtureFile] = useState<File | null>(null);
+  const [reviewBatchFile, setReviewBatchFile] = useState<File | null>(null);
+  const [extractionCandidatesFile, setExtractionCandidatesFile] = useState<File | null>(null);
   const [workspace, setWorkspace] = useState<TranscriptOntologyReviewWorkspace | null>(null);
   const [notice, setNotice] = useState('합성 전사 fixture를 선택해 주세요.');
   const [error, setError] = useState<string | null>(null);
@@ -481,6 +484,18 @@ export function TranscriptOntologyReviewPanel({ reviewerId }: { reviewerId: stri
     setNotice('입력 fixture가 바뀌었습니다. 다시 검증해 주세요.');
   };
 
+  const replaceHandoffFile = (kind: 'batch' | 'candidates', file: File | null) => {
+    requestGeneration.current += 1;
+    if (kind === 'batch') setReviewBatchFile(file);
+    else setExtractionCandidatesFile(file);
+    workspaceRef.current = null;
+    invalidateExportedPlan();
+    setWorkspace(null);
+    setBusy(false);
+    setError(null);
+    setNotice('R4 handoff 입력이 바뀌었습니다. 두 파일을 다시 검증해 주세요.');
+  };
+
   const loadWorkspace = async () => {
     const generation = requestGeneration.current + 1;
     requestGeneration.current = generation;
@@ -497,6 +512,32 @@ export function TranscriptOntologyReviewPanel({ reviewerId }: { reviewerId: stri
     } catch (caught: unknown) {
       if (requestGeneration.current !== generation) return;
       console.error('Failed to load the local transcript ontology review workspace', caught);
+      setError(errorMessage(caught));
+    } finally {
+      if (requestGeneration.current === generation) setBusy(false);
+    }
+  };
+
+  const loadHandoffWorkspace = async () => {
+    const generation = requestGeneration.current + 1;
+    requestGeneration.current = generation;
+    setBusy(true);
+    setError(null);
+    try {
+      const [reviewBatchText, extractionCandidatesText] = await Promise.all([
+        readLocalJson(reviewBatchFile, 'R4 검수 완료 전사 batch JSON'),
+        readLocalJson(extractionCandidatesFile, 'provider-neutral ontology 후보 JSON'),
+      ]);
+      const fixtureText = await buildPrivateTranscriptOntologyFixture({ reviewBatchText, extractionCandidatesText });
+      const next = await createTranscriptOntologyReviewWorkspace(fixtureText);
+      if (requestGeneration.current !== generation) return;
+      workspaceRef.current = next;
+      invalidateExportedPlan();
+      setWorkspace(next);
+      setNotice(`R4 전사 provenance에 결속된 ontology 후보 ${next.summary.total}개를 불러왔습니다.`);
+    } catch (caught: unknown) {
+      if (requestGeneration.current !== generation) return;
+      console.error('Failed to load the private transcript extraction handoff', caught);
       setError(errorMessage(caught));
     } finally {
       if (requestGeneration.current === generation) setBusy(false);
@@ -577,13 +618,29 @@ export function TranscriptOntologyReviewPanel({ reviewerId }: { reviewerId: stri
   return (
     <section aria-labelledby="transcript-review-heading" style={{ marginBottom: 36 }}>
       <header style={{ marginBottom: 12 }}>
-        <h2 id="transcript-review-heading">합성 전사 후보 검수</h2>
+        <h2 id="transcript-review-heading">전사 ontology 후보 검수</h2>
         <p style={{ color: MUTED, lineHeight: 1.6 }}>
           candidate node와 relation을 브라우저 메모리에서만 검수합니다. DB 저장·공개 graph 반영은 없습니다.
-          {' '}실제 시민 발언 파일은 이 prototype에 넣지 마세요.
+          {' '}승인된 consent·retention 정책 전에는 실제 시민 발언 파일을 넣지 마세요.
         </p>
       </header>
+      <form onSubmit={(event) => { event.preventDefault(); void loadHandoffWorkspace(); }} aria-busy={busy} style={{ ...cardStyle, background: PANEL, marginBottom: 16 }}>
+        <strong>R4 검수 batch → provider-neutral extraction handoff</strong>
+        <p style={{ color: MUTED, margin: 0 }}>
+          검수 완료 batch의 exact SHA-256과 capture·session·audio provenance가 일치하는 후보만 R2 사람 검수 큐로 엽니다. 외부 extraction은 호출하지 않습니다.
+        </p>
+        <label>R4 검수 완료 전사 batch JSON
+          <input type="file" accept="application/json,.json" onChange={(event) => replaceHandoffFile('batch', event.currentTarget.files?.[0] ?? null)} style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />
+        </label>
+        <label>provider-neutral ontology 후보 JSON
+          <input type="file" accept="application/json,.json" onChange={(event) => replaceHandoffFile('candidates', event.currentTarget.files?.[0] ?? null)} style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />
+        </label>
+        <button type="submit" disabled={busy || reviewBatchFile === null || extractionCandidatesFile === null} style={{ ...controlStyle, background: '#0B4F6C', color: '#FFFFFF', fontWeight: 800 }}>
+          {busy ? '검증 중…' : 'R4 handoff 로컬 검수 시작'}
+        </button>
+      </form>
       <form onSubmit={(event) => { event.preventDefault(); void loadWorkspace(); }} aria-busy={busy} style={{ ...cardStyle, background: PANEL, marginBottom: 16 }}>
+        <strong>기존 synthetic fixture 검증</strong>
         <label>전사 ontology fixture JSON
           <input type="file" accept="application/json,.json" onChange={(event) => replaceFixture(event.currentTarget.files?.[0] ?? null)} style={{ ...controlStyle, display: 'block', marginTop: 6, width: '100%' }} />
         </label>
@@ -601,6 +658,11 @@ export function TranscriptOntologyReviewPanel({ reviewerId }: { reviewerId: stri
           <section aria-label="전사 후보 검수 진행 요약" style={{ ...cardStyle, marginBottom: 20 }}>
             <strong>진행 {workspace.summary.decided}/{workspace.summary.total}</strong>
             <span>candidate node {workspace.summary.nodes} · relation {workspace.summary.relations}</span>
+            {workspace.source.handoff ? (
+              <span style={{ color: MUTED, overflowWrap: 'anywhere' }}>
+                R4 batch SHA-256 {workspace.source.handoff.reviewBatchSha256} · candidate set {workspace.source.handoff.candidateSetId}
+              </span>
+            ) : null}
             <button type="button" onClick={() => { void exportPlan(); }} disabled={exporting || workspace.summary.decided !== workspace.summary.total} style={{ ...controlStyle, background: '#553C9A', color: '#FFFFFF', fontWeight: 800 }}>
               {exporting ? 'plan 검증 중…' : '전사 후보 검수 plan 다운로드'}
             </button>

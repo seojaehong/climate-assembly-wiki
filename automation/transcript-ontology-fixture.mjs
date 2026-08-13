@@ -74,6 +74,26 @@ function canonicalIsoInstant(value, label) {
   return result;
 }
 
+function privateExtractionHandoff(value) {
+  if (value === undefined) return null;
+  if (!isRecord(value)
+    || canonicalJson(Object.keys(value).sort()) !== canonicalJson([
+      'audioSha256', 'candidateSetId', 'captureId', 'kind', 'reviewBatchSha256',
+    ].sort())
+    || value.kind !== 'private-transcript-extraction-handoff'
+    || !/^[a-f0-9]{64}$/.test(String(value.reviewBatchSha256 ?? ''))
+    || !/^[a-f0-9]{64}$/.test(String(value.audioSha256 ?? ''))) {
+    throw new Error('Invalid private transcript extraction handoff');
+  }
+  return {
+    kind: 'private-transcript-extraction-handoff',
+    reviewBatchSha256: value.reviewBatchSha256,
+    captureId: opaqueId(value.captureId, 'capture id'),
+    audioSha256: value.audioSha256,
+    candidateSetId: opaqueId(value.candidateSetId, 'candidate set id'),
+  };
+}
+
 function uniqueIds(rows, label) {
   if (!Array.isArray(rows) || rows.length === 0) throw new Error(`Invalid ${label}`);
   const ids = rows.map((row) => opaqueId(row?.uid, `${label} uid`));
@@ -103,7 +123,9 @@ export function buildReviewedTranscriptGraph(input) {
   const reviewedBy = nonemptyString(input.reviewedBy, 'fixture reviewer');
   const reviewedAt = canonicalIsoInstant(input.reviewedAt, 'fixture reviewedAt');
   if (!LANGUAGE_PATTERN.test(language)) throw new Error('Invalid fixture language');
-  if (!REVIEWER_ALIAS_PATTERN.test(reviewedBy)) throw new Error('Invalid fixture reviewer alias');
+  if (!REVIEWER_ALIAS_PATTERN.test(reviewedBy) && !AUTH_REVIEWER_ID_PATTERN.test(reviewedBy)) {
+    throw new Error('Invalid fixture reviewer identity');
+  }
   const fixtureChecksumSha256 = sha256(input);
   const chunkIds = new Set(uniqueIds(input.chunks, 'transcript chunk'));
   for (const chunk of input.chunks) {
@@ -289,6 +311,7 @@ function reviewedPlanSource(fixture, fixtureText, reviewedPlan) {
     reviewedBy: nonemptyString(fixture.reviewedBy, 'fixture reviewer'),
     reviewedAt: canonicalIsoInstant(fixture.reviewedAt, 'fixture reviewedAt'),
     fixtureSha256: rawSha256(fixtureText),
+    ...(fixture.source === undefined ? {} : { handoff: privateExtractionHandoff(fixture.source) }),
   };
   if (canonicalJson(source) !== canonicalJson(expected)) {
     throw new Error('Reviewed plan source does not match its transcript fixture');
