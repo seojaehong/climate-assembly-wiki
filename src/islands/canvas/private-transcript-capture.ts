@@ -101,6 +101,58 @@ function summarize(chunks: PrivateTranscriptChunk[]): PrivateTranscriptCaptureSe
   };
 }
 
+function validatePrivateTranscriptCaptureSession(session: PrivateTranscriptCaptureSession): void {
+  const expectedSource = createPrivateTranscriptCaptureSession({
+    captureId: session.source.captureId,
+    sessionId: session.source.sessionId,
+    audioSha256: session.source.audioSha256,
+    mimeType: session.source.mimeType,
+    byteLength: session.source.byteLength,
+    startedAt: session.source.startedAt,
+    stoppedAt: session.source.stoppedAt,
+  }).source;
+  if (session.source.durationMs !== expectedSource.durationMs || session.source.storage !== 'browser-memory') {
+    throw new Error('Invalid private transcript capture source');
+  }
+  session.chunks.forEach((chunk, index) => {
+    if (chunk.uid !== `${expectedSource.captureId}:chunk:${index + 1}`
+      || !Number.isSafeInteger(chunk.startMs)
+      || !Number.isSafeInteger(chunk.endMs)
+      || chunk.startMs < 0
+      || chunk.endMs <= chunk.startMs
+      || chunk.endMs > expectedSource.durationMs
+      || !SPEAKER.test(chunk.speakerLabelPseudonym)
+      || chunk.sourceText.trim().length === 0
+      || chunk.text.trim().length === 0) {
+      throw new Error('Invalid private transcript chunk');
+    }
+    if (chunk.reviewStatus === 'proposed') {
+      if (chunk.reviewer !== null || chunk.reviewedAt !== null) {
+        throw new Error('Invalid proposed transcript review metadata');
+      }
+      return;
+    }
+    if (!['accepted', 'edited', 'rejected'].includes(chunk.reviewStatus)
+      || chunk.reviewer === null
+      || !REVIEWER.test(chunk.reviewer)
+      || chunk.reviewedAt === null
+      || canonicalInstant(chunk.reviewedAt, 'transcript reviewedAt') < expectedSource.stoppedAt) {
+      throw new Error('Invalid reviewed transcript metadata');
+    }
+    if ((chunk.reviewStatus === 'accepted' || chunk.reviewStatus === 'rejected')
+      && chunk.text !== chunk.sourceText) {
+      throw new Error('Accepted or rejected transcript chunk must preserve source text');
+    }
+    if (chunk.reviewStatus === 'edited' && chunk.text === chunk.sourceText) {
+      throw new Error('Edited transcript chunk must change source text');
+    }
+  });
+  const expectedSummary = summarize(session.chunks);
+  if (session.summary.chunks !== expectedSummary.chunks || session.summary.decided !== expectedSummary.decided) {
+    throw new Error('Private transcript summary does not match chunks');
+  }
+}
+
 export function createPrivateTranscriptCaptureSession(input: CaptureInput): PrivateTranscriptCaptureSession {
   const captureId = opaqueId(input.captureId, 'capture id');
   const sessionId = opaqueId(input.sessionId, 'session id');
@@ -209,6 +261,7 @@ export function updatePrivateTranscriptChunkDraft(
 export function exportPrivateTranscriptReviewBatch(
   session: PrivateTranscriptCaptureSession,
 ): PrivateTranscriptReviewBatch {
+  validatePrivateTranscriptCaptureSession(session);
   if (session.chunks.length === 0 || session.summary.decided !== session.summary.chunks) {
     throw new Error('Every transcript chunk must be reviewed before extraction handoff');
   }

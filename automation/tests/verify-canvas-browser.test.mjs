@@ -255,13 +255,18 @@ async function fixtureServer({
               kind: 'private-transcript-review-batch',
               source: {
                 captureId: 'capture-browser', sessionId: privateSession.value,
-                audioSha256: '${'b'.repeat(64)}', byteLength: 16, storage: 'browser-memory',
+                audioSha256: '${'b'.repeat(64)}', mimeType: 'audio/webm', byteLength: 16,
+                startedAt: '2026-08-29T01:00:00.000Z', stoppedAt: '2026-08-29T01:00:01.000Z',
+                durationMs: 1000, storage: 'browser-memory',
               },
               chunks: [{
                 uid: 'capture-browser:chunk:1', sourceText, text: reviewedText,
+                startMs: 0, endMs: 1000, speakerLabelPseudonym: 'speaker-a',
                 reviewStatus: reviewedText === sourceText ? 'accepted' : 'edited',
                 reviewer: document.querySelector('#private-reviewer').value,
+                reviewedAt: '2026-08-29T01:05:00.000Z',
               }],
+              summary: { included: 1, rejected: 0, total: 1 },
               safety: {
                 localOnly: true, audioIncluded: false, databaseMutationExecuted: false,
                 publicGraphWritten: false, extractionExecuted: false, requiresExtractionReview: true,

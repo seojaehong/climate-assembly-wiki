@@ -445,15 +445,43 @@ export async function verifyCanvasBrowser({
     const privateDownloadPromise = reviewPage.waitForEvent('download', { timeout: timeoutMs });
     await privateBatchDownloadButton.click();
     const privateTranscriptBatch = JSON.parse(await downloadText(await privateDownloadPromise));
-    const privateTranscriptBatchDownloaded = privateTranscriptBatch.kind === 'private-transcript-review-batch'
+    const privateTranscriptSource = privateTranscriptBatch.source;
+    const privateTranscriptChunk = privateTranscriptBatch.chunks?.[0];
+    const privateTranscriptStartedAt = new Date(privateTranscriptSource?.startedAt ?? '');
+    const privateTranscriptStoppedAt = new Date(privateTranscriptSource?.stoppedAt ?? '');
+    const privateTranscriptReviewedAt = new Date(privateTranscriptChunk?.reviewedAt ?? '');
+    const privateTranscriptBatchDownloaded = privateTranscriptBatch.schemaVersion === 1
+      && privateTranscriptBatch.kind === 'private-transcript-review-batch'
       && privateTranscriptBatch.source?.sessionId === 'session-browser-r4'
       && privateTranscriptBatch.source?.storage === 'browser-memory'
       && /^[a-f0-9]{64}$/.test(privateTranscriptBatch.source?.audioSha256 ?? '')
-      && privateTranscriptBatch.chunks?.[0]?.reviewStatus === 'edited'
-      && privateTranscriptBatch.chunks?.[0]?.text === '합성 음성의 최종 검수 전사입니다.'
+      && privateTranscriptBatch.source?.mimeType.startsWith('audio/')
+      && Number.isSafeInteger(privateTranscriptBatch.source?.byteLength)
+      && privateTranscriptBatch.source.byteLength > 0
+      && privateTranscriptStartedAt.toISOString() === privateTranscriptBatch.source?.startedAt
+      && privateTranscriptStoppedAt.toISOString() === privateTranscriptBatch.source?.stoppedAt
+      && privateTranscriptStoppedAt.valueOf() - privateTranscriptStartedAt.valueOf()
+        === privateTranscriptBatch.source?.durationMs
+      && privateTranscriptBatch.chunks?.length === 1
+      && privateTranscriptChunk?.uid === `${privateTranscriptBatch.source?.captureId}:chunk:1`
+      && privateTranscriptChunk?.startMs === 0
+      && privateTranscriptChunk?.endMs === privateTranscriptBatch.source?.durationMs
+      && privateTranscriptChunk?.speakerLabelPseudonym === 'speaker-a'
+      && privateTranscriptChunk?.sourceText === '합성 음성 전사 원문입니다.'
+      && privateTranscriptChunk?.reviewStatus === 'edited'
+      && privateTranscriptChunk?.text === '합성 음성의 최종 검수 전사입니다.'
+      && privateTranscriptChunk?.reviewer === 'browser-r4-reviewer'
+      && privateTranscriptReviewedAt.toISOString() === privateTranscriptChunk?.reviewedAt
+      && privateTranscriptReviewedAt >= privateTranscriptStoppedAt
+      && privateTranscriptBatch.summary?.included === 1
+      && privateTranscriptBatch.summary?.rejected === 0
+      && privateTranscriptBatch.summary?.total === 1
       && privateTranscriptBatch.safety?.localOnly === true
       && privateTranscriptBatch.safety?.audioIncluded === false
+      && privateTranscriptBatch.safety?.databaseMutationExecuted === false
+      && privateTranscriptBatch.safety?.publicGraphWritten === false
       && privateTranscriptBatch.safety?.extractionExecuted === false
+      && privateTranscriptBatch.safety?.requiresExtractionReview === true
       && !JSON.stringify(privateTranscriptBatch).includes('synthetic-browser-audio');
     const privateCaptureChecks = {
       privateMediaRecorderAvailable,

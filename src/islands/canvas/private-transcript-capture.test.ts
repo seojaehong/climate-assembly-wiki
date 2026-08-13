@@ -5,6 +5,7 @@ import {
   exportPrivateTranscriptReviewBatch,
   reviewPrivateTranscriptChunk,
   updatePrivateTranscriptChunkDraft,
+  type PrivateTranscriptCaptureSession,
 } from './private-transcript-capture';
 
 const capture = () => createPrivateTranscriptCaptureSession({
@@ -130,6 +131,73 @@ describe('private transcript capture', () => {
     expect(reopened.summary.decided).toBe(0);
     expect(() => exportPrivateTranscriptReviewBatch(reopened)).toThrow(
       'Every transcript chunk must be reviewed before extraction handoff',
+    );
+  });
+
+  it('recomputes the review summary and rejects a proposed chunk disguised as decided', () => {
+    const proposed = appendPrivateTranscriptChunk(capture(), {
+      startMs: 0,
+      endMs: 12_000,
+      speakerLabelPseudonym: 'speaker-a',
+      text: '아직 검수하지 않은 전사입니다.',
+    });
+    const forged = {
+      ...proposed,
+      summary: { chunks: 1, decided: 1 },
+    };
+
+    expect(() => exportPrivateTranscriptReviewBatch(forged)).toThrow(
+      'Private transcript summary does not match chunks',
+    );
+  });
+
+  it('rejects changed accepted text and invalid review audit metadata at export time', () => {
+    const proposed = appendPrivateTranscriptChunk(capture(), {
+      startMs: 0,
+      endMs: 12_000,
+      speakerLabelPseudonym: 'speaker-a',
+      text: '검수할 전사입니다.',
+    });
+    const reviewed = reviewPrivateTranscriptChunk(proposed, {
+      uid: 'capture-20260829-a:chunk:1',
+      status: 'accepted',
+      text: '검수할 전사입니다.',
+      reviewer: 'moderator-r4-test',
+      reviewedAt: '2026-08-29T01:05:00.000Z',
+    });
+    const changedText = structuredClone(reviewed);
+    changedText.chunks[0].text = '판단 이후 바뀐 전사입니다.';
+    expect(() => exportPrivateTranscriptReviewBatch(changedText)).toThrow(
+      'Accepted or rejected transcript chunk must preserve source text',
+    );
+
+    const earlyAudit = structuredClone(reviewed);
+    earlyAudit.chunks[0].reviewedAt = '2026-08-29T00:59:59.000Z';
+    expect(() => exportPrivateTranscriptReviewBatch(earlyAudit)).toThrow(
+      'Invalid reviewed transcript metadata',
+    );
+  });
+
+  it('rejects source metadata that no longer describes the browser-memory capture', () => {
+    const reviewed = reviewPrivateTranscriptChunk(appendPrivateTranscriptChunk(capture(), {
+      startMs: 0,
+      endMs: 12_000,
+      speakerLabelPseudonym: 'speaker-a',
+      text: '검수 완료 전사입니다.',
+    }), {
+      uid: 'capture-20260829-a:chunk:1',
+      status: 'accepted',
+      text: '검수 완료 전사입니다.',
+      reviewer: 'moderator-r4-test',
+      reviewedAt: '2026-08-29T01:05:00.000Z',
+    });
+    const wrongStorage = {
+      ...reviewed,
+      source: { ...reviewed.source, storage: 'server' },
+    } as unknown as PrivateTranscriptCaptureSession;
+
+    expect(() => exportPrivateTranscriptReviewBatch(wrongStorage)).toThrow(
+      'Invalid private transcript capture source',
     );
   });
 });

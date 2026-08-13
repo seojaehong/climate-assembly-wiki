@@ -546,6 +546,7 @@ npm.cmd --prefix automation run bridge:transcript-ontology -- --fixture fixtures
 - 녹음이 끝나면 exact audio SHA-256, MIME type, byte length, 시작·종료 시각만 local capture session에 결속한다. 내려받는 전사 batch에는 음성 bytes/object URL을 포함하지 않는다.
 - moderator가 time-coded chunk, speaker pseudonym, 전사 원문을 수동 입력하고 각 chunk를 승인·수정 승인·반려해야 한다. 화면 문구를 다시 바꾸면 해당 판단을 `proposed`로 되돌리고 extraction handoff 다운로드를 다시 잠근다.
 - 모든 chunk가 결정되고 승인 또는 수정 승인된 chunk가 하나 이상 있을 때만 `private-transcript-review-batch`를 내려받는다. 이 batch는 `localOnly:true`, `extractionExecuted:false`, `requiresExtractionReview:true`이며 candidate extraction을 자동 실행하지 않는다.
+- 내려받기 직전 capture source, chunk 순서·시간·화자 가명, 판단 상태·검수자·검수 시각, 원문 보존 규칙과 summary를 실제 chunk에서 다시 검증한다. 캐시된 summary만 바꾸거나 판단 뒤 원문·audit metadata를 바꾼 session은 fail-closed한다.
 - 브라우저 verifier는 synthetic MediaRecorder adapter로 동의→녹음→정지→chunk 작성→검수 전 차단→수정 승인→재편집 차단→재판단→download를 실제 production React 화면에서 실행하고 write request가 없음을 확인한다.
 - 실제 시민 발언·지속 저장·외부 STT webhook/provider·음성 retention·reviewer 인증·DB/API·자동 extraction/publication은 구현하거나 승인하지 않았다. 실제 운영 전에는 별도 승인된 consent·보존·삭제·접근 정책이 필요하다.
 
