@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync(new URL('../../supabase/migrations/platform_p1c_org_selection.sql', import.meta.url), 'utf8');
 const rollback = readFileSync(new URL('../../supabase/rollbacks/platform_p1c_org_selection_BEFORE.sql', import.meta.url), 'utf8');
+const verificationDriver = readFileSync(new URL('../../supabase/verify/driver_pass1.sql', import.meta.url), 'utf8');
+const semanticRehearsal = readFileSync(new URL('../../supabase/verify/org_selection_test.sql', import.meta.url), 'utf8');
 
 function executableSql(source) {
   return source.replace(/^\s*--.*$/gm, '');
@@ -42,5 +44,18 @@ describe('A2 organization selection migration draft', () => {
     expect(rollback).toContain("raise exception 'user belongs to multiple orgs — explicit org selection required (Phase 2 org_select)'");
     expect(rollback).toContain('drop table if exists climate_vote.org_context');
     expect(rollback).toContain('using (org_id in (select m.org_id from climate_vote.membership m');
+  });
+
+  it('keeps the migration and rollback in the throwaway PostgreSQL rehearsal contract', () => {
+    expect(verificationDriver.indexOf('platform_p1_tenancy.sql'))
+      .toBeLessThan(verificationDriver.indexOf('platform_p1c_org_selection.sql'));
+    expect(verificationDriver.indexOf('platform_p1c_org_selection.sql'))
+      .toBeLessThan(verificationDriver.indexOf('platform_p2_analysis_review.sql'));
+    expect(semanticRehearsal).toContain("perform climate_vote.org_of_uid()");
+    expect(semanticRehearsal).toContain("P1C accepted a context token from another Auth session");
+    expect(semanticRehearsal).toContain("P1C accepted a context token from another user");
+    expect(semanticRehearsal).toContain("P1C RLS exposed an organization outside the selected context");
+    expect(semanticRehearsal).toContain('\\i /tmp/platform_p1c_org_selection_BEFORE.sql');
+    expect(semanticRehearsal).toContain('=== P1C ORG SELECTION REHEARSAL PASSED ===');
   });
 });

@@ -1,4 +1,8 @@
-SET check_function_bodies = off;
+\if :{?verify_function_bodies}
+\else
+  \set verify_function_bodies off
+\endif
+SET check_function_bodies = :verify_function_bodies;
 \echo === prelude ===
 \i /tmp/00_prelude.sql
 \echo === mod_console_core ===
@@ -21,6 +25,8 @@ SET check_function_bodies = off;
 \i /tmp/20260808_s4_ballot_subgroup.sql
 \echo === PLATFORM P1 ===
 \i /tmp/platform_p1_tenancy.sql
+\echo === PLATFORM P1C ORG SELECTION ===
+\i /tmp/platform_p1c_org_selection.sql
 \echo === PLATFORM P2 ===
 \i /tmp/platform_p2_analysis_review.sql
 \echo === PASS1 DONE ===

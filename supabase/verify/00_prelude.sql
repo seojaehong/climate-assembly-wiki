@@ -3,7 +3,13 @@ create schema if not exists extensions;
 create extension if not exists pgcrypto with schema extensions;
 create extension if not exists pgcrypto;  -- gen_random_uuid 등 public
 create schema if not exists auth;
-create or replace function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;
+create or replace function auth.jwt() returns jsonb language sql stable as $$
+  select coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb)
+$$;
+create or replace function auth.uid() returns uuid language sql stable as $$
+  select nullif(auth.jwt() ->> 'sub', '')::uuid
+$$;
+grant usage on schema auth to anon, authenticated, service_role;
 create schema if not exists climate_vote;
 
 -- base 테이블 (초기 대시보드 생성분, 파일 밖) — 마이그레이션이 참조하는 컬럼 포함
