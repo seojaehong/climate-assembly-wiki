@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync(new URL('../../supabase/migrations/platform_p1c_org_selection.sql', import.meta.url), 'utf8');
 const rollback = readFileSync(new URL('../../supabase/rollbacks/platform_p1c_org_selection_BEFORE.sql', import.meta.url), 'utf8');
+const activationRollback = readFileSync(new URL('../../supabase/rollbacks/platform_p1c_org_selection_activation_BEFORE.sql', import.meta.url), 'utf8');
 const verificationDriver = readFileSync(new URL('../../supabase/verify/driver_pass1.sql', import.meta.url), 'utf8');
 const semanticRehearsal = readFileSync(new URL('../../supabase/verify/org_selection_test.sql', import.meta.url), 'utf8');
 const postApplyVerification = readFileSync(new URL('../../supabase/verify/org_selection_post_apply.sql', import.meta.url), 'utf8');
@@ -44,7 +45,8 @@ describe('A2 organization selection migration draft', () => {
 
   it('keeps staff table activation grants disabled in the draft', () => {
     expect(executableSql(migration)).not.toMatch(/grant select on climate_vote\.membership/);
-    expect(migration).toContain('grant usage on schema climate_vote to authenticated');
+    expect(executableSql(migration)).not.toMatch(/grant usage on schema climate_vote to authenticated/);
+    expect(migration).toContain('-- grant usage on schema climate_vote to authenticated;');
     expect(migration).toContain('-- grant select, insert, update on climate_vote.assembly');
     expect(migration).toContain('Activation grants remain intentionally disabled in this draft.');
   });
@@ -53,6 +55,9 @@ describe('A2 organization selection migration draft', () => {
     expect(rollback).toContain("raise exception 'user belongs to multiple orgs — explicit org selection required (Phase 2 org_select)'");
     expect(rollback).toContain('drop table if exists climate_vote.org_context');
     expect(rollback).toContain('using (org_id in (select m.org_id from climate_vote.membership m');
+    expect(activationRollback).toContain('revoke select, insert, update, delete on');
+    expect(activationRollback).toContain('revoke select, insert, update, delete on climate_vote.membership');
+    expect(activationRollback).not.toContain('revoke usage on schema climate_vote');
   });
 
   it('keeps the migration and rollback in the throwaway PostgreSQL rehearsal contract', () => {
@@ -69,6 +74,9 @@ describe('A2 organization selection migration draft', () => {
     expect(semanticRehearsal).toContain("P1C RLS did not isolate every staff table to the selected organization");
     expect(semanticRehearsal).toContain("P1C allowed an operator insert outside the selected organization");
     expect(semanticRehearsal).toContain("P1C allowed a facilitator insert");
+    expect(semanticRehearsal).toContain('\\set expect_staff_grants on');
+    expect(semanticRehearsal).toContain('\\i /tmp/platform_p1c_org_selection_activation_BEFORE.sql');
+    expect(semanticRehearsal).toContain('\\set expect_staff_grants off');
     expect(semanticRehearsal).toContain('\\i /tmp/platform_p1c_org_selection_BEFORE.sql');
     expect(semanticRehearsal).toContain('=== P1C ORG SELECTION REHEARSAL PASSED ===');
   });
@@ -77,8 +85,10 @@ describe('A2 organization selection migration draft', () => {
     expect(postApplyVerification).toContain('expect_staff_grants');
     expect(postApplyVerification).toContain("current_setting('platform.verify_expect_staff_grants')::boolean");
     expect(postApplyVerification).toContain("c.relname in ('org_context', 'assembly', 'session', 'discussion_topic', 'submission', 'ballot')");
+    expect(postApplyVerification).toContain("('discussion_topic', 'topic_tenant_write', 'ALL')");
     expect(postApplyVerification).toContain('if v_count <> 10 then');
     expect(postApplyVerification).toContain("has_schema_privilege('authenticated', 'climate_vote', 'USAGE')");
+    expect(postApplyVerification).toContain('if v_expect_staff_grants');
     expect(postApplyVerification).toContain("has_table_privilege('authenticated', 'climate_vote.membership', 'SELECT')");
     expect(postApplyVerification).toContain("has_table_privilege('authenticated', format('climate_vote.%I', v_table), 'DELETE')");
     expect(postApplyVerification).toContain("'database_mutation_executed', false");

@@ -25,11 +25,12 @@
    - rollback removes `org_context` and its helper functions.
 5. Loaded a separate clean Postgres 16 database and ran `supabase/verify/org_selection_post_apply.sql`:
    - `expect_staff_grants=off` passed immediately after P1C with dormant staff grants;
-   - authenticated schema usage and the intended public RPC execution privileges were present while internal helpers remained private;
+   - authenticated schema usage was present after activation, while intended RPC execution privileges remained defined and internal helpers stayed private;
    - `expect_staff_grants=on` passed after applying the exact proposed SELECT/INSERT/UPDATE grants in the disposable database;
    - disabling RLS on `session` failed closed with exit code 3;
    - granting DELETE on `ballot` failed closed with exit code 3;
    - both successful reports returned `database_mutation_executed: false`.
+6. Revoked the activation table grants with `platform_p1c_org_selection_activation_BEFORE.sql`, reran the dormant verifier, and only then applied the P1C schema rollback. Staff tables were no longer directly accessible and the prior multi-organization rejection contract was restored.
 
 ## Result
 

@@ -55,16 +55,26 @@ begin
   end if;
 
   select count(*) into v_count
-  from pg_policies
-  where schemaname = 'climate_vote'
-    and policyname in (
-      'assembly_tenant_read', 'assembly_tenant_write',
-      'session_tenant_read', 'session_tenant_write',
-      'topic_tenant_read', 'topic_tenant_write',
-      'submission_tenant_read', 'submission_tenant_write',
-      'ballot_tenant_read', 'ballot_tenant_write'
-    )
-    and 'authenticated' = any(roles);
+  from (values
+    ('assembly', 'assembly_tenant_read', 'SELECT'),
+    ('assembly', 'assembly_tenant_write', 'ALL'),
+    ('session', 'session_tenant_read', 'SELECT'),
+    ('session', 'session_tenant_write', 'ALL'),
+    ('discussion_topic', 'topic_tenant_read', 'SELECT'),
+    ('discussion_topic', 'topic_tenant_write', 'ALL'),
+    ('submission', 'submission_tenant_read', 'SELECT'),
+    ('submission', 'submission_tenant_write', 'ALL'),
+    ('ballot', 'ballot_tenant_read', 'SELECT'),
+    ('ballot', 'ballot_tenant_write', 'ALL')
+  ) as expected(tablename, policyname, command)
+  join pg_policies p
+    on p.schemaname = 'climate_vote'
+   and p.tablename = expected.tablename
+   and p.policyname = expected.policyname
+   and p.cmd = expected.command
+  where 'authenticated' = any(p.roles)
+    and p.qual is not null
+    and (expected.command = 'SELECT' or p.with_check is not null);
   if v_count <> 10 then
     raise exception 'P1C verification failed: tenant policies are incomplete';
   end if;
@@ -81,8 +91,12 @@ begin
     end if;
   end loop;
 
-  if not has_schema_privilege('authenticated', 'climate_vote', 'USAGE')
-     or not has_function_privilege('authenticated', 'climate_vote.my_orgs()', 'EXECUTE')
+  if v_expect_staff_grants
+     and not has_schema_privilege('authenticated', 'climate_vote', 'USAGE') then
+    raise exception 'P1C verification failed: schema usage state is unexpected';
+  end if;
+
+  if not has_function_privilege('authenticated', 'climate_vote.my_orgs()', 'EXECUTE')
      or not has_function_privilege('authenticated', 'climate_vote.org_select(uuid)', 'EXECUTE')
      or has_function_privilege('anon', 'climate_vote.my_orgs()', 'EXECUTE')
      or has_function_privilege('anon', 'climate_vote.org_select(uuid)', 'EXECUTE')

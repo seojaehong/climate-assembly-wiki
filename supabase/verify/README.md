@@ -7,7 +7,7 @@
 - **패스2** (`check_function_bodies=on`): 동일 로드 clean. **P1/P1C/P2 전 함수 본문이 실제 컬럼에 대조 검증** 통과.
 - **계약 스모크** (`contract_test2/3`): issue_items(미분류2)→issue_upsert→issue_link_set→issue_list(연결1·미분류1·reviewed0)→**result_publish 거부(reviewed0 게이트)**→issue_review→**result_publish 성공(token)**→result_get(body 구조 = 결과페이지 계약과 일치).
 - **negative** (`neg_test`): 무효 join_code 거부 · **타 세션 주제 접근 거부(격리 불변식)** · org_of_code 정확 파생(t) · 잠금 가드(final submission에 item 삽입 차단).
-- **P1C 기관 선택** (`org_selection_test.sql`): 다중 membership에서 미선택 거부 → `org_select` token 발급 → Auth user·JWT session·header token 결속 → assembly/session/topic/submission/ballot 5개 staff table의 선택 org 단일 노출 → operator의 선택 org 내부 쓰기와 교차 org 차단·facilitator 쓰기 차단 → session/user/token 상충 및 만료 token 차단 → 다음 선택 시 만료 context 정리 → rollback 후 기존 다중 org 거부·membership-wide 휴면 policy 복원.
+- **P1C 기관 선택** (`org_selection_test.sql`): 다중 membership에서 미선택 거부 → `org_select` token 발급 → Auth user·JWT session·header token 결속 → assembly/session/topic/submission/ballot 5개 staff table의 선택 org 단일 노출 → operator의 선택 org 내부 쓰기와 교차 org 차단·facilitator 쓰기 차단 → session/user/token 상충 및 만료 token 차단 → 다음 선택 시 만료 context 정리 → activation GRANT 회수 → read-only 휴면 검증 → schema rollback 후 기존 다중 org 거부·membership-wide 휴면 policy 복원.
 - **P1C 적용 후 읽기 전용 검증** (`org_selection_post_apply.sql`): migration 직후 staff GRANT 휴면 상태(`expect_staff_grants=off`)와 별도 승인 GRANT 이후 활성 상태(`on`)에서 테이블·제약·인덱스·RLS·정책·함수·권한을 fail-closed 확인한다. SQL은 DB 객체나 데이터를 변경하지 않는다.
 
 ## 발견·정정
