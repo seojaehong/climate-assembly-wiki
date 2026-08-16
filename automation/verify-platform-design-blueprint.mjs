@@ -434,7 +434,14 @@ export async function verifyPlatformOrganizationSelection({ browser, origin, tim
     const selector = page.getByLabel('사용할 기관');
     await selector.waitFor({ timeout: timeoutMs });
     const treeLockedBeforeSelection = await page.getByRole('status').filter({ hasText: '사용할 기관을 선택' }).count() === 1;
-    await selector.selectOption(FIXTURE_IDS.orgSecondary);
+    await selector.evaluate((element, organizationId) => {
+      if (!(element instanceof HTMLSelectElement) || typeof organizationId !== 'string') {
+        throw new Error('Organization selection fixture is invalid');
+      }
+      element.value = organizationId;
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+    }, FIXTURE_IDS.orgSecondary);
     await page.waitForURL((url) => url.pathname.startsWith(`/platform/o/${FIXTURE_IDS.orgSecondary}`), { timeout: timeoutMs });
     await page.getByRole('button', { name: '접근성 감사 공론화', exact: true }).waitFor({ timeout: timeoutMs });
 
@@ -455,6 +462,7 @@ export async function verifyPlatformOrganizationSelection({ browser, origin, tim
       path: `/platform/o/${FIXTURE_IDS.orgSecondary}`,
       fixture: 'ci-platform-multi-org-fixture-v1',
       treeLockedBeforeSelection,
+      duplicateSelectionBlocked: selectionRequests.length === 1,
       selectionRequestCount: selectionRequests.length,
       selectedOrganizationId: FIXTURE_IDS.orgSecondary,
       contextHeaderObserved: contextHeaders.includes(contextToken),

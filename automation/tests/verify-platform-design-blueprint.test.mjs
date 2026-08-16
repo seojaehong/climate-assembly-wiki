@@ -157,6 +157,8 @@ describe('design blueprint browser CI contract', () => {
     expect(verifier).toContain('element.requestSubmit();');
     expect(verifier).toContain('verifyPlatformSessionIsolation({ browser, origin, timeoutMs })');
     expect(verifier).toContain('verifyPlatformOrganizationSelection({ browser, origin, timeoutMs })');
+    expect(verifier).toContain("element.dispatchEvent(new Event('change', { bubbles: true }));");
+    expect(verifier).toContain('duplicateSelectionBlocked: selectionRequests.length === 1');
     expect(verifier).toContain('verifyPlatformAccessPlan({ browser, origin, timeoutMs })');
     expect(verifier).toContain("getByRole('heading', { name: '승인 전 접근 계획' })");
     expect(verifier).toContain("getByRole('alert').filter({ hasText: '같은 이메일과 역할의 초대가 중복되었습니다.' })");

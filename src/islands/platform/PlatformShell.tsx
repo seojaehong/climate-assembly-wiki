@@ -86,7 +86,7 @@ export function clearPlatformSessionCredentials(
   }
 }
 
-/** Acquires a synchronous lock before the first await so one auth action cannot be submitted twice. */
+/** Acquires a synchronous lock before the first await so one platform action cannot be submitted twice. */
 export async function runExclusivePlatformOperation(
   lock: PlatformOperationLock,
   action: () => Promise<void>,
@@ -414,6 +414,7 @@ function AppShell({
   const [selectingOrg, setSelectingOrg] = useState(false);
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [logoutNotice, setLogoutNotice] = useState<string | null>(null);
+  const organizationSelectionLock = useRef(false);
   const logoutLock = useRef(false);
   const organizationGeneration = useRef(0);
   const publishTarget = deepestDataScopeTarget(tree, scope);
@@ -444,16 +445,22 @@ function AppShell({
   }, [session.userId, loadOrganizationTree]);
 
   const chooseOrganization = async (orgId: string) => {
-    if (!orgId || selectingOrg) return;
-    const generation = organizationGeneration.current + 1;
-    organizationGeneration.current = generation;
-    const selected = await completeOrganizationSelection(
-      () => selectOrg(orgId),
-      () => organizationGeneration.current === generation,
+    if (!orgId) return;
+    await runExclusivePlatformOperation(
+      organizationSelectionLock,
+      async () => {
+        const generation = organizationGeneration.current + 1;
+        organizationGeneration.current = generation;
+        const selected = await completeOrganizationSelection(
+          () => selectOrg(orgId),
+          () => organizationGeneration.current === generation,
+          () => undefined,
+          setTreeNotice,
+        );
+        if (selected) loadOrganizationTree();
+      },
       setSelectingOrg,
-      setTreeNotice,
     );
-    if (selected) loadOrganizationTree();
   };
 
   const logout = async () => {

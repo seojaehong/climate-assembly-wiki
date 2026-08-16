@@ -723,13 +723,15 @@ describe('PlatformShell accessibility', () => {
     expect(busyChanges).toEqual([true, false]);
   });
 
-  it('로그인과 로그아웃이 각각 지속되는 동기 lock을 사용한다', () => {
+  it('로그인·기관 선택·로그아웃이 각각 지속되는 동기 lock을 사용한다', () => {
     const source = readFileSync(new URL('./PlatformShell.tsx', import.meta.url), 'utf8');
 
     expect(source).toContain('const operationLock = useRef(false);');
+    expect(source).toContain('const organizationSelectionLock = useRef(false);');
     expect(source).toContain('const logoutLock = useRef(false);');
     expect(source).toContain('busy || operationLock.current');
     expect(source).toContain('logoutBusy || logoutLock.current');
+    expect(source).toContain('runExclusivePlatformOperation(\n      organizationSelectionLock,');
     expect(source).toContain('runExclusivePlatformOperation(\n      logoutLock,');
     expect(source.match(/disabled=\{busy\}/g)).toHaveLength(3);
   });
