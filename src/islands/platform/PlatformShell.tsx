@@ -40,7 +40,7 @@ import {
 } from '../../lib/platform';
 import ScopeOutlet from './ScopeViews';
 import { HQ_ACTOR_KEY, HQ_TOKEN_KEY } from '../mod/hq-gate-logic';
-import { PLATFORM_ORG_CONTEXT_KEY } from '../../lib/supabase';
+import { PLATFORM_ORG_CONTEXT_KEY, storePlatformOrgContextToken } from '../../lib/supabase';
 
 const NAVY = '#1F4E79';
 export const PLATFORM_ACCENT = '#135C73';
@@ -364,6 +364,7 @@ export async function completeOrganizationSelection(
   isCurrent: () => boolean,
   onBusyChange: (busy: boolean) => void,
   onNotice: (notice: string | null) => void,
+  storeContext: (token: string) => boolean = storePlatformOrgContextToken,
 ): Promise<boolean> {
   onBusyChange(true);
   onNotice(null);
@@ -373,6 +374,13 @@ export async function completeOrganizationSelection(
     if (result.notice || !result.data) {
       const notice = result.notice ?? '기관 선택 응답을 확인하지 못했습니다.';
       console.error('Failed to select platform organization', notice);
+      onNotice(notice);
+      onBusyChange(false);
+      return false;
+    }
+    if (!storeContext(result.data.contextToken)) {
+      const notice = '기관 선택 컨텍스트를 현재 탭에 저장하지 못했습니다.';
+      console.error('Failed to store platform organization context');
       onNotice(notice);
       onBusyChange(false);
       return false;

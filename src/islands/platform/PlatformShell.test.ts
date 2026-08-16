@@ -600,10 +600,11 @@ describe('PlatformShell accessibility', () => {
     const notices: Array<string | null> = [];
 
     await expect(completeOrganizationSelection(
-      async () => ({ data: 'org-a', notice: null }),
+      async () => ({ data: { orgId: 'org-a', contextToken: '00000000-0000-4000-8000-000000000099' }, notice: null }),
       () => true,
       (value) => busy.push(value),
       (notice) => notices.push(notice),
+      () => true,
     )).resolves.toBe(true);
     await expect(completeOrganizationSelection(
       async () => ({ data: null, notice: '선택 권한이 없습니다.' }),
@@ -614,6 +615,20 @@ describe('PlatformShell accessibility', () => {
 
     expect(busy).toEqual([true, false, true, false]);
     expect(notices).toEqual([null, null, '선택 권한이 없습니다.']);
+  });
+
+  it('이전 인증 세션의 늦은 기관 선택 응답은 탭 컨텍스트를 저장하지 않는다', async () => {
+    const storeContext = vi.fn(() => true);
+
+    await expect(completeOrganizationSelection(
+      async () => ({ data: { orgId: 'org-a', contextToken: '00000000-0000-4000-8000-000000000099' }, notice: null }),
+      () => false,
+      () => undefined,
+      () => undefined,
+      storeContext,
+    )).resolves.toBe(false);
+
+    expect(storeContext).not.toHaveBeenCalled();
   });
 
   it('탭별 기관 컨텍스트는 UUID만 session storage에 보존하고 제거한다', () => {

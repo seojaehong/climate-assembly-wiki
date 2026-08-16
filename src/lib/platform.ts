@@ -8,7 +8,7 @@
 //   guard() 로 감싸 { data, notice } 를 돌려준다 — 화면은 예외 대신 안내 문구를 띄운다.
 //   빌드는 언제나 통과한다.
 
-import { getSupabase, storePlatformOrgContextToken } from './supabase';
+import { getSupabase } from './supabase';
 import { type TreeNode } from '../islands/platform/platform-nav-logic';
 import type { BallotListRow, BallotResults } from './deliberation';
 
@@ -130,15 +130,20 @@ interface OrgSelectionResponse {
   context_token: string;
 }
 
-export async function selectOrg(orgId: string): Promise<PlatformResult<string>> {
+export interface OrgSelection {
+  orgId: string;
+  contextToken: string;
+}
+
+export async function selectOrg(orgId: string): Promise<PlatformResult<OrgSelection>> {
   return guard(async (sb) => {
     const { data, error } = await sb.schema(SCHEMA).rpc('org_select', { p_org: orgId });
     if (error) throw error;
     const selection = data as OrgSelectionResponse | null;
-    if (!selection || selection.org_id !== orgId || !storePlatformOrgContextToken(selection.context_token)) {
-      throw new Error('Organization context could not be stored');
+    if (!selection || selection.org_id !== orgId || !selection.context_token) {
+      throw new Error('Organization selection response is invalid');
     }
-    return selection.org_id;
+    return { orgId: selection.org_id, contextToken: selection.context_token };
   });
 }
 
