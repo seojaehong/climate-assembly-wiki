@@ -125,7 +125,7 @@ Executor core는 exact plan 검증 뒤 15분 이내 HMAC 승인(외부 보관 ke
 
 ### 2-4. A4 설계 프로비저닝 계획 검증
 
-`platform-design-provisioning-plan.mjs`는 설계 화면에서 내려받은 schema v4 청사진을 DB 명령으로 실행하지 않고, 향후 승인된 서버 계약이 소비할 assembly→session→topic/team 순서의 결정적 작업 계획으로 변환한다. 입력과 출력은 source prompt와 운영 목적을 포함하므로 저장소·`public/` 밖의 승인된 로컬 폴더에 둔다.
+`platform-design-provisioning-plan.mjs`는 설계 화면에서 내려받은 schema v4 청사진을 DB 명령으로 실행하지 않고, 향후 승인된 서버 계약이 소비할 assembly→session→topic/team 순서의 결정적 schema v2 작업 계획으로 변환한다. v2는 migration-owned session base와 team stable identity blocker를 각각 보존한다. 입력과 출력은 source prompt와 운영 목적을 포함하므로 저장소·`public/` 밖의 승인된 로컬 폴더에 둔다.
 
 ```powershell
 cd automation
@@ -138,7 +138,7 @@ npm.cmd run verify:platform-design-provisioning -- $designPlan --source $bluepri
 - UI와 CLI는 `design-blueprint-contract.json`의 schema version, 운영 방식, 준비도 vocabulary, slug와 크기 한계, dry-run 경계를 함께 사용한다.
 - 생성기는 exact source byte SHA-256과 assembly/session/topic/team별 stable operation ID, parent reference, 합계를 기록한다. verifier는 checksum뿐 아니라 원 청사진에서 전체 계획을 다시 생성해 순서·본문·계층·정원·정책이 바뀐 자체 재봉인 파일도 거부한다.
 - 계획은 항상 `readyForExecution:false`, `serverContractImplemented:false`, `databaseMutationExecuted:false`다. 실행 CLI나 Supabase adapter는 제공하지 않는다.
-- 현재 blocker는 회차 title/slug 저장 schema 미승인, design provisioning RPC 미구현, idempotent operation ledger 미구현, team join code 생성 계약 미승인이다. 네 항목이 migration·rollback·stage rehearsal·권한 테스트와 함께 별도 승인되기 전에는 이 plan을 SQL/API 작업 목록으로 사용하지 않는다.
+- 현재 blocker는 migration-owned session base 계약 부재, team ordinal 기반 stable identity 미승인, design provisioning RPC 미구현, idempotent operation ledger 미구현, team join code 생성 계약 미승인이다. 다섯 항목의 권장 계약과 승인 질문은 `docs/platform/A4_DESIGN_PROVISIONING_CONTRACT.md`에 분리했다. migration·rollback·stage rehearsal·권한 테스트가 별도 승인되기 전에는 이 plan을 SQL/API 작업 목록으로 사용하지 않는다.
 - 입력·출력 경로가 symlink/junction을 포함해 저장소를 가리키면 거부하며, 기존 출력은 명시적 `--force` 없이는 덮어쓰지 않는다. 오류에는 청사진 원문이나 파일 경로를 싣지 않는다.
 
 ## 3. 프론트 배포

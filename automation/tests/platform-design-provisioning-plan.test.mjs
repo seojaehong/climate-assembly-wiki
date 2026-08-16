@@ -67,6 +67,13 @@ test('shares the exact browser blueprint contract', () => {
   expect(DESIGN_BLUEPRINT_CONTRACT.readinessChecks).toEqual([
     'topics_open', 'teams_active', 'roster_loaded',
   ]);
+  expect(DESIGN_PROVISIONING_BLOCKERS).toEqual([
+    'schema.session_base_contract_not_migration_owned',
+    'schema.team_stable_identity_not_approved',
+    'server.design_provisioning_rpc_not_implemented',
+    'server.idempotent_operation_ledger_not_implemented',
+    'team.join_code_generation_contract_not_approved',
+  ]);
 });
 
 test('keeps the plan scripts and shared design contract in Linux CI', () => {
@@ -96,7 +103,7 @@ test('builds stable parent-before-child operations without executing them', () =
   const plan = buildDesignProvisioningPlan(source, sourceBytes(source));
 
   expect(plan).toMatchObject({
-    schemaVersion: 1,
+    schemaVersion: 2,
     planKind: 'platform_design_provisioning_plan',
     summary: {
       assemblyCount: 1,
@@ -135,7 +142,7 @@ test('binds exact source bytes and reconstructs the complete plan', () => {
     status: 'verified',
     checksum: plan.checksum,
     operationCount: 7,
-    blockerCount: 4,
+    blockerCount: 5,
     readyForExecution: false,
     databaseMutationExecuted: false,
   });
@@ -157,6 +164,12 @@ test('rejects checksum tampering and a self-resealed operation change', () => {
   tampered.checksum = designProvisioningPlanChecksum(tampered);
   expect(() => verifyDesignProvisioningPlan(tampered, source, bytes)).toThrow(
     'does not match its source blueprint',
+  );
+  const legacy = structuredClone(buildDesignProvisioningPlan(source, bytes));
+  legacy.schemaVersion = 1;
+  legacy.checksum = designProvisioningPlanChecksum(legacy);
+  expect(() => verifyDesignProvisioningPlan(legacy, source, bytes)).toThrow(
+    'checksum verification failed',
   );
 });
 
@@ -195,14 +208,14 @@ test('writes and verifies external plans without exposing an apply command', () 
     ])).toMatchObject({
       status: 'written',
       operationCount: 7,
-      blockerCount: 4,
+      blockerCount: 5,
       readyForExecution: false,
       databaseMutationExecuted: false,
     });
     expect(runDesignProvisioningCli([
       '--verify', outputPath,
       '--source', sourcePath,
-    ])).toMatchObject({ status: 'verified', operationCount: 7, blockerCount: 4 });
+    ])).toMatchObject({ status: 'verified', operationCount: 7, blockerCount: 5 });
     expect(() => runDesignProvisioningCli([
       '--source', sourcePath,
       '--output', outputPath,

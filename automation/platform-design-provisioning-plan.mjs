@@ -15,7 +15,8 @@ const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 export const DESIGN_PROVISIONING_BLOCKERS = Object.freeze([
-  'schema.session_title_slug_storage_not_approved',
+  'schema.session_base_contract_not_migration_owned',
+  'schema.team_stable_identity_not_approved',
   'server.design_provisioning_rpc_not_implemented',
   'server.idempotent_operation_ledger_not_implemented',
   'team.join_code_generation_contract_not_approved',
@@ -307,7 +308,7 @@ export function buildDesignProvisioningPlan(blueprint, sourceBytes) {
     }
   }
   const unsigned = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     planKind: 'platform_design_provisioning_plan',
     sourceBlueprint: {
       sha256: sha256(sourceBytes),
@@ -349,7 +350,7 @@ export function verifyDesignProvisioningPlan(plan, blueprint, sourceBytes) {
       'executionPolicy', 'blockers', 'readyForExecution', 'serverContractImplemented',
       'dryRun', 'databaseMutationExecuted', 'requiresApproval', 'checksum',
     ])
-    || plan.schemaVersion !== 1
+    || plan.schemaVersion !== 2
     || plan.planKind !== 'platform_design_provisioning_plan'
     || plan.readyForExecution !== false
     || plan.serverContractImplemented !== false
