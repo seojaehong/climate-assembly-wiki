@@ -7,6 +7,7 @@ const activationRollback = readFileSync(new URL('../../supabase/rollbacks/platfo
 const verificationDriver = readFileSync(new URL('../../supabase/verify/driver_pass1.sql', import.meta.url), 'utf8');
 const semanticRehearsal = readFileSync(new URL('../../supabase/verify/org_selection_test.sql', import.meta.url), 'utf8');
 const postApplyVerification = readFileSync(new URL('../../supabase/verify/org_selection_post_apply.sql', import.meta.url), 'utf8');
+const testWorkflow = readFileSync(new URL('../../.github/workflows/test.yml', import.meta.url), 'utf8');
 
 function executableSql(source) {
   return source.replace(/^\s*--.*$/gm, '');
@@ -87,6 +88,11 @@ describe('A2 organization selection migration draft', () => {
     expect(postApplyVerification).toContain("c.relname in ('org_context', 'assembly', 'session', 'discussion_topic', 'submission', 'ballot')");
     expect(postApplyVerification).toContain("('discussion_topic', 'topic_tenant_write', 'ALL')");
     expect(postApplyVerification).toContain('if v_count <> 10 then');
+    expect(postApplyVerification).toContain("p.roles = array['authenticated'::name]");
+    expect(postApplyVerification).toContain("regexp_replace(p.qual, E'\\\\s+', '', 'g')");
+    expect(postApplyVerification).toContain("v_expected_qual := '(org_id=org_of_uid())'");
+    expect(postApplyVerification).toContain('m.org_id=%I.org_id');
+    expect(postApplyVerification).toContain('tenant policy definition is unsafe');
     expect(postApplyVerification).toContain("has_schema_privilege('authenticated', 'climate_vote', 'USAGE')");
     expect(postApplyVerification).toContain('if v_expect_staff_grants');
     expect(postApplyVerification).toContain("has_table_privilege('authenticated', 'climate_vote.membership', 'SELECT')");
@@ -100,5 +106,14 @@ describe('A2 organization selection migration draft', () => {
     expect(executableVerification).not.toMatch(/\bdelete\s+from\b/i);
     expect(executableVerification).not.toMatch(/\balter\s+table\b/i);
     expect(executableVerification).not.toMatch(/^\s*(?:grant|revoke)\s+/im);
+  });
+
+  it('runs the P1C semantic and weakened-policy gates in CI', () => {
+    expect(testWorkflow).toContain("- 'supabase/**'");
+    expect(testWorkflow).toContain('Verify P1C organization selection semantics');
+    expect(testWorkflow).toContain('-v verify_function_bodies=on -f /tmp/driver_pass1.sql');
+    expect(testWorkflow).toContain('alter policy assembly_tenant_read on climate_vote.assembly using (true)');
+    expect(testWorkflow).toContain('grep -q "tenant policy definition is unsafe"');
+    expect(testWorkflow).toContain('-f /tmp/org_selection_test.sql');
   });
 });
