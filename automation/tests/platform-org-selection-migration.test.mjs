@@ -19,6 +19,9 @@ describe('A2 organization selection migration draft', () => {
     expect(migration).toContain("extensions.digest(v_token::text, 'sha256')");
     expect(migration).toContain('c.user_id = auth.uid()');
     expect(migration).toContain('c.session_id = climate_vote.auth_session_id()');
+    expect(migration).toContain("expires_at timestamptz not null default (now() + interval '12 hours')");
+    expect(migration).toContain('and c.expires_at > current_timestamp');
+    expect(migration).toContain('where c.expires_at <= clock_timestamp()');
   });
 
   it('returns only active memberships and rejects an unowned organization selection', () => {
@@ -54,6 +57,8 @@ describe('A2 organization selection migration draft', () => {
     expect(semanticRehearsal).toContain("perform climate_vote.org_of_uid()");
     expect(semanticRehearsal).toContain("P1C accepted a context token from another Auth session");
     expect(semanticRehearsal).toContain("P1C accepted a context token from another user");
+    expect(semanticRehearsal).toContain("P1C accepted an expired organization context token");
+    expect(semanticRehearsal).toContain("P1C organization selection did not prune expired contexts");
     expect(semanticRehearsal).toContain("P1C RLS exposed an organization outside the selected context");
     expect(semanticRehearsal).toContain('\\i /tmp/platform_p1c_org_selection_BEFORE.sql');
     expect(semanticRehearsal).toContain('=== P1C ORG SELECTION REHEARSAL PASSED ===');

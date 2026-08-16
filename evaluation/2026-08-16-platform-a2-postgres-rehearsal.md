@@ -18,6 +18,7 @@
    - `org_select` issues a context token for an active membership;
    - the selected organization is the only organization visible through the assembly RLS policy;
    - the token is rejected for another Auth session, another user, and an unknown token value;
+   - an expired token is rejected and the next organization selection prunes expired context rows;
    - rollback restores the prior multi-organization rejection and membership-wide dormant policy;
    - rollback removes `org_context` and its helper functions.
 

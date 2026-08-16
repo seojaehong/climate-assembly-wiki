@@ -74,6 +74,50 @@ begin
   end if;
 end $test$;
 
+reset role;
+update climate_vote.org_context
+set created_at = clock_timestamp() - interval '2 seconds',
+    expires_at = clock_timestamp() - interval '1 second'
+where token_hash = extensions.digest(:'context_token'::text, 'sha256');
+set role authenticated;
+
+do $test$
+declare
+  v_rejected boolean := false;
+  v_selected_count integer;
+begin
+  select count(*) filter (where selected) into v_selected_count
+  from climate_vote.my_orgs();
+  if v_selected_count <> 0 then
+    raise exception 'P1C accepted an expired organization context token';
+  end if;
+
+  begin
+    perform climate_vote.org_of_uid();
+  exception when others then
+    v_rejected := position('organization selection required' in sqlerrm) > 0;
+  end;
+  if not v_rejected then
+    raise exception 'P1C did not reject an expired organization context token';
+  end if;
+end $test$;
+
+select climate_vote.org_select('10000000-0000-4000-8000-000000000002') ->> 'context_token' as context_token \gset
+select set_config('request.headers', jsonb_build_object(
+  'x-platform-org-context', :'context_token'
+)::text, false);
+
+reset role;
+do $test$
+begin
+  if exists (
+    select 1 from climate_vote.org_context where expires_at <= clock_timestamp()
+  ) then
+    raise exception 'P1C organization selection did not prune expired contexts';
+  end if;
+end $test$;
+set role authenticated;
+
 select set_config('request.jwt.claims', jsonb_build_object(
   'sub', '30000000-0000-4000-8000-000000000001',
   'session_id', '50000000-0000-4000-8000-000000000002'

@@ -8,11 +8,15 @@ create table if not exists climate_vote.org_context (
   session_id uuid not null,
   user_id uuid not null,
   org_id uuid not null references climate_vote.org(id) on delete cascade,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default (now() + interval '12 hours'),
+  constraint org_context_expiry_order check (expires_at > created_at)
 );
 
 create index if not exists org_context_session_idx
   on climate_vote.org_context(session_id, user_id);
+create index if not exists org_context_expiry_idx
+  on climate_vote.org_context(expires_at);
 
 alter table climate_vote.org_context enable row level security;
 revoke all on climate_vote.org_context from public, anon, authenticated;
@@ -64,6 +68,7 @@ set search_path = pg_catalog, climate_vote, extensions as $fn$
   where c.token_hash = extensions.digest(climate_vote.request_org_context_token()::text, 'sha256')
     and c.user_id = auth.uid()
     and c.session_id = climate_vote.auth_session_id()
+    and c.expires_at > current_timestamp
   limit 1;
 $fn$;
 
@@ -108,6 +113,9 @@ begin
   if v_user_id is null or v_session_id is null then
     raise exception 'authenticated Supabase session required';
   end if;
+
+  delete from climate_vote.org_context c
+  where c.expires_at <= clock_timestamp();
 
   if not exists (
     select 1
