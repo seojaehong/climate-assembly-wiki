@@ -5,6 +5,7 @@ const migration = readFileSync(new URL('../../supabase/migrations/platform_p1c_o
 const rollback = readFileSync(new URL('../../supabase/rollbacks/platform_p1c_org_selection_BEFORE.sql', import.meta.url), 'utf8');
 const verificationDriver = readFileSync(new URL('../../supabase/verify/driver_pass1.sql', import.meta.url), 'utf8');
 const semanticRehearsal = readFileSync(new URL('../../supabase/verify/org_selection_test.sql', import.meta.url), 'utf8');
+const postApplyVerification = readFileSync(new URL('../../supabase/verify/org_selection_post_apply.sql', import.meta.url), 'utf8');
 
 function executableSql(source) {
   return source.replace(/^\s*--.*$/gm, '');
@@ -43,6 +44,8 @@ describe('A2 organization selection migration draft', () => {
 
   it('keeps staff table activation grants disabled in the draft', () => {
     expect(executableSql(migration)).not.toMatch(/grant select on climate_vote\.membership/);
+    expect(migration).toContain('grant usage on schema climate_vote to authenticated');
+    expect(migration).toContain('-- grant select, insert, update on climate_vote.assembly');
     expect(migration).toContain('Activation grants remain intentionally disabled in this draft.');
   });
 
@@ -68,5 +71,24 @@ describe('A2 organization selection migration draft', () => {
     expect(semanticRehearsal).toContain("P1C allowed a facilitator insert");
     expect(semanticRehearsal).toContain('\\i /tmp/platform_p1c_org_selection_BEFORE.sql');
     expect(semanticRehearsal).toContain('=== P1C ORG SELECTION REHEARSAL PASSED ===');
+  });
+
+  it('provides a read-only post-apply verifier for dormant and activated staff grants', () => {
+    expect(postApplyVerification).toContain('expect_staff_grants');
+    expect(postApplyVerification).toContain("current_setting('platform.verify_expect_staff_grants')::boolean");
+    expect(postApplyVerification).toContain("c.relname in ('org_context', 'assembly', 'session', 'discussion_topic', 'submission', 'ballot')");
+    expect(postApplyVerification).toContain('if v_count <> 10 then');
+    expect(postApplyVerification).toContain("has_schema_privilege('authenticated', 'climate_vote', 'USAGE')");
+    expect(postApplyVerification).toContain("has_table_privilege('authenticated', 'climate_vote.membership', 'SELECT')");
+    expect(postApplyVerification).toContain("has_table_privilege('authenticated', format('climate_vote.%I', v_table), 'DELETE')");
+    expect(postApplyVerification).toContain("'database_mutation_executed', false");
+    expect(postApplyVerification).toContain('=== P1C ORG SELECTION POST-APPLY VERIFICATION PASSED ===');
+
+    const executableVerification = executableSql(postApplyVerification);
+    expect(executableVerification).not.toMatch(/\binsert\s+into\b/i);
+    expect(executableVerification).not.toMatch(/\bupdate\s+climate_vote\b/i);
+    expect(executableVerification).not.toMatch(/\bdelete\s+from\b/i);
+    expect(executableVerification).not.toMatch(/\balter\s+table\b/i);
+    expect(executableVerification).not.toMatch(/^\s*(?:grant|revoke)\s+/im);
   });
 });

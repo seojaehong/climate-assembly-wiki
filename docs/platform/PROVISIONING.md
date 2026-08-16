@@ -45,10 +45,13 @@ npm.cmd run verify:platform-activation -- ..\evaluation\platform-activation-pref
 ## 2. Auth 활성화 (staff RLS 경로)
 P1의 RLS 정책은 `revoke all from authenticated` 때문에 **휴면**. 활성화:
 ```sql
-grant select on climate_vote.assembly, climate_vote.session, climate_vote.discussion_topic,
-                climate_vote.membership to authenticated;
--- (쓰기 필요 테이블은 operator/org_admin 정책이 이미 있으므로 select+정책으로 게이트)
+grant select on climate_vote.membership to authenticated;
+grant select, insert, update on
+  climate_vote.assembly, climate_vote.session, climate_vote.discussion_topic,
+  climate_vote.submission, climate_vote.ballot
+to authenticated;
 ```
+- P1C가 `my_orgs`·`org_select` 호출에 필요한 schema USAGE와 함수 EXECUTE만 먼저 연다. 위 직접 테이블 GRANT는 별도 활성화 승인 뒤에만 실행하며 DELETE는 허용하지 않는다.
 - Supabase Auth로 운영자 계정 생성 → `climate_vote.membership(org_id,user_id,role)` 행 삽입(초대 플로우 `invitation` 활용).
 - `auth.uid()`는 Supabase 기본 제공(JWT sub). 우리 정책이 이를 membership과 대조.
 
@@ -63,6 +66,7 @@ grant select on climate_vote.assembly, climate_vote.session, climate_vote.discus
 - 같은 Auth 세션을 공유하는 여러 탭도 서로 다른 선택 토큰을 사용한다. 로그아웃은 현재 탭의 토큰을 제거한다.
 - `session_id`는 Supabase Auth JWT의 필수 세션 식별자다. 공식 계약: [JWT claims](https://supabase.com/docs/guides/auth/jwt-fields), [User sessions](https://supabase.com/docs/guides/auth/sessions).
 - `org_context` 수명주기는 승인된 P1C 초안에 포함됐지만 실제 migration 적용과 staff GRANT 활성화는 별도 운영 승인 범위다. service role은 RLS를 우회하므로 사용자 요청 경로에서 사용하지 않는다.
+- P1C 적용 직후에는 `psql ... -v expect_staff_grants=off -f supabase/verify/org_selection_post_apply.sql`로 객체·RLS·정책·함수와 휴면 권한을 읽기 전용 검증한다. 별도 승인된 staff GRANT 뒤에는 같은 파일을 `expect_staff_grants=on`으로 다시 실행한다. 둘 중 하나라도 실패하면 Auth 트래픽을 열지 않는다.
 
 ### 2-2. 기관 접근 계획 파일
 

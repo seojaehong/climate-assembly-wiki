@@ -23,7 +23,14 @@
    - an expired token is rejected and the next organization selection prunes expired context rows;
    - rollback restores the prior multi-organization rejection and membership-wide dormant policy;
    - rollback removes `org_context` and its helper functions.
+5. Loaded a separate clean Postgres 16 database and ran `supabase/verify/org_selection_post_apply.sql`:
+   - `expect_staff_grants=off` passed immediately after P1C with dormant staff grants;
+   - authenticated schema usage and the intended public RPC execution privileges were present while internal helpers remained private;
+   - `expect_staff_grants=on` passed after applying the exact proposed SELECT/INSERT/UPDATE grants in the disposable database;
+   - disabling RLS on `session` failed closed with exit code 3;
+   - granting DELETE on `ballot` failed closed with exit code 3;
+   - both successful reports returned `database_mutation_executed: false`.
 
 ## Result
 
-The expanded rehearsal initially found that the legacy `session` table had tenant policies but no RLS enable statement. P1C now explicitly enables RLS on all five staff tables before any activation grant. After that correction, all parsing, function-body, positive, negative, five-table RLS, role-write, expiry, and rollback checks passed. The rehearsal used only a disposable local database. Applying the migration, enabling staff grants, provisioning Auth users or memberships, and changing production data remain separate approval gates.
+The expanded rehearsal initially found that the legacy `session` table had tenant policies but no RLS enable statement. P1C now explicitly enables RLS on all five staff tables before any activation grant. After that correction, all parsing, function-body, positive, negative, five-table RLS, role-write, expiry, rollback, and post-apply privilege checks passed. The rehearsal used only disposable local databases. Applying the migration, enabling staff grants, provisioning Auth users or memberships, and changing production data remain separate approval gates.
