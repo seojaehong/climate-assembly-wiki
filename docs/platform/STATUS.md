@@ -46,6 +46,8 @@
 
 ### Phase A 점진 구현 (2026-08-11)
 
+- **A2 기관 토큰 origin 결속 (2026-08-17)**: 탭별 기관 컨텍스트 헤더는 설정된 Supabase와 protocol·host·port가 정확히 같은 `/rest/v1/` 요청에만 붙인다. Auth 경로, 유사 호스트, HTTP downgrade, URL credential, 상대 경로에는 토큰을 전달하지 않으며 CI가 해당 회귀 테스트를 직접 실행한다. production DB·Auth·membership·GRANT는 변경하지 않았다.
+
 **추가 실행 검증:** Canvas browser verifier Vitest 3건이 읽기 전용 정상 렌더, 비인증 드래그·쓰기 요청 차단, GitHub의 재현 가능한 Node 20 콜드 실행 계약을 검증했다. 루트 `package-lock.json`을 추적하고 Canvas 관련 변경 시 `npm ci` 뒤 강제 Astro 콜드 시작과 실제 브라우저 검증을 실행한다. 실제 Node 20 개발 서버의 비식별 증거 JSON과 스크린샷은 `evaluation/2026-08-11-canvas-dev-browser-evidence.json`과 `evaluation/2026-08-11-canvas-dev-browser.png`에 보존했다.
 
 - **M1 Supabase contract preflight**: `automation/canvas-db-contract.mjs`가 production Canvas의 `session/participant/agenda/agenda_link/agenda_edit_log/rounds/attendance` operation과 attendance RPC를 20개 추적 migration의 최종 column/FK·RLS·operation/role policy·GRANT·realtime·SECURITY DEFINER 패턴과 읽기 전용으로 대조한다. 주석뿐인 SQL과 뒤 migration의 DROP/REVOKE/RLS disable을 증거로 세지 않고, matrix 밖 신규 table operation도 blocker로 만든다. 다만 정규식 기반 검사는 RLS/함수 본문 의미를 증명하지 않으므로 어떤 입력에도 M1 `ready`를 발급하지 않으며 `verification.semantic_review_required`를 유지한다. 6개 base table의 migration-owned 계약, 일부 attendance RPC의 explicit PUBLIC 회수, contract 사용자 승인, rollback SQL·stage rehearsal·role별 권한 테스트가 남아 있다. 정책·write failure·rollback 초안은 `docs/platform/CANVAS_DB_CONTRACT.md`에 분리했고 DB/API·환경변수·mutation은 사용하지 않았다. 이 진단은 live DB 부재나 M1 완료를 주장하지 않고, migration 작성·적용은 사용자 승인 뒤 별도 진행한다.

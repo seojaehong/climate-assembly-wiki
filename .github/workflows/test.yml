@@ -15,6 +15,8 @@ on:
       - 'src/islands/CanvasBoard.test.ts'
       - 'src/islands/OntologyReviewConsole.tsx'
       - 'src/islands/OntologyReviewConsole.test.ts'
+      - 'src/islands/platform/PlatformShell.tsx'
+      - 'src/islands/platform/PlatformShell.test.ts'
       - 'src/islands/canvas/**'
       - 'src/lib/supabase.ts'
       - 'src/pages/**/moderator/canvas.astro'
@@ -39,6 +41,8 @@ on:
       - 'src/islands/CanvasBoard.test.ts'
       - 'src/islands/OntologyReviewConsole.tsx'
       - 'src/islands/OntologyReviewConsole.test.ts'
+      - 'src/islands/platform/PlatformShell.tsx'
+      - 'src/islands/platform/PlatformShell.test.ts'
       - 'src/islands/canvas/**'
       - 'src/lib/supabase.ts'
       - 'src/pages/**/moderator/canvas.astro'
@@ -71,6 +75,7 @@ jobs:
           src/components/ModeratorPlatformNav.test.ts
           src/islands/CanvasBoard.test.ts
           src/islands/OntologyReviewConsole.test.ts
+          src/islands/platform/PlatformShell.test.ts
           src/islands/canvas/ontology-review-workspace.test.ts
           src/islands/canvas/transcript-ontology-review-workspace.test.ts
           src/islands/canvas/private-transcript-capture.test.ts

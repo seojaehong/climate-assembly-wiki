@@ -10,7 +10,7 @@ import ReviewConsole, { completeReviewLoad, completeReviewMutation, loadReviewDa
 import type { IssueViewModel, ReviewItem } from './review/review-console-logic';
 import { resolveHitlStatus } from '../../lib/hitl-status';
 import type { IssueItemsResult, IssueListResult, PlatformResult } from '../../lib/platform';
-import { clearPlatformOrgContextToken, PLATFORM_ORG_CONTEXT_HEADER, PLATFORM_ORG_CONTEXT_KEY, platformOrgContextHeaders, readPlatformOrgContextToken, storePlatformOrgContextToken } from '../../lib/supabase';
+import { clearPlatformOrgContextToken, isPlatformRestRequest, PLATFORM_ORG_CONTEXT_HEADER, PLATFORM_ORG_CONTEXT_KEY, platformOrgContextHeaders, readPlatformOrgContextToken, storePlatformOrgContextToken } from '../../lib/supabase';
 
 const tree: TreeNode = {
   kind: 'org',
@@ -648,6 +648,21 @@ describe('PlatformShell accessibility', () => {
     expect(clearPlatformOrgContextToken(storage)).toBe(true);
     expect(readPlatformOrgContextToken(storage)).toBeNull();
     expect(storePlatformOrgContextToken('not-a-token', storage)).toBe(false);
+  });
+
+  it('기관 컨텍스트 헤더를 승인된 Supabase REST origin에만 전달한다', () => {
+    const platformUrl = 'https://project.supabase.co';
+
+    expect(isPlatformRestRequest('https://project.supabase.co/rest/v1/rpc/my_orgs', platformUrl)).toBe(true);
+    expect(isPlatformRestRequest('https://project.supabase.co/rest/v1/assembly?select=id', platformUrl)).toBe(true);
+    expect(isPlatformRestRequest(new URL('https://project.supabase.co/rest/v1/rpc/my_orgs'), platformUrl)).toBe(true);
+    expect(isPlatformRestRequest(new Request('https://project.supabase.co/rest/v1/assembly'), platformUrl)).toBe(true);
+    expect(isPlatformRestRequest('https://project.supabase.co/auth/v1/token', platformUrl)).toBe(false);
+    expect(isPlatformRestRequest('https://project.supabase.co.evil.example/rest/v1/rpc/my_orgs', platformUrl)).toBe(false);
+    expect(isPlatformRestRequest('http://project.supabase.co/rest/v1/rpc/my_orgs', platformUrl)).toBe(false);
+    expect(isPlatformRestRequest('https://project.supabase.co:444/rest/v1/rpc/my_orgs', platformUrl)).toBe(false);
+    expect(isPlatformRestRequest('https://user:secret@project.supabase.co/rest/v1/rpc/my_orgs', platformUrl)).toBe(false);
+    expect(isPlatformRestRequest('/rest/v1/rpc/my_orgs', platformUrl)).toBe(false);
   });
 
   it('PlatformShell이 Auth 이벤트마다 generation을 교체하고 cleanup에서 무효화한다', () => {

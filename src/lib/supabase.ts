@@ -69,9 +69,23 @@ export function platformOrgContextHeaders(
   return headers;
 }
 
-async function platformFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+/** Restricts the tab-scoped organization token to the configured Supabase REST origin. */
+export function isPlatformRestRequest(
+  input: RequestInfo | URL,
+  platformUrl: string,
+): boolean {
   const target = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-  const headers = new URL(target).pathname.startsWith('/rest/v1/')
+  if (!URL.canParse(target) || !URL.canParse(platformUrl)) return false;
+  const targetUrl = new URL(target);
+  const expectedUrl = new URL(platformUrl);
+  return targetUrl.origin === expectedUrl.origin
+    && targetUrl.username === ''
+    && targetUrl.password === ''
+    && targetUrl.pathname.startsWith('/rest/v1/');
+}
+
+async function platformFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const headers = isPlatformRestRequest(input, url)
     ? platformOrgContextHeaders(init?.headers)
     : new Headers(init?.headers);
   return fetch(input, { ...init, headers });
