@@ -702,6 +702,7 @@ test('verification CLI validates signed evidence without loading database creden
       encoding: 'utf8',
       env: {
         ...process.env,
+        GITHUB_SHA: fixture.sourceCommit,
         SUPABASE_URL: '',
         SUPABASE_SERVICE_ROLE_KEY: '',
         SUPABASE_SERVICE_ROLE: '',
@@ -772,6 +773,7 @@ test('verification CLI rejects an untracked migration in the approval source tre
       encoding: 'utf8',
       env: {
         ...process.env,
+        GITHUB_SHA: fixture.sourceCommit,
         ACTIVATION_PREFLIGHT_AUDIT_HMAC_KEY: 'test-activation-audit-key-32-bytes-minimum',
         ACTIVATION_PREFLIGHT_AUDIT_KEY_ID: 'activation-audit-2026-08-v1',
       },
