@@ -129,6 +129,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A2 권한 활성화 초안 분리(2026-08-17):** staff 직접 권한을 기본 P1→P1C→P2 migration chain과 주석에서 분리한 `platform_p1c_org_selection_activation.sql`을 추가했다. 이 초안은 schema USAGE, membership SELECT, assembly/session/topic/submission/ballot의 SELECT·INSERT·UPDATE만 발급하고 DELETE나 org_context 직접 접근을 허용하지 않는다. 기본 driver는 이 파일을 실행하지 않고 semantic rehearsal만 별도 적용→활성 검증→권한 rollback→휴면 검증 순서를 실행한다. production migration·GRANT·Auth·membership·data는 변경하지 않았다.
 
+**A2 권한 원자성 검증(2026-08-17):** activation과 대응 권한 rollback을 각각 하나의 transaction으로 묶었다. PostgreSQL 16 semantic rehearsal은 활성화 대상 테이블 누락 시 앞서 실행된 schema·membership GRANT가 남지 않는지, rollback 대상 누락 시 기존 활성 권한이 부분 회수되지 않는지를 음성 경로로 검증한다. 실제 production 권한은 변경하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. Supabase Auth 운영자 계정과 membership을 승인된 운영 절차로 프로비저닝
 2. §5 결정 1·2·3·4·6 — A1~A4 활성화 범위 확정

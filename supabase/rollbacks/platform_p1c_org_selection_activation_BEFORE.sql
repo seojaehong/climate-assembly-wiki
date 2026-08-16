@@ -1,6 +1,8 @@
 -- Revoke the separately approved P1C staff table activation before schema rollback.
 -- Schema USAGE is intentionally preserved because it can predate P1C and is shared by legacy RPCs.
 
+begin;
+
 revoke select, insert, update, delete on
   climate_vote.assembly,
   climate_vote.session,
@@ -10,3 +12,5 @@ revoke select, insert, update, delete on
 from authenticated;
 
 revoke select, insert, update, delete on climate_vote.membership from authenticated;
+
+commit;

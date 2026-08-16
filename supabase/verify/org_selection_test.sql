@@ -56,6 +56,31 @@ insert into climate_vote.ballot(id, session_id, title, status, org_id) values
   ('45000000-0000-4000-8000-000000000001', '41000000-0000-4000-8000-000000000001', 'Ballot Alpha', 'draft', '10000000-0000-4000-8000-000000000001'),
   ('45000000-0000-4000-8000-000000000002', '41000000-0000-4000-8000-000000000002', 'Ballot Beta', 'draft', '10000000-0000-4000-8000-000000000002');
 
+-- A missing grant target must roll back every earlier statement in the file.
+alter table climate_vote.ballot rename to ballot_activation_unavailable;
+\set ON_ERROR_STOP off
+\i /tmp/platform_p1c_org_selection_activation.sql
+\set ON_ERROR_STOP on
+
+do $test$
+declare
+  v_table text;
+begin
+  if has_schema_privilege('authenticated', 'climate_vote', 'USAGE')
+     or has_table_privilege('authenticated', 'climate_vote.membership', 'SELECT') then
+    raise exception 'P1C failed activation left partial schema or membership privileges';
+  end if;
+  foreach v_table in array array['assembly', 'session', 'discussion_topic', 'submission'] loop
+    if has_table_privilege('authenticated', format('climate_vote.%I', v_table), 'SELECT')
+       or has_table_privilege('authenticated', format('climate_vote.%I', v_table), 'INSERT')
+       or has_table_privilege('authenticated', format('climate_vote.%I', v_table), 'UPDATE') then
+      raise exception 'P1C failed activation left partial staff table privileges';
+    end if;
+  end loop;
+end $test$;
+
+alter table climate_vote.ballot_activation_unavailable rename to ballot;
+
 \i /tmp/platform_p1c_org_selection_activation.sql
 
 \set expect_staff_grants on
@@ -323,6 +348,17 @@ begin
 end $test$;
 
 reset role;
+
+-- A missing revoke target must preserve the complete active grant set.
+alter table climate_vote.membership rename to membership_activation_unavailable;
+\set ON_ERROR_STOP off
+\i /tmp/platform_p1c_org_selection_activation_BEFORE.sql
+\set ON_ERROR_STOP on
+alter table climate_vote.membership_activation_unavailable rename to membership;
+
+\set expect_staff_grants on
+\i /tmp/org_selection_post_apply.sql
+
 \i /tmp/platform_p1c_org_selection_activation_BEFORE.sql
 \set expect_staff_grants off
 \i /tmp/org_selection_post_apply.sql

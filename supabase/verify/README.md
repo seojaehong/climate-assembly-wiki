@@ -9,6 +9,7 @@
 - **negative** (`neg_test`): 무효 join_code 거부 · **타 세션 주제 접근 거부(격리 불변식)** · org_of_code 정확 파생(t) · 잠금 가드(final submission에 item 삽입 차단).
 - **P1C 기관 선택** (`org_selection_test.sql`): 다중 membership에서 미선택 거부 → `org_select` token 발급 → Auth user·JWT session·header token 결속 → 기본 chain에 포함되지 않는 별도 activation 초안 적용 → assembly/session/topic/submission/ballot 5개 staff table의 선택 org 단일 노출 → operator의 선택 org 내부 쓰기와 교차 org 차단·facilitator 쓰기 차단 → session/user/token 상충 및 만료 token 차단 → 다음 선택 시 만료 context 정리 → activation GRANT 회수 → read-only 휴면 검증 → schema rollback 후 기존 다중 org 거부·membership-wide 휴면 policy 복원.
 - **P1C 적용 후 읽기 전용 검증** (`org_selection_post_apply.sql`): migration 직후 staff GRANT 휴면 상태(`expect_staff_grants=off`)와 별도 승인 GRANT 이후 활성 상태(`on`)에서 테이블·제약·인덱스·RLS·정책 역할·본문·함수·권한을 fail-closed 확인한다. SQL은 DB 객체나 데이터를 변경하지 않는다.
+- **P1C 권한 원자성**: 임시로 activation 대상 테이블을 숨겨 중간 GRANT 실패를 만든 뒤 schema·membership·staff table 권한이 모두 없는지 확인한다. 활성 후에는 rollback 대상을 숨겨 중간 REVOKE를 실패시키고, 전체 활성 권한이 유지되는지 검증한 다음 정상 rollback을 실행한다.
 
 ## 발견·정정
 - P1 `invitation.token` 기본식의 `gen_random_bytes` 미한정 → `extensions.gen_random_bytes`로 통일(P2 스타일). Supabase는 search_path로 동작했으나 이식성 정정.

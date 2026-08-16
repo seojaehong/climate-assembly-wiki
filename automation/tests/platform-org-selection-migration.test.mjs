@@ -59,6 +59,7 @@ describe('A2 organization selection migration draft', () => {
     expect(activation).toContain('grant select on climate_vote.membership to authenticated;');
     expect(activation).toContain('grant select, insert, update on');
     expect(activation).toMatch(/climate_vote\.ballot\s+to authenticated;/);
+    expect(executableSql(activation)).toMatch(/^\s*begin;[\s\S]*commit;\s*$/i);
     expect(executableSql(activation)).not.toMatch(/\bdelete\b/i);
     expect(executableSql(activation)).not.toMatch(/\bgrant\s+(?:all|create|truncate|references|trigger)\b/i);
   });
@@ -70,6 +71,7 @@ describe('A2 organization selection migration draft', () => {
     expect(rollback).toContain('grant execute on function climate_vote.org_of_uid() to anon, authenticated;');
     expect(activationRollback).toContain('revoke select, insert, update, delete on');
     expect(activationRollback).toContain('revoke select, insert, update, delete on climate_vote.membership');
+    expect(executableSql(activationRollback)).toMatch(/^\s*begin;[\s\S]*commit;\s*$/i);
     expect(activationRollback).not.toContain('revoke usage on schema climate_vote');
   });
 
@@ -85,6 +87,9 @@ describe('A2 organization selection migration draft', () => {
     expect(semanticRehearsal).toContain('P1C accepted a non-SHA-256 organization context hash');
     expect(semanticRehearsal).toContain('P1C organization context lifetime does not match 12 hours');
     expect(semanticRehearsal).toContain('\\i /tmp/platform_p1c_org_selection_activation.sql');
+    expect(semanticRehearsal).toContain('P1C failed activation left partial schema or membership privileges');
+    expect(semanticRehearsal).toContain('P1C failed activation left partial staff table privileges');
+    expect(semanticRehearsal).toContain('membership_activation_unavailable');
     expect(semanticRehearsal).toContain("P1C organization selection did not prune expired contexts");
     expect(semanticRehearsal).toContain("P1C RLS exposed an organization outside the selected context");
     expect(semanticRehearsal).toContain("P1C RLS did not isolate every staff table to the selected organization");
