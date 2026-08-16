@@ -58,6 +58,7 @@ grant select on climate_vote.assembly, climate_vote.session, climate_vote.discus
 - 여러 활성 기관에 소속된 사용자는 데이터 트리를 읽기 전에 기관 선택기가 표시된다. URL의 기관 ID만으로는 선택하지 않는다.
 - `org_select`는 요청 기관의 활성 membership을 검증한 뒤 opaque UUID를 한 번 발급한다. 브라우저는 이를 현재 탭의 `sessionStorage`에만 저장하고 Supabase 요청의 `x-platform-org-context` 헤더로 보낸다.
 - DB에는 토큰 원문 대신 SHA-256만 저장한다. `org_of_uid()`는 헤더 토큰, `auth.uid()`, JWT `session_id`, 활성 membership, 활성 org가 모두 일치할 때만 다중 소속 RLS 범위를 반환한다.
+- P1C는 activation grant 전에 assembly/session/topic/submission/ballot 5개 staff table의 RLS를 모두 명시적으로 활성화한다. 특히 기존 `session_tenant_*` policy만 있고 RLS enable이 빠진 legacy `session` table을 이 단계에서 닫는다.
 - 선택 컨텍스트는 발급 후 12시간에 만료된다. RLS 조회는 만료된 토큰을 즉시 거부하고, 다음 `org_select` 호출이 만료 행을 정리한다. 활성화 전 운영 시간에 맞춰 이 수명을 다시 승인한다.
 - 같은 Auth 세션을 공유하는 여러 탭도 서로 다른 선택 토큰을 사용한다. 로그아웃은 현재 탭의 토큰을 제거한다.
 - `session_id`는 Supabase Auth JWT의 필수 세션 식별자다. 공식 계약: [JWT claims](https://supabase.com/docs/guides/auth/jwt-fields), [User sessions](https://supabase.com/docs/guides/auth/sessions).

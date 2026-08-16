@@ -9,14 +9,37 @@ insert into climate_vote.membership(id, org_id, user_id, role, status) values
   ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001', 'operator', 'active'),
   ('20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000001', 'operator', 'active'),
   ('20000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000002', 'operator', 'active'),
-  ('20000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000002', 'operator', 'active');
+  ('20000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000002', 'operator', 'active'),
+  ('20000000-0000-4000-8000-000000000005', '10000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000003', 'facilitator', 'active');
 
 insert into climate_vote.assembly(id, slug, title, status, org_id) values
   ('40000000-0000-4000-8000-000000000001', 'assembly-alpha', 'Assembly Alpha', 'active', '10000000-0000-4000-8000-000000000001'),
   ('40000000-0000-4000-8000-000000000002', 'assembly-beta', 'Assembly Beta', 'active', '10000000-0000-4000-8000-000000000002');
 
+insert into climate_vote.session(id, slug, title, status, assembly_id, ordinal, held_on, org_id) values
+  ('41000000-0000-4000-8000-000000000001', 'session-alpha', 'Session Alpha', 'active', '40000000-0000-4000-8000-000000000001', 1, '2026-08-16', '10000000-0000-4000-8000-000000000001'),
+  ('41000000-0000-4000-8000-000000000002', 'session-beta', 'Session Beta', 'active', '40000000-0000-4000-8000-000000000002', 1, '2026-08-16', '10000000-0000-4000-8000-000000000002');
+
+insert into climate_vote.discussion_topic(id, session_id, ordinal, prompt, status, org_id) values
+  ('42000000-0000-4000-8000-000000000001', '41000000-0000-4000-8000-000000000001', 1, 'Topic Alpha', 'open', '10000000-0000-4000-8000-000000000001'),
+  ('42000000-0000-4000-8000-000000000002', '41000000-0000-4000-8000-000000000002', 1, 'Topic Beta', 'open', '10000000-0000-4000-8000-000000000002');
+
+insert into climate_vote.team(id, session_id, name, join_code, status, org_id) values
+  ('43000000-0000-4000-8000-000000000001', '41000000-0000-4000-8000-000000000001', 'Team Alpha', '100001', 'active', '10000000-0000-4000-8000-000000000001'),
+  ('43000000-0000-4000-8000-000000000002', '41000000-0000-4000-8000-000000000002', 'Team Beta', '100002', 'active', '10000000-0000-4000-8000-000000000002');
+
+insert into climate_vote.submission(id, topic_id, team_id, status, org_id) values
+  ('44000000-0000-4000-8000-000000000001', '42000000-0000-4000-8000-000000000001', '43000000-0000-4000-8000-000000000001', 'draft', '10000000-0000-4000-8000-000000000001'),
+  ('44000000-0000-4000-8000-000000000002', '42000000-0000-4000-8000-000000000002', '43000000-0000-4000-8000-000000000002', 'draft', '10000000-0000-4000-8000-000000000002');
+
+insert into climate_vote.ballot(id, session_id, title, status, org_id) values
+  ('45000000-0000-4000-8000-000000000001', '41000000-0000-4000-8000-000000000001', 'Ballot Alpha', 'draft', '10000000-0000-4000-8000-000000000001'),
+  ('45000000-0000-4000-8000-000000000002', '41000000-0000-4000-8000-000000000002', 'Ballot Beta', 'draft', '10000000-0000-4000-8000-000000000002');
+
 grant usage on schema climate_vote to authenticated;
-grant select on climate_vote.membership, climate_vote.assembly to authenticated;
+grant select on climate_vote.membership to authenticated;
+grant select, insert, update on climate_vote.assembly, climate_vote.session,
+  climate_vote.discussion_topic, climate_vote.submission, climate_vote.ballot to authenticated;
 
 select set_config('request.jwt.claims', jsonb_build_object(
   'sub', '30000000-0000-4000-8000-000000000001',
@@ -72,7 +95,87 @@ begin
      or (select count(*) from climate_vote.assembly) <> 1 then
     raise exception 'P1C RLS exposed an organization outside the selected context';
   end if;
+
+  if (select count(*) from climate_vote.session) <> 1
+     or exists (select 1 from climate_vote.session where org_id <> '10000000-0000-4000-8000-000000000002')
+     or (select count(*) from climate_vote.discussion_topic) <> 1
+     or exists (select 1 from climate_vote.discussion_topic where org_id <> '10000000-0000-4000-8000-000000000002')
+     or (select count(*) from climate_vote.submission) <> 1
+     or exists (select 1 from climate_vote.submission where org_id <> '10000000-0000-4000-8000-000000000002')
+     or (select count(*) from climate_vote.ballot) <> 1
+     or exists (select 1 from climate_vote.ballot where org_id <> '10000000-0000-4000-8000-000000000002') then
+    raise exception 'P1C RLS did not isolate every staff table to the selected organization';
+  end if;
 end $test$;
+
+do $test$
+declare
+  v_updated integer;
+  v_rejected boolean := false;
+begin
+  update climate_vote.assembly set title = 'Selected Operator Update'
+  where id = '40000000-0000-4000-8000-000000000002';
+  get diagnostics v_updated = row_count;
+  if v_updated <> 1 then
+    raise exception 'P1C rejected an operator write in the selected organization';
+  end if;
+
+  update climate_vote.assembly set title = 'Cross Organization Update'
+  where id = '40000000-0000-4000-8000-000000000001';
+  get diagnostics v_updated = row_count;
+  if v_updated <> 0 then
+    raise exception 'P1C allowed an operator update outside the selected organization';
+  end if;
+
+  begin
+    insert into climate_vote.assembly(id, slug, title, status, org_id)
+    values ('40000000-0000-4000-8000-000000000003', 'assembly-cross-org', 'Cross Organization Insert', 'active',
+      '10000000-0000-4000-8000-000000000001');
+  exception when insufficient_privilege then
+    v_rejected := true;
+  end;
+  if not v_rejected then
+    raise exception 'P1C allowed an operator insert outside the selected organization';
+  end if;
+end $test$;
+
+select set_config('request.jwt.claims', jsonb_build_object(
+  'sub', '30000000-0000-4000-8000-000000000003',
+  'session_id', '50000000-0000-4000-8000-000000000003'
+)::text, false);
+select set_config('request.headers', '{}'::jsonb::text, false);
+
+do $test$
+declare
+  v_updated integer;
+  v_rejected boolean := false;
+begin
+  update climate_vote.assembly set title = 'Facilitator Update'
+  where id = '40000000-0000-4000-8000-000000000002';
+  get diagnostics v_updated = row_count;
+  if v_updated <> 0 then
+    raise exception 'P1C allowed a facilitator update';
+  end if;
+
+  begin
+    insert into climate_vote.assembly(id, slug, title, status, org_id)
+    values ('40000000-0000-4000-8000-000000000004', 'assembly-facilitator', 'Facilitator Insert', 'active',
+      '10000000-0000-4000-8000-000000000002');
+  exception when insufficient_privilege then
+    v_rejected := true;
+  end;
+  if not v_rejected then
+    raise exception 'P1C allowed a facilitator insert';
+  end if;
+end $test$;
+
+select set_config('request.jwt.claims', jsonb_build_object(
+  'sub', '30000000-0000-4000-8000-000000000001',
+  'session_id', '50000000-0000-4000-8000-000000000001'
+)::text, false);
+select set_config('request.headers', jsonb_build_object(
+  'x-platform-org-context', :'context_token'
+)::text, false);
 
 reset role;
 update climate_vote.org_context

@@ -21,6 +21,14 @@ create index if not exists org_context_expiry_idx
 alter table climate_vote.org_context enable row level security;
 revoke all on climate_vote.org_context from public, anon, authenticated;
 
+-- Reassert RLS before any future staff table grants. The legacy session table
+-- had tenant policies but no RLS enable statement in the P1 chain.
+alter table climate_vote.assembly enable row level security;
+alter table climate_vote.session enable row level security;
+alter table climate_vote.discussion_topic enable row level security;
+alter table climate_vote.submission enable row level security;
+alter table climate_vote.ballot enable row level security;
+
 create or replace function climate_vote.request_org_context_token()
 returns uuid language plpgsql stable security definer
 set search_path = pg_catalog, climate_vote, extensions as $fn$

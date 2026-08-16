@@ -7,10 +7,11 @@
 - **패스2** (`check_function_bodies=on`): 동일 로드 clean. **P1/P1C/P2 전 함수 본문이 실제 컬럼에 대조 검증** 통과.
 - **계약 스모크** (`contract_test2/3`): issue_items(미분류2)→issue_upsert→issue_link_set→issue_list(연결1·미분류1·reviewed0)→**result_publish 거부(reviewed0 게이트)**→issue_review→**result_publish 성공(token)**→result_get(body 구조 = 결과페이지 계약과 일치).
 - **negative** (`neg_test`): 무효 join_code 거부 · **타 세션 주제 접근 거부(격리 불변식)** · org_of_code 정확 파생(t) · 잠금 가드(final submission에 item 삽입 차단).
-- **P1C 기관 선택** (`org_selection_test.sql`): 다중 membership에서 미선택 거부 → `org_select` token 발급 → Auth user·JWT session·header token 결속 → RLS 단일 org 노출 → session/user/token 상충 및 만료 token 차단 → 다음 선택 시 만료 context 정리 → rollback 후 기존 다중 org 거부·membership-wide 휴면 policy 복원.
+- **P1C 기관 선택** (`org_selection_test.sql`): 다중 membership에서 미선택 거부 → `org_select` token 발급 → Auth user·JWT session·header token 결속 → assembly/session/topic/submission/ballot 5개 staff table의 선택 org 단일 노출 → operator의 선택 org 내부 쓰기와 교차 org 차단·facilitator 쓰기 차단 → session/user/token 상충 및 만료 token 차단 → 다음 선택 시 만료 context 정리 → rollback 후 기존 다중 org 거부·membership-wide 휴면 policy 복원.
 
 ## 발견·정정
 - P1 `invitation.token` 기본식의 `gen_random_bytes` 미한정 → `extensions.gen_random_bytes`로 통일(P2 스타일). Supabase는 search_path로 동작했으나 이식성 정정.
+- P1의 `session_tenant_*` policy는 존재했지만 legacy `session` table에 RLS enable이 없었다. P1C가 5개 staff table의 RLS를 activation grant 전에 명시적으로 재활성화하고, 실제 5-table visibility test가 이를 고정한다.
 
 ## 재현 방법
 ```bash

@@ -34,6 +34,9 @@ describe('A2 organization selection migration draft', () => {
 
   it('requires one selected organization in multi-membership RLS policies', () => {
     expect(migration).toContain("raise exception 'organization selection required'");
+    for (const table of ['assembly', 'session', 'discussion_topic', 'submission', 'ballot']) {
+      expect(migration).toContain(`alter table climate_vote.${table} enable row level security`);
+    }
     expect(migration.match(/using \(org_id = climate_vote\.org_of_uid\(\)\)/g)).toHaveLength(5);
     expect(executableSql(migration)).not.toMatch(/using \(org_id in \(select m\.org_id/);
   });
@@ -60,6 +63,9 @@ describe('A2 organization selection migration draft', () => {
     expect(semanticRehearsal).toContain("P1C accepted an expired organization context token");
     expect(semanticRehearsal).toContain("P1C organization selection did not prune expired contexts");
     expect(semanticRehearsal).toContain("P1C RLS exposed an organization outside the selected context");
+    expect(semanticRehearsal).toContain("P1C RLS did not isolate every staff table to the selected organization");
+    expect(semanticRehearsal).toContain("P1C allowed an operator insert outside the selected organization");
+    expect(semanticRehearsal).toContain("P1C allowed a facilitator insert");
     expect(semanticRehearsal).toContain('\\i /tmp/platform_p1c_org_selection_BEFORE.sql');
     expect(semanticRehearsal).toContain('=== P1C ORG SELECTION REHEARSAL PASSED ===');
   });
