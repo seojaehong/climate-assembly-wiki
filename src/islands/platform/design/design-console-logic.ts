@@ -1,5 +1,6 @@
 import type { ReadinessResult } from '../../../lib/platform';
 import type { SessionTarget } from '../platform-nav-logic';
+import designBlueprintContract from './design-blueprint-contract.json';
 
 export type DesignScope = 'session' | 'assembly';
 export type DesignCheckKind = 'gate' | 'informational';
@@ -55,13 +56,14 @@ export interface DesignBlueprintInput {
   sessions: readonly DesignBlueprintSessionInput[];
 }
 
-export type DesignAssemblyMode = 'consensus' | 'vote';
-export type DesignReadinessKey = 'topics_open' | 'teams_active' | 'roster_loaded';
-export const DESIGN_READINESS_CHECKS: readonly DesignReadinessKey[] = [
+export const DESIGN_ASSEMBLY_MODES = ['consensus', 'vote'] as const;
+export type DesignAssemblyMode = (typeof DESIGN_ASSEMBLY_MODES)[number];
+export const DESIGN_READINESS_CHECKS = [
   'topics_open',
   'teams_active',
   'roster_loaded',
-];
+] as const;
+export type DesignReadinessKey = (typeof DESIGN_READINESS_CHECKS)[number];
 
 export interface DesignBlueprint {
   schemaVersion: 4;
@@ -100,22 +102,26 @@ export type DesignBlueprintImportResult =
   | { ok: true; input: DesignBlueprintInput; blueprint: DesignBlueprint }
   | { ok: false; error: string };
 
-const ASSEMBLY_SLUG_PATTERN = /^[a-z0-9-]{3,40}$/;
+function validateDesignBlueprintContract(): void {
+  if (
+    designBlueprintContract.schemaVersion !== 4
+    || designBlueprintContract.kind !== 'platform-design-blueprint'
+    || JSON.stringify(designBlueprintContract.assemblyModes) !== JSON.stringify(DESIGN_ASSEMBLY_MODES)
+    || JSON.stringify(designBlueprintContract.readinessChecks) !== JSON.stringify(DESIGN_READINESS_CHECKS)
+    || designBlueprintContract.slugPattern !== '^[a-z0-9-]{3,40}$'
+    || designBlueprintContract.boundaries.dryRun !== true
+    || designBlueprintContract.boundaries.databaseMutationExecuted !== false
+    || designBlueprintContract.boundaries.requiresApproval !== true
+  ) {
+    throw new Error('Design blueprint contract is invalid');
+  }
+}
+
+validateDesignBlueprintContract();
+
+const ASSEMBLY_SLUG_PATTERN = new RegExp(designBlueprintContract.slugPattern);
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
-export const DESIGN_BLUEPRINT_LIMITS = {
-  assemblyTitleChars: 200,
-  assemblyPurposeChars: 1_000,
-  sessionTitleChars: 200,
-  sessions: 24,
-  topicsPerSession: 50,
-  topicChars: 500,
-  topicsTextChars: 25_050,
-  teamsPerSession: 500,
-  participantsPerSession: 100_000,
-  generatedItems: 10_000,
-  importChars: 1_000_000,
-  importBytes: 1_000_000,
-} as const;
+export const DESIGN_BLUEPRINT_LIMITS = designBlueprintContract.limits;
 
 const BLUEPRINT_IMPORT_ERROR = '청사진 JSON 형식 또는 내용이 올바르지 않습니다.';
 
@@ -163,7 +169,7 @@ export function buildDesignBlueprint(input: DesignBlueprintInput): DesignBluepri
   if (assemblyPurpose.length > DESIGN_BLUEPRINT_LIMITS.assemblyPurposeChars) {
     errors.push(`공론화 목적은 ${DESIGN_BLUEPRINT_LIMITS.assemblyPurposeChars}자 이하여야 합니다.`);
   }
-  if (assemblyMode !== 'consensus' && assemblyMode !== 'vote') {
+  if (!DESIGN_ASSEMBLY_MODES.includes(assemblyMode)) {
     errors.push('운영 방식은 합의형 또는 투표형이어야 합니다.');
   }
   if (readinessChecks.length === 0) {

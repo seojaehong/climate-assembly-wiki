@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 4,
+  "kind": "platform-design-blueprint",
+  "assemblyModes": ["consensus", "vote"],
+  "readinessChecks": ["topics_open", "teams_active", "roster_loaded"],
+  "slugPattern": "^[a-z0-9-]{3,40}$",
+  "limits": {
+    "assemblyTitleChars": 200,
+    "assemblyPurposeChars": 1000,
+    "sessionTitleChars": 200,
+    "sessions": 24,
+    "topicsPerSession": 50,
+    "topicChars": 500,
+    "topicsTextChars": 25050,
+    "teamsPerSession": 500,
+    "participantsPerSession": 100000,
+    "generatedItems": 10000,
+    "importChars": 1000000,
+    "importBytes": 1000000
+  },
+  "boundaries": {
+    "dryRun": true,
+    "databaseMutationExecuted": false,
+    "requiresApproval": true
+  }
+}
