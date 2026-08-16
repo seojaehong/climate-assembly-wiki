@@ -1,12 +1,14 @@
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
 import {
+  ACTIVATION_APPROVAL_SOURCE_PATHS,
   evaluateActivationReadiness,
+  readActivationSourceTreeStatus,
   runActivationPreflight,
   runActivationPreflightCli,
   runActivationPreflightRpc,
@@ -14,6 +16,32 @@ import {
   validateActivationPreflightRpcReport,
   verifyActivationPreflightEvidence,
 } from '../platform-activation-preflight.mjs';
+
+const sourceModulePath = fileURLToPath(new URL('../platform-activation-preflight.mjs', import.meta.url));
+
+function createCommittedActivationCliFixture(prefix) {
+  const repoRoot = mkdtempSync(join(tmpdir(), prefix));
+  const automationDirectory = join(repoRoot, 'automation');
+  const verificationDirectory = join(repoRoot, 'supabase', 'verify');
+  mkdirSync(automationDirectory, { recursive: true });
+  mkdirSync(verificationDirectory, { recursive: true });
+  const modulePath = join(automationDirectory, 'platform-activation-preflight.mjs');
+  writeFileSync(modulePath, readFileSync(sourceModulePath), 'utf8');
+  writeFileSync(join(automationDirectory, 'package.json'), '{}\n', 'utf8');
+  writeFileSync(join(automationDirectory, 'package-lock.json'), '{}\n', 'utf8');
+  writeFileSync(join(verificationDirectory, 'README.md'), 'fixture\n', 'utf8');
+  execFileSync('git', ['init', '--quiet'], { cwd: repoRoot });
+  execFileSync('git', ['config', 'user.email', 'activation-fixture@example.test'], { cwd: repoRoot });
+  execFileSync('git', ['config', 'user.name', 'Activation Fixture'], { cwd: repoRoot });
+  execFileSync('git', ['add', '.'], { cwd: repoRoot });
+  execFileSync('git', ['commit', '--quiet', '-m', 'fixture'], { cwd: repoRoot });
+  const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  }).trim();
+  const scriptSha256 = createHash('sha256').update(readFileSync(modulePath)).digest('hex');
+  return { repoRoot, modulePath, sourceCommit, scriptSha256 };
+}
 
 const REQUIRED_TABLES = [
   'assembly',
@@ -437,6 +465,7 @@ test('CLI writes a count-only report and never persists an auth session', async 
     provenance: {
       sourceCommit: 'a'.repeat(40),
       scriptSha256: 'b'.repeat(64),
+      sourceTreeClean: true,
       runId: 'activation-local-1',
       keyId: 'activation-audit-2026-08-v1',
     },
@@ -454,12 +483,18 @@ test('CLI writes a count-only report and never persists an auth session', async 
     targetHost: 'example.supabase.co',
     accessMethod: 'security_definer_count_only_rpc',
     approvalEvidence: {
+      schemaVersion: 2,
       event: 'platform_activation_preflight',
+      toolVersion: 2,
       sourceCommit: 'a'.repeat(40),
       scriptSha256: 'b'.repeat(64),
+      sourceTreeClean: true,
       runId: 'activation-local-1',
       keyId: 'activation-audit-2026-08-v1',
-      integrity: { algorithm: 'hmac-sha256' },
+      integrity: {
+        algorithm: 'hmac-sha256',
+        target: 'preflight-report+provenance+source-tree',
+      },
     },
   });
   expect(output[0]).not.toContain('test-service-role-secret');
@@ -550,6 +585,7 @@ test('verifies a fresh ready report bound to the current commit, script, host, a
   const evidence = sealActivationPreflightEvidence(report, {
     sourceCommit: 'a'.repeat(40),
     scriptSha256: 'b'.repeat(64),
+    sourceTreeClean: true,
     runId: 'activation-local-1',
     keyId: 'activation-audit-2026-08-v1',
   }, 'test-activation-audit-key-32-bytes-minimum');
@@ -559,6 +595,7 @@ test('verifies a fresh ready report bound to the current commit, script, host, a
     expectedKeyId: 'activation-audit-2026-08-v1',
     currentCommit: 'a'.repeat(40),
     currentScriptSha256: 'b'.repeat(64),
+    currentSourceTreeClean: true,
     expectedTargetHost: 'example.supabase.co',
     now: '2026-08-11T07:05:00.000Z',
     maxAgeMs: 10 * 60 * 1000,
@@ -567,6 +604,7 @@ test('verifies a fresh ready report bound to the current commit, script, host, a
     checkedAt: '2026-08-11T07:00:00.000Z',
     targetHost: 'example.supabase.co',
     sourceCommit: 'a'.repeat(40),
+    sourceTreeClean: true,
     runId: 'activation-local-1',
     ageSeconds: 300,
   });
@@ -581,6 +619,7 @@ test('rejects a ready report whose signed counts were edited after generation', 
   const evidence = sealActivationPreflightEvidence(report, {
     sourceCommit: 'a'.repeat(40),
     scriptSha256: 'b'.repeat(64),
+    sourceTreeClean: true,
     runId: 'activation-local-1',
     keyId: 'activation-audit-2026-08-v1',
   }, 'test-activation-audit-key-32-bytes-minimum');
@@ -591,6 +630,7 @@ test('rejects a ready report whose signed counts were edited after generation', 
     expectedKeyId: 'activation-audit-2026-08-v1',
     currentCommit: 'a'.repeat(40),
     currentScriptSha256: 'b'.repeat(64),
+    currentSourceTreeClean: true,
     expectedTargetHost: 'example.supabase.co',
     now: '2026-08-11T07:05:00.000Z',
     maxAgeMs: 10 * 60 * 1000,
@@ -602,6 +642,7 @@ test.each([
   ['future timestamp', { now: '2026-08-11T06:59:00.000Z' }, 'activation evidence is stale'],
   ['different commit', { currentCommit: 'c'.repeat(40) }, 'activation evidence provenance does not match the trusted target'],
   ['different script', { currentScriptSha256: 'c'.repeat(64) }, 'activation evidence provenance does not match the trusted target'],
+  ['dirty source tree', { currentSourceTreeClean: false }, 'activation evidence verification configuration is invalid'],
   ['different host', { expectedTargetHost: 'other.supabase.co' }, 'activation evidence is not an approvable ready report'],
   ['untrusted key', { trustedKey: 'different-activation-audit-key-32-bytes' }, 'activation evidence integrity verification failed'],
 ])('rejects approval evidence with %s', (_label, override, expectedError) => {
@@ -613,6 +654,7 @@ test.each([
   const evidence = sealActivationPreflightEvidence(report, {
     sourceCommit: 'a'.repeat(40),
     scriptSha256: 'b'.repeat(64),
+    sourceTreeClean: true,
     runId: 'activation-local-1',
     keyId: 'activation-audit-2026-08-v1',
   }, 'test-activation-audit-key-32-bytes-minimum');
@@ -621,6 +663,7 @@ test.each([
     expectedKeyId: 'activation-audit-2026-08-v1',
     currentCommit: 'a'.repeat(40),
     currentScriptSha256: 'b'.repeat(64),
+    currentSourceTreeClean: true,
     expectedTargetHost: 'example.supabase.co',
     now: '2026-08-11T07:05:00.000Z',
     maxAgeMs: 10 * 60 * 1000,
@@ -631,15 +674,8 @@ test.each([
 });
 
 test('verification CLI validates signed evidence without loading database credentials', () => {
-  const temporaryDirectory = mkdtempSync(join(tmpdir(), 'activation-preflight-'));
-  const evidencePath = join(temporaryDirectory, 'ready.json');
-  const modulePath = fileURLToPath(new URL('../platform-activation-preflight.mjs', import.meta.url));
-  const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
-  const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  }).trim();
-  const scriptSha256 = createHash('sha256').update(readFileSync(modulePath)).digest('hex');
+  const fixture = createCommittedActivationCliFixture('activation-preflight-');
+  const evidencePath = join(fixture.repoRoot, 'ready.json');
   const checkedAt = new Date().toISOString();
   const report = {
     ...evaluateActivationReadiness(readyInventory(), checkedAt),
@@ -647,8 +683,9 @@ test('verification CLI validates signed evidence without loading database creden
     accessMethod: 'postgrest_and_auth_admin_service_role_read_only',
   };
   const evidence = sealActivationPreflightEvidence(report, {
-    sourceCommit,
-    scriptSha256,
+    sourceCommit: fixture.sourceCommit,
+    scriptSha256: fixture.scriptSha256,
+    sourceTreeClean: true,
     runId: 'activation-cli-1',
     keyId: 'activation-audit-2026-08-v1',
   }, 'test-activation-audit-key-32-bytes-minimum');
@@ -656,12 +693,12 @@ test('verification CLI validates signed evidence without loading database creden
 
   try {
     const result = spawnSync(process.execPath, [
-      modulePath,
+      fixture.modulePath,
       '--verify-evidence', evidencePath,
       '--expected-host', 'example.supabase.co',
       '--max-age-seconds', '600',
     ], {
-      cwd: repoRoot,
+      cwd: fixture.repoRoot,
       encoding: 'utf8',
       env: {
         ...process.env,
@@ -677,21 +714,80 @@ test('verification CLI validates signed evidence without loading database creden
     expect(JSON.parse(result.stdout)).toMatchObject({
       status: 'verified',
       targetHost: 'example.supabase.co',
-      sourceCommit,
+      sourceCommit: fixture.sourceCommit,
+      sourceTreeClean: true,
       runId: 'activation-cli-1',
     });
     expect(result.stderr).not.toContain('test-activation-audit-key-32-bytes-minimum');
   } finally {
-    rmSync(temporaryDirectory, { recursive: true, force: true });
+    rmSync(fixture.repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('activation source status rejects tracked changes in an approval input', () => {
+  const fixture = createCommittedActivationCliFixture('activation-preflight-dirty-');
+  try {
+    expect(ACTIVATION_APPROVAL_SOURCE_PATHS).toEqual(expect.arrayContaining([
+      'automation/platform-activation-preflight.mjs',
+      'automation/package-lock.json',
+      'supabase/migrations',
+      'supabase/rollbacks',
+      'supabase/verify',
+    ]));
+    expect(readActivationSourceTreeStatus({ repoRoot: fixture.repoRoot })).toEqual({ sourceTreeClean: true });
+    writeFileSync(join(fixture.repoRoot, 'supabase', 'verify', 'README.md'), 'changed\n', 'utf8');
+    expect(readActivationSourceTreeStatus({ repoRoot: fixture.repoRoot })).toEqual({ sourceTreeClean: false });
+  } finally {
+    rmSync(fixture.repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('verification CLI rejects an untracked migration in the approval source tree', () => {
+  const fixture = createCommittedActivationCliFixture('activation-preflight-untracked-');
+  const evidencePath = join(fixture.repoRoot, 'ready.json');
+  const report = {
+    ...evaluateActivationReadiness(readyInventory(), new Date().toISOString()),
+    targetHost: 'example.supabase.co',
+    accessMethod: 'postgrest_and_auth_admin_service_role_read_only',
+  };
+  const evidence = sealActivationPreflightEvidence(report, {
+    sourceCommit: fixture.sourceCommit,
+    scriptSha256: fixture.scriptSha256,
+    sourceTreeClean: true,
+    runId: 'activation-untracked-1',
+    keyId: 'activation-audit-2026-08-v1',
+  }, 'test-activation-audit-key-32-bytes-minimum');
+  writeFileSync(evidencePath, `${JSON.stringify(evidence)}\n`, 'utf8');
+  const migrationDirectory = join(fixture.repoRoot, 'supabase', 'migrations');
+  mkdirSync(migrationDirectory, { recursive: true });
+  writeFileSync(join(migrationDirectory, 'unapproved.sql'), 'select 1;\n', 'utf8');
+
+  try {
+    const result = spawnSync(process.execPath, [
+      fixture.modulePath,
+      '--verify-evidence', evidencePath,
+      '--expected-host', 'example.supabase.co',
+    ], {
+      cwd: fixture.repoRoot,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        ACTIVATION_PREFLIGHT_AUDIT_HMAC_KEY: 'test-activation-audit-key-32-bytes-minimum',
+        ACTIVATION_PREFLIGHT_AUDIT_KEY_ID: 'activation-audit-2026-08-v1',
+      },
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('activation evidence source tree is not clean');
+    expect(result.stderr).not.toContain('unapproved.sql');
+  } finally {
+    rmSync(fixture.repoRoot, { recursive: true, force: true });
   }
 });
 
 test('verification CLI rejects a workflow SHA that differs from the actual checkout HEAD', () => {
-  const temporaryDirectory = mkdtempSync(join(tmpdir(), 'activation-preflight-head-'));
-  const evidencePath = join(temporaryDirectory, 'stale-checkout.json');
-  const modulePath = fileURLToPath(new URL('../platform-activation-preflight.mjs', import.meta.url));
-  const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
-  const scriptSha256 = createHash('sha256').update(readFileSync(modulePath)).digest('hex');
+  const fixture = createCommittedActivationCliFixture('activation-preflight-head-');
+  const evidencePath = join(fixture.repoRoot, 'stale-checkout.json');
   const staleCommit = 'c'.repeat(40);
   const report = {
     ...evaluateActivationReadiness(readyInventory(), new Date().toISOString()),
@@ -700,7 +796,8 @@ test('verification CLI rejects a workflow SHA that differs from the actual check
   };
   const evidence = sealActivationPreflightEvidence(report, {
     sourceCommit: staleCommit,
-    scriptSha256,
+    scriptSha256: fixture.scriptSha256,
+    sourceTreeClean: true,
     runId: 'activation-stale-checkout-1',
     keyId: 'activation-audit-2026-08-v1',
   }, 'test-activation-audit-key-32-bytes-minimum');
@@ -708,11 +805,11 @@ test('verification CLI rejects a workflow SHA that differs from the actual check
 
   try {
     const result = spawnSync(process.execPath, [
-      modulePath,
+      fixture.modulePath,
       '--verify-evidence', evidencePath,
       '--expected-host', 'example.supabase.co',
     ], {
-      cwd: repoRoot,
+      cwd: fixture.repoRoot,
       encoding: 'utf8',
       env: {
         ...process.env,
@@ -725,7 +822,7 @@ test('verification CLI rejects a workflow SHA that differs from the actual check
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('activation evidence checkout does not match workflow commit');
   } finally {
-    rmSync(temporaryDirectory, { recursive: true, force: true });
+    rmSync(fixture.repoRoot, { recursive: true, force: true });
   }
 });
 

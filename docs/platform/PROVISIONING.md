@@ -34,8 +34,9 @@ npm.cmd run preflight:platform-activation
 - 종료 상태는 `ready`만 성공이다. `not_ready`는 실제 데이터 blocker, `not_verified`는 읽기 증거 자체가 불완전한 상태다. 두 상태 모두 활성화를 중단한다.
 - 현재 프로덕션에는 count-only RPC 초안을 적용하지 않아 실측 결과가 `not_verified / read_access_unavailable`이다. 이를 우회하려고 원시 테이블 GRANT를 추가하지 않는다.
 - RPC 적용 후의 진단은 읽기 전용 `STABLE` 함수가 호출 statement 시작 snapshot과 `statement_timestamp()`를 공유해 계산하지만, 진단 직후 데이터 변경까지 막지는 않는다. 승인된 활성화 직전 쓰기를 잠시 멈춘 상태에서 다시 실행하고 freshness 검증을 통과해야 한다.
-- `ready` 결과는 `ACTIVATION_PREFLIGHT_AUDIT_HMAC_KEY`(32자 이상)와 `ACTIVATION_PREFLIGHT_AUDIT_KEY_ID`가 모두 있을 때만 생성된다. report 전체와 source commit·정확한 스크립트 SHA-256·실행 ID·key ID를 외부 키 기반 HMAC-SHA256으로 결속하며 키는 JSON·stdout·오류에 포함하지 않는다.
-- 활성화 직전 아래 검증을 같은 checkout에서 실행한다. 현재 HEAD·스크립트 hash·승인 대상 host·key ID·HMAC·미래 시각·기본 10분 freshness 중 하나라도 다르면 실패한다. `--max-age-seconds` 완화는 승인 기록이 있을 때만 사용한다.
+- `ready` 결과는 `ACTIVATION_PREFLIGHT_AUDIT_HMAC_KEY`(32자 이상)와 `ACTIVATION_PREFLIGHT_AUDIT_KEY_ID`가 모두 있을 때만 생성된다. schema v2 approval evidence는 report 전체와 source commit·정확한 스크립트 SHA-256·승인 대상 clean source tree·실행 ID·key ID를 외부 키 기반 HMAC-SHA256으로 결속하며 키는 JSON·stdout·오류에 포함하지 않는다.
+- clean source 범위는 preflight CLI와 automation manifest/lockfile, 전체 `supabase/migrations`·`rollbacks`·`verify`다. 이 범위의 tracked 변경이나 untracked 파일이 하나라도 있으면 ready evidence 생성·검증을 모두 거부한다. 활성화와 무관한 working-tree 파일은 이 판정에 섞지 않는다.
+- 활성화 직전 아래 검증을 같은 checkout에서 실행한다. 현재 HEAD·스크립트 hash·승인 source clean 상태·대상 host·key ID·HMAC·미래 시각·기본 10분 freshness 중 하나라도 다르면 실패한다. `--max-age-seconds` 완화는 승인 기록이 있을 때만 사용한다.
 
 ```powershell
 cd automation

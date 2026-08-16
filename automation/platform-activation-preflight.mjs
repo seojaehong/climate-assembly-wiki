@@ -4,8 +4,18 @@ import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto
 import { readFileSync } from 'node:fs';
 
 const ACTIVATION_EVIDENCE_EVENT = 'platform_activation_preflight';
-const ACTIVATION_EVIDENCE_TOOL_VERSION = 1;
+const ACTIVATION_EVIDENCE_TOOL_VERSION = 2;
 const ACTIVATION_READ_CONSISTENCIES = new Set(['multi_request', 'single_statement']);
+const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
+
+export const ACTIVATION_APPROVAL_SOURCE_PATHS = [
+  'automation/platform-activation-preflight.mjs',
+  'automation/package.json',
+  'automation/package-lock.json',
+  'supabase/migrations',
+  'supabase/rollbacks',
+  'supabase/verify',
+];
 
 export const REQUIRED_ORG_ID_TABLES = [
   'assembly',
@@ -87,6 +97,7 @@ function validateActivationEvidenceConfiguration(provenance, key) {
   }
   if (!/^[0-9a-f]{40}$/.test(provenance.sourceCommit)
     || !/^[0-9a-f]{64}$/.test(provenance.scriptSha256)
+    || provenance.sourceTreeClean !== true
     || typeof provenance.runId !== 'string'
     || provenance.runId.length === 0
     || typeof provenance.keyId !== 'string'
@@ -107,11 +118,12 @@ export function sealActivationPreflightEvidence(report, provenance, key) {
     throw new Error('activation evidence can only seal a complete ready report');
   }
   const audit = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     event: ACTIVATION_EVIDENCE_EVENT,
     toolVersion: ACTIVATION_EVIDENCE_TOOL_VERSION,
     sourceCommit: provenance.sourceCommit,
     scriptSha256: provenance.scriptSha256,
+    sourceTreeClean: true,
     runId: provenance.runId,
     keyId: provenance.keyId,
   };
@@ -121,7 +133,7 @@ export function sealActivationPreflightEvidence(report, provenance, key) {
       ...audit,
       integrity: {
         algorithm: 'hmac-sha256',
-        target: 'preflight-report+provenance',
+        target: 'preflight-report+provenance+source-tree',
         digest: activationEvidenceDigest(report, audit, key),
       },
     },
@@ -133,6 +145,7 @@ export function verifyActivationPreflightEvidence(evidence, {
   expectedKeyId,
   currentCommit,
   currentScriptSha256,
+  currentSourceTreeClean,
   expectedTargetHost,
   now = new Date().toISOString(),
   maxAgeMs = 10 * 60 * 1000,
@@ -141,26 +154,29 @@ export function verifyActivationPreflightEvidence(evidence, {
   validateActivationEvidenceConfiguration({
     sourceCommit: audit?.sourceCommit,
     scriptSha256: audit?.scriptSha256,
+    sourceTreeClean: audit?.sourceTreeClean,
     runId: audit?.runId,
     keyId: audit?.keyId,
   }, trustedKey);
   if (typeof expectedKeyId !== 'string' || expectedKeyId.length === 0
     || !/^[0-9a-f]{40}$/.test(currentCommit)
     || !/^[0-9a-f]{64}$/.test(currentScriptSha256)
+    || currentSourceTreeClean !== true
     || typeof expectedTargetHost !== 'string'
     || expectedTargetHost.length === 0
     || !Number.isSafeInteger(maxAgeMs)
     || maxAgeMs <= 0) {
     throw new Error('activation evidence verification configuration is invalid');
   }
-  if (audit.schemaVersion !== 1
+  if (audit.schemaVersion !== 2
     || audit.event !== ACTIVATION_EVIDENCE_EVENT
     || audit.toolVersion !== ACTIVATION_EVIDENCE_TOOL_VERSION
     || audit.keyId !== expectedKeyId
     || audit.sourceCommit !== currentCommit
     || audit.scriptSha256 !== currentScriptSha256
+    || audit.sourceTreeClean !== true
     || audit.integrity?.algorithm !== 'hmac-sha256'
-    || audit.integrity?.target !== 'preflight-report+provenance'
+    || audit.integrity?.target !== 'preflight-report+provenance+source-tree'
     || !/^[0-9a-f]{64}$/.test(audit.integrity?.digest ?? '')) {
     throw new Error('activation evidence provenance does not match the trusted target');
   }
@@ -199,16 +215,39 @@ export function verifyActivationPreflightEvidence(evidence, {
     checkedAt: report.checkedAt,
     targetHost: report.targetHost,
     sourceCommit: audit.sourceCommit,
+    sourceTreeClean: true,
     runId: audit.runId,
     ageSeconds: Math.floor(ageMs / 1000),
   };
+}
+
+export function readActivationSourceTreeStatus({ repoRoot = REPO_ROOT } = {}) {
+  let status;
+  try {
+    status = execFileSync(
+      'git',
+      ['status', '--porcelain=v1', '--untracked-files=all', '--', ...ACTIVATION_APPROVAL_SOURCE_PATHS],
+      { cwd: repoRoot, encoding: 'utf8' },
+    );
+  } catch {
+    throw new Error('activation evidence source tree could not be inspected');
+  }
+  return { sourceTreeClean: status.trim().length === 0 };
+}
+
+function requireCleanActivationSourceTree() {
+  const status = readActivationSourceTreeStatus();
+  if (!status.sourceTreeClean) {
+    throw new Error('activation evidence source tree is not clean');
+  }
+  return true;
 }
 
 function currentSourceCommit(environment) {
   const checkoutCommit = execFileSync(
     'git',
     ['rev-parse', 'HEAD'],
-    { cwd: fileURLToPath(new URL('..', import.meta.url)), encoding: 'utf8' },
+    { cwd: REPO_ROOT, encoding: 'utf8' },
   ).trim();
   if (environment.GITHUB_SHA && environment.GITHUB_SHA !== checkoutCommit) {
     throw new Error('activation evidence checkout does not match workflow commit');
@@ -226,6 +265,7 @@ function currentActivationPreflightProvenance(environment) {
   return {
     sourceCommit: currentSourceCommit(environment),
     scriptSha256: currentScriptSha256(),
+    sourceTreeClean: requireCleanActivationSourceTree(),
     runId: environment.GITHUB_RUN_ID ?? environment.ACTIVATION_PREFLIGHT_RUN_ID ?? randomUUID(),
     keyId: environment.ACTIVATION_PREFLIGHT_AUDIT_KEY_ID ?? '',
   };
@@ -263,6 +303,7 @@ export function runActivationPreflightEvidenceCli({
     expectedKeyId: environment.ACTIVATION_PREFLIGHT_AUDIT_KEY_ID,
     currentCommit: currentSourceCommit(environment),
     currentScriptSha256: currentScriptSha256(),
+    currentSourceTreeClean: requireCleanActivationSourceTree(),
     expectedTargetHost,
     now,
     maxAgeMs: maxAgeSeconds * 1000,
