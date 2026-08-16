@@ -99,6 +99,24 @@ P1의 RLS 정책은 `revoke all from authenticated` 때문에 **휴면**이다. 
 - 파일에는 이메일과 Auth 사용자 UUID가 포함되므로 승인 담당자에게만 전달하고 공개 저장소·브라우저 저장소에 보관하지 않는다.
 - 이 파일은 실행 명령이 아니다. 실제 Auth 계정 생성, invitation/membership 추가, 메일 발송, RLS/GRANT 변경은 별도 사용자 승인과 감사 가능한 서버 작업으로 수행한다.
 
+### 2-3. A3 접근 프로비저닝 계획 검증
+
+`platform-access-provisioning-plan.mjs`는 2-2의 기관 접근 계획을 실제 실행 가능한 쓰기 명령으로 바꾸지 않고, 향후 승인된 executor가 따라야 할 안정 operation ID와 복구 정책을 고정한 read-only 계획으로 변환한다. 입력과 출력에는 이메일 또는 Auth 사용자 UUID가 있으므로 둘 다 저장소·`public/`·공유 evaluation artifact 밖의 승인된 보안 폴더에 둔다.
+
+```powershell
+cd automation
+$accessPlan = Join-Path $env:LOCALAPPDATA 'climate-assembly-private\organization-access-plan.json'
+$provisioningPlan = Join-Path $env:LOCALAPPDATA 'climate-assembly-private\organization-access-provisioning-plan.json'
+npm.cmd run plan:platform-access-provisioning -- --source $accessPlan --output $provisioningPlan
+npm.cmd run verify:platform-access-provisioning -- $provisioningPlan --source $accessPlan
+```
+
+- 생성기는 UI와 같은 추적 contract에서 exact schema·역할·256KiB 한계·dry-run 경계를 읽고, 입력 원문 바이트 SHA-256과 각 작업의 deterministic operation ID를 기록한다.
+- verifier는 checksum뿐 아니라 원 접근 계획에서 전체 계획을 다시 생성해 순서·조직·이메일·사용자·역할·실행 정책이 달라진 자체 재봉인 파일도 거부한다.
+- 입력·출력 경로가 저장소 내부이거나 symlink/junction을 통해 저장소를 가리키면 실행 전에 거부한다. 기존 출력은 명시적 `--force` 없이는 덮어쓰지 않는다.
+- stdout과 오류에는 이메일·사용자 UUID·credential·파일 경로를 싣지 않는다. 계획 파일 자체는 민감한 운영 자료이므로 승인자 외에는 전달하지 않는다.
+- 이 명령은 Supabase·Auth·메일·환경 credential에 접근하지 않고 `databaseMutationExecuted:false`를 유지한다. 실제 executor는 아직 없으며 별도 사용자 승인, 작업 전 현재 상태 lookup, 동일 operation ID 멱등 처리, 작업별 감사 receipt, 부분 성공 reconciliation을 구현·검증하기 전에는 실행하지 않는다.
+
 ## 3. 프론트 배포
 - `/platform/*`·`/r/*` 라우트는 정적 빌드 + 클라이언트 라우팅. **딥링크 새로고침** 위해 Cloudflare Pages SPA fallback rewrite 필요:
   - `_redirects`에 `/platform/* /platform/app/index.html 200`, `/r/* /r/[token] 200` (또는 SSR 어댑터 도입).

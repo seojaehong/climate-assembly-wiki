@@ -1,3 +1,5 @@
+import accessPlanContract from './access-plan-contract.json';
+
 export const STAFF_ROLES = ['org_admin', 'operator', 'hq', 'facilitator'] as const;
 export type StaffRole = (typeof STAFF_ROLES)[number];
 
@@ -33,7 +35,25 @@ export type AccessPlanResult =
   | { ok: true; plan: OrganizationAccessPlan; error: null }
   | { ok: false; plan: null; error: string };
 
-export const ACCESS_PLAN_IMPORT_BYTES = 256 * 1024;
+function validateAccessPlanContract(): void {
+  if (
+    accessPlanContract.schemaVersion !== 1
+    || accessPlanContract.kind !== 'platform-organization-access-plan'
+    || JSON.stringify(accessPlanContract.roles) !== JSON.stringify(STAFF_ROLES)
+    || accessPlanContract.maxBytes !== 256 * 1024
+    || accessPlanContract.boundaries.dryRun !== true
+    || accessPlanContract.boundaries.authAccountsCreated !== false
+    || accessPlanContract.boundaries.invitationsSent !== false
+    || accessPlanContract.boundaries.databaseMutationExecuted !== false
+    || accessPlanContract.boundaries.requiresApproval !== true
+  ) {
+    throw new Error('Organization access plan contract is invalid');
+  }
+}
+
+validateAccessPlanContract();
+
+export const ACCESS_PLAN_IMPORT_BYTES = accessPlanContract.maxBytes;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

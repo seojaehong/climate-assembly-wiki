@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "kind": "platform-organization-access-plan",
+  "roles": ["org_admin", "operator", "hq", "facilitator"],
+  "maxBytes": 262144,
+  "boundaries": {
+    "dryRun": true,
+    "authAccountsCreated": false,
+    "invitationsSent": false,
+    "databaseMutationExecuted": false,
+    "requiresApproval": true
+  }
+}

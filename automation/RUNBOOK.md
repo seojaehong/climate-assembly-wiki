@@ -448,6 +448,23 @@ npm.cmd run verify:platform-a2-activation -- ..\evaluation\platform-a2-activatio
 - 생성기는 기존 파일을 기본적으로 덮어쓰지 않는다. candidate diff 승인 뒤에만 `--force`로 추적 manifest를 교체한다.
 - 자세한 단계와 승인 경계는 `docs/platform/PROVISIONING.md` §1-2를 따른다.
 
+## A3 organization access provisioning plan
+
+기관 접근 화면에서 내려받은 민감 계획은 저장소 밖 승인된 로컬 폴더에서만 다음과 같이 변환·검증한다.
+
+```powershell
+cd automation
+$source = Join-Path $env:LOCALAPPDATA 'climate-assembly-private\organization-access-plan.json'
+$plan = Join-Path $env:LOCALAPPDATA 'climate-assembly-private\organization-access-provisioning-plan.json'
+npm.cmd run plan:platform-access-provisioning -- --source $source --output $plan
+npm.cmd run verify:platform-access-provisioning -- $plan --source $source
+```
+
+- shared contract, exact source byte hash, canonical checksum과 전체 재생성 비교를 모두 통과해야 한다.
+- 출력은 stable operation ID와 lookup-before-mutation·stop-on-failure·audit receipt·partial-success reconciliation 요구만 기록하는 dry-run이다.
+- 이 도구는 DB·Auth·메일·credential을 읽거나 변경하지 않는다. 계획 파일에는 이메일·Auth UUID가 있으므로 저장소, `evaluation/`, `public/`, 브라우저 저장소와 일반 로그에 복사하지 않는다.
+- 실제 초대·membership 추가 executor는 미구현이다. 별도 승인과 멱등성·감사 receipt·부분 성공 복구의 실행 테스트 전에는 사람이 plan을 수동 SQL/API 작업 목록으로 사용해서도 안 된다.
+
 ## A5 자동 Chromium 접근성 증거
 
 사용자 도메인 재검증은 실제 배포가 성공한 checkout에서 실행한다.

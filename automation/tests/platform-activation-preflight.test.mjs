@@ -23,13 +23,16 @@ function createCommittedActivationCliFixture(prefix) {
   const repoRoot = mkdtempSync(join(tmpdir(), prefix));
   const automationDirectory = join(repoRoot, 'automation');
   const verificationDirectory = join(repoRoot, 'supabase', 'verify');
+  const accessDirectory = join(repoRoot, 'src', 'islands', 'platform', 'access');
   mkdirSync(automationDirectory, { recursive: true });
   mkdirSync(verificationDirectory, { recursive: true });
+  mkdirSync(accessDirectory, { recursive: true });
   const modulePath = join(automationDirectory, 'platform-activation-preflight.mjs');
   writeFileSync(modulePath, readFileSync(sourceModulePath), 'utf8');
   writeFileSync(join(automationDirectory, 'package.json'), '{}\n', 'utf8');
   writeFileSync(join(automationDirectory, 'package-lock.json'), '{}\n', 'utf8');
   writeFileSync(join(verificationDirectory, 'README.md'), 'fixture\n', 'utf8');
+  writeFileSync(join(accessDirectory, 'README.md'), 'fixture\n', 'utf8');
   execFileSync('git', ['init', '--quiet'], { cwd: repoRoot });
   execFileSync('git', ['config', 'user.email', 'activation-fixture@example.test'], { cwd: repoRoot });
   execFileSync('git', ['config', 'user.name', 'Activation Fixture'], { cwd: repoRoot });
@@ -731,14 +734,20 @@ test('activation source status rejects tracked changes in an approval input', ()
     expect(ACTIVATION_APPROVAL_SOURCE_PATHS).toEqual(expect.arrayContaining([
       'automation/platform-activation-preflight.mjs',
       'automation/platform-a2-activation-bundle.mjs',
+      'automation/platform-access-provisioning-plan.mjs',
       'automation/package-lock.json',
       'evaluation/platform-a2-activation-bundle.json',
+      'src/islands/platform/access',
       'supabase/migrations',
       'supabase/rollbacks',
       'supabase/verify',
     ]));
     expect(readActivationSourceTreeStatus({ repoRoot: fixture.repoRoot })).toEqual({ sourceTreeClean: true });
-    writeFileSync(join(fixture.repoRoot, 'supabase', 'verify', 'README.md'), 'changed\n', 'utf8');
+    writeFileSync(
+      join(fixture.repoRoot, 'src', 'islands', 'platform', 'access', 'README.md'),
+      'changed\n',
+      'utf8',
+    );
     expect(readActivationSourceTreeStatus({ repoRoot: fixture.repoRoot })).toEqual({ sourceTreeClean: false });
   } finally {
     rmSync(fixture.repoRoot, { recursive: true, force: true });
