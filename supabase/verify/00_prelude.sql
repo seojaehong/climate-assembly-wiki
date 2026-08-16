@@ -9,8 +9,18 @@ $$;
 create or replace function auth.uid() returns uuid language sql stable as $$
   select nullif(auth.jwt() ->> 'sub', '')::uuid
 $$;
+create table if not exists auth.users (
+  id uuid primary key,
+  email text,
+  email_confirmed_at timestamptz,
+  confirmed_at timestamptz,
+  banned_until timestamptz,
+  deleted_at timestamptz,
+  is_anonymous boolean not null default false
+);
 grant usage on schema auth to anon, authenticated, service_role;
 create schema if not exists climate_vote;
+grant usage on schema climate_vote to service_role;
 
 -- base 테이블 (초기 대시보드 생성분, 파일 밖) — 마이그레이션이 참조하는 컬럼 포함
 create table if not exists climate_vote.session (

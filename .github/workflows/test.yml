@@ -114,6 +114,7 @@ jobs:
           docker cp supabase/verify/org_selection_post_apply.sql "${container}:/tmp/org_selection_post_apply.sql"
           docker cp supabase/rollbacks/platform_p1c_org_selection_BEFORE.sql "${container}:/tmp/platform_p1c_org_selection_BEFORE.sql"
           docker cp supabase/rollbacks/platform_p1c_org_selection_activation_BEFORE.sql "${container}:/tmp/platform_p1c_org_selection_activation_BEFORE.sql"
+          docker cp supabase/rollbacks/platform_p1c_activation_preflight_BEFORE.sql "${container}:/tmp/platform_p1c_activation_preflight_BEFORE.sql"
 
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -v verify_function_bodies=on -f /tmp/driver_pass1.sql

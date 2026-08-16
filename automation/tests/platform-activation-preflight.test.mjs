@@ -9,7 +9,9 @@ import {
   evaluateActivationReadiness,
   runActivationPreflight,
   runActivationPreflightCli,
+  runActivationPreflightRpc,
   sealActivationPreflightEvidence,
+  validateActivationPreflightRpcReport,
   verifyActivationPreflightEvidence,
 } from '../platform-activation-preflight.mjs';
 
@@ -84,6 +86,28 @@ function readyFixtures() {
       is_anonymous: false,
     })),
     ...inventory.hierarchyRows,
+  };
+}
+
+function rpcReport(inventory = readyInventory(), checkedAt = '2026-08-11T07:00:00.000Z') {
+  return {
+    ...evaluateActivationReadiness(inventory, checkedAt),
+    readConsistency: 'single_statement',
+  };
+}
+
+function makeRpcClient(report, error = null) {
+  const operations = [];
+  return {
+    operations,
+    schema(schemaName) {
+      return {
+        async rpc(functionName) {
+          operations.push({ schema: schemaName, functionName });
+          return { data: error ? null : report, error };
+        },
+      };
+    },
   };
 }
 
@@ -230,6 +254,37 @@ test('reads only scoped metadata and produces the same readiness report', async 
   expect(client.operations.filter((operation) => operation.resource === 'auth_user')).toHaveLength(2);
 });
 
+test('accepts only the count-only single-statement RPC contract', async () => {
+  const report = rpcReport();
+  const client = makeRpcClient(report);
+
+  await expect(runActivationPreflightRpc({ client })).resolves.toEqual(report);
+  expect(client.operations).toEqual([{
+    schema: 'climate_vote',
+    functionName: 'platform_activation_preflight',
+  }]);
+
+  expect(() => validateActivationPreflightRpcReport({
+    ...report,
+    userIds: ['sensitive-user-id'],
+  })).toThrow('activation preflight could not read activation_preflight_rpc');
+});
+
+test('rejects inconsistent or malformed RPC counts without exposing response content', async () => {
+  const report = rpcReport();
+  const malformed = {
+    ...report,
+    summary: { ...report.summary, totalNullOrgCount: 1 },
+  };
+
+  await expect(runActivationPreflightRpc({
+    client: makeRpcClient(malformed),
+  })).rejects.toThrow('activation preflight could not read activation_preflight_rpc');
+  await expect(runActivationPreflightRpc({
+    client: makeRpcClient(null, { message: 'sensitive-database-error' }),
+  })).rejects.not.toThrow('sensitive-database-error');
+});
+
 test('fails closed without echoing database error content', async () => {
   const client = makeReadOnlyClient({}, 'membership');
 
@@ -363,8 +418,7 @@ test('allows an expired auth session to preserve a valid archived organization r
 });
 
 test('CLI writes a count-only report and never persists an auth session', async () => {
-  const fixtures = readyFixtures();
-  const client = makeReadOnlyClient(fixtures);
+  const client = makeRpcClient(rpcReport());
   const createClient = (...args) => {
     createClient.calls.push(args);
     return client;
@@ -398,7 +452,7 @@ test('CLI writes a count-only report and never persists an auth session', async 
   expect(JSON.parse(output[0]).status).toBe('ready');
   expect(JSON.parse(output[0])).toMatchObject({
     targetHost: 'example.supabase.co',
-    accessMethod: 'postgrest_and_auth_admin_service_role_read_only',
+    accessMethod: 'security_definer_count_only_rpc',
     approvalEvidence: {
       event: 'platform_activation_preflight',
       sourceCommit: 'a'.repeat(40),
@@ -420,7 +474,7 @@ test('CLI refuses an unsigned ready report when approval evidence configuration 
       SUPABASE_URL: 'https://example.supabase.co',
       SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-secret',
     },
-    createClient: () => makeReadOnlyClient(readyFixtures()),
+    createClient: () => makeRpcClient(rpcReport()),
     checkedAt: '2026-08-11T07:00:00.000Z',
     provenance: {
       sourceCommit: 'a'.repeat(40),
@@ -435,9 +489,10 @@ test('CLI refuses an unsigned ready report when approval evidence configuration 
 });
 
 test('CLI returns a distinct nonzero code when activation is not ready', async () => {
-  const fixtures = Object.fromEntries(REQUIRED_TABLES.map((table) => [table, []]));
-  fixtures.org = [];
-  fixtures.membership = [];
+  const inventory = readyInventory();
+  inventory.organizations = [];
+  inventory.memberships = [];
+  inventory.authUsers = [];
   const output = [];
 
   const exitCode = await runActivationPreflightCli({
@@ -445,16 +500,15 @@ test('CLI returns a distinct nonzero code when activation is not ready', async (
       SUPABASE_URL: 'https://example.supabase.co',
       SUPABASE_SERVICE_ROLE: 'test-service-role-secret',
     },
-    createClient: () => makeReadOnlyClient(fixtures),
+    createClient: () => makeRpcClient(rpcReport(inventory)),
     checkedAt: '2026-08-11T07:00:00.000Z',
     stdout: (line) => output.push(line),
   });
 
   expect(exitCode).toBe(2);
-  expect(JSON.parse(output[0])).toMatchObject({
-    status: 'not_ready',
-    blockers: [{ code: 'no_active_organization', count: 1 }],
-  });
+  const report = JSON.parse(output[0]);
+  expect(report.status).toBe('not_ready');
+  expect(report.blockers).toContainEqual({ code: 'no_active_organization', count: 1 });
 });
 
 test('CLI emits a sanitized not-verified report when read access is unavailable', async () => {
@@ -465,7 +519,7 @@ test('CLI emits a sanitized not-verified report when read access is unavailable'
       SUPABASE_URL: 'https://example.supabase.co',
       SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-secret',
     },
-    createClient: () => makeReadOnlyClient({}, 'membership'),
+    createClient: () => makeRpcClient(null, { message: 'secret-row-value' }),
     checkedAt: '2026-08-11T07:00:00.000Z',
     stdout: (line) => output.push(line),
   });
@@ -476,12 +530,12 @@ test('CLI emits a sanitized not-verified report when read access is unavailable'
     status: 'not_verified',
     checkedAt: '2026-08-11T07:00:00.000Z',
     targetHost: 'example.supabase.co',
-    accessMethod: 'postgrest_and_auth_admin_service_role_read_only',
+    accessMethod: 'security_definer_count_only_rpc',
     databaseMutationExecuted: false,
     evidenceComplete: false,
-    readConsistency: 'multi_request',
+    readConsistency: 'single_statement',
     requiresImmediateRecheckBeforeActivation: true,
-    blockers: [{ code: 'read_access_unavailable', resource: 'membership' }],
+    blockers: [{ code: 'read_access_unavailable', resource: 'activation_preflight_rpc' }],
   });
   expect(output[0]).not.toContain('secret-row-value');
   expect(output[0]).not.toContain('test-service-role-secret');

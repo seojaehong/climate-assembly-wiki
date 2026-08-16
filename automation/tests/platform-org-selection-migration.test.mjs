@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync(new URL('../../supabase/migrations/platform_p1c_org_selection.sql', import.meta.url), 'utf8');
 const activation = readFileSync(new URL('../../supabase/migrations/platform_p1c_org_selection_activation.sql', import.meta.url), 'utf8');
+const activationPreflight = readFileSync(new URL('../../supabase/migrations/platform_p1c_activation_preflight.sql', import.meta.url), 'utf8');
 const rollback = readFileSync(new URL('../../supabase/rollbacks/platform_p1c_org_selection_BEFORE.sql', import.meta.url), 'utf8');
 const activationRollback = readFileSync(new URL('../../supabase/rollbacks/platform_p1c_org_selection_activation_BEFORE.sql', import.meta.url), 'utf8');
+const activationPreflightRollback = readFileSync(new URL('../../supabase/rollbacks/platform_p1c_activation_preflight_BEFORE.sql', import.meta.url), 'utf8');
 const verificationDriver = readFileSync(new URL('../../supabase/verify/driver_pass1.sql', import.meta.url), 'utf8');
 const semanticRehearsal = readFileSync(new URL('../../supabase/verify/org_selection_test.sql', import.meta.url), 'utf8');
 const postApplyVerification = readFileSync(new URL('../../supabase/verify/org_selection_post_apply.sql', import.meta.url), 'utf8');
@@ -64,6 +66,26 @@ describe('A2 organization selection migration draft', () => {
     expect(executableSql(activation)).not.toMatch(/\bgrant\s+(?:all|create|truncate|references|trigger)\b/i);
   });
 
+  it('keeps the count-only activation preflight service-role only and read-only', () => {
+    expect(activationPreflight).toContain('Do not apply without separate production approval.');
+    expect(activationPreflight).toContain('create or replace function climate_vote.platform_activation_preflight()');
+    expect(activationPreflight).toContain('security definer');
+    expect(activationPreflight).toContain('set search_path = pg_catalog, climate_vote, auth');
+    expect(activationPreflight).toContain('set row_security = off');
+    expect(activationPreflight).toContain("'readConsistency', 'single_statement'");
+    expect(activationPreflight).toContain("'databaseMutationExecuted', false");
+    expect(activationPreflight).toContain("'requiresImmediateRecheckBeforeActivation', true");
+    expect(activationPreflight).toContain('left join auth.users u on u.id = m.user_id');
+    expect(activationPreflight).toContain('grant execute on function climate_vote.platform_activation_preflight() to service_role;');
+    expect(activationPreflight).toContain('revoke all on function climate_vote.platform_activation_preflight() from public, anon, authenticated;');
+    expect(executableSql(activationPreflight)).toMatch(/^\s*begin;[\s\S]*commit;\s*$/i);
+    expect(executableSql(activationPreflight)).not.toMatch(/\b(?:insert\s+into|update|delete\s+from|truncate)\b/i);
+    expect(verificationDriver).not.toContain('platform_p1c_activation_preflight.sql');
+
+    expect(activationPreflightRollback).toContain('drop function if exists climate_vote.platform_activation_preflight()');
+    expect(executableSql(activationPreflightRollback)).toMatch(/^\s*begin;[\s\S]*commit;\s*$/i);
+  });
+
   it('provides a rollback that restores the prior fail-closed multi-org behavior', () => {
     expect(rollback).toContain("raise exception 'user belongs to multiple orgs — explicit org selection required (Phase 2 org_select)'");
     expect(rollback).toContain('drop table if exists climate_vote.org_context');
@@ -87,6 +109,10 @@ describe('A2 organization selection migration draft', () => {
     expect(semanticRehearsal).toContain('P1C accepted a non-SHA-256 organization context hash');
     expect(semanticRehearsal).toContain('P1C organization context lifetime does not match 12 hours');
     expect(semanticRehearsal).toContain('\\i /tmp/platform_p1c_org_selection_activation.sql');
+    expect(semanticRehearsal).toContain('\\i /tmp/platform_p1c_activation_preflight.sql');
+    expect(semanticRehearsal).toContain('P1C activation preflight did not return the expected count-only blockers');
+    expect(semanticRehearsal).toContain('P1C activation preflight rejected a ready tenant inventory');
+    expect(semanticRehearsal).toContain('P1C activation preflight execution privileges are unsafe');
     expect(semanticRehearsal).toContain('P1C failed activation left partial schema or membership privileges');
     expect(semanticRehearsal).toContain('P1C failed activation left partial staff table privileges');
     expect(semanticRehearsal).toContain('membership_activation_unavailable');
@@ -98,6 +124,7 @@ describe('A2 organization selection migration draft', () => {
     expect(semanticRehearsal).toContain('P1C rollback did not restore legacy org_of_uid execution privileges');
     expect(semanticRehearsal).toContain('\\set expect_staff_grants on');
     expect(semanticRehearsal).toContain('\\i /tmp/platform_p1c_org_selection_activation_BEFORE.sql');
+    expect(semanticRehearsal).toContain('\\i /tmp/platform_p1c_activation_preflight_BEFORE.sql');
     expect(semanticRehearsal).toContain('\\set expect_staff_grants off');
     expect(semanticRehearsal).toContain('\\i /tmp/platform_p1c_org_selection_BEFORE.sql');
     expect(semanticRehearsal).toContain('=== P1C ORG SELECTION REHEARSAL PASSED ===');
@@ -149,6 +176,7 @@ describe('A2 organization selection migration draft', () => {
     expect(testWorkflow).toContain('grep -q "org_context column contract is unsafe"');
     expect(testWorkflow).toContain('alter function climate_vote.org_of_uid() security invoker');
     expect(testWorkflow).toContain('grep -q "function execution contract is unsafe"');
+    expect(testWorkflow).toContain('platform_p1c_activation_preflight_BEFORE.sql');
     expect(testWorkflow).toContain('-f /tmp/org_selection_test.sql');
   });
 });

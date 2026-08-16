@@ -15,6 +15,8 @@
 
 `platform_p1c_org_selection_activation.sql`은 위 스키마 순서에 포함되지 않는 **별도 권한 활성화 초안**이다. 아래 읽기 전용 preflight·Auth 프로비저닝·사용자의 권한 활성화 승인 전에는 실행하지 않는다.
 
+`platform_p1c_activation_preflight.sql`도 기본 migration chain에 포함되지 않는 **별도 읽기 전용 초안**이다. P1·P1C·P2 스키마가 모두 있는 상태에서만 적용한다. 적용하면 `service_role`만 실행할 수 있는 `platform_activation_preflight()`가 추가되며 원시 행이 아닌 비식별 count/blocker만 한 SQL snapshot에서 반환한다. 이 함수 초안의 production 적용도 별도 DB 승인 전에는 수행하지 않는다.
+
 ### 1-1. A1·A2 활성화 전 읽기 전용 점검
 
 `platform_p1b_backfill.sql` 또는 staff용 GRANT를 실행하기 전에 현재 데이터 준비도를 비식별 집계로 확인한다.
@@ -24,12 +26,12 @@ cd automation
 npm.cmd run preflight:platform-activation
 ```
 
-- 입력은 `SUPABASE_URL`과 `SUPABASE_SERVICE_ROLE_KEY`(또는 `SUPABASE_SERVICE_ROLE`)다. Auth 세션은 저장하지 않는다.
+- 입력은 `SUPABASE_URL`과 `SUPABASE_SERVICE_ROLE_KEY`(또는 `SUPABASE_SERVICE_ROLE`)다. Auth 세션은 저장하지 않고, 원시 custom-schema SELECT 대신 service-role 전용 count-only RPC만 호출한다.
 - 12개 NOT NULL 대상 테이블의 전체 행·`org_id IS NULL` 건수와 assembly→session→topic→하위 행의 권위 있는 조직 경로 일치 여부를 점검한다. 활성 조직별 `org_admin`·`hq` 커버리지, 활성 membership의 활성 조직 귀속, 다중 조직 활성 사용자, membership이 가리키는 이메일 확인 완료·비익명 Supabase Auth 사용자의 존재·비활성 여부, 만료 전 HQ 세션의 활성 조직 바인딩도 확인한다.
 - 출력은 집계와 blocker 코드만 포함하며 조직·사용자 UUID, 토큰, 원문을 포함하지 않는다. `databaseMutationExecuted`는 항상 `false`다.
 - 종료 상태는 `ready`만 성공이다. `not_ready`는 실제 데이터 blocker, `not_verified`는 읽기 증거 자체가 불완전한 상태다. 두 상태 모두 활성화를 중단한다.
-- 현재 프로덕션의 custom schema 원시 테이블은 service role에도 SELECT가 열려 있지 않아 실측 결과가 `not_verified / read_access_unavailable`이다. 이를 우회하려고 임의 GRANT를 추가하지 않는다. 전용 읽기 함수 또는 일시적 감사 권한은 사용자 승인 후 별도 변경으로 다룬다.
-- 이 도구는 여러 읽기 요청의 결과를 합치는 preflight이며 단일 DB transaction snapshot은 아니다. 승인된 활성화 직전 쓰기를 잠시 멈춘 상태에서 다시 실행해야 하며, transactionally consistent 전용 읽기 함수가 필요하면 별도 DB 변경 승인을 받는다.
+- 현재 프로덕션에는 count-only RPC 초안을 적용하지 않아 실측 결과가 `not_verified / read_access_unavailable`이다. 이를 우회하려고 원시 테이블 GRANT를 추가하지 않는다.
+- RPC 적용 후의 진단은 한 SQL statement snapshot에서 계산되지만 진단 직후 데이터 변경까지 막지는 않는다. 승인된 활성화 직전 쓰기를 잠시 멈춘 상태에서 다시 실행하고 freshness 검증을 통과해야 한다.
 - `ready` 결과는 `ACTIVATION_PREFLIGHT_AUDIT_HMAC_KEY`(32자 이상)와 `ACTIVATION_PREFLIGHT_AUDIT_KEY_ID`가 모두 있을 때만 생성된다. report 전체와 source commit·정확한 스크립트 SHA-256·실행 ID·key ID를 외부 키 기반 HMAC-SHA256으로 결속하며 키는 JSON·stdout·오류에 포함하지 않는다.
 - 활성화 직전 아래 검증을 같은 checkout에서 실행한다. 현재 HEAD·스크립트 hash·승인 대상 host·key ID·HMAC·미래 시각·기본 10분 freshness 중 하나라도 다르면 실패한다. `--max-age-seconds` 완화는 승인 기록이 있을 때만 사용한다.
 
@@ -62,7 +64,7 @@ P1의 RLS 정책은 `revoke all from authenticated` 때문에 **휴면**이다. 
 - `session_id`는 Supabase Auth JWT의 필수 세션 식별자다. 공식 계약: [JWT claims](https://supabase.com/docs/guides/auth/jwt-fields), [User sessions](https://supabase.com/docs/guides/auth/sessions).
 - `org_context` 수명주기는 승인된 P1C 초안에 포함됐지만 실제 migration 적용과 staff GRANT 활성화는 별도 운영 승인 범위다. service role은 RLS를 우회하므로 사용자 요청 경로에서 사용하지 않는다.
 - P1C 적용 직후에는 `psql ... -v expect_staff_grants=off -f supabase/verify/org_selection_post_apply.sql`로 `org_context` 컬럼 타입·NOT NULL·기본값·12시간 수명·PK/FK/check·인덱스, RLS 정책 역할·본문, 함수 실행 속성과 휴면 권한을 읽기 전용 검증한다. 별도 승인된 staff GRANT 뒤에는 같은 파일을 `expect_staff_grants=on`으로 다시 실행한다. 둘 중 하나라도 실패하면 Auth 트래픽을 열지 않는다.
-- 활성화 뒤 P1C를 되돌릴 때는 먼저 `supabase/rollbacks/platform_p1c_org_selection_activation_BEFORE.sql`로 직접 테이블 권한을 하나의 transaction으로 회수하고 `expect_staff_grants=off` 검증을 통과시킨 다음 `platform_p1c_org_selection_BEFORE.sql`을 실행한다. schema USAGE는 P1C 이전 legacy RPC와 공유될 수 있어 activation rollback이 임의로 회수하지 않는다.
+- 활성화 뒤 P1C를 되돌릴 때는 먼저 `supabase/rollbacks/platform_p1c_org_selection_activation_BEFORE.sql`로 직접 테이블 권한을 하나의 transaction으로 회수하고 `expect_staff_grants=off` 검증을 통과시킨다. 그런 다음 `platform_p1c_activation_preflight_BEFORE.sql`로 count-only 함수를 제거하고 `platform_p1c_org_selection_BEFORE.sql`을 실행한다. schema USAGE는 P1C 이전 legacy RPC와 공유될 수 있어 activation rollback이 임의로 회수하지 않는다.
 
 ### 2-2. 기관 접근 계획 파일
 

@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 
 const ACTIVATION_EVIDENCE_EVENT = 'platform_activation_preflight';
 const ACTIVATION_EVIDENCE_TOOL_VERSION = 1;
+const ACTIVATION_READ_CONSISTENCIES = new Set(['multi_request', 'single_statement']);
 
 export const REQUIRED_ORG_ID_TABLES = [
   'assembly',
@@ -35,6 +36,34 @@ const HIERARCHY_TABLE_COLUMNS = {
   attendance: 'id,assignment_id,org_id',
   attendance_auth_session: 'token_hash,scope,team_id,expires_at,org_id',
 };
+
+const SUMMARY_FIELDS = [
+  'activeOrganizationCount',
+  'activeMembershipCount',
+  'requiredTableCount',
+  'missingTableCount',
+  'missingHierarchyEvidenceCount',
+  'hierarchyMismatchCount',
+  'totalNullOrgCount',
+  'organizationsWithoutAdminCount',
+  'organizationsWithoutHqCount',
+  'multiOrganizationUserCount',
+  'unavailableMembershipOrganizationCount',
+  'unavailableAuthUserCount',
+  'unboundActiveHqSessionCount',
+];
+
+const BLOCKER_SUMMARY_FIELDS = [
+  ['hierarchy_org_mismatch', 'hierarchyMismatchCount'],
+  ['no_active_organization', 'activeOrganizationCount'],
+  ['organization_without_admin', 'organizationsWithoutAdminCount'],
+  ['organization_without_hq', 'organizationsWithoutHqCount'],
+  ['multi_organization_user', 'multiOrganizationUserCount'],
+  ['membership_unavailable_organization', 'unavailableMembershipOrganizationCount'],
+  ['membership_auth_user_unavailable', 'unavailableAuthUserCount'],
+  ['null_org_id', 'totalNullOrgCount'],
+  ['unbound_active_hq_session', 'unboundActiveHqSessionCount'],
+];
 
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -71,7 +100,7 @@ export function sealActivationPreflightEvidence(report, provenance, key) {
   if (report.status !== 'ready'
     || report.evidenceComplete !== true
     || report.databaseMutationExecuted !== false
-    || report.readConsistency !== 'multi_request'
+    || !ACTIVATION_READ_CONSISTENCIES.has(report.readConsistency)
     || report.requiresImmediateRecheckBeforeActivation !== true
     || !Array.isArray(report.blockers)
     || report.blockers.length !== 0) {
@@ -146,7 +175,7 @@ export function verifyActivationPreflightEvidence(evidence, {
   if (report.status !== 'ready'
     || report.evidenceComplete !== true
     || report.databaseMutationExecuted !== false
-    || report.readConsistency !== 'multi_request'
+    || !ACTIVATION_READ_CONSISTENCIES.has(report.readConsistency)
     || report.requiresImmediateRecheckBeforeActivation !== true
     || !Array.isArray(report.blockers)
     || report.blockers.length !== 0
@@ -257,6 +286,94 @@ class ActivationPreflightReadError extends Error {
 
 function readError(table) {
   return new ActivationPreflightReadError(table);
+}
+
+function hasExactKeys(value, expectedKeys) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const actualKeys = Object.keys(value).sort();
+  return actualKeys.length === expectedKeys.length
+    && actualKeys.every((key, index) => key === [...expectedKeys].sort()[index]);
+}
+
+function isNonNegativeSafeInteger(value) {
+  return Number.isSafeInteger(value) && value >= 0;
+}
+
+export function validateActivationPreflightRpcReport(report) {
+  const rootKeys = [
+    'schemaVersion',
+    'status',
+    'checkedAt',
+    'databaseMutationExecuted',
+    'evidenceComplete',
+    'readConsistency',
+    'requiresImmediateRecheckBeforeActivation',
+    'summary',
+    'tables',
+    'blockers',
+  ];
+  if (!hasExactKeys(report, rootKeys)
+    || report.schemaVersion !== 1
+    || !['ready', 'not_ready'].includes(report.status)
+    || report.databaseMutationExecuted !== false
+    || report.evidenceComplete !== true
+    || report.readConsistency !== 'single_statement'
+    || report.requiresImmediateRecheckBeforeActivation !== true) {
+    throw readError('activation_preflight_rpc');
+  }
+  const checkedAt = new Date(report.checkedAt);
+  if (Number.isNaN(checkedAt.valueOf()) || checkedAt.toISOString() !== report.checkedAt) {
+    throw readError('activation_preflight_rpc');
+  }
+  if (!hasExactKeys(report.summary, SUMMARY_FIELDS)
+    || SUMMARY_FIELDS.some((field) => !isNonNegativeSafeInteger(report.summary[field]))
+    || report.summary.requiredTableCount !== REQUIRED_ORG_ID_TABLES.length
+    || report.summary.missingTableCount !== 0
+    || report.summary.missingHierarchyEvidenceCount !== 0) {
+    throw readError('activation_preflight_rpc');
+  }
+  if (!Array.isArray(report.tables)
+    || report.tables.length !== REQUIRED_ORG_ID_TABLES.length
+    || report.tables.some((table, index) => (
+      !hasExactKeys(table, ['table', 'totalCount', 'nullOrgCount'])
+      || table.table !== REQUIRED_ORG_ID_TABLES[index]
+      || !isNonNegativeSafeInteger(table.totalCount)
+      || !isNonNegativeSafeInteger(table.nullOrgCount)
+      || table.nullOrgCount > table.totalCount
+    ))) {
+    throw readError('activation_preflight_rpc');
+  }
+  const totalNullOrgCount = report.tables.reduce((total, table) => total + table.nullOrgCount, 0);
+  if (!Number.isSafeInteger(totalNullOrgCount)
+    || totalNullOrgCount !== report.summary.totalNullOrgCount
+    || !Array.isArray(report.blockers)) {
+    throw readError('activation_preflight_rpc');
+  }
+  const expectedBlockers = BLOCKER_SUMMARY_FIELDS.flatMap(([code, field]) => {
+    const count = code === 'no_active_organization'
+      ? (report.summary[field] === 0 ? 1 : 0)
+      : report.summary[field];
+    return count > 0 ? [{ code, count }] : [];
+  });
+  if (report.blockers.length !== expectedBlockers.length
+    || report.blockers.some((blocker, index) => (
+      !hasExactKeys(blocker, ['code', 'count'])
+      || blocker.code !== expectedBlockers[index].code
+      || blocker.count !== expectedBlockers[index].count
+    ))
+    || report.status !== (expectedBlockers.length === 0 ? 'ready' : 'not_ready')) {
+    throw readError('activation_preflight_rpc');
+  }
+  return report;
+}
+
+export async function runActivationPreflightRpc({ client }) {
+  if (!client) throw new Error('activation preflight configuration is invalid');
+  const { data, error } = await client
+    .schema('climate_vote')
+    .rpc('platform_activation_preflight');
+  if (error) throw readError('activation_preflight_rpc');
+  return validateActivationPreflightRpcReport(data);
 }
 
 async function readRows(client, table, columns, filters, pageSize, orderColumn = 'id') {
@@ -372,12 +489,24 @@ export async function runActivationPreflightCli({
   createClient,
   checkedAt = new Date().toISOString(),
   provenance,
+  preflightRunner = runActivationPreflightRpc,
+  accessMethod = 'security_definer_count_only_rpc',
+  failureReadConsistency = 'single_statement',
   stdout = console.log,
 }) {
   const url = environment.SUPABASE_URL;
   const serviceRoleKey = environment.SUPABASE_SERVICE_ROLE_KEY ?? environment.SUPABASE_SERVICE_ROLE;
-  if (typeof url !== 'string' || url.length === 0 || typeof serviceRoleKey !== 'string' || serviceRoleKey.length === 0) {
+  if (typeof url !== 'string'
+    || url.length === 0
+    || typeof serviceRoleKey !== 'string'
+    || serviceRoleKey.length === 0) {
     throw new Error('platform activation preflight credentials are missing');
+  }
+  if (typeof preflightRunner !== 'function'
+    || typeof accessMethod !== 'string'
+    || accessMethod.length === 0
+    || !ACTIVATION_READ_CONSISTENCIES.has(failureReadConsistency)) {
+    throw new Error('activation preflight configuration is invalid');
   }
   let targetHost;
   try {
@@ -390,7 +519,7 @@ export async function runActivationPreflightCli({
   });
   let report;
   try {
-    report = await runActivationPreflight({ client, checkedAt });
+    report = await preflightRunner({ client, checkedAt });
   } catch (error) {
     if (!(error instanceof ActivationPreflightReadError)) throw error;
     report = {
@@ -399,7 +528,7 @@ export async function runActivationPreflightCli({
       checkedAt,
       databaseMutationExecuted: false,
       evidenceComplete: false,
-      readConsistency: 'multi_request',
+      readConsistency: failureReadConsistency,
       requiresImmediateRecheckBeforeActivation: true,
       blockers: [{ code: error.code, resource: error.resource }],
     };
@@ -407,7 +536,7 @@ export async function runActivationPreflightCli({
   report = {
     ...report,
     targetHost,
-    accessMethod: 'postgrest_and_auth_admin_service_role_read_only',
+    accessMethod,
   };
   if (report.status === 'ready') {
     report = sealActivationPreflightEvidence(

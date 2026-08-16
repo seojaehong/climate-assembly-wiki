@@ -1,6 +1,17 @@
 \set ON_ERROR_STOP on
 
 -- Semantic rehearsal for the draft P1C organization selection migration.
+\i /tmp/platform_p1c_activation_preflight.sql
+
+do $test$
+begin
+  if has_function_privilege('anon', 'climate_vote.platform_activation_preflight()', 'EXECUTE')
+     or has_function_privilege('authenticated', 'climate_vote.platform_activation_preflight()', 'EXECUTE')
+     or not has_function_privilege('service_role', 'climate_vote.platform_activation_preflight()', 'EXECUTE') then
+    raise exception 'P1C activation preflight execution privileges are unsafe';
+  end if;
+end $test$;
+
 insert into climate_vote.org(id, slug, name, status) values
   ('10000000-0000-4000-8000-000000000001', 'org-alpha', 'Organization Alpha', 'active'),
   ('10000000-0000-4000-8000-000000000002', 'org-beta', 'Organization Beta', 'active');
@@ -55,6 +66,63 @@ insert into climate_vote.submission(id, topic_id, team_id, status, org_id) value
 insert into climate_vote.ballot(id, session_id, title, status, org_id) values
   ('45000000-0000-4000-8000-000000000001', '41000000-0000-4000-8000-000000000001', 'Ballot Alpha', 'draft', '10000000-0000-4000-8000-000000000001'),
   ('45000000-0000-4000-8000-000000000002', '41000000-0000-4000-8000-000000000002', 'Ballot Beta', 'draft', '10000000-0000-4000-8000-000000000002');
+
+insert into auth.users(id, email, email_confirmed_at, is_anonymous) values
+  ('30000000-0000-4000-8000-000000000001', 'operator-one@example.test', clock_timestamp() - interval '1 day', false),
+  ('30000000-0000-4000-8000-000000000002', 'operator-two@example.test', clock_timestamp() - interval '1 day', false),
+  ('30000000-0000-4000-8000-000000000003', 'facilitator@example.test', clock_timestamp() - interval '1 day', false);
+
+do $test$
+declare
+  v_report jsonb := climate_vote.platform_activation_preflight();
+begin
+  if v_report ->> 'status' <> 'not_ready'
+     or v_report ->> 'readConsistency' <> 'single_statement'
+     or (v_report #>> '{summary,multiOrganizationUserCount}')::integer <> 2
+     or (v_report #>> '{summary,organizationsWithoutAdminCount}')::integer <> 2
+     or (v_report #>> '{summary,organizationsWithoutHqCount}')::integer <> 2
+     or jsonb_path_exists(v_report, '$.**.user_id')
+     or jsonb_path_exists(v_report, '$.**.org_id') then
+    raise exception 'P1C activation preflight did not return the expected count-only blockers';
+  end if;
+end $test$;
+
+begin;
+update climate_vote.membership
+set status = 'revoked'
+where id in (
+  '20000000-0000-4000-8000-000000000002',
+  '20000000-0000-4000-8000-000000000004'
+);
+
+insert into auth.users(id, email, email_confirmed_at, is_anonymous) values
+  ('30000000-0000-4000-8000-000000000010', 'admin-alpha@example.test', clock_timestamp() - interval '1 day', false),
+  ('30000000-0000-4000-8000-000000000011', 'hq-alpha@example.test', clock_timestamp() - interval '1 day', false),
+  ('30000000-0000-4000-8000-000000000012', 'admin-beta@example.test', clock_timestamp() - interval '1 day', false),
+  ('30000000-0000-4000-8000-000000000013', 'hq-beta@example.test', clock_timestamp() - interval '1 day', false);
+
+insert into climate_vote.membership(id, org_id, user_id, role, status) values
+  ('20000000-0000-4000-8000-000000000010', '10000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000010', 'org_admin', 'active'),
+  ('20000000-0000-4000-8000-000000000011', '10000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000011', 'hq', 'active'),
+  ('20000000-0000-4000-8000-000000000012', '10000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000012', 'org_admin', 'active'),
+  ('20000000-0000-4000-8000-000000000013', '10000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000013', 'hq', 'active');
+
+set role service_role;
+do $test$
+declare
+  v_report jsonb;
+begin
+  v_report := climate_vote.platform_activation_preflight();
+  if v_report ->> 'status' <> 'ready'
+     or (v_report #>> '{summary,totalNullOrgCount}')::integer <> 0
+     or (v_report #>> '{summary,hierarchyMismatchCount}')::integer <> 0
+     or jsonb_array_length(v_report -> 'blockers') <> 0
+     or jsonb_array_length(v_report -> 'tables') <> 12 then
+    raise exception 'P1C activation preflight rejected a ready tenant inventory';
+  end if;
+end $test$;
+reset role;
+rollback;
 
 -- A missing grant target must roll back every earlier statement in the file.
 alter table climate_vote.ballot rename to ballot_activation_unavailable;
@@ -362,6 +430,7 @@ alter table climate_vote.membership_activation_unavailable rename to membership;
 \i /tmp/platform_p1c_org_selection_activation_BEFORE.sql
 \set expect_staff_grants off
 \i /tmp/org_selection_post_apply.sql
+\i /tmp/platform_p1c_activation_preflight_BEFORE.sql
 \i /tmp/platform_p1c_org_selection_BEFORE.sql
 
 do $test$
@@ -406,6 +475,9 @@ do $test$
 begin
   if to_regclass('climate_vote.org_context') is not null then
     raise exception 'P1C rollback left org_context behind';
+  end if;
+  if to_regprocedure('climate_vote.platform_activation_preflight()') is not null then
+    raise exception 'P1C rollback left activation preflight behind';
   end if;
 end $test$;
 
