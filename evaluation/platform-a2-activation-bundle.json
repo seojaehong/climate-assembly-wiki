@@ -59,8 +59,8 @@
       "command": "preflight:platform-activation",
       "artifact": {
         "path": "automation/platform-activation-preflight.mjs",
-        "sha256": "a55fad70fb60197a1a22608b0edb5e40a9172986203088cf6622482e6ae71dd9",
-        "bytes": 29422
+        "sha256": "849d7167b29296c9226c601954266a64bcc634961dd3dc557799bb2d9609fd6c",
+        "bytes": 29509
       }
     },
     {
@@ -69,8 +69,8 @@
       "command": "verify:platform-activation",
       "artifact": {
         "path": "automation/platform-activation-preflight.mjs",
-        "sha256": "a55fad70fb60197a1a22608b0edb5e40a9172986203088cf6622482e6ae71dd9",
-        "bytes": 29422
+        "sha256": "849d7167b29296c9226c601954266a64bcc634961dd3dc557799bb2d9609fd6c",
+        "bytes": 29509
       }
     },
     {
@@ -143,5 +143,5 @@
     "writesMemberships": false,
     "enablesProductionTraffic": false
   },
-  "checksum": "7c31b4557e51fbbf182c313f4adb5e80e99feb19b4b7df42a7616ce7049c3cd7"
+  "checksum": "f22d07949b2af495498ec016ae89758a5a781b1009ff4e8b8665dfc43cc82d22"
 }

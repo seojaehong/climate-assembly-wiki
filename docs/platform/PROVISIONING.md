@@ -9,7 +9,7 @@
 
 ## 1. 스키마 적용 (SQL Editor, 순서·통째)
 1. `platform_p1_tenancy.sql` — org·membership·invitation·org_id·헬퍼·RLS
-2. `platform_p1c_org_selection.sql` — 다중 소속의 탭별 기관 선택 컨텍스트·`my_orgs`·`org_select`·선택 범위 RLS. **현재 초안이며 별도 production 적용 승인 전 실행 금지**
+2. `platform_p1c_org_selection.sql` — 다중 소속의 탭별 기관 선택 컨텍스트·`my_orgs`·`org_select`·선택 범위 RLS. **2026-08-17 사용자 승인된 설계 초안이며 별도 production 적용 승인 전 실행 금지**
 3. `platform_p2_analysis_review.sql` — issue·result_page·검수/공개 RPC
 4. (데이터 있으면) `platform_p1b_backfill.sql` — 기본 org backfill + NOT NULL(G3)
 
