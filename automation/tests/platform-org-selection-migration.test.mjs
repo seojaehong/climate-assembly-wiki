@@ -23,6 +23,7 @@ describe('A2 organization selection migration draft', () => {
     expect(migration).toContain('c.user_id = auth.uid()');
     expect(migration).toContain('c.session_id = climate_vote.auth_session_id()');
     expect(migration).toContain("expires_at timestamptz not null default (now() + interval '12 hours')");
+    expect(migration).toContain('constraint org_context_token_hash_length check (octet_length(token_hash) = 32)');
     expect(migration).toContain('and c.expires_at > current_timestamp');
     expect(migration).toContain('where c.expires_at <= clock_timestamp()');
     expect(migration).toContain('climate_vote.org_of_uid()\nfrom public, anon;');
@@ -73,6 +74,8 @@ describe('A2 organization selection migration draft', () => {
     expect(semanticRehearsal).toContain("P1C accepted a context token from another Auth session");
     expect(semanticRehearsal).toContain("P1C accepted a context token from another user");
     expect(semanticRehearsal).toContain("P1C accepted an expired organization context token");
+    expect(semanticRehearsal).toContain('P1C accepted a non-SHA-256 organization context hash');
+    expect(semanticRehearsal).toContain('P1C organization context lifetime does not match 12 hours');
     expect(semanticRehearsal).toContain("P1C organization selection did not prune expired contexts");
     expect(semanticRehearsal).toContain("P1C RLS exposed an organization outside the selected context");
     expect(semanticRehearsal).toContain("P1C RLS did not isolate every staff table to the selected organization");
@@ -93,6 +96,13 @@ describe('A2 organization selection migration draft', () => {
     expect(postApplyVerification).toContain("('discussion_topic', 'topic_tenant_write', 'ALL')");
     expect(postApplyVerification).toContain('if v_count <> 10 then');
     expect(postApplyVerification).toContain("p.roles = array['authenticated'::name]");
+    expect(postApplyVerification).toContain("('expires_at', 'timestamp with time zone', true, '(now() + ''12:00:00''::interval)')");
+    expect(postApplyVerification).toContain("('org_context_org_id_fkey', 'f'::\"char\", 'FOREIGN KEY (org_id) REFERENCES org(id) ON DELETE CASCADE')");
+    expect(postApplyVerification).toContain("('org_context_token_hash_length', 'c'::\"char\", 'CHECK ((octet_length(token_hash) = 32))')");
+    expect(postApplyVerification).toContain('CREATE INDEX org_context_session_idx ON climate_vote.org_context USING btree (session_id, user_id)');
+    expect(postApplyVerification).toContain('org_context column contract is unsafe');
+    expect(postApplyVerification).toContain('org_context constraint contract is unsafe');
+    expect(postApplyVerification).toContain('org_context index contract is unsafe');
     expect(postApplyVerification).toContain("regexp_replace(p.qual, E'\\\\s+', '', 'g')");
     expect(postApplyVerification).toContain("v_expected_qual := '(org_id=org_of_uid())'");
     expect(postApplyVerification).toContain('m.org_id=%I.org_id');
@@ -121,6 +131,8 @@ describe('A2 organization selection migration draft', () => {
     expect(testWorkflow).toContain('-v verify_function_bodies=on -f /tmp/driver_pass1.sql');
     expect(testWorkflow).toContain('alter policy assembly_tenant_read on climate_vote.assembly using (true)');
     expect(testWorkflow).toContain('grep -q "tenant policy definition is unsafe"');
+    expect(testWorkflow).toContain("alter column expires_at set default (now() + interval '30 days')");
+    expect(testWorkflow).toContain('grep -q "org_context column contract is unsafe"');
     expect(testWorkflow).toContain('alter function climate_vote.org_of_uid() security invoker');
     expect(testWorkflow).toContain('grep -q "function execution contract is unsafe"');
     expect(testWorkflow).toContain('-f /tmp/org_selection_test.sql');

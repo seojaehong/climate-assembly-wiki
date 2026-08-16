@@ -25,6 +25,14 @@ declare
   v_volatility "char";
   v_language name;
   v_config text[];
+  v_column record;
+  v_type text;
+  v_not_null boolean;
+  v_default text;
+  v_constraint record;
+  v_constraint_type "char";
+  v_definition text;
+  v_index record;
 begin
   if to_regclass('climate_vote.org_context') is null then
     raise exception 'P1C verification failed: org_context is missing';
@@ -40,19 +48,72 @@ begin
     raise exception 'P1C verification failed: org_context columns are incomplete';
   end if;
 
-  if not exists (
-    select 1 from pg_constraint
-    where conrelid = 'climate_vote.org_context'::regclass
-      and conname = 'org_context_expiry_order'
-      and contype = 'c'
-  ) then
-    raise exception 'P1C verification failed: expiry constraint is missing';
-  end if;
+  for v_column in
+    select * from (values
+      ('token_hash', 'bytea', true, null::text),
+      ('session_id', 'uuid', true, null::text),
+      ('user_id', 'uuid', true, null::text),
+      ('org_id', 'uuid', true, null::text),
+      ('created_at', 'timestamp with time zone', true, 'now()'),
+      ('expires_at', 'timestamp with time zone', true, '(now() + ''12:00:00''::interval)')
+    ) as expected(column_name, data_type, required, default_expression)
+  loop
+    select format_type(a.atttypid, a.atttypmod), a.attnotnull,
+           pg_get_expr(d.adbin, d.adrelid)
+      into strict v_type, v_not_null, v_default
+    from pg_attribute a
+    left join pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
+    where a.attrelid = 'climate_vote.org_context'::regclass
+      and a.attname = v_column.column_name
+      and a.attnum > 0
+      and not a.attisdropped;
 
-  if to_regclass('climate_vote.org_context_session_idx') is null
-     or to_regclass('climate_vote.org_context_expiry_idx') is null then
-    raise exception 'P1C verification failed: context indexes are incomplete';
-  end if;
+    if v_type <> v_column.data_type
+       or v_not_null <> v_column.required
+       or v_default is distinct from v_column.default_expression then
+      raise exception 'P1C verification failed: org_context column contract is unsafe';
+    end if;
+  end loop;
+
+  for v_constraint in
+    select * from (values
+      ('org_context_pkey', 'p'::"char", 'PRIMARY KEY (token_hash)'),
+      ('org_context_org_id_fkey', 'f'::"char", 'FOREIGN KEY (org_id) REFERENCES org(id) ON DELETE CASCADE'),
+      ('org_context_token_hash_length', 'c'::"char", 'CHECK ((octet_length(token_hash) = 32))'),
+      ('org_context_expiry_order', 'c'::"char", 'CHECK ((expires_at > created_at))')
+    ) as expected(constraint_name, constraint_type, constraint_definition)
+  loop
+    select c.contype, pg_get_constraintdef(c.oid, false)
+      into strict v_constraint_type, v_definition
+    from pg_constraint c
+    where c.conrelid = 'climate_vote.org_context'::regclass
+      and c.conname = v_constraint.constraint_name;
+
+    if v_constraint_type <> v_constraint.constraint_type
+       or v_definition <> v_constraint.constraint_definition then
+      raise exception 'P1C verification failed: org_context constraint contract is unsafe';
+    end if;
+  end loop;
+
+  for v_index in
+    select * from (values
+      ('org_context_session_idx', 'CREATE INDEX org_context_session_idx ON climate_vote.org_context USING btree (session_id, user_id)'),
+      ('org_context_expiry_idx', 'CREATE INDEX org_context_expiry_idx ON climate_vote.org_context USING btree (expires_at)')
+    ) as expected(index_name, index_definition)
+  loop
+    select pg_get_indexdef(i.indexrelid)
+      into strict v_definition
+    from pg_index i
+    join pg_class c on c.oid = i.indexrelid
+    where i.indrelid = 'climate_vote.org_context'::regclass
+      and c.relname = v_index.index_name
+      and not i.indisunique
+      and not i.indisprimary;
+
+    if v_definition <> v_index.index_definition then
+      raise exception 'P1C verification failed: org_context index contract is unsafe';
+    end if;
+  end loop;
 
   select count(*) into v_count
   from pg_class c

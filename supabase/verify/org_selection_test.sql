@@ -12,6 +12,26 @@ insert into climate_vote.membership(id, org_id, user_id, role, status) values
   ('20000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000002', 'operator', 'active'),
   ('20000000-0000-4000-8000-000000000005', '10000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000003', 'facilitator', 'active');
 
+do $test$
+declare
+  v_rejected boolean := false;
+begin
+  begin
+    insert into climate_vote.org_context(token_hash, session_id, user_id, org_id)
+    values (
+      decode('00', 'hex'),
+      '50000000-0000-4000-8000-000000000001',
+      '30000000-0000-4000-8000-000000000001',
+      '10000000-0000-4000-8000-000000000001'
+    );
+  exception when check_violation then
+    v_rejected := true;
+  end;
+  if not v_rejected then
+    raise exception 'P1C accepted a non-SHA-256 organization context hash';
+  end if;
+end $test$;
+
 insert into climate_vote.assembly(id, slug, title, status, org_id) values
   ('40000000-0000-4000-8000-000000000001', 'assembly-alpha', 'Assembly Alpha', 'active', '10000000-0000-4000-8000-000000000001'),
   ('40000000-0000-4000-8000-000000000002', 'assembly-beta', 'Assembly Beta', 'active', '10000000-0000-4000-8000-000000000002');
@@ -75,6 +95,20 @@ begin
 end $test$;
 
 select climate_vote.org_select('10000000-0000-4000-8000-000000000002') ->> 'context_token' as context_token \gset
+select set_config('platform.verify_context_token', :'context_token', false);
+reset role;
+do $test$
+begin
+  if not exists (
+    select 1
+    from climate_vote.org_context
+    where token_hash = extensions.digest(current_setting('platform.verify_context_token'), 'sha256')
+      and expires_at - created_at = interval '12 hours'
+  ) then
+    raise exception 'P1C organization context lifetime does not match 12 hours';
+  end if;
+end $test$;
+set role authenticated;
 select set_config('request.headers', jsonb_build_object(
   'x-platform-org-context', :'context_token'
 )::text, false);

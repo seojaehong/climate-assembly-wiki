@@ -10,6 +10,7 @@ create table if not exists climate_vote.org_context (
   org_id uuid not null references climate_vote.org(id) on delete cascade,
   created_at timestamptz not null default now(),
   expires_at timestamptz not null default (now() + interval '12 hours'),
+  constraint org_context_token_hash_length check (octet_length(token_hash) = 32),
   constraint org_context_expiry_order check (expires_at > created_at)
 );
 

@@ -67,7 +67,7 @@ to authenticated;
 - 같은 Auth 세션을 공유하는 여러 탭도 서로 다른 선택 토큰을 사용한다. 로그아웃은 현재 탭의 토큰을 제거한다.
 - `session_id`는 Supabase Auth JWT의 필수 세션 식별자다. 공식 계약: [JWT claims](https://supabase.com/docs/guides/auth/jwt-fields), [User sessions](https://supabase.com/docs/guides/auth/sessions).
 - `org_context` 수명주기는 승인된 P1C 초안에 포함됐지만 실제 migration 적용과 staff GRANT 활성화는 별도 운영 승인 범위다. service role은 RLS를 우회하므로 사용자 요청 경로에서 사용하지 않는다.
-- P1C 적용 직후에는 `psql ... -v expect_staff_grants=off -f supabase/verify/org_selection_post_apply.sql`로 객체·RLS·정책·함수와 휴면 권한을 읽기 전용 검증한다. 별도 승인된 staff GRANT 뒤에는 같은 파일을 `expect_staff_grants=on`으로 다시 실행한다. 둘 중 하나라도 실패하면 Auth 트래픽을 열지 않는다.
+- P1C 적용 직후에는 `psql ... -v expect_staff_grants=off -f supabase/verify/org_selection_post_apply.sql`로 `org_context` 컬럼 타입·NOT NULL·기본값·12시간 수명·PK/FK/check·인덱스, RLS 정책 역할·본문, 함수 실행 속성과 휴면 권한을 읽기 전용 검증한다. 별도 승인된 staff GRANT 뒤에는 같은 파일을 `expect_staff_grants=on`으로 다시 실행한다. 둘 중 하나라도 실패하면 Auth 트래픽을 열지 않는다.
 - 활성화 뒤 P1C를 되돌릴 때는 먼저 `supabase/rollbacks/platform_p1c_org_selection_activation_BEFORE.sql`로 직접 테이블 권한을 회수하고 `expect_staff_grants=off` 검증을 통과시킨 다음 `platform_p1c_org_selection_BEFORE.sql`을 실행한다. schema USAGE는 P1C 이전 legacy RPC와 공유될 수 있어 activation rollback이 임의로 회수하지 않는다.
 
 ### 2-2. 기관 접근 계획 파일

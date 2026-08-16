@@ -116,6 +116,18 @@ jobs:
             -v expect_staff_grants=off -f /tmp/org_selection_post_apply.sql
 
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "alter table climate_vote.org_context alter column expires_at set default (now() + interval '30 days');"
+          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -v expect_staff_grants=off -f /tmp/org_selection_post_apply.sql \
+            >"$RUNNER_TEMP/p1c-unsafe-ttl.log" 2>&1; then
+            echo "Unsafe organization context lifetime unexpectedly passed verification" >&2
+            exit 1
+          fi
+          grep -q "org_context column contract is unsafe" "$RUNNER_TEMP/p1c-unsafe-ttl.log"
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "alter table climate_vote.org_context alter column expires_at set default (now() + interval '12 hours');"
+
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
             "alter policy assembly_tenant_read on climate_vote.assembly using (true);"
           if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -v expect_staff_grants=off -f /tmp/org_selection_post_apply.sql \
