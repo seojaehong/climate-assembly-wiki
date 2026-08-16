@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "planKind": "platform_a2_activation_bundle",
+  "dryRun": true,
+  "databaseMutationExecuted": false,
+  "credentialsRead": false,
+  "requiresApproval": true,
+  "prerequisiteSchema": [
+    {
+      "path": "supabase/migrations/platform_p1_tenancy.sql",
+      "sha256": "87c55a5f847f7fe50537d9ba37c91c0c37f1541705cbea8669193e97cd9d1a73",
+      "bytes": 19768
+    },
+    {
+      "path": "supabase/migrations/platform_p1c_org_selection.sql",
+      "sha256": "a14a499b8745d10374bf64749349b7035c175c85d41a723cf8ae94e224bd1a37",
+      "bytes": 11160
+    },
+    {
+      "path": "supabase/migrations/platform_p2_analysis_review.sql",
+      "sha256": "f51d457e0dfd327cfc3c96d1968fe07d4fae60985f702419f58b32f13e629f62",
+      "bytes": 38936
+    }
+  ],
+  "approvalEvidence": {
+    "schemaVersion": 2,
+    "sourceTreeCleanRequired": true,
+    "maximumAgeSeconds": 600,
+    "targetHostMatchRequired": true
+  },
+  "executionPolicy": {
+    "stopOnFailure": true,
+    "activationRequiresVerifiedReadyEvidence": true,
+    "rollbackBeforeSchemaRollback": true
+  },
+  "activation": [
+    {
+      "id": "install_preflight_rpc",
+      "kind": "apply_sql",
+      "artifact": {
+        "path": "supabase/migrations/platform_p1c_activation_preflight.sql",
+        "sha256": "9efd6f78282abd131993096345fea74e04e47c877c60905021a77cb241645361",
+        "bytes": 12258
+      }
+    },
+    {
+      "id": "verify_preflight_rpc",
+      "kind": "verify_sql",
+      "variables": {},
+      "artifact": {
+        "path": "supabase/verify/activation_preflight_post_apply.sql",
+        "sha256": "68dcb83f68e7d447877daf0adad0c9389115980a67e7f931ba5542efc99ce764",
+        "bytes": 8395
+      }
+    },
+    {
+      "id": "collect_ready_evidence",
+      "kind": "automation_command",
+      "command": "preflight:platform-activation",
+      "artifact": {
+        "path": "automation/platform-activation-preflight.mjs",
+        "sha256": "a55fad70fb60197a1a22608b0edb5e40a9172986203088cf6622482e6ae71dd9",
+        "bytes": 29422
+      }
+    },
+    {
+      "id": "verify_ready_evidence",
+      "kind": "automation_command",
+      "command": "verify:platform-activation",
+      "artifact": {
+        "path": "automation/platform-activation-preflight.mjs",
+        "sha256": "a55fad70fb60197a1a22608b0edb5e40a9172986203088cf6622482e6ae71dd9",
+        "bytes": 29422
+      }
+    },
+    {
+      "id": "activate_staff_grants",
+      "kind": "apply_sql",
+      "artifact": {
+        "path": "supabase/migrations/platform_p1c_org_selection_activation.sql",
+        "sha256": "ce408c5ff4b2f1e5ac24665845df3efc3da00ef87e1d946149a476ea412a45d5",
+        "bytes": 538
+      }
+    },
+    {
+      "id": "verify_staff_grants_active",
+      "kind": "verify_sql",
+      "variables": {
+        "expect_staff_grants": "on"
+      },
+      "artifact": {
+        "path": "supabase/verify/org_selection_post_apply.sql",
+        "sha256": "affa4b10707e93ee15ebcedccc8bca2f8c3709b279b1eed7a559905d5f178f16",
+        "bytes": 12410
+      }
+    }
+  ],
+  "rollback": [
+    {
+      "id": "revoke_staff_grants",
+      "kind": "rollback_sql",
+      "artifact": {
+        "path": "supabase/rollbacks/platform_p1c_org_selection_activation_BEFORE.sql",
+        "sha256": "8544fc089cc7d05802ddd0726b695557b4956d4fead237e038f4f8eb9d8c35fe",
+        "bytes": 481
+      }
+    },
+    {
+      "id": "verify_staff_grants_dormant",
+      "kind": "verify_sql",
+      "variables": {
+        "expect_staff_grants": "off"
+      },
+      "artifact": {
+        "path": "supabase/verify/org_selection_post_apply.sql",
+        "sha256": "affa4b10707e93ee15ebcedccc8bca2f8c3709b279b1eed7a559905d5f178f16",
+        "bytes": 12410
+      }
+    },
+    {
+      "id": "remove_preflight_rpc",
+      "kind": "rollback_sql",
+      "artifact": {
+        "path": "supabase/rollbacks/platform_p1c_activation_preflight_BEFORE.sql",
+        "sha256": "812a11a0ad7f423e2e2ef334c8ccd68216dd4b42bed8da3a22d770267ffa4d67",
+        "bytes": 280
+      }
+    },
+    {
+      "id": "verify_preflight_rpc_removed",
+      "kind": "verify_sql",
+      "variables": {},
+      "artifact": {
+        "path": "supabase/verify/activation_preflight_post_remove.sql",
+        "sha256": "db4dbf4781ac2f88bc0a7f4aa44a7a3af2a335acdc787bbbb7aaf6468bcdde6a",
+        "bytes": 561
+      }
+    }
+  ],
+  "boundaries": {
+    "appliesDatabaseChanges": false,
+    "provisionsAuthUsers": false,
+    "writesMemberships": false,
+    "enablesProductionTraffic": false
+  },
+  "checksum": "7c31b4557e51fbbf182c313f4adb5e80e99feb19b4b7df42a7616ce7049c3cd7"
+}

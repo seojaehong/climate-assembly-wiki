@@ -10,8 +10,10 @@ const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 export const ACTIVATION_APPROVAL_SOURCE_PATHS = [
   'automation/platform-activation-preflight.mjs',
+  'automation/platform-a2-activation-bundle.mjs',
   'automation/package.json',
   'automation/package-lock.json',
+  'evaluation/platform-a2-activation-bundle.json',
   'supabase/migrations',
   'supabase/rollbacks',
   'supabase/verify',

@@ -441,6 +441,7 @@ alter table climate_vote.membership_activation_unavailable rename to membership;
 \set expect_staff_grants off
 \i /tmp/org_selection_post_apply.sql
 \i /tmp/platform_p1c_activation_preflight_BEFORE.sql
+\i /tmp/activation_preflight_post_remove.sql
 \i /tmp/platform_p1c_org_selection_BEFORE.sql
 
 do $test$

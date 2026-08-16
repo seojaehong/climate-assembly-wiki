@@ -432,6 +432,22 @@ endpoint는 공개 읽기 전용이어야 하며 URL query, 응답, 브라우저
 - source 전환·즉시 갱신은 기존 polling을 먼저 중단하고 generation guard로 늦은 응답을 폐기한다. 자동갱신은 이전 요청 완료 뒤 다음 회차를 예약해 요청이 겹치지 않는다. 최신 요청 실패는 console error와 live 안내로 노출하고, 마지막 정상 source의 선택값·URL·그래프와 기존 live polling을 복구한다.
 - 현재는 승인 graph snapshot RPC/table과 공개 RLS 계약이 없으므로 `sources.json`에 `database.endpoint`를 설정하지 않았다. 정적 fallback만 활성 상태이며 DB endpoint·RLS·schema 생성은 별도 사용자 승인 대상이다.
 
+## A2 activation bundle dry-run
+
+production 적용 전에 exact SQL과 실행 순서가 drift하지 않았는지 다음 manifest로 확인한다.
+
+```powershell
+cd automation
+npm.cmd run plan:platform-a2-activation -- --output ..\evaluation\platform-a2-activation-bundle.candidate.json
+npm.cmd run verify:platform-a2-activation -- ..\evaluation\platform-a2-activation-bundle.json
+```
+
+- prerequisite 3개, activation 6단계, rollback 4단계의 순서와 source byte hash를 전체 재구성해 검증한다.
+- 출력은 dry-run 승인 자료이며 DB/API/credential을 사용하지 않는다. 실제 apply·Auth/membership·GRANT·traffic open은 수행하지 않는다.
+- tracked manifest만 고쳐 checksum을 다시 계산해도 현재 source와 다르면 실패한다. manifest와 builder는 A2 ready evidence의 clean source 범위에도 포함된다.
+- 생성기는 기존 파일을 기본적으로 덮어쓰지 않는다. candidate diff 승인 뒤에만 `--force`로 추적 manifest를 교체한다.
+- 자세한 단계와 승인 경계는 `docs/platform/PROVISIONING.md` §1-2를 따른다.
+
 ## A5 자동 Chromium 접근성 증거
 
 사용자 도메인 재검증은 실제 배포가 성공한 checkout에서 실행한다.

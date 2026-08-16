@@ -46,6 +46,24 @@ npm.cmd run verify:platform-activation -- ..\evaluation\platform-activation-pref
 - HMAC 키는 GitHub secret 한 곳에만 두지 말고 key ID별 외부 보안 저장소에 별도 백업한다. 회전은 활성화를 중단한 상태에서 과거 evidence 검증→새 key ID 발급→새 evidence 생성 순서로 진행하며, 과거 키 폐기는 별도 승인 기록 뒤 수행한다.
 - `ready` + 검증 성공도 활성화 행위를 자동 승인하지 않는다. 쓰기 동결 상태의 즉시 재실행 결과와 사용자의 DB·권한 변경 승인이 모두 필요하다.
 - 최신 비식별 실행 증거: `evaluation/platform-activation-preflight.json`.
+
+### 1-2. A2 활성화 승인 묶음
+
+`evaluation/platform-a2-activation-bundle.json`은 production 실행 파일이 아니라 승인자가 검토할 read-only dry-run manifest다. P1→P1C→P2 선행 스키마, count-only preflight 설치·검증, fresh ready evidence 생성·검증, staff GRANT 활성화·검증, GRANT 회수·휴면 검증·preflight 제거의 순서와 각 SQL/CLI 바이트 SHA-256을 고정한다.
+
+```powershell
+cd automation
+npm.cmd run plan:platform-a2-activation -- --output ..\evaluation\platform-a2-activation-bundle.candidate.json
+npm.cmd run verify:platform-a2-activation -- ..\evaluation\platform-a2-activation-bundle.json
+```
+
+- 생성과 검증은 DB·Auth·환경 credential을 읽지 않으며 `databaseMutationExecuted:false`, `requiresApproval:true`를 유지한다.
+- checksum만 다시 계산한 임의 순서 변경도 현재 repo의 정본 source 전체 재구성과 다르면 거부한다.
+- 생성은 candidate 파일에 수행해 추적된 승인 묶음을 자동으로 덮어쓰지 않는다. candidate diff를 사람이 검토한 뒤 승인된 변경에만 명시적 `--force`로 추적 파일을 갱신한다.
+- 모든 단계는 앞 단계 성공 후에만 진행하며 staff GRANT는 fresh schema v2 ready evidence 검증 뒤에만 허용한다. 실패 시 다음 단계를 실행하지 않는다.
+- rollback은 staff GRANT 회수→휴면 verifier→preflight RPC 제거→제거 verifier 순서다. P1C schema 자체를 되돌려야 할 때도 이 rollback을 먼저 완료한다.
+- manifest 검증 성공은 production 적용 승인이 아니다. 실제 SQL 실행, Auth 계정·membership 준비, 쓰기 동결과 traffic open은 각각 사용자 승인과 별도 실행 증거가 필요하다.
+
 > Supabase는 pgcrypto가 `extensions`에 있고 search_path에 포함 → 마이그레이션 그대로 동작.
 > 적용 검증: anon 키로 `POST /rest/v1/rpc/result_get {"p_token":"0..0"}` → `200 null` = 적용됨.
 

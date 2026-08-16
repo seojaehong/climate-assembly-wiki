@@ -730,7 +730,9 @@ test('activation source status rejects tracked changes in an approval input', ()
   try {
     expect(ACTIVATION_APPROVAL_SOURCE_PATHS).toEqual(expect.arrayContaining([
       'automation/platform-activation-preflight.mjs',
+      'automation/platform-a2-activation-bundle.mjs',
       'automation/package-lock.json',
+      'evaluation/platform-a2-activation-bundle.json',
       'supabase/migrations',
       'supabase/rollbacks',
       'supabase/verify',

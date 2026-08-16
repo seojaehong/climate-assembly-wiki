@@ -20,6 +20,8 @@
     "plan:platform-implementations": "node platform-implementation-plan.mjs",
     "preflight:platform-activation": "node platform-activation-preflight.mjs",
     "verify:platform-activation": "node platform-activation-preflight.mjs --verify-evidence",
+    "plan:platform-a2-activation": "node platform-a2-activation-bundle.mjs",
+    "verify:platform-a2-activation": "node platform-a2-activation-bundle.mjs --verify",
     "verify:canvas-browser": "node verify-canvas-browser.mjs",
     "verify:platform-design-blueprint": "node verify-platform-design-blueprint.mjs",
     "bridge:transcript-ontology": "node transcript-ontology-fixture.mjs"

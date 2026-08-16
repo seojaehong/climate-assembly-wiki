@@ -11,6 +11,7 @@ const verificationDriver = readFileSync(new URL('../../supabase/verify/driver_pa
 const semanticRehearsal = readFileSync(new URL('../../supabase/verify/org_selection_test.sql', import.meta.url), 'utf8');
 const postApplyVerification = readFileSync(new URL('../../supabase/verify/org_selection_post_apply.sql', import.meta.url), 'utf8');
 const activationPreflightPostApply = readFileSync(new URL('../../supabase/verify/activation_preflight_post_apply.sql', import.meta.url), 'utf8');
+const activationPreflightPostRemove = readFileSync(new URL('../../supabase/verify/activation_preflight_post_remove.sql', import.meta.url), 'utf8');
 const testWorkflow = readFileSync(new URL('../../.github/workflows/test.yml', import.meta.url), 'utf8');
 
 function executableSql(source) {
@@ -159,6 +160,14 @@ describe('A2 organization selection migration draft', () => {
     expect(executableVerification).not.toMatch(/^\s*(?:grant|revoke)\s+/im);
     expect(testWorkflow).toContain('activation-preflight-unsafe-volatility.log');
     expect(testWorkflow).toContain('Unsafe activation preflight privilege unexpectedly passed verification');
+  });
+
+  it('verifies that rollback removed the activation preflight without mutating data', () => {
+    expect(activationPreflightPostRemove).toContain("to_regprocedure('climate_vote.platform_activation_preflight()') is not null");
+    expect(activationPreflightPostRemove).toContain("'activation_preflight_present', false");
+    expect(activationPreflightPostRemove).toContain("'database_mutation_executed', false");
+    expect(semanticRehearsal).toContain('\\i /tmp/activation_preflight_post_remove.sql');
+    expect(testWorkflow).toContain('activation_preflight_post_remove.sql');
   });
 
   it('provides a read-only post-apply verifier for dormant and activated staff grants', () => {

@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'automation/**'
+      - 'evaluation/platform-a2-activation-bundle.json'
       - 'public/workshop-graph/**'
       - '.github/workflows/test.yml'
       - '.gitignore'
@@ -29,6 +30,7 @@ on:
   pull_request:
     paths:
       - 'automation/**'
+      - 'evaluation/platform-a2-activation-bundle.json'
       - 'public/workshop-graph/**'
       - '.github/workflows/test.yml'
       - '.gitignore'
@@ -113,6 +115,7 @@ jobs:
           docker cp supabase/verify/org_selection_test.sql "${container}:/tmp/org_selection_test.sql"
           docker cp supabase/verify/org_selection_post_apply.sql "${container}:/tmp/org_selection_post_apply.sql"
           docker cp supabase/verify/activation_preflight_post_apply.sql "${container}:/tmp/activation_preflight_post_apply.sql"
+          docker cp supabase/verify/activation_preflight_post_remove.sql "${container}:/tmp/activation_preflight_post_remove.sql"
           docker cp supabase/rollbacks/platform_p1c_org_selection_BEFORE.sql "${container}:/tmp/platform_p1c_org_selection_BEFORE.sql"
           docker cp supabase/rollbacks/platform_p1c_org_selection_activation_BEFORE.sql "${container}:/tmp/platform_p1c_org_selection_activation_BEFORE.sql"
           docker cp supabase/rollbacks/platform_p1c_activation_preflight_BEFORE.sql "${container}:/tmp/platform_p1c_activation_preflight_BEFORE.sql"
