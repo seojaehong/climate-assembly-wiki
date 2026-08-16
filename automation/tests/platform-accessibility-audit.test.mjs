@@ -19,6 +19,7 @@ let outDir;
 let server;
 let baseUrl;
 const TEST_SOURCE_COMMIT = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+const BROWSER_TEST_TIMEOUT_MS = 60_000;
 
 const validPage = `<!doctype html>
   <html lang="ko"><head><title>접근성 테스트</title></head><body>
@@ -121,7 +122,7 @@ test('audits WCAG 2.2 AA and skip-link focus through a real browser', async () =
   expect(report.routes[0].incomplete).toEqual([]);
   expect(existsSync(reportPath)).toBe(true);
   expect(JSON.parse(readFileSync(reportPath, 'utf8'))).toEqual(report);
-}, 60_000);
+}, BROWSER_TEST_TIMEOUT_MS);
 
 test('waits for a fixture-backed production surface before auditing it', async () => {
   const report = await auditPlatformAccessibility({
@@ -152,7 +153,7 @@ test('waits for a fixture-backed production surface before auditing it', async (
     fixture: 'read-only-browser-fixture',
     readiness: { selector: 'main[data-ready="true"]', reached: true },
   });
-}, 60_000);
+}, BROWSER_TEST_TIMEOUT_MS);
 
 test('preserves actionable violation evidence for a failing route', async () => {
   const report = await auditPlatformAccessibility({
@@ -173,7 +174,7 @@ test('preserves actionable violation evidence for a failing route', async () => 
     expect.objectContaining({ id: 'label' }),
   ]));
   expect(report.routes[0].skipLink).toMatchObject({ focusMoved: false });
-});
+}, BROWSER_TEST_TIMEOUT_MS);
 
 test('fails an accessible error document when the route itself is unavailable', async () => {
   const report = await auditPlatformAccessibility({
@@ -186,7 +187,7 @@ test('fails an accessible error document when the route itself is unavailable', 
 
   expect(report.status).toBe('fail');
   expect(report.routes[0]).toMatchObject({ httpStatus: 404, passed: false, violations: [] });
-});
+}, BROWSER_TEST_TIMEOUT_MS);
 
 test('distinguishes passing checks from unaudited product surfaces', async () => {
   const report = await auditPlatformAccessibility({
@@ -203,7 +204,7 @@ test('distinguishes passing checks from unaudited product surfaces', async () =>
   expect(report.coverage.excluded).toEqual([
     { id: 'authenticated-platform', reason: 'fixture unavailable' },
   ]);
-});
+}, BROWSER_TEST_TIMEOUT_MS);
 
 test('does not mistake another same-page link for the expected skip link', async () => {
   const report = await auditPlatformAccessibility({
@@ -220,7 +221,7 @@ test('does not mistake another same-page link for the expected skip link', async
     target: 'main-content',
     focusMoved: false,
   });
-});
+}, BROWSER_TEST_TIMEOUT_MS);
 
 test('preserves axe incomplete evidence and fails the automated audit', async () => {
   const reportPath = join(outDir, 'incomplete.json');
@@ -247,7 +248,7 @@ test('preserves axe incomplete evidence and fails the automated audit', async ()
     expect.objectContaining({ profile: 'desktop', incomplete: [expect.objectContaining({ id: 'color-contrast' })] }),
     expect.objectContaining({ profile: 'mobile', incomplete: [expect.objectContaining({ id: 'color-contrast' })] }),
   ]);
-});
+}, BROWSER_TEST_TIMEOUT_MS);
 
 test('fails a mobile audit case when the document has horizontal overflow', async () => {
   const report = await auditPlatformAccessibility({
@@ -273,7 +274,7 @@ test('fails a mobile audit case when the document has horizontal overflow', asyn
     },
   });
   expect(report.routes[0].layout.documentWidth).toBeGreaterThan(360);
-});
+}, BROWSER_TEST_TIMEOUT_MS);
 
 test('fails a mobile audit case when the target content is compressed', async () => {
   const report = await auditPlatformAccessibility({
@@ -295,7 +296,7 @@ test('fails a mobile audit case when the target content is compressed', async ()
     },
   });
   expect(report.routes[0].layout.contentWidth).toBeLessThan(400);
-});
+}, BROWSER_TEST_TIMEOUT_MS);
 
 test('verifies keyboard scrolling without treating region content as document clipping', async () => {
   const report = await auditPlatformAccessibility({
@@ -324,7 +325,7 @@ test('verifies keyboard scrolling without treating region content as document cl
   ]);
   expect(report.routes[0].layout.clippedOutsideScrollRegions).toEqual([]);
   expect(report.routes[0].layout).toMatchObject({ rawHorizontalOverflow: false, horizontalOverflow: false });
-});
+}, BROWSER_TEST_TIMEOUT_MS);
 
 test('installs root dependencies without requiring an ignored lockfile', () => {
   const workflow = readFileSync(
