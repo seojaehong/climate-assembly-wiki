@@ -20,6 +20,11 @@ declare
   v_qual text;
   v_with_check text;
   v_expected_qual text;
+  v_function_spec record;
+  v_security_definer boolean;
+  v_volatility "char";
+  v_language name;
+  v_config text[];
 begin
   if to_regclass('climate_vote.org_context') is null then
     raise exception 'P1C verification failed: org_context is missing';
@@ -129,10 +134,35 @@ begin
     'climate_vote.auth_session_id()',
     'climate_vote.selected_org_for_request()',
     'climate_vote.my_orgs()',
-    'climate_vote.org_select(uuid)'
+    'climate_vote.org_select(uuid)',
+    'climate_vote.org_of_uid()'
   ] loop
     if to_regprocedure(v_function) is null then
       raise exception 'P1C verification failed: required function is missing';
+    end if;
+  end loop;
+
+  for v_function_spec in
+    select * from (values
+      ('climate_vote.request_org_context_token()', 's'::"char", 'plpgsql'::name, 'search_path=pg_catalog, climate_vote, extensions'),
+      ('climate_vote.auth_session_id()', 's'::"char", 'plpgsql'::name, 'search_path=pg_catalog, climate_vote'),
+      ('climate_vote.selected_org_for_request()', 's'::"char", 'sql'::name, 'search_path=pg_catalog, climate_vote, extensions'),
+      ('climate_vote.my_orgs()', 's'::"char", 'plpgsql'::name, 'search_path=pg_catalog, climate_vote'),
+      ('climate_vote.org_select(uuid)', 'v'::"char", 'plpgsql'::name, 'search_path=pg_catalog, climate_vote, extensions'),
+      ('climate_vote.org_of_uid()', 's'::"char", 'plpgsql'::name, 'search_path=pg_catalog, climate_vote')
+    ) as expected(signature, volatility, language_name, function_config)
+  loop
+    select p.prosecdef, p.provolatile, l.lanname, p.proconfig
+      into strict v_security_definer, v_volatility, v_language, v_config
+    from pg_proc p
+    join pg_language l on l.oid = p.prolang
+    where p.oid = to_regprocedure(v_function_spec.signature);
+
+    if not v_security_definer
+       or v_volatility <> v_function_spec.volatility
+       or v_language <> v_function_spec.language_name
+       or v_config <> array[v_function_spec.function_config] then
+      raise exception 'P1C verification failed: function execution contract is unsafe';
     end if;
   end loop;
 
@@ -141,8 +171,10 @@ begin
     raise exception 'P1C verification failed: schema usage state is unexpected';
   end if;
 
-  if not has_function_privilege('authenticated', 'climate_vote.my_orgs()', 'EXECUTE')
+  if not has_function_privilege('authenticated', 'climate_vote.org_of_uid()', 'EXECUTE')
+     or not has_function_privilege('authenticated', 'climate_vote.my_orgs()', 'EXECUTE')
      or not has_function_privilege('authenticated', 'climate_vote.org_select(uuid)', 'EXECUTE')
+     or has_function_privilege('anon', 'climate_vote.org_of_uid()', 'EXECUTE')
      or has_function_privilege('anon', 'climate_vote.my_orgs()', 'EXECUTE')
      or has_function_privilege('anon', 'climate_vote.org_select(uuid)', 'EXECUTE')
      or has_function_privilege('authenticated', 'climate_vote.request_org_context_token()', 'EXECUTE')

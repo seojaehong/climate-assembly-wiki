@@ -25,6 +25,8 @@ describe('A2 organization selection migration draft', () => {
     expect(migration).toContain("expires_at timestamptz not null default (now() + interval '12 hours')");
     expect(migration).toContain('and c.expires_at > current_timestamp');
     expect(migration).toContain('where c.expires_at <= clock_timestamp()');
+    expect(migration).toContain('climate_vote.org_of_uid()\nfrom public, anon;');
+    expect(migration).toContain('climate_vote.org_of_uid(),\n  climate_vote.my_orgs()');
   });
 
   it('returns only active memberships and rejects an unowned organization selection', () => {
@@ -56,6 +58,7 @@ describe('A2 organization selection migration draft', () => {
     expect(rollback).toContain("raise exception 'user belongs to multiple orgs — explicit org selection required (Phase 2 org_select)'");
     expect(rollback).toContain('drop table if exists climate_vote.org_context');
     expect(rollback).toContain('using (org_id in (select m.org_id from climate_vote.membership m');
+    expect(rollback).toContain('grant execute on function climate_vote.org_of_uid() to anon, authenticated;');
     expect(activationRollback).toContain('revoke select, insert, update, delete on');
     expect(activationRollback).toContain('revoke select, insert, update, delete on climate_vote.membership');
     expect(activationRollback).not.toContain('revoke usage on schema climate_vote');
@@ -75,6 +78,7 @@ describe('A2 organization selection migration draft', () => {
     expect(semanticRehearsal).toContain("P1C RLS did not isolate every staff table to the selected organization");
     expect(semanticRehearsal).toContain("P1C allowed an operator insert outside the selected organization");
     expect(semanticRehearsal).toContain("P1C allowed a facilitator insert");
+    expect(semanticRehearsal).toContain('P1C rollback did not restore legacy org_of_uid execution privileges');
     expect(semanticRehearsal).toContain('\\set expect_staff_grants on');
     expect(semanticRehearsal).toContain('\\i /tmp/platform_p1c_org_selection_activation_BEFORE.sql');
     expect(semanticRehearsal).toContain('\\set expect_staff_grants off');
@@ -93,6 +97,9 @@ describe('A2 organization selection migration draft', () => {
     expect(postApplyVerification).toContain("v_expected_qual := '(org_id=org_of_uid())'");
     expect(postApplyVerification).toContain('m.org_id=%I.org_id');
     expect(postApplyVerification).toContain('tenant policy definition is unsafe');
+    expect(postApplyVerification).toContain("('climate_vote.org_of_uid()', 's'::\"char\", 'plpgsql'::name");
+    expect(postApplyVerification).toContain('function execution contract is unsafe');
+    expect(postApplyVerification).toContain("has_function_privilege('anon', 'climate_vote.org_of_uid()', 'EXECUTE')");
     expect(postApplyVerification).toContain("has_schema_privilege('authenticated', 'climate_vote', 'USAGE')");
     expect(postApplyVerification).toContain('if v_expect_staff_grants');
     expect(postApplyVerification).toContain("has_table_privilege('authenticated', 'climate_vote.membership', 'SELECT')");
@@ -114,6 +121,8 @@ describe('A2 organization selection migration draft', () => {
     expect(testWorkflow).toContain('-v verify_function_bodies=on -f /tmp/driver_pass1.sql');
     expect(testWorkflow).toContain('alter policy assembly_tenant_read on climate_vote.assembly using (true)');
     expect(testWorkflow).toContain('grep -q "tenant policy definition is unsafe"');
+    expect(testWorkflow).toContain('alter function climate_vote.org_of_uid() security invoker');
+    expect(testWorkflow).toContain('grep -q "function execution contract is unsafe"');
     expect(testWorkflow).toContain('-f /tmp/org_selection_test.sql');
   });
 });

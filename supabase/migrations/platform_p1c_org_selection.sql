@@ -241,10 +241,15 @@ revoke execute on function
   climate_vote.auth_session_id(),
   climate_vote.selected_org_for_request(),
   climate_vote.my_orgs(),
-  climate_vote.org_select(uuid)
-from public;
+  climate_vote.org_select(uuid),
+  climate_vote.org_of_uid()
+from public, anon;
 
-grant execute on function climate_vote.my_orgs(), climate_vote.org_select(uuid) to authenticated;
+grant execute on function
+  climate_vote.org_of_uid(),
+  climate_vote.my_orgs(),
+  climate_vote.org_select(uuid)
+to authenticated;
 
 -- Activation grants remain intentionally disabled in this draft.
 -- grant usage on schema climate_vote to authenticated;

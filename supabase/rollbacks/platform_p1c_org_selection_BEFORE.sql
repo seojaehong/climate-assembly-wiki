@@ -27,6 +27,8 @@ begin
   return v_ids[1];
 end $fn$;
 
+grant execute on function climate_vote.org_of_uid() to anon, authenticated;
+
 create policy assembly_tenant_read on climate_vote.assembly for select to authenticated
   using (org_id in (select m.org_id from climate_vote.membership m where m.user_id = auth.uid() and m.status = 'active'));
 create policy session_tenant_read on climate_vote.session for select to authenticated

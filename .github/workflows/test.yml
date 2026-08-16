@@ -127,6 +127,18 @@ jobs:
 
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/platform_p1c_org_selection.sql >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "alter function climate_vote.org_of_uid() security invoker;"
+          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -v expect_staff_grants=off -f /tmp/org_selection_post_apply.sql \
+            >"$RUNNER_TEMP/p1c-unsafe-function.log" 2>&1; then
+            echo "Unsafe organization function unexpectedly passed verification" >&2
+            exit 1
+          fi
+          grep -q "function execution contract is unsafe" "$RUNNER_TEMP/p1c-unsafe-function.log"
+
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/platform_p1c_org_selection.sql >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/org_selection_test.sql
       - name: Cache Playwright browsers

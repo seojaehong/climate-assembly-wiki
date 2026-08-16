@@ -329,6 +329,10 @@ begin
      or has_table_privilege('authenticated', 'climate_vote.assembly', 'SELECT') then
     raise exception 'P1C rollback left staff table grants active';
   end if;
+  if not has_function_privilege('anon', 'climate_vote.org_of_uid()', 'EXECUTE')
+     or not has_function_privilege('authenticated', 'climate_vote.org_of_uid()', 'EXECUTE') then
+    raise exception 'P1C rollback did not restore legacy org_of_uid execution privileges';
+  end if;
 end $test$;
 
 do $test$

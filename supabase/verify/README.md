@@ -28,7 +28,7 @@ MSYS_NO_PATHCONV=1 docker exec pgverify psql -U postgres -d verify -v ON_ERROR_S
 # 별도 승인 staff GRANT 이후 = psql ... -v expect_staff_grants=on -f /tmp/org_selection_post_apply.sql
 ```
 
-`.github/workflows/test.yml`은 `supabase/**` 변경 시 임시 PostgreSQL 16에 같은 P1→P1C→P2·롤백 계약을 실행한다. 정상 정책 통과와 함께 `assembly_tenant_read` 정책을 `USING (true)`로 약화한 음성 케이스가 post-apply verifier에서 반드시 거부되는지 확인한다.
+`.github/workflows/test.yml`은 `supabase/**` 변경 시 임시 PostgreSQL 16에 같은 P1→P1C→P2·롤백 계약을 실행한다. 정상 정책 통과와 함께 `assembly_tenant_read` 정책을 `USING (true)`로 약화하거나 `org_of_uid()`를 `SECURITY INVOKER`로 바꾼 음성 케이스가 post-apply verifier에서 반드시 거부되는지 확인한다.
 
 ## 환경 조정 (Supabase 전용, 우리 SQL 버그 아님)
 롤 anon/authenticated/service_role · publication supabase_realtime · `auth.uid()` stub · pgcrypto in extensions + search_path · base 테이블 stub(session/votes/rounds/snapshots — 마이그레이션 폴더 밖).
