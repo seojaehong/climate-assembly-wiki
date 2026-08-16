@@ -115,7 +115,13 @@ npm.cmd run verify:platform-access-provisioning -- $provisioningPlan --source $a
 - verifier는 checksum뿐 아니라 원 접근 계획에서 전체 계획을 다시 생성해 순서·조직·이메일·사용자·역할·실행 정책이 달라진 자체 재봉인 파일도 거부한다.
 - 입력·출력 경로가 저장소 내부이거나 symlink/junction을 통해 저장소를 가리키면 실행 전에 거부한다. 기존 출력은 명시적 `--force` 없이는 덮어쓰지 않는다.
 - stdout과 오류에는 이메일·사용자 UUID·credential·파일 경로를 싣지 않는다. 계획 파일 자체는 민감한 운영 자료이므로 승인자 외에는 전달하지 않는다.
-- 이 명령은 Supabase·Auth·메일·환경 credential에 접근하지 않고 `databaseMutationExecuted:false`를 유지한다. 실제 executor는 아직 없으며 별도 사용자 승인, 작업 전 현재 상태 lookup, 동일 operation ID 멱등 처리, 작업별 감사 receipt, 부분 성공 reconciliation을 구현·검증하기 전에는 실행하지 않는다.
+- 이 명령은 Supabase·Auth·메일·환경 credential에 접근하지 않고 `databaseMutationExecuted:false`를 유지한다.
+
+Executor core는 exact plan 검증 뒤 15분 이내 HMAC 승인(외부 보관 key + key ID + canonical Auth reviewer), stable lookup, 순차 apply, 응답 유실 뒤 조회 reconciliation, 첫 실패 중단, 비식별 receipt 영구화를 강제한다. 자동 mutation retry는 하지 않으며 receipt에는 operation ID·상태·count만 남기고 이메일·사용자 UUID를 넣지 않는다. Receipt 전체도 같은 trusted key와 key ID로 HMAC 결속하고 verifier가 상태별 count·시간 순서·operation ID 중복·plan checksum을 다시 확인한다.
+
+승인 key는 GitHub secret만을 유일한 보관처로 사용하지 않는다. 불변 key ID별로 별도 보안 저장소에 백업하고, 회전할 때는 신규 승인 발급을 멈춘 뒤 진행 중 15분 창과 receipt 검증을 끝내며, 과거 key는 승인된 보존기간 동안 read-only로 유지한다. 폐기에는 영향받는 approval ID·receipt run ID와 승인자를 별도 감사 기록으로 남긴다.
+
+다만 production Supabase/Auth adapter와 CLI 실행 경로는 아직 연결하지 않았다. 특히 현재 `invitation` table에는 `(org_id,email,role)` unique 또는 별도 operation ledger가 없어 응답 유실 뒤 중복 초대·메일을 서버가 확실히 막을 수 없다. 이 멱등 저장 계약, 초대 메일 provider, receipt의 외부 append-only 저장소를 별도 승인·검증하기 전에는 executor core에 production adapter를 주입하거나 계획을 수동 SQL/API 작업 목록으로 사용하지 않는다.
 
 ## 3. 프론트 배포
 - `/platform/*`·`/r/*` 라우트는 정적 빌드 + 클라이언트 라우팅. **딥링크 새로고침** 위해 Cloudflare Pages SPA fallback rewrite 필요:

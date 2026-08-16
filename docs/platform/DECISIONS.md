@@ -11,7 +11,7 @@
 - `platform_p1c_org_selection.sql` 초안은 다중 소속 사용자의 명시적 기관 선택을 추가했다. 탭별 opaque 토큰을 `sessionStorage`와 `x-platform-org-context` 요청 헤더로 전달하고, 서버가 `auth.uid()`·JWT `session_id`·활성 membership·활성 org를 매 요청 다시 대조한다. 토큰 원문은 DB에 저장하지 않고 SHA-256만 저장한다.
 - `org_select(p_org)`는 기관 ID를 받는 유일한 예외 RPC다. 도메인 데이터를 읽거나 쓰는 RPC는 계속 org ID를 인자로 받지 않으며 `org_of_uid()`에서 검증된 선택을 파생한다.
 - 초안과 rollback·UI·정적 계약 테스트만 승인되었다. 실제 Supabase 적용, backfill, NOT NULL, staff table GRANT, Auth 계정·membership 생성은 별도 승인 전까지 금지한다.
-- A3는 UI 접근 계획과 공용 schema를 쓰는 저장소 외부 dry-run provisioning plan까지만 허용한다. 안정 operation ID와 복구 정책은 향후 executor의 승인 조건이며, 현재 plan을 직접 SQL/API 실행 목록으로 해석하지 않는다.
+- A3는 UI 접근 계획과 공용 schema를 쓰는 저장소 외부 dry-run provisioning plan 및 adapter-independent executor core까지만 허용한다. core는 HMAC 승인·안정 lookup·응답 유실 reconciliation·비식별 receipt를 강제하지만 production Supabase/Auth adapter는 invitation 멱등 저장 계약 승인 전까지 연결하지 않으며, 현재 plan을 직접 SQL/API 실행 목록으로 해석하지 않는다.
 - `org_of_token` 레거시 HQ 단일-org fallback → 2번째 org 생기는 순간 raise. **HQ 공유비밀→membership 전환이 Phase 2 선행조건**(플랜 §0-5 동일)
 - org_id 영구 nullable = 격리 구멍 → backfill 후 NOT NULL 전환 필수(병합 시)
 - RLS 정책 11종은 `revoke all` 때문에 휴면 — 활성화 GRANT(+Supabase Auth)까지 무동작(의도적)

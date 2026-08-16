@@ -461,9 +461,10 @@ npm.cmd run verify:platform-access-provisioning -- $plan --source $source
 ```
 
 - shared contract, exact source byte hash, canonical checksum과 전체 재생성 비교를 모두 통과해야 한다.
-- 출력은 stable operation ID와 lookup-before-mutation·stop-on-failure·audit receipt·partial-success reconciliation 요구만 기록하는 dry-run이다.
+- 출력은 stable operation ID와 lookup-before-mutation·stop-on-failure·audit receipt·partial-success reconciliation·15분 HMAC 승인 요구를 기록하는 dry-run이다.
 - 이 도구는 DB·Auth·메일·credential을 읽거나 변경하지 않는다. 계획 파일에는 이메일·Auth UUID가 있으므로 저장소, `evaluation/`, `public/`, 브라우저 저장소와 일반 로그에 복사하지 않는다.
-- 실제 초대·membership 추가 executor는 미구현이다. 별도 승인과 멱등성·감사 receipt·부분 성공 복구의 실행 테스트 전에는 사람이 plan을 수동 SQL/API 작업 목록으로 사용해서도 안 된다.
+- Executor core는 승인 integrity·stable lookup·순차 apply·response-loss reconciliation·첫 실패 중단·비식별 receipt persistence를 실행 테스트한다. Receipt도 같은 trusted key로 서명하며 verifier가 HMAC·plan checksum·시간·상태별 count를 fail-closed 확인한다. 승인 key는 GitHub secret만을 유일한 보관처로 삼지 않고 key ID별 외부 보안 저장소에 보존해야 한다.
+- production Supabase/Auth adapter와 CLI는 미연결이다. 특히 invitation의 안정 idempotency key/ledger, 메일 provider, append-only receipt 저장소가 별도 승인·검증되기 전에는 core를 production에 연결하거나 사람이 plan을 수동 SQL/API 작업 목록으로 사용해서도 안 된다.
 
 ## A5 자동 Chromium 접근성 증거
 
