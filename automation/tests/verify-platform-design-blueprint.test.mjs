@@ -159,6 +159,13 @@ describe('design blueprint browser CI contract', () => {
     expect(verifier).toContain('verifyPlatformAccessPlan({ browser, origin, timeoutMs })');
     expect(verifier).toContain("getByRole('heading', { name: '승인 전 접근 계획' })");
     expect(verifier).toContain("getByRole('alert').filter({ hasText: '같은 이메일과 역할의 초대가 중복되었습니다.' })");
+    expect(verifier).toContain("getByLabel('접근 계획 JSON 불러오기')");
+    expect(verifier).toContain("hasText: '현재 기관과 다른 접근 계획입니다.'");
+    expect(verifier).toContain('oversizedImportRejected');
+    expect(verifier).toContain('staleImportIgnored');
+    expect(verifier).toContain('importedPlanRestored');
+    expect(verifier).toContain('importedEditInvalidated');
+    expect(verifier).toContain('importedDraftClearedOnReload');
     expect(verifier).toContain('localDraftClearedOnReload');
     expect(verifier).toContain("getByLabel('HQ 인증 토큰').count() === 0");
     expect(verifier).toContain("getByLabel('공개 결과 제목').count() === 0");
@@ -166,6 +173,6 @@ describe('design blueprint browser CI contract', () => {
     expect(verifier).toContain("sessionStorage.getItem('climate_vote_hq_gate_actor') === null");
     expect(verifier).toContain("pathname.replace(/\\/+$/, '') === '/platform'");
     expect(verifier).toContain('logoutRequests.length !== 1');
-    expect(verifier).toContain('schemaVersion: 9');
+    expect(verifier).toContain('schemaVersion: 10');
   });
 });

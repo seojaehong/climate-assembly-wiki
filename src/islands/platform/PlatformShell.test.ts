@@ -59,6 +59,7 @@ describe('PlatformShell accessibility', () => {
     expect(html).toContain('기관 역할·초대 계획');
     expect(html).toContain('이메일 초대 계획');
     expect(html).toContain('기존 Auth 계정 역할 계획');
+    expect(html).toContain('접근 계획 JSON 불러오기');
     expect(html).toContain('서버로 전송하지 않습니다');
     expect(html).toContain('disabled=""');
   });

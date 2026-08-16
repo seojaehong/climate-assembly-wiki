@@ -727,10 +727,88 @@ export async function verifyPlatformAccessPlan({ browser, origin, timeoutMs = 60
       && await page.getByRole('list', { name: '추가한 이메일 초대' }).count() === 0
       && await page.getByRole('list', { name: '추가한 기존 계정 역할' }).count() === 0;
 
+    const importInput = page.getByLabel('접근 계획 JSON 불러오기');
+    await importInput.setInputFiles({
+      name: 'wrong-organization-access-plan.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({
+        ...downloadJson,
+        organization: { id: '00000000-0000-4000-8000-000000000099', label: '다른 기관' },
+      }), 'utf8'),
+    });
+    const wrongOrganizationAlert = page.getByRole('alert').filter({ hasText: '현재 기관과 다른 접근 계획입니다.' });
+    await wrongOrganizationAlert.waitFor({ timeout: timeoutMs });
+    const wrongOrganizationRejected = await wrongOrganizationAlert.isVisible()
+      && await page.getByRole('list', { name: '추가한 이메일 초대' }).count() === 0
+      && await page.getByRole('list', { name: '추가한 기존 계정 역할' }).count() === 0;
+
+    await page.getByLabel('초대 이메일').fill('preserve@example.invalid');
+    await importInput.setInputFiles({
+      name: 'oversized-access-plan.json',
+      mimeType: 'application/json',
+      buffer: Buffer.alloc(256 * 1024 + 1, 0x78),
+    });
+    const invalidImportAlert = page.getByRole('alert').filter({ hasText: '접근 계획 JSON 형식 또는 내용이 올바르지 않습니다.' });
+    await invalidImportAlert.waitFor({ timeout: timeoutMs });
+    const oversizedImportRejected = await invalidImportAlert.isVisible()
+      && await page.getByLabel('초대 이메일').inputValue() === 'preserve@example.invalid'
+      && await page.getByRole('list', { name: '추가한 이메일 초대' }).count() === 0
+      && await page.getByRole('list', { name: '추가한 기존 계정 역할' }).count() === 0;
+    await page.getByLabel('초대 이메일').fill('');
+
+    await page.evaluate(() => {
+      const originalText = File.prototype.text;
+      File.prototype.text = async function delayedAccessPlanText() {
+        if (this.name === 'slow-access-plan.json') {
+          await new Promise((resolveDelay) => window.setTimeout(resolveDelay, 150));
+        }
+        return originalText.call(this);
+      };
+    });
+    await importInput.setInputFiles({
+      name: 'slow-access-plan.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(downloadJson), 'utf8'),
+    });
+    await page.getByLabel('초대 이메일').fill('latest@example.invalid');
+    await page.waitForTimeout(250);
+    const staleImportIgnored = await page.getByLabel('초대 이메일').inputValue() === 'latest@example.invalid'
+      && await page.getByRole('heading', { name: '승인 전 접근 계획' }).count() === 0
+      && await page.getByRole('list', { name: '추가한 이메일 초대' }).count() === 0
+      && await page.getByRole('list', { name: '추가한 기존 계정 역할' }).count() === 0;
+    await page.getByLabel('초대 이메일').fill('');
+
+    await importInput.setInputFiles({
+      name: filename,
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(downloadJson), 'utf8'),
+    });
+    await page.getByRole('status').filter({ hasText: '접근 계획 JSON을 다시 검증해 불러왔습니다.' }).waitFor({ timeout: timeoutMs });
+    const importedPlanRestored = await page.getByRole('heading', { name: '승인 전 접근 계획' }).isVisible()
+      && await page.getByRole('list', { name: '추가한 이메일 초대' }).getByRole('listitem').filter({ hasText: 'staff@example.invalid · 기관 관리자' }).count() === 1
+      && await page.getByRole('list', { name: '추가한 기존 계정 역할' }).getByRole('listitem').filter({ hasText: `${FIXTURE_IDS.user} · 본부` }).count() === 1
+      && !await page.getByRole('button', { name: '검증된 JSON 다운로드', exact: true }).isDisabled();
+    await page.getByLabel('초대 이메일').fill('changed@example.invalid');
+    const importedEditInvalidated = await page.getByRole('heading', { name: '승인 전 접근 계획' }).count() === 0
+      && await page.getByRole('button', { name: '검증된 JSON 다운로드', exact: true }).isDisabled();
+
+    await page.goto(new URL(PLATFORM_ENTRY_ROUTE, origin).toString(), { waitUntil: 'domcontentloaded', timeout: timeoutMs });
+    await page.getByRole('button', { name: '접근 관리', exact: true }).click();
+    await page.waitForURL((url) => url.pathname === ACCESS_PLAN_ROUTE, { timeout: timeoutMs });
+    await page.getByRole('heading', { name: '기관 역할·초대 계획' }).waitFor({ timeout: timeoutMs });
+    const importedDraftClearedOnReload = await page.getByRole('list', { name: '추가한 이메일 초대' }).count() === 0
+      && await page.getByRole('list', { name: '추가한 기존 계정 역할' }).count() === 0;
+
     if (!invalidInputRejected) throw new Error('Access plan did not reject an invalid invitation email');
     if (!duplicateRejected) throw new Error('Access plan did not reject a duplicate invitation');
     if (!previewReady) throw new Error('Access plan preview did not expose the approval boundary');
     if (!editInvalidated) throw new Error('Editing did not invalidate the access plan preview');
+    if (!wrongOrganizationRejected) throw new Error('Access plan import accepted a different organization');
+    if (!oversizedImportRejected) throw new Error('Access plan import accepted an oversized file');
+    if (!staleImportIgnored) throw new Error('A stale access plan import replaced newer edits');
+    if (!importedPlanRestored) throw new Error('Access plan import did not restore the validated plan');
+    if (!importedEditInvalidated) throw new Error('Editing did not invalidate the imported access plan');
+    if (!importedDraftClearedOnReload) throw new Error('Imported access plan persisted local draft state after reload');
     if (filename !== `내-기관_${FIXTURE_IDS.org}_access-plan.json`) throw new Error('Access plan filename is invalid');
     if (storageBeforeReload.local.length !== 1
       || storageBeforeReload.local[0] !== 'sb-pleyuknjnprsckssxvrh-auth-token'
@@ -761,6 +839,12 @@ export async function verifyPlatformAccessPlan({ browser, origin, timeoutMs = 60
       },
       browserStorageKeys: storageBeforeReload,
       localDraftClearedOnReload,
+      wrongOrganizationRejected,
+      oversizedImportRejected,
+      staleImportIgnored,
+      importedPlanRestored,
+      importedEditInvalidated,
+      importedDraftClearedOnReload,
       browserPageErrorCount: browserErrors.length,
       fixtureFailureCount: fixtureFailures.length,
       databaseMutationAttemptCount: mutationAttempts.length,
@@ -973,7 +1057,7 @@ export async function verifyPlatformDesignBlueprint({
     const publishLock = await verifyPublishConsoleLock({ browser, origin, timeoutMs });
 
     const report = {
-      schemaVersion: 9,
+      schemaVersion: 10,
       generatedAt: new Date().toISOString(),
       baseUrl: origin.origin,
       path: DESIGN_BLUEPRINT_ROUTE,

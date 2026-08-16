@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  ACCESS_PLAN_IMPORT_BYTES,
   STAFF_ROLES,
   accessPlanFilename,
   buildOrganizationAccessPlan,
+  parseOrganizationAccessPlanImport,
   type InvitationDraft,
   type MembershipDraft,
   type OrganizationAccessPlan,
@@ -84,14 +86,22 @@ export default function AccessConsole({ organization }: { organization: Organiza
   const [plan, setPlan] = useState<OrganizationAccessPlan | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [noticeIsError, setNoticeIsError] = useState(false);
+  const [importBusy, setImportBusy] = useState(false);
+  const importGeneration = useRef(0);
+
+  useEffect(() => () => { importGeneration.current += 1; }, []);
 
   const invalidate = () => {
+    importGeneration.current += 1;
+    setImportBusy(false);
     setPlan(null);
     setNotice(null);
     setNoticeIsError(false);
   };
 
   const buildPlan = () => {
+    importGeneration.current += 1;
+    setImportBusy(false);
     const result = buildOrganizationAccessPlan({ organization, invitations, memberships });
     if (!result.ok) {
       setPlan(null);
@@ -104,8 +114,45 @@ export default function AccessConsole({ organization }: { organization: Organiza
     setNoticeIsError(false);
   };
 
+  const importPlan = async (file: File) => {
+    const generation = importGeneration.current + 1;
+    importGeneration.current = generation;
+    setImportBusy(true);
+    try {
+      if (file.size > ACCESS_PLAN_IMPORT_BYTES) {
+        console.error('Failed to import organization access plan: file exceeds the safe size limit');
+        setNotice('접근 계획 JSON 형식 또는 내용이 올바르지 않습니다.');
+        setNoticeIsError(true);
+        return;
+      }
+      const content = await file.text();
+      if (importGeneration.current !== generation) return;
+      const imported = parseOrganizationAccessPlanImport(content, organization);
+      if (!imported.ok) {
+        console.error('Failed to import organization access plan: validation rejected the file');
+        setNotice(imported.error);
+        setNoticeIsError(true);
+        return;
+      }
+      setInvitation({ email: '', role: 'operator' });
+      setMembership({ userId: '', role: 'operator' });
+      setInvitations([...imported.plan.invitations]);
+      setMemberships([...imported.plan.memberships]);
+      setPlan(imported.plan);
+      setNotice('접근 계획 JSON을 다시 검증해 불러왔습니다. 실제 적용 전 별도 승인이 필요합니다.');
+      setNoticeIsError(false);
+    } catch (error: unknown) {
+      if (importGeneration.current !== generation) return;
+      console.error('Failed to import organization access plan', error);
+      setNotice('접근 계획 파일을 읽지 못했습니다. 다시 시도하세요.');
+      setNoticeIsError(true);
+    } finally {
+      if (importGeneration.current === generation) setImportBusy(false);
+    }
+  };
+
   return (
-    <div>
+    <div aria-busy={importBusy}>
       <div style={{ fontFamily: 'monospace', fontSize: 12, letterSpacing: '.14em', color: TEAL, textTransform: 'uppercase', marginBottom: 8 }}>기관 · 접근 관리</div>
       <h2 style={{ color: NAVY, margin: '0 0 6px' }}>기관 역할·초대 계획</h2>
       <p style={{ color: MUTED, margin: '0 0 18px' }}>현재 기관: {organization?.label ?? '기관 미확인'}. 입력은 브라우저 메모리에만 두며 서버로 전송하지 않습니다.</p>
@@ -137,13 +184,27 @@ export default function AccessConsole({ organization }: { organization: Organiza
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+        <label style={{ display: 'grid', gap: 4, color: NAVY, fontWeight: 700 }}>
+          접근 계획 JSON 불러오기
+          <input
+            type="file"
+            accept="application/json,.json"
+            disabled={importBusy}
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              event.currentTarget.value = '';
+              if (file) void importPlan(file);
+            }}
+            style={{ color: MUTED, minHeight: 44, maxWidth: 320 }}
+          />
+        </label>
         <button type="button" onClick={buildPlan} style={{ minHeight: 44, border: `2px solid ${NAVY}`, borderRadius: 8, padding: '8px 14px', background: NAVY, color: '#fff', fontWeight: 800 }}>계획 검증</button>
-        <button type="button" disabled={!plan} onClick={() => {
+        <button type="button" disabled={!plan || importBusy} onClick={() => {
           if (!plan) return;
           const result = completeAccessPlanDownload(plan, downloadPlan);
           setNotice(result.message);
           setNoticeIsError(!result.ok);
-        }} style={{ minHeight: 44, border: `2px solid ${TEAL}`, borderRadius: 8, padding: '8px 14px', background: plan ? '#fff' : '#E8EEF2', color: plan ? TEAL : MUTED, fontWeight: 800 }}>검증된 JSON 다운로드</button>
+        }} style={{ minHeight: 44, border: `2px solid ${TEAL}`, borderRadius: 8, padding: '8px 14px', background: plan && !importBusy ? '#fff' : '#E8EEF2', color: plan && !importBusy ? TEAL : MUTED, fontWeight: 800 }}>검증된 JSON 다운로드</button>
       </div>
       {notice ? <p role={noticeIsError ? 'alert' : 'status'} aria-live={noticeIsError ? 'assertive' : 'polite'} style={{ color: noticeIsError ? RED : TEAL, fontWeight: 700 }}>{notice}</p> : null}
       <AccessPlanSummary plan={plan} />

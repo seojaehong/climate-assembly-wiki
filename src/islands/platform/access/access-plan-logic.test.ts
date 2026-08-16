@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { completeAccessPlanDownload } from './AccessConsole';
-import { accessPlanFilename, buildOrganizationAccessPlan } from './access-plan-logic';
+import { accessPlanFilename, buildOrganizationAccessPlan, parseOrganizationAccessPlanImport } from './access-plan-logic';
 
 const organization = { id: '11111111-1111-4111-8111-111111111111', label: '기후 시민회의' };
 
@@ -71,5 +71,39 @@ describe('completeAccessPlanDownload', () => {
     expect(completeAccessPlanDownload(result.plan, () => { throw error; })).toEqual({ ok: false, message: '접근 계획을 다운로드하지 못했습니다. 다시 시도하세요.' });
     expect(consoleError).toHaveBeenCalledWith('Failed to download organization access plan', error);
     consoleError.mockRestore();
+  });
+});
+
+describe('parseOrganizationAccessPlanImport', () => {
+  const built = buildOrganizationAccessPlan({
+    organization,
+    invitations: [{ email: 'staff@example.com', role: 'org_admin' }],
+    memberships: [{ userId: '22222222-2222-4222-8222-222222222222', role: 'hq' }],
+  });
+  if (!built.ok) throw new Error(built.error);
+
+  it('현재 기관의 canonical approval plan만 다시 불러온다', () => {
+    expect(parseOrganizationAccessPlanImport(JSON.stringify(built.plan), organization)).toEqual({
+      ok: true,
+      plan: built.plan,
+      error: null,
+    });
+  });
+
+  it('다른 기관과 mutation 경계 변경을 거부한다', () => {
+    expect(parseOrganizationAccessPlanImport(JSON.stringify(built.plan), {
+      id: '33333333-3333-4333-8333-333333333333',
+      label: '다른 기관',
+    })).toEqual({ ok: false, plan: null, error: '현재 기관과 다른 접근 계획입니다.' });
+    expect(parseOrganizationAccessPlanImport(JSON.stringify({ ...built.plan, invitationsSent: true }), organization).ok).toBe(false);
+  });
+
+  it('추가 필드와 비canonical 항목 및 malformed JSON을 fail-closed 처리한다', () => {
+    expect(parseOrganizationAccessPlanImport(JSON.stringify({ ...built.plan, internalNote: 'do not import' }), organization).ok).toBe(false);
+    expect(parseOrganizationAccessPlanImport(JSON.stringify({
+      ...built.plan,
+      invitations: [{ email: 'STAFF@example.com', role: 'org_admin' }],
+    }), organization).ok).toBe(false);
+    expect(parseOrganizationAccessPlanImport('{"schemaVersion":', organization).ok).toBe(false);
   });
 });

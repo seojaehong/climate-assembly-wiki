@@ -57,6 +57,8 @@ grant select on climate_vote.assembly, climate_vote.session, climate_vote.discus
 
 - 허용 역할은 migration 정본과 같은 `org_admin`, `operator`, `hq`, `facilitator`다.
 - 파일의 canonical 기관 UUID가 승인 대상 기관과 같은지, 이메일·사용자 UUID·중복 역할이 유효한지 다시 확인한다.
+- 내려받은 파일은 같은 기관 접근 화면의 `접근 계획 JSON 불러오기`로 다시 열 수 있다. 현재 기관 ID·표시명, exact schema, 허용 필드·역할, canonical 이메일·UUID, 모든 dry-run 경계를 다시 검증한 뒤에만 편집 초안과 미리보기를 복원한다.
+- 다른 기관·변조·알 수 없는 필드·256KiB 초과 파일은 기존 초안을 바꾸지 않고 거부한다. 파일 읽기 중 사용자가 편집하거나 화면을 벗어나면 늦게 끝난 import도 폐기한다.
 - `dryRun:true`, `authAccountsCreated:false`, `invitationsSent:false`, `databaseMutationExecuted:false`, `requiresApproval:true`가 하나라도 다르면 적용 자료로 사용하지 않는다.
 - 파일에는 이메일과 Auth 사용자 UUID가 포함되므로 승인 담당자에게만 전달하고 공개 저장소·브라우저 저장소에 보관하지 않는다.
 - 이 파일은 실행 명령이 아니다. 실제 Auth 계정 생성, invitation/membership 추가, 메일 발송, RLS/GRANT 변경은 별도 사용자 승인과 감사 가능한 서버 작업으로 수행한다.
