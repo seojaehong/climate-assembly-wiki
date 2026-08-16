@@ -10,6 +10,7 @@ const activationPreflightRollback = readFileSync(new URL('../../supabase/rollbac
 const verificationDriver = readFileSync(new URL('../../supabase/verify/driver_pass1.sql', import.meta.url), 'utf8');
 const semanticRehearsal = readFileSync(new URL('../../supabase/verify/org_selection_test.sql', import.meta.url), 'utf8');
 const postApplyVerification = readFileSync(new URL('../../supabase/verify/org_selection_post_apply.sql', import.meta.url), 'utf8');
+const activationPreflightPostApply = readFileSync(new URL('../../supabase/verify/activation_preflight_post_apply.sql', import.meta.url), 'utf8');
 const testWorkflow = readFileSync(new URL('../../.github/workflows/test.yml', import.meta.url), 'utf8');
 
 function executableSql(source) {
@@ -135,6 +136,29 @@ describe('A2 organization selection migration draft', () => {
     expect(activationPreflight).toMatch(/language plpgsql\s+stable\s+security definer/i);
     expect(activationPreflight).toContain('statement_timestamp()');
     expect(activationPreflight).not.toContain('clock_timestamp()');
+  });
+
+  it('provides a read-only post-apply verifier for the activation preflight', () => {
+    expect(semanticRehearsal).toContain('\\i /tmp/activation_preflight_post_apply.sql');
+    expect(testWorkflow).toContain('activation_preflight_post_apply.sql');
+    expect(activationPreflightPostApply).toContain("p.provolatile");
+    expect(activationPreflightPostApply).toContain('pg_get_userbyid(p.proowner)');
+    expect(activationPreflightPostApply).toContain("'search_path=pg_catalog, climate_vote, auth' = any(v_config)");
+    expect(activationPreflightPostApply).toContain("has_function_privilege('service_role'");
+    expect(activationPreflightPostApply).toContain('set role service_role;');
+    expect(activationPreflightPostApply).toContain("v_report ->> 'readConsistency' <> 'single_statement'");
+    expect(activationPreflightPostApply).toContain("jsonb_path_exists(v_report, '$.**.org_id')");
+    expect(activationPreflightPostApply).toContain("v_summary_value !~ '^\\d+$'");
+    expect(activationPreflightPostApply).toContain('=== ACTIVATION PREFLIGHT POST-APPLY VERIFICATION PASSED ===');
+
+    const executableVerification = executableSql(activationPreflightPostApply);
+    expect(executableVerification).not.toMatch(/\binsert\s+into\b/i);
+    expect(executableVerification).not.toMatch(/\bupdate\s+climate_vote\b/i);
+    expect(executableVerification).not.toMatch(/\bdelete\s+from\b/i);
+    expect(executableVerification).not.toMatch(/\balter\s+table\b/i);
+    expect(executableVerification).not.toMatch(/^\s*(?:grant|revoke)\s+/im);
+    expect(testWorkflow).toContain('activation-preflight-unsafe-volatility.log');
+    expect(testWorkflow).toContain('Unsafe activation preflight privilege unexpectedly passed verification');
   });
 
   it('provides a read-only post-apply verifier for dormant and activated staff grants', () => {

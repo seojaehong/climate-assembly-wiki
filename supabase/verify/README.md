@@ -9,6 +9,7 @@
 - **negative** (`neg_test`): 무효 join_code 거부 · **타 세션 주제 접근 거부(격리 불변식)** · org_of_code 정확 파생(t) · 잠금 가드(final submission에 item 삽입 차단).
 - **P1C 기관 선택** (`org_selection_test.sql`): 다중 membership에서 미선택 거부 → `org_select` token 발급 → Auth user·JWT session·header token 결속 → 기본 chain에 포함되지 않는 service-role 전용 count-only preflight·activation 초안 적용 → preflight의 blocker/ready·Auth·위계·`STABLE` 고정 snapshot·권한·rollback 실행 검증 → assembly/session/topic/submission/ballot 5개 staff table의 선택 org 단일 노출 → operator의 선택 org 내부 쓰기와 교차 org 차단·facilitator 쓰기 차단 → session/user/token 상충 및 만료 token 차단 → 다음 선택 시 만료 context 정리 → activation GRANT 회수 → read-only 휴면 검증 → preflight·schema rollback 후 기존 다중 org 거부·membership-wide 휴면 policy 복원.
 - **P1C 적용 후 읽기 전용 검증** (`org_selection_post_apply.sql`): migration 직후 staff GRANT 휴면 상태(`expect_staff_grants=off`)와 별도 승인 GRANT 이후 활성 상태(`on`)에서 테이블·제약·인덱스·RLS·정책 역할·본문·함수·권한을 fail-closed 확인한다. SQL은 DB 객체나 데이터를 변경하지 않는다.
+- **A2 preflight 적용 후 읽기 전용 검증** (`activation_preflight_post_apply.sql`): 함수의 `STABLE`·`SECURITY DEFINER`·고정 `search_path`·`row_security=off`, service-role 단독 실행 권한과 실제 count-only report envelope·표 순서·합계·blocker 일치를 확인한다. readiness가 `ready`인지와 무관하게 객체·응답 계약이 안전한지를 검증하며 DB 객체나 데이터를 변경하지 않는다.
 - **P1C 권한 원자성**: 임시로 activation 대상 테이블을 숨겨 중간 GRANT 실패를 만든 뒤 schema·membership·staff table 권한이 모두 없는지 확인한다. 활성 후에는 rollback 대상을 숨겨 중간 REVOKE를 실패시키고, 전체 활성 권한이 유지되는지 검증한 다음 정상 rollback을 실행한다.
 
 ## 발견·정정
@@ -27,6 +28,7 @@ MSYS_NO_PATHCONV=1 docker exec pgverify psql -U postgres -d verify -v ON_ERROR_S
 # P1C 계약 = org_selection_test.sql (rollback까지 포함하므로 별도 clean DB에서 실행)
 # P1C 적용 직후 = psql ... -v expect_staff_grants=off -f /tmp/org_selection_post_apply.sql
 # 별도 승인 staff GRANT 이후 = psql ... -v expect_staff_grants=on -f /tmp/org_selection_post_apply.sql
+# A2 preflight 초안 적용 직후 = psql ... -f /tmp/activation_preflight_post_apply.sql
 ```
 
 `.github/workflows/test.yml`은 `supabase/**` 변경 시 임시 PostgreSQL 16에 같은 P1→P1C→P2·롤백 계약을 실행한다. 정상 정책 통과와 함께 `org_context` 기본 수명을 30일로 늘리거나, `assembly_tenant_read` 정책을 `USING (true)`로 약화하거나, `org_of_uid()`를 `SECURITY INVOKER`로 바꾼 음성 케이스가 post-apply verifier에서 반드시 거부되는지 확인한다.

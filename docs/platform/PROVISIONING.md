@@ -17,6 +17,8 @@
 
 `platform_p1c_activation_preflight.sql`도 기본 migration chain에 포함되지 않는 **별도 읽기 전용 초안**이다. P1·P1C·P2 스키마가 모두 있는 상태에서만 적용한다. 적용하면 `service_role`만 실행할 수 있는 `platform_activation_preflight()`가 추가되며 원시 행이 아닌 비식별 count/blocker만 한 SQL snapshot에서 반환한다. 이 함수 초안의 production 적용도 별도 DB 승인 전에는 수행하지 않는다.
 
+별도 승인으로 초안을 적용한 직후에는 `psql ... -f supabase/verify/activation_preflight_post_apply.sql`을 실행한다. 이 읽기 전용 verifier는 함수 volatility·보안 속성·고정 설정·service-role 단독 권한과 실제 report의 exact envelope·12개 표 순서·합계·blocker·비식별 경계를 확인한다. verifier 통과는 함수 계약 증거일 뿐 readiness 또는 권한 활성화 승인이 아니다.
+
 ### 1-1. A1·A2 활성화 전 읽기 전용 점검
 
 `platform_p1b_backfill.sql` 또는 staff용 GRANT를 실행하기 전에 현재 데이터 준비도를 비식별 집계로 확인한다.

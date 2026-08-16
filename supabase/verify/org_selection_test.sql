@@ -2,6 +2,7 @@
 
 -- Semantic rehearsal for the draft P1C organization selection migration.
 \i /tmp/platform_p1c_activation_preflight.sql
+\i /tmp/activation_preflight_post_apply.sql
 
 do $test$
 begin
