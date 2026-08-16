@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { BreadcrumbNav, clearPlatformSessionCredentials, completeAuthSessionLoad, completeOrganizationTreeLoad, completeSignOut, DataTreeNavigation, LoginCard, LogoutNotice, PLATFORM_ACCENT, PLATFORM_CONTROL_BORDER, runExclusivePlatformOperation, ViewTabs } from './PlatformShell';
+import { BreadcrumbNav, clearPlatformSessionCredentials, completeAuthSessionLoad, completeOrganizationSelection, completeOrganizationTreeLoad, completeSignOut, DataTreeNavigation, LoginCard, LogoutNotice, OrganizationSelector, PLATFORM_ACCENT, PLATFORM_CONTROL_BORDER, runExclusivePlatformOperation, ViewTabs } from './PlatformShell';
 import type { TreeNode } from './platform-nav-logic';
 import { HQ_ACTOR_KEY, HQ_TOKEN_KEY } from '../mod/hq-gate-logic';
 import ScopeOutlet from './ScopeViews';
@@ -10,6 +10,7 @@ import ReviewConsole, { completeReviewLoad, completeReviewMutation, loadReviewDa
 import type { IssueViewModel, ReviewItem } from './review/review-console-logic';
 import { resolveHitlStatus } from '../../lib/hitl-status';
 import type { IssueItemsResult, IssueListResult, PlatformResult } from '../../lib/platform';
+import { clearPlatformOrgContextToken, PLATFORM_ORG_CONTEXT_HEADER, PLATFORM_ORG_CONTEXT_KEY, platformOrgContextHeaders, readPlatformOrgContextToken, storePlatformOrgContextToken } from '../../lib/supabase';
 
 const tree: TreeNode = {
   kind: 'org',
@@ -469,10 +470,10 @@ describe('PlatformShell accessibility', () => {
     const navigations: Array<{ o?: string }> = [];
     let generation = 1;
     const oldTree: TreeNode = { kind: 'org', id: 'org-a', label: '이전 기관', children: [] };
-    const latestTree: TreeNode = { kind: 'org', id: 'org-b', label: '최신 기관', children: [] };
+    const latestTree: TreeNode = { kind: 'org', id: 'org-b', dataId: 'org-b', label: '최신 기관', children: [] };
 
     const first = completeOrganizationTreeLoad(
-      async () => ({ data: [{ id: 'org-a', name: '이전 기관', slug: 'old-org' }], notice: null }),
+      async () => ({ data: [{ id: 'org-a', name: '이전 기관', slug: 'old-org', selected: true }], notice: null }),
       oldTreeAction,
       () => generation === 1,
       'org-a',
@@ -485,7 +486,7 @@ describe('PlatformShell accessibility', () => {
 
     generation = 2;
     await completeOrganizationTreeLoad(
-      async () => ({ data: [{ id: 'org-b', name: '최신 기관', slug: 'latest-org' }], notice: null }),
+      async () => ({ data: [{ id: 'org-b', name: '최신 기관', slug: 'latest-org', selected: true }], notice: null }),
       async () => ({ data: latestTree, notice: null }),
       () => generation === 2,
       'org-a',
@@ -510,7 +511,7 @@ describe('PlatformShell accessibility', () => {
     const loadingChanges: boolean[] = [];
 
     await completeOrganizationTreeLoad(
-      async () => ({ data: [{ id: 'org-a', name: '기관', slug: 'org' }], notice: null }),
+      async () => ({ data: [{ id: 'org-a', name: '기관', slug: 'org', selected: true }], notice: null }),
       async () => ({ data: null, notice: null }),
       () => true,
       'org-a',
@@ -550,6 +551,90 @@ describe('PlatformShell accessibility', () => {
     expect(loadingChanges).toEqual([true, false]);
   });
 
+  it('다중 소속에 선택 컨텍스트가 없으면 트리를 읽지 않고 기관 선택을 요구한다', async () => {
+    const treeAction = vi.fn();
+    const organizations: Array<Array<{ id: string; name: string; slug: string; selected: boolean }>> = [];
+    const notices: Array<string | null> = [];
+
+    await completeOrganizationTreeLoad(
+      async () => ({
+        data: [
+          { id: 'org-a', name: '기관 A', slug: 'org-a', selected: false },
+          { id: 'org-b', name: '기관 B', slug: 'org-b', selected: false },
+        ],
+        notice: null,
+      }),
+      treeAction,
+      () => true,
+      null,
+      () => undefined,
+      (notice) => notices.push(notice),
+      () => undefined,
+      () => undefined,
+      (next) => organizations.push(next),
+    );
+
+    expect(treeAction).not.toHaveBeenCalled();
+    expect(organizations.at(-1)?.map((organization) => organization.id)).toEqual(['org-a', 'org-b']);
+    expect(notices.at(-1)).toContain('사용할 기관을 선택');
+  });
+
+  it('기관 선택기는 현재 선택과 명시적 미선택 상태를 접근 가능하게 표시한다', () => {
+    const html = renderToStaticMarkup(createElement(OrganizationSelector, {
+      organizations: [
+        { id: 'org-a', name: '기관 A', slug: 'org-a', selected: false },
+        { id: 'org-b', name: '기관 B', slug: 'org-b', selected: true },
+      ],
+      busy: false,
+      onSelect: () => undefined,
+    }));
+
+    expect(html).toContain('aria-label="사용할 기관"');
+    expect(html).toContain('<option value="">선택 필요</option>');
+    expect(html).toContain('<option value="org-b" selected="">기관 B</option>');
+    expect(html).toContain('border:2px solid #6B7D88');
+  });
+
+  it('기관 선택 성공과 실패를 busy 및 접근 가능한 notice 상태로 전달한다', async () => {
+    const busy: boolean[] = [];
+    const notices: Array<string | null> = [];
+
+    await expect(completeOrganizationSelection(
+      async () => ({ data: 'org-a', notice: null }),
+      () => true,
+      (value) => busy.push(value),
+      (notice) => notices.push(notice),
+    )).resolves.toBe(true);
+    await expect(completeOrganizationSelection(
+      async () => ({ data: null, notice: '선택 권한이 없습니다.' }),
+      () => true,
+      (value) => busy.push(value),
+      (notice) => notices.push(notice),
+    )).resolves.toBe(false);
+
+    expect(busy).toEqual([true, false, true, false]);
+    expect(notices).toEqual([null, null, '선택 권한이 없습니다.']);
+  });
+
+  it('탭별 기관 컨텍스트는 UUID만 session storage에 보존하고 제거한다', () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => { values.delete(key); },
+    };
+    const token = '00000000-0000-4000-8000-000000000099';
+
+    expect(storePlatformOrgContextToken(token, storage)).toBe(true);
+    expect(readPlatformOrgContextToken(storage)).toBe(token);
+    expect(PLATFORM_ORG_CONTEXT_HEADER).toBe('x-platform-org-context');
+    expect(platformOrgContextHeaders({ accept: 'application/json' }, storage).get(PLATFORM_ORG_CONTEXT_HEADER)).toBe(token);
+    expect(platformOrgContextHeaders({ accept: 'application/json' }, storage).get('accept')).toBe('application/json');
+    expect(clearPlatformOrgContextToken(storage)).toBe(true);
+    expect(readPlatformOrgContextToken(storage)).toBeNull();
+    expect(storePlatformOrgContextToken('not-a-token', storage)).toBe(false);
+  });
+
   it('PlatformShell이 Auth 이벤트마다 generation을 교체하고 cleanup에서 무효화한다', () => {
     const source = readFileSync(new URL('./PlatformShell.tsx', import.meta.url), 'utf8');
 
@@ -567,7 +652,7 @@ describe('PlatformShell accessibility', () => {
     expect(source).toContain('void completeOrganizationTreeLoad(');
     expect(source).toContain('currentScopeOrgId !== organization.id');
     expect(source).toContain('onNavigate({ o: organization.id })');
-    expect(source).toContain('}, [session.userId, navigate]);');
+    expect(source).toContain('loadOrganizationTree();');
   });
 
   it('성공한 로그아웃만 즉시 AppShell을 닫고 루트 스코프로 이동한다', async () => {
@@ -598,7 +683,7 @@ describe('PlatformShell accessibility', () => {
       { removeItem: (key) => removedKeys.push(key) },
       (error) => errors.push(error),
     )).toBe(true);
-    expect(removedKeys).toEqual([HQ_TOKEN_KEY, HQ_ACTOR_KEY]);
+    expect(removedKeys).toEqual([HQ_TOKEN_KEY, HQ_ACTOR_KEY, PLATFORM_ORG_CONTEXT_KEY]);
     expect(errors).toEqual([]);
 
     const storageError = new Error('fixture storage failure');
@@ -631,7 +716,7 @@ describe('PlatformShell accessibility', () => {
     expect(source).toContain('busy || operationLock.current');
     expect(source).toContain('logoutBusy || logoutLock.current');
     expect(source).toContain('runExclusivePlatformOperation(\n      logoutLock,');
-    expect(source.match(/disabled=\{busy\}/g)).toHaveLength(2);
+    expect(source.match(/disabled=\{busy\}/g)).toHaveLength(3);
   });
 
   it('로그아웃 실패와 비어 있는 응답을 알린다', async () => {

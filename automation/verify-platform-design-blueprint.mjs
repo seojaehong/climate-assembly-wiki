@@ -17,7 +17,7 @@ export const DESIGN_BLUEPRINT_ROUTE = `/platform/o/${FIXTURE_IDS.org}/c/audit-as
 export const ACCESS_PLAN_ROUTE = `/platform/o/${FIXTURE_IDS.org}/access`;
 export const REVIEW_CONSOLE_ROUTE = `/platform/o/${FIXTURE_IDS.org}/c/audit-assembly/s/audit-session/t/${FIXTURE_IDS.topic}/review`;
 export const PUBLISH_CONSOLE_ROUTE = `/platform/o/${FIXTURE_IDS.org}/c/audit-assembly/s/audit-session/t/${FIXTURE_IDS.topic}/publish`;
-const READ_RPCS = new Set(['/rest/v1/rpc/org_of_uid', '/rest/v1/rpc/readiness_check']);
+const READ_RPCS = new Set(['/rest/v1/rpc/my_orgs', '/rest/v1/rpc/readiness_check']);
 
 const REVIEW_TOPICS = [
   {
@@ -317,6 +317,7 @@ export async function verifyPlatformSessionIsolation({ browser, origin, timeoutM
     await context.addInitScript(() => {
       sessionStorage.setItem('climate_vote_hq_attendance_token', 'previous-user-sensitive-token');
       sessionStorage.setItem('climate_vote_hq_gate_actor', 'previous-user-actor');
+      sessionStorage.setItem('climate_vote_platform_org_context', '00000000-0000-4000-8000-000000000099');
     });
     await prepareAuthenticatedPlatform({
       context,
@@ -353,6 +354,7 @@ export async function verifyPlatformSessionIsolation({ browser, origin, timeoutM
     const storedCredentialsRemoved = await page.evaluate(() => (
       sessionStorage.getItem('climate_vote_hq_attendance_token') === null
       && sessionStorage.getItem('climate_vote_hq_gate_actor') === null
+      && sessionStorage.getItem('climate_vote_platform_org_context') === null
     ));
 
     if (!storedCredentialLoaded) throw new Error('Platform session isolation fixture did not load the stored credential');
@@ -375,6 +377,89 @@ export async function verifyPlatformSessionIsolation({ browser, origin, timeoutM
       priorConsoleRemoved,
       storedCredentialsRemoved,
       logoutRequestCount: logoutRequests.length,
+      browserPageErrorCount: browserErrors.length,
+      fixtureFailureCount: fixtureFailures.length,
+    };
+  } finally {
+    await context.close();
+  }
+}
+
+/** Verifies explicit multi-organization selection and tab-scoped request binding. */
+export async function verifyPlatformOrganizationSelection({ browser, origin, timeoutMs = 60_000 }) {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await context.newPage();
+  const browserErrors = [];
+  const fixtureFailures = [];
+  const selectionRequests = [];
+  const contextHeaders = [];
+  const contextToken = '00000000-0000-4000-8000-000000000098';
+  page.on('pageerror', (error) => browserErrors.push(error.message));
+  page.on('response', (response) => {
+    if (response.url().includes(FIXTURE_SUPABASE_ORIGIN) && response.status() >= 400) {
+      fixtureFailures.push({ status: response.status(), path: new URL(response.url()).pathname });
+    }
+  });
+
+  try {
+    await prepareAuthenticatedPlatform({
+      context,
+      page,
+      topics: REVIEW_TOPICS,
+      handleRequest: async ({ route, path, request }) => {
+        if (path === '/rest/v1/rpc/my_orgs') {
+          const requestToken = request.headers()['x-platform-org-context'] ?? null;
+          contextHeaders.push(requestToken);
+          await fulfillJson(route, [
+            { id: FIXTURE_IDS.org, name: '기관 A', slug: 'audit-org-a', selected: false },
+            { id: FIXTURE_IDS.orgSecondary, name: '기관 B', slug: 'audit-org-b', selected: requestToken === contextToken },
+          ]);
+          return true;
+        }
+        if (path === '/rest/v1/rpc/org_select') {
+          const body = request.postDataJSON();
+          selectionRequests.push(body);
+          await fulfillJson(route, { org_id: FIXTURE_IDS.orgSecondary, context_token: contextToken });
+          return true;
+        }
+        return false;
+      },
+    });
+    const response = await page.goto(new URL(PLATFORM_ENTRY_ROUTE, origin).toString(), {
+      waitUntil: 'domcontentloaded',
+      timeout: timeoutMs,
+    });
+    if (!response?.ok()) throw new Error(`Platform organization selection page returned HTTP ${response?.status() ?? 'unknown'}`);
+
+    const selector = page.getByLabel('사용할 기관');
+    await selector.waitFor({ timeout: timeoutMs });
+    const treeLockedBeforeSelection = await page.getByRole('status').filter({ hasText: '사용할 기관을 선택' }).count() === 1;
+    await selector.selectOption(FIXTURE_IDS.orgSecondary);
+    await page.waitForURL((url) => url.pathname.startsWith(`/platform/o/${FIXTURE_IDS.orgSecondary}`), { timeout: timeoutMs });
+    await page.getByRole('button', { name: '접근성 감사 공론화', exact: true }).waitFor({ timeout: timeoutMs });
+
+    const storedToken = await page.evaluate(() => sessionStorage.getItem('climate_vote_platform_org_context'));
+    const tokenHiddenFromDocument = !(await page.locator('body').textContent())?.includes(contextToken);
+    const selectionBound = selectionRequests.length === 1
+      && selectionRequests[0]?.p_org === FIXTURE_IDS.orgSecondary
+      && contextHeaders[0] === null
+      && contextHeaders.includes(contextToken);
+
+    if (!treeLockedBeforeSelection) throw new Error('Platform organization tree was not locked before selection');
+    if (!selectionBound) throw new Error('Platform organization selection was not bound to the request context');
+    if (storedToken !== contextToken || !tokenHiddenFromDocument) throw new Error('Platform organization context storage boundary failed');
+    if (browserErrors.length > 0) throw new Error('Platform organization selection observed a browser error');
+    if (fixtureFailures.length > 0) throw new Error('Platform organization selection observed an unexpected fixture failure');
+
+    return {
+      path: `/platform/o/${FIXTURE_IDS.orgSecondary}`,
+      fixture: 'ci-platform-multi-org-fixture-v1',
+      treeLockedBeforeSelection,
+      selectionRequestCount: selectionRequests.length,
+      selectedOrganizationId: FIXTURE_IDS.orgSecondary,
+      contextHeaderObserved: contextHeaders.includes(contextToken),
+      contextStoredInSession: storedToken === contextToken,
+      contextHiddenFromDocument: tokenHiddenFromDocument,
       browserPageErrorCount: browserErrors.length,
       fixtureFailureCount: fixtureFailures.length,
     };
@@ -1053,11 +1138,12 @@ export async function verifyPlatformDesignBlueprint({
     const accessPlan = await verifyPlatformAccessPlan({ browser, origin, timeoutMs });
     const authLock = await verifyPlatformAuthLock({ browser, origin, timeoutMs });
     const sessionIsolation = await verifyPlatformSessionIsolation({ browser, origin, timeoutMs });
+    const organizationSelection = await verifyPlatformOrganizationSelection({ browser, origin, timeoutMs });
     const reviewRace = await verifyReviewConsoleRace({ browser, origin, timeoutMs });
     const publishLock = await verifyPublishConsoleLock({ browser, origin, timeoutMs });
 
     const report = {
-      schemaVersion: 10,
+      schemaVersion: 11,
       generatedAt: new Date().toISOString(),
       baseUrl: origin.origin,
       path: DESIGN_BLUEPRINT_ROUTE,
@@ -1105,6 +1191,7 @@ export async function verifyPlatformDesignBlueprint({
         accessPlan,
         authLock,
         sessionIsolation,
+        organizationSelection,
         reviewRace,
         publishLock,
       },

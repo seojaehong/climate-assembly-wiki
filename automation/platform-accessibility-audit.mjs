@@ -52,6 +52,8 @@ export const FIXTURE_IDS = {
   session: '00000000-0000-4000-8000-000000000004',
   topic: '00000000-0000-4000-8000-000000000005',
   topicSecondary: '00000000-0000-4000-8000-000000000006',
+  authSession: '00000000-0000-4000-8000-000000000007',
+  orgSecondary: '00000000-0000-4000-8000-000000000008',
 };
 
 function jsonResponse(route, body, status = 200) {
@@ -69,6 +71,7 @@ function auditUser() {
     aud: 'authenticated',
     role: 'authenticated',
     email: 'accessibility-audit@example.invalid',
+    session_id: FIXTURE_IDS.authSession,
     email_confirmed_at: '2026-08-11T00:00:00.000Z',
     app_metadata: { provider: 'email', providers: ['email'] },
     user_metadata: {},
@@ -106,7 +109,12 @@ export async function prepareAuthenticatedPlatform({ context, page, topics, hand
     if (handleRequest && await handleRequest({ route, path, request: route.request() })) return;
     if (path === '/auth/v1/user') return jsonResponse(route, auditUser());
     if (path === '/auth/v1/token') return jsonResponse(route, session);
-    if (path === '/rest/v1/rpc/org_of_uid') return jsonResponse(route, FIXTURE_IDS.org);
+    if (path === '/rest/v1/rpc/my_orgs') return jsonResponse(route, [{
+      id: FIXTURE_IDS.org,
+      name: '내 기관',
+      slug: 'audit-org',
+      selected: true,
+    }]);
     if (path === '/rest/v1/rpc/readiness_check') {
       return jsonResponse(route, {
         ok: true,

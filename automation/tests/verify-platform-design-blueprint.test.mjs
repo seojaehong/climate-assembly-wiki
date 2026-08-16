@@ -112,7 +112,7 @@ describe('validateDownloadedAccessPlan', () => {
 
 describe('isDatabaseMutationRequest', () => {
   it('allows fixture read RPCs but blocks REST mutations', () => {
-    expect(isDatabaseMutationRequest('POST', '/rest/v1/rpc/org_of_uid')).toBe(false);
+    expect(isDatabaseMutationRequest('POST', '/rest/v1/rpc/my_orgs')).toBe(false);
     expect(isDatabaseMutationRequest('POST', '/rest/v1/rpc/readiness_check')).toBe(false);
     expect(isDatabaseMutationRequest('DELETE', '/rest/v1/rpc/readiness_check')).toBe(true);
     expect(isDatabaseMutationRequest('GET', '/rest/v1/assembly')).toBe(false);
@@ -156,6 +156,7 @@ describe('design blueprint browser CI contract', () => {
     expect(verifier).toContain("getByRole('form', { name: '운영진 로그인' })");
     expect(verifier).toContain('element.requestSubmit();');
     expect(verifier).toContain('verifyPlatformSessionIsolation({ browser, origin, timeoutMs })');
+    expect(verifier).toContain('verifyPlatformOrganizationSelection({ browser, origin, timeoutMs })');
     expect(verifier).toContain('verifyPlatformAccessPlan({ browser, origin, timeoutMs })');
     expect(verifier).toContain("getByRole('heading', { name: '승인 전 접근 계획' })");
     expect(verifier).toContain("getByRole('alert').filter({ hasText: '같은 이메일과 역할의 초대가 중복되었습니다.' })");
@@ -171,8 +172,9 @@ describe('design blueprint browser CI contract', () => {
     expect(verifier).toContain("getByLabel('공개 결과 제목').count() === 0");
     expect(verifier).toContain("sessionStorage.getItem('climate_vote_hq_attendance_token') === null");
     expect(verifier).toContain("sessionStorage.getItem('climate_vote_hq_gate_actor') === null");
+    expect(verifier).toContain("sessionStorage.getItem('climate_vote_platform_org_context') === null");
     expect(verifier).toContain("pathname.replace(/\\/+$/, '') === '/platform'");
     expect(verifier).toContain('logoutRequests.length !== 1');
-    expect(verifier).toContain('schemaVersion: 10');
+    expect(verifier).toContain('schemaVersion: 11');
   });
 });

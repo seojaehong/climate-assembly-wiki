@@ -33,11 +33,14 @@ import {
   signOut,
   myOrgs,
   orgTree,
+  selectOrg,
   type AuthSessionInfo,
+  type OrgRef,
   type PlatformResult,
 } from '../../lib/platform';
 import ScopeOutlet from './ScopeViews';
 import { HQ_ACTOR_KEY, HQ_TOKEN_KEY } from '../mod/hq-gate-logic';
+import { PLATFORM_ORG_CONTEXT_KEY } from '../../lib/supabase';
 
 const NAVY = '#1F4E79';
 export const PLATFORM_ACCENT = '#135C73';
@@ -75,6 +78,7 @@ export function clearPlatformSessionCredentials(
   try {
     storage.removeItem(HQ_TOKEN_KEY);
     storage.removeItem(HQ_ACTOR_KEY);
+    storage.removeItem(PLATFORM_ORG_CONTEXT_KEY);
     return true;
   } catch (error: unknown) {
     onError(error);
@@ -311,6 +315,7 @@ export async function completeOrganizationTreeLoad(
   onNotice: (notice: string | null) => void,
   onLoadingChange: (loading: boolean) => void,
   onNavigate: (scope: Scope) => void,
+  onOrganizations: (organizations: OrgRef[]) => void = () => undefined,
 ): Promise<void> {
   onTree(null);
   onNotice(null);
@@ -319,12 +324,20 @@ export async function completeOrganizationTreeLoad(
     const organizations = await organizationsAction();
     if (!isCurrent()) return;
     if (organizations.notice || !organizations.data || organizations.data.length === 0) {
+      onOrganizations([]);
       onNotice(organizations.notice ?? '소속 기관이 없습니다.');
       onLoadingChange(false);
       return;
     }
 
-    const organization = organizations.data[0];
+    onOrganizations(organizations.data);
+    const selectedOrganizations = organizations.data.filter((organization) => organization.selected);
+    const organization = organizations.data.length === 1 ? organizations.data[0] : selectedOrganizations[0];
+    if (!organization || selectedOrganizations.length > 1) {
+      onNotice('여러 기관에 소속되어 있습니다. 사용할 기관을 선택해 주세요.');
+      onLoadingChange(false);
+      return;
+    }
     const treeResult = await treeAction(organization.id);
     if (!isCurrent()) return;
     if (treeResult.notice || !treeResult.data) {
@@ -333,7 +346,7 @@ export async function completeOrganizationTreeLoad(
       return;
     }
 
-    onTree(treeResult.data);
+    onTree({ ...treeResult.data, id: organization.id, dataId: organization.id, label: organization.name });
     onNotice(null);
     onLoadingChange(false);
     if (currentScopeOrgId !== organization.id) onNavigate({ o: organization.id });
@@ -343,6 +356,35 @@ export async function completeOrganizationTreeLoad(
     onTree(null);
     onNotice('기관 데이터 트리를 불러오는 중 예상하지 못한 오류가 발생했습니다.');
     onLoadingChange(false);
+  }
+}
+
+export async function completeOrganizationSelection(
+  action: () => ReturnType<typeof selectOrg>,
+  isCurrent: () => boolean,
+  onBusyChange: (busy: boolean) => void,
+  onNotice: (notice: string | null) => void,
+): Promise<boolean> {
+  onBusyChange(true);
+  onNotice(null);
+  try {
+    const result = await action();
+    if (!isCurrent()) return false;
+    if (result.notice || !result.data) {
+      const notice = result.notice ?? '기관 선택 응답을 확인하지 못했습니다.';
+      console.error('Failed to select platform organization', notice);
+      onNotice(notice);
+      onBusyChange(false);
+      return false;
+    }
+    onBusyChange(false);
+    return true;
+  } catch (error: unknown) {
+    if (!isCurrent()) return false;
+    console.error('Failed to select platform organization', error);
+    onNotice('기관을 선택하는 중 예상하지 못한 오류가 발생했습니다.');
+    onBusyChange(false);
+    return false;
   }
 }
 
@@ -360,32 +402,51 @@ function AppShell({
   const [tree, setTree] = useState<TreeNode | null>(null);
   const [treeNotice, setTreeNotice] = useState<string | null>(null);
   const [loadingTree, setLoadingTree] = useState(true);
+  const [organizations, setOrganizations] = useState<OrgRef[]>([]);
+  const [selectingOrg, setSelectingOrg] = useState(false);
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [logoutNotice, setLogoutNotice] = useState<string | null>(null);
   const logoutLock = useRef(false);
+  const organizationGeneration = useRef(0);
   const publishTarget = deepestDataScopeTarget(tree, scope);
   const scopedTopics = topicTargetsForScope(tree, scope);
   const scopedSessions = sessionTargetsForScope(tree, scope);
   const scopedSessionTopics = sessionTopicGroupsForScope(tree, scope);
   const scopedPath = scopePathContext(tree, scope);
 
-  // org 파생(org_of_uid) → orgTree. org_id 는 클라이언트가 주장하지 않는다(서버 파생).
-  useEffect(() => {
-    let alive = true;
+  const loadOrganizationTree = useCallback(() => {
+    const generation = organizationGeneration.current + 1;
+    organizationGeneration.current = generation;
     void completeOrganizationTreeLoad(
       myOrgs,
       orgTree,
-      () => alive,
+      () => organizationGeneration.current === generation,
       scope.o,
       setTree,
       setTreeNotice,
       setLoadingTree,
       navigate,
+      setOrganizations,
     );
-    return () => { alive = false; };
-    // Reload for an authenticated user change, but not for navigation within that user's tree.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.userId, navigate]);
+  }, [navigate, scope.o]);
+
+  useEffect(() => {
+    loadOrganizationTree();
+    return () => { organizationGeneration.current += 1; };
+  }, [session.userId, loadOrganizationTree]);
+
+  const chooseOrganization = async (orgId: string) => {
+    if (!orgId || selectingOrg) return;
+    const generation = organizationGeneration.current + 1;
+    organizationGeneration.current = generation;
+    const selected = await completeOrganizationSelection(
+      () => selectOrg(orgId),
+      () => organizationGeneration.current === generation,
+      setSelectingOrg,
+      setTreeNotice,
+    );
+    if (selected) loadOrganizationTree();
+  };
 
   const logout = async () => {
     if (logoutBusy || logoutLock.current) return;
@@ -415,6 +476,11 @@ function AppShell({
         </div>
         <BreadcrumbNav tree={tree} scope={scope} navigate={navigate} />
         <div className="platform-shell-actions" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <OrganizationSelector
+            organizations={organizations}
+            busy={selectingOrg}
+            onSelect={(orgId) => void chooseOrganization(orgId)}
+          />
           <a href="/platform/accessibility/" style={{ ...ACCESSIBILITY_LINK_STYLE, fontSize: 13 }}>접근성</a>
           <span style={{ minWidth: 0, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: MUTED }}>{session.email ?? session.userId.slice(0, 8)}</span>
           <button
@@ -453,6 +519,39 @@ function AppShell({
         </main>
       </div>
     </div>
+  );
+}
+
+export function OrganizationSelector({
+  organizations,
+  busy,
+  onSelect,
+}: {
+  organizations: OrgRef[];
+  busy: boolean;
+  onSelect: (orgId: string) => void;
+}) {
+  if (organizations.length === 0) return null;
+  if (organizations.length === 1) {
+    return <span style={{ fontSize: 13, color: NAVY, fontWeight: 700 }}>{organizations[0].name}</span>;
+  }
+  const selected = organizations.find((organization) => organization.selected)?.id ?? '';
+  return (
+    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: NAVY, fontSize: 13, fontWeight: 700 }}>
+      기관
+      <select
+        aria-label="사용할 기관"
+        value={selected}
+        disabled={busy}
+        onChange={(event) => onSelect(event.target.value)}
+        style={{ minHeight: 36, maxWidth: 180, border: `2px solid ${PLATFORM_CONTROL_BORDER}`, borderRadius: 8, background: '#fff', color: INK, padding: '4px 8px' }}
+      >
+        <option value="">선택 필요</option>
+        {organizations.map((organization) => (
+          <option key={organization.id} value={organization.id}>{organization.name}</option>
+        ))}
+      </select>
+    </label>
   );
 }
 

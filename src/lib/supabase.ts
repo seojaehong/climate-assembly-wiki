@@ -1,5 +1,82 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
+export const PLATFORM_ORG_CONTEXT_KEY = 'climate_vote_platform_org_context';
+export const PLATFORM_ORG_CONTEXT_HEADER = 'x-platform-org-context';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export interface PlatformOrgContextStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
+
+function browserSessionStorage(): PlatformOrgContextStorage | null {
+  return typeof window === 'undefined' ? null : window.sessionStorage;
+}
+
+export function readPlatformOrgContextToken(
+  storage: PlatformOrgContextStorage | null = browserSessionStorage(),
+): string | null {
+  if (!storage) return null;
+  try {
+    const token = storage.getItem(PLATFORM_ORG_CONTEXT_KEY);
+    if (!token) return null;
+    if (UUID_RE.test(token)) return token;
+    storage.removeItem(PLATFORM_ORG_CONTEXT_KEY);
+    console.error('Discarded invalid platform organization context');
+    return null;
+  } catch (error: unknown) {
+    console.error('Failed to read platform organization context', error);
+    return null;
+  }
+}
+
+export function storePlatformOrgContextToken(
+  token: string,
+  storage: PlatformOrgContextStorage | null = browserSessionStorage(),
+): boolean {
+  if (!UUID_RE.test(token) || !storage) return false;
+  try {
+    storage.setItem(PLATFORM_ORG_CONTEXT_KEY, token);
+    return true;
+  } catch (error: unknown) {
+    console.error('Failed to store platform organization context', error);
+    return false;
+  }
+}
+
+export function clearPlatformOrgContextToken(
+  storage: PlatformOrgContextStorage | null = browserSessionStorage(),
+): boolean {
+  if (!storage) return true;
+  try {
+    storage.removeItem(PLATFORM_ORG_CONTEXT_KEY);
+    return true;
+  } catch (error: unknown) {
+    console.error('Failed to clear platform organization context', error);
+    return false;
+  }
+}
+
+export function platformOrgContextHeaders(
+  initialHeaders?: HeadersInit,
+  storage: PlatformOrgContextStorage | null = browserSessionStorage(),
+): Headers {
+  const headers = new Headers(initialHeaders);
+  const contextToken = readPlatformOrgContextToken(storage);
+  if (contextToken) headers.set(PLATFORM_ORG_CONTEXT_HEADER, contextToken);
+  return headers;
+}
+
+async function platformFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const target = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  const headers = new URL(target).pathname.startsWith('/rest/v1/')
+    ? platformOrgContextHeaders(init?.headers)
+    : new Headers(init?.headers);
+  return fetch(input, { ...init, headers });
+}
+
 // 공개(publishable) anon 키 + URL — 어차피 클라이언트 번들에 노출되는 공개 자격증명이며 RLS가 데이터를 보호한다.
 // Cloudflare Build env var(PUBLIC_SUPABASE_*)가 있으면 그것이 우선, 없으면 아래 fallback으로 prod 동작 보장.
 const FALLBACK_URL = 'https://pleyuknjnprsckssxvrh.supabase.co';
@@ -14,6 +91,7 @@ let _client: SupabaseClient | null = null;
 export function getSupabase(): SupabaseClient | null {
   if (!url || !anon) return null;
   if (!_client) _client = createClient(url, anon, {
+    global: { fetch: platformFetch },
     realtime: { params: { eventsPerSecond: 20 } },
   });
   return _client;

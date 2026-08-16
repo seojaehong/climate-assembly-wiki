@@ -13,6 +13,7 @@
 |------|----------------|------|
 | `20260621140534_BEFORE_snapshot_rpc.sql` | `migrations/20260621140534_snapshot_include_agenda.sql` | agenda·tally 키 추가 이전 cv_snapshot_now·cv_archive_round 원상복구 |
 | `20260724_BEFORE_mod_console.sql` | `migrations/20260724_mod_console_core.sql` | Part A: team/timer_log 키 추가 이전 cv_snapshot_now 원상복구. Part B(파괴적): team·timer_log·module_state·chat_message 테이블 및 mod_*/hq_teams RPC 전체 drop |
+| `platform_p1c_org_selection_BEFORE.sql` | `migrations/platform_p1c_org_selection.sql` | 탭별 기관 선택 컨텍스트·RPC를 제거하고 P1의 다중 소속 차단 함수와 휴면 RLS 정책을 복원 |
 
 ## 롤백 절차 (예시)
 

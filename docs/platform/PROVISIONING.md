@@ -9,8 +9,9 @@
 
 ## 1. 스키마 적용 (SQL Editor, 순서·통째)
 1. `platform_p1_tenancy.sql` — org·membership·invitation·org_id·헬퍼·RLS
-2. `platform_p2_analysis_review.sql` — issue·result_page·검수/공개 RPC
-3. (데이터 있으면) `platform_p1b_backfill.sql` — 기본 org backfill + NOT NULL(G3)
+2. `platform_p1c_org_selection.sql` — 다중 소속의 탭별 기관 선택 컨텍스트·`my_orgs`·`org_select`·선택 범위 RLS. **현재 초안이며 별도 production 적용 승인 전 실행 금지**
+3. `platform_p2_analysis_review.sql` — issue·result_page·검수/공개 RPC
+4. (데이터 있으면) `platform_p1b_backfill.sql` — 기본 org backfill + NOT NULL(G3)
 
 ### 1-1. A1·A2 활성화 전 읽기 전용 점검
 
@@ -51,7 +52,17 @@ grant select on climate_vote.assembly, climate_vote.session, climate_vote.discus
 - Supabase Auth로 운영자 계정 생성 → `climate_vote.membership(org_id,user_id,role)` 행 삽입(초대 플로우 `invitation` 활용).
 - `auth.uid()`는 Supabase 기본 제공(JWT sub). 우리 정책이 이를 membership과 대조.
 
-### 2-1. 기관 접근 계획 파일
+### 2-1. 다중 소속 기관 선택
+
+- 한 개 활성 기관에만 소속된 사용자는 선택 없이 해당 기관으로 진입한다.
+- 여러 활성 기관에 소속된 사용자는 데이터 트리를 읽기 전에 기관 선택기가 표시된다. URL의 기관 ID만으로는 선택하지 않는다.
+- `org_select`는 요청 기관의 활성 membership을 검증한 뒤 opaque UUID를 한 번 발급한다. 브라우저는 이를 현재 탭의 `sessionStorage`에만 저장하고 Supabase 요청의 `x-platform-org-context` 헤더로 보낸다.
+- DB에는 토큰 원문 대신 SHA-256만 저장한다. `org_of_uid()`는 헤더 토큰, `auth.uid()`, JWT `session_id`, 활성 membership, 활성 org가 모두 일치할 때만 다중 소속 RLS 범위를 반환한다.
+- 같은 Auth 세션을 공유하는 여러 탭도 서로 다른 선택 토큰을 사용한다. 로그아웃은 현재 탭의 토큰을 제거한다.
+- `session_id`는 Supabase Auth JWT의 필수 세션 식별자다. 공식 계약: [JWT claims](https://supabase.com/docs/guides/auth/jwt-fields), [User sessions](https://supabase.com/docs/guides/auth/sessions).
+- `org_context` 만료 행 정리와 실제 staff GRANT 활성화는 별도 운영 승인·migration 범위다. service role은 RLS를 우회하므로 사용자 요청 경로에서 사용하지 않는다.
+
+### 2-2. 기관 접근 계획 파일
 
 기관 루트의 `/platform/o/<기관>/access` 화면은 실제 계정이나 권한을 만들지 않는 로컬 사전 점검 도구다. 이메일 초대와 기존 Auth 사용자 UUID의 역할 계획을 추가한 뒤 `계획 검증`을 실행하고 JSON을 내려받는다.
 

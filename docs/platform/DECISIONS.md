@@ -8,7 +8,9 @@
 - 라이브 검증(psql/supabase CLI·전용 DB) 미수행 — 코드·문법 자체점검만. **실 적용 검증은 DB 프로비저닝/병합 시점**.
 
 ## P1(테넌시) 미결
-- `org_of_uid` 다중 org → raise (org 선택 RPC 미구현, Phase 2 TODO)
+- `platform_p1c_org_selection.sql` 초안은 다중 소속 사용자의 명시적 기관 선택을 추가했다. 탭별 opaque 토큰을 `sessionStorage`와 `x-platform-org-context` 요청 헤더로 전달하고, 서버가 `auth.uid()`·JWT `session_id`·활성 membership·활성 org를 매 요청 다시 대조한다. 토큰 원문은 DB에 저장하지 않고 SHA-256만 저장한다.
+- `org_select(p_org)`는 기관 ID를 받는 유일한 예외 RPC다. 도메인 데이터를 읽거나 쓰는 RPC는 계속 org ID를 인자로 받지 않으며 `org_of_uid()`에서 검증된 선택을 파생한다.
+- 초안과 rollback·UI·정적 계약 테스트만 승인되었다. 실제 Supabase 적용, backfill, NOT NULL, staff table GRANT, Auth 계정·membership 생성은 별도 승인 전까지 금지한다.
 - `org_of_token` 레거시 HQ 단일-org fallback → 2번째 org 생기는 순간 raise. **HQ 공유비밀→membership 전환이 Phase 2 선행조건**(플랜 §0-5 동일)
 - org_id 영구 nullable = 격리 구멍 → backfill 후 NOT NULL 전환 필수(병합 시)
 - RLS 정책 11종은 `revoke all` 때문에 휴면 — 활성화 GRANT(+Supabase Auth)까지 무동작(의도적)
@@ -21,7 +23,7 @@
 5. **provenance 잔존**: `submission_save_v2` upsert가 provenance 미갱신 → content 교체 시 utterance_uids 구 텍스트 지시 가능. issue draft 복귀로 완화하나 감사추적 일시 부정확.
 
 ## 방어 설계(유지할 것)
-- **격리 불변식**: RPC는 org_id 인자 안 받음. `org_of_code/uid/token`으로만 서버 파생.
+- **격리 불변식**: 도메인 RPC는 org_id 인자를 받지 않는다. 기관 선택 전용 `org_select`만 요청 기관을 받아 membership을 검증하고, 이후 `org_of_uid()`가 요청 컨텍스트에서 파생한다.
 - **stable-id 비대칭**: `issue_link.item_id`=NO ACTION → s1 delete-all이 링크 원문 삭제 시 조용히 파괴 않고 FK 실패. 안정 경로=`submission_save_v2`.
 - **cluster 분모**: `count(distinct coalesce(cluster_id, item_id))` — gongron R2 분모팽창 해결.
 - **무기명↔명부 비연결**: 공유 FK 금지 불변식.

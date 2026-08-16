@@ -1,16 +1,14 @@
 // 공론화 SaaS 플랫폼 — 데이터 레이어 (BUILD_SPEC §4-2 "데이터 연결")
 //
-// ★ 격리 불변식(BUILD_SPEC §2-2): 어떤 RPC 래퍼도 org_id 를 인자로 받지 않는다.
-//   서버가 auth.uid()·join_code·token 에서 파생한다. 클라이언트는 org 를 주장하지 못한다.
-//   (orgTree(orgId) 의 orgId 는 RPC 인자가 아니라 .from() 테이블 조회의 표시용 필터이며,
-//    실제 경계는 staff 세션 RLS 다 — 아래 orgTree 주석 참조.)
+// Tenant invariant: domain RPCs never accept org_id. org_select is the only
+// selection exception and validates the authenticated session and membership.
 //
 // ★ 런타임 흡수(BUILD_SPEC §4 산출물 6): 플랫폼 스키마(platform_p1/p2)는 아직 어느 DB에도
 //   미적용이라 대부분의 경로가 살아 있지 않다. 모든 데이터 호출을 단 하나의 오류 흡수 헬퍼
 //   guard() 로 감싸 { data, notice } 를 돌려준다 — 화면은 예외 대신 안내 문구를 띄운다.
 //   빌드는 언제나 통과한다.
 
-import { getSupabase } from './supabase';
+import { getSupabase, storePlatformOrgContextToken } from './supabase';
 import { type TreeNode } from '../islands/platform/platform-nav-logic';
 import type { BallotListRow, BallotResults } from './deliberation';
 
@@ -31,9 +29,8 @@ function describeError(e: unknown): string {
   if (code === 'PGRST202' || /Could not find the function|schema cache/i.test(msg)) {
     return '플랫폼 스키마가 아직 적용되지 않았습니다(platform_p1/p2 미적용). 병합 후 동작합니다.';
   }
-  // org_of_uid 다중 소속 예외(P1 §4-2)
-  if (/multiple orgs/i.test(msg)) {
-    return '여러 기관에 소속되어 있습니다 — 기관 선택이 필요합니다(Phase 2 org_select 미구현).';
+  if (/organization selection required|organization context/i.test(msg)) {
+    return '여러 기관에 소속되어 있습니다. 사용할 기관을 선택해 주세요.';
   }
   // 권한(휴면 RLS·revoke) — staff GRANT 미활성
   if (code === '42501' || /permission denied/i.test(msg)) {
@@ -106,27 +103,42 @@ export function onAuthChange(cb: () => void): () => void {
   return () => data.subscription.unsubscribe();
 }
 
-// ── org: 서버 파생(org_of_uid) — 클라이언트가 org 를 주장하지 않는다 ────
+// Organization discovery and validated tab-scoped selection.
 
 export interface OrgRef {
   id: string;
-  /** 표시명 — org 테이블은 revoke 상태라 slug/name 을 읽을 수 없다(미결). uuid 로 대체. */
   name: string;
+  slug: string;
+  selected: boolean;
 }
 
-/**
- * 내 소속 org. org_of_uid() RPC 가 유일한 경로다(membership 테이블 직접 read 는 P1 에서
- * revoke + 정책 휴면 → dead path). 함수는 uuid 하나 또는 null 을 돌려주고, 다중 소속이면
- * **예외**를 던진다(격리 불변식: 임의 org 선택 금지). 그 예외는 notice 로 흡수한다.
- * ★ 미결: org 이름/slug 표시는 org 테이블 read GRANT(또는 전용 RPC) 도입 전까지 불가.
- */
 export async function myOrgs(): Promise<PlatformResult<OrgRef[]>> {
   return guard(async (sb) => {
-    const { data, error } = await sb.schema(SCHEMA).rpc('org_of_uid');
+    const { data, error } = await sb.schema(SCHEMA).rpc('my_orgs');
     if (error) throw error;
-    const id = data as string | null;
-    if (!id) return [];
-    return [{ id, name: '내 기관' }];
+    return ((data ?? []) as Array<{ id: string; name: string; slug: string; selected: boolean }>).map((org) => ({
+      id: org.id,
+      name: org.name,
+      slug: org.slug,
+      selected: org.selected,
+    }));
+  });
+}
+
+interface OrgSelectionResponse {
+  org_id: string;
+  context_token: string;
+}
+
+export async function selectOrg(orgId: string): Promise<PlatformResult<string>> {
+  return guard(async (sb) => {
+    const { data, error } = await sb.schema(SCHEMA).rpc('org_select', { p_org: orgId });
+    if (error) throw error;
+    const selection = data as OrgSelectionResponse | null;
+    if (!selection || selection.org_id !== orgId || !storePlatformOrgContextToken(selection.context_token)) {
+      throw new Error('Organization context could not be stored');
+    }
+    return selection.org_id;
   });
 }
 
@@ -215,7 +227,7 @@ export async function orgTree(orgId: string): Promise<PlatformResult<TreeNode>> 
       kind: 'org',
       id: orgId,
       dataId: orgId,
-      label: '내 기관',
+      label: orgId,
       children: assemblyNodes,
     };
   });
