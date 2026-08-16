@@ -252,8 +252,5 @@ grant execute on function
   climate_vote.org_select(uuid)
 to authenticated;
 
--- Activation grants remain intentionally disabled in this draft.
--- grant usage on schema climate_vote to authenticated;
--- grant select on climate_vote.membership to authenticated;
--- grant select, insert, update on climate_vote.assembly, climate_vote.session,
---   climate_vote.discussion_topic, climate_vote.submission, climate_vote.ballot to authenticated;
+-- Staff table access remains intentionally dormant. Apply the separately
+-- approved platform_p1c_org_selection_activation.sql only after preflight.

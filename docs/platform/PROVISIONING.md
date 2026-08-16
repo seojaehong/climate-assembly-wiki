@@ -13,6 +13,8 @@
 3. `platform_p2_analysis_review.sql` — issue·result_page·검수/공개 RPC
 4. (데이터 있으면) `platform_p1b_backfill.sql` — 기본 org backfill + NOT NULL(G3)
 
+`platform_p1c_org_selection_activation.sql`은 위 스키마 순서에 포함되지 않는 **별도 권한 활성화 초안**이다. 아래 읽기 전용 preflight·Auth 프로비저닝·사용자의 권한 활성화 승인 전에는 실행하지 않는다.
+
 ### 1-1. A1·A2 활성화 전 읽기 전용 점검
 
 `platform_p1b_backfill.sql` 또는 staff용 GRANT를 실행하기 전에 현재 데이터 준비도를 비식별 집계로 확인한다.
@@ -43,16 +45,8 @@ npm.cmd run verify:platform-activation -- ..\evaluation\platform-activation-pref
 > 적용 검증: anon 키로 `POST /rest/v1/rpc/result_get {"p_token":"0..0"}` → `200 null` = 적용됨.
 
 ## 2. Auth 활성화 (staff RLS 경로)
-P1의 RLS 정책은 `revoke all from authenticated` 때문에 **휴면**. 활성화:
-```sql
-grant usage on schema climate_vote to authenticated;
-grant select on climate_vote.membership to authenticated;
-grant select, insert, update on
-  climate_vote.assembly, climate_vote.session, climate_vote.discussion_topic,
-  climate_vote.submission, climate_vote.ballot
-to authenticated;
-```
-- P1C는 `my_orgs`·`org_select`의 함수 EXECUTE 정의만 준비하고 schema USAGE와 직접 테이블 권한은 휴면으로 둔다. 위 GRANT 묶음은 별도 활성화 승인 뒤에만 실행하며 DELETE는 허용하지 않는다.
+P1의 RLS 정책은 `revoke all from authenticated` 때문에 **휴면**이다. 별도 승인 후 `platform_p1c_org_selection_activation.sql`을 통째로 실행해 schema USAGE, membership SELECT, 5개 staff 테이블의 SELECT·INSERT·UPDATE만 활성화한다.
+- P1C는 `my_orgs`·`org_select`의 함수 EXECUTE 정의만 준비하고 schema USAGE와 직접 테이블 권한은 휴면으로 둔다. activation 초안은 별도 권한 활성화 승인 뒤에만 실행하며 DELETE는 허용하지 않는다.
 - Supabase Auth로 운영자 계정 생성 → `climate_vote.membership(org_id,user_id,role)` 행 삽입(초대 플로우 `invitation` 활용).
 - `auth.uid()`는 Supabase 기본 제공(JWT sub). 우리 정책이 이를 membership과 대조.
 

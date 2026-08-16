@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync(new URL('../../supabase/migrations/platform_p1c_org_selection.sql', import.meta.url), 'utf8');
+const activation = readFileSync(new URL('../../supabase/migrations/platform_p1c_org_selection_activation.sql', import.meta.url), 'utf8');
 const rollback = readFileSync(new URL('../../supabase/rollbacks/platform_p1c_org_selection_BEFORE.sql', import.meta.url), 'utf8');
 const activationRollback = readFileSync(new URL('../../supabase/rollbacks/platform_p1c_org_selection_activation_BEFORE.sql', import.meta.url), 'utf8');
 const verificationDriver = readFileSync(new URL('../../supabase/verify/driver_pass1.sql', import.meta.url), 'utf8');
@@ -50,9 +51,16 @@ describe('A2 organization selection migration draft', () => {
   it('keeps staff table activation grants disabled in the draft', () => {
     expect(executableSql(migration)).not.toMatch(/grant select on climate_vote\.membership/);
     expect(executableSql(migration)).not.toMatch(/grant usage on schema climate_vote to authenticated/);
-    expect(migration).toContain('-- grant usage on schema climate_vote to authenticated;');
-    expect(migration).toContain('-- grant select, insert, update on climate_vote.assembly');
-    expect(migration).toContain('Activation grants remain intentionally disabled in this draft.');
+    expect(migration).toContain('platform_p1c_org_selection_activation.sql');
+    expect(verificationDriver).not.toContain('platform_p1c_org_selection_activation.sql');
+
+    expect(activation).toContain('Do not apply without a separate production activation approval.');
+    expect(activation).toContain('grant usage on schema climate_vote to authenticated;');
+    expect(activation).toContain('grant select on climate_vote.membership to authenticated;');
+    expect(activation).toContain('grant select, insert, update on');
+    expect(activation).toMatch(/climate_vote\.ballot\s+to authenticated;/);
+    expect(executableSql(activation)).not.toMatch(/\bdelete\b/i);
+    expect(executableSql(activation)).not.toMatch(/\bgrant\s+(?:all|create|truncate|references|trigger)\b/i);
   });
 
   it('provides a rollback that restores the prior fail-closed multi-org behavior', () => {
@@ -76,6 +84,7 @@ describe('A2 organization selection migration draft', () => {
     expect(semanticRehearsal).toContain("P1C accepted an expired organization context token");
     expect(semanticRehearsal).toContain('P1C accepted a non-SHA-256 organization context hash');
     expect(semanticRehearsal).toContain('P1C organization context lifetime does not match 12 hours');
+    expect(semanticRehearsal).toContain('\\i /tmp/platform_p1c_org_selection_activation.sql');
     expect(semanticRehearsal).toContain("P1C organization selection did not prune expired contexts");
     expect(semanticRehearsal).toContain("P1C RLS exposed an organization outside the selected context");
     expect(semanticRehearsal).toContain("P1C RLS did not isolate every staff table to the selected organization");

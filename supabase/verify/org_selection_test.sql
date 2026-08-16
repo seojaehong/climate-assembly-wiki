@@ -56,10 +56,7 @@ insert into climate_vote.ballot(id, session_id, title, status, org_id) values
   ('45000000-0000-4000-8000-000000000001', '41000000-0000-4000-8000-000000000001', 'Ballot Alpha', 'draft', '10000000-0000-4000-8000-000000000001'),
   ('45000000-0000-4000-8000-000000000002', '41000000-0000-4000-8000-000000000002', 'Ballot Beta', 'draft', '10000000-0000-4000-8000-000000000002');
 
-grant usage on schema climate_vote to authenticated;
-grant select on climate_vote.membership to authenticated;
-grant select, insert, update on climate_vote.assembly, climate_vote.session,
-  climate_vote.discussion_topic, climate_vote.submission, climate_vote.ballot to authenticated;
+\i /tmp/platform_p1c_org_selection_activation.sql
 
 \set expect_staff_grants on
 \i /tmp/org_selection_post_apply.sql
