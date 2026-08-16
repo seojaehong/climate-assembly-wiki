@@ -113,6 +113,7 @@ describe('A2 organization selection migration draft', () => {
     expect(semanticRehearsal).toContain('P1C activation preflight did not return the expected count-only blockers');
     expect(semanticRehearsal).toContain('P1C activation preflight rejected a ready tenant inventory');
     expect(semanticRehearsal).toContain('P1C activation preflight execution privileges are unsafe');
+    expect(semanticRehearsal).toContain("p.provolatile = 's'");
     expect(semanticRehearsal).toContain('P1C failed activation left partial schema or membership privileges');
     expect(semanticRehearsal).toContain('P1C failed activation left partial staff table privileges');
     expect(semanticRehearsal).toContain('membership_activation_unavailable');
@@ -128,6 +129,12 @@ describe('A2 organization selection migration draft', () => {
     expect(semanticRehearsal).toContain('\\set expect_staff_grants off');
     expect(semanticRehearsal).toContain('\\i /tmp/platform_p1c_org_selection_BEFORE.sql');
     expect(semanticRehearsal).toContain('=== P1C ORG SELECTION REHEARSAL PASSED ===');
+  });
+
+  it('uses one fixed snapshot for the count-only activation preflight', () => {
+    expect(activationPreflight).toMatch(/language plpgsql\s+stable\s+security definer/i);
+    expect(activationPreflight).toContain('statement_timestamp()');
+    expect(activationPreflight).not.toContain('clock_timestamp()');
   });
 
   it('provides a read-only post-apply verifier for dormant and activated staff grants', () => {

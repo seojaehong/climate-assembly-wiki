@@ -7,7 +7,16 @@ do $test$
 begin
   if has_function_privilege('anon', 'climate_vote.platform_activation_preflight()', 'EXECUTE')
      or has_function_privilege('authenticated', 'climate_vote.platform_activation_preflight()', 'EXECUTE')
-     or not has_function_privilege('service_role', 'climate_vote.platform_activation_preflight()', 'EXECUTE') then
+     or not has_function_privilege('service_role', 'climate_vote.platform_activation_preflight()', 'EXECUTE')
+     or not exists (
+       select 1
+       from pg_proc p
+       join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'climate_vote'
+         and p.proname = 'platform_activation_preflight'
+         and p.provolatile = 's'
+         and p.prosecdef
+     ) then
     raise exception 'P1C activation preflight execution privileges are unsafe';
   end if;
 end $test$;

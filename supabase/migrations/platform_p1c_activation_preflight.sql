@@ -6,12 +6,13 @@ begin;
 create or replace function climate_vote.platform_activation_preflight()
 returns jsonb
 language plpgsql
+stable
 security definer
 set search_path = pg_catalog, climate_vote, auth
 set row_security = off
 as $function$
 declare
-  v_checked_at timestamptz := clock_timestamp();
+  v_checked_at timestamptz := statement_timestamp();
   v_checked_at_text text;
   v_active_organization_count bigint;
   v_active_membership_count bigint;

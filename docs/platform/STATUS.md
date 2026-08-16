@@ -133,7 +133,7 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A2 권한 원자성 검증(2026-08-17):** activation과 대응 권한 rollback을 각각 하나의 transaction으로 묶었다. PostgreSQL 16 semantic rehearsal은 활성화 대상 테이블 누락 시 앞서 실행된 schema·membership GRANT가 남지 않는지, rollback 대상 누락 시 기존 활성 권한이 부분 회수되지 않는지를 음성 경로로 검증한다. 실제 production 권한은 변경하지 않았다.
 
-**A2 count-only preflight RPC 초안(2026-08-17):** service-role 전용 `platform_activation_preflight()`가 12개 `org_id` 대상·상위 조직 경로·Auth 상태·역할 커버리지를 한 SQL snapshot에서 비식별 계수로만 반환하는 별도 migration·rollback 초안을 추가했다. CLI는 exact response schema, 테이블별 합, blocker·summary 일치를 다시 검증하고 원시 ID·알 수 없는 필드·DB 오류 내용을 거부한다. 집중 automation 40건, Astro check 318파일 오류 0건, 일회성 PostgreSQL 16의 blocker→ready·권한·rollback 의미 검증이 통과했다. 전체 Windows automation은 변경 관련 테스트를 포함한 274건이 통과했고 기존 실브라우저 timeout 10건이 남았으며, Linux CI를 최종 전체 기준으로 삼는다. 초안은 기본 migration chain에 포함하지 않았고 production DB·Auth·membership·GRANT·data는 변경하지 않았다.
+**A2 count-only preflight RPC 초안(2026-08-17):** service-role 전용 `platform_activation_preflight()`가 12개 `org_id` 대상·상위 조직 경로·Auth 상태·역할 커버리지를 비식별 계수로만 반환하는 별도 migration·rollback 초안을 추가했다. 읽기 전용 `STABLE` 함수와 `statement_timestamp()`가 호출 statement의 고정 snapshot·기준 시각을 공유하며, CLI는 exact response schema, 테이블별 합, blocker·summary 일치를 다시 검증하고 원시 ID·알 수 없는 필드·DB 오류 내용을 거부한다. 집중 automation 41건, Astro check 318파일 오류 0건, 일회성 PostgreSQL 16의 blocker→ready·`provolatile='s'`·권한·rollback 의미 검증이 통과했다. 전체 Windows automation은 변경 관련 테스트를 포함한 274건이 통과했고 기존 실브라우저 timeout 10건이 남았으며, Linux CI를 최종 전체 기준으로 삼는다. 초안은 기본 migration chain에 포함하지 않았고 production DB·Auth·membership·GRANT·data는 변경하지 않았다.
 
 ## 다음 액션 (권장 순서)
 1. Supabase Auth 운영자 계정과 membership을 승인된 운영 절차로 프로비저닝
