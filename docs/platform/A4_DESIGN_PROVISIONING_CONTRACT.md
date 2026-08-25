@@ -78,6 +78,15 @@
 - 실제 프로비저닝 뒤의 rollback은 ledger 감사기록과 생성 resource·team ordinal mapping을 보존하거나 export하는 별도 데이터 계획과 사용자 승인이 필요하다.
 - CI cleanup fixture는 `verify` 데이터베이스와 명시적 throwaway flag에서만 정해진 synthetic ID·slug를 제거한다. production rollback 절차가 아니다.
 
+### 3-7. 실행 승인 artifact와 one-time claim
+
+- 실행 승인은 schema v1 `platform_design_provisioning_execution_approval` artifact로 고정한다. artifact는 exact plan checksum, 원 청사진 byte SHA-256·길이, operation count, approval/execution ID, 대상 organization UUID·host, canonical Auth reviewer, 승인 역할, 발급·만료 시각과 key ID를 외부 HMAC key로 결속한다.
+- 승인 역할은 `org_admin|hq`만 허용한다. artifact의 역할은 발급 당시 판단 기록이며 현재 membership 증거가 아니므로, 실제 adapter는 mutation 직전에 active membership과 선택 기관을 다시 검증해야 한다.
+- 유효기간은 trusted runner UTC 기준 최대 15분이다. 미래 발급, 만료, 비canonical 시각, 다른 key ID, source/plan 변경, digest 변조를 모두 거부한다.
+- 취소와 재사용 방지는 서명 파일만으로 해결하지 않는다. adapter가 durable approval-state 저장소에서 exact approval ID의 `revokedAt`과 one-time claim을 읽고, 첫 실행 전에 approval ID·execution ID·organization ID·target host·plan checksum을 같은 원자 transaction으로 claim해야 한다.
+- claim이 없으면 순수 verifier는 `claim_required`만 반환한다. 같은 approval/execution/plan의 진행 중 claim만 `resume_existing_claim`으로 복구할 수 있다. 다른 execution의 재사용과 `completed|failed` claim은 거부한다.
+- 현재 저장소의 `sealDesignProvisioningExecutionApproval()`과 `verifyDesignProvisioningExecutionApproval()`은 이 artifact와 state 형상을 검증하는 adapter-independent 순수 함수다. 승인 발급 CLI, durable revocation/claim 저장소, live membership 확인, production adapter는 제공하지 않으며 `databaseMutationExecuted:false`를 유지한다.
+
 ## 4. migration 초안 승인 시 필요한 산출물
 
 다음 묶음은 하나의 리뷰 단위로 작성하고, production 적용은 별도 승인으로 남긴다.
@@ -88,6 +97,7 @@
 4. PostgreSQL throwaway stage rehearsal
 5. 정상 생성, exact replay, payload 충돌, parent 충돌, join code 충돌 소진, transaction rollback, RLS/GRANT 음성 테스트
 6. plan source hash와 migration/rollback/verifier hash를 결속한 approval bundle
+7. 실행 승인 artifact의 role·expiry·revocation·one-time claim 순수 verifier와 음성 테스트
 
 ## 5. 승인 전에 결정할 항목
 
@@ -105,5 +115,6 @@
 - staff GRANT 활성화 또는 traffic open
 - 실제 join code 생성
 - plan executor·Supabase adapter 연결
+- 승인 발급 CLI, 실제 HMAC key, durable revocation/claim 저장소
 
 이 문서 승인만으로 위 항목을 실행하지 않는다. migration 초안 작성 승인과 production 적용 승인은 분리한다.

@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import {
   existsSync,
   readFileSync,
@@ -13,6 +13,11 @@ const CONTRACT_PATH = new URL('../src/islands/platform/design/design-blueprint-c
 const MAX_PROVISIONING_PLAN_BYTES = 16 * 1024 * 1024;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const KEY_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{2,79}$/;
+const AUTH_REVIEWER_PATTERN = /^auth-user:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const DESIGN_APPROVAL_ROLES = Object.freeze(['org_admin', 'hq']);
+const EXECUTION_APPROVAL_WINDOW_MS = 15 * 60 * 1000;
 
 export const DESIGN_PROVISIONING_BLOCKERS = Object.freeze([
   'approval.production_apply_not_granted',
@@ -36,6 +41,18 @@ function canonicalJson(value) {
 
 function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
+}
+
+function canonicalUtc(value) {
+  if (typeof value !== 'string') return null;
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString() !== value) return null;
+  return parsed;
+}
+
+function safeDigestEqual(left, right) {
+  if (!SHA256_PATTERN.test(left) || !SHA256_PATTERN.test(right)) return false;
+  return timingSafeEqual(Buffer.from(left, 'hex'), Buffer.from(right, 'hex'));
 }
 
 function isRecord(value) {
@@ -371,6 +388,217 @@ export function verifyDesignProvisioningPlan(plan, blueprint, sourceBytes) {
     operationCount: plan.summary.operationCount,
     blockerCount: plan.blockers.length,
     readyForExecution: false,
+    databaseMutationExecuted: false,
+  };
+}
+
+function approvalDigest(approval, key) {
+  const { digest: _digest, ...unsigned } = approval;
+  return createHmac('sha256', key).update(canonicalJson(unsigned)).digest('hex');
+}
+
+function requireTrustedApprovalKey(key) {
+  if (typeof key !== 'string' || key.length < 32) {
+    throw new Error('Design provisioning execution approval key is invalid');
+  }
+  return key;
+}
+
+function validateExecutionApprovalMetadata(metadata) {
+  if (!isRecord(metadata)
+    || !exactKeys(metadata, [
+      'approvalId', 'executionId', 'organizationId', 'targetHost', 'approvedBy', 'approvedRole',
+      'approvedAt', 'expiresAt', 'keyId',
+    ])
+    || !UUID_PATTERN.test(metadata.approvalId ?? '')
+    || !UUID_PATTERN.test(metadata.executionId ?? '')
+    || !UUID_PATTERN.test(metadata.organizationId ?? '')
+    || !KEY_ID_PATTERN.test(metadata.targetHost ?? '')
+    || !AUTH_REVIEWER_PATTERN.test(metadata.approvedBy ?? '')
+    || !DESIGN_APPROVAL_ROLES.includes(metadata.approvedRole)
+    || !KEY_ID_PATTERN.test(metadata.keyId ?? '')) {
+    throw new Error('Design provisioning execution approval metadata is invalid');
+  }
+  const approvedAt = canonicalUtc(metadata.approvedAt);
+  const expiresAt = canonicalUtc(metadata.expiresAt);
+  if (!approvedAt || !expiresAt
+    || expiresAt.getTime() <= approvedAt.getTime()
+    || expiresAt.getTime() - approvedAt.getTime() > EXECUTION_APPROVAL_WINDOW_MS) {
+    throw new Error('Design provisioning execution approval time is invalid');
+  }
+  return { approvedAt, expiresAt };
+}
+
+function validateExecutionApprovalState(approvalState, { approvedAt, expiresAt, now }) {
+  if (!isRecord(approvalState)
+    || !exactKeys(approvalState, ['approvalId', 'revokedAt', 'claim'])
+    || !UUID_PATTERN.test(approvalState.approvalId ?? '')) {
+    throw new Error('Design provisioning execution approval state is invalid');
+  }
+  let revokedAt = null;
+  if (approvalState.revokedAt !== null) {
+    revokedAt = canonicalUtc(approvalState.revokedAt);
+    if (!revokedAt
+      || revokedAt.getTime() < approvedAt.getTime()
+      || revokedAt.getTime() > now.getTime()) {
+      throw new Error('Design provisioning execution approval state is invalid');
+    }
+  }
+  const claim = approvalState.claim;
+  if (claim !== null) {
+    if (!isRecord(claim)
+      || !exactKeys(claim, [
+        'approvalId', 'executionId', 'organizationId', 'targetHost',
+        'planChecksum', 'status', 'claimedAt',
+      ])
+      || !UUID_PATTERN.test(claim.approvalId ?? '')
+      || !UUID_PATTERN.test(claim.executionId ?? '')
+      || !UUID_PATTERN.test(claim.organizationId ?? '')
+      || !KEY_ID_PATTERN.test(claim.targetHost ?? '')
+      || !SHA256_PATTERN.test(claim.planChecksum ?? '')
+      || !['claimed', 'completed', 'failed'].includes(claim.status)) {
+      throw new Error('Design provisioning execution approval state is invalid');
+    }
+    const claimedAt = canonicalUtc(claim.claimedAt);
+    if (!claimedAt
+      || claimedAt.getTime() < approvedAt.getTime()
+      || claimedAt.getTime() > expiresAt.getTime()
+      || claimedAt.getTime() > now.getTime()) {
+      throw new Error('Design provisioning execution approval state is invalid');
+    }
+  }
+  return { approvalId: approvalState.approvalId, revokedAt, claim };
+}
+
+export function sealDesignProvisioningExecutionApproval(
+  plan,
+  blueprint,
+  sourceBytes,
+  metadata,
+  key,
+) {
+  verifyDesignProvisioningPlan(plan, blueprint, sourceBytes);
+  validateExecutionApprovalMetadata(metadata);
+  const trustedKey = requireTrustedApprovalKey(key);
+  const unsigned = {
+    schemaVersion: 1,
+    kind: 'platform_design_provisioning_execution_approval',
+    planChecksum: plan.checksum,
+    sourceBlueprintSha256: plan.sourceBlueprint.sha256,
+    sourceBlueprintBytes: plan.sourceBlueprint.bytes,
+    operationCount: plan.summary.operationCount,
+    approvalId: metadata.approvalId,
+    executionId: metadata.executionId,
+    organizationId: metadata.organizationId,
+    targetHost: metadata.targetHost,
+    approvedBy: metadata.approvedBy,
+    approvedRole: metadata.approvedRole,
+    approvedAt: metadata.approvedAt,
+    expiresAt: metadata.expiresAt,
+    keyId: metadata.keyId,
+    allowDesignProvisioningMutation: true,
+    allowJoinCodeDisclosure: true,
+  };
+  return { ...unsigned, digest: approvalDigest(unsigned, trustedKey) };
+}
+
+export function verifyDesignProvisioningExecutionApproval(
+  approval,
+  plan,
+  blueprint,
+  sourceBytes,
+  {
+    trustedKey,
+    expectedKeyId,
+    expectedOrganizationId,
+    expectedTargetHost,
+    now = new Date(),
+    approvalState,
+  },
+) {
+  verifyDesignProvisioningPlan(plan, blueprint, sourceBytes);
+  if (!isRecord(approval)
+    || !exactKeys(approval, [
+      'schemaVersion', 'kind', 'planChecksum', 'sourceBlueprintSha256',
+      'sourceBlueprintBytes', 'operationCount', 'approvalId', 'executionId',
+      'organizationId', 'targetHost', 'approvedBy', 'approvedRole',
+      'approvedAt', 'expiresAt', 'keyId',
+      'allowDesignProvisioningMutation', 'allowJoinCodeDisclosure', 'digest',
+    ])
+    || approval.schemaVersion !== 1
+    || approval.kind !== 'platform_design_provisioning_execution_approval'
+    || approval.planChecksum !== plan.checksum
+    || approval.sourceBlueprintSha256 !== plan.sourceBlueprint.sha256
+    || approval.sourceBlueprintBytes !== plan.sourceBlueprint.bytes
+    || approval.operationCount !== plan.summary.operationCount
+    || approval.keyId !== expectedKeyId
+    || approval.organizationId !== expectedOrganizationId
+    || approval.targetHost !== expectedTargetHost
+    || !UUID_PATTERN.test(expectedOrganizationId ?? '')
+    || !KEY_ID_PATTERN.test(expectedTargetHost ?? '')
+    || approval.allowDesignProvisioningMutation !== true
+    || approval.allowJoinCodeDisclosure !== true
+    || !SHA256_PATTERN.test(approval.digest ?? '')) {
+    throw new Error('Design provisioning execution approval is invalid');
+  }
+  const { approvedAt, expiresAt } = validateExecutionApprovalMetadata({
+    approvalId: approval.approvalId,
+    executionId: approval.executionId,
+    organizationId: approval.organizationId,
+    targetHost: approval.targetHost,
+    approvedBy: approval.approvedBy,
+    approvedRole: approval.approvedRole,
+    approvedAt: approval.approvedAt,
+    expiresAt: approval.expiresAt,
+    keyId: approval.keyId,
+  });
+  const trustedNow = now instanceof Date ? now : new Date(now);
+  if (!Number.isFinite(trustedNow.getTime())
+    || trustedNow.getTime() < approvedAt.getTime()
+    || trustedNow.getTime() > expiresAt.getTime()) {
+    throw new Error('Design provisioning execution approval is expired or not yet valid');
+  }
+  const expectedDigest = approvalDigest(approval, requireTrustedApprovalKey(trustedKey));
+  if (!safeDigestEqual(approval.digest, expectedDigest)) {
+    throw new Error('Design provisioning execution approval integrity verification failed');
+  }
+  const state = validateExecutionApprovalState(approvalState, {
+    approvedAt,
+    expiresAt,
+    now: trustedNow,
+  });
+  if (state.approvalId !== approval.approvalId) {
+    throw new Error('Design provisioning execution approval state is invalid');
+  }
+  if (state.revokedAt) {
+    throw new Error('Design provisioning execution approval has been revoked');
+  }
+  const existingClaim = state.claim;
+  let claimAction = 'claim_required';
+  if (existingClaim) {
+    if (existingClaim.approvalId !== approval.approvalId) {
+      throw new Error('Design provisioning execution approval state is invalid');
+    }
+    if (existingClaim.status !== 'claimed') {
+      throw new Error('Design provisioning execution approval has already been consumed');
+    }
+    if (existingClaim.executionId !== approval.executionId
+      || existingClaim.organizationId !== approval.organizationId
+      || existingClaim.targetHost !== approval.targetHost
+      || existingClaim.planChecksum !== approval.planChecksum) {
+      throw new Error('Design provisioning execution approval has already been claimed');
+    }
+    claimAction = 'resume_existing_claim';
+  }
+  return {
+    status: 'verified',
+    approvalId: approval.approvalId,
+    executionId: approval.executionId,
+    organizationId: approval.organizationId,
+    targetHost: approval.targetHost,
+    approvedRole: approval.approvedRole,
+    planChecksum: approval.planChecksum,
+    claimAction,
     databaseMutationExecuted: false,
   };
 }

@@ -10,7 +10,9 @@ import {
   buildDesignProvisioningPlan,
   designProvisioningPlanChecksum,
   runDesignProvisioningCli,
+  sealDesignProvisioningExecutionApproval,
   validateDesignBlueprint,
+  verifyDesignProvisioningExecutionApproval,
   verifyDesignProvisioningPlan,
 } from '../platform-design-provisioning-plan.mjs';
 
@@ -55,6 +57,52 @@ function blueprint() {
 
 function sourceBytes(value = blueprint()) {
   return Buffer.from(`${JSON.stringify(value, null, 2)}\n`, 'utf8');
+}
+
+const approvalKey = 'test-design-provisioning-approval-key-32-bytes';
+const approvalKeyId = 'design-provisioning-2026-08-v1';
+const approvedAt = '2026-08-25T13:00:00.000Z';
+const expiresAt = '2026-08-25T13:15:00.000Z';
+
+function approvalMetadata(overrides = {}) {
+  return {
+    approvalId: '33333333-3333-4333-8333-333333333333',
+    executionId: '44444444-4444-4444-8444-444444444444',
+    organizationId: '22222222-2222-4222-8222-222222222222',
+    targetHost: 'production-primary',
+    approvedBy: 'auth-user:55555555-5555-4555-8555-555555555555',
+    approvedRole: 'org_admin',
+    approvedAt,
+    expiresAt,
+    keyId: approvalKeyId,
+    ...overrides,
+  };
+}
+
+function approvalState(overrides = {}) {
+  return {
+    approvalId: '33333333-3333-4333-8333-333333333333',
+    revokedAt: null,
+    claim: null,
+    ...overrides,
+  };
+}
+
+function executionApproval(source = blueprint(), metadata = approvalMetadata()) {
+  const bytes = sourceBytes(source);
+  const plan = buildDesignProvisioningPlan(source, bytes);
+  return {
+    source,
+    bytes,
+    plan,
+    approval: sealDesignProvisioningExecutionApproval(
+      plan,
+      source,
+      bytes,
+      metadata,
+      approvalKey,
+    ),
+  };
 }
 
 test('shares the exact browser blueprint contract', () => {
@@ -151,6 +199,158 @@ test('binds exact source bytes and reconstructs the complete plan', () => {
     source,
     Buffer.from(JSON.stringify(source), 'utf8'),
   )).toThrow('does not match its source blueprint');
+});
+
+test('seals a short-lived A4 execution approval to the exact verified plan and source', () => {
+  const { source, bytes, plan, approval } = executionApproval();
+
+  expect(approval).toMatchObject({
+    schemaVersion: 1,
+    kind: 'platform_design_provisioning_execution_approval',
+    planChecksum: plan.checksum,
+    sourceBlueprintSha256: plan.sourceBlueprint.sha256,
+    sourceBlueprintBytes: plan.sourceBlueprint.bytes,
+    operationCount: plan.summary.operationCount,
+    approvalId: '33333333-3333-4333-8333-333333333333',
+    executionId: '44444444-4444-4444-8444-444444444444',
+    organizationId: '22222222-2222-4222-8222-222222222222',
+    targetHost: 'production-primary',
+    approvedBy: 'auth-user:55555555-5555-4555-8555-555555555555',
+    approvedRole: 'org_admin',
+    approvedAt,
+    expiresAt,
+    keyId: approvalKeyId,
+    allowDesignProvisioningMutation: true,
+    allowJoinCodeDisclosure: true,
+  });
+  expect(approval.digest).toMatch(/^[0-9a-f]{64}$/);
+  expect(verifyDesignProvisioningExecutionApproval(approval, plan, source, bytes, {
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    expectedOrganizationId: approval.organizationId,
+    expectedTargetHost: approval.targetHost,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+    approvalState: approvalState(),
+  })).toEqual({
+    status: 'verified',
+    approvalId: approval.approvalId,
+    executionId: approval.executionId,
+    organizationId: approval.organizationId,
+    targetHost: approval.targetHost,
+    approvedRole: 'org_admin',
+    planChecksum: plan.checksum,
+    claimAction: 'claim_required',
+    databaseMutationExecuted: false,
+  });
+});
+
+test('allows only the same in-flight execution claim to resume', () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const claim = {
+    approvalId: approval.approvalId,
+    executionId: approval.executionId,
+    organizationId: approval.organizationId,
+    targetHost: approval.targetHost,
+    planChecksum: plan.checksum,
+    status: 'claimed',
+    claimedAt: '2026-08-25T13:01:00.000Z',
+  };
+  expect(verifyDesignProvisioningExecutionApproval(approval, plan, source, bytes, {
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    expectedOrganizationId: approval.organizationId,
+    expectedTargetHost: approval.targetHost,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+    approvalState: approvalState({ claim }),
+  }).claimAction).toBe('resume_existing_claim');
+
+  const reused = structuredClone(approval);
+  reused.executionId = '66666666-6666-4666-8666-666666666666';
+  expect(() => verifyDesignProvisioningExecutionApproval(reused, plan, source, bytes, {
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    expectedOrganizationId: approval.organizationId,
+    expectedTargetHost: approval.targetHost,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+    approvalState: approvalState({ claim }),
+  })).toThrow('integrity verification failed');
+
+  expect(() => verifyDesignProvisioningExecutionApproval(approval, plan, source, bytes, {
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    expectedOrganizationId: approval.organizationId,
+    expectedTargetHost: approval.targetHost,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+    approvalState: approvalState({ claim: { ...claim, executionId: '77777777-7777-4777-8777-777777777777' } }),
+  })).toThrow('has already been claimed');
+});
+
+test('rejects revoked, completed, expired, wrong-role, and tampered A4 approvals', () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const options = (state = approvalState()) => ({
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    expectedOrganizationId: approval.organizationId,
+    expectedTargetHost: approval.targetHost,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+    approvalState: state,
+  });
+  expect(() => verifyDesignProvisioningExecutionApproval(
+    approval,
+    plan,
+    source,
+    bytes,
+    options(approvalState({ revokedAt: '2026-08-25T13:02:00.000Z' })),
+  )).toThrow('has been revoked');
+  expect(() => verifyDesignProvisioningExecutionApproval(
+    approval,
+    plan,
+    source,
+    bytes,
+    options(approvalState({ claim: {
+      approvalId: approval.approvalId,
+      executionId: approval.executionId,
+      organizationId: approval.organizationId,
+      targetHost: approval.targetHost,
+      planChecksum: plan.checksum,
+      status: 'completed',
+      claimedAt: '2026-08-25T13:01:00.000Z',
+    } })),
+  )).toThrow('has already been consumed');
+  expect(() => verifyDesignProvisioningExecutionApproval(approval, plan, source, bytes, {
+    ...options(),
+    now: new Date('2026-08-25T13:16:00.000Z'),
+  })).toThrow('expired or not yet valid');
+  expect(() => executionApproval(blueprint(), approvalMetadata({ approvedRole: 'operator' }))).toThrow(
+    'approval metadata is invalid',
+  );
+  expect(executionApproval(blueprint(), approvalMetadata({ approvedRole: 'hq' })).approval.approvedRole).toBe('hq');
+  expect(() => executionApproval(blueprint(), approvalMetadata({
+    expiresAt: '2026-08-25T13:15:00.001Z',
+  }))).toThrow('approval time is invalid');
+  expect(() => verifyDesignProvisioningExecutionApproval(approval, plan, source, bytes, {
+    ...options(),
+    trustedKey: 'different-design-provisioning-key-32-bytes-minimum',
+  })).toThrow('integrity verification failed');
+  expect(() => verifyDesignProvisioningExecutionApproval(approval, plan, source, bytes, {
+    ...options(),
+    expectedOrganizationId: '88888888-8888-4888-8888-888888888888',
+  })).toThrow('is invalid');
+  expect(() => verifyDesignProvisioningExecutionApproval(approval, plan, source, bytes, {
+    ...options(),
+    expectedTargetHost: 'production-secondary',
+  })).toThrow('is invalid');
+  expect(() => verifyDesignProvisioningExecutionApproval(
+    { ...approval, operationCount: approval.operationCount + 1 },
+    plan,
+    source,
+    bytes,
+    options(),
+  )).toThrow('is invalid');
+  expect(() => verifyDesignProvisioningExecutionApproval(approval, plan, source, bytes, {
+    ...options(),
+    approvalState: { approvalId: approval.approvalId, revokedAt: null },
+  })).toThrow('approval state is invalid');
 });
 
 test('rejects checksum tampering and a self-resealed operation change', () => {
