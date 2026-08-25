@@ -467,6 +467,31 @@ test('seals and verifies an off-store inventory checkpoint without exposing stor
     });
     const receiptAdapter = createLocalDesignProvisioningReceiptAdapter({ directory });
     await receiptAdapter.append(receipt);
+    const legacyBackdatedCheckpoint = {
+      schemaVersion: 1,
+      kind: 'platform_design_provisioning_local_store_checkpoint',
+      keyId: checkpointKeyId,
+      createdAt: '2026-08-25T13:05:59.999Z',
+      authorizationCount: 2,
+      authorizationRecordCount: 3,
+      receiptCount: 1,
+      containsSensitiveValues: false,
+      localRehearsalOnly: true,
+      digest: '29877a122ae70d7e925973573720453e0cf69f12ae30ad7c409fa526138a520c',
+    };
+    await expect(sealLocalDesignProvisioningRehearsalStoreCheckpoint({
+      directory,
+      trustedCheckpointKey: approvalKey,
+      checkpointKeyId,
+      createdAt: '2026-08-25T13:05:59.999Z',
+    })).rejects.toThrow('inventory checkpoint temporal verification failed');
+    await expect(auditLocalDesignProvisioningRehearsalStore({
+      directory,
+      inventoryCheckpoint: legacyBackdatedCheckpoint,
+      trustedCheckpointKey: approvalKey,
+      expectedCheckpointKeyId: checkpointKeyId,
+      checkpointVerifiedAt: '2026-08-25T13:06:00.000Z',
+    })).rejects.toThrow('inventory checkpoint temporal verification failed');
     const checkpoint = await sealLocalDesignProvisioningRehearsalStoreCheckpoint({
       directory,
       trustedCheckpointKey: approvalKey,
@@ -563,6 +588,51 @@ test('seals and verifies an off-store inventory checkpoint without exposing stor
       directory,
       checkpointMaxAgeSeconds: 60,
     })).rejects.toThrow('inventory checkpoint configuration is invalid');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('rejects an inventory checkpoint older than a claim or revocation event', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const { plan, approval } = executionApproval();
+  const secondApprovalId = '66666666-6666-4666-8666-666666666666';
+  const checkpointOptions = {
+    directory,
+    trustedCheckpointKey: approvalKey,
+    checkpointKeyId: 'a4-inventory-checkpoint-v1',
+  };
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: approval.approvalId, context: liveContext() },
+    });
+    const authorizationAdapter = createLocalDesignProvisioningAuthorizationAdapter({ directory });
+    const initialSnapshot = await authorizationAdapter.readSnapshot(approval.approvalId);
+    await authorizationAdapter.claim(initialSnapshot, claimedApprovalState(approval, plan).claim);
+    await expect(sealLocalDesignProvisioningRehearsalStoreCheckpoint({
+      ...checkpointOptions,
+      createdAt: '2026-08-25T13:04:59.999Z',
+    })).rejects.toThrow('inventory checkpoint temporal verification failed');
+
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: secondApprovalId, context: liveContext() },
+    });
+    const secondSnapshot = await authorizationAdapter.readSnapshot(secondApprovalId);
+    await revokeLocalDesignProvisioningAuthorization({
+      directory,
+      expectedSnapshot: secondSnapshot,
+      revokedAt: '2026-08-25T13:07:00.000Z',
+    });
+    await expect(sealLocalDesignProvisioningRehearsalStoreCheckpoint({
+      ...checkpointOptions,
+      createdAt: '2026-08-25T13:06:59.999Z',
+    })).rejects.toThrow('inventory checkpoint temporal verification failed');
+    await expect(sealLocalDesignProvisioningRehearsalStoreCheckpoint({
+      ...checkpointOptions,
+      createdAt: '2026-08-25T13:07:00.000Z',
+    })).resolves.toMatchObject({ createdAt: '2026-08-25T13:07:00.000Z' });
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

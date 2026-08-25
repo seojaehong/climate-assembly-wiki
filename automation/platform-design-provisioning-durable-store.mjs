@@ -757,6 +757,13 @@ async function inspectLocalDesignProvisioningRehearsalStore({
   };
   const authorizationStates = new Map();
   const authorizationInventory = [];
+  let latestTimestampedEventAt = null;
+  const observeTimestamp = (value) => {
+    if (typeof value === 'string' && (latestTimestampedEventAt === null
+      || Date.parse(value) > Date.parse(latestTimestampedEventAt))) {
+      latestTimestampedEventAt = value;
+    }
+  };
   for (const approvalId of authorizationNames) {
     const approvalRoot = validateOwnedDirectory(
       authorizationRoot,
@@ -772,6 +779,11 @@ async function inspectLocalDesignProvisioningRehearsalStore({
       recordCount: journal.recordCount,
       tailRecordSha256: journal.latest.recordSha256,
     });
+    observeTimestamp(journal.latest.state.revokedAt);
+    if (journal.latest.state.claim !== null) {
+      observeTimestamp(journal.latest.state.claim.claimedAt);
+      observeTimestamp(journal.latest.state.claim.finalizedAt ?? null);
+    }
     if (journal.latest.state.revokedAt !== null) {
       authorizationSummary.revokedAuthorizationCount += 1;
     } else if (journal.latest.state.claim === null) {
@@ -830,6 +842,8 @@ async function inspectLocalDesignProvisioningRehearsalStore({
       executionId: receipt.executionId,
       receiptDigest: receipt.digest,
     });
+    observeTimestamp(receipt.startedAt);
+    observeTimestamp(receipt.completedAt);
     if (receipt.status === 'completed') receiptSummary.completedReceiptCount += 1;
     else receiptSummary.failedReceiptCount += 1;
   }
@@ -861,6 +875,7 @@ async function inspectLocalDesignProvisioningRehearsalStore({
       authorization: authorizationInventory,
       receipts: receiptInventory,
     },
+    latestTimestampedEventAt,
   };
 }
 
@@ -930,6 +945,13 @@ function validateInventoryCheckpoint(checkpoint) {
   return structuredClone(checkpoint);
 }
 
+function verifyCheckpointTemporalConsistency(createdAt, inspection) {
+  if (inspection.latestTimestampedEventAt !== null
+    && Date.parse(createdAt) < Date.parse(inspection.latestTimestampedEventAt)) {
+    throw new Error('Local design provisioning inventory checkpoint temporal verification failed');
+  }
+}
+
 function verifyInventoryCheckpoint(
   checkpointValue,
   inspection,
@@ -957,6 +979,7 @@ function verifyInventoryCheckpoint(
   if (!matches) {
     throw new Error('Local design provisioning inventory checkpoint verification failed');
   }
+  verifyCheckpointTemporalConsistency(checkpoint.createdAt, inspection);
   const verifiedAt = canonicalCheckpointTimestamp(checkpointVerifiedAt);
   if (!Number.isSafeInteger(checkpointMaxAgeSeconds)
     || checkpointMaxAgeSeconds <= 0
@@ -978,6 +1001,7 @@ export async function sealLocalDesignProvisioningRehearsalStoreCheckpoint({
   const configuration = checkpointKeyConfiguration(trustedCheckpointKey, checkpointKeyId);
   const createdAt = canonicalCheckpointTimestamp(createdAtValue);
   const inspection = await inspectLocalDesignProvisioningRehearsalStore({ directory });
+  verifyCheckpointTemporalConsistency(createdAt, inspection);
   const unsigned = inventoryCheckpointUnsigned(
     inspection.audit,
     configuration.checkpointKeyId,

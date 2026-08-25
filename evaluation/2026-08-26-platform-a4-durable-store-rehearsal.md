@@ -38,22 +38,23 @@
 18. Linux CI의 실제 6-process 경쟁에서 publisher가 temp를 열거 직후 정상 unlink하는 race를 재현했다. temp가 존재하면 owned regular file 검증을 유지하고 검사 중 ENOENT로 사라지면 정상 publish cleanup으로 무시하도록 수정했으며, 같은 경쟁을 Windows에서 연속 3회 재검증했다.
 19. 현재 store inventory를 외부 보관 후보 checkpoint로 비식별 HMAC 봉인했다. checkpoint 검증 audit는 approval 디렉터리·receipt 삭제와 이후 journal tail 추가, checkpoint digest 변조·부분 설정을 거부하고 exact inventory 복원과 기본 10분 freshness가 모두 맞을 때만 `catalogCompletenessVerified:true`, `checkpointFreshnessVerified:true`를 반환했다. 검증 시각 누락·10분 초과·미래 checkpoint와 잘못된 최대 나이도 거부했다.
 20. terminal claim의 canonical 시각 형식뿐 아니라 `finalizedAt >= claimedAt` 순서를 journal append 전에 검증한다. claim보다 1ms 앞선 completed claim을 직접 adapter에 전달한 부정 테스트는 journal에 기록하지 않고 거부됐다.
+21. checkpoint `createdAt`이 현재 state·receipt의 `claimedAt|finalizedAt|revokedAt|startedAt|completedAt` 최댓값보다 빠르면 seal과 audit 모두 거부한다. claim·revocation·receipt보다 1ms 앞선 시각, 이전 코드가 봉인한 유효 HMAC backdated checkpoint를 차단하고 exact event boundary는 허용했다.
 
 기본 전체-store audit는 checkpoint가 없어 `catalogCompletenessVerified:false`, `checkpointFreshnessVerified:false`다. 합성 off-store checkpoint가 exact inventory와 로컬 시간 경계를 모두 통과할 때만 둘 다 `true`지만, 실제 외부 보관·production key custody/rotation·독립 timestamp authority 증거로 승격하지 않는다.
 
 ## 자동화 검증
 
-- A4 plan·bundle 집중: 2개 파일, 56건 통과
-- automation 전체: 27개 파일, 415건 통과
+- A4 plan·bundle 집중: 2개 파일, 57건 통과
+- automation 전체: 27개 파일, 416건 통과
 - 애플리케이션 전체: 64개 파일, 1,060건 통과
 - Astro check: 330개 파일, 오류 0건, 기존 hint 49건
-- A4 bundle: artifact 17개, checksum `7bedf50e032e92c803ab551df528721f3f63348e4e6bebc05eccc5693d6a7487`
+- A4 bundle: artifact 17개, checksum `a2199bee51de619934e04d917ddb4646d5e3323f1a0de9cf96929438b7534a19`
 
 ## 남은 production blocker
 
 - 승인 발급 경로와 실제 HMAC key custody
 - production-grade durable revocation/claim·append-only receipt 저장소
-- 운영 외부 anchor 보관·독립 timestamp authority 및 production key custody·회전 registry
+- timestamp 없는 초기 authorization/context 전이의 authoritative event time, 운영 외부 anchor 보관·독립 timestamp authority 및 production key custody·회전 registry
 - live Auth/membership/org/host를 같은 transaction에서 검증하는 CAS adapter
 - production design executor와 read-only status adapter
 - migration·mapping·RPC 권한·role별 E2E에 대한 별도 승인

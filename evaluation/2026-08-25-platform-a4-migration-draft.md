@@ -88,14 +88,14 @@ column type·nullable·default·FK 검증 결과: `A4_COLUMN_FOREIGN_KEY_POSTGRE
 
 ## 자동화 회귀
 
-- A4 bundle·design plan 집중 테스트: 56건 통과
-- Windows automation 전체: 27개 파일, 415건 통과
+- A4 bundle·design plan 집중 테스트: 57건 통과
+- Windows automation 전체: 27개 파일, 416건 통과
 - 애플리케이션 전체: 64개 파일, 1,060건 통과
 - Astro check: 330개 파일, 오류 0건, 기존 hint 49건
-- 저장소 밖 로컬 durable store의 adapter 재시작·lock-free CAS·독립 Node 프로세스 6개 claim 경쟁(1 claimed, 5 conflict, journal record 2개)·orphan temp 복구·append-only replay/conflict·journal 변조·terminal claim 시각 역행·junction escape·revocation/claim 경쟁·membership 비활성 finalize와 재활성화 거부·비식별 전체-store/keyed receipt audit·off-store inventory checkpoint 삭제/tail 변경·기본 10분 freshness 테스트 통과
+- 저장소 밖 로컬 durable store의 adapter 재시작·lock-free CAS·독립 Node 프로세스 6개 claim 경쟁(1 claimed, 5 conflict, journal record 2개)·orphan temp 복구·append-only replay/conflict·journal 변조·terminal claim/checkpoint 사건시각 역행·junction escape·revocation/claim 경쟁·membership 비활성 finalize와 재활성화 거부·비식별 전체-store/keyed receipt audit·off-store inventory checkpoint 삭제/tail 변경·기본 10분 freshness 테스트 통과
 - approval bundle verifier: builder·durable store·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 17개, production apply 미승인·DB mutation 미실행 상태로 통과
 - 추적 manifest를 current source에서 재구성해 stale source hash를 거부하는 테스트 통과
-- bundle checksum: `7bedf50e032e92c803ab551df528721f3f63348e4e6bebc05eccc5693d6a7487`
+- bundle checksum: `a2199bee51de619934e04d917ddb4646d5e3323f1a0de9cf96929438b7534a19`
 
 ## 보안·데이터 무결성 결론
 
