@@ -917,6 +917,71 @@ test('rejects a durable terminal claim finalized before it was claimed', async (
   }
 });
 
+test('rejects durable receipt chronology that contradicts its authorization claim', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const { source, bytes, plan, approval } = executionApproval();
+  const executionResult = completedExecutionResult(executionPlanCandidate(plan));
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: approval.approvalId, context: liveContext() },
+    });
+    const authorizationAdapter = createLocalDesignProvisioningAuthorizationAdapter({ directory });
+    const receiptAdapter = createLocalDesignProvisioningReceiptAdapter({ directory });
+    const initialSnapshot = await authorizationAdapter.readSnapshot(approval.approvalId);
+    const claimedState = claimedApprovalState(approval, plan);
+    await authorizationAdapter.claim(initialSnapshot, claimedState.claim);
+
+    const earlyReceipt = sealDesignProvisioningExecutionReceipt({
+      plan,
+      blueprint: source,
+      sourceBytes: bytes,
+      approval,
+      approvalState: claimedApprovalState(approval, plan, '2026-08-25T13:04:00.000Z'),
+      executionResult,
+      startedAt: '2026-08-25T13:04:00.000Z',
+      completedAt: '2026-08-25T13:04:30.000Z',
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+    });
+    await expect(receiptAdapter.append(earlyReceipt))
+      .rejects.toThrow('receipt authorization linkage is invalid');
+
+    const lateReceipt = sealDesignProvisioningExecutionReceipt({
+      plan,
+      blueprint: source,
+      sourceBytes: bytes,
+      approval,
+      approvalState: claimedState,
+      executionResult,
+      startedAt: '2026-08-25T13:05:00.000Z',
+      completedAt: '2026-08-25T13:07:00.000Z',
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+    });
+    await receiptAdapter.append(lateReceipt);
+    const claimedSnapshot = await authorizationAdapter.readSnapshot(approval.approvalId);
+    await expect(authorizationAdapter.finalize(claimedSnapshot, {
+      ...claimedState.claim,
+      status: 'completed',
+      finalizedAt: '2026-08-25T13:06:59.999Z',
+    })).rejects.toThrow('receipt authorization linkage is invalid');
+
+    const receiptPath = join(directory, 'receipts', `${approval.executionId}.json`);
+    rmSync(receiptPath);
+    await authorizationAdapter.finalize(claimedSnapshot, {
+      ...claimedState.claim,
+      status: 'completed',
+      finalizedAt: '2026-08-25T13:06:59.999Z',
+    });
+    writeFileSync(receiptPath, `${JSON.stringify(lateReceipt)}\n`, 'utf8');
+    await expect(auditLocalDesignProvisioningRehearsalStore({ directory }))
+      .rejects.toThrow('receipt authorization linkage is invalid');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test('fails closed when a durable authorization journal record is modified', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
   const approvalId = approvalMetadata().approvalId;

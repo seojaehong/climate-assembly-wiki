@@ -587,7 +587,15 @@ export function createLocalDesignProvisioningAuthorizationAdapter({ directory } 
       return mutateAuthorization(root, expectedSnapshot, claim, 'claim');
     },
     async finalize(expectedSnapshot, terminalClaim) {
-      return mutateAuthorization(root, expectedSnapshot, terminalClaim, 'finalization');
+      const approvalId = expectedSnapshot?.state?.approvalId;
+      const validatedTerminalClaim = validateClaim(terminalClaim, approvalId);
+      await validateTerminalClaimReceiptIfPresent(root, validatedTerminalClaim);
+      return mutateAuthorization(
+        root,
+        expectedSnapshot,
+        validatedTerminalClaim,
+        'finalization',
+      );
     },
   });
 }
@@ -687,6 +695,34 @@ function validateReceipt(receipt) {
     throw new Error('Local design provisioning execution receipt is invalid');
   }
   return structuredClone(receipt);
+}
+
+function validateReceiptAuthorizationLinkage(receipt, authorizationState) {
+  const claim = authorizationState?.claim;
+  if (!claim
+    || claim.approvalId !== receipt.approvalId
+    || claim.executionId !== receipt.executionId
+    || claim.planChecksum !== receipt.approvedPlanChecksum
+    || (claim.status !== 'claimed' && claim.status !== receipt.status)
+    || receipt.startedAt < claim.claimedAt
+    || (claim.status !== 'claimed' && receipt.completedAt > claim.finalizedAt)) {
+    throw new Error('Local design provisioning execution receipt authorization linkage is invalid');
+  }
+}
+
+async function validateTerminalClaimReceiptIfPresent(root, terminalClaim) {
+  const receiptRoot = ensureOwnedChild(root, RECEIPT_DIRECTORY);
+  const receiptPath = resolve(receiptRoot, `${terminalClaim.executionId}.json`);
+  if (!existsSync(receiptPath)) return;
+  const receipt = validateReceipt(await readBoundedJson(
+    validateOwnedFile(
+      receiptRoot,
+      receiptPath,
+      'Local design provisioning execution receipt',
+    ),
+    'Local design provisioning execution receipt',
+  ));
+  validateReceiptAuthorizationLinkage(receipt, { claim: terminalClaim });
 }
 
 function receiptAuditKeyConfiguration(trustedReceiptKey, expectedReceiptKeyId) {
@@ -829,13 +865,7 @@ async function inspectLocalDesignProvisioningRehearsalStore({
     }
     verifyReceiptSignature(receipt, receiptAuditKey);
     const authorizationState = authorizationStates.get(receipt.approvalId);
-    const claim = authorizationState?.claim;
-    if (!claim
-      || claim.executionId !== receipt.executionId
-      || claim.planChecksum !== receipt.approvedPlanChecksum
-      || (claim.status !== 'claimed' && claim.status !== receipt.status)) {
-      throw new Error('Local design provisioning execution receipt authorization linkage is invalid');
-    }
+    validateReceiptAuthorizationLinkage(receipt, authorizationState);
     receiptSummary.receiptCount += 1;
     receiptInventory.push({
       approvalId: receipt.approvalId,
@@ -1077,6 +1107,8 @@ export function createLocalDesignProvisioningReceiptAdapter({ directory } = {}) 
     },
     async append(receiptValue) {
       const receipt = validateReceipt(receiptValue);
+      const authorization = await readAuthorizationJournal(root, receipt.approvalId);
+      validateReceiptAuthorizationLinkage(receipt, authorization.state);
       const filename = `${receipt.executionId}.json`;
       const published = await publishImmutableJson(receipts, filename, receipt);
       if (published) return { status: 'appended', receipt: structuredClone(receipt) };
