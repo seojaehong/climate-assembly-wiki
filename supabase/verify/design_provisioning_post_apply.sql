@@ -75,6 +75,10 @@ begin
      or v_definition not like '%count(distinct value ->> ''ref'')%'
      or v_definition not like '%jsonb_typeof(p_plan -> ''readyForExecution'') <> ''boolean''%'
      or v_definition not like '%jsonb_typeof(p_plan #> ''{sourceBlueprint,bytes}'') <> ''number''%'
+     or v_definition not like '%v_current_team_count > 0%'
+     or v_definition not like '%to_char(v_session_date, ''YYYY-MM-DD'')%'
+     or v_definition not like '%v_current_session_capacity > 100000%'
+     or v_definition not like '%v_current_topic_count = 0 or v_current_team_count = 0%'
      or v_definition not like '%design_join_code_exhausted%'
      or v_definition not like '%design_operation_conflict%' then
     raise exception 'A4 post-apply verification failed: RPC contract is unsafe';

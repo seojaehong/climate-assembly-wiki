@@ -148,6 +148,17 @@ declare
   v_participant_count integer := 0;
   v_assembly_count integer := 0;
   v_position integer := 0;
+  v_current_session_ref text;
+  v_previous_session_date date;
+  v_session_date date;
+  v_session_year integer;
+  v_session_month integer;
+  v_session_day integer;
+  v_current_topic_count integer := 0;
+  v_current_team_count integer := 0;
+  v_current_session_capacity integer := 0;
+  v_generated_count integer := 0;
+  v_current_topic_prompts jsonb := '{}'::jsonb;
 begin
   if p_plan is null or p_source_bytes is null or jsonb_typeof(p_plan) <> 'object' then
     raise exception using message = 'design_plan_invalid';
@@ -321,9 +332,16 @@ begin
          or jsonb_typeof(v_payload -> 'mode') <> 'string'
          or (v_payload ->> 'slug') !~ '^[a-z0-9-]{3,40}$'
          or length(trim(v_payload ->> 'title')) not between 1 and 200
+         or (v_payload ->> 'title') <> trim(v_payload ->> 'title')
          or (v_payload ->> 'title') <> p_plan #>> '{assembly,title}'
          or (v_payload ->> 'slug') <> p_plan #>> '{assembly,slug}'
-         or (v_payload ->> 'purpose') is not null and length(v_payload ->> 'purpose') > 1000
+         or (
+           (v_payload ->> 'purpose') is not null
+           and (
+             length(v_payload ->> 'purpose') > 1000
+             or (v_payload ->> 'purpose') <> trim(v_payload ->> 'purpose')
+           )
+         )
          or v_payload ->> 'mode' not in ('consensus', 'vote')
          or (select array_agg(key order by key) from jsonb_object_keys(v_payload -> 'config') keys(key))
             is distinct from array['readiness']
@@ -370,6 +388,11 @@ begin
          or (v_operation ->> 'ordinal') !~ '^[1-9][0-9]*$'
          or length(v_operation ->> 'ordinal') > 2
          or (v_operation ->> 'ordinal')::integer > 24
+         or v_operation ->> 'ordinal' <> (v_session_count + 1)::text
+         or (
+           v_current_session_ref is not null
+           and (v_current_topic_count = 0 or v_current_team_count = 0)
+         )
          or v_ref <> v_parent_ref || '/session:' || (v_payload ->> 'slug')
          or (select array_agg(key order by key) from jsonb_object_keys(v_payload) keys(key))
             is distinct from array['heldOn', 'slug', 'title']
@@ -378,9 +401,36 @@ begin
          or jsonb_typeof(v_payload -> 'heldOn') <> 'string'
          or (v_payload ->> 'slug') !~ '^[a-z0-9-]{3,40}$'
          or length(trim(v_payload ->> 'title')) not between 1 and 200
-         or (v_payload ->> 'heldOn') !~ '^\d{4}-\d{2}-\d{2}$' then
+         or (v_payload ->> 'title') <> trim(v_payload ->> 'title')
+         or (v_payload ->> 'heldOn') !~ '^[1-9][0-9]{3}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$' then
         raise exception using message = 'design_operation_invalid';
       end if;
+      v_session_year := substring(v_payload ->> 'heldOn' from 1 for 4)::integer;
+      v_session_month := substring(v_payload ->> 'heldOn' from 6 for 2)::integer;
+      v_session_day := substring(v_payload ->> 'heldOn' from 9 for 2)::integer;
+      if v_session_day > (case
+           when v_session_month = 2 then
+             case
+               when v_session_year % 400 = 0
+                 or (v_session_year % 4 = 0 and v_session_year % 100 <> 0) then 29
+               else 28
+             end
+           when v_session_month in (4, 6, 9, 11) then 30
+           else 31
+         end) then
+        raise exception using message = 'design_operation_invalid';
+      end if;
+      v_session_date := make_date(v_session_year, v_session_month, v_session_day);
+      if to_char(v_session_date, 'YYYY-MM-DD') <> v_payload ->> 'heldOn'
+         or (v_previous_session_date is not null and v_session_date < v_previous_session_date) then
+        raise exception using message = 'design_operation_invalid';
+      end if;
+      v_previous_session_date := v_session_date;
+      v_current_session_ref := v_ref;
+      v_current_topic_count := 0;
+      v_current_team_count := 0;
+      v_current_session_capacity := 0;
+      v_current_topic_prompts := '{}'::jsonb;
       if v_replayed then
         select id into v_resource_id from climate_vote.session where id = v_existing.resource_id;
       else
@@ -390,8 +440,8 @@ begin
             raise exception using message = 'design_parent_conflict';
           end if;
           insert into climate_vote.session (slug, title, status, assembly_id, ordinal, held_on, org_id)
-          values (v_payload ->> 'slug', v_payload ->> 'title', 'draft', v_parent_id,
-                  (v_operation ->> 'ordinal')::integer, (v_payload ->> 'heldOn')::date, v_org_id)
+           values (v_payload ->> 'slug', v_payload ->> 'title', 'draft', v_parent_id,
+                   (v_operation ->> 'ordinal')::integer, v_session_date, v_org_id)
           returning id into v_resource_id;
         end if;
       end if;
@@ -399,21 +449,30 @@ begin
         select 1 from climate_vote.session s where s.id = v_resource_id and s.org_id = v_org_id
           and s.assembly_id = v_parent_id and s.ordinal = (v_operation ->> 'ordinal')::integer
           and s.slug = v_payload ->> 'slug' and s.title = v_payload ->> 'title'
-          and s.held_on = (v_payload ->> 'heldOn')::date
+          and s.held_on = v_session_date
       ) then raise exception using message = 'design_resource_conflict'; end if;
       v_session_count := v_session_count + 1;
 
     elsif v_type = 'create_topic' then
       v_parent_id := nullif(v_refs ->> v_parent_ref, '')::uuid;
       if v_parent_id is null
+         or v_parent_ref is distinct from v_current_session_ref
+         or v_current_team_count > 0
          or (v_operation ->> 'ordinal') !~ '^[1-9][0-9]*$'
          or length(v_operation ->> 'ordinal') > 2
          or (v_operation ->> 'ordinal')::integer > 50
+         or v_operation ->> 'ordinal' <> (v_current_topic_count + 1)::text
          or v_ref <> v_parent_ref || '/topic:' || (v_operation ->> 'ordinal')
          or (select array_agg(key order by key) from jsonb_object_keys(v_payload) keys(key))
             is distinct from array['prompt']
          or jsonb_typeof(v_payload -> 'prompt') <> 'string'
-         or length(trim(v_payload ->> 'prompt')) not between 1 and 500 then
+         or length(trim(v_payload ->> 'prompt')) not between 1 and 500
+         or (v_payload ->> 'prompt') <> trim(v_payload ->> 'prompt')
+         or v_current_topic_prompts ? (v_payload ->> 'prompt') then
+        raise exception using message = 'design_operation_invalid';
+      end if;
+      v_generated_count := v_generated_count + 1;
+      if v_generated_count > 10000 then
         raise exception using message = 'design_operation_invalid';
       end if;
       if v_replayed then
@@ -434,23 +493,36 @@ begin
           and dt.ordinal = (v_operation ->> 'ordinal')::integer
           and dt.prompt = v_payload ->> 'prompt'
       ) then raise exception using message = 'design_resource_conflict'; end if;
+      v_current_topic_count := v_current_topic_count + 1;
+      v_current_topic_prompts := v_current_topic_prompts
+        || jsonb_build_object(v_payload ->> 'prompt', true);
       v_topic_count := v_topic_count + 1;
 
     else
       v_parent_id := nullif(v_refs ->> v_parent_ref, '')::uuid;
       if v_parent_id is null
+         or v_parent_ref is distinct from v_current_session_ref
+         or v_current_topic_count = 0
          or (v_operation ->> 'ordinal') !~ '^[1-9][0-9]*$'
          or length(v_operation ->> 'ordinal') > 3
          or (v_operation ->> 'ordinal')::integer > 500
+         or v_operation ->> 'ordinal' <> (v_current_team_count + 1)::text
          or v_ref <> v_parent_ref || '/team:' || (v_operation ->> 'ordinal')
          or (select array_agg(key order by key) from jsonb_object_keys(v_payload) keys(key))
             is distinct from array['name', 'plannedCapacity']
          or jsonb_typeof(v_payload -> 'name') <> 'string'
          or jsonb_typeof(v_payload -> 'plannedCapacity') <> 'number'
          or length(trim(v_payload ->> 'name')) not between 1 and 200
+         or (v_payload ->> 'name') <> ((v_operation ->> 'ordinal') || '조')
          or (v_payload ->> 'plannedCapacity') !~ '^[1-9][0-9]*$'
          or length(v_payload ->> 'plannedCapacity') > 6
          or (v_payload ->> 'plannedCapacity')::integer > 100000 then
+        raise exception using message = 'design_operation_invalid';
+      end if;
+      v_generated_count := v_generated_count + 1;
+      v_current_session_capacity := v_current_session_capacity
+        + (v_payload ->> 'plannedCapacity')::integer;
+      if v_generated_count > 10000 or v_current_session_capacity > 100000 then
         raise exception using message = 'design_operation_invalid';
       end if;
       if v_replayed then
@@ -485,6 +557,7 @@ begin
           and t.name = v_payload ->> 'name'
           and t.capacity = (v_payload ->> 'plannedCapacity')::integer
       ) then raise exception using message = 'design_resource_conflict'; end if;
+      v_current_team_count := v_current_team_count + 1;
       v_team_count := v_team_count + 1;
       v_participant_count := v_participant_count + (v_payload ->> 'plannedCapacity')::integer;
     end if;
@@ -508,6 +581,10 @@ begin
       ))
     );
   end loop;
+
+  if v_current_topic_count = 0 or v_current_team_count = 0 then
+    raise exception using message = 'design_operation_invalid';
+  end if;
 
   if p_plan #>> '{summary,assemblyCount}' <> v_assembly_count::text
      or p_plan #>> '{summary,sessionCount}' <> v_session_count::text

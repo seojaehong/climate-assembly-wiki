@@ -60,6 +60,30 @@ begin
 end
 $function$;
 
+create or replace function pg_temp.a4_reseal_plan_operation(p_plan jsonb, p_index integer)
+returns jsonb language plpgsql as $function$
+declare
+  v_operation jsonb;
+  v_result jsonb;
+begin
+  v_operation := p_plan #> array['operations', p_index::text];
+  v_result := jsonb_set(
+    p_plan,
+    array['operations', p_index::text, 'operationId'],
+    to_jsonb(climate_vote.platform_sha256_hex(
+      climate_vote.platform_json_canonical(v_operation - 'operationId')
+    ))
+  );
+  return jsonb_set(
+    v_result,
+    '{checksum}',
+    to_jsonb(climate_vote.platform_sha256_hex(
+      climate_vote.platform_json_canonical(v_result - 'checksum')
+    ))
+  );
+end
+$function$;
+
 create or replace function pg_temp.a4_reconciliation_query(p_plan jsonb)
 returns jsonb language sql as $function$
   select jsonb_build_object(
@@ -97,10 +121,12 @@ declare
   v_cross_plan jsonb;
   v_duplicate_plan jsonb;
   v_malformed_plan jsonb;
+  v_invalid_plan jsonb;
   v_parent_plan jsonb;
   v_exhaustion_plan jsonb;
   v_rollback_plan jsonb;
   v_session_id uuid;
+  v_parent_assembly_id uuid;
   v_ledger_count bigint;
   v_resource_count bigint;
   v_join_code_definition text;
@@ -129,6 +155,181 @@ begin
     'teamCount', 1, 'participantCount', 12, 'operationCount', 4
   ));
   v_query := pg_temp.a4_reconciliation_query(v_plan);
+
+  v_invalid_plan := jsonb_set(v_plan, '{operations,1,payload,heldOn}', '"2026-02-31"'::jsonb);
+  v_invalid_plan := pg_temp.a4_reseal_plan_operation(v_invalid_plan, 1);
+  begin
+    perform climate_vote.design_provision(v_invalid_plan, convert_to(repeat('s', 100), 'UTF8'));
+    raise exception 'A4 semantic test failed: invalid calendar date unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_operation_invalid' then raise; end if;
+  end;
+
+  v_invalid_plan := jsonb_set(v_plan, '{operations,1,ordinal}', '2'::jsonb);
+  v_invalid_plan := pg_temp.a4_reseal_plan_operation(v_invalid_plan, 1);
+  begin
+    perform climate_vote.design_provision(v_invalid_plan, convert_to(repeat('s', 100), 'UTF8'));
+    raise exception 'A4 semantic test failed: noncanonical ordinal unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_operation_invalid' then raise; end if;
+  end;
+
+  v_invalid_plan := jsonb_set(v_plan, '{operations,3,payload,name}', '"Alpha"'::jsonb);
+  v_invalid_plan := pg_temp.a4_reseal_plan_operation(v_invalid_plan, 3);
+  begin
+    perform climate_vote.design_provision(v_invalid_plan, convert_to(repeat('s', 100), 'UTF8'));
+    raise exception 'A4 semantic test failed: noncanonical team name unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_operation_invalid' then raise; end if;
+  end;
+
+  v_invalid_plan := jsonb_set(
+    v_plan,
+    '{operations}',
+    jsonb_build_array(
+      v_plan #> '{operations,0}', v_plan #> '{operations,1}',
+      v_plan #> '{operations,3}', v_plan #> '{operations,2}'
+    )
+  );
+  v_invalid_plan := jsonb_set(
+    v_invalid_plan,
+    '{checksum}',
+    to_jsonb(climate_vote.platform_sha256_hex(
+      climate_vote.platform_json_canonical(v_invalid_plan - 'checksum')
+    ))
+  );
+  begin
+    perform climate_vote.design_provision(v_invalid_plan, convert_to(repeat('s', 100), 'UTF8'));
+    raise exception 'A4 semantic test failed: noncanonical operation sequence unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_operation_invalid' then raise; end if;
+  end;
+
+  v_invalid_plan := pg_temp.a4_plan(
+    jsonb_build_array(
+      pg_temp.a4_operation('create_assembly', v_assembly_ref, null, null, jsonb_build_object(
+        'title', 'A4 test assembly', 'slug', 'a4-test-assembly', 'purpose', 'Migration rehearsal',
+        'mode', 'consensus', 'config', jsonb_build_object('readiness', jsonb_build_array('topics_open'))
+      )),
+      pg_temp.a4_operation('create_session', v_session_ref, v_assembly_ref, 1, jsonb_build_object(
+        'title', 'First session', 'slug', 'a4-session-1', 'heldOn', '2026-09-01'
+      )),
+      pg_temp.a4_operation('create_topic', v_session_ref || '/topic:1', v_session_ref, 1,
+        jsonb_build_object('prompt', 'First topic')),
+      pg_temp.a4_operation('create_team', v_session_ref || '/team:1', v_session_ref, 1,
+        jsonb_build_object('name', '1조', 'plannedCapacity', 60000)),
+      pg_temp.a4_operation('create_team', v_session_ref || '/team:2', v_session_ref, 2,
+        jsonb_build_object('name', '2조', 'plannedCapacity', 60000))
+    ),
+    jsonb_build_object(
+      'assemblyCount', 1, 'sessionCount', 1, 'topicCount', 1,
+      'teamCount', 2, 'participantCount', 120000, 'operationCount', 5
+    )
+  );
+  begin
+    perform climate_vote.design_provision(v_invalid_plan, convert_to(repeat('s', 100), 'UTF8'));
+    raise exception 'A4 semantic test failed: session capacity overflow unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_operation_invalid' then raise; end if;
+  end;
+
+  v_invalid_plan := pg_temp.a4_plan(
+    jsonb_build_array(
+      pg_temp.a4_operation('create_assembly', 'assembly:a4-date-order', null, null, jsonb_build_object(
+        'title', 'Date order assembly', 'slug', 'a4-date-order', 'purpose', null,
+        'mode', 'consensus', 'config', jsonb_build_object('readiness', jsonb_build_array('topics_open'))
+      )),
+      pg_temp.a4_operation('create_session', 'assembly:a4-date-order/session:a4-date-first',
+        'assembly:a4-date-order', 1, jsonb_build_object(
+          'title', 'First date session', 'slug', 'a4-date-first', 'heldOn', '2026-09-02'
+        )),
+      pg_temp.a4_operation('create_topic', 'assembly:a4-date-order/session:a4-date-first/topic:1',
+        'assembly:a4-date-order/session:a4-date-first', 1, jsonb_build_object('prompt', 'First date topic')),
+      pg_temp.a4_operation('create_team', 'assembly:a4-date-order/session:a4-date-first/team:1',
+        'assembly:a4-date-order/session:a4-date-first', 1,
+        jsonb_build_object('name', '1조', 'plannedCapacity', 10)),
+      pg_temp.a4_operation('create_session', 'assembly:a4-date-order/session:a4-date-second',
+        'assembly:a4-date-order', 2, jsonb_build_object(
+          'title', 'Second date session', 'slug', 'a4-date-second', 'heldOn', '2026-09-01'
+        )),
+      pg_temp.a4_operation('create_topic', 'assembly:a4-date-order/session:a4-date-second/topic:1',
+        'assembly:a4-date-order/session:a4-date-second', 1, jsonb_build_object('prompt', 'Second date topic')),
+      pg_temp.a4_operation('create_team', 'assembly:a4-date-order/session:a4-date-second/team:1',
+        'assembly:a4-date-order/session:a4-date-second', 1,
+        jsonb_build_object('name', '1조', 'plannedCapacity', 10))
+    ),
+    jsonb_build_object(
+      'assemblyCount', 1, 'sessionCount', 2, 'topicCount', 2,
+      'teamCount', 2, 'participantCount', 20, 'operationCount', 7
+    ),
+    'a4-date-order'
+  );
+  begin
+    perform climate_vote.design_provision(v_invalid_plan, convert_to(repeat('s', 100), 'UTF8'));
+    raise exception 'A4 semantic test failed: decreasing session date unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_operation_invalid' then raise; end if;
+  end;
+
+  v_invalid_plan := pg_temp.a4_plan(
+    jsonb_build_array(
+      pg_temp.a4_operation('create_assembly', 'assembly:a4-duplicate-prompt', null, null, jsonb_build_object(
+        'title', 'Duplicate prompt assembly', 'slug', 'a4-duplicate-prompt', 'purpose', null,
+        'mode', 'consensus', 'config', jsonb_build_object('readiness', jsonb_build_array('topics_open'))
+      )),
+      pg_temp.a4_operation('create_session', 'assembly:a4-duplicate-prompt/session:a4-prompt-session',
+        'assembly:a4-duplicate-prompt', 1, jsonb_build_object(
+          'title', 'Prompt session', 'slug', 'a4-prompt-session', 'heldOn', '2026-09-03'
+        )),
+      pg_temp.a4_operation('create_topic', 'assembly:a4-duplicate-prompt/session:a4-prompt-session/topic:1',
+        'assembly:a4-duplicate-prompt/session:a4-prompt-session', 1,
+        jsonb_build_object('prompt', 'Repeated prompt')),
+      pg_temp.a4_operation('create_topic', 'assembly:a4-duplicate-prompt/session:a4-prompt-session/topic:2',
+        'assembly:a4-duplicate-prompt/session:a4-prompt-session', 2,
+        jsonb_build_object('prompt', 'Repeated prompt')),
+      pg_temp.a4_operation('create_team', 'assembly:a4-duplicate-prompt/session:a4-prompt-session/team:1',
+        'assembly:a4-duplicate-prompt/session:a4-prompt-session', 1,
+        jsonb_build_object('name', '1조', 'plannedCapacity', 10))
+    ),
+    jsonb_build_object(
+      'assemblyCount', 1, 'sessionCount', 1, 'topicCount', 2,
+      'teamCount', 1, 'participantCount', 10, 'operationCount', 5
+    ),
+    'a4-duplicate-prompt'
+  );
+  begin
+    perform climate_vote.design_provision(v_invalid_plan, convert_to(repeat('s', 100), 'UTF8'));
+    raise exception 'A4 semantic test failed: duplicate topic prompt unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_operation_invalid' then raise; end if;
+  end;
+
+  v_invalid_plan := pg_temp.a4_plan(
+    jsonb_build_array(
+      pg_temp.a4_operation('create_assembly', 'assembly:a4-incomplete-session', null, null, jsonb_build_object(
+        'title', 'Incomplete session assembly', 'slug', 'a4-incomplete-session', 'purpose', null,
+        'mode', 'consensus', 'config', jsonb_build_object('readiness', jsonb_build_array('topics_open'))
+      )),
+      pg_temp.a4_operation('create_session', 'assembly:a4-incomplete-session/session:a4-incomplete',
+        'assembly:a4-incomplete-session', 1, jsonb_build_object(
+          'title', 'Incomplete session', 'slug', 'a4-incomplete', 'heldOn', '2026-09-03'
+        )),
+      pg_temp.a4_operation('create_topic', 'assembly:a4-incomplete-session/session:a4-incomplete/topic:1',
+        'assembly:a4-incomplete-session/session:a4-incomplete', 1,
+        jsonb_build_object('prompt', 'Only topic'))
+    ),
+    jsonb_build_object(
+      'assemblyCount', 1, 'sessionCount', 1, 'topicCount', 1,
+      'teamCount', 0, 'participantCount', 0, 'operationCount', 3
+    ),
+    'a4-incomplete-session'
+  );
+  begin
+    perform climate_vote.design_provision(v_invalid_plan, convert_to(repeat('s', 100), 'UTF8'));
+    raise exception 'A4 semantic test failed: incomplete session unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_operation_invalid' then raise; end if;
+  end;
 
   v_malformed_plan := jsonb_set(v_plan, '{readyForExecution}', '"true"'::jsonb);
   v_malformed_plan := jsonb_set(
@@ -346,6 +547,16 @@ begin
     if sqlerrm <> 'design_operation_conflict' then raise; end if;
   end;
 
+  insert into climate_vote.assembly (slug, title, purpose, mode, config, status, org_id)
+  values (
+    'a4-parent-conflict', 'Parent conflict assembly', null, 'consensus',
+    jsonb_build_object('readiness', jsonb_build_array('topics_open')), 'draft', v_org
+  ) returning id into v_parent_assembly_id;
+  insert into climate_vote.session (slug, title, status, assembly_id, ordinal, held_on, org_id)
+  values (
+    'a4-existing-session', 'Existing conflicting session', 'draft',
+    v_parent_assembly_id, 1, '2026-09-01', v_org
+  );
   v_parent_plan := pg_temp.a4_plan(
     jsonb_build_array(
       pg_temp.a4_operation(
@@ -356,19 +567,24 @@ begin
         )
       ),
       pg_temp.a4_operation(
-        'create_session', 'assembly:a4-parent-conflict/session:a4-session-first',
+        'create_session', 'assembly:a4-parent-conflict/session:a4-session-new',
         'assembly:a4-parent-conflict', 1,
-        jsonb_build_object('title', 'First conflicting session', 'slug', 'a4-session-first', 'heldOn', '2026-09-02')
+        jsonb_build_object('title', 'New conflicting session', 'slug', 'a4-session-new', 'heldOn', '2026-09-02')
       ),
       pg_temp.a4_operation(
-        'create_session', 'assembly:a4-parent-conflict/session:a4-session-second',
-        'assembly:a4-parent-conflict', 1,
-        jsonb_build_object('title', 'Second conflicting session', 'slug', 'a4-session-second', 'heldOn', '2026-09-03')
+        'create_topic', 'assembly:a4-parent-conflict/session:a4-session-new/topic:1',
+        'assembly:a4-parent-conflict/session:a4-session-new', 1,
+        jsonb_build_object('prompt', 'Parent conflict topic')
+      ),
+      pg_temp.a4_operation(
+        'create_team', 'assembly:a4-parent-conflict/session:a4-session-new/team:1',
+        'assembly:a4-parent-conflict/session:a4-session-new', 1,
+        jsonb_build_object('name', '1조', 'plannedCapacity', 10)
       )
     ),
     jsonb_build_object(
-      'assemblyCount', 1, 'sessionCount', 2, 'topicCount', 0,
-      'teamCount', 0, 'participantCount', 0, 'operationCount', 3
+      'assemblyCount', 1, 'sessionCount', 1, 'topicCount', 1,
+      'teamCount', 1, 'participantCount', 10, 'operationCount', 4
     ),
     'a4-parent-conflict'
   );
@@ -378,6 +594,8 @@ begin
   exception when others then
     if sqlerrm <> 'design_parent_conflict' then raise; end if;
   end;
+  delete from climate_vote.session where assembly_id = v_parent_assembly_id;
+  delete from climate_vote.assembly where id = v_parent_assembly_id;
 
   select id into strict v_session_id from climate_vote.session where slug = 'a4-session-1';
   insert into climate_vote.team (session_id, ordinal, name, join_code, capacity, status, org_id)
@@ -397,14 +615,19 @@ begin
         jsonb_build_object('title', 'Exhaustion session', 'slug', 'a4-exhaustion-session', 'heldOn', '2026-09-03')
       ),
       pg_temp.a4_operation(
+        'create_topic', 'assembly:a4-exhaustion/session:a4-exhaustion-session/topic:1',
+        'assembly:a4-exhaustion/session:a4-exhaustion-session', 1,
+        jsonb_build_object('prompt', 'Exhaustion topic')
+      ),
+      pg_temp.a4_operation(
         'create_team', 'assembly:a4-exhaustion/session:a4-exhaustion-session/team:1',
         'assembly:a4-exhaustion/session:a4-exhaustion-session', 1,
         jsonb_build_object('name', '1조', 'plannedCapacity', 10)
       )
     ),
     jsonb_build_object(
-      'assemblyCount', 1, 'sessionCount', 1, 'topicCount', 0,
-      'teamCount', 1, 'participantCount', 10, 'operationCount', 3
+      'assemblyCount', 1, 'sessionCount', 1, 'topicCount', 1,
+      'teamCount', 1, 'participantCount', 10, 'operationCount', 4
     ),
     'a4-exhaustion'
   );
@@ -449,15 +672,32 @@ begin
   end if;
 
   v_rollback_plan := pg_temp.a4_plan(
-    jsonb_build_array(pg_temp.a4_operation(
-      'create_assembly', 'assembly:a4-late-rollback', null, null, jsonb_build_object(
-        'title', 'Late rollback', 'slug', 'a4-late-rollback', 'purpose', null,
-        'mode', 'consensus', 'config', jsonb_build_object('readiness', jsonb_build_array('topics_open'))
+    jsonb_build_array(
+      pg_temp.a4_operation(
+        'create_assembly', 'assembly:a4-late-rollback', null, null, jsonb_build_object(
+          'title', 'Late rollback', 'slug', 'a4-late-rollback', 'purpose', null,
+          'mode', 'consensus', 'config', jsonb_build_object('readiness', jsonb_build_array('topics_open'))
+        )
+      ),
+      pg_temp.a4_operation(
+        'create_session', 'assembly:a4-late-rollback/session:a4-late-session',
+        'assembly:a4-late-rollback', 1,
+        jsonb_build_object('title', 'Late session', 'slug', 'a4-late-session', 'heldOn', '2026-09-05')
+      ),
+      pg_temp.a4_operation(
+        'create_topic', 'assembly:a4-late-rollback/session:a4-late-session/topic:1',
+        'assembly:a4-late-rollback/session:a4-late-session', 1,
+        jsonb_build_object('prompt', 'Late topic')
+      ),
+      pg_temp.a4_operation(
+        'create_team', 'assembly:a4-late-rollback/session:a4-late-session/team:1',
+        'assembly:a4-late-rollback/session:a4-late-session', 1,
+        jsonb_build_object('name', '1조', 'plannedCapacity', 10)
       )
-    )),
+    ),
     jsonb_build_object(
-      'assemblyCount', 2, 'sessionCount', 0, 'topicCount', 0,
-      'teamCount', 0, 'participantCount', 0, 'operationCount', 1
+      'assemblyCount', 2, 'sessionCount', 1, 'topicCount', 1,
+      'teamCount', 1, 'participantCount', 10, 'operationCount', 4
     ),
     'a4-late-rollback'
   );

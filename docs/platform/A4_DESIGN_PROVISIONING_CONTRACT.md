@@ -61,6 +61,7 @@
 - RPC는 `org_id`를 인자로 받지 않는다. 현재 Auth 사용자와 P1C 선택 context에서 `org_of_uid()`가 검증한 기관을 서버가 파생한다.
 - 허용 역할은 `org_admin`과 `hq`로 제한하고 활성 membership·활성 org를 매 요청 확인한다.
 - 입력은 field 이름뿐 아니라 boolean·number·string의 JSON 타입까지 exact schema/version으로 검증하고, plan checksum, 원 청사진 bytes의 길이·SHA-256, operation 순서, parent reference, operation ID를 다시 검증한다. 숫자나 실행 플래그를 문자열로 바꾼 self-resealed 입력은 거부한다. operation ID와 resource ref는 plan 안에서 각각 유일해야 하며, 중복은 어떤 lookup이나 mutation보다 먼저 거부한다. 원 bytes는 검증 중에만 사용하며 ledger·receipt에 저장하지 않는다.
+- operation grammar는 assembly 1건 뒤 session을 연속 ordinal로 처리하고, 각 session 안에서 연속 topic 뒤 연속 team을 처리한다. 실제 달력 날짜와 session 날짜 비감소, canonical text, session별 topic prompt 유일성, `${ordinal}조` team 이름, topic·team 각 1건 이상, session 누적 정원 100,000명과 전체 생성 항목 10,000건 상한을 client verifier와 RPC가 함께 검증한다.
 - assembly slug, session slug, session/topic/team ordinal을 lookup-before-mutation 방식으로 대조한다. 기존 값이 기대 payload와 다르면 update로 덮지 않고 충돌로 중단한다.
 - 모든 operation이 성공한 경우에만 commit한다. 오류는 원문·join code·credential을 포함하지 않는 안정 error code로 반환한다.
 - 성공 응답은 생성/재사용 resource ID, operation 상태, count와 plan checksum을 포함하되 원 청사진 본문은 반복하지 않는다.

@@ -169,6 +169,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 JSON scalar 타입 엄격화(2026-08-26):** mutation RPC와 read-only reconciliation RPC가 exact field 이름뿐 아니라 boolean·number·string JSON 타입을 각각 검사한다. 이전의 `->>` 텍스트 비교는 `readyForExecution` 같은 실행 플래그나 operation count를 JSON 문자열로 바꾸고 checksum을 다시 계산한 입력도 같은 값으로 받아들였지만, 이제 lookup·mutation 전에 안정 오류 코드로 거부한다. PostgreSQL 16 격리 리허설과 compiled-function post-apply verifier가 두 경로의 타입 위조 차단을 확인했다. production migration·DB·GRANT는 적용하지 않았다.
 
+**A4 canonical plan 의미 계약(2026-08-26):** mutation RPC가 client verifier와 같은 operation grammar를 재검증한다. assembly 뒤 연속 session, 각 session의 연속 topic→연속 team 순서, 실제 달력 날짜와 날짜 비감소, trim된 text, session 내 topic prompt 유일성, `${ordinal}조` team 이름, topic·team 최소 1건, session 누적 정원 100,000명, 전체 생성 항목 10,000건을 강제한다. PostgreSQL 16 격리 리허설은 invalid calendar, 날짜 역행, ordinal gap, child 순서 역전, 중복 prompt, 잘못된 team 이름, 정원 초과와 불완전 session을 안정 오류로 거부하고 전체 transaction rollback을 확인했다. parent-conflict·join-code exhaustion·late summary rollback fixture도 canonical plan으로 재구성해 기존 failure mode를 계속 증명한다. production migration·DB·GRANT는 적용하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

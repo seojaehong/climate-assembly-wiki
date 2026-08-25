@@ -130,6 +130,12 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(migration).toContain("jsonb_typeof(p_plan -> 'readyForExecution') <> 'boolean'");
   expect(migration).toContain("jsonb_typeof(p_plan #> '{sourceBlueprint,bytes}') <> 'number'");
   expect(migration).toContain("jsonb_typeof(p_query -> 'operationCount') <> 'number'");
+  expect(migration).toContain("v_operation ->> 'ordinal' <> (v_session_count + 1)::text");
+  expect(migration).toContain('v_current_team_count > 0');
+  expect(migration).toContain("(v_payload ->> 'name') <> ((v_operation ->> 'ordinal') || '조')");
+  expect(migration).toContain('v_current_session_capacity > 100000');
+  expect(migration).toContain("to_char(v_session_date, 'YYYY-MM-DD')");
+  expect(migration).toContain('v_current_topic_count = 0 or v_current_team_count = 0');
   expect(migration).toContain("encode(extensions.digest(p_source_bytes, 'sha256'), 'hex')");
   expect(migration).toContain('revoke all on function climate_vote.design_provision(jsonb, bytea)');
   expect(migration).toContain('create or replace function climate_vote.design_provisioning_status(p_query jsonb)');
@@ -150,6 +156,14 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(rehearsal).toContain('stringified plan scalar unexpectedly succeeded');
   expect(rehearsal).toContain('malformed plan container unexpectedly succeeded');
   expect(rehearsal).toContain('stringified reconciliation scalar unexpectedly succeeded');
+  expect(rehearsal).toContain('invalid calendar date unexpectedly succeeded');
+  expect(rehearsal).toContain('noncanonical operation sequence unexpectedly succeeded');
+  expect(rehearsal).toContain('noncanonical ordinal unexpectedly succeeded');
+  expect(rehearsal).toContain('noncanonical team name unexpectedly succeeded');
+  expect(rehearsal).toContain('session capacity overflow unexpectedly succeeded');
+  expect(rehearsal).toContain('decreasing session date unexpectedly succeeded');
+  expect(rehearsal).toContain('duplicate topic prompt unexpectedly succeeded');
+  expect(rehearsal).toContain('incomplete session unexpectedly succeeded');
   expect(rehearsal).toContain('late validation did not roll back mutations');
 });
 
