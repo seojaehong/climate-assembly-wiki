@@ -11,6 +11,7 @@ import {
   claimDesignProvisioningExecutionApproval,
   createInMemoryDesignProvisioningAuthorizationAdapter,
   designProvisioningPlanChecksum,
+  finalizeDesignProvisioningExecutionApproval,
   runDesignProvisioningCli,
   sealDesignProvisioningExecutionApproval,
   validateDesignBlueprint,
@@ -343,6 +344,7 @@ test('rejects revoked, completed, expired, wrong-role, and tampered A4 approvals
       planChecksum: plan.checksum,
       status: 'completed',
       claimedAt: '2026-08-25T13:01:00.000Z',
+      finalizedAt: '2026-08-25T13:02:00.000Z',
     } })),
   )).toThrow('has already been consumed');
   expect(() => verifyDesignProvisioningExecutionApproval(approval, plan, source, bytes, {
@@ -424,6 +426,179 @@ test('atomically claims an A4 approval after exact live membership verification'
     status: 'claimed',
   });
   expect((await claimDesignProvisioningExecutionApproval(input)).claimDisposition).toBe('existing');
+});
+
+test('atomically finalizes an A4 claim and reconciles the same terminal outcome', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const authorizationAdapter = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
+  const base = {
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+  };
+  await claimDesignProvisioningExecutionApproval({
+    ...base,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+  });
+
+  const concurrentResults = await Promise.all([
+    finalizeDesignProvisioningExecutionApproval({
+      ...base,
+      outcome: 'completed',
+      now: new Date('2026-08-25T13:16:00.000Z'),
+    }),
+    finalizeDesignProvisioningExecutionApproval({
+      ...base,
+      outcome: 'completed',
+      now: new Date('2026-08-25T13:16:00.000Z'),
+    }),
+  ]);
+  expect(concurrentResults.map(({ finalizationDisposition }) => finalizationDisposition).sort()).toEqual([
+    'new', 'reconciled',
+  ]);
+  expect(concurrentResults.find(({ finalizationDisposition }) => finalizationDisposition === 'new')).toEqual({
+    status: 'approval_completed',
+    approvalId: approval.approvalId,
+    executionId: approval.executionId,
+    organizationId: approval.organizationId,
+    targetHost: approval.targetHost,
+    finalizedBy: approval.approvedBy,
+    finalizedRole: approval.approvedRole,
+    finalizationDisposition: 'new',
+    approvalGateVerified: true,
+    readyForExecution: false,
+    rpcMutationExecuted: false,
+    databaseMutationExecuted: false,
+  });
+  expect((await authorizationAdapter.readSnapshot(approval.approvalId)).state.claim).toMatchObject({
+    approvalId: approval.approvalId,
+    executionId: approval.executionId,
+    status: 'completed',
+    finalizedAt: '2026-08-25T13:16:00.000Z',
+  });
+  expect((await finalizeDesignProvisioningExecutionApproval({
+    ...base,
+    outcome: 'completed',
+    now: new Date('2026-08-25T13:17:00.000Z'),
+  })).finalizationDisposition).toBe('existing');
+  await expect(finalizeDesignProvisioningExecutionApproval({
+    ...base,
+    outcome: 'failed',
+    now: new Date('2026-08-25T13:17:00.000Z'),
+  })).rejects.toThrow('terminal outcome conflicts');
+  await expect(claimDesignProvisioningExecutionApproval({
+    ...base,
+    now: new Date('2026-08-25T13:17:00.000Z'),
+  })).rejects.toThrow('expired or not yet valid');
+
+  const failureAdapter = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
+  const failureBase = { ...base, authorizationAdapter: failureAdapter };
+  await claimDesignProvisioningExecutionApproval({
+    ...failureBase,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+  });
+  expect(await finalizeDesignProvisioningExecutionApproval({
+    ...failureBase,
+    outcome: 'failed',
+    now: new Date('2026-08-25T13:06:00.000Z'),
+  })).toMatchObject({
+    status: 'approval_failed',
+    finalizationDisposition: 'new',
+    rpcMutationExecuted: false,
+    databaseMutationExecuted: false,
+  });
+});
+
+test('fails closed when finalization loses its claim, authorization context, or adapter contract', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const claimedAt = '2026-08-25T13:05:00.000Z';
+  const claimedState = approvalState({
+    claim: {
+      approvalId: approval.approvalId,
+      executionId: approval.executionId,
+      organizationId: approval.organizationId,
+      targetHost: approval.targetHost,
+      claimedBy: approval.approvedBy,
+      claimedRole: approval.approvedRole,
+      planChecksum: approval.planChecksum,
+      status: 'claimed',
+      claimedAt,
+    },
+  });
+  const base = {
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    outcome: 'failed',
+    now: new Date('2026-08-25T13:06:00.000Z'),
+  };
+
+  await expect(finalizeDesignProvisioningExecutionApproval({
+    ...base,
+    authorizationAdapter: {
+      async readSnapshot() { return { state: claimedState, context: liveContext() }; },
+      async claim() { throw new Error('claim must not run'); },
+    },
+  })).rejects.toThrow('authorization adapter is invalid');
+
+  const contextChangedAdapter = {
+    async readSnapshot() {
+      return { state: structuredClone(claimedState), context: liveContext() };
+    },
+    async claim() { throw new Error('claim must not run'); },
+    async finalize(_expectedSnapshot, terminalClaim) {
+      return {
+        status: 'finalized',
+        state: approvalState({ claim: structuredClone(terminalClaim) }),
+        context: liveContext({ membershipActive: false }),
+      };
+    },
+  };
+  await expect(finalizeDesignProvisioningExecutionApproval({
+    ...base,
+    authorizationAdapter: contextChangedAdapter,
+  })).rejects.toThrow('live authorization context is invalid');
+
+  const rewrittenFinalizationAdapter = {
+    async readSnapshot() {
+      return { state: structuredClone(claimedState), context: liveContext() };
+    },
+    async claim() { throw new Error('claim must not run'); },
+    async finalize(_expectedSnapshot, terminalClaim) {
+      return {
+        status: 'finalized',
+        state: approvalState({
+          claim: { ...structuredClone(terminalClaim), finalizedAt: '2026-08-25T13:05:30.000Z' },
+        }),
+        context: liveContext(),
+      };
+    },
+  };
+  await expect(finalizeDesignProvisioningExecutionApproval({
+    ...base,
+    authorizationAdapter: rewrittenFinalizationAdapter,
+  })).rejects.toThrow('finalization result is invalid');
+
+  const lostClaimAdapter = {
+    async readSnapshot() {
+      return { state: structuredClone(claimedState), context: liveContext() };
+    },
+    async claim() { throw new Error('claim must not run'); },
+    async finalize() {
+      return { status: 'conflict', state: approvalState(), context: liveContext() };
+    },
+  };
+  await expect(finalizeDesignProvisioningExecutionApproval({
+    ...base,
+    authorizationAdapter: lostClaimAdapter,
+  })).rejects.toThrow('finalization result is invalid');
 });
 
 test('reconciles a same-claim CAS response loss and rejects a competing claim or revocation', async () => {

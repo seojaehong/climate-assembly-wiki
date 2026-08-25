@@ -84,9 +84,9 @@
 - 승인 역할은 `org_admin|hq`만 허용한다. 현재 schema v1은 승인자와 실제 실행자를 같은 canonical Auth 사용자·역할로 결속한다. artifact의 역할은 발급 당시 판단 기록이며 현재 membership 증거가 아니므로, 실제 adapter는 mutation 직전에 active membership과 선택 기관을 다시 검증해야 한다. 향후 2인 승인 또는 실행 위임은 기존 필드의 느슨한 해석이 아니라 새 schema로 결정한다.
 - 유효기간은 trusted runner UTC 기준 최대 15분이다. 미래 발급, 만료, 비canonical 시각, 다른 key ID, source/plan 변경, digest 변조를 모두 거부한다.
 - 취소와 재사용 방지는 서명 파일만으로 해결하지 않는다. adapter가 durable approval-state 저장소에서 exact approval ID의 `revokedAt`과 one-time claim을 읽고, 첫 실행 전에 approval ID·execution ID·organization ID·target host·실행 actor·role·plan checksum을 같은 원자 transaction으로 claim해야 한다.
-- adapter contract는 `readSnapshot()`에서 approval state와 live Auth/membership/org/host context를 함께 읽고, `claim(expectedSnapshot, claim)`이 두 값을 같은 transaction에서 compare-and-set하도록 요구한다. claim 응답의 transaction 시점 context도 core가 다시 검증하므로 read와 claim 사이 membership·org 변경은 fail-closed한다.
-- claim이 없으면 순수 verifier는 `claim_required`만 반환한다. 같은 approval/execution/organization/host/actor/role/plan의 진행 중 claim만 `resume_existing_claim`으로 복구할 수 있다. 다른 실행·actor의 재사용과 `completed|failed` claim은 거부한다.
-- 현재 저장소의 `sealDesignProvisioningExecutionApproval()`과 `verifyDesignProvisioningExecutionApproval()`은 artifact/state를 검증하고, `claimDesignProvisioningExecutionApproval()`은 injected adapter의 snapshot/CAS 응답을 검증한다. in-memory adapter는 동시 claim·response-loss·충돌 테스트용이다. 결과는 항상 `readyForExecution:false`, `rpcMutationExecuted:false`, `databaseMutationExecuted:false`이며 승인 발급 CLI, durable 저장소, production adapter는 제공하지 않는다.
+- adapter contract는 `readSnapshot()`에서 approval state와 live Auth/membership/org/host context를 함께 읽고, `claim(expectedSnapshot, claim)`과 `finalize(expectedSnapshot, terminalClaim)`이 두 값을 같은 transaction에서 compare-and-set하도록 요구한다. claim·finalize 응답의 transaction 시점 context도 core가 다시 검증하므로 각 read와 CAS 사이 membership·org 변경은 fail-closed한다.
+- claim이 없으면 순수 verifier는 `claim_required`만 반환한다. 같은 approval/execution/organization/host/actor/role/plan의 진행 중 claim만 `resume_existing_claim`으로 복구할 수 있다. 기본 verifier와 새 claim은 `completed|failed`를 소비된 상태로 거부한다. 이미 유효 시간 안에 시작된 claim의 종료 기록은 승인 만료 뒤에도 허용하되 같은 terminal outcome만 `existing|reconciled`로 복구하고, 반대 outcome 덮어쓰기와 terminal state 재-claim은 거부한다.
+- 현재 저장소의 `sealDesignProvisioningExecutionApproval()`과 `verifyDesignProvisioningExecutionApproval()`은 artifact/state를 검증하고, `claimDesignProvisioningExecutionApproval()`과 `finalizeDesignProvisioningExecutionApproval()`은 injected adapter의 snapshot/CAS 응답을 검증한다. in-memory adapter는 동시 claim·finalize, response-loss·충돌 테스트용이다. 결과는 항상 `readyForExecution:false`, `rpcMutationExecuted:false`, `databaseMutationExecuted:false`이며 승인 발급 CLI, durable 저장소, production adapter는 제공하지 않는다.
 
 ## 4. migration 초안 승인 시 필요한 산출물
 
@@ -98,7 +98,7 @@
 4. PostgreSQL throwaway stage rehearsal
 5. 정상 생성, exact replay, payload 충돌, parent 충돌, join code 충돌 소진, transaction rollback, RLS/GRANT 음성 테스트
 6. plan source, bundle builder, A4 plan·bundle 집중 테스트와 migration/rollback/verifier hash를 결속한 approval bundle
-7. 실행 승인 artifact의 role·expiry·revocation·one-time claim 순수 verifier와 음성 테스트
+7. 실행 승인 artifact의 role·expiry·revocation·one-time claim·terminal finalization 순수 verifier와 음성 테스트
 
 ## 5. 승인 전에 결정할 항목
 

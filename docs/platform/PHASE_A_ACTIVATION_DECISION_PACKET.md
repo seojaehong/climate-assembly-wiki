@@ -195,7 +195,7 @@ P1C count-only RPC는 P1·P1C·P2가 모두 있어야 하므로 Gate B-A2가 Gat
 
 ### Gate F-A4 — design RPC 실행 권한 활성화(현재 차단)
 
-- 현재 blocker: A4 plan은 항상 `readyForExecution:false`이고, 이를 해제할 외부 서명 approval artifact·승인 역할·만료·취소·재사용 방지 계약이 아직 없다. 이 계약을 별도 repository 변경과 사용자 승인으로 완성하기 전에는 F-A4를 승인 요청하지 않는다.
+- 현재 blocker: 외부 HMAC approval artifact와 role·expiry·revocation·one-time claim·terminal finalization의 adapter-independent 계약은 구현됐지만, 실제 key custody·durable approval state·live membership CAS adapter와 production executor가 없다. A4 plan은 계속 `readyForExecution:false`이며 이 production 경로와 아래 선행조건을 별도 repository 변경·사용자 승인으로 완성하기 전에는 F-A4를 승인 요청하지 않는다.
 - 선행: A4 migration·mapping·read-only activation preflight, `org_admin|hq` Auth E2E, rollback 데이터 보존 계획, 승인된 execution artifact
 - 범위: 승인된 A4 RPC 권한만. A2 staff GRANT와 traffic은 포함하지 않는다.
 - 완료 증거: 정상·replay·conflict·transaction rollback과 role deny E2E
