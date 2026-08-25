@@ -125,7 +125,7 @@ Executor core는 exact plan 검증 뒤 15분 이내 HMAC 승인(외부 보관 ke
 
 ### 2-4. A4 설계 프로비저닝 계획 검증
 
-`sealLocalDesignProvisioningRehearsalStoreCheckpoint()`는 현재 inventory를 외부 보관용 비식별 HMAC checkpoint로 반환하며 store를 쓰지 않는다. 이후 audit에 checkpoint와 합성 key/key ID를 함께 주입하면 approval 삭제·journal tail 변경·receipt 변경을 거부하고 exact 일치에서만 `catalogCompletenessVerified:true`가 된다. 이는 로컬 생성시점 snapshot 검증이며 production 외부 보관·freshness·key custody·회전은 여전히 별도 blocker다.
+`sealLocalDesignProvisioningRehearsalStoreCheckpoint()`는 현재 inventory를 외부 보관용 비식별 HMAC checkpoint로 반환하며 store를 쓰지 않는다. 이후 audit에 checkpoint와 합성 key/key ID, canonical 검증 시각을 함께 주입하면 approval 삭제·journal tail 변경·receipt 변경을 거부하고 exact 일치와 기본 10분 freshness를 모두 통과할 때만 `catalogCompletenessVerified:true`, `checkpointFreshnessVerified:true`가 된다. checkpoint보다 이른 검증 시각, 10분 초과, 검증 시각 누락과 0 이하·24시간 초과 최대 나이는 fail-closed한다. 이는 로컬 생성시점 snapshot 검증이며 production 외부 보관·key custody·회전과 독립 timestamp authority는 여전히 별도 blocker다.
 
 `platform-design-provisioning-plan.mjs`는 설계 화면에서 내려받은 schema v4 청사진을 DB 명령으로 실행하지 않고, 향후 승인된 서버 계약이 소비할 assembly→session→topic/team 순서의 결정적 schema v2 작업 계획으로 변환한다. v2는 migration-owned session base와 team stable identity blocker를 각각 보존한다. 입력과 출력은 source prompt와 운영 목적을 포함하므로 저장소·`public/` 밖의 승인된 로컬 폴더에 둔다.
 

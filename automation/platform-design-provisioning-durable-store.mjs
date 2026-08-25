@@ -31,6 +31,8 @@ const AUTH_USER_PATTERN = /^auth-user:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[
 const JOURNAL_FILE_PATTERN = /^(\d{12})\.json$/;
 const RECEIPT_FILE_PATTERN = /^([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.json$/;
 const TEMPORARY_FILE_PATTERN = /^\.tmp-[0-9]+-[0-9a-f-]{36}$/;
+const DEFAULT_CHECKPOINT_MAX_AGE_SECONDS = 10 * 60;
+const MAX_CHECKPOINT_MAX_AGE_SECONDS = 24 * 60 * 60;
 const FAILURE_CODES = Object.freeze([
   'design_auth_required',
   'design_join_code_exhausted',
@@ -932,6 +934,8 @@ function verifyInventoryCheckpoint(
   inspection,
   trustedCheckpointKey,
   expectedCheckpointKeyId,
+  checkpointVerifiedAt,
+  checkpointMaxAgeSeconds,
 ) {
   const configuration = checkpointKeyConfiguration(
     trustedCheckpointKey,
@@ -951,6 +955,16 @@ function verifyInventoryCheckpoint(
     && timingSafeEqual(Buffer.from(digest, 'hex'), Buffer.from(expectedDigest, 'hex'));
   if (!matches) {
     throw new Error('Local design provisioning inventory checkpoint verification failed');
+  }
+  const verifiedAt = canonicalCheckpointTimestamp(checkpointVerifiedAt);
+  if (!Number.isSafeInteger(checkpointMaxAgeSeconds)
+    || checkpointMaxAgeSeconds <= 0
+    || checkpointMaxAgeSeconds > MAX_CHECKPOINT_MAX_AGE_SECONDS) {
+    throw new Error('Local design provisioning inventory checkpoint configuration is invalid');
+  }
+  const ageMilliseconds = new Date(verifiedAt).getTime() - new Date(checkpoint.createdAt).getTime();
+  if (ageMilliseconds < 0 || ageMilliseconds > checkpointMaxAgeSeconds * 1_000) {
+    throw new Error('Local design provisioning inventory checkpoint freshness verification failed');
   }
 }
 
@@ -985,6 +999,8 @@ export async function auditLocalDesignProvisioningRehearsalStore({
   inventoryCheckpoint,
   trustedCheckpointKey,
   expectedCheckpointKeyId,
+  checkpointVerifiedAt,
+  checkpointMaxAgeSeconds,
 } = {}) {
   const inspection = await inspectLocalDesignProvisioningRehearsalStore({
     directory,
@@ -993,11 +1009,14 @@ export async function auditLocalDesignProvisioningRehearsalStore({
   });
   const checkpointDisabled = inventoryCheckpoint === undefined
     && trustedCheckpointKey === undefined
-    && expectedCheckpointKeyId === undefined;
+    && expectedCheckpointKeyId === undefined
+    && checkpointVerifiedAt === undefined
+    && checkpointMaxAgeSeconds === undefined;
   if (!checkpointDisabled) {
     if (inventoryCheckpoint === undefined
       || trustedCheckpointKey === undefined
-      || expectedCheckpointKeyId === undefined) {
+      || expectedCheckpointKeyId === undefined
+      || checkpointVerifiedAt === undefined) {
       throw new Error('Local design provisioning inventory checkpoint configuration is invalid');
     }
     verifyInventoryCheckpoint(
@@ -1005,11 +1024,14 @@ export async function auditLocalDesignProvisioningRehearsalStore({
       inspection,
       trustedCheckpointKey,
       expectedCheckpointKeyId,
+      checkpointVerifiedAt,
+      checkpointMaxAgeSeconds ?? DEFAULT_CHECKPOINT_MAX_AGE_SECONDS,
     );
   }
   return {
     ...inspection.audit,
     catalogCompletenessVerified: !checkpointDisabled,
+    checkpointFreshnessVerified: !checkpointDisabled,
   };
 }
 

@@ -408,6 +408,7 @@ test('audits every durable authorization journal and receipt without exposing id
       orphanTemporaryFileCount: 0,
       containsSensitiveValues: false,
       catalogCompletenessVerified: false,
+      checkpointFreshnessVerified: false,
       receiptSignatureVerified: false,
       ...LOCAL_DESIGN_PROVISIONING_STORE_BOUNDARIES,
     });
@@ -439,6 +440,7 @@ test('seals and verifies an off-store inventory checkpoint without exposing stor
   const secondApprovalId = '66666666-6666-4666-8666-666666666666';
   const checkpointKeyId = 'a4-inventory-checkpoint-v1';
   const createdAt = '2026-08-25T13:10:00.000Z';
+  const checkpointVerifiedAt = '2026-08-25T13:20:00.000Z';
   try {
     await initializeLocalDesignProvisioningRehearsalStore({
       directory,
@@ -492,9 +494,11 @@ test('seals and verifies an off-store inventory checkpoint without exposing stor
       inventoryCheckpoint: checkpoint,
       trustedCheckpointKey: approvalKey,
       expectedCheckpointKeyId: checkpointKeyId,
+      checkpointVerifiedAt,
     })).toMatchObject({
       status: 'verified',
       catalogCompletenessVerified: true,
+      checkpointFreshnessVerified: true,
       containsSensitiveValues: false,
     });
     const receiptPath = join(directory, 'receipts', `${approval.executionId}.json`);
@@ -504,6 +508,7 @@ test('seals and verifies an off-store inventory checkpoint without exposing stor
       inventoryCheckpoint: checkpoint,
       trustedCheckpointKey: approvalKey,
       expectedCheckpointKeyId: checkpointKeyId,
+      checkpointVerifiedAt,
     })).rejects.toThrow('inventory checkpoint verification failed');
     await receiptAdapter.append(receipt);
     expect(await auditLocalDesignProvisioningRehearsalStore({
@@ -511,18 +516,53 @@ test('seals and verifies an off-store inventory checkpoint without exposing stor
       inventoryCheckpoint: checkpoint,
       trustedCheckpointKey: approvalKey,
       expectedCheckpointKeyId: checkpointKeyId,
+      checkpointVerifiedAt,
     })).toMatchObject({ catalogCompletenessVerified: true });
     await expect(auditLocalDesignProvisioningRehearsalStore({
       directory,
       inventoryCheckpoint: checkpoint,
       trustedCheckpointKey: approvalKey,
+      checkpointVerifiedAt,
     })).rejects.toThrow('inventory checkpoint configuration is invalid');
     await expect(auditLocalDesignProvisioningRehearsalStore({
       directory,
       inventoryCheckpoint: { ...checkpoint, digest: 'f'.repeat(64) },
       trustedCheckpointKey: approvalKey,
       expectedCheckpointKeyId: checkpointKeyId,
+      checkpointVerifiedAt,
     })).rejects.toThrow('inventory checkpoint verification failed');
+    await expect(auditLocalDesignProvisioningRehearsalStore({
+      directory,
+      inventoryCheckpoint: checkpoint,
+      trustedCheckpointKey: approvalKey,
+      expectedCheckpointKeyId: checkpointKeyId,
+    })).rejects.toThrow('inventory checkpoint configuration is invalid');
+    await expect(auditLocalDesignProvisioningRehearsalStore({
+      directory,
+      inventoryCheckpoint: checkpoint,
+      trustedCheckpointKey: approvalKey,
+      expectedCheckpointKeyId: checkpointKeyId,
+      checkpointVerifiedAt: '2026-08-25T13:20:00.001Z',
+    })).rejects.toThrow('inventory checkpoint freshness verification failed');
+    await expect(auditLocalDesignProvisioningRehearsalStore({
+      directory,
+      inventoryCheckpoint: checkpoint,
+      trustedCheckpointKey: approvalKey,
+      expectedCheckpointKeyId: checkpointKeyId,
+      checkpointVerifiedAt: '2026-08-25T13:09:59.999Z',
+    })).rejects.toThrow('inventory checkpoint freshness verification failed');
+    await expect(auditLocalDesignProvisioningRehearsalStore({
+      directory,
+      inventoryCheckpoint: checkpoint,
+      trustedCheckpointKey: approvalKey,
+      expectedCheckpointKeyId: checkpointKeyId,
+      checkpointVerifiedAt,
+      checkpointMaxAgeSeconds: 0,
+    })).rejects.toThrow('inventory checkpoint configuration is invalid');
+    await expect(auditLocalDesignProvisioningRehearsalStore({
+      directory,
+      checkpointMaxAgeSeconds: 60,
+    })).rejects.toThrow('inventory checkpoint configuration is invalid');
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -553,6 +593,7 @@ test('inventory checkpoint detects deleted authorization state and a changed jou
       inventoryCheckpoint: checkpoint,
       trustedCheckpointKey: approvalKey,
       expectedCheckpointKeyId: checkpointKeyId,
+      checkpointVerifiedAt: '2026-08-25T13:15:00.000Z',
     });
 
     rmSync(join(directory, 'authorization', secondApprovalId), { recursive: true, force: true });

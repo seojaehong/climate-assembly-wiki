@@ -89,13 +89,13 @@ column type·nullable·default·FK 검증 결과: `A4_COLUMN_FOREIGN_KEY_POSTGRE
 ## 자동화 회귀
 
 - A4 bundle·design plan 집중 테스트: 55건 통과
-- Windows automation 전체: 26개 파일, 405건 통과
+- Windows automation 전체: 27개 파일, 414건 통과
 - 애플리케이션 전체: 64개 파일, 1,060건 통과
-- Astro check: 328개 파일, 오류 0건, 기존 hint 49건
-- 저장소 밖 로컬 durable store의 adapter 재시작·lock-free CAS·독립 Node 프로세스 6개 claim 경쟁(1 claimed, 5 conflict, journal record 2개)·orphan temp 복구·append-only replay/conflict·journal 변조·junction escape·revocation/claim 경쟁·membership 비활성 finalize와 재활성화 거부·비식별 전체-store/keyed receipt audit·off-store inventory checkpoint 삭제/tail 변경 테스트 통과
+- Astro check: 330개 파일, 오류 0건, 기존 hint 49건
+- 저장소 밖 로컬 durable store의 adapter 재시작·lock-free CAS·독립 Node 프로세스 6개 claim 경쟁(1 claimed, 5 conflict, journal record 2개)·orphan temp 복구·append-only replay/conflict·journal 변조·junction escape·revocation/claim 경쟁·membership 비활성 finalize와 재활성화 거부·비식별 전체-store/keyed receipt audit·off-store inventory checkpoint 삭제/tail 변경·기본 10분 freshness 테스트 통과
 - approval bundle verifier: builder·durable store·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 17개, production apply 미승인·DB mutation 미실행 상태로 통과
 - 추적 manifest를 current source에서 재구성해 stale source hash를 거부하는 테스트 통과
-- bundle checksum: `b3ea889f1b5b3813d0ede7be09d67a1b5a16b91ac8eafa3a596bb90647f47656`
+- bundle checksum: `6762bbe8bccf20615c88a74b2b14dac86c3596ae742d49470c4c65cc94242acf`
 
 ## 보안·데이터 무결성 결론
 
@@ -104,7 +104,7 @@ column type·nullable·default·FK 검증 결과: `A4_COLUMN_FOREIGN_KEY_POSTGRE
 - mutation/status RPC는 최소 root 형상 확인 직후 Auth·기관·역할을 먼저 판정해 권한 없는 요청의 checksum·digest·operation 전수 검증을 실행하지 않는다.
 - reconciliation RPC는 mutation plan·원본 bytes를 받지 않는 `STABLE` 조회 함수이며 ledger/resource를 변경하지 않는다.
 - 로컬 durable store는 synthetic authorization context만 immutable journal에 함께 보존하며 production Auth/membership 증거로 사용하지 않는다.
-- 전체-store audit는 존재하는 journal·receipt와 claim 연결을 비식별 집계하고 합성 HMAC key로 receipt와 off-store inventory checkpoint를 검증할 수 있다. checkpoint 없는 기본 audit, 실제 외부 보관·freshness·production key custody/rotation은 여전히 증명하지 않는다.
+- 전체-store audit는 존재하는 journal·receipt와 claim 연결을 비식별 집계하고 합성 HMAC key로 receipt와 off-store inventory checkpoint를 검증할 수 있다. checkpoint 감사는 canonical 검증 시각과 기본 10분 freshness를 강제하지만, checkpoint 없는 기본 audit, 실제 외부 보관·production key custody/rotation·독립 timestamp authority는 여전히 증명하지 않는다.
 - 기존 resource가 plan payload와 다르거나 같은 operation이 다른 전체 plan checksum으로 재사용되면 update하지 않고 안정 오류 코드로 전체 transaction을 중단한다.
 - assembly·session·discussion topic은 payload·부모·기관뿐 아니라 서버 생성 상태 `draft`까지 일치해야 하며, 이미 활성화되거나 열린 resource를 새 설계의 성공 또는 replay로 채택하지 않는다.
 - post-apply verifier는 8개 제약을 이름만 세지 않고 정확한 table·종류·canonical definition으로 대조해 shadow 제약과 완화된 check 식을 거부한다.
