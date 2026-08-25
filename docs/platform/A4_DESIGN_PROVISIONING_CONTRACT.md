@@ -36,6 +36,7 @@
 - slug는 기존 전역 unique 계약을 유지한다. assembly별 중복 허용으로 바꾸는 것은 기존 URL·조회 계약 변경이므로 이 제안 범위에 넣지 않는다.
 - title·slug·assembly_id·ordinal·held_on·org_id를 NOT NULL로 바꾸기 전 count-only preflight와 승인된 backfill이 필요하다. 기존 행을 자동 추정해 채우지 않는다.
 - `(assembly_id, ordinal)` unique를 추가해 한 공론화 안에서 회차 순서를 안정적으로 식별한다.
+- preflight는 `readyForAdditiveMigration`과 `readyForActivation`을 분리한다. 전자는 nullable column·검증 가능한 제약을 추가할 수 있다는 뜻이고, 후자는 session 필수값과 team ordinal mapping·부모/org 일치가 모두 끝나 RPC를 열 수 있다는 뜻이다. 어느 값도 production 적용 승인을 대신하지 않는다.
 
 ### 3-2. team 안정 식별자
 
@@ -43,6 +44,7 @@
 - `name`은 표시값이며 식별자로 사용하지 않는다. 현재 청사진의 표준 이름은 `${ordinal}조`지만 향후 표시명 변경이 identity를 바꾸면 안 된다.
 - `plannedCapacity`는 기존 `team.capacity`에 매핑하고 양의 정수 제약을 검증한다.
 - 기존 team 행의 ordinal은 사용자 승인된 mapping 없이 이름에서 자동 추출하지 않는다.
+- 기존 team 행이 있다는 사실만으로 additive migration을 막지는 않는다. migration 뒤 해당 행은 ordinal `NULL`로 남고, 승인된 mapping을 적용해 `teamOrdinalNullCount=0`이 되기 전에는 activation readiness가 false다.
 
 ### 3-3. 멱등 operation ledger
 

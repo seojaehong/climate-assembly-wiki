@@ -16,6 +16,8 @@
 - `supabase/migrations/platform_p3_design_provisioning.sql`
 - `supabase/rollbacks/platform_p3_design_provisioning_BEFORE.sql`
 - `supabase/verify/design_provisioning_preflight.sql`
+- `supabase/verify/design_provisioning_preflight_legacy_fixture.sql`
+- `supabase/verify/design_provisioning_preflight_mapping_fixture.sql`
 - `supabase/verify/design_provisioning_post_apply.sql`
 - `supabase/verify/design_provisioning_test.sql`
 - `automation/platform-a4-migration-bundle.mjs`
@@ -24,23 +26,24 @@
 ## 격리 PostgreSQL 16 리허설 로그
 
 1. P1→P1C→P2 선행 schema를 throwaway container에 적용했다.
-2. 적용 전 preflight는 `databaseMutationExecuted:false`, `ready:true`, 기존 team mapping 대상 0건을 반환했다.
-3. A4 migration 초안과 post-apply verifier가 통과했다.
-4. 원 청사진 바이트 길이·SHA-256 불일치 거부, 정상 4개 operation 생성과 exact replay를 검증했다.
-5. 동일 operation ID의 payload 충돌, 같은 assembly ordinal의 parent 충돌을 거부했다.
-6. join code 충돌 20회 소진 시 앞선 assembly/session까지 rollback되는 것을 검증했다.
-7. 모든 INSERT 뒤 summary 불일치가 발견돼도 plan 전체가 rollback되는 것을 검증했다.
-8. `authenticated`에 RPC EXECUTE를 임시 부여한 격리 음성 테스트를 post-apply verifier가 거부했다.
-9. rollback 뒤 RPC·ledger·team ordinal이 제거된 것을 확인했다.
+2. legacy team 1건을 둔 적용 전 preflight는 `readyForAdditiveMigration:true`, `readyForActivation:false`, mapping 대상 1건을 반환했다.
+3. A4 migration 뒤에도 legacy ordinal이 `NULL`인 동안 activation을 차단하고, throwaway 전용 mapping fixture 적용 뒤에만 `readyForActivation:true`가 되는 것을 검증했다.
+4. A4 migration 초안과 post-apply verifier가 통과했다.
+5. 원 청사진 바이트 길이·SHA-256 불일치 거부, 정상 4개 operation 생성과 exact replay를 검증했다.
+6. 동일 operation ID의 payload 충돌, 같은 assembly ordinal의 parent 충돌을 거부했다.
+7. join code 충돌 20회 소진 시 앞선 assembly/session까지 rollback되는 것을 검증했다.
+8. 모든 INSERT 뒤 summary 불일치가 발견돼도 plan 전체가 rollback되는 것을 검증했다.
+9. `authenticated`에 RPC EXECUTE를 임시 부여한 격리 음성 테스트를 post-apply verifier가 거부했다.
+10. rollback 뒤 RPC·ledger·team ordinal이 제거된 것을 확인했다.
 
 결과: `A4_LOCAL_POSTGRES_REHEARSAL=passed`
 
 ## 자동화 회귀
 
-- A4 bundle·기존 design plan 집중 테스트: 15건 통과
-- Windows automation 전체: 26개 파일, 332건 통과
-- approval bundle verifier: artifact 8개, production apply 미승인·DB mutation 미실행 상태로 통과
-- bundle checksum: `3df87e216f9070e19e15da8c5beb40e405c44f280f6023e07b201dd16a50525c`
+- A4 bundle·기존 design plan 집중 테스트: 16건 통과
+- Windows automation 전체: 26개 파일, 333건 통과
+- approval bundle verifier: artifact 10개, production apply 미승인·DB mutation 미실행 상태로 통과
+- bundle checksum: `d48e989e3de7f9e344b987096109fc00ae7e40170ae57ae6a18492f4a73bd7ef`
 
 ## 보안·데이터 무결성 결론
 

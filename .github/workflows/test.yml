@@ -226,16 +226,44 @@ jobs:
           docker cp supabase/verify/00_prelude.sql "${container}:/tmp/00_prelude.sql"
           docker cp supabase/verify/driver_pass1.sql "${container}:/tmp/driver_pass1.sql"
           docker cp supabase/verify/design_provisioning_preflight.sql "${container}:/tmp/design_provisioning_preflight.sql"
+          docker cp supabase/verify/design_provisioning_preflight_legacy_fixture.sql "${container}:/tmp/design_provisioning_preflight_legacy_fixture.sql"
+          docker cp supabase/verify/design_provisioning_preflight_mapping_fixture.sql "${container}:/tmp/design_provisioning_preflight_mapping_fixture.sql"
           docker cp supabase/verify/design_provisioning_post_apply.sql "${container}:/tmp/design_provisioning_post_apply.sql"
           docker cp supabase/verify/design_provisioning_test.sql "${container}:/tmp/design_provisioning_test.sql"
           docker cp supabase/rollbacks/platform_p3_design_provisioning_BEFORE.sql "${container}:/tmp/platform_p3_design_provisioning_BEFORE.sql"
 
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -v verify_function_bodies=on -f /tmp/driver_pass1.sql >/dev/null
+          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/design_provisioning_preflight_legacy_fixture.sql \
+            >"$RUNNER_TEMP/a4-unguarded-fixture.log" 2>&1; then
+            echo "Unguarded A4 fixture unexpectedly succeeded" >&2
+            exit 1
+          fi
+          grep -q "throwaway fixture flag is required" "$RUNNER_TEMP/a4-unguarded-fixture.log"
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
-            -f /tmp/design_provisioning_preflight.sql >/dev/null
+            -v a4_throwaway_fixture=on -f /tmp/design_provisioning_preflight_legacy_fixture.sql >/dev/null
+          pre_migration_report="$(docker exec "$container" psql -U postgres -d verify \
+            -v ON_ERROR_STOP=1 -Atq -f /tmp/design_provisioning_preflight.sql)"
+          grep -q '"status": "migration_ready"' <<<"$pre_migration_report"
+          grep -q '"readyForAdditiveMigration": true' <<<"$pre_migration_report"
+          grep -q '"readyForActivation": false' <<<"$pre_migration_report"
+          grep -q '"teamOrdinalPresent": false' <<<"$pre_migration_report"
+          grep -q '"teamOrdinalNullCount": 1' <<<"$pre_migration_report"
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/platform_p3_design_provisioning.sql >/dev/null
+          pre_mapping_report="$(docker exec "$container" psql -U postgres -d verify \
+            -v ON_ERROR_STOP=1 -Atq -f /tmp/design_provisioning_preflight.sql)"
+          grep -q '"status": "migration_ready"' <<<"$pre_mapping_report"
+          grep -q '"teamOrdinalPresent": true' <<<"$pre_mapping_report"
+          grep -q '"teamOrdinalNullCount": 1' <<<"$pre_mapping_report"
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -v a4_throwaway_fixture=on -f /tmp/design_provisioning_preflight_mapping_fixture.sql >/dev/null
+          activation_report="$(docker exec "$container" psql -U postgres -d verify \
+            -v ON_ERROR_STOP=1 -Atq -f /tmp/design_provisioning_preflight.sql)"
+          grep -q '"status": "activation_ready"' <<<"$activation_report"
+          grep -q '"readyForActivation": true' <<<"$activation_report"
+          grep -q '"requiresApprovedBackfill": false' <<<"$activation_report"
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/design_provisioning_post_apply.sql >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \

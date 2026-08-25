@@ -18,8 +18,9 @@
     "existingRowBackfill": "separate_approval_required"
   },
   "executionOrder": [
-    "read_only_preflight",
+    "read_only_additive_preflight",
     "migration_draft",
+    "read_only_activation_preflight",
     "post_apply_verification",
     "semantic_rehearsal",
     "rollback_draft"
@@ -37,18 +38,28 @@
     },
     {
       "path": "docs/platform/A4_DESIGN_PROVISIONING_CONTRACT.md",
-      "sha256": "446e9d5c74889b20d834d60e301eee8d036daad03526ae03b68136b789c73cbc",
-      "bytes": 7925
+      "sha256": "1d306f8196e7af4de76a08fca690ef4e4ee16104a7a2d577031b64597a8b3b4c",
+      "bytes": 8542
     },
     {
       "path": "supabase/verify/design_provisioning_preflight.sql",
-      "sha256": "4da523b436ebca70f0842cc6961b1773ee7bb43f5c68aef45ca65e015baed534",
-      "bytes": 4323
+      "sha256": "b070b145d155fbebb3f4c1a05532cc209fd3d24d8b5129317cf8d1a569528606",
+      "bytes": 6085
+    },
+    {
+      "path": "supabase/verify/design_provisioning_preflight_legacy_fixture.sql",
+      "sha256": "63a7284eb260d3a90b013bb4e8073ea3423f7ad5214312df785a0b06ac2f3063",
+      "bytes": 1564
     },
     {
       "path": "supabase/migrations/platform_p3_design_provisioning.sql",
       "sha256": "0424665568d8719fac51be37141e70e1390b6bd6de123d5c6d670171f615e5d8",
       "bytes": 22245
+    },
+    {
+      "path": "supabase/verify/design_provisioning_preflight_mapping_fixture.sql",
+      "sha256": "f0e7f61b71edb204f9887dca6f013fc2f24bea5a925e742fe6bb96c49ac23fc1",
+      "bytes": 1098
     },
     {
       "path": "supabase/verify/design_provisioning_post_apply.sql",
@@ -74,5 +85,5 @@
     "activatesStaffGrants": false,
     "connectsProductionExecutor": false
   },
-  "checksum": "3df87e216f9070e19e15da8c5beb40e405c44f280f6023e07b201dd16a50525c"
+  "checksum": "d48e989e3de7f9e344b987096109fc00ae7e40170ae57ae6a18492f4a73bd7ef"
 }
