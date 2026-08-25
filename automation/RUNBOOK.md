@@ -503,8 +503,8 @@ npm.cmd run audit:platform-accessibility
 
 자동 axe/Chromium 감사는 스크린리더와 실제 모바일 보조기기 평가를 대체하지 않는다.
 추적 파일 `evaluation/platform-accessibility-manual-evaluation.json`은 데스크톱·모바일 프로필과
-로그인·인증 셸·접근성 성명·미공개 결과·공개 결과·온톨로지 검수의 12개 케이스,
-50개 필수 검사를 정의한다.
+로그인·인증 셸·접근성 성명·미공개 결과·공개 결과·온톨로지 검수와 KWCAG 표면 간 공통 검수의
+14개 케이스, 82개 필수 검사를 정의한다.
 초기값은 모두 `not_run`이며 전체 상태는 `needs_review`다. 이 파일은 품질인증 완료 증거가 아니다.
 
 평가자는 각 실행 케이스에 다음을 기록한다.
@@ -512,7 +512,7 @@ npm.cmd run audit:platform-accessibility
 - 프로필의 보조기술·브라우저·운영체제 이름과 버전, 기기
 - 평가자 실명 대신 승인된 역할 ID 또는 비식별 별칭과 ISO 8601 UTC 형식의 평가 시각
 - 각 검사의 `pass`, `fail`, `blocked`, `not_run` 상태
-- `fail` 또는 `blocked`일 때 재현 가능한 설명. 공개 결과 토큰·참여 코드·개인정보는 기록하지 않는다.
+- 실행한 모든 `pass`, `fail`, `blocked` 검사에 실제 관찰 설명. 공개 결과 토큰·참여 코드·개인정보는 기록하지 않는다.
 
 검증 명령:
 
@@ -527,9 +527,10 @@ npm.cmd run audit:platform-accessibility-manual -- --verify ../evaluation/platfo
 판정 일관성을 확인하지만 실제 사람 평가를 대신하지 않는다. 새 템플릿 생성은 기존 평가 기록을
 기본적으로 덮어쓰지 않는다. 별도 경로에서 생성해 사람이 diff를 확인하고 백업한 경우에만
 명시적 `--force`를 사용한다. `pass` 증거는 기록된 커밋이 현재 HEAD의 조상이고 그 이후 접근성
-대상 소스가 바뀌지 않았을 때만 유효하다. 페이지 공통 구조를 바꾸는 `src/layouts`도 대상 소스에
-포함한다. 승인된 사용자 도메인과 다르거나 대상 소스가 바뀌면 CI가 stale 증거를 거부하므로
-해당 커밋을 기준으로 수동평가를 다시 수행한다.
+대상 소스가 바뀌지 않았으며 현재 checkout에도 staged·unstaged·untracked 대상 변경이 없을 때만
+유효하다. 페이지 공통 구조를 바꾸는 `src/layouts`도 대상 소스에 포함한다. 승인된 사용자 도메인과
+다르거나 대상 소스가 바뀌면 CI가 stale 증거를 거부하므로 해당 clean commit을 기준으로 수동평가를
+다시 수행한다.
 
 ## R0 전사 fixture → 내부 온톨로지 graph
 

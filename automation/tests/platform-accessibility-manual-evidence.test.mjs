@@ -303,7 +303,7 @@ test('workflow watches every source path that can stale manual evidence', () => 
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/pages');
 });
 
-test('CLI accepts an evidence-only commit and rejects a later shared layout change', () => {
+test('CLI accepts an evidence-only commit and rejects committed or working-tree surface changes', () => {
   const repo = mkdtempSync(join(tmpdir(), 'manual-a11y-git-'));
   const modulePath = join(process.cwd(), 'platform-accessibility-manual-evidence.mjs');
   const runGit = (...args) => spawnSync('git', args, { cwd: repo, encoding: 'utf8' });
@@ -350,6 +350,28 @@ test('CLI accepts an evidence-only commit and rejects a later shared layout chan
     const verified = spawnSync(process.execPath, [modulePath, '--verify', evidencePath,
       '--expected-base-url', 'https://climate-assembly.org', '--repo-root', repo], { encoding: 'utf8' });
     expect(verified.status).toBe(0);
+
+    writeFileSync(join(repo, 'src', 'layouts', 'PlatformLayout.astro'), '<main aria-busy="true"><slot /></main>\n', 'utf8');
+    const dirtyTracked = spawnSync(process.execPath, [modulePath, '--verify', evidencePath,
+      '--expected-base-url', 'https://climate-assembly.org', '--repo-root', repo], { encoding: 'utf8' });
+    expect(dirtyTracked.status).toBe(1);
+    expect(dirtyTracked.stderr).toContain('stale');
+
+    expect(runGit('add', 'src/layouts/PlatformLayout.astro').status).toBe(0);
+    const stagedTracked = spawnSync(process.execPath, [modulePath, '--verify', evidencePath,
+      '--expected-base-url', 'https://climate-assembly.org', '--repo-root', repo], { encoding: 'utf8' });
+    expect(stagedTracked.status).toBe(1);
+    expect(stagedTracked.stderr).toContain('stale');
+
+    writeFileSync(join(repo, 'src', 'layouts', 'PlatformLayout.astro'), '<main><slot /></main>\n', 'utf8');
+    expect(runGit('add', 'src/layouts/PlatformLayout.astro').status).toBe(0);
+    const untrackedSurface = join(repo, 'src', 'components', 'UntrackedControl.tsx');
+    writeFileSync(untrackedSurface, 'export const untrackedControl = true;\n', 'utf8');
+    const dirtyUntracked = spawnSync(process.execPath, [modulePath, '--verify', evidencePath,
+      '--expected-base-url', 'https://climate-assembly.org', '--repo-root', repo], { encoding: 'utf8' });
+    expect(dirtyUntracked.status).toBe(1);
+    expect(dirtyUntracked.stderr).toContain('stale');
+    rmSync(untrackedSurface);
 
     writeFileSync(join(repo, 'src', 'layouts', 'PlatformLayout.astro'), '<main aria-busy="true"><slot /></main>\n', 'utf8');
     expect(runGit('add', '.').status).toBe(0);

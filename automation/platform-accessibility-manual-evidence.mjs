@@ -300,9 +300,23 @@ function gitTargetState(repoRoot, commitSha) {
     encoding: 'utf8',
   });
   if (diff.status !== 0) throw new Error('Failed to compare manual evidence accessibility surfaces');
+  const worktree = spawnSync('git', [
+    'status',
+    '--porcelain=v1',
+    '-z',
+    '--untracked-files=all',
+    '--',
+    ...MANUAL_ACCESSIBILITY_TARGET_PATHS,
+  ], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+  if (worktree.status !== 0) throw new Error('Failed to inspect manual evidence accessibility surfaces');
+  const committedChanges = diff.stdout.split(/\r?\n/).filter(Boolean);
+  const worktreeChanges = worktree.stdout.split('\0').filter(Boolean);
   return {
     isCommitAncestor: ancestor.status === 0,
-    changedPaths: diff.stdout.split(/\r?\n/).filter(Boolean),
+    changedPaths: [...committedChanges, ...worktreeChanges],
   };
 }
 
