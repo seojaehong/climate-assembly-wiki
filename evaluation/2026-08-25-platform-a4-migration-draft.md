@@ -40,12 +40,13 @@
 8. reconciliation의 executed checksum 충돌, 앞 operation 누락 뒤의 기존 operation 충돌 은폐와 `operator` 역할을 거부했다.
 9. 동일 operation ID의 payload 충돌과 operation payload가 같더라도 전체 plan checksum이 다른 교차-plan replay를 mutation 전에 거부했다.
 10. 독립된 새 assembly 안에서 같은 session ordinal을 재사용하는 parent 충돌을 거부했다.
-11. join code 생성기는 `extensions.gen_random_bytes(4)`와 rejection sampling을 사용하고 6자리 형상을 유지하며, 충돌 fixture 뒤에도 secure generator가 복원됨을 검증했다. 충돌 20회 소진 시 앞선 assembly/session까지 rollback되는 것도 확인했다.
-12. 모든 INSERT 뒤 summary 불일치가 발견돼도 plan 전체가 rollback되는 것을 검증했다.
-13. `authenticated`에 mutation/status RPC EXECUTE를 각각 임시 부여한 격리 음성 테스트를 post-apply verifier가 거부했다.
-14. ledger·non-null ordinal이 있는 populated rollback은 객체 제거 전에 거부되고 post-apply verifier가 계속 통과하는지 확인했다.
-15. exact-scope throwaway cleanup만 synthetic A4 행을 제거하는 것을 확인했다.
-16. cleanup 뒤 최종 rollback이 성공해 mutation/status RPC·ledger·team ordinal이 제거되는 것을 확인했다.
+11. 같은 session operation을 두 번 넣어 operation ID와 resource ref가 중복된 plan을 lookup·mutation 전에 거부하고 ledger·assembly 무변경을 확인했다.
+12. join code 생성기는 `extensions.gen_random_bytes(4)`와 rejection sampling을 사용하고 6자리 형상을 유지하며, 충돌 fixture 뒤에도 secure generator가 복원됨을 검증했다. 충돌 20회 소진 시 앞선 assembly/session까지 rollback되는 것도 확인했다.
+13. 모든 INSERT 뒤 summary 불일치가 발견돼도 plan 전체가 rollback되는 것을 검증했다.
+14. `authenticated`에 mutation/status RPC EXECUTE를 각각 임시 부여한 격리 음성 테스트를 post-apply verifier가 거부했다.
+15. ledger·non-null ordinal이 있는 populated rollback은 객체 제거 전에 거부되고 post-apply verifier가 계속 통과하는지 확인했다.
+16. exact-scope throwaway cleanup만 synthetic A4 행을 제거하는 것을 확인했다.
+17. cleanup 뒤 최종 rollback이 성공해 mutation/status RPC·ledger·team ordinal이 제거되는 것을 확인했다.
 
 결과: `A4_LOCAL_POSTGRES_REHEARSAL=passed`
 
@@ -59,6 +60,8 @@ partial ledger 충돌 은폐 방지 결과: `A4_PARTIAL_CONFLICT_POSTGRES_REHEAR
 
 join-code CSPRNG·복원 결과: `A4_SECURE_JOIN_CODE_POSTGRES_REHEARSAL=passed`
 
+중복 operation identity 차단 결과: `A4_DUPLICATE_OPERATION_IDENTITY_POSTGRES_REHEARSAL=passed`
+
 ## 자동화 회귀
 
 - A4 bundle·design plan 집중 테스트: 55건 통과
@@ -68,7 +71,7 @@ join-code CSPRNG·복원 결과: `A4_SECURE_JOIN_CODE_POSTGRES_REHEARSAL=passed`
 - 저장소 밖 로컬 durable store의 adapter 재시작·lock-free CAS·독립 Node 프로세스 6개 claim 경쟁(1 claimed, 5 conflict, journal record 2개)·orphan temp 복구·append-only replay/conflict·journal 변조·junction escape·revocation/claim 경쟁·membership 비활성 finalize와 재활성화 거부·비식별 전체-store/keyed receipt audit·off-store inventory checkpoint 삭제/tail 변경 테스트 통과
 - approval bundle verifier: builder·durable store·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 17개, production apply 미승인·DB mutation 미실행 상태로 통과
 - 추적 manifest를 current source에서 재구성해 stale source hash를 거부하는 테스트 통과
-- bundle checksum: `3dc9b9a5cd372b3b4d8e3aef9b4abef4edc8d811bd709fe085b8912e66fee7de`
+- bundle checksum: `63e941548771e7279f960c30f7a208d2aea321b0f963f12f5a20fc5b732d0176`
 
 ## 보안·데이터 무결성 결론
 
@@ -78,5 +81,6 @@ join-code CSPRNG·복원 결과: `A4_SECURE_JOIN_CODE_POSTGRES_REHEARSAL=passed`
 - 로컬 durable store는 synthetic authorization context만 immutable journal에 함께 보존하며 production Auth/membership 증거로 사용하지 않는다.
 - 전체-store audit는 존재하는 journal·receipt와 claim 연결을 비식별 집계하고 합성 HMAC key로 receipt와 off-store inventory checkpoint를 검증할 수 있다. checkpoint 없는 기본 audit, 실제 외부 보관·freshness·production key custody/rotation은 여전히 증명하지 않는다.
 - 기존 resource가 plan payload와 다르거나 같은 operation이 다른 전체 plan checksum으로 재사용되면 update하지 않고 안정 오류 코드로 전체 transaction을 중단한다.
+- plan 내부의 operation ID와 resource ref는 각각 유일해야 하며 중복 plan은 lookup·mutation 전에 거부한다.
 - join code는 비암호학적 `random()` 대신 `pgcrypto` CSPRNG와 rejection sampling으로 생성하며 ledger·일반 오류에는 기록하지 않는다.
 - production 경로는 여전히 비활성 상태이며 별도 적용 승인이 필요하다.

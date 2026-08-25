@@ -95,6 +95,7 @@ declare
   v_response jsonb;
   v_conflict jsonb;
   v_cross_plan jsonb;
+  v_duplicate_plan jsonb;
   v_parent_plan jsonb;
   v_exhaustion_plan jsonb;
   v_rollback_plan jsonb;
@@ -252,6 +253,45 @@ begin
        + (select count(*) from climate_vote.team where org_id = v_org)
      ) <> v_resource_count then
     raise exception 'A4 semantic test failed: cross-plan replay mutated state';
+  end if;
+
+  v_duplicate_plan := pg_temp.a4_plan(
+    jsonb_build_array(
+      pg_temp.a4_operation(
+        'create_assembly', 'assembly:a4-duplicate-operation', null, null,
+        jsonb_build_object(
+          'title', 'Duplicate operation assembly', 'slug', 'a4-duplicate-operation', 'purpose', null,
+          'mode', 'consensus', 'config', jsonb_build_object('readiness', jsonb_build_array('topics_open'))
+        )
+      ),
+      pg_temp.a4_operation(
+        'create_session', 'assembly:a4-duplicate-operation/session:a4-duplicate-session',
+        'assembly:a4-duplicate-operation', 1,
+        jsonb_build_object('title', 'Duplicate session', 'slug', 'a4-duplicate-session', 'heldOn', '2026-09-04')
+      ),
+      pg_temp.a4_operation(
+        'create_session', 'assembly:a4-duplicate-operation/session:a4-duplicate-session',
+        'assembly:a4-duplicate-operation', 1,
+        jsonb_build_object('title', 'Duplicate session', 'slug', 'a4-duplicate-session', 'heldOn', '2026-09-04')
+      )
+    ),
+    jsonb_build_object(
+      'assemblyCount', 1, 'sessionCount', 2, 'topicCount', 0,
+      'teamCount', 0, 'participantCount', 0, 'operationCount', 3
+    ),
+    'a4-duplicate-operation'
+  );
+  select count(*) into v_ledger_count
+  from climate_vote.design_provisioning_operation where org_id = v_org;
+  begin
+    perform climate_vote.design_provision(v_duplicate_plan, convert_to(repeat('s', 100), 'UTF8'));
+    raise exception 'A4 semantic test failed: duplicate operation identity unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_plan_invalid' then raise; end if;
+  end;
+  if exists (select 1 from climate_vote.assembly where slug = 'a4-duplicate-operation')
+     or (select count(*) from climate_vote.design_provisioning_operation where org_id = v_org) <> v_ledger_count then
+    raise exception 'A4 semantic test failed: duplicate operation identity mutated state';
   end if;
 
   v_conflict := jsonb_set(v_plan, '{operations,3,payload,name}', '"renamed team"'::jsonb);

@@ -165,6 +165,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 join-code CSPRNG 강화(2026-08-26):** 여러 운영 RPC에서 capability로 쓰이는 6자리 team join code 생성기를 PostgreSQL `random()`에서 `extensions.gen_random_bytes(4)` 기반 CSPRNG로 교체했다. 32-bit 공간을 6자리로 축소할 때 균등 상한 밖 값을 폐기하는 rejection sampling을 적용하고, post-apply verifier가 함수 volatility·search path·CSPRNG·편향 제거·비암호학적 random 부재를 확인한다. PostgreSQL 16 semantic rehearsal은 정상 6자리 생성, 강제 충돌 소진 뒤 전체 transaction rollback과 secure 함수 복원을 확인했다. production migration·DB·GRANT는 적용하지 않았다.
 
+**A4 operation identity 유일성 검증(2026-08-26):** mutation RPC가 plan의 operation ID와 canonical resource ref를 각각 전수 중복 검사한 뒤에만 Auth·ledger lookup과 resource mutation으로 진행한다. 이전에는 같은 session operation을 두 번 넣고 summary를 맞추면 한 resource를 `applied`·`replayed`로 중복 응답하면서 ledger는 한 행만 남아 reconciliation이 거부될 수 있었다. PostgreSQL 16 격리 리허설은 중복 plan을 `design_plan_invalid`로 차단하고 ledger·assembly 무변경을 확인했으며 post-apply verifier도 두 uniqueness 조건을 compiled function에서 검사한다. production migration·DB·GRANT는 적용하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

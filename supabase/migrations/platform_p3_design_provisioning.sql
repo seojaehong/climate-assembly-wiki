@@ -166,6 +166,12 @@ begin
      or jsonb_typeof(p_plan -> 'operations') <> 'array'
      or jsonb_array_length(p_plan -> 'operations') < 1
      or jsonb_array_length(p_plan -> 'operations') > 10025
+     or (select count(*) from jsonb_array_elements(p_plan -> 'operations'))
+        <> (select count(distinct value ->> 'operationId')
+            from jsonb_array_elements(p_plan -> 'operations'))
+     or (select count(*) from jsonb_array_elements(p_plan -> 'operations'))
+        <> (select count(distinct value ->> 'ref')
+            from jsonb_array_elements(p_plan -> 'operations'))
      or (select array_agg(key order by key) from jsonb_object_keys(p_plan -> 'sourceBlueprint') keys(key))
         is distinct from array['bytes', 'schemaVersion', 'sha256']
      or p_plan #>> '{sourceBlueprint,schemaVersion}' <> '4'
