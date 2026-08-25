@@ -257,10 +257,12 @@ function validateUniqueKey(payload, collection, fields) {
 
 function validateBallotAnswers(payload) {
   const itemsByBallot = new Map();
+  const itemsById = new Map();
   for (const item of payload.ballot_item) {
     if (!VALID_BALLOT_SCALES.has(item.scale)) {
       throw new Error('snapshot archive ballot item scale is invalid');
     }
+    itemsById.set(item.id, item);
     const items = itemsByBallot.get(item.ballot_id) ?? [];
     items.push(item);
     itemsByBallot.set(item.ballot_id, items);
@@ -270,6 +272,15 @@ function validateBallotAnswers(payload) {
     const answers = response.answers;
     if (!answers || typeof answers !== 'object' || Array.isArray(answers)) {
       throw new Error('snapshot archive ballot answers are invalid');
+    }
+    for (const itemId of Object.keys(answers)) {
+      const item = itemsById.get(itemId);
+      if (!item) {
+        throw new Error('snapshot archive ballot answer references unknown item');
+      }
+      if (item.ballot_id !== response.ballot_id) {
+        throw new Error('snapshot archive ballot answer belongs to another ballot');
+      }
     }
     for (const item of itemsByBallot.get(response.ballot_id) ?? []) {
       const hasAnswer = Object.hasOwn(answers, item.id);

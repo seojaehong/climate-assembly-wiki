@@ -494,6 +494,47 @@ test('rejects a response that omits an answer required by the archived ballot it
   });
 });
 
+test('rejects a response that references an item missing from the archive', async () => {
+  const archive = await signedArchiveFixture(platformPayloadFixture({
+    ballot_response: [{
+      id: 'response-1',
+      ballot_id: 'ballot-1',
+      client_id: 'client-0001',
+      answers: { 'ballot-item-1': 3, 'missing-item': 2 },
+    }],
+  }));
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toThrow('snapshot archive ballot answer references unknown item');
+  });
+});
+
+test('rejects a response that references an item from another ballot', async () => {
+  const archive = await signedArchiveFixture(platformPayloadFixture({
+    ballot: [
+      { id: 'ballot-1', session_id: 'session-1', token: 'ballot-token-1', org_id: 'org-1' },
+      { id: 'ballot-2', session_id: 'session-1', token: 'ballot-token-2', org_id: 'org-1' },
+    ],
+    ballot_item: [
+      { id: 'ballot-item-1', ballot_id: 'ballot-1', ordinal: 1, scale: 5, required: true },
+      { id: 'ballot-item-2', ballot_id: 'ballot-2', ordinal: 1, scale: 5, required: false },
+    ],
+    ballot_response: [{
+      id: 'response-1',
+      ballot_id: 'ballot-1',
+      client_id: 'client-0001',
+      answers: { 'ballot-item-1': 3, 'ballot-item-2': 2 },
+    }],
+    counts: { issue: 1, issue_link: 0, result_page: 0, submission: 1, ballot: 2 },
+  }));
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toThrow('snapshot archive ballot answer belongs to another ballot');
+  });
+});
+
 test('rejects an unsupported ballot scale even when the ballot has no responses', async () => {
   const archive = await signedArchiveFixture(platformPayloadFixture({
     ballot_item: [{
