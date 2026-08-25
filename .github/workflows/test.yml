@@ -4,6 +4,7 @@ on:
     paths:
       - 'automation/**'
       - 'evaluation/platform-a2-activation-bundle.json'
+      - 'evaluation/platform-a4-migration-bundle.json'
       - 'public/workshop-graph/**'
       - '.github/workflows/test.yml'
       - '.gitignore'
@@ -33,6 +34,7 @@ on:
     paths:
       - 'automation/**'
       - 'evaluation/platform-a2-activation-bundle.json'
+      - 'evaluation/platform-a4-migration-bundle.json'
       - 'public/workshop-graph/**'
       - '.github/workflows/test.yml'
       - '.gitignore'
@@ -196,6 +198,65 @@ jobs:
             -f /tmp/platform_p1c_org_selection.sql >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/org_selection_test.sql
+      - name: Verify A4 design provisioning draft semantics
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          container="a4-verify-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup() {
+            docker rm -f "$container" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker run -d --name "$container" \
+            -e POSTGRES_PASSWORD=verify \
+            -e POSTGRES_DB=verify \
+            postgres:16 >/dev/null
+          for _ in $(seq 1 60); do
+            if docker exec "$container" pg_isready -U postgres -d verify >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          docker exec "$container" pg_isready -U postgres -d verify >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "create role anon nologin; create role authenticated nologin; create role service_role nologin; create publication supabase_realtime; alter database verify set search_path=public,extensions,climate_vote;"
+          docker cp supabase/migrations/. "${container}:/tmp/"
+          docker cp supabase/verify/00_prelude.sql "${container}:/tmp/00_prelude.sql"
+          docker cp supabase/verify/driver_pass1.sql "${container}:/tmp/driver_pass1.sql"
+          docker cp supabase/verify/design_provisioning_preflight.sql "${container}:/tmp/design_provisioning_preflight.sql"
+          docker cp supabase/verify/design_provisioning_post_apply.sql "${container}:/tmp/design_provisioning_post_apply.sql"
+          docker cp supabase/verify/design_provisioning_test.sql "${container}:/tmp/design_provisioning_test.sql"
+          docker cp supabase/rollbacks/platform_p3_design_provisioning_BEFORE.sql "${container}:/tmp/platform_p3_design_provisioning_BEFORE.sql"
+
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -v verify_function_bodies=on -f /tmp/driver_pass1.sql >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/design_provisioning_preflight.sql >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/platform_p3_design_provisioning.sql >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/design_provisioning_post_apply.sql >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/design_provisioning_test.sql
+
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "grant execute on function climate_vote.design_provision(jsonb,bytea) to authenticated;"
+          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/design_provisioning_post_apply.sql \
+            >"$RUNNER_TEMP/a4-unsafe-grant.log" 2>&1; then
+            echo "Unsafe A4 authenticated grant unexpectedly passed verification" >&2
+            exit 1
+          fi
+          grep -q "dormant privilege contract is unsafe" "$RUNNER_TEMP/a4-unsafe-grant.log"
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "revoke execute on function climate_vote.design_provision(jsonb,bytea) from authenticated;"
+
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/platform_p3_design_provisioning_BEFORE.sql >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "do \$\$ begin if to_regprocedure('climate_vote.design_provision(jsonb,bytea)') is not null or to_regclass('climate_vote.design_provisioning_operation') is not null or exists (select 1 from information_schema.columns where table_schema='climate_vote' and table_name='team' and column_name='ordinal') then raise exception 'A4 rollback verification failed'; end if; end \$\$;"
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:

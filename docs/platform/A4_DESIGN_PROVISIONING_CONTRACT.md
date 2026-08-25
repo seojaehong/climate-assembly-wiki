@@ -1,8 +1,8 @@
 # A4 설계 프로비저닝 서버 계약 제안서
 
-상태: **승인 전 제안**
-작성 기준: 2026-08-17
-적용 여부: `false` — SQL migration, RPC, adapter, production 데이터 변경을 포함하지 않는다.
+상태: **migration 초안 작성 승인(2026-08-25), production 적용 미승인**
+작성 기준: 2026-08-25
+적용 여부: `false` — 저장소의 SQL 초안·rollback·검증 묶음만 승인되었으며 production DB, Auth, membership, GRANT, adapter는 변경하지 않는다.
 
 ## 1. 목적
 
@@ -19,13 +19,13 @@
 | 멱등 실행 | 없음 | 응답 유실 뒤 같은 plan을 재요청했을 때 중복 생성과 다른 payload의 operation ID 재사용을 막을 ledger가 필요하다. |
 | 설계 RPC | 없음 | 청사진·plan을 검증하고 기관을 서버에서 파생해 한 transaction으로 저장할 staff 전용 RPC가 필요하다. |
 
-이에 따라 현재 blocker 정본은 다음 다섯 가지다.
+초안 작성 승인 뒤 실행 계획의 현재 blocker 정본은 다음 다섯 가지다.
 
-1. `schema.session_base_contract_not_migration_owned`
-2. `schema.team_stable_identity_not_approved`
-3. `server.design_provisioning_rpc_not_implemented`
-4. `server.idempotent_operation_ledger_not_implemented`
-5. `team.join_code_generation_contract_not_approved`
+1. `approval.production_apply_not_granted`
+2. `schema.design_provisioning_migration_not_applied`
+3. `server.design_provisioning_rpc_not_activated`
+4. `server.idempotent_operation_ledger_not_activated`
+5. `team.join_code_generation_not_activated`
 
 ## 3. 권장 계약
 
@@ -58,7 +58,7 @@
 - 권장 형태는 plan 전체를 한 transaction에서 처리하는 staff 전용 RPC다. operation별 공개 RPC는 부분 성공 복구 부담 때문에 채택하지 않는다.
 - RPC는 `org_id`를 인자로 받지 않는다. 현재 Auth 사용자와 P1C 선택 context에서 `org_of_uid()`가 검증한 기관을 서버가 파생한다.
 - 허용 역할은 `org_admin`과 `hq`로 제한하고 활성 membership·활성 org를 매 요청 확인한다.
-- 입력은 exact schema/version, plan checksum, source byte hash, operation 순서, parent reference, operation ID를 다시 검증한다.
+- 입력은 exact schema/version, plan checksum, 원 청사진 bytes의 길이·SHA-256, operation 순서, parent reference, operation ID를 다시 검증한다. 원 bytes는 검증 중에만 사용하며 ledger·receipt에 저장하지 않는다.
 - assembly slug, session slug, session/topic/team ordinal을 lookup-before-mutation 방식으로 대조한다. 기존 값이 기대 payload와 다르면 update로 덮지 않고 충돌로 중단한다.
 - 모든 operation이 성공한 경우에만 commit한다. 오류는 원문·join code·credential을 포함하지 않는 안정 error code로 반환한다.
 - 성공 응답은 생성/재사용 resource ID, operation 상태, count와 plan checksum을 포함하되 원 청사진 본문은 반복하지 않는다.

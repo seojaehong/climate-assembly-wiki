@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "bundleKind": "platform_a4_migration_draft",
+  "migrationDraftApproved": true,
+  "productionApplyApproved": false,
+  "dryRun": true,
+  "databaseMutationExecuted": false,
+  "credentialsRead": false,
+  "requiresProductionApproval": true,
+  "decisions": {
+    "teamIdentity": [
+      "session_id",
+      "ordinal"
+    ],
+    "sessionSlugScope": "global",
+    "transactionScope": "whole_plan",
+    "joinCodeVisibility": "authorized_staff_response_only",
+    "existingRowBackfill": "separate_approval_required"
+  },
+  "executionOrder": [
+    "read_only_preflight",
+    "migration_draft",
+    "post_apply_verification",
+    "semantic_rehearsal",
+    "rollback_draft"
+  ],
+  "artifacts": [
+    {
+      "path": "src/islands/platform/design/design-blueprint-contract.json",
+      "sha256": "d1d2bbcea9a0fa7ef5dc12ae7d9f677c44ad606a8c2032f3b76ee54eb83e4b40",
+      "bytes": 691
+    },
+    {
+      "path": "automation/platform-design-provisioning-plan.mjs",
+      "sha256": "3e7d6d4ef4187339afa6b4d2bb8e5853aa99c93cc7f6aecff27c22ac5d8f0065",
+      "bytes": 18002
+    },
+    {
+      "path": "docs/platform/A4_DESIGN_PROVISIONING_CONTRACT.md",
+      "sha256": "446e9d5c74889b20d834d60e301eee8d036daad03526ae03b68136b789c73cbc",
+      "bytes": 7925
+    },
+    {
+      "path": "supabase/verify/design_provisioning_preflight.sql",
+      "sha256": "4da523b436ebca70f0842cc6961b1773ee7bb43f5c68aef45ca65e015baed534",
+      "bytes": 4323
+    },
+    {
+      "path": "supabase/migrations/platform_p3_design_provisioning.sql",
+      "sha256": "0424665568d8719fac51be37141e70e1390b6bd6de123d5c6d670171f615e5d8",
+      "bytes": 22245
+    },
+    {
+      "path": "supabase/verify/design_provisioning_post_apply.sql",
+      "sha256": "8fda2dcefa643a0edd48ab20690036313d1d20e08696bdf2871a7d7472f8218c",
+      "bytes": 4212
+    },
+    {
+      "path": "supabase/verify/design_provisioning_test.sql",
+      "sha256": "825378ede0e20b20385359ec47781cacb68258ea9400744d20d877f8e4fc36b8",
+      "bytes": 9606
+    },
+    {
+      "path": "supabase/rollbacks/platform_p3_design_provisioning_BEFORE.sql",
+      "sha256": "3e23a8bdabe517274151848121a1de9cb5e31eafec9d0f66b4621bdc036cf323",
+      "bytes": 1398
+    }
+  ],
+  "boundaries": {
+    "appliesProductionMigration": false,
+    "backfillsExistingRows": false,
+    "changesNotNullConstraints": false,
+    "createsAuthUsersOrMemberships": false,
+    "activatesStaffGrants": false,
+    "connectsProductionExecutor": false
+  },
+  "checksum": "3df87e216f9070e19e15da8c5beb40e405c44f280f6023e07b201dd16a50525c"
+}

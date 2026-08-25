@@ -68,11 +68,11 @@ test('shares the exact browser blueprint contract', () => {
     'topics_open', 'teams_active', 'roster_loaded',
   ]);
   expect(DESIGN_PROVISIONING_BLOCKERS).toEqual([
-    'schema.session_base_contract_not_migration_owned',
-    'schema.team_stable_identity_not_approved',
-    'server.design_provisioning_rpc_not_implemented',
-    'server.idempotent_operation_ledger_not_implemented',
-    'team.join_code_generation_contract_not_approved',
+    'approval.production_apply_not_granted',
+    'schema.design_provisioning_migration_not_applied',
+    'server.design_provisioning_rpc_not_activated',
+    'server.idempotent_operation_ledger_not_activated',
+    'team.join_code_generation_not_activated',
   ]);
 });
 

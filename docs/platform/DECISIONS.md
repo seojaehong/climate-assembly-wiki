@@ -12,7 +12,7 @@
 - `org_select(p_org)`는 기관 ID를 받는 유일한 예외 RPC다. 도메인 데이터를 읽거나 쓰는 RPC는 계속 org ID를 인자로 받지 않으며 `org_of_uid()`에서 검증된 선택을 파생한다.
 - **2026-08-17 사용자 승인:** `platform_p1c_org_selection.sql` 초안과 대응 rollback·UI·정적 계약 테스트를 승인했다. 이 승인은 설계 초안의 저장소 채택만 뜻하며, 실제 Supabase 적용, count-only preflight RPC 설치, backfill, NOT NULL, staff table GRANT, Auth 계정·membership 생성은 포함하지 않는다. 각 production 변경은 별도 승인 전까지 금지한다.
 - A3는 UI 접근 계획과 공용 schema를 쓰는 저장소 외부 dry-run provisioning plan 및 adapter-independent executor core까지만 허용한다. core는 HMAC 승인·안정 lookup·응답 유실 reconciliation·비식별 receipt를 강제하지만 production Supabase/Auth adapter는 invitation 멱등 저장 계약 승인 전까지 연결하지 않으며, 현재 plan을 직접 SQL/API 실행 목록으로 해석하지 않는다.
-- A4는 UI와 공용 contract를 쓰는 저장소 외부 dry-run provisioning plan까지만 허용한다. assembly→session→topic/team stable operation과 exact source 재생성 검증은 준비하되, migration-owned session base 계약·team ordinal identity·team join code·멱등 ledger·design RPC의 migration 계약이 승인되기 전에는 항상 `readyForExecution:false`이며 executor를 연결하지 않는다. 승인 전 제안은 `A4_DESIGN_PROVISIONING_CONTRACT.md`에 분리한다.
+- **2026-08-25 사용자 승인:** A4 migration 초안 작성과 저장소 채택을 승인했다. team identity는 `(session_id, ordinal)`, session slug는 기존 전역 unique, plan 전체 단일 transaction, join code는 승인된 staff의 현재 성공 응답에서만 표시, 기존 행 backfill은 별도 승인으로 확정한다. SQL 초안·rollback·read-only preflight·post-apply verifier·격리 PostgreSQL rehearsal·hash bundle까지만 허용하며 production 적용, backfill·NOT NULL, Auth·membership, staff GRANT, 실제 traffic, executor 연결은 승인하지 않았다. 따라서 dry-run plan은 계속 `readyForExecution:false`다.
 - `org_of_token` 레거시 HQ 단일-org fallback → 2번째 org 생기는 순간 raise. **HQ 공유비밀→membership 전환이 Phase 2 선행조건**(플랜 §0-5 동일)
 - org_id 영구 nullable = 격리 구멍 → backfill 후 NOT NULL 전환 필수(병합 시)
 - RLS 정책 11종은 `revoke all` 때문에 휴면 — 활성화 GRANT(+Supabase Auth)까지 무동작(의도적)

@@ -15,11 +15,11 @@ const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 export const DESIGN_PROVISIONING_BLOCKERS = Object.freeze([
-  'schema.session_base_contract_not_migration_owned',
-  'schema.team_stable_identity_not_approved',
-  'server.design_provisioning_rpc_not_implemented',
-  'server.idempotent_operation_ledger_not_implemented',
-  'team.join_code_generation_contract_not_approved',
+  'approval.production_apply_not_granted',
+  'schema.design_provisioning_migration_not_applied',
+  'server.design_provisioning_rpc_not_activated',
+  'server.idempotent_operation_ledger_not_activated',
+  'team.join_code_generation_not_activated',
 ]);
 
 function canonicalValue(value) {

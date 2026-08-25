@@ -26,6 +26,8 @@
     "verify:platform-access-provisioning": "node platform-access-provisioning-plan.mjs --verify",
     "plan:platform-design-provisioning": "node platform-design-provisioning-plan.mjs",
     "verify:platform-design-provisioning": "node platform-design-provisioning-plan.mjs --verify",
+    "plan:platform-a4-migration": "node platform-a4-migration-bundle.mjs",
+    "verify:platform-a4-migration": "node platform-a4-migration-bundle.mjs --verify",
     "verify:canvas-browser": "node verify-canvas-browser.mjs",
     "verify:platform-design-blueprint": "node verify-platform-design-blueprint.mjs",
     "bridge:transcript-ontology": "node transcript-ontology-fixture.mjs"

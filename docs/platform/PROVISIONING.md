@@ -138,7 +138,7 @@ npm.cmd run verify:platform-design-provisioning -- $designPlan --source $bluepri
 - UI와 CLI는 `design-blueprint-contract.json`의 schema version, 운영 방식, 준비도 vocabulary, slug와 크기 한계, dry-run 경계를 함께 사용한다.
 - 생성기는 exact source byte SHA-256과 assembly/session/topic/team별 stable operation ID, parent reference, 합계를 기록한다. verifier는 checksum뿐 아니라 원 청사진에서 전체 계획을 다시 생성해 순서·본문·계층·정원·정책이 바뀐 자체 재봉인 파일도 거부한다.
 - 계획은 항상 `readyForExecution:false`, `serverContractImplemented:false`, `databaseMutationExecuted:false`다. 실행 CLI나 Supabase adapter는 제공하지 않는다.
-- 현재 blocker는 migration-owned session base 계약 부재, team ordinal 기반 stable identity 미승인, design provisioning RPC 미구현, idempotent operation ledger 미구현, team join code 생성 계약 미승인이다. 다섯 항목의 권장 계약과 승인 질문은 `docs/platform/A4_DESIGN_PROVISIONING_CONTRACT.md`에 분리했다. migration·rollback·stage rehearsal·권한 테스트가 별도 승인되기 전에는 이 plan을 SQL/API 작업 목록으로 사용하지 않는다.
+- 2026-08-25 migration 초안 작성은 승인되어 session 계약 재확인, `(session_id, ordinal)` team identity, dormant design RPC·멱등 ledger·transaction 내부 join code 생성 초안과 rollback·검증 묶음을 작성했다. 현재 blocker는 production 적용 미승인, migration 미적용, RPC·ledger·join code 경로 미활성화다. `readyForExecution:false`인 plan을 SQL/API 작업 목록으로 사용하거나 production executor에 연결하지 않는다.
 - 입력·출력 경로가 symlink/junction을 포함해 저장소를 가리키면 거부하며, 기존 출력은 명시적 `--force` 없이는 덮어쓰지 않는다. 오류에는 청사진 원문이나 파일 경로를 싣지 않는다.
 
 ## 3. 프론트 배포
