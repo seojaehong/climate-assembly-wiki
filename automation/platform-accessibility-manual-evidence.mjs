@@ -255,6 +255,7 @@ export const MANUAL_ACCESSIBILITY_TARGET_PATHS = [
   'src/islands/canvas',
   'src/islands/platform',
   'src/islands/result',
+  'src/layouts',
   'src/pages',
   'src/components',
   'src/lib',

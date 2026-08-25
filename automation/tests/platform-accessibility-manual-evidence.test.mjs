@@ -263,11 +263,12 @@ test('workflow watches every source path that can stale manual evidence', () => 
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/components');
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/islands/OntologyReviewConsole.tsx');
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/islands/canvas');
+  expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/layouts');
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/lib');
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/pages');
 });
 
-test('CLI accepts an evidence-only commit and rejects a later shared dependency change', () => {
+test('CLI accepts an evidence-only commit and rejects a later shared layout change', () => {
   const repo = mkdtempSync(join(tmpdir(), 'manual-a11y-git-'));
   const modulePath = join(process.cwd(), 'platform-accessibility-manual-evidence.mjs');
   const runGit = (...args) => spawnSync('git', args, { cwd: repo, encoding: 'utf8' });
@@ -276,7 +277,9 @@ test('CLI accepts an evidence-only commit and rejects a later shared dependency 
     expect(runGit('config', 'user.email', 'test@example.invalid').status).toBe(0);
     expect(runGit('config', 'user.name', 'Test Runner').status).toBe(0);
     mkdirSync(join(repo, 'src', 'components'), { recursive: true });
+    mkdirSync(join(repo, 'src', 'layouts'), { recursive: true });
     writeFileSync(join(repo, 'src', 'components', 'HitlBadge.tsx'), 'export const badge = true;\n', 'utf8');
+    writeFileSync(join(repo, 'src', 'layouts', 'PlatformLayout.astro'), '<main><slot /></main>\n', 'utf8');
     expect(runGit('add', '.').status).toBe(0);
     expect(runGit('commit', '-m', 'feat: add surface').status).toBe(0);
     const surfaceSha = runGit('rev-parse', 'HEAD').stdout.trim();
@@ -310,9 +313,9 @@ test('CLI accepts an evidence-only commit and rejects a later shared dependency 
       '--expected-base-url', 'https://climate-assembly.org', '--repo-root', repo], { encoding: 'utf8' });
     expect(verified.status).toBe(0);
 
-    writeFileSync(join(repo, 'src', 'components', 'HitlBadge.tsx'), 'export const badge = false;\n', 'utf8');
+    writeFileSync(join(repo, 'src', 'layouts', 'PlatformLayout.astro'), '<main aria-busy="true"><slot /></main>\n', 'utf8');
     expect(runGit('add', '.').status).toBe(0);
-    expect(runGit('commit', '-m', 'fix: change shared dependency').status).toBe(0);
+    expect(runGit('commit', '-m', 'fix: change shared layout').status).toBe(0);
     const stale = spawnSync(process.execPath, [modulePath, '--verify', evidencePath,
       '--expected-base-url', 'https://climate-assembly.org', '--repo-root', repo], { encoding: 'utf8' });
     expect(stale.status).toBe(1);
