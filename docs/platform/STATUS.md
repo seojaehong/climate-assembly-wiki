@@ -181,6 +181,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 동시 exact plan 멱등 수렴(2026-08-26):** mutation RPC는 checksum·source 검증 뒤 첫 ledger/resource lookup 전에 기관 ID 기반 transaction advisory lock을 획득한다. test-only 지연 trigger와 두 독립 PostgreSQL 연결로 같은 신규 plan을 경합시킨 결과 하나는 `applied`, 다른 하나는 lock 대기 뒤 `replayed`가 되고 resource 한 세트와 ledger 4건만 남았다. post-apply verifier는 lock key와 source 검증 이후·operation loop 이전 순서를 compiled function에서 확인한다. production migration·DB·GRANT는 적용하지 않았다.
 
+**A4 비-draft 설계 resource 채택 차단(2026-08-26):** mutation RPC의 신규 채택과 exact replay는 assembly·session·discussion topic의 payload·부모·기관뿐 아니라 서버 생성 상태 `draft`도 대조한다. 정상 생성 뒤 assembly/session을 `active`, topic을 `open`으로 각각 바꾼 PostgreSQL 16 부정 rehearsal은 모두 `design_resource_conflict`로 중단됐고, post-apply verifier는 compiled function에서 세 상태 조건을 확인한다. 이미 활성화·종료된 자원을 새 설계 성공으로 기록하지 않으며 production migration·DB·GRANT는 적용하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

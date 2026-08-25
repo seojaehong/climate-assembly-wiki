@@ -88,6 +88,9 @@ begin
      or v_definition not like '%to_char(v_session_date, ''YYYY-MM-DD'')%'
      or v_definition not like '%v_current_session_capacity > 100000%'
      or v_definition not like '%v_current_topic_count = 0 or v_current_team_count = 0%'
+     or v_definition not like '%and a.status = ''draft''%'
+     or v_definition not like '%and s.status = ''draft''%'
+     or v_definition not like '%and dt.status = ''draft''%'
      or v_definition not like '%and t.status = ''active''%'
      or v_definition not like '%design_join_code_exhausted%'
      or v_definition not like '%design_operation_conflict%' then

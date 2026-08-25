@@ -151,6 +151,9 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(migration).toContain('v_current_session_capacity > 100000');
   expect(migration).toContain("to_char(v_session_date, 'YYYY-MM-DD')");
   expect(migration).toContain('v_current_topic_count = 0 or v_current_team_count = 0');
+  expect(migration).toContain("and a.status = 'draft'");
+  expect(migration).toContain("and s.status = 'draft'");
+  expect(migration).toContain("and dt.status = 'draft'");
   expect(migration).toContain("encode(extensions.digest(p_source_bytes, 'sha256'), 'hex')");
   expect(migration).toContain('revoke all on function climate_vote.design_provision(jsonb, bytea)');
   expect(migration).toContain('create or replace function climate_vote.design_provisioning_status(p_query jsonb)');
@@ -164,6 +167,9 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(rehearsal).toContain('unauthorized malformed plan was validated before role denial');
   expect(rehearsal).toContain('unauthorized malformed reconciliation query was validated before role denial');
   expect(rehearsal).toContain('disabled team replay unexpectedly exposed its join code');
+  expect(rehearsal).toContain('active assembly replay unexpectedly succeeded');
+  expect(rehearsal).toContain('active session replay unexpectedly succeeded');
+  expect(rehearsal).toContain('open topic replay unexpectedly succeeded');
   expect(rehearsal).toContain('disabled team reconciliation unexpectedly exposed its join code');
   expect(rehearsal).toContain('reconciliation checksum conflict unexpectedly succeeded');
   expect(rehearsal).toContain('partial reconciliation conflict unexpectedly returned pending');

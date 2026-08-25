@@ -50,7 +50,7 @@
 
 - ledger는 최소 `org_id`, `operation_id`, `plan_checksum`, `operation_type`, `request_hash`, `resource_id`, `applied_at`을 보존한다.
 - `operation_id`는 현재 plan의 64자 SHA-256이고 primary key 또는 동등한 unique key여야 한다.
-- 같은 operation ID·request hash·operation type·전체 plan checksum이 모두 같은 exact replay만 기존 resource를 반환한다. 다른 plan이 이전 operation을 부분 재사용하면 ledger의 plan checksum과 이후 reconciliation이 어긋나므로 mutation 전에 충돌로 중단한다.
+- 같은 operation ID·request hash·operation type·전체 plan checksum이 모두 같은 exact replay만 기존 resource를 반환한다. assembly·session·discussion topic은 서버가 생성하는 `draft`, team은 `active` 상태까지 payload·부모·기관과 함께 exact 대조한다. 이미 활성화·종료·보관된 resource를 새 설계가 채택하거나 replay하지 않는다. 다른 plan이 이전 operation을 부분 재사용하면 ledger의 plan checksum과 이후 reconciliation이 어긋나므로 mutation 전에 충돌로 중단한다.
 - 같은 operation ID에 다른 request hash가 오면 mutation 전에 실패한다.
 - ledger와 대상 행은 같은 transaction에서 기록한다. 대상 INSERT만 성공하거나 ledger만 성공하는 부분 상태를 허용하지 않는다.
 - checksum·source 검증을 마친 mutation RPC는 첫 ledger/resource lookup 전에 기관 ID에서 파생한 transaction advisory lock을 잡아 같은 기관의 plan 실행을 직렬화한다. 동시 exact plan은 하나가 `applied`, 다른 하나가 lock 대기 뒤 `replayed`로 수렴하며 hash 충돌은 다른 기관 실행을 불필요하게 직렬화할 뿐 격리나 정합성을 약화하지 않는다.

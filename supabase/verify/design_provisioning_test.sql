@@ -447,6 +447,47 @@ begin
   where session_id = (select id from climate_vote.session where slug = 'a4-session-1')
     and ordinal = 1;
 
+  update climate_vote.assembly
+  set status = 'active'
+  where slug = 'a4-test-assembly';
+  begin
+    perform climate_vote.design_provision(v_plan, convert_to(repeat('s', 100), 'UTF8'));
+    raise exception 'A4 semantic test failed: active assembly replay unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_resource_conflict' then raise; end if;
+  end;
+  update climate_vote.assembly
+  set status = 'draft'
+  where slug = 'a4-test-assembly';
+
+  update climate_vote.session
+  set status = 'active'
+  where slug = 'a4-session-1';
+  begin
+    perform climate_vote.design_provision(v_plan, convert_to(repeat('s', 100), 'UTF8'));
+    raise exception 'A4 semantic test failed: active session replay unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_resource_conflict' then raise; end if;
+  end;
+  update climate_vote.session
+  set status = 'draft'
+  where slug = 'a4-session-1';
+
+  update climate_vote.discussion_topic
+  set status = 'open'
+  where session_id = (select id from climate_vote.session where slug = 'a4-session-1')
+    and ordinal = 1;
+  begin
+    perform climate_vote.design_provision(v_plan, convert_to(repeat('s', 100), 'UTF8'));
+    raise exception 'A4 semantic test failed: open topic replay unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_resource_conflict' then raise; end if;
+  end;
+  update climate_vote.discussion_topic
+  set status = 'draft'
+  where session_id = (select id from climate_vote.session where slug = 'a4-session-1')
+    and ordinal = 1;
+
   begin
     perform climate_vote.design_provisioning_status(
       jsonb_set(v_query, '{executedPlanChecksum}', to_jsonb(repeat('b', 64)))

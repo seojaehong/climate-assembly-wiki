@@ -383,6 +383,7 @@ begin
           and a.slug = v_payload ->> 'slug' and a.title = v_payload ->> 'title'
           and a.purpose is not distinct from (v_payload ->> 'purpose')
           and a.mode = v_payload ->> 'mode' and a.config = v_payload -> 'config'
+          and a.status = 'draft'
       ) then raise exception using message = 'design_resource_conflict'; end if;
       v_assembly_count := v_assembly_count + 1;
 
@@ -453,7 +454,7 @@ begin
         select 1 from climate_vote.session s where s.id = v_resource_id and s.org_id = v_org_id
           and s.assembly_id = v_parent_id and s.ordinal = (v_operation ->> 'ordinal')::integer
           and s.slug = v_payload ->> 'slug' and s.title = v_payload ->> 'title'
-          and s.held_on = v_session_date
+          and s.held_on = v_session_date and s.status = 'draft'
       ) then raise exception using message = 'design_resource_conflict'; end if;
       v_session_count := v_session_count + 1;
 
@@ -495,7 +496,7 @@ begin
         select 1 from climate_vote.discussion_topic dt where dt.id = v_resource_id
           and dt.org_id = v_org_id and dt.session_id = v_parent_id
           and dt.ordinal = (v_operation ->> 'ordinal')::integer
-          and dt.prompt = v_payload ->> 'prompt'
+          and dt.prompt = v_payload ->> 'prompt' and dt.status = 'draft'
       ) then raise exception using message = 'design_resource_conflict'; end if;
       v_current_topic_count := v_current_topic_count + 1;
       v_current_topic_prompts := v_current_topic_prompts

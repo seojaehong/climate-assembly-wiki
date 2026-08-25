@@ -52,6 +52,7 @@
 20. ledger·non-null ordinal이 있는 populated rollback은 객체 제거 전에 거부되고 post-apply verifier가 계속 통과하는지 확인했다.
 21. exact-scope throwaway cleanup만 synthetic A4 행을 제거하는 것을 확인했다.
 22. cleanup 뒤 최종 rollback이 성공해 mutation/status RPC·ledger·team ordinal이 제거되는 것을 확인했다.
+23. 정상 생성 뒤 assembly를 `active`, session을 `active`, discussion topic을 `open`으로 각각 바꾼 exact replay가 모두 `design_resource_conflict`로 중단되는지 확인했다. RPC는 서버 생성 상태인 세 resource의 `draft`까지 exact 대조해 이미 활성화·종료된 자원을 새 설계가 채택하지 않는다.
 
 결과: `A4_LOCAL_POSTGRES_REHEARSAL=passed`
 
@@ -77,16 +78,18 @@ canonical plan 의미 계약 결과: `A4_CANONICAL_PLAN_SEMANTICS_POSTGRES_REHEA
 
 동시 exact plan 멱등 수렴 결과: `A4_CONCURRENT_EXACT_PLAN_POSTGRES_REHEARSAL=passed`
 
+비-draft 설계 resource 채택 차단 결과: `A4_DESIGN_RESOURCE_STATUS_POSTGRES_REHEARSAL=passed`
+
 ## 자동화 회귀
 
 - A4 bundle·design plan 집중 테스트: 55건 통과
-- Windows automation 전체: 26개 파일, 402건 통과
+- Windows automation 전체: 26개 파일, 405건 통과
 - 애플리케이션 전체: 64개 파일, 1,060건 통과
-- Astro check: 327개 파일, 오류 0건, 기존 hint 49건
+- Astro check: 328개 파일, 오류 0건, 기존 hint 49건
 - 저장소 밖 로컬 durable store의 adapter 재시작·lock-free CAS·독립 Node 프로세스 6개 claim 경쟁(1 claimed, 5 conflict, journal record 2개)·orphan temp 복구·append-only replay/conflict·journal 변조·junction escape·revocation/claim 경쟁·membership 비활성 finalize와 재활성화 거부·비식별 전체-store/keyed receipt audit·off-store inventory checkpoint 삭제/tail 변경 테스트 통과
 - approval bundle verifier: builder·durable store·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 17개, production apply 미승인·DB mutation 미실행 상태로 통과
 - 추적 manifest를 current source에서 재구성해 stale source hash를 거부하는 테스트 통과
-- bundle checksum: `d3275d5d3ce77ab7b6cf9607e0fca1fb01d14da9fe7a32f5d3e1a951d7be1864`
+- bundle checksum: `78066aebbeb241fcf0143e5ac722987a12c5157a7c6dda9d4ec0eca2e1c3b660`
 
 ## 보안·데이터 무결성 결론
 
@@ -97,6 +100,7 @@ canonical plan 의미 계약 결과: `A4_CANONICAL_PLAN_SEMANTICS_POSTGRES_REHEA
 - 로컬 durable store는 synthetic authorization context만 immutable journal에 함께 보존하며 production Auth/membership 증거로 사용하지 않는다.
 - 전체-store audit는 존재하는 journal·receipt와 claim 연결을 비식별 집계하고 합성 HMAC key로 receipt와 off-store inventory checkpoint를 검증할 수 있다. checkpoint 없는 기본 audit, 실제 외부 보관·freshness·production key custody/rotation은 여전히 증명하지 않는다.
 - 기존 resource가 plan payload와 다르거나 같은 operation이 다른 전체 plan checksum으로 재사용되면 update하지 않고 안정 오류 코드로 전체 transaction을 중단한다.
+- assembly·session·discussion topic은 payload·부모·기관뿐 아니라 서버 생성 상태 `draft`까지 일치해야 하며, 이미 활성화되거나 열린 resource를 새 설계의 성공 또는 replay로 채택하지 않는다.
 - 같은 기관의 동시 mutation plan은 source 검증 뒤 transaction advisory lock으로 직렬화해 exact plan 경쟁을 `applied`와 `replayed`로 수렴시킨다.
 - plan 내부의 operation ID와 resource ref는 각각 유일해야 하며 중복 plan은 lookup·mutation 전에 거부한다.
 - plan과 reconciliation query의 boolean·number·string JSON 타입을 exact 검사해 문자열로 바꾼 self-resealed 입력을 거부한다.
