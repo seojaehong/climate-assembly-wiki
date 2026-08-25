@@ -1,13 +1,14 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
 import {
   buildPlatformResultSourcePlan,
   buildPlatformResultSourcePublicationPlan,
+  validatePlatformResultSourcePrivateInputPath,
   validatePlatformResultSourcePublicationOutputPath,
   verifyPlatformResultSourcePlan,
   verifyPlatformResultSourcePublicationPlan,
@@ -250,6 +251,31 @@ test('requires publication plans to stay outside the repository', () => {
   expect(validatePlatformResultSourcePublicationOutputPath(externalOutput)).toBe(externalOutput);
   expect(() => validatePlatformResultSourcePublicationOutputPath(repositoryOutput))
     .toThrow('outside the repository');
+});
+
+test('requires raw source and review inputs to stay outside the repository', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'platform-result-source-private-input-'));
+  const externalInput = join(directory, 'private.json');
+  const repositoryInput = fileURLToPath(new URL('../platform-result-source-plan.mjs', import.meta.url));
+  const repositoryLink = join(directory, 'repository-link');
+  try {
+    writeFileSync(externalInput, '{}', 'utf8');
+    symlinkSync(dirname(repositoryInput), repositoryLink, process.platform === 'win32' ? 'junction' : 'dir');
+    expect(validatePlatformResultSourcePrivateInputPath(externalInput, 'review decisions'))
+      .toBe(externalInput);
+    expect(() => validatePlatformResultSourcePrivateInputPath(repositoryInput, 'issue-items'))
+      .toThrow('outside the repository');
+    expect(() => validatePlatformResultSourcePrivateInputPath(
+      join(repositoryLink, 'platform-result-source-plan.mjs'),
+      'review decisions',
+    )).toThrow('outside the repository');
+    expect(() => validatePlatformResultSourcePrivateInputPath(
+      join(directory, 'missing.json'),
+      'review decisions',
+    )).toThrow('unavailable');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test.each([

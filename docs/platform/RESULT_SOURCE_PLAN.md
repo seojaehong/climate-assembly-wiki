@@ -38,7 +38,7 @@ npm.cmd run plan:platform-result-sources -- --result <result.json> --issue-items
 node platform-result-source-plan.mjs --result <result.json> --issue-items <issue-items.json> --verify-plan <plan.json>
 ```
 
-The CLI refuses to overwrite an existing output. Keep authenticated captures and generated plans outside `public/`; do not commit real citizen text or join/HQ credentials.
+The CLI refuses to overwrite an existing output. `--issue-items` is an authenticated raw-source capture, so the CLI resolves symlinks/junctions and accepts it only as an existing regular file outside the repository. Publication mode applies the same boundary to `--reviews`, which contains reviewer identity and source-release decisions. Keep generated plans outside `public/`; do not commit real citizen text, reviewer identity, or join/HQ credentials.
 
 ## Approval boundary
 

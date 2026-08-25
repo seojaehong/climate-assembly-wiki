@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -509,15 +509,34 @@ export function validatePlatformResultSourcePublicationOutputPath(path) {
   return absolutePath;
 }
 
+export function validatePlatformResultSourcePrivateInputPath(path, label) {
+  const absolutePath = resolve(path);
+  let resolvedPath;
+  try {
+    resolvedPath = realpathSync.native(absolutePath);
+    if (!statSync(resolvedPath).isFile()) throw new Error('not a file');
+  } catch {
+    throw new Error(`Result source ${label} input is unavailable`);
+  }
+  if (isWithinRepository(resolvedPath)) {
+    throw new Error(`Result source ${label} input must remain outside the repository`);
+  }
+  return resolvedPath;
+}
+
 function main(argv) {
   const args = parseArgs(argv);
   const resultPath = args.get('--result');
   const sourcePath = args.get('--issue-items');
   if (!resultPath || !sourcePath) throw new Error('Both --result and --issue-items are required');
-  const result = readJson(resultPath, 'result snapshot');
-  const sourceSnapshot = readJson(sourcePath, 'source snapshot');
   const reviewsPath = args.get('--reviews');
-  const reviews = reviewsPath ? readJson(reviewsPath, 'source publication reviews') : null;
+  const externalSourcePath = validatePlatformResultSourcePrivateInputPath(sourcePath, 'issue-items');
+  const externalReviewsPath = reviewsPath
+    ? validatePlatformResultSourcePrivateInputPath(reviewsPath, 'review decisions')
+    : null;
+  const result = readJson(resultPath, 'result snapshot');
+  const sourceSnapshot = readJson(externalSourcePath, 'source snapshot');
+  const reviews = externalReviewsPath ? readJson(externalReviewsPath, 'source publication reviews') : null;
   const verifyPath = args.get('--verify-plan');
   if (verifyPath) {
     if (reviews) {

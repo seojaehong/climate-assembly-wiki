@@ -738,7 +738,7 @@ node platform-result-source-plan.mjs --result <result.json> --issue-items <issue
 
 `reviews.json`은 모든 연결된 issue/item 쌍에 `reviewed` 또는 `withheld` 결정을 하나씩 가져야 한다. 공개 결정은 원문과 byte 단위로 같은 canonical 발췌, `auth-user:<uuid>` 검수자, `org_admin|hq` 역할, 결과 발행 뒤이면서 관찰 시각 이전인 canonical UTC 시각을 요구한다. 보류 결정의 발췌는 `null`이어야 한다. 일부 결정 누락·중복·알 수 없는 연결·미검수 쟁점·계약 밖 필드는 전체 plan 생성을 차단한다.
 
-publication plan은 승인 원문을 포함하므로 repository, `public/`, Git에 저장할 수 없다. CLI는 실제 해석된 상위 경로가 repository 밖인지 검사하고 no-overwrite·사용자 전용 파일 모드로 기록하며 stdout에는 원문이나 검수자 ID를 출력하지 않는다. plan은 전체 `atomicResultBody`, 전후 SHA-256, 원문 exact UTF-8 SHA-256, 검수 patch, canonical self-checksum과 입력 재생성 검증을 제공한다. DB·RPC·Drive·public 파일은 쓰지 않으며 실제 `result_publish`, migration, 게시에는 별도 사용자 승인이 필요하다.
+인증 `issue-items` capture와 reviewer identity가 있는 `reviews.json`은 모두 repository·`public/`·Git 밖의 기존 일반 파일이어야 한다. CLI는 symlink/junction을 실제 경로로 해석해 repository 안을 가리키는 우회도 읽기 전에 거부한다. publication plan 역시 승인 원문을 포함하므로 repository 밖에만 no-overwrite·사용자 전용 파일 모드로 기록하며 stdout에는 원문이나 검수자 ID를 출력하지 않는다. plan은 전체 `atomicResultBody`, 전후 SHA-256, 원문 exact UTF-8 SHA-256, 검수 patch, canonical self-checksum과 입력 재생성 검증을 제공한다. DB·RPC·Drive·public 파일은 쓰지 않으며 실제 `result_publish`, migration, 게시에는 별도 사용자 승인이 필요하다.
 
 `--reviews`가 없는 기존 명령은 원문을 싣지 않는 provenance plan을 계속 생성한다.
 

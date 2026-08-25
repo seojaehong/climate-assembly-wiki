@@ -210,6 +210,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 migration 초안 현재상태 감사(2026-08-26):** 사용자 승인 범위의 additive migration·populated rollback guard·적용 전 count-only readiness·legacy/mapping fixture·post-apply schema/권한 verifier·PostgreSQL 의미 리허설·approval/receipt/reconciliation core·저장소 밖 durable rehearsal·current-source bundle을 현재 commit에서 요구사항별로 재대조했다. A4 집중 61건과 artifact 17개 bundle checksum `b7c971e74d4335a1173ccf11b6cd3a11e54ef624bde1856aa34f6c31fc747b9e`, GitHub Actions run `32910614144` 성공을 확인했다. 승인된 초안 범위는 충족됐으며 bundle의 `productionApplyApproved:false`, `databaseMutationExecuted:false`는 유지된다. production migration·mapping/backfill·Auth/membership·RPC 권한·executor·traffic은 별도 Gate A/B-A4 승인 전까지 실행하지 않는다.
 
+**A7 원문·검수 입력 repository 격리(2026-08-26):** result source CLI가 raw `issue-items`를 모든 모드에서, reviewer identity와 공개 결정을 담은 `reviews`를 publication 모드에서 repository 밖의 기존 일반 파일로만 받도록 강화했다. 경로를 읽기 전에 실제 경로로 해석해 저장소 내부 직접 경로와 내부를 가리키는 symlink/junction, 누락·디렉터리 입력을 식별값이나 원문 노출 없이 거부한다. publication plan의 repository 밖 no-overwrite·사용자 전용 파일 경계와 원문 비노출 stdout은 그대로 유지된다. 집중 24건과 automation 전체 27개 파일·436건이 통과했으며 production payload·DB·RPC·migration·실제 시민 원문·검수 입력에는 접근하거나 변경하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

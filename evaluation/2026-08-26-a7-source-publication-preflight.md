@@ -13,13 +13,14 @@
 - 보류 결정은 발췌를 `null`로 강제해 plan에 원문을 남기지 않는다.
 - 공개 record는 UI/DOCX와 공유하는 exact 9필드 계약을 사용한다. 검수자 identity는 공개 body에서 제외하고 비공개 patch에만 보존한다.
 - 원문을 포함하는 publication plan은 실제 경로 해석 뒤 repository 밖에만 no-overwrite·사용자 전용 모드로 기록한다. CLI stdout/error에는 원문이나 검수자 ID를 출력하지 않는다.
+- 인증 `issue-items`와 검수 결정 입력도 실제 경로가 repository 밖인 기존 일반 파일일 때만 읽는다. repository 내부 직접 경로와 내부를 가리키는 symlink/junction, 누락 파일은 내용을 읽기 전에 거부한다.
 - 전체 body의 전후 SHA-256, 세 입력의 canonical SHA-256, plan self-checksum과 현재 입력 재생성 검증을 제공한다.
 
 ## 검증
 
 - TDD red: 공개 plan export 부재를 테스트 수집 실패로 확인
-- 집중: `npm.cmd test -- --run tests/platform-result-source-plan.test.mjs` — 1개 파일, 23건 통과
-- automation 전체: `npm.cmd test -- --run` — 27개 파일, 435건 통과
+- 집중: `npm.cmd test -- --run tests/platform-result-source-plan.test.mjs` — 1개 파일, 24건 통과
+- automation 전체: `npm.cmd test -- --run` — 27개 파일, 436건 통과
 - 루트 전체: `npm.cmd exec vitest -- run` — 64개 파일, 1,077건 통과
 - Astro: `npm.cmd run check` — 330개 파일, 오류 0건, 기존 hint 49건
 - 기존 provenance CLI 생성·검증·no-overwrite 회귀 통과
