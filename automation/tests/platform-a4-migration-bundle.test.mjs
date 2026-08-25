@@ -34,6 +34,9 @@ test('binds the approved A4 draft while keeping production mutation blocked', ()
     },
   });
   expect(bundle.artifacts.map(({ path }) => path)).toEqual(A4_MIGRATION_ARTIFACTS);
+  expect(A4_MIGRATION_ARTIFACTS).toContain('automation/platform-a4-migration-bundle.mjs');
+  expect(A4_MIGRATION_ARTIFACTS).toContain('automation/tests/platform-a4-migration-bundle.test.mjs');
+  expect(A4_MIGRATION_ARTIFACTS).toContain('automation/tests/platform-design-provisioning-plan.test.mjs');
   expect(bundle.executionOrder).toEqual([
     'read_only_additive_preflight',
     'migration_draft',
@@ -44,7 +47,7 @@ test('binds the approved A4 draft while keeping production mutation blocked', ()
   ]);
   expect(verifyA4MigrationBundle(bundle)).toMatchObject({
     status: 'verified',
-    artifactCount: 11,
+    artifactCount: 14,
     productionApplyApproved: false,
     databaseMutationExecuted: false,
   });
@@ -64,13 +67,27 @@ test('writes and verifies an A4 bundle without implicit overwrite', () => {
   const outputPath = join(directory, 'bundle.json');
   try {
     expect(runA4MigrationBundleCli(['--output', outputPath])).toMatchObject({
-      status: 'written', artifactCount: 11, databaseMutationExecuted: false,
+      status: 'written', artifactCount: 14, databaseMutationExecuted: false,
     });
     expect(() => runA4MigrationBundleCli(['--output', outputPath])).toThrow('use --force');
     expect(runA4MigrationBundleCli(['--verify', outputPath])).toMatchObject({ status: 'verified' });
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test('tracked A4 manifest exactly matches every current approval source', () => {
+  const tracked = JSON.parse(readFileSync(
+    join(repoRoot, 'evaluation', 'platform-a4-migration-bundle.json'),
+    'utf8',
+  ));
+  expect(verifyA4MigrationBundle(tracked)).toMatchObject({
+    status: 'verified',
+    artifactCount: 14,
+    productionApplyApproved: false,
+    databaseMutationExecuted: false,
+  });
+  expect(tracked).toEqual(buildA4MigrationBundle());
 });
 
 test('A4 SQL draft keeps preflight and post-apply verification read-only', () => {

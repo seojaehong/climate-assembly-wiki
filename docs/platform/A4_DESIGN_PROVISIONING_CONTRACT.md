@@ -97,7 +97,7 @@
 3. session/team 제약과 ledger/RPC 권한을 확인하는 post-apply verifier
 4. PostgreSQL throwaway stage rehearsal
 5. 정상 생성, exact replay, payload 충돌, parent 충돌, join code 충돌 소진, transaction rollback, RLS/GRANT 음성 테스트
-6. plan source hash와 migration/rollback/verifier hash를 결속한 approval bundle
+6. plan source, bundle builder, A4 plan·bundle 집중 테스트와 migration/rollback/verifier hash를 결속한 approval bundle
 7. 실행 승인 artifact의 role·expiry·revocation·one-time claim 순수 verifier와 음성 테스트
 
 ## 5. 승인 전에 결정할 항목

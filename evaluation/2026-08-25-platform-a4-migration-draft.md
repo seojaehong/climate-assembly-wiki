@@ -21,7 +21,10 @@
 - `supabase/verify/design_provisioning_post_apply.sql`
 - `supabase/verify/design_provisioning_test.sql`
 - `supabase/verify/design_provisioning_rollback_cleanup_fixture.sql`
+- `automation/platform-design-provisioning-plan.mjs`
+- `automation/tests/platform-design-provisioning-plan.test.mjs`
 - `automation/platform-a4-migration-bundle.mjs`
+- `automation/tests/platform-a4-migration-bundle.test.mjs`
 - `evaluation/platform-a4-migration-bundle.json`
 
 ## 격리 PostgreSQL 16 리허설 로그
@@ -44,10 +47,11 @@
 
 ## 자동화 회귀
 
-- A4 bundle·기존 design plan 집중 테스트: 17건 통과
-- Windows automation 전체: 26개 파일, 334건 통과
-- approval bundle verifier: artifact 11개, production apply 미승인·DB mutation 미실행 상태로 통과
-- bundle checksum: `fea1bb8ff50d7e64f716c3c0e2fe4e0a8325b58a4abb0090121c2e6a4332ebdb`
+- A4 bundle·design plan 집중 테스트: 25건 통과
+- Windows automation 전체: 26개 파일, 342건 통과
+- approval bundle verifier: builder·A4 집중 테스트를 포함한 artifact 14개, production apply 미승인·DB mutation 미실행 상태로 통과
+- 추적 manifest를 current source에서 재구성해 stale source hash를 거부하는 테스트 통과
+- bundle checksum: `772ca962303099a1274eb37f65005adc0948098cdf5e2d17415fbed5742aaebe`
 
 ## 보안·데이터 무결성 결론
 
