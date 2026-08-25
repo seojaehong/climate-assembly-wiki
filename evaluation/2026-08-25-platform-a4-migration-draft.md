@@ -22,6 +22,7 @@
 - `supabase/verify/design_provisioning_test.sql`
 - `supabase/verify/design_provisioning_rollback_cleanup_fixture.sql`
 - `automation/platform-design-provisioning-plan.mjs`
+- `automation/platform-design-provisioning-durable-store.mjs`
 - `automation/tests/platform-design-provisioning-plan.test.mjs`
 - `automation/platform-a4-migration-bundle.mjs`
 - `automation/tests/platform-a4-migration-bundle.test.mjs`
@@ -55,16 +56,20 @@ partial ledger 충돌 은폐 방지 결과: `A4_PARTIAL_CONFLICT_POSTGRES_REHEAR
 
 ## 자동화 회귀
 
-- A4 bundle·design plan 집중 테스트: 38건 통과
-- Windows automation 전체: 26개 파일, 356건 통과
-- approval bundle verifier: builder·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 16개, production apply 미승인·DB mutation 미실행 상태로 통과
+- A4 bundle·design plan 집중 테스트: 43건 통과
+- Windows automation 전체: 26개 파일, 361건 통과
+- 애플리케이션 전체: 64개 파일, 1,060건 통과
+- Astro check: 327개 파일, 오류 0건, 기존 hint 49건
+- 저장소 밖 로컬 durable store의 adapter 재시작·동시 CAS·append-only replay/conflict·journal 변조·junction escape 거부 테스트 통과
+- approval bundle verifier: builder·durable store·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 17개, production apply 미승인·DB mutation 미실행 상태로 통과
 - 추적 manifest를 current source에서 재구성해 stale source hash를 거부하는 테스트 통과
-- bundle checksum: `e4c2272513e1372504a04d68ce58dd6d1798b70bb1e0c3e842580ac953786f6c`
+- bundle checksum: `ff703e149a8c38668b7d7b6477fff38cbda9f1b9b2097292efc8c4708bc397a2`
 
 ## 보안·데이터 무결성 결론
 
 - ledger에는 blueprint 원문, join code, 이메일, Auth UUID를 저장하지 않는다.
 - RPC는 `org_id`를 입력받지 않고 현재 Auth 사용자와 활성 membership에서 기관을 파생한다.
 - reconciliation RPC는 mutation plan·원본 bytes를 받지 않는 `STABLE` 조회 함수이며 ledger/resource를 변경하지 않는다.
+- 로컬 durable store는 synthetic authorization context만 immutable journal에 함께 보존하며 production Auth/membership 증거로 사용하지 않는다.
 - 기존 resource가 plan payload와 다르면 update하지 않고 안정 오류 코드로 전체 transaction을 중단한다.
 - production 경로는 여전히 비활성 상태이며 별도 적용 승인이 필요하다.

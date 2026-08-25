@@ -86,7 +86,7 @@
 - 취소와 재사용 방지는 서명 파일만으로 해결하지 않는다. adapter가 durable approval-state 저장소에서 exact approval ID의 `revokedAt`과 one-time claim을 읽고, 첫 실행 전에 approval ID·execution ID·organization ID·target host·실행 actor·role·plan checksum을 같은 원자 transaction으로 claim해야 한다.
 - adapter contract는 `readSnapshot()`에서 approval state와 live Auth/membership/org/host context를 함께 읽고, `claim(expectedSnapshot, claim)`과 `finalize(expectedSnapshot, terminalClaim)`이 두 값을 같은 transaction에서 compare-and-set하도록 요구한다. claim·finalize 응답의 transaction 시점 context도 core가 다시 검증하므로 각 read와 CAS 사이 membership·org 변경은 fail-closed한다.
 - claim이 없으면 순수 verifier는 `claim_required`만 반환한다. 같은 approval/execution/organization/host/actor/role/plan의 진행 중 claim만 `resume_existing_claim`으로 복구할 수 있다. 기본 verifier와 새 claim은 `completed|failed`를 소비된 상태로 거부한다. 이미 유효 시간 안에 시작된 claim의 종료 기록은 승인 만료 뒤에도 허용하되 같은 terminal outcome만 `existing|reconciled`로 복구하고, 반대 outcome 덮어쓰기와 terminal state 재-claim은 거부한다.
-- 현재 저장소의 `sealDesignProvisioningExecutionApproval()`과 `verifyDesignProvisioningExecutionApproval()`은 artifact/state를 검증하고, `claimDesignProvisioningExecutionApproval()`과 `finalizeDesignProvisioningExecutionApproval()`은 injected adapter의 snapshot/CAS 응답을 검증한다. in-memory adapter는 동시 claim·finalize, response-loss·충돌 테스트용이다. 결과는 항상 `readyForExecution:false`, `rpcMutationExecuted:false`, `databaseMutationExecuted:false`이며 승인 발급 CLI, durable 저장소, production adapter는 제공하지 않는다.
+- 현재 저장소의 `sealDesignProvisioningExecutionApproval()`과 `verifyDesignProvisioningExecutionApproval()`은 artifact/state를 검증하고, `claimDesignProvisioningExecutionApproval()`과 `finalizeDesignProvisioningExecutionApproval()`은 injected adapter의 snapshot/CAS 응답을 검증한다. in-memory adapter는 동시 claim·finalize, response-loss·충돌 테스트용이다. 저장소 밖 로컬 durable rehearsal adapter는 재시작·경쟁·append-only 복구 계약만 증명하며 live Auth 증거 또는 production 신뢰 저장소가 아니다. 결과는 항상 `readyForExecution:false`, `rpcMutationExecuted:false`, `databaseMutationExecuted:false`이며 승인 발급 CLI와 production adapter는 제공하지 않는다.
 
 ### 3-8. 비식별 execution receipt
 
@@ -97,6 +97,14 @@
 - `executeDesignProvisioningApprovalLifecycle()`은 injected authorization·execution·receipt adapter만 조율한다. claim 전과 직후 exact execution ID receipt를 조회하고, 이미 검증 가능한 receipt가 있으면 RPC를 건너뛴 뒤 같은 terminal outcome으로 finalize한다. `claimDisposition:new`을 받은 단 하나의 호출만 RPC를 실행하며, 기존·reconciled claim에 receipt가 없으면 미확정 outcome으로 보고 자동 재호출하지 않고 명시적 reconciliation을 요구한다. 새 RPC 결과는 봉인·append 뒤 같은 execution ID를 다시 조회해 exact HMAC receipt가 관찰될 때만 finalize한다. append 응답 유실 시 claim을 열어 둬 다음 실행이 저장된 receipt를 복구한다. in-memory receipt adapter는 append-only 충돌과 response-loss·동시 실행 테스트용이며 credential·Supabase·production endpoint를 알지 못한다.
 - `reconcileDesignProvisioningApprovalLifecycle()`은 운영자가 명시적으로 호출하는 별도 경로다. 기존 active claim을 먼저 검증하며 새 claim이나 일반 execution adapter를 호출하지 않는다. injected reconciliation adapter에는 mutation RPC로 재사용할 수 있는 실행 plan·원본 bytes 대신 approval/execution ID, approved/executed checksum, source hash·길이, operation ID·type만 담은 비식별 lookup query를 전달한다. adapter는 ledger·operation lookup만 수행해 기존 완료 결과 또는 `pending`을 반환해야 한다. `pending`, lookup 오류, receipt persistence 미확정은 claim을 열린 상태로 유지한다. 완료 결과는 동일한 response 검증·redaction·HMAC receipt·재조회·finalize 절차를 거친다. 유효 시간 안에 시작된 claim은 승인 만료 뒤에도 현재 live actor/org/host 검증을 통과하면 감사 상태를 닫을 수 있다.
 - migration 초안의 `design_provisioning_status(jsonb)`는 이 query 전용 `STABLE`·`SECURITY DEFINER` read-only RPC다. 현재 Auth 사용자와 `org_of_uid()` 기관의 active `org_admin|hq`를 재검증하고, 모든 ledger checksum·operation type·resource org가 일치할 때만 기존 resource와 team join code를 메모리 응답으로 복원한다. operation 하나라도 없으면 `pending`, ledger/resource가 충돌하면 안정 오류로 끝난다. public/anon/authenticated/service_role EXECUTE는 모두 회수되어 있으며 production migration·권한 활성화와 이를 호출할 adapter는 아직 제공하지 않는다.
+
+### 3-9. 로컬 durable rehearsal store
+
+- `platform-design-provisioning-durable-store.mjs`는 명시적으로 만든 저장소 밖 빈 디렉터리에만 초기화된다. marker가 없거나 저장소 내부·상대 경로·예상하지 않은 layout이면 쓰기 전에 거부한다.
+- authorization state와 고정된 synthetic context는 approval별 immutable hash-chain journal에 기록한다. claim·finalize는 approval별 exclusive lock 안에서 예상 snapshot과 현재 journal tail을 비교하고 새 record 하나만 link로 게시한다. 동시 경쟁은 하나만 새 claim으로 기록하고 나머지는 current snapshot conflict로 reconciliation한다.
+- receipt는 execution ID별 immutable 파일로 게시한다. 같은 HMAC receipt 재append는 `existing`, 다른 receipt는 원본을 보존한 `conflict`이며 restart 뒤에도 같은 결과를 반환한다. adapter는 operation receipt를 다시 구조 검증해 resource UUID·join code·Auth UUID 같은 필드를 영속하지 못하게 한다.
+- record SHA-256 chain은 손상·불완전 journal 검출용이지 신뢰 경계의 서명이 아니다. 로컬 파일을 수정하고 hash를 다시 계산할 수 있는 사용자를 방어하지 않으며, stale lock 자동 회수도 하지 않고 fail-closed한다.
+- 이 adapter는 fixture context만 같은 journal transaction에 보존한다. live Supabase Auth/membership CAS, revocation source, production key custody, RPC executor/status adapter, 운영 credential을 구현하지 않으며 production adapter로 사용할 수 없다.
 
 ## 4. migration 초안 승인 시 필요한 산출물
 
@@ -129,6 +137,6 @@
 - staff GRANT 활성화 또는 traffic open
 - 실제 join code 생성
 - production plan executor·Supabase adapter 연결
-- 승인 발급 CLI, 실제 HMAC key, durable revocation/claim·append-only receipt 저장소
+- 승인 발급 CLI, 실제 HMAC key, production-grade durable revocation/claim·append-only receipt 저장소와 live membership CAS
 
 이 문서 승인만으로 위 항목을 실행하지 않는다. migration 초안 작성 승인과 production 적용 승인은 분리한다.

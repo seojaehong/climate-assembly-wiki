@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,6 +23,12 @@ import {
   verifyDesignProvisioningExecutionReceipt,
   verifyDesignProvisioningPlan,
 } from '../platform-design-provisioning-plan.mjs';
+import {
+  createLocalDesignProvisioningAuthorizationAdapter,
+  createLocalDesignProvisioningReceiptAdapter,
+  initializeLocalDesignProvisioningRehearsalStore,
+  LOCAL_DESIGN_PROVISIONING_STORE_BOUNDARIES,
+} from '../platform-design-provisioning-durable-store.mjs';
 
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 const modulePath = fileURLToPath(new URL('../platform-design-provisioning-plan.mjs', import.meta.url));
@@ -197,6 +203,207 @@ test('shares the exact browser blueprint contract', () => {
     'server.idempotent_operation_ledger_not_activated',
     'team.join_code_generation_not_activated',
   ]);
+});
+
+test('keeps the durable adapter outside the repository and explicitly rehearsal-only', async () => {
+  expect(LOCAL_DESIGN_PROVISIONING_STORE_BOUNDARIES).toEqual({
+    localRehearsalOnly: true,
+    productionAdapter: false,
+    productionCredentialAccessed: false,
+    databaseMutationExecuted: false,
+    rpcMutationExecuted: false,
+  });
+  expect(() => initializeLocalDesignProvisioningRehearsalStore({
+    directory: repoRoot,
+    authorization: {
+      approvalId: approvalMetadata().approvalId,
+      context: liveContext(),
+    },
+  })).toThrow('outside the repository');
+});
+
+test('durably recovers an A4 receipt and terminal claim after adapter restart', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const { source, bytes, plan, approval } = executionApproval();
+  let executionCount = 0;
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: approval.approvalId, context: liveContext() },
+    });
+    const first = await executeDesignProvisioningApprovalLifecycle({
+      approval,
+      plan,
+      blueprint: source,
+      sourceBytes: bytes,
+      authorizationAdapter: createLocalDesignProvisioningAuthorizationAdapter({ directory }),
+      receiptAdapter: createLocalDesignProvisioningReceiptAdapter({ directory }),
+      executionAdapter: {
+        async execute({ plan: executionPlan }) {
+          executionCount += 1;
+          return completedExecutionResult(executionPlan);
+        },
+      },
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+      clock: sequenceClock(
+        '2026-08-25T13:05:00.000Z',
+        '2026-08-25T13:06:00.000Z',
+        '2026-08-25T13:07:00.000Z',
+      ),
+    });
+    expect(first).toMatchObject({
+      status: 'execution_completed',
+      executionDisposition: 'executed',
+      receiptDisposition: 'appended',
+    });
+
+    const restartedAuthorization = createLocalDesignProvisioningAuthorizationAdapter({ directory });
+    const restartedReceipts = createLocalDesignProvisioningReceiptAdapter({ directory });
+    const replay = await executeDesignProvisioningApprovalLifecycle({
+      approval,
+      plan,
+      blueprint: source,
+      sourceBytes: bytes,
+      authorizationAdapter: restartedAuthorization,
+      receiptAdapter: restartedReceipts,
+      executionAdapter: {
+        async execute() {
+          executionCount += 1;
+          throw new Error('durable replay must not execute the RPC');
+        },
+      },
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+      clock: () => new Date('2026-08-25T13:08:00.000Z'),
+    });
+    expect(replay).toMatchObject({
+      status: 'execution_completed',
+      executionDisposition: 'existing_receipt',
+      receiptDisposition: 'existing',
+    });
+    expect(executionCount).toBe(1);
+    expect((await restartedAuthorization.readSnapshot(approval.approvalId)).state.claim.status)
+      .toBe('completed');
+    const storedReceipt = await restartedReceipts.read(approval.executionId);
+    expect(storedReceipt).toMatchObject({
+      status: 'completed',
+      approvalId: approval.approvalId,
+      executionId: approval.executionId,
+      containsSensitiveValues: false,
+    });
+    expect(JSON.stringify(storedReceipt)).not.toContain(approval.approvedBy);
+    expect(storedReceipt.operations.every((operation) => (
+      Object.keys(operation).sort().join(',') === 'operationId,status,type'
+    ))).toBe(true);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('serializes concurrent durable claims and preserves append-only receipt conflicts', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const { source, bytes, plan, approval } = executionApproval();
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: approval.approvalId, context: liveContext() },
+    });
+    const claims = await Promise.all([
+      createLocalDesignProvisioningAuthorizationAdapter({ directory }),
+      createLocalDesignProvisioningAuthorizationAdapter({ directory }),
+    ].map((authorizationAdapter) => claimDesignProvisioningExecutionApproval({
+      approval,
+      plan,
+      blueprint: source,
+      sourceBytes: bytes,
+      authorizationAdapter,
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+      now: new Date('2026-08-25T13:05:00.000Z'),
+    })));
+    expect(claims.map(({ claimDisposition }) => claimDisposition).sort())
+      .toEqual(['new', 'reconciled']);
+
+    const receipt = sealDesignProvisioningExecutionReceipt({
+      plan,
+      blueprint: source,
+      sourceBytes: bytes,
+      approval,
+      approvalState: claimedApprovalState(approval, plan),
+      executionResult: completedExecutionResult(executionPlanCandidate(plan)),
+      startedAt: '2026-08-25T13:05:00.000Z',
+      completedAt: '2026-08-25T13:06:00.000Z',
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+    });
+    const receiptAdapters = [
+      createLocalDesignProvisioningReceiptAdapter({ directory }),
+      createLocalDesignProvisioningReceiptAdapter({ directory }),
+    ];
+    const appends = await Promise.all(receiptAdapters.map((adapter) => adapter.append(receipt)));
+    expect(appends.map(({ status }) => status).sort()).toEqual(['appended', 'existing']);
+
+    const conflictingReceipt = { ...receipt, digest: 'f'.repeat(64) };
+    expect(await receiptAdapters[0].append(conflictingReceipt)).toEqual({
+      status: 'conflict',
+      receipt,
+    });
+    expect(await createLocalDesignProvisioningReceiptAdapter({ directory }).read(
+      approval.executionId,
+    )).toEqual(receipt);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('fails closed when a durable authorization journal record is modified', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const approvalId = approvalMetadata().approvalId;
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId, context: liveContext() },
+    });
+    const recordPath = join(
+      directory,
+      'authorization',
+      approvalId,
+      '000000000000.json',
+    );
+    const modified = JSON.parse(readFileSync(recordPath, 'utf8'));
+    modified.context.membershipActive = false;
+    writeFileSync(recordPath, `${JSON.stringify(modified)}\n`, 'utf8');
+    await expect(createLocalDesignProvisioningAuthorizationAdapter({ directory })
+      .readSnapshot(approvalId)).rejects.toThrow('journal integrity failed');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('refuses an authorization directory junction that escapes the rehearsal store', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const escapedDirectory = mkdtempSync(join(tmpdir(), 'a4-durable-escape-'));
+  const firstApprovalId = approvalMetadata().approvalId;
+  const secondApprovalId = '66666666-6666-4666-8666-666666666666';
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: firstApprovalId, context: liveContext() },
+    });
+    symlinkSync(
+      escapedDirectory,
+      join(directory, 'authorization', secondApprovalId),
+      process.platform === 'win32' ? 'junction' : 'dir',
+    );
+    await expect(initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: secondApprovalId, context: liveContext() },
+    })).rejects.toThrow('authorization directory is invalid');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+    rmSync(escapedDirectory, { recursive: true, force: true });
+  }
 });
 
 test('keeps the plan scripts and shared design contract in Linux CI', () => {
