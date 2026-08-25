@@ -24,8 +24,8 @@
 | --- | --- |
 | A4 plan 집중 Vitest | 1개 파일, 21건 통과 |
 | A4 bundle 집중 Vitest | 1개 파일, 8건 통과; tracked manifest current-source 대조 포함 |
-| approval bundle | builder·A4 집중 테스트를 포함한 14개 artifact byte hash 결속 |
-| automation 전체 Vitest | 26개 파일, 346건 통과 |
+| approval bundle | builder·A4 집중 테스트·CI workflow를 포함한 15개 artifact byte hash 결속 |
+| automation 전체 Vitest | 26개 파일, 347건 통과 |
 | root 전체 Vitest | 64개 파일, 1,060건 통과 |
 | Astro check | 326개 파일, 오류 0건, 기존 hint 49건 |
 | diff whitespace | `git diff --check` 통과 |

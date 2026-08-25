@@ -38,8 +38,8 @@
     },
     {
       "path": "automation/platform-a4-migration-bundle.mjs",
-      "sha256": "fe8d23ddddf4c93f30b575218c526ddd8c4b98673dfaa41bf40ef209cc2a00ed",
-      "bytes": 6410
+      "sha256": "c0e2c996fb8775b2a19808731a1005871836e9a02109585d931bcd02591b4282",
+      "bytes": 6442
     },
     {
       "path": "automation/tests/platform-design-provisioning-plan.test.mjs",
@@ -48,8 +48,13 @@
     },
     {
       "path": "automation/tests/platform-a4-migration-bundle.test.mjs",
-      "sha256": "f327f862a9b2c5eaf738793ea1d244f33bb3fe1a91c42406814182365af08227",
-      "bytes": 7783
+      "sha256": "cb0f662736b7abe896afc2785171ae0352bf7c41fb4c186f472ab4f832ece74d",
+      "bytes": 7857
+    },
+    {
+      "path": ".github/workflows/test.yml",
+      "sha256": "c1feab992cd83ee1dbec021d5306d0485606ed614186a773f5cbaeb3d099e65b",
+      "bytes": 19200
     },
     {
       "path": "docs/platform/A4_DESIGN_PROVISIONING_CONTRACT.md",
@@ -105,5 +110,5 @@
     "activatesStaffGrants": false,
     "connectsProductionExecutor": false
   },
-  "checksum": "cefd67e3b9e1230d176fc2c4dca58cad95de9f7500a70e64a576879291f63eb2"
+  "checksum": "d55e7df00821615ff48fe1013b43f21e8cc2092c887643afd1989337f1164b74"
 }

@@ -37,6 +37,7 @@ test('binds the approved A4 draft while keeping production mutation blocked', ()
   expect(A4_MIGRATION_ARTIFACTS).toContain('automation/platform-a4-migration-bundle.mjs');
   expect(A4_MIGRATION_ARTIFACTS).toContain('automation/tests/platform-a4-migration-bundle.test.mjs');
   expect(A4_MIGRATION_ARTIFACTS).toContain('automation/tests/platform-design-provisioning-plan.test.mjs');
+  expect(A4_MIGRATION_ARTIFACTS).toContain('.github/workflows/test.yml');
   expect(bundle.executionOrder).toEqual([
     'read_only_additive_preflight',
     'migration_draft',
@@ -47,7 +48,7 @@ test('binds the approved A4 draft while keeping production mutation blocked', ()
   ]);
   expect(verifyA4MigrationBundle(bundle)).toMatchObject({
     status: 'verified',
-    artifactCount: 14,
+    artifactCount: 15,
     productionApplyApproved: false,
     databaseMutationExecuted: false,
   });
@@ -67,7 +68,7 @@ test('writes and verifies an A4 bundle without implicit overwrite', () => {
   const outputPath = join(directory, 'bundle.json');
   try {
     expect(runA4MigrationBundleCli(['--output', outputPath])).toMatchObject({
-      status: 'written', artifactCount: 14, databaseMutationExecuted: false,
+      status: 'written', artifactCount: 15, databaseMutationExecuted: false,
     });
     expect(() => runA4MigrationBundleCli(['--output', outputPath])).toThrow('use --force');
     expect(runA4MigrationBundleCli(['--verify', outputPath])).toMatchObject({ status: 'verified' });
@@ -83,7 +84,7 @@ test('tracked A4 manifest exactly matches every current approval source', () => 
   ));
   expect(verifyA4MigrationBundle(tracked)).toMatchObject({
     status: 'verified',
-    artifactCount: 14,
+    artifactCount: 15,
     productionApplyApproved: false,
     databaseMutationExecuted: false,
   });

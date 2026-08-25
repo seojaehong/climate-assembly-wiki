@@ -219,4 +219,11 @@ describe('A2 organization selection migration draft', () => {
     expect(testWorkflow).toContain('platform_p1c_activation_preflight_BEFORE.sql');
     expect(testWorkflow).toContain('-f /tmp/org_selection_test.sql');
   });
+
+  it('waits for the verification database, not only the PostgreSQL socket', () => {
+    const databaseProbe = 'psql -U postgres -d verify -v ON_ERROR_STOP=1 -tAc "select 1"';
+    expect(testWorkflow.match(new RegExp(databaseProbe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')))
+      .toHaveLength(4);
+    expect(testWorkflow).not.toContain('pg_isready -U postgres -d verify');
+  });
 });

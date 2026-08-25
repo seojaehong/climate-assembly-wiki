@@ -108,12 +108,12 @@ jobs:
             -e POSTGRES_DB=verify \
             postgres:16 >/dev/null
           for _ in $(seq 1 60); do
-            if docker exec "$container" pg_isready -U postgres -d verify >/dev/null 2>&1; then
+            if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -tAc "select 1" >/dev/null 2>&1; then
               break
             fi
             sleep 1
           done
-          docker exec "$container" pg_isready -U postgres -d verify >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -tAc "select 1" >/dev/null
 
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
             "create role anon nologin; create role authenticated nologin; create role service_role nologin; create publication supabase_realtime; alter database verify set search_path=public,extensions,climate_vote;"
@@ -214,12 +214,12 @@ jobs:
             -e POSTGRES_DB=verify \
             postgres:16 >/dev/null
           for _ in $(seq 1 60); do
-            if docker exec "$container" pg_isready -U postgres -d verify >/dev/null 2>&1; then
+            if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -tAc "select 1" >/dev/null 2>&1; then
               break
             fi
             sleep 1
           done
-          docker exec "$container" pg_isready -U postgres -d verify >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -tAc "select 1" >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
             "create role anon nologin; create role authenticated nologin; create role service_role nologin; create publication supabase_realtime; alter database verify set search_path=public,extensions,climate_vote;"
           docker cp supabase/migrations/. "${container}:/tmp/"
