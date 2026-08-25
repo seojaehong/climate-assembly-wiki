@@ -88,6 +88,13 @@
 - claim이 없으면 순수 verifier는 `claim_required`만 반환한다. 같은 approval/execution/organization/host/actor/role/plan의 진행 중 claim만 `resume_existing_claim`으로 복구할 수 있다. 기본 verifier와 새 claim은 `completed|failed`를 소비된 상태로 거부한다. 이미 유효 시간 안에 시작된 claim의 종료 기록은 승인 만료 뒤에도 허용하되 같은 terminal outcome만 `existing|reconciled`로 복구하고, 반대 outcome 덮어쓰기와 terminal state 재-claim은 거부한다.
 - 현재 저장소의 `sealDesignProvisioningExecutionApproval()`과 `verifyDesignProvisioningExecutionApproval()`은 artifact/state를 검증하고, `claimDesignProvisioningExecutionApproval()`과 `finalizeDesignProvisioningExecutionApproval()`은 injected adapter의 snapshot/CAS 응답을 검증한다. in-memory adapter는 동시 claim·finalize, response-loss·충돌 테스트용이다. 결과는 항상 `readyForExecution:false`, `rpcMutationExecuted:false`, `databaseMutationExecuted:false`이며 승인 발급 CLI, durable 저장소, production adapter는 제공하지 않는다.
 
+### 3-8. 비식별 execution receipt
+
+- 실행 순서는 `approval claim → design RPC → receipt seal·append-only persistence → terminal finalize`다. receipt 저장이 실패하면 claim을 `completed|failed`로 닫지 않고 진행 중으로 남겨 RPC ledger와 receipt 저장소를 먼저 reconciliation한다.
+- 성공 receipt는 승인된 review plan에서 operation·source를 그대로 두고 `blockers:[]`, 실행형 boolean만 바꾼 RPC plan checksum을 결정적으로 파생한다. review checksum과 executed checksum을 모두 HMAC에 결속하고, dry-run checksum을 RPC 결과로 재사용하면 거부한다. 이어 RPC의 exact schema, operation count·순서·ID, resource UUID 형식과 team join code 형식을 메모리에서 검증한 뒤 `resourceId`와 `joinCode`를 모두 폐기한다. 영속 대상에는 operation ID·type·`applied|replayed`와 비식별 count만 남긴다.
+- 실패 receipt는 저장된 원문 오류가 아니라 `design_*` allowlist 코드와 `rollbackVerified:true`만 허용한다. rollback이 확인되지 않은 응답 유실·미확정 outcome은 receipt나 terminal failure로 봉인하지 않는다.
+- schema v1 receipt는 exact approved/executed plan checksum, source SHA, approval/execution ID, key ID, 시작·완료 시각, 성공·실패 요약을 HMAC으로 결속하며 `containsSensitiveValues:false`를 강제한다. `sealDesignProvisioningExecutionReceipt()`과 `verifyDesignProvisioningExecutionReceipt()`은 순수 함수로 RPC 호출·receipt 저장·DB mutation을 수행하지 않는다.
+
 ## 4. migration 초안 승인 시 필요한 산출물
 
 다음 묶음은 하나의 리뷰 단위로 작성하고, production 적용은 별도 승인으로 남긴다.
@@ -99,6 +106,7 @@
 5. 정상 생성, exact replay, payload 충돌, parent 충돌, join code 충돌 소진, transaction rollback, RLS/GRANT 음성 테스트
 6. plan source, bundle builder, A4 plan·bundle 집중 테스트와 migration/rollback/verifier hash를 결속한 approval bundle
 7. 실행 승인 artifact의 role·expiry·revocation·one-time claim·terminal finalization 순수 verifier와 음성 테스트
+8. exact RPC response redaction, rollback-verified failure와 HMAC execution receipt 순수 seal/verifier
 
 ## 5. 승인 전에 결정할 항목
 
@@ -116,6 +124,6 @@
 - staff GRANT 활성화 또는 traffic open
 - 실제 join code 생성
 - plan executor·Supabase adapter 연결
-- 승인 발급 CLI, 실제 HMAC key, durable revocation/claim 저장소
+- 승인 발급 CLI, 실제 HMAC key, durable revocation/claim·append-only receipt 저장소
 
 이 문서 승인만으로 위 항목을 실행하지 않는다. migration 초안 작성 승인과 production 적용 승인은 분리한다.

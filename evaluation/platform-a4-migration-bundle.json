@@ -33,8 +33,8 @@
     },
     {
       "path": "automation/platform-design-provisioning-plan.mjs",
-      "sha256": "5cb8bc573125ed03c390bb877c798cd1aa8d1585918deda356b7d273ac4b4f17",
-      "bytes": 42183
+      "sha256": "d8e85396f3a987d9544c2cdc0d7b0b66760241e203d5fe815b7d60afaa18da56",
+      "bytes": 52291
     },
     {
       "path": "automation/platform-a4-migration-bundle.mjs",
@@ -43,8 +43,8 @@
     },
     {
       "path": "automation/tests/platform-design-provisioning-plan.test.mjs",
-      "sha256": "682dedb1eab6e7b2b8d1d2cf4d3b269b7e3ff5c934983d285f79b132296dc0d0",
-      "bytes": 31701
+      "sha256": "f87bf3c1d7aa0b6dac342b65de93544e8b584a18fb64430a44f993cb32840111",
+      "bytes": 38497
     },
     {
       "path": "automation/tests/platform-a4-migration-bundle.test.mjs",
@@ -53,8 +53,8 @@
     },
     {
       "path": "docs/platform/A4_DESIGN_PROVISIONING_CONTRACT.md",
-      "sha256": "c4ebb6632f481e40b2249dbbbc17491ea522dfce9f715b78447b00b8facf1721",
-      "bytes": 12341
+      "sha256": "c559d4bf393599422b974ff0b728b7411b0dea0bb0aaa85bdeefbfc78b61e28e",
+      "bytes": 14038
     },
     {
       "path": "supabase/verify/design_provisioning_preflight.sql",
@@ -105,5 +105,5 @@
     "activatesStaffGrants": false,
     "connectsProductionExecutor": false
   },
-  "checksum": "547e744894a4fc0d498ab8586f1a20c08c037c71c07e626c74dd11325efa34ab"
+  "checksum": "cefd67e3b9e1230d176fc2c4dca58cad95de9f7500a70e64a576879291f63eb2"
 }

@@ -14,8 +14,10 @@ import {
   finalizeDesignProvisioningExecutionApproval,
   runDesignProvisioningCli,
   sealDesignProvisioningExecutionApproval,
+  sealDesignProvisioningExecutionReceipt,
   validateDesignBlueprint,
   verifyDesignProvisioningExecutionApproval,
+  verifyDesignProvisioningExecutionReceipt,
   verifyDesignProvisioningPlan,
 } from '../platform-design-provisioning-plan.mjs';
 
@@ -118,6 +120,34 @@ function executionApproval(source = blueprint(), metadata = approvalMetadata()) 
       approvalKey,
     ),
   };
+}
+
+function claimedApprovalState(approval, plan, claimedAt = '2026-08-25T13:05:00.000Z') {
+  return approvalState({
+    claim: {
+      approvalId: approval.approvalId,
+      executionId: approval.executionId,
+      organizationId: approval.organizationId,
+      targetHost: approval.targetHost,
+      claimedBy: approval.approvedBy,
+      claimedRole: approval.approvedRole,
+      planChecksum: plan.checksum,
+      status: 'claimed',
+      claimedAt,
+    },
+  });
+}
+
+function executionPlanCandidate(plan) {
+  const candidate = {
+    ...structuredClone(plan),
+    blockers: [],
+    readyForExecution: true,
+    serverContractImplemented: true,
+    dryRun: false,
+    requiresApproval: false,
+  };
+  return { ...candidate, checksum: designProvisioningPlanChecksum(candidate) };
 }
 
 test('shares the exact browser blueprint contract', () => {
@@ -257,6 +287,181 @@ test('seals a short-lived A4 execution approval to the exact verified plan and s
     claimAction: 'claim_required',
     databaseMutationExecuted: false,
   });
+});
+
+test('seals and verifies a non-sensitive A4 receipt from an exact completed RPC response', () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const executionPlan = executionPlanCandidate(plan);
+  const resourceIds = plan.operations.map((_, index) => (
+    `${String(index + 1).padStart(8, '0')}-0000-4000-8000-000000000000`
+  ));
+  const joinCodes = plan.operations.map((_, index) => `${123450 + index}`);
+  const response = {
+    schemaVersion: 1,
+    planChecksum: executionPlan.checksum,
+    operationCount: plan.operations.length,
+    operations: plan.operations.map((operation, index) => ({
+      operationId: operation.operationId,
+      resourceId: resourceIds[index],
+      status: index === 0 ? 'replayed' : 'applied',
+      ...(operation.type === 'create_team' ? { joinCode: joinCodes[index] } : {}),
+    })),
+  };
+  const receipt = sealDesignProvisioningExecutionReceipt({
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    approval,
+    approvalState: claimedApprovalState(approval, plan),
+    executionResult: { status: 'completed', response },
+    startedAt: '2026-08-25T13:05:00.000Z',
+    completedAt: '2026-08-25T13:06:00.000Z',
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+  });
+
+  expect(receipt).toMatchObject({
+    schemaVersion: 1,
+    kind: 'platform_design_provisioning_execution_receipt',
+    status: 'completed',
+    approvedPlanChecksum: plan.checksum,
+    executedPlanChecksum: executionPlan.checksum,
+    sourceBlueprintSha256: plan.sourceBlueprint.sha256,
+    approvalId: approval.approvalId,
+    executionId: approval.executionId,
+    keyId: approvalKeyId,
+    failureCode: null,
+    rollbackVerified: false,
+    summary: {
+      plannedOperationCount: plan.operations.length,
+      observedOperationCount: plan.operations.length,
+      appliedCount: plan.operations.length - 1,
+      replayedCount: 1,
+    },
+    containsSensitiveValues: false,
+  });
+  expect(receipt.operations).toEqual(plan.operations.map((operation, index) => ({
+    operationId: operation.operationId,
+    type: operation.type,
+    status: index === 0 ? 'replayed' : 'applied',
+  })));
+  expect(receipt.digest).toMatch(/^[0-9a-f]{64}$/);
+  expect(receipt.executedPlanChecksum).not.toBe(receipt.approvedPlanChecksum);
+  const receiptWithoutDigest = JSON.stringify({ ...receipt, digest: '' });
+  for (const joinCode of joinCodes) expect(receiptWithoutDigest).not.toContain(joinCode);
+  for (const resourceId of resourceIds) expect(receiptWithoutDigest).not.toContain(resourceId);
+  expect(verifyDesignProvisioningExecutionReceipt(
+    receipt,
+    plan,
+    source,
+    bytes,
+    approval,
+    { trustedKey: approvalKey, expectedKeyId: approvalKeyId },
+  )).toEqual({
+    status: 'verified',
+    executionStatus: 'completed',
+    approvalId: approval.approvalId,
+    executionId: approval.executionId,
+    planChecksum: plan.checksum,
+    executedPlanChecksum: executionPlan.checksum,
+    operationCount: plan.operations.length,
+    containsSensitiveValues: false,
+  });
+  expect(() => verifyDesignProvisioningExecutionReceipt(
+    { ...receipt, summary: { ...receipt.summary, replayedCount: 0 } },
+    plan,
+    source,
+    bytes,
+    approval,
+    { trustedKey: approvalKey, expectedKeyId: approvalKeyId },
+  )).toThrow('receipt summary is invalid');
+});
+
+test('seals only allowlisted rollback-verified A4 failure receipts and rejects malformed outcomes', () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const base = {
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    approval,
+    approvalState: claimedApprovalState(approval, plan),
+    startedAt: '2026-08-25T13:05:00.000Z',
+    completedAt: '2026-08-25T13:06:00.000Z',
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+  };
+  const receipt = sealDesignProvisioningExecutionReceipt({
+    ...base,
+    executionResult: {
+      status: 'failed',
+      failureCode: 'design_operation_conflict',
+      rollbackVerified: true,
+    },
+  });
+  expect(receipt).toMatchObject({
+    status: 'failed',
+    failureCode: 'design_operation_conflict',
+    rollbackVerified: true,
+    operations: [],
+    summary: {
+      plannedOperationCount: plan.operations.length,
+      observedOperationCount: 0,
+      appliedCount: 0,
+      replayedCount: 0,
+    },
+    containsSensitiveValues: false,
+  });
+  expect(verifyDesignProvisioningExecutionReceipt(
+    receipt,
+    plan,
+    source,
+    bytes,
+    approval,
+    { trustedKey: approvalKey, expectedKeyId: approvalKeyId },
+  ).executionStatus).toBe('failed');
+
+  expect(() => sealDesignProvisioningExecutionReceipt({
+    ...base,
+    approvalState: approvalState(),
+    executionResult: {
+      status: 'failed',
+      failureCode: 'design_operation_conflict',
+      rollbackVerified: true,
+    },
+  })).toThrow('requires an active claim');
+  expect(() => sealDesignProvisioningExecutionReceipt({
+    ...base,
+    executionResult: {
+      status: 'failed',
+      failureCode: 'raw_database_error_with_secret',
+      rollbackVerified: true,
+    },
+  })).toThrow('execution result is invalid');
+  expect(() => sealDesignProvisioningExecutionReceipt({
+    ...base,
+    executionResult: {
+      status: 'failed',
+      failureCode: 'design_operation_conflict',
+      rollbackVerified: false,
+    },
+  })).toThrow('execution result is invalid');
+  expect(() => sealDesignProvisioningExecutionReceipt({
+    ...base,
+    executionResult: {
+      status: 'completed',
+      response: {
+        schemaVersion: 1,
+        planChecksum: plan.checksum,
+        operationCount: plan.operations.length,
+        operations: plan.operations.map((operation) => ({
+          operationId: operation.operationId,
+          resourceId: '11111111-1111-4111-8111-111111111111',
+          status: 'applied',
+          ...(operation.type === 'create_team' ? { joinCode: '123456' } : {}),
+        })),
+      },
+    },
+  })).toThrow('RPC response is invalid');
 });
 
 test('allows only the same in-flight execution claim to resume', () => {

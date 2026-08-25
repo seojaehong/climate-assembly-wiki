@@ -17,6 +17,20 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3
 const KEY_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{2,79}$/;
 const AUTH_REVIEWER_PATTERN = /^auth-user:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const DESIGN_APPROVAL_ROLES = Object.freeze(['org_admin', 'hq']);
+const DESIGN_PROVISIONING_FAILURE_CODES = Object.freeze([
+  'design_auth_required',
+  'design_join_code_exhausted',
+  'design_operation_conflict',
+  'design_operation_invalid',
+  'design_parent_conflict',
+  'design_plan_checksum_mismatch',
+  'design_plan_invalid',
+  'design_provision_failed',
+  'design_resource_conflict',
+  'design_role_forbidden',
+  'design_source_mismatch',
+  'design_summary_mismatch',
+]);
 const EXECUTION_APPROVAL_WINDOW_MS = 15 * 60 * 1000;
 
 export const DESIGN_PROVISIONING_BLOCKERS = Object.freeze([
@@ -397,6 +411,11 @@ function approvalDigest(approval, key) {
   return createHmac('sha256', key).update(canonicalJson(unsigned)).digest('hex');
 }
 
+function executionReceiptDigest(receipt, key) {
+  const { digest: _digest, ...unsigned } = receipt;
+  return createHmac('sha256', key).update(canonicalJson(unsigned)).digest('hex');
+}
+
 function requireTrustedApprovalKey(key) {
   if (typeof key !== 'string' || key.length < 32) {
     throw new Error('Design provisioning execution approval key is invalid');
@@ -623,6 +642,262 @@ export function verifyDesignProvisioningExecutionApproval(
     planChecksum: approval.planChecksum,
     claimAction,
     databaseMutationExecuted: false,
+  };
+}
+
+function validateExecutionReceiptTimes(startedAtValue, completedAtValue) {
+  const startedAt = canonicalUtc(startedAtValue);
+  const completedAt = canonicalUtc(completedAtValue);
+  if (!startedAt || !completedAt || completedAt.getTime() < startedAt.getTime()) {
+    throw new Error('Design provisioning execution receipt time is invalid');
+  }
+  return { startedAt, completedAt };
+}
+
+function designProvisioningExecutionCandidate(plan) {
+  const { checksum: _checksum, ...reviewPlan } = structuredClone(plan);
+  const unsigned = {
+    ...reviewPlan,
+    blockers: [],
+    readyForExecution: true,
+    serverContractImplemented: true,
+    dryRun: false,
+    requiresApproval: false,
+  };
+  return { ...unsigned, checksum: designProvisioningPlanChecksum(unsigned) };
+}
+
+function completedExecutionResult(executionPlan, executionResult) {
+  if (!isRecord(executionResult)
+    || !exactKeys(executionResult, ['status', 'response'])
+    || executionResult.status !== 'completed'
+    || !isRecord(executionResult.response)) {
+    throw new Error('Design provisioning execution result is invalid');
+  }
+  const response = executionResult.response;
+  if (!exactKeys(response, ['schemaVersion', 'planChecksum', 'operationCount', 'operations'])
+    || response.schemaVersion !== 1
+    || response.planChecksum !== executionPlan.checksum
+    || response.operationCount !== executionPlan.operations.length
+    || !Array.isArray(response.operations)
+    || response.operations.length !== executionPlan.operations.length) {
+    throw new Error('Design provisioning RPC response is invalid');
+  }
+  return response.operations.map((result, index) => {
+    const operation = executionPlan.operations[index];
+    const teamOperation = operation.type === 'create_team';
+    const expectedKeys = teamOperation
+      ? ['operationId', 'resourceId', 'status', 'joinCode']
+      : ['operationId', 'resourceId', 'status'];
+    if (!isRecord(result)
+      || !exactKeys(result, expectedKeys)
+      || result.operationId !== operation.operationId
+      || !UUID_PATTERN.test(result.resourceId ?? '')
+      || !['applied', 'replayed'].includes(result.status)
+      || (teamOperation && !/^[0-9]{6}$/.test(result.joinCode ?? ''))) {
+      throw new Error('Design provisioning RPC response is invalid');
+    }
+    return {
+      operationId: operation.operationId,
+      type: operation.type,
+      status: result.status,
+    };
+  });
+}
+
+function normalizedExecutionReceiptOutcome(executionPlan, executionResult) {
+  if (isRecord(executionResult) && executionResult.status === 'completed') {
+    return {
+      status: 'completed',
+      operations: completedExecutionResult(executionPlan, executionResult),
+      failureCode: null,
+      rollbackVerified: false,
+    };
+  }
+  if (!isRecord(executionResult)
+    || !exactKeys(executionResult, ['status', 'failureCode', 'rollbackVerified'])
+    || executionResult.status !== 'failed'
+    || !DESIGN_PROVISIONING_FAILURE_CODES.includes(executionResult.failureCode)
+    || executionResult.rollbackVerified !== true) {
+    throw new Error('Design provisioning execution result is invalid');
+  }
+  return {
+    status: 'failed',
+    operations: [],
+    failureCode: executionResult.failureCode,
+    rollbackVerified: true,
+  };
+}
+
+function receiptSummary(plan, operations) {
+  return {
+    plannedOperationCount: plan.operations.length,
+    observedOperationCount: operations.length,
+    appliedCount: operations.filter(({ status }) => status === 'applied').length,
+    replayedCount: operations.filter(({ status }) => status === 'replayed').length,
+  };
+}
+
+function verifyReceiptApprovalEnvelope(approval, plan, blueprint, sourceBytes, {
+  trustedKey,
+  expectedKeyId,
+  startedAt,
+}) {
+  return verifyDesignProvisioningExecutionApproval(
+    approval,
+    plan,
+    blueprint,
+    sourceBytes,
+    {
+      trustedKey,
+      expectedKeyId,
+      expectedOrganizationId: approval?.organizationId,
+      expectedTargetHost: approval?.targetHost,
+      now: startedAt,
+      approvalState: {
+        approvalId: approval?.approvalId,
+        revokedAt: null,
+        claim: null,
+      },
+    },
+  );
+}
+
+export function sealDesignProvisioningExecutionReceipt({
+  plan,
+  blueprint,
+  sourceBytes,
+  approval,
+  approvalState,
+  executionResult,
+  startedAt: startedAtValue,
+  completedAt: completedAtValue,
+  trustedKey,
+  expectedKeyId,
+}) {
+  const { startedAt, completedAt } = validateExecutionReceiptTimes(startedAtValue, completedAtValue);
+  const authorization = verifyDesignProvisioningExecutionApproval(
+    approval,
+    plan,
+    blueprint,
+    sourceBytes,
+    {
+      trustedKey,
+      expectedKeyId,
+      expectedOrganizationId: approval?.organizationId,
+      expectedTargetHost: approval?.targetHost,
+      now: startedAt,
+      approvalState,
+    },
+  );
+  if (authorization.claimAction !== 'resume_existing_claim') {
+    throw new Error('Design provisioning execution receipt requires an active claim');
+  }
+  const executionPlan = designProvisioningExecutionCandidate(plan);
+  const outcome = normalizedExecutionReceiptOutcome(executionPlan, executionResult);
+  const unsigned = {
+    schemaVersion: 1,
+    kind: 'platform_design_provisioning_execution_receipt',
+    status: outcome.status,
+    approvedPlanChecksum: plan.checksum,
+    executedPlanChecksum: executionPlan.checksum,
+    sourceBlueprintSha256: plan.sourceBlueprint.sha256,
+    approvalId: approval.approvalId,
+    executionId: approval.executionId,
+    keyId: approval.keyId,
+    startedAt: startedAt.toISOString(),
+    completedAt: completedAt.toISOString(),
+    summary: receiptSummary(plan, outcome.operations),
+    operations: outcome.operations,
+    failureCode: outcome.failureCode,
+    rollbackVerified: outcome.rollbackVerified,
+    containsSensitiveValues: false,
+  };
+  return {
+    ...unsigned,
+    digest: executionReceiptDigest(unsigned, requireTrustedApprovalKey(trustedKey)),
+  };
+}
+
+export function verifyDesignProvisioningExecutionReceipt(
+  receipt,
+  plan,
+  blueprint,
+  sourceBytes,
+  approval,
+  { trustedKey, expectedKeyId },
+) {
+  verifyDesignProvisioningPlan(plan, blueprint, sourceBytes);
+  const executionPlan = designProvisioningExecutionCandidate(plan);
+  if (!isRecord(receipt)
+    || !exactKeys(receipt, [
+      'schemaVersion', 'kind', 'status', 'approvedPlanChecksum', 'executedPlanChecksum',
+      'sourceBlueprintSha256',
+      'approvalId', 'executionId', 'keyId', 'startedAt', 'completedAt', 'summary',
+      'operations', 'failureCode', 'rollbackVerified', 'containsSensitiveValues', 'digest',
+    ])
+    || receipt.schemaVersion !== 1
+    || receipt.kind !== 'platform_design_provisioning_execution_receipt'
+    || !['completed', 'failed'].includes(receipt.status)
+    || receipt.approvedPlanChecksum !== plan.checksum
+    || receipt.executedPlanChecksum !== executionPlan.checksum
+    || receipt.sourceBlueprintSha256 !== plan.sourceBlueprint.sha256
+    || receipt.approvalId !== approval?.approvalId
+    || receipt.executionId !== approval?.executionId
+    || receipt.keyId !== expectedKeyId
+    || receipt.keyId !== approval?.keyId
+    || receipt.containsSensitiveValues !== false
+    || !SHA256_PATTERN.test(receipt.digest ?? '')
+    || !isRecord(receipt.summary)
+    || !exactKeys(receipt.summary, [
+      'plannedOperationCount', 'observedOperationCount', 'appliedCount', 'replayedCount',
+    ])
+    || !Array.isArray(receipt.operations)) {
+    throw new Error('Design provisioning execution receipt is invalid');
+  }
+  const { startedAt } = validateExecutionReceiptTimes(receipt.startedAt, receipt.completedAt);
+  verifyReceiptApprovalEnvelope(approval, plan, blueprint, sourceBytes, {
+    trustedKey,
+    expectedKeyId,
+    startedAt,
+  });
+  if (receipt.status === 'completed') {
+    if (receipt.failureCode !== null
+      || receipt.rollbackVerified !== false
+      || receipt.operations.length !== plan.operations.length) {
+      throw new Error('Design provisioning execution receipt is invalid');
+    }
+    for (const [index, operationReceipt] of receipt.operations.entries()) {
+      const planOperation = plan.operations[index];
+      if (!isRecord(operationReceipt)
+        || !exactKeys(operationReceipt, ['operationId', 'type', 'status'])
+        || operationReceipt.operationId !== planOperation.operationId
+        || operationReceipt.type !== planOperation.type
+        || !['applied', 'replayed'].includes(operationReceipt.status)) {
+        throw new Error('Design provisioning execution receipt is invalid');
+      }
+    }
+  } else if (!DESIGN_PROVISIONING_FAILURE_CODES.includes(receipt.failureCode)
+    || receipt.rollbackVerified !== true
+    || receipt.operations.length !== 0) {
+    throw new Error('Design provisioning execution receipt is invalid');
+  }
+  if (canonicalJson(receipt.summary) !== canonicalJson(receiptSummary(plan, receipt.operations))) {
+    throw new Error('Design provisioning execution receipt summary is invalid');
+  }
+  const expectedDigest = executionReceiptDigest(receipt, requireTrustedApprovalKey(trustedKey));
+  if (!safeDigestEqual(receipt.digest, expectedDigest)) {
+    throw new Error('Design provisioning execution receipt integrity verification failed');
+  }
+  return {
+    status: 'verified',
+    executionStatus: receipt.status,
+    approvalId: receipt.approvalId,
+    executionId: receipt.executionId,
+    planChecksum: receipt.approvedPlanChecksum,
+    executedPlanChecksum: receipt.executedPlanChecksum,
+    operationCount: receipt.summary.plannedOperationCount,
+    containsSensitiveValues: false,
   };
 }
 
