@@ -21,6 +21,7 @@
 - Astro: `npm.cmd run check` — 330개 파일, 오류 0건, 기존 hint 49건
 - 합성 DOCX OOXML: `result_issue_1`, `result_source_1_1` bookmark와 양방향 `w:anchor` 확인
 - 합성 DOCX 접근성 구조 감사: high 0건, 기존 key-value 표의 medium 2건, 새 원문 메타 추가 경고 0건
+- CI 경계: `.github/workflows/test.yml`의 push·pull request filter에 `src/islands/result/**`를 추가해 결과 웹·DOCX 변경의 clean 전체 테스트를 강제
 - PNG 시각 렌더: 로컬 LibreOffice 실행 파일 부재로 미실행
 
 ## 미완료·승인 경계
