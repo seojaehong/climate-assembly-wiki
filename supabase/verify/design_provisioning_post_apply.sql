@@ -73,6 +73,12 @@ begin
      or strpos(v_definition, 'v_user_id := auth.uid()') = 0
      or strpos(v_definition, 'v_user_id := auth.uid()')
         >= strpos(v_definition, 'climate_vote.platform_json_canonical(p_plan - ''checksum'')')
+     or v_definition not like '%pg_catalog.pg_advisory_xact_lock(%'
+     or v_definition not like '%pg_catalog.hashtextextended(''climate_vote.design_provision:'' || v_org_id::text, 0)%'
+     or strpos(v_definition, 'pg_catalog.pg_advisory_xact_lock(')
+        <= strpos(v_definition, 'encode(extensions.digest(p_source_bytes, ''sha256''), ''hex'')')
+     or strpos(v_definition, 'pg_catalog.pg_advisory_xact_lock(')
+        >= strpos(v_definition, 'for v_operation in')
      or v_definition not like '%v_existing.plan_checksum <> v_checksum%'
      or v_definition not like '%count(distinct value ->> ''operationId'')%'
      or v_definition not like '%count(distinct value ->> ''ref'')%'

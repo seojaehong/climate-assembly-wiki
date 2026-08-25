@@ -267,6 +267,10 @@ begin
     raise exception using message = 'design_source_mismatch';
   end if;
 
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('climate_vote.design_provision:' || v_org_id::text, 0)
+  );
+
   for v_operation in
     select value from jsonb_array_elements(p_plan -> 'operations') with ordinality order by ordinality
   loop

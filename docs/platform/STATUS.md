@@ -175,6 +175,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 권한 판정 우선 실행(2026-08-26):** mutation/status RPC는 null·root object 여부만 확인한 직후 현재 Auth 사용자, 선택 기관, 활성 membership·org, `org_admin|hq` 역할을 먼저 검증한다. 권한 없는 `operator`가 malformed plan/query를 보내도 checksum·source digest 또는 최대 10,025개 operation 배열 검증 전에 `design_role_forbidden`으로 중단한다. PostgreSQL 16 격리 리허설과 compiled-function 순서 verifier가 이를 확인했다. production migration·DB·GRANT는 적용하지 않았다.
 
+**A4 동시 exact plan 멱등 수렴(2026-08-26):** mutation RPC는 checksum·source 검증 뒤 첫 ledger/resource lookup 전에 기관 ID 기반 transaction advisory lock을 획득한다. test-only 지연 trigger와 두 독립 PostgreSQL 연결로 같은 신규 plan을 경합시킨 결과 하나는 `applied`, 다른 하나는 lock 대기 뒤 `replayed`가 되고 resource 한 세트와 ledger 4건만 남았다. post-apply verifier는 lock key와 source 검증 이후·operation loop 이전 순서를 compiled function에서 확인한다. production migration·DB·GRANT는 적용하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

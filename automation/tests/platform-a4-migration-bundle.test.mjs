@@ -132,6 +132,8 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
     reconciliationBody.indexOf("jsonb_array_length(p_query -> 'operations')"),
   );
   expect(migration).toContain('design_operation_conflict');
+  expect(migration).toContain('pg_catalog.pg_advisory_xact_lock');
+  expect(migration).toContain("pg_catalog.hashtextextended('climate_vote.design_provision:' || v_org_id::text, 0)");
   expect(migration).toContain('v_existing.plan_checksum <> v_checksum');
   expect(migration).toContain('design_parent_conflict');
   expect(migration).toContain('design_join_code_exhausted');
@@ -155,6 +157,7 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(migration).toContain('design_reconciliation_conflict');
   expect(migration).toContain('revoke all on function climate_vote.design_provisioning_status(jsonb)');
   expect(rehearsal).toContain('exact replay is not idempotent');
+  expect(rehearsal).toContain('concurrent exact plan did not converge to applied and replayed outcomes');
   expect(rehearsal).toContain('cross-plan replay unexpectedly succeeded');
   expect(rehearsal).toContain('pending reconciliation unexpectedly mutated state');
   expect(rehearsal).toContain('completed reconciliation response is unsafe');

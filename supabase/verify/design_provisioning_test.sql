@@ -1,6 +1,14 @@
 \set ON_ERROR_STOP on
 set search_path = pg_catalog, climate_vote;
 
+do $guard$
+begin
+  if current_database() <> 'verify' then
+    raise exception 'A4 semantic fixture refused outside the verify database';
+  end if;
+end
+$guard$;
+
 create or replace function pg_temp.a4_operation(
   p_type text, p_ref text, p_parent_ref text, p_ordinal integer, p_payload jsonb
 ) returns jsonb language plpgsql as $function$
@@ -106,6 +114,12 @@ returns jsonb language sql as $function$
     'containsSensitiveValues', false
   )
 $function$;
+
+create table climate_vote.a4_design_concurrency_fixture (
+  plan jsonb not null,
+  source_bytes bytea not null,
+  user_id uuid not null
+);
 
 do $test$
 declare
@@ -752,7 +766,128 @@ begin
   if exists (select 1 from climate_vote.assembly where slug = 'a4-late-rollback') then
     raise exception 'A4 semantic test failed: late validation did not roll back mutations';
   end if;
+
+  v_operations := jsonb_build_array(
+    pg_temp.a4_operation(
+      'create_assembly', 'assembly:a4-concurrent', null, null, jsonb_build_object(
+        'title', 'Concurrent assembly', 'slug', 'a4-concurrent', 'purpose', null,
+        'mode', 'consensus', 'config', jsonb_build_object('readiness', jsonb_build_array('topics_open'))
+      )
+    ),
+    pg_temp.a4_operation(
+      'create_session', 'assembly:a4-concurrent/session:a4-concurrent-session',
+      'assembly:a4-concurrent', 1,
+      jsonb_build_object('title', 'Concurrent session', 'slug', 'a4-concurrent-session', 'heldOn', '2026-09-06')
+    ),
+    pg_temp.a4_operation(
+      'create_topic', 'assembly:a4-concurrent/session:a4-concurrent-session/topic:1',
+      'assembly:a4-concurrent/session:a4-concurrent-session', 1,
+      jsonb_build_object('prompt', 'Concurrent topic')
+    ),
+    pg_temp.a4_operation(
+      'create_team', 'assembly:a4-concurrent/session:a4-concurrent-session/team:1',
+      'assembly:a4-concurrent/session:a4-concurrent-session', 1,
+      jsonb_build_object('name', '1조', 'plannedCapacity', 10)
+    )
+  );
+  v_plan := pg_temp.a4_plan(
+    v_operations,
+    jsonb_build_object(
+      'assemblyCount', 1, 'sessionCount', 1, 'topicCount', 1,
+      'teamCount', 1, 'participantCount', 10, 'operationCount', 4
+    ),
+    'a4-concurrent'
+  );
+  insert into climate_vote.a4_design_concurrency_fixture (plan, source_bytes, user_id)
+  values (v_plan, convert_to(repeat('s', 100), 'UTF8'), v_user);
 end
 $test$;
+
+create extension dblink with schema extensions;
+
+create function climate_vote.a4_design_concurrency_delay()
+returns trigger language plpgsql set search_path = pg_catalog as $function$
+begin
+  if new.slug = 'a4-concurrent' then
+    perform pg_sleep(1);
+  end if;
+  return new;
+end
+$function$;
+
+create trigger a4_design_concurrency_delay
+before insert on climate_vote.assembly
+for each row execute function climate_vote.a4_design_concurrency_delay();
+
+create function climate_vote.a4_run_design_concurrency_fixture()
+returns jsonb language plpgsql set search_path = pg_catalog, climate_vote, auth, extensions as $function$
+declare
+  v_plan jsonb;
+  v_source_bytes bytea;
+  v_user_id uuid;
+begin
+  select plan, source_bytes, user_id
+  into strict v_plan, v_source_bytes, v_user_id
+  from climate_vote.a4_design_concurrency_fixture;
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', v_user_id)::text, true);
+  return climate_vote.design_provision(v_plan, v_source_bytes);
+end
+$function$;
+
+select extensions.dblink_connect('a4_concurrent_1', 'dbname=' || current_database() || ' user=postgres');
+select extensions.dblink_connect('a4_concurrent_2', 'dbname=' || current_database() || ' user=postgres');
+select extensions.dblink_send_query(
+  'a4_concurrent_1',
+  'select climate_vote.a4_run_design_concurrency_fixture()'
+);
+select extensions.dblink_send_query(
+  'a4_concurrent_2',
+  'select climate_vote.a4_run_design_concurrency_fixture()'
+);
+
+do $concurrency$
+declare
+  v_first jsonb;
+  v_second jsonb;
+  v_first_statuses jsonb;
+  v_second_statuses jsonb;
+begin
+  begin
+    select result into strict v_first
+    from extensions.dblink_get_result('a4_concurrent_1') as response(result jsonb);
+    select result into strict v_second
+    from extensions.dblink_get_result('a4_concurrent_2') as response(result jsonb);
+  exception when others then
+    raise exception 'A4 semantic test failed: concurrent exact plan did not converge to applied and replayed outcomes';
+  end;
+
+  v_first_statuses := jsonb_path_query_array(v_first, '$.operations[*].status');
+  v_second_statuses := jsonb_path_query_array(v_second, '$.operations[*].status');
+  if not (
+    (v_first_statuses = '["applied", "applied", "applied", "applied"]'::jsonb
+      and v_second_statuses = '["replayed", "replayed", "replayed", "replayed"]'::jsonb)
+    or
+    (v_second_statuses = '["applied", "applied", "applied", "applied"]'::jsonb
+      and v_first_statuses = '["replayed", "replayed", "replayed", "replayed"]'::jsonb)
+  ) then
+    raise exception 'A4 semantic test failed: concurrent exact plan did not converge to applied and replayed outcomes';
+  end if;
+  if (select count(*) from climate_vote.assembly where slug = 'a4-concurrent') <> 1
+     or (select count(*) from climate_vote.session where slug = 'a4-concurrent-session') <> 1
+     or (select count(*) from climate_vote.design_provisioning_operation dpo
+         join climate_vote.a4_design_concurrency_fixture fixture
+           on dpo.plan_checksum = fixture.plan ->> 'checksum') <> 4 then
+    raise exception 'A4 semantic test failed: concurrent exact plan created duplicate or incomplete state';
+  end if;
+end
+$concurrency$;
+
+select extensions.dblink_disconnect('a4_concurrent_1');
+select extensions.dblink_disconnect('a4_concurrent_2');
+drop trigger a4_design_concurrency_delay on climate_vote.assembly;
+drop function climate_vote.a4_design_concurrency_delay();
+drop function climate_vote.a4_run_design_concurrency_fixture();
+drop table climate_vote.a4_design_concurrency_fixture;
+drop extension dblink;
 
 \echo === A4 DESIGN PROVISIONING SEMANTIC TEST PASSED ===

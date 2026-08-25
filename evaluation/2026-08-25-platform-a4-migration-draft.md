@@ -40,17 +40,18 @@
 8. reconciliation의 executed checksum 충돌, 앞 operation 누락 뒤의 기존 operation 충돌 은폐와 `operator` 역할을 거부했다.
 9. 정상 생성된 team을 `disabled`로 전환한 뒤 mutation exact replay는 `design_resource_conflict`, read-only reconciliation은 `design_reconciliation_conflict`로 거부하고 join code를 반환하지 않으며 ledger·resource 수가 유지되는지 확인했다.
 10. 권한 없는 `operator`가 malformed mutation plan 또는 reconciliation query를 보내도 checksum·operation 배열 검증보다 먼저 `design_role_forbidden`으로 중단되는지 확인했다.
-11. 동일 operation ID의 payload 충돌과 operation payload가 같더라도 전체 plan checksum이 다른 교차-plan replay를 mutation 전에 거부했다.
-12. 독립된 새 assembly 안에서 같은 session ordinal을 재사용하는 parent 충돌을 거부했다.
-13. 같은 session operation을 두 번 넣어 operation ID와 resource ref가 중복된 plan을 lookup·mutation 전에 거부하고 ledger·assembly 무변경을 확인했다.
-14. mutation plan의 실행 boolean과 reconciliation operation count를 JSON 문자열로 바꾸거나 summary를 잘못된 컨테이너로 바꾸고 checksum을 다시 계산해도 각각 `design_plan_invalid`, `design_reconciliation_query_invalid`로 거부했다.
-15. 잘못된 달력 날짜, 날짜 역행, 비연속 ordinal, topic/team 순서 역전, 중복 topic prompt, 비정규 team 이름, 세션 누적 정원 초과, topic 또는 team이 없는 세션을 `design_operation_invalid`로 거부하고 앞선 mutation을 rollback했다.
-16. join code 생성기는 `extensions.gen_random_bytes(4)`와 rejection sampling을 사용하고 6자리 형상을 유지하며, 충돌 fixture 뒤에도 secure generator가 복원됨을 검증했다. 충돌 20회 소진 시 앞선 assembly/session까지 rollback되는 것도 확인했다.
-17. 모든 INSERT 뒤 summary 불일치가 발견돼도 plan 전체가 rollback되는 것을 검증했다.
-18. `authenticated`에 mutation/status RPC EXECUTE를 각각 임시 부여한 격리 음성 테스트를 post-apply verifier가 거부했다.
-19. ledger·non-null ordinal이 있는 populated rollback은 객체 제거 전에 거부되고 post-apply verifier가 계속 통과하는지 확인했다.
-20. exact-scope throwaway cleanup만 synthetic A4 행을 제거하는 것을 확인했다.
-21. cleanup 뒤 최종 rollback이 성공해 mutation/status RPC·ledger·team ordinal이 제거되는 것을 확인했다.
+11. test-only 지연 trigger와 두 독립 PostgreSQL 연결이 같은 신규 plan을 동시에 실행해도 기관별 transaction advisory lock 뒤 하나는 `applied`, 다른 하나는 `replayed`로 수렴하고 resource 1세트·ledger 4건만 남는지 확인했다.
+12. 동일 operation ID의 payload 충돌과 operation payload가 같더라도 전체 plan checksum이 다른 교차-plan replay를 mutation 전에 거부했다.
+13. 독립된 새 assembly 안에서 같은 session ordinal을 재사용하는 parent 충돌을 거부했다.
+14. 같은 session operation을 두 번 넣어 operation ID와 resource ref가 중복된 plan을 lookup·mutation 전에 거부하고 ledger·assembly 무변경을 확인했다.
+15. mutation plan의 실행 boolean과 reconciliation operation count를 JSON 문자열로 바꾸거나 summary를 잘못된 컨테이너로 바꾸고 checksum을 다시 계산해도 각각 `design_plan_invalid`, `design_reconciliation_query_invalid`로 거부했다.
+16. 잘못된 달력 날짜, 날짜 역행, 비연속 ordinal, topic/team 순서 역전, 중복 topic prompt, 비정규 team 이름, 세션 누적 정원 초과, topic 또는 team이 없는 세션을 `design_operation_invalid`로 거부하고 앞선 mutation을 rollback했다.
+17. join code 생성기는 `extensions.gen_random_bytes(4)`와 rejection sampling을 사용하고 6자리 형상을 유지하며, 충돌 fixture 뒤에도 secure generator가 복원됨을 검증했다. 충돌 20회 소진 시 앞선 assembly/session까지 rollback되는 것도 확인했다.
+18. 모든 INSERT 뒤 summary 불일치가 발견돼도 plan 전체가 rollback되는 것을 검증했다.
+19. `authenticated`에 mutation/status RPC EXECUTE를 각각 임시 부여한 격리 음성 테스트를 post-apply verifier가 거부했다.
+20. ledger·non-null ordinal이 있는 populated rollback은 객체 제거 전에 거부되고 post-apply verifier가 계속 통과하는지 확인했다.
+21. exact-scope throwaway cleanup만 synthetic A4 행을 제거하는 것을 확인했다.
+22. cleanup 뒤 최종 rollback이 성공해 mutation/status RPC·ledger·team ordinal이 제거되는 것을 확인했다.
 
 결과: `A4_LOCAL_POSTGRES_REHEARSAL=passed`
 
@@ -74,6 +75,8 @@ canonical plan 의미 계약 결과: `A4_CANONICAL_PLAN_SEMANTICS_POSTGRES_REHEA
 
 권한 판정 우선 실행 결과: `A4_AUTHORIZATION_FIRST_POSTGRES_REHEARSAL=passed`
 
+동시 exact plan 멱등 수렴 결과: `A4_CONCURRENT_EXACT_PLAN_POSTGRES_REHEARSAL=passed`
+
 ## 자동화 회귀
 
 - A4 bundle·design plan 집중 테스트: 55건 통과
@@ -83,7 +86,7 @@ canonical plan 의미 계약 결과: `A4_CANONICAL_PLAN_SEMANTICS_POSTGRES_REHEA
 - 저장소 밖 로컬 durable store의 adapter 재시작·lock-free CAS·독립 Node 프로세스 6개 claim 경쟁(1 claimed, 5 conflict, journal record 2개)·orphan temp 복구·append-only replay/conflict·journal 변조·junction escape·revocation/claim 경쟁·membership 비활성 finalize와 재활성화 거부·비식별 전체-store/keyed receipt audit·off-store inventory checkpoint 삭제/tail 변경 테스트 통과
 - approval bundle verifier: builder·durable store·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 17개, production apply 미승인·DB mutation 미실행 상태로 통과
 - 추적 manifest를 current source에서 재구성해 stale source hash를 거부하는 테스트 통과
-- bundle checksum: `f3b00318dfd15ef2652d4777efb1e74f4aae6b9377e3a20a1974e0ce5f9f8a12`
+- bundle checksum: `d3275d5d3ce77ab7b6cf9607e0fca1fb01d14da9fe7a32f5d3e1a951d7be1864`
 
 ## 보안·데이터 무결성 결론
 
@@ -94,6 +97,7 @@ canonical plan 의미 계약 결과: `A4_CANONICAL_PLAN_SEMANTICS_POSTGRES_REHEA
 - 로컬 durable store는 synthetic authorization context만 immutable journal에 함께 보존하며 production Auth/membership 증거로 사용하지 않는다.
 - 전체-store audit는 존재하는 journal·receipt와 claim 연결을 비식별 집계하고 합성 HMAC key로 receipt와 off-store inventory checkpoint를 검증할 수 있다. checkpoint 없는 기본 audit, 실제 외부 보관·freshness·production key custody/rotation은 여전히 증명하지 않는다.
 - 기존 resource가 plan payload와 다르거나 같은 operation이 다른 전체 plan checksum으로 재사용되면 update하지 않고 안정 오류 코드로 전체 transaction을 중단한다.
+- 같은 기관의 동시 mutation plan은 source 검증 뒤 transaction advisory lock으로 직렬화해 exact plan 경쟁을 `applied`와 `replayed`로 수렴시킨다.
 - plan 내부의 operation ID와 resource ref는 각각 유일해야 하며 중복 plan은 lookup·mutation 전에 거부한다.
 - plan과 reconciliation query의 boolean·number·string JSON 타입을 exact 검사해 문자열로 바꾼 self-resealed 입력을 거부한다.
 - RPC가 client verifier와 같은 session/topic/team 순서·ordinal·달력 날짜·text·prompt 유일성·team 이름·세션 정원·생성 항목 상한을 재검증한다.
