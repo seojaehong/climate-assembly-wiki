@@ -1591,6 +1591,32 @@ export async function executeDesignProvisioningApprovalLifecycle({
     throw new Error('Design provisioning existing claim requires receipt reconciliation');
   }
 
+  const executionAuthorizationSnapshot = validateAuthorizationSnapshot(
+    await authorization.readSnapshot(approval.approvalId),
+  );
+  validateLiveAuthorizationContext(executionAuthorizationSnapshot.context, approval);
+  const executionAuthorization = verifyDesignProvisioningExecutionApproval(
+    approval,
+    plan,
+    blueprint,
+    sourceBytes,
+    {
+      trustedKey,
+      expectedKeyId,
+      expectedOrganizationId: executionAuthorizationSnapshot.context.organizationId,
+      expectedTargetHost: executionAuthorizationSnapshot.context.targetHost,
+      now: startedAt,
+      approvalState: executionAuthorizationSnapshot.state,
+    },
+  );
+  if (executionAuthorization.claimAction !== 'resume_existing_claim') {
+    throw new Error('Design provisioning execution authorization is no longer active');
+  }
+  assertClaimActor(
+    executionAuthorizationSnapshot.state,
+    executionAuthorizationSnapshot.context,
+  );
+
   const executionPlan = designProvisioningExecutionCandidate(plan);
   let executionResult;
   try {

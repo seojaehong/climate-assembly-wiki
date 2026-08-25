@@ -1592,6 +1592,61 @@ test('executes claim, exact RPC, append-only receipt, and finalization in order'
     .toBe('completed');
 });
 
+test('revalidates live authorization after claim before invoking the A4 RPC', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const backingAuthorization = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
+  const receiptAdapter = createInMemoryDesignProvisioningReceiptAdapter();
+  let snapshotReadCount = 0;
+  let executionCount = 0;
+  const authorizationAdapter = {
+    async readSnapshot(approvalId) {
+      snapshotReadCount += 1;
+      const snapshot = await backingAuthorization.readSnapshot(approvalId);
+      if (snapshotReadCount === 2) {
+        return {
+          ...snapshot,
+          context: liveContext({ membershipActive: false }),
+        };
+      }
+      return snapshot;
+    },
+    async claim(expectedSnapshot, claim) {
+      return backingAuthorization.claim(expectedSnapshot, claim);
+    },
+    async finalize(expectedSnapshot, terminalClaim) {
+      return backingAuthorization.finalize(expectedSnapshot, terminalClaim);
+    },
+  };
+
+  await expect(executeDesignProvisioningApprovalLifecycle({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter,
+    executionAdapter: {
+      async execute({ plan: executionPlan }) {
+        executionCount += 1;
+        return completedExecutionResult(executionPlan);
+      },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock(
+      '2026-08-25T13:05:00.000Z',
+      '2026-08-25T13:06:00.000Z',
+      '2026-08-25T13:07:00.000Z',
+    ),
+  })).rejects.toThrow('live authorization context is invalid');
+
+  expect(snapshotReadCount).toBe(2);
+  expect(executionCount).toBe(0);
+  expect(await receiptAdapter.read(approval.executionId)).toBeNull();
+  expect((await backingAuthorization.readSnapshot(approval.approvalId)).state.claim.status)
+    .toBe('claimed');
+});
+
 test('keeps an A4 claim open when finalization time predates receipt completion', async () => {
   const { source, bytes, plan, approval } = executionApproval();
   const authorizationAdapter = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
