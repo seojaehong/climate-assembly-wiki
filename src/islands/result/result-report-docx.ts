@@ -20,8 +20,10 @@
 
 import {
   AlignmentType,
+  Bookmark,
   BorderStyle,
   Document,
+  InternalHyperlink,
   Packer,
   Paragraph,
   Table,
@@ -85,6 +87,7 @@ export function resultReportFileName(input: { title: string; at: Date }): string
 export type ReportKV = { label: string; value: string };
 
 export type ResultIssueSection = {
+  issueBookmark: string;
   label: string;
   /** 빈도 라벨(합의/다수의견/소수의견/혼재) 또는 '—'. */
   frequencyLabel: string;
@@ -108,6 +111,19 @@ export type ResultIssueSection = {
   implementationUpdatedAtLabel: string;
   implementationSummary: string;
   implementationEvidenceUrl: string;
+  sourceReferencesValid: boolean;
+  sourceReferences: ResultSourceReferenceSection[];
+};
+
+export type ResultSourceReferenceSection = {
+  sourceBookmark: string;
+  teamName: string;
+  ordinal: number;
+  kindLabel: string;
+  excerpt: string;
+  contentSha256: string;
+  reviewedAtLabel: string;
+  reviewerRoleLabel: string;
 };
 
 /** §3 조×쟁점 매트릭스 모델. cells[i] = 세로 쟁점을 teams[i] 조가 제기했는가. */
@@ -137,6 +153,7 @@ export type ResultReportModel = {
   reviewBadge: string;
   overview: ReportKV[];
   issues: ResultIssueSection[];
+  sourceReferenceCount: number;
   /** null이면 §3을 만들지 않는다(조·쟁점이 비어 표가 malformed가 되는 것을 막는다). */
   matrix: ResultMatrixModel | null;
   takeaways: ResultTakeaways;
@@ -146,8 +163,9 @@ export type ResultReportModel = {
   consensusRule: string;
 };
 
-function issueSection(issue: ViewIssue): ResultIssueSection {
+function issueSection(issue: ViewIssue, issueIndex: number): ResultIssueSection {
   return {
+    issueBookmark: `result_issue_${issueIndex + 1}`,
     label: issue.label,
     frequencyLabel: issue.frequencyLabel ?? '—',
     stanceLabel: issue.stanceLabel ?? '—',
@@ -166,6 +184,17 @@ function issueSection(issue: ViewIssue): ResultIssueSection {
     implementationUpdatedAtLabel: formatPublishedDate(issue.implementation.updatedAt),
     implementationSummary: issue.implementation.summary ?? '—',
     implementationEvidenceUrl: issue.implementation.evidenceUrl ?? '—',
+    sourceReferencesValid: issue.sourceReferencesValid,
+    sourceReferences: issue.sourceReferences.map((reference, sourceIndex) => ({
+      sourceBookmark: `result_source_${issueIndex + 1}_${sourceIndex + 1}`,
+      teamName: reference.teamName,
+      ordinal: reference.ordinal,
+      kindLabel: reference.kind === 'core' ? '핵심' : '추가',
+      excerpt: reference.excerpt,
+      contentSha256: reference.contentSha256,
+      reviewedAtLabel: formatPublishedDate(reference.reviewedAt),
+      reviewerRoleLabel: reference.reviewerRole === 'hq' ? 'HQ' : '기관 관리자',
+    })),
   };
 }
 
@@ -220,6 +249,7 @@ export function buildResultReportModel(input: {
     reviewBadge: `검수 완료 ${stats.reviewedCount} / 전체 ${stats.issueCount}`,
     overview,
     issues,
+    sourceReferenceCount: issues.reduce((sum, issue) => sum + issue.sourceReferences.length, 0),
     matrix,
     takeaways,
     hitlNotice: view.hitlNotice,
@@ -235,6 +265,7 @@ const FONT = 'Malgun Gothic';
 const NAVY = '1F4E79';
 const INK = '1F2933';
 const MUTED = '5A6B73';
+const LINK = '135C73';
 const GREEN = '2F7D1E';
 const AMBER = 'B5651D';
 const HEAD_FILL = 'F1F7FA';
@@ -313,6 +344,23 @@ function cell(
   });
 }
 
+function bookmarkHeading(bookmark: string, text: string): Paragraph {
+  return new Paragraph({
+    spacing: { before: 240, after: 80 },
+    children: [new Bookmark({ id: bookmark, children: [run(text, { bold: true, size: 24, color: NAVY })] })],
+  });
+}
+
+function internalLink(text: string, anchor: string): Paragraph {
+  return new Paragraph({
+    spacing: { before: 80, after: 40 },
+    children: [new InternalHyperlink({
+      anchor,
+      children: [run(text, { bold: true, size: 20, color: LINK })],
+    })],
+  });
+}
+
 function docxColor(color: string): string {
   return color.replace(/^#/, '');
 }
@@ -360,6 +408,16 @@ function issueMetaTable(issue: ResultIssueSection): Table {
   ]);
 }
 
+function sourceReferenceMetadata(reference: ResultSourceReferenceSection): Paragraph[] {
+  return [
+    para(`조: ${reference.teamName}`, { size: 20, color: MUTED, after: 40 }),
+    para(`원문 위치: ${reference.kindLabel} ${reference.ordinal}번`, { size: 20, color: MUTED, after: 40 }),
+    para(`공개 검수일: ${reference.reviewedAtLabel}`, { size: 20, color: MUTED, after: 40 }),
+    para(`검수 역할: ${reference.reviewerRoleLabel}`, { size: 20, color: MUTED, after: 40 }),
+    para(`공개 payload SHA-256: ${reference.contentSha256}`, { size: 18, color: MUTED, after: 40 }),
+  ];
+}
+
 /** 다음-단계·리스트 칸을 표 없이 문단으로 — 빈 목록이면 '해당 없음' 안내. */
 function takeawayList(heading: string, accent: string, items: string[], empty: string): Paragraph[] {
   const out: Paragraph[] = [para(heading, { bold: true, size: 24, color: accent, before: 200, after: 80 })];
@@ -373,6 +431,8 @@ function takeawayList(heading: string, accent: string, items: string[], empty: s
 
 /** 모델 → docx Document. 내용은 모델이 확정한 문자열 그대로다(여기서 가공하지 않는다). */
 export function buildResultReportDoc(model: ResultReportModel): Document {
+  const hasSourceReferences = model.sourceReferenceCount > 0;
+  const summarySectionNumber = hasSourceReferences && model.matrix != null ? 5 : 4;
   const children: Array<Paragraph | Table> = [
     // 표지
     para(model.title, { bold: true, size: 40, color: NAVY, align: AlignmentType.CENTER, after: 80 }),
@@ -410,19 +470,51 @@ export function buildResultReportDoc(model: ResultReportModel): Document {
   if (model.issues.length > 0) {
     model.issues.forEach((issue, idx) => {
       children.push(
-        para(`${idx + 1}. ${issue.label}`, { bold: true, size: 24, color: NAVY, before: 240, after: 80 }),
+        bookmarkHeading(issue.issueBookmark, `${idx + 1}. ${issue.label}`),
         issueMetaTable(issue),
         para(issue.summary, { size: 22, before: 80, after: 40 }),
       );
+      if (issue.sourceReferences.length > 0) {
+        children.push(internalLink(
+          `원문 근거 ${issue.sourceReferences.length}건으로 이동`,
+          issue.sourceReferences[0].sourceBookmark,
+        ));
+      } else if (!issue.sourceReferencesValid) {
+        children.push(para('근거 원문 공개 정보 확인 필요', { bold: true, size: 20, color: AMBER, before: 80, after: 40 }));
+      }
     });
   } else {
     children.push(para('공개된 쟁점이 없습니다.', { size: 20, color: MUTED }));
   }
 
+  if (hasSourceReferences) {
+    children.push(sectionHeading('3. 공개 검수된 근거 원문'));
+    for (const issue of model.issues) {
+      for (const reference of issue.sourceReferences) {
+        children.push(
+          new Paragraph({
+            spacing: { before: 240, after: 80 },
+            children: [new Bookmark({
+              id: reference.sourceBookmark,
+              children: [run(`${issue.label} · ${reference.teamName} ${reference.kindLabel} ${reference.ordinal}번`, {
+                bold: true,
+                size: 24,
+                color: NAVY,
+              })],
+            })],
+          }),
+          para(`“${reference.excerpt}”`, { size: 22, after: 80 }),
+          ...sourceReferenceMetadata(reference),
+          internalLink('쟁점으로 돌아가기', issue.issueBookmark),
+        );
+      }
+    }
+  }
+
   // §3 조×쟁점 커버리지 매트릭스 (조·쟁점이 있을 때만)
   if (model.matrix != null) {
     children.push(
-      sectionHeading('3. 조 × 쟁점 커버리지'),
+      sectionHeading(`${hasSourceReferences ? 4 : 3}. 조 × 쟁점 커버리지`),
       para('세로 = 쟁점, 가로 = 조. ● 제기 · · 미제기', { size: 20, color: MUTED, after: 120 }),
       table([
         new TableRow({
@@ -453,7 +545,7 @@ export function buildResultReportDoc(model: ResultReportModel): Document {
 
   // §4 함께 확인된 것 / 더 논의할 것 / 다음 단계
   children.push(
-    sectionHeading('4. 정리'),
+    sectionHeading(`${summarySectionNumber}. 정리`),
     ...takeawayList('함께 확인된 것', GREEN, model.takeaways.consensus, '합의로 분류된 쟁점이 아직 없습니다.'),
     ...takeawayList('더 논의할 것', AMBER, model.takeaways.further, '추가 논의가 필요한 쟁점이 없습니다.'),
     para('다음 단계', { bold: true, size: 24, color: NAVY, before: 200, after: 80 }),

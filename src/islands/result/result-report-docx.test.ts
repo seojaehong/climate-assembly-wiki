@@ -26,6 +26,7 @@ function issue(over: Partial<ResultIssueRaw> = {}): ResultIssueRaw {
     consensus_denominator: 'consensus_denominator' in over ? over.consensus_denominator : 0,
     teams: over.teams ?? [],
     implementation: over.implementation ?? undefined,
+    source_references: over.source_references ?? undefined,
   };
 }
 
@@ -237,6 +238,71 @@ describe('buildResultReportModel — §2 쟁점별', () => {
     });
     expect(model.issues.map((i) => i.label)).toEqual(['많음', '적음']);
   });
+
+  it('공개검수된 원문과 쟁점·원문 bookmark를 보고서 모델에 보존한다', () => {
+    const model = buildResultReportModel({
+      view: view([issue({
+        id: 'issue-reviewed',
+        label: '대중교통 확대',
+        source_references: [{
+          reference_key: 'public-source-001',
+          team_name: '1분과 1조',
+          ordinal: 1,
+          kind: 'core',
+          excerpt: '대중교통 노선을 확대해야 합니다.',
+          content_sha256: 'a'.repeat(64),
+          publication_status: 'reviewed',
+          reviewed_at: '2026-08-26T00:00:00.000Z',
+          reviewer_role: 'hq',
+        }],
+      })]),
+      generatedAtLabel: 'x',
+    });
+
+    expect(model.issues[0]).toMatchObject({
+      issueBookmark: 'result_issue_1',
+      sourceReferencesValid: true,
+      sourceReferences: [{
+        sourceBookmark: 'result_source_1_1',
+        teamName: '1분과 1조',
+        ordinal: 1,
+        kindLabel: '핵심',
+        excerpt: '대중교통 노선을 확대해야 합니다.',
+        contentSha256: 'a'.repeat(64),
+        reviewedAtLabel: expect.stringMatching(/^2026-08-\d{2}$/),
+        reviewerRoleLabel: 'HQ',
+      }],
+    });
+    expect(model.sourceReferenceCount).toBe(1);
+  });
+
+  it('미검수 원문은 본문을 버리고 확인 필요 상태만 보고서 모델에 남긴다', () => {
+    const model = buildResultReportModel({
+      view: view([issue({
+        id: 'issue-draft',
+        review_status: 'draft',
+        source_references: [{
+          reference_key: 'public-source-001',
+          team_name: '1분과 1조',
+          ordinal: 1,
+          kind: 'core',
+          excerpt: '문서에 노출되면 안 되는 미검수 원문',
+          content_sha256: 'a'.repeat(64),
+          publication_status: 'reviewed',
+          reviewed_at: '2026-08-26T00:00:00.000Z',
+          reviewer_role: 'hq',
+        }],
+      })]),
+      generatedAtLabel: 'x',
+    });
+
+    expect(model.issues[0]).toMatchObject({
+      sourceReferencesValid: false,
+      sourceReferences: [],
+    });
+    expect(JSON.stringify(model)).not.toContain('문서에 노출되면 안 되는 미검수 원문');
+    expect(model.sourceReferenceCount).toBe(0);
+  });
 });
 
 describe('buildResultReportModel — §3 매트릭스·§4 정리', () => {
@@ -306,6 +372,21 @@ describe('buildResultReportDoc — 문서 생성(이미지 없이 표만)', () =
     expect(buf.includes('word/media/')).toBe(false);
   });
 
+  it('원문 필드가 없는 기존 payload는 기존 §3 매트릭스·§4 정리 번호를 유지한다', async () => {
+    const model = buildResultReportModel({
+      view: view([issue({ id: 'i1', frequency_class: 'consensus', teams: ['1분과 1조'] })]),
+      generatedAtLabel: 'x',
+    });
+    const buf = await Packer.toBuffer(buildResultReportDoc(model));
+    const zip = await JSZip.loadAsync(buf);
+    const documentXml = await zip.file('word/document.xml')?.async('string');
+
+    expect(model.sourceReferenceCount).toBe(0);
+    expect(documentXml).toContain('3. 조 × 쟁점 커버리지');
+    expect(documentXml).toContain('4. 정리');
+    expect(documentXml).not.toContain('공개 검수된 근거 원문');
+  });
+
   it('공용 HITL 설명과 상태별 글자·배경·경계 색상을 document.xml에 직렬화한다', async () => {
     const model = buildResultReportModel({
       view: view([issue({ id: 'archived', review_status: 'archived', origin: 'ai' })]),
@@ -342,6 +423,68 @@ describe('buildResultReportDoc — 문서 생성(이미지 없이 표만)', () =
     expect(documentXml).toContain('미이행 사유 공개');
     expect(documentXml).toContain('대안 정책을 우선 추진한다는 사유를 공개했습니다.');
     expect(documentXml).toContain('https://example.org/not-pursued-evidence');
+  });
+
+  it('승인 원문을 쟁점과 왕복하는 DOCX bookmark·internal hyperlink로 직렬화한다', async () => {
+    const model = buildResultReportModel({
+      view: view([issue({
+        id: 'issue-reviewed',
+        label: '대중교통 확대',
+        source_references: [{
+          reference_key: 'public-source-001',
+          team_name: '1분과 1조',
+          ordinal: 1,
+          kind: 'core',
+          excerpt: '대중교통 노선을 확대해야 합니다.',
+          content_sha256: 'a'.repeat(64),
+          publication_status: 'reviewed',
+          reviewed_at: '2026-08-26T00:00:00.000Z',
+          reviewer_role: 'hq',
+        }],
+      })]),
+      generatedAtLabel: 'x',
+    });
+    const buf = await Packer.toBuffer(buildResultReportDoc(model));
+    const zip = await JSZip.loadAsync(buf);
+    const documentXml = await zip.file('word/document.xml')?.async('string');
+
+    expect(documentXml).toContain('공개 검수된 근거 원문');
+    expect(documentXml).toContain('대중교통 노선을 확대해야 합니다.');
+    expect(documentXml).toContain('w:name="result_issue_1"');
+    expect(documentXml).toContain('w:name="result_source_1_1"');
+    expect(documentXml).toContain('w:anchor="result_source_1_1"');
+    expect(documentXml).toContain('w:anchor="result_issue_1"');
+    expect(documentXml).toContain('원문 근거 1건으로 이동');
+    expect(documentXml).toContain('쟁점으로 돌아가기');
+    expect(documentXml).toContain('4. 정리');
+    expect(documentXml).not.toContain('5. 정리');
+  });
+
+  it('잘못된 원문 묶음은 DOCX에서 원문 없이 확인 필요 안내만 직렬화한다', async () => {
+    const model = buildResultReportModel({
+      view: view([issue({
+        review_status: 'draft',
+        source_references: [{
+          reference_key: 'public-source-001',
+          team_name: '1분과 1조',
+          ordinal: 1,
+          kind: 'core',
+          excerpt: '문서에 노출되면 안 되는 미검수 원문',
+          content_sha256: 'a'.repeat(64),
+          publication_status: 'reviewed',
+          reviewed_at: '2026-08-26T00:00:00.000Z',
+          reviewer_role: 'hq',
+        }],
+      })]),
+      generatedAtLabel: 'x',
+    });
+    const buf = await Packer.toBuffer(buildResultReportDoc(model));
+    const zip = await JSZip.loadAsync(buf);
+    const documentXml = await zip.file('word/document.xml')?.async('string');
+
+    expect(documentXml).toContain('근거 원문 공개 정보 확인 필요');
+    expect(documentXml).not.toContain('문서에 노출되면 안 되는 미검수 원문');
+    expect(documentXml).not.toContain('공개 검수된 근거 원문');
   });
 
   it('퇴화 모델(쟁점 0·조 0·공개일 null·요약 없음)도 표만으로 정상 생성된다', async () => {

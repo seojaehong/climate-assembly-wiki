@@ -27,4 +27,4 @@
 - UI는 `content_sha256` 형식만 확인한다. 실제 원문 bytes와 digest 결속은 후속 승인된 publish preflight/RPC에서 검증해야 한다.
 - 현재 production `result_page` payload에는 `source_references`가 없다.
 - DB/RPC/migration, 실제 시민 원문 캡처, 공개 payload 적재와 게시를 수행하지 않았다.
-- DOCX 원문 역링크와 실제 스크린리더·모바일 보조기기 수동 평가는 후속 범위다.
+- 실제 스크린리더·모바일 보조기기 수동 평가는 후속 범위다. DOCX 원문 역링크는 `2026-08-26-a7-docx-source-backlinks.md`에서 별도 검증했다.
