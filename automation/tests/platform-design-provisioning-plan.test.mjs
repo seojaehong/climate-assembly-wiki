@@ -1,5 +1,12 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,6 +41,9 @@ import {
 
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 const modulePath = fileURLToPath(new URL('../platform-design-provisioning-plan.mjs', import.meta.url));
+const durableStoreModulePath = fileURLToPath(
+  new URL('../platform-design-provisioning-durable-store.mjs', import.meta.url),
+);
 
 function blueprint() {
   return {
@@ -480,7 +490,16 @@ test('keeps an active claim open when synthetic membership becomes inactive befo
       outcome: 'completed',
       now: new Date('2026-08-25T13:06:00.000Z'),
     })).rejects.toThrow('live authorization context is invalid');
-    expect((await restarted.readSnapshot(approval.approvalId)).state.claim.status).toBe('claimed');
+    const inactiveSnapshot = await restarted.readSnapshot(approval.approvalId);
+    expect(inactiveSnapshot.state.claim.status).toBe('claimed');
+    await expect(replaceLocalDesignProvisioningAuthorizationContext({
+      directory,
+      expectedSnapshot: inactiveSnapshot,
+      context: liveContext(),
+    })).resolves.toMatchObject({
+      status: 'conflict',
+      context: { membershipActive: false },
+    });
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -524,6 +543,43 @@ test('allows only one durable transition when claim and revocation race', async 
       expect(results[1]).toMatchObject({ status: 'fulfilled', value: { status: 'updated' } });
       expect(results[0]).toMatchObject({ status: 'rejected' });
     }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('uses immutable journal publication without a stale lock and ignores an orphan temp', async () => {
+  const durableSource = readFileSync(durableStoreModulePath, 'utf8');
+  expect(durableSource).not.toContain('write.lock');
+  expect(durableSource).not.toContain('acquireLock(');
+
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const { source, bytes, plan, approval } = executionApproval();
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: approval.approvalId, context: liveContext() },
+    });
+    const approvalDirectory = join(directory, 'authorization', approval.approvalId);
+    writeFileSync(
+      join(approvalDirectory, '.tmp-999-77777777-7777-4777-8777-777777777777'),
+      '{"incomplete":',
+      'utf8',
+    );
+    const authorizationAdapter = createLocalDesignProvisioningAuthorizationAdapter({ directory });
+    await expect(claimDesignProvisioningExecutionApproval({
+      approval,
+      plan,
+      blueprint: source,
+      sourceBytes: bytes,
+      authorizationAdapter,
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+      now: new Date('2026-08-25T13:05:00.000Z'),
+    })).resolves.toMatchObject({ claimDisposition: 'new' });
+    const names = readdirSync(approvalDirectory);
+    expect(names.filter((name) => /^\d{12}\.json$/.test(name))).toHaveLength(2);
+    expect(names).not.toContain('write.lock');
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

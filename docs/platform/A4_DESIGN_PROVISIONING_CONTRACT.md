@@ -101,11 +101,11 @@
 ### 3-9. 로컬 durable rehearsal store
 
 - `platform-design-provisioning-durable-store.mjs`는 명시적으로 만든 저장소 밖 빈 디렉터리에만 초기화된다. marker가 없거나 저장소 내부·상대 경로·예상하지 않은 layout이면 쓰기 전에 거부한다.
-- authorization state와 고정된 synthetic context는 approval별 immutable hash-chain journal에 기록한다. claim·finalize는 approval별 exclusive lock 안에서 예상 snapshot과 현재 journal tail을 비교하고 새 record 하나만 link로 게시한다. 동시 경쟁은 하나만 새 claim으로 기록하고 나머지는 current snapshot conflict로 reconciliation한다.
+- authorization state와 고정된 synthetic context는 approval별 immutable hash-chain journal에 기록한다. claim·finalize는 예상 snapshot과 현재 journal tail을 비교한 뒤 다음 sequence record를 hard-link로 원자 게시한다. 같은 tail에서 시작한 동시 경쟁은 동일 filename 중 하나만 생성할 수 있어 lock 없이 하나만 성공하고, 나머지는 최신 journal snapshot conflict로 reconciliation한다.
 - local revocation transition은 unclaimed approval에만 canonical UTC `revokedAt`을 같은 journal CAS로 기록한다. claim과 revocation이 경쟁하면 둘 중 하나만 journal tail을 차지하며, revocation이 먼저면 restart 뒤 새 claim도 core verifier가 거부한다. active claim을 뒤늦게 revoke해 receipt reconciliation을 영구 차단하는 전이는 허용하지 않는다.
-- synthetic authorization context 교체도 expected snapshot과 같은 journal transaction으로 기록한다. active claim 뒤 membership 또는 organization을 비활성화하면 core는 finalize 직전 context를 다시 거부하고 claim은 열린 상태로 남는다. 이 동작은 live provider의 transaction 격리를 증명하지 않는다.
+- synthetic authorization context 교체도 expected snapshot과 같은 journal CAS로 기록한다. identity는 바꾸지 않고 `membershipActive|organizationActive`의 `true→false` 무효화만 허용하며 재활성화를 거부해 revision 없는 local snapshot의 ABA 재일치를 막는다. active claim 뒤 비활성화하면 core는 finalize 직전 context를 다시 거부하고 claim은 열린 상태로 남는다. production live provider는 단방향 fixture 대신 별도 row version을 포함한 transaction 격리가 필요하다.
 - receipt는 execution ID별 immutable 파일로 게시한다. 같은 HMAC receipt 재append는 `existing`, 다른 receipt는 원본을 보존한 `conflict`이며 restart 뒤에도 같은 결과를 반환한다. adapter는 operation receipt를 다시 구조 검증해 resource UUID·join code·Auth UUID 같은 필드를 영속하지 못하게 한다.
-- record SHA-256 chain은 손상·불완전 journal 검출용이지 신뢰 경계의 서명이 아니다. 로컬 파일을 수정하고 hash를 다시 계산할 수 있는 사용자를 방어하지 않으며, stale lock 자동 회수도 하지 않고 fail-closed한다.
+- record SHA-256 chain은 손상·불완전 journal 검출용이지 신뢰 경계의 서명이 아니다. 로컬 파일을 수정하고 hash를 다시 계산할 수 있는 사용자를 방어하지 않는다. record publish 전 crash가 남긴 규격화된 temp 파일은 무시하며 persistent lock 파일을 만들지 않는다.
 - 이 adapter는 fixture context와 local revocation만 같은 journal transaction에 보존한다. live Supabase Auth/membership CAS, authoritative revocation source, production key custody, RPC executor/status adapter, 운영 credential을 구현하지 않으며 production adapter로 사용할 수 없다.
 
 ## 4. migration 초안 승인 시 필요한 산출물

@@ -11,10 +11,10 @@
 - `automation/platform-design-provisioning-durable-store.mjs`는 절대경로이며 저장소 밖에 있는 명시적 rehearsal 디렉터리만 받는다.
 - marker가 없는 기존 디렉터리, 저장소 내부 경로, 상대 경로, 예상하지 않은 layout은 쓰기 전에 거부한다.
 - approval state와 synthetic authorization context는 approval ID별 immutable SHA-256 chain journal에 기록한다.
-- claim·finalize는 approval별 exclusive lock과 expected snapshot compare-and-set으로 직렬화한다.
+- claim·finalize는 expected snapshot과 journal tail을 비교한 뒤 다음 sequence record를 hard-link로 게시하는 lock-free compare-and-set을 사용한다.
 - receipt는 execution ID별 immutable 파일로 게시하며 같은 receipt는 `existing`, 다른 receipt는 기존 파일을 유지한 `conflict`로 반환한다.
 - journal SHA-256은 손상 검출용이다. 외부 서명, live membership, revocation source, key custody 또는 production trust를 제공하지 않는다.
-- stale lock은 자동 회수하지 않아 미확정 동시 실행에서 fail-closed한다.
+- persistent lock 파일을 만들지 않으며 record 게시 전 crash가 남긴 규격화된 temp 파일은 무시한다.
 
 ## 장애·재시작 리허설
 
@@ -30,14 +30,16 @@
 10. unclaimed approval의 local revocation을 journal에 기록한 뒤 adapter를 다시 만들어도 새 claim이 거부되고 claim은 `null`로 유지됐다.
 11. active claim 뒤 synthetic membership을 비활성화하자 finalize가 거부되고 terminal state로 닫히지 않았다.
 12. claim과 revocation을 동시에 시작했을 때 하나의 transition만 journal에 추가되고 최종 상태가 `claimed`와 `revokedAt`을 함께 갖지 않았다.
+13. orphan temp 파일이 남은 상태에서도 다음 claim이 새 sequence record 하나를 게시했고 persistent lock 파일은 생성되지 않았다.
+14. synthetic membership을 비활성화한 뒤 재활성화하려는 context 전이는 `conflict`로 거부되어 revision 없는 snapshot의 ABA 재일치를 막았다.
 
 ## 자동화 검증
 
-- A4 plan·bundle 집중: 2개 파일, 46건 통과
-- automation 전체: 26개 파일, 364건 통과
+- A4 plan·bundle 집중: 2개 파일, 47건 통과
+- automation 전체: 26개 파일, 365건 통과
 - 애플리케이션 전체: 64개 파일, 1,060건 통과
 - Astro check: 327개 파일, 오류 0건, 기존 hint 49건
-- A4 bundle: artifact 17개, checksum `602b87647c795b8be6f8618c5bbcf087ddbe6e546e950c9e51a11942c9f68846`
+- A4 bundle: artifact 17개, checksum `eb74e2240c892de5a998bfb95e870a52cfcd48d53e5c689915912921cbd1009b`
 
 ## 남은 production blocker
 

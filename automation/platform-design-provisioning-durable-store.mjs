@@ -13,7 +13,6 @@ import {
 import { link, open, readFile, readdir, unlink } from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { setTimeout as wait } from 'node:timers/promises';
 
 const REPO_ROOT = realpathSync.native(fileURLToPath(new URL('..', import.meta.url)));
 const STORE_MARKER = '.platform-design-provisioning-rehearsal-store.json';
@@ -331,7 +330,6 @@ async function readAuthorizationJournal(root, approvalId) {
     .filter(({ match }) => match)
     .sort((left, right) => left.name.localeCompare(right.name));
   if (names.some((name) => !JOURNAL_FILE_PATTERN.test(name)
-    && name !== 'write.lock'
     && !/^\.tmp-[0-9]+-[0-9a-f-]{36}$/.test(name))) {
     throw new Error('Local design provisioning authorization journal contains an unexpected entry');
   }
@@ -362,35 +360,6 @@ async function readAuthorizationJournal(root, approvalId) {
   return latest;
 }
 
-async function acquireLock(directory) {
-  const path = resolve(directory, 'write.lock');
-  const token = `${process.pid}:${randomUUID()}`;
-  for (let attempt = 0; attempt < 200; attempt += 1) {
-    try {
-      const handle = await open(path, 'wx', 0o600);
-      await handle.writeFile(`${token}\n`, 'utf8');
-      await handle.sync();
-      await handle.close();
-      return async () => {
-        let observed = null;
-        try {
-          observed = (await readFile(path, 'utf8')).trim();
-        } catch {
-          throw new Error('Local design provisioning authorization lock was lost');
-        }
-        if (observed !== token) {
-          throw new Error('Local design provisioning authorization lock ownership changed');
-        }
-        await unlink(path);
-      };
-    } catch (error) {
-      if (!error || typeof error !== 'object' || error.code !== 'EEXIST') throw error;
-      await wait(5);
-    }
-  }
-  throw new Error('Local design provisioning authorization store is locked');
-}
-
 async function compareAndAppendAuthorization(root, expectedSnapshot, operation, transition) {
   if (!exactKeys(expectedSnapshot, ['state', 'context']) || !isRecord(expectedSnapshot.state)) {
     throw new Error(`Local design provisioning authorization ${operation} is invalid`);
@@ -401,48 +370,48 @@ async function compareAndAppendAuthorization(root, expectedSnapshot, operation, 
   const directory = approvalDirectory(root, approvalId);
   mkdirSync(directory, { recursive: true, mode: 0o700 });
   approvalDirectory(root, approvalId);
-  const release = await acquireLock(directory);
-  try {
-    const current = await readAuthorizationJournal(root, approvalId);
-    const snapshot = {
-      state: structuredClone(current.state),
-      context: structuredClone(current.context),
-    };
-    if (canonicalJson(snapshot) !== canonicalJson(expectedSnapshot)) {
-      return { status: 'conflict', ...snapshot };
-    }
-    const nextSnapshot = transition(structuredClone(snapshot));
-    if (nextSnapshot === null) return { status: 'conflict', ...snapshot };
-    if (!exactKeys(nextSnapshot, ['state', 'context'])) {
-      throw new Error(`Local design provisioning authorization ${operation} is invalid`);
-    }
-    validateState(nextSnapshot.state, approvalId);
-    validateContext(nextSnapshot.context);
-    if (canonicalJson(nextSnapshot) === canonicalJson(snapshot)) {
-      return { status: 'conflict', ...snapshot };
-    }
-    const nextRecord = authorizationRecord({
-      sequence: current.sequence + 1,
-      previousRecordSha256: current.recordSha256,
-      state: nextSnapshot.state,
-      context: nextSnapshot.context,
-    });
-    const published = await publishImmutableJson(
-      directory,
-      `${String(nextRecord.sequence).padStart(12, '0')}.json`,
-      nextRecord,
-    );
-    if (!published) {
-      throw new Error('Local design provisioning authorization journal append conflicted');
-    }
-    return {
-      status: 'updated',
-      state: structuredClone(nextSnapshot.state),
-      context: structuredClone(nextSnapshot.context),
-    };
-  } finally {
-    await release();
+  const current = await readAuthorizationJournal(root, approvalId);
+  const snapshot = {
+    state: structuredClone(current.state),
+    context: structuredClone(current.context),
+  };
+  if (canonicalJson(snapshot) !== canonicalJson(expectedSnapshot)) {
+    return { status: 'conflict', ...snapshot };
   }
+  const nextSnapshot = transition(structuredClone(snapshot));
+  if (nextSnapshot === null) return { status: 'conflict', ...snapshot };
+  if (!exactKeys(nextSnapshot, ['state', 'context'])) {
+    throw new Error(`Local design provisioning authorization ${operation} is invalid`);
+  }
+  validateState(nextSnapshot.state, approvalId);
+  validateContext(nextSnapshot.context);
+  if (canonicalJson(nextSnapshot) === canonicalJson(snapshot)) {
+    return { status: 'conflict', ...snapshot };
+  }
+  const nextRecord = authorizationRecord({
+    sequence: current.sequence + 1,
+    previousRecordSha256: current.recordSha256,
+    state: nextSnapshot.state,
+    context: nextSnapshot.context,
+  });
+  const published = await publishImmutableJson(
+    directory,
+    `${String(nextRecord.sequence).padStart(12, '0')}.json`,
+    nextRecord,
+  );
+  if (!published) {
+    const latest = await readAuthorizationJournal(root, approvalId);
+    return {
+      status: 'conflict',
+      state: structuredClone(latest.state),
+      context: structuredClone(latest.context),
+    };
+  }
+  return {
+    status: 'updated',
+    state: structuredClone(nextSnapshot.state),
+    context: structuredClone(nextSnapshot.context),
+  };
 }
 
 async function mutateAuthorization(root, expectedSnapshot, nextClaim, operation) {
@@ -591,7 +560,17 @@ export function replaceLocalDesignProvisioningAuthorizationContext({
     root,
     expectedSnapshot,
     'context transition',
-    (snapshot) => ({ state: snapshot.state, context }),
+    (snapshot) => {
+      const current = snapshot.context;
+      const sameIdentity = ['userId', 'role', 'organizationId', 'targetHost']
+        .every((key) => current[key] === context[key]);
+      const reactivates = (!current.membershipActive && context.membershipActive)
+        || (!current.organizationActive && context.organizationActive);
+      const deactivates = (current.membershipActive && !context.membershipActive)
+        || (current.organizationActive && !context.organizationActive);
+      if (!sameIdentity || reactivates || !deactivates) return null;
+      return { state: snapshot.state, context };
+    },
   );
 }
 
