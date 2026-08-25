@@ -17,6 +17,7 @@ export const A4_MIGRATION_ARTIFACTS = Object.freeze([
   'supabase/verify/design_provisioning_preflight_mapping_fixture.sql',
   'supabase/verify/design_provisioning_post_apply.sql',
   'supabase/verify/design_provisioning_test.sql',
+  'supabase/verify/design_provisioning_rollback_cleanup_fixture.sql',
   'supabase/rollbacks/platform_p3_design_provisioning_BEFORE.sql',
 ]);
 

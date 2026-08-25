@@ -230,6 +230,7 @@ jobs:
           docker cp supabase/verify/design_provisioning_preflight_mapping_fixture.sql "${container}:/tmp/design_provisioning_preflight_mapping_fixture.sql"
           docker cp supabase/verify/design_provisioning_post_apply.sql "${container}:/tmp/design_provisioning_post_apply.sql"
           docker cp supabase/verify/design_provisioning_test.sql "${container}:/tmp/design_provisioning_test.sql"
+          docker cp supabase/verify/design_provisioning_rollback_cleanup_fixture.sql "${container}:/tmp/design_provisioning_rollback_cleanup_fixture.sql"
           docker cp supabase/rollbacks/platform_p3_design_provisioning_BEFORE.sql "${container}:/tmp/platform_p3_design_provisioning_BEFORE.sql"
 
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
@@ -281,6 +282,17 @@ jobs:
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
             "revoke execute on function climate_vote.design_provision(jsonb,bytea) from authenticated;"
 
+          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/platform_p3_design_provisioning_BEFORE.sql \
+            >"$RUNNER_TEMP/a4-populated-rollback.log" 2>&1; then
+            echo "Populated A4 rollback unexpectedly succeeded" >&2
+            exit 1
+          fi
+          grep -q "design_provisioning_rollback_requires_data_plan" "$RUNNER_TEMP/a4-populated-rollback.log"
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/design_provisioning_post_apply.sql >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -v a4_throwaway_fixture=on -f /tmp/design_provisioning_rollback_cleanup_fixture.sql >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/platform_p3_design_provisioning_BEFORE.sql >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \

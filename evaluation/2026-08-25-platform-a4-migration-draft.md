@@ -20,6 +20,7 @@
 - `supabase/verify/design_provisioning_preflight_mapping_fixture.sql`
 - `supabase/verify/design_provisioning_post_apply.sql`
 - `supabase/verify/design_provisioning_test.sql`
+- `supabase/verify/design_provisioning_rollback_cleanup_fixture.sql`
 - `automation/platform-a4-migration-bundle.mjs`
 - `evaluation/platform-a4-migration-bundle.json`
 
@@ -35,16 +36,18 @@
 8. join code 충돌 20회 소진 시 앞선 assembly/session까지 rollback되는 것을 검증했다.
 9. 모든 INSERT 뒤 summary 불일치가 발견돼도 plan 전체가 rollback되는 것을 검증했다.
 10. `authenticated`에 RPC EXECUTE를 임시 부여한 격리 음성 테스트를 post-apply verifier가 거부했다.
-11. rollback 뒤 RPC·ledger·team ordinal이 제거된 것을 확인했다.
+11. ledger·non-null ordinal이 있는 populated rollback은 객체 제거 전에 거부되고 post-apply verifier가 계속 통과하는지 확인했다.
+12. exact-scope throwaway cleanup만 synthetic A4 행을 제거하는 것을 확인했다.
+13. cleanup 뒤 최종 rollback이 성공해 RPC·ledger·team ordinal이 제거되는 것을 확인했다.
 
 결과: `A4_LOCAL_POSTGRES_REHEARSAL=passed`
 
 ## 자동화 회귀
 
-- A4 bundle·기존 design plan 집중 테스트: 16건 통과
-- Windows automation 전체: 26개 파일, 333건 통과
-- approval bundle verifier: artifact 10개, production apply 미승인·DB mutation 미실행 상태로 통과
-- bundle checksum: `4752b045b27f0bb1026960c3c62bd3080c5d2030aa5b5da2228de43dd0e71109`
+- A4 bundle·기존 design plan 집중 테스트: 17건 통과
+- Windows automation 전체: 26개 파일, 334건 통과
+- approval bundle verifier: artifact 11개, production apply 미승인·DB mutation 미실행 상태로 통과
+- bundle checksum: `fea1bb8ff50d7e64f716c3c0e2fe4e0a8325b58a4abb0090121c2e6a4332ebdb`
 
 ## 보안·데이터 무결성 결론
 

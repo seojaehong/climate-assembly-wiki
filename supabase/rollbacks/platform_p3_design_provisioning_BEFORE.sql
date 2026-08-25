@@ -2,6 +2,28 @@
 
 begin;
 
+do $rollback_guard$
+declare
+  v_populated_ledger_count bigint := 0;
+  v_populated_ordinal_count bigint := 0;
+begin
+  if to_regclass('climate_vote.design_provisioning_operation') is not null then
+    select count(*) into v_populated_ledger_count
+    from climate_vote.design_provisioning_operation;
+  end if;
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'climate_vote' and table_name = 'team' and column_name = 'ordinal'
+  ) then
+    execute 'select count(*) from climate_vote.team where ordinal is not null'
+    into v_populated_ordinal_count;
+  end if;
+  if v_populated_ledger_count > 0 or v_populated_ordinal_count > 0 then
+    raise exception using message = 'design_provisioning_rollback_requires_data_plan';
+  end if;
+end
+$rollback_guard$;
+
 revoke all on function climate_vote.design_provision(jsonb, bytea) from public, anon, authenticated, service_role;
 revoke all on function climate_vote.platform_design_join_code() from public, anon, authenticated, service_role;
 revoke all on function climate_vote.platform_sha256_hex(text) from public, anon, authenticated, service_role;

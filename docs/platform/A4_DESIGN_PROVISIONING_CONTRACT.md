@@ -72,6 +72,12 @@
 - 같은 operation ID의 응답 유실 재요청은 ledger가 가리키는 기존 team의 동일 code를 현재 승인된 기관 staff에게만 다시 반환한다.
 - code는 audit log·ledger·일반 오류·CI artifact에 기록하지 않는다. UI에서도 필요 시에만 제공하고 브라우저 영구저장소에 보존하지 않는다.
 
+### 3-6. rollback 데이터 보존
+
+- ledger 행이나 non-null `team.ordinal`이 하나라도 있으면 기본 rollback은 어떤 객체도 제거하기 전에 전체 transaction을 거부한다.
+- 실제 프로비저닝 뒤의 rollback은 ledger 감사기록과 생성 resource·team ordinal mapping을 보존하거나 export하는 별도 데이터 계획과 사용자 승인이 필요하다.
+- CI cleanup fixture는 `verify` 데이터베이스와 명시적 throwaway flag에서만 정해진 synthetic ID·slug를 제거한다. production rollback 절차가 아니다.
+
 ## 4. migration 초안 승인 시 필요한 산출물
 
 다음 묶음은 하나의 리뷰 단위로 작성하고, production 적용은 별도 승인으로 남긴다.

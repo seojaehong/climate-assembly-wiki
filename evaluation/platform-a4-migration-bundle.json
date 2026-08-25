@@ -38,8 +38,8 @@
     },
     {
       "path": "docs/platform/A4_DESIGN_PROVISIONING_CONTRACT.md",
-      "sha256": "1d306f8196e7af4de76a08fca690ef4e4ee16104a7a2d577031b64597a8b3b4c",
-      "bytes": 8542
+      "sha256": "5c4bd23034d585cb52333db69e922b2729ffbc6ea3bf002ee2c0c4bdcd0b4108",
+      "bytes": 9114
     },
     {
       "path": "supabase/verify/design_provisioning_preflight.sql",
@@ -72,9 +72,14 @@
       "bytes": 9606
     },
     {
+      "path": "supabase/verify/design_provisioning_rollback_cleanup_fixture.sql",
+      "sha256": "3787c5fcf77a696c34f96be6656376c6782ba91ae7d148f4013cd74b15cb80de",
+      "bytes": 2223
+    },
+    {
       "path": "supabase/rollbacks/platform_p3_design_provisioning_BEFORE.sql",
-      "sha256": "3e23a8bdabe517274151848121a1de9cb5e31eafec9d0f66b4621bdc036cf323",
-      "bytes": 1398
+      "sha256": "70afddf948dcb1e4b0d4d67e2d7406c401db2b0ce9831f9d8d372b17c92bf000",
+      "bytes": 2183
     }
   ],
   "boundaries": {
@@ -85,5 +90,5 @@
     "activatesStaffGrants": false,
     "connectsProductionExecutor": false
   },
-  "checksum": "4752b045b27f0bb1026960c3c62bd3080c5d2030aa5b5da2228de43dd0e71109"
+  "checksum": "fea1bb8ff50d7e64f716c3c0e2fe4e0a8325b58a4abb0090121c2e6a4332ebdb"
 }

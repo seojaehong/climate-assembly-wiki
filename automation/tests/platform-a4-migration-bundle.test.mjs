@@ -44,7 +44,7 @@ test('binds the approved A4 draft while keeping production mutation blocked', ()
   ]);
   expect(verifyA4MigrationBundle(bundle)).toMatchObject({
     status: 'verified',
-    artifactCount: 10,
+    artifactCount: 11,
     productionApplyApproved: false,
     databaseMutationExecuted: false,
   });
@@ -64,7 +64,7 @@ test('writes and verifies an A4 bundle without implicit overwrite', () => {
   const outputPath = join(directory, 'bundle.json');
   try {
     expect(runA4MigrationBundleCli(['--output', outputPath])).toMatchObject({
-      status: 'written', artifactCount: 10, databaseMutationExecuted: false,
+      status: 'written', artifactCount: 11, databaseMutationExecuted: false,
     });
     expect(() => runA4MigrationBundleCli(['--output', outputPath])).toThrow('use --force');
     expect(runA4MigrationBundleCli(['--verify', outputPath])).toMatchObject({ status: 'verified' });
@@ -114,8 +114,12 @@ test('legacy lifecycle fixtures are throwaway-only and CI proves both readiness 
     join(repoRoot, 'supabase', 'verify', 'design_provisioning_preflight_mapping_fixture.sql'),
     'utf8',
   );
+  const cleanupFixture = readFileSync(
+    join(repoRoot, 'supabase', 'verify', 'design_provisioning_rollback_cleanup_fixture.sql'),
+    'utf8',
+  );
   const workflow = readFileSync(join(repoRoot, '.github', 'workflows', 'test.yml'), 'utf8');
-  for (const fixture of [legacyFixture, mappingFixture]) {
+  for (const fixture of [legacyFixture, mappingFixture, cleanupFixture]) {
     expect(fixture).toContain('a4_throwaway_fixture');
     expect(fixture).toContain('current_database() <> \'verify\'');
     expect(fixture).toContain('select 1 / 0 as fixture_guard_failure;');
@@ -124,4 +128,21 @@ test('legacy lifecycle fixtures are throwaway-only and CI proves both readiness 
   expect(workflow).toContain('\"status\": \"migration_ready\"');
   expect(workflow).toContain('\"status\": \"activation_ready\"');
   expect(workflow).toContain('\"teamOrdinalNullCount\": 1');
+});
+
+test('rollback refuses populated A4 state before any object is removed', () => {
+  const rollback = readFileSync(
+    join(repoRoot, 'supabase', 'rollbacks', 'platform_p3_design_provisioning_BEFORE.sql'),
+    'utf8',
+  );
+  const workflow = readFileSync(join(repoRoot, '.github', 'workflows', 'test.yml'), 'utf8');
+  expect(rollback).toContain('v_populated_ledger_count');
+  expect(rollback).toContain('v_populated_ordinal_count');
+  expect(rollback).toContain('design_provisioning_rollback_requires_data_plan');
+  expect(rollback.indexOf('design_provisioning_rollback_requires_data_plan')).toBeLessThan(
+    rollback.indexOf('revoke all on function climate_vote.design_provision'),
+  );
+  expect(workflow).toContain('Populated A4 rollback unexpectedly succeeded');
+  expect(workflow).toContain('design_provisioning_rollback_requires_data_plan');
+  expect(workflow).toContain('design_provisioning_rollback_cleanup_fixture.sql');
 });
