@@ -1,4 +1,9 @@
-import { createHash, randomUUID } from 'node:crypto';
+import {
+  createHash,
+  createHmac,
+  randomUUID,
+  timingSafeEqual,
+} from 'node:crypto';
 import {
   closeSync,
   existsSync,
@@ -653,7 +658,39 @@ function validateReceipt(receipt) {
   return structuredClone(receipt);
 }
 
-export async function auditLocalDesignProvisioningRehearsalStore({ directory } = {}) {
+function receiptAuditKeyConfiguration(trustedReceiptKey, expectedReceiptKeyId) {
+  const disabled = trustedReceiptKey === undefined && expectedReceiptKeyId === undefined;
+  if (disabled) return { enabled: false, trustedReceiptKey: null, expectedReceiptKeyId: null };
+  if (typeof trustedReceiptKey !== 'string'
+    || trustedReceiptKey.length < 32
+    || !KEY_ID_PATTERN.test(expectedReceiptKeyId ?? '')) {
+    throw new Error('Local design provisioning receipt audit key configuration is invalid');
+  }
+  return { enabled: true, trustedReceiptKey, expectedReceiptKeyId };
+}
+
+function verifyReceiptSignature(receipt, configuration) {
+  if (!configuration.enabled) return;
+  const { digest, ...unsigned } = receipt;
+  const expected = createHmac('sha256', configuration.trustedReceiptKey)
+    .update(canonicalJson(unsigned))
+    .digest('hex');
+  const matches = receipt.keyId === configuration.expectedReceiptKeyId
+    && timingSafeEqual(Buffer.from(digest, 'hex'), Buffer.from(expected, 'hex'));
+  if (!matches) {
+    throw new Error('Local design provisioning execution receipt signature verification failed');
+  }
+}
+
+export async function auditLocalDesignProvisioningRehearsalStore({
+  directory,
+  trustedReceiptKey,
+  expectedReceiptKeyId,
+} = {}) {
+  const receiptAuditKey = receiptAuditKeyConfiguration(
+    trustedReceiptKey,
+    expectedReceiptKeyId,
+  );
   const root = resolveStoreRoot(directory, { markerRequired: true });
   const expectedRootEntries = [
     STORE_MARKER,
@@ -741,6 +778,7 @@ export async function auditLocalDesignProvisioningRehearsalStore({ directory } =
     if (receipt.executionId !== match[1]) {
       throw new Error('Local design provisioning execution receipt filename is invalid');
     }
+    verifyReceiptSignature(receipt, receiptAuditKey);
     const authorizationState = authorizationStates.get(receipt.approvalId);
     const claim = authorizationState?.claim;
     if (!claim
@@ -770,7 +808,7 @@ export async function auditLocalDesignProvisioningRehearsalStore({ directory } =
     orphanTemporaryFileCount: authorizationSummary.orphanTemporaryFileCount,
     containsSensitiveValues: false,
     catalogCompletenessVerified: false,
-    receiptSignatureVerified: false,
+    receiptSignatureVerified: receiptAuditKey.enabled && receiptSummary.receiptCount > 0,
     ...LOCAL_DESIGN_PROVISIONING_STORE_BOUNDARIES,
   };
 }

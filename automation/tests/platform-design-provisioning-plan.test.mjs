@@ -415,6 +415,17 @@ test('audits every durable authorization journal and receipt without exposing id
     expect(serialized).not.toContain(secondApprovalId);
     expect(serialized).not.toContain(approval.executionId);
     expect(serialized).not.toContain(approval.approvedBy);
+    expect(await auditLocalDesignProvisioningRehearsalStore({
+      directory,
+      trustedReceiptKey: approvalKey,
+      expectedReceiptKeyId: approvalKeyId,
+    })).toMatchObject({
+      status: 'verified',
+      receiptCount: 1,
+      receiptSignatureVerified: true,
+      containsSensitiveValues: false,
+      productionCredentialAccessed: false,
+    });
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -452,6 +463,15 @@ test('store-wide audit rejects unexpected root and receipt entries', async () =>
       directory,
       authorization: { approvalId: approvalMetadata().approvalId, context: liveContext() },
     });
+    expect(await auditLocalDesignProvisioningRehearsalStore({
+      directory,
+      trustedReceiptKey: approvalKey,
+      expectedReceiptKeyId: approvalKeyId,
+    })).toMatchObject({ receiptCount: 0, receiptSignatureVerified: false });
+    await expect(auditLocalDesignProvisioningRehearsalStore({
+      directory,
+      trustedReceiptKey: approvalKey,
+    })).rejects.toThrow('receipt audit key configuration is invalid');
     writeFileSync(join(directory, 'unexpected.json'), '{}\n', 'utf8');
     await expect(auditLocalDesignProvisioningRehearsalStore({ directory }))
       .rejects.toThrow('layout contains an unexpected entry');
@@ -501,6 +521,50 @@ test('store-wide audit rejects a receipt that is not linked to its current autho
 
     await expect(auditLocalDesignProvisioningRehearsalStore({ directory }))
       .rejects.toThrow('receipt authorization linkage is invalid');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('keyed store-wide audit rejects a receipt with a forged HMAC digest', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const { source, bytes, plan, approval } = executionApproval();
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: approval.approvalId, context: liveContext() },
+    });
+    const authorizationAdapter = createLocalDesignProvisioningAuthorizationAdapter({ directory });
+    const snapshot = await authorizationAdapter.readSnapshot(approval.approvalId);
+    await authorizationAdapter.claim(snapshot, claimedApprovalState(approval, plan).claim);
+    const receipt = sealDesignProvisioningExecutionReceipt({
+      plan,
+      blueprint: source,
+      sourceBytes: bytes,
+      approval,
+      approvalState: claimedApprovalState(approval, plan),
+      executionResult: completedExecutionResult(executionPlanCandidate(plan)),
+      startedAt: '2026-08-25T13:05:00.000Z',
+      completedAt: '2026-08-25T13:06:00.000Z',
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+    });
+    await createLocalDesignProvisioningReceiptAdapter({ directory }).append(receipt);
+    const receiptPath = join(directory, 'receipts', `${approval.executionId}.json`);
+    writeFileSync(receiptPath, `${JSON.stringify({
+      ...receipt,
+      digest: 'f'.repeat(64),
+    })}\n`, 'utf8');
+
+    expect(await auditLocalDesignProvisioningRehearsalStore({ directory })).toMatchObject({
+      status: 'verified',
+      receiptSignatureVerified: false,
+    });
+    await expect(auditLocalDesignProvisioningRehearsalStore({
+      directory,
+      trustedReceiptKey: approvalKey,
+      expectedReceiptKeyId: approvalKeyId,
+    })).rejects.toThrow('receipt signature verification failed');
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -816,7 +880,7 @@ test('publishes exactly one authorization claim across independent Node processe
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
-});
+}, 15_000);
 
 test('keeps the plan scripts and shared design contract in Linux CI', () => {
   const packageJson = JSON.parse(readFileSync(join(repoRoot, 'automation', 'package.json'), 'utf8'));
