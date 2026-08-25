@@ -8,6 +8,8 @@ import {
   DESIGN_BLUEPRINT_CONTRACT,
   DESIGN_PROVISIONING_BLOCKERS,
   buildDesignProvisioningPlan,
+  claimDesignProvisioningExecutionApproval,
+  createInMemoryDesignProvisioningAuthorizationAdapter,
   designProvisioningPlanChecksum,
   runDesignProvisioningCli,
   sealDesignProvisioningExecutionApproval,
@@ -84,6 +86,18 @@ function approvalState(overrides = {}) {
     approvalId: '33333333-3333-4333-8333-333333333333',
     revokedAt: null,
     claim: null,
+    ...overrides,
+  };
+}
+
+function liveContext(overrides = {}) {
+  return {
+    userId: 'auth-user:55555555-5555-4555-8555-555555555555',
+    role: 'org_admin',
+    organizationId: '22222222-2222-4222-8222-222222222222',
+    targetHost: 'production-primary',
+    membershipActive: true,
+    organizationActive: true,
     ...overrides,
   };
 }
@@ -251,6 +265,8 @@ test('allows only the same in-flight execution claim to resume', () => {
     executionId: approval.executionId,
     organizationId: approval.organizationId,
     targetHost: approval.targetHost,
+    claimedBy: approval.approvedBy,
+    claimedRole: approval.approvedRole,
     planChecksum: plan.checksum,
     status: 'claimed',
     claimedAt: '2026-08-25T13:01:00.000Z',
@@ -283,6 +299,16 @@ test('allows only the same in-flight execution claim to resume', () => {
     now: new Date('2026-08-25T13:05:00.000Z'),
     approvalState: approvalState({ claim: { ...claim, executionId: '77777777-7777-4777-8777-777777777777' } }),
   })).toThrow('has already been claimed');
+  expect(() => verifyDesignProvisioningExecutionApproval(approval, plan, source, bytes, {
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    expectedOrganizationId: approval.organizationId,
+    expectedTargetHost: approval.targetHost,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+    approvalState: approvalState({
+      claim: { ...claim, claimedBy: 'auth-user:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' },
+    }),
+  })).toThrow('has already been claimed');
 });
 
 test('rejects revoked, completed, expired, wrong-role, and tampered A4 approvals', () => {
@@ -312,6 +338,8 @@ test('rejects revoked, completed, expired, wrong-role, and tampered A4 approvals
       executionId: approval.executionId,
       organizationId: approval.organizationId,
       targetHost: approval.targetHost,
+      claimedBy: approval.approvedBy,
+      claimedRole: approval.approvedRole,
       planChecksum: plan.checksum,
       status: 'completed',
       claimedAt: '2026-08-25T13:01:00.000Z',
@@ -351,6 +379,210 @@ test('rejects revoked, completed, expired, wrong-role, and tampered A4 approvals
     ...options(),
     approvalState: { approvalId: approval.approvalId, revokedAt: null },
   })).toThrow('approval state is invalid');
+});
+
+test('atomically claims an A4 approval after exact live membership verification', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const authorizationAdapter = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
+  const input = {
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+  };
+
+  const concurrentResults = await Promise.all([
+    claimDesignProvisioningExecutionApproval(input),
+    claimDesignProvisioningExecutionApproval(input),
+  ]);
+  expect(concurrentResults.map(({ claimDisposition }) => claimDisposition).sort()).toEqual([
+    'new', 'reconciled',
+  ]);
+  expect(concurrentResults.find(({ claimDisposition }) => claimDisposition === 'new')).toEqual({
+    status: 'approval_claimed',
+    approvalId: approval.approvalId,
+    executionId: approval.executionId,
+    organizationId: approval.organizationId,
+    targetHost: approval.targetHost,
+    claimedBy: approval.approvedBy,
+    claimedRole: approval.approvedRole,
+    claimDisposition: 'new',
+    approvalGateVerified: true,
+    readyForExecution: false,
+    rpcMutationExecuted: false,
+    databaseMutationExecuted: false,
+  });
+  expect((await authorizationAdapter.readSnapshot(approval.approvalId)).state.claim).toMatchObject({
+    approvalId: approval.approvalId,
+    executionId: approval.executionId,
+    claimedBy: approval.approvedBy,
+    claimedRole: approval.approvedRole,
+    status: 'claimed',
+  });
+  expect((await claimDesignProvisioningExecutionApproval(input)).claimDisposition).toBe('existing');
+});
+
+test('reconciles a same-claim CAS response loss and rejects a competing claim or revocation', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const base = {
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+  };
+  const emptyState = approvalState();
+  const responseLossAdapter = {
+    async readSnapshot() {
+      return { state: structuredClone(emptyState), context: liveContext() };
+    },
+    async claim(_expectedSnapshot, claim) {
+      return {
+        status: 'conflict',
+        state: approvalState({ claim: structuredClone(claim) }),
+        context: liveContext(),
+      };
+    },
+  };
+  expect((await claimDesignProvisioningExecutionApproval({
+    ...base,
+    authorizationAdapter: responseLossAdapter,
+  })).claimDisposition).toBe('reconciled');
+
+  const competingAdapter = {
+    async readSnapshot() {
+      return { state: structuredClone(emptyState), context: liveContext() };
+    },
+    async claim(_expectedSnapshot, claim) {
+      return {
+        status: 'conflict',
+        state: approvalState({
+          claim: { ...claim, executionId: '99999999-9999-4999-8999-999999999999' },
+        }),
+        context: liveContext(),
+      };
+    },
+  };
+  await expect(claimDesignProvisioningExecutionApproval({
+    ...base,
+    authorizationAdapter: competingAdapter,
+  })).rejects.toThrow('has already been claimed');
+
+  const revokedAdapter = {
+    async readSnapshot() {
+      return { state: structuredClone(emptyState), context: liveContext() };
+    },
+    async claim() {
+      return {
+        status: 'conflict',
+        state: approvalState({ revokedAt: '2026-08-25T13:04:00.000Z' }),
+        context: liveContext(),
+      };
+    },
+  };
+  await expect(claimDesignProvisioningExecutionApproval({
+    ...base,
+    authorizationAdapter: revokedAdapter,
+  })).rejects.toThrow('has been revoked');
+
+  const contextChangedAdapter = {
+    async readSnapshot() {
+      return { state: structuredClone(emptyState), context: liveContext() };
+    },
+    async claim(_expectedSnapshot, claim) {
+      return {
+        status: 'claimed',
+        state: approvalState({ claim: structuredClone(claim) }),
+        context: liveContext({ userId: 'auth-user:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }),
+      };
+    },
+  };
+  await expect(claimDesignProvisioningExecutionApproval({
+    ...base,
+    authorizationAdapter: contextChangedAdapter,
+  })).rejects.toThrow('live authorization context is invalid');
+});
+
+test('rejects inactive, cross-user, cross-role, and malformed live authorization context before claim', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  let claimCallCount = 0;
+  const adapterFor = (context) => ({
+    async readSnapshot() { return { state: approvalState(), context }; },
+    async claim() {
+      claimCallCount += 1;
+      throw new Error('claim must not run');
+    },
+  });
+  const base = {
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+  };
+  const invalidContexts = [
+    liveContext({ membershipActive: false }),
+    liveContext({ organizationActive: false }),
+    liveContext({ userId: 'auth-user:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }),
+    liveContext({ role: 'hq' }),
+    liveContext({ organizationId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' }),
+    liveContext({ targetHost: 'production-secondary' }),
+    { ...liveContext(), unknown: true },
+  ];
+  for (const context of invalidContexts) {
+    await expect(claimDesignProvisioningExecutionApproval({
+      ...base,
+      authorizationAdapter: adapterFor(context),
+    })).rejects.toThrow(
+      'live authorization context is invalid',
+    );
+  }
+  expect(claimCallCount).toBe(0);
+});
+
+test('fails closed on malformed authorization adapter snapshots and claim results', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const base = {
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+  };
+  await expect(claimDesignProvisioningExecutionApproval({
+    ...base,
+    authorizationAdapter: {},
+  })).rejects.toThrow('authorization adapter is invalid');
+  await expect(claimDesignProvisioningExecutionApproval({
+    ...base,
+    authorizationAdapter: {
+      async readSnapshot() {
+        return { state: approvalState(), context: liveContext(), unknown: true };
+      },
+      async claim() { throw new Error('must not run'); },
+    },
+  })).rejects.toThrow('authorization snapshot is invalid');
+  await expect(claimDesignProvisioningExecutionApproval({
+    ...base,
+    authorizationAdapter: {
+      async readSnapshot() {
+        return { state: approvalState(), context: liveContext() };
+      },
+      async claim() {
+        return { status: 'claimed', state: approvalState(), context: liveContext() };
+      },
+    },
+  })).rejects.toThrow('authorization claim result is invalid');
 });
 
 test('rejects checksum tampering and a self-resealed operation change', () => {

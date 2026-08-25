@@ -449,12 +449,14 @@ function validateExecutionApprovalState(approvalState, { approvedAt, expiresAt, 
     if (!isRecord(claim)
       || !exactKeys(claim, [
         'approvalId', 'executionId', 'organizationId', 'targetHost',
-        'planChecksum', 'status', 'claimedAt',
+        'claimedBy', 'claimedRole', 'planChecksum', 'status', 'claimedAt',
       ])
       || !UUID_PATTERN.test(claim.approvalId ?? '')
       || !UUID_PATTERN.test(claim.executionId ?? '')
       || !UUID_PATTERN.test(claim.organizationId ?? '')
       || !KEY_ID_PATTERN.test(claim.targetHost ?? '')
+      || !AUTH_REVIEWER_PATTERN.test(claim.claimedBy ?? '')
+      || !DESIGN_APPROVAL_ROLES.includes(claim.claimedRole)
       || !SHA256_PATTERN.test(claim.planChecksum ?? '')
       || !['claimed', 'completed', 'failed'].includes(claim.status)) {
       throw new Error('Design provisioning execution approval state is invalid');
@@ -585,6 +587,8 @@ export function verifyDesignProvisioningExecutionApproval(
     if (existingClaim.executionId !== approval.executionId
       || existingClaim.organizationId !== approval.organizationId
       || existingClaim.targetHost !== approval.targetHost
+      || existingClaim.claimedBy !== approval.approvedBy
+      || existingClaim.claimedRole !== approval.approvedRole
       || existingClaim.planChecksum !== approval.planChecksum) {
       throw new Error('Design provisioning execution approval has already been claimed');
     }
@@ -601,6 +605,215 @@ export function verifyDesignProvisioningExecutionApproval(
     claimAction,
     databaseMutationExecuted: false,
   };
+}
+
+function validateLiveAuthorizationContextShape(context) {
+  if (!isRecord(context)
+    || !exactKeys(context, [
+      'userId', 'role', 'organizationId', 'targetHost',
+      'membershipActive', 'organizationActive',
+    ])
+    || !AUTH_REVIEWER_PATTERN.test(context.userId ?? '')
+    || !DESIGN_APPROVAL_ROLES.includes(context.role)
+    || !UUID_PATTERN.test(context.organizationId ?? '')
+    || !KEY_ID_PATTERN.test(context.targetHost ?? '')
+    || typeof context.membershipActive !== 'boolean'
+    || typeof context.organizationActive !== 'boolean') {
+    throw new Error('Design provisioning live authorization context is invalid');
+  }
+  return context;
+}
+
+function validateLiveAuthorizationContext(context, approval) {
+  validateLiveAuthorizationContextShape(context);
+  if (context.membershipActive !== true
+    || context.organizationActive !== true
+    || context.userId !== approval.approvedBy
+    || context.role !== approval.approvedRole
+    || context.organizationId !== approval.organizationId
+    || context.targetHost !== approval.targetHost) {
+    throw new Error('Design provisioning live authorization context is invalid');
+  }
+  return context;
+}
+
+function validateAuthorizationAdapter(adapter) {
+  if (!isRecord(adapter)
+    || !exactKeys(adapter, ['readSnapshot', 'claim'])
+    || typeof adapter.readSnapshot !== 'function'
+    || typeof adapter.claim !== 'function') {
+    throw new Error('Design provisioning authorization adapter is invalid');
+  }
+  return adapter;
+}
+
+function validateAuthorizationSnapshot(snapshot) {
+  if (!isRecord(snapshot) || !exactKeys(snapshot, ['state', 'context'])) {
+    throw new Error('Design provisioning authorization snapshot is invalid');
+  }
+  validateLiveAuthorizationContextShape(snapshot.context);
+  return snapshot;
+}
+
+function validateClaimAdapterResult(result) {
+  if (!isRecord(result)
+    || !exactKeys(result, ['status', 'state', 'context'])
+    || !['claimed', 'conflict'].includes(result.status)) {
+    throw new Error('Design provisioning authorization claim result is invalid');
+  }
+  validateLiveAuthorizationContextShape(result.context);
+  return result;
+}
+
+function assertClaimActor(state, context) {
+  if (!state.claim
+    || state.claim.claimedBy !== context.userId
+    || state.claim.claimedRole !== context.role
+    || state.claim.organizationId !== context.organizationId
+    || state.claim.targetHost !== context.targetHost) {
+    throw new Error('Design provisioning authorization claim actor is invalid');
+  }
+}
+
+function claimedApprovalResult(approval, disposition) {
+  return {
+    status: 'approval_claimed',
+    approvalId: approval.approvalId,
+    executionId: approval.executionId,
+    organizationId: approval.organizationId,
+    targetHost: approval.targetHost,
+    claimedBy: approval.approvedBy,
+    claimedRole: approval.approvedRole,
+    claimDisposition: disposition,
+    approvalGateVerified: true,
+    readyForExecution: false,
+    rpcMutationExecuted: false,
+    databaseMutationExecuted: false,
+  };
+}
+
+export function createInMemoryDesignProvisioningAuthorizationAdapter(context) {
+  validateLiveAuthorizationContextShape(context);
+  const liveContext = structuredClone(context);
+  const states = new Map();
+  const stateFor = (approvalId) => states.get(approvalId) ?? {
+    approvalId,
+    revokedAt: null,
+    claim: null,
+  };
+  return Object.freeze({
+    async readSnapshot(approvalId) {
+      if (!UUID_PATTERN.test(approvalId ?? '')) {
+        throw new Error('In-memory design provisioning authorization lookup is invalid');
+      }
+      return {
+        state: structuredClone(stateFor(approvalId)),
+        context: structuredClone(liveContext),
+      };
+    },
+    async claim(expectedSnapshot, claim) {
+      if (!isRecord(expectedSnapshot)
+        || !exactKeys(expectedSnapshot, ['state', 'context'])
+        || !isRecord(expectedSnapshot.state)
+        || !UUID_PATTERN.test(expectedSnapshot.state.approvalId ?? '')
+        || !isRecord(claim)
+        || claim.approvalId !== expectedSnapshot.state.approvalId) {
+        throw new Error('In-memory design provisioning authorization claim is invalid');
+      }
+      const current = {
+        state: structuredClone(stateFor(claim.approvalId)),
+        context: structuredClone(liveContext),
+      };
+      if (canonicalJson(current) !== canonicalJson(expectedSnapshot)
+        || current.state.revokedAt !== null
+        || current.state.claim !== null) {
+        return { status: 'conflict', ...current };
+      }
+      const nextState = { ...current.state, claim: structuredClone(claim) };
+      states.set(claim.approvalId, nextState);
+      return {
+        status: 'claimed',
+        state: structuredClone(nextState),
+        context: structuredClone(liveContext),
+      };
+    },
+  });
+}
+
+export async function claimDesignProvisioningExecutionApproval({
+  approval,
+  plan,
+  blueprint,
+  sourceBytes,
+  authorizationAdapter,
+  trustedKey,
+  expectedKeyId,
+  now = new Date(),
+}) {
+  const adapter = validateAuthorizationAdapter(authorizationAdapter);
+  if (!isRecord(approval) || !UUID_PATTERN.test(approval.approvalId ?? '')) {
+    throw new Error('Design provisioning execution approval is invalid');
+  }
+  const initialSnapshot = validateAuthorizationSnapshot(
+    await adapter.readSnapshot(approval?.approvalId),
+  );
+  validateLiveAuthorizationContext(initialSnapshot.context, approval);
+  const initialAuthorization = verifyDesignProvisioningExecutionApproval(
+    approval,
+    plan,
+    blueprint,
+    sourceBytes,
+    {
+      trustedKey,
+      expectedKeyId,
+      expectedOrganizationId: initialSnapshot.context.organizationId,
+      expectedTargetHost: initialSnapshot.context.targetHost,
+      now,
+      approvalState: initialSnapshot.state,
+    },
+  );
+  if (initialAuthorization.claimAction === 'resume_existing_claim') {
+    assertClaimActor(initialSnapshot.state, initialSnapshot.context);
+    return claimedApprovalResult(approval, 'existing');
+  }
+  const trustedNow = now instanceof Date ? new Date(now.getTime()) : new Date(now);
+  if (!Number.isFinite(trustedNow.getTime())) {
+    throw new Error('Design provisioning execution approval time is invalid');
+  }
+  const claim = {
+    approvalId: approval.approvalId,
+    executionId: approval.executionId,
+    organizationId: approval.organizationId,
+    targetHost: approval.targetHost,
+    claimedBy: initialSnapshot.context.userId,
+    claimedRole: initialSnapshot.context.role,
+    planChecksum: approval.planChecksum,
+    status: 'claimed',
+    claimedAt: trustedNow.toISOString(),
+  };
+  const claimResult = validateClaimAdapterResult(
+    await adapter.claim(structuredClone(initialSnapshot), claim),
+  );
+  validateLiveAuthorizationContext(claimResult.context, approval);
+  const claimedAuthorization = verifyDesignProvisioningExecutionApproval(
+    approval,
+    plan,
+    blueprint,
+    sourceBytes,
+    {
+      trustedKey,
+      expectedKeyId,
+      expectedOrganizationId: claimResult.context.organizationId,
+      expectedTargetHost: claimResult.context.targetHost,
+      now: trustedNow,
+      approvalState: claimResult.state,
+    },
+  );
+  if (claimedAuthorization.claimAction !== 'resume_existing_claim') {
+    throw new Error('Design provisioning authorization claim result is invalid');
+  }
+  assertClaimActor(claimResult.state, claimResult.context);
+  return claimedApprovalResult(approval, claimResult.status === 'claimed' ? 'new' : 'reconciled');
 }
 
 function readJsonFile(path, label, maximumBytes) {
