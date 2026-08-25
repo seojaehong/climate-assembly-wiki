@@ -535,6 +535,41 @@ test('rejects a response that references an item from another ballot', async () 
   });
 });
 
+test('rejects a ballot item whose required flag is not a database boolean', async () => {
+  const archive = await signedArchiveFixture(platformPayloadFixture({
+    ballot_item: [{
+      id: 'ballot-item-1',
+      ballot_id: 'ballot-1',
+      ordinal: 1,
+      scale: 5,
+      required: 'true',
+    }],
+  }));
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toThrow('snapshot archive ballot item required flag is invalid');
+  });
+});
+
+test('rejects ballot response client ids outside the database length bounds', async () => {
+  for (const clientId of ['short', 'x'.repeat(81)]) {
+    const archive = await signedArchiveFixture(platformPayloadFixture({
+      ballot_response: [{
+        id: 'response-1',
+        ballot_id: 'ballot-1',
+        client_id: clientId,
+        answers: { 'ballot-item-1': 3 },
+      }],
+    }));
+
+    withSnapshotFile(archive, (filePath) => {
+      expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+        .toThrow('snapshot archive ballot response client id is invalid');
+    });
+  }
+});
+
 test('rejects an unsupported ballot scale even when the ballot has no responses', async () => {
   const archive = await signedArchiveFixture(platformPayloadFixture({
     ballot_item: [{

@@ -259,6 +259,9 @@ function validateBallotAnswers(payload) {
   const itemsByBallot = new Map();
   const itemsById = new Map();
   for (const item of payload.ballot_item) {
+    if (typeof item.required !== 'boolean') {
+      throw new Error('snapshot archive ballot item required flag is invalid');
+    }
     if (!VALID_BALLOT_SCALES.has(item.scale)) {
       throw new Error('snapshot archive ballot item scale is invalid');
     }
@@ -269,6 +272,12 @@ function validateBallotAnswers(payload) {
   }
   let checked = 0;
   for (const response of payload.ballot_response) {
+    const clientIdLength = typeof response.client_id === 'string'
+      ? Array.from(response.client_id).length
+      : 0;
+    if (clientIdLength < 8 || clientIdLength > 80) {
+      throw new Error('snapshot archive ballot response client id is invalid');
+    }
     const answers = response.answers;
     if (!answers || typeof answers !== 'object' || Array.isArray(answers)) {
       throw new Error('snapshot archive ballot answers are invalid');
