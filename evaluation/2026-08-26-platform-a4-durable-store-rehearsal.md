@@ -47,11 +47,11 @@
 
 ## 자동화 검증
 
-- A4 plan·bundle 집중: 2개 파일, 60건 통과
-- automation 전체: 27개 파일, 419건 통과
+- A4 plan·bundle 집중: 2개 파일, 61건 통과
+- automation 전체: 27개 파일, 420건 통과
 - 애플리케이션 전체: 64개 파일, 1,060건 통과
 - Astro check: 330개 파일, 오류 0건, 기존 hint 49건
-- A4 bundle: artifact 17개, checksum `14a078d5eb575b02a020ac2dcbdaf348643c10eec0470fcafc91ec39d58fc5c4`
+- A4 bundle: artifact 17개, checksum `b63d967d58633fb29eed62fc60e1ef909240368dcb221027d8fc19b4c329b897`
 
 ## 남은 production blocker
 

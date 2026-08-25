@@ -55,6 +55,7 @@
 23. 정상 생성 뒤 assembly를 `active`, session을 `active`, discussion topic을 `open`으로 각각 바꾼 exact replay가 모두 `design_resource_conflict`로 중단되는지 확인했다. RPC는 서버 생성 상태인 세 resource의 `draft`까지 exact 대조해 이미 활성화·종료된 자원을 새 설계가 채택하지 않는다.
 24. team의 `platform_team_capacity_positive`를 제거하고 shadow table에 같은 이름·정의를 둔 경우와, 정확한 team에 완화된 `capacity >= 0` 정의를 둔 경우를 post-apply verifier가 모두 거부했다. 복구한 정확한 table·check 종류·`capacity > 0` 정의에서는 verifier와 전체 semantic rehearsal이 다시 통과했다.
 25. `team.ordinal`을 PostgreSQL `bigint`로 바꾼 경우와 `session.assembly_id → assembly.id` FK를 제거한 경우를 post-apply verifier가 각각 column/FK 계약 오류로 거부했다. 15개 필수 column의 type·nullable·default와 session/ledger의 3개 참조 정의를 복구한 뒤 verifier와 전체 semantic rehearsal이 다시 통과했다.
+26. mutation RPC가 권한 판정에 사용한 membership·organization 행을 `FOR SHARE`로 transaction 끝까지 잠그는지 두 dblink 연결로 검증했다. plan INSERT를 1초 지연한 동안 membership 역할 변경과 organization `suspended` 전환은 각각 250ms lock timeout으로 밀렸고 두 plan은 정상 적용됐으며 권한 행은 active로 유지됐다.
 
 결과: `A4_LOCAL_POSTGRES_REHEARSAL=passed`
 
@@ -86,22 +87,25 @@ canonical plan 의미 계약 결과: `A4_CANONICAL_PLAN_SEMANTICS_POSTGRES_REHEA
 
 column type·nullable·default·FK 검증 결과: `A4_COLUMN_FOREIGN_KEY_POSTGRES_REHEARSAL=passed`
 
+authorization row-lock 경쟁 결과: `A4_AUTHORIZATION_ROW_LOCK_POSTGRES_REHEARSAL=passed`
+
 ## 자동화 회귀
 
-- A4 bundle·design plan 집중 테스트: 60건 통과
-- Windows automation 전체: 27개 파일, 419건 통과
+- A4 bundle·design plan 집중 테스트: 61건 통과
+- Windows automation 전체: 27개 파일, 420건 통과
 - 애플리케이션 전체: 64개 파일, 1,060건 통과
 - Astro check: 330개 파일, 오류 0건, 기존 hint 49건
 - 저장소 밖 로컬 durable store의 adapter 재시작·lock-free CAS·독립 Node 프로세스 6개 claim 경쟁(1 claimed, 5 conflict, journal record 2개)·orphan temp 복구·append-only replay/conflict·journal 변조·terminal claim/checkpoint/receipt/lifecycle clock 사건시각 역행·junction escape·revocation/claim 경쟁·membership 비활성 finalize와 재활성화 거부·비식별 전체-store/keyed receipt audit·off-store inventory checkpoint 삭제/tail 변경·기본 10분 freshness 테스트 통과
 - approval bundle verifier: builder·durable store·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 17개, production apply 미승인·DB mutation 미실행 상태로 통과
 - 추적 manifest를 current source에서 재구성해 stale source hash를 거부하는 테스트 통과
-- bundle checksum: `14a078d5eb575b02a020ac2dcbdaf348643c10eec0470fcafc91ec39d58fc5c4`
+- bundle checksum: `b63d967d58633fb29eed62fc60e1ef909240368dcb221027d8fc19b4c329b897`
 
 ## 보안·데이터 무결성 결론
 
 - ledger에는 blueprint 원문, join code, 이메일, Auth UUID를 저장하지 않는다.
 - RPC는 `org_id`를 입력받지 않고 현재 Auth 사용자와 활성 membership에서 기관을 파생한다.
 - mutation/status RPC는 최소 root 형상 확인 직후 Auth·기관·역할을 먼저 판정해 권한 없는 요청의 checksum·digest·operation 전수 검증을 실행하지 않는다.
+- mutation RPC는 권한 판정에 사용한 membership·organization 행을 transaction 종료까지 `FOR SHARE`로 잠가 실행 중 역할 회수·membership 취소·기관 비활성화가 먼저 commit되는 것을 막는다.
 - reconciliation RPC는 mutation plan·원본 bytes를 받지 않는 `STABLE` 조회 함수이며 ledger/resource를 변경하지 않는다.
 - 로컬 durable store는 synthetic authorization context만 immutable journal에 함께 보존하며 production Auth/membership 증거로 사용하지 않는다.
 - lifecycle은 새 claim 뒤 receipt가 없을 때 authorization snapshot을 다시 읽고 active membership·organization·actor·role·host와 exact claim을 재검증한 뒤에만 execution adapter를 호출한다. 이 재조회는 production RPC transaction 내부의 live membership 검증을 대체하지 않는다.

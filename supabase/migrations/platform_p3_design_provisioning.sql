@@ -169,13 +169,16 @@ begin
     raise exception using message = 'design_auth_required';
   end if;
   v_org_id := climate_vote.org_of_uid();
-  if v_org_id is null or not exists (
-    select 1
-    from climate_vote.membership m
-    join climate_vote.org o on o.id = m.org_id and o.status = 'active'
-    where m.user_id = v_user_id and m.org_id = v_org_id
-      and m.status = 'active' and m.role in ('org_admin', 'hq')
-  ) then
+  if v_org_id is null then
+    raise exception using message = 'design_role_forbidden';
+  end if;
+  perform 1
+  from climate_vote.membership m
+  join climate_vote.org o on o.id = m.org_id and o.status = 'active'
+  where m.user_id = v_user_id and m.org_id = v_org_id
+    and m.status = 'active' and m.role in ('org_admin', 'hq')
+  for share of m, o;
+  if not found then
     raise exception using message = 'design_role_forbidden';
   end if;
 

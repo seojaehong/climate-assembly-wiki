@@ -128,6 +128,7 @@ begin
      or not ('search_path=pg_catalog, climate_vote, auth, extensions' = any(v_config))
      or not ('row_security=off' = any(v_config))
      or v_definition not like '%m.role in (''org_admin'', ''hq'')%'
+     or v_definition not like '%for share of m, o%'
      or strpos(v_definition, 'v_user_id := auth.uid()') = 0
      or strpos(v_definition, 'v_user_id := auth.uid()')
         >= strpos(v_definition, 'climate_vote.platform_json_canonical(p_plan - ''checksum'')')

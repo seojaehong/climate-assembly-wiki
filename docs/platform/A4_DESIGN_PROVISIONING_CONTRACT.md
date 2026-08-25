@@ -60,7 +60,7 @@
 
 - 권장 형태는 plan 전체를 한 transaction에서 처리하는 staff 전용 RPC다. operation별 공개 RPC는 부분 성공 복구 부담 때문에 채택하지 않는다.
 - RPC는 `org_id`를 인자로 받지 않는다. 현재 Auth 사용자와 P1C 선택 context에서 `org_of_uid()`가 검증한 기관을 서버가 파생한다.
-- 허용 역할은 `org_admin`과 `hq`로 제한하고 활성 membership·활성 org를 매 요청 확인한다. 최소 root JSON 형상 확인 직후 이 권한 판정을 먼저 수행해 권한 없는 호출이 checksum·source digest나 대규모 operation 배열 검증 비용을 유발하지 못하게 한다.
+- 허용 역할은 `org_admin`과 `hq`로 제한하고 활성 membership·활성 org를 매 요청 확인한다. 최소 root JSON 형상 확인 직후 이 권한 판정을 먼저 수행해 권한 없는 호출이 checksum·source digest나 대규모 operation 배열 검증 비용을 유발하지 못하게 한다. mutation RPC는 검증에 사용한 membership과 organization 행을 `FOR SHARE`로 transaction 종료까지 잠가, plan 실행 중 역할 회수·membership 취소·기관 비활성화 update가 먼저 commit되어 권한 판정과 mutation 결과가 갈라지지 않게 한다. 권한 변경 transaction이 먼저 잠금을 획득했다면 RPC는 갱신 뒤 행을 재평가해 거부해야 한다.
 - 입력은 field 이름뿐 아니라 boolean·number·string의 JSON 타입까지 exact schema/version으로 검증하고, plan checksum, 원 청사진 bytes의 길이·SHA-256, operation 순서, parent reference, operation ID를 다시 검증한다. 숫자나 실행 플래그를 문자열로 바꾼 self-resealed 입력은 거부한다. operation ID와 resource ref는 plan 안에서 각각 유일해야 하며, 중복은 어떤 lookup이나 mutation보다 먼저 거부한다. 원 bytes는 검증 중에만 사용하며 ledger·receipt에 저장하지 않는다.
 - operation grammar는 assembly 1건 뒤 session을 연속 ordinal로 처리하고, 각 session 안에서 연속 topic 뒤 연속 team을 처리한다. 실제 달력 날짜와 session 날짜 비감소, canonical text, session별 topic prompt 유일성, `${ordinal}조` team 이름, topic·team 각 1건 이상, session 누적 정원 100,000명과 전체 생성 항목 10,000건 상한을 client verifier와 RPC가 함께 검증한다.
 - assembly slug, session slug, session/topic/team ordinal을 lookup-before-mutation 방식으로 대조한다. 기존 값이 기대 payload와 다르면 update로 덮지 않고 충돌로 중단한다.
@@ -124,7 +124,7 @@
 2. 기존 session/team의 null·중복·부모/org mismatch를 세는 read-only preflight
 3. session/team 제약과 ledger/RPC 권한을 확인하는 post-apply verifier
 4. PostgreSQL throwaway stage rehearsal
-5. 정상 생성, exact replay, payload 충돌, parent 충돌, join code 충돌 소진, transaction rollback, RLS/GRANT 음성 테스트
+5. 정상 생성, exact replay, payload 충돌, parent 충돌, join code 충돌 소진, transaction rollback, authorization row-lock 경쟁, RLS/GRANT 음성 테스트
 6. plan source, bundle builder, A4 plan·bundle 집중 테스트와 migration/rollback/verifier hash를 결속한 approval bundle
 7. 실행 승인 artifact의 role·expiry·revocation·one-time claim·terminal finalization 순수 verifier와 음성 테스트
 8. exact RPC response redaction, rollback-verified failure, HMAC execution receipt와 append-response-loss·unknown-outcome·동시 lifecycle test

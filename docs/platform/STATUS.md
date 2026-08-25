@@ -194,6 +194,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 동시 exact plan 멱등 수렴(2026-08-26):** mutation RPC는 checksum·source 검증 뒤 첫 ledger/resource lookup 전에 기관 ID 기반 transaction advisory lock을 획득한다. test-only 지연 trigger와 두 독립 PostgreSQL 연결로 같은 신규 plan을 경합시킨 결과 하나는 `applied`, 다른 하나는 lock 대기 뒤 `replayed`가 되고 resource 한 세트와 ledger 4건만 남았다. post-apply verifier는 lock key와 source 검증 이후·operation loop 이전 순서를 compiled function에서 확인한다. production migration·DB·GRANT는 적용하지 않았다.
 
+**A4 authorization row-lock 경계(2026-08-26):** mutation RPC가 권한 판정에 사용한 active membership과 organization 행을 `FOR SHARE`로 transaction 종료까지 유지한다. PostgreSQL 16의 별도 연결에서 plan INSERT를 1초 지연한 동안 membership 역할 변경과 organization `suspended` 전환을 각각 시도하자 둘 다 250ms lock timeout으로 밀렸고, 두 plan은 정상 적용된 뒤 권한 행이 active 상태로 남았다. post-apply verifier도 compiled function의 두-row lock을 요구한다. 이는 휴면 migration 초안 리허설이며 production DB·membership·org·GRANT는 변경하지 않았다.
+
 **A4 비-draft 설계 resource 채택 차단(2026-08-26):** mutation RPC의 신규 채택과 exact replay는 assembly·session·discussion topic의 payload·부모·기관뿐 아니라 서버 생성 상태 `draft`도 대조한다. 정상 생성 뒤 assembly/session을 `active`, topic을 `open`으로 각각 바꾼 PostgreSQL 16 부정 rehearsal은 모두 `design_resource_conflict`로 중단됐고, post-apply verifier는 compiled function에서 세 상태 조건을 확인한다. 이미 활성화·종료된 자원을 새 설계 성공으로 기록하지 않으며 production migration·DB·GRANT는 적용하지 않았다.
 
 **A4 제약 정본 검증 강화(2026-08-26):** post-apply verifier가 session/team/ledger의 8개 제약을 schema 전체의 이름 count가 아니라 정확한 대상 table·`check|unique|primary key` 종류·PostgreSQL canonical definition으로 대조한다. team의 양수 capacity 제약을 shadow table의 동명 제약으로 바꾼 경로와 정확한 team에 `capacity >= 0`으로 완화한 경로를 각각 거부했고, 원래 `capacity > 0` 복구 뒤 verifier와 전체 semantic rehearsal이 통과했다. production migration·DB·GRANT는 적용하지 않았다.

@@ -249,3 +249,28 @@ test('rollback refuses populated A4 state before any object is removed', () => {
   expect(workflow).toContain('design_provisioning_rollback_requires_data_plan');
   expect(workflow).toContain('design_provisioning_rollback_cleanup_fixture.sql');
 });
+
+test('A4 mutation RPC holds authorization rows through the whole transaction', () => {
+  const migration = readFileSync(
+    join(repoRoot, 'supabase', 'migrations', 'platform_p3_design_provisioning.sql'),
+    'utf8',
+  );
+  const postApply = readFileSync(
+    join(repoRoot, 'supabase', 'verify', 'design_provisioning_post_apply.sql'),
+    'utf8',
+  );
+  const rehearsal = readFileSync(
+    join(repoRoot, 'supabase', 'verify', 'design_provisioning_test.sql'),
+    'utf8',
+  );
+
+  expect(migration).toContain('for share of m, o;');
+  expect(postApply).toContain("v_definition not like '%for share of m, o%'");
+  expect(rehearsal).toContain(
+    'A4 semantic test failed: membership authorization lock unexpectedly released',
+  );
+  expect(rehearsal).toContain(
+    'A4 semantic test failed: organization authorization lock unexpectedly released',
+  );
+  expect(rehearsal).toContain('canceling statement due to lock timeout');
+});

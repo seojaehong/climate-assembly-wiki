@@ -68,6 +68,47 @@ begin
 end
 $function$;
 
+create or replace function pg_temp.a4_concurrency_plan(p_slug text)
+returns jsonb language plpgsql as $function$
+declare
+  v_assembly_ref text := 'assembly:' || p_slug;
+  v_session_slug text := p_slug || '-session';
+  v_session_ref text := v_assembly_ref || '/session:' || v_session_slug;
+  v_operations jsonb;
+begin
+  v_operations := jsonb_build_array(
+    pg_temp.a4_operation(
+      'create_assembly', v_assembly_ref, null, null,
+      jsonb_build_object(
+        'title', p_slug, 'slug', p_slug, 'purpose', 'Concurrency rehearsal',
+        'mode', 'consensus',
+        'config', jsonb_build_object('readiness', jsonb_build_array('topics_open'))
+      )
+    ),
+    pg_temp.a4_operation(
+      'create_session', v_session_ref, v_assembly_ref, 1,
+      jsonb_build_object('title', 'Concurrent session', 'slug', v_session_slug, 'heldOn', '2026-09-02')
+    ),
+    pg_temp.a4_operation(
+      'create_topic', v_session_ref || '/topic:1', v_session_ref, 1,
+      jsonb_build_object('prompt', 'Concurrent topic')
+    ),
+    pg_temp.a4_operation(
+      'create_team', v_session_ref || '/team:1', v_session_ref, 1,
+      jsonb_build_object('name', '1조', 'plannedCapacity', 10)
+    )
+  );
+  return pg_temp.a4_plan(
+    v_operations,
+    jsonb_build_object(
+      'assemblyCount', 1, 'sessionCount', 1, 'topicCount', 1,
+      'teamCount', 1, 'participantCount', 10, 'operationCount', 4
+    ),
+    p_slug
+  );
+end
+$function$;
+
 create or replace function pg_temp.a4_reseal_plan_operation(p_plan jsonb, p_index integer)
 returns jsonb language plpgsql as $function$
 declare
@@ -849,7 +890,7 @@ create extension dblink with schema extensions;
 create function climate_vote.a4_design_concurrency_delay()
 returns trigger language plpgsql set search_path = pg_catalog as $function$
 begin
-  if new.slug = 'a4-concurrent' then
+  if new.slug in ('a4-concurrent', 'a4-membership-lock', 'a4-organization-lock') then
     perform pg_sleep(1);
   end if;
   return new;
@@ -922,6 +963,101 @@ begin
   end if;
 end
 $concurrency$;
+
+select * from extensions.dblink_get_result('a4_concurrent_1') as response(result jsonb);
+select * from extensions.dblink_get_result('a4_concurrent_2') as response(result jsonb);
+
+update climate_vote.a4_design_concurrency_fixture
+set plan = pg_temp.a4_concurrency_plan('a4-membership-lock');
+
+select extensions.dblink_send_query(
+  'a4_concurrent_1',
+  'select climate_vote.a4_run_design_concurrency_fixture()'
+);
+
+do $membership_authorization_lock$
+declare
+  v_lock_timed_out boolean := false;
+  v_response jsonb;
+begin
+  perform pg_sleep(0.25);
+  perform extensions.dblink_exec('a4_concurrent_2', 'set lock_timeout = ''250ms''');
+  begin
+    perform extensions.dblink_exec(
+      'a4_concurrent_2',
+      'update climate_vote.membership set role = ''operator'' '
+      || 'where org_id = ''20000000-0000-0000-0000-000000000001''::uuid '
+      || 'and user_id = ''10000000-0000-0000-0000-000000000001''::uuid'
+    );
+  exception when others then
+    if strpos(sqlerrm, 'canceling statement due to lock timeout') = 0 then
+      raise;
+    end if;
+    v_lock_timed_out := true;
+  end;
+  select result into strict v_response
+  from extensions.dblink_get_result('a4_concurrent_1') as response(result jsonb);
+  if not v_lock_timed_out then
+    raise exception 'A4 semantic test failed: membership authorization lock unexpectedly released';
+  end if;
+  if jsonb_path_query_array(v_response, '$.operations[*].status')
+       <> '["applied", "applied", "applied", "applied"]'::jsonb
+     or not exists (
+       select 1 from climate_vote.membership
+       where org_id = '20000000-0000-0000-0000-000000000001'::uuid
+         and user_id = '10000000-0000-0000-0000-000000000001'::uuid
+         and role = 'org_admin' and status = 'active'
+     ) then
+    raise exception 'A4 semantic test failed: membership authorization lock outcome is invalid';
+  end if;
+end
+$membership_authorization_lock$;
+
+select * from extensions.dblink_get_result('a4_concurrent_1') as response(result jsonb);
+
+update climate_vote.a4_design_concurrency_fixture
+set plan = pg_temp.a4_concurrency_plan('a4-organization-lock');
+
+select extensions.dblink_send_query(
+  'a4_concurrent_1',
+  'select climate_vote.a4_run_design_concurrency_fixture()'
+);
+
+do $organization_authorization_lock$
+declare
+  v_lock_timed_out boolean := false;
+  v_response jsonb;
+begin
+  perform pg_sleep(0.25);
+  begin
+    perform extensions.dblink_exec(
+      'a4_concurrent_2',
+      'update climate_vote.org set status = ''suspended'' '
+      || 'where id = ''20000000-0000-0000-0000-000000000001''::uuid'
+    );
+  exception when others then
+    if strpos(sqlerrm, 'canceling statement due to lock timeout') = 0 then
+      raise;
+    end if;
+    v_lock_timed_out := true;
+  end;
+  select result into strict v_response
+  from extensions.dblink_get_result('a4_concurrent_1') as response(result jsonb);
+  if not v_lock_timed_out then
+    raise exception 'A4 semantic test failed: organization authorization lock unexpectedly released';
+  end if;
+  if jsonb_path_query_array(v_response, '$.operations[*].status')
+       <> '["applied", "applied", "applied", "applied"]'::jsonb
+     or not exists (
+       select 1 from climate_vote.org
+       where id = '20000000-0000-0000-0000-000000000001'::uuid and status = 'active'
+     ) then
+    raise exception 'A4 semantic test failed: organization authorization lock outcome is invalid';
+  end if;
+end
+$organization_authorization_lock$;
+
+select * from extensions.dblink_get_result('a4_concurrent_1') as response(result jsonb);
 
 select extensions.dblink_disconnect('a4_concurrent_1');
 select extensions.dblink_disconnect('a4_concurrent_2');
