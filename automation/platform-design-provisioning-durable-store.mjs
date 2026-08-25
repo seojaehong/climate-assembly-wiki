@@ -173,6 +173,33 @@ function validateOwnedFile(directory, path, label) {
   return path;
 }
 
+function validateTemporaryFileIfPresent(directory, path, label) {
+  if (!isInside(directory, path)) {
+    throw new Error(`${label} path is invalid`);
+  }
+  let metadata;
+  try {
+    metadata = lstatSync(path);
+  } catch (error) {
+    if (error && typeof error === 'object' && error.code === 'ENOENT') return false;
+    throw new Error(`${label} path is invalid`);
+  }
+  if (metadata.isSymbolicLink() || !metadata.isFile()) {
+    throw new Error(`${label} path is invalid`);
+  }
+  let actual;
+  try {
+    actual = realpathSync.native(path);
+  } catch (error) {
+    if (error && typeof error === 'object' && error.code === 'ENOENT') return false;
+    throw new Error(`${label} path is invalid`);
+  }
+  if (actual !== path) {
+    throw new Error(`${label} path is invalid`);
+  }
+  return true;
+}
+
 function validateContext(context) {
   if (!exactKeys(context, [
     'userId', 'role', 'organizationId', 'targetHost',
@@ -350,12 +377,13 @@ async function inspectAuthorizationJournal(directory, approvalId) {
     throw new Error('Local design provisioning authorization journal contains an unexpected entry');
   }
   const temporaryNames = names.filter((name) => TEMPORARY_FILE_PATTERN.test(name));
+  let orphanTemporaryFileCount = 0;
   for (const name of temporaryNames) {
-    validateOwnedFile(
+    if (validateTemporaryFileIfPresent(
       directory,
       resolve(directory, name),
       'Local design provisioning authorization temporary record',
-    );
+    )) orphanTemporaryFileCount += 1;
   }
   if (records.length === 0) {
     throw new Error('Local design provisioning authorization state is unavailable');
@@ -384,7 +412,7 @@ async function inspectAuthorizationJournal(directory, approvalId) {
   return {
     latest,
     recordCount: records.length,
-    orphanTemporaryFileCount: temporaryNames.length,
+    orphanTemporaryFileCount,
   };
 }
 
@@ -758,12 +786,11 @@ export async function auditLocalDesignProvisioningRehearsalStore({
   };
   for (const name of receiptNames) {
     if (TEMPORARY_FILE_PATTERN.test(name)) {
-      validateOwnedFile(
+      if (validateTemporaryFileIfPresent(
         receiptRoot,
         resolve(receiptRoot, name),
         'Local design provisioning execution receipt temporary record',
-      );
-      authorizationSummary.orphanTemporaryFileCount += 1;
+      )) authorizationSummary.orphanTemporaryFileCount += 1;
       continue;
     }
     const match = RECEIPT_FILE_PATTERN.exec(name);

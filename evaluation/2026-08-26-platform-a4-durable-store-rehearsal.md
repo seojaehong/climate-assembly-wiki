@@ -35,6 +35,7 @@
 15. 같은 expected snapshot을 가진 독립 Node 프로세스 6개가 claim을 경쟁했을 때 1개만 `claimed`, 5개는 `conflict`가 됐고 journal은 초기 record와 claim record 2개로 수렴했다.
 16. read-only 전체-store audit가 존재하는 approval journal 2개·record 3개·receipt 1개를 식별값 없이 집계하고, 숨은 journal 변조·예상 밖 root/receipt entry·현재 claim과 연결되지 않은 receipt를 거부했다.
 17. 합성 HMAC key와 exact key ID를 직접 주입한 audit는 정상 receipt의 canonical digest를 상수시간 비교해 `receiptSignatureVerified:true`를 반환하고, 위조 digest·부분 key 설정을 식별값 노출 없이 거부했다. receipt 0개와 기본 keyless audit는 계속 `false`다.
+18. Linux CI의 실제 6-process 경쟁에서 publisher가 temp를 열거 직후 정상 unlink하는 race를 재현했다. temp가 존재하면 owned regular file 검증을 유지하고 검사 중 ENOENT로 사라지면 정상 publish cleanup으로 무시하도록 수정했으며, 같은 경쟁을 Windows에서 연속 3회 재검증했다.
 
 전체-store audit는 외부 anchor가 없어 삭제된 entry의 완전성을 증명하지 못한다. 따라서 `catalogCompletenessVerified:false`를 유지하며, 합성 단일-key HMAC 검증도 production key custody·회전 증거로 승격하지 않는다.
 
@@ -44,7 +45,7 @@
 - automation 전체: 26개 파일, 371건 통과
 - 애플리케이션 전체: 64개 파일, 1,060건 통과
 - Astro check: 327개 파일, 오류 0건, 기존 hint 49건
-- A4 bundle: artifact 17개, checksum `4c2d3c90869d5d915dc79245e111644f24d99bd3ba26ede549d52bf73a574079`
+- A4 bundle: artifact 17개, checksum `ca55c2310409f93824752ec896e20dab0bff9fed7b5362a20e564f9566b4b668`
 
 ## 남은 production blocker
 

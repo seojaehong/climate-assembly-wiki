@@ -63,7 +63,7 @@ partial ledger 충돌 은폐 방지 결과: `A4_PARTIAL_CONFLICT_POSTGRES_REHEAR
 - 저장소 밖 로컬 durable store의 adapter 재시작·lock-free CAS·독립 Node 프로세스 6개 claim 경쟁(1 claimed, 5 conflict, journal record 2개)·orphan temp 복구·append-only replay/conflict·journal 변조·junction escape·revocation/claim 경쟁·membership 비활성 finalize와 재활성화 거부·비식별 전체-store 현재-entry 및 합성 단일-key receipt HMAC audit 테스트 통과
 - approval bundle verifier: builder·durable store·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 17개, production apply 미승인·DB mutation 미실행 상태로 통과
 - 추적 manifest를 current source에서 재구성해 stale source hash를 거부하는 테스트 통과
-- bundle checksum: `4c2d3c90869d5d915dc79245e111644f24d99bd3ba26ede549d52bf73a574079`
+- bundle checksum: `ca55c2310409f93824752ec896e20dab0bff9fed7b5362a20e564f9566b4b668`
 
 ## 보안·데이터 무결성 결론
 

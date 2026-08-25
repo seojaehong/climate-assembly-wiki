@@ -472,6 +472,16 @@ test('store-wide audit rejects unexpected root and receipt entries', async () =>
       directory,
       trustedReceiptKey: approvalKey,
     })).rejects.toThrow('receipt audit key configuration is invalid');
+    const temporaryPath = join(
+      directory,
+      'authorization',
+      approvalMetadata().approvalId,
+      '.tmp-123-77777777-7777-4777-8777-777777777777',
+    );
+    writeFileSync(temporaryPath, 'partial', 'utf8');
+    expect(await auditLocalDesignProvisioningRehearsalStore({ directory }))
+      .toMatchObject({ orphanTemporaryFileCount: 1 });
+    rmSync(temporaryPath);
     writeFileSync(join(directory, 'unexpected.json'), '{}\n', 'utf8');
     await expect(auditLocalDesignProvisioningRehearsalStore({ directory }))
       .rejects.toThrow('layout contains an unexpected entry');
