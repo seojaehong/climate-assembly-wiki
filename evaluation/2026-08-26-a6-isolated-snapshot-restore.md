@@ -32,6 +32,8 @@
 - trigger가 없거나 이미 비활성화됐거나 다시 활성화되지 않으면 성공 결과를 출력하지 않는다.
 - 다른 user trigger와 FK·check·unique 제약은 비활성화하지 않는다.
 - 8개 collection의 모든 컬럼을 archive에서 PostgreSQL 타입으로 재구성한 기대 행과 identity key로 null-safe 비교한다.
+- payload의 허용 collection과 8개 collection별 허용 열을 현재 migration 계약으로 고정하고, 복원기가 알 수 없는 collection이나 `jsonb_populate_recordset`이 모르는 열을 조용히 버리기 전에 preflight에서 거부한다.
+- 알 수 없는 collection·열의 이름과 값은 오류에 포함하지 않아 시민 원문이나 비공개 metadata가 로그에 노출되지 않게 한다.
 - 합성 부모는 FK·check·unique·trigger 실행 가능성을 확인하기 위한 것으로 원래 부모 데이터 복구를 증명하지 않는다.
 - PITR/WAL, 운영 감사로그, 운영 환경 복원은 이번 범위가 아니다.
 

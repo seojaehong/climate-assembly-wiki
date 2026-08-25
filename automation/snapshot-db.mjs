@@ -24,6 +24,38 @@ const ARCHIVE_RESTORE_ORDER = [
   'ballot_item',
   'ballot_response',
 ];
+const RESTORE_PAYLOAD_FIELDS = new Set([...ARCHIVE_RESTORE_ORDER, 'counts']);
+const RESTORE_ROW_FIELDS = {
+  submission: new Set([
+    'id', 'topic_id', 'team_id', 'status', 'finalized_at', 'finalized_by',
+    'archived_at', 'created_at', 'updated_at', 'org_id',
+  ]),
+  submission_item: new Set([
+    'id', 'submission_id', 'ordinal', 'kind', 'content', 'rationale',
+    'provenance', 'created_at',
+  ]),
+  issue: new Set([
+    'id', 'topic_id', 'label', 'stance', 'frequency_class', 'summary', 'origin',
+    'review_status', 'reviewed_by', 'reviewed_at', 'archived_at', 'org_id', 'created_at',
+  ]),
+  issue_link: new Set([
+    'issue_id', 'item_id', 'cluster_id', 'linked_by', 'created_at',
+  ]),
+  result_page: new Set([
+    'id', 'scope', 'scope_id', 'token', 'title', 'body', 'published_at',
+    'published_by', 'archived_at', 'org_id', 'created_at',
+  ]),
+  ballot: new Set([
+    'id', 'session_id', 'title', 'instructions', 'status', 'token', 'created_by',
+    'published_at', 'archived_at', 'created_at', 'subgroup', 'org_id',
+  ]),
+  ballot_item: new Set([
+    'id', 'ballot_id', 'ordinal', 'statement', 'description', 'scale', 'required',
+  ]),
+  ballot_response: new Set([
+    'id', 'ballot_id', 'client_id', 'answers', 'submitted_at', 'org_id',
+  ]),
+};
 const RESTORE_IDENTITY_KEYS = {
   submission: ['id'],
   submission_item: ['id'],
@@ -249,6 +281,21 @@ function collectionIds(payload, collection) {
     ids.add(row.id);
   }
   return ids;
+}
+
+function validateRestoreRowFields(payload) {
+  if (Object.keys(payload).some((field) => !RESTORE_PAYLOAD_FIELDS.has(field))) {
+    throw new Error('snapshot archive payload fields are invalid');
+  }
+  for (const collection of ARCHIVE_RESTORE_ORDER) {
+    const allowedFields = RESTORE_ROW_FIELDS[collection];
+    for (const row of payload[collection]) {
+      if (!row || typeof row !== 'object' || Array.isArray(row)
+        || Object.keys(row).some((field) => !allowedFields.has(field))) {
+        throw new Error(`snapshot archive row fields are invalid: ${collection}`);
+      }
+    }
+  }
 }
 
 function validateReference(payload, childCollection, field, parentIds) {
@@ -515,6 +562,7 @@ function unionSize(...sets) {
 /** Runs a read-only restore preflight without connecting to a database. */
 export function rehearseSnapshotArchiveFile({ filePath, auditKey }) {
   const { archive, payload, counts } = readVerifiedSnapshotArchive({ filePath, auditKey });
+  validateRestoreRowFields(payload);
   const ids = Object.fromEntries(ID_COLLECTIONS.map((collection) => [collection, collectionIds(payload, collection)]));
   validateSubmissionRows(payload);
   validateAnalysisRows(payload);

@@ -98,6 +98,7 @@ function platformPayloadFixture(overrides = {}) {
       title: 'Assembly ballot',
       status: 'open',
       token: 'ballot-token-1',
+      subgroup: null,
       org_id: 'org-1',
     }],
     ballot_item: [{
@@ -1156,6 +1157,76 @@ test('rejects a validly signed archive that is missing a required recovery colle
   withSnapshotFile(archive, (filePath) => {
     expect(() => verifySnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
       .toThrow('snapshot archive collection is missing: ballot_response');
+  });
+});
+
+test('rejects unknown recovery row fields before restore SQL can silently discard them', async () => {
+  const sensitiveFieldName = 'participant_private_note';
+  const collections = [
+    'submission',
+    'submission_item',
+    'issue',
+    'issue_link',
+    'result_page',
+    'ballot',
+    'ballot_item',
+    'ballot_response',
+  ];
+
+  for (const collection of collections) {
+    const payload = platformPayloadFixture();
+    if (payload[collection].length === 0) {
+      if (collection === 'issue_link') {
+        payload.issue_link = [{
+          issue_id: 'issue-1', item_id: 'item-1', cluster_id: null, linked_by: 'ai',
+          [sensitiveFieldName]: 'must not appear in the error',
+        }];
+        payload.counts.issue_link = 1;
+      } else {
+        payload.result_page = [{
+          id: 'result-1', scope: 'topic', scope_id: 'topic-1', token: 'result-token-1',
+          title: 'Assembly result', body: {}, org_id: 'org-1',
+          [sensitiveFieldName]: 'must not appear in the error',
+        }];
+        payload.counts.result_page = 1;
+      }
+    } else {
+      payload[collection] = [{
+        ...payload[collection][0],
+        [sensitiveFieldName]: 'must not appear in the error',
+      }];
+    }
+
+    const archive = await signedArchiveFixture(payload);
+    withSnapshotFile(archive, (filePath) => {
+      expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+        .toThrow(`snapshot archive row fields are invalid: ${collection}`);
+      try {
+        rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY });
+      } catch (error) {
+        expect(String(error)).not.toContain(sensitiveFieldName);
+        expect(String(error)).not.toContain('must not appear in the error');
+      }
+    });
+  }
+});
+
+test('rejects unknown recovery collections before restore can omit their rows', async () => {
+  const sensitiveCollectionName = 'participant_private_events';
+  const archive = await signedArchiveFixture({
+    ...platformPayloadFixture(),
+    [sensitiveCollectionName]: [{ value: 'must not appear in the error' }],
+  });
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toThrow('snapshot archive payload fields are invalid');
+    try {
+      rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY });
+    } catch (error) {
+      expect(String(error)).not.toContain(sensitiveCollectionName);
+      expect(String(error)).not.toContain('must not appear in the error');
+    }
   });
 });
 
