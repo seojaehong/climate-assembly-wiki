@@ -96,6 +96,7 @@ declare
   v_conflict jsonb;
   v_cross_plan jsonb;
   v_duplicate_plan jsonb;
+  v_malformed_plan jsonb;
   v_parent_plan jsonb;
   v_exhaustion_plan jsonb;
   v_rollback_plan jsonb;
@@ -128,6 +129,45 @@ begin
     'teamCount', 1, 'participantCount', 12, 'operationCount', 4
   ));
   v_query := pg_temp.a4_reconciliation_query(v_plan);
+
+  v_malformed_plan := jsonb_set(v_plan, '{readyForExecution}', '"true"'::jsonb);
+  v_malformed_plan := jsonb_set(
+    v_malformed_plan,
+    '{checksum}',
+    to_jsonb(climate_vote.platform_sha256_hex(
+      climate_vote.platform_json_canonical(v_malformed_plan - 'checksum')
+    ))
+  );
+  begin
+    perform climate_vote.design_provision(v_malformed_plan, convert_to(repeat('s', 100), 'UTF8'));
+    raise exception 'A4 semantic test failed: stringified plan scalar unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_plan_invalid' then raise; end if;
+  end;
+
+  v_malformed_plan := jsonb_set(v_plan, '{summary}', '[]'::jsonb);
+  v_malformed_plan := jsonb_set(
+    v_malformed_plan,
+    '{checksum}',
+    to_jsonb(climate_vote.platform_sha256_hex(
+      climate_vote.platform_json_canonical(v_malformed_plan - 'checksum')
+    ))
+  );
+  begin
+    perform climate_vote.design_provision(v_malformed_plan, convert_to(repeat('s', 100), 'UTF8'));
+    raise exception 'A4 semantic test failed: malformed plan container unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_plan_invalid' then raise; end if;
+  end;
+
+  begin
+    perform climate_vote.design_provisioning_status(
+      jsonb_set(v_query, '{operationCount}', '"4"'::jsonb)
+    );
+    raise exception 'A4 semantic test failed: stringified reconciliation scalar unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_reconciliation_query_invalid' then raise; end if;
+  end;
 
   select count(*) into v_ledger_count from climate_vote.design_provisioning_operation;
   select count(*) into v_resource_count from climate_vote.assembly;

@@ -127,6 +127,9 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(migration).not.toContain('floor(random()');
   expect(migration).toContain("count(distinct value ->> 'operationId')");
   expect(migration).toContain("count(distinct value ->> 'ref')");
+  expect(migration).toContain("jsonb_typeof(p_plan -> 'readyForExecution') <> 'boolean'");
+  expect(migration).toContain("jsonb_typeof(p_plan #> '{sourceBlueprint,bytes}') <> 'number'");
+  expect(migration).toContain("jsonb_typeof(p_query -> 'operationCount') <> 'number'");
   expect(migration).toContain("encode(extensions.digest(p_source_bytes, 'sha256'), 'hex')");
   expect(migration).toContain('revoke all on function climate_vote.design_provision(jsonb, bytea)');
   expect(migration).toContain('create or replace function climate_vote.design_provisioning_status(p_query jsonb)');
@@ -144,6 +147,9 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(rehearsal).toContain('join-code exhaustion unexpectedly succeeded');
   expect(rehearsal).toContain('secure join-code generator was not restored');
   expect(rehearsal).toContain('duplicate operation identity unexpectedly succeeded');
+  expect(rehearsal).toContain('stringified plan scalar unexpectedly succeeded');
+  expect(rehearsal).toContain('malformed plan container unexpectedly succeeded');
+  expect(rehearsal).toContain('stringified reconciliation scalar unexpectedly succeeded');
   expect(rehearsal).toContain('late validation did not roll back mutations');
 });
 

@@ -73,6 +73,8 @@ begin
      or v_definition not like '%v_existing.plan_checksum <> v_checksum%'
      or v_definition not like '%count(distinct value ->> ''operationId'')%'
      or v_definition not like '%count(distinct value ->> ''ref'')%'
+     or v_definition not like '%jsonb_typeof(p_plan -> ''readyForExecution'') <> ''boolean''%'
+     or v_definition not like '%jsonb_typeof(p_plan #> ''{sourceBlueprint,bytes}'') <> ''number''%'
      or v_definition not like '%design_join_code_exhausted%'
      or v_definition not like '%design_operation_conflict%' then
     raise exception 'A4 post-apply verification failed: RPC contract is unsafe';
@@ -90,6 +92,7 @@ begin
      or not ('search_path=pg_catalog, climate_vote, auth' = any(v_config))
      or not ('row_security=off' = any(v_config))
      or v_definition not like '%platform_design_provisioning_reconciliation_query%'
+     or v_definition not like '%jsonb_typeof(p_query -> ''operationCount'') <> ''number''%'
      or v_definition not like '%m.role in (''org_admin'', ''hq'')%'
      or v_definition not like '%design_reconciliation_conflict%'
      or v_definition not like '%jsonb_build_object(''status'', ''pending'')%' then

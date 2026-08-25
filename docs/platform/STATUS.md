@@ -167,6 +167,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 operation identity 유일성 검증(2026-08-26):** mutation RPC가 plan의 operation ID와 canonical resource ref를 각각 전수 중복 검사한 뒤에만 Auth·ledger lookup과 resource mutation으로 진행한다. 이전에는 같은 session operation을 두 번 넣고 summary를 맞추면 한 resource를 `applied`·`replayed`로 중복 응답하면서 ledger는 한 행만 남아 reconciliation이 거부될 수 있었다. PostgreSQL 16 격리 리허설은 중복 plan을 `design_plan_invalid`로 차단하고 ledger·assembly 무변경을 확인했으며 post-apply verifier도 두 uniqueness 조건을 compiled function에서 검사한다. production migration·DB·GRANT는 적용하지 않았다.
 
+**A4 JSON scalar 타입 엄격화(2026-08-26):** mutation RPC와 read-only reconciliation RPC가 exact field 이름뿐 아니라 boolean·number·string JSON 타입을 각각 검사한다. 이전의 `->>` 텍스트 비교는 `readyForExecution` 같은 실행 플래그나 operation count를 JSON 문자열로 바꾸고 checksum을 다시 계산한 입력도 같은 값으로 받아들였지만, 이제 lookup·mutation 전에 안정 오류 코드로 거부한다. PostgreSQL 16 격리 리허설과 compiled-function post-apply verifier가 두 경로의 타입 위조 차단을 확인했다. production migration·DB·GRANT는 적용하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

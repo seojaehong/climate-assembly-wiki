@@ -154,8 +154,39 @@ begin
   end if;
 
   select array_agg(key order by key) into v_actual_keys from jsonb_object_keys(p_plan) keys(key);
-  if v_actual_keys is distinct from v_expected_root_keys
-     or p_plan ->> 'schemaVersion' <> '2'
+  if v_actual_keys is distinct from v_expected_root_keys then
+    raise exception using message = 'design_plan_invalid';
+  end if;
+  if jsonb_typeof(p_plan -> 'schemaVersion') <> 'number'
+     or jsonb_typeof(p_plan -> 'planKind') <> 'string'
+     or jsonb_typeof(p_plan -> 'sourceBlueprint') <> 'object'
+     or jsonb_typeof(p_plan #> '{sourceBlueprint,sha256}') <> 'string'
+     or jsonb_typeof(p_plan #> '{sourceBlueprint,bytes}') <> 'number'
+     or jsonb_typeof(p_plan #> '{sourceBlueprint,schemaVersion}') <> 'number'
+     or jsonb_typeof(p_plan -> 'assembly') <> 'object'
+     or jsonb_typeof(p_plan #> '{assembly,slug}') <> 'string'
+     or jsonb_typeof(p_plan #> '{assembly,title}') <> 'string'
+     or jsonb_typeof(p_plan -> 'operations') <> 'array'
+     or jsonb_typeof(p_plan -> 'summary') <> 'object'
+     or jsonb_typeof(p_plan -> 'executionPolicy') <> 'object'
+     or jsonb_typeof(p_plan -> 'blockers') <> 'array'
+     or jsonb_typeof(p_plan -> 'readyForExecution') <> 'boolean'
+     or jsonb_typeof(p_plan -> 'serverContractImplemented') <> 'boolean'
+     or jsonb_typeof(p_plan -> 'dryRun') <> 'boolean'
+     or jsonb_typeof(p_plan -> 'databaseMutationExecuted') <> 'boolean'
+     or jsonb_typeof(p_plan -> 'requiresApproval') <> 'boolean'
+     or jsonb_typeof(p_plan -> 'checksum') <> 'string' then
+    raise exception using message = 'design_plan_invalid';
+  end if;
+  if exists (
+       select 1 from jsonb_each(p_plan -> 'summary') where jsonb_typeof(value) <> 'number'
+     )
+     or exists (
+       select 1 from jsonb_each(p_plan -> 'executionPolicy') where jsonb_typeof(value) <> 'boolean'
+     ) then
+    raise exception using message = 'design_plan_invalid';
+  end if;
+  if p_plan ->> 'schemaVersion' <> '2'
      or p_plan ->> 'planKind' <> 'platform_design_provisioning_plan'
      or p_plan ->> 'readyForExecution' <> 'true'
      or p_plan ->> 'serverContractImplemented' <> 'true'
@@ -163,7 +194,6 @@ begin
      or p_plan ->> 'databaseMutationExecuted' <> 'false'
      or p_plan ->> 'requiresApproval' <> 'false'
      or p_plan -> 'blockers' <> '[]'::jsonb
-     or jsonb_typeof(p_plan -> 'operations') <> 'array'
      or jsonb_array_length(p_plan -> 'operations') < 1
      or jsonb_array_length(p_plan -> 'operations') > 10025
      or (select count(*) from jsonb_array_elements(p_plan -> 'operations'))
@@ -230,8 +260,16 @@ begin
     select value from jsonb_array_elements(p_plan -> 'operations') with ordinality order by ordinality
   loop
     v_position := v_position + 1;
+    if jsonb_typeof(v_operation) <> 'object' then
+      raise exception using message = 'design_operation_invalid';
+    end if;
     select array_agg(key order by key) into v_actual_keys from jsonb_object_keys(v_operation) keys(key);
     if v_actual_keys is distinct from array['operationId', 'ordinal', 'parentRef', 'payload', 'ref', 'type']
+       or jsonb_typeof(v_operation -> 'operationId') <> 'string'
+       or jsonb_typeof(v_operation -> 'type') <> 'string'
+       or jsonb_typeof(v_operation -> 'ref') <> 'string'
+       or jsonb_typeof(v_operation -> 'parentRef') not in ('string', 'null')
+       or jsonb_typeof(v_operation -> 'ordinal') not in ('number', 'null')
        or jsonb_typeof(v_operation -> 'payload') <> 'object' then
       raise exception using message = 'design_operation_invalid';
     end if;
@@ -266,6 +304,10 @@ begin
     end if;
 
     if v_type = 'create_assembly' then
+      if jsonb_typeof(v_payload -> 'config') <> 'object'
+         or jsonb_typeof(v_payload #> '{config,readiness}') <> 'array' then
+        raise exception using message = 'design_operation_invalid';
+      end if;
       if v_position <> 1
          or v_assembly_count <> 0
          or v_parent_ref is not null
@@ -273,17 +315,23 @@ begin
          or v_ref <> 'assembly:' || (v_payload ->> 'slug')
          or (select array_agg(key order by key) from jsonb_object_keys(v_payload) keys(key))
             is distinct from array['config', 'mode', 'purpose', 'slug', 'title']
+         or jsonb_typeof(v_payload -> 'title') <> 'string'
+         or jsonb_typeof(v_payload -> 'slug') <> 'string'
+         or jsonb_typeof(v_payload -> 'purpose') not in ('string', 'null')
+         or jsonb_typeof(v_payload -> 'mode') <> 'string'
          or (v_payload ->> 'slug') !~ '^[a-z0-9-]{3,40}$'
          or length(trim(v_payload ->> 'title')) not between 1 and 200
          or (v_payload ->> 'title') <> p_plan #>> '{assembly,title}'
          or (v_payload ->> 'slug') <> p_plan #>> '{assembly,slug}'
          or (v_payload ->> 'purpose') is not null and length(v_payload ->> 'purpose') > 1000
          or v_payload ->> 'mode' not in ('consensus', 'vote')
-         or jsonb_typeof(v_payload -> 'config') <> 'object'
          or (select array_agg(key order by key) from jsonb_object_keys(v_payload -> 'config') keys(key))
             is distinct from array['readiness']
-         or jsonb_typeof(v_payload #> '{config,readiness}') <> 'array'
          or jsonb_array_length(v_payload #> '{config,readiness}') < 1
+         or exists (
+           select 1 from jsonb_array_elements(v_payload #> '{config,readiness}') readiness(value)
+           where jsonb_typeof(value) <> 'string'
+         )
          or exists (
            select 1 from jsonb_array_elements_text(v_payload #> '{config,readiness}') readiness(value)
            where value not in ('topics_open', 'teams_active', 'roster_loaded')
@@ -325,6 +373,9 @@ begin
          or v_ref <> v_parent_ref || '/session:' || (v_payload ->> 'slug')
          or (select array_agg(key order by key) from jsonb_object_keys(v_payload) keys(key))
             is distinct from array['heldOn', 'slug', 'title']
+         or jsonb_typeof(v_payload -> 'title') <> 'string'
+         or jsonb_typeof(v_payload -> 'slug') <> 'string'
+         or jsonb_typeof(v_payload -> 'heldOn') <> 'string'
          or (v_payload ->> 'slug') !~ '^[a-z0-9-]{3,40}$'
          or length(trim(v_payload ->> 'title')) not between 1 and 200
          or (v_payload ->> 'heldOn') !~ '^\d{4}-\d{2}-\d{2}$' then
@@ -361,6 +412,7 @@ begin
          or v_ref <> v_parent_ref || '/topic:' || (v_operation ->> 'ordinal')
          or (select array_agg(key order by key) from jsonb_object_keys(v_payload) keys(key))
             is distinct from array['prompt']
+         or jsonb_typeof(v_payload -> 'prompt') <> 'string'
          or length(trim(v_payload ->> 'prompt')) not between 1 and 500 then
         raise exception using message = 'design_operation_invalid';
       end if;
@@ -393,6 +445,8 @@ begin
          or v_ref <> v_parent_ref || '/team:' || (v_operation ->> 'ordinal')
          or (select array_agg(key order by key) from jsonb_object_keys(v_payload) keys(key))
             is distinct from array['name', 'plannedCapacity']
+         or jsonb_typeof(v_payload -> 'name') <> 'string'
+         or jsonb_typeof(v_payload -> 'plannedCapacity') <> 'number'
          or length(trim(v_payload ->> 'name')) not between 1 and 200
          or (v_payload ->> 'plannedCapacity') !~ '^[1-9][0-9]*$'
          or length(v_payload ->> 'plannedCapacity') > 6
@@ -509,8 +563,23 @@ begin
   end if;
   select array_agg(key order by key) into v_actual_keys
   from jsonb_object_keys(p_query) keys(key);
-  if v_actual_keys is distinct from v_expected_root_keys
-     or p_query ->> 'schemaVersion' <> '1'
+  if v_actual_keys is distinct from v_expected_root_keys then
+    raise exception using message = 'design_reconciliation_query_invalid';
+  end if;
+  if jsonb_typeof(p_query -> 'schemaVersion') <> 'number'
+     or jsonb_typeof(p_query -> 'kind') <> 'string'
+     or jsonb_typeof(p_query -> 'approvalId') <> 'string'
+     or jsonb_typeof(p_query -> 'executionId') <> 'string'
+     or jsonb_typeof(p_query -> 'approvedPlanChecksum') <> 'string'
+     or jsonb_typeof(p_query -> 'executedPlanChecksum') <> 'string'
+     or jsonb_typeof(p_query -> 'sourceBlueprintSha256') <> 'string'
+     or jsonb_typeof(p_query -> 'sourceBlueprintBytes') <> 'number'
+     or jsonb_typeof(p_query -> 'containsSensitiveValues') <> 'boolean'
+     or jsonb_typeof(p_query -> 'operationCount') <> 'number'
+     or jsonb_typeof(p_query -> 'operations') <> 'array' then
+    raise exception using message = 'design_reconciliation_query_invalid';
+  end if;
+  if p_query ->> 'schemaVersion' <> '1'
      or p_query ->> 'kind' <> 'platform_design_provisioning_reconciliation_query'
      or (p_query ->> 'approvalId') !~ '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
      or (p_query ->> 'executionId') !~ '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
@@ -522,7 +591,6 @@ begin
      or p_query -> 'containsSensitiveValues' <> 'false'::jsonb
      or (p_query ->> 'operationCount') !~ '^[1-9][0-9]*$'
      or (p_query ->> 'operationCount')::integer > 10025
-     or jsonb_typeof(p_query -> 'operations') <> 'array'
      or jsonb_array_length(p_query -> 'operations')
         <> (p_query ->> 'operationCount')::integer
      or (select count(*) from jsonb_array_elements(p_query -> 'operations'))
@@ -551,11 +619,16 @@ begin
     from jsonb_array_elements(p_query -> 'operations') with ordinality
     order by ordinality
   loop
+    if jsonb_typeof(v_operation) <> 'object' then
+      raise exception using message = 'design_reconciliation_query_invalid';
+    end if;
     select array_agg(key order by key) into v_actual_keys
     from jsonb_object_keys(v_operation) keys(key);
     v_operation_id := v_operation ->> 'operationId';
     v_operation_type := v_operation ->> 'type';
     if v_actual_keys is distinct from array['operationId', 'type']
+       or jsonb_typeof(v_operation -> 'operationId') <> 'string'
+       or jsonb_typeof(v_operation -> 'type') <> 'string'
        or v_operation_id !~ '^[0-9a-f]{64}$'
        or v_operation_type not in (
          'create_assembly', 'create_session', 'create_topic', 'create_team'
