@@ -37,3 +37,15 @@ CI에서 업로드한 `platform-accessibility-kwcag-coverage.json`과 추적 산
 ## 변경 경계
 
 이 작업은 감사 코드·CI·평가 템플릿과 추적 산출물만 변경했다. production DB, Auth, membership, RLS, GRANT, 공개 데이터와 배포 상태는 변경하지 않았다.
+
+## 접근성 성명 공개 연결
+
+- 소스 commit: `10ae40d`
+- `/platform/accessibility/`에 `evaluation/platform-accessibility-kwcag-coverage.json` 링크를 추가했다.
+- 성명은 KWCAG 2.2 33개 검사항목이 자동·수동 증거에 모두 매핑됐지만, 수동 평가 80개가 미실행이므로 모두 `needs_review`임을 화면에 명시한다.
+- 자동 증거는 품질인증 획득·전수 준수를 의미하지 않는다는 경계를 같은 상태 영역에 놓았다.
+- 커밋된 소스의 정적 미리보기에서 Chromium 12개 케이스가 모두 통과했고, axe 위반 0건·자동 판정 불가 0건을 확인했다.
+- 접근성 자동화 집중 34건, PlatformShell 49건, automation 전체 27개 파일·420건, 루트 전체 64개 파일·1,060건이 통과했다. Astro check는 330개 파일 오류 0건·기존 hint 49건이다.
+- 로컬 Node 24의 `astro build`는 기존 환경 문제로 정적 파일 생성 후 exit 1을 반환했다. 생성된 정적 미리보기로 브라우저 검증했으며, clean Node CI 빌드를 최종 증거로 남긴다.
+- 로컬 브라우저 증거: `.artifacts/platform-accessibility-a5-statement.json`
+- 로컬 KWCAG 매핑 증거: `.artifacts/platform-accessibility-a5-statement-kwcag.json`

@@ -1,6 +1,6 @@
 # 플랫폼 트랙 — 상태·병합 전 게이트
 
-- 갱신: 2026-08-25
+- 갱신: 2026-08-26
 - 브랜치: `main`
 - **백엔드 스키마와 프론트엔드는 2026-08-10 사용자 승인으로 프로덕션에 배포됨.** 기존 `/mod`·`/b`·`/hq`·`/v` 경로는 유지한다.
 
@@ -77,6 +77,7 @@
 - **A5 자동 감사 기반**: `automation/platform-accessibility-audit.mjs`가 실제 Chromium에서 axe-core WCAG 2.2 AA 태그, 건너뛰기 링크 포커스와 수평 넘침을 데스크톱 1440×1000·모바일 360×800 뷰포트로 검사한다. 플랫폼 로그인·인증 후 셸·접근성 성명·미공개/공개 결과·온톨로지 검수 초기 화면 6경로의 로컬 정적 빌드와 사용자 도메인 12케이스 증거를 각각 `evaluation/platform-accessibility-responsive-audit.json`, `evaluation/platform-accessibility-audit.json`에 저장한다. 두 보고서는 검사 checkout의 전체 commit과 감사 대상 경로의 clean 상태를 기록하고, 미커밋 source 또는 GitHub Actions commit과 실제 HEAD 불일치가 있거나 자동 판정 불가가 남으면 실패한다. 원격 배포 revision은 자동 증거와 분리해 `not_verified`로 보존한다. `.github/workflows/platform-accessibility.yml`은 관련 변경마다 동일한 2개 뷰포트 감사를 재실행한다.
 - **A5 수동 평가 증거 게이트**: `evaluation/platform-accessibility-manual-evaluation.json`은 6개 제품 표면과 KWCAG 표면 간 공통 검수를 데스크톱·모바일 스크린리더 프로필로 평가하는 14개 케이스·80개 필수 검사를 추적한다. `automation/platform-accessibility-manual-evidence.mjs`는 누락·중복·불완전 환경정보·설명 없는 실패를 거부하고, 모든 검사가 `pass`가 되기 전에는 `needs_review` 또는 `fail`을 유지한다. 통과 증거 뒤 공통 `src/layouts`를 포함한 접근성 대상 소스가 바뀌면 해당 증거를 stale로 거부한다. 현재는 실제 수동 평가 전이라 80개 모두 `not_run`이며 품질인증 완료를 주장하지 않는다.
 - **A5 KWCAG 2.2 기준별 증거 게이트(2026-08-26)**: `platform-accessibility-kwcag-coverage.mjs`가 `KS X OT0003:2022` 원문의 33개 검사항목 ID·순서를 exact 계약으로 고정하고 각 항목을 axe 자동 판정, 본문 바로가기 초점, 반응형 넘침, 키보드 스크롤과 수동 검사 ID에 연결한다. 기준 누락·중복·순서 변경, 존재하지 않는 증거 참조, 미커밋 자동 감사 소스를 거부한다. clean Node 20 CI run `32894750675`에서 12개 Chromium 자동 케이스와 자동 증거 4개가 통과했고 위반·자동 판정 불가·미매핑은 없었다. 수동 평가 80개가 `not_run`이므로 33개 항목은 모두 `needs_review`, `certificationClaimed:false`를 유지한다. CI artifact와 `evaluation/platform-accessibility-kwcag-coverage.json`의 byte SHA-256이 일치하며 production DB·Auth·membership·RLS·GRANT·배포는 변경하지 않았다.
+- **A5 접근성 성명 증거 연결(2026-08-26)**: `/platform/accessibility/`가 KWCAG 2.2 33개 검사항목의 기준별 증거 JSON을 자동·반응형·수동 증거와 함께 공개한다. 수동 평가 80개 미실행과 33개 항목 `needs_review`를 화면에 명시해 자동검사를 품질인증·전수 준수로 오인하지 않도록 했다. commit `10ae40d` 정적 미리보기의 데스크톱·모바일 12개 Chromium 케이스는 모두 통과했고 axe 위반·자동 판정 불가는 없었다. clean build·배포 증거는 push 후 CI로 분리한다.
 - 인증 셸과 공개 결과는 실제 production 컴포넌트에 CI 전용 읽기 응답을 주입하고 readiness selector 도달을 필수로 한다. fixture 이름·준비 상태·axe `incomplete`·뷰포트·문서 폭을 JSON에 보존한다. 스크린리더·실제 모바일 보조기기 전수 수동평가와 공식 품질인증은 완료로 간주하지 않는다.
 - **A7 XAI 산정 설명**: 공개 결과가 현재 스냅샷의 쟁점·미분류 원문·참여 조·합의 분모·HITL 검수 건수를 사용해 범위→집계→분류→검수 과정을 수치로 설명한다. 개별 원문 역링크는 공개 payload에 근거 데이터가 없어 완료로 간주하지 않으며, 데이터 계약과 DB 변경 승인 뒤 별도 구현한다.
 - **A7 검수 원문 cluster 보존**: `issue_items`의 각 연결을 issue·cluster·연결자 단위로 보존하고, 재분류·연결 해제 전에 replace-all `issue_link_set`이 결과 cluster를 손실 없이 표현할 수 있는지 전체 계획을 검증한다. 암묵적 보존 대상에 서로 다른 cluster가 섞이면 첫 RPC 전에 작업을 차단하고, 대상 전체에 적용할 cluster를 명시한 경우에만 target을 일괄 변경한다. 기록 표·CSV의 M:N provenance 형상은 유지하며 DB migration·데이터 변경은 수행하지 않았다.
