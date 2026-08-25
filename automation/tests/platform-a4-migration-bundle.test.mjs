@@ -109,6 +109,10 @@ test('A4 SQL draft keeps preflight and post-apply verification read-only', () =>
   expect(postApply).toContain("has_function_privilege('authenticated', 'climate_vote.design_provision(jsonb,bytea)', 'EXECUTE')");
   expect(postApply).toContain("has_function_privilege('authenticated', 'climate_vote.design_provisioning_status(jsonb)', 'EXECUTE')");
   expect(postApply).toContain('v_existing.plan_checksum <> v_checksum');
+  expect(postApply).toContain("('team', 'platform_team_capacity_positive', 'c'");
+  expect(postApply).toContain("'CHECK ((capacity > 0))'");
+  expect(postApply).toContain('c.conrelid = r.oid and c.conname = expected.constraint_name');
+  expect(postApply).toContain('pg_get_constraintdef(c.oid, false) <> expected.definition');
   expect(postApply).toContain('extensions.gen_random_bytes(4)');
   expect(postApply).toContain('staffGrantActive');
 });
@@ -232,6 +236,8 @@ test('rollback refuses populated A4 state before any object is removed', () => {
   );
   expect(rollback).toContain('drop function if exists climate_vote.design_provisioning_status(jsonb)');
   expect(workflow).toContain('grant execute on function climate_vote.design_provisioning_status(jsonb) to authenticated');
+  expect(workflow).toContain('Shadow A4 constraint unexpectedly passed verification');
+  expect(workflow).toContain('Wrong A4 constraint definition unexpectedly passed verification');
   expect(workflow).toContain('Populated A4 rollback unexpectedly succeeded');
   expect(workflow).toContain('design_provisioning_rollback_requires_data_plan');
   expect(workflow).toContain('design_provisioning_rollback_cleanup_fixture.sql');

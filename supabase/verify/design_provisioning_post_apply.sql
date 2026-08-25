@@ -30,15 +30,34 @@ begin
     raise exception 'A4 post-apply verification failed: column contract is unsafe';
   end if;
 
-  select count(*) into v_count
-  from pg_constraint c join pg_namespace n on n.oid = c.connamespace
-  where n.nspname = 'climate_vote' and c.conname in (
-    'platform_session_slug_shape', 'platform_session_title_shape',
-    'platform_session_ordinal_positive', 'platform_session_assembly_ordinal_key',
-    'platform_team_ordinal_positive', 'platform_team_capacity_positive',
-    'platform_team_session_ordinal_key', 'design_provisioning_operation_pkey'
-  );
-  if v_count <> 8 then
+  if exists (
+    select 1
+    from (values
+      ('session', 'platform_session_slug_shape', 'c',
+        'CHECK (((slug IS NULL) OR (slug ~ ''^[a-z0-9-]{3,40}$''::text)))'),
+      ('session', 'platform_session_title_shape', 'c',
+        'CHECK (((title IS NULL) OR ((length(TRIM(BOTH FROM title)) >= 1) AND (length(TRIM(BOTH FROM title)) <= 200))))'),
+      ('session', 'platform_session_ordinal_positive', 'c',
+        'CHECK (((ordinal IS NULL) OR (ordinal > 0)))'),
+      ('session', 'platform_session_assembly_ordinal_key', 'u',
+        'UNIQUE (assembly_id, ordinal)'),
+      ('team', 'platform_team_ordinal_positive', 'c',
+        'CHECK (((ordinal IS NULL) OR (ordinal > 0)))'),
+      ('team', 'platform_team_capacity_positive', 'c',
+        'CHECK ((capacity > 0))'),
+      ('team', 'platform_team_session_ordinal_key', 'u',
+        'UNIQUE (session_id, ordinal)'),
+      ('design_provisioning_operation', 'design_provisioning_operation_pkey', 'p',
+        'PRIMARY KEY (org_id, operation_id)')
+    ) expected(table_name, constraint_name, constraint_type, definition)
+    left join pg_class r
+      on r.oid = to_regclass('climate_vote.' || expected.table_name)
+    left join pg_constraint c
+      on c.conrelid = r.oid and c.conname = expected.constraint_name
+    where c.oid is null
+       or c.contype::text <> expected.constraint_type
+       or pg_get_constraintdef(c.oid, false) <> expected.definition
+  ) then
     raise exception 'A4 post-apply verification failed: constraint contract is unsafe';
   end if;
 

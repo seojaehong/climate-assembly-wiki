@@ -269,6 +269,31 @@ jobs:
           grep -q '"requiresApprovedBackfill": false' <<<"$activation_report"
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/design_provisioning_post_apply.sql >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "create table climate_vote.a4_constraint_shadow_fixture(capacity integer); alter table climate_vote.team drop constraint platform_team_capacity_positive; alter table climate_vote.a4_constraint_shadow_fixture add constraint platform_team_capacity_positive check (capacity > 0);" >/dev/null
+          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/design_provisioning_post_apply.sql \
+            >"$RUNNER_TEMP/a4-shadow-constraint.log" 2>&1; then
+            echo "Shadow A4 constraint unexpectedly passed verification" >&2
+            exit 1
+          fi
+          grep -q "constraint contract is unsafe" "$RUNNER_TEMP/a4-shadow-constraint.log"
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "drop table climate_vote.a4_constraint_shadow_fixture; alter table climate_vote.team add constraint platform_team_capacity_positive check (capacity > 0);" >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "alter table climate_vote.team drop constraint platform_team_capacity_positive; alter table climate_vote.team add constraint platform_team_capacity_positive check (capacity >= 0);" >/dev/null
+          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/design_provisioning_post_apply.sql \
+            >"$RUNNER_TEMP/a4-wrong-constraint-definition.log" 2>&1; then
+            echo "Wrong A4 constraint definition unexpectedly passed verification" >&2
+            exit 1
+          fi
+          grep -q "constraint contract is unsafe" \
+            "$RUNNER_TEMP/a4-wrong-constraint-definition.log"
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "alter table climate_vote.team drop constraint platform_team_capacity_positive; alter table climate_vote.team add constraint platform_team_capacity_positive check (capacity > 0);" >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/design_provisioning_post_apply.sql >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/design_provisioning_test.sql
 

@@ -183,6 +183,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 비-draft 설계 resource 채택 차단(2026-08-26):** mutation RPC의 신규 채택과 exact replay는 assembly·session·discussion topic의 payload·부모·기관뿐 아니라 서버 생성 상태 `draft`도 대조한다. 정상 생성 뒤 assembly/session을 `active`, topic을 `open`으로 각각 바꾼 PostgreSQL 16 부정 rehearsal은 모두 `design_resource_conflict`로 중단됐고, post-apply verifier는 compiled function에서 세 상태 조건을 확인한다. 이미 활성화·종료된 자원을 새 설계 성공으로 기록하지 않으며 production migration·DB·GRANT는 적용하지 않았다.
 
+**A4 제약 정본 검증 강화(2026-08-26):** post-apply verifier가 session/team/ledger의 8개 제약을 schema 전체의 이름 count가 아니라 정확한 대상 table·`check|unique|primary key` 종류·PostgreSQL canonical definition으로 대조한다. team의 양수 capacity 제약을 shadow table의 동명 제약으로 바꾼 경로와 정확한 team에 `capacity >= 0`으로 완화한 경로를 각각 거부했고, 원래 `capacity > 0` 복구 뒤 verifier와 전체 semantic rehearsal이 통과했다. production migration·DB·GRANT는 적용하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증
