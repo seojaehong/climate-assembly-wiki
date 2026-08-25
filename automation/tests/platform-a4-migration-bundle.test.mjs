@@ -113,6 +113,11 @@ test('A4 SQL draft keeps preflight and post-apply verification read-only', () =>
   expect(postApply).toContain("'CHECK ((capacity > 0))'");
   expect(postApply).toContain('c.conrelid = r.oid and c.conname = expected.constraint_name');
   expect(postApply).toContain('pg_get_constraintdef(c.oid, false) <> expected.definition');
+  expect(postApply).toContain("('team', 'ordinal', 'integer', false, null::text)");
+  expect(postApply).toContain("('design_provisioning_operation', 'applied_at', 'timestamp with time zone', true");
+  expect(postApply).toContain('format_type(a.atttypid, a.atttypmod) <> expected.data_type');
+  expect(postApply).toContain("('session', 'FOREIGN KEY (assembly_id) REFERENCES assembly(id)')");
+  expect(postApply).toContain('foreign key contract is unsafe');
   expect(postApply).toContain('extensions.gen_random_bytes(4)');
   expect(postApply).toContain('staffGrantActive');
 });
@@ -238,6 +243,8 @@ test('rollback refuses populated A4 state before any object is removed', () => {
   expect(workflow).toContain('grant execute on function climate_vote.design_provisioning_status(jsonb) to authenticated');
   expect(workflow).toContain('Shadow A4 constraint unexpectedly passed verification');
   expect(workflow).toContain('Wrong A4 constraint definition unexpectedly passed verification');
+  expect(workflow).toContain('Wrong A4 column type unexpectedly passed verification');
+  expect(workflow).toContain('Missing A4 foreign key unexpectedly passed verification');
   expect(workflow).toContain('Populated A4 rollback unexpectedly succeeded');
   expect(workflow).toContain('design_provisioning_rollback_requires_data_plan');
   expect(workflow).toContain('design_provisioning_rollback_cleanup_fixture.sql');

@@ -292,6 +292,28 @@ jobs:
             "$RUNNER_TEMP/a4-wrong-constraint-definition.log"
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
             "alter table climate_vote.team drop constraint platform_team_capacity_positive; alter table climate_vote.team add constraint platform_team_capacity_positive check (capacity > 0);" >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "alter table climate_vote.team alter column ordinal type bigint;" >/dev/null
+          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/design_provisioning_post_apply.sql \
+            >"$RUNNER_TEMP/a4-wrong-column-type.log" 2>&1; then
+            echo "Wrong A4 column type unexpectedly passed verification" >&2
+            exit 1
+          fi
+          grep -q "column contract is unsafe" "$RUNNER_TEMP/a4-wrong-column-type.log"
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "alter table climate_vote.team alter column ordinal type integer;" >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "alter table climate_vote.session drop constraint session_assembly_id_fkey;" >/dev/null
+          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/design_provisioning_post_apply.sql \
+            >"$RUNNER_TEMP/a4-missing-foreign-key.log" 2>&1; then
+            echo "Missing A4 foreign key unexpectedly passed verification" >&2
+            exit 1
+          fi
+          grep -q "foreign key contract is unsafe" "$RUNNER_TEMP/a4-missing-foreign-key.log"
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "alter table climate_vote.session add constraint session_assembly_id_fkey foreign key (assembly_id) references climate_vote.assembly(id);" >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/design_provisioning_post_apply.sql >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \

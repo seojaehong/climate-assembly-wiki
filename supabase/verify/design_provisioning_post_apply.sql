@@ -4,7 +4,6 @@ set search_path = pg_catalog, climate_vote;
 -- Read-only A4 structural and privilege verification.
 do $verify$
 declare
-  v_count integer;
   v_definition text;
   v_config text[];
 begin
@@ -17,17 +16,57 @@ begin
     raise exception 'A4 post-apply verification failed: required object is missing';
   end if;
 
-  select count(*) into v_count
-  from information_schema.columns
-  where table_schema = 'climate_vote' and (
-    (table_name = 'session' and column_name in ('slug', 'title', 'status', 'assembly_id', 'ordinal', 'held_on', 'org_id'))
-    or (table_name = 'team' and column_name = 'ordinal')
-    or (table_name = 'design_provisioning_operation' and column_name in (
-      'org_id', 'operation_id', 'plan_checksum', 'operation_type', 'request_hash', 'resource_id', 'applied_at'
-    ))
-  );
-  if v_count <> 15 then
+  if exists (
+    select 1
+    from (values
+      ('session', 'slug', 'text', false, null::text),
+      ('session', 'title', 'text', false, null::text),
+      ('session', 'status', 'text', false, '''draft''::text'),
+      ('session', 'assembly_id', 'uuid', false, null::text),
+      ('session', 'ordinal', 'integer', false, null::text),
+      ('session', 'held_on', 'date', false, null::text),
+      ('session', 'org_id', 'uuid', false, null::text),
+      ('team', 'ordinal', 'integer', false, null::text),
+      ('design_provisioning_operation', 'org_id', 'uuid', true, null::text),
+      ('design_provisioning_operation', 'operation_id', 'text', true, null::text),
+      ('design_provisioning_operation', 'plan_checksum', 'text', true, null::text),
+      ('design_provisioning_operation', 'operation_type', 'text', true, null::text),
+      ('design_provisioning_operation', 'request_hash', 'text', true, null::text),
+      ('design_provisioning_operation', 'resource_id', 'uuid', true, null::text),
+      ('design_provisioning_operation', 'applied_at', 'timestamp with time zone', true,
+        'statement_timestamp()')
+    ) expected(table_name, column_name, data_type, not_null, default_expression)
+    left join pg_class r
+      on r.oid = to_regclass('climate_vote.' || expected.table_name)
+    left join pg_attribute a
+      on a.attrelid = r.oid and a.attname = expected.column_name
+      and a.attnum > 0 and not a.attisdropped
+    left join pg_attrdef d
+      on d.adrelid = a.attrelid and d.adnum = a.attnum
+    where a.attnum is null
+       or format_type(a.atttypid, a.atttypmod) <> expected.data_type
+       or a.attnotnull <> expected.not_null
+       or pg_get_expr(d.adbin, d.adrelid) is distinct from expected.default_expression
+  ) then
     raise exception 'A4 post-apply verification failed: column contract is unsafe';
+  end if;
+
+  if exists (
+    select 1
+    from (values
+      ('session', 'FOREIGN KEY (assembly_id) REFERENCES assembly(id)'),
+      ('session', 'FOREIGN KEY (org_id) REFERENCES org(id)'),
+      ('design_provisioning_operation', 'FOREIGN KEY (org_id) REFERENCES org(id)')
+    ) expected(table_name, definition)
+    where not exists (
+      select 1
+      from pg_constraint c
+      where c.conrelid = to_regclass('climate_vote.' || expected.table_name)
+        and c.contype = 'f'
+        and pg_get_constraintdef(c.oid, false) = expected.definition
+    )
+  ) then
+    raise exception 'A4 post-apply verification failed: foreign key contract is unsafe';
   end if;
 
   if exists (

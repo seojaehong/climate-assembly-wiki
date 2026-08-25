@@ -185,6 +185,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 제약 정본 검증 강화(2026-08-26):** post-apply verifier가 session/team/ledger의 8개 제약을 schema 전체의 이름 count가 아니라 정확한 대상 table·`check|unique|primary key` 종류·PostgreSQL canonical definition으로 대조한다. team의 양수 capacity 제약을 shadow table의 동명 제약으로 바꾼 경로와 정확한 team에 `capacity >= 0`으로 완화한 경로를 각각 거부했고, 원래 `capacity > 0` 복구 뒤 verifier와 전체 semantic rehearsal이 통과했다. production migration·DB·GRANT는 적용하지 않았다.
 
+**A4 column·FK 정본 검증 강화(2026-08-26):** post-apply verifier가 session/team/ledger의 필수 15개 column을 정확한 PostgreSQL type·nullable·default로 대조하고, session의 assembly/org 및 ledger의 org FK를 canonical 참조 정의로 확인한다. `team.ordinal`을 `bigint`로 바꾼 경로와 `session→assembly` FK를 제거한 경로를 각각 거부했으며, integer/FK 복구 뒤 verifier와 전체 semantic rehearsal이 통과했다. production migration·DB·GRANT는 적용하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

@@ -131,7 +131,7 @@
 9. 기존 claim 전용 명시적 reconciliation, pending 보존, 만료 뒤 감사 종결과 adapter 오류 비노출 test
 10. 휴면 read-only ledger lookup RPC, checksum·role·resource 검증과 무변경 PostgreSQL rehearsal
 
-post-apply verifier는 제약 이름만 schema 전체에서 세지 않는다. 각 제약의 정확한 대상 table, `check|unique|primary key` 종류와 PostgreSQL canonical definition을 함께 대조해 다른 table의 동명 제약이나 완화된 식을 적용 증거로 인정하지 않는다.
+post-apply verifier는 column 이름이나 제약 이름만 schema 전체에서 세지 않는다. 15개 필수 column의 정확한 PostgreSQL type·nullable·default, session/ledger의 3개 FK 참조 정의, 각 named 제약의 대상 table·`check|unique|primary key` 종류와 canonical definition을 함께 대조한다. 잘못된 type·default·FK 누락, 다른 table의 동명 제약이나 완화된 식을 적용 증거로 인정하지 않는다.
 
 ## 5. 승인 전에 결정할 항목
 
