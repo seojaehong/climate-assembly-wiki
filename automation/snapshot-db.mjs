@@ -45,6 +45,7 @@ const VALID_ISSUE_REVIEW_STATUSES = new Set(['draft', 'reviewed', 'archived']);
 const VALID_ISSUE_LINK_AUTHORS = new Set(['ai', 'human']);
 const POSTGRES_INTEGER_MIN = -2_147_483_648;
 const POSTGRES_INTEGER_MAX = 2_147_483_647;
+const CANONICAL_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /** Maps non-secret GitHub workflow provenance into the export audit manifest. */
 export function workflowAuditContext(environment, exportedAt = new Date().toISOString()) {
@@ -233,6 +234,7 @@ function collectionIds(payload, collection) {
     if (!row || typeof row !== 'object' || Array.isArray(row) || typeof row.id !== 'string' || row.id.length === 0) {
       throw new Error(`snapshot archive row id is missing: ${collection}`);
     }
+    assertCanonicalUuid(row.id, `${collection}.id`);
     if (ids.has(row.id)) throw new Error(`snapshot archive duplicate id: ${collection}`);
     ids.add(row.id);
   }
@@ -242,7 +244,8 @@ function collectionIds(payload, collection) {
 function validateReference(payload, childCollection, field, parentIds) {
   let checked = 0;
   for (const row of payload[childCollection]) {
-    if (typeof row?.[field] !== 'string' || !parentIds.has(row[field])) {
+    assertCanonicalUuid(row?.[field], `${childCollection}.${field}`);
+    if (!parentIds.has(row[field])) {
       throw new Error(`snapshot archive broken reference: ${childCollection}.${field}`);
     }
     checked += 1;
@@ -274,6 +277,12 @@ function isPostgresInteger(value) {
   return Number.isInteger(value)
     && value >= POSTGRES_INTEGER_MIN
     && value <= POSTGRES_INTEGER_MAX;
+}
+
+function assertCanonicalUuid(value, label) {
+  if (typeof value !== 'string' || !CANONICAL_UUID_PATTERN.test(value)) {
+    throw new Error(`snapshot archive UUID is invalid: ${label}`);
+  }
 }
 
 function validateSubmissionRows(payload) {
@@ -324,6 +333,9 @@ function validateAnalysisRows(payload) {
     }
   }
   for (const link of payload.issue_link) {
+    if (link.cluster_id !== null && link.cluster_id !== undefined) {
+      assertCanonicalUuid(link.cluster_id, 'issue_link.cluster_id');
+    }
     if (!VALID_ISSUE_LINK_AUTHORS.has(link.linked_by)) {
       throw new Error('snapshot archive issue link author is invalid');
     }
@@ -429,6 +441,7 @@ function validateInternalTenantRelationships(payload) {
   }
   for (const response of payload.ballot_response) {
     if (response.org_id === null || response.org_id === undefined) continue;
+    assertCanonicalUuid(response.org_id, 'ballot_response.org_id');
     const ballot = ballotsById.get(response.ballot_id);
     if (response.org_id !== ballot.org_id) {
       throw new Error('snapshot archive ballot response crosses organizations');
@@ -445,6 +458,7 @@ function externalDependencyIds(rows, field, label) {
     if (typeof id !== 'string' || id.length === 0) {
       throw new Error(`snapshot archive external reference is missing: ${label}.${field}`);
     }
+    assertCanonicalUuid(id, `${label}.${field}`);
     ids.add(id);
   }
   return ids;
@@ -459,9 +473,7 @@ function optionalExternalDependencyIds(rows, field, label) {
   for (const row of rows) {
     const id = row?.[field];
     if (id === null || id === undefined) continue;
-    if (typeof id !== 'string' || id.length === 0) {
-      throw new Error(`snapshot archive external reference is invalid: ${label}.${field}`);
-    }
+    assertCanonicalUuid(id, `${label}.${field}`);
     ids.add(id);
   }
   return ids;
@@ -480,6 +492,7 @@ function resultScopeDependencies(rows) {
     if (typeof row.scope_id !== 'string' || row.scope_id.length === 0) {
       throw new Error('snapshot archive external reference is missing: result_page.scope_id');
     }
+    assertCanonicalUuid(row.scope_id, 'result_page.scope_id');
     ids[row.scope].add(row.scope_id);
   }
   return ids;

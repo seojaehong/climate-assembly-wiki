@@ -39,6 +39,42 @@ const TEST_AUDIT_CONTEXT = {
 };
 const TEST_AUDIT_OPTIONS = { auditKey: TEST_AUDIT_KEY, auditContext: TEST_AUDIT_CONTEXT };
 
+const FIXTURE_UUIDS = new Map([
+  ['org-1', '00000000-0000-0000-0000-000000000001'],
+  ['org-2', '00000000-0000-0000-0000-000000000002'],
+  ['topic-1', '00000000-0000-0000-0000-000000000011'],
+  ['topic-2', '00000000-0000-0000-0000-000000000012'],
+  ['team-1', '00000000-0000-0000-0000-000000000021'],
+  ['submission-1', '00000000-0000-0000-0000-000000000031'],
+  ['missing-submission', '00000000-0000-0000-0000-000000000039'],
+  ['item-1', '00000000-0000-0000-0000-000000000041'],
+  ['item-2', '00000000-0000-0000-0000-000000000042'],
+  ['missing-item', '00000000-0000-0000-0000-000000000049'],
+  ['issue-1', '00000000-0000-0000-0000-000000000051'],
+  ['session-1', '00000000-0000-0000-0000-000000000061'],
+  ['session-2', '00000000-0000-0000-0000-000000000062'],
+  ['assembly-1', '00000000-0000-0000-0000-000000000071'],
+  ['ballot-1', '00000000-0000-0000-0000-000000000081'],
+  ['ballot-2', '00000000-0000-0000-0000-000000000082'],
+  ['ballot-item-1', '00000000-0000-0000-0000-000000000091'],
+  ['ballot-item-2', '00000000-0000-0000-0000-000000000092'],
+  ['response-1', '00000000-0000-0000-0000-0000000000a1'],
+  ['result-1', '00000000-0000-0000-0000-0000000000b1'],
+  ['result-topic', '00000000-0000-0000-0000-0000000000b2'],
+  ['result-session', '00000000-0000-0000-0000-0000000000b3'],
+  ['result-assembly', '00000000-0000-0000-0000-0000000000b4'],
+]);
+
+function canonicalizeFixtureUuids(value) {
+  if (typeof value === 'string') return FIXTURE_UUIDS.get(value) ?? value;
+  if (Array.isArray(value)) return value.map(canonicalizeFixtureUuids);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(Object.entries(value).map(([key, entry]) => [
+    FIXTURE_UUIDS.get(key) ?? key,
+    canonicalizeFixtureUuids(entry),
+  ]));
+}
+
 function platformPayloadFixture(overrides = {}) {
   return {
     submission: [{
@@ -78,11 +114,12 @@ function platformPayloadFixture(overrides = {}) {
 }
 
 async function signedArchiveFixture(payload = platformPayloadFixture()) {
+  const canonicalPayload = canonicalizeFixtureUuids(payload);
   const rpc = vi.fn()
     .mockResolvedValueOnce({ data: { snapshot_id: 42 }, error: null })
     .mockResolvedValueOnce({ data: { id: 77 }, error: null });
   return snapshotArchive({
-    client: makeClient(rpc, { data: { id: 77, source: 'platform', payload }, error: null }),
+    client: makeClient(rpc, { data: { id: 77, source: 'platform', payload: canonicalPayload }, error: null }),
     roundId: 8,
     includePlatformSnapshot: true,
     ...TEST_AUDIT_OPTIONS,
@@ -509,6 +546,84 @@ test('rejects an orphaned internal reference before any database restore is atte
     expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
       .toThrow('snapshot archive broken reference: submission_item.submission_id');
   });
+});
+
+test('rejects a non-canonical UUID row id before restore validation continues', async () => {
+  const archive = await signedArchiveFixture(platformPayloadFixture({
+    submission: [{
+      id: 'not-a-uuid', topic_id: 'topic-1', team_id: 'team-1',
+      status: 'draft', org_id: 'org-1',
+    }],
+  }));
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toThrow('snapshot archive UUID is invalid: submission.id');
+  });
+});
+
+test('rejects a non-canonical UUID internal reference before checking parent presence', async () => {
+  const archive = await signedArchiveFixture(platformPayloadFixture({
+    ballot_item: [{
+      id: 'ballot-item-1', ballot_id: 'not-a-uuid', ordinal: 1,
+      statement: 'Support this proposal', scale: 5, required: true,
+    }],
+  }));
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toThrow('snapshot archive UUID is invalid: ballot_item.ballot_id');
+  });
+});
+
+test('rejects non-canonical UUIDs in external and nullable references', async () => {
+  const cases = [
+    {
+      payload: platformPayloadFixture({
+        submission: [{
+          id: 'submission-1', topic_id: 'not-a-uuid', team_id: 'team-1',
+          status: 'draft', org_id: 'org-1',
+        }],
+      }),
+      message: 'snapshot archive UUID is invalid: submission_or_issue.topic_id',
+    },
+    {
+      payload: platformPayloadFixture({
+        issue_link: [{
+          issue_id: 'issue-1', item_id: 'item-1', cluster_id: 'not-a-uuid', linked_by: 'human',
+        }],
+        counts: { issue: 1, issue_link: 1, result_page: 0, submission: 1, ballot: 1 },
+      }),
+      message: 'snapshot archive UUID is invalid: issue_link.cluster_id',
+    },
+    {
+      payload: platformPayloadFixture({
+        ballot_response: [{
+          id: 'response-1', ballot_id: 'ballot-1', client_id: 'client-0001',
+          answers: { 'ballot-item-1': 3 }, org_id: 'not-a-uuid',
+        }],
+      }),
+      message: 'snapshot archive UUID is invalid: ballot_response.org_id',
+    },
+    {
+      payload: platformPayloadFixture({
+        result_page: [{
+          id: 'result-1', scope: 'topic', scope_id: 'not-a-uuid', token: 'result-token',
+          title: 'Topic result', body: {}, org_id: 'org-1',
+        }],
+        counts: { issue: 1, issue_link: 0, result_page: 1, submission: 1, ballot: 1 },
+      }),
+      message: 'snapshot archive UUID is invalid: result_page.scope_id',
+    },
+  ];
+
+  for (const { payload, message } of cases) {
+    const archive = await signedArchiveFixture(payload);
+    withSnapshotFile(archive, (filePath) => {
+      expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+        .toThrow(message);
+    });
+  }
 });
 
 test('rejects submission statuses outside the database enum', async () => {
