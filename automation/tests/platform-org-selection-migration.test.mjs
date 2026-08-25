@@ -225,5 +225,6 @@ describe('A2 organization selection migration draft', () => {
     expect(testWorkflow.match(new RegExp(databaseProbe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')))
       .toHaveLength(4);
     expect(testWorkflow).not.toContain('pg_isready -U postgres -d verify');
+    expect(testWorkflow).not.toContain('\r');
   });
 });

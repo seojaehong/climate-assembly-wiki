@@ -13,6 +13,7 @@ export const A4_MIGRATION_ARTIFACTS = Object.freeze([
   'automation/platform-a4-migration-bundle.mjs',
   'automation/tests/platform-design-provisioning-plan.test.mjs',
   'automation/tests/platform-a4-migration-bundle.test.mjs',
+  '.gitattributes',
   '.github/workflows/test.yml',
   'docs/platform/A4_DESIGN_PROVISIONING_CONTRACT.md',
   'supabase/verify/design_provisioning_preflight.sql',

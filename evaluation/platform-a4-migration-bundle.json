@@ -38,8 +38,8 @@
     },
     {
       "path": "automation/platform-a4-migration-bundle.mjs",
-      "sha256": "c0e2c996fb8775b2a19808731a1005871836e9a02109585d931bcd02591b4282",
-      "bytes": 6442
+      "sha256": "ca08d65e95408bc58a876b0627be77f0137b3cd6149f5d197799e37f4601d30c",
+      "bytes": 6462
     },
     {
       "path": "automation/tests/platform-design-provisioning-plan.test.mjs",
@@ -48,13 +48,18 @@
     },
     {
       "path": "automation/tests/platform-a4-migration-bundle.test.mjs",
-      "sha256": "cb0f662736b7abe896afc2785171ae0352bf7c41fb4c186f472ab4f832ece74d",
-      "bytes": 7857
+      "sha256": "7d226d136ebe432034769941cb65e02360ae1167c02883d19e96a3a79867eff4",
+      "bytes": 8073
+    },
+    {
+      "path": ".gitattributes",
+      "sha256": "32f791f4d7ae12a635f20eda34ed3f9179fb13d5b4e6fd858c987a0f29143fba",
+      "bytes": 63
     },
     {
       "path": ".github/workflows/test.yml",
-      "sha256": "c1feab992cd83ee1dbec021d5306d0485606ed614186a773f5cbaeb3d099e65b",
-      "bytes": 19200
+      "sha256": "c64124489cb5e6c559323a5e2b63bee6ca1c60edbee14d734492edc5eada524d",
+      "bytes": 19247
     },
     {
       "path": "docs/platform/A4_DESIGN_PROVISIONING_CONTRACT.md",
@@ -110,5 +115,5 @@
     "activatesStaffGrants": false,
     "connectsProductionExecutor": false
   },
-  "checksum": "d55e7df00821615ff48fe1013b43f21e8cc2092c887643afd1989337f1164b74"
+  "checksum": "dca09188f60702d9d53bcbddd87b199fdf893b93ceeda7061d2b29e76297b4ec"
 }
