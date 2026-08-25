@@ -35,6 +35,9 @@ const UNIQUE_KEYS = [
   ['ballot_response', ['ballot_id', 'client_id']],
 ];
 const VALID_BALLOT_SCALES = new Set([2, 4, 5, 7]);
+const VALID_BALLOT_STATUSES = new Set(['draft', 'open', 'closed', 'published', 'archived']);
+const POSTGRES_INTEGER_MIN = -2_147_483_648;
+const POSTGRES_INTEGER_MAX = 2_147_483_647;
 
 /** Maps non-secret GitHub workflow provenance into the export audit manifest. */
 export function workflowAuditContext(environment, exportedAt = new Date().toISOString()) {
@@ -255,6 +258,34 @@ function validateUniqueKey(payload, collection, fields) {
   }
 }
 
+function databaseTrimmedCharacterLength(value) {
+  if (typeof value !== 'string') return null;
+  return Array.from(value.replace(/^ +| +$/gu, '')).length;
+}
+
+function validateBallotRows(payload) {
+  for (const ballot of payload.ballot) {
+    const titleLength = databaseTrimmedCharacterLength(ballot.title);
+    if (titleLength === null || titleLength < 1 || titleLength > 200) {
+      throw new Error('snapshot archive ballot title is invalid');
+    }
+    if (!VALID_BALLOT_STATUSES.has(ballot.status)) {
+      throw new Error('snapshot archive ballot status is invalid');
+    }
+  }
+  for (const item of payload.ballot_item) {
+    if (!Number.isInteger(item.ordinal)
+      || item.ordinal < POSTGRES_INTEGER_MIN
+      || item.ordinal > POSTGRES_INTEGER_MAX) {
+      throw new Error('snapshot archive ballot item ordinal is invalid');
+    }
+    const statementLength = databaseTrimmedCharacterLength(item.statement);
+    if (statementLength === null || statementLength < 1 || statementLength > 300) {
+      throw new Error('snapshot archive ballot item statement is invalid');
+    }
+  }
+}
+
 function validateBallotAnswers(payload) {
   const itemsByBallot = new Map();
   const itemsById = new Map();
@@ -362,6 +393,7 @@ function unionSize(...sets) {
 export function rehearseSnapshotArchiveFile({ filePath, auditKey }) {
   const { archive, payload, counts } = readVerifiedSnapshotArchive({ filePath, auditKey });
   const ids = Object.fromEntries(ID_COLLECTIONS.map((collection) => [collection, collectionIds(payload, collection)]));
+  validateBallotRows(payload);
   for (const [collection, fields] of UNIQUE_KEYS) validateUniqueKey(payload, collection, fields);
   const checkedInternalReferences = [
     validateReference(payload, 'submission_item', 'submission_id', ids.submission),

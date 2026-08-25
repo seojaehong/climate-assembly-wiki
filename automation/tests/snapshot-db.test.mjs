@@ -46,8 +46,22 @@ function platformPayloadFixture(overrides = {}) {
     issue: [{ id: 'issue-1', topic_id: 'topic-1', org_id: 'org-1' }],
     issue_link: [],
     result_page: [],
-    ballot: [{ id: 'ballot-1', session_id: 'session-1', token: 'ballot-token-1', org_id: 'org-1' }],
-    ballot_item: [{ id: 'ballot-item-1', ballot_id: 'ballot-1', ordinal: 1, scale: 5, required: true }],
+    ballot: [{
+      id: 'ballot-1',
+      session_id: 'session-1',
+      title: 'Assembly ballot',
+      status: 'open',
+      token: 'ballot-token-1',
+      org_id: 'org-1',
+    }],
+    ballot_item: [{
+      id: 'ballot-item-1',
+      ballot_id: 'ballot-1',
+      ordinal: 1,
+      statement: 'Support this proposal',
+      scale: 5,
+      required: true,
+    }],
     ballot_response: [{ id: 'response-1', ballot_id: 'ballot-1', client_id: 'client-0001', answers: { 'ballot-item-1': 3 } }],
     counts: { issue: 1, issue_link: 0, result_page: 0, submission: 1, ballot: 1 },
     ...overrides,
@@ -513,12 +527,24 @@ test('rejects a response that references an item missing from the archive', asyn
 test('rejects a response that references an item from another ballot', async () => {
   const archive = await signedArchiveFixture(platformPayloadFixture({
     ballot: [
-      { id: 'ballot-1', session_id: 'session-1', token: 'ballot-token-1', org_id: 'org-1' },
-      { id: 'ballot-2', session_id: 'session-1', token: 'ballot-token-2', org_id: 'org-1' },
+      {
+        id: 'ballot-1', session_id: 'session-1', title: 'First ballot', status: 'open',
+        token: 'ballot-token-1', org_id: 'org-1',
+      },
+      {
+        id: 'ballot-2', session_id: 'session-1', title: 'Second ballot', status: 'open',
+        token: 'ballot-token-2', org_id: 'org-1',
+      },
     ],
     ballot_item: [
-      { id: 'ballot-item-1', ballot_id: 'ballot-1', ordinal: 1, scale: 5, required: true },
-      { id: 'ballot-item-2', ballot_id: 'ballot-2', ordinal: 1, scale: 5, required: false },
+      {
+        id: 'ballot-item-1', ballot_id: 'ballot-1', ordinal: 1,
+        statement: 'First statement', scale: 5, required: true,
+      },
+      {
+        id: 'ballot-item-2', ballot_id: 'ballot-2', ordinal: 1,
+        statement: 'Second statement', scale: 5, required: false,
+      },
     ],
     ballot_response: [{
       id: 'response-1',
@@ -541,6 +567,7 @@ test('rejects a ballot item whose required flag is not a database boolean', asyn
       id: 'ballot-item-1',
       ballot_id: 'ballot-1',
       ordinal: 1,
+      statement: 'Support this proposal',
       scale: 5,
       required: 'true',
     }],
@@ -576,6 +603,7 @@ test('rejects an unsupported ballot scale even when the ballot has no responses'
       id: 'ballot-item-1',
       ballot_id: 'ballot-1',
       ordinal: 1,
+      statement: 'Support this proposal',
       scale: 3,
       required: true,
     }],
@@ -586,6 +614,70 @@ test('rejects an unsupported ballot scale even when the ballot has no responses'
     expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
       .toThrow('snapshot archive ballot item scale is invalid');
   });
+});
+
+test('rejects ballot titles outside the database trimmed length bounds', async () => {
+  for (const title of ['   ', 'x'.repeat(201)]) {
+    const archive = await signedArchiveFixture(platformPayloadFixture({
+      ballot: [{
+        id: 'ballot-1', session_id: 'session-1', title, status: 'open',
+        token: 'ballot-token-1', org_id: 'org-1',
+      }],
+    }));
+
+    withSnapshotFile(archive, (filePath) => {
+      expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+        .toThrow('snapshot archive ballot title is invalid');
+    });
+  }
+});
+
+test('rejects ballot statuses outside the database enum', async () => {
+  for (const status of [undefined, 'scheduled']) {
+    const archive = await signedArchiveFixture(platformPayloadFixture({
+      ballot: [{
+        id: 'ballot-1', session_id: 'session-1', title: 'Assembly ballot', status,
+        token: 'ballot-token-1', org_id: 'org-1',
+      }],
+    }));
+
+    withSnapshotFile(archive, (filePath) => {
+      expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+        .toThrow('snapshot archive ballot status is invalid');
+    });
+  }
+});
+
+test('rejects ballot item statements outside the database trimmed length bounds', async () => {
+  for (const statement of ['   ', 'x'.repeat(301)]) {
+    const archive = await signedArchiveFixture(platformPayloadFixture({
+      ballot_item: [{
+        id: 'ballot-item-1', ballot_id: 'ballot-1', ordinal: 1,
+        statement, scale: 5, required: true,
+      }],
+    }));
+
+    withSnapshotFile(archive, (filePath) => {
+      expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+        .toThrow('snapshot archive ballot item statement is invalid');
+    });
+  }
+});
+
+test('rejects ballot item ordinals that are not PostgreSQL integers', async () => {
+  for (const ordinal of [null, 1.5, 2_147_483_648]) {
+    const archive = await signedArchiveFixture(platformPayloadFixture({
+      ballot_item: [{
+        id: 'ballot-item-1', ballot_id: 'ballot-1', ordinal,
+        statement: 'Support this proposal', scale: 5, required: true,
+      }],
+    }));
+
+    withSnapshotFile(archive, (filePath) => {
+      expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+        .toThrow('snapshot archive ballot item ordinal is invalid');
+    });
+  }
 });
 
 test('reports organization and polymorphic result parents as distinct external dependencies', async () => {
