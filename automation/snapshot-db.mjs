@@ -24,6 +24,16 @@ const ARCHIVE_RESTORE_ORDER = [
   'ballot_item',
   'ballot_response',
 ];
+const RESTORE_IDENTITY_KEYS = {
+  submission: ['id'],
+  submission_item: ['id'],
+  issue: ['id'],
+  issue_link: ['issue_id', 'item_id'],
+  result_page: ['id'],
+  ballot: ['id'],
+  ballot_item: ['id'],
+  ballot_response: ['id'],
+};
 const ID_COLLECTIONS = ARCHIVE_RESTORE_ORDER.filter((key) => key !== 'issue_link');
 const UNIQUE_KEYS = [
   ['submission', ['topic_id', 'team_id']],
@@ -613,6 +623,24 @@ function restoreInsertSql(collection, rows) {
   return `insert into climate_vote.${collection}\nselect * from jsonb_populate_recordset(null::climate_vote.${collection}, ${sqlJson(rows)});`;
 }
 
+function restoreRowVerificationSql(collection, rows) {
+  const identity = RESTORE_IDENTITY_KEYS[collection]
+    .map((field) => `actual.${field} = expected.${field}`)
+    .join(' and ');
+  return `
+  if exists (
+    select 1
+    from jsonb_populate_recordset(
+      null::climate_vote.${collection},
+      ${sqlJson(rows)}
+    ) expected
+    left join climate_vote.${collection} actual on ${identity}
+    where actual is distinct from expected
+  ) then
+    raise exception 'snapshot restore row mismatch: ${collection}';
+  end if;`;
+}
+
 /** Builds SQL that performs and rolls back a restore in the isolated verify database. */
 export function buildSnapshotRestoreRehearsalSql({ filePath, auditKey, databaseName }) {
   if (databaseName !== 'verify') {
@@ -633,6 +661,9 @@ export function buildSnapshotRestoreRehearsalSql({ filePath, auditKey, databaseN
     if (select count(*) from climate_vote.${name}) <> ${expectedCounts[name]} then
       raise exception 'snapshot restore count mismatch: ${name}';
     end if;`).join('');
+  const rowChecks = ARCHIVE_RESTORE_ORDER
+    .map((name) => restoreRowVerificationSql(name, payload[name]))
+    .join('');
   const actualCountPairs = ARCHIVE_RESTORE_ORDER
     .map((name) => `'${name}', (select count(*) from climate_vote.${name})`)
     .join(',\n    ');
@@ -699,18 +730,7 @@ $restore_trigger$;
 ${ARCHIVE_RESTORE_ORDER.slice(2).map((name) => restoreInsertSql(name, payload[name])).join('\n')}
 
 do $restore_counts$
-begin${countChecks}
-  if exists (
-    select 1
-    from jsonb_populate_recordset(
-      null::climate_vote.submission,
-      ${sqlJson(payload.submission)}
-    ) expected
-    join climate_vote.submission actual on actual.id = expected.id
-    where actual is distinct from expected
-  ) then
-    raise exception 'snapshot restore submission row mismatch';
-  end if;
+begin${countChecks}${rowChecks}
 end
 $restore_counts$;
 
@@ -721,7 +741,7 @@ select jsonb_build_object(
   'databaseRestoreExecuted', true,
   'transactionRolledBack', true,
   'businessTriggerRestored', true,
-  'submissionRowsVerified', true,
+  'archiveRowsVerified', true,
   'counts', jsonb_build_object(
     ${actualCountPairs}
   )

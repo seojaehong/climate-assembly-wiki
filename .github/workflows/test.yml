@@ -363,12 +363,24 @@ jobs:
             "$RUNNER_TEMP/snapshot-restore-disabled-trigger.log"
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
             "alter table climate_vote.submission_item enable trigger submission_item_lock_guard;" >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "create function climate_vote.snapshot_restore_drift_fixture() returns trigger language plpgsql as 'begin new.title := chr(100) || chr(114) || chr(105) || chr(102) || chr(116); return new; end'; create trigger snapshot_restore_drift_fixture before insert on climate_vote.ballot for each row execute function climate_vote.snapshot_restore_drift_fixture();" >/dev/null
+          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -Atq -f /tmp/snapshot-restore.sql \
+            >"$RUNNER_TEMP/snapshot-restore-row-drift.log" 2>&1; then
+            echo "Snapshot restore unexpectedly accepted a drifted archive row" >&2
+            exit 1
+          fi
+          grep -q 'snapshot restore row mismatch: ballot' \
+            "$RUNNER_TEMP/snapshot-restore-row-drift.log"
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "drop trigger snapshot_restore_drift_fixture on climate_vote.ballot; drop function climate_vote.snapshot_restore_drift_fixture();" >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -Atq -f /tmp/snapshot-restore.sql | tee "$report_path"
           grep -q '"status": "restore_rehearsal_passed"' "$report_path"
           grep -q '"databaseRestoreExecuted": true' "$report_path"
           grep -q '"businessTriggerRestored": true' "$report_path"
-          grep -q '"submissionRowsVerified": true' "$report_path"
+          grep -q '"archiveRowsVerified": true' "$report_path"
           remaining_rows="$(docker exec "$container" psql -U postgres -d verify -Atq -c \
             "select (select count(*) from climate_vote.submission) + (select count(*) from climate_vote.submission_item) + (select count(*) from climate_vote.issue) + (select count(*) from climate_vote.issue_link) + (select count(*) from climate_vote.result_page) + (select count(*) from climate_vote.ballot) + (select count(*) from climate_vote.ballot_item) + (select count(*) from climate_vote.ballot_response);")"
           test "$remaining_rows" = "0"
