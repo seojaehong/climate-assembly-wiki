@@ -95,6 +95,7 @@
 - 실패 receipt는 저장된 원문 오류가 아니라 `design_*` allowlist 코드와 `rollbackVerified:true`만 허용한다. rollback이 확인되지 않은 응답 유실·미확정 outcome은 receipt나 terminal failure로 봉인하지 않는다.
 - schema v1 receipt는 exact approved/executed plan checksum, source SHA, approval/execution ID, key ID, 시작·완료 시각, 성공·실패 요약을 HMAC으로 결속하며 `containsSensitiveValues:false`를 강제한다. `sealDesignProvisioningExecutionReceipt()`과 `verifyDesignProvisioningExecutionReceipt()`은 순수 함수로 RPC 호출·receipt 저장·DB mutation을 수행하지 않는다.
 - `executeDesignProvisioningApprovalLifecycle()`은 injected authorization·execution·receipt adapter만 조율한다. claim 전과 직후 exact execution ID receipt를 조회하고, 이미 검증 가능한 receipt가 있으면 RPC를 건너뛴 뒤 같은 terminal outcome으로 finalize한다. `claimDisposition:new`을 받은 단 하나의 호출만 RPC를 실행하며, 기존·reconciled claim에 receipt가 없으면 미확정 outcome으로 보고 자동 재호출하지 않고 명시적 reconciliation을 요구한다. 새 RPC 결과는 봉인·append 뒤 같은 execution ID를 다시 조회해 exact HMAC receipt가 관찰될 때만 finalize한다. append 응답 유실 시 claim을 열어 둬 다음 실행이 저장된 receipt를 복구한다. in-memory receipt adapter는 append-only 충돌과 response-loss·동시 실행 테스트용이며 credential·Supabase·production endpoint를 알지 못한다.
+- `reconcileDesignProvisioningApprovalLifecycle()`은 운영자가 명시적으로 호출하는 별도 경로다. 기존 active claim을 먼저 검증하며 새 claim이나 일반 execution adapter를 호출하지 않는다. injected reconciliation adapter에는 mutation RPC로 재사용할 수 있는 실행 plan·원본 bytes 대신 approval/execution ID, approved/executed checksum, source hash·길이, operation ID·type만 담은 비식별 lookup query를 전달한다. adapter는 ledger·operation lookup만 수행해 기존 완료 결과 또는 `pending`을 반환해야 한다. `pending`, lookup 오류, receipt persistence 미확정은 claim을 열린 상태로 유지한다. 완료 결과는 동일한 response 검증·redaction·HMAC receipt·재조회·finalize 절차를 거친다. 유효 시간 안에 시작된 claim은 승인 만료 뒤에도 현재 live actor/org/host 검증을 통과하면 감사 상태를 닫을 수 있다. production reconciliation adapter와 endpoint는 아직 제공하지 않는다.
 
 ## 4. migration 초안 승인 시 필요한 산출물
 
@@ -108,6 +109,7 @@
 6. plan source, bundle builder, A4 plan·bundle 집중 테스트와 migration/rollback/verifier hash를 결속한 approval bundle
 7. 실행 승인 artifact의 role·expiry·revocation·one-time claim·terminal finalization 순수 verifier와 음성 테스트
 8. exact RPC response redaction, rollback-verified failure, HMAC execution receipt와 append-response-loss·unknown-outcome·동시 lifecycle test
+9. 기존 claim 전용 명시적 reconciliation, pending 보존, 만료 뒤 감사 종결과 adapter 오류 비노출 test
 
 ## 5. 승인 전에 결정할 항목
 

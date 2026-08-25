@@ -667,6 +667,23 @@ function designProvisioningExecutionCandidate(plan) {
   return { ...unsigned, checksum: designProvisioningPlanChecksum(unsigned) };
 }
 
+function designProvisioningReconciliationQuery(approval, plan) {
+  const executionPlan = designProvisioningExecutionCandidate(plan);
+  return {
+    schemaVersion: 1,
+    kind: 'platform_design_provisioning_reconciliation_query',
+    approvalId: approval.approvalId,
+    executionId: approval.executionId,
+    approvedPlanChecksum: plan.checksum,
+    executedPlanChecksum: executionPlan.checksum,
+    sourceBlueprintSha256: plan.sourceBlueprint.sha256,
+    sourceBlueprintBytes: plan.sourceBlueprint.bytes,
+    operationCount: plan.operations.length,
+    operations: plan.operations.map(({ operationId, type }) => ({ operationId, type })),
+    containsSensitiveValues: false,
+  };
+}
+
 function completedExecutionResult(executionPlan, executionResult) {
   if (!isRecord(executionResult)
     || !exactKeys(executionResult, ['status', 'response'])
@@ -916,6 +933,15 @@ function validateExecutionAdapter(adapter) {
     || !exactKeys(adapter, ['execute'])
     || typeof adapter.execute !== 'function') {
     throw new Error('Design provisioning execution adapter is invalid');
+  }
+  return adapter;
+}
+
+function validateReconciliationAdapter(adapter) {
+  if (!isRecord(adapter)
+    || !exactKeys(adapter, ['reconcile'])
+    || typeof adapter.reconcile !== 'function') {
+    throw new Error('Design provisioning execution reconciliation adapter is invalid');
   }
   return adapter;
 }
@@ -1420,6 +1446,74 @@ async function finalizeStoredExecutionReceipt({
   });
 }
 
+async function persistExecutionReceiptAndFinalize({
+  executionResult,
+  startedAt,
+  completedAt,
+  approval,
+  plan,
+  blueprint,
+  sourceBytes,
+  authorizationAdapter,
+  receiptAdapter,
+  trustedKey,
+  expectedKeyId,
+  clock,
+  executionDisposition,
+}) {
+  const claimedSnapshot = validateAuthorizationSnapshot(
+    await authorizationAdapter.readSnapshot(approval.approvalId),
+  );
+  validateLiveAuthorizationContext(claimedSnapshot.context, approval);
+  const candidateReceipt = sealDesignProvisioningExecutionReceipt({
+    plan,
+    blueprint,
+    sourceBytes,
+    approval,
+    approvalState: claimedSnapshot.state,
+    executionResult,
+    startedAt: startedAt.toISOString(),
+    completedAt: completedAt.toISOString(),
+    trustedKey,
+    expectedKeyId,
+  });
+
+  let appendResult;
+  try {
+    appendResult = validateReceiptAdapterResult(await receiptAdapter.append(candidateReceipt));
+  } catch (error) {
+    if (error instanceof Error
+      && error.message === 'Design provisioning execution receipt append result is invalid') {
+      throw error;
+    }
+    throw new Error('Design provisioning execution receipt append failed');
+  }
+  if (appendResult.status === 'appended'
+    && canonicalJson(appendResult.receipt) !== canonicalJson(candidateReceipt)) {
+    throw new Error('Design provisioning execution receipt append result is invalid');
+  }
+  const persistedReceipt = await readExecutionReceipt(receiptAdapter, approval.executionId);
+  if (!persistedReceipt) {
+    throw new Error('Design provisioning execution receipt persistence is not observable');
+  }
+  if (canonicalJson(persistedReceipt) !== canonicalJson(appendResult.receipt)) {
+    throw new Error('Design provisioning execution receipt append result is invalid');
+  }
+  return finalizeStoredExecutionReceipt({
+    receipt: persistedReceipt,
+    approval,
+    plan,
+    blueprint,
+    sourceBytes,
+    authorizationAdapter,
+    trustedKey,
+    expectedKeyId,
+    clock,
+    executionDisposition,
+    receiptDisposition: appendResult.status === 'appended' ? 'appended' : 'reconciled',
+  });
+}
+
 export async function executeDesignProvisioningApprovalLifecycle({
   approval,
   plan,
@@ -1503,56 +1597,155 @@ export async function executeDesignProvisioningApprovalLifecycle({
     throw new Error('Design provisioning execution adapter failed');
   }
   const completedAt = lifecycleTime(clock);
-  const claimedSnapshot = validateAuthorizationSnapshot(
-    await authorization.readSnapshot(approval.approvalId),
-  );
-  validateLiveAuthorizationContext(claimedSnapshot.context, approval);
-  const candidateReceipt = sealDesignProvisioningExecutionReceipt({
-    plan,
-    blueprint,
-    sourceBytes,
-    approval,
-    approvalState: claimedSnapshot.state,
+  return persistExecutionReceiptAndFinalize({
     executionResult,
-    startedAt: startedAt.toISOString(),
-    completedAt: completedAt.toISOString(),
-    trustedKey,
-    expectedKeyId,
-  });
-
-  let appendResult;
-  try {
-    appendResult = validateReceiptAdapterResult(await receipts.append(candidateReceipt));
-  } catch (error) {
-    if (error instanceof Error
-      && error.message === 'Design provisioning execution receipt append result is invalid') {
-      throw error;
-    }
-    throw new Error('Design provisioning execution receipt append failed');
-  }
-  if (appendResult.status === 'appended'
-    && canonicalJson(appendResult.receipt) !== canonicalJson(candidateReceipt)) {
-    throw new Error('Design provisioning execution receipt append result is invalid');
-  }
-  const persistedReceipt = await readExecutionReceipt(receipts, approval.executionId);
-  if (!persistedReceipt) {
-    throw new Error('Design provisioning execution receipt persistence is not observable');
-  }
-  if (canonicalJson(persistedReceipt) !== canonicalJson(appendResult.receipt)) {
-    throw new Error('Design provisioning execution receipt append result is invalid');
-  }
-  return finalizeStoredExecutionReceipt({
-    receipt: persistedReceipt,
+    startedAt,
+    completedAt,
     approval,
     plan,
     blueprint,
     sourceBytes,
     authorizationAdapter: authorization,
+    receiptAdapter: receipts,
     trustedKey,
     expectedKeyId,
     clock,
     executionDisposition: 'executed',
-    receiptDisposition: appendResult.status === 'appended' ? 'appended' : 'reconciled',
+  });
+}
+
+export async function reconcileDesignProvisioningApprovalLifecycle({
+  approval,
+  plan,
+  blueprint,
+  sourceBytes,
+  authorizationAdapter,
+  receiptAdapter: receiptAdapterValue,
+  reconciliationAdapter: reconciliationAdapterValue,
+  trustedKey,
+  expectedKeyId,
+  clock = () => new Date(),
+}) {
+  const authorization = validateAuthorizationAdapter(
+    authorizationAdapter,
+    { requireFinalize: true },
+  );
+  const receipts = validateReceiptAdapter(receiptAdapterValue);
+  const reconciliation = validateReconciliationAdapter(reconciliationAdapterValue);
+  if (typeof clock !== 'function') {
+    throw new Error('Design provisioning execution lifecycle clock is invalid');
+  }
+
+  const existingReceipt = await readExecutionReceipt(receipts, approval?.executionId);
+  if (existingReceipt) {
+    return finalizeStoredExecutionReceipt({
+      receipt: existingReceipt,
+      approval,
+      plan,
+      blueprint,
+      sourceBytes,
+      authorizationAdapter: authorization,
+      trustedKey,
+      expectedKeyId,
+      clock,
+      executionDisposition: 'existing_receipt',
+      receiptDisposition: 'existing',
+    });
+  }
+
+  const reconciliationAt = lifecycleTime(clock);
+  const initialSnapshot = validateAuthorizationSnapshot(
+    await authorization.readSnapshot(approval?.approvalId),
+  );
+  validateLiveAuthorizationContext(initialSnapshot.context, approval);
+  const initialAuthorization = verifyDesignProvisioningExecutionApproval(
+    approval,
+    plan,
+    blueprint,
+    sourceBytes,
+    {
+      trustedKey,
+      expectedKeyId,
+      expectedOrganizationId: initialSnapshot.context.organizationId,
+      expectedTargetHost: initialSnapshot.context.targetHost,
+      now: reconciliationAt,
+      approvalState: initialSnapshot.state,
+      allowConsumed: true,
+    },
+  );
+  if (initialAuthorization.claimAction !== 'resume_existing_claim') {
+    throw new Error('Design provisioning execution reconciliation requires an active claim');
+  }
+  assertClaimActor(initialSnapshot.state, initialSnapshot.context);
+  const startedAt = canonicalUtc(initialSnapshot.state.claim?.claimedAt);
+  if (!startedAt) {
+    throw new Error('Design provisioning execution reconciliation claim is invalid');
+  }
+
+  const receiptAfterClaim = await readExecutionReceipt(receipts, approval.executionId);
+  if (receiptAfterClaim) {
+    return finalizeStoredExecutionReceipt({
+      receipt: receiptAfterClaim,
+      approval,
+      plan,
+      blueprint,
+      sourceBytes,
+      authorizationAdapter: authorization,
+      trustedKey,
+      expectedKeyId,
+      clock,
+      executionDisposition: 'existing_receipt',
+      receiptDisposition: 'existing',
+    });
+  }
+
+  const reconciliationQuery = designProvisioningReconciliationQuery(approval, plan);
+  let reconciliationResult;
+  try {
+    reconciliationResult = await reconciliation.reconcile({
+      query: structuredClone(reconciliationQuery),
+    });
+  } catch {
+    throw new Error('Design provisioning execution reconciliation adapter failed');
+  }
+
+  const receiptAfterReconciliation = await readExecutionReceipt(receipts, approval.executionId);
+  if (receiptAfterReconciliation) {
+    return finalizeStoredExecutionReceipt({
+      receipt: receiptAfterReconciliation,
+      approval,
+      plan,
+      blueprint,
+      sourceBytes,
+      authorizationAdapter: authorization,
+      trustedKey,
+      expectedKeyId,
+      clock,
+      executionDisposition: 'existing_receipt',
+      receiptDisposition: 'existing',
+    });
+  }
+
+  if (isRecord(reconciliationResult)
+    && exactKeys(reconciliationResult, ['status'])
+    && reconciliationResult.status === 'pending') {
+    throw new Error('Design provisioning execution reconciliation remains pending');
+  }
+
+  return persistExecutionReceiptAndFinalize({
+    executionResult: reconciliationResult,
+    startedAt,
+    completedAt: lifecycleTime(clock),
+    approval,
+    plan,
+    blueprint,
+    sourceBytes,
+    authorizationAdapter: authorization,
+    receiptAdapter: receipts,
+    trustedKey,
+    expectedKeyId,
+    clock,
+    executionDisposition: 'reconciled',
   });
 }
 

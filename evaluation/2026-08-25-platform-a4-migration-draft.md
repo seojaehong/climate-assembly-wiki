@@ -47,11 +47,11 @@
 
 ## 자동화 회귀
 
-- A4 bundle·design plan 집중 테스트: 34건 통과
-- Windows automation 전체: 26개 파일, 352건 통과
+- A4 bundle·design plan 집중 테스트: 38건 통과
+- Windows automation 전체: 26개 파일, 356건 통과
 - approval bundle verifier: builder·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 16개, production apply 미승인·DB mutation 미실행 상태로 통과
 - 추적 manifest를 current source에서 재구성해 stale source hash를 거부하는 테스트 통과
-- bundle checksum: `b7dfb2ec8ef318e26e6d5bd7610cb010f27dc31adc5b36f3fa042fc61fb6a63c`
+- bundle checksum: `ef587641e3c166824b3be20697967887a967481c5f483eb4096147e58536fc33`
 
 ## 보안·데이터 무결성 결론
 

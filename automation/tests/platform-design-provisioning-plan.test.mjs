@@ -14,6 +14,7 @@ import {
   designProvisioningPlanChecksum,
   executeDesignProvisioningApprovalLifecycle,
   finalizeDesignProvisioningExecutionApproval,
+  reconcileDesignProvisioningApprovalLifecycle,
   runDesignProvisioningCli,
   sealDesignProvisioningExecutionApproval,
   sealDesignProvisioningExecutionReceipt,
@@ -789,6 +790,186 @@ test('allows only the new A4 claim owner to invoke RPC during concurrent lifecyc
   }
   expect(executionCount).toBe(1);
   expect((await receiptAdapter.read(approval.executionId)).status).toBe('completed');
+});
+
+test('explicitly reconciles an unknown A4 RPC outcome without executing it again', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const authorizationAdapter = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
+  const receiptAdapter = createInMemoryDesignProvisioningReceiptAdapter();
+  let executionCount = 0;
+  await expect(executeDesignProvisioningApprovalLifecycle({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter,
+    executionAdapter: {
+      async execute() {
+        executionCount += 1;
+        throw new Error('raw RPC response with secret');
+      },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock('2026-08-25T13:05:00.000Z'),
+  })).rejects.toThrow('execution adapter failed');
+
+  let reconciliationCount = 0;
+  const result = await reconcileDesignProvisioningApprovalLifecycle({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter,
+    reconciliationAdapter: {
+      async reconcile({ query }) {
+        reconciliationCount += 1;
+        expect(query).toEqual({
+          schemaVersion: 1,
+          kind: 'platform_design_provisioning_reconciliation_query',
+          approvalId: approval.approvalId,
+          executionId: approval.executionId,
+          approvedPlanChecksum: plan.checksum,
+          executedPlanChecksum: executionPlanCandidate(plan).checksum,
+          sourceBlueprintSha256: plan.sourceBlueprint.sha256,
+          sourceBlueprintBytes: plan.sourceBlueprint.bytes,
+          operationCount: plan.operations.length,
+          operations: plan.operations.map(({ operationId, type }) => ({ operationId, type })),
+          containsSensitiveValues: false,
+        });
+        expect(query).not.toHaveProperty('sourceBytes');
+        expect(query).not.toHaveProperty('readyForExecution');
+        return completedExecutionResult(executionPlanCandidate(plan), 'replayed');
+      },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock(
+      '2026-08-25T13:20:00.000Z',
+      '2026-08-25T13:21:00.000Z',
+      '2026-08-25T13:22:00.000Z',
+    ),
+  });
+
+  expect(result).toMatchObject({
+    status: 'execution_completed',
+    executionDisposition: 'reconciled',
+    receiptDisposition: 'appended',
+    finalizationDisposition: 'new',
+  });
+  expect(executionCount).toBe(1);
+  expect(reconciliationCount).toBe(1);
+  const storedReceipt = await receiptAdapter.read(approval.executionId);
+  expect(storedReceipt).toMatchObject({
+    startedAt: '2026-08-25T13:05:00.000Z',
+    completedAt: '2026-08-25T13:21:00.000Z',
+    status: 'completed',
+  });
+  expect((await authorizationAdapter.readSnapshot(approval.approvalId)).state.claim.status)
+    .toBe('completed');
+});
+
+test('requires a pre-existing A4 claim before explicit reconciliation', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const authorizationAdapter = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
+  let reconciliationCount = 0;
+  await expect(reconcileDesignProvisioningApprovalLifecycle({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter: createInMemoryDesignProvisioningReceiptAdapter(),
+    reconciliationAdapter: {
+      async reconcile() {
+        reconciliationCount += 1;
+        return { status: 'pending' };
+      },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock('2026-08-25T13:05:00.000Z'),
+  })).rejects.toThrow('reconciliation requires an active claim');
+  expect(reconciliationCount).toBe(0);
+  expect((await authorizationAdapter.readSnapshot(approval.approvalId)).state.claim).toBeNull();
+});
+
+test('keeps the A4 claim open when explicit reconciliation remains pending', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const authorizationAdapter = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
+  const receiptAdapter = createInMemoryDesignProvisioningReceiptAdapter();
+  await expect(executeDesignProvisioningApprovalLifecycle({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter,
+    executionAdapter: {
+      async execute() { throw new Error('unknown RPC outcome'); },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock('2026-08-25T13:05:00.000Z'),
+  })).rejects.toThrow('execution adapter failed');
+
+  await expect(reconcileDesignProvisioningApprovalLifecycle({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter,
+    reconciliationAdapter: {
+      async reconcile() { return { status: 'pending' }; },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock('2026-08-25T13:08:00.000Z'),
+  })).rejects.toThrow('reconciliation remains pending');
+  expect((await authorizationAdapter.readSnapshot(approval.approvalId)).state.claim.status)
+    .toBe('claimed');
+  expect(await receiptAdapter.read(approval.executionId)).toBeNull();
+});
+
+test('sanitizes A4 reconciliation adapter failures and preserves the active claim', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const authorizationAdapter = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
+  const receiptAdapter = createInMemoryDesignProvisioningReceiptAdapter();
+  await expect(executeDesignProvisioningApprovalLifecycle({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter,
+    executionAdapter: {
+      async execute() { throw new Error('unknown RPC outcome'); },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock('2026-08-25T13:05:00.000Z'),
+  })).rejects.toThrow('execution adapter failed');
+
+  await expect(reconcileDesignProvisioningApprovalLifecycle({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter,
+    reconciliationAdapter: {
+      async reconcile() { throw new Error('raw ledger response with secret'); },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock('2026-08-25T13:08:00.000Z'),
+  })).rejects.toThrow('reconciliation adapter failed');
+  expect((await authorizationAdapter.readSnapshot(approval.approvalId)).state.claim.status)
+    .toBe('claimed');
+  expect(await receiptAdapter.read(approval.executionId)).toBeNull();
 });
 
 test('allows only the same in-flight execution claim to resume', () => {

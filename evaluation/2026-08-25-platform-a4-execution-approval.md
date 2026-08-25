@@ -1,7 +1,7 @@
 # A4 실행 승인 artifact·receipt 계약 검증
 
 - 검증일: 2026-08-25
-- 범위: adapter-independent A4 실행 승인, 비식별 receipt와 injected response-loss lifecycle 계약
+- 범위: adapter-independent A4 실행 승인, 비식별 receipt, injected response-loss와 명시적 reconciliation lifecycle 계약
 - production DB·Auth·membership·GRANT·traffic·provider 접근 또는 mutation: 없음
 
 ## 구현 경계
@@ -16,6 +16,7 @@
 - 승인된 review plan에서 동일 operation/source를 가진 실행형 RPC checksum을 결정적으로 파생해 approved/executed checksum을 함께 결속한다. 성공 RPC response의 exact operation/resource/join-code 형식을 검증한 뒤 resource UUID와 join code를 제거하고 operation ID·type·status·count만 receipt에 남긴다.
 - 실패 receipt는 allowlist `design_*` 코드와 rollback 확인만 허용하며, approval/plan/source·execution·시각·요약을 HMAC으로 결속한다. 함수는 RPC·persistence를 호출하지 않는다.
 - injected lifecycle core는 claim 전·직후 receipt를 조회하고 새 RPC 결과를 비식별 receipt로 append·재조회한 뒤에만 finalize한다. 단 하나의 `new` claim 소유자만 RPC를 호출하며, receipt 없는 기존·reconciled claim은 미확정 outcome으로 보고 자동 재호출하지 않는다. append 응답 유실 뒤 저장된 receipt를 복구하면 RPC를 다시 호출하지 않으며, 저장 성공 응답이 있어도 receipt가 관찰되지 않으면 claim을 진행 중으로 보존한다.
+- 명시적 reconciliation lifecycle은 기존 active claim만 허용하고 새 claim·execution adapter를 호출하지 않는다. mutation RPC 입력으로 재사용할 수 없는 approval/execution·checksum·source hash/길이·operation ID/type 비식별 query만 injected adapter에 전달한다. exact ledger·operation lookup 결과가 `pending`이거나 오류이면 claim을 유지하며, 완료 결과는 동일한 response 검증·redaction·HMAC receipt persistence 뒤에만 finalize한다. 유효 시간 안에 시작된 claim의 만료 뒤 감사 종결과 adapter 원시 오류 비노출을 검증했다.
 - 승인 발급 CLI, 실제 key, production-backed durable state·live membership adapter와 production executor는 제공하지 않는다.
 - 기존 plan의 `readyForExecution:false`, `serverContractImplemented:false`, `databaseMutationExecuted:false`는 유지한다.
 
@@ -23,15 +24,15 @@
 
 | 검증 | 결과 |
 | --- | --- |
-| A4 plan 집중 Vitest | 1개 파일, 26건 통과 |
+| A4 plan 집중 Vitest | 1개 파일, 30건 통과 |
 | A4 bundle 집중 Vitest | 1개 파일, 8건 통과; tracked manifest current-source 대조 포함 |
 | approval bundle | builder·A4 집중 테스트·CI workflow·LF 규칙을 포함한 16개 artifact Git-canonical byte hash 결속 |
-| automation 전체 Vitest | 26개 파일, 352건 통과 |
+| automation 전체 Vitest | 26개 파일, 356건 통과 |
 | root 전체 Vitest | 64개 파일, 1,060건 통과 |
 | Astro check | 326개 파일, 오류 0건, 기존 hint 49건 |
 | diff whitespace | `git diff --check` 통과 |
 
-집중 음성 테스트는 wrong/inactive role, 다른 user/organization/host, 만료, 취소, 완료된 claim, 다른 execution 재사용, CAS 중 live context 변경, terminal claim 유실·반대 outcome, malformed RPC·raw failure·rollback 미확인, artifact tamper와 불완전 approval-state를 거부한다. append 응답 유실은 저장된 receipt를 우선 복구하고, unknown RPC outcome 재진입과 실제 동시 lifecycle은 receipt 없는 기존 claim에서 중단해 RPC 호출을 한 번으로 제한한다. 미확정 실행은 terminal finalize하지 않는다.
+집중 음성 테스트는 wrong/inactive role, 다른 user/organization/host, 만료, 취소, 완료된 claim, 다른 execution 재사용, CAS 중 live context 변경, terminal claim 유실·반대 outcome, malformed RPC·raw failure·rollback 미확인, artifact tamper와 불완전 approval-state를 거부한다. append 응답 유실은 저장된 receipt를 우선 복구하고, unknown RPC outcome 재진입과 실제 동시 lifecycle은 receipt 없는 기존 claim에서 중단해 RPC 호출을 한 번으로 제한한다. 명시적 reconciliation은 claim 없는 호출·pending·원시 adapter 오류를 거부하고 미확정 실행을 terminal finalize하지 않는다.
 
 ## 남은 blocker
 
@@ -39,6 +40,6 @@
 2. 승인 발급 주체·key custody와 durable revocation/claim 저장소
 3. production-backed 원자 claim/finalize와 active `org_admin|hq` membership·선택 기관 재검증 adapter
 4. A4 migration·mapping·activation preflight와 RPC 권한 활성화
-5. production append-only receipt persistence·실제 rollback·role deny E2E
+5. production append-only receipt persistence·ledger lookup reconciliation·실제 rollback·role deny E2E
 
 이 보고서는 repository 계약과 로컬 검증 증거이며 production 실행 승인 artifact가 아니다.
