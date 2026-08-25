@@ -710,7 +710,7 @@ function verifyReceiptSignature(receipt, configuration) {
   }
 }
 
-export async function auditLocalDesignProvisioningRehearsalStore({
+async function inspectLocalDesignProvisioningRehearsalStore({
   directory,
   trustedReceiptKey,
   expectedReceiptKeyId,
@@ -753,6 +753,7 @@ export async function auditLocalDesignProvisioningRehearsalStore({
     orphanTemporaryFileCount: 0,
   };
   const authorizationStates = new Map();
+  const authorizationInventory = [];
   for (const approvalId of authorizationNames) {
     const approvalRoot = validateOwnedDirectory(
       authorizationRoot,
@@ -763,6 +764,11 @@ export async function auditLocalDesignProvisioningRehearsalStore({
     authorizationSummary.authorizationRecordCount += journal.recordCount;
     authorizationSummary.orphanTemporaryFileCount += journal.orphanTemporaryFileCount;
     authorizationStates.set(approvalId, structuredClone(journal.latest.state));
+    authorizationInventory.push({
+      approvalId,
+      recordCount: journal.recordCount,
+      tailRecordSha256: journal.latest.recordSha256,
+    });
     if (journal.latest.state.revokedAt !== null) {
       authorizationSummary.revokedAuthorizationCount += 1;
     } else if (journal.latest.state.claim === null) {
@@ -784,6 +790,7 @@ export async function auditLocalDesignProvisioningRehearsalStore({
     completedReceiptCount: 0,
     failedReceiptCount: 0,
   };
+  const receiptInventory = [];
   for (const name of receiptNames) {
     if (TEMPORARY_FILE_PATTERN.test(name)) {
       if (validateTemporaryFileIfPresent(
@@ -815,28 +822,194 @@ export async function auditLocalDesignProvisioningRehearsalStore({
       throw new Error('Local design provisioning execution receipt authorization linkage is invalid');
     }
     receiptSummary.receiptCount += 1;
+    receiptInventory.push({
+      approvalId: receipt.approvalId,
+      executionId: receipt.executionId,
+      receiptDigest: receipt.digest,
+    });
     if (receipt.status === 'completed') receiptSummary.completedReceiptCount += 1;
     else receiptSummary.failedReceiptCount += 1;
   }
 
   return {
+    audit: {
+      schemaVersion: 1,
+      kind: 'platform_design_provisioning_local_store_audit',
+      status: 'verified',
+      authorizationCount: authorizationNames.length,
+      authorizationRecordCount: authorizationSummary.authorizationRecordCount,
+      unclaimedAuthorizationCount: authorizationSummary.unclaimedAuthorizationCount,
+      activeClaimCount: authorizationSummary.activeClaimCount,
+      terminalClaimCount: authorizationSummary.terminalClaimCount,
+      revokedAuthorizationCount: authorizationSummary.revokedAuthorizationCount,
+      receiptCount: receiptSummary.receiptCount,
+      completedReceiptCount: receiptSummary.completedReceiptCount,
+      failedReceiptCount: receiptSummary.failedReceiptCount,
+      orphanTemporaryFileCount: authorizationSummary.orphanTemporaryFileCount,
+      containsSensitiveValues: false,
+      catalogCompletenessVerified: false,
+      receiptSignatureVerified: receiptAuditKey.enabled && receiptSummary.receiptCount > 0,
+      ...LOCAL_DESIGN_PROVISIONING_STORE_BOUNDARIES,
+    },
+    inventory: {
+      schemaVersion: 1,
+      kind: 'platform_design_provisioning_local_store_inventory',
+      markerSha256: sha256(canonicalJson(MARKER)),
+      authorization: authorizationInventory,
+      receipts: receiptInventory,
+    },
+  };
+}
+
+function checkpointKeyConfiguration(trustedCheckpointKey, checkpointKeyId) {
+  if (typeof trustedCheckpointKey !== 'string'
+    || trustedCheckpointKey.length < 32
+    || !KEY_ID_PATTERN.test(checkpointKeyId ?? '')) {
+    throw new Error('Local design provisioning inventory checkpoint key configuration is invalid');
+  }
+  return { trustedCheckpointKey, checkpointKeyId };
+}
+
+function canonicalCheckpointTimestamp(value) {
+  if (typeof value !== 'string') {
+    throw new Error('Local design provisioning inventory checkpoint timestamp is invalid');
+  }
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString() !== value) {
+    throw new Error('Local design provisioning inventory checkpoint timestamp is invalid');
+  }
+  return value;
+}
+
+function inventoryCheckpointUnsigned(audit, keyId, createdAt) {
+  return {
     schemaVersion: 1,
-    kind: 'platform_design_provisioning_local_store_audit',
-    status: 'verified',
-    authorizationCount: authorizationNames.length,
-    authorizationRecordCount: authorizationSummary.authorizationRecordCount,
-    unclaimedAuthorizationCount: authorizationSummary.unclaimedAuthorizationCount,
-    activeClaimCount: authorizationSummary.activeClaimCount,
-    terminalClaimCount: authorizationSummary.terminalClaimCount,
-    revokedAuthorizationCount: authorizationSummary.revokedAuthorizationCount,
-    receiptCount: receiptSummary.receiptCount,
-    completedReceiptCount: receiptSummary.completedReceiptCount,
-    failedReceiptCount: receiptSummary.failedReceiptCount,
-    orphanTemporaryFileCount: authorizationSummary.orphanTemporaryFileCount,
+    kind: 'platform_design_provisioning_local_store_checkpoint',
+    keyId,
+    createdAt,
+    authorizationCount: audit.authorizationCount,
+    authorizationRecordCount: audit.authorizationRecordCount,
+    receiptCount: audit.receiptCount,
     containsSensitiveValues: false,
-    catalogCompletenessVerified: false,
-    receiptSignatureVerified: receiptAuditKey.enabled && receiptSummary.receiptCount > 0,
-    ...LOCAL_DESIGN_PROVISIONING_STORE_BOUNDARIES,
+    localRehearsalOnly: true,
+  };
+}
+
+function inventoryCheckpointDigest(unsigned, inventory, trustedCheckpointKey) {
+  return createHmac('sha256', trustedCheckpointKey).update(canonicalJson({
+    domain: 'platform_design_provisioning_local_store_checkpoint_v1',
+    checkpoint: unsigned,
+    inventory,
+  })).digest('hex');
+}
+
+function validateInventoryCheckpoint(checkpoint) {
+  if (!exactKeys(checkpoint, [
+    'schemaVersion', 'kind', 'keyId', 'createdAt', 'authorizationCount',
+    'authorizationRecordCount', 'receiptCount', 'containsSensitiveValues',
+    'localRehearsalOnly', 'digest',
+  ])
+    || checkpoint.schemaVersion !== 1
+    || checkpoint.kind !== 'platform_design_provisioning_local_store_checkpoint'
+    || !KEY_ID_PATTERN.test(checkpoint.keyId ?? '')
+    || !SHA256_PATTERN.test(checkpoint.digest ?? '')
+    || checkpoint.containsSensitiveValues !== false
+    || checkpoint.localRehearsalOnly !== true
+    || !Number.isSafeInteger(checkpoint.authorizationCount)
+    || checkpoint.authorizationCount < 0
+    || !Number.isSafeInteger(checkpoint.authorizationRecordCount)
+    || checkpoint.authorizationRecordCount < checkpoint.authorizationCount
+    || !Number.isSafeInteger(checkpoint.receiptCount)
+    || checkpoint.receiptCount < 0) {
+    throw new Error('Local design provisioning inventory checkpoint is invalid');
+  }
+  canonicalCheckpointTimestamp(checkpoint.createdAt);
+  return structuredClone(checkpoint);
+}
+
+function verifyInventoryCheckpoint(
+  checkpointValue,
+  inspection,
+  trustedCheckpointKey,
+  expectedCheckpointKeyId,
+) {
+  const configuration = checkpointKeyConfiguration(
+    trustedCheckpointKey,
+    expectedCheckpointKeyId,
+  );
+  const checkpoint = validateInventoryCheckpoint(checkpointValue);
+  const { digest, ...unsigned } = checkpoint;
+  const expectedDigest = inventoryCheckpointDigest(
+    unsigned,
+    inspection.inventory,
+    configuration.trustedCheckpointKey,
+  );
+  const matches = checkpoint.keyId === configuration.checkpointKeyId
+    && checkpoint.authorizationCount === inspection.audit.authorizationCount
+    && checkpoint.authorizationRecordCount === inspection.audit.authorizationRecordCount
+    && checkpoint.receiptCount === inspection.audit.receiptCount
+    && timingSafeEqual(Buffer.from(digest, 'hex'), Buffer.from(expectedDigest, 'hex'));
+  if (!matches) {
+    throw new Error('Local design provisioning inventory checkpoint verification failed');
+  }
+}
+
+export async function sealLocalDesignProvisioningRehearsalStoreCheckpoint({
+  directory,
+  trustedCheckpointKey,
+  checkpointKeyId,
+  createdAt: createdAtValue,
+} = {}) {
+  const configuration = checkpointKeyConfiguration(trustedCheckpointKey, checkpointKeyId);
+  const createdAt = canonicalCheckpointTimestamp(createdAtValue);
+  const inspection = await inspectLocalDesignProvisioningRehearsalStore({ directory });
+  const unsigned = inventoryCheckpointUnsigned(
+    inspection.audit,
+    configuration.checkpointKeyId,
+    createdAt,
+  );
+  return {
+    ...unsigned,
+    digest: inventoryCheckpointDigest(
+      unsigned,
+      inspection.inventory,
+      configuration.trustedCheckpointKey,
+    ),
+  };
+}
+
+export async function auditLocalDesignProvisioningRehearsalStore({
+  directory,
+  trustedReceiptKey,
+  expectedReceiptKeyId,
+  inventoryCheckpoint,
+  trustedCheckpointKey,
+  expectedCheckpointKeyId,
+} = {}) {
+  const inspection = await inspectLocalDesignProvisioningRehearsalStore({
+    directory,
+    trustedReceiptKey,
+    expectedReceiptKeyId,
+  });
+  const checkpointDisabled = inventoryCheckpoint === undefined
+    && trustedCheckpointKey === undefined
+    && expectedCheckpointKeyId === undefined;
+  if (!checkpointDisabled) {
+    if (inventoryCheckpoint === undefined
+      || trustedCheckpointKey === undefined
+      || expectedCheckpointKeyId === undefined) {
+      throw new Error('Local design provisioning inventory checkpoint configuration is invalid');
+    }
+    verifyInventoryCheckpoint(
+      inventoryCheckpoint,
+      inspection,
+      trustedCheckpointKey,
+      expectedCheckpointKeyId,
+    );
+  }
+  return {
+    ...inspection.audit,
+    catalogCompletenessVerified: !checkpointDisabled,
   };
 }
 

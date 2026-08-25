@@ -38,6 +38,7 @@ import {
   LOCAL_DESIGN_PROVISIONING_STORE_BOUNDARIES,
   replaceLocalDesignProvisioningAuthorizationContext,
   revokeLocalDesignProvisioningAuthorization,
+  sealLocalDesignProvisioningRehearsalStoreCheckpoint,
 } from '../platform-design-provisioning-durable-store.mjs';
 
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
@@ -426,6 +427,151 @@ test('audits every durable authorization journal and receipt without exposing id
       containsSensitiveValues: false,
       productionCredentialAccessed: false,
     });
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('seals and verifies an off-store inventory checkpoint without exposing store identifiers', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const { source, bytes, plan, approval } = executionApproval();
+  const firstApprovalId = approval.approvalId;
+  const secondApprovalId = '66666666-6666-4666-8666-666666666666';
+  const checkpointKeyId = 'a4-inventory-checkpoint-v1';
+  const createdAt = '2026-08-25T13:10:00.000Z';
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: firstApprovalId, context: liveContext() },
+    });
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: secondApprovalId, context: liveContext() },
+    });
+    const authorizationAdapter = createLocalDesignProvisioningAuthorizationAdapter({ directory });
+    const snapshot = await authorizationAdapter.readSnapshot(approval.approvalId);
+    await authorizationAdapter.claim(snapshot, claimedApprovalState(approval, plan).claim);
+    const receipt = sealDesignProvisioningExecutionReceipt({
+      plan,
+      blueprint: source,
+      sourceBytes: bytes,
+      approval,
+      approvalState: claimedApprovalState(approval, plan),
+      executionResult: completedExecutionResult(executionPlanCandidate(plan)),
+      startedAt: '2026-08-25T13:05:00.000Z',
+      completedAt: '2026-08-25T13:06:00.000Z',
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+    });
+    const receiptAdapter = createLocalDesignProvisioningReceiptAdapter({ directory });
+    await receiptAdapter.append(receipt);
+    const checkpoint = await sealLocalDesignProvisioningRehearsalStoreCheckpoint({
+      directory,
+      trustedCheckpointKey: approvalKey,
+      checkpointKeyId,
+      createdAt,
+    });
+    expect(checkpoint).toEqual({
+      schemaVersion: 1,
+      kind: 'platform_design_provisioning_local_store_checkpoint',
+      keyId: checkpointKeyId,
+      createdAt,
+      authorizationCount: 2,
+      authorizationRecordCount: 3,
+      receiptCount: 1,
+      containsSensitiveValues: false,
+      localRehearsalOnly: true,
+      digest: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
+    const serialized = JSON.stringify(checkpoint);
+    expect(serialized).not.toContain(firstApprovalId);
+    expect(serialized).not.toContain(secondApprovalId);
+    expect(serialized).not.toContain(approvalKey);
+    expect(await auditLocalDesignProvisioningRehearsalStore({
+      directory,
+      inventoryCheckpoint: checkpoint,
+      trustedCheckpointKey: approvalKey,
+      expectedCheckpointKeyId: checkpointKeyId,
+    })).toMatchObject({
+      status: 'verified',
+      catalogCompletenessVerified: true,
+      containsSensitiveValues: false,
+    });
+    const receiptPath = join(directory, 'receipts', `${approval.executionId}.json`);
+    rmSync(receiptPath);
+    await expect(auditLocalDesignProvisioningRehearsalStore({
+      directory,
+      inventoryCheckpoint: checkpoint,
+      trustedCheckpointKey: approvalKey,
+      expectedCheckpointKeyId: checkpointKeyId,
+    })).rejects.toThrow('inventory checkpoint verification failed');
+    await receiptAdapter.append(receipt);
+    expect(await auditLocalDesignProvisioningRehearsalStore({
+      directory,
+      inventoryCheckpoint: checkpoint,
+      trustedCheckpointKey: approvalKey,
+      expectedCheckpointKeyId: checkpointKeyId,
+    })).toMatchObject({ catalogCompletenessVerified: true });
+    await expect(auditLocalDesignProvisioningRehearsalStore({
+      directory,
+      inventoryCheckpoint: checkpoint,
+      trustedCheckpointKey: approvalKey,
+    })).rejects.toThrow('inventory checkpoint configuration is invalid');
+    await expect(auditLocalDesignProvisioningRehearsalStore({
+      directory,
+      inventoryCheckpoint: { ...checkpoint, digest: 'f'.repeat(64) },
+      trustedCheckpointKey: approvalKey,
+      expectedCheckpointKeyId: checkpointKeyId,
+    })).rejects.toThrow('inventory checkpoint verification failed');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('inventory checkpoint detects deleted authorization state and a changed journal tail', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const { plan, approval } = executionApproval();
+  const secondApprovalId = '66666666-6666-4666-8666-666666666666';
+  const checkpointKeyId = 'a4-inventory-checkpoint-v1';
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: approval.approvalId, context: liveContext() },
+    });
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: secondApprovalId, context: liveContext() },
+    });
+    const checkpoint = await sealLocalDesignProvisioningRehearsalStoreCheckpoint({
+      directory,
+      trustedCheckpointKey: approvalKey,
+      checkpointKeyId,
+      createdAt: '2026-08-25T13:10:00.000Z',
+    });
+    const anchoredAudit = () => auditLocalDesignProvisioningRehearsalStore({
+      directory,
+      inventoryCheckpoint: checkpoint,
+      trustedCheckpointKey: approvalKey,
+      expectedCheckpointKeyId: checkpointKeyId,
+    });
+
+    rmSync(join(directory, 'authorization', secondApprovalId), { recursive: true, force: true });
+    await expect(anchoredAudit()).rejects.toThrow('inventory checkpoint verification failed');
+    expect(await auditLocalDesignProvisioningRehearsalStore({ directory })).toMatchObject({
+      status: 'verified',
+      authorizationCount: 1,
+      catalogCompletenessVerified: false,
+    });
+
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: secondApprovalId, context: liveContext() },
+    });
+    expect(await anchoredAudit()).toMatchObject({ catalogCompletenessVerified: true });
+    const authorizationAdapter = createLocalDesignProvisioningAuthorizationAdapter({ directory });
+    const snapshot = await authorizationAdapter.readSnapshot(approval.approvalId);
+    await authorizationAdapter.claim(snapshot, claimedApprovalState(approval, plan).claim);
+    await expect(anchoredAudit()).rejects.toThrow('inventory checkpoint verification failed');
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
