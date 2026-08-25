@@ -1,7 +1,7 @@
 # A4 실행 승인 artifact·receipt 계약 검증
 
 - 검증일: 2026-08-25
-- 범위: adapter-independent A4 실행 승인 lifecycle와 비식별 receipt seal/verifier 계약
+- 범위: adapter-independent A4 실행 승인, 비식별 receipt와 injected response-loss lifecycle 계약
 - production DB·Auth·membership·GRANT·traffic·provider 접근 또는 mutation: 없음
 
 ## 구현 경계
@@ -15,6 +15,7 @@
 - in-memory test double의 동시 claim·finalize는 각각 `new` 1건과 동일 경쟁 `reconciled` 1건으로 수렴하고 이후 요청은 `existing`으로 복구된다. 반대 terminal outcome 덮어쓰기와 terminal state 재-claim은 거부한다.
 - 승인된 review plan에서 동일 operation/source를 가진 실행형 RPC checksum을 결정적으로 파생해 approved/executed checksum을 함께 결속한다. 성공 RPC response의 exact operation/resource/join-code 형식을 검증한 뒤 resource UUID와 join code를 제거하고 operation ID·type·status·count만 receipt에 남긴다.
 - 실패 receipt는 allowlist `design_*` 코드와 rollback 확인만 허용하며, approval/plan/source·execution·시각·요약을 HMAC으로 결속한다. 함수는 RPC·persistence를 호출하지 않는다.
+- injected lifecycle core는 claim 전·직후 receipt를 조회하고 새 RPC 결과를 비식별 receipt로 append·재조회한 뒤에만 finalize한다. append 응답 유실 뒤 저장된 receipt를 복구하면 RPC를 다시 호출하지 않으며, 저장 성공 응답이 있어도 receipt가 관찰되지 않으면 claim을 진행 중으로 보존한다.
 - 승인 발급 CLI, 실제 key, production-backed durable state·live membership adapter와 production executor는 제공하지 않는다.
 - 기존 plan의 `readyForExecution:false`, `serverContractImplemented:false`, `databaseMutationExecuted:false`는 유지한다.
 
@@ -22,22 +23,22 @@
 
 | 검증 | 결과 |
 | --- | --- |
-| A4 plan 집중 Vitest | 1개 파일, 21건 통과 |
+| A4 plan 집중 Vitest | 1개 파일, 25건 통과 |
 | A4 bundle 집중 Vitest | 1개 파일, 8건 통과; tracked manifest current-source 대조 포함 |
 | approval bundle | builder·A4 집중 테스트·CI workflow·LF 규칙을 포함한 16개 artifact Git-canonical byte hash 결속 |
-| automation 전체 Vitest | 26개 파일, 347건 통과 |
+| automation 전체 Vitest | 26개 파일, 351건 통과 |
 | root 전체 Vitest | 64개 파일, 1,060건 통과 |
 | Astro check | 326개 파일, 오류 0건, 기존 hint 49건 |
 | diff whitespace | `git diff --check` 통과 |
 
-집중 음성 테스트는 wrong/inactive role, 다른 user/organization/host, 만료, 취소, 완료된 claim, 다른 execution 재사용, CAS 중 live context 변경, terminal claim 유실·반대 outcome, malformed RPC·raw failure·rollback 미확인, artifact tamper와 불완전 approval-state를 거부한다. 같은 진행 중 claim과 같은 terminal outcome의 복구 및 receipt seal 경로는 RPC·DB mutation을 수행하지 않는다.
+집중 음성 테스트는 wrong/inactive role, 다른 user/organization/host, 만료, 취소, 완료된 claim, 다른 execution 재사용, CAS 중 live context 변경, terminal claim 유실·반대 outcome, malformed RPC·raw failure·rollback 미확인, artifact tamper와 불완전 approval-state를 거부한다. append 응답 유실은 저장된 receipt를 우선 복구해 RPC 호출을 한 번으로 제한하고, 미확정 실행은 terminal finalize하지 않는다.
 
 ## 남은 blocker
 
 1. Gate A 제품 방향과 Gate B-A4 production migration의 별도 사용자 승인
 2. 승인 발급 주체·key custody와 durable revocation/claim 저장소
-3. mutation 전 원자 claim, 종료 후 terminal finalize와 active `org_admin|hq` membership·선택 기관 재검증 adapter
+3. production-backed 원자 claim/finalize와 active `org_admin|hq` membership·선택 기관 재검증 adapter
 4. A4 migration·mapping·activation preflight와 RPC 권한 활성화
-5. append-only receipt persistence·실제 rollback·role deny E2E
+5. production append-only receipt persistence·실제 rollback·role deny E2E
 
 이 보고서는 repository 계약과 로컬 검증 증거이며 production 실행 승인 artifact가 아니다.

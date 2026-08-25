@@ -120,7 +120,7 @@ D2의 진행자 전환 시점, D5 공공 트랙의 데이터 등급·CSAP 등급
 | P1/P2 | production additive schema와 프론트 배포 기록, `STATUS.md` | 배포 기록 있음 | 이 결정 패킷 시점의 live schema refresh |
 | A2/P1C | 승인 기록 `dc43432`, activation bundle `21977d9`, PostgreSQL rehearsal | 초안·격리 리허설 | production P1C/preflight, 실제 readiness, Auth JWT E2E |
 | A3 | 계획 `edfd2ec`, executor core 보강 `ea57e86` | 로컬 core 검증 | production adapter, invitation ledger, 메일 provider, append-only receipt 저장소 |
-| A4 | 계약 `fa4d0fe`, plan `4ab55b5`, migration 계열 `873a50f..e9721eb`, approval/receipt core, CI | 초안·격리 PostgreSQL·순수 lifecycle/receipt 검증 | production migration, 실제 mapping/readiness, RPC 권한, durable approval/receipt·executor adapter |
+| A4 | 계약 `fa4d0fe`, plan `4ab55b5`, migration 계열 `873a50f..e9721eb`, approval/receipt·injected execution lifecycle core, CI | 초안·격리 PostgreSQL·response-loss lifecycle 검증 | production migration, 실제 mapping/readiness, RPC 권한, durable approval/receipt·executor adapter |
 | D2~D6 외부조건 | `evaluation/2026-08-25-phase-a-condition-audit.md` | 로컬 정본·공식 CSAP 자료 근거 감사 | 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·topology, named pilot·owner |
 
 `readyForExecution:false`는 `platform-design-provisioning-plan.mjs` 출력의 승인 전 불변식이다. migration 초안 승인이나 bundle verifier 성공을 production readiness 또는 실행 승인으로 해석하지 않는다.
@@ -195,7 +195,7 @@ P1C count-only RPC는 P1·P1C·P2가 모두 있어야 하므로 Gate B-A2가 Gat
 
 ### Gate F-A4 — design RPC 실행 권한 활성화(현재 차단)
 
-- 현재 blocker: 외부 HMAC approval artifact, role·expiry·revocation·one-time claim·terminal finalization과 비식별 receipt의 adapter-independent 계약은 구현됐지만, 실제 key custody·durable approval/append-only receipt state·live membership CAS adapter와 production executor가 없다. A4 plan은 계속 `readyForExecution:false`이며 이 production 경로와 아래 선행조건을 별도 repository 변경·사용자 승인으로 완성하기 전에는 F-A4를 승인 요청하지 않는다.
+- 현재 blocker: 외부 HMAC approval artifact, role·expiry·revocation·one-time claim·terminal finalization, 비식별 receipt와 injected response-loss lifecycle core는 구현됐지만, 실제 key custody·durable approval/append-only receipt state·live membership CAS adapter와 production executor가 없다. A4 plan은 계속 `readyForExecution:false`이며 이 production 경로와 아래 선행조건을 별도 repository 변경·사용자 승인으로 완성하기 전에는 F-A4를 승인 요청하지 않는다.
 - 선행: A4 migration·mapping·read-only activation preflight, `org_admin|hq` Auth E2E, rollback 데이터 보존 계획, 승인된 execution artifact
 - 범위: 승인된 A4 RPC 권한만. A2 staff GRANT와 traffic은 포함하지 않는다.
 - 완료 증거: 정상·replay·conflict·transaction rollback과 role deny E2E

@@ -10,7 +10,9 @@ import {
   buildDesignProvisioningPlan,
   claimDesignProvisioningExecutionApproval,
   createInMemoryDesignProvisioningAuthorizationAdapter,
+  createInMemoryDesignProvisioningReceiptAdapter,
   designProvisioningPlanChecksum,
+  executeDesignProvisioningApprovalLifecycle,
   finalizeDesignProvisioningExecutionApproval,
   runDesignProvisioningCli,
   sealDesignProvisioningExecutionApproval,
@@ -148,6 +150,33 @@ function executionPlanCandidate(plan) {
     requiresApproval: false,
   };
   return { ...candidate, checksum: designProvisioningPlanChecksum(candidate) };
+}
+
+function completedExecutionResult(executionPlan, operationStatus = 'applied') {
+  return {
+    status: 'completed',
+    response: {
+      schemaVersion: 1,
+      planChecksum: executionPlan.checksum,
+      operationCount: executionPlan.operations.length,
+      operations: executionPlan.operations.map((operation, index) => ({
+        operationId: operation.operationId,
+        resourceId: `${String(index + 1).padStart(8, '0')}-0000-4000-8000-000000000000`,
+        status: operationStatus,
+        ...(operation.type === 'create_team' ? { joinCode: `${123450 + index}` } : {}),
+      })),
+    },
+  };
+}
+
+function sequenceClock(...values) {
+  let index = 0;
+  return () => {
+    if (index >= values.length) throw new Error('test clock exhausted');
+    const value = values[index];
+    index += 1;
+    return new Date(value);
+  };
 }
 
 test('shares the exact browser blueprint contract', () => {
@@ -462,6 +491,219 @@ test('seals only allowlisted rollback-verified A4 failure receipts and rejects m
       },
     },
   })).toThrow('RPC response is invalid');
+});
+
+test('executes claim, exact RPC, append-only receipt, and finalization in order', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const authorizationAdapter = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
+  const receiptAdapter = createInMemoryDesignProvisioningReceiptAdapter();
+  const events = [];
+  const executionAdapter = {
+    async execute({ plan: executionPlan, sourceBytes: executionBytes }) {
+      events.push('execute');
+      expect(executionPlan).toEqual(executionPlanCandidate(plan));
+      expect(Buffer.from(executionBytes)).toEqual(bytes);
+      return completedExecutionResult(executionPlan);
+    },
+  };
+
+  const result = await executeDesignProvisioningApprovalLifecycle({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter: {
+      async read(executionId) {
+        events.push('read');
+        return receiptAdapter.read(executionId);
+      },
+      async append(receipt) {
+        events.push('append');
+        return receiptAdapter.append(receipt);
+      },
+    },
+    executionAdapter,
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock(
+      '2026-08-25T13:05:00.000Z',
+      '2026-08-25T13:06:00.000Z',
+      '2026-08-25T13:07:00.000Z',
+    ),
+  });
+
+  expect(events).toEqual(['read', 'read', 'execute', 'append', 'read']);
+  expect(result).toMatchObject({
+    status: 'execution_completed',
+    executionDisposition: 'executed',
+    receiptDisposition: 'appended',
+    finalizationDisposition: 'new',
+    approvalId: approval.approvalId,
+    executionId: approval.executionId,
+    planChecksum: plan.checksum,
+    operationCount: plan.operations.length,
+    containsSensitiveValues: false,
+  });
+  const storedReceipt = await receiptAdapter.read(approval.executionId);
+  expect(storedReceipt.status).toBe('completed');
+  expect(JSON.stringify({ ...storedReceipt, digest: '' })).not.toContain('123450');
+  expect((await authorizationAdapter.readSnapshot(approval.approvalId)).state.claim.status)
+    .toBe('completed');
+});
+
+test('recovers a persisted A4 receipt after append response loss without invoking RPC again', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const authorizationAdapter = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
+  const storedReceipts = createInMemoryDesignProvisioningReceiptAdapter();
+  let appendResponseLost = true;
+  let executionCount = 0;
+  const receiptAdapter = {
+    async read(executionId) { return storedReceipts.read(executionId); },
+    async append(receipt) {
+      const result = await storedReceipts.append(receipt);
+      if (appendResponseLost) {
+        appendResponseLost = false;
+        throw new Error('raw receipt storage response with secret');
+      }
+      return result;
+    },
+  };
+  const executionAdapter = {
+    async execute({ plan: executionPlan }) {
+      executionCount += 1;
+      return completedExecutionResult(executionPlan);
+    },
+  };
+  const base = {
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter,
+    executionAdapter,
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+  };
+
+  await expect(executeDesignProvisioningApprovalLifecycle({
+    ...base,
+    clock: sequenceClock(
+      '2026-08-25T13:05:00.000Z',
+      '2026-08-25T13:06:00.000Z',
+    ),
+  })).rejects.toThrow('execution receipt append failed');
+  expect((await authorizationAdapter.readSnapshot(approval.approvalId)).state.claim.status)
+    .toBe('claimed');
+  expect(await storedReceipts.read(approval.executionId)).not.toBeNull();
+
+  const recovered = await executeDesignProvisioningApprovalLifecycle({
+    ...base,
+    clock: sequenceClock('2026-08-25T13:07:00.000Z'),
+  });
+  expect(recovered).toMatchObject({
+    status: 'execution_completed',
+    executionDisposition: 'existing_receipt',
+    receiptDisposition: 'existing',
+    finalizationDisposition: 'new',
+  });
+  expect(executionCount).toBe(1);
+  expect(JSON.stringify(recovered)).not.toContain('raw receipt storage response with secret');
+});
+
+test('does not finalize when an acknowledged A4 receipt is not observable after append', async () => {
+  const { source, bytes, plan, approval } = executionApproval(blueprint(), approvalMetadata({
+    approvalId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+    executionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+  }));
+  const authorizationAdapter = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
+  await expect(executeDesignProvisioningApprovalLifecycle({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter: {
+      async read() { return null; },
+      async append(receipt) { return { status: 'appended', receipt }; },
+    },
+    executionAdapter: {
+      async execute({ plan: executionPlan }) {
+        return completedExecutionResult(executionPlan);
+      },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock(
+      '2026-08-25T13:05:00.000Z',
+      '2026-08-25T13:06:00.000Z',
+    ),
+  })).rejects.toThrow('execution receipt persistence is not observable');
+  expect((await authorizationAdapter.readSnapshot(approval.approvalId)).state.claim.status)
+    .toBe('claimed');
+});
+
+test('finalizes only rollback-verified failures and leaves unconfirmed execution claimed', async () => {
+  const failed = executionApproval();
+  const failedAuthorization = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
+  const failedReceipts = createInMemoryDesignProvisioningReceiptAdapter();
+  const failedResult = await executeDesignProvisioningApprovalLifecycle({
+    approval: failed.approval,
+    plan: failed.plan,
+    blueprint: failed.source,
+    sourceBytes: failed.bytes,
+    authorizationAdapter: failedAuthorization,
+    receiptAdapter: failedReceipts,
+    executionAdapter: {
+      async execute() {
+        return {
+          status: 'failed',
+          failureCode: 'design_operation_conflict',
+          rollbackVerified: true,
+        };
+      },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock(
+      '2026-08-25T13:05:00.000Z',
+      '2026-08-25T13:06:00.000Z',
+      '2026-08-25T13:07:00.000Z',
+    ),
+  });
+  expect(failedResult).toMatchObject({
+    status: 'execution_failed',
+    failureCode: 'design_operation_conflict',
+    executionDisposition: 'executed',
+    finalizationDisposition: 'new',
+  });
+  expect((await failedAuthorization.readSnapshot(failed.approval.approvalId)).state.claim.status)
+    .toBe('failed');
+
+  const unconfirmed = executionApproval(blueprint(), approvalMetadata({
+    approvalId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    executionId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  }));
+  const unconfirmedAuthorization = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
+  const unconfirmedReceipts = createInMemoryDesignProvisioningReceiptAdapter();
+  await expect(executeDesignProvisioningApprovalLifecycle({
+    approval: unconfirmed.approval,
+    plan: unconfirmed.plan,
+    blueprint: unconfirmed.source,
+    sourceBytes: unconfirmed.bytes,
+    authorizationAdapter: unconfirmedAuthorization,
+    receiptAdapter: unconfirmedReceipts,
+    executionAdapter: {
+      async execute() { throw new Error('raw RPC response with secret'); },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock('2026-08-25T13:05:00.000Z'),
+  })).rejects.toThrow('execution adapter failed');
+  expect((await unconfirmedAuthorization.readSnapshot(unconfirmed.approval.approvalId)).state.claim.status)
+    .toBe('claimed');
+  expect(await unconfirmedReceipts.read(unconfirmed.approval.executionId)).toBeNull();
 });
 
 test('allows only the same in-flight execution claim to resume', () => {

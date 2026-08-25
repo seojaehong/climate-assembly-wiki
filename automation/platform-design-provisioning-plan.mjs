@@ -901,6 +901,98 @@ export function verifyDesignProvisioningExecutionReceipt(
   };
 }
 
+function validateReceiptAdapter(adapter) {
+  if (!isRecord(adapter)
+    || !exactKeys(adapter, ['read', 'append'])
+    || typeof adapter.read !== 'function'
+    || typeof adapter.append !== 'function') {
+    throw new Error('Design provisioning execution receipt adapter is invalid');
+  }
+  return adapter;
+}
+
+function validateExecutionAdapter(adapter) {
+  if (!isRecord(adapter)
+    || !exactKeys(adapter, ['execute'])
+    || typeof adapter.execute !== 'function') {
+    throw new Error('Design provisioning execution adapter is invalid');
+  }
+  return adapter;
+}
+
+function validateReceiptAdapterResult(result) {
+  if (!isRecord(result)
+    || !exactKeys(result, ['status', 'receipt'])
+    || !['appended', 'existing', 'conflict'].includes(result.status)
+    || !isRecord(result.receipt)) {
+    throw new Error('Design provisioning execution receipt append result is invalid');
+  }
+  return result;
+}
+
+function validateStoredReceiptIdentity(receipt) {
+  if (!isRecord(receipt)
+    || receipt.kind !== 'platform_design_provisioning_execution_receipt'
+    || !UUID_PATTERN.test(receipt.approvalId ?? '')
+    || !UUID_PATTERN.test(receipt.executionId ?? '')
+    || !SHA256_PATTERN.test(receipt.digest ?? '')) {
+    throw new Error('In-memory design provisioning execution receipt is invalid');
+  }
+  return receipt;
+}
+
+function lifecycleTime(clock) {
+  let value;
+  try {
+    value = clock();
+  } catch {
+    throw new Error('Design provisioning execution lifecycle clock failed');
+  }
+  const time = value instanceof Date ? new Date(value.getTime()) : new Date(value);
+  if (!Number.isFinite(time.getTime())) {
+    throw new Error('Design provisioning execution lifecycle time is invalid');
+  }
+  return time;
+}
+
+async function readExecutionReceipt(adapter, executionId) {
+  let receipt;
+  try {
+    receipt = await adapter.read(executionId);
+  } catch {
+    throw new Error('Design provisioning execution receipt lookup failed');
+  }
+  if (receipt !== null && !isRecord(receipt)) {
+    throw new Error('Design provisioning execution receipt lookup result is invalid');
+  }
+  return receipt;
+}
+
+export function createInMemoryDesignProvisioningReceiptAdapter() {
+  const receipts = new Map();
+  return Object.freeze({
+    async read(executionId) {
+      if (!UUID_PATTERN.test(executionId ?? '')) {
+        throw new Error('In-memory design provisioning execution receipt lookup is invalid');
+      }
+      const receipt = receipts.get(executionId);
+      return receipt ? structuredClone(receipt) : null;
+    },
+    async append(receipt) {
+      validateStoredReceiptIdentity(receipt);
+      const existing = receipts.get(receipt.executionId);
+      if (existing) {
+        return {
+          status: canonicalJson(existing) === canonicalJson(receipt) ? 'existing' : 'conflict',
+          receipt: structuredClone(existing),
+        };
+      }
+      receipts.set(receipt.executionId, structuredClone(receipt));
+      return { status: 'appended', receipt: structuredClone(receipt) };
+    },
+  });
+}
+
 function validateLiveAuthorizationContextShape(context) {
   if (!isRecord(context)
     || !exactKeys(context, [
@@ -1268,6 +1360,196 @@ export async function finalizeDesignProvisioningExecutionApproval({
     outcome,
     finalizationResult.status === 'finalized' ? 'new' : 'reconciled',
   );
+}
+
+function lifecycleResult(receipt, verification, finalization, {
+  executionDisposition,
+  receiptDisposition,
+}) {
+  return {
+    status: receipt.status === 'completed' ? 'execution_completed' : 'execution_failed',
+    approvalId: receipt.approvalId,
+    executionId: receipt.executionId,
+    planChecksum: verification.planChecksum,
+    executedPlanChecksum: verification.executedPlanChecksum,
+    operationCount: verification.operationCount,
+    executionDisposition,
+    receiptDisposition,
+    finalizationDisposition: finalization.finalizationDisposition,
+    failureCode: receipt.failureCode,
+    rollbackVerified: receipt.rollbackVerified,
+    containsSensitiveValues: false,
+  };
+}
+
+async function finalizeStoredExecutionReceipt({
+  receipt,
+  approval,
+  plan,
+  blueprint,
+  sourceBytes,
+  authorizationAdapter,
+  trustedKey,
+  expectedKeyId,
+  clock,
+  executionDisposition,
+  receiptDisposition,
+}) {
+  const verification = verifyDesignProvisioningExecutionReceipt(
+    receipt,
+    plan,
+    blueprint,
+    sourceBytes,
+    approval,
+    { trustedKey, expectedKeyId },
+  );
+  const finalization = await finalizeDesignProvisioningExecutionApproval({
+    approval,
+    plan,
+    blueprint,
+    sourceBytes,
+    authorizationAdapter,
+    trustedKey,
+    expectedKeyId,
+    outcome: receipt.status,
+    now: lifecycleTime(clock),
+  });
+  return lifecycleResult(receipt, verification, finalization, {
+    executionDisposition,
+    receiptDisposition,
+  });
+}
+
+export async function executeDesignProvisioningApprovalLifecycle({
+  approval,
+  plan,
+  blueprint,
+  sourceBytes,
+  authorizationAdapter,
+  receiptAdapter: receiptAdapterValue,
+  executionAdapter: executionAdapterValue,
+  trustedKey,
+  expectedKeyId,
+  clock = () => new Date(),
+}) {
+  const authorization = validateAuthorizationAdapter(
+    authorizationAdapter,
+    { requireFinalize: true },
+  );
+  const receipts = validateReceiptAdapter(receiptAdapterValue);
+  const execution = validateExecutionAdapter(executionAdapterValue);
+  if (typeof clock !== 'function') {
+    throw new Error('Design provisioning execution lifecycle clock is invalid');
+  }
+
+  const existingReceipt = await readExecutionReceipt(receipts, approval?.executionId);
+  if (existingReceipt) {
+    return finalizeStoredExecutionReceipt({
+      receipt: existingReceipt,
+      approval,
+      plan,
+      blueprint,
+      sourceBytes,
+      authorizationAdapter: authorization,
+      trustedKey,
+      expectedKeyId,
+      clock,
+      executionDisposition: 'existing_receipt',
+      receiptDisposition: 'existing',
+    });
+  }
+
+  const startedAt = lifecycleTime(clock);
+  await claimDesignProvisioningExecutionApproval({
+    approval,
+    plan,
+    blueprint,
+    sourceBytes,
+    authorizationAdapter: authorization,
+    trustedKey,
+    expectedKeyId,
+    now: startedAt,
+  });
+
+  const receiptAfterClaim = await readExecutionReceipt(receipts, approval.executionId);
+  if (receiptAfterClaim) {
+    return finalizeStoredExecutionReceipt({
+      receipt: receiptAfterClaim,
+      approval,
+      plan,
+      blueprint,
+      sourceBytes,
+      authorizationAdapter: authorization,
+      trustedKey,
+      expectedKeyId,
+      clock,
+      executionDisposition: 'existing_receipt',
+      receiptDisposition: 'existing',
+    });
+  }
+
+  const executionPlan = designProvisioningExecutionCandidate(plan);
+  let executionResult;
+  try {
+    executionResult = await execution.execute({
+      plan: structuredClone(executionPlan),
+      sourceBytes: Buffer.from(sourceBytes),
+    });
+  } catch {
+    throw new Error('Design provisioning execution adapter failed');
+  }
+  const completedAt = lifecycleTime(clock);
+  const claimedSnapshot = validateAuthorizationSnapshot(
+    await authorization.readSnapshot(approval.approvalId),
+  );
+  validateLiveAuthorizationContext(claimedSnapshot.context, approval);
+  const candidateReceipt = sealDesignProvisioningExecutionReceipt({
+    plan,
+    blueprint,
+    sourceBytes,
+    approval,
+    approvalState: claimedSnapshot.state,
+    executionResult,
+    startedAt: startedAt.toISOString(),
+    completedAt: completedAt.toISOString(),
+    trustedKey,
+    expectedKeyId,
+  });
+
+  let appendResult;
+  try {
+    appendResult = validateReceiptAdapterResult(await receipts.append(candidateReceipt));
+  } catch (error) {
+    if (error instanceof Error
+      && error.message === 'Design provisioning execution receipt append result is invalid') {
+      throw error;
+    }
+    throw new Error('Design provisioning execution receipt append failed');
+  }
+  if (appendResult.status === 'appended'
+    && canonicalJson(appendResult.receipt) !== canonicalJson(candidateReceipt)) {
+    throw new Error('Design provisioning execution receipt append result is invalid');
+  }
+  const persistedReceipt = await readExecutionReceipt(receipts, approval.executionId);
+  if (!persistedReceipt) {
+    throw new Error('Design provisioning execution receipt persistence is not observable');
+  }
+  if (canonicalJson(persistedReceipt) !== canonicalJson(appendResult.receipt)) {
+    throw new Error('Design provisioning execution receipt append result is invalid');
+  }
+  return finalizeStoredExecutionReceipt({
+    receipt: persistedReceipt,
+    approval,
+    plan,
+    blueprint,
+    sourceBytes,
+    authorizationAdapter: authorization,
+    trustedKey,
+    expectedKeyId,
+    clock,
+    executionDisposition: 'executed',
+    receiptDisposition: appendResult.status === 'appended' ? 'appended' : 'reconciled',
+  });
 }
 
 function readJsonFile(path, label, maximumBytes) {
