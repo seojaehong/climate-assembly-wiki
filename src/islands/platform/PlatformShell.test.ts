@@ -303,6 +303,10 @@ describe('PlatformShell accessibility', () => {
     expect(source).toContain('axe-core 기반 WCAG 2.2 AA 자동검사');
     expect(source).toContain('evaluation/platform-accessibility-audit.json');
     expect(source).toContain('evaluation/platform-accessibility-responsive-audit.json');
+    expect(source).toContain('evaluation/platform-accessibility-kwcag-coverage.json');
+    expect(source).toContain('KWCAG 2.2 33개 검사항목');
+    expect(source).toContain('수동 평가 80개 필수 검사는 아직 실행 전');
+    expect(source).toContain('품질인증 획득 또는 전수 준수를 의미하지 않습니다.');
     expect(source).toContain('데스크톱 1440×1000과 모바일 360×800 뷰포트에서 가로 넘침도 함께 검사합니다.');
     expect(source).toContain('자동검사는 공식 품질인증이나 전수 수동평가를 대체하지 않습니다.');
     expect(source).toContain('인증 셸과 공개 결과의 자동감사는 읽기 전용 브라우저 fixture를 사용');
