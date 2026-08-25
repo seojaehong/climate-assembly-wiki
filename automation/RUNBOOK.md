@@ -696,7 +696,9 @@ reset이 강행되는 경로는 현재 없다.
 
 3. **reset 전 OneDrive export 권장** — `automation/export-snapshots-onedrive.mjs`로 최신
    snapshot을 off-Supabase에 내보낸 후 cv_archive_round 호출. PITR 미활성 상태이므로
-   Supabase snapshots 테이블 손상 시 유일한 복구 수단.
+   Supabase snapshots 테이블 손상 시 유일한 복구 수단. 같은 이름의 기존 export는 현재
+   source row와 byte 단위로 같을 때만 skip한다. 다르면 기존 파일을 덮어쓰지 않고 실패하므로,
+   충돌 파일을 임의 삭제하거나 교체하지 말고 원본 DB row와 off-DB 사본을 별도로 조사한다.
 
 ### 8/29 admin 재설계 하드 요구사항
 

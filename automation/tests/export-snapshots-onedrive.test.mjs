@@ -136,7 +136,7 @@ test('파일 내용에 원본 row 전체가 직렬화됨', async () => {
 
 // ── exportSnapshots: idempotency (append-only invariant) ────────────────────
 
-test('(b) 기존 파일 있으면 skip — 덮어쓰기 없음 (append-only 불변식)', async () => {
+test('(b) 기존 파일이 원본과 같을 때만 skip — 덮어쓰기 없음 (append-only 불변식)', async () => {
   const outDir = makeTmpDir('-idem');
   tmpDirs.push(outDir);
 
@@ -151,16 +151,28 @@ test('(b) 기존 파일 있으면 skip — 덮어쓰기 없음 (append-only 불�
   const SENTINEL = '{"sentinel": "must-not-be-overwritten"}';
   writeFileSync(fname1, SENTINEL, 'utf8');
 
-  // 2차 실행 (동일 rows)
-  const r2 = await exportSnapshots({ client: makeClient(SAMPLE_ROWS), outDir });
-  expect(r2.exported).toBe(0);
-  expect(r2.skipped).toBe(3);
-  expect(r2.files).toHaveLength(0);
+  // 2차 실행 (동일 rows, 기존 파일 변조)
+  await expect(
+    exportSnapshots({ client: makeClient(SAMPLE_ROWS), outDir })
+  ).rejects.toThrow('existing snapshot export does not match source row');
 
-  // sentinel 내용이 그대로 — 덮어쓰기 없음 검증
+  // sentinel 내용이 그대로 — 오류가 나도 덮어쓰기 없음 검증
   const afterContent = readFileSync(fname1, 'utf8');
   expect(afterContent).toBe(SENTINEL);
   expect(afterContent).not.toBe(originalContent);
+});
+
+test('기존 파일이 원본과 정확히 같으면 전체를 skip한다', async () => {
+  const outDir = makeTmpDir('-matching');
+  tmpDirs.push(outDir);
+
+  const first = await exportSnapshots({ client: makeClient(SAMPLE_ROWS), outDir });
+  expect(first.exported).toBe(3);
+
+  const second = await exportSnapshots({ client: makeClient(SAMPLE_ROWS), outDir });
+  expect(second.exported).toBe(0);
+  expect(second.skipped).toBe(3);
+  expect(second.files).toHaveLength(0);
 });
 
 test('일부 파일만 존재할 때 — 없는 것만 새로 씀', async () => {

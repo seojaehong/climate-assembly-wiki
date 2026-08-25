@@ -147,6 +147,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A6 archive schema drift 손실 방지(2026-08-26):** recovery preflight가 payload의 허용 collection과 대상 8개 collection의 허용 열을 현재 migration 계약으로 검사한다. 복원기가 새 collection을 누락하거나 PostgreSQL `jsonb_populate_recordset`이 모르는 열을 무시해 nullable metadata 오타·schema drift를 성공으로 오인하는 경로를 복원 SQL 생성 전에 fail-closed한다. 알 수 없는 collection과 각 collection의 알 수 없는 열을 주입한 음성 테스트는 모두 거부됐고 오류에는 collection·열 이름이나 값을 넣지 않는다. 기존 실제 격리 PostgreSQL archive의 `ballot.subgroup`을 포함한 전체 열 계약은 유지한다. production DB·Drive·archive는 변경하지 않았다.
 
+**A6 off-DB append-only export 충돌 검증(2026-08-26):** 수동 OneDrive exporter가 같은 이름의 파일 존재만 보고 무조건 skip하던 경로를 강화했다. 기존 파일은 현재 source row의 JSON 직렬화와 byte 단위로 정확히 같을 때만 skip하며, 다르면 식별값·payload를 오류에 넣거나 어느 쪽도 덮어쓰지 않고 fail-closed한다. 변조 sentinel 회귀 테스트는 기존 성공 동작을 먼저 재현한 뒤 거부 동작으로 고정했다. 집중 12건, automation 전체 27개 파일·422건, 루트 전체 64개 파일·1,060건과 Astro check 오류 0건이 통과했다. 실제 Supabase·OneDrive·credential에는 접근하지 않았고 PITR/WAL 및 운영 감사로그는 여전히 미구현이다.
+
 **A2 권한 활성화 초안 분리(2026-08-17):** staff 직접 권한을 기본 P1→P1C→P2 migration chain과 주석에서 분리한 `platform_p1c_org_selection_activation.sql`을 추가했다. 이 초안은 schema USAGE, membership SELECT, assembly/session/topic/submission/ballot의 SELECT·INSERT·UPDATE만 발급하고 DELETE나 org_context 직접 접근을 허용하지 않는다. 기본 driver는 이 파일을 실행하지 않고 semantic rehearsal만 별도 적용→활성 검증→권한 rollback→휴면 검증 순서를 실행한다. production migration·GRANT·Auth·membership·data는 변경하지 않았다.
 
 **A2 권한 원자성 검증(2026-08-17):** activation과 대응 권한 rollback을 각각 하나의 transaction으로 묶었다. PostgreSQL 16 semantic rehearsal은 활성화 대상 테이블 누락 시 앞서 실행된 schema·membership GRANT가 남지 않는지, rollback 대상 누락 시 기존 활성 권한이 부분 회수되지 않는지를 음성 경로로 검증한다. 실제 production 권한은 변경하지 않았다.

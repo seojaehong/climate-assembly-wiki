@@ -19,7 +19,8 @@
  * APPEND-ONLY 보장
  * ────────────────
  * 각 스냅샷은 snapshot_<id>_<sanitized-label>.json 으로 저장.
- * 파일이 이미 존재하면 skip(덮어쓰기 없음).
+ * 파일이 이미 존재하면 원본 row와 byte 단위로 일치할 때만 skip(덮어쓰기 없음).
+ * 내용이 다르면 기존 파일과 원본 중 어느 쪽도 변경하지 않고 실패한다.
  * 파일 쓰기는 .tmp → rename 방식으로 원자적 처리 (반쪽 파일 방지).
  *
  * ENV VARS
@@ -34,7 +35,7 @@
  */
 
 import { fileURLToPath } from 'node:url';
-import { existsSync, mkdirSync, writeFileSync, renameSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -79,15 +80,20 @@ export async function exportSnapshots({ client, outDir }) {
   for (const row of rows) {
     const filename = `snapshot_${row.id}_${sanitizeLabel(row.label)}.json`;
     const outPath = join(outDir, filename);
+    const serializedRow = JSON.stringify(row, null, 2);
 
     if (existsSync(outPath)) {
+      const existing = readFileSync(outPath, 'utf8');
+      if (existing !== serializedRow) {
+        throw new Error('existing snapshot export does not match source row');
+      }
       skipped++;
       continue;
     }
 
     // 원자적 쓰기: .tmp → rename
     const tmpPath = outPath + '.tmp';
-    writeFileSync(tmpPath, JSON.stringify(row, null, 2), 'utf8');
+    writeFileSync(tmpPath, serializedRow, 'utf8');
     renameSync(tmpPath, outPath);
 
     exported++;
