@@ -20,6 +20,7 @@
 
 import { resolveHitlStatus, type HitlStatus } from '../../lib/hitl-status';
 import implementationStatusContract from './implementation-status-contract.json';
+import sourceReferenceContract from './source-reference-contract.json';
 
 export const STANCE_LABEL: Record<string, string> = {
   pro: '찬성',
@@ -57,6 +58,19 @@ export type ResultIssueRaw = {
   consensus_denominator?: number | null;
   teams?: string[] | null;
   implementation?: ResultImplementationRaw | null;
+  source_references?: ResultSourceReferenceRaw[] | null;
+};
+
+export type ResultSourceReferenceRaw = {
+  reference_key?: string | null;
+  team_name?: string | null;
+  ordinal?: number | null;
+  kind?: string | null;
+  excerpt?: string | null;
+  content_sha256?: string | null;
+  publication_status?: string | null;
+  reviewed_at?: string | null;
+  reviewer_role?: string | null;
 };
 
 export type ResultImplementationRaw = {
@@ -105,6 +119,19 @@ export type ViewIssue = {
   isConsensus: boolean;
   hitl: HitlStatus;
   implementation: ImplementationView;
+  sourceReferences: SourceReferenceView[];
+  sourceReferencesValid: boolean;
+};
+
+export type SourceReferenceView = {
+  referenceKey: string;
+  teamName: string;
+  ordinal: number;
+  kind: 'core' | 'extra';
+  excerpt: string;
+  contentSha256: string;
+  reviewedAt: string;
+  reviewerRole: 'org_admin' | 'hq';
 };
 
 export type ImplementationState = keyof typeof implementationStatusContract.states;
@@ -135,6 +162,12 @@ const TRACKED_IMPLEMENTATION_STATES = new Set<string>(
     .map(([state]) => state),
 );
 const IMPLEMENTATION_TIMESTAMP_PATTERN = new RegExp(implementationStatusContract.record.timestampPattern);
+const SOURCE_REFERENCE_KEY_PATTERN = new RegExp(sourceReferenceContract.record.referenceKeyPattern);
+const SOURCE_CONTENT_SHA256_PATTERN = new RegExp(sourceReferenceContract.record.contentSha256Pattern);
+const SOURCE_TIMESTAMP_PATTERN = new RegExp(sourceReferenceContract.record.timestampPattern);
+const SOURCE_REFERENCE_KEYS = new Set(sourceReferenceContract.record.requiredKeys);
+const SOURCE_KINDS = new Set<string>(sourceReferenceContract.record.kinds);
+const SOURCE_REVIEWER_ROLES = new Set<string>(sourceReferenceContract.record.reviewerRoles);
 
 function isTrackedImplementationState(value: string): value is TrackedImplementationState {
   return TRACKED_IMPLEMENTATION_STATES.has(value);
@@ -155,6 +188,7 @@ export type ResultStats = {
   unclassifiedCount: number;
   participatingTeams: number;
   implementationTrackedCount: number;
+  sourceReferenceCount: number;
 };
 
 export type ResultView = {
@@ -235,6 +269,74 @@ function normalizedImplementationTimestamp(value: unknown): string | null {
   return text;
 }
 
+function normalizedSourceTimestamp(value: unknown): string | null {
+  const text = normalizedImplementationText(value, sourceReferenceContract.record.timestampMaxLength);
+  if (!text || !SOURCE_TIMESTAMP_PATTERN.test(text)) return null;
+  const timestamp = Date.parse(text);
+  const normalized = text.includes('.') ? text : text.replace(/Z$/, '.000Z');
+  if (Number.isNaN(timestamp) || new Date(timestamp).toISOString() !== normalized) return null;
+  return text;
+}
+
+function normalizedSourceReferences(
+  value: unknown,
+  issueReviewed: boolean,
+): { valid: boolean; references: SourceReferenceView[] } {
+  if (value == null) return { valid: true, references: [] };
+  if (!Array.isArray(value)) return { valid: false, references: [] };
+  if (value.length > 0 && !issueReviewed) return { valid: false, references: [] };
+
+  const references: SourceReferenceView[] = [];
+  const referenceKeys = new Set<string>();
+  for (const candidate of value) {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+      return { valid: false, references: [] };
+    }
+    const record = candidate as Record<string, unknown>;
+    const keys = Object.keys(record);
+    if (keys.length !== SOURCE_REFERENCE_KEYS.size || keys.some((key) => !SOURCE_REFERENCE_KEYS.has(key))) {
+      return { valid: false, references: [] };
+    }
+    const referenceKey = normalizedImplementationText(record.reference_key, 80);
+    const teamName = normalizedImplementationText(record.team_name, sourceReferenceContract.record.teamNameMaxLength);
+    const excerpt = normalizedImplementationText(record.excerpt, sourceReferenceContract.record.excerptMaxLength);
+    const reviewedAt = normalizedSourceTimestamp(record.reviewed_at);
+    const contentSha256 = typeof record.content_sha256 === 'string' ? record.content_sha256 : '';
+    const kind = typeof record.kind === 'string' ? record.kind : '';
+    const reviewerRole = typeof record.reviewer_role === 'string' ? record.reviewer_role : '';
+    const ordinal = record.ordinal;
+    if (!referenceKey || !SOURCE_REFERENCE_KEY_PATTERN.test(referenceKey)
+      || referenceKeys.has(referenceKey)
+      || !teamName
+      || !excerpt
+      || !SOURCE_CONTENT_SHA256_PATTERN.test(contentSha256)
+      || !reviewedAt
+      || !Number.isInteger(ordinal)
+      || (ordinal as number) < 1
+      || (ordinal as number) > sourceReferenceContract.record.maximumOrdinal
+      || !SOURCE_KINDS.has(kind)
+      || record.publication_status !== sourceReferenceContract.record.publicationStatus
+      || !SOURCE_REVIEWER_ROLES.has(reviewerRole)) {
+      return { valid: false, references: [] };
+    }
+    referenceKeys.add(referenceKey);
+    references.push({
+      referenceKey,
+      teamName,
+      ordinal: ordinal as number,
+      kind: kind as SourceReferenceView['kind'],
+      excerpt,
+      contentSha256,
+      reviewedAt,
+      reviewerRole: reviewerRole as SourceReferenceView['reviewerRole'],
+    });
+  }
+  references.sort((a, b) => a.teamName.localeCompare(b.teamName, 'ko')
+    || a.ordinal - b.ordinal
+    || a.referenceKey.localeCompare(b.referenceKey));
+  return { valid: true, references };
+}
+
 function normalizedEvidenceUrl(value: unknown): string | null {
   if (value == null || value === '') return null;
   const text = normalizedImplementationText(value, implementationStatusContract.record.evidenceUrlMaxLength);
@@ -298,6 +400,8 @@ export function toViewIssue(raw: ResultIssueRaw): ViewIssue {
     typeof raw.consensus_denominator === 'number' && Number.isFinite(raw.consensus_denominator)
       ? raw.consensus_denominator
       : null;
+  const hitl = resolveHitlStatus({ reviewStatus: raw.review_status, origin: raw.origin });
+  const sourceReferences = normalizedSourceReferences(raw.source_references, hitl.reviewed);
   return {
     id: raw.id ?? '',
     label: (raw.label ?? '').trim() || '(제목 없음)',
@@ -310,8 +414,10 @@ export function toViewIssue(raw: ResultIssueRaw): ViewIssue {
     teamCount: teams.length,
     consensusDenominator: denom,
     isConsensus: frequency === 'consensus',
-    hitl: resolveHitlStatus({ reviewStatus: raw.review_status, origin: raw.origin }),
+    hitl,
     implementation: toImplementation(raw.implementation),
+    sourceReferences: sourceReferences.references,
+    sourceReferencesValid: sourceReferences.valid,
   };
 }
 
@@ -404,6 +510,7 @@ export function buildResultView(res: ResultGetResponse): ResultView | null {
       unclassifiedCount: typeof body.unclassified_count === 'number' ? body.unclassified_count : 0,
       participatingTeams: teamSet.size,
       implementationTrackedCount: issues.filter((issue) => issue.implementation.tracked).length,
+      sourceReferenceCount: issues.reduce((sum, issue) => sum + issue.sourceReferences.length, 0),
     },
   };
 }

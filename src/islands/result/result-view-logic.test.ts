@@ -29,6 +29,7 @@ function issue(over: Partial<ResultIssueRaw> = {}): ResultIssueRaw {
     consensus_denominator: over.consensus_denominator ?? 0,
     teams: over.teams ?? [],
     implementation: over.implementation ?? undefined,
+    source_references: over.source_references ?? undefined,
   };
 }
 
@@ -165,6 +166,88 @@ describe('buildResultView — 검수 상태(draft 섞임)', () => {
     expect(view.issues.map((i) => i.hitl.state)).toEqual(['draft', 'draft', 'reviewed']);
     // 검수 대기가 다수여도 합의 비율 분모는 전체 쟁점(3) — reviewed-only로 좁히지 않는다.
     expect(view.stats.issueCount).toBe(3);
+  });
+});
+
+describe('공개 원문 역링크 계약', () => {
+  const reviewedSource = {
+    reference_key: 'public-source-001',
+    team_name: '1분과 1조',
+    ordinal: 1,
+    kind: 'core',
+    excerpt: '대중교통 노선을 확대해야 합니다.',
+    content_sha256: 'a'.repeat(64),
+    publication_status: 'reviewed',
+    reviewed_at: '2026-08-26T00:00:00.000Z',
+    reviewer_role: 'hq',
+  };
+
+  it('명시적 공개검수를 통과한 원문만 공개 뷰에 보존한다', () => {
+    const viewIssue = toViewIssue(issue({ source_references: [reviewedSource] }));
+
+    expect(viewIssue.sourceReferencesValid).toBe(true);
+    expect(viewIssue.sourceReferences).toEqual([{
+      referenceKey: 'public-source-001',
+      teamName: '1분과 1조',
+      ordinal: 1,
+      kind: 'core',
+      excerpt: '대중교통 노선을 확대해야 합니다.',
+      contentSha256: 'a'.repeat(64),
+      reviewedAt: '2026-08-26T00:00:00.000Z',
+      reviewerRole: 'hq',
+    }]);
+  });
+
+  it.each([
+    { ...reviewedSource, publication_status: 'draft' },
+    { ...reviewedSource, reviewer_role: 'operator' },
+    { ...reviewedSource, reviewed_at: '2026-08-26' },
+    { ...reviewedSource, content_sha256: 'not-a-digest' },
+    { ...reviewedSource, excerpt: '' },
+  ])('잘못된 공개검수 원문은 내용 전체를 fail-closed한다', (sourceReference) => {
+    const viewIssue = toViewIssue(issue({ source_references: [sourceReference] }));
+
+    expect(viewIssue.sourceReferencesValid).toBe(false);
+    expect(viewIssue.sourceReferences).toEqual([]);
+  });
+
+  it('쟁점 자체가 미검수면 원문 공개검수가 있어도 노출하지 않는다', () => {
+    const viewIssue = toViewIssue(issue({
+      review_status: 'draft',
+      source_references: [reviewedSource],
+    }));
+
+    expect(viewIssue.sourceReferencesValid).toBe(false);
+    expect(viewIssue.sourceReferences).toEqual([]);
+  });
+
+  it('중복 reference key와 승인 계약 밖 필드를 원문 전체 단위로 거부한다', () => {
+    const sourceWithInternalNote = { ...reviewedSource, internal_note: '공개하면 안 되는 내부 메모' };
+    const duplicate = toViewIssue(issue({
+      source_references: [reviewedSource, { ...reviewedSource }],
+    }));
+    const extraField = toViewIssue(issue({
+      source_references: [sourceWithInternalNote],
+    }));
+
+    expect(duplicate).toMatchObject({ sourceReferencesValid: false, sourceReferences: [] });
+    expect(extraField).toMatchObject({ sourceReferencesValid: false, sourceReferences: [] });
+  });
+
+  it('원문 공개 필드가 없으면 기존 공개 결과를 유효한 빈 상태로 유지한다', () => {
+    expect(toViewIssue(issue())).toMatchObject({
+      sourceReferencesValid: true,
+      sourceReferences: [],
+    });
+  });
+
+  it('공개 뷰는 검증된 원문 개수만 집계한다', () => {
+    const view = buildResultView(response([
+      issue({ id: 'approved', source_references: [reviewedSource] }),
+      issue({ id: 'missing' }),
+    ]));
+
+    expect(view?.stats.sourceReferenceCount).toBe(1);
   });
 });
 

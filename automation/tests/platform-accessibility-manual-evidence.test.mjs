@@ -48,11 +48,11 @@ test('keeps an untouched template in needs review with exact counts', () => {
   expect(evaluateManualAccessibilityEvidence(evidence)).toEqual({
     status: 'needs_review',
     caseCount: 14,
-    checkCount: 80,
+    checkCount: 82,
     passCount: 0,
     failCount: 0,
     blockedCount: 0,
-    notRunCount: 80,
+    notRunCount: 82,
   });
 });
 
@@ -193,7 +193,7 @@ test('CLI verifies valid evidence and does not echo malformed source data', () =
       evidencePath,
     ], { encoding: 'utf8' });
     expect(verified.status).toBe(0);
-    expect(JSON.parse(verified.stdout)).toMatchObject({ status: 'needs_review', caseCount: 14, notRunCount: 80 });
+    expect(JSON.parse(verified.stdout)).toMatchObject({ status: 'needs_review', caseCount: 14, notRunCount: 82 });
 
     writeFileSync(malformedPath, '{"secret":"must-not-echo"', 'utf8');
     const malformed = spawnSync(process.execPath, [

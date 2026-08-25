@@ -295,12 +295,24 @@ function RankingChart({ view }: { view: ResultViewModel }) {
 
 // ── 쟁점별 요약 + 연결 근거 ──
 
+function resultIssueAnchor(issue: ViewIssue): string {
+  return `result-issue-${encodeURIComponent(issue.id)}`;
+}
+
+function resultSourceAnchor(issue: ViewIssue, referenceKey: string): string {
+  return `result-source-${encodeURIComponent(issue.id)}-${encodeURIComponent(referenceKey)}`;
+}
+
+function sourceKindLabel(kind: 'core' | 'extra'): string {
+  return kind === 'core' ? '핵심' : '추가';
+}
+
 function IssueSummaries({ view }: { view: ResultViewModel }) {
   return (
     <section className="space-y-4">
       <Eyebrow style={{ color: TEAL }}>쟁점별 요약</Eyebrow>
       {view.issues.map((issue) => (
-        <article key={issue.id} className="rounded-2xl border-2 bg-white p-5 sm:p-6" style={{ borderColor: BORDER }}>
+        <article id={resultIssueAnchor(issue)} tabIndex={-1} key={issue.id} className="rounded-2xl border-2 bg-white p-5 sm:p-6" style={{ borderColor: BORDER }}>
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <h3 className="text-[clamp(19px,2vw,26px)] font-extrabold break-words" style={{ color: NAVY }}>
               {issue.label}
@@ -322,6 +334,22 @@ function IssueSummaries({ view }: { view: ResultViewModel }) {
             {issue.teams.length > 0 ? ` · ${issue.teams.join(', ')}` : ''}
             {issue.consensusDenominator != null ? ` · 원문 군집 ${issue.consensusDenominator}건` : ''}
           </p>
+          {issue.sourceReferences.length > 0 ? (
+            <p className="mt-3 text-[15px] font-bold">
+              <a
+                className="underline underline-offset-4"
+                style={{ color: TEAL }}
+                href={`#${resultSourceAnchor(issue, issue.sourceReferences[0].referenceKey)}`}
+              >
+                원문 근거 {issue.sourceReferences.length}건
+              </a>
+            </p>
+          ) : null}
+          {!issue.sourceReferencesValid ? (
+            <p className="mt-3 rounded-xl border-2 px-3 py-2 text-[14px] font-bold" style={{ borderColor: RESULT_STATUS_AMBER, background: '#FEF6E7', color: RESULT_STATUS_AMBER }}>
+              근거 원문 공개 정보 확인 필요
+            </p>
+          ) : null}
         </article>
       ))}
       {view.stats.unclassifiedCount > 0 ? (
@@ -371,6 +399,50 @@ function TakeawaysBlock({ view }: { view: ResultViewModel }) {
           이 결과는 숙의 과정의 중간 정리입니다. 더 논의할 쟁점은 다음 회차에서 이어 다루며,
           정리된 내용은 권고안 심의의 근거 자료로 쓰입니다.
         </p>
+      </div>
+    </section>
+  );
+}
+
+function SourceReferences({ view }: { view: ResultViewModel }) {
+  if (view.stats.sourceReferenceCount === 0) return null;
+  return (
+    <section
+      className="rounded-2xl border-2 bg-white p-5 sm:p-6"
+      style={{ borderColor: BORDER }}
+      aria-labelledby="result-source-references-title"
+      data-source-reference-ready="true"
+    >
+      <Eyebrow className="mb-1" style={{ color: TEAL }}>Source · 원문 역링크</Eyebrow>
+      <h2 id="result-source-references-title" className="text-[clamp(20px,2.2vw,30px)] font-extrabold" style={{ color: NAVY }}>
+        공개 검수된 근거 원문
+      </h2>
+      <p className="mt-1 text-[15px] leading-relaxed" style={{ color: GRAY }}>
+        원문별 공개 검수를 통과하고 현재 쟁점과 무결성 정보가 함께 보존된 기록만 표시합니다.
+      </p>
+      <div className="mt-4 grid gap-4">
+        {view.issues.flatMap((issue) => issue.sourceReferences.map((reference) => (
+          <article
+            id={resultSourceAnchor(issue, reference.referenceKey)}
+            tabIndex={-1}
+            key={`${issue.id}:${reference.referenceKey}`}
+            className="rounded-xl border-2 p-4"
+            style={{ borderColor: BORDER, background: '#F8FBFD' }}
+          >
+            <p className="text-[14px] font-bold" style={{ color: TEAL }}>{issue.label}</p>
+            <blockquote className="mt-2 whitespace-pre-wrap text-[16px] leading-relaxed" style={{ color: INK }}>
+              “{reference.excerpt}”
+            </blockquote>
+            <p className="mt-2 text-[14px] font-semibold" style={{ color: GRAY }}>
+              {reference.teamName} · {sourceKindLabel(reference.kind)} {reference.ordinal}번 · 공개 검수 {formatDate(reference.reviewedAt)}
+            </p>
+            <p className="mt-3 text-[14px] font-bold">
+              <a className="underline underline-offset-4" style={{ color: TEAL }} href={`#${resultIssueAnchor(issue)}`}>
+                쟁점으로 돌아가기
+              </a>
+            </p>
+          </article>
+        )))}
       </div>
     </section>
   );
@@ -467,7 +539,7 @@ function ResultExplanationPanel({ view }: { view: ResultViewModel }) {
         ))}
       </ol>
       <p className="mt-4 text-[14px] leading-relaxed" style={{ color: GRAY }}>
-        이 설명은 현재 공개 스냅샷에서 확인 가능한 집계 근거입니다. 개별 원문 인용은 해당 데이터가 공개 계약에 포함된 뒤 별도 제공합니다. 이행 상태는 등록된 공개 근거가 있을 때만 아래에 표시합니다.
+        이 설명은 현재 공개 스냅샷에서 확인 가능한 집계 근거입니다. 개별 원문은 별도 공개검수를 통과해 계약에 포함된 경우에만 원문 근거 영역에 표시합니다. 이행 상태는 등록된 공개 근거가 있을 때만 아래에 표시합니다.
       </p>
     </details>
   );
@@ -666,6 +738,7 @@ export function ResultContent({ view }: { view: ResultViewModel }) {
         <CoverageMatrix view={view} />
         <RankingChart view={view} />
         <IssueSummaries view={view} />
+        <SourceReferences view={view} />
         <TakeawaysBlock view={view} />
         <ImplementationTracking view={view} />
         <ResultExplanationPanel view={view} />

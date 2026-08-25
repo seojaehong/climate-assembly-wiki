@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "record": {
+    "requiredKeys": [
+      "reference_key",
+      "team_name",
+      "ordinal",
+      "kind",
+      "excerpt",
+      "content_sha256",
+      "publication_status",
+      "reviewed_at",
+      "reviewer_role"
+    ],
+    "referenceKeyPattern": "^[a-z0-9][a-z0-9_-]{7,79}$",
+    "teamNameMaxLength": 200,
+    "excerptMaxLength": 2000,
+    "contentSha256Pattern": "^[0-9a-f]{64}$",
+    "timestampMaxLength": 80,
+    "timestampPattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+    "maximumOrdinal": 2147483647,
+    "kinds": ["core", "extra"],
+    "publicationStatus": "reviewed",
+    "reviewerRoles": ["org_admin", "hq"]
+  }
+}

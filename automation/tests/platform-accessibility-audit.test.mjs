@@ -399,7 +399,7 @@ test('covers authenticated and published production surfaces with read-only brow
   expect(DEFAULT_AUDIT_ROUTES.find((route) => route.id === 'published-result')).toMatchObject({
     path: '/r/_/',
     fixture: 'ci-published-result-read-fixture-v1',
-    readySelector: 'main#main-content [data-implementation-tracking-ready="true"]',
+    readySelector: 'main#main-content [data-source-reference-ready="true"]',
     openDetailsBeforeAudit: true,
     requiredMobileScrollRegions: ['조별 쟁점 커버리지 표', '쟁점 분석 데이터 표'],
   });

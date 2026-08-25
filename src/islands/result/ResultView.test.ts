@@ -23,7 +23,7 @@ function contrastRatio(a: string, b: string): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-function readyView(reviewStatus: 'reviewed' | 'draft' = 'reviewed') {
+function readyView(reviewStatus: 'reviewed' | 'draft' = 'reviewed', withSourceReference = false) {
   const response: ResultGetResponse = {
     scope: 'session',
     scope_id: 'session-1',
@@ -44,6 +44,17 @@ function readyView(reviewStatus: 'reviewed' | 'draft' = 'reviewed') {
         review_status: reviewStatus,
         consensus_denominator: 2,
         teams: ['1분과 1조', '1분과 2조'],
+        source_references: withSourceReference ? [{
+          reference_key: 'public-source-001',
+          team_name: '1분과 1조',
+          ordinal: 1,
+          kind: 'core',
+          excerpt: '대중교통 노선을 확대해야 합니다.',
+          content_sha256: 'a'.repeat(64),
+          publication_status: 'reviewed',
+          reviewed_at: '2026-08-26T00:00:00.000Z',
+          reviewer_role: 'hq',
+        }] : undefined,
         implementation: {
           status: 'in_progress',
           responsible_body: '교통정책 담당기관',
@@ -155,6 +166,26 @@ describe('ResultView accessibility', () => {
     expect(html).toContain('class="sr-only">: 출처 정보가 없는 초안이며 운영진의 원문 대조와 확정이 필요합니다.</span>');
     expect(html).not.toContain('aria-label="검수 대기 · 초안');
     expect(html).not.toContain('>대기(AI 초안)<');
+  });
+
+  it('공개검수된 원문을 쟁점에서 근거 카드로 왕복 탐색하게 한다', () => {
+    const html = renderToStaticMarkup(createElement(ResultContent, { view: readyView('reviewed', true) }));
+
+    expect(html).toContain('원문 근거 1건');
+    expect(html).toContain('href="#result-source-issue-1-public-source-001"');
+    expect(html).toContain('id="result-source-issue-1-public-source-001"');
+    expect(html).toContain('대중교통 노선을 확대해야 합니다.');
+    expect(html).toContain('href="#result-issue-issue-1"');
+    expect(html).toContain('쟁점으로 돌아가기');
+    expect(html).toContain('data-source-reference-ready="true"');
+  });
+
+  it('미검수 쟁점의 원문은 내용 없이 확인 필요 상태만 표시한다', () => {
+    const html = renderToStaticMarkup(createElement(ResultContent, { view: readyView('draft', true) }));
+
+    expect(html).toContain('근거 원문 공개 정보 확인 필요');
+    expect(html).not.toContain('대중교통 노선을 확대해야 합니다.');
+    expect(html).not.toContain('data-source-reference-ready="true"');
   });
 
   it('공개 결과의 산정·검수 과정을 수치 기반 XAI 설명 패널로 제공한다', () => {

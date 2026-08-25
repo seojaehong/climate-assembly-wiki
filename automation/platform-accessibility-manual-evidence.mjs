@@ -65,6 +65,7 @@ export const MANUAL_ACCESSIBILITY_SURFACES = [
       { id: 'skip-focus', procedure: '페이지 첫 포커스에서 본문 바로가기를 실행한다.', expected: '포커스가 공개 결과 main으로 이동하고 결과 제목이 안내된다.' },
       { id: 'landmarks-and-headings', procedure: '랜드마크와 제목 목록으로 결과 전체를 탐색한다.', expected: '결과 범위·요약·쟁점·대체표·다운로드 구조를 제목만으로 찾을 수 있다.' },
       { id: 'hitl-meaning', procedure: '검수 완료·초안·보관 상태가 섞인 쟁점을 읽는다.', expected: '각 상태의 보이는 라벨과 설명이 함께 안내되어 색상이나 AI 출처를 추정할 필요가 없다.' },
+      { id: 'source-backlinks', procedure: '공개검수된 원문 근거 링크를 실행해 원문 카드로 이동하고 쟁점으로 돌아온 뒤 미검수 원문 경로를 확인한다.', expected: '승인 원문은 쟁점과 원문 카드 사이를 키보드·보조기술로 왕복하고, 미검수·잘못된 원문은 내용 없이 확인 필요 상태만 안내된다.' },
       { id: 'table-navigation', procedure: '쟁점 표와 커버리지 표를 표 탐색 명령으로 행·열 이동한다.', expected: 'caption과 행·열 머리글이 각 데이터 셀에 연결되고 현재 셀의 의미를 이해할 수 있다.' },
       { id: 'details-and-scroll', procedure: '두 표 대체본을 펼치고 각 명명된 영역에 포커스한 뒤 방향키·Home·End로 가로 이동한다.', expected: '펼침 상태가 안내되고 표 영역만 스크롤되며 포커스가 사라지거나 문서 내용이 잘리지 않는다.' },
     ],
