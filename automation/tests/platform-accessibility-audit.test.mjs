@@ -327,16 +327,16 @@ test('verifies keyboard scrolling without treating region content as document cl
   expect(report.routes[0].layout).toMatchObject({ rawHorizontalOverflow: false, horizontalOverflow: false });
 }, BROWSER_TEST_TIMEOUT_MS);
 
-test('installs root dependencies without requiring an ignored lockfile', () => {
+test('installs root and audit dependencies from their tracked lockfiles', () => {
   const workflow = readFileSync(
     new URL('../../.github/workflows/platform-accessibility.yml', import.meta.url),
     'utf8',
   );
 
-  expect(workflow).toContain('cache-dependency-path: automation/package-lock.json');
-  expect(workflow).toContain('run: npm install --no-package-lock');
+  expect(workflow).toContain('cache-dependency-path: |\n            package-lock.json\n            automation/package-lock.json');
+  expect(workflow).toContain('name: Install site dependencies\n        run: npm ci');
   expect(workflow).toContain('working-directory: automation\n        run: npm ci');
-  expect(workflow).not.toContain('run: npm ci\n      - name: Install audit dependencies');
+  expect(workflow).not.toContain('npm install --no-package-lock');
 });
 
 test('refuses to audit when the workflow commit differs from the checkout', () => {

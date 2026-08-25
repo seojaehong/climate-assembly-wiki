@@ -256,6 +256,8 @@ test('rejects an unapproved origin and stale passed surface evidence', () => {
 test('workflow watches every source path that can stale manual evidence', () => {
   const workflow = readFileSync(join(process.cwd(), '..', '.github', 'workflows', 'platform-accessibility.yml'), 'utf8');
   expect(workflow).toContain('fetch-depth: 0');
+  expect(workflow).toContain('name: Install site dependencies\n        run: npm ci');
+  expect(workflow).not.toContain('npm install --no-package-lock');
   for (const path of MANUAL_ACCESSIBILITY_TARGET_PATHS) {
     const workflowPath = /\.[a-z]+$/i.test(path) ? path : `${path}/**`;
     expect(workflow).toContain(`- '${workflowPath}'`);
