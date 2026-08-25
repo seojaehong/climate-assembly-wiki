@@ -443,6 +443,7 @@ test('rehearses internal restore relationships and reports unavailable parent de
         'ballot_response',
       ],
       checkedInternalReferences: 3,
+      checkedTenantRelationships: 0,
       checkedBallotAnswers: 1,
       externalDependencies: {
         org: 1,
@@ -933,6 +934,56 @@ test('accepts JSON null as a non-SQL-null result page body value', async () => {
   });
 });
 
+test('rejects an issue link whose item belongs to another discussion topic', async () => {
+  const archive = await signedArchiveFixture(platformPayloadFixture({
+    issue: [{
+      id: 'issue-1', topic_id: 'topic-2', label: 'Assembly issue', stance: null,
+      frequency_class: null, origin: 'ai', review_status: 'draft', org_id: 'org-1',
+    }],
+    issue_link: [{
+      issue_id: 'issue-1', item_id: 'item-1', cluster_id: null, linked_by: 'human',
+    }],
+    counts: { issue: 1, issue_link: 1, result_page: 0, submission: 1, ballot: 1 },
+  }));
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toThrow('snapshot archive issue link crosses discussion topics');
+  });
+});
+
+test('rejects an issue link whose item belongs to another organization', async () => {
+  const archive = await signedArchiveFixture(platformPayloadFixture({
+    issue: [{
+      id: 'issue-1', topic_id: 'topic-1', label: 'Assembly issue', stance: null,
+      frequency_class: null, origin: 'ai', review_status: 'draft', org_id: 'org-2',
+    }],
+    issue_link: [{
+      issue_id: 'issue-1', item_id: 'item-1', cluster_id: null, linked_by: 'human',
+    }],
+    counts: { issue: 1, issue_link: 1, result_page: 0, submission: 1, ballot: 1 },
+  }));
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toThrow('snapshot archive issue link crosses organizations');
+  });
+});
+
+test('rejects a ballot response whose explicit organization differs from its ballot', async () => {
+  const archive = await signedArchiveFixture(platformPayloadFixture({
+    ballot_response: [{
+      id: 'response-1', ballot_id: 'ballot-1', client_id: 'client-0001',
+      answers: { 'ballot-item-1': 3 }, org_id: 'org-2',
+    }],
+  }));
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toThrow('snapshot archive ballot response crosses organizations');
+  });
+});
+
 test('reports organization and polymorphic result parents as distinct external dependencies', async () => {
   const archive = await signedArchiveFixture(platformPayloadFixture({
     result_page: [
@@ -946,7 +997,7 @@ test('reports organization and polymorphic result parents as distinct external d
       },
       {
         id: 'result-assembly', scope: 'assembly', scope_id: 'assembly-1', token: 'token-assembly',
-        title: 'Assembly result', body: {}, org_id: 'org-1',
+        title: 'Assembly result', body: {}, org_id: 'org-2',
       },
     ],
     ballot_response: [{
@@ -954,7 +1005,7 @@ test('reports organization and polymorphic result parents as distinct external d
       ballot_id: 'ballot-1',
       client_id: 'client-0001',
       answers: { 'ballot-item-1': 3 },
-      org_id: 'org-2',
+      org_id: 'org-1',
     }],
     counts: { issue: 1, issue_link: 0, result_page: 3, submission: 1, ballot: 1 },
   }));

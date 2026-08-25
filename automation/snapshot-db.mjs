@@ -409,6 +409,35 @@ function validateBallotAnswers(payload) {
   return checked;
 }
 
+function validateInternalTenantRelationships(payload) {
+  const submissionsById = new Map(payload.submission.map((row) => [row.id, row]));
+  const itemsById = new Map(payload.submission_item.map((row) => [row.id, row]));
+  const issuesById = new Map(payload.issue.map((row) => [row.id, row]));
+  const ballotsById = new Map(payload.ballot.map((row) => [row.id, row]));
+  let checked = 0;
+  for (const link of payload.issue_link) {
+    const issue = issuesById.get(link.issue_id);
+    const item = itemsById.get(link.item_id);
+    const submission = submissionsById.get(item.submission_id);
+    if (issue.topic_id !== submission.topic_id) {
+      throw new Error('snapshot archive issue link crosses discussion topics');
+    }
+    if (issue.org_id !== submission.org_id) {
+      throw new Error('snapshot archive issue link crosses organizations');
+    }
+    checked += 1;
+  }
+  for (const response of payload.ballot_response) {
+    if (response.org_id === null || response.org_id === undefined) continue;
+    const ballot = ballotsById.get(response.ballot_id);
+    if (response.org_id !== ballot.org_id) {
+      throw new Error('snapshot archive ballot response crosses organizations');
+    }
+    checked += 1;
+  }
+  return checked;
+}
+
 function externalDependencyIds(rows, field, label) {
   const ids = new Set();
   for (const row of rows) {
@@ -475,6 +504,7 @@ export function rehearseSnapshotArchiveFile({ filePath, auditKey }) {
     validateReference(payload, 'ballot_item', 'ballot_id', ids.ballot),
     validateReference(payload, 'ballot_response', 'ballot_id', ids.ballot),
   ].reduce((total, value) => total + value, 0);
+  const checkedTenantRelationships = validateInternalTenantRelationships(payload);
   const topicRows = [...payload.submission, ...payload.issue];
   const resultScopes = resultScopeDependencies(payload.result_page);
   const topicIds = externalDependencyIds(topicRows, 'topic_id', 'submission_or_issue');
@@ -489,6 +519,7 @@ export function rehearseSnapshotArchiveFile({ filePath, auditKey }) {
     databaseRestoreExecuted: false,
     archiveRestoreOrder: [...ARCHIVE_RESTORE_ORDER],
     checkedInternalReferences,
+    checkedTenantRelationships,
     checkedBallotAnswers: validateBallotAnswers(payload),
     externalDependencies: {
       org: unionSize(requiredOrgIds, responseOrgIds),
