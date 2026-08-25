@@ -60,6 +60,29 @@ begin
 end
 $function$;
 
+create or replace function pg_temp.a4_reconciliation_query(p_plan jsonb)
+returns jsonb language sql as $function$
+  select jsonb_build_object(
+    'schemaVersion', 1,
+    'kind', 'platform_design_provisioning_reconciliation_query',
+    'approvalId', '30000000-0000-4000-8000-000000000001',
+    'executionId', '40000000-0000-4000-8000-000000000001',
+    'approvedPlanChecksum', repeat('a', 64),
+    'executedPlanChecksum', p_plan ->> 'checksum',
+    'sourceBlueprintSha256', p_plan #>> '{sourceBlueprint,sha256}',
+    'sourceBlueprintBytes', (p_plan #>> '{sourceBlueprint,bytes}')::integer,
+    'operationCount', jsonb_array_length(p_plan -> 'operations'),
+    'operations', (
+      select jsonb_agg(
+        jsonb_build_object('operationId', value ->> 'operationId', 'type', value ->> 'type')
+        order by ordinality
+      )
+      from jsonb_array_elements(p_plan -> 'operations') with ordinality
+    ),
+    'containsSensitiveValues', false
+  )
+$function$;
+
 do $test$
 declare
   v_user uuid := '10000000-0000-0000-0000-000000000001';
@@ -68,12 +91,15 @@ declare
   v_session_ref text := 'assembly:a4-test-assembly/session:a4-session-1';
   v_operations jsonb;
   v_plan jsonb;
+  v_query jsonb;
   v_response jsonb;
   v_conflict jsonb;
   v_parent_plan jsonb;
   v_exhaustion_plan jsonb;
   v_rollback_plan jsonb;
   v_session_id uuid;
+  v_ledger_count bigint;
+  v_resource_count bigint;
 begin
   insert into auth.users (id, email, email_confirmed_at) values (v_user, 'a4@example.invalid', now());
   insert into climate_vote.org (id, slug, name, status) values (v_org, 'a4-test-org', 'A4 test org', 'active');
@@ -98,6 +124,16 @@ begin
     'assemblyCount', 1, 'sessionCount', 1, 'topicCount', 1,
     'teamCount', 1, 'participantCount', 12, 'operationCount', 4
   ));
+  v_query := pg_temp.a4_reconciliation_query(v_plan);
+
+  select count(*) into v_ledger_count from climate_vote.design_provisioning_operation;
+  select count(*) into v_resource_count from climate_vote.assembly;
+  v_response := climate_vote.design_provisioning_status(v_query);
+  if v_response <> jsonb_build_object('status', 'pending')
+     or (select count(*) from climate_vote.design_provisioning_operation) <> v_ledger_count
+     or (select count(*) from climate_vote.assembly) <> v_resource_count then
+    raise exception 'A4 semantic test failed: pending reconciliation unexpectedly mutated state';
+  end if;
 
   begin
     perform climate_vote.design_provision(v_plan, convert_to(repeat('x', 100), 'UTF8'));
@@ -112,6 +148,63 @@ begin
      or (v_response #>> '{operations,3,joinCode}') !~ '^[0-9]{6}$' then
     raise exception 'A4 semantic test failed: normal provisioning response is unsafe';
   end if;
+
+  select count(*) into v_ledger_count from climate_vote.design_provisioning_operation;
+  select count(*) into v_resource_count from climate_vote.team;
+  v_response := climate_vote.design_provisioning_status(v_query);
+  if v_response ->> 'status' <> 'completed'
+     or v_response #>> '{response,schemaVersion}' <> '1'
+     or v_response #>> '{response,planChecksum}' <> v_plan ->> 'checksum'
+     or v_response #>> '{response,operationCount}' <> '4'
+     or jsonb_path_query_array(v_response, '$.response.operations[*].status')
+        <> '["replayed", "replayed", "replayed", "replayed"]'::jsonb
+     or (v_response #>> '{response,operations,3,joinCode}') !~ '^[0-9]{6}$'
+     or (select count(*) from climate_vote.design_provisioning_operation) <> v_ledger_count
+     or (select count(*) from climate_vote.team) <> v_resource_count then
+    raise exception 'A4 semantic test failed: completed reconciliation response is unsafe';
+  end if;
+
+  begin
+    perform climate_vote.design_provisioning_status(
+      jsonb_set(v_query, '{executedPlanChecksum}', to_jsonb(repeat('b', 64)))
+    );
+    raise exception 'A4 semantic test failed: reconciliation checksum conflict unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_reconciliation_conflict' then raise; end if;
+  end;
+
+  begin
+    perform climate_vote.design_provisioning_status(
+      jsonb_set(
+        jsonb_set(
+          v_query,
+          '{operations}',
+          jsonb_build_array(jsonb_build_object(
+            'operationId', repeat('c', 64),
+            'type', 'create_assembly'
+          )) || (v_query -> 'operations')
+        ),
+        '{operationCount}',
+        '5'::jsonb
+      ) || jsonb_build_object('executedPlanChecksum', repeat('b', 64))
+    );
+    raise exception 'A4 semantic test failed: partial reconciliation conflict unexpectedly returned pending';
+  exception when others then
+    if sqlerrm <> 'design_reconciliation_conflict' then raise; end if;
+  end;
+
+  update climate_vote.membership
+  set role = 'operator'
+  where org_id = v_org and user_id = v_user;
+  begin
+    perform climate_vote.design_provisioning_status(v_query);
+    raise exception 'A4 semantic test failed: reconciliation role denial unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_role_forbidden' then raise; end if;
+  end;
+  update climate_vote.membership
+  set role = 'org_admin'
+  where org_id = v_org and user_id = v_user;
 
   v_response := climate_vote.design_provision(v_plan, convert_to(repeat('s', 100), 'UTF8'));
   if jsonb_path_query_array(v_response, '$.operations[*].status') <> '["replayed", "replayed", "replayed", "replayed"]'::jsonb

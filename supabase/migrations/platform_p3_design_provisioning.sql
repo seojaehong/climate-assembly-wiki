@@ -457,9 +457,162 @@ exception when others then
 end
 $function$;
 
+create or replace function climate_vote.design_provisioning_status(p_query jsonb)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = pg_catalog, climate_vote, auth
+set row_security = off
+as $function$
+declare
+  v_expected_root_keys text[] := array[
+    'approvalId', 'approvedPlanChecksum', 'containsSensitiveValues',
+    'executedPlanChecksum', 'executionId', 'kind', 'operationCount',
+    'operations', 'schemaVersion', 'sourceBlueprintBytes', 'sourceBlueprintSha256'
+  ];
+  v_actual_keys text[];
+  v_user_id uuid;
+  v_org_id uuid;
+  v_operation jsonb;
+  v_operation_id text;
+  v_operation_type text;
+  v_existing climate_vote.design_provisioning_operation%rowtype;
+  v_resource_id uuid;
+  v_join_code text;
+  v_results jsonb := '[]'::jsonb;
+  v_pending boolean := false;
+begin
+  if p_query is null or jsonb_typeof(p_query) <> 'object' then
+    raise exception using message = 'design_reconciliation_query_invalid';
+  end if;
+  select array_agg(key order by key) into v_actual_keys
+  from jsonb_object_keys(p_query) keys(key);
+  if v_actual_keys is distinct from v_expected_root_keys
+     or p_query ->> 'schemaVersion' <> '1'
+     or p_query ->> 'kind' <> 'platform_design_provisioning_reconciliation_query'
+     or (p_query ->> 'approvalId') !~ '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     or (p_query ->> 'executionId') !~ '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     or (p_query ->> 'approvedPlanChecksum') !~ '^[0-9a-f]{64}$'
+     or (p_query ->> 'executedPlanChecksum') !~ '^[0-9a-f]{64}$'
+     or (p_query ->> 'sourceBlueprintSha256') !~ '^[0-9a-f]{64}$'
+     or (p_query ->> 'sourceBlueprintBytes') !~ '^[1-9][0-9]*$'
+     or (p_query ->> 'sourceBlueprintBytes')::integer > 1000000
+     or p_query -> 'containsSensitiveValues' <> 'false'::jsonb
+     or (p_query ->> 'operationCount') !~ '^[1-9][0-9]*$'
+     or (p_query ->> 'operationCount')::integer > 10025
+     or jsonb_typeof(p_query -> 'operations') <> 'array'
+     or jsonb_array_length(p_query -> 'operations')
+        <> (p_query ->> 'operationCount')::integer
+     or (select count(*) from jsonb_array_elements(p_query -> 'operations'))
+        <> (select count(distinct value ->> 'operationId')
+            from jsonb_array_elements(p_query -> 'operations')) then
+    raise exception using message = 'design_reconciliation_query_invalid';
+  end if;
+
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    raise exception using message = 'design_auth_required';
+  end if;
+  v_org_id := climate_vote.org_of_uid();
+  if v_org_id is null or not exists (
+    select 1
+    from climate_vote.membership m
+    join climate_vote.org o on o.id = m.org_id and o.status = 'active'
+    where m.user_id = v_user_id and m.org_id = v_org_id
+      and m.status = 'active' and m.role in ('org_admin', 'hq')
+  ) then
+    raise exception using message = 'design_role_forbidden';
+  end if;
+
+  for v_operation in
+    select value
+    from jsonb_array_elements(p_query -> 'operations') with ordinality
+    order by ordinality
+  loop
+    select array_agg(key order by key) into v_actual_keys
+    from jsonb_object_keys(v_operation) keys(key);
+    v_operation_id := v_operation ->> 'operationId';
+    v_operation_type := v_operation ->> 'type';
+    if v_actual_keys is distinct from array['operationId', 'type']
+       or v_operation_id !~ '^[0-9a-f]{64}$'
+       or v_operation_type not in (
+         'create_assembly', 'create_session', 'create_topic', 'create_team'
+       ) then
+      raise exception using message = 'design_reconciliation_query_invalid';
+    end if;
+
+    select * into v_existing
+    from climate_vote.design_provisioning_operation
+    where org_id = v_org_id and operation_id = v_operation_id;
+    if not found then
+      v_pending := true;
+      continue;
+    end if;
+    if v_existing.plan_checksum <> p_query ->> 'executedPlanChecksum'
+       or v_existing.operation_type <> v_operation_type then
+      raise exception using message = 'design_reconciliation_conflict';
+    end if;
+
+    v_resource_id := null;
+    v_join_code := null;
+    if v_operation_type = 'create_assembly' then
+      select id into v_resource_id
+      from climate_vote.assembly
+      where id = v_existing.resource_id and org_id = v_org_id;
+    elsif v_operation_type = 'create_session' then
+      select id into v_resource_id
+      from climate_vote.session
+      where id = v_existing.resource_id and org_id = v_org_id;
+    elsif v_operation_type = 'create_topic' then
+      select id into v_resource_id
+      from climate_vote.discussion_topic
+      where id = v_existing.resource_id and org_id = v_org_id;
+    else
+      select id, join_code into v_resource_id, v_join_code
+      from climate_vote.team
+      where id = v_existing.resource_id and org_id = v_org_id;
+    end if;
+    if v_resource_id is null
+       or (v_operation_type = 'create_team' and v_join_code !~ '^[0-9]{6}$') then
+      raise exception using message = 'design_reconciliation_conflict';
+    end if;
+
+    v_results := v_results || jsonb_build_array(
+      jsonb_strip_nulls(jsonb_build_object(
+        'operationId', v_operation_id,
+        'resourceId', v_resource_id,
+        'status', 'replayed',
+        'joinCode', case when v_operation_type = 'create_team' then v_join_code else null end
+      ))
+    );
+  end loop;
+
+  if v_pending then
+    return jsonb_build_object('status', 'pending');
+  end if;
+
+  return jsonb_build_object(
+    'status', 'completed',
+    'response', jsonb_build_object(
+      'schemaVersion', 1,
+      'planChecksum', p_query ->> 'executedPlanChecksum',
+      'operationCount', jsonb_array_length(v_results),
+      'operations', v_results
+    )
+  );
+exception when others then
+  if sqlerrm like 'design_%' then
+    raise;
+  end if;
+  raise exception using message = 'design_reconciliation_failed';
+end
+$function$;
+
 revoke all on function climate_vote.platform_json_canonical(jsonb) from public, anon, authenticated, service_role;
 revoke all on function climate_vote.platform_sha256_hex(text) from public, anon, authenticated, service_role;
 revoke all on function climate_vote.platform_design_join_code() from public, anon, authenticated, service_role;
 revoke all on function climate_vote.design_provision(jsonb, bytea) from public, anon, authenticated, service_role;
+revoke all on function climate_vote.design_provisioning_status(jsonb) from public, anon, authenticated, service_role;
 
 commit;

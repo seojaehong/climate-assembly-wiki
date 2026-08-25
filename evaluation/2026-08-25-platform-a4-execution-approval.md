@@ -17,6 +17,7 @@
 - 실패 receipt는 allowlist `design_*` 코드와 rollback 확인만 허용하며, approval/plan/source·execution·시각·요약을 HMAC으로 결속한다. 함수는 RPC·persistence를 호출하지 않는다.
 - injected lifecycle core는 claim 전·직후 receipt를 조회하고 새 RPC 결과를 비식별 receipt로 append·재조회한 뒤에만 finalize한다. 단 하나의 `new` claim 소유자만 RPC를 호출하며, receipt 없는 기존·reconciled claim은 미확정 outcome으로 보고 자동 재호출하지 않는다. append 응답 유실 뒤 저장된 receipt를 복구하면 RPC를 다시 호출하지 않으며, 저장 성공 응답이 있어도 receipt가 관찰되지 않으면 claim을 진행 중으로 보존한다.
 - 명시적 reconciliation lifecycle은 기존 active claim만 허용하고 새 claim·execution adapter를 호출하지 않는다. mutation RPC 입력으로 재사용할 수 없는 approval/execution·checksum·source hash/길이·operation ID/type 비식별 query만 injected adapter에 전달한다. exact ledger·operation lookup 결과가 `pending`이거나 오류이면 claim을 유지하며, 완료 결과는 동일한 response 검증·redaction·HMAC receipt persistence 뒤에만 finalize한다. 유효 시간 안에 시작된 claim의 만료 뒤 감사 종결과 adapter 원시 오류 비노출을 검증했다.
+- migration 초안의 `design_provisioning_status(jsonb)`는 같은 비식별 query를 받는 `STABLE` read-only RPC다. 현재 기관 `org_admin|hq`, ledger의 executed checksum·operation type, resource org를 검증하고 일부 누락은 `pending`, 전체 일치는 exact replay 응답으로 반환한다. 모든 기본 역할 EXECUTE는 회수돼 있으며 production adapter·권한은 없다.
 - 승인 발급 CLI, 실제 key, production-backed durable state·live membership adapter와 production executor는 제공하지 않는다.
 - 기존 plan의 `readyForExecution:false`, `serverContractImplemented:false`, `databaseMutationExecuted:false`는 유지한다.
 
@@ -40,6 +41,6 @@
 2. 승인 발급 주체·key custody와 durable revocation/claim 저장소
 3. production-backed 원자 claim/finalize와 active `org_admin|hq` membership·선택 기관 재검증 adapter
 4. A4 migration·mapping·activation preflight와 RPC 권한 활성화
-5. production append-only receipt persistence·ledger lookup reconciliation·실제 rollback·role deny E2E
+5. production append-only receipt persistence·status adapter/권한·실제 rollback·role deny E2E
 
 이 보고서는 repository 계약과 로컬 검증 증거이며 production 실행 승인 artifact가 아니다.

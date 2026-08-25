@@ -10,6 +10,7 @@ declare
 begin
   if to_regclass('climate_vote.design_provisioning_operation') is null
      or to_regprocedure('climate_vote.design_provision(jsonb,bytea)') is null
+     or to_regprocedure('climate_vote.design_provisioning_status(jsonb)') is null
      or to_regprocedure('climate_vote.platform_json_canonical(jsonb)') is null
      or to_regprocedure('climate_vote.platform_sha256_hex(text)') is null
      or to_regprocedure('climate_vote.platform_design_join_code()') is null then
@@ -58,10 +59,32 @@ begin
     raise exception 'A4 post-apply verification failed: RPC contract is unsafe';
   end if;
 
+  select p.prosrc, p.proconfig into strict v_definition, v_config
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'climate_vote' and p.proname = 'design_provisioning_status';
+  if not exists (
+       select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'climate_vote' and p.proname = 'design_provisioning_status'
+         and p.prosecdef and p.provolatile = 's' and pg_get_function_result(p.oid) = 'jsonb'
+         and p.pronargs = 1
+     )
+     or not ('search_path=pg_catalog, climate_vote, auth' = any(v_config))
+     or not ('row_security=off' = any(v_config))
+     or v_definition not like '%platform_design_provisioning_reconciliation_query%'
+     or v_definition not like '%m.role in (''org_admin'', ''hq'')%'
+     or v_definition not like '%design_reconciliation_conflict%'
+     or v_definition not like '%jsonb_build_object(''status'', ''pending'')%' then
+    raise exception 'A4 post-apply verification failed: reconciliation RPC contract is unsafe';
+  end if;
+
   if has_function_privilege('public', 'climate_vote.design_provision(jsonb,bytea)', 'EXECUTE')
      or has_function_privilege('anon', 'climate_vote.design_provision(jsonb,bytea)', 'EXECUTE')
      or has_function_privilege('authenticated', 'climate_vote.design_provision(jsonb,bytea)', 'EXECUTE')
      or has_function_privilege('service_role', 'climate_vote.design_provision(jsonb,bytea)', 'EXECUTE')
+     or has_function_privilege('public', 'climate_vote.design_provisioning_status(jsonb)', 'EXECUTE')
+     or has_function_privilege('anon', 'climate_vote.design_provisioning_status(jsonb)', 'EXECUTE')
+     or has_function_privilege('authenticated', 'climate_vote.design_provisioning_status(jsonb)', 'EXECUTE')
+     or has_function_privilege('service_role', 'climate_vote.design_provisioning_status(jsonb)', 'EXECUTE')
      or has_table_privilege('public', 'climate_vote.design_provisioning_operation', 'SELECT')
      or has_table_privilege('anon', 'climate_vote.design_provisioning_operation', 'SELECT')
      or has_table_privilege('authenticated', 'climate_vote.design_provisioning_operation', 'SELECT')
@@ -80,6 +103,7 @@ select jsonb_build_object(
   'kind', 'platform_design_provisioning_post_apply',
   'databaseMutationExecuted', false,
   'staffGrantActive', false,
+  'reconciliationRpcActive', false,
   'status', 'verified'
 ) as design_provisioning_post_apply;
 

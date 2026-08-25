@@ -35,15 +35,23 @@
 4. A4 migration 뒤에도 legacy ordinal이 `NULL`인 동안 activation을 차단하고, throwaway 전용 mapping fixture 적용 뒤에만 `readyForActivation:true`가 되는 것을 검증했다.
 5. A4 migration 초안과 post-apply verifier가 통과했다.
 6. 원 청사진 바이트 길이·SHA-256 불일치 거부, 정상 4개 operation 생성과 exact replay를 검증했다.
-7. 동일 operation ID의 payload 충돌, 같은 assembly ordinal의 parent 충돌을 거부했다.
-8. join code 충돌 20회 소진 시 앞선 assembly/session까지 rollback되는 것을 검증했다.
-9. 모든 INSERT 뒤 summary 불일치가 발견돼도 plan 전체가 rollback되는 것을 검증했다.
-10. `authenticated`에 RPC EXECUTE를 임시 부여한 격리 음성 테스트를 post-apply verifier가 거부했다.
-11. ledger·non-null ordinal이 있는 populated rollback은 객체 제거 전에 거부되고 post-apply verifier가 계속 통과하는지 확인했다.
-12. exact-scope throwaway cleanup만 synthetic A4 행을 제거하는 것을 확인했다.
-13. cleanup 뒤 최종 rollback이 성공해 RPC·ledger·team ordinal이 제거되는 것을 확인했다.
+7. read-only reconciliation은 실행 전 `pending`과 실행 후 4개 `replayed` operation·team join code를 반환하며 ledger/resource 행 수를 바꾸지 않았다.
+8. reconciliation의 executed checksum 충돌, 앞 operation 누락 뒤의 기존 operation 충돌 은폐와 `operator` 역할을 거부했다.
+9. 동일 operation ID의 payload 충돌, 같은 assembly ordinal의 parent 충돌을 거부했다.
+10. join code 충돌 20회 소진 시 앞선 assembly/session까지 rollback되는 것을 검증했다.
+11. 모든 INSERT 뒤 summary 불일치가 발견돼도 plan 전체가 rollback되는 것을 검증했다.
+12. `authenticated`에 mutation/status RPC EXECUTE를 각각 임시 부여한 격리 음성 테스트를 post-apply verifier가 거부했다.
+13. ledger·non-null ordinal이 있는 populated rollback은 객체 제거 전에 거부되고 post-apply verifier가 계속 통과하는지 확인했다.
+14. exact-scope throwaway cleanup만 synthetic A4 행을 제거하는 것을 확인했다.
+15. cleanup 뒤 최종 rollback이 성공해 mutation/status RPC·ledger·team ordinal이 제거되는 것을 확인했다.
 
 결과: `A4_LOCAL_POSTGRES_REHEARSAL=passed`
+
+추가 조회 계약 결과: `A4_RECONCILIATION_POSTGRES_REHEARSAL=passed`
+
+휴면 권한·populated guard·cleanup·최종 객체 제거 포함 전체 결과: `A4_RECONCILIATION_FULL_POSTGRES_REHEARSAL=passed`
+
+partial ledger 충돌 은폐 방지 결과: `A4_PARTIAL_CONFLICT_POSTGRES_REHEARSAL=passed`
 
 ## 자동화 회귀
 
@@ -51,11 +59,12 @@
 - Windows automation 전체: 26개 파일, 356건 통과
 - approval bundle verifier: builder·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 16개, production apply 미승인·DB mutation 미실행 상태로 통과
 - 추적 manifest를 current source에서 재구성해 stale source hash를 거부하는 테스트 통과
-- bundle checksum: `ef587641e3c166824b3be20697967887a967481c5f483eb4096147e58536fc33`
+- bundle checksum: `e4c2272513e1372504a04d68ce58dd6d1798b70bb1e0c3e842580ac953786f6c`
 
 ## 보안·데이터 무결성 결론
 
 - ledger에는 blueprint 원문, join code, 이메일, Auth UUID를 저장하지 않는다.
 - RPC는 `org_id`를 입력받지 않고 현재 Auth 사용자와 활성 membership에서 기관을 파생한다.
+- reconciliation RPC는 mutation plan·원본 bytes를 받지 않는 `STABLE` 조회 함수이며 ledger/resource를 변경하지 않는다.
 - 기존 resource가 plan payload와 다르면 update하지 않고 안정 오류 코드로 전체 transaction을 중단한다.
 - production 경로는 여전히 비활성 상태이며 별도 적용 승인이 필요하다.

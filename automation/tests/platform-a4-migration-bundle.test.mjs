@@ -106,6 +106,7 @@ test('A4 SQL draft keeps preflight and post-apply verification read-only', () =>
   expect(preflight).toContain("'teamOrdinalNullCount'");
   expect(preflight).toContain("'requiresApprovedBackfill'");
   expect(postApply).toContain("has_function_privilege('authenticated', 'climate_vote.design_provision(jsonb,bytea)', 'EXECUTE')");
+  expect(postApply).toContain("has_function_privilege('authenticated', 'climate_vote.design_provisioning_status(jsonb)', 'EXECUTE')");
   expect(postApply).toContain('staffGrantActive');
 });
 
@@ -119,7 +120,14 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(migration).toContain('design_join_code_exhausted');
   expect(migration).toContain("encode(extensions.digest(p_source_bytes, 'sha256'), 'hex')");
   expect(migration).toContain('revoke all on function climate_vote.design_provision(jsonb, bytea)');
+  expect(migration).toContain('create or replace function climate_vote.design_provisioning_status(p_query jsonb)');
+  expect(migration).toContain('design_reconciliation_conflict');
+  expect(migration).toContain('revoke all on function climate_vote.design_provisioning_status(jsonb)');
   expect(rehearsal).toContain('exact replay is not idempotent');
+  expect(rehearsal).toContain('pending reconciliation unexpectedly mutated state');
+  expect(rehearsal).toContain('completed reconciliation response is unsafe');
+  expect(rehearsal).toContain('reconciliation checksum conflict unexpectedly succeeded');
+  expect(rehearsal).toContain('partial reconciliation conflict unexpectedly returned pending');
   expect(rehearsal).toContain('source mismatch unexpectedly succeeded');
   expect(rehearsal).toContain('payload conflict unexpectedly succeeded');
   expect(rehearsal).toContain('parent conflict unexpectedly succeeded');
@@ -164,6 +172,8 @@ test('rollback refuses populated A4 state before any object is removed', () => {
   expect(rollback.indexOf('design_provisioning_rollback_requires_data_plan')).toBeLessThan(
     rollback.indexOf('revoke all on function climate_vote.design_provision'),
   );
+  expect(rollback).toContain('drop function if exists climate_vote.design_provisioning_status(jsonb)');
+  expect(workflow).toContain('grant execute on function climate_vote.design_provisioning_status(jsonb) to authenticated');
   expect(workflow).toContain('Populated A4 rollback unexpectedly succeeded');
   expect(workflow).toContain('design_provisioning_rollback_requires_data_plan');
   expect(workflow).toContain('design_provisioning_rollback_cleanup_fixture.sql');
