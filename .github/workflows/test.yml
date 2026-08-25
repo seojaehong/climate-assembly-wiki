@@ -351,10 +351,24 @@ jobs:
 
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -v verify_function_bodies=on -f /tmp/driver_pass1.sql >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "alter table climate_vote.submission_item disable trigger submission_item_lock_guard;" >/dev/null
+          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -Atq -f /tmp/snapshot-restore.sql \
+            >"$RUNNER_TEMP/snapshot-restore-disabled-trigger.log" 2>&1; then
+            echo "Snapshot restore unexpectedly accepted a disabled business trigger" >&2
+            exit 1
+          fi
+          grep -q 'requires the enabled submission item lock guard' \
+            "$RUNNER_TEMP/snapshot-restore-disabled-trigger.log"
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "alter table climate_vote.submission_item enable trigger submission_item_lock_guard;" >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -Atq -f /tmp/snapshot-restore.sql | tee "$report_path"
           grep -q '"status": "restore_rehearsal_passed"' "$report_path"
           grep -q '"databaseRestoreExecuted": true' "$report_path"
+          grep -q '"businessTriggerRestored": true' "$report_path"
+          grep -q '"submissionRowsVerified": true' "$report_path"
           remaining_rows="$(docker exec "$container" psql -U postgres -d verify -Atq -c \
             "select (select count(*) from climate_vote.submission) + (select count(*) from climate_vote.submission_item) + (select count(*) from climate_vote.issue) + (select count(*) from climate_vote.issue_link) + (select count(*) from climate_vote.result_page) + (select count(*) from climate_vote.ballot) + (select count(*) from climate_vote.ballot_item) + (select count(*) from climate_vote.ballot_response);")"
           test "$remaining_rows" = "0"

@@ -647,6 +647,16 @@ begin
   if exists (${targetPresenceQuery}) then
     raise exception 'snapshot restore rehearsal requires empty target tables';
   end if;
+  if not exists (
+    select 1
+    from pg_catalog.pg_trigger
+    where tgrelid = 'climate_vote.submission_item'::regclass
+      and tgname = 'submission_item_lock_guard'
+      and not tgisinternal
+      and tgenabled = 'O'
+  ) then
+    raise exception 'snapshot restore rehearsal requires the enabled submission item lock guard';
+  end if;
 end
 $restore_guard$;
 
@@ -668,10 +678,39 @@ select id, session_id, name, join_code, org_id
 from jsonb_to_recordset(${sqlJson(fixtures.team)})
   as x(id uuid, session_id uuid, name text, join_code text, org_id uuid);
 
-${ARCHIVE_RESTORE_ORDER.map((name) => restoreInsertSql(name, payload[name])).join('\n')}
+${restoreInsertSql('submission', payload.submission)}
+alter table climate_vote.submission_item disable trigger submission_item_lock_guard;
+${restoreInsertSql('submission_item', payload.submission_item)}
+alter table climate_vote.submission_item enable trigger submission_item_lock_guard;
+do $restore_trigger$
+begin
+  if not exists (
+    select 1
+    from pg_catalog.pg_trigger
+    where tgrelid = 'climate_vote.submission_item'::regclass
+      and tgname = 'submission_item_lock_guard'
+      and not tgisinternal
+      and tgenabled = 'O'
+  ) then
+    raise exception 'snapshot restore rehearsal did not restore the submission item lock guard';
+  end if;
+end
+$restore_trigger$;
+${ARCHIVE_RESTORE_ORDER.slice(2).map((name) => restoreInsertSql(name, payload[name])).join('\n')}
 
 do $restore_counts$
 begin${countChecks}
+  if exists (
+    select 1
+    from jsonb_populate_recordset(
+      null::climate_vote.submission,
+      ${sqlJson(payload.submission)}
+    ) expected
+    join climate_vote.submission actual on actual.id = expected.id
+    where actual is distinct from expected
+  ) then
+    raise exception 'snapshot restore submission row mismatch';
+  end if;
 end
 $restore_counts$;
 
@@ -681,6 +720,8 @@ select jsonb_build_object(
   'databaseName', current_database(),
   'databaseRestoreExecuted', true,
   'transactionRolledBack', true,
+  'businessTriggerRestored', true,
+  'submissionRowsVerified', true,
   'counts', jsonb_build_object(
     ${actualCountPairs}
   )

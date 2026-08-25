@@ -14,8 +14,11 @@
 
 - 준비 상태: `restore_rehearsal_prepared`
 - 실제 DB 실행 상태: `restore_rehearsal_passed`
-- 복원 행: submission 1, submission_item 1, issue 1, issue_link 1, result_page 1, ballot 1, ballot_item 1, ballot_response 1
+- 복원 행: final submission 1, submission_item 1, issue 1, issue_link 1, result_page 1, ballot 1, ballot_item 1, ballot_response 1
 - rollback 뒤 대상 테이블 잔존 행: 0
+- 복원 뒤 business trigger 상태: 활성
+- submission 전체 행과 archive 기대 행: 일치
+- 사전 비활성 trigger 부정 경로: 복원 전 거부
 - 실행 데이터베이스: PostgreSQL 16, database `verify`
 
 ## 안전 경계
@@ -24,6 +27,10 @@
 - SQL은 대상 테이블에 기존 행이 있으면 삽입 전에 실패한다.
 - 서명 키는 SQL과 결과 요약에 포함하지 않는다.
 - 복원 성공 결과를 출력한 뒤에도 transaction을 rollback하고 잔존 행을 다시 검사한다.
+- `submission_item_lock_guard`는 존재·활성 상태를 먼저 확인하고 item 삽입 구간에만 비활성화한 뒤 즉시 원상 활성화한다.
+- trigger가 없거나 이미 비활성화됐거나 다시 활성화되지 않으면 성공 결과를 출력하지 않는다.
+- 다른 user trigger와 FK·check·unique 제약은 비활성화하지 않는다.
+- 복원된 submission의 모든 컬럼을 archive에서 PostgreSQL 타입으로 재구성한 기대 행과 null-safe 비교한다.
 - 합성 부모는 FK·check·unique·trigger 실행 가능성을 확인하기 위한 것으로 원래 부모 데이터 복구를 증명하지 않는다.
 - PITR/WAL, 운영 감사로그, 운영 환경 복원은 이번 범위가 아니다.
 

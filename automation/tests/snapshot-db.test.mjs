@@ -1273,6 +1273,11 @@ test('builds a transaction-bound restore rehearsal for the isolated verify datab
     }));
     expect(result.sql).toContain("current_database() <> 'verify'");
     expect(result.sql).toContain('snapshot restore rehearsal requires empty target tables');
+    expect(result.sql).toContain("tgname = 'submission_item_lock_guard'");
+    expect(result.sql).toContain('alter table climate_vote.submission_item disable trigger submission_item_lock_guard');
+    expect(result.sql).toContain('alter table climate_vote.submission_item enable trigger submission_item_lock_guard');
+    expect(result.sql).toContain('actual is distinct from expected');
+    expect(result.sql).toContain("'submissionRowsVerified', true");
     expect(result.sql).toContain('jsonb_populate_recordset(null::climate_vote.submission');
     expect(result.sql).toContain("'databaseRestoreExecuted', true");
     expect(result.sql).toContain('rollback;');

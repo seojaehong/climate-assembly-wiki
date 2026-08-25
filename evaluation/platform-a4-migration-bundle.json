@@ -63,8 +63,8 @@
     },
     {
       "path": ".github/workflows/test.yml",
-      "sha256": "4deddffdfcb50ef9c57c07944a667f7b5e6e9c3c80958e9e122d61241165c96d",
-      "bytes": 23208
+      "sha256": "500e9d30e30e007cd3b2a466ae2dc730b246fd70c556156f35cae915d53ae025",
+      "bytes": 24200
     },
     {
       "path": "docs/platform/A4_DESIGN_PROVISIONING_CONTRACT.md",
@@ -120,5 +120,5 @@
     "activatesStaffGrants": false,
     "connectsProductionExecutor": false
   },
-  "checksum": "a23d4bd56e78559db0f2f3188a57146cf8c9703cbe2087fbc68e2cb364a8cbf4"
+  "checksum": "a17a73da783675e855785efee9a67151a2f86db5cd1a09c02fc81b535d87d4c2"
 }
