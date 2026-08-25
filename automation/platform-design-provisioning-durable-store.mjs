@@ -24,6 +24,8 @@ const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const KEY_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{2,79}$/;
 const AUTH_USER_PATTERN = /^auth-user:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const JOURNAL_FILE_PATTERN = /^(\d{12})\.json$/;
+const RECEIPT_FILE_PATTERN = /^([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.json$/;
+const TEMPORARY_FILE_PATTERN = /^\.tmp-[0-9]+-[0-9a-f-]{36}$/;
 const FAILURE_CODES = Object.freeze([
   'design_auth_required',
   'design_join_code_exhausted',
@@ -135,17 +137,24 @@ function verifyMarker(root) {
   }
 }
 
+function validateOwnedDirectory(parent, expected, label) {
+  if (!isInside(parent, expected)
+    || !existsSync(expected)
+    || lstatSync(expected).isSymbolicLink()
+    || !lstatSync(expected).isDirectory()) {
+    throw new Error(`${label} is invalid`);
+  }
+  const actual = realpathSync.native(expected);
+  if (actual !== expected || !isInside(parent, actual)) {
+    throw new Error(`${label} is invalid`);
+  }
+  return actual;
+}
+
 function ensureOwnedChild(root, name) {
   const expected = resolve(root, name);
   mkdirSync(expected, { recursive: true, mode: 0o700 });
-  if (lstatSync(expected).isSymbolicLink() || !lstatSync(expected).isDirectory()) {
-    throw new Error('Local design provisioning store layout is invalid');
-  }
-  const actual = realpathSync.native(expected);
-  if (actual !== expected || !isInside(root, actual)) {
-    throw new Error('Local design provisioning store layout is invalid');
-  }
-  return actual;
+  return validateOwnedDirectory(root, expected, 'Local design provisioning store layout');
 }
 
 function validateOwnedFile(directory, path, label) {
@@ -201,7 +210,8 @@ function validateState(state, approvalId) {
   if (!exactKeys(state, ['approvalId', 'revokedAt', 'claim'])
     || state.approvalId !== approvalId
     || (state.revokedAt !== null && new Date(state.revokedAt).toISOString() !== state.revokedAt)
-    || (state.claim !== null && !isRecord(state.claim))) {
+    || (state.claim !== null && !isRecord(state.claim))
+    || (state.revokedAt !== null && state.claim !== null)) {
     throw new Error('Local design provisioning authorization state is invalid');
   }
   if (state.claim !== null) validateClaim(state.claim, approvalId);
@@ -319,8 +329,7 @@ function approvalDirectory(root, approvalId) {
   return expected;
 }
 
-async function readAuthorizationJournal(root, approvalId) {
-  const directory = approvalDirectory(root, approvalId);
+async function inspectAuthorizationJournal(directory, approvalId) {
   let names;
   try {
     names = await readdir(directory);
@@ -332,8 +341,16 @@ async function readAuthorizationJournal(root, approvalId) {
     .filter(({ match }) => match)
     .sort((left, right) => left.name.localeCompare(right.name));
   if (names.some((name) => !JOURNAL_FILE_PATTERN.test(name)
-    && !/^\.tmp-[0-9]+-[0-9a-f-]{36}$/.test(name))) {
+    && !TEMPORARY_FILE_PATTERN.test(name))) {
     throw new Error('Local design provisioning authorization journal contains an unexpected entry');
+  }
+  const temporaryNames = names.filter((name) => TEMPORARY_FILE_PATTERN.test(name));
+  for (const name of temporaryNames) {
+    validateOwnedFile(
+      directory,
+      resolve(directory, name),
+      'Local design provisioning authorization temporary record',
+    );
   }
   if (records.length === 0) {
     throw new Error('Local design provisioning authorization state is unavailable');
@@ -359,7 +376,16 @@ async function readAuthorizationJournal(root, approvalId) {
     );
     previousRecordSha256 = latest.recordSha256;
   }
-  return latest;
+  return {
+    latest,
+    recordCount: records.length,
+    orphanTemporaryFileCount: temporaryNames.length,
+  };
+}
+
+async function readAuthorizationJournal(root, approvalId) {
+  const directory = approvalDirectory(root, approvalId);
+  return (await inspectAuthorizationJournal(directory, approvalId)).latest;
 }
 
 async function compareAndAppendAuthorization(root, expectedSnapshot, operation, transition) {
@@ -625,6 +651,128 @@ function validateReceipt(receipt) {
     throw new Error('Local design provisioning execution receipt is invalid');
   }
   return structuredClone(receipt);
+}
+
+export async function auditLocalDesignProvisioningRehearsalStore({ directory } = {}) {
+  const root = resolveStoreRoot(directory, { markerRequired: true });
+  const expectedRootEntries = [
+    STORE_MARKER,
+    AUTHORIZATION_DIRECTORY,
+    RECEIPT_DIRECTORY,
+  ].sort();
+  const rootEntries = (await readdir(root)).sort();
+  if (canonicalJson(rootEntries) !== canonicalJson(expectedRootEntries)) {
+    throw new Error('Local design provisioning store layout contains an unexpected entry');
+  }
+  const authorizationRoot = validateOwnedDirectory(
+    root,
+    resolve(root, AUTHORIZATION_DIRECTORY),
+    'Local design provisioning authorization root',
+  );
+  const receiptRoot = validateOwnedDirectory(
+    root,
+    resolve(root, RECEIPT_DIRECTORY),
+    'Local design provisioning receipt root',
+  );
+
+  const authorizationNames = (await readdir(authorizationRoot)).sort();
+  if (authorizationNames.some((name) => !UUID_PATTERN.test(name))) {
+    throw new Error('Local design provisioning authorization root contains an unexpected entry');
+  }
+  const authorizationSummary = {
+    authorizationRecordCount: 0,
+    unclaimedAuthorizationCount: 0,
+    activeClaimCount: 0,
+    terminalClaimCount: 0,
+    revokedAuthorizationCount: 0,
+    orphanTemporaryFileCount: 0,
+  };
+  const authorizationStates = new Map();
+  for (const approvalId of authorizationNames) {
+    const approvalRoot = validateOwnedDirectory(
+      authorizationRoot,
+      resolve(authorizationRoot, approvalId),
+      'Local design provisioning authorization directory',
+    );
+    const journal = await inspectAuthorizationJournal(approvalRoot, approvalId);
+    authorizationSummary.authorizationRecordCount += journal.recordCount;
+    authorizationSummary.orphanTemporaryFileCount += journal.orphanTemporaryFileCount;
+    authorizationStates.set(approvalId, structuredClone(journal.latest.state));
+    if (journal.latest.state.revokedAt !== null) {
+      authorizationSummary.revokedAuthorizationCount += 1;
+    } else if (journal.latest.state.claim === null) {
+      authorizationSummary.unclaimedAuthorizationCount += 1;
+    } else if (journal.latest.state.claim.status === 'claimed') {
+      authorizationSummary.activeClaimCount += 1;
+    } else {
+      authorizationSummary.terminalClaimCount += 1;
+    }
+  }
+
+  const receiptNames = (await readdir(receiptRoot)).sort();
+  if (receiptNames.some((name) => !RECEIPT_FILE_PATTERN.test(name)
+    && !TEMPORARY_FILE_PATTERN.test(name))) {
+    throw new Error('Local design provisioning receipt directory contains an unexpected entry');
+  }
+  const receiptSummary = {
+    receiptCount: 0,
+    completedReceiptCount: 0,
+    failedReceiptCount: 0,
+  };
+  for (const name of receiptNames) {
+    if (TEMPORARY_FILE_PATTERN.test(name)) {
+      validateOwnedFile(
+        receiptRoot,
+        resolve(receiptRoot, name),
+        'Local design provisioning execution receipt temporary record',
+      );
+      authorizationSummary.orphanTemporaryFileCount += 1;
+      continue;
+    }
+    const match = RECEIPT_FILE_PATTERN.exec(name);
+    const receipt = validateReceipt(await readBoundedJson(
+      validateOwnedFile(
+        receiptRoot,
+        resolve(receiptRoot, name),
+        'Local design provisioning execution receipt',
+      ),
+      'Local design provisioning execution receipt',
+    ));
+    if (receipt.executionId !== match[1]) {
+      throw new Error('Local design provisioning execution receipt filename is invalid');
+    }
+    const authorizationState = authorizationStates.get(receipt.approvalId);
+    const claim = authorizationState?.claim;
+    if (!claim
+      || claim.executionId !== receipt.executionId
+      || claim.planChecksum !== receipt.approvedPlanChecksum
+      || (claim.status !== 'claimed' && claim.status !== receipt.status)) {
+      throw new Error('Local design provisioning execution receipt authorization linkage is invalid');
+    }
+    receiptSummary.receiptCount += 1;
+    if (receipt.status === 'completed') receiptSummary.completedReceiptCount += 1;
+    else receiptSummary.failedReceiptCount += 1;
+  }
+
+  return {
+    schemaVersion: 1,
+    kind: 'platform_design_provisioning_local_store_audit',
+    status: 'verified',
+    authorizationCount: authorizationNames.length,
+    authorizationRecordCount: authorizationSummary.authorizationRecordCount,
+    unclaimedAuthorizationCount: authorizationSummary.unclaimedAuthorizationCount,
+    activeClaimCount: authorizationSummary.activeClaimCount,
+    terminalClaimCount: authorizationSummary.terminalClaimCount,
+    revokedAuthorizationCount: authorizationSummary.revokedAuthorizationCount,
+    receiptCount: receiptSummary.receiptCount,
+    completedReceiptCount: receiptSummary.completedReceiptCount,
+    failedReceiptCount: receiptSummary.failedReceiptCount,
+    orphanTemporaryFileCount: authorizationSummary.orphanTemporaryFileCount,
+    containsSensitiveValues: false,
+    catalogCompletenessVerified: false,
+    receiptSignatureVerified: false,
+    ...LOCAL_DESIGN_PROVISIONING_STORE_BOUNDARIES,
+  };
 }
 
 export function createLocalDesignProvisioningReceiptAdapter({ directory } = {}) {

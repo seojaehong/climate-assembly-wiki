@@ -33,19 +33,23 @@
 13. orphan temp 파일이 남은 상태에서도 다음 claim이 새 sequence record 하나를 게시했고 persistent lock 파일은 생성되지 않았다.
 14. synthetic membership을 비활성화한 뒤 재활성화하려는 context 전이는 `conflict`로 거부되어 revision 없는 snapshot의 ABA 재일치를 막았다.
 15. 같은 expected snapshot을 가진 독립 Node 프로세스 6개가 claim을 경쟁했을 때 1개만 `claimed`, 5개는 `conflict`가 됐고 journal은 초기 record와 claim record 2개로 수렴했다.
+16. read-only 전체-store audit가 존재하는 approval journal 2개·record 3개·receipt 1개를 식별값 없이 집계하고, 숨은 journal 변조·예상 밖 root/receipt entry·현재 claim과 연결되지 않은 receipt를 거부했다.
+
+전체-store audit는 삭제된 entry를 검출할 immutable catalog와 receipt HMAC을 검증할 외부 key를 사용하지 않는다. 따라서 결과는 `catalogCompletenessVerified:false`, `receiptSignatureVerified:false`를 명시하며 production 감사 증거로 승격하지 않는다.
 
 ## 자동화 검증
 
-- A4 plan·bundle 집중: 2개 파일, 48건 통과
-- automation 전체: 26개 파일, 366건 통과
+- A4 plan·bundle 집중: 2개 파일, 52건 통과
+- automation 전체: 26개 파일, 370건 통과
 - 애플리케이션 전체: 64개 파일, 1,060건 통과
 - Astro check: 327개 파일, 오류 0건, 기존 hint 49건
-- A4 bundle: artifact 17개, checksum `f608c1d09dcb1607b934172a778079917d0ec9822e0f3ef2c145ba6a3cf3d180`
+- A4 bundle: artifact 17개, checksum `92158cad570d97081ad2dfb56106d7a1a740c61934dd83b69fdbd8e9f9645c41`
 
 ## 남은 production blocker
 
 - 승인 발급 경로와 실제 HMAC key custody
 - production-grade durable revocation/claim·append-only receipt 저장소
+- immutable authorization/receipt catalog와 외부 key 기반 receipt signature audit
 - live Auth/membership/org/host를 같은 transaction에서 검증하는 CAS adapter
 - production design executor와 read-only status adapter
 - migration·mapping·RPC 권한·role별 E2E에 대한 별도 승인

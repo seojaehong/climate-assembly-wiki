@@ -31,6 +31,7 @@ import {
   verifyDesignProvisioningPlan,
 } from '../platform-design-provisioning-plan.mjs';
 import {
+  auditLocalDesignProvisioningRehearsalStore,
   createLocalDesignProvisioningAuthorizationAdapter,
   createLocalDesignProvisioningReceiptAdapter,
   initializeLocalDesignProvisioningRehearsalStore,
@@ -343,6 +344,163 @@ test('durably recovers an A4 receipt and terminal claim after adapter restart', 
     expect(storedReceipt.operations.every((operation) => (
       Object.keys(operation).sort().join(',') === 'operationId,status,type'
     ))).toBe(true);
+    expect(await auditLocalDesignProvisioningRehearsalStore({ directory })).toMatchObject({
+      status: 'verified',
+      authorizationCount: 1,
+      authorizationRecordCount: 3,
+      activeClaimCount: 0,
+      terminalClaimCount: 1,
+      receiptCount: 1,
+      completedReceiptCount: 1,
+      failedReceiptCount: 0,
+      containsSensitiveValues: false,
+    });
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('audits every durable authorization journal and receipt without exposing identifiers', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const { source, bytes, plan, approval } = executionApproval();
+  const secondApprovalId = '66666666-6666-4666-8666-666666666666';
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: approval.approvalId, context: liveContext() },
+    });
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: secondApprovalId, context: liveContext() },
+    });
+    const authorizationAdapter = createLocalDesignProvisioningAuthorizationAdapter({ directory });
+    const snapshot = await authorizationAdapter.readSnapshot(approval.approvalId);
+    await authorizationAdapter.claim(snapshot, claimedApprovalState(approval, plan).claim);
+    const receipt = sealDesignProvisioningExecutionReceipt({
+      plan,
+      blueprint: source,
+      sourceBytes: bytes,
+      approval,
+      approvalState: claimedApprovalState(approval, plan),
+      executionResult: completedExecutionResult(executionPlanCandidate(plan)),
+      startedAt: '2026-08-25T13:05:00.000Z',
+      completedAt: '2026-08-25T13:06:00.000Z',
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+    });
+    await createLocalDesignProvisioningReceiptAdapter({ directory }).append(receipt);
+
+    const audit = await auditLocalDesignProvisioningRehearsalStore({ directory });
+    expect(audit).toEqual({
+      schemaVersion: 1,
+      kind: 'platform_design_provisioning_local_store_audit',
+      status: 'verified',
+      authorizationCount: 2,
+      authorizationRecordCount: 3,
+      unclaimedAuthorizationCount: 1,
+      activeClaimCount: 1,
+      terminalClaimCount: 0,
+      revokedAuthorizationCount: 0,
+      receiptCount: 1,
+      completedReceiptCount: 1,
+      failedReceiptCount: 0,
+      orphanTemporaryFileCount: 0,
+      containsSensitiveValues: false,
+      catalogCompletenessVerified: false,
+      receiptSignatureVerified: false,
+      ...LOCAL_DESIGN_PROVISIONING_STORE_BOUNDARIES,
+    });
+    const serialized = JSON.stringify(audit);
+    expect(serialized).not.toContain(approval.approvalId);
+    expect(serialized).not.toContain(secondApprovalId);
+    expect(serialized).not.toContain(approval.executionId);
+    expect(serialized).not.toContain(approval.approvedBy);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('store-wide audit discovers an unread authorization journal integrity failure', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const firstApprovalId = approvalMetadata().approvalId;
+  const secondApprovalId = '66666666-6666-4666-8666-666666666666';
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: firstApprovalId, context: liveContext() },
+    });
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: secondApprovalId, context: liveContext() },
+    });
+    const recordPath = join(directory, 'authorization', secondApprovalId, '000000000000.json');
+    const modified = JSON.parse(readFileSync(recordPath, 'utf8'));
+    modified.context.organizationActive = false;
+    writeFileSync(recordPath, `${JSON.stringify(modified)}\n`, 'utf8');
+
+    await expect(auditLocalDesignProvisioningRehearsalStore({ directory }))
+      .rejects.toThrow('journal integrity failed');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('store-wide audit rejects unexpected root and receipt entries', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: approvalMetadata().approvalId, context: liveContext() },
+    });
+    writeFileSync(join(directory, 'unexpected.json'), '{}\n', 'utf8');
+    await expect(auditLocalDesignProvisioningRehearsalStore({ directory }))
+      .rejects.toThrow('layout contains an unexpected entry');
+    rmSync(join(directory, 'unexpected.json'));
+    writeFileSync(join(directory, 'receipts', 'unexpected.json'), '{}\n', 'utf8');
+    await expect(auditLocalDesignProvisioningRehearsalStore({ directory }))
+      .rejects.toThrow('receipt directory contains an unexpected entry');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('store-wide audit rejects a receipt that is not linked to its current authorization claim', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const { source, bytes, plan, approval } = executionApproval();
+  const secondApprovalId = '66666666-6666-4666-8666-666666666666';
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: approval.approvalId, context: liveContext() },
+    });
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: secondApprovalId, context: liveContext() },
+    });
+    const authorizationAdapter = createLocalDesignProvisioningAuthorizationAdapter({ directory });
+    const snapshot = await authorizationAdapter.readSnapshot(approval.approvalId);
+    await authorizationAdapter.claim(snapshot, claimedApprovalState(approval, plan).claim);
+    const receipt = sealDesignProvisioningExecutionReceipt({
+      plan,
+      blueprint: source,
+      sourceBytes: bytes,
+      approval,
+      approvalState: claimedApprovalState(approval, plan),
+      executionResult: completedExecutionResult(executionPlanCandidate(plan)),
+      startedAt: '2026-08-25T13:05:00.000Z',
+      completedAt: '2026-08-25T13:06:00.000Z',
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+    });
+    await createLocalDesignProvisioningReceiptAdapter({ directory }).append(receipt);
+    const receiptPath = join(directory, 'receipts', `${approval.executionId}.json`);
+    writeFileSync(receiptPath, `${JSON.stringify({
+      ...receipt,
+      approvalId: secondApprovalId,
+    })}\n`, 'utf8');
+
+    await expect(auditLocalDesignProvisioningRehearsalStore({ directory }))
+      .rejects.toThrow('receipt authorization linkage is invalid');
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
