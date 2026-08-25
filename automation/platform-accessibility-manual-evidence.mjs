@@ -221,8 +221,11 @@ function validateEvidenceShape(evidence) {
         throw new Error(`Manual evidence procedure does not match ${item.id}:${check.id}`);
       }
       if (!CHECK_STATUSES.has(check.status)) throw new Error(`Unsupported check status in ${item.id}`);
-      if (['fail', 'blocked'].includes(check.status) && !isNonemptyString(check.notes)) {
-        throw new Error('Failed or blocked checks require notes');
+      if (check.status === 'not_run' && check.notes !== null) {
+        throw new Error('Not-run checks must not contain observation notes');
+      }
+      if (check.status !== 'not_run' && !isNonemptyString(check.notes)) {
+        throw new Error('Executed checks require observation notes');
       }
     }
   }

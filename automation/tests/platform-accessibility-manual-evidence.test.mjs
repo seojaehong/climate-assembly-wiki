@@ -73,7 +73,10 @@ test('passes only when every check has complete evaluator and environment eviden
   for (const item of evidence.cases) {
     item.evaluator = 'Accessibility evaluator';
     item.testedAt = '2026-08-11T01:00:00.000Z';
-    for (const check of item.checks) check.status = 'pass';
+    for (const check of item.checks) {
+      check.status = 'pass';
+      check.notes = 'Observed the expected result with the configured assistive technology.';
+    }
   }
   evidence.status = 'pass';
 
@@ -89,6 +92,33 @@ test('rejects an executed check without evaluator metadata', () => {
   evidence.cases[0].checks[0].status = 'pass';
 
   expect(() => evaluateManualAccessibilityEvidence(evidence)).toThrow('Executed cases require evaluator and testedAt');
+});
+
+test('requires observation notes for every executed check and rejects prefilled not-run notes', () => {
+  const createEvidence = () => createManualAccessibilityTemplate({
+    baseUrl: 'https://climate-assembly.org',
+    commitSha: '9310d14',
+    generatedAt: '2026-08-11T00:00:00.000Z',
+  });
+  const unobservedPass = createEvidence();
+  unobservedPass.profiles[0].environment = {
+    assistiveTechnology: { name: 'Test reader', version: '1' },
+    browser: { name: 'Test browser', version: '1' },
+    operatingSystem: { name: 'Test OS', version: '1' },
+    device: 'Desktop',
+  };
+  unobservedPass.cases[0].evaluator = 'evaluator-role-a';
+  unobservedPass.cases[0].testedAt = '2026-08-11T01:00:00.000Z';
+  unobservedPass.cases[0].checks[0].status = 'pass';
+  expect(() => evaluateManualAccessibilityEvidence(unobservedPass)).toThrow(
+    'Executed checks require observation notes',
+  );
+
+  const prefilledNotRun = createEvidence();
+  prefilledNotRun.cases[0].checks[0].notes = 'Expected result copied before evaluation.';
+  expect(() => evaluateManualAccessibilityEvidence(prefilledNotRun)).toThrow(
+    'Not-run checks must not contain observation notes',
+  );
 });
 
 test('rejects incomplete matrix data and undocumented failures', () => {
@@ -117,7 +147,9 @@ test('rejects incomplete matrix data and undocumented failures', () => {
   undocumentedFailure.cases[0].testedAt = '2026-08-11T01:00:00.000Z';
   undocumentedFailure.cases[0].checks[0].status = 'fail';
   undocumentedFailure.status = 'fail';
-  expect(() => evaluateManualAccessibilityEvidence(undocumentedFailure)).toThrow('require notes');
+  expect(() => evaluateManualAccessibilityEvidence(undocumentedFailure)).toThrow(
+    'Executed checks require observation notes',
+  );
 });
 
 test('keeps blocked evidence under review and rejects a declared status mismatch', () => {
@@ -303,7 +335,10 @@ test('CLI accepts an evidence-only commit and rejects a later shared layout chan
     for (const item of evidence.cases) {
       item.evaluator = 'evaluator-role-a';
       item.testedAt = '2026-08-11T01:00:00.000Z';
-      for (const check of item.checks) check.status = 'pass';
+      for (const check of item.checks) {
+        check.status = 'pass';
+        check.notes = 'Observed the expected result with the configured assistive technology.';
+      }
     }
     evidence.status = 'pass';
     mkdirSync(join(repo, 'evaluation'));

@@ -49,3 +49,12 @@ CI에서 업로드한 `platform-accessibility-kwcag-coverage.json`과 추적 산
 - 로컬 Node 24의 `astro build`는 기존 환경 문제로 정적 파일 생성 후 exit 1을 반환했다. 생성된 정적 미리보기로 브라우저 검증했으며, clean Node CI 빌드를 최종 증거로 남긴다.
 - 로컬 브라우저 증거: `.artifacts/platform-accessibility-a5-statement.json`
 - 로컬 KWCAG 매핑 증거: `.artifacts/platform-accessibility-a5-statement-kwcag.json`
+
+## 수동 평가 관찰 증거 강화
+
+- 기존 게이트는 `pass`에 관찰 메모가 없어도 전체 통과를 허용했다.
+- 변경 후 `pass`, `fail`, `blocked`로 실행한 모든 검사는 보조기술로 확인한 관찰 메모가 필수다.
+- `not_run`에 메모를 미리 넣어 기대 결과를 실제 관찰처럼 남기는 경로도 거부한다.
+- 현재 추적 파일은 14개 케이스·80개 검사 모두 `not_run`, `notes:null`으로 새 계약을 통과하고 상태는 `needs_review`를 유지한다.
+- 집중 수동·KWCAG 검증 20건, automation 전체 27개 파일·421건, 루트 전체 64개 파일·1,060건이 통과했다. Astro check는 330개 파일 오류 0건·기존 hint 49건이다.
+- production DB, Auth, membership, RLS, GRANT, 배포 상태는 변경하지 않았다.

@@ -53,7 +53,10 @@ function passManualEvidence(evidence) {
   for (const item of evidence.cases) {
     item.evaluator = 'Accessibility evaluator';
     item.testedAt = '2026-08-26T01:00:00.000Z';
-    for (const check of item.checks) check.status = 'pass';
+    for (const check of item.checks) {
+      check.status = 'pass';
+      check.notes = 'Observed the expected result with the configured assistive technology.';
+    }
   }
   evidence.status = 'pass';
 }
