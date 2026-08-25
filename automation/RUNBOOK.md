@@ -726,6 +726,24 @@ admin 기능을 재활성화하기 전에 다음 조건을 **모두** 충족해�
 
 ---
 
+## A7 원문 공개 승인 전 publish plan
+
+현재 공개 `result_get` 캡처, 같은 범위의 `issue_items` 캡처, 운영진의 원문별 공개 결정을 하나의 replace-all 후보 body로 결속할 때만 사용한다.
+
+```powershell
+cd automation
+npm.cmd run plan:platform-result-sources -- --result <result.json> --issue-items <issue-items.json> --reviews <reviews.json> --output <outside-repository\source-publication-plan.json>
+node platform-result-source-plan.mjs --result <result.json> --issue-items <issue-items.json> --reviews <reviews.json> --verify-plan <outside-repository\source-publication-plan.json>
+```
+
+`reviews.json`은 모든 연결된 issue/item 쌍에 `reviewed` 또는 `withheld` 결정을 하나씩 가져야 한다. 공개 결정은 원문과 byte 단위로 같은 canonical 발췌, `auth-user:<uuid>` 검수자, `org_admin|hq` 역할, 결과 발행 뒤이면서 관찰 시각 이전인 canonical UTC 시각을 요구한다. 보류 결정의 발췌는 `null`이어야 한다. 일부 결정 누락·중복·알 수 없는 연결·미검수 쟁점·계약 밖 필드는 전체 plan 생성을 차단한다.
+
+publication plan은 승인 원문을 포함하므로 repository, `public/`, Git에 저장할 수 없다. CLI는 실제 해석된 상위 경로가 repository 밖인지 검사하고 no-overwrite·사용자 전용 파일 모드로 기록하며 stdout에는 원문이나 검수자 ID를 출력하지 않는다. plan은 전체 `atomicResultBody`, 전후 SHA-256, 원문 exact UTF-8 SHA-256, 검수 patch, canonical self-checksum과 입력 재생성 검증을 제공한다. DB·RPC·Drive·public 파일은 쓰지 않으며 실제 `result_publish`, migration, 게시에는 별도 사용자 승인이 필요하다.
+
+`--reviews`가 없는 기존 명령은 원문을 싣지 않는 provenance plan을 계속 생성한다.
+
+---
+
 ## A7 이행추적 승인 전 publish plan
 
 현재 공개 `result_get` 캡처와 운영진이 검수한 기관 응답으로 다음 전체 `result_page.body` 후보를 만들 때만 사용한다.

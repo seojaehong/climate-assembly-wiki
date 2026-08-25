@@ -10,7 +10,7 @@
 - 미검수 쟁점, 잘못된 record, 중복 key, 승인 계약 밖 필드는 원문 묶음 전체를 숨긴다.
 - DOCX 모델과 OOXML에는 차단된 원문 발췌가 남지 않고 `근거 원문 공개 정보 확인 필요`만 표시된다.
 - 기존 payload에 원문 필드가 없으면 기존 DOCX 구조를 유지한다.
-- UI와 DOCX는 제공된 SHA-256 형식만 보존한다. 원문 bytes와 digest의 실제 결속은 후속 승인된 publish preflight/RPC 책임이다.
+- UI와 DOCX는 제공된 SHA-256 형식만 보존한다. 로컬 승인 전 publish preflight가 canonical 원문 UTF-8 bytes와 digest를 결속하지만 production RPC에서 같은 결속을 강제하는 작업은 아직 남아 있다.
 
 ## 검증
 
