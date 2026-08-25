@@ -50,7 +50,7 @@
 
 - ledger는 최소 `org_id`, `operation_id`, `plan_checksum`, `operation_type`, `request_hash`, `resource_id`, `applied_at`을 보존한다.
 - `operation_id`는 현재 plan의 64자 SHA-256이고 primary key 또는 동등한 unique key여야 한다.
-- 같은 operation ID와 같은 request hash의 재요청은 기존 resource를 반환한다.
+- 같은 operation ID·request hash·operation type·전체 plan checksum이 모두 같은 exact replay만 기존 resource를 반환한다. 다른 plan이 이전 operation을 부분 재사용하면 ledger의 plan checksum과 이후 reconciliation이 어긋나므로 mutation 전에 충돌로 중단한다.
 - 같은 operation ID에 다른 request hash가 오면 mutation 전에 실패한다.
 - ledger와 대상 행은 같은 transaction에서 기록한다. 대상 INSERT만 성공하거나 ledger만 성공하는 부분 상태를 허용하지 않는다.
 - ledger·receipt에는 청사진 원문, join code, 이메일, Auth UUID를 기록하지 않는다.

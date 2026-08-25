@@ -54,6 +54,7 @@ begin
      or not ('search_path=pg_catalog, climate_vote, auth, extensions' = any(v_config))
      or not ('row_security=off' = any(v_config))
      or v_definition not like '%m.role in (''org_admin'', ''hq'')%'
+     or v_definition not like '%v_existing.plan_checksum <> v_checksum%'
      or v_definition not like '%design_join_code_exhausted%'
      or v_definition not like '%design_operation_conflict%' then
     raise exception 'A4 post-apply verification failed: RPC contract is unsafe';

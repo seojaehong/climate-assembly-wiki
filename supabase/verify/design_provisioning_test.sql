@@ -94,6 +94,7 @@ declare
   v_query jsonb;
   v_response jsonb;
   v_conflict jsonb;
+  v_cross_plan jsonb;
   v_parent_plan jsonb;
   v_exhaustion_plan jsonb;
   v_rollback_plan jsonb;
@@ -212,6 +213,46 @@ begin
     raise exception 'A4 semantic test failed: exact replay is not idempotent';
   end if;
 
+  v_cross_plan := jsonb_set(
+    jsonb_set(
+      v_plan,
+      '{sourceBlueprint,bytes}',
+      '101'::jsonb
+    ),
+    '{sourceBlueprint,sha256}',
+    to_jsonb(climate_vote.platform_sha256_hex(repeat('s', 101)))
+  );
+  v_cross_plan := jsonb_set(
+    v_cross_plan,
+    '{checksum}',
+    to_jsonb(climate_vote.platform_sha256_hex(
+      climate_vote.platform_json_canonical(v_cross_plan - 'checksum')
+    ))
+  );
+  select count(*) into v_ledger_count
+  from climate_vote.design_provisioning_operation where org_id = v_org;
+  select (
+    (select count(*) from climate_vote.assembly where org_id = v_org)
+    + (select count(*) from climate_vote.session where org_id = v_org)
+    + (select count(*) from climate_vote.discussion_topic where org_id = v_org)
+    + (select count(*) from climate_vote.team where org_id = v_org)
+  ) into v_resource_count;
+  begin
+    perform climate_vote.design_provision(v_cross_plan, convert_to(repeat('s', 101), 'UTF8'));
+    raise exception 'A4 semantic test failed: cross-plan replay unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_operation_conflict' then raise; end if;
+  end;
+  if (select count(*) from climate_vote.design_provisioning_operation where org_id = v_org) <> v_ledger_count
+     or (
+       (select count(*) from climate_vote.assembly where org_id = v_org)
+       + (select count(*) from climate_vote.session where org_id = v_org)
+       + (select count(*) from climate_vote.discussion_topic where org_id = v_org)
+       + (select count(*) from climate_vote.team where org_id = v_org)
+     ) <> v_resource_count then
+    raise exception 'A4 semantic test failed: cross-plan replay mutated state';
+  end if;
+
   v_conflict := jsonb_set(v_plan, '{operations,3,payload,name}', '"renamed team"'::jsonb);
   v_conflict := jsonb_set(
     v_conflict, '{checksum}',
@@ -226,16 +267,29 @@ begin
 
   v_parent_plan := pg_temp.a4_plan(
     jsonb_build_array(
-      v_operations -> 0,
       pg_temp.a4_operation(
-        'create_session', v_assembly_ref || '/session:a4-session-conflict', v_assembly_ref, 1,
-        jsonb_build_object('title', 'Conflicting session', 'slug', 'a4-session-conflict', 'heldOn', '2026-09-02')
+        'create_assembly', 'assembly:a4-parent-conflict', null, null,
+        jsonb_build_object(
+          'title', 'Parent conflict assembly', 'slug', 'a4-parent-conflict', 'purpose', null,
+          'mode', 'consensus', 'config', jsonb_build_object('readiness', jsonb_build_array('topics_open'))
+        )
+      ),
+      pg_temp.a4_operation(
+        'create_session', 'assembly:a4-parent-conflict/session:a4-session-first',
+        'assembly:a4-parent-conflict', 1,
+        jsonb_build_object('title', 'First conflicting session', 'slug', 'a4-session-first', 'heldOn', '2026-09-02')
+      ),
+      pg_temp.a4_operation(
+        'create_session', 'assembly:a4-parent-conflict/session:a4-session-second',
+        'assembly:a4-parent-conflict', 1,
+        jsonb_build_object('title', 'Second conflicting session', 'slug', 'a4-session-second', 'heldOn', '2026-09-03')
       )
     ),
     jsonb_build_object(
-      'assemblyCount', 1, 'sessionCount', 1, 'topicCount', 0,
-      'teamCount', 0, 'participantCount', 0, 'operationCount', 2
-    )
+      'assemblyCount', 1, 'sessionCount', 2, 'topicCount', 0,
+      'teamCount', 0, 'participantCount', 0, 'operationCount', 3
+    ),
+    'a4-parent-conflict'
   );
   begin
     perform climate_vote.design_provision(v_parent_plan, convert_to(repeat('s', 100), 'UTF8'));

@@ -236,7 +236,9 @@ begin
     where org_id = v_org_id and operation_id = v_operation_id;
     v_replayed := found;
     if v_replayed and (
-      v_existing.request_hash <> v_request_hash or v_existing.operation_type <> v_type
+      v_existing.plan_checksum <> v_checksum
+      or v_existing.request_hash <> v_request_hash
+      or v_existing.operation_type <> v_type
     ) then
       raise exception using message = 'design_operation_conflict';
     end if;

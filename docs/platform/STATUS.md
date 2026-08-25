@@ -161,6 +161,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **Phase A 활성화 결정 패킷(2026-08-25):** 상위 아키텍처 플랜 §5의 미결정 6건을 현재 A2~A4 구현과 대조해 `PHASE_A_ACTIVATION_DECISION_PACKET.md`로 정리했다. 권고안은 현 비공공 managed 배포와 각 물리 deployment 내부의 row-level 논리 테넌시, 관리자·운영자·HQ 우선 Auth와 facilitator 후속 전환, staff traffic 전 HQ membership 전환, 설계 마법사와 authorized execution 분리, 비공공 managed 유지와 공공 CSAP 적격성 확인 후 topology 별도 결정, 갈등관리 수행사 화이트라벨을 우선한 최소 범위의 Phase 2+ 지속이다. 각 결정에 대안·위험·재검토·완료/중단 기준과 역할표·근거 commit을 붙였다. 제품 결정, count-only 진단, Auth·membership, P1C/A4 휴면 migration, mapping·backfill, A2 GRANT, A4 RPC 권한, staff traffic을 독립 승인으로 나눴으며 `not_ready`는 scoped remediation 뒤 preflight 재실행으로만 해소한다. `2026-08-25-phase-a-condition-audit.md`는 D3 방향을 기존 정본으로 확인하고 D4의 2인 승인 의무가 현재 없음을 기록한다. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner는 조건부다. 독립 검수는 Gate 경계가 production 권한으로 넓어지지 않음을 확인했고, 외부조건은 미해결 상태로 명시했다. 이 문서 작성으로 production 변경 권한은 부여되지 않는다.
 
+**A4 교차-plan replay 차단(2026-08-26):** A4 ledger의 기존 operation은 request hash·type뿐 아니라 전체 plan checksum까지 exact 일치할 때만 replay한다. 같은 operation payload를 다른 source/plan에서 재사용하면 실행 성공 뒤 reconciliation checksum이 충돌하는 상태가 생기므로 첫 operation에서 `design_operation_conflict`로 중단하며, PostgreSQL 16 격리 리허설은 ledger와 assembly/session/topic/team 건수가 바뀌지 않음을 확인했다. 독립 parent-conflict fixture도 새 assembly 안의 중복 session ordinal로 분리해 두 계약을 각각 검증한다. A4 bundle 집중 8건, automation 전체 26개 파일·402건, 루트 전체 64개 파일·1,060건이 통과했다. production migration·DB·GRANT는 적용하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

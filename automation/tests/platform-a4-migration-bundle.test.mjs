@@ -108,6 +108,7 @@ test('A4 SQL draft keeps preflight and post-apply verification read-only', () =>
   expect(preflight).toContain("'requiresApprovedBackfill'");
   expect(postApply).toContain("has_function_privilege('authenticated', 'climate_vote.design_provision(jsonb,bytea)', 'EXECUTE')");
   expect(postApply).toContain("has_function_privilege('authenticated', 'climate_vote.design_provisioning_status(jsonb)', 'EXECUTE')");
+  expect(postApply).toContain('v_existing.plan_checksum <> v_checksum');
   expect(postApply).toContain('staffGrantActive');
 });
 
@@ -117,6 +118,7 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(migration).toContain('primary key (org_id, operation_id)');
   expect(migration).toContain("m.role in ('org_admin', 'hq')");
   expect(migration).toContain('design_operation_conflict');
+  expect(migration).toContain('v_existing.plan_checksum <> v_checksum');
   expect(migration).toContain('design_parent_conflict');
   expect(migration).toContain('design_join_code_exhausted');
   expect(migration).toContain("encode(extensions.digest(p_source_bytes, 'sha256'), 'hex')");
@@ -125,6 +127,7 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(migration).toContain('design_reconciliation_conflict');
   expect(migration).toContain('revoke all on function climate_vote.design_provisioning_status(jsonb)');
   expect(rehearsal).toContain('exact replay is not idempotent');
+  expect(rehearsal).toContain('cross-plan replay unexpectedly succeeded');
   expect(rehearsal).toContain('pending reconciliation unexpectedly mutated state');
   expect(rehearsal).toContain('completed reconciliation response is unsafe');
   expect(rehearsal).toContain('reconciliation checksum conflict unexpectedly succeeded');
