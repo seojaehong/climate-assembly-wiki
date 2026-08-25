@@ -22,6 +22,7 @@
 - 합성 DOCX OOXML: `result_issue_1`, `result_source_1_1` bookmark와 양방향 `w:anchor` 확인
 - 합성 DOCX 접근성 구조 감사: high 0건, 기존 key-value 표의 medium 2건, 새 원문 메타 추가 경고 0건
 - CI 경계: `.github/workflows/test.yml`의 push·pull request filter에 `src/islands/result/**`를 추가해 결과 웹·DOCX 변경의 clean 전체 테스트를 강제
+- A4 결속 manifest: workflow 변경 뒤 `platform-a4-migration-bundle.json`을 현재 17개 artifact에서 checksum `b7c971e74d4335a1173ccf11b6cd3a11e54ef624bde1856aa34f6c31fc747b9e`로 재생성·검증하고 집중 9건을 통과했다. `productionApplyApproved:false`, `databaseMutationExecuted:false`는 유지된다.
 - PNG 시각 렌더: 로컬 LibreOffice 실행 파일 부재로 미실행
 
 ## 미완료·승인 경계
