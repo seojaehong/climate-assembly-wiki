@@ -687,6 +687,7 @@ test('finalizes only rollback-verified failures and leaves unconfirmed execution
   }));
   const unconfirmedAuthorization = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
   const unconfirmedReceipts = createInMemoryDesignProvisioningReceiptAdapter();
+  let unconfirmedExecutionCount = 0;
   await expect(executeDesignProvisioningApprovalLifecycle({
     approval: unconfirmed.approval,
     plan: unconfirmed.plan,
@@ -695,7 +696,10 @@ test('finalizes only rollback-verified failures and leaves unconfirmed execution
     authorizationAdapter: unconfirmedAuthorization,
     receiptAdapter: unconfirmedReceipts,
     executionAdapter: {
-      async execute() { throw new Error('raw RPC response with secret'); },
+      async execute() {
+        unconfirmedExecutionCount += 1;
+        throw new Error('raw RPC response with secret');
+      },
     },
     trustedKey: approvalKey,
     expectedKeyId: approvalKeyId,
@@ -704,6 +708,87 @@ test('finalizes only rollback-verified failures and leaves unconfirmed execution
   expect((await unconfirmedAuthorization.readSnapshot(unconfirmed.approval.approvalId)).state.claim.status)
     .toBe('claimed');
   expect(await unconfirmedReceipts.read(unconfirmed.approval.executionId)).toBeNull();
+
+  await expect(executeDesignProvisioningApprovalLifecycle({
+    approval: unconfirmed.approval,
+    plan: unconfirmed.plan,
+    blueprint: unconfirmed.source,
+    sourceBytes: unconfirmed.bytes,
+    authorizationAdapter: unconfirmedAuthorization,
+    receiptAdapter: unconfirmedReceipts,
+    executionAdapter: {
+      async execute({ plan: executionPlan }) {
+        unconfirmedExecutionCount += 1;
+        return completedExecutionResult(executionPlan);
+      },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock('2026-08-25T13:06:00.000Z'),
+  })).rejects.toThrow('existing claim requires receipt reconciliation');
+  expect(unconfirmedExecutionCount).toBe(1);
+  expect(await unconfirmedReceipts.read(unconfirmed.approval.executionId)).toBeNull();
+});
+
+test('allows only the new A4 claim owner to invoke RPC during concurrent lifecycle calls', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const authorizationAdapter = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
+  const receiptAdapter = createInMemoryDesignProvisioningReceiptAdapter();
+  let executionCount = 0;
+  let signalFirstExecutionStarted;
+  let releaseFirstExecution;
+  const firstExecutionStarted = new Promise((resolve) => { signalFirstExecutionStarted = resolve; });
+  const firstExecutionRelease = new Promise((resolve) => { releaseFirstExecution = resolve; });
+  const executionAdapter = {
+    async execute({ plan: executionPlan }) {
+      executionCount += 1;
+      if (executionCount === 1) {
+        signalFirstExecutionStarted();
+        await firstExecutionRelease;
+      }
+      return completedExecutionResult(executionPlan);
+    },
+  };
+  const base = {
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter,
+    executionAdapter,
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+  };
+
+  const firstLifecycle = executeDesignProvisioningApprovalLifecycle({
+    ...base,
+    clock: sequenceClock(
+      '2026-08-25T13:05:00.000Z',
+      '2026-08-25T13:06:00.000Z',
+      '2026-08-25T13:07:00.000Z',
+    ),
+  });
+  await firstExecutionStarted;
+  const secondLifecycle = executeDesignProvisioningApprovalLifecycle({
+    ...base,
+    clock: sequenceClock(
+      '2026-08-25T13:05:30.000Z',
+      '2026-08-25T13:06:30.000Z',
+      '2026-08-25T13:07:30.000Z',
+    ),
+  });
+
+  try {
+    await expect(secondLifecycle).rejects.toThrow(
+      'existing claim requires receipt reconciliation',
+    );
+  } finally {
+    releaseFirstExecution();
+    await firstLifecycle;
+  }
+  expect(executionCount).toBe(1);
+  expect((await receiptAdapter.read(approval.executionId)).status).toBe('completed');
 });
 
 test('allows only the same in-flight execution claim to resume', () => {

@@ -1460,7 +1460,7 @@ export async function executeDesignProvisioningApprovalLifecycle({
   }
 
   const startedAt = lifecycleTime(clock);
-  await claimDesignProvisioningExecutionApproval({
+  const claimResult = await claimDesignProvisioningExecutionApproval({
     approval,
     plan,
     blueprint,
@@ -1486,6 +1486,10 @@ export async function executeDesignProvisioningApprovalLifecycle({
       executionDisposition: 'existing_receipt',
       receiptDisposition: 'existing',
     });
+  }
+
+  if (claimResult.claimDisposition !== 'new') {
+    throw new Error('Design provisioning existing claim requires receipt reconciliation');
   }
 
   const executionPlan = designProvisioningExecutionCandidate(plan);
