@@ -466,6 +466,23 @@ begin
   set role = 'operator'
   where org_id = v_org and user_id = v_user;
   begin
+    perform climate_vote.design_provision(
+      jsonb_set(v_plan, '{checksum}', to_jsonb(repeat('b', 64))),
+      convert_to(repeat('s', 100), 'UTF8')
+    );
+    raise exception 'A4 semantic test failed: unauthorized malformed plan was validated before role denial';
+  exception when others then
+    if sqlerrm <> 'design_role_forbidden' then raise; end if;
+  end;
+  begin
+    perform climate_vote.design_provisioning_status(
+      jsonb_set(v_query, '{operationCount}', to_jsonb('4'::text))
+    );
+    raise exception 'A4 semantic test failed: unauthorized malformed reconciliation query was validated before role denial';
+  exception when others then
+    if sqlerrm <> 'design_role_forbidden' then raise; end if;
+  end;
+  begin
     perform climate_vote.design_provisioning_status(v_query);
     raise exception 'A4 semantic test failed: reconciliation role denial unexpectedly succeeded';
   exception when others then

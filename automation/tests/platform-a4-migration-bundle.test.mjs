@@ -118,6 +118,19 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   const rehearsal = readFileSync(join(repoRoot, 'supabase', 'verify', 'design_provisioning_test.sql'), 'utf8');
   expect(migration).toContain('primary key (org_id, operation_id)');
   expect(migration).toContain("m.role in ('org_admin', 'hq')");
+  const mutationBody = migration.slice(
+    migration.indexOf('create or replace function climate_vote.design_provision(p_plan jsonb, p_source_bytes bytea)'),
+    migration.indexOf('create or replace function climate_vote.design_provisioning_status(p_query jsonb)'),
+  );
+  const reconciliationBody = migration.slice(
+    migration.indexOf('create or replace function climate_vote.design_provisioning_status(p_query jsonb)'),
+  );
+  expect(mutationBody.indexOf('v_user_id := auth.uid()')).toBeLessThan(
+    mutationBody.indexOf("climate_vote.platform_json_canonical(p_plan - 'checksum')"),
+  );
+  expect(reconciliationBody.indexOf('v_user_id := auth.uid()')).toBeLessThan(
+    reconciliationBody.indexOf("jsonb_array_length(p_query -> 'operations')"),
+  );
   expect(migration).toContain('design_operation_conflict');
   expect(migration).toContain('v_existing.plan_checksum <> v_checksum');
   expect(migration).toContain('design_parent_conflict');
@@ -145,6 +158,8 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(rehearsal).toContain('cross-plan replay unexpectedly succeeded');
   expect(rehearsal).toContain('pending reconciliation unexpectedly mutated state');
   expect(rehearsal).toContain('completed reconciliation response is unsafe');
+  expect(rehearsal).toContain('unauthorized malformed plan was validated before role denial');
+  expect(rehearsal).toContain('unauthorized malformed reconciliation query was validated before role denial');
   expect(rehearsal).toContain('disabled team replay unexpectedly exposed its join code');
   expect(rehearsal).toContain('disabled team reconciliation unexpectedly exposed its join code');
   expect(rehearsal).toContain('reconciliation checksum conflict unexpectedly succeeded');

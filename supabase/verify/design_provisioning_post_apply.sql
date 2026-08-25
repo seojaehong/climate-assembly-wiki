@@ -70,6 +70,9 @@ begin
      or not ('search_path=pg_catalog, climate_vote, auth, extensions' = any(v_config))
      or not ('row_security=off' = any(v_config))
      or v_definition not like '%m.role in (''org_admin'', ''hq'')%'
+     or strpos(v_definition, 'v_user_id := auth.uid()') = 0
+     or strpos(v_definition, 'v_user_id := auth.uid()')
+        >= strpos(v_definition, 'climate_vote.platform_json_canonical(p_plan - ''checksum'')')
      or v_definition not like '%v_existing.plan_checksum <> v_checksum%'
      or v_definition not like '%count(distinct value ->> ''operationId'')%'
      or v_definition not like '%count(distinct value ->> ''ref'')%'
@@ -97,6 +100,9 @@ begin
      or not ('search_path=pg_catalog, climate_vote, auth' = any(v_config))
      or not ('row_security=off' = any(v_config))
      or v_definition not like '%platform_design_provisioning_reconciliation_query%'
+     or strpos(v_definition, 'v_user_id := auth.uid()') = 0
+     or strpos(v_definition, 'v_user_id := auth.uid()')
+        >= strpos(v_definition, 'jsonb_array_length(p_query -> ''operations'')')
      or v_definition not like '%jsonb_typeof(p_query -> ''operationCount'') <> ''number''%'
      or v_definition not like '%m.role in (''org_admin'', ''hq'')%'
      or v_definition not like '%id = v_existing.resource_id and org_id = v_org_id and status = ''active''%'

@@ -164,6 +164,21 @@ begin
     raise exception using message = 'design_plan_invalid';
   end if;
 
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    raise exception using message = 'design_auth_required';
+  end if;
+  v_org_id := climate_vote.org_of_uid();
+  if v_org_id is null or not exists (
+    select 1
+    from climate_vote.membership m
+    join climate_vote.org o on o.id = m.org_id and o.status = 'active'
+    where m.user_id = v_user_id and m.org_id = v_org_id
+      and m.status = 'active' and m.role in ('org_admin', 'hq')
+  ) then
+    raise exception using message = 'design_role_forbidden';
+  end if;
+
   select array_agg(key order by key) into v_actual_keys from jsonb_object_keys(p_plan) keys(key);
   if v_actual_keys is distinct from v_expected_root_keys then
     raise exception using message = 'design_plan_invalid';
@@ -250,21 +265,6 @@ begin
      or encode(extensions.digest(p_source_bytes, 'sha256'), 'hex')
         <> p_plan #>> '{sourceBlueprint,sha256}' then
     raise exception using message = 'design_source_mismatch';
-  end if;
-
-  v_user_id := auth.uid();
-  if v_user_id is null then
-    raise exception using message = 'design_auth_required';
-  end if;
-  v_org_id := climate_vote.org_of_uid();
-  if v_org_id is null or not exists (
-    select 1
-    from climate_vote.membership m
-    join climate_vote.org o on o.id = m.org_id and o.status = 'active'
-    where m.user_id = v_user_id and m.org_id = v_org_id
-      and m.status = 'active' and m.role in ('org_admin', 'hq')
-  ) then
-    raise exception using message = 'design_role_forbidden';
   end if;
 
   for v_operation in
@@ -639,6 +639,22 @@ begin
   if p_query is null or jsonb_typeof(p_query) <> 'object' then
     raise exception using message = 'design_reconciliation_query_invalid';
   end if;
+
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    raise exception using message = 'design_auth_required';
+  end if;
+  v_org_id := climate_vote.org_of_uid();
+  if v_org_id is null or not exists (
+    select 1
+    from climate_vote.membership m
+    join climate_vote.org o on o.id = m.org_id and o.status = 'active'
+    where m.user_id = v_user_id and m.org_id = v_org_id
+      and m.status = 'active' and m.role in ('org_admin', 'hq')
+  ) then
+    raise exception using message = 'design_role_forbidden';
+  end if;
+
   select array_agg(key order by key) into v_actual_keys
   from jsonb_object_keys(p_query) keys(key);
   if v_actual_keys is distinct from v_expected_root_keys then
@@ -675,21 +691,6 @@ begin
         <> (select count(distinct value ->> 'operationId')
             from jsonb_array_elements(p_query -> 'operations')) then
     raise exception using message = 'design_reconciliation_query_invalid';
-  end if;
-
-  v_user_id := auth.uid();
-  if v_user_id is null then
-    raise exception using message = 'design_auth_required';
-  end if;
-  v_org_id := climate_vote.org_of_uid();
-  if v_org_id is null or not exists (
-    select 1
-    from climate_vote.membership m
-    join climate_vote.org o on o.id = m.org_id and o.status = 'active'
-    where m.user_id = v_user_id and m.org_id = v_org_id
-      and m.status = 'active' and m.role in ('org_admin', 'hq')
-  ) then
-    raise exception using message = 'design_role_forbidden';
   end if;
 
   for v_operation in
