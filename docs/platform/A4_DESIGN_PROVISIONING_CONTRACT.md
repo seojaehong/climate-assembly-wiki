@@ -70,7 +70,7 @@
 
 - join code는 client plan에 넣지 않고 server transaction 안에서 `pgcrypto` CSPRNG로 생성한다. 32-bit 값을 6자리 공간에 바로 나눈 나머지를 쓰지 않고, 균등하게 나누어지는 상한 밖 값을 버리는 rejection sampling으로 modulo bias를 제거한다. PostgreSQL `random()`은 capability 생성에 사용하지 않는다.
 - 기존 6자리 숫자·unique 계약을 유지한다. 충돌은 제한된 횟수만 재시도하고 소진되면 전체 transaction을 실패시킨다.
-- 같은 operation ID의 응답 유실 재요청은 ledger가 가리키는 기존 team의 동일 code를 현재 승인된 기관 staff에게만 다시 반환한다.
+- 같은 operation ID의 응답 유실 재요청은 ledger가 가리키는 기존 active team의 동일 code를 현재 승인된 기관 staff에게만 다시 반환한다. team이 disabled 상태면 mutation replay와 read-only reconciliation 모두 안정 충돌 오류로 중단하고 code를 반환하지 않는다.
 - code는 audit log·ledger·일반 오류·CI artifact에 기록하지 않는다. UI에서도 필요 시에만 제공하고 브라우저 영구저장소에 보존하지 않는다.
 
 ### 3-6. rollback 데이터 보존

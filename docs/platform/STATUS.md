@@ -171,6 +171,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 canonical plan 의미 계약(2026-08-26):** mutation RPC가 client verifier와 같은 operation grammar를 재검증한다. assembly 뒤 연속 session, 각 session의 연속 topic→연속 team 순서, 실제 달력 날짜와 날짜 비감소, trim된 text, session 내 topic prompt 유일성, `${ordinal}조` team 이름, topic·team 최소 1건, session 누적 정원 100,000명, 전체 생성 항목 10,000건을 강제한다. PostgreSQL 16 격리 리허설은 invalid calendar, 날짜 역행, ordinal gap, child 순서 역전, 중복 prompt, 잘못된 team 이름, 정원 초과와 불완전 session을 안정 오류로 거부하고 전체 transaction rollback을 확인했다. parent-conflict·join-code exhaustion·late summary rollback fixture도 canonical plan으로 재구성해 기존 failure mode를 계속 증명한다. production migration·DB·GRANT는 적용하지 않았다.
 
+**A4 비활성 team join-code 재노출 차단(2026-08-26):** mutation exact replay와 read-only reconciliation이 ledger resource의 기관 일치뿐 아니라 team `status='active'`를 다시 확인한다. 정상 생성 뒤 disabled로 전환한 team은 각각 `design_resource_conflict`, `design_reconciliation_conflict`로 닫혀 join code를 응답하지 않고 ledger·resource도 바꾸지 않는다. PostgreSQL 16 격리 리허설과 compiled-function post-apply verifier가 두 경로를 확인했다. production migration·DB·GRANT는 적용하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

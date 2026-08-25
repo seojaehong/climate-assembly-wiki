@@ -145,6 +145,8 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(rehearsal).toContain('cross-plan replay unexpectedly succeeded');
   expect(rehearsal).toContain('pending reconciliation unexpectedly mutated state');
   expect(rehearsal).toContain('completed reconciliation response is unsafe');
+  expect(rehearsal).toContain('disabled team replay unexpectedly exposed its join code');
+  expect(rehearsal).toContain('disabled team reconciliation unexpectedly exposed its join code');
   expect(rehearsal).toContain('reconciliation checksum conflict unexpectedly succeeded');
   expect(rehearsal).toContain('partial reconciliation conflict unexpectedly returned pending');
   expect(rehearsal).toContain('source mismatch unexpectedly succeeded');

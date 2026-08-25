@@ -53,8 +53,8 @@
     },
     {
       "path": "automation/tests/platform-a4-migration-bundle.test.mjs",
-      "sha256": "06ff8cb4a54ec2842a8bbb9080d2cc47e437ebd2e56b677a4f28fdba4f7057d9",
-      "bytes": 11590
+      "sha256": "1b66a66598299ee10f565469b35272f84dab8067ea1d9449e75b902a2ba46b5b",
+      "bytes": 11778
     },
     {
       "path": ".gitattributes",
@@ -68,8 +68,8 @@
     },
     {
       "path": "docs/platform/A4_DESIGN_PROVISIONING_CONTRACT.md",
-      "sha256": "78fa73314c2b2dfb654059b126c86f1c68cadbc37f09a1f8a7aa2b10939203f8",
-      "bytes": 23251
+      "sha256": "f99bf8ff83b71fbbda2a514e0b884bf1a5b6b4c260fcd7630d2111048e29e628",
+      "bytes": 23405
     },
     {
       "path": "supabase/verify/design_provisioning_preflight.sql",
@@ -83,8 +83,8 @@
     },
     {
       "path": "supabase/migrations/platform_p3_design_provisioning.sql",
-      "sha256": "dcb8b4c2955f40ef304a571b557944da9279342be7c88f9198d13f7f26f27fdf",
-      "bytes": 36527
+      "sha256": "f990b1734cf1ad9815baee4d9e4ddee2867ff32729a5f8d1200b88ca0b340e5b",
+      "bytes": 36583
     },
     {
       "path": "supabase/verify/design_provisioning_preflight_mapping_fixture.sql",
@@ -93,13 +93,13 @@
     },
     {
       "path": "supabase/verify/design_provisioning_post_apply.sql",
-      "sha256": "94c3d889ff8ebf559335181d57c5ddd3af4d84618826dff9fce282c822afec82",
-      "bytes": 7422
+      "sha256": "f25c745e9072e3f573c77bfceb166a8c5f6b679507853d1862552791b089b762",
+      "bytes": 7590
     },
     {
       "path": "supabase/verify/design_provisioning_test.sql",
-      "sha256": "b7e349489c4b7ad6948ae4172af1df342f696e37d8e91b74254800affd7f5a73",
-      "bytes": 32177
+      "sha256": "cbb5e4bcd9d52e7c001a98a7dfeb76f1b36d581b334123bbee96fcea07e9be9d",
+      "bytes": 33358
     },
     {
       "path": "supabase/verify/design_provisioning_rollback_cleanup_fixture.sql",
@@ -120,5 +120,5 @@
     "activatesStaffGrants": false,
     "connectsProductionExecutor": false
   },
-  "checksum": "6cb77d983cc5ad979991cb0a003d41a7dd25cb5bcb016b18ff602f94f77cb0dc"
+  "checksum": "eabbcff9105088a4ec96758a49faf0e7f1c9a4b45fea38244b819273d6d18842"
 }

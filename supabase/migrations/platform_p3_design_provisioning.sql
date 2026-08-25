@@ -556,6 +556,7 @@ begin
           and t.session_id = v_parent_id and t.ordinal = (v_operation ->> 'ordinal')::integer
           and t.name = v_payload ->> 'name'
           and t.capacity = (v_payload ->> 'plannedCapacity')::integer
+          and t.status = 'active'
       ) then raise exception using message = 'design_resource_conflict'; end if;
       v_current_team_count := v_current_team_count + 1;
       v_team_count := v_team_count + 1;
@@ -742,7 +743,7 @@ begin
     else
       select id, join_code into v_resource_id, v_join_code
       from climate_vote.team
-      where id = v_existing.resource_id and org_id = v_org_id;
+      where id = v_existing.resource_id and org_id = v_org_id and status = 'active';
     end if;
     if v_resource_id is null
        or (v_operation_type = 'create_team' and v_join_code !~ '^[0-9]{6}$') then

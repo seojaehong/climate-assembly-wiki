@@ -408,6 +408,31 @@ begin
     raise exception 'A4 semantic test failed: completed reconciliation response is unsafe';
   end if;
 
+  update climate_vote.team
+  set status = 'disabled'
+  where session_id = (select id from climate_vote.session where slug = 'a4-session-1')
+    and ordinal = 1;
+  begin
+    perform climate_vote.design_provision(v_plan, convert_to(repeat('s', 100), 'UTF8'));
+    raise exception 'A4 semantic test failed: disabled team replay unexpectedly exposed its join code';
+  exception when others then
+    if sqlerrm <> 'design_resource_conflict' then raise; end if;
+  end;
+  begin
+    perform climate_vote.design_provisioning_status(v_query);
+    raise exception 'A4 semantic test failed: disabled team reconciliation unexpectedly exposed its join code';
+  exception when others then
+    if sqlerrm <> 'design_reconciliation_conflict' then raise; end if;
+  end;
+  if (select count(*) from climate_vote.design_provisioning_operation) <> v_ledger_count
+     or (select count(*) from climate_vote.team) <> v_resource_count then
+    raise exception 'A4 semantic test failed: disabled team checks unexpectedly mutated state';
+  end if;
+  update climate_vote.team
+  set status = 'active'
+  where session_id = (select id from climate_vote.session where slug = 'a4-session-1')
+    and ordinal = 1;
+
   begin
     perform climate_vote.design_provisioning_status(
       jsonb_set(v_query, '{executedPlanChecksum}', to_jsonb(repeat('b', 64)))

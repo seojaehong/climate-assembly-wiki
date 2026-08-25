@@ -79,6 +79,7 @@ begin
      or v_definition not like '%to_char(v_session_date, ''YYYY-MM-DD'')%'
      or v_definition not like '%v_current_session_capacity > 100000%'
      or v_definition not like '%v_current_topic_count = 0 or v_current_team_count = 0%'
+     or v_definition not like '%and t.status = ''active''%'
      or v_definition not like '%design_join_code_exhausted%'
      or v_definition not like '%design_operation_conflict%' then
     raise exception 'A4 post-apply verification failed: RPC contract is unsafe';
@@ -98,6 +99,7 @@ begin
      or v_definition not like '%platform_design_provisioning_reconciliation_query%'
      or v_definition not like '%jsonb_typeof(p_query -> ''operationCount'') <> ''number''%'
      or v_definition not like '%m.role in (''org_admin'', ''hq'')%'
+     or v_definition not like '%id = v_existing.resource_id and org_id = v_org_id and status = ''active''%'
      or v_definition not like '%design_reconciliation_conflict%'
      or v_definition not like '%jsonb_build_object(''status'', ''pending'')%' then
     raise exception 'A4 post-apply verification failed: reconciliation RPC contract is unsafe';
