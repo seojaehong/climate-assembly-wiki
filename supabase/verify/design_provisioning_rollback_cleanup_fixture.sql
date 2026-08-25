@@ -30,7 +30,13 @@ where session_id in (
   select s.id
   from climate_vote.session s
   join climate_vote.assembly a on a.id = s.assembly_id
-  where a.slug in ('a4-test-assembly', 'a4-legacy-assembly', 'a4-concurrent')
+  where a.slug in (
+    'a4-test-assembly',
+    'a4-legacy-assembly',
+    'a4-concurrent',
+    'a4-membership-lock',
+    'a4-organization-lock'
+  )
 );
 
 delete from climate_vote.team
@@ -38,17 +44,35 @@ where session_id in (
   select s.id
   from climate_vote.session s
   join climate_vote.assembly a on a.id = s.assembly_id
-  where a.slug in ('a4-test-assembly', 'a4-legacy-assembly', 'a4-concurrent')
+  where a.slug in (
+    'a4-test-assembly',
+    'a4-legacy-assembly',
+    'a4-concurrent',
+    'a4-membership-lock',
+    'a4-organization-lock'
+  )
 );
 
 delete from climate_vote.session
 where assembly_id in (
   select id from climate_vote.assembly
-  where slug in ('a4-test-assembly', 'a4-legacy-assembly', 'a4-concurrent')
+  where slug in (
+    'a4-test-assembly',
+    'a4-legacy-assembly',
+    'a4-concurrent',
+    'a4-membership-lock',
+    'a4-organization-lock'
+  )
 );
 
 delete from climate_vote.assembly
-where slug in ('a4-test-assembly', 'a4-legacy-assembly', 'a4-concurrent');
+where slug in (
+  'a4-test-assembly',
+  'a4-legacy-assembly',
+  'a4-concurrent',
+  'a4-membership-lock',
+  'a4-organization-lock'
+);
 
 delete from climate_vote.membership
 where org_id in (
@@ -76,7 +100,13 @@ begin
      )
      or exists (
        select 1 from climate_vote.assembly
-       where slug in ('a4-test-assembly', 'a4-legacy-assembly', 'a4-concurrent')
+       where slug in (
+         'a4-test-assembly',
+         'a4-legacy-assembly',
+         'a4-concurrent',
+         'a4-membership-lock',
+         'a4-organization-lock'
+       )
      ) then
     raise exception 'A4 fixture cleanup was incomplete';
   end if;

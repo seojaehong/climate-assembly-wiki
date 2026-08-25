@@ -56,6 +56,7 @@
 24. team의 `platform_team_capacity_positive`를 제거하고 shadow table에 같은 이름·정의를 둔 경우와, 정확한 team에 완화된 `capacity >= 0` 정의를 둔 경우를 post-apply verifier가 모두 거부했다. 복구한 정확한 table·check 종류·`capacity > 0` 정의에서는 verifier와 전체 semantic rehearsal이 다시 통과했다.
 25. `team.ordinal`을 PostgreSQL `bigint`로 바꾼 경우와 `session.assembly_id → assembly.id` FK를 제거한 경우를 post-apply verifier가 각각 column/FK 계약 오류로 거부했다. 15개 필수 column의 type·nullable·default와 session/ledger의 3개 참조 정의를 복구한 뒤 verifier와 전체 semantic rehearsal이 다시 통과했다.
 26. mutation RPC가 권한 판정에 사용한 membership·organization 행을 `FOR SHARE`로 transaction 끝까지 잠그는지 두 dblink 연결로 검증했다. plan INSERT를 1초 지연한 동안 membership 역할 변경과 organization `suspended` 전환은 각각 250ms lock timeout으로 밀렸고 두 plan은 정상 적용됐으며 권한 행은 active로 유지됐다.
+27. rollback cleanup fixture가 동시성 리허설의 `a4-membership-lock`·`a4-organization-lock` resource까지 exact-scope로 제거하도록 고정했다.
 
 결과: `A4_LOCAL_POSTGRES_REHEARSAL=passed`
 
@@ -98,7 +99,7 @@ authorization row-lock 경쟁 결과: `A4_AUTHORIZATION_ROW_LOCK_POSTGRES_REHEAR
 - 저장소 밖 로컬 durable store의 adapter 재시작·lock-free CAS·독립 Node 프로세스 6개 claim 경쟁(1 claimed, 5 conflict, journal record 2개)·orphan temp 복구·append-only replay/conflict·journal 변조·terminal claim/checkpoint/receipt/lifecycle clock 사건시각 역행·junction escape·revocation/claim 경쟁·membership 비활성 finalize와 재활성화 거부·비식별 전체-store/keyed receipt audit·off-store inventory checkpoint 삭제/tail 변경·기본 10분 freshness 테스트 통과
 - approval bundle verifier: builder·durable store·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 17개, production apply 미승인·DB mutation 미실행 상태로 통과
 - 추적 manifest를 current source에서 재구성해 stale source hash를 거부하는 테스트 통과
-- bundle checksum: `b63d967d58633fb29eed62fc60e1ef909240368dcb221027d8fc19b4c329b897`
+- bundle checksum: `a161a2914568a0bacd1da675d958a6508a98582bf3dc1c422e455906e6976241`
 
 ## 보안·데이터 무결성 결론
 

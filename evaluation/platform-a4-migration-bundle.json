@@ -53,8 +53,8 @@
     },
     {
       "path": "automation/tests/platform-a4-migration-bundle.test.mjs",
-      "sha256": "0f8f70481cb3af47631a7fe47a47d8001cc12868a671e0b94802f3cb712d79a8",
-      "bytes": 15512
+      "sha256": "9229ceffc5d487e34c367d6d47bdf8b6fa9f7972816f78b19a2d5fe2b88a1218",
+      "bytes": 15784
     },
     {
       "path": ".gitattributes",
@@ -103,8 +103,8 @@
     },
     {
       "path": "supabase/verify/design_provisioning_rollback_cleanup_fixture.sql",
-      "sha256": "d15748425058b23beca16ce509f3ae702aefcc3b91a0a9db5044ae744902a5fb",
-      "bytes": 2308
+      "sha256": "6642cf47769b3959aac3b00634b3c20ef5de83e7794a38905ac982355377eac0",
+      "bytes": 2676
     },
     {
       "path": "supabase/rollbacks/platform_p3_design_provisioning_BEFORE.sql",
@@ -120,5 +120,5 @@
     "activatesStaffGrants": false,
     "connectsProductionExecutor": false
   },
-  "checksum": "b63d967d58633fb29eed62fc60e1ef909240368dcb221027d8fc19b4c329b897"
+  "checksum": "a161a2914568a0bacd1da675d958a6508a98582bf3dc1c422e455906e6976241"
 }
