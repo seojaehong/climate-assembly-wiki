@@ -311,6 +311,53 @@ jobs:
             -f /tmp/platform_p3_design_provisioning_BEFORE.sql >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
             "do \$\$ begin if to_regprocedure('climate_vote.design_provision(jsonb,bytea)') is not null or to_regprocedure('climate_vote.design_provisioning_status(jsonb)') is not null or to_regclass('climate_vote.design_provisioning_operation') is not null or exists (select 1 from information_schema.columns where table_schema='climate_vote' and table_name='team' and column_name='ordinal') then raise exception 'A4 rollback verification failed'; end if; end \$\$;"
+      - name: Rehearse signed snapshot restore in isolated PostgreSQL
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          container="snapshot-restore-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          audit_key="test-only-snapshot-restore-audit-key-2026"
+          archive_path="$RUNNER_TEMP/snapshot-restore-archive.json"
+          sql_path="$RUNNER_TEMP/snapshot-restore.sql"
+          report_path="$RUNNER_TEMP/snapshot-restore-report.log"
+          cleanup() {
+            docker rm -f "$container" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          SNAPSHOT_AUDIT_HMAC_KEY="$audit_key" \
+            node automation/tests/fixtures/create-snapshot-restore-archive.mjs "$archive_path"
+          SNAPSHOT_AUDIT_HMAC_KEY="$audit_key" SNAPSHOT_RESTORE_DATABASE=verify \
+            node automation/snapshot-db.mjs --prepare-restore-rehearsal "$archive_path" "$sql_path"
+
+          docker run -d --name "$container" \
+            -e POSTGRES_PASSWORD=verify \
+            -e POSTGRES_DB=verify \
+            postgres:16 >/dev/null
+          for _ in $(seq 1 60); do
+            if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -tAc "select 1" >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -tAc "select 1" >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "create role anon nologin; create role authenticated nologin; create role service_role nologin; create publication supabase_realtime; alter database verify set search_path=public,extensions,climate_vote;"
+          docker cp supabase/migrations/. "${container}:/tmp/"
+          docker cp supabase/verify/00_prelude.sql "${container}:/tmp/00_prelude.sql"
+          docker cp supabase/verify/driver_pass1.sql "${container}:/tmp/driver_pass1.sql"
+          docker cp "$sql_path" "${container}:/tmp/snapshot-restore.sql"
+
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -v verify_function_bodies=on -f /tmp/driver_pass1.sql >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -Atq -f /tmp/snapshot-restore.sql | tee "$report_path"
+          grep -q '"status": "restore_rehearsal_passed"' "$report_path"
+          grep -q '"databaseRestoreExecuted": true' "$report_path"
+          remaining_rows="$(docker exec "$container" psql -U postgres -d verify -Atq -c \
+            "select (select count(*) from climate_vote.submission) + (select count(*) from climate_vote.submission_item) + (select count(*) from climate_vote.issue) + (select count(*) from climate_vote.issue_link) + (select count(*) from climate_vote.result_page) + (select count(*) from climate_vote.ballot) + (select count(*) from climate_vote.ballot_item) + (select count(*) from climate_vote.ballot_response);")"
+          test "$remaining_rows" = "0"
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:

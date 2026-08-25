@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const PLATFORM_PAYLOAD_COLLECTIONS = [
@@ -545,6 +545,171 @@ export function rehearseSnapshotArchiveFile({ filePath, auditKey }) {
   };
 }
 
+function sqlJson(value) {
+  return `'${JSON.stringify(value).replaceAll("'", "''")}'::jsonb`;
+}
+
+function dependencyFixtureRows(payload) {
+  const orgIds = [...new Set([
+    ...payload.submission.map((row) => row.org_id),
+    ...payload.issue.map((row) => row.org_id),
+    ...payload.result_page.map((row) => row.org_id),
+    ...payload.ballot.map((row) => row.org_id),
+    ...payload.ballot_response.map((row) => row.org_id).filter(Boolean),
+  ])];
+  const topicIds = [...new Set([
+    ...payload.submission.map((row) => row.topic_id),
+    ...payload.issue.map((row) => row.topic_id),
+    ...payload.result_page.filter((row) => row.scope === 'topic').map((row) => row.scope_id),
+  ])];
+  const teamIds = [...new Set(payload.submission.map((row) => row.team_id))];
+  if (teamIds.length > 100_000) {
+    throw new Error('snapshot restore rehearsal fixture team limit exceeded');
+  }
+  const sessionIds = [...new Set([
+    ...payload.ballot.map((row) => row.session_id),
+    ...payload.result_page.filter((row) => row.scope === 'session').map((row) => row.scope_id),
+  ])];
+  if ((topicIds.length > 0 || teamIds.length > 0) && sessionIds.length === 0) {
+    sessionIds.push('ffffffff-ffff-4fff-8fff-fffffffffff1');
+  }
+  const assemblyIds = [...new Set(
+    payload.result_page.filter((row) => row.scope === 'assembly').map((row) => row.scope_id),
+  )];
+  const defaultOrgId = orgIds[0] ?? null;
+  const defaultSessionId = sessionIds[0] ?? null;
+  const orgForTopic = (topicId) => payload.submission.find((row) => row.topic_id === topicId)?.org_id
+    ?? payload.issue.find((row) => row.topic_id === topicId)?.org_id
+    ?? payload.result_page.find((row) => row.scope === 'topic' && row.scope_id === topicId)?.org_id
+    ?? defaultOrgId;
+  const orgForTeam = (teamId) => payload.submission.find((row) => row.team_id === teamId)?.org_id
+    ?? defaultOrgId;
+  return {
+    org: orgIds.map((id, index) => ({ id, slug: `restore-org-${index + 1}`, name: `Restore org ${index + 1}` })),
+    assembly: assemblyIds.map((id, index) => ({
+      id, slug: `restore-assembly-${index + 1}`, title: `Restore assembly ${index + 1}`, org_id: defaultOrgId,
+    })),
+    session: sessionIds.map((id, index) => ({
+      id, slug: `restore-session-${index + 1}`, title: `Restore session ${index + 1}`, org_id: defaultOrgId,
+    })),
+    discussion_topic: topicIds.map((id, index) => ({
+      id,
+      session_id: defaultSessionId,
+      ordinal: index + 1,
+      prompt: `Restore topic ${index + 1}`,
+      org_id: orgForTopic(id),
+    })),
+    team: teamIds.map((id, index) => ({
+      id,
+      session_id: defaultSessionId,
+      name: `Restore team ${index + 1}`,
+      join_code: String(900000 + index),
+      org_id: orgForTeam(id),
+    })),
+  };
+}
+
+function restoreInsertSql(collection, rows) {
+  return `insert into climate_vote.${collection}\nselect * from jsonb_populate_recordset(null::climate_vote.${collection}, ${sqlJson(rows)});`;
+}
+
+/** Builds SQL that performs and rolls back a restore in the isolated verify database. */
+export function buildSnapshotRestoreRehearsalSql({ filePath, auditKey, databaseName }) {
+  if (databaseName !== 'verify') {
+    throw new Error('snapshot restore rehearsal requires the verify database');
+  }
+  const preflight = rehearseSnapshotArchiveFile({ filePath, auditKey });
+  if (!Number.isSafeInteger(preflight.snapshotId) || preflight.snapshotId <= 0) {
+    throw new Error('snapshot restore rehearsal snapshot id is invalid');
+  }
+  const { payload } = readVerifiedSnapshotArchive({ filePath, auditKey });
+  const fixtures = dependencyFixtureRows(payload);
+  const targetTableList = ARCHIVE_RESTORE_ORDER.map((name) => `climate_vote.${name}`).join(', ');
+  const targetPresenceQuery = ARCHIVE_RESTORE_ORDER
+    .map((name) => `select 1 from climate_vote.${name}`)
+    .join(' union all ');
+  const expectedCounts = Object.fromEntries(ARCHIVE_RESTORE_ORDER.map((name) => [name, payload[name].length]));
+  const countChecks = ARCHIVE_RESTORE_ORDER.map((name) => `
+    if (select count(*) from climate_vote.${name}) <> ${expectedCounts[name]} then
+      raise exception 'snapshot restore count mismatch: ${name}';
+    end if;`).join('');
+  const actualCountPairs = ARCHIVE_RESTORE_ORDER
+    .map((name) => `'${name}', (select count(*) from climate_vote.${name})`)
+    .join(',\n    ');
+  const sql = `\\set ON_ERROR_STOP on
+begin;
+set local standard_conforming_strings = on;
+do $restore_guard$
+begin
+  if current_database() <> 'verify' then
+    raise exception 'snapshot restore rehearsal requires the verify database';
+  end if;
+  if exists (${targetPresenceQuery}) then
+    raise exception 'snapshot restore rehearsal requires empty target tables';
+  end if;
+end
+$restore_guard$;
+
+insert into climate_vote.org (id, slug, name)
+select id, slug, name
+from jsonb_to_recordset(${sqlJson(fixtures.org)}) as x(id uuid, slug text, name text);
+insert into climate_vote.assembly (id, slug, title, org_id)
+select id, slug, title, org_id
+from jsonb_to_recordset(${sqlJson(fixtures.assembly)}) as x(id uuid, slug text, title text, org_id uuid);
+insert into climate_vote.session (id, slug, title, org_id)
+select id, slug, title, org_id
+from jsonb_to_recordset(${sqlJson(fixtures.session)}) as x(id uuid, slug text, title text, org_id uuid);
+insert into climate_vote.discussion_topic (id, session_id, ordinal, prompt, org_id)
+select id, session_id, ordinal, prompt, org_id
+from jsonb_to_recordset(${sqlJson(fixtures.discussion_topic)})
+  as x(id uuid, session_id uuid, ordinal integer, prompt text, org_id uuid);
+insert into climate_vote.team (id, session_id, name, join_code, org_id)
+select id, session_id, name, join_code, org_id
+from jsonb_to_recordset(${sqlJson(fixtures.team)})
+  as x(id uuid, session_id uuid, name text, join_code text, org_id uuid);
+
+${ARCHIVE_RESTORE_ORDER.map((name) => restoreInsertSql(name, payload[name])).join('\n')}
+
+do $restore_counts$
+begin${countChecks}
+end
+$restore_counts$;
+
+select jsonb_build_object(
+  'status', 'restore_rehearsal_passed',
+  'snapshotId', ${Number(preflight.snapshotId)},
+  'databaseName', current_database(),
+  'databaseRestoreExecuted', true,
+  'transactionRolledBack', true,
+  'counts', jsonb_build_object(
+    ${actualCountPairs}
+  )
+)::text;
+rollback;
+
+do $restore_rollback$
+begin
+  if exists (${targetPresenceQuery}) then
+    raise exception 'snapshot restore rehearsal rollback failed';
+  end if;
+end
+$restore_rollback$;
+`;
+  return {
+    sql,
+    report: {
+      status: 'restore_rehearsal_prepared',
+      snapshotId: preflight.snapshotId,
+      keyId: preflight.keyId,
+      databaseName,
+      databaseRestoreExecuted: false,
+      transactionRollbackRequired: true,
+      targetTables: targetTableList.split(', '),
+      counts: expectedCounts,
+    },
+  };
+}
+
 async function readSnapshotRow({
   client,
   roundId,
@@ -619,9 +784,23 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     console.log(JSON.stringify(result));
     process.exit(0);
   }
+  if (command === '--prepare-restore-rehearsal') {
+    const filePath = process.argv[3];
+    const outputPath = process.argv[4];
+    if (!filePath) throw new Error('snapshot archive path is required');
+    if (!outputPath) throw new Error('snapshot restore rehearsal SQL path is required');
+    const result = buildSnapshotRestoreRehearsalSql({
+      filePath,
+      auditKey: process.env.SNAPSHOT_AUDIT_HMAC_KEY,
+      databaseName: process.env.SNAPSHOT_RESTORE_DATABASE,
+    });
+    writeFileSync(outputPath, result.sql, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
+    console.log(JSON.stringify({ ...result.report, outputPath }));
+    process.exit(0);
+  }
   const { createClient } = await import('@supabase/supabase-js');
   const { loadSchedule, findActiveWorkshop } = await import('./lib/schedule.mjs');
-  const { writeFileSync, mkdirSync } = await import('node:fs');
+  const { mkdirSync } = await import('node:fs');
   const schedule = await loadSchedule();
   const ws = findActiveWorkshop(schedule);
   if (!ws) {

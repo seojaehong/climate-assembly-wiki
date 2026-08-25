@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { test, expect, vi } from 'vitest';
 import {
+  buildSnapshotRestoreRehearsalSql,
   snapshotArchive,
   snapshotRound,
   rehearseSnapshotArchiveFile,
@@ -1251,5 +1252,75 @@ test('runs the read-only recovery preflight CLI without loading the snapshot sch
       checkedInternalReferences: 3,
       checkedBallotAnswers: 1,
     }));
+  });
+});
+
+test('builds a transaction-bound restore rehearsal for the isolated verify database', async () => {
+  const archive = await signedArchiveFixture();
+  withSnapshotFile(archive, (filePath) => {
+    const result = buildSnapshotRestoreRehearsalSql({
+      filePath,
+      auditKey: TEST_AUDIT_KEY,
+      databaseName: 'verify',
+    });
+
+    expect(result.report).toEqual(expect.objectContaining({
+      status: 'restore_rehearsal_prepared',
+      snapshotId: 77,
+      databaseName: 'verify',
+      databaseRestoreExecuted: false,
+      counts: expect.objectContaining({ submission: 1, issue: 1, ballot: 1 }),
+    }));
+    expect(result.sql).toContain("current_database() <> 'verify'");
+    expect(result.sql).toContain('snapshot restore rehearsal requires empty target tables');
+    expect(result.sql).toContain('jsonb_populate_recordset(null::climate_vote.submission');
+    expect(result.sql).toContain("'databaseRestoreExecuted', true");
+    expect(result.sql).toContain('rollback;');
+    expect(result.sql).not.toContain(TEST_AUDIT_KEY);
+  });
+});
+
+test('refuses to prepare a restore rehearsal for a non-isolated database name', async () => {
+  const archive = await signedArchiveFixture();
+  withSnapshotFile(archive, (filePath) => {
+    expect(() => buildSnapshotRestoreRehearsalSql({
+      filePath,
+      auditKey: TEST_AUDIT_KEY,
+      databaseName: 'postgres',
+    })).toThrow('snapshot restore rehearsal requires the verify database');
+  });
+});
+
+test('prepares restore rehearsal SQL through the CLI without connecting to a database', async () => {
+  const archive = await signedArchiveFixture();
+  withSnapshotFile(archive, (filePath) => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'snapshot-restore-sql-'));
+    const outputPath = join(tempDir, 'restore.sql');
+    try {
+      const output = execFileSync(
+        process.execPath,
+        [
+          fileURLToPath(new URL('../snapshot-db.mjs', import.meta.url)),
+          '--prepare-restore-rehearsal',
+          filePath,
+          outputPath,
+        ],
+        {
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            SNAPSHOT_AUDIT_HMAC_KEY: TEST_AUDIT_KEY,
+            SNAPSHOT_RESTORE_DATABASE: 'verify',
+          },
+        },
+      );
+      expect(JSON.parse(output)).toEqual(expect.objectContaining({
+        status: 'restore_rehearsal_prepared',
+        databaseRestoreExecuted: false,
+      }));
+      expect(readFileSync(outputPath, 'utf8')).toContain('begin;');
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 });

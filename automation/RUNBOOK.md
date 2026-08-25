@@ -60,7 +60,24 @@ Remove-Item Env:SNAPSHOT_AUDIT_HMAC_KEY
 - 필수 collection은 `submission`, `submission_item`, `issue`, `issue_link`, `result_page`, `ballot`, `ballot_item`, `ballot_response`다.
 - `--rehearse`는 위 검증 후 archive 내부 ID·FK(외래키: 다른 행을 가리키는 값), DB 고유키, submission 상태와 item 순서·종류·본문·근거, issue의 제목·방향·빈도·origin·검수 상태와 link 작성 주체, result page 제목·scope, ballot 제목·상태와 문항 순서·본문·허용 척도·필수 여부 boolean, 응답 client ID의 DB 길이 범위를 읽기 전용으로 점검한다. UUID 컬럼인 모든 행 ID, 내부 FK, 외부 부모 참조와 nullable `issue_link.cluster_id`·`ballot_response.org_id`는 PostgreSQL JSON export와 같은 소문자 8-4-4-4-12 canonical 형식이어야 한다. submission 상태는 `draft|final|reopened|archived`, item 종류는 `core|extra`, 순서는 PostgreSQL `integer` 범위만 허용한다. 본문은 PostgreSQL `trim`·`length` 의미로 1~2,000자, nullable 근거는 원문 기준 최대 2,000자다. issue 제목은 같은 의미로 1~200자이며 nullable 방향·빈도와 필수 origin·검수 상태·link 작성 주체는 migration enum만 허용한다. result page 제목은 1~300자다. `jsonb NOT NULL`은 SQL `NULL`만 막고 JSON 값 `null`은 허용하므로 archive의 provenance와 body가 JSON `null`인 것만으로 거부하지 않는다. ballot 제목과 문항 본문은 각각 1~200자와 1~300자를 검사하고, 상태는 `draft|open|closed|published|archived`만 허용한다. 각 issue link는 RPC와 같은 규칙으로 원문 submission과 topic·조직이 같아야 하며, `ballot_response.org_id`가 명시된 경우에는 상위 ballot 조직과 같아야 한다. 익명 응답의 nullable org는 계속 허용한다. 각 응답의 모든 문항 키가 archive에 존재하고 응답이 속한 같은 ballot의 문항인지도 전수 확인한다. 성공 요약에는 내부 참조·테넌트 관계·응답 점검 건수, 복원 순서, archive 밖 `org`·`discussion_topic`·`team`·`session`·`assembly` 부모의 중복 제거 건수와 `databaseRestoreExecuted: false`만 남기며 원문·ID·응답 값은 출력하지 않는다. nullable인 `ballot_response.org_id`도 값이 있으면 조직 부모 집합에 포함하고 형식을 검사한다. `result_page.scope`는 `topic`·`session`·`assembly`별 부모 건수에 합산하고 다른 값은 거부한다.
 - 현재 platform payload에는 `discussion_topic`, `team`, `session`과 공론화·조직 상위 경로가 포함되지 않는다. 따라서 `--rehearse`는 이 외부 의존을 건수로 드러내는 복구 preflight이며 독립 복원이 가능한 archive라는 뜻이 아니다. 부모 collection 추가는 snapshot DB 계약 변경이므로 별도 승인·migration 검토가 필요하다.
-- 두 명령은 DB나 Drive에 연결하지 않는다. 실제 격리 DB 복원 rehearsal, FK·업무 규칙 전수 검증, PITR/WAL, 사용자 행위 감사로그를 수행하거나 대체하지 않는다.
+- 두 명령은 DB나 Drive에 연결하지 않는다. FK·업무 규칙 전수 검증, PITR/WAL, 사용자 행위 감사로그를 수행하거나 대체하지 않는다.
+
+#### 격리 PostgreSQL 복원 rehearsal
+
+서명 archive의 행을 실제 PostgreSQL 제약 아래 복원해 보려면 신규 `verify` 데이터베이스에 현재 migration chain을 먼저 적용한다. 운영 DB나 기존 데이터가 있는 DB에는 사용하지 않는다. SQL 생성기는 데이터베이스 이름이 정확히 `verify`가 아니면 거부하고, 생성된 SQL도 `current_database()`와 대상 8개 테이블의 빈 상태를 다시 확인한다.
+
+```powershell
+Set-Location automation
+$env:SNAPSHOT_AUDIT_HMAC_KEY = Read-Host -MaskInput 'HMAC key for audit.keyId'
+$env:SNAPSHOT_RESTORE_DATABASE = 'verify'
+node snapshot-db.mjs --prepare-restore-rehearsal 'C:\secure\snapshots\archive.json' "$env:TEMP\snapshot-restore.sql"
+psql --dbname verify --set ON_ERROR_STOP=1 --file "$env:TEMP\snapshot-restore.sql"
+Remove-Item -LiteralPath "$env:TEMP\snapshot-restore.sql"
+Remove-Item Env:SNAPSHOT_AUDIT_HMAC_KEY
+Remove-Item Env:SNAPSHOT_RESTORE_DATABASE
+```
+
+생성 단계는 HMAC·구조·내부 관계 preflight를 다시 통과한 payload만 SQL에 넣고 DB에는 연결하지 않는다. 생성 SQL에는 archive 행이 포함되므로 archive와 같은 민감 자료로 취급하고 접근이 제한된 임시 위치에 저장한 뒤 실행 직후 삭제한다. 실행 단계는 archive 밖 `org`·`discussion_topic`·`team`·`session`·`assembly`를 합성 부모로 만든 뒤 `submission`부터 `ballot_response`까지 복원 순서대로 실제 삽입한다. collection별 실측 건수가 archive와 모두 같을 때만 `restore_rehearsal_passed`와 `databaseRestoreExecuted: true`를 출력하고 전체 트랜잭션을 rollback한다. rollback 뒤 대상 테이블이 비어 있지 않아도 실패한다. 합성 부모는 FK·check·unique·trigger 복원 가능성만 검증하며 원래 부모 행의 내용이나 권위 관계를 재현하지 않는다. CI는 PostgreSQL 16 일회성 `verify` DB에서 같은 절차와 최종 잔존 0행을 검사한다. PITR/WAL과 운영 감사로그는 별도 미구현 범위다.
 
 ## D-30 — `workshop-schedule.yml` 잠금
 
