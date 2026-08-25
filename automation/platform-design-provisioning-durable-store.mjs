@@ -391,7 +391,7 @@ async function acquireLock(directory) {
   throw new Error('Local design provisioning authorization store is locked');
 }
 
-async function mutateAuthorization(root, expectedSnapshot, nextClaim, operation) {
+async function compareAndAppendAuthorization(root, expectedSnapshot, operation, transition) {
   if (!exactKeys(expectedSnapshot, ['state', 'context']) || !isRecord(expectedSnapshot.state)) {
     throw new Error(`Local design provisioning authorization ${operation} is invalid`);
   }
@@ -408,30 +408,24 @@ async function mutateAuthorization(root, expectedSnapshot, nextClaim, operation)
       state: structuredClone(current.state),
       context: structuredClone(current.context),
     };
-    if (canonicalJson(snapshot) !== canonicalJson(expectedSnapshot)
-      || snapshot.state.revokedAt !== null) {
+    if (canonicalJson(snapshot) !== canonicalJson(expectedSnapshot)) {
       return { status: 'conflict', ...snapshot };
     }
-    const validatedClaim = validateClaim(nextClaim, approvalId);
-    let allowed = false;
-    if (operation === 'claim') {
-      allowed = snapshot.state.claim === null && validatedClaim.status === 'claimed';
-    } else {
-      const { status: terminalStatus, finalizedAt: _finalizedAt, ...terminalIdentity } = validatedClaim;
-      allowed = snapshot.state.claim?.status === 'claimed'
-        && ['completed', 'failed'].includes(terminalStatus)
-        && canonicalJson(snapshot.state.claim) === canonicalJson({
-          ...terminalIdentity,
-          status: 'claimed',
-        });
+    const nextSnapshot = transition(structuredClone(snapshot));
+    if (nextSnapshot === null) return { status: 'conflict', ...snapshot };
+    if (!exactKeys(nextSnapshot, ['state', 'context'])) {
+      throw new Error(`Local design provisioning authorization ${operation} is invalid`);
     }
-    if (!allowed) return { status: 'conflict', ...snapshot };
-    const nextState = { ...snapshot.state, claim: validatedClaim };
+    validateState(nextSnapshot.state, approvalId);
+    validateContext(nextSnapshot.context);
+    if (canonicalJson(nextSnapshot) === canonicalJson(snapshot)) {
+      return { status: 'conflict', ...snapshot };
+    }
     const nextRecord = authorizationRecord({
       sequence: current.sequence + 1,
       previousRecordSha256: current.recordSha256,
-      state: nextState,
-      context: snapshot.context,
+      state: nextSnapshot.state,
+      context: nextSnapshot.context,
     });
     const published = await publishImmutableJson(
       directory,
@@ -442,13 +436,59 @@ async function mutateAuthorization(root, expectedSnapshot, nextClaim, operation)
       throw new Error('Local design provisioning authorization journal append conflicted');
     }
     return {
-      status: operation === 'claim' ? 'claimed' : 'finalized',
-      state: structuredClone(nextState),
-      context: structuredClone(snapshot.context),
+      status: 'updated',
+      state: structuredClone(nextSnapshot.state),
+      context: structuredClone(nextSnapshot.context),
     };
   } finally {
     await release();
   }
+}
+
+async function mutateAuthorization(root, expectedSnapshot, nextClaim, operation) {
+  const approvalId = expectedSnapshot?.state?.approvalId;
+  const validatedClaim = validateClaim(nextClaim, approvalId);
+  const result = await compareAndAppendAuthorization(
+    root,
+    expectedSnapshot,
+    operation,
+    (snapshot) => {
+      if (snapshot.state.revokedAt !== null) return null;
+      let allowed = false;
+      if (operation === 'claim') {
+        allowed = snapshot.state.claim === null && validatedClaim.status === 'claimed';
+      } else {
+        const { status: terminalStatus, finalizedAt: _finalizedAt, ...terminalIdentity } = validatedClaim;
+        allowed = snapshot.state.claim?.status === 'claimed'
+          && ['completed', 'failed'].includes(terminalStatus)
+          && canonicalJson(snapshot.state.claim) === canonicalJson({
+            ...terminalIdentity,
+            status: 'claimed',
+          });
+      }
+      if (!allowed) return null;
+      return {
+        state: { ...snapshot.state, claim: validatedClaim },
+        context: snapshot.context,
+      };
+    },
+  );
+  if (result.status === 'conflict') return result;
+  return {
+    ...result,
+    status: operation === 'claim' ? 'claimed' : 'finalized',
+  };
+}
+
+function canonicalTransitionTimestamp(value, label) {
+  if (typeof value !== 'string') {
+    throw new Error(`Local design provisioning authorization ${label} is invalid`);
+  }
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString() !== value) {
+    throw new Error(`Local design provisioning authorization ${label} is invalid`);
+  }
+  return value;
 }
 
 async function initializeStore(root, authorization) {
@@ -517,6 +557,42 @@ export function createLocalDesignProvisioningAuthorizationAdapter({ directory } 
       return mutateAuthorization(root, expectedSnapshot, terminalClaim, 'finalization');
     },
   });
+}
+
+export function revokeLocalDesignProvisioningAuthorization({
+  directory,
+  expectedSnapshot,
+  revokedAt: revokedAtValue,
+} = {}) {
+  const root = resolveStoreRoot(directory, { markerRequired: true });
+  const revokedAt = canonicalTransitionTimestamp(revokedAtValue, 'revocation');
+  return compareAndAppendAuthorization(
+    root,
+    expectedSnapshot,
+    'revocation',
+    (snapshot) => {
+      if (snapshot.state.revokedAt !== null || snapshot.state.claim !== null) return null;
+      return {
+        state: { ...snapshot.state, revokedAt },
+        context: snapshot.context,
+      };
+    },
+  );
+}
+
+export function replaceLocalDesignProvisioningAuthorizationContext({
+  directory,
+  expectedSnapshot,
+  context: contextValue,
+} = {}) {
+  const root = resolveStoreRoot(directory, { markerRequired: true });
+  const context = validateContext(contextValue);
+  return compareAndAppendAuthorization(
+    root,
+    expectedSnapshot,
+    'context transition',
+    (snapshot) => ({ state: snapshot.state, context }),
+  );
 }
 
 function validateReceipt(receipt) {

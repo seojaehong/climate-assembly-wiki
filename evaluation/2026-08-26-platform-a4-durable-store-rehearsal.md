@@ -27,14 +27,17 @@
 7. authorization journal 내용을 hash 갱신 없이 변경하자 read 단계에서 integrity 오류로 중단됐다.
 8. approval 하위 디렉터리를 저장소 밖으로 향하는 junction으로 바꾸자 초기화 전에 거부됐다.
 9. 영속 receipt에는 Auth 사용자 식별값, resource UUID, team join code가 포함되지 않았다.
+10. unclaimed approval의 local revocation을 journal에 기록한 뒤 adapter를 다시 만들어도 새 claim이 거부되고 claim은 `null`로 유지됐다.
+11. active claim 뒤 synthetic membership을 비활성화하자 finalize가 거부되고 terminal state로 닫히지 않았다.
+12. claim과 revocation을 동시에 시작했을 때 하나의 transition만 journal에 추가되고 최종 상태가 `claimed`와 `revokedAt`을 함께 갖지 않았다.
 
 ## 자동화 검증
 
-- A4 plan·bundle 집중: 2개 파일, 43건 통과
-- automation 전체: 26개 파일, 361건 통과
+- A4 plan·bundle 집중: 2개 파일, 46건 통과
+- automation 전체: 26개 파일, 364건 통과
 - 애플리케이션 전체: 64개 파일, 1,060건 통과
 - Astro check: 327개 파일, 오류 0건, 기존 hint 49건
-- A4 bundle: artifact 17개, checksum `ff703e149a8c38668b7d7b6477fff38cbda9f1b9b2097292efc8c4708bc397a2`
+- A4 bundle: artifact 17개, checksum `602b87647c795b8be6f8618c5bbcf087ddbe6e546e950c9e51a11942c9f68846`
 
 ## 남은 production blocker
 

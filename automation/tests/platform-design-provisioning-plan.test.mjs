@@ -28,6 +28,8 @@ import {
   createLocalDesignProvisioningReceiptAdapter,
   initializeLocalDesignProvisioningRehearsalStore,
   LOCAL_DESIGN_PROVISIONING_STORE_BOUNDARIES,
+  replaceLocalDesignProvisioningAuthorizationContext,
+  revokeLocalDesignProvisioningAuthorization,
 } from '../platform-design-provisioning-durable-store.mjs';
 
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
@@ -403,6 +405,127 @@ test('refuses an authorization directory junction that escapes the rehearsal sto
   } finally {
     rmSync(directory, { recursive: true, force: true });
     rmSync(escapedDirectory, { recursive: true, force: true });
+  }
+});
+
+test('persists a local revocation across restart and rejects a later claim', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const { source, bytes, plan, approval } = executionApproval();
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: approval.approvalId, context: liveContext() },
+    });
+    const authorizationAdapter = createLocalDesignProvisioningAuthorizationAdapter({ directory });
+    const expectedSnapshot = await authorizationAdapter.readSnapshot(approval.approvalId);
+    expect(await revokeLocalDesignProvisioningAuthorization({
+      directory,
+      expectedSnapshot,
+      revokedAt: '2026-08-25T13:04:00.000Z',
+    })).toMatchObject({
+      status: 'updated',
+      state: { approvalId: approval.approvalId, revokedAt: '2026-08-25T13:04:00.000Z', claim: null },
+    });
+    const restarted = createLocalDesignProvisioningAuthorizationAdapter({ directory });
+    await expect(claimDesignProvisioningExecutionApproval({
+      approval,
+      plan,
+      blueprint: source,
+      sourceBytes: bytes,
+      authorizationAdapter: restarted,
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+      now: new Date('2026-08-25T13:05:00.000Z'),
+    })).rejects.toThrow('approval has been revoked');
+    expect((await restarted.readSnapshot(approval.approvalId)).state.claim).toBeNull();
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('keeps an active claim open when synthetic membership becomes inactive before finalize', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const { source, bytes, plan, approval } = executionApproval();
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: approval.approvalId, context: liveContext() },
+    });
+    const authorizationAdapter = createLocalDesignProvisioningAuthorizationAdapter({ directory });
+    await claimDesignProvisioningExecutionApproval({
+      approval,
+      plan,
+      blueprint: source,
+      sourceBytes: bytes,
+      authorizationAdapter,
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+      now: new Date('2026-08-25T13:05:00.000Z'),
+    });
+    const claimedSnapshot = await authorizationAdapter.readSnapshot(approval.approvalId);
+    expect(await replaceLocalDesignProvisioningAuthorizationContext({
+      directory,
+      expectedSnapshot: claimedSnapshot,
+      context: liveContext({ membershipActive: false }),
+    })).toMatchObject({ status: 'updated', context: { membershipActive: false } });
+    const restarted = createLocalDesignProvisioningAuthorizationAdapter({ directory });
+    await expect(finalizeDesignProvisioningExecutionApproval({
+      approval,
+      plan,
+      blueprint: source,
+      sourceBytes: bytes,
+      authorizationAdapter: restarted,
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+      outcome: 'completed',
+      now: new Date('2026-08-25T13:06:00.000Z'),
+    })).rejects.toThrow('live authorization context is invalid');
+    expect((await restarted.readSnapshot(approval.approvalId)).state.claim.status).toBe('claimed');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('allows only one durable transition when claim and revocation race', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const { source, bytes, plan, approval } = executionApproval();
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: approval.approvalId, context: liveContext() },
+    });
+    const authorizationAdapter = createLocalDesignProvisioningAuthorizationAdapter({ directory });
+    const expectedSnapshot = await authorizationAdapter.readSnapshot(approval.approvalId);
+    const results = await Promise.allSettled([
+      claimDesignProvisioningExecutionApproval({
+        approval,
+        plan,
+        blueprint: source,
+        sourceBytes: bytes,
+        authorizationAdapter,
+        trustedKey: approvalKey,
+        expectedKeyId: approvalKeyId,
+        now: new Date('2026-08-25T13:05:00.000Z'),
+      }),
+      revokeLocalDesignProvisioningAuthorization({
+        directory,
+        expectedSnapshot,
+        revokedAt: '2026-08-25T13:04:00.000Z',
+      }),
+    ]);
+    const finalSnapshot = await createLocalDesignProvisioningAuthorizationAdapter({ directory })
+      .readSnapshot(approval.approvalId);
+    expect(Boolean(finalSnapshot.state.claim) === Boolean(finalSnapshot.state.revokedAt)).toBe(false);
+    if (finalSnapshot.state.claim) {
+      expect(results[0].status).toBe('fulfilled');
+      expect(results[1]).toMatchObject({ status: 'fulfilled', value: { status: 'conflict' } });
+    } else {
+      expect(finalSnapshot.state.revokedAt).toBe('2026-08-25T13:04:00.000Z');
+      expect(results[1]).toMatchObject({ status: 'fulfilled', value: { status: 'updated' } });
+      expect(results[0]).toMatchObject({ status: 'rejected' });
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
   }
 });
 

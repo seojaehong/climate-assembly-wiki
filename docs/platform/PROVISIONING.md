@@ -127,7 +127,7 @@ Executor core는 exact plan 검증 뒤 15분 이내 HMAC 승인(외부 보관 ke
 
 `platform-design-provisioning-plan.mjs`는 설계 화면에서 내려받은 schema v4 청사진을 DB 명령으로 실행하지 않고, 향후 승인된 서버 계약이 소비할 assembly→session→topic/team 순서의 결정적 schema v2 작업 계획으로 변환한다. v2는 migration-owned session base와 team stable identity blocker를 각각 보존한다. 입력과 출력은 source prompt와 운영 목적을 포함하므로 저장소·`public/` 밖의 승인된 로컬 폴더에 둔다.
 
-`platform-design-provisioning-durable-store.mjs`는 production 연결 전 crash/restart 계약을 검증하는 로컬 rehearsal 전용 adapter다. 저장소 밖의 marker가 있는 빈 디렉터리에서 approval별 immutable hash-chain journal과 execution별 append-only receipt를 사용하고, CAS 경쟁·기존 receipt 복구·receipt 충돌을 재현한다. fixture authorization context는 live membership이 아니며 SHA-256 journal chain도 외부 신뢰 서명이 아니다. production credential·Supabase client·RPC executor를 읽거나 호출하지 않고, stale lock은 자동 삭제하지 않는다.
+`platform-design-provisioning-durable-store.mjs`는 production 연결 전 crash/restart 계약을 검증하는 로컬 rehearsal 전용 adapter다. 저장소 밖의 marker가 있는 빈 디렉터리에서 approval별 immutable hash-chain journal과 execution별 append-only receipt를 사용하고, CAS 경쟁·기존 receipt 복구·receipt 충돌을 재현한다. unclaimed approval의 local revocation과 synthetic membership context 변화도 같은 journal CAS로 기록해 claim 경쟁과 finalize 차단을 검증한다. fixture authorization context는 live membership이 아니며 SHA-256 journal chain도 외부 신뢰 서명이 아니다. production credential·Supabase client·RPC executor를 읽거나 호출하지 않고, stale lock은 자동 삭제하지 않는다.
 
 ```powershell
 cd automation
