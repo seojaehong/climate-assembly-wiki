@@ -49,7 +49,10 @@ function platformPayloadFixture(overrides = {}) {
       id: 'item-1', submission_id: 'submission-1', ordinal: 1,
       kind: 'core', content: 'Participant statement', rationale: null, provenance: {},
     }],
-    issue: [{ id: 'issue-1', topic_id: 'topic-1', org_id: 'org-1' }],
+    issue: [{
+      id: 'issue-1', topic_id: 'topic-1', label: 'Assembly issue', stance: null,
+      frequency_class: null, origin: 'ai', review_status: 'draft', org_id: 'org-1',
+    }],
     issue_link: [],
     result_page: [],
     ballot: [{
@@ -586,7 +589,7 @@ test('rejects submission item rationale outside the nullable database length bou
   }
 });
 
-test('rejects a null submission item provenance required by the database', async () => {
+test('accepts JSON null submission item provenance as a non-SQL-null jsonb value', async () => {
   const archive = await signedArchiveFixture(platformPayloadFixture({
     submission_item: [{
       id: 'item-1', submission_id: 'submission-1', ordinal: 1,
@@ -595,8 +598,8 @@ test('rejects a null submission item provenance required by the database', async
   }));
 
   withSnapshotFile(archive, (filePath) => {
-    expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
-      .toThrow('snapshot archive submission item provenance is invalid');
+    expect(rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }).status)
+      .toBe('preflight_passed');
   });
 });
 
@@ -802,12 +805,149 @@ test('rejects ballot item ordinals that are not PostgreSQL integers', async () =
   }
 });
 
+test('rejects issue labels outside the database trimmed length bounds', async () => {
+  for (const label of ['   ', 'x'.repeat(201)]) {
+    const archive = await signedArchiveFixture(platformPayloadFixture({
+      issue: [{
+        id: 'issue-1', topic_id: 'topic-1', label, stance: null,
+        frequency_class: null, origin: 'ai', review_status: 'draft', org_id: 'org-1',
+      }],
+    }));
+
+    withSnapshotFile(archive, (filePath) => {
+      expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+        .toThrow('snapshot archive issue label is invalid');
+    });
+  }
+});
+
+test('rejects issue stances outside the nullable database enum', async () => {
+  for (const stance of [17, 'support']) {
+    const archive = await signedArchiveFixture(platformPayloadFixture({
+      issue: [{
+        id: 'issue-1', topic_id: 'topic-1', label: 'Assembly issue', stance,
+        frequency_class: null, origin: 'ai', review_status: 'draft', org_id: 'org-1',
+      }],
+    }));
+
+    withSnapshotFile(archive, (filePath) => {
+      expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+        .toThrow('snapshot archive issue stance is invalid');
+    });
+  }
+});
+
+test('rejects issue frequency classes outside the nullable database enum', async () => {
+  for (const frequencyClass of [17, 'unanimous']) {
+    const archive = await signedArchiveFixture(platformPayloadFixture({
+      issue: [{
+        id: 'issue-1', topic_id: 'topic-1', label: 'Assembly issue', stance: null,
+        frequency_class: frequencyClass, origin: 'ai', review_status: 'draft', org_id: 'org-1',
+      }],
+    }));
+
+    withSnapshotFile(archive, (filePath) => {
+      expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+        .toThrow('snapshot archive issue frequency class is invalid');
+    });
+  }
+});
+
+test('rejects issue origins outside the database enum', async () => {
+  for (const origin of [undefined, 'model']) {
+    const archive = await signedArchiveFixture(platformPayloadFixture({
+      issue: [{
+        id: 'issue-1', topic_id: 'topic-1', label: 'Assembly issue', stance: null,
+        frequency_class: null, origin, review_status: 'draft', org_id: 'org-1',
+      }],
+    }));
+
+    withSnapshotFile(archive, (filePath) => {
+      expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+        .toThrow('snapshot archive issue origin is invalid');
+    });
+  }
+});
+
+test('rejects issue review statuses outside the database enum', async () => {
+  for (const reviewStatus of [undefined, 'approved']) {
+    const archive = await signedArchiveFixture(platformPayloadFixture({
+      issue: [{
+        id: 'issue-1', topic_id: 'topic-1', label: 'Assembly issue', stance: null,
+        frequency_class: null, origin: 'ai', review_status: reviewStatus, org_id: 'org-1',
+      }],
+    }));
+
+    withSnapshotFile(archive, (filePath) => {
+      expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+        .toThrow('snapshot archive issue review status is invalid');
+    });
+  }
+});
+
+test('rejects issue link authors outside the database enum', async () => {
+  for (const linkedBy of [undefined, 'moderator']) {
+    const archive = await signedArchiveFixture(platformPayloadFixture({
+      issue_link: [{
+        issue_id: 'issue-1', item_id: 'item-1', cluster_id: null, linked_by: linkedBy,
+      }],
+      counts: { issue: 1, issue_link: 1, result_page: 0, submission: 1, ballot: 1 },
+    }));
+
+    withSnapshotFile(archive, (filePath) => {
+      expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+        .toThrow('snapshot archive issue link author is invalid');
+    });
+  }
+});
+
+test('rejects result page titles outside the database trimmed length bounds', async () => {
+  for (const title of ['   ', 'x'.repeat(301)]) {
+    const archive = await signedArchiveFixture(platformPayloadFixture({
+      result_page: [{
+        id: 'result-1', scope: 'topic', scope_id: 'topic-1', token: 'result-token',
+        title, body: {}, org_id: 'org-1',
+      }],
+      counts: { issue: 1, issue_link: 0, result_page: 1, submission: 1, ballot: 1 },
+    }));
+
+    withSnapshotFile(archive, (filePath) => {
+      expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+        .toThrow('snapshot archive result page title is invalid');
+    });
+  }
+});
+
+test('accepts JSON null as a non-SQL-null result page body value', async () => {
+  const archive = await signedArchiveFixture(platformPayloadFixture({
+    result_page: [{
+      id: 'result-1', scope: 'topic', scope_id: 'topic-1', token: 'result-token',
+      title: 'Topic result', body: null, org_id: 'org-1',
+    }],
+    counts: { issue: 1, issue_link: 0, result_page: 1, submission: 1, ballot: 1 },
+  }));
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }).status)
+      .toBe('preflight_passed');
+  });
+});
+
 test('reports organization and polymorphic result parents as distinct external dependencies', async () => {
   const archive = await signedArchiveFixture(platformPayloadFixture({
     result_page: [
-      { id: 'result-topic', scope: 'topic', scope_id: 'topic-2', token: 'token-topic', org_id: 'org-1' },
-      { id: 'result-session', scope: 'session', scope_id: 'session-2', token: 'token-session', org_id: 'org-1' },
-      { id: 'result-assembly', scope: 'assembly', scope_id: 'assembly-1', token: 'token-assembly', org_id: 'org-1' },
+      {
+        id: 'result-topic', scope: 'topic', scope_id: 'topic-2', token: 'token-topic',
+        title: 'Topic result', body: {}, org_id: 'org-1',
+      },
+      {
+        id: 'result-session', scope: 'session', scope_id: 'session-2', token: 'token-session',
+        title: 'Session result', body: {}, org_id: 'org-1',
+      },
+      {
+        id: 'result-assembly', scope: 'assembly', scope_id: 'assembly-1', token: 'token-assembly',
+        title: 'Assembly result', body: {}, org_id: 'org-1',
+      },
     ],
     ballot_response: [{
       id: 'response-1',

@@ -38,6 +38,11 @@ const VALID_BALLOT_SCALES = new Set([2, 4, 5, 7]);
 const VALID_BALLOT_STATUSES = new Set(['draft', 'open', 'closed', 'published', 'archived']);
 const VALID_SUBMISSION_STATUSES = new Set(['draft', 'final', 'reopened', 'archived']);
 const VALID_SUBMISSION_ITEM_KINDS = new Set(['core', 'extra']);
+const VALID_ISSUE_STANCES = new Set(['pro', 'con', 'conditional', 'concern', 'proposal', 'neutral']);
+const VALID_ISSUE_FREQUENCY_CLASSES = new Set(['consensus', 'majority', 'minority', 'mixed']);
+const VALID_ISSUE_ORIGINS = new Set(['ai', 'human']);
+const VALID_ISSUE_REVIEW_STATUSES = new Set(['draft', 'reviewed', 'archived']);
+const VALID_ISSUE_LINK_AUTHORS = new Set(['ai', 'human']);
 const POSTGRES_INTEGER_MIN = -2_147_483_648;
 const POSTGRES_INTEGER_MAX = 2_147_483_647;
 
@@ -292,8 +297,41 @@ function validateSubmissionRows(payload) {
       && (typeof item.rationale !== 'string' || Array.from(item.rationale).length > 2_000)) {
       throw new Error('snapshot archive submission item rationale is invalid');
     }
-    if (item.provenance === null) {
-      throw new Error('snapshot archive submission item provenance is invalid');
+  }
+}
+
+function isNullableEnumValue(value, allowedValues) {
+  return value === null || value === undefined || allowedValues.has(value);
+}
+
+function validateAnalysisRows(payload) {
+  for (const issue of payload.issue) {
+    const labelLength = databaseTrimmedCharacterLength(issue.label);
+    if (labelLength === null || labelLength < 1 || labelLength > 200) {
+      throw new Error('snapshot archive issue label is invalid');
+    }
+    if (!isNullableEnumValue(issue.stance, VALID_ISSUE_STANCES)) {
+      throw new Error('snapshot archive issue stance is invalid');
+    }
+    if (!isNullableEnumValue(issue.frequency_class, VALID_ISSUE_FREQUENCY_CLASSES)) {
+      throw new Error('snapshot archive issue frequency class is invalid');
+    }
+    if (!VALID_ISSUE_ORIGINS.has(issue.origin)) {
+      throw new Error('snapshot archive issue origin is invalid');
+    }
+    if (!VALID_ISSUE_REVIEW_STATUSES.has(issue.review_status)) {
+      throw new Error('snapshot archive issue review status is invalid');
+    }
+  }
+  for (const link of payload.issue_link) {
+    if (!VALID_ISSUE_LINK_AUTHORS.has(link.linked_by)) {
+      throw new Error('snapshot archive issue link author is invalid');
+    }
+  }
+  for (const resultPage of payload.result_page) {
+    const titleLength = databaseTrimmedCharacterLength(resultPage.title);
+    if (titleLength === null || titleLength < 1 || titleLength > 300) {
+      throw new Error('snapshot archive result page title is invalid');
     }
   }
 }
@@ -427,6 +465,7 @@ export function rehearseSnapshotArchiveFile({ filePath, auditKey }) {
   const { archive, payload, counts } = readVerifiedSnapshotArchive({ filePath, auditKey });
   const ids = Object.fromEntries(ID_COLLECTIONS.map((collection) => [collection, collectionIds(payload, collection)]));
   validateSubmissionRows(payload);
+  validateAnalysisRows(payload);
   validateBallotRows(payload);
   for (const [collection, fields] of UNIQUE_KEYS) validateUniqueKey(payload, collection, fields);
   const checkedInternalReferences = [
