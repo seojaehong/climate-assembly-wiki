@@ -6,7 +6,7 @@
 
 실행 권한: `false` — 이 문서의 채택은 production DB, Auth, membership, GRANT, backfill, traffic 변경을 승인하지 않는다.
 
-독립 reader test: 결정 가능성 `PASS`, 승인 경계·gate 안전성 `PASS` — 초안 작성 대화 없이 현재 문서만 읽은 재검수에서 중대한 미해결 항목 없음.
+독립 reader test: Gate 경계 판독 `PASS` — production mutation과 후속 gate가 분리됨을 확인했다. D2·D5·D6의 외부조건은 미해결 상태로 남아 있으며, 이 문서에서는 조건부 결정으로만 다룬다. 검수 결과는 `evaluation/2026-08-25-phase-a-condition-audit.md`에 반영했다.
 
 ## 1. 결정 범위와 현재 위치
 
@@ -48,11 +48,11 @@ P1C의 staff 정책은 같은 기관의 active staff에게 읽기를 허용하�
 
 ### D1. 논리적 테넌시 모델
 
-- **권고**: 단일 DB schema 안에서 `org_id`, membership, RLS를 사용하는 row-level 테넌시
+- **권고**: 현 비공공 managed 배포와 각 물리 deployment 내부에서는 `org_id`, membership, RLS를 사용하는 row-level 테넌시를 기본값으로 둔다.
 - **대안**: 기관별 schema 또는 기관별 database
 - **권고 이유**: P1/P2가 이미 row-level 계약으로 배포됐고 RPC도 org를 서버에서 파생한다. 다른 모델은 migration과 RPC를 기관 수만큼 분기한다.
 - **주요 위험**: RLS/RPC 한 곳의 scope 누락이 기관 간 노출로 이어질 수 있어 deny 테스트와 org 파생 불변식이 필수다.
-- **재검토**: 계약·법률 검토가 물리 격리를 요구하거나 D5가 기관별 프로젝트로 바뀌는 경우
+- **재검토**: 계약·법률 검토가 물리 격리를 요구하거나 D5 확인 결과 공공 트랙에 기관별 프로젝트·database·망분리가 필요한 경우. 이때 공공 트랙의 tenancy topology는 D1을 자동 적용하지 않고 별도로 결정한다.
 
 ### D2. staff Auth 범위
 
@@ -61,6 +61,7 @@ P1C의 staff 정책은 같은 기관의 active staff에게 읽기를 허용하�
 - **권고 이유**: 관리자·운영 데이터와 HQ 행위부터 사용자·기관에 귀속하고, 행사 당일 진행자 로그인 전환은 별도 현장 검증으로 분리한다.
 - **주요 위험**: 기존 조코드 경로는 개인 신원 감사가 약하다. 진행자 경로의 종료 시점과 Auth 전환 E2E가 후속 결정으로 남는다.
 - **재검토**: 진행자 개인별 감사 요구가 확정되거나 현장 Auth 리허설이 완료된 경우
+- **근거 감사**: 상위 역할표도 facilitator를 `join_code (+ 향후 계정)`으로 정의한다. 개인별 감사 의무나 전환 시점은 현재 정본에서 발견되지 않았다.
 
 ### D3. HQ 공유비밀 전환 시점
 
@@ -69,6 +70,7 @@ P1C의 staff 정책은 같은 기관의 active staff에게 읽기를 허용하�
 - **권고 이유**: 공유비밀은 사용자·기관 귀속이 없고 다기관에서 권위 있는 org를 고를 수 없다.
 - **주요 위험**: Auth 계정·membership·세션 복구가 준비되지 않은 상태에서 먼저 전환하면 HQ 운영을 막을 수 있다.
 - **완료 기준**: 실제 Auth JWT의 allow/deny E2E, 세션 만료·로그아웃, rollback을 통과한 뒤에만 staff traffic을 연다.
+- **근거 감사**: 상위 아키텍처 플랜이 노출 이력과 자기신고 actor 문제 때문에 이 전환을 Phase 2 선행조건으로 이미 고정했다. 남은 것은 방향 선택이 아니라 별도 gate의 안전한 실행 승인이다.
 
 ### D4. 설계 셀프서비스 범위
 
@@ -77,16 +79,17 @@ P1C의 staff 정책은 같은 기관의 active staff에게 읽기를 허용하�
 - **권고 이유**: 청사진 UI와 dry-run plan은 이미 구현돼 입력 책임을 기관에 둘 수 있고, production executor는 아직 연결하지 않아 실행 통제를 유지할 수 있다.
 - **주요 위험**: 현재 RPC role check는 별도 2인 승인을 뜻하지 않는다. 2인 승인이나 승인 SLA가 필요하면 approval ledger와 독립 reviewer 계약을 추가해야 한다.
 - **완료 기준**: 작성→검증→승인 요청→authorized execution→receipt→rollback의 한 pilot rehearsal. 실패 책임자는 실행 담당 staff, 데이터 의미 책임자는 승인자다.
+- **근거 감사**: 현재 검수 계약은 reviewer·timestamp·append-only event를 요구하지만 2인 승인 또는 SLA 의무는 두지 않는다. 이를 요구하면 기존 계약의 해석이 아니라 신규 제품 요구사항이다.
 
 ### D5. 물리적 호스팅·격리
 
-- **권고**: 단일 Supabase 프로젝트 유지
-- **대안**: 기관별 Supabase 프로젝트 또는 별도 region/project
+- **권고**: 두 검토 트랙을 분리한다. 비공공 SaaS·내부 pilot은 managed 단일 Supabase를 유지한다. 공공조달은 데이터 분류와 cloud provider·기반 인프라의 CSAP 적격성을 먼저 확인한 뒤 물리 topology를 별도 결정한다. CSAP 적격 IaaS의 셀프호스트는 검토할 수 있는 fallback이지 Gate A에서 확정하는 기본값이 아니다.
+- **대안**: 적격성 확인 없이 모든 고객을 managed 한 트랙으로 운영하거나, 확인 전에 모든 고객을 기관별·셀프호스트 배포로 분리
 - **D1과의 차이**: D1은 한 DB 안의 논리적 행 격리이고, D5는 장애·운영·법률 경계를 나누는 물리적 배포 결정이다.
-- **권고 이유**: 공통 migration·백업·배포 경로를 하나로 유지하고 현재 production 구성을 바꾸지 않는다.
-- **주요 위험**: 장애 영향 범위와 리소스 경합이 모든 기관에 공유된다.
-- **재검토**: 발주 문서·계약·개인정보 영향평가가 별도 프로젝트/region을 요구하거나 운영 실측이 공용 자원 한계를 입증한 경우
-- **결정 전 외부 확인**: 현재 발주 문서·계약·개인정보 영향평가에 물리 격리 또는 region 의무가 있는지 확인한다. 확인 전에는 단일 프로젝트를 비-production 설계 가정으로만 쓸 수 있고 production D5는 조건부다.
+- **권고 이유**: 현재 vertical의 공통 migration·백업·배포를 유지하되, 확인되지 않은 provider 적격성이나 물리 격리 방식을 제품 결정으로 선결하지 않는다.
+- **주요 위험**: 공공 트랙이 별도 배포로 결정되면 migration·인증·복구 drift가 생길 수 있다. 데이터 등급과 provider·기반 인프라 적격성이 정해지지 않으면 region·기관별 DB·물리 망분리 요구도 확정할 수 없다.
+- **재검토**: 비공공 트랙도 계약상 물리 격리가 필요하거나 공용 자원 한계가 입증된 경우
+- **결정 전 외부 확인**: 공공 트랙의 정치적 의견·음성 데이터 등급, 필요한 CSAP 등급, cloud provider·기반 인프라 적격성, 기관별 물리 격리 요구를 법률·컴플라이언스 검토로 확정한다. 현재 개인정보 처리방침은 v0.1이며 관련 법률 검토와 책임자 지정이 남아 있다.
 
 ### D6. 플랫폼화 범위
 
@@ -95,11 +98,12 @@ P1C의 staff 정책은 같은 기관의 active staff에게 읽기를 허용하�
 - **제품 근거**: 단일 행사 UI를 넘어 기관별 데이터 귀속, 승인된 접근, 반복 가능한 설계가 있어야 재사용 가능한 운영 제품이 된다.
 - **완료 기준**: 한 pilot 범위에서 비공개 계획 생성, role별 allow/deny, 설계 dry-run, rollback과 receipt를 재현한다. production mutation은 각 gate 승인 전까지 제외한다.
 - **중단 조건**: 대상 기관·운영 owner가 없거나 A3 멱등 저장·receipt 계약을 승인할 수 없으면 production adapter 개발 전에 멈춘다.
+- **근거 감사**: 1차 고객군은 갈등관리 수행사 화이트라벨로 권고되어 있다. 다만 named pilot 기관, 운영 owner, 기술·법률 책임자는 정본에서 확정되지 않았다.
 - **결정 전 외부 확인**: pilot 기관, 운영 owner, A3 멱등 저장·receipt 계약 승인 책임자를 확인한다. 미확정이면 repository의 non-production 계약·verifier까지만 조건부 지속하고 production adapter는 보류한다.
 
 ### 권고 결정 기록 문구
 
-> D1 row-level 논리 테넌시, D2 관리자·운영자·HQ 우선 Auth, D3 staff traffic 전 HQ membership 전환, D4 설계 마법사와 authorized execution 분리, D5 단일 Supabase 프로젝트, D6 정의된 최소 범위의 Phase 2+ 개발 지속을 제품 방향으로 승인한다. Gate A 제품 결정과 비-production 개발 방향만 승인하며 production DB·Auth·membership·GRANT·backfill·traffic mutation은 승인하지 않는다.
+> D1 현 비공공 managed 배포와 각 물리 deployment 내부의 row-level 논리 테넌시, D2 관리자·운영자·HQ 우선 Auth와 facilitator 후속 전환, D3 staff traffic 전 HQ membership 전환, D4 설계 마법사와 authorized execution 분리, D5 비공공 managed 유지와 공공 CSAP 적격성 확인 후 topology 별도 결정, D6 갈등관리 수행사 화이트라벨을 우선한 최소 범위의 Phase 2+ 개발 지속을 제품 방향으로 승인한다. Gate A 제품 결정과 비-production 개발 방향만 승인하며 production DB·Auth·membership·GRANT·backfill·traffic mutation은 승인하지 않는다.
 
 개별 항목을 승인할 때도 다음 한정문을 반드시 붙인다.
 
@@ -107,7 +111,7 @@ P1C의 staff 정책은 같은 기관의 active staff에게 읽기를 허용하�
 
 일부 항목을 보류하면 의존하는 개발도 보류한다. D1 또는 D5가 보류되면 테넌시 production 작업을, D2 또는 D3가 보류되면 staff traffic 작업을, D4가 보류되면 A4 production adapter를, D6가 보류되면 Phase 2+ 신규 구현을 시작하지 않는다.
 
-D2의 진행자 개인 감사 요구, D4의 2인 승인 요구, D5의 물리 격리 의무, D6의 pilot owner 중 확인되지 않은 항목은 `조건부`로 기록한다. 조건부 결정은 repository의 문서·계약·검증 코드만 허용하며 관련 production adapter와 gate 요청을 보류한다.
+D2의 진행자 전환 시점, D5 공공 트랙의 데이터 등급·CSAP 등급·provider/인프라 적격성·tenancy topology, D6의 named pilot·owner는 `조건부`로 기록한다. D4의 2인 승인은 현 요구사항이 아니며 사용자가 새 요구로 채택할 때만 조건부로 추가한다. 조건부 결정은 repository의 문서·계약·검증 코드만 허용하며 관련 production adapter와 gate 요청을 보류한다.
 
 ## 4. 근거와 증거 수준
 
@@ -117,6 +121,7 @@ D2의 진행자 개인 감사 요구, D4의 2인 승인 요구, D5의 물리 격
 | A2/P1C | 승인 기록 `dc43432`, activation bundle `21977d9`, PostgreSQL rehearsal | 초안·격리 리허설 | production P1C/preflight, 실제 readiness, Auth JWT E2E |
 | A3 | 계획 `edfd2ec`, executor core 보강 `ea57e86` | 로컬 core 검증 | production adapter, invitation ledger, 메일 provider, append-only receipt 저장소 |
 | A4 | 계약 `fa4d0fe`, plan `4ab55b5`, migration 계열 `873a50f..e9721eb`, CI run `32844877353` | 초안·격리 PostgreSQL·CI | production migration, 실제 mapping/readiness, RPC 권한, executor adapter |
+| D2~D6 외부조건 | `evaluation/2026-08-25-phase-a-condition-audit.md` | 로컬 정본·공식 CSAP 자료 근거 감사 | 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·topology, named pilot·owner |
 
 `readyForExecution:false`는 `platform-design-provisioning-plan.mjs` 출력의 승인 전 불변식이다. migration 초안 승인이나 bundle verifier 성공을 production readiness 또는 실행 승인으로 해석하지 않는다.
 
@@ -243,3 +248,4 @@ P1C count-only RPC는 P1·P1C·P2가 모두 있어야 하므로 Gate B-A2가 Gat
 - `evaluation/2026-08-16-platform-a2-postgres-rehearsal.md`
 - `evaluation/platform-a4-migration-bundle.json`
 - `evaluation/2026-08-25-platform-a4-migration-draft.md`
+- `evaluation/2026-08-25-phase-a-condition-audit.md`
