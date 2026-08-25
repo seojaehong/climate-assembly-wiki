@@ -41,8 +41,14 @@ const TEST_AUDIT_OPTIONS = { auditKey: TEST_AUDIT_KEY, auditContext: TEST_AUDIT_
 
 function platformPayloadFixture(overrides = {}) {
   return {
-    submission: [{ id: 'submission-1', topic_id: 'topic-1', team_id: 'team-1', org_id: 'org-1' }],
-    submission_item: [{ id: 'item-1', submission_id: 'submission-1', ordinal: 1 }],
+    submission: [{
+      id: 'submission-1', topic_id: 'topic-1', team_id: 'team-1',
+      status: 'draft', org_id: 'org-1',
+    }],
+    submission_item: [{
+      id: 'item-1', submission_id: 'submission-1', ordinal: 1,
+      kind: 'core', content: 'Participant statement', rationale: null, provenance: {},
+    }],
     issue: [{ id: 'issue-1', topic_id: 'topic-1', org_id: 'org-1' }],
     issue_link: [],
     result_page: [],
@@ -470,8 +476,14 @@ test('rejects duplicate composite keys that would make an isolated restore fail'
 test('rejects duplicate child ordinals even when row ids are distinct', async () => {
   const archive = await signedArchiveFixture(platformPayloadFixture({
     submission_item: [
-      { id: 'item-1', submission_id: 'submission-1', ordinal: 1 },
-      { id: 'item-2', submission_id: 'submission-1', ordinal: 1 },
+      {
+        id: 'item-1', submission_id: 'submission-1', ordinal: 1,
+        kind: 'core', content: 'First statement', rationale: null, provenance: {},
+      },
+      {
+        id: 'item-2', submission_id: 'submission-1', ordinal: 1,
+        kind: 'extra', content: 'Second statement', rationale: null, provenance: {},
+      },
     ],
   }));
 
@@ -483,12 +495,122 @@ test('rejects duplicate child ordinals even when row ids are distinct', async ()
 
 test('rejects an orphaned internal reference before any database restore is attempted', async () => {
   const archive = await signedArchiveFixture(platformPayloadFixture({
-    submission_item: [{ id: 'item-1', submission_id: 'missing-submission', ordinal: 1 }],
+    submission_item: [{
+      id: 'item-1', submission_id: 'missing-submission', ordinal: 1,
+      kind: 'core', content: 'Participant statement', rationale: null, provenance: {},
+    }],
   }));
 
   withSnapshotFile(archive, (filePath) => {
     expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
       .toThrow('snapshot archive broken reference: submission_item.submission_id');
+  });
+});
+
+test('rejects submission statuses outside the database enum', async () => {
+  for (const status of [undefined, 'closed']) {
+    const archive = await signedArchiveFixture(platformPayloadFixture({
+      submission: [{
+        id: 'submission-1', topic_id: 'topic-1', team_id: 'team-1', status, org_id: 'org-1',
+      }],
+    }));
+
+    withSnapshotFile(archive, (filePath) => {
+      expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+        .toThrow('snapshot archive submission status is invalid');
+    });
+  }
+});
+
+test('rejects submission item ordinals that are not PostgreSQL integers', async () => {
+  for (const ordinal of [null, 1.5, -2_147_483_649]) {
+    const archive = await signedArchiveFixture(platformPayloadFixture({
+      submission_item: [{
+        id: 'item-1', submission_id: 'submission-1', ordinal,
+        kind: 'core', content: 'Participant statement', rationale: null, provenance: {},
+      }],
+    }));
+
+    withSnapshotFile(archive, (filePath) => {
+      expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+        .toThrow('snapshot archive submission item ordinal is invalid');
+    });
+  }
+});
+
+test('rejects submission item kinds outside the database enum', async () => {
+  for (const kind of [undefined, 'other']) {
+    const archive = await signedArchiveFixture(platformPayloadFixture({
+      submission_item: [{
+        id: 'item-1', submission_id: 'submission-1', ordinal: 1,
+        kind, content: 'Participant statement', rationale: null, provenance: {},
+      }],
+    }));
+
+    withSnapshotFile(archive, (filePath) => {
+      expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+        .toThrow('snapshot archive submission item kind is invalid');
+    });
+  }
+});
+
+test('rejects submission item content outside the database trimmed length bounds', async () => {
+  for (const content of ['   ', 'x'.repeat(2_001)]) {
+    const archive = await signedArchiveFixture(platformPayloadFixture({
+      submission_item: [{
+        id: 'item-1', submission_id: 'submission-1', ordinal: 1,
+        kind: 'core', content, rationale: null, provenance: {},
+      }],
+    }));
+
+    withSnapshotFile(archive, (filePath) => {
+      expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+        .toThrow('snapshot archive submission item content is invalid');
+    });
+  }
+});
+
+test('rejects submission item rationale outside the nullable database length bound', async () => {
+  for (const rationale of [17, 'x'.repeat(2_001)]) {
+    const archive = await signedArchiveFixture(platformPayloadFixture({
+      submission_item: [{
+        id: 'item-1', submission_id: 'submission-1', ordinal: 1,
+        kind: 'core', content: 'Participant statement', rationale, provenance: {},
+      }],
+    }));
+
+    withSnapshotFile(archive, (filePath) => {
+      expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+        .toThrow('snapshot archive submission item rationale is invalid');
+    });
+  }
+});
+
+test('rejects a null submission item provenance required by the database', async () => {
+  const archive = await signedArchiveFixture(platformPayloadFixture({
+    submission_item: [{
+      id: 'item-1', submission_id: 'submission-1', ordinal: 1,
+      kind: 'core', content: 'Participant statement', rationale: null, provenance: null,
+    }],
+  }));
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(() => rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toThrow('snapshot archive submission item provenance is invalid');
+  });
+});
+
+test('accepts omitted nullable and defaulted submission item fields', async () => {
+  const archive = await signedArchiveFixture(platformPayloadFixture({
+    submission_item: [{
+      id: 'item-1', submission_id: 'submission-1', ordinal: 1,
+      kind: 'core', content: 'Participant statement',
+    }],
+  }));
+
+  withSnapshotFile(archive, (filePath) => {
+    expect(rehearseSnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }).status)
+      .toBe('preflight_passed');
   });
 });
 

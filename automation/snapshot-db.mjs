@@ -36,6 +36,8 @@ const UNIQUE_KEYS = [
 ];
 const VALID_BALLOT_SCALES = new Set([2, 4, 5, 7]);
 const VALID_BALLOT_STATUSES = new Set(['draft', 'open', 'closed', 'published', 'archived']);
+const VALID_SUBMISSION_STATUSES = new Set(['draft', 'final', 'reopened', 'archived']);
+const VALID_SUBMISSION_ITEM_KINDS = new Set(['core', 'extra']);
 const POSTGRES_INTEGER_MIN = -2_147_483_648;
 const POSTGRES_INTEGER_MAX = 2_147_483_647;
 
@@ -263,6 +265,39 @@ function databaseTrimmedCharacterLength(value) {
   return Array.from(value.replace(/^ +| +$/gu, '')).length;
 }
 
+function isPostgresInteger(value) {
+  return Number.isInteger(value)
+    && value >= POSTGRES_INTEGER_MIN
+    && value <= POSTGRES_INTEGER_MAX;
+}
+
+function validateSubmissionRows(payload) {
+  for (const submission of payload.submission) {
+    if (!VALID_SUBMISSION_STATUSES.has(submission.status)) {
+      throw new Error('snapshot archive submission status is invalid');
+    }
+  }
+  for (const item of payload.submission_item) {
+    if (!isPostgresInteger(item.ordinal)) {
+      throw new Error('snapshot archive submission item ordinal is invalid');
+    }
+    if (!VALID_SUBMISSION_ITEM_KINDS.has(item.kind)) {
+      throw new Error('snapshot archive submission item kind is invalid');
+    }
+    const contentLength = databaseTrimmedCharacterLength(item.content);
+    if (contentLength === null || contentLength < 1 || contentLength > 2_000) {
+      throw new Error('snapshot archive submission item content is invalid');
+    }
+    if (item.rationale !== null && item.rationale !== undefined
+      && (typeof item.rationale !== 'string' || Array.from(item.rationale).length > 2_000)) {
+      throw new Error('snapshot archive submission item rationale is invalid');
+    }
+    if (item.provenance === null) {
+      throw new Error('snapshot archive submission item provenance is invalid');
+    }
+  }
+}
+
 function validateBallotRows(payload) {
   for (const ballot of payload.ballot) {
     const titleLength = databaseTrimmedCharacterLength(ballot.title);
@@ -274,9 +309,7 @@ function validateBallotRows(payload) {
     }
   }
   for (const item of payload.ballot_item) {
-    if (!Number.isInteger(item.ordinal)
-      || item.ordinal < POSTGRES_INTEGER_MIN
-      || item.ordinal > POSTGRES_INTEGER_MAX) {
+    if (!isPostgresInteger(item.ordinal)) {
       throw new Error('snapshot archive ballot item ordinal is invalid');
     }
     const statementLength = databaseTrimmedCharacterLength(item.statement);
@@ -393,6 +426,7 @@ function unionSize(...sets) {
 export function rehearseSnapshotArchiveFile({ filePath, auditKey }) {
   const { archive, payload, counts } = readVerifiedSnapshotArchive({ filePath, auditKey });
   const ids = Object.fromEntries(ID_COLLECTIONS.map((collection) => [collection, collectionIds(payload, collection)]));
+  validateSubmissionRows(payload);
   validateBallotRows(payload);
   for (const [collection, fields] of UNIQUE_KEYS) validateUniqueKey(payload, collection, fields);
   const checkedInternalReferences = [

@@ -131,6 +131,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A6 ballot 행 복원 제약 검증(2026-08-26):** archive recovery preflight가 `ballot.title`의 PostgreSQL 공백 제거 후 1~200자, `status`의 5개 허용 상태, `ballot_item.statement`의 공백 제거 후 1~300자, `ordinal`의 PostgreSQL `integer` 범위를 복원 전에 검사한다. Unicode 길이는 DB character 의미로 계산하고, 실패 오류에는 제목·문항·ID를 넣지 않는다. 집중 36건, automation 전체 381건, 루트 전체 64개 파일·1,060건이 통과했다. 이는 서명된 로컬 archive의 읽기 전용 검사이며 DB 연결·격리 복원·Drive 변경·PITR/WAL 검증을 수행하지 않는다.
 
+**A6 submission 행 복원 제약 검증(2026-08-26):** 같은 recovery preflight가 `submission.status`의 4개 허용 상태와 `submission_item`의 PostgreSQL `integer` 순서, `core|extra` 종류, 공백 제거 후 1~2,000자 본문, nullable 2,000자 근거, non-null provenance를 검사한다. Unicode 길이는 DB character 의미로 계산하고 실패 오류에는 참가자 원문·근거·ID를 넣지 않는다. 집중 43건, automation 전체 388건, 루트 전체 64개 파일·1,060건이 통과했다. 명시되지 않은 nullable 근거와 provenance는 DB default 복원 가능성을 보존하고, 명시적인 잘못된 값만 거부한다. DB 연결·격리 복원·Drive 변경·PITR/WAL 검증은 수행하지 않았다.
+
 **A2 권한 활성화 초안 분리(2026-08-17):** staff 직접 권한을 기본 P1→P1C→P2 migration chain과 주석에서 분리한 `platform_p1c_org_selection_activation.sql`을 추가했다. 이 초안은 schema USAGE, membership SELECT, assembly/session/topic/submission/ballot의 SELECT·INSERT·UPDATE만 발급하고 DELETE나 org_context 직접 접근을 허용하지 않는다. 기본 driver는 이 파일을 실행하지 않고 semantic rehearsal만 별도 적용→활성 검증→권한 rollback→휴면 검증 순서를 실행한다. production migration·GRANT·Auth·membership·data는 변경하지 않았다.
 
 **A2 권한 원자성 검증(2026-08-17):** activation과 대응 권한 rollback을 각각 하나의 transaction으로 묶었다. PostgreSQL 16 semantic rehearsal은 활성화 대상 테이블 누락 시 앞서 실행된 schema·membership GRANT가 남지 않는지, rollback 대상 누락 시 기존 활성 권한이 부분 회수되지 않는지를 음성 경로로 검증한다. 실제 production 권한은 변경하지 않았다.
