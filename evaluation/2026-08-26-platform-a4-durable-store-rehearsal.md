@@ -37,16 +37,17 @@
 17. 합성 HMAC key와 exact key ID를 직접 주입한 audit는 정상 receipt의 canonical digest를 상수시간 비교해 `receiptSignatureVerified:true`를 반환하고, 위조 digest·부분 key 설정을 식별값 노출 없이 거부했다. receipt 0개와 기본 keyless audit는 계속 `false`다.
 18. Linux CI의 실제 6-process 경쟁에서 publisher가 temp를 열거 직후 정상 unlink하는 race를 재현했다. temp가 존재하면 owned regular file 검증을 유지하고 검사 중 ENOENT로 사라지면 정상 publish cleanup으로 무시하도록 수정했으며, 같은 경쟁을 Windows에서 연속 3회 재검증했다.
 19. 현재 store inventory를 외부 보관 후보 checkpoint로 비식별 HMAC 봉인했다. checkpoint 검증 audit는 approval 디렉터리·receipt 삭제와 이후 journal tail 추가, checkpoint digest 변조·부분 설정을 거부하고 exact inventory 복원과 기본 10분 freshness가 모두 맞을 때만 `catalogCompletenessVerified:true`, `checkpointFreshnessVerified:true`를 반환했다. 검증 시각 누락·10분 초과·미래 checkpoint와 잘못된 최대 나이도 거부했다.
+20. terminal claim의 canonical 시각 형식뿐 아니라 `finalizedAt >= claimedAt` 순서를 journal append 전에 검증한다. claim보다 1ms 앞선 completed claim을 직접 adapter에 전달한 부정 테스트는 journal에 기록하지 않고 거부됐다.
 
 기본 전체-store audit는 checkpoint가 없어 `catalogCompletenessVerified:false`, `checkpointFreshnessVerified:false`다. 합성 off-store checkpoint가 exact inventory와 로컬 시간 경계를 모두 통과할 때만 둘 다 `true`지만, 실제 외부 보관·production key custody/rotation·독립 timestamp authority 증거로 승격하지 않는다.
 
 ## 자동화 검증
 
-- A4 plan·bundle 집중: 2개 파일, 55건 통과
-- automation 전체: 27개 파일, 414건 통과
+- A4 plan·bundle 집중: 2개 파일, 56건 통과
+- automation 전체: 27개 파일, 415건 통과
 - 애플리케이션 전체: 64개 파일, 1,060건 통과
 - Astro check: 330개 파일, 오류 0건, 기존 hint 49건
-- A4 bundle: artifact 17개, checksum `6762bbe8bccf20615c88a74b2b14dac86c3596ae742d49470c4c65cc94242acf`
+- A4 bundle: artifact 17개, checksum `7bedf50e032e92c803ab551df528721f3f63348e4e6bebc05eccc5693d6a7487`
 
 ## 남은 production blocker
 

@@ -823,6 +823,30 @@ test('serializes concurrent durable claims and preserves append-only receipt con
   }
 });
 
+test('rejects a durable terminal claim finalized before it was claimed', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const { plan, approval } = executionApproval();
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: approval.approvalId, context: liveContext() },
+    });
+    const authorizationAdapter = createLocalDesignProvisioningAuthorizationAdapter({ directory });
+    const initialSnapshot = await authorizationAdapter.readSnapshot(approval.approvalId);
+    const claimedState = claimedApprovalState(approval, plan);
+    await authorizationAdapter.claim(initialSnapshot, claimedState.claim);
+    const claimedSnapshot = await authorizationAdapter.readSnapshot(approval.approvalId);
+
+    await expect(authorizationAdapter.finalize(claimedSnapshot, {
+      ...claimedState.claim,
+      status: 'completed',
+      finalizedAt: '2026-08-25T13:04:59.999Z',
+    })).rejects.toThrow('authorization claim is invalid');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test('fails closed when a durable authorization journal record is modified', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
   const approvalId = approvalMetadata().approvalId;

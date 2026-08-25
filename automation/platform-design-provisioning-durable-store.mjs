@@ -234,7 +234,8 @@ function validateClaim(claim, approvalId) {
     || !SHA256_PATTERN.test(claim.planChecksum ?? '')
     || !['claimed', 'completed', 'failed'].includes(claim.status)
     || new Date(claim.claimedAt).toISOString() !== claim.claimedAt
-    || (terminal && new Date(claim.finalizedAt).toISOString() !== claim.finalizedAt)) {
+    || (terminal && new Date(claim.finalizedAt).toISOString() !== claim.finalizedAt)
+    || (terminal && Date.parse(claim.finalizedAt) < Date.parse(claim.claimedAt))) {
     throw new Error('Local design provisioning authorization claim is invalid');
   }
   return structuredClone(claim);
