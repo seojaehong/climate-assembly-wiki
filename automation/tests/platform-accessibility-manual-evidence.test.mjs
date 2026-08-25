@@ -23,7 +23,7 @@ test('creates the complete manual accessibility evaluation matrix as not run', (
     'desktop-screen-reader',
     'mobile-screen-reader',
   ]);
-  expect(evidence.cases).toHaveLength(12);
+  expect(evidence.cases).toHaveLength(14);
   expect(new Set(evidence.cases.map((item) => item.surfaceId))).toEqual(new Set([
     'platform-login',
     'authenticated-platform',
@@ -31,6 +31,7 @@ test('creates the complete manual accessibility evaluation matrix as not run', (
     'public-result-unpublished',
     'published-result',
     'ontology-review',
+    'kwcag-cross-surface',
   ]));
   expect(evidence.cases.every((item) => item.path && item.setup)).toBe(true);
   expect(evidence.cases.every((item) => item.checks.every((check) => check.procedure && check.expected))).toBe(true);
@@ -46,12 +47,12 @@ test('keeps an untouched template in needs review with exact counts', () => {
 
   expect(evaluateManualAccessibilityEvidence(evidence)).toEqual({
     status: 'needs_review',
-    caseCount: 12,
-    checkCount: 50,
+    caseCount: 14,
+    checkCount: 80,
     passCount: 0,
     failCount: 0,
     blockedCount: 0,
-    notRunCount: 50,
+    notRunCount: 80,
   });
 });
 
@@ -160,7 +161,7 @@ test('CLI verifies valid evidence and does not echo malformed source data', () =
       evidencePath,
     ], { encoding: 'utf8' });
     expect(verified.status).toBe(0);
-    expect(JSON.parse(verified.stdout)).toMatchObject({ status: 'needs_review', caseCount: 12, notRunCount: 50 });
+    expect(JSON.parse(verified.stdout)).toMatchObject({ status: 'needs_review', caseCount: 14, notRunCount: 80 });
 
     writeFileSync(malformedPath, '{"secret":"must-not-echo"', 'utf8');
     const malformed = spawnSync(process.execPath, [

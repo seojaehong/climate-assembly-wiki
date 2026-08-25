@@ -19,6 +19,8 @@ on:
       - 'automation/tests/verify-platform-design-blueprint.test.mjs'
       - 'automation/platform-accessibility-manual-evidence.mjs'
       - 'automation/tests/platform-accessibility-manual-evidence.test.mjs'
+      - 'automation/platform-accessibility-kwcag-coverage.mjs'
+      - 'automation/tests/platform-accessibility-kwcag-coverage.test.mjs'
       - 'evaluation/platform-accessibility-manual-evaluation.json'
       - 'automation/package*.json'
       - 'package*.json'
@@ -43,6 +45,8 @@ on:
       - 'automation/tests/verify-platform-design-blueprint.test.mjs'
       - 'automation/platform-accessibility-manual-evidence.mjs'
       - 'automation/tests/platform-accessibility-manual-evidence.test.mjs'
+      - 'automation/platform-accessibility-kwcag-coverage.mjs'
+      - 'automation/tests/platform-accessibility-kwcag-coverage.test.mjs'
       - 'evaluation/platform-accessibility-manual-evaluation.json'
       - 'automation/package*.json'
       - 'package*.json'
@@ -98,6 +102,14 @@ jobs:
         run: |
           rm -f ../.artifacts/platform-accessibility-audit.json
           npm run audit:platform-accessibility
+      - name: Map automated and manual evidence to KWCAG 2.2
+        working-directory: automation
+        run: |
+          rm -f ../.artifacts/platform-accessibility-kwcag-coverage.json
+          npm run audit:platform-accessibility-kwcag -- \
+            --automated-report ../.artifacts/platform-accessibility-audit.json \
+            --manual-evidence ../evaluation/platform-accessibility-manual-evaluation.json \
+            --output ../.artifacts/platform-accessibility-kwcag-coverage.json
       - name: Verify auth, access, design, review, and publish interactions
         working-directory: automation
         env:
@@ -113,5 +125,6 @@ jobs:
           name: platform-accessibility-audit
           path: |
             .artifacts/platform-accessibility-audit.json
+            .artifacts/platform-accessibility-kwcag-coverage.json
             .artifacts/platform-design-blueprint-browser.json
           if-no-files-found: error

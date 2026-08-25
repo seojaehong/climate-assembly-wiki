@@ -82,6 +82,29 @@ export const MANUAL_ACCESSIBILITY_SURFACES = [
       { id: 'decision-and-download', procedure: '모든 항목을 키보드로 검수한 뒤 완료 plan 다운로드를 실행한다.', expected: '모든 필수 결정 전에는 다운로드가 비활성이고 완료 후 파일을 내려받을 수 있으며 DB·공개 그래프 미반영 경계가 안내된다.' },
     ],
   },
+  {
+    id: 'kwcag-cross-surface',
+    label: 'KWCAG 2.2 표면 간 공통 검수',
+    path: '/platform/accessibility/',
+    setup: 'KWCAG 2.2 적용 범위인 6개 표면을 모두 열고 해당 기능의 존재·비존재와 대체수단을 함께 검수한다.',
+    checks: [
+      { id: 'non-text-content', procedure: '정보성 이미지·아이콘·차트와 장식 이미지를 표면별로 탐색한다.', expected: '정보성 텍스트 아닌 콘텐츠에는 용도에 맞는 대체 텍스트가 있고 장식은 보조기술에서 제외된다.' },
+      { id: 'multimedia-alternatives', procedure: '음성·영상·실시간 미디어의 존재를 표면별로 확인하고 존재하면 자막·대본·수어 대체수단을 실행한다.', expected: '멀티미디어가 없음이 기록되거나 있는 모든 멀티미디어의 동등한 대체수단을 이용할 수 있다.' },
+      { id: 'instructions-color-and-contrast', procedure: '모양·위치·방향·색·소리만으로 제공되는 지시와 색상만으로 구분되는 상태를 찾고 텍스트·공통 UI·인접 영역의 명도 대비를 확인한다.', expected: '모든 지시와 상태를 색이나 위치 없이 이해할 수 있고 텍스트와 인접 콘텐츠가 필요한 대비와 구분을 제공한다.' },
+      { id: 'audio-and-moving-content', procedure: '페이지 진입 후 자동 재생되는 소리와 자동으로 변경·이동·스크롤되는 콘텐츠를 확인한다.', expected: '자동 음성이 없고 자동 변경 콘텐츠가 있다면 정지·일시정지·탐색 수단을 키보드와 보조기술로 이용할 수 있다.' },
+      { id: 'keyboard-focus-and-shortcuts', procedure: '모든 기능을 키보드로 실행하고 초점 순서·표시·이탈을 확인한 뒤 문자 단축키 사용 여부를 점검한다.', expected: '키보드만으로 모든 기능을 이용할 수 있고 초점이 논리적으로 이동·표시되며 문자 단축키는 오동작을 방지한다.' },
+      { id: 'time-limits', procedure: '세션·입력·알림·상태 갱신의 시간제한을 찾고 연장·해제·조절 수단을 확인한다.', expected: '시간제한이 없음이 기록되거나 있는 제한은 사전 안내와 조절·연장 수단을 제공한다.' },
+      { id: 'flashing-content', procedure: '깜빡임·번짝임·빠른 점멸 효과를 표면별로 확인한다.', expected: '광과민성 발작을 유발할 수 있는 빈도의 깜빡임과 번짝임을 사용하지 않는다.' },
+      { id: 'language-titles-and-links', procedure: '문서 기본 언어, 페이지·프레임·콘텐츠 블록 제목과 링크 목적을 랜드마크·제목·링크 목록으로 확인한다.', expected: '기본 언어가 명시되고 제목과 링크 텍스트만으로 위치와 목적을 이해할 수 있다.' },
+      { id: 'electronic-publication-reference', procedure: '전자출판문서 형식 콘텐츠 존재 여부를 확인하고 존재하면 고정된 참조 위치 정보를 탐색한다.', expected: '해당 콘텐츠가 없음이 기록되거나 있다면 페이지·절·위치를 일관되게 참조할 수 있다.' },
+      { id: 'pointer-input', procedure: '다중 포인터·경로·드래그·기기 동작으로 실행되는 기능과 누름 순간 실행되는 기능을 확인한다.', expected: '단일 포인터 대체수단, 입력 취소·되돌리기, UI 대체 조작을 제공하고 조작 크기가 충분하다.' },
+      { id: 'context-and-help', procedure: '초점·입력만으로 새 창·페이지·설정이 바뀌는지 확인하고 도움 정보가 있는 페이지의 위치가 일관되는지 비교한다.', expected: '사용자가 의도하거나 사전 안내받은 때만 맥락이 변경되고 제공되는 도움 정보를 같은 상대 위치에서 찾을 수 있다.' },
+      { id: 'errors-labels-and-repeated-input', procedure: '필수·형식 오류를 발생시켜 식별·설명·정정 수단을 확인하고 레이블·네임 일치와 반복 입력 자동 완성을 검수한다.', expected: '오류 위치와 정정 방법이 안내되고 모든 입력에 대응 레이블이 있으며 이미 제공한 정보는 재입력하지 않아도 된다.' },
+      { id: 'accessible-authentication', procedure: '로그인·재인증·회복 경로에서 기억·퍼즐·복사 금지 등 인지 기능 테스트 의존성과 대체수단을 확인한다.', expected: '인지 기능 테스트에만 의존하지 않고 비밀번호 관리자·붙여넣기·보조기술을 방해하지 않는 대체 인증을 제공한다.' },
+      { id: 'markup-validity', procedure: 'DOM 검사 도구로 중복 ID, 잘못된 중첩·닫힘, 중복 속성과 보조기술에 노출되는 구조 오류를 확인한다.', expected: '마크업 오류가 없고 요소의 이름·역할·값·상태가 보조기술에 일관되게 노출된다.' },
+      { id: 'web-application-compatibility', procedure: '로그인, 조직 탐색, 결과, 검수 앱의 커스텀 UI를 스크린리더·키보드·터치로 끝까지 실행한다.', expected: '웹 애플리케이션의 모든 필수 과업에서 접근성 API를 통해 이름·역할·상태가 제공되고 키보드·터치 조작이 성공한다.' },
+    ],
+  },
 ];
 
 function emptyEnvironment() {

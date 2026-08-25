@@ -13,6 +13,7 @@
     "export-snapshots": "node export-snapshots-onedrive.mjs",
     "audit:platform-accessibility": "node platform-accessibility-audit.mjs",
     "audit:platform-accessibility-manual": "node platform-accessibility-manual-evidence.mjs",
+    "audit:platform-accessibility-kwcag": "node platform-accessibility-kwcag-coverage.mjs",
     "bridge:canvas-ontology": "node canvas-ontology-bridge.mjs",
     "audit:canvas-db-contract": "node canvas-db-contract.mjs",
     "plan:platform-analysis-import": "node platform-analysis-import.mjs",
