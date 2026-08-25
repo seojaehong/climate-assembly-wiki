@@ -2,12 +2,12 @@
 \if :{?a4_throwaway_fixture}
 \else
   \echo A4 throwaway fixture flag is required
-  \quit 3
+  select 1 / 0 as fixture_guard_failure;
 \endif
 \if :a4_throwaway_fixture
 \else
   \echo A4 throwaway fixture flag must be enabled
-  \quit 3
+  select 1 / 0 as fixture_guard_failure;
 \endif
 
 -- Test-only simulation of a separately approved team ordinal mapping.

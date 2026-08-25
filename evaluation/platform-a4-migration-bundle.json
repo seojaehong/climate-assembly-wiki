@@ -48,8 +48,8 @@
     },
     {
       "path": "supabase/verify/design_provisioning_preflight_legacy_fixture.sql",
-      "sha256": "63a7284eb260d3a90b013bb4e8073ea3423f7ad5214312df785a0b06ac2f3063",
-      "bytes": 1564
+      "sha256": "8e90bfea8b209916d2c6775b4ad2e164e332d9da6889e2c1a5f16a808f28df39",
+      "bytes": 1626
     },
     {
       "path": "supabase/migrations/platform_p3_design_provisioning.sql",
@@ -58,8 +58,8 @@
     },
     {
       "path": "supabase/verify/design_provisioning_preflight_mapping_fixture.sql",
-      "sha256": "f0e7f61b71edb204f9887dca6f013fc2f24bea5a925e742fe6bb96c49ac23fc1",
-      "bytes": 1098
+      "sha256": "48aef0422f9648b056d4f6d48370a404613895470c73f1f58f49504220455a24",
+      "bytes": 1160
     },
     {
       "path": "supabase/verify/design_provisioning_post_apply.sql",
@@ -85,5 +85,5 @@
     "activatesStaffGrants": false,
     "connectsProductionExecutor": false
   },
-  "checksum": "d48e989e3de7f9e344b987096109fc00ae7e40170ae57ae6a18492f4a73bd7ef"
+  "checksum": "4752b045b27f0bb1026960c3c62bd3080c5d2030aa5b5da2228de43dd0e71109"
 }

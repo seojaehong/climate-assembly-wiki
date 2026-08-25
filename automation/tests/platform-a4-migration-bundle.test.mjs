@@ -118,7 +118,7 @@ test('legacy lifecycle fixtures are throwaway-only and CI proves both readiness 
   for (const fixture of [legacyFixture, mappingFixture]) {
     expect(fixture).toContain('a4_throwaway_fixture');
     expect(fixture).toContain('current_database() <> \'verify\'');
-    expect(fixture).toContain('\\quit 3');
+    expect(fixture).toContain('select 1 / 0 as fixture_guard_failure;');
   }
   expect(workflow).toContain('Unguarded A4 fixture unexpectedly succeeded');
   expect(workflow).toContain('\"status\": \"migration_ready\"');
