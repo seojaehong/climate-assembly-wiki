@@ -1,6 +1,6 @@
 # 플랫폼 트랙 — 상태·병합 전 게이트
 
-- 갱신: 2026-08-13
+- 갱신: 2026-08-25
 - 브랜치: `main`
 - **백엔드 스키마와 프론트엔드는 2026-08-10 사용자 승인으로 프로덕션에 배포됨.** 기존 `/mod`·`/b`·`/hq`·`/v` 경로는 유지한다.
 
@@ -145,9 +145,12 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 migration 초안 승인·리허설(2026-08-25):** 사용자 승인에 따라 `platform_p3_design_provisioning.sql` 초안과 대응 rollback, 읽기 전용 preflight/post-apply verifier, PostgreSQL 의미 테스트, byte SHA-256 approval bundle을 추가했다. 초안은 session 필수 열 계약을 재확인하되 기존 행을 추정 backfill하거나 NOT NULL로 바꾸지 않고, team에 nullable ordinal과 `(session_id, ordinal)` stable identity·양수 capacity 제약을 둔다. schema v2 preflight는 기존 team 행이 있을 때도 shape·중복·capacity가 안전하면 `readyForAdditiveMigration:true`를 반환하고, migration 뒤 승인된 ordinal mapping과 session/team 필수값·부모/org 정합성이 끝나기 전까지 `readyForActivation:false`를 유지해 migration-before-column과 backfill-before-activation의 순환을 해소한다. `design_provisioning_operation` ledger와 `design_provision(jsonb, bytea)`는 원 청사진 bytes의 길이·SHA-256을 재계산하고, 기관을 `org_of_uid()`에서 파생해 `org_admin|hq`를 재검증하며 exact plan/checksum/operation hash/부모 순서/기존 resource 일치를 확인한 뒤 plan 전체를 한 transaction으로 처리한다. join code는 transaction 안에서 6자리로 생성하고 제한된 충돌 재시도 뒤 전체 rollback하며 ledger에는 저장하지 않는다. RPC·ledger는 public/anon/authenticated/service_role 모두 권한이 회수된 휴면 초안이다. 기본 rollback은 ledger 행이나 non-null team ordinal이 있으면 객체 제거 전에 `design_provisioning_rollback_requires_data_plan`으로 전체 transaction을 거부해 감사기록·mapping의 조용한 손실을 막는다. PostgreSQL 16 격리 DB에서 legacy team 보존→additive-ready→migration 후 activation 차단→test-only mapping 후 activation-ready, source bytes 불일치 거부, 정상 생성, exact replay, payload·parent 충돌, join-code 소진, 늦은 summary 실패의 전체 transaction rollback, unsafe authenticated GRANT 거부, populated rollback 거부와 객체 보존, exact-scope throwaway cleanup 뒤 최종 rollback을 검증했다. plan blocker는 production 적용 미승인과 migration/RPC/ledger/join-code 미활성화로 갱신했으며 `readyForExecution:false`는 유지한다. production DB·Auth·membership·GRANT·backfill·NOT NULL·traffic·executor에는 접근하거나 변경하지 않았다.
 
+**Phase A 활성화 결정 패킷(2026-08-25):** 상위 아키텍처 플랜 §5의 미결정 6건을 현재 A2~A4 구현과 대조해 `PHASE_A_ACTIVATION_DECISION_PACKET.md`로 정리했다. 권고안은 row-level 논리 테넌시, 관리자·운영자·HQ 우선 Auth, staff traffic 전 HQ membership 전환, 설계 마법사와 authorized execution 분리, 단일 Supabase 프로젝트, 정의된 최소 범위의 Phase 2+ 지속이다. 각 결정에 대안·위험·재검토·완료/중단 기준과 역할표·근거 commit을 붙였다. 제품 결정, count-only 진단, Auth·membership, P1C/A4 휴면 migration, mapping·backfill, A2 GRANT, A4 RPC 권한, staff traffic을 독립 승인으로 나눴으며 `not_ready`는 scoped remediation 뒤 preflight 재실행으로만 해소한다. 초안 대화가 없는 독립 decision reader와 security approver의 재검수는 모두 PASS였고 중대한 미해결 항목이 없었다. 이 문서 작성으로 production 변경 권한은 부여되지 않는다.
+
 ## 다음 액션 (권장 순서)
-1. Supabase Auth 운영자 계정과 membership을 승인된 운영 절차로 프로비저닝
-2. §5 결정 1·2·3·4·6 — A1~A4 활성화 범위 확정
-3. (승인 시) G3·RLS 활성화 GRANT·HQ membership 전환·자동 export 연결
-4. 스크린리더·모바일 보조기기 수동 접근성 평가
-5. 분석코어 어댑터 → 8/29 산출물로 검수 콘솔 첫 실전
+1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. D2·D4 운영요건, D5 물리 격리 의무, D6 pilot owner가 미확정이면 조건부로 기록
+2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증
+3. (별도 승인 시) A2 count-only preflight RPC 설치·진단 후 blocker별 Auth·membership 또는 mapping remediation 계획 승인
+4. fresh readiness와 별도 승인 뒤에만 A2 GRANT, A4 RPC 권한, staff traffic을 각각 활성화
+5. 스크린리더·모바일 보조기기 수동 접근성 평가
+6. 분석코어 어댑터 → 8/29 산출물로 검수 콘솔 첫 실전
