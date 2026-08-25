@@ -1429,6 +1429,11 @@ async function finalizeStoredExecutionReceipt({
     approval,
     { trustedKey, expectedKeyId },
   );
+  const finalizationAt = lifecycleTime(clock);
+  const receiptCompletedAt = canonicalUtc(receipt.completedAt);
+  if (!receiptCompletedAt || finalizationAt.getTime() < receiptCompletedAt.getTime()) {
+    throw new Error('Design provisioning execution receipt finalization time is invalid');
+  }
   const finalization = await finalizeDesignProvisioningExecutionApproval({
     approval,
     plan,
@@ -1438,7 +1443,7 @@ async function finalizeStoredExecutionReceipt({
     trustedKey,
     expectedKeyId,
     outcome: receipt.status,
-    now: lifecycleTime(clock),
+    now: finalizationAt,
   });
   return lifecycleResult(receipt, verification, finalization, {
     executionDisposition,

@@ -40,16 +40,17 @@
 20. terminal claim의 canonical 시각 형식뿐 아니라 `finalizedAt >= claimedAt` 순서를 journal append 전에 검증한다. claim보다 1ms 앞선 completed claim을 직접 adapter에 전달한 부정 테스트는 journal에 기록하지 않고 거부됐다.
 21. checkpoint `createdAt`이 현재 state·receipt의 `claimedAt|finalizedAt|revokedAt|startedAt|completedAt` 최댓값보다 빠르면 seal과 audit 모두 거부한다. claim·revocation·receipt보다 1ms 앞선 시각, 이전 코드가 봉인한 유효 HMAC backdated checkpoint를 차단하고 exact event boundary는 허용했다.
 22. durable receipt append는 실제 journal claim보다 먼저 시작한 receipt를 거부한다. 같은 local store receipt의 완료보다 1ms 이른 terminal finalize도 차단하며, receipt 없이 terminal journal을 닫은 뒤 late receipt 파일을 직접 복원한 모순은 전체-store audit에서 탐지했다.
+23. adapter-independent lifecycle core는 finalization clock이 검증된 receipt `completedAt`보다 1ms 빠르면 receipt를 보존하고 claim을 active로 유지한다. 같은 existing receipt replay도 차단되고 exact completion boundary에서 RPC 재호출 없이 종결됐다.
 
 기본 전체-store audit는 checkpoint가 없어 `catalogCompletenessVerified:false`, `checkpointFreshnessVerified:false`다. 합성 off-store checkpoint가 exact inventory와 로컬 시간 경계를 모두 통과할 때만 둘 다 `true`지만, 실제 외부 보관·production key custody/rotation·독립 timestamp authority 증거로 승격하지 않는다.
 
 ## 자동화 검증
 
-- A4 plan·bundle 집중: 2개 파일, 58건 통과
-- automation 전체: 27개 파일, 417건 통과
+- A4 plan·bundle 집중: 2개 파일, 59건 통과
+- automation 전체: 27개 파일, 418건 통과
 - 애플리케이션 전체: 64개 파일, 1,060건 통과
 - Astro check: 330개 파일, 오류 0건, 기존 hint 49건
-- A4 bundle: artifact 17개, checksum `427c31d7e1750d32de8e403385f165afdbda0aeb43190f533d99c9b10e79aeb5`
+- A4 bundle: artifact 17개, checksum `9415012d975f3bfda9d41b8ca1b04a8e4f1aaaa0e543005e7109e6f8852e72e9`
 
 ## 남은 production blocker
 

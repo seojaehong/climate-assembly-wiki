@@ -1592,6 +1592,55 @@ test('executes claim, exact RPC, append-only receipt, and finalization in order'
     .toBe('completed');
 });
 
+test('keeps an A4 claim open when finalization time predates receipt completion', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const authorizationAdapter = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
+  const receiptAdapter = createInMemoryDesignProvisioningReceiptAdapter();
+  let executionCount = 0;
+  const base = {
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter,
+    executionAdapter: {
+      async execute({ plan: executionPlan }) {
+        executionCount += 1;
+        return completedExecutionResult(executionPlan);
+      },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+  };
+
+  await expect(executeDesignProvisioningApprovalLifecycle({
+    ...base,
+    clock: sequenceClock(
+      '2026-08-25T13:05:00.000Z',
+      '2026-08-25T13:07:00.000Z',
+      '2026-08-25T13:06:59.999Z',
+    ),
+  })).rejects.toThrow('receipt finalization time is invalid');
+  expect((await authorizationAdapter.readSnapshot(approval.approvalId)).state.claim.status)
+    .toBe('claimed');
+  expect(await receiptAdapter.read(approval.executionId)).not.toBeNull();
+
+  await expect(executeDesignProvisioningApprovalLifecycle({
+    ...base,
+    clock: sequenceClock('2026-08-25T13:06:59.999Z'),
+  })).rejects.toThrow('receipt finalization time is invalid');
+  const recovered = await executeDesignProvisioningApprovalLifecycle({
+    ...base,
+    clock: sequenceClock('2026-08-25T13:07:00.000Z'),
+  });
+  expect(recovered).toMatchObject({
+    executionDisposition: 'existing_receipt',
+    finalizationDisposition: 'new',
+  });
+  expect(executionCount).toBe(1);
+});
+
 test('recovers a persisted A4 receipt after append response loss without invoking RPC again', async () => {
   const { source, bytes, plan, approval } = executionApproval();
   const authorizationAdapter = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
