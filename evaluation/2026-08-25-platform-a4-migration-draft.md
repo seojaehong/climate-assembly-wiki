@@ -56,14 +56,14 @@ partial ledger 충돌 은폐 방지 결과: `A4_PARTIAL_CONFLICT_POSTGRES_REHEAR
 
 ## 자동화 회귀
 
-- A4 bundle·design plan 집중 테스트: 47건 통과
-- Windows automation 전체: 26개 파일, 365건 통과
+- A4 bundle·design plan 집중 테스트: 48건 통과
+- Windows automation 전체: 26개 파일, 366건 통과
 - 애플리케이션 전체: 64개 파일, 1,060건 통과
 - Astro check: 327개 파일, 오류 0건, 기존 hint 49건
-- 저장소 밖 로컬 durable store의 adapter 재시작·lock-free CAS·orphan temp 복구·append-only replay/conflict·journal 변조·junction escape·revocation/claim 경쟁·membership 비활성 finalize와 재활성화 거부 테스트 통과
+- 저장소 밖 로컬 durable store의 adapter 재시작·lock-free CAS·독립 Node 프로세스 6개 claim 경쟁(1 claimed, 5 conflict, journal record 2개)·orphan temp 복구·append-only replay/conflict·journal 변조·junction escape·revocation/claim 경쟁·membership 비활성 finalize와 재활성화 거부 테스트 통과
 - approval bundle verifier: builder·durable store·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 17개, production apply 미승인·DB mutation 미실행 상태로 통과
 - 추적 manifest를 current source에서 재구성해 stale source hash를 거부하는 테스트 통과
-- bundle checksum: `eb74e2240c892de5a998bfb95e870a52cfcd48d53e5c689915912921cbd1009b`
+- bundle checksum: `f608c1d09dcb1607b934172a778079917d0ec9822e0f3ef2c145ba6a3cf3d180`
 
 ## 보안·데이터 무결성 결론
 

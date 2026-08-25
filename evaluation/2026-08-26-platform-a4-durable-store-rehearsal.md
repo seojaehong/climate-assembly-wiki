@@ -32,14 +32,15 @@
 12. claim과 revocation을 동시에 시작했을 때 하나의 transition만 journal에 추가되고 최종 상태가 `claimed`와 `revokedAt`을 함께 갖지 않았다.
 13. orphan temp 파일이 남은 상태에서도 다음 claim이 새 sequence record 하나를 게시했고 persistent lock 파일은 생성되지 않았다.
 14. synthetic membership을 비활성화한 뒤 재활성화하려는 context 전이는 `conflict`로 거부되어 revision 없는 snapshot의 ABA 재일치를 막았다.
+15. 같은 expected snapshot을 가진 독립 Node 프로세스 6개가 claim을 경쟁했을 때 1개만 `claimed`, 5개는 `conflict`가 됐고 journal은 초기 record와 claim record 2개로 수렴했다.
 
 ## 자동화 검증
 
-- A4 plan·bundle 집중: 2개 파일, 47건 통과
-- automation 전체: 26개 파일, 365건 통과
+- A4 plan·bundle 집중: 2개 파일, 48건 통과
+- automation 전체: 26개 파일, 366건 통과
 - 애플리케이션 전체: 64개 파일, 1,060건 통과
 - Astro check: 327개 파일, 오류 0건, 기존 hint 49건
-- A4 bundle: artifact 17개, checksum `eb74e2240c892de5a998bfb95e870a52cfcd48d53e5c689915912921cbd1009b`
+- A4 bundle: artifact 17개, checksum `f608c1d09dcb1607b934172a778079917d0ec9822e0f3ef2c145ba6a3cf3d180`
 
 ## 남은 production blocker
 

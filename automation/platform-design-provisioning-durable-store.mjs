@@ -41,6 +41,7 @@ const FAILURE_CODES = Object.freeze([
 const MARKER = Object.freeze({
   schemaVersion: 1,
   kind: 'platform_design_provisioning_local_rehearsal_store',
+  authorizationCas: 'immutable_hard_link_v1',
   localRehearsalOnly: true,
   productionAdapter: false,
   productionCredentialAccessed: false,
@@ -49,6 +50,7 @@ const MARKER = Object.freeze({
 });
 
 export const LOCAL_DESIGN_PROVISIONING_STORE_BOUNDARIES = Object.freeze({
+  authorizationCas: 'immutable_hard_link_v1',
   localRehearsalOnly: true,
   productionAdapter: false,
   productionCredentialAccessed: false,

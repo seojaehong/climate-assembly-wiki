@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import {
   mkdtempSync,
   readFileSync,
@@ -9,7 +9,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { expect, test } from 'vitest';
 import {
   DESIGN_BLUEPRINT_CONTRACT,
@@ -198,6 +198,40 @@ function sequenceClock(...values) {
   };
 }
 
+function runNodeEval(source, args) {
+  return new Promise((resolvePromise, rejectPromise) => {
+    const child = spawn(
+      process.execPath,
+      ['--input-type=module', '--eval', source, ...args],
+      { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] },
+    );
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk;
+      if (stdout.length > 64 * 1024) child.kill();
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk;
+      if (stderr.length > 64 * 1024) child.kill();
+    });
+    child.on('error', rejectPromise);
+    child.on('close', (code) => {
+      if (code !== 0) {
+        rejectPromise(new Error(`child process failed: ${stderr.trim() || 'unknown failure'}`));
+        return;
+      }
+      try {
+        resolvePromise(JSON.parse(stdout));
+      } catch {
+        rejectPromise(new Error('child process returned malformed output'));
+      }
+    });
+  });
+}
+
 test('shares the exact browser blueprint contract', () => {
   const tracked = JSON.parse(readFileSync(
     join(repoRoot, 'src', 'islands', 'platform', 'design', 'design-blueprint-contract.json'),
@@ -219,6 +253,7 @@ test('shares the exact browser blueprint contract', () => {
 
 test('keeps the durable adapter outside the repository and explicitly rehearsal-only', async () => {
   expect(LOCAL_DESIGN_PROVISIONING_STORE_BOUNDARIES).toEqual({
+    authorizationCas: 'immutable_hard_link_v1',
     localRehearsalOnly: true,
     productionAdapter: false,
     productionCredentialAccessed: false,
@@ -580,6 +615,46 @@ test('uses immutable journal publication without a stale lock and ignores an orp
     const names = readdirSync(approvalDirectory);
     expect(names.filter((name) => /^\d{12}\.json$/.test(name))).toHaveLength(2);
     expect(names).not.toContain('write.lock');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('publishes exactly one authorization claim across independent Node processes', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const { plan, approval } = executionApproval();
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: approval.approvalId, context: liveContext() },
+    });
+    const authorizationAdapter = createLocalDesignProvisioningAuthorizationAdapter({ directory });
+    const snapshot = await authorizationAdapter.readSnapshot(approval.approvalId);
+    const inputPath = join(directory, 'cross-process-input.json');
+    writeFileSync(inputPath, JSON.stringify({
+      snapshot,
+      claim: claimedApprovalState(approval, plan).claim,
+    }), 'utf8');
+    const durableModuleUrl = pathToFileURL(durableStoreModulePath).href;
+    const childSource = `
+      import { readFile } from 'node:fs/promises';
+      import { createLocalDesignProvisioningAuthorizationAdapter } from ${JSON.stringify(durableModuleUrl)};
+      const [directory, inputPath] = process.argv.slice(1);
+      const input = JSON.parse(await readFile(inputPath, 'utf8'));
+      const adapter = createLocalDesignProvisioningAuthorizationAdapter({ directory });
+      const result = await adapter.claim(input.snapshot, input.claim);
+      process.stdout.write(JSON.stringify({ status: result.status }));
+    `;
+    const results = await Promise.all(Array.from(
+      { length: 6 },
+      () => runNodeEval(childSource, [directory, inputPath]),
+    ));
+    expect(results.filter(({ status }) => status === 'claimed')).toHaveLength(1);
+    expect(results.filter(({ status }) => status === 'conflict')).toHaveLength(5);
+    expect(readdirSync(join(directory, 'authorization', approval.approvalId))
+      .filter((name) => /^\d{12}\.json$/.test(name))).toHaveLength(2);
+    expect((await authorizationAdapter.readSnapshot(approval.approvalId)).state.claim)
+      .toEqual(claimedApprovalState(approval, plan).claim);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
