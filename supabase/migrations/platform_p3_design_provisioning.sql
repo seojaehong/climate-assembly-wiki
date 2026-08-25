@@ -89,11 +89,24 @@ $function$;
 
 create or replace function climate_vote.platform_design_join_code()
 returns text
-language sql
+language plpgsql
 volatile
-set search_path = pg_catalog
+set search_path = pg_catalog, extensions
 as $function$
-  select lpad(floor(random() * 1000000)::integer::text, 6, '0')
+declare
+  v_bytes bytea;
+  v_value bigint;
+begin
+  loop
+    v_bytes := extensions.gen_random_bytes(4);
+    v_value := get_byte(v_bytes, 0)::bigint * 16777216
+      + get_byte(v_bytes, 1)::bigint * 65536
+      + get_byte(v_bytes, 2)::bigint * 256
+      + get_byte(v_bytes, 3)::bigint;
+    exit when v_value < 4294000000;
+  end loop;
+  return lpad((v_value % 1000000)::text, 6, '0');
+end
 $function$;
 
 create or replace function climate_vote.design_provision(p_plan jsonb, p_source_bytes bytea)

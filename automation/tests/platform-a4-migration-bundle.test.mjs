@@ -109,6 +109,7 @@ test('A4 SQL draft keeps preflight and post-apply verification read-only', () =>
   expect(postApply).toContain("has_function_privilege('authenticated', 'climate_vote.design_provision(jsonb,bytea)', 'EXECUTE')");
   expect(postApply).toContain("has_function_privilege('authenticated', 'climate_vote.design_provisioning_status(jsonb)', 'EXECUTE')");
   expect(postApply).toContain('v_existing.plan_checksum <> v_checksum');
+  expect(postApply).toContain('extensions.gen_random_bytes(4)');
   expect(postApply).toContain('staffGrantActive');
 });
 
@@ -121,6 +122,9 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(migration).toContain('v_existing.plan_checksum <> v_checksum');
   expect(migration).toContain('design_parent_conflict');
   expect(migration).toContain('design_join_code_exhausted');
+  expect(migration).toContain('extensions.gen_random_bytes(4)');
+  expect(migration).toContain('v_value < 4294000000');
+  expect(migration).not.toContain('floor(random()');
   expect(migration).toContain("encode(extensions.digest(p_source_bytes, 'sha256'), 'hex')");
   expect(migration).toContain('revoke all on function climate_vote.design_provision(jsonb, bytea)');
   expect(migration).toContain('create or replace function climate_vote.design_provisioning_status(p_query jsonb)');
@@ -136,6 +140,7 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(rehearsal).toContain('payload conflict unexpectedly succeeded');
   expect(rehearsal).toContain('parent conflict unexpectedly succeeded');
   expect(rehearsal).toContain('join-code exhaustion unexpectedly succeeded');
+  expect(rehearsal).toContain('secure join-code generator was not restored');
   expect(rehearsal).toContain('late validation did not roll back mutations');
 });
 

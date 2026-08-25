@@ -163,6 +163,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 교차-plan replay 차단(2026-08-26):** A4 ledger의 기존 operation은 request hash·type뿐 아니라 전체 plan checksum까지 exact 일치할 때만 replay한다. 같은 operation payload를 다른 source/plan에서 재사용하면 실행 성공 뒤 reconciliation checksum이 충돌하는 상태가 생기므로 첫 operation에서 `design_operation_conflict`로 중단하며, PostgreSQL 16 격리 리허설은 ledger와 assembly/session/topic/team 건수가 바뀌지 않음을 확인했다. 독립 parent-conflict fixture도 새 assembly 안의 중복 session ordinal로 분리해 두 계약을 각각 검증한다. A4 bundle 집중 8건, automation 전체 26개 파일·402건, 루트 전체 64개 파일·1,060건이 통과했다. production migration·DB·GRANT는 적용하지 않았다.
 
+**A4 join-code CSPRNG 강화(2026-08-26):** 여러 운영 RPC에서 capability로 쓰이는 6자리 team join code 생성기를 PostgreSQL `random()`에서 `extensions.gen_random_bytes(4)` 기반 CSPRNG로 교체했다. 32-bit 공간을 6자리로 축소할 때 균등 상한 밖 값을 폐기하는 rejection sampling을 적용하고, post-apply verifier가 함수 volatility·search path·CSPRNG·편향 제거·비암호학적 random 부재를 확인한다. PostgreSQL 16 semantic rehearsal은 정상 6자리 생성, 강제 충돌 소진 뒤 전체 transaction rollback과 secure 함수 복원을 확인했다. production migration·DB·GRANT는 적용하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

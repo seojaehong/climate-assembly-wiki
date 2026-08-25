@@ -44,6 +44,22 @@ begin
 
   select p.prosrc, p.proconfig into strict v_definition, v_config
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'climate_vote' and p.proname = 'platform_design_join_code';
+  if not exists (
+       select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'climate_vote' and p.proname = 'platform_design_join_code'
+         and p.provolatile = 'v' and pg_get_function_result(p.oid) = 'text'
+         and p.pronargs = 0
+     )
+     or not ('search_path=pg_catalog, extensions' = any(v_config))
+     or v_definition not like '%extensions.gen_random_bytes(4)%'
+     or v_definition not like '%v_value < 4294000000%'
+     or v_definition like '%random()%' then
+    raise exception 'A4 post-apply verification failed: join-code generator is unsafe';
+  end if;
+
+  select p.prosrc, p.proconfig into strict v_definition, v_config
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'climate_vote' and p.proname = 'design_provision';
   if not exists (
        select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace

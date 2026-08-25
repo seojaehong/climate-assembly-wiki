@@ -101,6 +101,7 @@ declare
   v_session_id uuid;
   v_ledger_count bigint;
   v_resource_count bigint;
+  v_join_code_definition text;
 begin
   insert into auth.users (id, email, email_confirmed_at) values (v_user, 'a4@example.invalid', now());
   insert into climate_vote.org (id, slug, name, status) values (v_org, 'a4-test-org', 'A4 test org', 'active');
@@ -338,8 +339,34 @@ begin
   end if;
 
   create or replace function climate_vote.platform_design_join_code()
-  returns text language sql volatile set search_path = pg_catalog
-  as $random$ select lpad(floor(random() * 1000000)::integer::text, 6, '0') $random$;
+  returns text language plpgsql volatile set search_path = pg_catalog, extensions
+  as $secure$
+  declare
+    v_bytes bytea;
+    v_value bigint;
+  begin
+    loop
+      v_bytes := extensions.gen_random_bytes(4);
+      v_value := get_byte(v_bytes, 0)::bigint * 16777216
+        + get_byte(v_bytes, 1)::bigint * 65536
+        + get_byte(v_bytes, 2)::bigint * 256
+        + get_byte(v_bytes, 3)::bigint;
+      exit when v_value < 4294000000;
+    end loop;
+    return lpad((v_value % 1000000)::text, 6, '0');
+  end
+  $secure$;
+  select pg_get_functiondef('climate_vote.platform_design_join_code()'::regprocedure)
+  into v_join_code_definition;
+  if v_join_code_definition not like '%extensions.gen_random_bytes(4)%'
+     or v_join_code_definition not like '%v_value < 4294000000%'
+     or v_join_code_definition like '%random()%'
+     or exists (
+       select 1 from generate_series(1, 64)
+       where climate_vote.platform_design_join_code() !~ '^[0-9]{6}$'
+     ) then
+    raise exception 'A4 semantic test failed: secure join-code generator was not restored';
+  end if;
 
   v_rollback_plan := pg_temp.a4_plan(
     jsonb_build_array(pg_temp.a4_operation(
