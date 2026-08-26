@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-25T20:24:01.143Z",
+  "generatedAt": "2026-08-26T12:46:20.434Z",
   "certificationClaimed": false,
   "status": "needs_review",
   "standard": {
@@ -14,8 +14,8 @@
     "sourceSha256": "c5a139dc548bf018115d142847b69b7017953f5987fc50534c81e6b175402f13"
   },
   "inputs": {
-    "automatedSourceCommit": "d27788a3022a464095eb8e430340e21a80e77f28",
-    "manualCommit": "58941e6a358765a9fbdf8e6e2d9a22f87f1e771c",
+    "automatedSourceCommit": "86a86fbcdf906ca3455e73c08dd3ca2403d1b574",
+    "manualCommit": "b85551f16965e64afd8fe25217d9535a2baf26d4",
     "manualStatus": "needs_review"
   },
   "summary": {
@@ -40,6 +40,10 @@
     },
     {
       "id": "keyboard-scroll-regions",
+      "status": "pass"
+    },
+    {
+      "id": "keyboard-focus-order",
       "status": "pass"
     }
   ],
@@ -240,7 +244,8 @@
       "id": "6.1.1",
       "name": "키보드 사용 보장",
       "automatedEvidence": [
-        "keyboard-scroll-regions"
+        "keyboard-scroll-regions",
+        "keyboard-focus-order"
       ],
       "manualEvidence": [
         "authenticated-platform:controls-and-forms",
@@ -252,7 +257,8 @@
       "id": "6.1.2",
       "name": "초점 이동과 표시",
       "automatedEvidence": [
-        "skip-link-focus"
+        "skip-link-focus",
+        "keyboard-focus-order"
       ],
       "manualEvidence": [
         "platform-login:focus-order",

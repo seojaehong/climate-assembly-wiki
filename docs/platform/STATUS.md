@@ -261,6 +261,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A5 로그인 실패 자동 접근성 감사 편입(2026-08-26):** 정적 로그인 화면만 검사하던 감사기에 읽기 전용 인증 거부 fixture와 post-navigation interaction hook을 추가해 실제 실패 상태를 axe 검사 대상으로 편입했다. 합성 `.invalid` 계정으로 제출한 뒤 alert 표시, 비밀번호 입력 포커스 복귀, 두 필드의 alert 설명 연결과 `aria-invalid`, atomic alert, 비밀번호 마스킹, controls 재활성화를 확인한다. Supabase origin 요청은 전부 브라우저 내부 합성 응답으로 차단해 외부 Auth·credential·DB mutation을 사용하지 않는다. 로컬 current-revision 프리뷰의 Chromium 감사는 7개 경로×2개 viewport, 총 14개 케이스가 모두 통과했고 violation·incomplete는 각각 0건이었다. 자동화는 실제 NVDA·VoiceOver·TalkBack 수동 평가를 대체하지 않으므로 전체 상태는 `needs_review`를 유지한다.
 
+**A5 로그인 키보드 초점 순서 자동 감사(2026-08-26):** 공개 `/platform/` 로그인에서 이메일→비밀번호→제출→접근성 안내 링크의 실제 `Tab` 순서와 역방향 `Shift+Tab`, 양 끝 경계 이탈을 desktop·mobile Chromium으로 검증한다. 순서 불일치와 마지막↔처음 순환 함정을 실패시키고, 활성 요소 증거에는 입력값·URL query를 남기지 않는다. 공개 revision `86a86fbcdf906ca3455e73c08dd3ca2403d1b574`의 7개 경로×2개 profile 총 14개 케이스는 모두 통과했고 violation·incomplete는 0건이었다. KWCAG 6.1.1·6.1.2에 자동 증거를 추가했지만 실제 NVDA·VoiceOver·TalkBack 및 모바일 보조기기 평가는 남아 있어 전체 상태와 두 기준은 `needs_review`를 유지한다. Auth·credential·production DB·migration·GRANT·데이터 mutation은 사용하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

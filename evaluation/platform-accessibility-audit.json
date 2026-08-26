@@ -1,15 +1,14 @@
 {
-  "schemaVersion": 3,
-  "generatedAt": "2026-08-11T19:19:35.196Z",
-  "sourceCommit": "abbfd3e6496b4c4f8763528327e427722b662f02",
+  "schemaVersion": 4,
+  "generatedAt": "2026-08-26T12:46:20.434Z",
+  "sourceCommit": "86a86fbcdf906ca3455e73c08dd3ca2403d1b574",
   "sourceTreeClean": true,
   "targetRevision": {
-    "status": "not_verified",
-    "sourceCommit": null,
-    "reason": "The audited origin does not expose a machine-verifiable deployment revision."
+    "status": "verified",
+    "sourceCommit": "86a86fbcdf906ca3455e73c08dd3ca2403d1b574"
   },
   "baseUrl": "https://climate-assembly.org",
-  "standard": "WCAG 2.2 AA automated subset + skip-link focus + responsive overflow",
+  "standard": "WCAG 2.2 AA automated subset + skip-link focus + keyboard focus order + responsive overflow",
   "engine": {
     "name": "axe-core",
     "version": "4.12.1",
@@ -23,11 +22,11 @@
   },
   "status": "needs_review",
   "summary": {
-    "routeCount": 6,
+    "routeCount": 7,
     "profileCount": 2,
-    "auditCaseCount": 12,
-    "passedRoutes": 6,
-    "passedCases": 12,
+    "auditCaseCount": 14,
+    "passedRoutes": 7,
+    "passedCases": 14,
     "violationCount": 0,
     "incompleteCount": 0,
     "excludedSurfaceCount": 1
@@ -53,6 +52,8 @@
     "audited": [
       "platform-login:desktop",
       "platform-login:mobile",
+      "platform-login-error:desktop",
+      "platform-login-error:mobile",
       "authenticated-platform:desktop",
       "authenticated-platform:mobile",
       "accessibility-statement:desktop",
@@ -82,7 +83,7 @@
       },
       "path": "/platform/",
       "url": "https://climate-assembly.org/platform/",
-      "fixture": null,
+      "fixture": "ci-login-keyboard-fixture-v1",
       "readiness": null,
       "httpStatus": 200,
       "passed": true,
@@ -90,6 +91,158 @@
         "found": true,
         "target": "platform-scope-content",
         "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": true,
+        "expected": [
+          "#platform-email",
+          "#platform-password",
+          "button[type=\"submit\"]",
+          "a[href=\"/platform/accessibility/\"]"
+        ],
+        "availability": [
+          {
+            "selector": "#platform-email",
+            "found": true,
+            "visible": true,
+            "enabled": true
+          },
+          {
+            "selector": "#platform-password",
+            "found": true,
+            "visible": true,
+            "enabled": true
+          },
+          {
+            "selector": "button[type=\"submit\"]",
+            "found": true,
+            "visible": true,
+            "enabled": true
+          },
+          {
+            "selector": "a[href=\"/platform/accessibility/\"]",
+            "found": true,
+            "visible": true,
+            "enabled": true
+          }
+        ],
+        "forward": [
+          {
+            "expectedSelector": "#platform-email",
+            "matched": true,
+            "active": {
+              "tag": "input",
+              "id": "platform-email",
+              "type": "email",
+              "role": null,
+              "hrefPath": null
+            }
+          },
+          {
+            "expectedSelector": "#platform-password",
+            "matched": true,
+            "active": {
+              "tag": "input",
+              "id": "platform-password",
+              "type": "password",
+              "role": null,
+              "hrefPath": null
+            }
+          },
+          {
+            "expectedSelector": "button[type=\"submit\"]",
+            "matched": true,
+            "active": {
+              "tag": "button",
+              "id": null,
+              "type": "submit",
+              "role": null,
+              "hrefPath": null
+            }
+          },
+          {
+            "expectedSelector": "a[href=\"/platform/accessibility/\"]",
+            "matched": true,
+            "active": {
+              "tag": "a",
+              "id": null,
+              "type": null,
+              "role": null,
+              "hrefPath": "/platform/accessibility/"
+            }
+          }
+        ],
+        "reverse": [
+          {
+            "expectedSelector": "a[href=\"/platform/accessibility/\"]",
+            "matched": true,
+            "active": {
+              "tag": "a",
+              "id": null,
+              "type": null,
+              "role": null,
+              "hrefPath": "/platform/accessibility/"
+            }
+          },
+          {
+            "expectedSelector": "button[type=\"submit\"]",
+            "matched": true,
+            "active": {
+              "tag": "button",
+              "id": null,
+              "type": "submit",
+              "role": null,
+              "hrefPath": null
+            }
+          },
+          {
+            "expectedSelector": "#platform-password",
+            "matched": true,
+            "active": {
+              "tag": "input",
+              "id": "platform-password",
+              "type": "password",
+              "role": null,
+              "hrefPath": null
+            }
+          },
+          {
+            "expectedSelector": "#platform-email",
+            "matched": true,
+            "active": {
+              "tag": "input",
+              "id": "platform-email",
+              "type": "email",
+              "role": null,
+              "hrefPath": null
+            }
+          }
+        ],
+        "forwardExit": {
+          "reachedBoundary": true,
+          "active": {
+            "tag": "button",
+            "id": null,
+            "type": "button",
+            "role": null,
+            "hrefPath": null
+          },
+          "escaped": true
+        },
+        "backwardExit": {
+          "reachedBoundary": true,
+          "active": {
+            "tag": "button",
+            "id": null,
+            "type": "button",
+            "role": null,
+            "hrefPath": null
+          },
+          "escaped": true
+        },
+        "escapedForward": true,
+        "escapedBackward": true,
+        "passed": true
       },
       "requiredScrollRegions": [],
       "layout": {
@@ -116,7 +269,7 @@
       },
       "path": "/platform/",
       "url": "https://climate-assembly.org/platform/",
-      "fixture": null,
+      "fixture": "ci-login-keyboard-fixture-v1",
       "readiness": null,
       "httpStatus": 200,
       "passed": true,
@@ -124,6 +277,256 @@
         "found": true,
         "target": "platform-scope-content",
         "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": true,
+        "expected": [
+          "#platform-email",
+          "#platform-password",
+          "button[type=\"submit\"]",
+          "a[href=\"/platform/accessibility/\"]"
+        ],
+        "availability": [
+          {
+            "selector": "#platform-email",
+            "found": true,
+            "visible": true,
+            "enabled": true
+          },
+          {
+            "selector": "#platform-password",
+            "found": true,
+            "visible": true,
+            "enabled": true
+          },
+          {
+            "selector": "button[type=\"submit\"]",
+            "found": true,
+            "visible": true,
+            "enabled": true
+          },
+          {
+            "selector": "a[href=\"/platform/accessibility/\"]",
+            "found": true,
+            "visible": true,
+            "enabled": true
+          }
+        ],
+        "forward": [
+          {
+            "expectedSelector": "#platform-email",
+            "matched": true,
+            "active": {
+              "tag": "input",
+              "id": "platform-email",
+              "type": "email",
+              "role": null,
+              "hrefPath": null
+            }
+          },
+          {
+            "expectedSelector": "#platform-password",
+            "matched": true,
+            "active": {
+              "tag": "input",
+              "id": "platform-password",
+              "type": "password",
+              "role": null,
+              "hrefPath": null
+            }
+          },
+          {
+            "expectedSelector": "button[type=\"submit\"]",
+            "matched": true,
+            "active": {
+              "tag": "button",
+              "id": null,
+              "type": "submit",
+              "role": null,
+              "hrefPath": null
+            }
+          },
+          {
+            "expectedSelector": "a[href=\"/platform/accessibility/\"]",
+            "matched": true,
+            "active": {
+              "tag": "a",
+              "id": null,
+              "type": null,
+              "role": null,
+              "hrefPath": "/platform/accessibility/"
+            }
+          }
+        ],
+        "reverse": [
+          {
+            "expectedSelector": "a[href=\"/platform/accessibility/\"]",
+            "matched": true,
+            "active": {
+              "tag": "a",
+              "id": null,
+              "type": null,
+              "role": null,
+              "hrefPath": "/platform/accessibility/"
+            }
+          },
+          {
+            "expectedSelector": "button[type=\"submit\"]",
+            "matched": true,
+            "active": {
+              "tag": "button",
+              "id": null,
+              "type": "submit",
+              "role": null,
+              "hrefPath": null
+            }
+          },
+          {
+            "expectedSelector": "#platform-password",
+            "matched": true,
+            "active": {
+              "tag": "input",
+              "id": "platform-password",
+              "type": "password",
+              "role": null,
+              "hrefPath": null
+            }
+          },
+          {
+            "expectedSelector": "#platform-email",
+            "matched": true,
+            "active": {
+              "tag": "input",
+              "id": "platform-email",
+              "type": "email",
+              "role": null,
+              "hrefPath": null
+            }
+          }
+        ],
+        "forwardExit": {
+          "reachedBoundary": true,
+          "active": {
+            "tag": "button",
+            "id": null,
+            "type": "button",
+            "role": null,
+            "hrefPath": null
+          },
+          "escaped": true
+        },
+        "backwardExit": {
+          "reachedBoundary": true,
+          "active": {
+            "tag": "button",
+            "id": null,
+            "type": "button",
+            "role": null,
+            "hrefPath": null
+          },
+          "escaped": true
+        },
+        "escapedForward": true,
+        "escapedBackward": true,
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 312,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "platform-login-error:desktop",
+      "routeId": "platform-login-error",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/platform/",
+      "url": "https://climate-assembly.org/platform/",
+      "fixture": "ci-login-rejection-fixture-v1",
+      "readiness": {
+        "selector": "#platform-login-error[role=\"alert\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "platform-scope-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 420,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "platform-login-error:mobile",
+      "routeId": "platform-login-error",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/platform/",
+      "url": "https://climate-assembly.org/platform/",
+      "fixture": "ci-login-rejection-fixture-v1",
+      "readiness": {
+        "selector": "#platform-login-error[role=\"alert\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "platform-scope-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "passed": true
       },
       "requiredScrollRegions": [],
       "layout": {
@@ -162,6 +565,18 @@
         "target": "platform-scope-content",
         "focusMoved": true
       },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "passed": true
+      },
       "requiredScrollRegions": [],
       "layout": {
         "viewportWidth": 1440,
@@ -199,6 +614,18 @@
         "target": "platform-scope-content",
         "focusMoved": true
       },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "passed": true
+      },
       "requiredScrollRegions": [],
       "layout": {
         "viewportWidth": 360,
@@ -232,6 +659,18 @@
         "found": true,
         "target": "main-content",
         "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "passed": true
       },
       "requiredScrollRegions": [],
       "layout": {
@@ -267,6 +706,18 @@
         "target": "main-content",
         "focusMoved": true
       },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "passed": true
+      },
       "requiredScrollRegions": [],
       "layout": {
         "viewportWidth": 360,
@@ -300,6 +751,18 @@
         "found": true,
         "target": "main-content",
         "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "passed": true
       },
       "requiredScrollRegions": [],
       "layout": {
@@ -335,6 +798,18 @@
         "target": "main-content",
         "focusMoved": true
       },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "passed": true
+      },
       "requiredScrollRegions": [],
       "layout": {
         "viewportWidth": 360,
@@ -362,7 +837,7 @@
       "url": "https://climate-assembly.org/r/_/",
       "fixture": "ci-published-result-read-fixture-v1",
       "readiness": {
-        "selector": "main#main-content header h1",
+        "selector": "main#main-content [data-source-reference-ready=\"true\"]",
         "reached": true
       },
       "httpStatus": 200,
@@ -371,6 +846,18 @@
         "found": true,
         "target": "main-content",
         "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "passed": true
       },
       "requiredScrollRegions": [],
       "layout": {
@@ -399,7 +886,7 @@
       "url": "https://climate-assembly.org/r/_/",
       "fixture": "ci-published-result-read-fixture-v1",
       "readiness": {
-        "selector": "main#main-content header h1",
+        "selector": "main#main-content [data-source-reference-ready=\"true\"]",
         "reached": true
       },
       "httpStatus": 200,
@@ -408,6 +895,18 @@
         "found": true,
         "target": "main-content",
         "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "passed": true
       },
       "requiredScrollRegions": [
         {
@@ -453,7 +952,7 @@
       },
       "path": "/ko/moderator/ontology-review/",
       "url": "https://climate-assembly.org/ko/moderator/ontology-review/",
-      "fixture": null,
+      "fixture": "ci-staff-read-fixture-v1",
       "readiness": {
         "selector": "main[data-ontology-review-ready=\"true\"]",
         "reached": true
@@ -464,6 +963,18 @@
         "found": true,
         "target": "ontology-review-content",
         "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "passed": true
       },
       "requiredScrollRegions": [],
       "layout": {
@@ -490,7 +1001,7 @@
       },
       "path": "/ko/moderator/ontology-review/",
       "url": "https://climate-assembly.org/ko/moderator/ontology-review/",
-      "fixture": null,
+      "fixture": "ci-staff-read-fixture-v1",
       "readiness": {
         "selector": "main[data-ontology-review-ready=\"true\"]",
         "reached": true
@@ -501,6 +1012,18 @@
         "found": true,
         "target": "ontology-review-content",
         "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "passed": true
       },
       "requiredScrollRegions": [],
       "layout": {
