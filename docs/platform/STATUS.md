@@ -224,6 +224,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A7 원문·검수 입력 repository 격리(2026-08-26):** result source CLI가 raw `issue-items`를 모든 모드에서, reviewer identity와 공개 결정을 담은 `reviews`를 publication 모드에서 repository 밖의 기존 일반 파일로만 받도록 강화했다. 경로를 읽기 전에 실제 경로로 해석해 저장소 내부 직접 경로와 내부를 가리키는 symlink/junction, 누락·디렉터리 입력을 식별값이나 원문 노출 없이 거부한다. publication plan의 repository 밖 no-overwrite·사용자 전용 파일 경계와 원문 비노출 stdout은 그대로 유지된다. 집중 24건과 automation 전체 27개 파일·436건이 통과했으며 production payload·DB·RPC·migration·실제 시민 원문·검수 입력에는 접근하거나 변경하지 않았다.
 
+**A7 원문 공개 계약 identity 결속(2026-08-26):** provenance plan과 replace-all publication plan을 schema v2로 올리고, UI·DOCX·publish preflight가 공유하는 `source-reference-contract.json`의 schema v1과 canonical SHA-256을 승인 artifact에 결속했다. 로더는 contract root·record exact field, 공개 9필드 순서, `core|extra`, `reviewed`, `org_admin|hq`, 양의 길이·순번 경계를 시작 시 검증한다. verifier는 identity가 없는 legacy plan과 checksum을 다시 계산한 contract identity 위조도 현재 입력 재생성 대조에서 거부한다. production payload·DB·RPC·migration·실제 원문·검수 입력에는 접근하거나 변경하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

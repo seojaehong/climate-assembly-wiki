@@ -8,6 +8,7 @@ import { expect, test } from 'vitest';
 import {
   buildPlatformResultSourcePlan,
   buildPlatformResultSourcePublicationPlan,
+  validateSourceReferenceContract,
   validatePlatformResultSourcePrivateInputPath,
   validatePlatformResultSourcePublicationOutputPath,
   verifyPlatformResultSourcePlan,
@@ -22,6 +23,50 @@ const ITEM_2 = '42111111-1111-4111-8111-111111111111';
 const ITEM_3 = '43111111-1111-4111-8111-111111111111';
 const SUBMISSION_ID = '51111111-1111-4111-8111-111111111111';
 const CLUSTER_ID = '61111111-1111-4111-8111-111111111111';
+
+function canonicalValue(value) {
+  if (Array.isArray(value)) return value.map(canonicalValue);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalValue(value[key])]));
+  }
+  return value;
+}
+
+function resealPlan(plan) {
+  const { checksumSha256: _checksumSha256, ...unsigned } = plan;
+  return {
+    ...unsigned,
+    checksumSha256: createHash('sha256').update(JSON.stringify(canonicalValue(unsigned))).digest('hex'),
+  };
+}
+
+const sourceReferenceContract = JSON.parse(readFileSync(
+  fileURLToPath(new URL('../../src/islands/result/source-reference-contract.json', import.meta.url)),
+  'utf8',
+));
+const SOURCE_REFERENCE_CONTRACT_SHA256 = createHash('sha256')
+  .update(JSON.stringify(canonicalValue(sourceReferenceContract)))
+  .digest('hex');
+
+test('validates the exact shared public source-reference contract', () => {
+  expect(() => validateSourceReferenceContract(sourceReferenceContract)).not.toThrow();
+
+  const extraRootField = structuredClone(sourceReferenceContract);
+  extraRootField.internalNote = 'must not be ignored';
+  expect(() => validateSourceReferenceContract(extraRootField)).toThrow('Unexpected source reference contract field');
+
+  const legacySchema = structuredClone(sourceReferenceContract);
+  legacySchema.schemaVersion = 0;
+  expect(() => validateSourceReferenceContract(legacySchema)).toThrow('Unsupported source reference contract schema version');
+
+  const driftedVocabulary = structuredClone(sourceReferenceContract);
+  driftedVocabulary.record.reviewerRoles = ['org_admin', 'operator'];
+  expect(() => validateSourceReferenceContract(driftedVocabulary)).toThrow('vocabulary');
+
+  const invalidBoundary = structuredClone(sourceReferenceContract);
+  invalidBoundary.record.excerptMaxLength = 0;
+  expect(() => validateSourceReferenceContract(invalidBoundary)).toThrow('excerpt max length');
+});
 
 function inputs() {
   return {
@@ -115,11 +160,15 @@ test('builds a sealed approval plan without raw source content', () => {
   const plan = buildPlatformResultSourcePlan(result, sourceSnapshot);
 
   expect(plan).toMatchObject({
-    schemaVersion: 1,
+    schemaVersion: 2,
     dryRun: true,
     databaseMutationExecuted: false,
     publicPayloadWritten: false,
     requiresApproval: true,
+    sourceReferenceContract: {
+      schemaVersion: 1,
+      canonicalSha256: SOURCE_REFERENCE_CONTRACT_SHA256,
+    },
     summary: { issueCount: 1, sourceReferenceCount: 2, unclassifiedCount: 1 },
   });
   expect(plan.issues[0].sourceReferences).toHaveLength(2);
@@ -143,13 +192,17 @@ test('builds a sealed replace-all publication plan with exact source bytes and a
     .digest('hex');
 
   expect(plan).toMatchObject({
-    schemaVersion: 1,
+    schemaVersion: 2,
     planKind: 'source_publication',
     mode: 'replace_all',
     dryRun: true,
     databaseMutationExecuted: false,
     publicPayloadWritten: false,
     requiresApproval: true,
+    sourceReferenceContract: {
+      schemaVersion: 1,
+      canonicalSha256: SOURCE_REFERENCE_CONTRACT_SHA256,
+    },
     summary: {
       issueCount: 1,
       linkedReferenceCount: 2,
@@ -340,6 +393,57 @@ test('verification rejects a self-rechecksummed plan that differs from source in
   expect(() => verifyPlatformResultSourcePlan(plan, result, alteredSource)).toThrow();
 });
 
+test('verification rejects a self-rechecksummed plan with a forged source contract identity', () => {
+  const { result, sourceSnapshot } = inputs();
+  const sourcePlan = buildPlatformResultSourcePlan(result, sourceSnapshot);
+  const forgedSourcePlan = resealPlan({
+    ...sourcePlan,
+    sourceReferenceContract: {
+      ...sourcePlan.sourceReferenceContract,
+      canonicalSha256: 'b'.repeat(64),
+    },
+  });
+  expect(() => verifyPlatformResultSourcePlan(forgedSourcePlan, result, sourceSnapshot))
+    .toThrow('does not match inputs');
+
+  const reviews = publicationReviews();
+  const publicationPlan = buildPlatformResultSourcePublicationPlan(result, sourceSnapshot, reviews);
+  const forgedPublicationPlan = resealPlan({
+    ...publicationPlan,
+    sourceReferenceContract: {
+      ...publicationPlan.sourceReferenceContract,
+      canonicalSha256: 'b'.repeat(64),
+    },
+  });
+  expect(() => verifyPlatformResultSourcePublicationPlan(
+    forgedPublicationPlan,
+    result,
+    sourceSnapshot,
+    reviews,
+  )).toThrow('does not match inputs');
+});
+
+test('verification rejects legacy plan schemas without a source contract identity', () => {
+  const { result, sourceSnapshot } = inputs();
+  const sourcePlan = buildPlatformResultSourcePlan(result, sourceSnapshot);
+  const { sourceReferenceContract: _sourceContract, ...legacySourcePlan } = sourcePlan;
+  expect(() => verifyPlatformResultSourcePlan(
+    resealPlan({ ...legacySourcePlan, schemaVersion: 1 }),
+    result,
+    sourceSnapshot,
+  )).toThrow('Unsupported source plan schema version');
+
+  const reviews = publicationReviews();
+  const publicationPlan = buildPlatformResultSourcePublicationPlan(result, sourceSnapshot, reviews);
+  const { sourceReferenceContract: _publicationContract, ...legacyPublicationPlan } = publicationPlan;
+  expect(() => verifyPlatformResultSourcePublicationPlan(
+    resealPlan({ ...legacyPublicationPlan, schemaVersion: 1 }),
+    result,
+    sourceSnapshot,
+    reviews,
+  )).toThrow('Unsupported source publication plan');
+});
+
 test('CLI creates and verifies a plan without overwriting an existing artifact', () => {
   const directory = mkdtempSync(join(tmpdir(), 'platform-result-source-'));
   try {
@@ -358,7 +462,7 @@ test('CLI creates and verifies a plan without overwriting an existing artifact',
     expect(JSON.parse(verify.stdout)).toEqual({ verified: true, databaseMutationExecuted: false });
     const overwrite = spawnSync(process.execPath, [script, '--result', resultPath, '--issue-items', sourcePath, '--output', outputPath], { encoding: 'utf8' });
     expect(overwrite.status).toBe(1);
-    expect(readFileSync(outputPath, 'utf8')).toContain('"schemaVersion": 1');
+    expect(readFileSync(outputPath, 'utf8')).toContain('"schemaVersion": 2');
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

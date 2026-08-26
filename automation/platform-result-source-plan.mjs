@@ -15,6 +15,7 @@ const sourceReferenceContract = JSON.parse(readFileSync(
   new URL('../src/islands/result/source-reference-contract.json', import.meta.url),
   'utf8',
 ));
+validateSourceReferenceContract(sourceReferenceContract);
 const publicRecordContract = requireObject(sourceReferenceContract.record, 'source reference contract');
 const SOURCE_REVIEWER_ROLES = new Set(requireArray(publicRecordContract.reviewerRoles, 'source reviewer roles'));
 const REFERENCE_KEY_PATTERN = new RegExp(requireText(publicRecordContract.referenceKeyPattern, 'reference key pattern'));
@@ -23,6 +24,10 @@ const MAX_TEAM_NAME_LENGTH = requireInteger(publicRecordContract.teamNameMaxLeng
 const MAX_EXCERPT_LENGTH = requireInteger(publicRecordContract.excerptMaxLength, 'excerpt max length');
 const MAX_SOURCE_ORDINAL = requireInteger(publicRecordContract.maximumOrdinal, 'maximum source ordinal');
 const PUBLIC_RECORD_KEYS = requireArray(publicRecordContract.requiredKeys, 'public source reference keys');
+const SOURCE_REFERENCE_CONTRACT_IDENTITY = Object.freeze({
+  schemaVersion: sourceReferenceContract.schemaVersion,
+  canonicalSha256: sha256(canonicalJson(sourceReferenceContract)),
+});
 
 function canonicalValue(value) {
   if (Array.isArray(value)) return value.map(canonicalValue);
@@ -74,6 +79,56 @@ function requireExactKeys(value, expected, label) {
   const actual = Object.keys(value).sort();
   const wanted = [...expected].sort();
   if (canonicalJson(actual) !== canonicalJson(wanted)) throw new Error(`Unexpected ${label} field`);
+}
+
+export function validateSourceReferenceContract(contract) {
+  const candidate = requireObject(contract, 'source reference contract');
+  requireExactKeys(candidate, ['schemaVersion', 'record'], 'source reference contract');
+  if (candidate.schemaVersion !== 1) throw new Error('Unsupported source reference contract schema version');
+  const record = requireObject(candidate.record, 'source reference contract record');
+  const recordKeys = [
+    'requiredKeys',
+    'referenceKeyPattern',
+    'teamNameMaxLength',
+    'excerptMaxLength',
+    'contentSha256Pattern',
+    'timestampMaxLength',
+    'timestampPattern',
+    'maximumOrdinal',
+    'kinds',
+    'publicationStatus',
+    'reviewerRoles',
+  ];
+  requireExactKeys(record, recordKeys, 'source reference contract record');
+  const requiredKeys = requireArray(record.requiredKeys, 'public source reference keys');
+  const expectedPublicKeys = [
+    'reference_key',
+    'team_name',
+    'ordinal',
+    'kind',
+    'excerpt',
+    'content_sha256',
+    'publication_status',
+    'reviewed_at',
+    'reviewer_role',
+  ];
+  if (canonicalJson(requiredKeys) !== canonicalJson(expectedPublicKeys)
+    || canonicalJson(record.kinds) !== canonicalJson(['core', 'extra'])
+    || record.publicationStatus !== 'reviewed'
+    || canonicalJson(record.reviewerRoles) !== canonicalJson(['org_admin', 'hq'])) {
+    throw new Error('Source reference contract vocabulary is invalid');
+  }
+  for (const [value, label] of [
+    [record.teamNameMaxLength, 'team name max length'],
+    [record.excerptMaxLength, 'excerpt max length'],
+    [record.timestampMaxLength, 'timestamp max length'],
+    [record.maximumOrdinal, 'maximum source ordinal'],
+  ]) requirePositiveInteger(value, label);
+  for (const [value, label] of [
+    [record.referenceKeyPattern, 'reference key pattern'],
+    [record.contentSha256Pattern, 'content digest pattern'],
+    [record.timestampPattern, 'timestamp pattern'],
+  ]) requireText(value, label);
 }
 
 function requireCanonicalTimestamp(value, label) {
@@ -266,7 +321,8 @@ function unsignedPlan(result, sourceSnapshot) {
   });
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    sourceReferenceContract: SOURCE_REFERENCE_CONTRACT_IDENTITY,
     scope: parsedResult.scope,
     scopeId: parsedResult.scopeId,
     publishedAt: parsedResult.publishedAt,
@@ -294,7 +350,7 @@ export function buildPlatformResultSourcePlan(result, sourceSnapshot) {
 
 export function verifyPlatformResultSourcePlan(plan, result, sourceSnapshot) {
   const candidate = requireObject(plan, 'source plan');
-  if (candidate.schemaVersion !== 1) throw new Error('Unsupported source plan schema version');
+  if (candidate.schemaVersion !== 2) throw new Error('Unsupported source plan schema version');
   if (typeof candidate.checksumSha256 !== 'string' || !SHA256_PATTERN.test(candidate.checksumSha256)) {
     throw new Error('Invalid source plan checksum');
   }
@@ -420,9 +476,10 @@ function unsignedPublicationPlan(result, sourceSnapshot, reviews) {
   const reviewedReferenceCount = decisions.filter((decision) => decision.publicationStatus === 'reviewed').length;
   const withheldReferenceCount = decisions.length - reviewedReferenceCount;
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     planKind: 'source_publication',
     mode: 'replace_all',
+    sourceReferenceContract: SOURCE_REFERENCE_CONTRACT_IDENTITY,
     scope: parsedResult.scope,
     scopeId: parsedResult.scopeId,
     observedAt,
@@ -455,7 +512,7 @@ export function buildPlatformResultSourcePublicationPlan(result, sourceSnapshot,
 
 export function verifyPlatformResultSourcePublicationPlan(plan, result, sourceSnapshot, reviews) {
   const candidate = requireObject(plan, 'source publication plan');
-  if (candidate.schemaVersion !== 1 || candidate.planKind !== 'source_publication') {
+  if (candidate.schemaVersion !== 2 || candidate.planKind !== 'source_publication') {
     throw new Error('Unsupported source publication plan');
   }
   if (typeof candidate.checksumSha256 !== 'string' || !SHA256_PATTERN.test(candidate.checksumSha256)) {

@@ -21,7 +21,7 @@ Any mismatch fails before a plan is written. This prevents a current mutable rev
 
 ## Output and privacy boundary
 
-The schema-v1 plan contains stable issue, item, submission and cluster IDs; team, ordinal, kind and `linked_by`; and a SHA-256 of each source item's content. It deliberately excludes source content and rationale. The plan is always marked:
+The schema-v2 plan contains stable issue, item, submission and cluster IDs; team, ordinal, kind and `linked_by`; and a SHA-256 of each source item's content. It deliberately excludes source content and rationale. It also binds the exact schema version and canonical SHA-256 of `source-reference-contract.json`; the verifier rejects legacy schema-v1 plans and self-rechecksummed contract identity drift. The plan is always marked:
 
 - `dryRun: true`
 - `databaseMutationExecuted: false`
