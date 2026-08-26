@@ -470,6 +470,8 @@ async function inspectRequiredKeyboardFocusOrder(page, expected) {
       availability: [],
       forward: [],
       reverse: [],
+      forwardExit: null,
+      backwardExit: null,
       escapedForward: false,
       escapedBackward: false,
       passed: true,
@@ -508,6 +510,26 @@ async function inspectRequiredKeyboardFocusOrder(page, expected) {
     ),
     active: await fingerprint(),
   });
+  const captureExit = () => page.evaluate((selectors) => {
+    const element = document.activeElement;
+    const href = element instanceof HTMLElement ? element.getAttribute('href') : null;
+    const active = element instanceof HTMLElement ? {
+      tag: element.tagName.toLowerCase(),
+      id: element.id || null,
+      type: element.getAttribute('type'),
+      role: element.getAttribute('role'),
+      hrefPath: href ? new URL(href, document.baseURI).pathname : null,
+    } : null;
+    const documentHasFocus = document.hasFocus();
+    const outsideExpected = !(element instanceof Element)
+      || selectors.every((selector) => !element.matches(selector));
+    return {
+      documentHasFocus,
+      outsideExpected,
+      active,
+      escaped: !documentHasFocus || outsideExpected,
+    };
+  }, expected);
 
   if (availability.some(({ found, visible, enabled }) => !found || !visible || !enabled)) {
     return {
@@ -516,6 +538,8 @@ async function inspectRequiredKeyboardFocusOrder(page, expected) {
       availability,
       forward: [],
       reverse: [],
+      forwardExit: null,
+      backwardExit: null,
       escapedForward: false,
       escapedBackward: false,
       passed: false,
@@ -530,11 +554,8 @@ async function inspectRequiredKeyboardFocusOrder(page, expected) {
     forward.push(await capture(selector));
   }
   await page.keyboard.press('Tab');
-  const escapedForward = await page.evaluate(
-    (selectors) => !(document.activeElement instanceof Element)
-      || selectors.every((selector) => !document.activeElement.matches(selector)),
-    expected,
-  );
+  const forwardExit = await captureExit();
+  const escapedForward = forwardExit.escaped;
 
   const reversedExpected = [...expected].reverse();
   const reverse = [];
@@ -545,11 +566,8 @@ async function inspectRequiredKeyboardFocusOrder(page, expected) {
     reverse.push(await capture(selector));
   }
   await page.keyboard.press('Shift+Tab');
-  const escapedBackward = await page.evaluate(
-    (selectors) => !(document.activeElement instanceof Element)
-      || selectors.every((selector) => !document.activeElement.matches(selector)),
-    expected,
-  );
+  const backwardExit = await captureExit();
+  const escapedBackward = backwardExit.escaped;
   const matched = [...forward, ...reverse].every((entry) => entry.matched);
 
   return {
@@ -558,6 +576,8 @@ async function inspectRequiredKeyboardFocusOrder(page, expected) {
     availability,
     forward,
     reverse,
+    forwardExit,
+    backwardExit,
     escapedForward,
     escapedBackward,
     passed: matched && escapedForward && escapedBackward,
@@ -682,6 +702,8 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
         availability: [],
         forward: [],
         reverse: [],
+        forwardExit: null,
+        backwardExit: null,
         escapedForward: false,
         escapedBackward: false,
         passed: false,
