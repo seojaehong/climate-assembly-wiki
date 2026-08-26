@@ -230,6 +230,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A3 접근 계획 계약 identity 결속(2026-08-26):** 기관 접근 provisioning plan을 schema v2로 올리고 브라우저·CLI가 공유하는 `access-plan-contract.json` schema v1과 canonical SHA-256을 `accessPlanContract`에 결속했다. verifier는 현재 contract와 source access plan에서 전체 artifact를 다시 생성하므로 plan checksum을 다시 계산한 contract digest 위조와 identity가 없는 legacy provisioning plan schema v1을 모두 거부한다. 브라우저가 내보내는 source access plan schema v1은 유지하며 과거 provisioning plan만 현재 source로 재생성해야 한다. production DB·Auth·초대·메일·membership·GRANT에는 접근하거나 변경하지 않았다.
 
+**A3 append-only receipt recovery 계약(2026-08-26):** executor adapter가 append-only persistence capability와 `runId`별 read/append를 함께 제공하도록 강화했다. Core는 operation lookup 전에 저장된 receipt의 HMAC·plan checksum·approval ID·run ID를 검증해 exact replay면 mutation 없이 반환한다. 봉인된 terminal receipt는 원 approval 서명과 발급시각을 다시 검증하므로 실행 창 만료 뒤 재시작에서도 mutation 없이 복구하지만, 저장본이 없으면 현재 trusted clock 기준 approval freshness를 통과해야 신규 실행한다. 신규 실행도 append 응답을 신뢰하지 않고 authoritative read-back과 생성 receipt가 canonical하게 같을 때만 성공한다. append가 저장 뒤 응답을 잃은 경로는 같은 receipt를 복구하고 같은 run 재실행은 lookup·apply·append를 반복하지 않으며, 다른 run receipt와 누락·위조·충돌은 mutation 전에 거부한다. Adapter 객체는 검증 경계에서 복제해 사후 변조를 격리한다. 이는 in-memory adapter contract 회귀이며 production invitation ledger·메일 provider·외부 append-only 저장소·Auth adapter는 구현하거나 연결하지 않았다. 조직 접근의 4개 role은 staff membership이고 시민 participant token 역할은 별도 경계임을 문서에 명시했다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

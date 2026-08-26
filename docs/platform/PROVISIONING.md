@@ -119,6 +119,10 @@ npm.cmd run verify:platform-access-provisioning -- $provisioningPlan --source $a
 
 Executor core는 exact plan 검증 뒤 15분 이내 HMAC 승인(외부 보관 key + key ID + canonical Auth reviewer), stable lookup, 순차 apply, 응답 유실 뒤 조회 reconciliation, 첫 실패 중단, 비식별 receipt 영구화를 강제한다. 자동 mutation retry는 하지 않으며 receipt에는 operation ID·상태·count만 남기고 이메일·사용자 UUID를 넣지 않는다. Receipt 전체도 같은 trusted key와 key ID로 HMAC 결속하고 verifier가 상태별 count·시간 순서·operation ID 중복·plan checksum을 다시 확인한다.
 
+Execution adapter는 append-only receipt persistence를 명시하고 `runId`별 read와 append를 모두 제공해야 한다. Core는 operation lookup 전에 저장된 receipt를 읽어 exact HMAC·plan·approval·run을 검증하고 일치하면 mutation 없이 그대로 반환한다. 이미 봉인된 terminal receipt 복구는 원 approval의 서명·발급시각 결속을 다시 확인하므로 15분 실행 창이 지난 재시작에서도 mutation 없이 가능하지만, 저장본이 없으면 현재 trusted clock 기준 approval freshness를 다시 통과해야 신규 실행할 수 있다. 신규 실행은 receipt append 응답을 성공 근거로 신뢰하지 않고 같은 `runId`를 다시 읽어 생성한 receipt와 canonical byte 의미가 같을 때만 완료한다. append 뒤 응답 유실은 저장본 재조회로 복구하지만 누락·위조·다른 run/approval·충돌 receipt는 실패하며 operation을 자동 재실행하지 않는다. Adapter가 반환하거나 받는 객체는 검증 경계에서 복제해 사후 변조가 core의 검증본을 바꾸지 못하게 한다. 현재 구현은 adapter contract와 in-memory 회귀일 뿐 production append-only 저장소는 아니다.
+
+조직 접근 계획의 4개 role은 staff membership 정본(`org_admin|operator|hq|facilitator`)이다. 제품계획의 시민 역할은 staff membership에 추가하지 않고 session의 participant token 경계로 분리한다.
+
 승인 key는 GitHub secret만을 유일한 보관처로 사용하지 않는다. 불변 key ID별로 별도 보안 저장소에 백업하고, 회전할 때는 신규 승인 발급을 멈춘 뒤 진행 중 15분 창과 receipt 검증을 끝내며, 과거 key는 승인된 보존기간 동안 read-only로 유지한다. 폐기에는 영향받는 approval ID·receipt run ID와 승인자를 별도 감사 기록으로 남긴다.
 
 다만 production Supabase/Auth adapter와 CLI 실행 경로는 아직 연결하지 않았다. 특히 현재 `invitation` table에는 `(org_id,email,role)` unique 또는 별도 operation ledger가 없어 응답 유실 뒤 중복 초대·메일을 서버가 확실히 막을 수 없다. 이 멱등 저장 계약, 초대 메일 provider, receipt의 외부 append-only 저장소를 별도 승인·검증하기 전에는 executor core에 production adapter를 주입하거나 계획을 수동 SQL/API 작업 목록으로 사용하지 않는다.

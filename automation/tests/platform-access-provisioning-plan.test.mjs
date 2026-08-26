@@ -74,16 +74,21 @@ function approvalFor(plan) {
 }
 
 function executionAdapter(overrides = {}) {
+  const receipts = new Map();
   return {
     capabilities: {
       stableOperationLookup: true,
       idempotentApply: true,
       automaticMutationRetry: false,
       receiptPersistence: true,
+      appendOnlyReceiptPersistence: true,
     },
     lookupOperation: async (operation) => ({ status: 'absent', operationId: operation.operationId }),
     applyOperation: async (operation) => ({ status: 'applied', operationId: operation.operationId }),
-    persistReceipt: async () => {},
+    readReceipt: async (runId) => receipts.get(runId) ?? null,
+    appendReceipt: async (receipt) => {
+      if (!receipts.has(receipt.runId)) receipts.set(receipt.runId, structuredClone(receipt));
+    },
     ...overrides,
   };
 }
@@ -262,6 +267,7 @@ test('executes sequential idempotent operations and persists a non-sensitive rec
   const plan = buildOrganizationAccessProvisioningPlan(source, bytes);
   const applied = [];
   const persisted = [];
+  const receipts = new Map();
   const receipt = await executeOrganizationAccessProvisioningPlan({
     plan,
     accessPlan: source,
@@ -275,7 +281,11 @@ test('executes sequential idempotent operations and persists a non-sensitive rec
         applied.push(operation.operationId);
         return { status: 'applied', operationId: operation.operationId };
       },
-      persistReceipt: async (value) => { persisted.push(value); },
+      readReceipt: async (runId) => receipts.get(runId) ?? null,
+      appendReceipt: async (value) => {
+        receipts.set(value.runId, structuredClone(value));
+        persisted.push(value);
+      },
     }),
     clock: () => new Date('2026-08-17T02:10:00.000Z'),
   });
@@ -351,6 +361,99 @@ test('reconciles a committed mutation after response loss without retrying apply
   expect(applyCalls).toBe(1);
   expect(receipt.status).toBe('completed');
   expect(receipt.operations[0]).toMatchObject({ status: 'reconciled', mutationAttempted: true });
+});
+
+test('recovers an append response loss and returns the same durable receipt on run replay', async () => {
+  const source = { ...accessPlan(), memberships: [] };
+  const bytes = sourceBytes(source);
+  const plan = buildOrganizationAccessProvisioningPlan(source, bytes);
+  const receipts = new Map();
+  let lookupCalls = 0;
+  let applyCalls = 0;
+  let appendCalls = 0;
+  const adapter = executionAdapter({
+    lookupOperation: async (operation) => {
+      lookupCalls += 1;
+      return { status: 'absent', operationId: operation.operationId };
+    },
+    applyOperation: async (operation) => {
+      applyCalls += 1;
+      return { status: 'applied', operationId: operation.operationId };
+    },
+    readReceipt: async (runId) => receipts.get(runId) ?? null,
+    appendReceipt: async (receipt) => {
+      appendCalls += 1;
+      receipts.set(receipt.runId, structuredClone(receipt));
+      throw new Error('synthetic append response loss');
+    },
+  });
+  const input = {
+    plan,
+    accessPlan: source,
+    sourceBytes: bytes,
+    approval: approvalFor(plan),
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    runId: '12121212-1212-4212-8212-121212121212',
+    adapter,
+    clock: () => new Date('2026-08-17T02:10:00.000Z'),
+  };
+
+  const first = await executeOrganizationAccessProvisioningPlan(input);
+  const replayed = await executeOrganizationAccessProvisioningPlan({
+    ...input,
+    clock: () => new Date('2026-08-17T03:00:00.000Z'),
+  });
+
+  expect(replayed).toEqual(first);
+  expect(lookupCalls).toBe(1);
+  expect(applyCalls).toBe(1);
+  expect(appendCalls).toBe(1);
+});
+
+test('rejects a conflicting stored receipt before operation lookup or mutation', async () => {
+  const source = { ...accessPlan(), memberships: [] };
+  const bytes = sourceBytes(source);
+  const plan = buildOrganizationAccessProvisioningPlan(source, bytes);
+  const runId = '13131313-1313-4313-8313-131313131313';
+  const conflictingReceipt = await executeOrganizationAccessProvisioningPlan({
+    plan,
+    accessPlan: source,
+    sourceBytes: bytes,
+    approval: approvalFor(plan),
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    runId: '14141414-1414-4414-8414-141414141414',
+    adapter: executionAdapter(),
+    clock: () => new Date('2026-08-17T02:10:00.000Z'),
+  });
+  let lookupCalls = 0;
+  let applyCalls = 0;
+
+  await expect(executeOrganizationAccessProvisioningPlan({
+    plan,
+    accessPlan: source,
+    sourceBytes: bytes,
+    approval: approvalFor(plan),
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    runId,
+    adapter: executionAdapter({
+      readReceipt: async () => conflictingReceipt,
+      lookupOperation: async (operation) => {
+        lookupCalls += 1;
+        return { status: 'absent', operationId: operation.operationId };
+      },
+      applyOperation: async (operation) => {
+        applyCalls += 1;
+        return { status: 'applied', operationId: operation.operationId };
+      },
+    }),
+    clock: () => new Date('2026-08-17T02:10:00.000Z'),
+  })).rejects.toThrow('stored execution receipt is invalid');
+
+  expect(lookupCalls).toBe(0);
+  expect(applyCalls).toBe(0);
 });
 
 test('treats an exact prior operation as already applied without another mutation', async () => {
@@ -467,6 +570,7 @@ test('rejects unsafe adapters before lookup and propagates receipt persistence f
         idempotentApply: false,
         automaticMutationRetry: false,
         receiptPersistence: true,
+        appendOnlyReceiptPersistence: true,
       },
     }),
   })).rejects.toThrow('execution adapter is unsafe');
@@ -478,13 +582,14 @@ test('rejects unsafe adapters before lookup and propagates receipt persistence f
         idempotentApply: true,
         automaticMutationRetry: true,
         receiptPersistence: true,
+        appendOnlyReceiptPersistence: true,
       },
     }),
   })).rejects.toThrow('execution adapter is unsafe');
   await expect(executeOrganizationAccessProvisioningPlan({
     ...common,
     adapter: executionAdapter({
-      persistReceipt: async () => { throw new Error('synthetic receipt failure'); },
+      appendReceipt: async () => { throw new Error('synthetic receipt failure'); },
     }),
   })).rejects.toThrow('receipt could not be persisted');
 });

@@ -469,17 +469,54 @@ function requireExecutionAdapter(adapter) {
     || !isRecord(adapter.capabilities)
     || !exactKeys(adapter.capabilities, [
       'stableOperationLookup', 'idempotentApply', 'automaticMutationRetry', 'receiptPersistence',
+      'appendOnlyReceiptPersistence',
     ])
     || adapter.capabilities.stableOperationLookup !== true
     || adapter.capabilities.idempotentApply !== true
     || adapter.capabilities.automaticMutationRetry !== false
     || adapter.capabilities.receiptPersistence !== true
+    || adapter.capabilities.appendOnlyReceiptPersistence !== true
     || typeof adapter.lookupOperation !== 'function'
     || typeof adapter.applyOperation !== 'function'
-    || typeof adapter.persistReceipt !== 'function') {
+    || typeof adapter.readReceipt !== 'function'
+    || typeof adapter.appendReceipt !== 'function') {
     throw new Error('Organization access provisioning execution adapter is unsafe');
   }
   return adapter;
+}
+
+async function readStoredExecutionReceipt(adapter, {
+  runId,
+  approvalId,
+  trustedKey,
+  expectedKeyId,
+  expectedPlanChecksum,
+}) {
+  let receipt;
+  try {
+    receipt = await adapter.readReceipt(runId);
+  } catch {
+    throw new Error('Organization access provisioning execution receipt could not be read');
+  }
+  if (receipt === null) return null;
+  try {
+    receipt = structuredClone(receipt);
+  } catch {
+    throw new Error('Organization access provisioning stored execution receipt is invalid');
+  }
+  try {
+    verifyOrganizationAccessProvisioningExecutionReceipt(receipt, {
+      trustedKey,
+      expectedKeyId,
+      expectedPlanChecksum,
+    });
+  } catch {
+    throw new Error('Organization access provisioning stored execution receipt is invalid');
+  }
+  if (receipt.runId !== runId || receipt.approvalId !== approvalId) {
+    throw new Error('Organization access provisioning stored execution receipt is invalid');
+  }
+  return receipt;
 }
 
 function validateLookupResult(result, operationId) {
@@ -564,13 +601,26 @@ export async function executeOrganizationAccessProvisioningPlan({
   if (!UUID_PATTERN.test(runId ?? '')) {
     throw new Error('Organization access provisioning execution run ID is invalid');
   }
+  const executionAdapter = requireExecutionAdapter(adapter);
+  const recoveryAuthorization = verifyOrganizationAccessProvisioningApproval(approval, plan, {
+    trustedKey,
+    expectedKeyId,
+    now: isRecord(approval) ? approval.approvedAt : new Date(Number.NaN),
+  });
+  const storedReceipt = await readStoredExecutionReceipt(executionAdapter, {
+    runId,
+    approvalId: recoveryAuthorization.approvalId,
+    trustedKey,
+    expectedKeyId,
+    expectedPlanChecksum: plan.checksum,
+  });
+  if (storedReceipt) return storedReceipt;
   const startedAt = executionTime(clock);
   const authorization = verifyOrganizationAccessProvisioningApproval(approval, plan, {
     trustedKey,
     expectedKeyId,
     now: startedAt,
   });
-  const executionAdapter = requireExecutionAdapter(adapter);
   const operationReceipts = [];
   let stopped = false;
   for (const operation of plan.operations) {
@@ -629,11 +679,26 @@ export async function executeOrganizationAccessProvisioningPlan({
     digest: executionReceiptDigest(unsignedReceipt, requireTrustedApprovalKey(trustedKey)),
   };
   try {
-    await executionAdapter.persistReceipt(receipt);
+    await executionAdapter.appendReceipt(structuredClone(receipt));
+  } catch {
+    // Append responses can be lost after durable publication. The read-back below is authoritative.
+  }
+  let persistedReceipt;
+  try {
+    persistedReceipt = await readStoredExecutionReceipt(executionAdapter, {
+      runId,
+      approvalId: authorization.approvalId,
+      trustedKey,
+      expectedKeyId,
+      expectedPlanChecksum: plan.checksum,
+    });
   } catch {
     throw new Error('Organization access provisioning execution receipt could not be persisted');
   }
-  return receipt;
+  if (!persistedReceipt || canonicalJson(persistedReceipt) !== canonicalJson(receipt)) {
+    throw new Error('Organization access provisioning execution receipt could not be persisted');
+  }
+  return persistedReceipt;
 }
 
 function readJsonFile(path, label, maxBytes) {
