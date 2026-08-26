@@ -41,6 +41,8 @@ import {
   sealLocalDesignProvisioningRehearsalStoreCheckpoint,
 } from '../platform-design-provisioning-durable-store.mjs';
 import {
+  executeDesignProvisioningApprovalLifecycleWithKeyRegistry,
+  reconcileDesignProvisioningApprovalLifecycleWithKeyRegistry,
   sealDesignProvisioningExecutionApprovalWithKeyRegistry,
   verifyDesignProvisioningExecutionApprovalWithKeyRegistry,
   verifyDesignProvisioningExecutionReceiptWithKeyRegistry,
@@ -1876,6 +1878,225 @@ test('executes claim, exact RPC, append-only receipt, and finalization in order'
   expect(JSON.stringify({ ...storedReceipt, digest: '' })).not.toContain('123450');
   expect((await authorizationAdapter.readSnapshot(approval.approvalId)).state.claim.status)
     .toBe('completed');
+});
+
+test('executes the A4 lifecycle through one active registry snapshot without exposing its key', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const authorizationAdapter = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
+  const receiptAdapter = createInMemoryDesignProvisioningReceiptAdapter();
+  let keyReadCount = 0;
+  let executionCount = 0;
+  const result = await executeDesignProvisioningApprovalLifecycleWithKeyRegistry({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter,
+    executionAdapter: {
+      async execute({ plan: executionPlan }) {
+        executionCount += 1;
+        return completedExecutionResult(executionPlan);
+      },
+    },
+    keyRegistry: {
+      async readKey() {
+        keyReadCount += 1;
+        return {
+          schemaVersion: 1,
+          kind: 'platform_design_provisioning_key_registry_entry',
+          keyId: approvalKeyId,
+          revision: 'a'.repeat(64),
+          state: 'active',
+          activatedAt: '2026-08-01T00:00:00.000Z',
+          issuanceDisabledAt: null,
+          verificationEndsAt: null,
+          trustedKey: approvalKey,
+        };
+      },
+    },
+    clock: sequenceClock(
+      '2026-08-25T13:05:00.000Z',
+      '2026-08-25T13:06:00.000Z',
+      '2026-08-25T13:07:00.000Z',
+    ),
+  });
+  expect(result).toMatchObject({
+    status: 'execution_completed',
+    executionDisposition: 'executed',
+    finalizationDisposition: 'new',
+  });
+  expect(JSON.stringify(result)).not.toContain(approvalKey);
+  expect(keyReadCount).toBe(1);
+  expect(executionCount).toBe(1);
+  expect(await receiptAdapter.read(approval.executionId)).toMatchObject({
+    startedAt: '2026-08-25T13:05:00.000Z',
+    completedAt: '2026-08-25T13:06:00.000Z',
+  });
+});
+
+test('reconciles an expired active A4 claim through a verify-only registry key', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const authorizationAdapter = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
+  const receiptAdapter = createInMemoryDesignProvisioningReceiptAdapter();
+  await expect(executeDesignProvisioningApprovalLifecycle({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter,
+    executionAdapter: { async execute() { throw new Error('synthetic unresolved response'); } },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock('2026-08-25T13:05:00.000Z'),
+  })).rejects.toThrow('execution adapter failed');
+
+  let keyReadCount = 0;
+  const result = await reconcileDesignProvisioningApprovalLifecycleWithKeyRegistry({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter,
+    reconciliationAdapter: {
+      async reconcile() {
+        return completedExecutionResult(executionPlanCandidate(plan), 'replayed');
+      },
+    },
+    keyRegistry: {
+      async readKey() {
+        keyReadCount += 1;
+        return {
+          schemaVersion: 1,
+          kind: 'platform_design_provisioning_key_registry_entry',
+          keyId: approvalKeyId,
+          revision: 'b'.repeat(64),
+          state: 'verify_only',
+          activatedAt: '2026-08-01T00:00:00.000Z',
+          issuanceDisabledAt: '2026-08-25T13:10:00.000Z',
+          verificationEndsAt: '2026-09-30T00:00:00.000Z',
+          trustedKey: approvalKey,
+        };
+      },
+    },
+    clock: sequenceClock(
+      '2026-08-25T13:20:00.000Z',
+      '2026-08-25T13:21:00.000Z',
+      '2026-08-25T13:22:00.000Z',
+    ),
+  });
+  expect(result).toMatchObject({
+    status: 'execution_completed',
+    executionDisposition: 'reconciled',
+    finalizationDisposition: 'new',
+  });
+  expect(keyReadCount).toBe(1);
+  expect((await authorizationAdapter.readSnapshot(approval.approvalId)).state.claim.status)
+    .toBe('completed');
+});
+
+test('rejects a retired A4 lifecycle key before claim or execution', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const authorizationAdapter = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
+  let executionCount = 0;
+  await expect(executeDesignProvisioningApprovalLifecycleWithKeyRegistry({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter: createInMemoryDesignProvisioningReceiptAdapter(),
+    executionAdapter: {
+      async execute() {
+        executionCount += 1;
+        throw new Error('must not execute');
+      },
+    },
+    keyRegistry: {
+      async readKey() {
+        return {
+          schemaVersion: 1,
+          kind: 'platform_design_provisioning_key_registry_entry',
+          keyId: approvalKeyId,
+          revision: 'c'.repeat(64),
+          state: 'retired',
+          activatedAt: '2026-08-01T00:00:00.000Z',
+          issuanceDisabledAt: '2026-08-25T13:01:00.000Z',
+          verificationEndsAt: '2026-08-25T13:04:00.000Z',
+          trustedKey: approvalKey,
+        };
+      },
+    },
+    clock: sequenceClock('2026-08-25T13:05:00.000Z'),
+  })).rejects.toThrow('key registry policy rejected the request');
+  expect(executionCount).toBe(0);
+  expect((await authorizationAdapter.readSnapshot(approval.approvalId)).state.claim).toBeNull();
+});
+
+test('rejects direct A4 lifecycle key options before registry access', async () => {
+  let keyReadCount = 0;
+  const keyRegistry = {
+    async readKey() {
+      keyReadCount += 1;
+      throw new Error('must not read');
+    },
+  };
+  await expect(executeDesignProvisioningApprovalLifecycleWithKeyRegistry({
+    trustedKey: approvalKey,
+    keyRegistry,
+  })).rejects.toThrow('key registry lifecycle options are invalid');
+  await expect(reconcileDesignProvisioningApprovalLifecycleWithKeyRegistry({
+    expectedKeyId: approvalKeyId,
+    keyRegistry,
+  })).rejects.toThrow('key registry lifecycle options are invalid');
+  expect(keyReadCount).toBe(0);
+});
+
+test('keeps the A4 claim open when a verify-only key expires during execution', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const authorizationAdapter = createInMemoryDesignProvisioningAuthorizationAdapter(liveContext());
+  const receiptAdapter = createInMemoryDesignProvisioningReceiptAdapter();
+  let executionCount = 0;
+  await expect(executeDesignProvisioningApprovalLifecycleWithKeyRegistry({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter,
+    executionAdapter: {
+      async execute({ plan: executionPlan }) {
+        executionCount += 1;
+        return completedExecutionResult(executionPlan);
+      },
+    },
+    keyRegistry: {
+      async readKey() {
+        return {
+          schemaVersion: 1,
+          kind: 'platform_design_provisioning_key_registry_entry',
+          keyId: approvalKeyId,
+          revision: 'd'.repeat(64),
+          state: 'verify_only',
+          activatedAt: '2026-08-01T00:00:00.000Z',
+          issuanceDisabledAt: '2026-08-25T13:01:00.000Z',
+          verificationEndsAt: '2026-08-25T13:15:00.000Z',
+          trustedKey: approvalKey,
+        };
+      },
+    },
+    clock: sequenceClock(
+      '2026-08-25T13:14:00.000Z',
+      '2026-08-25T13:16:00.000Z',
+      '2026-08-25T13:17:00.000Z',
+    ),
+  })).rejects.toThrow('key registry policy rejected the request');
+  expect(executionCount).toBe(1);
+  expect(await receiptAdapter.read(approval.executionId)).toBeNull();
+  expect((await authorizationAdapter.readSnapshot(approval.approvalId)).state.claim.status)
+    .toBe('claimed');
 });
 
 test('revalidates live authorization after claim before invoking the A4 RPC', async () => {

@@ -1,4 +1,6 @@
 import {
+  executeDesignProvisioningApprovalLifecycle,
+  reconcileDesignProvisioningApprovalLifecycle,
   sealDesignProvisioningExecutionApproval,
   verifyDesignProvisioningExecutionApproval,
   verifyDesignProvisioningExecutionReceipt,
@@ -8,6 +10,7 @@ import {
 const KEY_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{2,79}$/;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const KEY_STATES = Object.freeze(['active', 'verify_only', 'retired']);
+const POLICY_REJECTION_MESSAGE = 'Design provisioning key registry policy rejected the request';
 const APPROVAL_KEYS = Object.freeze([
   'schemaVersion', 'kind', 'planChecksum', 'sourceBlueprintSha256',
   'sourceBlueprintBytes', 'operationCount', 'approvalId', 'executionId',
@@ -185,7 +188,7 @@ async function authorizeRegistryIssuance(registry, entry, metadata) {
     || !expiresAt
     || authorizedAt.getTime() < approvedAt.getTime()
     || authorizedAt.getTime() > expiresAt.getTime()) {
-    throw new Error('Design provisioning key registry policy rejected the request');
+    throw new Error(POLICY_REJECTION_MESSAGE);
   }
 }
 
@@ -212,7 +215,7 @@ function validateIssuancePolicy(entry, approvedAtValue, expiresAtValue) {
     || approvedAt.getTime() < entry.activatedAt.getTime()
     || (entry.verificationEndsAt
       && expiresAt.getTime() > entry.verificationEndsAt.getTime())) {
-    throw new Error('Design provisioning key registry policy rejected the request');
+    throw new Error(POLICY_REJECTION_MESSAGE);
   }
 }
 
@@ -230,9 +233,65 @@ function validateVerificationPolicy(entry, approval, nowValue) {
     || (entry.verificationEndsAt
       && (expiresAt.getTime() > entry.verificationEndsAt.getTime()
         || now.getTime() > entry.verificationEndsAt.getTime()))) {
-    throw new Error('Design provisioning key registry policy rejected the request');
+    throw new Error(POLICY_REJECTION_MESSAGE);
   }
   return now;
+}
+
+async function registryLifecycleContext({
+  approval,
+  plan,
+  blueprint,
+  sourceBytes,
+  keyRegistry,
+  clock,
+}) {
+  verifyDesignProvisioningPlan(plan, blueprint, sourceBytes);
+  validateApprovalRegistryEnvelope(approval);
+  if (typeof clock !== 'function') {
+    throw new Error('Design provisioning key registry lifecycle clock is invalid');
+  }
+  const entry = await readRegistryEntry(keyRegistry, approval.keyId);
+  let firstTime;
+  try {
+    firstTime = trustedTime(clock());
+  } catch {
+    throw new Error('Design provisioning key registry lifecycle clock is invalid');
+  }
+  validateVerificationPolicy(entry, approval, firstTime);
+  let firstTimePending = true;
+  let policyFailure = false;
+  const replayingClock = () => {
+    if (firstTimePending) {
+      firstTimePending = false;
+      return new Date(firstTime.getTime());
+    }
+    const nextTime = clock();
+    try {
+      validateVerificationPolicy(entry, approval, nextTime);
+    } catch (error) {
+      if (error instanceof Error
+        && error.message === POLICY_REJECTION_MESSAGE) {
+        policyFailure = true;
+      }
+      throw error;
+    }
+    return nextTime;
+  };
+  return {
+    trustedKey: entry.trustedKey,
+    expectedKeyId: approval.keyId,
+    clock: replayingClock,
+    policyFailed: () => policyFailure,
+  };
+}
+
+function rejectDirectLifecycleKeyOptions(options) {
+  if (!isRecord(options)
+    || Object.hasOwn(options, 'trustedKey')
+    || Object.hasOwn(options, 'expectedKeyId')) {
+    throw new Error('Design provisioning key registry lifecycle options are invalid');
+  }
 }
 
 export async function sealDesignProvisioningExecutionApprovalWithKeyRegistry({
@@ -315,4 +374,58 @@ export async function verifyDesignProvisioningExecutionApprovalWithKeyRegistry({
       allowConsumed,
     },
   );
+}
+
+export async function executeDesignProvisioningApprovalLifecycleWithKeyRegistry(options = {}) {
+  rejectDirectLifecycleKeyOptions(options);
+  const {
+    keyRegistry,
+    clock = () => new Date(),
+    ...lifecycleOptions
+  } = options;
+  const context = await registryLifecycleContext({
+    ...lifecycleOptions,
+    keyRegistry,
+    clock,
+  });
+  try {
+    return await executeDesignProvisioningApprovalLifecycle({
+      ...lifecycleOptions,
+      trustedKey: context.trustedKey,
+      expectedKeyId: context.expectedKeyId,
+      clock: context.clock,
+    });
+  } catch (error) {
+    if (context.policyFailed()) {
+      throw new Error(POLICY_REJECTION_MESSAGE);
+    }
+    throw error;
+  }
+}
+
+export async function reconcileDesignProvisioningApprovalLifecycleWithKeyRegistry(options = {}) {
+  rejectDirectLifecycleKeyOptions(options);
+  const {
+    keyRegistry,
+    clock = () => new Date(),
+    ...lifecycleOptions
+  } = options;
+  const context = await registryLifecycleContext({
+    ...lifecycleOptions,
+    keyRegistry,
+    clock,
+  });
+  try {
+    return await reconcileDesignProvisioningApprovalLifecycle({
+      ...lifecycleOptions,
+      trustedKey: context.trustedKey,
+      expectedKeyId: context.expectedKeyId,
+      clock: context.clock,
+    });
+  } catch (error) {
+    if (context.policyFailed()) {
+      throw new Error(POLICY_REJECTION_MESSAGE);
+    }
+    throw error;
+  }
 }
