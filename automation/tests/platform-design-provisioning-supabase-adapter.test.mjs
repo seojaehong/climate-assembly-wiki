@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { createClient } from '@supabase/supabase-js';
 import { expect, test } from 'vitest';
 import {
   DESIGN_PROVISIONING_SUPABASE_ADAPTER_BOUNDARIES,
@@ -272,4 +273,139 @@ test('does not expose an unfenced execution or reconciliation method', () => {
     'revisionFencedReconciliation',
   ]);
   expect(fixture.calls).toHaveLength(0);
+});
+
+test('serializes both fenced RPCs through the real Supabase JS PostgREST client', async () => {
+  const requests = [];
+  const client = createClient(
+    'https://a4-adapter-fixture.supabase.invalid',
+    'fixture-anon-key-not-a-secret',
+    {
+      auth: {
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        persistSession: false,
+      },
+      global: {
+        async fetch(input, init) {
+          const headers = new Headers(init?.headers);
+          const body = JSON.parse(String(init?.body));
+          requests.push({
+            url: String(input),
+            method: init?.method,
+            headers,
+            body,
+            signal: init?.signal,
+          });
+          const response = String(input).endsWith('/design_provision')
+            ? {
+                status: 'completed',
+                operationCount: 0,
+                operations: [],
+                authorizationRevision: body.p_authorization_fence.authorizationRevision,
+              }
+            : {
+                status: 'pending',
+                authorizationRevision: body.p_authorization_fence.authorizationRevision,
+              };
+          return new Response(JSON.stringify(response), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        },
+      },
+    },
+  );
+  const fence = authorizationFence();
+  const query = reconciliationQuery();
+  const { executionAdapter, reconciliationAdapter } =
+    createSupabaseDesignProvisioningRpcAdapters({ client });
+
+  await expect(executionAdapter.execute({
+    plan: { schemaVersion: 1 },
+    sourceBytes: new Uint8Array([0, 15, 255]),
+    authorizationFence: fence,
+  })).resolves.toMatchObject({
+    status: 'completed',
+    authorizationRevision: fence.authorizationRevision,
+  });
+  await expect(reconciliationAdapter.reconcile({
+    query,
+    authorizationFence: fence,
+  })).resolves.toEqual({
+    status: 'pending',
+    authorizationRevision: fence.authorizationRevision,
+  });
+
+  expect(requests).toHaveLength(2);
+  expect(requests[0]).toMatchObject({
+    url: 'https://a4-adapter-fixture.supabase.invalid/rest/v1/rpc/design_provision',
+    method: 'POST',
+    body: {
+      p_plan: { schemaVersion: 1 },
+      p_source_bytes: '\\x000fff',
+      p_authorization_fence: fence,
+    },
+  });
+  expect(requests[1]).toMatchObject({
+    url: 'https://a4-adapter-fixture.supabase.invalid/rest/v1/rpc/design_provisioning_status',
+    method: 'POST',
+    body: {
+      p_query: query,
+      p_authorization_fence: fence,
+    },
+  });
+  for (const request of requests) {
+    expect(request.headers.get('content-profile')).toBe('climate_vote');
+    expect(request.headers.get('content-type')).toBe('application/json');
+    expect(request.headers.get('authorization')).toBe('Bearer fixture-anon-key-not-a-secret');
+    expect(request.headers.get('x-retry-count')).toBeNull();
+    expect(request.signal).toBeInstanceOf(AbortSignal);
+  }
+});
+
+test('does not retry a real Supabase JS RPC after an HTTP 503 response', async () => {
+  const rawDetail = 'fixture-raw-postgrest-detail';
+  const requests = [];
+  const client = createClient(
+    'https://a4-adapter-fixture.supabase.invalid',
+    'fixture-anon-key-not-a-secret',
+    {
+      auth: {
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        persistSession: false,
+      },
+      global: {
+        async fetch(input, init) {
+          requests.push({ input, init });
+          return new Response(JSON.stringify({
+            code: 'PGRST503',
+            message: rawDetail,
+            details: rawDetail,
+            hint: rawDetail,
+          }), {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        },
+      },
+    },
+  );
+  const { executionAdapter } = createSupabaseDesignProvisioningRpcAdapters({ client });
+  let observedError;
+  try {
+    await executionAdapter.execute({
+      plan: { schemaVersion: 1 },
+      sourceBytes: new Uint8Array([1]),
+      authorizationFence: authorizationFence(),
+    });
+  } catch (error) {
+    observedError = error;
+  }
+
+  expect(requests).toHaveLength(1);
+  expect(observedError).toBeInstanceOf(Error);
+  expect(observedError.message).toBe('Supabase design provisioning RPC failed');
+  expect(observedError.message).not.toContain(rawDetail);
 });

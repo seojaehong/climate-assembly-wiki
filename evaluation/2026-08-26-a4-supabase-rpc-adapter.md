@@ -12,6 +12,7 @@ The dormant A4 SQL fence now has a production-bound JavaScript adapter draft. Th
 - Every request receives a 20-second abort signal and is attempted once. An uncertain mutation outcome must use the existing explicit reconciliation lifecycle rather than an automatic retry.
 - Sparse, non-JSON, oversized, and malformed input is rejected before schema-client access. Raw Supabase errors and thrown values are replaced with stable non-sensitive errors.
 - Production-bound lifecycle entry points require approval and execution UUID v4 identities before receipt or authorization state access, matching the dormant SQL fence grammar.
+- A fixture-bound integration uses the actual lockfile Supabase JS client with custom fetch. It verifies both `/rest/v1/rpc/*` POST paths, `Content-Profile: climate_vote`, exact JSON arguments, PostgreSQL hex `bytea`, abort propagation, and a single request after HTTP 503.
 
 ## Inactive boundary
 
@@ -21,11 +22,11 @@ The dormant A4 SQL fence now has a production-bound JavaScript adapter draft. Th
 
 ## Verification
 
-- Focused A4 suite: 3 files and 94 tests passed.
-- Full automation suite: 28 files and 494 tests passed. One unrelated production graph polling case first reached its existing 20-second boundary, then passed alone and in the complete rerun.
+- Focused A4 suite: 3 files and 96 tests passed.
+- Full automation suite: 28 files and 496 tests passed.
 - Root suite: 65 files and 1,081 tests passed.
 - Astro check: 337 files, 0 errors, 0 warnings, and 49 existing hints.
-- A4 current-source bundle: 20 artifacts, checksum `2ce8605f8145e40f41e8e6b81eb4c8b6483252bf8e6644e11fe80738e02b2116`, `productionApplyApproved:false`, and `databaseMutationExecuted:false`.
+- A4 current-source bundle: 20 artifacts, checksum `9df1865b432a77240ce20bff1d2370b7a70cd4d735d6ac0d14e753229722e78e`, `productionApplyApproved:false`, and `databaseMutationExecuted:false`.
 
 ## Review
 
