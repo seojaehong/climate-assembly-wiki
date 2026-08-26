@@ -1814,6 +1814,40 @@ test('seals and verifies a non-sensitive A4 receipt from an exact completed RPC 
     operationCount: plan.operations.length,
     containsSensitiveValues: false,
   });
+  const authorizationRevision = 'b'.repeat(64);
+  const revisionBoundState = claimedApprovalState(approval, plan);
+  const revisionBoundReceipt = sealDesignProvisioningExecutionReceipt({
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    approval,
+    approvalState: {
+      ...revisionBoundState,
+      claim: {
+        ...revisionBoundState.claim,
+        authorizationRevision,
+      },
+    },
+    executionResult: { status: 'completed', response },
+    startedAt: '2026-08-25T13:05:00.000Z',
+    completedAt: '2026-08-25T13:06:00.000Z',
+    authorizationRevision,
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+  });
+  expect(revisionBoundReceipt.authorizationRevision).toBe(authorizationRevision);
+  expect(verifyDesignProvisioningExecutionReceipt(
+    revisionBoundReceipt,
+    plan,
+    source,
+    bytes,
+    approval,
+    {
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+      expectedAuthorizationRevision: authorizationRevision,
+    },
+  ).status).toBe('verified');
   await expect(verifyDesignProvisioningExecutionReceiptWithKeyRegistry({
     receipt,
     plan,
@@ -2441,7 +2475,118 @@ test('executes and finalizes through one revision-bound live authorization conte
     status: 'completed',
     authorizationRevision: snapshot.revision,
   });
+  expect((await receiptAdapter.read(approval.executionId)).authorizationRevision)
+    .toBe(snapshot.revision);
   expect(JSON.stringify(result)).not.toContain(snapshot.revision);
+});
+
+test('rejects a legacy stored receipt at the revision-bound recovery boundary', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const provider = createInMemoryRevisionedDesignProvisioningAuthorizationProvider(liveContext());
+  const receiptAdapter = createInMemoryDesignProvisioningReceiptAdapter();
+  await claimDesignProvisioningExecutionApproval({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter: provider.authorizationAdapter,
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+  });
+  const claimed = await provider.authorizationAdapter.readSnapshot(approval.approvalId);
+  const { authorizationRevision: _authorizationRevision, ...legacyClaim } = claimed.state.claim;
+  const legacyReceipt = sealDesignProvisioningExecutionReceipt({
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    approval,
+    approvalState: { ...claimed.state, claim: legacyClaim },
+    executionResult: completedExecutionResult(executionPlanCandidate(plan)),
+    startedAt: '2026-08-25T13:05:00.000Z',
+    completedAt: '2026-08-25T13:06:00.000Z',
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+  });
+  await receiptAdapter.append(legacyReceipt);
+  let executionCount = 0;
+
+  await expect(executeDesignProvisioningApprovalLifecycleWithRevisionedAuthorization({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter: provider.authorizationAdapter,
+    receiptAdapter,
+    executionAdapter: {
+      revisionFencedExecution: true,
+      async execute() {
+        executionCount += 1;
+        throw new Error('must not execute');
+      },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock('2026-08-25T13:07:00.000Z'),
+  })).rejects.toThrow('receipt authorization revision is invalid');
+  expect(executionCount).toBe(0);
+  expect((await provider.authorizationAdapter.readSnapshot(approval.approvalId)).state.claim.status)
+    .toBe('claimed');
+});
+
+test('rejects a validly signed stored receipt bound to another authorization revision', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const provider = createInMemoryRevisionedDesignProvisioningAuthorizationProvider(liveContext());
+  const receiptAdapter = createInMemoryDesignProvisioningReceiptAdapter();
+  await claimDesignProvisioningExecutionApproval({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter: provider.authorizationAdapter,
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+  });
+  const claimed = await provider.authorizationAdapter.readSnapshot(approval.approvalId);
+  const otherRevision = claimed.revision === 'e'.repeat(64)
+    ? 'd'.repeat(64)
+    : 'e'.repeat(64);
+  const mismatchedReceipt = sealDesignProvisioningExecutionReceipt({
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    approval,
+    approvalState: {
+      ...claimed.state,
+      claim: { ...claimed.state.claim, authorizationRevision: otherRevision },
+    },
+    executionResult: completedExecutionResult(executionPlanCandidate(plan)),
+    startedAt: '2026-08-25T13:05:00.000Z',
+    completedAt: '2026-08-25T13:06:00.000Z',
+    authorizationRevision: otherRevision,
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+  });
+  await receiptAdapter.append(mismatchedReceipt);
+
+  await expect(executeDesignProvisioningApprovalLifecycleWithRevisionedAuthorization({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter: provider.authorizationAdapter,
+    receiptAdapter,
+    executionAdapter: {
+      revisionFencedExecution: true,
+      async execute() { throw new Error('must not execute'); },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock('2026-08-25T13:07:00.000Z'),
+  })).rejects.toThrow('receipt authorization revision is invalid');
+  expect((await provider.authorizationAdapter.readSnapshot(approval.approvalId)).state.claim.status)
+    .toBe('claimed');
 });
 
 test('keeps the claim open when a fenced executor returns another authorization revision', async () => {

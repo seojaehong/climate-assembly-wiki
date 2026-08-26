@@ -91,12 +91,17 @@ function validateApprovalMetadataRegistryEnvelope(metadata) {
 }
 
 function validateReceiptRegistryEnvelope(receipt, expectedKeyId) {
+  const revisionBound = isRecord(receipt)
+    && Object.prototype.hasOwnProperty.call(receipt, 'authorizationRevision');
   if (!isRecord(receipt)
-    || !exactKeys(receipt, RECEIPT_KEYS)
+    || !exactKeys(receipt, revisionBound
+      ? [...RECEIPT_KEYS, 'authorizationRevision']
+      : RECEIPT_KEYS)
     || receipt.schemaVersion !== 1
     || receipt.kind !== 'platform_design_provisioning_execution_receipt'
     || receipt.keyId !== expectedKeyId
     || !KEY_ID_PATTERN.test(receipt.keyId ?? '')
+    || (revisionBound && !SHA256_PATTERN.test(receipt.authorizationRevision ?? ''))
     || !canonicalUtc(receipt.startedAt)
     || !canonicalUtc(receipt.completedAt)) {
     throw new Error('Design provisioning key registry request is invalid');
@@ -472,7 +477,10 @@ export async function executeDesignProvisioningApprovalLifecycleWithKeyRegistryA
 ) {
   requireRevisionedLifecycleAuthorization(options);
   requireRevisionFencedExecution(options);
-  return executeDesignProvisioningApprovalLifecycleWithKeyRegistry(options);
+  return executeDesignProvisioningApprovalLifecycleWithKeyRegistry({
+    ...options,
+    requireRevisionBoundReceipt: true,
+  });
 }
 
 export async function reconcileDesignProvisioningApprovalLifecycleWithKeyRegistryAndRevisionedAuthorization(
@@ -480,5 +488,8 @@ export async function reconcileDesignProvisioningApprovalLifecycleWithKeyRegistr
 ) {
   requireRevisionedLifecycleAuthorization(options);
   requireRevisionFencedReconciliation(options);
-  return reconcileDesignProvisioningApprovalLifecycleWithKeyRegistry(options);
+  return reconcileDesignProvisioningApprovalLifecycleWithKeyRegistry({
+    ...options,
+    requireRevisionBoundReceipt: true,
+  });
 }

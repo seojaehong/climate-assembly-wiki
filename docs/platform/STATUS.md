@@ -242,6 +242,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 RPC authorization fence 왕복 계약(2026-08-26):** production-bound execution/reconciliation wrapper가 revisioned authorization뿐 아니라 `revisionFencedExecution:true` 또는 `revisionFencedReconciliation:true` capability를 요구한다. Core는 RPC/ledger lookup 직전 검증한 approval·execution ID와 revision을 exact fence로 전달하고 adapter 응답이 같은 revision을 되돌릴 때만 결과를 처리한다. Unfenced adapter는 authorization·receipt·key registry read 전에 거부하며 다른 revision 응답은 receipt 없이 claim을 active로 보존한다. Legacy 저수준 core는 기존 회귀와 호환되지만 production-bound wrapper로 승격되지 않는다. 실제 Supabase RPC transaction·status lookup이 fence를 소비하는 adapter, DB·Auth·GRANT·traffic은 구현하거나 변경하지 않았다.
 
+**A4 revision-bound durable receipt 계약(2026-08-26):** fence 왕복을 통과한 실행·reconciliation 결과만 receipt의 optional `authorizationRevision`에 같은 SHA-256을 넣고 HMAC으로 결속한다. Production-bound 기존 receipt 복구는 현재 live snapshot/claim revision을 먼저 읽어 receipt와 exact 일치할 때만 finalize한다. 필드가 없는 legacy receipt와 다른 revision으로 유효하게 서명된 receipt는 실행 adapter를 재호출하지 않고 claim을 열린 상태로 둔 채 거부한다. 일반 receipt verifier와 저수준 lifecycle의 legacy 호환은 유지하되 production evidence로 승격하지 않는다. Durable store와 key registry envelope는 optional revision을 exact schema로 검증하고 claim linkage가 다르면 append/audit를 거부한다. 실제 production durable store·RPC/status adapter·DB·Auth·GRANT·traffic은 구현하거나 변경하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

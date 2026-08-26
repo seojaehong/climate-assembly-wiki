@@ -145,6 +145,8 @@ Production-bound live authorization seam은 `revisionedLiveAuthorization:true`�
 
 같은 production-bound wrapper는 execution/status adapter에 각각 `revisionFencedExecution:true`·`revisionFencedReconciliation:true`를 요구한다. Adapter 호출에는 approval ID·execution ID·현재 `authorizationRevision`만 담은 exact fence를 전달하고 응답 revision이 다르면 receipt를 봉인하지 않는다. 이는 RPC와 ledger lookup transaction이 같은 row-version fence를 소비하도록 정한 interface일 뿐 production Supabase adapter 연결이나 RPC 변경은 아니다.
 
+Fence 왕복이 확인된 receipt는 같은 `authorizationRevision`을 HMAC payload에 보존한다. Production-bound restart/reconciliation은 현재 claim revision과 receipt가 일치할 때만 종결하며 필드가 없는 legacy receipt나 다른 revision receipt는 RPC 재호출·terminal finalize 없이 거부한다. 일반 verifier의 legacy 호환은 유지하지만 production-bound 복구에는 사용할 수 없다.
+
 ```powershell
 cd automation
 $blueprint = Join-Path $env:LOCALAPPDATA 'climate-assembly-private\platform-design-blueprint.json'

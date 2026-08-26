@@ -797,6 +797,7 @@ export function sealDesignProvisioningExecutionReceipt({
   executionResult,
   startedAt: startedAtValue,
   completedAt: completedAtValue,
+  authorizationRevision,
   trustedKey,
   expectedKeyId,
 }) {
@@ -818,6 +819,11 @@ export function sealDesignProvisioningExecutionReceipt({
   if (authorization.claimAction !== 'resume_existing_claim') {
     throw new Error('Design provisioning execution receipt requires an active claim');
   }
+  if (authorizationRevision !== undefined
+    && (!SHA256_PATTERN.test(authorizationRevision ?? '')
+      || approvalState?.claim?.authorizationRevision !== authorizationRevision)) {
+    throw new Error('Design provisioning execution receipt authorization revision is invalid');
+  }
   const executionPlan = designProvisioningExecutionCandidate(plan);
   const outcome = normalizedExecutionReceiptOutcome(executionPlan, executionResult);
   const unsigned = {
@@ -830,6 +836,7 @@ export function sealDesignProvisioningExecutionReceipt({
     approvalId: approval.approvalId,
     executionId: approval.executionId,
     keyId: approval.keyId,
+    ...(authorizationRevision !== undefined ? { authorizationRevision } : {}),
     startedAt: startedAt.toISOString(),
     completedAt: completedAt.toISOString(),
     summary: receiptSummary(plan, outcome.operations),
@@ -850,17 +857,28 @@ export function verifyDesignProvisioningExecutionReceipt(
   blueprint,
   sourceBytes,
   approval,
-  { trustedKey, expectedKeyId },
+  { trustedKey, expectedKeyId, expectedAuthorizationRevision },
 ) {
   verifyDesignProvisioningPlan(plan, blueprint, sourceBytes);
   const executionPlan = designProvisioningExecutionCandidate(plan);
+  const revisionBound = isRecord(receipt)
+    && Object.prototype.hasOwnProperty.call(receipt, 'authorizationRevision');
+  if (expectedAuthorizationRevision !== undefined
+    && (!SHA256_PATTERN.test(expectedAuthorizationRevision ?? '')
+      || !revisionBound
+      || receipt.authorizationRevision !== expectedAuthorizationRevision)) {
+    throw new Error('Design provisioning execution receipt authorization revision is invalid');
+  }
+  const receiptKeys = [
+    'schemaVersion', 'kind', 'status', 'approvedPlanChecksum', 'executedPlanChecksum',
+    'sourceBlueprintSha256',
+    'approvalId', 'executionId', 'keyId', 'startedAt', 'completedAt', 'summary',
+    'operations', 'failureCode', 'rollbackVerified', 'containsSensitiveValues', 'digest',
+  ];
   if (!isRecord(receipt)
-    || !exactKeys(receipt, [
-      'schemaVersion', 'kind', 'status', 'approvedPlanChecksum', 'executedPlanChecksum',
-      'sourceBlueprintSha256',
-      'approvalId', 'executionId', 'keyId', 'startedAt', 'completedAt', 'summary',
-      'operations', 'failureCode', 'rollbackVerified', 'containsSensitiveValues', 'digest',
-    ])
+    || !exactKeys(receipt, revisionBound
+      ? [...receiptKeys, 'authorizationRevision']
+      : receiptKeys)
     || receipt.schemaVersion !== 1
     || receipt.kind !== 'platform_design_provisioning_execution_receipt'
     || !['completed', 'failed'].includes(receipt.status)
@@ -871,6 +889,7 @@ export function verifyDesignProvisioningExecutionReceipt(
     || receipt.executionId !== approval?.executionId
     || receipt.keyId !== expectedKeyId
     || receipt.keyId !== approval?.keyId
+    || (revisionBound && !SHA256_PATTERN.test(receipt.authorizationRevision ?? ''))
     || receipt.containsSensitiveValues !== false
     || !SHA256_PATTERN.test(receipt.digest ?? '')
     || !isRecord(receipt.summary)
@@ -1622,14 +1641,25 @@ async function finalizeStoredExecutionReceipt({
   clock,
   executionDisposition,
   receiptDisposition,
+  requireRevisionBoundReceipt = false,
 }) {
+  let expectedAuthorizationRevision;
+  if (requireRevisionBoundReceipt) {
+    const snapshot = validateAuthorizationSnapshot(
+      await authorizationAdapter.readSnapshot(approval.approvalId),
+      { requireRevision: true },
+    );
+    validateLiveAuthorizationContext(snapshot.context, approval);
+    assertClaimActor(snapshot.state, snapshot.context, snapshot.revision);
+    expectedAuthorizationRevision = snapshot.revision;
+  }
   const verification = verifyDesignProvisioningExecutionReceipt(
     receipt,
     plan,
     blueprint,
     sourceBytes,
     approval,
-    { trustedKey, expectedKeyId },
+    { trustedKey, expectedKeyId, expectedAuthorizationRevision },
   );
   const finalizationAt = lifecycleTime(clock);
   const receiptCompletedAt = canonicalUtc(receipt.completedAt);
@@ -1667,6 +1697,8 @@ async function persistExecutionReceiptAndFinalize({
   expectedKeyId,
   clock,
   executionDisposition,
+  authorizationRevision,
+  requireRevisionBoundReceipt = false,
 }) {
   const claimedSnapshot = validateAuthorizationSnapshot(
     await authorizationAdapter.readSnapshot(approval.approvalId),
@@ -1687,6 +1719,7 @@ async function persistExecutionReceiptAndFinalize({
     executionResult,
     startedAt: startedAt.toISOString(),
     completedAt: completedAt.toISOString(),
+    authorizationRevision,
     trustedKey,
     expectedKeyId,
   });
@@ -1724,6 +1757,7 @@ async function persistExecutionReceiptAndFinalize({
     clock,
     executionDisposition,
     receiptDisposition: appendResult.status === 'appended' ? 'appended' : 'reconciled',
+    requireRevisionBoundReceipt,
   });
 }
 
@@ -1738,6 +1772,7 @@ export async function executeDesignProvisioningApprovalLifecycle({
   trustedKey,
   expectedKeyId,
   clock = () => new Date(),
+  requireRevisionBoundReceipt = false,
 }) {
   const authorization = validateAuthorizationAdapter(
     authorizationAdapter,
@@ -1745,6 +1780,14 @@ export async function executeDesignProvisioningApprovalLifecycle({
   );
   const receipts = validateReceiptAdapter(receiptAdapterValue);
   const execution = validateExecutionAdapter(executionAdapterValue);
+  if (typeof requireRevisionBoundReceipt !== 'boolean') {
+    throw new Error('Design provisioning revision-bound receipt requirement is invalid');
+  }
+  if (requireRevisionBoundReceipt
+    && (authorization.revisionedLiveAuthorization !== true
+      || execution.revisionFencedExecution !== true)) {
+    throw new Error('Design provisioning revision-bound receipt adapters are required');
+  }
   if (execution.revisionFencedExecution === true
     && authorization.revisionedLiveAuthorization !== true) {
     throw new Error('Design provisioning revision-fenced execution requires revisioned authorization');
@@ -1767,6 +1810,7 @@ export async function executeDesignProvisioningApprovalLifecycle({
       clock,
       executionDisposition: 'existing_receipt',
       receiptDisposition: 'existing',
+      requireRevisionBoundReceipt,
     });
   }
 
@@ -1796,6 +1840,7 @@ export async function executeDesignProvisioningApprovalLifecycle({
       clock,
       executionDisposition: 'existing_receipt',
       receiptDisposition: 'existing',
+      requireRevisionBoundReceipt,
     });
   }
 
@@ -1869,6 +1914,8 @@ export async function executeDesignProvisioningApprovalLifecycle({
     expectedKeyId,
     clock,
     executionDisposition: 'executed',
+    authorizationRevision: authorizationFence?.authorizationRevision,
+    requireRevisionBoundReceipt,
   });
 }
 
@@ -1883,6 +1930,7 @@ export async function reconcileDesignProvisioningApprovalLifecycle({
   trustedKey,
   expectedKeyId,
   clock = () => new Date(),
+  requireRevisionBoundReceipt = false,
 }) {
   const authorization = validateAuthorizationAdapter(
     authorizationAdapter,
@@ -1890,6 +1938,14 @@ export async function reconcileDesignProvisioningApprovalLifecycle({
   );
   const receipts = validateReceiptAdapter(receiptAdapterValue);
   const reconciliation = validateReconciliationAdapter(reconciliationAdapterValue);
+  if (typeof requireRevisionBoundReceipt !== 'boolean') {
+    throw new Error('Design provisioning revision-bound receipt requirement is invalid');
+  }
+  if (requireRevisionBoundReceipt
+    && (authorization.revisionedLiveAuthorization !== true
+      || reconciliation.revisionFencedReconciliation !== true)) {
+    throw new Error('Design provisioning revision-bound receipt adapters are required');
+  }
   if (reconciliation.revisionFencedReconciliation === true
     && authorization.revisionedLiveAuthorization !== true) {
     throw new Error(
@@ -1914,6 +1970,7 @@ export async function reconcileDesignProvisioningApprovalLifecycle({
       clock,
       executionDisposition: 'existing_receipt',
       receiptDisposition: 'existing',
+      requireRevisionBoundReceipt,
     });
   }
 
@@ -1965,6 +2022,7 @@ export async function reconcileDesignProvisioningApprovalLifecycle({
       clock,
       executionDisposition: 'existing_receipt',
       receiptDisposition: 'existing',
+      requireRevisionBoundReceipt,
     });
   }
 
@@ -2005,6 +2063,7 @@ export async function reconcileDesignProvisioningApprovalLifecycle({
       clock,
       executionDisposition: 'existing_receipt',
       receiptDisposition: 'existing',
+      requireRevisionBoundReceipt,
     });
   }
 
@@ -2028,6 +2087,8 @@ export async function reconcileDesignProvisioningApprovalLifecycle({
     expectedKeyId,
     clock,
     executionDisposition: 'reconciled',
+    authorizationRevision: authorizationFence?.authorizationRevision,
+    requireRevisionBoundReceipt,
   });
 }
 
@@ -2071,6 +2132,7 @@ export async function executeDesignProvisioningApprovalLifecycleWithRevisionedAu
     ...options,
     authorizationAdapter,
     executionAdapter,
+    requireRevisionBoundReceipt: true,
   });
 }
 
@@ -2087,6 +2149,7 @@ export async function reconcileDesignProvisioningApprovalLifecycleWithRevisioned
     ...options,
     authorizationAdapter,
     reconciliationAdapter,
+    requireRevisionBoundReceipt: true,
   });
 }
 

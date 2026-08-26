@@ -33,18 +33,18 @@
     },
     {
       "path": "automation/platform-design-provisioning-plan.mjs",
-      "sha256": "6fcd840e18f5df1fb535ac603472d78f65e116ec5e931ab96cdc1780b3bab639",
-      "bytes": 79904
+      "sha256": "80b7386ed20a4883225b40177d91d6cec6c482601428eb9fb893837eaa8c498e",
+      "bytes": 82904
     },
     {
       "path": "automation/platform-design-provisioning-durable-store.mjs",
-      "sha256": "bc855a11b0bb5b71e2519ef1353699a590a05a4030a39e3ee8e190b18973f75b",
-      "bytes": 53325
+      "sha256": "092021c979954c1bbc6a3236983a37a337ee35344083302bf0240a3bcf3c098d",
+      "bytes": 53853
     },
     {
       "path": "automation/platform-design-provisioning-key-registry.mjs",
-      "sha256": "d661c8ccc59fb12cd9d5e51f4d56045952e99f344d438d5ff4ec746384f22084",
-      "bytes": 16284
+      "sha256": "20a4b9eac7e1e82243c971642b90f51d4476da84e998328741080fce2f11e287",
+      "bytes": 16668
     },
     {
       "path": "automation/platform-a4-migration-bundle.mjs",
@@ -53,8 +53,8 @@
     },
     {
       "path": "automation/tests/platform-design-provisioning-plan.test.mjs",
-      "sha256": "bd91f271f47c6a12232c06b135203566a93fce4b904664ca1f87c846539fcafd",
-      "bytes": 145810
+      "sha256": "daf5f4d7ccc25aefe15610cd6b425f04ab7f17dea4d072a8a60516c3204c4242",
+      "bytes": 151126
     },
     {
       "path": "automation/tests/platform-a4-migration-bundle.test.mjs",
@@ -73,8 +73,8 @@
     },
     {
       "path": "docs/platform/A4_DESIGN_PROVISIONING_CONTRACT.md",
-      "sha256": "d498ebddde921ebebda9e022803e951142424c1e39dd4fbec64eaf3468166f5a",
-      "bytes": 32321
+      "sha256": "6417ea39f8f6cfb6505c9b45a0cec8190d9e4f7eef4c9274b530b7cd62dc03e6",
+      "bytes": 33390
     },
     {
       "path": "supabase/verify/design_provisioning_preflight.sql",
@@ -125,5 +125,5 @@
     "activatesStaffGrants": false,
     "connectsProductionExecutor": false
   },
-  "checksum": "e550fa33c2a7c7dad0c869a323d6673abc8010c76f80ac1fc111d1a2cffeeb12"
+  "checksum": "82d6aabbd923834ed8239af766003d5776e5771b5a58dc6520777a8596263b7b"
 }

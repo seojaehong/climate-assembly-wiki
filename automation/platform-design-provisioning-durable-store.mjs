@@ -756,12 +756,19 @@ export function replaceLocalDesignProvisioningAuthorizationContext({
 }
 
 function validateReceipt(receipt) {
-  if (!exactKeys(receipt, [
+  const revisionBound = Object.prototype.hasOwnProperty.call(
+    receipt ?? {},
+    'authorizationRevision',
+  );
+  const receiptKeys = [
     'schemaVersion', 'kind', 'status', 'approvedPlanChecksum', 'executedPlanChecksum',
     'sourceBlueprintSha256', 'approvalId', 'executionId', 'keyId', 'startedAt',
     'completedAt', 'summary', 'operations', 'failureCode', 'rollbackVerified',
     'containsSensitiveValues', 'digest',
-  ])
+  ];
+  if (!exactKeys(receipt, revisionBound
+    ? [...receiptKeys, 'authorizationRevision']
+    : receiptKeys)
     || receipt.schemaVersion !== 1
     || receipt.kind !== 'platform_design_provisioning_execution_receipt'
     || !['completed', 'failed'].includes(receipt.status)
@@ -771,6 +778,7 @@ function validateReceipt(receipt) {
     || !SHA256_PATTERN.test(receipt.approvedPlanChecksum ?? '')
     || !SHA256_PATTERN.test(receipt.executedPlanChecksum ?? '')
     || !SHA256_PATTERN.test(receipt.sourceBlueprintSha256 ?? '')
+    || (revisionBound && !SHA256_PATTERN.test(receipt.authorizationRevision ?? ''))
     || !KEY_ID_PATTERN.test(receipt.keyId ?? '')
     || new Date(receipt.startedAt).toISOString() !== receipt.startedAt
     || new Date(receipt.completedAt).toISOString() !== receipt.completedAt
@@ -808,11 +816,15 @@ function validateReceipt(receipt) {
 
 function validateReceiptAuthorizationLinkage(receipt, authorizationState) {
   const claim = authorizationState?.claim;
+  const receiptRevision = receipt.authorizationRevision;
+  const claimRevision = claim?.authorizationRevision;
   if (!claim
     || claim.approvalId !== receipt.approvalId
     || claim.executionId !== receipt.executionId
     || claim.planChecksum !== receipt.approvedPlanChecksum
     || (claim.status !== 'claimed' && claim.status !== receipt.status)
+    || ((receiptRevision !== undefined || claimRevision !== undefined)
+      && receiptRevision !== claimRevision)
     || receipt.startedAt < claim.claimedAt
     || (claim.status !== 'claimed' && receipt.completedAt > claim.finalizedAt)) {
     throw new Error('Local design provisioning execution receipt authorization linkage is invalid');
