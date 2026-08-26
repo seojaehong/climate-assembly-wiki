@@ -277,6 +277,7 @@ export function validateManualAccessibilityTarget(evidence, {
   expectedBaseUrl,
   isCommitAncestor,
   changedPaths,
+  commitCommittedAt,
 }) {
   const normalizedExpected = expectedBaseUrl?.replace(/\/$/, '');
   const normalizedActual = evidence.baseUrl.replace(/\/$/, '');
@@ -285,6 +286,15 @@ export function validateManualAccessibilityTarget(evidence, {
   }
   if (evidence.status === 'pass' && (!isCommitAncestor || changedPaths.length > 0)) {
     throw new Error('Passed manual evidence is stale for the current accessibility surfaces');
+  }
+  if (evidence.status === 'pass') {
+    const commitCommittedAtMs = Date.parse(commitCommittedAt ?? '');
+    if (!Number.isFinite(commitCommittedAtMs)) {
+      throw new Error('Failed to validate the manual evidence commit timestamp');
+    }
+    if (evidence.cases.some((item) => Date.parse(item.testedAt) < commitCommittedAtMs)) {
+      throw new Error('Passed manual evidence predates its target commit');
+    }
   }
 }
 
@@ -306,6 +316,14 @@ function gitTargetState(repoRoot, commitSha) {
     encoding: 'utf8',
   });
   if (![0, 1].includes(ancestor.status)) throw new Error('Failed to validate the manual evidence commit');
+  const commit = spawnSync('git', ['show', '-s', '--format=%cI', commitSha], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+  const commitCommittedAt = typeof commit.stdout === 'string' ? commit.stdout.trim() : '';
+  if (commit.status !== 0 || !Number.isFinite(Date.parse(commitCommittedAt))) {
+    throw new Error('Failed to validate the manual evidence commit timestamp');
+  }
   const diff = spawnSync('git', ['diff', '--name-only', commitSha, 'HEAD', '--', ...MANUAL_ACCESSIBILITY_TARGET_PATHS], {
     cwd: repoRoot,
     encoding: 'utf8',
@@ -328,6 +346,7 @@ function gitTargetState(repoRoot, commitSha) {
   return {
     isCommitAncestor: ancestor.status === 0,
     changedPaths: [...committedChanges, ...worktreeChanges],
+    commitCommittedAt,
   };
 }
 
@@ -353,7 +372,7 @@ export function runManualAccessibilityEvidenceCli(args) {
     }
     const targetState = repoRoot
       ? gitTargetState(repoRoot, evidence.commitSha)
-      : { isCommitAncestor: true, changedPaths: [] };
+      : { isCommitAncestor: true, changedPaths: [], commitCommittedAt: null };
     validateManualAccessibilityTarget(evidence, { expectedBaseUrl, ...targetState });
     process.stdout.write(`${JSON.stringify(summary)}\n`);
     if (summary.status === 'fail') process.exitCode = 1;

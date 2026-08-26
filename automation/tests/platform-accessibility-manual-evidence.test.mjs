@@ -320,6 +320,52 @@ test('rejects an unapproved origin and stale passed surface evidence', () => {
   })).toThrow('stale');
 });
 
+test('rejects passed observations that predate the target commit', () => {
+  const evidence = createManualAccessibilityTemplate({
+    baseUrl: 'https://climate-assembly.org',
+    commitSha: '9310d14',
+    generatedAt: '2026-08-11T00:00:00.000Z',
+  });
+  for (const profile of evidence.profiles) {
+    profile.environment = {
+      assistiveTechnology: { name: 'Test reader', version: '1' },
+      browser: { name: 'Test browser', version: '1' },
+      operatingSystem: { name: 'Test OS', version: '1' },
+      device: 'Test device',
+    };
+  }
+  for (const item of evidence.cases) {
+    item.evaluator = 'evaluator-role-a';
+    item.testedAt = '2026-08-11T01:00:00.000Z';
+    for (const check of item.checks) {
+      check.status = 'pass';
+      check.notes = 'Observed the expected result with the configured assistive technology.';
+    }
+  }
+  evidence.status = 'pass';
+
+  expect(() => validateManualAccessibilityTarget(evidence, {
+    expectedBaseUrl: 'https://climate-assembly.org',
+    isCommitAncestor: true,
+    changedPaths: [],
+    commitCommittedAt: '2026-08-11T01:00:00.001Z',
+  })).toThrow('predates its target commit');
+
+  expect(() => validateManualAccessibilityTarget(evidence, {
+    expectedBaseUrl: 'https://climate-assembly.org',
+    isCommitAncestor: true,
+    changedPaths: [],
+    commitCommittedAt: null,
+  })).toThrow('commit timestamp');
+
+  expect(() => validateManualAccessibilityTarget(evidence, {
+    expectedBaseUrl: 'https://climate-assembly.org',
+    isCommitAncestor: true,
+    changedPaths: [],
+    commitCommittedAt: '2026-08-11T01:00:00.000Z',
+  })).not.toThrow();
+});
+
 test('workflow watches every source path that can stale manual evidence', () => {
   const workflow = readFileSync(join(process.cwd(), '..', '.github', 'workflows', 'platform-accessibility.yml'), 'utf8');
   expect(workflow).toContain('fetch-depth: 0');
@@ -340,7 +386,15 @@ test('workflow watches every source path that can stale manual evidence', () => 
 test('CLI accepts an evidence-only commit and rejects committed or working-tree surface changes', () => {
   const repo = mkdtempSync(join(tmpdir(), 'manual-a11y-git-'));
   const modulePath = join(process.cwd(), 'platform-accessibility-manual-evidence.mjs');
-  const runGit = (...args) => spawnSync('git', args, { cwd: repo, encoding: 'utf8' });
+  const runGit = (...args) => spawnSync('git', args, {
+    cwd: repo,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      GIT_AUTHOR_DATE: '2026-08-11T00:30:00.000Z',
+      GIT_COMMITTER_DATE: '2026-08-11T00:30:00.000Z',
+    },
+  });
   try {
     expect(runGit('init').status).toBe(0);
     expect(runGit('config', 'user.email', 'test@example.invalid').status).toBe(0);
@@ -377,6 +431,16 @@ test('CLI accepts an evidence-only commit and rejects committed or working-tree 
     evidence.status = 'pass';
     mkdirSync(join(repo, 'evaluation'));
     const evidencePath = join(repo, 'evaluation', 'manual.json');
+    const backdatedEvidence = structuredClone(evidence);
+    for (const item of backdatedEvidence.cases) item.testedAt = '2026-08-11T00:29:59.999Z';
+    writeFileSync(evidencePath, JSON.stringify(backdatedEvidence), 'utf8');
+    expect(runGit('add', '.').status).toBe(0);
+    expect(runGit('commit', '-m', 'docs: add backdated evidence').status).toBe(0);
+    const backdated = spawnSync(process.execPath, [modulePath, '--verify', evidencePath,
+      '--expected-base-url', 'https://climate-assembly.org', '--repo-root', repo], { encoding: 'utf8' });
+    expect(backdated.status).toBe(1);
+    expect(backdated.stderr).toContain('predates its target commit');
+
     writeFileSync(evidencePath, JSON.stringify(evidence), 'utf8');
     expect(runGit('add', '.').status).toBe(0);
     expect(runGit('commit', '-m', 'docs: add evidence').status).toBe(0);
