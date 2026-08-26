@@ -172,7 +172,7 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(rehearsal).toContain('exact replay is not idempotent');
   expect(rehearsal).toContain('concurrent exact plan did not converge to applied and replayed outcomes');
   expect(rehearsal).toContain('cross-plan replay unexpectedly succeeded');
-  expect(rehearsal).toContain('pending reconciliation unexpectedly mutated state');
+  expect(rehearsal).toContain('fenced reconciliation response did not echo its authorization revision');
   expect(rehearsal).toContain('completed reconciliation response is unsafe');
   expect(rehearsal).toContain('unauthorized malformed plan was validated before role denial');
   expect(rehearsal).toContain('unauthorized malformed reconciliation query was validated before role denial');
@@ -201,6 +201,69 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(rehearsal).toContain('duplicate topic prompt unexpectedly succeeded');
   expect(rehearsal).toContain('incomplete session unexpectedly succeeded');
   expect(rehearsal).toContain('late validation did not roll back mutations');
+});
+
+test('A4 dormant RPC draft accepts and echoes an exact live authorization revision fence', () => {
+  const migration = readFileSync(
+    join(repoRoot, 'supabase', 'migrations', 'platform_p3_design_provisioning.sql'),
+    'utf8',
+  );
+  const rehearsal = readFileSync(
+    join(repoRoot, 'supabase', 'verify', 'design_provisioning_test.sql'),
+    'utf8',
+  );
+  const postApply = readFileSync(
+    join(repoRoot, 'supabase', 'verify', 'design_provisioning_post_apply.sql'),
+    'utf8',
+  );
+  const rollback = readFileSync(
+    join(repoRoot, 'supabase', 'rollbacks', 'platform_p3_design_provisioning_BEFORE.sql'),
+    'utf8',
+  );
+
+  expect(migration).toContain('platform_design_authorization_revision()');
+  expect(migration).toMatch(
+    /design_provision\(\s*p_plan jsonb,\s*p_source_bytes bytea,\s*p_authorization_fence jsonb\s*\)/,
+  );
+  expect(migration).toMatch(
+    /design_provisioning_status\(\s*p_query jsonb,\s*p_authorization_fence jsonb\s*\)/,
+  );
+  expect(migration).toContain("'platform_design_provisioning_authorization_fence'");
+  expect(migration).toContain("raise exception using message = 'design_authorization_stale'");
+  expect(migration).toContain("'authorizationRevision', v_authorization_revision");
+  expect(migration).toContain(
+    'revoke all on function climate_vote.design_provision(jsonb, bytea, jsonb)',
+  );
+  expect(migration).toContain(
+    'revoke all on function climate_vote.design_provisioning_status(jsonb, jsonb)',
+  );
+  const fencedStatusBody = migration.slice(
+    migration.indexOf('create or replace function climate_vote.design_provisioning_status(\n  p_query jsonb,'),
+  );
+  expect(fencedStatusBody).toContain('volatile\nsecurity definer');
+  expect(fencedStatusBody).toContain('for share of m, o');
+
+  expect(rehearsal).toContain('stale mutation authorization fence unexpectedly succeeded');
+  expect(rehearsal).toContain('fenced provisioning response did not echo its authorization revision');
+  expect(rehearsal).toContain('stale reconciliation authorization fence unexpectedly succeeded');
+  expect(rehearsal).toContain('cross-execution reconciliation fence unexpectedly succeeded');
+  expect(rehearsal).toContain('membership ABA revision unexpectedly remained reusable');
+  expect(rehearsal).toContain('membership ABA mutation fence unexpectedly succeeded');
+  expect(rehearsal).toContain('membership ABA reconciliation fence unexpectedly succeeded');
+  expect(rehearsal).toContain('fenced reconciliation response did not echo its authorization revision');
+  expect(postApply).toContain("to_regprocedure('climate_vote.design_provision(jsonb,bytea,jsonb)')");
+  expect(postApply).toContain(
+    "has_function_privilege('authenticated', 'climate_vote.design_provision(jsonb,bytea,jsonb)', 'EXECUTE')",
+  );
+  expect(migration).toMatch(
+    /\(p_authorization_fence ->> 'executionId'\)\s+is distinct from \(p_query ->> 'executionId'\)/,
+  );
+  expect(rollback).toContain(
+    'drop function if exists climate_vote.design_provision(jsonb, bytea, jsonb)',
+  );
+  expect(rollback).toContain(
+    'drop function if exists climate_vote.design_provisioning_status(jsonb, jsonb)',
+  );
 });
 
 test('legacy lifecycle fixtures are throwaway-only and CI proves both readiness stages', () => {

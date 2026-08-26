@@ -159,7 +159,8 @@ $function$;
 create table climate_vote.a4_design_concurrency_fixture (
   plan jsonb not null,
   source_bytes bytea not null,
-  user_id uuid not null
+  user_id uuid not null,
+  authorization_revision text not null
 );
 
 do $test$
@@ -185,6 +186,8 @@ declare
   v_ledger_count bigint;
   v_resource_count bigint;
   v_join_code_definition text;
+  v_authorization_revision text;
+  v_authorization_fence jsonb;
 begin
   insert into auth.users (id, email, email_confirmed_at) values (v_user, 'a4@example.invalid', now());
   insert into climate_vote.org (id, slug, name, status) values (v_org, 'a4-test-org', 'A4 test org', 'active');
@@ -210,6 +213,47 @@ begin
     'teamCount', 1, 'participantCount', 12, 'operationCount', 4
   ));
   v_query := pg_temp.a4_reconciliation_query(v_plan);
+  v_authorization_revision := climate_vote.platform_design_authorization_revision();
+  v_authorization_fence := jsonb_build_object(
+    'schemaVersion', 1,
+    'kind', 'platform_design_provisioning_authorization_fence',
+    'approvalId', v_query ->> 'approvalId',
+    'executionId', v_query ->> 'executionId',
+    'authorizationRevision', v_authorization_revision
+  );
+
+  begin
+    perform climate_vote.design_provision(
+      v_plan,
+      convert_to(repeat('s', 100), 'UTF8'),
+      jsonb_set(v_authorization_fence, '{authorizationRevision}', to_jsonb(repeat('f', 64)))
+    );
+    raise exception 'A4 semantic test failed: stale mutation authorization fence unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_authorization_stale' then raise; end if;
+  end;
+  begin
+    perform climate_vote.design_provisioning_status(
+      v_query,
+      jsonb_set(v_authorization_fence, '{authorizationRevision}', to_jsonb(repeat('f', 64)))
+    );
+    raise exception 'A4 semantic test failed: stale reconciliation authorization fence unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_authorization_stale' then raise; end if;
+  end;
+  begin
+    perform climate_vote.design_provisioning_status(
+      v_query,
+      jsonb_set(
+        v_authorization_fence,
+        '{executionId}',
+        '"cccccccc-cccc-4ccc-8ccc-cccccccccccc"'::jsonb
+      )
+    );
+    raise exception 'A4 semantic test failed: cross-execution reconciliation fence unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_authorization_fence_invalid' then raise; end if;
+  end;
 
   v_invalid_plan := jsonb_set(v_plan, '{operations,1,payload,heldOn}', '"2026-02-31"'::jsonb);
   v_invalid_plan := pg_temp.a4_reseal_plan_operation(v_invalid_plan, 1);
@@ -427,11 +471,14 @@ begin
 
   select count(*) into v_ledger_count from climate_vote.design_provisioning_operation;
   select count(*) into v_resource_count from climate_vote.assembly;
-  v_response := climate_vote.design_provisioning_status(v_query);
-  if v_response <> jsonb_build_object('status', 'pending')
+  v_response := climate_vote.design_provisioning_status(v_query, v_authorization_fence);
+  if v_response <> jsonb_build_object(
+       'status', 'pending',
+       'authorizationRevision', v_authorization_revision
+     )
      or (select count(*) from climate_vote.design_provisioning_operation) <> v_ledger_count
      or (select count(*) from climate_vote.assembly) <> v_resource_count then
-    raise exception 'A4 semantic test failed: pending reconciliation unexpectedly mutated state';
+    raise exception 'A4 semantic test failed: fenced reconciliation response did not echo its authorization revision';
   end if;
 
   begin
@@ -441,17 +488,23 @@ begin
     if sqlerrm <> 'design_source_mismatch' then raise; end if;
   end;
 
-  v_response := climate_vote.design_provision(v_plan, convert_to(repeat('s', 100), 'UTF8'));
+  v_response := climate_vote.design_provision(
+    v_plan,
+    convert_to(repeat('s', 100), 'UTF8'),
+    v_authorization_fence
+  );
   if v_response ->> 'operationCount' <> '4'
+     or v_response ->> 'authorizationRevision' <> v_authorization_revision
      or jsonb_path_query_array(v_response, '$.operations[*].status') <> '["applied", "applied", "applied", "applied"]'::jsonb
      or (v_response #>> '{operations,3,joinCode}') !~ '^[0-9]{6}$' then
-    raise exception 'A4 semantic test failed: normal provisioning response is unsafe';
+    raise exception 'A4 semantic test failed: fenced provisioning response did not echo its authorization revision';
   end if;
 
   select count(*) into v_ledger_count from climate_vote.design_provisioning_operation;
   select count(*) into v_resource_count from climate_vote.team;
-  v_response := climate_vote.design_provisioning_status(v_query);
+  v_response := climate_vote.design_provisioning_status(v_query, v_authorization_fence);
   if v_response ->> 'status' <> 'completed'
+     or v_response ->> 'authorizationRevision' <> v_authorization_revision
      or v_response #>> '{response,schemaVersion}' <> '1'
      or v_response #>> '{response,planChecksum}' <> v_plan ->> 'checksum'
      or v_response #>> '{response,operationCount}' <> '4'
@@ -880,8 +933,14 @@ begin
     ),
     'a4-concurrent'
   );
-  insert into climate_vote.a4_design_concurrency_fixture (plan, source_bytes, user_id)
-  values (v_plan, convert_to(repeat('s', 100), 'UTF8'), v_user);
+  insert into climate_vote.a4_design_concurrency_fixture (
+    plan, source_bytes, user_id, authorization_revision
+  ) values (
+    v_plan,
+    convert_to(repeat('s', 100), 'UTF8'),
+    v_user,
+    climate_vote.platform_design_authorization_revision()
+  );
 end
 $test$;
 
@@ -918,6 +977,63 @@ $function$;
 
 select extensions.dblink_connect('a4_concurrent_1', 'dbname=' || current_database() || ' user=postgres');
 select extensions.dblink_connect('a4_concurrent_2', 'dbname=' || current_database() || ' user=postgres');
+
+do $authorization_revision_aba$
+declare
+  v_user_id uuid;
+  v_plan jsonb;
+  v_source_bytes bytea;
+  v_old_revision text;
+  v_new_revision text;
+  v_fence jsonb;
+  v_query jsonb;
+begin
+  select user_id, plan, source_bytes, authorization_revision
+  into strict v_user_id, v_plan, v_source_bytes, v_old_revision
+  from climate_vote.a4_design_concurrency_fixture;
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', v_user_id)::text, true);
+  perform extensions.dblink_exec(
+    'a4_concurrent_2',
+    'update climate_vote.membership set role = ''operator'' '
+    || 'where org_id = ''20000000-0000-0000-0000-000000000001''::uuid '
+    || 'and user_id = ''10000000-0000-0000-0000-000000000001''::uuid'
+  );
+  perform extensions.dblink_exec(
+    'a4_concurrent_2',
+    'update climate_vote.membership set role = ''org_admin'' '
+    || 'where org_id = ''20000000-0000-0000-0000-000000000001''::uuid '
+    || 'and user_id = ''10000000-0000-0000-0000-000000000001''::uuid'
+  );
+  v_new_revision := climate_vote.platform_design_authorization_revision();
+  if v_new_revision = v_old_revision then
+    raise exception 'A4 semantic test failed: membership ABA revision unexpectedly remained reusable';
+  end if;
+  v_query := pg_temp.a4_reconciliation_query(v_plan);
+  v_fence := jsonb_build_object(
+    'schemaVersion', 1,
+    'kind', 'platform_design_provisioning_authorization_fence',
+    'approvalId', v_query ->> 'approvalId',
+    'executionId', v_query ->> 'executionId',
+    'authorizationRevision', v_old_revision
+  );
+  begin
+    perform climate_vote.design_provision(v_plan, v_source_bytes, v_fence);
+    raise exception 'A4 semantic test failed: membership ABA mutation fence unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_authorization_stale' then raise; end if;
+  end;
+  begin
+    perform climate_vote.design_provisioning_status(
+      v_query,
+      v_fence
+    );
+    raise exception 'A4 semantic test failed: membership ABA reconciliation fence unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_authorization_stale' then raise; end if;
+  end;
+end
+$authorization_revision_aba$;
+
 select extensions.dblink_send_query(
   'a4_concurrent_1',
   'select climate_vote.a4_run_design_concurrency_fixture()'

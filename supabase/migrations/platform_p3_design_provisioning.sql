@@ -109,6 +109,49 @@ begin
 end
 $function$;
 
+create or replace function climate_vote.platform_design_authorization_revision()
+returns text
+language plpgsql
+stable
+security definer
+set search_path = pg_catalog, climate_vote, auth, extensions
+set row_security = off
+as $function$
+declare
+  v_user_id uuid;
+  v_org_id uuid;
+  v_org_version text;
+  v_membership_versions text;
+begin
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    raise exception using message = 'design_auth_required';
+  end if;
+  v_org_id := climate_vote.org_of_uid();
+  if v_org_id is null then
+    raise exception using message = 'design_role_forbidden';
+  end if;
+
+  select o.xmin::text into v_org_version
+  from climate_vote.org o
+  where o.id = v_org_id and o.status = 'active';
+  select string_agg(m.id::text || ':' || m.xmin::text, ',' order by m.id)
+  into v_membership_versions
+  from climate_vote.membership m
+  where m.user_id = v_user_id and m.org_id = v_org_id
+    and m.status = 'active' and m.role in ('org_admin', 'hq');
+  if v_org_version is null or v_membership_versions is null then
+    raise exception using message = 'design_role_forbidden';
+  end if;
+
+  return climate_vote.platform_sha256_hex(
+    'platform_design_authorization_revision_v1|'
+    || v_user_id::text || '|' || v_org_id::text || '|'
+    || v_org_version || '|' || v_membership_versions
+  );
+end
+$function$;
+
 create or replace function climate_vote.design_provision(p_plan jsonb, p_source_bytes bytea)
 returns jsonb
 language plpgsql
@@ -790,10 +833,178 @@ exception when others then
 end
 $function$;
 
+create or replace function climate_vote.design_provision(
+  p_plan jsonb,
+  p_source_bytes bytea,
+  p_authorization_fence jsonb
+)
+returns jsonb
+language plpgsql
+volatile
+security definer
+set search_path = pg_catalog, climate_vote, auth, extensions
+set row_security = off
+as $function$
+declare
+  v_expected_fence_keys text[] := array[
+    'approvalId', 'authorizationRevision', 'executionId', 'kind', 'schemaVersion'
+  ];
+  v_actual_fence_keys text[];
+  v_user_id uuid;
+  v_org_id uuid;
+  v_authorization_revision text;
+  v_response jsonb;
+begin
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    raise exception using message = 'design_auth_required';
+  end if;
+  v_org_id := climate_vote.org_of_uid();
+  if v_org_id is null then
+    raise exception using message = 'design_role_forbidden';
+  end if;
+  perform 1
+  from climate_vote.membership m
+  join climate_vote.org o on o.id = m.org_id and o.status = 'active'
+  where m.user_id = v_user_id and m.org_id = v_org_id
+    and m.status = 'active' and m.role in ('org_admin', 'hq')
+  for share of m, o;
+  if not found then
+    raise exception using message = 'design_role_forbidden';
+  end if;
+  v_authorization_revision := climate_vote.platform_design_authorization_revision();
+  if p_authorization_fence is null
+     or jsonb_typeof(p_authorization_fence) <> 'object' then
+    raise exception using message = 'design_authorization_fence_invalid';
+  end if;
+  select array_agg(key order by key) into v_actual_fence_keys
+  from jsonb_object_keys(p_authorization_fence) keys(key);
+  if v_actual_fence_keys is distinct from v_expected_fence_keys
+     or jsonb_typeof(p_authorization_fence -> 'schemaVersion') <> 'number'
+     or jsonb_typeof(p_authorization_fence -> 'kind') <> 'string'
+     or jsonb_typeof(p_authorization_fence -> 'approvalId') <> 'string'
+     or jsonb_typeof(p_authorization_fence -> 'executionId') <> 'string'
+     or jsonb_typeof(p_authorization_fence -> 'authorizationRevision') <> 'string'
+     or p_authorization_fence ->> 'schemaVersion' <> '1'
+     or p_authorization_fence ->> 'kind'
+        <> 'platform_design_provisioning_authorization_fence'
+     or (p_authorization_fence ->> 'approvalId')
+        !~ '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     or (p_authorization_fence ->> 'executionId')
+        !~ '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     or (p_authorization_fence ->> 'authorizationRevision') !~ '^[0-9a-f]{64}$' then
+    raise exception using message = 'design_authorization_fence_invalid';
+  end if;
+  if p_authorization_fence ->> 'authorizationRevision' <> v_authorization_revision then
+    raise exception using message = 'design_authorization_stale';
+  end if;
+
+  v_response := climate_vote.design_provision(p_plan, p_source_bytes);
+  if climate_vote.platform_design_authorization_revision() <> v_authorization_revision then
+    raise exception using message = 'design_authorization_stale';
+  end if;
+  return v_response || jsonb_build_object(
+    'authorizationRevision', v_authorization_revision
+  );
+exception when others then
+  if sqlerrm like 'design_%' then
+    raise;
+  end if;
+  raise exception using message = 'design_provision_failed';
+end
+$function$;
+
+create or replace function climate_vote.design_provisioning_status(
+  p_query jsonb,
+  p_authorization_fence jsonb
+)
+returns jsonb
+language plpgsql
+volatile
+security definer
+set search_path = pg_catalog, climate_vote, auth, extensions
+set row_security = off
+as $function$
+declare
+  v_expected_fence_keys text[] := array[
+    'approvalId', 'authorizationRevision', 'executionId', 'kind', 'schemaVersion'
+  ];
+  v_actual_fence_keys text[];
+  v_user_id uuid;
+  v_org_id uuid;
+  v_authorization_revision text;
+  v_response jsonb;
+begin
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    raise exception using message = 'design_auth_required';
+  end if;
+  v_org_id := climate_vote.org_of_uid();
+  if v_org_id is null then
+    raise exception using message = 'design_role_forbidden';
+  end if;
+  perform 1
+  from climate_vote.membership m
+  join climate_vote.org o on o.id = m.org_id and o.status = 'active'
+  where m.user_id = v_user_id and m.org_id = v_org_id
+    and m.status = 'active' and m.role in ('org_admin', 'hq')
+  for share of m, o;
+  if not found then
+    raise exception using message = 'design_role_forbidden';
+  end if;
+  v_authorization_revision := climate_vote.platform_design_authorization_revision();
+  if p_authorization_fence is null
+     or jsonb_typeof(p_authorization_fence) <> 'object' then
+    raise exception using message = 'design_authorization_fence_invalid';
+  end if;
+  select array_agg(key order by key) into v_actual_fence_keys
+  from jsonb_object_keys(p_authorization_fence) keys(key);
+  if v_actual_fence_keys is distinct from v_expected_fence_keys
+     or jsonb_typeof(p_authorization_fence -> 'schemaVersion') <> 'number'
+     or jsonb_typeof(p_authorization_fence -> 'kind') <> 'string'
+     or jsonb_typeof(p_authorization_fence -> 'approvalId') <> 'string'
+     or jsonb_typeof(p_authorization_fence -> 'executionId') <> 'string'
+     or jsonb_typeof(p_authorization_fence -> 'authorizationRevision') <> 'string'
+     or p_authorization_fence ->> 'schemaVersion' <> '1'
+     or p_authorization_fence ->> 'kind'
+        <> 'platform_design_provisioning_authorization_fence'
+     or (p_authorization_fence ->> 'approvalId')
+        !~ '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     or (p_authorization_fence ->> 'executionId')
+        !~ '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     or (p_authorization_fence ->> 'authorizationRevision') !~ '^[0-9a-f]{64}$'
+     or (p_authorization_fence ->> 'approvalId')
+        is distinct from (p_query ->> 'approvalId')
+     or (p_authorization_fence ->> 'executionId')
+        is distinct from (p_query ->> 'executionId') then
+    raise exception using message = 'design_authorization_fence_invalid';
+  end if;
+  if p_authorization_fence ->> 'authorizationRevision' <> v_authorization_revision then
+    raise exception using message = 'design_authorization_stale';
+  end if;
+
+  v_response := climate_vote.design_provisioning_status(p_query);
+  if climate_vote.platform_design_authorization_revision() <> v_authorization_revision then
+    raise exception using message = 'design_authorization_stale';
+  end if;
+  return v_response || jsonb_build_object(
+    'authorizationRevision', v_authorization_revision
+  );
+exception when others then
+  if sqlerrm like 'design_%' then
+    raise;
+  end if;
+  raise exception using message = 'design_reconciliation_failed';
+end
+$function$;
+
 revoke all on function climate_vote.platform_json_canonical(jsonb) from public, anon, authenticated, service_role;
 revoke all on function climate_vote.platform_sha256_hex(text) from public, anon, authenticated, service_role;
 revoke all on function climate_vote.platform_design_join_code() from public, anon, authenticated, service_role;
+revoke all on function climate_vote.platform_design_authorization_revision() from public, anon, authenticated, service_role;
 revoke all on function climate_vote.design_provision(jsonb, bytea) from public, anon, authenticated, service_role;
+revoke all on function climate_vote.design_provision(jsonb, bytea, jsonb) from public, anon, authenticated, service_role;
 revoke all on function climate_vote.design_provisioning_status(jsonb) from public, anon, authenticated, service_role;
+revoke all on function climate_vote.design_provisioning_status(jsonb, jsonb) from public, anon, authenticated, service_role;
 
 commit;

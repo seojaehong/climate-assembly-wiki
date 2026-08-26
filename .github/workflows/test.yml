@@ -345,6 +345,18 @@ jobs:
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
             "revoke execute on function climate_vote.design_provisioning_status(jsonb) from authenticated;"
 
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "grant execute on function climate_vote.design_provision(jsonb,bytea,jsonb), climate_vote.design_provisioning_status(jsonb,jsonb), climate_vote.platform_design_authorization_revision() to authenticated;"
+          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/design_provisioning_post_apply.sql \
+            >"$RUNNER_TEMP/a4-unsafe-fenced-grant.log" 2>&1; then
+            echo "Unsafe A4 fenced grant unexpectedly passed verification" >&2
+            exit 1
+          fi
+          grep -q "dormant privilege contract is unsafe" "$RUNNER_TEMP/a4-unsafe-fenced-grant.log"
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "revoke execute on function climate_vote.design_provision(jsonb,bytea,jsonb), climate_vote.design_provisioning_status(jsonb,jsonb), climate_vote.platform_design_authorization_revision() from authenticated;"
+
           if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/platform_p3_design_provisioning_BEFORE.sql \
             >"$RUNNER_TEMP/a4-populated-rollback.log" 2>&1; then
@@ -359,7 +371,7 @@ jobs:
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/platform_p3_design_provisioning_BEFORE.sql >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
-            "do \$\$ begin if to_regprocedure('climate_vote.design_provision(jsonb,bytea)') is not null or to_regprocedure('climate_vote.design_provisioning_status(jsonb)') is not null or to_regclass('climate_vote.design_provisioning_operation') is not null or exists (select 1 from information_schema.columns where table_schema='climate_vote' and table_name='team' and column_name='ordinal') then raise exception 'A4 rollback verification failed'; end if; end \$\$;"
+            "do \$\$ begin if to_regprocedure('climate_vote.design_provision(jsonb,bytea)') is not null or to_regprocedure('climate_vote.design_provision(jsonb,bytea,jsonb)') is not null or to_regprocedure('climate_vote.design_provisioning_status(jsonb)') is not null or to_regprocedure('climate_vote.design_provisioning_status(jsonb,jsonb)') is not null or to_regprocedure('climate_vote.platform_design_authorization_revision()') is not null or to_regclass('climate_vote.design_provisioning_operation') is not null or exists (select 1 from information_schema.columns where table_schema='climate_vote' and table_name='team' and column_name='ordinal') then raise exception 'A4 rollback verification failed'; end if; end \$\$;"
       - name: Rehearse signed snapshot restore in isolated PostgreSQL
         working-directory: .
         shell: bash

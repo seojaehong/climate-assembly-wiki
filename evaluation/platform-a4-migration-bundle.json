@@ -58,8 +58,8 @@
     },
     {
       "path": "automation/tests/platform-a4-migration-bundle.test.mjs",
-      "sha256": "393fb26911fd92aa1260a410224f63c1b5e3ba00564c4404ede7cc1963d5dc9f",
-      "bytes": 15888
+      "sha256": "24ea45cb526f35a5843d3e1d5eaca393d1f490ae4d6a708785499f0e7116c8bf",
+      "bytes": 19049
     },
     {
       "path": ".gitattributes",
@@ -68,13 +68,13 @@
     },
     {
       "path": ".github/workflows/test.yml",
-      "sha256": "d33d11d64c1065bd7a265ee502bcacd70a4c0e1955b94cf290169d26e8b67445",
-      "bytes": 29239
+      "sha256": "9bb3e265a0a501ef1665cf3c069562b5ffcb180095b86084f67aaaf1a8dd938d",
+      "bytes": 30524
     },
     {
       "path": "docs/platform/A4_DESIGN_PROVISIONING_CONTRACT.md",
-      "sha256": "6417ea39f8f6cfb6505c9b45a0cec8190d9e4f7eef4c9274b530b7cd62dc03e6",
-      "bytes": 33390
+      "sha256": "fd991089539328669fcbd22957c51efaf0975b976fe8a1bb5721a609c5770f4c",
+      "bytes": 34243
     },
     {
       "path": "supabase/verify/design_provisioning_preflight.sql",
@@ -88,8 +88,8 @@
     },
     {
       "path": "supabase/migrations/platform_p3_design_provisioning.sql",
-      "sha256": "8ab54a36ab148990a295f67641db572582cf2ba03927781af04a458b5b2e9d53",
-      "bytes": 36884
+      "sha256": "9169c74687269a079ca3cadb714bf3695492d1f37f98389a2bc8cdf2d8fc8ae4",
+      "bytes": 45234
     },
     {
       "path": "supabase/verify/design_provisioning_preflight_mapping_fixture.sql",
@@ -98,13 +98,13 @@
     },
     {
       "path": "supabase/verify/design_provisioning_post_apply.sql",
-      "sha256": "d386e0cfe7cde8add6a2550c1057191e22df32807fbfb7a87c5f283ed18c99f3",
-      "bytes": 11522
+      "sha256": "5ecfa53587b55fd83a13eb8915e410ba36464314d3b7feb84cba9f7c0c6155e5",
+      "bytes": 16684
     },
     {
       "path": "supabase/verify/design_provisioning_test.sql",
-      "sha256": "bd72233dadca2513f97e770a5ee0c25d159c7490c9efe42c509ce741a641d10d",
-      "bytes": 45963
+      "sha256": "68ae02544afdc3713554621bbd8fbf73833a507a739588110fd87e2137d3cbc2",
+      "bytes": 50310
     },
     {
       "path": "supabase/verify/design_provisioning_rollback_cleanup_fixture.sql",
@@ -113,8 +113,8 @@
     },
     {
       "path": "supabase/rollbacks/platform_p3_design_provisioning_BEFORE.sql",
-      "sha256": "4444bfebb420f323fd831aacbcd24f07718f7b346e743729a6f6e6675296dcce",
-      "bytes": 2373
+      "sha256": "83fefeb0a6b3db282c9314ad87c4c1c37deb572ab3319e65d686a23f0dd7b685",
+      "bytes": 2979
     }
   ],
   "boundaries": {
@@ -125,5 +125,5 @@
     "activatesStaffGrants": false,
     "connectsProductionExecutor": false
   },
-  "checksum": "82d6aabbd923834ed8239af766003d5776e5771b5a58dc6520777a8596263b7b"
+  "checksum": "bf662c286b0df67bba4dd96e5a54b2648593b6d82e6268584a04b06db39d2529"
 }

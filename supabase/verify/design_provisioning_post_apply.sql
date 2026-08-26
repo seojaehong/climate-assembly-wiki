@@ -9,7 +9,10 @@ declare
 begin
   if to_regclass('climate_vote.design_provisioning_operation') is null
      or to_regprocedure('climate_vote.design_provision(jsonb,bytea)') is null
+     or to_regprocedure('climate_vote.design_provision(jsonb,bytea,jsonb)') is null
      or to_regprocedure('climate_vote.design_provisioning_status(jsonb)') is null
+     or to_regprocedure('climate_vote.design_provisioning_status(jsonb,jsonb)') is null
+     or to_regprocedure('climate_vote.platform_design_authorization_revision()') is null
      or to_regprocedure('climate_vote.platform_json_canonical(jsonb)') is null
      or to_regprocedure('climate_vote.platform_sha256_hex(text)') is null
      or to_regprocedure('climate_vote.platform_design_join_code()') is null then
@@ -118,7 +121,8 @@ begin
 
   select p.prosrc, p.proconfig into strict v_definition, v_config
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-  where n.nspname = 'climate_vote' and p.proname = 'design_provision';
+  where n.nspname = 'climate_vote' and p.proname = 'design_provision'
+    and p.pronargs = 2;
   if not exists (
        select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
        where n.nspname = 'climate_vote' and p.proname = 'design_provision'
@@ -158,7 +162,8 @@ begin
 
   select p.prosrc, p.proconfig into strict v_definition, v_config
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-  where n.nspname = 'climate_vote' and p.proname = 'design_provisioning_status';
+  where n.nspname = 'climate_vote' and p.proname = 'design_provisioning_status'
+    and p.pronargs = 1;
   if not exists (
        select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
        where n.nspname = 'climate_vote' and p.proname = 'design_provisioning_status'
@@ -179,14 +184,87 @@ begin
     raise exception 'A4 post-apply verification failed: reconciliation RPC contract is unsafe';
   end if;
 
+  select p.prosrc, p.proconfig into strict v_definition, v_config
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'climate_vote'
+    and p.proname = 'platform_design_authorization_revision';
+  if not exists (
+       select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'climate_vote'
+         and p.proname = 'platform_design_authorization_revision'
+         and p.prosecdef and p.provolatile = 's'
+         and pg_get_function_result(p.oid) = 'text' and p.pronargs = 0
+     )
+     or not ('search_path=pg_catalog, climate_vote, auth, extensions' = any(v_config))
+     or not ('row_security=off' = any(v_config))
+     or v_definition not like '%platform_design_authorization_revision_v1%'
+     or v_definition not like '%o.xmin::text%'
+     or v_definition not like '%m.xmin::text%'
+     or v_definition not like '%m.role in (''org_admin'', ''hq'')%' then
+    raise exception 'A4 post-apply verification failed: authorization revision contract is unsafe';
+  end if;
+
+  select p.prosrc, p.proconfig into strict v_definition, v_config
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'climate_vote' and p.proname = 'design_provision'
+    and p.pronargs = 3;
+  if not exists (
+       select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'climate_vote' and p.proname = 'design_provision'
+         and p.prosecdef and p.provolatile = 'v'
+         and pg_get_function_result(p.oid) = 'jsonb' and p.pronargs = 3
+     )
+     or not ('search_path=pg_catalog, climate_vote, auth, extensions' = any(v_config))
+     or not ('row_security=off' = any(v_config))
+     or v_definition not like '%platform_design_provisioning_authorization_fence%'
+     or v_definition not like '%design_authorization_stale%'
+     or v_definition not like '%climate_vote.design_provision(p_plan, p_source_bytes)%'
+     or v_definition not like '%''authorizationRevision'', v_authorization_revision%' then
+    raise exception 'A4 post-apply verification failed: fenced mutation RPC contract is unsafe';
+  end if;
+
+  select p.prosrc, p.proconfig into strict v_definition, v_config
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'climate_vote' and p.proname = 'design_provisioning_status'
+    and p.pronargs = 2;
+  if not exists (
+       select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'climate_vote' and p.proname = 'design_provisioning_status'
+         and p.prosecdef and p.provolatile = 'v'
+         and pg_get_function_result(p.oid) = 'jsonb' and p.pronargs = 2
+     )
+     or not ('search_path=pg_catalog, climate_vote, auth, extensions' = any(v_config))
+     or not ('row_security=off' = any(v_config))
+     or v_definition not like '%for share of m, o%'
+     or v_definition not like '%platform_design_provisioning_authorization_fence%'
+     or v_definition not like '%is distinct from (p_query ->> ''approvalId'')%'
+     or v_definition not like '%is distinct from (p_query ->> ''executionId'')%'
+     or v_definition not like '%design_authorization_stale%'
+     or v_definition not like '%climate_vote.design_provisioning_status(p_query)%'
+     or v_definition not like '%''authorizationRevision'', v_authorization_revision%' then
+    raise exception 'A4 post-apply verification failed: fenced reconciliation RPC contract is unsafe';
+  end if;
+
   if has_function_privilege('public', 'climate_vote.design_provision(jsonb,bytea)', 'EXECUTE')
      or has_function_privilege('anon', 'climate_vote.design_provision(jsonb,bytea)', 'EXECUTE')
      or has_function_privilege('authenticated', 'climate_vote.design_provision(jsonb,bytea)', 'EXECUTE')
      or has_function_privilege('service_role', 'climate_vote.design_provision(jsonb,bytea)', 'EXECUTE')
+     or has_function_privilege('public', 'climate_vote.design_provision(jsonb,bytea,jsonb)', 'EXECUTE')
+     or has_function_privilege('anon', 'climate_vote.design_provision(jsonb,bytea,jsonb)', 'EXECUTE')
+     or has_function_privilege('authenticated', 'climate_vote.design_provision(jsonb,bytea,jsonb)', 'EXECUTE')
+     or has_function_privilege('service_role', 'climate_vote.design_provision(jsonb,bytea,jsonb)', 'EXECUTE')
      or has_function_privilege('public', 'climate_vote.design_provisioning_status(jsonb)', 'EXECUTE')
      or has_function_privilege('anon', 'climate_vote.design_provisioning_status(jsonb)', 'EXECUTE')
      or has_function_privilege('authenticated', 'climate_vote.design_provisioning_status(jsonb)', 'EXECUTE')
      or has_function_privilege('service_role', 'climate_vote.design_provisioning_status(jsonb)', 'EXECUTE')
+     or has_function_privilege('public', 'climate_vote.design_provisioning_status(jsonb,jsonb)', 'EXECUTE')
+     or has_function_privilege('anon', 'climate_vote.design_provisioning_status(jsonb,jsonb)', 'EXECUTE')
+     or has_function_privilege('authenticated', 'climate_vote.design_provisioning_status(jsonb,jsonb)', 'EXECUTE')
+     or has_function_privilege('service_role', 'climate_vote.design_provisioning_status(jsonb,jsonb)', 'EXECUTE')
+     or has_function_privilege('public', 'climate_vote.platform_design_authorization_revision()', 'EXECUTE')
+     or has_function_privilege('anon', 'climate_vote.platform_design_authorization_revision()', 'EXECUTE')
+     or has_function_privilege('authenticated', 'climate_vote.platform_design_authorization_revision()', 'EXECUTE')
+     or has_function_privilege('service_role', 'climate_vote.platform_design_authorization_revision()', 'EXECUTE')
      or has_table_privilege('public', 'climate_vote.design_provisioning_operation', 'SELECT')
      or has_table_privilege('anon', 'climate_vote.design_provisioning_operation', 'SELECT')
      or has_table_privilege('authenticated', 'climate_vote.design_provisioning_operation', 'SELECT')
@@ -206,6 +284,8 @@ select jsonb_build_object(
   'databaseMutationExecuted', false,
   'staffGrantActive', false,
   'reconciliationRpcActive', false,
+  'authorizationRevisionProviderActive', false,
+  'revisionFencedRpcActive', false,
   'status', 'verified'
 ) as design_provisioning_post_apply;
 

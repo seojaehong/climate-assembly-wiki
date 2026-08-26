@@ -24,14 +24,20 @@ begin
 end
 $rollback_guard$;
 
+revoke all on function climate_vote.design_provision(jsonb, bytea, jsonb) from public, anon, authenticated, service_role;
 revoke all on function climate_vote.design_provision(jsonb, bytea) from public, anon, authenticated, service_role;
+revoke all on function climate_vote.design_provisioning_status(jsonb, jsonb) from public, anon, authenticated, service_role;
 revoke all on function climate_vote.design_provisioning_status(jsonb) from public, anon, authenticated, service_role;
+revoke all on function climate_vote.platform_design_authorization_revision() from public, anon, authenticated, service_role;
 revoke all on function climate_vote.platform_design_join_code() from public, anon, authenticated, service_role;
 revoke all on function climate_vote.platform_sha256_hex(text) from public, anon, authenticated, service_role;
 revoke all on function climate_vote.platform_json_canonical(jsonb) from public, anon, authenticated, service_role;
 
+drop function if exists climate_vote.design_provisioning_status(jsonb, jsonb);
 drop function if exists climate_vote.design_provisioning_status(jsonb);
+drop function if exists climate_vote.design_provision(jsonb, bytea, jsonb);
 drop function if exists climate_vote.design_provision(jsonb, bytea);
+drop function if exists climate_vote.platform_design_authorization_revision();
 drop function if exists climate_vote.platform_design_join_code();
 drop function if exists climate_vote.platform_sha256_hex(text);
 drop function if exists climate_vote.platform_json_canonical(jsonb);
