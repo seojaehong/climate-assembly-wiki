@@ -68,8 +68,8 @@
     },
     {
       "path": "automation/tests/platform-a4-migration-bundle.test.mjs",
-      "sha256": "8932bdd61a11496082d30743345b2c2656180a2c6dfb4a4552d8affcb181dc6c",
-      "bytes": 24969
+      "sha256": "db4267fe777afded9b5c0921151184bc43c12c63bec996329725cb36e2181178",
+      "bytes": 25489
     },
     {
       "path": ".gitattributes",
@@ -78,13 +78,13 @@
     },
     {
       "path": ".github/workflows/test.yml",
-      "sha256": "1a9f16dcf77c4145ac155968519d56d8b23a299bc74e581fe2f23e9d03a8c7df",
-      "bytes": 38353
+      "sha256": "df102d69071564b6e4a72a9459a2c48554fc26c0e8c91687ab627a27aa0101d5",
+      "bytes": 39280
     },
     {
       "path": "docs/platform/A4_DESIGN_PROVISIONING_CONTRACT.md",
-      "sha256": "bb04ecaf8c1b402b191996a257843dda827f3eb5ef0807074f466eedb5ff0075",
-      "bytes": 38317
+      "sha256": "3759204b487ee531e0e3c9175e81a8307f5e4b035af75580430b567a5cf22992",
+      "bytes": 38806
     },
     {
       "path": "supabase/verify/design_provisioning_preflight.sql",
@@ -98,8 +98,8 @@
     },
     {
       "path": "supabase/migrations/platform_p3_design_provisioning.sql",
-      "sha256": "2d62efd267c2a537d7247f3a9cf213bf3de6c10204a014a33e7903358cc90e03",
-      "bytes": 50209
+      "sha256": "58bf29d9ee270642cc9f7ebee73f895b05fd097eb958907ea02afaa8b5184440",
+      "bytes": 50310
     },
     {
       "path": "supabase/verify/design_provisioning_preflight_mapping_fixture.sql",
@@ -108,8 +108,8 @@
     },
     {
       "path": "supabase/verify/design_provisioning_post_apply.sql",
-      "sha256": "c4807fc92b04211b03eec27e9912928cc85d1d007091610f2f3e46f81692949c",
-      "bytes": 21803
+      "sha256": "0b27c2a18658b306efe095fccde48ad0f78014bda210ed1ce925a18abb88e4f6",
+      "bytes": 22088
     },
     {
       "path": "supabase/verify/design_provisioning_test.sql",
@@ -123,8 +123,8 @@
     },
     {
       "path": "supabase/rollbacks/platform_p3_design_provisioning_BEFORE.sql",
-      "sha256": "c7e6fc6c8d65ff6a951a34f5fa002f0140dad69a3b26083c35e5f33a4f0bd3fa",
-      "bytes": 3099
+      "sha256": "a3654422c953baee1497e236e71a9935cb31fff79081e8dd427a22ca07d30c1a",
+      "bytes": 3199
     }
   ],
   "boundaries": {
@@ -135,5 +135,5 @@
     "activatesStaffGrants": false,
     "connectsProductionExecutor": false
   },
-  "checksum": "dbe992446ea141db79ec5619c3dcc9d56b0068dfd8e730c24c487e291243c11f"
+  "checksum": "928754e42720e888b8f954d187218b4d043f0e43aae8da006561be087f2f1de2"
 }

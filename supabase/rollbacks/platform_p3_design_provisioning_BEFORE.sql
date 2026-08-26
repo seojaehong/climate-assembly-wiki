@@ -24,6 +24,7 @@ begin
 end
 $rollback_guard$;
 
+revoke create on schema climate_vote from public, anon, authenticated, authenticator, service_role;
 revoke all on function climate_vote.design_provision(jsonb, bytea, jsonb) from public, anon, authenticated, authenticator, service_role;
 revoke all on function climate_vote.design_provision(jsonb, bytea) from public, anon, authenticated, authenticator, service_role;
 revoke all on function climate_vote.design_provisioning_status(jsonb, jsonb) from public, anon, authenticated, authenticator, service_role;

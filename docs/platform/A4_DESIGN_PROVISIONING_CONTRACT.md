@@ -57,6 +57,7 @@
 - ledger·receipt에는 청사진 원문, join code, 이메일, Auth UUID를 기록하지 않는다.
 - ledger table은 public·anon·authenticated·authenticator·service_role에 `SELECT|INSERT|UPDATE|DELETE|TRUNCATE|REFERENCES|TRIGGER` 어떤 권한도 노출하지 않는다. Post-apply verifier는 5개 runtime 역할과 7개 table privilege의 35개 effective 조합을 전수 대조하며 RLS 활성화만으로 직접 table 권한 회수를 대신하지 않는다.
 - PostgreSQL의 column-level `SELECT|INSERT|UPDATE|REFERENCES`는 table-level privilege와 별도로 부여될 수 있으므로 ledger의 어떤 column에도 노출하지 않는다. Post-apply verifier는 같은 5개 역할과 4개 column privilege의 20개 effective 조합을 `has_any_column_privilege`로 별도 대조한다.
+- public·anon·authenticated·authenticator·service_role은 `climate_vote` schema에 `CREATE` 권한을 갖지 않는다. Migration과 rollback은 기존 명시 grant를 회수하고, post-apply verifier는 5개 역할의 effective schema CREATE를 대조해 새 overload·shadow object를 만들 수 있는 DDL 우회를 적용 증거로 인정하지 않는다. 기존 API 호출에 필요한 schema `USAGE` 계약은 이 회수 범위에 포함하지 않는다.
 
 ### 3-4. design provisioning RPC
 
@@ -143,7 +144,7 @@
 9. 기존 claim 전용 명시적 reconciliation, pending 보존, 만료 뒤 감사 종결과 adapter 오류 비노출 test
 10. 휴면 read-only ledger lookup RPC, checksum·role·resource 검증과 무변경 PostgreSQL rehearsal
 
-post-apply verifier는 column 이름이나 제약 이름만 schema 전체에서 세지 않는다. 21개 필수 column의 정확한 PostgreSQL type·nullable·default, session/ledger의 3개 FK 참조 정의, source evidence와 execution binding 완전성을 포함한 각 named 제약의 대상 table·`check|unique|primary key` 종류와 canonical definition을 함께 대조한다. 잘못된 type·default·FK 누락, 다른 table의 동명 제약이나 완화된 식, 내부 helper의 EXECUTE 또는 ledger table/column privilege 재노출을 적용 증거로 인정하지 않는다. 체크섬 신뢰 경계인 `platform_json_canonical(jsonb)`와 `platform_sha256_hex(text)`는 존재 여부뿐 아니라 정확한 언어·`IMMUTABLE`·`STRICT`·invoker security·고정 `search_path`, canonical object key/array 순서와 SHA-256 known-answer까지 검증한다. Helper body나 설정을 바꿔 plan·operation·authorization revision checksum을 약화한 상태는 post-apply 성공으로 인정하지 않는다. Ledger와 8개 A4 함수는 동일한 owner를 가져야 하며 그 role은 superuser 또는 `BYPASSRLS`인 비-runtime 신뢰 role이어야 한다. 별도 LOGIN role이 SECURITY DEFINER RPC 하나를 소유하거나, 모든 A4 객체를 함께 소유해 owner 일치만 맞춘 상태도 휴면 적용 증거로 인정하지 않는다.
+post-apply verifier는 column 이름이나 제약 이름만 schema 전체에서 세지 않는다. 21개 필수 column의 정확한 PostgreSQL type·nullable·default, session/ledger의 3개 FK 참조 정의, source evidence와 execution binding 완전성을 포함한 각 named 제약의 대상 table·`check|unique|primary key` 종류와 canonical definition을 함께 대조한다. 잘못된 type·default·FK 누락, 다른 table의 동명 제약이나 완화된 식, runtime schema CREATE, 내부 helper의 EXECUTE 또는 ledger table/column privilege 재노출을 적용 증거로 인정하지 않는다. 체크섬 신뢰 경계인 `platform_json_canonical(jsonb)`와 `platform_sha256_hex(text)`는 존재 여부뿐 아니라 정확한 언어·`IMMUTABLE`·`STRICT`·invoker security·고정 `search_path`, canonical object key/array 순서와 SHA-256 known-answer까지 검증한다. Helper body나 설정을 바꿔 plan·operation·authorization revision checksum을 약화한 상태는 post-apply 성공으로 인정하지 않는다. Ledger와 8개 A4 함수는 동일한 owner를 가져야 하며 그 role은 superuser 또는 `BYPASSRLS`인 비-runtime 신뢰 role이어야 한다. 별도 LOGIN role이 SECURITY DEFINER RPC 하나를 소유하거나, 모든 A4 객체를 함께 소유해 owner 일치만 맞춘 상태도 휴면 적용 증거로 인정하지 않는다.
 
 ## 5. 승인 전에 결정할 항목
 

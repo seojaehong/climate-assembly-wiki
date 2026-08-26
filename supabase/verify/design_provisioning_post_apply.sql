@@ -373,6 +373,17 @@ begin
          ('authenticator'),
          ('service_role')
        ) roles(role_name)
+       where has_schema_privilege(roles.role_name, 'climate_vote', 'CREATE')
+     )
+     or exists (
+       select 1
+       from (values
+         ('public'),
+         ('anon'),
+         ('authenticated'),
+         ('authenticator'),
+         ('service_role')
+       ) roles(role_name)
        cross join (values
          ('SELECT'),
          ('INSERT'),

@@ -3,6 +3,8 @@
 
 begin;
 
+revoke create on schema climate_vote from public, anon, authenticated, authenticator, service_role;
+
 alter table climate_vote.session add column if not exists slug text;
 alter table climate_vote.session add column if not exists title text;
 alter table climate_vote.session add column if not exists status text default 'draft';

@@ -129,6 +129,9 @@ test('A4 SQL draft keeps preflight and post-apply verification read-only', () =>
   expect(normalizedMigration).toContain(
     `revoke all on climate_vote.design_provisioning_operation from ${runtimeRoles};`,
   );
+  const schemaCreateRevoke = `revoke create on schema climate_vote from ${runtimeRoles};`;
+  expect(normalizedMigration).toContain(schemaCreateRevoke);
+  expect(normalizedRollback).toContain(schemaCreateRevoke);
   for (const signature of functionSignatures) {
     const revoke = `revoke all on function ${signature} from ${runtimeRoles};`;
     expect(normalizedMigration).toContain(revoke);
@@ -155,6 +158,9 @@ test('A4 SQL draft keeps preflight and post-apply verification read-only', () =>
   expect(postApply).toContain('where has_any_column_privilege(roles.role_name,');
   expect(postApply).toContain(
     "'climate_vote.design_provisioning_operation', column_privileges.privilege_name)",
+  );
+  expect(postApply).toContain(
+    "has_schema_privilege(roles.role_name, 'climate_vote', 'CREATE')",
   );
   expect(postApply).toContain('checksum helper contract is unsafe');
   expect(postApply).toContain("p.proname = 'platform_json_canonical'");
@@ -395,6 +401,8 @@ test('rollback refuses populated A4 state before any object is removed', () => {
   expect(workflow).toContain('Untrusted A4 unified owner unexpectedly passed verification');
   expect(workflow).toContain('Unsafe A4 authenticator function grant unexpectedly passed verification');
   expect(workflow).toContain('for ledger_role in public anon authenticated authenticator service_role');
+  expect(workflow).toContain('for schema_role in public anon authenticated authenticator service_role');
+  expect(workflow).toContain('Unsafe A4 schema CREATE grant unexpectedly passed verification');
   expect(workflow).toContain('Shadow A4 constraint unexpectedly passed verification');
   expect(workflow).toContain('Wrong A4 constraint definition unexpectedly passed verification');
   expect(workflow).toContain('Wrong A4 column type unexpectedly passed verification');

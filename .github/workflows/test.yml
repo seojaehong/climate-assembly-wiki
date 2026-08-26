@@ -403,6 +403,21 @@ jobs:
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
             "revoke execute on function climate_vote.design_provision(jsonb,bytea,jsonb) from authenticator;"
 
+          for schema_role in public anon authenticated authenticator service_role; do
+            docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+              "grant create on schema climate_vote to ${schema_role};"
+            if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+              -f /tmp/design_provisioning_post_apply.sql \
+              >"$RUNNER_TEMP/a4-unsafe-schema-create-${schema_role}.log" 2>&1; then
+              echo "Unsafe A4 schema CREATE grant unexpectedly passed verification: ${schema_role}" >&2
+              exit 1
+            fi
+            grep -q "dormant privilege contract is unsafe" \
+              "$RUNNER_TEMP/a4-unsafe-schema-create-${schema_role}.log"
+            docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+              "revoke create on schema climate_vote from ${schema_role};"
+          done
+
           for helper_signature in \
             "climate_vote.platform_json_canonical(jsonb)" \
             "climate_vote.platform_sha256_hex(text)" \
