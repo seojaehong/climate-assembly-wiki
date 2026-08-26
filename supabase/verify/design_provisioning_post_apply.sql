@@ -317,6 +317,23 @@ begin
        ) privileges(privilege_name)
        where has_table_privilege(roles.role_name,
          'climate_vote.design_provisioning_operation', privileges.privilege_name)
+     )
+     or exists (
+       select 1
+       from (values
+         ('public'),
+         ('anon'),
+         ('authenticated'),
+         ('service_role')
+       ) roles(role_name)
+       cross join (values
+         ('SELECT'),
+         ('INSERT'),
+         ('UPDATE'),
+         ('REFERENCES')
+       ) column_privileges(privilege_name)
+       where has_any_column_privilege(roles.role_name,
+         'climate_vote.design_provisioning_operation', column_privileges.privilege_name)
      ) then
     raise exception 'A4 post-apply verification failed: dormant privilege contract is unsafe';
   end if;

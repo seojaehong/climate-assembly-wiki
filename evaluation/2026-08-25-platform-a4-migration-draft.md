@@ -60,6 +60,7 @@
 27. rollback cleanup fixture가 동시성 리허설의 `a4-membership-lock`·`a4-organization-lock` resource까지 exact-scope로 제거하도록 고정했다.
 28. migration이 권한을 회수하는 내부 canonical JSON·SHA-256·join-code helper 각각에 `authenticated` EXECUTE를 임시 부여한 PostgreSQL 16 음성 리허설이 모두 `dormant privilege contract is unsafe`로 거부되고, 각 권한 회수 뒤 post-apply verifier가 다시 통과하는지 확인했다. public·anon·authenticated·service_role 네 역할과 세 helper의 12개 effective privilege 조합을 verifier가 전수 검사한다.
 29. ledger table의 `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `TRUNCATE`, `REFERENCES`, `TRIGGER`를 public·anon·authenticated·service_role 각각에 임시 부여한 PostgreSQL 16 음성 리허설이 28개 조합 모두 같은 안정 오류로 거부되고, 매번 권한 회수 뒤 verifier가 다시 통과하는지 확인했다.
+30. table-level 권한은 false인 채 단일 `operation_id` column에만 `SELECT`, `INSERT`, `UPDATE`, `REFERENCES`를 부여하는 우회를 public·anon·authenticated·service_role 각각에서 리허설했다. `has_any_column_privilege` 기반 16개 조합이 모두 같은 안정 오류로 거부되고, 매번 권한 회수 뒤 verifier가 다시 통과했다.
 
 결과: `A4_LOCAL_POSTGRES_REHEARSAL=passed`
 
@@ -97,6 +98,8 @@ authorization row-lock 경쟁 결과: `A4_AUTHORIZATION_ROW_LOCK_POSTGRES_REHEAR
 
 ledger table 권한 재노출 차단 결과: `A4_LEDGER_PRIVILEGE_POSTGRES_REHEARSAL=passed`
 
+ledger column 권한 재노출 차단 결과: `A4_LEDGER_COLUMN_PRIVILEGE_POSTGRES_REHEARSAL=passed`
+
 ## 자동화 회귀
 
 - A4 bundle·design plan·Supabase adapter 집중 테스트: 96건 통과
@@ -106,7 +109,7 @@ ledger table 권한 재노출 차단 결과: `A4_LEDGER_PRIVILEGE_POSTGRES_REHEA
 - 저장소 밖 로컬 durable store의 adapter 재시작·lock-free CAS·독립 Node 프로세스 6개 claim 경쟁(1 claimed, 5 conflict, journal record 2개)·orphan temp 복구·append-only replay/conflict·journal 변조·terminal claim/checkpoint/receipt/lifecycle clock 사건시각 역행·junction escape·revocation/claim 경쟁·membership 비활성 finalize와 재활성화 거부·비식별 전체-store/keyed receipt audit·off-store inventory checkpoint 삭제/tail 변경·기본 10분 freshness 테스트 통과
 - approval bundle verifier: builder·durable store·Supabase adapter·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 20개, production apply 미승인·DB mutation 미실행 상태로 통과
 - 추적 manifest를 current source에서 재구성해 stale source hash를 거부하는 테스트 통과
-- bundle checksum: `069c743b49990def2bd6332f1c8e109e609a0977d390e7a91a4953b1c502ca01`
+- bundle checksum: `28bd43eaa87c81d87fd6af7e3142cefc24408844234d91321061a678412afc94`
 
 ## 보안·데이터 무결성 결론
 
@@ -124,6 +127,7 @@ ledger table 권한 재노출 차단 결과: `A4_LEDGER_PRIVILEGE_POSTGRES_REHEA
 - post-apply verifier는 21개 필수 column의 type·nullable·default와 session/ledger의 3개 FK 참조 정의도 exact 대조해 이름만 같은 비호환 schema를 거부한다.
 - post-apply verifier는 canonical JSON·SHA-256·join-code 내부 helper가 public·anon·authenticated·service_role 중 하나에라도 EXECUTE로 재노출되면 적용 증거를 거부한다.
 - post-apply verifier는 ledger table의 7개 PostgreSQL 권한이 public·anon·authenticated·service_role 중 하나에라도 재노출되면 RLS 상태와 무관하게 적용 증거를 거부한다.
+- post-apply verifier는 table-level ACL이 닫혀 있어도 ledger column 하나에 `SELECT|INSERT|UPDATE|REFERENCES`가 재노출되면 적용 증거를 거부한다.
 - 같은 기관의 동시 mutation plan은 source 검증 뒤 transaction advisory lock으로 직렬화해 exact plan 경쟁을 `applied`와 `replayed`로 수렴시킨다.
 - plan 내부의 operation ID와 resource ref는 각각 유일해야 하며 중복 plan은 lookup·mutation 전에 거부한다.
 - plan과 reconciliation query의 boolean·number·string JSON 타입을 exact 검사해 문자열로 바꾼 self-resealed 입력을 거부한다.

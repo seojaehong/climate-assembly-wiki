@@ -269,6 +269,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 ledger table 휴면 권한 전수 검증(2026-08-26):** migration이 ledger table에서 모든 권한을 회수하지만 post-apply verifier는 `SELECT`만 검사하던 공백을 보강했다. public·anon·authenticated·service_role 네 역할과 `SELECT|INSERT|UPDATE|DELETE|TRUNCATE|REFERENCES|TRIGGER` 일곱 권한의 28개 effective 조합을 전수 대조하며 하나라도 열리면 `dormant privilege contract is unsafe`로 거부한다. PostgreSQL 16 격리 리허설에서 28개 조합을 하나씩 부여했을 때 모두 거부되고 매번 권한 회수 뒤 다시 통과했다. Bundle artifact 20개 checksum은 `069c743b49990def2bd6332f1c8e109e609a0977d390e7a91a4953b1c502ca01`이며 production migration·DB·GRANT·credential·traffic은 변경하지 않았다.
 
+**A4 ledger column 휴면 권한 전수 검증(2026-08-26):** PostgreSQL column-level ACL은 table-level 권한과 별도로 존재해 기존 table matrix만으로는 단일 column의 `SELECT|INSERT|UPDATE|REFERENCES` 노출을 잡지 못했다. Post-apply verifier가 public·anon·authenticated·service_role 네 역할과 네 column 권한의 16개 effective 조합을 `has_any_column_privilege`로 별도 대조한다. Table-level 권한은 false인 상태에서 `operation_id` column에 16개 조합을 하나씩 부여한 PostgreSQL 16 리허설은 모두 거부됐고 매번 권한 회수 뒤 다시 통과했다. Bundle artifact 20개 checksum은 `28bd43eaa87c81d87fd6af7e3142cefc24408844234d91321061a678412afc94`이며 production migration·DB·GRANT·credential·traffic은 변경하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

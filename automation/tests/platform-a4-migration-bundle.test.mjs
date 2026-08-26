@@ -136,6 +136,10 @@ test('A4 SQL draft keeps preflight and post-apply verification read-only', () =>
   expect(postApply).toContain(
     "'climate_vote.design_provisioning_operation', privileges.privilege_name)",
   );
+  expect(postApply).toContain('where has_any_column_privilege(roles.role_name,');
+  expect(postApply).toContain(
+    "'climate_vote.design_provisioning_operation', column_privileges.privilege_name)",
+  );
   expect(postApply).toContain('v_existing.plan_checksum <> v_checksum');
   expect(postApply).toContain("('team', 'platform_team_capacity_positive', 'c'");
   expect(postApply).toContain("'CHECK ((capacity > 0))'");
@@ -359,6 +363,7 @@ test('rollback refuses populated A4 state before any object is removed', () => {
   expect(workflow).toContain('grant execute on function climate_vote.design_provisioning_status(jsonb) to authenticated');
   expect(workflow).toContain('Unsafe A4 internal helper grant unexpectedly passed verification');
   expect(workflow).toContain('Unsafe A4 ledger table grant unexpectedly passed verification');
+  expect(workflow).toContain('Unsafe A4 ledger column grant unexpectedly passed verification');
   expect(workflow).toContain('Shadow A4 constraint unexpectedly passed verification');
   expect(workflow).toContain('Wrong A4 constraint definition unexpectedly passed verification');
   expect(workflow).toContain('Wrong A4 column type unexpectedly passed verification');

@@ -396,6 +396,24 @@ jobs:
             done
           done
 
+          for ledger_role in public anon authenticated service_role; do
+            for ledger_column_privilege in SELECT INSERT UPDATE REFERENCES; do
+              ledger_column_privilege_name="${ledger_column_privilege,,}"
+              docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+                "grant ${ledger_column_privilege} (operation_id) on table climate_vote.design_provisioning_operation to ${ledger_role};"
+              if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+                -f /tmp/design_provisioning_post_apply.sql \
+                >"$RUNNER_TEMP/a4-unsafe-ledger-column-${ledger_role}-${ledger_column_privilege_name}-grant.log" 2>&1; then
+                echo "Unsafe A4 ledger column grant unexpectedly passed verification: ${ledger_role} ${ledger_column_privilege}" >&2
+                exit 1
+              fi
+              grep -q "dormant privilege contract is unsafe" \
+                "$RUNNER_TEMP/a4-unsafe-ledger-column-${ledger_role}-${ledger_column_privilege_name}-grant.log"
+              docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+                "revoke ${ledger_column_privilege} (operation_id) on table climate_vote.design_provisioning_operation from ${ledger_role};"
+            done
+          done
+
           if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/platform_p3_design_provisioning_BEFORE.sql \
             >"$RUNNER_TEMP/a4-populated-rollback.log" 2>&1; then
