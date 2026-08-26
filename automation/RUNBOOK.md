@@ -320,6 +320,7 @@ npm.cmd run plan:platform-analysis-import -- --verify-plan 'C:\approved\import-p
 
 - 출력은 항상 `dryRun: true`, `databaseMutationExecuted: false`, `requiresHumanReview: true`다.
 - import plan schema version 2 출력은 analysis·provenance map 원본 파일의 정확한 바이트 SHA-256과 canonical plan self-checksum을 포함한다. provenance map은 기존 구조의 schema version 1과 분석코어 호환 overlay가 있는 schema version 2를 지원한다. `--verify-plan`은 로컬 파일 3개만 읽어 입력 해시와 self-checksum을 확인하고, 같은 입력으로 계획을 다시 만들어 전체 canonical 내용이 일치하는지 검사한다.
+- raw `--analysis`, `--provenance-map`과 검수 전 `--verify-plan`은 symlink/junction을 실제 경로로 해석한 뒤 repository 밖의 기존 일반 파일만 읽는다. `--output`도 실제 상위 경로가 repository 밖이어야 하며 repository·`public/`·Git 안에는 시민 분석 산출, 매핑 ID, 검수 전 plan을 두지 않는다. 기존 출력을 `--force`로 교체할 때는 symlink나 hard-link가 아닌 외부 단일-link 일반 파일만 허용하고 새 파일은 사용자 전용 모드로 생성한다.
 - 이 해시들은 오래되거나 서로 맞지 않는 입력, 우발적인 파일 변경을 탐지하기 위한 내부 일관성 증거다. 해시와 계획이 같은 수정 가능한 파일에 있고 외부 secret·서명이 없으므로 작성자 진위, 외부 시점 증명 또는 의도적 재생성에 대한 tamper-evident 증거가 아니다.
 - 모든 후보는 `origin: ai`, `reviewStatus: draft`이며 원문 인용이 하나 이상 있어야 한다. 각 인용의 source UID·transcript chunk ID·submission item UUID·cluster UUID를 provenance에 함께 남긴다.
 - schema version 2에서는 모든 source mapping에 실제 transcript chunk ID가 있어야 하고, candidate mapping은 원 recommendation canonical JSON SHA-256에 결속된다. source UID를 transcript chunk ID로 대체 추정하지 않는다.

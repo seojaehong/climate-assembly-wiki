@@ -1,13 +1,15 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { linkSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
 import {
   buildPlatformAnalysisImportPlan,
   sealPlatformAnalysisImportPlan,
+  validatePlatformAnalysisImportPrivateInputPath,
+  validatePlatformAnalysisImportPrivateOutputPath,
   verifyPlatformAnalysisImportPlan,
 } from '../platform-analysis-import.mjs';
 
@@ -21,6 +23,53 @@ const canonicalValue = (value) => {
   return value;
 };
 const recommendationSourceHash = (value) => minoritySourceHash(JSON.stringify(canonicalValue(value)));
+
+test('keeps raw analysis inputs and review plans outside the repository', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'platform-analysis-private-paths-'));
+  const externalInput = join(directory, 'analysis.json');
+  const externalOutput = join(directory, 'plan.json');
+  const hardLinkedOutput = join(directory, 'hard-linked-plan.json');
+  const repositoryInput = fileURLToPath(new URL('../platform-analysis-import.mjs', import.meta.url));
+  const repositoryLink = join(directory, 'repository-link');
+  try {
+    writeFileSync(externalInput, '{}', 'utf8');
+    symlinkSync(dirname(repositoryInput), repositoryLink, process.platform === 'win32' ? 'junction' : 'dir');
+
+    expect(validatePlatformAnalysisImportPrivateInputPath(externalInput, 'analysis')).toBe(externalInput);
+    expect(validatePlatformAnalysisImportPrivateOutputPath(externalOutput)).toBe(externalOutput);
+    linkSync(externalInput, hardLinkedOutput);
+    expect(() => validatePlatformAnalysisImportPrivateOutputPath(hardLinkedOutput))
+      .toThrow('unavailable');
+    expect(() => validatePlatformAnalysisImportPrivateInputPath(repositoryInput, 'analysis'))
+      .toThrow('outside the repository');
+    expect(() => validatePlatformAnalysisImportPrivateInputPath(
+      join(repositoryLink, 'platform-analysis-import.mjs'),
+      'provenance map',
+    )).toThrow('outside the repository');
+    expect(() => validatePlatformAnalysisImportPrivateInputPath(
+      join(directory, 'missing.json'),
+      'analysis',
+    )).toThrow('unavailable');
+    expect(() => validatePlatformAnalysisImportPrivateOutputPath(
+      join(dirname(repositoryInput), 'private-plan.json'),
+    )).toThrow('outside the repository');
+    expect(() => validatePlatformAnalysisImportPrivateOutputPath(
+      join(repositoryLink, 'private-plan.json'),
+    )).toThrow('outside the repository');
+
+    const cli = spawnSync(process.execPath, [
+      repositoryInput,
+      '--analysis', repositoryInput,
+      '--provenance-map', externalInput,
+      '--output', externalOutput,
+    ], { encoding: 'utf8' });
+    expect(cli.status).toBe(1);
+    expect(cli.stderr).toContain('analysis input must remain outside the repository');
+    expect(cli.stderr).not.toContain(repositoryInput);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test('builds review-required issue drafts with source provenance and minority concerns', () => {
   const plan = buildPlatformAnalysisImportPlan({

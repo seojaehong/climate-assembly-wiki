@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
+import { existsSync, lstatSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
+import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 function analysisMeta(analysis) {
   const root = analysis && typeof analysis === 'object' ? analysis : {};
@@ -12,6 +13,59 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const ISSUE_STANCES = new Set(['pro', 'con', 'conditional', 'concern', 'proposal', 'neutral']);
 const FREQUENCY_CLASSES = new Set(['consensus', 'majority', 'minority', 'mixed']);
+const REPO_ROOT = realpathSync.native(fileURLToPath(new URL('..', import.meta.url)));
+
+function isWithinRepository(path) {
+  const pathFromRepository = relative(REPO_ROOT, path);
+  return pathFromRepository === ''
+    || (!pathFromRepository.startsWith('..') && !isAbsolute(pathFromRepository));
+}
+
+export function validatePlatformAnalysisImportPrivateInputPath(path, label) {
+  const absolutePath = resolve(path);
+  let resolvedPath;
+  try {
+    resolvedPath = realpathSync.native(absolutePath);
+    if (!statSync(resolvedPath).isFile()) throw new Error('not a file');
+  } catch {
+    throw new Error(`Analysis import ${label} input is unavailable`);
+  }
+  if (isWithinRepository(resolvedPath)) {
+    throw new Error(`Analysis import ${label} input must remain outside the repository`);
+  }
+  return resolvedPath;
+}
+
+export function validatePlatformAnalysisImportPrivateOutputPath(path) {
+  const absolutePath = resolve(path);
+  let resolvedParent;
+  try {
+    resolvedParent = realpathSync.native(dirname(absolutePath));
+    if (!statSync(resolvedParent).isDirectory()) throw new Error('not a directory');
+  } catch {
+    throw new Error('Analysis import output location is unavailable');
+  }
+  if (isWithinRepository(resolvedParent)) {
+    throw new Error('Analysis import output must remain outside the repository');
+  }
+  if (existsSync(absolutePath)) {
+    let outputInfo;
+    let resolvedOutput;
+    try {
+      outputInfo = lstatSync(absolutePath);
+      resolvedOutput = realpathSync.native(absolutePath);
+    } catch {
+      throw new Error('Analysis import output location is unavailable');
+    }
+    if (!outputInfo.isFile() || outputInfo.isSymbolicLink() || outputInfo.nlink !== 1) {
+      throw new Error('Analysis import output location is unavailable');
+    }
+    if (isWithinRepository(resolvedOutput)) {
+      throw new Error('Analysis import output must remain outside the repository');
+    }
+  }
+  return absolutePath;
+}
 
 function requireUuid(value, label) {
   if (typeof value !== 'string' || !UUID_PATTERN.test(value)) throw new Error(`Invalid ${label}`);
@@ -438,10 +492,21 @@ function parseCliArgs(argv) {
 
 export function runPlatformAnalysisImportCli(argv) {
   const options = parseCliArgs(argv);
-  const analysisFile = readJsonFile(options.analysisPath, 'analysis');
-  const provenanceFile = readJsonFile(options.provenanceMapPath, 'provenance map');
+  const analysisPath = validatePlatformAnalysisImportPrivateInputPath(options.analysisPath, 'analysis');
+  const provenanceMapPath = validatePlatformAnalysisImportPrivateInputPath(
+    options.provenanceMapPath,
+    'provenance map',
+  );
+  const verifyPlanPath = options.verifyPlanPath
+    ? validatePlatformAnalysisImportPrivateInputPath(options.verifyPlanPath, 'review plan')
+    : null;
+  const outputPath = options.outputPath
+    ? validatePlatformAnalysisImportPrivateOutputPath(options.outputPath)
+    : null;
+  const analysisFile = readJsonFile(analysisPath, 'analysis');
+  const provenanceFile = readJsonFile(provenanceMapPath, 'provenance map');
   if (options.verifyPlanPath) {
-    const planFile = readJsonFile(options.verifyPlanPath, 'analysis import plan');
+    const planFile = readJsonFile(verifyPlanPath, 'analysis import plan');
     const verification = verifyPlatformAnalysisImportPlan({
       plan: planFile.data,
       analysis: analysisFile.data,
@@ -464,9 +529,10 @@ export function runPlatformAnalysisImportCli(argv) {
     provenanceMapSource: provenanceFile.source,
   });
   try {
-    writeFileSync(options.outputPath, `${JSON.stringify(plan, null, 2)}\n`, {
+    writeFileSync(outputPath, `${JSON.stringify(plan, null, 2)}\n`, {
       encoding: 'utf8',
       flag: options.force ? 'w' : 'wx',
+      mode: 0o600,
     });
   } catch (error) {
     if (error && typeof error === 'object' && 'code' in error && error.code === 'EEXIST') {
@@ -474,7 +540,7 @@ export function runPlatformAnalysisImportCli(argv) {
     }
     throw error;
   }
-  return { mode: 'create', outputPath: options.outputPath, candidateCount: plan.candidates.length };
+  return { mode: 'create', outputPath, candidateCount: plan.candidates.length };
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
