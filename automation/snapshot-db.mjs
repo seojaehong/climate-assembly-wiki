@@ -14,6 +14,17 @@ const PLATFORM_PAYLOAD_COLLECTIONS = [
   'ballot_response',
 ];
 const DECLARED_PLATFORM_COUNTS = ['submission', 'issue', 'issue_link', 'result_page', 'ballot'];
+const SNAPSHOT_ARCHIVE_FIELDS = new Set(['legacy', 'platform', 'audit']);
+const SNAPSHOT_PLATFORM_REQUIRED_FIELDS = new Set(['id', 'source', 'payload']);
+const SNAPSHOT_PLATFORM_FIELDS = new Set([
+  'id', 'label', 'source', 'taken_at', 'votes_count', 'rounds_count', 'archive_log_count', 'payload', 'created_at',
+]);
+const SNAPSHOT_AUDIT_FIELDS = new Set([
+  'schemaVersion', 'event', 'exportedAt', 'repository', 'runId', 'commitSha', 'workflowRef',
+  'keyId', 'snapshotId', 'integrity',
+]);
+const SNAPSHOT_INTEGRITY_FIELDS = new Set(['algorithm', 'target', 'digest']);
+const DECLARED_PLATFORM_COUNT_FIELDS = new Set(DECLARED_PLATFORM_COUNTS);
 const ARCHIVE_RESTORE_ORDER = [
   'submission',
   'submission_item',
@@ -88,6 +99,14 @@ const VALID_ISSUE_LINK_AUTHORS = new Set(['ai', 'human']);
 const POSTGRES_INTEGER_MIN = -2_147_483_648;
 const POSTGRES_INTEGER_MAX = 2_147_483_647;
 const CANONICAL_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+function hasExactFields(value, allowedFields, requiredFields = allowedFields) {
+  return Boolean(value)
+    && typeof value === 'object'
+    && !Array.isArray(value)
+    && Object.keys(value).every((field) => allowedFields.has(field))
+    && [...requiredFields].every((field) => Object.hasOwn(value, field));
+}
 
 /** Maps non-secret GitHub workflow provenance into the export audit manifest. */
 export function workflowAuditContext(environment, exportedAt = new Date().toISOString()) {
@@ -207,7 +226,10 @@ function snapshotDigest(platform, audit, auditKey) {
 
 /** Verifies that the exported platform row still matches its audit manifest. */
 export function verifySnapshotArchiveIntegrity(archive, auditKey) {
-  if (!archive?.platform || !archive?.audit) return false;
+  if (!hasExactFields(archive, SNAPSHOT_ARCHIVE_FIELDS)
+    || !hasExactFields(archive.platform, SNAPSHOT_PLATFORM_FIELDS, SNAPSHOT_PLATFORM_REQUIRED_FIELDS)
+    || !hasExactFields(archive.audit, SNAPSHOT_AUDIT_FIELDS)
+    || !hasExactFields(archive.audit.integrity, SNAPSHOT_INTEGRITY_FIELDS)) return false;
   if (typeof auditKey !== 'string' || auditKey.length < 32) return false;
   if (archive.audit.schemaVersion !== 1 || archive.audit.event !== 'platform_snapshot_export') return false;
   if (archive.audit.snapshotId !== archive.platform.id) return false;
@@ -235,6 +257,9 @@ function readVerifiedSnapshotArchive({ filePath, auditKey }) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
     throw new Error('snapshot archive platform payload is missing');
   }
+  if (Object.keys(payload).some((field) => !RESTORE_PAYLOAD_FIELDS.has(field))) {
+    throw new Error('snapshot archive payload fields are invalid');
+  }
   const counts = {};
   for (const key of PLATFORM_PAYLOAD_COLLECTIONS) {
     if (!Array.isArray(payload[key])) {
@@ -244,6 +269,9 @@ function readVerifiedSnapshotArchive({ filePath, auditKey }) {
   }
   if (!payload.counts || typeof payload.counts !== 'object' || Array.isArray(payload.counts)) {
     throw new Error('snapshot archive declared counts are missing');
+  }
+  if (Object.keys(payload.counts).some((field) => !DECLARED_PLATFORM_COUNT_FIELDS.has(field))) {
+    throw new Error('snapshot archive declared count fields are invalid');
   }
   for (const key of DECLARED_PLATFORM_COUNTS) {
     if (payload.counts[key] !== counts[key]) {

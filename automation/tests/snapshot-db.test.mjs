@@ -121,7 +121,19 @@ async function signedArchiveFixture(payload = platformPayloadFixture()) {
     .mockResolvedValueOnce({ data: { snapshot_id: 42 }, error: null })
     .mockResolvedValueOnce({ data: { id: 77 }, error: null });
   return snapshotArchive({
-    client: makeClient(rpc, { data: { id: 77, source: 'platform', payload: canonicalPayload }, error: null }),
+    client: makeClient(rpc, {
+      data: {
+        id: 77,
+        label: 'platform-recovery-fixture',
+        source: 'platform',
+        taken_at: TEST_AUDIT_CONTEXT.exportedAt,
+        votes_count: 0,
+        rounds_count: 0,
+        archive_log_count: 0,
+        payload: canonicalPayload,
+      },
+      error: null,
+    }),
     roundId: 8,
     includePlatformSnapshot: true,
     ...TEST_AUDIT_OPTIONS,
@@ -416,6 +428,83 @@ test('verifies the exported platform row and rejects payload tampering', async (
     },
   };
   expect(verifySnapshotArchiveIntegrity(forgedArchive, TEST_AUDIT_KEY)).toBe(false);
+});
+
+test('rejects signed snapshot archive envelope schema drift without exposing unknown values', async () => {
+  const archive = await signedArchiveFixture();
+  const privateValue = 'private-value-must-not-echo';
+
+  const { legacy: _legacy, ...archiveWithoutLegacy } = archive;
+  expect(verifySnapshotArchiveIntegrity(archiveWithoutLegacy, TEST_AUDIT_KEY)).toBe(false);
+  expect(verifySnapshotArchiveIntegrity({ ...archive, internalNote: privateValue }, TEST_AUDIT_KEY)).toBe(false);
+  expect(verifySnapshotArchiveIntegrity({
+    ...archive,
+    audit: { ...archive.audit, internalNote: privateValue },
+  }, TEST_AUDIT_KEY)).toBe(false);
+  expect(verifySnapshotArchiveIntegrity({
+    ...archive,
+    audit: {
+      ...archive.audit,
+      integrity: { ...archive.audit.integrity, internalNote: privateValue },
+    },
+  }, TEST_AUDIT_KEY)).toBe(false);
+
+  const rpc = vi.fn()
+    .mockResolvedValueOnce({ data: { snapshot_id: 42 }, error: null })
+    .mockResolvedValueOnce({ data: { id: 77 }, error: null });
+  const platformDriftArchive = await snapshotArchive({
+    client: makeClient(rpc, {
+      data: {
+        id: 77,
+        source: 'platform',
+        payload: canonicalizeFixtureUuids(platformPayloadFixture()),
+        internalNote: privateValue,
+      },
+      error: null,
+    }),
+    roundId: 8,
+    includePlatformSnapshot: true,
+    ...TEST_AUDIT_OPTIONS,
+  });
+  expect(verifySnapshotArchiveIntegrity(platformDriftArchive, TEST_AUDIT_KEY)).toBe(false);
+
+  const payloadDriftArchive = await signedArchiveFixture({
+    ...platformPayloadFixture(),
+    internalCollection: [{ value: privateValue }],
+  });
+  withSnapshotFile(payloadDriftArchive, (filePath) => {
+    let error;
+    try {
+      verifySnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY });
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(Error);
+    expect(error.message).toBe('snapshot archive payload fields are invalid');
+    expect(error.message).not.toContain(privateValue);
+  });
+
+  const countDriftArchive = await signedArchiveFixture(platformPayloadFixture({
+    counts: {
+      issue: 1,
+      issue_link: 0,
+      result_page: 0,
+      submission: 1,
+      ballot: 1,
+      internalCount: privateValue,
+    },
+  }));
+  withSnapshotFile(countDriftArchive, (filePath) => {
+    let error;
+    try {
+      verifySnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY });
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(Error);
+    expect(error.message).toBe('snapshot archive declared count fields are invalid');
+    expect(error.message).not.toContain(privateValue);
+  });
 });
 
 test('fails closed before the platform RPC when audit signing configuration is incomplete', async () => {
