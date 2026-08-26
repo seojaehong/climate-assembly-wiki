@@ -265,6 +265,7 @@ export async function verifyPlatformAuthLock({ browser, origin, timeoutMs = 60_0
     const password = page.getByLabel('비밀번호');
     await email.fill('fixture-operator@example.invalid');
     await password.fill('fixture-password');
+    const focusedControlBeforeSubmit = await page.evaluate(() => document.activeElement?.id ?? null);
     await form.evaluate((element) => {
       if (!(element instanceof HTMLFormElement)) throw new Error('Login fixture target is not a form');
       element.requestSubmit();
@@ -274,12 +275,40 @@ export async function verifyPlatformAuthLock({ browser, origin, timeoutMs = 60_0
     const inputsLocked = await email.isDisabled() && await password.isDisabled();
     const duplicateLoginBlocked = loginRequests.length === 1;
     releaseLogin();
-    await page.getByRole('alert').waitFor({ timeout: timeoutMs });
+    const alert = page.getByRole('alert');
+    await alert.waitFor({ timeout: timeoutMs });
+    await page.waitForFunction(
+      (controlId) => document.activeElement?.id === controlId,
+      focusedControlBeforeSubmit,
+      { timeout: timeoutMs },
+    );
     const retryEnabled = await email.isEnabled() && await password.isEnabled();
+    const focusRestoredAfterFailure = await page.evaluate(
+      (controlId) => document.activeElement?.id === controlId,
+      focusedControlBeforeSubmit,
+    );
+    const errorId = await alert.getAttribute('id');
+    const [emailDescribedBy, passwordDescribedBy, emailInvalid, passwordInvalid] = await Promise.all([
+      email.getAttribute('aria-describedby'),
+      password.getAttribute('aria-describedby'),
+      email.getAttribute('aria-invalid'),
+      password.getAttribute('aria-invalid'),
+    ]);
+    const describedByIncludes = (value) => Boolean(errorId && value?.split(/\s+/).includes(errorId));
+    const errorLinkedToFields = describedByIncludes(emailDescribedBy)
+      && describedByIncludes(passwordDescribedBy)
+      && emailInvalid === 'true'
+      && passwordInvalid === 'true';
+    const alertAtomic = await alert.getAttribute('aria-atomic') === 'true';
+    const passwordRemainsMasked = await password.getAttribute('type') === 'password';
 
     if (!inputsLocked) throw new Error('Platform login inputs were not locked during authentication');
     if (!duplicateLoginBlocked) throw new Error('Platform login sent a duplicate authentication request');
     if (!retryEnabled) throw new Error('Platform login did not release its controls after failure');
+    if (!focusRestoredAfterFailure) throw new Error('Platform login did not restore focus after failure');
+    if (!errorLinkedToFields) throw new Error('Platform login error was not linked to both fields');
+    if (!alertAtomic) throw new Error('Platform login error was not announced atomically');
+    if (!passwordRemainsMasked) throw new Error('Platform login password field lost its masked input type');
     if (browserErrors.length > 0) throw new Error('Platform login verification observed a browser error');
     if (unexpectedRequests.length > 0) throw new Error('Platform login verification observed an unexpected fixture request');
 
@@ -290,6 +319,11 @@ export async function verifyPlatformAuthLock({ browser, origin, timeoutMs = 60_0
       duplicateLoginBlocked,
       loginRequestCount: loginRequests.length,
       retryEnabled,
+      focusedControlBeforeSubmit,
+      focusRestoredAfterFailure,
+      errorLinkedToFields,
+      alertAtomic,
+      passwordRemainsMasked,
       browserPageErrorCount: browserErrors.length,
       unexpectedRequestCount: unexpectedRequests.length,
     };
@@ -1151,7 +1185,7 @@ export async function verifyPlatformDesignBlueprint({
     const publishLock = await verifyPublishConsoleLock({ browser, origin, timeoutMs });
 
     const report = {
-      schemaVersion: 11,
+      schemaVersion: 12,
       generatedAt: new Date().toISOString(),
       baseUrl: origin.origin,
       path: DESIGN_BLUEPRINT_ROUTE,

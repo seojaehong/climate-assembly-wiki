@@ -212,15 +212,29 @@ export function LoginCard({ notice, onSignedIn }: { notice: string | null; onSig
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const operationLock = useRef(false);
+  const restoreFocus = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (busy || !err || !restoreFocus.current) return;
+    restoreFocus.current.focus();
+    restoreFocus.current = null;
+  }, [busy, err]);
 
   const submit = async (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!email.trim() || !pw || busy || operationLock.current) return;
+    const activeElement = event.currentTarget.ownerDocument.activeElement;
+    restoreFocus.current = activeElement instanceof HTMLElement && event.currentTarget.contains(activeElement)
+      ? activeElement
+      : null;
     await runExclusivePlatformOperation(operationLock, async () => {
       setErr(null);
       try {
         const r = await platformSignIn(email.trim(), pw);
-        if (r.data) onSignedIn(r.data);
+        if (r.data) {
+          restoreFocus.current = null;
+          onSignedIn(r.data);
+        }
         else setErr(r.notice ?? '로그인에 실패했습니다.');
       } catch (error: unknown) {
         console.error('Failed to sign in', error);
@@ -280,8 +294,8 @@ export function LoginCard({ notice, onSignedIn }: { notice: string | null; onSig
           aria-describedby={err ? 'platform-login-error' : notice ? 'platform-login-notice' : undefined}
         />
 
-        {err ? <p id="platform-login-error" role="alert" style={{ color: '#B91C1C', fontSize: 14, fontWeight: 600, margin: '2px 0 12px' }}>{err}</p> : null}
-        {notice && !err ? <p id="platform-login-notice" role="status" aria-live="polite" style={{ color: '#8A4F08', fontSize: 13, margin: '2px 0 12px' }}>{notice}</p> : null}
+        {err ? <p id="platform-login-error" role="alert" aria-atomic="true" style={{ color: '#B91C1C', fontSize: 14, fontWeight: 600, margin: '2px 0 12px' }}>{err}</p> : null}
+        {notice && !err ? <p id="platform-login-notice" role="status" aria-live="polite" aria-atomic="true" style={{ color: '#8A4F08', fontSize: 13, margin: '2px 0 12px' }}>{notice}</p> : null}
 
         <button
           type="submit"

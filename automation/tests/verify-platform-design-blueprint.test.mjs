@@ -155,6 +155,10 @@ describe('design blueprint browser CI contract', () => {
     expect(verifier).toContain('loginRequests.length === 1');
     expect(verifier).toContain("getByRole('form', { name: '운영진 로그인' })");
     expect(verifier).toContain('element.requestSubmit();');
+    expect(verifier).toContain('focusedControlBeforeSubmit');
+    expect(verifier).toContain('focusRestoredAfterFailure');
+    expect(verifier).toContain('errorLinkedToFields');
+    expect(verifier).toContain('alertAtomic');
     expect(verifier).toContain('verifyPlatformSessionIsolation({ browser, origin, timeoutMs })');
     expect(verifier).toContain('verifyPlatformOrganizationSelection({ browser, origin, timeoutMs })');
     expect(verifier).toContain("element.dispatchEvent(new Event('change', { bubbles: true }));");
@@ -177,6 +181,6 @@ describe('design blueprint browser CI contract', () => {
     expect(verifier).toContain("sessionStorage.getItem('climate_vote_platform_org_context') === null");
     expect(verifier).toContain("pathname.replace(/\\/+$/, '') === '/platform'");
     expect(verifier).toContain('logoutRequests.length !== 1');
-    expect(verifier).toContain('schemaVersion: 11');
+    expect(verifier).toContain('schemaVersion: 12');
   });
 });
