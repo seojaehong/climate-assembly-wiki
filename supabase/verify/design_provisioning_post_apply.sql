@@ -298,10 +298,26 @@ begin
      or has_function_privilege('anon', 'climate_vote.platform_design_join_code()', 'EXECUTE')
      or has_function_privilege('authenticated', 'climate_vote.platform_design_join_code()', 'EXECUTE')
      or has_function_privilege('service_role', 'climate_vote.platform_design_join_code()', 'EXECUTE')
-     or has_table_privilege('public', 'climate_vote.design_provisioning_operation', 'SELECT')
-     or has_table_privilege('anon', 'climate_vote.design_provisioning_operation', 'SELECT')
-     or has_table_privilege('authenticated', 'climate_vote.design_provisioning_operation', 'SELECT')
-     or has_table_privilege('service_role', 'climate_vote.design_provisioning_operation', 'SELECT') then
+     or exists (
+       select 1
+       from (values
+         ('public'),
+         ('anon'),
+         ('authenticated'),
+         ('service_role')
+       ) roles(role_name)
+       cross join (values
+         ('SELECT'),
+         ('INSERT'),
+         ('UPDATE'),
+         ('DELETE'),
+         ('TRUNCATE'),
+         ('REFERENCES'),
+         ('TRIGGER')
+       ) privileges(privilege_name)
+       where has_table_privilege(roles.role_name,
+         'climate_vote.design_provisioning_operation', privileges.privilege_name)
+     ) then
     raise exception 'A4 post-apply verification failed: dormant privilege contract is unsafe';
   end if;
 

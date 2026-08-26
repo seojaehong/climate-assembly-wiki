@@ -55,6 +55,7 @@
 - ledger와 대상 행은 같은 transaction에서 기록한다. 대상 INSERT만 성공하거나 ledger만 성공하는 부분 상태를 허용하지 않는다.
 - checksum·source 검증을 마친 mutation RPC는 첫 ledger/resource lookup 전에 기관 ID에서 파생한 transaction advisory lock을 잡아 같은 기관의 plan 실행을 직렬화한다. 동시 exact plan은 하나가 `applied`, 다른 하나가 lock 대기 뒤 `replayed`로 수렴하며 hash 충돌은 다른 기관 실행을 불필요하게 직렬화할 뿐 격리나 정합성을 약화하지 않는다.
 - ledger·receipt에는 청사진 원문, join code, 이메일, Auth UUID를 기록하지 않는다.
+- ledger table은 public·anon·authenticated·service_role에 `SELECT|INSERT|UPDATE|DELETE|TRUNCATE|REFERENCES|TRIGGER` 어떤 권한도 노출하지 않는다. Post-apply verifier는 4개 역할과 7개 table privilege의 28개 effective 조합을 전수 대조하며 RLS 활성화만으로 직접 table 권한 회수를 대신하지 않는다.
 
 ### 3-4. design provisioning RPC
 
@@ -141,7 +142,7 @@
 9. 기존 claim 전용 명시적 reconciliation, pending 보존, 만료 뒤 감사 종결과 adapter 오류 비노출 test
 10. 휴면 read-only ledger lookup RPC, checksum·role·resource 검증과 무변경 PostgreSQL rehearsal
 
-post-apply verifier는 column 이름이나 제약 이름만 schema 전체에서 세지 않는다. 21개 필수 column의 정확한 PostgreSQL type·nullable·default, session/ledger의 3개 FK 참조 정의, source evidence와 execution binding 완전성을 포함한 각 named 제약의 대상 table·`check|unique|primary key` 종류와 canonical definition을 함께 대조한다. 잘못된 type·default·FK 누락, 다른 table의 동명 제약이나 완화된 식, 내부 helper의 EXECUTE 재노출을 적용 증거로 인정하지 않는다.
+post-apply verifier는 column 이름이나 제약 이름만 schema 전체에서 세지 않는다. 21개 필수 column의 정확한 PostgreSQL type·nullable·default, session/ledger의 3개 FK 참조 정의, source evidence와 execution binding 완전성을 포함한 각 named 제약의 대상 table·`check|unique|primary key` 종류와 canonical definition을 함께 대조한다. 잘못된 type·default·FK 누락, 다른 table의 동명 제약이나 완화된 식, 내부 helper의 EXECUTE 또는 ledger table privilege 재노출을 적용 증거로 인정하지 않는다.
 
 ## 5. 승인 전에 결정할 항목
 

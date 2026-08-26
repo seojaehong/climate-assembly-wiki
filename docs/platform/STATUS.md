@@ -267,6 +267,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 내부 helper 휴면 권한 검증(2026-08-26):** migration 초안은 canonical JSON·SHA-256·join-code helper의 EXECUTE를 회수하지만 post-apply verifier가 이 권한 재노출을 검사하지 않던 공백을 보강했다. public·anon·authenticated·service_role 네 역할과 세 helper의 12개 effective privilege 조합을 전수 대조하며 하나라도 열리면 `dormant privilege contract is unsafe`로 거부한다. PostgreSQL 16 격리 리허설에서 각 helper를 독립적으로 `authenticated`에 부여했을 때 모두 거부되고 권한 회수 뒤 다시 통과했다. A4 집중 96건, 루트 전체 65개 파일·1,081건, automation 전체 28개 파일·505건과 Astro check 337개 파일 오류·경고 0건이 통과했다. Bundle artifact 20개 checksum은 `0be367703ff7496485f77a8d7a6ae7f22be178c81f17be4a3970f035e1cc18e2`이며 production migration·DB·GRANT·credential·traffic은 변경하지 않았다.
 
+**A4 ledger table 휴면 권한 전수 검증(2026-08-26):** migration이 ledger table에서 모든 권한을 회수하지만 post-apply verifier는 `SELECT`만 검사하던 공백을 보강했다. public·anon·authenticated·service_role 네 역할과 `SELECT|INSERT|UPDATE|DELETE|TRUNCATE|REFERENCES|TRIGGER` 일곱 권한의 28개 effective 조합을 전수 대조하며 하나라도 열리면 `dormant privilege contract is unsafe`로 거부한다. PostgreSQL 16 격리 리허설에서 28개 조합을 하나씩 부여했을 때 모두 거부되고 매번 권한 회수 뒤 다시 통과했다. Bundle artifact 20개 checksum은 `069c743b49990def2bd6332f1c8e109e609a0977d390e7a91a4953b1c502ca01`이며 production migration·DB·GRANT·credential·traffic은 변경하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증
