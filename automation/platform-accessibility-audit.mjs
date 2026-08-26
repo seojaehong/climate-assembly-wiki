@@ -463,6 +463,13 @@ async function inspectRequiredScrollRegions(page, labels) {
 }
 
 async function inspectRequiredKeyboardFocusOrder(page, expected) {
+  const emptyFocusAppearance = {
+    required: false,
+    minimumOutlineWidthPx: 2,
+    minimumContrastRatio: 3,
+    indicators: [],
+    passed: true,
+  };
   if (expected.length === 0) {
     return {
       required: false,
@@ -474,6 +481,7 @@ async function inspectRequiredKeyboardFocusOrder(page, expected) {
       backwardExit: null,
       escapedForward: false,
       escapedBackward: false,
+      focusAppearance: emptyFocusAppearance,
       passed: true,
     };
   }
@@ -509,6 +517,74 @@ async function inspectRequiredKeyboardFocusOrder(page, expected) {
       expectedSelector,
     ),
     active: await fingerprint(),
+    focusIndicator: await page.evaluate(() => {
+      const element = document.activeElement;
+      if (!(element instanceof HTMLElement)) {
+        return {
+          outlineStyle: null,
+          outlineWidthPx: null,
+          outlineOffsetPx: null,
+          outlineColor: null,
+          adjacentBackgroundColor: null,
+          contrastRatio: null,
+          passed: false,
+        };
+      }
+
+      const parseColor = (value) => {
+        const match = value.match(/^rgba?\(\s*([\d.]+)[, ]+\s*([\d.]+)[, ]+\s*([\d.]+)(?:\s*[,/]\s*([\d.]+))?\s*\)$/i);
+        if (!match) return null;
+        const alpha = match[4] === undefined ? 1 : Number.parseFloat(match[4]);
+        if (!Number.isFinite(alpha) || alpha < 1) return null;
+        return [Number.parseFloat(match[1]), Number.parseFloat(match[2]), Number.parseFloat(match[3])];
+      };
+      const luminance = (color) => {
+        const components = color.map((component) => {
+          const channel = component / 255;
+          return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * components[0] + 0.7152 * components[1] + 0.0722 * components[2];
+      };
+      const contrast = (first, second) => {
+        const firstLuminance = luminance(first);
+        const secondLuminance = luminance(second);
+        return (Math.max(firstLuminance, secondLuminance) + 0.05)
+          / (Math.min(firstLuminance, secondLuminance) + 0.05);
+      };
+      const nearestOpaqueBackground = () => {
+        let current = element.parentElement;
+        while (current) {
+          const color = getComputedStyle(current).backgroundColor;
+          if (parseColor(color)) return color;
+          current = current.parentElement;
+        }
+        return 'rgb(255, 255, 255)';
+      };
+
+      const style = getComputedStyle(element);
+      const outlineWidthPx = Number.parseFloat(style.outlineWidth);
+      const outlineOffsetPx = Number.parseFloat(style.outlineOffset);
+      const adjacentBackgroundColor = nearestOpaqueBackground();
+      const outlineRgb = parseColor(style.outlineColor);
+      const backgroundRgb = parseColor(adjacentBackgroundColor);
+      const contrastRatio = outlineRgb && backgroundRgb
+        ? Number(contrast(outlineRgb, backgroundRgb).toFixed(2))
+        : null;
+      const passed = !['none', 'hidden'].includes(style.outlineStyle)
+        && Number.isFinite(outlineWidthPx)
+        && outlineWidthPx >= 2
+        && contrastRatio !== null
+        && contrastRatio >= 3;
+      return {
+        outlineStyle: style.outlineStyle,
+        outlineWidthPx: Number.isFinite(outlineWidthPx) ? outlineWidthPx : null,
+        outlineOffsetPx: Number.isFinite(outlineOffsetPx) ? outlineOffsetPx : null,
+        outlineColor: style.outlineColor,
+        adjacentBackgroundColor,
+        contrastRatio,
+        passed,
+      };
+    }),
   });
   const captureExit = (boundary) => page.evaluate((expectedBoundary) => {
     const element = document.activeElement;
@@ -540,6 +616,13 @@ async function inspectRequiredKeyboardFocusOrder(page, expected) {
       backwardExit: null,
       escapedForward: false,
       escapedBackward: false,
+      focusAppearance: {
+        required: true,
+        minimumOutlineWidthPx: 2,
+        minimumContrastRatio: 3,
+        indicators: [],
+        passed: false,
+      },
       passed: false,
     };
   }
@@ -586,6 +669,10 @@ async function inspectRequiredKeyboardFocusOrder(page, expected) {
     const backwardExit = await captureExit('before');
     const escapedBackward = backwardExit.escaped;
     const matched = [...forward, ...reverse].every((entry) => entry.matched);
+    const indicators = forward.map(({ expectedSelector, focusIndicator }) => ({
+      expectedSelector,
+      ...focusIndicator,
+    }));
 
     return {
       required: true,
@@ -597,6 +684,13 @@ async function inspectRequiredKeyboardFocusOrder(page, expected) {
       backwardExit,
       escapedForward,
       escapedBackward,
+      focusAppearance: {
+        required: true,
+        minimumOutlineWidthPx: 2,
+        minimumContrastRatio: 3,
+        indicators,
+        passed: indicators.every((indicator) => indicator.passed),
+      },
       passed: matched && escapedForward && escapedBackward,
     };
   } finally {
@@ -684,6 +778,7 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
       && layout.contentWidthSufficient
       && layout.clippedOutsideScrollRegions.length === 0
       && keyboardFocusOrder.passed
+      && keyboardFocusOrder.focusAppearance.passed
       && requiredScrollRegions.every((region) => region.found && region.scrollable && region.focused && region.keyboardScrolled);
     return {
       id: `${route.id}:${profile.id}`,
@@ -728,6 +823,13 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
         backwardExit: null,
         escapedForward: false,
         escapedBackward: false,
+        focusAppearance: {
+          required: Array.isArray(route.requiredKeyboardFocusOrder) && route.requiredKeyboardFocusOrder.length > 0,
+          minimumOutlineWidthPx: 2,
+          minimumContrastRatio: 3,
+          indicators: [],
+          passed: false,
+        },
         passed: false,
       },
       requiredScrollRegions: [],
@@ -805,13 +907,13 @@ export async function auditPlatformAccessibility({
   const failed = passedCases !== auditedRoutes.length;
   const needsReview = !failed && (incompleteCount > 0 || excludedSurfaces.length > 0);
   const report = {
-    schemaVersion: 4,
+    schemaVersion: 5,
     generatedAt: generatedAt.toISOString(),
     sourceCommit,
     sourceTreeClean,
     targetRevision,
     baseUrl,
-    standard: 'WCAG 2.2 AA automated subset + skip-link focus + keyboard focus order + responsive overflow',
+    standard: 'WCAG 2.2 AA automated subset + skip-link focus + keyboard focus order and appearance + responsive overflow',
     engine: { name: 'axe-core', version: axe.version, tags: WCAG_TAGS },
     status: failed ? 'fail' : needsReview ? 'needs_review' : 'pass',
     summary: {

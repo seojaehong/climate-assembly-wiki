@@ -13,7 +13,7 @@ import {
 
 function passingAutomatedReport() {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     sourceCommit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     sourceTreeClean: true,
     targetRevision: {
@@ -21,7 +21,7 @@ function passingAutomatedReport() {
       sourceCommit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     },
     status: 'needs_review',
-    standard: 'WCAG 2.2 AA automated subset + skip-link focus + keyboard focus order + responsive overflow',
+    standard: 'WCAG 2.2 AA automated subset + skip-link focus + keyboard focus order and appearance + responsive overflow',
     summary: {
       auditCaseCount: 2,
       passedCases: 2,
@@ -31,7 +31,11 @@ function passingAutomatedReport() {
     routes: [{
       passed: true,
       skipLink: { focusMoved: true },
-      keyboardFocusOrder: { required: true, passed: true },
+      keyboardFocusOrder: {
+        required: true,
+        passed: true,
+        focusAppearance: { required: true, passed: true },
+      },
       requiredScrollRegions: [{ found: true, scrollable: true, focused: true, keyboardScrolled: true }],
       layout: { horizontalOverflow: false, contentWidthSufficient: true, clippedOutsideScrollRegions: [] },
     }],
@@ -78,6 +82,7 @@ test('keeps all 33 KWCAG 2.2 requirements mapped to real evidence contracts', ()
     'responsive-overflow',
     'keyboard-scroll-regions',
     'keyboard-focus-order',
+    'keyboard-focus-appearance',
   ]));
 });
 
@@ -195,6 +200,26 @@ test('fails keyboard requirements when bidirectional focus evidence fails', () =
 
   expect(report.status).toBe('fail');
   expect(report.criteria.find(({ id }) => id === '6.1.1')).toMatchObject({ status: 'fail' });
+  expect(report.criteria.find(({ id }) => id === '6.1.2')).toMatchObject({ status: 'fail' });
+});
+
+test('fails focus visibility without treating keyboard operation as failed', () => {
+  const manualEvidence = manualTemplate();
+  passManualEvidence(manualEvidence);
+  const automatedReport = passingAutomatedReport();
+  automatedReport.routes[0].keyboardFocusOrder.focusAppearance.passed = false;
+  const report = buildKwcagCoverageReport({
+    automatedReport,
+    manualEvidence,
+    generatedAt: new Date('2026-08-26T02:00:00.000Z'),
+  });
+
+  expect(report.status).toBe('fail');
+  expect(report.automatedEvidence.find(({ id }) => id === 'keyboard-focus-order'))
+    .toMatchObject({ status: 'pass' });
+  expect(report.automatedEvidence.find(({ id }) => id === 'keyboard-focus-appearance'))
+    .toMatchObject({ status: 'fail' });
+  expect(report.criteria.find(({ id }) => id === '6.1.1')).toMatchObject({ status: 'pass' });
   expect(report.criteria.find(({ id }) => id === '6.1.2')).toMatchObject({ status: 'fail' });
 });
 

@@ -60,7 +60,9 @@ const exercisedPage = `<!doctype html><html lang="ko"><head><title>상태 전환
   <a href="#main-content" style="display:inline-flex;align-items:center;min-height:24px">본문 바로가기</a><main id="main-content" tabindex="-1">
   <button type="button" style="min-width:44px;min-height:44px" onclick="document.querySelector('p').hidden=false">오류 표시</button>
   <p role="alert" hidden>입력 오류</p></main></body></html>`;
-const focusOrderPage = `<!doctype html><html lang="ko"><head><title>키보드 순서</title></head><body>
+const focusOrderPage = `<!doctype html><html lang="ko"><head><title>키보드 순서</title><style>
+  :focus-visible { outline: 2px solid #00637a; outline-offset: 3px; }
+  </style></head><body>
   <a href="#main-content" style="display:inline-flex;align-items:center;min-height:24px">본문 바로가기</a><main id="main-content" tabindex="-1">
   <form aria-label="로그인" style="display:grid;gap:8px"><label for="email">이메일</label><input id="email" type="email" style="min-height:44px">
   <label for="password">비밀번호</label><input id="password" type="password" style="min-height:44px">
@@ -75,6 +77,14 @@ const trappedFocusOrderPage = focusOrderPage.replace('</body>', `<script>
     }
   });
   </script></body>`);
+const hiddenFocusAppearancePage = focusOrderPage.replace(
+  '</head>',
+  '<style>:focus-visible { outline: none !important; }</style></head>',
+);
+const lowContrastFocusAppearancePage = focusOrderPage.replace(
+  '</head>',
+  '<style>:focus-visible { outline: 2px solid #c0c0c0 !important; }</style></head>',
+);
 
 beforeAll(async () => {
   outDir = mkdtempSync(join(tmpdir(), 'platform-a11y-'));
@@ -99,6 +109,10 @@ beforeAll(async () => {
               ? focusOrderPage
             : request.url === '/trapped-focus-order'
               ? trappedFocusOrderPage
+            : request.url === '/hidden-focus-appearance'
+              ? hiddenFocusAppearancePage
+            : request.url === '/low-contrast-focus-appearance'
+              ? lowContrastFocusAppearancePage
             : validPage,
     );
   });
@@ -126,7 +140,7 @@ test('audits WCAG 2.2 AA and skip-link focus through a real browser', async () =
   });
 
   expect(report.status).toBe('pass');
-  expect(report.schemaVersion).toBe(4);
+  expect(report.schemaVersion).toBe(5);
   expect(report.sourceCommit).toBe(TEST_SOURCE_COMMIT);
   expect(report.sourceTreeClean).toBe(true);
   expect(report.targetRevision).toEqual({
@@ -174,6 +188,12 @@ test('records exact forward and reverse keyboard focus order in browser evidence
     escapedBackward: true,
     forwardExit: { reachedBoundary: true },
     backwardExit: { reachedBoundary: true },
+    focusAppearance: {
+      required: true,
+      minimumOutlineWidthPx: 2,
+      minimumContrastRatio: 3,
+      passed: true,
+    },
   });
   expect(report.routes[0].keyboardFocusOrder.forward).toEqual(
     expectedOrder.map((expectedSelector) => expect.objectContaining({ expectedSelector, matched: true })),
@@ -181,6 +201,76 @@ test('records exact forward and reverse keyboard focus order in browser evidence
   expect(report.routes[0].keyboardFocusOrder.reverse).toEqual(
     [...expectedOrder].reverse().map((expectedSelector) => expect.objectContaining({ expectedSelector, matched: true })),
   );
+  expect(report.routes[0].keyboardFocusOrder.focusAppearance.indicators).toEqual(
+    expectedOrder.map((expectedSelector) => expect.objectContaining({
+      expectedSelector,
+      outlineStyle: 'solid',
+      outlineWidthPx: 2,
+      outlineOffsetPx: 3,
+      outlineColor: 'rgb(0, 99, 122)',
+      adjacentBackgroundColor: 'rgb(255, 255, 255)',
+      passed: true,
+    })),
+  );
+}, BROWSER_TEST_TIMEOUT_MS);
+
+test('fails a route when keyboard focus has no visible indicator', async () => {
+  const report = await auditPlatformAccessibility({
+    baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
+    routes: [{
+      id: 'hidden-focus-appearance',
+      path: '/hidden-focus-appearance',
+      skipTarget: 'main-content',
+      requiredKeyboardFocusOrder: ['#email', '#password', 'button[type="submit"]', '#help'],
+    }],
+    reportPath: join(outDir, 'hidden-focus-appearance.json'),
+  });
+
+  expect(report.status).toBe('fail');
+  expect(report.routes[0]).toMatchObject({
+    passed: false,
+    keyboardFocusOrder: {
+      passed: true,
+      focusAppearance: { required: true, passed: false },
+    },
+  });
+  expect(report.routes[0].keyboardFocusOrder.focusAppearance.indicators)
+    .toEqual(expect.arrayContaining([expect.objectContaining({
+      outlineStyle: 'none',
+      passed: false,
+    })]));
+}, BROWSER_TEST_TIMEOUT_MS);
+
+test('fails a visible keyboard focus outline with insufficient adjacent contrast', async () => {
+  const report = await auditPlatformAccessibility({
+    baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
+    routes: [{
+      id: 'low-contrast-focus-appearance',
+      path: '/low-contrast-focus-appearance',
+      skipTarget: 'main-content',
+      requiredKeyboardFocusOrder: ['#email', '#password', 'button[type="submit"]', '#help'],
+    }],
+    reportPath: join(outDir, 'low-contrast-focus-appearance.json'),
+  });
+
+  expect(report.status).toBe('fail');
+  expect(report.routes[0].keyboardFocusOrder).toMatchObject({
+    passed: true,
+    focusAppearance: { required: true, minimumContrastRatio: 3, passed: false },
+  });
+  expect(report.routes[0].keyboardFocusOrder.focusAppearance.indicators)
+    .toEqual(expect.arrayContaining([expect.objectContaining({
+      outlineStyle: 'solid',
+      outlineWidthPx: 2,
+      outlineColor: 'rgb(192, 192, 192)',
+      adjacentBackgroundColor: 'rgb(255, 255, 255)',
+      contrastRatio: 1.82,
+      passed: false,
+    })]));
 }, BROWSER_TEST_TIMEOUT_MS);
 
 test('fails a route when its required keyboard focus order does not match the page', async () => {
