@@ -174,8 +174,8 @@ function combinedStatus(statuses) {
 
 export function buildKwcagCoverageReport({ automatedReport, manualEvidence, generatedAt = new Date() }) {
   validateKwcagCoverageContract();
-  evaluateManualAccessibilityEvidence(manualEvidence);
   const automatedEvidence = automatedEvidenceResults(automatedReport);
+  evaluateManualAccessibilityEvidence(manualEvidence, { verifiedAt: generatedAt });
   const automatedById = new Map(automatedEvidence.map((item) => [item.id, item.status]));
   const manualReferences = [...new Set(KWCAG_22_CRITERIA.flatMap(({ manualEvidence: refs }) => refs))];
   const manualResults = manualReferences.map((reference) => manualEvidenceResult(manualEvidence, reference));

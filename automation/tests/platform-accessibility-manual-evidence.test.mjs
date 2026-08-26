@@ -94,6 +94,40 @@ test('rejects an executed check without evaluator metadata', () => {
   expect(() => evaluateManualAccessibilityEvidence(evidence)).toThrow('Executed cases require evaluator and testedAt');
 });
 
+test('rejects future evidence timestamps and evaluations that predate template generation', () => {
+  const verifiedAt = new Date('2026-08-11T03:00:00.000Z');
+  const evaluate = (evidence) => evaluateManualAccessibilityEvidence(evidence, { verifiedAt });
+  const createEvidence = () => createManualAccessibilityTemplate({
+    baseUrl: 'https://climate-assembly.org',
+    commitSha: '9310d14',
+    generatedAt: '2026-08-11T02:00:00.000Z',
+  });
+  const prepareExecutedCheck = (evidence, testedAt) => {
+    evidence.profiles[0].environment = {
+      assistiveTechnology: { name: 'Test reader', version: '1' },
+      browser: { name: 'Test browser', version: '1' },
+      operatingSystem: { name: 'Test OS', version: '1' },
+      device: 'Desktop',
+    };
+    evidence.cases[0].evaluator = 'evaluator-role-a';
+    evidence.cases[0].testedAt = testedAt;
+    evidence.cases[0].checks[0].status = 'pass';
+    evidence.cases[0].checks[0].notes = 'Observed with the configured assistive technology.';
+  };
+
+  const futureGenerated = createEvidence();
+  futureGenerated.generatedAt = '2026-08-11T03:00:00.001Z';
+  expect(() => evaluate(futureGenerated)).toThrow('generatedAt must not be in the future');
+
+  const predatingEvaluation = createEvidence();
+  prepareExecutedCheck(predatingEvaluation, '2026-08-11T01:59:59.999Z');
+  expect(() => evaluate(predatingEvaluation)).toThrow('testedAt must not predate generatedAt');
+
+  const futureEvaluation = createEvidence();
+  prepareExecutedCheck(futureEvaluation, '2026-08-11T03:00:00.001Z');
+  expect(() => evaluate(futureEvaluation)).toThrow('testedAt must not be in the future');
+});
+
 test('requires observation notes for every executed check and rejects prefilled not-run notes', () => {
   const createEvidence = () => createManualAccessibilityTemplate({
     baseUrl: 'https://climate-assembly.org',

@@ -164,10 +164,13 @@ function validateEnvironment(environment) {
     && isNonemptyString(environment?.device);
 }
 
-function validateEvidenceShape(evidence) {
+function validateEvidenceShape(evidence, verifiedAt) {
   if (evidence?.schemaVersion !== 1) throw new Error('Unsupported manual accessibility evidence schema');
   if (evidence.certificationClaimed !== false) throw new Error('Manual evidence must not claim certification');
   if (!isValidIsoDate(evidence.generatedAt)) throw new Error('generatedAt must be a valid ISO date');
+  const verifiedAtMs = verifiedAt.getTime();
+  const generatedAtMs = Date.parse(evidence.generatedAt);
+  if (generatedAtMs > verifiedAtMs) throw new Error('generatedAt must not be in the future');
   if (!/^[0-9a-f]{7,40}$/i.test(evidence.commitSha ?? '')) throw new Error('commitSha must be a Git commit hash');
   let parsedBaseUrl;
   try {
@@ -212,6 +215,11 @@ function validateEvidenceShape(evidence) {
     if (executed && (!isNonemptyString(item.evaluator) || !isValidIsoDate(item.testedAt))) {
       throw new Error('Executed cases require evaluator and testedAt');
     }
+    if (executed) {
+      const testedAtMs = Date.parse(item.testedAt);
+      if (testedAtMs < generatedAtMs) throw new Error('testedAt must not predate generatedAt');
+      if (testedAtMs > verifiedAtMs) throw new Error('testedAt must not be in the future');
+    }
     const profile = evidence.profiles.find(({ id }) => id === item.profileId);
     if (executed && !validateEnvironment(profile?.environment)) {
       throw new Error('Executed cases require complete environment metadata');
@@ -232,8 +240,11 @@ function validateEvidenceShape(evidence) {
   }
 }
 
-export function evaluateManualAccessibilityEvidence(evidence) {
-  validateEvidenceShape(evidence);
+export function evaluateManualAccessibilityEvidence(evidence, { verifiedAt = new Date() } = {}) {
+  if (!(verifiedAt instanceof Date) || Number.isNaN(verifiedAt.getTime())) {
+    throw new Error('verifiedAt must be a valid date');
+  }
+  validateEvidenceShape(evidence, verifiedAt);
   const checks = evidence.cases.flatMap((item) => item.checks);
   const count = (status) => checks.filter((check) => check.status === status).length;
   const failCount = count('fail');
