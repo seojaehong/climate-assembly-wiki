@@ -63,8 +63,8 @@
     },
     {
       "path": "automation/tests/platform-design-provisioning-supabase-adapter.test.mjs",
-      "sha256": "bc076fd30ae77d6b23d016caafb363ae6d4af24776782e83c184b0303e0e6ca2",
-      "bytes": 13782
+      "sha256": "88722dfadd9c4ad757085604ab54ff4b9a9146983b6aa6cd5f1f8db808dc671b",
+      "bytes": 13730
     },
     {
       "path": "automation/tests/platform-a4-migration-bundle.test.mjs",
@@ -135,5 +135,5 @@
     "activatesStaffGrants": false,
     "connectsProductionExecutor": false
   },
-  "checksum": "9df1865b432a77240ce20bff1d2370b7a70cd4d735d6ac0d14e753229722e78e"
+  "checksum": "25ac35f2193450e5ac92726dbe5ea5efda8e4f59952c33ea5c2bea97a968c303"
 }

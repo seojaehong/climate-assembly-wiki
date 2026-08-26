@@ -26,7 +26,8 @@ The dormant A4 SQL fence now has a production-bound JavaScript adapter draft. Th
 - Full automation suite: 28 files and 496 tests passed.
 - Root suite: 65 files and 1,081 tests passed.
 - Astro check: 337 files, 0 errors, 0 warnings, and 49 existing hints.
-- A4 current-source bundle: 20 artifacts, checksum `9df1865b432a77240ce20bff1d2370b7a70cd4d735d6ac0d14e753229722e78e`, `productionApplyApproved:false`, and `databaseMutationExecuted:false`.
+- A4 current-source bundle: 20 artifacts, checksum `25ac35f2193450e5ac92726dbe5ea5efda8e4f59952c33ea5c2bea97a968c303`, `productionApplyApproved:false`, and `databaseMutationExecuted:false`.
+- The Supabase JS fixtures inject a non-connecting Realtime transport so the PostgREST-only tests run consistently on Node.js 20 and newer runtimes without opening a WebSocket.
 
 ## Review
 

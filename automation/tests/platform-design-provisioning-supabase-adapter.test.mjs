@@ -6,6 +6,24 @@ import {
   createSupabaseDesignProvisioningRpcAdapters,
 } from '../platform-design-provisioning-supabase-adapter.mjs';
 
+class FixtureWebSocket {
+  constructor() {
+    throw new Error('The RPC adapter fixture must not open a Realtime connection');
+  }
+}
+
+function supabaseFixtureOptions(fetch) {
+  return {
+    auth: {
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      persistSession: false,
+    },
+    global: { fetch },
+    realtime: { transport: FixtureWebSocket },
+  };
+}
+
 function authorizationFence(overrides = {}) {
   return {
     schemaVersion: 1,
@@ -280,41 +298,32 @@ test('serializes both fenced RPCs through the real Supabase JS PostgREST client'
   const client = createClient(
     'https://a4-adapter-fixture.supabase.invalid',
     'fixture-anon-key-not-a-secret',
-    {
-      auth: {
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-        persistSession: false,
-      },
-      global: {
-        async fetch(input, init) {
-          const headers = new Headers(init?.headers);
-          const body = JSON.parse(String(init?.body));
-          requests.push({
-            url: String(input),
-            method: init?.method,
-            headers,
-            body,
-            signal: init?.signal,
-          });
-          const response = String(input).endsWith('/design_provision')
-            ? {
-                status: 'completed',
-                operationCount: 0,
-                operations: [],
-                authorizationRevision: body.p_authorization_fence.authorizationRevision,
-              }
-            : {
-                status: 'pending',
-                authorizationRevision: body.p_authorization_fence.authorizationRevision,
-              };
-          return new Response(JSON.stringify(response), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          });
-        },
-      },
-    },
+    supabaseFixtureOptions(async (input, init) => {
+      const headers = new Headers(init?.headers);
+      const body = JSON.parse(String(init?.body));
+      requests.push({
+        url: String(input),
+        method: init?.method,
+        headers,
+        body,
+        signal: init?.signal,
+      });
+      const response = String(input).endsWith('/design_provision')
+        ? {
+            status: 'completed',
+            operationCount: 0,
+            operations: [],
+            authorizationRevision: body.p_authorization_fence.authorizationRevision,
+          }
+        : {
+            status: 'pending',
+            authorizationRevision: body.p_authorization_fence.authorizationRevision,
+          };
+      return new Response(JSON.stringify(response), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }),
   );
   const fence = authorizationFence();
   const query = reconciliationQuery();
@@ -370,27 +379,18 @@ test('does not retry a real Supabase JS RPC after an HTTP 503 response', async (
   const client = createClient(
     'https://a4-adapter-fixture.supabase.invalid',
     'fixture-anon-key-not-a-secret',
-    {
-      auth: {
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-        persistSession: false,
-      },
-      global: {
-        async fetch(input, init) {
-          requests.push({ input, init });
-          return new Response(JSON.stringify({
-            code: 'PGRST503',
-            message: rawDetail,
-            details: rawDetail,
-            hint: rawDetail,
-          }), {
-            status: 503,
-            headers: { 'Content-Type': 'application/json' },
-          });
-        },
-      },
-    },
+    supabaseFixtureOptions(async (input, init) => {
+      requests.push({ input, init });
+      return new Response(JSON.stringify({
+        code: 'PGRST503',
+        message: rawDetail,
+        details: rawDetail,
+        hint: rawDetail,
+      }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }),
   );
   const { executionAdapter } = createSupabaseDesignProvisioningRpcAdapters({ client });
   let observedError;
