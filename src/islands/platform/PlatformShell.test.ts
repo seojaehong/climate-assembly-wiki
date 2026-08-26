@@ -281,6 +281,7 @@ describe('PlatformShell accessibility', () => {
     }));
 
     expect(html).toContain('<form');
+    expect(html.match(/<main/g)).toHaveLength(1);
     expect(html).toContain('id="platform-scope-content"');
     expect(html).toContain('tabindex="-1"');
     expect(html).toContain('aria-label="운영진 로그인"');

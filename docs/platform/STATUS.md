@@ -244,6 +244,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 revision-bound durable receipt 계약(2026-08-26):** fence 왕복을 통과한 실행·reconciliation 결과만 receipt의 optional `authorizationRevision`에 같은 SHA-256을 넣고 HMAC으로 결속한다. Production-bound 기존 receipt 복구는 현재 live snapshot/claim revision을 먼저 읽어 receipt와 exact 일치할 때만 finalize한다. 필드가 없는 legacy receipt와 다른 revision으로 유효하게 서명된 receipt는 실행 adapter를 재호출하지 않고 claim을 열린 상태로 둔 채 거부한다. 일반 receipt verifier와 저수준 lifecycle의 legacy 호환은 유지하되 production evidence로 승격하지 않는다. Durable store와 key registry envelope는 optional revision을 exact schema로 검증하고 claim linkage가 다르면 append/audit를 거부한다. 실제 production durable store·RPC/status adapter·DB·Auth·GRANT·traffic은 구현하거나 변경하지 않았다.
 
+**A5 로그인 main 랜드마크 보강(2026-08-26):** 공개 `/platform/`의 로그인 전 접근성 트리에서 이름 있는 form·heading·입력·버튼은 확인됐지만 `main` 랜드마크가 없었다. 로그인·초기 로딩을 감싸는 `Centered` container를 의미 없는 `div`에서 `main`으로 바꿔 form 역할과 건너뛰기 대상은 그대로 보존하면서 스크린리더 랜드마크 탐색 경로를 추가했다. 360×800 CSS viewport에서 문서 폭 360px, 로그인 form 폭 312px, 입력·버튼 높이 52px와 가로 overflow 없음도 직접 확인했다. 이는 브라우저 accessibility tree와 반응형 구조 검증이며 실제 NVDA·VoiceOver·TalkBack 수동 평가는 아니므로 `platform-accessibility-manual-evaluation.json`의 `needs_review`와 `not_run` 상태는 유지한다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

@@ -722,8 +722,8 @@ function sameLevel(a: Scope, b: Scope): boolean {
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: '100vh', background: BG, display: 'grid', placeItems: 'center', padding: 24, fontFamily: "Pretendard, system-ui, sans-serif" }}>
+    <main style={{ minHeight: '100vh', background: BG, display: 'grid', placeItems: 'center', padding: 24, fontFamily: "Pretendard, system-ui, sans-serif" }}>
       {children}
-    </div>
+    </main>
   );
 }
