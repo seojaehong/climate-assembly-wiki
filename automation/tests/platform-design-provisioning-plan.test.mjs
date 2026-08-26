@@ -32,10 +32,13 @@ import {
 } from '../platform-design-provisioning-plan.mjs';
 import {
   auditLocalDesignProvisioningRehearsalStore,
+  createLocalDesignProvisioningCheckpointAnchorAdapter,
   createLocalDesignProvisioningAuthorizationAdapter,
   createLocalDesignProvisioningReceiptAdapter,
+  initializeLocalDesignProvisioningCheckpointAnchorStore,
   initializeLocalDesignProvisioningRehearsalStore,
   LOCAL_DESIGN_PROVISIONING_STORE_BOUNDARIES,
+  persistLocalDesignProvisioningRehearsalStoreCheckpoint,
   replaceLocalDesignProvisioningAuthorizationContext,
   revokeLocalDesignProvisioningAuthorization,
   sealLocalDesignProvisioningRehearsalStoreCheckpoint,
@@ -695,6 +698,132 @@ test('inventory checkpoint detects deleted authorization state and a changed jou
     await expect(anchoredAudit()).rejects.toThrow('inventory checkpoint verification failed');
   } finally {
     rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('persists inventory checkpoints in a separate append-only anchor store and recovers response loss', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const anchorDirectory = mkdtempSync(join(tmpdir(), 'a4-checkpoint-anchor-'));
+  const checkpointKeyId = 'a4-inventory-checkpoint-v1';
+  const firstCreatedAt = '2026-08-25T13:10:00.000Z';
+  const secondCreatedAt = '2026-08-25T13:11:00.000Z';
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: approvalMetadata().approvalId, context: liveContext() },
+    });
+    expect(initializeLocalDesignProvisioningCheckpointAnchorStore({
+      directory: anchorDirectory,
+    })).toMatchObject({ status: 'initialized', appendOnlyCheckpointPersistence: true });
+    const anchorAdapter = createLocalDesignProvisioningCheckpointAnchorAdapter({
+      directory: anchorDirectory,
+    });
+    const first = await persistLocalDesignProvisioningRehearsalStoreCheckpoint({
+      directory,
+      checkpointAnchorAdapter: anchorAdapter,
+      trustedCheckpointKey: approvalKey,
+      checkpointKeyId,
+      createdAt: firstCreatedAt,
+    });
+    expect(first).toMatchObject({
+      status: 'persisted',
+      checkpoint: { createdAt: firstCreatedAt, keyId: checkpointKeyId },
+      appendOnlyCheckpointPersistence: true,
+      productionCredentialAccessed: false,
+      databaseMutationExecuted: false,
+    });
+    expect(await createLocalDesignProvisioningCheckpointAnchorAdapter({
+      directory: anchorDirectory,
+    }).readCheckpoint(firstCreatedAt)).toEqual(first.checkpoint);
+    expect(await persistLocalDesignProvisioningRehearsalStoreCheckpoint({
+      directory,
+      checkpointAnchorAdapter: anchorAdapter,
+      trustedCheckpointKey: approvalKey,
+      checkpointKeyId,
+      createdAt: firstCreatedAt,
+    })).toMatchObject({ status: 'existing', checkpoint: first.checkpoint });
+
+    const responseLossAdapter = Object.freeze({
+      ...anchorAdapter,
+      async appendCheckpoint(checkpoint) {
+        await anchorAdapter.appendCheckpoint(checkpoint);
+        throw new Error('synthetic response loss');
+      },
+    });
+    const recovered = await persistLocalDesignProvisioningRehearsalStoreCheckpoint({
+      directory,
+      checkpointAnchorAdapter: responseLossAdapter,
+      trustedCheckpointKey: approvalKey,
+      checkpointKeyId,
+      createdAt: secondCreatedAt,
+    });
+    expect(recovered).toMatchObject({
+      status: 'recovered',
+      checkpoint: { createdAt: secondCreatedAt },
+    });
+    expect(readdirSync(join(anchorDirectory, 'checkpoints'))).toHaveLength(2);
+    const serialized = readdirSync(join(anchorDirectory, 'checkpoints'))
+      .map((name) => readFileSync(join(anchorDirectory, 'checkpoints', name), 'utf8'))
+      .join('');
+    expect(serialized).not.toContain(approvalKey);
+    expect(serialized).not.toContain(approvalMetadata().approvalId);
+    expect(readdirSync(directory)).not.toContain('checkpoints');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+    rmSync(anchorDirectory, { recursive: true, force: true });
+  }
+});
+
+test('checkpoint anchor store rejects conflicts, tampering, unsafe roots, and invalid adapters', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'a4-durable-store-'));
+  const anchorDirectory = mkdtempSync(join(tmpdir(), 'a4-checkpoint-anchor-'));
+  try {
+    await initializeLocalDesignProvisioningRehearsalStore({
+      directory,
+      authorization: { approvalId: approvalMetadata().approvalId, context: liveContext() },
+    });
+    initializeLocalDesignProvisioningCheckpointAnchorStore({ directory: anchorDirectory });
+    const anchorAdapter = createLocalDesignProvisioningCheckpointAnchorAdapter({
+      directory: anchorDirectory,
+    });
+    const persisted = await persistLocalDesignProvisioningRehearsalStoreCheckpoint({
+      directory,
+      checkpointAnchorAdapter: anchorAdapter,
+      trustedCheckpointKey: approvalKey,
+      checkpointKeyId: 'a4-inventory-checkpoint-v1',
+      createdAt: '2026-08-25T13:10:00.000Z',
+    });
+    await expect(anchorAdapter.appendCheckpoint({
+      ...persisted.checkpoint,
+      digest: 'f'.repeat(64),
+    })).rejects.toThrow('checkpoint anchor conflict');
+    expect(await anchorAdapter.readCheckpoint(persisted.checkpoint.createdAt))
+      .toEqual(persisted.checkpoint);
+
+    const checkpointFile = join(
+      anchorDirectory,
+      'checkpoints',
+      readdirSync(join(anchorDirectory, 'checkpoints'))[0],
+    );
+    const tampered = JSON.parse(readFileSync(checkpointFile, 'utf8'));
+    tampered.recordSha256 = 'f'.repeat(64);
+    writeFileSync(checkpointFile, `${JSON.stringify(tampered)}\n`, 'utf8');
+    await expect(anchorAdapter.readCheckpoint(persisted.checkpoint.createdAt))
+      .rejects.toThrow('checkpoint anchor integrity failed');
+
+    expect(() => initializeLocalDesignProvisioningCheckpointAnchorStore({
+      directory: join(repoRoot, 'automation'),
+    })).toThrow('checkpoint anchor must remain outside the repository');
+    await expect(persistLocalDesignProvisioningRehearsalStoreCheckpoint({
+      directory,
+      checkpointAnchorAdapter: {},
+      trustedCheckpointKey: approvalKey,
+      checkpointKeyId: 'a4-inventory-checkpoint-v1',
+      createdAt: '2026-08-25T13:11:00.000Z',
+    })).rejects.toThrow('checkpoint anchor adapter is invalid');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+    rmSync(anchorDirectory, { recursive: true, force: true });
   }
 });
 

@@ -21,15 +21,19 @@ import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = realpathSync.native(fileURLToPath(new URL('..', import.meta.url)));
 const STORE_MARKER = '.platform-design-provisioning-rehearsal-store.json';
+const CHECKPOINT_ANCHOR_STORE_MARKER = '.platform-design-provisioning-checkpoint-anchor-store.json';
+const CHECKPOINT_ANCHOR_DIRECTORY = 'checkpoints';
 const AUTHORIZATION_DIRECTORY = 'authorization';
 const RECEIPT_DIRECTORY = 'receipts';
 const MAX_RECORD_BYTES = 1024 * 1024;
+const MAX_CHECKPOINT_ANCHOR_RECORDS = 10_000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const KEY_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{2,79}$/;
 const AUTH_USER_PATTERN = /^auth-user:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const JOURNAL_FILE_PATTERN = /^(\d{12})\.json$/;
 const RECEIPT_FILE_PATTERN = /^([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.json$/;
+const CHECKPOINT_ANCHOR_FILE_PATTERN = /^([0-9a-f]{64})\.json$/;
 const TEMPORARY_FILE_PATTERN = /^\.tmp-[0-9]+-[0-9a-f-]{36}$/;
 const DEFAULT_CHECKPOINT_MAX_AGE_SECONDS = 10 * 60;
 const MAX_CHECKPOINT_MAX_AGE_SECONDS = 24 * 60 * 60;
@@ -65,6 +69,22 @@ export const LOCAL_DESIGN_PROVISIONING_STORE_BOUNDARIES = Object.freeze({
   productionCredentialAccessed: false,
   databaseMutationExecuted: false,
   rpcMutationExecuted: false,
+});
+
+export const LOCAL_DESIGN_PROVISIONING_CHECKPOINT_ANCHOR_BOUNDARIES = Object.freeze({
+  appendOnlyCheckpointPersistence: true,
+  localRehearsalOnly: true,
+  productionAdapter: false,
+  productionCredentialAccessed: false,
+  databaseMutationExecuted: false,
+  rpcMutationExecuted: false,
+});
+
+const CHECKPOINT_ANCHOR_MARKER = Object.freeze({
+  schemaVersion: 1,
+  kind: 'platform_design_provisioning_local_checkpoint_anchor_store',
+  checkpointPublication: 'immutable_hard_link_v1',
+  ...LOCAL_DESIGN_PROVISIONING_CHECKPOINT_ANCHOR_BOUNDARIES,
 });
 
 function isRecord(value) {
@@ -119,6 +139,89 @@ function resolveStoreRoot(directory, { markerRequired = false } = {}) {
   }
   if (markerRequired) verifyMarker(root);
   return root;
+}
+
+function checkpointAnchorMarkerPath(root) {
+  return resolve(root, CHECKPOINT_ANCHOR_STORE_MARKER);
+}
+
+function verifyCheckpointAnchorMarker(root) {
+  const path = checkpointAnchorMarkerPath(root);
+  if (!existsSync(path)
+    || lstatSync(path).isSymbolicLink()
+    || !lstatSync(path).isFile()
+    || realpathSync.native(path) !== path) {
+    throw new Error('Local design provisioning checkpoint anchor marker is invalid');
+  }
+  const value = readBoundedJsonSync(
+    path,
+    'Local design provisioning checkpoint anchor marker',
+  );
+  if (canonicalJson(value) !== canonicalJson(CHECKPOINT_ANCHOR_MARKER)) {
+    throw new Error('Local design provisioning checkpoint anchor marker is invalid');
+  }
+}
+
+function resolveCheckpointAnchorRoot(directory, { markerRequired = false } = {}) {
+  if (typeof directory !== 'string' || !isAbsolute(directory)) {
+    throw new Error('Local design provisioning checkpoint anchor directory must be absolute');
+  }
+  let root;
+  try {
+    root = realpathSync.native(directory);
+  } catch {
+    throw new Error('Local design provisioning checkpoint anchor directory is unavailable');
+  }
+  if (!lstatSync(root).isDirectory()) {
+    throw new Error('Local design provisioning checkpoint anchor directory is invalid');
+  }
+  if (isInside(REPO_ROOT, root)) {
+    throw new Error('Local design provisioning checkpoint anchor must remain outside the repository');
+  }
+  if (markerRequired) verifyCheckpointAnchorMarker(root);
+  return root;
+}
+
+function ensureCheckpointAnchorDirectory(root) {
+  const expected = resolve(root, CHECKPOINT_ANCHOR_DIRECTORY);
+  mkdirSync(expected, { recursive: true, mode: 0o700 });
+  return validateOwnedDirectory(
+    root,
+    expected,
+    'Local design provisioning checkpoint anchor layout',
+  );
+}
+
+function verifyCheckpointAnchorLayout(root) {
+  const allowedRootEntries = [CHECKPOINT_ANCHOR_DIRECTORY, CHECKPOINT_ANCHOR_STORE_MARKER];
+  const rootEntries = readdirSync(root).sort();
+  if (canonicalJson(rootEntries) !== canonicalJson(allowedRootEntries.sort())) {
+    throw new Error('Local design provisioning checkpoint anchor layout is invalid');
+  }
+  const checkpointDirectory = ensureCheckpointAnchorDirectory(root);
+  const checkpointEntries = readdirSync(checkpointDirectory);
+  if (checkpointEntries.length > MAX_CHECKPOINT_ANCHOR_RECORDS) {
+    throw new Error('Local design provisioning checkpoint anchor record limit exceeded');
+  }
+  for (const name of checkpointEntries) {
+    if (TEMPORARY_FILE_PATTERN.test(name)) {
+      validateTemporaryFileIfPresent(
+        checkpointDirectory,
+        resolve(checkpointDirectory, name),
+        'Local design provisioning checkpoint anchor temporary record',
+      );
+      continue;
+    }
+    if (!CHECKPOINT_ANCHOR_FILE_PATTERN.test(name)) {
+      throw new Error('Local design provisioning checkpoint anchor layout is invalid');
+    }
+    validateOwnedFile(
+      checkpointDirectory,
+      resolve(checkpointDirectory, name),
+      'Local design provisioning checkpoint anchor record',
+    );
+  }
+  return checkpointDirectory;
 }
 
 function markerPath(root) {
@@ -973,6 +1076,176 @@ function validateInventoryCheckpoint(checkpoint) {
   }
   canonicalCheckpointTimestamp(checkpoint.createdAt);
   return structuredClone(checkpoint);
+}
+
+function checkpointAnchorRecord(checkpointValue) {
+  const checkpoint = validateInventoryCheckpoint(checkpointValue);
+  const unsigned = {
+    schemaVersion: 1,
+    kind: 'platform_design_provisioning_local_checkpoint_anchor_record',
+    checkpoint,
+    boundaries: LOCAL_DESIGN_PROVISIONING_CHECKPOINT_ANCHOR_BOUNDARIES,
+  };
+  return { ...unsigned, recordSha256: sha256(canonicalJson(unsigned)) };
+}
+
+function validateCheckpointAnchorRecord(value, expectedCreatedAt) {
+  if (!exactKeys(value, [
+    'schemaVersion', 'kind', 'checkpoint', 'boundaries', 'recordSha256',
+  ])
+    || value.schemaVersion !== 1
+    || value.kind !== 'platform_design_provisioning_local_checkpoint_anchor_record'
+    || canonicalJson(value.boundaries)
+      !== canonicalJson(LOCAL_DESIGN_PROVISIONING_CHECKPOINT_ANCHOR_BOUNDARIES)
+    || !SHA256_PATTERN.test(value.recordSha256 ?? '')) {
+    throw new Error('Local design provisioning checkpoint anchor record is invalid');
+  }
+  const checkpoint = validateInventoryCheckpoint(value.checkpoint);
+  if (checkpoint.createdAt !== expectedCreatedAt) {
+    throw new Error('Local design provisioning checkpoint anchor record is invalid');
+  }
+  const { recordSha256, ...unsigned } = value;
+  if (sha256(canonicalJson(unsigned)) !== recordSha256) {
+    throw new Error('Local design provisioning checkpoint anchor integrity failed');
+  }
+  return checkpoint;
+}
+
+function checkpointAnchorFilename(createdAtValue) {
+  const createdAt = canonicalCheckpointTimestamp(createdAtValue);
+  return `${sha256(createdAt)}.json`;
+}
+
+async function readCheckpointAnchorRecord(root, createdAtValue) {
+  verifyCheckpointAnchorMarker(root);
+  const checkpointDirectory = verifyCheckpointAnchorLayout(root);
+  const createdAt = canonicalCheckpointTimestamp(createdAtValue);
+  const path = resolve(checkpointDirectory, checkpointAnchorFilename(createdAt));
+  if (!existsSync(path)) return null;
+  validateOwnedFile(
+    checkpointDirectory,
+    path,
+    'Local design provisioning checkpoint anchor record',
+  );
+  return validateCheckpointAnchorRecord(
+    await readBoundedJson(path, 'Local design provisioning checkpoint anchor record'),
+    createdAt,
+  );
+}
+
+export function initializeLocalDesignProvisioningCheckpointAnchorStore({ directory } = {}) {
+  const root = resolveCheckpointAnchorRoot(directory);
+  const marker = checkpointAnchorMarkerPath(root);
+  let status = 'existing';
+  if (!existsSync(marker)) {
+    if (readdirSync(root).length !== 0) {
+      throw new Error('Local design provisioning checkpoint anchor directory must be empty');
+    }
+    const descriptor = openSync(marker, 'wx', 0o600);
+    try {
+      writeFileSync(descriptor, `${canonicalJson(CHECKPOINT_ANCHOR_MARKER)}\n`, 'utf8');
+    } finally {
+      closeSync(descriptor);
+    }
+    status = 'initialized';
+  } else {
+    verifyCheckpointAnchorMarker(root);
+  }
+  ensureCheckpointAnchorDirectory(root);
+  verifyCheckpointAnchorLayout(root);
+  return { status, ...LOCAL_DESIGN_PROVISIONING_CHECKPOINT_ANCHOR_BOUNDARIES };
+}
+
+export function createLocalDesignProvisioningCheckpointAnchorAdapter({ directory } = {}) {
+  const root = resolveCheckpointAnchorRoot(directory, { markerRequired: true });
+  verifyCheckpointAnchorLayout(root);
+  return Object.freeze({
+    ...LOCAL_DESIGN_PROVISIONING_CHECKPOINT_ANCHOR_BOUNDARIES,
+    async readCheckpoint(createdAtValue) {
+      return readCheckpointAnchorRecord(root, createdAtValue);
+    },
+    async appendCheckpoint(checkpointValue) {
+      const record = checkpointAnchorRecord(checkpointValue);
+      const createdAt = record.checkpoint.createdAt;
+      const filename = checkpointAnchorFilename(createdAt);
+      verifyCheckpointAnchorMarker(root);
+      const checkpointDirectory = verifyCheckpointAnchorLayout(root);
+      const published = await publishImmutableJson(checkpointDirectory, filename, record);
+      if (published) {
+        return {
+          status: 'persisted',
+          checkpointDigest: record.checkpoint.digest,
+          ...LOCAL_DESIGN_PROVISIONING_CHECKPOINT_ANCHOR_BOUNDARIES,
+        };
+      }
+      const existing = await readCheckpointAnchorRecord(root, createdAt);
+      if (canonicalJson(existing) !== canonicalJson(record.checkpoint)) {
+        throw new Error('Local design provisioning checkpoint anchor conflict');
+      }
+      return {
+        status: 'existing',
+        checkpointDigest: record.checkpoint.digest,
+        ...LOCAL_DESIGN_PROVISIONING_CHECKPOINT_ANCHOR_BOUNDARIES,
+      };
+    },
+  });
+}
+
+function validateCheckpointAnchorAdapter(adapter) {
+  if (!isRecord(adapter)
+    || adapter.appendOnlyCheckpointPersistence !== true
+    || adapter.localRehearsalOnly !== true
+    || adapter.productionAdapter !== false
+    || adapter.productionCredentialAccessed !== false
+    || adapter.databaseMutationExecuted !== false
+    || adapter.rpcMutationExecuted !== false
+    || typeof adapter.readCheckpoint !== 'function'
+    || typeof adapter.appendCheckpoint !== 'function') {
+    throw new Error('Local design provisioning checkpoint anchor adapter is invalid');
+  }
+  return adapter;
+}
+
+export async function persistLocalDesignProvisioningRehearsalStoreCheckpoint({
+  directory,
+  checkpointAnchorAdapter: adapterValue,
+  trustedCheckpointKey,
+  checkpointKeyId,
+  createdAt,
+} = {}) {
+  const adapter = validateCheckpointAnchorAdapter(adapterValue);
+  const checkpoint = await sealLocalDesignProvisioningRehearsalStoreCheckpoint({
+    directory,
+    trustedCheckpointKey,
+    checkpointKeyId,
+    createdAt,
+  });
+  let appendResult;
+  let appendFailed = false;
+  try {
+    appendResult = await adapter.appendCheckpoint(structuredClone(checkpoint));
+    if (!isRecord(appendResult)
+      || !['persisted', 'existing'].includes(appendResult.status)
+      || appendResult.checkpointDigest !== checkpoint.digest) {
+      throw new Error('Local design provisioning checkpoint anchor append result is invalid');
+    }
+  } catch {
+    appendFailed = true;
+  }
+  let stored;
+  try {
+    stored = await adapter.readCheckpoint(checkpoint.createdAt);
+  } catch {
+    throw new Error('Local design provisioning checkpoint anchor persistence verification failed');
+  }
+  if (canonicalJson(stored) !== canonicalJson(checkpoint)) {
+    throw new Error('Local design provisioning checkpoint anchor persistence verification failed');
+  }
+  return {
+    status: appendFailed ? 'recovered' : appendResult.status,
+    checkpoint: structuredClone(stored),
+    ...LOCAL_DESIGN_PROVISIONING_CHECKPOINT_ANCHOR_BOUNDARIES,
+  };
 }
 
 function verifyCheckpointTemporalConsistency(createdAt, inspection) {
