@@ -2430,6 +2430,69 @@ test('revisioned lifecycle rejects an unfenced executor before authorization sid
   expect(receiptReadCount).toBe(0);
 });
 
+test('revision-fenced lifecycle rejects non-v4 approval identity before state access', async () => {
+  const { source, bytes, plan, approval } = executionApproval(
+    blueprint(),
+    approvalMetadata({
+      approvalId: '33333333-3333-1333-8333-333333333333',
+      executionId: '44444444-4444-1444-8444-444444444444',
+    }),
+  );
+  const provider = createInMemoryRevisionedDesignProvisioningAuthorizationProvider(liveContext());
+  const base = provider.authorizationAdapter;
+  let authorizationReadCount = 0;
+  let receiptReadCount = 0;
+  const authorizationAdapter = {
+    revisionedLiveAuthorization: true,
+    async readSnapshot(approvalId) {
+      authorizationReadCount += 1;
+      return base.readSnapshot(approvalId);
+    },
+    claim: (expectedSnapshot, claim) => base.claim(expectedSnapshot, claim),
+    finalize: (expectedSnapshot, terminalClaim) => base.finalize(expectedSnapshot, terminalClaim),
+  };
+  const receiptAdapter = {
+    async read() {
+      receiptReadCount += 1;
+      return null;
+    },
+    async append() {
+      throw new Error('must not append');
+    },
+  };
+
+  await expect(executeDesignProvisioningApprovalLifecycleWithRevisionedAuthorization({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter,
+    executionAdapter: {
+      revisionFencedExecution: true,
+      async execute() { throw new Error('must not execute'); },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+  })).rejects.toThrow('revision-fenced identity is invalid');
+  await expect(reconcileDesignProvisioningApprovalLifecycleWithRevisionedAuthorization({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter,
+    reconciliationAdapter: {
+      revisionFencedReconciliation: true,
+      async reconcile() { throw new Error('must not reconcile'); },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+  })).rejects.toThrow('revision-fenced identity is invalid');
+  expect(authorizationReadCount).toBe(0);
+  expect(receiptReadCount).toBe(0);
+});
+
 test('executes and finalizes through one revision-bound live authorization context', async () => {
   const { source, bytes, plan, approval } = executionApproval();
   const provider = createInMemoryRevisionedDesignProvisioningAuthorizationProvider(liveContext());

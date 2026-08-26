@@ -14,6 +14,7 @@ const MAX_PROVISIONING_PLAN_BYTES = 16 * 1024 * 1024;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const KEY_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{2,79}$/;
 const AUTH_REVIEWER_PATTERN = /^auth-user:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const DESIGN_APPROVAL_ROLES = Object.freeze(['org_admin', 'hq']);
@@ -996,6 +997,14 @@ function designProvisioningAuthorizationFence(approval, snapshot) {
   };
 }
 
+function assertRevisionFencedApprovalIdentity(approval) {
+  if (!isRecord(approval)
+    || !UUID_V4_PATTERN.test(approval.approvalId ?? '')
+    || !UUID_V4_PATTERN.test(approval.executionId ?? '')) {
+    throw new Error('Design provisioning revision-fenced identity is invalid');
+  }
+}
+
 function verifiedRevisionFencedResult(result, expectedRevision, label) {
   if (!isRecord(result)
     || !Object.prototype.hasOwnProperty.call(result, 'authorizationRevision')
@@ -1795,6 +1804,9 @@ export async function executeDesignProvisioningApprovalLifecycle({
   if (typeof clock !== 'function') {
     throw new Error('Design provisioning execution lifecycle clock is invalid');
   }
+  if (execution.revisionFencedExecution === true) {
+    assertRevisionFencedApprovalIdentity(approval);
+  }
 
   const existingReceipt = await readExecutionReceipt(receipts, approval?.executionId);
   if (existingReceipt) {
@@ -1954,6 +1966,9 @@ export async function reconcileDesignProvisioningApprovalLifecycle({
   }
   if (typeof clock !== 'function') {
     throw new Error('Design provisioning execution lifecycle clock is invalid');
+  }
+  if (reconciliation.revisionFencedReconciliation === true) {
+    assertRevisionFencedApprovalIdentity(approval);
   }
 
   const existingReceipt = await readExecutionReceipt(receipts, approval?.executionId);
