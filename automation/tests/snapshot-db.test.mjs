@@ -481,11 +481,16 @@ test('binds the legacy snapshot into schema v2 archive integrity', async () => {
 
 test('reports schema v1 archives as platform-only integrity without overstating legacy verification', async () => {
   const archive = schemaV1Archive(await signedArchiveFixture());
-  expect(verifySnapshotArchiveIntegrity(archive, TEST_AUDIT_KEY)).toBe(true);
+  expect(verifySnapshotArchiveIntegrity(archive, TEST_AUDIT_KEY)).toBe(false);
+  expect(verifySnapshotArchiveIntegrity(
+    archive,
+    TEST_AUDIT_KEY,
+    { allowPlatformOnlyV1: true },
+  )).toBe(true);
   expect(verifySnapshotArchiveIntegrity({
     ...archive,
     legacy: { ...archive.legacy, snapshot_id: 999 },
-  }, TEST_AUDIT_KEY)).toBe(true);
+  }, TEST_AUDIT_KEY, { allowPlatformOnlyV1: true })).toBe(true);
   withSnapshotFile(archive, (filePath) => {
     expect(verifySnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
       .toEqual(expect.objectContaining({

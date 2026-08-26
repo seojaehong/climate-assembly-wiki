@@ -238,8 +238,12 @@ function snapshotIntegrityScope(audit) {
   };
 }
 
-/** Verifies the signed archive scope declared by its audit manifest. */
-export function verifySnapshotArchiveIntegrity(archive, auditKey) {
+/** Verifies full schema v2 integrity by default; schema v1 requires explicit platform-only compatibility. */
+export function verifySnapshotArchiveIntegrity(
+  archive,
+  auditKey,
+  { allowPlatformOnlyV1 = false } = {},
+) {
   if (!hasExactFields(archive, SNAPSHOT_ARCHIVE_FIELDS)
     || !isRecord(archive.legacy)
     || !hasExactFields(archive.platform, SNAPSHOT_PLATFORM_FIELDS, SNAPSHOT_PLATFORM_REQUIRED_FIELDS)
@@ -247,6 +251,7 @@ export function verifySnapshotArchiveIntegrity(archive, auditKey) {
     || !hasExactFields(archive.audit.integrity, SNAPSHOT_INTEGRITY_FIELDS)) return false;
   if (typeof auditKey !== 'string' || auditKey.length < 32) return false;
   if (![1, 2].includes(archive.audit.schemaVersion) || archive.audit.event !== 'platform_snapshot_export') return false;
+  if (archive.audit.schemaVersion === 1 && !allowPlatformOnlyV1) return false;
   if (archive.audit.snapshotId !== archive.platform.id) return false;
   const expectedTarget = archive.audit.schemaVersion === 2
     ? 'legacy+platform+provenance'
@@ -266,7 +271,7 @@ function readVerifiedSnapshotArchive({ filePath, auditKey }) {
   } catch {
     throw new Error('snapshot archive JSON is invalid');
   }
-  if (!verifySnapshotArchiveIntegrity(archive, auditKey)) {
+  if (!verifySnapshotArchiveIntegrity(archive, auditKey, { allowPlatformOnlyV1: true })) {
     throw new Error('snapshot archive integrity verification failed');
   }
   if (archive.platform.source !== 'platform') {
