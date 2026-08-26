@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,9 +17,14 @@ import {
   verifyOrganizationAccessProvisioningExecutionReceipt,
   verifyOrganizationAccessProvisioningPlan,
 } from '../platform-access-provisioning-plan.mjs';
+import {
+  createLocalAccessProvisioningReceiptAdapter,
+  initializeLocalAccessProvisioningReceiptStore,
+} from '../platform-access-provisioning-durable-store.mjs';
 
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 const modulePath = fileURLToPath(new URL('../platform-access-provisioning-plan.mjs', import.meta.url));
+const durableModulePath = fileURLToPath(new URL('../platform-access-provisioning-durable-store.mjs', import.meta.url));
 const approvalKey = 'test-provisioning-approval-key-32-bytes-minimum';
 const approvalKeyId = 'access-provisioning-2026-08-v1';
 const approvedAt = '2026-08-17T02:00:00.000Z';
@@ -93,6 +98,151 @@ function executionAdapter(overrides = {}) {
   };
 }
 
+test('initializes an outside-repository local receipt store with fail-closed boundaries', () => {
+  const root = mkdtempSync(join(tmpdir(), 'platform-access-receipts-'));
+  const nonempty = mkdtempSync(join(tmpdir(), 'platform-access-receipts-nonempty-'));
+  try {
+    writeFileSync(join(nonempty, 'sentinel.txt'), 'preserve', 'utf8');
+    expect(() => initializeLocalAccessProvisioningReceiptStore({ directory: 'relative-store' }))
+      .toThrow('must be absolute');
+    expect(() => initializeLocalAccessProvisioningReceiptStore({ directory: repoRoot }))
+      .toThrow('outside the repository');
+    expect(() => initializeLocalAccessProvisioningReceiptStore({ directory: nonempty }))
+      .toThrow('must be empty');
+
+    expect(initializeLocalAccessProvisioningReceiptStore({ directory: root })).toEqual({
+      status: 'initialized',
+      receiptPublication: 'immutable_hard_link_v1',
+      localRehearsalOnly: true,
+      productionAdapter: false,
+      databaseMutationExecuted: false,
+    });
+    const marker = readFileSync(
+      join(root, '.platform-access-provisioning-rehearsal-store.json'),
+      'utf8',
+    );
+    expect(marker).not.toContain('credential');
+    expect(marker).not.toContain('email');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(nonempty, { recursive: true, force: true });
+  }
+});
+
+test('durably recovers an append response loss after restart and preserves conflicts', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'platform-access-receipts-'));
+  try {
+    initializeLocalAccessProvisioningReceiptStore({ directory: root });
+    const source = { ...accessPlan(), memberships: [] };
+    const bytes = sourceBytes(source);
+    const plan = buildOrganizationAccessProvisioningPlan(source, bytes);
+    const runId = '15151515-1515-4515-8515-151515151515';
+    const receiptAdapter = createLocalAccessProvisioningReceiptAdapter({
+      directory: root,
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+      expectedPlanChecksum: plan.checksum,
+    });
+    let lookupCalls = 0;
+    let applyCalls = 0;
+    const first = await executeOrganizationAccessProvisioningPlan({
+      plan,
+      accessPlan: source,
+      sourceBytes: bytes,
+      approval: approvalFor(plan),
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+      runId,
+      adapter: executionAdapter({
+        readReceipt: receiptAdapter.readReceipt,
+        appendReceipt: async (receipt) => {
+          await receiptAdapter.appendReceipt(receipt);
+          throw new Error('synthetic durable append response loss');
+        },
+        lookupOperation: async (operation) => {
+          lookupCalls += 1;
+          return { status: 'absent', operationId: operation.operationId };
+        },
+        applyOperation: async (operation) => {
+          applyCalls += 1;
+          return { status: 'applied', operationId: operation.operationId };
+        },
+      }),
+      clock: () => new Date('2026-08-17T02:10:00.000Z'),
+    });
+
+    const restartedAdapter = createLocalAccessProvisioningReceiptAdapter({
+      directory: root,
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+      expectedPlanChecksum: plan.checksum,
+    });
+    const replayed = await executeOrganizationAccessProvisioningPlan({
+      plan,
+      accessPlan: source,
+      sourceBytes: bytes,
+      approval: approvalFor(plan),
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+      runId,
+      adapter: executionAdapter({
+        readReceipt: restartedAdapter.readReceipt,
+        appendReceipt: restartedAdapter.appendReceipt,
+        lookupOperation: async () => {
+          lookupCalls += 1;
+          throw new Error('lookup must not run during receipt recovery');
+        },
+        applyOperation: async () => {
+          applyCalls += 1;
+          throw new Error('apply must not run during receipt recovery');
+        },
+      }),
+      clock: () => new Date('2026-08-17T03:00:00.000Z'),
+    });
+    expect(replayed).toEqual(first);
+    expect(lookupCalls).toBe(1);
+    expect(applyCalls).toBe(1);
+
+    const alternate = await executeOrganizationAccessProvisioningPlan({
+      plan,
+      accessPlan: source,
+      sourceBytes: bytes,
+      approval: approvalFor(plan),
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+      runId,
+      adapter: executionAdapter({
+        lookupOperation: async (operation) => ({ status: 'applied', operationId: operation.operationId }),
+      }),
+      clock: () => new Date('2026-08-17T02:11:00.000Z'),
+    });
+    expect(await restartedAdapter.appendReceipt(alternate)).toEqual({ status: 'conflict', runId });
+    expect(await restartedAdapter.readReceipt(runId)).toEqual(first);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('rejects a receipt directory junction that escapes the local store', () => {
+  const root = mkdtempSync(join(tmpdir(), 'platform-access-receipts-'));
+  const outside = mkdtempSync(join(tmpdir(), 'platform-access-receipts-outside-'));
+  try {
+    initializeLocalAccessProvisioningReceiptStore({ directory: root });
+    rmSync(join(root, 'receipts'), { recursive: true, force: true });
+    mkdirSync(outside, { recursive: true });
+    symlinkSync(outside, join(root, 'receipts'), process.platform === 'win32' ? 'junction' : 'dir');
+    expect(() => createLocalAccessProvisioningReceiptAdapter({
+      directory: root,
+      trustedKey: approvalKey,
+      expectedKeyId: approvalKeyId,
+      expectedPlanChecksum: 'a'.repeat(64),
+    })).toThrow('receipt directory is invalid');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
+  }
+});
+
 test('shares the exact browser access-plan schema and role contract', () => {
   expect(ORGANIZATION_ACCESS_PLAN_CONTRACT).toEqual(trackedAccessPlanContract);
   expect(ORGANIZATION_ACCESS_PLAN_CONTRACT.roles).toEqual([
@@ -105,6 +255,7 @@ test('keeps the CLI scripts and browser contract in the Linux test workflow', ()
   const packageJson = JSON.parse(readFileSync(join(repoRoot, 'automation', 'package.json'), 'utf8'));
   const workflow = readFileSync(join(repoRoot, '.github', 'workflows', 'test.yml'), 'utf8');
   const source = readFileSync(modulePath, 'utf8');
+  const durableSource = readFileSync(durableModulePath, 'utf8');
 
   expect(packageJson.scripts['plan:platform-access-provisioning']).toBe(
     'node platform-access-provisioning-plan.mjs',
@@ -117,6 +268,8 @@ test('keeps the CLI scripts and browser contract in the Linux test workflow', ()
   expect(Object.keys(packageJson.scripts).some((name) => /apply.*access|access.*apply/.test(name))).toBe(false);
   expect(source).not.toContain('@supabase/supabase-js');
   expect(source).not.toContain('createClient(');
+  expect(durableSource).not.toContain('@supabase/supabase-js');
+  expect(durableSource).not.toContain('createClient(');
 });
 
 test('builds deterministic invitation and membership operations without executing them', () => {
