@@ -124,7 +124,8 @@ runtime schema CREATE 차단 결과: `A4_SCHEMA_CREATE_POSTGRES_REHEARSAL=passed
 - 저장소 밖 로컬 durable store의 adapter 재시작·lock-free CAS·독립 Node 프로세스 6개 claim 경쟁(1 claimed, 5 conflict, journal record 2개)·orphan temp 복구·append-only replay/conflict·journal 변조·terminal claim/checkpoint/receipt/lifecycle clock 사건시각 역행·junction escape·revocation/claim 경쟁·membership 비활성 finalize와 재활성화 거부·비식별 전체-store/keyed receipt audit·off-store inventory checkpoint 삭제/tail 변경·기본 10분 freshness 테스트 통과
 - approval bundle verifier: builder·durable store·Supabase adapter·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 20개, production apply 미승인·DB mutation 미실행 상태로 통과
 - 추적 manifest를 current source에서 재구성해 stale source hash를 거부하는 테스트 통과
-- bundle checksum: `352503218ffe09256264839c4fcd83547f4465d754bb21980eba098c01d0a369`
+- CI workflow: push event 누락 시에도 exact ref를 재검증할 수 있도록 `workflow_dispatch`를 허용하며, workflow bytes는 bundle에 결속한다.
+- bundle checksum: `5916cb4c65c98be791726b4d9960d7b2b896cfd6fd968dd395dac25fd167e7d4`
 
 ## 보안·데이터 무결성 결론
 
