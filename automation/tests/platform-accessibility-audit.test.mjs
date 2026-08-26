@@ -13,6 +13,7 @@ import {
   auditPlatformAccessibility,
   readAuditSourceStatus,
   validateAuditSourceState,
+  verifyDeploymentRevision,
 } from '../platform-accessibility-audit.mjs';
 
 let outDir;
@@ -93,6 +94,7 @@ test('audits WCAG 2.2 AA and skip-link focus through a real browser', async () =
     baseUrl,
     sourceCommit: TEST_SOURCE_COMMIT,
     sourceTreeClean: true,
+    targetRevision: { status: 'verified', sourceCommit: TEST_SOURCE_COMMIT },
     routes: [{ id: 'valid', path: '/valid', skipTarget: 'main-content' }],
     reportPath,
     generatedAt: new Date('2026-08-11T00:00:00.000Z'),
@@ -103,9 +105,8 @@ test('audits WCAG 2.2 AA and skip-link focus through a real browser', async () =
   expect(report.sourceCommit).toBe(TEST_SOURCE_COMMIT);
   expect(report.sourceTreeClean).toBe(true);
   expect(report.targetRevision).toEqual({
-    status: 'not_verified',
-    sourceCommit: null,
-    reason: 'The audited origin does not expose a machine-verifiable deployment revision.',
+    status: 'verified',
+    sourceCommit: TEST_SOURCE_COMMIT,
   });
   expect(report.summary).toEqual({
     routeCount: 1,
@@ -123,6 +124,69 @@ test('audits WCAG 2.2 AA and skip-link focus through a real browser', async () =
   expect(existsSync(reportPath)).toBe(true);
   expect(JSON.parse(readFileSync(reportPath, 'utf8'))).toEqual(report);
 }, BROWSER_TEST_TIMEOUT_MS);
+
+test('verifies the exact same-origin deployment revision manifest', async () => {
+  const manifestUrl = `${baseUrl}/deployment-revision.json`;
+  const result = await verifyDeploymentRevision({
+    baseUrl,
+    expectedSourceCommit: TEST_SOURCE_COMMIT,
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      url: manifestUrl,
+      headers: new Headers({ 'content-type': 'application/json; charset=utf-8' }),
+      text: async () => JSON.stringify({ schemaVersion: 1, sourceCommit: TEST_SOURCE_COMMIT }),
+    }),
+  });
+
+  expect(result).toEqual({ status: 'verified', sourceCommit: TEST_SOURCE_COMMIT });
+});
+
+test('rejects deployment revision mismatch, schema drift, redirects, and non-JSON responses', async () => {
+  const manifestUrl = `${baseUrl}/deployment-revision.json`;
+  const verify = (response) => verifyDeploymentRevision({
+    baseUrl,
+    expectedSourceCommit: TEST_SOURCE_COMMIT,
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      url: manifestUrl,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      ...response,
+    }),
+  });
+
+  await expect(verify({
+    text: async () => JSON.stringify({ schemaVersion: 1, sourceCommit: 'b'.repeat(40) }),
+  })).rejects.toThrow('does not match');
+  await expect(verify({
+    text: async () => JSON.stringify({ schemaVersion: 1, sourceCommit: TEST_SOURCE_COMMIT, note: 'drift' }),
+  })).rejects.toThrow('manifest is invalid');
+  await expect(verify({
+    url: `${baseUrl}/redirected.json`,
+    text: async () => JSON.stringify({ schemaVersion: 1, sourceCommit: TEST_SOURCE_COMMIT }),
+  })).rejects.toThrow('response is invalid');
+  await expect(verify({
+    headers: new Headers({ 'content-type': 'text/html' }),
+    text: async () => '<html></html>',
+  })).rejects.toThrow('response is invalid');
+});
+
+test('rejects forged verified and unverified target revision states before browser audit', async () => {
+  const audit = (targetRevision) => auditPlatformAccessibility({
+    baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
+    targetRevision,
+    routes: [{ id: 'valid', path: '/valid', skipTarget: 'main-content' }],
+    reportPath: join(outDir, 'forged-target-revision.json'),
+  });
+
+  await expect(audit({ status: 'verified', sourceCommit: 'b'.repeat(40) }))
+    .rejects.toThrow('does not match');
+  await expect(audit({ status: 'not_verified', sourceCommit: null, reason: 'attacker-controlled' }))
+    .rejects.toThrow('state is invalid');
+});
 
 test('waits for a fixture-backed production surface before auditing it', async () => {
   const report = await auditPlatformAccessibility({

@@ -4,12 +4,18 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { verifyDeploymentRevision } from './verify-deployment-revision.mjs';
+
+export { verifyDeploymentRevision } from './verify-deployment-revision.mjs';
 
 export const AUDITED_SOURCE_PATHS = [
   '.github/workflows/platform-accessibility.yml',
   'astro.config.mjs',
   'package-lock.json',
   'package.json',
+  'public/_headers',
+  'scripts/write-deployment-revision.mjs',
+  'scripts/write-deployment-revision.test.mjs',
   'tsconfig.json',
   'automation/package-lock.json',
   'automation/package.json',
@@ -20,6 +26,7 @@ export const AUDITED_SOURCE_PATHS = [
   'automation/tests/platform-accessibility-kwcag-coverage.test.mjs',
   'automation/tests/platform-accessibility-manual-evidence.test.mjs',
   'automation/tests/verify-platform-design-blueprint.test.mjs',
+  'automation/verify-deployment-revision.mjs',
   'automation/verify-platform-design-blueprint.mjs',
   'src/components',
   'src/islands/OntologyReviewConsole.tsx',
@@ -43,10 +50,39 @@ export function readAuditSourceStatus(projectRoot) {
 }
 
 export const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+const UNVERIFIED_TARGET_REVISION = Object.freeze({
+  status: 'not_verified',
+  sourceCommit: null,
+  reason: 'The audited origin does not expose a machine-verifiable deployment revision.',
+});
 export const DEFAULT_AUDIT_PROFILES = [
   { id: 'desktop', viewport: { width: 1440, height: 1000 } },
   { id: 'mobile', viewport: { width: 360, height: 800 }, minimumContentWidth: 280 },
 ];
+
+function hasExactFields(value, fields) {
+  return value !== null
+    && typeof value === 'object'
+    && !Array.isArray(value)
+    && Object.keys(value).length === fields.length
+    && fields.every((field) => Object.prototype.hasOwnProperty.call(value, field));
+}
+
+function validateTargetRevision(targetRevision, sourceCommit) {
+  if (targetRevision?.status === 'verified') {
+    if (!hasExactFields(targetRevision, ['status', 'sourceCommit'])
+      || targetRevision.sourceCommit !== sourceCommit) {
+      throw new Error('Verified deployment revision does not match the accessibility source commit.');
+    }
+    return;
+  }
+  if (!hasExactFields(targetRevision, ['status', 'sourceCommit', 'reason'])
+    || targetRevision.status !== UNVERIFIED_TARGET_REVISION.status
+    || targetRevision.sourceCommit !== null
+    || targetRevision.reason !== UNVERIFIED_TARGET_REVISION.reason) {
+    throw new Error('Accessibility target revision state is invalid.');
+  }
+}
 
 const SUPABASE_ORIGIN = 'https://pleyuknjnprsckssxvrh.supabase.co';
 const AUTH_STORAGE_KEY = 'sb-pleyuknjnprsckssxvrh-auth-token';
@@ -464,6 +500,7 @@ export async function auditPlatformAccessibility({
   settleMs = 0,
   excludedSurfaces = [],
   profiles = DEFAULT_AUDIT_PROFILES,
+  targetRevision = UNVERIFIED_TARGET_REVISION,
 }) {
   if (!/^[0-9a-f]{40}$/.test(sourceCommit)) {
     throw new Error('A full source commit is required for accessibility evidence.');
@@ -471,6 +508,7 @@ export async function auditPlatformAccessibility({
   if (sourceTreeClean !== true) {
     throw new Error('Accessibility evidence requires a clean audited source tree.');
   }
+  validateTargetRevision(targetRevision, sourceCommit);
   if (!Array.isArray(routes) || routes.length === 0) {
     throw new Error('At least one accessibility audit route is required.');
   }
@@ -512,11 +550,7 @@ export async function auditPlatformAccessibility({
     generatedAt: generatedAt.toISOString(),
     sourceCommit,
     sourceTreeClean,
-    targetRevision: {
-      status: 'not_verified',
-      sourceCommit: null,
-      reason: 'The audited origin does not expose a machine-verifiable deployment revision.',
-    },
+    targetRevision,
     baseUrl,
     standard: 'WCAG 2.2 AA automated subset + skip-link focus + responsive overflow',
     engine: { name: 'axe-core', version: axe.version, tags: WCAG_TAGS },
@@ -579,11 +613,16 @@ if (isCli) {
   const reportPath = process.env.PLATFORM_A11Y_REPORT
     ? resolve(process.env.PLATFORM_A11Y_REPORT)
     : resolve(projectRoot, 'evaluation', 'platform-accessibility-audit.json');
+  const targetRevision = await verifyDeploymentRevision({
+    baseUrl,
+    expectedSourceCommit: sourceCommit,
+  });
   const report = await auditPlatformAccessibility({
     baseUrl,
     sourceCommit,
     sourceTreeClean: true,
     reportPath,
+    targetRevision,
     settleMs: 1_500,
     excludedSurfaces: DEFAULT_EXCLUDED_SURFACES,
     routes: DEFAULT_AUDIT_ROUTES,

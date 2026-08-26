@@ -42,3 +42,9 @@ jobs:
           CLOUDFLARE_PUBLIC_ORIGIN: https://climate-assembly.org
           CLOUDFLARE_ASSET_PROBE_COUNT: 12
         run: node automation/verify-cloudflare-deployment.mjs
+
+      - name: Verify custom-domain deployment revision
+        env:
+          DEPLOYMENT_REVISION_BASE_URL: https://climate-assembly.org
+          DEPLOYMENT_REVISION_EXPECTED_COMMIT: ${{ github.sha }}
+        run: node automation/verify-deployment-revision.mjs

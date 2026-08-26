@@ -18,6 +18,7 @@
     "audit:graph-sources": "node scripts/audit-graph-source-coverage.mjs",
     "prebuild": "npm run build:scene && npm run build:agenda-surface && npm run build:gyeonggi-agenda-source && npm run build:kb-agenda-source && npm run wiki:reindex && npm run wiki:log",
     "build": "astro build",
+    "postbuild": "node scripts/write-deployment-revision.mjs",
     "preview": "astro preview",
     "check": "astro check",
     "wiki:reindex": "node scripts/build-index.mjs",

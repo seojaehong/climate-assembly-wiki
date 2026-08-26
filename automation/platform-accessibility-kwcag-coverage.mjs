@@ -117,7 +117,9 @@ export function validateKwcagCoverageContract({ criteria = KWCAG_22_CRITERIA } =
 
 function automatedEvidenceResults(report) {
   if (report?.schemaVersion !== 3 || !/^[0-9a-f]{40}$/.test(report.sourceCommit ?? '')
-    || report.sourceTreeClean !== true) {
+    || report.sourceTreeClean !== true
+    || report.targetRevision?.status !== 'verified'
+    || report.targetRevision.sourceCommit !== report.sourceCommit) {
     throw new Error('Automated accessibility report requires clean committed source');
   }
   if (!Array.isArray(report.routes) || report.routes.length === 0

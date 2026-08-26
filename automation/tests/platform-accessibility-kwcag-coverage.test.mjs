@@ -16,6 +16,10 @@ function passingAutomatedReport() {
     schemaVersion: 3,
     sourceCommit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     sourceTreeClean: true,
+    targetRevision: {
+      status: 'verified',
+      sourceCommit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    },
     status: 'needs_review',
     standard: 'WCAG 2.2 AA automated subset + skip-link focus + responsive overflow',
     summary: {
@@ -106,6 +110,13 @@ test('rejects missing criteria and unknown evidence references', () => {
   dirtyAutomated.sourceTreeClean = false;
   expect(() => buildKwcagCoverageReport({
     automatedReport: dirtyAutomated,
+    manualEvidence: manualTemplate(),
+  })).toThrow('clean committed source');
+
+  const mismatchedRevision = passingAutomatedReport();
+  mismatchedRevision.targetRevision.sourceCommit = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+  expect(() => buildKwcagCoverageReport({
+    automatedReport: mismatchedRevision,
     manualEvidence: manualTemplate(),
   })).toThrow('clean committed source');
 });

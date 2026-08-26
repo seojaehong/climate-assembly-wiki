@@ -498,7 +498,8 @@ npm.cmd run audit:platform-accessibility
 ```
 
 - 보고서는 실제 `git rev-parse HEAD`의 전체 commit을 감사기·UI `sourceCommit`으로 기록한다. 감사 대상 소스 경로에 미커밋 변경이 있거나 GitHub Actions의 `GITHUB_SHA`가 실제 checkout과 다르면 감사 전에 실패한다.
-- 사용자 도메인이 배포 revision을 기계 판독 가능한 형태로 노출하지 않으므로 `targetRevision.status`는 `not_verified`로 보존한다. 배포 성공·ResultView 자산 probe와 이 자동감사는 별도 증거이며, 보고서의 `sourceCommit`을 원격 배포 commit 증명으로 해석하지 않는다.
+- 정상 `npm run build`의 postbuild는 Cloudflare `CF_PAGES_COMMIT_SHA`, GitHub `GITHUB_SHA`, 로컬 checkout 순서로 전체 commit을 해석해 배포 artifact의 `/deployment-revision.json`에 exact-field manifest를 생성한다. 감사기는 같은 origin의 최종 URL·JSON MIME·256 byte 상한·schema·전체 SHA를 확인하고 checkout과 정확히 같을 때만 `targetRevision.status:verified`를 기록한다. endpoint 누락·redirect·캐시 오염·schema drift·SHA 불일치는 브라우저 감사 전에 실패한다.
+- `/deployment-revision.json`은 `no-store`이며 시민 데이터·환경값·branch 이름을 포함하지 않는다. 이 manifest는 현재 정적 artifact의 source commit을 증명하지만 Cloudflare 계정 소유권, 독립 timestamp 또는 실제 스크린리더 평가를 대신하지 않는다.
 - 로그인·인증 셸·접근성 성명·미공개/공개 결과 5개 표면을 데스크톱·모바일로 나눠 HTTP 상태, axe 자동 규칙, 건너뛰기 링크 포커스, 콘텐츠 폭과 내부 표 키보드 스크롤을 검사한다.
 - 인증 셸과 공개 결과의 데이터는 production 컴포넌트에 격리된 읽기 fixture를 주입한다. 따라서 이 결과는 배포된 UI 코드의 자동 회귀 증거이며 실제 운영 계정·공개 토큰이나 수동 보조기술 평가를 대신하지 않는다.
 
