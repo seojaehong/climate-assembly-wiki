@@ -205,7 +205,7 @@ begin
          and p.provolatile = 'v' and pg_get_function_result(p.oid) = 'text'
          and p.pronargs = 0
      )
-     or not ('search_path=pg_catalog, extensions' = any(v_config))
+     or v_config is distinct from array['search_path=pg_catalog, extensions']::text[]
      or v_definition not like '%extensions.gen_random_bytes(4)%'
      or v_definition not like '%v_value < 4294000000%'
      or v_definition like '%random()%' then
@@ -222,8 +222,7 @@ begin
          and p.prosecdef and p.provolatile = 'v' and pg_get_function_result(p.oid) = 'jsonb'
          and p.pronargs = 2
      )
-     or not ('search_path=pg_catalog, climate_vote, auth, extensions' = any(v_config))
-     or not ('row_security=off' = any(v_config))
+     or v_config is distinct from array['search_path=pg_catalog, climate_vote, auth, extensions', 'row_security=off']::text[]
      or v_definition not like '%m.role in (''org_admin'', ''hq'')%'
      or v_definition not like '%for share of m, o%'
      or strpos(v_definition, 'v_user_id := auth.uid()') = 0
@@ -263,8 +262,7 @@ begin
          and p.prosecdef and p.provolatile = 's' and pg_get_function_result(p.oid) = 'jsonb'
          and p.pronargs = 1
      )
-     or not ('search_path=pg_catalog, climate_vote, auth' = any(v_config))
-     or not ('row_security=off' = any(v_config))
+     or v_config is distinct from array['search_path=pg_catalog, climate_vote, auth', 'row_security=off']::text[]
      or v_definition not like '%platform_design_provisioning_reconciliation_query%'
      or strpos(v_definition, 'v_user_id := auth.uid()') = 0
      or strpos(v_definition, 'v_user_id := auth.uid()')
@@ -288,8 +286,7 @@ begin
          and p.prosecdef and p.provolatile = 's'
          and pg_get_function_result(p.oid) = 'text' and p.pronargs = 0
      )
-     or not ('search_path=pg_catalog, climate_vote, auth, extensions' = any(v_config))
-     or not ('row_security=off' = any(v_config))
+     or v_config is distinct from array['search_path=pg_catalog, climate_vote, auth, extensions', 'row_security=off']::text[]
      or v_definition not like '%platform_design_authorization_revision_v1%'
      or v_definition not like '%o.xmin::text%'
      or v_definition not like '%m.xmin::text%'
@@ -307,8 +304,7 @@ begin
          and p.prosecdef and p.provolatile = 'v'
          and pg_get_function_result(p.oid) = 'jsonb' and p.pronargs = 3
      )
-     or not ('search_path=pg_catalog, climate_vote, auth, extensions' = any(v_config))
-     or not ('row_security=off' = any(v_config))
+     or v_config is distinct from array['search_path=pg_catalog, climate_vote, auth, extensions', 'row_security=off']::text[]
      or v_definition not like '%platform_design_provisioning_authorization_fence%'
      or v_definition not like '%approvedPlanChecksum%'
      or v_definition not like '%design_execution_binding_conflict%'
@@ -329,8 +325,7 @@ begin
          and p.prosecdef and p.provolatile = 'v'
          and pg_get_function_result(p.oid) = 'jsonb' and p.pronargs = 2
      )
-     or not ('search_path=pg_catalog, climate_vote, auth, extensions' = any(v_config))
-     or not ('row_security=off' = any(v_config))
+     or v_config is distinct from array['search_path=pg_catalog, climate_vote, auth, extensions', 'row_security=off']::text[]
      or v_definition not like '%for share of m, o%'
      or v_definition not like '%platform_design_provisioning_authorization_fence%'
      or v_definition not like '%is distinct from (p_query ->> ''approvalId'')%'

@@ -282,6 +282,19 @@ jobs:
             "$RUNNER_TEMP/a4-altered-checksum-helper.log"
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/design_provisioning_post_apply.sql >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "alter function climate_vote.design_provision(jsonb,bytea) set session_replication_role = replica;"
+          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/design_provisioning_post_apply.sql \
+            >"$RUNNER_TEMP/a4-unsafe-function-config.log" 2>&1; then
+            echo "Altered A4 function configuration unexpectedly passed verification" >&2
+            exit 1
+          fi
+          grep -q "RPC contract is unsafe" "$RUNNER_TEMP/a4-unsafe-function-config.log"
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "alter function climate_vote.design_provision(jsonb,bytea) reset session_replication_role;"
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/design_provisioning_post_apply.sql >/dev/null
           if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -c "begin; create role a4_untrusted_owner login; grant usage, create on schema climate_vote to a4_untrusted_owner; alter function climate_vote.design_provision(jsonb,bytea,jsonb) owner to a4_untrusted_owner;" \
             -f /tmp/design_provisioning_post_apply.sql \

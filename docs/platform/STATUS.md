@@ -279,6 +279,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 runtime schema CREATE 차단(2026-08-26):** 함수·table·column ACL이 닫혀 있어도 runtime 역할에 `climate_vote` schema CREATE가 열리면 새 overload·shadow object를 만들 수 있는데, 기존 post-apply verifier는 이 DDL 공백을 허용했다. Migration과 rollback은 public·anon·authenticated·authenticator·service_role의 CREATE를 회수하고 verifier는 5개 effective privilege를 전수 대조한다. PostgreSQL 16에서 migration 전 `authenticator` CREATE가 적용 중 회수되는지와 적용 뒤 5개 역할의 독립 재부여가 모두 `dormant privilege contract is unsafe`로 거부된 뒤 정상 복구되는지 확인했다. API 호출에 필요한 schema USAGE는 변경하지 않았다. Bundle artifact 20개 checksum은 `928754e42720e888b8f954d187218b4d043f0e43aae8da006561be087f2f1de2`이며 production migration·DB·GRANT·credential·traffic은 변경하지 않았다.
 
+**A4 함수 exact configuration 결속(2026-08-27):** mutation RPC의 정상 `search_path`·`row_security=off`를 유지한 채 `session_replication_role=replica`를 추가하면 기존 verifier의 포함 검사를 통과해 함수 실행 중 FK·trigger를 우회할 수 있는 공백을 재현했다. Post-apply verifier는 canonical/SHA helper를 포함한 A4 함수 8개 모두의 `proconfig`를 migration 선언값과 exact 대조한다. 기존 포함검사를 쓰던 join-code·authorization helper와 mutation·status 각 두 overload 6개에 위험 설정을 독립적으로 추가한 PostgreSQL 16 리허설은 모두 함수별 안정 계약 오류로 거부됐고, reset 뒤 정상 검증이 복구됐다. Bundle artifact 20개 checksum은 `352503218ffe09256264839c4fcd83547f4465d754bb21980eba098c01d0a369`이며 production migration·DB·GRANT·credential·traffic은 변경하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

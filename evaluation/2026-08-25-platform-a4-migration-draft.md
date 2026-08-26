@@ -65,6 +65,7 @@
 32. 3-인자 SECURITY DEFINER mutation RPC의 owner를 별도 비특권 LOGIN role로 바꿔도 기존 verifier가 통과하는 공백을 재현했다. 보강 뒤 단일 함수 owner 불일치와 ledger·8개 A4 함수 전체를 같은 비특권 LOGIN role로 넘겨 단순 owner 일치만 맞춘 두 경우 모두 `owner contract is unsafe`로 거부됐다. 모든 A4 객체의 owner가 동일하고 그 role이 superuser 또는 `BYPASSRLS`인 비-runtime role인지 확인하며, 각 변조 transaction rollback 뒤 정상 verifier가 다시 통과했다.
 33. owner verifier가 runtime role로 분류하는 `authenticator`가 함수·ledger table·ledger column 휴면 ACL 검사에서는 빠져 있던 공백을 PostgreSQL 16에서 재현했다. 보강 전에는 fenced mutation EXECUTE, ledger SELECT, `operation_id` column SELECT를 각각 `authenticator`에 부여해도 verifier가 통과했다. 보강 뒤 migration은 기존 명시 grant까지 회수하고, post-apply verifier는 public·anon·authenticated·authenticator·service_role 5개 역할과 A4 함수 8개의 40개 EXECUTE 조합, ledger table 7개 권한의 35개 조합, column 4개 권한의 20개 조합을 전수 검사한다. 세 독립 grant는 모두 `dormant privilege contract is unsafe`로 거부됐고, 각 회수 뒤 정상 verifier가 다시 통과했다.
 34. runtime 역할에 `climate_vote` schema CREATE를 부여해도 기존 verifier가 통과해 새 overload·shadow object를 만들 수 있는 DDL 공백을 PostgreSQL 16에서 재현했다. Migration과 rollback은 public·anon·authenticated·authenticator·service_role의 기존 CREATE grant를 회수하고, post-apply verifier는 5개 effective 조합을 전수 검사한다. Migration 전 `authenticator`에 부여한 CREATE가 적용 중 회수됐고, 적용 뒤 5개 역할에 하나씩 재부여한 음성 리허설은 모두 `dormant privilege contract is unsafe`로 거부된 뒤 회수 후 정상 검증을 통과했다. Schema USAGE는 변경하지 않았다.
+35. mutation RPC에 정상 `search_path`·`row_security=off`를 그대로 둔 채 `session_replication_role=replica`를 추가하면 기존 verifier가 통과하는 공백을 PostgreSQL 16에서 재현했다. 이 설정은 함수 실행 중 FK·trigger를 우회할 수 있다. 보강 뒤 A4 함수 8개의 `proconfig`는 migration이 선언한 exact 배열만 허용한다. 기존 포함검사를 쓰던 join-code helper, authorization revision helper, mutation·status 각 두 overload까지 6개 함수에 같은 위험 설정을 하나씩 추가한 음성 리허설은 각 함수별 안정 계약 오류로 거부됐고, 설정 reset 뒤 post-apply verifier가 다시 통과했다.
 
 결과: `A4_LOCAL_POSTGRES_REHEARSAL=passed`
 
@@ -112,6 +113,8 @@ authenticator 휴면 ACL 차단 결과: `A4_AUTHENTICATOR_ACL_POSTGRES_REHEARSAL
 
 runtime schema CREATE 차단 결과: `A4_SCHEMA_CREATE_POSTGRES_REHEARSAL=passed`
 
+함수 exact configuration 결속 결과: `A4_FUNCTION_CONFIG_POSTGRES_REHEARSAL=passed`
+
 ## 자동화 회귀
 
 - A4 bundle·design plan·Supabase adapter 집중 테스트: 96건 통과
@@ -121,7 +124,7 @@ runtime schema CREATE 차단 결과: `A4_SCHEMA_CREATE_POSTGRES_REHEARSAL=passed
 - 저장소 밖 로컬 durable store의 adapter 재시작·lock-free CAS·독립 Node 프로세스 6개 claim 경쟁(1 claimed, 5 conflict, journal record 2개)·orphan temp 복구·append-only replay/conflict·journal 변조·terminal claim/checkpoint/receipt/lifecycle clock 사건시각 역행·junction escape·revocation/claim 경쟁·membership 비활성 finalize와 재활성화 거부·비식별 전체-store/keyed receipt audit·off-store inventory checkpoint 삭제/tail 변경·기본 10분 freshness 테스트 통과
 - approval bundle verifier: builder·durable store·Supabase adapter·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 20개, production apply 미승인·DB mutation 미실행 상태로 통과
 - 추적 manifest를 current source에서 재구성해 stale source hash를 거부하는 테스트 통과
-- bundle checksum: `928754e42720e888b8f954d187218b4d043f0e43aae8da006561be087f2f1de2`
+- bundle checksum: `352503218ffe09256264839c4fcd83547f4465d754bb21980eba098c01d0a369`
 
 ## 보안·데이터 무결성 결론
 
@@ -139,6 +142,7 @@ runtime schema CREATE 차단 결과: `A4_SCHEMA_CREATE_POSTGRES_REHEARSAL=passed
 - post-apply verifier는 21개 필수 column의 type·nullable·default와 session/ledger의 3개 FK 참조 정의도 exact 대조해 이름만 같은 비호환 schema를 거부한다.
 - post-apply verifier는 A4 함수 8개가 public·anon·authenticated·authenticator·service_role 중 하나에라도 EXECUTE로 재노출되면 적용 증거를 거부한다. 5개 역할과 8개 함수의 40개 effective 조합을 전수 대조한다.
 - post-apply verifier는 같은 5개 runtime 역할 중 하나라도 `climate_vote` schema CREATE를 effective privilege로 가지면 새 overload·shadow object DDL 우회가 가능하므로 적용 증거를 거부한다.
+- post-apply verifier는 A4 함수 8개의 PostgreSQL configuration을 선언된 `search_path`와 필요한 `row_security=off` exact 배열로 대조해, 정상 설정을 유지하면서 `session_replication_role=replica` 등을 덧붙이는 FK·trigger 우회를 거부한다.
 - post-apply verifier는 ledger table의 7개 PostgreSQL 권한이 같은 5개 runtime 역할 중 하나에라도 재노출되면 RLS 상태와 무관하게 적용 증거를 거부한다. 35개 effective 조합을 전수 대조한다.
 - post-apply verifier는 table-level ACL이 닫혀 있어도 ledger column 하나에 `SELECT|INSERT|UPDATE|REFERENCES`가 같은 5개 runtime 역할 중 하나에 재노출되면 적용 증거를 거부한다. 20개 effective 조합을 전수 대조한다.
 - post-apply verifier는 canonical JSON·SHA-256 helper의 언어·실행 속성·고정 `search_path`·핵심 body와 known-answer를 대조해 상수 checksum 또는 정렬 규칙 변조를 거부한다.

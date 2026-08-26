@@ -163,6 +163,22 @@ test('A4 SQL draft keeps preflight and post-apply verification read-only', () =>
     "has_schema_privilege(roles.role_name, 'climate_vote', 'CREATE')",
   );
   expect(postApply).toContain('checksum helper contract is unsafe');
+  const exactFunctionConfigs = [
+    ["v_config is distinct from array['search_path=pg_catalog']::text[]", 1],
+    ["v_config is distinct from array['search_path=pg_catalog, extensions']::text[]", 2],
+    [
+      "v_config is distinct from array['search_path=pg_catalog, climate_vote, auth', 'row_security=off']::text[]",
+      1,
+    ],
+    [
+      "v_config is distinct from array['search_path=pg_catalog, climate_vote, auth, extensions', 'row_security=off']::text[]",
+      4,
+    ],
+  ];
+  for (const [configContract, expectedCount] of exactFunctionConfigs) {
+    expect(postApply.split(configContract).length - 1).toBe(expectedCount);
+  }
+  expect(postApply).not.toContain('= any(v_config)');
   expect(postApply).toContain("p.proname = 'platform_json_canonical'");
   expect(postApply).toContain("p.proname = 'platform_sha256_hex'");
   expect(postApply).toContain('p.proisstrict');
@@ -403,6 +419,8 @@ test('rollback refuses populated A4 state before any object is removed', () => {
   expect(workflow).toContain('for ledger_role in public anon authenticated authenticator service_role');
   expect(workflow).toContain('for schema_role in public anon authenticated authenticator service_role');
   expect(workflow).toContain('Unsafe A4 schema CREATE grant unexpectedly passed verification');
+  expect(workflow).toContain('Altered A4 function configuration unexpectedly passed verification');
+  expect(workflow).toContain('set session_replication_role = replica');
   expect(workflow).toContain('Shadow A4 constraint unexpectedly passed verification');
   expect(workflow).toContain('Wrong A4 constraint definition unexpectedly passed verification');
   expect(workflow).toContain('Wrong A4 column type unexpectedly passed verification');
