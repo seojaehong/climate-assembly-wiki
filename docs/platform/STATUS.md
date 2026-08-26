@@ -251,6 +251,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A5 로그인 main 랜드마크 보강(2026-08-26):** 공개 `/platform/`의 로그인 전 접근성 트리에서 이름 있는 form·heading·입력·버튼은 확인됐지만 `main` 랜드마크가 없었다. 로그인·초기 로딩을 감싸는 `Centered` container를 의미 없는 `div`에서 `main`으로 바꿔 form 역할과 건너뛰기 대상은 그대로 보존하면서 스크린리더 랜드마크 탐색 경로를 추가했다. 360×800 CSS viewport에서 문서 폭 360px, 로그인 form 폭 312px, 입력·버튼 높이 52px와 가로 overflow 없음도 직접 확인했다. 이는 브라우저 accessibility tree와 반응형 구조 검증이며 실제 NVDA·VoiceOver·TalkBack 수동 평가는 아니므로 `platform-accessibility-manual-evaluation.json`의 `needs_review`와 `not_run` 상태는 유지한다.
 
+**A5 로그인 장식 로고 접근성 트리 제외(2026-08-26):** 공개 `/platform/` 로그인 접근성 트리에서 시각 장식용 단일 문자 `P`가 의미 없는 generic text로 노출되는 것을 확인했다. 로고 container만 `aria-hidden="true"`로 제외하고 브랜드명·로그인 제목·form·레이블·상태 메시지는 그대로 보존했다. 변경 전 실패하는 component 회귀를 고정한 뒤 집중 49건, 루트 전체 65개 파일·1,081건, automation 전체 28개 파일·496건과 Astro 337개 파일 오류·경고 0건(기존 hint 49건)이 통과했다. 이는 장식 텍스트의 프로그램 방식 제외를 검증한 것이며 실제 NVDA·VoiceOver·TalkBack 수동 평가는 아니므로 수동 평가 상태를 변경하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

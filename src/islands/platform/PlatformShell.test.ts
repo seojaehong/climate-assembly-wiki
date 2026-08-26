@@ -291,6 +291,7 @@ describe('PlatformShell accessibility', () => {
     expect(html).toContain('id="platform-password"');
     expect(html).toContain('role="status"');
     expect(html).toContain('aria-live="polite"');
+    expect(html).toMatch(/<div aria-hidden="true"[^>]*>P<\/div>/);
     expect(html).toContain('type="submit"');
     expect(html).not.toContain('outline:none');
     expect(html).toContain('border:2px solid #6B7D88');

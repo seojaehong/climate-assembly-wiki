@@ -244,7 +244,7 @@ export function LoginCard({ notice, onSignedIn }: { notice: string | null; onSig
         onSubmit={submit}
         style={{ width: '100%', maxWidth: 420, background: '#fff', border: `2px solid ${LINE}`, borderRadius: 24, padding: '40px 32px', boxShadow: '0 8px 24px -16px rgba(31,78,121,.18)' }}
       >
-        <div style={{ width: 48, height: 48, borderRadius: 16, background: TEAL, display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 24, margin: '0 auto 20px' }}>P</div>
+        <div aria-hidden="true" style={{ width: 48, height: 48, borderRadius: 16, background: TEAL, display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 24, margin: '0 auto 20px' }}>P</div>
         <div style={{ fontFamily: 'monospace', fontSize: 12, letterSpacing: '.14em', color: TEAL, textTransform: 'uppercase', textAlign: 'center', marginBottom: 6 }}>공론화 플랫폼</div>
         <h1 style={{ fontSize: 26, fontWeight: 800, color: NAVY, textAlign: 'center', margin: '0 0 6px', letterSpacing: '-.02em' }}>운영진 로그인</h1>
         <p style={{ fontSize: 14, color: MUTED, textAlign: 'center', margin: '0 0 24px' }}>기관 계정(Supabase Auth)으로 로그인합니다.</p>
