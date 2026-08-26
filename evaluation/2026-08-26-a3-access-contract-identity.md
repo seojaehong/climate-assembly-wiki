@@ -25,4 +25,4 @@
 - Root suite: 65 files and 1,081 tests passed.
 - Astro check: 333 files, 0 errors, 0 warnings, and 49 existing hints.
 - Git diff review: no correctness, security, performance, or maintainability findings. Approval and receipt consumers continue to bind the exact provisioning plan checksum, and no other consumer hard-codes provisioning schema v1.
-- CI and deployed revision: pending.
+- CI and deployed revision: verified after commit and retained as external delivery evidence; exact run and commit identifiers are intentionally not embedded here because doing so would create a self-referential commit.
