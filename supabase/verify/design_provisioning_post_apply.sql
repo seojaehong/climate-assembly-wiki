@@ -343,44 +343,34 @@ begin
     raise exception 'A4 post-apply verification failed: fenced reconciliation RPC contract is unsafe';
   end if;
 
-  if has_function_privilege('public', 'climate_vote.design_provision(jsonb,bytea)', 'EXECUTE')
-     or has_function_privilege('anon', 'climate_vote.design_provision(jsonb,bytea)', 'EXECUTE')
-     or has_function_privilege('authenticated', 'climate_vote.design_provision(jsonb,bytea)', 'EXECUTE')
-     or has_function_privilege('service_role', 'climate_vote.design_provision(jsonb,bytea)', 'EXECUTE')
-     or has_function_privilege('public', 'climate_vote.design_provision(jsonb,bytea,jsonb)', 'EXECUTE')
-     or has_function_privilege('anon', 'climate_vote.design_provision(jsonb,bytea,jsonb)', 'EXECUTE')
-     or has_function_privilege('authenticated', 'climate_vote.design_provision(jsonb,bytea,jsonb)', 'EXECUTE')
-     or has_function_privilege('service_role', 'climate_vote.design_provision(jsonb,bytea,jsonb)', 'EXECUTE')
-     or has_function_privilege('public', 'climate_vote.design_provisioning_status(jsonb)', 'EXECUTE')
-     or has_function_privilege('anon', 'climate_vote.design_provisioning_status(jsonb)', 'EXECUTE')
-     or has_function_privilege('authenticated', 'climate_vote.design_provisioning_status(jsonb)', 'EXECUTE')
-     or has_function_privilege('service_role', 'climate_vote.design_provisioning_status(jsonb)', 'EXECUTE')
-     or has_function_privilege('public', 'climate_vote.design_provisioning_status(jsonb,jsonb)', 'EXECUTE')
-     or has_function_privilege('anon', 'climate_vote.design_provisioning_status(jsonb,jsonb)', 'EXECUTE')
-     or has_function_privilege('authenticated', 'climate_vote.design_provisioning_status(jsonb,jsonb)', 'EXECUTE')
-     or has_function_privilege('service_role', 'climate_vote.design_provisioning_status(jsonb,jsonb)', 'EXECUTE')
-     or has_function_privilege('public', 'climate_vote.platform_design_authorization_revision()', 'EXECUTE')
-     or has_function_privilege('anon', 'climate_vote.platform_design_authorization_revision()', 'EXECUTE')
-     or has_function_privilege('authenticated', 'climate_vote.platform_design_authorization_revision()', 'EXECUTE')
-     or has_function_privilege('service_role', 'climate_vote.platform_design_authorization_revision()', 'EXECUTE')
-     or has_function_privilege('public', 'climate_vote.platform_json_canonical(jsonb)', 'EXECUTE')
-     or has_function_privilege('anon', 'climate_vote.platform_json_canonical(jsonb)', 'EXECUTE')
-     or has_function_privilege('authenticated', 'climate_vote.platform_json_canonical(jsonb)', 'EXECUTE')
-     or has_function_privilege('service_role', 'climate_vote.platform_json_canonical(jsonb)', 'EXECUTE')
-     or has_function_privilege('public', 'climate_vote.platform_sha256_hex(text)', 'EXECUTE')
-     or has_function_privilege('anon', 'climate_vote.platform_sha256_hex(text)', 'EXECUTE')
-     or has_function_privilege('authenticated', 'climate_vote.platform_sha256_hex(text)', 'EXECUTE')
-     or has_function_privilege('service_role', 'climate_vote.platform_sha256_hex(text)', 'EXECUTE')
-     or has_function_privilege('public', 'climate_vote.platform_design_join_code()', 'EXECUTE')
-     or has_function_privilege('anon', 'climate_vote.platform_design_join_code()', 'EXECUTE')
-     or has_function_privilege('authenticated', 'climate_vote.platform_design_join_code()', 'EXECUTE')
-     or has_function_privilege('service_role', 'climate_vote.platform_design_join_code()', 'EXECUTE')
+  if exists (
+       select 1
+       from (values
+         ('public'),
+         ('anon'),
+         ('authenticated'),
+         ('authenticator'),
+         ('service_role')
+       ) roles(role_name)
+       cross join (values
+         ('climate_vote.platform_json_canonical(jsonb)'),
+         ('climate_vote.platform_sha256_hex(text)'),
+         ('climate_vote.platform_design_join_code()'),
+         ('climate_vote.platform_design_authorization_revision()'),
+         ('climate_vote.design_provision(jsonb,bytea)'),
+         ('climate_vote.design_provision(jsonb,bytea,jsonb)'),
+         ('climate_vote.design_provisioning_status(jsonb)'),
+         ('climate_vote.design_provisioning_status(jsonb,jsonb)')
+       ) function_signatures(signature)
+       where has_function_privilege(roles.role_name, function_signatures.signature, 'EXECUTE')
+     )
      or exists (
        select 1
        from (values
          ('public'),
          ('anon'),
          ('authenticated'),
+         ('authenticator'),
          ('service_role')
        ) roles(role_name)
        cross join (values
@@ -401,6 +391,7 @@ begin
          ('public'),
          ('anon'),
          ('authenticated'),
+         ('authenticator'),
          ('service_role')
        ) roles(role_name)
        cross join (values

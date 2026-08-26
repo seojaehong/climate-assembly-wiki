@@ -71,7 +71,7 @@ create table climate_vote.design_provisioning_operation (
 );
 
 alter table climate_vote.design_provisioning_operation enable row level security;
-revoke all on climate_vote.design_provisioning_operation from public, anon, authenticated, service_role;
+revoke all on climate_vote.design_provisioning_operation from public, anon, authenticated, authenticator, service_role;
 
 create or replace function climate_vote.platform_json_canonical(p_value jsonb)
 returns text
@@ -1091,13 +1091,13 @@ exception when others then
 end
 $function$;
 
-revoke all on function climate_vote.platform_json_canonical(jsonb) from public, anon, authenticated, service_role;
-revoke all on function climate_vote.platform_sha256_hex(text) from public, anon, authenticated, service_role;
-revoke all on function climate_vote.platform_design_join_code() from public, anon, authenticated, service_role;
-revoke all on function climate_vote.platform_design_authorization_revision() from public, anon, authenticated, service_role;
-revoke all on function climate_vote.design_provision(jsonb, bytea) from public, anon, authenticated, service_role;
-revoke all on function climate_vote.design_provision(jsonb, bytea, jsonb) from public, anon, authenticated, service_role;
-revoke all on function climate_vote.design_provisioning_status(jsonb) from public, anon, authenticated, service_role;
-revoke all on function climate_vote.design_provisioning_status(jsonb, jsonb) from public, anon, authenticated, service_role;
+revoke all on function climate_vote.platform_json_canonical(jsonb) from public, anon, authenticated, authenticator, service_role;
+revoke all on function climate_vote.platform_sha256_hex(text) from public, anon, authenticated, authenticator, service_role;
+revoke all on function climate_vote.platform_design_join_code() from public, anon, authenticated, authenticator, service_role;
+revoke all on function climate_vote.platform_design_authorization_revision() from public, anon, authenticated, authenticator, service_role;
+revoke all on function climate_vote.design_provision(jsonb, bytea) from public, anon, authenticated, authenticator, service_role;
+revoke all on function climate_vote.design_provision(jsonb, bytea, jsonb) from public, anon, authenticated, authenticator, service_role;
+revoke all on function climate_vote.design_provisioning_status(jsonb) from public, anon, authenticated, authenticator, service_role;
+revoke all on function climate_vote.design_provisioning_status(jsonb, jsonb) from public, anon, authenticated, authenticator, service_role;
 
 commit;

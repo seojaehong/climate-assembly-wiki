@@ -225,7 +225,7 @@ jobs:
           done
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -tAc "select 1" >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
-            "create role anon nologin; create role authenticated nologin; create role service_role nologin; create publication supabase_realtime; alter database verify set search_path=public,extensions,climate_vote;"
+            "create role anon nologin; create role authenticated nologin; create role authenticator login; create role service_role nologin; create publication supabase_realtime; alter database verify set search_path=public,extensions,climate_vote;"
           docker cp supabase/migrations/. "${container}:/tmp/"
           docker cp supabase/verify/00_prelude.sql "${container}:/tmp/00_prelude.sql"
           docker cp supabase/verify/driver_pass1.sql "${container}:/tmp/driver_pass1.sql"
@@ -390,6 +390,19 @@ jobs:
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
             "revoke execute on function climate_vote.design_provision(jsonb,bytea,jsonb), climate_vote.design_provisioning_status(jsonb,jsonb), climate_vote.platform_design_authorization_revision() from authenticated;"
 
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "grant execute on function climate_vote.design_provision(jsonb,bytea,jsonb) to authenticator;"
+          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/design_provisioning_post_apply.sql \
+            >"$RUNNER_TEMP/a4-unsafe-authenticator-function-grant.log" 2>&1; then
+            echo "Unsafe A4 authenticator function grant unexpectedly passed verification" >&2
+            exit 1
+          fi
+          grep -q "dormant privilege contract is unsafe" \
+            "$RUNNER_TEMP/a4-unsafe-authenticator-function-grant.log"
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "revoke execute on function climate_vote.design_provision(jsonb,bytea,jsonb) from authenticator;"
+
           for helper_signature in \
             "climate_vote.platform_json_canonical(jsonb)" \
             "climate_vote.platform_sha256_hex(text)" \
@@ -410,7 +423,7 @@ jobs:
               "revoke execute on function ${helper_signature} from authenticated;"
           done
 
-          for ledger_role in public anon authenticated service_role; do
+          for ledger_role in public anon authenticated authenticator service_role; do
             for ledger_privilege in \
               SELECT INSERT UPDATE DELETE TRUNCATE REFERENCES TRIGGER; do
               ledger_privilege_name="${ledger_privilege,,}"
@@ -429,7 +442,7 @@ jobs:
             done
           done
 
-          for ledger_role in public anon authenticated service_role; do
+          for ledger_role in public anon authenticated authenticator service_role; do
             for ledger_column_privilege in SELECT INSERT UPDATE REFERENCES; do
               ledger_column_privilege_name="${ledger_column_privilege,,}"
               docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \

@@ -102,6 +102,8 @@ test('tracked A4 manifest exactly matches every current approval source', () => 
 });
 
 test('A4 SQL draft keeps preflight and post-apply verification read-only', () => {
+  const migration = readFileSync(join(repoRoot, 'supabase', 'migrations', 'platform_p3_design_provisioning.sql'), 'utf8');
+  const rollback = readFileSync(join(repoRoot, 'supabase', 'rollbacks', 'platform_p3_design_provisioning_BEFORE.sql'), 'utf8');
   const preflight = readFileSync(join(repoRoot, 'supabase', 'verify', 'design_provisioning_preflight.sql'), 'utf8');
   const postApply = readFileSync(join(repoRoot, 'supabase', 'verify', 'design_provisioning_post_apply.sql'), 'utf8');
   for (const sql of [preflight, postApply]) {
@@ -111,22 +113,36 @@ test('A4 SQL draft keeps preflight and post-apply verification read-only', () =>
   expect(preflight).toContain("'readyForActivation'");
   expect(preflight).toContain("'teamOrdinalNullCount'");
   expect(preflight).toContain("'requiresApprovedBackfill'");
-  expect(postApply).toContain("has_function_privilege('authenticated', 'climate_vote.design_provision(jsonb,bytea)', 'EXECUTE')");
-  expect(postApply).toContain("has_function_privilege('authenticated', 'climate_vote.design_provisioning_status(jsonb)', 'EXECUTE')");
-  for (const role of ['public', 'anon', 'authenticated', 'service_role']) {
-    for (const signature of [
-      'climate_vote.platform_json_canonical(jsonb)',
-      'climate_vote.platform_sha256_hex(text)',
-      'climate_vote.platform_design_join_code()',
-    ]) {
-      expect(postApply).toContain(
-        `has_function_privilege('${role}', '${signature}', 'EXECUTE')`,
-      );
-    }
+  const runtimeRoles = 'public,anon,authenticated,authenticator,service_role';
+  const normalizedMigration = migration.replace(/\s+/g, ' ').replace(/,\s*/g, ',');
+  const normalizedRollback = rollback.replace(/\s+/g, ' ').replace(/,\s*/g, ',');
+  const functionSignatures = [
+    'climate_vote.platform_json_canonical(jsonb)',
+    'climate_vote.platform_sha256_hex(text)',
+    'climate_vote.platform_design_join_code()',
+    'climate_vote.platform_design_authorization_revision()',
+    'climate_vote.design_provision(jsonb,bytea)',
+    'climate_vote.design_provision(jsonb,bytea,jsonb)',
+    'climate_vote.design_provisioning_status(jsonb)',
+    'climate_vote.design_provisioning_status(jsonb,jsonb)',
+  ];
+  expect(normalizedMigration).toContain(
+    `revoke all on climate_vote.design_provisioning_operation from ${runtimeRoles};`,
+  );
+  for (const signature of functionSignatures) {
+    const revoke = `revoke all on function ${signature} from ${runtimeRoles};`;
+    expect(normalizedMigration).toContain(revoke);
+    expect(normalizedRollback).toContain(revoke);
   }
-  for (const role of ['public', 'anon', 'authenticated', 'service_role']) {
+  for (const role of ['public', 'anon', 'authenticated', 'authenticator', 'service_role']) {
     expect(postApply).toContain(`('${role}')`);
   }
+  for (const signature of functionSignatures) {
+    expect(postApply).toContain(`('${signature}')`);
+  }
+  expect(postApply).toContain(
+    "has_function_privilege(roles.role_name, function_signatures.signature, 'EXECUTE')",
+  );
   for (const privilege of [
     'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER',
   ]) {
@@ -316,7 +332,7 @@ test('A4 dormant RPC draft accepts and echoes an exact live authorization revisi
   expect(rehearsal).toContain('fenced reconciliation response did not echo its authorization revision');
   expect(postApply).toContain("to_regprocedure('climate_vote.design_provision(jsonb,bytea,jsonb)')");
   expect(postApply).toContain(
-    "has_function_privilege('authenticated', 'climate_vote.design_provision(jsonb,bytea,jsonb)', 'EXECUTE')",
+    "('climate_vote.design_provision(jsonb,bytea,jsonb)')",
   );
   expect(migration).toMatch(
     /\(p_authorization_fence ->> 'executionId'\)\s+is distinct from \(p_query ->> 'executionId'\)/,
@@ -377,6 +393,8 @@ test('rollback refuses populated A4 state before any object is removed', () => {
   expect(workflow).toContain('Altered A4 checksum helper unexpectedly passed verification');
   expect(workflow).toContain('Untrusted A4 function owner unexpectedly passed verification');
   expect(workflow).toContain('Untrusted A4 unified owner unexpectedly passed verification');
+  expect(workflow).toContain('Unsafe A4 authenticator function grant unexpectedly passed verification');
+  expect(workflow).toContain('for ledger_role in public anon authenticated authenticator service_role');
   expect(workflow).toContain('Shadow A4 constraint unexpectedly passed verification');
   expect(workflow).toContain('Wrong A4 constraint definition unexpectedly passed verification');
   expect(workflow).toContain('Wrong A4 column type unexpectedly passed verification');

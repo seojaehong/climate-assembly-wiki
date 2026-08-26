@@ -63,6 +63,7 @@
 30. table-level 권한은 false인 채 단일 `operation_id` column에만 `SELECT`, `INSERT`, `UPDATE`, `REFERENCES`를 부여하는 우회를 public·anon·authenticated·service_role 각각에서 리허설했다. `has_any_column_privilege` 기반 16개 조합이 모두 같은 안정 오류로 거부되고, 매번 권한 회수 뒤 verifier가 다시 통과했다.
 31. `platform_sha256_hex(text)`를 64개의 `0`을 반환하도록 바꾸면 기존 post-apply verifier가 통과하는 공백을 PostgreSQL 16에서 재현했다. 보강 뒤 언어·`IMMUTABLE`·`STRICT`·invoker security·고정 `search_path`를 원본과 동일하게 유지한 채 canonical JSON helper와 SHA-256 helper의 body만 각각 상수 반환으로 바꾼 두 음성 리허설은 모두 `checksum helper contract is unsafe`로 거부됐고, 각 변조 transaction rollback 뒤 verifier가 다시 통과했다. Canonical object/array 순서와 SHA-256 known-answer도 함께 대조한다.
 32. 3-인자 SECURITY DEFINER mutation RPC의 owner를 별도 비특권 LOGIN role로 바꿔도 기존 verifier가 통과하는 공백을 재현했다. 보강 뒤 단일 함수 owner 불일치와 ledger·8개 A4 함수 전체를 같은 비특권 LOGIN role로 넘겨 단순 owner 일치만 맞춘 두 경우 모두 `owner contract is unsafe`로 거부됐다. 모든 A4 객체의 owner가 동일하고 그 role이 superuser 또는 `BYPASSRLS`인 비-runtime role인지 확인하며, 각 변조 transaction rollback 뒤 정상 verifier가 다시 통과했다.
+33. owner verifier가 runtime role로 분류하는 `authenticator`가 함수·ledger table·ledger column 휴면 ACL 검사에서는 빠져 있던 공백을 PostgreSQL 16에서 재현했다. 보강 전에는 fenced mutation EXECUTE, ledger SELECT, `operation_id` column SELECT를 각각 `authenticator`에 부여해도 verifier가 통과했다. 보강 뒤 migration은 기존 명시 grant까지 회수하고, post-apply verifier는 public·anon·authenticated·authenticator·service_role 5개 역할과 A4 함수 8개의 40개 EXECUTE 조합, ledger table 7개 권한의 35개 조합, column 4개 권한의 20개 조합을 전수 검사한다. 세 독립 grant는 모두 `dormant privilege contract is unsafe`로 거부됐고, 각 회수 뒤 정상 verifier가 다시 통과했다.
 
 결과: `A4_LOCAL_POSTGRES_REHEARSAL=passed`
 
@@ -106,6 +107,8 @@ checksum helper 구현 drift 차단 결과: `A4_CHECKSUM_HELPER_POSTGRES_REHEARS
 
 A4 객체 owner 신뢰 결속 결과: `A4_OWNER_CONTRACT_POSTGRES_REHEARSAL=passed`
 
+authenticator 휴면 ACL 차단 결과: `A4_AUTHENTICATOR_ACL_POSTGRES_REHEARSAL=passed`
+
 ## 자동화 회귀
 
 - A4 bundle·design plan·Supabase adapter 집중 테스트: 96건 통과
@@ -115,7 +118,7 @@ A4 객체 owner 신뢰 결속 결과: `A4_OWNER_CONTRACT_POSTGRES_REHEARSAL=pass
 - 저장소 밖 로컬 durable store의 adapter 재시작·lock-free CAS·독립 Node 프로세스 6개 claim 경쟁(1 claimed, 5 conflict, journal record 2개)·orphan temp 복구·append-only replay/conflict·journal 변조·terminal claim/checkpoint/receipt/lifecycle clock 사건시각 역행·junction escape·revocation/claim 경쟁·membership 비활성 finalize와 재활성화 거부·비식별 전체-store/keyed receipt audit·off-store inventory checkpoint 삭제/tail 변경·기본 10분 freshness 테스트 통과
 - approval bundle verifier: builder·durable store·Supabase adapter·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 20개, production apply 미승인·DB mutation 미실행 상태로 통과
 - 추적 manifest를 current source에서 재구성해 stale source hash를 거부하는 테스트 통과
-- bundle checksum: `f0f557bcf2d942afdf779f086a3918677423c19356cb3d5f555bb5cd7fda37cc`
+- bundle checksum: `dbe992446ea141db79ec5619c3dcc9d56b0068dfd8e730c24c487e291243c11f`
 
 ## 보안·데이터 무결성 결론
 
@@ -131,9 +134,9 @@ A4 객체 owner 신뢰 결속 결과: `A4_OWNER_CONTRACT_POSTGRES_REHEARSAL=pass
 - assembly·session·discussion topic은 payload·부모·기관뿐 아니라 서버 생성 상태 `draft`까지 일치해야 하며, 이미 활성화되거나 열린 resource를 새 설계의 성공 또는 replay로 채택하지 않는다.
 - post-apply verifier는 8개 제약을 이름만 세지 않고 정확한 table·종류·canonical definition으로 대조해 shadow 제약과 완화된 check 식을 거부한다.
 - post-apply verifier는 21개 필수 column의 type·nullable·default와 session/ledger의 3개 FK 참조 정의도 exact 대조해 이름만 같은 비호환 schema를 거부한다.
-- post-apply verifier는 canonical JSON·SHA-256·join-code 내부 helper가 public·anon·authenticated·service_role 중 하나에라도 EXECUTE로 재노출되면 적용 증거를 거부한다.
-- post-apply verifier는 ledger table의 7개 PostgreSQL 권한이 public·anon·authenticated·service_role 중 하나에라도 재노출되면 RLS 상태와 무관하게 적용 증거를 거부한다.
-- post-apply verifier는 table-level ACL이 닫혀 있어도 ledger column 하나에 `SELECT|INSERT|UPDATE|REFERENCES`가 재노출되면 적용 증거를 거부한다.
+- post-apply verifier는 A4 함수 8개가 public·anon·authenticated·authenticator·service_role 중 하나에라도 EXECUTE로 재노출되면 적용 증거를 거부한다. 5개 역할과 8개 함수의 40개 effective 조합을 전수 대조한다.
+- post-apply verifier는 ledger table의 7개 PostgreSQL 권한이 같은 5개 runtime 역할 중 하나에라도 재노출되면 RLS 상태와 무관하게 적용 증거를 거부한다. 35개 effective 조합을 전수 대조한다.
+- post-apply verifier는 table-level ACL이 닫혀 있어도 ledger column 하나에 `SELECT|INSERT|UPDATE|REFERENCES`가 같은 5개 runtime 역할 중 하나에 재노출되면 적용 증거를 거부한다. 20개 effective 조합을 전수 대조한다.
 - post-apply verifier는 canonical JSON·SHA-256 helper의 언어·실행 속성·고정 `search_path`·핵심 body와 known-answer를 대조해 상수 checksum 또는 정렬 규칙 변조를 거부한다.
 - post-apply verifier는 ledger와 8개 A4 함수의 owner를 하나의 superuser 또는 `BYPASSRLS` 비-runtime role로 결속해, 별도 LOGIN role의 implicit EXECUTE·함수 교체 권한 우회를 거부한다.
 - 같은 기관의 동시 mutation plan은 source 검증 뒤 transaction advisory lock으로 직렬화해 exact plan 경쟁을 `applied`와 `replayed`로 수렴시킨다.
