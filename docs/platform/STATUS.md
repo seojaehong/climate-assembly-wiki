@@ -226,6 +226,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A7 원문 공개 계약 identity 결속(2026-08-26):** provenance plan과 replace-all publication plan을 schema v2로 올리고, UI·DOCX·publish preflight가 공유하는 `source-reference-contract.json`의 schema v1과 canonical SHA-256을 승인 artifact에 결속했다. 로더는 contract root·record exact field, 공개 9필드 순서, `core|extra`, `reviewed`, `org_admin|hq`, 양의 길이·순번 경계를 시작 시 검증한다. verifier는 identity가 없는 legacy plan과 checksum을 다시 계산한 contract identity 위조도 현재 입력 재생성 대조에서 거부한다. production payload·DB·RPC·migration·실제 원문·검수 입력에는 접근하거나 변경하지 않았다.
 
+**A7 이행 상태 계약 identity 결속(2026-08-26):** 이행추적 publish plan을 schema v2로 올리고 웹·표·DOCX·preflight가 공유하는 `implementation-status-contract.json` schema v2와 canonical SHA-256을 artifact에 결속했다. plan self-checksum을 다시 계산해도 contract digest를 바꾼 artifact는 현재 result·responses 재생성 대조에서 거부하며, identity가 없는 legacy schema v1도 명시적으로 거부한다. 상태·record loader의 기존 exact-field·fallback·색상·HTTPS·timestamp 검증은 유지된다. production payload·DB·RPC·migration·실제 기관 응답에는 접근하거나 변경하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

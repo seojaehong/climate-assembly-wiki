@@ -17,6 +17,30 @@ const SCOPE_ID = '21111111-1111-4111-8111-111111111111';
 const ISSUE_1 = '31111111-1111-4111-8111-111111111111';
 const ISSUE_2 = '32111111-1111-4111-8111-111111111111';
 
+function canonicalValue(value) {
+  if (Array.isArray(value)) return value.map(canonicalValue);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalValue(value[key])]));
+  }
+  return value;
+}
+
+function resealPlan(plan) {
+  const { checksumSha256: _checksumSha256, ...unsigned } = plan;
+  return {
+    ...unsigned,
+    checksumSha256: createHash('sha256').update(JSON.stringify(canonicalValue(unsigned))).digest('hex'),
+  };
+}
+
+const implementationStatusContract = JSON.parse(readFileSync(
+  fileURLToPath(new URL('../../src/islands/result/implementation-status-contract.json', import.meta.url)),
+  'utf8',
+));
+const IMPLEMENTATION_STATUS_CONTRACT_SHA256 = createHash('sha256')
+  .update(JSON.stringify(canonicalValue(implementationStatusContract)))
+  .digest('hex');
+
 function inputs() {
   return {
     result: {
@@ -69,13 +93,17 @@ test('builds a sealed atomic body plan while retaining untouched issues', () => 
   const plan = buildPlatformImplementationPlan(result, responses);
 
   expect(plan).toMatchObject({
-    schemaVersion: 1,
+    schemaVersion: 2,
     scope: 'session',
     scopeId: SCOPE_ID,
     dryRun: true,
     databaseMutationExecuted: false,
     publicPayloadWritten: false,
     requiresApproval: true,
+    implementationStatusContract: {
+      schemaVersion: 2,
+      canonicalSha256: IMPLEMENTATION_STATUS_CONTRACT_SHA256,
+    },
     summary: { issueCount: 2, changedIssueCount: 1, retainedIssueCount: 1 },
   });
   expect(plan.atomicResultBody.issues[0].implementation).toEqual({
@@ -203,18 +231,26 @@ test('verification rejects a re-checksummed plan that no longer matches its inpu
   const plan = buildPlatformImplementationPlan(result, responses);
   const altered = structuredClone(plan);
   altered.atomicResultBody.issues[0].implementation.summary = '변조된 공개 설명';
-  const canonical = (value) => {
-    if (Array.isArray(value)) return value.map(canonical);
-    if (value && typeof value === 'object') {
-      return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])]));
-    }
-    return value;
-  };
-  const { checksumSha256: _checksum, ...unsigned } = altered;
-  altered.checksumSha256 = createHash('sha256')
-    .update(JSON.stringify(canonical(unsigned)))
-    .digest('hex');
-  expect(() => verifyPlatformImplementationPlan(altered, result, responses)).toThrow();
+  expect(() => verifyPlatformImplementationPlan(resealPlan(altered), result, responses)).toThrow();
+});
+
+test('verification rejects forged contract identity and legacy plan schemas', () => {
+  const { result, responses } = inputs();
+  const plan = buildPlatformImplementationPlan(result, responses);
+  const forged = resealPlan({
+    ...plan,
+    implementationStatusContract: {
+      ...plan.implementationStatusContract,
+      canonicalSha256: 'b'.repeat(64),
+    },
+  });
+  expect(() => verifyPlatformImplementationPlan(forged, result, responses))
+    .toThrow('does not match inputs');
+
+  const { implementationStatusContract: _contractIdentity, ...withoutIdentity } = plan;
+  const legacy = resealPlan({ ...withoutIdentity, schemaVersion: 1 });
+  expect(() => verifyPlatformImplementationPlan(legacy, result, responses))
+    .toThrow('Unsupported implementation plan schema version');
 });
 
 test('CLI creates and verifies a plan without overwriting an artifact or touching the database', () => {
@@ -235,7 +271,7 @@ test('CLI creates and verifies a plan without overwriting an artifact or touchin
     expect(JSON.parse(verify.stdout)).toEqual({ verified: true, databaseMutationExecuted: false });
     const overwrite = spawnSync(process.execPath, [script, '--result', resultPath, '--responses', responsesPath, '--output', outputPath], { encoding: 'utf8' });
     expect(overwrite.status).toBe(1);
-    expect(readFileSync(outputPath, 'utf8')).toContain('"schemaVersion": 1');
+    expect(readFileSync(outputPath, 'utf8')).toContain('"schemaVersion": 2');
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

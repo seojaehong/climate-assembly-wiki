@@ -23,7 +23,7 @@
 
 ## 출력
 
-schema-v1 plan은 현재 body와 다음 body의 SHA-256, 변경 쟁점별 전후 이행값 SHA-256, 역할형 검수자·시각, 전체 `atomicResultBody`를 보존한다. 갱신하지 않은 쟁점은 현재 snapshot에서 그대로 복사하되, 최종 body의 모든 기존 이행값도 동일 공개 계약으로 다시 검증한다.
+schema-v2 plan은 현재 body와 다음 body의 SHA-256, 변경 쟁점별 전후 이행값 SHA-256, 역할형 검수자·시각, 전체 `atomicResultBody`를 보존한다. 또한 `implementation-status-contract.json`의 schema와 canonical SHA-256을 결속한다. 갱신하지 않은 쟁점은 현재 snapshot에서 그대로 복사하되, 최종 body의 모든 기존 이행값도 동일 공개 계약으로 다시 검증한다. 현재 verifier는 identity가 없는 legacy schema-v1 plan과 checksum을 다시 계산한 contract identity drift를 거부한다.
 
 다음 안전 경계를 항상 포함한다.
 

@@ -109,10 +109,19 @@ function loadImplementationStatusContract() {
   if (!entries.some(([state, meta]) => !fallbackStates.has(state) && meta.tracked)) {
     throw new Error('Implementation status contract has no tracked state');
   }
-  return { record, states };
+  return {
+    schemaVersion: root.schemaVersion,
+    canonicalSha256: sha256(canonicalJson(root)),
+    record,
+    states,
+  };
 }
 
 const implementationContract = loadImplementationStatusContract();
+export const IMPLEMENTATION_STATUS_CONTRACT_IDENTITY = Object.freeze({
+  schemaVersion: implementationContract.schemaVersion,
+  canonicalSha256: implementationContract.canonicalSha256,
+});
 export const IMPLEMENTATION_RECORD_CONTRACT = implementationContract.record;
 export const IMPLEMENTATION_STATUS_CONTRACT = implementationContract.states;
 export const IMPLEMENTATION_STATES = new Set(
@@ -295,7 +304,8 @@ function unsignedPlan(resultInput, responsesInput) {
     })
     .sort((left, right) => left.issueId.localeCompare(right.issueId));
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    implementationStatusContract: IMPLEMENTATION_STATUS_CONTRACT_IDENTITY,
     scope: result.scope,
     scopeId: result.scopeId,
     observedAt: parsedResponses.observedAt,
@@ -326,7 +336,7 @@ export function buildPlatformImplementationPlan(resultInput, responsesInput) {
 
 export function verifyPlatformImplementationPlan(planInput, resultInput, responsesInput) {
   const plan = requireObject(planInput, 'implementation plan');
-  if (plan.schemaVersion !== 1) throw new Error('Unsupported implementation plan schema version');
+  if (plan.schemaVersion !== 2) throw new Error('Unsupported implementation plan schema version');
   if (typeof plan.checksumSha256 !== 'string' || !SHA256_PATTERN.test(plan.checksumSha256)) {
     throw new Error('Invalid implementation plan checksum');
   }

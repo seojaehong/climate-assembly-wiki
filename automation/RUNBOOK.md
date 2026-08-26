@@ -761,7 +761,7 @@ node platform-implementation-plan.mjs --result <result.json> --responses <respon
 
 plan은 scope·쟁점·상태·HTTPS 근거·역할형 검수자·시각 순서를 검증하고, 갱신하지 않은 쟁점을 포함한 전체 body를 재구성한다. 기존 output을 덮어쓰지 않으며 DB·RPC·Drive·public 파일을 쓰지 않는다. 실제 기관 응답과 plan은 `public/` 또는 Git에 두지 않는다.
 
-출력의 self-checksum은 우발적 변경 탐지용이다. 외부 서명, 기관 응답 진위, 검수자 인증, 게시 승인을 증명하지 않는다. 실제 `result_publish` 변경과 이행 데이터 저장 migration은 사용자 승인 전 실행하지 않는다.
+schema v2 출력은 `implementation-status-contract.json`의 schema와 canonical SHA-256을 함께 결속하고, 현재 verifier는 identity가 없는 legacy schema v1과 self-rechecksummed contract drift를 거부한다. plan self-checksum은 우발적 변경 탐지용이며 외부 서명, 기관 응답 진위, 검수자 인증, 게시 승인을 증명하지 않는다. 실제 `result_publish` 변경과 이행 데이터 저장 migration은 사용자 승인 전 실행하지 않는다.
 
 ---
 
