@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -23,6 +24,22 @@ const approvalKey = 'test-provisioning-approval-key-32-bytes-minimum';
 const approvalKeyId = 'access-provisioning-2026-08-v1';
 const approvedAt = '2026-08-17T02:00:00.000Z';
 const expiresAt = '2026-08-17T02:15:00.000Z';
+
+function canonicalValue(value) {
+  if (Array.isArray(value)) return value.map(canonicalValue);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalValue(value[key])]));
+  }
+  return value;
+}
+
+const trackedAccessPlanContract = JSON.parse(readFileSync(
+  join(repoRoot, 'src', 'islands', 'platform', 'access', 'access-plan-contract.json'),
+  'utf8',
+));
+const ACCESS_PLAN_CONTRACT_SHA256 = createHash('sha256')
+  .update(JSON.stringify(canonicalValue(trackedAccessPlanContract)))
+  .digest('hex');
 
 function accessPlan() {
   return {
@@ -72,11 +89,7 @@ function executionAdapter(overrides = {}) {
 }
 
 test('shares the exact browser access-plan schema and role contract', () => {
-  const tracked = JSON.parse(readFileSync(
-    join(repoRoot, 'src', 'islands', 'platform', 'access', 'access-plan-contract.json'),
-    'utf8',
-  ));
-  expect(ORGANIZATION_ACCESS_PLAN_CONTRACT).toEqual(tracked);
+  expect(ORGANIZATION_ACCESS_PLAN_CONTRACT).toEqual(trackedAccessPlanContract);
   expect(ORGANIZATION_ACCESS_PLAN_CONTRACT.roles).toEqual([
     'org_admin', 'operator', 'hq', 'facilitator',
   ]);
@@ -107,8 +120,12 @@ test('builds deterministic invitation and membership operations without executin
   const plan = buildOrganizationAccessProvisioningPlan(source, bytes);
 
   expect(plan).toMatchObject({
-    schemaVersion: 1,
+    schemaVersion: 2,
     planKind: 'platform_access_provisioning_plan',
+    accessPlanContract: {
+      schemaVersion: 1,
+      canonicalSha256: ACCESS_PLAN_CONTRACT_SHA256,
+    },
     organization: source.organization,
     summary: { invitationCount: 1, membershipCount: 1, operationCount: 2 },
     executionPolicy: {
@@ -177,6 +194,27 @@ test('rejects checksum tampering and a self-resealed operation change', () => {
   tampered.checksum = provisioningPlanChecksum(tampered);
   expect(() => verifyOrganizationAccessProvisioningPlan(tampered, source, bytes)).toThrow(
     'does not match its source',
+  );
+});
+
+test('rejects a self-resealed forged contract identity and legacy provisioning plan schema', () => {
+  const source = accessPlan();
+  const bytes = sourceBytes(source);
+  const plan = buildOrganizationAccessProvisioningPlan(source, bytes);
+
+  const forged = structuredClone(plan);
+  forged.accessPlanContract.canonicalSha256 = 'b'.repeat(64);
+  forged.checksum = provisioningPlanChecksum(forged);
+  expect(() => verifyOrganizationAccessProvisioningPlan(forged, source, bytes)).toThrow(
+    'does not match its source',
+  );
+
+  const legacy = structuredClone(plan);
+  delete legacy.accessPlanContract;
+  legacy.schemaVersion = 1;
+  legacy.checksum = provisioningPlanChecksum(legacy);
+  expect(() => verifyOrganizationAccessProvisioningPlan(legacy, source, bytes)).toThrow(
+    'provisioning plan is invalid',
   );
 });
 

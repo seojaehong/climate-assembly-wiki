@@ -111,8 +111,8 @@ npm.cmd run plan:platform-access-provisioning -- --source $accessPlan --output $
 npm.cmd run verify:platform-access-provisioning -- $provisioningPlan --source $accessPlan
 ```
 
-- 생성기는 UI와 같은 추적 contract에서 exact schema·역할·256KiB 한계·dry-run 경계를 읽고, 입력 원문 바이트 SHA-256과 각 작업의 deterministic operation ID를 기록한다.
-- verifier는 checksum뿐 아니라 원 접근 계획에서 전체 계획을 다시 생성해 순서·조직·이메일·사용자·역할·실행 정책이 달라진 자체 재봉인 파일도 거부한다.
+- 생성기는 UI와 같은 추적 `access-plan-contract.json`에서 exact schema·역할·256KiB 한계·dry-run 경계를 읽고, 입력 원문 바이트 SHA-256과 각 작업의 deterministic operation ID를 기록한다. 브라우저 접근 계획은 계속 contract schema v1이며, 이를 감싸는 provisioning plan schema v2가 contract schema와 canonical SHA-256을 `accessPlanContract`에 결속한다.
+- verifier는 checksum뿐 아니라 현재 contract와 원 접근 계획에서 전체 계획을 다시 생성해 contract identity·순서·조직·이메일·사용자·역할·실행 정책이 달라진 자체 재봉인 파일도 거부한다. identity가 없는 과거 provisioning plan schema v1은 실행 자료로 승격하지 않고 현재 source plan으로 다시 생성한다.
 - 입력·출력 경로가 저장소 내부이거나 symlink/junction을 통해 저장소를 가리키면 실행 전에 거부한다. 기존 출력은 명시적 `--force` 없이는 덮어쓰지 않는다.
 - stdout과 오류에는 이메일·사용자 UUID·credential·파일 경로를 싣지 않는다. 계획 파일 자체는 민감한 운영 자료이므로 승인자 외에는 전달하지 않는다.
 - 이 명령은 Supabase·Auth·메일·환경 credential에 접근하지 않고 `databaseMutationExecuted:false`를 유지한다.

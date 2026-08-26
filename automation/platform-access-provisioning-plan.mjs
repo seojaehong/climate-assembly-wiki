@@ -94,6 +94,10 @@ function loadAccessPlanContract() {
 }
 
 export const ORGANIZATION_ACCESS_PLAN_CONTRACT = loadAccessPlanContract();
+export const ORGANIZATION_ACCESS_PLAN_CONTRACT_IDENTITY = Object.freeze({
+  schemaVersion: ORGANIZATION_ACCESS_PLAN_CONTRACT.schemaVersion,
+  canonicalSha256: sha256(canonicalJson(ORGANIZATION_ACCESS_PLAN_CONTRACT)),
+});
 
 function canonicalEmail(value) {
   if (typeof value !== 'string') throw new Error('Organization access plan is invalid');
@@ -400,8 +404,9 @@ export function buildOrganizationAccessProvisioningPlan(accessPlan, sourceBytes)
     }),
   ];
   const unsigned = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     planKind: 'platform_access_provisioning_plan',
+    accessPlanContract: ORGANIZATION_ACCESS_PLAN_CONTRACT_IDENTITY,
     sourcePlan: { sha256: sha256(sourceBytes), bytes: sourceBytes.length },
     organization: source.organization,
     operations,
@@ -432,7 +437,7 @@ export function buildOrganizationAccessProvisioningPlan(accessPlan, sourceBytes)
 
 export function verifyOrganizationAccessProvisioningPlan(plan, accessPlan, sourceBytes) {
   if (!isRecord(plan)
-    || plan.schemaVersion !== 1
+    || plan.schemaVersion !== 2
     || plan.planKind !== 'platform_access_provisioning_plan'
     || plan.dryRun !== true
     || plan.authAccountsCreated !== false

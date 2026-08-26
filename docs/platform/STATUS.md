@@ -228,6 +228,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A7 이행 상태 계약 identity 결속(2026-08-26):** 이행추적 publish plan을 schema v2로 올리고 웹·표·DOCX·preflight가 공유하는 `implementation-status-contract.json` schema v2와 canonical SHA-256을 artifact에 결속했다. plan self-checksum을 다시 계산해도 contract digest를 바꾼 artifact는 현재 result·responses 재생성 대조에서 거부하며, identity가 없는 legacy schema v1도 명시적으로 거부한다. 상태·record loader의 기존 exact-field·fallback·색상·HTTPS·timestamp 검증은 유지된다. production payload·DB·RPC·migration·실제 기관 응답에는 접근하거나 변경하지 않았다.
 
+**A3 접근 계획 계약 identity 결속(2026-08-26):** 기관 접근 provisioning plan을 schema v2로 올리고 브라우저·CLI가 공유하는 `access-plan-contract.json` schema v1과 canonical SHA-256을 `accessPlanContract`에 결속했다. verifier는 현재 contract와 source access plan에서 전체 artifact를 다시 생성하므로 plan checksum을 다시 계산한 contract digest 위조와 identity가 없는 legacy provisioning plan schema v1을 모두 거부한다. 브라우저가 내보내는 source access plan schema v1은 유지하며 과거 provisioning plan만 현재 source로 재생성해야 한다. production DB·Auth·초대·메일·membership·GRANT에는 접근하거나 변경하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증
