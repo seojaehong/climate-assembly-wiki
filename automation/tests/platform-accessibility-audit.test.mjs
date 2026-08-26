@@ -61,10 +61,10 @@ const exercisedPage = `<!doctype html><html lang="ko"><head><title>상태 전환
   <button type="button" style="min-width:44px;min-height:44px" onclick="document.querySelector('p').hidden=false">오류 표시</button>
   <p role="alert" hidden>입력 오류</p></main></body></html>`;
 const focusOrderPage = `<!doctype html><html lang="ko"><head><title>키보드 순서</title></head><body>
-  <a href="#main-content">본문 바로가기</a><main id="main-content" tabindex="-1">
-  <form aria-label="로그인"><label for="email">이메일</label><input id="email" type="email">
-  <label for="password">비밀번호</label><input id="password" type="password">
-  <button type="submit">로그인</button><a id="help" href="/help">도움말</a></form></main></body></html>`;
+  <a href="#main-content" style="display:inline-flex;align-items:center;min-height:24px">본문 바로가기</a><main id="main-content" tabindex="-1">
+  <form aria-label="로그인" style="display:grid;gap:8px"><label for="email">이메일</label><input id="email" type="email" style="min-height:44px">
+  <label for="password">비밀번호</label><input id="password" type="password" style="min-height:44px">
+  <button type="submit" style="min-height:44px">로그인</button><a id="help" href="/help" style="display:inline-flex;align-items:center;min-height:44px">도움말</a></form></main></body></html>`;
 const trappedFocusOrderPage = focusOrderPage.replace('</body>', `<script>
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Tab') return;
