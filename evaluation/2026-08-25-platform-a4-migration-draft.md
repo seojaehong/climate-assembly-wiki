@@ -62,6 +62,7 @@
 29. ledger table의 `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `TRUNCATE`, `REFERENCES`, `TRIGGER`를 public·anon·authenticated·service_role 각각에 임시 부여한 PostgreSQL 16 음성 리허설이 28개 조합 모두 같은 안정 오류로 거부되고, 매번 권한 회수 뒤 verifier가 다시 통과하는지 확인했다.
 30. table-level 권한은 false인 채 단일 `operation_id` column에만 `SELECT`, `INSERT`, `UPDATE`, `REFERENCES`를 부여하는 우회를 public·anon·authenticated·service_role 각각에서 리허설했다. `has_any_column_privilege` 기반 16개 조합이 모두 같은 안정 오류로 거부되고, 매번 권한 회수 뒤 verifier가 다시 통과했다.
 31. `platform_sha256_hex(text)`를 64개의 `0`을 반환하도록 바꾸면 기존 post-apply verifier가 통과하는 공백을 PostgreSQL 16에서 재현했다. 보강 뒤 언어·`IMMUTABLE`·`STRICT`·invoker security·고정 `search_path`를 원본과 동일하게 유지한 채 canonical JSON helper와 SHA-256 helper의 body만 각각 상수 반환으로 바꾼 두 음성 리허설은 모두 `checksum helper contract is unsafe`로 거부됐고, 각 변조 transaction rollback 뒤 verifier가 다시 통과했다. Canonical object/array 순서와 SHA-256 known-answer도 함께 대조한다.
+32. 3-인자 SECURITY DEFINER mutation RPC의 owner를 별도 비특권 LOGIN role로 바꿔도 기존 verifier가 통과하는 공백을 재현했다. 보강 뒤 단일 함수 owner 불일치와 ledger·8개 A4 함수 전체를 같은 비특권 LOGIN role로 넘겨 단순 owner 일치만 맞춘 두 경우 모두 `owner contract is unsafe`로 거부됐다. 모든 A4 객체의 owner가 동일하고 그 role이 superuser 또는 `BYPASSRLS`인 비-runtime role인지 확인하며, 각 변조 transaction rollback 뒤 정상 verifier가 다시 통과했다.
 
 결과: `A4_LOCAL_POSTGRES_REHEARSAL=passed`
 
@@ -103,6 +104,8 @@ ledger column 권한 재노출 차단 결과: `A4_LEDGER_COLUMN_PRIVILEGE_POSTGR
 
 checksum helper 구현 drift 차단 결과: `A4_CHECKSUM_HELPER_POSTGRES_REHEARSAL=passed`
 
+A4 객체 owner 신뢰 결속 결과: `A4_OWNER_CONTRACT_POSTGRES_REHEARSAL=passed`
+
 ## 자동화 회귀
 
 - A4 bundle·design plan·Supabase adapter 집중 테스트: 96건 통과
@@ -112,7 +115,7 @@ checksum helper 구현 drift 차단 결과: `A4_CHECKSUM_HELPER_POSTGRES_REHEARS
 - 저장소 밖 로컬 durable store의 adapter 재시작·lock-free CAS·독립 Node 프로세스 6개 claim 경쟁(1 claimed, 5 conflict, journal record 2개)·orphan temp 복구·append-only replay/conflict·journal 변조·terminal claim/checkpoint/receipt/lifecycle clock 사건시각 역행·junction escape·revocation/claim 경쟁·membership 비활성 finalize와 재활성화 거부·비식별 전체-store/keyed receipt audit·off-store inventory checkpoint 삭제/tail 변경·기본 10분 freshness 테스트 통과
 - approval bundle verifier: builder·durable store·Supabase adapter·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 20개, production apply 미승인·DB mutation 미실행 상태로 통과
 - 추적 manifest를 current source에서 재구성해 stale source hash를 거부하는 테스트 통과
-- bundle checksum: `15ea7ea0625a75fc9033bcd7c6d4b659cbb3e8c8180c2a0c1f6b1cba4b952142`
+- bundle checksum: `f0f557bcf2d942afdf779f086a3918677423c19356cb3d5f555bb5cd7fda37cc`
 
 ## 보안·데이터 무결성 결론
 
@@ -132,6 +135,7 @@ checksum helper 구현 drift 차단 결과: `A4_CHECKSUM_HELPER_POSTGRES_REHEARS
 - post-apply verifier는 ledger table의 7개 PostgreSQL 권한이 public·anon·authenticated·service_role 중 하나에라도 재노출되면 RLS 상태와 무관하게 적용 증거를 거부한다.
 - post-apply verifier는 table-level ACL이 닫혀 있어도 ledger column 하나에 `SELECT|INSERT|UPDATE|REFERENCES`가 재노출되면 적용 증거를 거부한다.
 - post-apply verifier는 canonical JSON·SHA-256 helper의 언어·실행 속성·고정 `search_path`·핵심 body와 known-answer를 대조해 상수 checksum 또는 정렬 규칙 변조를 거부한다.
+- post-apply verifier는 ledger와 8개 A4 함수의 owner를 하나의 superuser 또는 `BYPASSRLS` 비-runtime role로 결속해, 별도 LOGIN role의 implicit EXECUTE·함수 교체 권한 우회를 거부한다.
 - 같은 기관의 동시 mutation plan은 source 검증 뒤 transaction advisory lock으로 직렬화해 exact plan 경쟁을 `applied`와 `replayed`로 수렴시킨다.
 - plan 내부의 operation ID와 resource ref는 각각 유일해야 하며 중복 plan은 lookup·mutation 전에 거부한다.
 - plan과 reconciliation query의 boolean·number·string JSON 타입을 exact 검사해 문자열로 바꾼 self-resealed 입력을 거부한다.

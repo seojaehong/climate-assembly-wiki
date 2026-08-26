@@ -282,6 +282,28 @@ jobs:
             "$RUNNER_TEMP/a4-altered-checksum-helper.log"
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/design_provisioning_post_apply.sql >/dev/null
+          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -c "begin; create role a4_untrusted_owner login; grant usage, create on schema climate_vote to a4_untrusted_owner; alter function climate_vote.design_provision(jsonb,bytea,jsonb) owner to a4_untrusted_owner;" \
+            -f /tmp/design_provisioning_post_apply.sql \
+            >"$RUNNER_TEMP/a4-untrusted-function-owner.log" 2>&1; then
+            echo "Untrusted A4 function owner unexpectedly passed verification" >&2
+            exit 1
+          fi
+          grep -q "owner contract is unsafe" \
+            "$RUNNER_TEMP/a4-untrusted-function-owner.log"
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/design_provisioning_post_apply.sql >/dev/null
+          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -c "begin; create role a4_untrusted_owner login; grant usage, create on schema climate_vote to a4_untrusted_owner; alter table climate_vote.design_provisioning_operation owner to a4_untrusted_owner; alter function climate_vote.platform_json_canonical(jsonb) owner to a4_untrusted_owner; alter function climate_vote.platform_sha256_hex(text) owner to a4_untrusted_owner; alter function climate_vote.platform_design_join_code() owner to a4_untrusted_owner; alter function climate_vote.platform_design_authorization_revision() owner to a4_untrusted_owner; alter function climate_vote.design_provision(jsonb,bytea) owner to a4_untrusted_owner; alter function climate_vote.design_provision(jsonb,bytea,jsonb) owner to a4_untrusted_owner; alter function climate_vote.design_provisioning_status(jsonb) owner to a4_untrusted_owner; alter function climate_vote.design_provisioning_status(jsonb,jsonb) owner to a4_untrusted_owner;" \
+            -f /tmp/design_provisioning_post_apply.sql \
+            >"$RUNNER_TEMP/a4-untrusted-unified-owner.log" 2>&1; then
+            echo "Untrusted A4 unified owner unexpectedly passed verification" >&2
+            exit 1
+          fi
+          grep -q "owner contract is unsafe" \
+            "$RUNNER_TEMP/a4-untrusted-unified-owner.log"
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/design_provisioning_post_apply.sql >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
             "create table climate_vote.a4_constraint_shadow_fixture(capacity integer); alter table climate_vote.team drop constraint platform_team_capacity_positive; alter table climate_vote.a4_constraint_shadow_fixture add constraint platform_team_capacity_positive check (capacity > 0);" >/dev/null
           if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \

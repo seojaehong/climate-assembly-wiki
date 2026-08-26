@@ -146,6 +146,10 @@ test('A4 SQL draft keeps preflight and post-apply verification read-only', () =>
   expect(postApply).toContain('p.proisstrict');
   expect(postApply).toContain("climate_vote.platform_json_canonical('{\"b\":1,\"a\":[true,null]}'::jsonb)");
   expect(postApply).toContain("climate_vote.platform_sha256_hex('abc')");
+  expect(postApply).toContain('owner contract is unsafe');
+  expect(postApply).toContain('pg_get_userbyid(v_owner_oid)');
+  expect(postApply).toContain('(r.rolsuper or r.rolbypassrls)');
+  expect(postApply).toContain('p.proowner <> v_owner_oid');
   expect(postApply).toContain('v_existing.plan_checksum <> v_checksum');
   expect(postApply).toContain("('team', 'platform_team_capacity_positive', 'c'");
   expect(postApply).toContain("'CHECK ((capacity > 0))'");
@@ -371,6 +375,8 @@ test('rollback refuses populated A4 state before any object is removed', () => {
   expect(workflow).toContain('Unsafe A4 ledger table grant unexpectedly passed verification');
   expect(workflow).toContain('Unsafe A4 ledger column grant unexpectedly passed verification');
   expect(workflow).toContain('Altered A4 checksum helper unexpectedly passed verification');
+  expect(workflow).toContain('Untrusted A4 function owner unexpectedly passed verification');
+  expect(workflow).toContain('Untrusted A4 unified owner unexpectedly passed verification');
   expect(workflow).toContain('Shadow A4 constraint unexpectedly passed verification');
   expect(workflow).toContain('Wrong A4 constraint definition unexpectedly passed verification');
   expect(workflow).toContain('Wrong A4 column type unexpectedly passed verification');

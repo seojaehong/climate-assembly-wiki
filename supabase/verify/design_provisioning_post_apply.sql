@@ -6,6 +6,8 @@ do $verify$
 declare
   v_definition text;
   v_config text[];
+  v_owner_oid oid;
+  v_owner_name name;
 begin
   if to_regclass('climate_vote.design_provisioning_operation') is null
      or to_regprocedure('climate_vote.design_provision(jsonb,bytea)') is null
@@ -17,6 +19,34 @@ begin
      or to_regprocedure('climate_vote.platform_sha256_hex(text)') is null
      or to_regprocedure('climate_vote.platform_design_join_code()') is null then
     raise exception 'A4 post-apply verification failed: required object is missing';
+  end if;
+
+  select c.relowner into strict v_owner_oid
+  from pg_class c
+  where c.oid = 'climate_vote.design_provisioning_operation'::regclass;
+  select pg_get_userbyid(v_owner_oid) into strict v_owner_name;
+  if v_owner_name in ('anon', 'authenticated', 'authenticator', 'service_role')
+     or not exists (
+       select 1
+       from pg_roles r
+       where r.oid = v_owner_oid and (r.rolsuper or r.rolbypassrls)
+     )
+     or exists (
+       select 1
+       from (values
+         ('climate_vote.platform_json_canonical(jsonb)'),
+         ('climate_vote.platform_sha256_hex(text)'),
+         ('climate_vote.platform_design_join_code()'),
+         ('climate_vote.platform_design_authorization_revision()'),
+         ('climate_vote.design_provision(jsonb,bytea)'),
+         ('climate_vote.design_provision(jsonb,bytea,jsonb)'),
+         ('climate_vote.design_provisioning_status(jsonb)'),
+         ('climate_vote.design_provisioning_status(jsonb,jsonb)')
+       ) expected(signature)
+       join pg_proc p on p.oid = to_regprocedure(expected.signature)
+       where p.proowner <> v_owner_oid
+     ) then
+    raise exception 'A4 post-apply verification failed: owner contract is unsafe';
   end if;
 
   if exists (
