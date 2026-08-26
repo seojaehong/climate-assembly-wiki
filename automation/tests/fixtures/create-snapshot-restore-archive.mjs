@@ -114,6 +114,7 @@ const payload = {
   counts: { submission: 1, issue: 1, issue_link: 1, result_page: 1, ballot: 1 },
 };
 const platform = { id: 77, source: 'platform', payload };
+const legacy = { snapshot_id: 42 };
 const audit = {
   schemaVersion: 1,
   event: 'platform_snapshot_export',
@@ -127,6 +128,7 @@ const audit = {
 };
 const digest = createHmac('sha256', auditKey).update(JSON.stringify({ ...audit, platform })).digest('hex');
 writeFileSync(outputPath, JSON.stringify({
+  legacy,
   platform,
   audit: {
     ...audit,

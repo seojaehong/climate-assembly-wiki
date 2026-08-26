@@ -1394,6 +1394,32 @@ test('verifies an archive through the read-only CLI without loading the snapshot
   });
 });
 
+test('keeps the isolated PostgreSQL restore fixture aligned with the exact archive envelope', () => {
+  const tempDir = mkdtempSync(join(tmpdir(), 'snapshot-restore-fixture-'));
+  const archivePath = join(tempDir, 'archive.json');
+  try {
+    execFileSync(
+      process.execPath,
+      [
+        fileURLToPath(new URL('fixtures/create-snapshot-restore-archive.mjs', import.meta.url)),
+        archivePath,
+      ],
+      {
+        encoding: 'utf8',
+        env: { ...process.env, SNAPSHOT_AUDIT_HMAC_KEY: TEST_AUDIT_KEY },
+      },
+    );
+    expect(verifySnapshotArchiveFile({ filePath: archivePath, auditKey: TEST_AUDIT_KEY }))
+      .toEqual(expect.objectContaining({
+        status: 'verified',
+        snapshotId: 77,
+        counts: expect.objectContaining({ submission: 1, issue: 1, ballot: 1 }),
+      }));
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
 test('runs the read-only recovery preflight CLI without loading the snapshot schedule', async () => {
   const archive = await signedArchiveFixture();
   withSnapshotFile(archive, (filePath) => {
