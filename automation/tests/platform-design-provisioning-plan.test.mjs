@@ -2512,6 +2512,7 @@ test('executes and finalizes through one revision-bound live authorization conte
           kind: 'platform_design_provisioning_authorization_fence',
           approvalId: approval.approvalId,
           executionId: approval.executionId,
+          approvedPlanChecksum: approval.planChecksum,
           authorizationRevision: expect.stringMatching(/^[0-9a-f]{64}$/),
         });
         return {
@@ -2963,6 +2964,7 @@ test('passes and verifies the authorization fence during revisioned reconciliati
     kind: 'platform_design_provisioning_authorization_fence',
     approvalId: approval.approvalId,
     executionId: approval.executionId,
+    approvedPlanChecksum: approval.planChecksum,
     authorizationRevision: snapshot.revision,
   });
   expect(snapshot.state.claim.status).toBe('claimed');

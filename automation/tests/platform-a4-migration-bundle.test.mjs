@@ -124,6 +124,11 @@ test('A4 SQL draft keeps preflight and post-apply verification read-only', () =>
   expect(postApply).toContain("('design_provisioning_operation', 'source_blueprint_bytes', 'integer', true");
   expect(postApply).toContain("'platform_design_operation_source_sha256_shape'");
   expect(postApply).toContain("'platform_design_operation_source_bytes_range'");
+  expect(postApply).toContain("('design_provisioning_operation', 'approval_id', 'uuid', false");
+  expect(postApply).toContain("('design_provisioning_operation', 'execution_id', 'uuid', false");
+  expect(postApply).toContain("('design_provisioning_operation', 'approved_plan_checksum', 'text', false");
+  expect(postApply).toContain("('design_provisioning_operation', 'authorization_revision', 'text', false");
+  expect(postApply).toContain("'platform_design_operation_execution_binding_complete'");
   expect(postApply).toContain('format_type(a.atttypid, a.atttypmod) <> expected.data_type');
   expect(postApply).toContain("('session', 'FOREIGN KEY (assembly_id) REFERENCES assembly(id)')");
   expect(postApply).toContain('foreign key contract is unsafe');
@@ -155,6 +160,9 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(migration).toContain('v_existing.plan_checksum <> v_checksum');
   expect(migration).toContain("v_existing.source_blueprint_sha256 <> p_plan #>> '{sourceBlueprint,sha256}'");
   expect(migration).toContain("v_existing.source_blueprint_bytes <> (p_plan #>> '{sourceBlueprint,bytes}')::integer");
+  expect(migration).toContain('design_execution_binding_conflict');
+  expect(migration).toContain('approved_plan_checksum = p_authorization_fence ->> \'approvedPlanChecksum\'');
+  expect(migration).toContain('ledger.authorization_revision is distinct from v_authorization_revision');
   expect(migration).toContain('design_parent_conflict');
   expect(migration).toContain('design_join_code_exhausted');
   expect(migration).toContain('extensions.gen_random_bytes(4)');
@@ -192,6 +200,11 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(rehearsal).toContain('open topic replay unexpectedly succeeded');
   expect(rehearsal).toContain('disabled team reconciliation unexpectedly exposed its join code');
   expect(rehearsal).toContain('reconciliation checksum conflict unexpectedly succeeded');
+  expect(rehearsal).toContain('cross-execution mutation replay unexpectedly succeeded');
+  expect(rehearsal).toContain('cross-approval-checksum mutation replay unexpectedly succeeded');
+  expect(rehearsal).toContain('reconciliation approved checksum conflict unexpectedly succeeded');
+  expect(rehearsal).toContain('reconciliation execution identity conflict unexpectedly succeeded');
+  expect(rehearsal).toContain('unbound ledger reconciliation unexpectedly succeeded');
   expect(rehearsal).toContain('reconciliation source digest conflict unexpectedly succeeded');
   expect(rehearsal).toContain('reconciliation source length conflict unexpectedly succeeded');
   expect(rehearsal).toContain('partial reconciliation conflict unexpectedly returned pending');
@@ -241,6 +254,7 @@ test('A4 dormant RPC draft accepts and echoes an exact live authorization revisi
     /design_provisioning_status\(\s*p_query jsonb,\s*p_authorization_fence jsonb\s*\)/,
   );
   expect(migration).toContain("'platform_design_provisioning_authorization_fence'");
+  expect(migration).toContain("'approvedPlanChecksum'");
   expect(migration).toContain("raise exception using message = 'design_authorization_stale'");
   expect(migration).toContain("'authorizationRevision', v_authorization_revision");
   expect(migration).toContain(
@@ -269,6 +283,9 @@ test('A4 dormant RPC draft accepts and echoes an exact live authorization revisi
   );
   expect(migration).toMatch(
     /\(p_authorization_fence ->> 'executionId'\)\s+is distinct from \(p_query ->> 'executionId'\)/,
+  );
+  expect(migration).toMatch(
+    /\(p_authorization_fence ->> 'approvedPlanChecksum'\)\s+is distinct from \(p_query ->> 'approvedPlanChecksum'\)/,
   );
   expect(rollback).toContain(
     'drop function if exists climate_vote.design_provision(jsonb, bytea, jsonb)',

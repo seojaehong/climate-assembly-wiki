@@ -984,7 +984,8 @@ function validateReconciliationAdapter(adapter) {
 
 function designProvisioningAuthorizationFence(approval, snapshot) {
   const authorizationRevision = snapshot?.revision;
-  if (!SHA256_PATTERN.test(authorizationRevision ?? '')
+  if (!SHA256_PATTERN.test(approval?.planChecksum ?? '')
+    || !SHA256_PATTERN.test(authorizationRevision ?? '')
     || snapshot.state?.claim?.authorizationRevision !== authorizationRevision) {
     throw new Error('Design provisioning authorization fence is invalid');
   }
@@ -993,6 +994,7 @@ function designProvisioningAuthorizationFence(approval, snapshot) {
     kind: 'platform_design_provisioning_authorization_fence',
     approvalId: approval.approvalId,
     executionId: approval.executionId,
+    approvedPlanChecksum: approval.planChecksum,
     authorizationRevision,
   };
 }

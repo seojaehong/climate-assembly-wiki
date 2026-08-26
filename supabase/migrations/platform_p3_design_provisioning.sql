@@ -45,12 +45,28 @@ create table climate_vote.design_provisioning_operation (
   request_hash text not null check (request_hash ~ '^[0-9a-f]{64}$'),
   source_blueprint_sha256 text not null,
   source_blueprint_bytes integer not null,
+  approval_id uuid,
+  execution_id uuid,
+  approved_plan_checksum text,
+  authorization_revision text,
   resource_id uuid not null,
   applied_at timestamptz not null default statement_timestamp(),
   constraint platform_design_operation_source_sha256_shape
     check (source_blueprint_sha256 ~ '^[0-9a-f]{64}$'),
   constraint platform_design_operation_source_bytes_range
     check (source_blueprint_bytes between 1 and 1000000),
+  constraint platform_design_operation_approved_checksum_shape
+    check (approved_plan_checksum is null or approved_plan_checksum ~ '^[0-9a-f]{64}$'),
+  constraint platform_design_operation_authorization_revision_shape
+    check (authorization_revision is null or authorization_revision ~ '^[0-9a-f]{64}$'),
+  constraint platform_design_operation_execution_binding_complete
+    check (
+      (approval_id is null and execution_id is null
+        and approved_plan_checksum is null and authorization_revision is null)
+      or
+      (approval_id is not null and execution_id is not null
+        and approved_plan_checksum is not null and authorization_revision is not null)
+    ),
   primary key (org_id, operation_id)
 );
 
@@ -790,7 +806,10 @@ begin
     if v_existing.plan_checksum <> p_query ->> 'executedPlanChecksum'
        or v_existing.operation_type <> v_operation_type
        or v_existing.source_blueprint_sha256 <> p_query ->> 'sourceBlueprintSha256'
-       or v_existing.source_blueprint_bytes <> (p_query ->> 'sourceBlueprintBytes')::integer then
+       or v_existing.source_blueprint_bytes <> (p_query ->> 'sourceBlueprintBytes')::integer
+       or v_existing.approval_id::text is distinct from p_query ->> 'approvalId'
+       or v_existing.execution_id::text is distinct from p_query ->> 'executionId'
+       or v_existing.approved_plan_checksum is distinct from p_query ->> 'approvedPlanChecksum' then
       raise exception using message = 'design_reconciliation_conflict';
     end if;
 
@@ -863,7 +882,8 @@ set row_security = off
 as $function$
 declare
   v_expected_fence_keys text[] := array[
-    'approvalId', 'authorizationRevision', 'executionId', 'kind', 'schemaVersion'
+    'approvalId', 'approvedPlanChecksum', 'authorizationRevision',
+    'executionId', 'kind', 'schemaVersion'
   ];
   v_actual_fence_keys text[];
   v_user_id uuid;
@@ -900,6 +920,7 @@ begin
      or jsonb_typeof(p_authorization_fence -> 'kind') <> 'string'
      or jsonb_typeof(p_authorization_fence -> 'approvalId') <> 'string'
      or jsonb_typeof(p_authorization_fence -> 'executionId') <> 'string'
+     or jsonb_typeof(p_authorization_fence -> 'approvedPlanChecksum') <> 'string'
      or jsonb_typeof(p_authorization_fence -> 'authorizationRevision') <> 'string'
      or p_authorization_fence ->> 'schemaVersion' <> '1'
      or p_authorization_fence ->> 'kind'
@@ -908,6 +929,7 @@ begin
         !~ '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
      or (p_authorization_fence ->> 'executionId')
         !~ '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     or (p_authorization_fence ->> 'approvedPlanChecksum') !~ '^[0-9a-f]{64}$'
      or (p_authorization_fence ->> 'authorizationRevision') !~ '^[0-9a-f]{64}$' then
     raise exception using message = 'design_authorization_fence_invalid';
   end if;
@@ -916,6 +938,46 @@ begin
   end if;
 
   v_response := climate_vote.design_provision(p_plan, p_source_bytes);
+  if exists (
+    select 1
+    from climate_vote.design_provisioning_operation ledger
+    join jsonb_array_elements(p_plan -> 'operations') operation
+      on operation ->> 'operationId' = ledger.operation_id
+    where ledger.org_id = v_org_id
+      and ledger.approval_id is not null
+      and (
+        ledger.approval_id::text is distinct from p_authorization_fence ->> 'approvalId'
+        or ledger.execution_id::text is distinct from p_authorization_fence ->> 'executionId'
+        or ledger.approved_plan_checksum is distinct from p_authorization_fence ->> 'approvedPlanChecksum'
+        or ledger.authorization_revision is distinct from v_authorization_revision
+      )
+  ) then
+    raise exception using message = 'design_execution_binding_conflict';
+  end if;
+  update climate_vote.design_provisioning_operation ledger
+  set approval_id = (p_authorization_fence ->> 'approvalId')::uuid,
+      execution_id = (p_authorization_fence ->> 'executionId')::uuid,
+      approved_plan_checksum = p_authorization_fence ->> 'approvedPlanChecksum',
+      authorization_revision = v_authorization_revision
+  where ledger.org_id = v_org_id
+    and ledger.operation_id in (
+      select operation ->> 'operationId'
+      from jsonb_array_elements(p_plan -> 'operations') operation
+    )
+    and ledger.approval_id is null;
+  if (
+    select count(*)
+    from climate_vote.design_provisioning_operation ledger
+    join jsonb_array_elements(p_plan -> 'operations') operation
+      on operation ->> 'operationId' = ledger.operation_id
+    where ledger.org_id = v_org_id
+      and ledger.approval_id::text = p_authorization_fence ->> 'approvalId'
+      and ledger.execution_id::text = p_authorization_fence ->> 'executionId'
+      and ledger.approved_plan_checksum = p_authorization_fence ->> 'approvedPlanChecksum'
+      and ledger.authorization_revision = v_authorization_revision
+  ) <> jsonb_array_length(p_plan -> 'operations') then
+    raise exception using message = 'design_execution_binding_conflict';
+  end if;
   if climate_vote.platform_design_authorization_revision() <> v_authorization_revision then
     raise exception using message = 'design_authorization_stale';
   end if;
@@ -943,7 +1005,8 @@ set row_security = off
 as $function$
 declare
   v_expected_fence_keys text[] := array[
-    'approvalId', 'authorizationRevision', 'executionId', 'kind', 'schemaVersion'
+    'approvalId', 'approvedPlanChecksum', 'authorizationRevision',
+    'executionId', 'kind', 'schemaVersion'
   ];
   v_actual_fence_keys text[];
   v_user_id uuid;
@@ -980,6 +1043,7 @@ begin
      or jsonb_typeof(p_authorization_fence -> 'kind') <> 'string'
      or jsonb_typeof(p_authorization_fence -> 'approvalId') <> 'string'
      or jsonb_typeof(p_authorization_fence -> 'executionId') <> 'string'
+     or jsonb_typeof(p_authorization_fence -> 'approvedPlanChecksum') <> 'string'
      or jsonb_typeof(p_authorization_fence -> 'authorizationRevision') <> 'string'
      or p_authorization_fence ->> 'schemaVersion' <> '1'
      or p_authorization_fence ->> 'kind'
@@ -988,17 +1052,30 @@ begin
         !~ '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
      or (p_authorization_fence ->> 'executionId')
         !~ '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     or (p_authorization_fence ->> 'approvedPlanChecksum') !~ '^[0-9a-f]{64}$'
      or (p_authorization_fence ->> 'authorizationRevision') !~ '^[0-9a-f]{64}$'
      or (p_authorization_fence ->> 'approvalId')
         is distinct from (p_query ->> 'approvalId')
      or (p_authorization_fence ->> 'executionId')
-        is distinct from (p_query ->> 'executionId') then
+        is distinct from (p_query ->> 'executionId')
+     or (p_authorization_fence ->> 'approvedPlanChecksum')
+        is distinct from (p_query ->> 'approvedPlanChecksum') then
     raise exception using message = 'design_authorization_fence_invalid';
   end if;
   if p_authorization_fence ->> 'authorizationRevision' <> v_authorization_revision then
     raise exception using message = 'design_authorization_stale';
   end if;
 
+  if exists (
+    select 1
+    from climate_vote.design_provisioning_operation ledger
+    join jsonb_array_elements(p_query -> 'operations') operation
+      on operation ->> 'operationId' = ledger.operation_id
+    where ledger.org_id = v_org_id
+      and ledger.authorization_revision is distinct from v_authorization_revision
+  ) then
+    raise exception using message = 'design_reconciliation_conflict';
+  end if;
   v_response := climate_vote.design_provisioning_status(p_query);
   if climate_vote.platform_design_authorization_revision() <> v_authorization_revision then
     raise exception using message = 'design_authorization_stale';

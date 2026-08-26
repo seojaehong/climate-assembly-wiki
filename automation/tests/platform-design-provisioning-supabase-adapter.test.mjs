@@ -30,6 +30,7 @@ function authorizationFence(overrides = {}) {
     kind: 'platform_design_provisioning_authorization_fence',
     approvalId: '30000000-0000-4000-8000-000000000001',
     executionId: '40000000-0000-4000-8000-000000000001',
+    approvedPlanChecksum: 'b'.repeat(64),
     authorizationRevision: 'a'.repeat(64),
     ...overrides,
   };
@@ -181,6 +182,10 @@ test('maps reconciliation only when query and fence identities match exactly', a
     authorizationFence: authorizationFence({
       executionId: '50000000-0000-4000-8000-000000000001',
     }),
+  })).rejects.toThrow('Supabase design provisioning reconciliation request is invalid');
+  await expect(reconciliationAdapter.reconcile({
+    query,
+    authorizationFence: authorizationFence({ approvedPlanChecksum: 'e'.repeat(64) }),
   })).rejects.toThrow('Supabase design provisioning reconciliation request is invalid');
   expect(fixture.calls).toHaveLength(1);
 });

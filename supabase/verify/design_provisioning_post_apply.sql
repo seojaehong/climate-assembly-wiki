@@ -37,6 +37,10 @@ begin
       ('design_provisioning_operation', 'request_hash', 'text', true, null::text),
       ('design_provisioning_operation', 'source_blueprint_sha256', 'text', true, null::text),
       ('design_provisioning_operation', 'source_blueprint_bytes', 'integer', true, null::text),
+      ('design_provisioning_operation', 'approval_id', 'uuid', false, null::text),
+      ('design_provisioning_operation', 'execution_id', 'uuid', false, null::text),
+      ('design_provisioning_operation', 'approved_plan_checksum', 'text', false, null::text),
+      ('design_provisioning_operation', 'authorization_revision', 'text', false, null::text),
       ('design_provisioning_operation', 'resource_id', 'uuid', true, null::text),
       ('design_provisioning_operation', 'applied_at', 'timestamp with time zone', true,
         'statement_timestamp()')
@@ -95,6 +99,12 @@ begin
         'CHECK ((source_blueprint_sha256 ~ ''^[0-9a-f]{64}$''::text))'),
       ('design_provisioning_operation', 'platform_design_operation_source_bytes_range', 'c',
         'CHECK (((source_blueprint_bytes >= 1) AND (source_blueprint_bytes <= 1000000)))'),
+      ('design_provisioning_operation', 'platform_design_operation_approved_checksum_shape', 'c',
+        'CHECK (((approved_plan_checksum IS NULL) OR (approved_plan_checksum ~ ''^[0-9a-f]{64}$''::text)))'),
+      ('design_provisioning_operation', 'platform_design_operation_authorization_revision_shape', 'c',
+        'CHECK (((authorization_revision IS NULL) OR (authorization_revision ~ ''^[0-9a-f]{64}$''::text)))'),
+      ('design_provisioning_operation', 'platform_design_operation_execution_binding_complete', 'c',
+        'CHECK ((((approval_id IS NULL) AND (execution_id IS NULL) AND (approved_plan_checksum IS NULL) AND (authorization_revision IS NULL)) OR ((approval_id IS NOT NULL) AND (execution_id IS NOT NULL) AND (approved_plan_checksum IS NOT NULL) AND (authorization_revision IS NOT NULL))))'),
       ('design_provisioning_operation', 'design_provisioning_operation_pkey', 'p',
         'PRIMARY KEY (org_id, operation_id)')
     ) expected(table_name, constraint_name, constraint_type, definition)
@@ -223,6 +233,9 @@ begin
      or not ('search_path=pg_catalog, climate_vote, auth, extensions' = any(v_config))
      or not ('row_security=off' = any(v_config))
      or v_definition not like '%platform_design_provisioning_authorization_fence%'
+     or v_definition not like '%approvedPlanChecksum%'
+     or v_definition not like '%design_execution_binding_conflict%'
+     or v_definition not like '%update climate_vote.design_provisioning_operation ledger%'
      or v_definition not like '%design_authorization_stale%'
      or v_definition not like '%climate_vote.design_provision(p_plan, p_source_bytes)%'
      or v_definition not like '%''authorizationRevision'', v_authorization_revision%' then
@@ -245,6 +258,8 @@ begin
      or v_definition not like '%platform_design_provisioning_authorization_fence%'
      or v_definition not like '%is distinct from (p_query ->> ''approvalId'')%'
      or v_definition not like '%is distinct from (p_query ->> ''executionId'')%'
+     or v_definition not like '%is distinct from (p_query ->> ''approvedPlanChecksum'')%'
+     or v_definition not like '%ledger.authorization_revision is distinct from v_authorization_revision%'
      or v_definition not like '%design_authorization_stale%'
      or v_definition not like '%climate_vote.design_provisioning_status(p_query)%'
      or v_definition not like '%''authorizationRevision'', v_authorization_revision%' then

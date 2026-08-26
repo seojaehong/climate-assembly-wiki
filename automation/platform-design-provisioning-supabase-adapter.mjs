@@ -74,6 +74,7 @@ function cloneJsonObject(value) {
 function validAuthorizationFence(value) {
   return exactKeys(value, [
     'approvalId',
+    'approvedPlanChecksum',
     'authorizationRevision',
     'executionId',
     'kind',
@@ -83,6 +84,7 @@ function validAuthorizationFence(value) {
     && value.kind === 'platform_design_provisioning_authorization_fence'
     && UUID_V4_PATTERN.test(value.approvalId ?? '')
     && UUID_V4_PATTERN.test(value.executionId ?? '')
+    && SHA256_PATTERN.test(value.approvedPlanChecksum ?? '')
     && SHA256_PATTERN.test(value.authorizationRevision ?? '');
 }
 
@@ -185,7 +187,8 @@ export function createSupabaseDesignProvisioningRpcAdapters(options) {
       const query = cloneJsonObject(request.query);
       if (!query
         || query.approvalId !== request.authorizationFence.approvalId
-        || query.executionId !== request.authorizationFence.executionId) {
+        || query.executionId !== request.authorizationFence.executionId
+        || query.approvedPlanChecksum !== request.authorizationFence.approvedPlanChecksum) {
         throw new Error('Supabase design provisioning reconciliation request is invalid');
       }
       const authorizationFence = structuredClone(request.authorizationFence);

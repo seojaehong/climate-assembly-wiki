@@ -219,6 +219,7 @@ begin
     'kind', 'platform_design_provisioning_authorization_fence',
     'approvalId', v_query ->> 'approvalId',
     'executionId', v_query ->> 'executionId',
+    'approvedPlanChecksum', v_query ->> 'approvedPlanChecksum',
     'authorizationRevision', v_authorization_revision
   );
 
@@ -500,6 +501,32 @@ begin
     raise exception 'A4 semantic test failed: fenced provisioning response did not echo its authorization revision';
   end if;
 
+  begin
+    perform climate_vote.design_provision(
+      v_plan,
+      convert_to(repeat('s', 100), 'UTF8'),
+      jsonb_set(
+        v_authorization_fence,
+        '{executionId}',
+        '"cccccccc-cccc-4ccc-8ccc-cccccccccccc"'::jsonb
+      )
+    );
+    raise exception 'A4 semantic test failed: cross-execution mutation replay unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_execution_binding_conflict' then raise; end if;
+  end;
+
+  begin
+    perform climate_vote.design_provision(
+      v_plan,
+      convert_to(repeat('s', 100), 'UTF8'),
+      jsonb_set(v_authorization_fence, '{approvedPlanChecksum}', to_jsonb(repeat('e', 64)))
+    );
+    raise exception 'A4 semantic test failed: cross-approval-checksum mutation replay unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_execution_binding_conflict' then raise; end if;
+  end;
+
   select count(*) into v_ledger_count from climate_vote.design_provisioning_operation;
   select count(*) into v_resource_count from climate_vote.team;
   v_response := climate_vote.design_provisioning_status(v_query, v_authorization_fence);
@@ -590,6 +617,43 @@ begin
   exception when others then
     if sqlerrm <> 'design_reconciliation_conflict' then raise; end if;
   end;
+
+  begin
+    perform climate_vote.design_provisioning_status(
+      jsonb_set(v_query, '{approvedPlanChecksum}', to_jsonb(repeat('e', 64)))
+    );
+    raise exception 'A4 semantic test failed: reconciliation approved checksum conflict unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_reconciliation_conflict' then raise; end if;
+  end;
+
+  begin
+    perform climate_vote.design_provisioning_status(
+      jsonb_set(v_query, '{executionId}', '"cccccccc-cccc-4ccc-8ccc-cccccccccccc"'::jsonb)
+    );
+    raise exception 'A4 semantic test failed: reconciliation execution identity conflict unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_reconciliation_conflict' then raise; end if;
+  end;
+
+  update climate_vote.design_provisioning_operation
+  set approval_id = null,
+      execution_id = null,
+      approved_plan_checksum = null,
+      authorization_revision = null
+  where org_id = v_org and plan_checksum = v_plan ->> 'checksum';
+  begin
+    perform climate_vote.design_provisioning_status(v_query, v_authorization_fence);
+    raise exception 'A4 semantic test failed: unbound ledger reconciliation unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_reconciliation_conflict' then raise; end if;
+  end;
+  update climate_vote.design_provisioning_operation
+  set approval_id = (v_authorization_fence ->> 'approvalId')::uuid,
+      execution_id = (v_authorization_fence ->> 'executionId')::uuid,
+      approved_plan_checksum = v_authorization_fence ->> 'approvedPlanChecksum',
+      authorization_revision = v_authorization_revision
+  where org_id = v_org and plan_checksum = v_plan ->> 'checksum';
 
   begin
     perform climate_vote.design_provisioning_status(
@@ -1032,6 +1096,7 @@ begin
     'kind', 'platform_design_provisioning_authorization_fence',
     'approvalId', v_query ->> 'approvalId',
     'executionId', v_query ->> 'executionId',
+    'approvedPlanChecksum', v_query ->> 'approvedPlanChecksum',
     'authorizationRevision', v_old_revision
   );
   begin
