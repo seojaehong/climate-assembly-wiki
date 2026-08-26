@@ -271,6 +271,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 ledger column 휴면 권한 전수 검증(2026-08-26):** PostgreSQL column-level ACL은 table-level 권한과 별도로 존재해 기존 table matrix만으로는 단일 column의 `SELECT|INSERT|UPDATE|REFERENCES` 노출을 잡지 못했다. Post-apply verifier가 public·anon·authenticated·service_role 네 역할과 네 column 권한의 16개 effective 조합을 `has_any_column_privilege`로 별도 대조한다. Table-level 권한은 false인 상태에서 `operation_id` column에 16개 조합을 하나씩 부여한 PostgreSQL 16 리허설은 모두 거부됐고 매번 권한 회수 뒤 다시 통과했다. Bundle artifact 20개 checksum은 `28bd43eaa87c81d87fd6af7e3142cefc24408844234d91321061a678412afc94`이며 production migration·DB·GRANT·credential·traffic은 변경하지 않았다.
 
+**A4 checksum helper 구현 정본 검증(2026-08-26):** 체크섬 신뢰 경계인 canonical JSON·SHA-256 helper는 기존 post-apply verifier에서 존재와 권한만 확인해, SHA helper를 상수 반환으로 바꿔도 통과하는 공백이 있었다. 두 helper의 정확한 언어·`IMMUTABLE`·`STRICT`·invoker security·단일 고정 `search_path`, canonical object key/array 순서와 SHA-256 known-answer를 함께 검증하도록 보강했다. PostgreSQL 16에서 원래 metadata를 유지하고 canonical helper와 SHA helper의 body만 각각 상수 반환으로 바꾼 두 transaction은 모두 `checksum helper contract is unsafe`로 거부됐고 rollback 뒤 정상 verifier가 다시 통과했다. Bundle artifact 20개 checksum은 `15ea7ea0625a75fc9033bcd7c6d4b659cbb3e8c8180c2a0c1f6b1cba4b952142`이며 production migration·DB·GRANT·credential·traffic은 변경하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

@@ -271,6 +271,17 @@ jobs:
           grep -q '"requiresApprovedBackfill": false' <<<"$activation_report"
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/design_provisioning_post_apply.sql >/dev/null
+          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -c "begin; create or replace function climate_vote.platform_sha256_hex(p_value text) returns text language sql immutable strict set search_path = pg_catalog, extensions as 'select repeat(''0'', 64)';" \
+            -f /tmp/design_provisioning_post_apply.sql \
+            >"$RUNNER_TEMP/a4-altered-checksum-helper.log" 2>&1; then
+            echo "Altered A4 checksum helper unexpectedly passed verification" >&2
+            exit 1
+          fi
+          grep -q "checksum helper contract is unsafe" \
+            "$RUNNER_TEMP/a4-altered-checksum-helper.log"
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/design_provisioning_post_apply.sql >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
             "create table climate_vote.a4_constraint_shadow_fixture(capacity integer); alter table climate_vote.team drop constraint platform_team_capacity_positive; alter table climate_vote.a4_constraint_shadow_fixture add constraint platform_team_capacity_positive check (capacity > 0);" >/dev/null
           if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \

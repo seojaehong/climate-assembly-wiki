@@ -143,7 +143,7 @@
 9. 기존 claim 전용 명시적 reconciliation, pending 보존, 만료 뒤 감사 종결과 adapter 오류 비노출 test
 10. 휴면 read-only ledger lookup RPC, checksum·role·resource 검증과 무변경 PostgreSQL rehearsal
 
-post-apply verifier는 column 이름이나 제약 이름만 schema 전체에서 세지 않는다. 21개 필수 column의 정확한 PostgreSQL type·nullable·default, session/ledger의 3개 FK 참조 정의, source evidence와 execution binding 완전성을 포함한 각 named 제약의 대상 table·`check|unique|primary key` 종류와 canonical definition을 함께 대조한다. 잘못된 type·default·FK 누락, 다른 table의 동명 제약이나 완화된 식, 내부 helper의 EXECUTE 또는 ledger table/column privilege 재노출을 적용 증거로 인정하지 않는다.
+post-apply verifier는 column 이름이나 제약 이름만 schema 전체에서 세지 않는다. 21개 필수 column의 정확한 PostgreSQL type·nullable·default, session/ledger의 3개 FK 참조 정의, source evidence와 execution binding 완전성을 포함한 각 named 제약의 대상 table·`check|unique|primary key` 종류와 canonical definition을 함께 대조한다. 잘못된 type·default·FK 누락, 다른 table의 동명 제약이나 완화된 식, 내부 helper의 EXECUTE 또는 ledger table/column privilege 재노출을 적용 증거로 인정하지 않는다. 체크섬 신뢰 경계인 `platform_json_canonical(jsonb)`와 `platform_sha256_hex(text)`는 존재 여부뿐 아니라 정확한 언어·`IMMUTABLE`·`STRICT`·invoker security·고정 `search_path`, canonical object key/array 순서와 SHA-256 known-answer까지 검증한다. Helper body나 설정을 바꿔 plan·operation·authorization revision checksum을 약화한 상태는 post-apply 성공으로 인정하지 않는다.
 
 ## 5. 승인 전에 결정할 항목
 

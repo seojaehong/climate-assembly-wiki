@@ -121,6 +121,53 @@ begin
 
   select p.prosrc, p.proconfig into strict v_definition, v_config
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'climate_vote' and p.proname = 'platform_json_canonical'
+    and p.pronargs = 1;
+  if not exists (
+       select 1
+       from pg_proc p
+       join pg_namespace n on n.oid = p.pronamespace
+       join pg_language l on l.oid = p.prolang
+       where n.nspname = 'climate_vote' and p.proname = 'platform_json_canonical'
+         and p.pronargs = 1 and pg_get_function_result(p.oid) = 'text'
+         and p.provolatile = 'i' and p.proisstrict and not p.prosecdef
+         and l.lanname = 'plpgsql'
+     )
+     or v_config is distinct from array['search_path=pg_catalog']::text[]
+     or v_definition not like '%jsonb_each(p_value)%'
+     or v_definition not like '%order by key)%'
+     or v_definition not like '%jsonb_array_elements(p_value) with ordinality%'
+     or v_definition not like '%order by ordinality)%'
+     or v_definition not like '%v_result := p_value::text%'
+     or climate_vote.platform_json_canonical('{"b":1,"a":[true,null]}'::jsonb)
+        is distinct from '{"a":[true,null],"b":1}' then
+    raise exception 'A4 post-apply verification failed: checksum helper contract is unsafe';
+  end if;
+
+  select p.prosrc, p.proconfig into strict v_definition, v_config
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'climate_vote' and p.proname = 'platform_sha256_hex'
+    and p.pronargs = 1;
+  if not exists (
+       select 1
+       from pg_proc p
+       join pg_namespace n on n.oid = p.pronamespace
+       join pg_language l on l.oid = p.prolang
+       where n.nspname = 'climate_vote' and p.proname = 'platform_sha256_hex'
+         and p.pronargs = 1 and pg_get_function_result(p.oid) = 'text'
+         and p.provolatile = 'i' and p.proisstrict and not p.prosecdef
+         and l.lanname = 'sql'
+     )
+     or v_config is distinct from array['search_path=pg_catalog, extensions']::text[]
+     or v_definition not like '%extensions.digest(convert_to(p_value, ''UTF8''), ''sha256'')%'
+     or v_definition not like '%encode(%''hex''%'
+     or climate_vote.platform_sha256_hex('abc') is distinct from
+        'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad' then
+    raise exception 'A4 post-apply verification failed: checksum helper contract is unsafe';
+  end if;
+
+  select p.prosrc, p.proconfig into strict v_definition, v_config
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'climate_vote' and p.proname = 'platform_design_join_code';
   if not exists (
        select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
