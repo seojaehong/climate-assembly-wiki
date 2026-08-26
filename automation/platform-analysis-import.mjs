@@ -13,7 +13,23 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const ISSUE_STANCES = new Set(['pro', 'con', 'conditional', 'concern', 'proposal', 'neutral']);
 const FREQUENCY_CLASSES = new Set(['consensus', 'majority', 'minority', 'mixed']);
+const SOURCE_MAPPING_FIELDS = new Set(['sourceUid', 'transcriptChunkId', 'itemId', 'clusterId']);
+const CANDIDATE_MAPPING_FIELDS = new Set([
+  'recommendationId', 'title', 'summary', 'sourceRecommendationSha256', 'minorityMappings',
+]);
+const MINORITY_MAPPING_FIELDS = new Set([
+  'index', 'minorityId', 'title', 'sourceTextSha256', 'citedUids',
+]);
 const REPO_ROOT = realpathSync.native(fileURLToPath(new URL('..', import.meta.url)));
+
+function requireExactFields(value, allowedFields, label) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`Invalid ${label}`);
+  }
+  if (Object.keys(value).some((field) => !allowedFields.has(field))) {
+    throw new Error(`Invalid ${label} fields`);
+  }
+}
 
 function isWithinRepository(path) {
   const pathFromRepository = relative(REPO_ROOT, path);
@@ -196,9 +212,7 @@ function normalizeCandidateMappings(value) {
   if (!Array.isArray(value)) throw new Error('Invalid candidateMappings');
   const mappings = new Map();
   for (const candidateMapping of value) {
-    if (!candidateMapping || typeof candidateMapping !== 'object' || Array.isArray(candidateMapping)) {
-      throw new Error('Invalid candidate mapping');
-    }
+    requireExactFields(candidateMapping, CANDIDATE_MAPPING_FIELDS, 'candidate mapping');
     const recommendationId = requireText(candidateMapping.recommendationId, 'candidate mapping recommendationId');
     if (mappings.has(recommendationId)) throw new Error('Duplicate candidate mapping');
     if (typeof candidateMapping.sourceRecommendationSha256 !== 'string'
@@ -209,8 +223,8 @@ function normalizeCandidateMappings(value) {
     if (!Array.isArray(minorityMappings)) throw new Error('Invalid minority mappings');
     const minorityByIndex = new Map();
     for (const minorityMapping of minorityMappings) {
-      if (!minorityMapping || typeof minorityMapping !== 'object' || Array.isArray(minorityMapping)
-        || !Number.isInteger(minorityMapping.index) || minorityMapping.index < 0) {
+      requireExactFields(minorityMapping, MINORITY_MAPPING_FIELDS, 'minority mapping');
+      if (!Number.isInteger(minorityMapping.index) || minorityMapping.index < 0) {
         throw new Error('Invalid minority mapping');
       }
       if (minorityByIndex.has(minorityMapping.index)) throw new Error('Duplicate minority mapping index');
@@ -250,6 +264,7 @@ export function buildPlatformAnalysisImportPlan({
   }
   const sourceIds = new Set();
   for (const mapping of sourceMappings) {
+    requireExactFields(mapping, SOURCE_MAPPING_FIELDS, 'source mapping');
     const sourceUid = requireText(mapping.sourceUid, 'sourceUid');
     if (sourceIds.has(sourceUid)) throw new Error('Duplicate source mapping');
     sourceIds.add(sourceUid);
@@ -396,8 +411,20 @@ export function sealPlatformAnalysisImportPlan({ plan, analysisSource, provenanc
 }
 
 function provenanceCandidateMappings(provenanceMap) {
-  if (provenanceMap?.schemaVersion === 1) return [];
+  if (provenanceMap?.schemaVersion === 1) {
+    requireExactFields(
+      provenanceMap,
+      new Set(['schemaVersion', 'topicId', 'sourceMappings']),
+      'provenance map',
+    );
+    return [];
+  }
   if (provenanceMap?.schemaVersion === 2) {
+    requireExactFields(
+      provenanceMap,
+      new Set(['schemaVersion', 'topicId', 'sourceMappings', 'candidateMappings']),
+      'provenance map',
+    );
     if (!Array.isArray(provenanceMap.candidateMappings)) throw new Error('Invalid candidateMappings');
     return provenanceMap.candidateMappings;
   }

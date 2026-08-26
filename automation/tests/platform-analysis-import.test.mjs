@@ -71,6 +71,84 @@ test('keeps raw analysis inputs and review plans outside the repository', () => 
   }
 });
 
+test('rejects unknown provenance mapping fields instead of silently dropping schema drift', () => {
+  const simpleAnalysis = {
+    recommendations: [{ rec_id: 'rec-fields', title: '필드 검증', cited_uids: ['source-main'] }],
+  };
+  const sourceMapping = {
+    sourceUid: 'source-main',
+    transcriptChunkId: 'chunk-main',
+    itemId: '21111111-1111-4111-8111-111111111111',
+    clusterId: null,
+  };
+  expect(() => buildPlatformAnalysisImportPlan({
+    topicId: TOPIC_ID,
+    analysis: simpleAnalysis,
+    sourceMappings: [{ ...sourceMapping, clusterID: 'private-value-must-not-echo' }],
+    provenanceSchemaVersion: 2,
+  })).toThrow('Invalid source mapping fields');
+
+  const mappedRecommendation = {
+    rec_id: 'rec-fields', title: '', was_derived_from: ['source-main'], minority: ['조건 우려'],
+  };
+  const mapping = {
+    recommendationId: 'rec-fields',
+    title: '필드 검증',
+    sourceRecommendationSha256: recommendationSourceHash(mappedRecommendation),
+    minorityMappings: [{
+      index: 0,
+      minorityId: 'minority-condition',
+      title: '조건 우려',
+      sourceTextSha256: minoritySourceHash('조건 우려'),
+      citedUids: ['source-main'],
+    }],
+  };
+  expect(() => buildPlatformAnalysisImportPlan({
+    topicId: TOPIC_ID,
+    analysis: { recommendations: [mappedRecommendation] },
+    sourceMappings: [sourceMapping],
+    candidateMappings: [{ ...mapping, internalNote: 'private-value-must-not-echo' }],
+    provenanceSchemaVersion: 2,
+  })).toThrow('Invalid candidate mapping fields');
+  expect(() => buildPlatformAnalysisImportPlan({
+    topicId: TOPIC_ID,
+    analysis: { recommendations: [mappedRecommendation] },
+    sourceMappings: [sourceMapping],
+    candidateMappings: [{
+      ...mapping,
+      minorityMappings: [{ ...mapping.minorityMappings[0], citationIDs: ['private-value-must-not-echo'] }],
+    }],
+    provenanceSchemaVersion: 2,
+  })).toThrow('Invalid minority mapping fields');
+
+  const directory = mkdtempSync(join(tmpdir(), 'platform-analysis-provenance-fields-'));
+  try {
+    const analysisPath = join(directory, 'analysis.json');
+    const mappingPath = join(directory, 'provenance.json');
+    const outputPath = join(directory, 'plan.json');
+    writeFileSync(analysisPath, JSON.stringify(simpleAnalysis), 'utf8');
+    writeFileSync(mappingPath, JSON.stringify({
+      schemaVersion: 2,
+      topicId: TOPIC_ID,
+      sourceMappings: [sourceMapping],
+      candidateMappings: [],
+      internalNote: 'private-value-must-not-echo',
+    }), 'utf8');
+    const modulePath = fileURLToPath(new URL('../platform-analysis-import.mjs', import.meta.url));
+    const result = spawnSync(process.execPath, [
+      modulePath,
+      '--analysis', analysisPath,
+      '--provenance-map', mappingPath,
+      '--output', outputPath,
+    ], { encoding: 'utf8' });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Invalid provenance map fields');
+    expect(result.stderr).not.toContain('private-value-must-not-echo');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test('builds review-required issue drafts with source provenance and minority concerns', () => {
   const plan = buildPlatformAnalysisImportPlan({
     topicId: TOPIC_ID,
