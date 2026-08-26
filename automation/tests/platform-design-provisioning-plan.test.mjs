@@ -40,11 +40,19 @@ import {
   revokeLocalDesignProvisioningAuthorization,
   sealLocalDesignProvisioningRehearsalStoreCheckpoint,
 } from '../platform-design-provisioning-durable-store.mjs';
+import {
+  sealDesignProvisioningExecutionApprovalWithKeyRegistry,
+  verifyDesignProvisioningExecutionApprovalWithKeyRegistry,
+  verifyDesignProvisioningExecutionReceiptWithKeyRegistry,
+} from '../platform-design-provisioning-key-registry.mjs';
 
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 const modulePath = fileURLToPath(new URL('../platform-design-provisioning-plan.mjs', import.meta.url));
 const durableStoreModulePath = fileURLToPath(
   new URL('../platform-design-provisioning-durable-store.mjs', import.meta.url),
+);
+const keyRegistryModulePath = fileURLToPath(
+  new URL('../platform-design-provisioning-key-registry.mjs', import.meta.url),
 );
 
 function blueprint() {
@@ -1242,6 +1250,7 @@ test('keeps the plan scripts and shared design contract in Linux CI', () => {
   const packageJson = JSON.parse(readFileSync(join(repoRoot, 'automation', 'package.json'), 'utf8'));
   const workflow = readFileSync(join(repoRoot, '.github', 'workflows', 'test.yml'), 'utf8');
   const source = readFileSync(modulePath, 'utf8');
+  const keyRegistrySource = readFileSync(keyRegistryModulePath, 'utf8');
 
   expect(packageJson.scripts['plan:platform-design-provisioning']).toBe(
     'node platform-design-provisioning-plan.mjs',
@@ -1254,6 +1263,8 @@ test('keeps the plan scripts and shared design contract in Linux CI', () => {
   expect(source).not.toContain('@supabase/supabase-js');
   expect(source).not.toContain('createClient(');
   expect(source).not.toContain('executeDesignProvisioningPlan');
+  expect(keyRegistrySource).not.toContain('@supabase/supabase-js');
+  expect(keyRegistrySource).not.toContain('createClient(');
 });
 
 test('validates and preserves the complete canonical blueprint hierarchy', () => {
@@ -1358,7 +1369,238 @@ test('seals a short-lived A4 execution approval to the exact verified plan and s
   });
 });
 
-test('seals and verifies a non-sensitive A4 receipt from an exact completed RPC response', () => {
+test('issues and verifies an A4 approval through an active key registry entry', async () => {
+  const source = blueprint();
+  const bytes = sourceBytes(source);
+  const plan = buildDesignProvisioningPlan(source, bytes);
+  const reads = [];
+  const authorizations = [];
+  const keyRegistry = {
+    async readKey(keyId) {
+      reads.push(keyId);
+      return {
+        schemaVersion: 1,
+        kind: 'platform_design_provisioning_key_registry_entry',
+        keyId: approvalKeyId,
+        revision: 'a'.repeat(64),
+        state: 'active',
+        activatedAt: '2026-08-01T00:00:00.000Z',
+        issuanceDisabledAt: null,
+        verificationEndsAt: null,
+        trustedKey: approvalKey,
+      };
+    },
+    async authorizeIssuance(request) {
+      authorizations.push(request);
+      return {
+        status: 'authorized',
+        keyId: approvalKeyId,
+        revision: 'a'.repeat(64),
+        authorizedAt: approvedAt,
+      };
+    },
+  };
+  const approval = await sealDesignProvisioningExecutionApprovalWithKeyRegistry({
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    metadata: approvalMetadata(),
+    keyRegistry,
+  });
+  expect(JSON.stringify(approval)).not.toContain(approvalKey);
+  await expect(verifyDesignProvisioningExecutionApprovalWithKeyRegistry({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    keyRegistry,
+    expectedOrganizationId: approval.organizationId,
+    expectedTargetHost: approval.targetHost,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+    approvalState: approvalState(),
+  })).resolves.toMatchObject({
+    status: 'verified',
+    approvalId: approval.approvalId,
+    claimAction: 'claim_required',
+    databaseMutationExecuted: false,
+  });
+  expect(reads).toEqual([approvalKeyId, approvalKeyId]);
+  expect(authorizations).toEqual([{
+    schemaVersion: 1,
+    kind: 'platform_design_provisioning_key_issuance_request',
+    keyId: approvalKeyId,
+    revision: 'a'.repeat(64),
+    approvedAt,
+    expiresAt,
+  }]);
+});
+
+test('refuses A4 approval issuance when key rotation wins the registry CAS', async () => {
+  const source = blueprint();
+  const bytes = sourceBytes(source);
+  const plan = buildDesignProvisioningPlan(source, bytes);
+  await expect(sealDesignProvisioningExecutionApprovalWithKeyRegistry({
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    metadata: approvalMetadata(),
+    keyRegistry: {
+      async readKey() {
+        return {
+          schemaVersion: 1,
+          kind: 'platform_design_provisioning_key_registry_entry',
+          keyId: approvalKeyId,
+          revision: 'a'.repeat(64),
+          state: 'active',
+          activatedAt: '2026-08-01T00:00:00.000Z',
+          issuanceDisabledAt: null,
+          verificationEndsAt: null,
+          trustedKey: approvalKey,
+        };
+      },
+      async authorizeIssuance() {
+        return {
+          status: 'conflict',
+          keyId: approvalKeyId,
+          revision: 'b'.repeat(64),
+          authorizedAt: null,
+        };
+      },
+    },
+  })).rejects.toThrow('key registry policy rejected the request');
+});
+
+test('refuses A4 approval issuance when registry authorization is outside the approval window', async () => {
+  const source = blueprint();
+  const bytes = sourceBytes(source);
+  const plan = buildDesignProvisioningPlan(source, bytes);
+  await expect(sealDesignProvisioningExecutionApprovalWithKeyRegistry({
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    metadata: approvalMetadata(),
+    keyRegistry: {
+      async readKey() {
+        return {
+          schemaVersion: 1,
+          kind: 'platform_design_provisioning_key_registry_entry',
+          keyId: approvalKeyId,
+          revision: 'a'.repeat(64),
+          state: 'active',
+          activatedAt: '2026-08-01T00:00:00.000Z',
+          issuanceDisabledAt: null,
+          verificationEndsAt: null,
+          trustedKey: approvalKey,
+        };
+      },
+      async authorizeIssuance() {
+        return {
+          status: 'authorized',
+          keyId: approvalKeyId,
+          revision: 'a'.repeat(64),
+          authorizedAt: '2026-08-25T13:16:00.000Z',
+        };
+      },
+    },
+  })).rejects.toThrow('key registry policy rejected the request');
+});
+
+test('uses verify-only keys for historical A4 approvals but refuses new issuance', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const keyRegistry = {
+    async readKey() {
+      return {
+        schemaVersion: 1,
+        kind: 'platform_design_provisioning_key_registry_entry',
+        keyId: approvalKeyId,
+        revision: 'a'.repeat(64),
+        state: 'verify_only',
+        activatedAt: '2026-08-01T00:00:00.000Z',
+        issuanceDisabledAt: '2026-08-25T13:01:00.000Z',
+        verificationEndsAt: '2026-09-30T00:00:00.000Z',
+        trustedKey: approvalKey,
+      };
+    },
+  };
+  await expect(verifyDesignProvisioningExecutionApprovalWithKeyRegistry({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    keyRegistry,
+    expectedOrganizationId: approval.organizationId,
+    expectedTargetHost: approval.targetHost,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+    approvalState: approvalState(),
+  })).resolves.toMatchObject({ status: 'verified' });
+
+  await expect(sealDesignProvisioningExecutionApprovalWithKeyRegistry({
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    metadata: approvalMetadata({
+      approvedAt: '2026-08-25T13:02:00.000Z',
+      expiresAt: '2026-08-25T13:10:00.000Z',
+    }),
+    keyRegistry,
+  })).rejects.toThrow('key registry policy rejected the request');
+});
+
+test('fails closed on retired, expired, or malformed A4 key registry entries', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  let readCount = 0;
+  const verify = (entry) => verifyDesignProvisioningExecutionApprovalWithKeyRegistry({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    keyRegistry: { async readKey() { readCount += 1; return entry; } },
+    expectedOrganizationId: approval.organizationId,
+    expectedTargetHost: approval.targetHost,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+    approvalState: approvalState(),
+  });
+  const baseEntry = {
+    schemaVersion: 1,
+    kind: 'platform_design_provisioning_key_registry_entry',
+    keyId: approvalKeyId,
+    revision: 'a'.repeat(64),
+    state: 'verify_only',
+    activatedAt: '2026-08-01T00:00:00.000Z',
+    issuanceDisabledAt: '2026-08-25T13:01:00.000Z',
+    verificationEndsAt: '2026-09-30T00:00:00.000Z',
+    trustedKey: approvalKey,
+  };
+  await expect(verify({ ...baseEntry, state: 'retired' }))
+    .rejects.toThrow('key registry policy rejected the request');
+  await expect(verify({
+    ...baseEntry,
+    verificationEndsAt: '2026-08-25T13:04:00.000Z',
+  })).rejects.toThrow('key registry policy rejected the request');
+  await expect(verify({ ...baseEntry, unknown: approvalKey }))
+    .rejects.toThrow('key registry response is invalid');
+  await expect(verifyDesignProvisioningExecutionApprovalWithKeyRegistry({
+    approval: { ...approval, unknown: true },
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    keyRegistry: { async readKey() { readCount += 1; return baseEntry; } },
+    expectedOrganizationId: approval.organizationId,
+    expectedTargetHost: approval.targetHost,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+    approvalState: approvalState(),
+  })).rejects.toThrow('key registry request is invalid');
+  await expect(sealDesignProvisioningExecutionApprovalWithKeyRegistry({
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    metadata: { ...approvalMetadata(), unknown: true },
+    keyRegistry: { async readKey() { readCount += 1; return baseEntry; } },
+  })).rejects.toThrow('key registry request is invalid');
+  expect(readCount).toBe(3);
+});
+
+test('seals and verifies a non-sensitive A4 receipt from an exact completed RPC response', async () => {
   const { source, bytes, plan, approval } = executionApproval();
   const executionPlan = executionPlanCandidate(plan);
   const resourceIds = plan.operations.map((_, index) => (
@@ -1436,6 +1678,50 @@ test('seals and verifies a non-sensitive A4 receipt from an exact completed RPC 
     operationCount: plan.operations.length,
     containsSensitiveValues: false,
   });
+  await expect(verifyDesignProvisioningExecutionReceiptWithKeyRegistry({
+    receipt,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    approval,
+    keyRegistry: {
+      async readKey() {
+        return {
+          schemaVersion: 1,
+          kind: 'platform_design_provisioning_key_registry_entry',
+          keyId: approvalKeyId,
+          revision: 'a'.repeat(64),
+          state: 'verify_only',
+          activatedAt: '2026-08-01T00:00:00.000Z',
+          issuanceDisabledAt: '2026-08-25T13:01:00.000Z',
+          verificationEndsAt: '2026-09-30T00:00:00.000Z',
+          trustedKey: approvalKey,
+        };
+      },
+    },
+    now: new Date('2026-08-26T00:00:00.000Z'),
+  })).resolves.toMatchObject({
+    status: 'verified',
+    executionStatus: 'completed',
+    executionId: approval.executionId,
+    containsSensitiveValues: false,
+  });
+  let malformedReceiptReads = 0;
+  await expect(verifyDesignProvisioningExecutionReceiptWithKeyRegistry({
+    receipt: { ...receipt, unknown: true },
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    approval,
+    keyRegistry: {
+      async readKey() {
+        malformedReceiptReads += 1;
+        throw new Error('must not read a key for a malformed receipt');
+      },
+    },
+    now: new Date('2026-08-26T00:00:00.000Z'),
+  })).rejects.toThrow('key registry request is invalid');
+  expect(malformedReceiptReads).toBe(0);
   expect(() => verifyDesignProvisioningExecutionReceipt(
     { ...receipt, summary: { ...receipt.summary, replayedCount: 0 } },
     plan,

@@ -11,6 +11,7 @@ export const A4_MIGRATION_ARTIFACTS = Object.freeze([
   'src/islands/platform/design/design-blueprint-contract.json',
   'automation/platform-design-provisioning-plan.mjs',
   'automation/platform-design-provisioning-durable-store.mjs',
+  'automation/platform-design-provisioning-key-registry.mjs',
   'automation/platform-a4-migration-bundle.mjs',
   'automation/tests/platform-design-provisioning-plan.test.mjs',
   'automation/tests/platform-a4-migration-bundle.test.mjs',
