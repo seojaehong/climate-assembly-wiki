@@ -510,7 +510,7 @@ async function inspectRequiredKeyboardFocusOrder(page, expected) {
     ),
     active: await fingerprint(),
   });
-  const captureExit = () => page.evaluate((selectors) => {
+  const captureExit = (boundary) => page.evaluate((expectedBoundary) => {
     const element = document.activeElement;
     const href = element instanceof HTMLElement ? element.getAttribute('href') : null;
     const active = element instanceof HTMLElement ? {
@@ -520,16 +520,14 @@ async function inspectRequiredKeyboardFocusOrder(page, expected) {
       role: element.getAttribute('role'),
       hrefPath: href ? new URL(href, document.baseURI).pathname : null,
     } : null;
-    const documentHasFocus = document.hasFocus();
-    const outsideExpected = !(element instanceof Element)
-      || selectors.every((selector) => !element.matches(selector));
+    const reachedBoundary = element instanceof HTMLElement
+      && element.dataset.platformA11yFocusBoundary === expectedBoundary;
     return {
-      documentHasFocus,
-      outsideExpected,
+      reachedBoundary,
       active,
-      escaped: !documentHasFocus || outsideExpected,
+      escaped: reachedBoundary,
     };
-  }, expected);
+  }, boundary);
 
   if (availability.some(({ found, visible, enabled }) => !found || !visible || !enabled)) {
     return {
@@ -546,42 +544,66 @@ async function inspectRequiredKeyboardFocusOrder(page, expected) {
     };
   }
 
-  const forward = [];
-  await page.locator(expected[0]).focus();
-  forward.push(await capture(expected[0]));
-  for (const selector of expected.slice(1)) {
+  await page.evaluate(({ firstSelector, lastSelector }) => {
+    const first = document.querySelector(firstSelector);
+    const last = document.querySelector(lastSelector);
+    if (!(first instanceof HTMLElement) || !(last instanceof HTMLElement)) {
+      throw new Error('Keyboard focus boundary targets are unavailable');
+    }
+    const createBoundary = (boundary) => {
+      const element = document.createElement('button');
+      element.type = 'button';
+      element.dataset.platformA11yFocusBoundary = boundary;
+      element.setAttribute('aria-label', `Accessibility audit ${boundary} focus boundary`);
+      element.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;padding:0;border:0;opacity:0;pointer-events:none;';
+      return element;
+    };
+    first.before(createBoundary('before'));
+    last.after(createBoundary('after'));
+  }, { firstSelector: expected[0], lastSelector: expected.at(-1) });
+
+  try {
+    const forward = [];
+    await page.locator(expected[0]).focus();
+    forward.push(await capture(expected[0]));
+    for (const selector of expected.slice(1)) {
+      await page.keyboard.press('Tab');
+      forward.push(await capture(selector));
+    }
     await page.keyboard.press('Tab');
-    forward.push(await capture(selector));
-  }
-  await page.keyboard.press('Tab');
-  const forwardExit = await captureExit();
-  const escapedForward = forwardExit.escaped;
+    const forwardExit = await captureExit('after');
+    const escapedForward = forwardExit.escaped;
 
-  const reversedExpected = [...expected].reverse();
-  const reverse = [];
-  await page.locator(reversedExpected[0]).focus();
-  reverse.push(await capture(reversedExpected[0]));
-  for (const selector of reversedExpected.slice(1)) {
+    const reversedExpected = [...expected].reverse();
+    const reverse = [];
+    await page.locator(reversedExpected[0]).focus();
+    reverse.push(await capture(reversedExpected[0]));
+    for (const selector of reversedExpected.slice(1)) {
+      await page.keyboard.press('Shift+Tab');
+      reverse.push(await capture(selector));
+    }
     await page.keyboard.press('Shift+Tab');
-    reverse.push(await capture(selector));
-  }
-  await page.keyboard.press('Shift+Tab');
-  const backwardExit = await captureExit();
-  const escapedBackward = backwardExit.escaped;
-  const matched = [...forward, ...reverse].every((entry) => entry.matched);
+    const backwardExit = await captureExit('before');
+    const escapedBackward = backwardExit.escaped;
+    const matched = [...forward, ...reverse].every((entry) => entry.matched);
 
-  return {
-    required: true,
-    expected,
-    availability,
-    forward,
-    reverse,
-    forwardExit,
-    backwardExit,
-    escapedForward,
-    escapedBackward,
-    passed: matched && escapedForward && escapedBackward,
-  };
+    return {
+      required: true,
+      expected,
+      availability,
+      forward,
+      reverse,
+      forwardExit,
+      backwardExit,
+      escapedForward,
+      escapedBackward,
+      passed: matched && escapedForward && escapedBackward,
+    };
+  } finally {
+    await page.locator('[data-platform-a11y-focus-boundary]').evaluateAll((elements) => {
+      for (const element of elements) element.remove();
+    });
+  }
 }
 
 async function auditRoute(browser, baseUrl, route, profile, settleMs) {

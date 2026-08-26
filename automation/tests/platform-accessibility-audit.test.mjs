@@ -172,6 +172,8 @@ test('records exact forward and reverse keyboard focus order in browser evidence
     passed: true,
     escapedForward: true,
     escapedBackward: true,
+    forwardExit: { reachedBoundary: true },
+    backwardExit: { reachedBoundary: true },
   });
   expect(report.routes[0].keyboardFocusOrder.forward).toEqual(
     expectedOrder.map((expectedSelector) => expect.objectContaining({ expectedSelector, matched: true })),
@@ -224,6 +226,8 @@ test('fails a focus cycle that never escapes the required controls', async () =>
     passed: false,
     escapedForward: false,
     escapedBackward: false,
+    forwardExit: { reachedBoundary: false },
+    backwardExit: { reachedBoundary: false },
   });
 }, BROWSER_TEST_TIMEOUT_MS);
 
