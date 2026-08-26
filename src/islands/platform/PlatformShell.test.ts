@@ -311,6 +311,7 @@ describe('PlatformShell accessibility', () => {
     expect(source).toContain('수동 평가 82개 필수 검사는 아직 실행 전');
     expect(source).toContain('품질인증 획득 또는 전수 준수를 의미하지 않습니다.');
     expect(source).toContain('데스크톱 1440×1000과 모바일 360×800 뷰포트에서 가로 넘침도 함께 검사합니다.');
+    expect(source).toContain('로그인 실패 상태의 오류 연결·포커스 복귀');
     expect(source).toContain('자동검사는 공식 품질인증이나 전수 수동평가를 대체하지 않습니다.');
     expect(source).toContain('인증 셸과 공개 결과의 자동감사는 읽기 전용 브라우저 fixture를 사용');
     expect(source).toContain('스크린리더와 실제 모바일 보조기기 평가는 수동 확인이 필요합니다.');

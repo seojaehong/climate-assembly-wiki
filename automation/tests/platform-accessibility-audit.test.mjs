@@ -56,6 +56,10 @@ const preparedPage = `<!doctype html><html lang="ko"><head><title>Fixture 준비
     document.querySelector('main').dataset.ready = 'true';
   });
   </script></body></html>`;
+const exercisedPage = `<!doctype html><html lang="ko"><head><title>상태 전환</title></head><body>
+  <a href="#main-content" style="display:inline-flex;align-items:center;min-height:24px">본문 바로가기</a><main id="main-content" tabindex="-1">
+  <button type="button" style="min-width:44px;min-height:44px" onclick="document.querySelector('p').hidden=false">오류 표시</button>
+  <p role="alert" hidden>입력 오류</p></main></body></html>`;
 
 beforeAll(async () => {
   outDir = mkdtempSync(join(tmpdir(), 'platform-a11y-'));
@@ -74,6 +78,8 @@ beforeAll(async () => {
               ? scrollRegionPage
             : request.url === '/prepared'
               ? preparedPage
+            : request.url === '/exercised'
+              ? exercisedPage
             : validPage,
     );
   });
@@ -216,6 +222,34 @@ test('waits for a fixture-backed production surface before auditing it', async (
     passed: true,
     fixture: 'read-only-browser-fixture',
     readiness: { selector: 'main[data-ready="true"]', reached: true },
+  });
+}, BROWSER_TEST_TIMEOUT_MS);
+
+test('audits the exercised interaction state instead of only the initial page', async () => {
+  const report = await auditPlatformAccessibility({
+    baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
+    routes: [{
+      id: 'exercised',
+      path: '/exercised',
+      skipTarget: 'main-content',
+      fixture: 'interaction-fixture',
+      readySelector: 'p[role="alert"]:not([hidden])',
+      afterNavigation: async ({ page }) => {
+        await page.getByRole('button', { name: '오류 표시' }).click();
+      },
+    }],
+    reportPath: join(outDir, 'exercised.json'),
+  });
+
+  expect(report.routes[0].violations, JSON.stringify(report.routes[0], null, 2)).toEqual([]);
+  expect(report.status).toBe('pass');
+  expect(report.routes[0]).toMatchObject({
+    routeId: 'exercised',
+    fixture: 'interaction-fixture',
+    readiness: { selector: 'p[role="alert"]:not([hidden])', reached: true },
+    passed: true,
   });
 }, BROWSER_TEST_TIMEOUT_MS);
 
@@ -449,12 +483,20 @@ test('detects untracked audited source and includes build and auditor dependenci
 test('covers authenticated and published production surfaces with read-only browser fixtures', () => {
   expect(DEFAULT_AUDIT_ROUTES.map((route) => route.id)).toEqual([
     'platform-login',
+    'platform-login-error',
     'authenticated-platform',
     'accessibility-statement',
     'public-result-unpublished',
     'published-result',
     'ontology-review',
   ]);
+  expect(DEFAULT_AUDIT_ROUTES.find((route) => route.id === 'platform-login-error')).toMatchObject({
+    path: '/platform/',
+    fixture: 'ci-login-rejection-fixture-v1',
+    readySelector: '#platform-login-error[role="alert"]',
+    prepare: expect.any(Function),
+    afterNavigation: expect.any(Function),
+  });
   expect(DEFAULT_AUDIT_ROUTES.find((route) => route.id === 'authenticated-platform')).toMatchObject({
     path: '/platform/',
     fixture: 'ci-staff-read-fixture-v1',

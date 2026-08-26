@@ -198,6 +198,69 @@ export async function prepareAuthenticatedPlatform({ context, page, topics, hand
   });
 }
 
+async function prepareRejectedPlatformLogin({ page }) {
+  await page.route(`${SUPABASE_ORIGIN}/**`, async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/auth/v1/token') {
+      await jsonResponse(route, { message: 'Fixture login rejected' }, 400);
+      return;
+    }
+    await jsonResponse(route, { message: `Unexpected login audit fixture request: ${path}` }, 500);
+  });
+}
+
+async function exerciseRejectedPlatformLogin({ page }) {
+  const form = page.getByRole('form', { name: '운영진 로그인' });
+  const email = page.getByLabel('이메일');
+  const password = page.getByLabel('비밀번호');
+  await form.waitFor({ timeout: 10_000 });
+  await email.fill('accessibility-audit@example.invalid');
+  await password.fill('fixture-password');
+  await password.press('Enter');
+
+  const alert = page.locator('#platform-login-error[role="alert"]');
+  await alert.waitFor({ state: 'visible', timeout: 10_000 });
+  await page.waitForFunction(
+    () => document.activeElement?.id === 'platform-password',
+    undefined,
+    { timeout: 10_000 },
+  );
+  const alertId = await alert.getAttribute('id');
+  const [
+    activeId,
+    emailDescribedBy,
+    passwordDescribedBy,
+    emailInvalid,
+    passwordInvalid,
+    alertAtomic,
+    passwordType,
+    emailEnabled,
+    passwordEnabled,
+  ] = await Promise.all([
+    page.evaluate(() => document.activeElement?.id ?? null),
+    email.getAttribute('aria-describedby'),
+    password.getAttribute('aria-describedby'),
+    email.getAttribute('aria-invalid'),
+    password.getAttribute('aria-invalid'),
+    alert.getAttribute('aria-atomic'),
+    password.getAttribute('type'),
+    email.isEnabled(),
+    password.isEnabled(),
+  ]);
+  const referencesAlert = (value) => Boolean(alertId && value?.split(/\s+/).includes(alertId));
+  if (activeId !== 'platform-password'
+    || !referencesAlert(emailDescribedBy)
+    || !referencesAlert(passwordDescribedBy)
+    || emailInvalid !== 'true'
+    || passwordInvalid !== 'true'
+    || alertAtomic !== 'true'
+    || passwordType !== 'password'
+    || !emailEnabled
+    || !passwordEnabled) {
+    throw new Error('Login rejection accessibility state is invalid');
+  }
+}
+
 function publishedResultFixture() {
   return {
     scope: 'session',
@@ -265,6 +328,15 @@ async function preparePublishedResult({ page }) {
 
 export const DEFAULT_AUDIT_ROUTES = [
   { id: 'platform-login', path: '/platform/', skipTarget: 'platform-scope-content' },
+  {
+    id: 'platform-login-error',
+    path: '/platform/',
+    skipTarget: 'platform-scope-content',
+    fixture: 'ci-login-rejection-fixture-v1',
+    readySelector: '#platform-login-error[role="alert"]',
+    prepare: prepareRejectedPlatformLogin,
+    afterNavigation: exerciseRejectedPlatformLogin,
+  },
   {
     id: 'authenticated-platform',
     path: '/platform/',
@@ -383,6 +455,7 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
     if (route.prepare) await route.prepare({ context, page, baseUrl });
     const url = routeUrl(baseUrl, route.path);
     const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    if (route.afterNavigation) await route.afterNavigation({ context, page, baseUrl });
     if (route.readySelector) {
       await page.waitForSelector(route.readySelector, { state: 'attached', timeout: 10_000 });
       readiness.reached = true;

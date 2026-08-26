@@ -259,6 +259,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 ledger execution identity 결속(2026-08-26):** 휴면 operation ledger가 approval ID·execution ID·승인된 plan checksum·authorization revision을 all-or-none으로 저장하고, fenced mutation만 실행 결과를 이 identity에 결속하도록 강화했다. 다른 execution 또는 승인 checksum replay, identity가 없는 저수준 ledger reconciliation은 모두 안정 conflict로 차단하며 status query의 승인 checksum과 live authorization revision도 exact 일치를 요구한다. 기존 SQL이 authorization fence의 승인 checksum을 받지 못해 실패하는 회귀를 먼저 고정한 뒤 PostgreSQL 16에서 plan 4개 operation이 단일 approval·execution·checksum·revision에 완전 결속된 `4|1|1|1|1|t`를 확인했다. 완화된 execution binding 제약은 post-apply verifier가 거부했고 rollback 뒤 object 부재도 확인했다. A4 집중 96건, 루트 전체 65개 파일·1,081건, automation 전체 28개 파일·496건과 Astro 337개 파일 오류·경고 0건(기존 hint 49건)이 통과했다. Bundle checksum은 `810b7d2ae988f254811a3e8dc2b29096213a43726ccfd601e0c6e1d3089be654`이며 production migration·DB·GRANT·credential·traffic은 변경하지 않았다.
 
+**A5 로그인 실패 자동 접근성 감사 편입(2026-08-26):** 정적 로그인 화면만 검사하던 감사기에 읽기 전용 인증 거부 fixture와 post-navigation interaction hook을 추가해 실제 실패 상태를 axe 검사 대상으로 편입했다. 합성 `.invalid` 계정으로 제출한 뒤 alert 표시, 비밀번호 입력 포커스 복귀, 두 필드의 alert 설명 연결과 `aria-invalid`, atomic alert, 비밀번호 마스킹, controls 재활성화를 확인한다. Supabase origin 요청은 전부 브라우저 내부 합성 응답으로 차단해 외부 Auth·credential·DB mutation을 사용하지 않는다. 로컬 current-revision 프리뷰의 Chromium 감사는 7개 경로×2개 viewport, 총 14개 케이스가 모두 통과했고 violation·incomplete는 각각 0건이었다. 자동화는 실제 NVDA·VoiceOver·TalkBack 수동 평가를 대체하지 않으므로 전체 상태는 `needs_review`를 유지한다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증
