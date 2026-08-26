@@ -100,10 +100,14 @@ const POSTGRES_INTEGER_MIN = -2_147_483_648;
 const POSTGRES_INTEGER_MAX = 2_147_483_647;
 const CANONICAL_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-function hasExactFields(value, allowedFields, requiredFields = allowedFields) {
+function isRecord(value) {
   return Boolean(value)
     && typeof value === 'object'
-    && !Array.isArray(value)
+    && !Array.isArray(value);
+}
+
+function hasExactFields(value, allowedFields, requiredFields = allowedFields) {
+  return isRecord(value)
     && Object.keys(value).every((field) => allowedFields.has(field))
     && [...requiredFields].every((field) => Object.hasOwn(value, field));
 }
@@ -157,6 +161,7 @@ export async function snapshotArchive({
 }) {
   const shared = { client, roundId, maxRetries, baseDelayMs, alert, cumulativeFailures };
   const legacy = await snapshotRound({ ...shared, label });
+  if (!isRecord(legacy)) throw new Error('legacy snapshot receipt is invalid');
   if (!includePlatformSnapshot) return legacy;
   validateAuditConfiguration(auditKey, auditContext);
   const receipt = await runSnapshotRpc({
@@ -169,7 +174,7 @@ export async function snapshotArchive({
     ...shared,
     snapshotId: receipt?.id,
   });
-  return { legacy, platform, audit: buildSnapshotAudit(platform, auditContext, auditKey) };
+  return { legacy, platform, audit: buildSnapshotAudit(legacy, platform, auditContext, auditKey) };
 }
 
 function validateAuditConfiguration(auditKey, context) {
@@ -186,9 +191,9 @@ function validateAuditConfiguration(auditKey, context) {
   }
 }
 
-function buildSnapshotAudit(platform, context, auditKey) {
+function buildSnapshotAudit(legacy, platform, context, auditKey) {
   const audit = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     event: 'platform_snapshot_export',
     exportedAt: context.exportedAt,
     repository: context.repository,
@@ -202,14 +207,14 @@ function buildSnapshotAudit(platform, context, auditKey) {
     ...audit,
     integrity: {
       algorithm: 'hmac-sha256',
-      target: 'platform+provenance',
-      digest: snapshotDigest(platform, audit, auditKey),
+      target: 'legacy+platform+provenance',
+      digest: snapshotDigest(legacy, platform, audit, auditKey),
     },
   };
 }
 
-function snapshotDigest(platform, audit, auditKey) {
-  const signedRecord = {
+function snapshotDigest(legacy, platform, audit, auditKey) {
+  const provenance = {
     schemaVersion: audit.schemaVersion,
     event: audit.event,
     exportedAt: audit.exportedAt,
@@ -219,23 +224,37 @@ function snapshotDigest(platform, audit, auditKey) {
     workflowRef: audit.workflowRef,
     keyId: audit.keyId,
     snapshotId: audit.snapshotId,
-    platform,
   };
+  const signedRecord = audit.schemaVersion === 2
+    ? { ...provenance, legacy, platform }
+    : { ...provenance, platform };
   return createHmac('sha256', auditKey).update(JSON.stringify(signedRecord)).digest('hex');
 }
 
-/** Verifies that the exported platform row still matches its audit manifest. */
+function snapshotIntegrityScope(audit) {
+  return {
+    integrityTarget: audit.integrity.target,
+    legacyIntegrityVerified: audit.schemaVersion === 2,
+  };
+}
+
+/** Verifies the signed archive scope declared by its audit manifest. */
 export function verifySnapshotArchiveIntegrity(archive, auditKey) {
   if (!hasExactFields(archive, SNAPSHOT_ARCHIVE_FIELDS)
+    || !isRecord(archive.legacy)
     || !hasExactFields(archive.platform, SNAPSHOT_PLATFORM_FIELDS, SNAPSHOT_PLATFORM_REQUIRED_FIELDS)
     || !hasExactFields(archive.audit, SNAPSHOT_AUDIT_FIELDS)
     || !hasExactFields(archive.audit.integrity, SNAPSHOT_INTEGRITY_FIELDS)) return false;
   if (typeof auditKey !== 'string' || auditKey.length < 32) return false;
-  if (archive.audit.schemaVersion !== 1 || archive.audit.event !== 'platform_snapshot_export') return false;
+  if (![1, 2].includes(archive.audit.schemaVersion) || archive.audit.event !== 'platform_snapshot_export') return false;
   if (archive.audit.snapshotId !== archive.platform.id) return false;
-  if (archive.audit.integrity?.algorithm !== 'hmac-sha256' || archive.audit.integrity?.target !== 'platform+provenance') return false;
+  const expectedTarget = archive.audit.schemaVersion === 2
+    ? 'legacy+platform+provenance'
+    : 'platform+provenance';
+  if (archive.audit.integrity?.algorithm !== 'hmac-sha256'
+    || archive.audit.integrity?.target !== expectedTarget) return false;
   if (!/^[a-f0-9]{64}$/.test(archive.audit.integrity.digest)) return false;
-  const expected = Buffer.from(snapshotDigest(archive.platform, archive.audit, auditKey), 'hex');
+  const expected = Buffer.from(snapshotDigest(archive.legacy, archive.platform, archive.audit, auditKey), 'hex');
   const actual = Buffer.from(archive.audit.integrity.digest, 'hex');
   return timingSafeEqual(actual, expected);
 }
@@ -278,12 +297,12 @@ function readVerifiedSnapshotArchive({ filePath, auditKey }) {
       throw new Error(`snapshot archive count mismatch: ${key}`);
     }
   }
-  return { archive, payload, counts };
+  return { archive, payload, counts, integrityScope: snapshotIntegrityScope(archive.audit) };
 }
 
 /** Verifies a signed archive file and returns metadata plus collection counts only. */
 export function verifySnapshotArchiveFile({ filePath, auditKey }) {
-  const { archive, counts } = readVerifiedSnapshotArchive({ filePath, auditKey });
+  const { archive, counts, integrityScope } = readVerifiedSnapshotArchive({ filePath, auditKey });
   return {
     status: 'verified',
     snapshotId: archive.platform.id,
@@ -294,6 +313,7 @@ export function verifySnapshotArchiveFile({ filePath, auditKey }) {
     runId: archive.audit.runId,
     commitSha: archive.audit.commitSha,
     workflowRef: archive.audit.workflowRef,
+    ...integrityScope,
     counts,
   };
 }
@@ -589,7 +609,7 @@ function unionSize(...sets) {
 
 /** Runs a read-only restore preflight without connecting to a database. */
 export function rehearseSnapshotArchiveFile({ filePath, auditKey }) {
-  const { archive, payload, counts } = readVerifiedSnapshotArchive({ filePath, auditKey });
+  const { archive, payload, counts, integrityScope } = readVerifiedSnapshotArchive({ filePath, auditKey });
   validateRestoreRowFields(payload);
   const ids = Object.fromEntries(ID_COLLECTIONS.map((collection) => [collection, collectionIds(payload, collection)]));
   validateSubmissionRows(payload);
@@ -615,6 +635,7 @@ export function rehearseSnapshotArchiveFile({ filePath, auditKey }) {
     status: 'preflight_passed',
     snapshotId: archive.platform.id,
     keyId: archive.audit.keyId,
+    ...integrityScope,
     databaseRestoreExecuted: false,
     archiveRestoreOrder: [...ARCHIVE_RESTORE_ORDER],
     checkedInternalReferences,
@@ -813,6 +834,8 @@ $restore_counts$;
 select jsonb_build_object(
   'status', 'restore_rehearsal_passed',
   'snapshotId', ${Number(preflight.snapshotId)},
+  'integrityTarget', '${preflight.integrityTarget}',
+  'legacyIntegrityVerified', ${preflight.legacyIntegrityVerified},
   'databaseName', current_database(),
   'databaseRestoreExecuted', true,
   'transactionRolledBack', true,
@@ -838,6 +861,8 @@ $restore_rollback$;
       status: 'restore_rehearsal_prepared',
       snapshotId: preflight.snapshotId,
       keyId: preflight.keyId,
+      integrityTarget: preflight.integrityTarget,
+      legacyIntegrityVerified: preflight.legacyIntegrityVerified,
       databaseName,
       databaseRestoreExecuted: false,
       transactionRollbackRequired: true,

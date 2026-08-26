@@ -140,6 +140,31 @@ async function signedArchiveFixture(payload = platformPayloadFixture()) {
   });
 }
 
+function schemaV1Archive(archive) {
+  const audit = {
+    schemaVersion: 1,
+    event: archive.audit.event,
+    exportedAt: archive.audit.exportedAt,
+    repository: archive.audit.repository,
+    runId: archive.audit.runId,
+    commitSha: archive.audit.commitSha,
+    workflowRef: archive.audit.workflowRef,
+    keyId: archive.audit.keyId,
+    snapshotId: archive.audit.snapshotId,
+  };
+  const digest = createHmac('sha256', TEST_AUDIT_KEY).update(JSON.stringify({
+    ...audit,
+    platform: archive.platform,
+  })).digest('hex');
+  return {
+    ...archive,
+    audit: {
+      ...audit,
+      integrity: { algorithm: 'hmac-sha256', target: 'platform+provenance', digest },
+    },
+  };
+}
+
 function withSnapshotFile(archive, callback) {
   const tempDir = mkdtempSync(join(tmpdir(), 'snapshot-verify-'));
   const filePath = join(tempDir, 'snapshot.json');
@@ -229,7 +254,7 @@ test('adds the platform snapshot after the legacy snapshot when platform export 
     legacy: { snapshot_id: 42, source: 'cron' },
     platform: platformRow,
     audit: {
-      schemaVersion: 1,
+      schemaVersion: 2,
       event: 'platform_snapshot_export',
       exportedAt: '2026-08-11T05:30:00.000Z',
       repository: 'seojaehong/climate-assembly-wiki',
@@ -240,9 +265,9 @@ test('adds the platform snapshot after the legacy snapshot when platform export 
       snapshotId: 77,
       integrity: {
         algorithm: 'hmac-sha256',
-        target: 'platform+provenance',
+        target: 'legacy+platform+provenance',
         digest: createHmac('sha256', TEST_AUDIT_KEY).update(JSON.stringify({
-          schemaVersion: 1,
+          schemaVersion: 2,
           event: 'platform_snapshot_export',
           exportedAt: TEST_AUDIT_CONTEXT.exportedAt,
           repository: TEST_AUDIT_CONTEXT.repository,
@@ -251,6 +276,7 @@ test('adds the platform snapshot after the legacy snapshot when platform export 
           workflowRef: TEST_AUDIT_CONTEXT.workflowRef,
           keyId: TEST_AUDIT_CONTEXT.keyId,
           snapshotId: 77,
+          legacy: { snapshot_id: 42, source: 'cron' },
           platform: platformRow,
         })).digest('hex'),
       },
@@ -273,6 +299,18 @@ test('keeps the platform snapshot disabled by default without changing the legac
     p_source: 'cron',
   });
   expect(out).toEqual({ snapshot_id: 42 });
+});
+
+test('refuses to sign an empty legacy snapshot receipt before creating the platform snapshot', async () => {
+  const rpc = vi.fn().mockResolvedValueOnce({ data: null, error: null });
+  await expect(snapshotArchive({
+    client: makeClient(rpc),
+    roundId: 8,
+    includePlatformSnapshot: true,
+    ...TEST_AUDIT_OPTIONS,
+  })).rejects.toThrow('legacy snapshot receipt is invalid');
+  expect(rpc).toHaveBeenCalledOnce();
+  expect(rpc).not.toHaveBeenCalledWith('platform_snapshot_now', expect.any(Object));
 });
 
 test('fails visibly when the created platform snapshot payload cannot be exported', async () => {
@@ -414,6 +452,7 @@ test('verifies the exported platform row and rejects payload tampering', async (
     workflowRef: forgedAudit.workflowRef,
     keyId: forgedAudit.keyId,
     snapshotId: forgedAudit.snapshotId,
+    legacy: archive.legacy,
     platform: forgedPlatform,
   };
   const forgedArchive = {
@@ -428,6 +467,32 @@ test('verifies the exported platform row and rejects payload tampering', async (
     },
   };
   expect(verifySnapshotArchiveIntegrity(forgedArchive, TEST_AUDIT_KEY)).toBe(false);
+});
+
+test('binds the legacy snapshot into schema v2 archive integrity', async () => {
+  const archive = await signedArchiveFixture();
+  expect(archive.audit.schemaVersion).toBe(2);
+  expect(archive.audit.integrity.target).toBe('legacy+platform+provenance');
+  expect(verifySnapshotArchiveIntegrity({
+    ...archive,
+    legacy: { ...archive.legacy, snapshot_id: 999 },
+  }, TEST_AUDIT_KEY)).toBe(false);
+});
+
+test('reports schema v1 archives as platform-only integrity without overstating legacy verification', async () => {
+  const archive = schemaV1Archive(await signedArchiveFixture());
+  expect(verifySnapshotArchiveIntegrity(archive, TEST_AUDIT_KEY)).toBe(true);
+  expect(verifySnapshotArchiveIntegrity({
+    ...archive,
+    legacy: { ...archive.legacy, snapshot_id: 999 },
+  }, TEST_AUDIT_KEY)).toBe(true);
+  withSnapshotFile(archive, (filePath) => {
+    expect(verifySnapshotArchiveFile({ filePath, auditKey: TEST_AUDIT_KEY }))
+      .toEqual(expect.objectContaining({
+        integrityTarget: 'platform+provenance',
+        legacyIntegrityVerified: false,
+      }));
+  });
 });
 
 test('rejects signed snapshot archive envelope schema drift without exposing unknown values', async () => {
@@ -538,6 +603,8 @@ test('verifies a signed archive file and returns a non-sensitive recovery summar
       runId: TEST_AUDIT_CONTEXT.runId,
       commitSha: TEST_AUDIT_CONTEXT.commitSha,
       workflowRef: TEST_AUDIT_CONTEXT.workflowRef,
+      integrityTarget: 'legacy+platform+provenance',
+      legacyIntegrityVerified: true,
       counts: {
         submission: 1,
         submission_item: 1,
@@ -559,6 +626,8 @@ test('rehearses internal restore relationships and reports unavailable parent de
       status: 'preflight_passed',
       snapshotId: 77,
       keyId: TEST_AUDIT_CONTEXT.keyId,
+      integrityTarget: 'legacy+platform+provenance',
+      legacyIntegrityVerified: true,
       databaseRestoreExecuted: false,
       archiveRestoreOrder: [
         'submission',
@@ -1348,6 +1417,7 @@ test('rejects a validly signed archive whose row is not a platform snapshot', as
           workflowRef: archive.audit.workflowRef,
           keyId: archive.audit.keyId,
           snapshotId: archive.audit.snapshotId,
+          legacy: archive.legacy,
           platform,
         }))
         .digest('hex'),
@@ -1453,6 +1523,8 @@ test('builds a transaction-bound restore rehearsal for the isolated verify datab
     expect(result.report).toEqual(expect.objectContaining({
       status: 'restore_rehearsal_prepared',
       snapshotId: 77,
+      integrityTarget: 'legacy+platform+provenance',
+      legacyIntegrityVerified: true,
       databaseName: 'verify',
       databaseRestoreExecuted: false,
       counts: expect.objectContaining({ submission: 1, issue: 1, ballot: 1 }),
@@ -1476,6 +1548,7 @@ test('builds a transaction-bound restore rehearsal for the isolated verify datab
     }
     expect(result.sql).toContain('actual is distinct from expected');
     expect(result.sql).toContain("'archiveRowsVerified', true");
+    expect(result.sql).toContain("'legacyIntegrityVerified', true");
     expect(result.sql).toContain('jsonb_populate_recordset(null::climate_vote.submission');
     expect(result.sql).toContain("'databaseRestoreExecuted', true");
     expect(result.sql).toContain('rollback;');

@@ -116,7 +116,7 @@ const payload = {
 const platform = { id: 77, source: 'platform', payload };
 const legacy = { snapshot_id: 42 };
 const audit = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   event: 'platform_snapshot_export',
   exportedAt: timestamp,
   repository: 'seojaehong/climate-assembly-wiki',
@@ -126,12 +126,12 @@ const audit = {
   keyId: 'snapshot-restore-test-key',
   snapshotId: platform.id,
 };
-const digest = createHmac('sha256', auditKey).update(JSON.stringify({ ...audit, platform })).digest('hex');
+const digest = createHmac('sha256', auditKey).update(JSON.stringify({ ...audit, legacy, platform })).digest('hex');
 writeFileSync(outputPath, JSON.stringify({
   legacy,
   platform,
   audit: {
     ...audit,
-    integrity: { algorithm: 'hmac-sha256', target: 'platform+provenance', digest },
+    integrity: { algorithm: 'hmac-sha256', target: 'legacy+platform+provenance', digest },
   },
 }, null, 2), { encoding: 'utf8', flag: 'wx' });

@@ -30,7 +30,7 @@
 - GitHub Actions repository variable `PLATFORM_SNAPSHOT_ENABLED`가 없거나 `false`이면 기존 `cv_snapshot_now`만 호출한다. 현재 기본값이다.
 - 승인 후 값을 정확히 `true`로 설정하면 각 실행에서 기존 snapshot을 먼저 보존하고 `platform_snapshot_now`를 추가 호출한다. 기존 투표·의제 payload를 플랫폼 snapshot으로 대체하지 않는다.
 - 비활성 상태의 Drive JSON은 기존 `cv_snapshot_now` 반환 형상을 그대로 유지한다. 활성화 상태에서는 생성된 platform snapshot 행을 ID로 다시 읽어 실제 `payload`를 포함한 `{ legacy, platform, audit }` JSON으로 Drive에 올린다.
-- `audit` manifest는 GitHub run ID·repository·commit SHA·workflow ref·export 시각·snapshot ID·`keyId`와 `platform` 전체 행을 HMAC-SHA256으로 결속한다. 복구 시 `audit.keyId`에 해당하며 Drive 파일 밖에 보관한 키를 `verifySnapshotArchiveIntegrity()`에 전달해 provenance·payload 서명을 확인한다.
+- 새 `audit` schema v2 manifest는 GitHub run ID·repository·commit SHA·workflow ref·export 시각·snapshot ID·`keyId`와 `legacy` RPC 결과·`platform` 전체 행을 HMAC-SHA256으로 함께 결속한다. 복구 시 `audit.keyId`에 해당하며 Drive 파일 밖에 보관한 키를 `verifySnapshotArchiveIntegrity()`에 전달해 provenance와 두 snapshot의 서명을 확인한다. 오류 없는 RPC가 빈 legacy receipt를 반환해도 platform RPC 전에 실패한다.
 - 복구 검증기는 `{ legacy, platform, audit }` 최상위와 platform snapshot 행, audit·integrity manifest를 exact-field 계약으로 읽는다. `platform`은 최소 `id|source|payload`가 있어야 하고, payload collection과 선언 count도 정본 필드만 허용한다. 새 DB 열·manifest 메모·count가 생기면 무시하지 않고 실패하므로 export 계약과 복원기를 함께 검토·갱신한 뒤 다시 생성한다.
 - 활성화하면 `climate_vote.snapshots`에 실행당 행이 1개에서 2개로 늘고 Drive 저장량도 증가한다. 프로덕션 행 증가와 저장량을 승인한 뒤에만 켠다.
 - `platform_p2_analysis_review.sql` 적용, service role의 `platform_snapshot_now(text)` 실행 권한, `climate_vote.snapshots` SELECT 권한을 먼저 확인한다. GitHub Actions secret `SNAPSHOT_AUDIT_HMAC_KEY`에는 32자 이상의 무작위 키를 두고 Drive JSON·로그·저장소에는 기록하지 않는다. repository variable `SNAPSHOT_AUDIT_KEY_ID`에는 비밀값이 아닌 불변 키 버전을 둔다. 키·key ID·GitHub provenance 중 하나라도 없으면 platform RPC 전에 실패한다.
@@ -56,7 +56,8 @@ node snapshot-db.mjs --rehearse 'C:\secure\snapshots\archive.json'
 Remove-Item Env:SNAPSHOT_AUDIT_HMAC_KEY
 ```
 
-- `--verify` 성공 시 snapshot ID·source·key ID·GitHub provenance와 collection별 건수만 JSON으로 출력한다. 제출 원문이나 참여 데이터는 출력하지 않는다.
+- `--verify` 성공 시 snapshot ID·source·key ID·GitHub provenance, `integrityTarget`, `legacyIntegrityVerified`와 collection별 건수만 JSON으로 출력한다. 제출 원문이나 참여 데이터는 출력하지 않는다. 새 schema v2는 `legacy+platform+provenance`와 `legacyIntegrityVerified:true`여야 한다.
+- 과거 schema v1 archive의 `platform+provenance` HMAC은 platform 복구 호환을 위해 계속 검증하지만 `legacyIntegrityVerified:false`로 보고한다. v1의 legacy 내용은 그 HMAC이 보호하지 않으므로 검증된 것으로 취급하지 말고, 별도 원본·Drive version history 등 독립 증거와 대조한다. v1 파일을 v2로 다시 포장하거나 새 시각의 원본이라고 주장하지 않는다.
 - HMAC이 다르거나 JSON이 손상됐거나 envelope 필드가 누락·추가됐거나 `platform` source가 아니거나 필수 collection이 빠졌거나 선언 count 필드·건수와 실제 배열 길이가 다르면 nonzero로 종료한다. 오류에는 알 수 없는 필드명·값이나 archive 원문을 출력하지 않는다.
 - 필수 collection은 `submission`, `submission_item`, `issue`, `issue_link`, `result_page`, `ballot`, `ballot_item`, `ballot_response`다.
 - `--rehearse`는 위 검증 후 archive 내부 ID·FK(외래키: 다른 행을 가리키는 값), DB 고유키, submission 상태와 item 순서·종류·본문·근거, issue의 제목·방향·빈도·origin·검수 상태와 link 작성 주체, result page 제목·scope, ballot 제목·상태와 문항 순서·본문·허용 척도·필수 여부 boolean, 응답 client ID의 DB 길이 범위를 읽기 전용으로 점검한다. UUID 컬럼인 모든 행 ID, 내부 FK, 외부 부모 참조와 nullable `issue_link.cluster_id`·`ballot_response.org_id`는 PostgreSQL JSON export와 같은 소문자 8-4-4-4-12 canonical 형식이어야 한다. submission 상태는 `draft|final|reopened|archived`, item 종류는 `core|extra`, 순서는 PostgreSQL `integer` 범위만 허용한다. 본문은 PostgreSQL `trim`·`length` 의미로 1~2,000자, nullable 근거는 원문 기준 최대 2,000자다. issue 제목은 같은 의미로 1~200자이며 nullable 방향·빈도와 필수 origin·검수 상태·link 작성 주체는 migration enum만 허용한다. result page 제목은 1~300자다. `jsonb NOT NULL`은 SQL `NULL`만 막고 JSON 값 `null`은 허용하므로 archive의 provenance와 body가 JSON `null`인 것만으로 거부하지 않는다. ballot 제목과 문항 본문은 각각 1~200자와 1~300자를 검사하고, 상태는 `draft|open|closed|published|archived`만 허용한다. 각 issue link는 RPC와 같은 규칙으로 원문 submission과 topic·조직이 같아야 하며, `ballot_response.org_id`가 명시된 경우에는 상위 ballot 조직과 같아야 한다. 익명 응답의 nullable org는 계속 허용한다. 각 응답의 모든 문항 키가 archive에 존재하고 응답이 속한 같은 ballot의 문항인지도 전수 확인한다. 성공 요약에는 내부 참조·테넌트 관계·응답 점검 건수, 복원 순서, archive 밖 `org`·`discussion_topic`·`team`·`session`·`assembly` 부모의 중복 제거 건수와 `databaseRestoreExecuted: false`만 남기며 원문·ID·응답 값은 출력하지 않는다. nullable인 `ballot_response.org_id`도 값이 있으면 조직 부모 집합에 포함하고 형식을 검사한다. `result_page.scope`는 `topic`·`session`·`assembly`별 부모 건수에 합산하고 다른 값은 거부한다.
@@ -160,7 +161,7 @@ gh workflow run finalize.yml -f workshop=test-dry-run
 - [ ] Drive SA 인증 OK — `test-dry-run` 폴더가 Drive 부모 폴더 안에 생성됨
 - [ ] Supabase RPC OK — `snapshot.out.json` 안에 `outPath` 존재
 - [ ] 플랫폼 export 승인 시에만 `PLATFORM_SNAPSHOT_ENABLED=true`이고, Drive JSON의 `platform.payload`·`legacy`·`audit` 결과가 모두 존재
-- [ ] `audit.keyId`로 선택한 Drive 밖의 과거/현재 HMAC 키로 `verifySnapshotArchiveIntegrity()`가 내려받은 JSON에 `true`를 반환하고 run ID·commit SHA가 실행 기록과 일치
+- [ ] `audit.keyId`로 선택한 Drive 밖의 현재 HMAC 키로 `verifySnapshotArchiveIntegrity()`가 내려받은 schema v2 JSON에 `true`를 반환하고 `integrityTarget=legacy+platform+provenance`·`legacyIntegrityVerified=true`·run ID·commit SHA가 실행 기록과 일치
 - [ ] Playwright 4페이지 모두 PNG 생성 — Drive `test-dry-run/{ts}/`에 page-{board,event,race-40,event-bar}.png
 - [ ] PNG Drive 업로드 OK — UI에서 4 파일 직접 확인
 - [ ] Sheets `워크숍_아카이브!A:E`에 test-dry-run row append
