@@ -13,7 +13,7 @@ import {
 
 function passingAutomatedReport() {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     sourceCommit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     sourceTreeClean: true,
     targetRevision: {
@@ -21,7 +21,7 @@ function passingAutomatedReport() {
       sourceCommit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     },
     status: 'needs_review',
-    standard: 'WCAG 2.2 AA automated subset + skip-link focus + responsive overflow',
+    standard: 'WCAG 2.2 AA automated subset + skip-link focus + keyboard focus order + responsive overflow',
     summary: {
       auditCaseCount: 2,
       passedCases: 2,
@@ -31,6 +31,7 @@ function passingAutomatedReport() {
     routes: [{
       passed: true,
       skipLink: { focusMoved: true },
+      keyboardFocusOrder: { required: true, passed: true },
       requiredScrollRegions: [{ found: true, scrollable: true, focused: true, keyboardScrolled: true }],
       layout: { horizontalOverflow: false, contentWidthSufficient: true, clippedOutsideScrollRegions: [] },
     }],
@@ -76,6 +77,7 @@ test('keeps all 33 KWCAG 2.2 requirements mapped to real evidence contracts', ()
     'skip-link-focus',
     'responsive-overflow',
     'keyboard-scroll-regions',
+    'keyboard-focus-order',
   ]));
 });
 
@@ -178,6 +180,22 @@ test('fails affected requirements when an automated evidence contract fails', ()
   expect(report.status).toBe('fail');
   expect(report.summary.failedCount).toBeGreaterThan(0);
   expect(report.criteria.find(({ id }) => id === '5.1.1')).toMatchObject({ status: 'fail' });
+});
+
+test('fails keyboard requirements when bidirectional focus evidence fails', () => {
+  const manualEvidence = manualTemplate();
+  passManualEvidence(manualEvidence);
+  const automatedReport = passingAutomatedReport();
+  automatedReport.routes[0].keyboardFocusOrder.passed = false;
+  const report = buildKwcagCoverageReport({
+    automatedReport,
+    manualEvidence,
+    generatedAt: new Date('2026-08-26T02:00:00.000Z'),
+  });
+
+  expect(report.status).toBe('fail');
+  expect(report.criteria.find(({ id }) => id === '6.1.1')).toMatchObject({ status: 'fail' });
+  expect(report.criteria.find(({ id }) => id === '6.1.2')).toMatchObject({ status: 'fail' });
 });
 
 test('CLI writes a non-certification coverage report and never echoes malformed evidence', () => {

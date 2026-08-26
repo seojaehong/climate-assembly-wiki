@@ -261,6 +261,11 @@ async function exerciseRejectedPlatformLogin({ page }) {
   }
 }
 
+async function preparePlatformLoginKeyboardAudit({ page }) {
+  await page.getByLabel('이메일').fill('accessibility-audit@example.invalid');
+  await page.getByLabel('비밀번호').fill('fixture-password');
+}
+
 function publishedResultFixture() {
   return {
     scope: 'session',
@@ -327,7 +332,19 @@ async function preparePublishedResult({ page }) {
 }
 
 export const DEFAULT_AUDIT_ROUTES = [
-  { id: 'platform-login', path: '/platform/', skipTarget: 'platform-scope-content' },
+  {
+    id: 'platform-login',
+    path: '/platform/',
+    skipTarget: 'platform-scope-content',
+    fixture: 'ci-login-keyboard-fixture-v1',
+    afterNavigation: preparePlatformLoginKeyboardAudit,
+    requiredKeyboardFocusOrder: [
+      '#platform-email',
+      '#platform-password',
+      'button[type="submit"]',
+      'a[href="/platform/accessibility/"]',
+    ],
+  },
   {
     id: 'platform-login-error',
     path: '/platform/',
@@ -445,6 +462,108 @@ async function inspectRequiredScrollRegions(page, labels) {
   return results;
 }
 
+async function inspectRequiredKeyboardFocusOrder(page, expected) {
+  if (expected.length === 0) {
+    return {
+      required: false,
+      expected: [],
+      availability: [],
+      forward: [],
+      reverse: [],
+      escapedForward: false,
+      escapedBackward: false,
+      passed: true,
+    };
+  }
+
+  const availability = [];
+  for (const selector of expected) {
+    const locator = page.locator(selector);
+    const count = await locator.count();
+    availability.push({
+      selector,
+      found: count === 1,
+      visible: count === 1 && await locator.isVisible(),
+      enabled: count === 1 && await locator.isEnabled(),
+    });
+  }
+
+  const fingerprint = () => page.evaluate(() => {
+    const element = document.activeElement;
+    if (!(element instanceof HTMLElement)) return null;
+    const href = element.getAttribute('href');
+    return {
+      tag: element.tagName.toLowerCase(),
+      id: element.id || null,
+      type: element.getAttribute('type'),
+      role: element.getAttribute('role'),
+      hrefPath: href ? new URL(href, document.baseURI).pathname : null,
+    };
+  });
+  const capture = async (expectedSelector) => ({
+    expectedSelector,
+    matched: await page.evaluate(
+      (selector) => document.activeElement instanceof Element && document.activeElement.matches(selector),
+      expectedSelector,
+    ),
+    active: await fingerprint(),
+  });
+
+  if (availability.some(({ found, visible, enabled }) => !found || !visible || !enabled)) {
+    return {
+      required: true,
+      expected,
+      availability,
+      forward: [],
+      reverse: [],
+      escapedForward: false,
+      escapedBackward: false,
+      passed: false,
+    };
+  }
+
+  const forward = [];
+  await page.locator(expected[0]).focus();
+  forward.push(await capture(expected[0]));
+  for (const selector of expected.slice(1)) {
+    await page.keyboard.press('Tab');
+    forward.push(await capture(selector));
+  }
+  await page.keyboard.press('Tab');
+  const escapedForward = await page.evaluate(
+    (selectors) => !(document.activeElement instanceof Element)
+      || selectors.every((selector) => !document.activeElement.matches(selector)),
+    expected,
+  );
+
+  const reversedExpected = [...expected].reverse();
+  const reverse = [];
+  await page.locator(reversedExpected[0]).focus();
+  reverse.push(await capture(reversedExpected[0]));
+  for (const selector of reversedExpected.slice(1)) {
+    await page.keyboard.press('Shift+Tab');
+    reverse.push(await capture(selector));
+  }
+  await page.keyboard.press('Shift+Tab');
+  const escapedBackward = await page.evaluate(
+    (selectors) => !(document.activeElement instanceof Element)
+      || selectors.every((selector) => !document.activeElement.matches(selector)),
+    expected,
+  );
+  const matched = [...forward, ...reverse].every((entry) => entry.matched);
+
+  return {
+    required: true,
+    expected,
+    availability,
+    forward,
+    reverse,
+    escapedForward,
+    escapedBackward,
+    passed: matched && escapedForward && escapedBackward,
+  };
+}
+
 async function auditRoute(browser, baseUrl, route, profile, settleMs) {
   const context = await browser.newContext({ viewport: profile.viewport });
   const page = await context.newPage();
@@ -507,6 +626,10 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
     const requiredScrollRegions = profile.id === 'mobile'
       ? await inspectRequiredScrollRegions(page, route.requiredMobileScrollRegions ?? [])
       : [];
+    const keyboardFocusOrder = await inspectRequiredKeyboardFocusOrder(
+      page,
+      route.requiredKeyboardFocusOrder ?? [],
+    );
     const violations = axeResult.violations.map(violationEvidence);
     const incomplete = axeResult.incomplete.map(violationEvidence);
     const httpStatus = response?.status() ?? null;
@@ -518,6 +641,7 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
       && !layout.horizontalOverflow
       && layout.contentWidthSufficient
       && layout.clippedOutsideScrollRegions.length === 0
+      && keyboardFocusOrder.passed
       && requiredScrollRegions.every((region) => region.found && region.scrollable && region.focused && region.keyboardScrolled);
     return {
       id: `${route.id}:${profile.id}`,
@@ -531,6 +655,7 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
       httpStatus,
       passed,
       skipLink,
+      keyboardFocusOrder,
       requiredScrollRegions,
       layout,
       violations,
@@ -551,6 +676,16 @@ async function auditRoute(browser, baseUrl, route, profile, settleMs) {
       httpStatus: null,
       passed: false,
       skipLink: { found: false, target: route.skipTarget, focusMoved: false },
+      keyboardFocusOrder: {
+        required: Array.isArray(route.requiredKeyboardFocusOrder) && route.requiredKeyboardFocusOrder.length > 0,
+        expected: Array.isArray(route.requiredKeyboardFocusOrder) ? route.requiredKeyboardFocusOrder : [],
+        availability: [],
+        forward: [],
+        reverse: [],
+        escapedForward: false,
+        escapedBackward: false,
+        passed: false,
+      },
       requiredScrollRegions: [],
       layout: null,
       violations: [],
@@ -587,6 +722,13 @@ export async function auditPlatformAccessibility({
   }
   for (const route of routes) {
     if (!route.skipTarget) throw new Error(`Route ${route.id} requires an expected skip target.`);
+    if (route.requiredKeyboardFocusOrder !== undefined
+      && (!Array.isArray(route.requiredKeyboardFocusOrder)
+        || route.requiredKeyboardFocusOrder.length < 2
+        || route.requiredKeyboardFocusOrder.some((selector) => typeof selector !== 'string' || !selector.trim())
+        || new Set(route.requiredKeyboardFocusOrder).size !== route.requiredKeyboardFocusOrder.length)) {
+      throw new Error(`Route ${route.id} requires a unique keyboard focus order with at least two selectors.`);
+    }
   }
   if (!Array.isArray(profiles) || profiles.length === 0) {
     throw new Error('At least one accessibility audit profile is required.');
@@ -619,13 +761,13 @@ export async function auditPlatformAccessibility({
   const failed = passedCases !== auditedRoutes.length;
   const needsReview = !failed && (incompleteCount > 0 || excludedSurfaces.length > 0);
   const report = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     generatedAt: generatedAt.toISOString(),
     sourceCommit,
     sourceTreeClean,
     targetRevision,
     baseUrl,
-    standard: 'WCAG 2.2 AA automated subset + skip-link focus + responsive overflow',
+    standard: 'WCAG 2.2 AA automated subset + skip-link focus + keyboard focus order + responsive overflow',
     engine: { name: 'axe-core', version: axe.version, tags: WCAG_TAGS },
     status: failed ? 'fail' : needsReview ? 'needs_review' : 'pass',
     summary: {

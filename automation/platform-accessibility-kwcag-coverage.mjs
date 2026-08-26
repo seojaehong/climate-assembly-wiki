@@ -23,6 +23,7 @@ export const AUTOMATED_ACCESSIBILITY_EVIDENCE = [
   { id: 'skip-link-focus', label: 'Chromium skip-link focus movement' },
   { id: 'responsive-overflow', label: 'Desktop and mobile responsive overflow' },
   { id: 'keyboard-scroll-regions', label: 'Keyboard-operable named horizontal scroll regions' },
+  { id: 'keyboard-focus-order', label: 'Chromium bidirectional keyboard focus order' },
 ];
 
 const KWCAG_22_REQUIREMENT_IDS = [
@@ -44,8 +45,8 @@ export const KWCAG_22_CRITERIA = [
   { id: '5.4.2', name: '자동 재생 금지', automatedEvidence: [], manualEvidence: [cross('audio-and-moving-content')] },
   { id: '5.4.3', name: '텍스트 콘텐츠의 명도 대비', automatedEvidence: ['axe-wcag22-aa'], manualEvidence: [cross('instructions-color-and-contrast')] },
   { id: '5.4.4', name: '콘텐츠 간의 구분', automatedEvidence: ['responsive-overflow'], manualEvidence: [cross('instructions-color-and-contrast')] },
-  { id: '6.1.1', name: '키보드 사용 보장', automatedEvidence: ['keyboard-scroll-regions'], manualEvidence: ['authenticated-platform:controls-and-forms', cross('keyboard-focus-and-shortcuts')] },
-  { id: '6.1.2', name: '초점 이동과 표시', automatedEvidence: ['skip-link-focus'], manualEvidence: ['platform-login:focus-order', cross('keyboard-focus-and-shortcuts')] },
+  { id: '6.1.1', name: '키보드 사용 보장', automatedEvidence: ['keyboard-scroll-regions', 'keyboard-focus-order'], manualEvidence: ['authenticated-platform:controls-and-forms', cross('keyboard-focus-and-shortcuts')] },
+  { id: '6.1.2', name: '초점 이동과 표시', automatedEvidence: ['skip-link-focus', 'keyboard-focus-order'], manualEvidence: ['platform-login:focus-order', cross('keyboard-focus-and-shortcuts')] },
   { id: '6.1.3', name: '조작 가능', automatedEvidence: ['axe-wcag22-aa'], manualEvidence: [cross('pointer-input')] },
   { id: '6.1.4', name: '문자 단축키', automatedEvidence: [], manualEvidence: [cross('keyboard-focus-and-shortcuts')] },
   { id: '6.2.1', name: '응답시간 조절', automatedEvidence: [], manualEvidence: [cross('time-limits')] },
@@ -116,14 +117,14 @@ export function validateKwcagCoverageContract({ criteria = KWCAG_22_CRITERIA } =
 }
 
 function automatedEvidenceResults(report) {
-  if (report?.schemaVersion !== 3 || !/^[0-9a-f]{40}$/.test(report.sourceCommit ?? '')
+  if (report?.schemaVersion !== 4 || !/^[0-9a-f]{40}$/.test(report.sourceCommit ?? '')
     || report.sourceTreeClean !== true
     || report.targetRevision?.status !== 'verified'
     || report.targetRevision.sourceCommit !== report.sourceCommit) {
     throw new Error('Automated accessibility report requires clean committed source');
   }
   if (!Array.isArray(report.routes) || report.routes.length === 0
-    || report.standard !== 'WCAG 2.2 AA automated subset + skip-link focus + responsive overflow') {
+    || report.standard !== 'WCAG 2.2 AA automated subset + skip-link focus + keyboard focus order + responsive overflow') {
     throw new Error('Automated accessibility report does not match the required schema and standard');
   }
   const summary = report.summary ?? {};
@@ -142,11 +143,17 @@ function automatedEvidenceResults(report) {
     region.found === true && region.scrollable === true
     && region.focused === true && region.keyboardScrolled === true
   ));
+  const focusOrders = report.routes
+    .map((route) => route.keyboardFocusOrder)
+    .filter((focusOrder) => focusOrder?.required === true);
+  const focusOrderPassed = focusOrders.length > 0
+    && focusOrders.every((focusOrder) => focusOrder.passed === true);
   return [
     { id: 'axe-wcag22-aa', status: axePassed ? 'pass' : 'fail' },
     { id: 'skip-link-focus', status: skipPassed ? 'pass' : 'fail' },
     { id: 'responsive-overflow', status: responsivePassed ? 'pass' : 'fail' },
     { id: 'keyboard-scroll-regions', status: scrollRegions.length === 0 ? 'needs_review' : scrollPassed ? 'pass' : 'fail' },
+    { id: 'keyboard-focus-order', status: focusOrders.length === 0 ? 'needs_review' : focusOrderPassed ? 'pass' : 'fail' },
   ];
 }
 

@@ -60,6 +60,21 @@ const exercisedPage = `<!doctype html><html lang="ko"><head><title>상태 전환
   <a href="#main-content" style="display:inline-flex;align-items:center;min-height:24px">본문 바로가기</a><main id="main-content" tabindex="-1">
   <button type="button" style="min-width:44px;min-height:44px" onclick="document.querySelector('p').hidden=false">오류 표시</button>
   <p role="alert" hidden>입력 오류</p></main></body></html>`;
+const focusOrderPage = `<!doctype html><html lang="ko"><head><title>키보드 순서</title></head><body>
+  <a href="#main-content">본문 바로가기</a><main id="main-content" tabindex="-1">
+  <form aria-label="로그인"><label for="email">이메일</label><input id="email" type="email">
+  <label for="password">비밀번호</label><input id="password" type="password">
+  <button type="submit">로그인</button><a id="help" href="/help">도움말</a></form></main></body></html>`;
+const trappedFocusOrderPage = focusOrderPage.replace('</body>', `<script>
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Tab') return;
+    if (!event.shiftKey && document.activeElement?.id === 'help') {
+      event.preventDefault(); document.querySelector('#email').focus();
+    } else if (event.shiftKey && document.activeElement?.id === 'email') {
+      event.preventDefault(); document.querySelector('#help').focus();
+    }
+  });
+  </script></body>`);
 
 beforeAll(async () => {
   outDir = mkdtempSync(join(tmpdir(), 'platform-a11y-'));
@@ -80,6 +95,10 @@ beforeAll(async () => {
               ? preparedPage
             : request.url === '/exercised'
               ? exercisedPage
+            : request.url === '/focus-order'
+              ? focusOrderPage
+            : request.url === '/trapped-focus-order'
+              ? trappedFocusOrderPage
             : validPage,
     );
   });
@@ -107,7 +126,7 @@ test('audits WCAG 2.2 AA and skip-link focus through a real browser', async () =
   });
 
   expect(report.status).toBe('pass');
-  expect(report.schemaVersion).toBe(3);
+  expect(report.schemaVersion).toBe(4);
   expect(report.sourceCommit).toBe(TEST_SOURCE_COMMIT);
   expect(report.sourceTreeClean).toBe(true);
   expect(report.targetRevision).toEqual({
@@ -130,6 +149,103 @@ test('audits WCAG 2.2 AA and skip-link focus through a real browser', async () =
   expect(existsSync(reportPath)).toBe(true);
   expect(JSON.parse(readFileSync(reportPath, 'utf8'))).toEqual(report);
 }, BROWSER_TEST_TIMEOUT_MS);
+
+test('records exact forward and reverse keyboard focus order in browser evidence', async () => {
+  const expectedOrder = ['#email', '#password', 'button[type="submit"]', '#help'];
+  const report = await auditPlatformAccessibility({
+    baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
+    routes: [{
+      id: 'focus-order',
+      path: '/focus-order',
+      skipTarget: 'main-content',
+      requiredKeyboardFocusOrder: expectedOrder,
+    }],
+    reportPath: join(outDir, 'focus-order.json'),
+  });
+
+  expect(report.status).toBe('pass');
+  expect(report.routes[0].keyboardFocusOrder).toMatchObject({
+    required: true,
+    expected: expectedOrder,
+    passed: true,
+    escapedForward: true,
+    escapedBackward: true,
+  });
+  expect(report.routes[0].keyboardFocusOrder.forward).toEqual(
+    expectedOrder.map((expectedSelector) => expect.objectContaining({ expectedSelector, matched: true })),
+  );
+  expect(report.routes[0].keyboardFocusOrder.reverse).toEqual(
+    [...expectedOrder].reverse().map((expectedSelector) => expect.objectContaining({ expectedSelector, matched: true })),
+  );
+}, BROWSER_TEST_TIMEOUT_MS);
+
+test('fails a route when its required keyboard focus order does not match the page', async () => {
+  const report = await auditPlatformAccessibility({
+    baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
+    routes: [{
+      id: 'wrong-focus-order',
+      path: '/focus-order',
+      skipTarget: 'main-content',
+      requiredKeyboardFocusOrder: ['#email', 'button[type="submit"]', '#password', '#help'],
+    }],
+    reportPath: join(outDir, 'wrong-focus-order.json'),
+  });
+
+  expect(report.status).toBe('fail');
+  expect(report.routes[0]).toMatchObject({
+    passed: false,
+    keyboardFocusOrder: { required: true, passed: false },
+  });
+  expect(report.routes[0].keyboardFocusOrder.forward).toEqual(expect.arrayContaining([
+    expect.objectContaining({ expectedSelector: 'button[type="submit"]', matched: false }),
+  ]));
+}, BROWSER_TEST_TIMEOUT_MS);
+
+test('fails a focus cycle that never escapes the required controls', async () => {
+  const report = await auditPlatformAccessibility({
+    baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
+    routes: [{
+      id: 'trapped-focus-order',
+      path: '/trapped-focus-order',
+      skipTarget: 'main-content',
+      requiredKeyboardFocusOrder: ['#email', '#password', 'button[type="submit"]', '#help'],
+    }],
+    reportPath: join(outDir, 'trapped-focus-order.json'),
+  });
+
+  expect(report.status).toBe('fail');
+  expect(report.routes[0].keyboardFocusOrder).toMatchObject({
+    passed: false,
+    escapedForward: false,
+    escapedBackward: false,
+  });
+}, BROWSER_TEST_TIMEOUT_MS);
+
+test('rejects malformed keyboard focus contracts before launching the audit', async () => {
+  const audit = (requiredKeyboardFocusOrder) => auditPlatformAccessibility({
+    baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
+    routes: [{
+      id: 'malformed-focus-order',
+      path: '/focus-order',
+      skipTarget: 'main-content',
+      requiredKeyboardFocusOrder,
+    }],
+    reportPath: join(outDir, 'malformed-focus-order.json'),
+  });
+
+  await expect(audit(['#email'])).rejects.toThrow('unique keyboard focus order');
+  await expect(audit(['#email', '#email'])).rejects.toThrow('unique keyboard focus order');
+  await expect(audit(['#email', ''])).rejects.toThrow('unique keyboard focus order');
+  await expect(audit('not-an-array')).rejects.toThrow('unique keyboard focus order');
+});
 
 test('verifies the exact same-origin deployment revision manifest', async () => {
   const manifestUrl = `${baseUrl}/deployment-revision.json`;
@@ -490,6 +606,17 @@ test('covers authenticated and published production surfaces with read-only brow
     'published-result',
     'ontology-review',
   ]);
+  expect(DEFAULT_AUDIT_ROUTES.find((route) => route.id === 'platform-login')).toMatchObject({
+    path: '/platform/',
+    fixture: 'ci-login-keyboard-fixture-v1',
+    afterNavigation: expect.any(Function),
+    requiredKeyboardFocusOrder: [
+      '#platform-email',
+      '#platform-password',
+      'button[type="submit"]',
+      'a[href="/platform/accessibility/"]',
+    ],
+  });
   expect(DEFAULT_AUDIT_ROUTES.find((route) => route.id === 'platform-login-error')).toMatchObject({
     path: '/platform/',
     fixture: 'ci-login-rejection-fixture-v1',
