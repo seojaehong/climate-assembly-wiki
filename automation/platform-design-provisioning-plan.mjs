@@ -469,9 +469,16 @@ function validateExecutionApprovalState(approvalState, { approvedAt, expiresAt, 
       'approvalId', 'executionId', 'organizationId', 'targetHost',
       'claimedBy', 'claimedRole', 'planChecksum', 'status', 'claimedAt',
     ];
+    const revisionedClaim = Object.prototype.hasOwnProperty.call(
+      claim ?? {},
+      'authorizationRevision',
+    );
+    const claimKeys = revisionedClaim
+      ? [...baseClaimKeys, 'authorizationRevision']
+      : baseClaimKeys;
     const terminalClaim = ['completed', 'failed'].includes(claim?.status);
     if (!isRecord(claim)
-      || !exactKeys(claim, terminalClaim ? [...baseClaimKeys, 'finalizedAt'] : baseClaimKeys)
+      || !exactKeys(claim, terminalClaim ? [...claimKeys, 'finalizedAt'] : claimKeys)
       || !UUID_PATTERN.test(claim.approvalId ?? '')
       || !UUID_PATTERN.test(claim.executionId ?? '')
       || !UUID_PATTERN.test(claim.organizationId ?? '')
@@ -479,6 +486,7 @@ function validateExecutionApprovalState(approvalState, { approvedAt, expiresAt, 
       || !AUTH_REVIEWER_PATTERN.test(claim.claimedBy ?? '')
       || !DESIGN_APPROVAL_ROLES.includes(claim.claimedRole)
       || !SHA256_PATTERN.test(claim.planChecksum ?? '')
+      || (revisionedClaim && !SHA256_PATTERN.test(claim.authorizationRevision ?? ''))
       || !['claimed', 'completed', 'failed'].includes(claim.status)) {
       throw new Error('Design provisioning execution approval state is invalid');
     }
@@ -1050,10 +1058,15 @@ function validateLiveAuthorizationContext(context, approval) {
 }
 
 function validateAuthorizationAdapter(adapter, { requireFinalize = false } = {}) {
-  const claimOnlyShape = isRecord(adapter)
-    && exactKeys(adapter, ['readSnapshot', 'claim']);
-  const finalizationShape = isRecord(adapter)
-    && exactKeys(adapter, ['readSnapshot', 'claim', 'finalize']);
+  const revisioned = adapter?.revisionedLiveAuthorization === true;
+  const claimOnlyKeys = revisioned
+    ? ['revisionedLiveAuthorization', 'readSnapshot', 'claim']
+    : ['readSnapshot', 'claim'];
+  const finalizationKeys = revisioned
+    ? ['revisionedLiveAuthorization', 'readSnapshot', 'claim', 'finalize']
+    : ['readSnapshot', 'claim', 'finalize'];
+  const claimOnlyShape = isRecord(adapter) && exactKeys(adapter, claimOnlyKeys);
+  const finalizationShape = isRecord(adapter) && exactKeys(adapter, finalizationKeys);
   if (!isRecord(adapter)
     || (requireFinalize ? !finalizationShape : (!claimOnlyShape && !finalizationShape))
     || typeof adapter.readSnapshot !== 'function'
@@ -1064,41 +1077,67 @@ function validateAuthorizationAdapter(adapter, { requireFinalize = false } = {})
   return adapter;
 }
 
-function validateAuthorizationSnapshot(snapshot) {
-  if (!isRecord(snapshot) || !exactKeys(snapshot, ['state', 'context'])) {
+function validateAuthorizationSnapshot(snapshot, { requireRevision = false } = {}) {
+  const revisioned = isRecord(snapshot)
+    && Object.prototype.hasOwnProperty.call(snapshot, 'revision');
+  const expectedKeys = revisioned ? ['state', 'context', 'revision'] : ['state', 'context'];
+  if (!isRecord(snapshot)
+    || !exactKeys(snapshot, expectedKeys)
+    || (requireRevision && !revisioned)
+    || (revisioned && !SHA256_PATTERN.test(snapshot.revision ?? ''))) {
     throw new Error('Design provisioning authorization snapshot is invalid');
   }
   validateLiveAuthorizationContextShape(snapshot.context);
   return snapshot;
 }
 
-function validateClaimAdapterResult(result) {
+function validateClaimAdapterResult(result, { requireRevision = false } = {}) {
+  const revisioned = isRecord(result)
+    && Object.prototype.hasOwnProperty.call(result, 'revision');
+  const expectedKeys = revisioned
+    ? ['status', 'state', 'context', 'revision']
+    : ['status', 'state', 'context'];
   if (!isRecord(result)
-    || !exactKeys(result, ['status', 'state', 'context'])
-    || !['claimed', 'conflict'].includes(result.status)) {
+    || !exactKeys(result, expectedKeys)
+    || !['claimed', 'conflict'].includes(result.status)
+    || (requireRevision && !revisioned)
+    || (revisioned && !SHA256_PATTERN.test(result.revision ?? ''))) {
     throw new Error('Design provisioning authorization claim result is invalid');
   }
   validateLiveAuthorizationContextShape(result.context);
   return result;
 }
 
-function validateFinalizationAdapterResult(result) {
+function validateFinalizationAdapterResult(result, { requireRevision = false } = {}) {
+  const revisioned = isRecord(result)
+    && Object.prototype.hasOwnProperty.call(result, 'revision');
+  const expectedKeys = revisioned
+    ? ['status', 'state', 'context', 'revision']
+    : ['status', 'state', 'context'];
   if (!isRecord(result)
-    || !exactKeys(result, ['status', 'state', 'context'])
-    || !['finalized', 'conflict'].includes(result.status)) {
+    || !exactKeys(result, expectedKeys)
+    || !['finalized', 'conflict'].includes(result.status)
+    || (requireRevision && !revisioned)
+    || (revisioned && !SHA256_PATTERN.test(result.revision ?? ''))) {
     throw new Error('Design provisioning authorization finalization result is invalid');
   }
   validateLiveAuthorizationContextShape(result.context);
   return result;
 }
 
-function assertClaimActor(state, context) {
+function assertClaimActor(state, context, authorizationRevision) {
   if (!state.claim
     || state.claim.claimedBy !== context.userId
     || state.claim.claimedRole !== context.role
     || state.claim.organizationId !== context.organizationId
     || state.claim.targetHost !== context.targetHost) {
     throw new Error('Design provisioning authorization claim actor is invalid');
+  }
+  const claimRevision = state.claim.authorizationRevision;
+  if ((authorizationRevision !== undefined || claimRevision !== undefined)
+    && (!SHA256_PATTERN.test(authorizationRevision ?? '')
+      || claimRevision !== authorizationRevision)) {
+    throw new Error('Design provisioning authorization claim authorization revision is invalid');
   }
 }
 
@@ -1217,6 +1256,111 @@ export function createInMemoryDesignProvisioningAuthorizationAdapter(context) {
   });
 }
 
+export function createInMemoryRevisionedDesignProvisioningAuthorizationProvider(context) {
+  validateLiveAuthorizationContextShape(context);
+  let liveContext = structuredClone(context);
+  let contextGeneration = 0;
+  const states = new Map();
+  const stateFor = (approvalId) => states.get(approvalId) ?? {
+    approvalId,
+    revokedAt: null,
+    claim: null,
+  };
+  const revision = () => sha256(canonicalJson({
+    domain: 'platform_design_provisioning_live_authorization_revision_v1',
+    contextGeneration,
+    context: liveContext,
+  }));
+  const snapshotFor = (approvalId) => ({
+    state: structuredClone(stateFor(approvalId)),
+    context: structuredClone(liveContext),
+    revision: revision(),
+  });
+  const authorizationAdapter = Object.freeze({
+    revisionedLiveAuthorization: true,
+    async readSnapshot(approvalId) {
+      if (!UUID_PATTERN.test(approvalId ?? '')) {
+        throw new Error('In-memory revisioned authorization lookup is invalid');
+      }
+      return snapshotFor(approvalId);
+    },
+    async claim(expectedSnapshotValue, claim) {
+      const expectedSnapshot = validateAuthorizationSnapshot(
+        expectedSnapshotValue,
+        { requireRevision: true },
+      );
+      if (!isRecord(claim)
+        || claim.approvalId !== expectedSnapshot.state?.approvalId
+        || claim.authorizationRevision !== expectedSnapshot.revision) {
+        throw new Error('In-memory revisioned authorization claim is invalid');
+      }
+      const current = snapshotFor(claim.approvalId);
+      if (canonicalJson(current) !== canonicalJson(expectedSnapshot)
+        || current.state.revokedAt !== null
+        || current.state.claim !== null) {
+        return { status: 'conflict', ...current };
+      }
+      const nextState = { ...current.state, claim: structuredClone(claim) };
+      states.set(claim.approvalId, nextState);
+      return { status: 'claimed', ...snapshotFor(claim.approvalId) };
+    },
+    async finalize(expectedSnapshotValue, terminalClaim) {
+      const expectedSnapshot = validateAuthorizationSnapshot(
+        expectedSnapshotValue,
+        { requireRevision: true },
+      );
+      if (!isRecord(terminalClaim)
+        || terminalClaim.approvalId !== expectedSnapshot.state?.approvalId
+        || terminalClaim.authorizationRevision !== expectedSnapshot.revision) {
+        throw new Error('In-memory revisioned authorization finalization is invalid');
+      }
+      const current = snapshotFor(terminalClaim.approvalId);
+      const { status, finalizedAt, ...terminalIdentity } = terminalClaim;
+      if (canonicalJson(current) !== canonicalJson(expectedSnapshot)
+        || current.state.revokedAt !== null
+        || current.state.claim?.status !== 'claimed'
+        || !['completed', 'failed'].includes(status)
+        || typeof finalizedAt !== 'string'
+        || canonicalJson(current.state.claim) !== canonicalJson({
+          ...terminalIdentity,
+          status: 'claimed',
+        })) {
+        return { status: 'conflict', ...current };
+      }
+      const nextState = { ...current.state, claim: structuredClone(terminalClaim) };
+      states.set(terminalClaim.approvalId, nextState);
+      return { status: 'finalized', ...snapshotFor(terminalClaim.approvalId) };
+    },
+  });
+  return Object.freeze({
+    authorizationAdapter,
+    async transitionContext({ approvalId, expectedRevision, context: nextContextValue } = {}) {
+      if (!UUID_PATTERN.test(approvalId ?? '')
+        || !SHA256_PATTERN.test(expectedRevision ?? '')) {
+        throw new Error('In-memory revisioned authorization context transition is invalid');
+      }
+      const nextContext = structuredClone(
+        validateLiveAuthorizationContextShape(nextContextValue),
+      );
+      const current = snapshotFor(approvalId);
+      if (current.revision !== expectedRevision) {
+        return {
+          status: 'conflict',
+          context: current.context,
+          revision: current.revision,
+        };
+      }
+      liveContext = nextContext;
+      contextGeneration += 1;
+      return {
+        status: 'updated',
+        context: structuredClone(liveContext),
+        revision: revision(),
+      };
+    },
+  });
+}
+
 export async function claimDesignProvisioningExecutionApproval({
   approval,
   plan,
@@ -1228,11 +1372,13 @@ export async function claimDesignProvisioningExecutionApproval({
   now = new Date(),
 }) {
   const adapter = validateAuthorizationAdapter(authorizationAdapter);
+  const revisionRequired = adapter.revisionedLiveAuthorization === true;
   if (!isRecord(approval) || !UUID_PATTERN.test(approval.approvalId ?? '')) {
     throw new Error('Design provisioning execution approval is invalid');
   }
   const initialSnapshot = validateAuthorizationSnapshot(
     await adapter.readSnapshot(approval?.approvalId),
+    { requireRevision: revisionRequired },
   );
   validateLiveAuthorizationContext(initialSnapshot.context, approval);
   const initialAuthorization = verifyDesignProvisioningExecutionApproval(
@@ -1250,7 +1396,11 @@ export async function claimDesignProvisioningExecutionApproval({
     },
   );
   if (initialAuthorization.claimAction === 'resume_existing_claim') {
-    assertClaimActor(initialSnapshot.state, initialSnapshot.context);
+    assertClaimActor(
+      initialSnapshot.state,
+      initialSnapshot.context,
+      initialSnapshot.revision,
+    );
     return claimedApprovalResult(approval, 'existing');
   }
   const trustedNow = now instanceof Date ? new Date(now.getTime()) : new Date(now);
@@ -1267,10 +1417,15 @@ export async function claimDesignProvisioningExecutionApproval({
     planChecksum: approval.planChecksum,
     status: 'claimed',
     claimedAt: trustedNow.toISOString(),
+    ...(revisionRequired ? { authorizationRevision: initialSnapshot.revision } : {}),
   };
   const claimResult = validateClaimAdapterResult(
     await adapter.claim(structuredClone(initialSnapshot), claim),
+    { requireRevision: revisionRequired },
   );
+  if (revisionRequired && claimResult.revision !== initialSnapshot.revision) {
+    throw new Error('Design provisioning authorization claim authorization revision is invalid');
+  }
   validateLiveAuthorizationContext(claimResult.context, approval);
   const claimedAuthorization = verifyDesignProvisioningExecutionApproval(
     approval,
@@ -1289,7 +1444,7 @@ export async function claimDesignProvisioningExecutionApproval({
   if (claimedAuthorization.claimAction !== 'resume_existing_claim') {
     throw new Error('Design provisioning authorization claim result is invalid');
   }
-  assertClaimActor(claimResult.state, claimResult.context);
+  assertClaimActor(claimResult.state, claimResult.context, claimResult.revision);
   return claimedApprovalResult(approval, claimResult.status === 'claimed' ? 'new' : 'reconciled');
 }
 
@@ -1308,11 +1463,13 @@ export async function finalizeDesignProvisioningExecutionApproval({
     throw new Error('Design provisioning execution approval terminal outcome is invalid');
   }
   const adapter = validateAuthorizationAdapter(authorizationAdapter, { requireFinalize: true });
+  const revisionRequired = adapter.revisionedLiveAuthorization === true;
   if (!isRecord(approval) || !UUID_PATTERN.test(approval.approvalId ?? '')) {
     throw new Error('Design provisioning execution approval is invalid');
   }
   const initialSnapshot = validateAuthorizationSnapshot(
     await adapter.readSnapshot(approval.approvalId),
+    { requireRevision: revisionRequired },
   );
   validateLiveAuthorizationContext(initialSnapshot.context, approval);
   const verificationOptions = {
@@ -1334,7 +1491,11 @@ export async function finalizeDesignProvisioningExecutionApproval({
   if (!initialSnapshot.state.claim) {
     throw new Error('Design provisioning authorization finalization requires an active claim');
   }
-  assertClaimActor(initialSnapshot.state, initialSnapshot.context);
+  assertClaimActor(
+    initialSnapshot.state,
+    initialSnapshot.context,
+    initialSnapshot.revision,
+  );
   const expectedAction = outcome === 'completed' ? 'completion_recorded' : 'failure_recorded';
   if (['completion_recorded', 'failure_recorded'].includes(initialAuthorization.claimAction)) {
     if (initialAuthorization.claimAction !== expectedAction) {
@@ -1356,7 +1517,11 @@ export async function finalizeDesignProvisioningExecutionApproval({
   };
   const finalizationResult = validateFinalizationAdapterResult(
     await adapter.finalize(structuredClone(initialSnapshot), terminalClaim),
+    { requireRevision: revisionRequired },
   );
+  if (revisionRequired && finalizationResult.revision !== initialSnapshot.revision) {
+    throw new Error('Design provisioning authorization claim authorization revision is invalid');
+  }
   if (finalizationResult.status === 'finalized'
     && canonicalJson(finalizationResult.state?.claim) !== canonicalJson(terminalClaim)) {
     throw new Error('Design provisioning authorization finalization result is invalid');
@@ -1380,7 +1545,11 @@ export async function finalizeDesignProvisioningExecutionApproval({
     }
     throw new Error('Design provisioning authorization finalization result is invalid');
   }
-  assertClaimActor(finalizationResult.state, finalizationResult.context);
+  assertClaimActor(
+    finalizationResult.state,
+    finalizationResult.context,
+    finalizationResult.revision,
+  );
   return finalizedApprovalResult(
     approval,
     outcome,
@@ -1468,8 +1637,14 @@ async function persistExecutionReceiptAndFinalize({
 }) {
   const claimedSnapshot = validateAuthorizationSnapshot(
     await authorizationAdapter.readSnapshot(approval.approvalId),
+    { requireRevision: authorizationAdapter.revisionedLiveAuthorization === true },
   );
   validateLiveAuthorizationContext(claimedSnapshot.context, approval);
+  assertClaimActor(
+    claimedSnapshot.state,
+    claimedSnapshot.context,
+    claimedSnapshot.revision,
+  );
   const candidateReceipt = sealDesignProvisioningExecutionReceipt({
     plan,
     blueprint,
@@ -1593,6 +1768,7 @@ export async function executeDesignProvisioningApprovalLifecycle({
 
   const executionAuthorizationSnapshot = validateAuthorizationSnapshot(
     await authorization.readSnapshot(approval.approvalId),
+    { requireRevision: authorization.revisionedLiveAuthorization === true },
   );
   validateLiveAuthorizationContext(executionAuthorizationSnapshot.context, approval);
   const executionAuthorization = verifyDesignProvisioningExecutionApproval(
@@ -1615,6 +1791,7 @@ export async function executeDesignProvisioningApprovalLifecycle({
   assertClaimActor(
     executionAuthorizationSnapshot.state,
     executionAuthorizationSnapshot.context,
+    executionAuthorizationSnapshot.revision,
   );
 
   const executionPlan = designProvisioningExecutionCandidate(plan);
@@ -1687,6 +1864,7 @@ export async function reconcileDesignProvisioningApprovalLifecycle({
   const reconciliationAt = lifecycleTime(clock);
   const initialSnapshot = validateAuthorizationSnapshot(
     await authorization.readSnapshot(approval?.approvalId),
+    { requireRevision: authorization.revisionedLiveAuthorization === true },
   );
   validateLiveAuthorizationContext(initialSnapshot.context, approval);
   const initialAuthorization = verifyDesignProvisioningExecutionApproval(
@@ -1707,7 +1885,11 @@ export async function reconcileDesignProvisioningApprovalLifecycle({
   if (initialAuthorization.claimAction !== 'resume_existing_claim') {
     throw new Error('Design provisioning execution reconciliation requires an active claim');
   }
-  assertClaimActor(initialSnapshot.state, initialSnapshot.context);
+  assertClaimActor(
+    initialSnapshot.state,
+    initialSnapshot.context,
+    initialSnapshot.revision,
+  );
   const startedAt = canonicalUtc(initialSnapshot.state.claim?.claimedAt);
   if (!startedAt) {
     throw new Error('Design provisioning execution reconciliation claim is invalid');
@@ -1777,6 +1959,41 @@ export async function reconcileDesignProvisioningApprovalLifecycle({
     expectedKeyId,
     clock,
     executionDisposition: 'reconciled',
+  });
+}
+
+function requireRevisionedAuthorizationAdapter(adapterValue) {
+  const adapter = validateAuthorizationAdapter(
+    adapterValue,
+    { requireFinalize: true },
+  );
+  if (adapter.revisionedLiveAuthorization !== true) {
+    throw new Error('Design provisioning revisioned authorization adapter is required');
+  }
+  return adapter;
+}
+
+export async function executeDesignProvisioningApprovalLifecycleWithRevisionedAuthorization(
+  options = {},
+) {
+  const authorizationAdapter = requireRevisionedAuthorizationAdapter(
+    options.authorizationAdapter,
+  );
+  return executeDesignProvisioningApprovalLifecycle({
+    ...options,
+    authorizationAdapter,
+  });
+}
+
+export async function reconcileDesignProvisioningApprovalLifecycleWithRevisionedAuthorization(
+  options = {},
+) {
+  const authorizationAdapter = requireRevisionedAuthorizationAdapter(
+    options.authorizationAdapter,
+  );
+  return reconcileDesignProvisioningApprovalLifecycle({
+    ...options,
+    authorizationAdapter,
   });
 }
 

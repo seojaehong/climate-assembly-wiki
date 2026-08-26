@@ -326,8 +326,13 @@ function validateClaim(claim, approvalId) {
     'approvalId', 'executionId', 'organizationId', 'targetHost', 'claimedBy',
     'claimedRole', 'planChecksum', 'status', 'claimedAt',
   ];
+  const revisioned = Object.prototype.hasOwnProperty.call(
+    claim ?? {},
+    'authorizationRevision',
+  );
+  const claimKeys = revisioned ? [...baseKeys, 'authorizationRevision'] : baseKeys;
   const terminal = ['completed', 'failed'].includes(claim?.status);
-  if (!exactKeys(claim, terminal ? [...baseKeys, 'finalizedAt'] : baseKeys)
+  if (!exactKeys(claim, terminal ? [...claimKeys, 'finalizedAt'] : claimKeys)
     || claim.approvalId !== approvalId
     || !UUID_PATTERN.test(claim.executionId ?? '')
     || !UUID_PATTERN.test(claim.organizationId ?? '')
@@ -335,6 +340,7 @@ function validateClaim(claim, approvalId) {
     || !AUTH_USER_PATTERN.test(claim.claimedBy ?? '')
     || !['org_admin', 'hq'].includes(claim.claimedRole)
     || !SHA256_PATTERN.test(claim.planChecksum ?? '')
+    || (revisioned && !SHA256_PATTERN.test(claim.authorizationRevision ?? ''))
     || !['claimed', 'completed', 'failed'].includes(claim.status)
     || new Date(claim.claimedAt).toISOString() !== claim.claimedAt
     || (terminal && new Date(claim.finalizedAt).toISOString() !== claim.finalizedAt)

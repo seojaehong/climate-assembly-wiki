@@ -141,6 +141,8 @@ Execution adapter는 append-only receipt persistence를 명시하고 `runId`별 
 
 `platform-design-provisioning-key-registry.mjs`는 A4 approval seal/verifier와 receipt verifier 앞에서 exact registry entry를 읽는 비-production 정책 wrapper다. `active` key의 신규 발급은 entry revision과 `authorizeIssuance()` CAS가 일치하고 registry의 `authorizedAt`이 approval 창 안일 때만 허용한다. 회전 또는 만료가 CAS보다 먼저면 봉인하지 않는다. `verify_only`는 발급 중단 이전 approval·receipt를 검증 종료 시각까지만 검증하며, `retired`와 cutoff 위반은 HMAC key를 저수준 함수에 전달하기 전에 거부한다. Registry-backed 실행·reconciliation wrapper는 한 번 검증한 key snapshot과 첫 trusted clock을 기존 injected lifecycle에 전달하고 직접 key 옵션을 거부한다. 이후 완료·finalize 시각도 같은 검증 종료시각을 통과해야 하며 cutoff를 넘으면 receipt 없이 claim을 열린 상태로 둔다. Registry 오류는 key ID·key material을 싣지 않은 일반 오류로 바꾸고 반환 결과에도 key를 포함하지 않는다. 실제 key 저장소·KMS/HSM·회전 작업·production adapter 연결은 제공하지 않으므로 합성 adapter 테스트가 key custody blocker를 해소하지는 않는다.
 
+Production-bound live authorization seam은 `revisionedLiveAuthorization:true`인 adapter만 사용한다. Snapshot과 claim/finalize 결과의 SHA-256 revision을 새 claim의 `authorizationRevision`에 결속하고 execution 직전·receipt 봉인·reconciliation·finalize마다 대조한다. 같은 actor·role·active boolean으로 복귀한 membership/org ABA도 revision이 달라지면 claim을 열린 상태로 두고 중단한다. In-memory revision provider와 revision-only/key-registry-composed lifecycle wrapper는 이 CAS 의미를 검증하는 test double이며 실제 Supabase row version·authoritative revocation·transaction adapter를 구현하지 않는다.
+
 ```powershell
 cd automation
 $blueprint = Join-Path $env:LOCALAPPDATA 'climate-assembly-private\platform-design-blueprint.json'

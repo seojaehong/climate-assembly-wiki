@@ -429,3 +429,34 @@ export async function reconcileDesignProvisioningApprovalLifecycleWithKeyRegistr
     throw error;
   }
 }
+
+function requireRevisionedLifecycleAuthorization(options) {
+  const adapter = options.authorizationAdapter;
+  if (!isRecord(adapter)
+    || !exactKeys(adapter, [
+      'revisionedLiveAuthorization',
+      'readSnapshot',
+      'claim',
+      'finalize',
+    ])
+    || adapter.revisionedLiveAuthorization !== true
+    || typeof adapter.readSnapshot !== 'function'
+    || typeof adapter.claim !== 'function'
+    || typeof adapter.finalize !== 'function') {
+    throw new Error('Design provisioning revisioned authorization adapter is required');
+  }
+}
+
+export async function executeDesignProvisioningApprovalLifecycleWithKeyRegistryAndRevisionedAuthorization(
+  options = {},
+) {
+  requireRevisionedLifecycleAuthorization(options);
+  return executeDesignProvisioningApprovalLifecycleWithKeyRegistry(options);
+}
+
+export async function reconcileDesignProvisioningApprovalLifecycleWithKeyRegistryAndRevisionedAuthorization(
+  options = {},
+) {
+  requireRevisionedLifecycleAuthorization(options);
+  return reconcileDesignProvisioningApprovalLifecycleWithKeyRegistry(options);
+}

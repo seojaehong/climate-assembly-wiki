@@ -17,11 +17,14 @@ import {
   buildDesignProvisioningPlan,
   claimDesignProvisioningExecutionApproval,
   createInMemoryDesignProvisioningAuthorizationAdapter,
+  createInMemoryRevisionedDesignProvisioningAuthorizationProvider,
   createInMemoryDesignProvisioningReceiptAdapter,
   designProvisioningPlanChecksum,
   executeDesignProvisioningApprovalLifecycle,
+  executeDesignProvisioningApprovalLifecycleWithRevisionedAuthorization,
   finalizeDesignProvisioningExecutionApproval,
   reconcileDesignProvisioningApprovalLifecycle,
+  reconcileDesignProvisioningApprovalLifecycleWithRevisionedAuthorization,
   runDesignProvisioningCli,
   sealDesignProvisioningExecutionApproval,
   sealDesignProvisioningExecutionReceipt,
@@ -45,7 +48,9 @@ import {
 } from '../platform-design-provisioning-durable-store.mjs';
 import {
   executeDesignProvisioningApprovalLifecycleWithKeyRegistry,
+  executeDesignProvisioningApprovalLifecycleWithKeyRegistryAndRevisionedAuthorization,
   reconcileDesignProvisioningApprovalLifecycleWithKeyRegistry,
+  reconcileDesignProvisioningApprovalLifecycleWithKeyRegistryAndRevisionedAuthorization,
   sealDesignProvisioningExecutionApprovalWithKeyRegistry,
   verifyDesignProvisioningExecutionApprovalWithKeyRegistry,
   verifyDesignProvisioningExecutionReceiptWithKeyRegistry,
@@ -2280,6 +2285,325 @@ test('revalidates live authorization after claim before invoking the A4 RPC', as
   expect(executionCount).toBe(0);
   expect(await receiptAdapter.read(approval.executionId)).toBeNull();
   expect((await backingAuthorization.readSnapshot(approval.approvalId)).state.claim.status)
+    .toBe('claimed');
+});
+
+test('revisioned authorization CAS rejects a stale snapshot after an active-inactive-active ABA', async () => {
+  const { plan, approval } = executionApproval();
+  const provider = createInMemoryRevisionedDesignProvisioningAuthorizationProvider(liveContext());
+  const initial = await provider.authorizationAdapter.readSnapshot(approval.approvalId);
+  const inactive = await provider.transitionContext({
+    approvalId: approval.approvalId,
+    expectedRevision: initial.revision,
+    context: liveContext({ membershipActive: false }),
+  });
+  const activeAgain = await provider.transitionContext({
+    approvalId: approval.approvalId,
+    expectedRevision: inactive.revision,
+    context: liveContext(),
+  });
+  expect(activeAgain.revision).not.toBe(initial.revision);
+  expect(activeAgain.context).toEqual(initial.context);
+
+  const result = await provider.authorizationAdapter.claim(initial, {
+    ...claimedApprovalState(approval, plan).claim,
+    authorizationRevision: initial.revision,
+  });
+  expect(result).toMatchObject({
+    status: 'conflict',
+    revision: activeAgain.revision,
+    context: liveContext(),
+  });
+  expect(result.state.claim).toBeNull();
+});
+
+test('revisioned lifecycle rejects a legacy or malformed revision adapter before side effects', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  let executionCount = 0;
+  await expect(executeDesignProvisioningApprovalLifecycleWithRevisionedAuthorization({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter: createInMemoryDesignProvisioningAuthorizationAdapter(liveContext()),
+    receiptAdapter: createInMemoryDesignProvisioningReceiptAdapter(),
+    executionAdapter: { async execute() { executionCount += 1; } },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+  })).rejects.toThrow('revisioned authorization adapter is required');
+  await expect(executeDesignProvisioningApprovalLifecycleWithRevisionedAuthorization({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter: {
+      revisionedLiveAuthorization: true,
+      async readSnapshot() {
+        return { state: approvalState(), context: liveContext() };
+      },
+      async claim() { throw new Error('must not claim'); },
+      async finalize() { throw new Error('must not finalize'); },
+    },
+    receiptAdapter: createInMemoryDesignProvisioningReceiptAdapter(),
+    executionAdapter: { async execute() { executionCount += 1; } },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock('2026-08-25T13:05:00.000Z'),
+  })).rejects.toThrow('authorization snapshot is invalid');
+  expect(executionCount).toBe(0);
+});
+
+test('executes and finalizes through one revision-bound live authorization context', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const provider = createInMemoryRevisionedDesignProvisioningAuthorizationProvider(liveContext());
+  const receiptAdapter = createInMemoryDesignProvisioningReceiptAdapter();
+  const result = await executeDesignProvisioningApprovalLifecycleWithRevisionedAuthorization({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter: provider.authorizationAdapter,
+    receiptAdapter,
+    executionAdapter: {
+      async execute({ plan: executionPlan }) {
+        return completedExecutionResult(executionPlan);
+      },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock(
+      '2026-08-25T13:05:00.000Z',
+      '2026-08-25T13:06:00.000Z',
+      '2026-08-25T13:07:00.000Z',
+    ),
+  });
+  expect(result).toMatchObject({
+    status: 'execution_completed',
+    executionDisposition: 'executed',
+    finalizationDisposition: 'new',
+  });
+  const snapshot = await provider.authorizationAdapter.readSnapshot(approval.approvalId);
+  expect(snapshot.state.claim).toMatchObject({
+    status: 'completed',
+    authorizationRevision: snapshot.revision,
+  });
+  expect(JSON.stringify(result)).not.toContain(snapshot.revision);
+});
+
+test('composes revisioned authorization with the key registry before execution', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const provider = createInMemoryRevisionedDesignProvisioningAuthorizationProvider(liveContext());
+  let keyReadCount = 0;
+  const keyRegistry = {
+    async readKey() {
+      keyReadCount += 1;
+      return {
+        schemaVersion: 1,
+        kind: 'platform_design_provisioning_key_registry_entry',
+        keyId: approvalKeyId,
+        revision: 'e'.repeat(64),
+        state: 'active',
+        activatedAt: '2026-08-01T00:00:00.000Z',
+        issuanceDisabledAt: null,
+        verificationEndsAt: null,
+        trustedKey: approvalKey,
+      };
+    },
+  };
+  const result = await executeDesignProvisioningApprovalLifecycleWithKeyRegistryAndRevisionedAuthorization({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter: provider.authorizationAdapter,
+    receiptAdapter: createInMemoryDesignProvisioningReceiptAdapter(),
+    executionAdapter: {
+      async execute({ plan: executionPlan }) {
+        return completedExecutionResult(executionPlan);
+      },
+    },
+    keyRegistry,
+    clock: sequenceClock(
+      '2026-08-25T13:05:00.000Z',
+      '2026-08-25T13:06:00.000Z',
+      '2026-08-25T13:07:00.000Z',
+    ),
+  });
+  expect(result).toMatchObject({ status: 'execution_completed' });
+  expect(keyReadCount).toBe(1);
+  expect(JSON.stringify(result)).not.toContain(approvalKey);
+
+  let rejectedKeyReadCount = 0;
+  await expect(reconcileDesignProvisioningApprovalLifecycleWithKeyRegistryAndRevisionedAuthorization({
+    authorizationAdapter: createInMemoryDesignProvisioningAuthorizationAdapter(liveContext()),
+    keyRegistry: {
+      async readKey() {
+        rejectedKeyReadCount += 1;
+        throw new Error('must not read');
+      },
+    },
+  })).rejects.toThrow('revisioned authorization adapter is required');
+  expect(rejectedKeyReadCount).toBe(0);
+
+  let malformedKeyReadCount = 0;
+  await expect(executeDesignProvisioningApprovalLifecycleWithKeyRegistryAndRevisionedAuthorization({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter: {
+      revisionedLiveAuthorization: true,
+      readSnapshot: async () => ({ invalid: true }),
+    },
+    receiptAdapter: createInMemoryDesignProvisioningReceiptAdapter(),
+    executionAdapter: {
+      async execute({ plan: executionPlan }) {
+        return completedExecutionResult(executionPlan);
+      },
+    },
+    keyRegistry: {
+      async readKey() {
+        malformedKeyReadCount += 1;
+        throw new Error('must not read');
+      },
+    },
+    clock: sequenceClock('2026-08-25T13:05:00.000Z'),
+  })).rejects.toThrow('revisioned authorization adapter is required');
+  expect(malformedKeyReadCount).toBe(0);
+});
+
+test('keeps a revision-bound claim open when live authorization undergoes ABA before execution', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const provider = createInMemoryRevisionedDesignProvisioningAuthorizationProvider(liveContext());
+  const base = provider.authorizationAdapter;
+  let executionCount = 0;
+  const authorizationAdapter = {
+    revisionedLiveAuthorization: true,
+    readSnapshot: (approvalId) => base.readSnapshot(approvalId),
+    async claim(expectedSnapshot, claim) {
+      const result = await base.claim(expectedSnapshot, claim);
+      const inactive = await provider.transitionContext({
+        approvalId: approval.approvalId,
+        expectedRevision: result.revision,
+        context: liveContext({ membershipActive: false }),
+      });
+      await provider.transitionContext({
+        approvalId: approval.approvalId,
+        expectedRevision: inactive.revision,
+        context: liveContext(),
+      });
+      return result;
+    },
+    finalize: (expectedSnapshot, terminalClaim) => base.finalize(expectedSnapshot, terminalClaim),
+  };
+
+  await expect(executeDesignProvisioningApprovalLifecycleWithRevisionedAuthorization({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter: createInMemoryDesignProvisioningReceiptAdapter(),
+    executionAdapter: {
+      async execute() {
+        executionCount += 1;
+        throw new Error('must not execute');
+      },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock('2026-08-25T13:05:00.000Z'),
+  })).rejects.toThrow('claim authorization revision is invalid');
+  expect(executionCount).toBe(0);
+  expect((await base.readSnapshot(approval.approvalId)).state.claim.status).toBe('claimed');
+});
+
+test('does not seal a receipt when live authorization undergoes ABA during execution', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const provider = createInMemoryRevisionedDesignProvisioningAuthorizationProvider(liveContext());
+  const receiptAdapter = createInMemoryDesignProvisioningReceiptAdapter();
+  let executionCount = 0;
+  await expect(executeDesignProvisioningApprovalLifecycleWithRevisionedAuthorization({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter: provider.authorizationAdapter,
+    receiptAdapter,
+    executionAdapter: {
+      async execute({ plan: executionPlan }) {
+        executionCount += 1;
+        const claimed = await provider.authorizationAdapter.readSnapshot(approval.approvalId);
+        const inactive = await provider.transitionContext({
+          approvalId: approval.approvalId,
+          expectedRevision: claimed.revision,
+          context: liveContext({ membershipActive: false }),
+        });
+        await provider.transitionContext({
+          approvalId: approval.approvalId,
+          expectedRevision: inactive.revision,
+          context: liveContext(),
+        });
+        return completedExecutionResult(executionPlan);
+      },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock(
+      '2026-08-25T13:05:00.000Z',
+      '2026-08-25T13:06:00.000Z',
+    ),
+  })).rejects.toThrow('claim authorization revision is invalid');
+  expect(executionCount).toBe(1);
+  expect(await receiptAdapter.read(approval.executionId)).toBeNull();
+  expect((await provider.authorizationAdapter.readSnapshot(approval.approvalId)).state.claim.status)
+    .toBe('claimed');
+});
+
+test('blocks revisioned reconciliation after an active claim authorization ABA', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const provider = createInMemoryRevisionedDesignProvisioningAuthorizationProvider(liveContext());
+  await claimDesignProvisioningExecutionApproval({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter: provider.authorizationAdapter,
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+  });
+  const claimed = await provider.authorizationAdapter.readSnapshot(approval.approvalId);
+  const inactive = await provider.transitionContext({
+    approvalId: approval.approvalId,
+    expectedRevision: claimed.revision,
+    context: liveContext({ organizationActive: false }),
+  });
+  await provider.transitionContext({
+    approvalId: approval.approvalId,
+    expectedRevision: inactive.revision,
+    context: liveContext(),
+  });
+  let reconciliationCount = 0;
+  await expect(reconcileDesignProvisioningApprovalLifecycleWithRevisionedAuthorization({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter: provider.authorizationAdapter,
+    receiptAdapter: createInMemoryDesignProvisioningReceiptAdapter(),
+    reconciliationAdapter: {
+      async reconcile() {
+        reconciliationCount += 1;
+        return { status: 'pending' };
+      },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock('2026-08-25T13:20:00.000Z'),
+  })).rejects.toThrow('claim authorization revision is invalid');
+  expect(reconciliationCount).toBe(0);
+  expect((await provider.authorizationAdapter.readSnapshot(approval.approvalId)).state.claim.status)
     .toBe('claimed');
 });
 

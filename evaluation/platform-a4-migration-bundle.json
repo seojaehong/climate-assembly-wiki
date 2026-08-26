@@ -33,18 +33,18 @@
     },
     {
       "path": "automation/platform-design-provisioning-plan.mjs",
-      "sha256": "ec638ff503cab56823602146212f3786fc78610fbf07f8ecd5ac920a690db27f",
-      "bytes": 67748
+      "sha256": "2ee6ef8c9713cc1995634c7160b6b8d7f3e05d6d27eadafdf52e1c023131703d",
+      "bytes": 76296
     },
     {
       "path": "automation/platform-design-provisioning-durable-store.mjs",
-      "sha256": "e384bc0fe19749eb52b10464553d628dba4ff9af0bc79096ead917c9de38669c",
-      "bytes": 53050
+      "sha256": "bc855a11b0bb5b71e2519ef1353699a590a05a4030a39e3ee8e190b18973f75b",
+      "bytes": 53325
     },
     {
       "path": "automation/platform-design-provisioning-key-registry.mjs",
-      "sha256": "09398445caf68d6161585d68a73a0e580b44294fc214985a7fcaf6108b637dda",
-      "bytes": 14331
+      "sha256": "a12f30fc7dc306b6bdb9412147364c2f1f529450a7adcacbc89dfa7bb2890ecc",
+      "bytes": 15404
     },
     {
       "path": "automation/platform-a4-migration-bundle.mjs",
@@ -53,8 +53,8 @@
     },
     {
       "path": "automation/tests/platform-design-provisioning-plan.test.mjs",
-      "sha256": "05dc5b5d3cff32a09a32c8888f1168a55cc4721afacb0541dcbedc585eff5bcd",
-      "bytes": 127296
+      "sha256": "0fbc724d6c137e15acee09120150a4bac7c3a09afa9de614b7c55b17755ae668",
+      "bytes": 139927
     },
     {
       "path": "automation/tests/platform-a4-migration-bundle.test.mjs",
@@ -73,8 +73,8 @@
     },
     {
       "path": "docs/platform/A4_DESIGN_PROVISIONING_CONTRACT.md",
-      "sha256": "86c850fb099682e02d86ed580e4667dce46702d304d3b546cf860bb88e17a553",
-      "bytes": 30165
+      "sha256": "6cf0447fa3638af78ad7020fadbb6841b8b74af19c43dfeebaea33dd076d939b",
+      "bytes": 31430
     },
     {
       "path": "supabase/verify/design_provisioning_preflight.sql",
@@ -125,5 +125,5 @@
     "activatesStaffGrants": false,
     "connectsProductionExecutor": false
   },
-  "checksum": "ddc9fe7d94e1f4612589b7e5ff97a517deb90b7c19ee336c96da2446c20b80ca"
+  "checksum": "da5311746da4d73e9da1f81249d5dcd979c742ec3ade7b4f5e248a83a0027f4f"
 }
