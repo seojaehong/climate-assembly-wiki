@@ -255,6 +255,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A5 로그인 실패 복구 접근성 계약(2026-08-26):** 로그인 제출 직전 form 내부 활성 요소를 기억하고 인증 실패로 controls가 다시 활성화된 뒤 그 요소로 포커스를 복귀시킨다. 오류와 안내 live region은 atomic announcement를 명시하고, 오류 발생 시 이메일·비밀번호 입력 모두 같은 alert를 설명으로 참조하며 `aria-invalid=true`를 유지한다. 격리된 `.invalid` Auth fixture의 실제 Chromium 검증은 비밀번호 입력에서 제출한 뒤 같은 입력으로 포커스 복귀, 요청 중 두 입력 잠금, 로그인 요청 1회, 중복 요청 차단, 실패 뒤 재시도 활성화, 두 필드 오류 연결, atomic alert, 비밀번호 마스킹 유지, browser page error·예상 밖 요청 0건을 확인했다. 루트 전체 65개 파일·1,081건과 automation 전체 28개 파일·496건은 통과했고, 기본 5초 automation 제한에서 환경 지연으로 CLI fixture 4건이 timeout된 별도 실행은 30초 제한의 동일 suite로 기능 통과를 재확인했다. 실제 credential·외부 Auth·DB는 사용하지 않았고 NVDA·VoiceOver·TalkBack 수동 평가 상태도 변경하지 않았다.
 
+**A4 reconciliation source evidence 결속(2026-08-26):** 휴면 operation ledger에 원 청사진 SHA-256과 byte 길이를 비식별 metadata로 추가하고, mutation exact replay와 read-only reconciliation이 executed plan checksum·operation type뿐 아니라 두 source evidence도 exact 대조하도록 강화했다. 원본 bytes는 저장하지 않는다. 변조된 source SHA와 100→99 byte 길이가 기존 SQL에서는 completed reconciliation으로 통과하는 실패 회귀를 먼저 확인했고, 수정 뒤 둘 다 `design_reconciliation_conflict`로 차단했다. Post-apply verifier는 17개 필수 column과 source SHA/길이 제약의 canonical definition을 확인하며, 완화된 길이 제약을 실제로 거부했다. PostgreSQL 16 격리 semantic/post-apply, A4 집중 96건, 루트 전체 65개 파일·1,081건, automation 전체 28개 파일·496건과 Astro 337개 파일 오류·경고 0건(기존 hint 49건)이 통과했다. Bundle checksum은 `94705effd7e0910943fcf1123b57695148cc8013dac3a460991271ec21143bd6`으로 갱신했다. production migration·DB·GRANT·credential·traffic은 변경하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

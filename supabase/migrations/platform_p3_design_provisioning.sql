@@ -43,8 +43,14 @@ create table climate_vote.design_provisioning_operation (
     operation_type in ('create_assembly', 'create_session', 'create_topic', 'create_team')
   ),
   request_hash text not null check (request_hash ~ '^[0-9a-f]{64}$'),
+  source_blueprint_sha256 text not null,
+  source_blueprint_bytes integer not null,
   resource_id uuid not null,
   applied_at timestamptz not null default statement_timestamp(),
+  constraint platform_design_operation_source_sha256_shape
+    check (source_blueprint_sha256 ~ '^[0-9a-f]{64}$'),
+  constraint platform_design_operation_source_bytes_range
+    check (source_blueprint_bytes between 1 and 1000000),
   primary key (org_id, operation_id)
 );
 
@@ -357,6 +363,8 @@ begin
       v_existing.plan_checksum <> v_checksum
       or v_existing.request_hash <> v_request_hash
       or v_existing.operation_type <> v_type
+      or v_existing.source_blueprint_sha256 <> p_plan #>> '{sourceBlueprint,sha256}'
+      or v_existing.source_blueprint_bytes <> (p_plan #>> '{sourceBlueprint,bytes}')::integer
     ) then
       raise exception using message = 'design_operation_conflict';
     end if;
@@ -617,8 +625,14 @@ begin
     if not v_replayed then
       begin
         insert into climate_vote.design_provisioning_operation (
-          org_id, operation_id, plan_checksum, operation_type, request_hash, resource_id
-        ) values (v_org_id, v_operation_id, v_checksum, v_type, v_request_hash, v_resource_id);
+          org_id, operation_id, plan_checksum, operation_type, request_hash,
+          source_blueprint_sha256, source_blueprint_bytes, resource_id
+        ) values (
+          v_org_id, v_operation_id, v_checksum, v_type, v_request_hash,
+          p_plan #>> '{sourceBlueprint,sha256}',
+          (p_plan #>> '{sourceBlueprint,bytes}')::integer,
+          v_resource_id
+        );
       exception when unique_violation then
         raise exception using message = 'design_operation_conflict';
       end;
@@ -774,7 +788,9 @@ begin
       continue;
     end if;
     if v_existing.plan_checksum <> p_query ->> 'executedPlanChecksum'
-       or v_existing.operation_type <> v_operation_type then
+       or v_existing.operation_type <> v_operation_type
+       or v_existing.source_blueprint_sha256 <> p_query ->> 'sourceBlueprintSha256'
+       or v_existing.source_blueprint_bytes <> (p_query ->> 'sourceBlueprintBytes')::integer then
       raise exception using message = 'design_reconciliation_conflict';
     end if;
 

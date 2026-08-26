@@ -35,6 +35,8 @@ begin
       ('design_provisioning_operation', 'plan_checksum', 'text', true, null::text),
       ('design_provisioning_operation', 'operation_type', 'text', true, null::text),
       ('design_provisioning_operation', 'request_hash', 'text', true, null::text),
+      ('design_provisioning_operation', 'source_blueprint_sha256', 'text', true, null::text),
+      ('design_provisioning_operation', 'source_blueprint_bytes', 'integer', true, null::text),
       ('design_provisioning_operation', 'resource_id', 'uuid', true, null::text),
       ('design_provisioning_operation', 'applied_at', 'timestamp with time zone', true,
         'statement_timestamp()')
@@ -89,6 +91,10 @@ begin
         'CHECK ((capacity > 0))'),
       ('team', 'platform_team_session_ordinal_key', 'u',
         'UNIQUE (session_id, ordinal)'),
+      ('design_provisioning_operation', 'platform_design_operation_source_sha256_shape', 'c',
+        'CHECK ((source_blueprint_sha256 ~ ''^[0-9a-f]{64}$''::text))'),
+      ('design_provisioning_operation', 'platform_design_operation_source_bytes_range', 'c',
+        'CHECK (((source_blueprint_bytes >= 1) AND (source_blueprint_bytes <= 1000000)))'),
       ('design_provisioning_operation', 'design_provisioning_operation_pkey', 'p',
         'PRIMARY KEY (org_id, operation_id)')
     ) expected(table_name, constraint_name, constraint_type, definition)

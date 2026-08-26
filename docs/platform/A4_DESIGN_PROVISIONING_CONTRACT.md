@@ -48,7 +48,7 @@
 
 ### 3-3. 멱등 operation ledger
 
-- ledger는 최소 `org_id`, `operation_id`, `plan_checksum`, `operation_type`, `request_hash`, `resource_id`, `applied_at`을 보존한다.
+- ledger는 최소 `org_id`, `operation_id`, `plan_checksum`, `operation_type`, `request_hash`, 원 청사진의 `source_blueprint_sha256`·`source_blueprint_bytes`, `resource_id`, `applied_at`을 보존한다. 원문 bytes 자체는 저장하지 않는다.
 - `operation_id`는 현재 plan의 64자 SHA-256이고 primary key 또는 동등한 unique key여야 한다.
 - 같은 operation ID·request hash·operation type·전체 plan checksum이 모두 같은 exact replay만 기존 resource를 반환한다. assembly·session·discussion topic은 서버가 생성하는 `draft`, team은 `active` 상태까지 payload·부모·기관과 함께 exact 대조한다. 이미 활성화·종료·보관된 resource를 새 설계가 채택하거나 replay하지 않는다. 다른 plan이 이전 operation을 부분 재사용하면 ledger의 plan checksum과 이후 reconciliation이 어긋나므로 mutation 전에 충돌로 중단한다.
 - 같은 operation ID에 다른 request hash가 오면 mutation 전에 실패한다.
@@ -106,7 +106,7 @@
 - Revision-fenced schema v1 receipt는 위 필드에 optional SHA-256 `authorizationRevision`을 추가한다. 일반 verifier는 legacy와 revision-bound receipt를 모두 검증하지만 production-bound lifecycle은 expected revision을 필수로 전달해 필드 누락·불일치를 별도 오류로 거부한다. Durable linkage도 claim과 receipt 중 한쪽에만 revision이 있거나 값이 다르면 append/audit를 거부한다.
 - `executeDesignProvisioningApprovalLifecycle()`은 injected authorization·execution·receipt adapter만 조율한다. claim 전과 직후 exact execution ID receipt를 조회하고, 이미 검증 가능한 receipt가 있으면 RPC를 건너뛴 뒤 같은 terminal outcome으로 finalize한다. `claimDisposition:new`을 받은 단 하나의 호출만 RPC 후보가 되며, receipt가 없음을 확인한 뒤 authorization snapshot을 다시 읽어 active membership·organization·actor·role·host와 같은 in-flight claim을 검증해야만 execution adapter를 호출한다. 이 재조회에서 context가 비활성화되거나 claim identity가 달라지면 receipt 없이 claim을 열린 상태로 두고 RPC를 호출하지 않는다. production RPC 자체의 transaction 안 live membership 검증은 여전히 별도 필수 경계이며 이 orchestration 재조회가 이를 대체하지 않는다. 기존·reconciled claim에 receipt가 없으면 미확정 outcome으로 보고 자동 재호출하지 않고 명시적 reconciliation을 요구한다. 새 RPC 결과는 봉인·append 뒤 같은 execution ID를 다시 조회해 exact HMAC receipt가 관찰될 때만 finalize한다. adapter 종류와 무관하게 trusted finalization clock은 `receipt.completedAt` 이상이어야 하며, 더 이른 clock이면 receipt를 보존하고 claim을 열린 상태로 둬 완료시각 이후 replay에서만 종결한다. append 응답 유실 시에도 다음 실행이 저장된 receipt를 복구한다. in-memory receipt adapter는 append-only 충돌과 response-loss·동시 실행 테스트용이며 credential·Supabase·production endpoint를 알지 못한다.
 - `reconcileDesignProvisioningApprovalLifecycle()`은 운영자가 명시적으로 호출하는 별도 경로다. 기존 active claim을 먼저 검증하며 새 claim이나 일반 execution adapter를 호출하지 않는다. injected reconciliation adapter에는 mutation RPC로 재사용할 수 있는 실행 plan·원본 bytes 대신 approval/execution ID, approved/executed checksum, source hash·길이, operation ID·type만 담은 비식별 lookup query를 전달한다. adapter는 ledger·operation lookup만 수행해 기존 완료 결과 또는 `pending`을 반환해야 한다. `pending`, lookup 오류, receipt persistence 미확정은 claim을 열린 상태로 유지한다. 완료 결과는 동일한 response 검증·redaction·HMAC receipt·재조회·finalize 절차를 거친다. 유효 시간 안에 시작된 claim은 승인 만료 뒤에도 현재 live actor/org/host 검증을 통과하면 감사 상태를 닫을 수 있다.
-- migration 초안의 `design_provisioning_status(jsonb)`는 이 query 전용 `STABLE`·`SECURITY DEFINER` read-only RPC다. 현재 Auth 사용자와 `org_of_uid()` 기관의 active `org_admin|hq`를 재검증하고, 모든 ledger checksum·operation type·resource org가 일치할 때만 기존 resource와 team join code를 메모리 응답으로 복원한다. operation 하나라도 없으면 `pending`, ledger/resource가 충돌하면 안정 오류로 끝난다. public/anon/authenticated/service_role EXECUTE는 모두 회수되어 있으며 production migration·권한 활성화와 이를 호출할 adapter는 아직 제공하지 않는다.
+- migration 초안의 `design_provisioning_status(jsonb)`는 이 query 전용 `STABLE`·`SECURITY DEFINER` read-only RPC다. 현재 Auth 사용자와 `org_of_uid()` 기관의 active `org_admin|hq`를 재검증하고, 모든 ledger의 executed checksum·operation type·원 청사진 SHA-256·byte 길이와 resource org가 일치할 때만 기존 resource와 team join code를 메모리 응답으로 복원한다. operation 하나라도 없으면 `pending`, ledger/resource/source evidence가 충돌하면 안정 오류로 끝난다. public/anon/authenticated/service_role EXECUTE는 모두 회수되어 있으며 production migration·권한 활성화와 이를 호출할 adapter는 아직 제공하지 않는다.
 
 ### 3-9. 로컬 durable rehearsal store
 
@@ -141,7 +141,7 @@
 9. 기존 claim 전용 명시적 reconciliation, pending 보존, 만료 뒤 감사 종결과 adapter 오류 비노출 test
 10. 휴면 read-only ledger lookup RPC, checksum·role·resource 검증과 무변경 PostgreSQL rehearsal
 
-post-apply verifier는 column 이름이나 제약 이름만 schema 전체에서 세지 않는다. 15개 필수 column의 정확한 PostgreSQL type·nullable·default, session/ledger의 3개 FK 참조 정의, 각 named 제약의 대상 table·`check|unique|primary key` 종류와 canonical definition을 함께 대조한다. 잘못된 type·default·FK 누락, 다른 table의 동명 제약이나 완화된 식을 적용 증거로 인정하지 않는다.
+post-apply verifier는 column 이름이나 제약 이름만 schema 전체에서 세지 않는다. 17개 필수 column의 정확한 PostgreSQL type·nullable·default, session/ledger의 3개 FK 참조 정의, source evidence를 포함한 각 named 제약의 대상 table·`check|unique|primary key` 종류와 canonical definition을 함께 대조한다. 잘못된 type·default·FK 누락, 다른 table의 동명 제약이나 완화된 식을 적용 증거로 인정하지 않는다.
 
 ## 5. 승인 전에 결정할 항목
 

@@ -120,6 +120,10 @@ test('A4 SQL draft keeps preflight and post-apply verification read-only', () =>
   expect(postApply).toContain('pg_get_constraintdef(c.oid, false) <> expected.definition');
   expect(postApply).toContain("('team', 'ordinal', 'integer', false, null::text)");
   expect(postApply).toContain("('design_provisioning_operation', 'applied_at', 'timestamp with time zone', true");
+  expect(postApply).toContain("('design_provisioning_operation', 'source_blueprint_sha256', 'text', true");
+  expect(postApply).toContain("('design_provisioning_operation', 'source_blueprint_bytes', 'integer', true");
+  expect(postApply).toContain("'platform_design_operation_source_sha256_shape'");
+  expect(postApply).toContain("'platform_design_operation_source_bytes_range'");
   expect(postApply).toContain('format_type(a.atttypid, a.atttypmod) <> expected.data_type');
   expect(postApply).toContain("('session', 'FOREIGN KEY (assembly_id) REFERENCES assembly(id)')");
   expect(postApply).toContain('foreign key contract is unsafe');
@@ -149,6 +153,8 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(migration).toContain('pg_catalog.pg_advisory_xact_lock');
   expect(migration).toContain("pg_catalog.hashtextextended('climate_vote.design_provision:' || v_org_id::text, 0)");
   expect(migration).toContain('v_existing.plan_checksum <> v_checksum');
+  expect(migration).toContain("v_existing.source_blueprint_sha256 <> p_plan #>> '{sourceBlueprint,sha256}'");
+  expect(migration).toContain("v_existing.source_blueprint_bytes <> (p_plan #>> '{sourceBlueprint,bytes}')::integer");
   expect(migration).toContain('design_parent_conflict');
   expect(migration).toContain('design_join_code_exhausted');
   expect(migration).toContain('extensions.gen_random_bytes(4)');
@@ -186,6 +192,8 @@ test('A4 migration and rehearsal cover idempotency, conflicts, exhaustion, rollb
   expect(rehearsal).toContain('open topic replay unexpectedly succeeded');
   expect(rehearsal).toContain('disabled team reconciliation unexpectedly exposed its join code');
   expect(rehearsal).toContain('reconciliation checksum conflict unexpectedly succeeded');
+  expect(rehearsal).toContain('reconciliation source digest conflict unexpectedly succeeded');
+  expect(rehearsal).toContain('reconciliation source length conflict unexpectedly succeeded');
   expect(rehearsal).toContain('partial reconciliation conflict unexpectedly returned pending');
   expect(rehearsal).toContain('source mismatch unexpectedly succeeded');
   expect(rehearsal).toContain('payload conflict unexpectedly succeeded');

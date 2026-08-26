@@ -593,6 +593,24 @@ begin
 
   begin
     perform climate_vote.design_provisioning_status(
+      jsonb_set(v_query, '{sourceBlueprintSha256}', to_jsonb(repeat('b', 64)))
+    );
+    raise exception 'A4 semantic test failed: reconciliation source digest conflict unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_reconciliation_conflict' then raise; end if;
+  end;
+
+  begin
+    perform climate_vote.design_provisioning_status(
+      jsonb_set(v_query, '{sourceBlueprintBytes}', '99'::jsonb)
+    );
+    raise exception 'A4 semantic test failed: reconciliation source length conflict unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'design_reconciliation_conflict' then raise; end if;
+  end;
+
+  begin
+    perform climate_vote.design_provisioning_status(
       jsonb_set(
         jsonb_set(
           v_query,
