@@ -1,6 +1,7 @@
 # A4 migration 초안 검증 보고서
 
 - 검증일: 2026-08-25 (Asia/Seoul)
+- 최종 보강: 2026-08-26 (Asia/Seoul)
 - 범위: 저장소의 A4 SQL 초안·rollback·read-only verifier·approval bundle
 - production 적용: 수행하지 않음
 - database credential 접근: 수행하지 않음
@@ -54,9 +55,10 @@
 22. cleanup 뒤 최종 rollback이 성공해 mutation/status RPC·ledger·team ordinal이 제거되는 것을 확인했다.
 23. 정상 생성 뒤 assembly를 `active`, session을 `active`, discussion topic을 `open`으로 각각 바꾼 exact replay가 모두 `design_resource_conflict`로 중단되는지 확인했다. RPC는 서버 생성 상태인 세 resource의 `draft`까지 exact 대조해 이미 활성화·종료된 자원을 새 설계가 채택하지 않는다.
 24. team의 `platform_team_capacity_positive`를 제거하고 shadow table에 같은 이름·정의를 둔 경우와, 정확한 team에 완화된 `capacity >= 0` 정의를 둔 경우를 post-apply verifier가 모두 거부했다. 복구한 정확한 table·check 종류·`capacity > 0` 정의에서는 verifier와 전체 semantic rehearsal이 다시 통과했다.
-25. `team.ordinal`을 PostgreSQL `bigint`로 바꾼 경우와 `session.assembly_id → assembly.id` FK를 제거한 경우를 post-apply verifier가 각각 column/FK 계약 오류로 거부했다. 15개 필수 column의 type·nullable·default와 session/ledger의 3개 참조 정의를 복구한 뒤 verifier와 전체 semantic rehearsal이 다시 통과했다.
+25. `team.ordinal`을 PostgreSQL `bigint`로 바꾼 경우와 `session.assembly_id → assembly.id` FK를 제거한 경우를 post-apply verifier가 각각 column/FK 계약 오류로 거부했다. 21개 필수 column의 type·nullable·default와 session/ledger의 3개 참조 정의를 복구한 뒤 verifier와 전체 semantic rehearsal이 다시 통과했다.
 26. mutation RPC가 권한 판정에 사용한 membership·organization 행을 `FOR SHARE`로 transaction 끝까지 잠그는지 두 dblink 연결로 검증했다. plan INSERT를 1초 지연한 동안 membership 역할 변경과 organization `suspended` 전환은 각각 250ms lock timeout으로 밀렸고 두 plan은 정상 적용됐으며 권한 행은 active로 유지됐다.
 27. rollback cleanup fixture가 동시성 리허설의 `a4-membership-lock`·`a4-organization-lock` resource까지 exact-scope로 제거하도록 고정했다.
+28. migration이 권한을 회수하는 내부 canonical JSON·SHA-256·join-code helper 각각에 `authenticated` EXECUTE를 임시 부여한 PostgreSQL 16 음성 리허설이 모두 `dormant privilege contract is unsafe`로 거부되고, 각 권한 회수 뒤 post-apply verifier가 다시 통과하는지 확인했다. public·anon·authenticated·service_role 네 역할과 세 helper의 12개 effective privilege 조합을 verifier가 전수 검사한다.
 
 결과: `A4_LOCAL_POSTGRES_REHEARSAL=passed`
 
@@ -90,16 +92,18 @@ column type·nullable·default·FK 검증 결과: `A4_COLUMN_FOREIGN_KEY_POSTGRE
 
 authorization row-lock 경쟁 결과: `A4_AUTHORIZATION_ROW_LOCK_POSTGRES_REHEARSAL=passed`
 
+내부 helper 권한 재노출 차단 결과: `A4_INTERNAL_HELPER_PRIVILEGE_POSTGRES_REHEARSAL=passed`
+
 ## 자동화 회귀
 
-- A4 bundle·design plan 집중 테스트: 61건 통과
-- Windows automation 전체: 27개 파일, 420건 통과
-- 애플리케이션 전체: 64개 파일, 1,060건 통과
-- Astro check: 330개 파일, 오류 0건, 기존 hint 49건
+- A4 bundle·design plan·Supabase adapter 집중 테스트: 96건 통과
+- Windows automation 전체: 28개 파일, 505건 통과
+- 애플리케이션 전체: 65개 파일, 1,081건 통과
+- Astro check: 337개 파일, 오류 0건, 경고 0건, 기존 hint 49건
 - 저장소 밖 로컬 durable store의 adapter 재시작·lock-free CAS·독립 Node 프로세스 6개 claim 경쟁(1 claimed, 5 conflict, journal record 2개)·orphan temp 복구·append-only replay/conflict·journal 변조·terminal claim/checkpoint/receipt/lifecycle clock 사건시각 역행·junction escape·revocation/claim 경쟁·membership 비활성 finalize와 재활성화 거부·비식별 전체-store/keyed receipt audit·off-store inventory checkpoint 삭제/tail 변경·기본 10분 freshness 테스트 통과
-- approval bundle verifier: builder·durable store·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 17개, production apply 미승인·DB mutation 미실행 상태로 통과
+- approval bundle verifier: builder·durable store·Supabase adapter·A4 집중 테스트·CI workflow·LF 규칙을 포함한 artifact 20개, production apply 미승인·DB mutation 미실행 상태로 통과
 - 추적 manifest를 current source에서 재구성해 stale source hash를 거부하는 테스트 통과
-- bundle checksum: `a161a2914568a0bacd1da675d958a6508a98582bf3dc1c422e455906e6976241`
+- bundle checksum: `0be367703ff7496485f77a8d7a6ae7f22be178c81f17be4a3970f035e1cc18e2`
 
 ## 보안·데이터 무결성 결론
 
@@ -114,7 +118,8 @@ authorization row-lock 경쟁 결과: `A4_AUTHORIZATION_ROW_LOCK_POSTGRES_REHEAR
 - 기존 resource가 plan payload와 다르거나 같은 operation이 다른 전체 plan checksum으로 재사용되면 update하지 않고 안정 오류 코드로 전체 transaction을 중단한다.
 - assembly·session·discussion topic은 payload·부모·기관뿐 아니라 서버 생성 상태 `draft`까지 일치해야 하며, 이미 활성화되거나 열린 resource를 새 설계의 성공 또는 replay로 채택하지 않는다.
 - post-apply verifier는 8개 제약을 이름만 세지 않고 정확한 table·종류·canonical definition으로 대조해 shadow 제약과 완화된 check 식을 거부한다.
-- post-apply verifier는 15개 필수 column의 type·nullable·default와 session/ledger의 3개 FK 참조 정의도 exact 대조해 이름만 같은 비호환 schema를 거부한다.
+- post-apply verifier는 21개 필수 column의 type·nullable·default와 session/ledger의 3개 FK 참조 정의도 exact 대조해 이름만 같은 비호환 schema를 거부한다.
+- post-apply verifier는 canonical JSON·SHA-256·join-code 내부 helper가 public·anon·authenticated·service_role 중 하나에라도 EXECUTE로 재노출되면 적용 증거를 거부한다.
 - 같은 기관의 동시 mutation plan은 source 검증 뒤 transaction advisory lock으로 직렬화해 exact plan 경쟁을 `applied`와 `replayed`로 수렴시킨다.
 - plan 내부의 operation ID와 resource ref는 각각 유일해야 하며 중복 plan은 lookup·mutation 전에 거부한다.
 - plan과 reconciliation query의 boolean·number·string JSON 타입을 exact 검사해 문자열로 바꾼 self-resealed 입력을 거부한다.

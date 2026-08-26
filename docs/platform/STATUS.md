@@ -265,6 +265,8 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A5 로그인 키보드 초점 모양 자동 감사(2026-08-26):** 실제 Chromium `Tab` 순회 중 이메일·비밀번호·제출·접근성 안내 링크 각각의 computed 외곽선 스타일·너비·offset·색과 가장 가까운 불투명 배경을 기록하고, 2px 이상 외곽선과 3:1 이상 대비를 모두 요구한다. 숨긴 외곽선과 흰 배경 대비 1.82:1의 저대비 외곽선이 순서 검증과 별개로 실패하는 회귀를 고정했다. 공개 revision `f30f33fc4ea15e5f7fbbd97b4822361b7658e71d`의 desktop·mobile 네 컨트롤은 모두 2px solid, 3px offset, `rgb(10, 107, 78)` 대 흰 배경 6.51:1로 통과했고 전체 14개 감사 케이스의 violation·incomplete는 0건이었다. 집중 34건, 루트 전체 65개 파일·1,081건, Linux automation 28개 파일·505건, Astro check 오류·경고 0건과 Node 20 정적 빌드 7,914페이지가 통과했다. KWCAG 6.1.2에 자동 근거를 추가했지만 실제 NVDA·VoiceOver·TalkBack 및 모바일 보조기기 평가는 남아 있어 `needs_review`를 유지한다. 실제 credential·Auth 제출·production DB·migration·GRANT·데이터 mutation은 사용하지 않았다.
 
+**A4 내부 helper 휴면 권한 검증(2026-08-26):** migration 초안은 canonical JSON·SHA-256·join-code helper의 EXECUTE를 회수하지만 post-apply verifier가 이 권한 재노출을 검사하지 않던 공백을 보강했다. public·anon·authenticated·service_role 네 역할과 세 helper의 12개 effective privilege 조합을 전수 대조하며 하나라도 열리면 `dormant privilege contract is unsafe`로 거부한다. PostgreSQL 16 격리 리허설에서 각 helper를 독립적으로 `authenticated`에 부여했을 때 모두 거부되고 권한 회수 뒤 다시 통과했다. A4 집중 96건, 루트 전체 65개 파일·1,081건, automation 전체 28개 파일·505건과 Astro check 337개 파일 오류·경고 0건이 통과했다. Bundle artifact 20개 checksum은 `0be367703ff7496485f77a8d7a6ae7f22be178c81f17be4a3970f035e1cc18e2`이며 production migration·DB·GRANT·credential·traffic은 변경하지 않았다.
+
 ## 다음 액션 (권장 순서)
 1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증

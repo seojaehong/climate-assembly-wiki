@@ -357,6 +357,26 @@ jobs:
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
             "revoke execute on function climate_vote.design_provision(jsonb,bytea,jsonb), climate_vote.design_provisioning_status(jsonb,jsonb), climate_vote.platform_design_authorization_revision() from authenticated;"
 
+          for helper_signature in \
+            "climate_vote.platform_json_canonical(jsonb)" \
+            "climate_vote.platform_sha256_hex(text)" \
+            "climate_vote.platform_design_join_code()"; do
+            helper_name="${helper_signature#*.}"
+            helper_name="${helper_name%%(*}"
+            docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+              "grant execute on function ${helper_signature} to authenticated;"
+            if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+              -f /tmp/design_provisioning_post_apply.sql \
+              >"$RUNNER_TEMP/a4-unsafe-${helper_name}-grant.log" 2>&1; then
+              echo "Unsafe A4 internal helper grant unexpectedly passed verification: ${helper_name}" >&2
+              exit 1
+            fi
+            grep -q "dormant privilege contract is unsafe" \
+              "$RUNNER_TEMP/a4-unsafe-${helper_name}-grant.log"
+            docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+              "revoke execute on function ${helper_signature} from authenticated;"
+          done
+
           if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/platform_p3_design_provisioning_BEFORE.sql \
             >"$RUNNER_TEMP/a4-populated-rollback.log" 2>&1; then

@@ -113,6 +113,17 @@ test('A4 SQL draft keeps preflight and post-apply verification read-only', () =>
   expect(preflight).toContain("'requiresApprovedBackfill'");
   expect(postApply).toContain("has_function_privilege('authenticated', 'climate_vote.design_provision(jsonb,bytea)', 'EXECUTE')");
   expect(postApply).toContain("has_function_privilege('authenticated', 'climate_vote.design_provisioning_status(jsonb)', 'EXECUTE')");
+  for (const role of ['public', 'anon', 'authenticated', 'service_role']) {
+    for (const signature of [
+      'climate_vote.platform_json_canonical(jsonb)',
+      'climate_vote.platform_sha256_hex(text)',
+      'climate_vote.platform_design_join_code()',
+    ]) {
+      expect(postApply).toContain(
+        `has_function_privilege('${role}', '${signature}', 'EXECUTE')`,
+      );
+    }
+  }
   expect(postApply).toContain('v_existing.plan_checksum <> v_checksum');
   expect(postApply).toContain("('team', 'platform_team_capacity_positive', 'c'");
   expect(postApply).toContain("'CHECK ((capacity > 0))'");
@@ -334,6 +345,7 @@ test('rollback refuses populated A4 state before any object is removed', () => {
   );
   expect(rollback).toContain('drop function if exists climate_vote.design_provisioning_status(jsonb)');
   expect(workflow).toContain('grant execute on function climate_vote.design_provisioning_status(jsonb) to authenticated');
+  expect(workflow).toContain('Unsafe A4 internal helper grant unexpectedly passed verification');
   expect(workflow).toContain('Shadow A4 constraint unexpectedly passed verification');
   expect(workflow).toContain('Wrong A4 constraint definition unexpectedly passed verification');
   expect(workflow).toContain('Wrong A4 column type unexpectedly passed verification');
