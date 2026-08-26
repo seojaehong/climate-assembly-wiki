@@ -143,6 +143,8 @@ Execution adapter는 append-only receipt persistence를 명시하고 `runId`별 
 
 Production-bound live authorization seam은 `revisionedLiveAuthorization:true`인 adapter만 사용한다. Snapshot과 claim/finalize 결과의 SHA-256 revision을 새 claim의 `authorizationRevision`에 결속하고 execution 직전·receipt 봉인·reconciliation·finalize마다 대조한다. 같은 actor·role·active boolean으로 복귀한 membership/org ABA도 revision이 달라지면 claim을 열린 상태로 두고 중단한다. In-memory revision provider와 revision-only/key-registry-composed lifecycle wrapper는 이 CAS 의미를 검증하는 test double이며 실제 Supabase row version·authoritative revocation·transaction adapter를 구현하지 않는다.
 
+같은 production-bound wrapper는 execution/status adapter에 각각 `revisionFencedExecution:true`·`revisionFencedReconciliation:true`를 요구한다. Adapter 호출에는 approval ID·execution ID·현재 `authorizationRevision`만 담은 exact fence를 전달하고 응답 revision이 다르면 receipt를 봉인하지 않는다. 이는 RPC와 ledger lookup transaction이 같은 row-version fence를 소비하도록 정한 interface일 뿐 production Supabase adapter 연결이나 RPC 변경은 아니다.
+
 ```powershell
 cd automation
 $blueprint = Join-Path $env:LOCALAPPDATA 'climate-assembly-private\platform-design-blueprint.json'

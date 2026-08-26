@@ -2345,12 +2345,55 @@ test('revisioned lifecycle rejects a legacy or malformed revision adapter before
       async finalize() { throw new Error('must not finalize'); },
     },
     receiptAdapter: createInMemoryDesignProvisioningReceiptAdapter(),
-    executionAdapter: { async execute() { executionCount += 1; } },
+    executionAdapter: {
+      revisionFencedExecution: true,
+      async execute() { executionCount += 1; },
+    },
     trustedKey: approvalKey,
     expectedKeyId: approvalKeyId,
     clock: sequenceClock('2026-08-25T13:05:00.000Z'),
   })).rejects.toThrow('authorization snapshot is invalid');
   expect(executionCount).toBe(0);
+});
+
+test('revisioned lifecycle rejects an unfenced executor before authorization side effects', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const provider = createInMemoryRevisionedDesignProvisioningAuthorizationProvider(liveContext());
+  const base = provider.authorizationAdapter;
+  let authorizationReadCount = 0;
+  let receiptReadCount = 0;
+  const authorizationAdapter = {
+    revisionedLiveAuthorization: true,
+    async readSnapshot(approvalId) {
+      authorizationReadCount += 1;
+      return base.readSnapshot(approvalId);
+    },
+    claim: (expectedSnapshot, claim) => base.claim(expectedSnapshot, claim),
+    finalize: (expectedSnapshot, terminalClaim) => base.finalize(expectedSnapshot, terminalClaim),
+  };
+  const receiptAdapter = {
+    async read() {
+      receiptReadCount += 1;
+      return null;
+    },
+    async append() {
+      throw new Error('must not append');
+    },
+  };
+
+  await expect(executeDesignProvisioningApprovalLifecycleWithRevisionedAuthorization({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter,
+    receiptAdapter,
+    executionAdapter: { async execute() { throw new Error('must not execute'); } },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+  })).rejects.toThrow('revision-fenced execution adapter is required');
+  expect(authorizationReadCount).toBe(0);
+  expect(receiptReadCount).toBe(0);
 });
 
 test('executes and finalizes through one revision-bound live authorization context', async () => {
@@ -2365,8 +2408,19 @@ test('executes and finalizes through one revision-bound live authorization conte
     authorizationAdapter: provider.authorizationAdapter,
     receiptAdapter,
     executionAdapter: {
-      async execute({ plan: executionPlan }) {
-        return completedExecutionResult(executionPlan);
+      revisionFencedExecution: true,
+      async execute({ plan: executionPlan, authorizationFence }) {
+        expect(authorizationFence).toEqual({
+          schemaVersion: 1,
+          kind: 'platform_design_provisioning_authorization_fence',
+          approvalId: approval.approvalId,
+          executionId: approval.executionId,
+          authorizationRevision: expect.stringMatching(/^[0-9a-f]{64}$/),
+        });
+        return {
+          ...completedExecutionResult(executionPlan),
+          authorizationRevision: authorizationFence.authorizationRevision,
+        };
       },
     },
     trustedKey: approvalKey,
@@ -2388,6 +2442,35 @@ test('executes and finalizes through one revision-bound live authorization conte
     authorizationRevision: snapshot.revision,
   });
   expect(JSON.stringify(result)).not.toContain(snapshot.revision);
+});
+
+test('keeps the claim open when a fenced executor returns another authorization revision', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const provider = createInMemoryRevisionedDesignProvisioningAuthorizationProvider(liveContext());
+  const receiptAdapter = createInMemoryDesignProvisioningReceiptAdapter();
+  await expect(executeDesignProvisioningApprovalLifecycleWithRevisionedAuthorization({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter: provider.authorizationAdapter,
+    receiptAdapter,
+    executionAdapter: {
+      revisionFencedExecution: true,
+      async execute({ plan: executionPlan }) {
+        return {
+          ...completedExecutionResult(executionPlan),
+          authorizationRevision: 'f'.repeat(64),
+        };
+      },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock('2026-08-25T13:05:00.000Z'),
+  })).rejects.toThrow('execution result authorization fence is invalid');
+  expect(await receiptAdapter.read(approval.executionId)).toBeNull();
+  expect((await provider.authorizationAdapter.readSnapshot(approval.approvalId)).state.claim.status)
+    .toBe('claimed');
 });
 
 test('composes revisioned authorization with the key registry before execution', async () => {
@@ -2418,8 +2501,12 @@ test('composes revisioned authorization with the key registry before execution',
     authorizationAdapter: provider.authorizationAdapter,
     receiptAdapter: createInMemoryDesignProvisioningReceiptAdapter(),
     executionAdapter: {
-      async execute({ plan: executionPlan }) {
-        return completedExecutionResult(executionPlan);
+      revisionFencedExecution: true,
+      async execute({ plan: executionPlan, authorizationFence }) {
+        return {
+          ...completedExecutionResult(executionPlan),
+          authorizationRevision: authorizationFence.authorizationRevision,
+        };
       },
     },
     keyRegistry,
@@ -2445,6 +2532,19 @@ test('composes revisioned authorization with the key registry before execution',
   })).rejects.toThrow('revisioned authorization adapter is required');
   expect(rejectedKeyReadCount).toBe(0);
 
+  let unfencedKeyReadCount = 0;
+  await expect(executeDesignProvisioningApprovalLifecycleWithKeyRegistryAndRevisionedAuthorization({
+    authorizationAdapter: provider.authorizationAdapter,
+    executionAdapter: { async execute() { throw new Error('must not execute'); } },
+    keyRegistry: {
+      async readKey() {
+        unfencedKeyReadCount += 1;
+        throw new Error('must not read');
+      },
+    },
+  })).rejects.toThrow('revision-fenced execution adapter is required');
+  expect(unfencedKeyReadCount).toBe(0);
+
   let malformedKeyReadCount = 0;
   await expect(executeDesignProvisioningApprovalLifecycleWithKeyRegistryAndRevisionedAuthorization({
     approval,
@@ -2457,6 +2557,7 @@ test('composes revisioned authorization with the key registry before execution',
     },
     receiptAdapter: createInMemoryDesignProvisioningReceiptAdapter(),
     executionAdapter: {
+      revisionFencedExecution: true,
       async execute({ plan: executionPlan }) {
         return completedExecutionResult(executionPlan);
       },
@@ -2505,6 +2606,7 @@ test('keeps a revision-bound claim open when live authorization undergoes ABA be
     authorizationAdapter,
     receiptAdapter: createInMemoryDesignProvisioningReceiptAdapter(),
     executionAdapter: {
+      revisionFencedExecution: true,
       async execute() {
         executionCount += 1;
         throw new Error('must not execute');
@@ -2531,7 +2633,8 @@ test('does not seal a receipt when live authorization undergoes ABA during execu
     authorizationAdapter: provider.authorizationAdapter,
     receiptAdapter,
     executionAdapter: {
-      async execute({ plan: executionPlan }) {
+      revisionFencedExecution: true,
+      async execute({ plan: executionPlan, authorizationFence }) {
         executionCount += 1;
         const claimed = await provider.authorizationAdapter.readSnapshot(approval.approvalId);
         const inactive = await provider.transitionContext({
@@ -2544,7 +2647,10 @@ test('does not seal a receipt when live authorization undergoes ABA during execu
           expectedRevision: inactive.revision,
           context: liveContext(),
         });
-        return completedExecutionResult(executionPlan);
+        return {
+          ...completedExecutionResult(executionPlan),
+          authorizationRevision: authorizationFence.authorizationRevision,
+        };
       },
     },
     trustedKey: approvalKey,
@@ -2593,6 +2699,7 @@ test('blocks revisioned reconciliation after an active claim authorization ABA',
     authorizationAdapter: provider.authorizationAdapter,
     receiptAdapter: createInMemoryDesignProvisioningReceiptAdapter(),
     reconciliationAdapter: {
+      revisionFencedReconciliation: true,
       async reconcile() {
         reconciliationCount += 1;
         return { status: 'pending' };
@@ -2605,6 +2712,52 @@ test('blocks revisioned reconciliation after an active claim authorization ABA',
   expect(reconciliationCount).toBe(0);
   expect((await provider.authorizationAdapter.readSnapshot(approval.approvalId)).state.claim.status)
     .toBe('claimed');
+});
+
+test('passes and verifies the authorization fence during revisioned reconciliation', async () => {
+  const { source, bytes, plan, approval } = executionApproval();
+  const provider = createInMemoryRevisionedDesignProvisioningAuthorizationProvider(liveContext());
+  await claimDesignProvisioningExecutionApproval({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter: provider.authorizationAdapter,
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    now: new Date('2026-08-25T13:05:00.000Z'),
+  });
+  let observedFence;
+  await expect(reconcileDesignProvisioningApprovalLifecycleWithRevisionedAuthorization({
+    approval,
+    plan,
+    blueprint: source,
+    sourceBytes: bytes,
+    authorizationAdapter: provider.authorizationAdapter,
+    receiptAdapter: createInMemoryDesignProvisioningReceiptAdapter(),
+    reconciliationAdapter: {
+      revisionFencedReconciliation: true,
+      async reconcile({ authorizationFence }) {
+        observedFence = authorizationFence;
+        return {
+          status: 'pending',
+          authorizationRevision: authorizationFence.authorizationRevision,
+        };
+      },
+    },
+    trustedKey: approvalKey,
+    expectedKeyId: approvalKeyId,
+    clock: sequenceClock('2026-08-25T13:20:00.000Z'),
+  })).rejects.toThrow('reconciliation remains pending');
+  const snapshot = await provider.authorizationAdapter.readSnapshot(approval.approvalId);
+  expect(observedFence).toEqual({
+    schemaVersion: 1,
+    kind: 'platform_design_provisioning_authorization_fence',
+    approvalId: approval.approvalId,
+    executionId: approval.executionId,
+    authorizationRevision: snapshot.revision,
+  });
+  expect(snapshot.state.claim.status).toBe('claimed');
 });
 
 test('keeps an A4 claim open when finalization time predates receipt completion', async () => {

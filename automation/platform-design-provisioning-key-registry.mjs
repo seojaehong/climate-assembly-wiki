@@ -447,10 +447,31 @@ function requireRevisionedLifecycleAuthorization(options) {
   }
 }
 
+function requireRevisionFencedExecution(options) {
+  const adapter = options.executionAdapter;
+  if (!isRecord(adapter)
+    || !exactKeys(adapter, ['revisionFencedExecution', 'execute'])
+    || adapter.revisionFencedExecution !== true
+    || typeof adapter.execute !== 'function') {
+    throw new Error('Design provisioning revision-fenced execution adapter is required');
+  }
+}
+
+function requireRevisionFencedReconciliation(options) {
+  const adapter = options.reconciliationAdapter;
+  if (!isRecord(adapter)
+    || !exactKeys(adapter, ['revisionFencedReconciliation', 'reconcile'])
+    || adapter.revisionFencedReconciliation !== true
+    || typeof adapter.reconcile !== 'function') {
+    throw new Error('Design provisioning revision-fenced reconciliation adapter is required');
+  }
+}
+
 export async function executeDesignProvisioningApprovalLifecycleWithKeyRegistryAndRevisionedAuthorization(
   options = {},
 ) {
   requireRevisionedLifecycleAuthorization(options);
+  requireRevisionFencedExecution(options);
   return executeDesignProvisioningApprovalLifecycleWithKeyRegistry(options);
 }
 
@@ -458,5 +479,6 @@ export async function reconcileDesignProvisioningApprovalLifecycleWithKeyRegistr
   options = {},
 ) {
   requireRevisionedLifecycleAuthorization(options);
+  requireRevisionFencedReconciliation(options);
   return reconcileDesignProvisioningApprovalLifecycleWithKeyRegistry(options);
 }

@@ -937,8 +937,12 @@ function validateReceiptAdapter(adapter) {
 }
 
 function validateExecutionAdapter(adapter) {
+  const revisionFenced = adapter?.revisionFencedExecution === true;
+  const expectedKeys = revisionFenced
+    ? ['revisionFencedExecution', 'execute']
+    : ['execute'];
   if (!isRecord(adapter)
-    || !exactKeys(adapter, ['execute'])
+    || !exactKeys(adapter, expectedKeys)
     || typeof adapter.execute !== 'function') {
     throw new Error('Design provisioning execution adapter is invalid');
   }
@@ -946,12 +950,41 @@ function validateExecutionAdapter(adapter) {
 }
 
 function validateReconciliationAdapter(adapter) {
+  const revisionFenced = adapter?.revisionFencedReconciliation === true;
+  const expectedKeys = revisionFenced
+    ? ['revisionFencedReconciliation', 'reconcile']
+    : ['reconcile'];
   if (!isRecord(adapter)
-    || !exactKeys(adapter, ['reconcile'])
+    || !exactKeys(adapter, expectedKeys)
     || typeof adapter.reconcile !== 'function') {
     throw new Error('Design provisioning execution reconciliation adapter is invalid');
   }
   return adapter;
+}
+
+function designProvisioningAuthorizationFence(approval, snapshot) {
+  const authorizationRevision = snapshot?.revision;
+  if (!SHA256_PATTERN.test(authorizationRevision ?? '')
+    || snapshot.state?.claim?.authorizationRevision !== authorizationRevision) {
+    throw new Error('Design provisioning authorization fence is invalid');
+  }
+  return {
+    schemaVersion: 1,
+    kind: 'platform_design_provisioning_authorization_fence',
+    approvalId: approval.approvalId,
+    executionId: approval.executionId,
+    authorizationRevision,
+  };
+}
+
+function verifiedRevisionFencedResult(result, expectedRevision, label) {
+  if (!isRecord(result)
+    || !Object.prototype.hasOwnProperty.call(result, 'authorizationRevision')
+    || result.authorizationRevision !== expectedRevision) {
+    throw new Error(`Design provisioning ${label} authorization fence is invalid`);
+  }
+  const { authorizationRevision: _authorizationRevision, ...unfencedResult } = result;
+  return unfencedResult;
 }
 
 function validateReceiptAdapterResult(result) {
@@ -1712,6 +1745,10 @@ export async function executeDesignProvisioningApprovalLifecycle({
   );
   const receipts = validateReceiptAdapter(receiptAdapterValue);
   const execution = validateExecutionAdapter(executionAdapterValue);
+  if (execution.revisionFencedExecution === true
+    && authorization.revisionedLiveAuthorization !== true) {
+    throw new Error('Design provisioning revision-fenced execution requires revisioned authorization');
+  }
   if (typeof clock !== 'function') {
     throw new Error('Design provisioning execution lifecycle clock is invalid');
   }
@@ -1795,14 +1832,27 @@ export async function executeDesignProvisioningApprovalLifecycle({
   );
 
   const executionPlan = designProvisioningExecutionCandidate(plan);
+  const authorizationFence = execution.revisionFencedExecution === true
+    ? designProvisioningAuthorizationFence(approval, executionAuthorizationSnapshot)
+    : null;
   let executionResult;
   try {
     executionResult = await execution.execute({
       plan: structuredClone(executionPlan),
       sourceBytes: Buffer.from(sourceBytes),
+      ...(authorizationFence
+        ? { authorizationFence: structuredClone(authorizationFence) }
+        : {}),
     });
   } catch {
     throw new Error('Design provisioning execution adapter failed');
+  }
+  if (authorizationFence) {
+    executionResult = verifiedRevisionFencedResult(
+      executionResult,
+      authorizationFence.authorizationRevision,
+      'execution result',
+    );
   }
   const completedAt = lifecycleTime(clock);
   return persistExecutionReceiptAndFinalize({
@@ -1840,6 +1890,12 @@ export async function reconcileDesignProvisioningApprovalLifecycle({
   );
   const receipts = validateReceiptAdapter(receiptAdapterValue);
   const reconciliation = validateReconciliationAdapter(reconciliationAdapterValue);
+  if (reconciliation.revisionFencedReconciliation === true
+    && authorization.revisionedLiveAuthorization !== true) {
+    throw new Error(
+      'Design provisioning revision-fenced reconciliation requires revisioned authorization',
+    );
+  }
   if (typeof clock !== 'function') {
     throw new Error('Design provisioning execution lifecycle clock is invalid');
   }
@@ -1913,13 +1969,26 @@ export async function reconcileDesignProvisioningApprovalLifecycle({
   }
 
   const reconciliationQuery = designProvisioningReconciliationQuery(approval, plan);
+  const authorizationFence = reconciliation.revisionFencedReconciliation === true
+    ? designProvisioningAuthorizationFence(approval, initialSnapshot)
+    : null;
   let reconciliationResult;
   try {
     reconciliationResult = await reconciliation.reconcile({
       query: structuredClone(reconciliationQuery),
+      ...(authorizationFence
+        ? { authorizationFence: structuredClone(authorizationFence) }
+        : {}),
     });
   } catch {
     throw new Error('Design provisioning execution reconciliation adapter failed');
+  }
+  if (authorizationFence) {
+    reconciliationResult = verifiedRevisionFencedResult(
+      reconciliationResult,
+      authorizationFence.authorizationRevision,
+      'reconciliation result',
+    );
   }
 
   const receiptAfterReconciliation = await readExecutionReceipt(receipts, approval.executionId);
@@ -1973,15 +2042,35 @@ function requireRevisionedAuthorizationAdapter(adapterValue) {
   return adapter;
 }
 
+function requireRevisionFencedExecutionAdapter(adapterValue) {
+  const adapter = validateExecutionAdapter(adapterValue);
+  if (adapter.revisionFencedExecution !== true) {
+    throw new Error('Design provisioning revision-fenced execution adapter is required');
+  }
+  return adapter;
+}
+
+function requireRevisionFencedReconciliationAdapter(adapterValue) {
+  const adapter = validateReconciliationAdapter(adapterValue);
+  if (adapter.revisionFencedReconciliation !== true) {
+    throw new Error('Design provisioning revision-fenced reconciliation adapter is required');
+  }
+  return adapter;
+}
+
 export async function executeDesignProvisioningApprovalLifecycleWithRevisionedAuthorization(
   options = {},
 ) {
   const authorizationAdapter = requireRevisionedAuthorizationAdapter(
     options.authorizationAdapter,
   );
+  const executionAdapter = requireRevisionFencedExecutionAdapter(
+    options.executionAdapter,
+  );
   return executeDesignProvisioningApprovalLifecycle({
     ...options,
     authorizationAdapter,
+    executionAdapter,
   });
 }
 
@@ -1991,9 +2080,13 @@ export async function reconcileDesignProvisioningApprovalLifecycleWithRevisioned
   const authorizationAdapter = requireRevisionedAuthorizationAdapter(
     options.authorizationAdapter,
   );
+  const reconciliationAdapter = requireRevisionFencedReconciliationAdapter(
+    options.reconciliationAdapter,
+  );
   return reconcileDesignProvisioningApprovalLifecycle({
     ...options,
     authorizationAdapter,
+    reconciliationAdapter,
   });
 }
 
