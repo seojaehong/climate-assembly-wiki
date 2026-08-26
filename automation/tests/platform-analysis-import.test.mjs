@@ -816,6 +816,99 @@ test('rejects a recomputed checksum when the sealed plan no longer matches its i
   })).toThrow('Provenance map hash mismatch');
 });
 
+test('rejects oversized private JSON inputs before parsing or writing a plan', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'platform-analysis-import-size-'));
+  try {
+    const analysisPath = join(directory, 'analysis.json');
+    const mappingPath = join(directory, 'provenance.json');
+    const outputPath = join(directory, 'plan.json');
+    writeFileSync(analysisPath, Buffer.alloc((16 * 1024 * 1024) + 1, 0x78));
+    writeFileSync(mappingPath, JSON.stringify({
+      schemaVersion: 1,
+      topicId: TOPIC_ID,
+      sourceMappings: [],
+    }), 'utf8');
+
+    const modulePath = fileURLToPath(new URL('../platform-analysis-import.mjs', import.meta.url));
+    const result = spawnSync(process.execPath, [
+      modulePath,
+      '--analysis', analysisPath,
+      '--provenance-map', mappingPath,
+      '--output', outputPath,
+    ], { encoding: 'utf8' });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Analysis import analysis JSON violates the size boundary');
+    expect(result.stderr).not.toContain('xxxxxxxx');
+    expect(() => readFileSync(outputPath)).toThrow();
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('rejects a generated review plan that would exceed the verification size boundary', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'platform-analysis-plan-size-'));
+  try {
+    const analysisPath = join(directory, 'analysis.json');
+    const mappingPath = join(directory, 'provenance.json');
+    const outputPath = join(directory, 'plan.json');
+    const maximumBytes = 16 * 1024 * 1024;
+    const analysis = {
+      recommendations: [{
+        rec_id: 'rec-large-plan',
+        title: '검증 가능한 출력 경계',
+        summary: '',
+        cited_uids: ['source-main'],
+      }],
+    };
+    const baseBytes = Buffer.byteLength(JSON.stringify(analysis), 'utf8');
+    analysis.recommendations[0].summary = 'x'.repeat(maximumBytes - baseBytes - 1);
+    const analysisSource = JSON.stringify(analysis);
+    expect(Buffer.byteLength(analysisSource, 'utf8')).toBe(maximumBytes - 1);
+    writeFileSync(analysisPath, analysisSource, 'utf8');
+    writeFileSync(mappingPath, JSON.stringify({
+      schemaVersion: 1,
+      topicId: TOPIC_ID,
+      sourceMappings: [{
+        sourceUid: 'source-main',
+        itemId: '21111111-1111-4111-8111-111111111111',
+        clusterId: null,
+      }],
+    }), 'utf8');
+
+    const modulePath = fileURLToPath(new URL('../platform-analysis-import.mjs', import.meta.url));
+    const result = spawnSync(process.execPath, [
+      modulePath,
+      '--analysis', analysisPath,
+      '--provenance-map', mappingPath,
+      '--output', outputPath,
+    ], { encoding: 'utf8' });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Analysis import plan JSON violates the size boundary');
+    expect(result.stderr).not.toContain('xxxxxxxx');
+    expect(() => readFileSync(outputPath)).toThrow();
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('rejects duplicate CLI options instead of silently selecting the last value', () => {
+  const modulePath = fileURLToPath(new URL('../platform-analysis-import.mjs', import.meta.url));
+  const result = spawnSync(process.execPath, [
+    modulePath,
+    '--analysis', 'first-private-path.json',
+    '--analysis', 'second-private-path.json',
+    '--provenance-map', 'mapping.json',
+    '--output', 'plan.json',
+  ], { encoding: 'utf8' });
+
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain('Duplicate argument: --analysis');
+  expect(result.stderr).not.toContain('first-private-path');
+  expect(result.stderr).not.toContain('second-private-path');
+});
+
 test('fails closed on malformed CLI input without echoing its contents', () => {
   const directory = mkdtempSync(join(tmpdir(), 'platform-analysis-import-malformed-'));
   try {

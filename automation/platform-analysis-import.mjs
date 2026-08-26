@@ -20,6 +20,7 @@ const CANDIDATE_MAPPING_FIELDS = new Set([
 const MINORITY_MAPPING_FIELDS = new Set([
   'index', 'minorityId', 'title', 'sourceTextSha256', 'citedUids',
 ]);
+const MAX_ANALYSIS_IMPORT_JSON_BYTES = 16 * 1024 * 1024;
 const REPO_ROOT = realpathSync.native(fileURLToPath(new URL('..', import.meta.url)));
 
 function requireExactFields(value, allowedFields, label) {
@@ -476,8 +477,25 @@ export function verifyPlatformAnalysisImportPlan({
 }
 
 function readJsonFile(path, label) {
+  let expectedSize;
   try {
-    const source = readFileSync(path);
+    expectedSize = statSync(path).size;
+  } catch (error) {
+    throw new Error(`Cannot read ${label} JSON`, { cause: error });
+  }
+  if (expectedSize <= 0 || expectedSize > MAX_ANALYSIS_IMPORT_JSON_BYTES) {
+    throw new Error(`Analysis import ${label} JSON violates the size boundary`);
+  }
+  let source;
+  try {
+    source = readFileSync(path);
+  } catch (error) {
+    throw new Error(`Cannot read ${label} JSON`, { cause: error });
+  }
+  if (source.length !== expectedSize || source.length > MAX_ANALYSIS_IMPORT_JSON_BYTES) {
+    throw new Error(`Analysis import ${label} JSON violates the size boundary`);
+  }
+  try {
     return { source, data: JSON.parse(source.toString('utf8')) };
   } catch (error) {
     throw new Error(`Cannot parse ${label} JSON`, { cause: error });
@@ -490,6 +508,7 @@ function parseCliArgs(argv) {
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === '--force') {
+      if (force) throw new Error('Duplicate argument: --force');
       force = true;
       continue;
     }
@@ -498,6 +517,7 @@ function parseCliArgs(argv) {
     }
     const value = argv[index + 1];
     if (!value || value.startsWith('--')) throw new Error(`Missing value for ${argument}`);
+    if (values.has(argument)) throw new Error(`Duplicate argument: ${argument}`);
     values.set(argument, value);
     index += 1;
   }
@@ -555,8 +575,12 @@ export function runPlatformAnalysisImportCli(argv) {
     analysisSource: analysisFile.source,
     provenanceMapSource: provenanceFile.source,
   });
+  const planSource = `${JSON.stringify(plan, null, 2)}\n`;
+  if (Buffer.byteLength(planSource, 'utf8') > MAX_ANALYSIS_IMPORT_JSON_BYTES) {
+    throw new Error('Analysis import plan JSON violates the size boundary');
+  }
   try {
-    writeFileSync(outputPath, `${JSON.stringify(plan, null, 2)}\n`, {
+    writeFileSync(outputPath, planSource, {
       encoding: 'utf8',
       flag: options.force ? 'w' : 'wx',
       mode: 0o600,
