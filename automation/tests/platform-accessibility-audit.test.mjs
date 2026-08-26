@@ -165,7 +165,7 @@ test('records exact forward and reverse keyboard focus order in browser evidence
     reportPath: join(outDir, 'focus-order.json'),
   });
 
-  expect(report.status, JSON.stringify(report.routes[0], null, 2)).toBe('pass');
+  expect(report.status, JSON.stringify(report.routes, null, 2)).toBe('pass');
   expect(report.routes[0].keyboardFocusOrder).toMatchObject({
     required: true,
     expected: expectedOrder,
