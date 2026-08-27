@@ -70,8 +70,8 @@
         "Tests pass"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "similarPairs(notes, threshold=0.34, limit=30). 짝마다 aId·bId·score·sharedTerms — 점수만 내지 않는다. 같은 조 쌍 제외는 note.teamId 비교(id 파싱 불필요). 정렬은 점수 내림차순 + 안정정렬(동점=원래 순서). ★문서빈도 필터를 일부러 넣지 않았다 — 보일러플레이트를 빼면 진짜 짝(버스 배차 0.462)이 약 0.30 으로 임계값 아래로 죽는다. 픽스처 실측: 꼭지1 18쌍(동일문장 10) · 꼭지2 7쌍 · 꼭지3 5쌍, 상한 30 여유. 테스트 13건 추가(총 27건)."
     },
     {
       "id": "US-005",
