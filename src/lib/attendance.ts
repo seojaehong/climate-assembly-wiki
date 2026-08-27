@@ -72,6 +72,36 @@ export async function unlockHqAttendance(password: string, actorLabel: string): 
   return typeof data === 'string' ? data : null;
 }
 
+/**
+ * 본부 운영자별 로그인 — 그 사람의 비밀번호를 알아야 그 사람 이름의 토큰이 나온다.
+ *
+ * 공유 비밀번호(unlockHqAttendance)로는 아무나 남의 이름을 댈 수 있었다. 재오픈 사유와
+ * 4범주 배정 기록에 진짜 행위자가 남으려면 이름이 증명돼야 한다.
+ * 개인 비밀번호가 아직 없는 사람을 위해 호출부는 실패 시 공유 경로로 넘어간다.
+ */
+export async function unlockHqNamed(operator: string, password: string): Promise<string | null> {
+  const { data, error } = await client().schema('climate_vote').rpc('attendance_hq_unlock_named', {
+    p_operator: operator,
+    p_password: password,
+  });
+  if (error) throw error;
+  return typeof data === 'string' ? data : null;
+}
+
+/** 로그인 화면 이름 목록. 비밀번호는 이 표에 없다. */
+export type HqOperator = { name: string; default_subgroup: string | null };
+
+export async function fetchHqOperators(): Promise<HqOperator[]> {
+  const { data, error } = await client()
+    .schema('climate_vote')
+    .from('hq_operator')
+    .select('name, default_subgroup')
+    .eq('active', true)
+    .order('name');
+  if (error) throw error;
+  return (data ?? []) as HqOperator[];
+}
+
 export async function fetchAttendanceRoster(token: string): Promise<AttendanceRosterRow[]> {
   const { data, error } = await client().schema('climate_vote').rpc('attendance_roster', { p_token: token });
   if (error) throw error;

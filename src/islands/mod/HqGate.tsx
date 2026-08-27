@@ -12,7 +12,7 @@
  * 인증은 기존 attendance_hq_unlock RPC(crypt 비교 + 5회/15분 rate limit)를 그대로 쓴다.
  */
 import { useState } from 'react';
-import { unlockHqAttendance } from '../../lib/attendance';
+import { unlockHqAttendance, unlockHqNamed } from '../../lib/attendance';
 import HqGrid from './HqGrid';
 import HqSubmissionBoard from './HqSubmissionBoard';
 import {
@@ -57,7 +57,11 @@ export default function HqGate() {
     setBusy(true);
     setMessage(null);
     try {
-      const nextToken = await unlockHqAttendance(password, label);
+      // 개인 비밀번호를 먼저 시도한다 — 이름이 증명돼야 기록이 근거가 된다.
+      // 아직 개인 비밀번호가 없는 사람은 공유 비밀번호로 그대로 들어온다(행사 전날에
+      // 로그인 경로를 끊지 않는다).
+      const nextToken =
+        (await unlockHqNamed(label, password)) ?? (await unlockHqAttendance(password, label));
       setPassword('');
       if (!isValidHqToken(nextToken)) {
         setMessage(gateFailureMessage('wrong-password'));
