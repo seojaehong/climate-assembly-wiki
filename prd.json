@@ -1,0 +1,188 @@
+{
+  "project": "8.29 조별 산출물 취합 L1~L4",
+  "branchName": "ralph/submission-aggregation-l1-l4",
+  "description": "조 15개가 세 꼭지에 쓴 줄을 본부가 모아 보되 임의로 합치지 않는 도구를 만든다. L1 유사한 것끼리 배치 → L2 닮은 짝 표시 → L3 4범주 잠정 구조화 → L4 대표 문장 지목. 설계 근거는 10_작업산출물/2026-08-27_0829_조별입력_3꼭지/취합설계_모이되모으지않는다.md 이며 반드시 먼저 읽을 것. 회의자료 260811이 「조별 결과 임의 통합」·「좋은 의견 선정」·「소수의견 삭제」·「문장 신작」을 금지하므로, 어느 story도 원문을 고치거나 카드를 없애서는 안 된다. 불변식: 묶어도 카드 수는 줄지 않는다(삭제 0장). ★가드레일 — 커밋만 하고 git push 금지, Supabase에 쓰기 금지(마이그레이션은 파일만 작성), Cloudflare 배포 금지, .env·키 파일 수정 금지, main 브랜치 직접 커밋 금지. 작업 폴더는 이 저장소(wiki)이고 검사는 npx vitest run 과 npx astro build(Node 20 포터블 PATH 필요)이다.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "픽스처 기반 취합 미리보기 라우트",
+      "description": "As a 개발자, I want 로그인 없이 조별 산출물 보드를 볼 수 있는 미리보기 라우트, so that L1~L4 화면을 브라우저로 검증할 수 있다 (실제 /hq 는 본부 비밀번호 게이트라 자동 검증이 불가하다).",
+      "acceptanceCriteria": [
+        "automation/fixtures/0829-submissions.json 에 15조 x 3꼭지 픽스처를 만든다. 각 조는 항목 1~3개를 갖고, 조 사이에 겹치는 문장과 그 조에만 있는 문장이 함께 있어야 한다(공통/차이가 실제로 생기도록)",
+        "픽스처 행 모양은 src/lib/hq-submissions.ts 의 HqSubmissionRow 와 정확히 같다",
+        "라우트 src/pages/[lang]/moderator/insights/submission-lab.astro 를 만들고 noindex,nofollow 를 넣는다",
+        "그 페이지는 픽스처를 읽어 기존 hq-submission-board-logic.ts 의 buildBoards 로 접은 뒤 꼭지 3개와 조 15개를 렌더한다",
+        "Supabase 를 호출하지 않는다(네트워크 없이 열려야 한다)",
+        "Typecheck passes",
+        "Tests pass",
+        "Verify in browser (claude-in-chrome)"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "L1 유사도 정렬 순수 로직",
+      "description": "As a 총괄모더레이터, I want 비슷한 카드가 서로 가까이 오도록 정렬되기를, so that 아무것도 묶지 않고도 공통점이 눈에 보인다.",
+      "acceptanceCriteria": [
+        "src/islands/mod/note-similarity.ts 를 만든다. 임베딩·네트워크를 쓰지 않고 한국어 문장에서 낱말을 뽑아 자카드 유사도를 계산한다(어떤 낱말이 겹쳤는지 함께 반환해야 한다 — 점수만 있는 불투명한 판정을 만들지 않는다)",
+        "orderNotesBySimilarity(notes) 는 카드를 재배열만 하고 개수를 바꾸지 않는다. 입력 길이와 출력 길이가 항상 같다",
+        "sharedTerms(a, b) 가 두 카드가 공유하는 낱말 배열을 돌려준다",
+        "한 글자 조사·불용어(그, 및, 등, 이, 가, 을, 를, 은, 는)는 유사도 계산에서 제외한다",
+        "src/islands/mod/note-similarity.test.ts 에 테스트를 쓴다. 개수 보존, 겹치는 낱말이 없으면 0, 같은 문장이면 1, 불용어만 겹치면 0 을 각각 검증한다",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "L1 정렬 토글 UI",
+      "description": "As a 총괄모더레이터, I want 보드에서 「조별 순서 / 비슷한 것끼리」를 전환하기를, so that 원문을 그대로 둔 채 배치만 바꿔 본다.",
+      "acceptanceCriteria": [
+        "HqSubmissionBoard 의 「모아보기」 화면에 정렬 토글 두 개(조별 순서 / 비슷한 것끼리)를 넣는다",
+        "「비슷한 것끼리」를 고르면 orderNotesBySimilarity 로 재배열한다",
+        "화면에 카드 수를 항상 표시하고, 정렬을 바꿔도 그 수가 변하지 않는다",
+        "정렬은 배치만 바꾼다는 안내 문구를 화면에 둔다",
+        "submission-lab 미리보기에서도 같은 토글이 동작한다",
+        "Typecheck passes",
+        "Tests pass",
+        "Verify in browser (claude-in-chrome)"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "L2 닮은 짝 후보 순수 로직",
+      "description": "As a 총괄모더레이터, I want 닮은 카드 짝을 근거와 함께 제시받기를, so that 묶을지는 내가 판단한다.",
+      "acceptanceCriteria": [
+        "note-similarity.ts 에 similarPairs(notes, threshold) 를 추가한다. 임계값 기본값은 보수적으로 0.34 로 두고 상수로 노출한다",
+        "각 짝은 두 카드 id, 점수, 공유 낱말 배열을 갖는다",
+        "같은 조 안의 두 카드는 짝으로 내지 않는다(같은 조가 나눠 쓴 문장을 묶으라고 권하지 않는다)",
+        "점수 내림차순으로 정렬하고 상한(기본 30쌍)을 둔다",
+        "테스트: 임계값 미만은 제외, 같은 조 쌍 제외, 정렬 순서, 상한 적용을 각각 검증한다",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "L2 닮은 짝 표시 UI",
+      "description": "As a 총괄모더레이터, I want 닮은 짝을 화면에서 확인하고 표시(체크)하기를, so that AI 는 제안까지만 하고 확정은 내가 한다.",
+      "acceptanceCriteria": [
+        "보드에 「닮은 짝」 패널을 넣어 similarPairs 결과를 보여준다",
+        "각 짝에 두 카드 원문, 조 이름, 공유 낱말을 함께 표시한다(점수만 보여주지 않는다)",
+        "패널 상단에 「AI 제안 — 확정은 사람이 합니다」와 짧은 한국어 문장에서 유사도가 틀릴 수 있다는 주의를 표시한다",
+        "짝마다 체크 버튼이 있고 누르면 두 카드에 같은 표시가 붙는다. 카드는 사라지거나 합쳐지지 않는다",
+        "체크는 되돌릴 수 있다",
+        "submission-lab 미리보기에서 동작을 확인한다",
+        "Typecheck passes",
+        "Tests pass",
+        "Verify in browser (claude-in-chrome)"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "L3 4범주 모델·배정 순수 로직",
+      "description": "As a 총괄모더레이터, I want 카드를 공통·차이·갈등·질문 네 범주로 잠정 배정하기를, so that 회의자료가 규정한 잠정 구조화를 그대로 한다.",
+      "acceptanceCriteria": [
+        "src/islands/mod/four-category.ts 를 만든다. 범주는 공통, 차이, 갈등, 질문 네 가지로 고정하고 상수로 노출한다",
+        "assignCategory(state, noteId, category) 는 배정을 바꾸며 카드를 지우지 않는다",
+        "unassignedCount(notes, state) 가 아직 어느 범주에도 없는 카드 수를 돌려준다",
+        "preservationInvariant(notes, state) 가 원문 카드 수와 배정 후 카드 수가 같은지(삭제 0) 판정한다",
+        "categoryOfCluster(memberTeamOrdinals) 는 조가 2개 이상이면 공통, 1개면 차이를 돌려준다(세기이지 판단이 아니다)",
+        "테스트: 배정해도 카드 수 불변, 미배정 카운트, 재배정 시 중복 없음, 공통/차이 판정을 각각 검증한다",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "L3 범주 배정 영속화 — 마이그레이션 파일만",
+      "description": "As a 운영자, I want 총괄모더레이터 3인의 배정이 기기 간에 공유되기를, so that 한 사람이 배정한 것을 다른 사람이 본다.",
+      "acceptanceCriteria": [
+        "supabase/migrations/20260828_s8_submission_category.sql 을 만든다. climate_vote 스키마에 배정 표를 두고 항목 id·범주·배정자·시각을 남긴다",
+        "원문 표(submission_item)를 수정하거나 삭제하는 구문을 절대 넣지 않는다",
+        "본부 토큰(scope='hq')으로만 쓰기 가능한 RPC 를 정의한다. attendance_token_row 로 검증하는 기존 20260827_s7_hq_submissions.sql 방식을 따른다",
+        "anon·authenticated 에 grant 하고 PUBLIC 은 revoke 한다",
+        "src/lib/hq-submissions.ts 에 그 RPC 를 부르는 함수를 추가한다(호출 코드만, 실행하지 않는다)",
+        "★ 이 story 는 파일 작성까지다. Supabase 에 접속하거나 마이그레이션을 적용하지 않는다",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "L3 4범주 배정 UI + 보존 카운터",
+      "description": "As a 총괄모더레이터, I want 카드를 네 범주로 옮기고 아무것도 잃지 않았음을 화면에서 확인하기를, so that 「모으지 않았다」를 숫자로 증명한다.",
+      "acceptanceCriteria": [
+        "보드에 4범주 화면을 넣는다. 카드마다 범주 버튼 네 개로 배정한다(드래그는 쓰지 않는다)",
+        "화면 상단에 「원문 N장 · 배정 M장 · 미배정 K장 · 삭제 0장」을 항상 표시한다",
+        "삭제 수가 0이 아니면 경고 색으로 표시한다",
+        "모든 범주 배정에 「잠정」 표시를 붙이고, 시민 검토 전에는 확정이 아니라는 문구를 둔다",
+        "미배정 카드가 있으면 그 수를 눈에 띄게 표시한다(소수의견이 조용히 사라지지 않게)",
+        "submission-lab 미리보기에서 배정과 카운터 동작을 확인한다",
+        "Typecheck passes",
+        "Tests pass",
+        "Verify in browser (claude-in-chrome)"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "L4 대표 문장 지목 순수 로직",
+      "description": "As a 시민, I want 묶인 카드 중 어느 문장을 대표로 할지 우리가 고르기를, so that 모더레이터가 좋은 의견을 고르는 일이 없다.",
+      "acceptanceCriteria": [
+        "src/islands/mod/representative-pick.ts 를 만든다",
+        "pickRepresentative(state, groupId, noteId, actor) 는 대표를 지정하되 actor 가 없으면 예외를 던진다(누가 골랐는지 없이 지정 불가)",
+        "actor 는 'citizen' 과 'moderator' 를 구분하고, moderator 단독 지정은 예외를 던진다. 회의자료가 모더레이터의 「좋은 의견 선정」을 금지하기 때문이다",
+        "대표는 반드시 그 묶음에 든 카드 중 하나여야 한다(밖의 카드나 새 문장은 예외)",
+        "지정 이력(누가·언제·무엇을)을 배열로 누적하며 덮어써도 이전 기록이 남는다",
+        "대표를 바꿔도 묶음의 카드 수는 변하지 않는다",
+        "테스트: actor 없음 예외, moderator 단독 예외, 묶음 밖 카드 예외, 이력 누적, 카드 수 불변을 각각 검증한다",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "L4 대표 문장 지목 UI",
+      "description": "As a 총괄모더레이터, I want 시민 앞에서 대표 문장을 지목하는 화면을 띄우기를, so that 지목이 시민의 행위로 남는다.",
+      "acceptanceCriteria": [
+        "묶음 화면에 대표 지목 UI 를 넣는다. 대표 후보는 그 묶음에 든 원문 카드뿐이고 새 문장을 입력하는 칸을 만들지 않는다",
+        "지목 시 확인 단계에서 「시민이 고른 것입니다」를 명시적으로 확인받는다(모더레이터 단독으로는 진행되지 않는다)",
+        "지목 이력(누가·언제)을 화면에 표시한다",
+        "대표로 지목되지 않은 카드도 계속 보인다(대표가 나머지를 대체하지 않는다)",
+        "submission-lab 미리보기에서 동작을 확인한다",
+        "Typecheck passes",
+        "Tests pass",
+        "Verify in browser (claude-in-chrome)"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
