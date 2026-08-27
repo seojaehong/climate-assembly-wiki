@@ -23,12 +23,16 @@ export type Note = {
 
 export type TeamColumn = {
   teamId: string;
+  /** 재오픈 호출에 쓴다. 아직 아무것도 안 쓴 조는 null. */
+  submissionId: string | null;
   teamName: string;
   tableNo: string | null;
   subgroup: string | null;
   /** 최종 제출로 잠긴 조는 더 이상 안 바뀐다 — 본부가 한눈에 구분해야 한다. */
   status: 'draft' | 'final' | 'reopened' | 'archived' | null;
   updatedAt: string | null;
+  /** 최종 제출 시각. 잠기지 않았으면 null. */
+  finalizedAt: string | null;
   notes: Note[];
 };
 
@@ -83,11 +87,13 @@ export function buildBoards(rows: HqSubmissionRow[]): TopicBoard[] {
     if (!team) {
       team = {
         teamId: row.team_id,
+        submissionId: row.submission_id ?? null,
         teamName: row.team_name,
         tableNo: row.table_no,
         subgroup: row.team_subgroup,
         status: row.submission_status,
         updatedAt: row.submission_updated_at,
+        finalizedAt: row.submission_finalized_at ?? null,
         notes: [],
       };
       teamIndex.set(key, team);

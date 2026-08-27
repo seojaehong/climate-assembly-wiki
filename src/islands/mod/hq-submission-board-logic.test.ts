@@ -27,6 +27,8 @@ function row(over: Partial<HqSubmissionRow> = {}): HqSubmissionRow {
     table_no: null,
     submission_status: 'draft',
     submission_updated_at: '2026-08-29T05:00:00Z',
+    submission_finalized_at: null,
+    submission_id: 'sub-1',
     item_ordinal: 1,
     item_kind: 'core',
     item_content: '대중교통이 부족하다',

@@ -13,7 +13,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "우리는 마을에서 버스 배차 간격이 두 시간이 넘는다는 것을 확인하였다",
-    "item_rationale": "군 노선 시간표를 조에서 함께 확인함"
+    "item_rationale": "군 노선 시간표를 조에서 함께 확인함",
+    "submission_id": "fx-team-082901-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -29,7 +31,9 @@
     "item_ordinal": 2,
     "item_kind": "extra",
     "item_content": "우리는 태양광 발전소가 들어설 때 주민에게 먼저 설명하지 않는다는 것을 확인하였다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082901-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -45,7 +49,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "우리는 태양광 발전소가 들어설 때 주민에게 먼저 설명하지 않는다는 것을 확인하였다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082902-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -61,7 +67,9 @@
     "item_ordinal": 2,
     "item_kind": "extra",
     "item_content": "우리는 노후 주택의 단열이 나빠 냉난방비가 크게 든다는 것을 확인하였다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082902-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -77,7 +85,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "우리는 마을에서 버스 배차 간격이 두 시간이 넘는다는 것을 확인하였다",
-    "item_rationale": "군 노선 시간표를 조에서 함께 확인함"
+    "item_rationale": "군 노선 시간표를 조에서 함께 확인함",
+    "submission_id": "fx-team-082903-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -93,7 +103,9 @@
     "item_ordinal": 2,
     "item_kind": "extra",
     "item_content": "우리는 전기요금 누진제 때문에 여름에 에어컨을 켜지 못한다는 것을 확인하였다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082903-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -109,7 +121,9 @@
     "item_ordinal": 3,
     "item_kind": "extra",
     "item_content": "우리는 재생에너지 공사에 지역 주민이 고용되지 않는다는 것을 확인하였다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082903-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -125,7 +139,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "우리는 노후 주택의 단열이 나빠 냉난방비가 크게 든다는 것을 확인하였다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082904-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -141,7 +157,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "우리는 축산 분뇨 처리 시설이 부족하다는 것을 확인하였다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082905-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -157,7 +175,9 @@
     "item_ordinal": 2,
     "item_kind": "extra",
     "item_content": "우리는 재생에너지 공사에 지역 주민이 고용되지 않는다는 것을 확인하였다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082905-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -173,7 +193,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "우리는 폭염 때 쉴 수 있는 그늘과 무더위쉼터가 부족하다는 것을 확인하였다",
-    "item_rationale": "읍내 쉼터 3곳을 지도에 표시해 보았음"
+    "item_rationale": "읍내 쉼터 3곳을 지도에 표시해 보았음",
+    "submission_id": "fx-team-082906-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -189,7 +211,9 @@
     "item_ordinal": 2,
     "item_kind": "extra",
     "item_content": "우리는 침수 위험 지역에 사는 주민이 어디로 대피해야 할지 모른다는 것을 확인하였다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082906-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -205,7 +229,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "우리는 폭염 때 쉴 수 있는 그늘과 무더위쉼터가 부족하다는 것을 확인하였다",
-    "item_rationale": "읍내 쉼터 3곳을 지도에 표시해 보았음"
+    "item_rationale": "읍내 쉼터 3곳을 지도에 표시해 보았음",
+    "submission_id": "fx-team-082907-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -221,7 +247,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "우리는 버스 배차 간격이 길어 승용차를 쓸 수밖에 없다는 것을 확인하였다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082908-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -237,7 +265,9 @@
     "item_ordinal": 2,
     "item_kind": "extra",
     "item_content": "우리는 야외 노동자가 폭염에 그대로 노출된다는 것을 확인하였다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082908-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -253,7 +283,9 @@
     "item_ordinal": 3,
     "item_kind": "extra",
     "item_content": "우리는 침수 위험 지역에 사는 주민이 어디로 대피해야 할지 모른다는 것을 확인하였다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082908-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -269,7 +301,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "우리는 가뭄으로 밭작물 수확이 줄었다는 것을 확인하였다",
-    "item_rationale": "올해 봄 파종을 두 번 다시 함"
+    "item_rationale": "올해 봄 파종을 두 번 다시 함",
+    "submission_id": "fx-team-082909-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -285,7 +319,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "우리는 야외 노동자가 폭염에 그대로 노출된다는 것을 확인하였다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082910-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -301,7 +337,9 @@
     "item_ordinal": 2,
     "item_kind": "extra",
     "item_content": "우리는 하천 정비가 늦어 비가 오면 도로가 잠긴다는 것을 확인하였다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082910-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -317,7 +355,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "우리는 석탄화력 폐쇄 뒤 일자리를 옮길 곳이 없다는 것을 확인하였다",
-    "item_rationale": "조원 중 두 명이 발전소 협력업체에서 일함"
+    "item_rationale": "조원 중 두 명이 발전소 협력업체에서 일함",
+    "submission_id": "fx-team-082911-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -333,7 +373,9 @@
     "item_ordinal": 2,
     "item_kind": "extra",
     "item_content": "우리는 기후 정책 설명회가 평일 낮에만 열린다는 것을 확인하였다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082911-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -349,7 +391,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "우리는 석탄화력 폐쇄 뒤 일자리를 옮길 곳이 없다는 것을 확인하였다",
-    "item_rationale": "조원 중 두 명이 발전소 협력업체에서 일함"
+    "item_rationale": "조원 중 두 명이 발전소 협력업체에서 일함",
+    "submission_id": "fx-team-082912-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -365,7 +409,9 @@
     "item_ordinal": 2,
     "item_kind": "extra",
     "item_content": "우리는 소상공인이 냉방비 부담을 혼자 진다는 것을 확인하였다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082912-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -381,7 +427,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "우리는 기후 정책 설명회가 평일 낮에만 열린다는 것을 확인하였다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082913-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -397,7 +445,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "우리는 청년이 지역에 남을 이유를 찾지 못한다는 것을 확인하였다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082914-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -413,7 +463,9 @@
     "item_ordinal": 2,
     "item_kind": "extra",
     "item_content": "우리는 소상공인이 냉방비 부담을 혼자 진다는 것을 확인하였다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082914-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-1",
@@ -429,7 +481,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "우리는 장애인이 폭염과 정전에 더 크게 노출된다는 것을 확인하였다",
-    "item_rationale": "조원 한 명이 활동지원사로 일하며 겪은 일"
+    "item_rationale": "조원 한 명이 활동지원사로 일하며 겪은 일",
+    "submission_id": "fx-team-082915-topic-0829-1",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -445,7 +499,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "마을에서 버스를 한 시간 안에 탈 수 있게 된다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082901-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -461,7 +517,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "태양광을 짓기 전에 주민이 먼저 설명을 듣고 동의하는 절차가 자리잡는다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082902-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -477,7 +535,9 @@
     "item_ordinal": 2,
     "item_kind": "extra",
     "item_content": "마을에서 버스를 한 시간 안에 탈 수 있게 된다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082902-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -493,7 +553,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "낡은 집도 단열이 되어 겨울에 춥지 않은 상태가 된다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082903-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -509,7 +571,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "낡은 집도 단열이 되어 겨울에 춥지 않은 상태가 된다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082904-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -525,7 +589,9 @@
     "item_ordinal": 2,
     "item_kind": "extra",
     "item_content": "재생에너지 수익이 지역에 남는다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082904-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -541,7 +607,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "재생에너지 수익이 지역에 남는다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082905-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -557,7 +625,9 @@
     "item_ordinal": 2,
     "item_kind": "extra",
     "item_content": "축산 분뇨가 에너지로 순환되는 상태가 된다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082905-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -573,7 +643,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "걸어서 5분 안에 그늘이나 쉼터에 닿을 수 있게 된다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082906-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -589,7 +661,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "걸어서 5분 안에 그늘이나 쉼터에 닿을 수 있게 된다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082907-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -605,7 +679,9 @@
     "item_ordinal": 2,
     "item_kind": "extra",
     "item_content": "폭염 특보 때 야외 작업이 실제로 멈춘다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082907-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -621,7 +697,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "폭염 특보 때 야외 작업이 실제로 멈춘다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082908-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -637,7 +715,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "가뭄이 와도 농사용 물을 예측해 나눌 수 있게 된다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082909-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -653,7 +733,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "비가 많이 와도 도로와 집이 잠기지 않는 상태가 된다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082910-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -669,7 +751,9 @@
     "item_ordinal": 2,
     "item_kind": "extra",
     "item_content": "대피 장소를 주민 누구나 알고 있게 된다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082910-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -685,7 +769,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "발전소가 문을 닫아도 그곳에서 일하던 사람이 다른 일자리로 옮겨 간다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082911-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -701,7 +787,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "발전소가 문을 닫아도 그곳에서 일하던 사람이 다른 일자리로 옮겨 간다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082912-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -717,7 +805,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "기후 정책 설명회가 저녁과 주말에도 열린다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082913-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -733,7 +823,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "청년이 지역에서 기후 관련 일자리를 찾을 수 있게 된다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082914-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -749,7 +841,9 @@
     "item_ordinal": 2,
     "item_kind": "extra",
     "item_content": "기후 정책 설명회가 저녁과 주말에도 열린다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082914-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-2",
@@ -765,7 +859,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "정전과 폭염 때 장애인이 먼저 보호받는 상태가 된다",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082915-topic-0829-2",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-3",
@@ -781,7 +877,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "농촌 버스 증차에 드는 비용은 얼마인가",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082901-topic-0829-3",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-3",
@@ -797,7 +895,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "주민 동의 절차를 법으로 정한 사례가 있는가",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082902-topic-0829-3",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-3",
@@ -813,7 +913,9 @@
     "item_ordinal": 2,
     "item_kind": "extra",
     "item_content": "농촌 버스 증차에 드는 비용은 얼마인가",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082902-topic-0829-3",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-3",
@@ -829,7 +931,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "단열 개선 지원금은 누가 얼마나 받을 수 있는가",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082903-topic-0829-3",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-3",
@@ -845,7 +949,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "단열 개선 지원금은 누가 얼마나 받을 수 있는가",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082904-topic-0829-3",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-3",
@@ -861,7 +967,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "재생에너지 이익공유제는 어디에서 시행되고 있는가",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082905-topic-0829-3",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-3",
@@ -877,7 +985,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "무더위쉼터는 인구 대비 몇 개가 필요한가",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082906-topic-0829-3",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-3",
@@ -893,7 +1003,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "무더위쉼터는 인구 대비 몇 개가 필요한가",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082907-topic-0829-3",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-3",
@@ -909,7 +1021,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "폭염 작업중지는 실제로 얼마나 지켜지는가",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082908-topic-0829-3",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-3",
@@ -925,7 +1039,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "가뭄 대비 저수율은 지금 어느 수준인가",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082909-topic-0829-3",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-3",
@@ -941,7 +1057,9 @@
     "item_ordinal": 2,
     "item_kind": "extra",
     "item_content": "폭염 작업중지는 실제로 얼마나 지켜지는가",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082909-topic-0829-3",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-3",
@@ -957,7 +1075,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "침수 위험 지도는 어디에서 볼 수 있는가",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082910-topic-0829-3",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-3",
@@ -973,7 +1093,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "석탄화력 노동자 전환 지원은 지금 무엇이 있는가",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082911-topic-0829-3",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-3",
@@ -989,7 +1111,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "석탄화력 노동자 전환 지원은 지금 무엇이 있는가",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082912-topic-0829-3",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-3",
@@ -1005,7 +1129,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "설명회를 저녁에 열면 참여가 실제로 늘어나는가",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082913-topic-0829-3",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-3",
@@ -1021,7 +1147,9 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "지역 청년 기후 일자리는 몇 개나 만들 수 있는가",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082914-topic-0829-3",
+    "submission_finalized_at": null
   },
   {
     "topic_id": "topic-0829-3",
@@ -1037,6 +1165,8 @@
     "item_ordinal": 1,
     "item_kind": "core",
     "item_content": "재난 상황에서 장애인 지원 체계는 어떻게 작동하는가",
-    "item_rationale": null
+    "item_rationale": null,
+    "submission_id": "fx-team-082915-topic-0829-3",
+    "submission_finalized_at": null
   }
 ]

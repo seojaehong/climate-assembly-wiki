@@ -24,8 +24,12 @@ export type HqSubmissionRow = {
   team_name: string;
   team_subgroup: string | null;
   table_no: string | null;
+  /** 재오픈 호출에 필요하다. 아직 제출물이 없는 조는 null. */
+  submission_id: string | null;
   submission_status: 'draft' | 'final' | 'reopened' | 'archived' | null;
   submission_updated_at: string | null;
+  /** 최종 제출 시각. 잠기지 않았으면 null. */
+  submission_finalized_at: string | null;
   /** 아직 한 줄도 안 쓴 조는 item_* 가 전부 null인 빈 행으로 온다. */
   item_ordinal: number | null;
   item_kind: 'core' | 'extra' | null;
@@ -70,4 +74,55 @@ export function subscribeHqSubmissions(onChange: () => void): () => void {
   return () => {
     sb.removeChannel(channel);
   };
+}
+
+/**
+ * 최종 제출을 되돌린다 — 본부 토큰만, 사유 필수.
+ *
+ * 조가 당일 잘못 눌렀을 때의 유일한 복구 경로다. 서버가 사유를 2자 이상 요구하고
+ * submission_lock_event에 누가·언제·왜를 남기므로, 되돌린 사실 자체가 기록으로 남는다.
+ */
+export async function reopenSubmission(
+  token: string,
+  submissionId: string,
+  reason: string
+): Promise<void> {
+  const { error } = await client()
+    .schema('climate_vote')
+    .rpc('submission_reopen', {
+      p_token: token,
+      p_submission_id: submissionId,
+      p_reason: reason,
+    });
+  if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
+}
+
+/** hq_submission_history 한 행 — 최종 제출·재오픈·저장으로 교체된 문장. */
+export type HqHistoryRow = {
+  team_name: string;
+  topic_ordinal: number;
+  topic_prompt: string;
+  event_at: string;
+  /** 'finalize' | 'reopen' | 'replaced' */
+  kind: string;
+  actor_label: string;
+  /** reopen이면 사유, replaced면 교체되어 사라진 문장. */
+  detail: string | null;
+};
+
+/**
+ * 조별 저장·제출 이력. 조가 저장할 때마다 교체되어 사라진 문장까지 들어 있다.
+ *
+ * submission_save가 항목을 통째로 갈아끼우기 때문에, 이력이 없으면 조가 고친 순간
+ * 앞 문장을 되살릴 수 없다. 회의자료의 「원 발언과 결과물 추적 가능하게 기록」이 근거다.
+ */
+export async function fetchHqSubmissionHistory(
+  token: string,
+  sessionSlug: string = DEFAULT_SESSION_SLUG
+): Promise<HqHistoryRow[]> {
+  const { data, error } = await client()
+    .schema('climate_vote')
+    .rpc('hq_submission_history', { p_token: token, p_session_slug: sessionSlug });
+  if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
+  return (data ?? []) as HqHistoryRow[];
 }

@@ -485,6 +485,7 @@ function HomeScreen({
   code,
   onCreatePoll,
   creating,
+  onExit,
 }: {
   teamId: string;
   teamName: string;
@@ -494,6 +495,7 @@ function HomeScreen({
   code: string | null;
   onCreatePoll: (input: { title: string; type: 'RADIO' | 'CHECKBOX'; options: string[] }) => void;
   creating: boolean;
+  onExit?: () => void;
 }) {
   // 탭 — 8.29는 조별 산출물이 본 과업이라 그것이 기본이다(mod-tabs.ts).
   // 새로고침해도 보던 탭에 머물도록 sessionStorage에 남긴다.
@@ -524,7 +526,7 @@ function HomeScreen({
 
   return (
     <div className="min-h-screen bg-[#F5F8FB]">
-      <TopBar right={<TeamBadge name={teamName} tableNo={tableNo} live />} />
+      <TopBar right={<TeamBadge name={teamName} tableNo={tableNo} live />} onExit={onExit} />
 
       <div className="max-w-5xl mx-auto p-6 sm:p-8">
         <ModTabBar active={tab} onSelect={selectTab} />
@@ -677,7 +679,16 @@ function ModTabBar({ active, onSelect }: { active: ModTabId; onSelect: (id: ModT
   );
 }
 
-function TopBar({ right, live }: { right: React.ReactNode; live?: boolean }) {
+function TopBar({
+  right,
+  live,
+  onExit,
+}: {
+  right: React.ReactNode;
+  live?: boolean;
+  /** 주면 조 배지 옆에 「나가기」가 붙는다. 조에 들어와 있을 때만 준다. */
+  onExit?: () => void;
+}) {
   return (
     <div className="flex items-center justify-between px-6 py-4 border-b border-[#DCE7EE] bg-[#F1F7FA]">
       <div className="flex items-center gap-3">
@@ -691,7 +702,18 @@ function TopBar({ right, live }: { right: React.ReactNode; live?: boolean }) {
           <Eyebrow className="text-[#5A6B73]">Moderator Console</Eyebrow>
         )}
       </div>
-      {right}
+      <div className="flex items-center gap-2">
+        {right}
+        {onExit ? (
+          <button
+            type="button"
+            onClick={onExit}
+            className="h-10 rounded-lg border border-[#C4D8E4] bg-white px-3 text-[14px] font-bold text-[#5A6B73]"
+          >
+            나가기
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -730,6 +752,7 @@ function PollingScreen({
   onClose,
   closing,
   restoreNotice,
+  onExit,
 }: {
   teamName: string;
   tableNo?: string | null;
@@ -740,6 +763,7 @@ function PollingScreen({
   onClose: () => void;
   closing: boolean;
   restoreNotice?: boolean;
+  onExit?: () => void;
 }) {
   const [qr, setQr] = useState<string | null>(null);
   const [eligibleCount, setEligibleCount] = useState<number | null>(null);
@@ -780,7 +804,7 @@ function PollingScreen({
 
   return (
     <div className="min-h-screen bg-[#F5F8FB]">
-      <TopBar right={<TeamBadge name={teamName} tableNo={tableNo} />} live />
+      <TopBar right={<TeamBadge name={teamName} tableNo={tableNo} />} live onExit={onExit} />
 
       <div className="max-w-6xl mx-auto p-6 sm:p-8">
         {restoreNotice ? (
@@ -1107,6 +1131,7 @@ function ResultsScreen({
   onReopen,
   closedAt,
   reopening,
+  onExit,
 }: {
   teamName: string;
   tableNo?: string | null;
@@ -1119,6 +1144,7 @@ function ResultsScreen({
   onReopen: () => void;
   closedAt: number | null;
   reopening: boolean;
+  onExit?: () => void;
 }) {
   const tally = tallyVotes(round, votes);
   const ranked = (round.options ?? [])
@@ -1148,7 +1174,7 @@ function ResultsScreen({
 
   return (
     <div className="min-h-screen bg-[#F5F8FB]">
-      <TopBar right={<TeamBadge name={teamName} tableNo={tableNo} />} />
+      <TopBar right={<TeamBadge name={teamName} tableNo={tableNo} />} onExit={onExit} />
 
       <div className="max-w-2xl mx-auto p-6 sm:p-8">
         <div className="bg-white rounded-3xl border border-[#DCE7EE] overflow-hidden shadow-sm">
@@ -1363,25 +1389,20 @@ export default function ModConsole() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  // 자동 입장 — ①조별 딥링크(`/mod?code=082901`) ②새로고침 시 sessionStorage 코드.
-  // 딥링크가 우선이다. 조에 링크만 보내면 코드를 불러줄 필요가 없고, 같은 기기에서
-  // 다른 조 링크를 열었을 때 앞 조의 저장 코드가 이겨 엉뚱한 조로 들어가면 안 된다.
+  // 자동 입장은 **주소에 실린 조별 딥링크(`/mod?code=082901`)로만** 한다.
+  //
+  // 예전에는 sessionStorage에 코드를 남겨 새로고침·뒤로가기에도 재입장시켰다. 편의였지만
+  // 코드를 넣지 않은 사람이 그 탭에서 앞 조의 산출물에 그대로 닿는다 — /mod-help에 들렀다
+  // 돌아오기만 해도 그랬다. 조 코드는 그 조의 자료를 여는 열쇠이므로 편의보다 앞선다.
+  // 새로고침 복구는 딥링크가 대신한다(주소에 ?code=가 남아 있으면 다시 들어간다).
   useEffect(() => {
     const fromLink =
       typeof window !== 'undefined' ? joinCodeFromSearch(window.location.search) : null;
-    const saved = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(CODE_KEY) : null;
-    const entry = fromLink ?? saved;
-    if (!entry || !isValidJoinCode(entry)) return;
-    codeRef.current = entry;
-    joinTeam(entry)
+    if (!fromLink || !isValidJoinCode(fromLink)) return;
+    codeRef.current = fromLink;
+    joinTeam(fromLink)
       .then(async (team) => {
-        if (!team) {
-          // 딥링크 코드가 무효(오타·재발급)면 저장 코드는 건드리지 않는다 — 링크만 틀린 것이다.
-          if (!fromLink) sessionStorage.removeItem(CODE_KEY);
-          return;
-        }
-        // 딥링크로 들어왔으면 새로고침에도 유지되도록 저장해 둔다.
-        if (fromLink) sessionStorage.setItem(CODE_KEY, fromLink);
+        if (!team) return;
         // 진행 중인 라운드가 있으면 함께 복원해 polling 화면(QR + 실시간 집계)으로 재진입한다.
         const round = await fetchActiveRound(team.id).catch(() => null);
         if (round) setVotes([]);
@@ -1459,7 +1480,6 @@ export default function ModConsole() {
       const team = await joinTeam(code);
       if (team) {
         codeRef.current = code;
-        sessionStorage.setItem(CODE_KEY, code);
         dispatch({ type: 'JOIN_SUCCESS', team });
       } else {
         dispatch({ type: 'JOIN_FAILURE', message: '존재하지 않는 접속코드입니다. 다시 확인해 주세요.' });
@@ -1532,6 +1552,31 @@ export default function ModConsole() {
     }
   };
 
+  /**
+   * 조 나가기 — 저장된 코드를 지우고 코드 입력 화면으로 되돌린다.
+   *
+   * 코드는 sessionStorage에 남아 같은 탭이면 새로고침·뒤로가기에도 유지된다(조가 실수로
+   * 새로고침해도 다시 안 치게 하려는 것). 그러나 나가는 길이 없으면 노트북을 넘겼을 때
+   * 다음 사람이 그대로 들어간다. 주소의 ?code= 도 함께 지운다 — 남겨두면 새로고침하는
+   * 순간 딥링크가 다시 입장시킨다.
+   */
+  const handleExit = () => {
+    if (!window.confirm('조에서 나갑니다. 다시 들어오려면 조 코드가 필요합니다.')) return;
+    try {
+      sessionStorage.removeItem(CODE_KEY);
+      sessionStorage.removeItem(MOD_TAB_KEY);
+    } catch {
+      /* 저장 불가 환경 — 아래 상태 초기화는 그대로 진행된다 */
+    }
+    codeRef.current = null;
+    if (typeof window !== 'undefined' && window.location.search) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    setVotes([]);
+    setClosedAt(null);
+    dispatch({ type: 'LOGOUT' });
+  };
+
   const enterFullscreen = () => {
     // 풀스크린 진입 시 1회 재조회 — 마감 직전(가드 적용 이전) 도착한 표까지 반영한다.
     if (state.round) {
@@ -1564,6 +1609,7 @@ export default function ModConsole() {
   if (state.screen === 'home') {
     screenEl = (
       <HomeScreen
+        onExit={handleExit}
         teamId={state.team?.id ?? ''}
         teamName={teamName}
         tableNo={tableNo}
@@ -1576,6 +1622,7 @@ export default function ModConsole() {
   } else if (state.screen === 'polling' && state.round) {
     screenEl = (
       <PollingScreen
+        onExit={handleExit}
         teamName={teamName}
         tableNo={tableNo}
         code={codeRef.current}
@@ -1592,6 +1639,7 @@ export default function ModConsole() {
   } else if (state.screen === 'results' && state.round) {
     screenEl = (
       <ResultsScreen
+        onExit={handleExit}
         teamName={teamName}
         tableNo={tableNo}
         sequence={resultsSequence?.roundId === state.round.id ? resultsSequence.sequence : 0}
