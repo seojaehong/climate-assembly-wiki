@@ -54,6 +54,18 @@ import {
   ontologyExportReadiness,
 } from './ontology-export';
 import { OntologyExportPanel } from './OntologyExportPanel';
+import {
+  emptyKindState,
+  kindPreservation,
+  toggleKind,
+  type KindState,
+  type OntologyKind,
+} from './ontology-kind';
+import {
+  OntologyKindBadge,
+  OntologyKindButtons,
+  OntologyKindCounter,
+} from './OntologyKindPanel';
 
 /**
  * 본부 조별 산출물 취합 보드.
@@ -139,6 +151,8 @@ function Postit({
   representative,
   category,
   onCategory,
+  kind,
+  onKind,
 }: {
   note: Note;
   showTeam: boolean;
@@ -148,6 +162,12 @@ function Postit({
   /** L3 — 이 카드에 얹힌 **잠정** 범주. 없으면 미배정이고, 미배정도 화면에 그대로 남는다. */
   category?: FourCategory | null;
   onCategory?: (noteId: string, category: FourCategory) => void;
+  /**
+   * US-013 — 이 카드에 얹힌 **잠정** 온톨로지 종류. 「온톨로지」 관점을 켰을 때만 넘어온다.
+   * 관점을 끄면 이름표도 버튼도 사라지지만 붙여둔 종류는 보드 상태에 그대로 남는다.
+   */
+  kind?: OntologyKind | null;
+  onKind?: (noteId: string, kind: OntologyKind) => void;
 }) {
   return (
     <article
@@ -155,17 +175,22 @@ function Postit({
       style={{ background: noteColor(note.teamName) }}
       data-note-id={note.id}
       data-category={category ?? ''}
+      data-kind={kind ?? ''}
       data-representative={representative && representative.length > 0 ? 'true' : 'false'}
     >
-      {/* 표시 세 겹(대표 · 닮은 짝 · 잠정 범주)을 **한 줄에 모은다** — 각자 한 줄씩 먹으면
+      {/* 표시 네 겹(대표 · 닮은 짝 · 잠정 범주 · 잠정 종류)을 **한 줄에 모은다** — 각자 한 줄씩 먹으면
           배지밭이 되어 본문이 카드 아래로 밀린다(US-009 기록). */}
-      {(representative && representative.length > 0) || (marks && marks.length > 0) || category ? (
+      {(representative && representative.length > 0) ||
+      (marks && marks.length > 0) ||
+      category ||
+      kind ? (
         <div className="mb-2 flex flex-wrap items-center gap-1">
           {representative && representative.length > 0 ? (
             <RepresentativeBadge marks={representative} />
           ) : null}
           {marks && marks.length > 0 ? <PairMarks marks={marks} /> : null}
           {category ? <CategoryBadge category={category} /> : null}
+          {kind ? <OntologyKindBadge kind={kind} /> : null}
         </div>
       ) : null}
       {showTeam ? (
@@ -186,6 +211,10 @@ function Postit({
       ) : null}
       {onCategory ? (
         <CategoryButtons noteId={note.id} current={category ?? null} onToggle={onCategory} />
+      ) : null}
+      {/* 관점을 켜야만 넘어온다 — 끄면 버튼이 사라지고 카드는 원래 모습으로 돌아온다. */}
+      {onKind ? (
+        <OntologyKindButtons noteId={note.id} current={kind ?? null} onToggle={onKind} />
       ) : null}
     </article>
   );
@@ -368,6 +397,13 @@ export default function HqSubmissionBoard({
   // L4 — 대표 지목 **이력만** 상태로 든다. 묶음(groups)은 체크된 짝에서 매번 파생하고,
   // 「현재 대표」는 이력의 마지막 사건에서 파생한다. 맞아야 하는 저장소가 하나뿐이라 어긋날 수가 없다.
   const [repHistory, setRepHistory] = useState<readonly RepresentativePickEntry[]>([]);
+  // US-013 — 「온톨로지」는 **관점**이다. 켜면 카드 위에 종류 이름표 한 겹이 겹쳐 보이고,
+  // 끄면 화면이 원래대로 돌아온다. 기본은 꺼짐 — 논증 구조는 취합의 마지막 겹이라
+  // 조가 쓴 것을 먼저 그대로 읽고 나서 얹는다.
+  const [ontologyView, setOntologyView] = useState(false);
+  // 카드 id → **잠정** 종류. 처음엔 비어 있다 — AI 가 미리 정하지 않는다(US-013 AC).
+  // 관점을 껐다 켜도 이 맵은 그대로다(붙인 것이 보기 전환으로 사라지면 안 된다).
+  const [kindState, setKindState] = useState<KindState>(() => emptyKindState());
   const [copied, setCopied] = useState(false);
   const [refreshedAt, setRefreshedAt] = useState<Date | null>(null);
   // 분과 필터 — 회의자료가 정한 구조화 단위가 분과다(총괄모더레이터 3인 × 5개 조).
@@ -446,6 +482,9 @@ export default function HqSubmissionBoard({
   const toggleNoteCategory = useCallback((noteId: string, category: FourCategory) => {
     setCatState((prev) => toggleCategory(prev, noteId, category));
   }, []);
+  const toggleNoteKind = useCallback((noteId: string, kind: OntologyKind) => {
+    setKindState((prev) => toggleKind(prev, noteId, kind));
+  }, []);
   // L4 — 묶음 = 사람이 ✓ 한 닮은 짝 하나(카드 두 장). **짝을 합쳐 큰 묶음을 만들지 않는다** —
   // 합치는 순간 그게 회의자료가 금지한 「조별 결과 임의 통합」이다.
   const repGroups = useMemo(
@@ -479,6 +518,9 @@ export default function HqSubmissionBoard({
     () => preservationInvariant(boardNotes, catState),
     [boardNotes, catState],
   );
+  // 「미지정 N장」도 같은 기준(꼭지·분과 전체, 검색어와 무관)으로 센다. 사람이 손으로 붙이는
+  // 이름표라 화면에 안 보이는 카드까지 세면 끝나지 않는 숙제가 된다(US-012 기록).
+  const kindReport = useMemo(() => kindPreservation(boardNotes, kindState), [boardNotes, kindState]);
 
   // 온톨로지 내보내기 — ★ **거르지 않은 꼭지 전체**(wholeBoard)를 쓴다. 조 순번(t01)은 board.teams
   // 에서의 자리로 매기므로, 분과로 거른 보드를 넘기면 같은 카드가 다른 순번을 받아 다른 분과의
@@ -725,6 +767,22 @@ export default function HqSubmissionBoard({
               />
             </>
           ) : null}
+          {/* US-013 — 「온톨로지」 관점 전환. **조별·모아보기 둘 다에서 보여야** 하므로
+              정렬 버튼들(`!grouped` 안)이 아니라 이 자리에 둔다. 두 보기 모두 포스트잇을 그린다. */}
+          <button
+            type="button"
+            aria-pressed={ontologyView}
+            data-testid="ontology-view-toggle"
+            onClick={() => setOntologyView((v) => !v)}
+            title="카드마다 쟁점·주장·제안·우려·조건·가치·근거 중 하나를 사람이 붙입니다"
+            className={`h-12 rounded-xl border px-4 text-[16px] font-bold ${
+              ontologyView
+                ? 'border-[#7A3E9D] bg-[#7A3E9D] text-white'
+                : 'border-[#C4D8E4] bg-white text-[#1F4E79]'
+            }`}
+          >
+            온톨로지
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -811,6 +869,11 @@ export default function HqSubmissionBoard({
 
       {/* L3 — 보존 카운터는 **접히지 않고 두 보기 모두에서 항상** 보인다. 「모으지 않았다」의 증명이다. */}
       <PreservationCounter report={preservation} />
+      {/* US-013 — 관점을 켠 동안에만 뜬다. 이름표가 안 보이는데 「미지정 N장」만 떠 있으면
+          무엇이 미지정인지 확인할 길이 없어 사람이 카운터를 못 믿는다. */}
+      {ontologyView ? (
+        <OntologyKindCounter notes={boardNotes} state={kindState} report={kindReport} />
+      ) : null}
       {/* US-012 — 내보내기도 두 보기 모두에서 항상 보인다(꼭지 전체를 담으므로 보기 방식과 무관하다). */}
       <OntologyExportPanel
         preservation={exportPreservation}
@@ -885,6 +948,8 @@ export default function HqSubmissionBoard({
                       representative={repMarks.get(note.id)}
                       category={catState.get(note.id) ?? null}
                       onCategory={toggleNoteCategory}
+                      kind={ontologyView ? (kindState.get(note.id) ?? null) : null}
+                      onKind={ontologyView ? toggleNoteKind : undefined}
                     />
                   ))}
                 </div>
@@ -932,6 +997,8 @@ export default function HqSubmissionBoard({
                   representative={repMarks.get(note.id)}
                   category={catState.get(note.id) ?? null}
                   onCategory={toggleNoteCategory}
+                  kind={ontologyView ? (kindState.get(note.id) ?? null) : null}
+                  onKind={ontologyView ? toggleNoteKind : undefined}
                 />
               ))
             )}

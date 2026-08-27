@@ -1,0 +1,247 @@
+{
+  "url": "http://localhost:4477/ko/moderator/insights/submission-lab/",
+  "passed": 48,
+  "total": 48,
+  "results": [
+    {
+      "name": "온톨로지 전환 버튼이 있다",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "전환 버튼 라벨이 「온톨로지」",
+      "pass": true,
+      "detail": "온톨로지"
+    },
+    {
+      "name": "기본은 꺼짐(aria-pressed=false)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "꺼진 동안 종류 버튼이 0개",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "꺼진 동안 카운터가 없다",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "조별 뷰 카드가 있다",
+      "pass": true,
+      "detail": "27장"
+    },
+    {
+      "name": "켜면 aria-pressed=true",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "조별 뷰에서도 카드마다 종류 버튼이 붙는다",
+      "pass": true,
+      "detail": "27/27"
+    },
+    {
+      "name": "관점을 켜도 조별 뷰 카드 id 다중집합 불변",
+      "pass": true,
+      "detail": "27장"
+    },
+    {
+      "name": "모아보기 카드가 있다",
+      "pass": true,
+      "detail": "27장"
+    },
+    {
+      "name": "카드마다 종류 버튼이 붙는다",
+      "pass": true,
+      "detail": "27/27"
+    },
+    {
+      "name": "카드 한 장의 종류 버튼이 7개",
+      "pass": true,
+      "detail": "7개"
+    },
+    {
+      "name": "종류 값이 브리지의 7종·순서와 같다",
+      "pass": true,
+      "detail": "Issue,Claim,Proposal,Concern,Condition,Value,Evidence"
+    },
+    {
+      "name": "한국어 라벨이 쟁점·주장·제안·우려·조건·가치·근거",
+      "pass": true,
+      "detail": "쟁점,주장,제안,우려,조건,가치,근거"
+    },
+    {
+      "name": "카운터가 네 숫자를 낸다",
+      "pass": true,
+      "detail": "[27,0,27,0]"
+    },
+    {
+      "name": "상단에 「미지정 N장」이 있다",
+      "pass": true,
+      "detail": "온톨로지 관점 원문 27장 · 종류 0장 · 미지정 27장 · 삭제 0장 쟁점 0 주장 0 제안 0 우려 0 조건 0 가치 0 근거 0 종류는 "
+    },
+    {
+      "name": "처음에는 종류 0장 · 미지정 = 원문",
+      "pass": true,
+      "detail": "[27,0,27,0]"
+    },
+    {
+      "name": "삭제 0장",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "AI 가 미리 정하지 않는다 — data-kind 가 붙은 카드 0장",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "종류별 수 일곱 개가 다 0",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "드래그 조작이 없다",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "종류를 누르면 카드에 data-kind 가 붙는다",
+      "pass": true,
+      "detail": "topic-0829-1:team-082901:1"
+    },
+    {
+      "name": "배지가 붙는다",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "배지에 「잠정」이 글자로 들어 있다",
+      "pass": true,
+      "detail": "잠정 · 주장"
+    },
+    {
+      "name": "카드 원문이 그대로다",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "종류를 붙여도 카드 id 다중집합 불변 — 카드 수가 줄지 않는다",
+      "pass": true,
+      "detail": "27장"
+    },
+    {
+      "name": "미지정이 1 줄고 종류가 1 는다",
+      "pass": true,
+      "detail": "[27,1,26,0]"
+    },
+    {
+      "name": "주장 칸의 수가 1",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "다른 종류를 누르면 갈아탄다 — 종류 수는 그대로 1",
+      "pass": true,
+      "detail": "[27,1,26,0]"
+    },
+    {
+      "name": "배지가 근거로 바뀐다",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "같은 버튼을 다시 누르면 해제된다 — 선택은 되돌릴 수 있다",
+      "pass": true,
+      "detail": "[27,0,27,0]"
+    },
+    {
+      "name": "해제하면 배지가 사라진다",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "해제해도 카드 id 다중집합 불변",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "다섯 장에 서로 다른 종류",
+      "pass": true,
+      "detail": "[27,5,22,0]"
+    },
+    {
+      "name": "일곱 종류 합 + 미지정 = 원문",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "끄면 카운터가 사라진다",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "끄면 종류 버튼도 사라진다",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "끄면 배지도 사라진다 — 관점은 한 겹일 뿐",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "껐을 때도 카드 id 다중집합 불변",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "다시 켜면 붙여둔 종류가 그대로 있다",
+      "pass": true,
+      "detail": "[27,5,22,0]"
+    },
+    {
+      "name": "조별 뷰에도 같은 이름표가 보인다",
+      "pass": true,
+      "detail": "5장"
+    },
+    {
+      "name": "보기 왕복 후에도 카드 id 다중집합 불변",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "다른 꼭지에서는 종류 0장 — 꼭지 배정이 새지 않는다",
+      "pass": true,
+      "detail": "[21,0,21,0]"
+    },
+    {
+      "name": "꼭지를 돌아오면 종류가 그대로다",
+      "pass": true,
+      "detail": "[27,5,22,0]"
+    },
+    {
+      "name": "분과를 고르면 카운터가 그 분과 카드만 센다",
+      "pass": true,
+      "detail": "[10,5,5,0]"
+    },
+    {
+      "name": "전체로 돌아오면 원래 수",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "supabase.co 요청 0건",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "콘솔 에러 0건",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}
