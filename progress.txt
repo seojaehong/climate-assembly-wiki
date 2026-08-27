@@ -533,3 +533,42 @@ Commit: cba0558
     된다 — 한 줄에 다 들어가는지 **스크린샷으로 확인할 것.** 안 들어가면 종류는 배지가 아니라
     버튼 줄(`CategoryButtons` 옆)에 두는 편이 낫다.
 ---
+
+## 2026-08-28 02:40 - US-011 보드 → 온톨로지 스냅샷 변환 (브라우저 안전)
+Commit: 523de61
+- `src/islands/mod/ontology-snapshot.ts` 신규(순수 로직) — `parseSubmissionNodeId` ·
+  `submissionNodeId` · `boardToOntologySnapshot(board, takenAt, {sessionSlug})` ·
+  `contentNodeCount` · `ontologyPreservation(notes, snapshot)` +
+  `ONTOLOGY_SNAPSHOT_SOURCE`('climate_vote.submission_item') · `DEFAULT_SESSION_SLUG`.
+  `automation/submission-ontology-bridge.mjs` 의 규칙을 옮긴 것이며 **node 전용 모듈을 하나도 안 쓴다.**
+  원본 .mjs 는 그대로 둔다(AC 가 id 규격의 기준으로 그 파일을 지목한다).
+- `src/islands/mod/ontology-snapshot.test.ts` 신규 20건. 검사: `npx vitest run src/`
+  **67파일 1,162건 통과**(기준선 1,142 + 20) · `npx astro check` 0 errors / 0 warnings / 49 hints(기준선 유지).
+  UI 가 없는 story 라 브라우저 검증 없음.
+- **★ 결정적 테스트 하나 — 원본 브리지와의 대조.** 픽스처 전체를 원본 `.mjs`
+  `submissionsToCanvasSnapshot(rows, {takenAt})` 에 통과시키고, 같은 픽스처의 `buildBoards()` 결과
+  꼭지 3개를 새 함수에 통과시켜 **agenda `(id,text,group_id,parent_id)` · link `(id,source_id,target_id)`
+  다중집합이 정확히 일치**하는지 본다. 「규칙을 옮겼다」가 주장이 아니라 증명이 된다.
+  ★ 앞으로 둘 중 하나를 고치면 이 테스트가 깨진다 — 그게 이 테스트의 목적이다.
+- **다음 이터레이션(US-012·US-013)을 위한 학습:**
+  - ★ **`boardToOntologySnapshot` 에는 거르지 않은 `TopicBoard` 를 넘길 것.** 조 순번(`t01`)은
+    `board.teams` 에서의 **자리**로 매긴다. `filterBoardBySubgroup()` 으로 거른 보드를 넘기면
+    같은 카드가 다른 순번을 받아 다른 분과의 스냅샷과 id 가 충돌한다. US-012 버튼은 분과 필터가
+    걸린 화면에서도 **전체 보드**를 넘겨야 한다(카운터가 `boardNotes` 를 쓰는 것과 같은 이유).
+  - ★ **「빈 값」은 반드시 `null`, 빈 문자열이 아니다.** `canvas-ontology-bridge.mjs` 의
+    `optionalString()` 이 non-null 값을 `nonemptyString()` 으로 넘겨 **`''` 면 예외를 던진다.**
+    `group_id`·`parent_id` 둘 다 해당. 링크 행에는 `relation` 키를 **아예 두지 않는다**(브리지가 후보를 단다).
+  - **빈 보드는 던진다**(`조가 쓴 항목이 하나도 없다`). US-012 는 버튼을 비활성화해서 이 예외에
+    도달하지 않게 하는 쪽이 맞다 — 예외는 마지막 방어선이다.
+  - 스냅샷 id 는 `0829-submissions-k{꼭지}-{takenAt}` 이다(원본 .mjs 는 꼭지 구분이 없다 —
+    전체 행을 한 번에 받기 때문). 꼭지 셋을 같은 순간에 내보내도 안 덮어쓴다.
+    **US-012 파일명은 이 id 를 그대로 쓰면 「꼭지와 시각」 요건이 자동으로 충족된다.**
+  - ⚠️ **`.mjs` 를 `.ts` 테스트에서 import 하면 `takenAt` 인자가 타입 추론에 안 잡힌다**
+    (기본값 없는 구조분해 인자는 JS 파일에서 추론이 못 만든다) → `astro check` 가 ts(2353) 로 죽는다.
+    원본을 건드리지 말고 **테스트 안에서 `as unknown as (...) => ...` 로 모양만 붙일 것.**
+  - US-013 의 종류 7종은 `automation/canvas-ontology-bridge.mjs` 의 `CANVAS_ONTOLOGY_NODE_KINDS`
+    (`Issue·Claim·Proposal·Concern·Condition·Value·Evidence`)와 한국어 `KIND_KO`
+    (`쟁점·주장·제안·우려·조건·가치·근거`)가 이미 그 파일 14~29행에 있다. 이름·개수를 거기서 베낄 것.
+    검수 큐는 노드마다 `kind: null` + `kindCandidates: [7종]` 로 시작한다 —
+    **「처음에는 전부 미지정」이 이미 파이프라인의 기본값**이라 US-013 도 같게 두면 된다.
+---
