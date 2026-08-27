@@ -201,6 +201,34 @@ L4 는 설계문서가 **「시민이 고른다」**로 못 박은 유일한 단
   훅: `ontology-export-panel` · `ontology-export-button` · `ontology-export-counter` ·
   `ontology-export-reason` · `ontology-export-alert` · `ontology-export-scope`.
 
+## 온톨로지 종류 붙이기 (`ontology-kind.ts` · `OntologyKindPanel.tsx`)
+
+「온톨로지」는 **관점(lens)** 이다 — 카드를 종류별 칸으로 옮기지 않고 카드 위에 이름표 한 겹을
+겹쳐 보인다. 관점을 끄면 화면이 원래대로 돌아온다. 종류별 칸으로 옮기는 화면을 만들지 말 것:
+옮기는 순간 「이 카드는 근거일 뿐」이라는 서열이 생기고, 그게 곧 「좋은 의견 선정」이다.
+
+- ★ **종류 7종의 이름·개수·순서는 `automation/canvas-ontology-bridge.mjs` 의
+  `CANVAS_ONTOLOGY_NODE_KINDS` 와 같아야 한다.** `ontology-kind.test.ts` 가 원본 배열과 직접
+  대조한다 — 한쪽만 고치면 깨진다. 화면과 검수 큐가 다른 어휘를 쓰면 사람이 같은 카드를 두 번,
+  서로 다른 말로 판정하게 된다. 한국어는 `ONTOLOGY_KIND_LABELS` 에만 있다(저장값은 ASCII).
+- ★ **`.mjs` 의 상수 배열은 `.ts` 테스트에서 그냥 import 해도 된다.** US-011 이 겪은 ts(2353) 은
+  **기본값 없는 구조분해 인자를 가진 함수** 전용 문제라 `as unknown as` 가 필요 없다.
+  이 브리지는 CLI 실행이 `import.meta.url === process.argv[1]` 로 막혀 있어 import 만으로는 안 돈다.
+- **처음에는 전부 미지정이다.** AI 가 미리 채우면 사람은 확인 없이 넘기고, 그 순간 종류를 붙인 것은
+  사람이 아니라 도구가 된다. 검수 큐도 노드마다 `kind: null` + 후보 7종으로 시작한다 — 같은 규칙이다.
+- **붙인 종류는 내보내는 스냅샷에 넣지 말 것.** 넣으면 `ontology-snapshot.test.ts` 의 원본 브리지
+  대조가 깨지고, 사람이 검수 큐에서 다시 고르는 단계를 도구가 앞질러 버린다. 화면에 그 사실을 적어 둔다.
+- 관점 전환 버튼은 **`!grouped` 블록이 아니라 항상 보이는 도구 줄**에 둔다. 정렬 버튼들은 모아보기
+  전용이라 그 안에 두면 조별 뷰에서 사라지는데, 두 보기 모두 `Postit` 을 그린다.
+  `Postit` 호출부는 **두 곳**이다 — 한 곳만 배선하면 조별 뷰에 조용히 버튼이 안 붙는다.
+- 「미지정 N장」은 `boardNotes`(꼭지·분과 전체, 검색 무관)로 센다. 내보내기 카운터는 `wholeBoard` 라
+  분과를 고르면 두 수가 갈라진다 — **정상이다**(사람이 손으로 붙이는 이름표라 안 보이는 카드까지
+  세면 끝나지 않는 숙제가 된다).
+- 종류별 수는 일곱이 **항상 다 나온다**(0장도 자리를 지킨다) — 빈 종류가 사라지면 「그 종류는 안 봐도
+  된다」로 읽힌다. `FourCategoryPanel` 의 미배정 칸과 같은 이유다.
+- 낱말만 쓰면 「조건」과 「우려」가 헷갈린다. 뜻 한 줄(`ONTOLOGY_KIND_HINTS`)을 `title` 로 붙일 것 —
+  **뜻이 없으면 사람은 첫 번째 버튼을 누른다.**
+
 ## UI 검증 시 셀렉터 함정
 
 포스트잇이 `<article>` 이다. **새 패널이 카드 발췌를 `<article>` 로 내면 「카드 N장」 검사가
@@ -218,6 +246,14 @@ L4 는 설계문서가 **「시민이 고른다」**로 못 박은 유일한 단
   `representative-citizen-confirm` · `representative-confirm` · `representative-error` ·
   `representative-history` · `representative-badge` · `representative-picked-count` · `representative-empty`.
   포스트잇에도 `data-representative="true|false"` 가 있다.
+- ★ **스크린샷·색 판정은 클릭 직후에 하지 말 것 — 150ms CSS transition 이 그대로 찍힌다.**
+  US-013 에서 활성 버튼이 짙은 초록이 아니라 흐린 올리브로 찍혔고 `getComputedStyle` 도 중간값
+  (`rgba(207,218,215,.77)`)을 돌려줘 「인라인 스타일이 안 먹었다」로 오진했다. Tailwind `transition`
+  은 duration 0.15s 다. **스크린샷 전에 `waitForTimeout(400)`.** DOM 검사(48/48)는 다 통과한 상태였다.
+- US-013 훅 — `ontology-view-toggle` · `ontology-kind-counter` · `ontology-unspecified-count` ·
+  `ontology-kind-deleted` · `ontology-kind-tally`(`data-kind`) · `ontology-kind-buttons` ·
+  `ontology-kind-badge`. 포스트잇에 `data-kind`(미지정이면 `""`) — `article[data-kind]:not([data-kind=""])`
+  로 「종류가 붙은 카드」를 센다.
 - ★ **조별 뷰로 갔다 오면 모아보기 쪽 패널이 통째로 언마운트된다.** `SimilarPairsPanel` ·
   `RepresentativePanel` 은 `!grouped` 브랜치 안이라 접힘 상태(`open`)가 초기값으로 돌아간다.
   체크·범주·지목 이력은 보드 상태라 그대로다 — **뷰·꼭지를 오간 뒤에는 패널을 다시 펼치고 판정할 것**

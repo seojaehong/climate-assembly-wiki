@@ -240,7 +240,7 @@
         "Verify in browser (claude-in-chrome)"
       ],
       "priority": 13,
-      "passes": false,
+      "passes": true,
       "notes": ""
     }
   ]

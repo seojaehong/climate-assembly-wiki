@@ -615,3 +615,49 @@ Commit: ac37532
     `Promise.all([page.waitForEvent('download'), click()])` → `dl.saveAs(경로)`.
     `automation/.artifacts/verify-us012.mjs` 가 그 예다.
 ---
+
+## 2026-08-28 03:20 - US-013 온톨로지 관점 보기 — 카드에 종류 붙이기
+Commit: 01036cd
+- `src/islands/mod/ontology-kind.ts` 신규(순수) — `ONTOLOGY_KINDS`(7종) · `ONTOLOGY_KIND_LABELS` ·
+  `ONTOLOGY_KIND_HINTS` · `KindState`(카드 id → 종류 맵) · `emptyKindState` · `assignKind` ·
+  `unassignKind` · `kindOf` · `toggleKind` · `unspecifiedCount` · `kindPreservation` · `countsByKind`.
+  `four-category.ts` 를 그대로 본떴다 — 배정 함수가 **카드 목록을 인자로 받지 않아** 이름표가
+  카드를 지울 방법 자체가 없다.
+- `src/islands/mod/OntologyKindPanel.tsx` 신규 — `OntologyKindButtons`(카드에 붙는 7버튼) ·
+  `OntologyKindBadge`(`잠정 · 주장`) · `OntologyKindCounter`(상단 「원문·종류·**미지정**·삭제 0」 + 종류별 수).
+- `HqSubmissionBoard.tsx` +69줄 — `ontologyView`·`kindState` 상태, `toggleNoteKind`, `kindReport`,
+  전환 버튼, 카운터, **Postit 호출부 2곳**(조별·모아보기) 배선. `Postit` 에 `data-kind` 추가.
+- `src/islands/mod/ontology-kind.test.ts` 신규 23건. 검사: `npx vitest run src/`
+  **69파일 1,200건 통과**(기준선 1,177 + 23) · `npx astro check` 0 errors / 0 warnings / 49 hints ·
+  `npx astro build` 성공.
+- 브라우저(playwright, submission-lab :4477) **48/48 PASS** — `evaluation/2026-08-28-us013-verify.json`,
+  스크린샷 `...-us013-grouped.png` · `...-assigned.png` · `...-panel.png` · `...-full.png`.
+  기본 꺼짐 · 켜면 27/27 카드에 버튼 · 7종 값·라벨이 브리지 순서와 일치 · 처음 종류 0장/미지정 27장 ·
+  붙여도 카드 id 다중집합 불변 · 갈아타기·해제 동작 · 관점을 껐다 켜도 붙인 것 유지 ·
+  조별↔모아보기·꼭지·분과를 오가도 보존 · supabase.co 0건 · 콘솔 에러 0건.
+- **다음 이터레이션을 위한 학습:**
+  - ★ **`.mjs` 상수 배열은 `.ts` 테스트에서 그냥 import 해도 된다.** US-011 이 겪은 ts(2353) 은
+    **기본값 없는 구조분해 인자를 가진 함수**에서만 난다. `CANVAS_ONTOLOGY_NODE_KINDS` 같은
+    배열 리터럴 export 는 `as unknown as` 없이 바로 쓰이고 `astro check` 도 통과한다.
+    `canvas-ontology-bridge.mjs` 는 CLI 실행이 `import.meta.url === process.argv[1]` 로 막혀 있어
+    import 만으로는 아무것도 안 돈다(테스트에서 안전).
+  - ★ **스크린샷은 클릭 직후에 찍지 말 것 — 150ms CSS transition 이 그대로 찍힌다.**
+    처음 찍은 `-assigned.png` 에서 활성 버튼이 짙은 초록이 아니라 흐린 올리브색으로 나왔고,
+    `getComputedStyle` 도 중간값(`rgba(207,218,215,.77)`)을 돌려줘 「스타일이 안 먹었다」로 오진했다.
+    (같은 방식의 L3 활성 버튼도 같은 순간엔 idle 값이 나온다 — 즉 **버그가 아니라 측정 시점 문제**다.)
+    Tailwind `transition` 은 duration 0.15s. **스크린샷·색 판정 전에 `waitForTimeout(400)`** 을 넣는다.
+  - 이름표를 하나 더 얹을 자리는 `Postit` 의 **배지 한 줄**과 카드 하단 버튼 줄이다. 배지는 이제
+    네 겹(대표·닮은 짝·범주·종류)이 한 줄에 모인다. 다섯째를 넣으려면 줄바꿈부터 볼 것.
+  - 300px 카드에 4버튼 줄 + 7버튼 줄(2행) 은 실측상 읽힌다. 두 줄 사이는 `border-t` 로 갈랐다.
+    버튼을 더 늘리면 카드 본문이 밀리므로 그때는 관점별로 **한 줄만** 켜지게 바꿔야 한다.
+  - 관점(view) 전환 버튼은 `!grouped` 블록이 아니라 **항상 보이는 도구 줄**에 둔다.
+    정렬 버튼들은 모아보기 전용이라 그 안에 두면 조별 뷰에서 사라진다. 두 보기 모두 `Postit` 을 그린다.
+  - 붙인 종류는 **US-012 내보내기에 넣지 않았다.** 넣으면 `ontology-snapshot.test.ts` 의
+    원본 브리지 대조가 깨지고, 검수 큐가 `kind: null` + 후보 7종으로 시작하는 설계와도 어긋난다
+    (AI 가 아니라 사람이 그 자리에서 고르는 것이 파이프라인의 규칙이다). 화면에 그 사실을 적어 두었다.
+  - 「미지정 N장」은 `boardNotes`(꼭지·분과 전체, 검색 무관)로 센다 — 내보내기 카운터(`wholeBoard`)와
+    기준이 다른 것이 정상이다(US-012 기록). 분과를 고르면 두 수가 갈라지는 것을 실측으로 확인했다(10 vs 27).
+  - 훅 — `ontology-view-toggle` · `ontology-kind-counter` · `ontology-unspecified-count` ·
+    `ontology-kind-deleted` · `ontology-kind-tally`(`data-kind`) · `ontology-kind-buttons` ·
+    `ontology-kind-badge`. 포스트잇에 `data-kind`(미지정이면 `""`).
+---
