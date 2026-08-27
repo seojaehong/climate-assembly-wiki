@@ -14,6 +14,7 @@
 import { useState } from 'react';
 import { unlockHqAttendance } from '../../lib/attendance';
 import HqGrid from './HqGrid';
+import HqSubmissionBoard from './HqSubmissionBoard';
 import {
   HQ_ACTOR_KEY,
   HQ_TOKEN_KEY,
@@ -42,6 +43,9 @@ export default function HqGate() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // 본부 화면 전환 — 8.29의 본 과업이 조별 산출물이므로 그것을 기본으로 연다.
+  // (투표·출석 그리드는 여전히 필요하지만 그날의 중심은 아니다.)
+  const [view, setView] = useState<'submissions' | 'grid'>('submissions');
 
   const unlock = async (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -136,8 +140,27 @@ export default function HqGate() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-end gap-3 bg-[#1F4E79] px-4 py-2 text-white">
-        <span className="text-[14px] font-bold">
+      <div className="flex flex-wrap items-center gap-3 bg-[#1F4E79] px-4 py-2 text-white">
+        <div role="tablist" aria-label="본부 화면" className="flex gap-1">
+          {([
+            ['submissions', '조별 산출물'],
+            ['grid', '투표·출석 현황'],
+          ] as const).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={view === id}
+              onClick={() => setView(id)}
+              className={`min-h-9 rounded-lg px-4 text-[14px] font-bold transition ${
+                view === id ? 'bg-white text-[#1F4E79]' : 'border border-white/40 text-white/85'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <span className="ml-auto text-[14px] font-bold">
           본부 로그인됨{actor ? ` · ${actor}` : ''}
         </span>
         <button
@@ -148,7 +171,7 @@ export default function HqGate() {
           로그아웃
         </button>
       </div>
-      <HqGrid />
+      {view === 'submissions' ? <HqSubmissionBoard token={token} /> : <HqGrid />}
     </>
   );
 }
