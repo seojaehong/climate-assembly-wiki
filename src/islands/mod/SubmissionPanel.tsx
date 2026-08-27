@@ -22,6 +22,7 @@ import {
   toSaveItems,
   type EditorRow,
 } from './submission-panel-logic';
+import { SUBMISSION_GUIDE, topicAnchorId } from './submission-guide';
 
 /**
  * 조별 산출물 — 그날의 꼭지를 **한 화면에 모두 펼친다.**
@@ -163,7 +164,10 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
   };
 
   return (
-    <section className="rounded-2xl border border-[#DCE7EE] bg-white overflow-hidden">
+    <section
+      id={topicAnchorId(topic.id)}
+      className="rounded-2xl border border-[#DCE7EE] bg-white overflow-hidden scroll-mt-4"
+    >
       <header className="px-5 py-4 bg-[#4F9D3A]/8 border-b border-[#DCE7EE]">
         <div className="flex items-baseline gap-2">
           <span className="text-[22px] font-extrabold text-[#4F9D3A]" aria-hidden="true">
@@ -396,6 +400,84 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
   );
 }
 
+/**
+ * 작성 매뉴얼 — 꼭지가 아직 안 열렸을 때도 보여야 한다. 조 모더레이터가 시작 전에
+ * 읽어 두는 것이 이 화면의 절반이기 때문이다. 기본은 펼침이고 접으면 그 상태가 유지된다.
+ */
+function SubmissionGuide() {
+  const [open, setOpen] = useState(() => {
+    try {
+      return sessionStorage.getItem('climate_vote_guide_collapsed') !== '1';
+    } catch {
+      return true;
+    }
+  });
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    try {
+      sessionStorage.setItem('climate_vote_guide_collapsed', next ? '0' : '1');
+    } catch {
+      /* 저장 못 해도 토글 자체는 된다 */
+    }
+  };
+
+  return (
+    <section className="rounded-2xl border border-[#C4D8E4] bg-[#F1F7FA] overflow-hidden">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        className="w-full flex items-center gap-3 px-5 py-4 text-left"
+      >
+        <span className="text-[22px]" aria-hidden="true">📖</span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-[19px] font-extrabold text-[#1F4E79]">작성 안내</span>
+          <span className="block text-[14px] text-[#5A6B73]">시작 전에 한 번 읽어 주세요</span>
+        </span>
+        <span className="text-[20px] text-[#5A6B73]" aria-hidden="true">{open ? '▾' : '▸'}</span>
+      </button>
+      {open ? (
+        <ol className="px-5 pb-5 space-y-3">
+          {SUBMISSION_GUIDE.map((item, index) => (
+            <li key={item.title} className="flex gap-3">
+              <span className="w-7 h-7 shrink-0 rounded-lg bg-white border border-[#C4D8E4] grid place-items-center text-[14px] font-bold text-[#1F4E79] tr-num">
+                {index + 1}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[16px] font-bold text-[#1F2933]">{item.title}</span>
+                <span className="block text-[15px] leading-[1.6] text-[#5A6B73]">{item.body}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
+    </section>
+  );
+}
+
+/** 꼭지 바로가기 — 세 구역이 세로로 길어 위아래로 오갈 일이 잦다. */
+function TopicJump({ topics }: { topics: Topic[] }) {
+  const jump = (topicId: string) => {
+    document.getElementById(topicAnchorId(topicId))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  return (
+    <nav aria-label="꼭지 바로가기" className="flex flex-wrap gap-2">
+      {topics.map((topic) => (
+        <button
+          key={topic.id}
+          type="button"
+          onClick={() => jump(topic.id)}
+          className="h-12 rounded-xl border border-[#C4D8E4] bg-white px-4 text-[16px] font-bold text-[#1F4E79] active:scale-[.99] transition"
+        >
+          <span className="text-[#4F9D3A] mr-1.5" aria-hidden="true">{ordinalMark(topic.ordinal)}</span>
+          {topic.prompt}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 export default function SubmissionPanel({ code }: { code: string | null }) {
   const [topics, setTopics] = useState<Topic[] | null>(null);
   const [topicsFailed, setTopicsFailed] = useState(false);
@@ -439,24 +521,29 @@ export default function SubmissionPanel({ code }: { code: string | null }) {
     return <p className="text-[16px] text-[#5A6B73]">불러오는 중…</p>;
   }
 
-  // 준비 전에는 운영 사정을 시민 화면에 늘어놓지 않는다 — 한 줄로 끝낸다.
+  // 준비 전에도 매뉴얼은 보여 준다 — 시작 전에 읽어 두는 것이 이 화면의 절반이다.
   if (topics.length === 0) {
     return (
-      <div className="rounded-2xl border border-[#DCE7EE] bg-[#F5F8FB] px-5 py-8 text-center">
-        <p className="text-[17px] font-bold text-[#1F4E79]">작성 화면 준비 중입니다.</p>
-        <button
-          type="button"
-          onClick={() => void loadTopics()}
-          className="mt-4 min-h-12 rounded-xl border border-[#C4D8E4] bg-white px-5 text-[16px] font-bold text-[#1F4E79]"
-        >
-          새로고침
-        </button>
+      <div className="space-y-5">
+        <SubmissionGuide />
+        <div className="rounded-2xl border border-[#DCE7EE] bg-[#F5F8FB] px-5 py-8 text-center">
+          <p className="text-[17px] font-bold text-[#1F4E79]">작성 화면 준비 중입니다.</p>
+          <button
+            type="button"
+            onClick={() => void loadTopics()}
+            className="mt-4 min-h-12 rounded-xl border border-[#C4D8E4] bg-white px-5 text-[16px] font-bold text-[#1F4E79]"
+          >
+            새로고침
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-5">
+      <SubmissionGuide />
+      <TopicJump topics={topics} />
       {topics.map((topic) => (
         <TopicSection key={topic.id} code={code} topic={topic} />
       ))}
