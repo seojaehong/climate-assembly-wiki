@@ -10,6 +10,9 @@ import {
   shouldLogOnStop,
   formatRemaining,
   type TimerState,
+  parseSessionMinutes,
+  stepSessionMinutes,
+  SESSION_MAX_MINUTES,
 } from './timer-logic';
 
 beforeEach(() => {
@@ -179,5 +182,36 @@ describe('formatRemaining', () => {
   });
   it('음수는 00:00으로 clamp', () => {
     expect(formatRemaining(-500)).toBe('00:00');
+  });
+});
+
+describe('parseSessionMinutes', () => {
+  it('reads a typed number', () => {
+    expect(parseSessionMinutes('37')).toBe(37);
+  });
+
+  it('clamps above the ceiling instead of refusing', () => {
+    expect(parseSessionMinutes('999')).toBe(SESSION_MAX_MINUTES);
+  });
+
+  // 편집 중 잠시 비거나 0이 되는 것은 확정하지 않는다 — 확정하면 입력칸이 되돌아가 못 고친다.
+  it.each(['', '   ', '0', '-5', 'abc', '1.5', '12a'])('leaves %p unconfirmed', (raw) => {
+    expect(parseSessionMinutes(raw)).toBeNull();
+  });
+
+  it('ignores surrounding whitespace', () => {
+    expect(parseSessionMinutes(' 20 ')).toBe(20);
+  });
+});
+
+describe('stepSessionMinutes', () => {
+  it('moves one minute at a time', () => {
+    expect(stepSessionMinutes(15, 1)).toBe(16);
+    expect(stepSessionMinutes(15, -1)).toBe(14);
+  });
+
+  it('stops at the boundaries instead of wrapping', () => {
+    expect(stepSessionMinutes(1, -1)).toBe(1);
+    expect(stepSessionMinutes(SESSION_MAX_MINUTES, 1)).toBe(SESSION_MAX_MINUTES);
   });
 });

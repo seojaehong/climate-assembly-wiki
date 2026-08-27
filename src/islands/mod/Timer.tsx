@@ -9,12 +9,20 @@ import {
   isLastTenSeconds,
   shouldLogOnStop,
   formatRemaining,
+  minutesToMs,
+  formatPresetLabel,
+  parseSessionMinutes,
+  stepSessionMinutes,
+  SESSION_MAX_MINUTES,
+  SPEECH_PRESET_MINUTES,
+  SESSION_PRESET_MINUTES,
   type TimerState,
   type TimerKind,
 } from './timer-logic';
 import { logTimer } from '../../lib/mod-console';
 
-const SPEECH_PRESETS = [1, 2, 3];
+const SPEECH_PRESETS = SPEECH_PRESET_MINUTES; // [0.5, 1, 2, 3] — 0.5는 「30초」로 표시된다
+const SESSION_PRESETS = SESSION_PRESET_MINUTES; // [5, 10, 15, 20, 25, 40] — 8.29 오후 진행표 블록
 
 function Eyebrow({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
@@ -31,6 +39,14 @@ function Eyebrow({ children, className = '' }: { children: React.ReactNode; clas
 export default function Timer({ code, teamName }: { code: string | null; teamName: string }) {
   const [state, setState] = useState<TimerState>(createIdleTimer('speech', 60_000));
   const [sessionMinutes, setSessionMinutes] = useState(15);
+  // 입력칸에 찍힌 글자. 편집 중 잠시 비는 것을 허용하려고 확정값(sessionMinutes)과 따로 둔다 —
+  // 값에 곧장 묶어 두면 지우는 순간 되돌아가 숫자를 고쳐 쓸 수가 없다.
+  const [sessionDraft, setSessionDraft] = useState('15');
+  /** 프리셋·＋/− 처럼 확정값을 바꾸는 경로는 입력칸 글자도 함께 맞춘다. */
+  const commitSessionMinutes = (value: number) => {
+    setSessionMinutes(value);
+    setSessionDraft(String(value));
+  };
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const expiredLoggedRef = useRef(false);
 
@@ -116,18 +132,21 @@ export default function Timer({ code, teamName }: { code: string | null; teamNam
             <div>
               <Eyebrow className="text-[#5A6B73] mb-1">발언 타이머</Eyebrow>
               <p className="text-[14px] text-[#5A6B73] mb-3">시간을 눌러 바로 시작합니다.</p>
-              <div className="grid grid-cols-3 gap-3">
-                {SPEECH_PRESETS.map((min) => (
-                  <button
-                    key={min}
-                    type="button"
-                    onClick={() => begin('speech', min * 60_000)}
-                    className="h-24 rounded-2xl border border-[#C4D8E4] bg-[#2E75B6]/5 flex flex-col items-center justify-center active:scale-[.98] transition"
-                  >
-                    <span className="text-[34px] font-extrabold text-[#1F4E79] leading-none tr-num">{min}</span>
-                    <span className="text-[16px] font-semibold text-[#2E75B6] mt-1">분</span>
-                  </button>
-                ))}
+              <div className="grid grid-cols-4 gap-3">
+                {SPEECH_PRESETS.map((min) => {
+                  const { value, unit } = formatPresetLabel(min);
+                  return (
+                    <button
+                      key={min}
+                      type="button"
+                      onClick={() => begin('speech', minutesToMs(min))}
+                      className="h-24 rounded-2xl border border-[#C4D8E4] bg-[#2E75B6]/5 flex flex-col items-center justify-center active:scale-[.98] transition"
+                    >
+                      <span className="text-[34px] font-extrabold text-[#1F4E79] leading-none tr-num">{value}</span>
+                      <span className="text-[16px] font-semibold text-[#2E75B6] mt-1">{unit}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -135,24 +154,60 @@ export default function Timer({ code, teamName }: { code: string | null; teamNam
 
             <div>
               <Eyebrow className="text-[#5A6B73] mb-1">세션 타이머</Eyebrow>
-              <p className="text-[14px] text-[#5A6B73] mb-3">분 단위로 직접 설정합니다.</p>
+              <p className="text-[14px] text-[#5A6B73] mb-3">블록을 고르거나 분 단위로 직접 설정합니다.</p>
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                {SESSION_PRESETS.map((min) => {
+                  const { value, unit } = formatPresetLabel(min);
+                  const selected = sessionMinutes === min;
+                  return (
+                    <button
+                      key={min}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => commitSessionMinutes(min)}
+                      className={`h-16 rounded-2xl border flex items-baseline justify-center gap-1 active:scale-[.98] transition ${
+                        selected ? 'border-[#2E75B6] bg-[#2E75B6] text-white' : 'border-[#C4D8E4] bg-[#2E75B6]/5 text-[#1F4E79]'
+                      }`}
+                    >
+                      <span className="text-[26px] font-extrabold leading-none tr-num">{value}</span>
+                      <span className={`text-[15px] font-semibold ${selected ? 'text-white/90' : 'text-[#2E75B6]'}`}>
+                        {unit}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
               <div className="flex items-center gap-3">
                 <div className="flex items-center rounded-xl border border-[#C4D8E4] overflow-hidden">
                   <button
                     type="button"
                     aria-label="1분 감소"
-                    onClick={() => setSessionMinutes((m) => Math.max(1, m - 1))}
+                    onClick={() => commitSessionMinutes(stepSessionMinutes(sessionMinutes, -1))}
                     className="w-14 h-16 text-3xl text-[#5A6B73] bg-[#F1F7FA]"
                   >
                     −
                   </button>
-                  <div className="w-24 h-16 grid place-items-center text-[30px] font-extrabold text-[#1F4E79] tr-num">
-                    {sessionMinutes}
-                  </div>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    aria-label="세션 시간(분)"
+                    value={sessionDraft}
+                    onChange={(e) => {
+                      setSessionDraft(e.target.value);
+                      const parsed = parseSessionMinutes(e.target.value);
+                      if (parsed !== null) setSessionMinutes(parsed);
+                    }}
+                    onFocus={(e) => e.currentTarget.select()}
+                    // 비운 채 벗어나면 마지막 확정값으로 되돌린다 — 빈 칸으로 시작을 누르는 일이 없게.
+                    onBlur={() => setSessionDraft(String(sessionMinutes))}
+                    maxLength={3}
+                    title={`1~${SESSION_MAX_MINUTES}분`}
+                    className="w-24 h-16 text-center text-[30px] font-extrabold text-[#1F4E79] tr-num bg-white outline-none focus:bg-[#F1F7FA]"
+                  />
                   <button
                     type="button"
                     aria-label="1분 증가"
-                    onClick={() => setSessionMinutes((m) => Math.min(180, m + 1))}
+                    onClick={() => commitSessionMinutes(stepSessionMinutes(sessionMinutes, 1))}
                     className="w-14 h-16 text-3xl text-[#5A6B73] bg-[#F1F7FA]"
                   >
                     ＋
@@ -161,7 +216,7 @@ export default function Timer({ code, teamName }: { code: string | null; teamNam
                 <span className="text-[18px] text-[#5A6B73] font-semibold">분</span>
                 <button
                   type="button"
-                  onClick={() => begin('session', sessionMinutes * 60_000)}
+                  onClick={() => begin('session', minutesToMs(sessionMinutes))}
                   className="flex-1 h-16 rounded-2xl bg-[#2E75B6] text-white text-[22px] font-bold shadow-sm active:scale-[.99] transition"
                 >
                   시작

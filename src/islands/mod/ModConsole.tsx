@@ -32,6 +32,7 @@ import AttendancePanel from './AttendancePanel';
 import BallotPanel from './BallotPanel';
 import SubmissionPanel from './SubmissionPanel';
 import { tableNoLabel } from './table-no';
+import { MOD_TABS, MOD_TAB_KEY, normalizeTabId, tabById, type ModTabId } from './mod-tabs';
 import Timer from './Timer';
 
 const CODE_KEY = 'mod_code';
@@ -494,6 +495,20 @@ function HomeScreen({
   onCreatePoll: (input: { title: string; type: 'RADIO' | 'CHECKBOX'; options: string[] }) => void;
   creating: boolean;
 }) {
+  // 탭 — 8.29는 조별 산출물이 본 과업이라 그것이 기본이다(mod-tabs.ts).
+  // 새로고침해도 보던 탭에 머물도록 sessionStorage에 남긴다.
+  const [tab, setTab] = useState<ModTabId>(() =>
+    normalizeTabId(typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(MOD_TAB_KEY) : null)
+  );
+  const selectTab = (next: ModTabId) => {
+    setTab(next);
+    try {
+      sessionStorage.setItem(MOD_TAB_KEY, next);
+    } catch {
+      /* 시크릿 모드 등 저장 불가 — 탭 전환 자체는 계속된다. */
+    }
+  };
+
   const [title, setTitle] = useState('');
   const [type, setType] = useState<'RADIO' | 'CHECKBOX'>('RADIO');
   const [options, setOptions] = useState<string[]>(['', '']);
@@ -512,13 +527,11 @@ function HomeScreen({
       <TopBar right={<TeamBadge name={teamName} tableNo={tableNo} live />} />
 
       <div className="max-w-5xl mx-auto p-6 sm:p-8">
-        <h2 className="text-[24px] font-extrabold text-[#1F4E79] mb-1" style={{ letterSpacing: '-.01em' }}>
-          무엇을 하시겠어요?
-        </h2>
-        <p className="text-[#5A6B73] text-[16px] mb-8">아래에서 하나를 선택하세요.</p>
+        <ModTabBar active={tab} onSelect={selectTab} />
 
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* 투표 만들기 카드 */}
+        <div className={tab === 'vote' ? 'grid lg:grid-cols-2 gap-6' : 'grid gap-6'}>
+          {tab === 'vote' && (
+          /* 투표 만들기 카드 */
           <section className="rounded-2xl border border-[#DCE7EE] bg-white overflow-hidden shadow-sm">
             <div className="flex items-center gap-3 px-6 py-4 bg-[#23B2C3]/8 border-b border-[#DCE7EE]">
               <span className="w-11 h-11 rounded-xl bg-[#23B2C3] grid place-items-center text-white text-2xl" aria-hidden="true">
@@ -612,15 +625,54 @@ function HomeScreen({
               </button>
             </div>
           </section>
+          )}
 
-          {/* 타이머 카드 */}
-          <Timer code={code} teamName={teamName} />
-          <AttendancePanel teamId={teamId} teamName={teamName} joinCode={code} />
-          <BallotPanel code={code} subgroup={subgroup ?? null} />
-          <SubmissionPanel code={code} />
-          <PastRoundsCard teamId={teamId} teamName={teamName} />
+          {tab === 'timer' && <Timer code={code} teamName={teamName} />}
+          {tab === 'attendance' && (
+            <AttendancePanel teamId={teamId} teamName={teamName} joinCode={code} />
+          )}
+          {tab === 'vote' && <BallotPanel code={code} subgroup={subgroup ?? null} />}
+          {tab === 'submission' && <SubmissionPanel code={code} />}
+          {tab === 'vote' && <PastRoundsCard teamId={teamId} teamName={teamName} />}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * 조 콘솔 상단 탭 — 8.29의 위계를 그대로 옮긴다(조별 산출물이 첫 탭·기본값).
+ * 조 모더레이터가 노트북 앞에서 장갑 낀 손으로도 누를 수 있도록 높이 56px·18px 글자를 쓴다.
+ */
+function ModTabBar({ active, onSelect }: { active: ModTabId; onSelect: (id: ModTabId) => void }) {
+  return (
+    <div className="mb-8">
+      <div
+        role="tablist"
+        aria-label="조 콘솔 메뉴"
+        className="flex flex-wrap gap-2 p-2 rounded-2xl border border-[#DCE7EE] bg-white shadow-sm"
+      >
+        {MOD_TABS.map((tab) => {
+          const selected = tab.id === active;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => onSelect(tab.id)}
+              className={`flex-1 min-w-[120px] h-14 px-4 rounded-xl text-[18px] font-bold transition active:scale-[.99] ${
+                selected
+                  ? 'bg-[#23B2C3] text-white shadow-sm'
+                  : 'bg-transparent text-[#5A6B73] hover:bg-[#F1F7FA]'
+              }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-[#5A6B73] text-[15px] mt-3 px-1">{tabById(active).hint}</p>
     </div>
   );
 }

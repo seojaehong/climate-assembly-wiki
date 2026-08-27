@@ -1,5 +1,57 @@
 /** 카운트다운 타이머 순수 로직 — React/DOM 의존 없음. */
 
+/**
+ * 발언 타이머 원터치 프리셋(분). 0.5 = 30초.
+ * 30초 규격은 8.29 제5차 회의 운영의 핵심 장치다 — 7·4 실측에서 인사 라운드에
+ * 30초 규격을 건 조는 13명이 2분 16초, 규격 없는 조는 9분 45초를 썼다.
+ */
+export const SPEECH_PRESET_MINUTES = [0.5, 1, 2, 3] as const;
+
+/** 세션 타이머 원터치 프리셋(분) — 8.29 오후 진행표의 블록 값. */
+export const SESSION_PRESET_MINUTES = [5, 10, 15, 20, 25, 40] as const;
+
+/**
+ * 분 → ms. 0.5분처럼 소수 프리셋도 초 단위 정수를 거쳐 계산해
+ * durationMs가 항상 정수 ms가 되게 한다(로그의 duration_s가 30.000000004 같은 값이 되지 않도록).
+ */
+export function minutesToMs(minutes: number): number {
+  return Math.round(minutes * 60) * 1000;
+}
+
+/**
+ * 프리셋 버튼 라벨 — 1분 미만은 초로 표기한다(0.5분 → 「30초」, 1분 → 「1분」).
+ * 큰 숫자와 단위를 따로 렌더하는 버튼 구조에 맞춰 분리해 반환한다.
+ */
+export function formatPresetLabel(minutes: number): { value: string; unit: string } {
+  if (minutes < 1) return { value: String(Math.round(minutes * 60)), unit: '초' };
+  return { value: String(minutes), unit: '분' };
+}
+
+/** 세션 타이머가 받는 분 범위. 1분 미만·180분 초과는 진행 실수로 본다. */
+export const SESSION_MIN_MINUTES = 1;
+export const SESSION_MAX_MINUTES = 180;
+
+/**
+ * 세션 분 입력칸에 찍힌 글자를 분 값으로 바꾼다.
+ *
+ * 편집 중에는 칸이 잠시 비거나 「0」이 될 수 있으므로, 그런 값은 확정하지 않고 null을 돌려
+ * 호출부가 직전 값을 그대로 두게 한다(입력칸이 스스로 되돌아가 글자를 못 지우는 일이 없도록).
+ * 확정 가능한 숫자는 1~180으로 자른다.
+ */
+export function parseSessionMinutes(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (trimmed === '') return null;
+  if (!/^\d{1,4}$/.test(trimmed)) return null;
+  const value = Number(trimmed);
+  if (value < SESSION_MIN_MINUTES) return null;
+  return Math.min(value, SESSION_MAX_MINUTES);
+}
+
+/** ＋/− 한 칸 이동. 범위를 벗어나면 경계에서 멈춘다. */
+export function stepSessionMinutes(current: number, delta: number): number {
+  return Math.min(SESSION_MAX_MINUTES, Math.max(SESSION_MIN_MINUTES, current + delta));
+}
+
 export type TimerKind = 'speech' | 'session';
 export type TimerPhase = 'idle' | 'running' | 'paused' | 'expired';
 
