@@ -44,6 +44,12 @@ Started: Thu, Aug 27, 2026 10:32:22 PM
   새 패널이 카드 발췌를 같은 태그로 내면 「카드 N장」 검사가 조용히 부풀어 통과한다. 그리드에
   `data-testid="note-grid"`, 카드에 `data-note-id` 가 있으니 **`[data-testid="note-grid"] article`** 로 세고
   다중집합 비교는 텍스트가 아니라 **id** 로 한다. 새 패널의 카드 발췌는 `<div>`·`<li>` 로 낼 것.
+- **긴 JS/JSON 파일을 bash heredoc 으로 쓰지 말 것** — 한국어 + 정규식 + 템플릿 리터럴이 섞이면
+  `<<'EOF'` 를 써도 bash 가 「unexpected EOF while looking for matching `'`」로 죽는다(US-008 실측).
+  검증 스크립트·컴포넌트는 **Write 도구로 파일에 직접** 쓰고, bash 는 짧은 `sed`/python 편집에만 쓴다.
+- **DOM 검사가 전부 통과해도 레이아웃은 따로 본다** — US-008 에서 35/35 PASS 인 채로 4범주 칸이
+  미배정 칸 높이에 끌려 늘어나 화면 절반이 빈칸이었다. **여러 칸을 나란히 두는 grid 는 `items-start`**,
+  길어질 수 있는 목록은 `max-h-[NNNpx] overflow-y-auto` 를 기본으로 둘 것.
 - **네트워크 0건 판정 시 Pretendard CDN 을 빼야 한다** — `global.css` 가 jsdelivr 웹폰트를 받으므로
   「외부 요청 0건」이 아니라 「supabase 요청 0건」으로 판정할 것.
 
@@ -360,4 +366,52 @@ Commit: 6ff3c9d
     호출하는 코드를 화면에 붙일 때는 실패를 조용히 삼키지 말고 눈에 보이게 할 것.
   - `attendance_auth_session.actor_label` 이 배정자 이름이 된다(본부 잠금 해제 때 입력한 이름).
     `submission_lock_event` 의 `actor_label` 과 같은 값이라 이력 화면에서 나란히 놓을 수 있다.
+---
+
+## 2026-08-28 01:45 - US-008 L3 4범주 배정 UI + 보존 카운터
+Commit: c7262fd (구현) · 7c84a81 (칸 높이 수정)
+- `src/islands/mod/FourCategoryPanel.tsx` 신규 — 네 컴포넌트를 한 파일에 뒀다(OneDrive 롤백 대비로
+  UI 를 새 untracked 파일에 몰고 `HqSubmissionBoard.tsx` 편집은 6군데로 줄였다).
+  - `PreservationCounter` — 「원문 N장 · 배정 M장 · 미배정 K장 · 삭제 0장」. **접히지 않고 두 보기
+    모두에서 항상** 보인다. `preservationTone` 이 danger 면 주황 테두리 + `role="alert"`.
+  - `CategoryButtons` — 카드마다 버튼 4개(`FOUR_CATEGORIES.map`). **드래그 요소 0개**(검증으로 확인).
+  - `CategoryBadge` — 「잠정 · 공통」처럼 **「잠정」을 글자로** 달고 다닌다. 화면 어디를 잘라 캡처해도
+    확정으로 읽히지 않게 하기 위해서다.
+  - `FourCategoryPanel` — 4범주 + **미배정 다섯째 칸**. 보기 전용(배정 버튼은 포스트잇에만 — 같은 조작이
+    두 곳에 있으면 사람이 「방금 뭘 했는지」를 놓친다).
+- `four-category.ts` 에 3개 추가 — `toggleCategory`(같은 범주 재클릭 = 해제), `countsByCategory`
+  (네 범주 키가 **항상 다 나온다**; 빈 범주가 사라지면 「안 봐도 된다」로 읽힌다), `preservationTone`.
+- `four-category.test.ts` +13건 (21 → 34).
+- `HqSubmissionBoard.tsx` — `catState`(카드 id → 범주) useState, `toggleNoteCategory`,
+  `preservation` useMemo, 카운터·패널 상시 마운트, `Postit` 두 호출부에 `category`/`onCategory`.
+- **서버 연동은 하지 않았다.** US-007 마이그레이션이 미적용이라 지금 RPC 를 부르면 화면이 404 로 죽는다.
+  AC 도 화면만 요구한다(미리보기 라우트에는 토큰이 없다).
+- 검사: `npx vitest run src/` **64파일 1,107건 통과**(기준선 1,094 + 13) ·
+  `npx astro check` 0 errors / 0 warnings / **49 hints**(기준선 유지) · `npx astro build` 성공(7,915쪽).
+- 브라우저 검증(playwright, dist :4477, submission-lab, 꼭지1) — **35/35 PASS**. 근거
+  `evaluation/2026-08-28-us008-verify.json`. 핵심: AC 문자열 그대로 · 초기 27/0/27/0 ·
+  범주 칸 5개 · 카드 27장 모두 버튼 4개 · **드래그 요소 0개** · 배정→배지 「잠정 · 공통」 ·
+  **★카드 27장 다중집합 배정·갈아타기·해제 전후 모두 동일** · 갈아타도 배지 1개 ·
+  **패널 칸 합계 = 원문 27장** · 접어도 카운터·주의문구·미배정 수 남음 · 조별 뷰 따라감 ·
+  **꼭지2 로 가면 21/0/21/0**(다른 꼭지 배정이 오탐 안 됨) · 정렬 병행 시에도 동일 · supabase.co 0건 · 콘솔 0건.
+- **★ 스크린샷을 보고 고친 것 하나** — 4범주 칸이 미배정 칸(24장) 높이에 끌려 늘어나
+  네 칸이 텅 빈 기둥이 되고 화면 절반이 빈칸이었다. DOM 검사 35건이 전부 통과한 상태였다.
+  `grid items-start` + 목록 `max-h-[340px] overflow-y-auto` 로 고치고 재빌드·재검증(35/35).
+- **다음 이터레이션을 위한 학습:**
+  - ★ **US-010(L4 UI)은 `Postit` 에 세 번째 표시를 얹게 된다.** 지금 카드 위쪽은 위에서부터
+    `PairMarks`(닮은 짝) → `CategoryBadge`(잠정 · 범주) → 조 이름 → 본문 → 근거 → `CategoryButtons` 다.
+    「대표」 표시는 배지 줄에 넣고 조작은 버튼 줄에 넣을 것. 셋이 다 붙은 카드를 **스크린샷으로 볼 것** —
+    포스트잇이 배지밭이 되면 본문이 안 읽힌다.
+  - ★ **패널을 하나 더 붙일 때 세로 길이를 먼저 생각할 것.** 카운터 + 짝 패널 + 4범주 패널이 이미
+    그리드를 한 화면 아래로 밀어냈다. L4 패널은 기본을 **접힌 상태**로 두는 것을 검토할 것.
+  - `preservation` 은 `boardNotes`(검색어와 무관한 꼭지·분과 전체)로 센다. `notes`(검색 결과)로 세면
+    「원문 N장」이 타이핑에 따라 흔들려 카드가 사라진 것처럼 읽힌다. US-010 도 같은 규칙을 쓸 것.
+  - 브라우저 검증에 쓸 수 있는 새 훅 — `[data-testid="preservation-counter"]`(innerText 정규식으로
+    네 숫자를 한 번에 뽑는다), `category-column`(`data-category`, 미배정 칸은 `unassigned`),
+    `category-member`(`data-note-id`), `category-badge`, `category-buttons`.
+    ★ 패널 발췌는 `<li>` 라 `[data-testid="note-grid"] article` 카운트를 오염시키지 않는다.
+  - 검증 스크립트 `automation/.artifacts/verify-us008.mjs` 를 US-010 이 복사해 쓰면 된다
+    (카운터 파서 `nums()` + 다중집합 헬퍼 `gridIds()` 가 그대로 재사용된다).
+  - ⚠️ **heredoc(`cat > f <<EOF`)으로 이 검증 스크립트를 쓰려다 bash 파싱 에러가 났다.**
+    한국어 + 정규식 + 템플릿 리터럴이 섞인 긴 JS 는 Write 도구로 파일에 직접 쓸 것.
 ---

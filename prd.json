@@ -144,7 +144,7 @@
         "Verify in browser (claude-in-chrome)"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
