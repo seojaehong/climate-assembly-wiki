@@ -19,6 +19,10 @@ import {
  * 「조별」은 어느 조가 무엇을 냈는지, 「모아보기」는 내용만 죽 훑을 때 쓴다.
  *
  * 읽기 전용이다 — 본부가 조의 글을 고치는 경로는 만들지 않았다(조의 산출물이므로).
+ *
+ * `fixtureRows`를 주면 Supabase를 아예 부르지 않는다(폴링·구독도 안 건다).
+ * /hq는 본부 비밀번호 게이트라 자동 검증이 불가해, 미리보기 라우트
+ * /ko/moderator/insights/submission-lab 이 픽스처로 같은 화면을 띄워 브라우저 검증에 쓴다.
  */
 
 /**
@@ -84,8 +88,15 @@ function StatusChip({ status }: { status: TopicBoard['teams'][number]['status'] 
   return null;
 }
 
-export default function HqSubmissionBoard({ token }: { token: string }) {
-  const [rows, setRows] = useState<HqSubmissionRow[] | null>(null);
+export default function HqSubmissionBoard({
+  token,
+  fixtureRows,
+}: {
+  token?: string;
+  /** 주면 네트워크를 쓰지 않는 미리보기 모드. 본부 화면(/hq)은 이 값을 주지 않는다. */
+  fixtureRows?: HqSubmissionRow[];
+}) {
+  const [rows, setRows] = useState<HqSubmissionRow[] | null>(fixtureRows ?? null);
   const [failed, setFailed] = useState<string | null>(null);
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const [grouped, setGrouped] = useState(true);
@@ -94,6 +105,7 @@ export default function HqSubmissionBoard({ token }: { token: string }) {
   const [refreshedAt, setRefreshedAt] = useState<Date | null>(null);
 
   const load = useCallback(async () => {
+    if (!token) return;
     try {
       const next = await fetchHqSubmissions(token);
       setRows(next);
@@ -106,6 +118,11 @@ export default function HqSubmissionBoard({ token }: { token: string }) {
   }, [token]);
 
   useEffect(() => {
+    // 미리보기 모드 — fetch·구독·폴링 어느 것도 걸지 않는다(네트워크 없이 열려야 한다).
+    if (fixtureRows) {
+      setRows(fixtureRows);
+      return;
+    }
     void load();
     const stop = subscribeHqSubmissions(() => {
       void load();
@@ -117,7 +134,7 @@ export default function HqSubmissionBoard({ token }: { token: string }) {
       stop();
       clearInterval(timer);
     };
-  }, [load]);
+  }, [load, fixtureRows]);
 
   useEffect(() => {
     if (!copied) return;
@@ -303,8 +320,12 @@ export default function HqSubmissionBoard({ token }: { token: string }) {
       )}
 
       <p className="mt-6 text-[14px] text-[#8FA3AD]">
-        조가 저장하는 대로 자동 갱신됩니다 (5초)
-        {refreshedAt ? ` · 마지막 갱신 ${refreshedAt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}
+        {fixtureRows
+          ? '미리보기 — 고정 픽스처를 읽습니다(갱신 없음)'
+          : '조가 저장하는 대로 자동 갱신됩니다 (5초)'}
+        {!fixtureRows && refreshedAt
+          ? ` · 마지막 갱신 ${refreshedAt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
+          : ''}
       </p>
     </div>
   );

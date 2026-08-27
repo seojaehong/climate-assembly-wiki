@@ -1,0 +1,67 @@
+# Ralph Progress Log
+Started: Thu, Aug 27, 2026 10:32:22 PM
+---
+
+## Codebase Patterns
+
+- **빌드는 `npx astro build` 뿐** — `npm run build`는 prebuild 체인이 Node 20에서 죽는다.
+  반드시 `export PATH="$HOME/tools/node-v20.18.0-win-x64:$PATH"` 를 앞에 붙인다(Node 24면 조용히 죽음).
+  전체 빌드 약 110초 · 7,900여 페이지. 타입 검사는 `npx astro check`(같은 PATH 필요) — 기준선 0 errors / 0 warnings / 49 hints.
+- **테스트는 `npx vitest run src/`** — 기준선 58파일 1,004건 통과. `vitest.config.ts` include는
+  `src/**/*.test.ts` + `scripts/**/*.test.mjs` 라 **`.tsx` 테스트는 안 잡힌다.** 로직은 순수 `.ts`로
+  분리하고 테스트는 `.ts`로 쓸 것(기존 mod 아일랜드가 전부 `*-logic.ts` + `*.test.ts` 짝인 이유).
+- **아일랜드 구조** — `src/islands/mod/Xxx.tsx`(React 렌더) + `xxx-logic.ts`(순수 로직) + `xxx-logic.test.ts`.
+  DOM·네트워크 없는 로직만 로직 파일에 둔다.
+- **Supabase 는 지연 생성** — `src/lib/supabase.ts` 의 `getSupabase()` 가 처음 호출될 때 클라이언트를 만든다.
+  모듈을 import 하는 것만으로는 네트워크가 안 열린다. 「네트워크 없이 열려야 한다」는 요건은
+  **fetch/subscribe 를 부르지 않는 것**으로 충족된다.
+- **미리보기 라우트 패턴** — 인증 게이트 뒤에 있는 화면은 같은 컴포넌트에 `fixtureRows` 같은
+  선택 prop 을 주어 픽스처로 띄우는 라우트를 따로 만든다. 컴포넌트에 「미리보기 모드」 분기를
+  한 군데(useEffect 초입)만 두고 나머지는 건드리지 않는다.
+- **비공개 라우트 3종 세트** — `getStaticPaths` 가 `ko` 만 내고, `<meta name="robots" content="noindex,nofollow">`,
+  그리고 `astro.config.mjs` 의 sitemap filter 화이트리스트(`/agenda` + locale home)에 안 걸리게 둔다.
+  `data-pagefind-body` 를 안 붙이면 검색 색인에도 안 들어간다.
+- **Tailwind 아일랜드를 쓰는 `.astro` 는 `styles/global.css` 를 import 해야 한다.** 안 하면 무스타일로 뜬다.
+  본부 화면 계열은 `hq.astro` 의 Pretendard body 폰트 + `.tr-num` 스타일 블록도 같이 복사한다.
+- **브라우저 검증 수단은 playwright** — `automation/node_modules/playwright` 에 이미 있다(`automation/verify-canvas-browser.mjs` 참고).
+  claude-in-chrome 도구는 이 세션에서 못 쓴다. 스크립트를 `automation/` **안에** 두어야 `import ... from 'playwright'` 가
+  풀린다(레포 밖 절대경로 import 는 Windows ESM 에서 `ERR_UNSUPPORTED_ESM_URL_SCHEME` 로 죽는다).
+  절차: `npx astro build` → `python3 -m http.server 4477 --directory dist` → playwright → **`netstat -ano | grep :4477` 로 PID 찾아 `taskkill //F //PID`**
+  (`pkill -f http.server` 는 이 환경에서 안 먹는다).
+- **네트워크 0건 판정 시 Pretendard CDN 을 빼야 한다** — `global.css` 가 jsdelivr 웹폰트를 받으므로
+  「외부 요청 0건」이 아니라 「supabase 요청 0건」으로 판정할 것.
+
+---
+
+## 2026-08-27 22:50 - US-001 픽스처 기반 취합 미리보기 라우트
+Commit: ralph/submission-aggregation-l1-l4
+- `automation/fixtures/0829-submissions.json` 신규 — 15조 × 꼭지 3개 = 항목 65건
+  (꼭지1 27 · 꼭지2 21 · 꼭지3 17). 행 모양은 `HqSubmissionRow` 와 동일.
+  조 이름·코드는 `조코드표_0829.csv`, 꼭지 문구는 `20260827_s6_open_0829_topics.sql` 에서 그대로 가져왔다.
+  조마다 항목 1~3개이고, **조 사이에 겹치는 문장**(예: 버스 배차 간격 = 1분과 1조·3조,
+  무더위쉼터 = 2분과 1조·2조, 석탄화력 = 3분과 1조·2조)과 **그 조에만 있는 문장**
+  (장애인·축산분뇨·하천정비 등)이 함께 있다 → L1·L2 유사도가 실제로 뭔가를 보여줄 수 있다.
+- `src/islands/mod/HqSubmissionBoard.tsx` — `fixtureRows?: HqSubmissionRow[]` prop 추가.
+  주면 useEffect 초입에서 `setRows` 하고 즉시 return → fetch·realtime 구독·5초 폴링 **셋 다** 안 건다.
+  `token` 을 optional 로 바꾸고 `load()` 초입에 `if (!token) return` 가드. 하단 안내문도 미리보기 문구로 분기.
+- `src/pages/[lang]/moderator/insights/submission-lab.astro` 신규 — ko 단일, noindex,nofollow,
+  상단에 「실제 조별 산출물이 아닙니다」 배너. `<HqSubmissionBoard fixtureRows={...} client:only="react" />`.
+- `src/islands/mod/submission-lab-fixture.test.ts` 신규 6건 — 꼭지 3개·조 15개, 조별 항목 1~3개,
+  조 이름 `N분과 M조` 정규식, **겹치는 문장 ≥2 / 단독 문장 ≥3**, HqSubmissionRow 모양.
+  겹침을 테스트로 못 박은 이유: 픽스처가 밋밋해지면 L1~L4 화면이 아무것도 못 보여주면서 테스트는 통과한다.
+- 검사: `npx vitest run src/` 60파일 1,018건 통과 · `npx astro check` 0 errors · `npx astro build` 성공.
+- 브라우저 검증(playwright, dist 정적 서버 :4477) — 꼭지 탭 3개, 각 꼭지 조 컬럼 15개,
+  포스트잇 27+21+17=65, 조별↔모아보기 토글 동작, **supabase 요청 0건 · websocket 0건 · 콘솔 에러 0건**.
+  증거: `evaluation/2026-08-27-submission-lab-us001-grouped.png`, `...-flat.png`.
+- **다음 이터레이션을 위한 학습:**
+  - 미리보기 라우트가 이제 있다. US-003/005/008/010 의 브라우저 검증은 전부
+    `http://localhost:4477/ko/moderator/insights/submission-lab/` 에서 한다. /hq 는 열 필요 없다.
+  - 픽스처를 고치면 `submission-lab-fixture.test.ts` 의 겹침·단독 하한(≥2 / ≥3)에 걸린다. 의도적이다.
+  - `buildBoards` 는 **행이 있는 조만** 컬럼을 만든다. 픽스처에서 조를 빼면 그 꼭지의 조 수가 15에서 준다.
+  - 카드 id 규격은 `${topic_id}:${team_id}:${item_ordinal}` (board-logic 이 만든다).
+    L2 「같은 조 쌍 제외」·L3 「몇 개 조인가」는 `Note.teamId` 를 그대로 쓰면 되고 id 파싱이 필요 없다.
+  - 포스트잇은 `section article` 로 잡힌다(조별 뷰). 모아보기는 `article`. playwright 셀렉터로 유용.
+  - 겹치는 문장이 **완전히 같은 문자열**인 짝(자카드 1.0)과 **비슷하기만 한 짝**
+    (`bus` vs `bus2` — 「버스 배차 간격」 공유)이 둘 다 들어 있다. US-004 의 임계값 0.34 를
+    시험할 때 후자가 경계 사례다.
+---
