@@ -44,9 +44,11 @@ Started: Thu, Aug 27, 2026 10:32:22 PM
   새 패널이 카드 발췌를 같은 태그로 내면 「카드 N장」 검사가 조용히 부풀어 통과한다. 그리드에
   `data-testid="note-grid"`, 카드에 `data-note-id` 가 있으니 **`[data-testid="note-grid"] article`** 로 세고
   다중집합 비교는 텍스트가 아니라 **id** 로 한다. 새 패널의 카드 발췌는 `<div>`·`<li>` 로 낼 것.
-- **긴 JS/JSON 파일을 bash heredoc 으로 쓰지 말 것** — 한국어 + 정규식 + 템플릿 리터럴이 섞이면
-  `<<'EOF'` 를 써도 bash 가 「unexpected EOF while looking for matching `'`」로 죽는다(US-008 실측).
-  검증 스크립트·컴포넌트는 **Write 도구로 파일에 직접** 쓰고, bash 는 짧은 `sed`/python 편집에만 쓴다.
+- **긴 JS/JSON 파일을 bash heredoc 으로 쓰지 말 것** — US-008 에서 heredoc 으로 검증 스크립트를
+  쓰다 bash 가 「unexpected EOF while looking for matching `'`」로 죽었다. `<<'EOF'` 는 본문을
+  파싱하지 않으므로 원인은 같은 명령에 이어 붙인 부분(`nohup … &` 체인)일 가능성이 크다 —
+  어느 쪽이든 **긴 스크립트는 Write 도구로 파일에 직접** 쓰고, 실행은 별도 명령으로 분리한다.
+  bash 는 짧은 `sed`/python 편집에만 쓴다.
 - **DOM 검사가 전부 통과해도 레이아웃은 따로 본다** — US-008 에서 35/35 PASS 인 채로 4범주 칸이
   미배정 칸 높이에 끌려 늘어나 화면 절반이 빈칸이었다. **여러 칸을 나란히 두는 grid 는 `items-start`**,
   길어질 수 있는 목록은 `max-h-[NNNpx] overflow-y-auto` 를 기본으로 둘 것.
@@ -412,6 +414,6 @@ Commit: c7262fd (구현) · 7c84a81 (칸 높이 수정)
     ★ 패널 발췌는 `<li>` 라 `[data-testid="note-grid"] article` 카운트를 오염시키지 않는다.
   - 검증 스크립트 `automation/.artifacts/verify-us008.mjs` 를 US-010 이 복사해 쓰면 된다
     (카운터 파서 `nums()` + 다중집합 헬퍼 `gridIds()` 가 그대로 재사용된다).
-  - ⚠️ **heredoc(`cat > f <<EOF`)으로 이 검증 스크립트를 쓰려다 bash 파싱 에러가 났다.**
-    한국어 + 정규식 + 템플릿 리터럴이 섞인 긴 JS 는 Write 도구로 파일에 직접 쓸 것.
+  - ⚠️ heredoc 으로 이 검증 스크립트를 쓰려다 bash 파싱 에러가 났다(상단 Codebase Patterns 참조).
+    **긴 스크립트는 Write 도구로 쓰고 실행은 별도 명령으로 분리할 것.**
 ---
