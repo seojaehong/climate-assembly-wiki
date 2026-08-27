@@ -307,3 +307,57 @@ Commit: fdb0b41
   - `Pick<Note, 'id'>` 로 받는다 — 로직이 원문 문자열을 들고 다니지 않게 하기 위해서다.
     테스트도 `{ id }` 만으로 쓸 수 있어 픽스처가 가볍다.
 ---
+
+## 2026-08-28 01:25 - US-007 L3 범주 배정 영속화 (마이그레이션 파일만)
+Commit: 6ff3c9d
+- `supabase/migrations/20260828_s8_submission_category.sql` 신규 — **작성만 했고 적용하지 않았다.**
+  Supabase 에 접속하지 않았다(AC 가 파일 작성까지로 못 박았다).
+  - `climate_vote.submission_category_event` — **append-only 사건 표**.
+    `(submission_id, item_ordinal, category, actor_scope='hq', actor_label, created_at)`.
+    RLS 켜고 anon·authenticated 에 `revoke all`(s8 archive 선례). 읽기·쓰기는 RPC 두 개로만.
+  - `hq_submission_category_assign(p_token, p_submission_id, p_item_ordinal, p_category)` — 쓰기.
+    `attendance_token_row` 로 `scope='hq'` 검증(s7 방식), `security definer` + `set search_path`,
+    `grant ... to anon, authenticated` + `revoke ... from public`.
+  - `hq_submission_categories(p_token, p_session_slug)` — 읽기. **항목별 마지막 배정**만 낸다.
+    보드 카드 id 와 잇도록 `topic_id`·`team_id` 를 함께 낸다.
+  - **원문 표에 대한 `alter`/`update`/`delete`/`drop` 구문이 한 줄도 없다**
+    (파일 전체에서 `alter` 는 새 표의 `enable row level security` 하나뿐 — grep 으로 확인).
+- `src/lib/hq-submissions.ts` — 호출 코드만 추가(**실행하지 않는다**). `SubmissionCategory` 타입,
+  `HqCategoryRow`, `categoryNoteId()`, `assignSubmissionCategory()`, `fetchHqSubmissionCategories()`.
+  ★ 여기서 `four-category.ts` 를 import 하지 않았다 — 이 리포의 import 방향은 **islands → lib** 한쪽이라
+  lib 이 islands 를 부르면 방향이 뒤집힌다. 네 문자열을 리터럴 유니온으로 다시 쓰고 **테스트로 대조**했다.
+- `src/lib/hq-submission-categories.test.ts` 신규 4건 — `categoryNoteId` 가 `buildBoards` 의 카드 id 와
+  같은 문자열을 내는가(어긋나면 배정이 아무 카드에도 안 붙는데 화면은 조용히 정상으로 보인다),
+  순번이 다르면 다른 카드, 저장값 4종이 `FOUR_CATEGORIES` 와 일치, 해제는 null.
+- 검사: `npx vitest run src/` **64파일 1,094건 통과**(기준선 1,090 + 4) ·
+  `npx astro check` 0 errors / 0 warnings / 49 hints. SQL story 라 브라우저 검증·`astro build` 생략.
+- **★ 설계 결정 세 가지 — 다시 논의하지 말 것.**
+  1. **항목 식별은 `submission_item.id` 가 아니라 `(submission_id, item_ordinal)` 이다.**
+     `submission_save` 는 항목을 **delete 후 insert** 로 갈아끼운다(s8 재오픈 마이그레이션 주석).
+     항목 uuid 는 조가 한 줄 고칠 때마다 바뀌어 배정이 매번 끊긴다. 게다가 `hq_submissions` 는
+     항목 uuid 를 **내주지도 않는다**. `(submission_id, ordinal)` 은 보드 카드 id `topic:team:ordinal`
+     과 정확히 같은 것을 가리킨다(submission 이 `(topic_id, team_id)` 로 유일하므로).
+  2. **`submission_item` 으로 가는 외래키를 일부러 안 걸었다.** `unique (submission_id, ordinal)` 이 있어
+     복합 FK 가 **가능해서** 오히려 함정이다. `on delete cascade` 면 조가 다시 저장하는 순간 배정 이력이
+     조용히 지워지고(= 이 PRD 가 금지한 바로 그것), cascade 없이 걸면 **본부가 배정했다는 이유로 조의 저장이
+     실패한다**(원문 표의 동작을 바꾸는 것이라 금지에 걸린다). FK 는 `submission(id)` 로만 건다 —
+     제출물은 `archived_at` 으로 보관될 뿐 삭제되지 않는다.
+  3. **읽기에서 null 을 먼저 걸러내면 안 된다.** `where category is not null` 을 `distinct on` **앞**에 두면
+     배정→해제한 항목에서 **해제 직전 배정이 되살아난다.** 마지막 사건을 먼저 뽑고(`order by ... e.id desc`
+     — `created_at` 은 같은 초에 두 번 눌리면 동점이다) 해제(null)는 그대로 내보내 화면이 판단하게 한다.
+- **파일명 주의** — `20260828_s8_hq_reopen_and_history.sql` 이 이미 s8 이라 접두어가 겹친다.
+  AC 가 파일명을 못 박았으므로 그대로 뒀다. 사전순 적용 순서에는 문제가 없다(reopen 이 먼저).
+  다음 마이그레이션은 **s9** 부터 쓸 것.
+- **다음 이터레이션을 위한 학습:**
+  - US-008 이 서버와 이을 때 쓸 것 — 배정: `assignSubmissionCategory(token, submissionId, ordinal, cat|null)`,
+    읽기: `fetchHqSubmissionCategories(token)` → `categoryNoteId(row)` 로 카드 id 를 만들어
+    `CategoryState`(카드 id → 범주) 맵을 채운다. **category 가 null 인 행은 「해제」이므로 맵에 넣지 말 것.**
+    `submissionId` 는 `TeamColumn.submissionId` 에 이미 있고, `ordinal` 은 `Note.ordinal` 이다.
+  - ★ **US-008 은 서버 연동을 안 해도 AC 를 만족한다.** AC 는 화면(버튼·카운터·「잠정」 표시)만 요구하고
+    미리보기 라우트에는 토큰이 없다. 상태는 `useState` 로 두고, 실제 `/hq` 붙이기는 별도 결정으로 남긴다
+    (마이그레이션이 아직 적용되지 않았으므로 지금 붙이면 화면이 RPC 404 로 죽는다).
+  - 마이그레이션은 **아직 적용 전이다.** 사람이 적용하기 전까지 위 RPC 두 개는 존재하지 않는다.
+    호출하는 코드를 화면에 붙일 때는 실패를 조용히 삼키지 말고 눈에 보이게 할 것.
+  - `attendance_auth_session.actor_label` 이 배정자 이름이 된다(본부 잠금 해제 때 입력한 이름).
+    `submission_lock_event` 의 `actor_label` 과 같은 값이라 이력 화면에서 나란히 놓을 수 있다.
+---
