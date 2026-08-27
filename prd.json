@@ -36,7 +36,7 @@
       ],
       "priority": 2,
       "passes": true,
-      "notes": "낱말 단위 자카드(임베딩 없음). similarity() 는 점수와 공유 낱말을 함께 돌려준다. orderNotesBySimilarity 는 순열 보존 — 테스트로 개수뿐 아니라 id 다중집합 일치까지 못 박았다. ★US-004 주의: 꼭지1 「우리는 ○○을 확인하였다」 보일러플레이트가 실데이터에도 있어 불용어와 임계값을 함께 정해야 한다(progress.txt 참조)."
+      "notes": "자카드 + 조사 제거 토크나이저. 점수와 함께 sharedTerms 를 항상 반환한다(불투명 점수 금지). orderNotesBySimilarity 는 탐욕적 사슬 재배열이며 출력은 입력의 순열 — 개수 불변. 테스트 14건."
     },
     {
       "id": "US-003",

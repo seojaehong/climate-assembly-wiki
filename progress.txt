@@ -104,3 +104,30 @@ Commit: ralph/submission-aggregation-l1-l4
   - 콘솔 출력으로 실데이터를 훑어보려면 `npx vitest run <파일> --reporter=verbose --disable-console-intercept`.
     기본 리포터는 `console.log` 를 삼킨다.
 ---
+
+## 2026-08-27 23:35 - US-002 L1 유사도 정렬 순수 로직
+Commit: ralph/submission-aggregation-l1-l4
+- `src/islands/mod/note-similarity.ts` 신규 — 임베딩·네트워크 없이 **자카드 유사도**만 쓴다.
+  `tokenize` 는 한글/영숫자만 남기고, 끝 조사(`은는이가을를과와의도만에에서으로로에게부터까지`)를
+  **떼고도 두 글자가 남을 때만** 뗀다(「제도」→「제」 방지). 한 글자·불용어(`그 및 등 이 가 을 를 은 는`)는 버린다.
+  `similarity(a,b)` 는 `{ score, sharedTerms }` 를 돌려준다 — **점수만 있는 불투명 판정을 만들지 않는다**는
+  PRD 요건이라 sharedTerms 를 옵션이 아니라 반환 타입에 박았다.
+  `orderNotesBySimilarity` 는 첫 카드에서 출발해 가장 비슷한 것을 이어 붙이는 탐욕적 사슬.
+  동점은 원래 순서가 앞선 쪽이 이겨(엄격한 `>`) 결과가 결정적이다. 출력은 입력의 **순열**.
+- `src/islands/mod/note-similarity.test.ts` 신규 14건 — 같은 문장 1, 무교집합 0, 불용어만 겹치면 0,
+  셀 낱말이 아예 없으면 0, sharedTerms 내용, **개수 보존 · 순열(중복/신규 없음) · 입력 비변형**,
+  비슷한 카드가 실제로 이웃이 되는지, 빈 배열·1장 입력.
+- 검사: `npx vitest run src/` 61파일 **1,040건 통과** · `npx astro check` **0 errors / 0 warnings / 49 hints**.
+  이 story 는 순수 로직이라 UI 변경이 없어 브라우저 검증 대상이 아니다.
+- **다음 이터레이션을 위한 학습:**
+  - 테스트 기준선이 progress 상단 기록(60파일 1,018건)에서 **61파일 1,040건**으로 올라갔다.
+    US-001 기록 이후 커밋 `6d40272`(취합 보드 스키마 수정)이 8건을 더 넣었기 때문이다. 새 기준선은 1,040.
+  - 실측: 픽스처 65장에서 `score >= 0.34` 인 **조가 다른** 짝은 꼭지별로 한 자릿수다.
+    완전 동일 문장(1.0) 말고 중간대(0.34~0.6) 짝이 실제로 존재하므로 US-004 임계값 0.34 는 그대로 쓸 만하다.
+  - `similarity` 는 `Note.content` 만 본다. `rationale` 은 일부러 섞지 않았다 —
+    이어붙이면 시민이 쓴 두 문장이 하나로 뭉개진다. US-004/005 에서도 이 선을 지킬 것.
+  - US-004 는 이 파일에 `similarPairs` 를 **추가**하면 된다. `jaccardOfSets` 가 이미 토큰 집합을 받으므로
+    토큰을 한 번만 만들어 O(n²) 로 도는 형태를 그대로 쓸 수 있다. 같은 조 제외는 `Note.teamId` 비교로 끝난다.
+  - 작업 트리에 이 PRD와 무관한 dirty 파일이 남아 있다(`SubmissionPanel.tsx` 미리보기 prop, `log.md`,
+    `index.md`, agenda json 3종). US-001 때부터 있던 것이고 **story 커밋에 섞지 않는다.**
+---
