@@ -1,0 +1,136 @@
+{
+  "passed": 26,
+  "total": 26,
+  "results": [
+    {
+      "name": "꼭지1 모아보기 카드 27장",
+      "ok": true,
+      "detail": "27장"
+    },
+    {
+      "name": "카운터 「원문 N장 · 내보냄 N장 · 삭제 0장」",
+      "ok": true,
+      "detail": "원문 27장 · 내보냄 27장 · 삭제 0장"
+    },
+    {
+      "name": "버튼 라벨",
+      "ok": true,
+      "detail": "온톨로지 검수로 내보내기"
+    },
+    {
+      "name": "버튼이 활성이고 이유 문구가 없다",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "경고 색이 아니다(삭제 0)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "파일명에 꼭지(k1)와 시각이 들어간다",
+      "ok": true,
+      "detail": "0829-submissions-k1-2026-08-27T17_54_16_047Z.json"
+    },
+    {
+      "name": "파일명에 금지 문자(:)가 없다",
+      "ok": true,
+      "detail": "0829-submissions-k1-2026-08-27T17_54_16_047Z.json"
+    },
+    {
+      "name": "근거가 아닌 행 27개 = 화면 카드 27장",
+      "ok": true,
+      "detail": "27행"
+    },
+    {
+      "name": "모든 노드 id 가 0829/t{2}/k1/i{2}(+/r) 규격",
+      "ok": true,
+      "detail": "전부 일치"
+    },
+    {
+      "name": "group_id 가 전부 빈 값(null) — 미리 묶어 보내지 않는다",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "parent_id 도 전부 null",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "근거는 별도 행 + 링크로 나간다(relation 키 없음)",
+      "ok": true,
+      "detail": "링크 8개"
+    },
+    {
+      "name": "taken_at·source 가 실려 있다",
+      "ok": true,
+      "detail": "climate_vote.submission_item / 2026-08-27T17:54:16.047Z"
+    },
+    {
+      "name": "내보낸 뒤 카드 id 다중집합이 동일하다(읽기 전용)",
+      "ok": true,
+      "detail": "27장"
+    },
+    {
+      "name": "카운터도 그대로",
+      "ok": true,
+      "detail": "원문 27장 · 내보냄 27장 · 삭제 0장"
+    },
+    {
+      "name": "분과 필터로 화면 카드가 줄었다",
+      "ok": true,
+      "detail": "9장"
+    },
+    {
+      "name": "분과 안내 문구가 뜬다",
+      "ok": true,
+      "detail": "지금 화면은 2분과만 보고 있지만, 내보내기는 꼭지 전체(15개 조)를 "
+    },
+    {
+      "name": "카운터는 여전히 꼭지 전체(27/27/0)",
+      "ok": true,
+      "detail": "원문 27장 · 내보냄 27장 · 삭제 0장"
+    },
+    {
+      "name": "분과 필터 중에도 파일은 27행 그대로",
+      "ok": true,
+      "detail": "27행"
+    },
+    {
+      "name": "★ 필터 전후 노드 id 다중집합이 정확히 같다 — 조 순번이 밀리지 않았다",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "같은 순간이 아니어도 꼭지가 같으면 본문도 같다",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "꼭지2 카운터가 그 꼭지 수를 따른다",
+      "ok": true,
+      "detail": "원문 21장 · 내보냄 21장 · 삭제 0장 / 화면 21장"
+    },
+    {
+      "name": "꼭지2 파일명은 k2 이고 꼭지1과 다르다",
+      "ok": true,
+      "detail": "0829-submissions-k2-2026-08-27T17_54_17_797Z.json"
+    },
+    {
+      "name": "꼭지2 노드는 전부 k2 이다 — 꼭지 간 누수 0",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "supabase.co 요청 0건",
+      "ok": true,
+      "detail": "0건"
+    },
+    {
+      "name": "콘솔 에러 0건",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

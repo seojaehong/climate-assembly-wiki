@@ -48,6 +48,12 @@ import {
   type RepresentativeState,
 } from './representative-pick';
 import { RepresentativeBadge, RepresentativePanel } from './RepresentativePanel';
+import {
+  buildOntologyExport,
+  ontologyExportPreservation,
+  ontologyExportReadiness,
+} from './ontology-export';
+import { OntologyExportPanel } from './OntologyExportPanel';
 
 /**
  * 본부 조별 산출물 취합 보드.
@@ -474,6 +480,32 @@ export default function HqSubmissionBoard({
     [boardNotes, catState],
   );
 
+  // 온톨로지 내보내기 — ★ **거르지 않은 꼭지 전체**(wholeBoard)를 쓴다. 조 순번(t01)은 board.teams
+  // 에서의 자리로 매기므로, 분과로 거른 보드를 넘기면 같은 카드가 다른 순번을 받아 다른 분과의
+  // 스냅샷과 노드 id 가 충돌한다(ontology-snapshot.ts 주석). 화면이 좁아도 파일은 꼭지 전체다.
+  const exportReadiness = useMemo(
+    () => ontologyExportReadiness(wholeBoard ? flattenNotes(wholeBoard) : []),
+    [wholeBoard],
+  );
+  const exportPreservation = useMemo(
+    () =>
+      wholeBoard
+        ? ontologyExportPreservation(wholeBoard)
+        : { submitted: 0, nodes: 0, deleted: 0, ok: true },
+    [wholeBoard],
+  );
+  const doExportOntology = useCallback(() => {
+    if (!wholeBoard || !exportReadiness.exportable) return;
+    // 시각은 **여기서** 읽는다 — 순수 모듈은 시계를 읽지 않는다(같은 입력이면 같은 출력).
+    const file = buildOntologyExport(wholeBoard, new Date().toISOString());
+    const url = URL.createObjectURL(new Blob([file.text], { type: file.mimeType }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = file.filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }, [wholeBoard, exportReadiness]);
+
   const doReopen = async () => {
     if (!reopening || !token) return;
     setReopenBusy(true);
@@ -779,6 +811,13 @@ export default function HqSubmissionBoard({
 
       {/* L3 — 보존 카운터는 **접히지 않고 두 보기 모두에서 항상** 보인다. 「모으지 않았다」의 증명이다. */}
       <PreservationCounter report={preservation} />
+      {/* US-012 — 내보내기도 두 보기 모두에서 항상 보인다(꼭지 전체를 담으므로 보기 방식과 무관하다). */}
+      <OntologyExportPanel
+        preservation={exportPreservation}
+        readiness={exportReadiness}
+        subgroupNotice={activeSubgroup}
+        onExport={doExportOntology}
+      />
       <FourCategoryPanel notes={boardNotes} state={catState} />
 
       {silent.length > 0 ? (
