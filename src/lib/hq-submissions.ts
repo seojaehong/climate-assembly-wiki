@@ -40,11 +40,15 @@ export async function fetchHqSubmissions(
   token: string,
   sessionSlug: string = DEFAULT_SESSION_SLUG
 ): Promise<HqSubmissionRow[]> {
-  const { data, error } = await client().rpc('hq_submissions', {
-    p_token: token,
-    p_session_slug: sessionSlug,
-  });
-  if (error) throw error;
+  // ⚠️ .schema('climate_vote')를 빼면 PostgREST가 public.hq_submissions를 찾다가
+  // PGRST202로 죽는다. 이 저장소의 RPC는 전부 climate_vote 스키마에 있다(deliberation.ts와 같다).
+  const { data, error } = await client()
+    .schema('climate_vote')
+    .rpc('hq_submissions', {
+      p_token: token,
+      p_session_slug: sessionSlug,
+    });
+  if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
   return (data ?? []) as HqSubmissionRow[];
 }
 

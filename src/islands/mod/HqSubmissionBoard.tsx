@@ -7,6 +7,9 @@ import {
   silentTeams,
   noteColor,
   boardToText,
+  groupBySubgroup,
+  subgroupsOf,
+  filterBoardBySubgroup,
   type Note,
   type TopicBoard,
 } from './hq-submission-board-logic';
@@ -35,6 +38,23 @@ import {
  * 45행 규모라 5초 폴링이 부담되지 않는다.
  */
 const POLL_MS = 5_000;
+
+/** 어떤 모양으로 오든 사람이 읽을 수 있는 한 줄로 만든다(코드가 있으면 함께 남긴다). */
+function describeError(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === 'string' && error) return error;
+  if (error && typeof error === 'object') {
+    const e = error as { code?: string; message?: string; hint?: string; details?: string };
+    const parts = [e.code, e.message ?? e.details ?? e.hint].filter(Boolean);
+    if (parts.length > 0) return parts.join(': ');
+    try {
+      return JSON.stringify(error).slice(0, 200);
+    } catch {
+      /* 순환 참조 등 — 아래 기본 문구로 떨어진다 */
+    }
+  }
+  return '원인을 알 수 없습니다';
+}
 
 function Eyebrow({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
@@ -103,6 +123,8 @@ export default function HqSubmissionBoard({
   const [query, setQuery] = useState('');
   const [copied, setCopied] = useState(false);
   const [refreshedAt, setRefreshedAt] = useState<Date | null>(null);
+  // 분과 필터 — 회의자료가 정한 구조화 단위가 분과다(총괄모더레이터 3인 × 5개 조).
+  const [subgroup, setSubgroup] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -112,8 +134,10 @@ export default function HqSubmissionBoard({
       setFailed(null);
       setRefreshedAt(new Date());
     } catch (error) {
+      // Supabase 오류는 Error 인스턴스가 아니라 평범한 객체다 — instanceof만 보면
+      // 진짜 원인이 통째로 사라지고 「불러오지 못했습니다」만 남아 진단이 불가능해진다.
       console.error('[HQ submissions] load failed', error);
-      setFailed(error instanceof Error ? error.message : '불러오지 못했습니다');
+      setFailed(describeError(error));
     }
   }, [token]);
 
@@ -151,7 +175,11 @@ export default function HqSubmissionBoard({
     setActiveTopic(boards[0].topicId);
   }, [boards, activeTopic]);
 
-  const board = boards.find((b) => b.topicId === activeTopic) ?? boards[0] ?? null;
+  const wholeBoard = boards.find((b) => b.topicId === activeTopic) ?? boards[0] ?? null;
+  const subgroups = wholeBoard ? subgroupsOf(wholeBoard) : [];
+  // 고른 분과가 사라지면(주제 전환 등) 전체로 되돌린다 — 빈 화면을 만들지 않는다.
+  const activeSubgroup = subgroup && subgroups.includes(subgroup) ? subgroup : null;
+  const board = wholeBoard ? filterBoardBySubgroup(wholeBoard, activeSubgroup) : null;
 
   const copyBoard = async () => {
     if (!board) return;
@@ -223,6 +251,48 @@ export default function HqSubmissionBoard({
         })}
       </div>
 
+      {/* 분과 필터 — 15개 조를 한 사람이 보지 않는다 */}
+      {subgroups.length > 1 ? (
+        <div role="group" aria-label="분과 선택" className="mb-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            aria-pressed={activeSubgroup === null}
+            onClick={() => setSubgroup(null)}
+            className={`h-12 rounded-xl px-4 text-[16px] font-bold transition ${
+              activeSubgroup === null
+                ? 'bg-[#23B2C3] text-white'
+                : 'border border-[#C4D8E4] bg-white text-[#5A6B73]'
+            }`}
+          >
+            전체 15개 조
+          </button>
+          {wholeBoard
+            ? groupBySubgroup(wholeBoard).map((block) => (
+                <button
+                  key={block.subgroup}
+                  type="button"
+                  aria-pressed={activeSubgroup === block.subgroup}
+                  onClick={() => setSubgroup(block.subgroup)}
+                  className={`h-12 rounded-xl px-4 text-[16px] font-bold transition ${
+                    activeSubgroup === block.subgroup
+                      ? 'bg-[#23B2C3] text-white'
+                      : 'border border-[#C4D8E4] bg-white text-[#5A6B73]'
+                  }`}
+                >
+                  {block.subgroup}
+                  <span
+                    className={`ml-2 text-[14px] font-extrabold tr-num ${
+                      activeSubgroup === block.subgroup ? 'text-white/85' : 'text-[#23B2C3]'
+                    }`}
+                  >
+                    {block.teamsWithNotes}/{block.teams.length}
+                  </span>
+                </button>
+              ))
+            : null}
+        </div>
+      ) : null}
+
       {/* 진척 + 도구 */}
       <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-[#DCE7EE] bg-white px-4 py-3">
         <div className="flex items-baseline gap-2">
@@ -282,8 +352,19 @@ export default function HqSubmissionBoard({
       ) : null}
 
       {grouped ? (
-        <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))]">
-          {board.teams.map((team) => (
+        <div className="space-y-7">
+          {groupBySubgroup(board).map((block) => (
+            <section key={block.subgroup}>
+              <header className="mb-3 flex flex-wrap items-baseline gap-3">
+                <h3 className="text-[22px] font-extrabold text-[#1F4E79]">{block.subgroup}</h3>
+                <span className="text-[16px] font-bold text-[#5A6B73]">
+                  <span className="text-[#23B2C3] tr-num">{block.teamsWithNotes}</span>/
+                  <span className="tr-num">{block.teams.length}</span>개 조 제출 ·{' '}
+                  <span className="text-[#1F4E79] tr-num">{block.totalNotes}</span>건
+                </span>
+              </header>
+              <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))]">
+                {block.teams.map((team) => (
             <section key={team.teamId} className="rounded-2xl border border-[#DCE7EE] bg-[#F8FAFC] p-4">
               <header className="mb-3 flex flex-wrap items-center gap-2">
                 <h3 className="text-[20px] font-extrabold text-[#1F4E79]">{team.teamName}</h3>
@@ -306,6 +387,9 @@ export default function HqSubmissionBoard({
                   ))}
                 </div>
               )}
+                  </section>
+                ))}
+              </div>
             </section>
           ))}
         </div>

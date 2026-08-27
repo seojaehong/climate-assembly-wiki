@@ -120,6 +120,76 @@ export function buildBoards(rows: HqSubmissionRow[]): TopicBoard[] {
   return boards;
 }
 
+// ── 분과 ────────────────────────────────────────────────────
+//
+// 회의자료 260811이 정한 구조화 단위는 **분과**다 — 분과 총괄모더레이터가 자기 5개 조를
+// 「공통·차이·갈등·질문」으로 잠정 비교·구조화한다. 15개 조를 한 사람이 모으지 않는다.
+// 그래서 보드도 분과로 접히고 걸러져야 한다.
+
+export type SubgroupBlock = {
+  /** 「1분과」. 조에 분과가 비어 있으면 「기타」로 모은다(테스트조 등). */
+  subgroup: string;
+  teams: TeamColumn[];
+  teamsWithNotes: number;
+  totalNotes: number;
+};
+
+/** 조 이름에서 분과를 읽는다. team.subgroup이 비어 있어도 이름으로 복구한다. */
+export function subgroupOf(team: Pick<TeamColumn, 'subgroup' | 'teamName'>): string {
+  const fromField = team.subgroup?.trim();
+  if (fromField) return fromField;
+  const match = /^(\d+분과)/.exec(team.teamName.trim());
+  return match ? match[1] : '기타';
+}
+
+/** 보드에 등장하는 분과 목록. 「N분과」는 숫자 순, 그 밖은 뒤로. */
+export function subgroupsOf(board: TopicBoard): string[] {
+  const seen = [...new Set(board.teams.map(subgroupOf))];
+  return seen.sort((a, b) => {
+    const na = /^(\d+)분과$/.exec(a);
+    const nb = /^(\d+)분과$/.exec(b);
+    if (na && nb) return Number(na[1]) - Number(nb[1]);
+    if (na) return -1;
+    if (nb) return 1;
+    return a.localeCompare(b);
+  });
+}
+
+/**
+ * 꼭지 하나를 분과별 덩어리로 접는다. 조는 이미 정렬돼 있으므로 순서를 그대로 물려받는다.
+ * 카드가 한 장도 없는 분과도 빼지 않는다 — 「어느 분과가 아직 안 냈나」가 본부의 관심사다.
+ */
+export function groupBySubgroup(board: TopicBoard): SubgroupBlock[] {
+  const blocks = new Map<string, SubgroupBlock>();
+  for (const name of subgroupsOf(board)) {
+    blocks.set(name, { subgroup: name, teams: [], teamsWithNotes: 0, totalNotes: 0 });
+  }
+  for (const team of board.teams) {
+    const block = blocks.get(subgroupOf(team));
+    if (!block) continue;
+    block.teams.push(team);
+    if (team.notes.length > 0) block.teamsWithNotes += 1;
+    block.totalNotes += team.notes.length;
+  }
+  return [...blocks.values()];
+}
+
+/**
+ * 분과 하나만 남긴 보드를 돌려준다. null이면 전체(거르지 않음).
+ * 집계(teamsWithNotes·totalNotes)도 남은 조 기준으로 다시 센다 — 걸러 놓고 전체 수를
+ * 보여주면 「우리 분과가 다 냈다」를 잘못 읽는다.
+ */
+export function filterBoardBySubgroup(board: TopicBoard, subgroup: string | null): TopicBoard {
+  if (!subgroup) return board;
+  const teams = board.teams.filter((team) => subgroupOf(team) === subgroup);
+  return {
+    ...board,
+    teams,
+    teamsWithNotes: teams.filter((team) => team.notes.length > 0).length,
+    totalNotes: teams.reduce((sum, team) => sum + team.notes.length, 0),
+  };
+}
+
 /** 한 꼭지의 카드를 조 구분 없이 한 줄로 편다 — 「조별」이 아니라 「내용별」로 볼 때 쓴다. */
 export function flattenNotes(board: TopicBoard): Note[] {
   return board.teams.flatMap((team) => team.notes);
