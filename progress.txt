@@ -470,3 +470,66 @@ Commit: 8d9288a
   - 검증 스크립트는 `automation/.artifacts/verify-us008.mjs` 를 복사해 쓴다
     (카운터 파서 `nums()` + 다중집합 헬퍼 `gridIds()` 재사용).
 ---
+
+## 2026-08-28 02:25 - US-010 L4 대표 문장 지목 UI
+Commit: cba0558
+- `src/islands/mod/representative-groups.ts` 신규(순수 로직, 테스트 19건) —
+  `groupsFromCheckedPairs` · `groupsMapOf` · `representativeNoteIds` · `pickedGroupCount` ·
+  `pickFailureGuidance` · `describePickFailure`.
+- `src/islands/mod/RepresentativePanel.tsx` 신규 — 패널 + 확인 창(`PickDialog`) + 포스트잇 배지
+  (`RepresentativeBadge`). UI 를 새 untracked 파일에 몰아 `HqSubmissionBoard.tsx` 편집은 6군데로 줄였다.
+- `HqSubmissionBoard.tsx` — `repHistory` useState, `repGroups`/`repState`/`repMarks` useMemo,
+  `doPick` useCallback, 모아보기 브랜치에 패널 마운트, `Postit` 두 호출부에 `representative`.
+- `FourCategoryPanel.tsx` — `CategoryBadge` 의 `mb-2` 만 뗐다(배지를 한 줄로 모으기 위해).
+- 검사: `npx vitest run src/` **66파일 1,142건 통과**(기준선 1,123 + 19) ·
+  `npx astro check` 0 errors / 0 warnings / **49 hints**(기준선 유지) · `npx astro build` 7,915쪽.
+- 브라우저 검증(playwright, dist :4477, submission-lab, 꼭지1) — **49/49 PASS**. 근거
+  `evaluation/2026-08-28-us010-verify.json`. 핵심: 기본 접힘 · 접혀도 「지목은 시민이 합니다」 ·
+  체크 전 묶음 0(AI 가 미리 묶지 않는다) · ✓ 2개 → 묶음 2개(번호 1,3) · 묶음은 언제나 카드 2장 ·
+  **패널·확인 창에 문장 입력칸 0개** · 확인란 없이 누르면 「모더레이터 단독」+「좋은 의견 선정」 안내 ·
+  단독 시도로는 배지 0개 · 확인 후 대표 지목·「지목됨 1묶음」 · 이력에 누가·언제·(모더레이터 대리 기록) ·
+  **★지목 후에도 카드 27장 다중집합 동일 · 삭제 0장** · 대표 배지는 1장에만 · 덮어쓰면 이력 2건 ·
+  조별 뷰 따라감 · 꼭지2 누수 0 · 짝 체크 해제 시 묶음만 빠지고 카드 불변 · 정렬 병행 ·
+  supabase.co 0건 · 콘솔 0건.
+- **★ 스크린샷을 보고 고친 것 하나** — 배지 세 겹(대표·닮은 짝·잠정 범주)이 **각자 한 줄씩** 먹어
+  본문이 카드 아래로 밀렸다(DOM 검사 49건은 전부 통과한 상태). 셋을 `flex flex-wrap` 한 줄로 모으고
+  각 배지의 `mb-2` 를 걷어냈다. 근거 `evaluation/2026-08-28-submission-lab-us010-badges.png`.
+- **★ 설계 결정 네 가지 — 다시 논의하지 말 것.**
+  1. **묶음 = 체크된 닮은 짝 하나 = 카드 두 장. 짝을 합쳐 큰 묶음을 만들지 않는다.**
+     카드 하나가 여러 짝에 드는 경우가 이미 있고(픽스처 꼭지1 에서 실제로 발생), 그것들을 이어
+     하나로 만드는 순간 그게 회의자료 260811 이 금지한 「조별 결과 임의 통합」이다. 사람이 ✓ 한 것은
+     「이 둘이 닮았다」이지 「이 다섯이 한 덩어리다」가 아니다.
+  2. **actor 는 `kind: 'moderator'` 고정이고 확인란이 `citizenConfirmed` 로 간다.**
+     화면을 조작하는 사람은 실제로 모더레이터이므로 이력이 정직해진다(「모더레이터 대리 기록」이
+     화면에 그대로 뜬다). 그리고 체크 없이 누르면 `moderator-alone` 이 **실제로 발생해** 화면에서
+     검증 가능하다 — 확인 버튼을 disabled 로 막았으면 「왜 안 되는지」가 영영 안 보인다.
+     `kind: 'citizen'` 으로 매핑하면 `citizenConfirmed` 검사를 우회해(로직이 citizen 은 무조건 true)
+     확인란이 장식이 된다. **그 매핑으로 바꾸지 말 것.**
+  3. **상태는 `history` 만 useState 로 든다.** 묶음(groups)은 `pairs`+`checkedPairs` 에서,
+     현재 대표는 history 마지막 사건에서 매번 파생한다. 동기화 useEffect 가 없고 맞아야 하는
+     저장소가 하나뿐이라 어긋날 수가 없다(US-009 가 「현재 대표」를 안 저장한 것과 같은 이유).
+  4. **패널 기본은 접힘.** 카운터 + 짝 패널 + 4범주 패널이 이미 그리드를 한 화면 아래로 밀어냈다.
+- **알려진 동작(의도한 것)** — 짝 체크를 풀었다 다시 켜면 **이전 지목이 되살아난다.**
+  이력이 append-only 이고 묶음 구성이 같으면 마지막 사건이 그대로 이기기 때문이다. 체크 해제는
+  「지목 취소」가 아니라 「그 묶음을 화면에서 내림」이다 — 기록을 지우지 않는 편이 이 PRD 의 방향이다.
+- **다음 이터레이션(US-011~013)을 위한 학습:**
+  - ★ **조별 뷰로 갔다 오면 모아보기 쪽 패널이 통째로 언마운트된다** — `SimilarPairsPanel` ·
+    `RepresentativePanel` 은 `!grouped` 브랜치 안에 있어 접힘 상태(`open`)가 초기값으로 돌아간다.
+    체크된 짝·범주·지목 이력은 보드 상태라 그대로다. **브라우저 검증에서 뷰·꼭지를 오간 뒤에는
+    패널을 다시 펼치고 판정할 것**(`verify-us010.mjs` 의 `ensureOpen()` 헬퍼를 복사해 쓰면 된다).
+    이걸 모르고 짜서 1건 오탐이 났다.
+  - US-012 「내보내기」 버튼은 어디에 둘 것인가 — 카운터 줄(`PreservationCounter` 옆)이 자연스럽다.
+    「원문 N장 · 내보냄 N장 · 삭제 0장」이 이미 있는 카운터와 같은 문법이기 때문이다.
+  - 새 브라우저 검증 훅 — `representative-panel` · `representative-toggle` · `representative-group`
+    (`data-group-id`, `data-picked`) · `representative-candidate`(`data-note-id`, `data-representative`) ·
+    `representative-pick-button` · `representative-dialog` · `representative-actor-label` ·
+    `representative-citizen-confirm` · `representative-confirm` · `representative-error` ·
+    `representative-history` · `representative-badge` · `representative-picked-count` ·
+    `representative-empty`. 포스트잇에 `data-representative="true|false"` 도 붙었다.
+    **패널 발췌는 전부 `<li>`·`<div>` 라 `[data-testid="note-grid"] article` 카운트를 오염시키지 않는다.**
+  - 검증 스크립트 `automation/.artifacts/verify-us010.mjs`(49건) + 배지 육안 확인용
+    `automation/.artifacts/shot-us010-badges.mjs`. 둘 다 untracked 라 story 커밋에 안 섞인다.
+  - ★ **포스트잇 배지 줄이 이제 세 겹이다.** US-013 이 「온톨로지 종류」 배지를 또 얹으면 네 겹이
+    된다 — 한 줄에 다 들어가는지 **스크린샷으로 확인할 것.** 안 들어가면 종류는 배지가 아니라
+    버튼 줄(`CategoryButtons` 옆)에 두는 편이 낫다.
+---

@@ -137,6 +137,24 @@ L4 는 설계문서가 **「시민이 고른다」**로 못 박은 유일한 단
 - 묶음의 카드 목록(`groups`)은 지목이 **절대 바꾸지 않는다**(같은 참조를 그대로 넘긴다).
   대표가 나머지를 대체하지 않으므로 화면도 나머지 카드를 계속 보여줘야 한다.
 
+## L4 지목 화면 (`RepresentativePanel.tsx` · `representative-groups.ts`)
+
+- **묶음의 출처는 「사람이 ✓ 한 닮은 짝」 하나뿐이다.** 묶음 하나 = 짝 하나 = 카드 **두 장**.
+  ★ **짝을 합쳐 큰 묶음을 만들지 말 것** — 한 카드가 여러 짝에 드는 일이 실제로 있고, 그것들을
+  이어 붙이는 순간 그게 「조별 결과 임의 통합」이다.
+- 묶음 번호는 `similarPairs()` 목록에서의 **자리**다(`marksByNote` 와 같은 규칙). 누른 순서로 매기면
+  하나를 풀 때 나머지가 밀려 「짝 3」이 가리키는 대상이 조작 중에 바뀐다.
+- ★ **actor 는 `kind: 'moderator'` 고정이고 확인란이 `citizenConfirmed` 로 간다.** 조작하는 사람은
+  실제로 모더레이터라 이력이 정직해지고(화면에 「모더레이터 대리 기록」이 뜬다), 체크 없이 누르면
+  `moderator-alone` 이 **실제로 발생해** 화면에서 이유를 보여줄 수 있다.
+  `kind: 'citizen'` 으로 매핑하면 로직이 무조건 true 로 통과시켜 **확인란이 장식이 된다** — 바꾸지 말 것.
+- **확인 버튼을 disabled 로 막지 말 것.** 눌러서 튕기고 이유를 읽는 것이 이 화면의 요점이다.
+  안내 문구는 `pickFailureGuidance(reason)` 에 있다(`.ts` 라 테스트가 잡는다).
+- **상태는 `history` 만 `useState`.** 묶음은 `pairs`+`checkedPairs` 에서, 현재 대표는 history 에서
+  매번 파생한다 — 동기화 `useEffect` 가 없고 맞아야 하는 저장소가 하나뿐이다.
+- 알려진 동작: 짝 체크를 풀었다 다시 켜면 **이전 지목이 되살아난다**(이력이 append-only 이므로).
+  체크 해제는 「지목 취소」가 아니라 「그 묶음을 화면에서 내림」이다.
+
 ## UI 검증 시 셀렉터 함정
 
 포스트잇이 `<article>` 이다. **새 패널이 카드 발췌를 `<article>` 로 내면 「카드 N장」 검사가
@@ -148,6 +166,16 @@ L4 는 설계문서가 **「시민이 고른다」**로 못 박은 유일한 단
 - L3 훅 — `preservation-counter`(innerText 정규식으로 네 숫자를 한 번에 뽑는다),
   `category-column`(`data-category`; 미배정 칸은 `unassigned`), `category-member`(`data-note-id`),
   `category-badge`, `category-buttons`. 패널 발췌는 `<li>` 라 카드 카운트를 오염시키지 않는다.
+- L4 훅 — `representative-panel` · `representative-toggle` · `representative-group`(`data-group-id`,
+  `data-picked`) · `representative-candidate`(`data-note-id`, `data-representative`) ·
+  `representative-pick-button` · `representative-dialog` · `representative-actor-label` ·
+  `representative-citizen-confirm` · `representative-confirm` · `representative-error` ·
+  `representative-history` · `representative-badge` · `representative-picked-count` · `representative-empty`.
+  포스트잇에도 `data-representative="true|false"` 가 있다.
+- ★ **조별 뷰로 갔다 오면 모아보기 쪽 패널이 통째로 언마운트된다.** `SimilarPairsPanel` ·
+  `RepresentativePanel` 은 `!grouped` 브랜치 안이라 접힘 상태(`open`)가 초기값으로 돌아간다.
+  체크·범주·지목 이력은 보드 상태라 그대로다 — **뷰·꼭지를 오간 뒤에는 패널을 다시 펼치고 판정할 것**
+  (`automation/.artifacts/verify-us010.mjs` 의 `ensureOpen()`).
 - 유사도 관련 화면은 **꼭지1 에서** 검증한다. 꼭지2·3 은 완전 동일 문장(1.00) 짝뿐이라
   패널이 실제로 도는지 판정이 안 된다. 꼭지1 에만 0.36~0.46 짜리 부분 유사 짝이 있다.
 
