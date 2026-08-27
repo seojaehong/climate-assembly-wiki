@@ -572,3 +572,46 @@ Commit: 523de61
     검수 큐는 노드마다 `kind: null` + `kindCandidates: [7종]` 로 시작한다 —
     **「처음에는 전부 미지정」이 이미 파이프라인의 기본값**이라 US-013 도 같게 두면 된다.
 ---
+
+## 2026-08-28 02:55 - US-012 온톨로지 검수 플랜 내보내기 버튼
+Commit: ac37532
+- `src/islands/mod/ontology-export.ts` 신규(순수) — `ontologyExportFilename` ·
+  `ontologyExportReadiness` · `ontologyExportPreservation` · `buildOntologyExport` +
+  `ONTOLOGY_EXPORT_MIME` · `ONTOLOGY_EXPORT_NEXT_STEP`.
+- `src/islands/mod/OntologyExportPanel.tsx` 신규(표시 전용) — 버튼 + 카운터 한 줄 +
+  경고/안내/분과 안내 + 다음 걸음 명령.
+- `HqSubmissionBoard.tsx` +39줄 — 파생값 3개(`exportReadiness`·`exportPreservation`·`doExportOntology`)와
+  `PreservationCounter` 바로 아래 렌더. 다운로드는 `OntologyReviewConsole` 과 같은 방식
+  (Blob → `createObjectURL` → anchor.click → `revokeObjectURL`).
+- `src/islands/mod/ontology-export.test.ts` 신규 15건. 검사: `npx vitest run src/`
+  **68파일 1,177건 통과**(기준선 1,162 + 15) · `npx astro check` 0 errors / 0 warnings / 49 hints ·
+  `npx astro build` 성공.
+- 브라우저(playwright, submission-lab :4477) **26/26 PASS** —
+  `evaluation/2026-08-28-us012-verify.json`, 스크린샷 `...-us012-panel.png` · `...-filtered.png` · `...-full.png`.
+  파일 27행 = 화면 27장, 모든 id 가 `0829/t{2}/k1/i{2}(/r)` 규격, `group_id` 전부 null,
+  근거 8건이 별도 행 + 링크(`relation` 키 없음), 내보낸 뒤 카드 id 다중집합 불변(읽기 전용),
+  **분과 필터 전후 노드 id 다중집합 동일**, 꼭지2 는 전부 k2(누수 0), supabase.co 0건, 콘솔 에러 0건.
+- **다음 이터레이션(US-013)을 위한 학습:**
+  - ★ **내보내기는 분과 필터를 따르지 않는다.** `wholeBoard` 를 넘긴다(거른 보드는 조 순번이 밀려
+    노드 id 가 충돌 — US-011 기록). 그 결과 **필터가 걸리면 화면에 카운터가 둘 뜨고 수가 다르다**
+    (L3 「원문 9장」 vs 내보내기 「원문 27장」). 버그로 읽히므로 `ontology-export-scope` 한 줄로 알린다.
+    US-013 의 「미지정 N장」은 **화면에 보이는 카드**(boardNotes)를 세는 쪽이 맞다 — 사람이 손으로
+    붙이는 라벨이라 안 보이는 카드까지 세면 끝나지 않는 숙제가 된다. 내보내기와 기준이 다른 것이 정상이다.
+  - `ontology-export.ts` 의 함수는 **보드 하나만** 받는다(카드 목록 인자 없음) — 화면이 거른 목록을
+    끼워 넣을 자리를 없앤 것이다. US-013 도 같은 손잡이를 쓸 거면 이 규칙을 깨지 말 것.
+  - 카운터는 스냅샷을 **밖으로 내주지 않고 개수만** 돌려준다(`ontologyExportPreservation`).
+    시각은 고정값(`1970-…`)을 쓰고, 실제 내려받을 스냅샷은 **누른 순간** `new Date().toISOString()` 으로
+    다시 만든다. 미리 만든 스냅샷을 들고 있다 그대로 내려받는 사고가 구조적으로 안 난다.
+  - **내려받는 것은 스냅샷이지 봉인된 검수 플랜이 아니다.** 플랜 봉인(SHA-256)은 `node:crypto` 라
+    브라우저에서 못 한다. 검수 큐(`OntologyReviewConsole`)는 **플랜 + 원 스냅샷 두 파일**을 요구하므로,
+    받은 파일만으로는 큐에 못 올린다 → 화면에 다음 명령을 적어 두었다:
+    `node automation/canvas-ontology-bridge.mjs --snapshot <받은파일> --output-plan <플랜파일>`.
+  - 화면에 명령·경로를 적을 때 `<code>` 를 그냥 두면 **하이픈에서 줄바꿈해 `--snapshot` 이
+    `- -snapshot` 으로 읽힌다**(복사하면 틀린 명령이 된다). `block overflow-x-auto whitespace-nowrap` 으로 낼 것.
+    DOM 검사 26건이 전부 통과한 상태에서 스크린샷으로만 잡힌 문제다.
+  - 「카드 0장 → 버튼 비활성」은 **픽스처 미리보기로는 도달할 수 없다**(15조가 다 썼다).
+    단위 테스트 3건으로 덮었고 브라우저 검증에서는 일부러 뺐다 — 조용히 건너뛴 것이 아니다.
+  - 브라우저에서 파일을 받으려면 `browser.newPage({ acceptDownloads: true })` +
+    `Promise.all([page.waitForEvent('download'), click()])` → `dl.saveAs(경로)`.
+    `automation/.artifacts/verify-us012.mjs` 가 그 예다.
+---

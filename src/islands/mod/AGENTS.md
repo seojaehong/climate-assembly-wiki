@@ -178,6 +178,29 @@ L4 는 설계문서가 **「시민이 고른다」**로 못 박은 유일한 단
   `astro check` 가 ts(2353) 으로 죽는다. 원본을 건드리지 말고 테스트 안에서 `as unknown as (...) => ...`
   로 모양만 붙인다.
 
+## 온톨로지 내보내기 (`ontology-export.ts` · `OntologyExportPanel.tsx`)
+
+취합 화면에서 검수 큐로 넘길 **스냅샷 JSON** 을 내려받는 자리다.
+
+- ★ **내보내기는 분과 필터를 따르지 않는다.** `wholeBoard` 를 넘긴다 — 거른 보드는 조 순번이 밀려
+  노드 id 가 다른 분과의 스냅샷과 충돌한다. 그래서 필터가 걸리면 화면에 카운터가 둘 뜨고 수가
+  다르다(L3 「원문 9장」 vs 내보내기 「원문 27장」). 버그로 읽히므로 `ontology-export-scope` 한 줄로 알린다.
+- `ontology-export.ts` 의 함수는 **보드 하나만** 받는다(카드 목록 인자 없음). 화면이 거른 목록을
+  실수로 끼워 넣을 자리를 없앤 것이다 — 이 규칙을 깨지 말 것.
+- 카운터는 스냅샷을 **밖으로 내주지 않고 개수만** 돌려준다(`ontologyExportPreservation`, 고정 시각).
+  내려받을 스냅샷은 **누른 순간** `new Date().toISOString()` 으로 다시 만든다(순수 모듈은 시계를 안 읽는다).
+- **내려받는 것은 스냅샷이지 봉인된 검수 플랜이 아니다** — 봉인(SHA-256)은 `node:crypto` 라 브라우저에서
+  못 한다. 검수 큐는 **플랜 + 원 스냅샷 두 파일**을 요구하므로 화면에 다음 명령을 적어 둔다
+  (`ONTOLOGY_EXPORT_NEXT_STEP`): `node automation/canvas-ontology-bridge.mjs --snapshot <파일> --output-plan <플랜>`.
+- ⚠️ **화면에 명령·경로를 `<code>` 로 낼 때는 `block overflow-x-auto whitespace-nowrap`.** 그냥 두면
+  하이픈에서 접혀 `--snapshot` 이 `- -snapshot` 으로 읽히고, 복사한 사람이 틀린 명령을 친다.
+  DOM 검사 26건이 다 통과한 채 스크린샷으로만 잡힌 문제다.
+- 「카드 0장 → 버튼 비활성」은 픽스처 미리보기로 **도달할 수 없다**(15조가 다 썼다). 단위 테스트로 덮는다.
+- 브라우저에서 파일 받기 — `newPage({ acceptDownloads: true })` +
+  `Promise.all([page.waitForEvent('download'), click()])` → `dl.saveAs(경로)`.
+  훅: `ontology-export-panel` · `ontology-export-button` · `ontology-export-counter` ·
+  `ontology-export-reason` · `ontology-export-alert` · `ontology-export-scope`.
+
 ## UI 검증 시 셀렉터 함정
 
 포스트잇이 `<article>` 이다. **새 패널이 카드 발췌를 `<article>` 로 내면 「카드 N장」 검사가
