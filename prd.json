@@ -163,8 +163,8 @@
         "Tests pass"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "현재 대표를 따로 저장하지 않는다 — append-only `history` 의 마지막 사건에서 파생한다(저장소 둘이면 어긋나고, US-007 읽기 RPC 의 `order by e.id desc` 와 같은 규칙이라 서버에 붙여도 해석이 하나다). actor = { kind, label, at, citizenConfirmed? } — ★시각을 인자로 받아 모듈이 시계를 읽지 않는다(네 인자 모양 유지). 예외 5종(reason): actor-required · actor-label-required(이름 공백) · moderator-alone · unknown-group · outside-group. ★API 가 카드 id 만 받아 「새 문장을 대표로」가 구조적으로 불가능하다. `groups` 는 같은 참조로 넘겨 지목이 카드 목록을 못 건드린다. US-010 이 쓸 것은 일부러 안 만들었다(묶음 만들기·representativeNoteIds — US-006→US-008 선례). 테스트 16건(총 1,123)."
     },
     {
       "id": "US-010",

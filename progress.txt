@@ -417,3 +417,56 @@ Commit: c7262fd (구현) · 7c84a81 (칸 높이 수정)
   - ⚠️ heredoc 으로 이 검증 스크립트를 쓰려다 bash 파싱 에러가 났다(상단 Codebase Patterns 참조).
     **긴 스크립트는 Write 도구로 쓰고 실행은 별도 명령으로 분리할 것.**
 ---
+
+## 2026-08-28 01:55 - US-009 L4 대표 문장 지목 순수 로직
+Commit: 8d9288a
+- `src/islands/mod/representative-pick.ts` 신규 — L4 의 순수 로직. UI·DB 의존 없음.
+  - `REPRESENTATIVE_ACTOR_KINDS = ['citizen','moderator']`, `RepresentativeActor =
+    { kind, label, at, citizenConfirmed? }`, `RepresentativePickEntry`(누가·언제·어느 묶음·무엇을),
+    `RepresentativeState = { groups, history }`, `RepresentativePickError`(reason 5종).
+  - `representativeStateFromGroups` / `emptyRepresentativeState` / `groupMembers` /
+    `pickRepresentative(state, groupId, noteId, actor)` / `representativeOf` / `pickHistory`.
+- `representative-pick.test.ts` 신규 **16건** — actor 없음·이름 공백·모더레이터 단독·
+  citizenConfirmed:false·시민 지정 성공·모더레이터 대리기록 성공·묶음 밖 카드·없는 묶음·빈 묶음·
+  지정 전 null·이력 누적(덮어써도 2건, 현재 대표는 마지막)·묶음 간 이력 분리·입력 상태 불변·
+  ★대표를 바꿔도 묶음 카드 수·목록 불변·대표 아닌 카드 잔존.
+- 검사: `npx vitest run src/` **65파일 1,123건 통과**(기준선 1,107 + 16) ·
+  `npx astro check` 0 errors / 0 warnings / 49 hints(기준선 유지).
+  순수 로직 story 라 브라우저 검증·`astro build` 생략(US-002/004/006/007 선례 — 라우트·컴포넌트 변화 없음).
+  AC 에도 브라우저 항목이 없다.
+- **★ 설계 결정 세 가지 — 다시 논의하지 말 것.**
+  1. **「현재 대표」를 따로 저장하지 않는다.** `representativeOf()` 가 append-only `history` 의
+     마지막 사건에서 파생한다. 맞아야 하는 저장소를 둘 두면 언젠가 어긋나고, 어긋난 순간 화면이
+     조용히 거짓을 보여준다(`four-category.ts` 가 「범주별 배열」을 버린 것과 같은 이유).
+     이 「마지막 사건이 이긴다」는 US-007 읽기 RPC(`order by ... e.id desc`)와 **같은 규칙**이라
+     나중에 서버에 붙여도 화면과 DB 의 해석이 하나다. 묶음 구성이 바뀌어 대표가 그 묶음에서
+     빠지면 예전 지목을 되살리지 않고 null 을 낸다(이력은 남는다) — 읽기는 너그럽게, 쓰기는 엄격하게.
+  2. **시각(`at`)을 actor 안에 넣었다.** AC 가 못 박은 네 인자 모양
+     `pickRepresentative(state, groupId, noteId, actor)` 을 지키면서 **모듈이 시계를 읽지 않게**
+     하려는 것이다(US-011 이 `takenAt` 인자로 요구하는 것과 같은 규칙). 「누가」와 「언제」는
+     어차피 한 사건의 두 면이라 한 객체에 있는 게 자연스럽다. 테스트가 시각에 안 흔들린다.
+  3. **금지는 검사가 아니라 API 모양으로 막았다.** ①모더레이터 단독은 `citizenConfirmed: true`
+     없이는 예외 → 화면이 확인 단계를 건너뛰면 지목 자체가 성립하지 않는다. ②이 API 는 카드 **id 만**
+     받는다 — 문장을 넣을 인자가 없으니 「새 문장을 대표로」가 불가능하다. ③`groups` 는 같은 참조로
+     그대로 넘어간다 — 지목이 묶음의 카드를 건드릴 방법이 없다.
+- **일부러 안 만든 것**(US-006 이 `countsByCategory` 를 US-008 에 넘긴 선례) —
+  묶음을 만드는 함수(체크된 짝 → groups), `syncGroups`, 화면용 `representativeNoteIds`.
+  전부 US-010 의 화면 요건이라 그 story 에서 필요한 모양대로 낸다.
+- **다음 이터레이션(US-010)을 위한 학습:**
+  - ★ **「묶음」의 출처를 먼저 정해야 한다.** 이 저장소에 아직 묶음 개념이 없다. 후보는
+    US-005 의 **체크된 닮은 짝**(`pair-marks.ts` 의 `checked` Set + `similarPairs` 자리 번호)이다.
+    짝 하나 = 카드 2장짜리 묶음이고 `pairKey(a,b)` 를 그대로 groupId 로 쓰면 화면의 「짝 N」과
+    대표 지목이 같은 것을 가리킨다. 카드가 여러 짝에 드는 경우가 이미 있으니(US-005 스크린샷의
+    「닮은 짝 1」·「닮은 짝 11」 두 배지) **짝을 합쳐 큰 묶음을 만들지 말 것** — 합치는 순간
+    그게 「임의 통합」이다.
+  - 화면은 예외를 삼키지 말고 `error.reason` 으로 한국어 안내를 고를 것
+    (특히 `moderator-alone` — 왜 안 되는지가 이 화면의 요점이다).
+  - ★ **포스트잇 배지 줄이 이미 두 겹이다**(`PairMarks` → `CategoryBadge` → 조 이름 → 본문 →
+    근거 → `CategoryButtons`). 「대표」 표시를 얹은 카드를 **스크린샷으로 볼 것** — 배지밭이 되면
+    본문이 안 읽힌다. 패널이 세로로 또 늘어나므로 L4 패널은 **기본 접힘**을 검토할 것(US-008 기록).
+  - `actor.label` 은 미리보기 라우트에 토큰이 없으므로 화면에서 입력받거나 고정 문자열을 쓴다.
+    실제 `/hq` 에서는 `attendance_auth_session.actor_label`(본부 잠금 해제 때 입력한 이름)이
+    같은 자리에 들어간다(US-007 기록).
+  - 검증 스크립트는 `automation/.artifacts/verify-us008.mjs` 를 복사해 쓴다
+    (카운터 파서 `nums()` + 다중집합 헬퍼 `gridIds()` 재사용).
+---
