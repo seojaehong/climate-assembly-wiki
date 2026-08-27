@@ -23,6 +23,7 @@ import {
   closeConfirmMessage,
   participationBase,
   REOPEN_WINDOW_MS,
+  joinCodeFromSearch,
 } from './mod-state';
 import { roundSequence, teamRoundHistory, type TeamRoundHistoryItem } from './round-sequence';
 import { renderResultSvg, type ResultImageInput } from './result-image';
@@ -1310,17 +1311,25 @@ export default function ModConsole() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  // 새로고침 시 sessionStorage 코드로 조용히 재입장
+  // 자동 입장 — ①조별 딥링크(`/mod?code=082901`) ②새로고침 시 sessionStorage 코드.
+  // 딥링크가 우선이다. 조에 링크만 보내면 코드를 불러줄 필요가 없고, 같은 기기에서
+  // 다른 조 링크를 열었을 때 앞 조의 저장 코드가 이겨 엉뚱한 조로 들어가면 안 된다.
   useEffect(() => {
+    const fromLink =
+      typeof window !== 'undefined' ? joinCodeFromSearch(window.location.search) : null;
     const saved = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(CODE_KEY) : null;
-    if (!saved || !isValidJoinCode(saved)) return;
-    codeRef.current = saved;
-    joinTeam(saved)
+    const entry = fromLink ?? saved;
+    if (!entry || !isValidJoinCode(entry)) return;
+    codeRef.current = entry;
+    joinTeam(entry)
       .then(async (team) => {
         if (!team) {
-          sessionStorage.removeItem(CODE_KEY);
+          // 딥링크 코드가 무효(오타·재발급)면 저장 코드는 건드리지 않는다 — 링크만 틀린 것이다.
+          if (!fromLink) sessionStorage.removeItem(CODE_KEY);
           return;
         }
+        // 딥링크로 들어왔으면 새로고침에도 유지되도록 저장해 둔다.
+        if (fromLink) sessionStorage.setItem(CODE_KEY, fromLink);
         // 진행 중인 라운드가 있으면 함께 복원해 polling 화면(QR + 실시간 집계)으로 재진입한다.
         const round = await fetchActiveRound(team.id).catch(() => null);
         if (round) setVotes([]);

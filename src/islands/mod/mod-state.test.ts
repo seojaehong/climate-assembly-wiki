@@ -6,6 +6,7 @@ import {
   closeConfirmMessage,
   participationBase,
   REOPEN_WINDOW_MS,
+  joinCodeFromSearch,
 } from './mod-state';
 import type { Round, Team } from '../../lib/mod-console';
 
@@ -160,5 +161,39 @@ describe('closeConfirmMessage', () => {
 
   it('handles nobody having voted yet', () => {
     expect(closeConfirmMessage(0, 12)).toBe('12명 중 0명이 투표했습니다. 아직 12명이 남았습니다.');
+  });
+});
+
+describe('joinCodeFromSearch', () => {
+  it('reads the six-digit code a per-team deep link carries', () => {
+    expect(joinCodeFromSearch('?code=082901')).toBe('082901');
+  });
+
+  it('accepts the short alias so printed links stay short', () => {
+    expect(joinCodeFromSearch('?c=082915')).toBe('082915');
+  });
+
+  it('finds the code among other query params', () => {
+    expect(joinCodeFromSearch('?utm_source=kakao&code=082907')).toBe('082907');
+  });
+
+  it('tolerates whitespace pasted in from a message', () => {
+    expect(joinCodeFromSearch('?code=%20082903%20')).toBe('082903');
+  });
+
+  it('returns null with no query string at all', () => {
+    expect(joinCodeFromSearch('')).toBeNull();
+  });
+
+  // 형식이 어긋난 링크는 조용히 남의 조로 넣지 않고 코드 입력 화면으로 떨어뜨린다.
+  it.each(['?code=8290', '?code=0829011', '?code=abcdef', '?code=', '?code=08290a'])(
+    'rejects a malformed code: %s',
+    (search) => {
+      expect(joinCodeFromSearch(search)).toBeNull();
+    }
+  );
+
+  it('prefers code over the alias when both are present', () => {
+    expect(joinCodeFromSearch('?c=082901&code=082902')).toBe('082902');
   });
 });

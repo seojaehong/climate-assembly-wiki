@@ -19,6 +19,32 @@ export type ModAction =
   | { type: 'NEW_POLL' }
   | { type: 'LOGOUT' };
 
+/**
+ * 조별 딥링크에서 조 코드를 읽는다 — `/mod?code=082901`.
+ *
+ * 조에 6자리 코드를 따로 불러주지 않고 링크 하나로 입장시키기 위한 것이다.
+ * 6자리 숫자가 아니면 null을 돌려 기존 코드 입력 화면으로 떨어뜨린다(잘못된 링크가
+ * 조용히 남의 조로 들어가는 일이 없도록 형식 검사는 여기서 끝낸다 — 실제 유효성은
+ * mod_join RPC가 판정한다).
+ *
+ * `code`와 짧은 별칭 `c` 둘 다 받는다. 인쇄물에 넣을 때 주소가 짧은 편이 낫다.
+ */
+export function joinCodeFromSearch(search: string): string | null {
+  let params: URLSearchParams;
+  try {
+    params = new URLSearchParams(search);
+  } catch {
+    return null;
+  }
+  for (const key of ['code', 'c']) {
+    const raw = params.get(key);
+    if (raw == null) continue;
+    const trimmed = raw.trim();
+    if (/^\d{6}$/.test(trimmed)) return trimmed;
+  }
+  return null;
+}
+
 /** 마감을 되돌릴 수 있는 시간(ms). 이 시간이 지나면 '다시 열기' 버튼이 사라진다. */
 export const REOPEN_WINDOW_MS = 60_000;
 
