@@ -12,6 +12,14 @@ import ModConsole from '../islands/mod/ModConsole';
   <style is:global>
     body { font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif; }
     .tr-num { letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+    @media print {
+      /* 인쇄·PDF — 조작용 요소를 걷어내고 글만 남긴다. 카드가 페이지 경계에서 잘리지 않게 한다. */
+      button, nav, [role="tablist"], input, textarea { display: none !important; }
+      .print\:hidden { display: none !important; }
+      body { background: #fff !important; }
+      section, article { break-inside: avoid; page-break-inside: avoid; }
+      a[href]:after { content: ""; }
+    }
   </style>
 </head><body>
   <ModConsole client:only="react" />

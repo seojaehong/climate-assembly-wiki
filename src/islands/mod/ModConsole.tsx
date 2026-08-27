@@ -634,7 +634,7 @@ function HomeScreen({
             <AttendancePanel teamId={teamId} teamName={teamName} joinCode={code} />
           )}
           {tab === 'vote' && <BallotPanel code={code} subgroup={subgroup ?? null} />}
-          {tab === 'submission' && <SubmissionPanel code={code} />}
+          {tab === 'submission' && <SubmissionPanel code={code} teamLabel={teamName} />}
           {tab === 'vote' && <PastRoundsCard teamId={teamId} teamName={teamName} />}
         </div>
       </div>

@@ -23,6 +23,16 @@ import {
   type EditorRow,
 } from './submission-panel-logic';
 import { SUBMISSION_GUIDE, topicAnchorId } from './submission-guide';
+import {
+  buildSubmissionReport,
+  reportToCsv,
+  reportToText,
+  reportFileName,
+  formatStamp,
+} from './submission-report';
+import { submissionReportBlob } from './submission-report-docx';
+import { buildBoards } from './hq-submission-board-logic';
+import type { HqSubmissionRow } from '../../lib/hq-submissions';
 
 /**
  * 조별 산출물 — 그날의 꼭지를 **한 화면에 모두 펼친다.**
@@ -478,7 +488,142 @@ function TopicJump({ topics }: { topics: Topic[] }) {
   );
 }
 
-export default function SubmissionPanel({ code }: { code: string | null }) {
+/**
+ * 우리 조 산출물 내려받기.
+ *
+ * 본부 보드와 **같은 모델·같은 문서**를 쓴다(submission-report.ts). 조가 받아 본 문서와
+ * 본부가 받아 본 문서의 형식이 갈리면, 같은 내용을 두고 어느 쪽이 맞는지 다투게 된다.
+ *
+ * 조 콘솔에는 본부 취합 RPC가 없으므로, 각 꼭지의 submission_get 결과를 모아
+ * 본부 보드와 같은 행 모양(HqSubmissionRow)으로 바꾼 뒤 같은 빌더에 넣는다.
+ */
+function TeamDownload({ code, teamLabel, topics }: { code: string; teamLabel: string; topics: Topic[] }) {
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const collect = async (): Promise<HqSubmissionRow[]> => {
+    const rows: HqSubmissionRow[] = [];
+    for (const topic of topics) {
+      const got = await submissionGet(code, topic.id);
+      const items = got?.items ?? [];
+      const base = {
+        topic_id: topic.id,
+        topic_ordinal: topic.ordinal,
+        topic_prompt: topic.prompt,
+        topic_status: topic.status,
+        team_id: code,
+        team_name: teamLabel,
+        team_subgroup: null,
+        table_no: null,
+        submission_id: null,
+        submission_status: got?.status ?? null,
+        submission_updated_at: got?.updated_at ?? null,
+        submission_finalized_at: got?.finalized_at ?? null,
+      } as const;
+      if (items.length === 0) {
+        rows.push({ ...base, item_ordinal: null, item_kind: null, item_content: null, item_rationale: null });
+        continue;
+      }
+      for (const it of items) {
+        rows.push({
+          ...base,
+          item_ordinal: it.ordinal,
+          item_kind: it.kind,
+          item_content: it.content,
+          item_rationale: it.rationale,
+        });
+      }
+    }
+    return rows;
+  };
+
+  const save = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const download = async (kind: 'docx' | 'csv' | 'txt') => {
+    setBusy(true);
+    setError(null);
+    try {
+      const report = buildSubmissionReport(buildBoards(await collect()), {
+        generatedAt: formatStamp(new Date()),
+        scopeLabel: teamLabel,
+      });
+      if (kind === 'docx') save(await submissionReportBlob(report), reportFileName(report, 'docx'));
+      else if (kind === 'csv')
+        save(new Blob([reportToCsv(report)], { type: 'text/csv;charset=utf-8' }), reportFileName(report, 'csv'));
+      else
+        save(new Blob([reportToText(report)], { type: 'text/plain;charset=utf-8' }), reportFileName(report, 'txt'));
+      setOpen(false);
+    } catch (caught) {
+      console.error('[조 산출물 내려받기] 실패', caught);
+      setError('내려받지 못했습니다 — 저장한 뒤 다시 시도해 주세요.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="rounded-2xl border border-[#DCE7EE] bg-white p-4 print:hidden">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <h4 className="text-[17px] font-extrabold text-[#1F4E79]">우리 조 산출물 내려받기</h4>
+          <p className="text-[14px] text-[#5A6B73]">
+            저장한 내용을 그대로 받습니다. 아직 저장하지 않은 글은 담기지 않습니다.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="h-12 rounded-xl border border-[#C4D8E4] bg-white px-4 text-[16px] font-bold text-[#1F4E79]"
+        >
+          내려받기 ▾
+        </button>
+      </div>
+      {open ? (
+        <div className="mt-3 grid gap-2 sm:grid-cols-4">
+          <button type="button" disabled={busy} onClick={() => void download('docx')}
+            className="h-12 rounded-xl border border-[#C4D8E4] text-[15px] font-bold text-[#1F4E79] disabled:opacity-40">
+            워드 (.docx)
+          </button>
+          <button type="button" disabled={busy} onClick={() => void download('csv')}
+            className="h-12 rounded-xl border border-[#C4D8E4] text-[15px] font-bold text-[#1F4E79] disabled:opacity-40">
+            엑셀 (.csv)
+          </button>
+          <button type="button" disabled={busy} onClick={() => void download('txt')}
+            className="h-12 rounded-xl border border-[#C4D8E4] text-[15px] font-bold text-[#1F4E79] disabled:opacity-40">
+            줄글 (.txt)
+          </button>
+          <button type="button" onClick={() => { setOpen(false); window.print(); }}
+            className="h-12 rounded-xl border border-[#C4D8E4] text-[15px] font-bold text-[#1F4E79]">
+            인쇄 · PDF
+          </button>
+        </div>
+      ) : null}
+      {error ? (
+        <p role="alert" className="mt-3 rounded-lg bg-[#FFF4D6] px-3 py-2 text-[14px] font-bold text-[#6B4B00]">
+          {error}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+export default function SubmissionPanel({
+  code,
+  teamLabel,
+}: {
+  code: string | null;
+  /** 내려받은 문서에 찍을 조 이름. 없으면 「우리 조」. */
+  teamLabel?: string;
+}) {
   const [topics, setTopics] = useState<Topic[] | null>(null);
   const [topicsFailed, setTopicsFailed] = useState(false);
 
@@ -547,6 +692,7 @@ export default function SubmissionPanel({ code }: { code: string | null }) {
       {topics.map((topic) => (
         <TopicSection key={topic.id} code={code} topic={topic} />
       ))}
+      <TeamDownload code={code} teamLabel={teamLabel ?? '우리 조'} topics={topics} />
     </div>
   );
 }

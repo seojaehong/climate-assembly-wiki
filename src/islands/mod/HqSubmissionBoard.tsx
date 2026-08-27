@@ -8,6 +8,14 @@ import {
   type HqSubmissionRow,
 } from '../../lib/hq-submissions';
 import {
+  buildSubmissionReport,
+  reportToCsv,
+  reportToText,
+  reportFileName,
+  formatStamp,
+} from './submission-report';
+import { submissionReportBlob } from './submission-report-docx';
+import {
   buildBoards,
   flattenNotes,
   filterNotes,
@@ -408,6 +416,8 @@ export default function HqSubmissionBoard({
   const [refreshedAt, setRefreshedAt] = useState<Date | null>(null);
   // 분과 필터 — 회의자료가 정한 구조화 단위가 분과다(총괄모더레이터 3인 × 5개 조).
   const [subgroup, setSubgroup] = useState<string | null>(null);
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   // 재오픈 - 사유가 필수라 다이얼로그를 거친다(서버도 2자 이상을 요구한다).
   const [reopening, setReopening] = useState<{ submissionId: string; teamName: string } | null>(null);
   const [reopenReason, setReopenReason] = useState('');
@@ -547,6 +557,58 @@ export default function HqSubmissionBoard({
     anchor.click();
     URL.revokeObjectURL(url);
   }, [wholeBoard, exportReadiness]);
+
+  /**
+   * 내려받기 — 지금 화면에 걸린 범위(분과 필터 포함)를 그대로 낸다.
+   *
+   * 요약하지 않고 순서를 바꾸지 않는다. 「약간의 편집」은 받는 사람이 워드에서 한다.
+   * 시각은 여기서 읽는다 — 순수 모듈은 시계를 읽지 않는다(같은 입력이면 같은 출력).
+   */
+  const buildReport = useCallback(() => {
+    const scoped = activeSubgroup ?? `전체 ${wholeBoard ? wholeBoard.teams.length : 0}개 조`;
+    const scopedBoards = activeSubgroup
+      ? boards.map((b) => filterBoardBySubgroup(b, activeSubgroup))
+      : boards;
+    return buildSubmissionReport(scopedBoards, {
+      generatedAt: formatStamp(new Date()),
+      scopeLabel: scoped,
+    });
+  }, [boards, activeSubgroup, wholeBoard]);
+
+  const saveFile = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const doDownload = async (kind: 'docx' | 'csv' | 'txt') => {
+    setDownloading(true);
+    try {
+      const report = buildReport();
+      if (kind === 'docx') {
+        saveFile(await submissionReportBlob(report), reportFileName(report, 'docx'));
+      } else if (kind === 'csv') {
+        saveFile(
+          new Blob([reportToCsv(report)], { type: 'text/csv;charset=utf-8' }),
+          reportFileName(report, 'csv')
+        );
+      } else {
+        saveFile(
+          new Blob([reportToText(report)], { type: 'text/plain;charset=utf-8' }),
+          reportFileName(report, 'txt')
+        );
+      }
+      setDownloadOpen(false);
+    } catch (error) {
+      console.error('[HQ submissions] download failed', error);
+      setFailed(describeError(error));
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const doReopen = async () => {
     if (!reopening || !token) return;
@@ -799,6 +861,63 @@ export default function HqSubmissionBoard({
           >
             이력
           </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setDownloadOpen((v) => !v)}
+              aria-expanded={downloadOpen}
+              className="h-12 rounded-xl border border-[#C4D8E4] bg-white px-4 text-[16px] font-bold text-[#1F4E79]"
+            >
+              내려받기 ▾
+            </button>
+            {downloadOpen ? (
+              <div className="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-[#DCE7EE] bg-white p-2 shadow-lg">
+                <p className="px-2 py-1 text-[13px] text-[#8FA3AD]">
+                  지금 보고 있는 범위를 그대로 냅니다
+                </p>
+                <button
+                  type="button"
+                  disabled={downloading}
+                  onClick={() => void doDownload('docx')}
+                  className="w-full rounded-lg px-3 py-2.5 text-left text-[16px] font-bold text-[#1F4E79] hover:bg-[#F1F7FA] disabled:opacity-40"
+                >
+                  워드 문서 (.docx)
+                  <span className="block text-[13px] font-normal text-[#5A6B73]">
+                    손봐서 인쇄·PDF로 저장
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  disabled={downloading}
+                  onClick={() => void doDownload('csv')}
+                  className="w-full rounded-lg px-3 py-2.5 text-left text-[16px] font-bold text-[#1F4E79] hover:bg-[#F1F7FA] disabled:opacity-40"
+                >
+                  엑셀 표 (.csv)
+                  <span className="block text-[13px] font-normal text-[#5A6B73]">
+                    한 줄 = 조가 쓴 한 문장
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  disabled={downloading}
+                  onClick={() => void doDownload('txt')}
+                  className="w-full rounded-lg px-3 py-2.5 text-left text-[16px] font-bold text-[#1F4E79] hover:bg-[#F1F7FA] disabled:opacity-40"
+                >
+                  줄글 텍스트 (.txt)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDownloadOpen(false);
+                    window.print();
+                  }}
+                  className="w-full rounded-lg px-3 py-2.5 text-left text-[16px] font-bold text-[#1F4E79] hover:bg-[#F1F7FA]"
+                >
+                  인쇄 · PDF로 저장
+                </button>
+              </div>
+            ) : null}
+          </div>
           <button
             type="button"
             onClick={() => void copyBoard()}
