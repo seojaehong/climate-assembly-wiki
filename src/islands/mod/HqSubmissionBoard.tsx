@@ -35,6 +35,19 @@ import {
   FourCategoryPanel,
   PreservationCounter,
 } from './FourCategoryPanel';
+import {
+  describePickFailure,
+  groupsFromCheckedPairs,
+  groupsMapOf,
+  representativeNoteIds,
+} from './representative-groups';
+import {
+  pickRepresentative,
+  type RepresentativeActor,
+  type RepresentativePickEntry,
+  type RepresentativeState,
+} from './representative-pick';
+import { RepresentativeBadge, RepresentativePanel } from './RepresentativePanel';
 
 /**
  * 본부 조별 산출물 취합 보드.
@@ -100,7 +113,7 @@ function Eyebrow({ children, className = '' }: { children: React.ReactNode; clas
  */
 function PairMarks({ marks }: { marks: number[] }) {
   return (
-    <div className="mb-2 flex flex-wrap gap-1" data-testid="pair-marks">
+    <div className="flex flex-wrap gap-1" data-testid="pair-marks">
       {marks.map((n) => (
         <span
           key={n}
@@ -117,12 +130,15 @@ function Postit({
   note,
   showTeam,
   marks,
+  representative,
   category,
   onCategory,
 }: {
   note: Note;
   showTeam: boolean;
   marks?: number[];
+  /** L4 — 이 카드가 대표로 지목된 묶음 번호들. 없으면 아무것도 안 붙고 카드는 그대로 남는다. */
+  representative?: number[];
   /** L3 — 이 카드에 얹힌 **잠정** 범주. 없으면 미배정이고, 미배정도 화면에 그대로 남는다. */
   category?: FourCategory | null;
   onCategory?: (noteId: string, category: FourCategory) => void;
@@ -133,9 +149,19 @@ function Postit({
       style={{ background: noteColor(note.teamName) }}
       data-note-id={note.id}
       data-category={category ?? ''}
+      data-representative={representative && representative.length > 0 ? 'true' : 'false'}
     >
-      {marks && marks.length > 0 ? <PairMarks marks={marks} /> : null}
-      {category ? <CategoryBadge category={category} /> : null}
+      {/* 표시 세 겹(대표 · 닮은 짝 · 잠정 범주)을 **한 줄에 모은다** — 각자 한 줄씩 먹으면
+          배지밭이 되어 본문이 카드 아래로 밀린다(US-009 기록). */}
+      {(representative && representative.length > 0) || (marks && marks.length > 0) || category ? (
+        <div className="mb-2 flex flex-wrap items-center gap-1">
+          {representative && representative.length > 0 ? (
+            <RepresentativeBadge marks={representative} />
+          ) : null}
+          {marks && marks.length > 0 ? <PairMarks marks={marks} /> : null}
+          {category ? <CategoryBadge category={category} /> : null}
+        </div>
+      ) : null}
       {showTeam ? (
         <div className="mb-2 flex items-baseline gap-2">
           <span className="text-[15px] font-extrabold text-[#1f2937]">{note.teamName}</span>
@@ -333,6 +359,9 @@ export default function HqSubmissionBoard({
   // L3 — 카드 id → **잠정** 범주. 카드는 제자리에 두고 이름표만 얹으므로 배정이 카드를 지울 수 없다.
   // 아직 서버에 붙이지 않는다(US-007 마이그레이션이 미적용이라 지금 부르면 RPC 404 로 죽는다).
   const [catState, setCatState] = useState<CategoryState>(() => emptyCategoryState());
+  // L4 — 대표 지목 **이력만** 상태로 든다. 묶음(groups)은 체크된 짝에서 매번 파생하고,
+  // 「현재 대표」는 이력의 마지막 사건에서 파생한다. 맞아야 하는 저장소가 하나뿐이라 어긋날 수가 없다.
+  const [repHistory, setRepHistory] = useState<readonly RepresentativePickEntry[]>([]);
   const [copied, setCopied] = useState(false);
   const [refreshedAt, setRefreshedAt] = useState<Date | null>(null);
   // 분과 필터 — 회의자료가 정한 구조화 단위가 분과다(총괄모더레이터 3인 × 5개 조).
@@ -411,6 +440,33 @@ export default function HqSubmissionBoard({
   const toggleNoteCategory = useCallback((noteId: string, category: FourCategory) => {
     setCatState((prev) => toggleCategory(prev, noteId, category));
   }, []);
+  // L4 — 묶음 = 사람이 ✓ 한 닮은 짝 하나(카드 두 장). **짝을 합쳐 큰 묶음을 만들지 않는다** —
+  // 합치는 순간 그게 회의자료가 금지한 「조별 결과 임의 통합」이다.
+  const repGroups = useMemo(
+    () => groupsFromCheckedPairs(pairs, checkedPairs),
+    [pairs, checkedPairs],
+  );
+  const repState = useMemo<RepresentativeState>(
+    () => ({ groups: groupsMapOf(repGroups), history: repHistory }),
+    [repGroups, repHistory],
+  );
+  const repMarks = useMemo(
+    () => representativeNoteIds(repState, repGroups),
+    [repState, repGroups],
+  );
+  /** 지목 시도. 성립하지 않으면 **이유별 한국어 안내**를 돌려준다(예외를 삼키지 않는다). */
+  const doPick = useCallback(
+    (groupId: string, noteId: string, actor: RepresentativeActor): string | null => {
+      try {
+        const next = pickRepresentative(repState, groupId, noteId, actor);
+        setRepHistory(next.history);
+        return null;
+      } catch (error) {
+        return describePickFailure(error);
+      }
+    },
+    [repState],
+  );
   // ★ 카운터는 **검색어와 무관한** 꼭지·분과 전체(boardNotes)로 센다. 검색으로 좁힌 수를 쓰면
   // 「원문 N장」이 타이핑에 따라 흔들려 카드가 사라진 것처럼 읽힌다.
   const preservation = useMemo(
@@ -787,6 +843,7 @@ export default function HqSubmissionBoard({
                       note={note}
                       showTeam={false}
                       marks={noteMarks.get(note.id)}
+                      representative={repMarks.get(note.id)}
                       category={catState.get(note.id) ?? null}
                       onCategory={toggleNoteCategory}
                     />
@@ -813,6 +870,13 @@ export default function HqSubmissionBoard({
             checked={checkedPairs}
             onToggle={toggleCheckedPair}
           />
+          {/* L4 — 묶음이 생긴 뒤에야 뜻이 있는 화면이라 짝 패널 바로 다음에 두고, 기본은 접어둔다. */}
+          <RepresentativePanel
+            groups={repGroups}
+            notesById={notesById}
+            state={repState}
+            onPick={doPick}
+          />
           <div
             data-testid="note-grid"
             className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]"
@@ -826,6 +890,7 @@ export default function HqSubmissionBoard({
                   note={note}
                   showTeam
                   marks={noteMarks.get(note.id)}
+                  representative={repMarks.get(note.id)}
                   category={catState.get(note.id) ?? null}
                   onCategory={toggleNoteCategory}
                 />

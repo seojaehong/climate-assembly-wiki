@@ -154,7 +154,7 @@ export function CategoryButtons({
 export function CategoryBadge({ category }: { category: FourCategory }) {
   const tone = CATEGORY_TONE[category];
   return (
-    <div className="mb-2">
+    <div>
       <span
         data-testid="category-badge"
         data-category={category}
