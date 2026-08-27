@@ -22,6 +22,19 @@ import {
 } from './hq-submission-board-logic';
 import { orderNotesBySimilarity, similarPairs, type SimilarPair } from './note-similarity';
 import { pairKey, togglePair, marksByNote, checkedPairCount } from './pair-marks';
+import {
+  emptyCategoryState,
+  preservationInvariant,
+  toggleCategory,
+  type CategoryState,
+  type FourCategory,
+} from './four-category';
+import {
+  CategoryBadge,
+  CategoryButtons,
+  FourCategoryPanel,
+  PreservationCounter,
+} from './FourCategoryPanel';
 
 /**
  * 본부 조별 산출물 취합 보드.
@@ -100,14 +113,29 @@ function PairMarks({ marks }: { marks: number[] }) {
   );
 }
 
-function Postit({ note, showTeam, marks }: { note: Note; showTeam: boolean; marks?: number[] }) {
+function Postit({
+  note,
+  showTeam,
+  marks,
+  category,
+  onCategory,
+}: {
+  note: Note;
+  showTeam: boolean;
+  marks?: number[];
+  /** L3 — 이 카드에 얹힌 **잠정** 범주. 없으면 미배정이고, 미배정도 화면에 그대로 남는다. */
+  category?: FourCategory | null;
+  onCategory?: (noteId: string, category: FourCategory) => void;
+}) {
   return (
     <article
       className="rounded-[6px] p-4 shadow-[0_8px_18px_rgba(31,41,55,.12),0_1px_2px_rgba(31,41,55,.06)]"
       style={{ background: noteColor(note.teamName) }}
       data-note-id={note.id}
+      data-category={category ?? ''}
     >
       {marks && marks.length > 0 ? <PairMarks marks={marks} /> : null}
+      {category ? <CategoryBadge category={category} /> : null}
       {showTeam ? (
         <div className="mb-2 flex items-baseline gap-2">
           <span className="text-[15px] font-extrabold text-[#1f2937]">{note.teamName}</span>
@@ -123,6 +151,9 @@ function Postit({ note, showTeam, marks }: { note: Note; showTeam: boolean; mark
         <p className="mt-3 border-t border-black/10 pt-2 text-[15px] leading-[1.5] text-[#4b5563]">
           {note.rationale}
         </p>
+      ) : null}
+      {onCategory ? (
+        <CategoryButtons noteId={note.id} current={category ?? null} onToggle={onCategory} />
       ) : null}
     </article>
   );
@@ -299,6 +330,9 @@ export default function HqSubmissionBoard({
   // L2 — 사람이 ✓ 한 짝. 카드 id 에 꼭지가 들어 있어 꼭지를 넘나들어도 한 Set 으로 충돌이 없다.
   // AI 가 미리 채우지 않는다 — 처음엔 비어 있고 사람이 눌러야 표시가 생긴다.
   const [checkedPairs, setCheckedPairs] = useState<Set<string>>(() => new Set());
+  // L3 — 카드 id → **잠정** 범주. 카드는 제자리에 두고 이름표만 얹으므로 배정이 카드를 지울 수 없다.
+  // 아직 서버에 붙이지 않는다(US-007 마이그레이션이 미적용이라 지금 부르면 RPC 404 로 죽는다).
+  const [catState, setCatState] = useState<CategoryState>(() => emptyCategoryState());
   const [copied, setCopied] = useState(false);
   const [refreshedAt, setRefreshedAt] = useState<Date | null>(null);
   // 분과 필터 — 회의자료가 정한 구조화 단위가 분과다(총괄모더레이터 3인 × 5개 조).
@@ -374,6 +408,15 @@ export default function HqSubmissionBoard({
   const toggleCheckedPair = useCallback((key: string) => {
     setCheckedPairs((prev) => togglePair(prev, key));
   }, []);
+  const toggleNoteCategory = useCallback((noteId: string, category: FourCategory) => {
+    setCatState((prev) => toggleCategory(prev, noteId, category));
+  }, []);
+  // ★ 카운터는 **검색어와 무관한** 꼭지·분과 전체(boardNotes)로 센다. 검색으로 좁힌 수를 쓰면
+  // 「원문 N장」이 타이핑에 따라 흔들려 카드가 사라진 것처럼 읽힌다.
+  const preservation = useMemo(
+    () => preservationInvariant(boardNotes, catState),
+    [boardNotes, catState],
+  );
 
   const doReopen = async () => {
     if (!reopening || !token) return;
@@ -678,6 +721,10 @@ export default function HqSubmissionBoard({
         </section>
       ) : null}
 
+      {/* L3 — 보존 카운터는 **접히지 않고 두 보기 모두에서 항상** 보인다. 「모으지 않았다」의 증명이다. */}
+      <PreservationCounter report={preservation} />
+      <FourCategoryPanel notes={boardNotes} state={catState} />
+
       {silent.length > 0 ? (
         <p className="mb-5 rounded-xl bg-[#FFF4D6] px-4 py-3 text-[16px] font-bold text-[#6B4B00]">
           아직 제출 없는 조 {silent.length} — {silent.join(' · ')}
@@ -740,6 +787,8 @@ export default function HqSubmissionBoard({
                       note={note}
                       showTeam={false}
                       marks={noteMarks.get(note.id)}
+                      category={catState.get(note.id) ?? null}
+                      onCategory={toggleNoteCategory}
                     />
                   ))}
                 </div>
@@ -772,7 +821,14 @@ export default function HqSubmissionBoard({
               <p className="text-[16px] text-[#5A6B73]">해당하는 카드가 없습니다.</p>
             ) : (
               notes.map((note) => (
-                <Postit key={note.id} note={note} showTeam marks={noteMarks.get(note.id)} />
+                <Postit
+                  key={note.id}
+                  note={note}
+                  showTeam
+                  marks={noteMarks.get(note.id)}
+                  category={catState.get(note.id) ?? null}
+                  onCategory={toggleNoteCategory}
+                />
               ))
             )}
           </div>

@@ -149,3 +149,55 @@ export function categoryOfCluster(memberTeamOrdinals: readonly string[]): FourCa
   if (distinctTeams.size === 0) return null;
   return distinctTeams.size >= 2 ? 'common' : 'difference';
 }
+
+/**
+ * 한 카드의 범주를 누르는 동작. 같은 범주를 다시 누르면 **해제**한다.
+ *
+ * 화면에 「해제」 버튼을 따로 두지 않기 위한 것이다. 되돌릴 수 없는 배정은 「잠정」이 아니고,
+ * 되돌리는 길이 눈에 안 보이면 사람은 되돌리지 않는다(설계문서 §4).
+ * 다른 범주를 누르면 갈아탄다 — 한 카드가 두 범주에 겹치는 일은 여전히 없다.
+ */
+export function toggleCategory(
+  state: CategoryState,
+  noteId: string,
+  category: FourCategory,
+): CategoryState {
+  return state.get(noteId) === category
+    ? unassignCategory(state, noteId)
+    : assignCategory(state, noteId, category);
+}
+
+/**
+ * 범주마다 카드가 몇 장인가. 네 범주가 **항상 다 나온다**(0장인 범주도 키가 있다) —
+ * 화면에서 빈 범주가 사라지면 「그 범주는 안 봐도 된다」로 읽힌다.
+ *
+ * `preservationInvariant` 와 같은 규칙으로 **목록 밖 카드 id 의 배정은 세지 않는다**
+ * (배정 맵 하나가 꼭지 세 개를 함께 담는다). 그래서 네 범주 합 + 미배정 = 원문 수가 항상 성립한다.
+ */
+export function countsByCategory(
+  notes: readonly Pick<Note, 'id'>[],
+  state: CategoryState,
+): Record<FourCategory, number> {
+  const counts: Record<FourCategory, number> = {
+    common: 0,
+    difference: 0,
+    conflict: 0,
+    question: 0,
+  };
+  for (const note of notes) {
+    const category = state.get(note.id);
+    if (category) counts[category] += 1;
+  }
+  return counts;
+}
+
+/**
+ * 보존 카운터를 무슨 색으로 그릴 것인가. 「삭제 0장」이 깨지면 경고색이다(US-008 AC).
+ *
+ * 이 자료구조에서 `deletedCount` 는 0 이 아닐 수가 없다 — 그래서 이 함수는 **일어나면 안 되는 일이
+ * 일어났을 때를 위한 것**이고, 순수 함수로 빼둔 덕에 손으로 만든 보고서로 시험할 수 있다
+ * (화면은 `.tsx` 라 테스트가 안 잡는다).
+ */
+export function preservationTone(report: PreservationReport): 'ok' | 'danger' {
+  return report.ok ? 'ok' : 'danger';
+}
