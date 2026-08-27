@@ -13,6 +13,7 @@ import {
   type Note,
   type TopicBoard,
 } from './hq-submission-board-logic';
+import { orderNotesBySimilarity } from './note-similarity';
 
 /**
  * 본부 조별 산출물 취합 보드.
@@ -121,6 +122,9 @@ export default function HqSubmissionBoard({
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const [grouped, setGrouped] = useState(true);
   const [query, setQuery] = useState('');
+  // L1 — 「모아보기」의 배치 방식. 기본은 조별 순서(원래 동작 그대로).
+  // 'similar'는 orderNotesBySimilarity로 **재배열만** 한다 — 카드는 합쳐지지도 사라지지도 않는다.
+  const [sortMode, setSortMode] = useState<'team' | 'similar'>('team');
   const [copied, setCopied] = useState(false);
   const [refreshedAt, setRefreshedAt] = useState<Date | null>(null);
   // 분과 필터 — 회의자료가 정한 구조화 단위가 분과다(총괄모더레이터 3인 × 5개 조).
@@ -220,7 +224,10 @@ export default function HqSubmissionBoard({
     );
   }
 
-  const notes = grouped ? [] : filterNotes(flattenNotes(board), query);
+  // 검색으로 먼저 거르고 그 다음에 재배열한다 — 유사도 사슬은 **화면에 보이는 카드끼리** 잇는다.
+  // (거르기 전에 정렬하면 안 보이는 카드가 사슬 중간에 끼어 이웃이 엉뚱해진다.)
+  const visibleNotes = grouped ? [] : filterNotes(flattenNotes(board), query);
+  const notes = sortMode === 'similar' ? orderNotesBySimilarity(visibleNotes) : visibleNotes;
   const silent = silentTeams(board);
 
   return (
@@ -326,14 +333,48 @@ export default function HqSubmissionBoard({
             </button>
           </div>
           {!grouped ? (
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="내용·조·테이블 검색"
-              aria-label="카드 검색"
-              className="h-12 w-56 rounded-xl border border-[#C4D8E4] px-3 text-[16px]"
-            />
+            <>
+              {/* L1 정렬 — 배치만 바꾼다. 조별 순서가 기본.
+                  「조별」(보기 방식)과 「조별 순서」(정렬)가 나란히 붙어 헷갈리므로 라벨을 둔다. */}
+              <Eyebrow className="ml-1 text-[#8FA3AD]">정렬</Eyebrow>
+              <div role="group" aria-label="정렬" className="flex overflow-hidden rounded-xl border border-[#C4D8E4]">
+                <button
+                  type="button"
+                  aria-pressed={sortMode === 'team'}
+                  onClick={() => setSortMode('team')}
+                  className={`h-12 px-4 text-[16px] font-bold ${
+                    sortMode === 'team' ? 'bg-[#1F4E79] text-white' : 'bg-white text-[#5A6B73]'
+                  }`}
+                >
+                  조별 순서
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={sortMode === 'similar'}
+                  onClick={() => setSortMode('similar')}
+                  className={`h-12 px-4 text-[16px] font-bold ${
+                    sortMode === 'similar' ? 'bg-[#1F4E79] text-white' : 'bg-white text-[#5A6B73]'
+                  }`}
+                >
+                  비슷한 것끼리
+                </button>
+              </div>
+              {/* 정렬을 바꿔도 이 수는 변하지 않는다 — 「배치만 바꿨다」의 증거를 정렬 버튼 옆에 둔다. */}
+              <span
+                data-testid="note-count"
+                className="text-[16px] font-bold text-[#5A6B73]"
+              >
+                카드 <span className="text-[#1F4E79] tr-num">{notes.length}</span>장
+              </span>
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="내용·조·테이블 검색"
+                aria-label="카드 검색"
+                className="h-12 w-56 rounded-xl border border-[#C4D8E4] px-3 text-[16px]"
+              />
+            </>
           ) : null}
           <button
             type="button"
@@ -394,12 +435,20 @@ export default function HqSubmissionBoard({
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">
-          {notes.length === 0 ? (
-            <p className="text-[16px] text-[#5A6B73]">해당하는 카드가 없습니다.</p>
-          ) : (
-            notes.map((note) => <Postit key={note.id} note={note} showTeam />)
-          )}
+        <div>
+          {/* 회의자료 260811이 「조별 결과 임의 통합」을 금지한다 — 정렬은 통합이 아님을 화면에 못 박는다. */}
+          <p className="mb-4 rounded-xl border border-[#DCE7EE] bg-[#F8FAFC] px-4 py-3 text-[15px] leading-[1.6] text-[#5A6B73]">
+            정렬은 <b className="text-[#1F4E79]">배치만 바꿉니다</b> — 카드가 합쳐지거나 사라지지
+            않습니다. 「비슷한 것끼리」는 낱말이 겹치는 카드를 이웃에 놓아 볼 뿐이고, 묶을지는 사람이
+            판단합니다.
+          </p>
+          <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">
+            {notes.length === 0 ? (
+              <p className="text-[16px] text-[#5A6B73]">해당하는 카드가 없습니다.</p>
+            ) : (
+              notes.map((note) => <Postit key={note.id} note={note} showTeam />)
+            )}
+          </div>
         </div>
       )}
 

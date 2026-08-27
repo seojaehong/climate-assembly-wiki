@@ -53,8 +53,8 @@
         "Verify in browser (claude-in-chrome)"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "「모아보기」에만 정렬 토글을 둔다(조별 뷰는 조 순서가 의미이므로 건드리지 않는다). 검색으로 먼저 거르고 그 다음 orderNotesBySimilarity — 사슬은 화면에 보이는 카드끼리 잇는다. 카드 수는 정렬 버튼 옆(data-testid=note-count)에 둬 전환 전후 비교가 직접 되게 했다. playwright 실측: 꼭지1 27장 → 전환 후에도 27장, 순열 일치, 같은 문장을 낸 다른 조 짝 10쌍이 전부 이웃(gap=1)."
     },
     {
       "id": "US-004",

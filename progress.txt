@@ -28,6 +28,12 @@ Started: Thu, Aug 27, 2026 10:32:22 PM
   풀린다(레포 밖 절대경로 import 는 Windows ESM 에서 `ERR_UNSUPPORTED_ESM_URL_SCHEME` 로 죽는다).
   절차: `npx astro build` → `python3 -m http.server 4477 --directory dist` → playwright → **`netstat -ano | grep :4477` 로 PID 찾아 `taskkill //F //PID`**
   (`pkill -f http.server` 는 이 환경에서 안 먹는다).
+- **「supabase 요청 0건」 판정은 외부 호스트로 할 것** — URL 에 `supabase` 로 정규식을 걸면
+  빌드 산출물 `/_astro/supabase.<hash>.js`(같은 오리진 정적 청크)가 걸려 1건으로 뜬다. `supabase.co` 로 판정한다.
+- **브라우저 검증 스크립트는 `automation/.artifacts/` 에 둔다** — `automation/` 안이라 `playwright` import 가 풀리고,
+  `.artifacts/` 는 untracked 라 story 커밋에 안 섞인다. 카드/노드 개수는 **개수만 세지 말고 다중집합 비교**까지
+  할 것(「한 장 빼고 한 장 복제」가 개수 검사를 통과한다).
+- **UI story 는 스크린샷을 눈으로 볼 것.** DOM 검사를 전부 통과해도 라벨 혼동·줄바꿈 같은 문제는 시각으로만 잡힌다.
 - **네트워크 0건 판정 시 Pretendard CDN 을 빼야 한다** — `global.css` 가 jsdelivr 웹폰트를 받으므로
   「외부 요청 0건」이 아니라 「supabase 요청 0건」으로 판정할 것.
 
@@ -116,4 +122,45 @@ Commit: ralph/submission-aggregation-l1-l4
     progress.txt·prd.json 이 서로를 덮어쓴다.
   - 이 PRD와 무관한 dirty 파일이 계속 남아 있다(`SubmissionPanel.tsx` 미리보기 prop, `log.md`,
     `index.md`, agenda json 3종). US-001 이전부터 있던 것이고 **story 커밋에 섞지 않는다.**
+---
+
+## 2026-08-27 23:50 - US-003 L1 정렬 토글 UI
+Commit: ralph/submission-aggregation-l1-l4
+- `src/islands/mod/HqSubmissionBoard.tsx` **한 파일만** 고쳤다. 새 로직 파일은 만들지 않았다 —
+  `orderNotesBySimilarity` 가 이미 순수·검증 완료(US-002 테스트 14건)라 토글은 삼항 하나면 끝난다.
+  래퍼(`sortNotesForView`)를 만들면 board-logic ↔ note-similarity 순환 import 만 생기고 새로 검증할 것은 없다.
+  - `sortMode: 'team' | 'similar'` 상태 추가. **기본은 'team'** — 기존 동작이 그대로 남는다.
+  - 「모아보기」에서만 토글이 뜬다. 조별 뷰는 조 순서 자체가 의미라 손대지 않았다(AC 범위도 모아보기다).
+  - **거르기 → 정렬 순서**로 뒀다: `filterNotes(...)` 결과를 `orderNotesBySimilarity` 에 넣는다.
+    반대로 하면 검색에 안 걸린 카드가 사슬 중간에 끼어 「이웃」이 화면상 엉뚱해진다.
+  - 카드 수를 **정렬 버튼 바로 옆**에 뒀다(`data-testid="note-count"`, 「카드 N장」).
+    헤더의 「총 N건」이 이미 있지만, 「배치만 바꿨다」는 전환 전후를 같은 자리에서 비교해야 보인다.
+  - 안내 문구를 모아보기 그리드 위에 박스로 뒀다 — 「정렬은 배치만 바꿉니다 — 카드가 합쳐지거나 사라지지 않습니다」.
+  - 「조별」(보기 방식)과 「조별 순서」(정렬)가 나란히 붙어 헷갈려서 그 사이에 `Eyebrow` 로 「정렬」 라벨을 넣었다.
+    **스크린샷을 보기 전에는 몰랐던 문제다** — DOM 카운트만으로는 안 잡힌다.
+- 검사: `npx vitest run src/` 61파일 **1,040건 통과**(기준선 유지) · `npx astro check` 0 errors / 0 warnings / 49 hints ·
+  `npx astro build` 성공(7,915쪽). 새 테스트는 안 붙였다 — 순수 로직이 안 늘었고 개수 보존은 US-002 가 이미 못 박았다.
+- 브라우저 검증(playwright, dist 정적 서버 :4477, `/ko/moderator/insights/submission-lab/`):
+  토글 2개 표시 · `aria-pressed` 전환 · **카드 27장 → 27장 불변** · 화면 표시 「카드 27장」 불변 ·
+  DOM 순서 실제 변경 · **정렬 전후가 같은 다중집합(순열)** · 「조별 순서」로 되돌리면 원래 순서 복귀 ·
+  안내 문구 표시 · 콘솔 에러 0건.
+  **같은 문장을 낸 다른 조 짝 10쌍이 전부 gap=1(이웃)** — 버스 배차(1분과1조·1분과3조), 석탄화력(3분과1조·3분과2조),
+  무더위쉼터(2분과1조·2분과2조), 야외노동자(2분과3조·2분과5조), 노후주택(1분과2조·1분과4조), 소상공인(3분과2조·3분과4조).
+  증거: `evaluation/2026-08-27-submission-lab-us003-similar.png`, `...-team.png`.
+- **다음 이터레이션을 위한 학습:**
+  - ★ **「supabase 요청 0건」 판정에 함정이 있다.** URL 에 `/supabase/` 로 정규식을 걸면
+    빌드 산출물 `/_astro/supabase.<hash>.js`(같은 오리진 정적 청크)가 잡혀 1건으로 뜬다.
+    실제 호출만 세려면 **`supabase.co` 같은 외부 호스트로 판정**할 것. US-001 기록의 「0건」과 모순이 아니다.
+  - 검증 스크립트는 `automation/.artifacts/verify-submission-lab-l1.mjs` 에 뒀다(untracked).
+    `automation/` **안**이라 `import { chromium } from 'playwright'` 가 풀리고, `.artifacts/` 라 커밋에 안 섞인다.
+    US-005/008/010/012/013 브라우저 검증은 이 파일을 복사해 고치면 된다.
+  - playwright 셀렉터 — 모아보기 카드는 `article`, 본문은 `article > p` 첫 번째, 조 이름은 `article span` 첫 번째,
+    카드 수는 `[data-testid="note-count"]`. 정렬 버튼은 `getByRole('button', { name: '비슷한 것끼리' })`.
+    **개수만 세지 말고 다중집합(sort 후 join) 비교까지 할 것** — 「한 장 빼고 한 장 복제」가 개수 검사를 통과한다.
+  - ★ **UI story 는 스크린샷을 실제로 볼 것.** 이번의 「조별 vs 조별 순서」 혼동은 DOM 검사 전부 통과 상태에서
+    눈으로만 잡혔다. 좌표·카운트 샘플로 UI 를 판정하지 말라는 지시가 이 뜻이다.
+  - `Postit` 은 `showTeam` 이 true 일 때만 조 이름을 낸다(모아보기). US-005 의 「짝에 조 이름 표시」는
+    이 컴포넌트를 그대로 쓰면 된다.
+  - 도구 줄(진척 + 도구 박스)이 1600px 에서 이미 꽉 찼다. US-005/012 가 버튼을 더 넣으면
+    줄바꿈(`flex-wrap` 은 이미 걸려 있다)되거나 별도 패널로 빼야 한다.
 ---
