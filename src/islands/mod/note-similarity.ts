@@ -106,3 +106,56 @@ export function orderNotesBySimilarity(notes: Note[]): Note[] {
 
   return order.map((index) => notes[index]);
 }
+
+/**
+ * L2 — 「닮은 짝 후보」의 임계값.
+ *
+ * 보수적으로 잡는다. 설계문서(취합설계 §5)가 못 박은 대로 한국어 단문에서 유사도는 자주 틀리고,
+ * 이 저장소에서도 무관한 의제가 0.954 로 잡힌 오탐이 있었다. 여기서 걸러 내지 못한 짝은
+ * 사람이 화면에서 걸러야 하므로, **적게 제안하고 근거를 함께 보이는 쪽**을 택한다.
+ */
+export const SIMILAR_PAIRS_THRESHOLD = 0.34;
+
+/** 한 화면에 사람이 실제로 검토할 수 있는 짝의 상한. 넘치면 아무도 안 본다. */
+export const SIMILAR_PAIRS_MAX = 30;
+
+/** 닮은 짝 후보 한 쌍. 점수만 두지 않고 **근거가 된 낱말**을 항상 함께 싣는다. */
+export type SimilarPair = {
+  aId: string;
+  bId: string;
+  score: number;
+  sharedTerms: string[];
+};
+
+/**
+ * 닮아 보이는 카드 짝을 점수·근거와 함께 **제안만** 한다.
+ *
+ * ★ 이 함수는 카드를 묶지도, 지우지도, 고치지도 않는다. 묶을지는 사람이 판단한다(AI 는 제안까지).
+ *
+ * - **같은 조 안의 두 카드는 짝으로 내지 않는다.** 한 조가 나눠 쓴 문장을 도로 합치라고 권하는 꼴이 되고,
+ *   조가 일부러 나눠 적은 뜻을 도구가 되돌리게 된다. 짝은 **조와 조 사이**에서만 뜻이 있다.
+ * - 임계값 **미만**은 제외한다(임계값과 같으면 낸다).
+ * - 점수 내림차순. 동점이면 원래 카드 순서가 앞선 짝이 먼저다(정렬이 안정적이라 결과가 항상 같다).
+ */
+export function similarPairs(
+  notes: Note[],
+  threshold: number = SIMILAR_PAIRS_THRESHOLD,
+  limit: number = SIMILAR_PAIRS_MAX,
+): SimilarPair[] {
+  // 짝마다 다시 쪼개면 O(n²)번 토크나이즈하게 된다 — 카드당 한 번만 쪼갠다.
+  const tokens = notes.map((note) => tokenize(note.content));
+  const pairs: SimilarPair[] = [];
+
+  for (let i = 0; i < notes.length; i += 1) {
+    for (let j = i + 1; j < notes.length; j += 1) {
+      if (notes[i].teamId === notes[j].teamId) continue;
+      const { score, shared } = jaccardOfSets(tokens[i], tokens[j]);
+      if (score < threshold) continue;
+      pairs.push({ aId: notes[i].id, bId: notes[j].id, score, sharedTerms: shared });
+    }
+  }
+
+  // Array.prototype.sort 는 안정 정렬이라, 위에서 i<j 순으로 넣은 순서가 동점의 순서로 남는다.
+  pairs.sort((x, y) => y.score - x.score);
+  return pairs.slice(0, Math.max(0, limit));
+}
