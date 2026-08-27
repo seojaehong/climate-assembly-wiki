@@ -126,3 +126,70 @@ export async function fetchHqSubmissionHistory(
   if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
   return (data ?? []) as HqHistoryRow[];
 }
+
+/**
+ * L3 4범주 — 저장값 네 가지. src/islands/mod/four-category.ts 의 `FOUR_CATEGORIES` 및
+ * 20260828_s8_submission_category.sql 의 check 제약과 같은 문자열이어야 한다.
+ * 한국어 라벨(공통·차이·갈등·질문)은 화면에만 있고 DB 에 들어가지 않는다.
+ *
+ * ※ 여기서 아일랜드를 import 하지 않는다 — 이 리포의 import 방향은 islands → lib 한쪽이다.
+ */
+export type SubmissionCategory = 'common' | 'difference' | 'conflict' | 'question';
+
+/** hq_submission_categories 한 행 — 항목별 **마지막** 배정. category가 null이면 해제된 것이다. */
+export type HqCategoryRow = {
+  topic_id: string;
+  team_id: string;
+  submission_id: string;
+  item_ordinal: number;
+  /** null = 배정 해제. 앞 배정이 되살아나지 않도록 서버가 해제 사건도 그대로 내려준다. */
+  category: SubmissionCategory | null;
+  actor_label: string;
+  assigned_at: string;
+};
+
+/**
+ * 배정 행을 보드 카드 id로 옮긴다.
+ *
+ * DB는 (submission_id, item_ordinal)로 항목을 가리키고 보드는 `topic:team:ordinal`로 가리킨다.
+ * 두 규격이 어긋나면 배정이 조용히 아무 카드에도 안 붙으므로 이 변환을 한 곳에 둔다
+ * (카드 id 규격은 hq-submission-board-logic.ts의 buildBoards가 만든다).
+ */
+export function categoryNoteId(row: Pick<HqCategoryRow, 'topic_id' | 'team_id' | 'item_ordinal'>): string {
+  return `${row.topic_id}:${row.team_id}:${row.item_ordinal}`;
+}
+
+/**
+ * 4범주 배정을 남긴다 — 본부 토큰만. `category`가 null이면 배정 해제다.
+ *
+ * 서버 표는 append-only라 되돌려도 앞 기록이 남는다(누가·언제 묶었는지가 책임으로 남아야 한다).
+ * 원문(submission_item)은 건드리지 않는다 — 카드는 지워지지도 합쳐지지도 않는다.
+ */
+export async function assignSubmissionCategory(
+  token: string,
+  submissionId: string,
+  itemOrdinal: number,
+  category: SubmissionCategory | null
+): Promise<void> {
+  const { error } = await client()
+    .schema('climate_vote')
+    .rpc('hq_submission_category_assign', {
+      p_token: token,
+      p_submission_id: submissionId,
+      p_item_ordinal: itemOrdinal,
+      p_category: category,
+    });
+  if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
+}
+
+/** 세션 전체의 현재 배정을 읽는다. 총괄모더레이터 3인이 같은 것을 보게 하는 경로다. */
+export async function fetchHqSubmissionCategories(
+  token: string,
+  sessionSlug: string = DEFAULT_SESSION_SLUG
+): Promise<HqCategoryRow[]> {
+  const { data, error } = await client()
+    .schema('climate_vote')
+    .rpc('hq_submission_categories', { p_token: token, p_session_slug: sessionSlug });
+  if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
+  return (data ?? []) as HqCategoryRow[];
+}
