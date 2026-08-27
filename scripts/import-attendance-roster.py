@@ -12,24 +12,30 @@ from pathlib import Path
 from typing import Iterable
 from xml.etree import ElementTree
 
-EXPECTED_SOURCE_HASH = "7D486447CA6873C94F99E401A87E939E164EC3C15126E91E1E6F2D67958E7BD3"
+# 정본 = 「20260829 시민참여단 참석명단_2.0.hwpx」(2026-08-27 수신).
+# 직전 정본은 7/4 명단(7D486447…)이었고 8/29 2.0에서 숙의 명부가 174→181명으로 바뀌었다
+# (드롭 3명 제외 + 신규 11명 편입, 3분과 4조 이명례의 연번 160→143 정정 포함).
+EXPECTED_SOURCE_HASH = "7AB0A88092A28D70BD77D695B33C9E9F067F91BF155829534438F3BDEC5080DF"
 EXPECTED_GROUP_COUNTS = {
     "1분과 1조": 12,
     "1분과 2조": 12,
-    "1분과 3조": 12,
+    "1분과 3조": 13,
     "1분과 4조": 12,
     "1분과 5조": 12,
     "2분과 1조": 9,
-    "2분과 2조": 12,
-    "2분과 3조": 12,
+    "2분과 2조": 13,
+    "2분과 3조": 13,
     "2분과 4조": 12,
-    "2분과 5조": 12,
+    "2분과 5조": 13,
     "3분과 1조": 9,
-    "3분과 2조": 12,
-    "3분과 3조": 12,
-    "3분과 4조": 12,
+    "3분과 2조": 13,
+    "3분과 3조": 13,
+    "3분과 4조": 13,
     "3분과 5조": 12,
 }
+
+# 명부 총원은 조별 인원의 합으로 둔다 — 숫자를 두 곳에 적어두면 한쪽만 고쳐진다.
+EXPECTED_TOTAL = sum(EXPECTED_GROUP_COUNTS.values())
 
 
 @dataclass(frozen=True)
@@ -52,6 +58,21 @@ def _cell_text(cell: ElementTree.Element) -> str:
     return " ".join(parts)
 
 
+_TEAM_HEADER = re.compile(r"^(\d)\s*분과\s*(\d+)\s*조")
+
+
+def _team_name(cell: str) -> str:
+    """
+    머리 칸에서 숙의 조 이름을 읽는다. 「1분과 1조 (11명)」·「2분과 1조9명」처럼
+    2.0 명단은 조 제목에 참석 인원을 덧붙였고, 7/4 명단에는 「(청소년)」이 붙기도 했다.
+    조 이름만 남기고 그 뒤 꼬리는 전부 버린다. 숙의 조가 아니면 빈 문자열.
+    """
+    match = _TEAM_HEADER.match(cell.strip())
+    if not match:
+        return ""
+    return f"{match.group(1)}분과 {int(match.group(2))}조"
+
+
 def _source_hash(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as source:
@@ -68,17 +89,23 @@ def parse_roster(path: Path, expected_hash: str = EXPECTED_SOURCE_HASH) -> list[
     with zipfile.ZipFile(path) as package:
         section = ElementTree.fromstring(package.read("Contents/section0.xml"))
 
+    # 표 인덱스를 고정 슬라이스로 잡지 않는다 — 명단이 늘면 표 개수가 바뀌어 조용히 잘린다.
+    # 대신 전 표를 훑되 「N분과 M조」 형태의 머리 칸이 나올 때만 그 조를 열어 담는다.
+    # 이 정규식이 기획분과(「기획분과 ( A )조」)를 자연히 걸러낸다 — DB에는 숙의 15개 조만 있다.
     tables = [node for node in section.iter() if _local_name(node.tag) == "tbl"]
     rows: list[RosterRow] = []
     current_team = ""
-    for table in tables[2:10]:
+    for table in tables:
         table_rows = [node for node in table if _local_name(node.tag) == "tr"]
-        for table_row in table_rows[1:]:
+        for table_row in table_rows:
             cells = [_cell_text(node) for node in table_row if _local_name(node.tag) == "tc"]
-            if len(cells) == 6 and "분과" in cells[0] and "조" in cells[0]:
-                current_team = re.sub(r"\s*\(청소년\)\s*", "", cells[0]).strip()
+            if not cells:
+                continue
+            team = _team_name(cells[0])
+            if team and len(cells) >= 6:
+                current_team = team
                 official_id, name = cells[1], cells[2]
-            elif len(cells) == 5 and current_team:
+            elif current_team and len(cells) >= 5 and cells[0].strip().isdigit():
                 official_id, name = cells[0], cells[1]
             else:
                 continue
@@ -93,8 +120,8 @@ def group_counts(rows: Iterable[RosterRow]) -> dict[str, int]:
 
 
 def validate_roster(rows: list[RosterRow]) -> None:
-    if len(rows) != 174:
-        raise ValueError(f"expected 174 roster rows, got {len(rows)}")
+    if len(rows) != EXPECTED_TOTAL:
+        raise ValueError(f"expected {EXPECTED_TOTAL} roster rows, got {len(rows)}")
     if group_counts(rows) != EXPECTED_GROUP_COUNTS:
         raise ValueError(f"group counts mismatch: {group_counts(rows)}")
     if any(not row.official_id or not row.name for row in rows):
@@ -116,6 +143,9 @@ def build_seed_sql(rows: list[RosterRow], session_slug: str, source_hash: str) -
     )
     slug = _sql_literal(session_slug)
     source = _sql_literal(source_hash.upper())
+    total = len(rows)
+    team_count = len(group_counts(rows))
+    official_ids = ", ".join(_sql_literal(row.official_id) for row in rows)
     return f"""begin;
 
 do $preflight$
@@ -126,12 +156,9 @@ begin
   if target_session_id is null then
     raise exception 'session not found: %', {slug};
   end if;
-  if exists (
-    select 1 from climate_vote.assembly_member
-    where source_hash is distinct from {source}
-  ) then
-    raise exception 'assembly_member already contains another source hash';
-  end if;
+  -- 다른 source_hash가 이미 있어도 막지 않는다. 명단은 개정되며(7/4 → 8/29 1.0 → 2.0)
+  -- 개정본을 넣지 못하면 신규 편입자가 당일 출석부에 뜨지 않는다.
+  -- 무엇으로 덮었는지는 아래 attendance_audit_log의 roster.import 기록으로 남는다.
 end
 $preflight$;
 
@@ -155,17 +182,32 @@ join climate_vote.team t on t.session_id = s.id and t.name = r.team_name
 on conflict (session_id, member_id) do update
   set team_id = excluded.team_id, active = true, updated_at = now();
 
+-- 개정 명단에서 빠진 사람(드롭·교체)의 배정을 내린다.
+-- 그대로 두면 hq_teams 인원과 정족수 산정이 실제보다 커진다.
+-- 행을 지우지 않고 active=false로 두어 출석 기록·감사 로그의 참조를 보존한다.
+update climate_vote.team_assignment ta
+   set active = false, updated_at = now()
+  from climate_vote.session s
+ where s.id = ta.session_id
+   and s.slug = {slug}
+   and ta.active
+   and not exists (
+     select 1 from climate_vote.assembly_member m
+      where m.id = ta.member_id
+        and m.official_id in ({official_ids})
+   );
+
 insert into climate_vote.attendance (assignment_id, base_status)
 select ta.id, 'unconfirmed'
 from climate_vote.team_assignment ta
 join climate_vote.session s on s.id = ta.session_id
-where s.slug = {slug}
+where s.slug = {slug} and ta.active
 on conflict (assignment_id) do nothing;
 
 insert into climate_vote.attendance_audit_log
   (session_id, action, before_value, after_value, actor_scope, actor_label)
 select s.id, 'roster.import', null,
-  jsonb_build_object('source_hash',{source},'member_count',174,'team_count',15),
+  jsonb_build_object('source_hash',{source},'member_count',{total},'team_count',{team_count}),
   'import', '고정 HWPX 명단 가져오기'
 from climate_vote.session s
 where s.slug={slug}
@@ -191,8 +233,8 @@ begin
   from climate_vote.attendance a
   join climate_vote.team_assignment ta on ta.id = a.assignment_id
   join climate_vote.session s on s.id = ta.session_id
-  where s.slug = {slug};
-  if roster_count <> 174 or assignment_count <> 174 or attendance_count <> 174 then
+  where s.slug = {slug} and ta.active;
+  if roster_count <> {total} or assignment_count <> {total} or attendance_count <> {total} then
     raise exception 'roster verification failed: members %, assignments %, attendance %',
       roster_count, assignment_count, attendance_count;
   end if;
@@ -207,6 +249,7 @@ def build_report(rows: list[RosterRow], path: Path, source_hash: str) -> dict[st
         "source_file": path.name,
         "source_sha256": source_hash,
         "item_count": len(rows),
+        "expected_total": EXPECTED_TOTAL,
         "team_count": len(group_counts(rows)),
         "group_counts": group_counts(rows),
         "blank_id_count": sum(not row.official_id for row in rows),
