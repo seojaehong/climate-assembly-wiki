@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchHqSubmissions, subscribeHqSubmissions, type HqSubmissionRow } from '../../lib/hq-submissions';
+import {
+  fetchHqSubmissions,
+  fetchHqSubmissionHistory,
+  reopenSubmission,
+  subscribeHqSubmissions,
+  type HqHistoryRow,
+  type HqSubmissionRow,
+} from '../../lib/hq-submissions';
 import {
   buildBoards,
   flattenNotes,
@@ -13,7 +20,8 @@ import {
   type Note,
   type TopicBoard,
 } from './hq-submission-board-logic';
-import { orderNotesBySimilarity } from './note-similarity';
+import { orderNotesBySimilarity, similarPairs, type SimilarPair } from './note-similarity';
+import { pairKey, togglePair, marksByNote, checkedPairCount } from './pair-marks';
 
 /**
  * 본부 조별 산출물 취합 보드.
@@ -57,6 +65,14 @@ function describeError(error: unknown): string {
   return '원인을 알 수 없습니다';
 }
 
+/** ISO -> 시:분:초. 값이 없으면 em dash. */
+function clock(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
 function Eyebrow({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
     <div className={`font-mono text-[12px] font-semibold uppercase ${className}`} style={{ letterSpacing: '.14em' }}>
@@ -65,12 +81,33 @@ function Eyebrow({ children, className = '' }: { children: React.ReactNode; clas
   );
 }
 
-function Postit({ note, showTeam }: { note: Note; showTeam: boolean }) {
+/**
+ * 「닮은 짝」에 사람이 붙인 표시. 카드에 번호표만 얹고 카드는 그대로 둔다.
+ * 조마다 포스트잇 색이 달라 배지는 자체 대비(짙은 남색 바탕 + 흰 글씨)를 갖는다.
+ */
+function PairMarks({ marks }: { marks: number[] }) {
+  return (
+    <div className="mb-2 flex flex-wrap gap-1" data-testid="pair-marks">
+      {marks.map((n) => (
+        <span
+          key={n}
+          className="rounded-full bg-[#1F4E79] px-2 py-[2px] text-[12px] font-extrabold text-white"
+        >
+          닮은 짝 {n}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function Postit({ note, showTeam, marks }: { note: Note; showTeam: boolean; marks?: number[] }) {
   return (
     <article
       className="rounded-[6px] p-4 shadow-[0_8px_18px_rgba(31,41,55,.12),0_1px_2px_rgba(31,41,55,.06)]"
       style={{ background: noteColor(note.teamName) }}
+      data-note-id={note.id}
     >
+      {marks && marks.length > 0 ? <PairMarks marks={marks} /> : null}
       {showTeam ? (
         <div className="mb-2 flex items-baseline gap-2">
           <span className="text-[15px] font-extrabold text-[#1f2937]">{note.teamName}</span>
@@ -109,6 +146,140 @@ function StatusChip({ status }: { status: TopicBoard['teams'][number]['status'] 
   return null;
 }
 
+/**
+ * L2 「닮은 짝」 패널 — AI 는 **제안까지만** 한다.
+ *
+ * 짝마다 두 카드의 원문 전체·조 이름·겹친 낱말을 함께 낸다. 점수만 보이면 「0.95니까 같은 말」
+ * 이라는 착시가 생기고, 그 착시야말로 설계문서 §5 가 막으려는 위험이다(한국어 단문에서
+ * 유사도는 자주 틀린다 — 이 저장소 실측에 무관한 의제가 0.954 로 잡힌 오탐이 있었다).
+ *
+ * ✓ 를 눌러도 카드는 사라지거나 합쳐지지 않는다 — 두 카드에 같은 번호표가 붙을 뿐이고
+ * 다시 누르면 없어진다.
+ *
+ * 짝 행은 일부러 `<article>` 이 아닌 `<li>`·`<div>` 로 낸다 — 포스트잇이 `<article>` 이라
+ * 같은 태그를 쓰면 「카드 N장」을 세는 검증이 조용히 부풀어 오른다.
+ */
+function SimilarPairsPanel({
+  pairs,
+  notesById,
+  checked,
+  onToggle,
+}: {
+  pairs: SimilarPair[];
+  notesById: Map<string, Note>;
+  checked: Set<string>;
+  onToggle: (key: string) => void;
+}) {
+  const [open, setOpen] = useState(true);
+  const marked = checkedPairCount(pairs, checked);
+
+  return (
+    <section
+      aria-label="닮은 짝"
+      data-testid="similar-pairs-panel"
+      className="mb-5 rounded-2xl border border-[#DCE7EE] bg-white p-4"
+    >
+      <header className="flex flex-wrap items-center gap-3">
+        <h3 className="text-[20px] font-extrabold text-[#1F4E79]">
+          닮은 짝 <span className="tr-num text-[#23B2C3]">{pairs.length}</span>쌍
+        </h3>
+        {marked > 0 ? (
+          <span data-testid="pair-checked-count" className="text-[16px] font-bold text-[#5A6B73]">
+            표시함 <span className="tr-num text-[#1F4E79]">{marked}</span>쌍
+          </span>
+        ) : null}
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className="ml-auto h-11 rounded-xl border border-[#C4D8E4] bg-white px-4 text-[15px] font-bold text-[#1F4E79]"
+        >
+          {open ? '접기' : '펼치기'}
+        </button>
+      </header>
+
+      <p className="mt-2 rounded-xl bg-[#FFF4D6] px-4 py-3 text-[15px] leading-[1.6] text-[#6B4B00]">
+        <b>AI 제안 — 확정은 사람이 합니다.</b> 짧은 한국어 문장에서는 유사도가 자주 틀립니다. 겹친
+        낱말을 직접 보고 판단하세요. 점수는 참고 표시일 뿐이고, ✓ 를 눌러도 카드는 합쳐지거나 사라지지
+        않습니다 — 두 카드에 같은 번호표만 붙습니다.
+      </p>
+
+      {open ? (
+        pairs.length === 0 ? (
+          <p className="mt-3 text-[16px] text-[#5A6B73]">이 꼭지에는 닮은 짝 후보가 없습니다.</p>
+        ) : (
+          <ul className="mt-3 grid gap-3">
+            {pairs.map((pair, index) => {
+              const key = pairKey(pair.aId, pair.bId);
+              const a = notesById.get(pair.aId);
+              const b = notesById.get(pair.bId);
+              if (!a || !b) return null;
+              const isChecked = checked.has(key);
+              return (
+                <li
+                  key={key}
+                  data-testid="pair-row"
+                  className={`rounded-xl border p-3 ${
+                    isChecked ? 'border-[#1F4E79] bg-[#F2F7FB]' : 'border-[#DCE7EE] bg-[#F8FAFC]'
+                  }`}
+                >
+                  <div className="mb-2 flex flex-wrap items-center gap-3">
+                    <span className="text-[15px] font-extrabold text-[#1F4E79] tr-num">
+                      닮은 짝 {index + 1}
+                    </span>
+                    <span className="text-[14px] font-bold text-[#8FA3AD] tr-num">
+                      참고 점수 {pair.score.toFixed(2)}
+                    </span>
+                    <span className="text-[14px] text-[#5A6B73]">
+                      겹친 낱말{' '}
+                      {pair.sharedTerms.map((term) => (
+                        <span
+                          key={term}
+                          className="mr-1 rounded bg-[#E3F2F5] px-2 py-[1px] text-[14px] font-bold text-[#0F6B78]"
+                        >
+                          {term}
+                        </span>
+                      ))}
+                    </span>
+                    <button
+                      type="button"
+                      aria-pressed={isChecked}
+                      onClick={() => onToggle(key)}
+                      className={`ml-auto h-11 rounded-xl px-4 text-[15px] font-bold ${
+                        isChecked
+                          ? 'bg-[#1F4E79] text-white'
+                          : 'border border-[#C4D8E4] bg-white text-[#1F4E79]'
+                      }`}
+                    >
+                      {isChecked ? '✓ 표시함 — 누르면 해제' : '✓ 닮은 짝으로 표시'}
+                    </button>
+                  </div>
+                  <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
+                    {[a, b].map((note) => (
+                      <div
+                        key={note.id}
+                        className="rounded-[6px] p-3"
+                        style={{ background: noteColor(note.teamName) }}
+                      >
+                        <div className="mb-1 text-[14px] font-extrabold text-[#1f2937]">
+                          {note.teamName}
+                        </div>
+                        <p className="whitespace-pre-wrap text-[16px] font-semibold leading-[1.45] text-[#1f2937]">
+                          {note.content}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )
+      ) : null}
+    </section>
+  );
+}
+
 export default function HqSubmissionBoard({
   token,
   fixtureRows,
@@ -125,10 +296,19 @@ export default function HqSubmissionBoard({
   // L1 — 「모아보기」의 배치 방식. 기본은 조별 순서(원래 동작 그대로).
   // 'similar'는 orderNotesBySimilarity로 **재배열만** 한다 — 카드는 합쳐지지도 사라지지도 않는다.
   const [sortMode, setSortMode] = useState<'team' | 'similar'>('team');
+  // L2 — 사람이 ✓ 한 짝. 카드 id 에 꼭지가 들어 있어 꼭지를 넘나들어도 한 Set 으로 충돌이 없다.
+  // AI 가 미리 채우지 않는다 — 처음엔 비어 있고 사람이 눌러야 표시가 생긴다.
+  const [checkedPairs, setCheckedPairs] = useState<Set<string>>(() => new Set());
   const [copied, setCopied] = useState(false);
   const [refreshedAt, setRefreshedAt] = useState<Date | null>(null);
   // 분과 필터 — 회의자료가 정한 구조화 단위가 분과다(총괄모더레이터 3인 × 5개 조).
   const [subgroup, setSubgroup] = useState<string | null>(null);
+  // 재오픈 - 사유가 필수라 다이얼로그를 거친다(서버도 2자 이상을 요구한다).
+  const [reopening, setReopening] = useState<{ submissionId: string; teamName: string } | null>(null);
+  const [reopenReason, setReopenReason] = useState('');
+  const [reopenBusy, setReopenBusy] = useState(false);
+  const [history, setHistory] = useState<HqHistoryRow[] | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -184,6 +364,44 @@ export default function HqSubmissionBoard({
   // 고른 분과가 사라지면(주제 전환 등) 전체로 되돌린다 — 빈 화면을 만들지 않는다.
   const activeSubgroup = subgroup && subgroups.includes(subgroup) ? subgroup : null;
   const board = wholeBoard ? filterBoardBySubgroup(wholeBoard, activeSubgroup) : null;
+
+  // L2 짝 후보는 **화면에 뜬 꼭지·분과의 카드 전체**로 낸다 — 검색어와는 무관하다.
+  // 패널은 그리드가 아니라 별도 목록이라, 검색으로 카드를 좁힌 동안에도 짝은 그대로 있어야 한다.
+  const boardNotes = useMemo(() => (board ? flattenNotes(board) : []), [board]);
+  const pairs = useMemo(() => similarPairs(boardNotes), [boardNotes]);
+  const notesById = useMemo(() => new Map(boardNotes.map((n) => [n.id, n])), [boardNotes]);
+  const noteMarks = useMemo(() => marksByNote(pairs, checkedPairs), [pairs, checkedPairs]);
+  const toggleCheckedPair = useCallback((key: string) => {
+    setCheckedPairs((prev) => togglePair(prev, key));
+  }, []);
+
+  const doReopen = async () => {
+    if (!reopening || !token) return;
+    setReopenBusy(true);
+    try {
+      await reopenSubmission(token, reopening.submissionId, reopenReason.trim());
+      setReopening(null);
+      setReopenReason('');
+      await load();
+      if (historyOpen) await loadHistory();
+    } catch (error) {
+      console.error('[HQ submissions] reopen failed', error);
+      setFailed(describeError(error));
+    } finally {
+      setReopenBusy(false);
+    }
+  };
+
+  const loadHistory = async () => {
+    if (!token) return;
+    try {
+      setHistory(await fetchHqSubmissionHistory(token));
+    } catch (error) {
+      console.error('[HQ submissions] history failed', error);
+      setHistory([]);
+      setFailed(describeError(error));
+    }
+  };
 
   const copyBoard = async () => {
     if (!board) return;
@@ -378,6 +596,22 @@ export default function HqSubmissionBoard({
           ) : null}
           <button
             type="button"
+            onClick={() => {
+              const next = !historyOpen;
+              setHistoryOpen(next);
+              if (next && history === null) void loadHistory();
+            }}
+            aria-pressed={historyOpen}
+            className={`h-12 rounded-xl border px-4 text-[16px] font-bold ${
+              historyOpen
+                ? 'border-[#1F4E79] bg-[#1F4E79] text-white'
+                : 'border-[#C4D8E4] bg-white text-[#1F4E79]'
+            }`}
+          >
+            이력
+          </button>
+          <button
+            type="button"
             onClick={() => void copyBoard()}
             className="h-12 rounded-xl border border-[#C4D8E4] bg-white px-4 text-[16px] font-bold text-[#1F4E79]"
           >
@@ -385,6 +619,64 @@ export default function HqSubmissionBoard({
           </button>
         </div>
       </div>
+
+      {historyOpen ? (
+        <section className="mb-5 rounded-2xl border border-[#DCE7EE] bg-white p-4">
+          <header className="mb-3 flex flex-wrap items-baseline gap-3">
+            <h3 className="text-[19px] font-extrabold text-[#1F4E79]">저장·제출 이력</h3>
+            <span className="text-[14px] text-[#5A6B73]">
+              조가 저장하며 교체된 문장까지 남습니다 — 지워지지 않습니다
+            </span>
+            <button
+              type="button"
+              onClick={() => void loadHistory()}
+              className="ml-auto h-10 rounded-lg border border-[#C4D8E4] px-3 text-[14px] font-bold text-[#1F4E79]"
+            >
+              새로고침
+            </button>
+          </header>
+          {history === null ? (
+            <p className="text-[15px] text-[#5A6B73]">불러오는 중…</p>
+          ) : history.length === 0 ? (
+            <p className="text-[15px] text-[#5A6B73]">아직 이력이 없습니다.</p>
+          ) : (
+            <div className="max-h-[420px] overflow-y-auto">
+              <table className="w-full text-left text-[15px]">
+                <thead className="sticky top-0 bg-white">
+                  <tr className="text-[13px] font-bold uppercase text-[#8FA3AD]">
+                    <th className="py-2 pr-3">시각</th>
+                    <th className="py-2 pr-3">조</th>
+                    <th className="py-2 pr-3">꼭지</th>
+                    <th className="py-2 pr-3">무슨 일</th>
+                    <th className="py-2">내용</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((row, index) => (
+                    <tr key={`${row.event_at}-${index}`} className="border-t border-[#EEF3F7] align-top">
+                      <td className="py-2 pr-3 whitespace-nowrap tr-num text-[#5A6B73]">
+                        {clock(row.event_at)}
+                      </td>
+                      <td className="py-2 pr-3 whitespace-nowrap font-bold text-[#1F4E79]">
+                        {row.team_name}
+                      </td>
+                      <td className="py-2 pr-3 whitespace-nowrap text-[#5A6B73]">{row.topic_prompt}</td>
+                      <td className="py-2 pr-3 whitespace-nowrap font-bold">
+                        {row.kind === 'finalize'
+                          ? '최종 제출'
+                          : row.kind === 'reopen'
+                            ? '다시 열기'
+                            : '저장으로 교체됨'}
+                      </td>
+                      <td className="py-2 break-words text-[#1F2933]">{row.detail ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      ) : null}
 
       {silent.length > 0 ? (
         <p className="mb-5 rounded-xl bg-[#FFF4D6] px-4 py-3 text-[16px] font-bold text-[#6B4B00]">
@@ -417,6 +709,25 @@ export default function HqSubmissionBoard({
                 </span>
                 <StatusChip status={team.status} />
               </header>
+              <p className="mb-3 text-[13px] text-[#8FA3AD] tr-num">
+                저장 {clock(team.updatedAt)}
+                {team.finalizedAt ? ` · 제출 ${clock(team.finalizedAt)}` : ''}
+              </p>
+              {team.status === 'final' && team.submissionId && token ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReopenReason('');
+                    setReopening({
+                      submissionId: team.submissionId as string,
+                      teamName: team.teamName,
+                    });
+                  }}
+                  className="mb-3 h-11 w-full rounded-xl border-2 border-[#B5651D] bg-white text-[15px] font-bold text-[#B5651D]"
+                >
+                  다시 열기
+                </button>
+              ) : null}
               {team.notes.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-[#C4D8E4] px-3 py-6 text-center text-[15px] text-[#8FA3AD]">
                   아직 없음
@@ -424,7 +735,12 @@ export default function HqSubmissionBoard({
               ) : (
                 <div className="grid gap-3">
                   {team.notes.map((note) => (
-                    <Postit key={note.id} note={note} showTeam={false} />
+                    <Postit
+                      key={note.id}
+                      note={note}
+                      showTeam={false}
+                      marks={noteMarks.get(note.id)}
+                    />
                   ))}
                 </div>
               )}
@@ -442,15 +758,66 @@ export default function HqSubmissionBoard({
             않습니다. 「비슷한 것끼리」는 낱말이 겹치는 카드를 이웃에 놓아 볼 뿐이고, 묶을지는 사람이
             판단합니다.
           </p>
-          <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">
+          <SimilarPairsPanel
+            pairs={pairs}
+            notesById={notesById}
+            checked={checkedPairs}
+            onToggle={toggleCheckedPair}
+          />
+          <div
+            data-testid="note-grid"
+            className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]"
+          >
             {notes.length === 0 ? (
               <p className="text-[16px] text-[#5A6B73]">해당하는 카드가 없습니다.</p>
             ) : (
-              notes.map((note) => <Postit key={note.id} note={note} showTeam />)
+              notes.map((note) => (
+                <Postit key={note.id} note={note} showTeam marks={noteMarks.get(note.id)} />
+              ))
             )}
           </div>
         </div>
       )}
+
+      {reopening ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1F4E79]/55 p-5">
+          <div className="w-full max-w-md rounded-2xl border border-[#DCE7EE] bg-white p-6">
+            <h4 className="text-[21px] font-extrabold text-[#1F4E79]">
+              {reopening.teamName} 다시 열기
+            </h4>
+            <p className="mt-2 text-[15px] leading-[1.6] text-[#5A6B73]">
+              최종 제출을 되돌려 조가 다시 고칠 수 있게 합니다. 사유는 기록으로 남습니다.
+            </p>
+            <label className="mt-4 block text-[15px] font-bold text-[#1F2933]">
+              사유
+              <input
+                type="text"
+                value={reopenReason}
+                onChange={(e) => setReopenReason(e.target.value)}
+                placeholder="예: 조가 실수로 눌렀다고 요청"
+                className="mt-1 h-12 w-full rounded-xl border border-[#C4D8E4] px-3 text-[16px] font-normal"
+              />
+            </label>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setReopening(null)}
+                className="h-12 rounded-xl border border-[#C4D8E4] bg-white text-[17px] font-bold text-[#1F4E79]"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                disabled={reopenReason.trim().length < 2 || reopenBusy}
+                onClick={() => void doReopen()}
+                className="h-12 rounded-xl bg-[#B5651D] text-[17px] font-bold text-white disabled:opacity-40"
+              >
+                {reopenBusy ? '여는 중…' : '다시 열기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <p className="mt-6 text-[14px] text-[#8FA3AD]">
         {fixtureRows
