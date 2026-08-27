@@ -21,8 +21,16 @@ import {
  * 읽기 전용이다 — 본부가 조의 글을 고치는 경로는 만들지 않았다(조의 산출물이므로).
  */
 
-/** Realtime이 끊겼을 때를 대비한 폴백 폴링 주기. */
-const POLL_MS = 15_000;
+/**
+ * 폴링 주기.
+ *
+ * ⚠️ Realtime을 보조 수단으로 본다. submission·submission_item은 anon SELECT 정책이 없고
+ * (읽기는 RPC로만 — 조끼리 서로 못 보게 한 설계다) Supabase의 postgres_changes는 RLS를
+ * 따르므로, anon 구독자에게 변경 이벤트가 오지 않을 수 있다. 그것을 고치겠다고 anon SELECT를
+ * 열면 닫아둔 조 간 열람 경로가 도로 열린다 — 그래서 폴링을 실질 갱신 수단으로 둔다.
+ * 45행 규모라 5초 폴링이 부담되지 않는다.
+ */
+const POLL_MS = 5_000;
 
 function Eyebrow({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
@@ -295,7 +303,7 @@ export default function HqSubmissionBoard({ token }: { token: string }) {
       )}
 
       <p className="mt-6 text-[14px] text-[#8FA3AD]">
-        조가 저장하는 대로 자동 갱신됩니다
+        조가 저장하는 대로 자동 갱신됩니다 (5초)
         {refreshedAt ? ` · 마지막 갱신 ${refreshedAt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}
       </p>
     </div>
