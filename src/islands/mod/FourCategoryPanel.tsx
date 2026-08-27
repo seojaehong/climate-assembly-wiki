@@ -228,7 +228,7 @@ export function FourCategoryPanel({
       </p>
 
       {open ? (
-        <div className="mt-3 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
+        <div className="mt-3 grid items-start gap-3 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
           {columns.map((column) => (
             <div
               key={column.key}
@@ -247,7 +247,7 @@ export function FourCategoryPanel({
                   아직 없음
                 </p>
               ) : (
-                <ul className="grid gap-2">
+                <ul className="grid max-h-[340px] gap-2 overflow-y-auto">
                   {column.members.map((note) => (
                     <li
                       key={note.id}
@@ -279,7 +279,7 @@ export function FourCategoryPanel({
             {unassigned.length === 0 ? (
               <p className="text-[14px] text-[#B5651D] opacity-80">모든 카드에 이름표가 붙었습니다.</p>
             ) : (
-              <ul className="grid gap-2">
+              <ul className="grid max-h-[340px] gap-2 overflow-y-auto">
                 {unassigned.map((note) => (
                   <li
                     key={note.id}
