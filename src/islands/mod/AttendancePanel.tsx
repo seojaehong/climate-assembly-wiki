@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ATTENDANCE_GUIDE } from './attendance-guide';
 import {
   bulkPresent,
   fetchAttendanceRoster,
@@ -32,6 +33,62 @@ function statusLabel(row: AttendanceRosterRow): string {
   if (row.is_early_leave) return '조퇴';
   if (row.is_late) return '지각';
   return '출석';
+}
+
+/**
+ * 출석 사용 안내 — 조별 산출물의 「작성 안내」와 같은 모양·같은 접힘 방식으로 둔다.
+ * 화면이 스스로 설명하지 않으면 현장에서 사람이 물어보는 시간이 그대로 지연이 된다.
+ */
+function AttendanceGuide() {
+  const [open, setOpen] = useState(() => {
+    try {
+      return sessionStorage.getItem('climate_vote_attendance_guide_collapsed') !== '1';
+    } catch {
+      return true;
+    }
+  });
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    try {
+      sessionStorage.setItem('climate_vote_attendance_guide_collapsed', next ? '0' : '1');
+    } catch {
+      /* 저장 못 해도 토글 자체는 된다 */
+    }
+  };
+
+  return (
+    <section className="rounded-2xl border border-[#C4D8E4] bg-[#F1F7FA] overflow-hidden">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        className="w-full flex items-center gap-3 px-5 py-4 text-left"
+      >
+        <span className="text-[22px]" aria-hidden="true">📖</span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-[19px] font-extrabold text-[#1F4E79]">출석 체크 사용법</span>
+          <span className="block text-[14px] text-[#5A6B73]">처음 쓰신다면 한 번 읽어 주세요</span>
+        </span>
+        <span className="text-[20px] text-[#5A6B73]" aria-hidden="true">{open ? '▾' : '▸'}</span>
+      </button>
+      {open ? (
+        <ol className="px-5 pb-5 space-y-3">
+          {ATTENDANCE_GUIDE.map((item, index) => (
+            <li key={item.title} className="flex gap-3">
+              <span className="w-7 h-7 shrink-0 rounded-lg bg-white border border-[#C4D8E4] grid place-items-center text-[14px] font-bold text-[#1F4E79] tr-num">
+                {index + 1}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[16px] font-bold text-[#1F2933]">{item.title}</span>
+                <span className="block text-[15px] leading-[1.6] text-[#5A6B73]">{item.body}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
+    </section>
+  );
 }
 
 export default function AttendancePanel({
@@ -233,8 +290,14 @@ export default function AttendancePanel({
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 sm:px-6 py-4 bg-[#4F9D3A]/8 border-b border-[#DCE7EE]">
         <div>
           <h3 className="text-[22px] font-extrabold text-[#1F4E79]">출석 체크 · {teamName}</h3>
-          <p className="text-[13px] text-[#5A6B73]">지각과 조퇴는 동시에 기록할 수 있습니다.</p>
+          <p className="text-[13px] text-[#5A6B73]">
+            누르면 바로 저장됩니다 · 잘못 눌렀으면 「미확인」으로 되돌립니다
+          </p>
         </div>
+        {/* 예전 이름은 「출석부 잠금」이었다. 그런데 잠그는 것이 아니라 이 기기 화면에서
+            명단을 감출 뿐이고, 「출석부 열기」로 비밀번호 없이 다시 열린다. 이름이 동작과
+            달라 현장에서 「한 번 잠그면 못 고치나」로 읽혔다 — 이름을 동작에 맞춘다.
+            기능은 남긴다: 태블릿을 놓고 자리를 뜰 때 이름·지역·성별이 화면에 남지 않는다. */}
         <button
           type="button"
           className="min-h-11 rounded-lg border border-[#9CB7C8] bg-white px-3 text-[13px] font-bold text-[#1F4E79]"
@@ -244,11 +307,12 @@ export default function AttendancePanel({
             setRows([]);
           }}
         >
-          출석부 잠금
+          출석부 닫기
         </button>
       </div>
 
       <div className="p-4 sm:p-6 space-y-4">
+        <AttendanceGuide />
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           {[
             ['현재 출석', summary.current_present],
