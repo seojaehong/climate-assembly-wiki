@@ -173,7 +173,7 @@ begin
       from climate_vote.submission_item i
       join climate_vote.submission s on s.id = i.submission_id
       join climate_vote.team t on t.id = s.team_id
-      join climate_vote.topic tp on tp.id = s.topic_id
+      join climate_vote.discussion_topic tp on tp.id = s.topic_id
      where i.content like '[TEST]%' or i.content like '[검증]%'
   loop
     v_prev := v_item.sub_status;

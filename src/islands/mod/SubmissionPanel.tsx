@@ -359,20 +359,12 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
                         : 'border-[#DCE7EE] bg-[#F5F8FB] text-[#5A6B73]'
                     }`}
                   />
-                  <textarea
-                    value={row.rationale}
-                    readOnly={!editable}
-                    onChange={(e) =>
-                      setRows((prev) => prev.map((r, i) => (i === index ? { ...r, rationale: e.target.value } : r)))
-                    }
-                    rows={2}
-                    placeholder="근거 (선택)"
-                    className={`w-full min-w-0 rounded-xl border px-3 py-2.5 text-[16px] outline-none resize-y ${
-                      editable
-                        ? 'border-[#C4D8E4] focus:border-[#4F9D3A] text-[#1F2933]'
-                        : 'border-[#DCE7EE] bg-[#F5F8FB] text-[#5A6B73]'
-                    }`}
-                  />
+                  {/* 「근거 (선택)」 칸은 2026-08-28 통화에서 없애기로 정리됐다.
+                      원인·배경을 별도 칸으로 두면 「써야 하나 말아야 하나·어떻게 써야 하나」가
+                      또 하나 늘고, 범주를 늘리면 그 자체로 시끄러워진다는 판단이었다.
+                      필요한 내용은 세 꼭지 본문에 함께 적는다.
+                      ★ DB 열(submission_item.rationale)과 내보내기 처리는 그대로 둔다 —
+                      화면에서만 뺀다. 되살릴 일이 생기면 이 블록만 복구하면 된다. */}
                 </div>
               ))}
             </div>
