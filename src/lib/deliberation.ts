@@ -99,6 +99,21 @@ export async function submissionSave(
 }
 
 /** 최종 제출(잠금). 항목 0건이면 RPC가 거부한다. 되돌리기는 HQ 재오픈뿐. */
+/**
+ * 조가 스스로 최종 제출을 다시 연다 — 본부 승인 없이.
+ *
+ * 행사 중 본부가 재오픈 요청을 일일이 받으면 그 조가 몇 분씩 멈춘다. 조는 자기 것만
+ * 열 수 있고 내용은 그대로이며, 누가 언제 열었는지는 기록에 남는다(actor_scope='team').
+ */
+export async function submissionReopenByTeam(code: string, topicId: string): Promise<void> {
+  const sb = client();
+  const { error } = await sb.schema('climate_vote').rpc('submission_reopen_by_team', {
+    p_code: code,
+    p_topic_id: topicId,
+  });
+  if (error) throw new Error(error.message ?? '다시 열지 못했습니다');
+}
+
 export async function submissionFinalize(code: string, topicId: string): Promise<SubmissionFinalizeResult> {
   const sb = client();
   const { data, error } = await sb.schema('climate_vote').rpc('submission_finalize', {

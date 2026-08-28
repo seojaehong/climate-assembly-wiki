@@ -3,6 +3,7 @@ import {
   submissionFinalize,
   submissionGet,
   submissionSave,
+  submissionReopenByTeam,
   topicList,
   type SubmissionStatus,
   type Topic,
@@ -86,6 +87,7 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
   const [saving, setSaving] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [confirmFinalize, setConfirmFinalize] = useState(false);
+  const [reopening, setReopening] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   const dirty = isDirty(rows, baseline);
@@ -151,6 +153,24 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  /**
+   * 다시 열기 — 본부 승인 없이 조가 직접 푼다. 기록은 남는다(actor_scope='team').
+   * 행사 중 본부를 부르게 하면 그 조가 몇 분씩 멈춘다.
+   */
+  const handleReopen = async () => {
+    if (!window.confirm('최종 제출을 취소하고 다시 고칠 수 있게 합니다. 내용은 그대로 남습니다.')) return;
+    setReopening(true);
+    try {
+      await submissionReopenByTeam(code, topic.id);
+      setToast('다시 열었습니다. 이어서 고치고 저장하세요.');
+      await loadSubmission();
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : '다시 열지 못했습니다.');
+    } finally {
+      setReopening(false);
     }
   };
 
@@ -233,9 +253,19 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
               </div>
             ) : null}
             {loaded.status === 'final' ? (
-              <p className="text-[15px] font-semibold text-[#5A6B73]">
-                수정이 필요하면 본부에 재오픈을 요청하세요.
-              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="text-[15px] font-semibold text-[#5A6B73]">
+                  잘못 눌렀다면 여기서 바로 다시 열 수 있습니다. 내용은 그대로 남습니다.
+                </p>
+                <button
+                  type="button"
+                  disabled={reopening}
+                  onClick={() => void handleReopen()}
+                  className="h-12 rounded-xl border-2 border-[#B5651D] bg-white px-4 text-[16px] font-bold text-[#B5651D] disabled:opacity-40"
+                >
+                  {reopening ? '여는 중…' : '다시 열기'}
+                </button>
+              </div>
             ) : null}
             {loaded.status !== 'final' && !topicOpen ? (
               <p className="rounded-xl border border-[#DCE7EE] bg-[#F1F7FA] px-4 py-2.5 text-[15px] font-semibold text-[#5A6B73]">

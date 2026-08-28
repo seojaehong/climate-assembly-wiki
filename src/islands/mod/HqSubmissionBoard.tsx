@@ -15,6 +15,9 @@ import {
   formatStamp,
 } from './submission-report';
 import { submissionReportBlob } from './submission-report-docx';
+import { buildSealedPlanFiles } from './ontology-plan';
+import { boardToOntologySnapshot } from './ontology-snapshot';
+import { assignSubmissionKind, fetchSubmissionKinds } from '../../lib/hq-submissions';
 import {
   buildBoards,
   flattenNotes,
@@ -436,6 +439,22 @@ export default function HqSubmissionBoard({
       setRows(next);
       setFailed(null);
       setRefreshedAt(new Date());
+      // 서버에 남은 종류 배정을 화면 상태로 되살린다. 없으면 조용히 넘어간다
+      // (s12 미적용 환경에서도 보드 자체는 떠야 한다).
+      try {
+        const kinds = await fetchSubmissionKinds(token);
+        setKindState((prev) => {
+          const merged = new Map(prev);
+          for (const row of kinds) {
+            const id = `${row.topic_id}:${row.team_id}:${row.item_ordinal}`;
+            if (row.kind) merged.set(id, row.kind as OntologyKind);
+            else merged.delete(id);
+          }
+          return merged;
+        });
+      } catch (kindError) {
+        console.warn('[HQ submissions] 종류 배정을 불러오지 못했습니다', kindError);
+      }
     } catch (error) {
       // Supabase 오류는 Error 인스턴스가 아니라 평범한 객체다 — instanceof만 보면
       // 진짜 원인이 통째로 사라지고 「불러오지 못했습니다」만 남아 진단이 불가능해진다.
@@ -497,7 +516,24 @@ export default function HqSubmissionBoard({
     setCatState((prev) => toggleCategory(prev, noteId, category));
   }, []);
   const toggleNoteKind = useCallback((noteId: string, kind: OntologyKind) => {
-    setKindState((prev) => toggleKind(prev, noteId, kind));
+    // 화면을 먼저 바꾸고 서버에 보낸다(누를 때마다 기다리게 하지 않는다).
+    // 카드 id는 `topic:team:ordinal` 이고, 저장에 필요한 것은 제출물 id와 항목 순번이다.
+    setKindState((prev) => {
+      const next = toggleKind(prev, noteId, kind);
+      if (token) {
+        const team = board?.teams.find((t) => t.notes.some((n) => n.id === noteId));
+        const note = team?.notes.find((n) => n.id === noteId);
+        if (team?.submissionId && note) {
+          void assignSubmissionKind(token, team.submissionId, note.ordinal, next.get(noteId) ?? null).catch(
+            (error) => {
+              console.error('[HQ submissions] kind assign failed', error);
+              setFailed(describeError(error));
+            }
+          );
+        }
+      }
+      return next;
+    });
   }, []);
   // L4 — 묶음 = 사람이 ✓ 한 닮은 짝 하나(카드 두 장). **짝을 합쳐 큰 묶음을 만들지 않는다** —
   // 합치는 순간 그게 회의자료가 금지한 「조별 결과 임의 통합」이다.
@@ -550,6 +586,34 @@ export default function HqSubmissionBoard({
         : { submitted: 0, nodes: 0, deleted: 0, ok: true },
     [wholeBoard],
   );
+  /**
+   * 온톨로지 검수 파일 두 개를 한 번에 낸다 — 스냅샷 + **봉인된 검수 계획**.
+   *
+   * 예전에는 스냅샷만 내주고 계획은 사람이 터미널에서 만들어야 했다. 행사장에서
+   * 총괄모더레이터가 할 수 있는 일이 아니다. 계획 생성은 CLI와 **같은 순수 로직**을 쓰고
+   * (automation/canvas-ontology-plan.mjs) 해시만 Web Crypto로 구한다 — 값이 같음을
+   * ontology-plan.test.ts 가 CLI 출력과 대조해 못 박는다.
+   */
+  const doExportPlan = useCallback(async () => {
+    if (!wholeBoard || !exportReadiness.exportable) return;
+    try {
+      const snapshot = boardToOntologySnapshot(wholeBoard, new Date().toISOString());
+      const stamp = formatStamp(new Date()).replace(/[-: ]/g, '').replace(/^(\d{8})(\d{4})$/, '$1-$2');
+      const files = await buildSealedPlanFiles(snapshot, activeSubgroup ?? '전체', stamp);
+      for (const file of [files.snapshot, files.plan]) {
+        const url = URL.createObjectURL(new Blob([file.text], { type: file.mimeType }));
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = file.filename;
+        anchor.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('[HQ submissions] ontology plan export failed', error);
+      setFailed(describeError(error));
+    }
+  }, [wholeBoard, exportReadiness, activeSubgroup]);
+
   const doExportOntology = useCallback(() => {
     if (!wholeBoard || !exportReadiness.exportable) return;
     // 시각은 **여기서** 읽는다 — 순수 모듈은 시계를 읽지 않는다(같은 입력이면 같은 출력).

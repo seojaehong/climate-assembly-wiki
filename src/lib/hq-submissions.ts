@@ -193,3 +193,45 @@ export async function fetchHqSubmissionCategories(
   if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
   return (data ?? []) as HqCategoryRow[];
 }
+
+// ── 온톨로지 종류(s12) ──────────────────────────────────────────────
+// 4범주(s9)와 같은 방식이다. 배정을 사건으로 쌓고 현재 상태는 마지막 사건으로 읽는다.
+
+export type HqKindRow = {
+  topic_id: string;
+  team_id: string;
+  submission_id: string;
+  item_ordinal: number;
+  kind: string | null;
+  actor_label: string;
+  assigned_at: string;
+};
+
+/** 종류를 붙이거나(kind) 해제한다(null). */
+export async function assignSubmissionKind(
+  token: string,
+  submissionId: string,
+  itemOrdinal: number,
+  kind: string | null
+): Promise<void> {
+  const { error } = await client()
+    .schema('climate_vote')
+    .rpc('hq_submission_kind_assign', {
+      p_token: token,
+      p_submission_id: submissionId,
+      p_item_ordinal: itemOrdinal,
+      p_kind: kind,
+    });
+  if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
+}
+
+export async function fetchSubmissionKinds(
+  token: string,
+  sessionSlug: string = DEFAULT_SESSION_SLUG
+): Promise<HqKindRow[]> {
+  const { data, error } = await client()
+    .schema('climate_vote')
+    .rpc('hq_submission_kinds', { p_token: token, p_session_slug: sessionSlug });
+  if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
+  return (data ?? []) as HqKindRow[];
+}
