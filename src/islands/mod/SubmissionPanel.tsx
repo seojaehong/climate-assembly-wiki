@@ -74,6 +74,21 @@ type LoadedSubmission = {
   finalizedAt: string | null;
 };
 
+/**
+ * 인쇄 문서를 다시 만들라는 신호.
+ *
+ * 인쇄 문서는 **항상 DOM에 있어야 한다** — 버튼을 눌러야 만들어지게 두면 Ctrl+P나
+ * 브라우저 메뉴로 인쇄할 때 드러낼 것이 없어 백지가 나간다(실제로 4쪽 전부 빈 종이가
+ * 나왔다). 그래서 처음에 한 번 만들고, 조가 저장할 때마다 이 신호로 갱신한다.
+ *
+ * 조 콘솔은 꼭지마다 구역이 따로라 상태를 공유하지 않는다. 상태를 위로 끌어올리면
+ * 세 구역이 서로의 저장에 다시 그려진다 — 입력 중에 그건 위험하다. 신호만 보낸다.
+ */
+const SUBMISSION_CHANGED = 'climate-vote:submission-changed';
+function announceSubmissionChanged() {
+  window.dispatchEvent(new CustomEvent(SUBMISSION_CHANGED));
+}
+
 /** 꼭지 번호 뱃지 — ①②③. 4개를 넘으면 숫자로 떨어진다. */
 const ORDINAL_MARKS = ['①', '②', '③', '④', '⑤', '⑥'];
 function ordinalMark(n: number): string {
@@ -167,6 +182,7 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
       await submissionSave(code, topic.id, toSaveItems(rows));
       setToast('저장되었습니다. 최종 제출 전까지 계속 고칠 수 있습니다.');
       await loadSubmission();
+      announceSubmissionChanged();
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
       setToast(
@@ -192,6 +208,7 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
       await submissionReopenByTeam(code, topic.id);
       setToast('다시 열었습니다. 이어서 고치고 저장하세요.');
       await loadSubmission();
+      announceSubmissionChanged();
     } catch (error) {
       setToast(error instanceof Error ? error.message : '다시 열지 못했습니다.');
     } finally {
@@ -211,6 +228,7 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
       await submissionFinalize(code, topic.id);
       setToast('최종 제출되었습니다.');
       await loadSubmission();
+      announceSubmissionChanged();
     } catch {
       setToast('최종 제출에 실패했습니다 — 네트워크를 확인하고 다시 시도해 주세요.');
     } finally {
@@ -627,18 +645,44 @@ function TeamDownload({
    * 인쇄 — 저장된 내용으로 문서를 만들어 그것만 찍는다.
    * 화면을 그대로 찍으면 안내문·빈 칸·버튼이 종이에 나온다.
    */
+  /** 저장된 내용으로 인쇄 문서를 다시 만든다. 실패해도 화면은 그대로 둔다. */
+  const refreshPrintReport = useCallback(async () => {
+    try {
+      setPrintReport(
+        buildSubmissionReport(buildBoards(await collect()), {
+          generatedAt: formatStamp(new Date()),
+          scopeLabel: teamLabel,
+        }),
+      );
+    } catch (caught) {
+      console.error('[조 산출물 인쇄] 문서 준비 실패', caught);
+    }
+    // collect 는 topics·code 에만 기대므로 의존성을 그 둘로 좁힌다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, teamLabel, topics]);
+
+  // 인쇄 문서는 **버튼을 누르기 전부터 DOM에 있어야 한다.**
+  // 눌러야 만들어지게 두면 Ctrl+P·브라우저 인쇄 메뉴로 찍을 때 드러낼 것이 없어
+  // 백지가 나간다 — 실제로 4쪽 전부 빈 종이가 나왔다.
+  useEffect(() => {
+    void refreshPrintReport();
+    const onChanged = () => void refreshPrintReport();
+    window.addEventListener(SUBMISSION_CHANGED, onChanged);
+    return () => window.removeEventListener(SUBMISSION_CHANGED, onChanged);
+  }, [refreshPrintReport]);
+
+  /**
+   * 인쇄 — 저장된 내용으로 문서를 다시 만든 뒤 그것만 찍는다.
+   * 화면을 그대로 찍으면 안내문·빈 칸·버튼이 종이에 나온다.
+   */
   const doPrint = async () => {
     setBusy(true);
     setError(null);
     try {
-      const report = buildSubmissionReport(buildBoards(await collect()), {
-        generatedAt: formatStamp(new Date()),
-        scopeLabel: teamLabel,
-      });
-      setPrintReport(report);
+      await refreshPrintReport();
       setOpen(false);
       // 문서가 DOM에 붙은 다음에 인쇄창을 연다.
-      await new Promise((resolve) => setTimeout(resolve, 120));
+      await new Promise((resolve) => setTimeout(resolve, 150));
       window.print();
     } catch (caught) {
       console.error('[조 산출물 인쇄] 실패', caught);
@@ -704,7 +748,10 @@ function TeamDownload({
           </button>
           <button type="button" disabled={busy} onClick={() => void doPrint()}
             className="h-12 rounded-xl border border-[#C4D8E4] text-[15px] font-bold text-[#1F4E79] disabled:opacity-40">
-            인쇄 · PDF
+            인쇄 · PDF로 저장
+            <span className="mt-0.5 block text-[12px] font-normal text-[#5A6B73]">
+              인쇄창에서 프린터 또는 「PDF로 저장」을 고르세요
+            </span>
           </button>
         </div>
       ) : null}

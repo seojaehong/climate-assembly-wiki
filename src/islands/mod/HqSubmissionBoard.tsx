@@ -1261,13 +1261,14 @@ export default function HqSubmissionBoard({
                     setPrintReport(buildReport());
                     setDownloadOpen(false);
                     // 문서가 DOM에 붙은 다음에 인쇄창을 연다.
-                    setTimeout(() => window.print(), 120);
+                    setTimeout(() => window.print(), 150);
                   }}
                   className="w-full rounded-lg px-3 py-2.5 text-left text-[16px] font-bold text-[#1F4E79] hover:bg-[#F1F7FA] disabled:opacity-40"
                 >
                   인쇄 · PDF로 저장
                   <span className="block text-[13px] font-normal text-[#5A6B73]">
-                    화면이 아니라 정리된 문서가 나갑니다
+                    화면이 아니라 정리된 문서가 나갑니다 · 인쇄창에서 프린터 또는 「PDF로
+                    저장」을 고르세요
                   </span>
                 </button>
               </div>
@@ -1522,7 +1523,11 @@ export default function HqSubmissionBoard({
         </div>
       ) : null}
 
-      {printReport ? <PrintableReport report={printReport} /> : null}
+      {/* 인쇄 문서는 **버튼을 누르기 전부터 DOM에 있어야 한다.** 눌러야 만들어지게 두면
+          Ctrl+P·브라우저 인쇄 메뉴로 찍을 때 드러낼 것이 없어 백지가 나간다.
+          /hq 는 자료가 이미 메모리에 있어 그때그때 만들 수 있다 — 버튼을 누르면
+          그 순간 값으로 갈아끼우고, 안 눌러도 최신 화면 내용이 준비돼 있다. */}
+      <PrintableReport report={printReport ?? buildReport()} />
 
       <p className="mt-6 text-[14px] text-[#8FA3AD]">
         {fixtureRows

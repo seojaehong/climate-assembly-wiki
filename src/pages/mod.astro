@@ -17,9 +17,16 @@ import ModConsole from '../islands/mod/ModConsole';
     .print-root { display: none; }
     @media print {
       /* 화면의 모든 것을 감추고 인쇄 문서만 보이게 한다.
-         요소별로 하나씩 숨기면 새 UI가 생길 때마다 빠뜨린다. */
-      body * { visibility: hidden !important; }
-      .print-root, .print-root * { visibility: visible !important; }
+         요소별로 하나씩 숨기면 새 UI가 생길 때마다 빠뜨린다.
+
+         ★ :has(.print-root) 로 **인쇄 문서가 실제로 있을 때만** 숨긴다.
+         이 조건 없이 body * 를 숨기면, Ctrl+P·브라우저 메뉴로 인쇄할 때처럼
+         문서가 준비되지 않은 순간에 드러낼 것이 없어 **백지가 나간다**.
+         실제로 그렇게 나갔다(4쪽 전부 빈 종이). 숨기는 규칙에는 반드시
+         「드러낼 것이 있다」는 조건이 함께 붙어야 한다. */
+      body:has(.print-root) * { visibility: hidden !important; }
+      body:has(.print-root) .print-root,
+      body:has(.print-root) .print-root * { visibility: visible !important; }
       .print-root {
         display: block !important;
         position: absolute; left: 0; top: 0; width: 100%;

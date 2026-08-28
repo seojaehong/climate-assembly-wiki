@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { SubmissionReport } from './submission-report';
 
 /**
@@ -12,9 +14,24 @@ import type { SubmissionReport } from './submission-report';
  * 같은 자료를 두고 어느 쪽이 맞는지 다투게 된다.
  *
  * 색을 쓰지 않는다 — 행사장 프린터는 대개 흑백이고, 회색 글자는 종이에서 날아간다.
+ *
+ * ── 왜 body 직속으로 옮겨 붙이나 ─────────────────────────────────────
+ * 처음에는 이 문서를 화면 컴포넌트 안에 그대로 두었다. 그랬더니 인쇄할 때 **부모
+ * section 이 display:none 이 되면서 문서가 통째로 사라져 백지가 나갔다.**
+ * visibility 는 자식에서 되살릴 수 있지만 **display:none 은 되살릴 수 없다** —
+ * 조상이 하나라도 꺼지면 그 아래는 전부 없는 것이 된다.
+ *
+ * 그래서 CSS로 조상을 일일이 되살리는 대신 **조상을 없앤다.** body 직속으로 옮겨
+ * 붙이면 어떤 화면이 어떻게 바뀌든 이 문서는 영향을 받지 않는다. 화면 쪽에 새 래퍼가
+ * 생겨도 다시 깨지지 않는다는 뜻이라, 규칙보다 구조로 막는 편이 오래 간다.
  */
 export default function PrintableReport({ report }: { report: SubmissionReport }) {
-  return (
+  // 서버 렌더·수화 이전에는 document 가 없다. 붙은 뒤에 옮겨 붙인다.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+
+  return createPortal(
     <div className="print-root" aria-hidden="true">
       <h1 style={{ fontSize: '20pt', fontWeight: 800, margin: '0 0 4pt' }}>{report.title}</h1>
       <p style={{ fontSize: '10pt', margin: '0 0 14pt' }}>
@@ -82,6 +99,7 @@ export default function PrintableReport({ report }: { report: SubmissionReport }
       ))}
 
       <p style={{ fontSize: '9pt', marginTop: '16pt', textAlign: 'center' }}>{report.notice}</p>
-    </div>
+    </div>,
+    document.body,
   );
 }
