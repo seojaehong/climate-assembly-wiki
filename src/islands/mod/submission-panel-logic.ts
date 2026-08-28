@@ -97,3 +97,33 @@ export function submissionBadge(status: SubmissionStatus | null): SubmissionBadg
   if (status === 'reopened') return { label: '재오픈됨 · 다시 편집 가능', tone: 'reopened' };
   return null;
 }
+
+/**
+ * 탭을 옮겼다 왔을 때 되살릴 미저장분을 고른다.
+ *
+ * 조별 산출물 탭을 떠나면 편집 구역이 통째로 언마운트되어 저장 안 한 줄이 사라졌다.
+ * 8.29에는 타이머·출석을 보고 돌아오는 동선이 있어 그대로 두면 현장에서 글이 날아간다.
+ *
+ * 서버 내용이 언제나 기준이다. 보관분은 **서버와 다를 때만** 되살린다 —
+ * 저장을 마치면 둘이 같아지므로 낡은 초안이 되살아나지 않는다.
+ *
+ * @param raw       보관함에서 꺼낸 문자열(없으면 null)
+ * @param serverRows 방금 서버에서 읽은 줄
+ * @returns 되살릴 줄. 되살릴 게 없으면 null
+ */
+export function pickRestoredRows(raw: string | null, serverRows: EditorRow[]): EditorRow[] | null {
+  if (!raw) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null; // 깨진 값 — 서버 내용으로 연다
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0) return null;
+  const rows = parsed.filter(
+    (row): row is EditorRow =>
+      typeof row === 'object' && row !== null && typeof (row as EditorRow).content === 'string'
+  );
+  if (rows.length !== parsed.length || rows.length === 0) return null;
+  return isDirty(rows, serverRows) ? rows : null;
+}

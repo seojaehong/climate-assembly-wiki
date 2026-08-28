@@ -17,6 +17,7 @@ import {
   isDirty,
   isEditable,
   moveRow,
+  pickRestoredRows,
   removeRow,
   rowsFromItems,
   submissionBadge,
@@ -93,6 +94,8 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
   const [toast, setToast] = useState<string | null>(null);
 
   const dirty = isDirty(rows, baseline);
+  // 미저장 입력 임시 보관함 — 조·꼭지마다 따로 둔다.
+  const draftKey = `climate_vote_draft:${code}:${topic.id}`;
   const badge = submissionBadge(loaded?.status ?? null);
   const topicOpen = topic.status === 'open';
   const editable = loaded != null && isEditable(loaded.status) && topicOpen;
@@ -112,18 +115,38 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
         updatedAt: result.updated_at ?? null,
         finalizedAt: result.finalized_at ?? null,
       });
-      setRows(nextRows);
       setBaseline(nextRows);
       setSavedAt(result.updated_at ?? null);
       setLoadFailed(false);
+      // 탭을 옮겼다 왔을 때 저장 안 한 글을 되살린다. 서버 내용을 기준선으로 두고,
+      // 보관분이 그와 다를 때만 화면에 올린다(저장을 마친 뒤엔 같아지므로 안 뜬다).
+      let restored: EditorRow[] | null = null;
+      try {
+        restored = pickRestoredRows(sessionStorage.getItem(draftKey), nextRows);
+      } catch {
+        /* 보관함을 못 읽는 브라우저 — 서버 내용으로 연다 */
+      }
+      setRows(restored ?? nextRows);
     } catch {
       setLoadFailed(true);
     }
-  }, [code, topic.id]);
+  }, [code, topic.id, draftKey]);
 
   useEffect(() => {
     void loadSubmission();
   }, [loadSubmission]);
+
+  // 미저장 내용을 보관함에 넣어 둔다. 저장해서 서버와 같아지면 지운다
+  // (낡은 초안이 남아 다음에 되살아나면 그게 더 위험하다).
+  useEffect(() => {
+    if (loaded == null) return;
+    try {
+      if (dirty) sessionStorage.setItem(draftKey, JSON.stringify(rows));
+      else sessionStorage.removeItem(draftKey);
+    } catch {
+      /* 보관만 못 할 뿐 편집은 계속된다 */
+    }
+  }, [rows, dirty, loaded, draftKey]);
 
   // 저장 전 이탈(새로고침·탭 닫기) confirm — 자동 저장이 없으므로 이 방어선이 유일하다.
   // 구역마다 걸어 두면 어느 꼭지에 미저장분이 있어도 잡힌다.
@@ -304,7 +327,16 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
                         </button>
                         <button
                           type="button"
-                          onClick={() => setRows((prev) => removeRow(prev, index))}
+                          onClick={() => {
+                            // 빈 줄은 그냥 지운다. 쓴 게 있을 때만 한 번 묻는다.
+                            if (
+                              row.content.trim().length > 0 &&
+                              !window.confirm(`${index + 1}번 줄을 지웁니다. 되돌릴 수 없습니다.`)
+                            ) {
+                              return;
+                            }
+                            setRows((prev) => removeRow(prev, index));
+                          }}
                           aria-label={`${topic.prompt} ${index + 1}번 삭제`}
                           className="w-10 h-10 rounded-lg border border-[#DCE7EE] text-[#5A6B73] text-xl grid place-items-center"
                         >
@@ -355,6 +387,11 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
                 >
                   <span className="text-2xl leading-none">＋</span> 한 줄 더
                 </button>
+                {rows.length >= MAX_SUBMISSION_ROWS ? (
+                  <p className="mt-2 text-center text-[15px] font-bold text-[#B5651D]">
+                    한 꼭지에 최대 {MAX_SUBMISSION_ROWS}줄까지 넣을 수 있습니다.
+                  </p>
+                ) : null}
 
                 <div className="grid grid-cols-2 gap-3">
                   <button
@@ -405,7 +442,9 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
                 최종 제출할까요?
               </h4>
               <p className="text-[16px] font-bold text-[#4F9D3A] mb-3 break-words">{topic.prompt}</p>
-              <p className="text-[18px] font-bold text-[#1F2933] leading-relaxed">{FINALIZE_CONFIRM_MESSAGE}</p>
+              <p className="text-[18px] font-bold text-[#1F2933] leading-relaxed">
+                최종 제출하면 잠깁니다. 잘못 눌렀다면 「다시 열기」로 바로 풀 수 있습니다.
+              </p>
               <p className="text-[15px] text-[#5A6B73] mt-3 tr-num">
                 지금 화면의 내용 {toSaveItems(rows).length}건이 그대로 제출됩니다.
               </p>
@@ -529,7 +568,18 @@ function TopicJump({ topics }: { topics: Topic[] }) {
  * 조 콘솔에는 본부 취합 RPC가 없으므로, 각 꼭지의 submission_get 결과를 모아
  * 본부 보드와 같은 행 모양(HqSubmissionRow)으로 바꾼 뒤 같은 빌더에 넣는다.
  */
-function TeamDownload({ code, teamLabel, topics }: { code: string; teamLabel: string; topics: Topic[] }) {
+function TeamDownload({
+  code,
+  teamLabel,
+  tableNo,
+  topics,
+}: {
+  code: string;
+  teamLabel: string;
+  /** 현장 좌석 번호 — 내려받은 표의 「테이블」 칸에 들어간다. */
+  tableNo?: string | null;
+  topics: Topic[];
+}) {
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -549,7 +599,7 @@ function TeamDownload({ code, teamLabel, topics }: { code: string; teamLabel: st
         team_id: code,
         team_name: teamLabel,
         team_subgroup: null,
-        table_no: null,
+        table_no: tableNo ?? null,
         submission_id: null,
         submission_status: got?.status ?? null,
         submission_updated_at: got?.updated_at ?? null,
@@ -679,10 +729,13 @@ function TeamDownload({ code, teamLabel, topics }: { code: string; teamLabel: st
 export default function SubmissionPanel({
   code,
   teamLabel,
+  tableNo,
 }: {
   code: string | null;
   /** 내려받은 문서에 찍을 조 이름. 없으면 「우리 조」. */
   teamLabel?: string;
+  /** 현장 좌석 번호. 내려받은 표의 「테이블」 칸에 들어간다. */
+  tableNo?: string | null;
 }) {
   const [topics, setTopics] = useState<Topic[] | null>(null);
   const [topicsFailed, setTopicsFailed] = useState(false);
@@ -752,7 +805,7 @@ export default function SubmissionPanel({
       {topics.map((topic) => (
         <TopicSection key={topic.id} code={code} topic={topic} />
       ))}
-      <TeamDownload code={code} teamLabel={teamLabel ?? '우리 조'} topics={topics} />
+      <TeamDownload code={code} teamLabel={teamLabel ?? '우리 조'} tableNo={tableNo} topics={topics} />
     </div>
   );
 }

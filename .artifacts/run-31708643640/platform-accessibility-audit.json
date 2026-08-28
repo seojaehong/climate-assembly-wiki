@@ -1,0 +1,521 @@
+{
+  "schemaVersion": 3,
+  "generatedAt": "2026-08-13T14:11:35.240Z",
+  "sourceCommit": "00833ae7b5ec1d6e2515467934365419a5d1df94",
+  "sourceTreeClean": true,
+  "targetRevision": {
+    "status": "not_verified",
+    "sourceCommit": null,
+    "reason": "The audited origin does not expose a machine-verifiable deployment revision."
+  },
+  "baseUrl": "http://127.0.0.1:4321",
+  "standard": "WCAG 2.2 AA automated subset + skip-link focus + responsive overflow",
+  "engine": {
+    "name": "axe-core",
+    "version": "4.12.1",
+    "tags": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag21a",
+      "wcag21aa",
+      "wcag22aa"
+    ]
+  },
+  "status": "needs_review",
+  "summary": {
+    "routeCount": 6,
+    "profileCount": 2,
+    "auditCaseCount": 12,
+    "passedRoutes": 6,
+    "passedCases": 12,
+    "violationCount": 0,
+    "incompleteCount": 0,
+    "excludedSurfaceCount": 1
+  },
+  "coverage": {
+    "profiles": [
+      {
+        "id": "desktop",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        }
+      },
+      {
+        "id": "mobile",
+        "viewport": {
+          "width": 360,
+          "height": 800
+        },
+        "minimumContentWidth": 280
+      }
+    ],
+    "audited": [
+      "platform-login:desktop",
+      "platform-login:mobile",
+      "authenticated-platform:desktop",
+      "authenticated-platform:mobile",
+      "accessibility-statement:desktop",
+      "accessibility-statement:mobile",
+      "public-result-unpublished:desktop",
+      "public-result-unpublished:mobile",
+      "published-result:desktop",
+      "published-result:mobile",
+      "ontology-review:desktop",
+      "ontology-review:mobile"
+    ],
+    "excluded": [
+      {
+        "id": "assistive-technology-manual-evaluation",
+        "reason": "Screen reader and mobile assistive-technology evaluation requires manual testing."
+      }
+    ]
+  },
+  "routes": [
+    {
+      "id": "platform-login:desktop",
+      "routeId": "platform-login",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/platform/",
+      "url": "http://127.0.0.1:4321/platform/",
+      "fixture": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "platform-scope-content",
+        "focusMoved": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 420,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "platform-login:mobile",
+      "routeId": "platform-login",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/platform/",
+      "url": "http://127.0.0.1:4321/platform/",
+      "fixture": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "platform-scope-content",
+        "focusMoved": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 312,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "authenticated-platform:desktop",
+      "routeId": "authenticated-platform",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/platform/",
+      "url": "http://127.0.0.1:4321/platform/",
+      "fixture": "ci-staff-read-fixture-v1",
+      "readiness": {
+        "selector": "aside button[aria-current=\"location\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "platform-scope-content",
+        "focusMoved": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1152,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "authenticated-platform:mobile",
+      "routeId": "authenticated-platform",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/platform/",
+      "url": "http://127.0.0.1:4321/platform/",
+      "fixture": "ci-staff-read-fixture-v1",
+      "readiness": {
+        "selector": "aside button[aria-current=\"location\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "platform-scope-content",
+        "focusMoved": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "accessibility-statement:desktop",
+      "routeId": "accessibility-statement",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/platform/accessibility/",
+      "url": "http://127.0.0.1:4321/platform/accessibility/",
+      "fixture": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 880,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "accessibility-statement:mobile",
+      "routeId": "accessibility-statement",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/platform/accessibility/",
+      "url": "http://127.0.0.1:4321/platform/accessibility/",
+      "fixture": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 328,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-result-unpublished:desktop",
+      "routeId": "public-result-unpublished",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/r/_/",
+      "url": "http://127.0.0.1:4321/r/_/",
+      "fixture": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-result-unpublished:mobile",
+      "routeId": "public-result-unpublished",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/r/_/",
+      "url": "http://127.0.0.1:4321/r/_/",
+      "fixture": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "published-result:desktop",
+      "routeId": "published-result",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/r/_/",
+      "url": "http://127.0.0.1:4321/r/_/",
+      "fixture": "ci-published-result-read-fixture-v1",
+      "readiness": {
+        "selector": "main#main-content [data-implementation-tracking-ready=\"true\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "published-result:mobile",
+      "routeId": "published-result",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/r/_/",
+      "url": "http://127.0.0.1:4321/r/_/",
+      "fixture": "ci-published-result-read-fixture-v1",
+      "readiness": {
+        "selector": "main#main-content [data-implementation-tracking-ready=\"true\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "requiredScrollRegions": [
+        {
+          "label": "조별 쟁점 커버리지 표",
+          "found": true,
+          "clientWidth": 284,
+          "scrollWidth": 373,
+          "scrollable": true,
+          "focused": true,
+          "keyboardScrolled": true
+        },
+        {
+          "label": "쟁점 분석 데이터 표",
+          "found": true,
+          "clientWidth": 284,
+          "scrollWidth": 720,
+          "scrollable": true,
+          "focused": true,
+          "keyboardScrolled": true
+        }
+      ],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 370,
+        "rawHorizontalOverflow": true,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "ontology-review:desktop",
+      "routeId": "ontology-review",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/ko/moderator/ontology-review/",
+      "url": "http://127.0.0.1:4321/ko/moderator/ontology-review/",
+      "fixture": null,
+      "readiness": {
+        "selector": "main[data-ontology-review-ready=\"true\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "ontology-review-content",
+        "focusMoved": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "ontology-review:mobile",
+      "routeId": "ontology-review",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/ko/moderator/ontology-review/",
+      "url": "http://127.0.0.1:4321/ko/moderator/ontology-review/",
+      "fixture": null,
+      "readiness": {
+        "selector": "main[data-ontology-review-ready=\"true\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "ontology-review-content",
+        "focusMoved": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 5,
+  "generatedAt": "2026-08-13T12:45:11.631Z",
+  "baseUrl": "http://127.0.0.1:4321",
+  "path": "/platform/o/00000000-0000-4000-8000-000000000002/c/audit-assembly/design",
+  "sourceCommit": "d03875ebaa46620fa75959bb44b467b1e7d8f7b0",
+  "sourceTreeClean": true,
+  "sourceTreeSha256": "bc6e272808adebf39a3795ce870809adafed643d4090a95e657231d6e7649d99",
+  "fixture": "ci-staff-read-fixture-v1",
+  "productionDatabaseAccess": false,
+  "runtime": {
+    "node": "v20.20.2",
+    "chromium": "149.0.7827.55"
+  },
+  "status": "pass",
+  "checks": {
+    "documentStatus": 200,
+    "multiSessionInput": true,
+    "invalidDateRejected": true,
+    "previewSummary": true,
+    "blueprintTableScroll": {
+      "clientWidth": 280,
+      "scrollWidth": 620,
+      "focused": true,
+      "keyboardScrolled": true
+    },
+    "previewInvalidated": true,
+    "downloadedFilename": "climate-2026_design_blueprint.json",
+    "blueprintSchemaVersion": 4,
+    "assemblyIntent": {
+      "purpose": "감축과 적응의 실행 조건을 시민과 함께 검토한다.",
+      "mode": "vote",
+      "readiness": [
+        "topics_open",
+        "teams_active"
+      ]
+    },
+    "sessionIdentities": [
+      {
+        "title": "감축 숙의",
+        "slug": "mitigation-session"
+      },
+      {
+        "title": "적응 숙의",
+        "slug": "adaptation-session"
+      }
+    ],
+    "exportedStats": {
+      "sessionCount": 2,
+      "topicCount": 2,
+      "teamCount": 2,
+      "participantCount": 22
+    },
+    "malformedImportRejected": true,
+    "malformedImportPreservedDraft": true,
+    "validImportRestoredHierarchy": true,
+    "importedPreviewReady": true,
+    "importEditInvalidated": true,
+    "oversizedImportRejected": true,
+    "staleImportIgnored": true,
+    "approvalBoundary": {
+      "dryRun": true,
+      "databaseMutationExecuted": false,
+      "requiresApproval": true
+    },
+    "browserPageErrorCount": 0,
+    "fixtureFailureCount": 0,
+    "databaseMutationAttemptCount": 0,
+    "reviewRace": {
+      "path": "/platform/o/00000000-0000-4000-8000-000000000002/c/audit-assembly/s/audit-session/t/00000000-0000-4000-8000-000000000005/review",
+      "fixture": "ci-review-race-fixture-v1",
+      "topicResetBeforeRelease": true,
+      "staleCompletionIgnored": true,
+      "duplicateWriteBlocked": true,
+      "requestBoundToLoadedCode": true,
+      "reviewMutationRequestCount": 1,
+      "browserPageErrorCount": 0,
+      "fixtureFailureCount": 0
+    }
+  }
+}

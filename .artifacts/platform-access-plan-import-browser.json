@@ -1,0 +1,155 @@
+{
+  "schemaVersion": 10,
+  "generatedAt": "2026-08-16T04:17:01.707Z",
+  "baseUrl": "http://127.0.0.1:4321",
+  "path": "/platform/o/00000000-0000-4000-8000-000000000002/c/audit-assembly/design",
+  "sourceCommit": "05c6351f6c54e563bcca2392204ba42d0ba280d5",
+  "sourceTreeClean": false,
+  "sourceTreeSha256": "ed52d3e144fbb8a3512e6e25436214a159a44198f8bd81b97d5a2b802b2c1680",
+  "fixture": "ci-staff-read-fixture-v1",
+  "productionDatabaseAccess": false,
+  "runtime": {
+    "node": "v24.12.0",
+    "chromium": "149.0.7827.55"
+  },
+  "status": "pass",
+  "checks": {
+    "documentStatus": 200,
+    "multiSessionInput": true,
+    "invalidDateRejected": true,
+    "previewSummary": true,
+    "blueprintTableScroll": {
+      "clientWidth": 280,
+      "scrollWidth": 620,
+      "focused": true,
+      "keyboardScrolled": true
+    },
+    "previewInvalidated": true,
+    "downloadedFilename": "climate-2026_design_blueprint.json",
+    "blueprintSchemaVersion": 4,
+    "assemblyIntent": {
+      "purpose": "감축과 적응의 실행 조건을 시민과 함께 검토한다.",
+      "mode": "vote",
+      "readiness": [
+        "topics_open",
+        "teams_active"
+      ]
+    },
+    "sessionIdentities": [
+      {
+        "title": "감축 숙의",
+        "slug": "mitigation-session"
+      },
+      {
+        "title": "적응 숙의",
+        "slug": "adaptation-session"
+      }
+    ],
+    "exportedStats": {
+      "sessionCount": 2,
+      "topicCount": 2,
+      "teamCount": 2,
+      "participantCount": 22
+    },
+    "malformedImportRejected": true,
+    "malformedImportPreservedDraft": true,
+    "validImportRestoredHierarchy": true,
+    "importedPreviewReady": true,
+    "importEditInvalidated": true,
+    "oversizedImportRejected": true,
+    "staleImportIgnored": true,
+    "approvalBoundary": {
+      "dryRun": true,
+      "databaseMutationExecuted": false,
+      "requiresApproval": true
+    },
+    "browserPageErrorCount": 0,
+    "fixtureFailureCount": 0,
+    "databaseMutationAttemptCount": 0,
+    "accessPlan": {
+      "path": "/platform/o/00000000-0000-4000-8000-000000000002/access",
+      "fixture": "ci-staff-read-fixture-v1",
+      "documentStatus": 200,
+      "invalidInputRejected": true,
+      "duplicateRejected": true,
+      "previewReady": true,
+      "editInvalidated": true,
+      "downloadedFilename": "내-기관_00000000-0000-4000-8000-000000000002_access-plan.json",
+      "exportedStats": {
+        "invitationCount": 1,
+        "membershipCount": 1
+      },
+      "approvalBoundary": {
+        "dryRun": true,
+        "authAccountsCreated": false,
+        "invitationsSent": false,
+        "databaseMutationExecuted": false,
+        "requiresApproval": true
+      },
+      "browserStorageKeys": {
+        "local": [
+          "sb-pleyuknjnprsckssxvrh-auth-token"
+        ],
+        "session": []
+      },
+      "localDraftClearedOnReload": true,
+      "wrongOrganizationRejected": true,
+      "oversizedImportRejected": true,
+      "staleImportIgnored": true,
+      "importedPlanRestored": true,
+      "importedEditInvalidated": true,
+      "importedDraftClearedOnReload": true,
+      "browserPageErrorCount": 0,
+      "fixtureFailureCount": 0,
+      "databaseMutationAttemptCount": 0
+    },
+    "authLock": {
+      "path": "/platform/",
+      "fixture": "ci-platform-auth-lock-fixture-v1",
+      "inputsLocked": true,
+      "duplicateLoginBlocked": true,
+      "loginRequestCount": 1,
+      "retryEnabled": true,
+      "browserPageErrorCount": 0,
+      "unexpectedRequestCount": 0
+    },
+    "sessionIsolation": {
+      "path": "/platform/o/00000000-0000-4000-8000-000000000002/c/audit-assembly/s/audit-session/t/00000000-0000-4000-8000-000000000005/publish",
+      "fixture": "ci-platform-session-isolation-fixture-v1",
+      "storedCredentialLoaded": true,
+      "rootRouteRestored": true,
+      "priorCredentialRemoved": true,
+      "priorDraftRemoved": true,
+      "priorTreeRemoved": true,
+      "priorConsoleRemoved": true,
+      "storedCredentialsRemoved": true,
+      "logoutRequestCount": 1,
+      "browserPageErrorCount": 0,
+      "fixtureFailureCount": 0
+    },
+    "reviewRace": {
+      "path": "/platform/o/00000000-0000-4000-8000-000000000002/c/audit-assembly/s/audit-session/t/00000000-0000-4000-8000-000000000005/review",
+      "fixture": "ci-review-race-fixture-v1",
+      "topicResetBeforeRelease": true,
+      "staleCompletionIgnored": true,
+      "duplicateWriteBlocked": true,
+      "requestBoundToLoadedCode": true,
+      "reviewMutationRequestCount": 1,
+      "browserPageErrorCount": 0,
+      "fixtureFailureCount": 0
+    },
+    "publishLock": {
+      "path": "/platform/o/00000000-0000-4000-8000-000000000002/c/audit-assembly/s/audit-session/t/00000000-0000-4000-8000-000000000005/publish",
+      "fixture": "ci-publish-lock-fixture-v1",
+      "publishBusyLocked": true,
+      "duplicatePublishBlocked": true,
+      "publishMutationRequestCount": 1,
+      "unpublishBusyLocked": true,
+      "duplicateUnpublishBlocked": true,
+      "unpublishMutationRequestCount": 1,
+      "publicationCleared": true,
+      "browserPageErrorCount": 0,
+      "fixtureFailureCount": 0
+    }
+  }
+}

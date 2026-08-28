@@ -169,3 +169,14 @@ describe('buildSubmissionReportDoc', () => {
     expect(empty.totalNotes).toBe(0);
   });
 });
+
+describe('상태 칸 — 빈 칸으로 두지 않는다', () => {
+  it('아직 제출 전이면 「작성 중」이라고 적는다', () => {
+    const drafting = report.topics
+      .flatMap((topic) => topic.subgroups)
+      .flatMap((block) => block.teams)
+      .filter((team) => team.notes.length > 0);
+    expect(drafting.length).toBeGreaterThan(0);
+    expect(drafting.every((team) => team.statusLabel.length > 0)).toBe(true);
+  });
+});

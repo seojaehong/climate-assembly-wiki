@@ -13,6 +13,7 @@ import {
   submissionBadge,
   toSaveItems,
   type EditorRow,
+  pickRestoredRows,
 } from './submission-panel-logic';
 import type { SubmissionItem } from '../../lib/deliberation';
 
@@ -151,5 +152,32 @@ describe('submissionBadge — 상태 배지', () => {
 describe('확인 문구', () => {
   it('최종 제출 confirm은 본부(HQ)만 다시 열 수 있음을 못박는다', () => {
     expect(FINALIZE_CONFIRM_MESSAGE).toContain('본부(HQ)만 다시 열 수 있습니다');
+  });
+});
+
+describe('pickRestoredRows — 탭을 옮겼다 와도 미저장분이 남는다', () => {
+  const server: EditorRow[] = [{ content: '이미 저장한 줄', rationale: '' }];
+
+  it('보관분이 서버와 다르면 그것을 되살린다', () => {
+    const draft: EditorRow[] = [
+      { content: '이미 저장한 줄', rationale: '' },
+      { content: '아직 저장 안 한 줄', rationale: '' },
+    ];
+    expect(pickRestoredRows(JSON.stringify(draft), server)).toEqual(draft);
+  });
+
+  it('저장을 마쳐 서버와 같아지면 되살리지 않는다 — 낡은 초안이 되돌아오면 더 위험하다', () => {
+    expect(pickRestoredRows(JSON.stringify(server), server)).toBeNull();
+  });
+
+  it('보관분이 없으면 서버 내용으로 연다', () => {
+    expect(pickRestoredRows(null, server)).toBeNull();
+  });
+
+  it('깨진 값·빈 배열·모양이 다른 값은 무시한다', () => {
+    expect(pickRestoredRows('{not json', server)).toBeNull();
+    expect(pickRestoredRows('[]', server)).toBeNull();
+    expect(pickRestoredRows('"문자열"', server)).toBeNull();
+    expect(pickRestoredRows('[{"엉뚱":1}]', server)).toBeNull();
   });
 });

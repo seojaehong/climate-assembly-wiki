@@ -1,0 +1,486 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-25T22:08:34.309Z",
+  "certificationClaimed": false,
+  "status": "needs_review",
+  "standard": {
+    "id": "KS X OT0003:2022",
+    "title": "한국형 웹 콘텐츠 접근성 지침 2.2",
+    "principleCount": 4,
+    "guidelineCount": 14,
+    "requirementCount": 33,
+    "sourcePage": "https://www.webwatch.or.kr/WA/010301.html?MenuCD=130",
+    "sourceDocument": "https://www.webwatch.or.kr/include/fileDown.asp?filename=%28KS%20X%20OT0003%29%20%ED%95%9C%EA%B5%AD%ED%98%95%20%EC%9B%B9%20%EC%BD%98%ED%85%90%EC%B8%A0%20%EC%A0%91%EA%B7%BC%EC%84%B1%20%EC%A7%80%EC%B9%A8%202.2.pdf",
+    "sourceSha256": "c5a139dc548bf018115d142847b69b7017953f5987fc50534c81e6b175402f13"
+  },
+  "inputs": {
+    "automatedSourceCommit": "10ae40d143bfdc2989551bfe72e2d3a224b906b9",
+    "manualCommit": "58941e6a358765a9fbdf8e6e2d9a22f87f1e771c",
+    "manualStatus": "needs_review"
+  },
+  "summary": {
+    "requirementCount": 33,
+    "passedCount": 0,
+    "failedCount": 0,
+    "needsReviewCount": 33,
+    "unmappedCount": 0
+  },
+  "automatedEvidence": [
+    {
+      "id": "axe-wcag22-aa",
+      "status": "pass"
+    },
+    {
+      "id": "skip-link-focus",
+      "status": "pass"
+    },
+    {
+      "id": "responsive-overflow",
+      "status": "pass"
+    },
+    {
+      "id": "keyboard-scroll-regions",
+      "status": "pass"
+    }
+  ],
+  "manualEvidence": [
+    {
+      "id": "kwcag-cross-surface:non-text-content",
+      "status": "needs_review"
+    },
+    {
+      "id": "kwcag-cross-surface:multimedia-alternatives",
+      "status": "needs_review"
+    },
+    {
+      "id": "published-result:table-navigation",
+      "status": "needs_review"
+    },
+    {
+      "id": "published-result:landmarks-and-headings",
+      "status": "needs_review"
+    },
+    {
+      "id": "kwcag-cross-surface:instructions-color-and-contrast",
+      "status": "needs_review"
+    },
+    {
+      "id": "kwcag-cross-surface:audio-and-moving-content",
+      "status": "needs_review"
+    },
+    {
+      "id": "authenticated-platform:controls-and-forms",
+      "status": "needs_review"
+    },
+    {
+      "id": "kwcag-cross-surface:keyboard-focus-and-shortcuts",
+      "status": "needs_review"
+    },
+    {
+      "id": "platform-login:focus-order",
+      "status": "needs_review"
+    },
+    {
+      "id": "kwcag-cross-surface:pointer-input",
+      "status": "needs_review"
+    },
+    {
+      "id": "kwcag-cross-surface:time-limits",
+      "status": "needs_review"
+    },
+    {
+      "id": "kwcag-cross-surface:flashing-content",
+      "status": "needs_review"
+    },
+    {
+      "id": "platform-login:skip-focus",
+      "status": "needs_review"
+    },
+    {
+      "id": "kwcag-cross-surface:language-titles-and-links",
+      "status": "needs_review"
+    },
+    {
+      "id": "accessibility-statement:link-purpose",
+      "status": "needs_review"
+    },
+    {
+      "id": "kwcag-cross-surface:electronic-publication-reference",
+      "status": "needs_review"
+    },
+    {
+      "id": "platform-login:form-labels",
+      "status": "needs_review"
+    },
+    {
+      "id": "ontology-review:upload-controls",
+      "status": "needs_review"
+    },
+    {
+      "id": "kwcag-cross-surface:context-and-help",
+      "status": "needs_review"
+    },
+    {
+      "id": "platform-login:error-announcement",
+      "status": "needs_review"
+    },
+    {
+      "id": "kwcag-cross-surface:errors-labels-and-repeated-input",
+      "status": "needs_review"
+    },
+    {
+      "id": "kwcag-cross-surface:accessible-authentication",
+      "status": "needs_review"
+    },
+    {
+      "id": "kwcag-cross-surface:markup-validity",
+      "status": "needs_review"
+    },
+    {
+      "id": "kwcag-cross-surface:web-application-compatibility",
+      "status": "needs_review"
+    }
+  ],
+  "criteria": [
+    {
+      "id": "5.1.1",
+      "name": "적절한 대체 텍스트 제공",
+      "automatedEvidence": [
+        "axe-wcag22-aa"
+      ],
+      "manualEvidence": [
+        "kwcag-cross-surface:non-text-content"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "5.2.1",
+      "name": "자막 제공",
+      "automatedEvidence": [],
+      "manualEvidence": [
+        "kwcag-cross-surface:multimedia-alternatives"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "5.3.1",
+      "name": "표의 구성",
+      "automatedEvidence": [
+        "axe-wcag22-aa",
+        "keyboard-scroll-regions"
+      ],
+      "manualEvidence": [
+        "published-result:table-navigation"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "5.3.2",
+      "name": "콘텐츠의 선형구조",
+      "automatedEvidence": [
+        "axe-wcag22-aa"
+      ],
+      "manualEvidence": [
+        "published-result:landmarks-and-headings"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "5.3.3",
+      "name": "명확한 지시사항 제공",
+      "automatedEvidence": [],
+      "manualEvidence": [
+        "kwcag-cross-surface:instructions-color-and-contrast"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "5.4.1",
+      "name": "색에 무관한 콘텐츠 인식",
+      "automatedEvidence": [
+        "axe-wcag22-aa"
+      ],
+      "manualEvidence": [
+        "kwcag-cross-surface:instructions-color-and-contrast"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "5.4.2",
+      "name": "자동 재생 금지",
+      "automatedEvidence": [],
+      "manualEvidence": [
+        "kwcag-cross-surface:audio-and-moving-content"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "5.4.3",
+      "name": "텍스트 콘텐츠의 명도 대비",
+      "automatedEvidence": [
+        "axe-wcag22-aa"
+      ],
+      "manualEvidence": [
+        "kwcag-cross-surface:instructions-color-and-contrast"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "5.4.4",
+      "name": "콘텐츠 간의 구분",
+      "automatedEvidence": [
+        "responsive-overflow"
+      ],
+      "manualEvidence": [
+        "kwcag-cross-surface:instructions-color-and-contrast"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "6.1.1",
+      "name": "키보드 사용 보장",
+      "automatedEvidence": [
+        "keyboard-scroll-regions"
+      ],
+      "manualEvidence": [
+        "authenticated-platform:controls-and-forms",
+        "kwcag-cross-surface:keyboard-focus-and-shortcuts"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "6.1.2",
+      "name": "초점 이동과 표시",
+      "automatedEvidence": [
+        "skip-link-focus"
+      ],
+      "manualEvidence": [
+        "platform-login:focus-order",
+        "kwcag-cross-surface:keyboard-focus-and-shortcuts"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "6.1.3",
+      "name": "조작 가능",
+      "automatedEvidence": [
+        "axe-wcag22-aa"
+      ],
+      "manualEvidence": [
+        "kwcag-cross-surface:pointer-input"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "6.1.4",
+      "name": "문자 단축키",
+      "automatedEvidence": [],
+      "manualEvidence": [
+        "kwcag-cross-surface:keyboard-focus-and-shortcuts"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "6.2.1",
+      "name": "응답시간 조절",
+      "automatedEvidence": [],
+      "manualEvidence": [
+        "kwcag-cross-surface:time-limits"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "6.2.2",
+      "name": "정지 기능 제공",
+      "automatedEvidence": [],
+      "manualEvidence": [
+        "kwcag-cross-surface:audio-and-moving-content",
+        "kwcag-cross-surface:time-limits"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "6.3.1",
+      "name": "깜빡임과 번짝임 사용 제한",
+      "automatedEvidence": [],
+      "manualEvidence": [
+        "kwcag-cross-surface:flashing-content"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "6.4.1",
+      "name": "반복 영역 건너뛰기",
+      "automatedEvidence": [
+        "skip-link-focus"
+      ],
+      "manualEvidence": [
+        "platform-login:skip-focus"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "6.4.2",
+      "name": "제목 제공",
+      "automatedEvidence": [
+        "axe-wcag22-aa"
+      ],
+      "manualEvidence": [
+        "kwcag-cross-surface:language-titles-and-links"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "6.4.3",
+      "name": "적절한 링크 텍스트",
+      "automatedEvidence": [
+        "axe-wcag22-aa"
+      ],
+      "manualEvidence": [
+        "accessibility-statement:link-purpose",
+        "kwcag-cross-surface:language-titles-and-links"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "6.4.4",
+      "name": "고정된 참조 위치 정보",
+      "automatedEvidence": [],
+      "manualEvidence": [
+        "kwcag-cross-surface:electronic-publication-reference"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "6.5.1",
+      "name": "단일 포인터 입력 지원",
+      "automatedEvidence": [],
+      "manualEvidence": [
+        "kwcag-cross-surface:pointer-input"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "6.5.2",
+      "name": "포인터 입력 취소",
+      "automatedEvidence": [],
+      "manualEvidence": [
+        "kwcag-cross-surface:pointer-input"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "6.5.3",
+      "name": "레이블과 네임",
+      "automatedEvidence": [
+        "axe-wcag22-aa"
+      ],
+      "manualEvidence": [
+        "platform-login:form-labels",
+        "ontology-review:upload-controls"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "6.5.4",
+      "name": "동작기반 작동",
+      "automatedEvidence": [],
+      "manualEvidence": [
+        "kwcag-cross-surface:pointer-input"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "7.1.1",
+      "name": "기본 언어 표시",
+      "automatedEvidence": [
+        "axe-wcag22-aa"
+      ],
+      "manualEvidence": [
+        "kwcag-cross-surface:language-titles-and-links"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "7.2.1",
+      "name": "사용자 요구에 따른 실행",
+      "automatedEvidence": [],
+      "manualEvidence": [
+        "kwcag-cross-surface:context-and-help"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "7.2.2",
+      "name": "찾기 쉬운 도움 정보",
+      "automatedEvidence": [],
+      "manualEvidence": [
+        "kwcag-cross-surface:context-and-help"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "7.3.1",
+      "name": "오류 정정",
+      "automatedEvidence": [],
+      "manualEvidence": [
+        "platform-login:error-announcement",
+        "kwcag-cross-surface:errors-labels-and-repeated-input"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "7.3.2",
+      "name": "레이블 제공",
+      "automatedEvidence": [
+        "axe-wcag22-aa"
+      ],
+      "manualEvidence": [
+        "platform-login:form-labels",
+        "kwcag-cross-surface:errors-labels-and-repeated-input"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "7.3.3",
+      "name": "접근 가능한 인증",
+      "automatedEvidence": [],
+      "manualEvidence": [
+        "kwcag-cross-surface:accessible-authentication"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "7.3.4",
+      "name": "반복 입력 정보",
+      "automatedEvidence": [],
+      "manualEvidence": [
+        "kwcag-cross-surface:errors-labels-and-repeated-input"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "8.1.1",
+      "name": "마크업 오류 방지",
+      "automatedEvidence": [
+        "axe-wcag22-aa"
+      ],
+      "manualEvidence": [
+        "kwcag-cross-surface:markup-validity"
+      ],
+      "status": "needs_review"
+    },
+    {
+      "id": "8.2.1",
+      "name": "웹 애플리케이션 접근성 준수",
+      "automatedEvidence": [
+        "axe-wcag22-aa"
+      ],
+      "manualEvidence": [
+        "authenticated-platform:controls-and-forms",
+        "kwcag-cross-surface:web-application-compatibility"
+      ],
+      "status": "needs_review"
+    }
+  ]
+}
