@@ -59,13 +59,16 @@ export default function Timer({ code, teamName }: { code: string | null; teamNam
     return () => clearInterval(id);
   }, [state.phase]);
 
-  // 만료 시 소리 재생 + 로그(1회만)
+  // 만료 시 로그(1회만)
+  //
+  // 🔇 2026-08-29: 만료음을 끈다. 한 공간에 15개 조가 앉아 있어 한 조의 타이머 소리가
+  //    옆 조 숙의를 끊는다. 조마다 타이머가 따로 돌기 때문에 하루 종일 아무 조나
+  //    울리는 셈이 된다. 알림은 화면으로 충분하다 — 마지막 10초 색 반전 + 만료 오버레이.
+  //    소리 파일(/sounds/timer-end.wav)과 audio 엘리먼트는 남겨 둔다. 다시 켜려면
+  //    아래 한 줄을 되살리면 된다.
   useEffect(() => {
     if (state.phase !== 'expired' || expiredLoggedRef.current) return;
     expiredLoggedRef.current = true;
-    audioRef.current?.play().catch(() => {
-      /* 자동재생 정책으로 막혀도 UX는 계속 진행 */
-    });
     if (code && state.startedAt != null) {
       void logTimer(code, {
         kind: state.kind,

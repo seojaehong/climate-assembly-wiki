@@ -362,6 +362,20 @@ export default function AttendancePanel({
                 <button type="button" onClick={() => void runAction(row, 'late')} disabled={rowPending} className="min-h-11 rounded-lg bg-[#F5A623] px-4 text-[15px] font-bold text-white active:scale-95 transition-transform duration-75 disabled:opacity-45">지각</button>
                 <button type="button" onClick={() => void runAction(row, 'absent')} disabled={rowPending} className="min-h-11 rounded-lg bg-[#DC2626] px-4 text-[15px] font-bold text-white active:scale-95 transition-transform duration-75 disabled:opacity-45">결석</button>
                 <button type="button" onClick={() => void runAction(row, 'early_leave')} disabled={rowPending} className="min-h-11 rounded-lg bg-[#2E75B6] px-4 text-[15px] font-bold text-white active:scale-95 transition-transform duration-75 disabled:opacity-45">조퇴</button>
+                {/* 「미확인」 — 잘못 누른 체크를 **체크 안 한 처음 상태로** 되돌린다.
+                    출석↔지각↔결석↔조퇴는 서로 덮어쓰면 되지만, 한 번 누르면 「아직
+                    확인 안 한 사람」으로는 돌아갈 방법이 없었다. 명단을 훑다가 옆 사람을
+                    잘못 누르면 그 사람은 영영 확인된 것으로 남는다.
+                    RPC(attendance_set)는 처음부터 'unconfirmed' 를 받고 있었고 버튼만
+                    없었다. 되돌리기라 다른 넷과 색을 달리해 실수로 눌리지 않게 한다. */}
+                <button
+                  type="button"
+                  onClick={() => void runAction(row, 'unconfirmed')}
+                  disabled={rowPending}
+                  className="min-h-11 rounded-lg border-2 border-[#9CB7C8] bg-white px-4 text-[15px] font-bold text-[#5A6B73] active:scale-95 transition-transform duration-75 disabled:opacity-45"
+                >
+                  미확인
+                </button>
                 <button type="button" onClick={() => { setMemberEdit(row); setMemberId(row.official_id); setMemberName(row.member_name); }} className="min-h-11 rounded-lg border border-[#9CB7C8] px-4 text-[15px] font-bold text-[#1F4E79] active:scale-95 transition-transform duration-75">명단 정정</button>
               </div>
 
