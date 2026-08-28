@@ -417,6 +417,10 @@ export default function HqSubmissionBoard({
   // 분과 필터 — 회의자료가 정한 구조화 단위가 분과다(총괄모더레이터 3인 × 5개 조).
   const [subgroup, setSubgroup] = useState<string | null>(null);
   const [downloadOpen, setDownloadOpen] = useState(false);
+  // 발표 모드 — 16:25 분과 공유에서 조원들이 함께 보는 화면.
+  // **분과 단위로만** 켠다. 15개 조를 한 화면에 띄우면 글자가 읽을 수 없이 작아지고,
+  // 그 자리 자체가 분과별로 진행된다(조별 발표 각 2분 → 총괄모더레이터 잠정 구조화).
+  const [presentMode, setPresentMode] = useState(false);
   const [downloading, setDownloading] = useState(false);
   // 재오픈 - 사유가 필수라 다이얼로그를 거친다(서버도 2자 이상을 요구한다).
   const [reopening, setReopening] = useState<{ submissionId: string; teamName: string } | null>(null);
@@ -681,6 +685,77 @@ export default function HqSubmissionBoard({
   // (거르기 전에 정렬하면 안 보이는 카드가 사슬 중간에 끼어 이웃이 엉뚱해진다.)
   const visibleNotes = grouped ? [] : filterNotes(flattenNotes(board), query);
   const notes = sortMode === 'similar' ? orderNotesBySimilarity(visibleNotes) : visibleNotes;
+  // ── 발표 모드 ────────────────────────────────────────────────────
+  // 조작 요소를 전부 걷어내고 글만 남긴다. 여러 사람이 동시에 읽는 화면이므로
+  // 본문을 크게 키우고(28px) 한 줄 길이를 제한한다. 자동 갱신은 그대로 돈다 —
+  // 발표 중에 다른 조가 저장하면 그 자리에서 따라와야 한다.
+  if (presentMode && activeSubgroup) {
+    const block = groupBySubgroup(board)[0];
+    return (
+      <div className="min-h-screen bg-white p-6 sm:p-10">
+        <header className="mb-8 flex flex-wrap items-baseline gap-4 border-b-4 border-[#1F4E79] pb-4">
+          <h1 className="text-[44px] font-extrabold leading-none text-[#1F4E79]">{activeSubgroup}</h1>
+          <p className="text-[30px] font-bold text-[#23B2C3]">{board.prompt}</p>
+          <p className="ml-auto text-[22px] font-bold text-[#5A6B73] tr-num">
+            {board.teamsWithNotes}/{board.teams.length}개 조 · {board.totalNotes}건
+          </p>
+          <button
+            type="button"
+            onClick={() => setPresentMode(false)}
+            className="h-12 rounded-xl border border-[#C4D8E4] px-4 text-[16px] font-bold text-[#5A6B73] print:hidden"
+          >
+            나가기
+          </button>
+        </header>
+
+        <div className="grid gap-6 [grid-template-columns:repeat(auto-fill,minmax(460px,1fr))]">
+          {(block ? block.teams : board.teams).map((team) => (
+            <section key={team.teamId} className="rounded-2xl border-2 border-[#DCE7EE] p-5">
+              <h2 className="mb-4 flex items-baseline gap-3 text-[30px] font-extrabold text-[#1F4E79]">
+                {team.teamName}
+                {team.tableNo ? (
+                  <span className="text-[20px] font-bold text-[#5A6B73]">{team.tableNo}번 테이블</span>
+                ) : null}
+                <span className="ml-auto text-[24px] font-extrabold text-[#23B2C3] tr-num">
+                  {team.notes.length}
+                </span>
+              </h2>
+              {team.notes.length === 0 ? (
+                <p className="rounded-xl border-2 border-dashed border-[#C4D8E4] px-4 py-10 text-center text-[24px] text-[#8FA3AD]">
+                  아직 없음
+                </p>
+              ) : (
+                <ol className="space-y-4">
+                  {team.notes.map((note, index) => (
+                    <li key={note.id} className="flex gap-3">
+                      <span className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#1F4E79] text-[20px] font-extrabold text-white tr-num">
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="whitespace-pre-wrap text-[28px] font-semibold leading-[1.45] text-[#1F2933]">
+                          {note.content}
+                        </p>
+                        {note.rationale ? (
+                          <p className="mt-2 text-[20px] leading-[1.5] text-[#5A6B73]">
+                            {note.rationale}
+                          </p>
+                        ) : null}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </section>
+          ))}
+        </div>
+
+        <p className="mt-10 text-center text-[18px] text-[#8FA3AD]">
+          조가 저장하는 대로 자동으로 따라옵니다 · 이 화면에서는 고칠 수 없습니다
+        </p>
+      </div>
+    );
+  }
+
   const silent = silentTeams(board);
 
   return (
@@ -844,6 +919,15 @@ export default function HqSubmissionBoard({
             }`}
           >
             온톨로지
+          </button>
+          <button
+            type="button"
+            disabled={!activeSubgroup}
+            title={activeSubgroup ? '' : '분과를 먼저 고르세요 — 발표는 분과 단위로 진행합니다'}
+            onClick={() => setPresentMode(true)}
+            className="h-12 rounded-xl border border-[#C4D8E4] bg-white px-4 text-[16px] font-bold text-[#1F4E79] disabled:opacity-40"
+          >
+            발표 모드
           </button>
           <button
             type="button"

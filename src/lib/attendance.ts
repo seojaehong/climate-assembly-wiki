@@ -89,17 +89,42 @@ export async function unlockHqNamed(operator: string, password: string): Promise
 }
 
 /** 로그인 화면 이름 목록. 비밀번호는 이 표에 없다. */
-export type HqOperator = { name: string; default_subgroup: string | null };
+export type HqOperator = {
+  name: string;
+  default_subgroup: string | null;
+  /** 임시 비밀번호를 아직 안 바꾼 사람. 로그인 뒤 안내를 띄운다. */
+  must_change_password?: boolean;
+};
 
 export async function fetchHqOperators(): Promise<HqOperator[]> {
   const { data, error } = await client()
     .schema('climate_vote')
     .from('hq_operator')
-    .select('name, default_subgroup')
+    .select('name, default_subgroup, must_change_password')
     .eq('active', true)
     .order('name');
   if (error) throw error;
   return (data ?? []) as HqOperator[];
+}
+
+/**
+ * 자기 비밀번호 변경. 본부 토큰 + **현재 비밀번호**를 둘 다 요구한다.
+ *
+ * 토큰은 로그인했다는 증거이지 지금 그 사람이 앞에 있다는 증거가 아니다 — 본부 노트북은
+ * 행사장에서 열어둔 채 자리를 비우기 쉽다. 대상은 토큰에 실린 이름으로 고정이라
+ * 남의 비밀번호는 바꿀 수 없다.
+ */
+export async function changeHqPassword(
+  token: string,
+  currentPassword: string,
+  newPassword: string
+): Promise<void> {
+  const { error } = await client().schema('climate_vote').rpc('hq_change_password', {
+    p_token: token,
+    p_current_password: currentPassword,
+    p_new_password: newPassword,
+  });
+  if (error) throw new Error(error.message ?? '비밀번호를 바꾸지 못했습니다');
 }
 
 export async function fetchAttendanceRoster(token: string): Promise<AttendanceRosterRow[]> {
