@@ -15,6 +15,8 @@ import {
   formatStamp,
 } from './submission-report';
 import { submissionReportBlob } from './submission-report-docx';
+import PrintableReport from './PrintableReport';
+import type { SubmissionReport } from './submission-report';
 import { buildSealedPlanFiles } from './ontology-plan';
 import { boardToOntologySnapshot } from './ontology-snapshot';
 import { assignSubmissionKind, fetchSubmissionKinds } from '../../lib/hq-submissions';
@@ -425,6 +427,8 @@ export default function HqSubmissionBoard({
   // 그 자리 자체가 분과별로 진행된다(조별 발표 각 2분 → 총괄모더레이터 잠정 구조화).
   const [presentMode, setPresentMode] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  // 인쇄 전용 문서 — 화면이 아니라 이것이 종이에 나간다.
+  const [printReport, setPrintReport] = useState<SubmissionReport | null>(null);
   // 재오픈 - 사유가 필수라 다이얼로그를 거친다(서버도 2자 이상을 요구한다).
   const [reopening, setReopening] = useState<{ submissionId: string; teamName: string } | null>(null);
   const [reopenReason, setReopenReason] = useState('');
@@ -1055,13 +1059,19 @@ export default function HqSubmissionBoard({
                 </button>
                 <button
                   type="button"
+                  disabled={downloading}
                   onClick={() => {
+                    setPrintReport(buildReport());
                     setDownloadOpen(false);
-                    window.print();
+                    // 문서가 DOM에 붙은 다음에 인쇄창을 연다.
+                    setTimeout(() => window.print(), 120);
                   }}
-                  className="w-full rounded-lg px-3 py-2.5 text-left text-[16px] font-bold text-[#1F4E79] hover:bg-[#F1F7FA]"
+                  className="w-full rounded-lg px-3 py-2.5 text-left text-[16px] font-bold text-[#1F4E79] hover:bg-[#F1F7FA] disabled:opacity-40"
                 >
                   인쇄 · PDF로 저장
+                  <span className="block text-[13px] font-normal text-[#5A6B73]">
+                    화면이 아니라 정리된 문서가 나갑니다
+                  </span>
                 </button>
               </div>
             ) : null}
@@ -1312,6 +1322,8 @@ export default function HqSubmissionBoard({
           </div>
         </div>
       ) : null}
+
+      {printReport ? <PrintableReport report={printReport} /> : null}
 
       <p className="mt-6 text-[14px] text-[#8FA3AD]">
         {fixtureRows

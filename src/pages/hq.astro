@@ -12,13 +12,22 @@ import HqGate from '../islands/mod/HqGate';
   <style is:global>
     body { font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif; }
     .tr-num { letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+    /* 인쇄 전용 문서 — 화면에서는 감춰 두고 종이에만 낸다.
+       예전에는 보고 있던 화면을 그대로 찍어 작성 안내·빈 입력칸·버튼까지 종이에 나왔다. */
+    .print-root { display: none; }
     @media print {
-      /* 인쇄·PDF — 조작용 요소를 걷어내고 글만 남긴다. 카드가 페이지 경계에서 잘리지 않게 한다. */
-      button, nav, [role="tablist"], input, textarea { display: none !important; }
-      .print\:hidden { display: none !important; }
+      /* 화면의 모든 것을 감추고 인쇄 문서만 보이게 한다.
+         요소별로 하나씩 숨기면 새 UI가 생길 때마다 빠뜨린다. */
+      body * { visibility: hidden !important; }
+      .print-root, .print-root * { visibility: visible !important; }
+      .print-root {
+        display: block !important;
+        position: absolute; left: 0; top: 0; width: 100%;
+        color: #000; background: #fff;
+      }
       body { background: #fff !important; }
-      section, article { break-inside: avoid; page-break-inside: avoid; }
       a[href]:after { content: ""; }
+      @page { margin: 14mm; }
     }
   </style>
 </head><body>

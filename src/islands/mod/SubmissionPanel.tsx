@@ -32,6 +32,8 @@ import {
   formatStamp,
 } from './submission-report';
 import { submissionReportBlob } from './submission-report-docx';
+import PrintableReport from './PrintableReport';
+import type { SubmissionReport } from './submission-report';
 import { buildBoards } from './hq-submission-board-logic';
 import type { HqSubmissionRow } from '../../lib/hq-submissions';
 
@@ -531,6 +533,8 @@ function TeamDownload({ code, teamLabel, topics }: { code: string; teamLabel: st
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 인쇄 전용 문서. 화면에는 안 보이고 종이에만 나간다.
+  const [printReport, setPrintReport] = useState<SubmissionReport | null>(null);
 
   const collect = async (): Promise<HqSubmissionRow[]> => {
     const rows: HqSubmissionRow[] = [];
@@ -575,6 +579,31 @@ function TeamDownload({ code, teamLabel, topics }: { code: string; teamLabel: st
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  /**
+   * 인쇄 — 저장된 내용으로 문서를 만들어 그것만 찍는다.
+   * 화면을 그대로 찍으면 안내문·빈 칸·버튼이 종이에 나온다.
+   */
+  const doPrint = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const report = buildSubmissionReport(buildBoards(await collect()), {
+        generatedAt: formatStamp(new Date()),
+        scopeLabel: teamLabel,
+      });
+      setPrintReport(report);
+      setOpen(false);
+      // 문서가 DOM에 붙은 다음에 인쇄창을 연다.
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      window.print();
+    } catch (caught) {
+      console.error('[조 산출물 인쇄] 실패', caught);
+      setError('인쇄 문서를 만들지 못했습니다 — 저장한 뒤 다시 시도해 주세요.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const download = async (kind: 'docx' | 'csv' | 'txt') => {
@@ -631,8 +660,8 @@ function TeamDownload({ code, teamLabel, topics }: { code: string; teamLabel: st
             className="h-12 rounded-xl border border-[#C4D8E4] text-[15px] font-bold text-[#1F4E79] disabled:opacity-40">
             줄글 (.txt)
           </button>
-          <button type="button" onClick={() => { setOpen(false); window.print(); }}
-            className="h-12 rounded-xl border border-[#C4D8E4] text-[15px] font-bold text-[#1F4E79]">
+          <button type="button" disabled={busy} onClick={() => void doPrint()}
+            className="h-12 rounded-xl border border-[#C4D8E4] text-[15px] font-bold text-[#1F4E79] disabled:opacity-40">
             인쇄 · PDF
           </button>
         </div>
@@ -642,6 +671,7 @@ function TeamDownload({ code, teamLabel, topics }: { code: string; teamLabel: st
           {error}
         </p>
       ) : null}
+      {printReport ? <PrintableReport report={printReport} /> : null}
     </section>
   );
 }
