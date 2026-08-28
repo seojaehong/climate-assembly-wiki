@@ -178,12 +178,9 @@ const ldJson = JSON.stringify(articleSchema);
               >
                 {lang === 'ko' ? '의제 자료실로 돌아가기' : 'Back to agenda library'}
               </a>
-              <a
-                href="/workshop-graph/"
-                class="rounded-md border border-amber-400/70 px-2.5 py-1 text-xs font-semibold text-amber-900 no-underline hover:bg-amber-100 dark:border-amber-400/50 dark:text-amber-100 dark:hover:bg-amber-900/50"
-              >
-                {lang === 'ko' ? '숙의 온톨로지 보기' : 'Open ontology graph'}
-              </a>
+              {/* 2026-08-29: 「숙의 온톨로지 보기」 링크 숨김. 제5차 회의 당일이라 6월
+                  워크숍 그래프가 오늘의 숙의 결과로 읽힌다. 상단 탭(navigation.ts)과 같은
+                  이유·같은 방식이다 — 페이지는 남기고 안내 동선에서만 뺀다. */}
             </div>
           </div>
         )}

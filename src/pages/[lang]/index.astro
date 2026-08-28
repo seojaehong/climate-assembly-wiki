@@ -571,47 +571,10 @@ const ldJson = JSON.stringify([
         </div>
       </div>
 
-      <div class="grid gap-5 md:grid-cols-2 mt-10">
-        <a
-          href="/workshop-graph/"
-          class="group block p-6 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-bg)] hover:bg-[var(--color-card-hover)] shadow-[var(--shadow-sm)] transition-colors"
-        >
-          <p class="text-xs font-bold tracking-widest uppercase text-[var(--color-accent)] mb-3">
-            ONTOLOGY + HABERMAS
-          </p>
-          <h3 class="font-bold text-[var(--color-fg)] text-xl mb-3">
-            {isKo ? '숙의 온톨로지 그래프' : 'Deliberation Ontology Graph'}
-          </h3>
-          <p class="text-sm text-[var(--color-fg-muted)] mb-5" style="line-height: var(--leading-relaxed);">
-            {isKo
-              ? '시민 발언을 쟁점·주장·정책대안·우려·조건·가치·근거로 연결해, 하버마스적 숙의의 논의 지형을 보여줍니다.'
-              : 'Connects citizen statements as issues, claims, proposals, concerns, conditions, values, and evidence to show the terrain of deliberation.'}
-          </p>
-          <span class="inline-flex items-center gap-1 text-sm font-semibold text-[var(--color-accent)] group-hover:gap-2 transition-all">
-            {isKo ? '그래프 열기' : 'Open graph'} <span aria-hidden="true">→</span>
-          </span>
-        </a>
-
-        <a
-          href="/workshop-graph/guide/"
-          class="group block p-6 rounded-2xl border border-[var(--color-accent-muted)] bg-[var(--color-accent-subtle)] hover:bg-[var(--color-card-hover)] shadow-[var(--shadow-sm)] transition-colors"
-        >
-          <p class="text-xs font-bold tracking-widest uppercase text-[var(--color-accent)] mb-3">
-            GUIDE
-          </p>
-          <h3 class="font-bold text-[var(--color-fg)] text-xl mb-3">
-            {isKo ? '온톨로지 사용설명서' : 'Ontology Guide'}
-          </h3>
-          <p class="text-sm text-[var(--color-fg-muted)] mb-5" style="line-height: var(--leading-relaxed);">
-            {isKo
-              ? 'AI가 합의를 만드는 도구가 아니라, 발언을 무손실로 보존하고 소수의견까지 추적하는 숙의 보조 도구임을 설명합니다.'
-              : 'Explains that the tool supports deliberation by preserving statements and minority opinions rather than making consensus for citizens.'}
-          </p>
-          <span class="inline-flex items-center gap-1 text-sm font-semibold text-[var(--color-accent)] group-hover:gap-2 transition-all">
-            {isKo ? '설명서 보기' : 'Read guide'} <span aria-hidden="true">→</span>
-          </span>
-        </a>
-      </div>
+      {/* 2026-08-29: 「숙의 온톨로지 그래프」·「온톨로지 사용설명서」 카드 2장 숨김.
+          제5차 회의 당일이라 홈에서 6월 워크숍 그래프가 오늘의 숙의 결과로 읽힌다.
+          상단 탭(navigation.ts)·의제 자료실과 같은 이유·같은 방식 — 페이지는 남기고
+          안내 동선에서만 뺀다. 직접 URL(/workshop-graph/, /workshop-graph/guide/) 보존. */}
     </div>
   </section>
 

@@ -97,11 +97,8 @@ const title = isKo ? record.title : `${record.title} | Source-backed agenda`;
 
 <Base title={title} lang={lang}>
   <main class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-    <nav class="mb-5 text-sm text-[var(--color-fg-muted)]">
-      <a href={`/${lang}/workshop-graph/`} class="text-[var(--color-accent)] hover:underline">
-        {isKo ? '숙의 온톨로지로 돌아가기' : 'Back to deliberation ontology'}
-      </a>
-    </nav>
+    {/* 2026-08-29: 「숙의 온톨로지로 돌아가기」 숨김 — 상단 탭과 같은 이유.
+        원천 자료를 보러 온 사람을 6월 워크숍 그래프로 되돌릴 이유가 오늘은 없다. */}
 
     <header class="mb-6 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-subtle)] p-5">
       <div class="mb-3 flex flex-wrap items-center gap-2 text-xs">
