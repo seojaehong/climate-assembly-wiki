@@ -75,13 +75,16 @@ export const TOP_NAV_ITEMS: NavItem[] = [
   // 2026-07-04: 탭 숨김 — public top nav는 의제 + 숙의 온톨로지만 유지. 직접 URL(/global/) 접근은 보존.
   // { section: 'global', labelKo: '해외사례', labelEn: 'Global', href: '/global/', external: true },
   // 2026-06-22: '숙의 온톨로지' — 6/13-14 워크숍 하버마스 기반 온톨로지 그래프.
-  {
-    section: 'workshop-graph',
-    labelKo: '숙의 온톨로지',
-    labelEn: 'Deliberation Map',
-    href: '/workshop-graph/',
-    external: true,
-  },
+  // 2026-08-29: 탭 숨김. 8.29 제5차 회의 당일, 공개 상단 탭에 6월 워크숍 기록이 남아
+  //   있으면 오늘의 숙의 결과로 읽힌다. 직접 URL(/workshop-graph/) 접근은 보존한다
+  //   — 페이지를 지우는 것이 아니라 안내 동선에서만 뺀다.
+  // {
+  //   section: 'workshop-graph',
+  //   labelKo: '숙의 온톨로지',
+  //   labelEn: 'Deliberation Map',
+  //   href: '/workshop-graph/',
+  //   external: true,
+  // },
   {
     section: 'field-ops',
     labelKo: '현장 운영',
