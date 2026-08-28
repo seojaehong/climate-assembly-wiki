@@ -31,9 +31,17 @@ import {
   subgroupsOf,
   filterBoardBySubgroup,
   type Note,
+  type TeamColumn,
   type TopicBoard,
 } from './hq-submission-board-logic';
 import { orderNotesBySimilarity, similarPairs, type SimilarPair } from './note-similarity';
+import {
+  teamPairOverlaps,
+  uniqueNoteIds,
+  uniqueCountByTeam,
+  type TeamPairOverlap,
+} from './team-similarity';
+import { presentScale } from './present-scale';
 import { pairKey, togglePair, marksByNote, checkedPairCount } from './pair-marks';
 import {
   emptyCategoryState,
@@ -264,6 +272,121 @@ function StatusChip({ status }: { status: TopicBoard['teams'][number]['status'] 
  * 짝 행은 일부러 `<article>` 이 아닌 `<li>`·`<div>` 로 낸다 — 포스트잇이 `<article>` 이라
  * 같은 태그를 쓰면 「카드 N장」을 세는 검증이 조용히 부풀어 오른다.
  */
+/**
+ * 조 × 조 겹침 — 「우리 분과에서 어느 조와 어느 조가 같은 이야기를 하고 있나」.
+ *
+ * 백분율 한 칸짜리 표(히트맵)로 만들지 않았다. 행사장에서 「1조와 4조가 62%」는
+ * 맞는지 틀린지 따질 방법이 없는데, 이 저장소는 유사도를 낼 때 **겹친 낱말을 항상
+ * 함께 싣는다**는 규칙을 이미 갖고 있다. 칸 하나에는 낱말이 안 들어간다.
+ * 그래서 순위 목록으로 두고 겹친 낱말을 줄에 그대로 적는다 — 한 분과는 5개 조,
+ * 최대 10쌍이라 목록이 오히려 멀리서 읽기 좋다.
+ *
+ * 펼치기는 클릭으로만 한다. hover 는 이 프로젝트에서 금지다(대형 스크린·터치).
+ */
+function TeamOverlapPanel({
+  overlaps,
+  uniqueByTeam,
+  teams,
+}: {
+  overlaps: TeamPairOverlap[];
+  uniqueByTeam: Map<string, number>;
+  teams: readonly TeamColumn[];
+}) {
+  const [open, setOpen] = useState(true);
+  const soloTeams = teams
+    .map((team) => ({ name: team.teamName, count: uniqueByTeam.get(team.teamId) ?? 0 }))
+    .filter((row) => row.count > 0)
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'ko'));
+
+  return (
+    <section
+      aria-label="조 사이 겹침"
+      data-testid="team-overlap-panel"
+      className="mb-5 rounded-2xl border border-[#DCE7EE] bg-white p-4"
+    >
+      <header className="flex flex-wrap items-center gap-3">
+        <h3 className="text-[20px] font-extrabold text-[#1F4E79]">
+          조 사이 겹침 <span className="tr-num text-[#23B2C3]">{overlaps.length}</span>쌍
+        </h3>
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className="ml-auto h-11 rounded-xl border border-[#C4D8E4] bg-white px-4 text-[15px] font-bold text-[#1F4E79]"
+        >
+          {open ? '접기' : '펼치기'}
+        </button>
+      </header>
+
+      <p className="mt-2 rounded-xl bg-[#FFF4D6] px-4 py-3 text-[15px] leading-[1.6] text-[#6B4B00]">
+        <b>AI 제안 — 확정은 사람이 합니다.</b> 낱말이 겹친 카드의 수를 조 단위로 접은 것입니다.
+        겹친 낱말을 보고 맞는지 판단해 주세요. 카드는 합쳐지지도 사라지지도 않습니다.
+      </p>
+
+      {open ? (
+        <div className="mt-3 space-y-4">
+          <div>
+            <h4 className="mb-2 text-[16px] font-extrabold text-[#5A6B73]">같은 이야기를 하는 조</h4>
+            {overlaps.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-[#C4D8E4] px-4 py-5 text-[16px] text-[#8FA3AD]">
+                아직 겹치는 조가 없습니다. 조가 더 쓰면 여기에 모입니다.
+              </p>
+            ) : (
+              <ol data-testid="team-overlap-list" className="space-y-2">
+                {overlaps.map((row) => (
+                  <li
+                    key={`${row.aTeamId} ${row.bTeamId}`}
+                    className="rounded-xl border border-[#DCE7EE] px-4 py-3"
+                  >
+                    <p className="flex flex-wrap items-baseline gap-2 text-[18px] font-extrabold text-[#1F2933]">
+                      {row.aTeamName} <span className="text-[#23B2C3]">↔</span> {row.bTeamName}
+                      <span className="ml-2 text-[16px] font-bold text-[#5A6B73]">
+                        비슷한 쌍 <span className="tr-num text-[#1F4E79]">{row.pairCount}</span>
+                      </span>
+                    </p>
+                    <p
+                      className="mt-1 text-[16px] leading-[1.6] text-[#5A6B73]"
+                      style={{ overflowWrap: 'anywhere' }}
+                    >
+                      겹친 낱말 {row.sharedTerms.map((term) => `「${term}」`).join(' ')}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+
+          <div>
+            <h4 className="mb-2 text-[16px] font-extrabold text-[#5A6B73]">
+              이 조만 말한 것 — 아직 아무도 같은 말을 하지 않았습니다
+            </h4>
+            {soloTeams.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-[#C4D8E4] px-4 py-5 text-[16px] text-[#8FA3AD]">
+                없습니다.
+              </p>
+            ) : (
+              <ul data-testid="team-unique-list" className="flex flex-wrap gap-2">
+                {soloTeams.map((row) => (
+                  <li
+                    key={row.name}
+                    className="rounded-xl bg-[#FFF0D6] px-4 py-2 text-[17px] font-bold text-[#8A5A00]"
+                  >
+                    {row.name} <span className="tr-num font-extrabold">{row.count}</span>건
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-2 text-[15px] leading-[1.6] text-[#5A6B73]">
+              「중요하다」는 뜻이 아닙니다. 회의자료가 <b className="text-[#1F4E79]">소수의견 삭제를
+              금지</b>하므로, 겹치는 것만 눈에 띄지 않도록 같은 무게로 함께 보여줍니다.
+            </p>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function SimilarPairsPanel({
   pairs,
   notesById,
@@ -511,6 +634,10 @@ export default function HqSubmissionBoard({
   // 패널은 그리드가 아니라 별도 목록이라, 검색으로 카드를 좁힌 동안에도 짝은 그대로 있어야 한다.
   const boardNotes = useMemo(() => (board ? flattenNotes(board) : []), [board]);
   const pairs = useMemo(() => similarPairs(boardNotes), [boardNotes]);
+  // 조 × 조 겹침도 같은 입력을 쓴다 — 검색어에 따라 조 사이의 숫자가 바뀌면
+  // 같은 회의에서 사람마다 다른 수치를 보게 된다.
+  const overlaps = useMemo(() => teamPairOverlaps(boardNotes), [boardNotes]);
+  const uniqueByTeam = useMemo(() => uniqueCountByTeam(boardNotes), [boardNotes]);
   const notesById = useMemo(() => new Map(boardNotes.map((n) => [n.id, n])), [boardNotes]);
   const noteMarks = useMemo(() => marksByNote(pairs, checkedPairs), [pairs, checkedPairs]);
   const toggleCheckedPair = useCallback((key: string) => {
@@ -759,6 +886,13 @@ export default function HqSubmissionBoard({
   // 발표 중에 다른 조가 저장하면 그 자리에서 따라와야 한다.
   if (presentMode && activeSubgroup) {
     const block = groupBySubgroup(board)[0];
+    const presentTeams = block ? block.teams : board.teams;
+    // 조가 얼마나 쓸지 미리 알 수 없다 — 분량을 보고 한 단계씩 줄인다(하한 24px).
+    const scale = presentScale(presentTeams);
+    // 「이 조만 말한 것」은 발표 모드에서도 보인다. 분과 공유의 목적이
+    // 겹치는 것 확인만이 아니라 한 조만 꺼낸 이야기를 건지는 것이기도 하다.
+    // ⚠️ 검색으로 거르기 전 카드로 센다 — 검색어에 따라 표시가 바뀌면 안 된다.
+    const presentUnique = uniqueNoteIds(flattenNotes(board));
     return (
       <div className="min-h-screen bg-white p-6 sm:p-10">
         <header className="mb-8 flex flex-wrap items-baseline gap-4 border-b-4 border-[#1F4E79] pb-4">
@@ -776,16 +910,38 @@ export default function HqSubmissionBoard({
           </button>
         </header>
 
-        <div className="grid gap-6 [grid-template-columns:repeat(auto-fill,minmax(460px,1fr))]">
-          {(block ? block.teams : board.teams).map((team) => (
+        <div
+          className="grid gap-6"
+          style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${scale.columnMin}px, 1fr))` }}
+        >
+          {presentTeams.map((team) => (
             <section key={team.teamId} className="rounded-2xl border-2 border-[#DCE7EE] p-5">
-              <h2 className="mb-4 flex items-baseline gap-3 text-[30px] font-extrabold text-[#1F4E79]">
+              <h2
+                className="mb-4 flex items-baseline gap-3 font-extrabold text-[#1F4E79]"
+                style={{ fontSize: `${scale.teamName}px` }}
+              >
                 {team.teamName}
                 {team.tableNo ? (
                   <span className="text-[20px] font-bold text-[#5A6B73]">{team.tableNo}번 테이블</span>
                 ) : null}
-                <span className="ml-auto text-[24px] font-extrabold text-[#23B2C3] tr-num">
-                  {team.notes.length}
+                <span className="ml-auto flex items-baseline gap-2">
+                  {(() => {
+                    const own = team.notes.filter((note) => presentUnique.has(note.id)).length;
+                    return own > 0 ? (
+                      <span
+                        className="rounded-md bg-[#FFF0D6] px-2 font-extrabold text-[#8A5A00] tr-num"
+                        style={{ fontSize: `${Math.round(scale.teamName * 0.62)}px` }}
+                      >
+                        이 조만 {own}
+                      </span>
+                    ) : null;
+                  })()}
+                  <span
+                    className="font-extrabold text-[#23B2C3] tr-num"
+                    style={{ fontSize: `${Math.round(scale.teamName * 0.8)}px` }}
+                  >
+                    {team.notes.length}
+                  </span>
                 </span>
               </h2>
               {team.notes.length === 0 ? (
@@ -796,15 +952,49 @@ export default function HqSubmissionBoard({
                 <ol className="space-y-4">
                   {team.notes.map((note, index) => (
                     <li key={note.id} className="flex gap-3">
-                      <span className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#1F4E79] text-[20px] font-extrabold text-white tr-num">
+                      <span
+                        className="mt-1 grid shrink-0 place-items-center rounded-lg bg-[#1F4E79] font-extrabold text-white tr-num"
+                        style={{
+                          height: `${scale.badge}px`,
+                          width: `${scale.badge}px`,
+                          fontSize: `${Math.round(scale.badge * 0.56)}px`,
+                        }}
+                      >
                         {index + 1}
                       </span>
-                      <div className="min-w-0">
-                        <p className="whitespace-pre-wrap text-[28px] font-semibold leading-[1.45] text-[#1F2933]">
+                      <div className="min-w-0 flex-1">
+                        {/* overflowWrap:'anywhere' — 띄어쓰기 없는 긴 낱말·주소가 들어와도
+                            가로로 삐져나가지 않게 한다. 이것 하나가 「값이 어떻게 나오든」의
+                            대부분을 막는다. */}
+                        <p
+                          className="whitespace-pre-wrap font-semibold text-[#1F2933]"
+                          style={{
+                            fontSize: `${scale.body}px`,
+                            lineHeight: 1.45,
+                            overflowWrap: 'anywhere',
+                            wordBreak: 'break-word',
+                          }}
+                        >
                           {note.content}
+                          {presentUnique.has(note.id) ? (
+                            <span
+                              className="ml-2 align-middle rounded-md bg-[#FFF0D6] px-2 py-0.5 font-extrabold text-[#8A5A00]"
+                              style={{ fontSize: `${Math.round(scale.body * 0.62)}px` }}
+                            >
+                              이 조만
+                            </span>
+                          ) : null}
                         </p>
                         {note.rationale ? (
-                          <p className="mt-2 text-[20px] leading-[1.5] text-[#5A6B73]">
+                          <p
+                            className="mt-2 text-[#5A6B73]"
+                            style={{
+                              fontSize: `${Math.round(scale.body * 0.72)}px`,
+                              lineHeight: 1.5,
+                              overflowWrap: 'anywhere',
+                              wordBreak: 'break-word',
+                            }}
+                          >
                             {note.rationale}
                           </p>
                         ) : null}
@@ -997,6 +1187,13 @@ export default function HqSubmissionBoard({
           >
             발표 모드
           </button>
+          {/* 안내가 title(hover)뿐이면 왜 안 눌리는지 모른 채 두세 번 더 누르게 된다.
+              행사장에서는 그 몇 초가 아깝다 — 눈에 보이는 문장으로 같이 적는다. */}
+          {!activeSubgroup ? (
+            <span className="self-center text-[15px] font-bold text-[#8A5A00]">
+              ← 분과를 먼저 고르세요
+            </span>
+          ) : null}
           <button
             type="button"
             onClick={() => {
@@ -1165,6 +1362,8 @@ export default function HqSubmissionBoard({
           아직 제출 없는 조 {silent.length} — {silent.join(' · ')}
         </p>
       ) : null}
+
+      <TeamOverlapPanel overlaps={overlaps} uniqueByTeam={uniqueByTeam} teams={board.teams} />
 
       {grouped ? (
         <div className="space-y-7">
