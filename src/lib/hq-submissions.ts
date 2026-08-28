@@ -235,3 +235,36 @@ export async function fetchSubmissionKinds(
   if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
   return (data ?? []) as HqKindRow[];
 }
+
+/** 전체 비우기 확인 문구. 화면과 DB 함수가 **같은 문자열**을 봐야 한다. */
+export const CLEAR_CONFIRM_PHRASE = '전체 비우기';
+
+export type ClearResult = {
+  cleared_items: number;
+  cleared_submissions: number;
+};
+
+/**
+ * 조별 산출물 전체 비우기 — 8.29 오전 연습 값을 오후 본 숙의 전에 치운다.
+ *
+ * 확인 문구를 정확히 넘겨야 지운다(오타 하나면 아무것도 안 지운다). 잘못 누른
+ * 클릭으로는 15개 조의 글이 사라지지 않게 하려는 것이다.
+ *
+ * 지운 문장은 s8 아카이브(submission_item_archive)에 그대로 남는다 — 유실이 아니라
+ * 화면에서 치우는 것이다. 되살리는 SQL은 s14 마이그레이션 주석에 적어 두었다.
+ */
+export async function clearAllSubmissions(
+  token: string,
+  confirmPhrase: string,
+  sessionSlug: string = DEFAULT_SESSION_SLUG
+): Promise<ClearResult> {
+  const { data, error } = await client()
+    .schema('climate_vote')
+    .rpc('hq_clear_submissions', {
+      p_token: token,
+      p_session_slug: sessionSlug,
+      p_confirm: confirmPhrase,
+    });
+  if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
+  return data as ClearResult;
+}

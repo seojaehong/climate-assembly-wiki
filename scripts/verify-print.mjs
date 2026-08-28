@@ -40,7 +40,13 @@ const KEEP = argv.includes('--keep');
 /** 완전한 백지 4쪽이 2,231바이트였다. 글이 실렸다면 그 몇 배는 된다. */
 const BLANK_PDF_BYTES = 20_000;
 
-/** 종이에 절대 나오면 안 되는 조작용 문구. */
+/**
+ * 종이에 절대 나오면 안 되는 **조작용** 문구.
+ *
+ * ⚠️ 「최종 제출」을 넣었다가 오탐이 났다 — 그 말은 보고서에서 **조의 상태 표시**로도
+ * 쓰인다(「1분과 1조 — 최종 제출」). 화면에만 있는 말과 종이에도 있는 말을 가려야 한다.
+ * 여기에는 버튼·안내처럼 종이에 나올 이유가 전혀 없는 것만 넣는다.
+ */
 const SCREEN_ONLY = [
   '펼치기',
   '접기',
@@ -49,8 +55,8 @@ const SCREEN_ONLY = [
   '발표 모드',
   '여기에 적습니다',
   '한 줄 더',
-  '최종 제출',
-  '나가기',
+  '다시 시도',
+  '다시 열기',
 ];
 
 const results = [];
@@ -93,7 +99,25 @@ async function auditPrint(page, label, dir) {
 
   const printed = await visibleUnderPrint(page);
   const chars = printed.replace(/\s+/g, '').length;
-  check(`[${label}] ★ 그냥 인쇄해도(Ctrl+P) 백지가 아니다`, chars > 200, `종이 글자 ${chars}자`);
+
+  // ⚠️ 「글자 수가 200자를 넘는가」로 재던 것을 버린다. 조가 아직 아무것도 안 쓴
+  //    상태에서는 보고서가 원래 짧다(제목 + 미제출 안내). 실제로 빈 조에서 169자가
+  //    나와 멀쩡한 것을 실패로 잡았고, 다음 실행은 209자로 **9자 차이로** 통과했다.
+  //    그런 기준은 언제든 뒤집힌다.
+  //
+  //    재야 할 것은 분량이 아니라 **인쇄 문서의 글이 그대로 종이에 나가는가** 이다.
+  //    문서가 비어 있으면 그것도 실패다 — 종이에 낼 것이 없다는 뜻이므로.
+  const docText = await page
+    .locator('.print-root')
+    .first()
+    .innerText()
+    .catch(() => '');
+  const doc = docText.replace(/\s+/g, '');
+  check(
+    `[${label}] ★ 그냥 인쇄해도(Ctrl+P) 인쇄 문서가 그대로 나간다`,
+    doc.length > 0 && chars >= Math.floor(doc.length * 0.9),
+    `문서 ${doc.length}자 → 종이 ${chars}자`,
+  );
 
   const leaked = SCREEN_ONLY.filter((word) => printed.includes(word));
   check(`[${label}] 종이에 화면 조작 요소가 섞이지 않는다`, leaked.length === 0, leaked.join(', ') || '없음');

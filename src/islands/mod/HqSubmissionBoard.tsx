@@ -16,6 +16,7 @@ import {
 } from './submission-report';
 import { submissionReportBlob } from './submission-report-docx';
 import PrintableReport from './PrintableReport';
+import ClearAllPanel from './ClearAllPanel';
 import type { SubmissionReport } from './submission-report';
 import { buildSealedPlanFiles } from './ontology-plan';
 import { boardToOntologySnapshot } from './ontology-snapshot';
@@ -646,26 +647,40 @@ export default function HqSubmissionBoard({
   const toggleNoteCategory = useCallback((noteId: string, category: FourCategory) => {
     setCatState((prev) => toggleCategory(prev, noteId, category));
   }, []);
-  const toggleNoteKind = useCallback((noteId: string, kind: OntologyKind) => {
-    // 화면을 먼저 바꾸고 서버에 보낸다(누를 때마다 기다리게 하지 않는다).
-    // 카드 id는 `topic:team:ordinal` 이고, 저장에 필요한 것은 제출물 id와 항목 순번이다.
-    setKindState((prev) => {
-      const next = toggleKind(prev, noteId, kind);
-      if (token) {
-        const team = board?.teams.find((t) => t.notes.some((n) => n.id === noteId));
-        const note = team?.notes.find((n) => n.id === noteId);
-        if (team?.submissionId && note) {
-          void assignSubmissionKind(token, team.submissionId, note.ordinal, next.get(noteId) ?? null).catch(
-            (error) => {
-              console.error('[HQ submissions] kind assign failed', error);
-              setFailed(describeError(error));
-            }
-          );
+  /**
+   * 카드에 종류를 붙였다 뗀다. 화면을 먼저 바꾸고 서버에 보낸다
+   * (누를 때마다 기다리게 하지 않는다).
+   *
+   * 🔴 예전에 이 함수는 의존성이 `[]` 였다. /hq 는 rows 가 null 로 시작하므로 첫 렌더의
+   * `board` 는 null 이고, 빈 배열이면 그 null 이 **영원히 붙잡힌다.** 그래서
+   * `board?.teams.find(...)` 가 언제나 undefined 가 되어 저장 RPC 가 **한 번도 불리지
+   * 않았다.** 화면에는 배지가 붙으니 저장된 것처럼 보이고, 새로고침해야만 사라진 걸 안다 —
+   * 실패가 조용해서 더 위험했다.
+   *
+   * 🔴 서버 호출을 setState **업데이터 밖으로** 뺀다. 업데이터 안의 부수효과는
+   * StrictMode 에서 두 번 실행되고, 이 표는 append-only 라 같은 배정이 두 줄 쌓인다.
+   *
+   * 🔴 `board` 가 아니라 `wholeBoard` 에서 카드를 찾는다. board 는 분과 필터가 걸린
+   * 보드라, 분과를 좁혀 놓고 붙인 배정이 조용히 누락됐다.
+   */
+  const toggleNoteKind = useCallback(
+    (noteId: string, kind: OntologyKind) => {
+      const next = toggleKind(kindState, noteId, kind);
+      setKindState(next);
+      if (!token) return;
+      // 카드 id는 `topic:team:ordinal` 이고, 저장에 필요한 것은 제출물 id와 항목 순번이다.
+      const team = wholeBoard?.teams.find((t) => t.notes.some((n) => n.id === noteId));
+      const note = team?.notes.find((n) => n.id === noteId);
+      if (!team?.submissionId || !note) return;
+      void assignSubmissionKind(token, team.submissionId, note.ordinal, next.get(noteId) ?? null).catch(
+        (error) => {
+          console.error('[HQ submissions] kind assign failed', error);
+          setFailed(describeError(error));
         }
-      }
-      return next;
-    });
-  }, []);
+      );
+    },
+    [kindState, token, wholeBoard]
+  );
   // L4 — 묶음 = 사람이 ✓ 한 닮은 짝 하나(카드 두 장). **짝을 합쳐 큰 묶음을 만들지 않는다** —
   // 합치는 순간 그게 회의자료가 금지한 「조별 결과 임의 통합」이다.
   const repGroups = useMemo(
@@ -1528,6 +1543,18 @@ export default function HqSubmissionBoard({
           /hq 는 자료가 이미 메모리에 있어 그때그때 만들 수 있다 — 버튼을 누르면
           그 순간 값으로 갈아끼우고, 안 눌러도 최신 화면 내용이 준비돼 있다. */}
       <PrintableReport report={printReport ?? buildReport()} />
+
+      {/* 위험한 조작은 **화면 맨 아래**에 둔다. 자주 쓰는 버튼들 사이에 두면
+          행사 중에 손이 미끄러져 눌린다. 픽스처(미리보기)에서는 띄우지 않는다 —
+          토큰이 없어 어차피 못 부르고, 미리보기에 지우기 버튼이 있을 이유도 없다. */}
+      {token ? (
+        <ClearAllPanel
+          token={token}
+          onCleared={() => {
+            void load();
+          }}
+        />
+      ) : null}
 
       <p className="mt-6 text-[14px] text-[#8FA3AD]">
         {fixtureRows
