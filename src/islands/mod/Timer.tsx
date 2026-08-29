@@ -168,13 +168,20 @@ export default function Timer({ code, teamName }: { code: string | null; teamNam
                       type="button"
                       aria-pressed={selected}
                       onClick={() => commitSessionMinutes(min)}
-                      className={`h-16 rounded-2xl border flex items-baseline justify-center gap-1 active:scale-[.98] transition ${
+                      className={`h-16 rounded-2xl border flex items-center justify-center active:scale-[.98] transition ${
                         selected ? 'border-[#2E75B6] bg-[#2E75B6] text-white' : 'border-[#C4D8E4] bg-[#2E75B6]/5 text-[#1F4E79]'
                       }`}
                     >
-                      <span className="text-[26px] font-extrabold leading-none tr-num">{value}</span>
-                      <span className={`text-[15px] font-semibold ${selected ? 'text-white/90' : 'text-[#2E75B6]'}`}>
-                        {unit}
+                      {/* 버튼에 items-baseline 을 걸었더니 숫자와 「분」의 베이스라인을 맞추느라
+                          **두 글자 묶음 전체가 버튼 세로 중앙에서 위로 밀렸다.**
+                          정렬을 두 겹으로 나눈다 — 버튼은 묶음을 가운데(items-center)에 두고,
+                          숫자와 단위의 베이스라인은 안쪽 묶음에서 맞춘다.
+                          발언 타이머(위)는 flex-col items-center 라 원래 문제가 없었다. */}
+                      <span className="flex items-baseline gap-1">
+                        <span className="text-[26px] font-extrabold leading-none tr-num">{value}</span>
+                        <span className={`text-[15px] font-semibold ${selected ? 'text-white/90' : 'text-[#2E75B6]'}`}>
+                          {unit}
+                        </span>
                       </span>
                     </button>
                   );
