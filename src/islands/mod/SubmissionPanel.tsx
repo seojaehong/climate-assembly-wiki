@@ -187,7 +187,7 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
       const message = error instanceof Error ? error.message : '';
       setToast(
         message.includes('finalized')
-          ? '이미 최종 제출된 상태입니다 — 본부에 재오픈을 요청하세요.'
+          ? '이미 최종 제출된 상태입니다 — 「다시 열기」를 누르면 조가 직접 풀 수 있습니다.'
           : message.includes('not open')
             ? '이 꼭지는 마감되어 저장할 수 없습니다.'
             : '저장에 실패했습니다 — 네트워크를 확인하고 다시 시도해 주세요.',

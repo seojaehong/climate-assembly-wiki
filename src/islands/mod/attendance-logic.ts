@@ -162,3 +162,43 @@ export function formatCheckTime(iso: string | null | undefined): string {
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
   return `${meridiem} ${h12}:${String(at.getMinutes()).padStart(2, '0')}`;
 }
+
+/**
+ * 행의 현재 상태를 **한 낱말로** 줄인다. 화면 색·강조를 여기서 갈라 쓴다.
+ *
+ * 배지가 어느 상태든 같은 회색이라, 명단을 훑을 때 누가 아직 미확인인지 눈으로
+ * 구분되지 않았다. 12~13명을 빠르게 확인하는 자리에서 글자를 읽게 만들면 놓친다.
+ *
+ * 「지각 · 조퇴」를 따로 두는 것은 그 둘이 동시에 성립하기 때문이다
+ * (늦게 왔다가 먼저 간 사람).
+ */
+export type AttendanceStatusKey =
+  | 'unconfirmed'
+  | 'present'
+  | 'late'
+  | 'early_leave'
+  | 'late_early'
+  | 'absent';
+
+export function statusKey(row: AttendanceValue): AttendanceStatusKey {
+  if (row.base_status === 'unconfirmed') return 'unconfirmed';
+  if (row.base_status === 'absent') return 'absent';
+  if (row.is_late && row.is_early_leave) return 'late_early';
+  if (row.is_early_leave) return 'early_leave';
+  if (row.is_late) return 'late';
+  return 'present';
+}
+
+/**
+ * 상태 버튼 넷 중 **지금 켜져 있는 것**. 눌린 버튼이 보여야 고칠 때 헷갈리지 않는다.
+ * 「지각 · 조퇴」는 두 버튼이 함께 켜진다.
+ */
+export function isActionActive(row: AttendanceValue, action: AttendanceAction): boolean {
+  const key = statusKey(row);
+  if (action === 'present') return key === 'present';
+  if (action === 'absent') return key === 'absent';
+  if (action === 'late') return key === 'late' || key === 'late_early';
+  if (action === 'early_leave') return key === 'early_leave' || key === 'late_early';
+  if (action === 'unconfirmed') return key === 'unconfirmed';
+  return false;
+}

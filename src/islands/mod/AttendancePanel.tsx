@@ -298,17 +298,26 @@ export default function AttendancePanel({
             명단을 감출 뿐이고, 「출석부 열기」로 비밀번호 없이 다시 열린다. 이름이 동작과
             달라 현장에서 「한 번 잠그면 못 고치나」로 읽혔다 — 이름을 동작에 맞춘다.
             기능은 남긴다: 태블릿을 놓고 자리를 뜰 때 이름·지역·성별이 화면에 남지 않는다. */}
-        <button
-          type="button"
-          className="min-h-11 rounded-lg border border-[#9CB7C8] bg-white px-3 text-[13px] font-bold text-[#1F4E79]"
-          onClick={() => {
-            sessionStorage.removeItem(tokenKey);
-            setToken(null);
-            setRows([]);
-          }}
-        >
-          출석부 닫기
-        </button>
+        {/* 사용법 안내는 접을 수 있다. 그래서 이 한 줄은 접히지 않는 자리에 따로 둔다 —
+            「닫기」가 기록을 잠그는 것으로 읽히면 현장에서 아무도 누르지 않는다. */}
+        <div className="text-right">
+          <button
+            type="button"
+            className="min-h-11 rounded-lg border border-[#9CB7C8] bg-white px-3 text-[13px] font-bold text-[#1F4E79]"
+            onClick={() => {
+              sessionStorage.removeItem(tokenKey);
+              setToken(null);
+              setRows([]);
+            }}
+          >
+            출석부 닫기
+          </button>
+          <p className="mt-1 text-[12px] leading-snug text-[#5A6B73]">
+            자리 비울 때만 — 화면에서 감출 뿐입니다
+            <br />
+            체크한 기록은 그대로 남고 다시 열 수 있습니다
+          </p>
+        </div>
       </div>
 
       <div className="p-4 sm:p-6 space-y-4">
@@ -500,30 +509,16 @@ export default function AttendancePanel({
                 </div>
               ) : null}
 
-              {/* 비활성화는 파괴적 조작이라 상태 버튼들과 한 줄에 두지 않는다. */}
-              <div className="mt-2 pl-7">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (!token || !window.confirm(`${row.member_name} 님을 이 조 명단에서 비활성화할까요?`)) return;
-                    setBusy(true);
-                    try {
-                      await saveRosterMember(token, { assignmentId: row.assignment_id, officialId: row.official_id, name: row.member_name, active: false });
-                      await load();
-                      setMessage(`${row.member_name} 님을 현재 조 명단에서 비활성화했습니다.`);
-                    } catch (error) {
-                      console.error('[attendance] member deactivation failed', error);
-                      setMessage('명단 비활성화를 저장하지 못했습니다.');
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                  disabled={busy}
-                  className="min-h-11 rounded-lg border border-[#DC2626] px-4 text-[15px] font-bold text-[#B91C1C] active:scale-95 transition-transform duration-75"
-                >
-                  비활성화
-                </button>
-              </div>
+              {/* 2026-08-29: 「비활성화」 버튼을 뺀다.
+                  이 버튼은 조원을 명단에서 내린다. 그런데 조 모더레이터가 명단을 고쳐야 할
+                  이유가 없다 — **명단 정본은 본부가 쥔다.** 반면 상태 버튼(출석·지각·결석·
+                  조퇴) 바로 아래 있어서 잘못 눌리기 쉬웠다. 확인 대화가 있긴 하지만,
+                  현장에서 빠르게 명단을 훑는 중에는 확인창도 그대로 눌린다.
+                  → 얻는 것 없이 잃을 것만 있는 버튼이라 화면에서 없앤다.
+
+                  RPC(attendance_member_save)와 lib 의 saveRosterMember 는 그대로 둔다 —
+                  「명단 정정」(이름·번호 고치기)이 같은 경로를 쓰고, 본부가 명단을 내려야 할
+                  때는 SQL 로 처리한다. 되살릴 일이 생기면 이 블록만 복구하면 된다. */}
             </div>
             );
           })}

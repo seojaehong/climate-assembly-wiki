@@ -32,6 +32,14 @@ describe('출석 체크 사용 안내', () => {
     expect(item!.body).not.toContain('잠깁니다');
   });
 
+  // 조원 「비활성화」 버튼을 화면에서 뺐다(2026-08-29). 없앤 기능은 어디로 가야 하는지
+  // 안내가 대신 말해야 한다 — 아니면 현장에서 찾다가 시간을 쓴다.
+  it('★ 명단에서 내리는 일은 본부 몫이라는 것을 밝힌다', () => {
+    const all = ATTENDANCE_GUIDE.map((i) => `${i.title} ${i.body}`).join(' ');
+    expect(all).toContain('본부');
+    expect(all).toContain('결석');
+  });
+
   it('저장 버튼이 없다는 것을 밝힌다 — 누르면 바로 저장된다', () => {
     const all = ATTENDANCE_GUIDE.map((i) => `${i.title} ${i.body}`).join(' ');
     expect(all).toContain('저장');

@@ -150,8 +150,10 @@ describe('submissionBadge — 상태 배지', () => {
 });
 
 describe('확인 문구', () => {
-  it('최종 제출 confirm은 본부(HQ)만 다시 열 수 있음을 못박는다', () => {
-    expect(FINALIZE_CONFIRM_MESSAGE).toContain('본부(HQ)만 다시 열 수 있습니다');
+  // 조 자체 재오픈(34b96da) 이후로 「본부만 연다」는 거짓이 됐다. 되살아나지 않게 못박는다.
+  it('최종 제출 confirm은 조가 직접 다시 열 수 있음을 알린다', () => {
+    expect(FINALIZE_CONFIRM_MESSAGE).toContain('다시 열기');
+    expect(FINALIZE_CONFIRM_MESSAGE).not.toContain('본부');
   });
 });
 

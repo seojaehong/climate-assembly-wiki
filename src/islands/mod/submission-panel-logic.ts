@@ -12,7 +12,7 @@ export type EditorRow = { content: string; rationale: string };
 export const MAX_SUBMISSION_ROWS = 30;
 
 export const FINALIZE_CONFIRM_MESSAGE =
-  '최종 제출 후에는 본부(HQ)만 다시 열 수 있습니다. 최종 제출할까요?';
+  '최종 제출하면 잠깁니다. 잘못 눌렀다면 「다시 열기」로 조가 직접 풀 수 있습니다. 최종 제출할까요?';
 export const LEAVE_CONFIRM_MESSAGE =
   '저장하지 않은 변경이 있습니다. 지금 이동하면 사라집니다. 계속할까요?';
 
