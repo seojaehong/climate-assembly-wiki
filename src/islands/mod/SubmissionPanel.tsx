@@ -20,6 +20,7 @@ import {
   pickRestoredRows,
   removeRow,
   rowsFromItems,
+  splitPastedRows,
   submissionBadge,
   toSaveItems,
   type EditorRow,
@@ -369,6 +370,28 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
                     onChange={(e) =>
                       setRows((prev) => prev.map((r, i) => (i === index ? { ...r, content: e.target.value } : r)))
                     }
+                    /* 여러 줄을 한 번에 붙이면 줄마다 칸을 만들어 나눠 담는다.
+                       조는 대부분 한글·워드에 써 두고 마지막에 옮긴다 — 통째로 한 칸에
+                       들어가면 문장 열 개가 1건이 되어 발표 카드도 겹침 판정도 무너진다.
+                       한 줄짜리는 손대지 않는다(기본 붙여넣기 유지). */
+                    onPaste={(e) => {
+                      if (!editable) return;
+                      const text = e.clipboardData.getData('text/plain');
+                      const split = splitPastedRows(rows, index, text);
+                      if (split.dropped > 0 && !split.applied) {
+                        e.preventDefault();
+                        setToast(`이미 ${MAX_SUBMISSION_ROWS}줄이라 더 넣을 수 없습니다 — ${split.dropped}줄이 들어가지 못했습니다.`);
+                        return;
+                      }
+                      if (!split.applied) return;
+                      e.preventDefault();
+                      setRows(split.rows);
+                      setToast(
+                        split.dropped > 0
+                          ? `${split.inserted}줄로 나눠 넣었습니다. ${MAX_SUBMISSION_ROWS}줄 상한이라 ${split.dropped}줄은 들어가지 못했습니다 — 확인해 주세요.`
+                          : `${split.inserted}줄로 나눠 넣었습니다.`,
+                      );
+                    }}
                     rows={2}
                     placeholder="여기에 적습니다"
                     className={`w-full min-w-0 rounded-xl border px-3 py-2.5 text-[17px] outline-none resize-y ${

@@ -127,3 +127,61 @@ export function pickRestoredRows(raw: string | null, serverRows: EditorRow[]): E
   if (rows.length !== parsed.length || rows.length === 0) return null;
   return isDirty(rows, serverRows) ? rows : null;
 }
+
+/**
+ * 여러 줄 붙여넣기 분해 — 조가 한글·워드에 써 둔 것을 옮겨 담는 실제 경로다.
+ *
+ * 2026-08-29 현장 관찰: 조는 대부분 자기 한글/워드 파일에서 작업하고 화면에는
+ * 마지막에 옮긴다. 그런데 textarea에 통째로 붙이면 **한 칸에 줄바꿈째로** 들어가
+ * 문장 10개가 1건이 된다. 발표 카드도 한 장, 조끼리 겹침 판정도 무의미해진다.
+ * 이 시스템은 「한 문장 = 한 행」에 전부 매여 있으므로 입구에서 나눠 받는다.
+ *
+ * 안전 규칙 — **어떤 경우에도 다른 행의 내용을 건드리지 않는다.**
+ * - 붙여넣는 칸이 비어 있으면: 첫 줄을 그 칸에, 나머지는 바로 뒤에 새 행으로
+ * - 칸에 이미 글이 있으면: 그 칸은 그대로 두고 전부 뒤에 새 행으로
+ *
+ * 한 줄짜리(또는 빈) 붙여넣기는 `applied:false`로 돌려보내 브라우저 기본
+ * 붙여넣기에 맡긴다 — 커서 위치 편집을 빼앗지 않는다.
+ */
+export type PasteSplit = {
+  /** 분해가 일어났는가. false면 호출부는 기본 붙여넣기를 그대로 둔다. */
+  applied: boolean;
+  rows: EditorRow[];
+  /** 실제로 들어간 줄 수. */
+  inserted: number;
+  /** 30줄 상한에 걸려 들어가지 못한 줄 수. 0이 아니면 반드시 알려야 한다. */
+  dropped: number;
+};
+
+export function splitPastedRows(
+  rows: EditorRow[],
+  index: number,
+  text: string,
+  cap: number = MAX_SUBMISSION_ROWS,
+): PasteSplit {
+  const none: PasteSplit = { applied: false, rows, inserted: 0, dropped: 0 };
+  if (index < 0 || index >= rows.length) return none;
+  // \r\n — 한글·워드 클립보드가 실어 보내는 줄바꿈이다.
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+  if (lines.length < 2) return none;
+
+  const target = rows[index];
+  const fillsTarget = target.content.trim().length === 0;
+  // 채울 자리 = 상한 - 현재 행수 (+ 빈 칸을 채우는 경우 그 한 칸)
+  const room = cap - rows.length + (fillsTarget ? 1 : 0);
+  if (room <= 0) return { applied: false, rows, inserted: 0, dropped: lines.length };
+
+  const taken = lines.slice(0, room);
+  const dropped = lines.length - taken.length;
+
+  const next = [...rows];
+  let after = index;
+  let head = taken;
+  if (fillsTarget) {
+    next[index] = { ...target, content: taken[0] };
+    head = taken.slice(1);
+  }
+  next.splice(after + 1, 0, ...head.map((content) => ({ content, rationale: '' })));
+
+  return { applied: true, rows: next, inserted: taken.length, dropped };
+}
