@@ -1,12 +1,40 @@
 # Phase A 활성화 결정 패킷
 
-상태: **결정 검토용 초안**
+상태: **Gate A 제품 결정 승인됨 (2026-08-29)** — 승인 문구는 §0 참조
 
 작성 기준: 2026-08-25
 
 실행 권한: `false` — 이 문서의 채택은 production DB, Auth, membership, GRANT, backfill, traffic 변경을 승인하지 않는다.
 
 독립 reader test: Gate 경계 판독 `PASS` — production mutation과 후속 gate가 분리됨을 확인했다. D2·D5·D6의 외부조건은 미해결 상태로 남아 있으며, 이 문서에서는 조건부 결정으로만 다룬다. 검수 결과는 `evaluation/2026-08-25-phase-a-condition-audit.md`에 반영했다.
+
+## 0. 승인 기록 (2026-08-29)
+
+사용자가 D1~D6 여섯 항목을 §3 권고안대로 일괄 승인했다. 승인 문구는 §3 「권고 결정 기록 문구」와 같다.
+
+> D1 현 비공공 managed 배포와 각 물리 deployment 내부의 row-level 논리 테넌시, D2 관리자·운영자·HQ 우선 Auth와 facilitator 후속 전환, D3 staff traffic 전 HQ membership 전환, D4 설계 마법사와 authorized execution 분리, D5 비공공 managed 유지와 공공 CSAP 적격성 확인 후 topology 별도 결정, D6 갈등관리 수행사 화이트라벨을 우선한 최소 범위의 Phase 2+ 개발 지속을 제품 방향으로 승인한다. Gate A 제품 결정과 비-production 개발 방향만 승인하며 production DB·Auth·membership·GRANT·backfill·traffic mutation은 승인하지 않는다.
+
+이 승인은 Gate A의 제품 결정만 승인하며 production mutation은 승인하지 않는다. Gate B 이후는 각 gate마다 증거와 승인 문구를 다시 제시한다.
+
+### 승인 시 확인한 교차 근거
+
+| 항목 | 대조한 것 |
+| --- | --- |
+| D2 | 2026-08-29 제5차 회의 당일 15개 조가 join code 경로로 운영됐다. facilitator Auth 전환의 현장 필요가 확인되지 않았다. |
+| D3 | 아키텍처 플랜이 HQ 공유비밀 전환을 Phase 2 선행조건으로 이미 고정했다. 방향 선택이 아니라 실행 gate 문제다. |
+| D5 | 사업제품계획서(2026-08-10)가 managed Supabase의 CSAP 부적격과 공공 트랙 OSS 셀프호스트를 이미 조사했다. 계획서가 이 패킷의 외부 확인 항목보다 앞서 있으므로, 공공 건이 특정되는 시점에 그 조사 결과를 §3 D5 재검토 입력으로 쓴다. |
+| D6 | 사업제품계획서가 독립적으로 갈등관리 수행사 화이트라벨을 1차 타깃으로 권고했다. |
+
+### 조건부로 남긴 항목
+
+| 항목 | 상태 | 해소 조건 |
+| --- | --- | --- |
+| D2 facilitator 전환 시점 | 조건부 | 진행자 개인별 감사 요구 확정 또는 현장 Auth 리허설 완료 |
+| D5 공공 트랙 데이터 등급·CSAP 등급·provider 적격성·tenancy topology | 조건부 | 법률·컴플라이언스 검토. 착수 계기는 특정 공공 건 발생 |
+| D6 named pilot 기관·운영 owner·A3 계약 승인 책임자 | 조건부 | 사용자 사업 판단. 미확정 동안 production adapter 개발은 보류하고 저장소 계약·verifier까지만 진행 |
+| D4 2인 승인 | 채택하지 않음 | 현 단일 운영자 전제에서 요구사항이 아니다. 새 요구로 채택할 때만 approval ledger·독립 reviewer 계약을 추가한다 |
+
+조건부 결정은 저장소의 문서·계약·검증 코드만 허용하며 관련 production adapter와 gate 요청을 보류한다.
 
 ## 1. 결정 범위와 현재 위치
 

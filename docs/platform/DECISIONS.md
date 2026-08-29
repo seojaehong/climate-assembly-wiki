@@ -2,6 +2,23 @@
 
 병합(8/29 라이브와 합치기) 결정 시 반드시 재확인할 항목. 스펙: `BUILD_SPEC.md`.
 
+## Gate A 제품 결정 (2026-08-29 사용자 승인)
+
+D1~D6을 `PHASE_A_ACTIVATION_DECISION_PACKET.md` §3 권고안대로 일괄 승인했다. 승인 문구·교차 근거·조건부 항목은 같은 문서 §0에 있다.
+
+| | 결정 |
+| --- | --- |
+| D1 테넌시 | 물리 deployment 내부는 `org_id`·membership·RLS의 row-level 논리 테넌시 |
+| D2 staff Auth | 1차는 `org_admin`·`operator`·`hq`. facilitator는 기존 조코드 경로 유지 |
+| D3 HQ 공유비밀 | staff traffic 개방 전에 `hq\|org_admin` membership 인증으로 전환 |
+| D4 설계 셀프서비스 | 마법사 작성·검증과 승인된 authorized execution을 분리. 2인 승인은 채택하지 않음 |
+| D5 호스팅 | 비공공은 managed 단일 Supabase 유지. 공공은 CSAP 적격성 확인 후 topology 별도 결정 |
+| D6 플랫폼화 범위 | 갈등관리 수행사 화이트라벨 우선. 최소 범위는 A2·A3 계약·A4 청사진 rehearsal |
+
+**이 승인은 Gate A의 제품 결정만 승인하며 production DB·Auth·membership·GRANT·backfill·traffic mutation은 승인하지 않는다.** 다음 production 요청은 Gate B-A2 휴면 schema 적용 여부로 한정한다.
+
+조건부: D2 facilitator 전환 시점 · D5 공공 트랙 데이터 등급·CSAP 등급·provider 적격성·topology · D6 named pilot·운영 owner·A3 계약 승인 책임자. 미해소 동안 해당 production adapter와 gate 요청은 보류한다.
+
 ## 확정된 격리 원칙
 - 프로덕션(main·climate_vote) **미적용** — 병합 전까지. 8/29는 현 상태 그대로.
 - 스키마는 순수 additive이나, P1이 기존 15테이블에 `org_id` nullable 추가(비파괴적이나 구조 변경)이므로 **적용 자체를 병합까지 보류**.

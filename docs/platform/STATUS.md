@@ -282,7 +282,7 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 **A4 함수 exact configuration 결속(2026-08-27):** mutation RPC의 정상 `search_path`·`row_security=off`를 유지한 채 `session_replication_role=replica`를 추가하면 기존 verifier의 포함 검사를 통과해 함수 실행 중 FK·trigger를 우회할 수 있는 공백을 재현했다. Post-apply verifier는 canonical/SHA helper를 포함한 A4 함수 8개 모두의 `proconfig`를 migration 선언값과 exact 대조한다. 기존 포함검사를 쓰던 join-code·authorization helper와 mutation·status 각 두 overload 6개에 위험 설정을 독립적으로 추가한 PostgreSQL 16 리허설은 모두 함수별 안정 계약 오류로 거부됐고, reset 뒤 정상 검증이 복구됐다. Bundle artifact 20개 checksum은 `352503218ffe09256264839c4fcd83547f4465d754bb21980eba098c01d0a369`이며 production migration·DB·GRANT·credential·traffic은 변경하지 않았다.
 
 ## 다음 액션 (권장 순서)
-1. `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향 확정. 진행자 전환 시점, 공공 데이터·CSAP 등급·provider 적격성·tenancy topology, named pilot·owner가 미확정이면 조건부로 기록
+1. ✅ **완료 (2026-08-29)** — `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향을 권고안대로 승인했다(§0 승인 기록, `DECISIONS.md`). 진행자 전환 시점·공공 데이터 등급·CSAP 등급·provider 적격성·tenancy topology·named pilot·owner는 조건부로 기록했다. production mutation은 승인하지 않았다
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증
 3. (별도 승인 시) A2 count-only preflight RPC 설치·진단 후 blocker별 Auth·membership 또는 mapping remediation 계획 승인
 4. fresh readiness와 별도 승인 뒤에만 A2 GRANT, A4 RPC 권한, staff traffic을 각각 활성화
