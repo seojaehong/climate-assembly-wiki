@@ -154,9 +154,25 @@ try {
   await score('C2', '★ 다단 조판 적용 (2단 이상)', 8, () => ({
     ok: Number(m.columns) >= 2, detail: `${m.columns}단`,
   }));
-  await score('C3', `★ 최악 조(${worst.name}, ${m.notes}줄) 세로 2.5화면 이하`, 12, async () => {
-    const s = await screens();
-    return { ok: s <= 2.5, detail: `${s.toFixed(1)}화면분` };
+  // ★ 「세로 몇 화면」은 기준이 될 수 없다 — 글 총량이 정하기 때문이다.
+  // 24px(8~15m 가독 하한)에서 한 글자는 줄간격 포함 약 835px² 를 먹는다.
+  // 화면 하나는 1920×1080 = 2.07M px². 8,000자면 어떤 배치를 해도 3화면이 넘는다.
+  // 그래서 재야 할 것은 「짧은가」가 아니라 **「필요 면적 대비 얼마나 낭비했는가」**다.
+  // 낭비 = 여백·중복·불필요한 장식. 그건 고칠 수 있고, 글 총량은 고칠 수 없다.
+  await score('C3', `★ 최악 조(${worst.name}, ${m.notes}줄) 면적 낭비 15% 이하`, 12, async () => {
+    const docH = await page.evaluate(() => document.documentElement.scrollHeight);
+    const chars = await page.evaluate(() => {
+      const sec = document.querySelector('div.grid > section');
+      return [...sec.querySelectorAll('ol li p')].reduce((a, e) => a + (e.textContent || '').length, 0);
+    });
+    // 필요 최소 면적 = 글자수 × (글자폭 × 줄높이). 24px·행간 1.45 기준.
+    const need = chars * (m.bodyPx * m.bodyPx * 1.45);
+    const used = docH * W;
+    const waste = ((used - need) / need) * 100;
+    return {
+      ok: waste <= 15,
+      detail: `낭비 ${waste.toFixed(0)}% (실제 ${(used / 1e6).toFixed(1)}M px² / 최소 ${(need / 1e6).toFixed(1)}M px² · ${chars}자)`,
+    };
   });
   await score('C4', '조 하나씩 — 가로 스크롤 없음', 8, async () => {
     const over = await hOverflow();

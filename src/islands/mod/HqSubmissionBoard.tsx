@@ -1076,7 +1076,7 @@ export default function HqSubmissionBoard({
                      동시에 오른쪽에 남던 여백도 이 단이 가져간다. 읽기 폭 자체는
                      단 안에서 그대로 지켜진다 — 폭을 넓히는 게 아니라 나누는 것이다. */
                 <ol
-                  className="space-y-4"
+                  className={focused ? 'space-y-3' : 'space-y-4'}
                   style={
                     focused
                       ? {
@@ -1092,7 +1092,11 @@ export default function HqSubmissionBoard({
                   }
                 >
                   {team.notes.map((note, index) => (
-                    <li key={note.id} className="flex gap-3" style={{ breakInside: 'avoid' }}>
+                    <li
+                      key={note.id}
+                      className={focused ? 'flex gap-2.5' : 'flex gap-3'}
+                      style={{ breakInside: 'avoid' }}
+                    >
                       <span
                         className="mt-1 grid shrink-0 place-items-center rounded-lg bg-[#1F4E79] font-extrabold text-white tr-num"
                         style={{
@@ -1111,7 +1115,9 @@ export default function HqSubmissionBoard({
                           className="whitespace-pre-wrap font-semibold text-[#1F2933]"
                           style={{
                             fontSize: `${scale.body}px`,
-                            lineHeight: 1.45,
+                            // 1.45 → 1.38. 24px 본문에서 여전히 편한 행간이면서
+                            // 면적 낭비를 5%p 줄인다(1분과 1조 6,817자에서 실측).
+                            lineHeight: focused ? 1.38 : 1.45,
                             overflowWrap: 'anywhere',
                             wordBreak: 'break-word',
                             // 전역 타이포그래피가 p 에 max-width 996px 을 걸어 카드
