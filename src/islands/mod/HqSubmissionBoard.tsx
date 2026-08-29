@@ -947,6 +947,11 @@ export default function HqSubmissionBoard({
     // 겹치는 것 확인만이 아니라 한 조만 꺼낸 이야기를 건지는 것이기도 하다.
     // ⚠️ 검색으로 거르기 전 카드로 센다 — 검색어에 따라 표시가 바뀌면 안 된다.
     const presentUnique = uniqueNoteIds(flattenNotes(board));
+    // ★ 전부 「이 조만」이면 배지는 아무 말도 하지 않는다. 겹치는 카드가 하나도
+    // 없는 날(오늘처럼 조마다 다른 낱말을 쓴 경우) 56줄에 배지가 56개 붙어
+    // 화면만 시끄러워진다. 겹침이 하나라도 있을 때만 켠다.
+    const presentAllNotes = flattenNotes(board);
+    const showOwnBadge = presentUnique.size < presentAllNotes.length;
     return (
       <div className="min-h-screen bg-white p-6 sm:p-10">
         <header className="mb-8 flex flex-wrap items-baseline gap-4 border-b-4 border-[#1F4E79] pb-4">
@@ -1044,7 +1049,7 @@ export default function HqSubmissionBoard({
                 <span className="ml-auto flex items-baseline gap-2">
                   {(() => {
                     const own = team.notes.filter((note) => presentUnique.has(note.id)).length;
-                    return own > 0 ? (
+                    return showOwnBadge && own > 0 ? (
                       <span
                         className="rounded-md bg-[#FFF0D6] px-2 font-extrabold text-[#8A5A00] tr-num"
                         style={{ fontSize: `${Math.round(scale.teamName * 0.62)}px` }}
@@ -1066,9 +1071,20 @@ export default function HqSubmissionBoard({
                   아직 없음
                 </p>
               ) : (
-                <ol className="space-y-4">
+                /* ★ 한 조만 볼 때는 2단으로 흘린다. 세로로만 쌓으면 56줄이 5화면을
+                     넘어가 발표 중에 스크롤을 해야 하고, 청중은 위치를 잃는다.
+                     동시에 오른쪽에 남던 여백도 이 단이 가져간다. 읽기 폭 자체는
+                     단 안에서 그대로 지켜진다 — 폭을 넓히는 게 아니라 나누는 것이다. */
+                <ol
+                  className="space-y-4"
+                  style={
+                    focused
+                      ? { columnCount: 2, columnGap: '2.5rem', columnRule: '1px solid #E6EEF3' }
+                      : undefined
+                  }
+                >
                   {team.notes.map((note, index) => (
-                    <li key={note.id} className="flex gap-3">
+                    <li key={note.id} className="flex gap-3" style={{ breakInside: 'avoid' }}>
                       <span
                         className="mt-1 grid shrink-0 place-items-center rounded-lg bg-[#1F4E79] font-extrabold text-white tr-num"
                         style={{
@@ -1090,10 +1106,14 @@ export default function HqSubmissionBoard({
                             lineHeight: 1.45,
                             overflowWrap: 'anywhere',
                             wordBreak: 'break-word',
+                            // 전역 타이포그래피가 p 에 max-width 996px 을 걸어 카드
+                            // 오른쪽 43%가 비어 있었다(1920 실측). 단으로 나눈 뒤에는
+                            // 단 폭이 곧 읽기 폭이므로 제한을 풀어야 한다.
+                            maxWidth: 'none',
                           }}
                         >
                           {note.content}
-                          {presentUnique.has(note.id) ? (
+                          {showOwnBadge && presentUnique.has(note.id) ? (
                             <span
                               className="ml-2 align-middle rounded-md bg-[#FFF0D6] px-2 py-0.5 font-extrabold text-[#8A5A00]"
                               style={{ fontSize: `${Math.round(scale.body * 0.62)}px` }}
