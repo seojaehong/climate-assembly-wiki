@@ -43,6 +43,7 @@ import {
   type TeamPairOverlap,
 } from './team-similarity';
 import { presentScale } from './present-scale';
+import { firstFocusTeamId, focusPosition, focusedTeam, stepTeam } from './present-focus';
 import { pairKey, togglePair, marksByNote, checkedPairCount } from './pair-marks';
 import {
   emptyCategoryState,
@@ -550,6 +551,9 @@ export default function HqSubmissionBoard({
   // **분과 단위로만** 켠다. 15개 조를 한 화면에 띄우면 글자가 읽을 수 없이 작아지고,
   // 그 자리 자체가 분과별로 진행된다(조별 발표 각 2분 → 총괄모더레이터 잠정 구조화).
   const [presentMode, setPresentMode] = useState(false);
+  // 「조 하나씩」 — 6-1 조별 공유는 한 조씩 차례로 발표하는 자리다. 다섯 조를 한
+  // 화면에 늘어놓으면 발표 중인 조가 눈에 안 들어온다. null = 전체 보기(기존 동작).
+  const [presentTeamId, setPresentTeamId] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   // 인쇄 전용 문서 — 화면이 아니라 이것이 종이에 나간다.
   const [printReport, setPrintReport] = useState<SubmissionReport | null>(null);
@@ -630,6 +634,36 @@ export default function HqSubmissionBoard({
   // 고른 분과가 사라지면(주제 전환 등) 전체로 되돌린다 — 빈 화면을 만들지 않는다.
   const activeSubgroup = subgroup && subgroups.includes(subgroup) ? subgroup : null;
   const board = wholeBoard ? filterBoardBySubgroup(wholeBoard, activeSubgroup) : null;
+
+  // 발표 모드 「조 하나씩」 — 화살표 키로 넘기고 Esc로 나간다. 발표대에서는
+  // 마우스를 잡을 손이 없다. 발표 모드가 아닐 때는 아무것도 듣지 않는다.
+  const presentTeamsForKeys = presentMode && board ? groupBySubgroup(board)[0]?.teams ?? [] : [];
+  useEffect(() => {
+    if (!presentMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setPresentMode(false);
+        setPresentTeamId(null);
+        return;
+      }
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      // 전체 보기에서 화살표를 누르면 「조 하나씩」으로 들어간다.
+      setPresentTeamId((cur) =>
+        cur === null
+          ? firstFocusTeamId(presentTeamsForKeys)
+          : stepTeam(presentTeamsForKeys, cur, e.key === 'ArrowRight' ? 1 : -1),
+      );
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // presentTeamsForKeys는 매 렌더 새 배열이라 teamId 목록으로 비교한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presentMode, presentTeamsForKeys.map((t) => t.teamId).join(',')]);
+
+  // 분과를 바꾸면 보고 있던 조는 그 분과에 없다 — 전체 보기로 되돌린다.
+  useEffect(() => {
+    setPresentTeamId(null);
+  }, [activeSubgroup, board?.topicId]);
 
   // L2 짝 후보는 **화면에 뜬 꼭지·분과의 카드 전체**로 낸다 — 검색어와는 무관하다.
   // 패널은 그리드가 아니라 별도 목록이라, 검색으로 카드를 좁힌 동안에도 짝은 그대로 있어야 한다.
@@ -902,8 +936,13 @@ export default function HqSubmissionBoard({
   if (presentMode && activeSubgroup) {
     const block = groupBySubgroup(board)[0];
     const presentTeams = block ? block.teams : board.teams;
+    // 「조 하나씩」이면 그 조만 그린다. 선택이 갱신 중에 사라지면 전체로 되돌아간다.
+    const focused = focusedTeam(presentTeams, presentTeamId);
+    const shownTeams = focused ? [focused] : presentTeams;
+    const position = focusPosition(presentTeams, presentTeamId);
     // 조가 얼마나 쓸지 미리 알 수 없다 — 분량을 보고 한 단계씩 줄인다(하한 24px).
-    const scale = presentScale(presentTeams);
+    // ★ 지금 그리는 것만으로 잰다 — 한 조만 볼 때 다른 조 분량 때문에 작아지면 안 된다.
+    const scale = presentScale(shownTeams);
     // 「이 조만 말한 것」은 발표 모드에서도 보인다. 분과 공유의 목적이
     // 겹치는 것 확인만이 아니라 한 조만 꺼낸 이야기를 건지는 것이기도 하다.
     // ⚠️ 검색으로 거르기 전 카드로 센다 — 검색어에 따라 표시가 바뀌면 안 된다.
@@ -916,20 +955,83 @@ export default function HqSubmissionBoard({
           <p className="ml-auto text-[22px] font-bold text-[#5A6B73] tr-num">
             {board.teamsWithNotes}/{board.teams.length}개 조 · {board.totalNotes}건
           </p>
-          <button
-            type="button"
-            onClick={() => setPresentMode(false)}
-            className="h-12 rounded-xl border border-[#C4D8E4] px-4 text-[16px] font-bold text-[#5A6B73] print:hidden"
-          >
-            나가기
-          </button>
+          <div className="flex items-center gap-2 print:hidden">
+            {/* 전체 ↔ 조 하나씩. 기본은 전체(기존 동작). */}
+            <button
+              type="button"
+              aria-pressed={presentTeamId === null}
+              onClick={() => setPresentTeamId(null)}
+              className={`h-12 rounded-xl border px-4 text-[16px] font-bold ${
+                presentTeamId === null
+                  ? 'border-[#1F4E79] bg-[#1F4E79] text-white'
+                  : 'border-[#C4D8E4] bg-white text-[#1F4E79]'
+              }`}
+            >
+              전체
+            </button>
+            <button
+              type="button"
+              aria-pressed={presentTeamId !== null}
+              data-testid="present-one-team"
+              onClick={() => setPresentTeamId(firstFocusTeamId(presentTeams))}
+              className={`h-12 rounded-xl border px-4 text-[16px] font-bold ${
+                presentTeamId !== null
+                  ? 'border-[#1F4E79] bg-[#1F4E79] text-white'
+                  : 'border-[#C4D8E4] bg-white text-[#1F4E79]'
+              }`}
+            >
+              조 하나씩
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPresentMode(false);
+                setPresentTeamId(null);
+              }}
+              className="h-12 rounded-xl border border-[#C4D8E4] px-4 text-[16px] font-bold text-[#5A6B73]"
+            >
+              나가기
+            </button>
+          </div>
         </header>
+
+        {/* 조 하나씩일 때만 나오는 이동 줄. 화살표 키(← →)로도 넘긴다. */}
+        {focused ? (
+          <div className="mb-6 flex items-center gap-4 print:hidden">
+            <button
+              type="button"
+              onClick={() => setPresentTeamId(stepTeam(presentTeams, presentTeamId, -1))}
+              className="h-14 rounded-xl border-2 border-[#1F4E79] px-6 text-[20px] font-extrabold text-[#1F4E79]"
+            >
+              ◀ 이전
+            </button>
+            <button
+              type="button"
+              onClick={() => setPresentTeamId(stepTeam(presentTeams, presentTeamId, 1))}
+              className="h-14 rounded-xl border-2 border-[#1F4E79] px-6 text-[20px] font-extrabold text-[#1F4E79]"
+            >
+              다음 ▶
+            </button>
+            {position ? (
+              <span className="text-[22px] font-bold text-[#5A6B73] tr-num">
+                {position.at} / {position.total}
+              </span>
+            ) : null}
+            <span className="ml-auto text-[16px] font-bold text-[#8FA3AD]">
+              ← → 키로도 넘길 수 있습니다
+            </span>
+          </div>
+        ) : null}
 
         <div
           className="grid gap-6"
-          style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${scale.columnMin}px, 1fr))` }}
+          style={{
+            gridTemplateColumns: focused
+              ? '1fr'
+              : `repeat(auto-fill, minmax(${scale.columnMin}px, 1fr))`,
+          }}
         >
-          {presentTeams.map((team) => (
+          {shownTeams.map((team) => (
             <section key={team.teamId} className="rounded-2xl border-2 border-[#DCE7EE] p-5">
               <h2
                 className="mb-4 flex items-baseline gap-3 font-extrabold text-[#1F4E79]"
