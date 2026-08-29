@@ -106,6 +106,10 @@
 - **A7 DOCX 원문 역링크 계약(2026-08-26)**: 공개 결과 보고서 모델이 웹에서 이미 검증된 원문만 이어받아 쟁점·원문별 결정적 bookmark를 만들고, 쟁점→첫 원문과 각 원문→쟁점의 Word internal hyperlink를 직렬화한다. 원문 카드에는 조·종류·순번·공개 검수일·검수 역할·payload SHA-256을 보존한다. 미검수 쟁점이나 잘못된 원문 묶음은 본문을 완전히 버리고 확인 필요 안내만 문서에 남긴다. 원문이 없는 기존 payload의 문서 구조와 섹션 번호는 유지하고, 원문이 있을 때만 별도 근거 절을 추가한다. 집중 DOCX 29건, 루트 전체 64개 파일·1,077건, automation 전체 27개 파일·422건과 Astro check 오류 0건(기존 hint 49건)이 통과했다. 합성 DOCX 구조 감사는 high 0건이며 새 원문 메타를 정의 목록으로 구성해 기존 표 경고를 늘리지 않았다. 일반 CI의 path filter에도 `src/islands/result/**`를 추가해 이후 결과 웹·DOCX 변경이 clean 전체 테스트를 우회하지 못하게 했다. 로컬 LibreOffice가 없어 PNG 시각 렌더는 실행하지 못했고 clean CI와 실제 Word·보조기기 수동 왕복은 별도 증거다. production payload·DB·RPC·migration·실제 시민 원문·공개 게시에는 접근하거나 변경하지 않았다.
 - **A7 원문 공개 publish preflight(2026-08-26)**: 기존 `platform-result-source-plan.mjs`에 명시적 `replace_all` 공개 모드를 추가했다. 모든 연결된 issue/item에 공개 또는 보류 결정을 요구하고, 공개 발췌를 canonical 원문 UTF-8 bytes와 SHA-256으로 결속하며, 공개 결과 집계 drift·미검수 쟁점·역할형 검수자·시각 순서·보류 발췌 null·exact 공개 9필드 계약을 fail-closed 검증한다. 승인된 원문만 넣은 전체 `atomicResultBody`, 전후 body SHA-256, 원문별 검수 patch, 입력 hash와 self-checksum을 재생성 검증한다. 원문을 포함하는 plan은 symlink/junction 해석 뒤 repository 밖 경로에만 no-overwrite·사용자 전용 모드로 저장하고 stdout에는 원문·검수자 ID를 싣지 않는다. 집중 23건, automation 전체 27개 파일·435건, 루트 전체 64개 파일·1,077건과 Astro check 오류 0건(기존 hint 49건)이 통과했다. 이는 local dry-run이며 production payload·DB·RPC·migration·실제 원문 캡처·공개 게시에는 접근하거나 변경하지 않았다.
 
+## 코드·스키마 점검 (2026-08-29)
+
+읽기 전용 전수 점검 결과는 `AUDIT_2026-08-29.md`에 있다. 신규 트랙(platform·submission·attendance)에서 「구현됐다고 적혀 있는데 아닌 것」은 나오지 않았고, `DECISIONS.md`의 divergence 3건은 실측과 일치했다. 지적은 레거시 `public.cv_*` 뷰 4종과 `cv_set_active`에 몰려 있다(anon 전권 DML·RLS 우회·사용처 없음). **행사 당일이라 손대지 않았고 회수 마이그레이션은 승인 대기다.**
+
 ## 병합 전 게이트
 
 ### ✅ G1. SQL 파싱·계약 검증 — 종료 (2026-08-09)
