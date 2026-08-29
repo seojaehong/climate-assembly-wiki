@@ -298,26 +298,20 @@ export default function AttendancePanel({
             명단을 감출 뿐이고, 「출석부 열기」로 비밀번호 없이 다시 열린다. 이름이 동작과
             달라 현장에서 「한 번 잠그면 못 고치나」로 읽혔다 — 이름을 동작에 맞춘다.
             기능은 남긴다: 태블릿을 놓고 자리를 뜰 때 이름·지역·성별이 화면에 남지 않는다. */}
-        {/* 사용법 안내는 접을 수 있다. 그래서 이 한 줄은 접히지 않는 자리에 따로 둔다 —
-            「닫기」가 기록을 잠그는 것으로 읽히면 현장에서 아무도 누르지 않는다. */}
-        <div className="text-right">
-          <button
-            type="button"
-            className="min-h-11 rounded-lg border border-[#9CB7C8] bg-white px-3 text-[13px] font-bold text-[#1F4E79]"
-            onClick={() => {
-              sessionStorage.removeItem(tokenKey);
-              setToken(null);
-              setRows([]);
-            }}
-          >
-            출석부 닫기
-          </button>
-          <p className="mt-1 text-[12px] leading-snug text-[#5A6B73]">
-            자리 비울 때만 — 화면에서 감출 뿐입니다
-            <br />
-            체크한 기록은 그대로 남고 다시 열 수 있습니다
-          </p>
-        </div>
+        {/* 캡션을 뺀다. 버튼이 **무엇을 안 하는지**(「잠그지 않습니다」) 설명하는 문구는
+            안심시키는 대신 「그럼 뭘 하는데?」를 새로 만든다 — 현장에서 그 질문이 계속
+            나왔다. 설명은 사용법 안내에만 두고, 화면에는 버튼만 남긴다. */}
+        <button
+          type="button"
+          className="min-h-11 rounded-lg border border-[#9CB7C8] bg-white px-3 text-[13px] font-bold text-[#1F4E79]"
+          onClick={() => {
+            sessionStorage.removeItem(tokenKey);
+            setToken(null);
+            setRows([]);
+          }}
+        >
+          출석부 닫기
+        </button>
       </div>
 
       <div className="p-4 sm:p-6 space-y-4">
