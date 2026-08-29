@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  MAX_SUBMISSION_ROWS,
-  splitPastedRows,
-  type EditorRow,
-} from './submission-panel-logic';
+import { MAX_SUBMISSION_ROWS, splitPastedRows, type EditorRow } from './submission-panel-logic';
 
 const row = (content: string): EditorRow => ({ content, rationale: '' });
 const contents = (rows: EditorRow[]) => rows.map((r) => r.content);
@@ -77,28 +73,32 @@ describe('splitPastedRows — 나눠 넣기', () => {
   });
 });
 
-describe('splitPastedRows — 30줄 상한 (여기서 글이 사라지면 안 된다)', () => {
+// 상한 값 자체는 운영 판단으로 바뀐다(2026-08-29 30 → 200). 여기서는 **로직**을
+// 재야 하므로 로컬 CAP 으로 고정한다 — 상수를 올릴 때마다 빨개지면 안 된다.
+const CAP = 30;
+
+describe('splitPastedRows — 상한 (여기서 글이 사라지면 안 된다)', () => {
   it('★ 상한을 넘으면 넣을 수 있는 만큼만 넣고 나머지 수를 알려준다', () => {
     const rows = Array.from({ length: 26 }, (_, i) => row(`기존${i}`));
     const paste = Array.from({ length: 12 }, (_, i) => `새${i}`).join('\n');
-    const out = splitPastedRows(rows, 0, paste, MAX_SUBMISSION_ROWS);
+    const out = splitPastedRows(rows, 0, paste, CAP);
     expect(out.applied).toBe(true);
-    expect(out.rows.length).toBe(MAX_SUBMISSION_ROWS);
+    expect(out.rows.length).toBe(CAP);
     expect(out.inserted).toBe(4);
     expect(out.dropped).toBe(8);
   });
 
   it('빈 칸을 채우는 경우 그 칸만큼 한 줄 더 들어간다', () => {
     const rows = [...Array.from({ length: 28 }, (_, i) => row(`기존${i}`)), row('')];
-    const out = splitPastedRows(rows, 28, '가\n나\n다\n라', MAX_SUBMISSION_ROWS);
-    expect(out.rows.length).toBe(MAX_SUBMISSION_ROWS);
+    const out = splitPastedRows(rows, 28, '가\n나\n다\n라', CAP);
+    expect(out.rows.length).toBe(CAP);
     expect(out.inserted).toBe(2); // 빈 칸 1 + 새 행 1
     expect(out.dropped).toBe(2);
   });
 
   it('★ 이미 꽉 찼으면 아무것도 넣지 않고 전부 못 넣었다고 알린다', () => {
-    const rows = Array.from({ length: MAX_SUBMISSION_ROWS }, (_, i) => row(`기존${i}`));
-    const out = splitPastedRows(rows, 0, '가\n나\n다', MAX_SUBMISSION_ROWS);
+    const rows = Array.from({ length: CAP }, (_, i) => row(`기존${i}`));
+    const out = splitPastedRows(rows, 0, '가\n나\n다', CAP);
     expect(out.applied).toBe(false);
     expect(out.rows).toBe(rows);
     expect(out.dropped).toBe(3);
@@ -106,8 +106,8 @@ describe('splitPastedRows — 30줄 상한 (여기서 글이 사라지면 안 �
 
   it('딱 맞으면 하나도 버리지 않는다', () => {
     const rows = Array.from({ length: 27 }, (_, i) => row(`기존${i}`));
-    const out = splitPastedRows(rows, 0, '가\n나\n다', MAX_SUBMISSION_ROWS);
-    expect(out.rows.length).toBe(MAX_SUBMISSION_ROWS);
+    const out = splitPastedRows(rows, 0, '가\n나\n다', CAP);
+    expect(out.rows.length).toBe(CAP);
     expect(out.dropped).toBe(0);
   });
 
@@ -128,5 +128,11 @@ describe('splitPastedRows — 30줄 상한 (여기서 글이 사라지면 안 �
     expect(out.inserted).toBe(9);
     expect(out.dropped).toBe(0);
     expect(out.rows[8].content).toContain('김민권');
+  });
+});
+
+describe('상한 상수', () => {
+  it('★ 화면 상한은 서버 RPC 상한(200)과 같아야 한다 — 크면 저장이 실패한다', () => {
+    expect(MAX_SUBMISSION_ROWS).toBe(200);
   });
 });

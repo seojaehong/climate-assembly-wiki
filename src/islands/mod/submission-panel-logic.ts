@@ -8,8 +8,15 @@ import type { SubmissionItem, SubmissionItemInput, SubmissionStatus } from '../.
 
 export type EditorRow = { content: string; rationale: string };
 
-/** submission_save p_items 상한(RPC: max 30). */
-export const MAX_SUBMISSION_ROWS = 30;
+/**
+ * submission_save p_items 상한(RPC: max 200).
+ *
+ * 2026-08-29 현장에서 30줄로는 모자랐다 — 조가 한글·워드에 정리해 둔 것을 통째로
+ * 옮기니 두 조가 상한에 걸렸다. ★ 이 값은 **꼭지당 총량**이라 「나눠서 저장」으로는
+ * 우회되지 않는다(저장할 때 화면의 전 행을 통째로 보낸다). 넘치면 문장이 갈 곳이
+ * 없으므로 서버 RPC와 함께 200으로 올렸다. 서버보다 크게 두지 말 것 — 저장이 실패한다.
+ */
+export const MAX_SUBMISSION_ROWS = 200;
 
 export const FINALIZE_CONFIRM_MESSAGE =
   '최종 제출하면 잠깁니다. 잘못 눌렀다면 「다시 열기」로 조가 직접 풀 수 있습니다. 최종 제출할까요?';

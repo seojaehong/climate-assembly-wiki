@@ -17,7 +17,7 @@ export type GuideItem = {
 };
 
 /** 한 꼭지·한 조가 저장할 수 있는 최대 줄 수. submission_save RPC의 상한과 같아야 한다. */
-export const MAX_ROWS_PER_TOPIC = 30;
+export const MAX_ROWS_PER_TOPIC = 200;
 
 export const SUBMISSION_GUIDE: readonly GuideItem[] = [
   {
@@ -26,7 +26,7 @@ export const SUBMISSION_GUIDE: readonly GuideItem[] = [
   },
   {
     title: '개수 제한이 없습니다',
-    body: `나온 만큼 적습니다. 세 개만 적어야 하는 것도, 꼭 채워야 하는 것도 아닙니다. 한 꼭지에 최대 ${MAX_ROWS_PER_TOPIC}줄까지 들어갑니다.`,
+    body: '나온 만큼 적습니다. 세 개만 적어야 하는 것도, 꼭 채워야 하는 것도 아닙니다. 줄 수는 사실상 제한이 없습니다.',
   },
   {
     title: '조가 합의한 문장을 그대로 적습니다',
@@ -42,7 +42,7 @@ export const SUBMISSION_GUIDE: readonly GuideItem[] = [
   },
   {
     title: '한글·워드에 써 둔 것은 한 칸에 통째로 붙여넣습니다',
-    body: `따로 정리해 둔 문서가 있으면 옮겨 적지 말고 전체를 복사해 아무 칸에나 한 번에 붙여넣습니다. 줄마다 칸이 자동으로 만들어집니다. ${MAX_ROWS_PER_TOPIC}줄을 넘는 만큼은 들어가지 않으니, 그때는 화면에 뜨는 안내를 확인해 주세요.`,
+    body: `따로 정리해 둔 문서가 있으면 옮겨 적지 말고 전체를 복사해 아무 칸에나 한 번에 붙여넣습니다. 줄마다 칸이 자동으로 만들어집니다. 한 꼭지에 ${MAX_ROWS_PER_TOPIC}줄까지 들어가므로 길이 걱정은 하지 않으셔도 됩니다.`,
   },
   {
     title: '「저장」은 몇 번이든, 「최종 제출」은 한 번입니다',
