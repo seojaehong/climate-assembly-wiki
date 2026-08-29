@@ -1079,7 +1079,15 @@ export default function HqSubmissionBoard({
                   className="space-y-4"
                   style={
                     focused
-                      ? { columnCount: 2, columnGap: '2.5rem', columnRule: '1px solid #E6EEF3' }
+                      ? {
+                          // 분량이 많으면 단을 하나 더 연다. 49줄이 2단으로도 3.4화면이라
+                          // 발표 중 스크롤이 생겼다(1920×1080 실측). 3단이면 2.3화면.
+                          // 1920 기준 3단은 한 단 약 590px — 24px 글자로 24자 안팎이라
+                          // 읽기 폭으로도 무리가 없다.
+                          columnCount: team.notes.length > 30 ? 3 : 2,
+                          columnGap: '2.25rem',
+                          columnRule: '1px solid #E6EEF3',
+                        }
                       : undefined
                   }
                 >
