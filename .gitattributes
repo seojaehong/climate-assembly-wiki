@@ -1,2 +1,7 @@
 .gitattributes text eol=lf
 .github/workflows/*.yml text eol=lf
+
+# 벤더링한 서드파티 패키지는 **업스트림 tarball 바이트 그대로** 둔다 (US-008).
+# core.autocrlf=true 인 Windows 에서 체크아웃하면 줄끝이 CRLF 로 바뀌어
+# `npm pack` 원본과 diff 가 나고, UPSTREAM.md 의 integrity 대조가 무의미해진다.
+vendor/** -text

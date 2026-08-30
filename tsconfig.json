@@ -10,5 +10,5 @@
     "jsx": "react-jsx",
     "jsxImportSource": "react"
   },
-  "exclude": ["dist", "dist_*", "dist.bak.*", "node_modules", "supabase/functions", "**/*.bak/**"]
+  "exclude": ["dist", "dist_*", "dist.bak.*", "node_modules", "vendor", "supabase/functions", "**/*.bak/**"]
 }

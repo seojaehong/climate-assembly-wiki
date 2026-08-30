@@ -25,6 +25,7 @@
  */
 import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
 
@@ -425,6 +426,71 @@ check('★ US-007 줄 분해 규칙 원문이 파서 도입으로 바뀌지 않�
     must(!src.includes('splitSubmissionLines'), `${f} 가 splitSubmissionLines 를 부른다`);
   }
   return '\\r?\\n · trim · 빈 줄 제거 · 파서 3개 모두 저장 규칙과 무관';
+});
+
+// ── US-008 · 벤더링 (npm 이 아니라 저장소 안에서 온다) ────────────
+//
+// 위 US-003~006 이 이미 「벤더 경로로 바뀌어도 어댑터가 돈다」를 증명한다 — 그 실측이
+// 지금 도는 코드가 `vendor/` 사본이기 때문이다. 아래 세 검사는 그 전제가 조용히
+// 깨지는 것(누가 package.json 을 레지스트리 버전으로 되돌리는 것)을 막는다.
+
+const VENDOR = {
+  // probe 는 **bare 지정자**여야 한다 — kordoc 은 `exports` 로 서브패스를 막아 놓았다
+  // (`kordoc/dist/index.cjs` 는 ERR_PACKAGE_PATH_NOT_EXPORTED). rhwp 는 `exports` 가 없어 둘 다 통한다.
+  '@rhwp/core': { dir: 'vendor/rhwp-core-0.8.4', version: '0.8.4', probe: '@rhwp/core' },
+  kordoc: { dir: 'vendor/kordoc-4.12.0', version: '4.12.0', probe: 'kordoc' },
+};
+
+/** 저장소 루트를 기준으로 해석한다 — 링크를 타고 vendor 로 들어가는지 보려는 것이다. */
+const requireFromRoot = createRequire(resolve(ROOT, 'verify-parsers-resolve-anchor.cjs'));
+
+console.log('\n  ── US-008 벤더링 ─────────');
+console.log(
+  `     ${Object.entries(VENDOR)
+    .map(([name, v]) => `${name} → ${v.dir}`)
+    .join(' · ')}\n`,
+);
+
+check('★ US-008 package.json 이 레지스트리가 아니라 vendor 를 가리킨다', () => {
+  const pkg = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8'));
+  const got = [];
+  for (const [name, v] of Object.entries(VENDOR)) {
+    const spec = pkg.dependencies?.[name];
+    must(spec === `file:./${v.dir}`, `${name} = ${JSON.stringify(spec)} ≠ file:./${v.dir}`);
+    got.push(spec);
+  }
+  return got.join(' · ');
+});
+
+check('★ US-008 벤더 폴더에 그 버전의 패키지가 실제로 있다 (LICENSE 포함)', () => {
+  const got = [];
+  for (const [name, v] of Object.entries(VENDOR)) {
+    const meta = JSON.parse(readFileSync(resolve(ROOT, v.dir, 'package.json'), 'utf8'));
+    must(meta.name === name, `${v.dir} 의 name 이 ${meta.name}`);
+    must(meta.version === v.version, `${v.dir} 버전 ${meta.version} ≠ ${v.version}`);
+    must(meta.license === 'MIT', `${v.dir} 라이선스 ${meta.license} ≠ MIT`);
+    must(statSync(resolve(ROOT, v.dir, 'LICENSE')).size > 0, `${v.dir}/LICENSE 가 비었다`);
+    got.push(`${name}@${meta.version} MIT`);
+  }
+  // kordoc 만 NOTICE·THIRD_PARTY 를 배포한다(rhwp 는 LICENSE 하나가 전부다 — UPSTREAM.md 참조).
+  must(statSync(resolve(ROOT, VENDOR.kordoc.dir, 'NOTICE')).size > 0, 'kordoc NOTICE 가 비었다');
+  must(statSync(resolve(ROOT, VENDOR.kordoc.dir, 'THIRD_PARTY')).isDirectory(), 'THIRD_PARTY 없음');
+  return `${got.join(' · ')} · kordoc NOTICE·THIRD_PARTY 있음`;
+});
+
+check('★ US-008 import 가 실제로 vendor 안으로 풀린다 (rhwp WASM 서브패스 포함)', () => {
+  const got = [];
+  for (const v of Object.values(VENDOR)) {
+    const abs = requireFromRoot.resolve(v.probe);
+    must(abs.startsWith(resolve(ROOT, v.dir)), `${v.probe} → ${abs} (vendor 밖)`);
+    got.push(v.probe);
+  }
+  // 이 서브패스가 풀려야 rhwp-adapter 가 WASM 을 읽는다(exports 필드가 없어서 통한다).
+  const wasm = requireFromRoot.resolve('@rhwp/core/rhwp_bg.wasm');
+  must(wasm.startsWith(resolve(ROOT, VENDOR['@rhwp/core'].dir)), `WASM → ${wasm} (vendor 밖)`);
+  const wasmBytes = statSync(wasm).size;
+  must(wasmBytes > 1_000_000, `WASM 이 ${wasmBytes}바이트뿐이다`);
+  return `${got.join(' · ')} · rhwp_bg.wasm ${(wasmBytes / 1024 / 1024).toFixed(1)}MB`;
 });
 
 console.log(`\n${pass} PASS · ${fail} FAIL (${pass}/${pass + fail})\n`);

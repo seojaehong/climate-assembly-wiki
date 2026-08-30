@@ -3,6 +3,14 @@
 문서 파서(rhwp·kordoc)를 우리 인터페이스 뒤로 감추는 자리다. 판정 근거는
 `20_스크립트/parsers/README.md`(측정일 2026-08-30) — **재조사하지 말 것.**
 
+## 두 라이브러리는 npm 이 아니라 `vendor/` 에서 온다 (US-008)
+
+`package.json` 이 `file:./vendor/rhwp-core-0.8.4` · `file:./vendor/kordoc-4.12.0` 을 가리키고,
+`node_modules/@rhwp/core`·`node_modules/kordoc` 은 그리로 향하는 **링크**다. 어댑터 코드는
+바뀔 것이 없다(bare 지정자가 그대로 풀린다). 다만 **버전을 올리거나 벤더 파일을 고칠 때는
+`vendor/AGENTS.md` 와 `vendor/UPSTREAM.md` 를 먼저 읽어라** — `.gitignore`·`tsconfig.json`
+까지 같이 고쳐야 하고, `node_modules/kordoc` 을 재귀 삭제하면 벤더 원본이 날아간다.
+
 ## 이 폴더의 `.ts` 가 지켜야 할 import 규칙
 
 `scripts/verify-parsers.mjs` 는 어댑터를 **esbuild 로 그 자리에서 변환해 불러온다.**
