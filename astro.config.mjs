@@ -4,6 +4,25 @@ import tailwindcss from '@tailwindcss/vite';
 import yaml from '@rollup/plugin-yaml';
 
 import react from '@astrojs/react';
+import { resolveDeploymentRevision } from './scripts/write-deployment-revision.mjs';
+
+/**
+ * 이 번들이 어느 커밋으로 빌드됐는지를 **번들 안에** 박는다.
+ *
+ * 조 콘솔이 「열어 둔 화면이 옛 코드인가」를 스스로 알아야 하기 때문이다(2026-08-29
+ * 통짜 6건의 유력 원인). postbuild 가 쓰는 `/deployment-revision.json` 과 **같은 해석
+ * 순서**(CF_PAGES_COMMIT_SHA → GITHUB_SHA → git rev-parse HEAD)를 쓰므로 정상 빌드에서
+ * 둘은 반드시 같은 값이 된다 — 다르면 그건 진짜로 배포가 바뀐 것이다.
+ *
+ * 해석 실패(=git 도 env 도 없는 환경)는 빌드를 세우지 않는다. 빈 문자열이 들어가고
+ * 화면은 감지를 접는다(`src/islands/mod/deploy-revision.ts`).
+ */
+let deployRevision = '';
+try {
+  deployRevision = resolveDeploymentRevision();
+} catch {
+  deployRevision = '';
+}
 
 const nodeMajor = Number.parseInt(process.versions.node.split('.')[0] || '0', 10);
 const pagefindIntegrations = nodeMajor >= 23
@@ -38,6 +57,9 @@ export default defineConfig({
   }), ...pagefindIntegrations, react()],
   vite: {
     plugins: [tailwindcss(), yaml()],
+    define: {
+      __DEPLOY_REVISION__: JSON.stringify(deployRevision),
+    },
   },
   i18n: {
     // M4 (2026-06-01): ja/zh/es restored. Structural-only — body content remains KO/EN.

@@ -65,13 +65,23 @@ import '../../styles/global.css';
       <div class="step-head"><span class="step-no">2</span><h2>조별 산출물 — 주제별 핵심의견과 근거 기록</h2></div>
       <ul>
         <li>「조별 산출물」 패널에서 <b>주제 탭</b>(주제 1·주제 2…)을 골라 해당 주제의 질문을 확인합니다.</li>
-        <li>토론에서 나온 <b>핵심의견</b>을 한 행에 하나씩 적고, 아래 칸에 <b>근거(선택)</b>를 덧붙입니다.</li>
-        <li><b>＋ 의견 추가</b>로 행을 늘리고(최대 30행), ↑·↓로 순서를 바꾸고, ×로 지웁니다.</li>
+        <li><b>한 행에 한 사람, 한 생각만</b> 적습니다. 이름은 문장과 <b>같은 줄에</b> 적어 주세요 — <i>(홍길동) 하고 싶은 말.</i></li>
+        <li class="warn-li">이름만 따로 한 줄에 쓰지 마세요. 그러면 그 아래 문장들이 <b>누가 한 말인지 이어지지 않습니다</b>.</li>
+        <li>아래 칸에 <b>근거(선택)</b>를 덧붙일 수 있습니다.</li>
+        <li><b>＋ 의견 추가</b>로 행을 늘리고(최대 200행), ↑·↓로 순서를 바꾸고, ×로 지웁니다.</li>
         <li>내용이 빈 행은 저장 시 자동으로 걸러집니다.</li>
       </ul>
+      <div class="tip-box">
+        <p class="tip-title">한글·워드에 써 두셨다면</p>
+        <ul>
+          <li><b>통째로 한 칸에 붙여넣으셔도 됩니다.</b> 화면이 줄 단위로 나눠 담습니다.</li>
+          <li>혹시 한 칸에 뭉쳐 들어가면 <b>「여러 분 말씀이 한 칸에 들어간 것 같습니다」</b> 안내가 뜨고, <b>「줄 단위로 나누기」</b> 버튼이 나타납니다. 눌러서 나누시면 됩니다.</li>
+          <li>긴 문장 한 건을 일부러 쓰신 것이면 <b>「이대로 두기」</b>를 고르시면 됩니다.</li>
+        </ul>
+      </div>
       <div class="done-box">
         <p class="done-title">완료 기준</p>
-        <p>모든 주제 탭에 우리 조의 핵심의견이 1건 이상 입력되어 있고, 의견마다 근거가 붙어 있습니다.</p>
+        <p>모든 주제 탭에 우리 조의 핵심의견이 1건 이상 입력되어 있고, 의견마다 근거가 붙어 있습니다. 한 행에 한 사람 말만 들어가 있습니다.</p>
       </div>
     </section>
 
@@ -82,6 +92,7 @@ import '../../styles/global.css';
         <li><b>저장</b> 버튼은 중간 보관입니다 — 저장 후에도 <b>최종 제출 전까지 계속 고칠 수 있습니다</b>.</li>
         <li><b>자동 저장은 없습니다.</b> 저장하지 않고 새로고침·탭 닫기를 하면 경고가 뜨고, 무시하면 내용이 사라집니다.</li>
         <li>버튼 아래 상태줄을 확인하세요 — <i>"저장하지 않은 변경이 있습니다."</i>가 보이면 아직 저장 전입니다. 저장되면 <i>"마지막 저장 HH:MM"</i>으로 바뀝니다.</li>
+        <li>화면 위에 <b>「화면이 갱신되었습니다」</b> 띠가 뜨면 <b>새로고침을 눌러 주세요.</b> 오래 열어 둔 화면은 옛 화면이라 일부 기능이 동작하지 않습니다. 띠의 버튼으로 새로고침하면 <b>쓰던 내용은 그대로 남습니다</b>.</li>
       </ul>
       <div class="done-box">
         <p class="done-title">완료 기준</p>
@@ -193,6 +204,11 @@ import '../../styles/global.css';
     }
     .done-title::before { content: "✓ "; }
     .done-box p:not(.done-title) { font-size: 15px; color: #1f2933; line-height: 1.6; margin: 0; }
+    .tip-box{margin-top:14px;padding:12px 16px;border:2px solid #4F9D3A;border-radius:12px;background:#F3F9F1}
+    .tip-title{margin:0 0 6px;font-weight:700;color:#2F6B22}
+    .tip-box ul{margin:0;padding-left:20px}
+    .tip-box li{margin:4px 0}
+    .warn-li{color:#B5651D;font-weight:600}
     .warn-box {
       border: 2px solid rgba(245, 166, 35, 0.55); background: rgba(245, 166, 35, 0.08);
       border-radius: 16px; padding: 18px 20px; margin-top: 8px;

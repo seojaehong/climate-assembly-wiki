@@ -160,6 +160,23 @@ export type PasteSplit = {
   dropped: number;
 };
 
+/**
+ * ★★ 「한 줄」의 정의 — 이 시스템에서 단 하나뿐인 규칙 ★★
+ *
+ * 1) `\r?\n` 으로 자른다 (한글·워드 클립보드는 CRLF 를 실어 보낸다)
+ * 2) 각 조각의 앞뒤 공백을 없앤다
+ * 3) 빈 조각은 버린다
+ * 4) 남은 줄이 **2개 이상일 때만** 나눈 것으로 본다. 1개면 원문을 손대지 않는다
+ *
+ * 이 규칙은 세 곳이 함께 쓴다 — 붙여넣기 분해(`splitPastedRows`), 긴 칸 나누기
+ * (`splitOverlongRows`), 그리고 **서버 RPC**(`supabase/migrations/20260830_s15_*.sql`
+ * 의 `climate_vote.submission_lines`). 규칙이 갈리면 같은 글이 경로에 따라 다르게
+ * 저장된다. 여기를 고치면 그 마이그레이션도 함께 고칠 것.
+ */
+export function splitSubmissionLines(text: string): string[] {
+  return text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+}
+
 export function splitPastedRows(
   rows: EditorRow[],
   index: number,
@@ -168,8 +185,7 @@ export function splitPastedRows(
 ): PasteSplit {
   const none: PasteSplit = { applied: false, rows, inserted: 0, dropped: 0 };
   if (index < 0 || index >= rows.length) return none;
-  // \r\n — 한글·워드 클립보드가 실어 보내는 줄바꿈이다.
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+  const lines = splitSubmissionLines(text);
   if (lines.length < 2) return none;
 
   const target = rows[index];
@@ -182,13 +198,83 @@ export function splitPastedRows(
   const dropped = lines.length - taken.length;
 
   const next = [...rows];
-  let after = index;
   let head = taken;
   if (fillsTarget) {
     next[index] = { ...target, content: taken[0] };
     head = taken.slice(1);
   }
-  next.splice(after + 1, 0, ...head.map((content) => ({ content, rationale: '' })));
+  next.splice(index + 1, 0, ...head.map((content) => ({ content, rationale: '' })));
 
   return { applied: true, rows: next, inserted: taken.length, dropped };
+}
+
+// ── 한 칸에 여러 사람 말이 든 경우 (2차 방어선) ────────────────────
+//
+// 8.29 실측: 통짜 6건이 전부 668자 이상이었고, 잘 쓴 조의 한 줄 중앙값은 39~90자였다.
+// 정당한 장문 한 건일 수도 있으므로 **강제로 나누지 않는다** — 알려 주고 조가 고른다.
+
+/**
+ * 「길다」고 볼 글자수. 실측 근거 —
+ * 상위 조의 한 줄 중앙값 39~90자, 최장 220자. 통짜 6건은 전부 668자 이상.
+ * 300자는 그 사이의 빈 구간이다. 넘는다고 잘못은 아니고, **묻기만 한다.**
+ */
+export const LONG_ROW_CHARS = 300;
+
+/** 길다고 볼 행의 index 목록. */
+export function overlongRowIndexes(rows: EditorRow[]): number[] {
+  return rows.reduce<number[]>((acc, row, i) => {
+    if (row.content.trim().length > LONG_ROW_CHARS) acc.push(i);
+    return acc;
+  }, []);
+}
+
+/**
+ * 길면서 **나눌 수 있는**(줄이 2개 이상인) 행. 줄바꿈 없는 긴 한 문장은 여기 안 든다 —
+ * 나눌 근거가 없으므로 버튼도 주지 않는다(경고만 남는다).
+ */
+export function splittableRowIndexes(rows: EditorRow[]): number[] {
+  return overlongRowIndexes(rows).filter((i) => splitSubmissionLines(rows[i].content).length >= 2);
+}
+
+export type OverlongSplit = {
+  /** 나눴는가. */
+  applied: boolean;
+  rows: EditorRow[];
+  /** 나누기 전 행수 → 나눈 뒤 행수. */
+  before: number;
+  after: number;
+  /** 나누면 상한을 넘어 포기했는가. 서버 RPC 와 같은 판단이다. */
+  overCap: boolean;
+};
+
+/**
+ * 긴 칸을 줄 단위로 나눈다. 위치는 지킨다 — 나뉜 조각이 그 자리에 그대로 늘어서고
+ * 다른 행은 순서도 내용도 바뀌지 않는다. rationale 은 첫 조각만 물려받는다
+ * (N 벌로 복제하면 원문에 없던 근거가 늘어난다 — 서버 RPC 와 같은 규칙).
+ *
+ * ★ 나눈 결과가 상한을 넘으면 **아무것도 하지 않는다.** 잘라내면 조가 쓴 문장이
+ * 사라진다. 서버 RPC 도 같은 선택을 한다(조용한 잘림 금지).
+ */
+export function splitOverlongRows(
+  rows: EditorRow[],
+  cap: number = MAX_SUBMISSION_ROWS,
+): OverlongSplit {
+  const targets = new Set(splittableRowIndexes(rows));
+  const before = rows.length;
+  if (targets.size === 0) return { applied: false, rows, before, after: before, overCap: false };
+
+  const next: EditorRow[] = [];
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i];
+    if (!targets.has(i)) {
+      next.push(row);
+      continue;
+    }
+    const lines = splitSubmissionLines(row.content);
+    lines.forEach((content, k) => {
+      next.push({ content, rationale: k === 0 ? row.rationale : '' });
+    });
+  }
+  if (next.length > cap) return { applied: false, rows, before, after: before, overCap: true };
+  return { applied: true, rows: next, before, after: next.length, overCap: false };
 }
