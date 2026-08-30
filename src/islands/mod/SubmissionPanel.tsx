@@ -9,9 +9,7 @@ import {
   type Topic,
 } from '../../lib/deliberation';
 import {
-  // ★ FINALIZE_CONFIRM_MESSAGE 는 여기서 쓰지 않는다 — 최종 제출 확인은 window.confirm 이
-  //   아니라 아래 모달이고, 문안이 제목·본문으로 나뉜다. 상수를 가져다 쓰지 않으면서
-  //   import 만 남아 있었다(죽은 참조).
+  FINALIZE_CONFIRM_MESSAGE,
   LONG_ROW_CHARS,
   MAX_SUBMISSION_ROWS,
   addRow,
@@ -24,6 +22,7 @@ import {
   pickRestoredRows,
   removeRow,
   rowsFromItems,
+  saveOutcomeMessage,
   splitOverlongRows,
   splitPastedRows,
   splittableRowIndexes,
@@ -297,8 +296,10 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
     if (!editable) return;
     setSaving(true);
     try {
-      await submissionSave(code, topic.id, toSaveItems(rows));
-      setToast('저장되었습니다. 최종 제출 전까지 계속 고칠 수 있습니다.');
+      // ★ 반환값을 버리지 않는다 — 서버가 줄을 나눴는지, 상한 때문에 나누기를 포기했는지가
+      //   여기에만 실려 온다(마이그레이션 s15). 버리면 조는 칸이 왜 늘었는지 모른다.
+      const result = await submissionSave(code, topic.id, toSaveItems(rows));
+      setToast(saveOutcomeMessage(result));
       await loadSubmission();
       announceSubmissionChanged();
     } catch (error) {
@@ -342,9 +343,15 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
     if (!editable) return;
     setFinalizing(true);
     try {
-      await submissionSave(code, topic.id, toSaveItems(rows));
+      const result = await submissionSave(code, topic.id, toSaveItems(rows));
       await submissionFinalize(code, topic.id);
-      setToast('최종 제출되었습니다.');
+      // 나누지 못한 채 잠겼다면 그 사실이 「제출 완료」보다 먼저 알려져야 한다 —
+      // 잠긴 뒤에는 「다시 열기」를 눌러야 고칠 수 있다.
+      setToast(
+        result?.split_skipped_over_cap
+          ? `최종 제출되었습니다. 다만 줄이 ${MAX_SUBMISSION_ROWS}개를 넘어 나누지 못했습니다 — 나누려면 「다시 열기」를 눌러 주세요.`
+          : '최종 제출되었습니다.',
+      );
       await loadSubmission();
       announceSubmissionChanged();
     } catch {
@@ -627,8 +634,10 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
                 최종 제출할까요?
               </h4>
               <p className="text-[16px] font-bold text-[#4F9D3A] mb-3 break-words">{topic.prompt}</p>
+              {/* ★ 문구는 상수 하나에서만 나온다. 여기에 문자열을 다시 적으면 상수를
+                  검사하는 테스트가 화면에 안 나가는 것을 재게 된다(예전에 그랬다). */}
               <p className="text-[18px] font-bold text-[#1F2933] leading-relaxed">
-                최종 제출하면 잠깁니다. 잘못 눌렀다면 「다시 열기」로 바로 풀 수 있습니다.
+                {FINALIZE_CONFIRM_MESSAGE}
               </p>
               <p className="text-[15px] text-[#5A6B73] mt-3 tr-num">
                 지금 화면의 내용 {toSaveItems(rows).length}건이 그대로 제출됩니다.

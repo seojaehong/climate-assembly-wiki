@@ -15,7 +15,18 @@ const arg = (n, d = null) => {
   return i === -1 ? d : argv[i + 1];
 };
 const BASE = arg('base', 'http://localhost:4321');
-const CODE = arg('code', '082901');
+/*
+ * ★ --code 기본값 주의 (2026-08-30)
+ *   8.29 산출물은 행사 후 전부 `final` 로 잠겼다. **잠긴 조에서는 편집 칸이 하나도
+ *   없어 이 드라이런을 돌릴 수 없다**(readOnly 라 붙여넣기·타이핑이 무시된다).
+ *   그래서 아직 열린 꼭지가 남은 조를 기본값으로 둔다. 이 기본값이 나중에 잠기면
+ *   아래 「편집 칸이 보인다」 검사가 그 사실을 이름 대고 알려 준다 — 다른 조로 바꾸면 된다.
+ *     select t.join_code, dt.ordinal, s.status from climate_vote.team t
+ *       cross join climate_vote.discussion_topic dt
+ *       left join climate_vote.submission s on s.team_id=t.id and s.topic_id=dt.id
+ *      where dt.status='open' and coalesce(s.status,'draft') <> 'final';
+ */
+const CODE = arg('code', '082915');
 const HEADED = argv.includes('--headed');
 
 let pass = 0;
@@ -43,6 +54,12 @@ const LINES = [
 
 const browser = await chromium.launch({ headless: !HEADED });
 const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+let saveCalls = 0;
+// ★ 「저장 버튼이 보인다」로 저장 안 했다고 판정하면 안 된다 — 버튼 존재는 네트워크가
+//   아니다. 실제 RPC 요청 수를 센다(Supabase 는 /rest/v1/rpc/submission_save 로 간다).
+page.on('request', (r) => {
+  if (/\/rpc\/submission_(save|finalize)/.test(r.url())) saveCalls += 1;
+});
 
 try {
   console.log(`\n붙여넣기 분해 드라이런 · ${BASE} · 조 ${CODE} · 저장하지 않음\n`);
@@ -58,7 +75,7 @@ try {
   await check('조 콘솔 진입 · 편집 칸이 보인다', async () => {
     await area.waitFor({ timeout: 20_000 });
     const n = await area.locator('textarea').count();
-    must(n > 0, 'textarea 가 없다');
+    must(n > 0, `조 ${CODE} 에 편집 가능한 꼭지가 없다 — 전부 최종 제출로 잠긴 조다. 열린 꼭지가 남은 조 코드를 --code 로 주자`);
     return `칸 ${n}개`;
   });
 
@@ -137,9 +154,8 @@ try {
   });
 
   await check('★ 저장 버튼을 누르지 않았다 — 서버에 아무것도 안 갔다', async () => {
-    const saving = await page.getByRole('button', { name: /^저장( 중…)?$/ }).count();
-    must(saving > 0, '저장 버튼이 보이지 않는다');
-    return '저장 미실행 상태로 종료';
+    must(saveCalls === 0, `submission_save/finalize 요청이 ${saveCalls}번 나갔다`);
+    return `저장·최종제출 RPC 요청 ${saveCalls}건`;
   });
 } finally {
   await browser.close();

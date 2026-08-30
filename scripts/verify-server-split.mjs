@@ -85,6 +85,18 @@ select team, topic_ord, count(*) as items_in, sum(length(content)) as chars_in,
        sum(cardinality(ps)) as items_out
 from parts group by team, topic_ord order by team, topic_ord;`;
 
+const CAP_SQL = `-- 읽기 전용. 배포된 s15 helper 를 실제로 실행한다.
+select
+  position('split_skipped_over_cap' in pg_get_functiondef('climate_vote.submission_save(text,uuid,jsonb)'::regprocedure)) > 0 as save_has_flag,
+  position('split_skipped_over_cap' in pg_get_functiondef('climate_vote.submission_save_v2(text,uuid,jsonb)'::regprocedure)) > 0 as v2_has_flag,
+  jsonb_array_length(climate_vote.submission_split_items(jsonb_build_array(jsonb_build_object(
+    'ordinal',1,'kind','core','content',(select string_agg('줄 '||g, chr(10)) from generate_series(1,250) g))))) as lines_250;`;
+
+if (argv.includes('--sql-cap')) {
+  console.log(CAP_SQL);
+  process.exit(0);
+}
+
 if (argv.includes('--sql')) {
   console.log(REPRO_SQL);
   process.exit(0);
@@ -199,6 +211,60 @@ check('★ 마이그레이션 SQL 도 같은 규칙을 쓴다', () => {
   must(sql.includes('>= 2'), '2줄 이상일 때만 나눈다는 조건이 없다');
   must(/v_items := p_items;/.test(sql), '상한 초과 시 원문 보존 경로가 없다');
   return 'submission_lines · 2줄 조건 · 상한 초과 시 원문 보존';
+});
+
+// ── 상한 초과 알림 (2026-08-30) ──────────────────────────────────
+//
+// 마이그레이션은 200을 넘으면 나누기를 포기하고 `split_skipped_over_cap` 을 돌려준다.
+// 그 플래그를 화면이 안 읽으면 설계가 반만 끝난 것이다 — 조는 왜 안 나뉘었는지 모른다.
+//
+// ★ 아래 SERVER_CAP_MEASURED 는 **운영에 적용된 s15 함수를 실제로 실행해** 얻은 값이다
+//   (2026-08-30, 읽기 전용 SELECT — submission_split_items 는 immutable 순수 함수라
+//    표를 건드리지 않는다). 재현 SQL 은 --sql-cap 으로 찍는다.
+const SERVER_CAP_MEASURED = {
+  saveHasFlag: true, // pg_get_functiondef(submission_save) 에 split_skipped_over_cap 있음
+  v2HasFlag: true,
+  lines250: 250, // 한 칸 250줄 → 250항목 (>200 이므로 서버는 나누기를 포기한다)
+  lines5: 5,
+  lines1: 1,
+};
+
+const synth = (n) => Array.from({ length: n }, (_, i) => `줄 ${i + 1}`).join('\n');
+
+check('★ 배포된 서버 helper 실측과 화면 규칙이 같다 (250줄·5줄·1줄)', () => {
+  const t250 = splitItem(synth(250)).length;
+  const t5 = splitItem(synth(5)).length;
+  const t1 = splitItem('한 줄뿐').length;
+  must(t250 === SERVER_CAP_MEASURED.lines250, `250줄: TS ${t250} ≠ 운영 ${SERVER_CAP_MEASURED.lines250}`);
+  must(t5 === SERVER_CAP_MEASURED.lines5, `5줄: TS ${t5} ≠ 운영 ${SERVER_CAP_MEASURED.lines5}`);
+  must(t1 === SERVER_CAP_MEASURED.lines1, `1줄: TS ${t1} ≠ 운영 ${SERVER_CAP_MEASURED.lines1}`);
+  return `250→${t250} · 5→${t5} · 1→${t1} (운영 실측과 동일)`;
+});
+
+check('★ 250줄은 상한 200을 넘는다 — 서버가 나누기를 포기하는 경로가 실제로 열린다', () => {
+  must(SERVER_CAP_MEASURED.lines250 > 200, '상한을 안 넘어 이 경로를 못 탄다');
+  must(SERVER_CAP_MEASURED.saveHasFlag && SERVER_CAP_MEASURED.v2HasFlag, '배포된 RPC 에 플래그가 없다');
+  return '250 > 200 → split_skipped_over_cap · 두 RPC 모두 반환';
+});
+
+check('★ 화면이 그 플래그를 읽고 조에게 알린다', () => {
+  const logic = readFileSync(resolve(HERE, '../src/islands/mod/submission-panel-logic.ts'), 'utf8');
+  const panel = readFileSync(resolve(HERE, '../src/islands/mod/SubmissionPanel.tsx'), 'utf8');
+  must(/export function saveOutcomeMessage/.test(logic), '알림 문구 생성기가 없다');
+  must(/split_skipped_over_cap/.test(logic), '상한 초과 분기가 없다');
+  must(panel.includes('const result = await submissionSave('), '저장 핸들러가 반환값을 버린다');
+  must(panel.includes('setToast(saveOutcomeMessage(result))'), '반환값이 알림으로 이어지지 않는다');
+  must(panel.includes('result?.split_skipped_over_cap'), '최종 제출 경로가 플래그를 안 본다');
+  return '저장·최종 제출 두 경로 모두 배선됨';
+});
+
+check('★ 최종 제출 확인 문구가 상수 하나에서만 나온다 (거짓 단언 종료)', () => {
+  const panel = readFileSync(resolve(HERE, '../src/islands/mod/SubmissionPanel.tsx'), 'utf8');
+  const logic = readFileSync(resolve(HERE, '../src/islands/mod/submission-panel-logic.ts'), 'utf8');
+  must(panel.includes('{FINALIZE_CONFIRM_MESSAGE}'), '모달이 상수를 렌더하지 않는다');
+  must(!panel.includes('최종 제출하면 잠깁니다. 잘못 눌렀다면'), '화면에 문장이 또 적혀 있다');
+  must(!/export const LEAVE_CONFIRM_MESSAGE/.test(logic), '아무도 못 읽는 상수가 남아 있다');
+  return '모달=상수 · 중복 문자열 없음 · LEAVE 상수 제거';
 });
 
 console.log(`\n결과: ${pass} PASS · ${fail} FAIL  (${pass}/${pass + fail})\n`);

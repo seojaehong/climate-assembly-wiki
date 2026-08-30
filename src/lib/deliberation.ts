@@ -57,7 +57,22 @@ export type SubmissionItemInput = {
   rationale: string | null;
 };
 
-export type SubmissionSaveResult = { id: string; status: SubmissionStatus; saved: number };
+/**
+ * submission_save 반환값.
+ *
+ * `split`·`split_skipped_over_cap` 은 서버 줄 분해(마이그레이션 s15)가 실어 보낸다.
+ * ★ 선택 항목으로 둔다 — 배포 순서가 어긋나 옛 RPC 를 만나도 화면이 죽지 않아야 한다.
+ *   `split` 은 **서버가 늘린 칸 수**(결과 행수가 아니다).
+ */
+export type SubmissionSaveResult = {
+  id: string;
+  status: SubmissionStatus;
+  saved: number;
+  /** 서버가 줄을 나누며 늘린 칸 수. 0이면 아무것도 나누지 않았다. */
+  split?: number;
+  /** 나누면 상한을 넘어 나누기를 포기했는가. 조에게 반드시 알려야 한다. */
+  split_skipped_over_cap?: boolean;
+};
 export type SubmissionFinalizeResult = { id: string; status: 'final' };
 
 /** 내 세션의 토론 주제 목록(open·closed). */

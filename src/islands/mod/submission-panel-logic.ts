@@ -18,10 +18,20 @@ export type EditorRow = { content: string; rationale: string };
  */
 export const MAX_SUBMISSION_ROWS = 200;
 
+/**
+ * 최종 제출 확인 모달의 본문. **화면이 정본이다** — 8.29에 조가 실제로 읽은 문구이고
+ * 조 안내문(`src/pages/mod-help/team.astro`)이 이 문장을 그대로 인용한다.
+ *
+ * 예전에는 이 상수를 아무도 렌더하지 않고 테스트만 검사했다 — 화면에 안 나가는 것을
+ * 재는 거짓 단언이었다. 지금은 모달이 이 상수를 그대로 쓴다(SubmissionPanel.tsx).
+ * ★ 「최종 제출할까요?」는 모달 제목이 따로 말하므로 본문에서 뺀다.
+ */
 export const FINALIZE_CONFIRM_MESSAGE =
-  '최종 제출하면 잠깁니다. 잘못 눌렀다면 「다시 열기」로 조가 직접 풀 수 있습니다. 최종 제출할까요?';
-export const LEAVE_CONFIRM_MESSAGE =
-  '저장하지 않은 변경이 있습니다. 지금 이동하면 사라집니다. 계속할까요?';
+  '최종 제출하면 잠깁니다. 잘못 눌렀다면 「다시 열기」로 바로 풀 수 있습니다.';
+
+// LEAVE_CONFIRM_MESSAGE 는 없앴다. 저장 전 이탈은 `beforeunload` 로 막는데, 최신
+// 브라우저는 **사이트가 준 문구를 절대 보여 주지 않는다**(제 문구를 쓴다). 즉 그 상수는
+// 아무도 못 읽는 문장이었고, 남겨 두면 「이렇게 뜬다」고 믿게 만든다.
 
 export function emptyRow(): EditorRow {
   return { content: '', rationale: '' };
@@ -277,4 +287,31 @@ export function splitOverlongRows(
   }
   if (next.length > cap) return { applied: false, rows, before, after: before, overCap: true };
   return { applied: true, rows: next, before, after: next.length, overCap: false };
+}
+
+// ── 저장 결과 알림 ─────────────────────────────────────────────
+//
+// 서버 줄 분해(마이그레이션 s15)는 결과를 반환값에 실어 보낸다. 화면이 그걸 안 읽으면
+// **조는 자기 글이 왜 달라졌는지 모른 채** 칸이 늘어난 화면을 보게 된다.
+// 상한을 넘겨 나누기를 포기한 경우는 더 그렇다 — 그건 조가 뭔가 해야 하는 상황이다.
+
+/** submission_save 반환값 중 알림에 필요한 부분만. */
+export type SubmissionSaveOutcome = {
+  split?: number;
+  split_skipped_over_cap?: boolean;
+};
+
+/**
+ * 저장 직후 띄울 문장. 「무슨 일이 있었고 → 뭘 하면 되는지」 순서로 적는다.
+ * 반환값이 없거나 옛 RPC 라 필드가 없으면 평소 문구로 돌아간다.
+ */
+export function saveOutcomeMessage(result: SubmissionSaveOutcome | null | undefined): string {
+  if (result?.split_skipped_over_cap) {
+    return `줄이 ${MAX_SUBMISSION_ROWS}개를 넘어 나누지 않고 그대로 저장했습니다. 긴 칸은 나누기 안내가 다시 뜹니다.`;
+  }
+  const split = result?.split ?? 0;
+  if (split > 0) {
+    return `한 칸에 여러 줄이 있어 저장하면서 나눴습니다 — 칸이 ${split}개 늘었습니다.`;
+  }
+  return '저장되었습니다. 최종 제출 전까지 계속 고칠 수 있습니다.';
 }
