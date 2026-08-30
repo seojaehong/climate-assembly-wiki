@@ -22,6 +22,10 @@ Started: Sun, Aug 30, 2026  7:46:30 PM
 - **검증 규약**: 숫자로 낸다("단위 164개·200자 초과 0개"), "정상 동작 확인" 은 검증이 아니다.
   기존 예시 `scripts/verify-server-split.mjs`·`verify-name-reparse.mjs`. 후자는 규칙을 .mjs 로
   베끼지 않고 **esbuild 로 .ts 를 그 자리에서 변환해 import** 한다 — 새 스크립트도 이 방식.
+- **커밋 제외 — prebuild 타임스탬프 churn**: 빌드를 돌리면 `index.md`(Last generated) ·
+  `log.md` · `public/workshop-graph/data/{agenda-surface,kb-agenda-surface}.json`(generated_at)이
+  매번 바뀐다. story 와 무관하므로 커밋에 넣지 않는다(US-001 커밋도 뺐다).
+- **`rm -rf` 는 거부된다**: 임시 디렉터리 정리는 `git clean -fd <경로>` 로 한다.
 - **금지**: git push · main 머지 · 배포 · 운영 DB 쓰기 · 유료 API 호출.
 
 ---
@@ -50,4 +54,33 @@ Commit: (아래 feat 커밋) · 브랜치 ralph/parser-internalization
     (`.npmrc` 에 이유가 적혀 있다). postinstall 은 양쪽 모두에서 돈다.
   - `automation/` 은 별도 node_modules 를 갖는다. 스크립트가 playwright·supabase-js 를 쓸 때
     `../automation/node_modules/...` 절대경로 import 를 쓰는 것이 이 저장소 관례.
+---
+
+## [2026-08-30 20:26] - US-002 extractDocument 인터페이스 타입 정의
+Commit: (아래 feat 커밋) · 브랜치 ralph/parser-internalization
+
+- `src/lib/parsers/types.ts` 신설 (78줄, 구현 코드 0줄)
+  - `ExtractedUnit` · `UnitProvenance` · `ExtractResult` · `ExtractWarning`
+  - 가독 편의로 union 두 개에 이름을 붙였다 — `ExtractEngine`('rhwp'|'kordoc'),
+    `ExtractWarningKind`(4종). 인라인 union 에는 멤버별 JSDoc 을 달 수 없어서다. 구조는 AC 와 동일.
+
+- **실측 결과**
+  - 형상 정확성 **4/4 PASS** — AC 문안을 그대로 옮긴 타입과 `Exact<A,B>`(양방향 assignability)로
+    대조. 필드명·선택성이 한 글자라도 다르면 tsc 가 터진다. 임시 파일로 확인 후 삭제.
+  - `npx tsc --noEmit -p tsconfig.json --listFiles | grep -c parsers/types.ts` → **1**
+    (tsconfig 에 `include` 가 없어 전부 딸려오지만, 실제로 검사 대상인지 눈으로 확인한 것)
+  - `npx tsc --noEmit` 오류 **0** · `npx vitest run` **86파일 1473테스트 통과**
+  - `astro build` 는 생략 — 아직 아무도 import 하지 않는 타입 전용 파일이라 빌드 그래프가 그대로다
+
+- **다음 이터레이션을 위한 학습:**
+  - **US-003 전에 rhwp export 이름부터 덤프할 것.** US-001 측정에서 `@rhwp/core` export 는
+    **8개뿐**인데 US-003 의 AC 는 `getSectionCount`·`getParagraphCount`·`getTextRange`·
+    `getCellParagraphCount`·`getTextInCell` 5개를 이름으로 지정한다. 8개 안에 다 있는지,
+    최상위인지 인스턴스 메서드인지 확인하고 시작해라. US-001 에서 배운 대로 **AC 보다 실측이 먼저**다.
+  - 어댑터는 `import type { ... } from './types'` 로 가져와라. tsconfig 가
+    `astro/tsconfigs/strict` 를 확장하므로 값 import 와 타입 import 를 섞지 않는 편이 안전하다.
+  - **`rm -rf` 는 이 환경에서 거부된다.** 작업 디렉터리를 지울 땐 `git clean -fd <경로>` 를 쓴다.
+  - **커밋에 넣지 말 것 — prebuild 가 만드는 타임스탬프 churn.** 빌드를 돌리면
+    `index.md`(Last generated) · `log.md` · `public/workshop-graph/data/*-agenda-surface.json`
+    (generated_at)이 매번 바뀐다. US-001 커밋도 이것들을 뺐다. story 파일만 골라 커밋한다.
 ---

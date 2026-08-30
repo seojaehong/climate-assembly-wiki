@@ -32,8 +32,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "타입 4종 신설 · 구현 코드 0줄. 형상 정확성 4/4 PASS — AC 문안 그대로의 타입과 양방향 assignability(Exact<A,B>)로 대조해 필드명·선택성이 한 글자도 다르지 않음을 tsc 로 확인했다. 가독 편의로 union 두 개에 이름을 붙였다(ExtractEngine = 'rhwp'|'kordoc', ExtractWarningKind = 4종) — 구조는 AC 와 동일하고 JSDoc 을 멤버마다 달기 위한 것. tsc --listFiles 로 이 파일이 실제 검사 대상임을 확인(1건). npx tsc 0 · vitest 86파일 1473테스트 통과. astro build 는 아직 아무도 import 하지 않는 타입 전용 파일이라 생략."
     },
     {
       "id": "US-003",
