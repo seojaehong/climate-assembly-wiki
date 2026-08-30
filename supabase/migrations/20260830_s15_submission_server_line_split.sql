@@ -276,7 +276,46 @@ revoke execute on function
 from public;
 
 -- ══════════════════════════════════════════════════════════════════
--- 되돌리기 (ROLLBACK) — 적용한 뒤에 되돌려야 할 때만 쓴다
+-- ------------------------------------------------------------------
+-- submission_finalize_hq — 본부가 조를 대신해 잠근다
+--
+-- 왜 필요한가: 기존 submission_finalize(p_code, p_topic_id) 는 조 코드로만
+-- 돌고 감사기록에 actor_scope='team' · finalized_by='mod:<조>' 를 남긴다.
+-- 본부가 행사 뒤 일괄로 잠글 때 그걸 쓰면 17건이 「조가 스스로 최종 제출했다」로
+-- 기록된다. 공론화 감사기록에 거짓이 남는다.
+-- 인증·감사 패턴은 submission_reopen(hq) 을 그대로 따른다.
+-- ------------------------------------------------------------------
+create or replace function climate_vote.submission_finalize_hq(
+  p_token text, p_submission_id uuid, p_reason text
+) returns jsonb
+language plpgsql security definer
+set search_path to 'climate_vote', 'extensions', 'pg_temp'
+as $fn$
+declare v_auth climate_vote.attendance_auth_session; v_sub climate_vote.submission; v_cnt int;
+begin
+  v_auth := climate_vote.attendance_token_row(p_token);
+  if v_auth.scope <> 'hq' then raise exception 'hq authorization required'; end if;
+  if length(trim(coalesce(p_reason,''))) < 2 then raise exception 'reason required'; end if;
+  select * into v_sub from climate_vote.submission where id = p_submission_id;
+  if not found then raise exception 'submission not found'; end if;
+  if v_sub.status = 'final' then raise exception 'already finalized'; end if;
+  select count(*) into v_cnt from climate_vote.submission_item where submission_id = v_sub.id;
+  if v_cnt = 0 then raise exception 'cannot finalize empty submission'; end if;
+
+  update climate_vote.submission
+     set status = 'final', finalized_at = now(), finalized_by = 'hq:' || v_auth.actor_label
+   where id = v_sub.id;
+  insert into climate_vote.submission_lock_event
+    (submission_id, action, actor_scope, actor_label, reason)
+  values (v_sub.id, 'finalize', 'hq', v_auth.actor_label, trim(p_reason));
+  return jsonb_build_object('id', v_sub.id, 'status', 'final', 'items', v_cnt);
+end $fn$;
+
+revoke all on function climate_vote.submission_finalize_hq(text, uuid, text) from public;
+grant execute on function climate_vote.submission_finalize_hq(text, uuid, text) to anon, authenticated;
+
+-- 되돌리기 (ROLLBACK)
+--   drop function if exists climate_vote.submission_finalize_hq(text, uuid, text); — 적용한 뒤에 되돌려야 할 때만 쓴다
 --
 -- ★ **s1(`20260808_s1_*.sql`)을 다시 돌리면 안 된다.** 그 파일의 submission_save 는
 --   상한이 아직 **30** 이다 — 8.29에 두 조가 걸렸던 바로 그 값이다. 되돌리려다
