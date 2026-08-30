@@ -1,4 +1,41 @@
 # Ralph Progress Log
+
+## Codebase Patterns
+(모든 이터레이션이 먼저 읽는다. 재사용 지식만 — story 세부는 아래 로그로)
+
+### rhwp WASM 을 Node 에서 띄우는 법 (실측 확인)
+```js
+import { createRequire } from 'node:module';
+import { readFile } from 'node:fs/promises';
+const require = createRequire(import.meta.url);
+const wasmPath = require.resolve('@rhwp/core/rhwp_bg.wasm');  // exports 필드가 없어 서브패스가 통한다
+await (await import('@rhwp/core')).default({ module_or_path: await readFile(wasmPath) });
+```
+- ★ **스크립트를 스크래치패드에 두면 `MODULE_NOT_FOUND`** 다. 모듈 해석이 스크립트 위치 기준이라 **저장소 안에서 실행**해야 한다
+- `globalThis.measureTextWidth` 스텁은 **불필요**하다(텍스트 추출만 할 때). 렌더할 때만 필요
+
+### ★ getTextFileText() 반환값은 JSON 인코딩 문자열이다
+「역슬래시 이스케이프 2문자」로 보이는 것의 정체다. 첫 글자와 끝 글자가 `"` 이고 **통째로 `JSON.parse` 가 된다**(두 대상 파일 모두 성공).
+- 정책권고안 hwpx : raw 2,261자 → parse 후 **2,002자**
+- A조 결과보고서 hwp : raw 28,504자 → parse 후 **25,320자**
+→ `JSON.parse` 를 1순위로, 실패할 때만 리터럴 `` `
+` 치환을 폴백으로 둔다.
+
+### HTML 엔티티는 parse 이후에도 남는다
+숫자 엔티티만 관측됐다 — hwpx `&#8212;`, A조 `&#8199;` `&#61580;` `&#61581;` `&#57430;`(사용자정의 영역 = 윙딩 불릿).
+**숫자 엔티티 디코드 필수**, 이름 엔티티는 미관측.
+
+### 이 저장소 규약
+- 빌드는 **Node 20 포터블 필수**: `export PATH="$HOME/tools/node-v20.18.0-win-x64:$PATH"`. Node 24 는 astro build 가 무출력 사망
+- `npm run build` 는 prebuild+astro+postbuild 를 다 돈다(2026-08-30 수리됨). `npx astro build` 만 쓰면 postbuild 훅이 안 걸려 `dist/deployment-revision.json` 이 안 생긴다
+- ★ **`npm run build` 의 prebuild 가 `index.md`·`log.md`·`public/workshop-graph/data/*.json` 을 재생성해 워킹트리를 더럽힌다.** 커밋 전에 `git checkout` 으로 되돌릴 것
+- **vitest 기준선 = 1,473 통과 / 86 파일**(이 브랜치)
+- 검증 규약: `scripts/verify-*.mjs` — **N/N 개수로 출력**, DB 에 쓰지 않는다. `verify-name-reparse.mjs` 는 규칙을 베끼지 않고 **esbuild 로 .ts 를 그 자리에서 변환해 import** 한다. 새 스크립트도 이 방식을 쓸 것
+
+### 판정 근거는 이미 있다 — 재조사 금지
+`../20_스크립트/parsers/README.md` + `measurement/`. 특히 **2차 분해 규칙은 만들지 않기로 확정**됐다(측정으로). 되살리지 말 것.
+
+---
 Started: Sun, Aug 30, 2026  7:46:30 PM
 ---
 
