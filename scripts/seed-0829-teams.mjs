@@ -53,6 +53,8 @@ async function runDryRun() {
 
 async function runLive() {
   checkEnvOrExit();
+  // ★ Node 20 에서 supabase-js 가 WebSocket 을 못 찾아 죽는다 — createClient 앞에서 막는다.
+  await import('./lib/node-ws-shim.mjs');
   const { createClient } = await import('@supabase/supabase-js');
   const client = createClient(
     process.env.SUPABASE_URL,

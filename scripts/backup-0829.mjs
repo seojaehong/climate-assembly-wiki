@@ -14,6 +14,8 @@
  * 산출: <out>/0829_산출물_<타임스탬프>.json  +  <out>/latest.json (항상 최신)
  * 같은 내용이면 새 파일을 만들지 않는다(체크섬 비교) — 파일만 쌓이는 것을 막는다.
  */
+// ★ Node 20 에서 supabase-js 가 WebSocket 을 못 찾아 죽는다 — createClient 앞에서 막는다.
+import './lib/node-ws-shim.mjs';
 import { createClient } from '../automation/node_modules/@supabase/supabase-js/dist/index.mjs';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';

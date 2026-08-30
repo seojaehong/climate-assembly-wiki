@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+// ★ Node 20 에서 supabase-js 가 WebSocket 을 못 찾아 죽는다 — createClient 앞에서 막는다.
+import './lib/node-ws-shim.mjs';
 import { createClient } from '@supabase/supabase-js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
