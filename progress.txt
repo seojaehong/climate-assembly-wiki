@@ -26,6 +26,11 @@ Started: Sun, Aug 30, 2026  7:46:30 PM
   `log.md` · `public/workshop-graph/data/{agenda-surface,kb-agenda-surface}.json`(generated_at)이
   매번 바뀐다. story 와 무관하므로 커밋에 넣지 않는다(US-001 커밋도 뺐다).
 - **`rm -rf` 는 거부된다**: 임시 디렉터리 정리는 `git clean -fd <경로>` 로 한다.
+- **★ 동시 실행 주의 (2026-08-30 20:26 실측)**: `ralph.sh` 루프가 **2개**(pid 30373 20:04 시작 ·
+  pid 30836 20:05 시작) 같은 브랜치에 동시에 쓰고 있었다. 다른 인스턴스가 만든 미추적 파일이
+  보일 수 있다(20:22 에 `src/lib/parsers/rhwp-adapter.ts` 가 그렇게 나타났다).
+  **내가 만들지 않은 미추적 파일은 지우지도 커밋하지도 말 것.** story 착수 전 `git status` 로
+  다른 인스턴스가 그 story 파일을 이미 쓰고 있는지 먼저 확인한다.
 - **금지**: git push · main 머지 · 배포 · 운영 DB 쓰기 · 유료 API 호출.
 
 ---
@@ -73,7 +78,8 @@ Commit: (아래 feat 커밋) · 브랜치 ralph/parser-internalization
   - `astro build` 는 생략 — 아직 아무도 import 하지 않는 타입 전용 파일이라 빌드 그래프가 그대로다
 
 - **다음 이터레이션을 위한 학습:**
-  - **US-003 전에 rhwp export 이름부터 덤프할 것.** US-001 측정에서 `@rhwp/core` export 는
+  - **US-003 착수 전 먼저 `git status`** — 다른 루프가 이미 `rhwp-adapter.ts` 를 쓰고 있거나
+    커밋했는지 확인한다(위 동시 실행 주의). 그 다음 **rhwp export 이름부터 덤프할 것.** US-001 측정에서 `@rhwp/core` export 는
     **8개뿐**인데 US-003 의 AC 는 `getSectionCount`·`getParagraphCount`·`getTextRange`·
     `getCellParagraphCount`·`getTextInCell` 5개를 이름으로 지정한다. 8개 안에 다 있는지,
     최상위인지 인스턴스 메서드인지 확인하고 시작해라. US-001 에서 배운 대로 **AC 보다 실측이 먼저**다.
