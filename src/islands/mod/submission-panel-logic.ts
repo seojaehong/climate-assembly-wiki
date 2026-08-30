@@ -6,7 +6,17 @@ import type { SubmissionItem, SubmissionItemInput, SubmissionStatus } from '../.
  * final이면 저장·제출 버튼 자체를 내리지 않고, 빈 제출은 최종 제출을 막는다.
  */
 
-export type EditorRow = { content: string; rationale: string };
+/**
+ * 편집 행 하나.
+ *
+ * `name` 은 **화면에만 있는 칸**이다. 저장할 때 `(이름) 내용` 으로 합쳐 보내고
+ * 불러올 때 되파싱해 도로 나눈다(joinSpeaker / parseSpeaker). DB 형식은 그대로다 —
+ * 분석 파이프라인이 이미 `(이름) 내용` 을 읽고 있으므로 바꾸면 그쪽이 깨진다.
+ *
+ * ★ `name` 은 선택 필드가 아니라 **필수**로 둔다. optional 로 두면 새 칸을 빠뜨린
+ *   생성 지점(초안 복원·붙여넣기 분해·긴 칸 나누기)이 컴파일러에 안 걸린다.
+ */
+export type EditorRow = { name: string; content: string; rationale: string };
 
 /**
  * submission_save p_items 상한(RPC: max 200).
@@ -34,13 +44,111 @@ export const FINALIZE_CONFIRM_MESSAGE =
 // 아무도 못 읽는 문장이었고, 남겨 두면 「이렇게 뜬다」고 믿게 만든다.
 
 export function emptyRow(): EditorRow {
-  return { content: '', rationale: '' };
+  return { name: '', content: '', rationale: '' };
+}
+
+// ── 이름 칸 ↔ 저장 문자열 (진단서 §4-4) ───────────────────────────
+//
+// 8.29 실측: 화자 미표기 7건(유형 B) · 화자 줄 분리 1건(유형 C, 그 꼭지의 39%).
+// 이름을 「문장과 같은 줄에」 적으라고 안내해도 조마다 다르게 쓴다. 칸을 따로 주면
+// 형식을 외울 일이 없어진다.
+//
+// ★ 되파싱이 틀리면 **본문이 잘린다.** 그래서 규칙을 좁게 잡고, 조금이라도 애매하면
+//   이름 칸을 비우고 본문을 통째로 둔다. 「애매하면 안 건드린다」가 기본값이다.
+
+/**
+ * 이름으로 볼 토큰인가 — **한글 2~3자만.** 공백·숫자·기호가 섞이면 이름이 아니다.
+ *
+ * 왜 3자에서 끊는가 — **금지어 목록을 만들지 않기 위해서다.**
+ * 8.29 참석 명단 201명의 길이 분포는 2자 1명 · 3자 199명 · 그 밖 1명(로마자 병기)이다.
+ * 그리고 641건 전수에서 이 규칙이 사람 이름이 아닌데 뽑은 것은 `기타의견 :` **단 1건**,
+ * 그 하나가 4자였다. 상한을 3자로 두면 그 1건이 사라지고 진짜 이름은 하나도 안 잃는다.
+ * 추측으로 만든 금지어 목록(「질문」「의견」…)은 두지 않는다 — 실측에서 한 번도 안 걸렸고,
+ * 목록이 길어질수록 진짜 이름을 막을 확률만 올라간다.
+ *
+ * 이 문턱이 실제로 걸러 내는 것(8.29 실측):
+ *   `(촉진질문: …)` `(추가질문: …)` — 닫는 괄호가 토큰 뒤에 없어 애초에 안 잡힌다
+ *   `(1) 기후문제로 …` `(2) 분명한 계절 …` — 토큰이 숫자
+ *   `2. 의견정리(…)` `의제1. …` — 콜론이 앞에 없다
+ *   `기타의견 : …` — 4자
+ * 남는 위험 : 4자 이름(남궁·황보 등)은 **못 뽑는다.** 그때는 이름 칸이 비고 본문이
+ * 통째로 남을 뿐이라 글자를 잃지 않는다 — 「애매하면 안 건드린다」의 값이다.
+ */
+const NAME_TOKEN = /^[가-힣]{2,3}$/;
+
+export function looksLikeSpeakerName(token: string): boolean {
+  return NAME_TOKEN.test(token.trim());
+}
+
+/** 이름 칸에 넣을 이름과, 이름을 뗀 본문. `name === ''` 이면 본문은 **원문 그대로**다. */
+export type SpeakerSplit = { name: string; body: string };
+
+/**
+ * 저장된 한 줄에서 이름을 되파싱한다. 8.29 실데이터가 세 형태로 섞여 있다 —
+ *   `(박서준) 환경교육 방식이 …`      (56건)
+ *   `- (임효은) 기업은 이윤을 …`       (144건)
+ *   `신유섭: 처음에 비해 많이 …`       (255건)
+ *
+ * 뽑지 않는 경우(전부 원문 그대로 돌려준다):
+ *   · 토큰이 이름처럼 생기지 않았다 (looksLikeSpeakerName)
+ *   · 이름을 떼면 **본문이 빈다** — 「이름만 있는 행」은 손대지 않고 §4-5 안내로 넘긴다
+ *   · 줄바꿈이 남아 있다 — 아직 안 나뉜 통짜다. 이름은 첫 줄에만 걸리므로 건드리지 않는다
+ *   · `(1) 정주현 : …` 처럼 번호가 앞에 붙은 형태 — 실측 존재하나 규칙이 흔들려 **보류**한다
+ */
+export function parseSpeaker(content: string): SpeakerSplit {
+  const none: SpeakerSplit = { name: '', body: content };
+  if (/\r?\n/.test(content)) return none;
+
+  // 앞머리 글머리표는 이름 판정에서만 무시한다(본문에는 원래 없던 자리다).
+  const head = content.replace(/^\s*[-–—·•*]\s*/, '');
+
+  // ① (이름) 내용 — 닫는 괄호가 토큰 **바로 뒤**에 와야 한다.
+  const paren = /^\(\s*([^()\s]{1,10})\s*\)\s*(\S[\s\S]*)$/.exec(head);
+  if (paren && looksLikeSpeakerName(paren[1])) {
+    return { name: paren[1].trim(), body: paren[2].trim() };
+  }
+
+  // ② 이름: 내용 — 콜론 앞에 공백이 없어야 한다(「… 정주현 : …」 같은 중간 콜론 차단).
+  const colon = /^([^\s:：]{1,10})\s*[:：]\s*(\S[\s\S]*)$/.exec(head);
+  if (colon && looksLikeSpeakerName(colon[1])) {
+    return { name: colon[1].trim(), body: colon[2].trim() };
+  }
+
+  return none;
+}
+
+/**
+ * 이름 칸에 조가 적은 잡동사니를 다듬는다 — `(홍길동)` `홍길동:` `- 홍길동` 을 전부
+ * `홍길동` 으로. 안 다듬으면 합칠 때 `(홍길동:) 내용` 이 저장된다.
+ */
+export function normalizeSpeakerName(raw: string): string {
+  return raw
+    .replace(/[()（）\[\]{}<>]/g, ' ')
+    .replace(/^[\s\-–—·•*]+/, '')
+    .replace(/[\s:：,.]+$/, '')
+    .trim();
+}
+
+/**
+ * 이름 칸 + 본문 → **저장할 한 줄.** 형식은 `(이름) 내용` 하나뿐이다 —
+ * 분석 파이프라인이 읽는 형식이고, 8.29 최상위 조가 쓴 형식이다.
+ * 이름이 비면 본문만 저장한다(강제하지 않는다).
+ */
+export function joinSpeaker(name: string, content: string): string {
+  const n = normalizeSpeakerName(name);
+  const c = content.trim();
+  if (n.length === 0) return c;
+  if (c.length === 0) return c; // 본문이 없으면 이름만 저장하지 않는다 — 쓰레기 노드가 된다
+  return `(${n}) ${c}`;
 }
 
 /** 서버 항목 → 편집 행. 항목이 없으면 빈 행 1개로 시작한다(빈 편집기 방지). */
 export function rowsFromItems(items: SubmissionItem[]): EditorRow[] {
   const sorted = [...items].sort((a, b) => a.ordinal - b.ordinal);
-  const rows = sorted.map((item) => ({ content: item.content, rationale: item.rationale ?? '' }));
+  const rows = sorted.map((item) => {
+    const { name, body } = parseSpeaker(item.content);
+    return { name, content: body, rationale: item.rationale ?? '' };
+  });
   return rows.length > 0 ? rows : [emptyRow()];
 }
 
@@ -59,7 +167,10 @@ export function isEditable(status: SubmissionStatus | null): boolean {
  */
 export function toSaveItems(rows: EditorRow[]): SubmissionItemInput[] {
   return rows
-    .map((row) => ({ content: row.content.trim(), rationale: row.rationale.trim() }))
+    .map((row) => ({
+      content: joinSpeaker(row.name, row.content),
+      rationale: row.rationale.trim(),
+    }))
     .filter((row) => row.content.length > 0)
     .map((row, index) => ({
       ordinal: index + 1,
@@ -97,8 +208,13 @@ export function moveRow(rows: EditorRow[], index: number, direction: -1 | 1): Ed
   return next;
 }
 
+/**
+ * ★ 이름 칸이 **반드시 여기 들어가야 한다.** 빠뜨리면 이름만 고쳤을 때 dirty 가 안 서고,
+ *   그러면 저장 버튼이 계속 잠기고 초안 보관 useEffect 도 안 돈다 —
+ *   조가 적은 이름이 조용히 사라진다(2026-08-30 `dropDraft` 와 같은 계열의 함정).
+ */
 function serializeRows(rows: EditorRow[]): string {
-  return JSON.stringify(rows.map((row) => [row.content, row.rationale]));
+  return JSON.stringify(rows.map((row) => [row.name, row.content, row.rationale]));
 }
 
 /** 저장 이후 달라진 것이 있는가 — 저장 버튼 활성화·이탈 confirm의 판정 기준. */
@@ -137,10 +253,19 @@ export function pickRestoredRows(raw: string | null, serverRows: EditorRow[]): E
     return null; // 깨진 값 — 서버 내용으로 연다
   }
   if (!Array.isArray(parsed) || parsed.length === 0) return null;
-  const rows = parsed.filter(
-    (row): row is EditorRow =>
-      typeof row === 'object' && row !== null && typeof (row as EditorRow).content === 'string'
-  );
+  // ★ 이름 칸이 생기기 **전에** 보관된 초안이 있을 수 있다(같은 탭에서 배포를 건너온 경우).
+  //   옛 모양은 {content, rationale} 뿐이라 name 이 undefined 로 들어오고, 그대로 쓰면
+  //   controlled input 이 uncontrolled 로 바뀌어 React 가 경고를 뱉는다. 여기서 메운다.
+  const rows = parsed
+    .filter(
+      (row): row is Partial<EditorRow> =>
+        typeof row === 'object' && row !== null && typeof (row as EditorRow).content === 'string',
+    )
+    .map((row) => ({
+      name: typeof row.name === 'string' ? row.name : '',
+      content: row.content as string,
+      rationale: typeof row.rationale === 'string' ? row.rationale : '',
+    }));
   if (rows.length !== parsed.length || rows.length === 0) return null;
   return isDirty(rows, serverRows) ? rows : null;
 }
@@ -207,13 +332,21 @@ export function splitPastedRows(
   const taken = lines.slice(0, room);
   const dropped = lines.length - taken.length;
 
+  // ★ 붙여넣는 줄에도 이름 되파싱을 건다. 안 걸면 **같은 글이 저장 전과 저장 후에 다르게
+  //   보인다** — 저장하면 서버에서 돌아올 때 rowsFromItems 가 되파싱하기 때문이다.
+  const toRow = (line: string): EditorRow => {
+    const { name, body } = parseSpeaker(line);
+    return { name, content: body, rationale: '' };
+  };
+
   const next = [...rows];
   let head = taken;
   if (fillsTarget) {
-    next[index] = { ...target, content: taken[0] };
+    const first = toRow(taken[0]);
+    next[index] = { ...target, name: first.name, content: first.content };
     head = taken.slice(1);
   }
-  next.splice(index + 1, 0, ...head.map((content) => ({ content, rationale: '' })));
+  next.splice(index + 1, 0, ...head.map(toRow));
 
   return { applied: true, rows: next, inserted: taken.length, dropped };
 }
@@ -281,12 +414,121 @@ export function splitOverlongRows(
       continue;
     }
     const lines = splitSubmissionLines(row.content);
-    lines.forEach((content, k) => {
-      next.push({ content, rationale: k === 0 ? row.rationale : '' });
+    lines.forEach((line, k) => {
+      const { name, body } = parseSpeaker(line);
+      next.push({
+        // 조각이 제 이름을 갖고 있으면 그것을 쓰고, 없을 때만 첫 조각이 원래 이름을 물려받는다.
+        // (N 벌로 복제하면 원문에 없던 화자가 늘어난다 — rationale 과 같은 규칙)
+        name: name || (k === 0 ? row.name : ''),
+        content: body,
+        rationale: k === 0 ? row.rationale : '',
+      });
     });
   }
   if (next.length > cap) return { applied: false, rows, before, after: before, overCap: true };
   return { applied: true, rows: next, before, after: next.length, overCap: false };
+}
+
+// ── 이름만 있는 행 (진단서 §4-5, 유형 C) ──────────────────────────
+//
+// 8.29 `1분과 2조 꼭지②` — 70행 중 비숙의 39%. 이런 모양이었다:
+//     권민정:                                  ← 이름만 있는 행 = 쓰레기 노드
+//     (1) 기후문제로 인한 식재료 가격 변동이 없음.  ← 화자 미상이 됨
+//     (2) 분명한 계절(4계절) …                  ← 화자 미상이 됨
+//     김혜인:                                  ← 다음 사람
+// 사람 눈에는 정성스러운데 **한 번에 두 가지가 깨진다.** 저장 전에 알리고, 옮겨 주는
+// 버튼을 함께 준다. ★ 강제하지 않는다 — 「이대로 두기」가 있다.
+
+/** 본문이 이름뿐인 행. `홍길동:` `(홍길동)` `- (홍길동)` 만 본다. */
+const NAME_ONLY = /^\s*[-–—·•*]?\s*(?:\(\s*([^()\s]{1,10})\s*\)|([^\s:：]{1,10}))\s*[:：]?\s*$/;
+
+export type NameOnlyRow = {
+  index: number;
+  /** 그 행이 들고 있는 이름. 이름 칸에만 있고 본문이 빈 행이면 이름 칸의 값이다. */
+  name: string;
+  /** 본문이 이름뿐인 행인가(true) · 이름 칸만 채우고 본문이 빈 행인가(false). */
+  inBody: boolean;
+};
+
+/**
+ * 저장하면 화자가 끊기거나 행 자체가 사라지는 행들.
+ *
+ * 두 가지를 **같이** 잡는다 —
+ *  ① 본문이 `권민정:` 처럼 이름뿐 → 쓰레기 노드 + 아래 문장이 화자를 잃는다
+ *  ② 이름 칸만 채우고 본문이 빈 행 → `toSaveItems` 가 조용히 버린다(조는 모른다)
+ */
+export function nameOnlyRowIndexes(rows: EditorRow[]): NameOnlyRow[] {
+  const out: NameOnlyRow[] = [];
+  rows.forEach((row, index) => {
+    const body = row.content.trim();
+    if (body.length === 0) {
+      // ② 이름만 적고 본문을 안 쓴 행. 빈 행(둘 다 빈)은 그냥 여분 칸이므로 뺀다.
+      if (normalizeSpeakerName(row.name).length > 0) {
+        out.push({ index, name: normalizeSpeakerName(row.name), inBody: false });
+      }
+      return;
+    }
+    // ① 본문이 이름뿐인 행. 이름 칸을 이미 쓴 행은 조가 의도한 것이므로 건드리지 않는다.
+    if (normalizeSpeakerName(row.name).length > 0) return;
+    const m = NAME_ONLY.exec(body);
+    const token = m ? (m[1] ?? m[2] ?? '') : '';
+    // 장식(괄호 또는 콜론)이 하나도 없는 홑단어는 이름이라 볼 근거가 없다 — 「오프닝」 같은
+    // 양식 잔재를 이름으로 오인하면 그 줄이 사라진다.
+    const decorated = /[():：（）]/.test(body);
+    if (token && decorated && looksLikeSpeakerName(token)) {
+      out.push({ index, name: token.trim(), inBody: true });
+    }
+  });
+  return out;
+}
+
+export type NameLift = {
+  applied: boolean;
+  rows: EditorRow[];
+  /** 이름 칸을 채워 준 행 수. */
+  filled: number;
+  /** 지운 「이름만 있는 행」 수. */
+  removed: number;
+};
+
+/**
+ * 이름만 있는 행의 이름을 **아래 행들의 이름 칸으로 내려 채우고** 그 행을 지운다.
+ *
+ * 한 행만 옮기면 안 된다 — 실데이터는 이름 하나 아래에 문장이 **여러 줄** 달려 있다.
+ * 다음 「이름만 있는 행」을 만나거나, 이미 제 이름을 가진 행을 만나면 거기서 멈춘다.
+ * 이름 칸만 채우고 본문이 빈 행(②)은 지우지 않는다 — 조가 아직 쓰는 중일 수 있다.
+ */
+export function liftNameOnlyRows(rows: EditorRow[]): NameLift {
+  const marks = nameOnlyRowIndexes(rows).filter((m) => m.inBody);
+  if (marks.length === 0) return { applied: false, rows, filled: 0, removed: 0 };
+  const heads = new Map(marks.map((m) => [m.index, m.name]));
+
+  const next: EditorRow[] = [];
+  let carry = '';
+  let filled = 0;
+  let removed = 0;
+  for (let i = 0; i < rows.length; i += 1) {
+    const head = heads.get(i);
+    if (head !== undefined) {
+      carry = head;
+      removed += 1;
+      continue; // 이름 행 자체는 저장할 것이 없다
+    }
+    const row = rows[i];
+    if (normalizeSpeakerName(row.name).length > 0) {
+      carry = ''; // 제 이름을 가진 행을 만나면 내려 채우기를 멈춘다
+      next.push(row);
+      continue;
+    }
+    if (carry && row.content.trim().length > 0) {
+      next.push({ ...row, name: carry });
+      filled += 1;
+      continue;
+    }
+    next.push(row);
+  }
+  if (next.length === 0) next.push(emptyRow());
+  return { applied: true, rows: next, filled, removed };
 }
 
 // ── 저장 결과 알림 ─────────────────────────────────────────────

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_SUBMISSION_ROWS, splitPastedRows, type EditorRow } from './submission-panel-logic';
 
-const row = (content: string): EditorRow => ({ content, rationale: '' });
+const row = (content: string): EditorRow => ({ name: '', content, rationale: '' });
 const contents = (rows: EditorRow[]) => rows.map((r) => r.content);
 
 describe('splitPastedRows — 언제 나서는가', () => {
@@ -67,7 +67,7 @@ describe('splitPastedRows — 나눠 넣기', () => {
   });
 
   it('rationale 열은 새 행에서 빈 문자열로 시작한다', () => {
-    const out = splitPastedRows([{ content: '', rationale: '근거' }], 0, '가\n나');
+    const out = splitPastedRows([{ name: '', content: '', rationale: '근거' }], 0, '가\n나');
     expect(out.rows[0].rationale).toBe('근거'); // 채운 칸의 기존 값은 보존
     expect(out.rows[1].rationale).toBe('');
   });
@@ -213,7 +213,7 @@ describe('splitOverlongRows — 긴 칸 나누기 (강제하지 않는다)', () 
   });
 
   it('rationale 은 첫 조각만 물려받는다 (복제 금지)', () => {
-    const out = splitOverlongRows([{ content: `${long(160)}\n${long(160)}`, rationale: '근거' }]);
+    const out = splitOverlongRows([{ name: '', content: `${long(160)}\n${long(160)}`, rationale: '근거' }]);
     expect(out.rows[0].rationale).toBe('근거');
     expect(out.rows[1].rationale).toBe('');
   });
