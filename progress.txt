@@ -31,6 +31,7 @@ await (await import('@rhwp/core')).default({ module_or_path: await readFile(wasm
 - ★ **`npm run build` 의 prebuild 가 `index.md`·`log.md`·`public/workshop-graph/data/*.json` 을 재생성해 워킹트리를 더럽힌다.** 커밋 전에 `git checkout` 으로 되돌릴 것
 - **vitest 기준선 = 1,473 통과 / 86 파일**(이 브랜치)
 - 검증 규약: `scripts/verify-*.mjs` — **N/N 개수로 출력**, DB 에 쓰지 않는다. `verify-name-reparse.mjs` 는 규칙을 베끼지 않고 **esbuild 로 .ts 를 그 자리에서 변환해 import** 한다. 새 스크립트도 이 방식을 쓸 것
+- ★ **그런데 변환본을 `data:` URL 로 import 하는 수법은 「의존성 없는 파일」에만 통한다.** 파서 어댑터처럼 `import('@rhwp/core')`·`createRequire(import.meta.url)` 를 쓰는 파일은 data: URL 에서 bare specifier 가 해석되지 않고 `import.meta.url` 도 그 data URL 이 된다. **변환 결과를 저장소 안 실제 `.mjs` 파일로 쓴 뒤 `pathToFileURL()` 로 import 할 것**(위 「스크래치패드에 두면 MODULE_NOT_FOUND」와 같은 이유)
 
 ### 판정 근거는 이미 있다 — 재조사 금지
 `../20_스크립트/parsers/README.md` + `measurement/`. 특히 **2차 분해 규칙은 만들지 않기로 확정**됐다(측정으로). 되살리지 말 것.
