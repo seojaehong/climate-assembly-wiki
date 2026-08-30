@@ -153,6 +153,105 @@ function collectUnits(doc: HwpDocument): ExtractedUnit[] {
   return units;
 }
 
+/** 구조 API 가 놓친 글자가 이 비율을 넘으면 경고한다. */
+const MISSING_CONTENT_RATIO = 0.05;
+
+/**
+ * `getTextFileText()` 의 반환값을 실제 문자열로 푼다.
+ *
+ * ★ 반환값은 평문이 아니라 **JSON 인코딩된 문자열**이다 — 첫 글자와 끝 글자가 `"` 이고
+ *   개행이 진짜 개행이 아니라 역슬래시 이스케이프 2문자로 들어 있다(두 시험 문서 모두
+ *   `JSON.parse` 성공: hwpx 2,261→2,002자 · A조 hwp 28,504→25,320자). 판(version)에 따라
+ *   따옴표 없이 올 수도 있어, 실패하면 리터럴 이스케이프만 치환하는 쪽으로 물러선다.
+ */
+export function unwrapTextFileText(raw: string): string {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed === 'string') return parsed;
+  } catch {
+    // 아래 폴백으로 간다
+  }
+  return raw
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\n')
+    .replace(/\\t/g, '\t');
+}
+
+/**
+ * 숫자 HTML 엔티티를 디코드한다.
+ *
+ * 실측에서 나온 것은 전부 숫자 엔티티였다 — hwpx `&#8212;`, A조 `&#8199;`·`&#61580;`
+ * (사용자정의 영역 = 윙딩 불릿). 이름 엔티티(`&amp;` 등)는 관측되지 않아 건드리지 않는다.
+ */
+export function decodeNumericEntities(text: string): string {
+  return text
+    .replace(/&#(\d+);/g, (whole, digits: string) => codePointOr(whole, Number(digits)))
+    .replace(/&#[xX]([0-9a-fA-F]+);/g, (whole, hex: string) =>
+      codePointOr(whole, Number.parseInt(hex, 16)),
+    );
+}
+
+/** 코드포인트 범위를 벗어나면 원문을 그대로 둔다. */
+function codePointOr(whole: string, codePoint: number): string {
+  if (!Number.isFinite(codePoint) || codePoint < 0 || codePoint > 0x10ffff) return whole;
+  try {
+    return String.fromCodePoint(codePoint);
+  } catch {
+    return whole;
+  }
+}
+
+/**
+ * 두 경로의 글자수를 견줄 수 있게 공백을 모두 턴다.
+ *
+ * 구조 API 쪽 단위는 이미 `trim()` 돼 있고 전문 쪽은 문단 개행·들여쓰기를 품고 있어,
+ * 공백을 그대로 두면 서식 차이가 「누락」으로 둔갑한다.
+ */
+export function comparableLength(text: string): number {
+  return text.replace(/\s/g, '').length;
+}
+
+/**
+ * 구조 API 로 뽑은 글자수와 전문(`getTextFileText`) 글자수를 대조해 누락을 판정한다.
+ *
+ * ★ **한 방향으로만 본다** — 전문이 구조보다 많을 때만 경고한다. 실측(2026-08-30):
+ *   - `결과보고서_A조.hwp` 구조 10,321자 · 전문 17,601자 → **41.4% 누락**(중첩표를 통째로 놓친다)
+ *   - `정책권고안_양식초안.hwpx` 구조 2,030자 · 전문 1,309자 → 구조 쪽이 **더 많다**
+ *   두 번째처럼 구조가 더 많은 경우는 누락이 아니다(전문 경로가 표를 덜 싣는다). PRD 의 AC 는
+ *   「차이가 5% 를 넘으면」이라 절대값으로 읽히지만, 그대로 하면 멀쩡한 hwpx 에 55% 누락 경고가
+ *   떠서 경고 자체가 무의미해진다. 그래서 방향을 하나로 좁혔다.
+ *
+ * @param structuralText 구조 API 단위를 이어 붙인 문자열
+ * @param rawTextFileText `getTextFileText()` 의 날 반환값
+ * @returns 누락이면 경고, 아니면 `null`
+ */
+export function checkMissingContent(
+  structuralText: string,
+  rawTextFileText: string,
+): ExtractWarning | null {
+  const fullText = decodeNumericEntities(unwrapTextFileText(rawTextFileText));
+  const structural = comparableLength(structuralText);
+  const full = comparableLength(fullText);
+  if (full === 0) return null;
+
+  const missing = full - structural;
+  if (missing <= 0 || missing / full <= MISSING_CONTENT_RATIO) return null;
+
+  const percent = ((missing / full) * 100).toFixed(1);
+  return {
+    kind: 'missing-content',
+    message:
+      `구조 API 로 뽑은 ${structural.toLocaleString('en-US')}자가 ` +
+      `전문 ${full.toLocaleString('en-US')}자보다 ${missing.toLocaleString('en-US')}자(${percent}%) 적습니다. ` +
+      '중첩표(표 안의 표)는 구조 API 가 놓칩니다.',
+    detail:
+      `structuralChars=${structural} textFileChars=${full} ` +
+      `missingChars=${missing} missingRatio=${(missing / full).toFixed(4)} ` +
+      `threshold=${MISSING_CONTENT_RATIO}`,
+  };
+}
+
 /**
  * HWP/HWPX 버퍼에서 단위를 뽑는다.
  *
@@ -169,6 +268,18 @@ export async function extractWithRhwp(
 
   const units = collectUnits(doc);
   const charCount = units.reduce((sum, unit) => sum + unit.text.length, 0);
+
+  // 누락 검사 — 전문 경로를 한 번 더 돌려 글자수를 견준다.
+  let rawTextFileText = '';
+  try {
+    rawTextFileText = doc.getTextFileText();
+  } catch {
+    rawTextFileText = '';
+  }
+  if (rawTextFileText.length > 0) {
+    const warning = checkMissingContent(units.map((unit) => unit.text).join('\n'), rawTextFileText);
+    if (warning) warnings.push(warning);
+  }
 
   return { units, warnings, charCount };
 }
