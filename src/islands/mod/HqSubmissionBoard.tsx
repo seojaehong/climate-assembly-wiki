@@ -6,6 +6,7 @@ import {
   subscribeHqSubmissions,
   type HqHistoryRow,
   type HqSubmissionRow,
+  CURRENT_SESSION_SLUG,
 } from '../../lib/hq-submissions';
 import {
   buildSubmissionReport,
@@ -567,14 +568,14 @@ export default function HqSubmissionBoard({
   const load = useCallback(async () => {
     if (!token) return;
     try {
-      const next = await fetchHqSubmissions(token);
+      const next = await fetchHqSubmissions(token, CURRENT_SESSION_SLUG);
       setRows(next);
       setFailed(null);
       setRefreshedAt(new Date());
       // 서버에 남은 종류 배정을 화면 상태로 되살린다. 없으면 조용히 넘어간다
       // (s12 미적용 환경에서도 보드 자체는 떠야 한다).
       try {
-        const kinds = await fetchSubmissionKinds(token);
+        const kinds = await fetchSubmissionKinds(token, CURRENT_SESSION_SLUG);
         setKindState((prev) => {
           const merged = new Map(prev);
           for (const row of kinds) {
@@ -878,7 +879,7 @@ export default function HqSubmissionBoard({
   const loadHistory = async () => {
     if (!token) return;
     try {
-      setHistory(await fetchHqSubmissionHistory(token));
+      setHistory(await fetchHqSubmissionHistory(token, CURRENT_SESSION_SLUG));
     } catch (error) {
       console.error('[HQ submissions] history failed', error);
       setHistory([]);
