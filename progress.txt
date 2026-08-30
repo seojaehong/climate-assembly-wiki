@@ -73,6 +73,25 @@ Started: Sun, Aug 30, 2026  7:46:30 PM
   보일 수 있다(20:22 에 `src/lib/parsers/rhwp-adapter.ts` 가 그렇게 나타났다).
   **내가 만들지 않은 미추적 파일은 지우지도 커밋하지도 말 것.** story 착수 전 `git status` 로
   다른 인스턴스가 그 story 파일을 이미 쓰고 있는지 먼저 확인한다.
+- **★ 파서 두 개는 npm 이 아니라 `vendor/` 에서 온다**(US-008). `package.json` 이
+  `file:./vendor/rhwp-core-0.8.4` · `file:./vendor/kordoc-4.12.0` 을 가리키고
+  `node_modules/{@rhwp/core,kordoc}` 은 그리로 향하는 **junction** 이다. 벤더 폴더를
+  건드릴 일이 생기면 `vendor/AGENTS.md` · `vendor/UPSTREAM.md` 를 먼저 읽을 것.
+- **★ `tsconfig.json` 의 `exclude` 에 있는 `"node_modules"` 는 최상위 하나만 가리킨다.**
+  프로젝트 안에 서드파티 사본을 두면 그 밑의 중첩 `@types/node` 까지 TS 루트 집합에 들어와
+  `tsc` 가 4GB 를 태우고 `FATAL ERROR: Ineffective mark-compacts` 로 죽는다(실측 약 170초).
+  새 폴더를 만들 때 `exclude` 를 함께 볼 것. `vitest.config.ts` 는 `include` 로 좁혀 놔 안전하다.
+- **★ `file:` 의존성 / junction 을 `rm -rf` 하지 마라.** MSYS 의 `rm -rf` 는 junction 안으로
+  들어가 링크가 가리키는 **원본**을 지운다. `lstat` 으로 갈라 링크는 `unlink`,
+  실디렉터리만 `rmSync({recursive:true})`.
+- **★ `.gitignore` 는 제외된 디렉터리 안의 파일을 `!` 로 되살리지 못한다.** 디렉터리를 먼저
+  풀고(`!a/b/`) 그 다음 내용을 푼다(`!a/b/**`). 그리고 그 블록은 **파일 맨 끝**이어야 한다 —
+  이 저장소는 아래쪽에 `dist_*/`·`dist.bak.*` 를 나중에 덧붙여 왔다.
+  확인은 `find <경로> -type f | git check-ignore --stdin` 이 아무것도 안 뱉는지 보는 것.
+- **★ `core.autocrlf=true` 다.** 바이트가 중요한 파일(서드파티 사본·픽스처)은 `.gitattributes`
+  에 `-text` 로 못박는다. `git add` 가 "LF will be replaced by CRLF" 경고를 뿜으면 신호다.
+- **★ JSON 을 문자열 치환으로 고칠 때 값은 `json.dumps(..., ensure_ascii=False)` 에 맡겨라.**
+  손으로 `\"` 를 적으면 위의 heredoc 역슬래시 함정과 겹쳐 파일이 깨진다(`prd.json` 을 한 번 깨뜨렸다).
 - **금지**: git push · main 머지 · 배포 · 운영 DB 쓰기 · 유료 API 호출.
 
 ---
@@ -365,4 +384,61 @@ Commit: e63a9e1 · 브랜치 ralph/parser-internalization
     **US-008(파서 라이브러리 벤더링)** 을 미커밋 상태로 추가해 뒀다. 지우지 않고 그대로 두고
     US-007 블록만 문자열 치환으로 고쳤다(`json.dumps` 로 통째로 다시 쓰면 남의 편집 서식이 날아간다).
     **그래서 이번 이터레이션은 COMPLETE 가 아니다** — US-008 이 `passes:false` 로 남아 있다.
+---
+
+## [2026-08-30 21:35] - US-008 파서 라이브러리 벤더링 — npm 의존을 끊는다
+Commit: c55435b · 브랜치 ralph/parser-internalization
+
+- `vendor/rhwp-core-0.8.4/`(7파일) · `vendor/kordoc-4.12.0/`(143파일) 신설 —
+  설치본과 `diff -r` 로 동일. `kordoc/node_modules` 만 뺐다(패키지 내용이 아니라 설치 산출물).
+- `package.json` 두 의존성을 `file:./vendor/...` 로. `.gitignore` 맨 끝에 allowlist.
+- `vendor/UPSTREAM.md`(출처·해시·패치 규약) · `vendor/AGENTS.md`(함께 고쳐야 하는 5군데·함정 3개) 신설.
+- `tsconfig.json` exclude 에 `"vendor"` · `.gitattributes` 에 `vendor/** -text` 추가.
+- `scripts/verify-parsers.mjs` 에 US-008 검사 3개 추가(25 → 28).
+
+- **실측 결과**
+  - `node scripts/verify-parsers.mjs` → **28 PASS · 0 FAIL (28/28)**. 기존 25개가
+    벤더 사본으로 그대로 통과한다 — 이것이 AC#6 의 증거다
+  - **삭제 → 복원** — `node_modules/{@rhwp/core,kordoc}` 을 지우고 `npm install` 하니
+    둘 다 **vendor 로 향하는 junction** 으로 되살아났다.
+    `require.resolve('kordoc')` → `vendor/kordoc-4.12.0/dist/index.cjs`,
+    `require.resolve('@rhwp/core/rhwp_bg.wasm')` → `vendor/rhwp-core-0.8.4/rhwp_bg.wasm`(7.7MB).
+    postinstall prune 8개 **697.4MB** 그대로 작동
+  - `find vendor -type f | git check-ignore --stdin` → **0건 / 150파일**
+  - `npm run build` **7916페이지** · `npx vitest run` **89파일 1,510테스트** · `npx tsc` **0**
+  - 커밋에 들어간 vendor 파일 152개(패키지 150 + AGENTS.md + UPSTREAM.md)
+
+- **다음 이터레이션을 위한 학습:**
+  - **★ 벤더링하면 `tsc` 가 힙 부족으로 죽는다 — 실제로 겪었다.** `tsconfig.json` 의
+    `exclude` 에 있는 `"node_modules"` 는 **최상위 하나만** 가리킨다. 벤더 폴더는 그 밖이라
+    TS 루트 집합에 통째로 들어오고, `npm install` 이 만든
+    `vendor/kordoc-4.12.0/node_modules/@types/node/**`(431개 `.ts`)까지 딸려와
+    `FATAL ERROR: Ineffective mark-compacts near heap limit`(4GB · 약 170초)로 끝났다.
+    `exclude` 에 `"vendor"` 를 넣으면 0초대로 통과한다 — `exclude` 는 루트 집합만 줄이고
+    `import` 로 딸려오는 `kordoc/dist/index.d.ts` 타입은 그대로 살아 있다.
+    `vitest.config.ts` 는 `include` 로 범위를 먼저 좁혀 놓아 영향이 없었다.
+  - **★ `file:` 의존성은 junction 이다. 재귀 삭제하면 벤더 원본이 날아간다.** MSYS `rm -rf` 는
+    junction 안으로 들어간다. `lstat` 으로 갈라 **링크는 `unlink`, 실디렉터리만 `rmSync(recursive)`**.
+    같은 이유로 postinstall prune 이 링크를 타고 `vendor/.../node_modules/sharp` 를 지운다
+    (설치 산출물이라 무해하고 `.gitignore` 의 `vendor/**/node_modules/` 가 추적을 막는다).
+  - **★ `.gitignore` 는 제외된 디렉터리 안의 파일을 `!` 로 되살리지 못한다.** 디렉터리
+    (`!vendor/kordoc-4.12.0/dist/`)를 먼저 풀고 내용(`!.../dist/**`)을 푼다. 그리고 그 블록은
+    **파일 맨 끝**에 있어야 한다 — 이 저장소는 아래쪽에 `dist_*/`·`dist.bak.*` 같은 광범위
+    규칙을 나중에 덧붙여 왔다. 확인은 `find vendor -type f | git check-ignore --stdin` 한 줄이다.
+  - **★ `core.autocrlf=true` 다.** `.gitattributes` 에 `vendor/** -text` 를 넣지 않으면
+    체크아웃할 때 `dist/*.js` 의 LF 가 CRLF 로 바뀌어 **업스트림 tarball 과 바이트가 갈린다**
+    (`UPSTREAM.md` 에 적은 integrity 대조가 무의미해진다). `git add` 가 경고를 90줄 뿜는다 —
+    그 경고를 무시하지 말 것.
+  - **integrity 해시는 벤더링 *전에* 뽑아라.** `file:` 로 바꾸는 순간 `package-lock.json` 의
+    해당 항목이 `{"resolved":"vendor/...","link":true}` 로 바뀌면서 sha512 가 사라진다.
+    잊었으면 `git show HEAD:package-lock.json` 으로 되찾는다. 이번 값은 `vendor/UPSTREAM.md` 에 있다.
+  - **kordoc 은 `exports` 로 서브패스를 막는다.** `require.resolve('kordoc/dist/index.cjs')` 는
+    `ERR_PACKAGE_PATH_NOT_EXPORTED` 다(`kordoc/package.json` 도 마찬가지). **bare 지정자를 써라.**
+    rhwp 는 `exports` 가 없어서 `@rhwp/core/rhwp_bg.wasm` 서브패스가 통하는 것이다 —
+    업스트림이 `exports` 를 넣는 날 어댑터가 깨진다.
+  - **★ heredoc 역슬래시 함정을 이번에도 밟았다.** 역슬래시 두 개(`\\n`)를 담은 python 을
+    heredoc 으로 넘기면 한 개(`\n`)로 줄어 앵커 매칭이 실패한다. `chr(92)` 로 조립하거나,
+    아예 JSON 값은 손으로 이스케이프하지 말고 **`json.dumps(..., ensure_ascii=False)`** 에 맡길 것
+    (한 번 손으로 이스케이프했다가 `prd.json` 을 깨뜨려 `git checkout` 으로 되돌렸다).
+  - **PRD 가 다 끝났다.** US-001~008 전부 `passes: true` 다.
 ---

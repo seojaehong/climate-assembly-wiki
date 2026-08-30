@@ -134,8 +134,8 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "실측 28 PASS · 0 FAIL (28/28) — 기존 25개(US-003~007)가 벤더 사본으로 그대로 통과하고, 벤더링이 조용히 되돌려지는 것을 막는 검사 3개를 더했다(package.json 이 file: 를 가리키는가 · 벤더 폴더에 그 버전과 LICENSE 가 있는가 · import 가 실제로 vendor 안으로 풀리는가). 복사는 설치본과 diff -r 로 동일 — rhwp 7파일 · kordoc 143파일(kordoc/node_modules 만 뺐다, 설치 산출물이라). AC#4 삭제·복원 실측 — node_modules 의 두 패키지를 지우고 npm install 하니 둘 다 vendor 로 향하는 junction 으로 되살아났고, @rhwp/core/rhwp_bg.wasm(7.7MB) 서브패스까지 vendor 안으로 풀린다. postinstall prune 8개 697.4MB 그대로 작동. AC#3 gitignore — 13행의 dist/ 규칙이 kordoc dist 를 먹던 것을 파일 맨 끝 allowlist 로 풀었다(디렉터리 !.../dist/ 를 먼저, 그 다음 내용 !.../dist/** — git 은 제외된 디렉터리 안의 파일을 되살리지 못한다). find vendor -type f | git check-ignore --stdin → 0건 / 150파일. npm run build 7916페이지 · npx vitest run 89파일 1,510테스트 · npx tsc 0. ★AC 편차 두 가지 — ① AC#1 「LICENSE·NOTICE·THIRD_PARTY 를 반드시 포함」은 rhwp 에서 달성 불가다. 업스트림 tarball 이 LICENSE(MIT) 하나만 배포하고 NOTICE·THIRD_PARTY 가 애초에 없다(package.json 의 files 필드로 확인). 없는 파일을 지어내지 않고 kordoc 만 3종을 갖춘 채로 두었으며 verify 검사도 그렇게 갈랐다. ② AC#3 의 명령 경로가 wiki/vendor/... 인데 저장소 루트가 곧 wiki 라 vendor/... 로 읽어 실행했다. ★AC 밖이지만 하지 않으면 깨지는 것 두 개 — (a) tsconfig.json 의 exclude 에 vendor 를 넣어야 한다. tsconfig 의 node_modules 항목은 최상위 하나만 가리켜서, npm 이 vendor 안에 만든 중첩 @types/node 까지 TS 루트 집합에 들어오고 tsc 가 4GB 를 태우다 FATAL ERROR: Ineffective mark-compacts 로 죽는다(약 170초). 실제로 겪고 고쳤다. (b) .gitattributes 에 vendor 를 -text 로. 이 저장소는 core.autocrlf=true 라 그것 없이는 체크아웃할 때 dist/*.js 의 LF 가 CRLF 로 바뀌어 UPSTREAM.md 에 적은 integrity 대조가 무의미해진다. ★수법 — node_modules/kordoc 은 vendor 로 향하는 링크다. MSYS 의 rm -rf 는 junction 안으로 들어가 벤더 원본을 지우므로, lstat 으로 갈라 링크는 unlink 하고 실디렉터리만 재귀 삭제했다."
     }
   ]
 }
