@@ -18,7 +18,8 @@ await (await import('@rhwp/core')).default({ module_or_path: await readFile(wasm
 「역슬래시 이스케이프 2문자」로 보이는 것의 정체다. 첫 글자와 끝 글자가 `"` 이고 **통째로 `JSON.parse` 가 된다**(두 대상 파일 모두 성공).
 - 정책권고안 hwpx : raw 2,261자 → parse 후 **2,002자**
 - A조 결과보고서 hwp : raw 28,504자 → parse 후 **25,320자**
-→ `JSON.parse` 를 1순위로, 실패할 때만 리터럴 `` `
+→ `JSON.parse` 를 1순위로, 실패할 때만 리터럴 `
+` `
 ` 치환을 폴백으로 둔다.
 
 ### HTML 엔티티는 parse 이후에도 남는다
@@ -63,6 +64,9 @@ Started: Sun, Aug 30, 2026  7:46:30 PM
 - **커밋 제외 — prebuild 타임스탬프 churn**: 빌드를 돌리면 `index.md`(Last generated) ·
   `log.md` · `public/workshop-graph/data/{agenda-surface,kb-agenda-surface}.json`(generated_at)이
   매번 바뀐다. story 와 무관하므로 커밋에 넣지 않는다(US-001 커밋도 뺐다).
+- **★ heredoc 에 역슬래시를 담지 마라**: `cat > f <<'EOF'` 로 따옴표를 씌워도 이 환경에서는
+  `\\` 가 `\` 로 줄어든다. 정규식·이스케이프가 든 소스는 **python 으로 써라**
+  (`chr(92)` 로 조립하면 확실하다). 쓴 뒤 `sed -n` 으로 눈으로 확인할 것.
 - **`rm -rf` 는 거부된다**: 임시 디렉터리 정리는 `git clean -fd <경로>` 로 한다.
 - **★ 동시 실행 주의 (2026-08-30 20:26 실측)**: `ralph.sh` 루프가 **2개**(pid 30373 20:04 시작 ·
   pid 30836 20:05 시작) 같은 브랜치에 동시에 쓰고 있었다. 다른 인스턴스가 만든 미추적 파일이
@@ -166,4 +170,40 @@ Commit: 5c92e12 · 브랜치 ralph/parser-internalization
     지웠고(`git clean` 으로 추정) `.scratch/probe*.mjs` 를 쓰며 커밋 2건(402224b·616713f)을 얹었다.
     **대책 — 검사가 끝나면 즉시 커밋해 창을 좁힌다. 남의 미커밋 파일·`.scratch/` 는 건드리지 않는다.**
     `prd.json` 을 쓰기 전에 `passes` 를 다시 읽어 이미 true 면 덮어쓰지 않는다.
+---
+
+## [2026-08-30 20:40] - US-004 rhwp 누락 검사 — 두 경로 글자수 대조
+Commit: f087ada · 브랜치 ralph/parser-internalization
+
+- `src/lib/parsers/rhwp-adapter.ts` 에 순수 함수 4개 추가 export
+  - `unwrapTextFileText` · `decodeNumericEntities` · `comparableLength` · `checkMissingContent`
+  - `extractWithRhwp` 가 `doc.getTextFileText()` 를 한 번 더 돌려 대조하고 경고를 `warnings` 에 넣는다
+- `src/lib/parsers/rhwp-adapter.test.ts` 신설 (16테스트) — 전부 WASM 없이 돈다.
+  저장소 밖 `00_입력자료` 를 읽는 시험은 넣지 않았다(CI 에서 깨진다). 실제 문서 숫자는 실측 스크립트 몫.
+
+- **실측 결과**
+  - `결과보고서_발화자추가_A조.hwp` — 구조 **10,321자** vs 전문 **17,601자** → **7,280자(41.4%) 누락**,
+    `missing-content` 경고 **1건** 발생 → **AC#5 PASS**
+  - `정책권고안_(양식_초안).hwpx` — 구조 **2,030자** vs 전문 **1,309자** → 경고 **0건**
+  - 전문 언랩은 두 문서 모두 `JSON.parse` 성공(raw 28,504→25,320 · 2,261→2,002).
+    엔티티 디코드 후 25,320→25,287 · 2,002→1,972. 디코드 뒤 남은 엔티티 **0**
+  - `npx tsc --noEmit` **0** · `npx vitest run` **88파일 1,497테스트 통과**
+  - `astro build` 생략 — 아직 아무도 import 하지 않아 빌드 그래프가 그대로다(US-002·US-003 과 같은 판단)
+
+- **다음 이터레이션을 위한 학습:**
+  - **★ 「차이 5%」는 절대값이면 안 된다.** 전문 경로가 구조보다 **적은** 경우가 실제로 있다
+    (hwpx 2,030 > 1,309). 절대값으로 재면 멀쩡한 파일에 55% 누락 경고가 뜬다.
+    **한 방향(전문 > 구조)으로만 경고**하도록 좁혔고 근거를 함수 JSDoc 에 박아 뒀다.
+  - **공백을 양쪽에서 털고 세라.** 구조 단위는 `trim()` 돼 있고 전문은 개행·들여쓰기를 품는다.
+    안 털면 A조가 49.9%, hwpx 가 27% 로 나와 숫자가 서식에 흔들린다.
+  - **★ Bash heredoc 이 역슬래시를 먹는다.** `<<'TS'` 로 따옴표를 씌워도 `\\r\\n` 이 `\r\n` 으로
+    줄어들어 정규식·문자열 리터럴이 조용히 망가진다(이번에 두 번 당했다 — `.replace(/\\r\\n/g, ...)` 가
+    실제 개행이 박힌 채로 나와 `Unterminated string literal` 이 됐다).
+    **역슬래시가 든 파일은 heredoc 말고 python 으로 써라**(`chr(92)` 로 조립하면 확실하다).
+  - **동시 실행이 계속되고 있다.** 이 이터레이션 중 다른 루프가 US-003 을 커밋(5c92e12)하면서
+    내 워킹트리 편집을 덮었고, 동시에 US-005(`kordoc-adapter.ts`)·US-007(`scripts/verify-parsers.mjs`)를
+    쓰고 있었다. **대책 — 검사 끝나면 즉시 커밋, `prd.json` 쓰기 전에 `passes` 재확인(이번엔 false 확인 후 기록),
+    남의 미커밋 파일은 손대지 않는다.**
+  - US-007 의 `verify-parsers.mjs` 는 이 경고를 그대로 확인하면 된다 — 기준 숫자는
+    **A조 41.4% 경고 1건 · hwpx 경고 0건**이다.
 ---
