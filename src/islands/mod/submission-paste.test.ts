@@ -136,3 +136,125 @@ describe('상한 상수', () => {
     expect(MAX_SUBMISSION_ROWS).toBe(200);
   });
 });
+
+// ── 2026-08-30 ── 8.29 통짜 6건 이후 보강분 ────────────────────────
+
+import {
+  LONG_ROW_CHARS,
+  overlongRowIndexes,
+  splitOverlongRows,
+  splitSubmissionLines,
+  splittableRowIndexes,
+} from './submission-panel-logic';
+import { isStaleBundle, parseRevisionManifest } from './deploy-revision';
+
+describe('splitSubmissionLines — 「한 줄」의 정의 (서버 SQL 과 같은 규칙)', () => {
+  it('\r\n · \n 을 모두 자른다', () => {
+    expect(splitSubmissionLines('가\r\n나\n다')).toEqual(['가', '나', '다']);
+  });
+  it('앞뒤 공백을 없애고 빈 줄을 버린다', () => {
+    expect(splitSubmissionLines('  가  \n\n\t\n 나 ')).toEqual(['가', '나']);
+  });
+  it('★ 줄바꿈이 없으면 한 줄이다 — 나누지 않는다는 뜻', () => {
+    expect(splitSubmissionLines('한 문장뿐')).toEqual(['한 문장뿐']);
+    expect(splitSubmissionLines('끝에만 줄바꿈\n')).toEqual(['끝에만 줄바꿈']);
+  });
+  it('빈 문자열은 0줄', () => {
+    expect(splitSubmissionLines('   \n\n ')).toEqual([]);
+  });
+});
+
+const long = (n: number) => '가'.repeat(n);
+
+describe('긴 칸 판정 — 경고를 언제 띄우는가', () => {
+  it(`${LONG_ROW_CHARS}자 이하는 조용하다`, () => {
+    expect(overlongRowIndexes([row(long(LONG_ROW_CHARS))])).toEqual([]);
+  });
+  it(`${LONG_ROW_CHARS}자를 넘으면 잡는다`, () => {
+    expect(overlongRowIndexes([row('짧음'), row(long(LONG_ROW_CHARS + 1))])).toEqual([1]);
+  });
+  it('앞뒤 공백은 길이에 안 넣는다', () => {
+    expect(overlongRowIndexes([row(`   ${long(10)}   `)])).toEqual([]);
+  });
+  it('★ 줄바꿈 없는 긴 한 문장은 「나눌 수 있는 칸」이 아니다 — 버튼을 주지 않는다', () => {
+    const rows = [row(long(700))];
+    expect(overlongRowIndexes(rows)).toEqual([0]);
+    expect(splittableRowIndexes(rows)).toEqual([]);
+  });
+  it('길고 줄바꿈이 있으면 나눌 수 있는 칸이다', () => {
+    const rows = [row(`${long(200)}\n${long(200)}`)];
+    expect(splittableRowIndexes(rows)).toEqual([0]);
+  });
+});
+
+describe('splitOverlongRows — 긴 칸 나누기 (강제하지 않는다)', () => {
+  it('나눌 게 없으면 아무 일도 안 한다', () => {
+    const rows = [row('짧음'), row('짧음2')];
+    const out = splitOverlongRows(rows);
+    expect(out.applied).toBe(false);
+    expect(out.rows).toBe(rows);
+  });
+
+  it('★ 8.29 3분과 3조 꼭지① 모양 — 1칸이 13칸으로', () => {
+    const blob = Array.from({ length: 13 }, (_, i) => `${'가'.repeat(30)} ${i}`).join('\r\n');
+    const out = splitOverlongRows([row(blob)]);
+    expect(out.applied).toBe(true);
+    expect(out.before).toBe(1);
+    expect(out.after).toBe(13);
+    expect(out.rows.every((r) => !/\r?\n/.test(r.content))).toBe(true);
+  });
+
+  it('★ 나뉜 조각은 그 자리에 들어가고 다른 행은 순서도 내용도 그대로다', () => {
+    const rows = [row('앞'), row(`${long(160)}\n${long(160)}`), row('뒤')];
+    const out = splitOverlongRows(rows);
+    expect(contents(out.rows)[0]).toBe('앞');
+    expect(contents(out.rows)[out.rows.length - 1]).toBe('뒤');
+    expect(out.rows.length).toBe(4);
+  });
+
+  it('rationale 은 첫 조각만 물려받는다 (복제 금지)', () => {
+    const out = splitOverlongRows([{ content: `${long(160)}\n${long(160)}`, rationale: '근거' }]);
+    expect(out.rows[0].rationale).toBe('근거');
+    expect(out.rows[1].rationale).toBe('');
+  });
+
+  it('★ 나누면 상한을 넘을 때 — 조용히 잘라내지 않고 통째로 포기한다', () => {
+    const rows = [row(Array.from({ length: 40 }, () => long(20)).join('\n'))];
+    const out = splitOverlongRows(rows, CAP); // CAP = 30
+    expect(out.applied).toBe(false);
+    expect(out.overCap).toBe(true);
+    expect(out.rows).toBe(rows); // 글자가 한 자도 사라지지 않았다
+  });
+
+  it('★ 멱등 — 나눈 결과를 다시 넣어도 그대로다 (서버 분해와 이중으로 걸려도 무해)', () => {
+    const once = splitOverlongRows([row(`${long(160)}\n${long(160)}\n${long(160)}`)]);
+    const twice = splitOverlongRows(once.rows);
+    expect(twice.applied).toBe(false);
+    expect(contents(twice.rows)).toEqual(contents(once.rows));
+  });
+});
+
+describe('배포 감지 — 열어 둔 화면이 옛 코드인가', () => {
+  const A = 'a'.repeat(40);
+  const B = `${'a'.repeat(39)}b`;
+
+  it('매니페스트를 해석한다', () => {
+    expect(parseRevisionManifest({ schemaVersion: 1, sourceCommit: A })).toBe(A);
+  });
+  it('schema·형식이 틀리면 null (dev 서버 HTML·404 포함)', () => {
+    expect(parseRevisionManifest({ schemaVersion: 2, sourceCommit: A })).toBeNull();
+    expect(parseRevisionManifest({ schemaVersion: 1, sourceCommit: 'abc' })).toBeNull();
+    expect(parseRevisionManifest('<!doctype html>')).toBeNull();
+    expect(parseRevisionManifest(null)).toBeNull();
+  });
+  it('★ 배포가 바뀌면 잡는다', () => {
+    expect(isStaleBundle(A, B)).toBe(true);
+  });
+  it('같으면 뜨지 않는다', () => {
+    expect(isStaleBundle(A, A)).toBe(false);
+  });
+  it('★ 모르면 조용히 있는다 — 근거 없는 「새로고침하세요」가 더 나쁘다', () => {
+    expect(isStaleBundle(null, A)).toBe(false);
+    expect(isStaleBundle(A, null)).toBe(false);
+  });
+});

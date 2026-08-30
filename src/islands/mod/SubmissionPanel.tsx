@@ -9,7 +9,10 @@ import {
   type Topic,
 } from '../../lib/deliberation';
 import {
-  FINALIZE_CONFIRM_MESSAGE,
+  // ★ FINALIZE_CONFIRM_MESSAGE 는 여기서 쓰지 않는다 — 최종 제출 확인은 window.confirm 이
+  //   아니라 아래 모달이고, 문안이 제목·본문으로 나뉜다. 상수를 가져다 쓰지 않으면서
+  //   import 만 남아 있었다(죽은 참조).
+  LONG_ROW_CHARS,
   MAX_SUBMISSION_ROWS,
   addRow,
   canFinalize,
@@ -17,14 +20,23 @@ import {
   isDirty,
   isEditable,
   moveRow,
+  overlongRowIndexes,
   pickRestoredRows,
   removeRow,
   rowsFromItems,
+  splitOverlongRows,
   splitPastedRows,
+  splittableRowIndexes,
   submissionBadge,
   toSaveItems,
   type EditorRow,
 } from './submission-panel-logic';
+import {
+  REVISION_POLL_MS,
+  fetchServedRevision,
+  isStaleBundle,
+  runningRevision,
+} from './deploy-revision';
 import { SUBMISSION_GUIDE, topicAnchorId } from './submission-guide';
 import {
   buildSubmissionReport,
@@ -90,6 +102,81 @@ function announceSubmissionChanged() {
   window.dispatchEvent(new CustomEvent(SUBMISSION_CHANGED));
 }
 
+/**
+ * 우리가 시킨 새로고침인가.
+ *
+ * 미저장분이 있으면 `beforeunload` 가 「나가시겠습니까」를 띄운다. 그건 조가 실수로
+ * 탭을 닫을 때를 위한 것이지, **우리가 눌러 달라고 한 새로고침**을 막으라는 게 아니다.
+ * 겁주는 창이 뜨면 조는 새로고침을 안 한다 — 그러면 옛 번들 그대로 남는다.
+ *
+ * 안전한 이유 — 미저장분은 이미 sessionStorage 초안에 들어가 있고(TopicSection 의
+ * 보관 useEffect), 새로 열릴 때 `pickRestoredRows` 가 서버 내용과 견줘 되살린다.
+ * sessionStorage 는 **같은 탭의 새로고침을 건너 산다.**
+ */
+let suppressUnloadGuard = false;
+
+/**
+ * 돌고 있는 번들이 서버의 현재 배포보다 낡았는가.
+ * 확실할 때만 true — 근거 없는 「새로고침하세요」는 입력 중인 조에게 해롭다.
+ */
+function useStaleBundle(): boolean {
+  const [stale, setStale] = useState(false);
+  useEffect(() => {
+    const running = runningRevision();
+    if (!running) return; // 번들에 커밋이 안 박혔다(dev 등) — 감지를 접는다
+    let alive = true;
+    const check = async () => {
+      const served = await fetchServedRevision();
+      if (alive && isStaleBundle(running, served)) setStale(true);
+    };
+    void check();
+    const timer = setInterval(() => void check(), REVISION_POLL_MS);
+    // ★ 탭으로 돌아온 순간을 놓치면 안 된다 — 8.29에 조가 한 일이 정확히 그것이고,
+    //   배경 탭에서는 브라우저가 타이머를 늘려 잡는다.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void check();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
+  return stale;
+}
+
+/** 새 배포 알림 띠. 화면 맨 위에 붙어 따라다닌다 — 조는 아래쪽 입력칸을 보고 있다. */
+function StaleBundleBanner() {
+  const reload = () => {
+    suppressUnloadGuard = true;
+    window.location.reload();
+  };
+  return (
+    <div
+      role="status"
+      className="sticky top-0 z-30 -mx-1 flex flex-wrap items-center gap-3 rounded-2xl border-2 border-[#B5651D] bg-[#FFF4D6] px-4 py-3 shadow-sm print:hidden"
+    >
+      <span className="text-[22px]" aria-hidden="true">🔄</span>
+      <span className="min-w-[220px] flex-1">
+        <span className="block text-[18px] font-extrabold text-[#6B4B00]">
+          화면이 갱신되었습니다
+        </span>
+        <span className="block text-[15px] font-semibold text-[#6B4B00]">
+          새로고침해야 새 기능이 켜집니다. <b>쓰던 글은 그대로 남습니다.</b>
+        </span>
+      </span>
+      <button
+        type="button"
+        onClick={reload}
+        className="h-12 shrink-0 rounded-xl bg-[#B5651D] px-5 text-[17px] font-bold text-white"
+      >
+        새로고침
+      </button>
+    </div>
+  );
+}
+
 /** 꼭지 번호 뱃지 — ①②③. 4개를 넘으면 숫자로 떨어진다. */
 const ORDINAL_MARKS = ['①', '②', '③', '④', '⑤', '⑥'];
 function ordinalMark(n: number): string {
@@ -108,6 +195,8 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
   const [confirmFinalize, setConfirmFinalize] = useState(false);
   const [reopening, setReopening] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  /** 「이대로 두겠다」고 조가 답한 긴 칸 조합. 새 덩어리가 생기면 다시 묻는다. */
+  const [longNoticeAnswered, setLongNoticeAnswered] = useState<string | null>(null);
 
   const dirty = isDirty(rows, baseline);
   // 미저장 입력 임시 보관함 — 조·꼭지마다 따로 둔다.
@@ -115,6 +204,31 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
   const badge = submissionBadge(loaded?.status ?? null);
   const topicOpen = topic.status === 'open';
   const editable = loaded != null && isEditable(loaded.status) && topicOpen;
+
+  // ── 한 칸에 여러 사람 말이 든 것 같을 때 (2차 방어선) ────────────
+  // 1차(붙여넣기 분해)가 옛 번들·드래그앤드롭으로 새어도 여기서 한 번 더 잡힌다.
+  // ★ 강제로 나누지 않는다 — 정말 긴 발언 한 건일 수 있다. 묻고 조가 고른다.
+  const overlong = overlongRowIndexes(rows);
+  const splittable = splittableRowIndexes(rows);
+  const longSignature = `${overlong.join(',')}|${splittable.join(',')}`;
+  const showLongNotice =
+    editable && overlong.length > 0 && longNoticeAnswered !== longSignature;
+
+  const handleSplitLong = () => {
+    const out = splitOverlongRows(rows);
+    if (!out.applied) {
+      setToast(
+        out.overCap
+          ? `나누면 ${MAX_SUBMISSION_ROWS}줄을 넘어 그대로 두었습니다 — 글자는 하나도 지우지 않았습니다. 몇 줄을 덜어 낸 뒤 다시 눌러 주세요.`
+          : '나눌 줄바꿈이 없습니다 — 한 문장이 길 뿐인 것 같습니다.',
+      );
+      setLongNoticeAnswered(longSignature);
+      return;
+    }
+    setRows(out.rows);
+    setLongNoticeAnswered(null);
+    setToast(`${out.before}칸을 ${out.after}칸으로 나눴습니다. 저장을 눌러 주세요.`);
+  };
 
   useEffect(() => {
     if (!toast) return;
@@ -169,6 +283,9 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
   useEffect(() => {
     if (!dirty || !editable) return;
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      // 우리가 띄운 「새로고침」 버튼으로 나가는 길만 열어 준다 — 초안은 이미 보관돼 있고
+      // 새로 열릴 때 되살아난다. 그 길까지 막으면 조가 새로고침을 안 하고 옛 번들이 남는다.
+      if (suppressUnloadGuard) return;
       e.preventDefault();
       e.returnValue = '';
     };
@@ -409,6 +526,41 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
                 </div>
               ))}
             </div>
+
+            {showLongNotice ? (
+              <div
+                role="status"
+                className="rounded-xl border-2 border-[#B5651D] bg-[#FFF4D6] px-4 py-3"
+              >
+                <p className="text-[17px] font-extrabold text-[#6B4B00]">
+                  {splittable.length > 0
+                    ? '여러 분 말씀이 한 칸에 들어간 것 같습니다. 나눠 드릴까요?'
+                    : '한 칸이 깁니다 — 한 분 말씀이 맞는지만 봐 주세요.'}
+                </p>
+                <p className="mt-1 text-[15px] font-semibold text-[#6B4B00] tr-num">
+                  {`${LONG_ROW_CHARS}자가 넘는 칸 ${overlong.length}개`}
+                  {splittable.length > 0 ? ` · 줄 단위로 나눌 수 있는 칸 ${splittable.length}개` : ''}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {splittable.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={handleSplitLong}
+                      className="h-12 rounded-xl bg-[#B5651D] px-5 text-[16px] font-bold text-white"
+                    >
+                      줄 단위로 나누기
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setLongNoticeAnswered(longSignature)}
+                    className="h-12 rounded-xl border-2 border-[#B5651D] bg-white px-5 text-[16px] font-bold text-[#B5651D]"
+                  >
+                    이대로 두기
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             {editable ? (
               <>
@@ -801,6 +953,9 @@ export default function SubmissionPanel({
 }) {
   const [topics, setTopics] = useState<Topic[] | null>(null);
   const [topicsFailed, setTopicsFailed] = useState(false);
+  // 열어 둔 화면이 옛 코드인가 — 8.29 통짜 6건의 유력 원인이다. 조가 입력하는 화면이라
+  // 여기(작성 탭)에 띄운다. 다른 탭에도 띄우려면 ModConsole 로 올려야 한다(이번 범위 밖).
+  const staleBundle = useStaleBundle();
 
   const loadTopics = useCallback(async () => {
     if (!code) return;
@@ -845,6 +1000,7 @@ export default function SubmissionPanel({
   if (topics.length === 0) {
     return (
       <div className="space-y-5">
+        {staleBundle ? <StaleBundleBanner /> : null}
         <SubmissionGuide />
         <div className="rounded-2xl border border-[#DCE7EE] bg-[#F5F8FB] px-5 py-8 text-center">
           <p className="text-[17px] font-bold text-[#1F4E79]">작성 화면 준비 중입니다.</p>
@@ -862,6 +1018,7 @@ export default function SubmissionPanel({
 
   return (
     <div className="space-y-5">
+      {staleBundle ? <StaleBundleBanner /> : null}
       <SubmissionGuide />
       <TopicJump topics={topics} />
       {topics.map((topic) => (

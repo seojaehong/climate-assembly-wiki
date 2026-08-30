@@ -95,6 +95,47 @@ try {
     return null;
   });
 
+  // ── 2차 방어선 — 붙여넣기 분해가 새어도 잡는가 (2026-08-30) ─────────
+  //
+  // 8.29 통짜 6건은 paste 이벤트를 타지 않은 것으로 보인다(옛 번들에는 onPaste 가 아예
+  // 없었다). 그 경로를 재현하려면 **paste 이벤트 없이** 한 칸에 여러 줄을 넣어야 한다 —
+  // fill() 이 정확히 그것이다(input 이벤트만 발생).
+  const BLOB_LINES = Array.from({ length: 12 }, (_, i) => `${'가'.repeat(35)} ${i}`);
+  let blobBefore = 0;
+
+  await check('★ paste 없이 한 칸에 통짜로 넣으면 경고가 뜬다 (옛 번들·드래그앤드롭 경로)', async () => {
+    blobBefore = await area.locator('textarea').count();
+    const box = area.locator('textarea:not([readonly])').last();
+    await box.click();
+    await box.fill(BLOB_LINES.join('\n')); // paste 이벤트가 발생하지 않는다
+    await page.waitForTimeout(800);
+    const value = await box.inputValue();
+    must(value.includes('\n'), '한 칸에 줄바꿈째로 들어가지 않았다 — 재현 실패');
+    const body = await area.innerText();
+    must(/한 칸에 들어간 것 같습니다/.test(body), '300자 경고가 안 떴다');
+    return `한 칸 ${value.length}자 · 경고 표시`;
+  });
+
+  await check('★ 「줄 단위로 나누기」를 누르면 칸이 실제로 나뉜다', async () => {
+    await area.getByRole('button', { name: '줄 단위로 나누기' }).click();
+    await page.waitForTimeout(900);
+    const after = await area.locator('textarea').count();
+    must(
+      after === blobBefore + BLOB_LINES.length - 1,
+      `칸이 ${blobBefore} → ${after} (기대 ${blobBefore + BLOB_LINES.length - 1})`,
+    );
+    const values = await area.locator('textarea').evaluateAll((els) => els.map((e) => e.value));
+    for (const line of BLOB_LINES) must(values.includes(line), `「…${line.slice(-6)}」이 제 칸에 없다`);
+    must(!values.some((v) => v.includes('\n')), '줄바꿈이 남은 칸이 있다');
+    return `1칸 → ${BLOB_LINES.length}칸 · 칸 ${blobBefore} → ${after}`;
+  });
+
+  await check('나눈 뒤에는 경고가 사라진다', async () => {
+    const body = await area.innerText();
+    must(!/한 칸에 들어간 것 같습니다/.test(body), '나눴는데 경고가 남아 있다');
+    return null;
+  });
+
   await check('★ 저장 버튼을 누르지 않았다 — 서버에 아무것도 안 갔다', async () => {
     const saving = await page.getByRole('button', { name: /^저장( 중…)?$/ }).count();
     must(saving > 0, '저장 버튼이 보이지 않는다');
