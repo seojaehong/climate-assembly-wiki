@@ -78,6 +78,10 @@ scripts/.cache/
 
 # Internal subagent memory (not public)
 .claude/
+
+# Local workflow state (machine-specific paths and session counters)
+.bkit/
+
 build_output.txt
 # Root package-lock.json is tracked for reproducible Node 20 installs.
 dist_backup_tmp

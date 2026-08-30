@@ -9,6 +9,10 @@ import {
   isLastTenSeconds,
   shouldLogOnStop,
   formatRemaining,
+  minutesToMs,
+  formatPresetLabel,
+  SPEECH_PRESET_MINUTES,
+  SESSION_PRESET_MINUTES,
   type TimerState,
   parseSessionMinutes,
   stepSessionMinutes,
@@ -182,6 +186,23 @@ describe('formatRemaining', () => {
   });
   it('음수는 00:00으로 clamp', () => {
     expect(formatRemaining(-500)).toBe('00:00');
+  });
+});
+
+describe('timer presets', () => {
+  it('keeps the approved speech and session minute values', () => {
+    expect(SPEECH_PRESET_MINUTES).toEqual([0.5, 1, 2, 3]);
+    expect(SESSION_PRESET_MINUTES).toEqual([5, 10, 15, 20, 25, 40]);
+  });
+
+  it('converts the 30-second speech preset to an integer duration', () => {
+    expect(minutesToMs(0.5)).toBe(30_000);
+    expect(Number.isInteger(minutesToMs(0.5))).toBe(true);
+  });
+
+  it('labels sub-minute presets in seconds and minute presets in minutes', () => {
+    expect(formatPresetLabel(0.5)).toEqual({ value: '30', unit: '초' });
+    expect(formatPresetLabel(1)).toEqual({ value: '1', unit: '분' });
   });
 });
 
