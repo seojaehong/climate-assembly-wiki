@@ -100,8 +100,8 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "실문서 드라이런 9/9 PASS. 라우팅 — 정책권고안 hwpx 164단위·2,707자(US-003 과 동일) · 결과.hwp(1.9MB) 380단위·3,080자 · 0829_조별산출물_전수.docx 865단위·78,081자(US-005 와 동일). 거절 — .doc(진짜 docx 바이트여도 확장자로 막음, 「다른 이름으로 저장해 .docx 로 올려 주세요」 포함) · .pdf 등 미지원 확장자 · 20,971,521바이트 too-large · 정확히 20MB(20,971,520)는 통과(경계) · .hwp 인 척하는 쓰레기 바이트도 던지지 않고 unsupported. vitest 11개 추가 → 89파일 1,510테스트 통과. tsc 0. ★AC 편차 없음. 다만 **AC#4 의 20MB 한도가 US-004 의 증거 문서를 막는다** — '★20260613 … _발화자 추가_A조.hwp' 는 119,689,216바이트(114.1MiB)라 진입점에서 too-large 로 거절된다. PRD 가 말한 「측정에서 죽은 119MB」가 바로 그 파일인데, 어댑터를 직접 부르면 842단위가 나온다(US-003·004 실측). 즉 한도는 AC 대로 지켰고, 그 결과 **US-007 의 누락 검사는 extractDocument 가 아니라 extractWithRhwp 로 직접 해야 한다**. 판단 순서는 확장자→크기→엔진(어차피 거절할 파일에 크기 경고를 먼저 씌우면 「.docx 로 저장해 주세요」 안내가 가린다). 어댑터가 던지면 진입점이 삼켜 unsupported 로 바꾼다 — extractWithRhwp 는 new HwpDocument 를 감싸지 않아 실제로 던진다. ★수법 — index.ts 는 어댑터를 상대경로로 값 import 하므로 esbuild `transform` 으로는 못 불러온다. `build({bundle:true, platform:'node', format:'esm', packages:'external'})` 로 말아 node_modules/.cache 에 쓰고 pathToFileURL 로 import 하면 bare 지정자(kordoc·@rhwp/core)가 그대로 풀린다. astro build 는 생략 — 아직 아무도 import 하지 않아 빌드 그래프가 그대로다(US-002~005 와 같은 판단)."
     },
     {
       "id": "US-007",

@@ -273,3 +273,43 @@ Commit: 965810d · 브랜치 ralph/parser-internalization
     `IRCell.text`/`IRCell.blocks`)이 kordoc 에 반복된다. 새 필드를 쓸 때 d.ts 주석에서
     「…있을 때만 채워지며」를 찾아 **폴백 자리가 따로 있는지 먼저 확인할 것**
 ---
+
+## [2026-08-30 20:56] - US-006 extractDocument 통합 진입점
+Commit: 2f041cf · 브랜치 ralph/parser-internalization
+
+- `src/lib/parsers/index.ts` 신설 — `extractDocument(buffer, filename)` · `planExtraction` ·
+  `extensionOf` · `MAX_BYTES` export. 판단 순서는 **확장자 → 크기 → 엔진**이고 그 이유를 파일
+  머리 JSDoc 에 박아 뒀다(어차피 거절할 파일에 크기 한도를 먼저 씌우면 「.docx 로 저장해 주세요」
+  안내가 크기 경고에 가린다).
+- `src/lib/parsers/index.test.ts` 신설 (11테스트) — 거절 경로는 엔진을 부르기 전에 끝나므로
+  WASM 도 kordoc 도 필요 없다. 실제 문서는 읽지 않는다(이 폴더 규칙).
+- `src/lib/parsers/AGENTS.md` 갱신 — index.ts 로딩 예외 · 진입점 규칙 3가지.
+
+- **실측 결과** (실문서 드라이런 **9/9 PASS**, 임시 스크립트로 돌리고 지웠다)
+  - 라우팅 — 정책권고안 hwpx **164단위·2,707자**(US-003 과 정확히 동일) ·
+    `결과.hwp`(1.9MB) **380단위·3,080자** · `0829_조별산출물_전수.docx` **865단위·78,081자**(US-005 와 동일).
+    모든 단위의 `provenance.engine` 이 기대한 엔진과 일치.
+  - 거절 — `.doc`(진짜 docx 바이트를 `.doc` 이름으로 넣어도 막힌다) · `.pdf` ·
+    20,971,521바이트 too-large · **정확히 20MB(20,971,520)는 통과**(경계) ·
+    `.hwp` 인 척하는 쓰레기 바이트도 던지지 않고 `unsupported`.
+  - `npx tsc --noEmit` **0** · `npx vitest run` **89파일 1,510테스트 통과**
+  - `astro build` 생략 — 아직 아무도 import 하지 않아 빌드 그래프가 그대로다.
+
+- **다음 이터레이션을 위한 학습:**
+  - **★ 20MB 한도가 US-004 의 증거 문서를 막는다.** `★20260613 … _발화자 추가_A조.hwp` 는
+    **119,689,216바이트(114.1MiB)** 다 — PRD 가 말한 「측정에서 죽은 119MB」가 바로 이 파일이고,
+    어댑터를 직접 부르면 842단위가 나온다. **US-007 의 누락 검사는 `extractDocument` 가 아니라
+    `extractWithRhwp` 로 직접 해야 한다.** 진입점으로 `.hwp` 라우팅을 보이고 싶으면
+    `★20260613 기후시민회의 의제숙의워크숍 결과.hwp`(1.9MB · 380단위)를 쓴다.
+  - **★ `index.ts` 는 esbuild `transform` 으로 못 불러온다.** 상대경로 값 import 가
+    `./rhwp-adapter` 그대로 남아 Node ESM 이 확장자 없이는 못 찾는다.
+    **`build({ bundle: true, platform: 'node', format: 'esm', packages: 'external' })`** 로 말아
+    `node_modules/.cache/verify-parsers/index.mjs` 에 쓰고 `pathToFileURL` 로 import 하면
+    상대 import 는 안으로 말리고 bare 지정자(`kordoc`·`@rhwp/core`)는 밖에 남아 풀린다(9/9 로 확인).
+    **US-007 의 `verify-parsers.mjs` 는 `loadAdapter`(transform)와 이 방식을 함께 가져야 한다.**
+  - **어댑터는 실제로 던진다.** `extractWithRhwp` 는 `new HwpDocument(bytes)` 를 감싸지 않아
+    쓰레기 바이트에 예외가 난다(실측: 「유효하지 않은 파일: 지원하지 않는 포맷입니다」).
+    진입점이 try/catch 로 삼켜 `unsupported` 로 바꾼다 — 「던지지 않는다」는 계약을 진입점이 지킨다.
+  - 동시 실행 계속됨 — 이 이터레이션 중 다른 루프가 `965810d`(US-005 캡션 후속)·`2f3c65d` 를 얹었다.
+    내 vitest 숫자 1,510 은 그 2테스트를 포함한 값이다.
+---
