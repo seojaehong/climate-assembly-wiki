@@ -1,3 +1,53 @@
 # Ralph Progress Log
 Started: Sun, Aug 30, 2026  7:46:30 PM
 ---
+
+## Codebase Patterns
+(모든 이터레이션이 먼저 읽는다. story 개별 사정은 아래 로그에 적을 것)
+
+- **의존성 설치**: `npm install --omit=optional` **금지**. 트리 전체에 걸려 rollup·esbuild·
+  lightningcss 네이티브 바이너리까지 빠지고 `astro build` 가
+  `Cannot find module '@rollup/rollup-win32-x64-msvc'` 로 죽는다. 평범한 `npm install` 을 쓰고,
+  무거운 것은 `postinstall` 의 `scripts/prune-kordoc-optionals.mjs` 가 지운다(~697MB).
+- **`sharp` 는 astro 것**이다(이미지 서비스). 최상위 `sharp`·`@img` 를 지우면
+  `Rollup failed to resolve import "sharp"` 로 빌드가 죽는다. kordoc 은 ^0.35 를 요구해
+  `node_modules/kordoc/node_modules/` 아래 사본이 따로 생기고, 지워도 되는 건 그 중첩 사본뿐.
+- **Node 20 포터블 필수**: 매 명령 앞에 `export PATH="$HOME/tools/node-v20.18.0-win-x64:$PATH"`.
+  Node 24 에서는 astro build 가 출력 없이 죽는다.
+- **검사 3종**: `npx tsc --noEmit -p tsconfig.json` · `npx vitest run`(86파일 1473테스트) ·
+  `npx astro build`(7916 페이지, 약 60초).
+- **OneDrive EPERM**: node_modules 를 지우는 코드는 재시도를 감쌀 것. npm 자체도 cleanup 단계에서
+  EPERM 을 뱉는데, 그 때 패키지 디렉터리의 package.json 만 지워지고 `.node` 파일이 남아
+  "디렉터리는 있는데 MODULE_NOT_FOUND" 인 상태가 만들어진다. 이러면 `npm install` 을 다시 돌린다.
+- **검증 규약**: 숫자로 낸다("단위 164개·200자 초과 0개"), "정상 동작 확인" 은 검증이 아니다.
+  기존 예시 `scripts/verify-server-split.mjs`·`verify-name-reparse.mjs`. 후자는 규칙을 .mjs 로
+  베끼지 않고 **esbuild 로 .ts 를 그 자리에서 변환해 import** 한다 — 새 스크립트도 이 방식.
+- **금지**: git push · main 머지 · 배포 · 운영 DB 쓰기 · 유료 API 호출.
+
+---
+
+## [2026-08-30 20:20] - US-001 파서 의존성 버전 고정 설치
+Commit: (아래 feat 커밋) · 브랜치 ralph/parser-internalization
+
+- `@rhwp/core` 0.8.4 · `kordoc` 4.12.0 을 캐럿 없이 정확한 버전으로 고정 설치
+- `scripts/prune-kordoc-optionals.mjs` 신설 + package.json 에 `postinstall` 등록
+- `scripts/AGENTS.md` 신설 — 설치·sharp·Node·EPERM 함정 기록
+
+- **실측 결과**
+  - 설치 검사 12/12 PASS (버전 2 · package.json 정확버전 2 · 무거운 optional 부재 5 · 빌드 네이티브 존재 3)
+  - prune 8개 제거 · **697.4MB** 회수 (transformers 220 · onnxruntime-node 283 ·
+    onnxruntime-web 128 · pdfjs-dist 36 · pdfium 11 · kordoc 중첩 sharp/@img 19)
+  - import smoke: rhwp export 8개 · kordoc export 75개
+  - `npx tsc --noEmit` 0 · `npx vitest run` 86파일 1473테스트 통과 · `npx astro build` 7916페이지 성공
+
+- **다음 이터레이션을 위한 학습:**
+  - **PRD 의 AC 두 개가 서로 모순이었다.** AC#2 「`npm install --omit=optional` 로 설치」 와
+    AC#4 「astro build 통과」 는 동시에 참일 수 없다(위 Codebase Patterns 참조). AC 를 고쳐 쓰지 않고
+    의도(무거운 optional 부재 + 빌드 통과)를 postinstall prune 으로 달성하고 notes 에 편차를 남겼다.
+    **뒤 story 의 AC 도 실측과 어긋날 수 있다 — 실측을 믿고, 편차는 notes 에 적는다.**
+  - kordoc export 75개 · rhwp export 8개. US-003/005 어댑터를 쓸 때 API 이름을 먼저 덤프해 볼 것.
+  - CI(`.github/workflows/deploy.yml`)와 Cloudflare 는 `npm ci` 가 아니라 `npm install` 을 쓴다
+    (`.npmrc` 에 이유가 적혀 있다). postinstall 은 양쪽 모두에서 돈다.
+  - `automation/` 은 별도 node_modules 를 갖는다. 스크립트가 playwright·supabase-js 를 쓸 때
+    `../automation/node_modules/...` 절대경로 import 를 쓰는 것이 이 저장소 관례.
+---

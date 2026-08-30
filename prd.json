@@ -15,8 +15,8 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "설치 12/12 PASS · prune 8개 697.4MB 회수 · tsc 0 · vitest 1473 통과 · astro build 7916페이지. ★AC 편차 — AC#2 의 `npm install --omit=optional` 은 AC#4(astro build 통과)와 양립 불가능함을 실측으로 확인했다. 그 플래그는 트리 전체에 걸려 rollup 네이티브까지 빼고 빌드가 \"Cannot find module @rollup/rollup-win32-x64-msvc\" 로 죽는다. 대신 평범한 npm install + postinstall prune(scripts/prune-kordoc-optionals.mjs)으로 AC#3(무거운 optional 부재)을 문자 그대로 달성했다. 또 최상위 sharp 는 kordoc 이 아니라 astro 이미지 서비스의 것이라 지울 수 없어(지우면 Rollup failed to resolve import \"sharp\") kordoc 중첩 사본만 지운다."
     },
     {
       "id": "US-002",
