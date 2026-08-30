@@ -183,3 +183,63 @@ describe('pickRestoredRows — 탭을 옮겼다 와도 미저장분이 남는다
     expect(pickRestoredRows('[{"엉뚱":1}]', server)).toBeNull();
   });
 });
+
+// ── 2026-08-30 ── 거짓 단언 끝내기 + 서버 분해 알림 ─────────────────
+
+import { readFileSync } from 'node:fs';
+import { saveOutcomeMessage } from './submission-panel-logic';
+
+describe('★ 확인 문구는 화면에 실제로 나가는 것이어야 한다', () => {
+  // 예전에는 이 상수를 **아무도 렌더하지 않았다.** 모달은 제 문자열을 따로 갖고 있었고,
+  // 위 「확인 문구」 테스트는 화면에 안 나가는 것을 재고 있었다. 그 거짓 단언을 끝낸다.
+  const panel = readFileSync(new URL('./SubmissionPanel.tsx', import.meta.url), 'utf8');
+
+  it('모달이 상수를 그대로 렌더한다', () => {
+    expect(panel).toContain('{FINALIZE_CONFIRM_MESSAGE}');
+  });
+
+  it('★ 같은 문장을 화면에 다시 적어 두지 않았다 (적으면 상수가 또 죽는다)', () => {
+    expect(panel).not.toContain('최종 제출하면 잠깁니다. 잘못 눌렀다면');
+  });
+
+  it('조 안내문이 인용한 문장과 글자까지 같다', () => {
+    // src/pages/mod-help/team.astro 가 이 문장을 그대로 인용한다. 갈라지면 조가 본
+    // 화면과 안내문이 어긋난다.
+    const help = readFileSync(new URL('../../pages/mod-help/team.astro', import.meta.url), 'utf8');
+    expect(help).toContain(FINALIZE_CONFIRM_MESSAGE);
+  });
+});
+
+describe('saveOutcomeMessage — 서버가 한 일을 조에게 알린다', () => {
+  it('아무것도 안 나눴으면 평소 문구', () => {
+    expect(saveOutcomeMessage({ split: 0 })).toContain('저장되었습니다');
+    expect(saveOutcomeMessage(null)).toContain('저장되었습니다');
+    expect(saveOutcomeMessage(undefined)).toContain('저장되었습니다');
+  });
+
+  it('옛 RPC(필드 없음)를 만나도 평소 문구로 돌아간다', () => {
+    expect(saveOutcomeMessage({})).toContain('저장되었습니다');
+  });
+
+  it('서버가 나눴으면 늘어난 칸 수를 말한다', () => {
+    expect(saveOutcomeMessage({ split: 12 })).toContain('12개 늘었습니다');
+  });
+
+  it(`★ 상한 초과로 못 나눴으면 그 사실과 다음 할 일을 말한다`, () => {
+    const msg = saveOutcomeMessage({ split: 0, split_skipped_over_cap: true });
+    expect(msg).toContain(`${MAX_SUBMISSION_ROWS}개를 넘어`);
+    expect(msg).toContain('그대로 저장했습니다');
+    expect(msg).toContain('다시 뜹니다'); // 뭘 하면 되는지
+  });
+
+  it('★ 상한 초과가 나눔 안내보다 우선한다', () => {
+    expect(saveOutcomeMessage({ split: 5, split_skipped_over_cap: true })).toContain('넘어');
+  });
+
+  it('★ 저장 핸들러가 RPC 반환값을 실제로 읽는다 (버리면 알림 자체가 불가능)', () => {
+    const panel = readFileSync(new URL('./SubmissionPanel.tsx', import.meta.url), 'utf8');
+    expect(panel).toContain('const result = await submissionSave(');
+    expect(panel).toContain('setToast(saveOutcomeMessage(result))');
+    expect(panel).toContain('result?.split_skipped_over_cap');
+  });
+});
