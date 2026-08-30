@@ -33,3 +33,32 @@ export PATH="$HOME/tools/node-v20.18.0-win-x64:$PATH"
 
 저장소가 OneDrive 안에 있어 `node_modules` 삭제가 EPERM 으로 실패한다. 파일을 지우는 스크립트는
 재시도를 넣을 것(`rmSync` 의 `maxRetries` 만으로는 부족해 바깥에서 한 번 더 감싼다).
+
+## `verify-*.mjs` 규약
+
+- **숫자로 낸다.** 「정상 동작 확인」은 검증이 아니다. 마지막 줄은 `N PASS · M FAIL (N/N)`.
+- **DB 에 쓰지 않는다.** 원본 문서·백업본은 읽기만 한다.
+- **규칙을 `.mjs` 에 베껴 적지 않는다.** esbuild 로 `.ts` 를 그 자리에서 변환해 불러온다.
+  사본이 갈라지면 스크립트가 「자기 자신」을 검증하게 된다.
+- **기대값은 임계치가 아니라 실측 상수로 박는다**(`SQL_MEASURED`·`SPLIT_MEASURED` 꼴).
+  「100개 이상」만 재면 164 가 163 이 돼도 안 걸린다. 상수 옆에 **언제·무엇으로 쟀는지**를 적는다.
+
+## ★ `verify-parsers.mjs` — 모듈을 두 번 불러오지 말 것
+
+진입점(`src/lib/parsers/index.ts`)과 어댑터(`rhwp-adapter.ts`)를 **따로** 불러오면 같은
+모듈의 사본이 둘 생긴다. rhwp 는 WASM 초기화 가드를 모듈 스코프에 두므로 사본마다 따로
+초기화된다. 그래서 하나의 `esbuild.build({ stdin, bundle: true, packages: 'external' })` 로
+필요한 것을 **전부 재수출**해 한 번에 말아 올린다:
+
+```js
+"export { extractDocument, planExtraction, MAX_BYTES } from './src/lib/parsers/index';"
+"export { extractWithRhwp } from './src/lib/parsers/rhwp-adapter';"
+```
+
+`resolveDir` 는 저장소 루트, 결과는 `node_modules/.cache/verify-parsers/bundle.mjs` 에 쓰고
+`pathToFileURL()` 로 import 한다. 상대 import 는 안으로 말리고 bare 지정자는 밖에 남는다.
+
+## 저장소 밖 실문서 — 읽기 전용
+
+`../00_입력자료/` · `../10_작업산출물/` 의 원본은 **옮기지도 고치지도 않는다.**
+114MB `.hwp` 도 rhwp 로 0.6초에 읽히므로 크기 때문에 건너뛸 이유는 없다(`--fast` 는 선택).

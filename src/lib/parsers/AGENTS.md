@@ -37,7 +37,12 @@
 - **표 캡션은 두 자리로 온다.** 중첩 구조가 있는 캡션만 `captionBlocks` 로 오고, 평범한
   글자 캡션은 `IRTable.caption` 문자열로만 온다. 한쪽만 보면 「표 1. …」 이 조용히 사라진다
 - **`parse()` 가 성공해도 `result.warnings`(`TRUNCATED_TABLE`·`SKIPPED_OLE` 등)는 현재 버린다.**
-  우리 `ExtractWarningKind` 4종에 대응이 없어서다 — US-007 에서 `missing-content` 로 옮길지 검토할 것
+  우리 `ExtractWarningKind` 4종에 대응이 없어서다.
+  ★ **US-007 에서 「지금은 옮기지 않는다」로 판단했다.** 근거 — 갖고 있는 실문서
+  (`0829_조별산출물_전수.docx`)가 kordoc 경고를 **0개** 낸다. 옮겨도 그것이 옳게 옮겨졌는지
+  숫자로 확인할 방법이 없고, 확인 못 하는 경고는 이 프로젝트가 싫어하는 「조용한」 동작이다.
+  **되살릴 조건** — 경고가 실제로 뜨는 docx 표본이 하나라도 생기면 그때 `TRUNCATED_TABLE` 을
+  `missing-content` 로 올리고 `scripts/verify-parsers.mjs` 에 그 문서로 검사를 더한다.
 - `parse()` 는 성공/실패를 `success` 로 가른다. 실패의 `code` 는 `ErrorCode` union —
   `ENCRYPTED`·`DRM_PROTECTED` 만 우리 `encrypted` 로 옮기고 나머지는 `unsupported` 다
 
@@ -66,4 +71,8 @@
 - `*.test.ts` 는 **실제 문서를 읽지 않는다**(원본이 저장소 밖 `00_입력자료`·`10_작업산출물`).
   대역 블록·대역 문서로 규칙만 못박는다
 - 실제 문서 숫자는 `node scripts/verify-parsers.mjs` 가 낸다. `N PASS · M FAIL (N/N)` 로 끝난다
+  (2026-08-30 기준 **25/25**, 2.8초 — US-003~007 의 실측이 전부 이 하나에 모여 있다)
 - Node 20 포터블 필수 — `export PATH="$HOME/tools/node-v20.18.0-win-x64:$PATH"`
+- ★ **파서는 저장 규칙(`islands/mod/submission-panel-logic.ts`)을 부르지 않는다.** 문서에서
+  단위를 뽑는 일과 저장할 때 줄을 나누는 일은 **다른 규칙**이고, 섞이면 8.29 데이터 해석이
+  움직인다. `verify-parsers.mjs` 의 US-007 검사가 이 두 세계가 붙는 순간 실패한다
