@@ -75,6 +75,39 @@ describe('collectKordocUnits', () => {
     expect(units.map((u) => u.text)).toEqual(['첫 줄', '둘째 줄']);
   });
 
+  it('표 캡션을 잃지 않는다 — 평범한 글자 캡션은 caption 문자열로만 온다', () => {
+    const units = collectKordocUnits([
+      {
+        type: 'table',
+        table: {
+          rows: 1,
+          cols: 1,
+          hasHeader: false,
+          caption: '표 1. 조별 산출물',
+          cells: [[cell('내용')]],
+        },
+      },
+    ]);
+    expect(units.map((u) => u.text)).toEqual(['내용', '표 1. 조별 산출물']);
+  });
+
+  it('captionBlocks 가 있으면 평탄화 사본(caption)을 겹쳐 담지 않는다', () => {
+    const units = collectKordocUnits([
+      {
+        type: 'table',
+        table: {
+          rows: 1,
+          cols: 1,
+          hasHeader: false,
+          caption: '표 1. 조별 산출물',
+          captionBlocks: [{ type: 'paragraph', text: '표 1. 조별 산출물' }],
+          cells: [[cell('내용')]],
+        },
+      },
+    ]);
+    expect(units.map((u) => u.text)).toEqual(['내용', '표 1. 조별 산출물']);
+  });
+
   it('중첩 리스트 항목(children)까지 파고든다', () => {
     const units = collectKordocUnits([
       { type: 'list', text: '상위', children: [{ type: 'list', text: '하위' }] },

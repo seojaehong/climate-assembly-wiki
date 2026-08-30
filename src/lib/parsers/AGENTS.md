@@ -29,6 +29,10 @@
   포맷이 아니다 — `provenance.page` 는 kordoc 이 준 블록에만 채운다
 - `IRCell.blocks` 가 있으면 그쪽이 정본이고 `IRCell.text` 는 그것의 평탄화 사본이다.
   둘 다 담으면 같은 글이 두 번 세어진다
+- **표 캡션은 두 자리로 온다.** 중첩 구조가 있는 캡션만 `captionBlocks` 로 오고, 평범한
+  글자 캡션은 `IRTable.caption` 문자열로만 온다. 한쪽만 보면 「표 1. …」 이 조용히 사라진다
+- **`parse()` 가 성공해도 `result.warnings`(`TRUNCATED_TABLE`·`SKIPPED_OLE` 등)는 현재 버린다.**
+  우리 `ExtractWarningKind` 4종에 대응이 없어서다 — US-007 에서 `missing-content` 로 옮길지 검토할 것
 - `parse()` 는 성공/실패를 `success` 로 가른다. 실패의 `code` 는 `ErrorCode` union —
   `ENCRYPTED`·`DRM_PROTECTED` 만 우리 `encrypted` 로 옮기고 나머지는 `unsupported` 다
 

@@ -45,7 +45,13 @@ function pushBlock(block: IRBlock, units: ExtractedUnit[]): void {
         }
       }
     }
-    for (const child of block.table.captionBlocks ?? []) pushBlock(child, units);
+    // 표 캡션. 중첩 구조가 있는 캡션만 captionBlocks 로 오고, 평범한 글자 캡션은
+    // `caption` 문자열로만 온다 — 둘 다 받지 않으면 「표 1. …」 이 조용히 사라진다.
+    if (block.table.captionBlocks && block.table.captionBlocks.length > 0) {
+      for (const child of block.table.captionBlocks) pushBlock(child, units);
+    } else if (block.table.caption && block.table.caption.trim()) {
+      units.push({ text: block.table.caption, provenance });
+    }
   }
 
   for (const child of block.children ?? []) pushBlock(child, units);
