@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { CLEAR_CONFIRM_PHRASE, clearAllSubmissions } from '../../lib/hq-submissions';
+import { CLEAR_CONFIRM_PHRASE, clearAllSubmissions,
+  CURRENT_SESSION_SLUG,
+} from '../../lib/hq-submissions';
 
 /**
  * 조별 산출물 전체 비우기 — 8.29 오전 연습 값을 오후 본 숙의 전에 치운다.
@@ -32,7 +34,7 @@ export default function ClearAllPanel({ token, onCleared }: { token: string; onC
     setFailed(null);
     setMessage(null);
     try {
-      const result = await clearAllSubmissions(token, phrase.trim());
+      const result = await clearAllSubmissions(token, phrase.trim(), CURRENT_SESSION_SLUG);
       setMessage(
         `${result.cleared_items}건을 비웠습니다. 지운 문장은 보관돼 있어 필요하면 되살릴 수 있습니다.`,
       );
