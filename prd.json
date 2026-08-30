@@ -116,6 +116,24 @@
         "Typecheck passes"
       ],
       "priority": 7,
+      "passes": true,
+      "notes": "실측 25 PASS · 0 FAIL (25/25) · 2.8초. `scripts/verify-parsers.mjs` 를 US-003~007 실측의 단일 창구로 넓혔다. ★AC 편차 하나 — AC#1 「신설」은 이미 US-005 가 만들어 둔 파일이라 확장으로 읽었다(그 파일 머리말 자체가 「US-004·006 의 실측이 US-007 에서 여기로 합쳐진다」고 적고 있었다). 숫자 — US-003 hwpx 164단위(본문 84·셀 80)·2,707자·200자 초과 0·provenance 결측 0(section/para 164/164, 셀 control/cellPara 80/80). US-004 A조 hwp(119,689,216바이트) 를 어댑터로 직접 불러 missing-content 1건(10,321 vs 17,601자·41.4%), 842단위는 그대로 나옴; hwpx 경고 0. US-005 docx 865단위·78,081자·치환문자 0·표본 3/3·거절 3종. US-006 진입점이 어댑터 직접 호출과 같은 수(hwpx 164/2,707 · docx 865/78,081)를 내고, 결과.hwp(1.8MB) 380단위, .doc 안내문구, .pdf·내용이 어긋난 .hwp unsupported, 20MB 경계(20,971,520 통과 / 20,971,521 too-large), 114MB 증거문서 too-large. US-007 회귀 — latest.json **641건**·63,444자를 splitSubmissionLines 에 돌려 **50건이 쪼개져 848행**, 공백 제외 48,238자 무손실, 멱등, 규칙 원문 대조 통과. ★「기존과 같음」의 근거 — `git diff main -- src/islands/mod/submission-panel-logic.ts` 가 **0줄**이다(줄 분해 규칙은 이 브랜치에서 한 자도 안 바뀌었다). 그래서 실측 상수 50/848 이 곧 파서 도입 전 값이고, 검사는 그 값이 지금도 나오는지를 묻는다. 여기에 더해 파서 3개(index·rhwp·kordoc)가 submission-panel-logic 을 import 하지 않음을 못박아, 두 세계가 붙는 순간 실패하게 했다. ★수법 — 진입점·어댑터·줄 분해 규칙을 esbuild `build({stdin, bundle:true, packages:'external'})` 로 **한 번에** 재수출해 말아 올린다. 따로 불러오면 같은 모듈의 사본이 둘 생겨 rhwp WASM 초기화 가드가 갈라진다. ★판단 기록 — kordoc 자신의 `result.warnings`(TRUNCATED_TABLE 등)를 missing-content 로 옮기는 건 **지금은 하지 않는다**. 가진 실문서가 그 경고를 0개 내서 옳게 옮겼는지 숫자로 확인할 수 없다 — 확인 못 하는 경고는 이 프로젝트가 싫어하는 조용한 동작이다. 되살릴 조건을 src/lib/parsers/AGENTS.md 에 적었다. npx tsc 0 · npx vitest run 89파일 1,510테스트 통과. astro build 는 생략 — 스크립트도 어댑터도 사이트가 import 하지 않아 빌드 그래프가 그대로다."
+    },
+    {
+      "id": "US-008",
+      "title": "파서 라이브러리 벤더링 — npm 의존을 끊는다",
+      "description": "As a 운영자, I want rhwp·kordoc 을 저장소 안에 두기를 원한다 so that npm 에서 사라지거나 우리가 직접 패치해야 할 때 행사가 멈추지 않는다",
+      "acceptanceCriteria": [
+        "wiki/vendor/rhwp-core-0.8.4/ 와 wiki/vendor/kordoc-4.12.0/ 에 각 npm 패키지 내용을 그대로 복사한다. LICENSE·NOTICE·THIRD_PARTY 를 반드시 포함한다(둘 다 MIT)",
+        "package.json 의 두 의존성을 정확버전에서 file:./vendor/rhwp-core-0.8.4 · file:./vendor/kordoc-4.12.0 으로 바꾼다",
+        ".gitignore 에 vendor allowlist 를 추가하되 ★ 뒤에 오는 광범위 무시 규칙에 다시 먹히지 않는지 `git check-ignore -v wiki/vendor/rhwp-core-0.8.4/package.json` 으로 실제 확인한다(이 저장소에서 실제로 겪은 함정이다)",
+        "node_modules/@rhwp/core 와 node_modules/kordoc 을 지운 뒤 npm install 하면 vendor 경로에서 복원된다. 복원 후 두 패키지가 다시 존재함을 확인한다",
+        "wiki/vendor/UPSTREAM.md 신설 — 업스트림 저장소 URL · 정확한 버전 · package-lock 의 integrity 해시 · 라이선스 · '우리가 패치하면 무엇을 왜 고쳤는지 여기 적는다'는 규약 · rhwp 는 WASM 바이너리라 진짜 소스 수정은 GitHub Rust 저장소가 필요하다는 사실 명시",
+        "scripts/verify-parsers.mjs 가 그대로 통과한다(벤더 경로로 바뀌어도 어댑터가 동작한다는 증거)",
+        "npm run build 통과 · 전체 vitest 통과",
+        "Typecheck passes"
+      ],
+      "priority": 8,
       "passes": false,
       "notes": ""
     }
