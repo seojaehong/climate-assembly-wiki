@@ -127,3 +127,42 @@ Commit: (아래 feat 커밋) · 브랜치 ralph/parser-internalization
     `index.md`(Last generated) · `log.md` · `public/workshop-graph/data/*-agenda-surface.json`
     (generated_at)이 매번 바뀐다. US-001 커밋도 이것들을 뺐다. story 파일만 골라 커밋한다.
 ---
+
+## [2026-08-30 20:33] - US-003 rhwp 어댑터 — 구조 API 로 셀 문단 추출
+Commit: 5c92e12 · 브랜치 ralph/parser-internalization
+
+- `src/lib/parsers/rhwp-adapter.ts` 신설 (174줄) — `extractWithRhwp(buffer)` export
+  - `getSectionCount`·`getParagraphCount`·`getParagraphLength`·`getTextRange` 로 본문 문단
+  - `getTableDimensions`·`getCellParagraphCount`·`getCellParagraphLength`·`getTextInCell` 로 셀 문단
+  - **순회를 `20_스크립트/parsers/measurement/rhwp_units.mjs` 와 한 줄씩 같게 유지했다.**
+    판정 숫자(164단위·최대 95자)가 그 순회에 묶여 있어 「개선」하면 근거가 깨진다.
+
+- **실측 결과** (Node 20 · 핀 고정된 `@rhwp/core` 0.8.4, wiki/node_modules)
+  - `정책권고안_(양식_초안).hwpx` **164단위**(본문 84 · 셀 80) · 2,707자 · 중앙값 10 · 최대 95 ·
+    **200자 초과 0개** · warnings 0 · 161ms → **AC「100개 이상 · 200자 초과 0」 PASS**
+  - provenance 결측 **0** — section/para 164/164, 셀단위 control/cell 80/80, engine≠rhwp 0, 공백만 단위 0
+  - `결과보고서_발화자추가_A조.hwp` **842단위**(본문 73 · 셀 769) · 12,655자 · 최대 204 · 200자 초과 2
+  - **저장된 실측과 단위 수가 정확히 일치** — `measurement/rhwp_units.json` 은
+    `f_form.hwpx` 164 / `d_speakers.hwp` 842. 글자수만 2,718→2,707 · 12,829→12,655 로 적은데,
+    우리가 단위마다 `trim()` 하기 때문이다(저장본은 untrimmed).
+  - `npx tsc --noEmit` **0** · `npx vitest run` **86파일 1473테스트 통과**
+  - `astro build` 생략 — 아직 아무도 import 하지 않아 빌드 그래프가 그대로다(US-002 와 같은 판단)
+
+- **다음 이터레이션을 위한 학습:**
+  - **★ README 표의 「rhwp 1,256단위」를 기준으로 삼지 마라.** 같은 파일의 저장된 실측은
+    **842단위**다(최대 204·200자↑ 2 는 표와 일치). 1,256 은 다른 파이프라인(줄 분해) 수치로 보인다.
+    US-004 의 대조 기준은 표가 아니라 **직접 낸 숫자**여야 한다.
+  - **WASM 초기화 — 폴백 분기는 타지 않았다.** `require.resolve('@rhwp/core/rhwp_bg.wasm')`
+    서브패스가 그대로 풀린다(0.8.4 의 exports 가 열어 둠). 어댑터의 `dirname(resolve(...))` 폴백은
+    보험으로만 남긴다.
+  - **★ esbuild 변환본을 `data:` URL 로 import 하면 안 된다.** `verify-name-reparse.mjs` 가 쓰는
+    그 수법은 **의존성이 없는 파일에만** 통한다. 어댑터는 `import('@rhwp/core')` 와
+    `createRequire(import.meta.url)` 를 쓰는데, data: URL 에서는 bare specifier 가 해석되지 않고
+    `import.meta.url` 도 그 data URL 이 된다. **변환 결과를 저장소 안 실제 `.mjs` 로 써서
+    `pathToFileURL()` 로 import 할 것.** US-007 의 `verify-parsers.mjs` 가 이 방식을 써야 한다.
+  - `path.win32` 백슬래시를 heredoc 안 정규식(`/\/g`)에 쓰면 셸이 먹는다. `pathToFileURL` 을 쓸 것.
+  - **동시 실행이 실제로 일어났다.** 이 이터레이션 도중 다른 루프가 `rhwp-adapter.ts`(20:22 작성)를
+    지웠고(`git clean` 으로 추정) `.scratch/probe*.mjs` 를 쓰며 커밋 2건(402224b·616713f)을 얹었다.
+    **대책 — 검사가 끝나면 즉시 커밋해 창을 좁힌다. 남의 미커밋 파일·`.scratch/` 는 건드리지 않는다.**
+    `prd.json` 을 쓰기 전에 `passes` 를 다시 읽어 이미 true 면 덮어쓰지 않는다.
+---

@@ -49,8 +49,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "실측 164단위·200자 초과 0개 PASS. 순회는 측정 스크립트 measurement/rhwp_units.mjs 와 한 줄씩 같게 유지했고, 저장된 실측 rhwp_units.json 과 단위 수가 정확히 일치한다 — f_form.hwpx 164(우리 2,707자 / 저장본 2,718자) · d_speakers.hwp 842(12,655 / 12,829). 글자수 차이는 우리가 단위마다 trim() 하기 때문. provenance 결측 0(section/para 164/164, 셀단위 control/cell 80/80), 공백만 단위 0, engine!=rhwp 0. .hwp 도 동작(842단위·최대 204자·200자 초과 2개 — README 표와 일치). WASM 은 require.resolve(\"@rhwp/core/rhwp_bg.wasm\") 서브패스가 그대로 풀려 폴백 분기는 타지 않았다. npx tsc 0 · npx vitest run 86파일 1473테스트 통과. astro build 는 생략 — 아직 아무도 import 하지 않아 빌드 그래프가 그대로다. ★AC 편차 없음. ★README 표의 「1,256단위」는 이 순회의 수가 아니다(저장 실측은 842) — 다른 파이프라인 수치로 보이니 뒤 story 에서 기준으로 삼지 말 것."
     },
     {
       "id": "US-004",
