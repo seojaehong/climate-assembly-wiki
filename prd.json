@@ -83,8 +83,8 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "실측 7/7 PASS (scripts/verify-parsers.mjs). 0829_조별산출물_전수.docx → 865단위 · 78,081자 · 중앙값 69 · 최대 1,658 · 214ms · 경고 0 · 치환문자(U+FFFD) 0 · 한글 든 단위 865/865 · 표본 문자열 3/3 보존. HWPX·HWP·비문서 바이트 3종 모두 units 0 · charCount 0 · unsupported 1개로 거절. vitest 8개(collectKordocUnits 6 · warningForFailure 2) 추가 → 전체 88파일 1,497테스트 통과. tsc 0. ★AC 편차 두 가지 — ① AC#2 「page 를 채운다」는 DOCX 에서 달성 불가다. kordoc 은 DOCX 블록에 pageNumber 를 주지 않는다(실측 730블록 중 0개, d.ts 도 「페이지 번호를 매기지 않는 포맷(DOCX 등)에서는 없고」라고 적는다). pageNumber 를 준 블록에만 page 를 채우도록 구현하고 시험으로 못박았다. ② AC#4 「암호화 문서면 encrypted 로 실패시킨다」는 암호 걸린 docx 표본이 없어 실문서로 확인하지 못했다. ParseFailure→ExtractWarning 매핑 함수(warningForFailure)를 export 해 ENCRYPTED·DRM_PROTECTED→encrypted, 그 밖→unsupported 를 vitest 로 확인했다. ★실측 발견 — 동기 판정기 detectFormat·isHwpxFile 은 zip 서명만 봐서 DOCX 를 \"hwpx\" 라고 답한다. 그것으로 걸렀다면 워드 파일을 전부 거절했을 것이다. 비동기 detectZipFormat() 을 써야 한다."
     },
     {
       "id": "US-006",

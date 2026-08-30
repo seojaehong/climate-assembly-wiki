@@ -207,3 +207,50 @@ Commit: f087ada · 브랜치 ralph/parser-internalization
   - US-007 의 `verify-parsers.mjs` 는 이 경고를 그대로 확인하면 된다 — 기준 숫자는
     **A조 41.4% 경고 1건 · hwpx 경고 0건**이다.
 ---
+
+## [2026-08-30 20:45] - US-005 kordoc 어댑터 — DOCX 전용
+Commit: d77826e · 브랜치 ralph/parser-internalization
+
+- `src/lib/parsers/kordoc-adapter.ts` 신설 — `extractWithKordoc(buffer)` export
+  - `parse()` 의 `blocks` 를 단위로 옮긴다. 표는 **셀마다 단위 하나**, 셀에 `blocks` 가
+    있으면 평탄화 사본(`IRCell.text`)이 아니라 그쪽을 쓴다(같은 글 이중계수 방지).
+    `children`(중첩 리스트)·`captionBlocks` 까지 파고든다
+  - **줄을 더 쪼개지 않는다** — 셀 하나 = 단위 하나. 2차 분해 규칙은 만들지 않기로 확정됐다
+- `src/lib/parsers/kordoc-adapter.test.ts` 신설 — 대역 블록으로 8개(실제 문서 안 읽음)
+- `scripts/verify-parsers.mjs` **신설** — US-007 이 여기에 US-004·006 을 합치면 된다
+- `src/lib/parsers/AGENTS.md` 신설 — import 규칙·kordoc/rhwp 함정·시험 방침
+
+- **실측 결과** (`node scripts/verify-parsers.mjs` → **7 PASS · 0 FAIL (7/7)**)
+  - `0829_조별산출물_전수.docx` **865단위** · 78,081자 · 중앙값 69 · **최대 1,658** · 214ms · 경고 0
+  - 한국어 보존 — 치환문자(U+FFFD) **0** · 한글 든 단위 **865/865** · 표본 문자열 3/3 보존
+  - `charCount` = 단위 글자수 합 78,081 (정확히 일치) · engine≠kordoc 0 · 공백만 단위 0
+  - 거절 3종 전부 `units 0 · charCount 0 · unsupported 1개` —
+    hwpx(`detail:"kordoc-adapter: hwpx"`) · hwp · 비문서 바이트(`not a zip container`)
+  - `npx tsc --noEmit` **0** · `npx vitest run` **88파일 1,497테스트 통과**
+  - `astro build` 생략 — 아직 아무도 import 하지 않아 빌드 그래프가 그대로다(US-002·003 과 같은 판단)
+  - **최대 1,658자는 kordoc 의 알려진 성질**이다. README 의 「kordoc 최대 3,219자」와 같은 계열 —
+    워드에는 rhwp 같은 대안이 없어 받아들인 것이다. 놀라지 말 것
+
+- **다음 이터레이션을 위한 학습:**
+  - **★ 동기 판정기는 DOCX 를 hwpx 라고 답한다.** `detectFormat(ab)` 도 `isHwpxFile(ab)` 도
+    zip 서명만 본다 — 실측에서 `0829_조별산출물_전수.docx` → `"hwpx"`, `isHwpxFile`=`true`.
+    그것으로 걸렀다면 **워드 파일을 전부 거절**했을 것이다. zip 안 종류는 **비동기
+    `detectZipFormat()`**(`"hwpx"|"xlsx"|"docx"|"unknown"`)만 맞힌다. OLE2 `.hwp` 는 동기
+    `isOldHwpFile()` 로 걸린다. **US-006 이 확장자로 라우팅할 때도 이 사실을 알고 있어야 한다** —
+    확장자와 실제 내용이 어긋난 파일은 어댑터가 잡는다
+  - **DOCX 에는 페이지 번호가 없다.** kordoc `IRBlock.pageNumber` 가 730블록 중 0개였다.
+    d.ts 도 「페이지 번호를 매기지 않는 포맷(DOCX 등)에서는 없고」라고 적는다.
+    US-005 AC#2 의 「page 를 채운다」는 워드에서는 달성 불가 — 준 블록에만 채우게 했다
+  - **`scripts/verify-parsers.mjs` 의 esbuild 방식은 실제로 통한다.** 변환본을
+    `node_modules/.cache/verify-parsers/*.mjs` 에 쓰고 `pathToFileURL()` 로 import 하면
+    bare 지정자(`kordoc`)가 node_modules 를 거슬러 올라가 풀린다. **어댑터 `.ts` 에는
+    상대경로 값 import 를 넣지 말 것** — `./types` 는 타입 전용이라 esbuild 가 지워 괜찮다
+  - **★ 동시 실행이 실제로 사고를 냈다.** 이 이터레이션은 US-003 을 집어 `rhwp-adapter.ts` 를
+    새로 썼는데, 그 사이 다른 루프가 US-003 을 **이미 커밋**(5c92e12)했고 내 쓰기가 그 커밋본을
+    덮어썼다. `git checkout -- <파일>` 로 되살렸다. **착수 전 `git log --oneline -3` 과
+    `git status` 를 둘 다 보고**, 그 story 파일이 이미 있거나 미추적 파일이 딸려 있으면
+    **그 story 를 건너뛰고 다음 우선순위로 간다**(이번엔 US-004 를 넘기고 US-005 를 했다)
+  - `warningForFailure` 를 export 한 이유 — 암호 걸린 docx 표본이 없어 실문서로 확인할 수 없다.
+    `ParseFailure`→`ExtractWarning` 매핑만 순수 함수로 떼어 vitest 로 못박았다.
+    US-006 도 같은 방식(순수 매핑 export + 대역 시험)을 쓸 수 있다
+---
