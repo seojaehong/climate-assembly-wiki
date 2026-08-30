@@ -13,6 +13,11 @@
   (`./types` 는 타입 전용이라 esbuild 가 지워 없어진다 — 그래서 괜찮다)
 - `data:` URL import 는 쓰지 않는다. bare 지정자가 해석되지 않고 `import.meta.url` 이
   그 data URL 이 된다. `verify-name-reparse.mjs` 의 수법은 **의존성 없는 파일 전용**이다
+- ★ **`index.ts` 는 예외다** — 진입점은 어댑터를 상대경로로 값 import 해야 한다(정상적인 코드다).
+  대신 불러올 때 `transform` 이 아니라 **`esbuild.build({ bundle: true, platform: 'node',
+  format: 'esm', packages: 'external' })`** 를 쓴다. 상대 import 는 안으로 말려 들어가고
+  bare 지정자는 밖에 남아 `wiki/node_modules` 에서 풀린다(US-006 에서 9/9 로 확인).
+  `transform` 으로는 `./rhwp-adapter` 가 확장자 없는 채로 남아 Node ESM 이 못 찾는다
 
 ## 계약 — `types.ts`
 
@@ -35,6 +40,18 @@
   우리 `ExtractWarningKind` 4종에 대응이 없어서다 — US-007 에서 `missing-content` 로 옮길지 검토할 것
 - `parse()` 는 성공/실패를 `success` 로 가른다. 실패의 `code` 는 `ErrorCode` union —
   `ENCRYPTED`·`DRM_PROTECTED` 만 우리 `encrypted` 로 옮기고 나머지는 `unsupported` 다
+
+## 진입점 `index.ts`
+
+- 판단 순서는 **확장자 → 크기 → 엔진**이다. 어차피 거절할 파일에 크기 한도를 먼저 들이대면
+  「.docx 로 저장해 주세요」 같은 안내가 크기 경고에 가린다
+- 어댑터가 던지면 진입점이 삼켜 `unsupported` 로 바꾼다. `extractWithRhwp` 는
+  `new HwpDocument(bytes)` 를 감싸지 않아 쓰레기 바이트에 실제로 던진다(실측)
+- ★ **20MB 한도가 우리 실문서 하나를 막는다.** `★20260613 … _발화자 추가_A조.hwp` 는
+  **119,689,216바이트(114.1MiB)** 라 진입점을 통과하지 못한다 — US-004 의 누락 경고 증거가
+  바로 그 파일이다. **그 문서로 누락 검사를 확인하려면 `extractWithRhwp` 를 직접 불러야 한다**
+  (US-007 의 `verify-parsers.mjs` 주의). 한도 안쪽 `.hwp` 실문서가 필요하면
+  `★20260613 기후시민회의 의제숙의워크숍 결과.hwp`(1.9MB · 380단위)를 쓴다
 
 ## rhwp 함정
 
