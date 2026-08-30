@@ -292,6 +292,24 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [dirty, editable]);
 
+  /**
+   * 저장이 끝나면 초안을 **먼저** 버린다.
+   *
+   * 서버가 줄을 나누면(s15) 서버 행수가 우리가 보낸 행수보다 많아진다. 이때 초안이
+   * 남아 있으면 loadSubmission 안의 pickRestoredRows 가 「초안 ≠ 서버」로 보고
+   * **나누기 전 초안을 되살린다.** DB 는 나뉘어 있는데 화면은 안 나뉜 채 계속
+   * 「저장하지 않은 변경」으로 남는다(2026-08-30 실화면 확인).
+   * 초안의 임무는 **저장 못 한 것**을 새로고침 너머로 살리는 것이다. 저장이 끝난
+   * 순간 정본은 서버다.
+   */
+  const dropDraft = () => {
+    try {
+      sessionStorage.removeItem(draftKey);
+    } catch {
+      /* 못 지워도 아래 loadSubmission 은 진행한다 */
+    }
+  };
+
   const handleSave = async () => {
     if (!editable) return;
     setSaving(true);
@@ -299,6 +317,7 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
       // ★ 반환값을 버리지 않는다 — 서버가 줄을 나눴는지, 상한 때문에 나누기를 포기했는지가
       //   여기에만 실려 온다(마이그레이션 s15). 버리면 조는 칸이 왜 늘었는지 모른다.
       const result = await submissionSave(code, topic.id, toSaveItems(rows));
+      dropDraft();
       setToast(saveOutcomeMessage(result));
       await loadSubmission();
       announceSubmissionChanged();
@@ -344,6 +363,7 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
     setFinalizing(true);
     try {
       const result = await submissionSave(code, topic.id, toSaveItems(rows));
+      dropDraft();
       await submissionFinalize(code, topic.id);
       // 나누지 못한 채 잠겼다면 그 사실이 「제출 완료」보다 먼저 알려져야 한다 —
       // 잠긴 뒤에는 「다시 열기」를 눌러야 고칠 수 있다.
