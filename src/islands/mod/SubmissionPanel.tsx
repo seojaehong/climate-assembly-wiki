@@ -17,7 +17,9 @@ import {
   emptyRow,
   isDirty,
   isEditable,
+  liftNameOnlyRows,
   moveRow,
+  nameOnlyRowIndexes,
   overlongRowIndexes,
   pickRestoredRows,
   removeRow,
@@ -196,6 +198,8 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
   const [toast, setToast] = useState<string | null>(null);
   /** 「이대로 두겠다」고 조가 답한 긴 칸 조합. 새 덩어리가 생기면 다시 묻는다. */
   const [longNoticeAnswered, setLongNoticeAnswered] = useState<string | null>(null);
+  /** 같은 방식으로, 「이름만 있는 줄」 안내에 답한 조합. */
+  const [nameNoticeAnswered, setNameNoticeAnswered] = useState<string | null>(null);
 
   const dirty = isDirty(rows, baseline);
   // 미저장 입력 임시 보관함 — 조·꼭지마다 따로 둔다.
@@ -227,6 +231,25 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
     setRows(out.rows);
     setLongNoticeAnswered(null);
     setToast(`${out.before}칸을 ${out.after}칸으로 나눴습니다. 저장을 눌러 주세요.`);
+  };
+
+  // ── 이름만 있는 줄 (진단서 §4-5, 유형 C) ────────────────────────
+  // 이름을 한 줄에 따로 쓰면 그 줄은 쓰레기 노드가 되고 아래 문장들은 화자를 잃는다.
+  // ★ 여기서도 강제하지 않는다 — 옮겨 주는 버튼과 「이대로 두기」를 함께 준다.
+  const nameOnly = nameOnlyRowIndexes(rows);
+  const nameSignature = nameOnly.map((m) => `${m.index}:${m.name}:${m.inBody ? 'b' : 'n'}`).join(',');
+  const liftable = nameOnly.filter((m) => m.inBody).length;
+  const showNameNotice = editable && nameOnly.length > 0 && nameNoticeAnswered !== nameSignature;
+
+  const handleLiftNames = () => {
+    const out = liftNameOnlyRows(rows);
+    if (!out.applied) {
+      setNameNoticeAnswered(nameSignature);
+      return;
+    }
+    setRows(out.rows);
+    setNameNoticeAnswered(null);
+    setToast(`이름 ${out.removed}개를 아래 ${out.filled}줄의 이름 칸으로 옮겼습니다. 저장을 눌러 주세요.`);
   };
 
   useEffect(() => {
@@ -508,6 +531,29 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
                       </div>
                     ) : null}
                   </div>
+                  {/* 이름 칸 — 본문 왼쪽(좁은 화면에서는 위)에 둔다.
+                      ★ 비워도 저장된다. 강제하지 않는다 — 8.29에 이름을 하나도 안 적은 조가
+                        7건이었는데 문장 품질은 최상급이었다. 막으면 그 조가 멈춘다.
+                      저장할 때 `(이름) 내용` 으로 합쳐 보내고 불러올 때 되파싱한다
+                      (joinSpeaker / parseSpeaker). DB 형식은 그대로다. */}
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <input
+                      type="text"
+                      value={row.name}
+                      readOnly={!editable}
+                      onChange={(e) =>
+                        setRows((prev) =>
+                          prev.map((r, i) => (i === index ? { ...r, name: e.target.value.slice(0, 20) } : r)),
+                        )
+                      }
+                      aria-label={`${topic.prompt} ${index + 1}번 말한 사람`}
+                      placeholder="이름"
+                      className={`h-[46px] w-full shrink-0 rounded-xl border px-3 text-[17px] font-bold outline-none sm:w-[132px] ${
+                        editable
+                          ? 'border-[#C4D8E4] focus:border-[#4F9D3A] text-[#1F4E79]'
+                          : 'border-[#DCE7EE] bg-[#F5F8FB] text-[#5A6B73]'
+                      }`}
+                    />
                   <textarea
                     value={row.content}
                     readOnly={!editable}
@@ -538,12 +584,13 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
                     }}
                     rows={2}
                     placeholder="여기에 적습니다"
-                    className={`w-full min-w-0 rounded-xl border px-3 py-2.5 text-[17px] outline-none resize-y ${
+                    className={`w-full min-w-0 flex-1 rounded-xl border px-3 py-2.5 text-[17px] outline-none resize-y ${
                       editable
                         ? 'border-[#C4D8E4] focus:border-[#4F9D3A] text-[#1F2933]'
                         : 'border-[#DCE7EE] bg-[#F5F8FB] text-[#5A6B73]'
                     }`}
                   />
+                  </div>
                   {/* 「근거 (선택)」 칸은 2026-08-28 통화에서 없애기로 정리됐다.
                       원인·배경을 별도 칸으로 두면 「써야 하나 말아야 하나·어떻게 써야 하나」가
                       또 하나 늘고, 범주를 늘리면 그 자체로 시끄러워진다는 판단이었다.
@@ -553,6 +600,40 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
                 </div>
               ))}
             </div>
+
+            {/* 두 안내가 동시에 뜰 수 있다. 바깥이 space-y-3 이라 세로로 쌓이고
+                버튼은 각자 flex-wrap 이라 좁은 화면에서도 겹치지 않는다. */}
+            {showNameNotice ? (
+              <div
+                role="status"
+                className="rounded-xl border-2 border-[#B5651D] bg-[#FFF4D6] px-4 py-3"
+              >
+                <p className="text-[17px] font-extrabold text-[#6B4B00] tr-num">
+                  {`이름만 있는 줄이 ${nameOnly.length}개 있습니다.`}
+                </p>
+                <p className="mt-1 text-[15px] font-semibold text-[#6B4B00]">
+                  이름 아래 줄에 내용을 적으면 누가 한 말인지 이어지지 않습니다.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {liftable > 0 ? (
+                    <button
+                      type="button"
+                      onClick={handleLiftNames}
+                      className="h-12 rounded-xl bg-[#B5651D] px-5 text-[16px] font-bold text-white"
+                    >
+                      이름 칸으로 옮기기
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setNameNoticeAnswered(nameSignature)}
+                    className="h-12 rounded-xl border-2 border-[#B5651D] bg-white px-5 text-[16px] font-bold text-[#B5651D]"
+                  >
+                    이대로 두기
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             {showLongNotice ? (
               <div

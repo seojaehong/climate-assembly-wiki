@@ -14,10 +14,14 @@ import {
   toSaveItems,
   type EditorRow,
   pickRestoredRows,
+  parseSpeaker,
+  joinSpeaker,
+  nameOnlyRowIndexes,
+  liftNameOnlyRows,
 } from './submission-panel-logic';
 import type { SubmissionItem } from '../../lib/deliberation';
 
-const row = (content: string, rationale = ''): EditorRow => ({ content, rationale });
+const row = (content: string, rationale = '', name = ''): EditorRow => ({ name, content, rationale });
 
 describe('isEditable — 잠금 판정', () => {
   it('제출물 없음(null)·draft·reopened는 편집 가능', () => {
@@ -158,12 +162,12 @@ describe('확인 문구', () => {
 });
 
 describe('pickRestoredRows — 탭을 옮겼다 와도 미저장분이 남는다', () => {
-  const server: EditorRow[] = [{ content: '이미 저장한 줄', rationale: '' }];
+  const server: EditorRow[] = [{ name: '', content: '이미 저장한 줄', rationale: '' }];
 
   it('보관분이 서버와 다르면 그것을 되살린다', () => {
     const draft: EditorRow[] = [
-      { content: '이미 저장한 줄', rationale: '' },
-      { content: '아직 저장 안 한 줄', rationale: '' },
+      { name: '', content: '이미 저장한 줄', rationale: '' },
+      { name: '', content: '아직 저장 안 한 줄', rationale: '' },
     ];
     expect(pickRestoredRows(JSON.stringify(draft), server)).toEqual(draft);
   });
@@ -241,5 +245,151 @@ describe('saveOutcomeMessage — 서버가 한 일을 조에게 알린다', () =
     expect(panel).toContain('const result = await submissionSave(');
     expect(panel).toContain('setToast(saveOutcomeMessage(result))');
     expect(panel).toContain('result?.split_skipped_over_cap');
+  });
+});
+
+// ── 이름 칸 (진단서 §4-4·5) ──────────────────────────────────────
+//
+// 8.29 실데이터 641건 전수 측정은 scripts/verify-name-reparse.mjs 가 한다
+// (367건 뽑음 · 오탐 0 · 보류 45). 여기서는 규칙의 경계만 못 박는다.
+
+describe('parseSpeaker — 되파싱은 좁게, 애매하면 안 건드린다', () => {
+  it('세 형태를 뽑는다', () => {
+    expect(parseSpeaker('(윤하은) 일회용 사용이 너무 많다.')).toEqual({
+      name: '윤하은',
+      body: '일회용 사용이 너무 많다.',
+    });
+    expect(parseSpeaker('- (박서준) 환경교육이 지루하다.')).toEqual({
+      name: '박서준',
+      body: '환경교육이 지루하다.',
+    });
+    expect(parseSpeaker('최삼관: 재활용률이 낮다.')).toEqual({
+      name: '최삼관',
+      body: '재활용률이 낮다.',
+    });
+  });
+
+  it('★ 이름이 아닌 것은 뽑지 않고 원문을 그대로 돌려준다', () => {
+    const keep = [
+      '(촉진질문: 기업들이 움직이지 않는 이유는 무엇일까?)', // 닫는 괄호가 토큰 뒤에 없다
+      '(1) 정주현 : 지금 사는 곳이 대학 오름촌에 있는데', // 번호가 앞에 붙었다 — 보류
+      '(1) 기후문제로 인한 식재료 가격 변동이 없음.', // 토큰이 숫자
+      '기타의견 : 중앙식 방식의 난방시설로 인한', // 4자 — 이름 상한 밖
+      '1. 시민참여단 발표하고 템플릿에 정리된 내용 작성', // 양식 잔재
+      '문제 및 배경(13:30~14:45)', // 콜론이 문장 안에 있다
+    ];
+    for (const s of keep) expect(parseSpeaker(s)).toEqual({ name: '', body: s });
+  });
+
+  it('★ 이름을 떼면 본문이 비는 줄은 건드리지 않는다 (그 줄이 사라지면 안 된다)', () => {
+    expect(parseSpeaker('권민정:')).toEqual({ name: '', body: '권민정:' });
+    expect(parseSpeaker('(권민정)')).toEqual({ name: '', body: '(권민정)' });
+  });
+
+  it('★ 아직 안 나뉜 통짜(줄바꿈 있음)는 건드리지 않는다', () => {
+    const blob = '(윤하은) 첫 줄\n(박서준) 둘째 줄';
+    expect(parseSpeaker(blob)).toEqual({ name: '', body: blob });
+  });
+});
+
+describe('joinSpeaker — 저장 형식은 `(이름) 내용` 하나뿐', () => {
+  it('이름 칸의 괄호·콜론·글머리표를 다듬어 합친다', () => {
+    for (const raw of ['홍길동', '(홍길동)', '홍길동:', '- 홍길동', ' 홍길동 ']) {
+      expect(joinSpeaker(raw, '한 말')).toBe('(홍길동) 한 말');
+    }
+  });
+  it('이름이 비면 본문만, 본문이 비면 아무것도 저장하지 않는다', () => {
+    expect(joinSpeaker('', '한 말')).toBe('한 말');
+    expect(joinSpeaker('홍길동', '  ')).toBe('');
+  });
+  it('★ 되파싱 → 합치기 왕복이 멱등이다', () => {
+    const once = joinSpeaker(...(({ name, body }) => [name, body] as const)(parseSpeaker('최삼관: 재활용률이 낮다.')));
+    expect(once).toBe('(최삼관) 재활용률이 낮다.');
+    const twice = joinSpeaker(...(({ name, body }) => [name, body] as const)(parseSpeaker(once)));
+    expect(twice).toBe(once);
+  });
+});
+
+describe('rowsFromItems / toSaveItems — 화면과 DB 사이', () => {
+  const item = (content: string): SubmissionItem =>
+    ({ ordinal: 1, kind: 'core', content, rationale: null }) as SubmissionItem;
+
+  it('불러오면 이름 칸이 채워지고, 저장하면 다시 합쳐진다', () => {
+    const rows = rowsFromItems([item('- (임효은) 기업은 이윤을 추구한다.')]);
+    expect(rows[0].name).toBe('임효은');
+    expect(rows[0].content).toBe('기업은 이윤을 추구한다.');
+    expect(toSaveItems(rows)[0].content).toBe('(임효은) 기업은 이윤을 추구한다.');
+  });
+
+  it('★ 이름 칸만 채우고 본문이 빈 행은 저장되지 않는다', () => {
+    expect(toSaveItems([{ name: '홍길동', content: '', rationale: '' }])).toEqual([]);
+  });
+});
+
+describe('isDirty / pickRestoredRows — 이름 칸이 초안을 건너 살아온다', () => {
+  it('★ 이름만 고쳐도 dirty 가 선다 (안 그러면 저장 버튼이 안 켜져 이름이 사라진다)', () => {
+    expect(isDirty([row('내용', '', '홍길동')], [row('내용')])).toBe(true);
+  });
+  it('★ 초안 복원이 이름 칸을 싣고 온다', () => {
+    const back = pickRestoredRows(JSON.stringify([row('쓰던 내용', '', '홍길동')]), [row('서버 내용')]);
+    expect(back?.[0]).toEqual({ name: '홍길동', content: '쓰던 내용', rationale: '' });
+  });
+  it('★ 이름 칸이 생기기 전의 옛 초안도 연다 (name 없음 → 빈 문자열)', () => {
+    const old = JSON.stringify([{ content: '옛 초안', rationale: '' }]);
+    expect(pickRestoredRows(old, [emptyRow()])?.[0]).toEqual({
+      name: '',
+      content: '옛 초안',
+      rationale: '',
+    });
+  });
+});
+
+describe('nameOnlyRowIndexes / liftNameOnlyRows — 유형 C (§4-5)', () => {
+  it('★ 8.29 1분과 2조 모양을 잡아 아래로 내려 채운다', () => {
+    const rows = [
+      row('권민정:'),
+      row('(1) 기후문제로 인한 식재료 가격 변동이 없음.'),
+      row('(2) 분명한 계절(4계절) 정상적인 기후변화'),
+      row('김혜인:'),
+      row('(1) 대중교통이 편해짐'),
+    ];
+    expect(nameOnlyRowIndexes(rows).map((m) => m.index)).toEqual([0, 3]);
+    const out = liftNameOnlyRows(rows);
+    expect(out.rows.map((r) => r.name)).toEqual(['권민정', '권민정', '김혜인']);
+    expect(out.rows.map((r) => r.content)).toEqual([rows[1].content, rows[2].content, rows[4].content]);
+    expect([out.filled, out.removed]).toEqual([3, 2]);
+  });
+
+  it('★ 이미 제 이름을 가진 행에서 내려 채우기가 멈춘다', () => {
+    const out = liftNameOnlyRows([row('권민정:'), row('가'), row('나', '', '김혜인'), row('다')]);
+    expect(out.rows.map((r) => r.name)).toEqual(['권민정', '김혜인', '']);
+  });
+
+  it('★ 양식 잔재·홑단어는 이름 행이 아니다 (지우면 그 줄이 사라진다)', () => {
+    for (const s of ['오프닝', '오셔서 느낀점.', '의제1. 기업이 온실가스를 감축하도록']) {
+      expect(nameOnlyRowIndexes([row(s)])).toEqual([]);
+    }
+  });
+
+  it('★ 이름 칸만 채우고 본문이 빈 행도 같은 안내로 잡는다 (조용한 유실 방지)', () => {
+    const marks = nameOnlyRowIndexes([row('', '', '홍길동'), emptyRow()]);
+    expect(marks).toEqual([{ index: 0, name: '홍길동', inBody: false }]);
+  });
+
+  it('빈 편집기를 만들지 않는다', () => {
+    expect(liftNameOnlyRows([row('권민정:')]).rows).toEqual([emptyRow()]);
+  });
+});
+
+describe('§4-6 양식 머리말이 입력칸에 미리 들어가는 경로가 없다', () => {
+  it('★ 초기 행은 세 칸 모두 빈 문자열이다', () => {
+    expect(emptyRow()).toEqual({ name: '', content: '', rationale: '' });
+    expect(rowsFromItems([])).toEqual([emptyRow()]);
+  });
+  it('★ placeholder 에 번호 매긴 양식이 없다', () => {
+    const panel = readFileSync(new URL('./SubmissionPanel.tsx', import.meta.url), 'utf8');
+    const ph = [...panel.matchAll(/placeholder="([^"]*)"/g)].map((m) => m[1]);
+    expect(ph.length).toBeGreaterThan(0);
+    for (const p of ph) expect(p).not.toMatch(/^\s*\d+[.)]/);
   });
 });
