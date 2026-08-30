@@ -258,3 +258,17 @@ describe('배포 감지 — 열어 둔 화면이 옛 코드인가', () => {
     expect(isStaleBundle(A, null)).toBe(false);
   });
 });
+
+describe('★ 이름 칸이 붙여넣기에 지워지지 않는다', () => {
+  it('빈 칸에 먼저 이름을 적어 두고 붙여넣어도 그 이름이 남는다', () => {
+    const out = splitPastedRows([{ name: '홍길동', content: '', rationale: '' }], 0, '첫 줄\n둘째 줄');
+    expect(out.applied).toBe(true);
+    expect(out.rows[0]).toEqual({ name: '홍길동', content: '첫 줄', rationale: '' });
+    expect(out.rows[1]).toEqual({ name: '', content: '둘째 줄', rationale: '' });
+  });
+
+  it('붙인 줄이 제 이름을 갖고 있으면 그것으로 갈아끼운다', () => {
+    const out = splitPastedRows([{ name: '홍길동', content: '', rationale: '' }], 0, '(박서준) 첫 줄\n둘째 줄');
+    expect(out.rows[0]).toEqual({ name: '박서준', content: '첫 줄', rationale: '' });
+  });
+});

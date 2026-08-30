@@ -343,7 +343,13 @@ export function splitPastedRows(
   let head = taken;
   if (fillsTarget) {
     const first = toRow(taken[0]);
-    next[index] = { ...target, name: first.name, content: first.content };
+    next[index] = {
+      ...target,
+      // ★ 조가 이름 칸에 먼저 적어 둔 이름을 붙여넣기가 지우면 안 된다.
+      //   붙인 줄이 제 이름을 갖고 있을 때만 갈아끼운다(splitOverlongRows 와 같은 규칙).
+      name: first.name || target.name,
+      content: first.content,
+    };
     head = taken.slice(1);
   }
   next.splice(index + 1, 0, ...head.map(toRow));
