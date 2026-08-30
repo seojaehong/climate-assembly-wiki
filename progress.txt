@@ -254,3 +254,22 @@ Commit: d77826e · 브랜치 ralph/parser-internalization
     `ParseFailure`→`ExtractWarning` 매핑만 순수 함수로 떼어 vitest 로 못박았다.
     US-006 도 같은 방식(순수 매핑 export + 대역 시험)을 쓸 수 있다
 ---
+
+## [2026-08-30 20:49] - US-005 후속 (표 캡션 유실)
+Commit: 965810d · 브랜치 ralph/parser-internalization
+
+- `pushBlock` 이 `captionBlocks` 만 보고 있어 **평범한 글자 캡션이 경고 없이 사라졌다.**
+  kordoc 은 중첩 구조가 있는 캡션만 `captionBlocks` 로 주고, 「표 1. …」 같은 보통 캡션은
+  `IRTable.caption` 문자열로만 준다. 둘 다 받되 겹쳐 담지 않도록 고치고 시험 2개를 더했다.
+  실측 docx 에는 캡션이 없어 7/7 숫자는 그대로다 — **시험이 아니라 d.ts 를 읽어 찾은 구멍**이다.
+- 시험 10개 · 전체 **88파일 1,499테스트 통과** · tsc 0 · `verify-parsers.mjs` 7/7 유지
+
+- **다음 이터레이션을 위한 학습:**
+  - **`parse()` 가 성공해도 kordoc 자신의 `result.warnings`(`TRUNCATED_TABLE`·`SKIPPED_OLE` 등)를
+    지금은 버리고 있다.** 우리 `ExtractWarningKind` 4종에 대응이 없어서다.
+    **US-007 에서 `missing-content` 로 옮길지 판단할 것** — 「조용히 빠지는 내용」이 이 프로젝트의
+    존재 이유라 버려 둘 자리가 아니다. `src/lib/parsers/AGENTS.md` 에도 적어 뒀다
+  - 한 라이브러리가 **같은 것을 두 자리로 주는 패턴**(`caption`/`captionBlocks`,
+    `IRCell.text`/`IRCell.blocks`)이 kordoc 에 반복된다. 새 필드를 쓸 때 d.ts 주석에서
+    「…있을 때만 채워지며」를 찾아 **폴백 자리가 따로 있는지 먼저 확인할 것**
+---
