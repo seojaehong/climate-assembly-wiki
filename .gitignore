@@ -111,3 +111,4 @@ dist.bak.*
 # npm 이 file: 링크를 통해 vendor 안에 중첩 설치하는 의존성은 설치 산출물이다 — 추적하지 않는다.
 # (2행의 `node_modules/` 가 이미 어느 깊이에서든 잡지만, 위 `!` 로 풀리지 않게 명시해 둔다.)
 vendor/**/node_modules/
+.env.backup

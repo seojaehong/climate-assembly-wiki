@@ -33,13 +33,19 @@ const ANON =
   process.env.PUBLIC_SUPABASE_ANON_KEY ||
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsZXl1a25qbnByc2Nrc3N4dnJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzOTEyMjQsImV4cCI6MjA4ODk2NzIyNH0.fP_OG2ZpP7KDtPebY4Wp20mMWlVMn5KQad7UpJ4hx08';
 
-const OPERATOR = arg('operator');
-const PASSWORD = arg('password');
+// 자격은 인자 > 환경변수 순으로 받는다.
+// ★ 환경변수를 받는 이유 — 예약 실행(작업 스케줄러)에 비번을 인자로 박으면
+//   명령줄이 프로세스 목록에 그대로 노출된다. `.env.backup`(gitignore 됨)에 두고
+//   배치 파일이 읽어 넘긴다. 이 저장소는 **공개**라 자격이 커밋되면 즉시 유출이다.
+const OPERATOR = arg('operator') || process.env.HQ_OPERATOR;
+const PASSWORD = arg('password') || process.env.HQ_PASSWORD;
 const OUT = arg('out', join(process.cwd(), '..', '10_작업산출물', '2026-08-29_산출물_백업'));
 const SESSION = arg('session', '0829-deliberation');
 
 if (!OPERATOR || !PASSWORD) {
-  console.error('--operator 와 --password 가 필요하다 (본부 계정)');
+  console.error('본부 자격이 없다. 둘 중 하나로 준다:');
+  console.error('  1) node scripts/backup-0829.mjs --operator 이름 --password 비번');
+  console.error('  2) HQ_OPERATOR / HQ_PASSWORD 환경변수 (예약 실행용, 권장)');
   process.exit(2);
 }
 

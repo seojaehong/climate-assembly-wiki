@@ -4,7 +4,12 @@ on:
     # Run every five minutes during each workshop window; the CLI enforces the exact date and end minute.
     - cron: '*/5 0-9 4 7 *'
     - cron: '*/5 0-9 29 8 *'
-    - cron: '*/5 0-12 12 9 *'
+    # 9.12~13 합숙은 1박 2일이라 밤을 건너야 한다. UTC 기준으로 끊기지 않게 이어 붙인다.
+    #   9/12 00-23 UTC = 9/12 09:00 ~ 9/13 08:59 KST
+    #   9/13 00-09 UTC = 9/13 09:00 ~ 9/13 18:59 KST
+    # ★ 종전 '0-12 12 9' + '0-9 13 9' 는 **9/12 22시~9/13 09시 KST 가 비어 있었다.**
+    #   조가 밤에 저장한 것이 아침까지 백업되지 않는 창이었다.
+    - cron: '*/5 * 12 9 *'
     - cron: '*/5 0-9 13 9 *'
     - cron: '*/5 0-9 17 10 *'
   workflow_dispatch:
@@ -38,10 +43,19 @@ jobs:
           if (o.skipped) { console.log('skipped:', o.skipped); process.exit(0); }
           const { execSync } = require('child_process');
           execSync('node upload-to-drive.mjs ' + process.env.DRIVE_PARENT_ID + ' ' + o.workshop + ' snapshots ' + o.outPath, { stdio: 'inherit' });
-          "
-      - name: Discord alert on failure
+      # ★ 2026-08-29 실측: 스냅샷이 실패했을 때 **이 알림 스텝도 함께 실패**했다
+      #   (`curl: (2) no URL specified` — DISCORD_WEBHOOK 미등록). 그래서 백업이
+      #   죽은 것을 아무도 몰랐고 행사 전체가 서버 스냅샷 0회로 지나갔다.
+      #   웹훅이 없으면 **조용히 죽는 대신 로그에 크게 남긴다.**
+      - name: Alert on failure
         if: failure()
+        env:
+          HOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          curl -X POST -H 'Content-Type: application/json' \
-            -d "{\"content\":\"⚠️ snapshot failed run=${{ github.run_id }}\"}" \
-            ${{ secrets.DISCORD_WEBHOOK }}
+          MSG="⚠️ snapshot failed run=${{ github.run_id }}"
+          echo "::error::$MSG"
+          if [ -z "$HOOK" ]; then
+            echo "::warning::DISCORD_WEBHOOK 시크릿이 없어 알림을 보내지 못했습니다. 이 실패는 로그로만 남습니다."
+            exit 0
+          fi
+          curl -sS -X POST -H 'Content-Type: application/json' -d "{\"content\":\"$MSG\"}" "$HOOK" || echo "::warning::알림 전송 실패(무시)"
