@@ -165,5 +165,12 @@ try {
   await browser.close();
   console.log(`\n결과: ${pass} PASS · ${fail} FAIL  (${pass}/${pass + fail})`);
   console.log(`스크린샷: ${SHOTS}\n`);
+  // ★ 검사를 한 건도 못 돌았으면 실패다. dev 서버가 안 떠 있으면 try 가 초반에 던지고
+  //   fail 이 0 인 채로 여기 와서 「0 PASS · 0 FAIL」로 조용히 exit 0 이 된다 —
+  //   아무것도 안 잰 것을 통과로 읽는 것이야말로 이 스크립트가 막으려던 실패다.
+  if (pass + fail === 0) {
+    console.error(`FAIL: 검사를 한 건도 돌지 못했다 — ${URL_LAB} 이 뜨는지 확인하라(npx astro dev --port 4321).\n`);
+    process.exit(1);
+  }
   process.exit(fail === 0 ? 0 : 1);
 }
