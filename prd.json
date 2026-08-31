@@ -76,8 +76,8 @@
         "Tests pass — 신규 실패 0"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "순수 함수 모듈 신설 — 저장소·네트워크 접근 없음. QueuedSave·queueKey(꼭지당 1건, 새 실패가 덮어씀)·nextBackoffMs·shouldAttempt·conflictVerdict·readQueue/writeQueue + 배선 편의 makeQueuedSave·withFailedAttempt. ★ 확정한 판단 3가지: ① nextBackoffMs 의 attempts 는 1부터(첫 실패=5초), 0·음수·NaN 은 첫 계단으로 접는다 ② shouldAttempt 는 nowMs === nextAttemptAtMs 면 시도(경계 포함), 오프라인이면 시도 자체를 건너뛰어 실패 횟수를 안 태운다 ③ conflictVerdict 는 undefined 와 null 을 같게 본다 — submission_get 은 제출물이 없으면 updated_at 을 안 실어 보내므로 구별하면 오프라인 첫 저장이 연결되자마자 conflict 로 막힌다. readQueue 는 한 항목이라도 틀리면 통째로 null (전체 교체 전송이라 반쪽 큐가 서버 항목을 지운다 · 글은 초안 봉투에 남는다). SubmissionPanel.tsx 미변경. 92파일/1,589테스트 전부 통과(직전 91/1,556 대비 +1파일 +33테스트, 신규 실패 0)."
     },
     {
       "id": "US-005",
