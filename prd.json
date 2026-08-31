@@ -241,8 +241,8 @@
         "Tests pass — 신규 실패 0"
       ],
       "priority": 13,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "내보내기 export-submissions-hwpx.mjs + 게이트 verify-hangul.mjs 짝. 게이트는 규칙을 베끼지 않고 내보내기 스크립트를 자식 프로세스로 실제 실행해 산출물을 검사한다. 실측(0829-submissions.json 65건): G1 validateHwpx ok=true·issues 0/0·zip 엔트리 6 · G2 표 데이터 행 마크다운 65/65·한글 되읽기 65/65, 칸 글자 260/260 동일, 표 9/9 전부 4칸·머리 9/9 동일 · 꼭지 헤딩 3/3 · 미제출 판(1분과 2조 꼭지1 비움) 「※ 미제출 1개 조 — 1분과 2조」 마크다운·한글 양쪽 보존, 남은 카드 63/63. 결과 11 PASS · 0 FAIL. G3(한글이 실제로 여는지)는 scripts/verify_hangul.py 를 만들되 실행하지 않았다(--i-am-here 잠금). 산출물은 .gitignore 된 output/ 에 쓰고 게이트가 지운다 — git status 에 .hwpx 없음. tsc 0에러 · vitest 96파일/1,718테스트 통과(신규 실패 0)."
     }
   ]
 }

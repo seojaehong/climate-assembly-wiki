@@ -768,3 +768,78 @@ Commit: 660d223
     **`esbuild --bundle` 로 한 덩어리 `.mjs` 를 만든 뒤 `pathToFileURL()` 로 import** 하면 된다.
     US-013 의 `export-submissions-hwpx.mjs` 도 이 방식이 필요하다(`transform` 만으로는 부족)
 ---
+
+## 2026-09-01 04:05 - US-013 (한글 1단계 — HWPX 생성 스크립트 + 적합성 게이트)
+Commit: ralph/submission-resilience-0912
+- 신규 `scripts/export-submissions-hwpx.mjs` — 화면이 쓰는 모델을 그대로 태운다:
+  `buildBoards` → `buildSubmissionReport` → `reportToMarkdown` → kordoc `markdownToHwpx()` → `.hwpx`.
+  **모델도 마크다운도 여기서 새로 만들지 않는다**(렌더러만 하나 더). 규칙을 `.mjs` 로 베끼지 않고
+  `esbuild.build({bundle:true, packages:'external'})` 한 덩어리로 말아 `node_modules/.cache/` 안
+  실제 `.mjs` 에 쓴 뒤 `pathToFileURL()` 로 import — `verify-parsers.mjs` 와 같은 방식
+- 신규 `scripts/verify-hangul.mjs` — **내보내기 스크립트를 `execFileSync` 로 실제 실행**해
+  나온 파일을 검사한다(규칙 사본 0). G1 `validateHwpx` · G2 `parseHwpx` 되읽기 대조 · G2b 미제출 조
+- 신규 `scripts/verify_hangul.py` — G3(한글 실물이 여는가). **만들었고 실행하지 않았다.**
+  `--i-am-here` 없이는 아무것도 안 하도록 잠갔다(COM 이 앱 창을 띄워 루프를 멈춘다)
+- 변경 파일: `scripts/export-submissions-hwpx.mjs`(신규) · `scripts/verify-hangul.mjs`(신규) ·
+  `scripts/verify_hangul.py`(신규) · `scripts/AGENTS.md`(「한글(.hwpx) 내보내기 · 게이트」 절 추가)
+
+### 실행 결과 — `node scripts/verify-hangul.mjs` (Node 20 포터블)
+```
+한글(.hwpx) 적합성 게이트 · 8.29 실데이터 · DB 쓰기 없음
+
+  픽스처 automation/fixtures/0829-submissions.json  (행 65건)
+  생성   output/_verify-hangul-main.hwpx  (211025바이트)
+
+  PASS  픽스처 행 수 = 실측 65 — 65/65
+  PASS  ★ G1 kordoc validateHwpx() 가 ok:true 이고 issues 0 — ok=true · issues 0/0 · zip 엔트리 6개
+  PASS  되읽기가 성공한다 (parseHwpx) — 블록 36개
+  PASS  ★ G2 표 데이터 행 수 = 항목 수 (원본 65) — 마크다운 65/65 · 한글 되읽기 65/65
+  PASS  표 개수·칸 수가 유지된다 (표 9 · 4칸) — 표 9/9 · 전부 4칸 · 머리 9/9 동일
+  PASS  ★ G2 칸 글자가 한 자도 달라지지 않는다 (마크다운 ↔ 한글 되읽기) — 260/260칸 동일
+  PASS  꼭지 제목이 전부 문서에 남는다 (꼭지 3) — 헤딩 13개 · 그중 꼭지(##) 3/3
+        — 1. 배경·문제 인식 / 2. 바라는 변화(기대 효과) / 3. 의제와 관련된 질문
+  PASS  안내 문구가 그대로 실린다 (잠정 산출물 표시) — 1/1
+  PASS  ★ 미제출 조 표기가 한글 파일에 글자 그대로 남는다 — 「※ 미제출 1개 조 — 1분과 2조」 · 비운 항목 2건
+  PASS  ★ 미제출 판에서도 남은 카드가 한 장도 안 준다 — 63/63장
+  PASS  미제출 판도 G1 을 통과한다 — ok=true · issues 0/0
+
+  G3(한글이 실제로 여는지)는 이 스크립트가 하지 않는다 — COM 자동화는 앱 창이 떠
+  루프를 멈춘다. 절차는 scripts/verify_hangul.py 머리말을 볼 것 (사람이 수동 실행).
+
+  만든 임시 파일 5개를 지웠다 (--keep 으로 남길 수 있다).
+
+결과: 11 PASS · 0 FAIL  (11/11)
+```
+
+### 커밋 안 함 확인 (AC「생성된 샘플 .hwpx 는 커밋하지 않는다」)
+```
+$ git check-ignore -v output/기후시민회의_조별산출물_전체15개조_20260829-1405.hwpx
+.gitignore:54:output/	output/기후시민회의_…_20260829-1405.hwpx
+$ git check-ignore -v node_modules/.cache/export-submissions-hwpx/bundle.mjs
+.gitignore:2:node_modules/	node_modules/.cache/export-submissions-hwpx/bundle.mjs
+$ git status --short
+?? scripts/export-submissions-hwpx.mjs
+?? scripts/verify-hangul.mjs
+?? scripts/verify_hangul.py
+```
+검사: `npx tsc --noEmit -p tsconfig.json` 0에러 · `npx vitest run` **96파일 / 1,718테스트 전부 통과**
+(직전 US-012 와 동일 — 신규 실패 0, 기준선 90/1,516 대비 유지). `.astro` 를 안 건드려 `npm run build` 는
+안 돌렸다(prebuild 워킹트리 오염 0). 운영 DB 접속 0 · 한글 COM 실행 0 · 유료 API 호출 0.
+
+- **다음(또는 사람)을 위한 학습:**
+  - ★★ **kordoc md→hwpx→md 왕복은 GFM 표에 대해 무손실이었다** — 칸 260/260 글자 동일.
+    US-012 가 걱정한 `<br>`·칸 trim 문제는 실제로 안 걸렸다. 그래서 대조를 「개수」가 아니라
+    **「글자 비교」**로 박았다. 표 문법이 흔들려도 조용히 통과하지 않는다
+  - ★ **카드 수는 마크다운 문자열이 아니라 `parseHwpx().blocks` 의 표 구조로 센다.**
+    `block.type==='table'` → `block.table.cells`(IRCell[][]), 첫 행이 머리·나머지가 데이터.
+    문자열로 세면 되읽기 쪽 표 문법(정렬 표기·공백)이 조금만 달라도 부풀거나 준다
+  - ★ **버퍼 타입이 함수마다 다르다.** `markdownToHwpx()`→`ArrayBuffer`(쓸 때 `Buffer.from`),
+    `validateHwpx()`는 Buffer 를 그대로 받지만 `parseHwpx()`는 `ArrayBuffer` 를 원한다 →
+    `buf.buffer.slice(buf.byteOffset, buf.byteOffset+buf.byteLength)`
+  - ★ **미제출 조를 만들 때 행을 지우면 안 된다.** `buildBoards` 가 행에서 조 자리를 만들므로
+    (`hq-submission-board-logic.ts:103`) 행을 지우면 「미제출」이 아니라 「없는 조」가 된다.
+    `item_content` 를 빈 문자열로 바꿔야 조 자리가 남고 silent 에 잡힌다. 이 함정으로 한 번 FAIL 났다
+  - 남은 사람 몫 = **G3.** `node scripts/verify-hangul.mjs --keep` 로 `output/_verify-hangul-main.hwpx`
+    를 남긴 뒤 탐색기에서 더블클릭해 오류 대화상자 없이 열리는지 눈으로 볼 것.
+    절차는 `scripts/verify_hangul.py` 머리말에 적어 두었다
+---

@@ -129,3 +129,31 @@ export PATH="$HOME/tools/node-v20.18.0-win-x64:$PATH"
 - 헤드리스 페이지는 타이머가 조절(throttle)돼 **5초 폴링이 실제로는 몇 번 안 돈다**(실측:
   30초 동안 `hq_submissions` 2회). 응답을 바꿔 화면이 따라오는지 볼 때는 `waitForTimeout` 이
   아니라 `waitForFunction` 으로 **바뀔 때까지** 기다릴 것
+
+## 한글(.hwpx) 내보내기 · 게이트 — 2026-09-01 (US-013)
+
+`export-submissions-hwpx.mjs`(만든다) 와 `verify-hangul.mjs`(잰다) 가 짝이다. 검증 스크립트는
+규칙을 베끼지 않고 **내보내기 스크립트를 자식 프로세스로 실제 실행**해 그 산출물을 검사한다 —
+검사 대상이 곧 운영 경로다.
+
+- kordoc 은 **Node 전용**이라 스크립트 층에서만 부른다. `submission-report-markdown.ts` 는
+  kordoc 을 모른다(브라우저 인접 층). 화면 모듈은 `esbuild.build({bundle:true, packages:'external'})`
+  로 말아 올려 부른다 — `verify-parsers.mjs` 와 같은 방식
+- **버퍼 타입이 함수마다 다르다.** `markdownToHwpx()` 는 `ArrayBuffer` 를 돌려주므로
+  `Buffer.from(...)` 해서 쓴다. `validateHwpx()` 는 Buffer/Uint8Array 를 그대로 받지만
+  `parseHwpx()` 는 `ArrayBuffer` 를 원한다 — Node Buffer 를 그냥 넘기면 안 되고
+  `buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)` 로 잘라 넘긴다
+- ★ **카드 수 대조는 마크다운 문자열이 아니라 `parseHwpx().blocks` 의 표 구조로 한다.**
+  `block.type === 'table'` → `block.table.cells`(IRCell[][]) 의 첫 행이 머리, 나머지가 데이터다.
+  문자열로 세면 되읽기 쪽 표 문법(정렬 표기·공백)이 조금만 달라도 조용히 부풀거나 준다
+- 실측(2026-09-01, `automation/fixtures/0829-submissions.json` 65건):
+  md→hwpx→md 왕복이 **표 9개 · 데이터 행 65/65 · 칸 260/260 글자 동일**로 무손실이었다.
+  칸 글자가 그대로라 대조는 개수가 아니라 **글자 비교**로 박아 두는 편이 낫다
+- ★ **미제출 조를 만들려면 행을 지우지 말고 `item_content` 를 비운다.** `buildBoards` 는
+  행에서 조 자리를 만들므로(`hq-submission-board-logic.ts:103`) 행을 지우면 그 조가 꼭지에서
+  통째로 사라져 「미제출」이 아니라 「없는 조」가 된다 — 불변식 검사가 무의미해진다
+- 산출물은 `.gitignore` 된 `output/` 에 쓴다(`.gitignore:54`). 검증 스크립트는 끝나면 지운다
+  (`--keep` 으로 남긴다). 커밋 전에 `git status` 로 `.hwpx` 가 안 새는지 볼 것
+- ★★ `scripts/verify_hangul.py`(G3, 한글이 실제로 여는지)는 **루프에서 실행 금지**다.
+  COM 이 한글 앱 창과 보안 대화상자를 띄워 무인 실행이 그 자리에서 멈춘다. 그래서
+  `--i-am-here` 없이는 아무것도 하지 않도록 잠가 두었다. G3 는 사람이 손으로 한다
