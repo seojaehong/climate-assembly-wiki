@@ -229,6 +229,27 @@ L4 는 설계문서가 **「시민이 고른다」**로 못 박은 유일한 단
 - 낱말만 쓰면 「조건」과 「우려」가 헷갈린다. 뜻 한 줄(`ONTOLOGY_KIND_HINTS`)을 `title` 로 붙일 것 —
   **뜻이 없으면 사람은 첫 번째 버튼을 누른다.**
 
+## 초안 보관 (`submission-draft-store.ts`)
+
+조가 저장을 안 누른 글의 보관소다. **`localStorage`/`sessionStorage` 를 직접 부르지 말고
+`createDraftStorage()` 를 거칠 것.**
+
+- 계층은 **local → session → 메모리**다. 쓰기는 던지는 계층을 건너뛰며 내려가고,
+  ★ **읽기는 세 계층을 순서대로 훑어 처음 찾은 값을 쓴다.** 이 배포 전에 `sessionStorage` 에만
+  있던 초안이 그대로 살아나는 것도, 계층이 중간에 강등돼도 값이 안 사라지는 것도 이 순서 덕이다
+- ★ **사본은 언제나 하나만 산다.** 지우기는 전 계층에서 지우고, **쓰기도 안착한 계층 말고는 전부 지운다.**
+  `setItem` 은 용량 초과 시 **원자적으로 실패**해 옛 값이 위 계층에 그대로 남는데, 읽기가 위에서부터
+  훑으므로 안 지우면 **방금 쓴 새 초안이 옛 초안에 가린다**(강등·승격 양쪽 다)
+- 예외를 절대 밖으로 던지지 않는다. `QuotaExceededError` 뿐 아니라 **전역 접근 자체가 던지는**
+  브라우저(사생활 보호·기업 정책)가 있어 `globalThis.localStorage` 참조를 try 안에 둔다.
+  vitest 는 `environment: 'node'` 라 그 전역이 그냥 `undefined` 다 — undefined 와 throw 를 같게 다룰 것
+- 보관 형태는 봉투(`DraftEnvelope { v, rows, savedAtMs, baseUpdatedAt }`)다. **옛 모양(EditorRow 배열)도
+  읽어 `savedAtMs:0` 으로 승격**하며, 0 은 **만료로 보지 않는다**(시각을 몰라서 글을 버리지 않는다)
+- 행 위생 처리(`name` 메우기, 한 줄이라도 틀리면 전체 폐기)는 `readDraft` 안에 있다.
+  `pickRestoredRows` 가 이걸 그대로 물려받으므로 **두 곳에 복제하지 말 것**
+- `staleKeys()` 는 `climate_vote_draft:` 접두사 + **만료분만** 낸다. 깨진 값·승격분은 안 낸다
+  (지우면 조가 쓰던 글을 대신 버리는 셈이고, `climate_vote_queue:` 키까지 쓸어 가면 안 된다)
+
 ## UI 검증 시 셀렉터 함정
 
 포스트잇이 `<article>` 이다. **새 패널이 카드 발췌를 `<article>` 로 내면 「카드 N장」 검사가

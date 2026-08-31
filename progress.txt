@@ -87,3 +87,40 @@ Commit: ralph/submission-resilience-0912
   - 상한을 바꿔야 할 일이 생기면 고쳐야 할 곳은 4군데다: s15 의 submission_save·submission_save_v2,
     `submission-panel-logic.ts:29`, `submission-guide.ts:20`
 ---
+
+## 2026-09-01 00:00 - US-002 (초안 저장소 추상화 — submission-draft-store.ts)
+Commit: ralph/submission-resilience-0912
+- 신규 `src/islands/mod/submission-draft-store.ts` (순수 함수 + 저장소 래퍼, UI 없음)
+  · `DraftEnvelope { v:1, rows, savedAtMs, baseUpdatedAt }` · `DRAFT_KEY_PREFIX` · `DRAFT_TTL_MS`(72h)
+  · `readDraft(raw, nowMs, ttlMs?)` — 옛 모양(EditorRow 배열) 승격 + 만료 판정
+  · `writeDraft(rows, baseUpdatedAt, nowMs)` · `staleKeys(allKeys, readRaw, nowMs, ttlMs?)`
+  · `createDraftStorage(candidates?)` — local→session→메모리
+- 신규 `src/islands/mod/submission-draft-store.test.ts` (34개)
+- `src/islands/mod/AGENTS.md` 「초안 보관」 절 신설
+- `SubmissionPanel.tsx` 는 **손대지 않았다**(AC 요건). 배선은 US-003.
+- 검사: `npx tsc --noEmit -p tsconfig.json` 통과 ·
+  `npx vitest run` **91 파일 / 1,550 테스트 전부 통과**
+  (기준선 90/1,516 대비 +1 파일 +34 테스트, **신규 실패 0**)
+- **다음 이터레이션을 위한 학습:**
+  - ★ **`readDraft` 가 행 위생 처리(`name` 메우기 · 한 줄이라도 틀리면 전체 폐기)를 이미 한다.**
+    US-003 에서 `pickRestoredRows` 는 `readDraft(raw, nowMs)?.rows` 를 받아
+    `isDirty(rows, serverRows)` 만 태우면 된다 — 로직을 두 곳에 복제하지 말 것.
+    단 `pickRestoredRows` 시그니처는 `(raw, serverRows)` 유지가 AC 라 **nowMs 를 어디서 받을지**를
+    정해야 한다(선택 3번째 인자 `nowMs = Date.now()` 가 기존 테스트를 안 깬다)
+  - ★ **읽기가 local→session→메모리 순서로 훑는 것이 US-003 의 승격 경로 그 자체다.**
+    지금 화면은 `sessionStorage` 에 쓰고 있으므로, 배선만 바꾸면 기존 초안이 저절로 살아난다.
+    별도 마이그레이션 코드를 쓰지 말 것
+  - ★ **사본은 하나만 산다** — 지우기는 전 계층이고, **쓰기도 안착한 계층 외를 지운다.**
+    처음엔 쓰기 쪽을 빠뜨렸는데, `setItem` 이 용량 초과 시 **원자적으로 실패**해
+    localStorage 에 옛 v1 이 남고 v2 는 sessionStorage 로 내려가 → 읽기가 위에서부터
+    훑으니 **v1 이 v2 를 가리는** 결함이 됐다(이 PRD 가 막으려는 바로 그 사고).
+    강등·승격 양쪽에 회귀 테스트를 박아 뒀다. `dropDraft()` 를 이 래퍼로 바꾸면
+    옛 sessionStorage 사본까지 같이 지워진다
+  - `staleKeys` 는 접두사를 `climate_vote_draft:` 로 좁혀 뒀다. US-004 의
+    `climate_vote_queue:` 키를 쓸어 가지 않는다(테스트로 박음)
+  - vitest 는 `environment: 'node'` 라 `globalThis.localStorage` 가 **undefined** 다.
+    래퍼는 undefined 와 throw 를 같게 다루므로 `createDraftStorage()` 를 인자 없이 불러도 죽지 않는다
+    (테스트로 박음). 브라우저 전역을 모듈 최상단에서 잡지 말 것
+  - `prd.json` 은 python `json.dumps(..., ensure_ascii=False, indent=2)` 로 다시 쓰면
+    나머지 story 가 손상 없이 보존된다
+---

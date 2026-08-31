@@ -37,8 +37,8 @@
         "Tests pass — npx vitest run 이 1516개 이상 통과하고 신규 실패 0"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "순수 함수(readDraft·writeDraft·staleKeys) + 저장소 래퍼(createDraftStorage) 신설. 읽기는 local→session→메모리 순서로 훑어 옛 sessionStorage 초안까지 살린다. ★ 사본은 하나만 — 지우기는 전 계층, 쓰기도 안착한 계층 외를 지운다(강등 시 옛 값이 새 값을 가리는 결함 수정). savedAtMs===0 승격분은 만료 제외, 경계는 엄격 비교(= 는 생존). SubmissionPanel.tsx 미변경. 91파일/1,550테스트 전부 통과(기준선 90/1,516 대비 +1파일 +34테스트, 신규 실패 0)."
     },
     {
       "id": "US-003",
