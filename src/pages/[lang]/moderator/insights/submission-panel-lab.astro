@@ -1,0 +1,75 @@
+---
+/**
+ * /ko/moderator/insights/submission-panel-lab — 조 작성 화면(SubmissionPanel) 미리보기
+ *
+ * 왜 있는가
+ *   조 화면(/mod?code=…)은 접속코드 게이트 뒤에 있고, 열면 topic_list·submission_get 이
+ *   **운영 DB** 로 나간다. 이번 브랜치는 운영 DB 를 건드리지 않는 것이 규칙이라 실화면으로는
+ *   초안 복원을 확인할 수 없다. 그래서 같은 컴포넌트를 고정 픽스처로 띄우는 라우트를 둔다.
+ *   이웃한 submission-lab.astro 는 **본부 보드(HqSubmissionBoard)** 미리보기라 조 화면이 아니다.
+ *
+ * PRIVACY
+ *   - ko 단일 라우트(getStaticPaths가 'ko'만 낸다)
+ *   - robots noindex,nofollow · 사이트맵 화이트리스트 밖 · pagefind 대상 아님
+ *
+ * DATA
+ *   - 이 파일 안의 고정 꼭지 2개 + 빈 제출물. Supabase를 부르지 않는다
+ *   - 초안 보관함(localStorage)만은 진짜다 — 여기서 확인하려는 것이 바로 그것이다
+ */
+import type { SubmissionGetResult, Topic } from '../../../../lib/deliberation';
+import SubmissionPanel from '../../../../islands/mod/SubmissionPanel';
+import '../../../../styles/global.css';
+
+export function getStaticPaths() {
+  return [{ params: { lang: 'ko' } }];
+}
+
+const topics: Topic[] = [
+  {
+    id: 'fixture-topic-1',
+    ordinal: 1,
+    block: 'am',
+    prompt: '기후위기 대응에서 우리 지역이 먼저 해야 할 일은 무엇입니까?',
+    guidance: '한 사람의 발언을 한 칸에 적습니다.',
+    status: 'open',
+  },
+  {
+    id: 'fixture-topic-2',
+    ordinal: 2,
+    block: 'pm',
+    prompt: '그 일을 하려면 무엇이 필요합니까?',
+    guidance: null,
+    status: 'open',
+  },
+];
+
+const submissions: Record<string, SubmissionGetResult> = {
+  'fixture-topic-1': { status: 'draft', updated_at: '2026-09-01T00:00:00.000Z', items: [] },
+  'fixture-topic-2': { status: null, items: [] },
+};
+---
+<!doctype html>
+<html lang="ko" class="light" data-theme="light"><head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="color-scheme" content="light" />
+  <title>조 작성 화면 미리보기 [모더레이터 인사이트]</title>
+  <style is:global>
+    body { font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif; }
+    .tr-num { letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  </style>
+</head><body>
+  <div style="background:#6e2020;color:#ffdcd7;text-align:center;padding:6px 16px;font-size:12px;font-weight:600;letter-spacing:.04em;border-bottom:2px solid #b22a2a;">
+    미리보기 — 픽스처 꼭지 {topics.length}개. 저장 버튼은 서버로 나가지 않습니다 · 외부 공개 금지
+  </div>
+  <div style="max-width:960px;margin:0 auto;padding:16px;">
+    <SubmissionPanel
+      code="fixture"
+      teamLabel="픽스처 조"
+      fixtureTopics={topics}
+      fixtureSubmissions={submissions}
+      client:only="react"
+    />
+  </div>
+</body></html>

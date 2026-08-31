@@ -124,3 +124,55 @@ Commit: ralph/submission-resilience-0912
   - `prd.json` 은 python `json.dumps(..., ensure_ascii=False, indent=2)` 로 다시 쓰면
     나머지 story 가 손상 없이 보존된다
 ---
+
+## 2026-09-01 00:30 - US-003 (초안 저장소를 SubmissionPanel 에 배선 — localStorage 승격)
+Commit: ralph/submission-resilience-0912
+- `submission-panel-logic.ts` — `pickRestoredRows(raw, serverRows, nowMs = Date.now())`.
+  본문은 `readDraft(raw, nowMs)?.rows` + `isDirty` 뿐이다. 파싱·행 위생·TTL 을 복제하지 않았다
+  (JSON.parse·정규화 24줄 삭제). 3번째 인자는 **선택**이라 기존 호출부·기존 테스트가 그대로 통과
+- `SubmissionPanel.tsx` — sessionStorage 직접 호출 3곳을 `draftStore`(모듈 단일 인스턴스) 경유로 교체
+  · 읽기 `draftStore.getItem(draftKey)` · 쓰기 `writeDraft(rows, loaded.updatedAt, Date.now())`
+  · `dropDraft()` = `draftStore.removeItem` (전 계층 삭제 → 배포 이전 sessionStorage 사본까지 함께 사라진다)
+  · 만료 초안 청소는 **패널 루트** useEffect 1회 (`staleKeys`). TopicSection 은 탭마다 다시 떠서 부적합
+  · 저장 성공 경로의 `dropDraft() → loadSubmission()` 순서 **그대로 유지**
+  · `climate_vote_guide_collapsed`(786·795줄)는 손대지 않았다 — 초안이 아니다
+  · 거짓이 된 주석 2곳 정정(beforeunload 근거 = 이제 탭 종료도 건넌다 / dropDraft)
+- **AC 이탈 1건 — 기록해 둔다.** AC 가 지목한 `/ko/moderator/insights/submission-lab` 은
+  **HqSubmissionBoard(본부 보드)** 미리보기라 조 작성 화면이 아니다. 조 화면은 접속코드 뒤라
+  실화면으로 열면 운영 DB 로 읽기가 나간다 → **`submission-panel-lab.astro` 픽스처 라우트를 신설**해 검증했다.
+  `SubmissionPanel` 에 `fixtureTopics`·`fixtureSubmissions` prop 을 더했다(HqSubmissionBoard 의 `fixtureRows` 관례)
+- **브라우저 검증**: `scripts/verify-draft-survives-tab-close.mjs` (playwright, 신규) — **7 PASS / 0 FAIL**
+  · 만료 초안(73h) 1건 삭제 · 살아 있는 초안 1건 유지
+  · 타이핑 → localStorage 에 봉투 `v:1` · `baseUpdatedAt='2026-09-01T00:00:00.000Z'` 동봉 · **사본 1개**
+  · 옛 모양(sessionStorage 배열, name 없음) 초안도 화면에 복원 = 승격 경로
+  · ★★ **`page.close()` 로 탭을 없애고 새 탭으로 재접속 → 친 글이 칸에 그대로** (사진으로 확인)
+  · 대조군: 탭이 죽으면 sessionStorage 초안은 함께 죽는다(= localStorage 승격이 아니었으면 글도 죽었다)
+  · Supabase 요청 시도 0건
+  · 눈으로 본 것: `.tmp-verify/us003-2-restored.png` — 꼭지① 칸에 「탭을 닫아도 남아야 하는 글 1788189958209」와
+    「저장하지 않은 변경이 있습니다」, 꼭지② 칸에 「배포 이전 sessionStorage 초안」이 그대로 떠 있다
+- ★ **사고 1건 — 운영 DB 에 읽기 4건이 나갔다(제출·쓰기 아님, submission_get 4회).**
+  픽스처 라우트 첫 실행 때다. 원인은 `TeamDownload` 가 **인쇄 문서를 버튼 누르기 전부터 만들어 두느라**
+  마운트 즉시 `submission_get` 을 부르는 것. 화면만 열어도 나간다. 곧바로 `fixtureSubmissions` 를
+  `TeamDownload` 까지 내려 막았고, 검증 스크립트는 이제 **세지 않고 `route(...).abort()` 로 끊는다** →
+  재실행 시 시도 0건. DDL·쓰기는 없었고 p_code 는 실재하지 않는 'fixture' 였다
+- 검사: `npx tsc --noEmit -p tsconfig.json` 통과 · `npx vitest run` **91 파일 / 1,556 테스트 전부 통과**
+  (직전 91/1,550 대비 +6, 신규 실패 0) · `npm run build` 통과 — 7,917쪽, `dist/ko/moderator/insights/submission-panel-lab/` 생성 확인
+  (★ `.astro` 는 tsc·vitest 어느 쪽도 안 본다. 새 라우트를 더한 이터레이션은 build 를 한 번 돌릴 것.
+   prebuild 가 더럽힌 `index.md`·`log.md`·`public/workshop-graph/data`·`src/data/agenda-network-scene.json` 은 git checkout 으로 원복)
+- 변경 파일: `submission-panel-logic.ts` · `submission-panel-logic.test.ts` · `SubmissionPanel.tsx` ·
+  `src/pages/[lang]/moderator/insights/submission-panel-lab.astro`(신규) ·
+  `scripts/verify-draft-survives-tab-close.mjs`(신규) · `src/islands/mod/AGENTS.md` · `.gitignore`
+- **다음 이터레이션을 위한 학습:**
+  - ★ **픽스처 라우트로 조 화면을 열 땐 `TeamDownload` 까지 픽스처를 내려야 한다.** 안 그러면
+    「화면을 여는 것만으로」 운영 DB 로 읽기가 나간다. US-005·US-006·US-010 도 이 라우트를 쓸 텐데,
+    새로 마운트 즉시 부르는 것을 추가하면 같은 구멍이 다시 뚫린다
+  - ★ **검증 스크립트에서 Supabase 요청은 세지 말고 막아라** — `context.route('**/rest/v1/**', abort)`.
+    세기만 하면 구멍을 발견하는 순간이 곧 접촉이다. 이번에 실제로 그렇게 됐다
+  - `submission-panel-lab.astro` 는 꼭지 2개·빈 제출물이다. US-010 의 마감 배너는 여기 `deadline_at` 을
+    넣어 확인하면 된다. 픽스처 `updated_at` 은 `2026-09-01T00:00:00.000Z` 로 고정돼 있어
+    US-004·005 의 `baseUpdatedAt` 대조를 화면에서 그대로 시험할 수 있다
+  - 재전송 큐(US-004·005)가 쓸 `baseUpdatedAt` 은 **이미 초안 봉투에 실려 저장되고 있다**.
+    큐를 만들 때 다시 계산하지 말고 초안 봉투에서 읽어 쓸 것
+  - `pickRestoredRows` 의 `nowMs` 는 선택 인자다. 호출부(`SubmissionPanel`)는 안 주고 있으므로
+    시계 주입이 필요해지면 그때 넘기면 된다
+---

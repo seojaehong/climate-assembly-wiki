@@ -55,8 +55,8 @@
         "Tests pass — 신규 실패 0"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "sessionStorage 직접 호출 3곳을 draftStore(모듈 단일 인스턴스) 경유로 교체 · 쓰기에 loaded.updatedAt 을 baseUpdatedAt 으로 동봉 · pickRestoredRows 는 시그니처 유지(3번째 nowMs 선택 인자) 후 readDraft 위임 · 만료 청소는 패널 루트 1회 · dropDraft()→loadSubmission() 순서 유지. ★ AC 가 지목한 submission-lab 은 HqSubmissionBoard(본부 보드) 미리보기라 조 화면이 아니다 → SubmissionPanel 전용 픽스처 라우트 submission-panel-lab.astro 를 신설해 검증(fixtureTopics·fixtureSubmissions prop). 브라우저 검증 scripts/verify-draft-survives-tab-close.mjs = 7 PASS / 0 FAIL, 탭 종료 후 재접속에 글 복원을 사진으로 확인. ★ 사고: 첫 실행 때 TeamDownload 의 인쇄 문서 사전 준비가 submission_get 4건을 운영 DB 로 보냈다(읽기만). fixtureSubmissions 를 TeamDownload 까지 내려 막고 스크립트는 요청을 abort 하도록 고쳐 재실행 시 0건. 91파일/1,556테스트 전부 통과(직전 91/1,550 대비 +6, 신규 실패 0)."
     },
     {
       "id": "US-004",

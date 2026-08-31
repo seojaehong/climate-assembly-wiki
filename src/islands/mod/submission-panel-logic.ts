@@ -1,4 +1,5 @@
 import type { SubmissionItem, SubmissionItemInput, SubmissionStatus } from '../../lib/deliberation';
+import { readDraft } from './submission-draft-store';
 
 /**
  * 조별 산출물(submission) 패널의 순수 로직 — 편집 행 조작, 저장 페이로드 변환,
@@ -240,34 +241,22 @@ export function submissionBadge(status: SubmissionStatus | null): SubmissionBadg
  * 서버 내용이 언제나 기준이다. 보관분은 **서버와 다를 때만** 되살린다 —
  * 저장을 마치면 둘이 같아지므로 낡은 초안이 되살아나지 않는다.
  *
+ * ★ 보관 문자열 해석(옛 모양 승격·행 위생·TTL 만료)은 전부 `submission-draft-store`
+ *   의 `readDraft` 가 한다. 여기서 복제하지 말 것 — 두 벌이 되면 한쪽만 고쳐진다.
+ *
  * @param raw       보관함에서 꺼낸 문자열(없으면 null)
  * @param serverRows 방금 서버에서 읽은 줄
+ * @param nowMs     만료 판정 기준 시각. 시험에서 주입한다
  * @returns 되살릴 줄. 되살릴 게 없으면 null
  */
-export function pickRestoredRows(raw: string | null, serverRows: EditorRow[]): EditorRow[] | null {
-  if (!raw) return null;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return null; // 깨진 값 — 서버 내용으로 연다
-  }
-  if (!Array.isArray(parsed) || parsed.length === 0) return null;
-  // ★ 이름 칸이 생기기 **전에** 보관된 초안이 있을 수 있다(같은 탭에서 배포를 건너온 경우).
-  //   옛 모양은 {content, rationale} 뿐이라 name 이 undefined 로 들어오고, 그대로 쓰면
-  //   controlled input 이 uncontrolled 로 바뀌어 React 가 경고를 뱉는다. 여기서 메운다.
-  const rows = parsed
-    .filter(
-      (row): row is Partial<EditorRow> =>
-        typeof row === 'object' && row !== null && typeof (row as EditorRow).content === 'string',
-    )
-    .map((row) => ({
-      name: typeof row.name === 'string' ? row.name : '',
-      content: row.content as string,
-      rationale: typeof row.rationale === 'string' ? row.rationale : '',
-    }));
-  if (rows.length !== parsed.length || rows.length === 0) return null;
-  return isDirty(rows, serverRows) ? rows : null;
+export function pickRestoredRows(
+  raw: string | null,
+  serverRows: EditorRow[],
+  nowMs: number = Date.now(),
+): EditorRow[] | null {
+  const draft = readDraft(raw, nowMs);
+  if (!draft) return null;
+  return isDirty(draft.rows, serverRows) ? draft.rows : null;
 }
 
 /**

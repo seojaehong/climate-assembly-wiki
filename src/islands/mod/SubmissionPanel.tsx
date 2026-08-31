@@ -5,6 +5,7 @@ import {
   submissionSave,
   submissionReopenByTeam,
   topicList,
+  type SubmissionGetResult,
   type SubmissionStatus,
   type Topic,
 } from '../../lib/deliberation';
@@ -32,6 +33,11 @@ import {
   toSaveItems,
   type EditorRow,
 } from './submission-panel-logic';
+import {
+  createDraftStorage,
+  staleKeys,
+  writeDraft,
+} from './submission-draft-store';
 import {
   REVISION_POLL_MS,
   fetchServedRevision,
@@ -98,6 +104,15 @@ type LoadedSubmission = {
  * 조 콘솔은 꼭지마다 구역이 따로라 상태를 공유하지 않는다. 상태를 위로 끌어올리면
  * 세 구역이 서로의 저장에 다시 그려진다 — 입력 중에 그건 위험하다. 신호만 보낸다.
  */
+/**
+ * 미저장분 보관함 — **모듈에 하나만 둔다.**
+ *
+ * 구역(TopicSection)마다 새로 만들면 메모리 계층이 구역별로 갈리고, 배포 이전
+ * `sessionStorage` 초안을 훑어 올리는 승격 경로도 구역마다 따로 돌게 된다.
+ * 계층 결정(local→session→메모리)은 탭 전체에서 한 번이어야 한다.
+ */
+const draftStore = createDraftStorage();
+
 const SUBMISSION_CHANGED = 'climate-vote:submission-changed';
 function announceSubmissionChanged() {
   window.dispatchEvent(new CustomEvent(SUBMISSION_CHANGED));
@@ -110,9 +125,10 @@ function announceSubmissionChanged() {
  * 탭을 닫을 때를 위한 것이지, **우리가 눌러 달라고 한 새로고침**을 막으라는 게 아니다.
  * 겁주는 창이 뜨면 조는 새로고침을 안 한다 — 그러면 옛 번들 그대로 남는다.
  *
- * 안전한 이유 — 미저장분은 이미 sessionStorage 초안에 들어가 있고(TopicSection 의
- * 보관 useEffect), 새로 열릴 때 `pickRestoredRows` 가 서버 내용과 견줘 되살린다.
- * sessionStorage 는 **같은 탭의 새로고침을 건너 산다.**
+ * 안전한 이유 — 미저장분은 이미 초안 보관함에 들어가 있고(TopicSection 의 보관
+ * useEffect), 새로 열릴 때 `pickRestoredRows` 가 서버 내용과 견줘 되살린다.
+ * 보관함은 `localStorage` 를 먼저 쓰므로 새로고침뿐 아니라 **탭을 닫았다 다시 열어도
+ * 산다**(US-003). 막힌 브라우저에서만 `sessionStorage`·메모리로 내려간다.
  */
 let suppressUnloadGuard = false;
 
@@ -185,7 +201,16 @@ function ordinalMark(n: number): string {
 }
 
 /** 꼭지 하나 = 구역 하나. 편집·저장·최종 제출을 스스로 갖는다. */
-function TopicSection({ code, topic }: { code: string; topic: Topic }) {
+function TopicSection({
+  code,
+  topic,
+  fixtureSubmission,
+}: {
+  code: string;
+  topic: Topic;
+  /** 주면 `submission_get` 을 부르지 않는다 — 픽스처 라우트 전용(HqSubmissionBoard 의 fixtureRows 와 같은 관례). */
+  fixtureSubmission?: SubmissionGetResult;
+}) {
   const [loaded, setLoaded] = useState<LoadedSubmission | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [rows, setRows] = useState<EditorRow[]>([emptyRow()]);
@@ -260,7 +285,7 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
 
   const loadSubmission = useCallback(async () => {
     try {
-      const result = await submissionGet(code, topic.id);
+      const result = fixtureSubmission ?? (await submissionGet(code, topic.id));
       const nextRows = rowsFromItems(result.items ?? []);
       setLoaded({
         status: result.status ?? null,
@@ -274,7 +299,7 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
       // 보관분이 그와 다를 때만 화면에 올린다(저장을 마친 뒤엔 같아지므로 안 뜬다).
       let restored: EditorRow[] | null = null;
       try {
-        restored = pickRestoredRows(sessionStorage.getItem(draftKey), nextRows);
+        restored = pickRestoredRows(draftStore.getItem(draftKey), nextRows);
       } catch {
         /* 보관함을 못 읽는 브라우저 — 서버 내용으로 연다 */
       }
@@ -282,7 +307,7 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
     } catch {
       setLoadFailed(true);
     }
-  }, [code, topic.id, draftKey]);
+  }, [code, topic.id, draftKey, fixtureSubmission]);
 
   useEffect(() => {
     void loadSubmission();
@@ -292,12 +317,10 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
   // (낡은 초안이 남아 다음에 되살아나면 그게 더 위험하다).
   useEffect(() => {
     if (loaded == null) return;
-    try {
-      if (dirty) sessionStorage.setItem(draftKey, JSON.stringify(rows));
-      else sessionStorage.removeItem(draftKey);
-    } catch {
-      /* 보관만 못 할 뿐 편집은 계속된다 */
-    }
+    // ★ 딛고 선 서버 updated_at 을 함께 넣는다 — 재전송 큐(US-004·005)가
+    //   「내가 읽은 뒤에 남이 저장했는가」를 이 값으로 판정한다.
+    if (dirty) draftStore.setItem(draftKey, writeDraft(rows, loaded.updatedAt, Date.now()));
+    else draftStore.removeItem(draftKey);
   }, [rows, dirty, loaded, draftKey]);
 
   // 저장 전 이탈(새로고침·탭 닫기) confirm — 자동 저장이 없으므로 이 방어선이 유일하다.
@@ -326,11 +349,9 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
    * 순간 정본은 서버다.
    */
   const dropDraft = () => {
-    try {
-      sessionStorage.removeItem(draftKey);
-    } catch {
-      /* 못 지워도 아래 loadSubmission 은 진행한다 */
-    }
+    // 보관함이 모든 계층에서 지운다 — 한 곳만 지우면 배포 이전 `sessionStorage`
+    // 사본이 남아 다음 열람에 되살아난다(submission-draft-store).
+    draftStore.removeItem(draftKey);
   };
 
   const handleSave = async () => {
@@ -868,12 +889,20 @@ function TeamDownload({
   teamLabel,
   tableNo,
   topics,
+  fixtureSubmissions,
 }: {
   code: string;
   teamLabel: string;
   /** 현장 좌석 번호 — 내려받은 표의 「테이블」 칸에 들어간다. */
   tableNo?: string | null;
   topics: Topic[];
+  /**
+   * 꼭지 id → 픽스처 제출물. 주면 `submission_get` 을 부르지 않는다.
+   *
+   * ★ 인쇄 문서는 **버튼을 누르기 전부터** 만들어 둔다(아래 useEffect). 그래서 이 값을
+   *   안 받으면 픽스처 라우트가 화면을 여는 것만으로 운영 DB 로 읽기를 보낸다.
+   */
+  fixtureSubmissions?: Record<string, SubmissionGetResult>;
 }) {
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
@@ -884,7 +913,7 @@ function TeamDownload({
   const collect = async (): Promise<HqSubmissionRow[]> => {
     const rows: HqSubmissionRow[] = [];
     for (const topic of topics) {
-      const got = await submissionGet(code, topic.id);
+      const got = fixtureSubmissions?.[topic.id] ?? (await submissionGet(code, topic.id));
       const items = got?.items ?? [];
       const base = {
         topic_id: topic.id,
@@ -944,7 +973,7 @@ function TeamDownload({
     }
     // collect 는 topics·code 에만 기대므로 의존성을 그 둘로 좁힌다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, teamLabel, topics]);
+  }, [code, teamLabel, topics, fixtureSubmissions]);
 
   // 인쇄 문서는 **버튼을 누르기 전부터 DOM에 있어야 한다.**
   // 눌러야 만들어지게 두면 Ctrl+P·브라우저 인쇄 메뉴로 찍을 때 드러낼 것이 없어
@@ -1054,12 +1083,24 @@ export default function SubmissionPanel({
   code,
   teamLabel,
   tableNo,
+  fixtureTopics,
+  fixtureSubmissions,
 }: {
   code: string | null;
   /** 내려받은 문서에 찍을 조 이름. 없으면 「우리 조」. */
   teamLabel?: string;
   /** 현장 좌석 번호. 내려받은 표의 「테이블」 칸에 들어간다. */
   tableNo?: string | null;
+  /**
+   * 픽스처 꼭지 목록. 주면 `topic_list` 를 부르지 않는다.
+   *
+   * 조 화면은 접속코드 뒤에 있어 브라우저 자동 검증이 불가능하고, 운영 DB 를 부르는
+   * 것도 금지다. `HqSubmissionBoard` 의 `fixtureRows` 와 같은 관례로 네트워크를 건너뛴다
+   * (`src/pages/[lang]/moderator/insights/submission-panel-lab.astro`).
+   */
+  fixtureTopics?: Topic[];
+  /** 꼭지 id → 픽스처 제출물. 주면 그 꼭지는 `submission_get` 을 부르지 않는다. */
+  fixtureSubmissions?: Record<string, SubmissionGetResult>;
 }) {
   const [topics, setTopics] = useState<Topic[] | null>(null);
   const [topicsFailed, setTopicsFailed] = useState(false);
@@ -1069,17 +1110,32 @@ export default function SubmissionPanel({
 
   const loadTopics = useCallback(async () => {
     if (!code) return;
+    if (fixtureTopics) {
+      setTopics(fixtureTopics);
+      setTopicsFailed(false);
+      return;
+    }
     try {
       setTopics(await topicList(code));
       setTopicsFailed(false);
     } catch {
       setTopicsFailed(true);
     }
-  }, [code]);
+  }, [code, fixtureTopics]);
 
   useEffect(() => {
     void loadTopics();
   }, [loadTopics]);
+
+  // 지난 회차 초안 청소 — 패널이 처음 뜰 때 한 번. `localStorage` 로 올라가면서
+  // 초안이 기기에 눌러앉게 됐으므로, 유효기간(72h)이 지난 것은 여기서 버린다.
+  // ★ 만료분만 지운다. 살아 있는 초안을 지우면 조가 쓰던 글을 대신 버리는 셈이다.
+  useEffect(() => {
+    const now = Date.now();
+    for (const key of staleKeys(draftStore.keys(), (k) => draftStore.getItem(k), now)) {
+      draftStore.removeItem(key);
+    }
+  }, []);
 
   if (!code) {
     return <p className="text-[16px] text-[#5A6B73]">조 접속 후에 사용할 수 있습니다.</p>;
@@ -1132,9 +1188,20 @@ export default function SubmissionPanel({
       <SubmissionGuide />
       <TopicJump topics={topics} />
       {topics.map((topic) => (
-        <TopicSection key={topic.id} code={code} topic={topic} />
+        <TopicSection
+          key={topic.id}
+          code={code}
+          topic={topic}
+          fixtureSubmission={fixtureSubmissions?.[topic.id]}
+        />
       ))}
-      <TeamDownload code={code} teamLabel={teamLabel ?? '우리 조'} tableNo={tableNo} topics={topics} />
+      <TeamDownload
+        code={code}
+        teamLabel={teamLabel ?? '우리 조'}
+        tableNo={tableNo}
+        topics={topics}
+        fixtureSubmissions={fixtureSubmissions}
+      />
     </div>
   );
 }

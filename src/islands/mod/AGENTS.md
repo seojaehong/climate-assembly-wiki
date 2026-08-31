@@ -34,6 +34,17 @@
 `src/lib/supabase.ts` 의 `getSupabase()` 는 지연 생성이라 **모듈 import 만으로는 네트워크가 안 열린다.**
 「네트워크 없이」 요건은 호출을 막는 것으로 충족되며, import 를 피할 필요는 없다.
 
+**조 작성 화면(`SubmissionPanel`)도 같은 관례를 쓴다.** 조 화면은 접속코드 뒤라 실화면으로 열면
+`topic_list`·`submission_get` 이 운영 DB 로 나간다. `fixtureTopics` + `fixtureSubmissions`(꼭지 id → 제출물)
+를 주면 둘 다 건너뛴다. 라우트는 `/ko/moderator/insights/submission-panel-lab` 이다
+(이웃한 `submission-lab` 은 **본부 보드** 미리보기지 조 화면이 아니다 — 헷갈리지 말 것).
+
+- ★ **`TeamDownload` 에도 픽스처를 같이 내려야 한다.** 인쇄 문서는 버튼을 누르기 **전부터** DOM 에
+  있어야 해서 마운트 즉시 `submission_get` 을 부른다. 이걸 빠뜨려 화면을 여는 것만으로 운영 DB 에
+  읽기 4건이 새어 나간 적이 있다(2026-09-01, US-003)
+- ★ 검증 스크립트는 요청을 **세지 말고 막아라** — `context.route('**/rest/v1/**', abort)` 로 끊고
+  시도 횟수가 0인지 본다. 세기만 하면 배선 구멍이 곧 운영 DB 접촉이 된다
+
 ## 8.29 취합 화면의 불변식
 
 회의자료 260811 이 「조별 결과 임의 통합」·「좋은 의견 선정」·「소수의견 삭제」·「문장 신작」을 금지한다.
@@ -247,6 +258,11 @@ L4 는 설계문서가 **「시민이 고른다」**로 못 박은 유일한 단
   읽어 `savedAtMs:0` 으로 승격**하며, 0 은 **만료로 보지 않는다**(시각을 몰라서 글을 버리지 않는다)
 - 행 위생 처리(`name` 메우기, 한 줄이라도 틀리면 전체 폐기)는 `readDraft` 안에 있다.
   `pickRestoredRows` 가 이걸 그대로 물려받으므로 **두 곳에 복제하지 말 것**
+- 배선은 `SubmissionPanel.tsx` 에 있고 **보관함 인스턴스는 모듈에 하나뿐**이다(`draftStore`).
+  구역(TopicSection)마다 만들면 메모리 계층이 갈리고 승격 경로가 구역별로 따로 돈다.
+  만료 초안 청소(`staleKeys`)는 **패널 루트**에서 한 번만 한다 — TopicSection 은 탭을 옮길 때마다 다시 뜬다
+- 초안을 쓸 때 `loaded.updatedAt` 을 `baseUpdatedAt` 으로 함께 넣는다. 재전송 큐가 이 값으로
+  「내가 읽은 뒤에 남이 저장했는가」를 판정한다
 - `staleKeys()` 는 `climate_vote_draft:` 접두사 + **만료분만** 낸다. 깨진 값·승격분은 안 낸다
   (지우면 조가 쓰던 글을 대신 버리는 셈이고, `climate_vote_queue:` 키까지 쓸어 가면 안 된다)
 

@@ -20,6 +20,7 @@ import {
   liftNameOnlyRows,
 } from './submission-panel-logic';
 import type { SubmissionItem } from '../../lib/deliberation';
+import { DRAFT_TTL_MS, writeDraft } from './submission-draft-store';
 
 const row = (content: string, rationale = '', name = ''): EditorRow => ({ name, content, rationale });
 
@@ -185,6 +186,40 @@ describe('pickRestoredRows — 탭을 옮겼다 와도 미저장분이 남는다
     expect(pickRestoredRows('[]', server)).toBeNull();
     expect(pickRestoredRows('"문자열"', server)).toBeNull();
     expect(pickRestoredRows('[{"엉뚱":1}]', server)).toBeNull();
+  });
+});
+
+// ── US-003 ── 초안 봉투(submission-draft-store)를 건너온 뒤에도 계약이 같다 ──
+describe('pickRestoredRows — 봉투 모양·유효기간 (US-003 배선)', () => {
+  const server: EditorRow[] = [row('이미 저장한 줄')];
+  const draft: EditorRow[] = [row('이미 저장한 줄'), row('아직 저장 안 한 줄')];
+  const NOW = 1_700_000_000_000;
+
+  it('봉투(writeDraft 산물)를 그대로 되살린다', () => {
+    const raw = writeDraft(draft, '2026-09-01T00:00:00Z', NOW);
+    expect(pickRestoredRows(raw, server, NOW)).toEqual(draft);
+  });
+
+  it('★ 유효기간(72h)이 지난 봉투는 되살리지 않는다 — 지난 회차 글이 돌아오면 안 된다', () => {
+    const raw = writeDraft(draft, null, NOW - DRAFT_TTL_MS - 1);
+    expect(pickRestoredRows(raw, server, NOW)).toBeNull();
+  });
+
+  it('★ 경계(정확히 72h 전)는 아직 살아 있다', () => {
+    const raw = writeDraft(draft, null, NOW - DRAFT_TTL_MS);
+    expect(pickRestoredRows(raw, server, NOW)).toEqual(draft);
+  });
+
+  it('★ 옛 모양(배열 그대로)은 시각을 몰라도 만료로 보지 않는다 — 배포를 건너온 탭', () => {
+    expect(pickRestoredRows(JSON.stringify(draft), server, NOW)).toEqual(draft);
+  });
+
+  it('봉투라도 서버와 같으면 되살리지 않는다', () => {
+    expect(pickRestoredRows(writeDraft(server, null, NOW), server, NOW)).toBeNull();
+  });
+
+  it('nowMs 를 안 주면 지금 시각으로 판정한다 — 기존 호출부 계약 유지', () => {
+    expect(pickRestoredRows(writeDraft(draft, null, Date.now()), server)).toEqual(draft);
   });
 });
 
