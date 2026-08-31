@@ -35,6 +35,33 @@ MSYS_NO_PATHCONV=1 docker exec pgverify psql -U postgres -d verify -v ON_ERROR_S
 
 `.github/workflows/test.yml`은 `supabase/**` 변경 시 임시 PostgreSQL 16에 같은 P1→P1C→P2·롤백 계약을 실행한다. 정상 정책 통과와 함께 `org_context` 기본 수명을 30일로 늘리거나, `assembly_tenant_read` 정책을 `USING (true)`로 약화하거나, `org_of_uid()`를 `SECURITY INVOKER`로 바꾼 음성 케이스가 post-apply verifier에서 반드시 거부되는지 확인한다.
 
+## s17 마감시각 (2026-09-01, US-007) — 운영 DB 무접촉
+
+`migrations/20260901_s17_topic_deadline.sql` 은 `topic_list` 를 **drop 후 재생성**한다. 그 구문이
+권한을 어떻게 바꾸는지는 문서로 못 믿을 대목이라 throwaway PostgreSQL 16 에서 실제로 돌렸다.
+파일 둘 다 이 폴더에 있다.
+
+| 파일 | 성격 | 결과 |
+|------|------|------|
+| `20260901_s17_topic_deadline.sql` | **읽기 전용** post-apply 검증(세션 임시표만 씀) | **7/7 PASS** |
+| `20260901_s17_topic_deadline_contract.sql` | 계약 스모크 — 씨앗을 만들고 마지막에 `rollback`. ⚠️ **버려도 되는 DB 에서만** | **8/8 PASS** |
+
+- 음성 대조 1: s17 **미적용** 상태에서 읽기 전용 검증 → `3/7`, 예외로 정지(fail-closed 확인)
+- 음성 대조 2: s17 에서 **grant 절만 뺀 판** 적용 → C4 만 `FAIL`, `public=t`
+  (자세한 해석은 `migrations/AGENTS.md` 「`drop function` 뒤 권한이 실제로 어떻게 되나」)
+- 롤백 리허설: `rollbacks/20260901_s17_topic_deadline_BEFORE.sql` 적용 후
+  `topic_list` 6컬럼 복귀 · `anon=t authenticated=t public=f` · `topic_set_deadline` 소멸 ·
+  `deadline_at` 컬럼 0개. 재적용 2회 연속도 무사(멱등)
+- ★ s17 은 `driver_pass1.sql` 에 **넣지 않았다** — 그 드라이버는 s5 이후 `2026*` 파일을 애초에
+  싣지 않는다(s1·s2·s4 + platform 뿐). 병합 시 트랙 정리와 함께 배선한다
+
+```bash
+# 위 driver_pass1 로드 뒤
+MSYS_NO_PATHCONV=1 docker exec pgverify psql -U postgres -d verify -v ON_ERROR_STOP=1 -f /tmp/20260901_s17_topic_deadline.sql
+MSYS_NO_PATHCONV=1 docker exec pgverify psql -U postgres -d verify -v ON_ERROR_STOP=1 -f /tmp/verify_s17.sql    # 7/7
+MSYS_NO_PATHCONV=1 docker exec pgverify psql -U postgres -d verify -v ON_ERROR_STOP=1 -f /tmp/contract_s17.sql  # 8/8
+```
+
 ## 환경 조정 (Supabase 전용, 우리 SQL 버그 아님)
 롤 anon/authenticated/service_role · publication supabase_realtime · `auth.uid()` stub · pgcrypto in extensions + search_path · base 테이블 stub(session/votes/rounds/snapshots — 마이그레이션 폴더 밖).
 

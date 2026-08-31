@@ -134,8 +134,8 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "신규 3파일 — migrations/20260901_s17_topic_deadline.sql · rollbacks/20260901_s17_topic_deadline_BEFORE.sql · verify/20260901_s17_topic_deadline.sql(읽기 전용) + verify/..._contract.sql(계약 스모크). 설계 §2.2 를 그대로 옮겼고 새로 설계하지 않았다. deadline_at 은 nullable 추가라 null=마감 없음으로 안전 퇴화한다. topic_list 는 DROP 후 CREATE 하고 s1:306-326 의 revoke public + grant anon,authenticated 를 그대로 재부여했다. ★ 운영 DB 에 SQL 한 줄도 보내지 않았다 — 버려도 되는 PostgreSQL 16 컨테이너에서 driver_pass1 로드 후 실제로 돌렸다: verify 7/7 PASS · contract 8/8 PASS · 롤백 리허설(6컬럼 복귀·grant 복원·컬럼 제거) · 재적용 멱등. ★ 이번에 뒤집힌 사실: 설계문서·PRD 가 말한 「grant 재부여 누락 = 조 화면 전면 장애」는 이 환경에서 틀렸다. drop 후 create 하면 PUBLIC EXECUTE 가 기본으로 되살아나 anon 이 PUBLIC 에 얹혀 계속 호출된다(실측 public=t). 즉시 증상이 없는 대신 명시적 grant 가 사라진 채 남아, 나중에 누가 revoke public 만 돌리면 anon·authenticated 가 동시에 죽는다 — 2026-07-26 라이브 장애와 같은 구조. 그래서 검사는 anon=t 가 아니라 public=f 를 본다. ★ create or replace 는 ACL 을 보존한다(실측). ★ s17 은 driver_pass1.sql 에 넣지 않았다 — 그 드라이버는 s5 이후 2026* 파일을 애초에 싣지 않는다(s1·s2·s4+platform 뿐). 병합 시 배선. TS 는 손대지 않았다(Topic 타입·topicList 는 US-009). tsc 통과 · 92파일/1,623테스트 전부 통과(기준선 유지, 신규 실패 0)."
     },
     {
       "id": "US-008",

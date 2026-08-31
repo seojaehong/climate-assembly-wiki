@@ -103,3 +103,54 @@ platform 트랙과 겹치는 함수를 다룰 때는 **새 마이그레이션을
 
 2026-08-31 전수 확인 결과, `2026*` 트랙과 `platform_*` 트랙이 **둘 다 정의하는 함수는
 `submission_save_v2` 하나뿐**이다. `topic_list` 는 platform 쪽에 없다.
+
+## `drop function` 뒤 권한이 실제로 어떻게 되나 — 2026-09-01 실측 (US-007 / s17)
+
+`20260901_s17_topic_deadline.sql` 이 `topic_list` 를 drop 후 재생성하면서 버려도 되는 PostgreSQL 16
+컨테이너에서 실제로 재현해 본 결과다. **설계문서·PRD 에 적힌 「grant 재부여를 빠뜨리면 조 화면이
+전면 장애」는 이 저장소 환경에서 사실이 아니다.** 실제로 일어나는 일은 더 조용하고 더 나쁘다.
+
+| 구문 | 기존 ACL | 결과 |
+|------|----------|------|
+| `create or replace function` | **보존된다** | 앞선 `revoke ... from public` 이 그대로 살아 있다 |
+| `drop function` + `create function` | **날아간다** | 새 함수는 **PUBLIC EXECUTE 를 기본으로 갖는다** |
+
+실측값 — grant 절을 뺀 s17 을 적용한 직후:
+`anon=t authenticated=t public=t` (재부여 정상판은 `anon=t authenticated=t public=f`)
+
+→ **조 화면은 안 죽는다.** anon 이 PUBLIC 에 얹혀 계속 호출되기 때문이다. 대신
+① PUBLIC 노출이 되살아나고 ② 명시적 `anon`·`authenticated` grant 가 사라진다.
+그 상태에서 누군가 나중에 위생 정리로 `revoke execute ... from public` 만 돌리면 그 순간
+**anon 과 authenticated 가 동시에 권한을 잃는다** — `20260726_grant_authenticated_execute.sql`
+머리말의 2026-07-26 라이브 장애(`42501 permission denied for function hq_teams`)와 같은 구조다.
+
+★ 그러므로 `revoke from public` + `grant to anon, authenticated` 는 「조 화면을 살리는 주문」이
+아니라 **「PUBLIC 에 얹힌 상태를 명시적 권한으로 갈아 끼우는 짝」**이다. 위 5종 세트의 4·5 를
+항상 함께 쓰라는 규칙의 진짜 이유가 이것이다. 검증도 `anon=t` 만 보면 안 되고
+**`public=f` 를 함께 봐야** 의미가 있다(`supabase/verify/20260901_s17_topic_deadline.sql` C4).
+
+### 이 폴더 파일을 실제로 돌려보는 법 (운영 DB 무접촉)
+
+`supabase/verify/README.md` 의 G1 하네스와 같은 방식이다. 요약:
+
+```bash
+docker run -d --name pgverify -e POSTGRES_PASSWORD=verify -e POSTGRES_DB=verify postgres:16
+docker exec pgverify psql -U postgres -d verify -c "create role anon nologin; create role authenticated nologin; create role service_role nologin; create publication supabase_realtime; alter database verify set search_path=public,extensions,climate_vote;"
+docker cp supabase/migrations/. pgverify:/tmp/ ; docker cp supabase/verify/00_prelude.sql pgverify:/tmp/ ; docker cp supabase/verify/driver_pass1.sql pgverify:/tmp/
+MSYS_NO_PATHCONV=1 docker exec pgverify psql -U postgres -d verify -v ON_ERROR_STOP=1 -v verify_function_bodies=on -f /tmp/driver_pass1.sql
+```
+
+함정 셋:
+- **Git Bash 는 `/tmp/...` 를 윈도 경로로 바꿔 버린다.** `MSYS_NO_PATHCONV=1` 을 붙일 것
+- **`anon` 의 `usage on schema climate_vote` 는 어느 마이그레이션에도 없다.** 운영에서는
+  Supabase 의 「노출 스키마」 설정이 준다. throwaway DB 에서는 직접 줘야 anon 호출 검사가 돈다
+- **psql 은 문장마다 암시적 커밋**이라 `create temporary table ... on commit drop` 은 즉시 사라진다
+
+### ★ `driver_pass1.sql` 은 s5~s17 을 싣지 않는다
+
+CI(`.github/workflows/test.yml`)가 `supabase/**` 변경 시 돌리는 것은 `driver_pass1.sql` 인데,
+그 파일이 `\i` 로 부르는 목록은 mod_console·attendance·s1·s2·s4 + platform 뿐이다.
+**s5 이후의 `2026*` 파일은 CI 가 파싱조차 하지 않는다.** s17 도 마찬가지다 —
+넣지 않은 것은 관례를 따른 것이며, 병합 시 트랙을 정리할 때 함께 배선한다.
+그때까지 s17 의 파싱·권한·계약 근거는 위 하네스로 손수 돌린 결과
+(`verify 7/7` · `contract 8/8`, progress.txt 2026-09-01 US-007 항)뿐이다.

@@ -362,3 +362,73 @@ Commit: 86da8c9
     **모양이 같아 헷갈릴 수 있다** — 배너와 배지가 나란히 뜰 때 「14:23」이 시각인지 잔여인지
     구별되게 단위·문맥을 붙일 것(`timer-logic.ts:133 formatRemaining` 이 이미 `MM:SS` 를 낸다)
 ---
+
+## 2026-09-01 02:00 - US-007 (s17 마이그레이션 파일 — topic.deadline_at + topic_set_deadline)
+Commit: ralph/submission-resilience-0912
+- 신규 4파일. 설계 §2.2 를 **그대로 옮겼다**(새로 설계하지 않았다)
+  · `supabase/migrations/20260901_s17_topic_deadline.sql`
+    `discussion_topic.deadline_at timestamptz` 추가(nullable) ·
+    `topic_list` **DROP 후 CREATE**(8컬럼 = 기존 6 + `deadline_at` + `server_now`) ·
+    `topic_set_deadline(text, uuid, timestamptz)`(s7:25 의 `attendance_token_row` → `scope='hq'`) ·
+    s1:306-326 의 `revoke from public` + `grant to anon, authenticated` 재부여
+  · `supabase/rollbacks/20260901_s17_topic_deadline_BEFORE.sql`
+  · `supabase/verify/20260901_s17_topic_deadline.sql` — **읽기 전용** post-apply(세션 임시표만)
+  · `supabase/verify/20260901_s17_topic_deadline_contract.sql` — 계약 스모크(씨앗 후 `rollback`)
+- `p_deadline_at = null` 이 본부 「지우기」다. 꼭지 `status` 는 건드리지 않는다 —
+  마감은 안내이지 잠금이 아니다. 서버가 마감 후 저장을 막으면 8.29 에 실제로 일어난 일
+  (다 정리했는데 못 올림)이 그대로 반복된다
+- **운영 DB 에 SQL 을 한 줄도 보내지 않았다.** 대신 버려도 되는 PostgreSQL 16 컨테이너를 띄워
+  `driver_pass1.sql`(prelude→mod_console→attendance→s1→s2→s4→platform, `check_function_bodies=on`)
+  을 clean 로드한 뒤 s17 을 실제로 적용해 돌렸다
+
+- **검증 숫자 (전부 실측)**
+  · 읽기 전용 검증 **7/7 PASS** — 컬럼 타입/nullable · 반환 8컬럼 · security definer·sql·search_path ·
+    ★권한 · `topic_set_deadline` 계약 · 권한 · 소유자
+  · 계약 스모크 **8/8 PASS** — anon 롤 실행 성공 / draft 제외 open 1건 / `server_now` ±10초 /
+    본부가 건 마감이 `topic_list` 에 그대로 / null 로 지워짐 / 조 토큰 `HQ authorization required` /
+    없는 꼭지 `topic not found` / 마감을 걸어도 `status='open'` 유지
+  · **음성 대조 1** — s17 **미적용** 상태에서 읽기 전용 검증 → `3/7`, 예외로 정지(fail-closed 확인).
+    검사가 진짜로 무언가를 보고 있다는 증거다
+  · **음성 대조 2** — s17 에서 **grant 절만 뺀 판** 적용 → C4 하나만 FAIL, `public=t`
+  · **롤백 리허설** — `_BEFORE.sql` 적용 후 `topic_list` 6컬럼 복귀 ·
+    `anon=t authenticated=t public=f` · `topic_set_deadline` 소멸 · `deadline_at` 컬럼 0개
+  · **멱등** — 롤백 후 재적용 + 한 번 더 연속 적용도 무사
+
+- **★★ 이번에 뒤집힌 사실 — 설계문서·PRD 의 위험 서술이 틀렸다**
+  설계 §2.2 와 PRD 는 「`drop` 뒤 grant 재부여를 빠뜨리면 조 화면이 **전면 장애**」라고 적고 있다.
+  실측은 다르다. `drop function` + `create function` 은 ACL 을 날리지만 **새 함수는 PUBLIC
+  EXECUTE 를 기본으로 갖는다.** 그래서 grant 절을 빼도 `anon=t`(PUBLIC 경유) — **화면은 안 죽는다.**
+  · 실제로 일어나는 일은 더 조용하고 더 나쁘다: ① PUBLIC 노출이 되살아나고
+    ② 명시적 `anon`·`authenticated` grant 가 사라진다
+  · 그 상태에서 나중에 누가 위생 정리로 `revoke execute ... from public` 만 돌리면 그 순간
+    **anon 과 authenticated 가 동시에** 권한을 잃는다 —
+    `20260726_grant_authenticated_execute.sql` 머리말의 2026-07-26 라이브 장애
+    (`42501 permission denied for function hq_teams`)와 **같은 구조**다
+  · 그래서 검증은 `anon=t` 만 보면 안 되고 **`public=f` 를 함께** 봐야 뜻이 있다(C4 가 그렇게 짰다)
+  · 대비: **`create or replace` 는 기존 ACL 을 보존한다**(실측 — `topic_set_deadline` 이
+    grant 절 없는 판에서도 `public=f` 를 유지했다)
+- **★ `driver_pass1.sql` 에 s17 을 넣지 않았다.** 그 드라이버가 `\i` 하는 목록은
+  mod_console·attendance·s1·s2·s4 + platform 뿐 — **s5 이후 `2026*` 파일은 CI 가 파싱조차 안 한다.**
+  s17 만 끼우는 것은 관례에 어긋나고 이 브랜치에서 CI 로 확인할 수도 없다(push 금지).
+  병합 시 트랙 정리와 함께 배선한다고 `supabase/migrations/AGENTS.md` 에 남겼다
+- TS 는 **한 줄도 안 건드렸다** — `Topic` 타입·`topicList`·`topicSetDeadline` 래퍼는 US-009 다
+- 변경 파일: 위 신규 4개 · `supabase/migrations/AGENTS.md` · `supabase/rollbacks/README.md` ·
+  `supabase/verify/README.md` · `prd.json` · `progress.txt`
+- 검사: `npx tsc --noEmit -p tsconfig.json` 통과 ·
+  `npx vitest run` **92 파일 / 1,623 테스트 전부 통과**(직전과 동일, 신규 실패 0)
+- **다음 이터레이션을 위한 학습:**
+  - ★ **US-009 는 「DB 미적용 상태에서도 안전」이 핵심인데, 지금 운영 DB 는 실제로 미적용이다.**
+    `topic_list` 가 6컬럼을 돌려주므로 `deadline_at`·`server_now` 는 `undefined` 로 온다.
+    선택 필드로 두고 `countdownTier` 가 `'none'` 이 되는 것을 테스트로 박으라는 AC 가 바로 이것이다
+  - ★ **`server_now` 는 `timestamptz` 라 `2026-09-12 06:30:00+00` 꼴 문자열로 온다.**
+    ISO 8601 의 `T` 가 아니라 **공백 구분**이다(위 계약 스모크 출력에서 실측).
+    `Date.parse()` 는 이 꼴을 브라우저마다 다르게 읽는다 — US-008 의 `clockOffsetMs` 는
+    **`Date.parse` 결과가 `NaN` 이면 오프셋 0 으로 접는 경로**를 반드시 두고 테스트할 것.
+    (supabase-js 는 PostgREST JSON 을 받으므로 실제로는 `2026-09-12T06:30:00+00:00` 로 올 가능성이
+     높지만, 어느 쪽이 오든 안전하도록 짜라는 뜻이다. 두 꼴 다 테스트에 넣을 것)
+  - ★ **마감은 잠금이 아니다.** s17 은 `status` 를 안 건드리고 서버는 마감 후 저장을 막지 않는다.
+    US-010 의 배너가 `over` 라고 해서 입력·저장 버튼을 비활성화하면 안 된다 — 8.29 사고 재현이다
+  - ★ 이 폴더 SQL 을 **실제로 돌려보는 법**을 `supabase/migrations/AGENTS.md` 에 적었다
+    (docker + `MSYS_NO_PATHCONV=1` + anon 의 schema usage 는 마이그레이션이 아니라 플랫폼이 준다는 것).
+    앞으로 SQL story 는 「파일을 썼다」로 끝내지 말고 이 하네스로 숫자를 낼 것
+---

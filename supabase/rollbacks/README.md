@@ -15,6 +15,7 @@
 | `20260724_BEFORE_mod_console.sql` | `migrations/20260724_mod_console_core.sql` | Part A: team/timer_log 키 추가 이전 cv_snapshot_now 원상복구. Part B(파괴적): team·timer_log·module_state·chat_message 테이블 및 mod_*/hq_teams RPC 전체 drop |
 | `platform_p1c_org_selection_BEFORE.sql` | `migrations/platform_p1c_org_selection.sql` | 탭별 기관 선택 컨텍스트·RPC를 제거하고 P1의 다중 소속 차단 함수와 휴면 RLS 정책을 복원 |
 | `platform_p1c_org_selection_activation_BEFORE.sql` | `migrations/platform_p1c_org_selection_activation.sql` | 별도 승인으로 활성화한 staff 직접 테이블 권한을 회수하고 P1C 휴면 검증 상태로 복원 |
+| `20260901_s17_topic_deadline_BEFORE.sql` | `migrations/20260901_s17_topic_deadline.sql` | `topic_set_deadline` 제거 · `topic_list` 를 s1 의 6컬럼 형태로 복원(★grant 재부여 포함) · `discussion_topic.deadline_at` 컬럼 제거. ⚠️ 걸어 둔 마감 시각이 전부 사라지므로 drop 전에 export |
 
 ## 롤백 절차 (예시)
 
