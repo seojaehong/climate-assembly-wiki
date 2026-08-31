@@ -304,3 +304,61 @@ Commit: ralph/submission-resilience-0912
 - 검사: tsc 통과 · `npx vitest run` **92 파일 / 1,599 테스트 전부 통과** ·
   `scripts/verify-queue-resend.mjs` **9 PASS / 0 FAIL 재실행**(고친 코드 기준, 운영 DB 요청 0건)
 ---
+
+## 2026-09-01 01:35 - US-006 (저장 상태 배지 — 지금 안전한지 한눈에)
+Commit: 86da8c9
+- `submission-panel-logic.ts` 신규 순수 함수 2개(+테스트 24개) — 판단은 전부 `.ts` 에 뒀다
+  · `formatSavedClock(iso)` = `14:23` 꼴. `toLocaleTimeString` 을 쓰지 않는다(환경마다 갈린다)
+  · `draftStatusLabel(input, nowMs)` → `{ state, label, tone }`. 상태 6가지
+- `SubmissionPanel.tsx` 배선
+  · `dirtySinceMs` 상태 + 30초 `setInterval` tick. 미저장이 풀리면 타이머를 접는다
+  · `TopicSection` **헤더**에 렌더(제목 아래·안내 위). `data-save-status` 속성으로 검증 스크립트가 집는다
+  · 불러오는 중(`loaded == null && !loadFailed`)에는 아예 안 낸다 — 아직 아무 사실도 없다
+- **★ 확정한 판단 — 우선순위 `saving > conflict > queued > loadFailed > unsaved > saved`**
+  겹침은 예외가 아니라 일상이다. 재전송(`attempt`)과 덮어쓰기(`handleOverwrite`)는
+  `queued`·`conflict` 를 **켠 채로** `setSaving(true)` 한다. 그 순간 가장 참인 말은 「보내는 중」이다.
+  `queued` 가 `loadFailed` 보다 앞인 이유는, 조에게 필요한 소식이 「못 불러왔다」가 아니라
+  「글은 이 기기에 남아 있고 연결되면 자동으로 올라간다」이기 때문이다.
+  겹침 쌍 5개를 전부 테스트로 박았다 — 순서를 바꾸려면 그 테스트부터 고쳐야 한다
+- **★ 대기 중에 조가 계속 쓰면 `dirty` 도 켜지는데 그때도 `queued` 로 둔다.** 섞은 상태를
+  새로 만들면 문구가 길어지고, 본문의 대기 안내 블록이 이미 그 사정을 말한다
+- **★ AC 밖 변경 1건 — 기록해 둔다.** `SubmissionPanel` 의 `formatClock` 을 `formatSavedClock`
+  에 위임했다(3줄). 배지가 「저장됨 · 14:23」인데 바로 아래 줄이 「마지막 저장 오후 2:23」이면
+  조가 **같은 사실을 다른 시각으로 읽는다**. 최종 제출 시각(🔒 배지)까지 한 표기로 모였다
+- **★ AC 이탈 1건.** AC 가 지목한 `submission-lab` 은 본부 보드라 **타이핑할 칸이 없다**
+  (US-003 에서 확인된 것). `submission-panel-lab.astro` 로 검증했다
+- **브라우저 검증**: `scripts/verify-save-status-badge.mjs`(신규, playwright) — **11 PASS / 0 FAIL**
+  · 첫 화면에 배지 2개(꼭지당 1개) · `state=saved` · 「● 저장됨 · 09:00」
+  · 스크롤 맨 위에서 `y=876 / 화면높이 1100` = 첫 화면 안 · **16px** · `opacity=1` · `title` 없음
+  · ★★ 타이핑 즉시 `saved → unsaved`, 문구 「! 저장 안 함」. **1분 미만이라 「n분째」가 안 붙는다**
+  · 꼭지② 는 `saved` 그대로 = 꼭지마다 따로 센다
+  · 30초 tick 을 넘겨도 배지가 살아 있다(`unsaved` 유지) = 타이머 정리 사고 없음
+  · 저장 성공 → `saved` + 「저장됨 · 09:00」(픽스처 `updated_at` 의 지역시각). 아래 줄도 「마지막 저장 09:00」 = 표기 일치
+  · 오프라인 저장 → `queued` + 「! 대기 중 · 1번째 시도 (연결되면 자동 저장)」
+  · **본문 대기 안내 블록과 「지금 다시 시도」 버튼이 그대로 남아 있다**(배지가 선택지를 삼키지 않는다)
+  · `online` 복귀 → `queued → saved`, 큐 삭제
+  · 운영 DB 무접촉: `**/rest/v1/**` 전량 가로채기, 가로채기 밖 요청 **0건**
+  · 눈으로 본 것: `.tmp-verify/us006-1-unsaved.png`(꼭지① 제목 아래 주황 「! 저장 안 함」),
+    `us006-2-saved.png`(초록 「● 저장됨 · 09:00」 + 꼭지② 「● 아직 저장된 내용 없음」),
+    `us006-3-queued.png`(주황 배지 + 그 아래 대기 안내 블록 + 「지금 다시 시도」 동시 노출)
+- 검사: `npx tsc --noEmit -p tsconfig.json` 통과 ·
+  `npx vitest run` **92 파일 / 1,623 테스트 전부 통과**(직전 92/1,599 대비 +24, 신규 실패 0)
+  `.astro` 를 안 건드렸으므로 `npm run build` 는 돌리지 않았다
+- 변경 파일: `submission-panel-logic.ts` · `submission-panel-logic.test.ts` · `SubmissionPanel.tsx` ·
+  `scripts/verify-save-status-badge.mjs`(신규) · `src/islands/mod/AGENTS.md` · `prd.json` · `progress.txt`
+- **다음 이터레이션을 위한 학습:**
+  - ★ **픽스처 라우트는 `submission_get` 을 네트워크로 안 보낸다** — `fixtureSubmissions` 가
+    `loadSubmission()` 을 통째로 대신한다. 그래서 검증 스크립트에서 `route` 로 `submission_get`
+    응답을 바꿔도 **화면의 `savedAt` 은 안 바뀐다**(픽스처의 `updated_at` 고정). 처음에 여기서
+    1건 FAIL 이 났다. 화면에 뜰 시각은 `BASE_UPDATED_AT` 에서 계산해 대조할 것.
+    단 **큐 워커의 `submissionGet` 은 픽스처를 안 거치고 진짜로 나간다**(`attempt()` 안) — 가로채야 한다
+  - ★ **검증 스크립트는 문구가 아니라 `data-save-status` 로 상태를 집는다.** 문구를 고쳐도
+    스크립트가 안 깨진다. US-010 의 마감 배너도 같은 방식(`data-*`)으로 낼 것
+  - US-010 의 마감 배너는 **탭 바깥**이라 이 배지와 자리가 겹치지 않는다. 다만
+    「warn 구간에서 미저장 안내를 함께 낸다」(US-010 AC)는 여기 `draftStatusLabel` 의
+    `unsaved` 판정과 **같은 사실**을 쓴다 — 미저장 여부를 배너가 다시 계산하지 말고
+    꼭지별 `dirty` 를 올려 받을 것. 두 곳이 다른 답을 내면 조가 어느 쪽을 믿을지 모른다
+  - `formatSavedClock` 은 `HH:MM` 24시 표기다. US-008 의 `formatCountdown`(`MM:SS`)과
+    **모양이 같아 헷갈릴 수 있다** — 배너와 배지가 나란히 뜰 때 「14:23」이 시각인지 잔여인지
+    구별되게 단위·문맥을 붙일 것(`timer-logic.ts:133 formatRemaining` 이 이미 `MM:SS` 를 낸다)
+---

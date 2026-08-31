@@ -115,8 +115,8 @@
         "Tests pass — 신규 실패 0"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "순수 함수 draftStatusLabel(state, nowMs) + formatSavedClock 을 submission-panel-logic.ts 에 신설(테스트 24개). 상태 6가지의 우선순위를 saving > conflict > queued > loadFailed > unsaved > saved 로 확정하고 겹침 쌍을 전부 테스트로 박았다 — 재전송·덮어쓰기는 queued·conflict 를 켠 채로 날아가므로 겹침이 예외가 아니라 일상이다. ★ 배지 전용 상태를 새로 만들지 않았다 — 입력은 전부 TopicSection 이 이미 들고 있는 값(saving·conflict·queued·dirty·loadFailed·savedAt)이다(US-005 인계 메모). ★ AC 밖 변경 1건: SubmissionPanel 의 formatClock 을 formatSavedClock 에 위임했다. 배지가 '저장됨 · 14:23' 인데 바로 아래 줄이 '마지막 저장 오후 2:23' 이면 조가 같은 사실을 다른 시각으로 읽는다. 표기를 한 함수로 모았다. ★ AC 이탈 1건: AC 가 지목한 submission-lab 은 본부 보드라 타이핑할 칸이 없다(US-003 에서 확인) → submission-panel-lab.astro 로 검증. 브라우저 검증 scripts/verify-save-status-badge.mjs = 11 PASS / 0 FAIL(운영 DB 요청 0건) — 첫 화면 배지 2개 · 16px · opacity 1 · title 없음 · 타이핑 즉시 saved→unsaved · 30초 tick 생존 · 저장 성공 시 '저장됨 · HH:MM' · 오프라인 저장 시 '대기 중 · 1번째 시도' · 본문 대기 안내 블록과 「지금 다시 시도」 버튼 보존 · 온라인 복귀 시 saved 복귀. 92파일/1,623테스트 전부 통과(직전 92/1,599 대비 +24, 신규 실패 0)."
     },
     {
       "id": "US-007",
