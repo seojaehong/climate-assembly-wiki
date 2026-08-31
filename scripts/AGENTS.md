@@ -62,3 +62,21 @@ export PATH="$HOME/tools/node-v20.18.0-win-x64:$PATH"
 
 `../00_입력자료/` · `../10_작업산출물/` 의 원본은 **옮기지도 고치지도 않는다.**
 114MB `.hwp` 도 rhwp 로 0.6초에 읽히므로 크기 때문에 건너뛸 이유는 없다(`--fast` 는 선택).
+
+## 손유지 타입 ↔ SQL 대조는 정규식으로 싸게 된다 — 2026-09-01 (US-009)
+
+`src/lib/deliberation.ts` · `hq-submissions.ts` 는 스스로 **손유지 타입**이라고 밝힌다 — DB 와의
+일치를 타입체커가 검증하지 못한다. 그래서 `returns table` 컬럼을 빠뜨리거나 `p_deadline_at` 을
+`p_deadline` 으로 잘못 적어도 **tsc 는 통과하고, 틀린 것은 행사 당일 PGRST202/42883 로 드러난다.**
+
+`verify-topic-contract.mjs` 가 그 구멍을 메우는 최소 형태다. **도커도 DB 도 필요 없다** —
+마이그레이션 `.sql` 과 `.ts` 를 각각 정규식으로 읽어 **이름 집합을 비교하고 N/N 으로 찍는다**
+(`topic_list 컬럼 8/8` · `topic_set_deadline 인자 3/3`). 새 RPC 를 `src/lib/*.ts` 에 붙일 때 복제할 것.
+
+- 뽑는 자리는 두 곳뿐이다: SQL 의 `returns table(...)` / `create ... function f(...)` 인자 목록,
+  TS 의 `export type X = { ... }` / `.rpc('f', { ... })` 객체 키
+- TS 쪽 본문에서 **주석을 먼저 지운다.** 안 지우면 JSDoc 안의 `deadline_at:` 같은 낱말이 필드로 잡힌다
+- ★ **이름만 보고 타입은 안 본다.** `timestamptz` ↔ `string` 대응은 정규식으로 판정할 수 없다.
+  「선택 필드인가(`?:`)」처럼 **의미가 걸린 것만** 따로 못 박는다(배포·DB 적용 순서 분리가 걸려 있다)
+- 이 대조는 `supabase/verify/*_contract.sql`(서버가 실제로 어떻게 도나)을 **대체하지 않는다.**
+  서버가 멀쩡해도 이름 하나가 어긋나면 화면은 여전히 죽는다 — 두 개를 다 둔다

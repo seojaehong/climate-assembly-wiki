@@ -154,3 +154,18 @@ CI(`.github/workflows/test.yml`)가 `supabase/**` 변경 시 돌리는 것은 `d
 넣지 않은 것은 관례를 따른 것이며, 병합 시 트랙을 정리할 때 함께 배선한다.
 그때까지 s17 의 파싱·권한·계약 근거는 위 하네스로 손수 돌린 결과
 (`verify 7/7` · `contract 8/8`, progress.txt 2026-09-01 US-007 항)뿐이다.
+
+## 시그니처를 바꿨으면 `src/lib` 쪽도 **기계로** 맞춰라 — 2026-09-01 (US-009)
+
+위 「RPC 를 새로 만들 때」가 「`src/lib/*.ts` 의 손유지 타입도 같이 고칠 것」으로 끝나는데,
+그 「같이 고쳤나」를 사람 눈으로 확인하는 한 언젠가 빠진다. tsc 는 이 어긋남을 못 잡는다.
+
+`node scripts/verify-topic-contract.mjs` 가 s17 에 대해 그것을 센다 —
+`topic_list` 반환 컬럼 ↔ `Topic` 타입 필드 **8/8**, `topic_set_deadline` 인자 ↔ `.rpc()` 호출부 키 **3/3**,
+그리고 grant 재부여(`revoke from public` + `to anon, authenticated`)가 파일에 살아 있는지까지.
+**도커도 DB 도 필요 없다.** 새 RPC 를 화면에 붙일 때 이 스크립트를 본떠 늘릴 것
+(작성법은 `scripts/AGENTS.md` 「손유지 타입 ↔ SQL 대조」).
+
+★ **반환 컬럼을 늘렸으면 TS 쪽은 선택 필드(`?:`)로 받는 편이 낫다.** 마이그레이션 적용과
+배포는 순서가 어긋나고, 필수 필드로 받으면 옛 RPC 응답이 **타입에서** 막혀 두 작업이 서로에게 묶인다.
+s17 의 `deadline_at`·`server_now` 가 그 예다 — 없으면 화면이 배너를 안 그리고 조용히 퇴화한다.
