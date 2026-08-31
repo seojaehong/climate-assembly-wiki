@@ -58,3 +58,48 @@ revoke all on climate_vote.<t> from anon, authenticated;
 ## 적용은 사람이 한다
 이 폴더에 파일을 쓰는 것과 Supabase 에 적용하는 것은 별개다. 에이전트는 **파일 작성까지만** 한다.
 적용 전 상태에서 새 RPC 를 화면에 붙이면 PostgREST 가 `PGRST202` 로 죽는다.
+
+## 행 수 상한 드리프트 — 2026-08-31 판정 (US-001 / R0)
+
+**판정: 파일로 고정됨.** 꼭지당 행 수 상한 200 은 저장소 파일에 재기준화돼 있다.
+8.29 현장에서 파일 없이 적용했던 `raise_submission_item_cap_30_to_200` 의 드리프트는
+`20260830_s15_submission_server_line_split.sql` 이 메웠다.
+
+근거 (줄번호):
+
+| 파일 | 줄 | 값 | 판정 |
+|------|-----|-----|------|
+| `20260830_s15_submission_server_line_split.sql` | 132-133 | 200 | `submission_save` 를 `create or replace` 로 200 재기준화 |
+| `20260830_s15_submission_server_line_split.sql` | 193-194 | 200 | `submission_save_v2` 도 같은 파일에서 200 |
+| `20260830_s15_submission_server_line_split.sql` | 140 · 200 | 200 | 분해 결과가 200 초과면 나누기를 포기(글자 유실 없음) |
+| `20260808_s1_assembly_topic_submission.sql` | 201-202 | **30** | `submission_save` 의 옛 값. s15 가 사전순 뒤라 **덮인다** — 드리프트가 아니라 상위(supersede)다 |
+| `src/islands/mod/submission-panel-logic.ts` | 29 | 200 | 화면 `MAX_SUBMISSION_ROWS` |
+| `src/islands/mod/submission-guide.ts` | 20 | 200 | 안내문 `MAX_ROWS_PER_TOPIC` |
+
+★ **행 수 상한에 대응하는 표 check 제약은 없다.** `submission_item` 의 check 는 `kind` ·
+`content`(1~2000자) · `rationale`(≤2000자) 뿐이다(`20260808_s1_*.sql:76-78`). 상한은 오직
+**RPC 안의 `jsonb_array_length(p_items) > N` 가드**로만 존재한다. 그래서 「제약을 고쳤나」가 아니라
+「어느 파일이 그 함수를 마지막으로 정의하나」가 유일한 판정 기준이다.
+
+### ★ `platform_*.sql` 은 날짜 파일보다 **뒤에** 온다 — 잔여 위험
+
+파일명 사전순에서 숫자(`2`)가 알파벳(`p`)보다 앞이므로 `platform_*.sql` 은 **모든 `2026*` 파일보다
+뒤에 적용된다.** 그리고 `platform_p2_analysis_review.sql:204-205` 가 `submission_save_v2` 를
+**상한 30 으로 다시 정의한다.**
+
+→ 폴더를 통째로 재생하거나 platform 트랙을 적용하면 **`submission_save_v2` 만 30 으로 되돌아간다.**
+
+지금 당장 터지지 않는 이유(둘 다 확인함):
+- 화면은 `submission_save_v2` 를 부르지 않는다. `src/lib/deliberation.ts:107` 이 `submission_save` 만 부른다
+- `platform_p2_analysis_review.sql:3` 자체가 「8/29 라이브와 별개, 병합 전까지 프로덕션 미적용」이라고 적고 있다
+
+**고칠 주체는 platform 트랙이다.** 그 트랙을 적용·병합할 때 p2 의 30 을 200 으로 올린다.
+이 저장소(9.12 트랙)에서 p2 를 고치지 않는다 — 다른 트랙의 파일이다.
+
+★ **`2026…_s17_item_cap_200.sql` 같은 날짜 파일을 새로 만들어도 이 구멍은 안 막힌다.**
+그 파일도 `platform_p2` 보다 앞서기 때문이다. 그래서 US-001 은 파일을 만들지 않았다.
+platform 트랙과 겹치는 함수를 다룰 때는 **새 마이그레이션을 쓰기 전에
+`grep -n "<함수명>" supabase/migrations/platform_p*.sql` 을 먼저 돌릴 것.**
+
+2026-08-31 전수 확인 결과, `2026*` 트랙과 `platform_*` 트랙이 **둘 다 정의하는 함수는
+`submission_save_v2` 하나뿐**이다. `topic_list` 는 platform 쪽에 없다.

@@ -40,6 +40,16 @@ Started: 2026-08-31 (제출 내구성 + 마감 카운트다운 + 한글 1단계)
   `src/pages/[lang]/moderator/insights/submission-lab.astro` (+`-extreme`),
   데이터 `automation/fixtures/0829-submissions.json`
 
+### 마이그레이션 폴더 — 트랙이 둘이고 사전순이 갈린다 (2026-08-31 실증)
+- 파일명 사전순에서 숫자(`2`)가 알파벳(`p`)보다 앞이라 **`platform_*.sql` 이 모든 `2026*` 파일보다
+  뒤에 적용된다.** 즉 날짜 파일로는 platform 트랙이 정의한 함수를 이길 수 없다
+- ★ **새 마이그레이션을 쓰기 전에 `grep -n "<함수명>" supabase/migrations/platform_p*.sql` 을 돌릴 것.**
+  두 트랙이 같은 함수를 정의하면 전체 재생 시 platform 쪽이 이긴다
+- 2026-08-31 전수 확인: 겹치는 함수는 **`submission_save_v2` 하나뿐**(platform_p2:204-205 가 상한 30).
+  `topic_list` 는 platform 쪽에 없다 → **US-007 은 이 함정에 안 걸린다**
+- 행 수 상한(200)은 **표 check 제약이 아니라 RPC 안의 `jsonb_array_length(p_items) > N` 가드**다.
+  "제약을 고쳤나"가 아니라 "어느 파일이 그 함수를 마지막으로 정의하나"가 판정 기준
+
 ### 한글(HWP/HWPX) — 2026-08-31 실증
 - `vendor/kordoc` 은 **읽기 전용이 아니다.** `markdownToHwpx` · `fillHwpx` · `patchHwp` · `patchHwpx` ·
   `extractClickHereFields` · `validateHwpx` 가 있고 전부 실제로 돌아간다
@@ -47,4 +57,33 @@ Started: 2026-08-31 (제출 내구성 + 마감 카운트다운 + 한글 1단계)
   (`zlib.deflateSync`·`crypto.createHash` 를 실제로 쓴다). Node 에서만 쓸 것
 - ★ **한글 COM 자동화(`pyhwpx`)는 루프에서 실행 금지** — 앱 창이 떠서 멈춘다. 사람이 수동으로
 
+---
+
+## 2026-08-31 23:40 - US-001 (R0 — 꼭지당 행 수 상한 200 저장소·운영 드리프트 확인)
+Commit: ralph/submission-resilience-0912
+- **판정: 파일로 고정됨.** 상한 200 은 저장소 파일에 재기준화돼 있다. 그래서
+  AC 조건("이미 고정돼 있으면 만들지 않는다")에 따라 `s17_item_cap_200.sql` 을 **만들지 않았다**
+- 근거 줄번호
+  · `20260830_s15_*.sql:132-133` submission_save 를 create or replace 로 200 재기준화
+  · `20260830_s15_*.sql:193-194` submission_save_v2 도 같은 파일에서 200
+  · `20260830_s15_*.sql:140·200` 분해 결과 200 초과 시 나누기 포기(글자 유실 없음)
+  · `20260808_s1_*.sql:201-202` = **30** (옛 값). s15 가 사전순 뒤라 덮인다 = 드리프트 아님, supersede
+  · `20260808_s1_*.sql:76-78` submission_item 의 check 는 kind·content(1~2000)·rationale(≤2000) 뿐 —
+    **행 수 check 제약은 애초에 없다.** 상한은 RPC 가드로만 존재
+  · 화면 쪽 상수도 200: `submission-panel-logic.ts:29` · `submission-guide.ts:20`
+- **새로 찾은 잔여 위험 (이번 story 의 실제 수확)**
+  `platform_p2_analysis_review.sql:204-205` 가 `submission_save_v2` 를 **상한 30 으로 다시 정의**하는데,
+  `platform_*` 이 사전순에서 `2026*` 보다 **뒤**다 → 폴더 통째 재생·platform 트랙 적용 시 v2 만 30 회귀.
+  · 지금 안 터지는 이유: 화면은 v2 를 안 부른다(`src/lib/deliberation.ts:107` 이 submission_save 만 호출),
+    그리고 `platform_p2_*.sql:3` 이 스스로 「병합 전까지 프로덕션 미적용」이라고 적고 있다
+  · ★ **날짜 파일(`2026…_s17_item_cap_200.sql`)을 만들어도 이 구멍은 안 막힌다** — 그 파일도 platform 보다 앞선다.
+    고칠 주체는 platform 트랙. 이 저장소에서 p2 를 고치지 않는다(다른 트랙 파일)
+- 변경 파일: `supabase/migrations/AGENTS.md` (「행 수 상한 드리프트」 절 신설) · `prd.json` · `progress.txt`
+- 운영 DB 에 **SQL 을 한 줄도 보내지 않았다.** 판정은 전부 파일 직독
+- 검사: `npx tsc --noEmit` 통과 · `npx vitest run` **90 파일 / 1,516 테스트 전부 통과**(기준선 유지, 신규 실패 0)
+- **다음 이터레이션을 위한 학습:**
+  - platform 트랙 사전순 함정은 위 `## Codebase Patterns` 에 올렸다. US-007 전에 그 grep 을 돌릴 것
+  - `topic_list` 는 platform 쪽에 없으므로 US-007 의 DROP·CREATE 는 트랙 충돌 걱정 없이 진행 가능
+  - 상한을 바꿔야 할 일이 생기면 고쳐야 할 곳은 4군데다: s15 의 submission_save·submission_save_v2,
+    `submission-panel-logic.ts:29`, `submission-guide.ts:20`
 ---

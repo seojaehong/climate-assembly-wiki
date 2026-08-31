@@ -16,8 +16,8 @@
         "Typecheck passes (npx tsc --noEmit -p tsconfig.json)"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "판정: 파일로 고정됨(s15:132-133·193-194). s17_item_cap_200.sql 은 만들지 않음 — AC 조건(이미 고정돼 있으면 만들지 않는다). 잔여 위험 = platform_p2_analysis_review.sql:204-205 가 submission_save_v2 를 30 으로 재정의하고 사전순 뒤에 온다 → supabase/migrations/AGENTS.md 「행 수 상한 드리프트」에 기록. 운영 DB 에 SQL 미실행."
     },
     {
       "id": "US-002",
