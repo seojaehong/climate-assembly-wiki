@@ -36,6 +36,13 @@ import {
   type TeamColumn,
   type TopicBoard,
 } from './hq-submission-board-logic';
+import {
+  deadlineEchoLabel,
+  deadlineFailureMessage,
+  describeRpcError,
+  planDeadline,
+} from './hq-deadline-logic';
+import { topicSetDeadline } from '../../lib/deliberation';
 import { orderNotesBySimilarity, similarPairs, type SimilarPair } from './note-similarity';
 import {
   teamPairOverlaps,
@@ -116,22 +123,13 @@ import {
  */
 const POLL_MS = 5_000;
 
-/** 어떤 모양으로 오든 사람이 읽을 수 있는 한 줄로 만든다(코드가 있으면 함께 남긴다). */
-function describeError(error: unknown): string {
-  if (error instanceof Error && error.message) return error.message;
-  if (typeof error === 'string' && error) return error;
-  if (error && typeof error === 'object') {
-    const e = error as { code?: string; message?: string; hint?: string; details?: string };
-    const parts = [e.code, e.message ?? e.details ?? e.hint].filter(Boolean);
-    if (parts.length > 0) return parts.join(': ');
-    try {
-      return JSON.stringify(error).slice(0, 200);
-    } catch {
-      /* 순환 참조 등 — 아래 기본 문구로 떨어진다 */
-    }
-  }
-  return '원인을 알 수 없습니다';
-}
+/**
+ * 어떤 모양으로 오든 사람이 읽을 수 있는 한 줄로 만든다(코드가 있으면 함께 남긴다).
+ *
+ * 본체는 `hq-deadline-logic.ts` 에 있다 — `.tsx` 는 vitest include 밖이라 여기 두면
+ * 「PostgREST 오류는 Error 가 아니다」라는 핵심 판단이 영영 시험되지 않는다.
+ */
+const describeError = describeRpcError;
 
 /** ISO -> 시:분:초. 값이 없으면 em dash. */
 function clock(iso: string | null | undefined): string {
@@ -564,6 +562,17 @@ export default function HqSubmissionBoard({
   const [reopenBusy, setReopenBusy] = useState(false);
   const [history, setHistory] = useState<HqHistoryRow[] | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  // US-011 마감시각 — 꼭지 id → 입력칸에 친 값(로컬 벽시계). 꼭지를 오가도 친 값이 남는다.
+  const [deadlineDraft, setDeadlineDraft] = useState<Record<string, string>>({});
+  // 꼭지 id → **이 화면이 마지막으로 건 값**(ISO). null = 지움, 키 없음 = 아직 안 건드림.
+  // ★ 서버의 현재 마감이 아니다 — 본부에는 deadline_at 을 되읽을 RPC 가 없다(hq_submissions 는
+  //   그 컬럼을 안 주고 topic_list 는 조 접속코드를 요구한다). 없는 사실을 지어내지 않는다.
+  const [deadlineApplied, setDeadlineApplied] = useState<Record<string, string | null>>({});
+  const [deadlineBusy, setDeadlineBusy] = useState(false);
+  // 실패 문구는 꼭지에 묶어 둔다 — 꼭지를 옮기면 남의 꼭지 경고가 따라다니지 않는다.
+  const [deadlineError, setDeadlineError] = useState<{ topicId: string; message: string } | null>(
+    null
+  );
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -887,6 +896,35 @@ export default function HqSubmissionBoard({
     }
   };
 
+  /**
+   * 꼭지 마감을 걸거나 지운다 — 무엇을 보낼지는 `planDeadline` 이 정한다.
+   *
+   * ★ 마감은 **잠금이 아니다.** RPC 가 꼭지 status 를 안 건드리므로 마감 뒤에도 조는
+   *   계속 저장할 수 있다. 8.29 에 실제로 일어난 일(다 정리했는데 못 올림)이 반복되지 않도록
+   *   시간을 알리기만 한다.
+   */
+  const applyDeadline = async (mode: 'set' | 'clear') => {
+    if (!token || !board) return;
+    const topicId = board.topicId;
+    const plan = planDeadline(mode, deadlineDraft[topicId] ?? '');
+    if (plan.kind === 'reject') {
+      setDeadlineError({ topicId, message: plan.message });
+      return;
+    }
+    setDeadlineBusy(true);
+    setDeadlineError(null);
+    try {
+      await topicSetDeadline(token, topicId, plan.deadlineAt);
+      setDeadlineApplied((prev) => ({ ...prev, [topicId]: plan.deadlineAt }));
+      if (plan.kind === 'clear') setDeadlineDraft((prev) => ({ ...prev, [topicId]: '' }));
+    } catch (error) {
+      console.error('[HQ submissions] deadline failed', error);
+      setDeadlineError({ topicId, message: deadlineFailureMessage(mode, error) });
+    } finally {
+      setDeadlineBusy(false);
+    }
+  };
+
   const copyBoard = async () => {
     if (!board) return;
     try {
@@ -1195,6 +1233,67 @@ export default function HqSubmissionBoard({
           );
         })}
       </div>
+
+      {/* US-011 마감시각 — 고른 꼭지 하나에 건다. 본부 토큰이 있을 때만 낸다
+          (미리보기 라우트는 토큰을 안 주므로 이 줄이 아예 안 그려진다).
+          ★ 카드 수 검사가 부풀지 않도록 여기의 어떤 요소도 <article> 로 내지 않는다. */}
+      {token ? (
+        <div
+          data-testid="hq-deadline-row"
+          className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-[#DCE7EE] bg-white px-4 py-3"
+        >
+          <Eyebrow className="text-[#5A6B73]">마감</Eyebrow>
+          <label htmlFor="hq-deadline-input" className="text-[16px] font-bold text-[#1F4E79]">
+            「{board.prompt}」
+          </label>
+          <input
+            id="hq-deadline-input"
+            type="datetime-local"
+            data-testid="hq-deadline-input"
+            data-topic-id={board.topicId}
+            value={deadlineDraft[board.topicId] ?? ''}
+            onChange={(e) =>
+              setDeadlineDraft((prev) => ({ ...prev, [board.topicId]: e.target.value }))
+            }
+            className="h-12 rounded-xl border border-[#C4D8E4] px-3 text-[16px]"
+          />
+          <button
+            type="button"
+            data-testid="hq-deadline-set"
+            disabled={deadlineBusy}
+            onClick={() => void applyDeadline('set')}
+            className="h-12 rounded-xl bg-[#1F4E79] px-5 text-[16px] font-bold text-white disabled:opacity-50"
+          >
+            걸기
+          </button>
+          <button
+            type="button"
+            data-testid="hq-deadline-clear"
+            disabled={deadlineBusy}
+            onClick={() => void applyDeadline('clear')}
+            className="h-12 rounded-xl border border-[#C4D8E4] px-5 text-[16px] font-bold text-[#5A6B73] disabled:opacity-50"
+          >
+            지우기
+          </button>
+          <span data-testid="hq-deadline-echo" className="text-[15px] font-bold text-[#5A6B73]">
+            {deadlineEchoLabel(deadlineApplied[board.topicId])}
+          </span>
+          {/* 마감은 잠금이 아니고, 조 화면 배너는 30초마다 꼭지를 다시 읽는다.
+              이 두 가지를 모르면 「안 걸렸다」로 오해해 같은 시각을 반복해서 건다. */}
+          <span className="basis-full text-[14px] text-[#8FA3AD]">
+            조 화면 배너에 최대 30초 뒤 뜹니다 · 마감이 지나도 조는 계속 저장할 수 있습니다
+          </span>
+          {deadlineError && deadlineError.topicId === board.topicId ? (
+            <p
+              role="alert"
+              data-testid="hq-deadline-error"
+              className="basis-full rounded-lg bg-[#FFF4D6] px-4 py-3 text-[15px] font-bold text-[#6B4B00]"
+            >
+              {deadlineError.message}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* 분과 필터 — 15개 조를 한 사람이 보지 않는다 */}
       {subgroups.length > 1 ? (

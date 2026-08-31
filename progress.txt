@@ -629,3 +629,67 @@ Commit: ralph/submission-resilience-0912
   - `datetime-local` 은 **로컬 시각**을 낸다. `topic_set_deadline` 은 `timestamptz` 를 받으므로
     보낼 때 ISO(UTC)로 바꿔야 하고, 되읽어 채울 때는 반대 변환이 필요하다(US-011 이 정할 것)
 ---
+
+## 2026-09-01 03:45 - US-011 (본부 마감시각 설정 UI)
+Commit: ralph/submission-resilience-0912
+- 신규 `src/islands/mod/hq-deadline-logic.ts` + `.test.ts`(27개) — **판단은 전부 여기**
+  · `localInputToIso` · `isoToLocalInput` · `planDeadline` · `describeRpcError` ·
+    `deadlineFailureMessage` · `deadlineEchoLabel`
+- `HqSubmissionBoard.tsx` — 꼭지 탭 **바로 아래** 한 줄(`datetime-local` + 걸기 + 지우기 +
+  되비침 + `role="alert"`). 본부 토큰이 있을 때만 그린다. 렌더만, 판단 없음
+  · 옛 `describeError` 본체를 `describeRpcError` 로 옮기고 별칭만 남겼다(동작 동일, 이제 시험된다)
+- 신규 `scripts/verify-hq-deadline.mjs` · `src/islands/mod/AGENTS.md` 「본부 마감시각 설정」 +
+  US-011 셀렉터 훅 · `scripts/AGENTS.md` 「웹소켓은 route 로 못 막는다」 · 「/hq 도 DB 없이」 절 신설
+
+- **★★ 이 화면은 마감시각을 「쓰기만」 한다 — 되읽기 경로가 아예 없다**
+  본부는 `deadline_at` 을 읽을 수 없다. `hq_submissions` 는 그 컬럼을 안 내려주고
+  `topic_list` 는 **조 접속코드**를 요구하는데 본부는 토큰만 갖는다. 그래서 입력칸은 서버의
+  현재 마감으로 채워지지 않고, 되비침(`deadlineEchoLabel`)은 「**이 화면이 방금 건 값**」이라고
+  말한다. 서버 현재값인 척하면 본부가 그것을 믿는다 — **다음 이터레이션이 이 공백을
+  드리프트로 오해하지 말 것.** 메우려면 RPC 를 늘리는 마이그레이션이 먼저다(이번 범위 밖)
+- **★★ `datetime-local` 은 시간대가 없다.** `2026-09-12T14:30` 을 그대로 보내면 `timestamptz`
+  컬럼을 Postgres 가 **서버 시간대로** 읽어 몇 시간이 어긋난다. 기기 로컬로 해석해 UTC ISO 로
+  바꿔 보낸다. 성분을 직접 `new Date(y,m-1,d,…)` 로 넘기고 **되돌아오는지 확인**해
+  `2026-02-31`(달을 넘겨 굴러가는 값)을 걸러낸다
+- **★ 「지우기」는 입력칸을 보지 않는다.** 잘못 건 시각을 되돌리는 경로가 이것 하나뿐인데
+  「입력칸이 비었다」로 거절하면 되돌릴 방법이 사라진다
+- **★ 실패 문구를 꼭지에 묶었다**(`{topicId, message}`). 전역 문자열이면 꼭지를 옮겨도 남의
+  경고가 따라다닌다 — 실측으로 확인했다(꼭지② 로 옮기면 경고 0개)
+- **★ 마감은 잠금이 아니다.** 화면에 그렇게 적었다(「마감이 지나도 조는 계속 저장할 수 있습니다」).
+  조 배너가 30초 폴링이라 「걸었는데 조 화면에 안 뜬다」는 오해도 같은 줄에서 미리 막는다
+
+- **검증 숫자 — `node scripts/verify-hq-deadline.mjs` = 12 PASS / 0 FAIL** (실화면 `/hq`)
+  · 마감 줄 1개 · `type=datetime-local` · 걸기/지우기 각 1개
+  · **카드 수 27/27장** (픽스처 `0829-submissions.json` 꼭지① 실측) · 화면 표기 「카드 27장」
+  · 마감 줄 안 `article` **0개** · **페이지 전체 article 27개 = 카드 수**
+  · 미제출 조 표기 살아 있음 — 한 조를 비운 응답에서 「아직 제출 없는 조 1 — 1분과 1조」, 카드 25장
+  · 빈 입력으로 걸기 → **RPC 0건** + `role="alert"` 안내
+  · ★★ `2026-09-12T14:30` → **`2026-09-12T05:30:00.000Z`** (Node 가 같은 기기·같은 TZ 로 만든 값과 일치)
+  · 지우기 → **`p_deadline_at: null`** + 입력칸 비워짐 + 되비침 「방금 마감을 지웠습니다」
+  · RPC 실패 → `role="alert"` 에 **`PGRST202: Could not find the function climate_vote.topic_set_deadline`**
+  · 꼭지② 로 옮기면 경고 **0개** · 입력값은 꼭지별로 각각 유지(①14:30 ②09:00)
+  · 미리보기 라우트(토큰 없음) 마감 줄 **0개** — 픽스처 화면은 이 story 이전과 같다
+  · `hq_submissions 2 · kinds 2 · topic_set_deadline 3 · 기타 0` **전부 지어낸 응답**, 새 나간 요청 0건,
+    **WebSocket 시도 1건 전부 스텁에 갇힘(실제 연결 0)**
+- **음성 대조 3건 — 깨 보고 원복했다**
+  · A. ISO 대신 원문(`2026-09-12T14:30`)을 보냄 → **1 FAIL**
+  · B. 마감 줄을 `<div>` 대신 `<article>` 로 냄 → **1 FAIL**(페이지 전체 28개).
+    ★ 이때 `note-grid` 안만 세는 「카드 27장」 표기는 **그대로 통과했다** — 카드 수 검사는
+    **좁힌 범위와 페이지 전체 둘 다** 봐야 부풀림을 잡는다
+  · C. `role="alert"` 제거 → **2 FAIL**
+- 검사: `npx tsc --noEmit -p tsconfig.json` 통과 ·
+  `npx vitest run` **95 파일 / 1,707 테스트 전부 통과**(직전 94/1,680 대비 +1 파일 +27 테스트, 신규 실패 0)
+  `.astro` 를 안 건드려 `npm run build` 는 안 돌렸다(prebuild 워킹트리 오염 0 — `git status` 로 확인)
+  dev 서버는 종료했다(포트 4321 은 이 세션이 띄운 것이 아니라 그대로 뒀다 — 우리 것은 4322 였다)
+
+- **다음 이터레이션(US-012 · 한글 1단계)을 위한 학습:**
+  - ★★ **`context.route` 는 웹소켓을 못 막는다.** Realtime 을 구독하는 컴포넌트를 실화면으로
+    여는 검증 스크립트는 `window.WebSocket` 을 스텁으로 갈아끼워야 「운영 DB 0건」이 참이 된다.
+    자세한 것은 `scripts/AGENTS.md` 새 절
+  - ★ `/hq` 게이트는 **`sessionStorage` 에 아무 문자열이나 넣으면 열린다**(`isValidHqToken` =
+    비어 있지 않은 문자열). 본부 화면 검증에 비밀번호·RPC 가 필요 없다
+  - ★ **헤드리스 페이지는 타이머가 조절된다** — 5초 폴링이 30초 동안 2번밖에 안 돌았다.
+    응답을 바꿔 화면이 따라오는지 볼 때는 `waitForFunction` 으로 기다릴 것
+  - US-012·013 은 한글(HWPX)이라 UI 가 없다. `vendor/kordoc` 은 **Node 전용**(`zlib`·`crypto` 정적
+    import)이고 **COM 자동화(`pyhwpx`)는 루프에서 실행 금지**다 — G3(한글이 실제로 여는지)는 사람이 한다
+---

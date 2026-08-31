@@ -206,8 +206,8 @@
         "Tests pass — 신규 실패 0"
       ],
       "priority": 11,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "HqSubmissionBoard 꼭지 탭 아래 한 줄(datetime-local + 걸기 + 지우기). 판단은 신규 hq-deadline-logic.ts(테스트 27개), .tsx 는 렌더만. ★ 본부에는 deadline_at 되읽기 경로가 없다(hq_submissions 미포함 · topic_list 는 조 접속코드 요구) → 쓰기 전용 + 이 화면이 방금 건 값만 되비침. 검증 scripts/verify-hq-deadline.mjs 12 PASS / 0 FAIL (실화면 /hq · 토큰 주입 · HTTP·WebSocket 전부 가로챔, 운영 DB 0건). 음성 대조 3건 = ISO 변환 깨기 1 FAIL · 마감 줄을 article 로 내기 1 FAIL · role=alert 제거 2 FAIL."
     },
     {
       "id": "US-012",

@@ -388,6 +388,31 @@ L4 는 설계문서가 **「시민이 고른다」**로 못 박은 유일한 단
   없을 때도 마감이 보여야 하고 `server_now` 갱신 주기도 여기서 나온다
 - 크기: 잔여 40px `tabular-nums` · 본문 24px. hover 로만 보이는 정보 금지(태블릿에서 안 뜬다)
 
+## 본부 마감시각 설정 (`hq-deadline-logic.ts` · US-011)
+
+`HqSubmissionBoard.tsx` 의 꼭지 탭 바로 아래 한 줄 — `datetime-local` + 「걸기」 + 「지우기」.
+보내는 값을 정하는 것은 전부 `hq-deadline-logic.ts` 이고 `.tsx` 에는 입력칸과 버튼만 있다.
+
+- ★★ **`datetime-local` 은 시간대가 없다**(`2026-09-12T14:30`). 그대로 보내면 `timestamptz`
+  컬럼을 Postgres 가 **서버 시간대로** 읽어 몇 시간이 어긋난다. `localInputToIso()` 로 기기
+  로컬 시각으로 해석해 UTC ISO 로 바꿔 보낼 것. 일부러 원문 그대로 보내 보면
+  `scripts/verify-hq-deadline.mjs` 가 **1건 FAIL** 한다(`14:30` vs `05:30Z`)
+- ★ **이 화면은 마감시각을 쓰기만 한다.** 본부에는 `deadline_at` 을 되읽을 경로가 **없다** —
+  `hq_submissions` 는 그 컬럼을 안 내려주고 `topic_list` 는 조 접속코드를 요구한다(본부는
+  토큰만 갖는다). 그래서 화면은 「이 화면이 방금 건 값」만 되비춘다(`deadlineEchoLabel`).
+  **서버의 현재값인 척하지 말 것** — 본부가 그 표시를 믿는다. 되읽기를 원하면 RPC 를 늘리는
+  마이그레이션이 먼저다
+- ★ **「지우기」는 입력칸을 보지 않는다.** 잘못 건 시각을 되돌리는 경로가 이것 하나뿐인데
+  입력칸이 비었다고 거절하면 되돌릴 방법이 사라진다
+- ★ **마감은 잠금이 아니다.** RPC 가 꼭지 `status` 를 안 건드려 마감 뒤에도 조는 저장할 수 있다.
+  화면 문구도 그렇게 적어 둔다 — 「마감=못 낸다」로 읽히면 8.29 가 반복된다
+- ★ **실패 문구는 꼭지에 묶어 둔다**(`{topicId, message}`). 전역 문자열로 두면 꼭지를 옮겨도
+  남의 경고가 따라다닌다
+- 본부 토큰이 없으면 이 줄을 **아예 안 그린다** — 그래서 미리보기 라우트(`submission-lab`)는
+  이 story 이전과 화면이 같다. 반대로 말하면 **미리보기 라우트로는 이 story 를 못 잰다**
+- `describeRpcError()` 가 `HqSubmissionBoard` 의 옛 `describeError` 본체다. `.tsx` 에 두면
+  「PostgREST 오류는 `Error` 가 아니다」라는 핵심 판단이 영영 시험되지 않아 `.ts` 로 옮겼다
+
 ## UI 검증 시 셀렉터 함정
 
 포스트잇이 `<article>` 이다. **새 패널이 카드 발췌를 `<article>` 로 내면 「카드 N장」 검사가
@@ -405,6 +430,11 @@ L4 는 설계문서가 **「시민이 고른다」**로 못 박은 유일한 단
   `representative-citizen-confirm` · `representative-confirm` · `representative-error` ·
   `representative-history` · `representative-badge` · `representative-picked-count` · `representative-empty`.
   포스트잇에도 `data-representative="true|false"` 가 있다.
+- US-011 훅 — `hq-deadline-row` · `hq-deadline-input`(`data-topic-id`) · `hq-deadline-set` ·
+  `hq-deadline-clear` · `hq-deadline-echo` · `hq-deadline-error`(`role="alert"`). 전부 `<div>`·
+  `<p>`·`<span>` 이다 — **마감 줄을 `<article>` 로 내면** 「페이지 전체 article == 카드 수」 검사가
+  **1건 FAIL** 한다(실측). `note-grid` 안만 세는 「카드 N장」 표기는 그때도 그대로 통과한다 —
+  카드 수 검사는 **범위를 좁힌 것과 페이지 전체 두 가지를 다 봐야** 부풀림을 잡는다
 - ★ **스크린샷·색 판정은 클릭 직후에 하지 말 것 — 150ms CSS transition 이 그대로 찍힌다.**
   US-013 에서 활성 버튼이 짙은 초록이 아니라 흐린 올리브로 찍혔고 `getComputedStyle` 도 중간값
   (`rgba(207,218,215,.77)`)을 돌려줘 「인라인 스타일이 안 먹었다」로 오진했다. Tailwind `transition`

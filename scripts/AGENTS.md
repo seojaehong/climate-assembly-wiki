@@ -100,3 +100,32 @@ export PATH="$HOME/tools/node-v20.18.0-win-x64:$PATH"
 - ★ **시각이 걸린 전환은 `waitForTimeout` 으로 재지 말 것.** dev 서버 컴파일·수화 지연이
   몇 초씩 들쭉날쭉해 경계에서 통과/실패가 오간다. 「원하는 상태가 될 때까지 폴링하고
   **몇 초 걸렸는지 찍는다**」가 사실에 가깝고 재현된다(`waitForTier`)
+
+## ★★ 웹소켓은 `context.route` 로 못 막는다 — 2026-09-01 (US-011)
+
+`context.route('**/*.supabase.co/**', abort)` 는 **HTTP 만** 가로챈다. Supabase Realtime 은
+웹소켓(`wss://…/realtime/v1/websocket`)이라 이 그물을 그냥 통과한다. `HqSubmissionBoard` 는
+`fixtureRows` 가 없으면 `subscribeHqSubmissions()` 로 구독을 걸므로, 실화면 `/hq` 를 여는
+스크립트는 **운영 Supabase 에 웹소켓을 연 채로** 「요청 0건」이라고 보고하게 된다.
+
+`addInitScript` 에서 `window.WebSocket` 을 무동작 스텁으로 갈아끼우고 시도한 URL 을 배열에
+쌓아 두면, 실제 연결을 0으로 만들면서 **몇 번 시도했는지까지 숫자로 낼 수 있다**
+(`verify-hq-deadline.mjs` 실측: 시도 1건, 전부 스텁에 갇힘).
+
+- 스텁은 `send`·`close`·`addEventListener`·`removeEventListener`·`dispatchEvent` 와
+  `CONNECTING/OPEN/CLOSING/CLOSED` 상수까지 갖춰야 한다 — supabase-js 가 이것들을 실제로 만진다.
+  `onopen` 을 절대 안 부르므로 구독은 조용히 대기하다 끝난다
+- US-010 의 `/mod` 스크립트가 이 함정을 안 만난 것은 `ModConsole` 이 구독을 안 걸어서다.
+  **구독을 거는 컴포넌트를 실화면으로 여는 스크립트는 전부 해당된다**
+
+## 본부 게이트 뒤 화면(`/hq`)도 DB 없이 검증된다 — 2026-09-01 (US-011)
+
+`/hq` 는 본부 비밀번호 게이트지만 토큰은 `sessionStorage` 에 있을 뿐이고 검사는
+`isValidHqToken` = **비어 있지 않은 문자열**이다(`hq-gate-logic.ts:21`). `addInitScript` 로
+`climate_vote_hq_attendance_token` 을 심으면 게이트가 바로 열린다 — 비밀번호도 RPC 도 필요 없다.
+
+- 토큰이 필요한 UI(마감시각 줄 등)는 **미리보기 라우트로는 못 잰다** — `submission-lab` 은
+  `fixtureRows` 만 주고 토큰은 안 준다. 실화면 + 토큰 주입이 유일한 길이다
+- 헤드리스 페이지는 타이머가 조절(throttle)돼 **5초 폴링이 실제로는 몇 번 안 돈다**(실측:
+  30초 동안 `hq_submissions` 2회). 응답을 바꿔 화면이 따라오는지 볼 때는 `waitForTimeout` 이
+  아니라 `waitForFunction` 으로 **바뀔 때까지** 기다릴 것
