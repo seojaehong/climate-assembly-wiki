@@ -21,6 +21,8 @@ import {
   saveFailureKind,
   saveFailureMessage,
   sameSavePayload,
+  draftStatusLabel,
+  formatSavedClock,
 } from './submission-panel-logic';
 import type { SubmissionItem } from '../../lib/deliberation';
 import { DRAFT_TTL_MS, writeDraft } from './submission-draft-store';
@@ -492,5 +494,158 @@ describe('sameSavePayload — 재전송 성공 뒤 초안을 버려도 되는가
   it('내용이 같아도 순서가 다르면 false', () => {
     const queued = toSaveItems([row('가'), row('나')]);
     expect(sameSavePayload([row('나'), row('가')], queued)).toBe(false);
+  });
+});
+
+describe('formatSavedClock', () => {
+  it('시각을 HH:MM 24시 표기로 낸다', () => {
+    // 지역 시각으로 만들고 지역 시각으로 읽으므로 기계의 표준시대와 무관하다.
+    expect(formatSavedClock(new Date(2026, 8, 1, 14, 23).toISOString())).toBe('14:23');
+  });
+
+  it('한 자리 시·분은 0을 채운다', () => {
+    expect(formatSavedClock(new Date(2026, 8, 1, 9, 5).toISOString())).toBe('09:05');
+  });
+
+  it('자정은 00:00 이다 (12:00 으로 접지 않는다)', () => {
+    expect(formatSavedClock(new Date(2026, 8, 1, 0, 0).toISOString())).toBe('00:00');
+  });
+
+  it('없거나 깨진 값이면 빈 문자열 — 화면에 Invalid Date 를 띄우지 않는다', () => {
+    expect(formatSavedClock(null)).toBe('');
+    expect(formatSavedClock(undefined)).toBe('');
+    expect(formatSavedClock('')).toBe('');
+    expect(formatSavedClock('어제쯤')).toBe('');
+  });
+});
+
+describe('draftStatusLabel', () => {
+  const NOW = 1_780_000_000_000;
+
+  it('saved — 서버 시각을 낸다', () => {
+    const savedAt = new Date(2026, 8, 1, 14, 23).toISOString();
+    expect(draftStatusLabel({ savedAt }, NOW)).toEqual({
+      state: 'saved',
+      label: '저장됨 · 14:23',
+      tone: 'ok',
+    });
+  });
+
+  it('saved — 저장된 적이 없으면 시각 없이 낸다', () => {
+    const out = draftStatusLabel({ savedAt: null }, NOW);
+    expect(out.state).toBe('saved');
+    expect(out.label).toBe('아직 저장된 내용 없음');
+  });
+
+  it('unsaved — 1분 미만은 분을 붙이지 않는다', () => {
+    const out = draftStatusLabel({ dirty: true, dirtySinceMs: NOW - 59_999 }, NOW);
+    expect(out).toEqual({ state: 'unsaved', label: '저장 안 함', tone: 'warn' });
+  });
+
+  it('unsaved — 정확히 1분이면 「1분째」 (경계)', () => {
+    expect(draftStatusLabel({ dirty: true, dirtySinceMs: NOW - 60_000 }, NOW).label).toBe(
+      '저장 안 함 · 1분째',
+    );
+  });
+
+  it('unsaved — 경과 분을 내림으로 센다', () => {
+    expect(draftStatusLabel({ dirty: true, dirtySinceMs: NOW - 3 * 60_000 - 59_000 }, NOW).label).toBe(
+      '저장 안 함 · 3분째',
+    );
+  });
+
+  it('unsaved — 시작 시각이 없으면 분 없이 낸다 (0분째를 쓰지 않는다)', () => {
+    expect(draftStatusLabel({ dirty: true, dirtySinceMs: null }, NOW).label).toBe('저장 안 함');
+  });
+
+  it('unsaved — 시계가 뒤로 갔어도 음수 분이 나오지 않는다', () => {
+    expect(draftStatusLabel({ dirty: true, dirtySinceMs: NOW + 5 * 60_000 }, NOW).label).toBe(
+      '저장 안 함',
+    );
+  });
+
+  it('saving — 보내는 중', () => {
+    expect(draftStatusLabel({ saving: true }, NOW)).toEqual({
+      state: 'saving',
+      label: '저장 중…',
+      tone: 'busy',
+    });
+  });
+
+  it('queued — 시도 횟수를 낸다', () => {
+    expect(draftStatusLabel({ queuedAttempts: 2 }, NOW)).toEqual({
+      state: 'queued',
+      label: '대기 중 · 2번째 시도 (연결되면 자동 저장)',
+      tone: 'warn',
+    });
+  });
+
+  it('queued — 시도 횟수는 1부터 센다 (0·음수는 첫 시도로 접는다)', () => {
+    expect(draftStatusLabel({ queuedAttempts: 0 }, NOW).label).toBe(
+      '대기 중 · 1번째 시도 (연결되면 자동 저장)',
+    );
+    expect(draftStatusLabel({ queuedAttempts: -3 }, NOW).label).toBe(
+      '대기 중 · 1번째 시도 (연결되면 자동 저장)',
+    );
+    expect(draftStatusLabel({ queuedAttempts: Number.NaN }, NOW).label).toBe(
+      '대기 중 · 1번째 시도 (연결되면 자동 저장)',
+    );
+  });
+
+  it('queued — 대기 건이 없으면(null) queued 가 아니다', () => {
+    expect(draftStatusLabel({ queuedAttempts: null, savedAt: null }, NOW).state).toBe('saved');
+  });
+
+  it('conflict — 선택이 필요하다고 말한다', () => {
+    const out = draftStatusLabel({ conflict: true, queuedAttempts: 1 }, NOW);
+    expect(out.state).toBe('conflict');
+    expect(out.tone).toBe('danger');
+    expect(out.label).toContain('다른 기기');
+  });
+
+  it('loadFailed — 불러오지 못했다고 말한다', () => {
+    expect(draftStatusLabel({ loadFailed: true }, NOW)).toEqual({
+      state: 'loadFailed',
+      label: '불러오지 못했습니다',
+      tone: 'danger',
+    });
+  });
+
+  // ── 우선순위 (겹칠 때 무엇이 이기는가) ─────────────────────────
+  // 재전송·덮어쓰기는 queued·conflict 를 켠 채로 날아가므로 겹침이 일상이다.
+
+  it('★ saving 이 conflict 를 이긴다 — 덮어쓰기가 날아가는 중이다', () => {
+    expect(draftStatusLabel({ saving: true, conflict: true, queuedAttempts: 1 }, NOW).state).toBe(
+      'saving',
+    );
+  });
+
+  it('★ conflict 가 queued 를 이긴다 — 조가 골라야 큐가 움직인다', () => {
+    expect(draftStatusLabel({ conflict: true, queuedAttempts: 3 }, NOW).state).toBe('conflict');
+  });
+
+  it('★ queued 가 loadFailed 를 이긴다 — 「글은 남아 있다」가 더 필요한 소식이다', () => {
+    expect(draftStatusLabel({ queuedAttempts: 1, loadFailed: true }, NOW).state).toBe('queued');
+  });
+
+  it('★ loadFailed 가 unsaved 를 이긴다 — 못 불러왔으면 기준선을 믿을 수 없다', () => {
+    expect(
+      draftStatusLabel({ loadFailed: true, dirty: true, dirtySinceMs: NOW - 60_000 }, NOW).state,
+    ).toBe('loadFailed');
+  });
+
+  it('★ unsaved 가 saved 를 이긴다 — 저장 시각이 있어도 그 뒤에 고쳤으면 미저장이다', () => {
+    const savedAt = new Date(2026, 8, 1, 14, 23).toISOString();
+    expect(draftStatusLabel({ dirty: true, dirtySinceMs: NOW, savedAt }, NOW).state).toBe('unsaved');
+  });
+
+  it('★ 대기 중에 조가 계속 써도 queued 로 남는다 (섞은 상태를 만들지 않는다)', () => {
+    expect(
+      draftStatusLabel({ queuedAttempts: 2, dirty: true, dirtySinceMs: NOW - 120_000 }, NOW).state,
+    ).toBe('queued');
+  });
+
+  it('아무것도 안 준 빈 입력도 죽지 않는다', () => {
+    expect(draftStatusLabel({}, NOW).state).toBe('saved');
   });
 });

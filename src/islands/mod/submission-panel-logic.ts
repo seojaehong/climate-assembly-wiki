@@ -619,3 +619,116 @@ export function saveFailureMessage(kind: SaveFailureKind): string {
 export function sameSavePayload(rows: EditorRow[], items: SubmissionItemInput[]): boolean {
   return JSON.stringify(toSaveItems(rows)) === JSON.stringify(items);
 }
+
+// ── 저장 상태 배지 (설계 §1.4) ───────────────────────────────────
+// 8.29에 조가 가장 자주 물은 것이 「지금 저장된 거 맞아요?」였다. 그때 화면은
+// `savedAt`(맨 아래 회색 한 줄)과 `toast`(3초 뒤 사라짐)가 따로 놀아, 조가
+// 「지금 안전한가」를 한 번에 읽을 자리가 없었다. 상태를 **하나로 합쳐** 꼭지
+// 머리에 상시로 낸다.
+
+/**
+ * 시각을 `14:23` 꼴로. 값이 없거나 깨졌으면 빈 문자열.
+ *
+ * `toLocaleTimeString`을 쓰지 않는다 — 환경마다 '오후 2:23'·'2:23 PM'·초까지 붙는
+ * 모양으로 갈려 테스트가 기계에 따라 달라진다(`attendance-logic.ts`의 같은 판단).
+ * 24시 표기를 쓰는 이유는 배지가 짧아야 하고, 마감이 걸린 자리에서 오전·오후를
+ * 잘못 읽는 사고를 없애기 위해서다.
+ */
+export function formatSavedClock(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return '';
+  return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
+}
+
+/** 배지가 낼 수 있는 상태 여섯 가지. 설계 §1.4의 상태 머신 그대로다. */
+export type DraftStatusState =
+  | 'saved'
+  | 'unsaved'
+  | 'saving'
+  | 'queued'
+  | 'conflict'
+  | 'loadFailed';
+
+/**
+ * 배지가 보는 화면 상태.
+ *
+ * ★ **새 상태 축을 만들지 않는다.** 여기 들어오는 값은 전부 `TopicSection`이
+ *   이미 들고 있는 것이다(`saving`·`conflict`·`queued`·`dirty`·`loadFailed`·`savedAt`).
+ *   배지 전용 상태를 따로 두면 두 축이 어긋나 「저장됐다는데 저장 버튼이 살아 있는」
+ *   화면이 나온다.
+ */
+export type DraftStatusInput = {
+  /** 불러오기가 실패했는가. */
+  loadFailed?: boolean;
+  /** 지금 요청이 날아가는 중인가(손저장·최종제출·재전송 전부 포함). */
+  saving?: boolean;
+  /** 서버가 더 새것이라 조에게 묻는 중인가. */
+  conflict?: boolean;
+  /** 대기 중인 재전송의 시도 횟수. 대기 건이 없으면 null. */
+  queuedAttempts?: number | null;
+  /** 화면이 기준선과 다른가. */
+  dirty?: boolean;
+  /** 지금의 미저장 상태가 **언제부터**인가(ms). 아니면 null. */
+  dirtySinceMs?: number | null;
+  /** 서버가 마지막으로 받은 시각(ISO). */
+  savedAt?: string | null;
+};
+
+export type DraftStatus = {
+  state: DraftStatusState;
+  /** 배지에 그대로 찍을 한 줄. */
+  label: string;
+  /** 색 갈래. 렌더는 이 값만 보고 고른다. */
+  tone: 'ok' | 'busy' | 'warn' | 'danger';
+};
+
+/** 1분. 이보다 짧은 미저장은 분을 붙이지 않는다(「0분째」는 불안만 준다). */
+const MINUTE_MS = 60_000;
+
+/**
+ * 화면 상태 → 배지 한 줄.
+ *
+ * 우선순위는 **saving > conflict > queued > loadFailed > unsaved > saved**.
+ * - `saving`이 맨 앞인 이유: 재전송·덮어쓰기는 `queued`·`conflict`를 켠 채로 날아간다.
+ *   그 순간 가장 참인 말은 「보내는 중」이다.
+ * - `queued`가 `loadFailed`보다 앞인 이유: 조에게 필요한 소식은 「못 불러왔다」가 아니라
+ *   「글은 이 기기에 남아 있고 연결되면 자동으로 올라간다」다.
+ * - 대기 중에 조가 계속 쓰면 `dirty`도 켜지는데, 그때도 `queued`로 둔다. 섞은 상태를
+ *   새로 만들면 문구가 길어지고, 본문의 대기 안내 블록이 이미 그 사정을 말한다.
+ */
+export function draftStatusLabel(input: DraftStatusInput, nowMs: number): DraftStatus {
+  if (input.saving) return { state: 'saving', label: '저장 중…', tone: 'busy' };
+  if (input.conflict) {
+    return { state: 'conflict', label: '다른 기기에서 저장됐습니다 — 선택이 필요합니다', tone: 'danger' };
+  }
+  const attempts = input.queuedAttempts;
+  if (typeof attempts === 'number') {
+    // 시도 횟수는 1부터 센다(`submission-queue.ts`의 `nextBackoffMs`와 같은 기준).
+    const nth = Number.isFinite(attempts) ? Math.max(1, Math.floor(attempts)) : 1;
+    return {
+      state: 'queued',
+      label: `대기 중 · ${nth}번째 시도 (연결되면 자동 저장)`,
+      tone: 'warn',
+    };
+  }
+  if (input.loadFailed) {
+    return { state: 'loadFailed', label: '불러오지 못했습니다', tone: 'danger' };
+  }
+  if (input.dirty) {
+    const since = input.dirtySinceMs;
+    const elapsed = typeof since === 'number' && Number.isFinite(since) ? Math.max(0, nowMs - since) : 0;
+    const minutes = Math.floor(elapsed / MINUTE_MS);
+    return {
+      state: 'unsaved',
+      label: minutes >= 1 ? `저장 안 함 · ${minutes}분째` : '저장 안 함',
+      tone: 'warn',
+    };
+  }
+  const clock = formatSavedClock(input.savedAt);
+  return {
+    state: 'saved',
+    label: clock ? `저장됨 · ${clock}` : '아직 저장된 내용 없음',
+    tone: 'ok',
+  };
+}

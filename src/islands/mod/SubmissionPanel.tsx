@@ -15,7 +15,9 @@ import {
   MAX_SUBMISSION_ROWS,
   addRow,
   canFinalize,
+  draftStatusLabel,
   emptyRow,
+  formatSavedClock,
   isDirty,
   isEditable,
   liftNameOnlyRows,
@@ -93,12 +95,14 @@ function Eyebrow({ children, className = '' }: { children: React.ReactNode; clas
   );
 }
 
-/** ISO 시각을 시:분으로. 값이 없거나 깨졌으면 '—'. */
+/**
+ * ISO 시각을 `14:23` 꼴로. 값이 없거나 깨졌으면 '—'.
+ *
+ * 표기는 `formatSavedClock` 하나에 맡긴다 — 상태 배지와 이 자리(마지막 저장·최종
+ * 제출 시각)가 **같은 사실을 다른 모양으로** 내면 조가 두 시각을 다른 것으로 읽는다.
+ */
 function formatClock(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  return formatSavedClock(iso) || '—';
 }
 
 type LoadedSubmission = {
@@ -270,11 +274,43 @@ function TopicSection({
   savingRef.current = saving || finalizing;
 
   const dirty = isDirty(rows, baseline);
+
+  // ── 저장 상태 배지의 시계 (설계 §1.4) ─────────────────────────
+  // 「저장 안 함 · 3분째」를 내려면 **언제부터** 미저장인지와 **지금**이 필요하다.
+  // 둘 다 화면 상태로 둔다 — 순수 함수(`draftStatusLabel`)는 시각을 인자로만 받는다.
+  const [dirtySinceMs, setDirtySinceMs] = useState<number | null>(null);
+  const [statusNowMs, setStatusNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    // 미저장이 이어지는 동안 시작 시각은 그대로 둔다(한 글자마다 0분으로 되돌아가면
+    // 「몇 분째 저장 안 했는지」라는 정보 자체가 없어진다).
+    setDirtySinceMs((prev) => (dirty ? (prev ?? Date.now()) : null));
+  }, [dirty]);
+  useEffect(() => {
+    if (dirtySinceMs == null) return;
+    // 이펙트가 다시 걸리는 순간이 곧 미저장의 시작이므로 여기서 시계를 맞춘다.
+    setStatusNowMs(Date.now());
+    // 30초 간격 — 분이 바뀌는 순간과 화면이 어긋나는 폭을 30초 아래로 묶는다.
+    const t = setInterval(() => setStatusNowMs(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, [dirtySinceMs]);
   // 미저장 입력 임시 보관함 — 조·꼭지마다 따로 둔다.
   const draftKey = `climate_vote_draft:${code}:${topic.id}`;
   // 저장 실패분 재전송 큐 — 같은 보관함(local→session→메모리)에 접두사만 갈라 둔다.
   const qKey = queueKey(code, topic.id);
   const badge = submissionBadge(loaded?.status ?? null);
+  // ★ 위 `badge` 는 잠금(최종 제출) 배지다. 이것은 **저장 상태** 배지로 별개다.
+  const saveStatus = draftStatusLabel(
+    {
+      loadFailed,
+      saving: saving || finalizing,
+      conflict: conflict != null,
+      queuedAttempts: queued?.attempts ?? null,
+      dirty,
+      dirtySinceMs,
+      savedAt,
+    },
+    statusNowMs,
+  );
   const topicOpen = topic.status === 'open';
   const editable = loaded != null && isEditable(loaded.status) && topicOpen;
 
@@ -628,6 +664,32 @@ function TopicSection({
             </span>
           ) : null}
         </div>
+        {/* 저장 상태 배지 (설계 §1.4) — 「지금 내 글이 안전한가」.
+            ★ 꼭지 **머리**에 둔다. 저장 버튼 옆(맨 아래)에만 두면 긴 꼭지에서는
+              스크롤 밖으로 나가 조가 못 본다. 8.29에 실제로 그랬다.
+            ★ hover 로만 보이는 정보를 두지 않는다 — 현장은 태블릿·손가락이다.
+            불러오는 중에는 내지 않는다(아직 아무 사실도 없다). */}
+        {loaded != null || loadFailed ? (
+          <p
+            role="status"
+            aria-live="polite"
+            data-save-status={saveStatus.state}
+            className={`tr-num mt-2 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[16px] font-extrabold ${
+              saveStatus.tone === 'ok'
+                ? 'border-[#4F9D3A]/40 bg-[#4F9D3A]/10 text-[#2F6322]'
+                : saveStatus.tone === 'busy'
+                  ? 'border-[#1F4E79]/40 bg-[#1F4E79]/10 text-[#1F4E79]'
+                  : saveStatus.tone === 'warn'
+                    ? 'border-[#F5A623] bg-[#F5A623]/15 text-[#B5651D]'
+                    : 'border-[#B22A2A] bg-[#FDECEC] text-[#8B1F1F]'
+            }`}
+          >
+            <span aria-hidden="true">
+              {saveStatus.tone === 'ok' ? '●' : saveStatus.tone === 'busy' ? '⟳' : '!'}
+            </span>
+            <span>{saveStatus.label}</span>
+          </p>
+        ) : null}
         {topic.guidance ? (
           <p className="mt-2 text-[15px] leading-[1.55] text-[#5A6B73] break-words">{topic.guidance}</p>
         ) : null}

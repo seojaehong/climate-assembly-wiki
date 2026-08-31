@@ -308,6 +308,28 @@ L4 는 설계문서가 **「시민이 고른다」**로 못 박은 유일한 단
 - 워커 이펙트는 `rows` 에 의존하면 안 된다 — 한 글자마다 백오프 타이머가 처음부터 다시 걸린다.
   「지금 화면」이 필요하면 `rowsRef` 로 읽는다
 
+## 저장 상태 배지 (`draftStatusLabel` · US-006)
+
+「지금 내 글이 안전한가」를 꼭지 머리에 상시로 낸다. 판단은 `submission-panel-logic.ts` 의
+순수 함수, `SubmissionPanel.tsx` 는 색과 자리만 고른다.
+
+- **상태 여섯 가지**는 전부 `TopicSection` 이 **이미 들고 있는 값**에서 나온다
+  (`saving`·`conflict`·`queued`·`dirty`·`loadFailed`·`savedAt`). 배지 전용 상태를 새로 만들면
+  두 축이 어긋나 「저장됐다는데 저장 버튼이 살아 있는」 화면이 나온다
+- **우선순위 = saving > conflict > queued > loadFailed > unsaved > saved.**
+  재전송·덮어쓰기는 `queued`·`conflict` 를 켠 채로 날아가므로 겹침이 일상이다.
+  겹침 쌍은 테스트로 박아 뒀다 — 순서를 바꾸려면 그 테스트부터 고칠 것
+- ★ **배지는 본문의 대기·충돌 안내 블록을 대신하지 않는다.** 배지는 「지금 안전한가」,
+  그 블록은 「무엇을 골라야 하는가」다. 충돌 선택지 두 개는 배지에 못 들어간다
+- 시각 표기는 `formatSavedClock` **하나**로 모았다(`14:23` 꼴). `SubmissionPanel` 의
+  `formatClock` 도 여기에 위임한다 — 같은 사실을 배지는 `14:23`, 아래 줄은 `오후 2:23` 으로
+  내면 조가 서로 다른 시각으로 읽는다. `toLocaleTimeString` 은 환경마다 갈리므로 쓰지 않는다
+- 「n분째」의 시작 시각(`dirtySinceMs`)은 **미저장이 이어지는 동안 고정**이다. 한 글자마다
+  갱신하면 「몇 분째 저장 안 했는지」라는 정보 자체가 없어진다. 30초 간격 `setInterval` 로
+  다시 그리고, 미저장이 풀리면 타이머를 접는다
+- 검증: `node scripts/verify-save-status-badge.mjs`(dev 서버 필요). 배지의 `data-save-status`
+  속성으로 상태를 집는다 — 문구가 바뀌어도 스크립트가 안 깨진다
+
 ## UI 검증 시 셀렉터 함정
 
 포스트잇이 `<article>` 이다. **새 패널이 카드 발췌를 `<article>` 로 내면 「카드 N장」 검사가
