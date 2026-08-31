@@ -1,444 +1,50 @@
 # Ralph Progress Log
+Started: 2026-08-31 (제출 내구성 + 마감 카운트다운 + 한글 1단계)
+브랜치: ralph/submission-resilience-0912 (base = origin/main 4b4538f)
+이전 run(parser-internalization, 8/8 완료)은 archive/2026-08-31-parser-internalization/ 에 있다.
 
 ## Codebase Patterns
 (모든 이터레이션이 먼저 읽는다. 재사용 지식만 — story 세부는 아래 로그로)
 
-### rhwp WASM 을 Node 에서 띄우는 법 (실측 확인)
-```js
-import { createRequire } from 'node:module';
-import { readFile } from 'node:fs/promises';
-const require = createRequire(import.meta.url);
-const wasmPath = require.resolve('@rhwp/core/rhwp_bg.wasm');  // exports 필드가 없어 서브패스가 통한다
-await (await import('@rhwp/core')).default({ module_or_path: await readFile(wasmPath) });
-```
-- ★ **스크립트를 스크래치패드에 두면 `MODULE_NOT_FOUND`** 다. 모듈 해석이 스크립트 위치 기준이라 **저장소 안에서 실행**해야 한다
-- `globalThis.measureTextWidth` 스텁은 **불필요**하다(텍스트 추출만 할 때). 렌더할 때만 필요
-
-### ★ getTextFileText() 반환값은 JSON 인코딩 문자열이다
-「역슬래시 이스케이프 2문자」로 보이는 것의 정체다. 첫 글자와 끝 글자가 `"` 이고 **통째로 `JSON.parse` 가 된다**(두 대상 파일 모두 성공).
-- 정책권고안 hwpx : raw 2,261자 → parse 후 **2,002자**
-- A조 결과보고서 hwp : raw 28,504자 → parse 후 **25,320자**
-→ `JSON.parse` 를 1순위로, 실패할 때만 리터럴 `
-` `
-` 치환을 폴백으로 둔다.
-
-### HTML 엔티티는 parse 이후에도 남는다
-숫자 엔티티만 관측됐다 — hwpx `&#8212;`, A조 `&#8199;` `&#61580;` `&#61581;` `&#57430;`(사용자정의 영역 = 윙딩 불릿).
-**숫자 엔티티 디코드 필수**, 이름 엔티티는 미관측.
-
 ### 이 저장소 규약
-- 빌드는 **Node 20 포터블 필수**: `export PATH="$HOME/tools/node-v20.18.0-win-x64:$PATH"`. Node 24 는 astro build 가 무출력 사망
-- `npm run build` 는 prebuild+astro+postbuild 를 다 돈다(2026-08-30 수리됨). `npx astro build` 만 쓰면 postbuild 훅이 안 걸려 `dist/deployment-revision.json` 이 안 생긴다
-- ★ **`npm run build` 의 prebuild 가 `index.md`·`log.md`·`public/workshop-graph/data/*.json` 을 재생성해 워킹트리를 더럽힌다.** 커밋 전에 `git checkout` 으로 되돌릴 것
-- **vitest 기준선 = 1,473 통과 / 86 파일**(이 브랜치)
-- 검증 규약: `scripts/verify-*.mjs` — **N/N 개수로 출력**, DB 에 쓰지 않는다. `verify-name-reparse.mjs` 는 규칙을 베끼지 않고 **esbuild 로 .ts 를 그 자리에서 변환해 import** 한다. 새 스크립트도 이 방식을 쓸 것
-- ★ **그런데 변환본을 `data:` URL 로 import 하는 수법은 「의존성 없는 파일」에만 통한다.** 파서 어댑터처럼 `import('@rhwp/core')`·`createRequire(import.meta.url)` 를 쓰는 파일은 data: URL 에서 bare specifier 가 해석되지 않고 `import.meta.url` 도 그 data URL 이 된다. **변환 결과를 저장소 안 실제 `.mjs` 파일로 쓴 뒤 `pathToFileURL()` 로 import 할 것**(위 「스크래치패드에 두면 MODULE_NOT_FOUND」와 같은 이유)
+- 빌드는 **Node 20 포터블 필수**: `export PATH="$HOME/tools/node-v20.18.0-win-x64:$PATH"`.
+  Node 24 는 astro build 가 무출력 사망
+- `npm run build` = prebuild + astro + postbuild. `npx astro build` 만 쓰면 postbuild 훅이 안 걸려
+  `dist/deployment-revision.json` 이 안 생긴다
+- ★ **prebuild 가 `index.md`·`log.md`·`public/workshop-graph/data/*.json` 을 재생성해 워킹트리를 더럽힌다.**
+  커밋 전에 `git checkout` 으로 되돌릴 것
+- `package.json` 에 `test` 스크립트가 **없다**. `npx vitest run` 을 쓴다
+- **테스트 기준선 = 90 파일 / 1,516 테스트 전부 통과** (2026-08-31, 이 브랜치 시작 시점)
+- ★ **`.tsx` 테스트는 vitest include 에 안 잡혀 조용히 통과한 것처럼 보인다.**
+  검증할 판단 로직은 반드시 `.ts` 로 뺀다 (`src/islands/mod/AGENTS.md` 파일 짝 규칙)
+- 검증 규약: `scripts/verify-*.mjs` — **N/N 개수로 출력**, DB 에 쓰지 않는다
+- ★ `verify-name-reparse.mjs` 는 규칙을 베끼지 않고 **esbuild 로 `.ts` 를 그 자리에서 변환해 import** 한다.
+  단 `data:` URL 은 bare specifier 가 해석되지 않으므로 **변환본을 저장소 안 실제 `.mjs` 로 쓴 뒤
+  `pathToFileURL()` 로 import** 할 것
+- **의존성 설치**: `npm install --omit=optional` **금지**. rollup·esbuild·lightningcss 네이티브 바이너리가
+  빠져 `astro build` 가 `Cannot find module '@rollup/rollup-win32-x64-msvc'` 로 죽는다
+- **OneDrive EPERM**: node_modules 를 지우는 코드는 재시도를 감쌀 것. 편집이 검사와 커밋 사이에
+  롤백된 사례가 있으니 긴 빌드 전후 `git diff --stat` 확인
 
-### 판정 근거는 이미 있다 — 재조사 금지
-`../20_스크립트/parsers/README.md` + `measurement/`. 특히 **2차 분해 규칙은 만들지 않기로 확정**됐다(측정으로). 되살리지 말 것.
+### 이 화면(조 콘솔)의 구조 — 2026-08-31 코드 직독 확인
+- **`/mod` 가 곧 조 화면.** 조는 `/mod?code=082901` 로 들어온다 (`ModConsole.tsx:1392`)
+- 조의 **기본 탭은 `submission`** (`mod-tabs.ts:24-28`) → 조에게 항상 보여야 할 것은 탭 **바깥**에 둔다
+- 꼭지 하나 = `TopicSection` 하나, 상태·저장·최종제출을 각자 가짐 (`SubmissionPanel.tsx:189`)
+- 초안 키 = `climate_vote_draft:${code}:${topic.id}` (`SubmissionPanel.tsx:207`)
+- `submission_save` 는 **items 전체 교체 = last-write-wins** (`20260808_s1_*.sql:190`)
+- ★ 저장 성공 시 **`dropDraft()` → `loadSubmission()` 순서 고정.** 뒤집으면 서버가 나눈 결과(s15)가
+  화면에 안 오고 「저장 안 함」으로 남는다 (2026-08-30 실화면 버그, `SubmissionPanel.tsx:318-334`)
+- 본부 RPC 권한 = `attendance_token_row(p_token)` → `scope='hq'` (`20260827_s7_*.sql:25`)
+- ★ `topic_list` 는 `returns table` 이라 컬럼 추가 시 **DROP 후 CREATE**. **grant 재부여 누락 시 조 화면 전면 장애**
+- 네트워크·DB 없이 화면 검증하는 픽스처 라우트:
+  `src/pages/[lang]/moderator/insights/submission-lab.astro` (+`-extreme`),
+  데이터 `automation/fixtures/0829-submissions.json`
 
----
-Started: Sun, Aug 30, 2026  7:46:30 PM
----
+### 한글(HWP/HWPX) — 2026-08-31 실증
+- `vendor/kordoc` 은 **읽기 전용이 아니다.** `markdownToHwpx` · `fillHwpx` · `patchHwp` · `patchHwpx` ·
+  `extractClickHereFields` · `validateHwpx` 가 있고 전부 실제로 돌아간다
+- 다만 `dist/index.js` 가 `fs`·`zlib`·`crypto`·`stream` 을 정적 import 해 **브라우저 번들은 안 된다**
+  (`zlib.deflateSync`·`crypto.createHash` 를 실제로 쓴다). Node 에서만 쓸 것
+- ★ **한글 COM 자동화(`pyhwpx`)는 루프에서 실행 금지** — 앱 창이 떠서 멈춘다. 사람이 수동으로
 
-## Codebase Patterns
-(모든 이터레이션이 먼저 읽는다. story 개별 사정은 아래 로그에 적을 것)
-
-- **의존성 설치**: `npm install --omit=optional` **금지**. 트리 전체에 걸려 rollup·esbuild·
-  lightningcss 네이티브 바이너리까지 빠지고 `astro build` 가
-  `Cannot find module '@rollup/rollup-win32-x64-msvc'` 로 죽는다. 평범한 `npm install` 을 쓰고,
-  무거운 것은 `postinstall` 의 `scripts/prune-kordoc-optionals.mjs` 가 지운다(~697MB).
-- **`sharp` 는 astro 것**이다(이미지 서비스). 최상위 `sharp`·`@img` 를 지우면
-  `Rollup failed to resolve import "sharp"` 로 빌드가 죽는다. kordoc 은 ^0.35 를 요구해
-  `node_modules/kordoc/node_modules/` 아래 사본이 따로 생기고, 지워도 되는 건 그 중첩 사본뿐.
-- **Node 20 포터블 필수**: 매 명령 앞에 `export PATH="$HOME/tools/node-v20.18.0-win-x64:$PATH"`.
-  Node 24 에서는 astro build 가 출력 없이 죽는다.
-- **검사 3종**: `npx tsc --noEmit -p tsconfig.json` · `npx vitest run`(86파일 1473테스트) ·
-  `npx astro build`(7916 페이지, 약 60초).
-- **OneDrive EPERM**: node_modules 를 지우는 코드는 재시도를 감쌀 것. npm 자체도 cleanup 단계에서
-  EPERM 을 뱉는데, 그 때 패키지 디렉터리의 package.json 만 지워지고 `.node` 파일이 남아
-  "디렉터리는 있는데 MODULE_NOT_FOUND" 인 상태가 만들어진다. 이러면 `npm install` 을 다시 돌린다.
-- **검증 규약**: 숫자로 낸다("단위 164개·200자 초과 0개"), "정상 동작 확인" 은 검증이 아니다.
-  기존 예시 `scripts/verify-server-split.mjs`·`verify-name-reparse.mjs`. 후자는 규칙을 .mjs 로
-  베끼지 않고 **esbuild 로 .ts 를 그 자리에서 변환해 import** 한다 — 새 스크립트도 이 방식.
-- **커밋 제외 — prebuild 타임스탬프 churn**: 빌드를 돌리면 `index.md`(Last generated) ·
-  `log.md` · `public/workshop-graph/data/{agenda-surface,kb-agenda-surface}.json`(generated_at)이
-  매번 바뀐다. story 와 무관하므로 커밋에 넣지 않는다(US-001 커밋도 뺐다).
-- **★ heredoc 에 역슬래시를 담지 마라**: `cat > f <<'EOF'` 로 따옴표를 씌워도 이 환경에서는
-  `\\` 가 `\` 로 줄어든다. 정규식·이스케이프가 든 소스는 **python 으로 써라**
-  (`chr(92)` 로 조립하면 확실하다). 쓴 뒤 `sed -n` 으로 눈으로 확인할 것.
-- **`rm -rf` 는 거부된다**: 임시 디렉터리 정리는 `git clean -fd <경로>` 로 한다.
-- **★ 동시 실행 주의 (2026-08-30 20:26 실측)**: `ralph.sh` 루프가 **2개**(pid 30373 20:04 시작 ·
-  pid 30836 20:05 시작) 같은 브랜치에 동시에 쓰고 있었다. 다른 인스턴스가 만든 미추적 파일이
-  보일 수 있다(20:22 에 `src/lib/parsers/rhwp-adapter.ts` 가 그렇게 나타났다).
-  **내가 만들지 않은 미추적 파일은 지우지도 커밋하지도 말 것.** story 착수 전 `git status` 로
-  다른 인스턴스가 그 story 파일을 이미 쓰고 있는지 먼저 확인한다.
-- **★ 파서 두 개는 npm 이 아니라 `vendor/` 에서 온다**(US-008). `package.json` 이
-  `file:./vendor/rhwp-core-0.8.4` · `file:./vendor/kordoc-4.12.0` 을 가리키고
-  `node_modules/{@rhwp/core,kordoc}` 은 그리로 향하는 **junction** 이다. 벤더 폴더를
-  건드릴 일이 생기면 `vendor/AGENTS.md` · `vendor/UPSTREAM.md` 를 먼저 읽을 것.
-- **★ `tsconfig.json` 의 `exclude` 에 있는 `"node_modules"` 는 최상위 하나만 가리킨다.**
-  프로젝트 안에 서드파티 사본을 두면 그 밑의 중첩 `@types/node` 까지 TS 루트 집합에 들어와
-  `tsc` 가 4GB 를 태우고 `FATAL ERROR: Ineffective mark-compacts` 로 죽는다(실측 약 170초).
-  새 폴더를 만들 때 `exclude` 를 함께 볼 것. `vitest.config.ts` 는 `include` 로 좁혀 놔 안전하다.
-- **★ `file:` 의존성 / junction 을 `rm -rf` 하지 마라.** MSYS 의 `rm -rf` 는 junction 안으로
-  들어가 링크가 가리키는 **원본**을 지운다. `lstat` 으로 갈라 링크는 `unlink`,
-  실디렉터리만 `rmSync({recursive:true})`.
-- **★ `.gitignore` 는 제외된 디렉터리 안의 파일을 `!` 로 되살리지 못한다.** 디렉터리를 먼저
-  풀고(`!a/b/`) 그 다음 내용을 푼다(`!a/b/**`). 그리고 그 블록은 **파일 맨 끝**이어야 한다 —
-  이 저장소는 아래쪽에 `dist_*/`·`dist.bak.*` 를 나중에 덧붙여 왔다.
-  확인은 `find <경로> -type f | git check-ignore --stdin` 이 아무것도 안 뱉는지 보는 것.
-- **★ `core.autocrlf=true` 다.** 바이트가 중요한 파일(서드파티 사본·픽스처)은 `.gitattributes`
-  에 `-text` 로 못박는다. `git add` 가 "LF will be replaced by CRLF" 경고를 뿜으면 신호다.
-- **★ JSON 을 문자열 치환으로 고칠 때 값은 `json.dumps(..., ensure_ascii=False)` 에 맡겨라.**
-  손으로 `\"` 를 적으면 위의 heredoc 역슬래시 함정과 겹쳐 파일이 깨진다(`prd.json` 을 한 번 깨뜨렸다).
-- **금지**: git push · main 머지 · 배포 · 운영 DB 쓰기 · 유료 API 호출.
-
----
-
-## [2026-08-30 20:20] - US-001 파서 의존성 버전 고정 설치
-Commit: (아래 feat 커밋) · 브랜치 ralph/parser-internalization
-
-- `@rhwp/core` 0.8.4 · `kordoc` 4.12.0 을 캐럿 없이 정확한 버전으로 고정 설치
-- `scripts/prune-kordoc-optionals.mjs` 신설 + package.json 에 `postinstall` 등록
-- `scripts/AGENTS.md` 신설 — 설치·sharp·Node·EPERM 함정 기록
-
-- **실측 결과**
-  - 설치 검사 12/12 PASS (버전 2 · package.json 정확버전 2 · 무거운 optional 부재 5 · 빌드 네이티브 존재 3)
-  - prune 8개 제거 · **697.4MB** 회수 (transformers 220 · onnxruntime-node 283 ·
-    onnxruntime-web 128 · pdfjs-dist 36 · pdfium 11 · kordoc 중첩 sharp/@img 19)
-  - import smoke: rhwp export 8개 · kordoc export 75개
-  - `npx tsc --noEmit` 0 · `npx vitest run` 86파일 1473테스트 통과 · `npx astro build` 7916페이지 성공
-
-- **다음 이터레이션을 위한 학습:**
-  - **PRD 의 AC 두 개가 서로 모순이었다.** AC#2 「`npm install --omit=optional` 로 설치」 와
-    AC#4 「astro build 통과」 는 동시에 참일 수 없다(위 Codebase Patterns 참조). AC 를 고쳐 쓰지 않고
-    의도(무거운 optional 부재 + 빌드 통과)를 postinstall prune 으로 달성하고 notes 에 편차를 남겼다.
-    **뒤 story 의 AC 도 실측과 어긋날 수 있다 — 실측을 믿고, 편차는 notes 에 적는다.**
-  - kordoc export 75개 · rhwp export 8개. US-003/005 어댑터를 쓸 때 API 이름을 먼저 덤프해 볼 것.
-  - CI(`.github/workflows/deploy.yml`)와 Cloudflare 는 `npm ci` 가 아니라 `npm install` 을 쓴다
-    (`.npmrc` 에 이유가 적혀 있다). postinstall 은 양쪽 모두에서 돈다.
-  - `automation/` 은 별도 node_modules 를 갖는다. 스크립트가 playwright·supabase-js 를 쓸 때
-    `../automation/node_modules/...` 절대경로 import 를 쓰는 것이 이 저장소 관례.
----
-
-## [2026-08-30 20:26] - US-002 extractDocument 인터페이스 타입 정의
-Commit: (아래 feat 커밋) · 브랜치 ralph/parser-internalization
-
-- `src/lib/parsers/types.ts` 신설 (78줄, 구현 코드 0줄)
-  - `ExtractedUnit` · `UnitProvenance` · `ExtractResult` · `ExtractWarning`
-  - 가독 편의로 union 두 개에 이름을 붙였다 — `ExtractEngine`('rhwp'|'kordoc'),
-    `ExtractWarningKind`(4종). 인라인 union 에는 멤버별 JSDoc 을 달 수 없어서다. 구조는 AC 와 동일.
-
-- **실측 결과**
-  - 형상 정확성 **4/4 PASS** — AC 문안을 그대로 옮긴 타입과 `Exact<A,B>`(양방향 assignability)로
-    대조. 필드명·선택성이 한 글자라도 다르면 tsc 가 터진다. 임시 파일로 확인 후 삭제.
-  - `npx tsc --noEmit -p tsconfig.json --listFiles | grep -c parsers/types.ts` → **1**
-    (tsconfig 에 `include` 가 없어 전부 딸려오지만, 실제로 검사 대상인지 눈으로 확인한 것)
-  - `npx tsc --noEmit` 오류 **0** · `npx vitest run` **86파일 1473테스트 통과**
-  - `astro build` 는 생략 — 아직 아무도 import 하지 않는 타입 전용 파일이라 빌드 그래프가 그대로다
-
-- **다음 이터레이션을 위한 학습:**
-  - **US-003 착수 전 먼저 `git status`** — 다른 루프가 이미 `rhwp-adapter.ts` 를 쓰고 있거나
-    커밋했는지 확인한다(위 동시 실행 주의). 그 다음 **rhwp export 이름부터 덤프할 것.** US-001 측정에서 `@rhwp/core` export 는
-    **8개뿐**인데 US-003 의 AC 는 `getSectionCount`·`getParagraphCount`·`getTextRange`·
-    `getCellParagraphCount`·`getTextInCell` 5개를 이름으로 지정한다. 8개 안에 다 있는지,
-    최상위인지 인스턴스 메서드인지 확인하고 시작해라. US-001 에서 배운 대로 **AC 보다 실측이 먼저**다.
-  - 어댑터는 `import type { ... } from './types'` 로 가져와라. tsconfig 가
-    `astro/tsconfigs/strict` 를 확장하므로 값 import 와 타입 import 를 섞지 않는 편이 안전하다.
-  - **`rm -rf` 는 이 환경에서 거부된다.** 작업 디렉터리를 지울 땐 `git clean -fd <경로>` 를 쓴다.
-  - **커밋에 넣지 말 것 — prebuild 가 만드는 타임스탬프 churn.** 빌드를 돌리면
-    `index.md`(Last generated) · `log.md` · `public/workshop-graph/data/*-agenda-surface.json`
-    (generated_at)이 매번 바뀐다. US-001 커밋도 이것들을 뺐다. story 파일만 골라 커밋한다.
----
-
-## [2026-08-30 20:33] - US-003 rhwp 어댑터 — 구조 API 로 셀 문단 추출
-Commit: 5c92e12 · 브랜치 ralph/parser-internalization
-
-- `src/lib/parsers/rhwp-adapter.ts` 신설 (174줄) — `extractWithRhwp(buffer)` export
-  - `getSectionCount`·`getParagraphCount`·`getParagraphLength`·`getTextRange` 로 본문 문단
-  - `getTableDimensions`·`getCellParagraphCount`·`getCellParagraphLength`·`getTextInCell` 로 셀 문단
-  - **순회를 `20_스크립트/parsers/measurement/rhwp_units.mjs` 와 한 줄씩 같게 유지했다.**
-    판정 숫자(164단위·최대 95자)가 그 순회에 묶여 있어 「개선」하면 근거가 깨진다.
-
-- **실측 결과** (Node 20 · 핀 고정된 `@rhwp/core` 0.8.4, wiki/node_modules)
-  - `정책권고안_(양식_초안).hwpx` **164단위**(본문 84 · 셀 80) · 2,707자 · 중앙값 10 · 최대 95 ·
-    **200자 초과 0개** · warnings 0 · 161ms → **AC「100개 이상 · 200자 초과 0」 PASS**
-  - provenance 결측 **0** — section/para 164/164, 셀단위 control/cell 80/80, engine≠rhwp 0, 공백만 단위 0
-  - `결과보고서_발화자추가_A조.hwp` **842단위**(본문 73 · 셀 769) · 12,655자 · 최대 204 · 200자 초과 2
-  - **저장된 실측과 단위 수가 정확히 일치** — `measurement/rhwp_units.json` 은
-    `f_form.hwpx` 164 / `d_speakers.hwp` 842. 글자수만 2,718→2,707 · 12,829→12,655 로 적은데,
-    우리가 단위마다 `trim()` 하기 때문이다(저장본은 untrimmed).
-  - `npx tsc --noEmit` **0** · `npx vitest run` **86파일 1473테스트 통과**
-  - `astro build` 생략 — 아직 아무도 import 하지 않아 빌드 그래프가 그대로다(US-002 와 같은 판단)
-
-- **다음 이터레이션을 위한 학습:**
-  - **★ README 표의 「rhwp 1,256단위」를 기준으로 삼지 마라.** 같은 파일의 저장된 실측은
-    **842단위**다(최대 204·200자↑ 2 는 표와 일치). 1,256 은 다른 파이프라인(줄 분해) 수치로 보인다.
-    US-004 의 대조 기준은 표가 아니라 **직접 낸 숫자**여야 한다.
-  - **WASM 초기화 — 폴백 분기는 타지 않았다.** `require.resolve('@rhwp/core/rhwp_bg.wasm')`
-    서브패스가 그대로 풀린다(0.8.4 의 exports 가 열어 둠). 어댑터의 `dirname(resolve(...))` 폴백은
-    보험으로만 남긴다.
-  - **★ esbuild 변환본을 `data:` URL 로 import 하면 안 된다.** `verify-name-reparse.mjs` 가 쓰는
-    그 수법은 **의존성이 없는 파일에만** 통한다. 어댑터는 `import('@rhwp/core')` 와
-    `createRequire(import.meta.url)` 를 쓰는데, data: URL 에서는 bare specifier 가 해석되지 않고
-    `import.meta.url` 도 그 data URL 이 된다. **변환 결과를 저장소 안 실제 `.mjs` 로 써서
-    `pathToFileURL()` 로 import 할 것.** US-007 의 `verify-parsers.mjs` 가 이 방식을 써야 한다.
-  - `path.win32` 백슬래시를 heredoc 안 정규식(`/\/g`)에 쓰면 셸이 먹는다. `pathToFileURL` 을 쓸 것.
-  - **동시 실행이 실제로 일어났다.** 이 이터레이션 도중 다른 루프가 `rhwp-adapter.ts`(20:22 작성)를
-    지웠고(`git clean` 으로 추정) `.scratch/probe*.mjs` 를 쓰며 커밋 2건(402224b·616713f)을 얹었다.
-    **대책 — 검사가 끝나면 즉시 커밋해 창을 좁힌다. 남의 미커밋 파일·`.scratch/` 는 건드리지 않는다.**
-    `prd.json` 을 쓰기 전에 `passes` 를 다시 읽어 이미 true 면 덮어쓰지 않는다.
----
-
-## [2026-08-30 20:40] - US-004 rhwp 누락 검사 — 두 경로 글자수 대조
-Commit: f087ada · 브랜치 ralph/parser-internalization
-
-- `src/lib/parsers/rhwp-adapter.ts` 에 순수 함수 4개 추가 export
-  - `unwrapTextFileText` · `decodeNumericEntities` · `comparableLength` · `checkMissingContent`
-  - `extractWithRhwp` 가 `doc.getTextFileText()` 를 한 번 더 돌려 대조하고 경고를 `warnings` 에 넣는다
-- `src/lib/parsers/rhwp-adapter.test.ts` 신설 (16테스트) — 전부 WASM 없이 돈다.
-  저장소 밖 `00_입력자료` 를 읽는 시험은 넣지 않았다(CI 에서 깨진다). 실제 문서 숫자는 실측 스크립트 몫.
-
-- **실측 결과**
-  - `결과보고서_발화자추가_A조.hwp` — 구조 **10,321자** vs 전문 **17,601자** → **7,280자(41.4%) 누락**,
-    `missing-content` 경고 **1건** 발생 → **AC#5 PASS**
-  - `정책권고안_(양식_초안).hwpx` — 구조 **2,030자** vs 전문 **1,309자** → 경고 **0건**
-  - 전문 언랩은 두 문서 모두 `JSON.parse` 성공(raw 28,504→25,320 · 2,261→2,002).
-    엔티티 디코드 후 25,320→25,287 · 2,002→1,972. 디코드 뒤 남은 엔티티 **0**
-  - `npx tsc --noEmit` **0** · `npx vitest run` **88파일 1,497테스트 통과**
-  - `astro build` 생략 — 아직 아무도 import 하지 않아 빌드 그래프가 그대로다(US-002·US-003 과 같은 판단)
-
-- **다음 이터레이션을 위한 학습:**
-  - **★ 「차이 5%」는 절대값이면 안 된다.** 전문 경로가 구조보다 **적은** 경우가 실제로 있다
-    (hwpx 2,030 > 1,309). 절대값으로 재면 멀쩡한 파일에 55% 누락 경고가 뜬다.
-    **한 방향(전문 > 구조)으로만 경고**하도록 좁혔고 근거를 함수 JSDoc 에 박아 뒀다.
-  - **공백을 양쪽에서 털고 세라.** 구조 단위는 `trim()` 돼 있고 전문은 개행·들여쓰기를 품는다.
-    안 털면 A조가 49.9%, hwpx 가 27% 로 나와 숫자가 서식에 흔들린다.
-  - **★ Bash heredoc 이 역슬래시를 먹는다.** `<<'TS'` 로 따옴표를 씌워도 `\\r\\n` 이 `\r\n` 으로
-    줄어들어 정규식·문자열 리터럴이 조용히 망가진다(이번에 두 번 당했다 — `.replace(/\\r\\n/g, ...)` 가
-    실제 개행이 박힌 채로 나와 `Unterminated string literal` 이 됐다).
-    **역슬래시가 든 파일은 heredoc 말고 python 으로 써라**(`chr(92)` 로 조립하면 확실하다).
-  - **동시 실행이 계속되고 있다.** 이 이터레이션 중 다른 루프가 US-003 을 커밋(5c92e12)하면서
-    내 워킹트리 편집을 덮었고, 동시에 US-005(`kordoc-adapter.ts`)·US-007(`scripts/verify-parsers.mjs`)를
-    쓰고 있었다. **대책 — 검사 끝나면 즉시 커밋, `prd.json` 쓰기 전에 `passes` 재확인(이번엔 false 확인 후 기록),
-    남의 미커밋 파일은 손대지 않는다.**
-  - US-007 의 `verify-parsers.mjs` 는 이 경고를 그대로 확인하면 된다 — 기준 숫자는
-    **A조 41.4% 경고 1건 · hwpx 경고 0건**이다.
----
-
-## [2026-08-30 20:45] - US-005 kordoc 어댑터 — DOCX 전용
-Commit: d77826e · 브랜치 ralph/parser-internalization
-
-- `src/lib/parsers/kordoc-adapter.ts` 신설 — `extractWithKordoc(buffer)` export
-  - `parse()` 의 `blocks` 를 단위로 옮긴다. 표는 **셀마다 단위 하나**, 셀에 `blocks` 가
-    있으면 평탄화 사본(`IRCell.text`)이 아니라 그쪽을 쓴다(같은 글 이중계수 방지).
-    `children`(중첩 리스트)·`captionBlocks` 까지 파고든다
-  - **줄을 더 쪼개지 않는다** — 셀 하나 = 단위 하나. 2차 분해 규칙은 만들지 않기로 확정됐다
-- `src/lib/parsers/kordoc-adapter.test.ts` 신설 — 대역 블록으로 8개(실제 문서 안 읽음)
-- `scripts/verify-parsers.mjs` **신설** — US-007 이 여기에 US-004·006 을 합치면 된다
-- `src/lib/parsers/AGENTS.md` 신설 — import 규칙·kordoc/rhwp 함정·시험 방침
-
-- **실측 결과** (`node scripts/verify-parsers.mjs` → **7 PASS · 0 FAIL (7/7)**)
-  - `0829_조별산출물_전수.docx` **865단위** · 78,081자 · 중앙값 69 · **최대 1,658** · 214ms · 경고 0
-  - 한국어 보존 — 치환문자(U+FFFD) **0** · 한글 든 단위 **865/865** · 표본 문자열 3/3 보존
-  - `charCount` = 단위 글자수 합 78,081 (정확히 일치) · engine≠kordoc 0 · 공백만 단위 0
-  - 거절 3종 전부 `units 0 · charCount 0 · unsupported 1개` —
-    hwpx(`detail:"kordoc-adapter: hwpx"`) · hwp · 비문서 바이트(`not a zip container`)
-  - `npx tsc --noEmit` **0** · `npx vitest run` **88파일 1,497테스트 통과**
-  - `astro build` 생략 — 아직 아무도 import 하지 않아 빌드 그래프가 그대로다(US-002·003 과 같은 판단)
-  - **최대 1,658자는 kordoc 의 알려진 성질**이다. README 의 「kordoc 최대 3,219자」와 같은 계열 —
-    워드에는 rhwp 같은 대안이 없어 받아들인 것이다. 놀라지 말 것
-
-- **다음 이터레이션을 위한 학습:**
-  - **★ 동기 판정기는 DOCX 를 hwpx 라고 답한다.** `detectFormat(ab)` 도 `isHwpxFile(ab)` 도
-    zip 서명만 본다 — 실측에서 `0829_조별산출물_전수.docx` → `"hwpx"`, `isHwpxFile`=`true`.
-    그것으로 걸렀다면 **워드 파일을 전부 거절**했을 것이다. zip 안 종류는 **비동기
-    `detectZipFormat()`**(`"hwpx"|"xlsx"|"docx"|"unknown"`)만 맞힌다. OLE2 `.hwp` 는 동기
-    `isOldHwpFile()` 로 걸린다. **US-006 이 확장자로 라우팅할 때도 이 사실을 알고 있어야 한다** —
-    확장자와 실제 내용이 어긋난 파일은 어댑터가 잡는다
-  - **DOCX 에는 페이지 번호가 없다.** kordoc `IRBlock.pageNumber` 가 730블록 중 0개였다.
-    d.ts 도 「페이지 번호를 매기지 않는 포맷(DOCX 등)에서는 없고」라고 적는다.
-    US-005 AC#2 의 「page 를 채운다」는 워드에서는 달성 불가 — 준 블록에만 채우게 했다
-  - **`scripts/verify-parsers.mjs` 의 esbuild 방식은 실제로 통한다.** 변환본을
-    `node_modules/.cache/verify-parsers/*.mjs` 에 쓰고 `pathToFileURL()` 로 import 하면
-    bare 지정자(`kordoc`)가 node_modules 를 거슬러 올라가 풀린다. **어댑터 `.ts` 에는
-    상대경로 값 import 를 넣지 말 것** — `./types` 는 타입 전용이라 esbuild 가 지워 괜찮다
-  - **★ 동시 실행이 실제로 사고를 냈다.** 이 이터레이션은 US-003 을 집어 `rhwp-adapter.ts` 를
-    새로 썼는데, 그 사이 다른 루프가 US-003 을 **이미 커밋**(5c92e12)했고 내 쓰기가 그 커밋본을
-    덮어썼다. `git checkout -- <파일>` 로 되살렸다. **착수 전 `git log --oneline -3` 과
-    `git status` 를 둘 다 보고**, 그 story 파일이 이미 있거나 미추적 파일이 딸려 있으면
-    **그 story 를 건너뛰고 다음 우선순위로 간다**(이번엔 US-004 를 넘기고 US-005 를 했다)
-  - `warningForFailure` 를 export 한 이유 — 암호 걸린 docx 표본이 없어 실문서로 확인할 수 없다.
-    `ParseFailure`→`ExtractWarning` 매핑만 순수 함수로 떼어 vitest 로 못박았다.
-    US-006 도 같은 방식(순수 매핑 export + 대역 시험)을 쓸 수 있다
----
-
-## [2026-08-30 20:49] - US-005 후속 (표 캡션 유실)
-Commit: 965810d · 브랜치 ralph/parser-internalization
-
-- `pushBlock` 이 `captionBlocks` 만 보고 있어 **평범한 글자 캡션이 경고 없이 사라졌다.**
-  kordoc 은 중첩 구조가 있는 캡션만 `captionBlocks` 로 주고, 「표 1. …」 같은 보통 캡션은
-  `IRTable.caption` 문자열로만 준다. 둘 다 받되 겹쳐 담지 않도록 고치고 시험 2개를 더했다.
-  실측 docx 에는 캡션이 없어 7/7 숫자는 그대로다 — **시험이 아니라 d.ts 를 읽어 찾은 구멍**이다.
-- 시험 10개 · 전체 **88파일 1,499테스트 통과** · tsc 0 · `verify-parsers.mjs` 7/7 유지
-
-- **다음 이터레이션을 위한 학습:**
-  - **`parse()` 가 성공해도 kordoc 자신의 `result.warnings`(`TRUNCATED_TABLE`·`SKIPPED_OLE` 등)를
-    지금은 버리고 있다.** 우리 `ExtractWarningKind` 4종에 대응이 없어서다.
-    **US-007 에서 `missing-content` 로 옮길지 판단할 것** — 「조용히 빠지는 내용」이 이 프로젝트의
-    존재 이유라 버려 둘 자리가 아니다. `src/lib/parsers/AGENTS.md` 에도 적어 뒀다
-  - 한 라이브러리가 **같은 것을 두 자리로 주는 패턴**(`caption`/`captionBlocks`,
-    `IRCell.text`/`IRCell.blocks`)이 kordoc 에 반복된다. 새 필드를 쓸 때 d.ts 주석에서
-    「…있을 때만 채워지며」를 찾아 **폴백 자리가 따로 있는지 먼저 확인할 것**
----
-
-## [2026-08-30 20:56] - US-006 extractDocument 통합 진입점
-Commit: 2f041cf · 브랜치 ralph/parser-internalization
-
-- `src/lib/parsers/index.ts` 신설 — `extractDocument(buffer, filename)` · `planExtraction` ·
-  `extensionOf` · `MAX_BYTES` export. 판단 순서는 **확장자 → 크기 → 엔진**이고 그 이유를 파일
-  머리 JSDoc 에 박아 뒀다(어차피 거절할 파일에 크기 한도를 먼저 씌우면 「.docx 로 저장해 주세요」
-  안내가 크기 경고에 가린다).
-- `src/lib/parsers/index.test.ts` 신설 (11테스트) — 거절 경로는 엔진을 부르기 전에 끝나므로
-  WASM 도 kordoc 도 필요 없다. 실제 문서는 읽지 않는다(이 폴더 규칙).
-- `src/lib/parsers/AGENTS.md` 갱신 — index.ts 로딩 예외 · 진입점 규칙 3가지.
-
-- **실측 결과** (실문서 드라이런 **9/9 PASS**, 임시 스크립트로 돌리고 지웠다)
-  - 라우팅 — 정책권고안 hwpx **164단위·2,707자**(US-003 과 정확히 동일) ·
-    `결과.hwp`(1.9MB) **380단위·3,080자** · `0829_조별산출물_전수.docx` **865단위·78,081자**(US-005 와 동일).
-    모든 단위의 `provenance.engine` 이 기대한 엔진과 일치.
-  - 거절 — `.doc`(진짜 docx 바이트를 `.doc` 이름으로 넣어도 막힌다) · `.pdf` ·
-    20,971,521바이트 too-large · **정확히 20MB(20,971,520)는 통과**(경계) ·
-    `.hwp` 인 척하는 쓰레기 바이트도 던지지 않고 `unsupported`.
-  - `npx tsc --noEmit` **0** · `npx vitest run` **89파일 1,510테스트 통과**
-  - `astro build` 생략 — 아직 아무도 import 하지 않아 빌드 그래프가 그대로다.
-
-- **다음 이터레이션을 위한 학습:**
-  - **★ 20MB 한도가 US-004 의 증거 문서를 막는다.** `★20260613 … _발화자 추가_A조.hwp` 는
-    **119,689,216바이트(114.1MiB)** 다 — PRD 가 말한 「측정에서 죽은 119MB」가 바로 이 파일이고,
-    어댑터를 직접 부르면 842단위가 나온다. **US-007 의 누락 검사는 `extractDocument` 가 아니라
-    `extractWithRhwp` 로 직접 해야 한다.** 진입점으로 `.hwp` 라우팅을 보이고 싶으면
-    `★20260613 기후시민회의 의제숙의워크숍 결과.hwp`(1.9MB · 380단위)를 쓴다.
-  - **★ `index.ts` 는 esbuild `transform` 으로 못 불러온다.** 상대경로 값 import 가
-    `./rhwp-adapter` 그대로 남아 Node ESM 이 확장자 없이는 못 찾는다.
-    **`build({ bundle: true, platform: 'node', format: 'esm', packages: 'external' })`** 로 말아
-    `node_modules/.cache/verify-parsers/index.mjs` 에 쓰고 `pathToFileURL` 로 import 하면
-    상대 import 는 안으로 말리고 bare 지정자(`kordoc`·`@rhwp/core`)는 밖에 남아 풀린다(9/9 로 확인).
-    **US-007 의 `verify-parsers.mjs` 는 `loadAdapter`(transform)와 이 방식을 함께 가져야 한다.**
-  - **어댑터는 실제로 던진다.** `extractWithRhwp` 는 `new HwpDocument(bytes)` 를 감싸지 않아
-    쓰레기 바이트에 예외가 난다(실측: 「유효하지 않은 파일: 지원하지 않는 포맷입니다」).
-    진입점이 try/catch 로 삼켜 `unsupported` 로 바꾼다 — 「던지지 않는다」는 계약을 진입점이 지킨다.
-  - 동시 실행 계속됨 — 이 이터레이션 중 다른 루프가 `965810d`(US-005 캡션 후속)·`2f3c65d` 를 얹었다.
-    내 vitest 숫자 1,510 은 그 2테스트를 포함한 값이다.
----
-
-## [2026-08-30 21:05] - US-007 회귀 시험 — 기존 641건이 흔들리지 않는다
-Commit: e63a9e1 · 브랜치 ralph/parser-internalization
-
-- `scripts/verify-parsers.mjs` 를 **US-003~007 실측의 단일 창구**로 넓혔다(136줄 → 386줄).
-  AC#1 의 「신설」은 US-005 가 이미 만들어 둔 파일이라 확장으로 읽었다 — 그 파일 머리말 자체가
-  「US-004·006 의 실측이 US-007 에서 여기로 합쳐진다」고 적고 있었다.
-- `scripts/AGENTS.md` · `src/lib/parsers/AGENTS.md` 갱신.
-
-- **실측 결과** (`node scripts/verify-parsers.mjs` → **25 PASS · 0 FAIL (25/25)** · 2.8초)
-  - US-003 hwpx **164단위**(본문 84·셀 80) · 2,707자 · 최대 95 · 200자 초과 **0** ·
-    provenance 결측 0(section/para 164/164 · 셀 control/cellPara 80/80)
-  - US-004 A조 hwp(119,689,216바이트)를 **어댑터로 직접** 불러 `missing-content` **1건**
-    (10,321 vs 17,601자 · 41.4%) · 842단위는 그대로 나온다 · hwpx 경고 0
-  - US-005 docx **865단위·78,081자** · 치환문자 0 · 표본 3/3 · 거절 3종
-  - US-006 진입점이 어댑터 직접 호출과 **같은 수**(hwpx 164/2,707 · docx 865/78,081) ·
-    결과.hwp(1.8MB) 380단위 · `.doc` 안내문구 · `.pdf`·내용이 어긋난 `.hwp` unsupported ·
-    20MB 경계(20,971,520 통과 / 20,971,521 too-large) · 114MB 증거문서 too-large
-  - US-007 회귀 — `latest.json` **641건 · 63,444자** → `splitSubmissionLines` 로
-    **50건이 쪼개져 848행** · 공백 제외 48,238자 무손실 · 멱등 · 규칙 원문 대조 통과
-  - `npx tsc --noEmit` **0** · `npx vitest run` **89파일 1,510테스트 통과**
-  - `astro build` 생략 — 스크립트도 어댑터도 사이트가 import 하지 않아 빌드 그래프가 그대로다
-
-- **다음 이터레이션을 위한 학습:**
-  - **★ 「기존과 같음」을 어떻게 증명했나.** `git diff main -- src/islands/mod/submission-panel-logic.ts`
-    가 **0줄**이다 — 줄 분해 규칙은 이 브랜치에서 한 자도 안 바뀌었다. 그래서 실측 상수
-    `{rows:641, splitCount:50, outTotal:848, charsIn:63444}` 가 곧 파서 도입 **전** 값이고,
-    검사는 파서 7개 story 를 얹은 지금도 같은 값이 나오는지를 묻는다.
-    **git 명령을 스크립트 안에 넣지 않았다** — 머지되면 의미가 사라지고, 저장소 관례는
-    `SQL_MEASURED` 처럼 **실측 상수 + 언제·무엇으로 쟀는지 주석**이다.
-  - **★ 모듈을 두 번 불러오면 안 된다.** `index.ts`(bundle 필요)와 `rhwp-adapter.ts`(transform 가능)를
-    **따로** 불러오면 같은 모듈의 사본이 둘 생기고, rhwp 는 WASM 초기화 가드를 모듈 스코프에 두므로
-    사본마다 따로 초기화된다. 하나의 `build({ stdin: {contents, resolveDir: ROOT, loader:'ts'},
-    bundle:true, platform:'node', format:'esm', packages:'external', write:false })` 로
-    필요한 것을 **전부 재수출**해 한 번에 말아 올린다. 줄 분해 규칙(`submission-panel-logic`)도
-    같은 번들에 얹으면 esbuild 호출이 하나로 끝난다.
-  - **114MB `.hwp` 는 rhwp 로 0.6초에 읽힌다.** 크기 때문에 실측을 건너뛸 이유가 없다
-    (`--fast` 플래그는 남겨 뒀지만 기본 경로가 2.8초로 끝난다).
-  - **임계치가 아니라 실측 상수로 박아라.** 「100개 이상」만 재면 164 가 163 이 돼도 안 걸린다.
-    이번 25개 검사는 전부 **정확한 수**를 요구한다.
-  - **★ 판단 기록 — kordoc `result.warnings` 는 지금 옮기지 않는다.** US-005 후속이 US-007 에
-    맡긴 숙제였다. 가진 실문서(`0829_조별산출물_전수.docx`)가 그 경고를 **0개** 내므로 옮겨도
-    옳게 옮겼는지 숫자로 확인할 수 없다 — 확인 못 하는 경고는 이 프로젝트가 싫어하는 조용한 동작이다.
-    **되살릴 조건**(경고가 실제로 뜨는 docx 표본이 생기면)을 `src/lib/parsers/AGENTS.md` 에 적었다.
-  - **★ 파서는 저장 규칙을 import 하지 않는다** — 검사 하나가 이것을 못박는다
-    (`index.ts`·`rhwp-adapter.ts`·`kordoc-adapter.ts` 에 `submission-panel-logic` ·
-    `splitSubmissionLines` 문자열이 없어야 한다). 문서에서 단위를 뽑는 규칙과 저장할 때 줄을
-    나누는 규칙이 섞이면 8.29 데이터 해석이 움직인다.
-  - **동시 실행 계속됨 — 이번엔 PRD 가 늘었다.** 작업 중 다른 손이 `prd.json` 에
-    **US-008(파서 라이브러리 벤더링)** 을 미커밋 상태로 추가해 뒀다. 지우지 않고 그대로 두고
-    US-007 블록만 문자열 치환으로 고쳤다(`json.dumps` 로 통째로 다시 쓰면 남의 편집 서식이 날아간다).
-    **그래서 이번 이터레이션은 COMPLETE 가 아니다** — US-008 이 `passes:false` 로 남아 있다.
----
-
-## [2026-08-30 21:35] - US-008 파서 라이브러리 벤더링 — npm 의존을 끊는다
-Commit: c55435b · 브랜치 ralph/parser-internalization
-
-- `vendor/rhwp-core-0.8.4/`(7파일) · `vendor/kordoc-4.12.0/`(143파일) 신설 —
-  설치본과 `diff -r` 로 동일. `kordoc/node_modules` 만 뺐다(패키지 내용이 아니라 설치 산출물).
-- `package.json` 두 의존성을 `file:./vendor/...` 로. `.gitignore` 맨 끝에 allowlist.
-- `vendor/UPSTREAM.md`(출처·해시·패치 규약) · `vendor/AGENTS.md`(함께 고쳐야 하는 5군데·함정 3개) 신설.
-- `tsconfig.json` exclude 에 `"vendor"` · `.gitattributes` 에 `vendor/** -text` 추가.
-- `scripts/verify-parsers.mjs` 에 US-008 검사 3개 추가(25 → 28).
-
-- **실측 결과**
-  - `node scripts/verify-parsers.mjs` → **28 PASS · 0 FAIL (28/28)**. 기존 25개가
-    벤더 사본으로 그대로 통과한다 — 이것이 AC#6 의 증거다
-  - **삭제 → 복원** — `node_modules/{@rhwp/core,kordoc}` 을 지우고 `npm install` 하니
-    둘 다 **vendor 로 향하는 junction** 으로 되살아났다.
-    `require.resolve('kordoc')` → `vendor/kordoc-4.12.0/dist/index.cjs`,
-    `require.resolve('@rhwp/core/rhwp_bg.wasm')` → `vendor/rhwp-core-0.8.4/rhwp_bg.wasm`(7.7MB).
-    postinstall prune 8개 **697.4MB** 그대로 작동
-  - `find vendor -type f | git check-ignore --stdin` → **0건 / 150파일**
-  - `npm run build` **7916페이지** · `npx vitest run` **89파일 1,510테스트** · `npx tsc` **0**
-  - 커밋에 들어간 vendor 파일 152개(패키지 150 + AGENTS.md + UPSTREAM.md)
-
-- **다음 이터레이션을 위한 학습:**
-  - **★ 벤더링하면 `tsc` 가 힙 부족으로 죽는다 — 실제로 겪었다.** `tsconfig.json` 의
-    `exclude` 에 있는 `"node_modules"` 는 **최상위 하나만** 가리킨다. 벤더 폴더는 그 밖이라
-    TS 루트 집합에 통째로 들어오고, `npm install` 이 만든
-    `vendor/kordoc-4.12.0/node_modules/@types/node/**`(431개 `.ts`)까지 딸려와
-    `FATAL ERROR: Ineffective mark-compacts near heap limit`(4GB · 약 170초)로 끝났다.
-    `exclude` 에 `"vendor"` 를 넣으면 0초대로 통과한다 — `exclude` 는 루트 집합만 줄이고
-    `import` 로 딸려오는 `kordoc/dist/index.d.ts` 타입은 그대로 살아 있다.
-    `vitest.config.ts` 는 `include` 로 범위를 먼저 좁혀 놓아 영향이 없었다.
-  - **★ `file:` 의존성은 junction 이다. 재귀 삭제하면 벤더 원본이 날아간다.** MSYS `rm -rf` 는
-    junction 안으로 들어간다. `lstat` 으로 갈라 **링크는 `unlink`, 실디렉터리만 `rmSync(recursive)`**.
-    같은 이유로 postinstall prune 이 링크를 타고 `vendor/.../node_modules/sharp` 를 지운다
-    (설치 산출물이라 무해하고 `.gitignore` 의 `vendor/**/node_modules/` 가 추적을 막는다).
-  - **★ `.gitignore` 는 제외된 디렉터리 안의 파일을 `!` 로 되살리지 못한다.** 디렉터리
-    (`!vendor/kordoc-4.12.0/dist/`)를 먼저 풀고 내용(`!.../dist/**`)을 푼다. 그리고 그 블록은
-    **파일 맨 끝**에 있어야 한다 — 이 저장소는 아래쪽에 `dist_*/`·`dist.bak.*` 같은 광범위
-    규칙을 나중에 덧붙여 왔다. 확인은 `find vendor -type f | git check-ignore --stdin` 한 줄이다.
-  - **★ `core.autocrlf=true` 다.** `.gitattributes` 에 `vendor/** -text` 를 넣지 않으면
-    체크아웃할 때 `dist/*.js` 의 LF 가 CRLF 로 바뀌어 **업스트림 tarball 과 바이트가 갈린다**
-    (`UPSTREAM.md` 에 적은 integrity 대조가 무의미해진다). `git add` 가 경고를 90줄 뿜는다 —
-    그 경고를 무시하지 말 것.
-  - **integrity 해시는 벤더링 *전에* 뽑아라.** `file:` 로 바꾸는 순간 `package-lock.json` 의
-    해당 항목이 `{"resolved":"vendor/...","link":true}` 로 바뀌면서 sha512 가 사라진다.
-    잊었으면 `git show HEAD:package-lock.json` 으로 되찾는다. 이번 값은 `vendor/UPSTREAM.md` 에 있다.
-  - **kordoc 은 `exports` 로 서브패스를 막는다.** `require.resolve('kordoc/dist/index.cjs')` 는
-    `ERR_PACKAGE_PATH_NOT_EXPORTED` 다(`kordoc/package.json` 도 마찬가지). **bare 지정자를 써라.**
-    rhwp 는 `exports` 가 없어서 `@rhwp/core/rhwp_bg.wasm` 서브패스가 통하는 것이다 —
-    업스트림이 `exports` 를 넣는 날 어댑터가 깨진다.
-  - **★ heredoc 역슬래시 함정을 이번에도 밟았다.** 역슬래시 두 개(`\\n`)를 담은 python 을
-    heredoc 으로 넘기면 한 개(`\n`)로 줄어 앵커 매칭이 실패한다. `chr(92)` 로 조립하거나,
-    아예 JSON 값은 손으로 이스케이프하지 말고 **`json.dumps(..., ensure_ascii=False)`** 에 맡길 것
-    (한 번 손으로 이스케이프했다가 `prd.json` 을 깨뜨려 `git checkout` 으로 되돌렸다).
-  - **PRD 가 다 끝났다.** US-001~008 전부 `passes: true` 다.
 ---
