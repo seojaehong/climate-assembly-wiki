@@ -40,6 +40,16 @@ Started: 2026-08-31 (제출 내구성 + 마감 카운트다운 + 한글 1단계)
   `src/pages/[lang]/moderator/insights/submission-lab.astro` (+`-extreme`),
   데이터 `automation/fixtures/0829-submissions.json`
 
+### Supabase 오류 다루기 — 2026-09-01 실증
+- ★★ **PostgREST 오류는 `Error` 인스턴스가 아니다.** supabase-js 는 `throwOnError` 를 안 켜면
+  응답 본문(평범한 객체 `{code, message, details, hint}`)을 그대로 `{ error }` 로 주고,
+  `src/lib/deliberation.ts` 래퍼가 그걸 그대로 throw 한다
+- 그래서 `error instanceof Error ? error.message : ''` 로 분기하면 **서버 문구를 영영 못 읽는다.**
+  실제로 조 화면의 finalized·not open 안내가 여태 죽은 코드였다(US-005 에서 발견)
+- 진짜 `Error` 가 오는 경우는 **연결 자체가 끊겼을 때**(TypeError: Failed to fetch)뿐이다
+- 메시지는 `submission-panel-logic.ts` 의 `saveFailureKind()` 처럼 **Error·문자열·평범한 객체를
+  다 읽는 방식**으로 꺼낼 것. RPC 실패를 문구로 갈라 다르게 대응하는 화면은 전부 해당된다
+
 ### 마이그레이션 폴더 — 트랙이 둘이고 사전순이 갈린다 (2026-08-31 실증)
 - 파일명 사전순에서 숫자(`2`)가 알파벳(`p`)보다 앞이라 **`platform_*.sql` 이 모든 `2026*` 파일보다
   뒤에 적용된다.** 즉 날짜 파일로는 platform 트랙이 정의한 함수를 이길 수 없다
@@ -279,4 +289,18 @@ Commit: ralph/submission-resilience-0912
   - 픽스처 라우트로 **저장 성공까지** 시험하려면 `submission_save` 를 route 로 fulfill 해야 한다
     (픽스처 prop 은 읽기만 막는다). 배너의 「저장 버튼은 서버로 나가지 않습니다」는 route 를
     가로채는 검증 스크립트 안에서만 참이다 — 사람이 브라우저로 열어 저장을 누르면 **나간다**
+---
+
+## 2026-09-01 01:15 - US-005 보강 (워커 ↔ 손저장 겹침 차단)
+Commit: ralph/submission-resilience-0912
+- 재전송이 날아가는 동안 저장 버튼이 살아 있었다. 그 틈에 조가 새 내용을 저장하면
+  **늦게 도착한 큐(옛 내용)가 이긴다** — 손으로 저장한 새 글이 서버·저장소·화면에서 다 사라진다
+  (`sameSavePayload` 가 false 라 초안은 살지만, 화면은 `loadSubmission` 이 가져온 옛 내용이 된다)
+- 고친 것 두 줄: `attempt()` 가 자물쇠를 잡은 뒤 `setSaving(true)`, `finally` 에서 해제.
+  반대 방향도 막았다 — `savingRef`(saving‖finalizing)가 켜져 있으면 워커가 **비킨다**.
+  그 저장이 성공하면 `dropDraft()` 가 큐째 지우고, 실패하면 큐가 새로 얹혀 워커가 다시 온다
+- `## Codebase Patterns` 에 「Supabase 오류 다루기」 절 신설 — PostgREST 오류가 `Error` 가 아니라는
+  것은 이 story 밖에서도 걸린다(US-011 의 `topicSetDeadline` 실패 안내가 바로 다음 차례다)
+- 검사: tsc 통과 · `npx vitest run` **92 파일 / 1,599 테스트 전부 통과** ·
+  `scripts/verify-queue-resend.mjs` **9 PASS / 0 FAIL 재실행**(고친 코드 기준, 운영 DB 요청 0건)
 ---

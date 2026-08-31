@@ -265,6 +265,9 @@ function TopicSection({
    */
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
+  /** 손으로 누른 저장·최종 제출이 날아가는 중인가. 워커가 그 위에 겹치면 안 된다. */
+  const savingRef = useRef(false);
+  savingRef.current = saving || finalizing;
 
   const dirty = isDirty(rows, baseline);
   // 미저장 입력 임시 보관함 — 조·꼭지마다 따로 둔다.
@@ -463,9 +466,16 @@ function TopicSection({
       const online = typeof navigator === 'undefined' ? true : navigator.onLine !== false;
       if (!online) return; // 오프라인이면 시도 자체를 건너뛴다 — 실패 횟수를 낭비하지 않는다
       if (!force && !shouldAttempt(q, now, online)) return;
+      // ★ 손으로 누른 저장이 날아가는 중이면 비킨다. 겹치면 늦게 도착한 쪽이 이기는데,
+      //   그게 큐(옛 내용)면 방금 손으로 저장한 새 내용이 서버에서 지워진다.
+      //   그 저장이 성공하면 큐째로 없어지고, 실패하면 큐가 새로 얹혀 여기로 다시 온다.
+      if (savingRef.current) return;
       const since = attemptingSinceRef.current;
       if (since !== null && now - since < ATTEMPT_LOCK_MS) return;
       attemptingSinceRef.current = now;
+      // 보내는 동안은 저장·최종 제출 버튼을 잠근다 — 조가 그 틈에 새 내용을 저장하면
+      // 뒤늦게 도착한 큐가 그걸 덮는다(같은 사고의 반대 방향).
+      setSaving(true);
       try {
         const server = await submissionGet(q.code, q.topicId);
         if (conflictVerdict(server.updated_at, q.baseUpdatedAt) === 'conflict') {
@@ -494,6 +504,7 @@ function TopicSection({
         setQueued(next);
       } finally {
         attemptingSinceRef.current = null;
+        setSaving(false);
       }
     },
     [qKey, dropDraft, clearQueue, loadSubmission],
