@@ -565,3 +565,67 @@ Commit: f241e63 (ralph/submission-resilience-0912)
   - 새 RPC 를 `src/lib/*.ts` 에 붙일 때는 `scripts/verify-topic-contract.mjs` 를 본떠
     이름 대조를 한 건 늘려라. tsc 가 절대 못 잡는 층이다
 ---
+
+## 2026-09-01 03:15 - US-010 (마감 배너 — 탭이 아니라 상단 고정)
+Commit: ralph/submission-resilience-0912
+- 신규 `src/islands/mod/DeadlineBanner.tsx` — **렌더만.** 판단은 한 줄도 없다
+  · 자기 몫의 `topic_list` 폴링(30초) + 1초 tick + 구간별 색만 갖는다
+- `src/islands/mod/topic-countdown.ts` 에 **`bannerView()`** 신설(+ 테스트 11개)
+  · `bannerView(topics, nowMs, offsetMs, unsavedTopicIds) → {topic,tier,remainingMs,countdown,message,hasUnsaved} | null`
+- `ModConsole.tsx` — 탭 렌더 **바깥**, `ModTabBar` **위**에 마운트 + `unsavedTopicIds` 상태
+- `SubmissionPanel.tsx` — `onUnsavedTopicsChange`(루트) · `onUnsavedChange`(TopicSection) 선택 prop
+- 신규 `scripts/verify-deadline-banner.mjs` · `src/islands/mod/AGENTS.md`「마감 배너」 ·
+  `scripts/AGENTS.md`「접속코드 뒤 화면도 DB 없이 검증된다」 절 신설
+
+- **★ 왜 `bannerView` 를 새로 만들었나 — .tsx 는 검사 밖이다**
+  AC 는 「판단 로직은 전부 `topic-countdown.ts`」인데, 고르기·구간·문구·미저장 결합을
+  렌더에서 조립하면 **그 조립 자체가 검사 밖에 남는다**(이 저장소의 `.tsx` 는 vitest include 밖).
+  그래서 조립까지 `.ts` 에서 끝내고 `.tsx` 는 **색과 크기만** 고른다. 실제로 이 결정 덕에
+  「미저장은 배너가 고른 그 꼭지만 본다」 같은 규칙이 단위 시험으로 박혔다
+- **★★ 구조로 막은 함정 — 오프셋을 tick 값으로 다시 재면 카운트다운이 얼어붙는다**
+  `clockOffsetMs(serverNow, nowMs)` 는 `nowMs` 가 커질수록 작아진다. 매 tick 다시 계산하면
+  오프셋이 정확히 상쇄돼 **잔여가 그대로 멈춘다**(숫자는 떠 있는데 안 줄어든다 = 가장 나쁜 실패).
+  그래서 오프셋은 **폴링 때 한 번만** 잡아 state 에 둔다. 일부러 깨 보니 검증기가 **4건 FAIL**
+- **★ 미저장은 배너가 만들지 않는다 — 위에서 받는다**
+  `TopicSection`(`dirty || queued != null`) → `SubmissionPanel`(모아서 정렬한 문자열 키로 알림)
+  → `ModConsole`(state) → 배너. 초안 보관함을 뒤져 짐작하면 「서버와 같은 초안」까지 미저장이 되어
+  저장 배지와 배너가 **다른 말을 한다**. 두 자리가 같은 사실을 보게 하는 것이 이 배선의 목적
+- **★ 탭을 옮겨 패널이 언마운트돼도 미저장 목록을 지우지 않는다.** 패널이 없는 동안에는
+  아무도 글을 못 고치므로 마지막 값이 여전히 사실이다. 지우면 마감 3분 전에 안내가 조용히 사라진다
+- **★ AC 이탈 1건 — 검증 화면을 바꿨다.** AC 는 `submission-lab` 픽스처를 지목하지만 그건 본부
+  보드고(US-003·006 에서 확인), 조 화면 픽스처(`submission-panel-lab`)에는 **탭 바가 없어**
+  이 story 의 핵심(「탭 바 위인가」)을 잴 수 없다. 그래서 `rest/v1` 을 통째로 가로채
+  **`mod_join` 응답까지 지어내** 진짜 `/mod?code=082901` 을 열었다. 운영 DB 요청 0건
+
+- **검증 숫자 — `node scripts/verify-deadline-banner.mjs` = 12 PASS / 0 FAIL**
+  · 마감 없음 → **배너 요소 0개**(빈 껍데기 금지) · 마감 2건 중 임박한 꼭지② 하나만
+  · 문서 순서상 **배너 → 탭바**(`compareDocumentPosition`), 탭바 안에 없음, y=114
+  · 잔여 **40px** `tabular-nums` · 본문 **24px** · opacity 1 · title 속성 없음
+  · 1초 tick 실측 **10:01 → 09:58** · calm→notice **2.5초** · notice→warn **4.5초**
+  · warn 문구 "지금 저장하세요. 저장하지 않은 내용이 있습니다." (notice 구간에서는 안 붙는 것도 확인)
+  · **타이머 탭으로 옮겨도** 같은 배너·같은 문구 유지(사진 `us010-4-other-tab.png`)
+  · over = 빨강 `00:00` 「마감되었습니다」인데 **입력칸·저장 버튼은 안 잠긴다**
+  · 서버 시각을 +10분 기울여도 잔여 **04:01**(기기 기준이면 14:00) — 오프셋이 실제로 태워진다
+  · `mod_join 6 · topic_list 12 · submission_get 16 · 기타 6` **전부 지어낸 응답**, 새 나간 요청 0건
+- **음성 대조 3건 — 「무엇을 보는 검사인가」를 증명한다** (깨 보고 원복했다)
+  · A. 오프셋을 tick 값으로 재계산 → **4 FAIL**(tick·두 전환·탭 이동)
+  · B. 배너를 작성 탭 **안**으로 이동 → **3 FAIL**(문서 순서·탭 이동·다른 탭에서 배너 실종)
+  · C. `unsavedTopicIds` 를 안 넘김 → **2 FAIL**(warn 문구에 저장 안내가 안 붙음)
+- 검사: `npx tsc --noEmit -p tsconfig.json` 통과 ·
+  `npx vitest run` **94 파일 / 1,680 테스트 전부 통과**(직전 94/1,669 대비 **+11**, 신규 실패 0)
+  `.astro` 를 안 건드려 `npm run build` 는 안 돌렸다(prebuild 워킹트리 오염 없음). dev 서버는 종료했다
+- **다음 이터레이션(US-011)을 위한 학습:**
+  - ★ `HqSubmissionBoard` 에 마감 입력을 붙일 때 **`topicSetDeadline` 은 이미 있다**(US-009,
+    `src/lib/deliberation.ts`). 실패 문구는 그 래퍼가 `PGRST202: …` 꼴로 감싸 준다 —
+    `role="alert"` 에 그대로 실으면 s17 미적용 DB 에서 원인이 보인다
+  - ★ 배너는 **30초 폴링**이라 본부가 마감을 걸면 조 화면에 최대 30초 뒤 뜬다. 본부 UI 에서
+    「걸었다」고 곧바로 조 화면을 확인하려 들면 안 뜬 것으로 오해할 수 있다(정상 동작)
+  - ★ **알고 감수한 구멍**: 타이머 탭에서 **새로고침**하면 `SubmissionPanel` 이 안 떠
+    `unsavedTopicIds` 가 빈 채로 남는다 → 초안이 살아 있어도 warn 문구에 미저장 안내가 안 붙는다.
+    기본 탭이 `submission` 이라 드문 경로이고 「지금 저장하세요」는 그대로 뜬다. **이것을
+    초안 보관함 훑기로 메우지 말 것** — 음성 대조 C 가 막으려던 바로 그 위반이다
+  - ★ 검증 스크립트에서 `/mod` 를 여는 법·Playwright route 우선순위·`networkidle` 함정은
+    `scripts/AGENTS.md` 새 절에 적어 뒀다. US-011 의 `/hq` 검증에 그대로 쓰인다
+  - `datetime-local` 은 **로컬 시각**을 낸다. `topic_set_deadline` 은 `timestamptz` 를 받으므로
+    보낼 때 ISO(UTC)로 바꿔야 하고, 되읽어 채울 때는 반대 변환이 필요하다(US-011 이 정할 것)
+---

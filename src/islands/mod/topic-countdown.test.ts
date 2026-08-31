@@ -3,6 +3,7 @@ import {
   NOTICE_THRESHOLD_MS,
   WARN_THRESHOLD_MS,
   bannerMessage,
+  bannerView,
   clockOffsetMs,
   countdownTier,
   formatCountdown,
@@ -316,5 +317,95 @@ describe('배선 시나리오 — 마감 1건이 calm→notice→warn→over 로
     expect(at(9.5)).toBe('warn'); // 30초
     expect(at(10)).toBe('over'); // 정확히 마감
     expect(at(12)).toBe('over');
+  });
+});
+
+describe('bannerView — 배너 한 벌 조립 (US-010 이 그리는 값 그대로)', () => {
+  /** `id` 가 붙은 꼭지. 미저장 결합이 id 로 이뤄지므로 여기서만 필요하다. */
+  const withId = (id: string, ordinal: number, deadline_at: string | null, status: 'open' | 'closed' = 'open') => ({
+    id,
+    ordinal,
+    status,
+    deadline_at,
+    prompt: `꼭지 ${ordinal}`,
+  });
+
+  const iso = (msFromServerNow: number) => new Date(SERVER_NOW_MS + msFromServerNow).toISOString();
+
+  it('마감이 하나도 없으면 null — 빈 껍데기를 그리지 않는다', () => {
+    const topics = [withId('a', 1, null), withId('b', 2, undefined as unknown as null)];
+    expect(bannerView(topics, SERVER_NOW_MS, 0, [])).toBeNull();
+  });
+
+  it('꼭지 목록이 없거나 비어도 null 이다', () => {
+    expect(bannerView(null, SERVER_NOW_MS, 0, [])).toBeNull();
+    expect(bannerView([], SERVER_NOW_MS, 0, [])).toBeNull();
+  });
+
+  it('가장 임박한 열린 꼭지 하나를 고르고 구간·잔여·문구를 함께 낸다', () => {
+    const topics = [withId('a', 1, iso(20 * MIN)), withId('b', 2, iso(4 * MIN))];
+    const view = bannerView(topics, SERVER_NOW_MS, 0, []);
+    expect(view?.topic.id).toBe('b');
+    expect(view?.tier).toBe('notice');
+    expect(view?.remainingMs).toBe(4 * MIN);
+    expect(view?.countdown).toBe('04:00');
+    expect(view?.message).toBe('곧 마감입니다.');
+    expect(view?.hasUnsaved).toBe(false);
+  });
+
+  it('★ 미저장은 배너가 고른 그 꼭지만 본다 — 다른 꼭지의 미저장은 안 끌어온다', () => {
+    const topics = [withId('a', 1, iso(20 * MIN)), withId('b', 2, iso(2 * MIN))];
+    const view = bannerView(topics, SERVER_NOW_MS, 0, ['a']);
+    expect(view?.topic.id).toBe('b');
+    expect(view?.hasUnsaved).toBe(false);
+    expect(view?.message).toBe('지금 저장하세요.');
+  });
+
+  it('그 꼭지가 미저장이면 warn 문구에 저장 안내가 붙는다', () => {
+    const topics = [withId('b', 2, iso(2 * MIN))];
+    const view = bannerView(topics, SERVER_NOW_MS, 0, ['b', 'c']);
+    expect(view?.hasUnsaved).toBe(true);
+    expect(view?.message).toContain('저장하지 않은 내용이 있습니다');
+  });
+
+  it('calm 구간은 미저장이어도 문구가 비어 있다 — 여유 있을 때 외치지 않는다', () => {
+    const topics = [withId('b', 2, iso(30 * MIN))];
+    const view = bannerView(topics, SERVER_NOW_MS, 0, ['b']);
+    expect(view?.tier).toBe('calm');
+    expect(view?.message).toBe('');
+    expect(view?.hasUnsaved).toBe(true);
+  });
+
+  it('마감이 지나면 over · 잔여는 음수이지만 표시는 00:00 이다', () => {
+    const topics = [withId('b', 2, iso(-90_000))];
+    const view = bannerView(topics, SERVER_NOW_MS, 0, []);
+    expect(view?.tier).toBe('over');
+    expect(view?.remainingMs).toBeLessThan(0);
+    expect(view?.countdown).toBe('00:00');
+    expect(view?.message).toBe('마감되었습니다.');
+  });
+
+  it('닫힌 꼭지의 마감은 배너에 오르지 않는다', () => {
+    const topics = [withId('a', 1, iso(2 * MIN), 'closed')];
+    expect(bannerView(topics, SERVER_NOW_MS, 0, [])).toBeNull();
+  });
+
+  it('★ 서버 오프셋을 태운다 — 기기 시계가 10분 빨라도 잔여가 같다', () => {
+    const deadline = iso(6 * MIN);
+    const localNow = SERVER_NOW_MS + 10 * MIN; // 기기가 10분 빠름
+    const offset = clockOffsetMs(SERVER_NOW_ISO, localNow); // = -10분
+    const view = bannerView([withId('a', 1, deadline)], localNow, offset, []);
+    expect(view?.remainingMs).toBe(6 * MIN);
+    expect(view?.tier).toBe('calm');
+  });
+
+  it('★ 못 읽는 마감 시각은 배너를 안 그린다 — NaN 이 빨간 「마감되었습니다」로 둔갑하지 않는다', () => {
+    expect(bannerView([withId('a', 1, '언젠가')], SERVER_NOW_MS, 0, [])).toBeNull();
+  });
+
+  it('미저장 목록을 안 주거나 null 이어도 죽지 않는다', () => {
+    const topics = [withId('b', 2, iso(2 * MIN))];
+    expect(bannerView(topics, SERVER_NOW_MS, 0)?.hasUnsaved).toBe(false);
+    expect(bannerView(topics, SERVER_NOW_MS, 0, null)?.hasUnsaved).toBe(false);
   });
 });

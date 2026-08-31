@@ -170,3 +170,55 @@ export function bannerMessage(tier: CountdownTier, hasUnsaved: boolean): string 
         : '마감되었습니다.';
   }
 }
+
+/** 배너가 실제로 그릴 한 벌. 그릴 것이 없으면 `null` — 「빈 껍데기 금지」가 이 반환값 하나로 끝난다. */
+export type BannerView<T extends CountdownTopic> = {
+  topic: T;
+  tier: Exclude<CountdownTier, 'none'>;
+  /** 남은 ms. 지났으면 음수다(문구는 `message` 가 이미 갈랐다). */
+  remainingMs: number;
+  /** `MM:SS`. 지났으면 `00:00`. */
+  countdown: string;
+  message: string;
+  /** **그 꼭지**의 미저장 여부. 「아무 꼭지나」가 아니다. */
+  hasUnsaved: boolean;
+};
+
+/**
+ * 꼭지 목록 → 배너 한 벌. `DeadlineBanner.tsx` 가 그대로 그리기만 하면 되게 묶어 둔다.
+ *
+ * ★ 왜 묶는가: 이 저장소의 `.tsx` 테스트는 vitest include 에 안 잡혀 **조용히 통과한 것처럼
+ *   보인다**(`AGENTS.md` 파일 짝 규칙). 고르기·구간·문구·미저장 결합을 렌더에서 조립하면
+ *   그 조립이 영영 검사 밖에 남는다. 그래서 조립까지 여기서 끝내고 `.tsx` 는 색만 고른다.
+ *
+ * ★ `hasUnsaved` 는 **배너가 고른 그 꼭지**만 본다. 다른 꼭지의 미저장까지 끌어다 쓰면
+ *   이미 저장을 마친 꼭지의 마감 앞에서 「저장 안 한 내용이 있습니다」가 떠 조를 헷갈리게 한다.
+ *
+ * ★ 미저장 사실은 **여기서 다시 계산하지 않는다.** 화면(`draftStatusLabel`)이 보는 것과 같은
+ *   값을 위에서 받아야 한다 — 초안 파일의 존재로 짐작하면 「서버와 같은 초안」까지 미저장이 된다.
+ */
+export function bannerView<T extends CountdownTopic & { id: string }>(
+  topics: readonly T[] | null | undefined,
+  nowMs: number,
+  offsetMs: number,
+  unsavedTopicIds?: readonly string[] | null,
+): BannerView<T> | null {
+  const topic = pickBannerTopic(topics, nowMs, offsetMs);
+  if (topic === null) return null;
+
+  const remaining = remainingMs(topic.deadline_at, nowMs, offsetMs);
+  const tier = countdownTier(remaining);
+  // `pickBannerTopic` 이 이미 읽히는 마감만 고르므로 여기 걸릴 일은 없다. 그래도
+  // 「못 읽은 시각」이 배너로 새 나가지 않도록 한 번 더 막는다(NaN → 빨간 마감 둔갑 방지).
+  if (tier === 'none' || remaining === null) return null;
+
+  const hasUnsaved = Array.isArray(unsavedTopicIds) && unsavedTopicIds.includes(topic.id);
+  return {
+    topic,
+    tier,
+    remainingMs: remaining,
+    countdown: formatCountdown(remaining),
+    message: bannerMessage(tier, hasUnsaved),
+    hasUnsaved,
+  };
+}

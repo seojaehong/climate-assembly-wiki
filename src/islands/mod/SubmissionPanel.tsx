@@ -230,11 +230,19 @@ function TopicSection({
   code,
   topic,
   fixtureSubmission,
+  onUnsavedChange,
 }: {
   code: string;
   topic: Topic;
   /** 주면 `submission_get` 을 부르지 않는다 — 픽스처 라우트 전용(HqSubmissionBoard 의 fixtureRows 와 같은 관례). */
   fixtureSubmission?: SubmissionGetResult;
+  /**
+   * 이 꼭지에 저장 안 한 내용이 있는지 위로 알린다(마감 배너가 쓴다, US-010).
+   *
+   * ★ 배너가 초안 보관함을 뒤져 스스로 판정하면 안 되기 때문에 있는 통로다 —
+   *   서버와 내용이 같은 초안까지 「미저장」이 되어 배지와 배너가 다른 말을 한다.
+   */
+  onUnsavedChange?: (topicId: string, unsaved: boolean) => void;
 }) {
   const [loaded, setLoaded] = useState<LoadedSubmission | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -403,6 +411,14 @@ function TopicSection({
     if (dirty) draftStore.setItem(draftKey, writeDraft(rows, loaded.updatedAt, Date.now()));
     else draftStore.removeItem(draftKey);
   }, [rows, dirty, loaded, draftKey]);
+
+  // 마감 배너(탭 바깥)가 볼 수 있게 미저장 사실을 위로 올린다.
+  // ★ 「저장 안 함」과 「재전송 대기」를 **같은 사실**로 묶는다 — 둘 다 서버에 아직
+  //   안 올라간 글이고, 설계 §2.4 도 `unsaved`/`queued` 를 함께 센다.
+  const unsavedForBanner = dirty || queued != null;
+  useEffect(() => {
+    onUnsavedChange?.(topic.id, unsavedForBanner);
+  }, [onUnsavedChange, topic.id, unsavedForBanner]);
 
   // 저장 전 이탈(새로고침·탭 닫기) confirm — 자동 저장이 없으므로 이 방어선이 유일하다.
   // 구역마다 걸어 두면 어느 꼭지에 미저장분이 있어도 잡힌다.
@@ -1410,6 +1426,7 @@ export default function SubmissionPanel({
   tableNo,
   fixtureTopics,
   fixtureSubmissions,
+  onUnsavedTopicsChange,
 }: {
   code: string | null;
   /** 내려받은 문서에 찍을 조 이름. 없으면 「우리 조」. */
@@ -1426,6 +1443,12 @@ export default function SubmissionPanel({
   fixtureTopics?: Topic[];
   /** 꼭지 id → 픽스처 제출물. 주면 그 꼭지는 `submission_get` 을 부르지 않는다. */
   fixtureSubmissions?: Record<string, SubmissionGetResult>;
+  /**
+   * 저장 안 한 내용이 있는 꼭지 id 목록. 마감 배너(`DeadlineBanner`)가 받아 쓴다.
+   *
+   * 배너는 탭 **바깥**에 있어 이 패널의 형제다. 그래서 사실을 아는 쪽(여기)이 위로 올린다.
+   */
+  onUnsavedTopicsChange?: (topicIds: string[]) => void;
 }) {
   const [topics, setTopics] = useState<Topic[] | null>(null);
   const [topicsFailed, setTopicsFailed] = useState(false);
@@ -1451,6 +1474,21 @@ export default function SubmissionPanel({
   useEffect(() => {
     void loadTopics();
   }, [loadTopics]);
+
+  // 꼭지별 미저장 → 하나의 목록으로 모아 위로 올린다(마감 배너용).
+  // ★ 같은 값이면 상태를 안 바꾼다 — 안 그러면 자식의 알림 → 부모 리렌더 → 자식 알림이 돈다.
+  const [unsavedMap, setUnsavedMap] = useState<Record<string, boolean>>({});
+  const handleUnsavedChange = useCallback((topicId: string, unsaved: boolean) => {
+    setUnsavedMap((prev) => (Boolean(prev[topicId]) === unsaved ? prev : { ...prev, [topicId]: unsaved }));
+  }, []);
+  // 배열은 매번 새로 만들어지므로 **정렬한 문자열**을 의존성으로 쓴다(참조 비교로는 매 렌더마다 알린다).
+  const unsavedKey = Object.keys(unsavedMap)
+    .filter((id) => unsavedMap[id])
+    .sort()
+    .join(' ');
+  useEffect(() => {
+    onUnsavedTopicsChange?.(unsavedKey ? unsavedKey.split(' ') : []);
+  }, [unsavedKey, onUnsavedTopicsChange]);
 
   // 지난 회차 초안 청소 — 패널이 처음 뜰 때 한 번. `localStorage` 로 올라가면서
   // 초안이 기기에 눌러앉게 됐으므로, 유효기간(72h)이 지난 것은 여기서 버린다.
@@ -1518,6 +1556,7 @@ export default function SubmissionPanel({
           code={code}
           topic={topic}
           fixtureSubmission={fixtureSubmissions?.[topic.id]}
+          onUnsavedChange={handleUnsavedChange}
         />
       ))}
       <TeamDownload

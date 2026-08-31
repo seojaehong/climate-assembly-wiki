@@ -189,8 +189,8 @@
         "Tests pass — 신규 실패 0"
       ],
       "priority": 10,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "신규 DeadlineBanner.tsx(렌더만) + topic-countdown.ts 에 bannerView() 조립 함수 신설(테스트 11개). ModConsole 의 탭 렌더 바깥·ModTabBar 위에 마운트하고, 미저장 사실은 TopicSection→SubmissionPanel→ModConsole→배너로 **올려 받는다**(onUnsavedChange/onUnsavedTopicsChange). ★ 판단을 .tsx 에 두지 않으려고 bannerView 를 만들었다 — 이 저장소의 .tsx 테스트는 vitest include 밖이라 고르기·구간·문구·미저장 결합을 렌더에서 조립하면 그 조립이 영영 검사 밖에 남는다. .tsx 가 정하는 것은 색·크기뿐. ★ 함정 1(구조로 막음): 오프셋을 매 tick 의 nowMs 로 다시 계산하면 정확히 상쇄돼 잔여가 얼어붙는다 → 폴링 때 한 번만 잡아 state 에 둔다. ★ 함정 2: 탭을 옮겨 패널이 언마운트돼도 마지막 미저장 목록을 지우지 않는다(그동안 아무도 글을 못 고치므로 여전히 사실). ★ AC 이탈 1건: AC 가 지목한 submission-lab 은 본부 보드고 픽스처 라우트에는 탭 바가 없어 「탭 바 위」를 잴 수 없다 → rest/v1 을 전부 가로채(mod_join 응답까지 지어내) 진짜 /mod?code=082901 을 열어 검증했다. 운영 DB 요청 0건. 브라우저 검증 scripts/verify-deadline-banner.mjs = 12 PASS / 0 FAIL — 마감 없음이면 배너 요소 0개 · 문서 순서상 배너→탭바(y=114) · 잔여 40px tabular-nums·본문 24px·opacity 1 · 1초 tick 실측(10:01→09:58) · calm→notice 2.5초 · notice→warn 4.5초에 저장 안내 결합 · 타이머 탭에서도 warn 유지 · over 는 00:00 빨강이되 입력·저장 안 잠김 · 서버 +10분 기울여도 잔여 04:01. 음성 대조 3건으로 검사가 살아 있음을 확인: 오프셋 재계산 함정 → 4 FAIL · 배너를 탭 안으로 이동 → 3 FAIL · 미저장 올려보내기 절단 → 2 FAIL. 94파일/1,680테스트 전부 통과(직전 94/1,669 대비 +11, 신규 실패 0)."
     },
     {
       "id": "US-011",

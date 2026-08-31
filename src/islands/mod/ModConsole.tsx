@@ -31,6 +31,7 @@ import { downloadBlob, resultImageFileName, svgToPngBlob, RESULT_IMAGE_SCALE } f
 import AttendancePanel from './AttendancePanel';
 import BallotPanel from './BallotPanel';
 import SubmissionPanel from './SubmissionPanel';
+import DeadlineBanner from './DeadlineBanner';
 import { tableNoLabel } from './table-no';
 import { MOD_TABS, MOD_TAB_KEY, normalizeTabId, tabById, type ModTabId } from './mod-tabs';
 import Timer from './Timer';
@@ -511,6 +512,15 @@ function HomeScreen({
     }
   };
 
+  /**
+   * 저장 안 한 내용이 있는 꼭지 id — 작성 탭(`SubmissionPanel`)이 올려 보낸다.
+   *
+   * ★ 탭을 옮겨 패널이 사라져도 **마지막 값을 그대로 둔다.** 패널이 없는 동안에는
+   *   아무도 글을 고칠 수 없으므로 그 값이 여전히 사실이고, 지우면 마감 3분 전에
+   *   「저장 안 한 내용이 있습니다」가 조용히 사라진다.
+   */
+  const [unsavedTopicIds, setUnsavedTopicIds] = useState<string[]>([]);
+
   const [title, setTitle] = useState('');
   const [type, setType] = useState<'RADIO' | 'CHECKBOX'>('RADIO');
   const [options, setOptions] = useState<string[]>(['', '']);
@@ -529,6 +539,12 @@ function HomeScreen({
       <TopBar right={<TeamBadge name={teamName} tableNo={tableNo} live />} onExit={onExit} />
 
       <div className="max-w-5xl mx-auto p-6 sm:p-8">
+        {/*
+          마감 배너는 **탭 바 위·탭 렌더 바깥**이다. 조의 기본 탭이 `submission` 이라
+          (`mod-tabs.ts:24-28`) `timer` 탭 안에 두면 8.29처럼 아무도 보지 않는다(설계 B-D2).
+          마감이 안 걸려 있으면 스스로 아무것도 그리지 않는다.
+        */}
+        <DeadlineBanner code={code} unsavedTopicIds={unsavedTopicIds} />
         <ModTabBar active={tab} onSelect={selectTab} />
 
         <div className={tab === 'vote' ? 'grid lg:grid-cols-2 gap-6' : 'grid gap-6'}>
@@ -634,7 +650,14 @@ function HomeScreen({
             <AttendancePanel teamId={teamId} teamName={teamName} joinCode={code} />
           )}
           {tab === 'vote' && <BallotPanel code={code} subgroup={subgroup ?? null} />}
-          {tab === 'submission' && <SubmissionPanel code={code} teamLabel={teamName} tableNo={tableNo} />}
+          {tab === 'submission' && (
+            <SubmissionPanel
+              code={code}
+              teamLabel={teamName}
+              tableNo={tableNo}
+              onUnsavedTopicsChange={setUnsavedTopicIds}
+            />
+          )}
           {tab === 'vote' && <PastRoundsCard teamId={teamId} teamName={teamName} />}
         </div>
       </div>
