@@ -96,8 +96,8 @@
         "Tests pass — 신규 실패 0"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "handleSave 의 catch 를 saveFailureKind 로 갈라 network 계열만 큐에 적재 · 마운트 시 readQueue · 백오프 타이머 + window 'online' 리스너 + 「지금 다시 시도」 버튼(설계 §1.3 깨우는 조건 셋) · 재전송은 submissionGet → conflictVerdict==='send' 일 때만 submissionSave · conflict 면 전송 0건에 [내 내용으로 덮어쓰기][서버 내용 보기] 두 선택지(기본 선택 없음, 서버 내용은 보기 전용 펼침이라 글이 사라지지 않는다) · submissionGet 실패는 아무것도 안 보내고 다음 백오프 · 언마운트 시 타이머·리스너 정리. ★ 이번에 찾은 것 1: PostgREST 오류는 Error 인스턴스가 아니라 평범한 객체다(supabase-js 가 응답 본문을 그대로 error 로 준다) → 기존 화면의 finalized·not open 분기는 죽은 코드였다. saveFailureKind 가 객체·문자열·Error 를 다 읽게 고쳤다. ★ 찾은 것 2: 재전송 성공 뒤 무조건 dropDraft() 하면 오프라인 동안 더 쓴 글이 사라진다 → sameSavePayload 로 화면이 큐와 같을 때만 버린다(AC 문구에서 의도적으로 벗어난 곳, 불변식 「글을 잃지 않는다」 우선). ★ 재전송 자물쇠는 시각(60초 만료)이라 요청이 안 끝나도 큐가 안 박힌다. 브라우저 검증 scripts/verify-queue-resend.mjs = 9 PASS / 0 FAIL(REST 전량 가로채기, 운영 DB 요청 0건). 92파일/1,599테스트 전부 통과(직전 92/1,589 대비 +10, 신규 실패 0)."
     },
     {
       "id": "US-006",

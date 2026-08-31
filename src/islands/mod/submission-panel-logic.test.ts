@@ -18,6 +18,9 @@ import {
   joinSpeaker,
   nameOnlyRowIndexes,
   liftNameOnlyRows,
+  saveFailureKind,
+  saveFailureMessage,
+  sameSavePayload,
 } from './submission-panel-logic';
 import type { SubmissionItem } from '../../lib/deliberation';
 import { DRAFT_TTL_MS, writeDraft } from './submission-draft-store';
@@ -426,5 +429,68 @@ describe('§4-6 양식 머리말이 입력칸에 미리 들어가는 경로가 �
     const ph = [...panel.matchAll(/placeholder="([^"]*)"/g)].map((m) => m[1]);
     expect(ph.length).toBeGreaterThan(0);
     for (const p of ph) expect(p).not.toMatch(/^\s*\d+[.)]/);
+  });
+});
+
+describe('saveFailureKind — 재전송할 실패와 안 할 실패', () => {
+  it('finalized 예외는 finalized', () => {
+    expect(saveFailureKind(new Error('submission is finalized — reopen required (hq)'))).toBe(
+      'finalized',
+    );
+  });
+
+  it('not open 예외는 closed', () => {
+    expect(saveFailureKind(new Error('topic is not open'))).toBe('closed');
+  });
+
+  it('★ 모르는 실패는 network 로 접는다 — 다시 보내 볼 값어치가 있는 쪽', () => {
+    expect(saveFailureKind(new Error('Failed to fetch'))).toBe('network');
+    expect(saveFailureKind(new Error(''))).toBe('network');
+    expect(saveFailureKind(undefined)).toBe('network');
+    expect(saveFailureKind({ code: 'PGRST202' })).toBe('network');
+  });
+
+  it('★ PostgREST 오류는 Error 가 아니라 평범한 객체다 — 그래도 읽어야 한다', () => {
+    // supabase-js 는 throwOnError 없이 응답 본문을 그대로 error 로 돌려준다.
+    // 이걸 놓치면 잠긴 꼭지의 실패가 network 로 분류돼 큐가 영원히 두드린다.
+    const pgrst = { code: 'P0001', details: null, hint: null, message: 'submission is finalized — reopen required (hq)' };
+    expect(saveFailureKind(pgrst)).toBe('finalized');
+    expect(saveFailureKind({ code: 'P0001', message: 'topic is not open' })).toBe('closed');
+  });
+
+  it('문자열로 던진 실패도 읽는다', () => {
+    expect(saveFailureKind('topic is not open')).toBe('closed');
+  });
+
+  it('갈래마다 안내 문장이 다르고 network 는 자동 재저장을 약속한다', () => {
+    expect(saveFailureMessage('finalized')).toContain('다시 열기');
+    expect(saveFailureMessage('closed')).toContain('마감');
+    expect(saveFailureMessage('network')).toContain('연결되면 자동으로');
+    const all = new Set(
+      (['finalized', 'closed', 'network'] as const).map((k) => saveFailureMessage(k)),
+    );
+    expect(all.size).toBe(3);
+  });
+});
+
+describe('sameSavePayload — 재전송 성공 뒤 초안을 버려도 되는가', () => {
+  it('화면 내용이 큐에 실린 것과 같으면 true', () => {
+    const rows = [row('첫 줄', '', '홍길동'), row('둘째 줄')];
+    expect(sameSavePayload(rows, toSaveItems(rows))).toBe(true);
+  });
+
+  it('★ 오프라인 중 더 쓴 내용이 있으면 false — 초안을 버리면 그 글이 사라진다', () => {
+    const queued = toSaveItems([row('첫 줄')]);
+    expect(sameSavePayload([row('첫 줄'), row('오프라인 중에 더 쓴 줄')], queued)).toBe(false);
+  });
+
+  it('빈 줄만 더 늘어난 것은 페이로드가 같으므로 true (저장할 내용이 같다)', () => {
+    const rows = [row('첫 줄')];
+    expect(sameSavePayload([...rows, emptyRow()], toSaveItems(rows))).toBe(true);
+  });
+
+  it('내용이 같아도 순서가 다르면 false', () => {
+    const queued = toSaveItems([row('가'), row('나')]);
+    expect(sameSavePayload([row('나'), row('가')], queued)).toBe(false);
   });
 });

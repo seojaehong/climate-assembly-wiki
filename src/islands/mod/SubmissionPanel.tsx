@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   submissionFinalize,
   submissionGet,
@@ -25,6 +25,9 @@ import {
   pickRestoredRows,
   removeRow,
   rowsFromItems,
+  sameSavePayload,
+  saveFailureKind,
+  saveFailureMessage,
   saveOutcomeMessage,
   splitOverlongRows,
   splitPastedRows,
@@ -38,6 +41,16 @@ import {
   staleKeys,
   writeDraft,
 } from './submission-draft-store';
+import {
+  conflictVerdict,
+  makeQueuedSave,
+  queueKey,
+  readQueue,
+  shouldAttempt,
+  withFailedAttempt,
+  writeQueue,
+  type QueuedSave,
+} from './submission-queue';
 import {
   REVISION_POLL_MS,
   fetchServedRevision,
@@ -112,6 +125,14 @@ type LoadedSubmission = {
  * 계층 결정(local→session→메모리)은 탭 전체에서 한 번이어야 한다.
  */
 const draftStore = createDraftStorage();
+
+/**
+ * 재전송 자물쇠의 유효기간. 이 시간이 지나면 앞선 시도가 아직 안 끝났어도 다시 건다.
+ *
+ * 요청이 영영 안 끝나는 망(캡티브 포털·죽은 와이파이)이 실제로 있다. 자물쇠를
+ * 불리언으로 두면 그 한 번에 큐가 영원히 멈춘다 — 그게 이 story 가 막으려는 상태다.
+ */
+const ATTEMPT_LOCK_MS = 60_000;
 
 const SUBMISSION_CHANGED = 'climate-vote:submission-changed';
 function announceSubmissionChanged() {
@@ -225,10 +246,31 @@ function TopicSection({
   const [longNoticeAnswered, setLongNoticeAnswered] = useState<string | null>(null);
   /** 같은 방식으로, 「이름만 있는 줄」 안내에 답한 조합. */
   const [nameNoticeAnswered, setNameNoticeAnswered] = useState<string | null>(null);
+  /** 저장에 실패해 다시 보낼 것을 기다리는 건. 꼭지당 1건이다(submission-queue). */
+  const [queued, setQueued] = useState<QueuedSave | null>(null);
+  /**
+   * 재전송 직전에 **서버가 더 새것**으로 밝혀진 상태. 보내지 않고 조에게 묻는다(A-D5).
+   * 병합도 하지 않고 조용히 덮어쓰지도 않는다 — 어느 쪽이든 남의 글이 사라진다.
+   */
+  const [conflict, setConflict] = useState<{ serverRows: EditorRow[] } | null>(null);
+  const [showServerRows, setShowServerRows] = useState(false);
+  /**
+   * 재전송이 겹치지 않게 하는 자물쇠. 불리언이 아니라 **시각**을 넣는다 —
+   * 요청이 영영 안 끝나면 불리언 자물쇠는 박힌 채 남아 큐가 영원히 멈춘다.
+   */
+  const attemptingSinceRef = useRef<number | null>(null);
+  /**
+   * 워커가 「지금 화면」을 봐야 할 때만 쓴다. 워커 이펙트를 `rows` 로 다시 태우면
+   * 조가 한 글자 칠 때마다 백오프 타이머가 처음부터 다시 걸린다.
+   */
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
 
   const dirty = isDirty(rows, baseline);
   // 미저장 입력 임시 보관함 — 조·꼭지마다 따로 둔다.
   const draftKey = `climate_vote_draft:${code}:${topic.id}`;
+  // 저장 실패분 재전송 큐 — 같은 보관함(local→session→메모리)에 접두사만 갈라 둔다.
+  const qKey = queueKey(code, topic.id);
   const badge = submissionBadge(loaded?.status ?? null);
   const topicOpen = topic.status === 'open';
   const editable = loaded != null && isEditable(loaded.status) && topicOpen;
@@ -348,11 +390,27 @@ function TopicSection({
    * 초안의 임무는 **저장 못 한 것**을 새로고침 너머로 살리는 것이다. 저장이 끝난
    * 순간 정본은 서버다.
    */
-  const dropDraft = () => {
+  /**
+   * 큐를 놓는다 — 보관함에서도, 화면 상태에서도.
+   *
+   * 저장이 어떤 경로로든 성공하면 대기 중이던 옛 내용은 더 이상 보낼 것이 아니다.
+   * 남겨 두면 워커가 **이미 지난 내용을 다시 올려** 방금 저장한 것을 덮는다.
+   */
+  const clearQueue = useCallback(() => {
+    draftStore.removeItem(qKey);
+    setQueued(null);
+    setConflict(null);
+    setShowServerRows(false);
+  }, [qKey]);
+
+  const dropDraft = useCallback(() => {
     // 보관함이 모든 계층에서 지운다 — 한 곳만 지우면 배포 이전 `sessionStorage`
     // 사본이 남아 다음 열람에 되살아난다(submission-draft-store).
     draftStore.removeItem(draftKey);
-  };
+    // 설계 §1.5 — 초안을 버릴 때 큐도 함께 버린다. 초안이 없어졌다는 건 저장이
+    // 끝났다는 뜻이고, 그러면 큐에 실린 옛 내용은 되레 위험하다.
+    clearQueue();
+  }, [draftKey, clearQueue]);
 
   const handleSave = async () => {
     if (!editable) return;
@@ -366,18 +424,133 @@ function TopicSection({
       await loadSubmission();
       announceSubmissionChanged();
     } catch (error) {
-      const message = error instanceof Error ? error.message : '';
-      setToast(
-        message.includes('finalized')
-          ? '이미 최종 제출된 상태입니다 — 「다시 열기」를 누르면 조가 직접 풀 수 있습니다.'
-          : message.includes('not open')
-            ? '이 꼭지는 마감되어 저장할 수 없습니다.'
-            : '저장에 실패했습니다 — 네트워크를 확인하고 다시 시도해 주세요.',
-      );
+      // ★ 다시 보내면 될 실패(네트워크 계열)만 큐로 간다. 잠긴 꼭지·마감된 꼭지는
+      //   몇 번을 보내도 같은 결과라, 큐에 넣으면 300초마다 영원히 두드리는 소음이 된다.
+      const kind = saveFailureKind(error);
+      if (kind === 'network' && loaded != null) {
+        const q = makeQueuedSave({
+          code,
+          topicId: topic.id,
+          items: toSaveItems(rows),
+          // 딛고 선 서버 시각. 재전송 직전에 이 값으로 「그사이 남이 저장했는가」를 본다.
+          baseUpdatedAt: loaded.updatedAt,
+          nowMs: Date.now(),
+        });
+        draftStore.setItem(qKey, writeQueue(q));
+        setQueued(q);
+        setConflict(null);
+      }
+      setToast(saveFailureMessage(kind));
     } finally {
       setSaving(false);
     }
   };
+
+  /**
+   * 재전송 한 번 — 설계 §1.3 의 절차를 그대로 따른다.
+   *
+   * 1. `submissionGet` 으로 지금 서버 `updated_at` 을 읽는다
+   * 2. 큐의 `baseUpdatedAt` 과 같을 때만 보낸다
+   * 3. 다르면 **보내지 않고** 조에게 묻는다(충돌)
+   * 4. `submissionGet` 자체가 실패하면 아무것도 안 보내고 다음 백오프로 넘긴다
+   *
+   * `force` 는 「연결이 돌아왔다」·「지금 다시 시도」처럼 **새 정보가 생긴 순간**에만 준다.
+   * 그때까지의 백오프는 「연결이 없다」는 추정 위에 잡힌 것이라 더 기다릴 이유가 없다.
+   */
+  const attempt = useCallback(
+    async (q: QueuedSave, force: boolean) => {
+      const now = Date.now();
+      const online = typeof navigator === 'undefined' ? true : navigator.onLine !== false;
+      if (!online) return; // 오프라인이면 시도 자체를 건너뛴다 — 실패 횟수를 낭비하지 않는다
+      if (!force && !shouldAttempt(q, now, online)) return;
+      const since = attemptingSinceRef.current;
+      if (since !== null && now - since < ATTEMPT_LOCK_MS) return;
+      attemptingSinceRef.current = now;
+      try {
+        const server = await submissionGet(q.code, q.topicId);
+        if (conflictVerdict(server.updated_at, q.baseUpdatedAt) === 'conflict') {
+          setConflict({ serverRows: rowsFromItems(server.items ?? []) });
+          return;
+        }
+        await submissionSave(q.code, q.topicId, q.items);
+        // ★ 순서는 큐 삭제 → dropDraft() → loadSubmission() 다(2026-08-30 실화면 버그).
+        //   다만 **오프라인 동안 조가 더 썼으면 초안을 버리지 않는다.** 그때 초안은
+        //   낡은 사본이 아니라 큐보다 새 글이고, 버리면 화면에서도 저장소에서도 사라진다.
+        if (sameSavePayload(rowsRef.current, q.items)) dropDraft();
+        else clearQueue();
+        await loadSubmission();
+        announceSubmissionChanged();
+        setToast('연결이 돌아와 자동으로 저장했습니다.');
+      } catch (error) {
+        const kind = saveFailureKind(error);
+        if (kind !== 'network') {
+          // 잠겼거나 마감됐다 — 다시 보내도 같은 결과다. 큐를 놓고 조에게 알린다.
+          clearQueue();
+          setToast(saveFailureMessage(kind));
+          return;
+        }
+        const next = withFailedAttempt(q, Date.now());
+        draftStore.setItem(qKey, writeQueue(next));
+        setQueued(next);
+      } finally {
+        attemptingSinceRef.current = null;
+      }
+    },
+    [qKey, dropDraft, clearQueue, loadSubmission],
+  );
+
+  /**
+   * 충돌 상태에서 조가 「내 내용으로 덮어쓰기」를 골랐다.
+   *
+   * 보내는 것은 **큐에 실린 내용**이다(조가 그걸 보고 골랐다). 화면에서 다시 만들면
+   * 고른 것과 다른 게 나간다.
+   */
+  const handleOverwrite = async () => {
+    const q = queued;
+    if (!q) return;
+    setSaving(true);
+    try {
+      await submissionSave(q.code, q.topicId, q.items);
+      if (sameSavePayload(rowsRef.current, q.items)) dropDraft();
+      else clearQueue();
+      await loadSubmission();
+      announceSubmissionChanged();
+      setToast('내 내용으로 저장했습니다.');
+    } catch (error) {
+      const kind = saveFailureKind(error);
+      if (kind !== 'network') clearQueue();
+      setToast(saveFailureMessage(kind));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 마운트 시 큐 확인 — 탭을 닫았다 다시 연 조는 여기서 대기 중인 건을 되찾는다.
+  useEffect(() => {
+    setQueued(readQueue(draftStore.getItem(qKey)));
+    setConflict(null);
+    setShowServerRows(false);
+  }, [qKey]);
+
+  /**
+   * 큐 워커 — 깨우는 조건 셋 중 둘이 여기 있다(설계 §1.3).
+   * ① `nextAttemptAtMs` 타이머 ② `online` 이벤트. ③ 「지금 다시 시도」 버튼은 아래 화면에.
+   *
+   * 충돌 중에는 돌지 않는다 — 조가 고르기 전에는 보낼 것이 없다.
+   */
+  useEffect(() => {
+    if (!queued || conflict) return;
+    const timer = setTimeout(
+      () => void attempt(queued, false),
+      Math.max(0, queued.nextAttemptAtMs - Date.now()),
+    );
+    const onOnline = () => void attempt(queued, true);
+    window.addEventListener('online', onOnline);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('online', onOnline);
+    };
+  }, [queued, conflict, attempt]);
 
   /**
    * 다시 열기 — 본부 승인 없이 조가 직접 푼다. 기록은 남는다(actor_scope='team').
@@ -503,6 +676,85 @@ function TopicSection({
               <p className="rounded-xl border border-[#DCE7EE] bg-[#F1F7FA] px-4 py-2.5 text-[15px] font-semibold text-[#5A6B73]">
                 이 꼭지는 마감되어 더 이상 저장할 수 없습니다.
               </p>
+            ) : null}
+
+            {/* 저장 실패분 — 대기 중이거나, 서버가 더 새것이라 조에게 묻는 중이거나.
+                ★ 어느 쪽이든 **글은 이 기기에 남아 있다**는 말을 먼저 한다. 8.29에 조가
+                  가장 불안해한 것이 「지금 내 글이 어디 있느냐」였다. */}
+            {queued && conflict ? (
+              <div
+                role="alert"
+                className="rounded-xl border-2 border-[#B22A2A] bg-[#FDECEC] px-4 py-3"
+              >
+                <p className="text-[17px] font-extrabold text-[#8B1F1F]">
+                  다른 기기에서 이 꼭지를 먼저 저장했습니다.
+                </p>
+                <p className="mt-1 text-[15px] font-semibold text-[#8B1F1F]">
+                  대기 중이던 내 내용은 아직 보내지 않았습니다 — 어느 쪽으로 할지 골라 주세요.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleOverwrite()}
+                    disabled={saving}
+                    className="h-12 rounded-xl bg-[#B22A2A] px-5 text-[16px] font-bold text-white disabled:opacity-40"
+                  >
+                    {saving ? '저장 중…' : '내 내용으로 덮어쓰기'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowServerRows((v) => !v)}
+                    className="h-12 rounded-xl border-2 border-[#B22A2A] bg-white px-5 text-[16px] font-bold text-[#B22A2A]"
+                  >
+                    {showServerRows ? '서버 내용 접기' : '서버 내용 보기'}
+                  </button>
+                </div>
+                {showServerRows ? (
+                  <div className="mt-3 space-y-2 rounded-xl border border-[#E7BDBD] bg-white p-3">
+                    <p className="text-[15px] font-bold text-[#8B1F1F] tr-num">
+                      {`서버에 저장돼 있는 내용 ${conflict.serverRows.length}줄`}
+                    </p>
+                    <ol className="space-y-1.5">
+                      {conflict.serverRows.map((serverRow, i) => (
+                        <li
+                          key={i}
+                          className="text-[16px] leading-[1.55] text-[#1F2933] break-words"
+                        >
+                          <span className="font-bold text-[#5A6B73] tr-num">{`${i + 1}. `}</span>
+                          {serverRow.name ? (
+                            <b className="text-[#1F4E79]">{`${serverRow.name} `}</b>
+                          ) : null}
+                          {serverRow.content}
+                        </li>
+                      ))}
+                    </ol>
+                    <p className="text-[14px] font-semibold text-[#5A6B73]">
+                      보기 전용입니다. 필요한 문장을 위 칸에 옮겨 적고 저장하면 양쪽이 다 남습니다.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            ) : queued ? (
+              <div
+                role="status"
+                className="flex flex-wrap items-center gap-3 rounded-xl border-2 border-[#F5A623] bg-[#FFF4D6] px-4 py-3"
+              >
+                <span className="flex-1 min-w-[220px]">
+                  <span className="block text-[17px] font-extrabold text-[#6B4B00] tr-num">
+                    {`저장하지 못한 내용이 대기 중입니다 · ${queued.attempts}번째 시도`}
+                  </span>
+                  <span className="block text-[15px] font-semibold text-[#6B4B00]">
+                    연결되면 자동으로 저장합니다. <b>글은 이 기기에 남아 있습니다.</b>
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void attempt(queued, true)}
+                  className="h-12 shrink-0 rounded-xl border-2 border-[#B5651D] bg-white px-4 text-[16px] font-bold text-[#B5651D]"
+                >
+                  지금 다시 시도
+                </button>
+              </div>
             ) : null}
 
             <div className="space-y-3">

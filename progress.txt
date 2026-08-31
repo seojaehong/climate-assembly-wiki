@@ -212,3 +212,71 @@ Commit: ralph/submission-resilience-0912
   - `staleKeys()` 는 접두사를 `climate_vote_draft:` 로 좁혀 뒀으니 큐 키를 쓸어 가지 않는다.
     큐 만료 청소가 필요하면 US-005 에서 따로 만들어야 한다(이번 story 범위 밖이라 안 만들었다)
 ---
+
+## 2026-09-01 01:10 - US-005 (큐 워커 배선 — 실패 시 적재, 연결되면 자동 재전송)
+Commit: ralph/submission-resilience-0912
+- `submission-panel-logic.ts` 신규 순수 함수 3개(+테스트 10개) — 판단은 전부 `.ts` 에 뒀다
+  · `saveFailureKind(error)` = `finalized` | `closed` | `network`. **큐에 가는 것은 network 뿐**
+  · `saveFailureMessage(kind)` — 즉시 저장·재전송·충돌 세 자리가 같은 말을 쓴다
+  · `sameSavePayload(rows, items)` — 재전송 성공 뒤 초안을 버려도 되는지 판정
+- `SubmissionPanel.tsx` 배선
+  · `handleSave` catch → `saveFailureKind`. network 면 `makeQueuedSave` 로 적재
+    (`baseUpdatedAt = loaded.updatedAt`), 아니면 기존 토스트만
+  · 마운트 시 `readQueue(draftStore.getItem(qKey))` — 탭을 닫았다 온 조가 대기 건을 되찾는다
+  · 워커 이펙트: 백오프 `setTimeout` + `window 'online'` 리스너. 언마운트 시 둘 다 정리
+  · `attempt(q, force)` = submissionGet → `conflictVerdict` → `send` 일 때만 submissionSave →
+    큐 삭제 → (조건부) `dropDraft()` → `loadSubmission()` → 알림
+  · 충돌이면 전송하지 않고 `[내 내용으로 덮어쓰기]` `[서버 내용 보기]` 두 선택지(기본 선택 없음).
+    「서버 내용 보기」는 **보기 전용 펼침**이라 어느 쪽 글도 사라지지 않는다 — 조는 문장을
+    옮겨 적고 평소대로 저장하면 양쪽을 다 남길 수 있다
+  · `dropDraft()` 가 큐도 함께 지운다(설계 §1.5). 그래서 수동 저장이 성공하면 워커가 멈춘다
+- **★ 이번에 찾은 것 1 — 화면의 finalized·not open 분기는 여태 죽은 코드였다.**
+  `postgrest-js` 는 `throwOnError` 없이 **응답 본문(평범한 객체)** 을 그대로 `{ error }` 로 주고
+  (`dist/index.mjs:485-505`), `deliberation.ts` 래퍼가 그걸 그대로 throw 한다.
+  기존 `error instanceof Error ? error.message : ''` 로는 서버 문구를 못 읽어 **모든 실패가
+  「네트워크」 안내**로 떨어졌다. 그대로 뒀으면 잠긴 꼭지의 실패까지 큐에 들어가 300초마다 영원히
+  두드렸을 것이다. `saveFailureKind` 가 Error·문자열·평범한 객체를 다 읽게 고치고 테스트로 박았다
+- **★ 이번에 찾은 것 2 — 「큐 삭제 → dropDraft → loadSubmission」을 무조건 따르면 글이 사라진다.**
+  오프라인에서 v1 저장 실패 → 조가 계속 써서 화면이 v2 → 연결 복구 → v1 전송 성공 →
+  `dropDraft()` 가 **v2 초안을 지우고** `loadSubmission()` 이 v1 을 덮어씌운다. 이 PRD 가 막으려는
+  사고 그 자체다. `sameSavePayload(rowsRef.current, q.items)` 가 같을 때만 초안을 버리고,
+  다르면 큐만 놓는다(초안이 남아 화면에 복원되고 미저장으로 표시된다).
+  **AC 문구에서 의도적으로 벗어난 유일한 곳**이며 불변식 「글을 잃지 않는다」를 우선했다
+- 전송할 payload 는 **큐에 언 것 그대로**다(화면에서 다시 만들지 않는다). 마운트 직후 과거
+  예정 건이 깨어나면 `loadSubmission` 이 끝나기 전이라 화면은 `[emptyRow()]` 일 수 있는데,
+  그때 화면 기준으로 만들면 **서버 내용을 빈 것으로 덮는다**
+- **브라우저 검증**: `scripts/verify-queue-resend.mjs`(신규, playwright) — **9 PASS / 0 FAIL**
+  · 오프라인 저장 → 큐 `attempts=1` · `baseUpdatedAt='2026-09-01T00:00:00.000Z'` 동봉 · 「대기 중」 안내
+  · 오프라인 동안 백오프 5초를 넘겨도 **submission_get 시도 0건**(실패 횟수를 안 태운다)
+  · ★★ `setOffline(false)` 로 실제 `online` 이벤트 → get 1건으로 대조 → save 1건 → 큐·초안 삭제 →
+    「연결이 돌아와 자동으로 저장했습니다」
+  · 충돌(서버 updated_at 이 다름) → **전송 0건**, 선택지 2개 노출, 큐 보류 유지
+  · 「서버 내용 보기」 → 서버 1줄 보기 전용 노출(큐 유지) / 「덮어쓰기」 → 그때 save 1건 · 큐 삭제
+  · finalized 실패는 큐 0건 + 기존 토스트 유지 / 큐가 빈 뒤 6초간 요청 0건(타이머·리스너 누수 없음)
+  · 눈으로 본 것: `.tmp-verify/us005-1-queued.png`(꼭지① 상단 노란 「저장하지 못한 내용이 대기 중입니다 ·
+    1번째 시도 / 연결되면 자동으로 저장합니다. 글은 이 기기에 남아 있습니다」 + 「지금 다시 시도」),
+    `us005-3-conflict.png` · `us005-4-server-view.png`(꼭지② 붉은 충돌 상자 + 두 버튼 + 서버 문장 1줄)
+- ★ 운영 DB 무접촉: `**/rest/v1/**` 을 **전량 가로채** 지어낸 응답으로만 답했다. 통과 경로 0개,
+  가로채기 밖 요청 0건. US-003 의 「세지 말고 막아라」를 그대로 따랐다
+- 검사: `npx tsc --noEmit -p tsconfig.json` 통과 ·
+  `npx vitest run` **92 파일 / 1,599 테스트 전부 통과**(직전 92/1,589 대비 +10, 신규 실패 0)
+  `.astro` 를 안 건드렸으므로 `npm run build` 는 돌리지 않았다
+- 변경 파일: `submission-panel-logic.ts` · `submission-panel-logic.test.ts` · `SubmissionPanel.tsx` ·
+  `scripts/verify-queue-resend.mjs`(신규) · `src/islands/mod/AGENTS.md` · `prd.json` · `progress.txt`
+- **다음 이터레이션을 위한 학습:**
+  - ★ **US-006 의 상태 6가지 중 `queued`·`conflict` 는 이미 화면 상태로 있다** —
+    `TopicSection` 의 `queued: QueuedSave | null` 과 `conflict: { serverRows } | null`.
+    `draftStatusLabel` 을 만들 때 새 상태 축을 또 만들지 말고 이 둘 + `dirty`·`saving`·`loadFailed` 를
+    한 인자 객체로 받아 문자열만 내면 된다. 시도 횟수는 `queued.attempts`
+  - ★ US-006 이 배지를 헤더로 올릴 때 **지금의 큐/충돌 안내 블록(본문 상단)을 지우지 말 것.**
+    배지는 「지금 안전한가」를, 이 블록은 「무엇을 골라야 하는가」를 낸다. 충돌 선택지는 배지에 못 넣는다
+  - `deliberation.ts` 의 `submissionSave` 에 `AbortSignal` 을 다는 설계 항목(design.md:177)은
+    **이번에 하지 않았다**(AC 밖). 대신 재전송 자물쇠를 60초 만료 시각으로 두어 무한 대기가
+    큐를 영구히 막지 못하게 했다. 진짜 취소가 필요해지면 그때 달면 된다
+  - ★ 브라우저 검증에서 조 화면의 `section` 은 **15개**가 잡힌다(안내·내려받기·본부 미리보기·
+    Astro 개발 툴바). 꼭지 구역은 `section:has(textarea)` 로 골라야 한다 — 처음에 `nth(0)` 을
+    썼다가 「작성 안내」를 집어 7개가 무더기로 FAIL 났다
+  - 픽스처 라우트로 **저장 성공까지** 시험하려면 `submission_save` 를 route 로 fulfill 해야 한다
+    (픽스처 prop 은 읽기만 막는다). 배너의 「저장 버튼은 서버로 나가지 않습니다」는 route 를
+    가로채는 검증 스크립트 안에서만 참이다 — 사람이 브라우저로 열어 저장을 누르면 **나간다**
+---

@@ -552,3 +552,70 @@ export function saveOutcomeMessage(result: SubmissionSaveOutcome | null | undefi
   }
   return '저장되었습니다. 최종 제출 전까지 계속 고칠 수 있습니다.';
 }
+
+// ── 저장 실패의 갈래 ───────────────────────────────────────────
+//
+// 8.29의 세 번째 구멍이 「저장이 한 번 실패하면 그걸로 끝」이었다. 실패를 자동으로
+// 다시 보내려면 **다시 보내서 될 실패**와 **다시 보내도 같은 실패**를 갈라야 한다.
+// 잠긴 꼭지에 300초마다 영원히 재전송하는 것은 회복이 아니라 소음이다.
+
+/** 저장 실패의 갈래. `network` 만 재전송 큐로 간다. */
+export type SaveFailureKind = 'finalized' | 'closed' | 'network';
+
+/**
+ * 실패에서 메시지를 꺼낸다.
+ *
+ * ★ **PostgREST 오류는 `Error` 인스턴스가 아니다.** supabase-js 는 `throwOnError` 를
+ *   켜지 않으면 응답 본문을 그대로 `{ error }` 로 돌려주고(`postgrest-js` 의 `else` 가지),
+ *   우리 래퍼(`deliberation.ts`)가 그 **평범한 객체**를 그대로 throw 한다. 그래서
+ *   `error instanceof Error` 로만 보면 서버가 보낸 'submission is finalized …' 를
+ *   영영 못 읽는다 — 그 가지는 여태 죽은 코드였다(2026-09-01 확인).
+ *   네트워크 자체가 끊긴 경우에만 진짜 `Error`(TypeError: Failed to fetch)가 온다.
+ */
+function failureMessageOf(error: unknown): string {
+  if (typeof error === 'string') return error;
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && error !== null) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string') return message;
+  }
+  return '';
+}
+
+/**
+ * 실패를 갈래로 나눈다. RPC 예외 메시지를 그대로 본다(서버 문구는 영문 고정이다).
+ *
+ * - `finalized` = 이미 최종 제출됨(20260808_s1: 'submission is finalized …')
+ * - `closed` = 꼭지가 마감됨('topic is not open')
+ * - `network` = 그 밖의 전부. **모르는 실패는 네트워크로 본다** — 다시 보내 볼 값어치가
+ *   있는 쪽으로 접는다. 잘못 접어도 큐가 다시 시도할 뿐이고, 반대로 접으면 글이 안 올라간다.
+ */
+export function saveFailureKind(error: unknown): SaveFailureKind {
+  const message = failureMessageOf(error);
+  if (message.includes('finalized')) return 'finalized';
+  if (message.includes('not open')) return 'closed';
+  return 'network';
+}
+
+/** 갈래별 안내 문장. 화면 세 곳(즉시 저장·재전송·최종 제출)이 같은 말을 쓰게 한다. */
+export function saveFailureMessage(kind: SaveFailureKind): string {
+  if (kind === 'finalized') {
+    return '이미 최종 제출된 상태입니다 — 「다시 열기」를 누르면 조가 직접 풀 수 있습니다.';
+  }
+  if (kind === 'closed') return '이 꼭지는 마감되어 저장할 수 없습니다.';
+  return '지금 저장하지 못해 대기 중입니다 — 연결되면 자동으로 다시 저장합니다. 글은 남아 있습니다.';
+}
+
+/**
+ * 화면의 지금 내용이 **큐에 실린 것과 같은가.**
+ *
+ * 재전송이 성공한 뒤 초안을 버려도 되는지를 이걸로 정한다. 오프라인 동안 조가 계속
+ * 쓰고 있었다면 큐(v1)보다 화면(v2)이 새롭다. 이때 초안을 버리면 v2가 저장소에서도
+ * 화면에서도 사라진다 — 이 PRD가 막으려는 바로 그 사고다. 같을 때만 버린다.
+ *
+ * 비교는 **저장 페이로드 기준**이다. 빈 줄 정리·이름 합치기를 거친 뒤 같으면
+ * 서버에 갈 내용이 같다는 뜻이라 초안을 남길 이유가 없다.
+ */
+export function sameSavePayload(rows: EditorRow[], items: SubmissionItemInput[]): boolean {
+  return JSON.stringify(toSaveItems(rows)) === JSON.stringify(items);
+}

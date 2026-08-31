@@ -287,6 +287,27 @@ L4 는 설계문서가 **「시민이 고른다」**로 못 박은 유일한 단
 - `baseUpdatedAt` 은 큐에서 다시 계산하지 말고 [초안 봉투](#초안-보관-submission-draft-storets)에
   실려 온 값을 그대로 옮긴다
 
+### 배선 쪽 (`SubmissionPanel.tsx` · US-005)
+
+- ★★ **PostgREST 오류는 `Error` 인스턴스가 아니다.** supabase-js 는 `throwOnError` 를 켜지 않으면
+  응답 본문(평범한 객체 `{code, message, details, hint}`)을 그대로 `{ error }` 로 돌려주고,
+  `deliberation.ts` 의 래퍼가 그걸 그대로 throw 한다. `error instanceof Error ? error.message : ''`
+  로 분기하면 서버 문구를 **영영 못 읽는다** — 실제로 화면의 finalized·not open 가지가 죽은
+  코드였다(2026-09-01 발견). 메시지는 `saveFailureKind()` 로 꺼낼 것. 진짜 `Error` 가 오는 경우는
+  **연결 자체가 끊겼을 때**(TypeError: Failed to fetch)뿐이다
+- 큐에 넣을 실패는 `saveFailureKind(error) === 'network'` 뿐이다. `finalized`·`closed` 를 넣으면
+  300초마다 영원히 두드린다. **재전송이 실패했을 때도 같은 판정을 해서** 그사이 잠긴 꼭지의
+  큐를 놓아 준다
+- ★ 재전송이 성공해도 **화면이 큐보다 새것이면 초안을 버리지 않는다**(`sameSavePayload`).
+  오프라인 동안 조가 계속 쓰고 있었으면 초안이 큐보다 새 글이고, 버리면 화면·저장소 양쪽에서
+  사라진다. 같을 때만 `dropDraft()` → 아니면 큐만 놓고 `loadSubmission()`
+- 워커를 깨우는 것은 셋이다: 백오프 타이머 · `online` 이벤트 · 「지금 다시 시도」 버튼.
+  **뒤의 둘은 백오프를 건너뛴다**(새 정보가 생긴 순간이라 더 기다릴 이유가 없다)
+- 재전송 자물쇠는 불리언이 아니라 **시각**이다(`ATTEMPT_LOCK_MS` 60초). 요청이 영영 안 끝나는
+  망에서 불리언 자물쇠는 박힌 채 남아 큐를 영구히 멈춘다
+- 워커 이펙트는 `rows` 에 의존하면 안 된다 — 한 글자마다 백오프 타이머가 처음부터 다시 걸린다.
+  「지금 화면」이 필요하면 `rowsRef` 로 읽는다
+
 ## UI 검증 시 셀렉터 함정
 
 포스트잇이 `<article>` 이다. **새 패널이 카드 발췌를 `<article>` 로 내면 「카드 N장」 검사가
@@ -316,6 +337,9 @@ L4 는 설계문서가 **「시민이 고른다」**로 못 박은 유일한 단
   `RepresentativePanel` 은 `!grouped` 브랜치 안이라 접힘 상태(`open`)가 초기값으로 돌아간다.
   체크·범주·지목 이력은 보드 상태라 그대로다 — **뷰·꼭지를 오간 뒤에는 패널을 다시 펼치고 판정할 것**
   (`automation/.artifacts/verify-us010.mjs` 의 `ensureOpen()`).
+- ★ 조 화면(`submission-panel-lab`)에서 `section` 을 세면 **15개**가 잡힌다 — 첫 구역은 「작성 안내」,
+  뒤에는 내려받기·본부 미리보기·Astro 개발 툴바까지 섞인다. 꼭지 구역은
+  `page.locator('section').filter({ has: page.locator('textarea') })` 로 고른다(2026-09-01 실측)
 - 유사도 관련 화면은 **꼭지1 에서** 검증한다. 꼭지2·3 은 완전 동일 문장(1.00) 짝뿐이라
   패널이 실제로 도는지 판정이 안 된다. 꼭지1 에만 0.36~0.46 짜리 부분 유사 짝이 있다.
 
