@@ -223,8 +223,8 @@
         "Tests pass — 신규 실패 0"
       ],
       "priority": 12,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "reportToMarkdown() 은 submission-report.ts 모델을 그대로 옮기기만 한다(새 모델 없음). 표 = 순번·이름·내용·근거 4칸, 분과마다 하나. 미제출 조는 표 행이 아니라 「※ 미제출 N개 조 — 이름들」 한 줄(boardToText 와 같은 정보). 실데이터(0829-submissions.json 65건) 드라이런: 표 데이터 행 65/65 · 칸 수 4 아닌 줄 0/0 · 조 하나 비우면 미제출 1줄. 테스트 11개 신규, 전체 96파일/1718테스트 통과. tsc 0에러. kordoc GFM 표 규칙(파이프 \\| 이스케이프 · 앞뒤 파이프 필수 · 셀 trim · <br> 금지)은 src/islands/mod/AGENTS.md 에 기록 — US-013 이 그대로 쓴다."
     },
     {
       "id": "US-013",
