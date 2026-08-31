@@ -154,8 +154,8 @@
         "Tests pass — 신규 실패 0"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "신규 topic-countdown.ts(순수 함수만 · Date.now() 미호출) + topic-countdown.test.ts(40개). ★ 확정한 판단 3가지: ① 「가장 임박한」은 「가장 작은 잔여」가 아니다 — 최솟값으로 고르면 오전에 지난 꼭지가 가장 음수라 오후 내내 배너가 「마감되었습니다」에 붙박이고 다음 마감이 조용히 지나간다(이 PRD 가 겨눈 8.29 사고 그 자체). pickBannerTopic 은 안 지난 것 중 가장 가까운 것 → 전부 지났을 때만 가장 최근에 지난 것, 동률은 ordinal 순. ② 미저장 안내는 warn·over 에서만 붙인다 — AC 문구는 조건 없이 읽히지만 설계 §2.4「3분 이하 구간에서」와 US-010 AC「warn 구간에서」를 따랐다(AC 문구 이탈 1건). over 에도 붙이는 이유는 마감이 잠금이 아니라 마감 뒤에도 저장이 되기 때문. ③ server_now 를 못 읽으면 오프셋 0 으로 접는다. ★ 실측으로 뒤집힌 것: timestamptz 공백 꼴을 T 로 바꾸기만 하면 '2026-09-12T06:30:00+00' 이 되어 V8 에서 NaN 이 된다(공백 꼴은 관대한 옛 파서, T 꼴은 엄격한 ISO 파서). 오프셋 +HH → +HH:00 확장이 함께 있어야 두 꼴이 같은 수가 된다. countdownTier 는 Number.isFinite 가드로 NaN 이 'over'(빨간 「마감되었습니다」)로 둔갑하는 것을 막는다. formatCountdown 은 timer-logic.ts formatRemaining 재사용. Topic 타입은 손대지 않았다(US-009) — pickBannerTopic 은 제네릭 구조 타입이라 확장된 Topic 이 그대로 들어맞는다. 음성 대조 3건으로 검사가 살아 있음을 확인(isFinite 가드 제거 → 1 FAIL · 최솟값 선택으로 되돌림 → 3 FAIL · 오프셋 확장 제거 → 1 FAIL). tsc 통과 · 93파일/1,663테스트 전부 통과(직전 92/1,623 대비 +1파일 +40테스트, 신규 실패 0)."
     },
     {
       "id": "US-009",

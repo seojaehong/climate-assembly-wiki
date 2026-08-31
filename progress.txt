@@ -432,3 +432,77 @@ Commit: ralph/submission-resilience-0912
     (docker + `MSYS_NO_PATHCONV=1` + anon 의 schema usage 는 마이그레이션이 아니라 플랫폼이 준다는 것).
     앞으로 SQL story 는 「파일을 썼다」로 끝내지 말고 이 하네스로 숫자를 낼 것
 ---
+
+## 2026-09-01 02:15 - US-008 (카운트다운 순수 로직 — topic-countdown.ts)
+Commit: ralph/submission-resilience-0912
+- 신규 `src/islands/mod/topic-countdown.ts` — **순수 함수만.** `Date.now()` 도 `navigator` 도 안 부른다
+  · `parseTimestampMs(raw)` · `clockOffsetMs(serverNowIso, localNowMs)` ·
+    `remainingMs(deadlineAtIso, nowMs, offsetMs)` · `countdownTier(remaining)` ·
+    `pickBannerTopic(topics, nowMs, offsetMs)` · `formatCountdown(ms)` · `bannerMessage(tier, hasUnsaved)`
+  · 상수 `NOTICE_THRESHOLD_MS`(5분) · `WARN_THRESHOLD_MS`(3분)
+- 신규 `src/islands/mod/topic-countdown.test.ts` (40개)
+- `src/islands/mod/AGENTS.md` 「마감 카운트다운」 절 신설
+- `src/lib/deliberation.ts` 의 `Topic` 타입은 **한 줄도 안 건드렸다** — US-009 다.
+  `pickBannerTopic` 은 `<T extends CountdownTopic>` 제네릭 구조 타입이라
+  US-009 가 `Topic` 을 넓히면 **여기 고칠 것 없이** 그대로 들어맞고, 배너(US-010)는
+  `prompt`·`ordinal` 이 살아 있는 원본 객체를 돌려받는다
+
+- **★★ 실측으로 뒤집힌 것 — 인계받은 「공백 꼴이면 NaN」 대비책이 반대로 위험했다.**
+  US-007 이 남긴 학습은 「`server_now` 가 `2026-09-12 06:30:00+00` 공백 꼴이라
+  `Date.parse` 가 NaN 일 수 있으니 접어라」였다. Node 20/V8 에서 실제로 재 보니
+  · `Date.parse('2026-09-12 06:30:00+00')` = **1789194600000 (성공)** — 공백 꼴은 관대한 옛 파서가 읽는다
+  · `Date.parse('2026-09-12T06:30:00+00')` = **NaN** — `T` 꼴은 엄격한 ISO 파서가 읽고 2자리 오프셋을 거부한다
+  즉 **공백을 `T` 로 바꾸는 「정규화」가 오히려 멀쩡한 값을 죽인다.** 그래서
+  `parseTimestampMs` 는 공백 치환과 **오프셋 확장(`+HH` → `+HH:00`)을 함께** 하고,
+  그래도 안 되면 원문으로 한 번 더 읽는다. Safari(조 태블릿)는 공백 꼴 자체를 거부하므로
+  이 확장이 거기서는 **유일한 경로**다
+- **★ NaN 가드가 없으면 「못 읽은 시각」이 빨간 「마감되었습니다」로 둔갑한다.**
+  자연스러운 else 사슬(`>5분`/`>3분`/`>0`/else)에서 NaN 은 **모든 비교에 실패해 else 로 굴러떨어진다**.
+  `countdownTier` 는 `Number.isFinite` 로 막아 `'none'`(배너 미표시)을 낸다
+
+- **★ 확정한 판단 1 — 「가장 임박한」은 「가장 작은 잔여」가 아니다.**
+  `pickBannerTopic` 을 순진하게 `min(remainingMs)` 로 짜면, 오전 10시에 지난 꼭지가 가장 음수라
+  **오후 내내 배너가 「마감되었습니다」에 붙박이고 15시 마감 꼭지는 조용히 지나간다** —
+  이 PRD 가 겨눈 8.29 사고 그 자체다. 그래서 ① 아직 안 지난 것이 하나라도 있으면 그중 가장 가까운 것
+  ② 전부 지났을 때만 가장 최근에 지난 것. 동률은 `ordinal` 앞선 쪽. 잔여 정확히 0 은 「지난 것」이다
+  (구간 경계 `over` 와 같은 기준). AC 가 안 정한 것이라 여기서 정했다 — 테스트 3개로 박아 뒀다
+- **★ 확정한 판단 2 (AC 문구 이탈 1건) — 미저장 안내는 `warn`·`over` 에서만 붙인다.**
+  US-008 AC 는 조건 없이 「`hasUnsaved` 면 포함한다」로 읽히지만 설계 §2.4 는 「3분 이하 구간에서」,
+  US-010 AC 도 「warn 구간에서」다. 그리고 US-010 은 **판단을 전부 이 모듈에 두라**고 요구하므로
+  구간 가르기를 렌더로 미룰 수 없다. 여유 있을 때부터 매초 「저장 안 했다」를 외치면 조는 배너를 안 읽는다
+- **★ 확정한 판단 3 — `over` 에도 저장을 권한다.** US-007 이 확인한 대로 s17 은 꼭지 `status` 를
+  건드리지 않고 **서버는 마감 뒤에도 저장을 받는다.** 「마감되었습니다」만 말하고 끝내면
+  8.29 의 사후 보고서(다 정리했는데 못 올림)가 그대로 반복된다
+- 오프셋을 못 잡으면(옛 RPC 라 `server_now` 가 아예 없거나 못 읽는 값) **0 으로 접는다**.
+  기기 시계로라도 세는 편이 카운트다운을 통째로 죽이는 것보다 낫다 (US-009 의 「미적용 DB」가 이 경로)
+- `formatCountdown` 은 `timer-logic.ts:133 formatRemaining` 에 **위임**했다(재구현 안 함).
+  음수 clamp(`00:00`)·ceil 이 이미 맞다
+
+- **검증 숫자 — 음성 대조 3건으로 검사가 살아 있음을 확인했다**
+  (「40개 통과」만으로는 무엇을 보는 검사인지 알 수 없다. 일부러 깨 보고 원복했다)
+  · A. `countdownTier` 의 `Number.isFinite` 가드 제거 → **1 FAIL**(NaN·Infinity 가 `over` 로 둔갑)
+  · B. `pickBannerTopic` 을 단순 최솟값으로 되돌림 → **3 FAIL**(지난 꼭지가 남은 꼭지를 이김 · 전부 지났을 때 순서 · 잔여 0 처리)
+  · C. `parseTimestampMs` 의 오프셋 확장(`+HH`→`+HH:00`) 제거 → **1 FAIL**
+    (★ 처음엔 0 FAIL 이었다 — 원문 재시도 폴백이 Node 에서 가려 줬다. `T`+2자리 오프셋 꼴을
+     직접 넣는 테스트를 더해 확장 경로를 격리했다. Safari 에서만 드러날 결함을 Node 에서 잡는 방법이다)
+  · 시계 오차 대조(V5b): 기기가 ±10분 틀려도 오프셋을 태우면 **잔여가 6분 그대로** — 부호 실수 방지
+  · 구간 흐름: 마감 1건이 `calm(10분·6분) → notice(정확히 5분·4분) → warn(정확히 3분·30초) → over(정확히 0·+2분)`
+- 검사: `npx tsc --noEmit -p tsconfig.json` 통과 ·
+  `npx vitest run` **93 파일 / 1,663 테스트 전부 통과**(직전 92/1,623 대비 +1 파일 +40 테스트, **신규 실패 0**)
+  `.astro` 를 안 건드렸으므로 `npm run build` 는 돌리지 않았다. UI 가 없어 브라우저 검증 AC 도 없다
+- 변경 파일: `src/islands/mod/topic-countdown.ts`(신규) · `src/islands/mod/topic-countdown.test.ts`(신규) ·
+  `src/islands/mod/AGENTS.md` · `prd.json` · `progress.txt`
+- **다음 이터레이션(US-009)을 위한 학습:**
+  - ★ **`Topic` 에 두 필드를 더하면 `pickBannerTopic` 은 자동으로 맞는다** — 제네릭 구조 타입이라
+    `deadline_at?: string | null` 만 있으면 되고, `server_now` 는 **행마다 같은 값**이라
+    꼭지가 아니라 **응답 전체에서 한 번** 꺼내 `clockOffsetMs` 에 넣는 값이다(꼭지별로 안 쓴다)
+  - ★ US-009 AC 의 「두 필드가 `undefined` 일 때 `countdownTier` 가 `'none'`」은 **이미 성립한다** —
+    `remainingMs(undefined, ...)` 가 `null` 을 내고 `countdownTier(null)` 이 `'none'` 이다.
+    US-009 는 그 사실을 `topicList()` 응답 모양으로 한 번 더 박기만 하면 된다
+  - ★ US-010 의 배너는 **미저장 여부를 다시 계산하면 안 된다.** `bannerMessage` 의 `hasUnsaved` 는
+    US-006 `draftStatusLabel` 이 보는 것과 **같은 사실**이어야 한다 — 꼭지별 `dirty`(또는 `queued`)를
+    위로 올려 받을 것. 두 곳이 다른 답을 내면 조가 어느 쪽을 믿을지 모른다
+  - ★ US-010 은 `over` 여도 **입력·저장 버튼을 잠그면 안 된다.** 마감은 안내이지 잠금이 아니다
+  - `formatCountdown`(`MM:SS` = 잔여)과 `formatSavedClock`(`HH:MM` = 시각)이 **모양이 같다.**
+    배너와 배지가 나란히 뜰 때 「14:23」이 어느 쪽인지 구별되게 문맥·단위를 붙일 것
+---
