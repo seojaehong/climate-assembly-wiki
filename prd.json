@@ -170,7 +170,7 @@
         "Tests pass — 신규 실패 0"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
