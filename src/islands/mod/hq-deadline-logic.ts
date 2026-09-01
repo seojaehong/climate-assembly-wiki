@@ -5,10 +5,12 @@
  * `.tsx` 테스트는 **조용히 실행되지 않는다**. 그래서 판단(시각 변환·거절·실패 문구)은
  * 전부 여기서 끝내고 `.tsx` 에는 입력칸과 버튼만 남긴다.
  *
- * ★ 이 화면은 마감시각을 **쓰기만 한다.** 본부에는 `deadline_at` 을 되읽을 경로가 없다 —
- *   `hq_submissions` 는 그 컬럼을 안 내려주고 `topic_list` 는 조 접속코드를 요구한다(본부는
- *   토큰만 갖는다). 그래서 화면은 「이 화면이 방금 건 값」만 되비춘다. 서버의 현재값을
- *   보여주는 척하지 않는다 — 없는 사실을 지어내면 본부가 그것을 믿는다.
+ * ★ 되읽기는 **s19**(`hq_topic_deadlines`)가 준다. 그 전에는 본부에 `deadline_at` 을
+ *   읽을 경로가 없어(`hq_submissions` 는 그 컬럼을 안 내려주고 `topic_list` 는 조 접속코드를
+ *   요구한다) 화면이 「이 화면이 방금 건 값」만 되비췄고, **새로고침하면 본부가 자기가 무엇을
+ *   걸었는지 몰랐다.** 이제 서버 값을 읽어 보여주되, **못 읽었으면 그 사실을 그대로 낸다** —
+ *   서버의 현재값인 척하지 않는다(없는 사실을 지어내면 본부가 그것을 믿는다).
+ *   그래서 표시에는 출처(`DeadlineSource`)가 항상 함께 붙는다.
  */
 
 /** 마감 시각을 서버에 어떻게 보낼지. `reject` 면 아무것도 보내지 않는다. */
@@ -128,4 +130,60 @@ export function deadlineEchoLabel(applied: string | null | undefined): string {
   const local = isoToLocalInput(applied);
   if (!local) return '방금 마감을 걸었습니다';
   return `방금 ${local.replace('T', ' ')} 로 걸었습니다`;
+}
+
+// ── 서버 되읽기 (s19 `hq_topic_deadlines`) ──────────────────────────────
+
+/**
+ * 표시 한 줄이 **어디서 온 사실인가.**
+ * - `server` — s19 로 읽은 서버의 현재 마감. 새로고침해도 이 값이 나온다
+ * - `local`  — 서버를 못 읽어 이 화면의 마지막 조작만 되비추는 중
+ * - `unknown`— 서버도 못 읽었고 이 화면에서 건드린 적도 없다
+ *
+ * 화면은 이 값을 `data-deadline-source` 로 그대로 낸다 — 문구가 바뀌어도 검증이 안 깨지고,
+ * 무엇보다 **「서버 값」과 「방금 내가 누른 값」이 화면에서 구별된다.**
+ */
+export type DeadlineSource = 'server' | 'local' | 'unknown';
+
+export type DeadlineView = { label: string; source: DeadlineSource };
+
+/**
+ * 꼭지 id → 서버의 현재 마감(ISO). `null` = 마감 없음.
+ * 맵 **자체가 null** 이면 아직 한 번도 못 읽었다(= 모름). 둘을 섞지 말 것 —
+ * 「마감 없음」과 「모른다」는 본부에게 전혀 다른 사실이다.
+ */
+export type ServerDeadlines = Readonly<Record<string, string | null>> | null;
+
+/** s19 응답 행을 꼭지 id 맵으로 접는다. 반환에 없는 꼭지는 맵에도 없다(= 그 꼭지는 모름). */
+export function serverDeadlineMap(
+  rows: readonly { topic_id: string; deadline_at: string | null }[]
+): Record<string, string | null> {
+  const map: Record<string, string | null> = {};
+  for (const row of rows) map[row.topic_id] = row.deadline_at ?? null;
+  return map;
+}
+
+/**
+ * 마감 줄에 낼 한 줄과 그 출처.
+ *
+ * ★ **서버를 못 읽었을 때의 문구는 s19 이전과 글자 하나까지 같다**(`deadlineEchoLabel`).
+ *   s19 미적용 DB 에서 화면이 죽지 않고 **기존 동작 그대로** 퇴화하는 것이 요건이다.
+ */
+export function deadlineView(
+  server: ServerDeadlines,
+  topicId: string,
+  applied: string | null | undefined
+): DeadlineView {
+  if (server && Object.prototype.hasOwnProperty.call(server, topicId)) {
+    const value = server[topicId];
+    if (value === null || value === undefined) return { label: '현재 마감 없음', source: 'server' };
+    const local = isoToLocalInput(value);
+    // 서버가 읽을 수 없는 값을 준 경우 — 있다는 사실만 말하고 시각을 지어내지 않는다.
+    if (!local) return { label: '현재 마감 — 시각을 읽을 수 없습니다', source: 'server' };
+    return { label: `현재 마감 ${local.replace('T', ' ')}`, source: 'server' };
+  }
+  return {
+    label: deadlineEchoLabel(applied),
+    source: applied === undefined ? 'unknown' : 'local',
+  };
 }

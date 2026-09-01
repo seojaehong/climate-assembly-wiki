@@ -1,5 +1,5 @@
 /**
- * 손유지 타입 ↔ s17 SQL 대조 드라이런 — **파일만 읽는다. DB 에 접속조차 하지 않는다.**
+ * 손유지 타입 ↔ s17·s19 SQL 대조 드라이런 — **파일만 읽는다. DB 에 접속조차 하지 않는다.**
  *
  *   node scripts/verify-topic-contract.mjs
  *
@@ -55,7 +55,7 @@ function must(cond, message) {
   if (!cond) throw new Error(message);
 }
 
-console.log(`\n  s17 SQL ↔ deliberation.ts 대조 (읽기 전용)\n`);
+console.log(`\n  s17·s19 SQL ↔ deliberation.ts · hq-submissions.ts 대조 (읽기 전용)\n`);
 
 // ── 1. topic_list 반환 컬럼 ↔ Topic 타입 필드 ────────────────────────
 
@@ -145,6 +145,83 @@ check('★ drop 된 topic_list 에 anon·authenticated grant 가 재부여돼 �
   must(/topic_set_deadline\(text, uuid, timestamptz\)/.test(grant[1]), 'grant 대상에 topic_set_deadline 이 없다');
   must(/to anon, authenticated/.test(grant[1]), 'anon·authenticated 둘 다에게 주지 않는다');
   return 'topic_list · topic_set_deadline → anon, authenticated';
+});
+
+// ── 4. s19 hq_topic_deadlines ↔ HqTopicDeadlineRow · 호출부 ─────────
+//
+// s17 이 「걸기」만 주고 「읽기」를 안 줘서 본부가 새로고침하면 자기가 무엇을 걸었는지
+// 몰랐다. s19 가 그 되읽기 하나를 더한다 — 여기서도 재는 것은 **파일끼리의 정합**이다.
+
+const S19_PATH = 'supabase/migrations/20260902_s19_hq_topic_deadlines.sql';
+const HQ_TS_PATH = 'src/lib/hq-submissions.ts';
+const s19 = read(S19_PATH);
+const hqTs = read(HQ_TS_PATH);
+
+check('hq_topic_deadlines 반환 컬럼이 HqTopicDeadlineRow 필드와 같다', () => {
+  const m = s19.match(
+    /create or replace function climate_vote\.hq_topic_deadlines\([\s\S]*?\)\s*returns\s+table\(([\s\S]*?)\)\s*language/i,
+  );
+  must(m, `${S19_PATH} 에서 hq_topic_deadlines 의 returns table 을 못 찾았다`);
+  const cols = m[1]
+    .split(',')
+    .map((s) => s.trim().split(/\s+/)[0])
+    .filter(Boolean);
+
+  const t = hqTs.match(/export type HqTopicDeadlineRow = \{([\s\S]*?)\n\};/);
+  must(t, `${HQ_TS_PATH} 에서 export type HqTopicDeadlineRow 를 못 찾았다`);
+  const body = t[1].replace(/\/\*\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  const fields = [...body.matchAll(/^\s*([a-z_][a-z0-9_]*)\??\s*:/gim)].map((x) => x[1]);
+
+  const missing = cols.filter((c) => !fields.includes(c));
+  const extra = fields.filter((f) => !cols.includes(f));
+  must(missing.length === 0, `타입에 없는 SQL 컬럼: ${missing.join(', ')}`);
+  must(extra.length === 0, `SQL 에 없는 타입 필드: ${extra.join(', ')}`);
+  return `${cols.length}/${cols.length} 일치 (${cols.join(' · ')})`;
+});
+
+check('hq_topic_deadlines 인자 이름이 호출부 키와 같다', () => {
+  const m = s19.match(
+    /create or replace function climate_vote\.hq_topic_deadlines\(([\s\S]*?)\)\s*returns/i,
+  );
+  must(m, `${S19_PATH} 에서 hq_topic_deadlines 정의를 못 찾았다`);
+  const args = m[1]
+    .split(',')
+    .map((s) => s.trim().split(/\s+/)[0])
+    .filter(Boolean);
+
+  const call = hqTs.match(/\.rpc\('hq_topic_deadlines',\s*\{([\s\S]*?)\}\)/);
+  must(call, `${HQ_TS_PATH} 에서 hq_topic_deadlines 호출부를 못 찾았다`);
+  const keys = [...call[1].matchAll(/([a-z_][a-z0-9_]*)\s*:/gim)].map((x) => x[1]);
+
+  const missing = args.filter((a) => !keys.includes(a));
+  const extra = keys.filter((k) => !args.includes(k));
+  must(missing.length === 0, `호출부에 없는 SQL 인자: ${missing.join(', ')}`);
+  must(extra.length === 0, `SQL 에 없는 호출부 키: ${extra.join(', ')}`);
+  must(!/p_code/.test(call[1]), '되읽기가 조 코드(p_code)를 넘긴다 — 본부는 토큰 축이다');
+  return `${args.length}/${args.length} 일치 (${args.join(' · ')})`;
+});
+
+check('★ s19 권한 — revoke from public 이 grant to anon, authenticated 보다 앞이다', () => {
+  const revokeAt = s19.search(/revoke execute on function\s+climate_vote\.hq_topic_deadlines/i);
+  const grantAt = s19.search(/grant execute on function\s+climate_vote\.hq_topic_deadlines/i);
+  must(revokeAt !== -1, 'revoke execute … from public 이 없다 — PUBLIC 에 얹힌 채로 남는다');
+  must(grantAt !== -1, 'grant execute … to anon, authenticated 가 없다');
+  must(/from public/i.test(s19.slice(revokeAt, grantAt)), 'revoke 대상이 public 이 아니다');
+  must(/to anon, authenticated/i.test(s19.slice(grantAt)), 'anon·authenticated 둘 다에게 주지 않는다');
+  must(revokeAt < grantAt, 'grant 가 revoke 보다 앞이다 — 순서를 지킬 것');
+  return 'revoke(public) → grant(anon, authenticated)';
+});
+
+check('★ s19 미적용 DB 에서 래퍼가 「모름」으로 퇴화한다 (PGRST202 → null)', () => {
+  const fn = hqTs.match(/export async function fetchHqTopicDeadlines\([\s\S]*?\n\}/);
+  must(fn, `${HQ_TS_PATH} 에서 fetchHqTopicDeadlines 를 못 찾았다`);
+  must(/PGRST202/.test(fn[0]), 'PGRST202 를 구별하지 않는다 — 화면이 죽는다');
+  must(/return null/.test(fn[0]), 'null(= 모름)을 돌려주지 않는다');
+  must(
+    /Promise<HqTopicDeadlineRow\[\] \| null>/.test(fn[0]),
+    '반환 타입이 `HqTopicDeadlineRow[] | null` 이 아니다 — 호출부가 「모름」을 구별할 수 없다',
+  );
+  return 'PGRST202/42883 → null · 그 밖의 오류는 던진다';
 });
 
 console.log(`\n  ${pass} PASS / ${fail} FAIL\n`);

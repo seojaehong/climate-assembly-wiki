@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   deadlineEchoLabel,
   deadlineFailureMessage,
+  deadlineView,
   describeRpcError,
   isoToLocalInput,
   localInputToIso,
   planDeadline,
+  serverDeadlineMap,
 } from './hq-deadline-logic';
 
 /**
@@ -170,5 +172,83 @@ describe('deadlineEchoLabel', () => {
   it('건 시각을 로컬 벽시계로 되비춘다', () => {
     const iso = localInputToIso(EVENT_LOCAL) as string;
     expect(deadlineEchoLabel(iso)).toContain('2026-09-12 14:30');
+  });
+});
+
+// ── 서버 되읽기 (s19) ─────────────────────────────────────────────────
+// 「본부가 새로고침하면 자기가 무엇을 걸었는지 모른다」가 이 story 가 고친 결함이다.
+// 여기서 못 박는 것은 두 가지 — ① 서버 값을 읽었으면 그것을 보여준다
+// ② **못 읽었으면 s19 이전과 글자 하나까지 같은 화면으로 퇴화한다.**
+
+describe('serverDeadlineMap', () => {
+  it('행을 꼭지 id 맵으로 접는다 — null 은 「마감 없음」으로 그대로 남는다', () => {
+    const map = serverDeadlineMap([
+      { topic_id: 't1', deadline_at: '2026-09-12T05:30:00+00:00' },
+      { topic_id: 't2', deadline_at: null },
+    ]);
+    expect(map).toEqual({ t1: '2026-09-12T05:30:00+00:00', t2: null });
+  });
+
+  it('반환에 없는 꼭지는 맵에도 없다 — 그 꼭지는 「마감 없음」이 아니라 「모름」이다', () => {
+    const map = serverDeadlineMap([{ topic_id: 't1', deadline_at: null }]);
+    expect(Object.prototype.hasOwnProperty.call(map, 't1')).toBe(true);
+    expect(Object.prototype.hasOwnProperty.call(map, 't9')).toBe(false);
+  });
+
+  it('빈 배열은 빈 맵이다 — 「읽었는데 꼭지가 없다」와 「못 읽었다(null)」는 다르다', () => {
+    expect(serverDeadlineMap([])).toEqual({});
+  });
+});
+
+describe('deadlineView', () => {
+  const ISO = localInputToIso(EVENT_LOCAL) as string;
+
+  it('★ 서버 값을 읽었으면 그 시각을 로컬 벽시계로 보여준다 (source=server)', () => {
+    const view = deadlineView({ t1: ISO }, 't1', undefined);
+    expect(view.source).toBe('server');
+    expect(view.label).toContain('2026-09-12 14:30');
+    expect(view.label).toContain('현재 마감');
+  });
+
+  it('서버가 null 이면 「현재 마감 없음」 — 「모름」과 다른 말이다', () => {
+    expect(deadlineView({ t1: null }, 't1', undefined)).toEqual({
+      label: '현재 마감 없음',
+      source: 'server',
+    });
+  });
+
+  it('★ 서버 값이 이 화면의 마지막 조작을 이긴다 — 남이 건 마감이 보여야 한다', () => {
+    const other = new Date(2026, 8, 12, 16, 0, 0, 0).toISOString();
+    const view = deadlineView({ t1: other }, 't1', ISO);
+    expect(view.source).toBe('server');
+    expect(view.label).toContain('16:00');
+    expect(view.label).not.toContain('14:30');
+  });
+
+  it('★★ s19 미적용(맵이 null) — s19 이전 문구 그대로 퇴화한다', () => {
+    expect(deadlineView(null, 't1', undefined)).toEqual({
+      label: deadlineEchoLabel(undefined),
+      source: 'unknown',
+    });
+    expect(deadlineView(null, 't1', null)).toEqual({
+      label: deadlineEchoLabel(null),
+      source: 'local',
+    });
+    expect(deadlineView(null, 't1', ISO)).toEqual({
+      label: deadlineEchoLabel(ISO),
+      source: 'local',
+    });
+  });
+
+  it('맵은 있는데 그 꼭지가 없으면 그 꼭지만 모름이다', () => {
+    const view = deadlineView({ t1: ISO }, 't2', undefined);
+    expect(view.source).toBe('unknown');
+    expect(view.label).toBe(deadlineEchoLabel(undefined));
+  });
+
+  it('서버가 읽을 수 없는 값을 주면 시각을 지어내지 않는다', () => {
+    const view = deadlineView({ t1: '읽을 수 없는 값' }, 't1', undefined);
+    expect(view.source).toBe('server');
+    expect(view.label).toContain('읽을 수 없습니다');
   });
 });

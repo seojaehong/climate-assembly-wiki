@@ -62,6 +62,35 @@ MSYS_NO_PATHCONV=1 docker exec pgverify psql -U postgres -d verify -v ON_ERROR_S
 MSYS_NO_PATHCONV=1 docker exec pgverify psql -U postgres -d verify -v ON_ERROR_STOP=1 -f /tmp/contract_s17.sql  # 8/8
 ```
 
+## s19 마감 되읽기 (2026-09-02, US-019) — 운영 DB 무접촉
+
+`migrations/20260902_s19_hq_topic_deadlines.sql` 은 **순수 additive** 다 — 본부가 마감을
+되읽을 소형 RPC(`hq_topic_deadlines`) 하나만 더한다. `hq_submissions` 를 drop+create 하지
+않았다(운영 중 핫 함수 스왑 + ACL 소실 위험 대비 이득 없음).
+
+| 파일 | 성격 | 결과 |
+|------|------|------|
+| `20260902_s19_hq_topic_deadlines.sql` | **읽기 전용** post-apply 검증(세션 임시표만 씀) | **6/6 PASS** |
+| `20260902_s19_hq_topic_deadlines_contract.sql` | 계약 스모크 — 씨앗을 만들고 마지막에 `rollback`. ⚠️ **버려도 되는 DB 에서만** | **7/7 PASS** |
+
+- 음성 대조 1: s19 **미적용** 상태에서 읽기 전용 검증 → `0/6`, 예외로 정지(fail-closed 확인)
+- 음성 대조 2: 함수를 drop 하고 **grant 절만 뺀 판** 적용 → C3 만 `FAIL`, `anon=t authenticated=t public=t`
+  (`create or replace` 는 ACL 을 보존하므로 이 음성 대조는 **drop 을 먼저 해야** 재현된다)
+- 롤백 리허설: `rollbacks/20260902_s19_hq_topic_deadlines_BEFORE.sql` 적용 후
+  `hq_topic_deadlines` 0개 · **s17 의 `deadline_at` 컬럼과 `topic_set_deadline` 은 그대로**.
+  재적용 2회 연속도 무사(멱등), 이후 s17 verify 도 **7/7 유지**
+- ★ s19 도 `driver_pass1.sql` 에 **넣지 않았다**(s17 과 같은 이유 — 그 드라이버는 s5 이후
+  `2026*` 파일을 애초에 싣지 않는다). 병합 시 트랙 정리와 함께 배선한다
+
+```bash
+# 위 driver_pass1 로드 뒤 — ★ migrations 와 verify 는 파일명이 겹치므로 **다른 디렉터리**로 복사할 것
+#   docker cp supabase/migrations/. pgverify:/tmp/ ; docker cp supabase/verify/. pgverify:/tmp/ver/
+MSYS_NO_PATHCONV=1 docker exec pgverify psql -U postgres -d verify -v ON_ERROR_STOP=1 -f /tmp/20260901_s17_topic_deadline.sql
+MSYS_NO_PATHCONV=1 docker exec pgverify psql -U postgres -d verify -v ON_ERROR_STOP=1 -f /tmp/20260902_s19_hq_topic_deadlines.sql
+MSYS_NO_PATHCONV=1 docker exec pgverify psql -U postgres -d verify -v ON_ERROR_STOP=1 -f /tmp/ver/20260902_s19_hq_topic_deadlines.sql           # 6/6
+MSYS_NO_PATHCONV=1 docker exec pgverify psql -U postgres -d verify -v ON_ERROR_STOP=1 -f /tmp/ver/20260902_s19_hq_topic_deadlines_contract.sql  # 7/7
+```
+
 ## 환경 조정 (Supabase 전용, 우리 SQL 버그 아님)
 롤 anon/authenticated/service_role · publication supabase_realtime · `auth.uid()` stub · pgcrypto in extensions + search_path · base 테이블 stub(session/votes/rounds/snapshots — 마이그레이션 폴더 밖).
 

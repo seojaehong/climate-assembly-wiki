@@ -843,3 +843,57 @@ $ git status --short
     를 남긴 뒤 탐색기에서 더블클릭해 오류 대화상자 없이 열리는지 눈으로 볼 것.
     절차는 `scripts/verify_hangul.py` 머리말에 적어 두었다
 ---
+
+## 2026-09-02 - 본부 마감 되읽기 (s19 `hq_topic_deadlines` + /hq 배선)
+Commit: ralph/submission-resilience-0912
+- **무엇이 문제였나** — s17 이 본부에 「마감 걸기」만 주고 **읽는 경로를 안 줬다.**
+  `hq_submissions` 는 `deadline_at` 을 반환에 안 넣고 `topic_list` 는 조 접속코드를 요구한다.
+  그래서 `HqSubmissionBoard` 는 「이 화면이 방금 건 값」만 되비췄고 **새로고침하면 본부가 자기가
+  무엇을 걸었는지 몰랐다**(코드가 566-570 에 그 사실을 스스로 적어 두고 있었다). 9.12 에 잘못
+  건 시각을 못 잡는다
+- **왜 additive 로 갔나** — `hq_submissions` 에 컬럼을 얹으려면 `returns table` 이라 **drop 후
+  create** 여야 한다. ① 본부 보드가 5초마다 부르는 **핫 함수 스왑**이고 ② drop 은 ACL 을 날려
+  PUBLIC 에 얹힌 상태로 되돌아간다(2026-09-01 실측). 되읽기 하나를 얻자고 감수할 위험이 아니다.
+  대신 **반환 3컬럼짜리 소형 RPC 를 새로 하나** 뒀다 — `create or replace` 로 충분하고(ACL 보존)
+  기존 함수·표·권한을 하나도 안 건드린다. 판단 기준은 `supabase/migrations/AGENTS.md` 말미에 남겼다
+- 신규 4파일 · `migrations/20260902_s19_hq_topic_deadlines.sql`(권한은 **revoke public → grant
+  anon,authenticated** 순서) · `rollbacks/…_BEFORE.sql` · `verify/…sql` · `verify/…_contract.sql`
+- 화면 배선 — `src/lib/hq-submissions.ts` 에 `fetchHqTopicDeadlines`(★ `PGRST202`/`42883` 만
+  **null(= 모름)** 로 접고 나머지 오류는 던진다) · `hq-deadline-logic.ts` 에 `deadlineView`·
+  `serverDeadlineMap`(순수, `.ts` 라 vitest 가 잡는다) · `HqSubmissionBoard` 는 5초 폴링으로
+  되읽고 입력칸을 서버 값으로 채운다
+
+- **검증 숫자 (전부 실측 · 운영 DB 무접촉)**
+  · 컨테이너 리허설(버려도 되는 PostgreSQL 16, `driver_pass1` → s17 → s19):
+    읽기 전용 검증 **6/6 PASS** · 계약 스모크 **7/7 PASS**(anon 실행 · draft 제외 ·
+    ★되읽기 왕복 · 지움 반영 · 조 토큰 거부 · 세션 분리 · 읽기 전용)
+  · **음성 대조 1** — s19 미적용에서 읽기 전용 검증 → **0/6**, 예외로 정지(fail-closed)
+  · **음성 대조 2** — 함수를 drop 하고 **grant 절만 뺀 판** 적용 → C3 만 FAIL,
+    `anon=t authenticated=t public=t`. ★ `create or replace` 는 ACL 을 보존하므로 이 음성 대조는
+    **drop 을 먼저 해야** 재현된다(그냥 덮어쓰면 public=f 가 살아 있어 통과해 버린다)
+  · **롤백 리허설** — 함수 0개 · **s17 의 `deadline_at` 컬럼과 `topic_set_deadline` 은 그대로** ·
+    재적용 2회 연속 무사(멱등) · 이후 s17 verify **7/7 유지**
+  · `scripts/verify-hq-deadline.mjs` **17 PASS / 0 FAIL**(기존 12 + 신규 5).
+    음성 대조 — `deadlineView(null, …)` 로 바꾸면 **4건 FAIL**(되읽기·폴링 추종·지움 반영·지우기 표시)
+  · `scripts/verify-topic-contract.mjs` **10/10**(s19 반환 3/3 · 인자 2/2 · revoke→grant 순서 ·
+    PGRST202 퇴화 경로가 래퍼에 실재하는지)
+  · 눈으로 확인 — `.tmp-verify/us019-readback.png`(다시 연 화면에 「현재 마감 2026-09-12 14:30」 +
+    입력칸 `2026-09-12 오후 02:30` 채워짐 · 15/15 조 · 카드 27장) ·
+    `.tmp-verify/us019-degraded.png`(PGRST202 에서 「이 화면에서는 아직 걸지 않았습니다」 ·
+    입력칸 빈 칸 · 카드 27장 그대로)
+- 검사: `npx tsc --noEmit` 0에러 · `npx vitest run` **97파일 / 1,737테스트**(기준선 97/1,728 대비 +9,
+  신규 실패 0) · `npx astro build && npm run postbuild` 7,917쪽 빌드 성공
+- **다음(또는 사람)을 위한 학습:**
+  - ★★ **`migrations/` 와 `verify/` 는 파일명이 겹친다.** 컨테이너에 둘 다 `/tmp/` 로 복사하면
+    **verify 파일이 마이그레이션을 덮어쓴다**(s17·s19 둘 다 같은 이름이다). 실제로 이 함정에
+    걸려 「적용했는데 verify 가 3/7」이라는 엉뚱한 화면을 봤다. `verify` 는 `/tmp/ver/` 로 따로 복사할 것
+  - ★ **「마감 없음」과 「모른다」를 한 자료구조에 담지 말 것.** `deadlineServer` 는
+    `Record | null` 이고 **맵 자체가 null 이면 못 읽은 것**, 값이 null 이면 마감이 없는 것이다.
+    합치면 s19 미적용 DB 에서 화면이 「마감 없음」이라고 거짓말한다
+  - ★ **오류 코드 분류는 래퍼(`src/lib`)에서 한다.** 이 리포의 import 방향이 islands → lib 한쪽이라
+    `.ts` 순수 로직에서는 PostgREST 오류 객체를 볼 수 없다. `.ts` 에는 표시 판정만 남긴다
+  - ★ **표시에 출처를 속성으로 달아라**(`data-deadline-source`). 「서버 값」과 「방금 내가 누른 값」이
+    같은 자리에 뜨는 화면은 그 구별이 없으면 본부가 잘못된 것을 믿는다. 검증도 문구 대신 이걸 집는다
+  - 마감 되읽기는 **s19 미적용 운영 DB 에서도 안전하다** — 화면이 s19 이전 표시로 물러날 뿐
+    걸기·지우기는 그대로 된다. 적용은 사람이 한다(이 브랜치는 파일까지만)
+---

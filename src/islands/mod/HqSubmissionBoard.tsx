@@ -21,7 +21,11 @@ import ClearAllPanel from './ClearAllPanel';
 import type { SubmissionReport } from './submission-report';
 import { buildSealedPlanFiles } from './ontology-plan';
 import { boardToOntologySnapshot } from './ontology-snapshot';
-import { assignSubmissionKind, fetchSubmissionKinds } from '../../lib/hq-submissions';
+import {
+  assignSubmissionKind,
+  fetchHqTopicDeadlines,
+  fetchSubmissionKinds,
+} from '../../lib/hq-submissions';
 import {
   buildBoards,
   flattenNotes,
@@ -37,10 +41,12 @@ import {
   type TopicBoard,
 } from './hq-submission-board-logic';
 import {
-  deadlineEchoLabel,
   deadlineFailureMessage,
+  deadlineView,
   describeRpcError,
+  isoToLocalInput,
   planDeadline,
+  serverDeadlineMap,
 } from './hq-deadline-logic';
 import { topicSetDeadline } from '../../lib/deliberation';
 import { orderNotesBySimilarity, similarPairs, type SimilarPair } from './note-similarity';
@@ -565,9 +571,12 @@ export default function HqSubmissionBoard({
   // US-011 마감시각 — 꼭지 id → 입력칸에 친 값(로컬 벽시계). 꼭지를 오가도 친 값이 남는다.
   const [deadlineDraft, setDeadlineDraft] = useState<Record<string, string>>({});
   // 꼭지 id → **이 화면이 마지막으로 건 값**(ISO). null = 지움, 키 없음 = 아직 안 건드림.
-  // ★ 서버의 현재 마감이 아니다 — 본부에는 deadline_at 을 되읽을 RPC 가 없다(hq_submissions 는
-  //   그 컬럼을 안 주고 topic_list 는 조 접속코드를 요구한다). 없는 사실을 지어내지 않는다.
+  // ★ 서버 값이 아니다 — s19 를 못 읽었을 때의 **퇴화 표시 전용**이다(그때만 화면에 나온다).
   const [deadlineApplied, setDeadlineApplied] = useState<Record<string, string | null>>({});
+  // 꼭지 id → **서버의 현재 마감**(s19 hq_topic_deadlines). 값 null = 마감 없음.
+  // ★ 맵 자체가 null 이면 **아직 한 번도 못 읽었다**(= 모름). 「마감 없음」과 섞지 말 것 —
+  //   본부에게 전혀 다른 사실이고, 이 구별이 새로고침 뒤에도 마감을 보여 주는 근거다.
+  const [deadlineServer, setDeadlineServer] = useState<Record<string, string | null> | null>(null);
   const [deadlineBusy, setDeadlineBusy] = useState(false);
   // 실패 문구는 꼭지에 묶어 둔다 — 꼭지를 옮기면 남의 꼭지 경고가 따라다니지 않는다.
   const [deadlineError, setDeadlineError] = useState<{ topicId: string; message: string } | null>(
@@ -605,6 +614,28 @@ export default function HqSubmissionBoard({
     }
   }, [token]);
 
+  /**
+   * 서버의 현재 마감을 읽어 온다(s19).
+   *
+   * ★ **못 읽어도 지난 값을 지우지 않는다.** 한 번 읽은 사실을 네트워크가 한 번 끊겼다고
+   *   「모름」으로 되돌리면 본부 화면의 마감이 깜빡인다. 배너 폴링(DeadlineBanner)이
+   *   실패를 삼키고 지난 값을 유지하는 것과 같은 규칙이다.
+   */
+  const loadDeadlines = useCallback(async () => {
+    if (!token) return;
+    try {
+      const rows = await fetchHqTopicDeadlines(token, CURRENT_SESSION_SLUG);
+      if (rows === null) {
+        // s19 미적용 — 「마감 없음」이 아니라 「모름」이다. 화면은 s19 이전 표시로 퇴화한다.
+        console.warn('[HQ submissions] s19 미적용 — 서버의 현재 마감을 읽을 수 없습니다');
+        return;
+      }
+      setDeadlineServer(serverDeadlineMap(rows));
+    } catch (error) {
+      console.warn('[HQ submissions] 서버의 현재 마감을 읽지 못했습니다', error);
+    }
+  }, [token]);
+
   useEffect(() => {
     // 미리보기 모드 — fetch·구독·폴링 어느 것도 걸지 않는다(네트워크 없이 열려야 한다).
     if (fixtureRows) {
@@ -612,17 +643,20 @@ export default function HqSubmissionBoard({
       return;
     }
     void load();
+    void loadDeadlines();
     const stop = subscribeHqSubmissions(() => {
       void load();
     });
     const timer = setInterval(() => {
       void load();
+      // 마감은 본부 3인이 각자 걸 수 있다 — 남이 건 값도 따라와야 「내가 뭘 걸었나」가 맞는다.
+      void loadDeadlines();
     }, POLL_MS);
     return () => {
       stop();
       clearInterval(timer);
     };
-  }, [load, fixtureRows]);
+  }, [load, loadDeadlines, fixtureRows]);
 
   useEffect(() => {
     if (!copied) return;
@@ -916,7 +950,12 @@ export default function HqSubmissionBoard({
     try {
       await topicSetDeadline(token, topicId, plan.deadlineAt);
       setDeadlineApplied((prev) => ({ ...prev, [topicId]: plan.deadlineAt }));
+      // 서버가 받아 준 값이므로 되읽기 맵도 같이 옮긴다 — 다음 폴링까지 옛 값이 남지 않게.
+      // ★ 아직 한 번도 못 읽었으면(null) **만들지 않는다.** 「모름」을 「서버에서 읽었다」로
+      //   바꾸는 것은 없는 사실을 지어내는 것이고, s19 미적용 DB 에서 정확히 그렇게 된다.
+      setDeadlineServer((prev) => (prev === null ? null : { ...prev, [topicId]: plan.deadlineAt }));
       if (plan.kind === 'clear') setDeadlineDraft((prev) => ({ ...prev, [topicId]: '' }));
+      void loadDeadlines();
     } catch (error) {
       console.error('[HQ submissions] deadline failed', error);
       setDeadlineError({ topicId, message: deadlineFailureMessage(mode, error) });
@@ -963,6 +1002,13 @@ export default function HqSubmissionBoard({
       </p>
     );
   }
+
+  // 마감 줄에 낼 한 줄과 그 출처. 서버(s19)를 읽었으면 서버 값, 못 읽었으면 s19 이전 표시.
+  const deadlineShown = deadlineView(deadlineServer, board.topicId, deadlineApplied[board.topicId]);
+  // 입력칸의 기본값 — 아직 아무것도 치지 않았으면 **서버의 현재 마감**이 들어가 있다.
+  // 이것이 「새로고침하면 자기가 뭘 걸었는지 모른다」의 나머지 반쪽이다.
+  // ('' 는 undefined 가 아니라서 「지우기」 뒤에는 ?? 가 안 걸린다 — 빈 칸이 그대로 유지된다.)
+  const deadlineServerValue = deadlineServer?.[board.topicId] ?? null;
 
   // 검색으로 먼저 거르고 그 다음에 재배열한다 — 유사도 사슬은 **화면에 보이는 카드끼리** 잇는다.
   // (거르기 전에 정렬하면 안 보이는 카드가 사슬 중간에 끼어 이웃이 엉뚱해진다.)
@@ -1251,7 +1297,7 @@ export default function HqSubmissionBoard({
             type="datetime-local"
             data-testid="hq-deadline-input"
             data-topic-id={board.topicId}
-            value={deadlineDraft[board.topicId] ?? ''}
+            value={deadlineDraft[board.topicId] ?? isoToLocalInput(deadlineServerValue)}
             onChange={(e) =>
               setDeadlineDraft((prev) => ({ ...prev, [board.topicId]: e.target.value }))
             }
@@ -1275,8 +1321,14 @@ export default function HqSubmissionBoard({
           >
             지우기
           </button>
-          <span data-testid="hq-deadline-echo" className="text-[15px] font-bold text-[#5A6B73]">
-            {deadlineEchoLabel(deadlineApplied[board.topicId])}
+          {/* 출처를 속성으로 함께 낸다 — 서버에서 읽은 값인지 이 화면의 마지막 조작인지가
+              구별돼야 본부가 표시를 믿을 수 있다(검증도 문구가 아니라 이 속성을 집는다). */}
+          <span
+            data-testid="hq-deadline-echo"
+            data-deadline-source={deadlineShown.source}
+            className="text-[15px] font-bold text-[#5A6B73]"
+          >
+            {deadlineShown.label}
           </span>
           {/* 마감은 잠금이 아니고, 조 화면 배너는 30초마다 꼭지를 다시 읽는다.
               이 두 가지를 모르면 「안 걸렸다」로 오해해 같은 시각을 반복해서 건다. */}

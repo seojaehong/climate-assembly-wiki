@@ -397,11 +397,10 @@ L4 는 설계문서가 **「시민이 고른다」**로 못 박은 유일한 단
   컬럼을 Postgres 가 **서버 시간대로** 읽어 몇 시간이 어긋난다. `localInputToIso()` 로 기기
   로컬 시각으로 해석해 UTC ISO 로 바꿔 보낼 것. 일부러 원문 그대로 보내 보면
   `scripts/verify-hq-deadline.mjs` 가 **1건 FAIL** 한다(`14:30` vs `05:30Z`)
-- ★ **이 화면은 마감시각을 쓰기만 한다.** 본부에는 `deadline_at` 을 되읽을 경로가 **없다** —
-  `hq_submissions` 는 그 컬럼을 안 내려주고 `topic_list` 는 조 접속코드를 요구한다(본부는
-  토큰만 갖는다). 그래서 화면은 「이 화면이 방금 건 값」만 되비춘다(`deadlineEchoLabel`).
-  **서버의 현재값인 척하지 말 것** — 본부가 그 표시를 믿는다. 되읽기를 원하면 RPC 를 늘리는
-  마이그레이션이 먼저다
+- ★ **되읽기는 s19 가 준다**(아래 절). s19 이전에는 본부에 `deadline_at` 을 읽을 경로가 없어
+  (`hq_submissions` 가 그 컬럼을 안 내려주고 `topic_list` 는 조 접속코드를 요구한다)
+  화면이 「이 화면이 방금 건 값」만 되비췄고 **새로고침하면 본부가 자기가 무엇을 걸었는지
+  몰랐다.** `deadlineEchoLabel` 은 그때의 문구이고 지금은 **s19 를 못 읽었을 때의 퇴화 표시**로만 쓴다
 - ★ **「지우기」는 입력칸을 보지 않는다.** 잘못 건 시각을 되돌리는 경로가 이것 하나뿐인데
   입력칸이 비었다고 거절하면 되돌릴 방법이 사라진다
 - ★ **마감은 잠금이 아니다.** RPC 가 꼭지 `status` 를 안 건드려 마감 뒤에도 조는 저장할 수 있다.
@@ -412,6 +411,33 @@ L4 는 설계문서가 **「시민이 고른다」**로 못 박은 유일한 단
   이 story 이전과 화면이 같다. 반대로 말하면 **미리보기 라우트로는 이 story 를 못 잰다**
 - `describeRpcError()` 가 `HqSubmissionBoard` 의 옛 `describeError` 본체다. `.tsx` 에 두면
   「PostgREST 오류는 `Error` 가 아니다」라는 핵심 판단이 영영 시험되지 않아 `.ts` 로 옮겼다
+
+## 본부 마감시각 되읽기 (`deadlineView` · s19 · US-019)
+
+s17 이 「걸기」만 주고 「읽기」를 안 줘서 **본부가 새로고침하면 자기가 무엇을 걸었는지 몰랐다.**
+`hq_topic_deadlines(p_token, p_session_slug)`(신규 소형 RPC)가 그 되읽기 하나만 더한다 —
+`hq_submissions` 를 **drop+create 하지 않았다**(운영 중 핫 함수 스왑 + ACL 소실 위험 대비 이득 없음).
+
+- ★ **「마감 없음」과 「모른다」는 다른 사실이다.** `deadlineServer` 는 `Record | null` 이고
+  **맵 자체가 null 이면 아직 못 읽었다**, 맵 안의 값이 null 이면 마감이 없다. 이 둘을 합치면
+  s19 미적용 DB 에서 화면이 「마감 없음」이라고 **거짓말**한다
+- ★ **s19 미적용(`PGRST202`)이면 조용히 퇴화한다.** 래퍼 `fetchHqTopicDeadlines` 가 그때만
+  `null` 을 돌려주고(그 밖의 오류는 던진다) 화면은 **s19 이전 문구 그대로**(`deadlineEchoLabel`)
+  로 물러난다. 걸기·지우기는 그대로 된다 — US-009 가 `topic_list` 에서 쓴 것과 같은 방침
+- ★ **분류는 래퍼(`src/lib`)에서 한다.** 이 리포의 import 방향은 islands → lib 한쪽이라
+  `.ts` 로직에서 오류 코드를 못 본다. 대신 표시 판정(`deadlineView`)만 `.ts` 로 뺀다
+- ★ **표시에는 출처가 붙는다** — `data-deadline-source`(`server`|`local`|`unknown`).
+  「서버의 현재 마감」과 「방금 내가 누른 값」이 화면에서 구별돼야 본부가 표시를 믿는다.
+  검증도 문구가 아니라 이 속성을 집는다
+- 걸기 성공 시 `deadlineServer` 를 **맵이 이미 있을 때만** 낙관적으로 갱신한다. 없을 때
+  만들면 「모름」이 「서버에서 읽었다」로 바뀌어 s19 미적용 DB 에서 정확히 거짓말이 된다
+- 폴링은 `load()` 와 같은 5초 간격이다 — 본부 콘솔이 3인이라 **남이 건 마감**도 따라와야 한다.
+  읽기 실패는 삼키고 **지난 값을 유지**한다(끊길 때마다 마감이 깜빡이면 안 된다)
+- 입력칸 기본값은 `deadlineDraft[t] ?? isoToLocalInput(서버값)` — 「지우기」가 넣는 `''` 는
+  `undefined` 가 아니라서 `??` 가 안 걸린다(빈 칸이 그대로 남는다). 동기화 `useEffect` 가 없다
+- 검증: `node scripts/verify-hq-deadline.mjs`(dev 서버 필요) **17검사**. 되읽기·폴링 추종·
+  지움 반영·PGRST202 퇴화·퇴화 중 걸기까지 본다. 음성 대조 — `deadlineView(null, …)` 로
+  바꿔 보면 **4건 FAIL**(실측). 파일 대조는 `node scripts/verify-topic-contract.mjs` 10/10
 
 ## 마크다운 내보내기 (`submission-report-markdown.ts` · US-012)
 
@@ -454,7 +480,8 @@ docx·csv·txt 와 같은 층이고, 이 문자열이 kordoc `markdownToHwpx()` 
   `representative-history` · `representative-badge` · `representative-picked-count` · `representative-empty`.
   포스트잇에도 `data-representative="true|false"` 가 있다.
 - US-011 훅 — `hq-deadline-row` · `hq-deadline-input`(`data-topic-id`) · `hq-deadline-set` ·
-  `hq-deadline-clear` · `hq-deadline-echo` · `hq-deadline-error`(`role="alert"`). 전부 `<div>`·
+  `hq-deadline-clear` · `hq-deadline-echo`(s19 부터 `data-deadline-source`) ·
+  `hq-deadline-error`(`role="alert"`). 전부 `<div>`·
   `<p>`·`<span>` 이다 — **마감 줄을 `<article>` 로 내면** 「페이지 전체 article == 카드 수」 검사가
   **1건 FAIL** 한다(실측). `note-grid` 안만 세는 「카드 N장」 표기는 그때도 그대로 통과한다 —
   카드 수 검사는 **범위를 좁힌 것과 페이지 전체 두 가지를 다 봐야** 부풀림을 잡는다

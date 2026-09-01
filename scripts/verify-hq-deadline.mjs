@@ -21,6 +21,14 @@
  *   ② 「지우기」가 정말 null 을 보내는가
  *   ③ RPC 가 실패하면 role="alert" 로 **원인 코드까지** 보이는가
  *   ④ ★ 카드 수 보존 불변식과 미제출 조 표기가 그대로인가(새 UI 가 <article> 을 안 내는가)
+ *   ⑤ ★★ **되읽기(s19)** — 마감을 건 뒤 화면을 **다시 열면** 그 값이 보이는가.
+ *      본부가 새로고침하면 자기가 무엇을 걸었는지 몰랐다는 것이 이 story 가 고친 결함이다.
+ *      남(다른 본부 콘솔)이 건 마감이 폴링으로 따라오는지도 같이 본다
+ *   ⑥ ★ **s19 미적용(PGRST202) 퇴화** — 되읽기 RPC 가 없어도 화면이 죽지 않고 s19 이전
+ *      표시로 조용히 물러나며 걸기·지우기는 그대로 되는가
+ *
+ * 표시의 출처는 문구가 아니라 `[data-testid="hq-deadline-echo"]` 의
+ * `data-deadline-source`(`server`|`local`|`unknown`)로 집는다 — 문구가 바뀌어도 안 깨진다.
  */
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -89,9 +97,26 @@ function rowsWithSilentTeam() {
 }
 
 // ── 서버 흉내 ─────────────────────────────────────────────────
-const server = { rows: FIXTURE_ROWS, failDeadline: null };
+/** 꼭지 id → 현재 마감(ISO) · null = 마감 없음. s19 hq_topic_deadlines 가 이걸 내려준다. */
+const TOPIC_IDS = [...new Set(FIXTURE_ROWS.map((r) => r.topic_id))];
+const freshDeadlines = () => Object.fromEntries(TOPIC_IDS.map((id) => [id, null]));
+const server = {
+  rows: FIXTURE_ROWS,
+  failDeadline: null,
+  // 시작값은 전부 null(마감 없음) — 기존 검사들이 보는 「빈 입력칸」이 그대로 유지된다.
+  deadlines: freshDeadlines(),
+  /** true 면 되읽기 RPC 가 없는 DB 를 흉내낸다(s19 미적용). */
+  deadlinesMissing: false,
+};
 const sent = [];
-const calls = { hq_submissions: 0, hq_kinds: 0, set_deadline: 0, other: 0, escaped: 0 };
+const calls = {
+  hq_submissions: 0,
+  hq_kinds: 0,
+  set_deadline: 0,
+  topic_deadlines: 0,
+  other: 0,
+  escaped: 0,
+};
 
 mkdirSync(SHOTS, { recursive: true });
 const browser = await chromium.launch({ headless: !HEADED });
@@ -125,7 +150,33 @@ await context.route('**/rest/v1/**', async (route) => {
     }
     sent.push(body);
     if (server.failDeadline) return json(route, server.failDeadline, 404);
+    // ★ 실제로 서버 상태를 바꾼다 — 안 바꾸면 「다시 열면 보이는가」를 잴 수 없다.
+    if (body && body.p_topic_id) server.deadlines[body.p_topic_id] = body.p_deadline_at ?? null;
     return json(route, null);
+  }
+  if (url.includes('/rpc/hq_topic_deadlines')) {
+    calls.topic_deadlines += 1;
+    // s19 미적용 DB 흉내 — PostgREST 는 함수를 못 찾으면 PGRST202 를 낸다.
+    if (server.deadlinesMissing) {
+      return json(
+        route,
+        {
+          code: 'PGRST202',
+          message: 'Could not find the function climate_vote.hq_topic_deadlines',
+          hint: null,
+          details: null,
+        },
+        404
+      );
+    }
+    return json(
+      route,
+      TOPIC_IDS.map((id, i) => ({
+        topic_id: id,
+        topic_ordinal: i + 1,
+        deadline_at: server.deadlines[id],
+      }))
+    );
   }
   calls.other += 1;
   return json(route, []);
@@ -186,6 +237,10 @@ const openHq = async (page) => {
 
 const row = (page) => page.locator('[data-testid="hq-deadline-row"]');
 const input = (page) => page.locator('[data-testid="hq-deadline-input"]');
+const echo = (page) => page.locator('[data-testid="hq-deadline-echo"]');
+const echoText = async (page) => (await echo(page).innerText()).replace(/\s+/g, ' ').trim();
+/** 'server' = s19 로 읽은 서버 값 · 'local' = 이 화면의 마지막 조작 · 'unknown' = 모름 */
+const echoSource = async (page) => (await echo(page).getAttribute('data-deadline-source')) ?? '';
 const alertText = async (page) => {
   const a = page.locator('[data-testid="hq-deadline-error"]');
   return (await a.count()) === 0 ? '' : (await a.innerText()).replace(/\s+/g, ' ').trim();
@@ -276,9 +331,9 @@ try {
     must(body.p_topic_id === TOPIC_ID, `p_topic_id 가 ${body.p_topic_id} 다`);
     must(body.p_token === TOKEN, `p_token 이 ${body.p_token} 다`);
     must((await alertText(page)) === '', `실패 문구가 남아 있다 — "${await alertText(page)}"`);
-    const echo = (await page.locator('[data-testid="hq-deadline-echo"]').innerText()).trim();
-    must(echo.includes('2026-09-12 14:30'), `되비침이 "${echo}" 다`);
-    return `${LOCAL_INPUT} → ${body.p_deadline_at} · 되비침 "${echo}"`;
+    const label = await echoText(page);
+    must(label.includes('2026-09-12 14:30'), `표시가 "${label}" 다`);
+    return `${LOCAL_INPUT} → ${body.p_deadline_at} · 표시 "${label}"(${await echoSource(page)})`;
   });
 
   await check('★ 지우기 — p_deadline_at 이 null 이고 입력칸이 비워진다', async () => {
@@ -288,9 +343,12 @@ try {
     must(sent.length === 1, `RPC 가 ${sent.length}건 나갔다`);
     must(sent[0].p_deadline_at === null, `p_deadline_at 이 ${JSON.stringify(sent[0].p_deadline_at)} 다`);
     must((await input(page).inputValue()) === '', `입력칸에 "${await input(page).inputValue()}" 가 남았다`);
-    const echo = (await page.locator('[data-testid="hq-deadline-echo"]').innerText()).trim();
-    must(echo.includes('지웠습니다'), `되비침이 "${echo}" 다`);
-    return `p_deadline_at: null · 되비침 "${echo}"`;
+    // s19 이전에는 「방금 마감을 지웠습니다」(이 화면의 조작)였다. 이제 서버를 읽으므로
+    // **서버의 현재 상태**를 낸다 — 지운 사실은 서버 값이 없다는 것으로 드러난다.
+    const label = await echoText(page);
+    must(label.includes('현재 마감 없음'), `표시가 "${label}" 다`);
+    must((await echoSource(page)) === 'server', `출처가 "${await echoSource(page)}" 다`);
+    return `p_deadline_at: null · 표시 "${label}"(server)`;
   });
 
   await check('★ RPC 실패 — role="alert" 에 서버 코드가 그대로 보인다 (s17 미적용 진단)', async () => {
@@ -352,6 +410,107 @@ try {
     return `마감 줄 0개 · 카드 ${articles}장(그대로)`;
   });
 
+  // ── 되읽기(s19) — 이 story 가 고친 결함 ─────────────────────────
+  // 「본부가 마감을 걸고 새로고침하면 자기가 무엇을 걸었는지 모른다」
+
+  await check('★★ 되읽기 — 마감을 걸고 화면을 다시 열면 그 값이 그대로 보인다', async () => {
+    // 화면 상태를 처음부터 다시 만든다(꼭지①로 돌아가 마감을 건다).
+    await pickTopic(page, topicRows(TOPIC_ID)[0].topic_prompt);
+    sent.length = 0;
+    await input(page).fill(LOCAL_INPUT);
+    await page.locator('[data-testid="hq-deadline-set"]').click();
+    await page.waitForTimeout(800);
+    must(sent.length === 1, `RPC 가 ${sent.length}건 나갔다`);
+    must(server.deadlines[TOPIC_ID] === EXPECTED_ISO, '서버 흉내가 값을 안 받았다');
+
+    // ★ 여기가 핵심 — 새로 연다. s19 이전이라면 이 순간 「아직 걸지 않았습니다」가 됐다.
+    await openHq(page);
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-testid="hq-deadline-echo"]')?.getAttribute(
+          'data-deadline-source'
+        ) === 'server',
+      undefined,
+      { timeout: 20_000 }
+    );
+    const label = await echoText(page);
+    must(label.includes('2026-09-12 14:30'), `다시 연 화면의 표시가 "${label}" 다`);
+    const prefilled = await input(page).inputValue();
+    must(prefilled === LOCAL_INPUT, `입력칸이 "${prefilled}" 다 — ${LOCAL_INPUT} 이어야 한다`);
+    await page.screenshot({ path: `${SHOTS}/us019-readback.png`, fullPage: false });
+    return `표시 "${label}"(server) · 입력칸 "${prefilled}" · 되읽기 RPC ${calls.topic_deadlines}건`;
+  });
+
+  await check('★ 남(다른 본부 콘솔)이 건 마감이 폴링으로 따라온다', async () => {
+    const other = new Date(2026, 8, 12, 16, 45, 0, 0).toISOString();
+    server.deadlines[TOPIC_ID] = other;
+    await page.waitForFunction(
+      () =>
+        (document.querySelector('[data-testid="hq-deadline-echo"]')?.textContent ?? '').includes(
+          '16:45'
+        ),
+      undefined,
+      { timeout: 20_000 }
+    );
+    const label = await echoText(page);
+    must((await echoSource(page)) === 'server', `출처가 "${await echoSource(page)}" 다`);
+    return `"${label}"`;
+  });
+
+  await check('★ 되읽기가 지움을 반영한다 — 다시 열면 「현재 마감 없음」', async () => {
+    await page.locator('[data-testid="hq-deadline-clear"]').click();
+    await page.waitForTimeout(800);
+    must(server.deadlines[TOPIC_ID] === null, '서버 흉내에 마감이 남아 있다');
+    await openHq(page);
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-testid="hq-deadline-echo"]')?.getAttribute(
+          'data-deadline-source'
+        ) === 'server',
+      undefined,
+      { timeout: 20_000 }
+    );
+    const label = await echoText(page);
+    must(label.includes('현재 마감 없음'), `표시가 "${label}" 다`);
+    must((await input(page).inputValue()) === '', `입력칸에 "${await input(page).inputValue()}" 가 남았다`);
+    return `"${label}" · 입력칸 빈 칸`;
+  });
+
+  await check('★ s19 미적용(PGRST202) — 화면이 죽지 않고 s19 이전 표시로 퇴화한다', async () => {
+    server.deadlinesMissing = true;
+    server.deadlines = freshDeadlines();
+    await openHq(page);
+    await page.waitForTimeout(1200);
+    must((await row(page).count()) === 1, '마감 줄이 사라졌다');
+    must((await echoSource(page)) === 'unknown', `출처가 "${await echoSource(page)}" 다`);
+    const label = await echoText(page);
+    must(label.includes('아직'), `퇴화 문구가 "${label}" 다 — s19 이전 문구여야 한다`);
+    must((await input(page).inputValue()) === '', `입력칸에 "${await input(page).inputValue()}" 가 남았다`);
+    // 카드 수 불변식은 퇴화 상태에서도 그대로다.
+    await page.locator('button', { hasText: '모아보기' }).first().click();
+    await page.waitForTimeout(400);
+    const n = await page.locator('[data-testid="note-grid"] article').count();
+    must(n === CARDS_TOPIC1, `카드가 ${n}장 — 픽스처는 ${CARDS_TOPIC1}건`);
+    await page.screenshot({ path: `${SHOTS}/us019-degraded.png`, fullPage: false });
+    return `표시 "${label}"(unknown) · 카드 ${n}/${CARDS_TOPIC1}장`;
+  });
+
+  await check('★ 퇴화 상태에서도 걸기는 그대로 동작한다 — 「이 화면이 건 값」을 되비춘다', async () => {
+    sent.length = 0;
+    await input(page).fill(LOCAL_INPUT);
+    await page.locator('[data-testid="hq-deadline-set"]').click();
+    await page.waitForTimeout(800);
+    must(sent.length === 1, `RPC 가 ${sent.length}건 나갔다`);
+    must(sent[0].p_deadline_at === EXPECTED_ISO, `p_deadline_at 이 ${sent[0].p_deadline_at} 다`);
+    must((await alertText(page)) === '', `실패 문구가 떴다 — "${await alertText(page)}"`);
+    // ★ 서버를 못 읽었으므로 「서버 값」인 척하면 안 된다 — 출처는 local 이어야 한다.
+    must((await echoSource(page)) === 'local', `출처가 "${await echoSource(page)}" 다`);
+    const label = await echoText(page);
+    must(label.includes('방금'), `표시가 "${label}" 다`);
+    server.deadlinesMissing = false;
+    return `p_deadline_at ${sent[0].p_deadline_at} · 표시 "${label}"(local)`;
+  });
+
   await check('운영 DB 로 나간 요청 0건 · 실제 웹소켓 연결 0건', async () => {
     must(calls.escaped === 0, `rest/v1 밖으로 새어 나간 요청 ${calls.escaped}건`);
     const ws = await page.evaluate(() => window.__wsAttempts ?? []);
@@ -362,7 +521,8 @@ try {
     );
     return (
       `hq_submissions ${calls.hq_submissions} · kinds ${calls.hq_kinds} · ` +
-      `topic_set_deadline ${calls.set_deadline} · 기타 ${calls.other} — 전부 지어낸 응답 · ` +
+      `topic_set_deadline ${calls.set_deadline} · hq_topic_deadlines ${calls.topic_deadlines} · ` +
+      `기타 ${calls.other} — 전부 지어낸 응답 · ` +
       `WebSocket 시도 ${real.length}건 전부 스텁에 갇힘(실제 연결 0)`
     );
   });
