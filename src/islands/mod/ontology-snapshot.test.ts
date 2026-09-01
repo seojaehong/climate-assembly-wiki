@@ -4,6 +4,7 @@ import { buildBoards, flattenNotes, type TopicBoard } from './hq-submission-boar
 import {
   boardToOntologySnapshot,
   contentNodeCount,
+  DEFAULT_SESSION_SLUG,
   ontologyPreservation,
   ONTOLOGY_SNAPSHOT_SOURCE,
   parseSubmissionNodeId,
@@ -195,7 +196,8 @@ describe('boardToOntologySnapshot — 근거는 별도 행 + 링크', () => {
     expect(snapshot.payload.agenda_link).toEqual([
       {
         id: '0829/t01/k1/i01~r',
-        session_id: '0829-deliberation',
+        // 회차 값을 박지 않는다 — 기본값은 「지금 운영하는 회차」여야 한다(다음 회차에도 유효한 검사).
+        session_id: DEFAULT_SESSION_SLUG,
         source_id: '0829/t01/k1/i01/r',
         target_id: '0829/t01/k1/i01',
       },

@@ -21,6 +21,7 @@ import ClearAllPanel from './ClearAllPanel';
 import type { SubmissionReport } from './submission-report';
 import { buildSealedPlanFiles } from './ontology-plan';
 import { boardToOntologySnapshot } from './ontology-snapshot';
+import { hqBoardState, notOpenedMessage } from './hq-session-state';
 import {
   assignSubmissionKind,
   fetchHqTopicDeadlines,
@@ -974,15 +975,24 @@ export default function HqSubmissionBoard({
     }
   };
 
-  if (rows === null && failed === null) {
+  // 무엇을 그릴지는 한 곳에서 정한다(hq-session-state.ts). 화면이 회차를 바꾼 직후
+  // 개통 SQL 적용 전이면 여기서 「아직 개통되지 않았다」로 갈린다.
+  const view = hqBoardState({
+    rows,
+    failed,
+    boardCount: boards.length,
+    sessionSlug: CURRENT_SESSION_SLUG,
+  });
+
+  if (view.kind === 'loading') {
     return <p className="p-6 text-[16px] text-[#5A6B73]">조별 산출물을 불러오는 중…</p>;
   }
 
-  if (failed !== null) {
+  if (view.kind === 'failed') {
     return (
       <div className="p-6">
         <p role="alert" className="rounded-lg bg-[#FFF4D6] px-4 py-3 text-[15px] font-bold text-[#6B4B00]">
-          조별 산출물을 불러오지 못했습니다 — {failed}
+          조별 산출물을 불러오지 못했습니다 — {view.message}
         </p>
         <button
           type="button"
@@ -995,11 +1005,31 @@ export default function HqSubmissionBoard({
     );
   }
 
-  if (!board) {
+  // `!board` 는 boardCount 0 과 같은 조건이다(보드가 비어야 board 가 null 이다).
+  // 둘을 함께 적는 것은 타입을 좁히기 위해서다 — 아래 코드는 board 가 있어야 돈다.
+  if (view.kind === 'not-opened' || !board) {
+    const notice = view.kind === 'not-opened' ? view : notOpenedMessage(CURRENT_SESSION_SLUG);
     return (
-      <p className="p-6 text-[16px] text-[#5A6B73]">
-        아직 열린 토론 주제가 없습니다. 주제를 열면 조가 쓰는 대로 여기에 모입니다.
-      </p>
+      <div className="p-6">
+        <div className="rounded-2xl border-2 border-[#C4D8E4] bg-[#F4F9FC] px-6 py-6">
+          <p role="status" className="text-[26px] font-extrabold leading-snug text-[#1F4E79]">
+            {notice.headline}
+          </p>
+          <p className="mt-3 max-w-[64ch] text-[18px] leading-relaxed text-[#33474F]">
+            {notice.detail}
+          </p>
+          <p className="mt-2 max-w-[64ch] text-[16px] leading-relaxed text-[#5A6B73]">
+            {notice.hint}
+          </p>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="mt-4 h-12 rounded-xl border border-[#C4D8E4] bg-white px-5 text-[16px] font-bold text-[#1F4E79]"
+          >
+            다시 확인
+          </button>
+        </div>
+      </div>
     );
   }
 

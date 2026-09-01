@@ -200,6 +200,13 @@ commit;`;
 
 /**
  * Build one transaction for an administrator to create a new session and its roster.
+ *
+ * ★ roster.inheritTenancyFrom 이 있으면 세션·조가 그 세션의 `org_id`(와 `assembly_id`)를
+ *   물려받는다. `platform_p1b_backfill.sql` 이 적용된 DB 에서는 org_id 가 NOT NULL 이라
+ *   그 값 없이는 insert 자체가 실패하고, 나중에 update 로 메울 수도 없다.
+ *   상속하면 p1b 적용 여부와 무관하게 맞는다(미적용이면 상속값이 null 이다).
+ *   자세한 근거는 scripts/session-rosters.mjs 머리말 「테넌시 상속」.
+ *
  * @param {ReturnType<import('./session-rosters.mjs').sessionRoster>} [roster] 생략하면 활성 회차.
  */
 export function formatSessionSeedSql(roster = ACTIVE_ROSTER) {
@@ -208,15 +215,43 @@ export function formatSessionSeedSql(roster = ACTIVE_ROSTER) {
     .map((row) => `  ('${row.name}', '${row.subgroup}', ${row.ordinal}, '${row.code}')`)
     .join(',\n');
   const escapedTitle = roster.title.replaceAll("'", "''");
+  const source = roster.inheritTenancyFrom ?? null;
+  const escapedSource = source ? source.replaceAll("'", "''") : null;
+
+  // 상속본은 원본 세션 행에서 org_id·assembly_id 를 읽어 온다 — 그래서 insert 가 values 가
+  // 아니라 select 다. held_on 은 이 회차의 행사일이다(상속하지 않는다).
+  const sessionInsert = source
+    ? `do $tenancy$
+begin
+  if not exists (select 1 from climate_vote.session where slug = '${escapedSource}') then
+    raise exception 'tenancy source session not found: ${escapedSource}';
+  end if;
+end
+$tenancy$;
+
+insert into climate_vote.session (slug, title, config, status, org_id, assembly_id, held_on)
+select '${roster.slug}', '${escapedTitle}', '${JSON.stringify(SESSION_CONFIG)}'::jsonb, 'active',
+       src.org_id, src.assembly_id, date '${roster.date}'
+from climate_vote.session src
+where src.slug = '${escapedSource}'
+on conflict (slug) do nothing;`
+    : `insert into climate_vote.session (slug, title, config, status)
+values ('${roster.slug}', '${escapedTitle}', '${JSON.stringify(SESSION_CONFIG)}'::jsonb, 'active')
+on conflict (slug) do nothing;`;
+
+  const teamColumns = source
+    ? '(session_id, name, subgroup, join_code, capacity, status, org_id)'
+    : '(session_id, name, subgroup, join_code, capacity, status)';
+  const teamSelect = source
+    ? `select s.id, expected.name, expected.subgroup, expected.join_code, ${TEAM_CAPACITY}, 'active', s.org_id`
+    : `select s.id, expected.name, expected.subgroup, expected.join_code, ${TEAM_CAPACITY}, 'active'`;
 
   return `begin;
 
-insert into climate_vote.session (slug, title, config, status)
-values ('${roster.slug}', '${escapedTitle}', '${JSON.stringify(SESSION_CONFIG)}'::jsonb, 'active')
-on conflict (slug) do nothing;
+${sessionInsert}
 
-insert into climate_vote.team (session_id, name, subgroup, join_code, capacity, status)
-select s.id, expected.name, expected.subgroup, expected.join_code, ${TEAM_CAPACITY}, 'active'
+insert into climate_vote.team ${teamColumns}
+${teamSelect}
 from climate_vote.session s
 cross join (values
 ${values}

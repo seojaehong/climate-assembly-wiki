@@ -47,8 +47,15 @@ export type HqSubmissionRow = {
  *
  * 그래서 **기본값을 없앴다.** 이제 모든 호출이 세션을 명시해야 하고, 빠뜨리면
  * 조용히 8.29 로 가는 대신 **타입 검사가 막는다.**
+ *
+ * 2026-09-01 6·7차(9.12~13 경주)로 전환. 8.29 데이터는 그대로 있고 세션이 하나 늘었을 뿐이다
+ * — 8.29 를 다시 보려면 이 값을 되돌리는 것이 아니라 `scripts/backup-0829.mjs --session
+ * 0829-deliberation` 처럼 세션을 지정해 읽는다.
+ *
+ * ★ 조 구성·접속코드의 정본은 `scripts/session-rosters.mjs` 다. 이 상수와 그 파일의
+ *   `ACTIVE_SESSION_SLUG` 는 **같은 값이어야 한다**(seed SQL 이 만든 세션을 화면이 읽는다).
  */
-export const CURRENT_SESSION_SLUG = '0829-deliberation';
+export const CURRENT_SESSION_SLUG = '0912-deliberation';
 
 /** @deprecated 기본 인자로 쓰지 말 것 — 세션을 명시하라. 남긴 것은 옛 import 호환용이다. */
 export const DEFAULT_SESSION_SLUG = CURRENT_SESSION_SLUG;
