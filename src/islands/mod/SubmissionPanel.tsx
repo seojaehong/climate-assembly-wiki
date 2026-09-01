@@ -68,6 +68,13 @@ import {
   formatStamp,
 } from './submission-report';
 import { submissionReportBlob } from './submission-report-docx';
+import {
+  MULTI_DOWNLOAD_HINT,
+  buildTeamBundleEntries,
+  shouldShowMultiDownloadHint,
+  teamBundleFileName,
+} from './team-download-bundle';
+import { buildZipArchive } from './zip-store';
 import PrintableReport from './PrintableReport';
 import type { SubmissionReport } from './submission-report';
 import { buildBoards } from './hq-submission-board-logic';
@@ -1250,6 +1257,11 @@ function TeamDownload({
   const [error, setError] = useState<string | null>(null);
   // 인쇄 전용 문서. 화면에는 안 보이고 종이에만 나간다.
   const [printReport, setPrintReport] = useState<SubmissionReport | null>(null);
+  /**
+   * 개별 형식을 몇 번 눌렀는가. 브라우저의 「여러 파일 내려받기」 차단은 **조용해서**
+   * (`a.click()` 이 그대로 성공한다) 실패를 감지할 수 없다 — 누른 횟수만 세어 안내를 띄운다.
+   */
+  const [individualDownloads, setIndividualDownloads] = useState(0);
 
   const collect = async (): Promise<HqSubmissionRow[]> => {
     const rows: HqSubmissionRow[] = [];
@@ -1347,22 +1359,61 @@ function TeamDownload({
     }
   };
 
+  /** 저장된 내용으로 보고서 모델을 만든다. 개별 내려받기와 「전부 받기」가 같은 문서를 쓰게 하는 자리다. */
+  const buildReport = async (at: Date): Promise<SubmissionReport> =>
+    buildSubmissionReport(buildBoards(await collect()), {
+      generatedAt: formatStamp(at),
+      scopeLabel: teamLabel,
+    });
+
   const download = async (kind: 'docx' | 'csv' | 'txt') => {
     setBusy(true);
     setError(null);
     try {
-      const report = buildSubmissionReport(buildBoards(await collect()), {
-        generatedAt: formatStamp(new Date()),
-        scopeLabel: teamLabel,
-      });
+      const report = await buildReport(new Date());
       if (kind === 'docx') save(await submissionReportBlob(report), reportFileName(report, 'docx'));
       else if (kind === 'csv')
         save(new Blob([reportToCsv(report)], { type: 'text/csv;charset=utf-8' }), reportFileName(report, 'csv'));
       else
         save(new Blob([reportToText(report)], { type: 'text/plain;charset=utf-8' }), reportFileName(report, 'txt'));
+      setIndividualDownloads((n) => n + 1);
       setOpen(false);
     } catch (caught) {
       console.error('[조 산출물 내려받기] 실패', caught);
+      setError('내려받지 못했습니다 — 저장한 뒤 다시 시도해 주세요.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
+   * 전부 받기 — 워드·엑셀·줄글을 ZIP 하나로 묶어 **다운로드 한 개**로 내보낸다.
+   *
+   * 세 형식을 연달아 누르면 브라우저가 「여러 파일 내려받기」를 물으며 두 번째부터 막을 수 있다.
+   * `zip-store.ts` 가 45장 결과 이미지에서 쓴 것과 같은 우회다 — 한 파일이면 그 경계에 닿지 않는다.
+   *
+   * 세 파일은 **한 보고서 모델**에서 나온다. 형식마다 따로 만들면 시각이 갈려
+   * 압축 안에서 파일명·머리글의 시각이 서로 다른 문서가 된다.
+   */
+  const downloadBundle = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const at = new Date();
+      const report = await buildReport(at);
+      const docx = new Uint8Array(await (await submissionReportBlob(report)).arrayBuffer());
+      const entries = buildTeamBundleEntries(report, {
+        docx,
+        csv: reportToCsv(report),
+        txt: reportToText(report),
+      });
+      save(
+        new Blob([buildZipArchive(entries, at)], { type: 'application/zip' }),
+        teamBundleFileName(report)
+      );
+      setOpen(false);
+    } catch (caught) {
+      console.error('[조 산출물 전부 받기] 실패', caught);
       setError('내려받지 못했습니다 — 저장한 뒤 다시 시도해 주세요.');
     } finally {
       setBusy(false);
@@ -1389,6 +1440,19 @@ function TeamDownload({
       </div>
       {open ? (
         <div className="mt-3 grid gap-2 sm:grid-cols-4">
+          {/* 세 형식이 한 파일로 떨어진다 — 여러 개를 받을 때의 기본 동선이라 맨 앞·가로 전체다. */}
+          <button
+            type="button"
+            data-testid="team-download-zip"
+            disabled={busy}
+            onClick={() => void downloadBundle()}
+            className="h-14 rounded-xl bg-[#1F4E79] px-4 text-[17px] font-extrabold text-white disabled:opacity-40 sm:col-span-4"
+          >
+            전부 받기 (.zip)
+            <span className="mt-0.5 block text-[13px] font-normal text-[#DCE7EE]">
+              워드·엑셀·줄글 세 파일을 한 번에
+            </span>
+          </button>
           <button type="button" disabled={busy} onClick={() => void download('docx')}
             className="h-12 rounded-xl border border-[#C4D8E4] text-[15px] font-bold text-[#1F4E79] disabled:opacity-40">
             워드 (.docx)
@@ -1413,6 +1477,18 @@ function TeamDownload({
       {error ? (
         <p role="alert" className="mt-3 rounded-lg bg-[#FFF4D6] px-3 py-2 text-[14px] font-bold text-[#6B4B00]">
           {error}
+        </p>
+      ) : null}
+      {/*
+        메뉴가 접힌 뒤에도 보이도록 `open` 밖에 둔다 — 내려받기를 누르면 메뉴가 닫히므로
+        메뉴 안에 두면 정작 안내가 필요한 순간에 화면에서 사라진다.
+      */}
+      {shouldShowMultiDownloadHint(individualDownloads) ? (
+        <p
+          data-testid="team-download-multi-hint"
+          className="mt-3 rounded-lg bg-[#EAF3F8] px-3 py-2 text-[14px] font-bold text-[#1F4E79]"
+        >
+          {MULTI_DOWNLOAD_HINT}
         </p>
       ) : null}
       {printReport ? <PrintableReport report={printReport} /> : null}
