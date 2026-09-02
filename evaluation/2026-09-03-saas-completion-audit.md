@@ -21,12 +21,12 @@ Phase C 글로벌 항목이 남아 있다. 이 문서는 계획서의 각 항목
 | A3 5역할·조직·초대 | production 미완료 | UI·계획기·adapter-independent executor/receipt 계약 | named pilot·운영 owner·승인 책임자, durable invitation/receipt와 production adapter |
 | A4 셀프서비스 설계 | production 미완료 | schema v4 마법사, migration 초안, fenced RPC adapter, approval bundle | production migration·권한·key custody·live authorization adapter의 개별 승인과 적용 |
 | A5 KWCAG 2.2 AA | 부분 완료 | 자동 WCAG/KWCAG 매핑, 키보드·포커스·반응형 CI | 실제 스크린리더와 모바일 보조기기 수동 평가, 접근성 성명 확정 |
-| A6 복구·export·감사 | 부분 완료 | 서명 snapshot/export, 복원 rehearsal, workflow | provider PITR/WAL 통제, production platform snapshot 활성화, 사용자 행위 감사로그 |
+| A6 복구·export·감사 | 부분 완료 | 서명 snapshot/export·복원 rehearsal·workflow, 15-table append-only 사용자 행위 감사 migration/RPC/UI 초안 | 감사 migration production 적용·named actor 실계정 E2E, provider PITR/WAL 통제, production platform snapshot 활성화 |
 | A7 이행추적·원문 역링크·HITL | 부분 완료 | source publication, implementation tracking, review queue 계약과 UI | production 저장·공개 adapter, 실제 기관 응답을 사용한 승인 흐름 |
 | B1 데이터 분류 | 조건부 | Gate A 권고 방향 기록 | 실제 pilot 데이터 등급·CSAP 등급 확정 |
 | B2 CSAP 인프라 | 미착수 | 아키텍처 선택 조건만 문서화 | 적격 provider/topology 확정 후 셀프호스트 구축 |
 | B3 인증·조달 등록 | 외부 절차 | 요구 관문 문서화 | CSAP 심사와 디지털서비스 선정·등록 |
-| B4 PIA 패키지 | 기관 입력 대기 | DB·비영속 음성 흐름을 포함한 10개 데이터셋·37개 table 카탈로그, 개인정보 판단 profile, fail-closed JSON/Markdown 생성기 | 기관 처리 근거·민감정보·국외 이전·수탁자·고지/동의 판단 확정 |
+| B4 PIA 패키지 | 기관 입력 대기 | DB·비영속 음성 흐름을 포함한 11개 데이터셋·38개 table 카탈로그, 개인정보 판단 profile, fail-closed JSON/Markdown 생성기 | 기관 처리 근거·민감정보·국외 이전·수탁자·고지/동의 판단 확정 |
 | B5 기록물 매핑 | 기관 입력 대기 | 모든 데이터셋의 기록 유형·단위과제·보존기간·기산점·처분 권한·파기 방법 입력 계약과 schema coverage CI | 기관 기록관리기준표와 책임자 검토값 확정 |
 | B6 GPKI/SAML | 기관 입력 대기 | self-hosted SAML SP·IdP metadata·GPKI gateway·계정 연결·assertion 안전 정책의 fail-closed 계획 생성기 | 기관 metadata·gateway·책임자 승인과 격리 통합 시험 |
 | B7 셀프호스트 부하 검증 | 선행조건 대기 | managed 환경 수치는 기준으로 사용하지 않음 | B2 환경 완성 후 동일 시나리오 재측정 |
@@ -57,6 +57,19 @@ Phase C 글로벌 항목이 남아 있다. 이 문서는 계획서의 각 항목
 
 strict check에서 기존 `BaseLayout.astro`의 hreflang 반복 변수가 암시적 `any`로 추론되는 문제도
 발견해 `HreflangLink` 타입을 명시했다. 렌더 결과는 바꾸지 않는다.
+
+## 9/3 후속 — A6 사용자 행위 감사로그
+
+기관·membership·초대·설계·조별 기록·투표 설계·쟁점·공개 결과를 포함한 15개 table의
+INSERT·UPDATE·DELETE를 같은 transaction에서 자동 등록하는 `platform_p4_audit_log.sql` 초안을
+추가했다. 감사 행은 resource identity와 변경 column 이름만 저장하고 원문·이메일·token·응답 값은
+저장하지 않는다. runtime 역할의 table 직접 접근과 감사 행 UPDATE·DELETE·TRUNCATE를 차단하며,
+선택 기관의 active 관리자·운영자·본부만 `platform_audit_list`로 cursor 조회할 수 있다. 기관 기록
+화면과 spreadsheet-safe CSV export도 같은 metadata 계약에 연결했다.
+
+PostgreSQL 16 semantic rehearsal과 populated rollback 거부는 CI에 배선했다. 이 초안은 아직
+production에 적용하지 않았고 기존 capability 호출은 named Auth 사용자가 없을 수 있으므로 A1 전환 전
+actor가 `anon`으로만 남을 수 있다. 따라서 A6 전체가 아니라 감사로그 제품 계약을 준비한 상태다.
 
 ## 실행 순서
 
@@ -106,7 +119,7 @@ private export에 source access method를 보존한다. 실제 migration SQL은 
 기산점·처분 방식·권한·파기 방법을 검증한다. 기관 검토가 `approved`인데 필수 근거가 비어 있으면 모순으로 거부하고,
 그 밖의 미결정 값은 blocker로 보존해 제출 준비 완료를 표시하지 않는다.
 
-기본 template 실행은 데이터셋 10개·table 37개를 포함하고 institution-owned blocker 80개를
+기본 template 실행은 데이터셋 11개·table 38개를 포함하고 institution-owned blocker 87개를
 보고했으며 `readyForInstitutionSubmission:false`, `complianceCertified:false`,
 `legalAssessmentPerformedByProduct:false`, `databaseMutationExecuted:false`를 유지했다. 따라서
 제품 측 자료 구조는 준비됐지만 B4/B5 자체는 기관 책임자 판단 전 완료가 아니다.

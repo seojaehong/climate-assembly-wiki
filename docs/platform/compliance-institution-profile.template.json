@@ -81,6 +81,16 @@
         "destructionMethod": null
       },
       {
+        "datasetId": "platform-user-audit",
+        "recordClass": "pending",
+        "unitTaskCode": null,
+        "retentionPeriod": "pending",
+        "retentionTrigger": null,
+        "dispositionAction": "pending",
+        "dispositionAuthority": null,
+        "destructionMethod": null
+      },
+      {
         "datasetId": "resilience-export",
         "recordClass": "pending",
         "unitTaskCode": null,

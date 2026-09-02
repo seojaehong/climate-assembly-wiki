@@ -316,7 +316,7 @@ describe('VIEWS_FOR_LEVEL (단일 원천)', () => {
     }
   });
   it('검수(review)는 주제 스코프에만, 공개(publish)는 전 레벨에 있다', () => {
-    expect(VIEWS_FOR_LEVEL.org).toEqual(['access']);
+    expect(VIEWS_FOR_LEVEL.org).toEqual(['access', 'record']);
     expect(VIEWS_FOR_LEVEL.topic).toContain('review');
     expect(VIEWS_FOR_LEVEL.session).not.toContain('review');
     expect(VIEWS_FOR_LEVEL.assembly).not.toContain('review');

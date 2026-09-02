@@ -73,13 +73,13 @@
     },
     {
       "path": ".gitattributes",
-      "sha256": "ed4ad2d51f849bb14a586144a76aac1d5c6dfeba6359537cc1df47afc28c965a",
-      "bytes": 367
+      "sha256": "b9d7445ec20837a624a563549a42d9c60060b740cf1110a7cc568bacbedf4d40",
+      "bytes": 1607
     },
     {
       "path": ".github/workflows/test.yml",
-      "sha256": "846b28e1d0d804ff260084dd02cc2105b5ea35c68724cc5116e4c5ee613e5ed9",
-      "bytes": 40260
+      "sha256": "63d395efc2e042542322b5d8fbb32cbc22100e2479e49eed9da883def14a3668",
+      "bytes": 43804
     },
     {
       "path": "docs/platform/A4_DESIGN_PROVISIONING_CONTRACT.md",
@@ -135,5 +135,5 @@
     "activatesStaffGrants": false,
     "connectsProductionExecutor": false
   },
-  "checksum": "be5123927cbe8f445a7e2bc3f567455fca1036ccb8414a05406efb24f666c79d"
+  "checksum": "b5bd4c425611b653873bd1a76bc2da21657403b67223cdd3f50ff14613736410"
 }

@@ -12,6 +12,7 @@ import AssemblyAnalyzeConsole from './analyze/AssemblyAnalyzeConsole';
 import AssemblyRecordConsole from './record/AssemblyRecordConsole';
 import { buildPublicationScopeKey } from './publish/publish-console-logic';
 import AccessConsole from './access/AccessConsole';
+import AuditLogConsole from './record/AuditLogConsole';
 
 const NAVY = '#1F4E79';
 const TEAL = '#135C73';
@@ -120,6 +121,7 @@ function ViewPanel({
 }) {
   const meta = VIEW_META[view];
   const { level, id } = deepestScopeLevel(scope);
+  const { level: viewLevel } = deepestViewScopeLevel(scope);
 
   if (view === 'access') {
     const org = scopeContext.org;
@@ -171,6 +173,10 @@ function ViewPanel({
         context={scopeContext}
       />
     );
+  }
+
+  if (view === 'record' && viewLevel === 'org') {
+    return <AuditLogConsole key={scopeContext.org?.id ?? 'missing-org'} organization={scopeContext.org ?? null} />;
   }
 
   if (view === 'vote' && level === 'session') {

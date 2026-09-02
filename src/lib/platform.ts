@@ -20,6 +20,38 @@ export interface PlatformResult<T> {
   notice: string | null;
 }
 
+export interface PlatformAuditEvent {
+  id: string;
+  occurred_at: string;
+  transaction_id: string;
+  actor_user_id: string | null;
+  actor_role: string;
+  operation: 'insert' | 'update' | 'delete';
+  resource_type: string;
+  resource_id: string;
+  changed_fields: string[];
+}
+
+export interface PlatformAuditPage {
+  events: PlatformAuditEvent[];
+  next_after_id: string | null;
+}
+
+/** Selected-organization audit metadata. The server derives org_id from the Auth context. */
+export async function platformAuditList(
+  afterId: string | null = null,
+  limit = 100,
+): Promise<PlatformResult<PlatformAuditPage>> {
+  return guard(async (sb) => {
+    const { data, error } = await sb.schema(SCHEMA).rpc('platform_audit_list', {
+      p_after_id: afterId,
+      p_limit: limit,
+    });
+    if (error) throw error;
+    return data as PlatformAuditPage;
+  });
+}
+
 /** Supabase/PostgREST 오류를 한국어 안내로 번역(스키마 미적용·다중 org 등). */
 function describeError(e: unknown): string {
   const err = e as { code?: string; message?: string } | null;
