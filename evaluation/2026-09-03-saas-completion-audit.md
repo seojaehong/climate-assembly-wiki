@@ -26,8 +26,8 @@ Phase C 글로벌 항목이 남아 있다. 이 문서는 계획서의 각 항목
 | B1 데이터 분류 | 조건부 | Gate A 권고 방향 기록 | 실제 pilot 데이터 등급·CSAP 등급 확정 |
 | B2 CSAP 인프라 | 미착수 | 아키텍처 선택 조건만 문서화 | 적격 provider/topology 확정 후 셀프호스트 구축 |
 | B3 인증·조달 등록 | 외부 절차 | 요구 관문 문서화 | CSAP 심사와 디지털서비스 선정·등록 |
-| B4 PIA 패키지 | 부분 완료 | 개인정보 처리방침 초안과 일부 데이터 경계 문서 | 데이터흐름도·민감정보·파기절차를 하나의 기관 제출 패키지로 확정 |
-| B5 기록물 매핑 | 미착수 | 요구사항만 존재 | 보존기간·회의록 관리 스키마와 운영 절차 |
+| B4 PIA 패키지 | 기관 입력 대기 | DB·비영속 음성 흐름을 포함한 10개 데이터셋·37개 table 카탈로그, 개인정보 판단 profile, fail-closed JSON/Markdown 생성기 | 기관 처리 근거·민감정보·국외 이전·수탁자·고지/동의 판단 확정 |
+| B5 기록물 매핑 | 기관 입력 대기 | 모든 데이터셋의 기록 유형·단위과제·보존기간·기산점·처분 권한·파기 방법 입력 계약과 schema coverage CI | 기관 기록관리기준표와 책임자 검토값 확정 |
 | B6 GPKI/SAML | 미착수 | 요구사항만 존재 | 공공 IdP·metadata·계정 연결 계약과 통합 |
 | B7 셀프호스트 부하 검증 | 선행조건 대기 | managed 환경 수치는 기준으로 사용하지 않음 | B2 환경 완성 후 동일 시나리오 재측정 |
 | Phase C 글로벌 | 부분/미착수 | 한국어 SSOT와 다국어 정적 빌드 기반 | RTL·locale 전면화, 리전별 데이터주권, 라이선스, 비동기 채널, 자동 진행 기능 |
@@ -96,3 +96,17 @@ fallback은 두지 않았다. RPC 응답의 schema version·root field·세션/�
 private export에 source access method를 보존한다. 실제 migration SQL은 승인 전 작성하지 않았고,
 적용·allow/deny·rollback·실 export 범위는
 `docs/platform/SUBMISSION_IDENTITY_RPC_APPROVAL_PACKET.md`에 분리했다.
+
+## B4/B5 기관 제출 지원 패키지
+
+현재·휴면 migration의 `climate_vote` table과 legacy 4개 table을 9개 DB 업무 데이터셋에 정확히
+한 번씩 매핑하고, 브라우저 메모리의 비영속 음성·전사 후보를 별도 데이터셋으로 추가한 catalog를
+구축했다. 생성기는 기관 profile의 서비스 트랙, 처리 근거, 정치적
+의견·음성 분류, 국외 이전, 수탁자, 고지/동의와 데이터셋별 기록 유형·단위과제·보존기간·
+기산점·처분 방식·권한·파기 방법을 검증한다. 기관 검토가 `approved`인데 필수 근거가 비어 있으면 모순으로 거부하고,
+그 밖의 미결정 값은 blocker로 보존해 제출 준비 완료를 표시하지 않는다.
+
+기본 template 실행은 데이터셋 10개·table 37개를 포함하고 institution-owned blocker 80개를
+보고했으며 `readyForInstitutionSubmission:false`, `complianceCertified:false`,
+`legalAssessmentPerformedByProduct:false`, `databaseMutationExecuted:false`를 유지했다. 따라서
+제품 측 자료 구조는 준비됐지만 B4/B5 자체는 기관 책임자 판단 전 완료가 아니다.

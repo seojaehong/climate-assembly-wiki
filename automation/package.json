@@ -21,6 +21,7 @@
     "plan:platform-analysis-import": "node platform-analysis-import.mjs",
     "plan:platform-result-sources": "node platform-result-source-plan.mjs",
     "plan:platform-implementations": "node platform-implementation-plan.mjs",
+    "plan:platform-compliance-package": "node platform-compliance-package.mjs",
     "preflight:platform-activation": "node platform-activation-preflight.mjs",
     "verify:platform-activation": "node platform-activation-preflight.mjs --verify-evidence",
     "plan:platform-a2-activation": "node platform-a2-activation-bundle.mjs",

@@ -835,6 +835,37 @@ schema v2 출력은 `implementation-status-contract.json`의 schema와 canonical
 
 ---
 
+## B4/B5 개인정보 영향평가·기록물 관리 지원 패키지
+
+기관별 판단을 저장소 밖 JSON profile에 채운 뒤 데이터흐름도, 개인정보 판단표, 데이터셋별
+보존·처분 매핑을 JSON과 Markdown 한 쌍으로 만든다.
+
+```powershell
+Copy-Item ..\docs\platform\compliance-institution-profile.template.json C:\approved\institution-profile.json
+# C:\approved\institution-profile.json을 기관 개인정보·기록물 책임자가 검토·작성
+npm.cmd run plan:platform-compliance-package -- `
+  --profile C:\approved\institution-profile.json `
+  --json-output C:\approved\compliance-package.json `
+  --markdown-output C:\approved\compliance-package.md
+```
+
+카탈로그는 migration과 legacy 운영 스키마의 모든 `climate_vote` table을 정확히 한 데이터셋에
+연결한다. 새 table이 생겼는데 분류가 없거나 한 table이 둘에 중복되면 테스트가 실패한다.
+기관 profile은 실제 기관 코드·처리 근거·민감정보 판단·국외 이전·수탁자·고지/동의 검토와
+데이터셋별 기록 유형(회의록·행정기록·감사기록 등), 단위과제·보존기간·기산점·처분 방식·
+처분 권한·파기 방법을 모두 요구한다. Markdown 출력의 Mermaid 데이터 흐름도에는 DB table뿐
+아니라 브라우저 메모리에서만 처리되는 비영속 음성·전사도 별도 데이터셋으로 표시한다.
+
+`pending`이 하나라도 있으면 출력은 `needs_institution_decisions`이며
+`readyForInstitutionSubmission:false`다. 모든 판단이 기관 책임 역할과 canonical UTC 검토시각에
+결속돼야 `ready_for_institution_submission`이 된다. 이 상태도 법률 적합성이나 인증 획득을
+뜻하지 않으며 출력은 항상 `complianceCertified:false`,
+`legalAssessmentPerformedByProduct:false`, `databaseMutationExecuted:false`를 유지한다.
+기관 profile과 두 출력은 개인정보·내부 보존 정책을 포함할 수 있으므로 Git·public 경로에
+넣지 않고 기존 파일도 덮어쓰지 않는다.
+
+---
+
 ## 알려진 한계 (B-008a 범위 밖)
 
 - 시민 모바일 디바이스 화면 캡쳐 → B-008b (별도 spec)
