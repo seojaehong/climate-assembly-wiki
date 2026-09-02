@@ -21,17 +21,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { marked } from 'marked';
 import DocLayout from '../../../layouts/DocLayout.astro';
+import { SITE_LOCALE_CODES, STRUCTURAL_LOCALE_CODES, isSiteLocale } from '../../../lib/site-locales';
 
 // ---------------------------------------------------------------------------
 // getStaticPaths
 // ---------------------------------------------------------------------------
 export async function getStaticPaths() {
-  const langs = ['ko', 'en', 'ja', 'zh', 'es'] as const; // M4 done 2026-06-01 (ja/zh/es structural)
   const docEntries = await getCollection('doc');
   // 2026-06-02: skip draft docs so unpublished pages never get static routes.
   const publishedEntries = docEntries.filter((entry) => entry.data.draft !== true);
 
-  return langs.flatMap((lang) =>
+  return SITE_LOCALE_CODES.flatMap((lang) =>
     publishedEntries.map((entry) => ({
       params: { lang, slug: entry.data.slug },
       props: { entry, lang },
@@ -50,10 +50,10 @@ const { entry, lang } = Astro.props as { entry: CollectionEntry<'doc'>; lang: st
 const translationsRoot = path.resolve(process.cwd(), 'translations');
 const enFilePath = path.join(translationsRoot, 'en', 'doc', `${entry.data.slug}.md`);
 const hasEnTranslation = lang === 'en' && fs.existsSync(enFilePath);
-// Structural-only locales (ja/zh/es): always show fallback banner.
+// Structural-only locales always show a fallback banner.
 const showFallbackBanner =
   (lang === 'en' && !hasEnTranslation) ||
-  (['ja', 'zh', 'es'].includes(lang));
+  (isSiteLocale(lang) && STRUCTURAL_LOCALE_CODES.includes(lang));
 
 let enTitle = entry.data.title;
 let enBodyHtml = '';
@@ -98,7 +98,7 @@ const docTypeLabel: Record<string, string> = {
   lang={lang}
   trustLabel={translationStatus ?? 'author-verified'}
   license={entry.data.license as 'CC-BY-SA-4.0' | 'CC-BY-4.0' | 'CC-BY-NC-SA-3.0-IGO' | 'all-rights-reserved'}
-  alternateLangs={['ko', 'en', 'ja', 'zh', 'es']}
+  alternateLangs={[...SITE_LOCALE_CODES]}
   canonicalPath={`/${lang}/doc/${entry.data.slug}/`}
   isFallback={showFallbackBanner}
   sourceKorean={`/ko/doc/${entry.data.slug}/`}

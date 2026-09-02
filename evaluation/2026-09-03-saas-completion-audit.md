@@ -6,7 +6,7 @@
 구현됐지만, 판매 가능한 멀티테넌트 SaaS를 만드는 production 활성화와 Phase B 조달·인증,
 Phase C 글로벌 항목이 남아 있다. 이 문서는 계획서의 각 항목을 현재 저장소 증거와 대조한 기준선이다.
 
-- 기준 소스: `origin/main` merge commit `98c81e45421275aa792ef30e82d59ec6e1295ee6`
+- 기준 소스: RTL 후속 시작 시점 `origin/main` merge commit `abb72d9d209d931f698fcd959275424960559722`
 - 운영 검증: `climate-assembly-wiki.pages.dev`와 `climate-assembly.org`가 같은 commit manifest 제공
 - 운영 자산 검증: 두 origin에서 각각 12회 probe 통과
 - production DB mutation: 이번 작업에서 0건
@@ -30,7 +30,7 @@ Phase C 글로벌 항목이 남아 있다. 이 문서는 계획서의 각 항목
 | B5 기록물 매핑 | 기관 입력 대기 | 모든 데이터셋의 기록 유형·단위과제·보존기간·기산점·처분 권한·파기 방법 입력 계약과 schema coverage CI | 기관 기록관리기준표와 책임자 검토값 확정 |
 | B6 GPKI/SAML | 기관 입력 대기 | self-hosted SAML SP·IdP metadata·GPKI gateway·계정 연결·assertion 안전 정책의 fail-closed 계획 생성기 | 기관 metadata·gateway·책임자 승인과 격리 통합 시험 |
 | B7 셀프호스트 부하 검증 | 선행조건 대기 | managed 환경 수치는 기준으로 사용하지 않음 | B2 환경 완성 후 동일 시나리오 재측정 |
-| Phase C 글로벌 | 부분/미착수 | 한국어 SSOT와 다국어 정적 빌드 기반 | RTL·locale 전면화, 리전별 데이터주권, 라이선스, 비동기 채널, 자동 진행 기능 |
+| Phase C 글로벌 | 부분 구현 | 한국어 SSOT, 6개 locale 정적 빌드, 중앙 locale registry, Arabic RTL 문서 방향·구조 전용 고지 | 아랍어 원문 번역·native review, RTL 수동 시각/보조기기 검수, 리전별 데이터주권, 라이선스, 비동기 채널, 자동 진행 기능 |
 
 ## 이번 구현 — 8/29 provenance 공백
 
@@ -122,3 +122,26 @@ fingerprint, 불변 subject와 계정 연결 방식, assertion 검증 정책, ga
 `readyForInstitutionIntegration:false`, `databaseMutationExecuted:false`,
 `authProviderRegistered:false`, `credentialFieldSchemaIncluded:false`를 유지했다. 실제 Auth admin API·IdP·DB는
 호출하지 않았으므로 B6 통합 자체는 기관 설정과 격리 시험 전 완료가 아니다.
+
+## Phase C RTL·locale 기반
+
+공개 다국어 surface의 locale 목록을 `src/lib/site-locales.ts`에 모으고 Arabic(`ar`)을 구조 전용
+locale로 추가했다. `BaseLayout.astro`와 deprecated `Base.astro` 모두 문서 방향을 registry에서
+계산하므로 Arabic 정적 페이지는 `lang="ar" dir="rtl"`을 출력한다. 홈·의제 목록·의제 상세·
+원천 상세에는 Arabic 본문이 번역 완료된 것처럼 보이지 않도록 현지어 구조 전용 고지와 KO/EN
+원문 링크를 표시한다. sitemap·hreflang·언어 전환·Open Graph locale도 같은 6개 locale 계약에
+맞췄다.
+
+이 단계는 RTL 기술 기반만 구현한 것이다. Arabic 본문 번역과 현지어 검수, 브라우저별 시각 검수,
+스크린리더 수동 평가는 완료로 간주하지 않으며 Phase C의 데이터주권·라이선스·대규모 비동기 기능도
+여전히 남아 있다. production DB/Auth 변경은 실행하지 않았다.
+
+검증 결과:
+
+- locale registry 집중 테스트: 1개 파일, 3건 통과
+- Astro strict check: 454개 파일, 오류·경고 0건, 기존 hint 57건
+- 정적 production build: 9,493개 페이지 생성
+- 산출 HTML: Arabic 홈·의제 상세·원천 상세의 `lang="ar" dir="rtl"`, 구조 전용 고지,
+  Arabic hreflang과 sitemap URL 확인
+- 프론트 전체 Vitest: 99개 파일 중 97개 파일, 1,756건 중 1,753건 통과. 실패 3건은
+  Windows CRLF checkout에서 LF 문자열을 exact match하는 기존 source-contract 테스트이며 변경 로직과 무관하다.

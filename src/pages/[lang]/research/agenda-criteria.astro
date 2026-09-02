@@ -7,14 +7,10 @@
 
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import TranslationFallbackBanner from '../../../components/TranslationFallbackBanner.astro';
+import { STRUCTURAL_LOCALE_CODES } from '../../../lib/site-locales';
 
 export function getStaticPaths() {
-  return [
-    { params: { lang: 'en' } },
-    { params: { lang: 'ja' } },
-    { params: { lang: 'zh' } },
-    { params: { lang: 'es' } },
-  ];
+  return ['en', ...STRUCTURAL_LOCALE_CODES].map((lang) => ({ params: { lang } }));
 }
 
 const { lang } = Astro.params as { lang: string };

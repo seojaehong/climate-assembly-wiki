@@ -3,20 +3,15 @@
  * /[lang]/research/
  * Research section index.
  * ko: shows intro + link to the report
- * en/ja/zh/es: placeholder with fallback banner
+ * en and structural locales: placeholder with fallback banner
  */
 
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import TranslationFallbackBanner from '../../../components/TranslationFallbackBanner.astro';
+import { SITE_LOCALE_CODES } from '../../../lib/site-locales';
 
 export function getStaticPaths() {
-  return [
-    { params: { lang: 'ko' } },
-    { params: { lang: 'en' } },
-    { params: { lang: 'ja' } },
-    { params: { lang: 'zh' } },
-    { params: { lang: 'es' } },
-  ];
+  return SITE_LOCALE_CODES.map((lang) => ({ params: { lang } }));
 }
 
 const { lang } = Astro.params as { lang: string };

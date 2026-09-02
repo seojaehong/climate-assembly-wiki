@@ -8,6 +8,7 @@
 import '../styles/global.css';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
+import { SITE_LOCALE_CODES, localeDirection, replaceLocalePrefix } from '../lib/site-locales';
 
 interface Props {
   title: string;
@@ -17,14 +18,13 @@ interface Props {
 
 const { title, lang, description = '2026 기후시민회의 모더레이터 아카이브' } = Astro.props;
 
-// M4 (2026-06-01): emit hreflang for all 5 locales on Base-using pages too.
+// Emit hreflang for every public locale on Base-using pages too.
 // Base.astro is deprecated, but 9 pages still import it; SEO requires alternates
-// to ja/zh/es to ship even before migration to BaseLayout completes.
+// to structural locales before migration to BaseLayout completes.
 const SITE_URL = (Astro.site?.toString() ?? 'https://climate-assembly-wiki.pages.dev').replace(/\/$/, '');
-const M4_LOCALES = ['ko', 'en', 'ja', 'zh', 'es'];
 const _path = Astro.url.pathname;
-const hreflangLinks = M4_LOCALES.map((altLang) => {
-  const altPath = _path.replace(/^\/(ko|en|ja|zh|es)\//, `/${altLang}/`);
+const hreflangLinks = SITE_LOCALE_CODES.map((altLang) => {
+  const altPath = replaceLocalePrefix(_path, altLang);
   const ensured = altPath.endsWith('/') ? altPath : altPath + '/';
   return { lang: altLang, url: `${SITE_URL}${ensured}` };
 });
@@ -32,7 +32,7 @@ const canonicalUrl = `${SITE_URL}${_path.endsWith('/') ? _path : _path + '/'}`;
 const xDefaultUrl = hreflangLinks.find((l) => l.lang === 'ko')?.url ?? canonicalUrl;
 ---
 <!doctype html>
-<html lang={lang} class="scroll-smooth">
+<html lang={lang} dir={localeDirection(lang)} class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

@@ -3,27 +3,18 @@ interface Props {
   currentLang: string;
 }
 
+import { SITE_LOCALES, isSiteLocale, replaceLocalePrefix } from '../lib/site-locales';
+
 const { currentLang } = Astro.props;
 
-const langs = [
-  { code: 'ko', label: '한국어' },
-  { code: 'en', label: 'English' },
-  { code: 'ja', label: '日本語' },
-  { code: 'zh', label: '中文' },
-  { code: 'es', label: 'Español' },
-];
+const langs = SITE_LOCALES;
 
 // Swap the lang segment in the URL while preserving the rest of the path.
 // e.g. /ko/agenda/climate-dividend → /en/agenda/climate-dividend
 const currentUrl = Astro.url.pathname;
 function buildUrl(targetLang: string): string {
-  const segments = currentUrl.split('/').filter(Boolean);
-  if (segments[0] && ['ko', 'en', 'ja', 'zh', 'es'].includes(segments[0])) {
-    segments[0] = targetLang;
-  } else {
-    segments.unshift(targetLang);
-  }
-  return '/' + segments.join('/');
+  if (!isSiteLocale(targetLang)) return currentUrl;
+  return replaceLocalePrefix(currentUrl, targetLang);
 }
 ---
 <div class="relative group">
