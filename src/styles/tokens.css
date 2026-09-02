@@ -195,6 +195,30 @@
   --transition-slow: 300ms ease-out;
 }
 
+/* Phase C locale stacks use local/system fonts only: no cross-region font request or tracking pixel. */
+html:lang(ja) {
+  --font-body: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI",
+    "Yu Gothic", "Noto Sans JP", "Segoe UI", sans-serif;
+  --font-display: var(--font-body);
+  --tracking-tight: 0;
+  --tracking-snug: 0;
+}
+
+html:lang(zh) {
+  --font-body: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei",
+    "Noto Sans SC", "Segoe UI", sans-serif;
+  --font-display: var(--font-body);
+  --tracking-tight: 0;
+  --tracking-snug: 0;
+}
+
+html:lang(ar) {
+  --font-body: "Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
+  --font-display: var(--font-body);
+  --tracking-tight: 0;
+  --tracking-snug: 0;
+}
+
 /* ============================================================
    DARK MODE — manual toggle (highest priority)
    Covers: .dark class (Tailwind v4) AND [data-theme="dark"] attr (tokens).
