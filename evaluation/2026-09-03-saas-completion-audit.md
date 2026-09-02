@@ -28,7 +28,7 @@ Phase C 글로벌 항목이 남아 있다. 이 문서는 계획서의 각 항목
 | B3 인증·조달 등록 | 외부 절차 | 요구 관문 문서화 | CSAP 심사와 디지털서비스 선정·등록 |
 | B4 PIA 패키지 | 기관 입력 대기 | DB·비영속 음성 흐름을 포함한 10개 데이터셋·37개 table 카탈로그, 개인정보 판단 profile, fail-closed JSON/Markdown 생성기 | 기관 처리 근거·민감정보·국외 이전·수탁자·고지/동의 판단 확정 |
 | B5 기록물 매핑 | 기관 입력 대기 | 모든 데이터셋의 기록 유형·단위과제·보존기간·기산점·처분 권한·파기 방법 입력 계약과 schema coverage CI | 기관 기록관리기준표와 책임자 검토값 확정 |
-| B6 GPKI/SAML | 미착수 | 요구사항만 존재 | 공공 IdP·metadata·계정 연결 계약과 통합 |
+| B6 GPKI/SAML | 기관 입력 대기 | self-hosted SAML SP·IdP metadata·GPKI gateway·계정 연결·assertion 안전 정책의 fail-closed 계획 생성기 | 기관 metadata·gateway·책임자 승인과 격리 통합 시험 |
 | B7 셀프호스트 부하 검증 | 선행조건 대기 | managed 환경 수치는 기준으로 사용하지 않음 | B2 환경 완성 후 동일 시나리오 재측정 |
 | Phase C 글로벌 | 부분/미착수 | 한국어 SSOT와 다국어 정적 빌드 기반 | RTL·locale 전면화, 리전별 데이터주권, 라이선스, 비동기 채널, 자동 진행 기능 |
 
@@ -110,3 +110,15 @@ private export에 source access method를 보존한다. 실제 migration SQL은 
 보고했으며 `readyForInstitutionSubmission:false`, `complianceCertified:false`,
 `legalAssessmentPerformedByProduct:false`, `databaseMutationExecuted:false`를 유지했다. 따라서
 제품 측 자료 구조는 준비됐지만 B4/B5 자체는 기관 책임자 판단 전 완료가 아니다.
+
+## B6 공공 IdP 연계 계획
+
+GPKI를 SAML과 동일한 기술로 가정하지 않고 `saml2`와 `gpki_via_saml_gateway`를 분리했다.
+기관 profile은 self-hosted Auth URL, application origin, IdP metadata source·entity ID·인증서
+fingerprint, 불변 subject와 계정 연결 방식, assertion 검증 정책, gateway 소유자·근거 및 최종
+검토를 요구한다. JIT provisioning과 외부 attribute 기반 application role 부여는 거부한다.
+
+기본 template 실행은 institution-owned blocker 17개를 보고했으며
+`readyForInstitutionIntegration:false`, `databaseMutationExecuted:false`,
+`authProviderRegistered:false`, `credentialFieldSchemaIncluded:false`를 유지했다. 실제 Auth admin API·IdP·DB는
+호출하지 않았으므로 B6 통합 자체는 기관 설정과 격리 시험 전 완료가 아니다.

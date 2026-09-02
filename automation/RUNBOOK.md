@@ -866,6 +866,30 @@ npm.cmd run plan:platform-compliance-package -- `
 
 ---
 
+## B6 공공 IdP 연계 계획
+
+기관별 판단을 저장소 밖 profile에 작성한 뒤 실제 Auth·IdP 설정 전에 읽기 전용 계획을 만든다.
+
+```powershell
+Copy-Item ..\docs\platform\public-identity-institution-profile.template.json C:\approved\public-identity-profile.json
+# 기관 인증 연계 책임자가 IdP metadata와 계정 연결 정책을 검토·작성
+npm.cmd run plan:platform-public-identity -- `
+  --profile C:\approved\public-identity-profile.json `
+  --output C:\approved\public-identity-plan.json
+```
+
+`saml2`는 기관 SAML IdP를 직접 연결하는 모드다. `gpki_via_saml_gateway`는 GPKI 인증서를
+제품이 직접 처리한다는 뜻이 아니라, 기관이 승인한 gateway가 SAML assertion을 제공하는
+구성이다. gateway 소유자와 승인 근거가 없으면 계획 생성을 거부한다.
+
+JIT provisioning과 IdP attribute 기반 application role 부여는 허용하지 않는다. 외부 subject와
+기존 계정 연결은 사전 등록 exact match 또는 관리자 승인 방식만 허용하며, 실제 membership은
+별도 승인된 access workflow에서 부여한다. metadata URL query, 저장소 내부 profile/output,
+기존 출력 덮어쓰기도 거부한다. 생성기는 Auth admin API·IdP·DB를 호출하지 않으며 credential
+전용 입력·출력 field가 없다. 자유문자 field에는 비밀값을 입력하지 않는다.
+
+---
+
 ## 알려진 한계 (B-008a 범위 밖)
 
 - 시민 모바일 디바이스 화면 캡쳐 → B-008b (별도 spec)

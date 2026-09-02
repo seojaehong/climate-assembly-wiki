@@ -297,6 +297,15 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 거짓으로 표시하지 않는다. DB·Auth·외부 API·데이터 mutation은 없다. 실제 B4/B5 완료에는 기관
 개인정보 책임 역할과 기록물관리 책임 역할의 검토가 필요하다.
 
+## B6 공공 IdP 연계 계획 (2026-09-03)
+
+`platform-public-identity-plan.mjs`가 self-hosted Supabase SAML SP endpoint, 기관 IdP metadata,
+불변 subject 기반 계정 연결, assertion 검증과 GPKI-SAML gateway 승인 경계를 저장소 밖 기관
+profile에서 검증한다. GPKI를 SAML과 동일시하지 않으며 JIT provisioning과 외부 attribute의
+application role 직접 부여를 거부한다. 기본 template의 기관 미결정 17개는 blocker로 남는다.
+생성기는 DB·Auth admin API·IdP를 호출하지 않고 credential 전용 field도 두지 않는다. 실제 B6 완료에는
+기관 IdP metadata와 gateway 여부, self-host 배포, 책임자 검토 및 격리 환경 통합 시험이 필요하다.
+
 ## 다음 액션 (권장 순서)
 1. ✅ **완료 (2026-08-29)** — `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향을 권고안대로 승인했다(§0 승인 기록, `DECISIONS.md`). 진행자 전환 시점·공공 데이터 등급·CSAP 등급·provider 적격성·tenancy topology·named pilot·owner는 조건부로 기록했다. production mutation은 승인하지 않았다
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증
