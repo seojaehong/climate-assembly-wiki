@@ -16,6 +16,7 @@
  */
 
 import TrustBadge from './TrustBadge.astro';
+import { contentUiCopy } from '../lib/site-locales';
 
 interface Props {
   id: number;
@@ -50,20 +51,17 @@ const categoryConfig = {
   '일반-의제': {
     pillStyle: 'background:var(--color-cat-general-bg);color:var(--color-cat-general-fg)',
     barStyle: 'background:var(--color-cat-general-bar)',
-    labelKo: '일반',
-    labelEn: 'General',
+    copyKey: 'general',
   },
   '메타-의제': {
     pillStyle: 'background:var(--color-cat-meta-bg);color:var(--color-cat-meta-fg)',
     barStyle: 'background:var(--color-cat-meta-bar)',
-    labelKo: '메타',
-    labelEn: 'Meta',
+    copyKey: 'meta',
   },
   '실행-의제': {
     pillStyle: 'background:var(--color-cat-action-bg);color:var(--color-cat-action-fg)',
     barStyle: 'background:var(--color-cat-action-bar)',
-    labelKo: '실행',
-    labelEn: 'Action',
+    copyKey: 'action',
   },
 } as const;
 
@@ -71,31 +69,23 @@ const categoryConfig = {
 const statusConfig = {
   proposed: {
     classes: 'border border-[var(--color-border-strong)] text-[var(--color-fg-muted)]',
-    labelKo: '제안',
-    labelEn: 'Proposed',
   },
   discussed: {
     classes: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
-    labelKo: '논의됨',
-    labelEn: 'Discussed',
   },
   recommended: {
     classes: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
-    labelKo: '권고',
-    labelEn: 'Recommended',
   },
   final: {
     classes: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
-    labelKo: '최종',
-    labelEn: 'Final',
   },
 } as const;
 
-const isKo = lang === 'ko';
+const copy = contentUiCopy(lang);
 const catCfg = categoryConfig[category];
 const stsCfg = statusConfig[status];
-const catLabel = isKo ? catCfg.labelKo : catCfg.labelEn;
-const stsLabel = isKo ? stsCfg.labelKo : stsCfg.labelEn;
+const catLabel = copy.agendaCategory[catCfg.copyKey];
+const stsLabel = copy.agendaStatus[status];
 const idPadded = id.toString().padStart(2, '0');
 const isInternalDraft = sourceMode === 'internal-draft';
 ---
@@ -134,9 +124,9 @@ const isInternalDraft = sourceMode === 'internal-draft';
     {isInternalDraft ? (
       <span
         class="text-xs px-2 py-0.5 rounded-md border border-amber-400/70 text-amber-700 bg-amber-50 dark:border-amber-500/60 dark:text-amber-200 dark:bg-amber-950/40 font-medium"
-        title={isKo ? '공식 원천 DB가 아닌 내부 해설 초안' : 'Internal brief draft, not an official source record'}
+        title={copy.internalBriefDescription}
       >
-        {isKo ? '내부 해설 초안' : 'Internal draft'}
+        {copy.internalBriefDraft}
       </span>
     ) : (
       <!-- R-05: contentStatus = trust of the current-language original content -->
@@ -146,8 +136,8 @@ const isInternalDraft = sourceMode === 'internal-draft';
     {enAvailable && (
       <span
         class="text-xs px-1.5 py-0.5 rounded-md border border-[var(--color-info)] text-[var(--color-info)] dark:border-blue-600 dark:text-blue-300 font-medium"
-        title={isKo ? '영문 번역 있음' : 'English available'}
-        aria-label={isKo ? '영문 번역 있음' : 'English translation available'}
+        title={copy.englishAvailable}
+        aria-label={copy.englishTranslationAvailable}
       >
         EN
       </span>

@@ -36,6 +36,28 @@ export interface SiteShellCopy {
   contactNewTab: string;
 }
 
+export type TrustStatus = 'machine' | 'reviewed' | 'native' | 'author-verified';
+export type TranslationStatus = TrustStatus;
+
+interface BadgeCopy {
+  label: string;
+  ariaLabel: string;
+}
+
+export interface ContentUiCopy {
+  agendaCategory: Record<'general' | 'meta' | 'action', string>;
+  agendaCategoryLegend: string;
+  agendaCategoryPrefix: string;
+  agendaStatus: Record<'proposed' | 'discussed' | 'recommended' | 'final', string>;
+  internalDraft: string;
+  internalBriefDraft: string;
+  internalBriefDescription: string;
+  englishAvailable: string;
+  englishTranslationAvailable: string;
+  trust: Record<TrustStatus, BadgeCopy>;
+  translationStatus: Record<TranslationStatus, BadgeCopy>;
+}
+
 const SITE_SHELL_COPY: Record<SiteLocale, SiteShellCopy> = {
   ko: {
     siteName: '기후시민회의 Wiki',
@@ -189,6 +211,147 @@ const SITE_SHELL_COPY: Record<SiteLocale, SiteShellCopy> = {
   },
 };
 
+const CONTENT_UI_COPY: Record<SiteLocale, ContentUiCopy> = {
+  ko: {
+    agendaCategory: { general: '일반', meta: '메타', action: '실행' },
+    agendaCategoryLegend: '의제 분류 범례',
+    agendaCategoryPrefix: '분류:',
+    agendaStatus: { proposed: '제안', discussed: '논의됨', recommended: '권고', final: '최종' },
+    internalDraft: '내부 가안',
+    internalBriefDraft: '내부 해설 초안',
+    internalBriefDescription: '공식 원천 DB가 아닌 내부 해설 초안',
+    englishAvailable: '영문 번역 있음',
+    englishTranslationAvailable: '영문 번역 있음',
+    trust: {
+      machine: { label: '기계 초안', ariaLabel: '기계 번역 초안' },
+      reviewed: { label: 'LLM 검토', ariaLabel: 'LLM 검토 완료' },
+      native: { label: '원어민 검증', ariaLabel: '원어민 검증' },
+      'author-verified': { label: '저자 검증', ariaLabel: '저자 직접 검증' },
+    },
+    translationStatus: {
+      machine: { label: '기계 번역', ariaLabel: '기계 번역 초안 — 검토 전' },
+      reviewed: { label: '검토됨', ariaLabel: 'LLM 또는 사람이 검토한 번역' },
+      native: { label: '원어민 검증', ariaLabel: '원어민이 검증한 번역' },
+      'author-verified': { label: '저자 검증', ariaLabel: '저자가 직접 검증한 번역 — 최고 등급' },
+    },
+  },
+  en: {
+    agendaCategory: { general: 'General', meta: 'Meta', action: 'Action' },
+    agendaCategoryLegend: 'Agenda category legend',
+    agendaCategoryPrefix: 'Category:',
+    agendaStatus: { proposed: 'Proposed', discussed: 'Discussed', recommended: 'Recommended', final: 'Final' },
+    internalDraft: 'Internal draft',
+    internalBriefDraft: 'Internal brief draft',
+    internalBriefDescription: 'Internal brief draft, not an official source record',
+    englishAvailable: 'English available',
+    englishTranslationAvailable: 'English translation available',
+    trust: {
+      machine: { label: 'Machine draft', ariaLabel: 'Machine-generated draft, unreviewed' },
+      reviewed: { label: 'LLM-reviewed', ariaLabel: 'LLM-assisted, moderator reviewed' },
+      native: { label: 'Native-verified', ariaLabel: 'Reviewed by native speaker' },
+      'author-verified': { label: 'Author-verified', ariaLabel: 'Author-verified — highest grade' },
+    },
+    translationStatus: {
+      machine: { label: 'Machine translation', ariaLabel: 'Machine translation — unreviewed draft' },
+      reviewed: { label: 'Human-reviewed', ariaLabel: 'LLM-assisted, human-reviewed translation' },
+      native: { label: 'Native-verified', ariaLabel: 'Reviewed and verified by a native speaker' },
+      'author-verified': { label: 'Author-verified', ariaLabel: 'Author-verified translation — highest grade' },
+    },
+  },
+  ja: {
+    agendaCategory: { general: '一般', meta: 'メタ', action: '実行' },
+    agendaCategoryLegend: '議題分類の凡例',
+    agendaCategoryPrefix: '分類:',
+    agendaStatus: { proposed: '提案', discussed: '審議済み', recommended: '勧告', final: '最終' },
+    internalDraft: '内部草案',
+    internalBriefDraft: '内部解説草案',
+    internalBriefDescription: '公式ソース記録ではない内部解説草案',
+    englishAvailable: '英訳あり',
+    englishTranslationAvailable: '英語版あり',
+    trust: {
+      machine: { label: '機械生成草案', ariaLabel: '未確認の機械生成草案' },
+      reviewed: { label: 'LLM 確認済み', ariaLabel: 'LLM 支援、モデレーター確認済み' },
+      native: { label: '母語話者確認済み', ariaLabel: '母語話者による確認済み' },
+      'author-verified': { label: '著者確認済み', ariaLabel: '著者が直接確認済み' },
+    },
+    translationStatus: {
+      machine: { label: '機械翻訳', ariaLabel: '未確認の機械翻訳草案' },
+      reviewed: { label: '確認済み', ariaLabel: 'LLM または人が確認した翻訳' },
+      native: { label: '母語話者確認済み', ariaLabel: '母語話者が確認した翻訳' },
+      'author-verified': { label: '著者確認済み', ariaLabel: '著者が直接確認した翻訳' },
+    },
+  },
+  zh: {
+    agendaCategory: { general: '一般', meta: '元议题', action: '行动' },
+    agendaCategoryLegend: '议题分类图例',
+    agendaCategoryPrefix: '分类：',
+    agendaStatus: { proposed: '已提议', discussed: '已讨论', recommended: '已建议', final: '最终' },
+    internalDraft: '内部草案',
+    internalBriefDraft: '内部解读草案',
+    internalBriefDescription: '非官方来源记录的内部解读草案',
+    englishAvailable: '有英文版',
+    englishTranslationAvailable: '有英文译文',
+    trust: {
+      machine: { label: '机器草稿', ariaLabel: '未经审核的机器生成草稿' },
+      reviewed: { label: 'LLM 已审核', ariaLabel: '由 LLM 辅助并经主持人审核' },
+      native: { label: '母语者已审核', ariaLabel: '经母语者审核' },
+      'author-verified': { label: '作者已确认', ariaLabel: '作者直接确认' },
+    },
+    translationStatus: {
+      machine: { label: '机器翻译', ariaLabel: '未经审核的机器翻译草稿' },
+      reviewed: { label: '已审核', ariaLabel: '经 LLM 或人工审核的翻译' },
+      native: { label: '母语者已审核', ariaLabel: '经母语者审核的翻译' },
+      'author-verified': { label: '作者已确认', ariaLabel: '作者直接确认的翻译' },
+    },
+  },
+  es: {
+    agendaCategory: { general: 'General', meta: 'Meta', action: 'Acción' },
+    agendaCategoryLegend: 'Leyenda de categorías de agenda',
+    agendaCategoryPrefix: 'Categoría:',
+    agendaStatus: { proposed: 'Propuesto', discussed: 'Debatido', recommended: 'Recomendado', final: 'Final' },
+    internalDraft: 'Borrador interno',
+    internalBriefDraft: 'Borrador explicativo interno',
+    internalBriefDescription: 'Borrador explicativo interno, no un registro de una fuente oficial',
+    englishAvailable: 'Disponible en inglés',
+    englishTranslationAvailable: 'Traducción al inglés disponible',
+    trust: {
+      machine: { label: 'Borrador automático', ariaLabel: 'Borrador generado automáticamente, sin revisar' },
+      reviewed: { label: 'Revisado con LLM', ariaLabel: 'Asistido por LLM y revisado por moderación' },
+      native: { label: 'Revisado por hablante nativo', ariaLabel: 'Revisado por una persona hablante nativa' },
+      'author-verified': { label: 'Verificado por la autoría', ariaLabel: 'Verificado directamente por la autoría' },
+    },
+    translationStatus: {
+      machine: { label: 'Traducción automática', ariaLabel: 'Borrador de traducción automática sin revisar' },
+      reviewed: { label: 'Revisado', ariaLabel: 'Traducción revisada mediante LLM o por una persona' },
+      native: { label: 'Revisado por hablante nativo', ariaLabel: 'Traducción revisada por una persona hablante nativa' },
+      'author-verified': { label: 'Verificado por la autoría', ariaLabel: 'Traducción verificada directamente por la autoría' },
+    },
+  },
+  ar: {
+    agendaCategory: { general: 'عام', meta: 'حول العملية', action: 'إجراء' },
+    agendaCategoryLegend: 'دليل فئات جدول الأعمال',
+    agendaCategoryPrefix: 'الفئة:',
+    agendaStatus: { proposed: 'مقترح', discussed: 'نوقش', recommended: 'موصى به', final: 'نهائي' },
+    internalDraft: 'مسودة داخلية',
+    internalBriefDraft: 'مسودة شرح داخلية',
+    internalBriefDescription: 'مسودة شرح داخلية وليست سجلًا من مصدر رسمي',
+    englishAvailable: 'متوفر بالإنجليزية',
+    englishTranslationAvailable: 'تتوفر ترجمة إنجليزية',
+    trust: {
+      machine: { label: 'مسودة آلية', ariaLabel: 'مسودة مولدة آليًا لم تراجع' },
+      reviewed: { label: 'راجعه نموذج لغوي', ariaLabel: 'بمساعدة نموذج لغوي ومراجعة الميسّر' },
+      native: { label: 'تحقق منها متحدث أصلي', ariaLabel: 'راجعها متحدث أصلي' },
+      'author-verified': { label: 'تحقق منها المؤلف', ariaLabel: 'تحقق منها المؤلف مباشرة' },
+    },
+    translationStatus: {
+      machine: { label: 'ترجمة آلية', ariaLabel: 'مسودة ترجمة آلية لم تراجع' },
+      reviewed: { label: 'تمت المراجعة', ariaLabel: 'ترجمة راجعها نموذج لغوي أو شخص' },
+      native: { label: 'تحقق منها متحدث أصلي', ariaLabel: 'ترجمة راجعها متحدث أصلي' },
+      'author-verified': { label: 'تحقق منها المؤلف', ariaLabel: 'ترجمة تحقق منها المؤلف مباشرة' },
+    },
+  },
+};
+
 export const SITE_LOCALE_CODES: SiteLocale[] = SITE_LOCALES.map(({ code }) => code);
 export const STRUCTURAL_LOCALE_CODES: SiteLocale[] = SITE_LOCALES
   .filter(({ contentMode }) => contentMode === 'structural')
@@ -208,6 +371,10 @@ export function localeOgTag(value: string | undefined): string {
 
 export function siteShellCopy(value: string | undefined): SiteShellCopy {
   return isSiteLocale(value) ? SITE_SHELL_COPY[value] : SITE_SHELL_COPY.en;
+}
+
+export function contentUiCopy(value: string | undefined): ContentUiCopy {
+  return isSiteLocale(value) ? CONTENT_UI_COPY[value] : CONTENT_UI_COPY.en;
 }
 
 export function replaceLocalePrefix(pathname: string, targetLocale: SiteLocale): string {

@@ -20,7 +20,7 @@ import HomeLayout from '../../layouts/HomeLayout.astro';
 import AgendaCard from '../../components/AgendaCard.astro';
 import TrustBadge from '../../components/TrustBadge.astro';
 import TranslationFallbackBanner from '../../components/TranslationFallbackBanner.astro';
-import { SITE_LOCALE_CODES, STRUCTURAL_LOCALE_CODES, isSiteLocale } from '../../lib/site-locales';
+import { SITE_LOCALE_CODES, STRUCTURAL_LOCALE_CODES, contentUiCopy, isSiteLocale } from '../../lib/site-locales';
 
 // R-02: repo URL constant — replace all placeholder https://github.com links
 const REPO = 'https://github.com/seojaehong/climate-assembly-wiki';
@@ -75,6 +75,7 @@ if (nextSession?.data.date) {
 
 const isKo = lang === 'ko';
 const isStructuralLocale = isSiteLocale(lang) && STRUCTURAL_LOCALE_CODES.includes(lang);
+const contentCopy = contentUiCopy(lang);
 
 // Latest activity — official climatevoice notices plus site updates.
 const latestActivity = isKo ? [
@@ -425,30 +426,30 @@ const ldJson = JSON.stringify([
       </div>
 
       {/* R-16: Category colour legend — one compact row above the grid */}
-      <div class="flex flex-wrap items-center gap-4 mb-6" aria-label={isKo ? '의제 분류 범례' : 'Agenda category legend'}>
-        <span class="text-xs text-[var(--color-fg-muted)] font-semibold">{isKo ? '분류:' : 'Category:'}</span>
+      <div class="flex flex-wrap items-center gap-4 mb-6" aria-label={contentCopy.agendaCategoryLegend}>
+        <span class="text-xs text-[var(--color-fg-muted)] font-semibold">{contentCopy.agendaCategoryPrefix}</span>
         <span class="flex items-center gap-1.5 text-xs">
           <span class="inline-block w-3 h-3 rounded-full" style="background:var(--color-cat-general-bar)" aria-hidden="true"></span>
-          <span style="color:var(--color-cat-general-fg)">{isKo ? '일반 의제' : 'General'}</span>
+          <span style="color:var(--color-cat-general-fg)">{contentCopy.agendaCategory.general}</span>
         </span>
         <span class="flex items-center gap-1.5 text-xs">
           <span class="inline-block w-3 h-3 rounded-full" style="background:var(--color-cat-meta-bar)" aria-hidden="true"></span>
-          <span style="color:var(--color-cat-meta-fg)">{isKo ? '메타 의제' : 'Meta'}</span>
+          <span style="color:var(--color-cat-meta-fg)">{contentCopy.agendaCategory.meta}</span>
         </span>
         <span class="flex items-center gap-1.5 text-xs">
           <span class="inline-block w-3 h-3 rounded-full" style="background:var(--color-cat-action-bar)" aria-hidden="true"></span>
-          <span style="color:var(--color-cat-action-fg)">{isKo ? '실행 의제' : 'Action'}</span>
+          <span style="color:var(--color-cat-action-fg)">{contentCopy.agendaCategory.action}</span>
         </span>
       </div>
 
       {heroAgendas.length > 0 ? (
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {heroAgendas.map((entry) => {
-            // R-05: KO original is always 'native' trust. EN shows the translation status.
+            // R-05: Only EN renders the EN translation; all other locale cards show the KO source title.
             const contentStatus =
-              lang === 'ko'
-                ? 'native'
-                : (entry.data.translations?.en?.status ?? 'machine');
+              lang === 'en'
+                ? (entry.data.translations?.en?.status ?? 'machine')
+                : 'native';
             return (
               <AgendaCard
                 id={entry.data.id}
