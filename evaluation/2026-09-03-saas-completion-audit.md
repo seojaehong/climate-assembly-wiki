@@ -87,3 +87,12 @@ bigint ID 대체를 금지한다. 실제 자격증명 주입 실행과 private e
 payload key만 비식별 검사한 결과 `submission_item`을 포함한 platform snapshot은 0행이었다.
 따라서 현재 실 ID 확보 경로는 없다. 최소 테이블 SELECT 권한 또는 UUID를 반환하는 read-only
 SECURITY DEFINER RPC를 운영에 추가하는 것은 권한 변경이므로 별도 승인 전에는 적용하지 않는다.
+
+### 최소 권한 RPC 준비
+
+직접 table SELECT를 넓히지 않고 지정 세션의 현재 identity source만 반환하는 service-role-only
+RPC를 권고안으로 확정했다. exporter에는 명시적 `read_only_rpc` adapter를 추가하되 자동
+fallback은 두지 않았다. RPC 응답의 schema version·root field·세션/행 관계를 전수 검증하고
+private export에 source access method를 보존한다. 실제 migration SQL은 승인 전 작성하지 않았고,
+적용·allow/deny·rollback·실 export 범위는
+`docs/platform/SUBMISSION_IDENTITY_RPC_APPROVAL_PACKET.md`에 분리했다.
