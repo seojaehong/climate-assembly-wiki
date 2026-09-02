@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "organizationCode": "replace-with-institution-code",
+  "systemName": "공론화 SaaS",
+  "serviceTrack": "pending",
+  "privacyDecision": {
+    "status": "pending",
+    "reviewerRole": null,
+    "reviewedAt": null,
+    "lawfulBasisReference": null,
+    "politicalOpinionClassification": "pending",
+    "audioBiometricClassification": "pending",
+    "overseasTransferDecision": "pending",
+    "processorInventoryStatus": "pending",
+    "noticeAndConsentStatus": "pending"
+  },
+  "recordsDecision": {
+    "status": "pending",
+    "reviewerRole": null,
+    "reviewedAt": null,
+    "scheduleAuthority": null,
+    "mappings": [
+      {
+        "datasetId": "analysis-publication",
+        "recordClass": "pending",
+        "unitTaskCode": null,
+        "retentionPeriod": "pending",
+        "retentionTrigger": null,
+        "dispositionAction": "pending",
+        "dispositionAuthority": null,
+        "destructionMethod": null
+      },
+      {
+        "datasetId": "anonymous-voting",
+        "recordClass": "pending",
+        "unitTaskCode": null,
+        "retentionPeriod": "pending",
+        "retentionTrigger": null,
+        "dispositionAction": "pending",
+        "dispositionAuthority": null,
+        "destructionMethod": null
+      },
+      {
+        "datasetId": "attendance-identity",
+        "recordClass": "pending",
+        "unitTaskCode": null,
+        "retentionPeriod": "pending",
+        "retentionTrigger": null,
+        "dispositionAction": "pending",
+        "dispositionAuthority": null,
+        "destructionMethod": null
+      },
+      {
+        "datasetId": "core-session-operations",
+        "recordClass": "pending",
+        "unitTaskCode": null,
+        "retentionPeriod": "pending",
+        "retentionTrigger": null,
+        "dispositionAction": "pending",
+        "dispositionAuthority": null,
+        "destructionMethod": null
+      },
+      {
+        "datasetId": "deliberation-content",
+        "recordClass": "pending",
+        "unitTaskCode": null,
+        "retentionPeriod": "pending",
+        "retentionTrigger": null,
+        "dispositionAction": "pending",
+        "dispositionAuthority": null,
+        "destructionMethod": null
+      },
+      {
+        "datasetId": "design-provisioning",
+        "recordClass": "pending",
+        "unitTaskCode": null,
+        "retentionPeriod": "pending",
+        "retentionTrigger": null,
+        "dispositionAction": "pending",
+        "dispositionAuthority": null,
+        "destructionMethod": null
+      },
+      {
+        "datasetId": "resilience-export",
+        "recordClass": "pending",
+        "unitTaskCode": null,
+        "retentionPeriod": "pending",
+        "retentionTrigger": null,
+        "dispositionAction": "pending",
+        "dispositionAuthority": null,
+        "destructionMethod": null
+      },
+      {
+        "datasetId": "tenant-staff-access",
+        "recordClass": "pending",
+        "unitTaskCode": null,
+        "retentionPeriod": "pending",
+        "retentionTrigger": null,
+        "dispositionAction": "pending",
+        "dispositionAuthority": null,
+        "destructionMethod": null
+      },
+      {
+        "datasetId": "tenant-context-selection",
+        "recordClass": "pending",
+        "unitTaskCode": null,
+        "retentionPeriod": "pending",
+        "retentionTrigger": null,
+        "dispositionAction": "pending",
+        "dispositionAuthority": null,
+        "destructionMethod": null
+      },
+      {
+        "datasetId": "transient-audio-transcript",
+        "recordClass": "pending",
+        "unitTaskCode": null,
+        "retentionPeriod": "pending",
+        "retentionTrigger": null,
+        "dispositionAction": "pending",
+        "dispositionAuthority": null,
+        "destructionMethod": null
+      }
+    ]
+  }
+}

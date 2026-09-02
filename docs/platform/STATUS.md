@@ -285,6 +285,18 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 
 **A4 함수 exact configuration 결속(2026-08-27):** mutation RPC의 정상 `search_path`·`row_security=off`를 유지한 채 `session_replication_role=replica`를 추가하면 기존 verifier의 포함 검사를 통과해 함수 실행 중 FK·trigger를 우회할 수 있는 공백을 재현했다. Post-apply verifier는 canonical/SHA helper를 포함한 A4 함수 8개 모두의 `proconfig`를 migration 선언값과 exact 대조한다. 기존 포함검사를 쓰던 join-code·authorization helper와 mutation·status 각 두 overload 6개에 위험 설정을 독립적으로 추가한 PostgreSQL 16 리허설은 모두 함수별 안정 계약 오류로 거부됐고, reset 뒤 정상 검증이 복구됐다. Bundle artifact 20개 checksum은 `352503218ffe09256264839c4fcd83547f4465d754bb21980eba098c01d0a369`이며 production migration·DB·GRANT·credential·traffic은 변경하지 않았다.
 
+## B4/B5 개인정보·기록물 지원 패키지 (2026-09-03)
+
+`platform-compliance-catalog.json`이 현재·휴면 migration과 legacy 운영 schema의
+`climate_vote` table 37개를 9개 DB 업무 데이터셋에 중복 없이 매핑하고, browser-memory-only
+음성·전사 후보를 열 번째 비영속 데이터셋으로 분리한다. 저장소 밖 기관 profile에
+개인정보 분류·처리 근거·국외 이전·수탁자·고지/동의와 기록관리기준표·기록 유형·단위과제·
+보존기간·기산점·처분 권한·파기 방법을 채우면 `platform-compliance-package.mjs`가 checksum을
+가진 JSON·Markdown 패키지와 Mermaid 데이터 흐름도를 생성한다. 기본 template의 기관 미결정
+80개는 모두 blocker로 남고 제출 준비·법률 판단·인증을
+거짓으로 표시하지 않는다. DB·Auth·외부 API·데이터 mutation은 없다. 실제 B4/B5 완료에는 기관
+개인정보 책임 역할과 기록물관리 책임 역할의 검토가 필요하다.
+
 ## 다음 액션 (권장 순서)
 1. ✅ **완료 (2026-08-29)** — `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향을 권고안대로 승인했다(§0 승인 기록, `DECISIONS.md`). 진행자 전환 시점·공공 데이터 등급·CSAP 등급·provider 적격성·tenancy topology·named pilot·owner는 조건부로 기록했다. production mutation은 승인하지 않았다
 2. (별도 승인 시) P1C 휴면 schema 적용·`expect_staff_grants=off` 검증
