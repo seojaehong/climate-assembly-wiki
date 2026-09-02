@@ -12,7 +12,7 @@
  * aria-label supports ko / en (pass lang prop; default 'ko').
  */
 
-type TranslationStatus = 'machine' | 'reviewed' | 'native' | 'author-verified';
+import { contentUiCopy, type TranslationStatus } from '../lib/site-locales';
 
 interface Props {
   status: TranslationStatus;
@@ -24,56 +24,34 @@ const { status, lang = 'ko' } = Astro.props;
 
 const config: Record<TranslationStatus, {
   icon: string;
-  labelKo: string;
-  labelEn: string;
-  ariaKo: string;
-  ariaEn: string;
   className: string;
 }> = {
   machine: {
     icon: '⚠️',
-    labelKo: '기계 번역',
-    labelEn: 'Machine translation',
-    ariaKo: '기계 번역 초안 — 검토 전',
-    ariaEn: 'Machine translation — unreviewed draft',
     className: 'bg-yellow-50 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300',
   },
   reviewed: {
     icon: '🔵',
-    labelKo: '검토됨',
-    labelEn: 'Human-reviewed',
-    ariaKo: 'LLM 또는 사람이 검토한 번역',
-    ariaEn: 'LLM-assisted, human-reviewed translation',
     className: 'bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300',
   },
   native: {
     icon: '🟢',
-    labelKo: '원어민 검증',
-    labelEn: 'Native-verified',
-    ariaKo: '원어민이 검증한 번역',
-    ariaEn: 'Reviewed and verified by a native speaker',
     className: 'bg-green-50 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300',
   },
   'author-verified': {
     icon: '🟢✓',
-    labelKo: '저자 검증',
-    labelEn: 'Author-verified',
-    ariaKo: '저자가 직접 검증한 번역 — 최고 등급',
-    ariaEn: 'Author-verified translation — highest grade',
     className: 'bg-green-50 text-green-800 border-green-500 border-2 font-semibold dark:bg-green-900/30 dark:text-green-200 dark:border-green-400',
   },
 };
 
 const cfg = config[status];
-const isKo = lang === 'ko';
-const label = isKo ? cfg.labelKo : cfg.labelEn;
-const ariaLabel = isKo ? cfg.ariaKo : cfg.ariaEn;
+const copy = contentUiCopy(lang).translationStatus[status];
 ---
 <span
   class={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded border ${cfg.className}`}
   role="img"
-  aria-label={ariaLabel}
+  aria-label={copy.ariaLabel}
 >
   <span aria-hidden="true">{cfg.icon}</span>
-  {label}
+  {copy.label}
 </span>

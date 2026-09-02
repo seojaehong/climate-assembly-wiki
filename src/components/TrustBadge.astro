@@ -13,8 +13,10 @@
  * R-07: native = outline style, author-verified = filled style (visually distinct)
  */
 
+import { contentUiCopy, type TrustStatus } from '../lib/site-locales';
+
 interface Props {
-  status: 'machine' | 'reviewed' | 'native' | 'author-verified';
+  status: TrustStatus;
   /** Display language for label text. Defaults to Astro's current locale. */
   lang?: string;
 }
@@ -28,43 +30,25 @@ const CONFIG = {
     classes: 'border',
     style: 'background-color:var(--color-warn-bg);color:var(--color-warn-fg);border-color:var(--color-warn);',
     icon: '⚠',
-    labelKo: '기계 초안',
-    labelEn: 'Machine draft',
-    ariaKo: '기계 번역 초안',
-    ariaEn: 'Machine-generated draft, unreviewed',
   },
   reviewed: {
     classes: 'bg-blue-100 text-blue-800 border border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-600',
     icon: '◉',
-    labelKo: 'LLM 검토',
-    labelEn: 'LLM-reviewed',
-    ariaKo: 'LLM 검토 완료',
-    ariaEn: 'LLM-assisted, moderator reviewed',
   },
   native: {
     // R-07: outline style — border-only, no fill background
     classes: 'bg-transparent text-emerald-700 border-2 border-emerald-600 dark:text-emerald-300 dark:border-emerald-500',
     icon: '✓',
-    labelKo: '원어민 검증',
-    labelEn: 'Native-verified',
-    ariaKo: '원어민 검증',
-    ariaEn: 'Reviewed by native speaker',
   },
   'author-verified': {
     // R-07: filled style — solid emerald background
     classes: 'bg-emerald-600 text-white border border-emerald-600 font-semibold dark:bg-emerald-700 dark:border-emerald-500 dark:text-white',
     icon: '✓✓',
-    labelKo: '저자 검증',
-    labelEn: 'Author-verified',
-    ariaKo: '저자 직접 검증',
-    ariaEn: 'Author-verified — highest grade',
   },
 } as const;
 
 const cfg = CONFIG[status];
-const isKo = lang === 'ko';
-const label = isKo ? cfg.labelKo : cfg.labelEn;
-const ariaLabel = isKo ? cfg.ariaKo : cfg.ariaEn;
+const copy = contentUiCopy(lang).trust[status];
 const badgeStyle = 'style' in cfg ? (cfg as { style: string }).style : undefined;
 ---
 
@@ -72,8 +56,8 @@ const badgeStyle = 'style' in cfg ? (cfg as { style: string }).style : undefined
   class={`trust-badge trust-badge--${status} inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded ${cfg.classes}`}
   style={badgeStyle}
   role="img"
-  aria-label={ariaLabel}
+  aria-label={copy.ariaLabel}
 >
   <span aria-hidden="true">{cfg.icon}</span>
-  {label}
+  {copy.label}
 </span>

@@ -15,6 +15,7 @@ import TrustBadge from '../components/TrustBadge.astro';
 import LicenseBadge from '../components/LicenseBadge.astro';
 import TranslationFallbackBanner from '../components/TranslationFallbackBanner.astro';
 import Toc from '../components/Toc.astro';
+import { contentUiCopy } from '../lib/site-locales';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -101,6 +102,7 @@ const {
 } = Astro.props;
 
 const showTrustBadge = Boolean(trustLabel) && !isInternalDraft;
+const contentCopy = contentUiCopy(lang);
 
 // ---------------------------------------------------------------------------
 // Canonical site base URL — use Astro.site (set in astro.config.mjs via PUBLIC_SITE_URL env)
@@ -197,7 +199,7 @@ const ldJson = JSON.stringify(articleSchema);
               <TrustBadge status={trustLabel} lang={lang} />
             ) : (
               <span class="rounded-md border border-amber-400/70 px-2 py-0.5 text-amber-700 dark:text-amber-200">
-                {lang === 'ko' ? '내부 가안' : 'Internal draft'}
+                {contentCopy.internalDraft}
               </span>
             )}
             <span aria-hidden="true" class="text-[var(--color-border-strong)]">·</span>

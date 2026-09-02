@@ -4,6 +4,7 @@ import {
   SITE_LOCALE_CODES,
   SITE_LOCALES,
   STRUCTURAL_LOCALE_CODES,
+  contentUiCopy,
   isSiteLocale,
   localeDirection,
   localeOgTag,
@@ -54,5 +55,27 @@ describe('site locale registry', () => {
     expect(siteShellCopy('zh').searchClose).toBe('关闭');
     expect(siteShellCopy('es').license).toBe('Licencia');
     expect(siteShellCopy('unknown').siteName).toBe('Korea Climate Assembly Wiki');
+  });
+
+  it('provides localized agenda and trust labels for every public locale', () => {
+    expect(contentUiCopy('ar')).toMatchObject({
+      agendaCategory: { general: 'عام', meta: 'حول العملية', action: 'إجراء' },
+      agendaCategoryLegend: 'دليل فئات جدول الأعمال',
+      agendaCategoryPrefix: 'الفئة:',
+      agendaStatus: { proposed: 'مقترح', discussed: 'نوقش', recommended: 'موصى به', final: 'نهائي' },
+      internalDraft: 'مسودة داخلية',
+      trust: {
+        machine: { label: 'مسودة آلية' },
+        native: { label: 'تحقق منها متحدث أصلي' },
+      },
+      translationStatus: {
+        reviewed: { label: 'تمت المراجعة' },
+        'author-verified': { label: 'تحقق منها المؤلف' },
+      },
+    });
+    expect(contentUiCopy('ja').agendaStatus.recommended).toBe('勧告');
+    expect(contentUiCopy('zh').trust.reviewed.label).toBe('LLM 已审核');
+    expect(contentUiCopy('es').translationStatus.machine.label).toBe('Traducción automática');
+    expect(contentUiCopy('unknown').agendaCategory.action).toBe('Action');
   });
 });
