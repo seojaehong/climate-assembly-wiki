@@ -78,3 +78,12 @@ strict check에서 기존 `BaseLayout.astro`의 hreflang 반복 변수가 암시
 과거 행의 원래 UUID는 현재 스키마만으로 복구할 수 없다. 따라서 8/29 분석 원문과 현재 행이
 exact match되지 않으면 실데이터 provenance 완료 증거가 아니며, 임의 UUID 생성이나 archive
 bigint ID 대체를 금지한다. 실제 자격증명 주입 실행과 private export 생성은 아직 하지 않았다.
+
+### live read probe
+
+환경에 이미 주입된 운영 URL·service role key를 값 노출 없이 사용해 새 exporter를 실행했다.
+지정 세션의 첫 `SELECT`가 PostgreSQL 권한 코드 `42501`·HTTP 403으로 중단됐고 private output은
+생성되지 않았다. 같은 자격증명으로 기존 `climate_vote.snapshots` 22행은 읽을 수 있었지만,
+payload key만 비식별 검사한 결과 `submission_item`을 포함한 platform snapshot은 0행이었다.
+따라서 현재 실 ID 확보 경로는 없다. 최소 테이블 SELECT 권한 또는 UUID를 반환하는 read-only
+SECURITY DEFINER RPC를 운영에 추가하는 것은 권한 변경이므로 별도 승인 전에는 적용하지 않는다.

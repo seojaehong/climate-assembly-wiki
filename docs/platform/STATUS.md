@@ -291,4 +291,4 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 3. (별도 승인 시) A2 count-only preflight RPC 설치·진단 후 blocker별 Auth·membership 또는 mapping remediation 계획 승인
 4. fresh readiness와 별도 승인 뒤에만 A2 GRANT, A4 RPC 권한, staff traffic을 각각 활성화
 5. 스크린리더·모바일 보조기기 수동 접근성 평가
-6. 지정 프로젝트·세션만 SELECT하고 저장소 밖에 최소 원문 좌표를 쓰는 read-only identity export 도구까지 완료. 실제 자격증명 주입 실행 후 8/29 provenance map·검수 전 import plan 생성
+6. 지정 프로젝트·세션만 SELECT하고 저장소 밖에 최소 원문 좌표를 쓰는 read-only identity export 도구까지 완료. 9/3 live probe에서 service role 직접 SELECT는 `42501`, 읽을 수 있는 legacy snapshot 22개 중 `submission_item` 포함 payload는 0개였다. 별도 승인으로 최소 SELECT/RPC 권한을 연 뒤 8/29 provenance map·검수 전 import plan 생성
