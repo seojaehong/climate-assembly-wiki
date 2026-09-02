@@ -2,7 +2,7 @@
 
 ## 현재 구현
 
-플랫폼의 `공개` 화면에서 새로 발행하고 공개 재조회까지 검증한 결과에 한해, 검수 완료 권고를 선택하여 다음 기관 답변을 직접 입력할 수 있다.
+플랫폼의 `공개` 화면에서 새로 발행한 결과 또는 같은 스코프의 기존 공개 토큰을 `result_get`으로 재조회·검증한 결과에 한해, 검수 완료 권고를 선택하여 다음 기관 답변을 직접 입력할 수 있다. 기존 URL 입력은 현재 사이트의 `/r/<32자리 hex>`만 허용하고 외부 origin, URL credential, query, fragment를 거부한다.
 
 - 이행 상태: 기관 검토 중, 이행 계획 수립, 이행 중, 이행 완료, 미이행 사유 공개
 - 책임 기관
@@ -19,7 +19,7 @@
 ```text
 climate_vote.result_implementation_upsert(
   p_token text,
-  p_result_id uuid,
+  p_result_token text,
   p_issue_id uuid,
   p_implementation jsonb
 )
@@ -32,7 +32,7 @@ RPC가 없으면 화면은 저장 성공을 가장하지 않고 `A7 migration �
 승인되면 다음 조건으로 SQL 초안·rollback·PostgreSQL 16 검증을 함께 작성한다.
 
 1. HQ capability 토큰을 `attendance_token_row(p_token)`으로 검증하고 `scope = 'hq'`만 허용한다.
-2. 선택된 기관 컨텍스트와 결과 페이지의 기관이 일치해야 한다.
+2. 공개 토큰으로 찾은 결과 페이지의 기관과 선택된 기관 컨텍스트가 일치해야 하며 내부 result UUID를 브라우저에 새로 노출하지 않는다.
 3. 공개 중이며 archive되지 않은 `result_page`만 갱신한다.
 4. `p_issue_id`는 해당 결과 snapshot의 `body.issues` 안에 있고 `review_status = 'reviewed'`여야 한다.
 5. 허용 필드는 `status`, `responsible_body`, `updated_at`, `summary`, `evidence_url`뿐이며 길이·canonical UTC·HTTPS·URL credential 금지 규칙을 서버에서도 재검증한다.

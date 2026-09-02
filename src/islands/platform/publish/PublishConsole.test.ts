@@ -12,6 +12,8 @@ describe('PublishConsole', () => {
     expect(html).toContain('HQ 인증 토큰');
     expect(html).toContain('공개 결과 제목');
     expect(html).toContain('검수 결과 발행');
+    expect(html).toContain('기존 공개 결과 토큰 또는 URL');
+    expect(html).toContain('기존 결과 불러와 이행조치 관리');
     expect(html).toContain('topic-1');
     expect(html).toContain('AI는 초안을 만들고');
   });
@@ -29,18 +31,17 @@ describe('PublishConsole', () => {
     expect(copiedHtml).toContain('공개 결과 URL을 클립보드에 복사했습니다.');
   });
 
-  it('발행과 공개 해제가 같은 동기 operation lock을 공유한다', () => {
+  it('발행·공개 해제·기존 결과 연결이 같은 동기 operation lock을 공유한다', () => {
     const source = readFileSync(new URL('./PublishConsole.tsx', import.meta.url), 'utf8');
 
-    expect(source.match(/runExclusivePublicationOperation\(operationLock/g)).toHaveLength(2);
-    expect(source.match(/operationLock\.current/g)).toHaveLength(2);
+    expect(source.match(/runExclusivePublicationOperation\(operationLock/g)).toHaveLength(3);
+    expect(source.match(/operationLock\.current/g)).toHaveLength(3);
     expect(source).toContain('disabled={busy}');
   });
 
   it('검수 완료 권고의 기관 이행조치 직접 등록 폼을 렌더한다', () => {
     const html = renderToStaticMarkup(createElement(ImplementationConsole, {
       hqToken: 'hq-token',
-      resultId: 'result-1',
       resultToken: 'public-token',
       resultBody: {
         issues: [{

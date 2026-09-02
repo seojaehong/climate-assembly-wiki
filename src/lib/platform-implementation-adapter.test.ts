@@ -20,7 +20,7 @@ describe('resultImplementationUpsert', () => {
       error: null,
     });
 
-    const result = await resultImplementationUpsert('hq-token', 'result-1', 'issue-1', {
+    const result = await resultImplementationUpsert('hq-token', '0123456789abcdef0123456789abcdef', 'issue-1', {
       status: 'in_progress',
       responsible_body: '교통정책 담당기관',
       updated_at: '2026-09-03T01:30:00.000Z',
@@ -30,7 +30,7 @@ describe('resultImplementationUpsert', () => {
 
     expect(rpc).toHaveBeenCalledWith('result_implementation_upsert', {
       p_token: 'hq-token',
-      p_result_id: 'result-1',
+      p_result_token: '0123456789abcdef0123456789abcdef',
       p_issue_id: 'issue-1',
       p_implementation: {
         status: 'in_progress',
@@ -46,7 +46,7 @@ describe('resultImplementationUpsert', () => {
   it('degrades to an explicit approval notice while the RPC migration is absent', async () => {
     rpc.mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'Could not find the function' } });
 
-    const result = await resultImplementationUpsert('hq-token', 'result-1', 'issue-1', {
+    const result = await resultImplementationUpsert('hq-token', '0123456789abcdef0123456789abcdef', 'issue-1', {
       status: 'planned',
       responsible_body: '교통정책 담당기관',
       updated_at: '2026-09-03T01:30:00.000Z',

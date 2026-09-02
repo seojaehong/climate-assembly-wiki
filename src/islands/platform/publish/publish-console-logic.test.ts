@@ -3,6 +3,8 @@ import { HQ_TOKEN_KEY } from '../../mod/hq-gate-logic';
 import {
   buildPublicationScopeKey,
   buildPublicResultUrl,
+  buildAttachedPublication,
+  parsePublicResultToken,
   readStoredHqToken,
   runExclusivePublicationOperation,
   validatePublishInput,
@@ -120,6 +122,60 @@ describe('buildPublicResultUrl', () => {
       .toBe('https://climate-assembly.org/r/abc123');
     expect(buildPublicResultUrl('abc123', 'https://preview.example'))
       .toBe('https://preview.example/r/abc123');
+  });
+});
+
+describe('parsePublicResultToken', () => {
+  const token = '0123456789abcdef0123456789abcdef';
+
+  it('accepts a canonical token or same-origin public result URL', () => {
+    expect(parsePublicResultToken(`  ${token.toUpperCase()}  `, 'https://climate-assembly.org')).toEqual({
+      ok: true,
+      token,
+      error: null,
+    });
+    expect(parsePublicResultToken(`https://climate-assembly.org/r/${token}`, 'https://climate-assembly.org')).toEqual({
+      ok: true,
+      token,
+      error: null,
+    });
+  });
+
+  it('rejects foreign origins, credentials, query strings and malformed tokens', () => {
+    expect(parsePublicResultToken(`https://evil.example/r/${token}`, 'https://climate-assembly.org').error).toContain('현재 사이트');
+    expect(parsePublicResultToken(`https://user:secret@climate-assembly.org/r/${token}`, 'https://climate-assembly.org').error).toContain('현재 사이트');
+    expect(parsePublicResultToken(`https://climate-assembly.org/r/${token}?leak=1`, 'https://climate-assembly.org').error).toContain('형식');
+    expect(parsePublicResultToken('not-a-token', 'https://climate-assembly.org').error).toContain('형식');
+  });
+});
+
+describe('buildAttachedPublication', () => {
+  const token = '0123456789abcdef0123456789abcdef';
+  const actual = {
+    scope: 'session',
+    scope_id: 'session-1',
+    title: '기후시민회의 결과',
+    published_at: '2026-09-03T01:30:00.000Z',
+    body: { reviewed_count: 2, issues: [] },
+    hitl_notice: '검수 안내',
+  };
+
+  it('binds an existing public snapshot to the currently selected scope', () => {
+    expect(buildAttachedPublication(token, 'https://climate-assembly.org', 'session', 'session-1', actual)).toEqual({
+      id: null,
+      token,
+      title: '기후시민회의 결과',
+      url: `https://climate-assembly.org/r/${token}`,
+      publishedAt: '2026-09-03T01:30:00.000Z',
+      reviewedCount: 2,
+      verified: true,
+      body: actual.body,
+    });
+  });
+
+  it('rejects a snapshot from another scope or malformed publication metadata', () => {
+    expect(() => buildAttachedPublication(token, 'https://climate-assembly.org', 'session', 'other', actual)).toThrow('스코프');
+    expect(() => buildAttachedPublication(token, 'https://climate-assembly.org', 'session', 'session-1', { ...actual, published_at: 'invalid' })).toThrow('발행 시각');
   });
 });
 

@@ -501,14 +501,14 @@ export interface ResultImplementationUpsertResult {
  */
 export async function resultImplementationUpsert(
   hqToken: string,
-  resultId: string,
+  resultToken: string,
   issueId: string,
   implementation: ResultImplementationInput,
 ): Promise<PlatformResult<ResultImplementationUpsertResult>> {
   return guard(async (sb) => {
     const { data, error } = await sb.schema(SCHEMA).rpc('result_implementation_upsert', {
       p_token: hqToken,
-      p_result_id: resultId,
+      p_result_token: resultToken,
       p_issue_id: issueId,
       p_implementation: implementation,
     });

@@ -90,6 +90,82 @@ export function buildPublicResultUrl(token: string, origin: string): string {
   return `${origin.replace(/\/+$/, '')}/r/${encodeURIComponent(token)}`;
 }
 
+const PUBLIC_RESULT_TOKEN_PATTERN = /^[0-9a-f]{32}$/;
+
+export type PublicResultTokenValidation =
+  | { ok: true; token: string; error: null }
+  | { ok: false; token: null; error: string };
+
+/** Accepts a canonical token or a same-origin /r/<token> URL without forwarding arbitrary URLs. */
+export function parsePublicResultToken(input: string, currentOrigin: string): PublicResultTokenValidation {
+  const normalized = input.trim();
+  const directToken = normalized.toLowerCase();
+  if (PUBLIC_RESULT_TOKEN_PATTERN.test(directToken)) return { ok: true, token: directToken, error: null };
+
+  let candidate: URL;
+  let origin: URL;
+  try {
+    candidate = new URL(normalized);
+    origin = new URL(currentOrigin);
+  } catch {
+    return { ok: false, token: null, error: '공개 결과 토큰 또는 URL 형식을 확인해 주세요.' };
+  }
+  if (candidate.origin !== origin.origin || candidate.username || candidate.password) {
+    return { ok: false, token: null, error: '현재 사이트의 공개 결과 URL만 사용할 수 있습니다.' };
+  }
+  if (candidate.search || candidate.hash) {
+    return { ok: false, token: null, error: '공개 결과 URL 형식을 확인해 주세요.' };
+  }
+  const match = candidate.pathname.match(/^\/r\/([0-9a-f]{32})\/?$/i);
+  if (!match) return { ok: false, token: null, error: '공개 결과 토큰 또는 URL 형식을 확인해 주세요.' };
+  return { ok: true, token: match[1].toLowerCase(), error: null };
+}
+
+export interface AttachedPublication {
+  id: null;
+  token: string;
+  title: string;
+  url: string;
+  publishedAt: string;
+  reviewedCount: number;
+  verified: true;
+  body: unknown;
+}
+
+/** Converts a public read into editor state only when it belongs to the selected platform scope. */
+export function buildAttachedPublication(
+  token: string,
+  origin: string,
+  scope: ScopeLevel | null,
+  scopeId: string | null,
+  actual: ResultPageView | null,
+): AttachedPublication {
+  if (!scope || !scopeId) throw new Error('기존 결과를 불러올 스코프를 먼저 선택해 주세요.');
+  if (!actual) throw new Error('공개 결과가 조회되지 않습니다.');
+  if (actual.scope !== scope || actual.scope_id !== scopeId) {
+    throw new Error('공개 결과가 현재 선택한 스코프와 일치하지 않습니다.');
+  }
+  const title = actual.title.trim();
+  if (!title) throw new Error('공개 결과 제목을 확인할 수 없습니다.');
+  const publishedAt = new Date(actual.published_at);
+  if (Number.isNaN(publishedAt.getTime())) throw new Error('공개 결과 발행 시각을 확인할 수 없습니다.');
+  const body = typeof actual.body === 'object' && actual.body !== null ? actual.body as Record<string, unknown> : {};
+  const reviewedCount = body.reviewed_count;
+  if (!Number.isSafeInteger(reviewedCount) || (reviewedCount as number) < 0) {
+    throw new Error('공개 결과의 검수 완료 건수를 확인할 수 없습니다.');
+  }
+  return {
+    id: null,
+    token,
+    title,
+    url: buildPublicResultUrl(token, origin),
+    publishedAt: actual.published_at,
+    reviewedCount: reviewedCount as number,
+    verified: true,
+    body: actual.body,
+  };
+}
+
 /** Changes whenever navigation selects a different publication scope, forcing state isolation. */
 export function buildPublicationScopeKey(scope: ScopeLevel | null, scopeId: string | null): string {
   return scope && scopeId ? `${scope}:${scopeId}` : 'none';

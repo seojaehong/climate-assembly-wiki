@@ -31,7 +31,7 @@
 
 ## 승인 경계
 
-플랫폼 `공개` 화면에는 발행 직후 검증된 snapshot을 대상으로 하는 기관 이행조치 입력 폼과 휴면 `result_implementation_upsert` 클라이언트 어댑터가 있다. 화면은 이 계약으로 입력을 검증하고 저장 후 `result_get` 공개 재조회가 같은 값을 반환해야 완료로 표시한다.
+플랫폼 `공개` 화면에는 발행 직후 검증된 snapshot 또는 같은 스코프의 기존 공개 토큰을 대상으로 하는 기관 이행조치 입력 폼과 휴면 `result_implementation_upsert` 클라이언트 어댑터가 있다. 화면은 이 계약으로 입력을 검증하고 저장 후 `result_get` 공개 재조회가 같은 값을 반환해야 완료로 표시한다. 기존 결과 연결은 현재 origin의 canonical `/r/<token>`만 허용하고 다른 스코프의 공개 결과를 편집 상태로 결속하지 않는다.
 
 RPC, DB 스키마, migration, 실제 시민 데이터, 공개 snapshot은 아직 변경하지 않았다. RPC가 없으면 저장 성공을 가장하지 않고 A7 migration 승인 필요 안내를 표시한다. 서버 저장 계약과 승인 문구는 [A7 기관 이행조치 직접 등록 승인 패킷](./A7_IMPLEMENTATION_WRITE_APPROVAL_PACKET.md)에 정의한다.
 
