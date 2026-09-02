@@ -160,3 +160,14 @@ locale로 추가했다. `BaseLayout.astro`와 deprecated `Base.astro` 모두 문
   6개 언어 전환 링크를 제공하도록 source contract와 산출 HTML을 확인
 - 프론트 전체 Vitest: 99개 파일 중 97개 파일, 1,756건 중 1,753건 통과. 실패 3건은
   Windows CRLF checkout에서 LF 문자열을 exact match하는 기존 source-contract 테스트이며 변경 로직과 무관하다.
+
+## 9/3 후속 — Windows 전체 회귀 기준 복구
+
+위 3개 실패를 단순 면책으로 남기지 않고 source-contract 테스트가 파일을 읽을 때 CRLF를 LF로
+정규화하도록 수정했다. 제품 소스와 배포 산출물은 바꾸지 않았고, Windows와 CI의 줄바꿈 방식에
+관계없이 같은 계약 문자열을 검사한다.
+
+검증 결과:
+
+- 이전 실패 집중 테스트: 2개 파일, 53건 통과
+- 저장소 전체 Vitest: 105개 파일, 1,775건 전부 통과
