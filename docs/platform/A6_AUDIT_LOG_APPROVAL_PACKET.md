@@ -67,8 +67,9 @@ rollback: `supabase/rollbacks/platform_p4_audit_log_BEFORE.sql`
 5. 서로 다른 두 기관 계정과 facilitator 계정으로 allow/deny를 확인한다.
 6. 첫 off-DB append-only export를 만들고 건수·최소/최대 event ID·checksum을 운영 기록에 남긴다.
 
-CI의 PostgreSQL 16 rehearsal은 `supabase/verify/platform_audit_test.sql`로 문법·함수 본문·15개 trigger,
-직접 접근 차단, 자식 resource의 기관 파생, 변경 column, 행 값 비노출, cursor pagination, 기관 격리,
+CI의 PostgreSQL 16 rehearsal은 `supabase/verify/platform_audit_test.sql`로 문법·함수 본문·owner와
+고정 함수 설정·15개 BEFORE trigger, table/column/identity-sequence 직접 접근 차단, 자식 resource의
+기관 파생, cross-org 이동 거부, 변경 column, 행 값 비노출, cursor pagination, 기관 격리,
 facilitator 거부, 변조 거부와 populated rollback 거부를 검사한다. 이는 production 적용 증거가 아니다.
 
 ## rollback·보존
