@@ -12,6 +12,10 @@ import { resolveHitlStatus } from '../../lib/hitl-status';
 import type { IssueItemsResult, IssueListResult, PlatformResult } from '../../lib/platform';
 import { clearPlatformOrgContextToken, isPlatformRestRequest, PLATFORM_ORG_CONTEXT_HEADER, PLATFORM_ORG_CONTEXT_KEY, platformOrgContextHeaders, readPlatformOrgContextToken, storePlatformOrgContextToken } from '../../lib/supabase';
 
+function readPlatformShellSource(): string {
+  return readFileSync(new URL('./PlatformShell.tsx', import.meta.url), 'utf8').replaceAll('\r\n', '\n');
+}
+
 const tree: TreeNode = {
   kind: 'org',
   id: 'org',
@@ -676,7 +680,7 @@ describe('PlatformShell accessibility', () => {
   });
 
   it('PlatformShell이 Auth 이벤트마다 generation을 교체하고 cleanup에서 무효화한다', () => {
-    const source = readFileSync(new URL('./PlatformShell.tsx', import.meta.url), 'utf8');
+    const source = readPlatformShellSource();
 
     expect(source).toContain('const generation = authGeneration.current + 1;');
     expect(source).toContain('authGeneration.current = generation;');
@@ -686,7 +690,7 @@ describe('PlatformShell accessibility', () => {
   });
 
   it('AppShell이 사용자 변경 때 기관 트리를 다시 읽고 서버 기관 스코프로 재결속한다', () => {
-    const source = readFileSync(new URL('./PlatformShell.tsx', import.meta.url), 'utf8');
+    const source = readPlatformShellSource();
 
     expect(source).toContain('key={session.userId}');
     expect(source).toContain('void completeOrganizationTreeLoad(');
@@ -703,7 +707,7 @@ describe('PlatformShell accessibility', () => {
       (notice) => notices.push(notice),
     )).resolves.toBe(true);
 
-    const source = readFileSync(new URL('./PlatformShell.tsx', import.meta.url), 'utf8');
+    const source = readPlatformShellSource();
     expect(notices).toEqual([null]);
     expect(source).toContain('if (signedOut) {');
     expect(source).toContain('onSignedOut(credentialsCleared ? null');
@@ -749,7 +753,7 @@ describe('PlatformShell accessibility', () => {
   });
 
   it('로그인·기관 선택·로그아웃이 각각 지속되는 동기 lock을 사용한다', () => {
-    const source = readFileSync(new URL('./PlatformShell.tsx', import.meta.url), 'utf8');
+    const source = readPlatformShellSource();
 
     expect(source).toContain('const operationLock = useRef(false);');
     expect(source).toContain('const organizationSelectionLock = useRef(false);');

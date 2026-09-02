@@ -62,7 +62,7 @@ describe('deployment revision manifest', () => {
 
   it('keeps the postbuild command and public cache policy bound to the exact manifest path', () => {
     const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-    const headers = readFileSync(new URL('../public/_headers', import.meta.url), 'utf8');
+    const headers = readFileSync(new URL('../public/_headers', import.meta.url), 'utf8').replaceAll('\r\n', '\n');
 
     expect(packageJson.scripts.postbuild).toBe('node scripts/write-deployment-revision.mjs');
     expect(headers).toContain('/deployment-revision.json\n  Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
