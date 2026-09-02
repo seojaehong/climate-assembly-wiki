@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "strategy": "pending",
+  "softwareLicense": "pending",
+  "contentLicense": "CC-BY-SA-4.0",
+  "commercialLicenseOwnerRole": null,
+  "copyrightOwnershipReview": {
+    "status": "pending",
+    "reviewerRole": null,
+    "reviewedAt": null
+  },
+  "contributorRightsReview": {
+    "status": "pending",
+    "reviewerRole": null,
+    "reviewedAt": null
+  },
+  "thirdPartyNoticeReview": {
+    "status": "pending",
+    "reviewerRole": null,
+    "reviewedAt": null
+  },
+  "decisionReview": {
+    "status": "pending",
+    "reviewerRole": null,
+    "reviewedAt": null
+  }
+}
