@@ -282,6 +282,13 @@ test('the repository catalog covers every current and planned climate_vote table
     publicRelease: 'never',
   });
   expect(transientAudio.dataClasses).toContain('audio_or_biometric_candidate');
+  const platformAudit = repositoryCatalog.datasets.find((dataset) => dataset.id === 'platform-user-audit');
+  expect(platformAudit).toMatchObject({
+    deploymentState: 'dormant_draft',
+    tables: ['platform_audit_event'],
+    publicRelease: 'never',
+  });
+  expect(platformAudit.dataClasses).toContain('audit_metadata');
 });
 
 test('CLI uses the tracked catalog and creates a private pending package only once', async () => {

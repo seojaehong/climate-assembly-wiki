@@ -504,6 +504,59 @@ jobs:
             -f /tmp/platform_p3_design_provisioning_BEFORE.sql >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
             "do \$\$ begin if to_regprocedure('climate_vote.design_provision(jsonb,bytea)') is not null or to_regprocedure('climate_vote.design_provision(jsonb,bytea,jsonb)') is not null or to_regprocedure('climate_vote.design_provisioning_status(jsonb)') is not null or to_regprocedure('climate_vote.design_provisioning_status(jsonb,jsonb)') is not null or to_regprocedure('climate_vote.platform_design_authorization_revision()') is not null or to_regclass('climate_vote.design_provisioning_operation') is not null or exists (select 1 from information_schema.columns where table_schema='climate_vote' and table_name='team' and column_name='ordinal') then raise exception 'A4 rollback verification failed'; end if; end \$\$;"
+      - name: Verify A6 append-only platform audit semantics
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          container="a6-audit-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup() {
+            docker rm -f "$container" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker run -d --name "$container" \
+            -e POSTGRES_PASSWORD=verify \
+            -e POSTGRES_DB=verify \
+            postgres:16 >/dev/null
+          for _ in $(seq 1 60); do
+            if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -tAc "select 1" >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -tAc "select 1" >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "create role anon nologin; create role authenticated nologin; create role authenticator login; create role service_role nologin; create publication supabase_realtime; alter database verify set search_path=public,extensions,climate_vote;"
+          docker cp supabase/migrations/. "${container}:/tmp/"
+          docker cp supabase/verify/00_prelude.sql "${container}:/tmp/00_prelude.sql"
+          docker cp supabase/verify/driver_pass1.sql "${container}:/tmp/driver_pass1.sql"
+          docker cp supabase/verify/platform_audit_test.sql "${container}:/tmp/platform_audit_test.sql"
+          docker cp supabase/rollbacks/platform_p4_audit_log_BEFORE.sql "${container}:/tmp/platform_p4_audit_log_BEFORE.sql"
+
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -v verify_function_bodies=on -f /tmp/driver_pass1.sql >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/platform_p3_design_provisioning.sql >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/platform_p4_audit_log.sql >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/platform_audit_test.sql
+
+          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/platform_p4_audit_log_BEFORE.sql \
+            >"$RUNNER_TEMP/a6-populated-rollback.log" 2>&1; then
+            echo "Populated A6 rollback unexpectedly succeeded" >&2
+            exit 1
+          fi
+          grep -q "platform_audit_rollback_requires_retention_plan" "$RUNNER_TEMP/a6-populated-rollback.log"
+
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "drop trigger platform_audit_event_immutable on climate_vote.platform_audit_event; drop trigger platform_audit_event_no_truncate on climate_vote.platform_audit_event; truncate climate_vote.platform_audit_event;" >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/platform_p4_audit_log_BEFORE.sql >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "do \$\$ begin if to_regclass('climate_vote.platform_audit_event') is not null or to_regprocedure('climate_vote.platform_audit_list(bigint,integer)') is not null or exists (select 1 from pg_trigger where tgname = 'platform_audit_capture' and not tgisinternal) then raise exception 'A6 rollback verification failed'; end if; end \$\$;"
       - name: Rehearse signed snapshot restore in isolated PostgreSQL
         working-directory: .
         shell: bash

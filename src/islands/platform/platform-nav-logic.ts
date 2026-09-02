@@ -37,7 +37,7 @@ export type ViewScopeLevel = ScopeLevel | 'org';
  *   assembly: design, records, analysis, and publishing across sessions
  */
 export const VIEWS_FOR_LEVEL: Record<ViewScopeLevel, readonly ViewName[]> = {
-  org: ['access'],
+  org: ['access', 'record'],
   topic: ['record', 'analyze', 'review', 'publish'],
   session: ['design', 'record', 'vote', 'analyze', 'publish'],
   assembly: ['design', 'record', 'analyze', 'publish'],

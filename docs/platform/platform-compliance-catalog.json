@@ -155,6 +155,20 @@
       "publicRelease": "never"
     },
     {
+      "id": "platform-user-audit",
+      "title": "플랫폼 사용자 행위 감사",
+      "deploymentState": "dormant_draft",
+      "tables": ["platform_audit_event"],
+      "storageLocations": ["managed_supabase_database", "restricted_off_database_export"],
+      "purpose": "기관별 플랫폼 자원 변경의 비식별 감사 metadata를 보존",
+      "dataSubjects": ["staff"],
+      "dataClasses": ["staff_identity", "audit_metadata", "operational_state"],
+      "ingress": ["database_row_change_trigger"],
+      "internalUses": ["security_audit", "incident_response", "accountability"],
+      "egress": ["restricted_audit_export"],
+      "publicRelease": "never"
+    },
+    {
       "id": "transient-audio-transcript",
       "title": "음성·전사 검수 후보",
       "deploymentState": "dormant_draft",

@@ -28,48 +28,48 @@
   "artifacts": [
     {
       "path": "src/islands/platform/design/design-blueprint-contract.json",
-      "sha256": "d1d2bbcea9a0fa7ef5dc12ae7d9f677c44ad606a8c2032f3b76ee54eb83e4b40",
-      "bytes": 691
+      "sha256": "3d25cde6dfe90e8cc66abe36f66d1493e773334971bd641b612b7a9a9c1b0c2b",
+      "bytes": 717
     },
     {
       "path": "automation/platform-design-provisioning-plan.mjs",
-      "sha256": "657973d1a0e8e52f4fc4e67c72175f1eec22da099dee891074bbe08000412d9a",
-      "bytes": 83621
+      "sha256": "69bb3a86959668f40144f6712dfcf2ef3b3724e78869a6b475bf44b9d062de1e",
+      "bytes": 85894
     },
     {
       "path": "automation/platform-design-provisioning-durable-store.mjs",
-      "sha256": "092021c979954c1bbc6a3236983a37a337ee35344083302bf0240a3bcf3c098d",
-      "bytes": 53853
+      "sha256": "932f52331cb5c1e40c2d0c26f53d104d1457b7d7fed1fcc9874f4c8f0afa1abb",
+      "bytes": 55273
     },
     {
       "path": "automation/platform-design-provisioning-key-registry.mjs",
-      "sha256": "20a4b9eac7e1e82243c971642b90f51d4476da84e998328741080fce2f11e287",
-      "bytes": 16668
+      "sha256": "e90db83a187bf18aa674797f1c5d457c303dc37b4cba70d7fb9e810252351d34",
+      "bytes": 17163
     },
     {
       "path": "automation/platform-design-provisioning-supabase-adapter.mjs",
-      "sha256": "addb5bd4c41e0e440f6096fbe12d218fdd142f0a018915d99faefa023d5fff9d",
-      "bytes": 7808
+      "sha256": "df71aec226446e01719f0d69b3e4ba72197afa8828b1a48d52f76417d97b0ff2",
+      "bytes": 8017
     },
     {
       "path": "automation/platform-a4-migration-bundle.mjs",
-      "sha256": "622fc99ab600675ac324754790170a0767f0279e8fe5ae356d9d50506d182d57",
-      "bytes": 6730
+      "sha256": "9b9c888168b29494fbfe92d181d4318d818b578dde111863e625f5eadf521e19",
+      "bytes": 6913
     },
     {
       "path": "automation/tests/platform-design-provisioning-plan.test.mjs",
-      "sha256": "7937788647a6a1cc197cc86c252b11f8cf255d43dbd7c8c91b6086c6db0e4718",
-      "bytes": 153345
+      "sha256": "248219966919a6750989177304edc9934f6b69156506c45e2584ed7fb04687f9",
+      "bytes": 157384
     },
     {
       "path": "automation/tests/platform-design-provisioning-supabase-adapter.test.mjs",
-      "sha256": "7024f78ff10d5f5a35f365d2a12c099146bf16ba31af29943921398a07a17d0e",
-      "bytes": 14007
+      "sha256": "dc6d02e06ad74819397dc0fb3c69eb932558f6b5a9be51e00dfd3e9b6640a599",
+      "bytes": 14423
     },
     {
       "path": "automation/tests/platform-a4-migration-bundle.test.mjs",
-      "sha256": "b7bf8a1115645360e6b8df662502232eb8d1c8d5256ad8fe3aab413f51530231",
-      "bytes": 26359
+      "sha256": "009cdef13d69bb812b7d74770ca5abf8f269ae7351499f481742da7899eb1ff5",
+      "bytes": 26821
     },
     {
       "path": ".gitattributes",
@@ -78,53 +78,53 @@
     },
     {
       "path": ".github/workflows/test.yml",
-      "sha256": "846b28e1d0d804ff260084dd02cc2105b5ea35c68724cc5116e4c5ee613e5ed9",
-      "bytes": 40260
+      "sha256": "63d395efc2e042542322b5d8fbb32cbc22100e2479e49eed9da883def14a3668",
+      "bytes": 43804
     },
     {
       "path": "docs/platform/A4_DESIGN_PROVISIONING_CONTRACT.md",
-      "sha256": "5b489f46e6071e13878fb5cb178fbd122014851714088608cdf0452e121d27bb",
-      "bytes": 39201
+      "sha256": "612259fc3659a7139f414557ab5947862dd540ed182ec2d05365dc208572154b",
+      "bytes": 39368
     },
     {
       "path": "supabase/verify/design_provisioning_preflight.sql",
-      "sha256": "b070b145d155fbebb3f4c1a05532cc209fd3d24d8b5129317cf8d1a569528606",
-      "bytes": 6085
+      "sha256": "0777deeaa79ad53c1be7c006e7370b76b32e1744569dcf817c510aed848b44c0",
+      "bytes": 6211
     },
     {
       "path": "supabase/verify/design_provisioning_preflight_legacy_fixture.sql",
-      "sha256": "8e90bfea8b209916d2c6775b4ad2e164e332d9da6889e2c1a5f16a808f28df39",
-      "bytes": 1626
+      "sha256": "3b01453433056b117a9983a4a5b4384c343f6cecb42c44f702cbd7b745da49a6",
+      "bytes": 1686
     },
     {
       "path": "supabase/migrations/platform_p3_design_provisioning.sql",
-      "sha256": "58bf29d9ee270642cc9f7ebee73f895b05fd097eb958907ea02afaa8b5184440",
-      "bytes": 50310
+      "sha256": "fb9237956d88c546a38f1a2026e4bdbc2b7009eda6a9e8b85b106e7df03113ba",
+      "bytes": 51415
     },
     {
       "path": "supabase/verify/design_provisioning_preflight_mapping_fixture.sql",
-      "sha256": "48aef0422f9648b056d4f6d48370a404613895470c73f1f58f49504220455a24",
-      "bytes": 1160
+      "sha256": "224f11809aa4b9df6e912400807a0b3c5dfc208b67c9542dd6244a1e1fbfde3d",
+      "bytes": 1204
     },
     {
       "path": "supabase/verify/design_provisioning_post_apply.sql",
-      "sha256": "87df53056b93b8d02b069d1d46fe48952b3f9e3de28d64dc243d4fcc490e7063",
-      "bytes": 22057
+      "sha256": "275f1d1983bf08f8ed717197e2941bb16245e0e93bbf76a0f379d4edd48eb13d",
+      "bytes": 22489
     },
     {
       "path": "supabase/verify/design_provisioning_test.sql",
-      "sha256": "eab11f3a7e8d325a5c8b15d60aca91b15c8a969fc8306b4b79879090d774b37a",
-      "bytes": 53735
+      "sha256": "8f80da38514cbe06ec36bbc2289e7445bfa0486c750824ebeb38904f63ada536",
+      "bytes": 55004
     },
     {
       "path": "supabase/verify/design_provisioning_rollback_cleanup_fixture.sql",
-      "sha256": "6642cf47769b3959aac3b00634b3c20ef5de83e7794a38905ac982355377eac0",
-      "bytes": 2676
+      "sha256": "a443cfaca36e6444e4e4a03a44699c461df7f9d6288c43f125b000e6d62a22ac",
+      "bytes": 2792
     },
     {
       "path": "supabase/rollbacks/platform_p3_design_provisioning_BEFORE.sql",
-      "sha256": "a3654422c953baee1497e236e71a9935cb31fff79081e8dd427a22ca07d30c1a",
-      "bytes": 3199
+      "sha256": "428b5aaa5023720ce96d7a73c53566a047cc9fb3784862b5d92cb63a87a9bfd6",
+      "bytes": 3258
     }
   ],
   "boundaries": {
@@ -135,5 +135,5 @@
     "activatesStaffGrants": false,
     "connectsProductionExecutor": false
   },
-  "checksum": "be5123927cbe8f445a7e2bc3f567455fca1036ccb8414a05406efb24f666c79d"
+  "checksum": "ad8c1702ebfa14f2d3b3290484fec34baaa913833f9f7fe7cc87cf2a8c356f1c"
 }

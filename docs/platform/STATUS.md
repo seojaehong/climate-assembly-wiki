@@ -288,12 +288,12 @@ PostgREST+JWT+RLS throwaway 스택으로 **플랫폼 UI 실 전송(supabase-js�
 ## B4/B5 개인정보·기록물 지원 패키지 (2026-09-03)
 
 `platform-compliance-catalog.json`이 현재·휴면 migration과 legacy 운영 schema의
-`climate_vote` table 37개를 9개 DB 업무 데이터셋에 중복 없이 매핑하고, browser-memory-only
-음성·전사 후보를 열 번째 비영속 데이터셋으로 분리한다. 저장소 밖 기관 profile에
+`climate_vote` table 38개를 10개 DB 업무 데이터셋에 중복 없이 매핑하고, browser-memory-only
+음성·전사 후보를 열한 번째 비영속 데이터셋으로 분리한다. 저장소 밖 기관 profile에
 개인정보 분류·처리 근거·국외 이전·수탁자·고지/동의와 기록관리기준표·기록 유형·단위과제·
 보존기간·기산점·처분 권한·파기 방법을 채우면 `platform-compliance-package.mjs`가 checksum을
 가진 JSON·Markdown 패키지와 Mermaid 데이터 흐름도를 생성한다. 기본 template의 기관 미결정
-80개는 모두 blocker로 남고 제출 준비·법률 판단·인증을
+87개는 모두 blocker로 남고 제출 준비·법률 판단·인증을
 거짓으로 표시하지 않는다. DB·Auth·외부 API·데이터 mutation은 없다. 실제 B4/B5 완료에는 기관
 개인정보 책임 역할과 기록물관리 책임 역할의 검토가 필요하다.
 
@@ -305,6 +305,24 @@ profile에서 검증한다. GPKI를 SAML과 동일시하지 않으며 JIT provis
 application role 직접 부여를 거부한다. 기본 template의 기관 미결정 17개는 blocker로 남는다.
 생성기는 DB·Auth admin API·IdP를 호출하지 않고 credential 전용 field도 두지 않는다. 실제 B6 완료에는
 기관 IdP metadata와 gateway 여부, self-host 배포, 책임자 검토 및 격리 환경 통합 시험이 필요하다.
+
+## A6 사용자 행위 감사로그 초안 (2026-09-03)
+
+`platform_p4_audit_log.sql`이 기관·접근·설계·기록·투표 설계·분석·공개의 15개 table 변경을
+같은 transaction의 BEFORE trigger로 `platform_audit_event`에 기록한다. 이벤트에는 기관·시각·
+transaction·Auth 사용자/역할·동작·resource identity·실제로 바뀐 column 이름만 포함하며
+행의 이전·이후 값, 시민 원문, 투표 응답, 이메일, 초대 token, join code는 복사하지 않는다.
+감사 table은 runtime 5개 역할의 직접 접근을 차단하고 UPDATE·DELETE·TRUNCATE를 거부한다.
+`platform_audit_list`는 클라이언트 org 인자를 받지 않고 P1C 선택 기관을 서버에서 파생하며 active
+`org_admin|operator|hq`만 최대 500건 cursor pagination으로 읽는다. 기관 `record` 뷰에는 새로고침·
+이전 페이지·spreadsheet-safe CSV 내보내기 UI를 연결했다. 브라우저 저장소에는 보관하지 않는다.
+
+Source-contract·UI·CSV·navigation 집중 45건과 Astro check(오류·경고 0, 기존 hint 57)가 통과했다.
+PostgreSQL 16의 15개 trigger, 격리, 값 비노출, append-only, pagination, 역할 거부와 populated rollback
+거부 rehearsal을 CI에 추가했다. 로컬 Docker 엔진은 실행 중이 아니어서 DB rehearsal은 GitHub CI에서
+확정한다. migration·rollback·적용 전 조건·보존 결정은 `A6_AUDIT_LOG_APPROVAL_PACKET.md`에 분리했으며
+production DB/Auth/GRANT/data 변경은 0건이다. 기존 capability RPC의 named actor 귀속, provider
+PITR/WAL과 production snapshot 활성화는 계속 남아 있다.
 
 ## 다음 액션 (권장 순서)
 1. ✅ **완료 (2026-08-29)** — `PHASE_A_ACTIVATION_DECISION_PACKET.md`의 D1~D6 제품 방향을 권고안대로 승인했다(§0 승인 기록, `DECISIONS.md`). 진행자 전환 시점·공공 데이터 등급·CSAP 등급·provider 적격성·tenancy topology·named pilot·owner는 조건부로 기록했다. production mutation은 승인하지 않았다
