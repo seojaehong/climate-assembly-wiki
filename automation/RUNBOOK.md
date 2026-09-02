@@ -245,6 +245,40 @@ npm.cmd run audit:canvas-db-contract -- --output-json ../evaluation/canvas-db-co
   `docs/platform/CANVAS_DB_CONTRACT.md`에 정리했지만 승인·rollback SQL·stage rehearsal은 미완료다.
   migration 작성·실 DB 적용은 별도 사용자 승인과 live preflight 이후에만 진행한다.
 
+## 분석 UID provenance map 생성
+
+`platform-analysis-provenance-map.mjs`는 분석코어 입력의 source UID를 원 `submission_item.id`에
+결정적으로 연결한다. 문장을 새로 만들거나 유사도 매칭하지 않고, 조 이름·꼭지 순번·항목 순번과
+원문이 모두 정확히 같은 행만 채택한다. 하나라도 없거나 중복되거나 본문이 달라지면 출력하지 않는다.
+
+입력 두 파일과 출력은 시민 원문과 내부 UUID를 포함하므로 모두 저장소 밖의 승인된 비공개 경로에 둔다.
+분석 입력은 `uid|team|topic|topic_no|text` exact-field 배열이어야 한다. 제출 export는 배열 또는
+`submissions` 배열을 가진 객체이며 각 행에 최소한 다음 필드가 있어야 한다.
+
+```json
+{
+  "topic_id": "주제 UUID",
+  "topic_ordinal": 1,
+  "team_name": "1분과 1조",
+  "item_id": "submission_item UUID",
+  "item_ordinal": 1,
+  "item_content": "원문 한 줄",
+  "cluster_id": null
+}
+```
+
+기존 8/29 `latest.json`은 `item_id`가 없으므로 provenance 근거로 사용할 수 없다. UUID를 임의로
+합성하지 말고, 승인된 read-only export 또는 이미 보존된 platform snapshot에서 실제 ID를 포함한
+flattened export를 준비한다.
+
+```powershell
+npm.cmd run plan:platform-analysis-provenance -- --analysis-sources 'C:\approved\analysis-sources.json' --submission-export 'C:\approved\submission-items.json' --topic-id '주제 UUID' --output 'C:\approved\provenance.json'
+```
+
+- 결과는 importer가 받는 schema version 1 provenance map이며 source UID·item UUID·nullable cluster UUID만 담는다.
+- 입력·출력은 저장소 밖 일반 파일만 허용하고 16MiB를 넘기지 않는다. 기존 출력은 `--force` 없이는 덮어쓰지 않는다.
+- 이 명령은 환경변수·credential·Supabase client·DB RPC를 사용하지 않으며 DB와 공개 파일을 변경하지 않는다.
+
 ## 분석코어 import plan dry-run
 
 `platform-analysis-import.mjs`는 분석 산출을 DB에 쓰지 않고 사람 검수 전용 계획 JSON으로만 변환한다.
