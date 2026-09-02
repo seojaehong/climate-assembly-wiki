@@ -3,6 +3,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import PublishConsole, { CopyAnnouncement } from './PublishConsole';
+import ImplementationConsole from './ImplementationConsole';
 
 describe('PublishConsole', () => {
   it('선택한 스코프와 공개 입력·HITL 안내를 한 화면에 렌더한다', () => {
@@ -34,5 +35,34 @@ describe('PublishConsole', () => {
     expect(source.match(/runExclusivePublicationOperation\(operationLock/g)).toHaveLength(2);
     expect(source.match(/operationLock\.current/g)).toHaveLength(2);
     expect(source).toContain('disabled={busy}');
+  });
+
+  it('검수 완료 권고의 기관 이행조치 직접 등록 폼을 렌더한다', () => {
+    const html = renderToStaticMarkup(createElement(ImplementationConsole, {
+      hqToken: 'hq-token',
+      resultId: 'result-1',
+      resultToken: 'public-token',
+      resultBody: {
+        issues: [{
+          id: '31111111-1111-4111-8111-111111111111',
+          label: '대중교통 확대',
+          review_status: 'reviewed',
+        }],
+      },
+      onVerified: () => undefined,
+    }));
+
+    expect(html).toContain('기관 이행조치 직접 등록');
+    expect(html).toContain('대중교통 확대');
+    expect(html).toContain('이행조치 저장 및 공개 확인');
+    expect(html).toContain('이행 완료·미이행 사유 공개는 HTTPS 근거가 필수');
+    expect(html).toContain('border:2px solid #135C73');
+  });
+
+  it('이행조치 저장은 동기 operation lock으로 중복 제출을 막는다', () => {
+    const source = readFileSync(new URL('./ImplementationConsole.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain('busy || operationLock.current');
+    expect(source).toContain('runExclusivePublicationOperation(operationLock');
   });
 });

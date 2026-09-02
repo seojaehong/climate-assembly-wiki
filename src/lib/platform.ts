@@ -53,12 +53,13 @@ export async function platformAuditList(
 }
 
 /** Supabase/PostgREST 오류를 한국어 안내로 번역(스키마 미적용·다중 org 등). */
-function describeError(e: unknown): string {
+function describeError(e: unknown, missingFunctionNotice?: string): string {
   const err = e as { code?: string; message?: string } | null;
   const msg = err?.message ?? '';
   const code = err?.code ?? '';
   // PostgREST: 함수/스키마 미적용
   if (code === 'PGRST202' || /Could not find the function|schema cache/i.test(msg)) {
+    if (missingFunctionNotice) return missingFunctionNotice;
     return '플랫폼 스키마가 아직 적용되지 않았습니다(platform_p1/p2 미적용). 병합 후 동작합니다.';
   }
   if (/organization selection required|organization context/i.test(msg)) {
@@ -77,6 +78,7 @@ function describeError(e: unknown): string {
  */
 async function guard<T>(
   fn: (sb: NonNullable<ReturnType<typeof getSupabase>>) => Promise<T>,
+  missingFunctionNotice?: string,
 ): Promise<PlatformResult<T>> {
   const sb = getSupabase();
   if (!sb) return { data: null, notice: '연결 설정이 없습니다(PUBLIC_SUPABASE_* 미설정).' };
@@ -84,7 +86,7 @@ async function guard<T>(
     const data = await fn(sb);
     return { data, notice: null };
   } catch (e) {
-    return { data: null, notice: describeError(e) };
+    return { data: null, notice: describeError(e, missingFunctionNotice) };
   }
 }
 
@@ -477,6 +479,42 @@ export async function resultUnpublish(hqToken: string, resultId: string): Promis
     if (error) throw error;
     return data as { id: string; published_at: null };
   });
+}
+
+export interface ResultImplementationInput {
+  status: 'under_review' | 'planned' | 'in_progress' | 'implemented' | 'not_pursued';
+  responsible_body: string;
+  updated_at: string;
+  summary: string;
+  evidence_url: string | null;
+}
+
+export interface ResultImplementationUpsertResult {
+  result_id: string;
+  issue_id: string;
+  updated_at: string;
+}
+
+/**
+ * 발행 결과의 권고별 기관 이행조치를 직접 등록한다.
+ * RPC migration 미적용 시 화면은 명시적인 승인 대기 상태로 퇴화한다.
+ */
+export async function resultImplementationUpsert(
+  hqToken: string,
+  resultId: string,
+  issueId: string,
+  implementation: ResultImplementationInput,
+): Promise<PlatformResult<ResultImplementationUpsertResult>> {
+  return guard(async (sb) => {
+    const { data, error } = await sb.schema(SCHEMA).rpc('result_implementation_upsert', {
+      p_token: hqToken,
+      p_result_id: resultId,
+      p_issue_id: issueId,
+      p_implementation: implementation,
+    });
+    if (error) throw error;
+    return data as ResultImplementationUpsertResult;
+  }, '이행조치 저장 RPC가 아직 승인·적용되지 않았습니다. A7 migration 승인 후 사용할 수 있습니다.');
 }
 
 export interface ResultPageView {
