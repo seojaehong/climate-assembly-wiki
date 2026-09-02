@@ -50,6 +50,13 @@ Phase C 글로벌 항목이 남아 있다. 이 문서는 계획서의 각 항목
 - provenance generator와 기존 importer 집중 테스트: 2개 파일, 26건 통과
 - 실제 8/29 분석입력과 legacy `latest.json` 대조: `Invalid submission item UUID`로 중단
 - 위 중단 실행의 출력 파일 생성: 0건
+- 프론트 전체 Vitest: 98개 파일, 1,753건 통과
+- automation 전체 기본 실행: 511건 중 505건 통과, 임시 Git fixture 6건은 Windows 5초 제한 초과
+- 위 6개 관련 파일의 60초 제한 순차 재실행: 92건 통과
+- Astro strict check: 446개 파일, 오류·경고 0건, 기존 hint 57건
+
+strict check에서 기존 `BaseLayout.astro`의 hreflang 반복 변수가 암시적 `any`로 추론되는 문제도
+발견해 `HreflangLink` 타입을 명시했다. 렌더 결과는 바꾸지 않는다.
 
 ## 실행 순서
 
