@@ -20,12 +20,15 @@ interface Props {
   lang: string;
 }
 
+import { siteShellCopy } from '../lib/site-locales';
+
 const { lang } = Astro.props;
 
-const isKo = lang === 'ko';
-const placeholder = isKo ? '용어, 의제, 회차 검색…' : 'Search agendas, sessions, tools…';
-const closeLabel = isKo ? '닫기' : 'Close';
-const searchLabel = isKo ? '위키 전체 검색' : 'Search the wiki';
+const shellCopy = siteShellCopy(lang);
+const placeholder = shellCopy.searchPlaceholder;
+const closeLabel = shellCopy.searchClose;
+const searchLabel = shellCopy.searchLabel;
+const searchUnavailable = shellCopy.searchIndexUnavailable;
 ---
 
 <!-- Search modal dialog -->
@@ -71,16 +74,16 @@ const searchLabel = isKo ? '위키 전체 검색' : 'Search the wiki';
 
   <!-- Footer hint -->
   <div class="flex items-center gap-4 border-t border-[var(--color-border)] px-4 py-2 text-xs text-[var(--color-muted)]">
-    <span><kbd class="px-1.5 py-0.5 rounded border border-current font-mono">↑↓</kbd> {isKo ? '탐색' : 'navigate'}</span>
-    <span><kbd class="px-1.5 py-0.5 rounded border border-current font-mono">Enter</kbd> {isKo ? '열기' : 'open'}</span>
-    <span><kbd class="px-1.5 py-0.5 rounded border border-current font-mono">Esc</kbd> {isKo ? '닫기' : 'close'}</span>
+    <span><kbd class="px-1.5 py-0.5 rounded border border-current font-mono">↑↓</kbd> {shellCopy.searchNavigate}</span>
+    <span><kbd class="px-1.5 py-0.5 rounded border border-current font-mono">Enter</kbd> {shellCopy.searchOpen}</span>
+    <span><kbd class="px-1.5 py-0.5 rounded border border-current font-mono">Esc</kbd> {shellCopy.searchClose}</span>
     <span class="ml-auto">
-      <kbd class="px-1.5 py-0.5 rounded border border-current font-mono">/</kbd> {isKo ? '검색 단축키' : 'shortcut'}
+      <kbd class="px-1.5 py-0.5 rounded border border-current font-mono">/</kbd> {shellCopy.searchShortcut}
     </span>
   </div>
 </dialog>
 
-<script define:vars={{ lang, placeholder }}>
+<script define:vars={{ lang, placeholder, searchUnavailable }}>
   (function () {
     const dialog = document.getElementById('search-modal');
     const closeBtn = document.getElementById('search-modal-close');
@@ -121,9 +124,7 @@ const searchLabel = isKo ? '위키 전체 검색' : 'Search the wiki';
         // Pagefind bundle not available in dev mode — silently skip
         mountEl.innerHTML =
           '<p class="text-sm text-center py-8 text-gray-400">' +
-          (lang === 'ko'
-            ? '검색 인덱스는 빌드 후 사용 가능합니다.'
-            : 'Search index is available after build.') +
+          searchUnavailable +
           '</p>';
       }
     }

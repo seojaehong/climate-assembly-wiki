@@ -9,12 +9,18 @@
  *
  * localStorage key: 'theme' — values: 'dark' | 'light' | (absent = system)
  */
+
+interface Props {
+  label?: string;
+}
+
+const { label = 'Toggle dark mode / 다크모드 전환' } = Astro.props;
 ---
 
 <button
   id="theme-toggle"
   type="button"
-  aria-label="Toggle dark mode / 다크모드 전환"
+  aria-label={label}
   class="theme-toggle min-w-11 min-h-11 p-2.5 rounded-lg border border-[var(--color-border)] text-[var(--color-fg-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] inline-flex items-center justify-center"
   aria-pressed="false"
 >
@@ -47,7 +53,7 @@
 
     // Guard: prevent duplicate click listeners when initThemeToggle is called
     // multiple times (e.g. astro:page-load after View Transitions on same page)
-    if ((btn as any).__themeToggleInit) {
+    if (btn.dataset.themeToggleInit === 'true') {
       // Still sync icon/aria state in case theme changed externally
       const dark = html.classList.contains('dark');
       btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
@@ -55,7 +61,7 @@
       if (iconMoon) iconMoon.classList.toggle('hidden', dark);
       return;
     }
-    (btn as any).__themeToggleInit = true;
+    btn.dataset.themeToggleInit = 'true';
 
     function isDark(): boolean {
       return html.classList.contains('dark');

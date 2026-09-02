@@ -192,6 +192,31 @@ RPC가 없는 현재 운영 환경에서는 승인 필요 안내를 계속 표�
 - Astro strict check: 464개 파일, 오류·경고 0건, 기존 hint 57건
 - `git diff --check`: 통과
 
+## 9/3 후속 — Phase C 다국어 공통 셸과 검색 접근성
+
+6개 공개 locale의 사이트명, 건너뛰기 링크, 탐색·검색·메뉴·테마 레이블, 검색 도움말,
+푸터 고지·라이선스·연락처 문구를 `src/lib/site-locales.ts`의 typed registry에 모았다.
+기존에는 일본어·중국어·스페인어·아랍어 경로의 푸터가 한국어로 되돌아갔지만, 이제 현재
+locale의 공통 셸 문구를 유지한다. Arabic 데스크톱 하위 메뉴도 RTL 시작점에 맞춰 열린다.
+
+공통 헤더가 검색 버튼을 표시하면서 검색 모달을 포함하지 않았던 deprecated `Base.astro`에도
+`SearchModal`과 현지어 건너뛰기 링크를 연결했다. 모바일 메뉴에는 현지어 검색 동작을 추가했고,
+테마 버튼의 `any` 캐스트는 dataset 기반 초기화 표식으로 교체했다.
+
+이 단계는 공통 셸의 구조 번역과 동작을 보강한 것이다. 의제·본문·탐색 데이터는 구조 locale에서
+계속 영어 또는 한국어 fallback임을 명시하며, Pagefind 결과 UI의 완전한 현지화와 원어민 검수는
+Phase C 잔여 작업이다. production DB/Auth/GRANT와 실데이터는 변경하지 않았다.
+
+검증 결과:
+
+- locale·헤더 source contract 집중 테스트: 2개 파일, 8건 통과
+- 저장소 전체 Vitest: 105개 파일, 1,782건 전부 통과
+- Windows automation 전체: 32개 파일, 535건 전부 통과
+- Astro strict check: 464개 파일, 오류·경고 0건, 기존 hint 57건
+- 정적 production build: 9,493개 페이지 생성
+- 로컬 실제 브라우저: Arabic 홈과 의제 목록의 `lang=ar`, `dir=rtl`, 현지어 사이트명·건너뛰기
+  링크·푸터 고지, 데스크톱/모바일 검색 모달, 뷰포트 바깥 가로 넘침 없음, 콘솔 오류 0건
+
 ## 9/3 후속 — 기존 공개 결과 브라우저 회귀 게이트
 
 정적 source contract에만 의존하지 않도록 기존 production fixture 브라우저 감사에 A7 기존 결과

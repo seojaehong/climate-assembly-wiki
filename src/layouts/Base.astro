@@ -8,7 +8,8 @@
 import '../styles/global.css';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
-import { SITE_LOCALE_CODES, localeDirection, replaceLocalePrefix } from '../lib/site-locales';
+import SearchModal from '../components/SearchModal.astro';
+import { SITE_LOCALE_CODES, localeDirection, replaceLocalePrefix, siteShellCopy } from '../lib/site-locales';
 
 interface Props {
   title: string;
@@ -16,7 +17,9 @@ interface Props {
   description?: string;
 }
 
-const { title, lang, description = '2026 기후시민회의 모더레이터 아카이브' } = Astro.props;
+const { title, lang, description: descriptionProp } = Astro.props;
+const shellCopy = siteShellCopy(lang);
+const description = descriptionProp ?? shellCopy.defaultDescription;
 
 // Emit hreflang for every public locale on Base-using pages too.
 // Base.astro is deprecated, but 9 pages still import it; SEO requires alternates
@@ -37,7 +40,7 @@ const xDefaultUrl = hreflangLinks.find((l) => l.lang === 'ko')?.url ?? canonical
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
-    <title>{title} | 기후시민회의 Wiki</title>
+    <title>{title} | {shellCopy.siteName}</title>
     <link rel="canonical" href={canonicalUrl} />
     {hreflangLinks.map((l) => (
       <link rel="alternate" hreflang={l.lang} href={l.url} />
@@ -61,7 +64,15 @@ const xDefaultUrl = hreflangLinks.find((l) => l.lang === 'ko')?.url ?? canonical
   </head>
   <body class="min-h-screen overflow-x-hidden bg-[var(--color-bg)] text-[var(--color-fg)] transition-colors duration-200">
 
+    <a
+      href="#main-content"
+      class="skip-link sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:dark:bg-gray-900 focus:border-2 focus:border-green-600 focus:rounded focus:text-green-800 focus:dark:text-green-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+    >
+      {shellCopy.skipToContent}
+    </a>
+
     <SiteHeader lang={lang} />
+    <SearchModal lang={lang} />
 
     <main id="main-content" tabindex="-1" data-pagefind-body class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <slot />

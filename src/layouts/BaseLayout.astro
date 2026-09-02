@@ -16,7 +16,7 @@ import { ClientRouter } from 'astro:transitions';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SearchModal from '../components/SearchModal.astro';
-import { SITE_LOCALE_CODES, isSiteLocale, localeDirection, localeOgTag, replaceLocalePrefix } from '../lib/site-locales';
+import { SITE_LOCALE_CODES, isSiteLocale, localeDirection, localeOgTag, replaceLocalePrefix, siteShellCopy } from '../lib/site-locales';
 import '../styles/global.css';
 
 // ---------------------------------------------------------------------------
@@ -86,12 +86,10 @@ const {
   noindex = false,
 } = Astro.props;
 
+const shellCopy = siteShellCopy(lang);
+
 // Resolve description default after destructuring to avoid TS scope issues
-const description: string = descriptionProp ?? (
-  lang === 'ko'
-    ? '2026 기후시민회의 모더레이터 아카이브 및 다국어 위키'
-    : "2026 Korea Climate Citizens’ Assembly — Moderator Archive & Multilingual Wiki"
-);
+const description: string = descriptionProp ?? shellCopy.defaultDescription;
 
 // Resolve canonicalPath alias
 const canonicalPath: string | undefined = canonicalPathProp;
@@ -120,7 +118,7 @@ const hreflangLinks: HreflangLink[] = alternateLangs.filter(isSiteLocale).map((a
 // x-default points to ko
 const defaultUrl = hreflangLinks.find((link) => link.lang === 'ko')?.url ?? canonicalUrl;
 
-const siteTitleSuffix = lang === 'ko' ? '기후시민회의 Wiki' : 'Korea Climate Assembly Wiki';
+const siteTitleSuffix = shellCopy.siteName;
 const fullTitle = `${title} | ${siteTitleSuffix}`;
 ---
 <!doctype html>
@@ -211,7 +209,7 @@ const fullTitle = `${title} | ${siteTitleSuffix}`;
       href="#main-content"
       class="skip-link sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:dark:bg-gray-900 focus:border-2 focus:border-green-600 focus:rounded focus:text-green-800 focus:dark:text-green-400 focus:outline-none focus:ring-2 focus:ring-green-500"
     >
-      {lang === 'ko' ? '본문으로 건너뛰기' : 'Skip to main content'}
+      {shellCopy.skipToContent}
     </a>
 
     <!-- Site header (Group B — SiteHeader.astro) -->
