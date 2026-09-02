@@ -171,3 +171,23 @@ locale로 추가했다. `BaseLayout.astro`와 deprecated `Base.astro` 모두 문
 
 - 이전 실패 집중 테스트: 2개 파일, 53건 통과
 - 저장소 전체 Vitest: 105개 파일, 1,775건 전부 통과
+
+## 9/3 후속 — 기존 공개 결과의 이행조치 관리 재개
+
+새로 발행한 결과만 현재 탭에서 관리할 수 있던 A7 콘솔에 기존 공개 결과를 다시 연결하는 경로를
+추가했다. 32자리 공개 토큰 또는 현재 사이트의 `/r/<token>` URL을 입력하면 `result_get`으로
+공개 snapshot을 다시 읽고, 현재 선택한 공론화·회차·주제 스코프와 정확히 일치하는 경우에만
+이행조치 입력 화면을 연다. 외부 origin, URL credential, query, fragment, 잘못된 토큰과 다른
+스코프의 결과는 fail-closed한다.
+
+향후 `result_implementation_upsert` 계약은 브라우저에 내부 result UUID를 새로 노출하지 않도록
+`p_result_token`을 사용한다. 공개 read에는 내부 UUID가 없으므로 기존 결과를 연결한 화면에서는
+공개 해제 동작을 제공하지 않는다. RPC migration·DB/Auth/GRANT·실데이터는 변경하지 않았으며,
+RPC가 없는 현재 운영 환경에서는 승인 필요 안내를 계속 표시한다.
+
+검증 결과:
+
+- 토큰·URL·스코프 결속 및 RPC adapter 집중 테스트: 4개 파일, 23건 통과
+- 저장소 전체 Vitest: 105개 파일, 1,779건 전부 통과
+- Astro strict check: 464개 파일, 오류·경고 0건, 기존 hint 57건
+- `git diff --check`: 통과

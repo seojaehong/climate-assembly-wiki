@@ -25,7 +25,6 @@ const PANEL = '#F5F9FB';
 
 interface Props {
   hqToken: string;
-  resultId: string;
   resultToken: string;
   resultBody: unknown;
   onVerified: (body: unknown) => void;
@@ -38,7 +37,7 @@ function localDateTimeValue(iso?: string): string {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }
 
-export default function ImplementationConsole({ hqToken, resultId, resultToken, resultBody, onVerified }: Props) {
+export default function ImplementationConsole({ hqToken, resultToken, resultBody, onVerified }: Props) {
   const issues = useMemo(() => listImplementationIssues(resultBody), [resultBody]);
   const [issueId, setIssueId] = useState(issues[0]?.id ?? '');
   const selected = issues.find((issue) => issue.id === issueId) ?? null;
@@ -86,7 +85,7 @@ export default function ImplementationConsole({ hqToken, resultId, resultToken, 
       await runExclusivePublicationOperation(operationLock, async () => {
         const saved = await resultImplementationUpsert(
           token,
-          resultId,
+          resultToken,
           mutation.issue_id,
           mutation.implementation,
         );

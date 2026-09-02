@@ -3,6 +3,8 @@ import { resultGet, resultPublish, resultUnpublish } from '../../../lib/platform
 import type { ScopeLevel } from '../platform-nav-logic';
 import {
   buildPublicResultUrl,
+  buildAttachedPublication,
+  parsePublicResultToken,
   readStoredHqToken,
   runExclusivePublicationOperation,
   validatePublishInput,
@@ -21,7 +23,7 @@ const LINE = '#6B7D88';
 const PANEL = '#F5F9FB';
 
 interface Publication {
-  id: string;
+  id: string | null;
   token: string;
   title: string;
   url: string;
@@ -67,6 +69,7 @@ function initialHqToken(): string {
 export default function PublishConsole({ scope, scopeId }: Props) {
   const [hqToken, setHqToken] = useState(initialHqToken);
   const [title, setTitle] = useState('');
+  const [existingResultInput, setExistingResultInput] = useState('');
   const [publication, setPublication] = useState<Publication | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -133,7 +136,8 @@ export default function PublishConsole({ scope, scopeId }: Props) {
   };
 
   const unpublish = async () => {
-    if (busy || operationLock.current || !publication) return;
+    const resultId = publication?.id;
+    if (busy || operationLock.current || !publication || !resultId) return;
     const token = hqToken.trim();
     if (!token) {
       setError('공개 해제에도 HQ 인증 토큰이 필요합니다.');
@@ -145,7 +149,7 @@ export default function PublishConsole({ scope, scopeId }: Props) {
     setCopied(false);
     try {
       await runExclusivePublicationOperation(operationLock, async () => {
-        const unpublished = await resultUnpublish(token, publication.id);
+        const unpublished = await resultUnpublish(token, resultId);
         if (unpublished.notice || !unpublished.data) {
           setError(unpublished.notice ?? '공개 해제 응답을 확인하지 못했습니다.');
           return;
@@ -167,6 +171,40 @@ export default function PublishConsole({ scope, scopeId }: Props) {
     } catch (requestError) {
       console.error('Failed to unpublish result', requestError);
       setError('공개 해제 중 예상하지 못한 오류가 발생했습니다.');
+    }
+  };
+
+  const loadExisting = async () => {
+    if (busy || operationLock.current) return;
+    setError(null);
+    setNotice(null);
+    setCopied(false);
+    const origin = window.location.origin;
+    const parsed = parsePublicResultToken(existingResultInput, origin);
+    if (!parsed.ok) {
+      setError(parsed.error);
+      return;
+    }
+    try {
+      await runExclusivePublicationOperation(operationLock, async () => {
+        const fetched = await resultGet(parsed.token);
+        if (fetched.notice || !fetched.data) {
+          setError(fetched.notice ?? '공개 결과가 조회되지 않습니다.');
+          return;
+        }
+        try {
+          const attached = buildAttachedPublication(parsed.token, origin, scope, scopeId, fetched.data);
+          setPublication(attached);
+          setTitle(attached.title);
+          setExistingResultInput(attached.url);
+          setNotice('기존 공개 결과를 현재 스코프에 연결하고 재조회 검증했습니다.');
+        } catch (validationError) {
+          setError(validationError instanceof Error ? validationError.message : '공개 결과를 확인하지 못했습니다.');
+        }
+      }, setBusy);
+    } catch (requestError) {
+      console.error('Failed to load existing publication', requestError);
+      setError('기존 공개 결과를 불러오는 중 예상하지 못한 오류가 발생했습니다.');
     }
   };
 
@@ -239,6 +277,27 @@ export default function PublishConsole({ scope, scopeId }: Props) {
         >
           {busy ? '처리 중…' : publication ? '최신 검수 결과로 재발행' : '검수 결과 발행'}
         </button>
+
+        <div style={{ marginTop: 18, paddingTop: 16, borderTop: `2px solid ${LINE}` }}>
+          <label>
+            <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: NAVY, marginBottom: 5 }}>기존 공개 결과 토큰 또는 URL</span>
+            <input
+              value={existingResultInput}
+              disabled={busy}
+              onChange={(event) => setExistingResultInput(event.target.value)}
+              placeholder="32자리 토큰 또는 현재 사이트의 /r/… URL"
+              style={inputStyle}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={loadExisting}
+            disabled={busy || !scope || !scopeId || !existingResultInput.trim()}
+            style={{ marginTop: 10, border: `2px solid ${TEAL}`, borderRadius: 10, background: '#fff', color: TEAL, padding: '9px 14px', fontSize: 14, fontWeight: 800, cursor: busy ? 'wait' : 'pointer' }}
+          >
+            기존 결과 불러와 이행조치 관리
+          </button>
+        </div>
       </section>
 
       {error ? <p role="alert" style={{ color: RED, fontWeight: 700, margin: '14px 0 0' }}>{error}</p> : null}
@@ -264,15 +323,16 @@ export default function PublishConsole({ scope, scopeId }: Props) {
             <a href={publication.url} target="_blank" rel="noreferrer" style={{ borderRadius: 9, background: TEAL, color: '#fff', padding: '9px 13px', fontWeight: 800, textDecoration: 'none' }}>
               새 창에서 공개 페이지 확인
             </a>
-            <button type="button" onClick={unpublish} disabled={busy} style={{ border: `2px solid ${RED}`, borderRadius: 9, background: '#fff', color: RED, padding: '9px 13px', fontWeight: 800, cursor: busy ? 'wait' : 'pointer' }}>
-              공개 해제
-            </button>
+            {publication.id ? (
+              <button type="button" onClick={unpublish} disabled={busy} style={{ border: `2px solid ${RED}`, borderRadius: 9, background: '#fff', color: RED, padding: '9px 13px', fontWeight: 800, cursor: busy ? 'wait' : 'pointer' }}>
+                공개 해제
+              </button>
+            ) : null}
           </div>
         </section>
         {publication.verified ? (
           <ImplementationConsole
             hqToken={hqToken}
-            resultId={publication.id}
             resultToken={publication.token}
             resultBody={publication.body}
             onVerified={(body) => setPublication((current) => current ? { ...current, body } : current)}
