@@ -641,11 +641,16 @@ export async function verifyPublishConsoleLock({ browser, origin, timeoutMs = 60
   const fixtureFailures = [];
   const publishRequests = [];
   const unpublishRequests = [];
+  const existingResultRequests = [];
+  const implementationRequests = [];
+  const existingResultToken = '0123456789abcdef0123456789abcdef';
   let published = false;
   let releasePublish;
   let releaseUnpublish;
+  let releaseExistingResult;
   const publishGate = new Promise((resolveGate) => { releasePublish = resolveGate; });
   const unpublishGate = new Promise((resolveGate) => { releaseUnpublish = resolveGate; });
+  const existingResultGate = new Promise((resolveGate) => { releaseExistingResult = resolveGate; });
   page.on('pageerror', (error) => browserErrors.push(error.message));
   page.on('response', (response) => {
     if (response.url().includes('pleyuknjnprsckssxvrh.supabase.co') && response.status() >= 400) {
@@ -681,6 +686,27 @@ export async function verifyPublishConsoleLock({ browser, origin, timeoutMs = 60
           return true;
         }
         if (path === '/rest/v1/rpc/result_get') {
+          const payload = request.postDataJSON();
+          if (payload?.p_token === existingResultToken) {
+            existingResultRequests.push(payload);
+            await existingResultGate;
+            await fulfillJson(route, {
+              scope: 'topic',
+              scope_id: FIXTURE_IDS.topic,
+              title: '기존 공개 이행 결과',
+              published_at: '2026-08-13T13:00:00.000Z',
+              body: {
+                reviewed_count: 1,
+                issues: [{
+                  id: '00000000-0000-4000-8000-000000000601',
+                  label: '대중교통 전환 지원',
+                  review_status: 'reviewed',
+                }],
+              },
+              hitl_notice: 'fixture implementation notice',
+            });
+            return true;
+          }
           await fulfillJson(route, published ? {
             scope: 'topic',
             scope_id: FIXTURE_IDS.topic,
@@ -689,6 +715,11 @@ export async function verifyPublishConsoleLock({ browser, origin, timeoutMs = 60
             body: {},
             hitl_notice: 'fixture review notice',
           } : null);
+          return true;
+        }
+        if (path === '/rest/v1/rpc/result_implementation_upsert') {
+          implementationRequests.push(request.postDataJSON());
+          await fulfillJson(route, null);
           return true;
         }
         return false;
@@ -731,11 +762,36 @@ export async function verifyPublishConsoleLock({ browser, origin, timeoutMs = 60
     await page.getByRole('status').filter({ hasText: '공개 해제·비공개 재조회 검증을 완료했습니다.' }).waitFor({ timeout: timeoutMs });
     const publicationCleared = await page.getByRole('region', { name: '발행된 결과' }).count() === 0;
 
+    const existingResultUrl = new URL(`/r/${existingResultToken}`, origin).toString();
+    const existingResultInput = page.getByLabel('기존 공개 결과 토큰 또는 URL');
+    await existingResultInput.fill(existingResultUrl);
+    const existingResultButton = page.getByRole('button', { name: '기존 결과 불러와 이행조치 관리', exact: true });
+    await existingResultButton.evaluate((button) => {
+      button.click();
+      button.click();
+    });
+    await page.waitForTimeout(100);
+    const existingResultBusyLocked = await existingResultInput.isDisabled()
+      && await page.getByLabel('HQ 인증 토큰').isDisabled();
+    const duplicateExistingResultBlocked = existingResultRequests.length === 1;
+    releaseExistingResult();
+    await page.getByRole('status').filter({ hasText: '기존 공개 결과를 현재 스코프에 연결하고 재조회 검증했습니다.' }).waitFor({ timeout: timeoutMs });
+    const existingResultAttached = await page.getByRole('region', { name: '발행된 결과' }).isVisible()
+      && await page.getByLabel('공개 결과 URL').inputValue() === existingResultUrl
+      && await page.getByRole('region', { name: '기관 이행조치 등록' }).isVisible()
+      && await page.getByLabel('대상 권고').inputValue() === '00000000-0000-4000-8000-000000000601';
+    const existingResultUnpublishHidden = await page.getByRole('button', { name: '공개 해제', exact: true }).count() === 0;
+
     if (!publishBusyLocked) throw new Error('Publish inputs were not locked during the mutation');
     if (!duplicatePublishBlocked) throw new Error('Publish console sent a duplicate publish mutation');
     if (!unpublishBusyLocked) throw new Error('Unpublish control was not locked during the mutation');
     if (!duplicateUnpublishBlocked) throw new Error('Publish console sent a duplicate unpublish mutation');
     if (!publicationCleared) throw new Error('Publish console retained a result after verified unpublish');
+    if (!existingResultBusyLocked) throw new Error('Existing result inputs were not locked during the public read');
+    if (!duplicateExistingResultBlocked) throw new Error('Publish console sent a duplicate existing result read');
+    if (!existingResultAttached) throw new Error('Publish console did not attach the verified existing result');
+    if (!existingResultUnpublishHidden) throw new Error('Existing result exposed unpublish without an internal result identifier');
+    if (implementationRequests.length > 0) throw new Error('Existing result verification attempted an implementation mutation');
     if (browserErrors.length > 0) throw new Error('Publish console verification observed a browser error');
     if (fixtureFailures.length > 0) throw new Error('Publish console verification observed an unexpected fixture request');
 
@@ -749,12 +805,19 @@ export async function verifyPublishConsoleLock({ browser, origin, timeoutMs = 60
       duplicateUnpublishBlocked,
       unpublishMutationRequestCount: unpublishRequests.length,
       publicationCleared,
+      existingResultBusyLocked,
+      duplicateExistingResultBlocked,
+      existingResultReadRequestCount: existingResultRequests.length,
+      existingResultAttached,
+      existingResultUnpublishHidden,
+      implementationMutationRequestCount: implementationRequests.length,
       browserPageErrorCount: browserErrors.length,
       fixtureFailureCount: fixtureFailures.length,
     };
   } finally {
     releasePublish?.();
     releaseUnpublish?.();
+    releaseExistingResult?.();
     await context.close();
   }
 }
@@ -1185,7 +1248,7 @@ export async function verifyPlatformDesignBlueprint({
     const publishLock = await verifyPublishConsoleLock({ browser, origin, timeoutMs });
 
     const report = {
-      schemaVersion: 12,
+      schemaVersion: 13,
       generatedAt: new Date().toISOString(),
       baseUrl: origin.origin,
       path: DESIGN_BLUEPRINT_ROUTE,

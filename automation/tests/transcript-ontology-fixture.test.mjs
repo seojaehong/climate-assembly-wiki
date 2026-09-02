@@ -39,7 +39,7 @@ const LIVE_FIXTURE = {
 const R2_FIXTURE_TEXT = readFileSync(
   fileURLToPath(new URL('../fixtures/transcript-ontology-review-candidates.example.json', import.meta.url)),
   'utf8',
-);
+).replace(/\r\n/g, '\n');
 const R2_FIXTURE = JSON.parse(R2_FIXTURE_TEXT);
 
 function reviewedR2Plan() {

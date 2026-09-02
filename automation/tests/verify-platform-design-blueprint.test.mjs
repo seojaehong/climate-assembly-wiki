@@ -141,7 +141,7 @@ describe('design blueprint browser CI contract', () => {
     const verifier = readFileSync(
       new URL('../verify-platform-design-blueprint.mjs', import.meta.url),
       'utf8',
-    );
+    ).replace(/\r\n/g, '\n');
     expect(verifier).toContain("page.setViewportSize({ width: 360, height: 800 })");
     expect(verifier).toContain("getByRole('region', { name: '설계 청사진 회차별 구성 표' })");
     expect(verifier).toContain("blueprintTableRegion.press('End')");
@@ -151,6 +151,11 @@ describe('design blueprint browser CI contract', () => {
     expect(verifier).toContain("getByText('검수 완료로 확정했습니다.', { exact: true }).count() === 0");
     expect(verifier).toContain('publishRequests.length === 1');
     expect(verifier).toContain('unpublishRequests.length === 1');
+    expect(verifier).toContain('existingResultRequests.length === 1');
+    expect(verifier).toContain("getByRole('button', { name: '기존 결과 불러와 이행조치 관리', exact: true })");
+    expect(verifier).toContain("getByRole('region', { name: '기관 이행조치 등록' })");
+    expect(verifier).toContain('existingResultUnpublishHidden');
+    expect(verifier).toContain('implementationMutationRequestCount: implementationRequests.length');
     expect(verifier).toContain("getByLabel('공개 결과 제목').isDisabled()");
     expect(verifier).toContain('loginRequests.length === 1');
     expect(verifier).toContain("getByRole('form', { name: '운영진 로그인' })");
@@ -181,6 +186,6 @@ describe('design blueprint browser CI contract', () => {
     expect(verifier).toContain("sessionStorage.getItem('climate_vote_platform_org_context') === null");
     expect(verifier).toContain("pathname.replace(/\\/+$/, '') === '/platform'");
     expect(verifier).toContain('logoutRequests.length !== 1');
-    expect(verifier).toContain('schemaVersion: 12');
+    expect(verifier).toContain('schemaVersion: 13');
   });
 });

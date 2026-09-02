@@ -191,3 +191,31 @@ RPC가 없는 현재 운영 환경에서는 승인 필요 안내를 계속 표�
 - 저장소 전체 Vitest: 105개 파일, 1,779건 전부 통과
 - Astro strict check: 464개 파일, 오류·경고 0건, 기존 hint 57건
 - `git diff --check`: 통과
+
+## 9/3 후속 — 기존 공개 결과 브라우저 회귀 게이트
+
+정적 source contract에만 의존하지 않도록 기존 production fixture 브라우저 감사에 A7 기존 결과
+재연결 흐름을 편입했다. 실제 Chromium에서 같은 버튼을 두 번 실행해도 공개 `result_get`은 한 번만
+호출되며, 진행 중 입력 잠금, 선택 주제와 같은 스코프의 snapshot 결속, 발행 카드와 기관 이행조치
+패널 표시를 확인한다. 공개 read가 내부 result UUID를 제공하지 않는 경우 공개 해제 버튼이 숨겨지고,
+이 검증 과정에서 `result_implementation_upsert` 호출은 0건이어야 한다.
+
+로컬 정적 빌드 fixture 검증 결과:
+
+- 정적 production build: 9,493개 페이지 생성
+- 브라우저 전체 운영 상호작용 보고서: `status:pass`, document HTTP 200
+- 기존 결과 read 1건, 중복 read 차단, 스코프 결속·이행조치 패널 표시 확인
+- 이행조치 mutation 0건, browser page error 0건, fixture failure 0건
+- 보고서 schema version 13으로 상승해 CI가 새 필드를 필수 증거로 추적
+
+전체 Windows automation 회귀에서는 줄바꿈에 따라 SQL source contract와 전사 fixture hash가
+달라지고, 여러 Git/CLI subprocess를 실행하는 3개 검사가 공통 5초 제한을 넘는 기존 문제도
+확인했다. SQL·fixture 검사는 CRLF를 LF로 정규화한 논리 source를 비교하고, A4 승인 번들은 모든
+UTF-8 source의 줄바꿈만 canonical LF로 변환한 뒤 hash·byte count를 계산하도록 보강했다. UTF-8이
+아닌 파일은 거부하고 그 밖의 content 변경은 계속 다른 hash가 된다. subprocess 검사는 기능 제한이
+아니라 Windows 실행시간을 반영해 해당 3건에만 30초 제한을 부여했다. 갱신된 A4 번들은 여전히
+`productionApplyApproved:false`, `databaseMutationExecuted:false`다.
+
+- Windows automation 전체: 32개 파일, 535건 전부 통과
+- 루트 Vitest 전체: 105개 파일, 1,779건 전부 통과
+- Astro strict check: 464개 파일, 오류·경고 0건, 기존 hint 57건

@@ -46,6 +46,17 @@ function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
 }
 
+/** Keeps approval-source hashes stable across Git text checkouts while preserving UTF-8 content changes. */
+export function canonicalA4ArtifactBytes(bytes) {
+  let text;
+  try {
+    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error('A4 migration bundle source artifact is not UTF-8 text');
+  }
+  return Buffer.from(text.replace(/\r\n/g, '\n'), 'utf8');
+}
+
 function artifact(repoRoot, path) {
   let bytes;
   try {
@@ -54,7 +65,8 @@ function artifact(repoRoot, path) {
     throw new Error('A4 migration bundle source artifact is unavailable');
   }
   if (bytes.length === 0) throw new Error('A4 migration bundle source artifact is empty');
-  return { path, sha256: sha256(bytes), bytes: bytes.length };
+  const canonicalBytes = canonicalA4ArtifactBytes(bytes);
+  return { path, sha256: sha256(canonicalBytes), bytes: canonicalBytes.length };
 }
 
 export function a4MigrationBundleChecksum(bundle) {
