@@ -247,6 +247,28 @@ npm.cmd run audit:canvas-db-contract -- --output-json ../evaluation/canvas-db-co
 
 ## 분석 UID provenance map 생성
 
+`platform-submission-identity-export.mjs`는 승인된 운영 점검에서 지정 세션의
+현재 참조 가능한 `submission_item.id`와 분석 입력 대조에 필요한 최소 원문 좌표만 읽기 전용으로 내보낸다.
+서비스 역할 키는 환경변수로만 받고, `PLATFORM_EXPORT_EXPECTED_PROJECT_REF`가 URL의 프로젝트와
+정확히 일치하지 않으면 연결 전에 실패한다. 모든 조회는 `climate_vote` 스키마의 `SELECT`이며
+RPC나 쓰기 호출은 없다. 출력에는 join code·근거·사용자·토큰을 넣지 않고 저장소 밖의 새 파일만
+허용한다. 기존 파일은 덮어쓰지 않는다.
+
+```powershell
+$env:SUPABASE_URL='https://<project-ref>.supabase.co'
+$env:SUPABASE_SERVICE_ROLE_KEY='<service-role-key>'
+$env:PLATFORM_EXPORT_EXPECTED_PROJECT_REF='<project-ref>'
+npm.cmd run export:platform-submission-identities -- --session-slug '0829-deliberation' --output 'C:\approved\submission-items.json'
+```
+
+완료 출력의 `databaseMutationExecuted:false`, 프로젝트 ref, 세션 slug, 행 수를 확인한 뒤 아래
+provenance 생성기에 전달한다. 자격증명이나 원문 export는 저장소·로그·메신저에 남기지 않는다.
+export 본문은 source project ref·session UUID/slug와
+`identityScope:current_submission_item`, `historicalArchiveIncluded:false`를 명시한다.
+기존 `submission_item_archive`는 삭제 당시 UUID를 보존하지 않으므로 이미 삭제된 과거 행의 UUID를
+이 도구로 복원할 수 없다. 과거 분석 원문과 현재 행이 정확히 일치하지 않으면 UUID를 합성하거나
+archive의 bigint ID로 대체하지 말고 provenance 생성을 중단한다.
+
 `platform-analysis-provenance-map.mjs`는 분석코어 입력의 source UID를 원 `submission_item.id`에
 결정적으로 연결한다. 문장을 새로 만들거나 유사도 매칭하지 않고, 조 이름·꼭지 순번·항목 순번과
 원문이 모두 정확히 같은 행만 채택한다. 하나라도 없거나 중복되거나 본문이 달라지면 출력하지 않는다.
