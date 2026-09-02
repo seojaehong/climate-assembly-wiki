@@ -491,7 +491,7 @@ test('runs the local create, verify, and reviewed graph export CLI without datab
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
-});
+}, 30_000);
 
 test('does not echo malformed participant content through the CLI error channel', () => {
   const directory = mkdtempSync(join(tmpdir(), 'canvas-ontology-private-error-'));

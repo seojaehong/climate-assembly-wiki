@@ -53,8 +53,8 @@
     },
     {
       "path": "automation/platform-a4-migration-bundle.mjs",
-      "sha256": "622fc99ab600675ac324754790170a0767f0279e8fe5ae356d9d50506d182d57",
-      "bytes": 6730
+      "sha256": "78cf358f24a84db7448d25d4405d12d9bf3818a649a71b4443072dfb099be144",
+      "bytes": 7209
     },
     {
       "path": "automation/tests/platform-design-provisioning-plan.test.mjs",
@@ -68,8 +68,8 @@
     },
     {
       "path": "automation/tests/platform-a4-migration-bundle.test.mjs",
-      "sha256": "b7bf8a1115645360e6b8df662502232eb8d1c8d5256ad8fe3aab413f51530231",
-      "bytes": 26359
+      "sha256": "a258da018edaecab8e63fee69157dbfbf95f10f47535a89d1e42a930c0d14419",
+      "bytes": 26883
     },
     {
       "path": ".gitattributes",
@@ -135,5 +135,5 @@
     "activatesStaffGrants": false,
     "connectsProductionExecutor": false
   },
-  "checksum": "b5bd4c425611b653873bd1a76bc2da21657403b67223cdd3f50ff14613736410"
+  "checksum": "329987e2225b688300bbae460e329bdaa004d3a4196e75ec77118985ac4dc72e"
 }

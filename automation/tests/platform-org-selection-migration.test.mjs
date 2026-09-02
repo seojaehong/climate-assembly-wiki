@@ -1,18 +1,22 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migration = readFileSync(new URL('../../supabase/migrations/platform_p1c_org_selection.sql', import.meta.url), 'utf8');
-const activation = readFileSync(new URL('../../supabase/migrations/platform_p1c_org_selection_activation.sql', import.meta.url), 'utf8');
-const activationPreflight = readFileSync(new URL('../../supabase/migrations/platform_p1c_activation_preflight.sql', import.meta.url), 'utf8');
-const rollback = readFileSync(new URL('../../supabase/rollbacks/platform_p1c_org_selection_BEFORE.sql', import.meta.url), 'utf8');
-const activationRollback = readFileSync(new URL('../../supabase/rollbacks/platform_p1c_org_selection_activation_BEFORE.sql', import.meta.url), 'utf8');
-const activationPreflightRollback = readFileSync(new URL('../../supabase/rollbacks/platform_p1c_activation_preflight_BEFORE.sql', import.meta.url), 'utf8');
-const verificationDriver = readFileSync(new URL('../../supabase/verify/driver_pass1.sql', import.meta.url), 'utf8');
-const semanticRehearsal = readFileSync(new URL('../../supabase/verify/org_selection_test.sql', import.meta.url), 'utf8');
-const postApplyVerification = readFileSync(new URL('../../supabase/verify/org_selection_post_apply.sql', import.meta.url), 'utf8');
-const activationPreflightPostApply = readFileSync(new URL('../../supabase/verify/activation_preflight_post_apply.sql', import.meta.url), 'utf8');
-const activationPreflightPostRemove = readFileSync(new URL('../../supabase/verify/activation_preflight_post_remove.sql', import.meta.url), 'utf8');
-const testWorkflow = readFileSync(new URL('../../.github/workflows/test.yml', import.meta.url), 'utf8');
+function readText(url) {
+  return readFileSync(url, 'utf8').replace(/\r\n/g, '\n');
+}
+
+const migration = readText(new URL('../../supabase/migrations/platform_p1c_org_selection.sql', import.meta.url));
+const activation = readText(new URL('../../supabase/migrations/platform_p1c_org_selection_activation.sql', import.meta.url));
+const activationPreflight = readText(new URL('../../supabase/migrations/platform_p1c_activation_preflight.sql', import.meta.url));
+const rollback = readText(new URL('../../supabase/rollbacks/platform_p1c_org_selection_BEFORE.sql', import.meta.url));
+const activationRollback = readText(new URL('../../supabase/rollbacks/platform_p1c_org_selection_activation_BEFORE.sql', import.meta.url));
+const activationPreflightRollback = readText(new URL('../../supabase/rollbacks/platform_p1c_activation_preflight_BEFORE.sql', import.meta.url));
+const verificationDriver = readText(new URL('../../supabase/verify/driver_pass1.sql', import.meta.url));
+const semanticRehearsal = readText(new URL('../../supabase/verify/org_selection_test.sql', import.meta.url));
+const postApplyVerification = readText(new URL('../../supabase/verify/org_selection_post_apply.sql', import.meta.url));
+const activationPreflightPostApply = readText(new URL('../../supabase/verify/activation_preflight_post_apply.sql', import.meta.url));
+const activationPreflightPostRemove = readText(new URL('../../supabase/verify/activation_preflight_post_remove.sql', import.meta.url));
+const testWorkflow = readText(new URL('../../.github/workflows/test.yml', import.meta.url));
 
 function executableSql(source) {
   return source.replace(/^\s*--.*$/gm, '');

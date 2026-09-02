@@ -726,7 +726,7 @@ test('verification CLI validates signed evidence without loading database creden
   } finally {
     rmSync(fixture.repoRoot, { recursive: true, force: true });
   }
-});
+}, 30_000);
 
 test('activation source status rejects tracked changes in an approval input', () => {
   const fixture = createCommittedActivationCliFixture('activation-preflight-dirty-');

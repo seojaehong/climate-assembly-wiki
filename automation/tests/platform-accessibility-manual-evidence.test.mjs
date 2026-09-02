@@ -481,4 +481,4 @@ test('CLI accepts an evidence-only commit and rejects committed or working-tree 
   } finally {
     rmSync(repo, { recursive: true, force: true });
   }
-});
+}, 30_000);

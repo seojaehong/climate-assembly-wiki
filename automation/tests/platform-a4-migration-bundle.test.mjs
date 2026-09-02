@@ -7,11 +7,21 @@ import {
   A4_MIGRATION_ARTIFACTS,
   a4MigrationBundleChecksum,
   buildA4MigrationBundle,
+  canonicalA4ArtifactBytes,
   runA4MigrationBundleCli,
   verifyA4MigrationBundle,
 } from '../platform-a4-migration-bundle.mjs';
 
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
+
+test('canonicalizes Git text line endings without hiding UTF-8 content changes', () => {
+  expect(canonicalA4ArtifactBytes(Buffer.from('alpha\r\nbeta\r\n')))
+    .toEqual(canonicalA4ArtifactBytes(Buffer.from('alpha\nbeta\n')));
+  expect(canonicalA4ArtifactBytes(Buffer.from('alpha\ngamma\n')))
+    .not.toEqual(canonicalA4ArtifactBytes(Buffer.from('alpha\nbeta\n')));
+  expect(() => canonicalA4ArtifactBytes(Buffer.from([0xc3, 0x28])))
+    .toThrow('not UTF-8 text');
+});
 
 test('binds the approved A4 draft while keeping production mutation blocked', () => {
   const bundle = buildA4MigrationBundle();
@@ -307,7 +317,7 @@ test('A4 dormant RPC draft accepts and echoes an exact live authorization revisi
   const migration = readFileSync(
     join(repoRoot, 'supabase', 'migrations', 'platform_p3_design_provisioning.sql'),
     'utf8',
-  );
+  ).replace(/\r\n/g, '\n');
   const rehearsal = readFileSync(
     join(repoRoot, 'supabase', 'verify', 'design_provisioning_test.sql'),
     'utf8',
