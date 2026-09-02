@@ -19,18 +19,14 @@ import type { CollectionEntry } from 'astro:content';
 import HomeLayout from '../../layouts/HomeLayout.astro';
 import AgendaCard from '../../components/AgendaCard.astro';
 import TrustBadge from '../../components/TrustBadge.astro';
+import TranslationFallbackBanner from '../../components/TranslationFallbackBanner.astro';
+import { SITE_LOCALE_CODES, STRUCTURAL_LOCALE_CODES, isSiteLocale } from '../../lib/site-locales';
 
 // R-02: repo URL constant — replace all placeholder https://github.com links
 const REPO = 'https://github.com/seojaehong/climate-assembly-wiki';
 
 export async function getStaticPaths() {
-  return [
-    { params: { lang: 'ko' } },
-    { params: { lang: 'en' } },
-    { params: { lang: 'ja' } },
-    { params: { lang: 'zh' } },
-    { params: { lang: 'es' } },
-  ];
+  return SITE_LOCALE_CODES.map((lang) => ({ params: { lang } }));
 }
 
 const { lang } = Astro.params;
@@ -78,6 +74,7 @@ if (nextSession?.data.date) {
 }
 
 const isKo = lang === 'ko';
+const isStructuralLocale = isSiteLocale(lang) && STRUCTURAL_LOCALE_CODES.includes(lang);
 
 // Latest activity — official climatevoice notices plus site updates.
 const latestActivity = isKo ? [
@@ -131,6 +128,12 @@ const ldJson = JSON.stringify([
     : "2026 Korea Climate Citizens' Assembly Archive — about 220 citizen participants, deliberation sessions, En-ROADS climate simulator, 15-agenda multilingual wiki"}
   ldJson={ldJson}
 >
+
+  {isStructuralLocale && (
+    <div class="max-w-[var(--size-container)] mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <TranslationFallbackBanner targetLang={lang} currentPath={Astro.url.pathname} />
+    </div>
+  )}
 
   <!-- ================================================================
        1. HERO — slogan + stats + countdown + CTA

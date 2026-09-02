@@ -8,19 +8,14 @@
  *
  * 원본: /public/workshop-graph/index.html
  * 직접 접근: /workshop-graph/
- * 다국어 wrapper: /ko/workshop-graph/ · /en/workshop-graph/ · /ja/workshop-graph/ · /zh/workshop-graph/ · /es/workshop-graph/
+ * 다국어 wrapper는 중앙 locale registry의 모든 공개 언어에 대해 생성한다.
  */
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { SITE_LOCALE_CODES } from '../../lib/site-locales';
 
 export async function getStaticPaths() {
-  return [
-    { params: { lang: 'ko' } },
-    { params: { lang: 'en' } },
-    { params: { lang: 'ja' } },
-    { params: { lang: 'zh' } },
-    { params: { lang: 'es' } },
-  ];
+  return SITE_LOCALE_CODES.map((lang) => ({ params: { lang } }));
 }
 
 const { lang } = Astro.params;
@@ -60,6 +55,13 @@ const COPY = {
     caption: 'Conecta intervenciones ciudadanas como problemas, afirmaciones, propuestas, preocupaciones, condiciones, valores y evidencias.',
     graphLabel: 'Abrir grafo',
     guideLabel: 'Guía',
+  },
+  ar: {
+    title: 'خريطة المداولات — ورشة 13-14 يونيو',
+    description: 'رسم أنطولوجي لدعم مداولات جمعية مواطني المناخ في كوريا.',
+    caption: 'يربط مداخلات المواطنين بالقضايا والادعاءات والمقترحات والمخاوف والشروط والقيم والأدلة.',
+    graphLabel: 'فتح الخريطة',
+    guideLabel: 'الدليل',
   },
 } as const;
 

@@ -40,11 +40,11 @@ export default defineConfig({
     // Defence in depth: pages already absent from dist won't appear anyway,
     // but this guards against stray paths being added later.
     filter: (page) =>
-      /\/(ko|en|ja|zh|es)\/(agenda(\/|$))/.test(page) ||
-      /\/(ko|en|ja|zh|es)\/?$/.test(page),
+      /\/(ko|en|ja|zh|es|ar)\/(agenda(\/|$))/.test(page) ||
+      /\/(ko|en|ja|zh|es|ar)\/?$/.test(page),
     i18n: {
       defaultLocale: 'ko',
-      // M4 (2026-06-01): ja/zh/es restored as structural-only locales.
+      // ja/zh/es/ar are structural-only locales until reviewed translations ship.
       // Body content remains KO/EN until translation lands; URLs ship for SEO + hreflang.
       locales: {
         ko: 'ko-KR',
@@ -52,6 +52,7 @@ export default defineConfig({
         ja: 'ja-JP',
         zh: 'zh-CN',
         es: 'es-ES',
+        ar: 'ar',
       },
     },
   }), ...pagefindIntegrations, react()],
@@ -62,10 +63,10 @@ export default defineConfig({
     },
   },
   i18n: {
-    // M4 (2026-06-01): ja/zh/es restored. Structural-only — body content remains KO/EN.
-    // Each page's getStaticPaths emits routes for all 5 locales explicitly, so the
+    // ja/zh/es/ar are structural-only — body content remains KO/EN.
+    // Each public page's getStaticPaths emits routes for all 6 locales explicitly, so the
     // built-in `fallback` config is not needed (would chain to defaultLocale=ko anyway).
-    locales: ['ko', 'en', 'ja', 'zh', 'es'],
+    locales: ['ko', 'en', 'ja', 'zh', 'es', 'ar'],
     defaultLocale: 'ko',
     routing: {
       prefixDefaultLocale: true,      // /ko/ prefix always present

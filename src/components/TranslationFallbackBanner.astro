@@ -12,6 +12,8 @@
  * Placement: above main content in page layouts, rendered only when targetLang !== 'ko'.
  */
 
+import { STRUCTURAL_LOCALE_CODES, isSiteLocale } from '../lib/site-locales';
+
 const REPO = 'https://github.com/seojaehong/climate-assembly-wiki';
 
 interface Props {
@@ -27,17 +29,17 @@ const { targetLang, currentPath } = Astro.props;
 const koPath = currentPath
   ? currentPath.replace(/^\/[a-z]{2}(\/|$)/, '/ko$1')
   : '/ko/';
-// EN equivalent of the current page (used for ja/zh/es structural banner)
+// EN equivalent of the current page (used for structural locale banners)
 const enPath = currentPath
   ? currentPath.replace(/^\/[a-z]{2}(\/|$)/, '/en$1')
   : '/en/';
 
-// M4 (2026-06-01): ja/zh/es are structural-only locales.
+// Structural-only locales serve EN/KO content until reviewed translations ship.
 // They serve EN/KO content but exist for SEO/hreflang/shared-link discoverability.
 // Render a distinct promotional banner instead of the EN translation-fallback copy.
-const isStructuralLocale = ['ja', 'zh', 'es'].includes(targetLang);
+const isStructuralLocale = isSiteLocale(targetLang) && STRUCTURAL_LOCALE_CODES.includes(targetLang);
 
-// Localized banner copy for structural locales (ja/zh/es).
+// Localized banner copy for structural locales.
 // LLM 2-pass draft (2026-06-01). Native review pending.
 type StructuralCopy = {
   title: string;
@@ -79,6 +81,16 @@ const structuralCopy: Record<string, StructuralCopy> = {
     contribute: '¿Quiere ayudar con la traducción?',
     cta: 'Abrir un issue en GitHub →',
     dismiss: 'Cerrar',
+  },
+  ar: {
+    title: 'هذه النسخة اللغوية هي نسخة هيكلية فقط.',
+    body: 'الترجمة العربية الكاملة قيد الإعداد. يظهر المحتوى أدناه باللغة الإنجليزية أو الكورية مؤقتًا.',
+    viewIn: 'عرض هذه الصفحة باللغة:',
+    koLabel: 'الكورية (한국어)',
+    enLabel: 'الإنجليزية (English)',
+    contribute: 'هل ترغب في المساعدة في الترجمة؟',
+    cta: 'فتح بلاغ على GitHub ←',
+    dismiss: 'إغلاق',
   },
 };
 const copy: StructuralCopy = structuralCopy[targetLang] ?? structuralCopy.es;

@@ -12,6 +12,7 @@
  */
 
 import BaseLayout from './BaseLayout.astro';
+import { SITE_LOCALE_CODES } from '../lib/site-locales';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -29,9 +30,8 @@ export interface Props {
 
 const { title, lang, description, ldJson } = Astro.props;
 
-// Home page exists for all 5 locales (M4 2026-06-01).
-// ja/zh/es are structural-only — they render EN body content with a promotional banner.
-const alternateLangs = ['ko', 'en', 'ja', 'zh', 'es'];
+// Structural locales render EN body content with a prominent fallback banner.
+const alternateLangs = [...SITE_LOCALE_CODES];
 ---
 <BaseLayout
   title={title}

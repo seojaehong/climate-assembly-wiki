@@ -4,14 +4,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Base from '../../../layouts/Base.astro';
 import AgendaCard from '../../../components/AgendaCard.astro';
+import TranslationFallbackBanner from '../../../components/TranslationFallbackBanner.astro';
+import { SITE_LOCALE_CODES, STRUCTURAL_LOCALE_CODES, isSiteLocale } from '../../../lib/site-locales';
 
 export async function getStaticPaths() {
-  const langs = ['ko', 'en', 'ja', 'zh', 'es']; // M4 done 2026-06-01 (structural)
-  return langs.map((lang) => ({ params: { lang } }));
+  return SITE_LOCALE_CODES.map((lang) => ({ params: { lang } }));
 }
 
 const { lang } = Astro.params;
 const isKo = lang === 'ko';
+const isStructuralLocale = isSiteLocale(lang) && STRUCTURAL_LOCALE_CODES.includes(lang);
 
 interface AgendaSurfaceSummary {
   source?: {
@@ -47,6 +49,7 @@ const sorted = agendaEntries
   .sort((a, b) => a.data.id - b.data.id);
 ---
 <Base title={isKo ? '의제 자료실' : 'Agenda Library'} lang={lang}>
+  {isStructuralLocale && <TranslationFallbackBanner targetLang={lang} currentPath={Astro.url.pathname} />}
   <div class="agenda-library-page min-w-0 max-w-full overflow-hidden">
   <section class="mb-8 min-w-0">
     <p class="text-sm font-semibold text-[var(--color-accent)] mb-2">

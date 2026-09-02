@@ -3,43 +3,27 @@
  * LanguageToggle.astro — B3
  * Switches between ko and en using <a> tags (no-JS fallback, Design §3.3).
  *
- * M3: renders exactly two options — 한국어 / English.
+ * Renders every locale from the central registry.
  * The active language is highlighted with aria-current="true".
- *
- * NOTE — M4 expansion:
- * When ja/zh/es are added to astro.config.mjs locales, uncomment the M4 block below
- * and add the corresponding <a> elements.
- * <!-- M4: add ja/zh/es here -->
  *
  * client:load note: this is a pure .astro component using <a> tags.
  * No framework island is needed; the links resolve with zero JS.
  */
 
+import { SITE_LOCALES, isSiteLocale, replaceLocalePrefix } from '../lib/site-locales';
+
 // Detect the current lang from the URL path segment
 const currentUrl = Astro.url.pathname;
 const segments = currentUrl.split('/').filter(Boolean);
-const SUPPORTED = ['ko', 'en', 'ja', 'zh', 'es'];
-const currentLang = (SUPPORTED.includes(segments[0])) ? segments[0] : 'ko';
+const currentLang = isSiteLocale(segments[0]) ? segments[0] : 'ko';
 
 function buildUrl(targetLang: string): string {
-  const segs = currentUrl.split('/').filter(Boolean);
-  if (segs[0] && SUPPORTED.includes(segs[0])) {
-    segs[0] = targetLang;
-  } else {
-    segs.unshift(targetLang);
-  }
-  // Always append trailing slash — Astro static output places pages at
-  // /lang/section/index.html; without the slash Cloudflare Pages 404s.
-  return '/' + segs.join('/') + '/';
+  if (!isSiteLocale(targetLang)) return currentUrl;
+  const replaced = replaceLocalePrefix(currentUrl, targetLang);
+  return replaced.endsWith('/') ? replaced : `${replaced}/`;
 }
 
-const langs = [
-  { code: 'ko', label: '한국어' },
-  { code: 'en', label: 'English' },
-  { code: 'ja', label: '日本語' },
-  { code: 'zh', label: '中文' },
-  { code: 'es', label: 'Español' },
-];
+const langs = SITE_LOCALES;
 ---
 
 <nav aria-label="Language / 언어" class="language-toggle flex items-center gap-1">

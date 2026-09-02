@@ -249,6 +249,15 @@ code, pre, kbd {
   background-color: rgba(10, 10, 10, 0.85) !important;
 }
 
+html[dir='rtl'] body {
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+}
+
+html[dir='rtl'] .language-toggle,
+html[dir='rtl'] .fallback-banner {
+  direction: rtl;
+}
+
 @media (max-width: 720px) {
   .platform-shell-header {
     flex-wrap: wrap;

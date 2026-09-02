@@ -19,6 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { marked } from 'marked';
 import AgendaLayout from '../../../layouts/AgendaLayout.astro';
+import { SITE_LOCALE_CODES, STRUCTURAL_LOCALE_CODES, isSiteLocale } from '../../../lib/site-locales';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,10 +40,9 @@ interface EnTranslationFrontmatter {
 // getStaticPaths
 // ---------------------------------------------------------------------------
 export async function getStaticPaths() {
-  const langs = ['ko', 'en', 'ja', 'zh', 'es'] as const; // M4 done 2026-06-01 (ja/zh/es structural)
   const agendaEntries = await getCollection('agenda');
 
-  return langs.flatMap((lang) =>
+  return SITE_LOCALE_CODES.flatMap((lang) =>
     agendaEntries.map((entry) => ({
       params: { lang, slug: entry.data.slug },
       props: { entry, lang },
@@ -83,11 +83,11 @@ const hasEnTranslation =
   lang === 'en' &&
   (fs.existsSync(enFilePath) || fs.existsSync(enFilePathNumbered));
 
-// Structural-only locales (ja/zh/es): always fall back to KO body and show banner.
+// Structural-only locales always fall back to KO body and show a banner.
 // EN: banner only when EN translation file is missing.
 const showFallbackBanner =
   (lang === 'en' && !hasEnTranslation) ||
-  (['ja', 'zh', 'es'].includes(lang));
+  (isSiteLocale(lang) && STRUCTURAL_LOCALE_CODES.includes(lang));
 
 // For EN pages with translations: parse the markdown file to get EN content.
 let enTitle = entry.data.title;
@@ -134,7 +134,7 @@ const translationStatus: 'machine' | 'reviewed' | 'native' | 'author-verified' |
   trustLabel={translationStatus ?? 'author-verified'}
   isInternalDraft={true}
   license={entry.data.license as 'CC-BY-SA-4.0' | 'CC-BY-4.0' | 'CC-BY-NC-SA-3.0-IGO' | 'all-rights-reserved'}
-  alternateLangs={['ko', 'en', 'ja', 'zh', 'es']}
+  alternateLangs={[...SITE_LOCALE_CODES]}
   canonicalPath={`/${lang}/agenda/${entry.data.slug}/`}
   isFallback={showFallbackBanner}
   sourceKorean={`/ko/agenda/${entry.data.slug}/`}
