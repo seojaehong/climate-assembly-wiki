@@ -143,5 +143,7 @@ locale로 추가했다. `BaseLayout.astro`와 deprecated `Base.astro` 모두 문
 - 정적 production build: 9,493개 페이지 생성
 - 산출 HTML: Arabic 홈·의제 상세·원천 상세의 `lang="ar" dir="rtl"`, 구조 전용 고지,
   Arabic hreflang과 sitemap URL 확인
+- 헤더 회귀 보완: 모든 구조 locale에서 로고·내부 탐색이 현재 locale을 유지하고, 모바일 메뉴에서도
+  6개 언어 전환 링크를 제공하도록 source contract와 산출 HTML을 확인
 - 프론트 전체 Vitest: 99개 파일 중 97개 파일, 1,756건 중 1,753건 통과. 실패 3건은
   Windows CRLF checkout에서 LF 문자열을 exact match하는 기존 source-contract 테스트이며 변경 로직과 무관하다.
