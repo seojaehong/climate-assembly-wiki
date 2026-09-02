@@ -244,3 +244,23 @@ UTF-8 source의 줄바꿈만 canonical LF로 변환한 뒤 hash·byte count를 �
 - Windows automation 전체: 32개 파일, 535건 전부 통과
 - 루트 Vitest 전체: 105개 파일, 1,779건 전부 통과
 - Astro strict check: 464개 파일, 오류·경고 0건, 기존 hint 57건
+
+## 9/3 후속 — Phase C 구조 locale 탐색 연속성
+
+공통 셸이 현지어여도 헤더의 실제 탐색 항목과 `SiteSidebar`가 한국어·영어 이분법을 유지해
+Arabic 의제 상세에서 사이드바 링크가 `/ko/`로 되돌아가던 공백을 닫았다. 6개 locale을 인식하는
+typed navigation label helper를 추가하고, 상단 의제·현장 운영·운영 하위 메뉴·사이드바 제목과
+의제 그룹명을 일본어·중국어·스페인어·아랍어로 제공한다. 의제 제목은 원문 번역·검수 전까지
+영어 fallback을 유지하므로 구조 번역을 본문 번역 완료로 오인시키지 않는다.
+
+production DB/Auth/GRANT와 실데이터는 변경하지 않았다.
+
+검증 결과:
+
+- locale·탐색 집중 테스트: 3개 파일, 11건 통과
+- 저장소 전체 Vitest: 105개 파일, 1,784건 전부 통과
+- Windows automation 전체: 32개 파일, 535건 전부 통과
+- Astro strict check: 464개 파일, 오류·경고 0건, 기존 hint 57건
+- 정적 production build: 9,493개 페이지 생성
+- 로컬 실제 브라우저: Arabic 상단 메뉴·하위 메뉴·사이드바 제목·4개 그룹명이 현지어로 표시되고
+  의제 내부 링크는 `/ar/`를 유지함. 데스크톱·모바일 RTL 가로 넘침 및 콘솔 오류 0건

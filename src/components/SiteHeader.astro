@@ -9,13 +9,12 @@
 
 import LanguageToggle from './LanguageToggle.astro';
 import ThemeToggle from './ThemeToggle.astro';
-import { TOP_NAV_ITEMS, SIDEBAR_SECTIONS } from '../data/navigation';
+import { navigationLabel, TOP_NAV_ITEMS, SIDEBAR_SECTIONS } from '../data/navigation';
 import { isSiteLocale, siteShellCopy } from '../lib/site-locales';
 
 const currentUrl = Astro.url.pathname;
 const segments = currentUrl.split('/').filter(Boolean);
 const currentLang = isSiteLocale(segments[0]) ? segments[0] : 'ko';
-const isKo = currentLang === 'ko';
 const shellCopy = siteShellCopy(currentLang);
 const currentSection = segments[1] ?? '';
 
@@ -65,7 +64,7 @@ function navHref(section: string): string {
                     : 'text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-fg)]',
                 ].join(' ')}
               >
-                {isKo ? item.labelKo : item.labelEn}
+                {navigationLabel(item, currentLang)}
                 <svg aria-hidden="true" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                   <polyline points="6 9 12 15 18 9"/>
                 </svg>
@@ -80,7 +79,7 @@ function navHref(section: string): string {
                         {...childAttrs}
                         class="block px-3 py-2 rounded-lg text-sm font-medium text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-accent)] transition-colors"
                       >
-                        {isKo ? child.labelKo : child.labelEn}
+                        {navigationLabel(child, currentLang)}
                       </a>
                     );
                   })}
@@ -101,7 +100,7 @@ function navHref(section: string): string {
                 : 'text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-fg)]',
             ].join(' ')}
           >
-            {isKo ? item.labelKo : item.labelEn}
+            {navigationLabel(item, currentLang)}
           </a>
         );
       })}
@@ -173,7 +172,7 @@ function navHref(section: string): string {
                       : 'text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-fg)]',
                   ].join(' ')}
                 >
-                  {isKo ? item.labelKo : item.labelEn}
+                  {navigationLabel(item, currentLang)}
                 </a>
                 {item.children?.map((child) => {
                   const childAttrs = child.external ? { target: '_blank', rel: 'noopener' } : {};
@@ -183,7 +182,7 @@ function navHref(section: string): string {
                       {...childAttrs}
                       class="block px-7 py-2 text-sm text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-accent)] transition-colors"
                     >
-                      {isKo ? child.labelKo : child.labelEn}
+                      {navigationLabel(child, currentLang)}
                     </a>
                   );
                 })}
@@ -196,7 +195,7 @@ function navHref(section: string): string {
             <div class="border-t border-[var(--color-border)] mt-1 pt-1">
               <details class="group">
                 <summary class="flex items-center justify-between px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-[var(--color-accent)] cursor-pointer list-none select-none hover:bg-[var(--color-bg-subtle)] transition-colors">
-                  <span>{isKo ? currentSidebarSection.labelKo : currentSidebarSection.labelEn}</span>
+                  <span>{navigationLabel(currentSidebarSection, currentLang)}</span>
                   <svg
                     aria-hidden="true"
                     class="w-3 h-3 transition-transform group-open:rotate-180"
@@ -224,7 +223,7 @@ function navHref(section: string): string {
                               : 'text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-fg)]',
                           ].join(' ')}
                         >
-                          {isKo ? item.labelKo : item.labelEn}
+                          {navigationLabel(item, currentLang)}
                         </a>
                       </li>
                     );

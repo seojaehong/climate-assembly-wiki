@@ -47,6 +47,7 @@ describe('site locale registry', () => {
       siteName: 'ويكي جمعية المواطنين للمناخ في كوريا',
       skipToContent: 'الانتقال إلى المحتوى الرئيسي',
       openSearch: 'فتح البحث (/)',
+      sectionNavigation: 'التنقل بين الأقسام',
       footerDisclaimer: 'هذا أرشيف مستقل وليس منشورًا حكوميًا رسميًا.',
     });
     expect(siteShellCopy('ja').openMenu).toBe('メニューを開く');
