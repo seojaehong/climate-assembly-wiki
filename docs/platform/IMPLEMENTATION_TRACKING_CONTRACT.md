@@ -31,6 +31,10 @@
 
 ## 승인 경계
 
-이 변경은 선택 필드를 읽는 프런트엔드 계약과 보고서 표현만 추가한다. RPC, DB 스키마, migration, 실제 시민 데이터, 공개 snapshot은 변경하지 않는다. 실제 이행 정보 게시에는 데이터 소유자, 갱신 책임, 근거 검수, atomic publish payload에 대한 별도 사용자 승인이 필요하다.
+플랫폼 `공개` 화면에는 발행 직후 검증된 snapshot을 대상으로 하는 기관 이행조치 입력 폼과 휴면 `result_implementation_upsert` 클라이언트 어댑터가 있다. 화면은 이 계약으로 입력을 검증하고 저장 후 `result_get` 공개 재조회가 같은 값을 반환해야 완료로 표시한다.
+
+RPC, DB 스키마, migration, 실제 시민 데이터, 공개 snapshot은 아직 변경하지 않았다. RPC가 없으면 저장 성공을 가장하지 않고 A7 migration 승인 필요 안내를 표시한다. 서버 저장 계약과 승인 문구는 [A7 기관 이행조치 직접 등록 승인 패킷](./A7_IMPLEMENTATION_WRITE_APPROVAL_PACKET.md)에 정의한다.
+
+실제 이행 정보 게시에는 데이터 소유자, 갱신 책임, 근거 검수, atomic publish payload와 migration 적용에 대한 별도 사용자 승인이 필요하다.
 
 승인 전 payload 검증 절차는 [이행추적 publish plan](./IMPLEMENTATION_PUBLISH_PLAN.md)에 정의한다.

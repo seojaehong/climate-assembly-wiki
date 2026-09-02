@@ -8,6 +8,7 @@ import {
   validatePublishInput,
   verifyPublishedResult,
 } from './publish-console-logic';
+import ImplementationConsole from './ImplementationConsole';
 
 const NAVY = '#1F4E79';
 const TEAL = '#135C73';
@@ -27,6 +28,7 @@ interface Publication {
   publishedAt: string;
   reviewedCount: number;
   verified: boolean;
+  body: unknown;
 }
 
 interface Props {
@@ -102,12 +104,13 @@ export default function PublishConsole({ scope, scopeId }: Props) {
           publishedAt: published.data.published_at,
           reviewedCount: published.data.reviewed_count,
           verified: false,
+          body: null,
         };
         setPublication(nextPublication);
 
         const fetched = await resultGet(published.data.token);
-        if (fetched.notice) {
-          setNotice(`발행 응답은 받았지만 공개 조회를 재확인하지 못했습니다: ${fetched.notice}`);
+        if (fetched.notice || !fetched.data) {
+          setNotice(`발행 응답은 받았지만 공개 조회를 재확인하지 못했습니다: ${fetched.notice ?? '공개 결과가 없습니다.'}`);
           return;
         }
 
@@ -120,7 +123,7 @@ export default function PublishConsole({ scope, scopeId }: Props) {
           return;
         }
 
-        setPublication({ ...nextPublication, verified: true });
+        setPublication({ ...nextPublication, verified: true, body: fetched.data.body });
         setNotice(`공개 완료·재조회 검증 완료 · 검수 완료 쟁점 ${published.data.reviewed_count}건`);
       }, setBusy);
     } catch (requestError) {
@@ -243,7 +246,7 @@ export default function PublishConsole({ scope, scopeId }: Props) {
       <CopyAnnouncement copied={copied} />
 
       {publication ? (
-        <section aria-label="발행된 결과" style={{ marginTop: 18, border: `2px solid ${publication.verified ? GREEN : AMBER}`, borderRadius: 16, background: '#fff', padding: 20 }}>
+        <><section aria-label="발행된 결과" style={{ marginTop: 18, border: `2px solid ${publication.verified ? GREEN : AMBER}`, borderRadius: 16, background: '#fff', padding: 20 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <h3 style={{ margin: 0, color: NAVY, fontSize: 19 }}>{publication.title}</h3>
             <span style={{ borderRadius: 999, padding: '3px 9px', color: '#fff', background: publication.verified ? GREEN : AMBER, fontSize: 12, fontWeight: 800 }}>
@@ -266,6 +269,15 @@ export default function PublishConsole({ scope, scopeId }: Props) {
             </button>
           </div>
         </section>
+        {publication.verified ? (
+          <ImplementationConsole
+            hqToken={hqToken}
+            resultId={publication.id}
+            resultToken={publication.token}
+            resultBody={publication.body}
+            onVerified={(body) => setPublication((current) => current ? { ...current, body } : current)}
+          />
+        ) : null}</>
       ) : null}
     </div>
   );
