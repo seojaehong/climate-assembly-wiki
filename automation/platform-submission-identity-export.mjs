@@ -9,6 +9,10 @@ const PROJECT_REF_PATTERN = /^[a-z0-9]{20}$/;
 const PAGE_SIZE = 500;
 const MAX_ROWS = 10_000;
 const MAX_JSON_BYTES = 16 * 1024 * 1024;
+const ACCESS_METHODS = new Set(['direct_tables', 'read_only_rpc']);
+const RPC_SOURCE_FIELDS = new Set([
+  'schemaVersion', 'sessions', 'topics', 'teams', 'submissions', 'items',
+]);
 
 function requireUuid(value, label) {
   if (typeof value !== 'string' || !UUID_PATTERN.test(value)) throw new Error(`Invalid ${label}`);
@@ -50,6 +54,7 @@ function requireUniqueRows(rows, key, label) {
 
 export function buildSubmissionIdentityExport({
   sourceProjectRef,
+  sourceAccessMethod,
   sessionSlug,
   exportedAt,
   sessions,
@@ -61,6 +66,7 @@ export function buildSubmissionIdentityExport({
   if (typeof sourceProjectRef !== 'string' || !PROJECT_REF_PATTERN.test(sourceProjectRef)) {
     throw new Error('Invalid source project ref');
   }
+  if (!ACCESS_METHODS.has(sourceAccessMethod)) throw new Error('Invalid source access method');
   const selectedSessionSlug = requireSessionSlug(sessionSlug);
   const selectedExportedAt = requireIsoTimestamp(exportedAt);
   if (!Array.isArray(sessions) || sessions.length !== 1) {
@@ -147,6 +153,7 @@ export function buildSubmissionIdentityExport({
     identityScope: 'current_submission_item',
     historicalArchiveIncluded: false,
     sourceProjectRef,
+    sourceAccessMethod,
     sessionId,
     sessionSlug: selectedSessionSlug,
     exportedAt: selectedExportedAt,
@@ -220,6 +227,27 @@ export async function readSubmissionIdentitySource({ client, sessionSlug }) {
   return { sessions, topics, teams, submissions, items };
 }
 
+export async function readSubmissionIdentitySourceFromRpc({ client, sessionSlug }) {
+  const selectedSessionSlug = requireSessionSlug(sessionSlug);
+  const { data, error } = await client
+    .schema('climate_vote')
+    .rpc('platform_submission_identity_source', { p_session_slug: selectedSessionSlug });
+  if (error) throw new Error('Read-only identity RPC failed');
+  if (!data || typeof data !== 'object' || Array.isArray(data)
+    || data.schemaVersion !== 1
+    || Object.keys(data).some((field) => !RPC_SOURCE_FIELDS.has(field))
+    || ![data.sessions, data.topics, data.teams, data.submissions, data.items].every(Array.isArray)) {
+    throw new Error('Invalid read-only RPC response');
+  }
+  return {
+    sessions: data.sessions,
+    topics: data.topics,
+    teams: data.teams,
+    submissions: data.submissions,
+    items: data.items,
+  };
+}
+
 function targetProjectRef(url, expectedProjectRef) {
   if (typeof expectedProjectRef !== 'string' || !PROJECT_REF_PATTERN.test(expectedProjectRef)) {
     throw new Error('Expected Supabase project ref is missing or invalid');
@@ -284,12 +312,17 @@ export async function runSubmissionIdentityExportCli({
     throw new Error('Submission identity export credentials are missing');
   }
   const projectRef = targetProjectRef(url, environment.PLATFORM_EXPORT_EXPECTED_PROJECT_REF);
+  const accessMethod = environment.PLATFORM_EXPORT_ACCESS_METHOD ?? 'direct_tables';
+  if (!ACCESS_METHODS.has(accessMethod)) throw new Error('Submission identity export access method is invalid');
   const client = createClient(url, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const source = await readSubmissionIdentitySource({ client, sessionSlug: options.sessionSlug });
+  const source = accessMethod === 'read_only_rpc'
+    ? await readSubmissionIdentitySourceFromRpc({ client, sessionSlug: options.sessionSlug })
+    : await readSubmissionIdentitySource({ client, sessionSlug: options.sessionSlug });
   const exported = buildSubmissionIdentityExport({
     sourceProjectRef: projectRef,
+    sourceAccessMethod: accessMethod,
     sessionSlug: options.sessionSlug,
     exportedAt,
     ...source,
@@ -300,6 +333,7 @@ export async function runSubmissionIdentityExportCli({
     projectRef,
     sessionSlug: exported.sessionSlug,
     rowCount: exported.rowCount,
+    accessMethod,
     databaseMutationExecuted: false,
   };
 }

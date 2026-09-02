@@ -5,6 +5,7 @@ import { expect, test } from 'vitest';
 import {
   buildSubmissionIdentityExport,
   readSubmissionIdentitySource,
+  readSubmissionIdentitySourceFromRpc,
   runSubmissionIdentityExportCli,
 } from '../platform-submission-identity-export.mjs';
 import { buildPlatformAnalysisProvenanceMap } from '../platform-analysis-provenance-map.mjs';
@@ -41,6 +42,7 @@ function sourceRows(overrides = {}) {
 test('builds the minimal provenance export and sorts by source coordinates', () => {
   const result = buildSubmissionIdentityExport({
     sourceProjectRef: 'pleyuknjnprsckssxvrh',
+    sourceAccessMethod: 'direct_tables',
     sessionSlug: '0829-deliberation',
     exportedAt: '2026-09-03T00:00:00.000Z',
     ...sourceRows(),
@@ -50,6 +52,7 @@ test('builds the minimal provenance export and sorts by source coordinates', () 
     identityScope: 'current_submission_item',
     historicalArchiveIncluded: false,
     sourceProjectRef: 'pleyuknjnprsckssxvrh',
+    sourceAccessMethod: 'direct_tables',
     sessionId: ids.session,
     sessionSlug: '0829-deliberation',
     exportedAt: '2026-09-03T00:00:00.000Z',
@@ -86,12 +89,14 @@ test('builds the minimal provenance export and sorts by source coordinates', () 
 test('fails closed on cross-session rows, archived submissions, and duplicate coordinates', () => {
   expect(() => buildSubmissionIdentityExport({
     sourceProjectRef: 'pleyuknjnprsckssxvrh',
+    sourceAccessMethod: 'direct_tables',
     sessionSlug: '0829-deliberation',
     exportedAt: '2026-09-03T00:00:00.000Z',
     ...sourceRows({ topics: [{ id: ids.topic, session_id: ids.team, ordinal: 1 }] }),
   })).toThrow('another session');
   expect(() => buildSubmissionIdentityExport({
     sourceProjectRef: 'pleyuknjnprsckssxvrh',
+    sourceAccessMethod: 'direct_tables',
     sessionSlug: '0829-deliberation',
     exportedAt: '2026-09-03T00:00:00.000Z',
     ...sourceRows({
@@ -105,6 +110,7 @@ test('fails closed on cross-session rows, archived submissions, and duplicate co
   })).toThrow('archived submission');
   expect(() => buildSubmissionIdentityExport({
     sourceProjectRef: 'pleyuknjnprsckssxvrh',
+    sourceAccessMethod: 'direct_tables',
     sessionSlug: '0829-deliberation',
     exportedAt: '2026-09-03T00:00:00.000Z',
     ...sourceRows({
@@ -196,6 +202,65 @@ test('read failures do not expose database error details', async () => {
   }
 });
 
+test('reads the same validated source through the service-role-only RPC adapter', async () => {
+  const rows = sourceRows();
+  const calls = [];
+  const client = {
+    schema(schema) {
+      calls.push(['schema', schema]);
+      return {
+        rpc(name, args) {
+          calls.push(['rpc', name, args]);
+          return Promise.resolve({
+            data: {
+              schemaVersion: 1,
+              sessions: rows.sessions,
+              topics: rows.topics,
+              teams: rows.teams,
+              submissions: rows.submissions,
+              items: rows.items,
+            },
+            error: null,
+          });
+        },
+      };
+    },
+  };
+  await expect(readSubmissionIdentitySourceFromRpc({
+    client,
+    sessionSlug: '0829-deliberation',
+  })).resolves.toEqual(rows);
+  expect(calls).toEqual([
+    ['schema', 'climate_vote'],
+    ['rpc', 'platform_submission_identity_source', { p_session_slug: '0829-deliberation' }],
+  ]);
+});
+
+test('RPC adapter rejects extra fields and hides remote failure details', async () => {
+  const clientFor = (result) => ({
+    schema() {
+      return { rpc: () => Promise.resolve(result) };
+    },
+  });
+  await expect(readSubmissionIdentitySourceFromRpc({
+    client: clientFor({
+      data: { schemaVersion: 1, ...sourceRows(), privateField: 'must not pass' },
+      error: null,
+    }),
+    sessionSlug: '0829-deliberation',
+  })).rejects.toThrow('Invalid read-only RPC response');
+  try {
+    await readSubmissionIdentitySourceFromRpc({
+      client: clientFor({ data: null, error: { code: '42501', message: 'private detail' } }),
+      sessionSlug: '0829-deliberation',
+    });
+  } catch (error) {
+    expect(error.message).toBe('Read-only identity RPC failed');
+    expect(error.message).not.toContain('private detail');
+    expect(error.message).not.toContain('42501');
+  }
+});
+
 test('CLI requires an exact project ref and writes the private export outside the repository', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'platform-submission-identity-export-'));
   const outputPath = join(directory, 'submission-items.json');
@@ -228,6 +293,7 @@ test('CLI requires an exact project ref and writes the private export outside th
       projectRef: 'pleyuknjnprsckssxvrh',
       sessionSlug: '0829-deliberation',
       rowCount: 1,
+      accessMethod: 'direct_tables',
       databaseMutationExecuted: false,
     });
     expect(JSON.parse(readFileSync(outputPath, 'utf8')).submissions[0].item_id).toBe(ids.item);
@@ -241,6 +307,42 @@ test('CLI requires an exact project ref and writes the private export outside th
       },
       createClient,
     })).rejects.toThrow('does not match');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('CLI uses the RPC adapter only when the access method is explicit', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'platform-submission-identity-rpc-export-'));
+  const outputPath = join(directory, 'submission-items.json');
+  const rows = sourceRows();
+  const calls = [];
+  const createClient = () => ({
+    schema(schema) {
+      calls.push(['schema', schema]);
+      return {
+        rpc(name, args) {
+          calls.push(['rpc', name, args]);
+          return Promise.resolve({ data: { schemaVersion: 1, ...rows }, error: null });
+        },
+      };
+    },
+  });
+  try {
+    const result = await runSubmissionIdentityExportCli({
+      argv: ['--session-slug', '0829-deliberation', '--output', outputPath],
+      environment: {
+        SUPABASE_URL: 'https://pleyuknjnprsckssxvrh.supabase.co',
+        SUPABASE_SERVICE_ROLE_KEY: 'private-test-key',
+        PLATFORM_EXPORT_EXPECTED_PROJECT_REF: 'pleyuknjnprsckssxvrh',
+        PLATFORM_EXPORT_ACCESS_METHOD: 'read_only_rpc',
+      },
+      createClient,
+      exportedAt: '2026-09-03T00:00:00.000Z',
+    });
+    expect(result.accessMethod).toBe('read_only_rpc');
+    expect(calls.some(([operation]) => operation === 'rpc')).toBe(true);
+    expect(calls.some(([operation]) => operation === 'from')).toBe(false);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

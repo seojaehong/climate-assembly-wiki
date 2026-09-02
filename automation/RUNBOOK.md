@@ -258,8 +258,14 @@ RPC나 쓰기 호출은 없다. 출력에는 join code·근거·사용자·토�
 $env:SUPABASE_URL='https://<project-ref>.supabase.co'
 $env:SUPABASE_SERVICE_ROLE_KEY='<service-role-key>'
 $env:PLATFORM_EXPORT_EXPECTED_PROJECT_REF='<project-ref>'
+$env:PLATFORM_EXPORT_ACCESS_METHOD='direct_tables' # 승인된 table SELECT가 있을 때만
 npm.cmd run export:platform-submission-identities -- --session-slug '0829-deliberation' --output 'C:\approved\submission-items.json'
 ```
+
+운영 권고 경로는 table SELECT가 아니라 승인 패킷의 최소 권한 RPC다. RPC가 별도 승인·설치된
+뒤에만 `PLATFORM_EXPORT_ACCESS_METHOD=read_only_rpc`로 바꾼다. 두 방식 사이 자동 fallback은
+없으며 RPC 미설치·권한 오류는 private output을 만들지 않고 실패한다. 승인 범위와 검증·rollback은
+`docs/platform/SUBMISSION_IDENTITY_RPC_APPROVAL_PACKET.md`를 따른다.
 
 완료 출력의 `databaseMutationExecuted:false`, 프로젝트 ref, 세션 slug, 행 수를 확인한 뒤 아래
 provenance 생성기에 전달한다. 자격증명이나 원문 export는 저장소·로그·메신저에 남기지 않는다.
