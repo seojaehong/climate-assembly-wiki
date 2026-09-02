@@ -30,7 +30,7 @@ Phase C 글로벌 항목이 남아 있다. 이 문서는 계획서의 각 항목
 | B5 기록물 매핑 | 기관 입력 대기 | 모든 데이터셋의 기록 유형·단위과제·보존기간·기산점·처분 권한·파기 방법 입력 계약과 schema coverage CI | 기관 기록관리기준표와 책임자 검토값 확정 |
 | B6 GPKI/SAML | 기관 입력 대기 | self-hosted SAML SP·IdP metadata·GPKI gateway·계정 연결·assertion 안전 정책의 fail-closed 계획 생성기 | 기관 metadata·gateway·책임자 승인과 격리 통합 시험 |
 | B7 셀프호스트 부하 검증 | 선행조건 대기 | managed 환경 수치는 기준으로 사용하지 않음 | B2 환경 완성 후 동일 시나리오 재측정 |
-| Phase C 글로벌 | 부분 구현 | 한국어 SSOT, 6개 locale 정적 빌드, 중앙 locale registry, Arabic RTL 문서 방향·구조 전용 고지 | 아랍어 원문 번역·native review, RTL 수동 시각/보조기기 검수, 리전별 데이터주권, 라이선스, 비동기 채널, 자동 진행 기능 |
+| Phase C 글로벌 | 부분 구현 | 한국어 SSOT, 6개 locale 정적 빌드, locale별 글꼴·Arabic RTL, 테넌트 등록부 기반 데이터주권 격리 계획기 | 본문 번역·native review, 수동 보조기기 검수, 실제 별도 리전 provision·격리 E2E, 라이선스, 비동기 채널, 자동 진행 기능 |
 
 ## 이번 구현 — 8/29 provenance 공백
 
@@ -309,4 +309,37 @@ ES module named export가 아니라 classic IIFE로 실행되어 `window.Pagefin
 - Astro strict check: 464개 파일, 오류·경고 0건, 기존 hint 57건
 - 정적 production build: 9,493개 페이지 생성
 - 운영 사전 진단: 양쪽 도메인의 Pagefind JS/CSS HTTP 200, JS가 `window.PagefindUI`를 등록하는
-  IIFE임을 직접 확인. 실제 검색 입력·결과는 이 수정의 main 배포 후 최종 검증한다.
+  IIFE임을 직접 확인
+- main 병합 `7ef0182e01256469e210611382af0492e30ab070` 후 양쪽 도메인 manifest 일치,
+  감사·Cloudflare Pages·Workers 성공 확인
+- 양쪽 운영 도메인의 Arabic 검색에서 입력 UI와 `climate` 결과·추가 로드 문구가 표시되고,
+  인덱스 불가 fallback 미표시, `lang=ar`, `dir=rtl`, 가로 넘침 없음 확인
+
+## 9/3 후속 — Phase C 리전별 데이터주권·locale 글꼴 계약
+
+한국 공공 테넌트와 해외 테넌트를 서로 다른 데이터 평면에 고정하기 위한 fail-closed 계획
+생성기를 추가했다. 리전은 application/API origin을 공유할 수 없고 DB·object storage·backup
+국가가 일치해야 하며, 교차 리전 복제·backup과 브라우저 IP·언어 기반 추정 라우팅을 거부한다.
+한국 계약 주체는 국내 CSAP 적격 트랙, 그 밖의 계약 주체는 별도 해외 트랙에만 배정할 수 있다.
+
+기관·계약 승인 profile과 생성 계획은 저장소 밖에만 둘 수 있고 기존 출력을 덮어쓰지 않는다.
+계획은 참여자 신원·숙의 원문·음성·전사·감사로그를 중앙 라우터에 저장하지 않으며 실제 DB,
+DNS, 인프라를 변경하지 않는다. template은 미결정 인프라·책임자·검토를 blocker로 유지하므로
+별도 리전이 실제 provision되고 격리 E2E를 통과하기 전에는 Phase C 완료가 아니다.
+
+일본어·중국어·아랍어 공개 셸에는 각 문자권의 로컬 시스템 글꼴 stack을 추가했다. 새 외부 font
+요청은 만들지 않으며 Arabic은 한국어 본문 자간과 Latin용 음수 제목 자간을 적용하지 않는다.
+
+검증 결과:
+
+- 데이터주권 계획기 집중 테스트: 1개 파일, 6건 통과
+- locale 글꼴 집중 테스트: 1개 파일, 2건 통과
+- 기본 profile 실행: 리전 2개, 미결정 blocker 15개,
+  `readyForIsolatedDeployment:false`, DB·인프라·DNS 변경 0건, checksum 검증 통과
+- 저장소 전체 Vitest: 106개 파일, 1,788건 전부 통과
+- Windows automation 전체: 33개 파일, 541건 중 540건 통과. 기존 Git fixture 1건은 공통
+  5초 제한을 넘겼고 해당 파일을 30초 제한으로 단독 재실행해 8건 전부 통과
+- Astro strict check: 467개 파일, 오류·경고 0건, 기존 hint 57건
+- 정적 production build: 9,493개 페이지 생성
+- 로컬 실제 브라우저: Japanese·Chinese·Arabic의 body·대표 제목에 문자권별 font stack 적용,
+  body·제목 자간 `normal`, Arabic `dir=rtl`, 세 locale 모두 가로 넘침 없음

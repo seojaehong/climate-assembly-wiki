@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "routingMode": "pending",
+  "regions": [
+    {
+      "id": "kr-public",
+      "track": "kr_public_csap",
+      "applicationOrigin": null,
+      "apiOrigin": null,
+      "dataLocationCountry": "KR",
+      "objectStorageCountry": "KR",
+      "backupCountry": "KR",
+      "providerEligibility": "pending",
+      "crossRegionReplication": false,
+      "encryptionKeyScope": "pending",
+      "operationalOwnerRole": null
+    },
+    {
+      "id": "global-primary",
+      "track": "international",
+      "applicationOrigin": null,
+      "apiOrigin": null,
+      "dataLocationCountry": null,
+      "objectStorageCountry": null,
+      "backupCountry": null,
+      "providerEligibility": "pending",
+      "crossRegionReplication": false,
+      "encryptionKeyScope": "pending",
+      "operationalOwnerRole": null
+    }
+  ],
+  "tenantAssignments": [],
+  "review": {
+    "status": "pending",
+    "reviewerRole": null,
+    "reviewedAt": null
+  }
+}

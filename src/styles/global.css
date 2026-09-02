@@ -249,8 +249,16 @@ code, pre, kbd {
   background-color: rgba(10, 10, 10, 0.85) !important;
 }
 
+html:lang(en) body,
+html:lang(es) body,
+html:lang(ja) body,
+html:lang(zh) body,
+html:lang(ar) body {
+  letter-spacing: normal;
+}
+
 html[dir='rtl'] body {
-  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+  font-family: var(--font-body);
 }
 
 html[dir='rtl'] .language-toggle,
