@@ -65,3 +65,25 @@ strict check에서 기존 `BaseLayout.astro`의 hreflang 반복 변수가 암시
 3. 주제별 provenance map과 검수 전 import plan을 생성하고 사람이 원문 역링크를 전수 확인한다.
 4. production 적용은 Gate B-A2, A2 진단, 권한, A4 migration/RPC, 실제 issue 적재를 각각 분리 승인한다.
 5. 수동 접근성 평가와 Phase B 사업 결정을 병렬로 준비하되 외부 심사 완료를 코드 완료로 표시하지 않는다.
+
+## 9/3 후속 — 현재 submission identity의 안전한 추출 경로
+
+`automation/platform-submission-identity-export.mjs`를 추가해 지정된 Supabase 프로젝트와 세션의
+현재 `submission_item`만 서비스 역할로 읽고, 분석 대조에 필요한 UUID·주제/조/순번·원문만
+저장소 밖에 내보내도록 했다. 프로젝트 ref 불일치, 다른 세션 행, archive/중복 행, 빈 결과,
+16MiB 초과 결과는 모두 파일 생성 전에 거부하고 DB mutation은 실행하지 않는다.
+
+이 경로는 현재 행의 FK 대상 UUID를 확보하는 수단이다. S8의
+`submission_item_archive`에는 삭제 전 `submission_item.id`가 저장되지 않으므로 이미 삭제된
+과거 행의 원래 UUID는 현재 스키마만으로 복구할 수 없다. 따라서 8/29 분석 원문과 현재 행이
+exact match되지 않으면 실데이터 provenance 완료 증거가 아니며, 임의 UUID 생성이나 archive
+bigint ID 대체를 금지한다. 실제 자격증명 주입 실행과 private export 생성은 아직 하지 않았다.
+
+### live read probe
+
+환경에 이미 주입된 운영 URL·service role key를 값 노출 없이 사용해 새 exporter를 실행했다.
+지정 세션의 첫 `SELECT`가 PostgreSQL 권한 코드 `42501`·HTTP 403으로 중단됐고 private output은
+생성되지 않았다. 같은 자격증명으로 기존 `climate_vote.snapshots` 22행은 읽을 수 있었지만,
+payload key만 비식별 검사한 결과 `submission_item`을 포함한 platform snapshot은 0행이었다.
+따라서 현재 실 ID 확보 경로는 없다. 최소 테이블 SELECT 권한 또는 UUID를 반환하는 read-only
+SECURITY DEFINER RPC를 운영에 추가하는 것은 권한 변경이므로 별도 승인 전에는 적용하지 않는다.

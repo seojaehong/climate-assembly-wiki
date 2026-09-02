@@ -16,6 +16,7 @@
     "audit:platform-accessibility-kwcag": "node platform-accessibility-kwcag-coverage.mjs",
     "bridge:canvas-ontology": "node canvas-ontology-bridge.mjs",
     "audit:canvas-db-contract": "node canvas-db-contract.mjs",
+    "export:platform-submission-identities": "node platform-submission-identity-export.mjs",
     "plan:platform-analysis-provenance": "node platform-analysis-provenance-map.mjs",
     "plan:platform-analysis-import": "node platform-analysis-import.mjs",
     "plan:platform-result-sources": "node platform-result-source-plan.mjs",
