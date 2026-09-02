@@ -16,6 +16,7 @@ export interface SiteShellCopy {
   skipToContent: string;
   mainNavigation: string;
   mobileNavigation: string;
+  sectionNavigation: string;
   openSearch: string;
   openMenu: string;
   themeToggle: string;
@@ -42,6 +43,7 @@ const SITE_SHELL_COPY: Record<SiteLocale, SiteShellCopy> = {
     skipToContent: '본문으로 건너뛰기',
     mainNavigation: '주요 탐색',
     mobileNavigation: '모바일 탐색',
+    sectionNavigation: '섹션 탐색',
     openSearch: '검색 열기 (/)',
     openMenu: '메뉴 열기',
     themeToggle: '다크 모드 전환',
@@ -66,6 +68,7 @@ const SITE_SHELL_COPY: Record<SiteLocale, SiteShellCopy> = {
     skipToContent: 'Skip to main content',
     mainNavigation: 'Main navigation',
     mobileNavigation: 'Mobile navigation',
+    sectionNavigation: 'Section navigation',
     openSearch: 'Open search (/)',
     openMenu: 'Open menu',
     themeToggle: 'Toggle dark mode',
@@ -90,6 +93,7 @@ const SITE_SHELL_COPY: Record<SiteLocale, SiteShellCopy> = {
     skipToContent: 'メインコンテンツへ移動',
     mainNavigation: 'メインナビゲーション',
     mobileNavigation: 'モバイルナビゲーション',
+    sectionNavigation: 'セクションナビゲーション',
     openSearch: '検索を開く (/)',
     openMenu: 'メニューを開く',
     themeToggle: 'ダークモードを切り替え',
@@ -114,6 +118,7 @@ const SITE_SHELL_COPY: Record<SiteLocale, SiteShellCopy> = {
     skipToContent: '跳转到主要内容',
     mainNavigation: '主导航',
     mobileNavigation: '移动端导航',
+    sectionNavigation: '章节导航',
     openSearch: '打开搜索 (/)',
     openMenu: '打开菜单',
     themeToggle: '切换深色模式',
@@ -138,6 +143,7 @@ const SITE_SHELL_COPY: Record<SiteLocale, SiteShellCopy> = {
     skipToContent: 'Saltar al contenido principal',
     mainNavigation: 'Navegación principal',
     mobileNavigation: 'Navegación móvil',
+    sectionNavigation: 'Navegación de secciones',
     openSearch: 'Abrir búsqueda (/)',
     openMenu: 'Abrir menú',
     themeToggle: 'Cambiar modo oscuro',
@@ -162,6 +168,7 @@ const SITE_SHELL_COPY: Record<SiteLocale, SiteShellCopy> = {
     skipToContent: 'الانتقال إلى المحتوى الرئيسي',
     mainNavigation: 'التنقل الرئيسي',
     mobileNavigation: 'التنقل عبر الهاتف',
+    sectionNavigation: 'التنقل بين الأقسام',
     openSearch: 'فتح البحث (/)',
     openMenu: 'فتح القائمة',
     themeToggle: 'تبديل الوضع الداكن',

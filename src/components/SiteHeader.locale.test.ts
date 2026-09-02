@@ -22,6 +22,10 @@ const deprecatedBaseSource = readFileSync(
   fileURLToPath(new URL('../layouts/Base.astro', import.meta.url)),
   'utf8',
 ).replace(/\r\n/g, '\n');
+const sidebarSource = readFileSync(
+  fileURLToPath(new URL('./SiteSidebar.astro', import.meta.url)),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 describe('SiteHeader locale navigation contract', () => {
   it('recognizes every locale through the central registry', () => {
@@ -52,5 +56,13 @@ describe('SiteHeader locale navigation contract', () => {
     expect(deprecatedBaseSource).toContain('const shellCopy = siteShellCopy(lang);');
     expect(deprecatedBaseSource).toContain('{shellCopy.skipToContent}');
     expect(deprecatedBaseSource).toContain('<SearchModal lang={lang} />');
+  });
+
+  it('keeps structural-locale sidebar links and labels in the current locale', () => {
+    expect(sidebarSource).toContain("const currentLang = isSiteLocale(segments[0]) ? segments[0] : 'ko';");
+    expect(sidebarSource).toContain('aria-label={shellCopy.sectionNavigation}');
+    expect(sidebarSource).toContain('navigationLabel(section, currentLang)');
+    expect(sidebarSource).toContain('navigationLabel(item, currentLang)');
+    expect(sidebarSource).toContain('navigationGroupLabel(group, currentLang)');
   });
 });

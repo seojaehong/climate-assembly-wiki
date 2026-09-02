@@ -12,6 +12,8 @@
  *   import { TOP_NAV_ITEMS, SIDEBAR_SECTIONS } from '@/data/navigation';
  */
 
+import { isSiteLocale, type SiteLocale } from '../lib/site-locales';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -23,6 +25,8 @@ export interface NavItem {
   labelKo: string;
   /** English label */
   labelEn: string;
+  /** Shared-navigation labels for structural locales; native review is tracked separately. */
+  labels?: Partial<Record<Exclude<SiteLocale, 'ko' | 'en'>, string>>;
   /** Optional absolute href override (skips /{lang}/ prefix). Used for static demo pages. */
   href?: string;
   /** Open in new tab (for static demo pages outside the wiki app) */
@@ -31,6 +35,7 @@ export interface NavItem {
   children?: {
     labelKo: string;
     labelEn: string;
+    labels?: Partial<Record<Exclude<SiteLocale, 'ko' | 'en'>, string>>;
     href: string;
     external?: boolean;
   }[];
@@ -54,6 +59,8 @@ export interface SidebarSection {
   labelKo: string;
   /** English section heading */
   labelEn: string;
+  /** Section-heading labels for structural locales; native review is tracked separately. */
+  labels?: Partial<Record<Exclude<SiteLocale, 'ko' | 'en'>, string>>;
   items: SidebarItem[];
 }
 
@@ -63,7 +70,12 @@ export interface SidebarSection {
 // ---------------------------------------------------------------------------
 
 export const TOP_NAV_ITEMS: NavItem[] = [
-  { section: 'agenda',    labelKo: '의제',    labelEn: 'Agenda' },
+  {
+    section: 'agenda',
+    labelKo: '의제',
+    labelEn: 'Agenda',
+    labels: { ja: '議題', zh: '议题', es: 'Agenda', ar: 'جدول الأعمال' },
+  },
   // 2026-06-13: '리서치' (research) temporarily hidden for 6/13 workshop demo —
   // research/* pages still build, but link removed from public nav.
   // { section: 'research',  labelKo: '리서치',  labelEn: 'Research' },
@@ -89,11 +101,27 @@ export const TOP_NAV_ITEMS: NavItem[] = [
     section: 'field-ops',
     labelKo: '현장 운영',
     labelEn: 'Field Ops',
+    labels: { ja: '現場運営', zh: '现场运营', es: 'Operaciones de campo', ar: 'العمليات الميدانية' },
     href: '/mod/',
     children: [
-      { labelKo: '모더레이터 콘솔', labelEn: 'Moderator Console', href: '/mod/' },
-      { labelKo: '본부 현황', labelEn: 'Headquarters', href: '/hq/' },
-      { labelKo: '사용법', labelEn: 'Console Guide', href: '/mod-help/' },
+      {
+        labelKo: '모더레이터 콘솔',
+        labelEn: 'Moderator Console',
+        labels: { ja: 'モデレーターコンソール', zh: '主持人控制台', es: 'Consola de moderación', ar: 'وحدة تحكم الميسّر' },
+        href: '/mod/',
+      },
+      {
+        labelKo: '본부 현황',
+        labelEn: 'Headquarters',
+        labels: { ja: '本部状況', zh: '总部状态', es: 'Estado de la sede', ar: 'حالة المقر' },
+        href: '/hq/',
+      },
+      {
+        labelKo: '사용법',
+        labelEn: 'Console Guide',
+        labels: { ja: '利用ガイド', zh: '使用指南', es: 'Guía de la consola', ar: 'دليل وحدة التحكم' },
+        href: '/mod-help/',
+      },
     ],
   },
   // 2026-06-13: '운영규정 의견' — 3교시 A조/B조 시민 포스트잇 의견 시각화
@@ -119,6 +147,7 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
     id: 'agenda',
     labelKo: '의제',
     labelEn: 'Agenda',
+    labels: { ja: '議題', zh: '议题', es: 'Agenda', ar: 'جدول الأعمال' },
     items: [
       // [감축1] — Direct GHG reduction (domestic energy mix)
       { group: '감축1', labelKo: '01 핵발전 vs 재생에너지',  labelEn: '01 Nuclear vs Renewable',         path: 'agenda/01-nuclear-vs-renewable' },
@@ -147,3 +176,27 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
   // surface is restricted to homepage + agenda pages. Restore from git history
   // when content is republished.
 ];
+
+type LocalizedNavigationItem = Pick<NavItem, 'labelKo' | 'labelEn' | 'labels'>;
+
+const NAVIGATION_GROUP_LABELS: Record<string, Record<SiteLocale, string>> = {
+  '감축1': { ko: '감축1', en: 'Mitigation 1', ja: '緩和 1', zh: '减排 1', es: 'Mitigación 1', ar: 'التخفيف 1' },
+  '감축2': { ko: '감축2', en: 'Mitigation 2', ja: '緩和 2', zh: '减排 2', es: 'Mitigación 2', ar: 'التخفيف 2' },
+  '적응': { ko: '적응', en: 'Adaptation', ja: '適応', zh: '适应', es: 'Adaptación', ar: 'التكيف' },
+  '메타': { ko: '메타', en: 'Meta', ja: 'メタ', zh: '元议题', es: 'Meta', ar: 'ما وراء العملية' },
+};
+
+export function navigationLabel(item: LocalizedNavigationItem, locale: string | undefined): string {
+  if (locale === 'ko') return item.labelKo;
+  if (locale === 'en' || !isSiteLocale(locale)) return item.labelEn;
+  if (locale === 'ja' || locale === 'zh' || locale === 'es' || locale === 'ar') {
+    return item.labels?.[locale] ?? item.labelEn;
+  }
+  return item.labelEn;
+}
+
+export function navigationGroupLabel(group: string, locale: string | undefined): string {
+  const labels = NAVIGATION_GROUP_LABELS[group];
+  if (!labels) return group;
+  return labels[isSiteLocale(locale) ? locale : 'en'];
+}
