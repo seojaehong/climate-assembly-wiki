@@ -31,6 +31,8 @@ const searchLabel = shellCopy.searchLabel;
 const searchUnavailable = shellCopy.searchIndexUnavailable;
 ---
 
+<link rel="stylesheet" href="/pagefind/pagefind-ui.css" />
+
 <!-- Search modal dialog -->
 <dialog
   id="search-modal"
@@ -92,14 +94,40 @@ const searchUnavailable = shellCopy.searchIndexUnavailable;
     if (!dialog || !mountEl) return;
 
     let pagefindLoaded = false;
+    let pagefindLoadPromise = null;
+
+    function loadPagefindBundle() {
+      if (typeof window.PagefindUI === 'function') return Promise.resolve();
+      if (pagefindLoadPromise) return pagefindLoadPromise;
+
+      pagefindLoadPromise = new Promise((resolve, reject) => {
+        const existing = document.querySelector('script[data-pagefind-ui]');
+        existing?.remove();
+
+        const script = document.createElement('script');
+        script.src = '/pagefind/pagefind-ui.js';
+        script.async = true;
+        script.dataset.pagefindUi = 'true';
+        script.addEventListener('load', () => resolve(), { once: true });
+        script.addEventListener('error', () => {
+          script.remove();
+          reject(new Error('Pagefind UI bundle failed to load'));
+        }, { once: true });
+        document.head.appendChild(script);
+      });
+
+      return pagefindLoadPromise;
+    }
 
     async function loadPagefind() {
       if (pagefindLoaded) return;
-      pagefindLoaded = true;
 
       try {
-        // @ts-ignore — Pagefind is injected post-build
-        const { PagefindUI } = await import('/pagefind/pagefind-ui.js');
+        await loadPagefindBundle();
+        const PagefindUI = window.PagefindUI;
+        if (typeof PagefindUI !== 'function') {
+          throw new Error('PagefindUI global was not registered');
+        }
         new PagefindUI({
           element: '#pagefind-modal-ui',
           showImages: false,
@@ -120,8 +148,10 @@ const searchUnavailable = shellCopy.searchIndexUnavailable;
             searching: '검색 중…',
           } : undefined,
         });
-      } catch (e) {
-        // Pagefind bundle not available in dev mode — silently skip
+        pagefindLoaded = true;
+      } catch (error) {
+        pagefindLoadPromise = null;
+        console.error('[search] Failed to load Pagefind UI', error);
         mountEl.innerHTML =
           '<p class="text-sm text-center py-8 text-gray-400">' +
           searchUnavailable +
