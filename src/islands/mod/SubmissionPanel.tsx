@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   submissionFinalize,
   submissionGet,
   submissionSave,
   submissionReopenByTeam,
   topicList,
+  type SubmissionGetResult,
   type SubmissionStatus,
   type Topic,
 } from '../../lib/deliberation';
@@ -14,7 +15,9 @@ import {
   MAX_SUBMISSION_ROWS,
   addRow,
   canFinalize,
+  draftStatusLabel,
   emptyRow,
+  formatSavedClock,
   isDirty,
   isEditable,
   liftNameOnlyRows,
@@ -24,6 +27,9 @@ import {
   pickRestoredRows,
   removeRow,
   rowsFromItems,
+  sameSavePayload,
+  saveFailureKind,
+  saveFailureMessage,
   saveOutcomeMessage,
   splitOverlongRows,
   splitPastedRows,
@@ -32,6 +38,21 @@ import {
   toSaveItems,
   type EditorRow,
 } from './submission-panel-logic';
+import {
+  createDraftStorage,
+  staleKeys,
+  writeDraft,
+} from './submission-draft-store';
+import {
+  conflictVerdict,
+  makeQueuedSave,
+  queueKey,
+  readQueue,
+  shouldAttempt,
+  withFailedAttempt,
+  writeQueue,
+  type QueuedSave,
+} from './submission-queue';
 import {
   REVISION_POLL_MS,
   fetchServedRevision,
@@ -47,6 +68,13 @@ import {
   formatStamp,
 } from './submission-report';
 import { submissionReportBlob } from './submission-report-docx';
+import {
+  MULTI_DOWNLOAD_HINT,
+  buildTeamBundleEntries,
+  shouldShowMultiDownloadHint,
+  teamBundleFileName,
+} from './team-download-bundle';
+import { buildZipArchive } from './zip-store';
 import PrintableReport from './PrintableReport';
 import type { SubmissionReport } from './submission-report';
 import { buildBoards } from './hq-submission-board-logic';
@@ -74,12 +102,14 @@ function Eyebrow({ children, className = '' }: { children: React.ReactNode; clas
   );
 }
 
-/** ISO 시각을 시:분으로. 값이 없거나 깨졌으면 '—'. */
+/**
+ * ISO 시각을 `14:23` 꼴로. 값이 없거나 깨졌으면 '—'.
+ *
+ * 표기는 `formatSavedClock` 하나에 맡긴다 — 상태 배지와 이 자리(마지막 저장·최종
+ * 제출 시각)가 **같은 사실을 다른 모양으로** 내면 조가 두 시각을 다른 것으로 읽는다.
+ */
 function formatClock(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  return formatSavedClock(iso) || '—';
 }
 
 type LoadedSubmission = {
@@ -98,6 +128,23 @@ type LoadedSubmission = {
  * 조 콘솔은 꼭지마다 구역이 따로라 상태를 공유하지 않는다. 상태를 위로 끌어올리면
  * 세 구역이 서로의 저장에 다시 그려진다 — 입력 중에 그건 위험하다. 신호만 보낸다.
  */
+/**
+ * 미저장분 보관함 — **모듈에 하나만 둔다.**
+ *
+ * 구역(TopicSection)마다 새로 만들면 메모리 계층이 구역별로 갈리고, 배포 이전
+ * `sessionStorage` 초안을 훑어 올리는 승격 경로도 구역마다 따로 돌게 된다.
+ * 계층 결정(local→session→메모리)은 탭 전체에서 한 번이어야 한다.
+ */
+const draftStore = createDraftStorage();
+
+/**
+ * 재전송 자물쇠의 유효기간. 이 시간이 지나면 앞선 시도가 아직 안 끝났어도 다시 건다.
+ *
+ * 요청이 영영 안 끝나는 망(캡티브 포털·죽은 와이파이)이 실제로 있다. 자물쇠를
+ * 불리언으로 두면 그 한 번에 큐가 영원히 멈춘다 — 그게 이 story 가 막으려는 상태다.
+ */
+const ATTEMPT_LOCK_MS = 60_000;
+
 const SUBMISSION_CHANGED = 'climate-vote:submission-changed';
 function announceSubmissionChanged() {
   window.dispatchEvent(new CustomEvent(SUBMISSION_CHANGED));
@@ -110,9 +157,10 @@ function announceSubmissionChanged() {
  * 탭을 닫을 때를 위한 것이지, **우리가 눌러 달라고 한 새로고침**을 막으라는 게 아니다.
  * 겁주는 창이 뜨면 조는 새로고침을 안 한다 — 그러면 옛 번들 그대로 남는다.
  *
- * 안전한 이유 — 미저장분은 이미 sessionStorage 초안에 들어가 있고(TopicSection 의
- * 보관 useEffect), 새로 열릴 때 `pickRestoredRows` 가 서버 내용과 견줘 되살린다.
- * sessionStorage 는 **같은 탭의 새로고침을 건너 산다.**
+ * 안전한 이유 — 미저장분은 이미 초안 보관함에 들어가 있고(TopicSection 의 보관
+ * useEffect), 새로 열릴 때 `pickRestoredRows` 가 서버 내용과 견줘 되살린다.
+ * 보관함은 `localStorage` 를 먼저 쓰므로 새로고침뿐 아니라 **탭을 닫았다 다시 열어도
+ * 산다**(US-003). 막힌 브라우저에서만 `sessionStorage`·메모리로 내려간다.
  */
 let suppressUnloadGuard = false;
 
@@ -185,7 +233,24 @@ function ordinalMark(n: number): string {
 }
 
 /** 꼭지 하나 = 구역 하나. 편집·저장·최종 제출을 스스로 갖는다. */
-function TopicSection({ code, topic }: { code: string; topic: Topic }) {
+function TopicSection({
+  code,
+  topic,
+  fixtureSubmission,
+  onUnsavedChange,
+}: {
+  code: string;
+  topic: Topic;
+  /** 주면 `submission_get` 을 부르지 않는다 — 픽스처 라우트 전용(HqSubmissionBoard 의 fixtureRows 와 같은 관례). */
+  fixtureSubmission?: SubmissionGetResult;
+  /**
+   * 이 꼭지에 저장 안 한 내용이 있는지 위로 알린다(마감 배너가 쓴다, US-010).
+   *
+   * ★ 배너가 초안 보관함을 뒤져 스스로 판정하면 안 되기 때문에 있는 통로다 —
+   *   서버와 내용이 같은 초안까지 「미저장」이 되어 배지와 배너가 다른 말을 한다.
+   */
+  onUnsavedChange?: (topicId: string, unsaved: boolean) => void;
+}) {
   const [loaded, setLoaded] = useState<LoadedSubmission | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [rows, setRows] = useState<EditorRow[]>([emptyRow()]);
@@ -200,11 +265,67 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
   const [longNoticeAnswered, setLongNoticeAnswered] = useState<string | null>(null);
   /** 같은 방식으로, 「이름만 있는 줄」 안내에 답한 조합. */
   const [nameNoticeAnswered, setNameNoticeAnswered] = useState<string | null>(null);
+  /** 저장에 실패해 다시 보낼 것을 기다리는 건. 꼭지당 1건이다(submission-queue). */
+  const [queued, setQueued] = useState<QueuedSave | null>(null);
+  /**
+   * 재전송 직전에 **서버가 더 새것**으로 밝혀진 상태. 보내지 않고 조에게 묻는다(A-D5).
+   * 병합도 하지 않고 조용히 덮어쓰지도 않는다 — 어느 쪽이든 남의 글이 사라진다.
+   */
+  const [conflict, setConflict] = useState<{ serverRows: EditorRow[] } | null>(null);
+  const [showServerRows, setShowServerRows] = useState(false);
+  /**
+   * 재전송이 겹치지 않게 하는 자물쇠. 불리언이 아니라 **시각**을 넣는다 —
+   * 요청이 영영 안 끝나면 불리언 자물쇠는 박힌 채 남아 큐가 영원히 멈춘다.
+   */
+  const attemptingSinceRef = useRef<number | null>(null);
+  /**
+   * 워커가 「지금 화면」을 봐야 할 때만 쓴다. 워커 이펙트를 `rows` 로 다시 태우면
+   * 조가 한 글자 칠 때마다 백오프 타이머가 처음부터 다시 걸린다.
+   */
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
+  /** 손으로 누른 저장·최종 제출이 날아가는 중인가. 워커가 그 위에 겹치면 안 된다. */
+  const savingRef = useRef(false);
+  savingRef.current = saving || finalizing;
 
   const dirty = isDirty(rows, baseline);
+
+  // ── 저장 상태 배지의 시계 (설계 §1.4) ─────────────────────────
+  // 「저장 안 함 · 3분째」를 내려면 **언제부터** 미저장인지와 **지금**이 필요하다.
+  // 둘 다 화면 상태로 둔다 — 순수 함수(`draftStatusLabel`)는 시각을 인자로만 받는다.
+  const [dirtySinceMs, setDirtySinceMs] = useState<number | null>(null);
+  const [statusNowMs, setStatusNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    // 미저장이 이어지는 동안 시작 시각은 그대로 둔다(한 글자마다 0분으로 되돌아가면
+    // 「몇 분째 저장 안 했는지」라는 정보 자체가 없어진다).
+    setDirtySinceMs((prev) => (dirty ? (prev ?? Date.now()) : null));
+  }, [dirty]);
+  useEffect(() => {
+    if (dirtySinceMs == null) return;
+    // 이펙트가 다시 걸리는 순간이 곧 미저장의 시작이므로 여기서 시계를 맞춘다.
+    setStatusNowMs(Date.now());
+    // 30초 간격 — 분이 바뀌는 순간과 화면이 어긋나는 폭을 30초 아래로 묶는다.
+    const t = setInterval(() => setStatusNowMs(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, [dirtySinceMs]);
   // 미저장 입력 임시 보관함 — 조·꼭지마다 따로 둔다.
   const draftKey = `climate_vote_draft:${code}:${topic.id}`;
+  // 저장 실패분 재전송 큐 — 같은 보관함(local→session→메모리)에 접두사만 갈라 둔다.
+  const qKey = queueKey(code, topic.id);
   const badge = submissionBadge(loaded?.status ?? null);
+  // ★ 위 `badge` 는 잠금(최종 제출) 배지다. 이것은 **저장 상태** 배지로 별개다.
+  const saveStatus = draftStatusLabel(
+    {
+      loadFailed,
+      saving: saving || finalizing,
+      conflict: conflict != null,
+      queuedAttempts: queued?.attempts ?? null,
+      dirty,
+      dirtySinceMs,
+      savedAt,
+    },
+    statusNowMs,
+  );
   const topicOpen = topic.status === 'open';
   const editable = loaded != null && isEditable(loaded.status) && topicOpen;
 
@@ -260,7 +381,7 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
 
   const loadSubmission = useCallback(async () => {
     try {
-      const result = await submissionGet(code, topic.id);
+      const result = fixtureSubmission ?? (await submissionGet(code, topic.id));
       const nextRows = rowsFromItems(result.items ?? []);
       setLoaded({
         status: result.status ?? null,
@@ -274,7 +395,7 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
       // 보관분이 그와 다를 때만 화면에 올린다(저장을 마친 뒤엔 같아지므로 안 뜬다).
       let restored: EditorRow[] | null = null;
       try {
-        restored = pickRestoredRows(sessionStorage.getItem(draftKey), nextRows);
+        restored = pickRestoredRows(draftStore.getItem(draftKey), nextRows);
       } catch {
         /* 보관함을 못 읽는 브라우저 — 서버 내용으로 연다 */
       }
@@ -282,7 +403,7 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
     } catch {
       setLoadFailed(true);
     }
-  }, [code, topic.id, draftKey]);
+  }, [code, topic.id, draftKey, fixtureSubmission]);
 
   useEffect(() => {
     void loadSubmission();
@@ -292,13 +413,19 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
   // (낡은 초안이 남아 다음에 되살아나면 그게 더 위험하다).
   useEffect(() => {
     if (loaded == null) return;
-    try {
-      if (dirty) sessionStorage.setItem(draftKey, JSON.stringify(rows));
-      else sessionStorage.removeItem(draftKey);
-    } catch {
-      /* 보관만 못 할 뿐 편집은 계속된다 */
-    }
+    // ★ 딛고 선 서버 updated_at 을 함께 넣는다 — 재전송 큐(US-004·005)가
+    //   「내가 읽은 뒤에 남이 저장했는가」를 이 값으로 판정한다.
+    if (dirty) draftStore.setItem(draftKey, writeDraft(rows, loaded.updatedAt, Date.now()));
+    else draftStore.removeItem(draftKey);
   }, [rows, dirty, loaded, draftKey]);
+
+  // 마감 배너(탭 바깥)가 볼 수 있게 미저장 사실을 위로 올린다.
+  // ★ 「저장 안 함」과 「재전송 대기」를 **같은 사실**로 묶는다 — 둘 다 서버에 아직
+  //   안 올라간 글이고, 설계 §2.4 도 `unsaved`/`queued` 를 함께 센다.
+  const unsavedForBanner = dirty || queued != null;
+  useEffect(() => {
+    onUnsavedChange?.(topic.id, unsavedForBanner);
+  }, [onUnsavedChange, topic.id, unsavedForBanner]);
 
   // 저장 전 이탈(새로고침·탭 닫기) confirm — 자동 저장이 없으므로 이 방어선이 유일하다.
   // 구역마다 걸어 두면 어느 꼭지에 미저장분이 있어도 잡힌다.
@@ -325,13 +452,27 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
    * 초안의 임무는 **저장 못 한 것**을 새로고침 너머로 살리는 것이다. 저장이 끝난
    * 순간 정본은 서버다.
    */
-  const dropDraft = () => {
-    try {
-      sessionStorage.removeItem(draftKey);
-    } catch {
-      /* 못 지워도 아래 loadSubmission 은 진행한다 */
-    }
-  };
+  /**
+   * 큐를 놓는다 — 보관함에서도, 화면 상태에서도.
+   *
+   * 저장이 어떤 경로로든 성공하면 대기 중이던 옛 내용은 더 이상 보낼 것이 아니다.
+   * 남겨 두면 워커가 **이미 지난 내용을 다시 올려** 방금 저장한 것을 덮는다.
+   */
+  const clearQueue = useCallback(() => {
+    draftStore.removeItem(qKey);
+    setQueued(null);
+    setConflict(null);
+    setShowServerRows(false);
+  }, [qKey]);
+
+  const dropDraft = useCallback(() => {
+    // 보관함이 모든 계층에서 지운다 — 한 곳만 지우면 배포 이전 `sessionStorage`
+    // 사본이 남아 다음 열람에 되살아난다(submission-draft-store).
+    draftStore.removeItem(draftKey);
+    // 설계 §1.5 — 초안을 버릴 때 큐도 함께 버린다. 초안이 없어졌다는 건 저장이
+    // 끝났다는 뜻이고, 그러면 큐에 실린 옛 내용은 되레 위험하다.
+    clearQueue();
+  }, [draftKey, clearQueue]);
 
   const handleSave = async () => {
     if (!editable) return;
@@ -345,18 +486,141 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
       await loadSubmission();
       announceSubmissionChanged();
     } catch (error) {
-      const message = error instanceof Error ? error.message : '';
-      setToast(
-        message.includes('finalized')
-          ? '이미 최종 제출된 상태입니다 — 「다시 열기」를 누르면 조가 직접 풀 수 있습니다.'
-          : message.includes('not open')
-            ? '이 꼭지는 마감되어 저장할 수 없습니다.'
-            : '저장에 실패했습니다 — 네트워크를 확인하고 다시 시도해 주세요.',
-      );
+      // ★ 다시 보내면 될 실패(네트워크 계열)만 큐로 간다. 잠긴 꼭지·마감된 꼭지는
+      //   몇 번을 보내도 같은 결과라, 큐에 넣으면 300초마다 영원히 두드리는 소음이 된다.
+      const kind = saveFailureKind(error);
+      if (kind === 'network' && loaded != null) {
+        const q = makeQueuedSave({
+          code,
+          topicId: topic.id,
+          items: toSaveItems(rows),
+          // 딛고 선 서버 시각. 재전송 직전에 이 값으로 「그사이 남이 저장했는가」를 본다.
+          baseUpdatedAt: loaded.updatedAt,
+          nowMs: Date.now(),
+        });
+        draftStore.setItem(qKey, writeQueue(q));
+        setQueued(q);
+        setConflict(null);
+      }
+      setToast(saveFailureMessage(kind));
     } finally {
       setSaving(false);
     }
   };
+
+  /**
+   * 재전송 한 번 — 설계 §1.3 의 절차를 그대로 따른다.
+   *
+   * 1. `submissionGet` 으로 지금 서버 `updated_at` 을 읽는다
+   * 2. 큐의 `baseUpdatedAt` 과 같을 때만 보낸다
+   * 3. 다르면 **보내지 않고** 조에게 묻는다(충돌)
+   * 4. `submissionGet` 자체가 실패하면 아무것도 안 보내고 다음 백오프로 넘긴다
+   *
+   * `force` 는 「연결이 돌아왔다」·「지금 다시 시도」처럼 **새 정보가 생긴 순간**에만 준다.
+   * 그때까지의 백오프는 「연결이 없다」는 추정 위에 잡힌 것이라 더 기다릴 이유가 없다.
+   */
+  const attempt = useCallback(
+    async (q: QueuedSave, force: boolean) => {
+      const now = Date.now();
+      const online = typeof navigator === 'undefined' ? true : navigator.onLine !== false;
+      if (!online) return; // 오프라인이면 시도 자체를 건너뛴다 — 실패 횟수를 낭비하지 않는다
+      if (!force && !shouldAttempt(q, now, online)) return;
+      // ★ 손으로 누른 저장이 날아가는 중이면 비킨다. 겹치면 늦게 도착한 쪽이 이기는데,
+      //   그게 큐(옛 내용)면 방금 손으로 저장한 새 내용이 서버에서 지워진다.
+      //   그 저장이 성공하면 큐째로 없어지고, 실패하면 큐가 새로 얹혀 여기로 다시 온다.
+      if (savingRef.current) return;
+      const since = attemptingSinceRef.current;
+      if (since !== null && now - since < ATTEMPT_LOCK_MS) return;
+      attemptingSinceRef.current = now;
+      // 보내는 동안은 저장·최종 제출 버튼을 잠근다 — 조가 그 틈에 새 내용을 저장하면
+      // 뒤늦게 도착한 큐가 그걸 덮는다(같은 사고의 반대 방향).
+      setSaving(true);
+      try {
+        const server = await submissionGet(q.code, q.topicId);
+        if (conflictVerdict(server.updated_at, q.baseUpdatedAt) === 'conflict') {
+          setConflict({ serverRows: rowsFromItems(server.items ?? []) });
+          return;
+        }
+        await submissionSave(q.code, q.topicId, q.items);
+        // ★ 순서는 큐 삭제 → dropDraft() → loadSubmission() 다(2026-08-30 실화면 버그).
+        //   다만 **오프라인 동안 조가 더 썼으면 초안을 버리지 않는다.** 그때 초안은
+        //   낡은 사본이 아니라 큐보다 새 글이고, 버리면 화면에서도 저장소에서도 사라진다.
+        if (sameSavePayload(rowsRef.current, q.items)) dropDraft();
+        else clearQueue();
+        await loadSubmission();
+        announceSubmissionChanged();
+        setToast('연결이 돌아와 자동으로 저장했습니다.');
+      } catch (error) {
+        const kind = saveFailureKind(error);
+        if (kind !== 'network') {
+          // 잠겼거나 마감됐다 — 다시 보내도 같은 결과다. 큐를 놓고 조에게 알린다.
+          clearQueue();
+          setToast(saveFailureMessage(kind));
+          return;
+        }
+        const next = withFailedAttempt(q, Date.now());
+        draftStore.setItem(qKey, writeQueue(next));
+        setQueued(next);
+      } finally {
+        attemptingSinceRef.current = null;
+        setSaving(false);
+      }
+    },
+    [qKey, dropDraft, clearQueue, loadSubmission],
+  );
+
+  /**
+   * 충돌 상태에서 조가 「내 내용으로 덮어쓰기」를 골랐다.
+   *
+   * 보내는 것은 **큐에 실린 내용**이다(조가 그걸 보고 골랐다). 화면에서 다시 만들면
+   * 고른 것과 다른 게 나간다.
+   */
+  const handleOverwrite = async () => {
+    const q = queued;
+    if (!q) return;
+    setSaving(true);
+    try {
+      await submissionSave(q.code, q.topicId, q.items);
+      if (sameSavePayload(rowsRef.current, q.items)) dropDraft();
+      else clearQueue();
+      await loadSubmission();
+      announceSubmissionChanged();
+      setToast('내 내용으로 저장했습니다.');
+    } catch (error) {
+      const kind = saveFailureKind(error);
+      if (kind !== 'network') clearQueue();
+      setToast(saveFailureMessage(kind));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 마운트 시 큐 확인 — 탭을 닫았다 다시 연 조는 여기서 대기 중인 건을 되찾는다.
+  useEffect(() => {
+    setQueued(readQueue(draftStore.getItem(qKey)));
+    setConflict(null);
+    setShowServerRows(false);
+  }, [qKey]);
+
+  /**
+   * 큐 워커 — 깨우는 조건 셋 중 둘이 여기 있다(설계 §1.3).
+   * ① `nextAttemptAtMs` 타이머 ② `online` 이벤트. ③ 「지금 다시 시도」 버튼은 아래 화면에.
+   *
+   * 충돌 중에는 돌지 않는다 — 조가 고르기 전에는 보낼 것이 없다.
+   */
+  useEffect(() => {
+    if (!queued || conflict) return;
+    const timer = setTimeout(
+      () => void attempt(queued, false),
+      Math.max(0, queued.nextAttemptAtMs - Date.now()),
+    );
+    const onOnline = () => void attempt(queued, true);
+    window.addEventListener('online', onOnline);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('online', onOnline);
+    };
+  }, [queued, conflict, attempt]);
 
   /**
    * 다시 열기 — 본부 승인 없이 조가 직접 푼다. 기록은 남는다(actor_scope='team').
@@ -423,6 +687,32 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
             </span>
           ) : null}
         </div>
+        {/* 저장 상태 배지 (설계 §1.4) — 「지금 내 글이 안전한가」.
+            ★ 꼭지 **머리**에 둔다. 저장 버튼 옆(맨 아래)에만 두면 긴 꼭지에서는
+              스크롤 밖으로 나가 조가 못 본다. 8.29에 실제로 그랬다.
+            ★ hover 로만 보이는 정보를 두지 않는다 — 현장은 태블릿·손가락이다.
+            불러오는 중에는 내지 않는다(아직 아무 사실도 없다). */}
+        {loaded != null || loadFailed ? (
+          <p
+            role="status"
+            aria-live="polite"
+            data-save-status={saveStatus.state}
+            className={`tr-num mt-2 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[16px] font-extrabold ${
+              saveStatus.tone === 'ok'
+                ? 'border-[#4F9D3A]/40 bg-[#4F9D3A]/10 text-[#2F6322]'
+                : saveStatus.tone === 'busy'
+                  ? 'border-[#1F4E79]/40 bg-[#1F4E79]/10 text-[#1F4E79]'
+                  : saveStatus.tone === 'warn'
+                    ? 'border-[#F5A623] bg-[#F5A623]/15 text-[#B5651D]'
+                    : 'border-[#B22A2A] bg-[#FDECEC] text-[#8B1F1F]'
+            }`}
+          >
+            <span aria-hidden="true">
+              {saveStatus.tone === 'ok' ? '●' : saveStatus.tone === 'busy' ? '⟳' : '!'}
+            </span>
+            <span>{saveStatus.label}</span>
+          </p>
+        ) : null}
         {topic.guidance ? (
           <p className="mt-2 text-[15px] leading-[1.55] text-[#5A6B73] break-words">{topic.guidance}</p>
         ) : null}
@@ -482,6 +772,85 @@ function TopicSection({ code, topic }: { code: string; topic: Topic }) {
               <p className="rounded-xl border border-[#DCE7EE] bg-[#F1F7FA] px-4 py-2.5 text-[15px] font-semibold text-[#5A6B73]">
                 이 꼭지는 마감되어 더 이상 저장할 수 없습니다.
               </p>
+            ) : null}
+
+            {/* 저장 실패분 — 대기 중이거나, 서버가 더 새것이라 조에게 묻는 중이거나.
+                ★ 어느 쪽이든 **글은 이 기기에 남아 있다**는 말을 먼저 한다. 8.29에 조가
+                  가장 불안해한 것이 「지금 내 글이 어디 있느냐」였다. */}
+            {queued && conflict ? (
+              <div
+                role="alert"
+                className="rounded-xl border-2 border-[#B22A2A] bg-[#FDECEC] px-4 py-3"
+              >
+                <p className="text-[17px] font-extrabold text-[#8B1F1F]">
+                  다른 기기에서 이 꼭지를 먼저 저장했습니다.
+                </p>
+                <p className="mt-1 text-[15px] font-semibold text-[#8B1F1F]">
+                  대기 중이던 내 내용은 아직 보내지 않았습니다 — 어느 쪽으로 할지 골라 주세요.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleOverwrite()}
+                    disabled={saving}
+                    className="h-12 rounded-xl bg-[#B22A2A] px-5 text-[16px] font-bold text-white disabled:opacity-40"
+                  >
+                    {saving ? '저장 중…' : '내 내용으로 덮어쓰기'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowServerRows((v) => !v)}
+                    className="h-12 rounded-xl border-2 border-[#B22A2A] bg-white px-5 text-[16px] font-bold text-[#B22A2A]"
+                  >
+                    {showServerRows ? '서버 내용 접기' : '서버 내용 보기'}
+                  </button>
+                </div>
+                {showServerRows ? (
+                  <div className="mt-3 space-y-2 rounded-xl border border-[#E7BDBD] bg-white p-3">
+                    <p className="text-[15px] font-bold text-[#8B1F1F] tr-num">
+                      {`서버에 저장돼 있는 내용 ${conflict.serverRows.length}줄`}
+                    </p>
+                    <ol className="space-y-1.5">
+                      {conflict.serverRows.map((serverRow, i) => (
+                        <li
+                          key={i}
+                          className="text-[16px] leading-[1.55] text-[#1F2933] break-words"
+                        >
+                          <span className="font-bold text-[#5A6B73] tr-num">{`${i + 1}. `}</span>
+                          {serverRow.name ? (
+                            <b className="text-[#1F4E79]">{`${serverRow.name} `}</b>
+                          ) : null}
+                          {serverRow.content}
+                        </li>
+                      ))}
+                    </ol>
+                    <p className="text-[14px] font-semibold text-[#5A6B73]">
+                      보기 전용입니다. 필요한 문장을 위 칸에 옮겨 적고 저장하면 양쪽이 다 남습니다.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            ) : queued ? (
+              <div
+                role="status"
+                className="flex flex-wrap items-center gap-3 rounded-xl border-2 border-[#F5A623] bg-[#FFF4D6] px-4 py-3"
+              >
+                <span className="flex-1 min-w-[220px]">
+                  <span className="block text-[17px] font-extrabold text-[#6B4B00] tr-num">
+                    {`저장하지 못한 내용이 대기 중입니다 · ${queued.attempts}번째 시도`}
+                  </span>
+                  <span className="block text-[15px] font-semibold text-[#6B4B00]">
+                    연결되면 자동으로 저장합니다. <b>글은 이 기기에 남아 있습니다.</b>
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void attempt(queued, true)}
+                  className="h-12 shrink-0 rounded-xl border-2 border-[#B5651D] bg-white px-4 text-[16px] font-bold text-[#B5651D]"
+                >
+                  지금 다시 시도
+                </button>
+              </div>
             ) : null}
 
             <div className="space-y-3">
@@ -868,23 +1237,36 @@ function TeamDownload({
   teamLabel,
   tableNo,
   topics,
+  fixtureSubmissions,
 }: {
   code: string;
   teamLabel: string;
   /** 현장 좌석 번호 — 내려받은 표의 「테이블」 칸에 들어간다. */
   tableNo?: string | null;
   topics: Topic[];
+  /**
+   * 꼭지 id → 픽스처 제출물. 주면 `submission_get` 을 부르지 않는다.
+   *
+   * ★ 인쇄 문서는 **버튼을 누르기 전부터** 만들어 둔다(아래 useEffect). 그래서 이 값을
+   *   안 받으면 픽스처 라우트가 화면을 여는 것만으로 운영 DB 로 읽기를 보낸다.
+   */
+  fixtureSubmissions?: Record<string, SubmissionGetResult>;
 }) {
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // 인쇄 전용 문서. 화면에는 안 보이고 종이에만 나간다.
   const [printReport, setPrintReport] = useState<SubmissionReport | null>(null);
+  /**
+   * 개별 형식을 몇 번 눌렀는가. 브라우저의 「여러 파일 내려받기」 차단은 **조용해서**
+   * (`a.click()` 이 그대로 성공한다) 실패를 감지할 수 없다 — 누른 횟수만 세어 안내를 띄운다.
+   */
+  const [individualDownloads, setIndividualDownloads] = useState(0);
 
   const collect = async (): Promise<HqSubmissionRow[]> => {
     const rows: HqSubmissionRow[] = [];
     for (const topic of topics) {
-      const got = await submissionGet(code, topic.id);
+      const got = fixtureSubmissions?.[topic.id] ?? (await submissionGet(code, topic.id));
       const items = got?.items ?? [];
       const base = {
         topic_id: topic.id,
@@ -944,7 +1326,7 @@ function TeamDownload({
     }
     // collect 는 topics·code 에만 기대므로 의존성을 그 둘로 좁힌다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, teamLabel, topics]);
+  }, [code, teamLabel, topics, fixtureSubmissions]);
 
   // 인쇄 문서는 **버튼을 누르기 전부터 DOM에 있어야 한다.**
   // 눌러야 만들어지게 두면 Ctrl+P·브라우저 인쇄 메뉴로 찍을 때 드러낼 것이 없어
@@ -977,22 +1359,61 @@ function TeamDownload({
     }
   };
 
+  /** 저장된 내용으로 보고서 모델을 만든다. 개별 내려받기와 「전부 받기」가 같은 문서를 쓰게 하는 자리다. */
+  const buildReport = async (at: Date): Promise<SubmissionReport> =>
+    buildSubmissionReport(buildBoards(await collect()), {
+      generatedAt: formatStamp(at),
+      scopeLabel: teamLabel,
+    });
+
   const download = async (kind: 'docx' | 'csv' | 'txt') => {
     setBusy(true);
     setError(null);
     try {
-      const report = buildSubmissionReport(buildBoards(await collect()), {
-        generatedAt: formatStamp(new Date()),
-        scopeLabel: teamLabel,
-      });
+      const report = await buildReport(new Date());
       if (kind === 'docx') save(await submissionReportBlob(report), reportFileName(report, 'docx'));
       else if (kind === 'csv')
         save(new Blob([reportToCsv(report)], { type: 'text/csv;charset=utf-8' }), reportFileName(report, 'csv'));
       else
         save(new Blob([reportToText(report)], { type: 'text/plain;charset=utf-8' }), reportFileName(report, 'txt'));
+      setIndividualDownloads((n) => n + 1);
       setOpen(false);
     } catch (caught) {
       console.error('[조 산출물 내려받기] 실패', caught);
+      setError('내려받지 못했습니다 — 저장한 뒤 다시 시도해 주세요.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
+   * 전부 받기 — 워드·엑셀·줄글을 ZIP 하나로 묶어 **다운로드 한 개**로 내보낸다.
+   *
+   * 세 형식을 연달아 누르면 브라우저가 「여러 파일 내려받기」를 물으며 두 번째부터 막을 수 있다.
+   * `zip-store.ts` 가 45장 결과 이미지에서 쓴 것과 같은 우회다 — 한 파일이면 그 경계에 닿지 않는다.
+   *
+   * 세 파일은 **한 보고서 모델**에서 나온다. 형식마다 따로 만들면 시각이 갈려
+   * 압축 안에서 파일명·머리글의 시각이 서로 다른 문서가 된다.
+   */
+  const downloadBundle = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const at = new Date();
+      const report = await buildReport(at);
+      const docx = new Uint8Array(await (await submissionReportBlob(report)).arrayBuffer());
+      const entries = buildTeamBundleEntries(report, {
+        docx,
+        csv: reportToCsv(report),
+        txt: reportToText(report),
+      });
+      save(
+        new Blob([buildZipArchive(entries, at)], { type: 'application/zip' }),
+        teamBundleFileName(report)
+      );
+      setOpen(false);
+    } catch (caught) {
+      console.error('[조 산출물 전부 받기] 실패', caught);
       setError('내려받지 못했습니다 — 저장한 뒤 다시 시도해 주세요.');
     } finally {
       setBusy(false);
@@ -1019,6 +1440,19 @@ function TeamDownload({
       </div>
       {open ? (
         <div className="mt-3 grid gap-2 sm:grid-cols-4">
+          {/* 세 형식이 한 파일로 떨어진다 — 여러 개를 받을 때의 기본 동선이라 맨 앞·가로 전체다. */}
+          <button
+            type="button"
+            data-testid="team-download-zip"
+            disabled={busy}
+            onClick={() => void downloadBundle()}
+            className="h-14 rounded-xl bg-[#1F4E79] px-4 text-[17px] font-extrabold text-white disabled:opacity-40 sm:col-span-4"
+          >
+            전부 받기 (.zip)
+            <span className="mt-0.5 block text-[13px] font-normal text-[#DCE7EE]">
+              워드·엑셀·줄글 세 파일을 한 번에
+            </span>
+          </button>
           <button type="button" disabled={busy} onClick={() => void download('docx')}
             className="h-12 rounded-xl border border-[#C4D8E4] text-[15px] font-bold text-[#1F4E79] disabled:opacity-40">
             워드 (.docx)
@@ -1045,6 +1479,18 @@ function TeamDownload({
           {error}
         </p>
       ) : null}
+      {/*
+        메뉴가 접힌 뒤에도 보이도록 `open` 밖에 둔다 — 내려받기를 누르면 메뉴가 닫히므로
+        메뉴 안에 두면 정작 안내가 필요한 순간에 화면에서 사라진다.
+      */}
+      {shouldShowMultiDownloadHint(individualDownloads) ? (
+        <p
+          data-testid="team-download-multi-hint"
+          className="mt-3 rounded-lg bg-[#EAF3F8] px-3 py-2 text-[14px] font-bold text-[#1F4E79]"
+        >
+          {MULTI_DOWNLOAD_HINT}
+        </p>
+      ) : null}
       {printReport ? <PrintableReport report={printReport} /> : null}
     </section>
   );
@@ -1054,12 +1500,31 @@ export default function SubmissionPanel({
   code,
   teamLabel,
   tableNo,
+  fixtureTopics,
+  fixtureSubmissions,
+  onUnsavedTopicsChange,
 }: {
   code: string | null;
   /** 내려받은 문서에 찍을 조 이름. 없으면 「우리 조」. */
   teamLabel?: string;
   /** 현장 좌석 번호. 내려받은 표의 「테이블」 칸에 들어간다. */
   tableNo?: string | null;
+  /**
+   * 픽스처 꼭지 목록. 주면 `topic_list` 를 부르지 않는다.
+   *
+   * 조 화면은 접속코드 뒤에 있어 브라우저 자동 검증이 불가능하고, 운영 DB 를 부르는
+   * 것도 금지다. `HqSubmissionBoard` 의 `fixtureRows` 와 같은 관례로 네트워크를 건너뛴다
+   * (`src/pages/[lang]/moderator/insights/submission-panel-lab.astro`).
+   */
+  fixtureTopics?: Topic[];
+  /** 꼭지 id → 픽스처 제출물. 주면 그 꼭지는 `submission_get` 을 부르지 않는다. */
+  fixtureSubmissions?: Record<string, SubmissionGetResult>;
+  /**
+   * 저장 안 한 내용이 있는 꼭지 id 목록. 마감 배너(`DeadlineBanner`)가 받아 쓴다.
+   *
+   * 배너는 탭 **바깥**에 있어 이 패널의 형제다. 그래서 사실을 아는 쪽(여기)이 위로 올린다.
+   */
+  onUnsavedTopicsChange?: (topicIds: string[]) => void;
 }) {
   const [topics, setTopics] = useState<Topic[] | null>(null);
   const [topicsFailed, setTopicsFailed] = useState(false);
@@ -1069,17 +1534,47 @@ export default function SubmissionPanel({
 
   const loadTopics = useCallback(async () => {
     if (!code) return;
+    if (fixtureTopics) {
+      setTopics(fixtureTopics);
+      setTopicsFailed(false);
+      return;
+    }
     try {
       setTopics(await topicList(code));
       setTopicsFailed(false);
     } catch {
       setTopicsFailed(true);
     }
-  }, [code]);
+  }, [code, fixtureTopics]);
 
   useEffect(() => {
     void loadTopics();
   }, [loadTopics]);
+
+  // 꼭지별 미저장 → 하나의 목록으로 모아 위로 올린다(마감 배너용).
+  // ★ 같은 값이면 상태를 안 바꾼다 — 안 그러면 자식의 알림 → 부모 리렌더 → 자식 알림이 돈다.
+  const [unsavedMap, setUnsavedMap] = useState<Record<string, boolean>>({});
+  const handleUnsavedChange = useCallback((topicId: string, unsaved: boolean) => {
+    setUnsavedMap((prev) => (Boolean(prev[topicId]) === unsaved ? prev : { ...prev, [topicId]: unsaved }));
+  }, []);
+  // 배열은 매번 새로 만들어지므로 **정렬한 문자열**을 의존성으로 쓴다(참조 비교로는 매 렌더마다 알린다).
+  const unsavedKey = Object.keys(unsavedMap)
+    .filter((id) => unsavedMap[id])
+    .sort()
+    .join(' ');
+  useEffect(() => {
+    onUnsavedTopicsChange?.(unsavedKey ? unsavedKey.split(' ') : []);
+  }, [unsavedKey, onUnsavedTopicsChange]);
+
+  // 지난 회차 초안 청소 — 패널이 처음 뜰 때 한 번. `localStorage` 로 올라가면서
+  // 초안이 기기에 눌러앉게 됐으므로, 유효기간(72h)이 지난 것은 여기서 버린다.
+  // ★ 만료분만 지운다. 살아 있는 초안을 지우면 조가 쓰던 글을 대신 버리는 셈이다.
+  useEffect(() => {
+    const now = Date.now();
+    for (const key of staleKeys(draftStore.keys(), (k) => draftStore.getItem(k), now)) {
+      draftStore.removeItem(key);
+    }
+  }, []);
 
   if (!code) {
     return <p className="text-[16px] text-[#5A6B73]">조 접속 후에 사용할 수 있습니다.</p>;
@@ -1132,9 +1627,21 @@ export default function SubmissionPanel({
       <SubmissionGuide />
       <TopicJump topics={topics} />
       {topics.map((topic) => (
-        <TopicSection key={topic.id} code={code} topic={topic} />
+        <TopicSection
+          key={topic.id}
+          code={code}
+          topic={topic}
+          fixtureSubmission={fixtureSubmissions?.[topic.id]}
+          onUnsavedChange={handleUnsavedChange}
+        />
       ))}
-      <TeamDownload code={code} teamLabel={teamLabel ?? '우리 조'} tableNo={tableNo} topics={topics} />
+      <TeamDownload
+        code={code}
+        teamLabel={teamLabel ?? '우리 조'}
+        tableNo={tableNo}
+        topics={topics}
+        fixtureSubmissions={fixtureSubmissions}
+      />
     </div>
   );
 }

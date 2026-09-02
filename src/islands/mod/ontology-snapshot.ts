@@ -1,4 +1,5 @@
 import type { Note, TopicBoard } from './hq-submission-board-logic';
+import { CURRENT_SESSION_SLUG } from '../../lib/hq-submissions';
 
 /**
  * 취합 보드 → 온톨로지 검수 스냅샷 어댑터 (브라우저에서 도는 판).
@@ -91,7 +92,19 @@ export type OntologySnapshot = {
 /** 스냅샷 출처 — 원문이 실제로 사는 표 이름. 검수 플랜에 그대로 기록된다. */
 export const ONTOLOGY_SNAPSHOT_SOURCE = 'climate_vote.submission_item';
 
-export const DEFAULT_SESSION_SLUG = '0829-deliberation';
+/**
+ * 내보낸 스냅샷에 적히는 **출처 회차**. 화면이 보고 있는 세션과 같아야 한다.
+ *
+ * ★ 2026-09-01 이전에는 `'0829-deliberation'` 이 여기 박혀 있었고 `/hq` 의 내보내기가
+ *   세션을 넘기지 않았다 — 회차를 바꾸면 9.12 산출물이 **8.29 소속으로** 적힌 채 검수
+ *   큐에 들어갔을 것이다(`src/lib/hq-submissions.ts` 머리말의 같은 결함, 세 번째 자리).
+ *   그래서 값을 박지 않고 활성 회차 상수를 그대로 쓴다.
+ *
+ * ★ 노드 id 의 `0829/` 접두는 **회차가 아니라 id 형식의 이름**이다(바꾸지 않는다).
+ *   `automation/submission-ontology-bridge.mjs` 의 파서가 `^0829\/…` 로 못박고 있어
+ *   여기만 바꾸면 두 구현의 대조가 깨진다. 회차를 가리키는 값은 `session_id` 다.
+ */
+export const DEFAULT_SESSION_SLUG = CURRENT_SESSION_SLUG;
 
 /**
  * 꼭지 보드 하나 → 온톨로지 스냅샷.

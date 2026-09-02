@@ -17,6 +17,7 @@ dist/
 # Build / cache
 .cache/
 .tmp/
+.tmp-verify/
 .turbo/
 .vercel/
 .wrangler/

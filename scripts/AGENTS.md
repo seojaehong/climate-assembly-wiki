@@ -62,3 +62,98 @@ export PATH="$HOME/tools/node-v20.18.0-win-x64:$PATH"
 
 `../00_입력자료/` · `../10_작업산출물/` 의 원본은 **옮기지도 고치지도 않는다.**
 114MB `.hwp` 도 rhwp 로 0.6초에 읽히므로 크기 때문에 건너뛸 이유는 없다(`--fast` 는 선택).
+
+## 손유지 타입 ↔ SQL 대조는 정규식으로 싸게 된다 — 2026-09-01 (US-009)
+
+`src/lib/deliberation.ts` · `hq-submissions.ts` 는 스스로 **손유지 타입**이라고 밝힌다 — DB 와의
+일치를 타입체커가 검증하지 못한다. 그래서 `returns table` 컬럼을 빠뜨리거나 `p_deadline_at` 을
+`p_deadline` 으로 잘못 적어도 **tsc 는 통과하고, 틀린 것은 행사 당일 PGRST202/42883 로 드러난다.**
+
+`verify-topic-contract.mjs` 가 그 구멍을 메우는 최소 형태다. **도커도 DB 도 필요 없다** —
+마이그레이션 `.sql` 과 `.ts` 를 각각 정규식으로 읽어 **이름 집합을 비교하고 N/N 으로 찍는다**
+(`topic_list 컬럼 8/8` · `topic_set_deadline 인자 3/3`). 새 RPC 를 `src/lib/*.ts` 에 붙일 때 복제할 것.
+
+- 뽑는 자리는 두 곳뿐이다: SQL 의 `returns table(...)` / `create ... function f(...)` 인자 목록,
+  TS 의 `export type X = { ... }` / `.rpc('f', { ... })` 객체 키
+- TS 쪽 본문에서 **주석을 먼저 지운다.** 안 지우면 JSDoc 안의 `deadline_at:` 같은 낱말이 필드로 잡힌다
+- ★ **이름만 보고 타입은 안 본다.** `timestamptz` ↔ `string` 대응은 정규식으로 판정할 수 없다.
+  「선택 필드인가(`?:`)」처럼 **의미가 걸린 것만** 따로 못 박는다(배포·DB 적용 순서 분리가 걸려 있다)
+- 이 대조는 `supabase/verify/*_contract.sql`(서버가 실제로 어떻게 도나)을 **대체하지 않는다.**
+  서버가 멀쩡해도 이름 하나가 어긋나면 화면은 여전히 죽는다 — 두 개를 다 둔다
+
+## 접속코드 뒤 화면(`/mod`)도 DB 없이 검증된다 — 2026-09-01 (US-010)
+
+조 화면은 `mod_join` 을 통과해야 열려 여태 픽스처 라우트로 우회했다. 그런데 **마운트 자리**
+(「탭 바 위인가」)처럼 픽스처 라우트에 없는 것을 재려면 진짜 `/mod?code=…` 를 열어야 한다.
+`verify-deadline-banner.mjs` 는 `rest/v1` 을 통째로 가로채 **`mod_join` 응답까지 지어낸다** —
+운영 DB 로 나가는 요청은 0건이다. 접속코드 게이트가 있는 화면은 이 방식으로 전부 열 수 있다.
+
+- ★★ **Playwright 는 나중에 등록한 `context.route` 를 먼저 본다.** 포괄 규칙
+  (`**/*.supabase.co/**`)을 나중에 등록하면 앞서 등록한 `**/rest/v1/**` 규칙을 **가려 버린다**
+  (실측: `mod_join` 까지 abort 되어 화면이 아예 안 떴다). 포괄 규칙에서 `route.fallback()` 으로
+  넘기거나 등록 순서를 뒤집을 것
+- ★ **`waitUntil: 'networkidle'` 을 쓰지 말 것.** 조 콘솔은 라운드를 5초마다 폴링해
+  「조용해지는 순간」이 오지 않는다 — 30초 타임아웃으로 죽는다. `domcontentloaded` +
+  `waitForSelector('[role="tablist"]')` 로 기다린다
+- ★ **탭 선택은 `sessionStorage` 에 남는다**(`mod-tabs.ts:34`). 앞 검사에서 탭을 옮겼으면
+  다음 검사의 `page.goto` 는 **그 탭으로 열린다** — 작성 탭을 쓰는 검사는 먼저 탭을 되돌릴 것
+- ★ **시각이 걸린 전환은 `waitForTimeout` 으로 재지 말 것.** dev 서버 컴파일·수화 지연이
+  몇 초씩 들쭉날쭉해 경계에서 통과/실패가 오간다. 「원하는 상태가 될 때까지 폴링하고
+  **몇 초 걸렸는지 찍는다**」가 사실에 가깝고 재현된다(`waitForTier`)
+
+## ★★ 웹소켓은 `context.route` 로 못 막는다 — 2026-09-01 (US-011)
+
+`context.route('**/*.supabase.co/**', abort)` 는 **HTTP 만** 가로챈다. Supabase Realtime 은
+웹소켓(`wss://…/realtime/v1/websocket`)이라 이 그물을 그냥 통과한다. `HqSubmissionBoard` 는
+`fixtureRows` 가 없으면 `subscribeHqSubmissions()` 로 구독을 걸므로, 실화면 `/hq` 를 여는
+스크립트는 **운영 Supabase 에 웹소켓을 연 채로** 「요청 0건」이라고 보고하게 된다.
+
+`addInitScript` 에서 `window.WebSocket` 을 무동작 스텁으로 갈아끼우고 시도한 URL 을 배열에
+쌓아 두면, 실제 연결을 0으로 만들면서 **몇 번 시도했는지까지 숫자로 낼 수 있다**
+(`verify-hq-deadline.mjs` 실측: 시도 1건, 전부 스텁에 갇힘).
+
+- 스텁은 `send`·`close`·`addEventListener`·`removeEventListener`·`dispatchEvent` 와
+  `CONNECTING/OPEN/CLOSING/CLOSED` 상수까지 갖춰야 한다 — supabase-js 가 이것들을 실제로 만진다.
+  `onopen` 을 절대 안 부르므로 구독은 조용히 대기하다 끝난다
+- US-010 의 `/mod` 스크립트가 이 함정을 안 만난 것은 `ModConsole` 이 구독을 안 걸어서다.
+  **구독을 거는 컴포넌트를 실화면으로 여는 스크립트는 전부 해당된다**
+
+## 본부 게이트 뒤 화면(`/hq`)도 DB 없이 검증된다 — 2026-09-01 (US-011)
+
+`/hq` 는 본부 비밀번호 게이트지만 토큰은 `sessionStorage` 에 있을 뿐이고 검사는
+`isValidHqToken` = **비어 있지 않은 문자열**이다(`hq-gate-logic.ts:21`). `addInitScript` 로
+`climate_vote_hq_attendance_token` 을 심으면 게이트가 바로 열린다 — 비밀번호도 RPC 도 필요 없다.
+
+- 토큰이 필요한 UI(마감시각 줄 등)는 **미리보기 라우트로는 못 잰다** — `submission-lab` 은
+  `fixtureRows` 만 주고 토큰은 안 준다. 실화면 + 토큰 주입이 유일한 길이다
+- 헤드리스 페이지는 타이머가 조절(throttle)돼 **5초 폴링이 실제로는 몇 번 안 돈다**(실측:
+  30초 동안 `hq_submissions` 2회). 응답을 바꿔 화면이 따라오는지 볼 때는 `waitForTimeout` 이
+  아니라 `waitForFunction` 으로 **바뀔 때까지** 기다릴 것
+
+## 한글(.hwpx) 내보내기 · 게이트 — 2026-09-01 (US-013)
+
+`export-submissions-hwpx.mjs`(만든다) 와 `verify-hangul.mjs`(잰다) 가 짝이다. 검증 스크립트는
+규칙을 베끼지 않고 **내보내기 스크립트를 자식 프로세스로 실제 실행**해 그 산출물을 검사한다 —
+검사 대상이 곧 운영 경로다.
+
+- kordoc 은 **Node 전용**이라 스크립트 층에서만 부른다. `submission-report-markdown.ts` 는
+  kordoc 을 모른다(브라우저 인접 층). 화면 모듈은 `esbuild.build({bundle:true, packages:'external'})`
+  로 말아 올려 부른다 — `verify-parsers.mjs` 와 같은 방식
+- **버퍼 타입이 함수마다 다르다.** `markdownToHwpx()` 는 `ArrayBuffer` 를 돌려주므로
+  `Buffer.from(...)` 해서 쓴다. `validateHwpx()` 는 Buffer/Uint8Array 를 그대로 받지만
+  `parseHwpx()` 는 `ArrayBuffer` 를 원한다 — Node Buffer 를 그냥 넘기면 안 되고
+  `buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)` 로 잘라 넘긴다
+- ★ **카드 수 대조는 마크다운 문자열이 아니라 `parseHwpx().blocks` 의 표 구조로 한다.**
+  `block.type === 'table'` → `block.table.cells`(IRCell[][]) 의 첫 행이 머리, 나머지가 데이터다.
+  문자열로 세면 되읽기 쪽 표 문법(정렬 표기·공백)이 조금만 달라도 조용히 부풀거나 준다
+- 실측(2026-09-01, `automation/fixtures/0829-submissions.json` 65건):
+  md→hwpx→md 왕복이 **표 9개 · 데이터 행 65/65 · 칸 260/260 글자 동일**로 무손실이었다.
+  칸 글자가 그대로라 대조는 개수가 아니라 **글자 비교**로 박아 두는 편이 낫다
+- ★ **미제출 조를 만들려면 행을 지우지 말고 `item_content` 를 비운다.** `buildBoards` 는
+  행에서 조 자리를 만들므로(`hq-submission-board-logic.ts:103`) 행을 지우면 그 조가 꼭지에서
+  통째로 사라져 「미제출」이 아니라 「없는 조」가 된다 — 불변식 검사가 무의미해진다
+- 산출물은 `.gitignore` 된 `output/` 에 쓴다(`.gitignore:54`). 검증 스크립트는 끝나면 지운다
+  (`--keep` 으로 남긴다). 커밋 전에 `git status` 로 `.hwpx` 가 안 새는지 볼 것
+- ★★ `scripts/verify_hangul.py`(G3, 한글이 실제로 여는지)는 **루프에서 실행 금지**다.
+  COM 이 한글 앱 창과 보안 대화상자를 띄워 무인 실행이 그 자리에서 멈춘다. 그래서
+  `--i-am-here` 없이는 아무것도 하지 않도록 잠가 두었다. G3 는 사람이 손으로 한다

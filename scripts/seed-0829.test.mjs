@@ -17,6 +17,7 @@ import {
   formatJoinCodeSyncSql,
   formatJoinCodeRotationSql,
 } from './seed-0829-lib.mjs';
+import { ACTIVE_SESSION_SLUG, sessionRoster } from './session-rosters.mjs';
 
 describe('fullTeamRoster', () => {
   test('produces 15 teams, 5 per subgroup, named "N분과 M조"', () => {
@@ -79,10 +80,12 @@ describe('date-based join codes', () => {
     expect(joinCodeForTeam('0829', 15)).toBe('082915');
   });
 
-  test('maps the 8/29 roster to unique 082901..082915 codes', () => {
+  // ★ 값(082901)이 아니라 규칙(MMDD + 조 순번)을 잰다 — 회차가 바뀌어도 이 검사는 유효하다.
+  //   8/29 자체의 코드는 scripts/session-rosters.test.mjs 가 슬러그를 명시해 못박고 있다.
+  test('maps the active roster to unique MMDD+ordinal codes', () => {
     const codes = fullTeamRoster().map((team) => joinCodeForTeamName(team.name));
-    expect(codes[0]).toBe('082901');
-    expect(codes.at(-1)).toBe('082915');
+    expect(codes[0]).toBe(`${SESSION_DATE_MMDD}01`);
+    expect(codes.at(-1)).toBe(`${SESSION_DATE_MMDD}15`);
     expect(new Set(codes).size).toBe(15);
   });
 
@@ -95,11 +98,12 @@ describe('date-based join codes', () => {
   });
 
   test('emits an atomic admin transaction for syncing an existing roster', () => {
+    // 활성 회차 기준. 8/29판의 값 대조는 session-rosters.test.mjs 가 슬러그를 명시해 한다.
     const sql = formatJoinCodeSyncSql();
     expect(sql).toMatch(/^begin;/);
     expect(sql).toMatch(/commit;$/);
-    expect(sql).toContain("'1분과 1조', '082901'");
-    expect(sql).toContain("'3분과 5조', '082915'");
+    expect(sql).toContain(`'1분과 1조', '${SESSION_DATE_MMDD}01'`);
+    expect(sql).toContain(`'3분과 5조', '${SESSION_DATE_MMDD}15'`);
     expect(sql).toContain('complete official 15-team roster is required');
     expect(sql).toContain('join-code collision detected');
     expect(sql).toContain('join-code verification failed');
@@ -109,8 +113,8 @@ describe('date-based join codes', () => {
     const sql = formatSessionSeedSql();
     expect(sql).toMatch(/^begin;/);
     expect(sql).toMatch(/commit;$/);
-    expect(sql).toContain("values ('0829-deliberation', '8/29 숙의'");
-    expect(sql).toContain("'1분과 1조', '1분과', 1, '082901'");
+    expect(sql).toContain(`'${SESSION_SLUG}', '${SESSION_TITLE}'`);
+    expect(sql).toContain(`'1분과 1조', '1분과', 1, '${SESSION_DATE_MMDD}01'`);
     expect(sql).toContain('and not exists');
     expect(sql).not.toContain('on conflict (session_id, name)');
     expect(sql).toContain('session seed verification failed');
@@ -162,11 +166,24 @@ describe('sessionAction', () => {
 });
 
 describe('seed constants', () => {
-  test('match the 0829 session spec', () => {
-    expect(SESSION_DATE).toBe('2026-08-29');
-    expect(SESSION_SLUG).toBe('0829-deliberation');
-    expect(SESSION_TITLE).toBe('8/29 숙의');
-    expect(SESSION_DATE_MMDD).toBe('0829');
+  /**
+   * ★ 회차 값을 박지 않는다. 이 상수들은 전부 **활성 회차 정의에서 파생**되므로,
+   *   값을 적어 두면 회차를 넘길 때마다 깨지고 값만 바꿔 고치게 된다. 회차가 바뀌어도
+   *   참이어야 하는 것은 「활성 정의와 어긋나지 않는다」는 성질이다.
+   *   (어느 회차인지를 못박는 검사는 scripts/session-rosters.test.mjs 가 한다.)
+   */
+  test('derive from the active session roster without drifting', () => {
+    const active = sessionRoster(ACTIVE_SESSION_SLUG);
+    expect(SESSION_SLUG).toBe(ACTIVE_SESSION_SLUG);
+    expect(SESSION_SLUG).toBe(active.slug);
+    expect(SESSION_DATE).toBe(active.date);
+    expect(SESSION_TITLE).toBe(active.title);
+    expect(SESSION_DATE_MMDD).toBe(active.mmdd);
+    expect(SESSION_DATE_MMDD).toBe(SESSION_DATE.slice(5).replace('-', ''));
+    expect(SESSION_SLUG.startsWith(SESSION_DATE_MMDD)).toBe(true);
+  });
+
+  test('회차와 무관한 상수는 고정이다', () => {
     expect(SESSION_CONFIG).toEqual({ modules: ['poll', 'timer'] });
     expect(TEAM_CAPACITY).toBe(20);
   });

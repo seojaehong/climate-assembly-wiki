@@ -39,6 +39,20 @@ function sameUtcDate(first, second) {
     && first.getUTCDate() === second.getUTCDate();
 }
 
+function snapshotEndInstant(value) {
+  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):00\+09:00$/.exec(value ?? '');
+  if (!match || Number(match[2]) > 23 || Number(match[3]) > 59) {
+    throw new Error('invalid snapshot end');
+  }
+  const instant = Date.parse(value);
+  if (!Number.isFinite(instant)) throw new Error('invalid snapshot end');
+  const normalizedKst = new Date(instant + 9 * 60 * 60 * 1000).toISOString().slice(0, 19);
+  if (normalizedKst !== `${match[1]}T${match[2]}:${match[3]}:00`) {
+    throw new Error('invalid snapshot end');
+  }
+  return instant;
+}
+
 export function captureCronForWorkshop(workshop) {
   const start = new Date(workshopInstant(workshop.date, workshop.start_kst));
   const end = new Date(workshopInstant(workshop.date, workshop.end_kst));
@@ -51,7 +65,23 @@ export function captureCronForWorkshop(workshop) {
 }
 
 export function snapshotCronForWorkshop(workshop) {
-  return captureCronForWorkshop(workshop);
+  if (workshop.snapshot_until_kst === undefined) return captureCronForWorkshop(workshop);
+  const start = new Date(workshopInstant(workshop.date, workshop.start_kst));
+  const endExclusive = new Date(snapshotEndInstant(workshop.snapshot_until_kst));
+  if (endExclusive <= start) {
+    throw new Error('invalid snapshot end');
+  }
+  const lastRun = new Date(endExclusive.getTime() - 5 * 60 * 1000);
+  if (start.getUTCMinutes() % 5 !== 0 || lastRun.getUTCMinutes() % 5 !== 0) {
+    throw new Error('workshop snapshot times must align to five minutes');
+  }
+  if (!sameUtcDate(start, lastRun)) {
+    throw new Error('snapshot cron requires a single UTC date');
+  }
+  const startHour = start.getUTCHours();
+  const endHour = lastRun.getUTCHours();
+  const hours = startHour === 0 && endHour === 23 ? '*' : `${startHour}-${endHour}`;
+  return `*/5 ${hours} ${start.getUTCDate()} ${start.getUTCMonth() + 1} *`;
 }
 
 export function finalizeCronForWorkshop(workshop, delayHours = 4) {
@@ -89,6 +119,17 @@ export function findActiveWorkshop(schedule, now = new Date()) {
   return ws;
 }
 
+export function findActiveSnapshotWorkshop(schedule, now = new Date()) {
+  const extended = schedule.workshops.find((workshop) => {
+    if (workshop.snapshot_until_kst === undefined) return false;
+    snapshotCronForWorkshop(workshop);
+    const start = workshopInstant(workshop.date, workshop.start_kst);
+    const endExclusive = snapshotEndInstant(workshop.snapshot_until_kst);
+    return now.getTime() >= start && now.getTime() < endExclusive;
+  });
+  return extended ?? findActiveWorkshop(schedule, now);
+}
+
 export function validateSchedule(schedule) {
   if (!schedule || !Array.isArray(schedule.workshops) || schedule.workshops.length === 0) {
     throw new Error('invalid workshop schedule');
@@ -110,6 +151,7 @@ export function validateSchedule(schedule) {
       throw new Error('workshop dates must be strictly increasing');
     }
     captureCronForWorkshop(workshop);
+    snapshotCronForWorkshop(workshop);
     dates.add(date);
     names.add(workshop.name);
     previousDate = date;

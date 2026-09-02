@@ -2,9 +2,13 @@ import { getSupabase } from './supabase';
 
 /**
  * 숙의 운영 데이터 레이어 — 20260808_s1(주제·조별 산출물)과 20260808_s2(다의제 투표)의
- * RPC를 감싼다. 모든 운영 RPC는 p_code = 조 접속코드(join_code) capability이며,
+ * RPC를 감싼다. 조 운영 RPC는 p_code = 조 접속코드(join_code) capability이며,
  * 파라미터명·반환 구조는 마이그레이션 SQL과 1:1이다(손유지 타입 — DB와의 일치를
  * 타입체커가 검증하지 못하므로 스키마 변경 시 여기부터 맞출 것).
+ *
+ * ★ 예외 하나 — `topicSetDeadline`(s17)만 p_token = **본부 토큰**이다. 꼭지 마감은 조가
+ *   아니라 본부가 거는 것이라 권한 축이 다르다. 그 하나는 `src/lib/hq-submissions.ts`
+ *   의 호출 관례(토큰 우선 인자 + 오류를 읽을 수 있는 `Error` 로 감싸기)를 따른다.
  */
 
 function client() {
@@ -17,7 +21,15 @@ function client() {
 // S1 — 토론 주제 + 조별 산출물
 // ============================================================
 
-/** topic_list 반환 행. draft·archived 주제는 RPC가 이미 걸러 open/closed만 온다. */
+/**
+ * topic_list 반환 행. draft·archived 주제는 RPC가 이미 걸러 open/closed만 온다.
+ *
+ * `deadline_at`·`server_now` 는 마이그레이션 s17이 실어 보낸다.
+ * ★ 선택 항목으로 둔다 — **배포와 DB 적용 순서에 묶이지 않아야 한다.** s17이 아직 안 걸린
+ *   DB의 옛 RPC는 6개 컬럼만 주고, 그때 두 값은 `undefined` 다. 그 상태에서
+ *   `remainingMs(undefined, …)` 는 `null`, `countdownTier(null)` 은 `'none'` 이라
+ *   배너가 아예 안 그려진다(`src/islands/mod/topic-countdown.ts`). 죽지 않고 퇴화한다.
+ */
 export type Topic = {
   id: string;
   ordinal: number;
@@ -25,6 +37,13 @@ export type Topic = {
   prompt: string;
   guidance: string | null;
   status: 'open' | 'closed';
+  /** 꼭지 마감 시각(timestamptz). null = 마감 없음, undefined = s17 미적용 DB. */
+  deadline_at?: string | null;
+  /**
+   * 서버의 지금 시각. 조 기기 시계를 못 믿어 오프셋을 잡는 데 쓴다(설계 B-D3).
+   * ★ **행마다 같은 값**이다 — 꼭지별로 쓰는 값이 아니라 응답 전체에서 한 번 꺼낸다.
+   */
+  server_now?: string;
 };
 
 export type SubmissionStatus = 'draft' | 'final' | 'reopened' | 'archived';
@@ -75,12 +94,46 @@ export type SubmissionSaveResult = {
 };
 export type SubmissionFinalizeResult = { id: string; status: 'final' };
 
-/** 내 세션의 토론 주제 목록(open·closed). */
+/**
+ * 내 세션의 토론 주제 목록(open·closed).
+ *
+ * ★ s17 미적용 DB도 그대로 통과한다 — 옛 RPC는 컬럼 6개짜리 행을 주고, 없는 키는
+ *   읽을 때 `undefined` 일 뿐이라 여기서 예외가 나지 않는다. 그래서 값을 채워 넣는
+ *   정규화를 두지 않았다(빈 값을 만들어 내면 「마감 없음」과 「미적용」이 섞인다).
+ */
 export async function topicList(code: string): Promise<Topic[]> {
   const sb = client();
   const { data, error } = await sb.schema('climate_vote').rpc('topic_list', { p_code: code });
   if (error) throw error;
   return (data ?? []) as Topic[];
+}
+
+/**
+ * 꼭지 마감 시각을 걸거나 지운다 — **본부 토큰만**(s17 `topic_set_deadline`).
+ *
+ * `deadlineAt` 에 `null` 을 주면 마감을 **지운다**. 잘못 건 시각을 되돌리는 경로가
+ * 이것 하나라 별도 함수를 두지 않는다(설계 §2.6).
+ *
+ * ★ 마감은 **잠금이 아니다.** RPC는 꼭지 `status` 를 건드리지 않고 서버는 마감 뒤에도
+ *   저장을 받는다. 마감을 잠금으로 다루면 8.29에 실제로 일어난 일(다 정리했는데
+ *   못 올림)이 반복된다.
+ *
+ * 오류를 `Error` 로 감싸는 것은 `hq-submissions.ts` 관례다. PostgREST 오류는 `Error`
+ * 인스턴스가 아니라 평범한 객체로 와서, 그대로 던지면 화면이 문구를 못 읽는다.
+ * 본부 UI(US-011)가 `role="alert"` 로 사유를 읽어야 하므로 여기서 감싼다.
+ * s17 미적용 DB에서는 `PGRST202`(함수 없음)가 그 문구로 나온다.
+ */
+export async function topicSetDeadline(
+  token: string,
+  topicId: string,
+  deadlineAt: string | null,
+): Promise<void> {
+  const { error } = await client().schema('climate_vote').rpc('topic_set_deadline', {
+    p_token: token,
+    p_topic_id: topicId,
+    p_deadline_at: deadlineAt,
+  });
+  if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
 }
 
 /** 주제별 우리 조 제출물 + 항목. */

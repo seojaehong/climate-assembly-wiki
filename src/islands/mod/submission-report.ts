@@ -238,7 +238,9 @@ function safeName(value: string): string {
 /** 「기후시민회의_조별산출물_전체15개조_20260829-1405.docx」 */
 export function reportFileName(
   report: SubmissionReport,
-  ext: 'docx' | 'csv' | 'txt'
+  // 'zip' 은 세 형식을 한 번에 묶어 내보내는 「전부 받기」의 겉봉 이름이다(team-download-bundle.ts).
+  // 이름 규칙은 개별 파일과 같아야 압축을 풀었을 때 같은 문서로 읽힌다.
+  ext: 'docx' | 'csv' | 'txt' | 'zip'
 ): string {
   const stamp = report.generatedAt.replace(/[-: ]/g, '').replace(/^(\d{8})(\d{4})$/, '$1-$2');
   const scope = safeName(report.scopeLabel).replace(/\s+/g, '') || '전체';

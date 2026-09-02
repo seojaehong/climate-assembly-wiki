@@ -21,7 +21,12 @@ import ClearAllPanel from './ClearAllPanel';
 import type { SubmissionReport } from './submission-report';
 import { buildSealedPlanFiles } from './ontology-plan';
 import { boardToOntologySnapshot } from './ontology-snapshot';
-import { assignSubmissionKind, fetchSubmissionKinds } from '../../lib/hq-submissions';
+import { hqBoardState, notOpenedMessage } from './hq-session-state';
+import {
+  assignSubmissionKind,
+  fetchHqTopicDeadlines,
+  fetchSubmissionKinds,
+} from '../../lib/hq-submissions';
 import {
   buildBoards,
   flattenNotes,
@@ -36,6 +41,15 @@ import {
   type TeamColumn,
   type TopicBoard,
 } from './hq-submission-board-logic';
+import {
+  deadlineFailureMessage,
+  deadlineView,
+  describeRpcError,
+  isoToLocalInput,
+  planDeadline,
+  serverDeadlineMap,
+} from './hq-deadline-logic';
+import { topicSetDeadline } from '../../lib/deliberation';
 import { orderNotesBySimilarity, similarPairs, type SimilarPair } from './note-similarity';
 import {
   teamPairOverlaps,
@@ -116,22 +130,13 @@ import {
  */
 const POLL_MS = 5_000;
 
-/** 어떤 모양으로 오든 사람이 읽을 수 있는 한 줄로 만든다(코드가 있으면 함께 남긴다). */
-function describeError(error: unknown): string {
-  if (error instanceof Error && error.message) return error.message;
-  if (typeof error === 'string' && error) return error;
-  if (error && typeof error === 'object') {
-    const e = error as { code?: string; message?: string; hint?: string; details?: string };
-    const parts = [e.code, e.message ?? e.details ?? e.hint].filter(Boolean);
-    if (parts.length > 0) return parts.join(': ');
-    try {
-      return JSON.stringify(error).slice(0, 200);
-    } catch {
-      /* 순환 참조 등 — 아래 기본 문구로 떨어진다 */
-    }
-  }
-  return '원인을 알 수 없습니다';
-}
+/**
+ * 어떤 모양으로 오든 사람이 읽을 수 있는 한 줄로 만든다(코드가 있으면 함께 남긴다).
+ *
+ * 본체는 `hq-deadline-logic.ts` 에 있다 — `.tsx` 는 vitest include 밖이라 여기 두면
+ * 「PostgREST 오류는 Error 가 아니다」라는 핵심 판단이 영영 시험되지 않는다.
+ */
+const describeError = describeRpcError;
 
 /** ISO -> 시:분:초. 값이 없으면 em dash. */
 function clock(iso: string | null | undefined): string {
@@ -564,6 +569,20 @@ export default function HqSubmissionBoard({
   const [reopenBusy, setReopenBusy] = useState(false);
   const [history, setHistory] = useState<HqHistoryRow[] | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  // US-011 마감시각 — 꼭지 id → 입력칸에 친 값(로컬 벽시계). 꼭지를 오가도 친 값이 남는다.
+  const [deadlineDraft, setDeadlineDraft] = useState<Record<string, string>>({});
+  // 꼭지 id → **이 화면이 마지막으로 건 값**(ISO). null = 지움, 키 없음 = 아직 안 건드림.
+  // ★ 서버 값이 아니다 — s19 를 못 읽었을 때의 **퇴화 표시 전용**이다(그때만 화면에 나온다).
+  const [deadlineApplied, setDeadlineApplied] = useState<Record<string, string | null>>({});
+  // 꼭지 id → **서버의 현재 마감**(s19 hq_topic_deadlines). 값 null = 마감 없음.
+  // ★ 맵 자체가 null 이면 **아직 한 번도 못 읽었다**(= 모름). 「마감 없음」과 섞지 말 것 —
+  //   본부에게 전혀 다른 사실이고, 이 구별이 새로고침 뒤에도 마감을 보여 주는 근거다.
+  const [deadlineServer, setDeadlineServer] = useState<Record<string, string | null> | null>(null);
+  const [deadlineBusy, setDeadlineBusy] = useState(false);
+  // 실패 문구는 꼭지에 묶어 둔다 — 꼭지를 옮기면 남의 꼭지 경고가 따라다니지 않는다.
+  const [deadlineError, setDeadlineError] = useState<{ topicId: string; message: string } | null>(
+    null
+  );
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -596,6 +615,28 @@ export default function HqSubmissionBoard({
     }
   }, [token]);
 
+  /**
+   * 서버의 현재 마감을 읽어 온다(s19).
+   *
+   * ★ **못 읽어도 지난 값을 지우지 않는다.** 한 번 읽은 사실을 네트워크가 한 번 끊겼다고
+   *   「모름」으로 되돌리면 본부 화면의 마감이 깜빡인다. 배너 폴링(DeadlineBanner)이
+   *   실패를 삼키고 지난 값을 유지하는 것과 같은 규칙이다.
+   */
+  const loadDeadlines = useCallback(async () => {
+    if (!token) return;
+    try {
+      const rows = await fetchHqTopicDeadlines(token, CURRENT_SESSION_SLUG);
+      if (rows === null) {
+        // s19 미적용 — 「마감 없음」이 아니라 「모름」이다. 화면은 s19 이전 표시로 퇴화한다.
+        console.warn('[HQ submissions] s19 미적용 — 서버의 현재 마감을 읽을 수 없습니다');
+        return;
+      }
+      setDeadlineServer(serverDeadlineMap(rows));
+    } catch (error) {
+      console.warn('[HQ submissions] 서버의 현재 마감을 읽지 못했습니다', error);
+    }
+  }, [token]);
+
   useEffect(() => {
     // 미리보기 모드 — fetch·구독·폴링 어느 것도 걸지 않는다(네트워크 없이 열려야 한다).
     if (fixtureRows) {
@@ -603,17 +644,20 @@ export default function HqSubmissionBoard({
       return;
     }
     void load();
+    void loadDeadlines();
     const stop = subscribeHqSubmissions(() => {
       void load();
     });
     const timer = setInterval(() => {
       void load();
+      // 마감은 본부 3인이 각자 걸 수 있다 — 남이 건 값도 따라와야 「내가 뭘 걸었나」가 맞는다.
+      void loadDeadlines();
     }, POLL_MS);
     return () => {
       stop();
       clearInterval(timer);
     };
-  }, [load, fixtureRows]);
+  }, [load, loadDeadlines, fixtureRows]);
 
   useEffect(() => {
     if (!copied) return;
@@ -887,6 +931,40 @@ export default function HqSubmissionBoard({
     }
   };
 
+  /**
+   * 꼭지 마감을 걸거나 지운다 — 무엇을 보낼지는 `planDeadline` 이 정한다.
+   *
+   * ★ 마감은 **잠금이 아니다.** RPC 가 꼭지 status 를 안 건드리므로 마감 뒤에도 조는
+   *   계속 저장할 수 있다. 8.29 에 실제로 일어난 일(다 정리했는데 못 올림)이 반복되지 않도록
+   *   시간을 알리기만 한다.
+   */
+  const applyDeadline = async (mode: 'set' | 'clear') => {
+    if (!token || !board) return;
+    const topicId = board.topicId;
+    const plan = planDeadline(mode, deadlineDraft[topicId] ?? '');
+    if (plan.kind === 'reject') {
+      setDeadlineError({ topicId, message: plan.message });
+      return;
+    }
+    setDeadlineBusy(true);
+    setDeadlineError(null);
+    try {
+      await topicSetDeadline(token, topicId, plan.deadlineAt);
+      setDeadlineApplied((prev) => ({ ...prev, [topicId]: plan.deadlineAt }));
+      // 서버가 받아 준 값이므로 되읽기 맵도 같이 옮긴다 — 다음 폴링까지 옛 값이 남지 않게.
+      // ★ 아직 한 번도 못 읽었으면(null) **만들지 않는다.** 「모름」을 「서버에서 읽었다」로
+      //   바꾸는 것은 없는 사실을 지어내는 것이고, s19 미적용 DB 에서 정확히 그렇게 된다.
+      setDeadlineServer((prev) => (prev === null ? null : { ...prev, [topicId]: plan.deadlineAt }));
+      if (plan.kind === 'clear') setDeadlineDraft((prev) => ({ ...prev, [topicId]: '' }));
+      void loadDeadlines();
+    } catch (error) {
+      console.error('[HQ submissions] deadline failed', error);
+      setDeadlineError({ topicId, message: deadlineFailureMessage(mode, error) });
+    } finally {
+      setDeadlineBusy(false);
+    }
+  };
+
   const copyBoard = async () => {
     if (!board) return;
     try {
@@ -897,15 +975,24 @@ export default function HqSubmissionBoard({
     }
   };
 
-  if (rows === null && failed === null) {
+  // 무엇을 그릴지는 한 곳에서 정한다(hq-session-state.ts). 화면이 회차를 바꾼 직후
+  // 개통 SQL 적용 전이면 여기서 「아직 개통되지 않았다」로 갈린다.
+  const view = hqBoardState({
+    rows,
+    failed,
+    boardCount: boards.length,
+    sessionSlug: CURRENT_SESSION_SLUG,
+  });
+
+  if (view.kind === 'loading') {
     return <p className="p-6 text-[16px] text-[#5A6B73]">조별 산출물을 불러오는 중…</p>;
   }
 
-  if (failed !== null) {
+  if (view.kind === 'failed') {
     return (
       <div className="p-6">
         <p role="alert" className="rounded-lg bg-[#FFF4D6] px-4 py-3 text-[15px] font-bold text-[#6B4B00]">
-          조별 산출물을 불러오지 못했습니다 — {failed}
+          조별 산출물을 불러오지 못했습니다 — {view.message}
         </p>
         <button
           type="button"
@@ -918,13 +1005,40 @@ export default function HqSubmissionBoard({
     );
   }
 
-  if (!board) {
+  // `!board` 는 boardCount 0 과 같은 조건이다(보드가 비어야 board 가 null 이다).
+  // 둘을 함께 적는 것은 타입을 좁히기 위해서다 — 아래 코드는 board 가 있어야 돈다.
+  if (view.kind === 'not-opened' || !board) {
+    const notice = view.kind === 'not-opened' ? view : notOpenedMessage(CURRENT_SESSION_SLUG);
     return (
-      <p className="p-6 text-[16px] text-[#5A6B73]">
-        아직 열린 토론 주제가 없습니다. 주제를 열면 조가 쓰는 대로 여기에 모입니다.
-      </p>
+      <div className="p-6">
+        <div className="rounded-2xl border-2 border-[#C4D8E4] bg-[#F4F9FC] px-6 py-6">
+          <p role="status" className="text-[26px] font-extrabold leading-snug text-[#1F4E79]">
+            {notice.headline}
+          </p>
+          <p className="mt-3 max-w-[64ch] text-[18px] leading-relaxed text-[#33474F]">
+            {notice.detail}
+          </p>
+          <p className="mt-2 max-w-[64ch] text-[16px] leading-relaxed text-[#5A6B73]">
+            {notice.hint}
+          </p>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="mt-4 h-12 rounded-xl border border-[#C4D8E4] bg-white px-5 text-[16px] font-bold text-[#1F4E79]"
+          >
+            다시 확인
+          </button>
+        </div>
+      </div>
     );
   }
+
+  // 마감 줄에 낼 한 줄과 그 출처. 서버(s19)를 읽었으면 서버 값, 못 읽었으면 s19 이전 표시.
+  const deadlineShown = deadlineView(deadlineServer, board.topicId, deadlineApplied[board.topicId]);
+  // 입력칸의 기본값 — 아직 아무것도 치지 않았으면 **서버의 현재 마감**이 들어가 있다.
+  // 이것이 「새로고침하면 자기가 뭘 걸었는지 모른다」의 나머지 반쪽이다.
+  // ('' 는 undefined 가 아니라서 「지우기」 뒤에는 ?? 가 안 걸린다 — 빈 칸이 그대로 유지된다.)
+  const deadlineServerValue = deadlineServer?.[board.topicId] ?? null;
 
   // 검색으로 먼저 거르고 그 다음에 재배열한다 — 유사도 사슬은 **화면에 보이는 카드끼리** 잇는다.
   // (거르기 전에 정렬하면 안 보이는 카드가 사슬 중간에 끼어 이웃이 엉뚱해진다.)
@@ -1195,6 +1309,73 @@ export default function HqSubmissionBoard({
           );
         })}
       </div>
+
+      {/* US-011 마감시각 — 고른 꼭지 하나에 건다. 본부 토큰이 있을 때만 낸다
+          (미리보기 라우트는 토큰을 안 주므로 이 줄이 아예 안 그려진다).
+          ★ 카드 수 검사가 부풀지 않도록 여기의 어떤 요소도 <article> 로 내지 않는다. */}
+      {token ? (
+        <div
+          data-testid="hq-deadline-row"
+          className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-[#DCE7EE] bg-white px-4 py-3"
+        >
+          <Eyebrow className="text-[#5A6B73]">마감</Eyebrow>
+          <label htmlFor="hq-deadline-input" className="text-[16px] font-bold text-[#1F4E79]">
+            「{board.prompt}」
+          </label>
+          <input
+            id="hq-deadline-input"
+            type="datetime-local"
+            data-testid="hq-deadline-input"
+            data-topic-id={board.topicId}
+            value={deadlineDraft[board.topicId] ?? isoToLocalInput(deadlineServerValue)}
+            onChange={(e) =>
+              setDeadlineDraft((prev) => ({ ...prev, [board.topicId]: e.target.value }))
+            }
+            className="h-12 rounded-xl border border-[#C4D8E4] px-3 text-[16px]"
+          />
+          <button
+            type="button"
+            data-testid="hq-deadline-set"
+            disabled={deadlineBusy}
+            onClick={() => void applyDeadline('set')}
+            className="h-12 rounded-xl bg-[#1F4E79] px-5 text-[16px] font-bold text-white disabled:opacity-50"
+          >
+            걸기
+          </button>
+          <button
+            type="button"
+            data-testid="hq-deadline-clear"
+            disabled={deadlineBusy}
+            onClick={() => void applyDeadline('clear')}
+            className="h-12 rounded-xl border border-[#C4D8E4] px-5 text-[16px] font-bold text-[#5A6B73] disabled:opacity-50"
+          >
+            지우기
+          </button>
+          {/* 출처를 속성으로 함께 낸다 — 서버에서 읽은 값인지 이 화면의 마지막 조작인지가
+              구별돼야 본부가 표시를 믿을 수 있다(검증도 문구가 아니라 이 속성을 집는다). */}
+          <span
+            data-testid="hq-deadline-echo"
+            data-deadline-source={deadlineShown.source}
+            className="text-[15px] font-bold text-[#5A6B73]"
+          >
+            {deadlineShown.label}
+          </span>
+          {/* 마감은 잠금이 아니고, 조 화면 배너는 30초마다 꼭지를 다시 읽는다.
+              이 두 가지를 모르면 「안 걸렸다」로 오해해 같은 시각을 반복해서 건다. */}
+          <span className="basis-full text-[14px] text-[#8FA3AD]">
+            조 화면 배너에 최대 30초 뒤 뜹니다 · 마감이 지나도 조는 계속 저장할 수 있습니다
+          </span>
+          {deadlineError && deadlineError.topicId === board.topicId ? (
+            <p
+              role="alert"
+              data-testid="hq-deadline-error"
+              className="basis-full rounded-lg bg-[#FFF4D6] px-4 py-3 text-[15px] font-bold text-[#6B4B00]"
+            >
+              {deadlineError.message}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* 분과 필터 — 15개 조를 한 사람이 보지 않는다 */}
       {subgroups.length > 1 ? (

@@ -1,4 +1,5 @@
 import type { SubmissionItem, SubmissionItemInput, SubmissionStatus } from '../../lib/deliberation';
+import { readDraft } from './submission-draft-store';
 
 /**
  * 조별 산출물(submission) 패널의 순수 로직 — 편집 행 조작, 저장 페이로드 변환,
@@ -240,34 +241,22 @@ export function submissionBadge(status: SubmissionStatus | null): SubmissionBadg
  * 서버 내용이 언제나 기준이다. 보관분은 **서버와 다를 때만** 되살린다 —
  * 저장을 마치면 둘이 같아지므로 낡은 초안이 되살아나지 않는다.
  *
+ * ★ 보관 문자열 해석(옛 모양 승격·행 위생·TTL 만료)은 전부 `submission-draft-store`
+ *   의 `readDraft` 가 한다. 여기서 복제하지 말 것 — 두 벌이 되면 한쪽만 고쳐진다.
+ *
  * @param raw       보관함에서 꺼낸 문자열(없으면 null)
  * @param serverRows 방금 서버에서 읽은 줄
+ * @param nowMs     만료 판정 기준 시각. 시험에서 주입한다
  * @returns 되살릴 줄. 되살릴 게 없으면 null
  */
-export function pickRestoredRows(raw: string | null, serverRows: EditorRow[]): EditorRow[] | null {
-  if (!raw) return null;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return null; // 깨진 값 — 서버 내용으로 연다
-  }
-  if (!Array.isArray(parsed) || parsed.length === 0) return null;
-  // ★ 이름 칸이 생기기 **전에** 보관된 초안이 있을 수 있다(같은 탭에서 배포를 건너온 경우).
-  //   옛 모양은 {content, rationale} 뿐이라 name 이 undefined 로 들어오고, 그대로 쓰면
-  //   controlled input 이 uncontrolled 로 바뀌어 React 가 경고를 뱉는다. 여기서 메운다.
-  const rows = parsed
-    .filter(
-      (row): row is Partial<EditorRow> =>
-        typeof row === 'object' && row !== null && typeof (row as EditorRow).content === 'string',
-    )
-    .map((row) => ({
-      name: typeof row.name === 'string' ? row.name : '',
-      content: row.content as string,
-      rationale: typeof row.rationale === 'string' ? row.rationale : '',
-    }));
-  if (rows.length !== parsed.length || rows.length === 0) return null;
-  return isDirty(rows, serverRows) ? rows : null;
+export function pickRestoredRows(
+  raw: string | null,
+  serverRows: EditorRow[],
+  nowMs: number = Date.now(),
+): EditorRow[] | null {
+  const draft = readDraft(raw, nowMs);
+  if (!draft) return null;
+  return isDirty(draft.rows, serverRows) ? draft.rows : null;
 }
 
 /**
@@ -562,4 +551,184 @@ export function saveOutcomeMessage(result: SubmissionSaveOutcome | null | undefi
     return `한 칸에 여러 줄이 있어 저장하면서 나눴습니다 — 칸이 ${split}개 늘었습니다.`;
   }
   return '저장되었습니다. 최종 제출 전까지 계속 고칠 수 있습니다.';
+}
+
+// ── 저장 실패의 갈래 ───────────────────────────────────────────
+//
+// 8.29의 세 번째 구멍이 「저장이 한 번 실패하면 그걸로 끝」이었다. 실패를 자동으로
+// 다시 보내려면 **다시 보내서 될 실패**와 **다시 보내도 같은 실패**를 갈라야 한다.
+// 잠긴 꼭지에 300초마다 영원히 재전송하는 것은 회복이 아니라 소음이다.
+
+/** 저장 실패의 갈래. `network` 만 재전송 큐로 간다. */
+export type SaveFailureKind = 'finalized' | 'closed' | 'network';
+
+/**
+ * 실패에서 메시지를 꺼낸다.
+ *
+ * ★ **PostgREST 오류는 `Error` 인스턴스가 아니다.** supabase-js 는 `throwOnError` 를
+ *   켜지 않으면 응답 본문을 그대로 `{ error }` 로 돌려주고(`postgrest-js` 의 `else` 가지),
+ *   우리 래퍼(`deliberation.ts`)가 그 **평범한 객체**를 그대로 throw 한다. 그래서
+ *   `error instanceof Error` 로만 보면 서버가 보낸 'submission is finalized …' 를
+ *   영영 못 읽는다 — 그 가지는 여태 죽은 코드였다(2026-09-01 확인).
+ *   네트워크 자체가 끊긴 경우에만 진짜 `Error`(TypeError: Failed to fetch)가 온다.
+ */
+function failureMessageOf(error: unknown): string {
+  if (typeof error === 'string') return error;
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && error !== null) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string') return message;
+  }
+  return '';
+}
+
+/**
+ * 실패를 갈래로 나눈다. RPC 예외 메시지를 그대로 본다(서버 문구는 영문 고정이다).
+ *
+ * - `finalized` = 이미 최종 제출됨(20260808_s1: 'submission is finalized …')
+ * - `closed` = 꼭지가 마감됨('topic is not open')
+ * - `network` = 그 밖의 전부. **모르는 실패는 네트워크로 본다** — 다시 보내 볼 값어치가
+ *   있는 쪽으로 접는다. 잘못 접어도 큐가 다시 시도할 뿐이고, 반대로 접으면 글이 안 올라간다.
+ */
+export function saveFailureKind(error: unknown): SaveFailureKind {
+  const message = failureMessageOf(error);
+  if (message.includes('finalized')) return 'finalized';
+  if (message.includes('not open')) return 'closed';
+  return 'network';
+}
+
+/** 갈래별 안내 문장. 화면 세 곳(즉시 저장·재전송·최종 제출)이 같은 말을 쓰게 한다. */
+export function saveFailureMessage(kind: SaveFailureKind): string {
+  if (kind === 'finalized') {
+    return '이미 최종 제출된 상태입니다 — 「다시 열기」를 누르면 조가 직접 풀 수 있습니다.';
+  }
+  if (kind === 'closed') return '이 꼭지는 마감되어 저장할 수 없습니다.';
+  return '지금 저장하지 못해 대기 중입니다 — 연결되면 자동으로 다시 저장합니다. 글은 남아 있습니다.';
+}
+
+/**
+ * 화면의 지금 내용이 **큐에 실린 것과 같은가.**
+ *
+ * 재전송이 성공한 뒤 초안을 버려도 되는지를 이걸로 정한다. 오프라인 동안 조가 계속
+ * 쓰고 있었다면 큐(v1)보다 화면(v2)이 새롭다. 이때 초안을 버리면 v2가 저장소에서도
+ * 화면에서도 사라진다 — 이 PRD가 막으려는 바로 그 사고다. 같을 때만 버린다.
+ *
+ * 비교는 **저장 페이로드 기준**이다. 빈 줄 정리·이름 합치기를 거친 뒤 같으면
+ * 서버에 갈 내용이 같다는 뜻이라 초안을 남길 이유가 없다.
+ */
+export function sameSavePayload(rows: EditorRow[], items: SubmissionItemInput[]): boolean {
+  return JSON.stringify(toSaveItems(rows)) === JSON.stringify(items);
+}
+
+// ── 저장 상태 배지 (설계 §1.4) ───────────────────────────────────
+// 8.29에 조가 가장 자주 물은 것이 「지금 저장된 거 맞아요?」였다. 그때 화면은
+// `savedAt`(맨 아래 회색 한 줄)과 `toast`(3초 뒤 사라짐)가 따로 놀아, 조가
+// 「지금 안전한가」를 한 번에 읽을 자리가 없었다. 상태를 **하나로 합쳐** 꼭지
+// 머리에 상시로 낸다.
+
+/**
+ * 시각을 `14:23` 꼴로. 값이 없거나 깨졌으면 빈 문자열.
+ *
+ * `toLocaleTimeString`을 쓰지 않는다 — 환경마다 '오후 2:23'·'2:23 PM'·초까지 붙는
+ * 모양으로 갈려 테스트가 기계에 따라 달라진다(`attendance-logic.ts`의 같은 판단).
+ * 24시 표기를 쓰는 이유는 배지가 짧아야 하고, 마감이 걸린 자리에서 오전·오후를
+ * 잘못 읽는 사고를 없애기 위해서다.
+ */
+export function formatSavedClock(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return '';
+  return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
+}
+
+/** 배지가 낼 수 있는 상태 여섯 가지. 설계 §1.4의 상태 머신 그대로다. */
+export type DraftStatusState =
+  | 'saved'
+  | 'unsaved'
+  | 'saving'
+  | 'queued'
+  | 'conflict'
+  | 'loadFailed';
+
+/**
+ * 배지가 보는 화면 상태.
+ *
+ * ★ **새 상태 축을 만들지 않는다.** 여기 들어오는 값은 전부 `TopicSection`이
+ *   이미 들고 있는 것이다(`saving`·`conflict`·`queued`·`dirty`·`loadFailed`·`savedAt`).
+ *   배지 전용 상태를 따로 두면 두 축이 어긋나 「저장됐다는데 저장 버튼이 살아 있는」
+ *   화면이 나온다.
+ */
+export type DraftStatusInput = {
+  /** 불러오기가 실패했는가. */
+  loadFailed?: boolean;
+  /** 지금 요청이 날아가는 중인가(손저장·최종제출·재전송 전부 포함). */
+  saving?: boolean;
+  /** 서버가 더 새것이라 조에게 묻는 중인가. */
+  conflict?: boolean;
+  /** 대기 중인 재전송의 시도 횟수. 대기 건이 없으면 null. */
+  queuedAttempts?: number | null;
+  /** 화면이 기준선과 다른가. */
+  dirty?: boolean;
+  /** 지금의 미저장 상태가 **언제부터**인가(ms). 아니면 null. */
+  dirtySinceMs?: number | null;
+  /** 서버가 마지막으로 받은 시각(ISO). */
+  savedAt?: string | null;
+};
+
+export type DraftStatus = {
+  state: DraftStatusState;
+  /** 배지에 그대로 찍을 한 줄. */
+  label: string;
+  /** 색 갈래. 렌더는 이 값만 보고 고른다. */
+  tone: 'ok' | 'busy' | 'warn' | 'danger';
+};
+
+/** 1분. 이보다 짧은 미저장은 분을 붙이지 않는다(「0분째」는 불안만 준다). */
+const MINUTE_MS = 60_000;
+
+/**
+ * 화면 상태 → 배지 한 줄.
+ *
+ * 우선순위는 **saving > conflict > queued > loadFailed > unsaved > saved**.
+ * - `saving`이 맨 앞인 이유: 재전송·덮어쓰기는 `queued`·`conflict`를 켠 채로 날아간다.
+ *   그 순간 가장 참인 말은 「보내는 중」이다.
+ * - `queued`가 `loadFailed`보다 앞인 이유: 조에게 필요한 소식은 「못 불러왔다」가 아니라
+ *   「글은 이 기기에 남아 있고 연결되면 자동으로 올라간다」다.
+ * - 대기 중에 조가 계속 쓰면 `dirty`도 켜지는데, 그때도 `queued`로 둔다. 섞은 상태를
+ *   새로 만들면 문구가 길어지고, 본문의 대기 안내 블록이 이미 그 사정을 말한다.
+ */
+export function draftStatusLabel(input: DraftStatusInput, nowMs: number): DraftStatus {
+  if (input.saving) return { state: 'saving', label: '저장 중…', tone: 'busy' };
+  if (input.conflict) {
+    return { state: 'conflict', label: '다른 기기에서 저장됐습니다 — 선택이 필요합니다', tone: 'danger' };
+  }
+  const attempts = input.queuedAttempts;
+  if (typeof attempts === 'number') {
+    // 시도 횟수는 1부터 센다(`submission-queue.ts`의 `nextBackoffMs`와 같은 기준).
+    const nth = Number.isFinite(attempts) ? Math.max(1, Math.floor(attempts)) : 1;
+    return {
+      state: 'queued',
+      label: `대기 중 · ${nth}번째 시도 (연결되면 자동 저장)`,
+      tone: 'warn',
+    };
+  }
+  if (input.loadFailed) {
+    return { state: 'loadFailed', label: '불러오지 못했습니다', tone: 'danger' };
+  }
+  if (input.dirty) {
+    const since = input.dirtySinceMs;
+    const elapsed = typeof since === 'number' && Number.isFinite(since) ? Math.max(0, nowMs - since) : 0;
+    const minutes = Math.floor(elapsed / MINUTE_MS);
+    return {
+      state: 'unsaved',
+      label: minutes >= 1 ? `저장 안 함 · ${minutes}분째` : '저장 안 함',
+      tone: 'warn',
+    };
+  }
+  const clock = formatSavedClock(input.savedAt);
+  return {
+    state: 'saved',
+    label: clock ? `저장됨 · ${clock}` : '아직 저장된 내용 없음',
+    tone: 'ok',
+  };
 }

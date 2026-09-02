@@ -47,8 +47,15 @@ export type HqSubmissionRow = {
  *
  * 그래서 **기본값을 없앴다.** 이제 모든 호출이 세션을 명시해야 하고, 빠뜨리면
  * 조용히 8.29 로 가는 대신 **타입 검사가 막는다.**
+ *
+ * 2026-09-01 6·7차(9.12~13 경주)로 전환. 8.29 데이터는 그대로 있고 세션이 하나 늘었을 뿐이다
+ * — 8.29 를 다시 보려면 이 값을 되돌리는 것이 아니라 `scripts/backup-0829.mjs --session
+ * 0829-deliberation` 처럼 세션을 지정해 읽는다.
+ *
+ * ★ 조 구성·접속코드의 정본은 `scripts/session-rosters.mjs` 다. 이 상수와 그 파일의
+ *   `ACTIVE_SESSION_SLUG` 는 **같은 값이어야 한다**(seed SQL 이 만든 세션을 화면이 읽는다).
  */
-export const CURRENT_SESSION_SLUG = '0829-deliberation';
+export const CURRENT_SESSION_SLUG = '0912-deliberation';
 
 /** @deprecated 기본 인자로 쓰지 말 것 — 세션을 명시하라. 남긴 것은 옛 import 호환용이다. */
 export const DEFAULT_SESSION_SLUG = CURRENT_SESSION_SLUG;
@@ -248,6 +255,42 @@ export async function fetchSubmissionKinds(
     .rpc('hq_submission_kinds', { p_token: token, p_session_slug: sessionSlug });
   if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
   return (data ?? []) as HqKindRow[];
+}
+
+// ── 꼭지 마감 되읽기(s19) ───────────────────────────────────────────
+// s17 이 본부에 「마감 걸기」를 줬지만 **읽는 경로를 주지 않았다.** hq_submissions 는
+// deadline_at 을 반환에 안 넣고 topic_list 는 조 접속코드를 요구한다. 그래서 본부는
+// 새로고침하면 자기가 무엇을 걸었는지 몰랐다. s19 가 그 되읽기 하나만 더한다.
+
+/** hq_topic_deadlines 한 행. `deadline_at` 이 null 이면 그 꼭지는 마감이 없다. */
+export type HqTopicDeadlineRow = {
+  topic_id: string;
+  topic_ordinal: number;
+  deadline_at: string | null;
+};
+
+/**
+ * 세션의 꼭지별 현재 마감을 본부 토큰으로 읽는다.
+ *
+ * ★ **s19 미적용 DB 에서는 `null` 을 돌려준다**(예외를 던지지 않는다). PostgREST 가 함수를
+ *   못 찾으면 `PGRST202` 다 — 그것은 「마감이 없다」가 아니라 「모른다」이므로 호출부가
+ *   두 사실을 구별할 수 있어야 한다. 화면은 null 이면 s19 이전 표시로 조용히 퇴화하고
+ *   마감 걸기·지우기는 그대로 동작한다(US-009 가 topic_list 에서 쓴 것과 같은 방침).
+ *   그 밖의 오류(권한·네트워크)는 감추지 않고 던진다.
+ */
+export async function fetchHqTopicDeadlines(
+  token: string,
+  sessionSlug: string
+): Promise<HqTopicDeadlineRow[] | null> {
+  const { data, error } = await client()
+    .schema('climate_vote')
+    .rpc('hq_topic_deadlines', { p_token: token, p_session_slug: sessionSlug });
+  if (error) {
+    // PGRST202 = PostgREST 스키마 캐시에 함수가 없음, 42883 = Postgres undefined_function.
+    if (error.code === 'PGRST202' || error.code === '42883') return null;
+    throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
+  }
+  return (data ?? []) as HqTopicDeadlineRow[];
 }
 
 /** 전체 비우기 확인 문구. 화면과 DB 함수가 **같은 문자열**을 봐야 한다. */
