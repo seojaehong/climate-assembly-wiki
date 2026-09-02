@@ -20,6 +20,7 @@ workshops:
     name: 6차_분과권고안의결_경주합숙1일차
     start_kst: "09:00"
     end_kst: "21:00"
+    snapshot_until_kst: "2026-09-13T09:00:00+09:00"
     supabase_round_id: 6  # ★ 행사 전 실제 round_id 확인 필요
   - date: 2026-09-13
     name: 7차_분과권고안의결_경주합숙2일차

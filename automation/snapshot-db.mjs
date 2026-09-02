@@ -966,10 +966,10 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(0);
   }
   const { createClient } = await import('@supabase/supabase-js');
-  const { loadSchedule, findActiveWorkshop } = await import('./lib/schedule.mjs');
+  const { loadSchedule, findActiveSnapshotWorkshop } = await import('./lib/schedule.mjs');
   const { mkdirSync } = await import('node:fs');
   const schedule = await loadSchedule();
-  const ws = findActiveWorkshop(schedule);
+  const ws = findActiveSnapshotWorkshop(schedule);
   if (!ws) {
     console.log(JSON.stringify({ skipped: 'not in workshop window' }));
     process.exit(0);

@@ -6,6 +6,7 @@ import {
   captureCronForWorkshop,
   finalizeCronForWorkshop,
   findActiveWorkshop,
+  findActiveSnapshotWorkshop,
   loadSchedule,
   snapshotCronForWorkshop,
   validateSchedule,
@@ -87,6 +88,38 @@ test('archive workflows cover every workshop in the canonical schedule', async (
     expect(finalizeWorkflow.concurrency.group).toContain(mapping);
     expect(finalizeStep.env.WORKSHOP).toContain(mapping);
   }
+});
+
+test('keeps the overnight snapshot window active between the two Gyeongju workshop days', async () => {
+  const schedulePath = fileURLToPath(new URL('../workshop-schedule.yml', import.meta.url));
+  const loaded = await loadSchedule(schedulePath);
+  const firstDay = loaded.workshops.find(
+    (workshop) => workshop.name === '6차_분과권고안의결_경주합숙1일차',
+  );
+
+  expect(snapshotCronForWorkshop(firstDay)).toBe('*/5 * 12 9 *');
+  expect(findActiveWorkshop(loaded, new Date('2026-09-12T14:00:00Z'))).toBeNull();
+  expect(findActiveSnapshotWorkshop(loaded, new Date('2026-09-12T14:00:00Z'))?.name)
+    .toBe('6차_분과권고안의결_경주합숙1일차');
+  expect(findActiveSnapshotWorkshop(loaded, new Date('2026-09-12T23:55:00Z'))?.name)
+    .toBe('6차_분과권고안의결_경주합숙1일차');
+  expect(findActiveSnapshotWorkshop(loaded, new Date('2026-09-13T00:00:00Z'))?.name)
+    .toBe('7차_분과권고안의결_경주합숙2일차');
+});
+
+test('rejects an extended snapshot window that cannot be represented by one UTC cron row', () => {
+  expect(() => snapshotCronForWorkshop({
+    date: '2026-09-12',
+    start_kst: '09:00',
+    end_kst: '21:00',
+    snapshot_until_kst: '2026-09-13T10:00:00+09:00',
+  })).toThrow('snapshot cron requires a single UTC date');
+  expect(() => snapshotCronForWorkshop({
+    date: '2026-09-12',
+    start_kst: '09:00',
+    end_kst: '21:00',
+    snapshot_until_kst: '2026-09-31T09:00:00+09:00',
+  })).toThrow('invalid snapshot end');
 });
 
 test('rejects invalid calendar dates, times, and off-grid capture windows', () => {

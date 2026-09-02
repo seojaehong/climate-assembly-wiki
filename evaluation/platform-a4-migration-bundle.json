@@ -73,8 +73,8 @@
     },
     {
       "path": ".gitattributes",
-      "sha256": "32f791f4d7ae12a635f20eda34ed3f9179fb13d5b4e6fd858c987a0f29143fba",
-      "bytes": 63
+      "sha256": "ed4ad2d51f849bb14a586144a76aac1d5c6dfeba6359537cc1df47afc28c965a",
+      "bytes": 367
     },
     {
       "path": ".github/workflows/test.yml",
@@ -135,5 +135,5 @@
     "activatesStaffGrants": false,
     "connectsProductionExecutor": false
   },
-  "checksum": "5916cb4c65c98be791726b4d9960d7b2b896cfd6fd968dd395dac25fd167e7d4"
+  "checksum": "be5123927cbe8f445a7e2bc3f567455fca1036ccb8414a05406efb24f666c79d"
 }
