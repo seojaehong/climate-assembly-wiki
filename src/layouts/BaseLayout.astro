@@ -104,7 +104,12 @@ const canonicalUrl = `${SITE_URL}${pathname.endsWith('/') ? pathname : pathname 
 
 // hreflang links: emit for each alternate language that exists for this page.
 // Design §5.2: also emit x-default pointing to ko version.
-const hreflangLinks = alternateLangs.map((altLang: string) => {
+interface HreflangLink {
+  lang: string;
+  url: string;
+}
+
+const hreflangLinks: HreflangLink[] = (alternateLangs as string[]).map((altLang: string) => {
   const altPath = canonicalPath
     ? canonicalPath.replace(/^\/(ko|en|ja|zh|es)\//, `/${altLang}/`)
     : Astro.url.pathname.replace(/^\/(ko|en|ja|zh|es)\//, `/${altLang}/`);
@@ -113,7 +118,7 @@ const hreflangLinks = alternateLangs.map((altLang: string) => {
 });
 
 // x-default points to ko
-const defaultUrl = hreflangLinks.find((l: { lang: string; url: string }) => l.lang === 'ko')?.url ?? canonicalUrl;
+const defaultUrl = hreflangLinks.find((link) => link.lang === 'ko')?.url ?? canonicalUrl;
 
 const siteTitleSuffix = lang === 'ko' ? '기후시민회의 Wiki' : 'Korea Climate Assembly Wiki';
 const fullTitle = `${title} | ${siteTitleSuffix}`;
