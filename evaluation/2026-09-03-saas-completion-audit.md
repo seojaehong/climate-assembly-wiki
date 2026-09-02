@@ -289,3 +289,24 @@ production DB/Auth/GRANT와 실데이터는 변경하지 않았다.
   4단계 신뢰 배지와 접근성 레이블을 확인했고 `lang=ar`, `dir=rtl`, 가로 넘침 없음 확인
 - Arabic 검색 모달의 제목·닫기·도움말은 현지어로 확인. 로컬 Node 24에서는 저장소 설정상
   Pagefind integration을 생략하므로 결과 입력 UI는 main 배포 후 별도로 확인한다.
+
+## 9/3 후속 — Pagefind 운영 로더 복구
+
+위 배지 변경을 main에 배포한 뒤 운영 검색 모달을 다시 열어, `/pagefind/pagefind-ui.js`가 HTTP
+200으로 존재하는데도 검색 입력 대신 인덱스 불가 안내가 표시되는 결함을 발견했다. 배포 번들은
+ES module named export가 아니라 classic IIFE로 실행되어 `window.PagefindUI`를 등록하지만 기존
+로더가 dynamic import의 named export를 요구해 항상 실패한 것이 원인이었다.
+
+검색을 처음 열 때 classic script element로 번들을 한 번만 로드하고 전역 constructor를 확인한
+후 UI를 생성하도록 바꿨다. Pagefind 기본 stylesheet도 연결했으며 로드 실패는 콘솔에 원인을
+남기고 현지어 fallback을 표시한다. DB/Auth/GRANT와 실데이터는 변경하지 않았다.
+
+검증 결과:
+
+- Pagefind 로더 source contract: 1개 파일, 6건 통과
+- 저장소 전체 Vitest: 105개 파일, 1,786건 전부 통과
+- Windows automation 전체: 32개 파일, 535건 전부 통과
+- Astro strict check: 464개 파일, 오류·경고 0건, 기존 hint 57건
+- 정적 production build: 9,493개 페이지 생성
+- 운영 사전 진단: 양쪽 도메인의 Pagefind JS/CSS HTTP 200, JS가 `window.PagefindUI`를 등록하는
+  IIFE임을 직접 확인. 실제 검색 입력·결과는 이 수정의 main 배포 후 최종 검증한다.

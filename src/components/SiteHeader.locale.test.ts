@@ -58,6 +58,15 @@ describe('SiteHeader locale navigation contract', () => {
     expect(deprecatedBaseSource).toContain('<SearchModal lang={lang} />');
   });
 
+  it('loads the Pagefind browser bundle from its global registration', () => {
+    expect(searchSource).toContain('const script = document.createElement(\'script\');');
+    expect(searchSource).toContain("script.src = '/pagefind/pagefind-ui.js';");
+    expect(searchSource).toContain('const PagefindUI = window.PagefindUI;');
+    expect(searchSource).not.toContain("import('/pagefind/pagefind-ui.js')");
+    expect(searchSource).toContain('<link rel="stylesheet" href="/pagefind/pagefind-ui.css" />');
+    expect(searchSource).toContain("console.error('[search] Failed to load Pagefind UI', error);");
+  });
+
   it('keeps structural-locale sidebar links and labels in the current locale', () => {
     expect(sidebarSource).toContain("const currentLang = isSiteLocale(segments[0]) ? segments[0] : 'ko';");
     expect(sidebarSource).toContain('aria-label={shellCopy.sectionNavigation}');
