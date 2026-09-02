@@ -8,6 +8,7 @@ import {
   localeDirection,
   localeOgTag,
   replaceLocalePrefix,
+  siteShellCopy,
 } from './site-locales';
 
 describe('site locale registry', () => {
@@ -39,5 +40,18 @@ describe('site locale registry', () => {
     expect(replaceLocalePrefix('/ko/agenda/topic/', 'ar')).toBe('/ar/agenda/topic/');
     expect(replaceLocalePrefix('/agenda/topic/', 'ar')).toBe('/ar/agenda/topic/');
     expect(replaceLocalePrefix('/', 'ar')).toBe('/ar/');
+  });
+
+  it('provides localized shell controls without treating structural locales as Korean', () => {
+    expect(siteShellCopy('ar')).toMatchObject({
+      siteName: 'ويكي جمعية المواطنين للمناخ في كوريا',
+      skipToContent: 'الانتقال إلى المحتوى الرئيسي',
+      openSearch: 'فتح البحث (/)',
+      footerDisclaimer: 'هذا أرشيف مستقل وليس منشورًا حكوميًا رسميًا.',
+    });
+    expect(siteShellCopy('ja').openMenu).toBe('メニューを開く');
+    expect(siteShellCopy('zh').searchClose).toBe('关闭');
+    expect(siteShellCopy('es').license).toBe('Licencia');
+    expect(siteShellCopy('unknown').siteName).toBe('Korea Climate Assembly Wiki');
   });
 });

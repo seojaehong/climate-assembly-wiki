@@ -10,12 +10,13 @@
 import LanguageToggle from './LanguageToggle.astro';
 import ThemeToggle from './ThemeToggle.astro';
 import { TOP_NAV_ITEMS, SIDEBAR_SECTIONS } from '../data/navigation';
-import { isSiteLocale } from '../lib/site-locales';
+import { isSiteLocale, siteShellCopy } from '../lib/site-locales';
 
 const currentUrl = Astro.url.pathname;
 const segments = currentUrl.split('/').filter(Boolean);
 const currentLang = isSiteLocale(segments[0]) ? segments[0] : 'ko';
 const isKo = currentLang === 'ko';
+const shellCopy = siteShellCopy(currentLang);
 const currentSection = segments[1] ?? '';
 
 // R-11: Find the sidebar section matching the current section (for mobile sub-nav)
@@ -38,12 +39,12 @@ function navHref(section: string): string {
       class="site-logo font-bold text-sm text-[var(--color-accent)] shrink-0 tracking-tight hover:opacity-80 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
       transition:name="site-logo"
     >
-      {isKo ? '기후시민회의 Wiki' : 'Korea Climate Assembly Wiki'}
+      {shellCopy.siteName}
     </a>
 
     <!-- Desktop nav (md+) -->
     <nav
-      aria-label={isKo ? '주요 탐색' : 'Main navigation'}
+      aria-label={shellCopy.mainNavigation}
       class="hidden md:flex items-center gap-0.5 text-sm"
     >
       {TOP_NAV_ITEMS.map((item) => {
@@ -69,7 +70,7 @@ function navHref(section: string): string {
                   <polyline points="6 9 12 15 18 9"/>
                 </svg>
               </a>
-              <div class="absolute left-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition z-50">
+              <div class="desktop-submenu absolute left-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition z-50">
                 <div class="min-w-[180px] rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] shadow-[var(--shadow-lg)] p-1.5">
                   {item.children.map((child) => {
                     const childAttrs = child.external ? { target: '_blank', rel: 'noopener' } : {};
@@ -113,7 +114,7 @@ function navHref(section: string): string {
       <button
         data-search-trigger
         type="button"
-        aria-label={isKo ? '검색 열기 (/)' : 'Open search (/)'}
+        aria-label={shellCopy.openSearch}
         class="hidden sm:inline-flex min-w-11 min-h-11 p-2.5 rounded-md border border-[var(--color-border)] text-[var(--color-fg-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] items-center justify-center"
       >
         <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -126,14 +127,14 @@ function navHref(section: string): string {
         <LanguageToggle />
       </span>
       <span class="hidden sm:inline-flex">
-        <ThemeToggle />
+        <ThemeToggle label={shellCopy.themeToggle} />
       </span>
 
       <!-- Mobile hamburger (md-: visible) -->
       <details class="mobile-menu relative md:hidden">
         <summary
           class="list-none min-w-11 min-h-11 p-2.5 rounded-md border border-[var(--color-border)] text-[var(--color-fg-muted)] cursor-pointer hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] inline-flex items-center justify-center"
-          aria-label={isKo ? '메뉴 열기' : 'Open menu'}
+          aria-label={shellCopy.openMenu}
         >
           <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <line x1="3" y1="6" x2="21" y2="6"/>
@@ -143,9 +144,18 @@ function navHref(section: string): string {
         </summary>
 
         <nav
-          aria-label={isKo ? '모바일 탐색' : 'Mobile navigation'}
+          aria-label={shellCopy.mobileNavigation}
           class="absolute right-0 top-full mt-1 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl shadow-[var(--shadow-lg)] z-50 min-w-[220px] py-1.5 overflow-hidden"
         >
+          <button
+            data-search-trigger
+            type="button"
+            class="sm:hidden w-full min-h-11 px-4 py-2.5 text-start text-sm font-medium text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-accent)] transition-colors"
+            aria-label={shellCopy.openSearch}
+          >
+            {shellCopy.searchLabel}
+          </button>
+
           {TOP_NAV_ITEMS.map((item) => {
             const active = currentSection === item.section;
             const href = item.href ?? navHref(item.section);
@@ -238,6 +248,11 @@ function navHref(section: string): string {
 </header>
 
 <style>
+  :global(html[dir='rtl']) .desktop-submenu {
+    right: 0;
+    left: auto;
+  }
+
   @media (max-width: 640px) {
     #site-header > div {
       width: 100vw;
