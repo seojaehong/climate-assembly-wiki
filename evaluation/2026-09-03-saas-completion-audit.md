@@ -343,3 +343,31 @@ DNS, 인프라를 변경하지 않는다. template은 미결정 인프라·책�
 - 정적 production build: 9,493개 페이지 생성
 - 로컬 실제 브라우저: Japanese·Chinese·Arabic의 body·대표 제목에 문자권별 font stack 적용,
   body·제목 자간 `normal`, Arabic `dir=rtl`, 세 locale 모두 가로 넘침 없음
+
+## 9/3 후속 — Phase C 코드·콘텐츠 라이선스 경계 결정 준비
+
+루트 CC BY-SA 4.0 선언이 코드와 콘텐츠를 함께 덮는 현재 상태, 루트 package license 공란,
+콘텐츠 schema의 CC BY-SA, En-ROADS의 CC BY, vendored 패키지의 MIT·NOTICE·THIRD_PARTY를
+각각 분리해 기록하는 fail-closed 계획 생성기를 추가했다. 직접 runtime·development 의존성은
+lockfile과 linked vendor package metadata에서 실제 버전·license를 읽고, license metadata가
+하나라도 없으면 변경 검토 준비 상태가 되지 않는다.
+
+템플릿은 AGPL only/or-later 및 오픈소스/dual 전략을 미결정으로 유지한다. 저작권 소유,
+기여자 재라이선스 권한, 제3자 고지, 최종 결정 검토가 모두 승인되고 dual 전략의 상용 제공
+역할까지 확정돼야 `readyForLicenseChangeReview:true`가 된다. 이 값은 실제 재라이선스나 권리
+부여가 아니라 별도 변경 PR을 검토할 준비만 뜻한다. 생성기는 법률 자문을 제공하지 않고
+`LICENSE`, package metadata, DB를 변경하지 않으며, profile과 불변 출력은 저장소 밖에만 둔다.
+
+기본 미결정 profile을 현재 저장소에 실행한 결과는 다음과 같다.
+
+- 계획 생성기 집중 테스트: 1개 파일, 7건 통과
+- 직접 의존성 26개, license metadata 누락 0개
+- repository evidence 13개, 권리자 결정 blocker 6개
+- `needs_rights_holder_decisions`, `readyForLicenseChangeReview:false`
+- 권리 부여·license 파일·package metadata·DB 변경 0건
+- 저장소 전체 Vitest: 106개 파일, 1,788건 전부 통과
+- Windows automation 전체: 34개 파일, 548건 중 547건 통과. 기존 Git fixture 1건은 공통
+  5초 제한을 넘겼고 해당 파일을 30초 제한으로 단독 재실행해 8건 전부 통과
+- Astro strict check: 469개 파일, 오류·경고 0건, 기존 hint 57건
+- 정적 production build: 9,493개 페이지 생성
+- 검증 출력: `C:\Users\iceam\AppData\Local\Temp\platform-license-boundary-20260903-0614\plan.json`
