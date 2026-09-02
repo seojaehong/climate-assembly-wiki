@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "organizationCode": "replace-with-institution-code",
+  "systemName": "공론화 SaaS",
+  "deploymentMode": "pending",
+  "federationMode": "pending",
+  "authBaseUrl": null,
+  "applicationOrigin": null,
+  "idpMetadata": {
+    "sourceKind": "pending",
+    "sourceReference": null,
+    "expectedEntityId": null,
+    "certificateFingerprintSha256": null,
+    "reviewedAt": null,
+    "refreshOwnerRole": null
+  },
+  "identityMapping": {
+    "nameIdFormat": "pending",
+    "immutableSubjectAttribute": null,
+    "emailAttribute": null,
+    "accountLinking": "pending",
+    "jitProvisioning": false,
+    "defaultMembershipRole": null
+  },
+  "assertionPolicy": {
+    "responseSigned": true,
+    "assertionSigned": true,
+    "encryptedAssertions": "pending",
+    "requireAudience": true,
+    "requireDestination": true,
+    "requireRecipient": true,
+    "requireInResponseTo": true,
+    "rejectReplay": true,
+    "clockSyncOwnerRole": null
+  },
+  "gatewayDecision": {
+    "status": "pending",
+    "ownerRole": null,
+    "reference": null
+  },
+  "review": {
+    "status": "pending",
+    "reviewerRole": null,
+    "reviewedAt": null
+  }
+}
