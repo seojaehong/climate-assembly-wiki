@@ -223,7 +223,7 @@ describe('A2 organization selection migration draft', () => {
   it('waits for the verification database, not only the PostgreSQL socket', () => {
     const databaseProbe = 'psql -U postgres -d verify -v ON_ERROR_STOP=1 -tAc "select 1"';
     expect(testWorkflow.match(new RegExp(databaseProbe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')))
-      .toHaveLength(6);
+      .toHaveLength(8);
     expect(testWorkflow).not.toContain('pg_isready -U postgres -d verify');
     expect(testWorkflow).not.toContain('\r');
   });

@@ -1,5 +1,23 @@
 .gitattributes text eol=lf
 .github/workflows/*.yml text eol=lf
+src/islands/platform/design/design-blueprint-contract.json text eol=lf
+automation/platform-design-provisioning-plan.mjs text eol=lf
+automation/platform-design-provisioning-durable-store.mjs text eol=lf
+automation/platform-design-provisioning-key-registry.mjs text eol=lf
+automation/platform-design-provisioning-supabase-adapter.mjs text eol=lf
+automation/platform-a4-migration-bundle.mjs text eol=lf
+automation/tests/platform-design-provisioning-plan.test.mjs text eol=lf
+automation/tests/platform-design-provisioning-supabase-adapter.test.mjs text eol=lf
+automation/tests/platform-a4-migration-bundle.test.mjs text eol=lf
+docs/platform/A4_DESIGN_PROVISIONING_CONTRACT.md text eol=lf
+supabase/verify/design_provisioning_preflight.sql text eol=lf
+supabase/verify/design_provisioning_preflight_legacy_fixture.sql text eol=lf
+supabase/migrations/platform_p3_design_provisioning.sql text eol=lf
+supabase/verify/design_provisioning_preflight_mapping_fixture.sql text eol=lf
+supabase/verify/design_provisioning_post_apply.sql text eol=lf
+supabase/verify/design_provisioning_test.sql text eol=lf
+supabase/verify/design_provisioning_rollback_cleanup_fixture.sql text eol=lf
+supabase/rollbacks/platform_p3_design_provisioning_BEFORE.sql text eol=lf
 
 # 벤더링한 서드파티 패키지는 **업스트림 tarball 바이트 그대로** 둔다 (US-008).
 # core.autocrlf=true 인 Windows 에서 체크아웃하면 줄끝이 CRLF 로 바뀌어
