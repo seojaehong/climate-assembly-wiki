@@ -14,7 +14,15 @@ fi
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 started_seconds=$SECONDS
-source_commit="$(git rev-parse HEAD)"
+# The verifier is commonly launched from WSL against a worktree checked out by
+# Windows Git. Use the checkout's CRLF normalization semantics explicitly so a
+# release run still rejects content changes without treating every text file as
+# dirty solely because WSL has a separate global Git configuration.
+git_autocrlf="${P1A_GIT_AUTOCRLF:-true}"
+git_repo() {
+  git -c "core.autocrlf=$git_autocrlf" "$@"
+}
+source_commit="$(git_repo rev-parse HEAD)"
 node_bin="${P1A_NODE_BIN:-node}"
 if ! command -v "$node_bin" >/dev/null 2>&1 && [[ "$node_bin" == "node" ]]; then
   for candidate in "/mnt/c/Program Files/nodejs/node.exe" "/c/Program Files/nodejs/node.exe"; do
@@ -106,7 +114,7 @@ for target_file in "${target_files[@]}"; do
     exit 1
   fi
 done
-target_dirty="$(git status --porcelain -- "${target_files[@]}")"
+target_dirty="$(git_repo status --porcelain -- "${target_files[@]}")"
 if [[ "$release_mode" == "true" && -n "$target_dirty" ]]; then
   echo "release verification refused: target manifest contains dirty files" >&2
   printf '%s\n' "$target_dirty" >&2
@@ -127,7 +135,7 @@ target_manifest="$(compute_target_manifest)"
 target_manifest_sha256="$(printf '%s' "$target_manifest" | sha256sum | cut -d' ' -f1)"
 "$node_bin" scripts/verify-workshop-access-contract.mjs >/dev/null
 echo "target_manifest_count=$target_manifest_count target_manifest_sha256=$target_manifest_sha256 release_mode=$release_mode"
-if [[ -z "$(git status --porcelain)" ]]; then
+if [[ -z "$(git_repo status --porcelain)" ]]; then
   source_tree_clean=true
 else
   source_tree_clean=false

@@ -157,6 +157,15 @@ describe('9/12 readiness traceability verifier', () => {
     expect(cleared).toBeGreaterThan(removed);
   });
 
+  test('normalizes Git status when WSL inspects a Windows checkout', () => {
+    const runner = readFileSync(resolve(projectRoot, 'scripts/verify-0912-postgres.sh'), 'utf8');
+
+    expect(runner).toContain('git_autocrlf="${P1A_GIT_AUTOCRLF:-true}"');
+    expect(runner).toContain('git -c "core.autocrlf=$git_autocrlf" "$@"');
+    expect(runner).toContain('target_dirty="$(git_repo status --porcelain -- "${target_files[@]}")"');
+    expect(runner).toContain('if [[ -z "$(git_repo status --porcelain)" ]]');
+  });
+
   test.each([
     [['--no-write'], '지원하지 않는 옵션'],
     [['--output'], '값이 필요'],

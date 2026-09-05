@@ -568,7 +568,7 @@ const additionalBehavioralSeams = [
   [postgresVerifier, /concurrentActiveRoundCreationVerification[\s\S]{0,300}concurrentNamedPasswordRecoveryVerification/i, 'report records active-round and named recovery concurrency checks'],
   [postgresVerifier, /automation\/0912-rpc-contract\.mjs[\s\S]{0,500}src\/islands\/mod\/ModConsole\.tsx/i, 'manifest includes emulator and stored-session client contracts'],
   [postgresVerifier, /ballot[ _-]*close[ _-]*race|ballot_close_race/i, 'ballot close race verifier'],
-  [postgresVerifier, /--release[\s\S]{0,7000}git status --porcelain -- "\$\{target_files\[@\]\}"[\s\S]{0,1200}release verification refused/i, 'release mode rejects dirty manifest targets'],
+  [postgresVerifier, /--release[\s\S]{0,7000}git_repo status --porcelain -- "\$\{target_files\[@\]\}"[\s\S]{0,1200}release verification refused/i, 'release mode rejects dirty manifest targets'],
   [postgresVerifier, /(?=[\s\S]*compute_target_manifest)(?=[\s\S]*createHash\("sha256"\))(?=[\s\S]*target_manifest_sha256)(?=[\s\S]*target_manifest_after)(?=[\s\S]*manifest target changed during execution)/i, 'target SHA-256 manifest bound before and after execution'],
   [postgresVerifier, /targetManifestCount[\s\S]{0,300}targetManifestSha256[\s\S]{0,300}targetManifestVerifiedAtCompletion[\s\S]{0,300}targetManifest/i, 'report embeds the verified target manifest'],
   [runbook, /비구속 현장 조사[\s\S]{0,400}공식 의사결정/i, 'public vote accepted-risk runbook'],
