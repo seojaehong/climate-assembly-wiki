@@ -635,8 +635,8 @@ test('rehearses internal restore relationships and reports unavailable parent de
       legacyIntegrityVerified: true,
       databaseRestoreExecuted: false,
       archiveRestoreOrder: [
-        'submission',
         'submission_item',
+        'submission',
         'issue',
         'issue_link',
         'result_page',
@@ -1536,9 +1536,40 @@ test('builds a transaction-bound restore rehearsal for the isolated verify datab
     }));
     expect(result.sql).toContain("current_database() <> 'verify'");
     expect(result.sql).toContain('snapshot restore rehearsal requires empty target tables');
-    expect(result.sql).toContain("tgname = 'submission_item_lock_guard'");
-    expect(result.sql).toContain('alter table climate_vote.submission_item disable trigger submission_item_lock_guard');
-    expect(result.sql).toContain('alter table climate_vote.submission_item enable trigger submission_item_lock_guard');
+    const triggerGuardIndex = result.sql.indexOf("tgname = 'submission_item_lock_guard'");
+    const constraintGuardIndex = result.sql.indexOf("conname = 'submission_item_submission_id_fkey'");
+    expect(triggerGuardIndex).toBeGreaterThan(-1);
+    expect(constraintGuardIndex).toBeGreaterThan(triggerGuardIndex);
+    expect(result.sql).toContain("confrelid = 'climate_vote.submission'::regclass");
+    expect(result.sql).toContain('and convalidated');
+    expect(result.sql).toContain('and not condeferrable');
+    expect(result.sql).toContain('and not condeferred');
+    expect(result.sql).not.toContain('disable trigger');
+    expect(result.sql).not.toContain('enable trigger');
+
+    const constraintAlterIndex = result.sql.indexOf(
+      'alter table climate_vote.submission_item\n  alter constraint submission_item_submission_id_fkey\n  deferrable initially deferred;',
+    );
+    const itemInsertIndex = result.sql.indexOf('insert into climate_vote.submission_item\nselect');
+    const submissionInsertIndex = result.sql.indexOf('insert into climate_vote.submission\nselect');
+    const constraintImmediateIndex = result.sql.indexOf(
+      'set constraints submission_item_submission_id_fkey immediate;',
+    );
+    expect(constraintAlterIndex).toBeGreaterThan(constraintGuardIndex);
+    expect(itemInsertIndex).toBeGreaterThan(constraintAlterIndex);
+    expect(submissionInsertIndex).toBeGreaterThan(itemInsertIndex);
+    expect(constraintImmediateIndex).toBeGreaterThan(submissionInsertIndex);
+
+    const rollbackIndex = result.sql.lastIndexOf('\nrollback;');
+    const rollbackGuardIndex = result.sql.lastIndexOf('do $restore_rollback$');
+    expect(rollbackIndex).toBeGreaterThan(constraintImmediateIndex);
+    expect(rollbackGuardIndex).toBeGreaterThan(rollbackIndex);
+    const rollbackGuardSql = result.sql.slice(rollbackGuardIndex);
+    expect(rollbackGuardSql).toContain("tgname = 'submission_item_lock_guard'");
+    expect(rollbackGuardSql).toContain("conname = 'submission_item_submission_id_fkey'");
+    expect(rollbackGuardSql).toContain('and convalidated');
+    expect(rollbackGuardSql).toContain('and not condeferrable');
+    expect(rollbackGuardSql).toContain('and not condeferred');
     for (const collection of [
       'submission',
       'submission_item',

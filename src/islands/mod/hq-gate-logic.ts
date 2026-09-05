@@ -17,6 +17,36 @@ export const HQ_ACTOR_KEY = 'climate_vote_hq_gate_actor';
 export const HQ_UNLOCK_MAX_ATTEMPTS = 5;
 export const HQ_UNLOCK_LOCK_MINUTES = 15;
 
+/** PostgreSQL pgcrypto bcrypt accepts at most 72 UTF-8 bytes. */
+export const HQ_NEW_PASSWORD_MAX_BYTES = 72;
+export const HQ_NEW_PASSWORD_MIN_CHARACTERS = 8;
+
+/** Return the encoded byte length used by the server-side octet_length guard. */
+export function utf8ByteLength(value: string): number {
+  return new TextEncoder().encode(value).byteLength;
+}
+
+/**
+ * Validate a new HQ password before sending it to the password-rotation RPC.
+ * The current password is deliberately not checked here: an existing legacy
+ * credential must remain enterable even when it predates the new bcrypt limit.
+ */
+export function validateHqNewPassword(
+  password: string,
+  confirmation: string,
+): string | null {
+  if (password !== confirmation) {
+    return '새 비밀번호 두 칸이 서로 다릅니다.';
+  }
+  if (Array.from(password).length < HQ_NEW_PASSWORD_MIN_CHARACTERS) {
+    return `새 비밀번호는 ${HQ_NEW_PASSWORD_MIN_CHARACTERS}자 이상이어야 합니다.`;
+  }
+  if (utf8ByteLength(password) > HQ_NEW_PASSWORD_MAX_BYTES) {
+    return `새 비밀번호는 UTF-8 기준 ${HQ_NEW_PASSWORD_MAX_BYTES}바이트 이하로 입력해 주세요.`;
+  }
+  return null;
+}
+
 /** sessionStorage에서 읽은 값이 통과 가능한 HQ 토큰인지 판단한다. */
 export function isValidHqToken(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;

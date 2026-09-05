@@ -192,8 +192,11 @@ insert into climate_vote.submission(id, topic_id, team_id, org_id) values
   ('80000000-0000-4000-8000-000000000001', '70000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001');
 insert into climate_vote.submission_item(id, submission_id, ordinal, content) values
   ('90000000-0000-4000-8000-000000000001', '80000000-0000-4000-8000-000000000001', 1, 'Sensitive participant content');
-delete from climate_vote.submission
-where id = '80000000-0000-4000-8000-000000000001';
+-- Delete the item directly while its parent remains available. The legacy
+-- archive intentionally keeps a foreign key to submission, so deleting the
+-- parent would test an unsupported history-destruction path rather than P4.
+delete from climate_vote.submission_item
+where id = '90000000-0000-4000-8000-000000000001';
 
 do $semantics$
 declare
@@ -227,7 +230,7 @@ begin
       and e.operation = 'delete'
       and e.org_id = '20000000-0000-4000-8000-000000000001'
   ) then
-    raise exception 'A6 audit verification failed: cascade delete tenant context was lost';
+    raise exception 'A6 audit verification failed: delete tenant context was lost';
   end if;
 
   if exists (

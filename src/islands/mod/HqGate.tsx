@@ -18,11 +18,14 @@ import WorkshopHqStatus from './WorkshopHqStatus';
 import { createSafeBrowserStorage } from '../../lib/safe-browser-storage';
 import {
   HQ_ACTOR_KEY,
+  HQ_NEW_PASSWORD_MAX_BYTES,
   HQ_TOKEN_KEY,
   classifyHqAuthorizationError,
   gateFailureMessage,
   isValidHqToken,
   normalizeActorLabel,
+  utf8ByteLength,
+  validateHqNewPassword,
 } from './hq-gate-logic';
 
 const hqSessionStorage = createSafeBrowserStorage('sessionStorage');
@@ -161,12 +164,9 @@ export default function HqGate() {
   const submitPasswordChange = async (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!token) return;
-    if (pwNext !== pwConfirm) {
-      setPwMessage('새 비밀번호 두 칸이 서로 다릅니다.');
-      return;
-    }
-    if (pwNext.length < 8) {
-      setPwMessage('새 비밀번호는 8자 이상이어야 합니다.');
+    const validationMessage = validateHqNewPassword(pwNext, pwConfirm);
+    if (validationMessage) {
+      setPwMessage(validationMessage);
       return;
     }
     setPwBusy(true);
@@ -381,9 +381,14 @@ export default function HqGate() {
                 autoComplete="new-password"
                 value={pwNext}
                 onChange={(e) => setPwNext(e.target.value)}
+                maxLength={HQ_NEW_PASSWORD_MAX_BYTES}
+                aria-describedby="hq-new-password-guidance"
                 className="mt-1 h-12 w-full rounded-xl border border-[#C4D8E4] px-3 text-[16px] font-normal"
               />
             </label>
+            <p id="hq-new-password-guidance" className="mt-1 text-[13px] leading-[1.5] text-[#5A6B73]">
+              UTF-8 기준 {utf8ByteLength(pwNext)}/{HQ_NEW_PASSWORD_MAX_BYTES}바이트… 한글·이모지는 한 글자가 여러 바이트입니다.
+            </p>
             <label className="mt-3 block text-[15px] font-bold text-[#1F2933]">
               새 비밀번호 확인
               <input
@@ -391,6 +396,8 @@ export default function HqGate() {
                 autoComplete="new-password"
                 value={pwConfirm}
                 onChange={(e) => setPwConfirm(e.target.value)}
+                maxLength={HQ_NEW_PASSWORD_MAX_BYTES}
+                aria-describedby="hq-new-password-guidance"
                 className="mt-1 h-12 w-full rounded-xl border border-[#C4D8E4] px-3 text-[16px] font-normal"
               />
             </label>

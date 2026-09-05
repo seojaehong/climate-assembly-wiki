@@ -1,6 +1,12 @@
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
-import { classifyStoredSessionResumeError } from './ModConsole';
+import { describe, expect, it, vi } from 'vitest';
+import { classifyStoredSessionResumeError, migrateLegacyWorkshopStorage } from './ModConsole';
+import {
+  listLegacyDraftRecoveries,
+  readDraft,
+  writeDraft,
+} from './submission-draft-store';
+import { createSafeBrowserStorage } from '../../lib/safe-browser-storage';
 
 const consoleSource = readFileSync(new URL('./ModConsole.tsx', import.meta.url), 'utf8');
 const deadlineSource = readFileSync(new URL('./DeadlineBanner.tsx', import.meta.url), 'utf8');
@@ -22,6 +28,239 @@ const modalDialogSource = readFileSync(new URL('./use-modal-dialog.ts', import.m
 const publicVoteSource = readFileSync(new URL('./VoteCard.tsx', import.meta.url), 'utf8');
 const publicBallotSource = readFileSync(new URL('../ballot/BallotCard.tsx', import.meta.url), 'utf8');
 const hqAttendanceSource = readFileSync(new URL('./HqAttendanceAdmin.tsx', import.meta.url), 'utf8');
+
+const LEGACY_MIGRATION_NOW = 1_789_123_456_000;
+
+function migrationStorage(initial: Record<string, string> = {}): Storage & {
+  dump(): Record<string, string>;
+} {
+  const values = new Map(Object.entries(initial));
+  return {
+    get length(): number {
+      return values.size;
+    },
+    clear(): void {
+      values.clear();
+    },
+    getItem(key: string): string | null {
+      return values.get(key) ?? null;
+    },
+    key(index: number): string | null {
+      return [...values.keys()][index] ?? null;
+    },
+    removeItem(key: string): void {
+      values.delete(key);
+    },
+    setItem(key: string, value: string): void {
+      values.set(key, value);
+    },
+    dump(): Record<string, string> {
+      return Object.fromEntries(values);
+    },
+  };
+}
+
+describe('/mod legacy join-code storage migration', () => {
+  const joinCode = '091201';
+  const teamId = 'team-safe-id';
+  const topicId = 'topic-1';
+  const legacyDraftKey = `climate_vote_draft:${joinCode}:${topicId}`;
+  const teamDraftKey = `climate_vote_draft:${teamId}:${topicId}`;
+  const legacyQueueKey = `climate_vote_queue:${joinCode}:${topicId}`;
+
+  const draft = (content: string, extras: Record<string, unknown> = {}): string => JSON.stringify({
+    v: 1,
+    rows: [{ name: '', content, rationale: '근거' }],
+    savedAtMs: LEGACY_MIGRATION_NOW - 100,
+    baseUpdatedAt: '2026-09-12T01:00:00Z',
+    baseVersion: 3,
+    ...extras,
+  });
+
+  const queue = (content: string, extras: Record<string, unknown> = {}): string => JSON.stringify({
+    v: 1,
+    code: joinCode,
+    topicId,
+    items: [{ ordinal: 1, kind: 'core', content, rationale: '대기 근거' }],
+    baseUpdatedAt: '2026-09-12T01:00:00Z',
+    queuedAtMs: LEGACY_MIGRATION_NOW - 50,
+    attempts: 1,
+    nextAttemptAtMs: LEGACY_MIGRATION_NOW + 5_000,
+    ...extras,
+  });
+
+  it('rewrites and verifies a legacy draft without carrying credentials before deleting the source', () => {
+    const storage = migrationStorage({
+      [legacyDraftKey]: draft('이전 초안', { code: joinCode, accessToken: 'secret-bearer' }),
+    });
+
+    expect(migrateLegacyWorkshopStorage(storage, joinCode, teamId, LEGACY_MIGRATION_NOW)).toEqual({
+      attentionCount: 0,
+      cleanupFailed: false,
+    });
+    expect(storage.getItem(legacyDraftKey)).toBeNull();
+    expect(readDraft(storage.getItem(teamDraftKey), LEGACY_MIGRATION_NOW)?.rows).toEqual([
+      { name: '', content: '이전 초안', rationale: '근거' },
+    ]);
+    expect(storage.getItem(teamDraftKey)).not.toContain(joinCode);
+    expect(storage.getItem(teamDraftKey)).not.toContain('secret-bearer');
+  });
+
+  it('keeps the current team draft and moves a divergent legacy draft into a verified recovery', () => {
+    const current = writeDraft(
+      [{ name: '', content: '현재 초안', rationale: '' }],
+      '2026-09-12T02:00:00Z',
+      LEGACY_MIGRATION_NOW,
+      4,
+    );
+    const storage = migrationStorage({
+      [legacyDraftKey]: draft('충돌한 이전 초안', { code: joinCode }),
+      [teamDraftKey]: current,
+    });
+
+    expect(migrateLegacyWorkshopStorage(storage, joinCode, teamId, LEGACY_MIGRATION_NOW)).toEqual({
+      attentionCount: 1,
+      cleanupFailed: false,
+    });
+    expect(storage.getItem(legacyDraftKey)).toBeNull();
+    expect(storage.getItem(teamDraftKey)).toBe(current);
+    const recoveries = listLegacyDraftRecoveries(storage, teamId);
+    expect(recoveries).toHaveLength(1);
+    expect(readDraft(recoveries[0]?.draftRaw ?? null, LEGACY_MIGRATION_NOW)?.rows[0]?.content)
+      .toBe('충돌한 이전 초안');
+    expect(JSON.stringify(storage.dump())).not.toContain(joinCode);
+  });
+
+  it('preserves a queue-only unsent payload as a join-code-free recovery without scheduling a resend', () => {
+    const storage = migrationStorage({
+      [legacyQueueKey]: queue('아직 전송하지 못한 내용', { accessToken: 'secret-bearer' }),
+    });
+
+    expect(migrateLegacyWorkshopStorage(storage, joinCode, teamId, LEGACY_MIGRATION_NOW)).toEqual({
+      attentionCount: 1,
+      cleanupFailed: false,
+    });
+    expect(storage.getItem(legacyQueueKey)).toBeNull();
+    expect(storage.getItem(`climate_vote_queue:${teamId}:${topicId}`)).toBeNull();
+    expect(storage.getItem(teamDraftKey)).toBeNull();
+    const recoveries = listLegacyDraftRecoveries(storage, teamId);
+    expect(recoveries).toHaveLength(1);
+    expect(readDraft(recoveries[0]?.draftRaw ?? null, LEGACY_MIGRATION_NOW)?.rows).toEqual([
+      { name: '', content: '아직 전송하지 못한 내용', rationale: '대기 근거' },
+    ]);
+    expect(JSON.stringify(storage.dump())).not.toContain(joinCode);
+    expect(JSON.stringify(storage.dump())).not.toContain('secret-bearer');
+  });
+
+  it('preserves divergent draft and queue contents separately across a partial-save conflict', () => {
+    const current = writeDraft(
+      [{ name: '', content: '현재 조 초안', rationale: '' }],
+      null,
+      LEGACY_MIGRATION_NOW,
+      5,
+    );
+    const storage = migrationStorage({
+      [legacyDraftKey]: draft('이전 조 초안'),
+      [legacyQueueKey]: queue('전송 대기 내용'),
+      [teamDraftKey]: current,
+    });
+
+    expect(migrateLegacyWorkshopStorage(storage, joinCode, teamId, LEGACY_MIGRATION_NOW)).toEqual({
+      attentionCount: 2,
+      cleanupFailed: false,
+    });
+    expect(storage.getItem(teamDraftKey)).toBe(current);
+    const recoveredContents = listLegacyDraftRecoveries(storage, teamId)
+      .map((record) => readDraft(record.draftRaw, LEGACY_MIGRATION_NOW)?.rows[0]?.content)
+      .sort();
+    expect(recoveredContents).toEqual(['이전 조 초안', '전송 대기 내용'].sort());
+    expect(storage.getItem(legacyDraftKey)).toBeNull();
+    expect(storage.getItem(legacyQueueKey)).toBeNull();
+  });
+
+  it('retains the original draft or queue and reports an error when recovery cannot be verified', () => {
+    const current = writeDraft(
+      [{ name: '', content: '현재 초안', rationale: '' }],
+      null,
+      LEGACY_MIGRATION_NOW,
+      4,
+    );
+    const draftRaw = draft('복구 실패 초안');
+    const queueRaw = queue('복구 실패 큐');
+    const storage = migrationStorage({
+      [legacyDraftKey]: draftRaw,
+      [legacyQueueKey]: queueRaw,
+      [teamDraftKey]: current,
+    });
+    const originalSetItem = storage.setItem.bind(storage);
+    storage.setItem = (key: string, value: string): void => {
+      if (key.startsWith('climate_vote_draft_recovery:')) return;
+      originalSetItem(key, value);
+    };
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    expect(migrateLegacyWorkshopStorage(storage, joinCode, teamId, LEGACY_MIGRATION_NOW)).toEqual({
+      attentionCount: 2,
+      cleanupFailed: true,
+    });
+    expect(storage.getItem(legacyDraftKey)).toBe(draftRaw);
+    expect(storage.getItem(legacyQueueKey)).toBe(queueRaw);
+    expect(storage.getItem(teamDraftKey)).toBe(current);
+    expect(error).toHaveBeenCalled();
+
+    error.mockRestore();
+  });
+
+  it('does not mistake a native write failure and memory fallback for durable recovery', () => {
+    const draftRaw = draft('native 쓰기 실패 초안');
+    const nativeStorage = migrationStorage({ [legacyDraftKey]: draftRaw });
+    nativeStorage.setItem = (): void => {
+      throw new Error('native quota');
+    };
+    const storage = createSafeBrowserStorage('localStorage', {
+      getStorage: () => nativeStorage,
+      memory: new Map<string, string>(),
+    });
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    expect(migrateLegacyWorkshopStorage(storage, joinCode, teamId, LEGACY_MIGRATION_NOW)).toEqual({
+      attentionCount: 1,
+      cleanupFailed: true,
+    });
+    expect(storage.isPersistent()).toBe(false);
+    expect(nativeStorage.getItem(legacyDraftKey)).toBe(draftRaw);
+    expect(storage.getItem(legacyDraftKey)).toBe(draftRaw);
+    expect(error).toHaveBeenCalled();
+
+    error.mockRestore();
+  });
+
+  it('restores the source mirror when native removal falls back after a verified queue recovery', () => {
+    const queueRaw = queue('native 삭제 실패 큐');
+    const nativeStorage = migrationStorage({ [legacyQueueKey]: queueRaw });
+    nativeStorage.removeItem = (): void => {
+      throw new Error('native removal denied');
+    };
+    const storage = createSafeBrowserStorage('sessionStorage', {
+      getStorage: () => nativeStorage,
+      memory: new Map<string, string>(),
+    });
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    expect(migrateLegacyWorkshopStorage(storage, joinCode, teamId, LEGACY_MIGRATION_NOW)).toEqual({
+      attentionCount: 1,
+      cleanupFailed: true,
+    });
+    expect(storage.isPersistent()).toBe(false);
+    expect(nativeStorage.getItem(legacyQueueKey)).toBe(queueRaw);
+    expect(storage.getItem(legacyQueueKey)).toBe(queueRaw);
+    expect(storage.getItem(`climate_vote_queue:${teamId}:${topicId}`)).toBeNull();
+    expect(listLegacyDraftRecoveries(nativeStorage, teamId)).toHaveLength(1);
+    expect(error).toHaveBeenCalled();
+
+    error.mockRestore();
+  });
+});
 
 describe('one shared workshop snapshot', () => {
   it('loads topic_list only from the workshop session module', () => {
@@ -331,7 +570,8 @@ describe('/mod opaque session and OCC wiring', () => {
   it('exports join-code-free recovery copies for divergent legacy drafts', () => {
     expect(consoleSource).toContain('preserveLegacyDraftRecovery(');
     expect(consoleSource).toContain('legacyRecoveriesForTeam(');
-    expect(consoleSource).toContain('충돌 초안 복구본 내려받기');
+    expect(consoleSource).toContain('이전 작성 내용 복구본 내려받기');
+    expect(consoleSource).toContain('이 사이트의 브라우저 데이터를 삭제해 주세요.');
     expect(consoleSource).toContain("format: 'climate-vote-legacy-draft-recovery-v1'");
   });
 

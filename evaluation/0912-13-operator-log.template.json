@@ -1,0 +1,1781 @@
+{
+  "schemaVersion": 2,
+  "evidenceType": "0912-operator-readiness",
+  "session": "0912-deliberation",
+  "releaseRunId": null,
+  "generatedAt": null,
+  "sourceCommit": null,
+  "targetRevision": null,
+  "productionEnvironment": {
+    "id": null,
+    "webOrigin": null,
+    "supabaseProjectRef": null,
+    "databaseTlsSpkiSha256": null,
+    "organizationId": null,
+    "assemblyId": null,
+    "sessionId": null,
+    "sessionSlug": "0912-deliberation"
+  },
+  "artifactBindings": [
+    {
+      "path": "evaluation/0912-13-backup-manifest.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-13-field-rehearsal.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-13-hq-rehearsal.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-13-implementation-verification.md",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-13-restore-report.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-13-security-diff-review.md",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-13-traceability-report.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-hq-dashboard-accessibility.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/controls/0-acl-inventory.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/controls/1-direct-edge-probe.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/controls/2-deployment-revision.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/controls/3-backup-restore.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/controls/4-onsite-rehearsal.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/controls/5-token-revocation.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/controls/6-rollback-readiness.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/0-source-clean.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/1-root-vitest.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/10-secure-seed-sync-production-approval.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/11-s20-topics-production-approval.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/12-p1a-additive-production-approval.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/13-p1a-production-verification.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/14-named-hq-operators-ready.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/15-hq-join-code-pre-rotation.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/16-join-code-throttle-edge-probe.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/17-p2-p1b-p1c-production-approval.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/18-maintenance-token-staff-client-deployed.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/19-deployed-revision-match.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/2-automation-vitest.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/20-production-routine-acl-inventory.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/21-p2a-cutover-separate-production-approval.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/22-p2a-positive-legacy-negative-verification.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/23-p2a-token-revocation-verification.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/24-p3-design-provisioning-production-approval.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/25-p4-audit-log-production-approval.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/26-post-p4-legacy-negative-verification.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/27-field-rehearsal.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/28-hq-field-rehearsal.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/29-onsite-device-network-rehearsal.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/3-astro-check-production-build.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/30-mod-hq-automated-a11y.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/31-mod-hq-manual-a11y.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/32-backup.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/33-restore-isolated.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/34-final-token-cleanup.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/4-rpc-contract.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/5-traceability-report.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/6-security-diff-review.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/7-postgres-p1a-p2a-disposable.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/8-roster-canonical-review.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/gates/9-p1-tenancy-production-approval.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/rollout/0-session-roster-review.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/rollout/1-p1-tenancy.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/rollout/10-p2a-positive-legacy-negative-verify.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/rollout/11-p3-design-provisioning.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/rollout/12-p4-audit-log.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/rollout/13-post-p4-legacy-negative-and-final-status.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/rollout/2-secure-session-team-seed.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/rollout/3-s20-draft-topics.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/rollout/4-p1a-additive-and-verify.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/rollout/5-hq-rotate-join-codes.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/rollout/6-p2-analysis.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/rollout/7-p1b-p1c-org-selection.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/rollout/8-maintenance-deploy-token-staff-client.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-operator/rollout/9-p2a-atomic-token-grant-legacy-revoke.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-p1a-postgres-report.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-p3-production-result.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/0912-p4-production-result.json",
+      "sha256": null
+    },
+    {
+      "path": "evaluation/platform-accessibility-manual-evaluation.json",
+      "sha256": null
+    }
+  ],
+  "status": "not_run",
+  "attestation": null,
+  "approvals": [
+    {
+      "id": "approval-p1-tenancy",
+      "scope": "p1-tenancy",
+      "status": "pending",
+      "approvedAt": null,
+      "approver": {
+        "id": null,
+        "label": null,
+        "role": null
+      },
+      "session": "0912-deliberation",
+      "sourceCommit": null,
+      "targetRevision": null,
+      "rolloutStepIds": [
+        "p1-tenancy"
+      ],
+      "gateIds": [
+        "p1-tenancy-production-approval"
+      ]
+    },
+    {
+      "id": "approval-secure-seed-sync",
+      "scope": "secure-seed-sync",
+      "status": "pending",
+      "approvedAt": null,
+      "approver": {
+        "id": null,
+        "label": null,
+        "role": null
+      },
+      "session": "0912-deliberation",
+      "sourceCommit": null,
+      "targetRevision": null,
+      "rolloutStepIds": [
+        "secure-session-team-seed"
+      ],
+      "gateIds": [
+        "secure-seed-sync-production-approval"
+      ]
+    },
+    {
+      "id": "approval-s20-topics",
+      "scope": "s20-topics",
+      "status": "pending",
+      "approvedAt": null,
+      "approver": {
+        "id": null,
+        "label": null,
+        "role": null
+      },
+      "session": "0912-deliberation",
+      "sourceCommit": null,
+      "targetRevision": null,
+      "rolloutStepIds": [
+        "s20-draft-topics"
+      ],
+      "gateIds": [
+        "s20-topics-production-approval"
+      ]
+    },
+    {
+      "id": "approval-p1a-additive",
+      "scope": "p1a-additive",
+      "status": "pending",
+      "approvedAt": null,
+      "approver": {
+        "id": null,
+        "label": null,
+        "role": null
+      },
+      "session": "0912-deliberation",
+      "sourceCommit": null,
+      "targetRevision": null,
+      "rolloutStepIds": [
+        "p1a-additive-and-verify"
+      ],
+      "gateIds": [
+        "p1a-additive-production-approval",
+        "p1a-production-verification"
+      ]
+    },
+    {
+      "id": "approval-join-code-pre-rotation",
+      "scope": "join-code-pre-rotation",
+      "status": "pending",
+      "approvedAt": null,
+      "approver": {
+        "id": null,
+        "label": null,
+        "role": null
+      },
+      "session": "0912-deliberation",
+      "sourceCommit": null,
+      "targetRevision": null,
+      "rolloutStepIds": [
+        "hq-rotate-join-codes"
+      ],
+      "gateIds": [
+        "hq-join-code-pre-rotation",
+        "join-code-throttle-edge-probe"
+      ]
+    },
+    {
+      "id": "approval-p2-p1b-p1c",
+      "scope": "p2-p1b-p1c",
+      "status": "pending",
+      "approvedAt": null,
+      "approver": {
+        "id": null,
+        "label": null,
+        "role": null
+      },
+      "session": "0912-deliberation",
+      "sourceCommit": null,
+      "targetRevision": null,
+      "rolloutStepIds": [
+        "p2-analysis",
+        "p1b-p1c-org-selection"
+      ],
+      "gateIds": [
+        "p2-p1b-p1c-production-approval"
+      ]
+    },
+    {
+      "id": "approval-maintenance-deploy",
+      "scope": "maintenance-deploy",
+      "status": "pending",
+      "approvedAt": null,
+      "approver": {
+        "id": null,
+        "label": null,
+        "role": null
+      },
+      "session": "0912-deliberation",
+      "sourceCommit": null,
+      "targetRevision": null,
+      "rolloutStepIds": [
+        "maintenance-deploy-token-staff-client"
+      ],
+      "gateIds": [
+        "maintenance-token-staff-client-deployed",
+        "deployed-revision-match"
+      ]
+    },
+    {
+      "id": "approval-p2a-cutover",
+      "scope": "p2a-cutover",
+      "status": "pending",
+      "approvedAt": null,
+      "approver": {
+        "id": null,
+        "label": null,
+        "role": null
+      },
+      "session": "0912-deliberation",
+      "sourceCommit": null,
+      "targetRevision": null,
+      "rolloutStepIds": [
+        "p2a-atomic-token-grant-legacy-revoke",
+        "p2a-positive-legacy-negative-verify"
+      ],
+      "gateIds": [
+        "p2a-cutover-separate-production-approval",
+        "p2a-positive-legacy-negative-verification",
+        "p2a-token-revocation-verification"
+      ]
+    },
+    {
+      "id": "approval-p3-design",
+      "scope": "p3-design",
+      "status": "pending",
+      "approvedAt": null,
+      "approver": {
+        "id": null,
+        "label": null,
+        "role": null
+      },
+      "session": "0912-deliberation",
+      "sourceCommit": null,
+      "targetRevision": null,
+      "rolloutStepIds": [
+        "p3-design-provisioning"
+      ],
+      "gateIds": [
+        "p3-design-provisioning-production-approval"
+      ]
+    },
+    {
+      "id": "approval-p4-audit",
+      "scope": "p4-audit",
+      "status": "pending",
+      "approvedAt": null,
+      "approver": {
+        "id": null,
+        "label": null,
+        "role": null
+      },
+      "session": "0912-deliberation",
+      "sourceCommit": null,
+      "targetRevision": null,
+      "rolloutStepIds": [
+        "p4-audit-log",
+        "post-p4-legacy-negative-and-final-status"
+      ],
+      "gateIds": [
+        "p4-audit-log-production-approval",
+        "post-p4-legacy-negative-verification"
+      ]
+    },
+    {
+      "id": "approval-backup-snapshot",
+      "scope": "backup-snapshot",
+      "status": "pending",
+      "approvedAt": null,
+      "approver": {
+        "id": null,
+        "label": null,
+        "role": null
+      },
+      "session": "0912-deliberation",
+      "sourceCommit": null,
+      "targetRevision": null,
+      "rolloutStepIds": [],
+      "gateIds": [
+        "backup"
+      ]
+    },
+    {
+      "id": "approval-final-token-cleanup",
+      "scope": "final-token-cleanup",
+      "status": "pending",
+      "approvedAt": null,
+      "approver": {
+        "id": null,
+        "label": null,
+        "role": null
+      },
+      "session": "0912-deliberation",
+      "sourceCommit": null,
+      "targetRevision": null,
+      "rolloutStepIds": [],
+      "gateIds": [
+        "final-token-cleanup"
+      ]
+    }
+  ],
+  "safety": {
+    "sensitiveMaterialDetected": null,
+    "unapprovedProductionMutationCount": null,
+    "syntheticRehearsalProductionMutationCount": null,
+    "capabilityValuesLeakedToDraftQueueOrEvidence": null,
+    "approvedRolloutDatabaseConnectionCount": null,
+    "approvedRolloutMutationCount": null,
+    "observationDatabaseConnectionCount": null,
+    "observationMutationCount": null
+  },
+  "gates": [
+    {
+      "id": "source-clean",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/0-source-clean.json",
+        "measurement": {
+          "name": "source_tree_clean",
+          "expected": true,
+          "observed": null,
+          "unit": "boolean"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "root-vitest",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/1-root-vitest.json",
+        "measurement": {
+          "name": "root_vitest_failed_test_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "tests"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "automation-vitest",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/2-automation-vitest.json",
+        "measurement": {
+          "name": "automation_vitest_failed_test_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "tests"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "astro-check-production-build",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/3-astro-check-production-build.json",
+        "measurement": {
+          "name": "astro_check_build_error_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "errors"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "rpc-contract",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/4-rpc-contract.json",
+        "measurement": {
+          "name": "rpc_contract_mismatch_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "mismatches"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "traceability-report",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/5-traceability-report.json",
+        "measurement": {
+          "name": "traceability_failed_check_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "checks"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "security-diff-review",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/6-security-diff-review.json",
+        "measurement": {
+          "name": "unresolved_blocking_security_finding_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "findings"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "postgres-p1a-p2a-disposable",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/7-postgres-p1a-p2a-disposable.json",
+        "measurement": {
+          "name": "disposable_postgres_failed_check_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "checks"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "roster-canonical-review",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/8-roster-canonical-review.json",
+        "measurement": {
+          "name": "canonical_roster_team_count",
+          "expected": 15,
+          "observed": null,
+          "unit": "teams"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "p1-tenancy-production-approval",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/9-p1-tenancy-production-approval.json",
+        "measurement": {
+          "name": "gate_p1_tenancy_production_approval_result",
+          "expected": "pass",
+          "observed": null,
+          "unit": "result"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "secure-seed-sync-production-approval",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/10-secure-seed-sync-production-approval.json",
+        "measurement": {
+          "name": "gate_secure_seed_sync_production_approval_result",
+          "expected": "pass",
+          "observed": null,
+          "unit": "result"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "s20-topics-production-approval",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/11-s20-topics-production-approval.json",
+        "measurement": {
+          "name": "gate_s20_topics_production_approval_result",
+          "expected": "pass",
+          "observed": null,
+          "unit": "result"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "p1a-additive-production-approval",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/12-p1a-additive-production-approval.json",
+        "measurement": {
+          "name": "gate_p1a_additive_production_approval_result",
+          "expected": "pass",
+          "observed": null,
+          "unit": "result"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "p1a-production-verification",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/13-p1a-production-verification.json",
+        "measurement": {
+          "name": "gate_p1a_production_verification_result",
+          "expected": "pass",
+          "observed": null,
+          "unit": "result"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "named-hq-operators-ready",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/14-named-hq-operators-ready.json",
+        "measurement": {
+          "name": "unverified_named_hq_operator_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "operators"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "hq-join-code-pre-rotation",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/15-hq-join-code-pre-rotation.json",
+        "measurement": {
+          "name": "rotation_target_team_count",
+          "expected": 15,
+          "observed": null,
+          "unit": "teams"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "join-code-throttle-edge-probe",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/16-join-code-throttle-edge-probe.json",
+        "measurement": {
+          "name": "untrusted_forwarding_header_acceptance_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "requests"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "p2-p1b-p1c-production-approval",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/17-p2-p1b-p1c-production-approval.json",
+        "measurement": {
+          "name": "gate_p2_p1b_p1c_production_approval_result",
+          "expected": "pass",
+          "observed": null,
+          "unit": "result"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "maintenance-token-staff-client-deployed",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/18-maintenance-token-staff-client-deployed.json",
+        "measurement": {
+          "name": "gate_maintenance_token_staff_client_deployed_result",
+          "expected": "pass",
+          "observed": null,
+          "unit": "result"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "deployed-revision-match",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/19-deployed-revision-match.json",
+        "measurement": {
+          "name": "deployed_revision",
+          "expected": null,
+          "observed": null,
+          "unit": "git-commit"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "production-routine-acl-inventory",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/20-production-routine-acl-inventory.json",
+        "measurement": {
+          "name": "unapproved_executable_routine_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "routines"
+        },
+        "productionAccess": {
+          "mode": "read-only-observation",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "p2a-cutover-separate-production-approval",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/21-p2a-cutover-separate-production-approval.json",
+        "measurement": {
+          "name": "gate_p2a_cutover_separate_production_approval_result",
+          "expected": "pass",
+          "observed": null,
+          "unit": "result"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "p2a-positive-legacy-negative-verification",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/22-p2a-positive-legacy-negative-verification.json",
+        "measurement": {
+          "name": "legacy_positive_execution_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "calls"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "p2a-token-revocation-verification",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/23-p2a-token-revocation-verification.json",
+        "measurement": {
+          "name": "p2a_token_revocation_failed_check_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "checks"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "p3-design-provisioning-production-approval",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/24-p3-design-provisioning-production-approval.json",
+        "measurement": {
+          "name": "gate_p3_design_provisioning_production_approval_result",
+          "expected": "pass",
+          "observed": null,
+          "unit": "result"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "p4-audit-log-production-approval",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/25-p4-audit-log-production-approval.json",
+        "measurement": {
+          "name": "gate_p4_audit_log_production_approval_result",
+          "expected": "pass",
+          "observed": null,
+          "unit": "result"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "post-p4-legacy-negative-verification",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/26-post-p4-legacy-negative-verification.json",
+        "measurement": {
+          "name": "gate_post_p4_legacy_negative_verification_result",
+          "expected": "pass",
+          "observed": null,
+          "unit": "result"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "field-rehearsal",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/27-field-rehearsal.json",
+        "measurement": {
+          "name": "field_rehearsal_failed_check_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "checks"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "hq-field-rehearsal",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/28-hq-field-rehearsal.json",
+        "measurement": {
+          "name": "hq_rehearsal_failed_check_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "checks"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "onsite-device-network-rehearsal",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/29-onsite-device-network-rehearsal.json",
+        "measurement": {
+          "name": "onsite_failed_scenario_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "scenarios"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "mod-hq-automated-a11y",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/30-mod-hq-automated-a11y.json",
+        "measurement": {
+          "name": "automated_accessibility_violation_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "violations"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "mod-hq-manual-a11y",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/31-mod-hq-manual-a11y.json",
+        "measurement": {
+          "name": "manual_accessibility_failed_case_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "cases"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "backup",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/32-backup.json",
+        "measurement": {
+          "name": "verified_backup_snapshot_count",
+          "expected": 1,
+          "observed": null,
+          "unit": "snapshots"
+        },
+        "productionAccess": {
+          "mode": "approved-db-rollout",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": "approval-backup-snapshot",
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "restore-isolated",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/33-restore-isolated.json",
+        "measurement": {
+          "name": "isolated_restore_mismatch_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "mismatches"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "final-token-cleanup",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/gates/34-final-token-cleanup.json",
+        "measurement": {
+          "name": "remaining_temporary_event_token_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "tokens"
+        },
+        "productionAccess": {
+          "mode": "approved-db-rollout",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": "approval-final-token-cleanup",
+          "environmentId": null
+        }
+      }
+    }
+  ],
+  "rolloutSteps": [
+    {
+      "id": "session-roster-review",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/rollout/0-session-roster-review.json",
+        "measurement": {
+          "name": "rollout_approved_roster_team_count",
+          "expected": 15,
+          "observed": null,
+          "unit": "teams"
+        },
+        "productionAccess": {
+          "mode": "no-production-db",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": null,
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "p1-tenancy",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/rollout/1-p1-tenancy.json",
+        "measurement": {
+          "name": "rollout_p1_tenancy_result",
+          "expected": "pass",
+          "observed": null,
+          "unit": "result"
+        },
+        "productionAccess": {
+          "mode": "approved-db-rollout",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": "approval-p1-tenancy",
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "secure-session-team-seed",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/rollout/2-secure-session-team-seed.json",
+        "measurement": {
+          "name": "rollout_active_team_count",
+          "expected": 15,
+          "observed": null,
+          "unit": "teams"
+        },
+        "productionAccess": {
+          "mode": "approved-db-rollout",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": "approval-secure-seed-sync",
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "s20-draft-topics",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/rollout/3-s20-draft-topics.json",
+        "measurement": {
+          "name": "rollout_draft_topic_count",
+          "expected": 6,
+          "observed": null,
+          "unit": "topics"
+        },
+        "productionAccess": {
+          "mode": "approved-db-rollout",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": "approval-s20-topics",
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "p1a-additive-and-verify",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/rollout/4-p1a-additive-and-verify.json",
+        "measurement": {
+          "name": "rollout_p1a_additive_and_verify_result",
+          "expected": "pass",
+          "observed": null,
+          "unit": "result"
+        },
+        "productionAccess": {
+          "mode": "approved-db-rollout",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": "approval-p1a-additive",
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "hq-rotate-join-codes",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/rollout/5-hq-rotate-join-codes.json",
+        "measurement": {
+          "name": "rollout_rotated_team_count",
+          "expected": 15,
+          "observed": null,
+          "unit": "teams"
+        },
+        "productionAccess": {
+          "mode": "approved-db-rollout",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": "approval-join-code-pre-rotation",
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "p2-analysis",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/rollout/6-p2-analysis.json",
+        "measurement": {
+          "name": "rollout_p2_analysis_result",
+          "expected": "pass",
+          "observed": null,
+          "unit": "result"
+        },
+        "productionAccess": {
+          "mode": "approved-db-rollout",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": "approval-p2-p1b-p1c",
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "p1b-p1c-org-selection",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/rollout/7-p1b-p1c-org-selection.json",
+        "measurement": {
+          "name": "rollout_p1b_p1c_org_selection_result",
+          "expected": "pass",
+          "observed": null,
+          "unit": "result"
+        },
+        "productionAccess": {
+          "mode": "approved-db-rollout",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": "approval-p2-p1b-p1c",
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "maintenance-deploy-token-staff-client",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/rollout/8-maintenance-deploy-token-staff-client.json",
+        "measurement": {
+          "name": "rollout_deployed_revision",
+          "expected": null,
+          "observed": null,
+          "unit": "git-commit"
+        },
+        "productionAccess": {
+          "mode": "approved-non-db-rollout",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": "approval-maintenance-deploy",
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "p2a-atomic-token-grant-legacy-revoke",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/rollout/9-p2a-atomic-token-grant-legacy-revoke.json",
+        "measurement": {
+          "name": "rollout_p2a_atomic_token_grant_legacy_revoke_result",
+          "expected": "pass",
+          "observed": null,
+          "unit": "result"
+        },
+        "productionAccess": {
+          "mode": "approved-db-rollout",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": "approval-p2a-cutover",
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "p2a-positive-legacy-negative-verify",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/rollout/10-p2a-positive-legacy-negative-verify.json",
+        "measurement": {
+          "name": "rollout_legacy_positive_execution_count",
+          "expected": 0,
+          "observed": null,
+          "unit": "calls"
+        },
+        "productionAccess": {
+          "mode": "approved-db-rollout",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": "approval-p2a-cutover",
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "p3-design-provisioning",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/rollout/11-p3-design-provisioning.json",
+        "measurement": {
+          "name": "rollout_p3_apply_and_post_apply_verified",
+          "expected": true,
+          "observed": null,
+          "unit": "boolean"
+        },
+        "productionAccess": {
+          "mode": "approved-db-rollout",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": "approval-p3-design",
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "p4-audit-log",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/rollout/12-p4-audit-log.json",
+        "measurement": {
+          "name": "rollout_p4_apply_and_audit_verified",
+          "expected": true,
+          "observed": null,
+          "unit": "boolean"
+        },
+        "productionAccess": {
+          "mode": "approved-db-rollout",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": "approval-p4-audit",
+          "environmentId": null
+        }
+      }
+    },
+    {
+      "id": "post-p4-legacy-negative-and-final-status",
+      "status": "not_run",
+      "executedAt": null,
+      "evidence": {
+        "type": null,
+        "reference": "evaluation/0912-operator/rollout/13-post-p4-legacy-negative-and-final-status.json",
+        "measurement": {
+          "name": "rollout_final_status_tuple",
+          "expected": "1-session/15-teams/6-topics",
+          "observed": null,
+          "unit": "state"
+        },
+        "productionAccess": {
+          "mode": "approved-db-rollout",
+          "connectionCount": null,
+          "mutationCount": null,
+          "approvalId": "approval-p4-audit",
+          "environmentId": null
+        }
+      }
+    }
+  ],
+  "controls": {
+    "aclInventory": {
+      "status": "not_run",
+      "checkedAt": null,
+      "evidenceRef": "evaluation/0912-operator/controls/0-acl-inventory.json",
+      "sourceCommit": null,
+      "targetRevision": null,
+      "productionAccess": {
+        "mode": "no-production-db",
+        "connectionCount": null,
+        "mutationCount": null,
+        "approvalId": null,
+        "environmentId": null
+      },
+      "details": {
+        "identityArgumentAllowlistMatched": null,
+        "publicExecutableRoutineCount": null,
+        "unapprovedAnonAuthenticatedRoutineCount": null,
+        "legacyExecutableRoutineCount": null
+      }
+    },
+    "directEdgeProbe": {
+      "status": "not_run",
+      "checkedAt": null,
+      "evidenceRef": "evaluation/0912-operator/controls/1-direct-edge-probe.json",
+      "sourceCommit": null,
+      "targetRevision": null,
+      "productionAccess": {
+        "mode": "no-production-db",
+        "connectionCount": null,
+        "mutationCount": null,
+        "approvalId": null,
+        "environmentId": null
+      },
+      "details": {
+        "requestCount": null,
+        "forwardedForOverrideCount": null,
+        "realIpOverrideCount": null,
+        "trustedEdgeSourceStable": null,
+        "edgeOnlyExchangeVerified": null
+      }
+    },
+    "deploymentRevision": {
+      "status": "not_run",
+      "checkedAt": null,
+      "evidenceRef": "evaluation/0912-operator/controls/2-deployment-revision.json",
+      "sourceCommit": null,
+      "targetRevision": null,
+      "productionAccess": {
+        "mode": "no-production-db",
+        "connectionCount": null,
+        "mutationCount": null,
+        "approvalId": null,
+        "environmentId": null
+      },
+      "details": {
+        "endpointCount": null,
+        "expectedRevision": null,
+        "observedRevision": null
+      }
+    },
+    "backupRestore": {
+      "status": "not_run",
+      "checkedAt": null,
+      "evidenceRef": "evaluation/0912-operator/controls/3-backup-restore.json",
+      "sourceCommit": null,
+      "targetRevision": null,
+      "productionAccess": {
+        "mode": "no-production-db",
+        "connectionCount": null,
+        "mutationCount": null,
+        "approvalId": null,
+        "environmentId": null
+      },
+      "details": {
+        "snapshotId": null,
+        "archiveSha256": null,
+        "checksumMatch": null,
+        "rowCountMatch": null,
+        "postgresMajorVersion": null,
+        "isolatedNetwork": null,
+        "containerDisposed": null
+      }
+    },
+    "onsiteRehearsal": {
+      "status": "not_run",
+      "checkedAt": null,
+      "evidenceRef": "evaluation/0912-operator/controls/4-onsite-rehearsal.json",
+      "sourceCommit": null,
+      "targetRevision": null,
+      "productionAccess": {
+        "mode": "no-production-db",
+        "connectionCount": null,
+        "mutationCount": null,
+        "approvalId": null,
+        "environmentId": null
+      },
+      "details": {
+        "deviceCount": null,
+        "networkProfileCount": null,
+        "failedScenarioCount": null,
+        "desktopVerified": null,
+        "mobileVerified": null,
+        "keyboardOnlyVerified": null
+      }
+    },
+    "tokenRevocation": {
+      "status": "not_run",
+      "checkedAt": null,
+      "evidenceRef": "evaluation/0912-operator/controls/5-token-revocation.json",
+      "sourceCommit": null,
+      "targetRevision": null,
+      "productionAccess": {
+        "mode": "no-production-db",
+        "connectionCount": null,
+        "mutationCount": null,
+        "approvalId": null,
+        "environmentId": null
+      },
+      "details": {
+        "revokedTokenReuseAcceptedCount": null,
+        "hqLogoutRevocationVerified": null,
+        "passwordChangeAllDevicesRevoked": null,
+        "teamDeviceRevocationVerified": null
+      }
+    },
+    "rollbackReadiness": {
+      "status": "not_run",
+      "checkedAt": null,
+      "evidenceRef": "evaluation/0912-operator/controls/6-rollback-readiness.json",
+      "sourceCommit": null,
+      "targetRevision": null,
+      "productionAccess": {
+        "mode": "no-production-db",
+        "connectionCount": null,
+        "mutationCount": null,
+        "approvalId": null,
+        "environmentId": null
+      },
+      "details": {
+        "rollbackArtifactSha256": null,
+        "activityGuardRefusalVerified": null,
+        "isolatedRollbackExercisePassed": null,
+        "activationReapplyVerified": null
+      }
+    }
+  }
+}

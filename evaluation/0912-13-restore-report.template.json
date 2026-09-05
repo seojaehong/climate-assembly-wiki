@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "evidenceType": "0912-restore-rehearsal",
+  "status": "not_run",
+  "releaseRunId": null,
+  "sourceCommit": null,
+  "generatedAt": null,
+  "attestation": null,
+  "producer": "isolated-postgres-restore-rehearsal",
+  "snapshot": {
+    "snapshotId": null,
+    "archiveObjectRef": null,
+    "archiveSizeBytes": null,
+    "archiveSha256": null,
+    "archiveAudit": {
+      "schemaVersion": 2,
+      "event": "platform_snapshot_export",
+      "exportedAt": null,
+      "repository": null,
+      "runId": null,
+      "commitSha": null,
+      "workflowRef": null,
+      "keyId": null,
+      "snapshotId": null,
+      "integrityAlgorithm": "hmac-sha256",
+      "integrityTarget": "legacy+platform+provenance"
+    }
+  },
+  "environment": {
+    "engine": "postgresql",
+    "majorVersion": 16,
+    "databaseName": "verify",
+    "networkMode": "none",
+    "containerName": null,
+    "containerDisposed": null,
+    "productionDatabaseConnectionCount": null,
+    "productionMutationCount": null
+  },
+  "verification": {
+    "restoreRehearsalPassed": null,
+    "archiveIntegrityVerified": null,
+    "hmacVerified": null,
+    "databaseRestoreExecuted": null,
+    "transactionRolledBack": null,
+    "archiveRowsVerified": null,
+    "businessTriggersEnabledBefore": null,
+    "businessTriggersEnabledDuringRestore": null,
+    "businessTriggersEnabledAfter": null,
+    "constraintsEnabled": null,
+    "secretMaterialDetected": null,
+    "originalCounts": {
+      "submission": null,
+      "submission_item": null,
+      "issue": null,
+      "issue_link": null,
+      "result_page": null,
+      "ballot": null,
+      "ballot_item": null,
+      "ballot_response": null
+    },
+    "restoredCounts": {
+      "submission": null,
+      "submission_item": null,
+      "issue": null,
+      "issue_link": null,
+      "result_page": null,
+      "ballot": null,
+      "ballot_item": null,
+      "ballot_response": null
+    }
+  }
+}

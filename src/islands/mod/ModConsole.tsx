@@ -14,7 +14,7 @@ import {
   type Team,
   type Vote,
 } from '../../lib/mod-console';
-import type { WorkshopAuthorization } from '../../lib/deliberation';
+import type { SubmissionItemInput, WorkshopAuthorization } from '../../lib/deliberation';
 import {
   clearWorkshopSession,
   deviceLabel,
@@ -69,8 +69,9 @@ import {
 import Timer from './Timer';
 import {
   listLegacyDraftRecoveries,
-  migrateLegacyDraft,
   preserveLegacyDraftRecovery,
+  readDraft,
+  writeDraft,
   type LegacyDraftRecoveryRecord,
 } from './submission-draft-store';
 import { useModalDialog } from './use-modal-dialog';
@@ -92,42 +93,219 @@ function workshopTeamToTeam(team: WorkshopTeam): Team {
   };
 }
 
-/** Remove reusable join credentials from browser storage while preserving safe draft content. */
-function migrateLegacyWorkshopStorage(storage: Storage, joinCode: string, teamId: string): number {
+function canonicalLegacyDraft(raw: string | null, nowMs: number): string | null {
+  const draft = readDraft(raw, nowMs, Number.POSITIVE_INFINITY);
+  if (!draft) return null;
+  return writeDraft(
+    draft.rows,
+    draft.baseUpdatedAt,
+    draft.savedAtMs,
+    draft.baseVersion,
+  );
+}
+
+function isLegacyQueueItem(value: unknown): value is SubmissionItemInput {
+  if (typeof value !== 'object' || value === null) return false;
+  const item = value as Partial<SubmissionItemInput>;
+  return Number.isSafeInteger(item.ordinal)
+    && (item.ordinal ?? 0) > 0
+    && (item.kind === 'core' || item.kind === 'extra')
+    && typeof item.content === 'string'
+    && (item.rationale === null || typeof item.rationale === 'string');
+}
+
+/**
+ * Convert only the citizen-authored fields from a legacy v1 retry queue into a
+ * normal draft envelope. Credential and retry fields are deliberately ignored,
+ * and the recovery key is not a queue key, so this copy can never auto-resend.
+ */
+function legacyQueueRecoveryDraft(raw: string | null, nowMs: number): string | null {
+  if (raw === null) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
+  const queue = parsed as {
+    v?: unknown;
+    items?: unknown;
+    baseUpdatedAt?: unknown;
+    queuedAtMs?: unknown;
+  };
+  if (queue.v !== 1 || !Array.isArray(queue.items) || queue.items.length === 0) return null;
+  if (!queue.items.every(isLegacyQueueItem)) return null;
+  const savedAtMs = typeof queue.queuedAtMs === 'number'
+    && Number.isFinite(queue.queuedAtMs)
+    && queue.queuedAtMs >= 0
+    ? queue.queuedAtMs
+    : nowMs;
+  const baseUpdatedAt = typeof queue.baseUpdatedAt === 'string' ? queue.baseUpdatedAt : null;
+  return writeDraft(
+    queue.items.map((item) => ({
+      name: '',
+      content: item.content,
+      rationale: item.rationale ?? '',
+    })),
+    baseUpdatedAt,
+    savedAtMs,
+    null,
+  );
+}
+
+type PersistenceAwareStorage = Storage & { isPersistent?: () => boolean };
+
+function assertPersistentStorage(storage: Storage): void {
+  const persistenceAware = storage as PersistenceAwareStorage;
+  if (typeof persistenceAware.isPersistent === 'function' && !persistenceAware.isPersistent()) {
+    throw new Error('Browser storage became non-persistent during legacy recovery.');
+  }
+}
+
+function writeVerifiedDraft(storage: Storage, key: string, raw: string, nowMs: number): void {
+  assertPersistentStorage(storage);
+  storage.setItem(key, raw);
+  assertPersistentStorage(storage);
+  const stored = storage.getItem(key);
+  assertPersistentStorage(storage);
+  if (stored !== raw || canonicalLegacyDraft(stored, nowMs) !== raw) {
+    throw new Error('Legacy draft copy could not be verified.');
+  }
+}
+
+function preserveVerifiedRecovery(
+  storage: Storage,
+  teamId: string,
+  topicId: string,
+  draftRaw: string,
+  nowMs: number,
+): void {
+  assertPersistentStorage(storage);
+  preserveLegacyDraftRecovery(storage, teamId, topicId, draftRaw, nowMs);
+  assertPersistentStorage(storage);
+  const verified = listLegacyDraftRecoveries(storage, teamId)
+    .some((record) => record.topicId === topicId && record.draftRaw === draftRaw);
+  assertPersistentStorage(storage);
+  if (!verified) throw new Error('Legacy recovery copy could not be read back.');
+}
+
+function restoreVolatileSource(storage: Storage, key: string, sourceRaw: string): void {
+  try {
+    storage.setItem(key, sourceRaw);
+  } catch (error) {
+    console.error('[workshop access] failed to restore volatile legacy source', error);
+  }
+}
+
+function removeVerified(storage: Storage, key: string, sourceRaw: string): void {
+  assertPersistentStorage(storage);
+  storage.removeItem(key);
+  try {
+    assertPersistentStorage(storage);
+  } catch (error) {
+    restoreVolatileSource(storage, key, sourceRaw);
+    throw error;
+  }
+  if (storage.getItem(key) !== null) {
+    throw new Error('Legacy credential-bearing key could not be removed.');
+  }
+  try {
+    assertPersistentStorage(storage);
+  } catch (error) {
+    restoreVolatileSource(storage, key, sourceRaw);
+    throw error;
+  }
+}
+
+export type LegacyWorkshopStorageMigration = {
+  attentionCount: number;
+  cleanupFailed: boolean;
+};
+
+/** Remove reusable join credentials only after join-code-free content is durably readable. */
+export function migrateLegacyWorkshopStorage(
+  storage: Storage,
+  joinCode: string,
+  teamId: string,
+  nowMs: number = Date.now(),
+): LegacyWorkshopStorageMigration {
   const draftPrefix = `climate_vote_draft:${joinCode}:`;
   const queuePrefix = `climate_vote_queue:${joinCode}:`;
-  let conflicts = 0;
+  let recoveryNotices = 0;
+  let cleanupFailed = false;
+  let keys: string[];
   try {
-    const keys = Array.from({ length: storage.length }, (_, index) => storage.key(index))
+    keys = Array.from({ length: storage.length }, (_, index) => storage.key(index))
       .filter((key): key is string => key !== null);
-    for (const key of keys) {
-      if (key.startsWith(draftPrefix)) {
+    assertPersistentStorage(storage);
+  } catch (error) {
+    console.error('[workshop access] legacy storage scan failed', error);
+    return { attentionCount: 1, cleanupFailed: true };
+  }
+
+  for (const key of keys) {
+    if (key.startsWith(draftPrefix)) {
+      try {
         const topicId = key.slice(draftPrefix.length);
+        if (!topicId) throw new Error('Legacy draft topic id is missing.');
+        const sourceRaw = storage.getItem(key);
+        assertPersistentStorage(storage);
+        if (sourceRaw === null) continue;
+        const sourceDraft = canonicalLegacyDraft(sourceRaw, nowMs);
+        if (!sourceDraft) throw new Error('Legacy draft is malformed; preserving its original key.');
         const target = `climate_vote_draft:${teamId}:${topicId}`;
-        if (migrateLegacyDraft(storage, key, target) === 'conflict') {
-          conflicts += 1;
-          const sourceRaw = storage.getItem(key);
-          if (sourceRaw !== null) {
-            try {
-              preserveLegacyDraftRecovery(storage, teamId, topicId, sourceRaw, Date.now());
-            } catch (error) {
-              // The original key remains untouched. Report the failed recovery
-              // copy so the operator does not mistake preservation for access.
-              console.error('[workshop access] legacy draft recovery copy failed', error);
-            }
-          }
+        const targetRaw = storage.getItem(target);
+        assertPersistentStorage(storage);
+        if (targetRaw === null) {
+          writeVerifiedDraft(storage, target, sourceDraft, nowMs);
+          removeVerified(storage, key, sourceRaw);
+          continue;
         }
-      } else if (key.startsWith(queuePrefix)) {
-        // v1 queue payloads contain the join code and have no atomic baseVersion. The migrated
-        // draft above still preserves the user's text, so an unsafe automatic resend is discarded.
-        storage.removeItem(key);
+        const targetDraft = canonicalLegacyDraft(targetRaw, nowMs);
+        if (targetDraft === null) {
+          preserveVerifiedRecovery(storage, teamId, topicId, sourceDraft, nowMs);
+          removeVerified(storage, key, sourceRaw);
+          recoveryNotices += 1;
+          continue;
+        }
+        if (targetRaw !== targetDraft) writeVerifiedDraft(storage, target, targetDraft, nowMs);
+        if (targetDraft !== sourceDraft) {
+          preserveVerifiedRecovery(storage, teamId, topicId, sourceDraft, nowMs);
+          removeVerified(storage, key, sourceRaw);
+          recoveryNotices += 1;
+          continue;
+        }
+        removeVerified(storage, key, sourceRaw);
+      } catch (error) {
+        // A failed write, read-back, or removal leaves the original source in
+        // place whenever it is still available. Never hide this from operators.
+        console.error('[workshop access] legacy draft migration failed', error);
+        recoveryNotices += 1;
+        cleanupFailed = true;
+      }
+    } else if (key.startsWith(queuePrefix)) {
+      try {
+        const topicId = key.slice(queuePrefix.length);
+        if (!topicId) throw new Error('Legacy queue topic id is missing.');
+        const sourceRaw = storage.getItem(key);
+        assertPersistentStorage(storage);
+        if (sourceRaw === null) continue;
+        const recoveryDraft = legacyQueueRecoveryDraft(sourceRaw, nowMs);
+        if (!recoveryDraft) {
+          throw new Error('Legacy queue is malformed; preserving its original key.');
+        }
+        preserveVerifiedRecovery(storage, teamId, topicId, recoveryDraft, nowMs);
+        removeVerified(storage, key, sourceRaw);
+        recoveryNotices += 1;
+      } catch (error) {
+        console.error('[workshop access] legacy queue recovery failed', error);
+        recoveryNotices += 1;
+        cleanupFailed = true;
       }
     }
-  } catch (error) {
-    console.error('[workshop access] legacy draft migration failed', error);
-    conflicts += 1;
   }
-  return conflicts;
+  return { attentionCount: recoveryNotices, cleanupFailed };
 }
 
 const workshopLocalStorage = createSafeBrowserStorage('localStorage');
@@ -1994,6 +2172,7 @@ export default function ModConsole() {
   );
   const [legacyDraftConflicts, setLegacyDraftConflicts] = useState(0);
   const [legacyDraftRecoveries, setLegacyDraftRecoveries] = useState<LegacyDraftRecoveryRecord[]>([]);
+  const [legacyStorageCleanupFailed, setLegacyStorageCleanupFailed] = useState(false);
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
   const [exitBusy, setExitBusy] = useState(false);
   const [exitError, setExitError] = useState<string | null>(null);
@@ -2063,6 +2242,7 @@ export default function ModConsole() {
       try {
         let session: WorkshopSession | null = null;
         let migrationConflicts = 0;
+        let migrationCleanupFailed = false;
         if (fromAddress.present) {
           setStoredResumeRetryAvailable(false);
           if (!fromAddress.code || !isValidJoinCode(fromAddress.code)) {
@@ -2076,8 +2256,18 @@ export default function ModConsole() {
           }
           const deviceId = getOrCreateWorkshopDeviceId(workshopLocalStorage);
           session = await exchangeWorkshopCode(fromAddress.code, deviceId, deviceLabel(navigator.userAgent));
-          migrationConflicts = migrateLegacyWorkshopStorage(workshopLocalStorage, fromAddress.code, session.team.id)
-            + migrateLegacyWorkshopStorage(workshopSessionStorage, fromAddress.code, session.team.id);
+          const localMigration = migrateLegacyWorkshopStorage(
+            workshopLocalStorage,
+            fromAddress.code,
+            session.team.id,
+          );
+          const sessionMigration = migrateLegacyWorkshopStorage(
+            workshopSessionStorage,
+            fromAddress.code,
+            session.team.id,
+          );
+          migrationConflicts = localMigration.attentionCount + sessionMigration.attentionCount;
+          migrationCleanupFailed = localMigration.cleanupFailed || sessionMigration.cleanupFailed;
         } else {
           const stored = readWorkshopSession(workshopLocalStorage);
           if (!stored) {
@@ -2091,6 +2281,7 @@ export default function ModConsole() {
         const recoveries = legacyRecoveriesForTeam(session.team.id);
         setLegacyDraftRecoveries(recoveries);
         setLegacyDraftConflicts(Math.max(migrationConflicts, recoveries.length));
+        setLegacyStorageCleanupFailed(migrationCleanupFailed);
         storeWorkshopSession(workshopLocalStorage, session);
         setNonPersistentMode(!workshopLocalStorage.isPersistent());
         setWorkshopSession(session);
@@ -2209,11 +2400,13 @@ export default function ModConsole() {
     try {
       const deviceId = getOrCreateWorkshopDeviceId(workshopLocalStorage);
       const session = await exchangeWorkshopCode(code, deviceId, deviceLabel(navigator.userAgent));
-      const conflicts = migrateLegacyWorkshopStorage(workshopLocalStorage, code, session.team.id)
-        + migrateLegacyWorkshopStorage(workshopSessionStorage, code, session.team.id);
+      const localMigration = migrateLegacyWorkshopStorage(workshopLocalStorage, code, session.team.id);
+      const sessionMigration = migrateLegacyWorkshopStorage(workshopSessionStorage, code, session.team.id);
+      const conflicts = localMigration.attentionCount + sessionMigration.attentionCount;
       const recoveries = legacyRecoveriesForTeam(session.team.id);
       setLegacyDraftRecoveries(recoveries);
       setLegacyDraftConflicts(Math.max(conflicts, recoveries.length));
+      setLegacyStorageCleanupFailed(localMigration.cleanupFailed || sessionMigration.cleanupFailed);
       storeWorkshopSession(workshopLocalStorage, session);
       setNonPersistentMode(!workshopLocalStorage.isPersistent());
       setWorkshopSession(session);
@@ -2472,6 +2665,7 @@ export default function ModConsole() {
     setClosedAt(null);
     setLegacyDraftConflicts(0);
     setLegacyDraftRecoveries([]);
+    setLegacyStorageCleanupFailed(false);
     dispatch({ type: 'LOGOUT' });
     setExitConfirmOpen(false);
     setExitBusy(false);
@@ -2484,7 +2678,7 @@ export default function ModConsole() {
   const downloadLegacyDraftRecoveries = () => {
     const teamId = state.team?.id;
     if (!teamId || legacyDraftRecoveries.length === 0) {
-      setToast('내려받을 충돌 초안 복구본이 없습니다.');
+      setToast('내려받을 이전 작성 내용 복구본이 없습니다.');
       return;
     }
     try {
@@ -2498,10 +2692,10 @@ export default function ModConsole() {
         new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' }),
         `climate-vote-draft-recovery-${teamId.slice(0, 8)}.json`,
       );
-      setToast(`충돌 초안 복구본 ${legacyDraftRecoveries.length}개를 내려받았습니다.`);
+      setToast(`이전 작성 내용 복구본 ${legacyDraftRecoveries.length}개를 내려받았습니다.`);
     } catch (error) {
       console.error('[workshop access] legacy draft recovery download failed', error);
-      setToast('충돌 초안 복구본을 내려받지 못했습니다. 다시 시도해 주세요.');
+      setToast('이전 작성 내용 복구본을 내려받지 못했습니다. 다시 시도해 주세요.');
     }
   };
 
@@ -2614,16 +2808,21 @@ export default function ModConsole() {
           브라우저 저장소를 사용할 수 없어 연결 정보가 이 페이지 메모리에만 유지됩니다. 새로고침하면 조 코드로 다시 입장해야 합니다.
         </div>
       ) : null}
-      {legacyDraftConflicts > 0 ? (
+      {legacyDraftConflicts > 0 || legacyStorageCleanupFailed ? (
         <div
           role="alert"
           className="fixed bottom-20 left-4 right-4 z-[70] mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-3 rounded-xl border-2 border-[#DC2626] bg-[#FEF2F2] px-4 py-3 text-center text-[14px] font-extrabold text-[#B91C1C] shadow-lg"
         >
           <span className="min-w-[220px] flex-1">
-            이전 코드 초안과 현재 조 초안이 달라 원본을 덮어쓰지 않고 보존했습니다.
+            이전 코드로 저장한 작성 내용을 현재 조 자료와 섞지 않고 별도 보존했습니다.
             {legacyDraftRecoveries.length > 0
               ? ` 조 코드가 들어 있지 않은 복구본 ${legacyDraftRecoveries.length}개를 내려받아 내용을 확인할 수 있습니다.`
               : ' 안전한 복구본을 만들지 못했으므로 이 페이지를 닫지 말고 지원 담당자에게 알려 주세요.'}
+            {legacyStorageCleanupFailed
+              ? legacyDraftRecoveries.length > 0
+                ? ' 브라우저 저장 제한으로 이전 코드 정보 삭제를 확인하지 못했습니다. 복구본을 받은 뒤 지원 담당자와 이 사이트의 브라우저 데이터를 삭제해 주세요.'
+                : ' 브라우저 저장 제한으로 이전 코드 정보 삭제를 확인하지 못했습니다. 이 페이지를 닫지 말고 지원 담당자가 작성 내용을 옮긴 뒤 이 사이트의 브라우저 데이터를 삭제해 주세요.'
+              : ''}
           </span>
           {legacyDraftRecoveries.length > 0 ? (
             <button
@@ -2631,7 +2830,7 @@ export default function ModConsole() {
               onClick={downloadLegacyDraftRecoveries}
               className="min-h-11 rounded-lg border-2 border-[#B91C1C] bg-white px-4 text-[#B91C1C]"
             >
-              충돌 초안 복구본 내려받기
+              이전 작성 내용 복구본 내려받기
             </button>
           ) : null}
         </div>

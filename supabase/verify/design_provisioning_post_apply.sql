@@ -1,5 +1,7 @@
 \set ON_ERROR_STOP on
-set search_path = pg_catalog, climate_vote;
+
+begin transaction isolation level repeatable read read only;
+set local search_path = pg_catalog, climate_vote;
 
 -- Read-only A4 structural and privilege verification.
 do $verify$
@@ -58,7 +60,7 @@ begin
       ('session', 'assembly_id', 'uuid', false, null::text),
       ('session', 'ordinal', 'integer', false, null::text),
       ('session', 'held_on', 'date', false, null::text),
-      ('session', 'org_id', 'uuid', false, null::text),
+      ('session', 'org_id', 'uuid', true, null::text),
       ('team', 'ordinal', 'integer', false, null::text),
       ('design_provisioning_operation', 'org_id', 'uuid', true, null::text),
       ('design_provisioning_operation', 'operation_id', 'text', true, null::text),
@@ -208,6 +210,7 @@ begin
      or v_config is distinct from array['search_path=pg_catalog, extensions']::text[]
      or v_definition not like '%extensions.gen_random_bytes(4)%'
      or v_definition not like '%v_value < 4294000000%'
+     or v_definition not like '%v_code <> ''000000''%'
      or v_definition not like '%v_code !~ ''^0912(0[1-9]|1[0-5])$''%'
      or v_definition like '%random()%' then
     raise exception 'A4 post-apply verification failed: join-code generator is unsafe';
@@ -430,4 +433,5 @@ select jsonb_build_object(
   'status', 'verified'
 ) as design_provisioning_post_apply;
 
+commit;
 \echo === A4 DESIGN PROVISIONING POST-APPLY VERIFICATION PASSED ===

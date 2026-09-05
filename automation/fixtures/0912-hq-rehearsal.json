@@ -180,7 +180,7 @@
     "workshop_hq_logout_v2": {
       "effect": "fixture-mutation",
       "requestFields": ["p_token"],
-      "successResponse": "null",
+      "successResponse": "true",
       "failureKeepsLocalCapability": true
     }
   }

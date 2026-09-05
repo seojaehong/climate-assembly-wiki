@@ -270,6 +270,12 @@ requireText(sql, /pg_advisory_xact_lock\s*\(/i, 'serialized first result publish
 requireText(sql, /result_implementation_event/i, 'append-only implementation history');
 requireText(sql, /workshop_audit_no_truncate/i, 'append-only audit truncate guard');
 requireText(sql, /workshop_random_join_code/i, 'cryptographic join-code generator');
+requireText(sql, /v_code\s*<>\s*'000000'/i, 'synthetic moderator code reservation');
+requireText(
+  designProvisioning,
+  /v_code\s*<>\s*'000000'/i,
+  'design-provisioning synthetic moderator code reservation',
+);
 requireText(sql, /workshop_request_source_hash/i, 'hashed request-source helper');
 requireText(sql, /source_hash[\s\S]{0,500}interval '15 minutes'/i, 'source-layer exchange throttling');
 requireText(sql, /v_source_failures\s*>=\s*60/i, 'venue-safe source failure threshold');
@@ -502,9 +508,9 @@ const additionalBehavioralSeams = [
   [activation, /implementation_snapshots[\s\S]{0,1800}platform_result_implementation_snapshot_hash[\s\S]{0,1200}update climate_vote\.result_page/i, 'implementation snapshot backfill at atomic cutover'],
   [activationRollback, /implementation_snapshots[\s\S]{0,1200}'snapshot_hash'[\s\S]{0,1000}update climate_vote\.result_page/i, 'implementation snapshot metadata rollback'],
   [rollback, /platform_result_implementation_upsert_v3[\s\S]{0,300}platform_result_implementation_upsert_v2[\s\S]{0,300}platform_result_publish_v2[\s\S]{0,300}platform_result_implementation_snapshot_hash/i, 'P1a drops implementation writers and dependent hash helper in order'],
-  [sql, /hq_change_password[\s\S]{0,2500}insert into climate_vote\.attendance_auth_attempt[\s\S]{0,500}current_password_incorrect/i, 'password failure preserves throttle evidence'],
+  [sql, /hq_change_password[\s\S]{0,2200}password-change:[\s\S]{0,900}v_password_failures>=5[\s\S]{0,400}rate_limited[\s\S]{0,900}current_password_incorrect/i, 'password change has a separate authenticated-actor failure budget'],
   [sql, /attendance_hq_unlock_named[\s\S]{0,1600}attendance-auth:hq-named-global[\s\S]{0,900}source_hash=v_source_hash[\s\S]{0,800}v_source_failures>=20[\s\S]{0,120}v_global_failures>=120[\s\S]{0,900}N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy[\s\S]{0,500}v_password_matches:=crypt\(p_password,v_hash\)=v_hash/i, 'named HQ source/global cost budgets and dummy bcrypt comparison'],
-  [sql, /hq_change_password[\s\S]{0,2800}current_password_incorrect[\s\S]{0,1800}hq_password_changed[\s\S]{0,500}sessions_revoked/i, 'authenticated password recovery bypasses public account poisoning and appends audit'],
+  [sql, /hq_change_password[\s\S]{0,4200}current_password_incorrect[\s\S]{0,2200}hq_password_changed[\s\S]{0,500}sessions_revoked/i, 'authenticated password recovery is rate bounded and appends audit'],
   [sql, /hq_change_password[\s\S]{0,3600}update climate_vote\.attendance_auth_session[\s\S]{0,300}scope='hq'[\s\S]{0,300}actor_label=v_name[\s\S]{0,500}sessions_revoked/i, 'password rotation revokes every actor HQ bearer'],
   [sql, /workshop_hq_logout_v2[\s\S]{0,900}attendance_token_row\(p_token\)[\s\S]{0,500}set revoked_at=now\(\)[\s\S]{0,300}digest\(lower\(p_token\),'sha256'\)/i, 'server-side exact HQ bearer logout'],
   [sql, /submission_reopen_by_team_v2[\s\S]{0,1200}dt\.status='open'/i, 'team submission reopen requires an open topic'],
@@ -531,7 +537,7 @@ const additionalBehavioralSeams = [
   [activationVerify, /expired Canvas round was not available for operator recovery[\s\S]{0,700}platform_canvas_round_set_status_v2/i, 'expired Canvas read and close recovery'],
   [activationVerify, /rejected public lifecycle action changed vote\/ballot state/i, 'public ballot lifecycle negative behavior'],
   [activationVerify, /public ballot response did not inherit ballot organization/i, 'public ballot organization binding'],
-  [activationVerify, /account-name failure poisoning blocked valid[\s\S]{0,1200}source budget did not[\s\S]{0,5000}correct password recovery was blocked/i, 'named HQ account-poison recovery and source cost boundary'],
+  [activationVerify, /account-name failure poisoning blocked valid[\s\S]{0,1200}source budget did not[\s\S]{0,6000}password change budget did not block attempt six[\s\S]{0,2200}password recovery did not resume after budget expiry/i, 'named HQ public-login and authenticated password-change budgets'],
   [activationVerify, /missing named HQ dummy bcrypt path minted a token or lost failure evidence/i, 'missing named HQ dummy bcrypt behavior'],
   [activationVerify, /password change did not revoke every actor session[\s\S]{0,900}second-device HQ token survived password change/i, 'password rotation multi-device revocation behavior'],
   [activationVerify, /named HQ logout failed through anon RPC role[\s\S]{0,500}revoked named HQ bearer logged out twice/i, 'anonymous RPC role HQ logout behavior'],
@@ -558,7 +564,7 @@ const additionalBehavioralSeams = [
   [loadtest, /classifyVoteRpcResponse[\s\S]{0,350}'duplicate'[\s\S]{0,120}'closed'/i, 'loadtest semantic response checks'],
   [postgresVerifier, /concurrent[^\n]*HQ|hq_change_password/i, 'concurrent HQ throttle verifier'],
   [postgresVerifier, /concurrent_active_round_creation=pass successes=1 conflicts=1 active_rounds=1/i, 'concurrent moderator active-round invariant verifier'],
-  [postgresVerifier, /concurrent_named_password_recovery=pass account_poison_failures=5 incorrect=6 recovery=true old_bearer_revoked=true/i, 'concurrent named HQ account-poison recovery verifier'],
+  [postgresVerifier, /concurrent_named_password_recovery=pass account_poison_failures=5 incorrect=5 rate_limited=1 recovery_after_window=true old_bearer_revoked=true/i, 'concurrent named HQ password-change budget and recovery verifier'],
   [postgresVerifier, /concurrentActiveRoundCreationVerification[\s\S]{0,300}concurrentNamedPasswordRecoveryVerification/i, 'report records active-round and named recovery concurrency checks'],
   [postgresVerifier, /automation\/0912-rpc-contract\.mjs[\s\S]{0,500}src\/islands\/mod\/ModConsole\.tsx/i, 'manifest includes emulator and stored-session client contracts'],
   [postgresVerifier, /ballot[ _-]*close[ _-]*race|ballot_close_race/i, 'ballot close race verifier'],

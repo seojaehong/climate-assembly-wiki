@@ -130,7 +130,7 @@ begin
       + get_byte(v_bytes, 3)::bigint;
     if v_value < 4294000000 then
       v_code := lpad((v_value % 1000000)::text, 6, '0');
-      exit when v_code !~ '^0912(0[1-9]|1[0-5])$';
+      exit when v_code <> '000000' and v_code !~ '^0912(0[1-9]|1[0-5])$';
     end if;
   end loop;
   return v_code;

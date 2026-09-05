@@ -86,7 +86,57 @@ grant select,insert on table public.cv_votes to anon, authenticated;
 
 \echo === LATER PLATFORM MIGRATIONS MUST NOT REOPEN LEGACY EXECUTE ===
 \i /tmp/platform_p3_design_provisioning.sql
+\i /tmp/design_provisioning_post_apply.sql
+\echo === CAPTURE PRE-P4 LEGACY AUDIT HISTORY ===
+\i /tmp/platform_audit_history_snapshot.sql
+create temporary table p4_legacy_history_before (
+  attendance_row_count bigint not null,
+  attendance_sha256 text not null,
+  workshop_row_count bigint not null,
+  workshop_sha256 text not null
+) on commit preserve rows;
+insert into p4_legacy_history_before
+select
+  (select count(*) from climate_vote.attendance_audit_log),
+  (select encode(extensions.digest(
+    coalesce(jsonb_agg(to_jsonb(row_value) order by row_value.id), '[]'::jsonb)::text,
+    'sha256'), 'hex') from climate_vote.attendance_audit_log row_value),
+  (select count(*) from climate_vote.workshop_audit_event),
+  (select encode(extensions.digest(
+    coalesce(jsonb_agg(to_jsonb(row_value) order by row_value.id), '[]'::jsonb)::text,
+    'sha256'), 'hex') from climate_vote.workshop_audit_event row_value);
 \i /tmp/platform_p4_audit_log.sql
+\i /tmp/platform_audit_post_apply.sql
+\i /tmp/platform_audit_history_snapshot.sql
+do $p4_history_preservation$
+declare
+  v_before p4_legacy_history_before%rowtype;
+  v_attendance_count bigint;
+  v_attendance_sha256 text;
+  v_workshop_count bigint;
+  v_workshop_sha256 text;
+begin
+  select * into strict v_before from p4_legacy_history_before;
+  select count(*), encode(extensions.digest(
+      coalesce(jsonb_agg(to_jsonb(row_value) order by row_value.id), '[]'::jsonb)::text,
+      'sha256'), 'hex')
+    into v_attendance_count, v_attendance_sha256
+    from climate_vote.attendance_audit_log row_value;
+  select count(*), encode(extensions.digest(
+      coalesce(jsonb_agg(to_jsonb(row_value) order by row_value.id), '[]'::jsonb)::text,
+      'sha256'), 'hex')
+    into v_workshop_count, v_workshop_sha256
+    from climate_vote.workshop_audit_event row_value;
+  if v_before.attendance_row_count is distinct from v_attendance_count
+     or v_before.attendance_sha256 is distinct from v_attendance_sha256
+     or v_before.workshop_row_count is distinct from v_workshop_count
+     or v_before.workshop_sha256 is distinct from v_workshop_sha256
+     or (select count(*) from climate_vote.platform_audit_event) <> 0 then
+    raise exception 'P4 migration changed pre-existing audit history';
+  end if;
+end
+$p4_history_preservation$;
+drop table p4_legacy_history_before;
 \i /tmp/platform_p2a_0912_token_only_activation.verify.sql
 
 \echo === P2A ACTIVATION ROLLBACK ===

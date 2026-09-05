@@ -26,6 +26,21 @@ describe('9/12 readiness traceability verifier', () => {
     expect(report.safety).toEqual({ liveDatabaseMutationCount: 0, networkRequestCount: 0 });
   });
 
+  test('recomputes traceability from an immutable source reader independently of evidence files', () => {
+    const sourceCommit = 'a'.repeat(40);
+    const report = verify0912Readiness({
+      root: projectRoot,
+      generatedAt: new Date('2026-09-05T00:00:00.000Z'),
+      sourceReader: (relativePath) => readFileSync(resolve(projectRoot, relativePath)),
+      sourceCommit,
+      sourceTreeClean: true,
+    });
+
+    expect(report.status, report.errors.join('\n')).toBe('pass');
+    expect(report.sourceCommit).toBe(sourceCommit);
+    expect(report.sourceTreeClean).toBe(true);
+  });
+
   test('does not require generated release outputs before the traceability run', () => {
     const manifest = JSON.parse(readFileSync(
       resolve(projectRoot, 'automation/fixtures/0912-traceability.json'),
@@ -105,7 +120,7 @@ describe('9/12 readiness traceability verifier', () => {
   });
 
   test('exports the exact critical and production approval gate contracts', () => {
-    expect(REQUIRED_0912_CRITICAL_GATES).toHaveLength(34);
+    expect(REQUIRED_0912_CRITICAL_GATES).toHaveLength(35);
     expect(REQUIRED_0912_APPROVAL_GATES).toEqual([
       'p1-tenancy',
       'secure-session-team-seed',

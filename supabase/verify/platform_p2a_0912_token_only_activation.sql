@@ -501,23 +501,111 @@ values('p2a-foreign-round-capability-0001','P2a foreign isolated round','RADIO',
   '["yes","no"]'::jsonb,'active','91200000-0000-0000-0000-000000000105','verify');
 
 insert into climate_vote.assembly_member(id,official_id,name,active,source_hash,org_id)
-values('91200000-0000-0000-0000-000000000341','P2A-ATTENDANCE',
+values
+ ('91200000-0000-0000-0000-000000000341','P2A-SHARED-OFFICIAL-ID',
   'P2a attendance member',true,'verify',
-  '91200000-0000-0000-0000-000000000001');
+  '91200000-0000-0000-0000-000000000001'),
+ ('91200000-0000-0000-0000-000000000343','P2A-SHARED-OFFICIAL-ID',
+  'P2a other-org member',true,'verify',
+  '91200000-0000-0000-0000-000000000101');
+do $org_scoped_official_id$
+begin
+  if exists (
+    select 1 from pg_constraint
+     where conrelid='climate_vote.assembly_member'::regclass
+       and conname='assembly_member_official_id_key'
+  ) or not exists (
+    select 1
+      from pg_index i
+      join pg_class c on c.oid=i.indexrelid
+      join pg_namespace n on n.oid=c.relnamespace
+      join pg_am am on am.oid=c.relam
+     where n.nspname='climate_vote'
+       and c.relname='assembly_member_org_official_id_uniq'
+       and i.indrelid='climate_vote.assembly_member'::regclass
+       and i.indisunique and i.indisvalid and i.indisready
+       and am.amname='btree' and i.indnkeyatts=2 and i.indnatts=2
+       and pg_get_indexdef(i.indexrelid,1,true)='org_id'
+       and pg_get_indexdef(i.indexrelid,2,true)='official_id'
+       and regexp_replace(
+         lower(pg_get_expr(i.indpred,i.indrelid,false)),
+         '[[:space:]]+',' ','g')='(org_id is not null)'
+  ) then
+    raise exception 'P1b official id cutover did not replace the global guard';
+  end if;
+  if (select count(*) from climate_vote.assembly_member
+       where official_id='P2A-SHARED-OFFICIAL-ID'
+         and org_id in ('91200000-0000-0000-0000-000000000001',
+                        '91200000-0000-0000-0000-000000000101'))<>2 then
+    raise exception 'P2a organization-scoped official id did not allow two organizations';
+  end if;
+  begin
+    insert into climate_vote.assembly_member(id,official_id,name,active,source_hash,org_id)
+    values('91200000-0000-0000-0000-000000000345','P2A-SHARED-OFFICIAL-ID',
+      'P2a same-org duplicate must fail',true,'verify',
+      '91200000-0000-0000-0000-000000000001');
+    raise exception 'P2a same-org duplicate official id unexpectedly accepted';
+  exception when unique_violation then
+    null;
+  end;
+end $org_scoped_official_id$;
 insert into climate_vote.team_assignment(id,session_id,team_id,member_id,active,org_id)
-values('91200000-0000-0000-0000-000000000342',
+values
+ ('91200000-0000-0000-0000-000000000342',
   '91200000-0000-0000-0000-000000000003',
   '91200000-0000-0000-0000-000000000011',
+  '91200000-0000-0000-0000-000000000341',true,
+  '91200000-0000-0000-0000-000000000001'),
+ ('91200000-0000-0000-0000-000000000344',
+  '91200000-0000-0000-0000-000000000151',
+  '91200000-0000-0000-0000-000000000152',
   '91200000-0000-0000-0000-000000000341',true,
   '91200000-0000-0000-0000-000000000001');
 insert into climate_vote.attendance(assignment_id,base_status,org_id)
 values('91200000-0000-0000-0000-000000000342','unconfirmed',
   '91200000-0000-0000-0000-000000000001');
+insert into climate_vote.hq_operator(name,default_subgroup,active,must_change_password)
+values('P2a scoped HQ verifier','synthetic',true,false)
+on conflict(name) do update set active=true;
 
 do $scoped_hq_negative$
-declare v_hq text; v_before text;
+declare
+  v_hq text; v_before text; v_audit_before bigint;
+  v_member_before jsonb; v_current_assignment_before jsonb;
+  v_shared_assignment_before jsonb;
 begin
   v_hq:=climate_vote.attendance_issue_token('hq',null,'P2a scoped HQ verifier');
+  select to_jsonb(m) into v_member_before from climate_vote.assembly_member m
+   where m.id='91200000-0000-0000-0000-000000000341';
+  select to_jsonb(ta) into v_current_assignment_before
+    from climate_vote.team_assignment ta
+   where ta.id='91200000-0000-0000-0000-000000000342';
+  select to_jsonb(ta) into v_shared_assignment_before
+    from climate_vote.team_assignment ta
+   where ta.id='91200000-0000-0000-0000-000000000344';
+  v_audit_before:=(select count(*) from climate_vote.attendance_audit_log);
+  begin
+    perform climate_vote.attendance_member_save_v2(v_hq,'0912-deliberation',
+      '91200000-0000-0000-0000-000000000342','P2A-MUTATED',
+      'P2a mutated shared member','91200000-0000-0000-0000-000000000011',false);
+    raise exception 'P2a shared member mutation unexpectedly accepted';
+  exception when others then
+    if sqlerrm='P2a shared member mutation unexpectedly accepted' then raise; end if;
+    if position('shared member fields cannot be changed outside current session scope' in sqlerrm)=0 then raise; end if;
+  end;
+  if (select to_jsonb(m) from climate_vote.assembly_member m
+       where m.id='91200000-0000-0000-0000-000000000341') is distinct from v_member_before
+     or (select to_jsonb(ta) from climate_vote.team_assignment ta
+          where ta.id='91200000-0000-0000-0000-000000000342')
+          is distinct from v_current_assignment_before
+     or (select to_jsonb(ta) from climate_vote.team_assignment ta
+          where ta.id='91200000-0000-0000-0000-000000000344')
+          is distinct from v_shared_assignment_before
+     or (select count(*) from climate_vote.attendance_audit_log)<>v_audit_before then
+    raise exception 'P2a rejected shared member mutation changed either session or audit state';
+  end if;
+  delete from climate_vote.team_assignment
+   where id='91200000-0000-0000-0000-000000000344';
   begin
     perform * from climate_vote.hq_rounds_v2(v_hq,'p2a-same-org-other');
     raise exception 'P2a cross-session HQ read unexpectedly accepted';
@@ -823,14 +911,16 @@ insert into climate_vote.attendance_secret(secret_key,secret_hash) values
   ('hq:P2a verify operator',crypt('P2a named password',gen_salt('bf',4))),
   ('hq:P2a poison operator',crypt('P2a poison password',gen_salt('bf',4))),
   ('hq:P2a rate operator',crypt('P2a rate password',gen_salt('bf',4))),
-  ('hq:P2a change operator',crypt('P2a change password',gen_salt('bf',4)))
+  ('hq:P2a change operator',crypt('P2a change password',gen_salt('bf',4))),
+  ('hq:P2a byte operator',crypt('P2a byte password',gen_salt('bf',4)))
 on conflict(secret_key) do update set secret_hash=excluded.secret_hash;
 insert into climate_vote.hq_operator(name,default_subgroup,active,must_change_password)
 values
   ('P2a verify operator','synthetic',true,true),
   ('P2a poison operator','synthetic',true,true),
   ('P2a rate operator','synthetic',true,true),
-  ('P2a change operator','synthetic',true,true)
+  ('P2a change operator','synthetic',true,true),
+  ('P2a byte operator','synthetic',true,true)
 on conflict(name) do update set active=true,must_change_password=true;
 
 do $bootstrap_null_guards$
@@ -839,6 +929,7 @@ declare
   v_secret text; v_must_change boolean; v_rate_token text; v_result jsonb; i int;
   v_change_token text; v_change_token_2 text; v_poison_token text;
   v_source_hash text; v_workshop_audit bigint;
+  v_byte_token text; v_byte_password text:=repeat('가',24);
 begin
   v_tokens:=(select count(*) from climate_vote.attendance_auth_session);
   v_attempts:=(select count(*) from climate_vote.attendance_auth_attempt);
@@ -939,6 +1030,35 @@ begin
     raise exception 'P2a NULL password change mutated secret, flag, attempt, or audit';
   end if;
 
+  if octet_length(v_byte_password)<>72 then
+    raise exception 'P2a password byte-boundary fixture is not exactly 72 bytes';
+  end if;
+  v_byte_token:=climate_vote.attendance_hq_unlock_named(
+    'P2a byte operator','P2a byte password');
+  select secret_hash into v_secret from climate_vote.attendance_secret
+   where secret_key='hq:P2a byte operator';
+  begin
+    perform climate_vote.hq_change_password(
+      v_byte_token,'P2a byte password',v_byte_password||'a');
+    raise exception 'P2a 73-byte new password unexpectedly changed secret';
+  exception when others then
+    if sqlerrm='P2a 73-byte new password unexpectedly changed secret' then raise; end if;
+    if sqlerrm<>'새 비밀번호는 UTF-8 기준 72바이트 이하여야 합니다' then raise; end if;
+  end;
+  if (select secret_hash from climate_vote.attendance_secret
+       where secret_key='hq:P2a byte operator') is distinct from v_secret
+     or (select id from climate_vote.attendance_token_row(v_byte_token)) is null then
+    raise exception 'P2a rejected 73-byte password changed secret or revoked bearer';
+  end if;
+  v_result:=climate_vote.hq_change_password(
+    v_byte_token,'P2a byte password',v_byte_password);
+  if v_result->>'changed'<>'true'
+     or (select extensions.crypt(v_byte_password,secret_hash)=secret_hash
+          from climate_vote.attendance_secret
+          where secret_key='hq:P2a byte operator') is not true then
+    raise exception 'P2a 72-byte UTF-8 password boundary was rejected: %',v_result;
+  end if;
+
   v_change_token:=climate_vote.attendance_hq_unlock_named(
     'P2a change operator','P2a change password');
   v_change_token_2:=climate_vote.attendance_hq_unlock_named(
@@ -980,13 +1100,38 @@ begin
     end if;
   end loop;
   v_result:=climate_vote.hq_change_password(
+    v_rate_token,'wrong current password','P2a replacement password');
+  if v_result->>'changed'<>'false'
+     or v_result->>'error'<>'rate_limited' then
+    raise exception 'P2a password change budget did not block attempt six: %',v_result;
+  end if;
+  v_result:=climate_vote.hq_change_password(
+    v_rate_token,'P2a rate password','P2a replacement password');
+  if v_result->>'changed'<>'false'
+     or v_result->>'error'<>'rate_limited'
+     or (select extensions.crypt('P2a rate password',secret_hash)=secret_hash
+       from climate_vote.attendance_secret
+       where secret_key='hq:P2a rate operator') is not true then
+    raise exception 'P2a password change budget allowed a correct guess inside the window: %',v_result;
+  end if;
+  if (select count(*) from climate_vote.attendance_auth_attempt
+       where scope='hq' and subject='password-change:P2a rate operator'
+         and not succeeded)<>5 then
+    raise exception 'P2a password change failure budget was not exact';
+  end if;
+  update climate_vote.attendance_auth_attempt
+     set attempted_at=now()-interval '16 minutes'
+   where scope='hq' and subject='password-change:P2a rate operator'
+     and not succeeded;
+  v_result:=climate_vote.hq_change_password(
     v_rate_token,'P2a rate password','P2a replacement password');
   if v_result->>'changed'<>'true'
      or coalesce((v_result->>'sessions_revoked')::int,0)<1 then
-    raise exception 'P2a correct password recovery was blocked: %',v_result;
+    raise exception 'P2a password recovery did not resume after budget expiry: %',v_result;
   end if;
   if (select count(*) from climate_vote.attendance_auth_attempt
-       where scope='hq' and subject='P2a rate operator' and not succeeded)<>5
+       where scope='hq' and subject='password-change:P2a rate operator'
+         and not succeeded)<>5
      or (select extensions.crypt('P2a replacement password',secret_hash)=secret_hash
        from climate_vote.attendance_secret
        where secret_key='hq:P2a rate operator') is not true

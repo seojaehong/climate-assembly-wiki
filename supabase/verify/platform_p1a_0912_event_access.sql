@@ -222,6 +222,7 @@ declare
   v_secret text; v_must_change boolean; v_rate_token text; v_result jsonb; i int;
   v_change_token text; v_change_token_2 text; v_logout_token text;
   v_poison_token text; v_source_hash text; v_workshop_audit_count bigint;
+  v_byte_token text; v_byte_password text:=repeat('가',24);
 begin
   insert into climate_vote.attendance_secret(secret_key,secret_hash) values
     ('hq_password',crypt('P1a shared password',gen_salt('bf',4))),
@@ -229,7 +230,8 @@ begin
     ('hq:P1a poison operator',crypt('P1a poison password',gen_salt('bf',4))),
     ('hq:P1a rate operator',crypt('P1a rate password',gen_salt('bf',4))),
     ('hq:P1a change operator',crypt('P1a change password',gen_salt('bf',4))),
-    ('hq:P1a logout operator',crypt('P1a logout password',gen_salt('bf',4)))
+    ('hq:P1a logout operator',crypt('P1a logout password',gen_salt('bf',4))),
+    ('hq:P1a byte operator',crypt('P1a byte password',gen_salt('bf',4)))
   on conflict(secret_key) do update set secret_hash=excluded.secret_hash;
   insert into climate_vote.hq_operator(name,default_subgroup,active,must_change_password)
   values
@@ -237,7 +239,8 @@ begin
     ('P1a poison operator','synthetic',true,true),
     ('P1a rate operator','synthetic',true,true),
     ('P1a change operator','synthetic',true,true),
-    ('P1a logout operator','synthetic',true,true)
+    ('P1a logout operator','synthetic',true,true),
+    ('P1a byte operator','synthetic',true,true)
   on conflict(name) do update set active=true,must_change_password=true;
 
   v_token_count:=(select count(*) from climate_vote.attendance_auth_session);
@@ -336,6 +339,37 @@ begin
     raise exception 'NULL password change mutated secret, flag, attempt, or audit state';
   end if;
 
+  -- bcrypt's boundary is bytes, not visible characters. Reject 73 UTF-8 bytes
+  -- without exposing the input, keep the bearer usable, then accept exactly 72.
+  if octet_length(v_byte_password)<>72 then
+    raise exception 'password byte-boundary fixture is not exactly 72 bytes';
+  end if;
+  v_byte_token:=climate_vote.attendance_hq_unlock_named(
+    'P1a byte operator','P1a byte password');
+  select secret_hash into v_secret from climate_vote.attendance_secret
+   where secret_key='hq:P1a byte operator';
+  begin
+    perform climate_vote.hq_change_password(
+      v_byte_token,'P1a byte password',v_byte_password||'a');
+    raise exception '73-byte new password unexpectedly changed HQ password';
+  exception when others then
+    if sqlerrm='73-byte new password unexpectedly changed HQ password' then raise; end if;
+    if sqlerrm<>'새 비밀번호는 UTF-8 기준 72바이트 이하여야 합니다' then raise; end if;
+  end;
+  if (select secret_hash from climate_vote.attendance_secret
+       where secret_key='hq:P1a byte operator') is distinct from v_secret
+     or (select id from climate_vote.attendance_token_row(v_byte_token)) is null then
+    raise exception 'rejected 73-byte password changed secret or revoked bearer';
+  end if;
+  v_result:=climate_vote.hq_change_password(
+    v_byte_token,'P1a byte password',v_byte_password);
+  if v_result->>'changed'<>'true'
+     or (select extensions.crypt(v_byte_password,secret_hash)=secret_hash
+          from climate_vote.attendance_secret
+          where secret_key='hq:P1a byte operator') is not true then
+    raise exception '72-byte UTF-8 password boundary was rejected: %',v_result;
+  end if;
+
   -- Password rotation invalidates every bearer for the named actor, not just
   -- the browser that submitted the change.
   v_change_token:=climate_vote.attendance_hq_unlock_named(
@@ -379,9 +413,10 @@ begin
     if position('expired or revoked' in sqlerrm)=0 then raise; end if;
   end;
 
-  -- Wrong-current-password responses commit audit rows, but public login
-  -- failures for the same name cannot lock an already authenticated operator
-  -- out of a correct recovery. The bearer is the trust/cost boundary here.
+  -- Public login failures for the same name cannot poison password changes.
+  -- Once authenticated, five wrong-current-password attempts exhaust a
+  -- separate actor bucket. The bearer alone must not permit unlimited bcrypt
+  -- guesses, and recovery resumes only after the private budget window ends.
   v_rate_token:=climate_vote.attendance_hq_unlock_named(
     'P1a rate operator','P1a rate password');
   select secret_hash into v_secret from climate_vote.attendance_secret
@@ -398,13 +433,38 @@ begin
     end if;
   end loop;
   v_result:=climate_vote.hq_change_password(
+    v_rate_token,'wrong current password','P1a replacement password');
+  if v_result->>'changed'<>'false'
+     or v_result->>'error'<>'rate_limited' then
+    raise exception 'password change budget did not block attempt six: %',v_result;
+  end if;
+  v_result:=climate_vote.hq_change_password(
+    v_rate_token,'P1a rate password','P1a replacement password');
+  if v_result->>'changed'<>'false'
+     or v_result->>'error'<>'rate_limited'
+     or (select extensions.crypt('P1a rate password',secret_hash)=secret_hash
+       from climate_vote.attendance_secret
+       where secret_key='hq:P1a rate operator') is not true then
+    raise exception 'password change budget allowed a correct guess inside the window: %',v_result;
+  end if;
+  if (select count(*) from climate_vote.attendance_auth_attempt
+       where scope='hq' and subject='password-change:P1a rate operator'
+         and not succeeded)<>5 then
+    raise exception 'password change failure budget was not exact';
+  end if;
+  update climate_vote.attendance_auth_attempt
+     set attempted_at=now()-interval '16 minutes'
+   where scope='hq' and subject='password-change:P1a rate operator'
+     and not succeeded;
+  v_result:=climate_vote.hq_change_password(
     v_rate_token,'P1a rate password','P1a replacement password');
   if v_result->>'changed'<>'true'
      or coalesce((v_result->>'sessions_revoked')::int,0)<1 then
-    raise exception 'correct password recovery was blocked by account failures: %',v_result;
+    raise exception 'correct password recovery did not resume after budget expiry: %',v_result;
   end if;
   if (select count(*) from climate_vote.attendance_auth_attempt
-       where scope='hq' and subject='P1a rate operator' and not succeeded)<>5
+       where scope='hq' and subject='password-change:P1a rate operator'
+         and not succeeded)<>5
      or (select extensions.crypt('P1a replacement password',secret_hash)=secret_hash
        from climate_vote.attendance_secret
        where secret_key='hq:P1a rate operator') is not true
@@ -627,6 +687,7 @@ begin
   v_code:=v_rotate->'codes'->0->>'join_code';
   v_code_b:=v_rotate->'codes'->1->>'join_code';
   if v_code!~'^[0-9]{6}$' or v_code_b!~'^[0-9]{6}$' or v_code=v_code_b
+     or v_code='000000' or v_code_b='000000'
      or v_code~'^0912(0[1-9]|1[0-5])$' or v_code_b~'^0912(0[1-9]|1[0-5])$' then
     raise exception 'random join-code contract failed';
   end if;
@@ -1223,10 +1284,13 @@ declare
   v_unbound_round text:='p1a-legacy-unbound-read-only-0001';
   v_current_assignment uuid:='91200000-0000-0000-0000-000000000601';
   v_other_assignment uuid:='91200000-0000-0000-0000-000000000611';
+  v_shared_assignment uuid:='91200000-0000-0000-0000-000000000631';
   v_foreign_team uuid:='91200000-0000-0000-0000-000000000621';
   v_foreign_submission uuid:='91200000-0000-0000-0000-000000000622';
   v_clear jsonb; v_table_before text; v_count int; v_audit_count int;
   v_attendance_before jsonb; v_member_name_before text; v_pin_before text;
+  v_member_before jsonb; v_current_assignment_before jsonb;
+  v_shared_assignment_before jsonb;
   v_lifecycle_status text; v_topic_status text; v_updated_at timestamptz;
 begin
   v_hq:=climate_vote.attendance_issue_token('hq',null,'Scoped HQ verifier');
@@ -1252,6 +1316,9 @@ begin
      '91200000-0000-0000-0000-000000000001'),
     (v_other_assignment,(select id from climate_vote.session where slug='p1a-verify-other'),
      '91200000-0000-0000-0000-000000000612','91200000-0000-0000-0000-000000000610',true,
+     '91200000-0000-0000-0000-000000000001'),
+    (v_shared_assignment,(select id from climate_vote.session where slug='p1a-verify-other'),
+     '91200000-0000-0000-0000-000000000612','91200000-0000-0000-0000-000000000600',true,
      '91200000-0000-0000-0000-000000000001');
   insert into climate_vote.attendance(assignment_id,base_status,org_id)
   values
@@ -1260,10 +1327,53 @@ begin
 
   insert into climate_vote.org(id,slug,name,status) values
     ('91200000-0000-0000-0000-000000000701','p1a-foreign-org','P1a foreign org','active');
+  if not exists (
+    select 1 from pg_constraint
+     where conrelid='climate_vote.assembly_member'::regclass
+       and conname='assembly_member_official_id_key' and contype='u'
+  ) or not exists (
+    select 1
+      from pg_index i
+      join pg_class c on c.oid=i.indexrelid
+      join pg_namespace n on n.oid=c.relnamespace
+      join pg_am am on am.oid=c.relam
+     where n.nspname='climate_vote'
+       and c.relname='assembly_member_org_official_id_uniq'
+       and i.indrelid='climate_vote.assembly_member'::regclass
+       and i.indisunique and i.indisvalid and i.indisready
+       and am.amname='btree' and i.indnkeyatts=2 and i.indnatts=2
+       and pg_get_indexdef(i.indexrelid,1,true)='org_id'
+       and pg_get_indexdef(i.indexrelid,2,true)='official_id'
+       and regexp_replace(
+         lower(pg_get_expr(i.indpred,i.indrelid,false)),
+         '[[:space:]]+',' ','g')='(org_id is not null)'
+  ) then
+    raise exception 'P1 official id transition guards are incomplete';
+  end if;
+  -- P1 must retain the legacy global invariant until P1b has backfilled every
+  -- org_id. Otherwise a NULL-org legacy write can make the later backfill fail.
+  begin
+    insert into climate_vote.assembly_member(id,official_id,name,active,source_hash,org_id)
+    values('91200000-0000-0000-0000-000000000620','P1A-CURRENT',
+      'Pre-backfill cross-org duplicate must fail',true,'verify',
+      '91200000-0000-0000-0000-000000000701');
+    raise exception 'P1 global official id guard unexpectedly accepted a cross-org duplicate';
+  exception when unique_violation then
+    null;
+  end;
   insert into climate_vote.assembly_member(id,official_id,name,active,source_hash,org_id)
   values('91200000-0000-0000-0000-000000000620','P1A-FOREIGN',
     'Foreign-org synthetic member',true,'verify',
     '91200000-0000-0000-0000-000000000701');
+  begin
+    insert into climate_vote.assembly_member(id,official_id,name,active,source_hash,org_id)
+    values('91200000-0000-0000-0000-000000000629','P1A-CURRENT',
+      'Same-org duplicate must fail',true,'verify',
+      '91200000-0000-0000-0000-000000000001');
+    raise exception 'same-org duplicate official id unexpectedly accepted';
+  exception when unique_violation then
+    null;
+  end;
   insert into climate_vote.assembly(id,slug,title,purpose,mode,config,status,org_id) values
     ('91200000-0000-0000-0000-000000000702','p1a-foreign-assembly','P1a foreign assembly',
      'Cross-org negative verification','consensus','{}','active',
@@ -1593,6 +1703,50 @@ begin
       where ta.id=v_current_assignment) is distinct from v_member_name_before then
     raise exception 'NULL member input changed member state';
   end if;
+  select to_jsonb(m) into v_member_before from climate_vote.assembly_member m
+   where m.id='91200000-0000-0000-0000-000000000600';
+  select to_jsonb(ta) into v_current_assignment_before
+    from climate_vote.team_assignment ta where ta.id=v_current_assignment;
+  select to_jsonb(ta) into v_shared_assignment_before
+    from climate_vote.team_assignment ta where ta.id=v_shared_assignment;
+  v_audit_count:=(select count(*) from climate_vote.attendance_audit_log);
+  begin
+    perform climate_vote.attendance_member_save_v2(v_hq,'0912-deliberation',
+      v_current_assignment,'P1A-MUTATED','Current synthetic member',
+      '91200000-0000-0000-0000-000000000011',true);
+    raise exception 'shared member official id mutation unexpectedly accepted';
+  exception when others then
+    if sqlerrm='shared member official id mutation unexpectedly accepted' then raise; end if;
+    if position('shared member fields cannot be changed outside current session scope' in sqlerrm)=0 then raise; end if;
+  end;
+  begin
+    perform climate_vote.attendance_member_save_v2(v_hq,'0912-deliberation',
+      v_current_assignment,'P1A-CURRENT','Mutated shared member name',
+      '91200000-0000-0000-0000-000000000011',true);
+    raise exception 'shared member name mutation unexpectedly accepted';
+  exception when others then
+    if sqlerrm='shared member name mutation unexpectedly accepted' then raise; end if;
+    if position('shared member fields cannot be changed outside current session scope' in sqlerrm)=0 then raise; end if;
+  end;
+  begin
+    perform climate_vote.attendance_member_save_v2(v_hq,'0912-deliberation',
+      v_current_assignment,'P1A-CURRENT','Current synthetic member',
+      '91200000-0000-0000-0000-000000000011',false);
+    raise exception 'shared member active mutation unexpectedly accepted';
+  exception when others then
+    if sqlerrm='shared member active mutation unexpectedly accepted' then raise; end if;
+    if position('shared member fields cannot be changed outside current session scope' in sqlerrm)=0 then raise; end if;
+  end;
+  if (select to_jsonb(m) from climate_vote.assembly_member m
+       where m.id='91200000-0000-0000-0000-000000000600') is distinct from v_member_before
+     or (select to_jsonb(ta) from climate_vote.team_assignment ta
+          where ta.id=v_current_assignment) is distinct from v_current_assignment_before
+     or (select to_jsonb(ta) from climate_vote.team_assignment ta
+          where ta.id=v_shared_assignment) is distinct from v_shared_assignment_before
+     or (select count(*) from climate_vote.attendance_audit_log)<>v_audit_count then
+    raise exception 'rejected shared member mutation changed either session or audit state';
+  end if;
+  delete from climate_vote.team_assignment where id=v_shared_assignment;
   perform climate_vote.attendance_member_save_v2(v_team_token,'0912-deliberation',
     v_current_assignment,'P1A-CURRENT','Current synthetic member updated',null,true);
   select attendance_pin_hash into v_pin_before from climate_vote.team

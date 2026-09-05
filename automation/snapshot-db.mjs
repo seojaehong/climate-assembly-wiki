@@ -26,8 +26,8 @@ const SNAPSHOT_AUDIT_FIELDS = new Set([
 const SNAPSHOT_INTEGRITY_FIELDS = new Set(['algorithm', 'target', 'digest']);
 const DECLARED_PLATFORM_COUNT_FIELDS = new Set(DECLARED_PLATFORM_COUNTS);
 const ARCHIVE_RESTORE_ORDER = [
-  'submission',
   'submission_item',
+  'submission',
   'issue',
   'issue_link',
   'result_page',
@@ -790,6 +790,19 @@ begin
   ) then
     raise exception 'snapshot restore rehearsal requires the enabled submission item lock guard';
   end if;
+  if not exists (
+    select 1
+    from pg_catalog.pg_constraint
+    where conrelid = 'climate_vote.submission_item'::regclass
+      and conname = 'submission_item_submission_id_fkey'
+      and contype = 'f'
+      and confrelid = 'climate_vote.submission'::regclass
+      and convalidated
+      and not condeferrable
+      and not condeferred
+  ) then
+    raise exception 'snapshot restore rehearsal requires the validated non-deferrable submission item foreign key';
+  end if;
 end
 $restore_guard$;
 
@@ -811,24 +824,12 @@ select id, session_id, name, join_code, org_id
 from jsonb_to_recordset(${sqlJson(fixtures.team)})
   as x(id uuid, session_id uuid, name text, join_code text, org_id uuid);
 
-${restoreInsertSql('submission', payload.submission)}
-alter table climate_vote.submission_item disable trigger submission_item_lock_guard;
+alter table climate_vote.submission_item
+  alter constraint submission_item_submission_id_fkey
+  deferrable initially deferred;
 ${restoreInsertSql('submission_item', payload.submission_item)}
-alter table climate_vote.submission_item enable trigger submission_item_lock_guard;
-do $restore_trigger$
-begin
-  if not exists (
-    select 1
-    from pg_catalog.pg_trigger
-    where tgrelid = 'climate_vote.submission_item'::regclass
-      and tgname = 'submission_item_lock_guard'
-      and not tgisinternal
-      and tgenabled = 'O'
-  ) then
-    raise exception 'snapshot restore rehearsal did not restore the submission item lock guard';
-  end if;
-end
-$restore_trigger$;
+${restoreInsertSql('submission', payload.submission)}
+set constraints submission_item_submission_id_fkey immediate;
 ${ARCHIVE_RESTORE_ORDER.slice(2).map((name) => restoreInsertSql(name, payload[name])).join('\n')}
 
 do $restore_counts$
@@ -856,6 +857,29 @@ do $restore_rollback$
 begin
   if exists (${targetPresenceQuery}) then
     raise exception 'snapshot restore rehearsal rollback failed';
+  end if;
+  if not exists (
+    select 1
+    from pg_catalog.pg_trigger
+    where tgrelid = 'climate_vote.submission_item'::regclass
+      and tgname = 'submission_item_lock_guard'
+      and not tgisinternal
+      and tgenabled = 'O'
+  ) then
+    raise exception 'snapshot restore rehearsal rollback did not keep the submission item lock guard enabled';
+  end if;
+  if not exists (
+    select 1
+    from pg_catalog.pg_constraint
+    where conrelid = 'climate_vote.submission_item'::regclass
+      and conname = 'submission_item_submission_id_fkey'
+      and contype = 'f'
+      and confrelid = 'climate_vote.submission'::regclass
+      and convalidated
+      and not condeferrable
+      and not condeferred
+  ) then
+    raise exception 'snapshot restore rehearsal rollback did not restore the submission item foreign key';
   end if;
 end
 $restore_rollback$;

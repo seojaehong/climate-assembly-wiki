@@ -35,11 +35,17 @@ fi
 target_files=(
   "supabase/migrations/platform_p1a_0912_event_access.sql"
   "supabase/migrations/platform_p2a_0912_token_only_activation.sql"
+  "supabase/rollbacks/platform_p1_BEFORE.sql"
   "supabase/rollbacks/platform_p1a_0912_event_access_BEFORE.sql"
   "supabase/rollbacks/platform_p2a_0912_token_only_activation_BEFORE.sql"
   "supabase/verify/platform_p1a_0912_event_access.sql"
   "supabase/verify/platform_p2a_0912_token_only_activation.sql"
   "supabase/verify/platform_p2a_0912_token_only_activation_rollback.sql"
+  "supabase/verify/design_provisioning_post_apply.sql"
+  "supabase/verify/platform_audit_history_snapshot.sql"
+  "supabase/verify/platform_audit_post_apply.sql"
+  "supabase/verify/platform_audit_test.sql"
+  "supabase/verify/driver_pass1.sql"
   "automation/tests/fixtures/0912-p1a-driver.sql"
   "automation/tests/fixtures/0912-p1a-activation-driver.sql"
   "automation/tests/fixtures/0912-p1a-seed.sql"
@@ -163,9 +169,12 @@ docker exec "$container" psql -U postgres -d verify \
   "create role anon nologin; create role authenticated nologin; create role service_role nologin; create publication supabase_realtime; alter database verify set search_path=public,extensions,climate_vote;"
 
 docker cp supabase/migrations/. "${container}:/tmp/"
+docker cp supabase/rollbacks/platform_p1_BEFORE.sql \
+  "${container}:/tmp/platform_p1_BEFORE.sql"
 docker cp supabase/rollbacks/platform_p1a_0912_event_access_BEFORE.sql \
   "${container}:/tmp/platform_p1a_0912_event_access_BEFORE.sql"
 docker cp supabase/verify/00_prelude.sql "${container}:/tmp/00_prelude.sql"
+docker cp supabase/verify/driver_pass1.sql "${container}:/tmp/driver_pass1.sql"
 docker cp supabase/verify/platform_p1a_0912_event_access.sql \
   "${container}:/tmp/platform_p1a_0912_event_access.verify.sql"
 docker cp automation/tests/fixtures/0912-p1a-seed.sql \
@@ -178,6 +187,14 @@ docker cp supabase/verify/platform_p2a_0912_token_only_activation.sql \
   "${container}:/tmp/platform_p2a_0912_token_only_activation.verify.sql"
 docker cp supabase/verify/platform_p2a_0912_token_only_activation_rollback.sql \
   "${container}:/tmp/platform_p2a_0912_token_only_activation.rollback.verify.sql"
+docker cp supabase/verify/design_provisioning_post_apply.sql \
+  "${container}:/tmp/design_provisioning_post_apply.sql"
+docker cp supabase/verify/platform_audit_history_snapshot.sql \
+  "${container}:/tmp/platform_audit_history_snapshot.sql"
+docker cp supabase/verify/platform_audit_post_apply.sql \
+  "${container}:/tmp/platform_audit_post_apply.sql"
+docker cp supabase/verify/platform_audit_test.sql \
+  "${container}:/tmp/platform_audit_test.sql"
 docker cp automation/tests/fixtures/0912-p1a-activation-driver.sql \
   "${container}:/tmp/0912-p1a-activation-driver.sql"
 docker cp automation/tests/fixtures/0912-seed-cli-prelude.sql \
@@ -208,6 +225,38 @@ docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -Atq -c \
   "delete from climate_vote.workshop_join_exchange_attempt
     where device_id='91200000-0000-0000-0000-000000000099';" >/dev/null
 echo "concurrent_join_rate_limit=pass recorded_failures=5"
+
+# Clone the quiet P1a state and prove the complete rollback path restores the
+# exact legacy global constraint before removing org_id. The primary database
+# remains available for the independent P1a rollback/race checks below.
+docker exec "$container" createdb -U postgres --template=verify verify_p1_rollback
+docker exec "$container" psql -U postgres -d verify_p1_rollback \
+  -v ON_ERROR_STOP=1 -f /tmp/platform_p1a_0912_event_access_BEFORE.sql >/dev/null
+docker exec "$container" psql -U postgres -d verify_p1_rollback \
+  -v ON_ERROR_STOP=1 -f /tmp/platform_p1_BEFORE.sql >/dev/null
+p1_rollback_clean_state="$(docker exec "$container" psql -U postgres \
+  -d verify_p1_rollback -v ON_ERROR_STOP=1 -Atq -c \
+  "select case when
+      not exists(select 1 from information_schema.columns
+        where table_schema='climate_vote' and table_name='assembly_member'
+          and column_name='org_id')
+      and to_regclass('climate_vote.org') is null
+      and to_regclass('climate_vote.assembly_member_org_official_id_uniq') is null
+      and exists(
+        select 1
+          from pg_constraint c
+          join pg_index i on i.indexrelid=c.conindid
+          join pg_attribute a
+            on a.attrelid=c.conrelid and a.attname='official_id' and not a.attisdropped
+         where c.conrelid='climate_vote.assembly_member'::regclass
+           and c.conname='assembly_member_official_id_key'
+           and c.contype='u' and c.convalidated
+           and c.conkey=array[a.attnum]::smallint[]
+           and i.indisunique and i.indisvalid and i.indisready)
+    then 1 else 0 end;")"
+test "$p1_rollback_clean_state" = "1"
+docker exec "$container" dropdb -U postgres --force verify_p1_rollback
+echo "p1_rollback_clean_path=pass global_unique=restored"
 
 # With no persisted event activity, the reviewed rollback must be complete.
 docker exec "$container" psql -U postgres -d verify \
@@ -271,6 +320,28 @@ echo "activation_rollback_guard=pass unacknowledged_execution=blocked"
 docker exec "$container" psql -U postgres -d verify \
   -v ON_ERROR_STOP=1 -v p1a_throwaway_fixture=on \
   -f /tmp/0912-p1a-activation-driver.sql
+
+# The activation driver runs the read-only P3/P4 post-apply checks immediately
+# after their migrations and before the post-P4 legacy-access negative check.
+echo "p3_p4_read_only_post_apply=pass production_mutations=0"
+
+# Exercise P4's mutating behavior suite in an independent disposable database
+# with the A6 fixture it was designed for. The full activation database remains
+# untouched for the P1a/P2a concurrency and rollback checks that follow.
+docker exec "$container" createdb -U postgres verify_p4_behavior
+docker exec "$container" psql -U postgres -d verify_p4_behavior \
+  -v ON_ERROR_STOP=1 -c \
+  "create publication supabase_realtime; alter database verify_p4_behavior set search_path=public,extensions,climate_vote;" >/dev/null
+docker exec "$container" psql -U postgres -d verify_p4_behavior \
+  -v ON_ERROR_STOP=1 -v verify_function_bodies=on -f /tmp/driver_pass1.sql >/dev/null
+docker exec "$container" psql -U postgres -d verify_p4_behavior \
+  -v ON_ERROR_STOP=1 -f /tmp/platform_p3_design_provisioning.sql >/dev/null
+docker exec "$container" psql -U postgres -d verify_p4_behavior \
+  -v ON_ERROR_STOP=1 -f /tmp/platform_p4_audit_log.sql >/dev/null
+docker exec "$container" psql -U postgres -d verify_p4_behavior \
+  -v ON_ERROR_STOP=1 -f /tmp/platform_audit_test.sql >/dev/null
+docker exec "$container" dropdb -U postgres --force verify_p4_behavior
+echo "p4_behavior_verification=pass database=disposable-clone"
 
 # The activation verifier itself is transactional. Exercise the remaining
 # multi-connection invariants against the final reapplied P2a state before this
@@ -417,8 +488,9 @@ test "$shared_token_count_after" = "$shared_token_count_before"
 echo "concurrent_shared_hq_throttle=pass recorded_failures=5 minted_tokens=0"
 
 # Public failures against a known account name cannot block a correct login.
-# Once authenticated, concurrent wrong-current-password attempts are audited,
-# and the correct credential must still rotate the secret and revoke the bearer.
+# Once authenticated, concurrent wrong-current-password attempts share a
+# separate actor budget. The correct credential remains blocked until that
+# private budget expires, then rotates the secret and revokes every bearer.
 docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -Atq -c \
   "insert into climate_vote.attendance_secret(secret_key,secret_hash)
      values('hq:Concurrent rate operator',extensions.crypt('Concurrent named password',extensions.gen_salt('bf',4)))
@@ -427,7 +499,8 @@ docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -Atq -c \
      values('Concurrent rate operator','synthetic',true,true)
      on conflict(name) do update set active=true,must_change_password=true;
    delete from climate_vote.attendance_auth_attempt
-     where scope='hq' and subject='Concurrent rate operator';
+     where scope='hq' and subject in (
+       'Concurrent rate operator','password-change:Concurrent rate operator');
    insert into climate_vote.attendance_auth_attempt(scope,subject,succeeded,source_hash)
      select 'hq','Concurrent rate operator',false,repeat('c',64)
        from generate_series(1,5);" >/dev/null
@@ -458,16 +531,40 @@ for suffix in $(seq 1 6); do
 done
 for pid in "${named_hq_pids[@]}"; do wait "$pid"; done
 named_incorrect_results=0
+named_rate_limited_results=0
 for result_file in "$concurrency_dir"/named-hq-*.out; do
   if grep -q 'current_password_incorrect' "$result_file"; then
     ((named_incorrect_results+=1))
+  fi
+  if grep -q 'rate_limited' "$result_file"; then
+    ((named_rate_limited_results+=1))
   fi
 done
 named_password_failures="$(docker exec "$container" psql -U postgres -d verify \
   -v ON_ERROR_STOP=1 -Atq -c \
   "select count(*) from climate_vote.attendance_auth_attempt
-    where scope='hq' and subject='Concurrent rate operator' and not succeeded
+    where scope='hq' and subject='password-change:Concurrent rate operator'
+      and not succeeded
       and source_hash is null;")"
+named_blocked_recovery_result="$(docker exec "$container" psql -U postgres -d verify \
+  -v ON_ERROR_STOP=1 -Atq -c \
+  "select climate_vote.hq_change_password('${named_hq_token}',
+    'Concurrent named password','Concurrent replacement password');")"
+grep -q '"error": "rate_limited"' <<<"$named_blocked_recovery_result"
+named_blocked_state_ok="$(docker exec "$container" psql -U postgres -d verify \
+  -v ON_ERROR_STOP=1 -Atq -c \
+  "select case when
+      (select extensions.crypt('Concurrent named password',secret_hash)=secret_hash
+         from climate_vote.attendance_secret where secret_key='hq:Concurrent rate operator')
+      and (select revoked_at is null from climate_vote.attendance_auth_session
+        where token_hash=encode(extensions.digest('${named_hq_token}','sha256'),'hex'))
+    then 1 else 0 end;")"
+test "$named_blocked_state_ok" = "1"
+docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -Atq -c \
+  "update climate_vote.attendance_auth_attempt
+      set attempted_at=now()-interval '16 minutes'
+    where scope='hq' and subject='password-change:Concurrent rate operator'
+      and not succeeded;" >/dev/null
 named_recovery_result="$(docker exec "$container" psql -U postgres -d verify \
   -v ON_ERROR_STOP=1 -Atq -c \
   "select climate_vote.hq_change_password('${named_hq_token}',
@@ -486,8 +583,9 @@ named_state_ok="$(docker exec "$container" psql -U postgres -d verify \
         where action='hq_password_changed' and actor_label='Concurrent rate operator')
           =${named_workshop_audit_before}+1
     then 1 else 0 end;")"
-test "$named_incorrect_results" = "6"
-test "$named_password_failures" = "6"
+test "$named_incorrect_results" = "5"
+test "$named_rate_limited_results" = "1"
+test "$named_password_failures" = "5"
 test "$named_state_ok" = "1"
 if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -Atq -c \
   "select climate_vote.attendance_token_row('${named_hq_token}');" \
@@ -496,7 +594,7 @@ if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -Atq -
   exit 1
 fi
 grep -q 'expired or revoked' "$concurrency_dir/named-old-token.out"
-echo "concurrent_named_password_recovery=pass account_poison_failures=5 incorrect=6 recovery=true old_bearer_revoked=true"
+echo "concurrent_named_password_recovery=pass account_poison_failures=5 incorrect=5 rate_limited=1 recovery_after_window=true old_bearer_revoked=true"
 
 # A staff close that owns the ballot row lock must win over a concurrent public
 # submit. The submit waits, rechecks the committed status, and writes no row.
@@ -562,6 +660,40 @@ ballot_race_state="$(docker exec "$container" psql -U postgres -d verify \
 test "$ballot_race_state" = "1"
 echo "ballot_close_race=pass close_wins=true responses=0"
 
+# P1 rollback must refuse before changing any schema when tenant-scoped rows
+# cannot satisfy the legacy global official_id invariant. Exercise this after
+# P1b removed the global constraint and before the CLI-only database reset.
+docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -Atq -c \
+  "insert into climate_vote.org(id,slug,name,status)
+     values('91200000-0000-0000-0000-000000000901','p1-rollback-org',
+       'P1 rollback verifier','active');
+   insert into climate_vote.assembly_member(id,official_id,name,active,source_hash,org_id)
+     values
+       ('91200000-0000-0000-0000-000000000902','P1-ROLLBACK-DUPLICATE',
+        'P1 rollback member A',true,'verify','91200000-0000-0000-0000-000000000001'),
+       ('91200000-0000-0000-0000-000000000903','P1-ROLLBACK-DUPLICATE',
+        'P1 rollback member B',true,'verify','91200000-0000-0000-0000-000000000901');" >/dev/null
+if p1_rollback_output="$(docker exec "$container" psql -U postgres -d verify \
+  -v ON_ERROR_STOP=1 -f /tmp/platform_p1_BEFORE.sql 2>&1)"; then
+  echo "P1 rollback unexpectedly removed tenant boundaries with global duplicates" >&2
+  exit 1
+fi
+grep -q "P1 rollback refused: assembly member official ids are not globally unique" \
+  <<<"$p1_rollback_output"
+p1_rollback_state="$(docker exec "$container" psql -U postgres -d verify \
+  -v ON_ERROR_STOP=1 -Atq -c \
+  "select case when
+      exists(select 1 from information_schema.columns
+        where table_schema='climate_vote' and table_name='assembly_member'
+          and column_name='org_id')
+      and to_regclass('climate_vote.assembly_member_org_official_id_uniq') is not null
+      and to_regclass('climate_vote.org') is not null
+      and (select count(*) from climate_vote.assembly_member
+        where official_id='P1-ROLLBACK-DUPLICATE')=2
+    then 1 else 0 end;")"
+test "$p1_rollback_state" = "1"
+echo "p1_rollback_duplicate_guard=pass schema_state=preserved"
+
 # Execute the actual operational CLI output in a third empty database. The
 # generated capability values stay in a private temporary file and are never
 # printed to stdout, the report, or the repository.
@@ -621,14 +753,14 @@ seed_code_digest_after="$(docker exec "$container" psql -U postgres -d verify -A
 test "$seed_code_digest_before" = "$seed_code_digest_after"
 echo "seed_cli_sql=syntax-and-success-pass partial_tenancy=fail-closed capability_values_logged=0"
 
-generated_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+generated_at="$("$node_bin" -p 'new Date().toISOString()')"
 elapsed_seconds=$((SECONDS - started_seconds))
 target_manifest_after="$(compute_target_manifest)"
 if [[ "$target_manifest_after" != "$target_manifest" ]]; then
   echo "verification refused: a manifest target changed during execution" >&2
   exit 1
 fi
-report="$(printf '{"schemaVersion":1,"reportId":"0912-p1a-p2a-postgres-verification","generatedAt":"%s","sourceCommit":"%s","sourceTreeClean":%s,"releaseMode":%s,"status":"pass","database":"disposable-postgres-16","checkFunctionBodies":true,"staticContractVerification":"passed","migrationOrderVerification":"passed","behaviorVerification":"passed","concurrentJoinRateLimitVerification":"passed","concurrentTeamDeviceLimitVerification":"passed","concurrentActiveRoundCreationVerification":"passed","concurrentSharedHqThrottleVerification":"passed","concurrentNamedPasswordRecoveryVerification":"passed","ballotCloseRaceVerification":"passed","rollbackWithoutActivity":"passed","rollbackWithActivity":"refused","canvasScopeRollbackGuardVerification":"passed","tokenOnlyActivationVerification":"passed","legacyPermissionNegativeVerification":"passed","legacyCrossSessionDeadlineNegativeVerification":"passed","predictableJoinCodeExclusionVerification":"passed","postP4LegacyNegativeVerification":"passed","activationRollbackGuardVerification":"passed","activationRollbackExerciseVerification":"passed","activationReapplyVerification":"passed","seedCliSqlSyntaxAndSuccessVerification":"passed","seedCliPartialTenancyFailClosedVerification":"passed","seedCliCapabilityValuesLogged":0,"seedCliHostTemporaryFileMode":"%s","seedCliHostTemporaryFileRemovedBeforeExecution":true,"seedCliContainerCopyRemovedWithCreatedContainer":true,"targetManifestCount":%d,"targetManifestSha256":"%s","targetManifestVerifiedAtCompletion":true,"targetManifest":%s,"safety":{"productionDatabaseConnectionCount":0,"productionMutationCount":0},"elapsedSeconds":%d}' \
+report="$(printf '{"schemaVersion":1,"reportId":"0912-p1a-p2a-postgres-verification","generatedAt":"%s","sourceCommit":"%s","sourceTreeClean":%s,"releaseMode":%s,"status":"pass","database":"disposable-postgres-16","checkFunctionBodies":true,"staticContractVerification":"passed","migrationOrderVerification":"passed","behaviorVerification":"passed","concurrentJoinRateLimitVerification":"passed","concurrentTeamDeviceLimitVerification":"passed","concurrentActiveRoundCreationVerification":"passed","concurrentSharedHqThrottleVerification":"passed","concurrentNamedPasswordRecoveryVerification":"passed","ballotCloseRaceVerification":"passed","rollbackWithoutActivity":"passed","rollbackWithActivity":"refused","canvasScopeRollbackGuardVerification":"passed","tokenOnlyActivationVerification":"passed","legacyPermissionNegativeVerification":"passed","legacyCrossSessionDeadlineNegativeVerification":"passed","predictableJoinCodeExclusionVerification":"passed","postP4LegacyNegativeVerification":"passed","p3ReadOnlyPostApplyVerification":"passed","p4ReadOnlyPostApplyVerification":"passed","p4LegacyHistoryPreservationVerification":"passed","p4BehaviorVerification":"passed","activationRollbackGuardVerification":"passed","activationRollbackExerciseVerification":"passed","activationReapplyVerification":"passed","seedCliSqlSyntaxAndSuccessVerification":"passed","seedCliPartialTenancyFailClosedVerification":"passed","seedCliCapabilityValuesLogged":0,"seedCliHostTemporaryFileMode":"%s","seedCliHostTemporaryFileRemovedBeforeExecution":true,"seedCliContainerCopyRemovedWithCreatedContainer":true,"targetManifestCount":%d,"targetManifestSha256":"%s","targetManifestVerifiedAtCompletion":true,"targetManifest":%s,"safety":{"productionDatabaseConnectionCount":0,"productionMutationCount":0},"elapsedSeconds":%d}' \
   "$generated_at" "$source_commit" "$source_tree_clean" "$release_mode" "$seed_sql_mode" \
   "$target_manifest_count" "$target_manifest_sha256" "$target_manifest" "$elapsed_seconds")"
 echo "$report"

@@ -67,7 +67,7 @@ const REQUIRED_RPC_CONTRACTS = Object.freeze({
   },
   workshop_hq_logout_v2: {
     requestFields: ['p_token'],
-    successResponse: 'null',
+    successResponse: 'true',
   },
 });
 
@@ -641,7 +641,10 @@ async function runBrowserRehearsal(options, fixture, fixturePath, fixtureSha256)
       });
     }
 
-    return json(route, { code: scenario.syntheticTransportErrorCode, message: 'synthetic logout transport failure' }, 503);
+    if (attempt === 1) {
+      return json(route, { code: scenario.syntheticTransportErrorCode, message: 'synthetic logout transport failure' }, 503);
+    }
+    return json(route, true);
   };
 
   let browser;
@@ -888,6 +891,26 @@ async function runBrowserRehearsal(options, fixture, fixturePath, fixtureSha256)
       };
     });
 
+    await check('logout-success-clears-capability', '서버가 true로 폐기를 확인한 뒤에만 본부 토큰을 지운다', async () => {
+      await page.getByRole('button', { name: '로그아웃', exact: true }).click();
+      await page.getByRole('button', { name: '본부 로그인', exact: true }).waitFor({ timeout: options.timeoutMs });
+      const cleared = await page.evaluate(({ capabilityKey, actorKey }) => (
+        sessionStorage.getItem(capabilityKey) === null
+          && sessionStorage.getItem(actorKey) === null
+      ), {
+        capabilityKey: fixture.storage.capabilityStorageKey,
+        actorKey: fixture.storage.actorStorageKey,
+      });
+      assert(cleared, 'successful logout kept the local HQ capability or actor');
+      assert(mutationBodies.workshop_hq_logout_v2.length === 2, 'logout RPC request count was not two');
+      return {
+        requestCount: 2,
+        response: { httpStatus: 200, value: true },
+        localCapabilityCleared: true,
+        actorCleared: true,
+      };
+    });
+
     await check('deny-by-default-network', 'Supabase HTTP와 WebSocket을 deny-by-default로 격리해 운영 DB mutation 0을 유지한다', async () => {
       const webSocketAttemptCount = await page.evaluate(() => window.__hqRehearsalWebSocketAttempts?.length ?? 0);
       observedWebSocketAttemptCount = webSocketAttemptCount;
@@ -970,6 +993,7 @@ async function runBrowserRehearsal(options, fixture, fixturePath, fixtureSha256)
       actorLabel: fixture.session.operatorActorLabel,
       capabilitySource: 'runtime-generated',
       capabilityPersistedAfterLogoutFailure: checks.some((entry) => entry.id === 'logout-failure-retains-capability' && entry.status === 'pass'),
+      capabilityClearedAfterLogoutSuccess: checks.some((entry) => entry.id === 'logout-success-clears-capability' && entry.status === 'pass'),
     },
     rpcContracts: fixture.rpcContracts,
     observations: {
@@ -989,6 +1013,7 @@ async function runBrowserRehearsal(options, fixture, fixturePath, fixtureSha256)
       staleConflictReloaded: checks.some((entry) => entry.id === 'stale-conflict-recovery' && entry.status === 'pass'),
       exactSetClearConflictPreservedRows: checks.some((entry) => entry.id === 'clear-exact-set-conflict' && entry.status === 'pass'),
       logoutFailurePreservedCapability: checks.some((entry) => entry.id === 'logout-failure-retains-capability' && entry.status === 'pass'),
+      logoutSuccessClearedCapability: checks.some((entry) => entry.id === 'logout-success-clears-capability' && entry.status === 'pass'),
     },
     checks,
     findings,

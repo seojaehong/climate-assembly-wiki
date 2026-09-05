@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "policyId": "0912-evidence-trust",
+  "status": "unconfigured",
+  "environment": {
+    "id": "climate-assembly-production",
+    "webOrigin": "https://climate-assembly.org",
+    "supabaseProjectRef": "pleyuknjnprsckssxvrh",
+    "databaseTlsSpkiSha256": null,
+    "orgId": null,
+    "assemblyId": null,
+    "sessionId": null,
+    "sessionSlug": "0912-deliberation"
+  },
+  "keyIds": {
+    "operator": null,
+    "backup": null,
+    "restore": null
+  }
+}

@@ -365,7 +365,7 @@ export const MANUAL_ACCESSIBILITY_TARGET_PATHS = [
   'src/styles',
 ];
 
-function gitTargetState(repoRoot, commitSha) {
+export function readManualAccessibilityTargetState(repoRoot, commitSha) {
   const ancestor = spawnSync('git', ['merge-base', '--is-ancestor', commitSha, 'HEAD'], {
     cwd: repoRoot,
     encoding: 'utf8',
@@ -426,7 +426,7 @@ export function runManualAccessibilityEvidenceCli(args) {
       throw new Error('Passed evidence requires approved origin and repository verification');
     }
     const targetState = repoRoot
-      ? gitTargetState(repoRoot, evidence.commitSha)
+      ? readManualAccessibilityTargetState(repoRoot, evidence.commitSha)
       : { isCommitAncestor: true, changedPaths: [], commitCommittedAt: null };
     validateManualAccessibilityTarget(evidence, { expectedBaseUrl, ...targetState });
     process.stdout.write(`${JSON.stringify(summary)}\n`);

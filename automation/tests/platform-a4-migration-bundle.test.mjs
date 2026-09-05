@@ -219,7 +219,9 @@ test('A4 SQL draft keeps preflight and post-apply verification read-only', () =>
   expect(postApply).toContain('foreign key contract is unsafe');
   expect(postApply).toContain('extensions.gen_random_bytes(4)');
   expect(migration).toContain("v_code !~ '^0912(0[1-9]|1[0-5])$'");
+  expect(migration).toContain("v_code <> '000000'");
   expect(postApply).toContain("v_code !~ ''^0912(0[1-9]|1[0-5])$''");
+  expect(postApply).toContain("v_code <> ''000000''");
   expect(postApply).toContain('staffGrantActive');
 });
 

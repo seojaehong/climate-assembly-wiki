@@ -34,7 +34,7 @@
 - 기존 live table을 새로 만들지 않고, 승인된 migration이 `session`의 필수 column과 제약을 명시적으로 재확인한다.
 - 필수 저장값은 `id`, `slug`, `title`, `status`, `assembly_id`, `ordinal`, `held_on`, `org_id`다.
 - slug는 기존 전역 unique 계약을 유지한다. assembly별 중복 허용으로 바꾸는 것은 기존 URL·조회 계약 변경이므로 이 제안 범위에 넣지 않는다.
-- title·slug·assembly_id·ordinal·held_on·org_id를 NOT NULL로 바꾸기 전 count-only preflight와 승인된 backfill이 필요하다. 기존 행을 자동 추정해 채우지 않는다.
+- 운영 정본 순서에서는 P1b가 `org_id`를 먼저 backfill하고 NOT NULL로 전환한다. A4 post-apply verifier는 이 선행 불변식을 필수로 확인하며, P1b 전의 단독 P3 적용을 성공 증거로 인정하지 않는다. title·slug·assembly_id·ordinal·held_on을 추가로 NOT NULL로 바꾸기 전에는 count-only preflight와 승인된 backfill이 필요하고, 기존 행을 자동 추정해 채우지 않는다.
 - `(assembly_id, ordinal)` unique를 추가해 한 공론화 안에서 회차 순서를 안정적으로 식별한다.
 - preflight는 `readyForAdditiveMigration`과 `readyForActivation`을 분리한다. 전자는 nullable column·검증 가능한 제약을 추가할 수 있다는 뜻이고, 후자는 session 필수값과 team ordinal mapping·부모/org 일치가 모두 끝나 RPC를 열 수 있다는 뜻이다. 어느 값도 production 적용 승인을 대신하지 않는다.
 

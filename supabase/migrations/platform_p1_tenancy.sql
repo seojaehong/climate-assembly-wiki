@@ -17,7 +17,10 @@
 --   3. 기존 위계·명부·무기명 테이블에 org_id uuid nullable 부착(additive).
 --   4. 주요 위계 테이블(assembly·session·topic·submission·ballot)에 staff 세션용 RLS 테넌트 정책.
 --
--- SAFETY: 순수 additive. 기존 테이블 컬럼/데이터 변경 없음(신규 nullable 컬럼·신규 테이블·신규 함수만).
+-- SAFETY: 데이터 행은 변경하지 않는 스키마 전환이다. 전체 DDL을 한
+--         트랜잭션으로 적용하고, assembly_member.official_id의 기존 전역
+--         UNIQUE는 backfill/NOT NULL 전환이 끝나는 P1b까지 유지한다.
+--         이 단계에서는 org-scoped partial UNIQUE를 먼저 추가하기만 한다.
 --         기존 RPC/트리거/정책은 손대지 않음 → /mod·/b·/hq·출석 경로 동작 불변.
 --         org_id 는 전부 nullable(기본값 없음) → 기존 행에 NULL 로 남고 어떤 조회도 깨지지 않음.
 --         ★ RLS 테넌트 정책은 **설계상 휴면 상태**다. 기존 테이블은 이미
@@ -32,6 +35,8 @@
 --   POST /rest/v1/rpc/org_of_code {"p_join_code":"<유효 join_code>"} → 200 (org_id 또는 null) = 적용됨
 --   PGRST202 + message 에 climate_vote.org_of_code → 미적용
 --   RLS 정책은 anon 으로 검증 불가(정책은 staff authenticated 전용·현재 휴면). 활성화는 §5 참조.
+
+begin;
 
 -- ── 1. 테넌시 코어 (신설) ─────────────────────────────────────────────
 
@@ -100,6 +105,53 @@ alter table climate_vote.team             add column if not exists org_id uuid r
 -- 로스터/PII군: 직접 org_id.
 alter table climate_vote.assembly_member  add column if not exists org_id uuid references climate_vote.org(id);
 alter table climate_vote.team_assignment  add column if not exists org_id uuid references climate_vote.org(id);
+
+-- official_id는 기관이 발급한 번호이므로 최종 고유 범위는 (org_id, official_id)다.
+-- 다만 이 P1 단계에서 전역 UNIQUE를 없애면 org_id=NULL인 legacy RPC 행이
+-- 중복될 수 있고 P1b backfill이 중단된다. 따라서 partial index를 먼저
+-- 만들되, 전역 constraint는 P1b의 backfill + NOT NULL 완료 후에만 제거한다.
+do $official_id_global_guard$
+begin
+  if not exists (
+    select 1
+      from pg_constraint c
+      join pg_index i on i.indexrelid=c.conindid
+      join pg_attribute a
+        on a.attrelid=c.conrelid and a.attname='official_id' and not a.attisdropped
+     where c.conrelid='climate_vote.assembly_member'::regclass
+       and c.conname='assembly_member_official_id_key'
+       and c.contype='u' and c.convalidated
+       and c.conkey=array[a.attnum]::smallint[]
+       and i.indisunique and i.indisvalid and i.indisready
+  ) then
+    raise exception 'P1 refused: legacy global official id constraint is not valid';
+  end if;
+end $official_id_global_guard$;
+create unique index if not exists assembly_member_org_official_id_uniq
+  on climate_vote.assembly_member(org_id, official_id)
+  where org_id is not null;
+do $official_id_org_guard$
+begin
+  if not exists (
+    select 1
+      from pg_index i
+      join pg_class c on c.oid=i.indexrelid
+      join pg_namespace n on n.oid=c.relnamespace
+      join pg_am am on am.oid=c.relam
+     where n.nspname='climate_vote'
+       and c.relname='assembly_member_org_official_id_uniq'
+       and i.indrelid='climate_vote.assembly_member'::regclass
+       and i.indisunique and i.indisvalid and i.indisready
+       and am.amname='btree' and i.indnkeyatts=2 and i.indnatts=2
+       and pg_get_indexdef(i.indexrelid,1,true)='org_id'
+       and pg_get_indexdef(i.indexrelid,2,true)='official_id'
+       and regexp_replace(
+         lower(pg_get_expr(i.indpred,i.indrelid,false)),
+         '[[:space:]]+',' ','g')='(org_id is not null)'
+  ) then
+    raise exception 'P1 refused: organization-scoped official id index is not valid';
+  end if;
+end $official_id_org_guard$;
 
 -- 출석군(5): attendance / attendance_audit_log / attendance_auth_session /
 --            attendance_auth_attempt / round_attendance_snapshot.
@@ -299,3 +351,5 @@ grant execute on function
   climate_vote.org_of_uid(),
   climate_vote.org_of_token(text)
 to anon, authenticated;
+
+commit;

@@ -2841,7 +2841,7 @@ returns jsonb language plpgsql security definer
 set search_path = climate_vote, extensions, pg_temp as $fn$
 declare
   v_auth climate_vote.attendance_auth_session; v_name text; v_hash text;
-  v_revoked int;
+  v_revoked int; v_password_failures int; v_failure_subject text;
 begin
   v_auth:=climate_vote.attendance_token_row(p_token);
   if v_auth.scope<>'hq' then raise exception 'HQ authorization required'; end if;
@@ -2854,11 +2854,24 @@ begin
     raise exception '등록된 운영자만 비밀번호를 바꿀 수 있습니다';
   end if;
   perform pg_advisory_xact_lock(hashtextextended('attendance-auth:'||v_name,0));
+  -- Public login failures use the operator name and source buckets. Password
+  -- changes use a separate authenticated-actor bucket so anonymous callers
+  -- cannot lock this path, while a stolen bearer cannot make unlimited bcrypt
+  -- guesses or evade the budget by switching between the actor's sessions.
+  v_failure_subject:='password-change:'||v_name;
+  select count(*) into v_password_failures
+    from climate_vote.attendance_auth_attempt
+   where scope='hq' and subject=v_failure_subject and not succeeded
+     and attempted_at>now()-interval '15 minutes';
+  if v_password_failures>=5 then
+    return jsonb_build_object(
+      'name',v_name,'changed',false,'error','rate_limited');
+  end if;
   select secret_hash into v_hash from climate_vote.attendance_secret
    where secret_key='hq:'||v_name;
   if v_hash is null or crypt(p_current_password,v_hash)<>v_hash then
     insert into climate_vote.attendance_auth_attempt(scope,subject,succeeded)
-    values('hq',v_name,false);
+    values('hq',v_failure_subject,false);
     -- Return a typed failure instead of raising: an exception would roll back
     -- the attempt row and silently disable the rate limit.
     return jsonb_build_object(
@@ -2866,6 +2879,12 @@ begin
   end if;
   if length(p_new_password)<8 then
     raise exception '새 비밀번호는 8자 이상이어야 합니다';
+  end if;
+  -- pgcrypto bcrypt rejects inputs beyond its 72-byte boundary. Validate the
+  -- new credential before crypt() and never echo credential material. The
+  -- current credential intentionally remains unbounded for legacy recovery.
+  if octet_length(p_new_password)>72 then
+    raise exception '새 비밀번호는 UTF-8 기준 72바이트 이하여야 합니다';
   end if;
   if p_new_password=p_current_password then
     raise exception '지금과 다른 비밀번호를 정해 주세요';
@@ -2875,7 +2894,7 @@ begin
    where secret_key='hq:'||v_name;
   update climate_vote.hq_operator set must_change_password=false where name=v_name;
   insert into climate_vote.attendance_auth_attempt(scope,subject,succeeded)
-  values('hq',v_name,true);
+  values('hq',v_failure_subject,true);
   -- The credential is global for this named operator. A successful password
   -- change therefore invalidates every outstanding HQ bearer for that actor,
   -- including the token used for this request and tokens on other devices.
@@ -2976,7 +2995,8 @@ begin
       +get_byte(v_bytes,2)::bigint*256
       +get_byte(v_bytes,3)::bigint;
     v_code:=lpad((v_number%1000000)::text,6,'0');
-    if v_code !~ '^0912(0[1-9]|1[0-5])$'
+    if v_code <> '000000'
+       and v_code !~ '^0912(0[1-9]|1[0-5])$'
        and not (v_code=any(coalesce(p_excluded,array[]::text[])))
        and not exists(select 1 from climate_vote.team where join_code=v_code) then
       return v_code;
@@ -3405,6 +3425,7 @@ set search_path = climate_vote, extensions, pg_temp as $fn$
 declare v_auth climate_vote.attendance_auth_session; v_session climate_vote.session;
   v_assignment climate_vote.team_assignment; v_member climate_vote.assembly_member;
   v_target_team uuid; v_before jsonb; v_after jsonb;
+  v_member_fields_changed boolean; v_shared_member boolean;
 begin
   if p_official_id is null or p_name is null
      or length(trim(p_official_id)) not between 1 and 40
@@ -3443,16 +3464,32 @@ begin
      where m.id=v_assignment.member_id and m.org_id=v_session.org_id for update;
     if not found then raise exception 'member outside attendance scope'; end if;
     v_before:=jsonb_build_object('member',to_jsonb(v_member),'assignment',to_jsonb(v_assignment));
+    v_member_fields_changed:=
+      trim(p_official_id) is distinct from v_member.official_id
+      or trim(p_name) is distinct from v_member.name
+      or (v_auth.scope='hq' and p_active is distinct from v_member.active);
+    if v_member_fields_changed then
+      select exists(
+        select 1 from climate_vote.team_assignment other_assignment
+         where other_assignment.member_id=v_member.id
+           and other_assignment.session_id is distinct from v_session.id
+      ) into v_shared_member;
+      if v_shared_member then
+        raise exception 'shared member fields cannot be changed outside current session scope';
+      end if;
+    end if;
     v_target_team:=case when v_auth.scope='hq' then coalesce(p_team_id,v_assignment.team_id)
                         else v_assignment.team_id end;
     perform 1 from climate_vote.team t
      where t.id=v_target_team and t.session_id=v_session.id
        and t.org_id=v_session.org_id and t.status='active';
     if not found then raise exception 'target team outside attendance scope'; end if;
-    update climate_vote.assembly_member set official_id=trim(p_official_id),
-      name=trim(p_name),active=case when v_auth.scope='hq' then p_active else active end,
-      updated_at=now()
-     where id=v_member.id and org_id=v_session.org_id returning * into v_member;
+    if v_member_fields_changed then
+      update climate_vote.assembly_member set official_id=trim(p_official_id),
+        name=trim(p_name),active=case when v_auth.scope='hq' then p_active else active end,
+        updated_at=now()
+       where id=v_member.id and org_id=v_session.org_id returning * into v_member;
+    end if;
     update climate_vote.team_assignment set team_id=v_target_team,active=p_active,
       updated_at=now()
      where id=v_assignment.id and session_id=v_session.id and org_id=v_session.org_id

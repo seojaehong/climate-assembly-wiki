@@ -1,0 +1,224 @@
+{
+  "schemaVersion": 1,
+  "rehearsalId": "0912-13-field-rehearsal",
+  "generatedAt": "2026-09-05T13:59:48.024Z",
+  "elapsedMs": 18615,
+  "sourceCommit": "9743aaa50393cba5bc9764beb00b61837df5a52d",
+  "sourceTreeClean": true,
+  "target": {
+    "baseUrl": "http://127.0.0.1:4331",
+    "route": "/mod?code=[redacted]"
+  },
+  "fixture": "automation/fixtures/0912-rehearsal.json",
+  "fixtureSha256": "34023adaea6473d6327b2f5b9e6ca08dfb38bce45f8641889e28d1216bfdf40c",
+  "fixtureIdentity": {
+    "schemaVersion": 1,
+    "fixtureId": "0912-field-rehearsal-v1",
+    "classification": "synthetic-no-pii-no-secrets"
+  },
+  "observedConfiguration": {
+    "fixtureId": "0912-field-rehearsal-v1",
+    "session": {
+      "id": "09120000-0000-4000-8000-000000000001",
+      "slug": "0912-deliberation",
+      "title": "9월 현장 리허설 합성 세션"
+    },
+    "team": {
+      "id": "09120000-0000-4000-8000-000000000010",
+      "name": "합성 1조",
+      "tableNo": "T-01"
+    },
+    "topics": [
+      {
+        "id": "09120000-0000-4000-8000-000000000201",
+        "ordinal": 1,
+        "prompt": "합성 꼭지 1",
+        "status": "open"
+      },
+      {
+        "id": "09120000-0000-4000-8000-000000000202",
+        "ordinal": 2,
+        "prompt": "합성 꼭지 2",
+        "status": "draft"
+      },
+      {
+        "id": "09120000-0000-4000-8000-000000000203",
+        "ordinal": 3,
+        "prompt": "합성 꼭지 3",
+        "status": "draft"
+      },
+      {
+        "id": "09120000-0000-4000-8000-000000000204",
+        "ordinal": 4,
+        "prompt": "합성 꼭지 4",
+        "status": "draft"
+      },
+      {
+        "id": "09120000-0000-4000-8000-000000000205",
+        "ordinal": 5,
+        "prompt": "합성 꼭지 5",
+        "status": "draft"
+      },
+      {
+        "id": "09120000-0000-4000-8000-000000000206",
+        "ordinal": 6,
+        "prompt": "합성 꼭지 6",
+        "status": "draft"
+      }
+    ],
+    "rpcAllowlist": {
+      "read": [
+        "mod_session_get",
+        "topic_list_v2",
+        "submission_get_v2",
+        "mod_rounds_v2",
+        "mod_session_teams_v2",
+        "mod_vote_counts_v2",
+        "mod_votes_v2",
+        "ballot_list_v2",
+        "ballot_results_v2"
+      ],
+      "mutation": [
+        "mod_exchange_join_code",
+        "submission_save_v3",
+        "mod_create_round_v3",
+        "mod_set_round_status_v3",
+        "mod_proxy_vote_v3",
+        "mod_log_timer_v2",
+        "ballot_create_v3",
+        "ballot_set_status_v2"
+      ],
+      "legacyRejected": [
+        "mod_join",
+        "topic_list",
+        "submission_save",
+        "submission_get"
+      ]
+    },
+    "flow": {
+      "initialVisibleTopicOrdinal": 1,
+      "nextVisibleTopicOrdinal": 2,
+      "initialDeadlineOffsetMinutes": 40,
+      "warningDeadlineOffsetMinutes": 2
+    }
+  },
+  "status": "pass",
+  "summary": {
+    "checkCount": 11,
+    "passCount": 11,
+    "failCount": 0
+  },
+  "safety": {
+    "liveNetworkRequestCount": 0,
+    "liveDatabaseMutationCount": 0,
+    "capabilityValuesLeakedToDraftQueueOrEvidence": false,
+    "capabilityLeakScan": {
+      "draftQueueEntryCount": 2,
+      "draftQueueMatchCount": 0,
+      "evidenceMatchCount": 0
+    }
+  },
+  "networkContract": {
+    "codeRemovedBeforeExchange": true,
+    "workshopSessionPersisted": true,
+    "codeExchangeCount": 1,
+    "tokenResumeCount": 2,
+    "legacyJoinCodeRpcCount": 0,
+    "tokenContractViolationCount": 0,
+    "unexpectedRpcRequestCount": 0,
+    "unexpectedRpcNames": [],
+    "fixtureMutationRequestCount": 3,
+    "escapedExternalRequestCount": 0,
+    "escapedExternalOrigins": [],
+    "queueSchemaVersion": 2,
+    "occRequestCount": 2,
+    "webSocket": {
+      "stubbed": true,
+      "stubConnectionAttemptCount": 0,
+      "actualNetworkConnectionCount": 0,
+      "blockedExternalConnectionAttemptCount": 0,
+      "blockedExternalOrigins": []
+    }
+  },
+  "checks": [
+    {
+      "id": "0",
+      "title": "접속 권한 — 코드 1회 교환 뒤 토큰으로 재개",
+      "status": "pass",
+      "expected": "코드는 요청 전에 URL·저장소에서 사라지고 새로고침은 mod_session_get으로 복원된다",
+      "observed": "교환 1회 · 토큰 재개 1회 · URL/저장소 코드 0건 · 만료 2026-09-13T13:00:00.000Z"
+    },
+    {
+      "id": "1",
+      "title": "입력 — 꼭지①에 여러 줄",
+      "status": "pass",
+      "expected": "4줄이 칸마다 나뉘고 배지가 「저장 안 함」으로 뒤집힌다",
+      "observed": "칸 1→4개 · 배지 \"저장 안 함\" · 마감 배너 calm"
+    },
+    {
+      "id": "1b",
+      "title": "순차 꼭지 개방 — 기존 작업 맥락 보존",
+      "status": "pass",
+      "expected": "꼭지②와 알림만 추가되고 꼭지① 입력·포커스·스크롤은 그대로다",
+      "observed": "꼭지 1→2개 · 입력 4줄 유지 · 포커스 유지 · 스크롤 변화 0px · \"새 꼭지②가 열렸습니다. 작성 중인 위치는 그대로 유지했습니다. 새 꼭지로 이동\""
+    },
+    {
+      "id": "2",
+      "title": "오프라인 전환 — 계속 타이핑",
+      "status": "pass",
+      "expected": "연결이 끊긴 뒤에도 앞 글이 그대로 있고 새 줄이 더 들어간다",
+      "observed": "onLine=false · 칸 5개 전부 유지 · 초안에 오프라인 줄 포함"
+    },
+    {
+      "id": "3",
+      "title": "오프라인 저장 시도 — 「저장」",
+      "status": "pass",
+      "expected": "배지 「대기 중 · 1번째 시도」 + 본문에 대기 안내",
+      "observed": "큐 v2 · 5줄(baseVersion=0, requestId 보존) · 배지 \"대기 중 · 1번째 시도 (연결되면 자동 저장)\" · 비밀값 0건"
+    },
+    {
+      "id": "4",
+      "title": "탭 종료 → 재접속",
+      "status": "pass",
+      "expected": "새 탭에서 친 글 5줄이 전부 복원된다",
+      "observed": "새 탭 · 5줄 전부 복원 (붙여넣기 4줄 + 오프라인 1줄)"
+    },
+    {
+      "id": "5",
+      "title": "온라인 복귀 — 큐 자동 재전송",
+      "status": "pass",
+      "expected": "재접속한 탭이 스스로 큐를 비우고 배지가 「저장됨」으로 돌아온다",
+      "observed": "1.6초 만에 큐 비움 · requestId/baseVersion 동일 · 서버 v1 5줄 · 배지 \"저장됨 · 09:00\""
+    },
+    {
+      "id": "6",
+      "title": "마감 임박 — 배너 warn + 저장 안내",
+      "status": "pass",
+      "expected": "warn(주황) 구간으로 가고 미저장이 있으면 저장 안내가 함께 뜬다",
+      "observed": "1.2초 만에 새 마감 반영+warn · 잔여 01:59 · \"지금 저장하세요. 저장하지 않은 내용이 있습니다.\""
+    },
+    {
+      "id": "7",
+      "title": "내려받기 — 「전부 받기 (.zip)」 한 번",
+      "status": "pass",
+      "expected": "ZIP 하나가 떨어지고 안에 워드·엑셀·줄글 3개 · 저장한 줄이 그대로 담긴다",
+      "observed": "기후시민회의_조별산출물_합성1조_20260905-2259.zip · 11636B · 3개(docx/csv/txt) · 저장분 5줄 담김 · 미저장 1줄 제외"
+    },
+    {
+      "id": "8",
+      "title": "불변식 — 글자가 사라지지 않았다",
+      "status": "pass",
+      "expected": "처음부터 친 6줄이 순서 그대로 화면에 남아 있다",
+      "observed": "6/6줄 · 순서 일치 · 뭉친 칸 0개"
+    },
+    {
+      "id": "9",
+      "title": "운영 DB 무접촉",
+      "status": "pass",
+      "expected": "가로채기 밖 요청·구형 코드 RPC·토큰 계약 오류가 모두 0건",
+      "observed": "exchange 1 · resume 2 · topic_v2 5 · submission_get_v2 18 · save_v3 2 · WebSocket stub 0회/실제 0건 · 구형/외부 요청 0건"
+    }
+  ],
+  "findings": [],
+  "screenshots": ".tmp-verify/rehearsal-*.png"
+}

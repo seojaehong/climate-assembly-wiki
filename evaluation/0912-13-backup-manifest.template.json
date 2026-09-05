@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "evidenceType": "0912-backup-manifest",
+  "status": "not_run",
+  "releaseRunId": null,
+  "sourceCommit": null,
+  "generatedAt": null,
+  "attestation": null,
+  "producer": "approved-snapshot-workflow",
+  "workflow": {
+    "runId": null,
+    "keyId": null,
+    "executionMode": "approved-service-role-workflow",
+    "hmacVerified": null,
+    "browserExecution": null
+  },
+  "snapshot": {
+    "snapshotId": null,
+    "session": "0912-deliberation",
+    "archiveObjectRef": null,
+    "archiveSizeBytes": null,
+    "archiveSha256": null,
+    "archiveAudit": {
+      "schemaVersion": 2,
+      "event": "platform_snapshot_export",
+      "exportedAt": null,
+      "repository": null,
+      "runId": null,
+      "commitSha": null,
+      "workflowRef": null,
+      "keyId": null,
+      "snapshotId": null,
+      "integrityAlgorithm": "hmac-sha256",
+      "integrityTarget": "legacy+platform+provenance"
+    },
+    "counts": {
+      "submission": null,
+      "submission_item": null,
+      "issue": null,
+      "issue_link": null,
+      "result_page": null,
+      "ballot": null,
+      "ballot_item": null,
+      "ballot_response": null
+    }
+  },
+  "latest": {
+    "capturedAt": null,
+    "checksumSha256": null,
+    "teamCount": null,
+    "itemCount": null,
+    "finalizedSubmissionCount": null
+  }
+}

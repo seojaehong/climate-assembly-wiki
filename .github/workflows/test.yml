@@ -6,6 +6,7 @@ on:
       - 'automation/**'
       - 'docs/platform/**'
       - 'docs/operations/0912-13-runbook.md'
+      - 'docs/operations/0912-evidence-trust-policy.json'
       - 'evaluation/0912*.json'
       - 'evaluation/platform-a2-activation-bundle.json'
       - 'evaluation/platform-a4-migration-bundle.json'
@@ -46,6 +47,8 @@ on:
       - 'scripts/verify-0912-readiness.mjs'
       - 'scripts/verify-0912-release-report.mjs'
       - 'scripts/verify-0912-postgres.sh'
+      - 'scripts/0912-*.mjs'
+      - 'scripts/prepare-0912-*.mjs'
       - 'scripts/verify-workshop-access-contract.mjs'
       - 'scripts/seed-0829-*.mjs'
       - 'scripts/rotate-join-code.mjs'
@@ -62,6 +65,7 @@ on:
       - 'automation/**'
       - 'docs/platform/**'
       - 'docs/operations/0912-13-runbook.md'
+      - 'docs/operations/0912-evidence-trust-policy.json'
       - 'evaluation/0912*.json'
       - 'evaluation/platform-a2-activation-bundle.json'
       - 'evaluation/platform-a4-migration-bundle.json'
@@ -102,6 +106,8 @@ on:
       - 'scripts/verify-0912-readiness.mjs'
       - 'scripts/verify-0912-release-report.mjs'
       - 'scripts/verify-0912-postgres.sh'
+      - 'scripts/0912-*.mjs'
+      - 'scripts/prepare-0912-*.mjs'
       - 'scripts/verify-workshop-access-contract.mjs'
       - 'scripts/seed-0829-*.mjs'
       - 'scripts/rotate-join-code.mjs'
@@ -302,6 +308,8 @@ jobs:
           grep -q "throwaway fixture flag is required" "$RUNNER_TEMP/a4-unguarded-fixture.log"
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -v a4_throwaway_fixture=on -f /tmp/design_provisioning_preflight_legacy_fixture.sql >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/platform_p1b_backfill.sql >/dev/null
           pre_migration_report="$(docker exec "$container" psql -U postgres -d verify \
             -v ON_ERROR_STOP=1 -Atq -f /tmp/design_provisioning_preflight.sql)"
           grep -q '"status": "migration_ready"' <<<"$pre_migration_report"
@@ -584,17 +592,164 @@ jobs:
           docker cp supabase/migrations/. "${container}:/tmp/"
           docker cp supabase/verify/00_prelude.sql "${container}:/tmp/00_prelude.sql"
           docker cp supabase/verify/driver_pass1.sql "${container}:/tmp/driver_pass1.sql"
+          docker cp supabase/verify/platform_audit_post_apply.sql "${container}:/tmp/platform_audit_post_apply.sql"
           docker cp supabase/verify/platform_audit_test.sql "${container}:/tmp/platform_audit_test.sql"
           docker cp supabase/rollbacks/platform_p4_audit_log_BEFORE.sql "${container}:/tmp/platform_p4_audit_log_BEFORE.sql"
 
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -v verify_function_bodies=on -f /tmp/driver_pass1.sql >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/platform_p1c_org_selection_activation.sql >/dev/null
+          # This focused A6 fixture predates P1a. Install only the legacy audit
+          # history surface needed to exercise the read-only P4 snapshot output;
+          # the full ordered P1a/P2a/P3/P4 chain runs in verify-0912-postgres.sh.
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "create table climate_vote.workshop_audit_event (id bigint generated always as identity primary key, payload jsonb not null); insert into climate_vote.attendance_audit_log(action, actor_scope, actor_label, before_value) values ('a6_history_fixture', 'import', 'ci', '{\"b\":2,\"a\":1}'::jsonb); insert into climate_vote.workshop_audit_event(payload) values ('{\"z\":3,\"a\":1}'::jsonb);" >/dev/null
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/platform_p3_design_provisioning.sql >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/platform_p4_audit_log.sql >/dev/null
+
+          post_apply_report="$(docker exec "$container" psql -U postgres -d verify \
+            -v ON_ERROR_STOP=1 -Atq -f /tmp/platform_audit_post_apply.sql)"
+          POST_APPLY_REPORT="$post_apply_report" node --input-type=module <<'NODE'
+          const lines = (process.env.POST_APPLY_REPORT ?? '')
+            .split(/\r?\n/u)
+            .filter((line) => line.length > 0);
+          const marker = '=== P4 AUDIT POST-APPLY VERIFICATION PASSED ===';
+          const jsonLines = lines.filter((line) => line.startsWith('{') && line.endsWith('}'));
+          if (lines.length !== 2 || lines[1] !== marker || jsonLines.length !== 1) {
+            throw new Error('P4 post-apply emitted an unexpected stdout contract');
+          }
+          const report = JSON.parse(jsonLines[0]);
+          const expectedKeys = [
+            'attendanceHistory', 'captureTriggerCount', 'databaseMutationExecuted',
+            'historySnapshotAlgorithm', 'historyStableDuringVerification', 'kind',
+            'schemaVersion', 'status', 'workshopHistory',
+          ];
+          if (JSON.stringify(Object.keys(report).sort()) !== JSON.stringify(expectedKeys)) {
+            throw new Error('P4 post-apply emitted an unexpected result schema');
+          }
+          const sha256Pattern = /^[0-9a-f]{64}$/u;
+          if (report.schemaVersion !== 1
+            || report.kind !== 'platform_audit_post_apply'
+            || report.status !== 'verified'
+            || report.databaseMutationExecuted !== false
+            || report.captureTriggerCount !== 15
+            || report.historyStableDuringVerification !== true
+            || report.historySnapshotAlgorithm !== 'sha256-canonical-jsonb-v1'
+            || report.attendanceHistory?.rowCount !== 1
+            || !sha256Pattern.test(report.attendanceHistory?.canonicalJsonbSha256 ?? '')
+            || report.workshopHistory?.rowCount !== 1
+            || !sha256Pattern.test(report.workshopHistory?.canonicalJsonbSha256 ?? '')) {
+            throw new Error('P4 post-apply result values are unsafe');
+          }
+          NODE
+
+          clone_for_post_apply_negative() {
+            docker exec "$container" createdb -U postgres --template=verify "$1"
+          }
+          assert_post_apply_rejected() {
+            local database="$1"
+            local expected_message="$2"
+            local log_path="$RUNNER_TEMP/$3"
+            if docker exec "$container" psql -U postgres -d "$database" \
+              -v ON_ERROR_STOP=1 -f /tmp/platform_audit_post_apply.sql \
+              >"$log_path" 2>&1; then
+              echo "P4 post-apply unexpectedly accepted unsafe contract in $database" >&2
+              exit 1
+            fi
+            grep -q "$expected_message" "$log_path"
+          }
+
+          clone_for_post_apply_negative verify_a6_bad_immutable
+          docker exec "$container" psql -U postgres -d verify_a6_bad_immutable -v ON_ERROR_STOP=1 -c \
+            "drop trigger platform_audit_event_immutable on climate_vote.platform_audit_event; create trigger platform_audit_event_immutable before update on climate_vote.platform_audit_event for each row execute function climate_vote.platform_audit_reject_change();" >/dev/null
+          assert_post_apply_rejected verify_a6_bad_immutable \
+            'append-only trigger contract is unsafe' a6-bad-immutable.log
+
+          clone_for_post_apply_negative verify_a6_bad_truncate
+          docker exec "$container" psql -U postgres -d verify_a6_bad_truncate -v ON_ERROR_STOP=1 -c \
+            "drop trigger platform_audit_event_no_truncate on climate_vote.platform_audit_event; create trigger platform_audit_event_no_truncate before insert on climate_vote.platform_audit_event for each row execute function climate_vote.platform_audit_reject_change();" >/dev/null
+          assert_post_apply_rejected verify_a6_bad_truncate \
+            'append-only trigger contract is unsafe' a6-bad-truncate.log
+
+          clone_for_post_apply_negative verify_a6_bad_capture
+          docker exec "$container" psql -U postgres -d verify_a6_bad_capture -v ON_ERROR_STOP=1 -c \
+            "drop trigger platform_audit_capture on climate_vote.assembly; create trigger platform_audit_capture before insert on climate_vote.assembly for each row execute function climate_vote.platform_audit_row_change();" >/dev/null
+          assert_post_apply_rejected verify_a6_bad_capture \
+            'capture trigger contract is unsafe' a6-bad-capture.log
+
+          clone_for_post_apply_negative verify_a6_unlogged_audit
+          docker exec "$container" psql -U postgres -d verify_a6_unlogged_audit -v ON_ERROR_STOP=1 -c \
+            "alter table climate_vote.platform_audit_event set unlogged;" >/dev/null
+          assert_post_apply_rejected verify_a6_unlogged_audit \
+            'table storage contract is unsafe' a6-unlogged-audit.log
+
+          clone_for_post_apply_negative verify_a6_extra_capture_trigger
+          docker exec "$container" psql -U postgres -d verify_a6_extra_capture_trigger -v ON_ERROR_STOP=1 -c \
+            "create function climate_vote.zzz_mutate_after_audit() returns trigger language plpgsql as \$\$ begin new.title := new.title || ' [tampered]'; return new; end \$\$; create trigger zzz_mutate_after_audit before update on climate_vote.assembly for each row execute function climate_vote.zzz_mutate_after_audit();" >/dev/null
+          assert_post_apply_rejected verify_a6_extra_capture_trigger \
+            'capture trigger contract is unsafe' a6-extra-capture-trigger.log
+
+          clone_for_post_apply_negative verify_a6_bad_org_index
+          docker exec "$container" psql -U postgres -d verify_a6_bad_org_index -v ON_ERROR_STOP=1 -c \
+            "drop index climate_vote.platform_audit_event_org_page_idx; create index platform_audit_event_org_page_idx on climate_vote.platform_audit_event(org_id, id);" >/dev/null
+          assert_post_apply_rejected verify_a6_bad_org_index \
+            'index or constraint contract is unsafe' a6-bad-org-index.log
+
+          clone_for_post_apply_negative verify_a6_bad_actor_index
+          docker exec "$container" psql -U postgres -d verify_a6_bad_actor_index -v ON_ERROR_STOP=1 -c \
+            "drop index climate_vote.platform_audit_event_actor_idx; create index platform_audit_event_actor_idx on climate_vote.platform_audit_event(org_id, actor_user_id, id desc) where actor_user_id is null;" >/dev/null
+          assert_post_apply_rejected verify_a6_bad_actor_index \
+            'index or constraint contract is unsafe' a6-bad-actor-index.log
+
+          clone_for_post_apply_negative verify_a6_bad_constraint
+          docker exec "$container" psql -U postgres -d verify_a6_bad_constraint -v ON_ERROR_STOP=1 -c \
+            "alter table climate_vote.platform_audit_event drop constraint platform_audit_event_operation_check; alter table climate_vote.platform_audit_event add constraint platform_audit_fake_check check (true);" >/dev/null
+          assert_post_apply_rejected verify_a6_bad_constraint \
+            'index or constraint contract is unsafe' a6-bad-constraint.log
+
+          clone_for_post_apply_negative verify_a6_bad_provenance_default
+          docker exec "$container" psql -U postgres -d verify_a6_bad_provenance_default -v ON_ERROR_STOP=1 -c \
+            "alter table climate_vote.platform_audit_event alter column transaction_id set default 0;" >/dev/null
+          assert_post_apply_rejected verify_a6_bad_provenance_default \
+            'column contract is unsafe' a6-bad-provenance-default.log
+
+          clone_for_post_apply_negative verify_a6_bad_column_acl
+          docker exec "$container" psql -U postgres -d verify_a6_bad_column_acl -v ON_ERROR_STOP=1 -c \
+            "grant select(actor_role, operation) on climate_vote.platform_audit_event to authenticated;" >/dev/null
+          assert_post_apply_rejected verify_a6_bad_column_acl \
+            'table privilege contract is unsafe' a6-bad-column-acl.log
+
+          clone_for_post_apply_negative verify_a6_rogue_audit_reader
+          docker exec "$container" psql -U postgres -d verify_a6_rogue_audit_reader -v ON_ERROR_STOP=1 -c \
+            "create role a6_rogue_audit_reader login; grant usage on schema climate_vote to a6_rogue_audit_reader; grant select on climate_vote.platform_audit_event to a6_rogue_audit_reader; create policy a6_rogue_audit_read on climate_vote.platform_audit_event for select to a6_rogue_audit_reader using (true);" >/dev/null
+          assert_post_apply_rejected verify_a6_rogue_audit_reader \
+            'table privilege contract is unsafe' a6-rogue-audit-reader.log
+
+          clone_for_post_apply_negative verify_a6_missing_schema_usage
+          docker exec "$container" psql -U postgres -d verify_a6_missing_schema_usage -v ON_ERROR_STOP=1 -c \
+            "revoke usage on schema climate_vote from authenticated;" >/dev/null
+          assert_post_apply_rejected verify_a6_missing_schema_usage \
+            'list RPC contract is unsafe' a6-missing-schema-usage.log
+
+          clone_for_post_apply_negative verify_a6_list_grant_option
+          docker exec "$container" psql -U postgres -d verify_a6_list_grant_option -v ON_ERROR_STOP=1 -c \
+            "grant execute on function climate_vote.platform_audit_list(bigint, integer) to authenticated with grant option;" >/dev/null
+          assert_post_apply_rejected verify_a6_list_grant_option \
+            'list RPC contract is unsafe' a6-list-grant-option.log
+
+          clone_for_post_apply_negative verify_a6_bad_list_source
+          docker exec "$container" psql -U postgres -d verify_a6_bad_list_source -v ON_ERROR_STOP=1 -c \
+            "do \$\$ declare v_definition text; begin select replace(pg_get_functiondef('climate_vote.platform_audit_list(bigint,integer)'::regprocedure), 'where e.org_id = v_org_id', 'where e.org_id = v_org_id or true') into v_definition; execute v_definition; end \$\$;" >/dev/null
+          assert_post_apply_rejected verify_a6_bad_list_source \
+            'function source contract is unsafe' a6-bad-list-source.log
+
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/platform_audit_test.sql
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "do \$\$ declare v_page jsonb; begin if not exists (select 1 from climate_vote.platform_audit_event where resource_type='assembly' and resource_id='40000000-0000-4000-8000-000000000001' and operation='update' and actor_user_id='10000000-0000-4000-8000-000000000001' and actor_role='org_admin') then raise exception 'A6 audit verification failed: actor identity or role was not captured'; end if; perform set_config('request.jwt.claims','{\"sub\":\"10000000-0000-4000-8000-000000000001\",\"role\":\"authenticated\"}',false); v_page := climate_vote.platform_audit_list(null,100); if jsonb_array_length(v_page->'events')=0 or exists (select 1 from jsonb_array_elements(v_page->'events') item where item->>'resource_id' in ('20000000-0000-4000-8000-000000000002','30000000-0000-4000-8000-000000000002','40000000-0000-4000-8000-000000000002')) then raise exception 'A6 audit verification failed: tenant-scoped page leaked another organization'; end if; end \$\$;" >/dev/null
 
           if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/platform_p4_audit_log_BEFORE.sql \
@@ -651,17 +806,17 @@ jobs:
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -v verify_function_bodies=on -f /tmp/driver_pass1.sql >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
-            "alter table climate_vote.submission_item disable trigger submission_item_lock_guard;" >/dev/null
+            "alter table climate_vote.submission_item alter constraint submission_item_submission_id_fkey deferrable initially deferred;" >/dev/null
           if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -Atq -f /tmp/snapshot-restore.sql \
-            >"$RUNNER_TEMP/snapshot-restore-disabled-trigger.log" 2>&1; then
-            echo "Snapshot restore unexpectedly accepted a disabled business trigger" >&2
+            >"$RUNNER_TEMP/snapshot-restore-schema-drift.log" 2>&1; then
+            echo "Snapshot restore unexpectedly accepted a drifted submission item foreign key" >&2
             exit 1
           fi
-          grep -q 'requires the enabled submission item lock guard' \
-            "$RUNNER_TEMP/snapshot-restore-disabled-trigger.log"
+          grep -q 'requires the validated non-deferrable submission item foreign key' \
+            "$RUNNER_TEMP/snapshot-restore-schema-drift.log"
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
-            "alter table climate_vote.submission_item enable trigger submission_item_lock_guard;" >/dev/null
+            "alter table climate_vote.submission_item alter constraint submission_item_submission_id_fkey not deferrable;" >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
             "create function climate_vote.snapshot_restore_drift_fixture() returns trigger language plpgsql as 'begin new.title := chr(100) || chr(114) || chr(105) || chr(102) || chr(116); return new; end'; create trigger snapshot_restore_drift_fixture before insert on climate_vote.ballot for each row execute function climate_vote.snapshot_restore_drift_fixture();" >/dev/null
           if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
@@ -683,6 +838,8 @@ jobs:
           remaining_rows="$(docker exec "$container" psql -U postgres -d verify -Atq -c \
             "select (select count(*) from climate_vote.submission) + (select count(*) from climate_vote.submission_item) + (select count(*) from climate_vote.issue) + (select count(*) from climate_vote.issue_link) + (select count(*) from climate_vote.result_page) + (select count(*) from climate_vote.ballot) + (select count(*) from climate_vote.ballot_item) + (select count(*) from climate_vote.ballot_response);")"
           test "$remaining_rows" = "0"
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
+            "do \$\$ begin if not exists (select 1 from pg_catalog.pg_trigger where tgrelid = 'climate_vote.submission_item'::regclass and tgname = 'submission_item_lock_guard' and not tgisinternal and tgenabled = 'O') then raise exception 'snapshot restore rollback left the submission item lock guard disabled'; end if; if not exists (select 1 from pg_catalog.pg_constraint where conrelid = 'climate_vote.submission_item'::regclass and conname = 'submission_item_submission_id_fkey' and contype = 'f' and confrelid = 'climate_vote.submission'::regclass and convalidated and not condeferrable and not condeferred) then raise exception 'snapshot restore rollback left the submission item foreign key drifted'; end if; end \$\$;" >/dev/null
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:

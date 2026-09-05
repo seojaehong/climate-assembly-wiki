@@ -1,0 +1,4296 @@
+{
+  "schemaVersion": 5,
+  "generatedAt": "2026-09-05T13:57:09.476Z",
+  "sourceCommit": "9743aaa50393cba5bc9764beb00b61837df5a52d",
+  "sourceTreeClean": true,
+  "evidenceClassification": "release-evidence",
+  "releaseEvidence": true,
+  "targetRevision": {
+    "status": "verified",
+    "sourceCommit": "9743aaa50393cba5bc9764beb00b61837df5a52d"
+  },
+  "baseUrl": "http://127.0.0.1:4331",
+  "standard": "WCAG 2.2 AA automated subset + skip-link focus + keyboard focus order and appearance + responsive overflow",
+  "engine": {
+    "name": "axe-core",
+    "version": "4.12.1",
+    "tags": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag21a",
+      "wcag21aa",
+      "wcag22aa"
+    ]
+  },
+  "status": "needs_review",
+  "summary": {
+    "routeCount": 23,
+    "profileCount": 2,
+    "auditCaseCount": 46,
+    "passedRoutes": 23,
+    "passedCases": 46,
+    "violationCount": 0,
+    "incompleteCount": 0,
+    "excludedSurfaceCount": 1
+  },
+  "coverage": {
+    "profiles": [
+      {
+        "id": "desktop",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        }
+      },
+      {
+        "id": "mobile",
+        "viewport": {
+          "width": 360,
+          "height": 800
+        },
+        "minimumContentWidth": 280
+      }
+    ],
+    "audited": [
+      "platform-login:desktop",
+      "platform-login:mobile",
+      "platform-login-error:desktop",
+      "platform-login-error:mobile",
+      "authenticated-platform:desktop",
+      "authenticated-platform:mobile",
+      "accessibility-statement:desktop",
+      "accessibility-statement:mobile",
+      "public-result-unpublished:desktop",
+      "public-result-unpublished:mobile",
+      "published-result:desktop",
+      "published-result:mobile",
+      "ontology-review:desktop",
+      "ontology-review:mobile",
+      "public-vote-open:desktop",
+      "public-vote-open:mobile",
+      "public-vote-submitted:desktop",
+      "public-vote-submitted:mobile",
+      "public-vote-duplicate:desktop",
+      "public-vote-duplicate:mobile",
+      "public-vote-closed:desktop",
+      "public-vote-closed:mobile",
+      "public-vote-error:desktop",
+      "public-vote-error:mobile",
+      "public-ballot-open:desktop",
+      "public-ballot-open:mobile",
+      "public-ballot-submitted:desktop",
+      "public-ballot-submitted:mobile",
+      "public-ballot-duplicate:desktop",
+      "public-ballot-duplicate:mobile",
+      "public-ballot-closed:desktop",
+      "public-ballot-closed:mobile",
+      "public-ballot-published:desktop",
+      "public-ballot-published:mobile",
+      "public-ballot-error:desktop",
+      "public-ballot-error:mobile",
+      "moderator-console:desktop",
+      "moderator-console:mobile",
+      "moderator-console-timer:desktop",
+      "moderator-console-timer:mobile",
+      "hq-console-gate:desktop",
+      "hq-console-gate:mobile",
+      "hq-console-submissions:desktop",
+      "hq-console-submissions:mobile",
+      "hq-console-dashboard:desktop",
+      "hq-console-dashboard:mobile"
+    ],
+    "excluded": [
+      {
+        "id": "assistive-technology-manual-evaluation",
+        "reason": "Screen reader and mobile assistive-technology evaluation requires manual testing."
+      }
+    ]
+  },
+  "routes": [
+    {
+      "id": "platform-login:desktop",
+      "routeId": "platform-login",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/platform/",
+      "url": "http://127.0.0.1:4331/platform/",
+      "fixture": "ci-login-keyboard-fixture-v1",
+      "fixtureNetworkRequired": false,
+      "fixtureNetwork": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "platform-scope-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": true,
+        "expected": [
+          "#platform-email",
+          "#platform-password",
+          "button[type=\"submit\"]",
+          "a[href=\"/platform/accessibility/\"]"
+        ],
+        "availability": [
+          {
+            "selector": "#platform-email",
+            "found": true,
+            "visible": true,
+            "enabled": true
+          },
+          {
+            "selector": "#platform-password",
+            "found": true,
+            "visible": true,
+            "enabled": true
+          },
+          {
+            "selector": "button[type=\"submit\"]",
+            "found": true,
+            "visible": true,
+            "enabled": true
+          },
+          {
+            "selector": "a[href=\"/platform/accessibility/\"]",
+            "found": true,
+            "visible": true,
+            "enabled": true
+          }
+        ],
+        "forward": [
+          {
+            "expectedSelector": "#platform-email",
+            "matched": true,
+            "active": {
+              "tag": "input",
+              "id": "platform-email",
+              "type": "email",
+              "role": null,
+              "hrefPath": null
+            },
+            "focusIndicator": {
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            }
+          },
+          {
+            "expectedSelector": "#platform-password",
+            "matched": true,
+            "active": {
+              "tag": "input",
+              "id": "platform-password",
+              "type": "password",
+              "role": null,
+              "hrefPath": null
+            },
+            "focusIndicator": {
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            }
+          },
+          {
+            "expectedSelector": "button[type=\"submit\"]",
+            "matched": true,
+            "active": {
+              "tag": "button",
+              "id": null,
+              "type": "submit",
+              "role": null,
+              "hrefPath": null
+            },
+            "focusIndicator": {
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            }
+          },
+          {
+            "expectedSelector": "a[href=\"/platform/accessibility/\"]",
+            "matched": true,
+            "active": {
+              "tag": "a",
+              "id": null,
+              "type": null,
+              "role": null,
+              "hrefPath": "/platform/accessibility/"
+            },
+            "focusIndicator": {
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            }
+          }
+        ],
+        "reverse": [
+          {
+            "expectedSelector": "a[href=\"/platform/accessibility/\"]",
+            "matched": true,
+            "active": {
+              "tag": "a",
+              "id": null,
+              "type": null,
+              "role": null,
+              "hrefPath": "/platform/accessibility/"
+            },
+            "focusIndicator": {
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            }
+          },
+          {
+            "expectedSelector": "button[type=\"submit\"]",
+            "matched": true,
+            "active": {
+              "tag": "button",
+              "id": null,
+              "type": "submit",
+              "role": null,
+              "hrefPath": null
+            },
+            "focusIndicator": {
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            }
+          },
+          {
+            "expectedSelector": "#platform-password",
+            "matched": true,
+            "active": {
+              "tag": "input",
+              "id": "platform-password",
+              "type": "password",
+              "role": null,
+              "hrefPath": null
+            },
+            "focusIndicator": {
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            }
+          },
+          {
+            "expectedSelector": "#platform-email",
+            "matched": true,
+            "active": {
+              "tag": "input",
+              "id": "platform-email",
+              "type": "email",
+              "role": null,
+              "hrefPath": null
+            },
+            "focusIndicator": {
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            }
+          }
+        ],
+        "forwardExit": {
+          "reachedBoundary": true,
+          "active": {
+            "tag": "button",
+            "id": null,
+            "type": "button",
+            "role": null,
+            "hrefPath": null
+          },
+          "escaped": true
+        },
+        "backwardExit": {
+          "reachedBoundary": true,
+          "active": {
+            "tag": "button",
+            "id": null,
+            "type": "button",
+            "role": null,
+            "hrefPath": null
+          },
+          "escaped": true
+        },
+        "escapedForward": true,
+        "escapedBackward": true,
+        "focusAppearance": {
+          "required": true,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [
+            {
+              "expectedSelector": "#platform-email",
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            },
+            {
+              "expectedSelector": "#platform-password",
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            },
+            {
+              "expectedSelector": "button[type=\"submit\"]",
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            },
+            {
+              "expectedSelector": "a[href=\"/platform/accessibility/\"]",
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            }
+          ],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 420,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "platform-login:mobile",
+      "routeId": "platform-login",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/platform/",
+      "url": "http://127.0.0.1:4331/platform/",
+      "fixture": "ci-login-keyboard-fixture-v1",
+      "fixtureNetworkRequired": false,
+      "fixtureNetwork": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "platform-scope-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": true,
+        "expected": [
+          "#platform-email",
+          "#platform-password",
+          "button[type=\"submit\"]",
+          "a[href=\"/platform/accessibility/\"]"
+        ],
+        "availability": [
+          {
+            "selector": "#platform-email",
+            "found": true,
+            "visible": true,
+            "enabled": true
+          },
+          {
+            "selector": "#platform-password",
+            "found": true,
+            "visible": true,
+            "enabled": true
+          },
+          {
+            "selector": "button[type=\"submit\"]",
+            "found": true,
+            "visible": true,
+            "enabled": true
+          },
+          {
+            "selector": "a[href=\"/platform/accessibility/\"]",
+            "found": true,
+            "visible": true,
+            "enabled": true
+          }
+        ],
+        "forward": [
+          {
+            "expectedSelector": "#platform-email",
+            "matched": true,
+            "active": {
+              "tag": "input",
+              "id": "platform-email",
+              "type": "email",
+              "role": null,
+              "hrefPath": null
+            },
+            "focusIndicator": {
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            }
+          },
+          {
+            "expectedSelector": "#platform-password",
+            "matched": true,
+            "active": {
+              "tag": "input",
+              "id": "platform-password",
+              "type": "password",
+              "role": null,
+              "hrefPath": null
+            },
+            "focusIndicator": {
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            }
+          },
+          {
+            "expectedSelector": "button[type=\"submit\"]",
+            "matched": true,
+            "active": {
+              "tag": "button",
+              "id": null,
+              "type": "submit",
+              "role": null,
+              "hrefPath": null
+            },
+            "focusIndicator": {
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            }
+          },
+          {
+            "expectedSelector": "a[href=\"/platform/accessibility/\"]",
+            "matched": true,
+            "active": {
+              "tag": "a",
+              "id": null,
+              "type": null,
+              "role": null,
+              "hrefPath": "/platform/accessibility/"
+            },
+            "focusIndicator": {
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            }
+          }
+        ],
+        "reverse": [
+          {
+            "expectedSelector": "a[href=\"/platform/accessibility/\"]",
+            "matched": true,
+            "active": {
+              "tag": "a",
+              "id": null,
+              "type": null,
+              "role": null,
+              "hrefPath": "/platform/accessibility/"
+            },
+            "focusIndicator": {
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            }
+          },
+          {
+            "expectedSelector": "button[type=\"submit\"]",
+            "matched": true,
+            "active": {
+              "tag": "button",
+              "id": null,
+              "type": "submit",
+              "role": null,
+              "hrefPath": null
+            },
+            "focusIndicator": {
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            }
+          },
+          {
+            "expectedSelector": "#platform-password",
+            "matched": true,
+            "active": {
+              "tag": "input",
+              "id": "platform-password",
+              "type": "password",
+              "role": null,
+              "hrefPath": null
+            },
+            "focusIndicator": {
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            }
+          },
+          {
+            "expectedSelector": "#platform-email",
+            "matched": true,
+            "active": {
+              "tag": "input",
+              "id": "platform-email",
+              "type": "email",
+              "role": null,
+              "hrefPath": null
+            },
+            "focusIndicator": {
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            }
+          }
+        ],
+        "forwardExit": {
+          "reachedBoundary": true,
+          "active": {
+            "tag": "button",
+            "id": null,
+            "type": "button",
+            "role": null,
+            "hrefPath": null
+          },
+          "escaped": true
+        },
+        "backwardExit": {
+          "reachedBoundary": true,
+          "active": {
+            "tag": "button",
+            "id": null,
+            "type": "button",
+            "role": null,
+            "hrefPath": null
+          },
+          "escaped": true
+        },
+        "escapedForward": true,
+        "escapedBackward": true,
+        "focusAppearance": {
+          "required": true,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [
+            {
+              "expectedSelector": "#platform-email",
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            },
+            {
+              "expectedSelector": "#platform-password",
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            },
+            {
+              "expectedSelector": "button[type=\"submit\"]",
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            },
+            {
+              "expectedSelector": "a[href=\"/platform/accessibility/\"]",
+              "outlineStyle": "solid",
+              "outlineWidthPx": 2,
+              "outlineOffsetPx": 3,
+              "outlineColor": "rgb(10, 107, 78)",
+              "adjacentBackgroundColor": "rgb(255, 255, 255)",
+              "contrastRatio": 6.51,
+              "passed": true
+            }
+          ],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 312,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "platform-login-error:desktop",
+      "routeId": "platform-login-error",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/platform/",
+      "url": "http://127.0.0.1:4331/platform/",
+      "fixture": "ci-login-rejection-fixture-v1",
+      "fixtureNetworkRequired": false,
+      "fixtureNetwork": null,
+      "readiness": {
+        "selector": "#platform-login-error[role=\"alert\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "platform-scope-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 420,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "platform-login-error:mobile",
+      "routeId": "platform-login-error",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/platform/",
+      "url": "http://127.0.0.1:4331/platform/",
+      "fixture": "ci-login-rejection-fixture-v1",
+      "fixtureNetworkRequired": false,
+      "fixtureNetwork": null,
+      "readiness": {
+        "selector": "#platform-login-error[role=\"alert\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "platform-scope-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 312,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "authenticated-platform:desktop",
+      "routeId": "authenticated-platform",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/platform/",
+      "url": "http://127.0.0.1:4331/platform/",
+      "fixture": "ci-staff-read-fixture-v1",
+      "fixtureNetworkRequired": false,
+      "fixtureNetwork": null,
+      "readiness": {
+        "selector": "aside button[aria-current=\"location\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "platform-scope-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1152,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "authenticated-platform:mobile",
+      "routeId": "authenticated-platform",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/platform/",
+      "url": "http://127.0.0.1:4331/platform/",
+      "fixture": "ci-staff-read-fixture-v1",
+      "fixtureNetworkRequired": false,
+      "fixtureNetwork": null,
+      "readiness": {
+        "selector": "aside button[aria-current=\"location\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "platform-scope-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "accessibility-statement:desktop",
+      "routeId": "accessibility-statement",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/platform/accessibility/",
+      "url": "http://127.0.0.1:4331/platform/accessibility/",
+      "fixture": null,
+      "fixtureNetworkRequired": false,
+      "fixtureNetwork": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 880,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "accessibility-statement:mobile",
+      "routeId": "accessibility-statement",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/platform/accessibility/",
+      "url": "http://127.0.0.1:4331/platform/accessibility/",
+      "fixture": null,
+      "fixtureNetworkRequired": false,
+      "fixtureNetwork": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 328,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-result-unpublished:desktop",
+      "routeId": "public-result-unpublished",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/r/_/",
+      "url": "http://127.0.0.1:4331/r/_/",
+      "fixture": null,
+      "fixtureNetworkRequired": false,
+      "fixtureNetwork": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-result-unpublished:mobile",
+      "routeId": "public-result-unpublished",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/r/_/",
+      "url": "http://127.0.0.1:4331/r/_/",
+      "fixture": null,
+      "fixtureNetworkRequired": false,
+      "fixtureNetwork": null,
+      "readiness": null,
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "published-result:desktop",
+      "routeId": "published-result",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/r/_/",
+      "url": "http://127.0.0.1:4331/r/_/",
+      "fixture": "ci-published-result-read-fixture-v1",
+      "fixtureNetworkRequired": false,
+      "fixtureNetwork": null,
+      "readiness": {
+        "selector": "main#main-content [data-source-reference-ready=\"true\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "published-result:mobile",
+      "routeId": "published-result",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/r/_/",
+      "url": "http://127.0.0.1:4331/r/_/",
+      "fixture": "ci-published-result-read-fixture-v1",
+      "fixtureNetworkRequired": false,
+      "fixtureNetwork": null,
+      "readiness": {
+        "selector": "main#main-content [data-source-reference-ready=\"true\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "main-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [
+        {
+          "label": "조별 쟁점 커버리지 표",
+          "found": true,
+          "clientWidth": 284,
+          "scrollWidth": 357,
+          "scrollable": true,
+          "focused": true,
+          "keyboardScrolled": true
+        },
+        {
+          "label": "쟁점 분석 데이터 표",
+          "found": true,
+          "clientWidth": 284,
+          "scrollWidth": 720,
+          "scrollable": true,
+          "focused": true,
+          "keyboardScrolled": true
+        }
+      ],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "ontology-review:desktop",
+      "routeId": "ontology-review",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/ko/moderator/ontology-review/",
+      "url": "http://127.0.0.1:4331/ko/moderator/ontology-review/",
+      "fixture": "ci-staff-read-fixture-v1",
+      "fixtureNetworkRequired": false,
+      "fixtureNetwork": null,
+      "readiness": {
+        "selector": "main[data-ontology-review-ready=\"true\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "ontology-review-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "ontology-review:mobile",
+      "routeId": "ontology-review",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/ko/moderator/ontology-review/",
+      "url": "http://127.0.0.1:4331/ko/moderator/ontology-review/",
+      "fixture": "ci-staff-read-fixture-v1",
+      "fixtureNetworkRequired": false,
+      "fixtureNetwork": null,
+      "readiness": {
+        "selector": "main[data-ontology-review-ready=\"true\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "ontology-review-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-vote-open:desktop",
+      "routeId": "public-vote-open",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/v?r=00000000-0000-4000-8000-000000000009",
+      "url": "http://127.0.0.1:4331/v?r=00000000-0000-4000-8000-000000000009",
+      "fixture": "ci-public-round-open-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 1,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "public_round_get_v2": 1,
+          "public_round_cast_v2": 0,
+          "public_round_votes_v2": 0
+        },
+        "state": "open",
+        "kind": "round",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "[role=\"group\"][aria-label=\"보기\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-vote-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-vote-open:mobile",
+      "routeId": "public-vote-open",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/v?r=00000000-0000-4000-8000-000000000009",
+      "url": "http://127.0.0.1:4331/v?r=00000000-0000-4000-8000-000000000009",
+      "fixture": "ci-public-round-open-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 1,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "public_round_get_v2": 1,
+          "public_round_cast_v2": 0,
+          "public_round_votes_v2": 0
+        },
+        "state": "open",
+        "kind": "round",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "[role=\"group\"][aria-label=\"보기\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-vote-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-vote-submitted:desktop",
+      "routeId": "public-vote-submitted",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/v?r=00000000-0000-4000-8000-000000000009",
+      "url": "http://127.0.0.1:4331/v?r=00000000-0000-4000-8000-000000000009",
+      "fixture": "ci-public-round-submit-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 2,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 1,
+        "expectedRpcCalls": {
+          "public_round_get_v2": 1,
+          "public_round_cast_v2": 1,
+          "public_round_votes_v2": 0
+        },
+        "state": "submitted",
+        "kind": "round",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-vote-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-vote-submitted:mobile",
+      "routeId": "public-vote-submitted",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/v?r=00000000-0000-4000-8000-000000000009",
+      "url": "http://127.0.0.1:4331/v?r=00000000-0000-4000-8000-000000000009",
+      "fixture": "ci-public-round-submit-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 2,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 1,
+        "expectedRpcCalls": {
+          "public_round_get_v2": 1,
+          "public_round_cast_v2": 1,
+          "public_round_votes_v2": 0
+        },
+        "state": "submitted",
+        "kind": "round",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-vote-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-vote-duplicate:desktop",
+      "routeId": "public-vote-duplicate",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/v?r=00000000-0000-4000-8000-000000000009",
+      "url": "http://127.0.0.1:4331/v?r=00000000-0000-4000-8000-000000000009",
+      "fixture": "ci-public-round-duplicate-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 2,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 1,
+        "expectedRpcCalls": {
+          "public_round_get_v2": 1,
+          "public_round_cast_v2": 1,
+          "public_round_votes_v2": 0
+        },
+        "state": "duplicate",
+        "kind": "round",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-vote-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-vote-duplicate:mobile",
+      "routeId": "public-vote-duplicate",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/v?r=00000000-0000-4000-8000-000000000009",
+      "url": "http://127.0.0.1:4331/v?r=00000000-0000-4000-8000-000000000009",
+      "fixture": "ci-public-round-duplicate-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 2,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 1,
+        "expectedRpcCalls": {
+          "public_round_get_v2": 1,
+          "public_round_cast_v2": 1,
+          "public_round_votes_v2": 0
+        },
+        "state": "duplicate",
+        "kind": "round",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-vote-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-vote-closed:desktop",
+      "routeId": "public-vote-closed",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/v?r=00000000-0000-4000-8000-000000000009",
+      "url": "http://127.0.0.1:4331/v?r=00000000-0000-4000-8000-000000000009",
+      "fixture": "ci-public-round-closed-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 2,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "public_round_get_v2": 1,
+          "public_round_cast_v2": 0,
+          "public_round_votes_v2": 1
+        },
+        "state": "closed",
+        "kind": "round",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-vote-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-vote-closed:mobile",
+      "routeId": "public-vote-closed",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/v?r=00000000-0000-4000-8000-000000000009",
+      "url": "http://127.0.0.1:4331/v?r=00000000-0000-4000-8000-000000000009",
+      "fixture": "ci-public-round-closed-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 2,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "public_round_get_v2": 1,
+          "public_round_cast_v2": 0,
+          "public_round_votes_v2": 1
+        },
+        "state": "closed",
+        "kind": "round",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-vote-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-vote-error:desktop",
+      "routeId": "public-vote-error",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/v?r=00000000-0000-4000-8000-000000000009",
+      "url": "http://127.0.0.1:4331/v?r=00000000-0000-4000-8000-000000000009",
+      "fixture": "ci-public-round-read-error-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 1,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "public_round_get_v2": 1,
+          "public_round_cast_v2": 0,
+          "public_round_votes_v2": 0
+        },
+        "state": "error",
+        "kind": "round",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-vote-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-vote-error:mobile",
+      "routeId": "public-vote-error",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/v?r=00000000-0000-4000-8000-000000000009",
+      "url": "http://127.0.0.1:4331/v?r=00000000-0000-4000-8000-000000000009",
+      "fixture": "ci-public-round-read-error-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 1,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "public_round_get_v2": 1,
+          "public_round_cast_v2": 0,
+          "public_round_votes_v2": 0
+        },
+        "state": "error",
+        "kind": "round",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-vote-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-ballot-open:desktop",
+      "routeId": "public-ballot-open",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/b?t=accessibility-audit-public-ballot-token",
+      "url": "http://127.0.0.1:4331/b?t=accessibility-audit-public-ballot-token",
+      "fixture": "ci-public-ballot-open-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 1,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "ballot_get": 1,
+          "ballot_submit": 0,
+          "ballot_results": 0
+        },
+        "state": "open",
+        "kind": "ballot",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "[role=\"group\"][aria-label=\"의제 1 응답\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-ballot-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-ballot-open:mobile",
+      "routeId": "public-ballot-open",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/b?t=accessibility-audit-public-ballot-token",
+      "url": "http://127.0.0.1:4331/b?t=accessibility-audit-public-ballot-token",
+      "fixture": "ci-public-ballot-open-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 1,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "ballot_get": 1,
+          "ballot_submit": 0,
+          "ballot_results": 0
+        },
+        "state": "open",
+        "kind": "ballot",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "[role=\"group\"][aria-label=\"의제 1 응답\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-ballot-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-ballot-submitted:desktop",
+      "routeId": "public-ballot-submitted",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/b?t=accessibility-audit-public-ballot-token",
+      "url": "http://127.0.0.1:4331/b?t=accessibility-audit-public-ballot-token",
+      "fixture": "ci-public-ballot-submit-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 2,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 1,
+        "expectedRpcCalls": {
+          "ballot_get": 1,
+          "ballot_submit": 1,
+          "ballot_results": 0
+        },
+        "state": "submitted",
+        "kind": "ballot",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-ballot-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-ballot-submitted:mobile",
+      "routeId": "public-ballot-submitted",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/b?t=accessibility-audit-public-ballot-token",
+      "url": "http://127.0.0.1:4331/b?t=accessibility-audit-public-ballot-token",
+      "fixture": "ci-public-ballot-submit-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 2,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 1,
+        "expectedRpcCalls": {
+          "ballot_get": 1,
+          "ballot_submit": 1,
+          "ballot_results": 0
+        },
+        "state": "submitted",
+        "kind": "ballot",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-ballot-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-ballot-duplicate:desktop",
+      "routeId": "public-ballot-duplicate",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/b?t=accessibility-audit-public-ballot-token",
+      "url": "http://127.0.0.1:4331/b?t=accessibility-audit-public-ballot-token",
+      "fixture": "ci-public-ballot-duplicate-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 2,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 1,
+        "expectedRpcCalls": {
+          "ballot_get": 1,
+          "ballot_submit": 1,
+          "ballot_results": 0
+        },
+        "state": "duplicate",
+        "kind": "ballot",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-ballot-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-ballot-duplicate:mobile",
+      "routeId": "public-ballot-duplicate",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/b?t=accessibility-audit-public-ballot-token",
+      "url": "http://127.0.0.1:4331/b?t=accessibility-audit-public-ballot-token",
+      "fixture": "ci-public-ballot-duplicate-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 2,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 1,
+        "expectedRpcCalls": {
+          "ballot_get": 1,
+          "ballot_submit": 1,
+          "ballot_results": 0
+        },
+        "state": "duplicate",
+        "kind": "ballot",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-ballot-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-ballot-closed:desktop",
+      "routeId": "public-ballot-closed",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/b?t=accessibility-audit-public-ballot-token",
+      "url": "http://127.0.0.1:4331/b?t=accessibility-audit-public-ballot-token",
+      "fixture": "ci-public-ballot-closed-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 1,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "ballot_get": 1,
+          "ballot_submit": 0,
+          "ballot_results": 0
+        },
+        "state": "closed",
+        "kind": "ballot",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-ballot-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-ballot-closed:mobile",
+      "routeId": "public-ballot-closed",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/b?t=accessibility-audit-public-ballot-token",
+      "url": "http://127.0.0.1:4331/b?t=accessibility-audit-public-ballot-token",
+      "fixture": "ci-public-ballot-closed-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 1,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "ballot_get": 1,
+          "ballot_submit": 0,
+          "ballot_results": 0
+        },
+        "state": "closed",
+        "kind": "ballot",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-ballot-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-ballot-published:desktop",
+      "routeId": "public-ballot-published",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/b?t=accessibility-audit-public-ballot-token",
+      "url": "http://127.0.0.1:4331/b?t=accessibility-audit-public-ballot-token",
+      "fixture": "ci-public-ballot-published-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 2,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "ballot_get": 1,
+          "ballot_submit": 0,
+          "ballot_results": 1
+        },
+        "state": "published",
+        "kind": "ballot",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-ballot-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-ballot-published:mobile",
+      "routeId": "public-ballot-published",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/b?t=accessibility-audit-public-ballot-token",
+      "url": "http://127.0.0.1:4331/b?t=accessibility-audit-public-ballot-token",
+      "fixture": "ci-public-ballot-published-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 2,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "ballot_get": 1,
+          "ballot_submit": 0,
+          "ballot_results": 1
+        },
+        "state": "published",
+        "kind": "ballot",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-ballot-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-ballot-error:desktop",
+      "routeId": "public-ballot-error",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/b?t=accessibility-audit-public-ballot-token",
+      "url": "http://127.0.0.1:4331/b?t=accessibility-audit-public-ballot-token",
+      "fixture": "ci-public-ballot-read-error-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 1,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "ballot_get": 1,
+          "ballot_submit": 0,
+          "ballot_results": 0
+        },
+        "state": "error",
+        "kind": "ballot",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-ballot-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "public-ballot-error:mobile",
+      "routeId": "public-ballot-error",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/b?t=accessibility-audit-public-ballot-token",
+      "url": "http://127.0.0.1:4331/b?t=accessibility-audit-public-ballot-token",
+      "fixture": "ci-public-ballot-read-error-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 1,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "ballot_get": 1,
+          "ballot_submit": 0,
+          "ballot_results": 0
+        },
+        "state": "error",
+        "kind": "ballot",
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "public-ballot-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "moderator-console:desktop",
+      "routeId": "moderator-console",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/mod?code=000000",
+      "url": "http://127.0.0.1:4331/mod?code=000000",
+      "fixture": "ci-0912-synthetic-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 5,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "mod_exchange_join_code": 1,
+          "mod_session_get": 0,
+          "topic_list_v2": 1,
+          "submission_get_v2": 2,
+          "mod_rounds_v2": 1,
+          "mod_session_teams_v2": 0,
+          "mod_vote_counts_v2": 0,
+          "mod_votes_v2": 0
+        },
+        "workerWebSocketAttemptCount": 0,
+        "liveDatabaseMutationCount": 0,
+        "workshopSessionPersisted": true,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "#mod-console-content [data-testid=\"workshop-status-rail\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "mod-console-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "moderator-console:mobile",
+      "routeId": "moderator-console",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/mod?code=000000",
+      "url": "http://127.0.0.1:4331/mod?code=000000",
+      "fixture": "ci-0912-synthetic-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 5,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "mod_exchange_join_code": 1,
+          "mod_session_get": 0,
+          "topic_list_v2": 1,
+          "submission_get_v2": 2,
+          "mod_rounds_v2": 1,
+          "mod_session_teams_v2": 0,
+          "mod_vote_counts_v2": 0,
+          "mod_votes_v2": 0
+        },
+        "workerWebSocketAttemptCount": 0,
+        "liveDatabaseMutationCount": 0,
+        "workshopSessionPersisted": true,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "#mod-console-content [data-testid=\"workshop-status-rail\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "mod-console-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [
+        {
+          "label": "조 작업 상태 가로 목록",
+          "found": true,
+          "clientWidth": 286,
+          "scrollWidth": 662,
+          "scrollable": true,
+          "focused": true,
+          "keyboardScrolled": true
+        }
+      ],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "moderator-console-timer:desktop",
+      "routeId": "moderator-console-timer",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/mod?code=000000",
+      "url": "http://127.0.0.1:4331/mod?code=000000",
+      "fixture": "ci-0912-synthetic-timer-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 5,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "mod_exchange_join_code": 1,
+          "mod_session_get": 0,
+          "topic_list_v2": 1,
+          "submission_get_v2": 2,
+          "mod_rounds_v2": 1,
+          "mod_session_teams_v2": 0,
+          "mod_vote_counts_v2": 0,
+          "mod_votes_v2": 0
+        },
+        "workerWebSocketAttemptCount": 0,
+        "liveDatabaseMutationCount": 0,
+        "workshopSessionPersisted": true,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "#mod-panel-timer:not([hidden])",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "mod-console-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "moderator-console-timer:mobile",
+      "routeId": "moderator-console-timer",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/mod?code=000000",
+      "url": "http://127.0.0.1:4331/mod?code=000000",
+      "fixture": "ci-0912-synthetic-timer-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 5,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "mod_exchange_join_code": 1,
+          "mod_session_get": 0,
+          "topic_list_v2": 1,
+          "submission_get_v2": 2,
+          "mod_rounds_v2": 1,
+          "mod_session_teams_v2": 0,
+          "mod_vote_counts_v2": 0,
+          "mod_votes_v2": 0
+        },
+        "workerWebSocketAttemptCount": 0,
+        "liveDatabaseMutationCount": 0,
+        "workshopSessionPersisted": true,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "#mod-panel-timer:not([hidden])",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "mod-console-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [
+        {
+          "label": "조 작업 상태 가로 목록",
+          "found": true,
+          "clientWidth": 286,
+          "scrollWidth": 662,
+          "scrollable": true,
+          "focused": true,
+          "keyboardScrolled": true
+        }
+      ],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "hq-console-gate:desktop",
+      "routeId": "hq-console-gate",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/hq",
+      "url": "http://127.0.0.1:4331/hq",
+      "fixture": "ci-hq-gate-no-secret-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 0,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 0,
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "#hq-gate-title",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "hq-console-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "hq-console-gate:mobile",
+      "routeId": "hq-console-gate",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/hq",
+      "url": "http://127.0.0.1:4331/hq",
+      "fixture": "ci-hq-gate-no-secret-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 0,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "simulatedMutationRequestCount": 0,
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "#hq-gate-title",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "hq-console-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "hq-console-submissions:desktop",
+      "routeId": "hq-console-submissions",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/hq",
+      "url": "http://127.0.0.1:4331/hq",
+      "fixture": "ci-0912-hq-submissions-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 6,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "[aria-label=\"접근성 감사 합성 조 접속 기기\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "hq-console-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "hq-console-submissions:mobile",
+      "routeId": "hq-console-submissions",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/hq",
+      "url": "http://127.0.0.1:4331/hq",
+      "fixture": "ci-0912-hq-submissions-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 6,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "[aria-label=\"접근성 감사 합성 조 접속 기기\"]",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "hq-console-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "hq-console-dashboard:desktop",
+      "routeId": "hq-console-dashboard",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/hq?ops=1",
+      "url": "http://127.0.0.1:4331/hq?ops=1",
+      "fixture": "ci-0912-hq-dashboard-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 12,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "#hq-console-content h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "hq-console-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "hq-console-dashboard:mobile",
+      "routeId": "hq-console-dashboard",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/hq?ops=1",
+      "url": "http://127.0.0.1:4331/hq?ops=1",
+      "fixture": "ci-0912-hq-dashboard-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 12,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 0,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketOrigins": [],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 0,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 0,
+          "blockedExternalOrigins": []
+        }
+      },
+      "readiness": {
+        "selector": "#hq-console-content h1",
+        "reached": true
+      },
+      "httpStatus": 200,
+      "passed": true,
+      "skipLink": {
+        "found": true,
+        "target": "hq-console-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    }
+  ]
+}

@@ -222,12 +222,16 @@
     },
     {
       "id": "DB-P1A-DISPOSABLE",
-      "statement": "roster 정본 확인 뒤 P1→secure seed/s20→P1a→P2→P1b/P1c→P2a→P3→P4 순서를 고정하고, P1a 행동·P2a token positive와 legacy HQ·출석·산출물 및 cross-session negative·P3/P4 재개방 방지·rollback·재적용을 격리 PostgreSQL 16에서 실제 실행하며 운영 DB에는 연결하지 않는다.",
+      "statement": "roster 정본 확인 뒤 P1→secure seed/s20→P1a→P2→P1b/P1c→P2a→P3→P4 순서를 고정하고, P1a 행동·P2a token positive와 legacy HQ·출석·산출물 및 cross-session negative·P3/P4 post-apply·P4 기존 감사이력 전후 SHA-256 보존·P4 append-only 행동·재개방 방지·rollback·재적용을 격리 PostgreSQL 16에서 실제 실행하며 운영 DB에는 연결하지 않는다.",
       "implementationFiles": [
         "supabase/migrations/platform_p1a_0912_event_access.sql",
         "supabase/migrations/platform_p2a_0912_token_only_activation.sql",
         "supabase/migrations/platform_p3_design_provisioning.sql",
         "supabase/migrations/platform_p4_audit_log.sql",
+        "supabase/verify/design_provisioning_post_apply.sql",
+        "supabase/verify/platform_audit_history_snapshot.sql",
+        "supabase/verify/platform_audit_post_apply.sql",
+        "supabase/verify/platform_audit_test.sql",
         "supabase/rollbacks/platform_p2a_0912_token_only_activation_BEFORE.sql",
         "scripts/verify-0912-postgres.sh",
         ".github/workflows/test.yml"
@@ -251,13 +255,26 @@
       "id": "OPS-BACKUP-RESTORE-STOP",
       "statement": "행사 전 백업, 별도 환경 복원, 중단 기준, 비상 RPC 사용 절차를 실행 기록으로 남긴다.",
       "implementationFiles": [
-        "docs/operations/0912-13-runbook.md"
+        "docs/operations/0912-13-runbook.md",
+        "docs/operations/0912-evidence-trust-policy.json",
+        "automation/snapshot-db.mjs",
+        "scripts/0912-backup-restore-evidence.mjs",
+        "scripts/0912-operator-evidence.mjs",
+        "scripts/0912-sign-evidence.mjs"
       ],
       "testFiles": [
-        "automation/tests/0912-readiness-verifier.test.mjs"
+        "automation/tests/0912-readiness-verifier.test.mjs",
+        "automation/tests/snapshot-db.test.mjs",
+        "scripts/0912-backup-restore-evidence.test.mjs",
+        "scripts/0912-operator-evidence.test.mjs",
+        "scripts/0912-sign-evidence.test.mjs",
+        "scripts/verify-0912-release-report.test.mjs"
       ],
       "evidenceFiles": [
-        "evaluation/0912-13-readiness-report.template.json"
+        "evaluation/0912-13-readiness-report.template.json",
+        "evaluation/0912-13-operator-log.template.json",
+        "evaluation/0912-13-backup-manifest.template.json",
+        "evaluation/0912-13-restore-report.template.json"
       ]
     },
     {
@@ -268,12 +285,17 @@
         ".github/workflows/platform-accessibility.yml",
         "scripts/verify-workshop-access-contract.mjs",
         "scripts/verify-0912-hq-rehearsal.mjs",
-        "scripts/verify-0912-release-report.mjs"
+        "scripts/verify-0912-release-report.mjs",
+        "scripts/0912-sign-evidence.mjs",
+        "docs/operations/0912-evidence-trust-policy.json"
       ],
       "testFiles": [
         "automation/tests/0912-readiness-verifier.test.mjs",
         "scripts/verify-0912-hq-rehearsal.test.mjs",
         "scripts/verify-0912-release-report.test.mjs",
+        "scripts/0912-sign-evidence.test.mjs",
+        "scripts/0912-operator-evidence.test.mjs",
+        "scripts/0912-backup-restore-evidence.test.mjs",
         "automation/tests/fixtures/0912-p1a-activation-driver.sql",
         "supabase/verify/platform_p2a_0912_token_only_activation.sql",
         "supabase/verify/design_provisioning_post_apply.sql"

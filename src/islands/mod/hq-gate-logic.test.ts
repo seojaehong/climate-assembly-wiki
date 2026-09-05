@@ -1,6 +1,9 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   HQ_ACTOR_KEY,
+  HQ_NEW_PASSWORD_MAX_BYTES,
+  HQ_NEW_PASSWORD_MIN_CHARACTERS,
   HQ_TOKEN_KEY,
   HQ_UNLOCK_LOCK_MINUTES,
   HQ_UNLOCK_MAX_ATTEMPTS,
@@ -8,7 +11,11 @@ import {
   gateFailureMessage,
   isValidHqToken,
   normalizeActorLabel,
+  utf8ByteLength,
+  validateHqNewPassword,
 } from './hq-gate-logic';
+
+const hqGateSource = readFileSync(new URL('./HqGate.tsx', import.meta.url), 'utf8');
 
 describe('HQ_TOKEN_KEY', () => {
   it('HqAttendanceAdmin의 TOKEN_KEY와 동일한 키를 공유한다(이중 로그인 방지의 전제)', () => {
@@ -68,6 +75,45 @@ describe('normalizeActorLabel', () => {
 
   it('공백만 있는 입력은 빈 문자열(입력 누락)이 된다', () => {
     expect(normalizeActorLabel('   ')).toBe('');
+  });
+});
+
+describe('validateHqNewPassword', () => {
+  it('ASCII 72바이트는 허용하고 73바이트는 저장 전 거부한다', () => {
+    const atLimit = 'a'.repeat(HQ_NEW_PASSWORD_MAX_BYTES);
+    const overLimit = `${atLimit}a`;
+
+    expect(utf8ByteLength(atLimit)).toBe(72);
+    expect(validateHqNewPassword(atLimit, atLimit)).toBeNull();
+    expect(utf8ByteLength(overLimit)).toBe(73);
+    expect(validateHqNewPassword(overLimit, overLimit)).toContain('72바이트');
+  });
+
+  it('UTF-8 다중 바이트 문자도 72/73바이트 경계로 판단한다', () => {
+    const atLimit = '가'.repeat(24);
+    const overLimit = `${atLimit}a`;
+
+    expect(utf8ByteLength(atLimit)).toBe(72);
+    expect(validateHqNewPassword(atLimit, atLimit)).toBeNull();
+    expect(utf8ByteLength(overLimit)).toBe(73);
+    expect(validateHqNewPassword(overLimit, overLimit)).toContain('72바이트');
+  });
+
+  it('확인 불일치와 최소 길이를 서로 다른 안내로 거부한다', () => {
+    expect(validateHqNewPassword('abcdefgh', 'abcdefgi')).toContain('서로 다릅니다');
+    expect(validateHqNewPassword('abcdefg', 'abcdefg')).toContain(
+      `${HQ_NEW_PASSWORD_MIN_CHARACTERS}자 이상`,
+    );
+  });
+
+  it('새 비밀번호 두 입력만 maxlength를 적용하고 현재 비밀번호는 legacy 복구를 위해 제한하지 않는다', () => {
+    expect(hqGateSource.match(/maxLength=\{HQ_NEW_PASSWORD_MAX_BYTES\}/g)).toHaveLength(2);
+
+    const currentInputStart = hqGateSource.indexOf('ref={currentPasswordRef}');
+    const newInputStart = hqGateSource.indexOf('autoComplete="new-password"', currentInputStart);
+    expect(currentInputStart).toBeGreaterThan(-1);
+    expect(newInputStart).toBeGreaterThan(currentInputStart);
+    expect(hqGateSource.slice(currentInputStart, newInputStart)).not.toContain('maxLength=');
   });
 });
 

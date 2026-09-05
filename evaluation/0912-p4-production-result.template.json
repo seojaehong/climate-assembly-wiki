@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "evidenceType": "0912-p4-production-result",
+  "rolloutId": "p4-audit-log",
+  "releaseRunId": null,
+  "sourceCommit": null,
+  "targetRevision": null,
+  "productionEnvironmentId": null,
+  "mode": null,
+  "approvalId": "approval-p4-audit",
+  "startedAt": null,
+  "completedAt": null,
+  "migration": {
+    "path": "supabase/migrations/platform_p4_audit_log.sql",
+    "sha256": null,
+    "historyId": "platform_p4_audit_log",
+    "historyRowCount": null,
+    "historyChecksumMatched": null
+  },
+  "verification": {
+    "path": "supabase/verify/platform_audit_post_apply.sql",
+    "sha256": null,
+    "exitCode": null,
+    "status": "not_run",
+    "checkCount": 2,
+    "failedCheckCount": null,
+    "checks": [
+      { "id": "p4-post-apply-script", "status": "not_run" },
+      { "id": "p4-legacy-history-preserved", "status": "not_run" }
+    ]
+  },
+  "legacyHistory": {
+    "snapshotPath": "supabase/verify/platform_audit_history_snapshot.sql",
+    "snapshotSha256": null,
+    "algorithm": "sha256-canonical-jsonb-v1",
+    "capturedBeforeAt": null,
+    "capturedAfterAt": null,
+    "attendance": {
+      "rowCountBefore": null,
+      "rowCountAfter": null,
+      "sha256Before": null,
+      "sha256After": null
+    },
+    "workshop": {
+      "rowCountBefore": null,
+      "rowCountAfter": null,
+      "sha256Before": null,
+      "sha256After": null
+    }
+  },
+  "productionAccess": {
+    "connectionCount": null,
+    "mutationCount": null
+  }
+}

@@ -1,0 +1,448 @@
+{
+  "schemaVersion": 1,
+  "reportId": "0912-13-traceability-verification",
+  "generatedAt": "2026-09-05T13:56:28.890Z",
+  "sourceCommit": "9743aaa50393cba5bc9764beb00b61837df5a52d",
+  "sourceTreeClean": true,
+  "status": "pass",
+  "safety": {
+    "liveDatabaseMutationCount": 0,
+    "networkRequestCount": 0
+  },
+  "summary": {
+    "requirementCount": 14,
+    "checkCount": 13,
+    "passCount": 13,
+    "failCount": 0
+  },
+  "checks": [
+    {
+      "id": "manifest-schema",
+      "status": "pass",
+      "evidence": {
+        "requirementCount": 14
+      }
+    },
+    {
+      "id": "requirement-links",
+      "status": "pass",
+      "evidence": {
+        "linkCount": 140
+      }
+    },
+    {
+      "id": "report-template",
+      "status": "pass",
+      "evidence": {
+        "gateCount": 34,
+        "requirementCount": 14,
+        "rolloutStepCount": 14
+      }
+    },
+    {
+      "id": "field-report-template",
+      "status": "pass",
+      "evidence": {
+        "path": "evaluation/0912-13-field-rehearsal.template.json",
+        "escapedExternalRequestCount": 0,
+        "webSocketActualNetworkConnectionCount": 0
+      }
+    },
+    {
+      "id": "hq-report-template",
+      "status": "pass",
+      "evidence": {
+        "path": "evaluation/0912-13-hq-rehearsal.template.json",
+        "rehearsalId": "0912-13-hq-v3-browser-rehearsal",
+        "productionDatabaseMutationCount": 0
+      }
+    },
+    {
+      "id": "synthetic-fixture",
+      "status": "pass",
+      "evidence": {
+        "fixtureId": "0912-field-rehearsal-v1",
+        "topicCount": 6,
+        "rolloutSteps": 14
+      }
+    },
+    {
+      "id": "ci-matrix",
+      "status": "pass",
+      "evidence": {
+        "path": ".github/workflows/test.yml",
+        "snippets": [
+          "src/islands/mod/**",
+          "src/lib/**",
+          "docs/platform/**",
+          "src/pages/mod.astro",
+          "src/pages/hq.astro",
+          "scripts/verify-0912-readiness.mjs",
+          "scripts/verify-0912-release-report.mjs",
+          "scripts/verify-0912-hq-rehearsal.mjs",
+          "scripts/verify-workshop-access-contract.mjs",
+          "scripts/verify-0912-postgres.sh",
+          "scripts/seed-0829-*.mjs",
+          "scripts/rotate-join-code.mjs",
+          "scripts/session-rosters*.mjs",
+          "verify-0912-field-rehearsal",
+          "node-version: 20",
+          "node scripts/verify-field-rehearsal.mjs",
+          "node scripts/verify-0912-hq-rehearsal.mjs",
+          "0912-field-rehearsal",
+          "0912-hq-rehearsal",
+          "verify-0912-event-access",
+          "Run P1a, P2a, P3 and P4 ordered access rehearsals",
+          "Run strict Astro and TypeScript checks",
+          "npm run check",
+          "npm exec vitest -- run"
+        ]
+      }
+    },
+    {
+      "id": "postgres-p1a-p2a-disposable",
+      "status": "pass",
+      "evidence": {
+        "runner": {
+          "path": "scripts/verify-0912-postgres.sh",
+          "snippets": [
+            "postgres:16",
+            "container_id=\"\"",
+            "seed_sql_path=\"\"",
+            "docker rm -f \"$container_id\"",
+            "chmod 600 \"$seed_sql_path\"",
+            "stat -c '%a' \"$seed_sql_path\"",
+            "test \"$seed_sql_mode\" = \"0600\"",
+            "rm -f -- \"$seed_sql_path\"",
+            "0912-p1a-driver.sql",
+            "0912-p1a-activation-driver.sql",
+            "platform_p1a_0912_event_access_BEFORE.sql",
+            "platform_p2a_0912_token_only_activation_BEFORE.sql",
+            "platform_p2a_0912_token_only_activation.verify.sql",
+            "platform_p2a_0912_token_only_activation.rollback.verify.sql",
+            "tokenOnlyActivationVerification",
+            "legacyPermissionNegativeVerification",
+            "legacyCrossSessionDeadlineNegativeVerification",
+            "predictableJoinCodeExclusionVerification",
+            "postP4LegacyNegativeVerification",
+            "activationRollbackGuardVerification",
+            "activationRollbackExerciseVerification",
+            "activationReapplyVerification",
+            "seedCliSqlSyntaxAndSuccessVerification",
+            "seedCliPartialTenancyFailClosedVerification",
+            "seedCliCapabilityValuesLogged",
+            "seedCliHostTemporaryFileMode",
+            "seedCliHostTemporaryFileRemovedBeforeExecution",
+            "seedCliContainerCopyRemovedWithCreatedContainer",
+            "productionDatabaseConnectionCount",
+            "productionMutationCount"
+          ]
+        },
+        "driver": {
+          "path": "automation/tests/fixtures/0912-p1a-driver.sql",
+          "snippets": [
+            "set check_function_bodies = on",
+            "platform_p1_tenancy.sql",
+            "0912-p1a-seed.sql",
+            "platform_p1a_0912_event_access.sql",
+            "platform_p1a_0912_event_access.verify.sql"
+          ]
+        },
+        "driverOrder": {
+          "path": "automation/tests/fixtures/0912-p1a-driver.sql",
+          "orderedSnippets": [
+            "\\i /tmp/platform_p1_tenancy.sql",
+            "\\i /tmp/0912-p1a-seed.sql",
+            "\\i /tmp/platform_p1a_0912_event_access.sql"
+          ]
+        },
+        "activationDriver": {
+          "path": "automation/tests/fixtures/0912-p1a-activation-driver.sql",
+          "snippets": [
+            "platform_p1a_0912_event_access.sql",
+            "platform_p2_analysis_review.sql",
+            "platform_p1b_backfill.sql",
+            "platform_p1c_org_selection.sql",
+            "platform_p2a_0912_token_only_activation.sql",
+            "platform_p2a_0912_token_only_activation.verify.sql",
+            "platform_p3_design_provisioning.sql",
+            "platform_p4_audit_log.sql",
+            "platform_p2a_0912_token_only_activation_BEFORE.sql",
+            "platform_p2a_0912_token_only_activation.rollback.verify.sql",
+            "emergency_rollback_ack='I_ACCEPT_LEGACY_ACCESS_REOPEN'",
+            "emergency_rollback_incident='disposable-verification-only'",
+            "P2A REAPPLY AFTER ROLLBACK"
+          ]
+        },
+        "activationDriverOrder": {
+          "path": "automation/tests/fixtures/0912-p1a-activation-driver.sql",
+          "orderedSnippets": [
+            "\\i /tmp/platform_p1_tenancy.sql",
+            "\\i /tmp/0912-p1a-seed.sql",
+            "\\i /tmp/platform_p1a_0912_event_access.sql",
+            "\\i /tmp/platform_p2_analysis_review.sql",
+            "\\i /tmp/platform_p1b_backfill.sql",
+            "\\i /tmp/platform_p1c_org_selection.sql",
+            "\\i /tmp/platform_p2a_0912_token_only_activation.sql",
+            "\\i /tmp/platform_p3_design_provisioning.sql",
+            "\\i /tmp/platform_p4_audit_log.sql"
+          ]
+        },
+        "activationVerify": {
+          "path": "supabase/verify/platform_p2a_0912_token_only_activation.sql",
+          "snippets": [
+            "legacy execute survived activation",
+            "staff ballot privilege mismatch",
+            "mod_proxy_vote_v3",
+            "topic_set_deadline",
+            "legacy call permission denied seam failed"
+          ]
+        },
+        "activationRollbackVerify": {
+          "path": "supabase/verify/platform_p2a_0912_token_only_activation_rollback.sql",
+          "snippets": [
+            "activation rollback privilege mismatch",
+            "activation rollback left token/non-idempotent RPC executable",
+            "mod_proxy_vote_v2"
+          ]
+        },
+        "seed": {
+          "path": "automation/tests/fixtures/0912-p1a-seed.sql",
+          "snippets": [
+            "current_database() <> 'verify'",
+            "'0912-deliberation'",
+            "'091201'",
+            "'091202'",
+            "'draft'"
+          ]
+        },
+        "seedCliPrelude": {
+          "path": "automation/tests/fixtures/0912-seed-cli-prelude.sql",
+          "snippets": [
+            "current_database() <> 'verify'",
+            "'0829-deliberation'",
+            "platform_p1_tenancy.sql",
+            "SEED CLI THROWAWAY SOURCE INSTALLED"
+          ]
+        }
+      }
+    },
+    {
+      "id": "seed-live-write-disabled",
+      "status": "pass",
+      "evidence": {
+        "implementation": {
+          "path": "scripts/seed-0829-teams.mjs",
+          "snippets": [
+            "There is intentionally no direct live-write mode",
+            "--print-seed-sql",
+            "--print-sync-sql",
+            "import { randomInt } from 'node:crypto'",
+            "unknownArgs.length > 0 || selectedModes.length !== 1",
+            "code: '******'",
+            "process.exitCode = 2"
+          ]
+        },
+        "library": {
+          "path": "scripts/seed-0829-lib.mjs",
+          "snippets": [
+            "roster codes are required; operational callers must use a cryptographically secure generator",
+            "function rosterCodeRows(roster, codes)"
+          ]
+        },
+        "rotation": {
+          "path": "scripts/rotate-join-code.mjs",
+          "snippets": [
+            "const allowedModes = new Set(['--dry-run', '--print-sql'])",
+            "modes.length !== 1 || names.length !== 1",
+            "직접 live 쓰기 경로는 비활성화되어 있습니다.",
+            "process.exitCode = 2"
+          ]
+        },
+        "test": {
+          "path": "scripts/seed-0829.test.mjs",
+          "snippets": [
+            "refuses a no-argument direct live write before loading any credentials",
+            "rejects unknown or conflicting seed modes instead of guessing operator intent",
+            "disables direct rotation and keeps dry-run codes masked",
+            "emits an atomic admin transaction for a new session roster",
+            "creates one unique six-digit code per active team",
+            "refuses to generate operational SQL without caller-supplied secure codes",
+            "expect(result.status).toBe(2)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "hq-attendance-session-boundary",
+      "status": "pass",
+      "evidence": {
+        "attendance": {
+          "path": "src/lib/attendance.ts",
+          "snippets": [
+            "'attendance_roster_v2'",
+            "'attendance_hq_summary_v2'",
+            "'attendance_set_v2'",
+            "'attendance_bulk_present_v2'",
+            "'attendance_finalize_absent_v2'",
+            "'attendance_member_save_v2'",
+            "'attendance_hq_audit_v2'",
+            "'attendance_hq_set_team_pin_v2'",
+            "'attendance_hq_set_table_no_v2'",
+            "'workshop_hq_logout_v2'",
+            "p_token: token",
+            "p_session_slug: sessionSlug"
+          ]
+        },
+        "submissions": {
+          "path": "src/lib/hq-submissions.ts",
+          "snippets": [
+            "'hq_submissions_v3'",
+            "'submission_reopen_v2'",
+            "'hq_submission_history_v2'",
+            "'hq_submission_category_assign_v3'",
+            "'hq_submission_categories_v3'",
+            "'hq_submission_kind_assign_v3'",
+            "'hq_submission_kinds_v3'",
+            "'hq_topic_deadlines_v2'",
+            "'hq_clear_submissions_v3'",
+            "source_item_id",
+            "p_token: token",
+            "p_session_slug: sessionSlug"
+          ]
+        },
+        "grid": {
+          "path": "src/lib/mod-console.ts",
+          "snippets": [
+            "'mod_rounds_v2'",
+            "'mod_session_teams_v2'",
+            "'mod_vote_counts_v2'",
+            "'mod_votes_v2'",
+            "'public_round_get_v2'",
+            "'public_round_votes_v2'",
+            "'public_round_cast_v2'",
+            "'hq_teams_v2'",
+            "'hq_rounds_v2'",
+            "'hq_vote_counts_v2'",
+            "'hq_votes_v2'",
+            "p_token: token",
+            "p_session_slug: sessionSlug"
+          ]
+        }
+      }
+    },
+    {
+      "id": "accessibility-routes",
+      "status": "pass",
+      "evidence": {
+        "automated": {
+          "path": "automation/platform-accessibility-audit.mjs",
+          "snippets": [
+            "id: 'moderator-console'",
+            "path: '/mod?code=000000'",
+            "id: 'hq-console-gate'",
+            "id: 'hq-console-dashboard'",
+            "path: '/hq'",
+            "sessionStorage.setItem('climate_vote_hq_attendance_token'",
+            "'workshop_hq_status'",
+            "'workshop_hq_devices'",
+            "'attendance_hq_summary_v2'",
+            "'attendance_roster_v2'",
+            "'attendance_hq_audit_v2'",
+            "'hq_submissions_v3'",
+            "'hq_submission_history_v2'",
+            "'hq_submission_categories_v3'",
+            "'hq_submission_kinds_v3'",
+            "'hq_topic_deadlines_v2'",
+            "'attendance_set_v2'",
+            "'attendance_bulk_present_v2'",
+            "'attendance_finalize_absent_v2'",
+            "'attendance_member_save_v2'",
+            "'attendance_hq_set_team_pin_v2'",
+            "'attendance_hq_set_table_no_v2'",
+            "'submission_reopen_v2'",
+            "'hq_submission_category_assign_v3'",
+            "'hq_submission_kind_assign_v3'",
+            "'hq_clear_submissions_v3'",
+            "'hq_teams_v2'",
+            "'hq_rounds_v2'",
+            "'hq_vote_counts_v2'",
+            "'hq_votes_v2'",
+            "escapedNetworkRequestCount: 0",
+            "blockedExternalRequestCount === 0",
+            "page.route('**/*'",
+            "serviceWorkers: 'block'",
+            "context.routeWebSocket(/.*/",
+            "blockedExternalConnectionAttemptCount === 0",
+            "actualNetworkConnectionCount: 0"
+          ]
+        },
+        "manual": {
+          "path": "automation/platform-accessibility-manual-evidence.mjs",
+          "snippets": [
+            "id: 'moderator-console'",
+            "id: 'hq-console-gate'"
+          ]
+        }
+      }
+    },
+    {
+      "id": "field-context-preservation",
+      "status": "pass",
+      "evidence": {
+        "path": "scripts/verify-field-rehearsal.mjs",
+        "snippets": [
+          "workshop-new-topic-alert",
+          "contextState.focused",
+          "contextState.scrollDelta",
+          "__fieldRehearsalWebSocket",
+          "actualNetworkConnectionCount",
+          "serviceWorkers: 'block'",
+          "context.routeWebSocket(/.*/",
+          "blockedExternalConnectionAttemptCount",
+          "liveDatabaseMutationCount: calls.live_database_mutation",
+          "unexpectedRpcRequestCount: calls.unexpected_rpc",
+          "context.route('**/*'",
+          "requestUrl.origin === BASE_ORIGIN",
+          "requestUrl.origin === FIXTURE_SUPABASE_ORIGIN",
+          "escapedExternalRequestCount: calls.escaped"
+        ]
+      }
+    },
+    {
+      "id": "runbook-controls",
+      "status": "pass",
+      "evidence": {
+        "path": "docs/operations/0912-13-runbook.md",
+        "snippets": [
+          "백업",
+          "복원",
+          "토큰 폐기",
+          "비상 RPC",
+          "중단 기준",
+          "운영 DB 변경 0건",
+          "운영 승인 gate 1",
+          "운영 승인 gate 2",
+          "운영 승인 gate 3",
+          "4인자 HQ rotate 선교체",
+          "maintenance token/staff client 배포",
+          "P2a 별도 승인·원자 cutover",
+          "activation positive·negative 검증",
+          "P3 design provisioning",
+          "P4 audit log",
+          "post-P4 legacy negative 재검증",
+          "P1 → seed/s20 → P1a → P2 → P1b/P1c → P2a → P3 → P4",
+          "P1보다 앞서 실행하면 안 된다",
+          "mod_proxy_vote_v3",
+          "platform_ballot_results_v2",
+          "workshop_hq_rotate_join_codes(p_token, p_session_slug, p_confirmation, p_idempotency_key)",
+          "workshop_hq_logout_v2(p_token)",
+          "scripts/verify-0912-hq-rehearsal.mjs",
+          "scripts/verify-0912-release-report.mjs",
+          "direct live-write 경로는 완전히 비활성화"
+        ]
+      }
+    }
+  ],
+  "errors": []
+}

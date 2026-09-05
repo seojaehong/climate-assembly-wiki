@@ -4,6 +4,57 @@
 -- ⚠️ backfill 로 org_id 를 채운 뒤라면 아래 `drop column org_id` 는 그 값들을 소실시킨다 —
 --    NOT NULL 전환까지 마친 상태라면 롤백 대신 별도 다운 마이그레이션을 설계하라.
 
+begin;
+
+-- org_id를 지우기 전에 기관간 official_id 중복을 먼저 검사한다. 중복이
+-- 있는데 테넌트 경계를 없애면 이전 스키마의 전역 고유성을 복원할 수
+-- 없으므로, 어떤 DDL도 남기기 전에 전체 롤백을 거부한다.
+do $official_id_rollback_guard$
+begin
+  if exists (
+    select 1
+      from climate_vote.assembly_member
+     group by official_id
+    having count(*) > 1
+  ) then
+    raise exception 'P1 rollback refused: assembly member official ids are not globally unique';
+  end if;
+end $official_id_rollback_guard$;
+
+-- P1b가 전역 constraint를 제거한 상태에서 롤백하더라도 이전 스키마의
+-- 무결성을 먼저 복원한다. 중복 행이 있거나 constraint 생성이 실패하면
+-- 같은 트랜잭션의 후속 DROP도 모두 취소된다.
+do $official_id_global_unique$
+begin
+  if not exists (
+    select 1 from pg_constraint
+     where conrelid='climate_vote.assembly_member'::regclass
+       and conname='assembly_member_official_id_key'
+       and contype='u'
+  ) then
+    alter table climate_vote.assembly_member
+      add constraint assembly_member_official_id_key unique (official_id);
+  end if;
+end $official_id_global_unique$;
+
+do $official_id_global_unique_guard$
+begin
+  if not exists (
+    select 1
+      from pg_constraint c
+      join pg_index i on i.indexrelid=c.conindid
+      join pg_attribute a
+        on a.attrelid=c.conrelid and a.attname='official_id' and not a.attisdropped
+     where c.conrelid='climate_vote.assembly_member'::regclass
+       and c.conname='assembly_member_official_id_key'
+       and c.contype='u' and c.convalidated
+       and c.conkey=array[a.attnum]::smallint[]
+       and i.indisunique and i.indisvalid and i.indisready
+  ) then
+    raise exception 'P1 rollback refused: global official id constraint was not restored';
+  end if;
+end $official_id_global_unique_guard$;
+
 -- 6·4. 헬퍼 함수 제거
 drop function if exists climate_vote.org_of_token(text);
 drop function if exists climate_vote.org_of_uid();
@@ -43,3 +94,5 @@ alter table climate_vote.assembly                  drop column if exists org_id;
 drop table if exists climate_vote.invitation;
 drop table if exists climate_vote.membership;
 drop table if exists climate_vote.org;
+
+commit;

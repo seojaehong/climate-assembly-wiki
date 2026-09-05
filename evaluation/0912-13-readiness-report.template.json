@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "reportId": "0912-13-readiness",
+  "releaseRunId": null,
   "generatedAt": null,
   "sourceCommit": null,
   "sourceTreeClean": null,
@@ -9,7 +10,9 @@
   "releaseDecision": "not_ready",
   "safety": {
     "fixtureClassification": "synthetic-no-pii-no-secrets",
-    "liveDatabaseMutationCount": 0,
+    "approvedProductionMutationCount": null,
+    "unapprovedProductionMutationCount": 0,
+    "syntheticRehearsalProductionMutationCount": 0,
     "capabilityValuesLeakedToDraftQueueOrEvidence": null
   },
   "criticalGates": [
@@ -36,6 +39,7 @@
     { "id": "production-routine-acl-inventory", "status": "not_run", "evidence": null },
     { "id": "p2a-cutover-separate-production-approval", "status": "not_run", "evidence": null },
     { "id": "p2a-positive-legacy-negative-verification", "status": "not_run", "evidence": null },
+    { "id": "p2a-token-revocation-verification", "status": "not_run", "evidence": null },
     { "id": "p3-design-provisioning-production-approval", "status": "not_run", "evidence": null },
     { "id": "p4-audit-log-production-approval", "status": "not_run", "evidence": null },
     { "id": "post-p4-legacy-negative-verification", "status": "not_run", "evidence": null },
@@ -46,7 +50,7 @@
     { "id": "mod-hq-manual-a11y", "status": "not_run", "evidence": null },
     { "id": "backup", "status": "not_run", "evidence": null },
     { "id": "restore-isolated", "status": "not_run", "evidence": null },
-    { "id": "token-revocation", "status": "not_run", "evidence": null }
+    { "id": "final-token-cleanup", "status": "not_run", "evidence": null }
   ],
   "productionRollout": {
     "status": "not_run",

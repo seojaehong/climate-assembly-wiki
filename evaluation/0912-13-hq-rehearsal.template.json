@@ -47,7 +47,8 @@
     "injected": null,
     "actorLabel": null,
     "capabilitySource": "runtime-generated",
-    "capabilityPersistedAfterLogoutFailure": null
+    "capabilityPersistedAfterLogoutFailure": null,
+    "capabilityClearedAfterLogoutSuccess": null
   },
   "rpcContracts": {},
   "observations": {},

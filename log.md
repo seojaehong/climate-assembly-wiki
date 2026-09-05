@@ -2,6 +2,7 @@
 <!-- Format: YYYY-MM-DD HH:MM | [ingest|update|session|lint] | <path> | <description> -->
 <!-- DO NOT reorder or delete lines — this is a content changelog, not a git log. -->
 
+2026-09-06 03:54 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-08-30 17:29 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 2026-08-27 20:42 | lint | wiki/index.md | wiki:reindex + wiki:log prebuild run
 !-- APPEND-ONLY. Newest entries at top. -->

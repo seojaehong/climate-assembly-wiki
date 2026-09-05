@@ -44,6 +44,7 @@ export const REQUIRED_0912_CRITICAL_GATES = Object.freeze([
   'production-routine-acl-inventory',
   'p2a-cutover-separate-production-approval',
   'p2a-positive-legacy-negative-verification',
+  'p2a-token-revocation-verification',
   'p3-design-provisioning-production-approval',
   'p4-audit-log-production-approval',
   'post-p4-legacy-negative-verification',
@@ -54,7 +55,7 @@ export const REQUIRED_0912_CRITICAL_GATES = Object.freeze([
   'mod-hq-manual-a11y',
   'backup',
   'restore-isolated',
-  'token-revocation',
+  'final-token-cleanup',
 ]);
 
 export const REQUIRED_0912_APPROVAL_GATES = Object.freeze([
@@ -68,9 +69,9 @@ export const REQUIRED_0912_APPROVAL_GATES = Object.freeze([
   'p4-audit-log',
 ]);
 
-function readJson(path) {
+function readJson(path, readText = (value) => readFileSync(value, 'utf8')) {
   try {
-    return JSON.parse(readFileSync(path, 'utf8'));
+    return JSON.parse(readText(path));
   } catch (error) {
     throw new Error(`JSON을 읽지 못했습니다: ${path} (${error instanceof Error ? error.message : String(error)})`);
   }
@@ -86,24 +87,26 @@ function filePart(reference) {
   return reference.split('#', 1)[0];
 }
 
-function inspectRequiredText(root, relativePath, snippets) {
-  const content = readFileSync(resolve(root, relativePath), 'utf8');
+function inspectRequiredText(readSourceText, relativePath, snippets) {
+  const content = readSourceText(relativePath);
   const missing = snippets.filter((snippet) => !content.includes(snippet));
-  if (missing.length > 0) throw new Error(`${relativePath} 필수 표식 누락: ${missing.join(', ')}`);
-  return { path: relativePath, snippets };
+  if (missing.length > 0) {
+    throw new Error(`${relativePath} 필수 표식 ${missing.length}개가 누락됐습니다.`);
+  }
+  return { path: relativePath, matchedSnippetCount: snippets.length };
 }
 
-function inspectRequiredOrder(root, relativePath, snippets) {
-  const content = readFileSync(resolve(root, relativePath), 'utf8');
+function inspectRequiredOrder(readSourceText, relativePath, snippets) {
+  const content = readSourceText(relativePath);
   const positions = snippets.map((snippet) => content.indexOf(snippet));
   if (positions.some((position) => position < 0)) {
     const missing = snippets.filter((_, index) => positions[index] < 0);
-    throw new Error(`${relativePath} 순서 표식 누락: ${missing.join(', ')}`);
+    throw new Error(`${relativePath} 순서 표식 ${missing.length}개가 누락됐습니다.`);
   }
   if (positions.some((position, index) => index > 0 && position <= positions[index - 1])) {
-    throw new Error(`${relativePath} 적용 순서가 정본과 다릅니다: ${snippets.join(' → ')}`);
+    throw new Error(`${relativePath} 적용 순서가 정본과 다릅니다.`);
   }
-  return { path: relativePath, orderedSnippets: snippets };
+  return { path: relativePath, orderedSnippetCount: snippets.length };
 }
 
 export function verify0912Readiness({
@@ -114,11 +117,29 @@ export function verify0912Readiness({
   hqReportTemplatePath = 'evaluation/0912-13-hq-rehearsal.template.json',
   rehearsalFixturePath = 'automation/fixtures/0912-rehearsal.json',
   generatedAt = new Date(),
+  sourceReader,
+  sourceCommit: sourceCommitOverride,
+  sourceTreeClean: sourceTreeCleanOverride,
 } = {}) {
   if (!root) throw new Error('root가 필요합니다.');
   const absoluteRoot = resolve(root);
-  const manifest = readJson(resolve(absoluteRoot, manifestPath));
-  const template = readJson(resolve(absoluteRoot, reportTemplatePath));
+  const readSourceText = (relativePath) => {
+    const value = typeof sourceReader === 'function'
+      ? sourceReader(relativePath)
+      : readFileSync(resolve(absoluteRoot, relativePath));
+    return Buffer.isBuffer(value) ? value.toString('utf8') : String(value);
+  };
+  const sourcePathExists = (relativePath) => {
+    if (typeof sourceReader !== 'function') return existsSync(resolve(absoluteRoot, relativePath));
+    try {
+      sourceReader(relativePath);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const manifest = readJson(manifestPath, readSourceText);
+  const template = readJson(reportTemplatePath, readSourceText);
   const errors = [];
   const checks = [];
 
@@ -155,7 +176,7 @@ export function verify0912Readiness({
         requireArray(requirement[field], `${requirement.id}.${field}`);
         for (const reference of requirement[field]) {
           const relativePath = filePart(reference);
-          if (!existsSync(resolve(absoluteRoot, relativePath))) {
+          if (!sourcePathExists(relativePath)) {
             throw new Error(`${requirement.id}가 없는 파일을 가리킵니다: ${relativePath}`);
           }
           linkCount += 1;
@@ -170,9 +191,12 @@ export function verify0912Readiness({
       || template.releaseDecision !== 'not_ready') {
       throw new Error('보고서 template은 실행 전 needs_review/not_ready여야 합니다.');
     }
-    if (template.safety?.liveDatabaseMutationCount !== 0
+    if (template.releaseRunId !== null
+      || template.safety?.approvedProductionMutationCount !== null
+      || template.safety?.unapprovedProductionMutationCount !== 0
+      || template.safety?.syntheticRehearsalProductionMutationCount !== 0
       || template.safety?.capabilityValuesLeakedToDraftQueueOrEvidence !== null) {
-      throw new Error('보고서 안전 경계가 운영 DB 0건/권한값 누출 미실행으로 잠기지 않았습니다.');
+      throw new Error('보고서 안전 경계가 실행 ID 미지정/승인 변경 미실행/비승인 변경 0건/권한값 누출 미실행으로 잠기지 않았습니다.');
     }
     const reportIds = template.requirements?.map((item) => item.id) ?? [];
     if (REQUIRED_0912_REQUIREMENTS.some((id) => !reportIds.includes(id))) {
@@ -216,7 +240,7 @@ export function verify0912Readiness({
   });
 
   record('field-report-template', () => {
-    const fieldTemplate = readJson(resolve(absoluteRoot, fieldReportTemplatePath));
+    const fieldTemplate = readJson(fieldReportTemplatePath, readSourceText);
     if (fieldTemplate.status !== 'not_run'
       || fieldTemplate.safety?.liveNetworkRequestCount !== 0
       || fieldTemplate.safety?.liveDatabaseMutationCount !== 0
@@ -238,7 +262,7 @@ export function verify0912Readiness({
   });
 
   record('hq-report-template', () => {
-    const hqTemplate = readJson(resolve(absoluteRoot, hqReportTemplatePath));
+    const hqTemplate = readJson(hqReportTemplatePath, readSourceText);
     if (hqTemplate.schemaVersion !== 1
       || hqTemplate.rehearsalId !== '0912-13-hq-v3-browser-rehearsal'
       || hqTemplate.status !== 'not_run'
@@ -263,7 +287,7 @@ export function verify0912Readiness({
   });
 
   record('synthetic-fixture', () => {
-    const fixture = readJson(resolve(absoluteRoot, rehearsalFixturePath));
+    const fixture = readJson(rehearsalFixturePath, readSourceText);
     if (fixture.classification !== 'synthetic-no-pii-no-secrets'
       || fixture.authorization?.capabilityValuesStoredInFixture !== false) {
       throw new Error('합성 fixture 분류 또는 권한값 미보관 선언이 없습니다.');
@@ -333,7 +357,7 @@ export function verify0912Readiness({
     };
   });
 
-  record('ci-matrix', () => inspectRequiredText(absoluteRoot, '.github/workflows/test.yml', [
+  record('ci-matrix', () => inspectRequiredText(readSourceText, '.github/workflows/test.yml', [
     "src/islands/mod/**",
     "src/lib/**",
     "docs/platform/**",
@@ -361,7 +385,7 @@ export function verify0912Readiness({
   ]));
 
   record('postgres-p1a-p2a-disposable', () => {
-    const runner = inspectRequiredText(absoluteRoot, 'scripts/verify-0912-postgres.sh', [
+    const runner = inspectRequiredText(readSourceText, 'scripts/verify-0912-postgres.sh', [
       'postgres:16',
       'container_id=""',
       'seed_sql_path=""',
@@ -393,20 +417,20 @@ export function verify0912Readiness({
       'productionDatabaseConnectionCount',
       'productionMutationCount',
     ]);
-    const driver = inspectRequiredText(absoluteRoot, 'automation/tests/fixtures/0912-p1a-driver.sql', [
+    const driver = inspectRequiredText(readSourceText, 'automation/tests/fixtures/0912-p1a-driver.sql', [
       'set check_function_bodies = on',
       'platform_p1_tenancy.sql',
       '0912-p1a-seed.sql',
       'platform_p1a_0912_event_access.sql',
       'platform_p1a_0912_event_access.verify.sql',
     ]);
-    const driverOrder = inspectRequiredOrder(absoluteRoot, 'automation/tests/fixtures/0912-p1a-driver.sql', [
+    const driverOrder = inspectRequiredOrder(readSourceText, 'automation/tests/fixtures/0912-p1a-driver.sql', [
       '\\i /tmp/platform_p1_tenancy.sql',
       '\\i /tmp/0912-p1a-seed.sql',
       '\\i /tmp/platform_p1a_0912_event_access.sql',
     ]);
     const activationDriver = inspectRequiredText(
-      absoluteRoot,
+      readSourceText,
       'automation/tests/fixtures/0912-p1a-activation-driver.sql',
       [
         'platform_p1a_0912_event_access.sql',
@@ -425,7 +449,7 @@ export function verify0912Readiness({
       ],
     );
     const activationDriverOrder = inspectRequiredOrder(
-      absoluteRoot,
+      readSourceText,
       'automation/tests/fixtures/0912-p1a-activation-driver.sql',
       [
         '\\i /tmp/platform_p1_tenancy.sql',
@@ -440,7 +464,7 @@ export function verify0912Readiness({
       ],
     );
     const activationVerify = inspectRequiredText(
-      absoluteRoot,
+      readSourceText,
       'supabase/verify/platform_p2a_0912_token_only_activation.sql',
       [
         'legacy execute survived activation',
@@ -451,12 +475,12 @@ export function verify0912Readiness({
       ],
     );
     const activationRollbackVerify = inspectRequiredText(
-      absoluteRoot,
+      readSourceText,
       'supabase/verify/platform_p2a_0912_token_only_activation_rollback.sql',
       ['activation rollback privilege mismatch', 'activation rollback left token/non-idempotent RPC executable',
         'mod_proxy_vote_v2'],
     );
-    const seed = inspectRequiredText(absoluteRoot, 'automation/tests/fixtures/0912-p1a-seed.sql', [
+    const seed = inspectRequiredText(readSourceText, 'automation/tests/fixtures/0912-p1a-seed.sql', [
       "current_database() <> 'verify'",
       "'0912-deliberation'",
       "'091201'",
@@ -464,7 +488,7 @@ export function verify0912Readiness({
       "'draft'",
     ]);
     const seedCliPrelude = inspectRequiredText(
-      absoluteRoot,
+      readSourceText,
       'automation/tests/fixtures/0912-seed-cli-prelude.sql',
       [
         "current_database() <> 'verify'",
@@ -487,7 +511,7 @@ export function verify0912Readiness({
   });
 
   record('seed-live-write-disabled', () => {
-    const implementation = inspectRequiredText(absoluteRoot, 'scripts/seed-0829-teams.mjs', [
+    const implementation = inspectRequiredText(readSourceText, 'scripts/seed-0829-teams.mjs', [
       'There is intentionally no direct live-write mode',
       '--print-seed-sql',
       '--print-sync-sql',
@@ -496,22 +520,22 @@ export function verify0912Readiness({
       "code: '******'",
       'process.exitCode = 2',
     ]);
-    const library = inspectRequiredText(absoluteRoot, 'scripts/seed-0829-lib.mjs', [
+    const library = inspectRequiredText(readSourceText, 'scripts/seed-0829-lib.mjs', [
       'roster codes are required; operational callers must use a cryptographically secure generator',
       'function rosterCodeRows(roster, codes)',
     ]);
-    const rotation = inspectRequiredText(absoluteRoot, 'scripts/rotate-join-code.mjs', [
+    const rotation = inspectRequiredText(readSourceText, 'scripts/rotate-join-code.mjs', [
       "const allowedModes = new Set(['--dry-run', '--print-sql'])",
       'modes.length !== 1 || names.length !== 1',
       '직접 live 쓰기 경로는 비활성화되어 있습니다.',
       'process.exitCode = 2',
     ]);
-    const rotationSource = readFileSync(resolve(absoluteRoot, 'scripts/rotate-join-code.mjs'), 'utf8');
+    const rotationSource = readSourceText('scripts/rotate-join-code.mjs');
     if (rotationSource.includes('createClient(') || rotationSource.includes('SUPABASE_SERVICE_ROLE_KEY')
       || rotationSource.includes(".from('team')")) {
       throw new Error('rotate-join-code.mjs에 direct Supabase write 경로가 남아 있습니다.');
     }
-    const test = inspectRequiredText(absoluteRoot, 'scripts/seed-0829.test.mjs', [
+    const test = inspectRequiredText(readSourceText, 'scripts/seed-0829.test.mjs', [
       'refuses a no-argument direct live write before loading any credentials',
       'rejects unknown or conflicting seed modes instead of guessing operator intent',
       'disables direct rotation and keeps dry-run codes masked',
@@ -523,8 +547,30 @@ export function verify0912Readiness({
     return { implementation, library, rotation, test };
   });
 
+  record('backup-token-bound-export', () => {
+    const backupSource = readSourceText('scripts/backup-0829.mjs');
+    const required = [
+      "rpc('attendance_hq_unlock_named'",
+      "rpc('hq_submissions_v3', { p_token: token, p_session_slug: SESSION })",
+      "rpc('hq_teams_v2', { p_token: token, p_session_slug: SESSION })",
+      "rpc('attendance_hq_summary_v2', { p_token: token, p_session_slug: SESSION })",
+      "rpc('workshop_hq_logout_v2', { p_token: token })",
+      'captured_at: capturedAt.toISOString()',
+    ];
+    const missing = required.filter((snippet) => !backupSource.includes(snippet));
+    const forbidden = [
+      "rpc('hq_submissions',",
+      "rpc('hq_teams',",
+      "rpc('attendance_hq_summary',",
+    ].filter((snippet) => backupSource.includes(snippet));
+    if (missing.length > 0 || forbidden.length > 0) {
+      throw new Error(`backup RPC contract mismatch (missing=${missing.join('|')}, legacy=${forbidden.join('|')})`);
+    }
+    return { path: 'scripts/backup-0829.mjs', tokenBoundReadRpcCount: 3, logoutRequired: true };
+  });
+
   record('hq-attendance-session-boundary', () => {
-    const attendance = inspectRequiredText(absoluteRoot, 'src/lib/attendance.ts', [
+    const attendance = inspectRequiredText(readSourceText, 'src/lib/attendance.ts', [
       "'attendance_roster_v2'",
       "'attendance_hq_summary_v2'",
       "'attendance_set_v2'",
@@ -538,7 +584,7 @@ export function verify0912Readiness({
       'p_token: token',
       'p_session_slug: sessionSlug',
     ]);
-    const submissions = inspectRequiredText(absoluteRoot, 'src/lib/hq-submissions.ts', [
+    const submissions = inspectRequiredText(readSourceText, 'src/lib/hq-submissions.ts', [
       "'hq_submissions_v3'",
       "'submission_reopen_v2'",
       "'hq_submission_history_v2'",
@@ -552,7 +598,7 @@ export function verify0912Readiness({
       'p_token: token',
       'p_session_slug: sessionSlug',
     ]);
-    const grid = inspectRequiredText(absoluteRoot, 'src/lib/mod-console.ts', [
+    const grid = inspectRequiredText(readSourceText, 'src/lib/mod-console.ts', [
       "'mod_rounds_v2'",
       "'mod_session_teams_v2'",
       "'mod_vote_counts_v2'",
@@ -571,7 +617,7 @@ export function verify0912Readiness({
   });
 
   record('accessibility-routes', () => {
-    const automated = inspectRequiredText(absoluteRoot, 'automation/platform-accessibility-audit.mjs', [
+    const automated = inspectRequiredText(readSourceText, 'automation/platform-accessibility-audit.mjs', [
       "id: 'moderator-console'",
       "path: '/mod?code=000000'",
       "id: 'hq-console-gate'",
@@ -610,7 +656,7 @@ export function verify0912Readiness({
       'blockedExternalConnectionAttemptCount === 0',
       'actualNetworkConnectionCount: 0',
     ]);
-    const manual = inspectRequiredText(absoluteRoot, 'automation/platform-accessibility-manual-evidence.mjs', [
+    const manual = inspectRequiredText(readSourceText, 'automation/platform-accessibility-manual-evidence.mjs', [
       "id: 'moderator-console'",
       "id: 'hq-console-gate'",
     ]);
@@ -618,7 +664,7 @@ export function verify0912Readiness({
   });
 
   record('field-context-preservation', () => inspectRequiredText(
-    absoluteRoot,
+    readSourceText,
     'scripts/verify-field-rehearsal.mjs',
     ['workshop-new-topic-alert', 'contextState.focused', 'contextState.scrollDelta',
       '__fieldRehearsalWebSocket', 'actualNetworkConnectionCount',
@@ -631,7 +677,7 @@ export function verify0912Readiness({
   ));
 
   record('runbook-controls', () => inspectRequiredText(
-    absoluteRoot,
+    readSourceText,
     'docs/operations/0912-13-runbook.md',
     [
       '백업',
@@ -664,16 +710,24 @@ export function verify0912Readiness({
 
   let sourceCommit = null;
   let sourceTreeClean = null;
-  try {
-    const gitOptions = {
-      cwd: absoluteRoot,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-    };
-    sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], gitOptions).trim();
-    sourceTreeClean = execFileSync('git', ['status', '--porcelain'], gitOptions).trim() === '';
-  } catch (error) {
-    errors.push(`git-state: ${error instanceof Error ? error.message : String(error)}`);
+  if (typeof sourceReader === 'function') {
+    sourceCommit = sourceCommitOverride ?? null;
+    sourceTreeClean = sourceTreeCleanOverride ?? null;
+    if (!/^[0-9a-f]{40}$/.test(sourceCommit ?? '') || sourceTreeClean !== true) {
+      errors.push('git-state: committed source reader requires a full source commit and clean immutable tree');
+    }
+  } else {
+    try {
+      const gitOptions = {
+        cwd: absoluteRoot,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      };
+      sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], gitOptions).trim();
+      sourceTreeClean = execFileSync('git', ['status', '--porcelain'], gitOptions).trim() === '';
+    } catch (error) {
+      errors.push(`git-state: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   return {

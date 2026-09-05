@@ -39,6 +39,7 @@ test('canonical HQ rehearsal fixture is synthetic and carries the exact v3 reque
   ]);
   assert.equal(value.rpcContracts.hq_clear_submissions_v3.exactSetField, 'p_expected_submissions');
   assert.deepEqual(value.rpcContracts.workshop_hq_logout_v2.requestFields, ['p_token']);
+  assert.equal(value.rpcContracts.workshop_hq_logout_v2.successResponse, 'true');
   assert.equal(value.storage.capabilitySource, 'runtime-generated');
   assert.equal(value.boardRows[0].item_id, value.categoryAssignments[0].source_item_id);
 });

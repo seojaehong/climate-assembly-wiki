@@ -1,0 +1,277 @@
+{
+  "schemaVersion": 1,
+  "rehearsalId": "0912-13-hq-v3-browser-rehearsal",
+  "generatedAt": "2026-09-05T13:57:12.497Z",
+  "elapsedMs": 2702,
+  "sourceCommit": "9743aaa50393cba5bc9764beb00b61837df5a52d",
+  "sourceTreeClean": true,
+  "status": "pass",
+  "target": {
+    "baseUrl": "http://127.0.0.1:4331",
+    "route": "/hq?ops=1"
+  },
+  "fixture": "automation/fixtures/0912-hq-rehearsal.json",
+  "fixtureSha256": "d18e8f2ab911eab29b92c3bfe22701d946b7f5885a4a067910b6fca4d0f5d3d9",
+  "fixtureIdentity": {
+    "schemaVersion": 1,
+    "fixtureId": "0912-hq-v3-rehearsal-v1",
+    "classification": "synthetic-no-pii-no-secrets"
+  },
+  "evidenceBoundary": {
+    "evidenceClass": "ui-fixture-only",
+    "databaseAuthorizationOrLifecycleEvidence": false,
+    "canonicalDatabaseVerifier": "scripts/verify-0912-postgres.sh",
+    "statement": "브라우저 합성 fixture는 요청 형식과 사용자에게 보이는 복구 흐름만 검증하며 DB 권한, 동시성 또는 수명주기의 증거가 아닙니다."
+  },
+  "summary": {
+    "checkCount": 7,
+    "passCount": 7,
+    "failCount": 0
+  },
+  "safety": {
+    "allSupabaseHttpIntercepted": true,
+    "interceptedSupabaseHttpRequestCount": 25,
+    "forwardedSupabaseHttpRequestCount": 0,
+    "blockedUnexpectedSupabaseHttpRequestCount": 0,
+    "blockedUnexpectedSupabaseRpcNames": [],
+    "blockedExternalHttpRequestCount": 0,
+    "fixtureReadRequestCount": 18,
+    "fixtureMutationRequestCount": 7,
+    "productionDatabaseMutationCount": 0,
+    "contractViolationCount": 0,
+    "contractViolations": [],
+    "webSocket": {
+      "stubbed": true,
+      "attemptCount": 0,
+      "actualConnectionCount": 0
+    },
+    "screenshotsWritten": 0,
+    "runtimeCapabilityMaterialDetectedBeforeWrite": false,
+    "runtimeCapabilityMaterialInWrittenReport": false
+  },
+  "namedHqSession": {
+    "injected": true,
+    "actorLabel": "합성 운영자",
+    "capabilitySource": "runtime-generated",
+    "capabilityPersistedAfterLogoutFailure": true
+  },
+  "rpcContracts": {
+    "hq_submission_category_assign_v3": {
+      "effect": "fixture-mutation",
+      "requestFields": [
+        "p_token",
+        "p_session_slug",
+        "p_submission_id",
+        "p_item_ordinal",
+        "p_category",
+        "p_expected_submission_updated_at",
+        "p_expected_event_id",
+        "p_idempotency_key"
+      ],
+      "responseStatuses": [
+        "applied",
+        "conflict"
+      ],
+      "stableIdempotencyForExactRetry": true,
+      "compareAndSetFields": [
+        "p_expected_submission_updated_at",
+        "p_expected_event_id"
+      ]
+    },
+    "hq_submission_kind_assign_v3": {
+      "effect": "fixture-mutation",
+      "requestFields": [
+        "p_token",
+        "p_session_slug",
+        "p_submission_id",
+        "p_item_ordinal",
+        "p_kind",
+        "p_expected_submission_updated_at",
+        "p_expected_event_id",
+        "p_idempotency_key"
+      ],
+      "responseStatuses": [
+        "applied",
+        "conflict"
+      ],
+      "stableIdempotencyForExactRetry": true,
+      "compareAndSetFields": [
+        "p_expected_submission_updated_at",
+        "p_expected_event_id"
+      ]
+    },
+    "hq_clear_submissions_v3": {
+      "effect": "fixture-mutation",
+      "requestFields": [
+        "p_token",
+        "p_session_slug",
+        "p_confirm",
+        "p_expected_submissions",
+        "p_idempotency_key"
+      ],
+      "responseStatuses": [
+        "applied",
+        "conflict"
+      ],
+      "exactSetField": "p_expected_submissions"
+    },
+    "workshop_hq_logout_v2": {
+      "effect": "fixture-mutation",
+      "requestFields": [
+        "p_token"
+      ],
+      "successResponse": "null",
+      "failureKeepsLocalCapability": true
+    }
+  },
+  "observations": {
+    "rpcCallCounts": {
+      "hq_clear_submissions_v3": 1,
+      "hq_submission_categories_v3": 5,
+      "hq_submission_category_assign_v3": 3,
+      "hq_submission_kind_assign_v3": 2,
+      "hq_submission_kinds_v3": 5,
+      "hq_submissions_v3": 5,
+      "hq_topic_deadlines_v2": 1,
+      "workshop_hq_devices": 1,
+      "workshop_hq_logout_v2": 1,
+      "workshop_hq_status": 1
+    },
+    "categoryRetry": {
+      "exactRequestRetried": true,
+      "stableIdempotencyKey": true,
+      "stableExpectedEventId": true,
+      "stableExpectedSubmissionUpdatedAt": true
+    },
+    "kindRetry": {
+      "exactRequestRetried": true,
+      "stableIdempotencyKey": true,
+      "stableExpectedEventId": true,
+      "stableExpectedSubmissionUpdatedAt": true
+    },
+    "staleConflictReloaded": true,
+    "exactSetClearConflictPreservedRows": true,
+    "logoutFailurePreservedCapability": true
+  },
+  "checks": [
+    {
+      "id": "named-hq-session",
+      "label": "이름이 있는 본부 세션을 주입하고 v3 범위 읽기로 화면을 연다",
+      "status": "pass",
+      "observed": {
+        "actorLabel": "합성 운영자",
+        "capabilitySource": "runtime-generated",
+        "scopedReadRpcNames": [
+          "workshop_hq_status",
+          "workshop_hq_devices",
+          "hq_submissions_v3",
+          "hq_submission_categories_v3",
+          "hq_submission_kinds_v3",
+          "hq_topic_deadlines_v2"
+        ]
+      }
+    },
+    {
+      "id": "category-stable-retry",
+      "label": "범주 v3 전송 재시도는 idempotency와 두 CAS 값을 그대로 재사용한다",
+      "status": "pass",
+      "observed": {
+        "requestCount": 2,
+        "firstResponse": {
+          "httpStatus": 503,
+          "code": "SYNTHETIC_TRANSPORT_FAILURE"
+        },
+        "secondResponse": {
+          "status": "applied",
+          "eventId": 42
+        },
+        "stableIdempotencyKey": true,
+        "stableExpectedEventId": true,
+        "stableExpectedSubmissionUpdatedAt": true
+      }
+    },
+    {
+      "id": "kind-stable-retry",
+      "label": "종류 v3 전송 재시도도 idempotency와 두 CAS 값을 그대로 재사용한다",
+      "status": "pass",
+      "observed": {
+        "requestCount": 2,
+        "firstResponse": {
+          "httpStatus": 503,
+          "code": "SYNTHETIC_TRANSPORT_FAILURE"
+        },
+        "secondResponse": {
+          "status": "applied",
+          "eventId": 72
+        },
+        "stableIdempotencyKey": true,
+        "stableExpectedEventId": true,
+        "stableExpectedSubmissionUpdatedAt": true
+      }
+    },
+    {
+      "id": "stale-conflict-recovery",
+      "label": "stale 범주 CAS 충돌은 최신 원문과 배정을 다시 읽고 눈에 보이게 안내한다",
+      "status": "pass",
+      "observed": {
+        "request": {
+          "expectedEventId": 42,
+          "expectedSubmissionUpdatedAt": "2026-09-12T01:00:00.000Z",
+          "changedIntentUsesNewIdempotencyKey": true
+        },
+        "response": {
+          "status": "conflict",
+          "currentEventId": 43,
+          "currentSubmissionUpdatedAt": "2026-09-12T01:05:00.000Z"
+        },
+        "authoritativeReload": true,
+        "visibleAlert": true,
+        "replacedSourceDoesNotKeepOldKind": true
+      }
+    },
+    {
+      "id": "clear-exact-set-conflict",
+      "label": "전체 비우기 v3는 정확한 제출물 세대 집합을 보내고 충돌 시 아무것도 지우지 않는다",
+      "status": "pass",
+      "observed": {
+        "exactSet": true,
+        "expectedSubmissionCount": 2,
+        "duplicateSubmissionCount": 0,
+        "response": {
+          "status": "conflict"
+        },
+        "deletedItemCount": 0,
+        "visibleAlert": true
+      }
+    },
+    {
+      "id": "logout-failure-retains-capability",
+      "label": "서버 로그아웃 실패는 본부 토큰을 지우지 않고 재시도를 안내한다",
+      "status": "pass",
+      "observed": {
+        "requestCount": 1,
+        "response": {
+          "httpStatus": 503,
+          "code": "SYNTHETIC_TRANSPORT_FAILURE"
+        },
+        "localCapabilityRetained": true,
+        "visibleRetryGuidance": true
+      }
+    },
+    {
+      "id": "deny-by-default-network",
+      "label": "Supabase HTTP와 WebSocket을 deny-by-default로 격리해 운영 DB mutation 0을 유지한다",
+      "status": "pass",
+      "observed": {
+        "interceptedSupabaseHttpRequestCount": 25,
+        "forwardedSupabaseHttpRequestCount": 0,
+        "blockedUnexpectedSupabaseHttpRequestCount": 0,
+        "fixtureMutationRequestCount": 7,
+        "productionDatabaseMutationCount": 0,
+        "webSocketAttemptCount": 0,
+        "actualWebSocketConnectionCount": 0
+      }
+    }
+  ],
+  "findings": []
+}

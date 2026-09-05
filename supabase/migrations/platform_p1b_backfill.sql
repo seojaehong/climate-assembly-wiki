@@ -16,6 +16,8 @@
 --
 -- ROLLBACK: NOT NULL 되돌리기 = alter column drop not null (org_id 컬럼·데이터는 유지).
 
+begin;
+
 -- 1. 기본 org
 insert into climate_vote.org (slug, name, status)
 values ('kcrc-climate-2026', '한국갈등해결센터 기후시민회의', 'active')
@@ -78,8 +80,41 @@ alter table climate_vote.result_page         alter column org_id set not null;
 alter table climate_vote.attendance              alter column org_id set not null;
 alter table climate_vote.attendance_auth_session alter column org_id set not null;
 
+-- P1에서 미리 생성한 org-scoped UNIQUE가 백필 결과 전체를 실제로
+-- 보호하는지 확인한 뒤에만 legacy 전역 UNIQUE를 해제한다. 이 순서면
+-- 인덱스 생성/검증 실패 시 트랜잭션 전체가 rollback되어 기존 보호가 남는다.
+create unique index if not exists assembly_member_org_official_id_uniq
+  on climate_vote.assembly_member(org_id, official_id)
+  where org_id is not null;
+do $official_id_cutover$
+begin
+  if not exists (
+    select 1
+      from pg_index i
+      join pg_class c on c.oid=i.indexrelid
+      join pg_namespace n on n.oid=c.relnamespace
+      join pg_am am on am.oid=c.relam
+     where n.nspname='climate_vote'
+       and c.relname='assembly_member_org_official_id_uniq'
+       and i.indrelid='climate_vote.assembly_member'::regclass
+       and i.indisunique and i.indisvalid and i.indisready
+       and am.amname='btree' and i.indnkeyatts=2 and i.indnatts=2
+       and pg_get_indexdef(i.indexrelid,1,true)='org_id'
+       and pg_get_indexdef(i.indexrelid,2,true)='official_id'
+       and regexp_replace(
+         lower(pg_get_expr(i.indpred,i.indrelid,false)),
+         '[[:space:]]+',' ','g')='(org_id is not null)'
+  ) then
+    raise exception 'P1b cutover refused: organization-scoped official id index is not valid';
+  end if;
+end $official_id_cutover$;
+alter table climate_vote.assembly_member
+  drop constraint if exists assembly_member_official_id_key;
+
 -- 확인
 select 'assembly' t, count(*) filter (where org_id is null) null_org from climate_vote.assembly
 union all select 'session', count(*) filter (where org_id is null) from climate_vote.session
 union all select 'issue', count(*) filter (where org_id is null) from climate_vote.issue
 union all select 'result_page', count(*) filter (where org_id is null) from climate_vote.result_page;
+
+commit;
