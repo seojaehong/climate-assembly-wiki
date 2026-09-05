@@ -13,6 +13,13 @@ import {
   subgroupsOf,
   groupBySubgroup,
   filterBoardBySubgroup,
+  hqAssignmentFingerprint,
+  hqAssignmentConflictMessage,
+  hqLiveItemIdentityMap,
+  isHqAssignmentContinuationCurrent,
+  buildHqClearSnapshot,
+  resolveHqAssignmentIntent,
+  resolveHqClearIntent,
 } from './hq-submission-board-logic';
 
 function row(over: Partial<HqSubmissionRow> = {}): HqSubmissionRow {
@@ -26,9 +33,11 @@ function row(over: Partial<HqSubmissionRow> = {}): HqSubmissionRow {
     team_subgroup: '1분과',
     table_no: null,
     submission_status: 'draft',
+    submission_version: 1,
     submission_updated_at: '2026-08-29T05:00:00Z',
     submission_finalized_at: null,
     submission_id: 'sub-1',
+    item_id: 'item-1',
     item_ordinal: 1,
     item_kind: 'core',
     item_content: '대중교통이 부족하다',
@@ -68,6 +77,11 @@ describe('buildBoards', () => {
     ]);
     expect(boards[0].totalNotes).toBe(3);
     expect(boards[0].teamsWithNotes).toBe(2);
+    expect(boards[0].teams[0].notes[0]).toEqual(expect.objectContaining({
+      submissionId: 'sub-1',
+      submissionUpdatedAt: '2026-08-29T05:00:00Z',
+      itemId: 'item-1',
+    }));
   });
 
   it('orders 꼭지 by ordinal, not by arrival', () => {
@@ -129,6 +143,160 @@ describe('buildBoards', () => {
 
   it('returns an empty list for no rows', () => {
     expect(buildBoards([])).toEqual([]);
+  });
+});
+
+describe('HQ assignment intent identity', () => {
+  const payload = {
+    assignmentKind: 'category' as const,
+    sessionSlug: '0912-deliberation',
+    submissionId: 'submission-1',
+    itemOrdinal: 1,
+    sourceItemId: 'item-1',
+    desired: 'common',
+    expectedSubmissionUpdatedAt: '2026-09-12T07:00:00Z',
+    expectedEventId: 8,
+  };
+
+  it('reuses one UUID for an exact ambiguous retry', () => {
+    const first = resolveHqAssignmentIntent(undefined, payload, () => 'intent-1');
+    const retried = resolveHqAssignmentIntent(first, { ...payload }, () => 'intent-2');
+
+    expect(retried).toBe(first);
+    expect(retried.idempotencyKey).toBe('intent-1');
+  });
+
+  it('uses a new UUID when source generation or latest assignment changes', () => {
+    const first = resolveHqAssignmentIntent(undefined, payload, () => 'intent-1');
+    const afterSubmissionChange = resolveHqAssignmentIntent(
+      first,
+      { ...payload, expectedSubmissionUpdatedAt: '2026-09-12T07:01:00Z' },
+      () => 'intent-2',
+    );
+    const afterAssignmentChange = resolveHqAssignmentIntent(
+      first,
+      { ...payload, expectedEventId: 9 },
+      () => 'intent-3',
+    );
+    const afterSourceReplacement = resolveHqAssignmentIntent(
+      first,
+      { ...payload, sourceItemId: 'item-2' },
+      () => 'intent-4',
+    );
+
+    expect(afterSubmissionChange.idempotencyKey).toBe('intent-2');
+    expect(afterAssignmentChange.idempotencyKey).toBe('intent-3');
+    expect(afterSourceReplacement.idempotencyKey).toBe('intent-4');
+  });
+
+  it('separates category and ontology-kind payloads', () => {
+    const category = hqAssignmentFingerprint(payload);
+    const kind = hqAssignmentFingerprint({ ...payload, assignmentKind: 'kind', desired: 'Claim' });
+
+    expect(category).not.toBe(kind);
+  });
+});
+
+describe('HQ assignment race guards', () => {
+  it('does not let an old continuation overwrite a newer operation after reload', async () => {
+    let releaseReload: (() => void) | undefined;
+    const reload = new Promise<void>((resolve) => {
+      releaseReload = resolve;
+    });
+    let latestSequence = 1;
+    let visibleState = 'initial';
+    const oldContinuation = (async () => {
+      await reload;
+      if (isHqAssignmentContinuationCurrent(latestSequence, 1, 3, 3)) {
+        visibleState = 'old conflict';
+      }
+    })();
+
+    latestSequence = 2;
+    visibleState = 'new success';
+    releaseReload?.();
+    await oldContinuation;
+
+    expect(visibleState).toBe('new success');
+  });
+
+  it('distinguishes a replaced source from another HQ assignment event', () => {
+    expect(hqAssignmentConflictMessage({
+      assignmentKind: 'category',
+      expectedSubmissionUpdatedAt: '2026-09-12T07:00:00Z',
+      currentSubmissionUpdatedAt: '2026-09-12T07:01:00Z',
+      expectedEventId: 8,
+      currentEventId: 8,
+    })).toContain('원문이 변경됨');
+    expect(hqAssignmentConflictMessage({
+      assignmentKind: 'kind',
+      expectedSubmissionUpdatedAt: '2026-09-12T07:00:00Z',
+      currentSubmissionUpdatedAt: '2026-09-12T16:00:00+09:00',
+      expectedEventId: 8,
+      currentEventId: 9,
+    })).toContain('다른 본부 사용자가 먼저 종류를 변경');
+  });
+
+  it('maps only unambiguous live source item identities', () => {
+    expect(hqLiveItemIdentityMap([
+      row({ item_id: 'item-a', item_ordinal: 1 }),
+      row({ item_id: 'item-b', item_ordinal: 2 }),
+    ])).toEqual(new Map([
+      ['t1:team-1:1', 'item-a'],
+      ['t1:team-1:2', 'item-b'],
+    ]));
+    const contradictory = hqLiveItemIdentityMap([
+      row({ item_id: 'item-a', item_ordinal: 1 }),
+      row({ item_id: 'item-replaced', item_ordinal: 1 }),
+    ]);
+    expect(contradictory.has('t1:team-1:1')).toBe(false);
+  });
+});
+
+describe('HQ clear-all generation snapshot', () => {
+  it('deduplicates repeated item rows and sorts the exact submission set', () => {
+    const snapshot = buildHqClearSnapshot([
+      row({ submission_id: 'sub-b', submission_version: 3, item_ordinal: 1 }),
+      row({ submission_id: 'sub-a', submission_version: 5, item_ordinal: 1 }),
+      row({ submission_id: 'sub-b', submission_version: 3, item_ordinal: 2 }),
+    ]);
+
+    expect(snapshot).toEqual([
+      { id: 'sub-a', version: 5 },
+      { id: 'sub-b', version: 3 },
+    ]);
+  });
+
+  it('fails closed on a missing or contradictory generation', () => {
+    expect(buildHqClearSnapshot([row({ submission_version: null })])).toBeNull();
+    expect(buildHqClearSnapshot([
+      row({ submission_version: 2, item_ordinal: 1 }),
+      row({ submission_version: 3, item_ordinal: 2 }),
+    ])).toBeNull();
+  });
+
+  it('reuses a key for order-only retries and rotates it for a new generation', () => {
+    const first = resolveHqClearIntent(
+      undefined,
+      '0912-deliberation',
+      [{ id: 'sub-b', version: 1 }, { id: 'sub-a', version: 2 }],
+      () => 'clear-1',
+    );
+    const reordered = resolveHqClearIntent(
+      first,
+      '0912-deliberation',
+      [{ id: 'sub-a', version: 2 }, { id: 'sub-b', version: 1 }],
+      () => 'clear-2',
+    );
+    const changed = resolveHqClearIntent(
+      first,
+      '0912-deliberation',
+      [{ id: 'sub-a', version: 3 }, { id: 'sub-b', version: 1 }],
+      () => 'clear-3',
+    );
+
+    expect(reordered).toBe(first);
+    expect(changed.idempotencyKey).toBe('clear-3');
   });
 });
 

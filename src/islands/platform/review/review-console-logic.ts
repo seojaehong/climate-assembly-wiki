@@ -9,11 +9,17 @@
 // 전수 역추적)과 원문 재분류(issue_link_set)는 주제 전체(조 횡단)의 submission_item 본문 + 현재
 // 링크가 필요하다 — P2 issue_items(code,topicId) 가 이를 준다(toReviewItems 로 뷰모델화).
 //   · issue_items 로드 성공 → 연결 원문 카드·미분류함 본문·재분류/끌어오기 전부 동작.
-//   · 미로드(스키마 미적용·코드 무효) → 콘솔은 재분류/끌어오기를 **비활성**한다.
+//   · 미로드(스키마 미적용·권한 오류) → 콘솔은 재분류/끌어오기를 **비활성**한다.
 // 이유는 issue_link_set 이 replace-all(아래)이라, issue별 전체 item 집합을 모르는 채 부분 집합으로
 // 호출하면 기존 링크를 **파괴**한다. gap 을 빈 패널이 아니라 데이터 유실 버그로 만들지 않기 위한 게이트.
 
-import type { IssueRow, IssueListResult, IssueItemRow, IssueItemsResult } from '../../../lib/platform';
+import type {
+  IssueRow,
+  IssueListResult,
+  IssueItemRow,
+  IssueItemsResult,
+  IssueReclassifyCallInput,
+} from '../../../lib/platform';
 import { resolveHitlStatus, type HitlStatus } from '../../../lib/hitl-status';
 
 // ── 4×6 코딩 스킴 (gongron 채택분 그대로) ──────────────────────────────
@@ -80,6 +86,8 @@ export interface IssueViewModel {
   /** 합의도 분모(cluster 보정, issue_list consensus_denominator). */
   consensusDenominator: number;
   reviewable: boolean;
+  /** Empty only while an older server contract is still deployed. */
+  snapshotHash: string;
 }
 
 /** IssueRow(issue_list 원소) → 화면 뷰모델. 배지·검수가능 판정을 실어 준다. */
@@ -100,6 +108,7 @@ export function toIssueViewModel(row: IssueRow): IssueViewModel {
     linkedItemCount: row.linked_item_count ?? 0,
     consensusDenominator: row.consensus_denominator ?? 0,
     reviewable: canReview(status),
+    snapshotHash: row.snapshot_hash ?? '',
   };
 }
 
@@ -279,23 +288,51 @@ function plannedTargetCluster(
   return { clusterId: first, error: null };
 }
 
-/** issue_link_set 한 번의 호출(replace-all: issueId 의 링크를 itemIds 로 통째 교체). */
-export interface LinkSetCall {
-  issueId: string;
-  itemIds: string[];
-  clusterId: string | null;
+/** 원자 계획 안의 issue별 replace-all 링크 집합. */
+export interface ReclassifyCall extends IssueReclassifyCallInput {
   /** 'target'=끌어온/이동한 쪽, 'source'=원본에서 뺀 쪽. */
   role: 'target' | 'source';
 }
 
 export interface ReclassifyPlan {
-  calls: LinkSetCall[];
+  calls: ReclassifyCall[];
   error: string | null;
 }
 
 /**
- * 재분류/끌어오기 계획 — issue_link_set 이 **replace-all**(delete then insert)이므로 부분 집합
- * 호출은 기존 링크를 파괴한다. 그래서 각 issue 의 **전체 결과 집합**을 계산해 최대 2번의 호출을 낸다.
+ * The atomic RPC compares this complete per-issue snapshot before replacing
+ * links. Include provenance as well as item/cluster so a concurrent human
+ * relink cannot be silently overwritten by a stale browser tab.
+ */
+function expectedLinksForIssue(items: ReviewItem[], issueId: string): IssueReclassifyCallInput['expectedLinks'] {
+  return items
+    .flatMap((item) => item.links
+      .filter((link) => link.issueId === issueId)
+      .map((link) => ({
+        itemId: item.itemId,
+        clusterId: link.clusterId,
+        linkedBy: link.linkedBy,
+      })))
+    .sort((left, right) => left.itemId.localeCompare(right.itemId));
+}
+
+/** Stable identity for retaining one request UUID across an ambiguous retry. */
+export function reclassifyPlanFingerprint(plan: ReclassifyPlan): string {
+  return JSON.stringify(plan.calls
+    .map((call) => ({
+      issueId: call.issueId,
+      role: call.role,
+      clusterId: call.clusterId,
+      itemIds: [...call.itemIds].sort(),
+      expectedLinks: [...call.expectedLinks]
+        .sort((left, right) => left.itemId.localeCompare(right.itemId)),
+    }))
+    .sort((left, right) => left.issueId.localeCompare(right.issueId)));
+}
+
+/**
+ * 재분류/끌어오기 계획 — 서버가 issue별 링크를 **replace-all**(delete then insert)하므로 부분 집합은
+ * 기존 링크를 파괴한다. 각 issue의 전체 결과 집합을 계산해 하나의 원자 계획에 최대 두 집합을 담는다.
  *   · targetIssueId 로 이동(∪ selected)
  *   · sourceIssueId 가 있으면 원본에서 뺀 나머지(\ selected)로 원본 재기록
  * 미분류에서 끌어오기는 sourceIssueId 를 비운다(target 한 번).
@@ -333,7 +370,7 @@ export function planReclassify(
     : { clusterId: requestedClusterId, error: null };
   if (targetCluster.error) return { calls: [], error: targetCluster.error };
 
-  let sourceCall: LinkSetCall | null = null;
+  let sourceCall: ReclassifyCall | null = null;
   if (sourceIssueId) {
     const remaining = issueItemIds(items, sourceIssueId).filter((id) => !selected.includes(id));
     const sourceCluster = uniformIssueCluster(items, sourceIssueId, remaining);
@@ -342,19 +379,26 @@ export function planReclassify(
       issueId: sourceIssueId,
       itemIds: remaining,
       clusterId: sourceCluster.clusterId,
+      expectedLinks: expectedLinksForIssue(items, sourceIssueId),
       role: 'source',
     };
   }
 
-  const calls: LinkSetCall[] = [
-    { issueId: targetIssueId, itemIds: targetSet, clusterId: targetCluster.clusterId, role: 'target' },
+  const calls: ReclassifyCall[] = [
+    {
+      issueId: targetIssueId,
+      itemIds: targetSet,
+      clusterId: targetCluster.clusterId,
+      expectedLinks: expectedLinksForIssue(items, targetIssueId),
+      role: 'target',
+    },
   ];
   if (sourceCall) calls.push(sourceCall);
   return { calls, error: null };
 }
 
 /**
- * 선택 issue 의 링크에서 원문을 제거(연결 해제) — issue_link_set 으로 남은 집합만 재기록.
+ * 선택 issue의 링크에서 원문을 제거(연결 해제) — 원자 계획으로 남은 집합만 재기록.
  * 되돌아간 원문은 미분류함으로 떨어진다. 빈 배열도 유효(전체 해제).
  */
 export function planUnlink(items: ReviewItem[], issueId: string, removeItemIds: string[]): ReclassifyPlan {
@@ -371,7 +415,13 @@ export function planUnlink(items: ReviewItem[], issueId: string, removeItemIds: 
   const sourceCluster = uniformIssueCluster(items, issueId, remaining);
   if (sourceCluster.error) return { calls: [], error: sourceCluster.error };
   return {
-    calls: [{ issueId, itemIds: remaining, clusterId: sourceCluster.clusterId, role: 'source' }],
+    calls: [{
+      issueId,
+      itemIds: remaining,
+      clusterId: sourceCluster.clusterId,
+      expectedLinks: expectedLinksForIssue(items, issueId),
+      role: 'source',
+    }],
     error: null,
   };
 }

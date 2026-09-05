@@ -37,9 +37,9 @@ describe('세션 slug — 기본 인자 금지', () => {
       // ★ `\([^)]*\)` 로 자르면 `phrase.trim()` 의 닫는 괄호에서 끊긴다(실제로 겪었다).
       //   호출 시작점부터 넉넉히 떠서 본다 — 인자 목록이 줄바꿈돼 있어도 잡힌다.
       const names =
-        /(fetchHqSubmissions|fetchSubmissionKinds|fetchHqSubmissionHistory|fetchHqSubmissionCategories|clearAllSubmissions)\(/g;
+        /(fetchHqSubmissions|fetchSubmissionKinds|fetchHqSubmissionHistory|fetchHqSubmissionCategories|reopenSubmission|assignSubmissionCategory|assignSubmissionKind|clearAllSubmissions)\(/g;
       for (const m of src.matchAll(names)) {
-        const window = src.slice(m.index, m.index + 160);
+        const window = src.slice(m.index, m.index + 240);
         const head = window.slice(0, 60);
         expect(window, `${f} — 세션을 안 넘긴다: ${head}`).toContain(
           'CURRENT_SESSION_SLUG'

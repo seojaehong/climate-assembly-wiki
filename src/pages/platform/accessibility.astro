@@ -1,7 +1,7 @@
 ---
 import '../../styles/global.css';
 
-const updatedAt = '2026년 8월 26일';
+const updatedAt = '2026년 9월 5일';
 const feedbackUrl = 'https://github.com/seojaehong/climate-assembly-wiki/issues/new';
 const auditEvidenceUrl = 'https://github.com/seojaehong/climate-assembly-wiki/blob/main/evaluation/platform-accessibility-audit.json';
 const responsiveAuditEvidenceUrl = 'https://github.com/seojaehong/climate-assembly-wiki/blob/main/evaluation/platform-accessibility-responsive-audit.json';
@@ -61,7 +61,8 @@ const manualEvaluationEvidenceUrl = 'https://github.com/seojaehong/climate-assem
       <section class="status" aria-labelledby="conformance-heading">
         <h2 id="conformance-heading">현재 준수 상태: 자동 범위 통과·수동 평가 진행 중</h2>
         <p>
-          `/platform` 운영 화면과 `/r` 공개 결과 화면을 우선 범위로 개선하고 있습니다.
+          `/platform` 운영 화면, `/r` 공개 결과 화면, `/mod` 조 진행 콘솔과 `/hq` 본부 운영 콘솔을
+          우선 범위로 개선하고 있습니다.
           axe-core 기반 WCAG 2.2 AA 자동검사와 실제 Chromium 건너뛰기 링크 포커스 검증을 지속 실행합니다.
           데스크톱 1440×1000과 모바일 360×800 뷰포트에서 가로 넘침도 함께 검사합니다.
           로그인 폼의 순방향·역방향 키보드 포커스 순서와 양 끝에서의 포커스 탈출도 실제 Tab·Shift+Tab 입력으로 검사합니다.
@@ -69,12 +70,13 @@ const manualEvaluationEvidenceUrl = 'https://github.com/seojaehong/climate-assem
           로그인 실패 상태의 오류 연결·포커스 복귀도 read-only 실패 fixture로 재현한 뒤 같은 자동검사를 수행합니다.
           아래 연결된 증거는 로그인 진입과 실패 상태, 읽기 전용 fixture로 렌더한 인증 후 운영 셸,
           접근성 성명, 미공개 결과 상태, 읽기 전용 fixture로 렌더한 공개 결과,
-          온톨로지 검수 큐의 검사 화면을 포함합니다. 각 실행에서 사용한 인증·읽기 전용 fixture와
+          온톨로지 검수 큐, 조 진행 콘솔, 본부 게이트와 본부 대시보드 검사 화면을 포함합니다.
+          각 실행에서 사용한 인증·읽기 전용 fixture와
           화면 준비 상태는 연결된 JSON 증거에 함께 기록됩니다.
         </p>
         <p>
           <code>KS X OT0003:2022</code>의 KWCAG 2.2 33개 검사항목을 자동·수동 증거에 모두 연결했습니다.
-          다만 수동 평가 82개 필수 검사는 아직 실행 전이므로 33개 항목 모두 <code>needs_review</code>로 유지합니다.
+          다만 수동 평가 98개 필수 검사는 아직 실행 전이므로 33개 항목 모두 <code>needs_review</code>로 유지합니다.
           현재 증거는 품질인증 획득 또는 전수 준수를 의미하지 않습니다.
         </p>
         <p>
@@ -111,7 +113,7 @@ const manualEvaluationEvidenceUrl = 'https://github.com/seojaehong/climate-assem
       <section aria-labelledby="limitations-heading">
         <h2 id="limitations-heading">알려진 한계</h2>
         <ul>
-          <li>기존 `/mod`, `/hq`, `/b`, `/v` 현장 운영 화면은 이번 성명의 우선 평가 범위에 포함되지 않습니다.</li>
+          <li>`/b`, `/v` 현장 운영 화면은 이번 성명의 우선 평가 범위에 포함되지 않습니다.</li>
           <li>인증 셸과 공개 결과의 자동감사는 읽기 전용 브라우저 fixture를 사용하므로 실제 운영 데이터·권한 조합의 전수 검증을 대체하지 않습니다.</li>
           <li>온톨로지 검수 큐 자동감사는 초기 업로드 화면만 포함하며, 실제 보조기술을 이용한 파일 업로드·검수 결정·다운로드 흐름은 수동 평가가 필요합니다.</li>
           <li>모바일 뷰포트 자동검사는 포함하지만 스크린리더와 실제 모바일 보조기기 평가는 수동 확인이 필요합니다.</li>

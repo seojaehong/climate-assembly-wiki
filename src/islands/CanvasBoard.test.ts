@@ -9,6 +9,7 @@ import {
   CanvasConnectionNotice,
   CanvasOperationNotice,
   retainCanvasOperationNotice,
+  resolveCanvasVoteRoundSnapshot,
 } from './CanvasBoard';
 import type { CanvasOperationResult } from './canvas/canvas-operation';
 import { completeCanvasAuthSessionLoad, runExclusiveCanvasAuthOperation } from './canvas/useAuth';
@@ -234,6 +235,7 @@ describe('Canvas auth session freshness', () => {
     const source = readFileSync(new URL('./CanvasBoard.tsx', import.meta.url), 'utf8');
 
     expect(source.match(/runExclusiveCanvasAuthOperation\(authOperationLock/g)).toHaveLength(2);
+    expect(source.match(/runExclusiveCanvasAuthOperation\(voteRoundOperationLock/g)).toHaveLength(2);
     expect(source).toContain('operationState?.generation === authGeneration');
     expect(source).toContain('authGenerationRef.current === generation');
     expect(source).toContain('}, [authGeneration, setNodes]);');
@@ -242,6 +244,58 @@ describe('Canvas auth session freshness', () => {
     expect(source).toContain("loggingOut ? '로그아웃 중…' : '로그아웃'");
     expect(source).toContain("setLoginEmail('');");
     expect(source).toContain("setLoginPw('');");
+  });
+
+  it('restores and transitions the one session-bound Canvas round through scoped staff RPCs', () => {
+    const source = readFileSync(new URL('./CanvasBoard.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain("rpc('platform_canvas_round_create_v2'");
+    expect(source).toContain("rpc('platform_canvas_round_current_v2'");
+    expect(source).toContain("rpc('platform_canvas_round_set_status_v2'");
+    expect(source).toContain('p_session_id: sessionId');
+    expect(source).not.toContain("from('rounds')");
+    expect(source).toContain('진행 중 투표 먼저 마감');
+    expect(source).toContain('마감 전에는 이 제어창을 닫을 수 없습니다.');
+    expect(source).toContain('disabled={voteRoundOperationBusy}');
+    expect(source).toContain("setInterval(() => void reloadCurrentVoteRound('background'), 5_000)");
+    expect(source).toContain("reloadCurrentVoteRound('background')");
+    expect(source).toContain('if (!currentRound)');
+    expect(source).toContain('setVoteRound(null)');
+    expect(source).not.toContain('setVoteRoundId(');
+    expect(source).not.toContain('setVoteRoundStatus(');
+    expect(source).not.toContain('setVoteUrl(');
+    expect(source).not.toContain('setVoteQr(');
+    expect(source).toContain('if (changed.conflict) await reloadCurrentVoteRound()');
+  });
+
+  it('never clears or downgrades a locally closed Canvas round with an older current-round poll', () => {
+    const closed = {
+      id: 'r1',
+      status: 'closed' as const,
+      url: 'https://example.test/v/?round=r1',
+      qr: 'data:image/png;base64,closed',
+    };
+    const staleActive = {
+      ...closed,
+      status: 'active' as const,
+      qr: 'data:image/png;base64,stale',
+    };
+    const nextRound = {
+      ...closed,
+      id: 'r2',
+      status: 'pending' as const,
+      qr: 'data:image/png;base64,next',
+    };
+
+    expect(resolveCanvasVoteRoundSnapshot(closed, null)).toBe(closed);
+    expect(resolveCanvasVoteRoundSnapshot(closed, staleActive)).toBe(closed);
+    expect(resolveCanvasVoteRoundSnapshot(closed, nextRound)).toBe(nextRound);
+  });
+
+  it('uses a native button for each team visibility filter', () => {
+    const source = readFileSync(new URL('./CanvasBoard.tsx', import.meta.url), 'utf8');
+    expect(source).toContain('aria-pressed={focusJo === jo}');
+    expect(source).not.toContain('<span onClick={() => setFocusJo');
   });
 
   it('discards an initial session response after a newer auth event invalidates it', async () => {
@@ -356,10 +410,14 @@ describe('CanvasBoard development runtime', () => {
     expect(heatmap).not.toContain('client <script>');
   });
 
-  it('loads the official Pretendard subset stylesheet instead of a missing font file', () => {
+  it('keeps the standalone Canvas free of a third-party font request with native fallbacks', () => {
     const globalStyles = readFileSync(new URL('../styles/global.css', import.meta.url), 'utf8');
+    const tokens = readFileSync(new URL('../styles/tokens.css', import.meta.url), 'utf8');
 
-    expect(globalStyles).toContain('pretendardvariable-dynamic-subset.min.css');
+    expect(globalStyles).not.toContain('cdn.jsdelivr.net');
+    expect(globalStyles).not.toContain('pretendardvariable-dynamic-subset.min.css');
     expect(globalStyles).not.toContain('pretendardvariable-dynamic-subset.woff2');
+    expect(tokens).toContain('-apple-system, BlinkMacSystemFont, "Pretendard Variable", "Pretendard"');
+    expect(tokens).toContain('"Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", "Segoe UI", sans-serif');
   });
 });

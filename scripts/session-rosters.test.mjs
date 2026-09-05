@@ -6,7 +6,11 @@ import {
   normalizeSessionRoster,
   sessionRoster,
 } from './session-rosters.mjs';
-import { joinCodeForTeam, formatSessionSeedSql } from './seed-0829-lib.mjs';
+import { genUniqueCodes, joinCodeForTeam, formatSessionSeedSql } from './seed-0829-lib.mjs';
+
+function fixtureCodes(roster, start = 730001) {
+  return roster.teams.map((_, index) => String(start + index));
+}
 
 /** 8/29 세션의 15개 조를 사본으로 가져온다 (다음 회차 정의의 출발점). */
 function officialFifteen() {
@@ -45,7 +49,7 @@ describe('활성 세션 — 값이 아니라 성질을 잰다', () => {
   test('인자 없이 부르면 활성 세션이 나오고 slug·date·mmdd·title이 서로 맞는다', () => {
     const roster = sessionRoster();
     expect(roster.slug).toBe(ACTIVE_SESSION_SLUG);
-    // mmdd는 date에서 파생되고, slug는 그 mmdd로 시작해야 한다(코드와 세션이 같은 날을 가리킨다).
+    // mmdd는 date에서 파생되고, slug는 운영자가 회차를 즉시 대조할 수 있게 그 mmdd로 시작한다.
     const [, , month, day] = /^(\d{4})-(\d{2})-(\d{2})$/.exec(roster.date);
     expect(roster.mmdd).toBe(`${month}${day}`);
     expect(roster.slug.startsWith(roster.mmdd)).toBe(true);
@@ -114,15 +118,14 @@ describe('9/12 로스터 — 6·7차(경주 1박2일)', () => {
     );
   });
 
-  test('접속코드는 091201..091215이고 겹치지 않는다', () => {
+  test('접속코드는 날짜·순번과 독립된 보안 난수원에서 겹치지 않게 생성된다', () => {
     const roster = sessionRoster('0912-deliberation');
-    const codes = roster.teams.map((team) => joinCodeForTeam(roster.mmdd, team.ordinal));
-    expect(codes[0]).toBe('091201');
-    expect(codes.at(-1)).toBe('091215');
+    let next = 730001;
+    const codes = genUniqueCodes(roster.teams.length, [], () => next++);
+    expect(codes[0]).toBe('730001');
+    expect(codes.at(-1)).toBe('730015');
     expect(new Set(codes).size).toBe(15);
-    // 지난 회차 코드와도 겹치지 않는다 — 날짜가 앞 네 자리라 구조적으로 갈린다.
-    const previous = sessionRoster('0829-deliberation').teams.map((t) => joinCodeForTeam('0829', t.ordinal));
-    expect(codes.some((code) => previous.includes(code))).toBe(false);
+    expect(codes.every((code) => !code.startsWith(roster.mmdd))).toBe(true);
   });
 
   test('org_id를 8.29에서 물려받도록 표시돼 있다 (p1b NOT NULL에서 시드가 죽지 않는다)', () => {
@@ -131,12 +134,14 @@ describe('9/12 로스터 — 6·7차(경주 1박2일)', () => {
   });
 
   test('시드 SQL은 9/12 세션을 만들 뿐 8.29를 고치지 않는다', () => {
-    const sql = formatSessionSeedSql(sessionRoster('0912-deliberation'));
+    const roster = sessionRoster('0912-deliberation');
+    const sql = formatSessionSeedSql(roster, fixtureCodes(roster));
     expect(sql).toMatch(/^begin;/);
     expect(sql).toMatch(/commit;$/);
     expect(sql).toContain("'0912-deliberation', '9/12 숙의'");
-    expect(sql).toContain("('1분과 1조', '1분과', 1, '091201')");
-    expect(sql).toContain("('3분과 5조', '3분과', 15, '091215')");
+    expect(sql).toContain("('1분과 1조', '1분과', 1, '730001')");
+    expect(sql).toContain("('3분과 5조', '3분과', 15, '730015')");
+    expect(sql).not.toContain("'091201'");
     expect(sql).toContain('session seed verification failed: % of 15');
     // 테넌시 상속 — 원본이 없으면 조용히 0건이 아니라 예외로 멈춘다.
     expect(sql).toContain('tenancy source session not found: 0829-deliberation');
@@ -148,7 +153,9 @@ describe('9/12 로스터 — 6·7차(경주 1박2일)', () => {
   });
 
   test('8.29 시드 SQL은 예전 모양 그대로다 (상속 없는 회차는 values 그대로)', () => {
-    const sql = formatSessionSeedSql(sessionRoster('0829-deliberation'));
+    const roster = sessionRoster('0829-deliberation');
+    const historicalCodes = roster.teams.map((team) => joinCodeForTeam(roster.mmdd, team.ordinal));
+    const sql = formatSessionSeedSql(roster, historicalCodes);
     expect(sql).toContain("values ('0829-deliberation', '8/29 숙의'");
     expect(sql).toContain("'1분과 1조', '1분과', 1, '082901'");
     expect(sql).toContain('session seed verification failed: % of 15');
@@ -170,13 +177,14 @@ describe('다음 회차 — 정의만 추가하면 쓸 수 있는 구조', () =>
     expect(roster.teams.at(-1)).toEqual({ name: '기획 B조', subgroup: '기획', ordinal: 17 });
   });
 
-  test('접속코드 규칙(MMDD + 전체 조 순번)이 17개 구성에서도 그대로 적용된다', () => {
+  test('17개 구성도 독립 난수원에서 조 수만큼 고유 코드를 받는다', () => {
     const roster = normalizeSessionRoster(HYPOTHETICAL_SLUG, HYPOTHETICAL_DEF);
-    const codes = roster.teams.map((team) => joinCodeForTeam(roster.mmdd, team.ordinal));
-    expect(codes[0]).toBe('123101');
-    expect(codes[14]).toBe('123115');
-    expect(codes[15]).toBe('123116');
-    expect(codes.at(-1)).toBe('123117');
+    let next = 740001;
+    const codes = genUniqueCodes(roster.teams.length, [], () => next++);
+    expect(codes[0]).toBe('740001');
+    expect(codes[14]).toBe('740015');
+    expect(codes[15]).toBe('740016');
+    expect(codes.at(-1)).toBe('740017');
     expect(new Set(codes).size).toBe(17);
   });
 
@@ -190,13 +198,14 @@ describe('다음 회차 — 정의만 추가하면 쓸 수 있는 구조', () =>
 
   test('17개 구성으로도 시드 SQL이 그대로 나온다 (등록된 회차는 건드리지 않는다)', () => {
     const roster = normalizeSessionRoster(HYPOTHETICAL_SLUG, HYPOTHETICAL_DEF);
-    const sql = formatSessionSeedSql(roster);
+    const sql = formatSessionSeedSql(roster, fixtureCodes(roster, 740001));
     expect(sql).toContain("values ('1231-deliberation', '12/31 숙의'");
-    expect(sql).toContain("('기획 A조', '기획', 16, '123116')");
-    expect(sql).toContain("('기획 B조', '기획', 17, '123117')");
+    expect(sql).toContain("('기획 A조', '기획', 16, '740016')");
+    expect(sql).toContain("('기획 B조', '기획', 17, '740017')");
     expect(sql).toContain('session seed verification failed: % of 17');
 
-    const activeSql = formatSessionSeedSql();
+    const activeRoster = sessionRoster();
+    const activeSql = formatSessionSeedSql(activeRoster, fixtureCodes(activeRoster));
     expect(activeSql).toContain(`'${ACTIVE_SESSION_SLUG}'`);
     expect(activeSql).not.toContain('기획 A조');
   });
@@ -205,7 +214,7 @@ describe('다음 회차 — 정의만 추가하면 쓸 수 있는 구조', () =>
 describe('정의 검증 — 잘못된 회차 정의는 조용히 통과하지 않는다', () => {
   const base = () => ({ date: '2026-12-31', teams: officialFifteen() });
 
-  test('같은 순번을 두 조에 주면 거부한다 (같은 접속코드가 두 조에 발급된다)', () => {
+  test('같은 순번을 두 조에 주면 거부한다 (화면·명찰 정렬이 모호해진다)', () => {
     const def = base();
     def.teams[1] = { ...def.teams[1], ordinal: 1 };
     expect(() => normalizeSessionRoster(HYPOTHETICAL_SLUG, def)).toThrow(/ordinal/);
@@ -217,7 +226,7 @@ describe('정의 검증 — 잘못된 회차 정의는 조용히 통과하지 �
     expect(() => normalizeSessionRoster(HYPOTHETICAL_SLUG, def)).toThrow(/1분과 1조/);
   });
 
-  test('순번이 정수 1..99를 벗어나면 거부한다 (접속코드 두 자리를 넘는다)', () => {
+  test('순번이 정수 1..99를 벗어나면 거부한다', () => {
     for (const bad of [0, 100, 1.5, '3', null]) {
       const def = base();
       def.teams[0] = { ...def.teams[0], ordinal: bad };
@@ -235,15 +244,39 @@ describe('정의 검증 — 잘못된 회차 정의는 조용히 통과하지 �
     expect(() => normalizeSessionRoster(HYPOTHETICAL_SLUG, noSubgroup)).toThrow();
   });
 
+  test('이름·분과의 작은따옴표는 SQL literal로 안전하게 인코딩한다', () => {
+    const def = base();
+    def.teams[0] = { ...def.teams[0], name: "O'Brien 조", subgroup: "시민's 분과" };
+    const roster = normalizeSessionRoster(HYPOTHETICAL_SLUG, def);
+    const sql = formatSessionSeedSql(roster, fixtureCodes(roster));
+
+    expect(sql).toContain("'O''Brien 조', '시민''s 분과'");
+    expect(sql).not.toContain("'O'Brien 조'");
+  });
+
+  test('조 식별 필드의 제어 문자는 SQL 패킷 생성 전에 거부한다', () => {
+    for (const key of ['name', 'subgroup']) {
+      const def = base();
+      def.teams[0] = { ...def.teams[0], [key]: `안전하지\n않음` };
+      expect(() => normalizeSessionRoster(HYPOTHETICAL_SLUG, def)).toThrow(/제어 문자/);
+    }
+  });
+
   test('날짜 형식이 어긋나거나 조 목록이 비면 거부한다', () => {
     expect(() => normalizeSessionRoster(HYPOTHETICAL_SLUG, { date: '2026-12-3', teams: officialFifteen() })).toThrow();
     expect(() => normalizeSessionRoster(HYPOTHETICAL_SLUG, { date: '2026-12-31', teams: [] })).toThrow();
     expect(() => normalizeSessionRoster(HYPOTHETICAL_SLUG, null)).toThrow();
   });
 
-  test('슬러그가 날짜의 MMDD로 시작하지 않으면 거부한다 (코드와 세션이 다른 날을 가리킨다)', () => {
+  test('슬러그가 날짜의 MMDD로 시작하지 않으면 회차 대조 오류로 거부한다', () => {
     expect(() => normalizeSessionRoster('1230-deliberation', base())).toThrow(/1231/);
     expect(() => normalizeSessionRoster('1231-rehearsal', base())).not.toThrow();
+  });
+
+  test('슬러그는 SQL과 URL에 안전한 allowlist 형식만 허용한다', () => {
+    for (const slug of ["1231-bad'", '1231-Bad', '1231-bad_name', '1231-bad/path']) {
+      expect(() => normalizeSessionRoster(slug, base())).toThrow(/소문자 영문/);
+    }
   });
 
   test('테넌시 상속이 비었거나 자기 자신이면 거부한다', () => {
@@ -253,6 +286,9 @@ describe('정의 검증 — 잘못된 회차 정의는 조용히 통과하지 �
     expect(() =>
       normalizeSessionRoster(HYPOTHETICAL_SLUG, { ...base(), inheritTenancyFrom: HYPOTHETICAL_SLUG })
     ).toThrow(/자기 자신/);
+    expect(() =>
+      normalizeSessionRoster(HYPOTHETICAL_SLUG, { ...base(), inheritTenancyFrom: "0829-bad'" })
+    ).toThrow(/형식/);
     // 없는 것은 정상이다 — 8.29처럼 org_id 이전에 만들어진 회차가 그렇다.
     expect(normalizeSessionRoster(HYPOTHETICAL_SLUG, base()).inheritTenancyFrom).toBeNull();
   });

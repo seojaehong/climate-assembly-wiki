@@ -1,5 +1,6 @@
 -- platform G3: 기본 org 생성 + org_id backfill + NOT NULL 전환
--- project: climate_vote 스키마. P1(platform_p1_tenancy) 적용 후 실행.
+-- project: climate_vote 스키마. P1(platform_p1_tenancy)과
+-- platform_p2_analysis_review 적용 후 실행.
 --
 -- WHY: P1이 15테이블에 org_id를 nullable로 부착했다. 영구 nullable = 격리 구멍
 --      (정책이 NULL 행을 조용히 포함/누락). 데이터를 기본 org로 backfill한 뒤

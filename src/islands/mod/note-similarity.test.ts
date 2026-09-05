@@ -27,6 +27,9 @@ function note(content: string, over: Partial<Note> = {}): Note {
     content,
     rationale: null,
     ...over,
+    submissionId: over.submissionId ?? null,
+    submissionUpdatedAt: over.submissionUpdatedAt ?? null,
+    itemId: over.itemId ?? null,
   };
 }
 

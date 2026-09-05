@@ -1,6 +1,7 @@
 -- Draft only. Do not apply without separate production approval.
 -- A6 adds an append-only, tenant-scoped user action audit trail.
--- Prerequisite: P1 -> P1C -> P2 -> P3 and the approved A2 org_id backfill.
+-- Operational prerequisite: P1 -> seed/s20 -> P1a -> P2 -> P1b/P1c ->
+-- P2a -> P3, with each production approval and verification completed.
 
 begin;
 

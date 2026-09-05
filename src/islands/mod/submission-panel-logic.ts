@@ -260,6 +260,50 @@ export function pickRestoredRows(
 }
 
 /**
+ * 초안을 화면에 되살릴 때 필요한 OCC 기준까지 한 번에 고른다.
+ *
+ * 행만 복원하고 현재 서버 버전으로 저장하면, 다른 기기가 그 사이 저장했어도 그 사실을
+ * 잃어버린다. 새 봉투는 저장 당시 `baseVersion`을 그대로 쓴다. 버전이 없던 예전 봉투는
+ * `baseUpdatedAt`이 현재 서버와 정확히 같을 때만 안전하다고 본다. 기준 시각도 없는데
+ * 서버에 이미 제출물이 있으면 보수적으로 충돌을 보여 준다.
+ */
+export type RestoredDraftDecision = {
+  rows: EditorRow[];
+  expectedVersion: number;
+  baseUpdatedAt: string | null;
+  conflictsWithServer: boolean;
+};
+
+export function restoredDraftDecision(
+  raw: string | null,
+  serverRows: EditorRow[],
+  serverVersion: number,
+  serverUpdatedAt: string | null,
+  nowMs: number = Date.now(),
+): RestoredDraftDecision | null {
+  const draft = readDraft(raw, nowMs);
+  if (!draft || !isDirty(draft.rows, serverRows)) return null;
+
+  if (draft.baseVersion !== null) {
+    return {
+      rows: draft.rows,
+      expectedVersion: draft.baseVersion,
+      baseUpdatedAt: draft.baseUpdatedAt,
+      conflictsWithServer: draft.baseVersion !== serverVersion,
+    };
+  }
+
+  const lacksComparableBaseline = draft.baseUpdatedAt === null && serverVersion !== 0;
+  return {
+    rows: draft.rows,
+    expectedVersion: serverVersion,
+    baseUpdatedAt: draft.baseUpdatedAt,
+    conflictsWithServer:
+      lacksComparableBaseline || draft.baseUpdatedAt !== serverUpdatedAt,
+  };
+}
+
+/**
  * 여러 줄 붙여넣기 분해 — 조가 한글·워드에 써 둔 것을 옮겨 담는 실제 경로다.
  *
  * 2026-08-29 현장 관찰: 조는 대부분 자기 한글/워드 파일에서 작업하고 화면에는
@@ -560,7 +604,7 @@ export function saveOutcomeMessage(result: SubmissionSaveOutcome | null | undefi
 // 잠긴 꼭지에 300초마다 영원히 재전송하는 것은 회복이 아니라 소음이다.
 
 /** 저장 실패의 갈래. `network` 만 재전송 큐로 간다. */
-export type SaveFailureKind = 'finalized' | 'closed' | 'network';
+export type SaveFailureKind = 'finalized' | 'closed' | 'authorization' | 'network';
 
 /**
  * 실패에서 메시지를 꺼낸다.
@@ -591,7 +635,10 @@ function failureMessageOf(error: unknown): string {
  *   있는 쪽으로 접는다. 잘못 접어도 큐가 다시 시도할 뿐이고, 반대로 접으면 글이 안 올라간다.
  */
 export function saveFailureKind(error: unknown): SaveFailureKind {
-  const message = failureMessageOf(error);
+  const message = failureMessageOf(error).trim();
+  if (/^(?:[A-Z0-9]+:\s*)?(?:workshop authorization (?:required|expired or revoked)|team authorization (?:required|scope mismatch))$/i.test(message)) {
+    return 'authorization';
+  }
   if (message.includes('finalized')) return 'finalized';
   if (message.includes('not open')) return 'closed';
   return 'network';
@@ -603,6 +650,9 @@ export function saveFailureMessage(kind: SaveFailureKind): string {
     return '이미 최종 제출된 상태입니다 — 「다시 열기」를 누르면 조가 직접 풀 수 있습니다.';
   }
   if (kind === 'closed') return '이 꼭지는 마감되어 저장할 수 없습니다.';
+  if (kind === 'authorization') {
+    return '조 연결이 만료되었거나 해제되었습니다 — 상단 「나가기」를 누르고 조 코드로 다시 들어와 주세요.';
+  }
   return '지금 저장하지 못해 대기 중입니다 — 연결되면 자동으로 다시 저장합니다. 글은 남아 있습니다.';
 }
 

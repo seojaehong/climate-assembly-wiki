@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "rehearsalId": "0912-13-hq-v3-browser-rehearsal",
+  "generatedAt": null,
+  "elapsedMs": null,
+  "sourceCommit": null,
+  "sourceTreeClean": null,
+  "status": "not_run",
+  "target": {
+    "baseUrl": null,
+    "route": "/hq?ops=1"
+  },
+  "fixture": "automation/fixtures/0912-hq-rehearsal.json",
+  "fixtureSha256": null,
+  "fixtureIdentity": {
+    "schemaVersion": 1,
+    "fixtureId": "0912-hq-v3-rehearsal-v1",
+    "classification": "synthetic-no-pii-no-secrets"
+  },
+  "evidenceBoundary": {
+    "evidenceClass": "ui-fixture-only",
+    "databaseAuthorizationOrLifecycleEvidence": false,
+    "canonicalDatabaseVerifier": "scripts/verify-0912-postgres.sh",
+    "statement": "브라우저 합성 fixture는 요청 형식과 사용자에게 보이는 복구 흐름만 검증하며 DB 권한, 동시성 또는 수명주기의 증거가 아닙니다."
+  },
+  "summary": {
+    "checkCount": 0,
+    "passCount": 0,
+    "failCount": 0
+  },
+  "safety": {
+    "allSupabaseHttpIntercepted": null,
+    "forwardedSupabaseHttpRequestCount": 0,
+    "blockedUnexpectedSupabaseHttpRequestCount": 0,
+    "fixtureMutationRequestCount": 0,
+    "productionDatabaseMutationCount": 0,
+    "webSocket": {
+      "stubbed": null,
+      "attemptCount": 0,
+      "actualConnectionCount": 0
+    },
+    "screenshotsWritten": 0,
+    "runtimeCapabilityMaterialDetectedBeforeWrite": null,
+    "runtimeCapabilityMaterialInWrittenReport": null
+  },
+  "namedHqSession": {
+    "injected": null,
+    "actorLabel": null,
+    "capabilitySource": "runtime-generated",
+    "capabilityPersistedAfterLogoutFailure": null
+  },
+  "rpcContracts": {},
+  "observations": {},
+  "checks": [],
+  "findings": []
+}

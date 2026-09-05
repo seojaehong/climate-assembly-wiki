@@ -7,11 +7,12 @@ import {
   type BallotItem,
   type BallotResults,
 } from '../../lib/ballot';
-import { getDeviceToken } from '../../lib/mod-console';
+import { getDeviceToken, isDeviceTokenPersistent } from '../../lib/mod-console';
 import {
   answeredCount,
   getLocalSubmit,
   isComplete,
+  isLocalSubmitStoragePersistent,
   parseBallotUrl,
   recordLocalSubmit,
   refreshNoticeMessage,
@@ -19,9 +20,25 @@ import {
   scaleLabels,
   subgroupVoteBadge,
 } from './ballot-logic';
+import { useModalDialog } from '../mod/use-modal-dialog';
+
+export const BALLOT_EVIDENCE_BOUNDARY =
+  '이름·개인정보는 저장하지 않으며, 브라우저 기기 식별값으로 중복을 줄이는 비구속 현장 의견조사입니다. 공식 의사결정이나 참여 인원 산정의 단독 근거로 사용할 수 없습니다.';
+
+export function ballotResponseCountLabel(count: number): string {
+  return `기기 응답 ${count}건`;
+}
 
 // VoteCard.tsx의 Shell/CenterMessage/Eyebrow 패턴·색상을 그대로 따른다(수정 금지라 로컬 재정의).
 const SCALE_BAR_COLORS = ['#23B2C3', '#2E75B6', '#4F9D3A', '#F5A623', '#135C73', '#1F4E79', '#5A6B73'];
+const STATUS_ICON_PATHS: Record<string, string> = {
+  '✓': 'M5 12.5 10 17l9-10',
+  '!': 'M12 5v9m0 4h.01',
+  '↻': 'M20 11a8 8 0 1 1-2.34-5.66M20 4v7h-7',
+  '📷': 'M4 7h3l2-2h6l2 2h3v12H4zM15 13a3 3 0 1 1-6 0 3 3 0 0 1 6 0',
+  '⏱': 'M9 3h6m-3 3a7 7 0 1 1-7 7 7 7 0 0 1 7-7m0 3v4l3 2',
+  '⏳': 'M7 3h10M7 21h10M8 3c0 4 2 5 4 7-2 2-4 3-4 7m8-14c0 4-2 5-4 7 2 2 4 3 4 7',
+};
 
 function Eyebrow({
   children,
@@ -43,6 +60,7 @@ function Eyebrow({
 }
 
 function Shell({ children, align = 'center' }: { children: React.ReactNode; align?: 'center' | 'top' }) {
+  const nonPersistentMode = !isDeviceTokenPersistent() || !isLocalSubmitStoragePersistent();
   return (
     <div
       className={`min-h-screen bg-[#F5F8FB] flex justify-center px-4 py-8 ${
@@ -50,6 +68,11 @@ function Shell({ children, align = 'center' }: { children: React.ReactNode; alig
       }`}
     >
       <div className="w-full max-w-md bg-white rounded-3xl border border-[#DCE7EE] overflow-hidden shadow-[0_1px_2px_rgba(31,78,121,.04),0_8px_24px_-16px_rgba(31,78,121,.18)]">
+        {nonPersistentMode ? (
+          <p role="alert" className="border-b-2 border-[#B5651D] bg-[#FFF4D6] px-4 py-3 text-center text-[14px] font-bold text-[#6B4B00]">
+            브라우저 저장소가 차단되어 이 페이지를 새로고침하면 기기 중복 확인 정보가 유지되지 않습니다.
+          </p>
+        ) : null}
         {children}
       </div>
     </div>
@@ -79,7 +102,18 @@ function CenterMessage({
           style={{ background: color }}
           aria-hidden="true"
         >
-          {icon}
+          <svg
+            aria-hidden="true"
+            className="h-9 w-9"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.25}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d={STATUS_ICON_PATHS[icon] ?? STATUS_ICON_PATHS['!']} />
+          </svg>
         </div>
         <Eyebrow className="mb-2" style={{ color } as React.CSSProperties}>
           {eyebrow}
@@ -115,6 +149,31 @@ function LoadingScreen() {
         <p className="text-[#5A6B73] text-[16px]">잠시만 기다려 주세요…</p>
       </div>
     </Shell>
+  );
+}
+
+export function LoadErrorScreen({
+  title,
+  body,
+  onRetry,
+  retrying,
+}: {
+  title: string;
+  body: string;
+  onRetry: () => void;
+  retrying: boolean;
+}) {
+  return (
+    <CenterMessage icon="↻" eyebrow="연결 확인" title={title} body={body} color="#7C2D12">
+      <button
+        type="button"
+        onClick={onRetry}
+        disabled={retrying}
+        className="mt-6 min-h-[56px] w-full rounded-2xl border-2 border-[#B5651D] bg-white px-4 text-[17px] font-extrabold text-[#7C2D12] disabled:opacity-50"
+      >
+        {retrying ? '다시 불러오는 중…' : '다시 불러오기'}
+      </button>
+    </CenterMessage>
   );
 }
 
@@ -159,13 +218,13 @@ function DoneScreen({
     <CenterMessage
       icon={duplicate ? '!' : '✓'}
       eyebrow="제출 완료"
-      title={duplicate ? '이미 제출하셨습니다' : '투표가 제출되었습니다'}
+      title={duplicate ? '이미 제출하셨습니다' : '의견이 제출되었습니다'}
       body={
         duplicate
           ? '이 기기의 답변은 정상적으로 제출되어 있습니다.'
-          : '참여해 주셔서 감사합니다. 결과는 투표 마감 후 공개됩니다.'
+          : '참여해 주셔서 감사합니다. 결과는 의견조사 마감 후 공개됩니다.'
       }
-      color={duplicate ? '#F5A623' : '#4F9D3A'}
+      color={duplicate ? '#8A4B08' : '#2D6A24'}
     >
       <p className="mt-5 text-[14px] leading-relaxed text-[#5A6B73]">집계는 운영진 확인을 거쳐 공개됩니다.</p>
       <RefreshButton onRefresh={onRefresh} refreshing={refreshing} refreshNotice={refreshNotice} />
@@ -186,7 +245,7 @@ function ClosedScreen({
     <CenterMessage
       icon="⏱"
       eyebrow="마감"
-      title="투표가 마감되었습니다"
+      title="의견조사가 마감되었습니다"
       body="집계는 운영진 확인을 거쳐 공개됩니다."
       color="#2E75B6"
     >
@@ -274,10 +333,24 @@ function ConfirmDialog({
   onConfirm: () => void;
   submitting: boolean;
 }) {
+  const dialogRef = useModalDialog<HTMLDivElement>(true, () => {
+    if (!submitting) onCancel();
+  });
   return (
-    <div className="fixed inset-0 z-50 bg-[#1F2933]/50 flex items-center justify-center px-6" role="dialog" aria-modal="true" aria-label="제출 확인">
-      <div className="w-full max-w-sm bg-white rounded-3xl px-6 pt-8 pb-6 text-center shadow-xl">
-        <h2 className="text-[21px] font-extrabold text-[#1F4E79] mb-2" style={{ letterSpacing: '-.02em' }}>
+    <div className="fixed inset-0 z-50 bg-[#1F2933]/50 flex items-center justify-center px-6">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ballot-submit-dialog-title"
+        tabIndex={-1}
+        className="w-full max-w-sm bg-white rounded-3xl px-6 pt-8 pb-6 text-center shadow-xl"
+      >
+        <h2
+          id="ballot-submit-dialog-title"
+          className="text-[21px] font-extrabold text-[#1F4E79] mb-2"
+          style={{ letterSpacing: '-.02em' }}
+        >
           답변을 제출할까요?
         </h2>
         <p className="text-[15px] leading-relaxed text-[#5A6B73] mb-1">
@@ -296,6 +369,7 @@ function ConfirmDialog({
           type="button"
           onClick={onCancel}
           disabled={submitting}
+          data-dialog-initial-focus
           className="w-full min-h-[56px] mt-2 rounded-2xl border border-[#C4D8E4] bg-white text-[#1F4E79] text-[17px] font-bold disabled:opacity-50"
         >
           다시 살펴보기
@@ -330,7 +404,7 @@ function VotingScreen({
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-[#DCE7EE] px-6 py-3">
         <div className="flex items-baseline justify-between mb-1.5">
           <span className="flex items-center gap-2">
-            <Eyebrow className="text-[#5A6B73]">다의제 투표</Eyebrow>
+            <Eyebrow className="text-[#5A6B73]">다의제 현장 의견조사</Eyebrow>
             {subgroupVoteBadge(ballot.subgroup) ? (
               <span className="rounded-full bg-[#135C73] px-2.5 py-0.5 text-[13px] font-bold text-white">
                 {subgroupVoteBadge(ballot.subgroup)}
@@ -357,7 +431,7 @@ function VotingScreen({
           <p className="text-[15px] leading-relaxed text-[#5A6B73] mb-2">{ballot.instructions}</p>
         ) : null}
         <p className="text-[13px] text-[#5A6B73] mb-4">
-          모든 문항에 답한 뒤 맨 아래에서 한 번에 제출합니다. 무기명 투표입니다.
+          모든 문항에 답한 뒤 맨 아래에서 한 번에 제출합니다.
         </p>
 
         <div className="divide-y divide-[#DCE7EE]">
@@ -388,7 +462,7 @@ function VotingScreen({
           {complete ? '제출하기' : `남은 문항 ${total - answered}개에 답해 주세요`}
         </button>
 
-        <p className="text-[13px] text-[#5A6B73] text-center mt-6">이름·개인정보는 저장되지 않습니다. 무기명 투표입니다.</p>
+        <p className="text-[13px] leading-relaxed text-[#5A6B73] text-center mt-6">{BALLOT_EVIDENCE_BOUNDARY}</p>
       </div>
     </Shell>
   );
@@ -403,7 +477,7 @@ function ResultsScreen({ results }: { results: BallotResults | null }) {
     <Shell align="top">
       <div className="px-6 pt-8 pb-8">
         <div className="flex items-center gap-2 mb-2">
-          <Eyebrow className="text-[#5A6B73]">투표 마감됨 · 결과</Eyebrow>
+          <Eyebrow className="text-[#5A6B73]">의견조사 마감됨 · 결과</Eyebrow>
           {subgroupVoteBadge(results.subgroup) ? (
             <span className="rounded-full bg-[#135C73] px-2.5 py-0.5 text-[13px] font-bold text-white">
               {subgroupVoteBadge(results.subgroup)}
@@ -413,7 +487,8 @@ function ResultsScreen({ results }: { results: BallotResults | null }) {
         <h1 className="text-[24px] font-extrabold text-[#1F4E79] leading-snug mb-1" style={{ letterSpacing: '-.022em' }}>
           {results.title}
         </h1>
-        <p className="text-[#5A6B73] text-[14px] mb-6">총 {results.responses}명 제출</p>
+        <p className="text-[#5A6B73] text-[14px] mb-2">{ballotResponseCountLabel(results.responses)}</p>
+        <p className="text-[#5A6B73] text-[13px] leading-relaxed mb-6">{BALLOT_EVIDENCE_BOUNDARY}</p>
 
         <div className="space-y-8">
           {results.items.map((item) => {
@@ -431,7 +506,7 @@ function ResultsScreen({ results }: { results: BallotResults | null }) {
                   <h2 className="text-[17px] font-extrabold text-[#1F2933] leading-snug">{item.statement}</h2>
                 </div>
                 <p className="ml-9 text-[13px] text-[#5A6B73] mb-3 tr-num">
-                  응답 {item.n}명{item.avg != null ? ` · 평균 ${item.avg.toFixed(2)} / ${item.scale}` : ''}
+                  {ballotResponseCountLabel(item.n)}{item.avg != null ? ` · 평균 ${item.avg.toFixed(2)} / ${item.scale}` : ''}
                 </p>
 
                 <div className="space-y-2">
@@ -444,7 +519,7 @@ function ResultsScreen({ results }: { results: BallotResults | null }) {
                         <div className="flex justify-between items-baseline mb-1">
                           <span className="text-[14px] font-bold text-[#1F2933]">{label}</span>
                           <span className="text-[14px] font-extrabold text-[#1F4E79] tr-num">
-                            {count}명 <span className="text-[#5A6B73] text-[12px] font-semibold">{pct}%</span>
+                            {count}건 <span className="text-[#5A6B73] text-[12px] font-semibold">{pct}%</span>
                           </span>
                         </div>
                         <div className="h-6 rounded-md bg-[#F1F7FA] overflow-hidden">
@@ -491,23 +566,34 @@ export default function BallotCard() {
   const [results, setResults] = useState<BallotResults | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
+  const [ballotLoadError, setBallotLoadError] = useState<string | null>(null);
+  const [resultLoading, setResultLoading] = useState(false);
+  const [resultError, setResultError] = useState<string | null>(null);
+  const [resultReloadKey, setResultReloadKey] = useState(0);
 
   const load = async ({ preserveCurrent = false }: { preserveCurrent?: boolean } = {}): Promise<Ballot | null> => {
     if (!token) return null;
     try {
       const b = await fetchBallot(token);
       setBallot(b);
+      setBallotLoadError(null);
       if (b && getLocalSubmit(b.id)) setLocallySubmitted(true);
       return b;
     } catch (loadError) {
       console.error('투표를 불러오지 못했습니다.', loadError);
-      if (!preserveCurrent) setBallot(null);
+      setBallotLoadError('투표 정보를 불러오지 못했습니다. 네트워크를 확인하고 다시 시도해 주세요.');
+      if (!preserveCurrent) setBallot(undefined);
       return null;
     }
   };
 
   useEffect(() => {
-    load();
+    setBallot(undefined);
+    setBallotLoadError(null);
+    setResults(null);
+    setResultError(null);
+    setResultLoading(false);
+    void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -520,10 +606,27 @@ export default function BallotCard() {
   // published가 되면 결과를 가져온다(p_code 없이 — published일 때만 non-null).
   useEffect(() => {
     if (screen !== 'published' || !token) return;
+    let cancelled = false;
+    setResultLoading(true);
+    setResultError(null);
     fetchBallotResults(token)
-      .then(setResults)
-      .catch(() => {});
-  }, [screen, token]);
+      .then((nextResults) => {
+        if (!nextResults) throw new Error('Published ballot returned no public results.');
+        if (!cancelled) setResults(nextResults);
+      })
+      .catch((loadError: unknown) => {
+        console.error('공개된 투표 결과를 불러오지 못했습니다.', loadError);
+        if (!cancelled) {
+          setResultError('공개 결과를 불러오지 못했습니다. 네트워크를 확인하고 다시 시도해 주세요.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setResultLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [screen, token, resultReloadKey]);
 
   const handleSelect = (itemId: string, v: number) => {
     setAnswers((prev) => ({ ...prev, [itemId]: v }));
@@ -545,9 +648,10 @@ export default function BallotCard() {
         setSubmitState('duplicate');
       } else {
         // 제출 시점에 이미 마감됨 — 최신 상태(closed/published)를 다시 받아 화면 전환.
-        load();
+        void load({ preserveCurrent: true });
       }
-    } catch {
+    } catch (submitError: unknown) {
+      console.error('투표 제출에 실패했습니다.', submitError);
       setConfirmOpen(false);
       setError('제출에 실패했습니다. 네트워크를 확인하고 다시 시도해 주세요.');
     } finally {
@@ -571,9 +675,43 @@ export default function BallotCard() {
     }
   };
 
+  const handleBallotRetry = async () => {
+    setRefreshing(true);
+    setBallot(undefined);
+    setBallotLoadError(null);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  if (token && ballotLoadError && ballot === undefined) {
+    return (
+      <LoadErrorScreen
+        title="투표 화면에 연결하지 못했습니다"
+        body={ballotLoadError}
+        onRetry={() => void handleBallotRetry()}
+        retrying={refreshing}
+      />
+    );
+  }
   if (screen === 'invalid') return <InvalidScreen />;
   if (screen === 'loading') return <LoadingScreen />;
-  if (screen === 'published') return <ResultsScreen results={results} />;
+  if (screen === 'published') {
+    if (resultError) {
+      return (
+        <LoadErrorScreen
+          title="공개 결과에 연결하지 못했습니다"
+          body={resultError}
+          onRetry={() => setResultReloadKey((current) => current + 1)}
+          retrying={resultLoading}
+        />
+      );
+    }
+    if (resultLoading || !results) return <LoadingScreen />;
+    return <ResultsScreen results={results} />;
+  }
   if (screen === 'closed') {
     return <ClosedScreen onRefresh={handleRefresh} refreshing={refreshing} refreshNotice={refreshNotice} />;
   }

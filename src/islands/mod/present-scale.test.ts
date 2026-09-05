@@ -10,6 +10,9 @@ function team(name: string, contents: string[]): TeamColumn {
     tableNo: null,
     subgroup: '1분과',
     ordinal: index + 1,
+    submissionId: null,
+    submissionUpdatedAt: null,
+    itemId: null,
     content,
     rationale: null,
   }));
@@ -20,6 +23,7 @@ function team(name: string, contents: string[]): TeamColumn {
     subgroup: '1분과',
     status: null,
     submissionId: null,
+    submissionVersion: null,
     updatedAt: null,
     finalizedAt: null,
     notes,

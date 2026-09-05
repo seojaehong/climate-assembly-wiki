@@ -261,15 +261,19 @@ begin
 
   foreach v_table in array array['assembly', 'session', 'discussion_topic', 'submission', 'ballot'] loop
     if has_table_privilege('authenticated', format('climate_vote.%I', v_table), 'SELECT')
-       <> v_expect_staff_grants
-       or has_table_privilege('authenticated', format('climate_vote.%I', v_table), 'INSERT')
-       <> v_expect_staff_grants
-       or has_table_privilege('authenticated', format('climate_vote.%I', v_table), 'UPDATE')
        <> v_expect_staff_grants then
-      raise exception 'P1C verification failed: staff table grant state is unexpected';
+      raise exception 'P1C verification failed: staff table read grant state is unexpected';
     end if;
-    if has_table_privilege('authenticated', format('climate_vote.%I', v_table), 'DELETE') then
-      raise exception 'P1C verification failed: staff table delete grant is present';
+    if has_table_privilege('public', format('climate_vote.%I', v_table), 'INSERT')
+       or has_table_privilege('anon', format('climate_vote.%I', v_table), 'INSERT')
+       or has_table_privilege('authenticated', format('climate_vote.%I', v_table), 'INSERT')
+       or has_table_privilege('public', format('climate_vote.%I', v_table), 'UPDATE')
+       or has_table_privilege('anon', format('climate_vote.%I', v_table), 'UPDATE')
+       or has_table_privilege('authenticated', format('climate_vote.%I', v_table), 'UPDATE')
+       or has_table_privilege('public', format('climate_vote.%I', v_table), 'DELETE')
+       or has_table_privilege('anon', format('climate_vote.%I', v_table), 'DELETE')
+       or has_table_privilege('authenticated', format('climate_vote.%I', v_table), 'DELETE') then
+      raise exception 'P1C verification failed: core table mutation grant is present';
     end if;
   end loop;
 end $verify$;

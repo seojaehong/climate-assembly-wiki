@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MOD_TABS, DEFAULT_MOD_TAB, normalizeTabId, tabById } from './mod-tabs';
+import { MOD_TABS, DEFAULT_MOD_TAB, normalizeTabId, tabAfterKey, tabById } from './mod-tabs';
 
 describe('MOD_TABS', () => {
   it('opens on 조별 산출물 — the actual work of 8.29', () => {
@@ -34,6 +34,21 @@ describe('normalizeTabId', () => {
   // 저장값이 낡거나 깨졌을 때 빈 화면이 되지 않게 기본 탭으로 떨어뜨린다.
   it.each([undefined, null, '', 'canvas', 42, {}])('falls back to the default for %p', (value) => {
     expect(normalizeTabId(value)).toBe(DEFAULT_MOD_TAB);
+  });
+});
+
+describe('tabAfterKey — roving keyboard navigation', () => {
+  it('wraps with horizontal and vertical arrow keys', () => {
+    expect(tabAfterKey('submission', 'ArrowLeft')).toBe('timer');
+    expect(tabAfterKey('timer', 'ArrowRight')).toBe('submission');
+    expect(tabAfterKey('submission', 'ArrowUp')).toBe('timer');
+    expect(tabAfterKey('timer', 'ArrowDown')).toBe('submission');
+  });
+
+  it('supports Home and End and ignores unrelated keys', () => {
+    expect(tabAfterKey('vote', 'Home')).toBe('submission');
+    expect(tabAfterKey('attendance', 'End')).toBe('timer');
+    expect(tabAfterKey('attendance', 'Enter')).toBeNull();
   });
 });
 

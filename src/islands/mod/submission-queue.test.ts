@@ -22,11 +22,11 @@ function item(over: Partial<SubmissionItemInput> = {}): SubmissionItemInput {
 
 function queued(over: Partial<QueuedSave> = {}): QueuedSave {
   return {
-    v: 1,
-    code: '082901',
+    v: 2,
     topicId: 'topic-1',
     items: [item()],
-    baseUpdatedAt: '2026-09-01T00:00:00.000Z',
+    baseVersion: 7,
+    requestId: '11111111-1111-4111-8111-111111111111',
     queuedAtMs: NOW,
     attempts: 1,
     nextAttemptAtMs: NOW + 5_000,
@@ -35,22 +35,24 @@ function queued(over: Partial<QueuedSave> = {}): QueuedSave {
 }
 
 describe('queueKey — 꼭지당 1건', () => {
-  it('접두사 + 코드 + 꼭지 id', () => {
-    expect(queueKey('082901', 'topic-1')).toBe('climate_vote_queue:082901:topic-1');
-    expect(queueKey('082901', 'topic-1').startsWith(QUEUE_KEY_PREFIX)).toBe(true);
+  it('접두사 + 비식별 조 scope + 꼭지 id', () => {
+    const teamId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    expect(queueKey(teamId, 'topic-1')).toBe(`climate_vote_queue:${teamId}:topic-1`);
+    expect(queueKey(teamId, 'topic-1').startsWith(QUEUE_KEY_PREFIX)).toBe(true);
+    expect(queueKey(teamId, 'topic-1')).not.toContain('082901');
   });
 
   it('같은 꼭지는 같은 키다 — 새 실패가 옛 것을 덮어쓴다', () => {
-    expect(queueKey('082901', 'topic-1')).toBe(queueKey('082901', 'topic-1'));
+    expect(queueKey('team-a', 'topic-1')).toBe(queueKey('team-a', 'topic-1'));
   });
 
   it('꼭지가 다르면 키가 갈린다', () => {
-    expect(queueKey('082901', 'topic-1')).not.toBe(queueKey('082901', 'topic-2'));
-    expect(queueKey('082901', 'topic-1')).not.toBe(queueKey('082902', 'topic-1'));
+    expect(queueKey('team-a', 'topic-1')).not.toBe(queueKey('team-a', 'topic-2'));
+    expect(queueKey('team-a', 'topic-1')).not.toBe(queueKey('team-b', 'topic-1'));
   });
 
   it('초안 키(climate_vote_draft:)와 겹치지 않는다', () => {
-    expect(queueKey('082901', 'topic-1').startsWith('climate_vote_draft:')).toBe(false);
+    expect(queueKey('team-a', 'topic-1').startsWith('climate_vote_draft:')).toBe(false);
   });
 });
 
@@ -130,25 +132,28 @@ describe('conflictVerdict — 조용한 덮어쓰기를 막는다', () => {
 describe('makeQueuedSave · withFailedAttempt', () => {
   it('첫 실패는 attempts 1, 5초 뒤 시도', () => {
     const q = makeQueuedSave({
-      code: '082901',
       topicId: 'topic-1',
       items: [item()],
-      baseUpdatedAt: null,
+      baseVersion: 0,
+      requestId: '11111111-1111-4111-8111-111111111111',
       nowMs: NOW,
     });
-    expect(q.v).toBe(1);
+    expect(q.v).toBe(2);
     expect(q.attempts).toBe(1);
     expect(q.queuedAtMs).toBe(NOW);
     expect(q.nextAttemptAtMs).toBe(NOW + 5_000);
-    expect(q.baseUpdatedAt).toBeNull();
+    expect(q.baseVersion).toBe(0);
+    expect(q.requestId).toBe('11111111-1111-4111-8111-111111111111');
+    expect(q).not.toHaveProperty('code');
+    expect(q).not.toHaveProperty('accessToken');
   });
 
   it('실패를 이어 세면 계단을 이어 오른다', () => {
     const q = makeQueuedSave({
-      code: '082901',
       topicId: 'topic-1',
       items: [item()],
-      baseUpdatedAt: null,
+      baseVersion: 2,
+      requestId: '22222222-2222-4222-8222-222222222222',
       nowMs: NOW,
       attempts: 3,
     });
@@ -167,11 +172,12 @@ describe('makeQueuedSave · withFailedAttempt', () => {
     expect(q.attempts).toBe(1);
   });
 
-  it('실패가 쌓여도 items·baseUpdatedAt 은 그대로다 — 글은 변하지 않는다', () => {
+  it('실패가 쌓여도 items·baseVersion·requestId 는 그대로다', () => {
     let q = queued({ attempts: 1 });
     for (let i = 0; i < 10; i += 1) q = withFailedAttempt(q, NOW);
     expect(q.items).toEqual([item()]);
-    expect(q.baseUpdatedAt).toBe('2026-09-01T00:00:00.000Z');
+    expect(q.baseVersion).toBe(7);
+    expect(q.requestId).toBe('11111111-1111-4111-8111-111111111111');
     expect(q.nextAttemptAtMs).toBe(NOW + 300_000);
   });
 });
@@ -185,7 +191,7 @@ describe('readQueue / writeQueue — 왕복', () => {
   it('여러 항목·kind extra·rationale 문자열도 살아남는다', () => {
     const q = queued({
       items: [item(), item({ ordinal: 2, kind: 'extra', rationale: '통계 근거' })],
-      baseUpdatedAt: null,
+      baseVersion: 0,
     });
     expect(readQueue(writeQueue(q))).toEqual(q);
   });
@@ -203,31 +209,34 @@ describe('readQueue / writeQueue — 왕복', () => {
     expect(readQueue('[]')).toBeNull();
   });
 
-  it('버전이 다르면 null', () => {
-    expect(readQueue(JSON.stringify({ ...queued(), v: 2 }))).toBeNull();
+  it('버전이 다르거나 예전 code 포맷이면 null', () => {
+    expect(readQueue(JSON.stringify({ ...queued(), v: 1 }))).toBeNull();
+    expect(readQueue(JSON.stringify({ ...queued(), v: 1, code: '082901' }))).toBeNull();
     const noVersion = { ...queued() } as Partial<QueuedSave>;
     delete noVersion.v;
     expect(readQueue(JSON.stringify(noVersion))).toBeNull();
   });
 
-  it('code·topicId 가 없거나 빈 문자열이면 null', () => {
-    expect(readQueue(JSON.stringify({ ...queued(), code: '' }))).toBeNull();
-    expect(readQueue(JSON.stringify({ ...queued(), code: 82901 }))).toBeNull();
+  it('topicId·requestId 가 없거나 빈 문자열이면 null', () => {
     expect(readQueue(JSON.stringify({ ...queued(), topicId: '' }))).toBeNull();
+    expect(readQueue(JSON.stringify({ ...queued(), requestId: '' }))).toBeNull();
+    expect(readQueue(JSON.stringify({ ...queued(), requestId: 'not-a-uuid' }))).toBeNull();
   });
 
   it('숫자 칸이 깨졌으면 null', () => {
     expect(readQueue(JSON.stringify({ ...queued(), queuedAtMs: '어제' }))).toBeNull();
     expect(readQueue(JSON.stringify({ ...queued(), attempts: null }))).toBeNull();
+    expect(readQueue(JSON.stringify({ ...queued(), attempts: 0 }))).toBeNull();
+    expect(readQueue(JSON.stringify({ ...queued(), attempts: 1.5 }))).toBeNull();
     expect(readQueue(JSON.stringify({ ...queued(), nextAttemptAtMs: undefined }))).toBeNull();
   });
 
-  it('baseUpdatedAt 은 문자열이나 null 만 받는다', () => {
-    expect(readQueue(JSON.stringify({ ...queued(), baseUpdatedAt: null }))?.baseUpdatedAt).toBeNull();
-    expect(readQueue(JSON.stringify({ ...queued(), baseUpdatedAt: 17 }))).toBeNull();
-    // 아예 없는 것도 null 로는 못 본다 — 큐가 무엇을 딛고 섰는지 모르면 대조를 못 한다
+  it('baseVersion은 0 이상 안전한 정수만 받는다', () => {
+    expect(readQueue(JSON.stringify({ ...queued(), baseVersion: 0 }))?.baseVersion).toBe(0);
+    expect(readQueue(JSON.stringify({ ...queued(), baseVersion: -1 }))).toBeNull();
+    expect(readQueue(JSON.stringify({ ...queued(), baseVersion: 1.5 }))).toBeNull();
     const missing = { ...queued() } as Partial<QueuedSave>;
-    delete missing.baseUpdatedAt;
+    delete missing.baseVersion;
     expect(readQueue(JSON.stringify(missing))).toBeNull();
   });
 
@@ -240,6 +249,8 @@ describe('readQueue / writeQueue — 왕복', () => {
     expect(
       readQueue(JSON.stringify({ ...queued(), items: [item({ ordinal: 'first' as unknown as number })] })),
     ).toBeNull();
+    expect(readQueue(JSON.stringify({ ...queued(), items: [item({ ordinal: 0 })] }))).toBeNull();
+    expect(readQueue(JSON.stringify({ ...queued(), items: [item({ ordinal: 1.5 })] }))).toBeNull();
     expect(
       readQueue(JSON.stringify({ ...queued(), items: [item({ rationale: 3 as unknown as string })] })),
     ).toBeNull();
@@ -253,7 +264,7 @@ describe('readQueue / writeQueue — 왕복', () => {
     const parsed = readQueue(JSON.stringify({ ...queued(), 딴것: '섞임' }));
     expect(parsed).not.toBeNull();
     expect(Object.keys(parsed as QueuedSave).sort()).toEqual(
-      ['attempts', 'baseUpdatedAt', 'code', 'items', 'nextAttemptAtMs', 'queuedAtMs', 'topicId', 'v'].sort(),
+      ['attempts', 'baseVersion', 'items', 'nextAttemptAtMs', 'queuedAtMs', 'requestId', 'topicId', 'v'].sort(),
     );
   });
 });

@@ -5,10 +5,18 @@ import {
   fetchActiveRound,
   fetchRound,
   fetchHqTeams,
+  fetchHqRounds,
+  fetchHqVoteCounts,
+  fetchHqVotesForRounds,
+  fetchSessionTeams,
   fetchTeamRounds,
-  fetchVoteCounts,
-  fetchVotesForRounds,
-  joinTeam,
+  fetchTeamVoteCounts,
+  fetchTeamVotes,
+  fetchPublicTally,
+  castBallot,
+  createPoll,
+  getDeviceToken,
+  setPollStatus,
   type Round,
   type Vote,
 } from './mod-console';
@@ -26,6 +34,24 @@ describe('isValidJoinCode', () => {
     expect(isValidJoinCode(' 123456')).toBe(false);
   });
 });
+
+describe('public vote device identity migration', () => {
+  it('legacy nested-route id를 canonical cv_device 키로 원자적으로 이관한다', () => {
+    const values = new Map<string, string>([['climate_vote_client_id', 'legacy-device-id']]);
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+    });
+    try {
+      expect(getDeviceToken()).toBe('legacy-device-id');
+      expect(values.get('cv_device')).toBe('legacy-device-id');
+      expect(values.has('climate_vote_client_id')).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
 describe('tallyVotes', () => {
   const round: Round = { id: 'r', title: 't', type: 'RADIO', options: ['A', 'B'], status: 'active', team_id: null };
   it('RADIO 집계 + archived 제외', () => {
@@ -34,331 +60,237 @@ describe('tallyVotes', () => {
       { id: 2, round_id: 'r', choice: 'A', archived_at: null },
       { id: 3, round_id: 'r', choice: 'B', archived_at: '2026-07-24' },
     ];
-    expect(tallyVotes(round, votes)).toEqual({ total: 2, byOption: { A: 2, B: 0 } });
+    expect(tallyVotes(round, votes)).toEqual({ total: 2, byOption: { A: 2, B: 0 }, averageByOption: {} });
   });
   it('CHECKBOX는 배열 각 항목 1카운트', () => {
     const r: Round = { ...round, type: 'CHECKBOX' };
     const votes: Vote[] = [{ id: 1, round_id: 'r', choice: ['A', 'B'], archived_at: null }];
-    expect(tallyVotes(r, votes)).toEqual({ total: 1, byOption: { A: 1, B: 1 } });
+    expect(tallyVotes(r, votes)).toEqual({ total: 1, byOption: { A: 1, B: 1 }, averageByOption: {} });
   });
 });
 
-describe('joinTeam', () => {
-  function mockRpc(result: { data: unknown; error: unknown }) {
-    const rpc = vi.fn(() => Promise.resolve(result));
-    const schema = vi.fn(() => ({ rpc }));
-    (getSupabase as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ schema });
-    return { rpc, schema };
-  }
+const access = { accessToken: 'a'.repeat(64) };
+const hqToken = 'b'.repeat(64);
+const sessionSlug = '0912-deliberation';
 
-  beforeEach(() => {
-    vi.mocked(getSupabase).mockReset();
-  });
+function mockRpc(result: { data: unknown; error: unknown }) {
+  const rpc = vi.fn(() => Promise.resolve(result));
+  const schema = vi.fn(() => ({ rpc }));
+  vi.mocked(getSupabase).mockReturnValue({ schema } as never);
+  return { rpc, schema };
+}
 
-  it('일치하는 팀이 없으면(빈 배열) null 반환 — 잘못된 코드', async () => {
-    mockRpc({ data: [], error: null });
-
-    const result = await joinTeam('000000');
-
-    expect(result).toBeNull();
-  });
-
-  it('RPC 자체가 실패하면(네트워크/서버 오류) error를 throw', async () => {
-    const err = new Error('network down');
-    mockRpc({ data: null, error: err });
-
-    await expect(joinTeam('123456')).rejects.toBe(err);
-  });
-
-  it('일치하는 팀이 있으면 해당 팀 반환', async () => {
-    const team = { id: 't1', name: '1조', subgroup: null, join_code: '123456', capacity: 14 };
-    mockRpc({ data: [team], error: null });
-
-    const result = await joinTeam('123456');
-
-    expect(result).toEqual(team);
-  });
+beforeEach(() => {
+  vi.mocked(getSupabase).mockReset();
 });
 
-describe('fetchActiveRound', () => {
-  const teamId = 'team-123';
-  const eqCalls: unknown[][] = [];
+describe('scoped round reads', () => {
+  const active = { id: 'r1', title: 't', type: 'RADIO', options: ['A'], status: 'active', team_id: 't1' };
 
-  function mockChain(result: { data: unknown; error: unknown }) {
-    const eq = vi.fn((...args: unknown[]) => {
-      eqCalls.push(args);
-      return chain;
+  it('team token으로 라운드와 active 라운드를 읽는다', async () => {
+    const { rpc } = mockRpc({ data: [active], error: null });
+    await expect(fetchTeamRounds(access)).resolves.toEqual([active]);
+    await expect(fetchActiveRound(access)).resolves.toEqual(active);
+    expect(rpc).toHaveBeenCalledWith('mod_rounds_v2', { p_token: access.accessToken });
+  });
+
+  it('공개 링크는 round id capability RPC만 호출한다', async () => {
+    const { rpc } = mockRpc({ data: [active], error: null });
+    await expect(fetchRound('r1')).resolves.toEqual({ ...active, team_id: null });
+    expect(rpc).toHaveBeenCalledWith('public_round_get_v2', { p_round_id: 'r1' });
+  });
+
+  it('HQ 라운드는 token과 session slug를 모두 보낸다', async () => {
+    const { rpc } = mockRpc({ data: [active], error: null });
+    await expect(fetchHqRounds(hqToken, sessionSlug)).resolves.toEqual([active]);
+    expect(rpc).toHaveBeenCalledWith('hq_rounds_v2', {
+      p_token: hqToken,
+      p_session_slug: sessionSlug,
     });
-    const chain: any = {
-      eq,
-      order: vi.fn(() => chain),
-      limit: vi.fn(() => Promise.resolve(result)),
-    };
-    const from = vi.fn(() => ({ select: vi.fn(() => chain) }));
-    const schema = vi.fn(() => ({ from }));
-    (getSupabase as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ schema });
-  }
-
-  beforeEach(() => {
-    eqCalls.length = 0;
-    vi.mocked(getSupabase).mockReset();
-  });
-
-  it('rows 반환 시 첫 번째 row 반환 + 필터 체인 검증', async () => {
-    const row = { id: 'r1', title: 't', type: 'RADIO', options: ['A', 'B'], status: 'active', team_id: teamId };
-    mockChain({ data: [row], error: null });
-
-    const result = await fetchActiveRound(teamId);
-
-    expect(result).toEqual(row);
-    expect(eqCalls).toContainEqual(['team_id', teamId]);
-    expect(eqCalls).toContainEqual(['status', 'active']);
-  });
-
-  it('빈 data → null 반환', async () => {
-    mockChain({ data: [], error: null });
-
-    const result = await fetchActiveRound(teamId);
-
-    expect(result).toBeNull();
-  });
-
-  it('error 존재 시 해당 error를 throw', async () => {
-    const err = new Error('boom');
-    mockChain({ data: null, error: err });
-
-    await expect(fetchActiveRound(teamId)).rejects.toBe(err);
   });
 });
 
-describe('fetchRound', () => {
-  const roundId = 'round-abc';
+describe('scoped team lists', () => {
+  const rows = ['2분과 5조', '1분과 1조'].map((name, index) => ({
+    id: `t${index}`,
+    name,
+    subgroup: name.slice(0, 3),
+    capacity: 12,
+    status: 'active',
+    table_no: null,
+  }));
 
-  function mockSingle(result: { data: unknown; error: unknown }) {
-    const eq = vi.fn(() => ({ maybeSingle: vi.fn(() => Promise.resolve(result)) }));
-    const select = vi.fn(() => ({ eq }));
-    const from = vi.fn(() => ({ select }));
-    const schema = vi.fn(() => ({ from }));
-    (getSupabase as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ schema });
-    return { eq, select, from };
-  }
-
-  beforeEach(() => {
-    vi.mocked(getSupabase).mockReset();
-  });
-
-  it('row 존재 시 해당 round 반환', async () => {
-    const row = { id: roundId, title: 't', type: 'RADIO', options: ['A', 'B'], status: 'active', team_id: 't1' };
-    const { eq } = mockSingle({ data: row, error: null });
-
-    const result = await fetchRound(roundId);
-
-    expect(result).toEqual(row);
-    expect(eq).toHaveBeenCalledWith('id', roundId);
-  });
-
-  it('없으면 null 반환', async () => {
-    mockSingle({ data: null, error: null });
-
-    const result = await fetchRound(roundId);
-
-    expect(result).toBeNull();
-  });
-
-  it('error 존재 시 해당 error를 throw', async () => {
-    const err = new Error('boom');
-    mockSingle({ data: null, error: err });
-
-    await expect(fetchRound(roundId)).rejects.toBe(err);
-  });
-});
-
-describe('fetchHqTeams', () => {
-  function mockRpc(result: { data: unknown; error: unknown }) {
-    const rpc = vi.fn(() => Promise.resolve(result));
-    const schema = vi.fn(() => ({ rpc }));
-    (getSupabase as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ schema });
-    return { rpc, schema };
-  }
-
-  beforeEach(() => {
-    vi.mocked(getSupabase).mockReset();
-  });
-
-  it('hq_teams RPC 호출 + status active만 반환(join_code 없음)', async () => {
-    const rows = [
-      { id: 't1', name: '1조', subgroup: '교육', capacity: 14, status: 'active' },
-      { id: 't2', name: '2조', subgroup: null, capacity: 10, status: 'disabled' },
-    ];
-    const { rpc, schema } = mockRpc({ data: rows, error: null });
-
-    const result = await fetchHqTeams();
-
-    expect(result).toEqual([rows[0]]);
-    expect(schema).toHaveBeenCalledWith('climate_vote');
-    expect(rpc).toHaveBeenCalledWith('hq_teams');
-  });
-
-  it('RPC가 임의 순서로 반환해도 표준 조 순서로 정렬한다', async () => {
-    // hq_teams()에는 order by가 없고 Postgres는 행 순서를 보장하지 않는다.
-    // 렌더 순서를 결정적으로 만드는 책임은 이 fetch 경로에 있다.
-    const rows = ['2분과 5조', '1분과 3조', '3분과 1조', '1분과 1조'].map((name, i) => ({
-      id: `t${i}`,
-      name,
-      subgroup: name.slice(0, 3),
-      capacity: 12,
-      status: 'active',
-    }));
-    mockRpc({ data: rows, error: null });
-
-    const result = await fetchHqTeams();
-
-    expect(result.map((t) => t.name)).toEqual(['1분과 1조', '1분과 3조', '2분과 5조', '3분과 1조']);
-  });
-
-  it('data 없으면 빈 배열', async () => {
-    mockRpc({ data: null, error: null });
-
-    const result = await fetchHqTeams();
-
-    expect(result).toEqual([]);
-  });
-
-  it('error 존재 시 throw', async () => {
-    const err = new Error('boom');
-    mockRpc({ data: null, error: err });
-
-    await expect(fetchHqTeams()).rejects.toBe(err);
-  });
-});
-
-describe('fetchTeamRounds', () => {
-  function mockChain(result: { data: unknown; error: unknown }) {
-    const order = vi.fn(() => Promise.resolve(result));
-    const not = vi.fn(() => ({ order }));
-    const select = vi.fn(() => ({ not }));
-    const from = vi.fn(() => ({ select }));
-    const schema = vi.fn(() => ({ from }));
-    (getSupabase as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ schema });
-    return { not, order, select, from };
-  }
-
-  beforeEach(() => {
-    vi.mocked(getSupabase).mockReset();
-  });
-
-  it('team_id not null 필터 + created_at desc 정렬로 조회', async () => {
-    const rows = [{ id: 'r1', title: 't', type: 'RADIO', options: ['A'], status: 'active', team_id: 't1' }];
-    const { not } = mockChain({ data: rows, error: null });
-
-    const result = await fetchTeamRounds();
-
-    expect(result).toEqual(rows);
-    expect(not).toHaveBeenCalledWith('team_id', 'is', null);
-  });
-
-  it('data 없으면 빈 배열', async () => {
-    mockChain({ data: null, error: null });
-
-    const result = await fetchTeamRounds();
-
-    expect(result).toEqual([]);
-  });
-
-  it('error 존재 시 throw', async () => {
-    const err = new Error('boom');
-    mockChain({ data: null, error: err });
-
-    await expect(fetchTeamRounds()).rejects.toBe(err);
-  });
-});
-
-describe('fetchVoteCounts', () => {
-  function mockCountChain(resultByRoundId: Record<string, { count: number | null; error: unknown }>) {
-    const from = vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn((_col: string, roundId: string) => ({
-          is: vi.fn(() => Promise.resolve(resultByRoundId[roundId])),
-        })),
-      })),
-    }));
-    const schema = vi.fn(() => ({ from }));
-    (getSupabase as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ schema });
-  }
-
-  beforeEach(() => {
-    vi.mocked(getSupabase).mockReset();
-  });
-
-  it('라운드별 count를 맵으로 반환', async () => {
-    mockCountChain({
-      r1: { count: 5, error: null },
-      r2: { count: 0, error: null },
+  it('HQ team read를 token/session에 묶고 표준 순서로 정렬한다', async () => {
+    const { rpc } = mockRpc({ data: rows, error: null });
+    const result = await fetchHqTeams(hqToken, sessionSlug);
+    expect(result.map((team) => team.name)).toEqual(['1분과 1조', '2분과 5조']);
+    expect(rpc).toHaveBeenCalledWith('hq_teams_v2', {
+      p_token: hqToken,
+      p_session_slug: sessionSlug,
     });
-
-    const result = await fetchVoteCounts(['r1', 'r2']);
-
-    expect(result).toEqual({ r1: 5, r2: 0 });
   });
 
-  it('count가 null이면 0으로 처리', async () => {
-    mockCountChain({ r1: { count: null, error: null } });
-
-    const result = await fetchVoteCounts(['r1']);
-
-    expect(result).toEqual({ r1: 0 });
-  });
-
-  it('error 존재 시 throw', async () => {
-    const err = new Error('boom');
-    mockCountChain({ r1: { count: null, error: err } });
-
-    await expect(fetchVoteCounts(['r1'])).rejects.toBe(err);
+  it('조 분과 목록은 team token 세션에 묶는다', async () => {
+    const { rpc } = mockRpc({ data: rows, error: null });
+    await expect(fetchSessionTeams(access)).resolves.toHaveLength(2);
+    expect(rpc).toHaveBeenCalledWith('mod_session_teams_v2', { p_token: access.accessToken });
   });
 });
 
-describe('fetchVotesForRounds', () => {
-  beforeEach(() => {
-    vi.mocked(getSupabase).mockReset();
+describe('scoped vote reads and public cast', () => {
+  const votes = [{ id: 1, round_id: 'r1', choice: 'A', archived_at: null }];
+
+  it('team token count와 vote RPC를 사용한다', async () => {
+    const first = mockRpc({ data: [{ round_id: 'r1', vote_count: 1 }], error: null });
+    await expect(fetchTeamVoteCounts(access, ['r1'])).resolves.toEqual({ r1: 1 });
+    expect(first.rpc).toHaveBeenCalledWith('mod_vote_counts_v2', {
+      p_token: access.accessToken,
+      p_round_ids: ['r1'],
+    });
+    const second = mockRpc({ data: votes, error: null });
+    await expect(fetchTeamVotes(access, 'r1')).resolves.toEqual(votes);
+    expect(second.rpc).toHaveBeenCalledWith('mod_votes_v2', {
+      p_token: access.accessToken,
+      p_round_id: 'r1',
+    });
   });
 
-  it('미보관 표를 한 번에 조회해 라운드별로 묶고 빈 라운드도 보존한다', async () => {
-    const result = {
-      data: [
-        { id: 1, round_id: 'r1', choice: 'A', archived_at: null },
-        { id: 2, round_id: 'r1', choice: 'B', archived_at: null },
-      ],
-      error: null,
-    };
-    const is = vi.fn(() => Promise.resolve(result));
-    const inFilter = vi.fn(() => ({ is }));
-    const select = vi.fn(() => ({ in: inFilter }));
-    const from = vi.fn(() => ({ select }));
-    const schema = vi.fn(() => ({ from }));
-    vi.mocked(getSupabase).mockReturnValue({ schema } as never);
-
-    await expect(fetchVotesForRounds(['r1', 'r2'])).resolves.toEqual({
-      r1: result.data,
+  it('HQ count와 vote RPC에 token/session을 함께 보낸다', async () => {
+    const first = mockRpc({ data: [{ round_id: 'r1', vote_count: 1 }], error: null });
+    await expect(fetchHqVoteCounts(hqToken, sessionSlug, ['r1'])).resolves.toEqual({ r1: 1 });
+    expect(first.rpc).toHaveBeenCalledWith('hq_vote_counts_v2', {
+      p_token: hqToken,
+      p_session_slug: sessionSlug,
+      p_round_ids: ['r1'],
+    });
+    const second = mockRpc({ data: votes, error: null });
+    await expect(fetchHqVotesForRounds(hqToken, sessionSlug, ['r1', 'r2'])).resolves.toEqual({
+      r1: votes,
       r2: [],
     });
-    expect(inFilter).toHaveBeenCalledWith('round_id', ['r1', 'r2']);
-    expect(is).toHaveBeenCalledWith('archived_at', null);
+    expect(second.rpc).toHaveBeenCalledWith('hq_votes_v2', {
+      p_token: hqToken,
+      p_session_slug: sessionSlug,
+      p_round_ids: ['r1', 'r2'],
+    });
   });
 
-  it('라운드가 없으면 Supabase를 호출하지 않는다', async () => {
-    await expect(fetchVotesForRounds([])).resolves.toEqual({});
-    expect(getSupabase).not.toHaveBeenCalled();
+  it('공개 결과와 cast는 round-id capability RPC만 사용한다', async () => {
+    const first = mockRpc({ data: [{ choice: 'A', vote_count: 2, total_votes: 3, average_score: null }], error: null });
+    await expect(fetchPublicTally('r1')).resolves.toEqual({
+      total: 3,
+      byOption: { A: 2 },
+      averageByOption: {},
+    });
+    expect(first.rpc).toHaveBeenCalledWith('public_round_votes_v2', { p_round_id: 'r1' });
+
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => 'device-1'),
+      setItem: vi.fn(),
+    });
+    const second = mockRpc({ data: 'duplicate', error: null });
+    await expect(castBallot('r1', 'A')).resolves.toBe('duplicate');
+    expect(second.rpc).toHaveBeenCalledWith('public_round_cast_v2', {
+      p_round_id: 'r1',
+      p_choice: 'A',
+      p_client_id: 'device-1',
+    });
+    vi.unstubAllGlobals();
   });
 
-  it('조회 오류를 throw한다', async () => {
-    const err = new Error('boom');
-    const is = vi.fn(() => Promise.resolve({ data: null, error: err }));
-    const inFilter = vi.fn(() => ({ is }));
-    const select = vi.fn(() => ({ in: inFilter }));
-    const from = vi.fn(() => ({ select }));
-    const schema = vi.fn(() => ({ from }));
-    vi.mocked(getSupabase).mockReturnValue({ schema } as never);
+  it('SCALE_MULTI 공개 집계의 서버 평균을 보존한다', async () => {
+    mockRpc({
+      data: [{ choice: 'Agenda A', vote_count: 3, total_votes: 3, average_score: '4.33' }],
+      error: null,
+    });
+    await expect(fetchPublicTally('canvas-round')).resolves.toEqual({
+      total: 3,
+      byOption: { 'Agenda A': 3 },
+      averageByOption: { 'Agenda A': 4.33 },
+    });
+  });
 
-    await expect(fetchVotesForRounds(['r1'])).rejects.toBe(err);
+  it('잘못된 public cast 응답과 RPC 오류를 숨기지 않는다', async () => {
+    mockRpc({ data: 'unexpected', error: null });
+    await expect(castBallot('r1', 'A')).rejects.toThrow('public vote response is invalid');
+    const error = new Error('scope denied');
+    mockRpc({ data: null, error });
+    await expect(fetchHqRounds(hqToken, sessionSlug)).rejects.toBe(error);
+  });
+});
+
+describe('moderator round mutations', () => {
+  const activeRound: Round = {
+    id: 'round-1',
+    title: '현장 투표',
+    type: 'RADIO',
+    options: ['A', 'B'],
+    status: 'active',
+    team_id: 'team-1',
+    updated_at: '2026-09-12T04:30:00.000Z',
+  };
+
+  it('creates an already-active v3 round with the caller intent key', async () => {
+    const { rpc } = mockRpc({ data: activeRound, error: null });
+
+    await expect(createPoll(access, {
+      title: activeRound.title,
+      type: activeRound.type,
+      options: activeRound.options ?? [],
+    }, '11111111-1111-4111-8111-111111111111')).resolves.toEqual(activeRound);
+
+    expect(rpc).toHaveBeenCalledWith('mod_create_round_v3', {
+      p_token: access.accessToken,
+      p_title: activeRound.title,
+      p_type: activeRound.type,
+      p_options: ['A', 'B'],
+      p_idempotency_key: '11111111-1111-4111-8111-111111111111',
+    });
+  });
+
+  it('sends expected status, target status, and stable intent key to the CAS v3 RPC', async () => {
+    const closedRound: Round = { ...activeRound, status: 'closed' };
+    const { rpc } = mockRpc({ data: closedRound, error: null });
+
+    await expect(setPollStatus(
+      access,
+      activeRound.id,
+      'active',
+      'closed',
+      '22222222-2222-4222-8222-222222222222',
+    )).resolves.toEqual(closedRound);
+
+    expect(rpc).toHaveBeenCalledWith('mod_set_round_status_v3', {
+      p_token: access.accessToken,
+      p_round_id: activeRound.id,
+      p_expected_status: 'active',
+      p_status: 'closed',
+      p_idempotency_key: '22222222-2222-4222-8222-222222222222',
+    });
+  });
+
+  it('propagates a stale transition error so the UI can perform a scoped reload', async () => {
+    const conflict = new Error('round status conflict: expected active, current closed');
+    mockRpc({ data: null, error: conflict });
+
+    await expect(setPollStatus(
+      access,
+      activeRound.id,
+      'active',
+      'closed',
+      '33333333-3333-4333-8333-333333333333',
+    )).rejects.toBe(conflict);
+  });
+
+  it('rejects a response for a different transition instead of moving the UI to a false state', async () => {
+    mockRpc({ data: activeRound, error: null });
+
+    await expect(setPollStatus(
+      access,
+      activeRound.id,
+      'active',
+      'closed',
+      '44444444-4444-4444-8444-444444444444',
+    )).rejects.toThrow('does not match the requested transition');
   });
 });

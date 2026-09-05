@@ -2,8 +2,9 @@
 -- project: labor_money (pleyuknjnprsckssxvrh), schema: climate_vote
 --
 -- ── 왜 필요한가 ──────────────────────────────────────────────────────
--- `10_작업산출물/2026-09-12_0912_개통/0912_개통_세션조.sql` 이 세션 `0912-deliberation`
--- 과 조 15개(`091201`~`091215`)를 만든다. 거기까지만 하면 조가 링크로 들어와도
+-- `node scripts/seed-0829-teams.mjs --print-seed-sql` 이 출력하는 검토용 트랜잭션으로
+-- 세션 `0912-deliberation` 과 조 15개를 만든다. 파일명은 옛 회차 이름을 유지하지만
+-- 실제 대상은 `scripts/session-rosters.mjs` 의 ACTIVE_SESSION_SLUG가 정한다. 거기까지만 하면 조가 링크로 들어와도
 -- 입력할 주제가 하나도 안 보인다 — `topic_list` 가 `discussion_topic` 을 읽는데
 -- 그 세션에 행이 0개이기 때문이다(8.29 전야에 겪은 것과 같은 상태,
 -- `20260827_s6_open_0829_topics.sql` 머리말 참조).
@@ -35,7 +36,8 @@
 -- `topic_list` 는 `status in ('open','closed')` 만 돌려준다(s1:151-162, s17 재정의).
 -- draft 는 조 화면에 **안 보인다.** 6개를 미리 열어 두면 1일차 오전부터 6개가 다 보여
 -- 조가 순서를 앞질러 쓴다. 행사 당일 세션이 시작될 때 하나씩 연다 —
--- 여는 SQL 은 `10_작업산출물/2026-09-12_0912_개통/꼭지_열기.sql` 이다.
+-- 여는 정본 경로는 `/hq`의 `workshop_hq_open_next_topic`이다. 비상 시에도 직접 UPDATE가
+-- 아니라 `docs/operations/0912-13-runbook.md`의 세션 범위·멱등 RPC를 사용한다.
 --
 -- ★★ 그래서 s6 와 **한 군데가 다르다.** s6 는 on conflict 갱신절에서 `status = 'open'`
 --    을 함께 박았다. 그 꼴을 그대로 베껴 `'draft'` 로 두면, 행사 당일 ①~③ 을 연 뒤
@@ -43,7 +45,7 @@
 --    조 화면에서 사라진다.** 그래서 갱신절은 문안(prompt·guidance·block)만 손대고
 --    `status` 는 건드리지 않는다.
 --      · 이 파일  = 문안의 주인
---      · 꼭지_열기 = status 의 주인
+--      · 본부의 감사 RPC = status 의 주인
 --
 -- ── SAFETY ───────────────────────────────────────────────────────────
 -- 8.29 를 읽지도 쓰지도 않는다. `0829-deliberation` 이라는 문자열이 이 파일에 없다.
@@ -55,7 +57,7 @@
 -- ROLLBACK: supabase/rollbacks/20260902_s20_open_0912_topics_BEFORE.sql
 -- VERIFY  : supabase/verify/20260902_s20_open_0912_topics.sql
 --
--- ★ 선행 조건 — `0912_개통_세션조.sql` 이 **먼저** 적용돼 있어야 한다.
+-- ★ 선행 조건 — 위 seed generator의 검토·승인된 트랜잭션이 **먼저** 적용돼 있어야 한다.
 --   세션이 없으면 아래 do 블록이 예외로 멈춘다(조용히 0건 심는 일이 없게).
 --
 -- ★ 적용 후 검증(anon 키, Content-Profile: climate_vote 필수):
@@ -72,7 +74,7 @@ begin
   select id, org_id into v_session, v_org
     from climate_vote.session where slug = '0912-deliberation';
   if v_session is null then
-    raise exception 's20: session 0912-deliberation not found — 0912_개통_세션조.sql 을 먼저 적용할 것';
+    raise exception 's20: session 0912-deliberation not found — reviewed session/team seed must run first';
   end if;
 
   -- 여섯 꼭지를 ordinal 1~6 에 고정한다.
@@ -126,7 +128,7 @@ order by dt.ordinal;
 
 -- 확인 2 — 조 콘솔이 실제로 보게 되는 목록.
 --   ★ 지금은 **0건이 정상**이다. draft 는 topic_list 가 걸러낸다.
---     행사 당일 꼭지_열기.sql 로 open 으로 바꾼 만큼만 여기에 나타난다.
+--     행사 당일 본부의 감사 RPC로 open 으로 바꾼 만큼만 여기에 나타난다.
 select ordinal, block, status, prompt
 from climate_vote.topic_list('091201')
 order by ordinal;

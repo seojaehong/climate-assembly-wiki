@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import HitlBadge from '../../../components/HitlBadge';
 import { issueList, type IssueListResult, type PlatformResult } from '../../../lib/platform';
 import { buildScopedAnalysisView } from './analyze-console-logic';
@@ -12,17 +12,17 @@ const MUTED = '#5A6B73';
 const LINE = '#6B7D88';
 const PANEL = '#F1F7FA';
 
-type IssueListLoader = (code: string, topicId: string) => Promise<PlatformResult<IssueListResult>>;
+type IssueListLoader = (sessionId: string, topicId: string) => Promise<PlatformResult<IssueListResult>>;
 
 export async function loadScopedAnalysis(
-  code: string,
+  sessionId: string,
   scope: AnalysisScope,
   topics: readonly TopicTarget[],
   loader: IssueListLoader = issueList,
 ): Promise<PlatformResult<AnalysisView>> {
   const responses = await Promise.all(topics.map(async (target) => ({
     target,
-    response: await loader(code, target.id),
+    response: await loader(sessionId, target.id),
   })));
   const topicResults = [];
   for (const { target, response } of responses) {
@@ -187,25 +187,41 @@ export function AnalysisResults({ view }: { view: AnalysisView }) {
 export default function AnalyzeConsole({
   scope,
   topics,
+  sessionId,
 }: {
   scope: AnalysisScope | null;
   topics: readonly TopicTarget[];
+  sessionId: string | null;
 }) {
-  const [code, setCode] = useState('');
   const [view, setView] = useState<AnalysisView | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const requestGeneration = useRef(0);
+  const topicsRef = useRef(topics);
+  topicsRef.current = topics;
   const scopeKey = `${scope ?? 'none'}:${topics.map((topic) => topic.id).join(',')}`;
+
+  const load = useCallback(async (): Promise<void> => {
+    if (!scope || !sessionId || topicsRef.current.length === 0) return;
+    const generation = requestGeneration.current + 1;
+    requestGeneration.current = generation;
+    await completeAnalysisLoad(
+      () => loadScopedAnalysis(sessionId, scope, topicsRef.current),
+      setBusy,
+      setView,
+      setNotice,
+      () => requestGeneration.current === generation,
+    );
+  }, [scope, sessionId]);
 
   useEffect(() => {
     requestGeneration.current += 1;
-    setCode('');
     setView(null);
     setNotice(null);
     setBusy(false);
+    void load();
     return () => { requestGeneration.current += 1; };
-  }, [scopeKey]);
+  }, [load, scopeKey]);
 
   if (!scope) {
     return (
@@ -223,24 +239,13 @@ export default function AnalyzeConsole({
     );
   }
 
-  const load = async (event: React.SubmitEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const trimmedCode = code.trim();
-    if (!trimmedCode) {
-      setNotice('조 참여 코드(join_code)를 입력하세요.');
-      return;
-    }
-    const generation = requestGeneration.current + 1;
-    requestGeneration.current = generation;
-    await completeAnalysisLoad(
-      () => loadScopedAnalysis(trimmedCode, scope, topics),
-      setBusy,
-      setView,
-      setNotice,
-      () => requestGeneration.current === generation,
+  if (!sessionId) {
+    return (
+      <div role="alert" style={{ border: `2px dashed ${TEAL}`, borderRadius: 14, background: PANEL, padding: 20, color: MUTED }}>
+        회차 연결 정보를 확인하지 못했습니다. 좌측 트리에서 회차 또는 주제를 다시 선택하세요.
+      </div>
     );
-    if (requestGeneration.current === generation) setCode('');
-  };
+  }
 
   const scopeLabel = scope === 'session' ? '회차' : '주제';
 
@@ -256,42 +261,30 @@ export default function AnalyzeConsole({
         </p>
       </header>
 
-      <form
-        aria-label={`${scopeLabel} 분석 불러오기`}
+      <section
+        aria-label={`${scopeLabel} 분석 동기화`}
         aria-busy={busy}
-        onSubmit={load}
         style={{ border: `2px solid ${LINE}`, borderRadius: 16, background: PANEL, padding: 18 }}
       >
-        <label htmlFor="analysis-join-code" style={{ display: 'block', color: NAVY, fontSize: 14, fontWeight: 800, marginBottom: 6 }}>
-          조 참여 코드
-        </label>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <input
-            id="analysis-join-code"
-            type="password"
-            value={code}
-            onChange={(event) => setCode(event.target.value)}
-            aria-describedby={notice ? 'analysis-load-notice' : 'analysis-load-help'}
-            autoComplete="off"
-            style={{ flex: '1 1 220px', minWidth: 0, height: 44, boxSizing: 'border-box', border: `2px solid ${LINE}`, borderRadius: 10, padding: '0 12px', color: INK, background: '#fff', fontSize: 14 }}
-          />
+          <p id="analysis-load-help" style={{ flex: '1 1 260px', color: MUTED, fontSize: 13, margin: 0, alignSelf: 'center' }}>
+            로그인된 운영자 권한과 선택한 회차를 기준으로 자동 동기화합니다.
+          </p>
           <button
-            type="submit"
+            type="button"
+            onClick={() => { void load(); }}
             disabled={busy}
             style={{ minHeight: 44, border: `2px solid ${TEAL}`, borderRadius: 10, background: busy ? '#CBD5DC' : TEAL, color: '#fff', padding: '8px 18px', fontSize: 14, fontWeight: 800, cursor: busy ? 'default' : 'pointer' }}
           >
-            {busy ? '불러오는 중…' : '분석 불러오기'}
+            {busy ? '불러오는 중…' : '분석 새로고침'}
           </button>
         </div>
-        <p id="analysis-load-help" style={{ color: MUTED, fontSize: 12, margin: '8px 0 0' }}>
-          코드는 조회 권한 확인에만 사용하며 브라우저 저장소에 보관하지 않습니다.
-        </p>
         {notice ? <p id="analysis-load-notice" role="alert" style={{ color: '#B91C1C', fontSize: 14, fontWeight: 700, margin: '10px 0 0' }}>{notice}</p> : null}
-      </form>
+      </section>
 
       {view ? <AnalysisResults view={view} /> : (
         <p role="status" aria-live="polite" style={{ color: MUTED, margin: 0 }}>
-          쟁점 목록을 불러오면 분석 결과가 표시됩니다.
+          {busy ? '쟁점 목록을 안전하게 불러오는 중입니다.' : '쟁점 목록을 자동으로 불러옵니다.'}
         </p>
       )}
     </div>

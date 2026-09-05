@@ -23,6 +23,7 @@ function row(over: Partial<HqSubmissionRow> = {}): HqSubmissionRow {
     table_no: '3',
     submission_id: 'sub-1',
     submission_status: 'draft',
+    submission_version: 1,
     submission_updated_at: '2026-08-29T05:00:00Z',
     submission_finalized_at: null,
     item_ordinal: 1,

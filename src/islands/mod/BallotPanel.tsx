@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import {
   ballotCreate,
@@ -12,8 +12,9 @@ import {
   type BallotScale,
   type SubmissionGetResult,
   type Topic,
+  type WorkshopAuthorization,
 } from '../../lib/deliberation';
-import { fetchHqTeams } from '../../lib/mod-console';
+import { fetchSessionTeams } from '../../lib/mod-console';
 import { renderBallotItemSvg } from './ballot-result-image';
 import {
   RESULT_IMAGE_SCALE,
@@ -27,6 +28,7 @@ import {
   BALLOT_SCALES,
   MAX_BALLOT_ITEMS,
   ballotStatusLabel,
+  ballotCreateIntent,
   ballotUrl,
   distRows,
   emptyBallotFormItem,
@@ -37,8 +39,14 @@ import {
   subgroupBadgeLabel,
   validateBallotForm,
   type BallotAction,
+  type BallotCreateIntent,
   type BallotFormItem,
 } from './ballot-panel-logic';
+import {
+  createResourceRequestCoordinator,
+  type ResourceRequestPriority,
+} from './resource-request-coordinator';
+import { useModalDialog } from './use-modal-dialog';
 
 const DIST_COLORS = ['#23B2C3', '#2E75B6', '#4F9D3A', '#F5A623', '#135C73', '#1F4E79', '#B5651D'];
 
@@ -62,9 +70,9 @@ function formatClock(iso: string | null | undefined): string {
 }
 
 function statusBadgeClass(status: BallotListRow['status']): string {
-  if (status === 'open') return 'bg-[#23B2C3] text-white';
+  if (status === 'open') return 'bg-[#135C73] text-white';
   if (status === 'closed') return 'bg-[#DC2626] text-white';
-  if (status === 'published') return 'bg-[#4F9D3A] text-white';
+  if (status === 'published') return 'bg-[#2F6F25] text-white';
   return 'bg-[#F1F7FA] text-[#5A6B73] border border-[#DCE7EE]';
 }
 
@@ -87,7 +95,10 @@ function BallotQrFullscreen({
     // 대형 스크린에서 원거리 스캔 대비 고해상도로 뽑는다(표시 크기는 CSS가 결정).
     QRCode.toDataURL(url, { width: 960, margin: 1 })
       .then(setQr)
-      .catch(() => setQr(null));
+      .catch((error: unknown) => {
+        console.warn('[ballot QR] generation failed', error);
+        setQr(null);
+      });
   }, [url]);
 
   useEffect(() => {
@@ -171,44 +182,57 @@ function BallotQrFullscreen({
 
 function BallotResultsFullscreen({
   ballot,
-  code,
+  access,
   onExit,
   onNotify,
 }: {
   ballot: BallotListRow;
-  code: string;
+  access: WorkshopAuthorization;
   onExit: () => void;
   /** 내보내기 결과 안내(토스트). 패널 본체의 setToast를 받는다. */
   onNotify: (message: string) => void;
 }) {
   const [results, setResults] = useState<BallotResults | null>(null);
   const [failed, setFailed] = useState(false);
+  const [lastSuccessAt, setLastSuccessAt] = useState<number | null>(null);
+  const [resultsRefreshing, setResultsRefreshing] = useState(false);
   const [exporting, setExporting] = useState<'png' | 'docx' | null>(null);
+  const resultsRefreshCoordinator = useRef(createResourceRequestCoordinator());
+
+  const refreshResults = useCallback(async (priority: ResourceRequestPriority = 'manual') => {
+    const coordinator = resultsRefreshCoordinator.current;
+    const ticket = coordinator.begin(`ballot-results:${ballot.token}`, priority);
+    if (!ticket) return;
+    setResultsRefreshing(true);
+    try {
+      const next = await ballotResults(ballot.token, access);
+      if (!coordinator.isCurrent(ticket)) return;
+      if (next) {
+        setResults(next);
+        setFailed(false);
+        setLastSuccessAt(Date.now());
+      } else {
+        setFailed(true);
+      }
+    } catch (error: unknown) {
+      console.error('[ballot] results refresh failed', error);
+      if (coordinator.isCurrent(ticket)) setFailed(true);
+    } finally {
+      const wasCurrent = coordinator.isCurrent(ticket);
+      coordinator.finish(ticket);
+      if (wasCurrent) setResultsRefreshing(false);
+    }
+  }, [access, ballot.token]);
 
   useEffect(() => {
-    let cancelled = false;
-    const refresh = () => {
-      ballotResults(ballot.token, code)
-        .then((next) => {
-          if (cancelled) return;
-          if (next) {
-            setResults(next);
-            setFailed(false);
-          } else {
-            setFailed(true);
-          }
-        })
-        .catch(() => {
-          if (!cancelled) setFailed(true);
-        });
-    };
-    refresh();
-    const interval = setInterval(refresh, 3000);
+    const coordinator = resultsRefreshCoordinator.current;
+    void refreshResults('background');
+    const interval = setInterval(() => void refreshResults('background'), 3000);
     return () => {
-      cancelled = true;
       clearInterval(interval);
+      coordinator.invalidate();
     };
-  }, [ballot.token, code]);
+  }, [refreshResults]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -251,7 +275,7 @@ function BallotResultsFullscreen({
    * Chrome이 다중 자동 다운로드를 차단해 첫 1장만 저장되므로(E2E 실측) ZIP 한 파일로 우회한다.
    */
   const savePng = async () => {
-    if (results == null || exporting != null) return;
+    if (results == null || exporting != null || failed) return;
     if (results.items.length === 0) {
       onNotify('저장할 결과 이미지가 없습니다.');
       return;
@@ -270,6 +294,7 @@ function BallotResultsFullscreen({
       downloadBlob(new Blob([archive], { type: 'application/zip' }), ballotImageZipFileName({ title: results.title, at }));
       onNotify(`결과 이미지 ${pngs.length}장을 ZIP으로 저장했습니다.`);
     } catch (err) {
+      console.error('[ballot] result image export failed', err);
       onNotify(err instanceof Error ? err.message : '이미지 저장에 실패했습니다.');
     } finally {
       setExporting(null);
@@ -278,18 +303,19 @@ function BallotResultsFullscreen({
 
   /** 결과보고서 DOCX. docx 모듈은 무겁다 — 눌렀을 때만 동적 로드해 콘솔 초기 로드를 지킨다. */
   const saveDocx = async () => {
-    if (results == null || exporting != null) return;
+    if (results == null || exporting != null || failed) return;
     setExporting('docx');
     try {
       const docxMod = await import('./ballot-report-docx');
       // §3 내 조 산출물은 선택 데이터 — 조회에 실패해도 보고서는 §1·§2만으로 나간다.
       let topics: Array<{ topic: Topic; submission: SubmissionGetResult }> | null = null;
       try {
-        const list = await topicList(code);
+        const list = await topicList(access);
         topics = await Promise.all(
-          list.map(async (t) => ({ topic: t, submission: await submissionGet(code, t.id) })),
+          list.map(async (t) => ({ topic: t, submission: await submissionGet(access, t.id) })),
         );
-      } catch {
+      } catch (error) {
+        console.warn('[ballot report] topic context unavailable; exporting results only', error);
         topics = null;
       }
       const model = docxMod.buildBallotReportModel({
@@ -302,13 +328,15 @@ function BallotResultsFullscreen({
       try {
         const pngs = await renderItemPngs(results);
         itemImages = new Map(pngs.map(({ item, bytes }) => [item.id, bytes.buffer as ArrayBuffer]));
-      } catch {
+      } catch (error) {
+        console.warn('[ballot report] item images unavailable; exporting text-only document', error);
         itemImages = undefined;
       }
       const blob = await docxMod.ballotReportBlob(model, { itemImages });
       downloadBlob(blob, docxMod.ballotReportFileName({ title: results.title, at: new Date() }));
       onNotify('결과보고서(DOCX)를 저장했습니다.');
-    } catch {
+    } catch (error: unknown) {
+      console.error('[ballot] result report export failed', error);
       onNotify('보고서 저장에 실패했습니다 — 다시 시도해 주세요.');
     } finally {
       setExporting(null);
@@ -350,10 +378,32 @@ function BallotResultsFullscreen({
       </div>
 
       <div className="flex flex-wrap gap-2 mb-5">
+        {failed ? (
+          <div
+            role="alert"
+            className="basis-full flex flex-wrap items-center gap-3 rounded-xl border-2 border-[#DC2626] bg-[#FEF2F2] px-4 py-3 text-[#B91C1C]"
+          >
+            <p className="min-w-[220px] flex-1 text-[15px] font-extrabold leading-relaxed">
+              결과 연결이 끊겨 마지막 정상 집계를 유지합니다.{' '}
+              {lastSuccessAt === null
+                ? '아직 서버에서 확인된 집계가 없습니다.'
+                : `마지막 정상 확인 ${formatClock(new Date(lastSuccessAt).toISOString())}.`}{' '}
+              다시 확인되기 전에는 결과 파일을 저장할 수 없습니다.
+            </p>
+            <button
+              type="button"
+              onClick={() => void refreshResults('manual')}
+              disabled={resultsRefreshing}
+              className="min-h-11 rounded-xl border-2 border-[#B91C1C] bg-white px-4 text-[14px] font-extrabold disabled:opacity-50"
+            >
+              {resultsRefreshing ? '다시 연결 중…' : '지금 다시 연결'}
+            </button>
+          </div>
+        ) : null}
         <button
           type="button"
           onClick={() => void savePng()}
-          disabled={results == null || exporting != null}
+          disabled={results == null || exporting != null || failed}
           className="h-12 rounded-xl border border-[#1F4E79] px-4 text-[16px] font-bold text-[#1F4E79] disabled:opacity-40"
         >
           {exporting === 'png' ? '이미지 저장 중…' : '결과 이미지 저장(PNG)'}
@@ -361,7 +411,7 @@ function BallotResultsFullscreen({
         <button
           type="button"
           onClick={() => void saveDocx()}
-          disabled={results == null || exporting != null}
+          disabled={results == null || exporting != null || failed}
           className="h-12 rounded-xl border border-[#1F4E79] px-4 text-[16px] font-bold text-[#1F4E79] disabled:opacity-40"
         >
           {exporting === 'docx' ? '보고서 만드는 중…' : '보고서 다운로드(DOCX)'}
@@ -433,12 +483,14 @@ function BallotResultsFullscreen({
 function CreateForm({
   submitting,
   subgroup,
+  access,
   onCreate,
   onCancel,
 }: {
   submitting: boolean;
-  /** 내 조의 분과(mod_join team.subgroup). 「(내 분과)」 표기·확인 문구 분기에 쓴다. */
+  /** 토큰 세션에 묶인 내 조의 분과. 「(내 분과)」 표기·확인 문구 분기에 쓴다. */
   subgroup: string | null;
+  access: WorkshopAuthorization;
   onCreate: (
     title: string,
     instructions: string | null,
@@ -453,7 +505,7 @@ function CreateForm({
   // 대상: null=세션 전체(기본), 분과명=해당 분과 한정.
   // 총괄 모더레이터가 한 콘솔에서 1·2·3분과 투표를 전부 만들 수 있게 세션의 모든 분과를 선택지로 낸다.
   const [target, setTarget] = useState<string | null>(null);
-  // 세션 분과 목록 — 폼 오픈 시 hq_teams를 1회 조회. null=아직(또는 실패)이라 폴백 사용.
+  // 세션 분과 목록 — 폼 오픈 시 token-scoped 팀 목록을 1회 조회한다.
   const [subgroupOptions, setSubgroupOptions] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -461,18 +513,19 @@ function CreateForm({
 
   useEffect(() => {
     let cancelled = false;
-    fetchHqTeams()
+    fetchSessionTeams(access)
       .then((teams) => {
         if (!cancelled) setSubgroupOptions(sessionSubgroups(teams, mySubgroup));
       })
-      .catch(() => {
+      .catch((error: unknown) => {
+        console.warn('[ballot] subgroup list unavailable; using current subgroup only', error);
         // 조회 실패 시 기존 동작 폴백: 전체/내 분과만.
         if (!cancelled) setSubgroupOptions(mySubgroup ? [mySubgroup] : []);
       });
     return () => {
       cancelled = true;
     };
-  }, [mySubgroup]);
+  }, [access, mySubgroup]);
 
   // 조회 완료 전에도 기존 선택지(전체/내 분과)는 바로 쓸 수 있게 한다.
   const targetOptions = subgroupOptions ?? (mySubgroup ? [mySubgroup] : []);
@@ -678,15 +731,14 @@ function CreateForm({
 // ============================================================
 
 export default function BallotPanel({
-  code,
+  access,
   subgroup = null,
 }: {
-  code: string | null;
-  /** 내 조의 분과(mod_join team.subgroup). 없으면 분과 한정 투표를 만들 수 없다. */
+  access: WorkshopAuthorization | null;
+  /** 토큰 세션에 묶인 내 조의 분과. 없으면 분과 한정 투표를 만들 수 없다. */
   subgroup?: string | null;
 }) {
   const [ballots, setBallots] = useState<BallotListRow[] | null>(null);
-  const [loadFailed, setLoadFailed] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -695,6 +747,22 @@ export default function BallotPanel({
   const [qrId, setQrId] = useState<string | null>(null);
   const [resultsId, setResultsId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const createRequestIdRef = useRef<BallotCreateIntent | null>(null);
+  const refreshCoordinatorRef = useRef(createResourceRequestCoordinator());
+  const [refreshState, setRefreshState] = useState<{
+    failed: boolean;
+    busy: boolean;
+    lastSuccessAt: number | null;
+  }>({ failed: false, busy: false, lastSuccessAt: null });
+  const actionDialogRef = useModalDialog<HTMLDivElement>(
+    confirmAction !== null,
+    () => setConfirmAction(null),
+  );
+
+  const cancelCreate = () => {
+    createRequestIdRef.current = null;
+    setShowForm(false);
+  };
 
   useEffect(() => {
     if (!toast) return;
@@ -702,39 +770,39 @@ export default function BallotPanel({
     return () => clearTimeout(t);
   }, [toast]);
 
-  const refresh = useCallback(async () => {
-    if (!code) return;
+  const refresh = useCallback(async (priority: ResourceRequestPriority = 'manual') => {
+    if (!access) return;
+    const coordinator = refreshCoordinatorRef.current;
+    const ticket = coordinator.begin('ballot-list', priority);
+    if (!ticket) return;
+    setRefreshState((current) => ({ ...current, busy: true }));
     try {
-      const rows = await ballotList(code);
+      const rows = await ballotList(access);
+      if (!coordinator.isCurrent(ticket)) return;
       setBallots(rows);
-      setLoadFailed(false);
-    } catch {
-      setLoadFailed(true);
+      setRefreshState({ failed: false, busy: false, lastSuccessAt: Date.now() });
+    } catch (error: unknown) {
+      console.error('[ballot] list refresh failed', error);
+      if (!coordinator.isCurrent(ticket)) return;
+      setRefreshState((current) => ({ ...current, failed: true, busy: false }));
+    } finally {
+      coordinator.finish(ticket);
     }
-  }, [code]);
+  }, [access]);
 
   useEffect(() => {
-    if (!code) return;
-    let cancelled = false;
-    const tick = () => {
-      ballotList(code)
-        .then((rows) => {
-          if (!cancelled) {
-            setBallots(rows);
-            setLoadFailed(false);
-          }
-        })
-        .catch(() => {
-          if (!cancelled) setLoadFailed(true);
-        });
-    };
-    tick();
-    const interval = setInterval(tick, 3000);
+    if (!access) return;
+    const coordinator = refreshCoordinatorRef.current;
+    coordinator.invalidate();
+    setBallots(null);
+    setRefreshState({ failed: false, busy: false, lastSuccessAt: null });
+    void refresh('background');
+    const interval = setInterval(() => void refresh('background'), 3000);
     return () => {
-      cancelled = true;
       clearInterval(interval);
+      coordinator.invalidate();
     };
-  }, [code]);
+  }, [access, refresh]);
 
   const handleCreate = async (
     title: string,
@@ -742,22 +810,30 @@ export default function BallotPanel({
     items: BallotFormItem[],
     ballotSubgroup: string | null,
   ) => {
-    if (!code) return;
+    if (!access) return;
     const checked = validateBallotForm(title, items);
     if (!checked.ok) return;
+    const payload = {
+      title: checked.title,
+      instructions,
+      items: checked.items,
+      subgroup: ballotSubgroup,
+    };
+    const intent = ballotCreateIntent(
+      createRequestIdRef.current,
+      payload,
+      () => crypto.randomUUID(),
+    );
+    createRequestIdRef.current = intent;
     setSubmitting(true);
     try {
-      // 대상=전체면 deliberation.ballotCreateParams가 p_subgroup 키 자체를 빼고 보낸다(S4 미적용 DB 호환).
-      await ballotCreate(code, {
-        title: checked.title,
-        instructions,
-        items: checked.items,
-        subgroup: ballotSubgroup,
-      });
+      await ballotCreate(access, payload, intent.requestId);
+      createRequestIdRef.current = null;
       setShowForm(false);
       setToast('투표 초안이 만들어졌습니다. 준비되면 투표 시작을 누르세요.');
       await refresh();
-    } catch {
+    } catch (error: unknown) {
+      console.error('[ballot] create failed', error);
       setToast('투표 만들기에 실패했습니다 — 네트워크를 확인하고 다시 시도해 주세요.');
     } finally {
       setSubmitting(false);
@@ -765,10 +841,14 @@ export default function BallotPanel({
   };
 
   const runTransition = async (ballot: BallotListRow, action: BallotAction) => {
-    if (!code) return;
+    if (!access) return;
+    if (refreshState.failed || refreshState.lastSuccessAt === null) {
+      setToast('최신 투표 상태를 확인한 뒤 다시 시도해 주세요.');
+      return;
+    }
     setBusyId(ballot.id);
     try {
-      await ballotSetStatus(code, ballot.id, action.to);
+      await ballotSetStatus(access, ballot.id, action.to);
       if (action.to === 'open') setQrId(ballot.id); // 시작 직후 바로 QR을 띄운다 — 현장 순서 그대로.
       setToast(
         action.to === 'open'
@@ -778,7 +858,8 @@ export default function BallotPanel({
             : '결과가 공개되었습니다.',
       );
       await refresh();
-    } catch {
+    } catch (error: unknown) {
+      console.error('[ballot] status transition failed', error);
       setToast('상태 변경에 실패했습니다 — 네트워크를 확인하고 다시 시도해 주세요.');
     } finally {
       setBusyId(null);
@@ -806,21 +887,36 @@ export default function BallotPanel({
       </div>
 
       <div className="p-4 sm:p-6 space-y-4">
-        {!code ? (
+        {!access ? (
           <p className="text-[16px] text-[#5A6B73]">조 접속 후에 사용할 수 있습니다.</p>
         ) : showForm ? (
           <CreateForm
             submitting={submitting}
             subgroup={subgroup}
+            access={access}
             onCreate={handleCreate}
-            onCancel={() => setShowForm(false)}
+            onCancel={cancelCreate}
           />
         ) : (
           <>
-            {loadFailed && ballots == null ? (
-              <p className="rounded-xl border-2 border-[#F5A623] bg-[#F5A623]/10 px-4 py-3 text-[16px] font-extrabold text-[#B5651D]">
-                투표 목록을 불러오지 못했습니다 — 네트워크를 확인해 주세요. 3초마다 다시 시도합니다.
-              </p>
+            {refreshState.failed ? (
+              <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border-2 border-[#DC2626] bg-[#FEF2F2] px-4 py-3 text-[#B91C1C]">
+                <p className="min-w-[220px] flex-1 text-[16px] font-extrabold leading-relaxed">
+                  투표 목록 연결이 끊겨 마지막 확인 상태를 표시합니다.{' '}
+                  {refreshState.lastSuccessAt === null
+                    ? '아직 서버에서 확인된 목록이 없습니다.'
+                    : `마지막 정상 확인 ${formatClock(new Date(refreshState.lastSuccessAt).toISOString())}.`}
+                  {' '}최신 상태를 확인하기 전에는 상태를 변경할 수 없습니다.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void refresh()}
+                  disabled={refreshState.busy}
+                  className="min-h-11 rounded-xl border-2 border-[#B91C1C] bg-white px-4 text-[14px] font-extrabold disabled:opacity-50"
+                >
+                  {refreshState.busy ? '다시 확인 중…' : '목록 다시 확인'}
+                </button>
+              </div>
             ) : null}
 
             {(ballots ?? []).map((ballot) => {
@@ -858,7 +954,7 @@ export default function BallotPanel({
                       <button
                         type="button"
                         onClick={() => setQrId(ballot.id)}
-                        className="h-12 rounded-xl bg-[#23B2C3] px-4 text-[16px] font-bold text-white"
+                        className="h-12 rounded-xl bg-[#135C73] px-4 text-[16px] font-bold text-white"
                       >
                         QR 크게 보기
                       </button>
@@ -884,13 +980,13 @@ export default function BallotPanel({
                     {action ? (
                       <button
                         type="button"
-                        disabled={busy}
+                        disabled={busy || refreshState.failed || refreshState.lastSuccessAt === null}
                         onClick={() => setConfirmAction({ ballot, action })}
                         className={`h-12 rounded-xl px-4 text-[16px] font-bold disabled:opacity-50 ${
                           action.to === 'closed'
                             ? 'bg-[#DC2626] text-white'
                             : action.to === 'published'
-                              ? 'bg-[#4F9D3A] text-white'
+                              ? 'bg-[#2F6F25] text-white'
                               : 'bg-[#2E75B6] text-white'
                         }`}
                       >
@@ -908,7 +1004,10 @@ export default function BallotPanel({
 
             <button
               type="button"
-              onClick={() => setShowForm(true)}
+              onClick={() => {
+                createRequestIdRef.current = null;
+                setShowForm(true);
+              }}
               className="w-full h-14 rounded-2xl border border-dashed border-[#2E75B6] text-[#2E75B6] text-[18px] font-bold flex items-center justify-center gap-2"
             >
               <span className="text-2xl leading-none">＋</span> 새 다의제 투표
@@ -919,7 +1018,14 @@ export default function BallotPanel({
 
       {confirmAction ? (
         <div className="fixed inset-0 z-40 bg-[#1F4E79]/55 backdrop-blur-[1px] flex items-center justify-center p-5">
-          <div className="w-full max-w-md bg-white rounded-2xl border border-[#DCE7EE] overflow-hidden">
+          <div
+            ref={actionDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ballot-action-dialog-title"
+            tabIndex={-1}
+            className="w-full max-w-md bg-white rounded-2xl border border-[#DCE7EE] overflow-hidden"
+          >
             <div className="px-6 pt-6 pb-5 text-center">
               <div
                 className="w-14 h-14 mx-auto rounded-2xl bg-[#F5A623]/15 border border-[#F5A623]/40 grid place-items-center text-3xl mb-4"
@@ -929,6 +1035,7 @@ export default function BallotPanel({
               </div>
               <Eyebrow className="text-[#B5651D] mb-2">Confirm</Eyebrow>
               <h4
+                id="ballot-action-dialog-title"
                 className="text-[22px] font-extrabold text-[#1F4E79] leading-snug mb-3"
                 style={{ letterSpacing: '-.01em' }}
               >
@@ -941,6 +1048,7 @@ export default function BallotPanel({
             <div className="grid grid-cols-2 gap-3 p-5 pt-0">
               <button
                 type="button"
+                data-dialog-initial-focus
                 onClick={() => setConfirmAction(null)}
                 className="h-[56px] rounded-2xl border border-[#C4D8E4] bg-white text-[#1F4E79] text-[19px] font-bold"
               >
@@ -948,6 +1056,7 @@ export default function BallotPanel({
               </button>
               <button
                 type="button"
+                disabled={refreshState.failed || refreshState.lastSuccessAt === null}
                 onClick={() => {
                   const { ballot, action } = confirmAction;
                   setConfirmAction(null);
@@ -965,10 +1074,10 @@ export default function BallotPanel({
       ) : null}
 
       {qrBallot ? <BallotQrFullscreen ballot={qrBallot} onExit={() => setQrId(null)} /> : null}
-      {resultsBallot && code ? (
+      {resultsBallot && access ? (
         <BallotResultsFullscreen
           ballot={resultsBallot}
-          code={code}
+          access={access}
           onExit={() => setResultsId(null)}
           onNotify={setToast}
         />

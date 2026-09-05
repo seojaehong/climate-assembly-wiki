@@ -49,6 +49,7 @@ function row(overrides: Partial<HqSubmissionRow>): HqSubmissionRow {
     table_no: null,
     submission_id: 's1',
     submission_status: 'draft',
+    submission_version: 1,
     submission_updated_at: null,
     submission_finalized_at: null,
     item_ordinal: 1,

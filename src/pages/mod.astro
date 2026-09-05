@@ -36,7 +36,15 @@ import ModConsole from '../islands/mod/ModConsole';
       a[href]:after { content: ""; }
       @page { margin: 14mm; }
     }
-  </style>
+</style>
 </head><body>
-  <ModConsole client:only="react" />
+  <a
+    href="#mod-console-content"
+    class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:text-[#1F4E79] focus:shadow-lg"
+  >
+    본문 바로가기
+  </a>
+  <main id="mod-console-content" tabindex="-1">
+    <ModConsole client:only="react" />
+  </main>
 </body></html>

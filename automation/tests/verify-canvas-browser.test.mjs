@@ -904,8 +904,9 @@ describe('Canvas browser CI contract', () => {
     expect(workflow).toContain('npm ci');
     expect(workflow).toContain('src/islands/OntologyReviewConsole.test.ts');
     expect(workflow).toContain('src/islands/CanvasBoard.test.ts');
-    expect(workflow).toContain('src/islands/canvas/ontology-review-workspace.test.ts');
-    expect(workflow).toContain('src/islands/canvas/transcript-ontology-review-workspace.test.ts');
+    expect(workflow).toContain("- 'src/islands/canvas/**'");
+    expect(workflow).toContain('Run complete root Vitest suite');
+    expect(workflow).toContain('npm exec vitest -- run');
     expect(workflow).toContain("'src/lib/supabase.ts'");
     expect(workflow).toContain("'src/components/ModeratorPlatformNav.tsx'");
     expect(workflow).toContain("'src/components/ModeratorPlatformNav.test.ts'");

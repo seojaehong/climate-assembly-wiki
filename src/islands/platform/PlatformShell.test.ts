@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { BreadcrumbNav, clearPlatformSessionCredentials, completeAuthSessionLoad, completeOrganizationSelection, completeOrganizationTreeLoad, completeSignOut, DataTreeNavigation, LoginCard, LogoutNotice, OrganizationSelector, PLATFORM_ACCENT, PLATFORM_CONTROL_BORDER, runExclusivePlatformOperation, ViewTabs } from './PlatformShell';
+import { BreadcrumbNav, clearPlatformSessionCredentials, completeAuthSessionLoad, completeHqSignOut, completeOrganizationSelection, completeOrganizationTreeLoad, completeSignOut, DataTreeNavigation, LoginCard, LogoutNotice, OrganizationSelector, PLATFORM_ACCENT, PLATFORM_CONTROL_BORDER, runExclusivePlatformOperation, ViewTabs } from './PlatformShell';
 import type { TreeNode } from './platform-nav-logic';
 import { HQ_ACTOR_KEY, HQ_TOKEN_KEY } from '../mod/hq-gate-logic';
 import ScopeOutlet from './ScopeViews';
@@ -100,11 +100,12 @@ describe('PlatformShell accessibility', () => {
       navigate,
       scope: { o: 'org', c: 'assembly', s: 'session', t: 'topic-1', view: 'analyze' },
       scopedTopics: [{ id: 'topic-1', label: '에너지 전환' }],
+      scopeContext: { session: { id: 'session-1', label: '제1차 회의' } },
     }));
 
     expect(html).toContain('이 주제의 쟁점 분석');
-    expect(html).toContain('주제 분석 불러오기');
-    expect(html).toContain('analysis-join-code');
+    expect(html).toContain('분석 새로고침');
+    expect(html).not.toContain('analysis-join-code');
     expect(html).not.toContain('데이터 로드 골격');
   });
 
@@ -116,15 +117,16 @@ describe('PlatformShell accessibility', () => {
         { id: 'topic-1', label: '에너지 전환' },
         { id: 'topic-2', label: '수송 부문' },
       ],
+      scopeContext: { session: { id: 'session-1', label: '제1차 회의' } },
     }));
 
     expect(html).toContain('이 회차의 쟁점 분석');
     expect(html).toContain('2개 주제');
-    expect(html).toContain('analysis-join-code');
+    expect(html).not.toContain('analysis-join-code');
     expect(html).not.toContain('데이터 로드 골격');
   });
 
-  it('공론화 분석이 회차별 코드 입력을 갖춘 실제 분석 콘솔을 연다', () => {
+  it('공론화 분석이 회차별 staff session으로 자동 동기화되는 실제 분석 콘솔을 연다', () => {
     const html = renderToStaticMarkup(createElement(ScopeOutlet, {
       navigate,
       scope: { o: 'org', c: 'assembly', view: 'analyze' },
@@ -136,11 +138,12 @@ describe('PlatformShell accessibility', () => {
     }));
 
     expect(html).toContain('이 공론화의 쟁점 분석');
-    expect(html).toContain('제1차 회의 참여 코드');
+    expect(html).toContain('공론화 분석 새로고침');
+    expect(html).not.toContain('참여 코드');
     expect(html).not.toContain('데이터 로드 골격');
   });
 
-  it('공론화 기록이 회차별 코드 입력을 갖춘 실제 기록 콘솔을 연다', () => {
+  it('공론화 기록이 회차별 staff session으로 자동 동기화되는 실제 기록 콘솔을 연다', () => {
     const html = renderToStaticMarkup(createElement(ScopeOutlet, {
       navigate,
       scope: { o: 'org', c: 'assembly', view: 'record' },
@@ -152,7 +155,8 @@ describe('PlatformShell accessibility', () => {
     }));
 
     expect(html).toContain('이 공론화의 조별 기록');
-    expect(html).toContain('제1차 회의 참여 코드');
+    expect(html).toContain('공론화 기록 새로고침');
+    expect(html).not.toContain('참여 코드');
     expect(html).not.toContain('데이터 로드 골격');
   });
 
@@ -161,6 +165,7 @@ describe('PlatformShell accessibility', () => {
       navigate,
       scope: { o: 'org', c: 'assembly', s: 'session', t: 'topic-1', view: 'record' },
       scopedTopics: [{ id: 'topic-1', label: '에너지 전환' }],
+      scopeContext: { session: { id: 'session-1', label: '제1차 회의' } },
     }));
     const sessionHtml = renderToStaticMarkup(createElement(ScopeOutlet, {
       navigate,
@@ -169,6 +174,7 @@ describe('PlatformShell accessibility', () => {
         { id: 'topic-1', label: '에너지 전환' },
         { id: 'topic-2', label: '수송 부문' },
       ],
+      scopeContext: { session: { id: 'session-1', label: '제1차 회의' } },
     }));
 
     expect(topicHtml).toContain('이 주제의 조별 기록');
@@ -195,20 +201,21 @@ describe('PlatformShell accessibility', () => {
     }));
 
     expect(html).toContain('이 회차의 투표 집계');
-    expect(html).toContain('회차 투표 불러오기');
-    expect(html).toContain('vote-join-code');
+    expect(html).toContain('투표 집계를 안전하게 불러오는 중');
+    expect(html).not.toContain('회차 투표 불러오기');
+    expect(html).not.toContain('vote-join-code');
     expect(html).not.toContain('데이터 로드 골격');
   });
 
   it('검수 콘솔이 고대비 색·2px 경계·브라우저 포커스 표시를 유지한다', () => {
-    const html = renderToStaticMarkup(createElement(ReviewConsole, { topicId: null }));
-    const formHtml = renderToStaticMarkup(createElement(ReviewConsole, { topicId: 'topic-1', items: [] }));
+    const html = renderToStaticMarkup(createElement(ReviewConsole, { topicId: null, sessionId: null }));
+    const formHtml = renderToStaticMarkup(createElement(ReviewConsole, { topicId: 'topic-1', sessionId: 'session-1', items: [] }));
     const source = readFileSync(new URL('./review/ReviewConsole.tsx', import.meta.url), 'utf8');
 
     expect(html).toContain('border:2px dashed #135C73');
     expect(formHtml).toContain('aria-busy="false"');
-    expect(formHtml).toContain('for="review-join-code"');
-    expect(formHtml).toContain('id="review-join-code"');
+    expect(formHtml).toContain('검수 데이터 새로고침');
+    expect(formHtml).not.toContain('review-join-code');
     for (const controlId of ['review-issue-label', 'review-frequency', 'review-stance', 'review-summary', 'review-cluster-id']) {
       expect(source).toContain(`htmlFor="${controlId}"`);
       expect(source).toContain(`id="${controlId}"`);
@@ -224,12 +231,12 @@ describe('PlatformShell accessibility', () => {
     expect(source).not.toContain('#B5651D');
     expect(source).toContain('const generation = requestGeneration.current + 1;');
     expect(source).toContain('requestGeneration.current = generation;');
-    expect(source).toContain('() => requestGeneration.current === generation && currentTopicId.current === topicId');
-    expect(source).toContain("if (requestGeneration.current === generation && currentTopicId.current === topicId) setCode('');");
+    expect(source).toContain('currentTopicId.current === topicId');
+    expect(source).toContain('currentSessionId.current === sessionId');
     expect(source).toContain('return () => {');
     expect(source).toContain('requestGeneration.current += 1;');
     expect(source).toContain('flashGeneration.current += 1;');
-    expect(source).toContain('if (!topicId || mutationInFlight.current) return null;');
+    expect(source).toContain('if (!topicId || !sessionId || mutationInFlight.current) return null;');
     expect(source).toContain('mutationInFlight.current = true;');
     expect(source).toContain('mutationSerial.current === context.serial');
     expect(source).toContain('currentTopicId.current === context.topicId');
@@ -242,7 +249,7 @@ describe('PlatformShell accessibility', () => {
       id: 'issue-1', label: '재생에너지 확대', stance: 'proposal', frequencyClass: 'consensus',
       summary: null, origin: 'human', reviewStatus: 'reviewed', reviewedBy: 'operator',
       frequencyBadge: '합의', stanceBadge: '대안·제안', hitl: resolveHitlStatus({ reviewStatus: 'reviewed', origin: 'human' }),
-      linkedItemCount: 2, consensusDenominator: 2, reviewable: false,
+      linkedItemCount: 2, consensusDenominator: 2, reviewable: false, snapshotHash: 'fixture-snapshot-hash',
     };
     const activeHtml = renderToStaticMarkup(createElement(ReviewIssueChoice, { vm, active: true, onSelect: () => undefined }));
     const inactiveHtml = renderToStaticMarkup(createElement(ReviewIssueChoice, { vm, active: false, onSelect: () => undefined }));
@@ -312,7 +319,7 @@ describe('PlatformShell accessibility', () => {
     expect(source).toContain('evaluation/platform-accessibility-responsive-audit.json');
     expect(source).toContain('evaluation/platform-accessibility-kwcag-coverage.json');
     expect(source).toContain('KWCAG 2.2 33개 검사항목');
-    expect(source).toContain('수동 평가 82개 필수 검사는 아직 실행 전');
+    expect(source).toContain('수동 평가 98개 필수 검사는 아직 실행 전');
     expect(source).toContain('품질인증 획득 또는 전수 준수를 의미하지 않습니다.');
     expect(source).toContain('데스크톱 1440×1000과 모바일 360×800 뷰포트에서 가로 넘침도 함께 검사합니다.');
     expect(source).toContain('로그인 실패 상태의 오류 연결·포커스 복귀');
@@ -710,7 +717,7 @@ describe('PlatformShell accessibility', () => {
     const source = readPlatformShellSource();
     expect(notices).toEqual([null]);
     expect(source).toContain('if (signedOut) {');
-    expect(source).toContain('onSignedOut(credentialsCleared ? null');
+    expect(source).toContain('onSignedOut(localCredentialsCleared ? null');
     expect(source).toContain('onSignedIn={(s) => {\n      authGeneration.current += 1;');
     expect(source).toContain('onSignedOut={(notice) => {\n        authGeneration.current += 1;');
     expect(source).toContain('signOutBoundaryNotice.current = notice;');
@@ -719,7 +726,54 @@ describe('PlatformShell accessibility', () => {
     expect(source).toContain('navigate({});');
   });
 
-  it('성공 로그아웃에서 legacy HQ 토큰과 운영자 표시명을 함께 제거한다', () => {
+  it('HQ 서버 세션을 먼저 폐기한 뒤 로컬 HQ 인증 정보를 제거한다', async () => {
+    const values = new Map<string, string>([
+      [HQ_TOKEN_KEY, 'hq-token'],
+      [HQ_ACTOR_KEY, '운영자'],
+    ]);
+    const revoked: string[] = [];
+    const errors: unknown[] = [];
+
+    await expect(completeHqSignOut(
+      {
+        getItem: (key) => values.get(key) ?? null,
+        removeItem: (key) => { values.delete(key); },
+      },
+      async (token) => { revoked.push(token); },
+      (error) => errors.push(error),
+    )).resolves.toEqual({ canSignOutPlatform: true, localCredentialsCleared: true });
+    expect(revoked).toEqual(['hq-token']);
+    expect(values.has(HQ_TOKEN_KEY)).toBe(false);
+    expect(values.has(HQ_ACTOR_KEY)).toBe(false);
+    expect(errors).toEqual([]);
+  });
+
+  it('HQ 서버 폐기에 실패하면 로컬 bearer를 보존하고 플랫폼 로그아웃을 중단한다', async () => {
+    const values = new Map<string, string>([
+      [HQ_TOKEN_KEY, 'hq-token'],
+      [HQ_ACTOR_KEY, '운영자'],
+    ]);
+    const revokeError = new Error('fixture revoke failure');
+    const errors: unknown[] = [];
+
+    await expect(completeHqSignOut(
+      {
+        getItem: (key) => values.get(key) ?? null,
+        removeItem: (key) => { values.delete(key); },
+      },
+      async () => { throw revokeError; },
+      (error) => errors.push(error),
+    )).resolves.toEqual({ canSignOutPlatform: false, localCredentialsCleared: false });
+    expect(values.get(HQ_TOKEN_KEY)).toBe('hq-token');
+    expect(values.get(HQ_ACTOR_KEY)).toBe('운영자');
+    expect(errors).toEqual([revokeError]);
+
+    const source = readPlatformShellSource();
+    expect(source).toContain('if (!hqSignOut.canSignOutPlatform) {');
+    expect(source).toContain('HQ 인증을 서버에서 종료하지 못했습니다.');
+  });
+
+  it('플랫폼 로그아웃 성공 뒤 기관 컨텍스트를 제거한다', () => {
     const removedKeys: string[] = [];
     const errors: unknown[] = [];
 
@@ -727,7 +781,7 @@ describe('PlatformShell accessibility', () => {
       { removeItem: (key) => removedKeys.push(key) },
       (error) => errors.push(error),
     )).toBe(true);
-    expect(removedKeys).toEqual([HQ_TOKEN_KEY, HQ_ACTOR_KEY, PLATFORM_ORG_CONTEXT_KEY]);
+    expect(removedKeys).toEqual([PLATFORM_ORG_CONTEXT_KEY]);
     expect(errors).toEqual([]);
 
     const storageError = new Error('fixture storage failure');
@@ -824,14 +878,14 @@ describe('ReviewConsole loading', () => {
     }],
   };
 
-  it('쟁점과 원문을 같은 주제·참여 코드 범위에서 함께 불러온다', async () => {
+  it('쟁점과 원문을 같은 staff session·주제 범위에서 함께 불러온다', async () => {
     const listLoader = vi.fn().mockResolvedValue({ data: listResult, notice: null });
     const itemsLoader = vi.fn().mockResolvedValue({ data: itemsResult, notice: null });
 
-    const loaded = await loadReviewData('JOIN-1', 'topic-1', listLoader, itemsLoader);
+    const loaded = await loadReviewData('session-1', 'topic-1', listLoader, itemsLoader);
 
-    expect(listLoader).toHaveBeenCalledWith('JOIN-1', 'topic-1');
-    expect(itemsLoader).toHaveBeenCalledWith('JOIN-1', 'topic-1');
+    expect(listLoader).toHaveBeenCalledWith('session-1', 'topic-1');
+    expect(itemsLoader).toHaveBeenCalledWith('session-1', 'topic-1');
     expect(loaded.notice).toBeNull();
     expect(loaded.data?.list).toEqual(listResult);
     expect(loaded.data?.items?.[0]?.itemId).toBe('item-1');
@@ -841,7 +895,7 @@ describe('ReviewConsole loading', () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     const loaded = await loadReviewData(
-      'JOIN-1',
+      'session-1',
       'topic-1',
       async () => ({ data: listResult, notice: null }),
       async () => ({ data: null, notice: null }),

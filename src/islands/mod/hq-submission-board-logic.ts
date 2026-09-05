@@ -1,4 +1,4 @@
-import type { HqSubmissionRow } from '../../lib/hq-submissions';
+import type { HqExpectedSubmission, HqSubmissionRow } from '../../lib/hq-submissions';
 
 /**
  * 본부 산출물 보드의 순수 로직 — 평면 행을 「꼭지 → 조 → 포스트잇」으로 접고,
@@ -17,6 +17,11 @@ export type Note = {
   tableNo: string | null;
   subgroup: string | null;
   ordinal: number;
+  /** Submission generation captured with this card; assignment writes compare against it. */
+  submissionId: string | null;
+  submissionUpdatedAt: string | null;
+  /** Stable live row identity used to reject same-ordinal replacement ghosts. */
+  itemId: string | null;
   content: string;
   rationale: string | null;
 };
@@ -25,6 +30,8 @@ export type TeamColumn = {
   teamId: string;
   /** 재오픈 호출에 쓴다. 아직 아무것도 안 쓴 조는 null. */
   submissionId: string | null;
+  /** Submission generation captured for clear-all compare-and-set. */
+  submissionVersion: number | null;
   teamName: string;
   tableNo: string | null;
   subgroup: string | null;
@@ -88,6 +95,7 @@ export function buildBoards(rows: HqSubmissionRow[]): TopicBoard[] {
       team = {
         teamId: row.team_id,
         submissionId: row.submission_id ?? null,
+        submissionVersion: row.submission_version ?? null,
         teamName: row.team_name,
         tableNo: row.table_no,
         subgroup: row.team_subgroup,
@@ -110,6 +118,9 @@ export function buildBoards(rows: HqSubmissionRow[]): TopicBoard[] {
       tableNo: row.table_no,
       subgroup: row.team_subgroup,
       ordinal: row.item_ordinal ?? team.notes.length + 1,
+      submissionId: row.submission_id,
+      submissionUpdatedAt: row.submission_updated_at,
+      itemId: row.item_id ?? null,
       content,
       rationale: row.item_rationale?.trim() ? row.item_rationale.trim() : null,
     });
@@ -124,6 +135,145 @@ export function buildBoards(rows: HqSubmissionRow[]): TopicBoard[] {
   }
   boards.sort((a, b) => a.ordinal - b.ordinal);
   return boards;
+}
+
+export type HqAssignmentKind = 'category' | 'kind';
+
+export type HqAssignmentIntentPayload = {
+  assignmentKind: HqAssignmentKind;
+  sessionSlug: string;
+  submissionId: string;
+  itemOrdinal: number;
+  sourceItemId: string;
+  desired: string | null;
+  expectedSubmissionUpdatedAt: string;
+  expectedEventId: number | null;
+};
+
+export type HqAssignmentIntent = {
+  fingerprint: string;
+  idempotencyKey: string;
+};
+
+/** Stable, secret-free identity for one exact compare-and-set assignment request. */
+export function hqAssignmentFingerprint(payload: HqAssignmentIntentPayload): string {
+  return JSON.stringify([
+    payload.assignmentKind,
+    payload.sessionSlug,
+    payload.submissionId,
+    payload.itemOrdinal,
+    payload.sourceItemId,
+    payload.desired,
+    payload.expectedSubmissionUpdatedAt,
+    payload.expectedEventId,
+  ]);
+}
+
+/**
+ * Reuse a UUID only while retrying the exact same payload. Once the source generation,
+ * assignment event, or desired value changes, the caller receives a new intent.
+ */
+export function resolveHqAssignmentIntent(
+  current: HqAssignmentIntent | undefined,
+  payload: HqAssignmentIntentPayload,
+  createKey: () => string = () => crypto.randomUUID(),
+): HqAssignmentIntent {
+  const fingerprint = hqAssignmentFingerprint(payload);
+  if (current?.fingerprint === fingerprint) return current;
+  return { fingerprint, idempotencyKey: createKey() };
+}
+
+/** Current card identities keyed exactly like category/kind assignment rows. */
+export function hqLiveItemIdentityMap(
+  rows: readonly HqSubmissionRow[],
+): Map<string, string> {
+  const identities = new Map<string, string>();
+  const contradictory = new Set<string>();
+  for (const row of rows) {
+    if (row.item_ordinal === null || !row.item_id) continue;
+    const noteId = `${row.topic_id}:${row.team_id}:${row.item_ordinal}`;
+    const previous = identities.get(noteId);
+    if (previous !== undefined && previous !== row.item_id) {
+      identities.delete(noteId);
+      contradictory.add(noteId);
+      continue;
+    }
+    if (!contradictory.has(noteId)) identities.set(noteId, row.item_id);
+  }
+  return identities;
+}
+
+export function isHqAssignmentContinuationCurrent(
+  latestOperationSequence: number | undefined,
+  operationSequence: number,
+  currentViewEpoch: number,
+  capturedViewEpoch: number,
+): boolean {
+  return latestOperationSequence === operationSequence && currentViewEpoch === capturedViewEpoch;
+}
+
+type HqAssignmentConflictDetails = {
+  assignmentKind: HqAssignmentKind;
+  expectedSubmissionUpdatedAt: string;
+  currentSubmissionUpdatedAt: string | null;
+  expectedEventId: number | null;
+  currentEventId: number | null;
+};
+
+function sameTimestamp(left: string, right: string | null): boolean {
+  if (right === null) return false;
+  const leftTime = Date.parse(left);
+  const rightTime = Date.parse(right);
+  if (Number.isFinite(leftTime) && Number.isFinite(rightTime)) return leftTime === rightTime;
+  return left === right;
+}
+
+/** Explain whether the source text changed or another HQ operator won the assignment race. */
+export function hqAssignmentConflictMessage(details: HqAssignmentConflictDetails): string {
+  if (!sameTimestamp(details.expectedSubmissionUpdatedAt, details.currentSubmissionUpdatedAt)) {
+    return '원문이 변경됨. 최신 보드를 확인한 뒤 최신 카드에서 다시 지정해 주세요.';
+  }
+  if (details.expectedEventId !== details.currentEventId) {
+    const label = details.assignmentKind === 'category' ? '범주' : '종류';
+    return `다른 본부 사용자가 먼저 ${label}를 변경했습니다. 최신 배정을 확인한 뒤 다시 지정해 주세요.`;
+  }
+  return '카드 상태가 변경되었습니다. 최신 보드를 확인한 뒤 다시 지정해 주세요.';
+}
+
+/**
+ * Build the deterministic, duplicate-free generation set required by clear-all v3.
+ * A missing or contradictory generation fails closed instead of narrowing deletion scope.
+ */
+export function buildHqClearSnapshot(rows: readonly HqSubmissionRow[]): HqExpectedSubmission[] | null {
+  const versions = new Map<string, number>();
+  for (const row of rows) {
+    if (!row.submission_id) continue;
+    if (!Number.isSafeInteger(row.submission_version) || (row.submission_version ?? -1) < 0) return null;
+    const version = row.submission_version as number;
+    const previous = versions.get(row.submission_id);
+    if (previous !== undefined && previous !== version) return null;
+    versions.set(row.submission_id, version);
+  }
+  return [...versions.entries()]
+    .map(([id, version]) => ({ id, version }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+export function resolveHqClearIntent(
+  current: HqAssignmentIntent | undefined,
+  sessionSlug: string,
+  expectedSubmissions: readonly HqExpectedSubmission[],
+  createKey: () => string = () => crypto.randomUUID(),
+): HqAssignmentIntent {
+  const fingerprint = JSON.stringify([
+    'clear',
+    sessionSlug,
+    [...expectedSubmissions]
+      .sort((left, right) => left.id.localeCompare(right.id))
+      .map(({ id, version }) => [id, version]),
+  ]);
+  if (current?.fingerprint === fingerprint) return current;
+  return { fingerprint, idempotencyKey: createKey() };
 }
 
 // ── 분과 ────────────────────────────────────────────────────

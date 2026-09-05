@@ -1,8 +1,11 @@
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 import {
   fullTeamRoster,
   buildTeamPlan,
   genUniqueCodes,
+  genRosterCodes,
   formatCodeTable,
   sessionAction,
   SESSION_SLUG,
@@ -18,6 +21,13 @@ import {
   formatJoinCodeRotationSql,
 } from './seed-0829-lib.mjs';
 import { ACTIVE_SESSION_SLUG, sessionRoster } from './session-rosters.mjs';
+
+const SEED_SCRIPT = fileURLToPath(new URL('./seed-0829-teams.mjs', import.meta.url));
+const ROTATE_SCRIPT = fileURLToPath(new URL('./rotate-join-code.mjs', import.meta.url));
+
+function fixtureCodes(roster, start = 730001) {
+  return roster.teams.map((_, index) => String(start + index));
+}
 
 describe('fullTeamRoster', () => {
   test('produces 15 teams, 5 per subgroup, named "N분과 M조"', () => {
@@ -72,17 +82,20 @@ describe('genUniqueCodes', () => {
   test('throws without an injected randomInt generator', () => {
     expect(() => genUniqueCodes(1, [])).toThrow();
   });
+
+  test('rejects values outside the six-digit range', () => {
+    expect(() => genUniqueCodes(1, [], () => 99999)).toThrow(/100000 to 999999/);
+    expect(() => genUniqueCodes(1, [], () => 1000000)).toThrow(/100000 to 999999/);
+  });
 });
 
-describe('date-based join codes', () => {
-  test('formats MMDD + two-digit global team ordinal', () => {
+describe('legacy 8/29 join-code fixtures', () => {
+  test('formats historical MMDD + two-digit global team ordinal fixtures', () => {
     expect(joinCodeForTeam('0725', 1)).toBe('072501');
     expect(joinCodeForTeam('0829', 15)).toBe('082915');
   });
 
-  // ★ 값(082901)이 아니라 규칙(MMDD + 조 순번)을 잰다 — 회차가 바뀌어도 이 검사는 유효하다.
-  //   8/29 자체의 코드는 scripts/session-rosters.test.mjs 가 슬러그를 명시해 못박고 있다.
-  test('maps the active roster to unique MMDD+ordinal codes', () => {
+  test('keeps the legacy helper deterministic without using it in operational SQL', () => {
     const codes = fullTeamRoster().map((team) => joinCodeForTeamName(team.name));
     expect(codes[0]).toBe(`${SESSION_DATE_MMDD}01`);
     expect(codes.at(-1)).toBe(`${SESSION_DATE_MMDD}15`);
@@ -98,26 +111,83 @@ describe('date-based join codes', () => {
   });
 
   test('emits an atomic admin transaction for syncing an existing roster', () => {
-    // 활성 회차 기준. 8/29판의 값 대조는 session-rosters.test.mjs 가 슬러그를 명시해 한다.
-    const sql = formatJoinCodeSyncSql();
+    const roster = sessionRoster();
+    const codes = fixtureCodes(roster);
+    const sql = formatJoinCodeSyncSql(roster, codes);
     expect(sql).toMatch(/^begin;/);
     expect(sql).toMatch(/commit;$/);
-    expect(sql).toContain(`'1분과 1조', '${SESSION_DATE_MMDD}01'`);
-    expect(sql).toContain(`'3분과 5조', '${SESSION_DATE_MMDD}15'`);
+    expect(sql).toContain("'1분과 1조', '1분과', '730001'");
+    expect(sql).toContain("'3분과 5조', '3분과', '730015'");
+    expect(sql).not.toContain("'091201'");
     expect(sql).toContain('complete official 15-team roster is required');
+    expect(sql).toContain('select count(*) into session_team_count');
+    expect(sql).toContain('session_team_count <> 15');
+    expect(sql).toContain('expected.subgroup = t.subgroup');
+    expect(sql).toContain("t.status = 'active'");
+    expect(sql).toContain(`t.capacity = ${TEAM_CAPACITY}`);
     expect(sql).toContain('join-code collision detected');
     expect(sql).toContain('join-code verification failed');
+    expect(sql).toContain("where src.slug = '0829-deliberation'");
+    expect(sql).toContain("target_session.held_on is distinct from date '2026-09-12'");
+    expect(sql).toContain('existing session tenancy mismatch: 0912-deliberation');
+    expect(sql).toContain('existing team tenancy mismatch: 0912-deliberation');
+    expect(sql).not.toContain('set org_id =');
+    expect(sql).not.toContain('set assembly_id =');
+    expect(sql).not.toContain('set held_on =');
+  });
+
+  test('refuses to sync an existing session without an approved tenancy source', () => {
+    const roster = { ...sessionRoster('0912-deliberation'), inheritTenancyFrom: null };
+
+    expect(() => formatJoinCodeSyncSql(roster, fixtureCodes(roster))).toThrow(/approved tenancy source is required/);
   });
 
   test('emits an atomic admin transaction for a new session roster', () => {
-    const sql = formatSessionSeedSql();
+    const roster = sessionRoster();
+    const sql = formatSessionSeedSql(roster, fixtureCodes(roster));
     expect(sql).toMatch(/^begin;/);
     expect(sql).toMatch(/commit;$/);
     expect(sql).toContain(`'${SESSION_SLUG}', '${SESSION_TITLE}'`);
-    expect(sql).toContain(`'1분과 1조', '1분과', 1, '${SESSION_DATE_MMDD}01'`);
+    expect(sql).toContain("'1분과 1조', '1분과', 1, '730001'");
+    expect(sql).not.toContain("'091201'");
     expect(sql).toContain('and not exists');
     expect(sql).not.toContain('on conflict (session_id, name)');
     expect(sql).toContain('session seed verification failed');
+  });
+
+  test('fails closed when seed meets a partial existing session with invalid tenancy', () => {
+    const roster = sessionRoster('0912-deliberation');
+    const sql = formatSessionSeedSql(roster, fixtureCodes(roster));
+    const conflictIndex = sql.indexOf('on conflict (slug) do nothing;');
+    const sessionGuardIndex = sql.indexOf('existing session tenancy mismatch: 0912-deliberation');
+
+    expect(conflictIndex).toBeGreaterThan(-1);
+    expect(sessionGuardIndex).toBeGreaterThan(conflictIndex);
+    expect(sql).toContain("target_session.held_on is distinct from date '2026-09-12'");
+    expect(sql).toContain('existing team tenancy mismatch: 0912-deliberation');
+    expect(sql).toContain('t.org_id is distinct from target_session.org_id');
+  });
+
+  test('rejects extra, inactive, or shape-mismatched teams in seed and sync packets', () => {
+    const roster = sessionRoster();
+    const codes = fixtureCodes(roster);
+    for (const sql of [formatSessionSeedSql(roster, codes), formatJoinCodeSyncSql(roster, codes)]) {
+      expect(sql).toContain('select count(*) into session_team_count');
+      expect(sql).toContain('session_team_count <> 15');
+      expect(sql).toContain('expected.subgroup = t.subgroup');
+      expect(sql).toContain("t.status = 'active'");
+      expect(sql).toContain(`t.capacity = ${TEAM_CAPACITY}`);
+      expect(sql).toContain('complete official 15-team roster is required');
+    }
+  });
+
+  test('refuses an on-conflict seed when no approved tenancy source can validate it', () => {
+    const roster = sessionRoster('0829-deliberation');
+    const sql = formatSessionSeedSql(roster, fixtureCodes(roster, 720001));
+
+    expect(sql).toContain('returning id into seeded_session_id');
+    expect(sql).toContain('if seeded_session_id is null then');
+    expect(sql).toContain('existing session cannot be verified without approved tenancy source');
   });
 
   test('emits an atomic admin transaction for emergency code rotation', () => {
@@ -186,5 +256,77 @@ describe('seed constants', () => {
   test('회차와 무관한 상수는 고정이다', () => {
     expect(SESSION_CONFIG).toEqual({ modules: ['poll', 'timer'] });
     expect(TEAM_CAPACITY).toBe(20);
+  });
+});
+
+describe('seed command safety boundary', () => {
+  test('refuses a no-argument direct live write before loading any credentials', () => {
+    const result = spawnSync(process.execPath, [SEED_SCRIPT], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        SUPABASE_URL: 'https://must-not-be-contacted.invalid',
+        SUPABASE_SERVICE_ROLE_KEY: 'synthetic-do-not-use',
+      },
+    });
+
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toContain('직접 live 쓰기 경로는 비활성화');
+  });
+
+  test('rejects unknown or conflicting seed modes instead of guessing operator intent', () => {
+    for (const args of [
+      ['--print-seed-sql', '--dry-run'],
+      ['--print-seed-sql', '--unknown'],
+    ]) {
+      const result = spawnSync(process.execPath, [SEED_SCRIPT, ...args], { encoding: 'utf8' });
+      expect(result.status).toBe(2);
+      expect(result.stdout).toBe('');
+      expect(result.stderr).toContain('사용:');
+    }
+  });
+
+  test('disables direct rotation and keeps dry-run codes masked', () => {
+    const direct = spawnSync(process.execPath, [ROTATE_SCRIPT, '1분과 1조'], { encoding: 'utf8' });
+    expect(direct.status).toBe(2);
+    expect(direct.stdout).toBe('');
+    expect(direct.stderr).toContain('직접 live 쓰기 경로는 비활성화');
+
+    const dryRun = spawnSync(
+      process.execPath,
+      [ROTATE_SCRIPT, '1분과 1조', '--dry-run'],
+      { encoding: 'utf8' },
+    );
+    expect(dryRun.status).toBe(0);
+    expect(dryRun.stdout).toContain('new code:     ******');
+    expect(dryRun.stdout).not.toMatch(/new code:\s+\d{6}/);
+  });
+});
+
+describe('secure roster code generation', () => {
+  test('creates one unique six-digit code per active team', () => {
+    let next = 730000;
+    const codes = genRosterCodes(undefined, () => next++);
+
+    expect(codes).toHaveLength(15);
+    expect(new Set(codes).size).toBe(15);
+    expect(codes.every((code) => /^\d{6}$/.test(code))).toBe(true);
+    expect(codes).not.toContain('091201');
+  });
+
+  test('accepts only a complete validated secure code set in generated SQL', () => {
+    const secureCodes = Array.from({ length: 15 }, (_, index) => String(730001 + index));
+    const sql = formatSessionSeedSql(undefined, secureCodes);
+
+    expect(sql).toContain("'730001'");
+    expect(sql).toContain("'730015'");
+    expect(sql).not.toContain("'091201'");
+    expect(() => formatSessionSeedSql(undefined, secureCodes.slice(1))).toThrow(/one unique six-digit code/);
+  });
+
+  test('refuses to generate operational SQL without caller-supplied secure codes', () => {
+    expect(() => formatSessionSeedSql()).toThrow(/roster codes are required/);
+    expect(() => formatJoinCodeSyncSql()).toThrow(/roster codes are required/);
   });
 });

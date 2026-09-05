@@ -208,6 +208,7 @@ begin
      or v_config is distinct from array['search_path=pg_catalog, extensions']::text[]
      or v_definition not like '%extensions.gen_random_bytes(4)%'
      or v_definition not like '%v_value < 4294000000%'
+     or v_definition not like '%v_code !~ ''^0912(0[1-9]|1[0-5])$''%'
      or v_definition like '%random()%' then
     raise exception 'A4 post-apply verification failed: join-code generator is unsafe';
   end if;

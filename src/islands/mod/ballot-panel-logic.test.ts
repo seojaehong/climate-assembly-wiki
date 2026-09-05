@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   BALLOT_SCALES,
@@ -5,6 +6,8 @@ import {
   MAX_STATEMENT_LENGTH,
   MAX_TITLE_LENGTH,
   ballotStatusLabel,
+  ballotCreateFingerprint,
+  ballotCreateIntent,
   ballotUrl,
   canTransition,
   distRows,
@@ -17,7 +20,18 @@ import {
   validateBallotForm,
   type BallotFormItem,
 } from './ballot-panel-logic';
-import { ballotCreateParams, type BallotItemInput, type BallotStatus } from '../../lib/deliberation';
+import type { BallotStatus } from '../../lib/deliberation';
+import { createResourceRequestCoordinator } from './resource-request-coordinator';
+
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
 
 const ALL_STATUSES: BallotStatus[] = ['draft', 'open', 'closed', 'published', 'archived'];
 
@@ -136,6 +150,86 @@ describe('validateBallotForm — 생성 폼 검증', () => {
   });
 });
 
+describe('ballot create idempotency intent', () => {
+  const payload = {
+    title: ' 폐회 투표 ',
+    instructions: ' 한 번만 제출 ',
+    items: [{ ordinal: 1, statement: ' 의제 A ', scale: 5 as const, required: true }],
+    subgroup: ' 1분과 ',
+  };
+
+  it('normalizes the canonical payload before fingerprinting', () => {
+    expect(ballotCreateFingerprint(payload)).toBe(ballotCreateFingerprint({
+      ...payload,
+      title: '폐회 투표',
+      instructions: '한 번만 제출',
+      items: [{ ...payload.items[0], statement: '의제 A' }],
+      subgroup: '1분과',
+    }));
+  });
+
+  it('keeps the UUID for an exact retry and rotates it when content changes', () => {
+    let sequence = 0;
+    const uuid = () => `request-${++sequence}`;
+    const first = ballotCreateIntent(null, payload, uuid);
+    const retry = ballotCreateIntent(first, { ...payload }, uuid);
+    const changed = ballotCreateIntent(retry, {
+      ...payload,
+      items: [{ ...payload.items[0], statement: '의제 B' }],
+    }, uuid);
+
+    expect(retry).toBe(first);
+    expect(changed.requestId).toBe('request-2');
+    expect(changed.fingerprint).not.toBe(first.fingerprint);
+  });
+});
+
+describe('ballot polling coordination', () => {
+  it('does not start a second list request while a slow background request is pending', async () => {
+    const coordinator = createResourceRequestCoordinator();
+    const slow = deferred<readonly string[]>();
+    const applied: string[][] = [];
+    let requestCount = 0;
+    const run = async (promise: Promise<readonly string[]>): Promise<boolean> => {
+      const ticket = coordinator.begin('ballot-list', 'background');
+      if (!ticket) return false;
+      requestCount += 1;
+      try {
+        const rows = await promise;
+        if (!coordinator.isCurrent(ticket)) return false;
+        applied.push([...rows]);
+        return true;
+      } finally {
+        coordinator.finish(ticket);
+      }
+    };
+
+    const first = run(slow.promise);
+    await expect(run(Promise.resolve(['newer tick']))).resolves.toBe(false);
+    slow.resolve(['slow response']);
+    await expect(first).resolves.toBe(true);
+
+    expect(requestCount).toBe(1);
+    expect(applied).toEqual([['slow response']]);
+  });
+
+  it('wires list and fullscreen result intervals as background requests', () => {
+    const source = readFileSync(new URL('./BallotPanel.tsx', import.meta.url), 'utf8');
+    expect(source).toContain("refresh('background')");
+    expect(source).toContain("refreshResults('background')");
+  });
+
+  it('marks cached fullscreen results stale and blocks exports until a refresh succeeds', () => {
+    const source = readFileSync(new URL('./BallotPanel.tsx', import.meta.url), 'utf8');
+    expect(source).toContain('결과 연결이 끊겨 마지막 정상 집계를 유지합니다.');
+    expect(source).toContain('마지막 정상 확인');
+    expect(source).toContain("refreshResults('manual')");
+    expect(source).toContain('results == null || exporting != null || failed');
+    expect(source).toContain("console.error('[ballot] result image export failed'");
+    expect(source).toContain("console.error('[ballot] result report export failed'");
+  });
+});
+
 describe('ballotUrl — 참가자 진입 URL', () => {
   it('/b?t=<token> 형태를 만든다', () => {
     expect(ballotUrl('https://climate-assembly.org', 'abc123')).toBe('https://climate-assembly.org/b?t=abc123');
@@ -233,44 +327,6 @@ describe('sessionSubgroups — 세션 분과 선택지(총괄 모더레이터 �
     expect(sessionSubgroups([], null)).toEqual([]);
     expect(sessionSubgroups([], undefined)).toEqual([]);
     expect(sessionSubgroups([], '1분과')).toEqual(['1분과']);
-  });
-});
-
-describe('ballotCreateParams — 조건부 p_subgroup 전달(배포 순서 제약)', () => {
-  const items: BallotItemInput[] = [{ ordinal: 1, statement: '의제 A', scale: 5, required: true }];
-
-  it('대상=전체면 p_subgroup 키 자체를 넣지 않는다 — S4 미적용 DB의 4인자 함수 매칭 보존', () => {
-    for (const subgroup of [null, undefined, '', '  '] as const) {
-      const params = ballotCreateParams('123456', { title: '제목', items, subgroup });
-      expect('p_subgroup' in params).toBe(false);
-      expect(params).toEqual({
-        p_code: '123456',
-        p_title: '제목',
-        p_instructions: null,
-        p_items: items,
-      });
-    }
-  });
-
-  it('subgroup 옵션을 아예 주지 않아도(기존 호출부) 키가 없다', () => {
-    const params = ballotCreateParams('123456', { title: '제목', items });
-    expect('p_subgroup' in params).toBe(false);
-  });
-
-  it('분과 선택 시에만 p_subgroup을 포함한다(trim 적용)', () => {
-    const params = ballotCreateParams('123456', {
-      title: '제목',
-      instructions: '안내',
-      items,
-      subgroup: ' 1분과 ',
-    });
-    expect(params).toEqual({
-      p_code: '123456',
-      p_title: '제목',
-      p_instructions: '안내',
-      p_items: items,
-      p_subgroup: '1분과',
-    });
   });
 });
 

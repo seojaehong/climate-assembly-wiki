@@ -1,0 +1,286 @@
+{
+  "schemaVersion": 1,
+  "manifestId": "0912-13-readiness-traceability",
+  "requirements": [
+    {
+      "id": "AUTH-2DEVICE",
+      "statement": "한 조는 동시에 두 기기까지만 활성화하고 세 번째 기기는 명시적으로 거부한다.",
+      "implementationFiles": [
+        "supabase/migrations/platform_p1a_0912_event_access.sql",
+        "src/lib/workshop-access.ts"
+      ],
+      "testFiles": [
+        "automation/tests/0912-rpc-contract.test.mjs",
+        "src/lib/workshop-access.test.ts"
+      ],
+      "evidenceFiles": [
+        "evaluation/0912-13-readiness-report.template.json"
+      ]
+    },
+    {
+      "id": "AUTH-TOKEN-ONLY",
+      "statement": "P1a에서 team token RPC는 비공개로 둔 채 HQ가 예측 코드를 먼저 회전하고, P2·P1b/P1c와 maintenance client 배포 뒤 P2a가 token 권한 grant와 legacy HQ·출석·산출물 read/mutation revoke를 원자 적용한다. 새 HQ·출석·산출물 RPC는 token과 session slug로 조직·세션 경계를 고정하고 P3·P4 뒤에도 legacy 권한이 다시 열리지 않게 한다.",
+      "implementationFiles": [
+        "supabase/migrations/platform_p1a_0912_event_access.sql",
+        "supabase/migrations/platform_p2a_0912_token_only_activation.sql",
+        "supabase/rollbacks/platform_p2a_0912_token_only_activation_BEFORE.sql",
+        "supabase/migrations/platform_p3_design_provisioning.sql",
+        "supabase/migrations/platform_p4_audit_log.sql",
+        "src/lib/workshop-access.ts",
+        "src/lib/deliberation.ts",
+        "src/lib/mod-console.ts",
+        "src/lib/platform.ts",
+        "src/lib/attendance.ts",
+        "src/lib/hq-submissions.ts",
+        "src/lib/workshop-hq.ts"
+      ],
+      "testFiles": [
+        "src/lib/workshop-access.test.ts",
+        "src/lib/deliberation-access.test.ts",
+        "src/lib/attendance-access.test.ts",
+        "src/lib/hq-submissions-access.test.ts",
+        "src/lib/workshop-hq.test.ts",
+        "automation/tests/0912-rpc-contract.test.mjs",
+        "automation/tests/fixtures/0912-p1a-activation-driver.sql",
+        "supabase/verify/platform_p2a_0912_token_only_activation.sql",
+        "supabase/verify/platform_p2a_0912_token_only_activation_rollback.sql"
+      ],
+      "evidenceFiles": [
+        "evaluation/0912-13-readiness-report.template.json",
+        "docs/operations/0912-13-runbook.md"
+      ]
+    },
+    {
+      "id": "SYNC-SESSION-STATE",
+      "statement": "조 화면은 꼭지와 서버 시각을 단일 상태로 폴링하고 실패 시 마지막 정상 값을 보존한다.",
+      "implementationFiles": [
+        "src/islands/mod/workshop-session-state.ts",
+        "src/islands/mod/ModConsole.tsx",
+        "src/islands/mod/DeadlineBanner.tsx"
+      ],
+      "testFiles": [
+        "src/islands/mod/workshop-session-state.test.ts"
+      ],
+      "evidenceFiles": [
+        "evaluation/0912-13-readiness-report.template.json"
+      ]
+    },
+    {
+      "id": "UX-STATUS-RAIL",
+      "statement": "연결, 마지막 동기화, 미저장, 대기, 충돌 상태를 색상 외 텍스트로 한눈에 표시한다.",
+      "implementationFiles": [
+        "src/islands/mod/ModConsole.tsx",
+        "src/islands/mod/workshop-session-state.ts"
+      ],
+      "testFiles": [
+        "src/islands/mod/mod-console-accessibility.test.ts",
+        "src/islands/mod/workshop-session-state.test.ts"
+      ],
+      "evidenceFiles": [
+        "evaluation/0912-13-readiness-report.template.json",
+        "evaluation/platform-accessibility-manual-evaluation.json"
+      ]
+    },
+    {
+      "id": "TOPIC-CONTEXT-PRESERVE",
+      "statement": "본부가 다음 꼭지를 열어도 기존 입력, 포커스, 스크롤 위치를 보존한다.",
+      "implementationFiles": [
+        "src/islands/mod/workshop-session-state.ts",
+        "src/islands/mod/ModConsole.tsx",
+        "scripts/verify-field-rehearsal.mjs"
+      ],
+      "testFiles": [
+        "src/islands/mod/workshop-session-state.test.ts",
+        "automation/tests/0912-rpc-contract.test.mjs"
+      ],
+      "evidenceFiles": [
+        "evaluation/0912-13-field-rehearsal.template.json",
+        "evaluation/0912-13-readiness-report.template.json"
+      ]
+    },
+    {
+      "id": "SAVE-OCC-IDEMPOTENCY",
+      "statement": "서버 버전 충돌은 덮어쓰지 않고 현재 snapshot을 반환하며 같은 요청은 한 번만 반영한다.",
+      "implementationFiles": [
+        "supabase/migrations/platform_p1a_0912_event_access.sql",
+        "src/lib/deliberation.ts"
+      ],
+      "testFiles": [
+        "src/lib/deliberation-access.test.ts",
+        "automation/tests/0912-rpc-contract.test.mjs"
+      ],
+      "evidenceFiles": [
+        "evaluation/0912-13-readiness-report.template.json"
+      ]
+    },
+    {
+      "id": "PLATFORM-RECLASSIFY-ATOMIC",
+      "statement": "검수 화면의 원문 이동·연결 해제는 대상과 원본 쟁점의 전체 링크 snapshot을 한 요청으로 보내고, 서버가 동일 트랜잭션에서 스코프·CAS를 검증한 뒤 전부 반영하거나 전부 취소한다. 같은 요청 재시도는 멱등 처리하며 충돌이면 최신 데이터를 다시 읽는다.",
+      "implementationFiles": [
+        "supabase/migrations/platform_p1a_0912_event_access.sql",
+        "supabase/migrations/platform_p2a_0912_token_only_activation.sql",
+        "src/lib/platform.ts",
+        "src/islands/platform/review/ReviewConsole.tsx",
+        "src/islands/platform/review/review-console-logic.ts"
+      ],
+      "testFiles": [
+        "src/islands/platform/review/review-console-logic.test.ts",
+        "automation/tests/0912-rpc-contract.test.mjs",
+        "supabase/verify/platform_p2a_0912_token_only_activation.sql"
+      ],
+      "evidenceFiles": [
+        "evaluation/0912-13-readiness-report.template.json"
+      ]
+    },
+    {
+      "id": "HQ-CONTROL",
+      "statement": "본부는 상태·꼭지·마감·코드 회전을 서버 기대값과 멱등키로 실행하고, 출석은 token·session slug 경계 v2 RPC, 산출물 조회·분류·전체 비우기는 submission version과 event identity를 함께 검사하는 v3 RPC를 사용한다. 진행자 round/ballot 생성과 proxy vote는 UUID 멱등키가 있는 v3를 사용하고, round 상태 전환은 expected status와 요청 payload에 묶인 UUID 멱등키로 CAS 처리하며 마감 뒤 서버 시각 60초 안에서만 재개한다. staff ballot과 Canvas 라운드 생성·현재 상태·상태 전환은 인증된 session 경계 v2 경로를 사용한다.",
+      "implementationFiles": [
+        "supabase/migrations/platform_p1a_0912_event_access.sql",
+        "src/lib/workshop-hq.ts",
+        "src/islands/mod/WorkshopHqStatus.tsx",
+        "src/lib/mod-console.ts",
+        "src/lib/platform.ts",
+        "src/lib/attendance.ts",
+        "src/lib/hq-submissions.ts"
+      ],
+      "testFiles": [
+        "src/lib/workshop-hq.test.ts",
+        "src/islands/mod/workshop-hq-logic.test.ts",
+        "scripts/verify-0912-hq-rehearsal.test.mjs",
+        "src/lib/mod-console.test.ts",
+        "src/lib/mod-console-access.test.ts",
+        "src/lib/deliberation-access.test.ts",
+        "src/lib/platform-ballot-access.test.ts",
+        "src/lib/attendance-access.test.ts",
+        "src/lib/hq-submissions-access.test.ts",
+        "automation/tests/0912-rpc-contract.test.mjs",
+        "supabase/verify/platform_p1a_0912_event_access.sql",
+        "supabase/verify/platform_p2a_0912_token_only_activation.sql"
+      ],
+      "evidenceFiles": [
+        "evaluation/0912-13-hq-rehearsal.template.json",
+        "evaluation/0912-13-readiness-report.template.json"
+      ]
+    },
+    {
+      "id": "HQ-TOKEN-REVOCATION",
+      "statement": "본부는 활성 기기를 식별해 개별 토큰을 폐기하고 폐기된 토큰의 재사용을 거부한다.",
+      "implementationFiles": [
+        "supabase/migrations/platform_p1a_0912_event_access.sql",
+        "src/lib/workshop-hq.ts"
+      ],
+      "testFiles": [
+        "src/lib/workshop-hq.test.ts",
+        "automation/tests/0912-rpc-contract.test.mjs"
+      ],
+      "evidenceFiles": [
+        "evaluation/0912-13-readiness-report.template.json"
+      ]
+    },
+    {
+      "id": "A11Y-MOD-HQ",
+      "statement": "/mod와 /hq를 데스크톱, 모바일 자동 감사와 수동 보조기술 평가 범위에 포함한다.",
+      "implementationFiles": [
+        "automation/platform-accessibility-audit.mjs",
+        "automation/platform-accessibility-manual-evidence.mjs",
+        ".github/workflows/platform-accessibility.yml"
+      ],
+      "testFiles": [
+        "automation/tests/platform-accessibility-audit.test.mjs",
+        "automation/tests/platform-accessibility-manual-evidence.test.mjs"
+      ],
+      "evidenceFiles": [
+        "evaluation/platform-accessibility-manual-evaluation.json",
+        "evaluation/0912-13-readiness-report.template.json"
+      ]
+    },
+    {
+      "id": "OPS-ZERO-LIVE-MUTATION",
+      "statement": "자동 리허설은 합성 mock으로 운영 DB 변경 0건을 증명하고 preview origin과 정확한 Supabase fixture origin 외의 모든 HTTP 요청을 계측·차단한다. 현장 콘솔은 외부 CDN 글꼴 없이 시스템 한글 글꼴로 동작한다. seed와 개별 코드 회전 helper의 direct live write는 종료코드 2로 비활성화한다. seed/sync는 호출자가 주입한 암호학적 6자리 code 집합이 없으면 거부하고, strict 단일 모드에서만 원자 SQL을 승인된 비밀 scratch에 출력하며 sync는 기존 session org·assembly·held_on과 모든 team org 불일치를 fail-closed로 거부한다.",
+      "implementationFiles": [
+        "automation/0912-rpc-contract.mjs",
+        "scripts/verify-field-rehearsal.mjs",
+        "scripts/verify-0912-hq-rehearsal.mjs",
+        "scripts/seed-0829-teams.mjs",
+        "scripts/seed-0829-lib.mjs",
+        "scripts/rotate-join-code.mjs",
+        "src/styles/global.css"
+      ],
+      "testFiles": [
+        "automation/tests/0912-rpc-contract.test.mjs",
+        "scripts/seed-0829.test.mjs",
+        "scripts/verify-0912-postgres.sh",
+        "automation/tests/fixtures/0912-seed-cli-prelude.sql"
+      ],
+      "evidenceFiles": [
+        "evaluation/0912-13-field-rehearsal.template.json",
+        "evaluation/0912-13-hq-rehearsal.template.json",
+        "evaluation/0912-13-readiness-report.template.json",
+        "docs/operations/0912-13-runbook.md"
+      ]
+    },
+    {
+      "id": "DB-P1A-DISPOSABLE",
+      "statement": "roster 정본 확인 뒤 P1→secure seed/s20→P1a→P2→P1b/P1c→P2a→P3→P4 순서를 고정하고, P1a 행동·P2a token positive와 legacy HQ·출석·산출물 및 cross-session negative·P3/P4 재개방 방지·rollback·재적용을 격리 PostgreSQL 16에서 실제 실행하며 운영 DB에는 연결하지 않는다.",
+      "implementationFiles": [
+        "supabase/migrations/platform_p1a_0912_event_access.sql",
+        "supabase/migrations/platform_p2a_0912_token_only_activation.sql",
+        "supabase/migrations/platform_p3_design_provisioning.sql",
+        "supabase/migrations/platform_p4_audit_log.sql",
+        "supabase/rollbacks/platform_p2a_0912_token_only_activation_BEFORE.sql",
+        "scripts/verify-0912-postgres.sh",
+        ".github/workflows/test.yml"
+      ],
+      "testFiles": [
+        "automation/tests/fixtures/0912-p1a-driver.sql",
+        "automation/tests/fixtures/0912-p1a-activation-driver.sql",
+        "automation/tests/fixtures/0912-p1a-seed.sql",
+        "automation/tests/fixtures/0912-seed-cli-prelude.sql",
+        "supabase/verify/platform_p1a_0912_event_access.sql",
+        "supabase/verify/platform_p2a_0912_token_only_activation.sql",
+        "supabase/verify/platform_p2a_0912_token_only_activation_rollback.sql",
+        "supabase/verify/design_provisioning_post_apply.sql"
+      ],
+      "evidenceFiles": [
+        "evaluation/0912-13-readiness-report.template.json",
+        "docs/operations/0912-13-runbook.md"
+      ]
+    },
+    {
+      "id": "OPS-BACKUP-RESTORE-STOP",
+      "statement": "행사 전 백업, 별도 환경 복원, 중단 기준, 비상 RPC 사용 절차를 실행 기록으로 남긴다.",
+      "implementationFiles": [
+        "docs/operations/0912-13-runbook.md"
+      ],
+      "testFiles": [
+        "automation/tests/0912-readiness-verifier.test.mjs"
+      ],
+      "evidenceFiles": [
+        "evaluation/0912-13-readiness-report.template.json"
+      ]
+    },
+    {
+      "id": "CI-COMPLETE-MATRIX",
+      "statement": "src/lib 전체를 포함한 변경 경로가 strict TypeScript, 전체 Vitest, RPC·staff ballot·HQ·출석·산출물 token/session 계약, roster 정본 확인→P1→secure seed/s20→P1a→HQ rotate→P2→P1b/P1c→client deploy→P2a→P3→P4 순서, positive·legacy/cross-session negative seam, 조·HQ 현장 리허설, 추적성, 접근성 감사를 모두 기동한다. 실행 readiness 보고서는 필수 gate 순서·증거·소스 commit·배포 revision·안전 상태가 모두 일치할 때만 ready로 인정한다.",
+      "implementationFiles": [
+        ".github/workflows/test.yml",
+        ".github/workflows/platform-accessibility.yml",
+        "scripts/verify-workshop-access-contract.mjs",
+        "scripts/verify-0912-hq-rehearsal.mjs",
+        "scripts/verify-0912-release-report.mjs"
+      ],
+      "testFiles": [
+        "automation/tests/0912-readiness-verifier.test.mjs",
+        "scripts/verify-0912-hq-rehearsal.test.mjs",
+        "scripts/verify-0912-release-report.test.mjs",
+        "automation/tests/fixtures/0912-p1a-activation-driver.sql",
+        "supabase/verify/platform_p2a_0912_token_only_activation.sql",
+        "supabase/verify/design_provisioning_post_apply.sql"
+      ],
+      "evidenceFiles": [
+        "evaluation/0912-13-readiness-report.template.json"
+      ]
+    }
+  ]
+}

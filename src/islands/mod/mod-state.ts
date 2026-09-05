@@ -45,7 +45,7 @@ export function joinCodeFromSearch(search: string): string | null {
   return null;
 }
 
-/** 마감을 되돌릴 수 있는 시간(ms). 이 시간이 지나면 '다시 열기' 버튼이 사라진다. */
+/** Client guidance window in ms. The server independently enforces the limit. */
 export const REOPEN_WINDOW_MS = 60_000;
 
 /** 마감 직후 REOPEN_WINDOW_MS 안이면 true. closedAt이 없으면(마감 이력 없음) false. */
@@ -54,12 +54,172 @@ export function canReopen(closedAt: number | null, now: number): boolean {
   return now - closedAt < REOPEN_WINDOW_MS;
 }
 
+export type MutableRoundStatus = 'active' | 'closed';
+
+export type RoundStatusIntent = Readonly<{
+  roundId: string;
+  expectedStatus: MutableRoundStatus;
+  status: MutableRoundStatus;
+  expectedUpdatedAt: string | null;
+  idempotencyKey: string;
+}>;
+
+/** Reuse an idempotency key until the observed round or transition changes. */
+export function getOrCreateRoundStatusIntent(
+  current: RoundStatusIntent | null,
+  roundId: string,
+  expectedStatus: MutableRoundStatus,
+  status: MutableRoundStatus,
+  expectedUpdatedAt: string | null,
+  createIdempotencyKey: () => string = () => crypto.randomUUID(),
+): RoundStatusIntent {
+  if (
+    current?.roundId === roundId
+    && current.expectedStatus === expectedStatus
+    && current.status === status
+    && current.expectedUpdatedAt === expectedUpdatedAt
+  ) {
+    return current;
+  }
+  return {
+    roundId,
+    expectedStatus,
+    status,
+    expectedUpdatedAt,
+    idempotencyKey: createIdempotencyKey(),
+  };
+}
+
+/** Use only the server-recorded transition timestamp for reopen guidance. */
+export function roundUpdatedAtMs(round: Pick<Round, 'updated_at'>): number | null {
+  if (!round.updated_at) return null;
+  const parsed = Date.parse(round.updated_at);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export type RoundStatusRecoveryDecision = Readonly<{
+  reachedTarget: boolean;
+  unchangedExpectedSnapshot: boolean;
+  clearIntent: boolean;
+}>;
+
+/** Decide whether an ambiguous retry key is still safe after a scoped server reload. */
+export function roundStatusRecoveryDecision(
+  latest: Pick<Round, 'status' | 'updated_at'>,
+  intent: RoundStatusIntent,
+  definitiveFailure: boolean,
+): RoundStatusRecoveryDecision {
+  const reachedTarget = latest.status === intent.status;
+  const unchangedExpectedSnapshot = latest.status === intent.expectedStatus
+    && intent.expectedUpdatedAt !== null
+    && latest.updated_at === intent.expectedUpdatedAt;
+  return {
+    reachedTarget,
+    unchangedExpectedSnapshot,
+    clearIntent: definitiveFailure || reachedTarget || !unchangedExpectedSnapshot,
+  };
+}
+
+function roundStatusErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    return String(error.message);
+  }
+  return String(error);
+}
+
+/** Identify server-final CAS and reopen-window rejections. */
+export function isDefinitiveRoundStatusFailure(error: unknown): boolean {
+  const message = roundStatusErrorMessage(error);
+  return /(?:round status|expected status).*(?:conflict|mismatch|changed|current)|(?:stale|conflict).*(?:round|status)|reopen.*(?:window|expired|elapsed|too late)|(?:window|deadline).*(?:reopen|elapsed|expired)|different request|round status response/i
+    .test(message);
+}
+
 /**
  * 참여 모수. attendance_round_eligible_count RPC는 출석 체크인을 안 한 조에서 null이 아니라
  * 0을 돌려주므로 `??`로는 걸러지지 않는다 — 0도 "모름"으로 보고 조 정원으로 대체한다.
  */
 export function participationBase(eligibleCount: number | null, capacity: number): number {
   return eligibleCount && eligibleCount > 0 ? eligibleCount : capacity;
+}
+
+export type ProxyVoteRoundType = Round['type'] | 'TEXT';
+
+export type VoteRefreshPriority = 'background' | 'manual' | 'final';
+
+export type VoteRefreshMeta = {
+  failed: boolean;
+  finalVerificationStatus: 'not-required' | 'pending' | 'verified' | 'failed';
+  lastSuccessAt: number | null;
+  busy: boolean;
+};
+
+export const EMPTY_VOTE_REFRESH_META: VoteRefreshMeta = {
+  failed: false,
+  finalVerificationStatus: 'not-required',
+  lastSuccessAt: null,
+  busy: false,
+};
+
+/** Start a tally read. A final read is the only transition into pending verification. */
+export function beginVoteRefresh(
+  current: VoteRefreshMeta,
+  priority: VoteRefreshPriority,
+): VoteRefreshMeta {
+  const finalVerification = priority === 'final';
+  return {
+    ...current,
+    failed: finalVerification ? false : current.failed,
+    finalVerificationStatus: finalVerification ? 'pending' : current.finalVerificationStatus,
+    busy: true,
+  };
+}
+
+/** Apply a successful tally read without letting a background read certify a final result. */
+export function completeVoteRefresh(
+  current: VoteRefreshMeta,
+  priority: VoteRefreshPriority,
+  completedAt: number,
+): VoteRefreshMeta {
+  return {
+    failed: false,
+    finalVerificationStatus: priority === 'final' ? 'verified' : current.finalVerificationStatus,
+    lastSuccessAt: completedAt,
+    busy: false,
+  };
+}
+
+/** Preserve the last normal timestamp while visibly failing a final or live refresh. */
+export function failVoteRefresh(
+  current: VoteRefreshMeta,
+  priority: VoteRefreshPriority,
+): VoteRefreshMeta {
+  return {
+    ...current,
+    failed: true,
+    finalVerificationStatus: priority === 'final' ? 'failed' : current.finalVerificationStatus,
+    busy: false,
+  };
+}
+
+export function canUseFinalVoteSnapshot(meta: VoteRefreshMeta): boolean {
+  return meta.finalVerificationStatus === 'verified';
+}
+
+/** Toggle one CHECKBOX option without mutating the prior React state value. */
+export function toggleProxyVoteChoice(selected: readonly string[], option: string): string[] {
+  return selected.includes(option)
+    ? selected.filter((candidate) => candidate !== option)
+    : [...selected, option];
+}
+
+/** CHECKBOX is the only proxy-vote round whose JSON choice must be an array. */
+export function proxyVotePayload(
+  type: ProxyVoteRoundType,
+  singleChoice: string,
+  checkboxChoices: readonly string[],
+): string | string[] {
+  return type === 'CHECKBOX' ? [...checkboxChoices] : singleChoice;
 }
 
 /**

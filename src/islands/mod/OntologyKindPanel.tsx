@@ -50,10 +50,12 @@ export function OntologyKindButtons({
   noteId,
   current,
   onToggle,
+  disabled = false,
 }: {
   noteId: string;
   current: OntologyKind | null;
   onToggle: (noteId: string, kind: OntologyKind) => void;
+  disabled?: boolean;
 }) {
   return (
     <div
@@ -70,6 +72,8 @@ export function OntologyKindButtons({
             key={kind}
             type="button"
             aria-pressed={active}
+            aria-busy={disabled || undefined}
+            disabled={disabled}
             data-kind={kind}
             onClick={() => onToggle(noteId, kind)}
             title={
@@ -77,7 +81,7 @@ export function OntologyKindButtons({
                 ? '다시 누르면 해제'
                 : `${ONTOLOGY_KIND_LABELS[kind]} — ${ONTOLOGY_KIND_HINTS[kind]}`
             }
-            className="h-9 min-w-[46px] rounded-lg border-2 px-2 text-[14px] font-extrabold transition"
+            className="h-9 min-w-[46px] rounded-lg border-2 px-2 text-[14px] font-extrabold transition disabled:cursor-wait disabled:opacity-55"
             style={
               active
                 ? { borderColor: tone, background: tone, color: '#ffffff' }

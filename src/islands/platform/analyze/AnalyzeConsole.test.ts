@@ -94,23 +94,22 @@ describe('AnalysisResults', () => {
 });
 
 describe('AnalyzeConsole', () => {
-  it('주제 미선택과 로드 전 입력 상태를 명확히 구분한다', () => {
-    const noTopicHtml = renderToStaticMarkup(createElement(AnalyzeConsole, { scope: null, topics: [] }));
+  it('주제 미선택과 로그인된 회차 자동 동기화 상태를 명확히 구분한다', () => {
+    const noTopicHtml = renderToStaticMarkup(createElement(AnalyzeConsole, { scope: null, topics: [], sessionId: null }));
     const formHtml = renderToStaticMarkup(createElement(AnalyzeConsole, {
       scope: 'topic',
       topics: [{ id: 'topic-1', label: '에너지 전환' }],
+      sessionId: 'session-1',
     }));
 
     expect(noTopicHtml).toContain('주제(topic) 또는 회차(session) 스코프를 먼저 선택하세요.');
     expect(noTopicHtml).toContain('role="status"');
-    expect(formHtml).toContain('<form');
-    expect(formHtml).toContain('aria-label="주제 분석 불러오기"');
+    expect(formHtml).toContain('aria-label="주제 분석 동기화"');
     expect(formHtml).toContain('aria-busy="false"');
-    expect(formHtml).toContain('for="analysis-join-code"');
-    expect(formHtml).toContain('id="analysis-join-code"');
-    expect(formHtml).toContain('type="password"');
-    expect(formHtml).toContain('분석 불러오기');
-    expect(formHtml).toContain('쟁점 목록을 불러오면');
+    expect(formHtml).toContain('분석 새로고침');
+    expect(formHtml).toContain('운영자 권한');
+    expect(formHtml).not.toContain('type="password"');
+    expect(formHtml).not.toContain('join-code');
   });
 
   it('회차 스코프는 포함된 주제 수와 회차 분석 입력을 표시한다', () => {
@@ -120,18 +119,19 @@ describe('AnalyzeConsole', () => {
         { id: 'topic-1', label: '에너지 전환' },
         { id: 'topic-2', label: '수송 부문' },
       ],
+      sessionId: 'session-1',
     }));
 
     expect(html).toContain('이 회차의 쟁점 분석');
     expect(html).toContain('2개 주제');
-    expect(html).toContain('aria-label="회차 분석 불러오기"');
+    expect(html).toContain('aria-label="회차 분석 동기화"');
     expect(html).not.toContain('주제(topic) 스코프를 먼저 선택하세요.');
   });
 });
 
 describe('loadScopedAnalysis', () => {
-  it('회차의 모든 주제를 같은 참여 코드로 조회해 집계한다', async () => {
-    const loader = vi.fn(async (_code: string, topicId: string): Promise<PlatformResult<IssueListResult>> => ({
+  it('회차의 모든 주제를 같은 staff session id로 조회해 집계한다', async () => {
+    const loader = vi.fn(async (_sessionId: string, topicId: string): Promise<PlatformResult<IssueListResult>> => ({
       data: {
         ...result,
         topic_id: topicId,
@@ -140,14 +140,14 @@ describe('loadScopedAnalysis', () => {
       notice: null,
     }));
 
-    const loaded = await loadScopedAnalysis('team-code', 'session', [
+    const loaded = await loadScopedAnalysis('session-1', 'session', [
       { id: 'topic-1', label: '에너지 전환' },
       { id: 'topic-2', label: '수송 부문' },
     ], loader);
 
     expect(loader.mock.calls).toEqual([
-      ['team-code', 'topic-1'],
-      ['team-code', 'topic-2'],
+      ['session-1', 'topic-1'],
+      ['session-1', 'topic-2'],
     ]);
     expect(loaded.notice).toBeNull();
     expect(loaded.data?.scope).toBe('session');
@@ -156,18 +156,18 @@ describe('loadScopedAnalysis', () => {
   });
 
   it('일부 주제 조회 실패를 불완전한 회차 분석으로 표시하지 않는다', async () => {
-    const loader = vi.fn(async (_code: string, topicId: string): Promise<PlatformResult<IssueListResult>> =>
+    const loader = vi.fn(async (_sessionId: string, topicId: string): Promise<PlatformResult<IssueListResult>> =>
       topicId === 'topic-2'
-        ? { data: null, notice: '참여 코드 범위를 확인하세요.' }
+        ? { data: null, notice: '운영자 권한 범위를 확인하세요.' }
         : { data: result, notice: null });
 
-    const loaded = await loadScopedAnalysis('team-code', 'session', [
+    const loaded = await loadScopedAnalysis('session-1', 'session', [
       { id: 'topic-1', label: '에너지 전환' },
       { id: 'topic-2', label: '수송 부문' },
     ], loader);
 
     expect(loaded.data).toBeNull();
-    expect(loaded.notice).toBe('수송 부문: 참여 코드 범위를 확인하세요.');
+    expect(loaded.notice).toBe('수송 부문: 운영자 권한 범위를 확인하세요.');
   });
 });
 
@@ -196,7 +196,7 @@ describe('completeAnalysisLoad', () => {
     const notices: Array<string | null> = [];
 
     await completeAnalysisLoad(
-      async () => ({ data: null, notice: '참여 코드를 확인하세요.' }),
+      async () => ({ data: null, notice: '운영자 권한을 확인하세요.' }),
       (value) => busy.push(value),
       (value) => views.push(value),
       (value) => notices.push(value),
@@ -204,7 +204,7 @@ describe('completeAnalysisLoad', () => {
 
     expect(busy).toEqual([true, false]);
     expect(views).toEqual([null]);
-    expect(notices).toEqual([null, '참여 코드를 확인하세요.']);
+    expect(notices).toEqual([null, '운영자 권한을 확인하세요.']);
   });
 
   it('예상하지 못한 예외를 로그하고 사용자 notice로 바꾼다', async () => {

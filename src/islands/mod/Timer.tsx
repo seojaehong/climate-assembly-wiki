@@ -20,6 +20,7 @@ import {
   type TimerKind,
 } from './timer-logic';
 import { logTimer } from '../../lib/mod-console';
+import type { WorkshopAuthorization } from '../../lib/deliberation';
 
 const SPEECH_PRESETS = SPEECH_PRESET_MINUTES; // [0.5, 1, 2, 3] — 0.5는 「30초」로 표시된다
 const SESSION_PRESETS = SESSION_PRESET_MINUTES; // [5, 10, 15, 20, 25, 40] — 8.29 오후 진행표 블록
@@ -34,9 +35,15 @@ function Eyebrow({ children, className = '' }: { children: React.ReactNode; clas
 
 /**
  * 발언·세션 타이머 카드(홈 화면) + 실행 중 오버레이(마지막 10초 색 반전 + 만료 알림).
- * code/teamName은 timer_log 로깅(mod_log_timer RPC)과 표시용 뱃지에 쓰인다.
+ * access/teamName은 timer_log 로깅(mod_log_timer RPC)과 표시용 뱃지에 쓰인다.
  */
-export default function Timer({ code, teamName }: { code: string | null; teamName: string }) {
+export default function Timer({
+  access,
+  teamName,
+}: {
+  access: WorkshopAuthorization | null;
+  teamName: string;
+}) {
   const [state, setState] = useState<TimerState>(createIdleTimer('speech', 60_000));
   const [sessionMinutes, setSessionMinutes] = useState(15);
   // 입력칸에 찍힌 글자. 편집 중 잠시 비는 것을 허용하려고 확정값(sessionMinutes)과 따로 둔다 —
@@ -69,17 +76,17 @@ export default function Timer({ code, teamName }: { code: string | null; teamNam
   useEffect(() => {
     if (state.phase !== 'expired' || expiredLoggedRef.current) return;
     expiredLoggedRef.current = true;
-    if (code && state.startedAt != null) {
-      void logTimer(code, {
+    if (access && state.startedAt != null) {
+      void logTimer(access, {
         kind: state.kind,
         duration_s: Math.round(state.durationMs / 1000),
         started_at: new Date(state.startedAt).toISOString(),
         ended_at: new Date().toISOString(),
-      }).catch(() => {
-        /* fire-and-forget — 로그 실패가 타이머 UX를 막지 않는다 */
+      }).catch((error: unknown) => {
+        console.error('[timer] expiration log failed', error);
       });
     }
-  }, [state.phase, state.kind, state.durationMs, state.startedAt, code]);
+  }, [state.phase, state.kind, state.durationMs, state.startedAt, access]);
 
   const begin = (kind: TimerKind, durationMs: number) => {
     expiredLoggedRef.current = false;
@@ -91,15 +98,17 @@ export default function Timer({ code, teamName }: { code: string | null; teamNam
   const handleStop = () => {
     // 진행 중 수동 종료도 로그를 남긴다(만료가 아니어도 발언 배분 지표에는 유효한 구간).
     // expired는 만료 useEffect가 이미 로그를 남겼으므로 shouldLogOnStop이 중복 기록을 막는다.
-    if (code && state.startedAt != null && shouldLogOnStop(state.phase)) {
+    if (access && state.startedAt != null && shouldLogOnStop(state.phase)) {
       const elapsedMs = state.durationMs - state.remainingMs;
       if (elapsedMs > 0) {
-        void logTimer(code, {
+        void logTimer(access, {
           kind: state.kind,
           duration_s: Math.round(elapsedMs / 1000),
           started_at: new Date(state.startedAt).toISOString(),
           ended_at: new Date().toISOString(),
-        }).catch(() => {});
+        }).catch((error: unknown) => {
+          console.error('[timer] stop log failed', error);
+        });
       }
     }
     setState((s) => stopTimer(s));
@@ -179,7 +188,7 @@ export default function Timer({ code, teamName }: { code: string | null; teamNam
                           발언 타이머(위)는 flex-col items-center 라 원래 문제가 없었다. */}
                       <span className="flex items-baseline gap-1">
                         <span className="text-[26px] font-extrabold leading-none tr-num">{value}</span>
-                        <span className={`text-[15px] font-semibold ${selected ? 'text-white/90' : 'text-[#2E75B6]'}`}>
+                        <span className={`text-[15px] font-semibold ${selected ? 'text-white' : 'text-[#2E75B6]'}`}>
                           {unit}
                         </span>
                       </span>
@@ -187,7 +196,7 @@ export default function Timer({ code, teamName }: { code: string | null; teamNam
                   );
                 })}
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center rounded-xl border border-[#C4D8E4] overflow-hidden">
                   <button
                     type="button"
@@ -195,7 +204,9 @@ export default function Timer({ code, teamName }: { code: string | null; teamNam
                     onClick={() => commitSessionMinutes(stepSessionMinutes(sessionMinutes, -1))}
                     className="w-14 h-16 text-3xl text-[#5A6B73] bg-[#F1F7FA]"
                   >
-                    −
+                    <svg aria-hidden="true" className="mx-auto h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round">
+                      <path d="M6 12h12" />
+                    </svg>
                   </button>
                   <input
                     type="text"
@@ -220,14 +231,16 @@ export default function Timer({ code, teamName }: { code: string | null; teamNam
                     onClick={() => commitSessionMinutes(stepSessionMinutes(sessionMinutes, 1))}
                     className="w-14 h-16 text-3xl text-[#5A6B73] bg-[#F1F7FA]"
                   >
-                    ＋
+                    <svg aria-hidden="true" className="mx-auto h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round">
+                      <path d="M6 12h12M12 6v12" />
+                    </svg>
                   </button>
                 </div>
                 <span className="text-[18px] text-[#5A6B73] font-semibold">분</span>
                 <button
                   type="button"
                   onClick={() => begin('session', minutesToMs(sessionMinutes))}
-                  className="flex-1 h-16 rounded-2xl bg-[#2E75B6] text-white text-[22px] font-bold shadow-sm active:scale-[.99] transition"
+                  className="h-16 basis-full rounded-2xl bg-[#2E75B6] text-white text-[22px] font-bold shadow-sm active:scale-[.99] transition sm:basis-auto sm:flex-1"
                 >
                   시작
                 </button>
@@ -277,12 +290,12 @@ function TimerOverlay({
         </div>
 
         {warn && state.phase !== 'expired' ? (
-          <div className="text-[18px] font-bold text-white/90 mb-2 flex items-center gap-2">
+          <div className="text-[18px] font-bold text-white mb-2 flex items-center gap-2">
             <span aria-hidden="true">⏰</span> 곧 종료됩니다
           </div>
         ) : null}
         {state.phase === 'expired' ? (
-          <div className="text-[18px] font-bold text-white/90 mb-2 flex items-center gap-2">
+          <div className="text-[18px] font-bold text-white mb-2 flex items-center gap-2">
             <span aria-hidden="true">⏰</span> 시간이 종료되었습니다
           </div>
         ) : null}

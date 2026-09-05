@@ -51,6 +51,16 @@
         "destructionMethod": null
       },
       {
+        "datasetId": "canvas-round-lifecycle-audit",
+        "recordClass": "pending",
+        "unitTaskCode": null,
+        "retentionPeriod": "pending",
+        "retentionTrigger": null,
+        "dispositionAction": "pending",
+        "dispositionAuthority": null,
+        "destructionMethod": null
+      },
+      {
         "datasetId": "core-session-operations",
         "recordClass": "pending",
         "unitTaskCode": null,
@@ -101,6 +111,16 @@
         "destructionMethod": null
       },
       {
+        "datasetId": "result-implementation-audit",
+        "recordClass": "pending",
+        "unitTaskCode": null,
+        "retentionPeriod": "pending",
+        "retentionTrigger": null,
+        "dispositionAction": "pending",
+        "dispositionAuthority": null,
+        "destructionMethod": null
+      },
+      {
         "datasetId": "tenant-staff-access",
         "recordClass": "pending",
         "unitTaskCode": null,
@@ -122,6 +142,16 @@
       },
       {
         "datasetId": "transient-audio-transcript",
+        "recordClass": "pending",
+        "unitTaskCode": null,
+        "retentionPeriod": "pending",
+        "retentionTrigger": null,
+        "dispositionAction": "pending",
+        "dispositionAuthority": null,
+        "destructionMethod": null
+      },
+      {
+        "datasetId": "workshop-event-access",
         "recordClass": "pending",
         "unitTaskCode": null,
         "retentionPeriod": "pending",

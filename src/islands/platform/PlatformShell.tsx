@@ -40,6 +40,7 @@ import {
 } from '../../lib/platform';
 import ScopeOutlet from './ScopeViews';
 import { HQ_ACTOR_KEY, HQ_TOKEN_KEY } from '../mod/hq-gate-logic';
+import { revokeHqSession } from '../../lib/attendance';
 import { PLATFORM_ORG_CONTEXT_KEY, storePlatformOrgContextToken } from '../../lib/supabase';
 
 const NAVY = '#1F4E79';
@@ -69,15 +70,57 @@ export interface PlatformSessionStorage {
   removeItem(key: string): void;
 }
 
-/** Clears legacy HQ credentials when the authenticated platform user signs out. */
+export interface PlatformHqSessionStorage extends PlatformSessionStorage {
+  getItem(key: string): string | null;
+}
+
+export interface PlatformHqSignOutResult {
+  canSignOutPlatform: boolean;
+  localCredentialsCleared: boolean;
+}
+
+/** Revokes an HQ bearer before removing it so a platform logout cannot leave a live server session. */
+export async function completeHqSignOut(
+  storage: PlatformHqSessionStorage | null | undefined,
+  revoke: (token: string) => Promise<void>,
+  onError: (error: unknown) => void,
+): Promise<PlatformHqSignOutResult> {
+  if (!storage) return { canSignOutPlatform: true, localCredentialsCleared: true };
+
+  let token: string | null;
+  try {
+    token = storage.getItem(HQ_TOKEN_KEY);
+  } catch (error: unknown) {
+    onError(error);
+    return { canSignOutPlatform: false, localCredentialsCleared: false };
+  }
+
+  if (token) {
+    try {
+      await revoke(token);
+    } catch (error: unknown) {
+      onError(error);
+      return { canSignOutPlatform: false, localCredentialsCleared: false };
+    }
+  }
+
+  try {
+    storage.removeItem(HQ_TOKEN_KEY);
+    storage.removeItem(HQ_ACTOR_KEY);
+    return { canSignOutPlatform: true, localCredentialsCleared: true };
+  } catch (error: unknown) {
+    onError(error);
+    return { canSignOutPlatform: true, localCredentialsCleared: false };
+  }
+}
+
+/** Clears the platform organization context after the authenticated session ends. */
 export function clearPlatformSessionCredentials(
   storage: PlatformSessionStorage | null | undefined,
   onError: (error: unknown) => void,
 ): boolean {
   if (!storage) return true;
   try {
-    storage.removeItem(HQ_TOKEN_KEY);
-    storage.removeItem(HQ_ACTOR_KEY);
     storage.removeItem(PLATFORM_ORG_CONTEXT_KEY);
     return true;
   } catch (error: unknown) {
@@ -482,13 +525,25 @@ function AppShell({
     await runExclusivePlatformOperation(
       logoutLock,
       async () => {
+        const storage = typeof window === 'undefined' ? null : window.sessionStorage;
+        const hqSignOut = await completeHqSignOut(
+          storage,
+          revokeHqSession,
+          (error) => console.error('Failed to revoke HQ session', error),
+        );
+        if (!hqSignOut.canSignOutPlatform) {
+          setLogoutNotice('HQ 인증을 서버에서 종료하지 못했습니다. 네트워크를 확인한 뒤 다시 로그아웃해 주세요.');
+          return;
+        }
+
         const signedOut = await completeSignOut(signOut, setLogoutNotice);
         if (signedOut) {
           const credentialsCleared = clearPlatformSessionCredentials(
-            typeof window === 'undefined' ? null : window.sessionStorage,
+            storage,
             (error) => console.error('Failed to clear platform session credentials', error),
           );
-          onSignedOut(credentialsCleared ? null : '로그아웃했지만 브라우저의 HQ 인증 정보를 지우지 못했습니다. 이 탭을 닫아 주세요.');
+          const localCredentialsCleared = hqSignOut.localCredentialsCleared && credentialsCleared;
+          onSignedOut(localCredentialsCleared ? null : '서버 로그아웃은 완료했지만 브라우저 인증 정보를 모두 지우지 못했습니다. 이 탭을 닫아 주세요.');
         }
       },
       setLogoutBusy,

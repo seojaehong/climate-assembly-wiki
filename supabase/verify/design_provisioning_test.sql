@@ -920,6 +920,7 @@ begin
   declare
     v_bytes bytea;
     v_value bigint;
+    v_code text;
   begin
     loop
       v_bytes := extensions.gen_random_bytes(4);
@@ -927,15 +928,19 @@ begin
         + get_byte(v_bytes, 1)::bigint * 65536
         + get_byte(v_bytes, 2)::bigint * 256
         + get_byte(v_bytes, 3)::bigint;
-      exit when v_value < 4294000000;
+      if v_value < 4294000000 then
+        v_code := lpad((v_value % 1000000)::text, 6, '0');
+        exit when v_code !~ '^0912(0[1-9]|1[0-5])$';
+      end if;
     end loop;
-    return lpad((v_value % 1000000)::text, 6, '0');
+    return v_code;
   end
   $secure$;
   select pg_get_functiondef('climate_vote.platform_design_join_code()'::regprocedure)
   into v_join_code_definition;
   if v_join_code_definition not like '%extensions.gen_random_bytes(4)%'
      or v_join_code_definition not like '%v_value < 4294000000%'
+     or v_join_code_definition not like '%v_code !~ ''^0912(0[1-9]|1[0-5])$''%'
      or v_join_code_definition like '%random()%'
      or exists (
        select 1 from generate_series(1, 64)

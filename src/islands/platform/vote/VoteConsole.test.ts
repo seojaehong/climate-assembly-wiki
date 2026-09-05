@@ -44,7 +44,6 @@ const result: BallotResults = {
 
 function adapter(overrides: Partial<VoteDataAdapter> = {}): VoteDataAdapter {
   return {
-    validateTopic: vi.fn(async (): Promise<PlatformResult<unknown>> => ({ data: {}, notice: null })),
     listBallots: vi.fn(async (): Promise<PlatformResult<BallotListRow[]>> => ({ data: [row], notice: null })),
     loadResults: vi.fn(async (): Promise<PlatformResult<BallotResults | null>> => ({ data: result, notice: null })),
     ...overrides,
@@ -52,32 +51,31 @@ function adapter(overrides: Partial<VoteDataAdapter> = {}): VoteDataAdapter {
 }
 
 describe('loadSessionVotes', () => {
-  it('선택 회차의 주제로 코드를 검증한 뒤 목록과 전체 집계를 불러온다', async () => {
+  it('로그인한 운영자의 선택 회차 범위로 목록과 전체 집계를 불러온다', async () => {
     const data = adapter();
-    const loaded = await loadSessionVotes('team-code', [{ id: 'topic-1', label: '에너지 전환' }], data);
+    const loaded = await loadSessionVotes('session-1', data);
 
-    expect(data.validateTopic).toHaveBeenCalledWith('team-code', 'topic-1');
-    expect(data.listBallots).toHaveBeenCalledWith('team-code');
-    expect(data.loadResults).toHaveBeenCalledWith('token-1', 'team-code');
+    expect(data.listBallots).toHaveBeenCalledWith('session-1');
+    expect(data.loadResults).toHaveBeenCalledWith('token-1', 'session-1');
     expect(loaded.notice).toBeNull();
     expect(loaded.data?.stats).toEqual({ ballotCount: 1, openCount: 0, itemCount: 1, responseCount: 12 });
   });
 
-  it('다른 회차 코드면 투표 목록을 노출하지 않는다', async () => {
+  it('서버가 선택 회차 접근을 거부하면 투표 목록을 노출하지 않는다', async () => {
     const data = adapter({
-      validateTopic: vi.fn(async () => ({ data: null, notice: 'topic does not belong to team session' })),
+      listBallots: vi.fn(async () => ({ data: null, notice: '선택 회차 접근 권한이 없습니다.' })),
     });
-    const loaded = await loadSessionVotes('wrong-code', [{ id: 'topic-1', label: '에너지 전환' }], data);
+    const loaded = await loadSessionVotes('wrong-session', data);
 
-    expect(loaded).toEqual({ data: null, notice: '선택 회차 검증 실패: topic does not belong to team session' });
-    expect(data.listBallots).not.toHaveBeenCalled();
+    expect(loaded).toEqual({ data: null, notice: '선택 회차 접근 권한이 없습니다.' });
+    expect(data.loadResults).not.toHaveBeenCalled();
   });
 
   it('한 투표의 집계라도 실패하면 불완전한 회차 집계를 노출하지 않는다', async () => {
     const data = adapter({
       loadResults: vi.fn(async () => ({ data: null, notice: '집계 조회 실패' })),
     });
-    const loaded = await loadSessionVotes('team-code', [{ id: 'topic-1', label: '에너지 전환' }], data);
+    const loaded = await loadSessionVotes('session-1', data);
 
     expect(loaded).toEqual({ data: null, notice: '에너지 정책 우선순위: 집계 조회 실패' });
   });
@@ -117,18 +115,14 @@ describe('VoteResults', () => {
 });
 
 describe('VoteConsole', () => {
-  it('회차 검증용 비영구 참여 코드 입력을 제공한다', () => {
+  it('참여 코드 입력 없이 로그인된 회차 투표를 자동으로 불러온다', () => {
     const html = renderToStaticMarkup(createElement(VoteConsole, {
-      topics: [{ id: 'topic-1', label: '에너지 전환' }],
+      sessionId: 'session-1',
     }));
 
-    expect(html).toContain('aria-label="회차 투표 불러오기"');
-    expect(html).toContain('aria-busy="false"');
-    expect(html).toContain('type="password"');
-    expect(html).toContain('autoComplete="off"');
-    expect(html).toContain('브라우저 저장소에 보관하지 않습니다.');
-    expect(html).toContain('border:2px solid #6B7D88');
-    expect(html).not.toMatch(/border:(?:1|1\.5)px/);
+    expect(html).toContain('투표 집계를 안전하게 불러오는 중');
+    expect(html).not.toContain('조 참여 코드');
+    expect(html).not.toContain('type="password"');
   });
 });
 

@@ -289,6 +289,34 @@ test('the repository catalog covers every current and planned climate_vote table
     publicRelease: 'never',
   });
   expect(platformAudit.dataClasses).toContain('audit_metadata');
+  const workshopAccess = repositoryCatalog.datasets.find((dataset) => dataset.id === 'workshop-event-access');
+  expect(workshopAccess).toMatchObject({
+    deploymentState: 'dormant_draft',
+    tables: [
+      'workshop_join_exchange_attempt',
+      'workshop_request_ledger',
+      'workshop_audit_event',
+    ],
+    publicRelease: 'never',
+  });
+  const canvasRoundAudit = repositoryCatalog.datasets.find(
+    (dataset) => dataset.id === 'canvas-round-lifecycle-audit',
+  );
+  expect(canvasRoundAudit).toMatchObject({
+    deploymentState: 'dormant_draft',
+    tables: ['platform_canvas_round_event'],
+    dataSubjects: ['staff'],
+    publicRelease: 'never',
+  });
+  expect(canvasRoundAudit.dataClasses).toContain('audit_metadata');
+  const implementationAudit = repositoryCatalog.datasets.find(
+    (dataset) => dataset.id === 'result-implementation-audit',
+  );
+  expect(implementationAudit).toMatchObject({
+    deploymentState: 'dormant_draft',
+    tables: ['result_implementation_event'],
+    publicRelease: 'never',
+  });
 });
 
 test('CLI uses the tracked catalog and creates a private pending package only once', async () => {

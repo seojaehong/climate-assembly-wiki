@@ -5,22 +5,153 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
 import {
   DEFAULT_AUDIT_ROUTES,
   DEFAULT_EXCLUDED_SURFACES,
   AUDITED_SOURCE_PATHS,
   accessibilityAuditExitCode,
   auditPlatformAccessibility,
+  fixtureNetworkPasses,
+  installFixtureWebSocketIsolation,
   readAuditSourceStatus,
   validateAuditSourceState,
   verifyDeploymentRevision,
 } from '../platform-accessibility-audit.mjs';
 
+const BROWSER_TEST_TIMEOUT_MS = 60_000;
+
+const safeFixtureNetwork = {
+  escapedNetworkRequestCount: 0,
+  escapedNetworkOrigins: [],
+  blockedExternalRequestCount: 0,
+  blockedExternalOrigins: [],
+  unexpectedSupabaseRequestCount: 0,
+  contractViolationCount: 0,
+  mutationRequestCount: 0,
+  liveDatabaseMutationCount: 0,
+  webSocket: {
+    stubbed: true,
+    actualNetworkConnectionCount: 0,
+    blockedExternalConnectionAttemptCount: 0,
+    blockedExternalOrigins: [],
+  },
+};
+
+test('fails fixture isolation on blocked attempts or an observed escaped response', () => {
+  expect(fixtureNetworkPasses(safeFixtureNetwork)).toBe(true);
+  expect(fixtureNetworkPasses({
+    ...safeFixtureNetwork,
+    blockedExternalRequestCount: 1,
+    blockedExternalOrigins: ['http://127.0.0.1:65534'],
+  })).toBe(false);
+  expect(fixtureNetworkPasses({
+    ...safeFixtureNetwork,
+    escapedNetworkRequestCount: 1,
+    escapedNetworkOrigins: ['https://example.invalid'],
+  })).toBe(false);
+  expect(fixtureNetworkPasses({
+    ...safeFixtureNetwork,
+    webSocket: {
+      ...safeFixtureNetwork.webSocket,
+      blockedExternalConnectionAttemptCount: 1,
+      blockedExternalOrigins: ['ws://127.0.0.1:65534'],
+    },
+  })).toBe(false);
+});
+
+test('uses one deny-by-default HTTP route after exact local and Supabase checks', () => {
+  const source = readFileSync(new URL('../platform-accessibility-audit.mjs', import.meta.url), 'utf8');
+  expect(source).toContain("page.route('**/*'");
+  expect(source).not.toContain("page.route('https://**/*'");
+  expect(source).toContain('requestUrl.origin === baseOrigin');
+  expect(source).toContain('requestUrl.origin === SUPABASE_ORIGIN');
+  expect(source).toContain('fixtureNetwork.blockedExternalRequestCount === 0');
+  expect(source).toContain("serviceWorkers: 'block'");
+  expect(source).toContain('context.routeWebSocket(/.*/');
+  expect(source).toContain('fixtureNetwork.webSocket?.blockedExternalConnectionAttemptCount === 0');
+  expect(source).not.toContain('connectToServer()');
+});
+
+test('intercepts a real Worker WebSocket before any loopback upgrade reaches the server', async () => {
+  let nativeUpgradeCount = 0;
+  const socketServer = createServer((_request, response) => {
+    response.writeHead(426).end();
+  });
+  socketServer.on('upgrade', (_request, socket) => {
+    nativeUpgradeCount += 1;
+    socket.destroy();
+  });
+  await new Promise((resolve) => socketServer.listen(0, '127.0.0.1', resolve));
+  const address = socketServer.address();
+  if (!address || typeof address === 'string') throw new Error('Loopback WebSocket server did not bind');
+  const socketOrigin = `ws://127.0.0.1:${address.port}`;
+  const fixtureState = {
+    webSocketRoutingInstalled: false,
+    webSocketRouteAttemptCount: 0,
+    syntheticWebSocketAttemptCount: 0,
+    blockedExternalWebSocketAttemptCount: 0,
+    blockedExternalWebSocketOrigins: [],
+  };
+  const browser = await chromium.launch();
+  try {
+    const context = await browser.newContext({ serviceWorkers: 'block' });
+    try {
+      await installFixtureWebSocketIsolation({ context, fixtureState });
+      const page = await context.newPage();
+      await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(async (socketUrls) => {
+        const source = `self.onmessage = (event) => {
+          const socket = new WebSocket(event.data);
+          let finished = false;
+          const finish = () => {
+            if (finished) return;
+            finished = true;
+            self.postMessage('intercepted');
+          };
+          socket.addEventListener('close', finish, { once: true });
+          socket.addEventListener('error', finish, { once: true });
+        };`;
+        const worker = new Worker(URL.createObjectURL(new Blob([source], { type: 'text/javascript' })));
+        for (const socketUrl of socketUrls) {
+          await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error('Worker WebSocket interception timed out')), 5_000);
+            worker.addEventListener('message', () => {
+              clearTimeout(timeout);
+              resolve();
+            }, { once: true });
+            worker.postMessage(socketUrl);
+          });
+        }
+        worker.terminate();
+      }, [
+        `${socketOrigin}/native-upgrade-must-not-run`,
+        'wss://pleyuknjnprsckssxvrh.supabase.co/realtime/v1/websocket',
+      ]);
+      await page.waitForTimeout(50);
+    } finally {
+      await context.close();
+    }
+  } finally {
+    await browser.close();
+    await new Promise((resolve, reject) => socketServer.close((error) => error ? reject(error) : resolve()));
+  }
+
+  expect(nativeUpgradeCount).toBe(0);
+  expect(fixtureState).toMatchObject({
+    webSocketRoutingInstalled: true,
+    webSocketRouteAttemptCount: 0,
+    workerWebSocketAttemptCount: 2,
+    syntheticWebSocketAttemptCount: 1,
+    blockedExternalWebSocketAttemptCount: 1,
+    blockedExternalWebSocketOrigins: [socketOrigin],
+  });
+}, BROWSER_TEST_TIMEOUT_MS);
+
 let outDir;
 let server;
 let baseUrl;
 const TEST_SOURCE_COMMIT = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-const BROWSER_TEST_TIMEOUT_MS = 60_000;
 
 const validPage = `<!doctype html>
   <html lang="ko"><head><title>접근성 테스트</title></head><body>
@@ -143,6 +274,8 @@ test('audits WCAG 2.2 AA and skip-link focus through a real browser', async () =
   expect(report.schemaVersion).toBe(5);
   expect(report.sourceCommit).toBe(TEST_SOURCE_COMMIT);
   expect(report.sourceTreeClean).toBe(true);
+  expect(report.evidenceClassification).toBe('release-evidence');
+  expect(report.releaseEvidence).toBe(true);
   expect(report.targetRevision).toEqual({
     status: 'verified',
     sourceCommit: TEST_SOURCE_COMMIT,
@@ -163,6 +296,42 @@ test('audits WCAG 2.2 AA and skip-link focus through a real browser', async () =
   expect(existsSync(reportPath)).toBe(true);
   expect(JSON.parse(readFileSync(reportPath, 'utf8'))).toEqual(report);
 }, BROWSER_TEST_TIMEOUT_MS);
+
+test('labels an explicitly requested dirty-tree browser run as draft rather than release evidence', async () => {
+  const report = await auditPlatformAccessibility({
+    baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: false,
+    draftSourceMeasurement: true,
+    routes: [{ id: 'draft-valid', path: '/valid', skipTarget: 'main-content' }],
+    profiles: [{ id: 'desktop', viewport: { width: 1280, height: 800 } }],
+    reportPath: join(outDir, 'draft-report.json'),
+  });
+
+  expect(report.status).toBe('needs_review');
+  expect(report.sourceTreeClean).toBe(false);
+  expect(report.evidenceClassification).toBe('draft-uncommitted-source-measurement');
+  expect(report.releaseEvidence).toBe(false);
+  expect(report.summary.passedCases).toBe(1);
+}, BROWSER_TEST_TIMEOUT_MS);
+
+test('keeps dirty source out of release evidence and requires truthful draft classification', async () => {
+  const baseArguments = {
+    baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    routes: [{ id: 'source-state', path: '/valid', skipTarget: 'main-content' }],
+    reportPath: join(outDir, 'source-state.json'),
+  };
+  await expect(auditPlatformAccessibility({
+    ...baseArguments,
+    sourceTreeClean: false,
+  })).rejects.toThrow('requires a clean audited source tree');
+  await expect(auditPlatformAccessibility({
+    ...baseArguments,
+    sourceTreeClean: true,
+    draftSourceMeasurement: true,
+  })).rejects.toThrow('must record sourceTreeClean as false');
+});
 
 test('records exact forward and reverse keyboard focus order in browser evidence', async () => {
   const expectedOrder = ['#email', '#password', 'button[type="submit"]', '#help'];
@@ -435,6 +604,44 @@ test('waits for a fixture-backed production surface before auditing it', async (
   });
 }, BROWSER_TEST_TIMEOUT_MS);
 
+test('fails closed when a route that requires fixture evidence returns no controller', async () => {
+  const report = await auditPlatformAccessibility({
+    baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
+    routes: [{
+      id: 'missing-required-evidence',
+      path: '/valid',
+      skipTarget: 'main-content',
+      fixture: 'required-network-fixture',
+      requiresFixtureEvidence: true,
+      prepare: async () => null,
+    }],
+    profiles: [{ id: 'desktop', viewport: { width: 1280, height: 800 } }],
+    reportPath: join(outDir, 'missing-required-evidence.json'),
+  });
+
+  expect(report.status).toBe('fail');
+  expect(report.routes[0]).toMatchObject({
+    fixtureNetworkRequired: true,
+    fixtureNetwork: null,
+    passed: false,
+  });
+  await expect(auditPlatformAccessibility({
+    baseUrl,
+    sourceCommit: TEST_SOURCE_COMMIT,
+    sourceTreeClean: true,
+    routes: [{
+      id: 'missing-required-controller',
+      path: '/valid',
+      skipTarget: 'main-content',
+      fixture: 'required-network-fixture',
+      requiresFixtureEvidence: true,
+    }],
+    reportPath: join(outDir, 'missing-required-controller.json'),
+  })).rejects.toThrow('requires a fixture controller with network evidence');
+}, BROWSER_TEST_TIMEOUT_MS);
+
 test('audits the exercised interaction state instead of only the initial page', async () => {
   const report = await auditPlatformAccessibility({
     baseUrl,
@@ -680,8 +887,11 @@ test('detects untracked audited source and includes build and auditor dependenci
       'astro.config.mjs',
       'package-lock.json',
       'automation/package-lock.json',
+      'public/v',
       'src/islands/OntologyReviewConsole.tsx',
+      'src/islands/ballot',
       'src/islands/canvas',
+      'src/islands/mod',
       'src/layouts',
       'src/pages',
     ]));
@@ -699,6 +909,22 @@ test('covers authenticated and published production surfaces with read-only brow
     'public-result-unpublished',
     'published-result',
     'ontology-review',
+    'public-vote-open',
+    'public-vote-submitted',
+    'public-vote-duplicate',
+    'public-vote-closed',
+    'public-vote-error',
+    'public-ballot-open',
+    'public-ballot-submitted',
+    'public-ballot-duplicate',
+    'public-ballot-closed',
+    'public-ballot-published',
+    'public-ballot-error',
+    'moderator-console',
+    'moderator-console-timer',
+    'hq-console-gate',
+    'hq-console-submissions',
+    'hq-console-dashboard',
   ]);
   expect(DEFAULT_AUDIT_ROUTES.find((route) => route.id === 'platform-login')).toMatchObject({
     path: '/platform/',
@@ -737,6 +963,67 @@ test('covers authenticated and published production surfaces with read-only brow
     readySelector: 'main[data-ontology-review-ready="true"]',
     prepare: expect.any(Function),
   });
+  expect(DEFAULT_AUDIT_ROUTES.find((route) => route.id === 'moderator-console')).toMatchObject({
+    path: '/mod?code=000000',
+    skipTarget: 'mod-console-content',
+    fixture: 'ci-0912-synthetic-read-fixture-v1',
+    requiresFixtureEvidence: true,
+    readySelector: '#mod-console-content [data-testid="workshop-status-rail"]',
+    requiredMobileScrollRegions: ['조 작업 상태 가로 목록'],
+    prepare: expect.any(Function),
+  });
+  expect(DEFAULT_AUDIT_ROUTES.find((route) => route.id === 'hq-console-gate')).toMatchObject({
+    path: '/hq',
+    skipTarget: 'hq-console-content',
+    fixture: 'ci-hq-gate-no-secret-v1',
+    requiresFixtureEvidence: true,
+    readySelector: '#hq-gate-title',
+    prepare: expect.any(Function),
+  });
+  expect(DEFAULT_AUDIT_ROUTES.find((route) => route.id === 'hq-console-dashboard')).toMatchObject({
+    path: '/hq?ops=1',
+    skipTarget: 'hq-console-content',
+    fixture: 'ci-0912-hq-dashboard-read-fixture-v1',
+    requiresFixtureEvidence: true,
+    readySelector: '#hq-console-content h1',
+    prepare: expect.any(Function),
+    afterNavigation: expect.any(Function),
+  });
+  expect(DEFAULT_AUDIT_ROUTES.find((route) => route.id === 'hq-console-submissions')).toMatchObject({
+    readySelector: '[aria-label="접근성 감사 합성 조 접속 기기"]',
+    afterNavigation: expect.any(Function),
+  });
+  for (const id of [
+    'public-vote-open',
+    'public-vote-submitted',
+    'public-vote-duplicate',
+    'public-vote-closed',
+    'public-vote-error',
+  ]) {
+    expect(DEFAULT_AUDIT_ROUTES.find((route) => route.id === id)).toMatchObject({
+      path: expect.stringMatching(/^\/v\?r=/),
+      skipTarget: 'public-vote-content',
+      requiresFixtureEvidence: true,
+      prepare: expect.any(Function),
+      afterNavigation: expect.any(Function),
+    });
+  }
+  for (const id of [
+    'public-ballot-open',
+    'public-ballot-submitted',
+    'public-ballot-duplicate',
+    'public-ballot-closed',
+    'public-ballot-published',
+    'public-ballot-error',
+  ]) {
+    expect(DEFAULT_AUDIT_ROUTES.find((route) => route.id === id)).toMatchObject({
+      path: expect.stringMatching(/^\/b\?t=/),
+      skipTarget: 'public-ballot-content',
+      requiresFixtureEvidence: true,
+      prepare: expect.any(Function),
+      afterNavigation: expect.any(Function),
+    });
+  }
   expect(DEFAULT_EXCLUDED_SURFACES).toEqual([
     expect.objectContaining({ id: 'assistive-technology-manual-evaluation' }),
   ]);

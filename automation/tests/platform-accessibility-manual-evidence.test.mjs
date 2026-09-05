@@ -23,7 +23,7 @@ test('creates the complete manual accessibility evaluation matrix as not run', (
     'desktop-screen-reader',
     'mobile-screen-reader',
   ]);
-  expect(evidence.cases).toHaveLength(14);
+  expect(evidence.cases).toHaveLength(22);
   expect(new Set(evidence.cases.map((item) => item.surfaceId))).toEqual(new Set([
     'platform-login',
     'authenticated-platform',
@@ -31,6 +31,10 @@ test('creates the complete manual accessibility evaluation matrix as not run', (
     'public-result-unpublished',
     'published-result',
     'ontology-review',
+    'public-vote',
+    'public-ballot',
+    'moderator-console',
+    'hq-console-gate',
     'kwcag-cross-surface',
   ]));
   expect(evidence.cases.every((item) => item.path && item.setup)).toBe(true);
@@ -47,12 +51,12 @@ test('keeps an untouched template in needs review with exact counts', () => {
 
   expect(evaluateManualAccessibilityEvidence(evidence)).toEqual({
     status: 'needs_review',
-    caseCount: 14,
-    checkCount: 82,
+    caseCount: 22,
+    checkCount: 118,
     passCount: 0,
     failCount: 0,
     blockedCount: 0,
-    notRunCount: 82,
+    notRunCount: 118,
   });
 });
 
@@ -227,7 +231,7 @@ test('CLI verifies valid evidence and does not echo malformed source data', () =
       evidencePath,
     ], { encoding: 'utf8' });
     expect(verified.status).toBe(0);
-    expect(JSON.parse(verified.stdout)).toMatchObject({ status: 'needs_review', caseCount: 14, notRunCount: 82 });
+    expect(JSON.parse(verified.stdout)).toMatchObject({ status: 'needs_review', caseCount: 22, notRunCount: 118 });
 
     writeFileSync(malformedPath, '{"secret":"must-not-echo"', 'utf8');
     const malformed = spawnSync(process.execPath, [
@@ -376,11 +380,15 @@ test('workflow watches every source path that can stale manual evidence', () => 
     expect(workflow).toContain(`- '${workflowPath}'`);
   }
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/components');
+  expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('public/v');
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/islands/OntologyReviewConsole.tsx');
+  expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/islands/ballot');
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/islands/canvas');
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/layouts');
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/lib');
   expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/pages');
+  expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/pages/b.astro');
+  expect(MANUAL_ACCESSIBILITY_TARGET_PATHS).toContain('src/pages/v.astro');
 });
 
 test('CLI accepts an evidence-only commit and rejects committed or working-tree surface changes', () => {

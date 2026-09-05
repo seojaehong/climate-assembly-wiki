@@ -25,20 +25,20 @@ function result(topicId: string, itemId: string): IssueItemsResult {
 }
 
 describe('loadScopedRecords', () => {
-  it('회차의 모든 주제 기록을 같은 참여 코드로 조회해 합친다', async () => {
-    const loader = vi.fn(async (_code: string, topicId: string): Promise<PlatformResult<IssueItemsResult>> => ({
+  it('회차의 모든 주제 기록을 같은 staff session id로 조회해 합친다', async () => {
+    const loader = vi.fn(async (_sessionId: string, topicId: string): Promise<PlatformResult<IssueItemsResult>> => ({
       data: result(topicId, `item-${topicId}`),
       notice: null,
     }));
 
-    const loaded = await loadScopedRecords('team-code', 'session', [
+    const loaded = await loadScopedRecords('session-1', 'session', [
       { id: 'topic-1', label: '에너지 전환' },
       { id: 'topic-2', label: '수송 부문' },
     ], { session: { id: 'session-1', label: '제1차 회의' } }, loader);
 
     expect(loader.mock.calls).toEqual([
-      ['team-code', 'topic-1'],
-      ['team-code', 'topic-2'],
+      ['session-1', 'topic-1'],
+      ['session-1', 'topic-2'],
     ]);
     expect(loaded.notice).toBeNull();
     expect(loaded.data?.stats).toMatchObject({ topicCount: 2, submissionCount: 2, itemCount: 2 });
@@ -47,18 +47,18 @@ describe('loadScopedRecords', () => {
   });
 
   it('일부 주제 실패를 불완전한 회차 기록으로 표시하지 않는다', async () => {
-    const loader = vi.fn(async (_code: string, topicId: string): Promise<PlatformResult<IssueItemsResult>> =>
+    const loader = vi.fn(async (_sessionId: string, topicId: string): Promise<PlatformResult<IssueItemsResult>> =>
       topicId === 'topic-2'
-        ? { data: null, notice: '참여 코드 범위를 확인하세요.' }
+        ? { data: null, notice: '운영자 권한 범위를 확인하세요.' }
         : { data: result(topicId, `item-${topicId}`), notice: null });
 
-    const loaded = await loadScopedRecords('team-code', 'session', [
+    const loaded = await loadScopedRecords('session-1', 'session', [
       { id: 'topic-1', label: '에너지 전환' },
       { id: 'topic-2', label: '수송 부문' },
     ], {}, loader);
 
     expect(loaded.data).toBeNull();
-    expect(loaded.notice).toBe('수송 부문: 참여 코드 범위를 확인하세요.');
+    expect(loaded.notice).toBe('수송 부문: 운영자 권한 범위를 확인하세요.');
   });
 });
 
@@ -182,10 +182,11 @@ describe('downloadRecordCsv', () => {
 });
 
 describe('RecordConsole', () => {
-  it('주제와 회차 스코프에 맞는 비영구 참여 코드 입력을 제공한다', () => {
+  it('주제와 회차 스코프를 로그인된 회차에 연결해 자동 동기화한다', () => {
     const topicHtml = renderToStaticMarkup(createElement(RecordConsole, {
       scope: 'topic',
       topics: [{ id: 'topic-1', label: '에너지 전환' }],
+      sessionId: 'session-1',
     }));
     const sessionHtml = renderToStaticMarkup(createElement(RecordConsole, {
       scope: 'session',
@@ -193,18 +194,20 @@ describe('RecordConsole', () => {
         { id: 'topic-1', label: '에너지 전환' },
         { id: 'topic-2', label: '수송 부문' },
       ],
+      sessionId: 'session-1',
     }));
 
     expect(topicHtml).toContain('이 주제의 조별 기록');
-    expect(topicHtml).toContain('aria-label="주제 기록 불러오기"');
-    expect(topicHtml).toContain('type="password"');
-    expect(topicHtml).toContain('autoComplete="off"');
-    expect(topicHtml).toContain('브라우저 저장소에 보관하지 않습니다.');
+    expect(topicHtml).toContain('aria-label="주제 기록 동기화"');
+    expect(topicHtml).toContain('운영자 권한');
+    expect(topicHtml).toContain('기록 새로고침');
+    expect(topicHtml).not.toContain('type="password"');
+    expect(topicHtml).not.toContain('join-code');
     expect(topicHtml).toContain('border:2px solid #6B7D88');
     expect(topicHtml).not.toMatch(/border:(?:1|1\.5)px/);
     expect(sessionHtml).toContain('이 회차의 조별 기록');
     expect(sessionHtml).toContain('2개 주제');
-    expect(sessionHtml).toContain('aria-label="회차 기록 불러오기"');
+    expect(sessionHtml).toContain('aria-label="회차 기록 동기화"');
   });
 });
 

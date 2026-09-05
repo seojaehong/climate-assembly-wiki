@@ -5,9 +5,21 @@ import {
   attendanceSummary,
   classifyAttendanceError,
   isEligibleDuringRound,
+  mergeAttendanceRosterSnapshot,
   nextAttendanceValue,
   type AttendanceValue,
 } from './attendance-logic';
+import { createResourceRequestCoordinator } from './resource-request-coordinator';
+
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
 
 const unconfirmed: AttendanceValue = {
   base_status: 'unconfirmed',
@@ -206,6 +218,41 @@ describe('applyAttendanceAction — 낙관적 반영 (서버 attendance_set과 �
     applyAttendanceAction(original, 'present', AT);
     expect(original.base_status).toBe('unconfirmed');
     expect(original.checked_in_at).toBeNull();
+  });
+
+  it('preserves optimistic pending rows when a roster snapshot was fetched before the mutation', () => {
+    const optimistic = applyAttendanceAction(base, 'present', AT);
+    const merged = mergeAttendanceRosterSnapshot(
+      [optimistic],
+      [base],
+      new Set([base.assignment_id]),
+    );
+
+    expect(merged[0]).toBe(optimistic);
+    expect(merged[0]?.base_status).toBe('present');
+  });
+
+  it('does not let a slow pre-mutation poll roll an optimistic success back', async () => {
+    const coordinator = createResourceRequestCoordinator();
+    const slowRoster = deferred<typeof base[]>();
+    let rows = [base];
+    const ticket = coordinator.begin('attendance:team-1', 'background');
+    expect(ticket).not.toBeNull();
+    const polling = (async () => {
+      const next = await slowRoster.promise;
+      if (ticket && coordinator.isCurrent(ticket)) {
+        rows = mergeAttendanceRosterSnapshot(rows, next, new Set());
+      }
+      if (ticket) coordinator.finish(ticket);
+    })();
+
+    rows = [applyAttendanceAction(base, 'present', AT)];
+    coordinator.invalidate();
+    slowRoster.resolve([base]);
+    await polling;
+
+    expect(rows[0]?.base_status).toBe('present');
+    expect(rows[0]?.checked_in_at).toBe(AT);
   });
 });
 

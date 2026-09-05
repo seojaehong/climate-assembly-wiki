@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "0912-hq-v3-rehearsal-v1",
+  "classification": "synthetic-no-pii-no-secrets",
+  "evidence": {
+    "evidenceClass": "ui-fixture-only",
+    "databaseAuthorizationOrLifecycleEvidence": false,
+    "canonicalDatabaseVerifier": "scripts/verify-0912-postgres.sh",
+    "productionDatabaseMutationRequiresExplicitApproval": true,
+    "screenshotsAllowed": false
+  },
+  "supabaseOrigin": "https://pleyuknjnprsckssxvrh.supabase.co",
+  "session": {
+    "id": "09120000-0000-4000-8000-000000000301",
+    "slug": "0912-deliberation",
+    "title": "9월 본부 통합 리허설 합성 세션",
+    "organizationName": "합성 운영기관",
+    "operatorActorLabel": "합성 운영자"
+  },
+  "storage": {
+    "capabilityStorageKey": "climate_vote_hq_attendance_token",
+    "actorStorageKey": "climate_vote_hq_gate_actor",
+    "capabilitySource": "runtime-generated"
+  },
+  "boardRows": [
+    {
+      "topic_id": "09120000-0000-4000-8000-000000000311",
+      "topic_ordinal": 1,
+      "topic_prompt": "합성 꼭지 1",
+      "topic_status": "open",
+      "team_id": "09120000-0000-4000-8000-000000000321",
+      "team_name": "1분과 1조",
+      "team_subgroup": "1분과",
+      "table_no": "T-01",
+      "submission_id": "09120000-0000-4000-8000-000000000331",
+      "submission_status": "draft",
+      "submission_version": 3,
+      "submission_updated_at": "2026-09-12T01:00:00.000Z",
+      "submission_finalized_at": null,
+      "item_ordinal": 1,
+      "item_id": "09120000-0000-4000-8000-000000000341",
+      "item_kind": "core",
+      "item_content": "합성 카드 하나 — 대중교통 배차를 생활권 기준으로 조정한다.",
+      "item_rationale": "합성 근거 — 이동 접근성을 고르게 확인한다."
+    },
+    {
+      "topic_id": "09120000-0000-4000-8000-000000000311",
+      "topic_ordinal": 1,
+      "topic_prompt": "합성 꼭지 1",
+      "topic_status": "open",
+      "team_id": "09120000-0000-4000-8000-000000000322",
+      "team_name": "1분과 2조",
+      "team_subgroup": "1분과",
+      "table_no": "T-02",
+      "submission_id": "09120000-0000-4000-8000-000000000332",
+      "submission_status": "draft",
+      "submission_version": 5,
+      "submission_updated_at": "2026-09-12T01:01:00.000Z",
+      "submission_finalized_at": null,
+      "item_ordinal": 1,
+      "item_id": "09120000-0000-4000-8000-000000000343",
+      "item_kind": "core",
+      "item_content": "합성 카드 둘 — 공공건물의 에너지 사용을 공개한다.",
+      "item_rationale": "합성 근거 — 실행 결과를 시민이 다시 확인할 수 있어야 한다."
+    }
+  ],
+  "categoryAssignments": [
+    {
+      "topic_id": "09120000-0000-4000-8000-000000000311",
+      "team_id": "09120000-0000-4000-8000-000000000321",
+      "submission_id": "09120000-0000-4000-8000-000000000331",
+      "item_ordinal": 1,
+      "event_id": 41,
+      "source_item_id": "09120000-0000-4000-8000-000000000341",
+      "category": null,
+      "actor_label": "합성 선행 운영자",
+      "assigned_at": "2026-09-12T01:02:00.000Z"
+    }
+  ],
+  "kindAssignments": [
+    {
+      "topic_id": "09120000-0000-4000-8000-000000000311",
+      "team_id": "09120000-0000-4000-8000-000000000321",
+      "submission_id": "09120000-0000-4000-8000-000000000331",
+      "item_ordinal": 1,
+      "event_id": 71,
+      "source_item_id": "09120000-0000-4000-8000-000000000341",
+      "kind": null,
+      "actor_label": "합성 선행 운영자",
+      "assigned_at": "2026-09-12T01:02:30.000Z"
+    }
+  ],
+  "workshopStatus": {
+    "session_id": "09120000-0000-4000-8000-000000000301",
+    "session_slug": "0912-deliberation",
+    "session_title": "9월 본부 통합 리허설 합성 세션",
+    "org_name": "합성 운영기관",
+    "topic_total": 1,
+    "topic_open": 1,
+    "topic_closed": 0,
+    "next_topic_id": null,
+    "next_topic_ordinal": null,
+    "next_topic_prompt": null,
+    "teams_total": 2,
+    "active_devices": 0,
+    "teams_online": 0,
+    "submissions_draft": 2,
+    "submissions_final": 0,
+    "last_activity_at": "2026-09-12T01:02:30.000Z",
+    "topics": [
+      {
+        "id": "09120000-0000-4000-8000-000000000311",
+        "ordinal": 1,
+        "prompt": "합성 꼭지 1",
+        "status": "open",
+        "deadline_at": null
+      }
+    ]
+  },
+  "scenario": {
+    "primarySubmissionId": "09120000-0000-4000-8000-000000000331",
+    "primaryItemOrdinal": 1,
+    "categoryRetryValue": "common",
+    "categoryConflictValue": "difference",
+    "categoryConcurrentValue": "question",
+    "categoryAppliedEventId": 42,
+    "categoryConcurrentEventId": 43,
+    "kindRetryValue": "Claim",
+    "kindAppliedEventId": 72,
+    "kindConcurrentEventId": 73,
+    "concurrentSourceItemId": "09120000-0000-4000-8000-000000000342",
+    "concurrentSubmissionUpdatedAt": "2026-09-12T01:05:00.000Z",
+    "syntheticTransportErrorCode": "SYNTHETIC_TRANSPORT_FAILURE"
+  },
+  "rpcContracts": {
+    "hq_submission_category_assign_v3": {
+      "effect": "fixture-mutation",
+      "requestFields": [
+        "p_token",
+        "p_session_slug",
+        "p_submission_id",
+        "p_item_ordinal",
+        "p_category",
+        "p_expected_submission_updated_at",
+        "p_expected_event_id",
+        "p_idempotency_key"
+      ],
+      "responseStatuses": ["applied", "conflict"],
+      "stableIdempotencyForExactRetry": true,
+      "compareAndSetFields": ["p_expected_submission_updated_at", "p_expected_event_id"]
+    },
+    "hq_submission_kind_assign_v3": {
+      "effect": "fixture-mutation",
+      "requestFields": [
+        "p_token",
+        "p_session_slug",
+        "p_submission_id",
+        "p_item_ordinal",
+        "p_kind",
+        "p_expected_submission_updated_at",
+        "p_expected_event_id",
+        "p_idempotency_key"
+      ],
+      "responseStatuses": ["applied", "conflict"],
+      "stableIdempotencyForExactRetry": true,
+      "compareAndSetFields": ["p_expected_submission_updated_at", "p_expected_event_id"]
+    },
+    "hq_clear_submissions_v3": {
+      "effect": "fixture-mutation",
+      "requestFields": [
+        "p_token",
+        "p_session_slug",
+        "p_confirm",
+        "p_expected_submissions",
+        "p_idempotency_key"
+      ],
+      "responseStatuses": ["applied", "conflict"],
+      "exactSetField": "p_expected_submissions"
+    },
+    "workshop_hq_logout_v2": {
+      "effect": "fixture-mutation",
+      "requestFields": ["p_token"],
+      "successResponse": "null",
+      "failureKeepsLocalCapability": true
+    }
+  }
+}

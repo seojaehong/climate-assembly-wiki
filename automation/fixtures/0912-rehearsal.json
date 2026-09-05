@@ -1,0 +1,369 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "0912-field-rehearsal-v1",
+  "classification": "synthetic-no-pii-no-secrets",
+  "rolloutContract": {
+    "productionMutationRequiresExplicitApproval": true,
+    "approvalGates": [
+      "p1-tenancy",
+      "secure-session-team-seed",
+      "s20-draft-topics",
+      "p1a-additive",
+      "p2-analysis-org-selection",
+      "p2a-token-only-cutover",
+      "p3-design-provisioning",
+      "p4-audit-log"
+    ],
+    "orderedSteps": [
+      "session-roster-review",
+      "p1-tenancy",
+      "secure-session-team-seed",
+      "s20-draft-topics",
+      "p1a-additive-and-verify",
+      "hq-rotate-join-codes",
+      "p2-analysis",
+      "p1b-p1c-org-selection",
+      "maintenance-deploy-token-staff-client",
+      "p2a-atomic-token-grant-legacy-revoke",
+      "p2a-positive-legacy-negative-verify",
+      "p3-design-provisioning",
+      "p4-audit-log",
+      "post-p4-legacy-negative-and-final-status"
+    ],
+    "p1aTeamTokenRpcPubliclyExecutable": false,
+    "p2aAtomicTokenGrantAndLegacyRevoke": true
+  },
+  "authorization": {
+    "joinCode": "runtime-injected",
+    "teamToken": "runtime-generated",
+    "hqToken": "runtime-injected",
+    "capabilityValuesStoredInFixture": false,
+    "maxActiveDevicesPerTeam": 2,
+    "tokenExpiresAt": "2026-09-13T13:00:00.000Z"
+  },
+  "fieldRehearsal": {
+    "supabaseOrigin": "https://pleyuknjnprsckssxvrh.supabase.co",
+    "rpcBehaviors": {
+      "mod_exchange_join_code": {
+        "effect": "mutation",
+        "response": "join-exchange",
+        "requiresTeamToken": false,
+        "requiresIdempotencyKey": false
+      },
+      "mod_session_get": {
+        "effect": "read",
+        "response": "session-resume",
+        "requiresTeamToken": true,
+        "requiresIdempotencyKey": false
+      },
+      "topic_list_v2": {
+        "effect": "read",
+        "response": "topic-list",
+        "requiresTeamToken": true,
+        "requiresIdempotencyKey": false
+      },
+      "submission_get_v2": {
+        "effect": "read",
+        "response": "submission-get",
+        "requiresTeamToken": true,
+        "requiresIdempotencyKey": false
+      },
+      "submission_save_v3": {
+        "effect": "mutation",
+        "response": "submission-save",
+        "requiresTeamToken": true,
+        "requiresIdempotencyKey": true
+      },
+      "mod_rounds_v2": {
+        "effect": "read",
+        "response": "empty-list",
+        "requiresTeamToken": true,
+        "requiresIdempotencyKey": false
+      },
+      "mod_session_teams_v2": {
+        "effect": "read",
+        "response": "empty-list",
+        "requiresTeamToken": true,
+        "requiresIdempotencyKey": false
+      },
+      "mod_vote_counts_v2": {
+        "effect": "read",
+        "response": "empty-list",
+        "requiresTeamToken": true,
+        "requiresIdempotencyKey": false
+      },
+      "mod_votes_v2": {
+        "effect": "read",
+        "response": "empty-list",
+        "requiresTeamToken": true,
+        "requiresIdempotencyKey": false
+      },
+      "ballot_list_v2": {
+        "effect": "read",
+        "response": "empty-list",
+        "requiresTeamToken": true,
+        "requiresIdempotencyKey": false
+      },
+      "ballot_results_v2": {
+        "effect": "read",
+        "response": "ballot-results",
+        "requiresTeamToken": true,
+        "requiresIdempotencyKey": false,
+        "responseBody": {
+          "id": "ballot-rehearsal",
+          "title": "합성 투표",
+          "status": "draft",
+          "responses": 0,
+          "items": []
+        }
+      },
+      "mod_create_round_v3": {
+        "effect": "mutation",
+        "response": "status-object",
+        "requiresTeamToken": true,
+        "requiresIdempotencyKey": true,
+        "status": "active"
+      },
+      "mod_set_round_status_v3": {
+        "effect": "mutation",
+        "response": "status-object",
+        "requiresTeamToken": true,
+        "requiresIdempotencyKey": true,
+        "requiresExpectedStatus": true,
+        "statusFromArgument": "p_status",
+        "allowedTransitions": [
+          "active->closed",
+          "closed->active"
+        ],
+        "closedToActiveWindowSeconds": 60,
+        "serverTimeAuthoritative": true
+      },
+      "mod_proxy_vote_v3": {
+        "effect": "mutation",
+        "response": "scalar",
+        "requiresTeamToken": true,
+        "requiresIdempotencyKey": true,
+        "responseBody": 1
+      },
+      "mod_log_timer_v2": {
+        "effect": "mutation",
+        "response": "scalar",
+        "requiresTeamToken": true,
+        "requiresIdempotencyKey": false,
+        "responseBody": 1
+      },
+      "ballot_create_v3": {
+        "effect": "mutation",
+        "response": "status-object",
+        "requiresTeamToken": true,
+        "requiresIdempotencyKey": true,
+        "status": "draft"
+      },
+      "ballot_set_status_v2": {
+        "effect": "mutation",
+        "response": "status-object",
+        "requiresTeamToken": true,
+        "requiresIdempotencyKey": false,
+        "statusFromArgument": "p_status"
+      }
+    },
+    "legacyRejectedRpcNames": [
+      "mod_join",
+      "topic_list",
+      "submission_save",
+      "submission_get"
+    ],
+    "flow": {
+      "initialVisibleTopicOrdinal": 1,
+      "nextVisibleTopicOrdinal": 2,
+      "initialDeadlineOffsetMinutes": 40,
+      "warningDeadlineOffsetMinutes": 2,
+      "pastedLines": [
+        "연결이 끊겨도 남아야 하는 첫째 줄 {{timestamp}}",
+        "둘째 줄 — 버스 노선을 마을 단위로 다시 짠다",
+        "셋째 줄 — 옥상 태양광을 공공건물부터 의무화한다",
+        "넷째 줄 — 폐열을 인근 온실에 돌려쓴다"
+      ],
+      "offlineLine": "다섯째 줄 — 오프라인 상태에서 더 친 글",
+      "deadlineLine": "여섯째 줄 — 마감 직전에 친 글, 아직 저장 안 함"
+    }
+  },
+  "rpcCoverage": {
+    "evidenceClass": "ui-fixture-only",
+    "securityOrLifecycleEvidence": false,
+    "canonicalSecurityVerifier": "scripts/verify-0912-postgres.sh",
+    "declaredInventorySource": "expectedRpcContracts",
+    "declaredInventoryMeaning": "RPC name inventory only; declaration is not emulator implementation or execution evidence",
+    "emulatorImplementedRpcNames": [
+      "mod_exchange_join_code",
+      "mod_session_get",
+      "topic_list_v2",
+      "submission_get_v2",
+      "submission_save_v3",
+      "submission_finalize_v2",
+      "submission_reopen_by_team_v2",
+      "mod_create_round_v3",
+      "mod_set_round_status_v3",
+      "mod_proxy_vote_v3",
+      "mod_log_timer_v2",
+      "ballot_create_v3",
+      "ballot_set_status_v2",
+      "ballot_list_v2",
+      "ballot_results_v2",
+      "workshop_hq_status",
+      "workshop_hq_open_next_topic",
+      "workshop_hq_set_topic_status",
+      "workshop_hq_devices",
+      "workshop_hq_revoke_device",
+      "workshop_hq_set_deadline",
+      "workshop_hq_rotate_join_codes"
+    ],
+    "emulatorImplementedMeaning": "Exact UI-fixture switch subset for browser request/response and visible recovery only; not authorization, lifecycle, concurrency, or database-security evidence",
+    "browserFixtureAllowlistSource": "fieldRehearsal.rpcBehaviors",
+    "browserFixtureAllowlistMeaning": "Requests the browser fixture may answer; allowance alone is not execution evidence",
+    "executionEvidenceMeaning": "Only RPC names observed in a concrete run or focused test are exercised"
+  },
+  "session": {
+    "id": "09120000-0000-4000-8000-000000000001",
+    "slug": "0912-deliberation",
+    "title": "9월 현장 리허설 합성 세션",
+    "startsAt": "2026-09-12T00:00:00.000Z",
+    "endsAt": "2026-09-13T09:00:00.000Z",
+    "graceEndsAt": "2026-09-13T13:00:00.000Z"
+  },
+  "team": {
+    "id": "09120000-0000-4000-8000-000000000010",
+    "name": "합성 1조",
+    "subgroup": "합성 분과",
+    "capacity": 12,
+    "tableNo": "T-01"
+  },
+  "devices": [
+    {
+      "id": "09120000-0000-4000-8000-000000000101",
+      "label": "합성 기기 A"
+    },
+    {
+      "id": "09120000-0000-4000-8000-000000000102",
+      "label": "합성 기기 B"
+    },
+    {
+      "id": "09120000-0000-4000-8000-000000000103",
+      "label": "합성 기기 C"
+    }
+  ],
+  "topics": [
+    {
+      "id": "09120000-0000-4000-8000-000000000201",
+      "ordinal": 1,
+      "block": "am",
+      "prompt": "합성 꼭지 1",
+      "guidance": "리허설 입력 보존 확인",
+      "status": "open",
+      "deadlineAt": "2026-09-12T03:00:00.000Z"
+    },
+    {
+      "id": "09120000-0000-4000-8000-000000000202",
+      "ordinal": 2,
+      "block": "am",
+      "prompt": "합성 꼭지 2",
+      "guidance": "순차 개방 확인",
+      "status": "draft",
+      "deadlineAt": null
+    },
+    {
+      "id": "09120000-0000-4000-8000-000000000203",
+      "ordinal": 3,
+      "block": "am",
+      "prompt": "합성 꼭지 3",
+      "guidance": "순차 개방 확인",
+      "status": "draft",
+      "deadlineAt": null
+    },
+    {
+      "id": "09120000-0000-4000-8000-000000000204",
+      "ordinal": 4,
+      "block": "pm",
+      "prompt": "합성 꼭지 4",
+      "guidance": "순차 개방 확인",
+      "status": "draft",
+      "deadlineAt": null
+    },
+    {
+      "id": "09120000-0000-4000-8000-000000000205",
+      "ordinal": 5,
+      "block": "pm",
+      "prompt": "합성 꼭지 5",
+      "guidance": "순차 개방 확인",
+      "status": "draft",
+      "deadlineAt": null
+    },
+    {
+      "id": "09120000-0000-4000-8000-000000000206",
+      "ordinal": 6,
+      "block": "pm",
+      "prompt": "합성 꼭지 6",
+      "guidance": "순차 개방 확인",
+      "status": "draft",
+      "deadlineAt": null
+    }
+  ],
+  "expectedRpcContracts": [
+    "mod_exchange_join_code",
+    "mod_session_get",
+    "workshop_team_logout_v2",
+    "topic_list_v2",
+    "submission_get_v2",
+    "submission_save_v3",
+    "submission_finalize_v2",
+    "submission_reopen_by_team_v2",
+    "mod_create_round_v3",
+    "mod_set_round_status_v3",
+    "mod_proxy_vote_v3",
+    "mod_log_timer_v2",
+    "mod_rounds_v2",
+    "mod_session_teams_v2",
+    "mod_vote_counts_v2",
+    "mod_votes_v2",
+    "public_round_get_v2",
+    "public_round_votes_v2",
+    "public_round_cast_v2",
+    "platform_canvas_round_create_v2",
+    "platform_canvas_round_current_v2",
+    "platform_canvas_round_set_status_v2",
+    "ballot_create_v3",
+    "ballot_set_status_v2",
+    "ballot_list_v2",
+    "ballot_results_v2",
+    "attendance_roster_v2",
+    "attendance_hq_summary_v2",
+    "attendance_set_v2",
+    "attendance_bulk_present_v2",
+    "attendance_finalize_absent_v2",
+    "attendance_member_save_v2",
+    "attendance_hq_audit_v2",
+    "attendance_hq_set_team_pin_v2",
+    "attendance_hq_set_table_no_v2",
+    "hq_submissions_v3",
+    "submission_reopen_v2",
+    "hq_submission_history_v2",
+    "hq_submission_category_assign_v3",
+    "hq_submission_categories_v3",
+    "hq_submission_kind_assign_v3",
+    "hq_submission_kinds_v3",
+    "hq_topic_deadlines_v2",
+    "hq_clear_submissions_v3",
+    "hq_teams_v2",
+    "hq_rounds_v2",
+    "hq_vote_counts_v2",
+    "hq_votes_v2",
+    "workshop_hq_logout_v2",
+    "workshop_hq_status",
+    "workshop_hq_open_next_topic",
+    "workshop_hq_set_topic_status",
+    "workshop_hq_devices",
+    "workshop_hq_revoke_device",
+    "workshop_hq_set_deadline",
+    "workshop_hq_rotate_join_codes"
+  ]
+}

@@ -283,20 +283,22 @@ export interface ReadinessResult {
   checks: ReadinessCheck[];
 }
 
-/** Read-only session readiness through the existing staff-accessible RPC. */
+/** Read-only readiness scoped to the authenticated staff member's selected organization. */
 export async function readinessCheck(sessionId: string): Promise<PlatformResult<ReadinessResult>> {
   return guard(async (sb) => {
-    const { data, error } = await sb.schema(SCHEMA).rpc('readiness_check', { p_session: sessionId });
+    const { data, error } = await sb.schema(SCHEMA).rpc('platform_readiness_check_v2', {
+      p_session_id: sessionId,
+    });
     if (error) throw error;
     return data as ReadinessResult;
   });
 }
 
-// ── P2 검수·공개 RPC 래퍼 (전부 p_code = join_code capability) ──────────
-// ★ org_id 를 받는 래퍼는 하나도 없다(불변식). ★ 병합 시 재확인 미결:
-//   P2 헤더의 DIVERGENCE — 검수/공개가 join_code(운영자) 서명이다. Auth 셸이라도
-//   실제 issue CRUD·공개에는 조 join_code 가 필요하다. 이 code seam 은 Phase 2 에서
-//   HQ/staff 토큰 RPC 로 전환 예정(현재는 스코프 뷰에 code 입력 자리만 둔다).
+// ── Staff 검수·공개 RPC 래퍼 ──────────────────────────────────────────
+// Every call is anchored to a workshop session selected from the authenticated
+// organization tree. The server validates both staff membership and that the
+// requested topic/result scope belongs to that session. Reusable join/HQ codes
+// never cross this production adapter boundary.
 
 export interface IssueRow {
   id: string;
@@ -311,6 +313,8 @@ export interface IssueRow {
   archived_at: string | null;
   linked_item_count: number;
   consensus_denominator: number;
+  /** Server-computed CAS over the issue fields and its exact ordered links. */
+  snapshot_hash?: string;
 }
 
 export interface IssueListResult {
@@ -320,10 +324,13 @@ export interface IssueListResult {
   reviewed_count: number;
 }
 
-/** 주제의 issue 목록 + 미분류·검수 카운트(P2 issue_list). */
-export async function issueList(code: string, topicId: string): Promise<PlatformResult<IssueListResult>> {
+/** 주제의 issue 목록 + 미분류·검수 카운트. */
+export async function issueList(sessionId: string, topicId: string): Promise<PlatformResult<IssueListResult>> {
   return guard(async (sb) => {
-    const { data, error } = await sb.schema(SCHEMA).rpc('issue_list', { p_code: code, p_topic_id: topicId });
+    const { data, error } = await sb.schema(SCHEMA).rpc('platform_issue_list_v2', {
+      p_session_id: sessionId,
+      p_topic_id: topicId,
+    });
     if (error) throw error;
     return data as IssueListResult;
   });
@@ -357,112 +364,217 @@ export interface IssueItemsResult {
   items: IssueItemRow[];
 }
 
-/** 주제의 전 조 원문 + 현재 링크(P2 issue_items). 검수 콘솔의 미분류함·재분류 데이터 소스. */
-export async function issueItems(code: string, topicId: string): Promise<PlatformResult<IssueItemsResult>> {
+/** 주제의 전 조 원문 + 현재 링크. 검수 콘솔의 미분류함·재분류 데이터 소스. */
+export async function issueItems(sessionId: string, topicId: string): Promise<PlatformResult<IssueItemsResult>> {
   return guard(async (sb) => {
-    const { data, error } = await sb.schema(SCHEMA).rpc('issue_items', { p_code: code, p_topic_id: topicId });
+    const { data, error } = await sb.schema(SCHEMA).rpc('platform_issue_items_v2', {
+      p_session_id: sessionId,
+      p_topic_id: topicId,
+    });
     if (error) throw error;
     return data as IssueItemsResult;
   });
 }
 
-/** Session ballot list through the existing join-code scoped RPC. */
-export async function platformBallotList(code: string): Promise<PlatformResult<BallotListRow[]>> {
+/** Authenticated staff ballot list, scoped by membership and the selected session on the server. */
+export async function platformBallotList(sessionId: string): Promise<PlatformResult<BallotListRow[]>> {
   return guard(async (sb) => {
-    const { data, error } = await sb.schema(SCHEMA).rpc('ballot_list', { p_code: code });
+    const { data, error } = await sb.schema(SCHEMA).rpc('platform_ballot_list_v2', {
+      p_session_id: sessionId,
+    });
     if (error) throw error;
     return (data ?? []) as BallotListRow[];
   });
 }
 
-/** Aggregate ballot result available to operators regardless of ballot status. */
+/** Authenticated staff aggregate, including non-published ballots in the selected session. */
 export async function platformBallotResults(
   token: string,
-  code: string,
+  sessionId: string,
 ): Promise<PlatformResult<BallotResults | null>> {
   return guard(async (sb) => {
-    const { data, error } = await sb.schema(SCHEMA).rpc('ballot_results', {
-      p_token: token,
-      p_code: code,
+    const { data, error } = await sb.schema(SCHEMA).rpc('platform_ballot_results_v2', {
+      p_ballot_token: token,
+      p_session_id: sessionId,
     });
     if (error) throw error;
     return (data as BallotResults | null) ?? null;
   });
 }
 
-/** issue 생성/수정(P2 issue_upsert). id 있으면 수정, 없으면 생성. */
+export interface IssueUpsertInput {
+  /** Client-generated stable UUID. It is reused for an ambiguous create retry. */
+  id: string;
+  label: string;
+  stance?: string;
+  frequency?: string;
+  summary?: string;
+}
+
+export type IssueUpsertResult =
+  | {
+      status: 'applied';
+      id: string;
+      created: boolean;
+      snapshot_hash: string;
+    }
+  | {
+      status: 'conflict';
+      id: string;
+      current_snapshot_hash: string;
+    };
+
+/**
+ * Create or edit an issue with compare-and-swap and idempotency protection.
+ * New issues use a client UUID and a null expected hash; edits require the hash
+ * captured when the operator selected the issue.
+ */
 export async function issueUpsert(
-  code: string,
+  sessionId: string,
   topicId: string,
-  issue: { id?: string; label: string; stance?: string; frequency?: string; summary?: string },
-): Promise<PlatformResult<{ id: string; created: boolean }>> {
+  issue: IssueUpsertInput,
+  expectedSnapshotHash: string | null,
+  idempotencyKey: string,
+): Promise<PlatformResult<IssueUpsertResult>> {
   return guard(async (sb) => {
-    const { data, error } = await sb.schema(SCHEMA).rpc('issue_upsert', {
-      p_code: code,
+    const { data, error } = await sb.schema(SCHEMA).rpc('platform_issue_upsert_v3', {
+      p_session_id: sessionId,
       p_topic_id: topicId,
       p_issue: issue,
+      p_expected_snapshot_hash: expectedSnapshotHash,
+      p_idempotency_key: idempotencyKey,
     });
     if (error) throw error;
-    return data as { id: string; created: boolean };
+    return data as IssueUpsertResult;
   });
 }
 
-/** issue 의 원문 연결 교체(P2 issue_link_set). cluster_id 는 nullable. */
-export async function issueLinkSet(
-  code: string,
-  issueId: string,
-  itemIds: string[],
-  clusterId: string | null,
-): Promise<PlatformResult<{ issue_id: string; linked: number }>> {
+export interface IssueReclassifyExpectedLinkInput {
+  itemId: string;
+  clusterId: string | null;
+  linkedBy: string;
+}
+
+export interface IssueReclassifyCallInput {
+  issueId: string;
+  itemIds: string[];
+  clusterId: string | null;
+  expectedLinks: IssueReclassifyExpectedLinkInput[];
+  role: 'target' | 'source';
+}
+
+export interface IssueReclassifyResult {
+  status: 'applied' | 'conflict';
+  affected_issues?: number;
+  linked_count?: number;
+  issue_ids?: string[];
+  conflict_issue_id?: string;
+}
+
+/**
+ * Applies a complete reclassification plan in one database transaction.
+ * expectedLinks is the browser's read snapshot and acts as the server CAS.
+ */
+export async function issueReclassify(
+  sessionId: string,
+  topicId: string,
+  calls: IssueReclassifyCallInput[],
+  idempotencyKey: string,
+): Promise<PlatformResult<IssueReclassifyResult>> {
   return guard(async (sb) => {
-    const { data, error } = await sb.schema(SCHEMA).rpc('issue_link_set', {
-      p_code: code,
-      p_issue_id: issueId,
-      p_item_ids: itemIds,
-      p_cluster_id: clusterId,
+    const { data, error } = await sb.schema(SCHEMA).rpc('platform_issue_reclassify_v2', {
+      p_session_id: sessionId,
+      p_topic_id: topicId,
+      p_plan: {
+        calls: calls.map((call) => ({
+          issue_id: call.issueId,
+          item_ids: call.itemIds,
+          cluster_id: call.clusterId,
+          expected_links: call.expectedLinks.map((link) => ({
+            item_id: link.itemId,
+            cluster_id: link.clusterId,
+            linked_by: link.linkedBy,
+          })),
+          role: call.role,
+        })),
+      },
+      p_idempotency_key: idempotencyKey,
     });
     if (error) throw error;
-    return data as { issue_id: string; linked: number };
+    return data as IssueReclassifyResult;
   });
 }
 
-/** issue 병합(P2 issue_merge) — src → dst 링크 이전 후 src archive. */
+export interface IssueMergeResult {
+  status: 'applied' | 'conflict';
+  src?: string;
+  dst?: string;
+  moved?: number;
+  conflict_issue_id?: string;
+  current_snapshot_hash?: string;
+  dst_snapshot_hash?: string;
+}
+
+/** issue 병합 — 두 issue의 화면 스냅샷이 그대로일 때만 src → dst를 적용. */
 export async function issueMerge(
-  code: string,
+  sessionId: string,
   srcIssueId: string,
   dstIssueId: string,
-): Promise<PlatformResult<{ src: string; dst: string; moved: number }>> {
+  expectedSrcSnapshotHash: string,
+  expectedDstSnapshotHash: string,
+  idempotencyKey: string,
+): Promise<PlatformResult<IssueMergeResult>> {
   return guard(async (sb) => {
-    const { data, error } = await sb.schema(SCHEMA).rpc('issue_merge', {
-      p_code: code,
+    const { data, error } = await sb.schema(SCHEMA).rpc('platform_issue_merge_v3', {
+      p_session_id: sessionId,
       p_src_issue_id: srcIssueId,
       p_dst_issue_id: dstIssueId,
+      p_expected_src_snapshot_hash: expectedSrcSnapshotHash,
+      p_expected_dst_snapshot_hash: expectedDstSnapshotHash,
+      p_idempotency_key: idempotencyKey,
     });
     if (error) throw error;
-    return data as { src: string; dst: string; moved: number };
+    return data as IssueMergeResult;
   });
 }
 
-/** 검수 확정(P2 issue_review) — draft → reviewed. */
-export async function issueReview(code: string, issueId: string): Promise<PlatformResult<{ id: string; review_status: string }>> {
+export interface IssueReviewResult {
+  status: 'applied' | 'conflict';
+  id?: string;
+  review_status?: string;
+  current_snapshot_hash?: string;
+  snapshot_hash?: string;
+}
+
+/** 검수 확정 — 화면에서 읽은 issue+원문 링크가 그대로일 때만 draft → reviewed. */
+export async function issueReview(
+  sessionId: string,
+  issueId: string,
+  expectedSnapshotHash: string,
+  idempotencyKey: string,
+): Promise<PlatformResult<IssueReviewResult>> {
   return guard(async (sb) => {
-    const { data, error } = await sb.schema(SCHEMA).rpc('issue_review', { p_code: code, p_issue_id: issueId });
+    const { data, error } = await sb.schema(SCHEMA).rpc('platform_issue_review_v3', {
+      p_session_id: sessionId,
+      p_issue_id: issueId,
+      p_expected_snapshot_hash: expectedSnapshotHash,
+      p_idempotency_key: idempotencyKey,
+    });
     if (error) throw error;
-    return data as { id: string; review_status: string };
+    return data as IssueReviewResult;
   });
 }
 
-/** 공개(P2 result_publish) — ★ G2: HQ 토큰 서명(조 코드 아님). 스코프 내 reviewed ≥1 필수. token 반환.
- *  hqToken = attendance HQ 인증 토큰(scope='hq'). publish는 HQ/org_admin 권한(플랜 §2-3). */
+/** Staff 결과 공개. 스코프 내 reviewed ≥1 필수. */
 export async function resultPublish(
-  hqToken: string,
+  sessionId: string,
   scope: 'topic' | 'session' | 'assembly',
   scopeId: string,
   title: string,
 ): Promise<PlatformResult<{ id: string; token: string; published_at: string; reviewed_count: number }>> {
   return guard(async (sb) => {
-    const { data, error } = await sb.schema(SCHEMA).rpc('result_publish', {
-      p_token: hqToken,
+    const { data, error } = await sb.schema(SCHEMA).rpc('platform_result_publish_v2', {
+      p_session_id: sessionId,
       p_scope: scope,
       p_scope_id: scopeId,
       p_title: title,
@@ -472,10 +584,13 @@ export async function resultPublish(
   });
 }
 
-/** 공개 해제(P2 result_unpublish) — ★ G2: HQ 토큰 서명. */
-export async function resultUnpublish(hqToken: string, resultId: string): Promise<PlatformResult<{ id: string; published_at: null }>> {
+/** Staff 결과 공개 해제. */
+export async function resultUnpublish(sessionId: string, resultId: string): Promise<PlatformResult<{ id: string; published_at: null }>> {
   return guard(async (sb) => {
-    const { data, error } = await sb.schema(SCHEMA).rpc('result_unpublish', { p_token: hqToken, p_result_id: resultId });
+    const { data, error } = await sb.schema(SCHEMA).rpc('platform_result_unpublish_v2', {
+      p_session_id: sessionId,
+      p_result_id: resultId,
+    });
     if (error) throw error;
     return data as { id: string; published_at: null };
   });
@@ -489,10 +604,105 @@ export interface ResultImplementationInput {
   evidence_url: string | null;
 }
 
-export interface ResultImplementationUpsertResult {
-  result_id: string;
-  issue_id: string;
-  updated_at: string;
+export type ResultImplementationUpsertResult =
+  | {
+      status: 'applied';
+      result_id: string;
+      issue_id: string;
+      event_id: number;
+      updated_at: string;
+      snapshot_hash: string;
+    }
+  | {
+      status: 'conflict';
+      result_id: string;
+      issue_id: string;
+      current_snapshot_hash: string;
+    };
+
+export interface ResultImplementationUpsertIntentInput {
+  sessionId: string;
+  resultToken: string;
+  issueId: string;
+  implementation: ResultImplementationInput;
+  expectedSnapshotHash: string | null;
+}
+
+export interface ResultImplementationUpsertIntent {
+  fingerprint: string;
+  idempotencyKey: string;
+}
+
+/** Canonical fingerprint of the exact mutation request except its generated UUID. */
+export function resultImplementationUpsertIntentFingerprint(
+  input: ResultImplementationUpsertIntentInput,
+): string {
+  return JSON.stringify([
+    'platform_result_implementation_upsert_v3',
+    input.sessionId,
+    input.resultToken,
+    input.issueId,
+    input.implementation.status,
+    input.implementation.responsible_body,
+    input.implementation.updated_at,
+    input.implementation.summary,
+    input.implementation.evidence_url,
+    input.expectedSnapshotHash,
+  ]);
+}
+
+/** Reuses the UUID only while every user-intent and CAS field is unchanged. */
+export function ensureResultImplementationUpsertIntent(
+  current: ResultImplementationUpsertIntent | null,
+  input: ResultImplementationUpsertIntentInput,
+  createId: () => string = () => crypto.randomUUID(),
+): ResultImplementationUpsertIntent {
+  const fingerprint = resultImplementationUpsertIntentFingerprint(input);
+  if (current?.fingerprint === fingerprint) return current;
+  return { fingerprint, idempotencyKey: createId() };
+}
+
+type JsonRecord = Record<string, unknown>;
+
+function isJsonRecord(value: unknown): value is JsonRecord {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function hasExactJsonKeys(value: JsonRecord, keys: string[]): boolean {
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  return JSON.stringify(actual) === JSON.stringify(expected);
+}
+
+function parseResultImplementationUpsertResult(value: unknown): ResultImplementationUpsertResult {
+  if (!isJsonRecord(value)
+    || typeof value.result_id !== 'string'
+    || !value.result_id
+    || typeof value.issue_id !== 'string'
+    || !value.issue_id) {
+    throw new Error('이행조치 저장 응답 형식을 확인하지 못했습니다.');
+  }
+  if (value.status === 'applied'
+    && hasExactJsonKeys(value, [
+      'status', 'result_id', 'issue_id', 'event_id', 'updated_at', 'snapshot_hash',
+    ])
+    && Number.isSafeInteger(value.event_id)
+    && Number(value.event_id) > 0
+    && typeof value.updated_at === 'string'
+    && !Number.isNaN(Date.parse(value.updated_at))
+    && typeof value.snapshot_hash === 'string'
+    && value.snapshot_hash.length > 0) {
+    return value as ResultImplementationUpsertResult;
+  }
+  if (value.status === 'conflict'
+    && hasExactJsonKeys(value, [
+      'status', 'result_id', 'issue_id', 'current_snapshot_hash',
+    ])
+    && typeof value.current_snapshot_hash === 'string'
+    && value.current_snapshot_hash.length > 0) {
+    return value as ResultImplementationUpsertResult;
+  }
+  throw new Error('이행조치 저장 응답 형식을 확인하지 못했습니다.');
 }
 
 /**
@@ -500,21 +710,25 @@ export interface ResultImplementationUpsertResult {
  * RPC migration 미적용 시 화면은 명시적인 승인 대기 상태로 퇴화한다.
  */
 export async function resultImplementationUpsert(
-  hqToken: string,
+  sessionId: string,
   resultToken: string,
   issueId: string,
   implementation: ResultImplementationInput,
+  expectedSnapshotHash: string | null,
+  idempotencyKey: string,
 ): Promise<PlatformResult<ResultImplementationUpsertResult>> {
   return guard(async (sb) => {
-    const { data, error } = await sb.schema(SCHEMA).rpc('result_implementation_upsert', {
-      p_token: hqToken,
+    const { data, error } = await sb.schema(SCHEMA).rpc('platform_result_implementation_upsert_v3', {
+      p_session_id: sessionId,
       p_result_token: resultToken,
       p_issue_id: issueId,
       p_implementation: implementation,
+      p_expected_snapshot_hash: expectedSnapshotHash,
+      p_idempotency_key: idempotencyKey,
     });
     if (error) throw error;
-    return data as ResultImplementationUpsertResult;
-  }, '이행조치 저장 RPC가 아직 승인·적용되지 않았습니다. A7 migration 승인 후 사용할 수 있습니다.');
+    return parseResultImplementationUpsertResult(data);
+  }, '이행조치 v3 저장 RPC가 아직 승인·적용되지 않았습니다. P1a migration 승인 후 사용할 수 있습니다.');
 }
 
 export interface ResultPageView {

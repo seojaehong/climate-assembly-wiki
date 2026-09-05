@@ -247,32 +247,28 @@ end $test$;
 
 do $test$
 declare
-  v_updated integer;
-  v_rejected boolean := false;
+  v_update_rejected boolean := false;
+  v_insert_rejected boolean := false;
 begin
-  update climate_vote.assembly set title = 'Selected Operator Update'
-  where id = '40000000-0000-4000-8000-000000000002';
-  get diagnostics v_updated = row_count;
-  if v_updated <> 1 then
-    raise exception 'P1C rejected an operator write in the selected organization';
-  end if;
-
-  update climate_vote.assembly set title = 'Cross Organization Update'
-  where id = '40000000-0000-4000-8000-000000000001';
-  get diagnostics v_updated = row_count;
-  if v_updated <> 0 then
-    raise exception 'P1C allowed an operator update outside the selected organization';
+  begin
+    update climate_vote.assembly set title = 'Direct Operator Update Must Fail'
+    where id = '40000000-0000-4000-8000-000000000002';
+  exception when insufficient_privilege then
+    v_update_rejected := true;
+  end;
+  if not v_update_rejected then
+    raise exception 'P1C allowed an operator to bypass lifecycle RPCs with direct update';
   end if;
 
   begin
     insert into climate_vote.assembly(id, slug, title, status, org_id)
-    values ('40000000-0000-4000-8000-000000000003', 'assembly-cross-org', 'Cross Organization Insert', 'active',
-      '10000000-0000-4000-8000-000000000001');
+    values ('40000000-0000-4000-8000-000000000003', 'assembly-direct-insert', 'Direct Insert Must Fail', 'active',
+      '10000000-0000-4000-8000-000000000002');
   exception when insufficient_privilege then
-    v_rejected := true;
+    v_insert_rejected := true;
   end;
-  if not v_rejected then
-    raise exception 'P1C allowed an operator insert outside the selected organization';
+  if not v_insert_rejected then
+    raise exception 'P1C allowed an operator to bypass lifecycle RPCs with direct insert';
   end if;
 end $test$;
 
@@ -284,14 +280,17 @@ select set_config('request.headers', '{}'::jsonb::text, false);
 
 do $test$
 declare
-  v_updated integer;
+  v_update_rejected boolean := false;
   v_rejected boolean := false;
 begin
-  update climate_vote.assembly set title = 'Facilitator Update'
-  where id = '40000000-0000-4000-8000-000000000002';
-  get diagnostics v_updated = row_count;
-  if v_updated <> 0 then
-    raise exception 'P1C allowed a facilitator update';
+  begin
+    update climate_vote.assembly set title = 'Facilitator Update'
+    where id = '40000000-0000-4000-8000-000000000002';
+  exception when insufficient_privilege then
+    v_update_rejected := true;
+  end;
+  if not v_update_rejected then
+    raise exception 'P1C allowed a facilitator direct update';
   end if;
 
   begin

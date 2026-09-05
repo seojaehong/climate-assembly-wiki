@@ -1,12 +1,12 @@
 // 검수 콘솔 — AI 초안을 사람이 원문과 대조해 확정하는 검수실 (플랫폼 핵심 화면)
 //
 // gongron 최대 강점(§2-1)을 우리 데이터로 이식: 4×6 코딩 스킴 배지 · 원문 재분류 · 병합 · 검수 게이트.
-// 데이터는 P2 RPC(issue_list/issue_upsert/issue_link_set/issue_merge/issue_review)만 쓴다.
+// 데이터는 authenticated staff RPC만 쓴다.
 // 색·타이포는 /mod 콘솔 톤. 합니다체. 라이브는 스키마 적용 후 동작(guard 가 미적용을 notice 로 흡수).
 //
-// 원문 본문·링크는 P2 issue_items(code,topicId) 로 조회한다(issue_list 는 카운트만).
+// 원문 본문·링크는 선택한 sessionId와 topicId로 조회한다(issue_list 는 카운트만).
 //   issue_items 성공 → 연결 원문 카드·미분류함 본문·재분류/끌어오기 **활성**.
-//   실패(스키마 미적용·코드 무효) → items 미로드로 남아 재분류/끌어오기 **비활성**(replace-all 파괴 방지).
+//   실패(스키마 미적용·권한 오류) → items 미로드로 남아 재분류/끌어오기 **비활성**(replace-all 파괴 방지).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import HitlBadge from '../../../components/HitlBadge';
@@ -14,7 +14,7 @@ import {
   issueList,
   issueItems,
   issueUpsert,
-  issueLinkSet,
+  issueReclassify,
   issueMerge,
   issueReview,
   type IssueListResult,
@@ -35,6 +35,7 @@ import {
   validateMerge,
   itemKindLabel,
   sourceReference,
+  reclassifyPlanFingerprint,
   type IssueViewModel,
   type ReviewItem,
   type ReclassifyPlan,
@@ -51,8 +52,8 @@ const RED = '#B91C1C';
 export const REVIEW_STATUS_GREEN = '#2F6F25';
 const GREEN = REVIEW_STATUS_GREEN;
 
-type IssueListLoader = (code: string, topicId: string) => Promise<PlatformResult<IssueListResult>>;
-type IssueItemsLoader = (code: string, topicId: string) => Promise<PlatformResult<IssueItemsResult>>;
+type IssueListLoader = (sessionId: string, topicId: string) => Promise<PlatformResult<IssueListResult>>;
+type IssueItemsLoader = (sessionId: string, topicId: string) => Promise<PlatformResult<IssueItemsResult>>;
 
 export interface ReviewLoadData {
   list: IssueListResult | null;
@@ -60,14 +61,14 @@ export interface ReviewLoadData {
 }
 
 export async function loadReviewData(
-  code: string,
+  sessionId: string,
   topicId: string,
   listLoader: IssueListLoader = issueList,
   itemsLoader: IssueItemsLoader = issueItems,
 ): Promise<PlatformResult<ReviewLoadData>> {
   const [listResult, itemsResult] = await Promise.all([
-    listLoader(code, topicId),
-    itemsLoader(code, topicId),
+    listLoader(sessionId, topicId),
+    itemsLoader(sessionId, topicId),
   ]);
   const notices: string[] = [];
   if (!listResult.data) {
@@ -215,10 +216,61 @@ const field: React.CSSProperties = {
 
 interface EditForm {
   id: string | null;
+  expectedSnapshotHash: string | null;
   label: string;
   stance: string;
   frequency: string;
   summary: string;
+}
+
+export interface IssueUpsertIntentInput {
+  sessionId: string;
+  topicId: string;
+  existingIssueId: string | null;
+  expectedSnapshotHash: string | null;
+  label: string;
+  stance?: string;
+  frequency?: string;
+  summary?: string;
+}
+
+export interface IssueUpsertIntent {
+  fingerprint: string;
+  issueId: string;
+  idempotencyKey: string;
+}
+
+/** Canonical fingerprint of the exact server request except generated UUIDs. */
+export function issueUpsertIntentFingerprint(input: IssueUpsertIntentInput): string {
+  return JSON.stringify([
+    'platform_issue_upsert_v3',
+    input.sessionId,
+    input.topicId,
+    input.existingIssueId,
+    input.expectedSnapshotHash,
+    input.label,
+    input.stance ?? null,
+    input.frequency ?? null,
+    input.summary ?? null,
+  ]);
+}
+
+/**
+ * Reuses both UUIDs only for an exact ambiguous retry. A changed field or CAS
+ * snapshot starts a new intent; creates also receive a new stable issue UUID.
+ */
+export function ensureIssueUpsertIntent(
+  current: IssueUpsertIntent | null,
+  input: IssueUpsertIntentInput,
+  createId: () => string = () => crypto.randomUUID(),
+): IssueUpsertIntent {
+  const fingerprint = issueUpsertIntentFingerprint(input);
+  if (current?.fingerprint === fingerprint) return current;
+  return {
+    fingerprint,
+    issueId: input.existingIssueId ?? createId(),
+    idempotencyKey: createId(),
+  };
 }
 
 export interface ReviewFlash {
@@ -230,9 +282,17 @@ interface ReviewMutationContext {
   requestGeneration: number;
   serial: number;
   topicId: string;
+  sessionId: string;
 }
 
-const emptyForm: EditForm = { id: null, label: '', stance: '', frequency: '', summary: '' };
+const emptyForm: EditForm = {
+  id: null,
+  expectedSnapshotHash: null,
+  label: '',
+  stance: '',
+  frequency: '',
+  summary: '',
+};
 
 export function ReviewFlashNotice({ flash }: { flash: ReviewFlash }) {
   return (
@@ -249,6 +309,7 @@ export function ReviewFlashNotice({ flash }: { flash: ReviewFlash }) {
 function formFrom(vm: IssueViewModel): EditForm {
   return {
     id: vm.id,
+    expectedSnapshotHash: vm.snapshotHash || null,
     label: vm.label,
     stance: vm.stance ?? '',
     frequency: vm.frequencyClass ?? '',
@@ -261,6 +322,8 @@ function formFrom(vm: IssueViewModel): EditForm {
 export interface ReviewConsoleProps {
   /** 검수 대상 주제(discussion_topic) id — 스코프에서 온다. */
   topicId: string | null;
+  /** 검수 대상을 포함하는 회차 id — 인증된 기관 트리에서 온다. */
+  sessionId: string | null;
   /**
    * 원문(submission_item) 주입 override — 테스트/스토리용. undefined 면 issue_items RPC 로 자체 조회한다.
    * P2 issue_items 성공 시 items 가 채워져 연결 원문 본문·미분류함 본문·재분류가 **활성**된다.
@@ -269,9 +332,8 @@ export interface ReviewConsoleProps {
   items?: ReviewItem[] | null;
 }
 
-export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewConsoleProps) {
-  const [code, setCode] = useState('');
-  const [activeCode, setActiveCode] = useState<string | null>(null); // 실제로 불러온 코드
+export default function ReviewConsole({ topicId, sessionId, items: itemsOverride }: ReviewConsoleProps) {
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [list, setList] = useState<IssueListResult | null>(null);
   const [fetchedItems, setFetchedItems] = useState<ReviewItem[] | null>(null); // issue_items 조회 결과
   const [notice, setNotice] = useState<string | null>(null);
@@ -286,10 +348,16 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
   const [flash, setFlash] = useState<ReviewFlash | null>(null);
   const requestGeneration = useRef(0);
   const currentTopicId = useRef(topicId);
+  const currentSessionId = useRef(sessionId);
   const mutationSerial = useRef(0);
   const mutationInFlight = useRef(false);
+  const issueUpsertIntent = useRef<IssueUpsertIntent | null>(null);
+  const reclassifyIntent = useRef<{ fingerprint: string; id: string } | null>(null);
+  const reviewIntent = useRef<{ fingerprint: string; id: string } | null>(null);
+  const mergeIntent = useRef<{ fingerprint: string; id: string } | null>(null);
   const flashGeneration = useRef(0);
   currentTopicId.current = topicId;
+  currentSessionId.current = sessionId;
 
   // 유효 items = override(테스트 주입) 우선, 없으면 자체 조회분. null = 미로드(재분류 비활성).
   const items = itemsOverride !== undefined ? itemsOverride : fetchedItems;
@@ -297,8 +365,7 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
 
   useEffect(() => {
     requestGeneration.current += 1;
-    setCode('');
-    setActiveCode(null);
+    setActiveSessionId(null);
     setList(null);
     setFetchedItems(null);
     setNotice(null);
@@ -309,6 +376,10 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
     setFlash(null);
     mutationSerial.current += 1;
     mutationInFlight.current = false;
+    issueUpsertIntent.current = null;
+    reclassifyIntent.current = null;
+    reviewIntent.current = null;
+    mergeIntent.current = null;
     flashGeneration.current += 1;
     return () => {
       requestGeneration.current += 1;
@@ -316,41 +387,39 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
       mutationInFlight.current = false;
       flashGeneration.current += 1;
     };
-  }, [topicId]);
+  }, [sessionId, topicId]);
 
-  const reload = useCallback(async (theCode: string): Promise<boolean> => {
+  const reload = useCallback(async (): Promise<boolean> => {
     if (!topicId) {
       setNotice('주제(topic) 스코프를 먼저 선택하세요.');
       return false;
     }
-    if (currentTopicId.current !== topicId) return false;
+    if (!sessionId) {
+      setNotice('회차 연결 정보를 확인하지 못했습니다. 좌측 트리에서 주제를 다시 선택하세요.');
+      return false;
+    }
+    if (currentTopicId.current !== topicId || currentSessionId.current !== sessionId) return false;
     const generation = requestGeneration.current + 1;
     requestGeneration.current = generation;
     const loaded = await completeReviewLoad(
-      () => loadReviewData(theCode, topicId),
+      () => loadReviewData(sessionId, topicId),
       setBusy,
       (data) => {
         setList(data?.list ?? null);
         setFetchedItems(data?.items ?? null);
-        setActiveCode(data?.list ? theCode : null);
+        setActiveSessionId(data?.list ? sessionId : null);
       },
       setNotice,
-      () => requestGeneration.current === generation && currentTopicId.current === topicId,
+      () => requestGeneration.current === generation
+        && currentTopicId.current === topicId
+        && currentSessionId.current === sessionId,
     );
-    if (requestGeneration.current === generation && currentTopicId.current === topicId) setCode('');
     return loaded;
-  }, [topicId]);
+  }, [sessionId, topicId]);
 
-  // 코드가 바뀌면 선택·체크 초기화(다른 세션일 수 있음).
-  const load = useCallback(() => {
-    if (busy) return;
-    const c = code.trim();
-    if (!c) { setNotice('조 참여 코드(join_code)를 입력하세요.'); return; }
-    setSelectedId(null);
-    setForm(emptyForm);
-    setChecked(new Set());
-    void reload(c);
-  }, [busy, code, reload]);
+  useEffect(() => {
+    if (topicId && sessionId) void reload();
+  }, [reload, sessionId, topicId]);
 
   const issues = useMemo(() => toIssueViewModels(list), [list]);
   const selected = useMemo(() => issues.find((i) => i.id === selectedId) ?? null, [issues, selectedId]);
@@ -384,15 +453,17 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
     requestGeneration.current === context.requestGeneration
     && mutationSerial.current === context.serial
     && currentTopicId.current === context.topicId
+    && currentSessionId.current === context.sessionId
   );
 
   const runMutation = async <T,>(action: () => Promise<PlatformResult<T>>): Promise<T | null> => {
-    if (!topicId || mutationInFlight.current) return null;
+    if (!topicId || !sessionId || mutationInFlight.current) return null;
     mutationInFlight.current = true;
     const context: ReviewMutationContext = {
       requestGeneration: requestGeneration.current,
       serial: mutationSerial.current + 1,
       topicId,
+      sessionId,
     };
     mutationSerial.current = context.serial;
     try {
@@ -408,50 +479,153 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
   };
 
   // ── 편집 저장 ──
-  const selectIssue = (vm: IssueViewModel) => { setSelectedId(vm.id); setForm(formFrom(vm)); setChecked(new Set()); setReclassTarget(''); };
-  const newIssue = () => { setSelectedId(null); setForm(emptyForm); setChecked(new Set()); };
+  const selectIssue = (vm: IssueViewModel) => {
+    issueUpsertIntent.current = null;
+    setSelectedId(vm.id);
+    setForm(formFrom(vm));
+    setChecked(new Set());
+    setReclassTarget('');
+  };
+  const newIssue = () => {
+    issueUpsertIntent.current = null;
+    setSelectedId(null);
+    setForm(emptyForm);
+    setChecked(new Set());
+  };
 
   const saveIssue = async () => {
-    if (!activeCode || !topicId) return;
+    if (!activeSessionId || !topicId) return;
     if (!form.label.trim()) { showFlash('쟁점명을 입력하세요.'); return; }
-    const result = await runMutation(() => issueUpsert(activeCode, topicId, {
-      id: form.id ?? undefined,
+    if (form.id !== null && !form.expectedSnapshotHash) {
+      showFlash('수정 기준값을 확인하지 못했습니다. 최신 쟁점을 다시 선택하세요.');
+      return;
+    }
+
+    const payload = {
       label: form.label.trim(),
       stance: form.stance || undefined,
       frequency: form.frequency || undefined,
-      summary: form.summary || undefined,
-    }));
-    if (!result) return;
+      summary: form.summary.trim() || undefined,
+    };
+    const intent = ensureIssueUpsertIntent(issueUpsertIntent.current, {
+      sessionId: activeSessionId,
+      topicId,
+      existingIssueId: form.id,
+      expectedSnapshotHash: form.expectedSnapshotHash,
+      ...payload,
+    });
+    issueUpsertIntent.current = intent;
+
+    const result = await runMutation(() => issueUpsert(
+      activeSessionId,
+      topicId,
+      { id: intent.issueId, ...payload },
+      form.expectedSnapshotHash,
+      intent.idempotencyKey,
+    ));
+    if (!result) {
+      await reload();
+      return;
+    }
+    if (result.status === 'conflict' && result.id === intent.issueId && result.current_snapshot_hash) {
+      issueUpsertIntent.current = null;
+      setSelectedId(null);
+      setForm(emptyForm);
+      await reload();
+      showFlash('쟁점이 다른 화면에서 바뀌었습니다. 최신 내용을 다시 선택해 검토하세요.');
+      return;
+    }
+    if (
+      result.status !== 'applied'
+      || result.id !== intent.issueId
+      || typeof result.created !== 'boolean'
+      || !result.snapshot_hash
+    ) {
+      console.error('Unexpected issue upsert result', result);
+      await reload();
+      showFlash('저장 결과를 확인하지 못했습니다. 최신 목록을 확인한 뒤 같은 내용으로 다시 시도하세요.');
+      return;
+    }
+    issueUpsertIntent.current = null;
     showFlash(result.created ? '쟁점을 만들었습니다(검수 대기).' : '쟁점을 수정했습니다 — 재검수가 필요합니다.', 'status');
     const savedId = result.id;
-    const loaded = await reload(activeCode);
+    setForm((current) => ({
+      ...current,
+      id: savedId,
+      expectedSnapshotHash: result.snapshot_hash,
+      label: payload.label,
+      summary: payload.summary ?? '',
+    }));
+    const loaded = await reload();
     if (loaded && savedId) setSelectedId(savedId);
   };
 
   // ── 검수 확정 ──
   const doReview = async (issueId: string) => {
-    if (!activeCode) return;
-    const result = await runMutation(() => issueReview(activeCode, issueId));
+    if (!activeSessionId) return;
+    const issue = issues.find((candidate) => candidate.id === issueId);
+    if (!issue?.snapshotHash) {
+      showFlash('검수 기준값을 확인하지 못했습니다. 데이터를 새로고침한 뒤 다시 시도하세요.');
+      return;
+    }
+    const fingerprint = `${issue.id}:${issue.snapshotHash}`;
+    if (reviewIntent.current?.fingerprint !== fingerprint) {
+      reviewIntent.current = { fingerprint, id: crypto.randomUUID() };
+    }
+    const intentId = reviewIntent.current.id;
+    const result = await runMutation(() => issueReview(
+      activeSessionId,
+      issue.id,
+      issue.snapshotHash,
+      intentId,
+    ));
     if (!result) return;
+    reviewIntent.current = null;
+    if (result.status === 'conflict') {
+      await reload();
+      showFlash('쟁점 내용이나 연결 원문이 다른 화면에서 바뀌었습니다. 최신 내용을 다시 확인하세요.');
+      return;
+    }
+    if (result.status !== 'applied') {
+      console.error('Unexpected issue review result', result);
+      showFlash('검수 결과를 확인하지 못했습니다. 현재 데이터를 다시 불러오세요.');
+      return;
+    }
     showFlash('검수 완료로 확정했습니다.', 'status');
-    await reload(activeCode);
+    await reload();
   };
 
-  // ── 재분류/끌어오기(issue_link_set replace-all — plan 이 전체 집합을 계산) ──
+  // ── 재분류/끌어오기 — 전체 계획을 서버의 단일 트랜잭션으로 적용 ──
   const runPlan = async (plan: ReclassifyPlan, okMsg: string) => {
     if (plan.error) { showFlash(plan.error); return; }
-    if (!activeCode) return;
-    const result = await runMutation(async () => {
-      for (const call of plan.calls) {
-        const response = await issueLinkSet(activeCode, call.issueId, call.itemIds, call.clusterId);
-        if (response.notice || !response.data) return { data: null, notice: response.notice };
-      }
-      return { data: true, notice: null };
-    });
+    if (!activeSessionId || !topicId || plan.calls.length === 0) return;
+    const fingerprint = reclassifyPlanFingerprint(plan);
+    if (reclassifyIntent.current?.fingerprint !== fingerprint) {
+      reclassifyIntent.current = { fingerprint, id: crypto.randomUUID() };
+    }
+    const intentId = reclassifyIntent.current.id;
+    const result = await runMutation(() => issueReclassify(
+      activeSessionId,
+      topicId,
+      plan.calls,
+      intentId,
+    ));
     if (!result) return;
+    reclassifyIntent.current = null;
+    if (result.status === 'conflict') {
+      setChecked(new Set());
+      await reload();
+      showFlash('다른 화면에서 원문 분류가 변경되었습니다. 최신 데이터를 불러왔으니 다시 선택하세요.');
+      return;
+    }
+    if (result.status !== 'applied') {
+      console.error('Unexpected atomic reclassification result', result);
+      showFlash('재분류 결과를 확인하지 못했습니다. 현재 데이터를 다시 불러오세요.');
+      return;
+    }
     showFlash(okMsg, 'status');
     setChecked(new Set());
-    await reload(activeCode);
+    await reload();
   };
 
   const reclassifyChecked = () => {
@@ -474,14 +648,48 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
 
   // ── 병합 ──
   const doMerge = async () => {
-    if (!activeCode) return;
+    if (!activeSessionId) return;
     const v = validateMerge(mergeSrc || null, mergeDst || null, issues);
     if (!v.ok) { showFlash(v.reason ?? '병합할 수 없습니다.'); return; }
-    const result = await runMutation(() => issueMerge(activeCode, mergeSrc, mergeDst));
+    const source = issues.find((issue) => issue.id === mergeSrc);
+    const destination = issues.find((issue) => issue.id === mergeDst);
+    if (!source?.snapshotHash || !destination?.snapshotHash) {
+      showFlash('병합 기준값을 확인하지 못했습니다. 데이터를 새로고침한 뒤 다시 시도하세요.');
+      return;
+    }
+    const fingerprint = [
+      source.id,
+      source.snapshotHash,
+      destination.id,
+      destination.snapshotHash,
+    ].join(':');
+    if (mergeIntent.current?.fingerprint !== fingerprint) {
+      mergeIntent.current = { fingerprint, id: crypto.randomUUID() };
+    }
+    const intentId = mergeIntent.current.id;
+    const result = await runMutation(() => issueMerge(
+      activeSessionId,
+      source.id,
+      destination.id,
+      source.snapshotHash,
+      destination.snapshotHash,
+      intentId,
+    ));
     if (!result) return;
+    mergeIntent.current = null;
+    if (result.status === 'conflict') {
+      await reload();
+      showFlash('병합 대상의 내용이나 연결 원문이 바뀌었습니다. 최신 내용을 확인하고 다시 병합하세요.');
+      return;
+    }
+    if (result.status !== 'applied' || typeof result.moved !== 'number') {
+      console.error('Unexpected issue merge result', result);
+      showFlash('병합 결과를 확인하지 못했습니다. 현재 데이터를 다시 불러오세요.');
+      return;
+    }
     showFlash(`병합 완료 — 원문 ${result.moved}건 이전, 원본은 보관되었습니다.`, 'status');
     setMergeSrc(''); setMergeDst('');
-    await reload(activeCode);
+    await reload();
   };
 
   const toggleCheck = (id: string) => {
@@ -501,10 +709,17 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
     );
   }
 
+  if (!sessionId) {
+    return (
+      <div role="alert" style={{ border: `2px dashed ${TEAL}`, borderRadius: 14, padding: '22px 20px', background: PANEL, color: MUTED, fontSize: 15 }}>
+        회차 연결 정보를 확인하지 못했습니다. 좌측 트리에서 주제를 다시 선택하세요.
+      </div>
+    );
+  }
+
   return (
     <div aria-busy={busy} style={{ fontFamily: 'Pretendard, system-ui, sans-serif', color: INK }}>
-      {/* 헤더 + 코드 seam */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 14, marginBottom: 16 }}>
+      <div style={{ marginBottom: 16 }}>
         <div style={{ flex: 1, minWidth: 260 }}>
           <Eyebrow>검수실 · HITL</Eyebrow>
           <h2 style={{ fontSize: 24, fontWeight: 800, color: NAVY, margin: '4px 0 4px', letterSpacing: '-.01em' }}>
@@ -514,29 +729,14 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
             AI가 만든 <b style={{ color: AMBER }}>초안(draft)</b>을 사람이 확인·수정·병합하고 「검수 완료」해야 공개할 수 있습니다.
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-          <div>
-            <label htmlFor="review-join-code" style={{ display: 'block', fontSize: 12, color: MUTED, marginBottom: 4 }}>조 참여 코드(join_code)</label>
-            <input
-              id="review-join-code"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && load()}
-              disabled={busy}
-              placeholder="예: 3F7K2P"
-              style={{ ...field, width: 160, fontFamily: 'monospace', letterSpacing: '.08em' }}
-            />
-          </div>
-          <button onClick={load} disabled={busy} style={busy ? btn('disabled') : btn('primary')}>
-            {busy ? '불러오는 중…' : '불러오기'}
-          </button>
-        </div>
       </div>
 
-      {/* code seam 안내 — P2 는 operator join_code 서명 */}
-      <p style={{ fontSize: 12, color: AMBER, background: '#FBF3E6', border: `2px solid ${AMBER}`, borderRadius: 10, padding: '8px 12px', margin: '0 0 14px' }}>
-        ※ 검수 RPC는 조 <code>join_code</code>(운영자) 서명입니다. staff Auth 셸에서도 코드 입력 자리가 필요합니다(Phase 2에서 HQ 토큰 전환 예정, 미결).
-      </p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, margin: '0 0 14px', padding: '8px 12px', border: `2px solid ${LINE}`, borderRadius: 10, background: PANEL }}>
+        <p style={{ fontSize: 12, color: MUTED, margin: 0 }}>로그인된 운영자 권한과 선택한 회차를 기준으로 자동 동기화합니다.</p>
+        <button type="button" onClick={() => { void reload(); }} disabled={busy} style={busy ? btn('disabled') : btn('ghost')}>
+          {busy ? '불러오는 중…' : '검수 데이터 새로고침'}
+        </button>
+      </div>
 
       {notice ? (
         <p role="alert" style={{ fontSize: 14, color: AMBER, background: '#FBF3E6', borderRadius: 10, padding: '10px 14px', margin: '0 0 14px' }}>{notice}</p>
@@ -646,7 +846,7 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
                 <Eyebrow color={MUTED}>연결 원문 · {selected.label}</Eyebrow>
                 {!itemsLoaded ? (
                   <p style={{ fontSize: 13, color: AMBER, margin: '10px 0 0', lineHeight: 1.6 }}>
-                    연결 원문 <b>{selected.linkedItemCount}건</b>(카운트만). 원문 본문(issue_items)이 로드되지 않아 재분류가 비활성입니다 — 스키마 미적용/코드 무효일 수 있습니다.
+                    연결 원문 <b>{selected.linkedItemCount}건</b>(카운트만). 원문 본문이 로드되지 않아 재분류가 비활성입니다 — 스키마 적용 상태와 운영자 권한을 확인하세요.
                   </p>
                 ) : linkedItems.length === 0 ? (
                   <p style={{ fontSize: 14, color: MUTED, margin: '10px 0 0' }}>연결된 원문이 없습니다. 아래 미분류함에서 끌어오세요.</p>
@@ -682,7 +882,7 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
               <p style={{ fontSize: 12, color: MUTED, margin: '6px 0 10px' }}>어떤 쟁점에도 연결되지 않은 원문입니다. 본문을 확인하고 쟁점으로 끌어오세요(원문 전수 역추적).</p>
               {!itemsLoaded ? (
                 <p style={{ fontSize: 13, color: AMBER, lineHeight: 1.6, margin: 0 }}>
-                  미분류 <b>{unclassifiedCount}건</b>(카운트만). 원문 본문(issue_items)이 로드되지 않아 끌어오기가 비활성입니다 — 스키마 미적용/코드 무효일 수 있습니다.
+                  미분류 <b>{unclassifiedCount}건</b>(카운트만). 원문 본문이 로드되지 않아 끌어오기가 비활성입니다 — 스키마 적용 상태와 운영자 권한을 확인하세요.
                 </p>
               ) : !partition || partition.unclassified.length === 0 ? (
                 <p style={{ fontSize: 14, color: MUTED, margin: 0 }}>미분류 원문이 없습니다. 모든 원문이 쟁점에 연결되었습니다.</p>
@@ -707,7 +907,7 @@ export default function ReviewConsole({ topicId, items: itemsOverride }: ReviewC
         </div>
       ) : (
         <div style={{ border: `2px dashed ${TEAL}`, borderRadius: 14, padding: '22px 20px', background: PANEL, color: MUTED, fontSize: 14 }}>
-          코드를 입력하고 「불러오기」를 누르면 이 주제의 쟁점 목록이 열립니다.
+          {busy ? '이 주제의 쟁점 목록을 안전하게 불러오는 중입니다.' : '이 주제의 쟁점 목록을 자동으로 불러옵니다.'}
         </div>
       )}
     </div>

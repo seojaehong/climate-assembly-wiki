@@ -122,6 +122,7 @@ function ViewPanel({
   const meta = VIEW_META[view];
   const { level, id } = deepestScopeLevel(scope);
   const { level: viewLevel } = deepestViewScopeLevel(scope);
+  const staffSessionId = scopeContext.session?.id ?? scopedSessions[0]?.id ?? null;
 
   if (view === 'access') {
     const org = scopeContext.org;
@@ -140,16 +141,17 @@ function ViewPanel({
 
   // Review remains topic-only, as defined by VIEWS_FOR_LEVEL.
   if (view === 'review') {
-    return <ReviewConsole topicId={level === 'topic' ? id : null} />;
+    return <ReviewConsole topicId={level === 'topic' ? id : null} sessionId={staffSessionId} />;
   }
 
   if (view === 'publish') {
     const resolvedScopeId = publishScopeId === undefined ? id : publishScopeId;
     return (
       <PublishConsole
-        key={buildPublicationScopeKey(level, resolvedScopeId)}
+        key={`${buildPublicationScopeKey(level, resolvedScopeId)}:${staffSessionId ?? 'missing-session'}`}
         scope={level}
         scopeId={resolvedScopeId}
+        sessionId={staffSessionId}
       />
     );
   }
@@ -160,6 +162,7 @@ function ViewPanel({
         key={`${level}:${scopedTopics.map((topic) => topic.id).join(',')}`}
         scope={level}
         topics={scopedTopics}
+        sessionId={staffSessionId}
         context={scopeContext}
       />
     );
@@ -182,8 +185,8 @@ function ViewPanel({
   if (view === 'vote' && level === 'session') {
     return (
       <VoteConsole
-        key={`session:${scopedTopics.map((topic) => topic.id).join(',')}`}
-        topics={scopedTopics}
+        key={`session:${scopeContext.session?.id ?? 'missing-session'}`}
+        sessionId={scopeContext.session?.id ?? null}
       />
     );
   }
@@ -194,6 +197,7 @@ function ViewPanel({
         key={`${level}:${scopedTopics.map((topic) => topic.id).join(',')}`}
         scope={level}
         topics={scopedTopics}
+        sessionId={staffSessionId}
       />
     );
   }

@@ -29,7 +29,7 @@ import { noteColor, type Note } from './hq-submission-board-logic';
 const CATEGORY_TONE: Record<FourCategory, { border: string; text: string; bg: string }> = {
   common: { border: '#1F4E79', text: '#1F4E79', bg: '#EAF2F8' },
   difference: { border: '#0F6B78', text: '#0F6B78', bg: '#E3F2F5' },
-  conflict: { border: '#B5651D', text: '#B5651D', bg: '#FBEEE2' },
+  conflict: { border: '#8A4512', text: '#8A4512', bg: '#FBEEE2' },
   question: { border: '#6B4B00', text: '#6B4B00', bg: '#FFF4D6' },
 };
 
@@ -46,7 +46,7 @@ export function PreservationCounter({ report }: { report: PreservationReport }) 
     <div
       data-testid="preservation-counter"
       className={`mb-5 rounded-2xl border px-4 py-3 ${
-        danger ? 'border-[#B5651D] bg-[#FBEEE2]' : 'border-[#DCE7EE] bg-white'
+        danger ? 'border-[#8A4512] bg-[#FBEEE2]' : 'border-[#DCE7EE] bg-white'
       }`}
     >
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
@@ -65,7 +65,7 @@ export function PreservationCounter({ report }: { report: PreservationReport }) 
           · 미배정{' '}
           <span
             className={`text-[24px] font-extrabold tr-num ${
-              report.unassignedCount > 0 ? 'text-[#B5651D]' : 'text-[#1F4E79]'
+              report.unassignedCount > 0 ? 'text-[#8A4512]' : 'text-[#1F4E79]'
             }`}
           >
             {report.unassignedCount}
@@ -74,17 +74,17 @@ export function PreservationCounter({ report }: { report: PreservationReport }) 
         </span>
         <span
           data-testid="deleted-count"
-          className={`text-[17px] font-bold ${danger ? 'text-[#B5651D]' : 'text-[#5A6B73]'}`}
+          className={`text-[17px] font-bold ${danger ? 'text-[#8A4512]' : 'text-[#5A6B73]'}`}
         >
           · 삭제{' '}
-          <span className={`text-[24px] font-extrabold tr-num ${danger ? 'text-[#B5651D]' : 'text-[#1F4E79]'}`}>
+          <span className={`text-[24px] font-extrabold tr-num ${danger ? 'text-[#8A4512]' : 'text-[#1F4E79]'}`}>
             {report.deletedCount}
           </span>
           장
         </span>
       </div>
       {danger ? (
-        <p role="alert" className="mt-2 text-[15px] font-bold leading-[1.6] text-[#B5651D]">
+        <p role="alert" className="mt-2 text-[15px] font-bold leading-[1.6] text-[#8A4512]">
           ⚠ 카드가 사라졌습니다. 이 화면에서는 일어날 수 없는 일입니다 — 배정을 멈추고 기록을
           확인하세요.
         </p>
@@ -109,10 +109,12 @@ export function CategoryButtons({
   noteId,
   current,
   onToggle,
+  disabled = false,
 }: {
   noteId: string;
   current: FourCategory | null;
   onToggle: (noteId: string, category: FourCategory) => void;
+  disabled?: boolean;
 }) {
   return (
     <div
@@ -128,11 +130,12 @@ export function CategoryButtons({
           <button
             key={category}
             type="button"
+            disabled={disabled}
             aria-pressed={active}
             data-category={category}
             onClick={() => onToggle(noteId, category)}
             title={active ? '다시 누르면 해제' : `${FOUR_CATEGORY_LABELS[category]}으로 잠정 배정`}
-            className="h-9 min-w-[52px] rounded-lg border-2 px-2 text-[14px] font-extrabold transition"
+            className="min-h-11 min-w-[52px] rounded-lg border-2 px-2 text-[14px] font-extrabold transition disabled:cursor-wait disabled:opacity-60"
             style={
               active
                 ? { borderColor: tone.border, background: tone.border, color: '#ffffff' }
@@ -240,10 +243,10 @@ export function FourCategoryPanel({
               <h4 className="mb-2 text-[17px] font-extrabold" style={{ color: column.tone.text }}>
                 {column.label}{' '}
                 <span className="tr-num">{column.members.length}</span>장
-                <span className="ml-2 text-[13px] font-bold opacity-70">잠정</span>
+                <span className="ml-2 text-[13px] font-bold">잠정</span>
               </h4>
               {column.members.length === 0 ? (
-                <p className="text-[14px]" style={{ color: column.tone.text, opacity: 0.7 }}>
+                <p className="text-[14px]" style={{ color: column.tone.text }}>
                   아직 없음
                 </p>
               ) : (
@@ -271,13 +274,13 @@ export function FourCategoryPanel({
           <div
             data-testid="category-column"
             data-category="unassigned"
-            className="rounded-xl border-2 border-dashed border-[#B5651D] bg-[#FFFDF7] p-3"
+            className="rounded-xl border-2 border-dashed border-[#8A4512] bg-[#FFFDF7] p-3"
           >
-            <h4 className="mb-2 text-[17px] font-extrabold text-[#B5651D]">
+            <h4 className="mb-2 text-[17px] font-extrabold text-[#8A4512]">
               미배정 <span className="tr-num">{unassigned.length}</span>장
             </h4>
             {unassigned.length === 0 ? (
-              <p className="text-[14px] text-[#B5651D] opacity-80">모든 카드에 이름표가 붙었습니다.</p>
+              <p className="text-[14px] text-[#8A4512]">모든 카드에 이름표가 붙었습니다.</p>
             ) : (
               <ul className="grid max-h-[340px] gap-2 overflow-y-auto">
                 {unassigned.map((note) => (
@@ -302,12 +305,12 @@ export function FourCategoryPanel({
 
       {/* 접어도 남는다 — 접힌 상태에서 캡처해도 「잠정」이 읽혀야 한다. */}
       {!open && unassigned.length > 0 ? (
-        <p className="mt-2 text-[15px] font-bold text-[#B5651D]">
+        <p className="mt-2 text-[15px] font-bold text-[#8A4512]">
           미배정 <span className="tr-num">{unassigned.length}</span>장이 남아 있습니다.
         </p>
       ) : null}
 
-      <p className="mt-2 text-[14px] text-[#8FA3AD]">
+      <p className="mt-2 text-[14px] text-[#526975]">
         카드를 끌어다 놓는 조작은 없습니다. 각 카드의 버튼 네 개로 배정하고, 같은 버튼을 다시 누르면
         해제됩니다.
       </p>

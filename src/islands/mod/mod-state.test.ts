@@ -7,10 +7,16 @@ import {
   participationBase,
   REOPEN_WINDOW_MS,
   joinCodeFromSearch,
+  getOrCreateRoundStatusIntent,
+  isDefinitiveRoundStatusFailure,
+  proxyVotePayload,
+  roundStatusRecoveryDecision,
+  roundUpdatedAtMs,
+  toggleProxyVoteChoice,
 } from './mod-state';
 import type { Round, Team } from '../../lib/mod-console';
 
-const team: Team = { id: 't1', name: '3분과 2조', subgroup: '3분과', join_code: '482913', capacity: 20 };
+const team: Team = { id: 't1', name: '3분과 2조', subgroup: '3분과', capacity: 20 };
 const round: Round = {
   id: 'r1',
   title: '우리 조가 가장 중요하게 볼 의제는?',
@@ -162,6 +168,135 @@ describe('closeConfirmMessage', () => {
   it('handles nobody having voted yet', () => {
     expect(closeConfirmMessage(0, 12)).toBe('12명 중 0명이 투표했습니다. 아직 12명이 남았습니다.');
   });
+});
+
+describe('round status transition safety', () => {
+  it('reuses one idempotency key for the same ambiguous close retry', () => {
+    let generated = 0;
+    const nextKey = () => `intent-${++generated}`;
+    const first = getOrCreateRoundStatusIntent(
+      null,
+      'round-1',
+      'active',
+      'closed',
+      '2026-09-12T04:29:00.000Z',
+      nextKey,
+    );
+    const retry = getOrCreateRoundStatusIntent(
+      first,
+      'round-1',
+      'active',
+      'closed',
+      '2026-09-12T04:29:00.000Z',
+      nextKey,
+    );
+
+    expect(retry).toBe(first);
+    expect(retry.idempotencyKey).toBe('intent-1');
+    expect(generated).toBe(1);
+  });
+
+  it('creates a new intent when the round or transition direction changes', () => {
+    let generated = 0;
+    const nextKey = () => `intent-${++generated}`;
+    const close = getOrCreateRoundStatusIntent(null, 'round-1', 'active', 'closed', 't1', nextKey);
+    const reopen = getOrCreateRoundStatusIntent(close, 'round-1', 'closed', 'active', 't2', nextKey);
+    const otherRound = getOrCreateRoundStatusIntent(reopen, 'round-2', 'closed', 'active', 't2', nextKey);
+
+    expect([close.idempotencyKey, reopen.idempotencyKey, otherRound.idempotencyKey]).toEqual([
+      'intent-1',
+      'intent-2',
+      'intent-3',
+    ]);
+  });
+
+  it('starts a new intent if another device changed the same-status round snapshot', () => {
+    let generated = 0;
+    const nextKey = () => `intent-${++generated}`;
+    const original = getOrCreateRoundStatusIntent(null, 'round-1', 'active', 'closed', 't1', nextKey);
+    const afterConcurrentReopen = getOrCreateRoundStatusIntent(
+      original,
+      'round-1',
+      'active',
+      'closed',
+      't3',
+      nextKey,
+    );
+
+    expect(afterConcurrentReopen.idempotencyKey).toBe('intent-2');
+  });
+
+  it('uses only a valid server updated_at timestamp for the reopen guidance clock', () => {
+    expect(roundUpdatedAtMs({ ...closedRound, updated_at: '2026-09-12T04:30:00.000Z' }))
+      .toBe(Date.parse('2026-09-12T04:30:00.000Z'));
+    expect(roundUpdatedAtMs({ ...closedRound, updated_at: 'not-a-date' })).toBeNull();
+    expect(roundUpdatedAtMs({ ...closedRound, updated_at: undefined })).toBeNull();
+  });
+
+  it('distinguishes server-final CAS/window failures from ambiguous transport failures', () => {
+    expect(isDefinitiveRoundStatusFailure(new Error('round status conflict: expected active, current closed')))
+      .toBe(true);
+    expect(isDefinitiveRoundStatusFailure({ message: 'round reopen window expired' })).toBe(true);
+    expect(isDefinitiveRoundStatusFailure(new TypeError('Failed to fetch'))).toBe(false);
+  });
+
+  it('retains an ambiguous retry key only while the expected server snapshot is unchanged', () => {
+    const intent = getOrCreateRoundStatusIntent(
+      null,
+      'round-1',
+      'closed',
+      'active',
+      '2026-09-12T04:30:00.000Z',
+      () => 'intent-1',
+    );
+
+    expect(roundStatusRecoveryDecision({
+      status: 'closed',
+      updated_at: '2026-09-12T04:30:00.000Z',
+    }, intent, false)).toEqual({
+      reachedTarget: false,
+      unchangedExpectedSnapshot: true,
+      clearIntent: false,
+    });
+    expect(roundStatusRecoveryDecision({
+      status: 'closed',
+      updated_at: '2026-09-12T04:31:00.000Z',
+    }, intent, false).clearIntent).toBe(true);
+    expect(roundStatusRecoveryDecision({
+      status: 'active',
+      updated_at: '2026-09-12T04:31:00.000Z',
+    }, intent, false)).toMatchObject({ reachedTarget: true, clearIntent: true });
+    expect(roundStatusRecoveryDecision({
+      status: 'closed',
+      updated_at: '2026-09-12T04:30:00.000Z',
+    }, intent, true).clearIntent).toBe(true);
+  });
+});
+
+describe('proxy vote checkbox selection', () => {
+  it('adds and removes checkbox options without mutating the previous selection', () => {
+    const original = ['에너지 전환'];
+    const added = toggleProxyVoteChoice(original, '자원순환');
+
+    expect(added).toEqual(['에너지 전환', '자원순환']);
+    expect(original).toEqual(['에너지 전환']);
+    expect(toggleProxyVoteChoice(added, '에너지 전환')).toEqual(['자원순환']);
+  });
+
+  it('sends CHECKBOX choices as a JSON-compatible array', () => {
+    const selected = ['에너지 전환', '기후교육'];
+    const payload = proxyVotePayload('CHECKBOX', 'ignored', selected);
+
+    expect(payload).toEqual(selected);
+    expect(payload).not.toBe(selected);
+  });
+
+  it.each(['RADIO', 'SCALE', 'SCALE_MULTI', 'TEXT'] as const)(
+    'keeps %s proxy choices scalar',
+    (type) => {
+      expect(proxyVotePayload(type, '3', ['ignored'])).toBe('3');
+    },
+  );
 });
 
 describe('joinCodeFromSearch', () => {

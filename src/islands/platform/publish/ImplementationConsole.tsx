@@ -1,7 +1,9 @@
 import { useMemo, useRef, useState } from 'react';
 import {
+  ensureResultImplementationUpsertIntent,
   resultGet,
   resultImplementationUpsert,
+  type ResultImplementationUpsertIntent,
 } from '../../../lib/platform';
 import implementationStatusContract from '../../result/implementation-status-contract.json';
 import {
@@ -24,10 +26,42 @@ const LINE = '#6B7D88';
 const PANEL = '#F5F9FB';
 
 interface Props {
-  hqToken: string;
+  sessionId: string;
   resultToken: string;
   resultBody: unknown;
   onVerified: (body: unknown) => void;
+}
+
+interface ImplementationSnapshotState {
+  exists: boolean;
+  snapshotHash: string | null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Reads only the server CAS value; form parsing stays in the public contract helper. */
+export function getImplementationSnapshotState(
+  body: unknown,
+  issueId: string,
+): ImplementationSnapshotState {
+  if (!isRecord(body) || !Array.isArray(body.issues)) {
+    return { exists: false, snapshotHash: null };
+  }
+  const issue = body.issues.find((candidate) => (
+    isRecord(candidate)
+    && candidate.id === issueId
+    && candidate.review_status === 'reviewed'
+  ));
+  if (!isRecord(issue) || !isRecord(issue.implementation)) {
+    return { exists: false, snapshotHash: null };
+  }
+  const snapshotHash = typeof issue.implementation.snapshot_hash === 'string'
+    && issue.implementation.snapshot_hash.trim().length > 0
+    ? issue.implementation.snapshot_hash
+    : null;
+  return { exists: true, snapshotHash };
 }
 
 function localDateTimeValue(iso?: string): string {
@@ -37,7 +71,7 @@ function localDateTimeValue(iso?: string): string {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }
 
-export default function ImplementationConsole({ hqToken, resultToken, resultBody, onVerified }: Props) {
+export default function ImplementationConsole({ sessionId, resultToken, resultBody, onVerified }: Props) {
   const issues = useMemo(() => listImplementationIssues(resultBody), [resultBody]);
   const [issueId, setIssueId] = useState(issues[0]?.id ?? '');
   const selected = issues.find((issue) => issue.id === issueId) ?? null;
@@ -50,6 +84,19 @@ export default function ImplementationConsole({ hqToken, resultToken, resultBody
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const operationLock = useRef(false);
+  const upsertIntent = useRef<ResultImplementationUpsertIntent | null>(null);
+
+  const showImplementationFromBody = (body: unknown, targetIssueId: string): boolean => {
+    const next = listImplementationIssues(body).find((issue) => issue.id === targetIssueId);
+    if (!next) return false;
+    setIssueId(targetIssueId);
+    setStatus(next.implementation?.status ?? 'under_review');
+    setResponsibleBody(next.implementation?.responsible_body ?? '');
+    setUpdatedAt(localDateTimeValue(next.implementation?.updated_at));
+    setSummary(next.implementation?.summary ?? '');
+    setEvidenceUrl(next.implementation?.evidence_url ?? '');
+    return true;
+  };
 
   const chooseIssue = (nextIssueId: string) => {
     const next = issues.find((issue) => issue.id === nextIssueId)?.implementation ?? null;
@@ -61,6 +108,7 @@ export default function ImplementationConsole({ hqToken, resultToken, resultBody
     setEvidenceUrl(next?.evidence_url ?? '');
     setError(null);
     setNotice(null);
+    upsertIntent.current = null;
   };
 
   const save = async () => {
@@ -75,35 +123,90 @@ export default function ImplementationConsole({ hqToken, resultToken, resultBody
       return;
     }
 
-    const token = hqToken.trim();
-    if (!token) {
-      setError('이행조치 등록에는 HQ 인증 토큰이 필요합니다.');
+    const anchoredSessionId = sessionId.trim();
+    if (!anchoredSessionId) {
+      setError('선택한 범위에 연결된 회차가 없어 이행조치를 저장할 수 없습니다.');
       return;
     }
+    const snapshotState = getImplementationSnapshotState(resultBody, mutation.issue_id);
+    if (snapshotState.exists && !snapshotState.snapshotHash) {
+      setError('수정 기준값을 확인하지 못했습니다. 최신 공개 결과를 다시 불러와 검토해 주세요.');
+      return;
+    }
+    const intent = ensureResultImplementationUpsertIntent(upsertIntent.current, {
+      sessionId: anchoredSessionId,
+      resultToken,
+      issueId: mutation.issue_id,
+      implementation: mutation.implementation,
+      expectedSnapshotHash: snapshotState.snapshotHash,
+    });
+    upsertIntent.current = intent;
 
     try {
       await runExclusivePublicationOperation(operationLock, async () => {
         const saved = await resultImplementationUpsert(
-          token,
+          anchoredSessionId,
           resultToken,
           mutation.issue_id,
           mutation.implementation,
+          snapshotState.snapshotHash,
+          intent.idempotencyKey,
         );
         if (saved.notice || !saved.data) {
-          setError(saved.notice ?? '이행조치 저장 응답을 확인하지 못했습니다.');
+          setError(saved.notice
+            ? `${saved.notice} 입력을 바꾸지 않았다면 같은 요청 식별자로 다시 확인할 수 있습니다.`
+            : '이행조치 저장 응답을 확인하지 못했습니다. 같은 요청 식별자를 유지합니다.');
+          return;
+        }
+        if (saved.data.issue_id !== mutation.issue_id) {
+          console.error('Unexpected implementation upsert issue identity');
+          setError('저장 결과의 대상 권고를 확인하지 못했습니다. 입력을 유지했으니 현재 상태를 확인해 주세요.');
+          return;
+        }
+        if (saved.data.status === 'conflict') {
+          upsertIntent.current = null;
+          const fetched = await resultGet(resultToken);
+          if (fetched.notice || !fetched.data) {
+            setError('다른 화면에서 이행조치가 변경됐지만 최신 결과를 재조회하지 못했습니다. 공개 결과를 다시 불러와 검토해 주세요.');
+            return;
+          }
+          onVerified(fetched.data.body);
+          const refreshed = getImplementationSnapshotState(fetched.data.body, mutation.issue_id);
+          const formRestored = showImplementationFromBody(fetched.data.body, mutation.issue_id);
+          if (!formRestored || !refreshed.exists
+            || refreshed.snapshotHash !== saved.data.current_snapshot_hash) {
+            setError('다른 화면의 변경을 감지했지만 최신 기준값을 확인하지 못했습니다. 공개 결과를 다시 불러와 검토해 주세요.');
+            return;
+          }
+          setError('다른 화면에서 이행조치가 변경되어 최신 값을 다시 불러왔습니다. 내용을 검토한 뒤 다시 저장해 주세요.');
           return;
         }
         const fetched = await resultGet(resultToken);
         if (fetched.notice || !fetched.data) {
-          setError(fetched.notice ?? '저장 후 공개 결과를 재조회하지 못했습니다.');
+          setError(fetched.notice
+            ? `${fetched.notice} 입력과 같은 요청 식별자를 유지했습니다.`
+            : '저장 후 공개 결과를 재조회하지 못했습니다. 입력과 같은 요청 식별자를 유지했습니다.');
           return;
         }
         const verification = verifyImplementationMutation(fetched.data.body, mutation);
         if (!verification.ok) {
-          setError(verification.error);
+          upsertIntent.current = null;
+          onVerified(fetched.data.body);
+          showImplementationFromBody(fetched.data.body, mutation.issue_id);
+          setError(`${verification.error} 최신 내용을 검토한 뒤 다시 저장해 주세요.`);
           return;
         }
+        const persisted = getImplementationSnapshotState(fetched.data.body, mutation.issue_id);
+        if (!persisted.exists || persisted.snapshotHash !== saved.data.snapshot_hash) {
+          upsertIntent.current = null;
+          onVerified(fetched.data.body);
+          showImplementationFromBody(fetched.data.body, mutation.issue_id);
+          setError('저장 후 다른 변경이 확인됐습니다. 최신 내용을 검토한 뒤 다시 저장해 주세요.');
+          return;
+        }
+        upsertIntent.current = null;
         onVerified(fetched.data.body);
+        showImplementationFromBody(fetched.data.body, mutation.issue_id);
         setNotice('기관 이행조치 저장·공개 재조회 검증을 완료했습니다.');
       }, setBusy);
     } catch (requestError) {

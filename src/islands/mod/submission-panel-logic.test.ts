@@ -14,6 +14,7 @@ import {
   toSaveItems,
   type EditorRow,
   pickRestoredRows,
+  restoredDraftDecision,
   parseSpeaker,
   joinSpeaker,
   nameOnlyRowIndexes,
@@ -228,6 +229,83 @@ describe('pickRestoredRows — 봉투 모양·유효기간 (US-003 배선)', () 
   });
 });
 
+describe('restoredDraftDecision — 복원 초안의 OCC 기준 보존', () => {
+  const server = [row('서버 내용')];
+  const draft = [row('내 미저장 내용')];
+  const NOW = 1_700_000_000_000;
+
+  it('저장 당시 서버 버전을 그대로 되살린다', () => {
+    const decision = restoredDraftDecision(
+      writeDraft(draft, '2026-09-01T00:00:00Z', NOW, 4),
+      server,
+      4,
+      '2026-09-01T00:00:00Z',
+      NOW,
+    );
+
+    expect(decision).toEqual({
+      rows: draft,
+      expectedVersion: 4,
+      baseUpdatedAt: '2026-09-01T00:00:00Z',
+      conflictsWithServer: false,
+    });
+  });
+
+  it('다른 기기가 저장해 서버 버전이 바뀌면 자동 저장하지 않고 충돌로 연다', () => {
+    const decision = restoredDraftDecision(
+      writeDraft(draft, '2026-09-01T00:00:00Z', NOW, 4),
+      server,
+      5,
+      '2026-09-01T00:03:00Z',
+      NOW,
+    );
+
+    expect(decision?.expectedVersion).toBe(4);
+    expect(decision?.conflictsWithServer).toBe(true);
+  });
+
+  it('버전이 없던 예전 초안은 updated_at이 같을 때만 현재 버전 위에 안전하게 승격한다', () => {
+    const same = restoredDraftDecision(
+      writeDraft(draft, '2026-09-01T00:00:00Z', NOW),
+      server,
+      7,
+      '2026-09-01T00:00:00Z',
+      NOW,
+    );
+    const changed = restoredDraftDecision(
+      writeDraft(draft, '2026-09-01T00:00:00Z', NOW),
+      server,
+      8,
+      '2026-09-01T00:03:00Z',
+      NOW,
+    );
+
+    expect(same).toMatchObject({ expectedVersion: 7, conflictsWithServer: false });
+    expect(changed).toMatchObject({ expectedVersion: 8, conflictsWithServer: true });
+  });
+
+  it('기준 정보가 없는 옛 배열은 서버 제출물이 있으면 보수적으로 충돌 처리한다', () => {
+    const decision = restoredDraftDecision(JSON.stringify(draft), server, 1, null, NOW);
+
+    expect(decision).toMatchObject({ expectedVersion: 1, conflictsWithServer: true });
+  });
+
+  it('서버와 같은 내용이거나 만료된 초안은 복원하지 않는다', () => {
+    expect(
+      restoredDraftDecision(writeDraft(server, null, NOW, 2), server, 2, null, NOW),
+    ).toBeNull();
+    expect(
+      restoredDraftDecision(
+        writeDraft(draft, null, NOW - DRAFT_TTL_MS - 1, 2),
+        server,
+        2,
+        null,
+        NOW,
+      ),
+    ).toBeNull();
+  });
+});
+
 // ── 2026-08-30 ── 거짓 단언 끝내기 + 서버 분해 알림 ─────────────────
 
 import { readFileSync } from 'node:fs';
@@ -283,7 +361,7 @@ describe('saveOutcomeMessage — 서버가 한 일을 조에게 알린다', () =
   it('★ 저장 핸들러가 RPC 반환값을 실제로 읽는다 (버리면 알림 자체가 불가능)', () => {
     const panel = readFileSync(new URL('./SubmissionPanel.tsx', import.meta.url), 'utf8');
     expect(panel).toContain('const result = await submissionSave(');
-    expect(panel).toContain('setToast(saveOutcomeMessage(result))');
+    expect(panel).toContain('saveOutcomeMessage(result)');
     expect(panel).toContain('result?.split_skipped_over_cap');
   });
 });
@@ -445,6 +523,25 @@ describe('saveFailureKind — 재전송할 실패와 안 할 실패', () => {
     expect(saveFailureKind(new Error('topic is not open'))).toBe('closed');
   });
 
+  it('만료·해제된 workshop token은 재전송 큐에 넣지 않는 authorization 실패다', () => {
+    expect(saveFailureKind({ message: 'workshop authorization expired or revoked' })).toBe(
+      'authorization',
+    );
+    expect(saveFailureKind({ message: 'team authorization scope mismatch' })).toBe(
+      'authorization',
+    );
+    expect(saveFailureKind(new Error('team authorization required'))).toBe('authorization');
+    expect(saveFailureKind(new Error('P0001: team authorization scope mismatch'))).toBe(
+      'authorization',
+    );
+    expect(saveFailureMessage('authorization')).toContain('조 코드로 다시');
+  });
+
+  it('인증 문구가 로그 설명에 섞인 경우에는 확정 만료로 오판하지 않는다', () => {
+    expect(saveFailureKind(new Error('audit note: team authorization scope mismatch yesterday')))
+      .toBe('network');
+  });
+
   it('★ 모르는 실패는 network 로 접는다 — 다시 보내 볼 값어치가 있는 쪽', () => {
     expect(saveFailureKind(new Error('Failed to fetch'))).toBe('network');
     expect(saveFailureKind(new Error(''))).toBe('network');
@@ -469,9 +566,9 @@ describe('saveFailureKind — 재전송할 실패와 안 할 실패', () => {
     expect(saveFailureMessage('closed')).toContain('마감');
     expect(saveFailureMessage('network')).toContain('연결되면 자동으로');
     const all = new Set(
-      (['finalized', 'closed', 'network'] as const).map((k) => saveFailureMessage(k)),
+      (['finalized', 'closed', 'authorization', 'network'] as const).map((k) => saveFailureMessage(k)),
     );
-    expect(all.size).toBe(3);
+    expect(all.size).toBe(4);
   });
 });
 

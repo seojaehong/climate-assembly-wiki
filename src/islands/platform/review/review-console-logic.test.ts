@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { IssueRow, IssueListResult, IssueItemRow, IssueItemsResult } from '../../../lib/platform';
 import {
   FREQUENCY_OPTIONS,
@@ -18,12 +18,14 @@ import {
   issueItemIds,
   planReclassify,
   planUnlink,
+  reclassifyPlanFingerprint,
   validateMerge,
   itemKindLabel,
   sourceReference,
   type ReviewItem,
   type IssueViewModel,
 } from './review-console-logic';
+import { ensureIssueUpsertIntent, issueUpsertIntentFingerprint } from './ReviewConsole';
 
 // ── 픽스처 ─────────────────────────────────────────────────────────────
 
@@ -315,9 +317,52 @@ describe('planReclassify', () => {
     const plan = planReclassify(mixed, ['a'], 'i2', 'i1', 'k9');
     expect(plan.error).toBeNull();
     expect(plan.calls).toEqual([
-      { issueId: 'i2', itemIds: ['c', 'a'], clusterId: 'k9', role: 'target' },
-      { issueId: 'i1', itemIds: ['b'], clusterId: 'k2', role: 'source' },
+      {
+        issueId: 'i2',
+        itemIds: ['c', 'a'],
+        clusterId: 'k9',
+        expectedLinks: [{ itemId: 'c', clusterId: 'k1', linkedBy: 'human' }],
+        role: 'target',
+      },
+      {
+        issueId: 'i1',
+        itemIds: ['b'],
+        clusterId: 'k2',
+        expectedLinks: [
+          { itemId: 'a', clusterId: 'k2', linkedBy: 'ai' },
+          { itemId: 'b', clusterId: 'k2', linkedBy: 'human' },
+        ],
+        role: 'source',
+      },
     ]);
+  });
+
+  it('affected issue의 item·cluster·provenance 전체를 stale-write CAS에 포함', () => {
+    const linked = [
+      item({ itemId: 'a', links: [{ issueId: 'i1', clusterId: 'k1', linkedBy: 'ai' }] }),
+      item({ itemId: 'b', links: [{ issueId: 'i1', clusterId: null, linkedBy: 'human' }] }),
+      item({ itemId: 'c', links: [] }),
+    ];
+    const plan = planReclassify(linked, ['c'], 'i1', null, 'k2');
+
+    expect(plan.calls[0].expectedLinks).toEqual([
+      { itemId: 'a', clusterId: 'k1', linkedBy: 'ai' },
+      { itemId: 'b', clusterId: null, linkedBy: 'human' },
+    ]);
+  });
+
+  it('선택 순서와 call 순서가 달라도 재시도 fingerprint가 같다', () => {
+    const base = planReclassify(items, ['a'], 'i2', 'i1', 'k9');
+    const reordered = {
+      error: base.error,
+      calls: [...base.calls].reverse().map((call) => ({
+        ...call,
+        itemIds: [...call.itemIds].reverse(),
+        expectedLinks: [...call.expectedLinks].reverse(),
+      })),
+    };
+
+    expect(reclassifyPlanFingerprint(reordered)).toBe(reclassifyPlanFingerprint(base));
   });
 
   it('이미 대상에 연결된 null cluster는 원본의 non-null cluster보다 우선 보존', () => {
@@ -416,5 +461,71 @@ describe('itemKindLabel', () => {
   it('core/extra', () => {
     expect(itemKindLabel('core')).toBe('핵심');
     expect(itemKindLabel('extra')).toBe('부가');
+  });
+});
+
+describe('issue upsert intent', () => {
+  const createInput = {
+    sessionId: 'session-1',
+    topicId: 'topic-1',
+    existingIssueId: null,
+    expectedSnapshotHash: null,
+    label: '재생에너지 확대',
+    stance: 'pro',
+    frequency: 'majority',
+    summary: '검수 문안',
+  } as const;
+
+  it('응답이 유실된 새 쟁점 재시도에는 issue UUID와 멱등키를 함께 유지한다', () => {
+    const ids = [
+      '31111111-1111-4111-8111-111111111111',
+      '32222222-2222-4222-8222-222222222222',
+    ];
+    const createId = vi.fn(() => {
+      const id = ids.shift();
+      if (!id) throw new Error('unexpected UUID request');
+      return id;
+    });
+    const first = ensureIssueUpsertIntent(null, createInput, createId);
+    const retry = ensureIssueUpsertIntent(first, createInput, createId);
+
+    expect(first).toEqual({
+      fingerprint: issueUpsertIntentFingerprint(createInput),
+      issueId: '31111111-1111-4111-8111-111111111111',
+      idempotencyKey: '32222222-2222-4222-8222-222222222222',
+    });
+    expect(retry).toBe(first);
+    expect(createId).toHaveBeenCalledTimes(2);
+  });
+
+  it('사용자가 전송 값을 바꾸면 새 생성 intent와 UUID를 만든다', () => {
+    let sequence = 0;
+    const createId = vi.fn(() => `30000000-0000-4000-8000-${String(sequence += 1).padStart(12, '0')}`);
+    const first = ensureIssueUpsertIntent(null, createInput, createId);
+    const changed = ensureIssueUpsertIntent(first, { ...createInput, summary: '수정한 문안' }, createId);
+
+    expect(changed.fingerprint).not.toBe(first.fingerprint);
+    expect(changed.issueId).not.toBe(first.issueId);
+    expect(changed.idempotencyKey).not.toBe(first.idempotencyKey);
+    expect(createId).toHaveBeenCalledTimes(4);
+  });
+
+  it('편집은 선택 당시 snapshot과 기존 issue id를 고정하고 snapshot 변경 시 새 멱등키를 쓴다', () => {
+    let sequence = 0;
+    const createId = vi.fn(() => `40000000-0000-4000-8000-${String(sequence += 1).padStart(12, '0')}`);
+    const input = {
+      ...createInput,
+      existingIssueId: 'issue-1',
+      expectedSnapshotHash: 'snapshot-a',
+    };
+    const first = ensureIssueUpsertIntent(null, input, createId);
+    const retry = ensureIssueUpsertIntent(first, input, createId);
+    const refreshed = ensureIssueUpsertIntent(first, { ...input, expectedSnapshotHash: 'snapshot-b' }, createId);
+
+    expect(first.issueId).toBe('issue-1');
+    expect(retry).toBe(first);
+    expect(refreshed.issueId).toBe('issue-1');
+    expect(refreshed.idempotencyKey).not.toBe(first.idempotencyKey);
+    expect(createId).toHaveBeenCalledTimes(2);
   });
 });

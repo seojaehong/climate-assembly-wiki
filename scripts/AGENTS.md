@@ -104,18 +104,19 @@ export PATH="$HOME/tools/node-v20.18.0-win-x64:$PATH"
 ## ★★ 웹소켓은 `context.route` 로 못 막는다 — 2026-09-01 (US-011)
 
 `context.route('**/*.supabase.co/**', abort)` 는 **HTTP 만** 가로챈다. Supabase Realtime 은
-웹소켓(`wss://…/realtime/v1/websocket`)이라 이 그물을 그냥 통과한다. `HqSubmissionBoard` 는
-`fixtureRows` 가 없으면 `subscribeHqSubmissions()` 로 구독을 걸므로, 실화면 `/hq` 를 여는
-스크립트는 **운영 Supabase 에 웹소켓을 연 채로** 「요청 0건」이라고 보고하게 된다.
+웹소켓(`wss://…/realtime/v1/websocket`)이라 이 그물을 그냥 통과한다. 현재
+`HqSubmissionBoard`는 HQ capability를 broad table 구독에 전달할 수 없으므로
+세션 범위 RPC 폴링만 쓴다. 향후 Realtime을 다시 넣을 때는 session-scoped broadcast처럼
+서버가 권한을 검증하는 채널을 먼저 만들고 아래 웹소켓 격리 검사를 그대로 통과해야 한다.
 
 `addInitScript` 에서 `window.WebSocket` 을 무동작 스텁으로 갈아끼우고 시도한 URL 을 배열에
 쌓아 두면, 실제 연결을 0으로 만들면서 **몇 번 시도했는지까지 숫자로 낼 수 있다**
-(`verify-hq-deadline.mjs` 실측: 시도 1건, 전부 스텁에 갇힘).
+현재 정상 경로의 기대 시도는 0건이며, 1건이라도 생기면 회귀로 보고한다.
 
 - 스텁은 `send`·`close`·`addEventListener`·`removeEventListener`·`dispatchEvent` 와
   `CONNECTING/OPEN/CLOSING/CLOSED` 상수까지 갖춰야 한다 — supabase-js 가 이것들을 실제로 만진다.
   `onopen` 을 절대 안 부르므로 구독은 조용히 대기하다 끝난다
-- US-010 의 `/mod` 스크립트가 이 함정을 안 만난 것은 `ModConsole` 이 구독을 안 걸어서다.
+- `/mod`와 `/hq` 현장 스크립트 모두 HTTP와 WebSocket 연결 수를 별도로 검증한다.
   **구독을 거는 컴포넌트를 실화면으로 여는 스크립트는 전부 해당된다**
 
 ## 본부 게이트 뒤 화면(`/hq`)도 DB 없이 검증된다 — 2026-09-01 (US-011)

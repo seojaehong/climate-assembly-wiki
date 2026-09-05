@@ -4,9 +4,13 @@ on:
   push:
     paths:
       - 'automation/**'
+      - 'docs/platform/**'
+      - 'docs/operations/0912-13-runbook.md'
+      - 'evaluation/0912*.json'
       - 'evaluation/platform-a2-activation-bundle.json'
       - 'evaluation/platform-a4-migration-bundle.json'
       - 'public/workshop-graph/**'
+      - 'public/v/**'
       - '.github/workflows/test.yml'
       - '.gitattributes'
       - '.gitignore'
@@ -21,11 +25,31 @@ on:
       - 'src/islands/OntologyReviewConsole.test.ts'
       - 'src/islands/platform/PlatformShell.tsx'
       - 'src/islands/platform/PlatformShell.test.ts'
+      - 'src/islands/platform/**'
+      - 'src/islands/ballot/**'
       - 'src/islands/platform/access/**'
       - 'src/islands/platform/design/**'
       - 'src/islands/result/**'
       - 'src/islands/canvas/**'
+      - 'src/islands/mod/**'
+      - 'src/lib/**'
+      - 'src/lib/deliberation.ts'
+      - 'src/lib/mod-console.ts'
+      - 'src/lib/workshop-*.ts'
       - 'src/lib/supabase.ts'
+      - 'src/pages/mod.astro'
+      - 'src/pages/hq.astro'
+      - 'src/pages/v.astro'
+      - 'src/pages/b.astro'
+      - 'scripts/verify-field-rehearsal.mjs'
+      - 'scripts/verify-0912-hq-rehearsal.mjs'
+      - 'scripts/verify-0912-readiness.mjs'
+      - 'scripts/verify-0912-release-report.mjs'
+      - 'scripts/verify-0912-postgres.sh'
+      - 'scripts/verify-workshop-access-contract.mjs'
+      - 'scripts/seed-0829-*.mjs'
+      - 'scripts/rotate-join-code.mjs'
+      - 'scripts/session-rosters*.mjs'
       - 'src/pages/**/moderator/canvas.astro'
       - 'src/pages/**/moderator/live.astro'
       - 'src/pages/**/moderator/ontology-review.astro'
@@ -36,9 +60,13 @@ on:
   pull_request:
     paths:
       - 'automation/**'
+      - 'docs/platform/**'
+      - 'docs/operations/0912-13-runbook.md'
+      - 'evaluation/0912*.json'
       - 'evaluation/platform-a2-activation-bundle.json'
       - 'evaluation/platform-a4-migration-bundle.json'
       - 'public/workshop-graph/**'
+      - 'public/v/**'
       - '.github/workflows/test.yml'
       - '.gitattributes'
       - '.gitignore'
@@ -53,11 +81,31 @@ on:
       - 'src/islands/OntologyReviewConsole.test.ts'
       - 'src/islands/platform/PlatformShell.tsx'
       - 'src/islands/platform/PlatformShell.test.ts'
+      - 'src/islands/platform/**'
+      - 'src/islands/ballot/**'
       - 'src/islands/platform/access/**'
       - 'src/islands/platform/design/**'
       - 'src/islands/result/**'
       - 'src/islands/canvas/**'
+      - 'src/islands/mod/**'
+      - 'src/lib/**'
+      - 'src/lib/deliberation.ts'
+      - 'src/lib/mod-console.ts'
+      - 'src/lib/workshop-*.ts'
       - 'src/lib/supabase.ts'
+      - 'src/pages/mod.astro'
+      - 'src/pages/hq.astro'
+      - 'src/pages/v.astro'
+      - 'src/pages/b.astro'
+      - 'scripts/verify-field-rehearsal.mjs'
+      - 'scripts/verify-0912-hq-rehearsal.mjs'
+      - 'scripts/verify-0912-readiness.mjs'
+      - 'scripts/verify-0912-release-report.mjs'
+      - 'scripts/verify-0912-postgres.sh'
+      - 'scripts/verify-workshop-access-contract.mjs'
+      - 'scripts/seed-0829-*.mjs'
+      - 'scripts/rotate-join-code.mjs'
+      - 'scripts/session-rosters*.mjs'
       - 'src/pages/**/moderator/canvas.astro'
       - 'src/pages/**/moderator/live.astro'
       - 'src/pages/**/moderator/ontology-review.astro'
@@ -82,21 +130,26 @@ jobs:
       - name: Install root runtime
         run: npm ci
         working-directory: .
-      - name: Run root Canvas navigation tests
-        run: >-
-          npm exec vitest -- run
-          src/components/ModeratorPlatformNav.test.ts
-          src/islands/CanvasBoard.test.ts
-          src/islands/OntologyReviewConsole.test.ts
-          src/islands/platform/PlatformShell.test.ts
-          src/islands/platform/access/access-plan-logic.test.ts
-          src/islands/platform/design/design-console-logic.test.ts
-          src/islands/canvas/ontology-review-workspace.test.ts
-          src/islands/canvas/transcript-ontology-review-workspace.test.ts
-          src/islands/canvas/private-transcript-capture.test.ts
-          src/islands/canvas/PrivateTranscriptCapturePanel.test.ts
+      - name: Run strict Astro and TypeScript checks
+        run: npm run check
+        working-directory: .
+      - name: Run complete root Vitest suite
+        run: npm exec vitest -- run
         working-directory: .
       - run: npm ci
+      - name: Verify 9/12 workshop access static contract
+        working-directory: .
+        run: node scripts/verify-workshop-access-contract.mjs
+      - name: Verify 9/12 readiness traceability
+        working-directory: .
+        run: node scripts/verify-0912-readiness.mjs --output .artifacts/0912-13-traceability-report.json
+      - name: Upload 9/12 traceability evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: 0912-13-traceability
+          path: .artifacts/0912-13-traceability-report.json
+          if-no-files-found: error
       - name: Verify P1C organization selection semantics
         working-directory: .
         shell: bash
@@ -672,3 +725,115 @@ jobs:
             exit 1
           fi
           node automation/verify-canvas-browser.mjs --base-url http://127.0.0.1:4328
+
+  verify-0912-field-rehearsal:
+    name: Verify 9/12 field flow with synthetic browser fixtures
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            automation/package-lock.json
+      - name: Install root runtime
+        run: npm ci
+      - name: Install browser audit runtime
+        run: npm ci
+        working-directory: automation
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('automation/package-lock.json', 'package-lock.json') }}
+      - name: Install Chromium
+        run: npm exec -- playwright install --with-deps chromium
+        working-directory: automation
+      - name: Build production site with Node 20
+        run: npm exec -- astro build
+      - name: Run synthetic 9/12 field rehearsal against preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          preview_log="$RUNNER_TEMP/0912-preview.log"
+          rehearsal_log="$RUNNER_TEMP/0912-field-rehearsal.log"
+          hq_rehearsal_log="$RUNNER_TEMP/0912-hq-rehearsal.log"
+          report_path="$RUNNER_TEMP/0912-13-field-rehearsal.json"
+          hq_report_path="$RUNNER_TEMP/0912-13-hq-rehearsal.json"
+          npm exec -- astro preview --host 127.0.0.1 --port 4331 >"$preview_log" 2>&1 &
+          server_pid=$!
+          cleanup() {
+            status=$?
+            trap - EXIT
+            kill "$server_pid" 2>/dev/null || true
+            wait "$server_pid" 2>/dev/null || true
+            if [ "$status" -ne 0 ]; then
+              cat "$preview_log"
+            fi
+            exit "$status"
+          }
+          trap cleanup EXIT
+          ready=false
+          for _ in $(seq 1 120); do
+            if curl --fail --silent --max-time 2 http://127.0.0.1:4331/mod >/dev/null; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              cat "$preview_log"
+              exit 1
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            cat "$preview_log"
+            exit 1
+          fi
+          node scripts/verify-field-rehearsal.mjs \
+            --base http://127.0.0.1:4331 \
+            --report "$report_path" \
+            2>&1 | tee "$rehearsal_log"
+          node scripts/verify-0912-hq-rehearsal.mjs \
+            --base http://127.0.0.1:4331 \
+            --report "$hq_report_path" \
+            2>&1 | tee "$hq_rehearsal_log"
+      - name: Upload 9/12 field and HQ rehearsal evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: 0912-field-hq-rehearsal
+          path: |
+            ${{ runner.temp }}/0912-preview.log
+            ${{ runner.temp }}/0912-field-rehearsal.log
+            ${{ runner.temp }}/0912-hq-rehearsal.log
+            ${{ runner.temp }}/0912-13-field-rehearsal.json
+            ${{ runner.temp }}/0912-13-hq-rehearsal.json
+            .tmp-verify/rehearsal-*.png
+          if-no-files-found: error
+
+  verify-0912-event-access:
+    name: Verify 9/12 access and cutover ordering in disposable PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run P1a, P2a, P3 and P4 ordered access rehearsals
+        shell: bash
+        run: |
+          set -euo pipefail
+          P1A_CONTAINER_NAME="p1a-0912-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            P1A_REPORT_PATH="$RUNNER_TEMP/0912-p1a-postgres-report.json" \
+            bash scripts/verify-0912-postgres.sh \
+            2>&1 | tee "$RUNNER_TEMP/0912-p1a-postgres.log"
+      - name: Upload 9/12 PostgreSQL verification log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: 0912-p1a-p2a-postgres-verification
+          path: |
+            ${{ runner.temp }}/0912-p1a-postgres.log
+            ${{ runner.temp }}/0912-p1a-postgres-report.json
+          if-no-files-found: error

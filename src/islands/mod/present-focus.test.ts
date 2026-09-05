@@ -6,6 +6,7 @@ function team(id: string, noteCount = 0): TeamColumn {
   return {
     teamId: id,
     submissionId: null,
+    submissionVersion: null,
     teamName: id,
     tableNo: null,
     subgroup: '1분과',

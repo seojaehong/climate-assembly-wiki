@@ -28,7 +28,8 @@ create table if not exists climate_vote.session (
   slug text unique, title text, config jsonb default '{}', status text default 'draft',
   created_at timestamptz not null default now());
 create table if not exists climate_vote.rounds (
-  id text primary key, title text, type text, options jsonb default '[]',
+  id text primary key, title text, description text, type text, options jsonb default '[]',
+  scale_low int, scale_high int, scale_low_label text, scale_high_label text,
   sort_order int default 0, status text default 'draft',
   created_at timestamptz not null default now(), updated_at timestamptz not null default now());
 create table if not exists climate_vote.votes (

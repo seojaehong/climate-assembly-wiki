@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { ReactFlow, Background, Controls, applyNodeChanges, type NodeChange } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -18,6 +18,10 @@ import {
   type CanvasWriteResponse,
 } from './canvas/canvas-operation';
 import type { CanvasConnectionState, CanvasConnectionStatus } from './canvas/canvas-connection';
+import {
+  createResourceRequestCoordinator,
+  type ResourceRequestPriority,
+} from './mod/resource-request-coordinator';
 
 const nodeTypes = { agenda: AgendaNode, zoneFrame: ZoneFrameNode };
 
@@ -179,26 +183,105 @@ function unlinkAgendas(ids: string[]) {
   return runCanvasWrite('의제 연결 해제', (sb) => sb.schema('climate_vote').from('agenda_link').delete().in('id', ids));
 }
 
-async function createVoteRound(agendaTexts: string[]): Promise<{ id: string | null; result: CanvasOperationResult }> {
-  const id = `AGV-${crypto.randomUUID()}`;
-  const row = {
-    id, title: '의제 평가 투표', description: '각 의제의 중요도를 5점 척도로 평가해 주세요.',
-    type: 'SCALE_MULTI', options: agendaTexts,
-    scale_low: 1, scale_high: 5, scale_low_label: '낮음', scale_high_label: '높음',
-    status: 'pending', sort_order: 100,
-  };
-  const result = await runCanvasWrite('투표 생성', async (sb) => reconcileCommittedCanvasInsert<Record<string, unknown>>(
-    await sb.schema('climate_vote').from('rounds').insert(row),
-    () => sb.schema('climate_vote').from('rounds')
-      .select('id,title,description,type,options,scale_low,scale_high,scale_low_label,scale_high_label,status,sort_order')
-      .eq('id', id).maybeSingle(),
-    (existing) => Object.entries(row).every(([key, value]) => (
-      key === 'options'
-        ? JSON.stringify(existing[key]) === JSON.stringify(value)
-        : existing[key] === value
-    )),
-  ));
-  return { id: result.ok ? id : null, result };
+async function createVoteRound(
+  sessionId: string,
+  agendaTexts: string[],
+): Promise<{ id: string | null; result: CanvasOperationResult }> {
+  const idempotencyKey = crypto.randomUUID();
+  let createdId: string | null = null;
+  const result = await runCanvasWrite('투표 생성', async (sb) => {
+    const response = await sb.schema('climate_vote').rpc('platform_canvas_round_create_v2', {
+      p_session_id: sessionId,
+      p_options: agendaTexts,
+      p_idempotency_key: idempotencyKey,
+    });
+    const row = (response.data as Array<{ id?: unknown }> | null)?.[0];
+    if (!response.error && typeof row?.id !== 'string') {
+      return { error: new Error('Canvas round RPC returned an invalid response.'), retryable: false };
+    }
+    createdId = typeof row?.id === 'string' ? row.id : null;
+    return { error: response.error };
+  });
+  return { id: result.ok ? createdId : null, result };
+}
+
+async function setCanvasVoteRoundStatus(
+  sessionId: string,
+  roundId: string,
+  expectedStatus: 'pending' | 'active',
+  status: 'active' | 'closed',
+): Promise<{ status: 'active' | 'closed' | null; result: CanvasOperationResult; conflict: boolean }> {
+  const idempotencyKey = crypto.randomUUID();
+  let updatedStatus: 'active' | 'closed' | null = null;
+  let conflict = false;
+  const result = await runCanvasWrite(status === 'active' ? '투표 시작' : '투표 마감', async (sb) => {
+    const response = await sb.schema('climate_vote').rpc('platform_canvas_round_set_status_v2', {
+      p_session_id: sessionId,
+      p_round_id: roundId,
+      p_expected_status: expectedStatus,
+      p_status: status,
+      p_idempotency_key: idempotencyKey,
+    });
+    const row = response.data as { status?: unknown; current_status?: unknown } | null;
+    if (!response.error && row?.status !== status) {
+      conflict = true;
+      return {
+        error: new Error(`Canvas round status conflict: ${String(row?.current_status ?? row?.status)}`),
+        retryable: false,
+        message: '투표 상태가 다른 화면에서 변경되었습니다. 최신 상태를 확인해 주세요.',
+      };
+    }
+    updatedStatus = row?.status === status ? status : null;
+    return { error: response.error };
+  });
+  return { status: result.ok ? updatedStatus : null, result, conflict };
+}
+
+type CurrentCanvasRound = {
+  id: string;
+  title: string;
+  status: 'pending' | 'active';
+};
+
+export type CanvasVoteRoundView = {
+  id: string;
+  status: 'pending' | 'active' | 'closed';
+  url: string;
+  qr: string;
+};
+
+const CANVAS_ROUND_STATUS_RANK: Record<CanvasVoteRoundView['status'], number> = {
+  pending: 0,
+  active: 1,
+  closed: 2,
+};
+
+export function resolveCanvasVoteRoundSnapshot(
+  current: CanvasVoteRoundView | null,
+  incoming: CanvasVoteRoundView | null,
+): CanvasVoteRoundView | null {
+  if (current?.status === 'closed' && incoming === null) return current;
+  if (current && incoming && current.id === incoming.id
+      && CANVAS_ROUND_STATUS_RANK[incoming.status] < CANVAS_ROUND_STATUS_RANK[current.status]) {
+    return current;
+  }
+  return incoming;
+}
+
+async function fetchCurrentCanvasVoteRound(sessionId: string): Promise<CurrentCanvasRound | null> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Canvas Supabase client is not configured.');
+  const response = await sb.schema('climate_vote').rpc('platform_canvas_round_current_v2', {
+    p_session_id: sessionId,
+  });
+  if (response.error) throw response.error;
+  const row = (response.data as Array<Partial<CurrentCanvasRound>> | null)?.[0];
+  if (!row) return null;
+  if (typeof row.id !== 'string' || typeof row.title !== 'string'
+      || (row.status !== 'pending' && row.status !== 'active')) {
+    throw new Error('Canvas current round RPC returned an invalid response.');
+  }
+  return { id: row.id, title: row.title, status: row.status };
 }
 
 function setGroup(ids: string[], groupId: string | null) {
@@ -237,7 +320,7 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
   const operationResult = operationState?.generation === authGeneration ? operationState.result : null;
   const retryingOperation = retryingGeneration === authGeneration;
 
-  const applyOperationResult = (generation: number, result: CanvasOperationResult) => {
+  const applyOperationResult = useCallback((generation: number, result: CanvasOperationResult) => {
     setOperationState((current) => ({
       generation,
       result: retainCanvasOperationNotice(
@@ -245,7 +328,7 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
         result,
       ),
     }));
-  };
+  }, []);
 
   const completeOperation = async (operation: Promise<CanvasOperationResult>) => {
     const generation = authGenerationRef.current;
@@ -372,7 +455,66 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
   // 선택된 카드 + 묶기/해제 상태
   const selectedNodes = useMemo(() => nodes.filter((n) => (n as { selected?: boolean }).selected), [nodes]);
   const selectedIds = selectedNodes.map((n) => n.id);
-  const [voteUrl, setVoteUrl] = useState<string | null>(null);
+  const [voteRound, setVoteRound] = useState<CanvasVoteRoundView | null>(null);
+  const voteUrl = voteRound?.url ?? null;
+  const voteRoundId = voteRound?.id ?? null;
+  const voteRoundStatus = voteRound?.status ?? null;
+  const voteQr = voteRound?.qr ?? null;
+  const voteRoundOperationLock = useRef(false);
+  const [voteRoundOperationBusy, setVoteRoundOperationBusy] = useState(false);
+  const voteRoundRefreshCoordinatorRef = useRef(createResourceRequestCoordinator());
+
+  const reloadCurrentVoteRound = useCallback(async (
+    priority: ResourceRequestPriority = 'manual',
+  ) => {
+    const coordinator = voteRoundRefreshCoordinatorRef.current;
+    if (!authed || !sessionId) {
+      coordinator.invalidate();
+      setVoteRound(null);
+      return;
+    }
+    if (priority === 'background' && voteRoundOperationLock.current) return;
+    const ticket = coordinator.begin(`canvas-round:${sessionId}`, priority);
+    if (!ticket) return;
+    const generation = authGenerationRef.current;
+    try {
+      const currentRound = await fetchCurrentCanvasVoteRound(sessionId);
+      if (authGenerationRef.current !== generation || !coordinator.isCurrent(ticket)) return;
+      if (!currentRound) {
+        // Clear an obsolete pending/active view as one state cell, but retain a
+        // locally confirmed close because the current-round RPC omits closed rows.
+        setVoteRound((current) => resolveCanvasVoteRoundSnapshot(current, null));
+        return;
+      }
+      const url = `${window.location.origin}/v/?round=${currentRound.id}`;
+      const qr = await QRCode.toDataURL(url, { width: 200, margin: 1 });
+      if (authGenerationRef.current !== generation || !coordinator.isCurrent(ticket)) return;
+      const incoming = { id: currentRound.id, status: currentRound.status, url, qr };
+      setVoteRound((current) => resolveCanvasVoteRoundSnapshot(current, incoming));
+    } catch (error: unknown) {
+      if (authGenerationRef.current !== generation || !coordinator.isCurrent(ticket)) return;
+      console.error('Canvas current round recovery failed', error);
+      applyOperationResult(generation, {
+        ok: false,
+        kind: 'alert',
+        message: '진행 중인 투표를 복원하지 못했습니다. 상태를 새로고침해 주세요.',
+      });
+    } finally {
+      coordinator.finish(ticket);
+    }
+  }, [applyOperationResult, authed, sessionId]);
+
+  useEffect(() => {
+    const coordinator = voteRoundRefreshCoordinatorRef.current;
+    coordinator.invalidate();
+    void reloadCurrentVoteRound('background');
+    if (!authed || !sessionId) return undefined;
+    const interval = setInterval(() => void reloadCurrentVoteRound('background'), 5_000);
+    return () => {
+      clearInterval(interval);
+      coordinator.invalidate();
+    };
+  }, [authGeneration, authed, reloadCurrentVoteRound, sessionId]);
 
   // ✨ 임베딩 유사 의제 추천 (gte-small 코사인 유사도, edge function). 추천일 뿐 자동병합 없음.
   const [suggestions, setSuggestions] = useState<{ a: string; at: string; b: string; bt: string; sim: number }[]>([]);
@@ -439,22 +581,55 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
     setKnnFor(anchor.id);
   };
 
-  const [voteQr, setVoteQr] = useState<string | null>(null);
   const makeVote = async () => {
-    const generation = authGenerationRef.current;
-    const texts = selectedNodes.map((n) => (n.data as { label: string }).label);
-    const { id, result } = await createVoteRound(texts);
-    if (authGenerationRef.current !== generation) return;
-    applyOperationResult(generation, result);
-    if (id) {
-      const u = `${window.location.origin}/v/?round=${id}`;
-      setVoteUrl(u);
-      await completeOperation(executeCanvasOperation('투표 QR 생성', async () => {
-        const qr = await QRCode.toDataURL(u, { width: 200, margin: 1 });
-        if (authGenerationRef.current === generation) setVoteQr(qr);
-        return { error: null };
-      }));
-    }
+    if (!sessionId) return;
+    await runExclusiveCanvasAuthOperation(voteRoundOperationLock, async () => {
+      voteRoundRefreshCoordinatorRef.current.invalidate();
+      const generation = authGenerationRef.current;
+      const texts = selectedNodes.map((n) => (n.data as { label: string }).label);
+      const { id, result } = await createVoteRound(sessionId, texts);
+      if (authGenerationRef.current !== generation) return;
+      applyOperationResult(generation, result);
+      if (id) {
+        const u = `${window.location.origin}/v/?round=${id}`;
+        let qr: string | null = null;
+        const qrResult = await completeOperation(executeCanvasOperation('투표 QR 생성', async () => {
+          qr = await QRCode.toDataURL(u, { width: 200, margin: 1 });
+          return { error: null };
+        }));
+        if (authGenerationRef.current !== generation) return;
+        if (qrResult.ok && qr) {
+          setVoteRound({ id, status: 'pending', url: u, qr });
+        } else {
+          // The create RPC may have committed even when local QR rendering did
+          // not. Recover from the server instead of retaining a partial round.
+          await reloadCurrentVoteRound();
+        }
+      }
+    }, setVoteRoundOperationBusy);
+  };
+  const changeVoteRoundStatus = async (status: 'active' | 'closed') => {
+    if (!sessionId || !voteRoundId || !voteRoundStatus || voteRoundStatus === 'closed') return;
+    await runExclusiveCanvasAuthOperation(voteRoundOperationLock, async () => {
+      voteRoundRefreshCoordinatorRef.current.invalidate();
+      const generation = authGenerationRef.current;
+      const expectedStatus = voteRoundStatus;
+      const changed = await setCanvasVoteRoundStatus(
+        sessionId,
+        voteRoundId,
+        expectedStatus,
+        status,
+      );
+      if (authGenerationRef.current !== generation) return;
+      applyOperationResult(generation, changed.result);
+      if (changed.status) {
+        const updatedStatus = changed.status;
+        setVoteRound((current) => current?.id === voteRoundId
+          ? { ...current, status: updatedStatus }
+          : current);
+      }
+      if (changed.conflict) await reloadCurrentVoteRound();
+    }, setVoteRoundOperationBusy);
   };
   // 📲 참여 QR — 180명이 폰으로 /join 접속해 의제 제출
   const [joinQr, setJoinQr] = useState<string | null>(null);
@@ -484,8 +659,9 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
     setLoginPw('');
     setLoginErr(null);
     setFocusJo(null);
-    setVoteUrl(null);
-    setVoteQr(null);
+    setVoteRound(null);
+    voteRoundOperationLock.current = false;
+    setVoteRoundOperationBusy(false);
     setJoinQr(null);
     setSuggestions([]);
     setSuggesting(false);
@@ -575,15 +751,17 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
       {/* 채택 → cv 투표 생성: 선택 의제로 모바일 투표(SCALE_MULTI) 라운드 만들기 */}
       {writable && selectedIds.length >= 1 && (
         <button
-          onClick={makeVote}
+          type="button"
+          onClick={() => void makeVote()}
+          disabled={voteRoundOperationBusy || voteRoundId != null}
           style={{
             position: 'absolute', top: 16, left: selectedIds.length >= 2 ? 250 : 128, zIndex: 10,
             padding: '12px 18px', fontSize: 16, fontWeight: 800, borderRadius: 12,
-            border: 'none', background: '#0d9488', color: '#fff', cursor: 'pointer',
+            border: 'none', background: '#0d9488', color: '#fff', cursor: voteRoundOperationBusy ? 'wait' : voteRoundId ? 'not-allowed' : 'pointer',
             boxShadow: '0 4px 12px rgba(0,0,0,.18)',
           }}
         >
-          🗳 투표 생성 ({selectedIds.length})
+          {voteRoundOperationBusy ? '투표 작업 중…' : voteRoundId ? '진행 중 투표 먼저 마감' : `🗳 투표 생성 (${selectedIds.length})`}
         </button>
       )}
 
@@ -594,12 +772,45 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
           background: '#fff', borderRadius: 16, padding: '20px 24px', maxWidth: '92vw', textAlign: 'center',
           boxShadow: '0 12px 40px rgba(0,0,0,.35)',
         }}>
-          <div style={{ fontWeight: 900, fontSize: 18, color: '#0d9488', marginBottom: 12 }}>🗳 투표 생성됨 — 스캔해서 투표하세요</div>
+          <div style={{ fontWeight: 900, fontSize: 18, color: '#0d9488', marginBottom: 12 }}>
+            {voteRoundStatus === 'pending' && '🗳 투표 준비됨 — 시작 후 스캔해 주세요'}
+            {voteRoundStatus === 'active' && '🟢 투표 진행 중 — 스캔해서 투표하세요'}
+            {voteRoundStatus === 'closed' && '✅ 투표 마감됨 — 링크에서 결과를 확인하세요'}
+          </div>
+          <p style={{ maxWidth: 420, margin: '0 auto 12px', color: '#7c2d12', fontSize: 13, fontWeight: 800 }}>
+            현장 참고용 익명 의견조사입니다. 공식 의사결정의 단독 근거로 사용하지 마세요.
+          </p>
           {voteQr && <img src={voteQr} alt="투표 QR" style={{ width: 200, height: 200 }} />}
+          <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 8 }}>
+            {voteRoundStatus === 'pending' && (
+              <button
+                type="button"
+                onClick={() => void changeVoteRoundStatus('active')}
+                disabled={voteRoundOperationBusy}
+                style={{ padding: '9px 16px', borderRadius: 9, border: 'none', background: '#15803d', color: '#fff', cursor: voteRoundOperationBusy ? 'wait' : 'pointer', fontWeight: 900 }}
+              >{voteRoundOperationBusy ? '시작 중…' : '투표 시작'}</button>
+            )}
+            {voteRoundStatus === 'active' && (
+              <button
+                type="button"
+                onClick={() => void changeVoteRoundStatus('closed')}
+                disabled={voteRoundOperationBusy}
+                style={{ padding: '9px 16px', borderRadius: 9, border: 'none', background: '#b42318', color: '#fff', cursor: voteRoundOperationBusy ? 'wait' : 'pointer', fontWeight: 900 }}
+              >{voteRoundOperationBusy ? '마감 중…' : '투표 마감'}</button>
+            )}
+          </div>
           <div style={{ marginTop: 10, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
             <a href={voteUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#6b7280', wordBreak: 'break-all', maxWidth: 240 }}>{voteUrl}</a>
             <button onClick={() => void copyVoteLink()} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', cursor: 'pointer', fontWeight: 800 }}>복사</button>
-            <button onClick={() => { setVoteUrl(null); setVoteQr(null); }} style={{ padding: '6px 10px', borderRadius: 8, border: 'none', background: '#e5e7eb', cursor: 'pointer' }}>✕</button>
+            {voteRoundStatus === 'closed' ? (
+              <button
+                type="button"
+                onClick={() => setVoteRound(null)}
+                style={{ padding: '6px 10px', borderRadius: 8, border: 'none', background: '#e5e7eb', cursor: 'pointer' }}
+              >✕</button>
+            ) : (
+              <span style={{ fontSize: 12, color: '#7c2d12', fontWeight: 800 }}>마감 전에는 이 제어창을 닫을 수 없습니다.</span>
+            )}
           </div>
         </div>
       )}
@@ -640,7 +851,7 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
               display: 'flex', alignItems: 'center', gap: 5, padding: '2px 8px 2px 4px', borderRadius: 999,
               background: focusJo === jo ? 'rgba(255,255,255,.95)' : 'rgba(255,255,255,.15)',
               color: focusJo === jo ? '#1f2937' : '#fff', fontSize: 13, fontWeight: 800,
-              border: focusJo === jo ? '2px solid #fff' : '1px solid rgba(255,255,255,.3)', cursor: 'pointer',
+              border: focusJo === jo ? '2px solid #fff' : '1px solid rgba(255,255,255,.3)',
             }}>
               <input
                 type="color"
@@ -650,7 +861,16 @@ export default function CanvasBoard({ sessionSlug }: { sessionSlug: string }) {
                 title={`${jo} 색 선택`}
                 style={{ width: 20, height: 20, border: 'none', borderRadius: 5, background: 'none', cursor: 'pointer', padding: 0 }}
               />
-              <span onClick={() => setFocusJo(focusJo === jo ? null : jo)} title={`${jo}만 보기`}>{jo}</span>
+              <button
+                type="button"
+                onClick={() => setFocusJo(focusJo === jo ? null : jo)}
+                aria-pressed={focusJo === jo}
+                title={`${jo}만 보기`}
+                style={{
+                  border: 'none', background: 'transparent', color: 'inherit', font: 'inherit',
+                  padding: '3px 2px', cursor: 'pointer', borderRadius: 5,
+                }}
+              >{jo}</button>
             </span>
           ))}
         </div>

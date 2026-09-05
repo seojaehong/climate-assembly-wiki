@@ -17,7 +17,7 @@ export const DESIGN_BLUEPRINT_ROUTE = `/platform/o/${FIXTURE_IDS.org}/c/audit-as
 export const ACCESS_PLAN_ROUTE = `/platform/o/${FIXTURE_IDS.org}/access`;
 export const REVIEW_CONSOLE_ROUTE = `/platform/o/${FIXTURE_IDS.org}/c/audit-assembly/s/audit-session/t/${FIXTURE_IDS.topic}/review`;
 export const PUBLISH_CONSOLE_ROUTE = `/platform/o/${FIXTURE_IDS.org}/c/audit-assembly/s/audit-session/t/${FIXTURE_IDS.topic}/publish`;
-const READ_RPCS = new Set(['/rest/v1/rpc/my_orgs', '/rest/v1/rpc/readiness_check']);
+const READ_RPCS = new Set(['/rest/v1/rpc/my_orgs', '/rest/v1/rpc/platform_readiness_check_v2']);
 
 const REVIEW_TOPICS = [
   {

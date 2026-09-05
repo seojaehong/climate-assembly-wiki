@@ -1,18 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   fetchAttendanceAudit,
   fetchAttendanceRoster,
   saveRosterMember,
   setTeamAttendancePin,
   setTeamTableNo,
-  unlockHqAttendance,
   type AttendanceAuditRow,
   type AttendanceRosterRow,
 } from '../../lib/attendance';
+import { CURRENT_SESSION_SLUG } from '../../lib/hq-submissions';
 import type { HqTeam } from '../../lib/mod-console';
+import { classifyAttendanceError } from './attendance-logic';
 import { TABLE_NO_MAX_LENGTH, normalizeTableNo, tableNoLabel } from './table-no';
-
-const TOKEN_KEY = 'climate_vote_hq_attendance_token';
 
 function csvCell(value: string | boolean): string {
   return `"${String(value).replaceAll('"', '""')}"`;
@@ -69,10 +68,15 @@ function formatAuditValue(value: unknown): string {
   }
 }
 
-export default function HqAttendanceAdmin({ teams }: { teams: HqTeam[] }) {
-  const [token, setToken] = useState<string | null>(null);
-  const [actorLabel, setActorLabel] = useState('');
-  const [password, setPassword] = useState('');
+export default function HqAttendanceAdmin({
+  teams,
+  token,
+  onAuthorizationExpired,
+}: {
+  teams: HqTeam[];
+  token: string;
+  onAuthorizationExpired: () => void;
+}) {
   const [rows, setRows] = useState<AttendanceRosterRow[]>([]);
   const [audit, setAudit] = useState<AttendanceAuditRow[]>([]);
   const [tab, setTab] = useState<'roster' | 'audit'>('roster');
@@ -90,33 +94,63 @@ export default function HqAttendanceAdmin({ teams }: { teams: HqTeam[] }) {
   const [tableSavingId, setTableSavingId] = useState<string | null>(null);
   // 저장 실패는 조별로 남긴다 — 공용 message 채널은 15초 폴링 성공이 지워 버린다.
   const [tableErrors, setTableErrors] = useState<Record<string, string>>({});
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [refreshBusy, setRefreshBusy] = useState(false);
+  const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(null);
+  const tokenRef = useRef<string>(token);
+  const loadRequestSequence = useRef(0);
+  const loadInFlightRef = useRef<{ token: string; requestId: number; promise: Promise<void> } | null>(null);
 
-  const load = useCallback(async (sessionToken: string) => {
-    try {
-      const [nextRows, nextAudit] = await Promise.all([
-        fetchAttendanceRoster(sessionToken),
-        fetchAttendanceAudit(sessionToken),
-      ]);
-      setRows(nextRows);
-      setAudit(nextAudit);
-      setMessage(null);
-    } catch (error) {
-      console.error('[HQ attendance] admin refresh failed', error);
-      sessionStorage.removeItem(TOKEN_KEY);
-      setToken(null);
-      setRows([]);
-      setAudit([]);
-      setMessage('관리자 세션이 만료되었거나 데이터를 불러오지 못했습니다. 다시 잠금을 해제해 주세요.');
-    }
-  }, []);
+  const load = useCallback((sessionToken: string): Promise<void> => {
+    const currentRequest = loadInFlightRef.current;
+    if (currentRequest?.token === sessionToken) return currentRequest.promise;
+
+    setRefreshBusy(true);
+    const requestId = loadRequestSequence.current + 1;
+    loadRequestSequence.current = requestId;
+    const request = (async () => {
+      try {
+        const [nextRows, nextAudit] = await Promise.all([
+          fetchAttendanceRoster(sessionToken, CURRENT_SESSION_SLUG),
+          fetchAttendanceAudit(sessionToken, CURRENT_SESSION_SLUG),
+        ]);
+        if (tokenRef.current !== sessionToken) return;
+        setRows(nextRows);
+        setAudit(nextAudit);
+        setRefreshError(null);
+        setLastRefreshAt(Date.now());
+        setMessage(null);
+      } catch (error) {
+        console.error('[HQ attendance] admin refresh failed', error);
+        if (tokenRef.current !== sessionToken) return;
+        if (classifyAttendanceError(error) === 'transient') {
+          setRefreshError('연결이 잠시 끊겼습니다. 마지막으로 확인한 명단과 수정이력을 유지하고 자동으로 다시 연결합니다.');
+          return;
+        }
+        setRows([]);
+        setAudit([]);
+        setRefreshError(null);
+        onAuthorizationExpired();
+      } finally {
+        if (loadInFlightRef.current?.requestId === requestId) {
+          loadInFlightRef.current = null;
+          setRefreshBusy(false);
+        }
+      }
+    })();
+    loadInFlightRef.current = { token: sessionToken, requestId, promise: request };
+    return request;
+  }, [onAuthorizationExpired]);
 
   useEffect(() => {
-    const saved = sessionStorage.getItem(TOKEN_KEY);
-    if (saved) {
-      setToken(saved);
-      void load(saved);
-    }
-  }, [load]);
+    tokenRef.current = token;
+    loadRequestSequence.current += 1;
+    loadInFlightRef.current = null;
+    setRows([]);
+    setAudit([]);
+    setRefreshError(null);
+    void load(token);
+  }, [load, token]);
 
   useEffect(() => {
     if (!token) return undefined;
@@ -140,39 +174,12 @@ export default function HqAttendanceAdmin({ teams }: { teams: HqTeam[] }) {
     );
   }, [query, rows, teamFilter]);
 
-  const unlock = async (event: React.SyntheticEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!actorLabel.trim() || !password) {
-      setMessage('운영자 표시 이름과 공유 비밀번호를 모두 입력해 주세요.');
-      return;
-    }
-    setBusy(true);
-    setMessage(null);
-    try {
-      const nextToken = await unlockHqAttendance(password, actorLabel.trim());
-      setPassword('');
-      if (!nextToken) {
-        setMessage('비밀번호가 일치하지 않거나 잠시 잠금 상태입니다.');
-        return;
-      }
-      sessionStorage.setItem(TOKEN_KEY, nextToken);
-      setToken(nextToken);
-      await load(nextToken);
-    } catch (error) {
-      console.error('[HQ attendance] unlock failed', error);
-      setPassword('');
-      setMessage('잠금 해제 요청을 처리하지 못했습니다.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const saveExisting = async (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!token || !editing) return;
     setBusy(true);
     try {
-      await saveRosterMember(token, {
+      await saveRosterMember(token, CURRENT_SESSION_SLUG, {
         assignmentId: editing.assignment_id,
         officialId: editing.official_id,
         name: editing.member_name,
@@ -195,7 +202,7 @@ export default function HqAttendanceAdmin({ teams }: { teams: HqTeam[] }) {
     if (!token || !newMember.teamId) return;
     setBusy(true);
     try {
-      await saveRosterMember(token, {
+      await saveRosterMember(token, CURRENT_SESSION_SLUG, {
         officialId: newMember.officialId,
         name: newMember.name,
         teamId: newMember.teamId,
@@ -214,13 +221,13 @@ export default function HqAttendanceAdmin({ teams }: { teams: HqTeam[] }) {
 
   const rotatePin = async (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!token || !pinTeamId || !/^\d{6,12}$/.test(newPin)) {
-      setMessage('조 운영 PIN은 숫자 6~12자리로 입력해 주세요.');
+    if (!token || !pinTeamId || !/^\d{6,10}$/.test(newPin)) {
+      setMessage('조 운영 PIN은 숫자 6~10자리로 입력해 주세요.');
       return;
     }
     setBusy(true);
     try {
-      await setTeamAttendancePin(token, pinTeamId, newPin);
+      await setTeamAttendancePin(token, CURRENT_SESSION_SLUG, pinTeamId, newPin);
       setNewPin('');
       setMessage('조 운영 PIN을 새 값으로 교체했습니다. 화면에는 다시 표시되지 않습니다.');
       await load(token);
@@ -243,7 +250,7 @@ export default function HqAttendanceAdmin({ teams }: { teams: HqTeam[] }) {
       return rest;
     });
     try {
-      await setTeamTableNo(token, team.id, value);
+      await setTeamTableNo(token, CURRENT_SESSION_SLUG, team.id, value);
       // 초안을 지우지 않는다. teams prop은 /hq 폴링(최대 30초) 뒤에야 새 값을 싣고 오므로,
       // 여기서 지우면 입력창이 옛 값으로 되돌아가 저장이 실패한 것처럼 보인다.
       setTableDrafts((current) => ({ ...current, [team.id]: value ?? '' }));
@@ -263,73 +270,37 @@ export default function HqAttendanceAdmin({ teams }: { teams: HqTeam[] }) {
     }
   };
 
-  if (!token) {
-    return (
-      <section className="rounded-2xl border border-[#C4D8E4] bg-white p-5 shadow-sm" aria-labelledby="hq-admin-title">
-        <h2 id="hq-admin-title" className="text-[21px] font-extrabold text-[#1F2933]">HQ 명단 관리</h2>
-        <p className="mt-1 text-[14px] leading-relaxed text-[#5A6B73]">
-          공개 화면에는 통계만 표시됩니다. 실명 명단·수정이력·CSV는 잠금 해제 후 이용할 수 있습니다.
-        </p>
-        <form onSubmit={unlock} className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-          <label className="text-[13px] font-bold text-[#334E5C]">
-            운영자 표시 이름
-            <input
-              value={actorLabel}
-              onChange={(event) => setActorLabel(event.target.value)}
-              autoComplete="name"
-              className="mt-1 min-h-11 w-full rounded-xl border border-[#C4D8E4] px-3 text-[15px]"
-            />
-          </label>
-          <label className="text-[13px] font-bold text-[#334E5C]">
-            HQ 공유 비밀번호
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="current-password"
-              className="mt-1 min-h-11 w-full rounded-xl border border-[#C4D8E4] px-3 text-[15px]"
-            />
-          </label>
-          <button
-            type="submit"
-            disabled={busy}
-            className="min-h-11 self-end rounded-xl bg-[#1F4E79] px-5 text-[15px] font-extrabold text-white disabled:opacity-50"
-          >
-            잠금 해제
-          </button>
-        </form>
-        {message ? <p className="mt-3 rounded-lg bg-[#FFF4D6] px-3 py-2 text-[13px] font-bold text-[#6B4B00]">{message}</p> : null}
-      </section>
-    );
-  }
-
   return (
     <section className="rounded-2xl border-2 border-[#1F4E79] bg-white p-4 shadow-sm sm:p-5" aria-labelledby="hq-admin-title">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 id="hq-admin-title" className="text-[22px] font-extrabold text-[#1F2933]">HQ 명단 관리 · 잠금 해제됨</h2>
+          <h2 id="hq-admin-title" className="text-[22px] font-extrabold text-[#1F2933]">HQ 명단 관리</h2>
           <p className="mt-1 text-[13px] text-[#5A6B73]">변경은 삭제되지 않는 수정이력에 운영자 이름과 함께 기록됩니다.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => downloadCsv(rows)} className="min-h-11 rounded-xl border border-[#1F4E79] px-4 text-[14px] font-bold text-[#1F4E79]">
             CSV 다운로드
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              sessionStorage.removeItem(TOKEN_KEY);
-              setToken(null);
-              setRows([]);
-              setAudit([]);
-            }}
-            className="min-h-11 rounded-xl bg-[#1F4E79] px-4 text-[14px] font-bold text-white"
-          >
-            잠금
-          </button>
         </div>
       </div>
 
       {message ? <p className="mt-3 rounded-lg bg-[#EEF4F8] px-3 py-2 text-[13px] font-bold text-[#1F4E79]">{message}</p> : null}
+      {refreshError ? (
+        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border-2 border-[#B5651D] bg-[#FFF4D6] px-3 py-2" role="alert">
+          <p className="min-w-[220px] flex-1 text-[13px] font-bold leading-relaxed text-[#6B4B00]">
+            {refreshError}{' '}
+            {lastRefreshAt == null ? '아직 정상 확인된 시각이 없습니다.' : `마지막 정상 확인 ${new Date(lastRefreshAt).toLocaleTimeString('ko-KR')}`}
+          </p>
+          <button
+            type="button"
+            onClick={() => token && void load(token)}
+            disabled={refreshBusy}
+            className="min-h-11 rounded-lg border-2 border-[#6B4B00] bg-white px-3 text-[13px] font-extrabold text-[#6B4B00] disabled:opacity-50"
+          >
+            {refreshBusy ? '다시 연결 중…' : '지금 다시 연결'}
+          </button>
+        </div>
+      ) : null}
 
       <div className="mt-4 flex gap-2 border-b border-[#DCE7EE]">
         {(['roster', 'audit'] as const).map((value) => (
@@ -377,7 +348,7 @@ export default function HqAttendanceAdmin({ teams }: { teams: HqTeam[] }) {
             <select aria-label="운영 PIN을 교체할 조" value={pinTeamId} onChange={(event) => setPinTeamId(event.target.value)} className="min-h-11 rounded-lg border border-[#D8BE79] px-3">
               {teams.map((team) => <option key={team.id} value={team.id}>{team.name} 운영 PIN</option>)}
             </select>
-            <input aria-label="새 조 운영 PIN" type="password" inputMode="numeric" value={newPin} onChange={(event) => setNewPin(event.target.value.replace(/\D/g, ''))} placeholder="새 숫자 PIN 6~12자리" className="min-h-11 rounded-lg border border-[#D8BE79] px-3" />
+            <input aria-label="새 조 운영 PIN" type="password" inputMode="numeric" value={newPin} onChange={(event) => setNewPin(event.target.value.replace(/\D/g, ''))} placeholder="새 숫자 PIN 6~10자리" className="min-h-11 rounded-lg border border-[#D8BE79] px-3" />
             <button disabled={busy} className="min-h-11 rounded-lg bg-[#6B4B00] px-4 font-bold text-white disabled:opacity-50">PIN 교체</button>
           </form>
 
@@ -424,11 +395,59 @@ export default function HqAttendanceAdmin({ teams }: { teams: HqTeam[] }) {
             </ul>
           </section>
 
-          <div className="overflow-x-auto rounded-xl border border-[#DCE7EE]">
+          {visibleRows.length === 0 ? (
+            <p role="status" className="rounded-xl border border-[#DCE7EE] bg-[#F8FAFC] p-4 text-[14px] font-bold text-[#5A6B73]">
+              표시할 출석 명단이 없습니다. 검색어와 조 필터를 확인해 주세요.
+            </p>
+          ) : (
+            <ul aria-label="출석 명단" className="space-y-3 md:hidden">
+              {visibleRows.map((row) => (
+                <li key={row.assignment_id} className="rounded-xl border border-[#DCE7EE] bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[17px] font-extrabold text-[#1F2933]">{row.member_name}</p>
+                      <p className="mt-1 font-mono text-[13px] font-bold text-[#526975]">{row.official_id}</p>
+                    </div>
+                    <span className="rounded-full bg-[#EEF4F8] px-3 py-1 text-[12px] font-extrabold text-[#334E5C]">
+                      {row.active ? '활성' : '비활성'}
+                    </span>
+                  </div>
+                  <dl className="mt-4 grid grid-cols-[72px_1fr] gap-x-3 gap-y-2 text-[14px]">
+                    <dt className="font-bold text-[#526975]">조</dt>
+                    <dd className="font-bold text-[#1F2933]">{row.team_name}</dd>
+                    <dt className="font-bold text-[#526975]">상태</dt>
+                    <dd>{row.base_status}{row.is_late ? ' · 지각' : ''}{row.is_early_leave ? ' · 조퇴' : ''}</dd>
+                    <dt className="font-bold text-[#526975]">입실</dt>
+                    <dd>{row.checked_in_at ? new Date(row.checked_in_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '—'}</dd>
+                    <dt className="font-bold text-[#526975]">퇴실</dt>
+                    <dd>{row.checked_out_at ? new Date(row.checked_out_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '—'}</dd>
+                  </dl>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(row)}
+                    className="mt-4 min-h-11 w-full rounded-lg border-2 border-[#1F4E79] px-3 font-bold text-[#1F4E79]"
+                  >
+                    {row.member_name} 수정
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {visibleRows.length > 0 ? (
+          <div
+            role="region"
+            aria-label="출석 명단 표"
+            tabIndex={0}
+            className="hidden overflow-x-auto rounded-xl border border-[#DCE7EE] focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79] md:block"
+          >
             <table className="min-w-[920px] w-full text-left text-[14px]">
+              <caption className="sr-only">공식 ID, 이름, 조, 출석 상태와 관리 기능이 있는 출석 명단</caption>
               <thead className="bg-[#EEF4F8] text-[#334E5C]">
                 <tr>
-                  {['공식 ID', '이름', '조', '상태', '입실', '퇴실', '활성', '관리'].map((label) => <th key={label} className="px-3 py-3">{label}</th>)}
+                  {['공식 ID', '이름', '조', '상태', '입실', '퇴실', '활성', '관리'].map((label) => (
+                    <th key={label} scope="col" className="px-3 py-3">{label}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -449,6 +468,7 @@ export default function HqAttendanceAdmin({ teams }: { teams: HqTeam[] }) {
               </tbody>
             </table>
           </div>
+          ) : null}
         </div>
       ) : (
         <ol className="mt-4 space-y-3">

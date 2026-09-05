@@ -18,16 +18,13 @@ function sbHeaders(method) {
   return h;
 }
 
-function sbGet(path, params) {
-  const u = new URL(SB_URL + '/rest/v1/' + path);
-  if (params) Object.entries(params).forEach(([k,v]) => u.searchParams.set(k,v));
-  return fetch(u.toString(), { headers: sbHeaders('GET') }).then(r => r.json());
-}
-
-function sbPost(path, body) {
-  return fetch(SB_URL + '/rest/v1/' + path, {
+function sbRpc(name, body) {
+  const headers = sbHeaders('POST');
+  headers['Content-Profile'] = 'climate_vote';
+  headers['Accept-Profile'] = 'climate_vote';
+  return fetch(SB_URL + '/rest/v1/rpc/' + name, {
     method: 'POST',
-    headers: sbHeaders('POST'),
+    headers,
     body: JSON.stringify(body),
   }).then(async r => {
     const text = await r.text();
@@ -47,17 +44,152 @@ function uuid4() {
     (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
 }
 
+let memoryClientId = null;
+let persistentClientIdAvailable = true;
+
 function getClientId() {
-  let id = localStorage.getItem('climate_vote_client_id');
-  if (!id) { id = uuid4(); localStorage.setItem('climate_vote_client_id', id); }
-  return id;
+  if (memoryClientId) return memoryClientId;
+  try {
+    let id = localStorage.getItem('cv_device') || localStorage.getItem('climate_vote_client_id');
+    if (!id) id = uuid4();
+    localStorage.setItem('cv_device', id);
+    localStorage.removeItem('climate_vote_client_id');
+    memoryClientId = id;
+    return id;
+  } catch (error) {
+    console.error('vote device persistence unavailable', error);
+    persistentClientIdAvailable = false;
+    memoryClientId = uuid4();
+    return memoryClientId;
+  }
 }
 
 // State
 let currentRound = null;
 let radioSelected = null;
 let checkboxSelected = new Set();
-let scaleValues = {};
+let scaleValues = new Map();
+let pendingRefreshTimer = null;
+
+function optionLabel(option, fallback) {
+  if (typeof option === 'string') return option;
+  if (option && typeof option === 'object') {
+    if (typeof option.label === 'string') return option.label;
+    if (typeof option.value === 'string') return option.value;
+  }
+  return fallback;
+}
+
+function replaceChildren(element, children) {
+  if (!element) return;
+  element.replaceChildren(...children);
+}
+
+function makeTallyRow(label, detail, percent) {
+  const row = document.createElement('div');
+  row.className = 'tally-bar-row';
+  const heading = document.createElement('div');
+  heading.className = 'tally-bar-label';
+  const labelNode = document.createElement('span');
+  labelNode.textContent = label;
+  const detailNode = document.createElement('span');
+  detailNode.textContent = detail;
+  heading.append(labelNode, detailNode);
+  const track = document.createElement('div');
+  track.className = 'tally-bar-track';
+  const fill = document.createElement('div');
+  fill.className = 'tally-bar-fill';
+  fill.style.width = Math.max(0, Math.min(100, percent)) + '%';
+  track.append(fill);
+  row.append(heading, track);
+  return row;
+}
+
+function showMessage(title, message, retry) {
+  const titleNode = document.querySelector('#screenError .error-title');
+  const body = document.getElementById('errorMsg');
+  if (titleNode) titleNode.textContent = title;
+  if (body) {
+    const messageNode = document.createElement('p');
+    messageNode.textContent = message;
+    const children = [messageNode];
+    if (retry) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'retry-btn';
+      button.textContent = '다시 시도';
+      button.addEventListener('click', retry);
+      children.push(button);
+    }
+    replaceChildren(body, children);
+  }
+  show('screenError');
+}
+
+function ensureNonbindingNotice(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container || container.querySelector('[data-public-vote-notice]')) return;
+  const notice = document.createElement('p');
+  notice.dataset.publicVoteNotice = 'true';
+  notice.textContent = '기기 기준 중복 제한을 적용한 비구속 현장 조사입니다. 공식 의사결정의 단독 근거로 사용할 수 없으며 조 모더레이터의 대리 기록과는 별개입니다.';
+  notice.style.color = '#7c2d12';
+  notice.style.fontWeight = '700';
+  notice.style.marginTop = '16px';
+  container.append(notice);
+}
+
+function ensureStorageNotice(containerId) {
+  if (persistentClientIdAvailable) return;
+  const container = document.getElementById(containerId);
+  if (!container || container.querySelector('[data-storage-notice]')) return;
+  const notice = document.createElement('p');
+  notice.dataset.storageNotice = 'true';
+  notice.setAttribute('role', 'status');
+  notice.textContent = '이 브라우저에서는 기기 식별값을 저장할 수 없습니다. 새로고침하면 중복 응답 방지가 유지되지 않을 수 있습니다.';
+  notice.style.color = '#991b1b';
+  notice.style.fontWeight = '700';
+  notice.style.marginTop = '12px';
+  container.append(notice);
+}
+
+function removeLegacyIdentityInputs() {
+  document.querySelectorAll('.voter-section').forEach(section => section.remove());
+  const form = document.getElementById('screenForm');
+  if (!form || form.querySelector('[data-privacy-notice]')) return;
+  const notice = document.createElement('p');
+  notice.dataset.privacyNotice = 'true';
+  notice.textContent = '이름 등 개인정보는 수집하지 않습니다.';
+  notice.style.color = '#4a5568';
+  notice.style.marginBottom = '16px';
+  form.insertBefore(notice, document.getElementById('submitBtn'));
+}
+
+function wireStaticControls() {
+  const submit = document.getElementById('submitBtn');
+  if (submit && !submit.dataset.safeVoteHandler) {
+    submit.removeAttribute('onclick');
+    submit.dataset.safeVoteHandler = 'true';
+    submit.addEventListener('click', () => { void window._voteSubmit(); });
+  }
+  document.querySelectorAll('.retry-btn').forEach(button => {
+    button.removeAttribute('onclick');
+    if (button.dataset.safeVoteHandler) return;
+    button.dataset.safeVoteHandler = 'true';
+    button.addEventListener('click', window._voteShowForm);
+  });
+}
+
+function makeNativeChoiceInput(input, label) {
+  input.style.display = 'block';
+  input.style.position = 'absolute';
+  input.style.width = '1px';
+  input.style.height = '1px';
+  input.style.opacity = '0';
+  input.style.overflow = 'hidden';
+  input.style.clipPath = 'inset(50%)';
+  input.addEventListener('focus', () => { label.style.outline = '3px solid #0D7490'; });
+  input.addEventListener('blur', () => { label.style.outline = ''; });
+}
 
 function show(id) {
   document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
@@ -84,7 +216,7 @@ window._voteToggleCheckbox = function(idx, val) {
 };
 
 window._voteSetScale = function(label, score, rowIdx) {
-  scaleValues[label] = score;
+  scaleValues.set(label, score);
   const low = currentRound ? (currentRound.scale_low || 1) : 1;
   const high = currentRound ? (currentRound.scale_high || 5) : 5;
   for (let s = low; s <= high; s++) {
@@ -96,7 +228,7 @@ window._voteSetScale = function(label, score, rowIdx) {
 window._voteShowForm = function() {
   radioSelected = null;
   checkboxSelected = new Set();
-  scaleValues = {};
+  scaleValues = new Map();
   const ti = document.getElementById('textInput');
   if (ti) ti.value = '';
   document.querySelectorAll('.opt-label').forEach(el => el.classList.remove('selected'));
@@ -128,14 +260,14 @@ window._voteSubmit = async function() {
     choice = Array.from(checkboxSelected);
   } else if (type === 'SCALE_MULTI') {
     const opts = currentRound.options || [];
-    const labels = opts.map(o => typeof o === 'string' ? o : (o.label || ''));
-    const missing = labels.filter(l => !(l in scaleValues));
+    const labels = opts.map((option, index) => optionLabel(option, '항목' + (index + 1)));
+    const missing = labels.filter(label => !scaleValues.has(label));
     if (missing.length > 0) {
       alert('모든 항목에 점수를 매겨 주세요.\n미입력: ' + missing.slice(0,3).join(', '));
       if (btn) { btn.disabled = false; btn.textContent = '제출'; }
       return;
     }
-    choice = scaleValues;
+    choice = Object.fromEntries(scaleValues);
   } else if (type === 'TEXT') {
     const val = document.getElementById('textInput').value.trim();
     if (!val) {
@@ -143,58 +275,38 @@ window._voteSubmit = async function() {
       if (btn) { btn.disabled = false; btn.textContent = '제출'; }
       return;
     }
+    if (val.length > 2000) {
+      alert('의견은 2,000자 이하로 입력해 주세요.');
+      if (btn) { btn.disabled = false; btn.textContent = '제출'; }
+      return;
+    }
     choice = val;
   }
 
-  const voterName = (document.getElementById('voterName').value || '').trim();
-  if (!voterName) {
-    alert('성함을 입력해 주세요.');
-    if (btn) { btn.disabled = false; btn.textContent = '제출'; }
-    document.getElementById('voterName').focus();
-    return;
-  }
-
-  // 사전 중복 체크 (성함 정규화)
   try {
-    const norm = voterName.replace(/\s+/g, '').toLowerCase();
-    const dupCheck = await sbGet('cv_votes', {
-      'round_id': 'eq.' + currentRound.id,
-      'select': 'voter_name',
+    const cast = await sbRpc('public_round_cast_v2', {
+      p_round_id: currentRound.id,
+      p_choice: choice,
+      p_client_id: getClientId(),
     });
-    if (Array.isArray(dupCheck)) {
-      const hit = dupCheck.find(v => (v.voter_name || '').replace(/\s+/g, '').toLowerCase() === norm);
-      if (hit) {
-        alert('이미 같은 성함으로 응답이 접수되었습니다.\n동명이인이라면 운영자에게 알려주세요.');
-        if (btn) { btn.disabled = false; btn.textContent = '제출'; }
-        return;
-      }
+    if (cast === 'duplicate') {
+      alert('이 기기에서는 이미 응답하셨습니다.');
+      if (btn) { btn.disabled = false; btn.textContent = '제출'; }
+      return;
     }
-  } catch(_) {}
-
-  const payload = {
-    round_id: currentRound.id,
-    choice: choice,
-    voter_role: null,
-    voter_name: voterName,
-    client_id: getClientId(),
-  };
-
-  try {
-    await sbPost('cv_votes', payload);
+    if (cast === 'closed') {
+      alert('이미 마감된 투표입니다.');
+      show('screenClosed');
+      return;
+    }
+    if (cast !== 'ok') throw new Error('알 수 없는 투표 처리 결과입니다.');
     const thanksMsg = document.getElementById('thanksMsg');
     if (thanksMsg) thanksMsg.textContent = currentRound.title + ' 라운드에 응답하셨습니다.';
     show('screenThanks');
-    loadTallyPreview();
   } catch(e) {
     console.error(e);
     const msg = e && (e.message || e.details || '');
-    if (/uniq_votes_round_voter_name/.test(JSON.stringify(e))) {
-      alert('이미 같은 성함으로 응답이 접수되었습니다.\n동명이인이라면 운영자에게 알려주세요.');
-    } else if (/uniq_votes_round_client/.test(JSON.stringify(e))) {
-      alert('이 기기에서는 이미 응답하셨습니다.');
-    } else {
-      alert('제출 오류: ' + msg);
-    }
+    alert('제출 오류: ' + msg);
     if (btn) { btn.disabled = false; btn.textContent = '제출'; }
   }
 };
@@ -203,38 +315,56 @@ async function loadTallyPreview() {
   if (!currentRound) return;
   const type = currentRound.type;
   try {
-    let rows;
-    if (type === 'SCALE_MULTI') {
-      rows = await sbGet('cv_tally_scale', { 'round_id': 'eq.' + currentRound.id, 'order': 'avg_score.desc' });
-    } else {
-      rows = await sbGet('cv_tally', { 'round_id': 'eq.' + currentRound.id, 'order': 'n.desc' });
-    }
-    if (!rows || rows.code) return;
-    const total = rows.reduce((s, r) => s + (r.n || 0), 0);
+    const rows = await sbRpc('public_round_votes_v2', { p_round_id: currentRound.id });
+    if (!Array.isArray(rows)) throw new Error('집계 응답 형식이 올바르지 않습니다.');
+    const total = Number(rows[0]?.total_votes || 0);
     const preview = document.getElementById('tallyPreview');
     const rowsEl = document.getElementById('tallyRows');
     if (!rowsEl || !preview) return;
 
-    if (type === 'SCALE_MULTI') {
-      rowsEl.innerHTML = rows.slice(0,5).map(r => {
-        const pct = ((r.avg_score - 1) / 4 * 100).toFixed(0);
-        return `<div class="tally-bar-row">
-          <div class="tally-bar-label"><span>${r.item_label || '-'}</span><span>평균 ${(r.avg_score||0).toFixed(1)} / 5 (${r.n}명)</span></div>
-          <div class="tally-bar-track"><div class="tally-bar-fill" style="width:${pct}%"></div></div>
-        </div>`;
-      }).join('');
+    if (type === 'TEXT') {
+      const summary = document.createElement('p');
+      summary.textContent = `기기 응답 ${total}건입니다. 자유서술 원문은 공개 결과 화면에 표시하지 않습니다.`;
+      replaceChildren(rowsEl, [summary]);
+    } else if (type === 'SCALE_MULTI') {
+      replaceChildren(rowsEl, rows.slice(0, 100).map(row => {
+        const average = Number(row.average_score || 0);
+        const low = Number(currentRound.scale_low || 1);
+        const high = Number(currentRound.scale_high || 5);
+        const percent = high > low ? ((average - low) / (high - low)) * 100 : 0;
+        const label = typeof row.choice === 'string' ? row.choice : '-';
+        return makeTallyRow(label,
+          `평균 ${average.toFixed(1)} / ${high} (${Number(row.vote_count || 0)}명)`, percent);
+      }));
     } else {
-      rowsEl.innerHTML = rows.map(r => {
-        const pct = total > 0 ? (r.n / total * 100).toFixed(0) : 0;
-        return `<div class="tally-bar-row">
-          <div class="tally-bar-label"><span>${r.choice_text || '-'}</span><span>${r.n}표 (${pct}%)</span></div>
-          <div class="tally-bar-track"><div class="tally-bar-fill" style="width:${pct}%"></div></div>
-        </div>`;
-      }).join('');
+      replaceChildren(rowsEl, rows.map(row => {
+        const count = Number(row.vote_count || 0);
+        const percent = total > 0 ? (count / total) * 100 : 0;
+        const label = typeof row.choice === 'string' ? row.choice : JSON.stringify(row.choice ?? '-');
+        return makeTallyRow(label, `${count}표 (${percent.toFixed(0)}%)`, percent);
+      }));
     }
+    const closed = document.getElementById('screenClosed');
+    if (closed && currentRound.status === 'closed') closed.append(preview);
     preview.style.display = 'block';
   } catch(e) {
-    console.warn('tally preview failed', e);
+    console.error('tally preview failed', e);
+    const preview = document.getElementById('tallyPreview');
+    const rowsEl = document.getElementById('tallyRows');
+    if (preview && rowsEl) {
+      const message = document.createElement('p');
+      message.setAttribute('role', 'alert');
+      message.textContent = '집계를 불러오지 못했습니다.';
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'retry-btn';
+      retry.textContent = '집계 다시 시도';
+      retry.addEventListener('click', loadTallyPreview);
+      replaceChildren(rowsEl, [message, retry]);
+      const closed = document.getElementById('screenClosed');
+      if (closed && currentRound.status === 'closed') closed.append(preview);
+      preview.style.display = 'block';
+    }
   }
 }
 
@@ -242,7 +372,21 @@ function renderForm(round) {
   if (!round) return;
   currentRound = round;
 
-  if (round.status === 'closed') { show('screenClosed'); return; }
+  if (round.status === 'closed') {
+    if (pendingRefreshTimer) window.clearTimeout(pendingRefreshTimer);
+    show('screenClosed');
+    ensureNonbindingNotice('screenClosed');
+    ensureStorageNotice('screenClosed');
+    void loadTallyPreview();
+    return;
+  }
+  if (round.status !== 'active') {
+    showMessage('투표 대기 중입니다.', '운영진이 투표를 시작하면 참여할 수 있습니다.', init);
+    if (pendingRefreshTimer) window.clearTimeout(pendingRefreshTimer);
+    pendingRefreshTimer = window.setTimeout(() => { void init(); }, 5_000);
+    return;
+  }
+  if (pendingRefreshTimer) window.clearTimeout(pendingRefreshTimer);
 
   const badge = document.getElementById('formRoundBadge');
   const titleEl = document.getElementById('formTitle');
@@ -256,18 +400,29 @@ function renderForm(round) {
     if (el) el.style.display = 'none';
   });
 
-  const opts = round.options || [];
+  const opts = Array.isArray(round.options) ? round.options : [];
 
   if (round.type === 'RADIO') {
     const list = document.getElementById('radioList');
     if (list) {
-      list.innerHTML = opts.map((o, i) => {
-        const val = typeof o === 'string' ? o : (o.label || o.value || JSON.stringify(o));
-        const safe = val.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-        return `<label class="opt-label" id="radio_${i}" onclick="_voteSelectRadio(${i},'${safe}')">
-          <span class="opt-custom"></span><span>${val}</span>
-        </label>`;
-      }).join('');
+      replaceChildren(list, opts.map((option, index) => {
+        const value = optionLabel(option, JSON.stringify(option));
+        const label = document.createElement('label');
+        label.className = 'opt-label';
+        label.id = 'radio_' + index;
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'vote_radio';
+        input.value = value;
+        input.addEventListener('change', () => window._voteSelectRadio(index, value));
+        makeNativeChoiceInput(input, label);
+        const custom = document.createElement('span');
+        custom.className = 'opt-custom';
+        const text = document.createElement('span');
+        text.textContent = value;
+        label.append(input, custom, text);
+        return label;
+      }));
     }
     const sec = document.getElementById('radioSection');
     if (sec) sec.style.display = 'block';
@@ -275,13 +430,23 @@ function renderForm(round) {
   } else if (round.type === 'CHECKBOX') {
     const list = document.getElementById('checkboxList');
     if (list) {
-      list.innerHTML = opts.map((o, i) => {
-        const val = typeof o === 'string' ? o : (o.label || o.value || JSON.stringify(o));
-        const safe = val.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-        return `<label class="opt-label checkbox" id="chk_${i}" onclick="_voteToggleCheckbox(${i},'${safe}')">
-          <span class="opt-custom"></span><span>${val}</span>
-        </label>`;
-      }).join('');
+      replaceChildren(list, opts.map((option, index) => {
+        const value = optionLabel(option, JSON.stringify(option));
+        const label = document.createElement('label');
+        label.className = 'opt-label checkbox';
+        label.id = 'chk_' + index;
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = value;
+        input.addEventListener('change', () => window._voteToggleCheckbox(index, value));
+        makeNativeChoiceInput(input, label);
+        const custom = document.createElement('span');
+        custom.className = 'opt-custom';
+        const text = document.createElement('span');
+        text.textContent = value;
+        label.append(input, custom, text);
+        return label;
+      }));
     }
     const sec = document.getElementById('checkboxSection');
     if (sec) sec.style.display = 'block';
@@ -293,19 +458,35 @@ function renderForm(round) {
     const lowLabel = round.scale_low_label || '낮음';
     const highLabel = round.scale_high_label || '높음';
     if (list) {
-      list.innerHTML = opts.map((o, idx) => {
-        const lbl = typeof o === 'string' ? o : (o.label || '항목' + (idx+1));
-        const safeLbl = lbl.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-        const btns = [];
-        for (let s = low; s <= high; s++) {
-          btns.push(`<button class="scale-btn" id="sb_${idx}_${s}" onclick="_voteSetScale('${safeLbl}',${s},${idx})">${s}</button>`);
+      replaceChildren(list, opts.map((option, index) => {
+        const labelText = optionLabel(option, '항목' + (index + 1));
+        const row = document.createElement('div');
+        row.className = 'scale-row';
+        const label = document.createElement('div');
+        label.className = 'scale-label';
+        label.textContent = labelText;
+        const buttons = document.createElement('div');
+        buttons.className = 'scale-btns';
+        for (let score = low; score <= high; score += 1) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'scale-btn';
+          button.id = `sb_${index}_${score}`;
+          button.textContent = String(score);
+          button.setAttribute('aria-label', `${labelText} ${score}점`);
+          button.addEventListener('click', () => window._voteSetScale(labelText, score, index));
+          buttons.append(button);
         }
-        return `<div class="scale-row">
-          <div class="scale-label">${lbl}</div>
-          <div class="scale-btns">${btns.join('')}</div>
-          <div class="scale-hint"><span>${low} = ${lowLabel}</span><span>${high} = ${highLabel}</span></div>
-        </div>`;
-      }).join('');
+        const hint = document.createElement('div');
+        hint.className = 'scale-hint';
+        const lowHint = document.createElement('span');
+        lowHint.textContent = `${low} = ${lowLabel}`;
+        const highHint = document.createElement('span');
+        highHint.textContent = `${high} = ${highLabel}`;
+        hint.append(lowHint, highHint);
+        row.append(label, buttons, hint);
+        return row;
+      }));
     }
     const sec = document.getElementById('scaleSection');
     if (sec) sec.style.display = 'block';
@@ -313,13 +494,28 @@ function renderForm(round) {
   } else if (round.type === 'TEXT') {
     const sec = document.getElementById('textSection');
     if (sec) sec.style.display = 'block';
+    const input = document.getElementById('textInput');
+    if (input) input.focus();
   }
 
   show('screenForm');
+  ensureNonbindingNotice('screenForm');
+  ensureStorageNotice('screenForm');
 }
 
 async function init() {
-  const roundId = window.VOTE_ROUND_ID;
+  removeLegacyIdentityInputs();
+  wireStaticControls();
+  getClientId();
+  const queryRoundId = new URLSearchParams(window.location.search).get('round');
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  const routeIndex = parts.indexOf('v');
+  const pathRoundId = routeIndex >= 0 ? parts[routeIndex + 1] : null;
+  if (!queryRoundId && pathRoundId) {
+    window.location.replace(`/v?round=${encodeURIComponent(pathRoundId)}`);
+    return;
+  }
+  const roundId = window.VOTE_ROUND_ID || queryRoundId || pathRoundId;
   if (!roundId) {
     const errMsg = document.getElementById('errorMsg');
     if (errMsg) errMsg.textContent = '라운드 ID가 설정되지 않았습니다.';
@@ -331,19 +527,17 @@ async function init() {
   if (hdr) hdr.textContent = roundId + ' 라운드';
 
   try {
-    const data = await sbGet('cv_rounds', { 'id': 'eq.' + roundId, 'limit': '1' });
-    if (!data || data.length === 0 || data.code) {
-      throw new Error(data?.message || '라운드 정보를 찾을 수 없습니다');
+    const data = await sbRpc('public_round_get_v2', { p_round_id: roundId });
+    if (!Array.isArray(data) || data.length !== 1) {
+      throw new Error('라운드 정보를 찾을 수 없습니다.');
     }
     renderForm(data[0]);
   } catch(e) {
     console.error(e);
-    const errMsg = document.getElementById('errorMsg');
-    if (errMsg) {
-      errMsg.innerHTML = '<b>라운드 로드 실패</b><br>' + (e.message || JSON.stringify(e)) +
-        '<br><br><small style="color:#888">Supabase API Settings &gt; Exposed schemas에 <b>climate_vote</b>를 추가해야 합니다.</small>';
-    }
-    show('screenError');
+    const message = e && typeof e.message === 'string'
+      ? e.message
+      : '라운드 정보를 불러오지 못했습니다.';
+    showMessage('라운드 로드 실패', message, init);
   }
 }
 

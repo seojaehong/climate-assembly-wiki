@@ -65,10 +65,11 @@ describe('A2 organization selection migration draft', () => {
     expect(activation).toContain('Do not apply without a separate production activation approval.');
     expect(activation).toContain('grant usage on schema climate_vote to authenticated;');
     expect(activation).toContain('grant select on climate_vote.membership to authenticated;');
-    expect(activation).toContain('grant select, insert, update on');
+    expect(activation).toContain('grant select on');
     expect(activation).toMatch(/climate_vote\.ballot\s+to authenticated;/);
+    expect(activation).toContain('revoke insert, update, delete, truncate, references, trigger on');
+    expect(activation).toContain('from public, anon, authenticated;');
     expect(executableSql(activation)).toMatch(/^\s*begin;[\s\S]*commit;\s*$/i);
-    expect(executableSql(activation)).not.toMatch(/\bdelete\b/i);
     expect(executableSql(activation)).not.toMatch(/\bgrant\s+(?:all|create|truncate|references|trigger)\b/i);
   });
 
@@ -126,7 +127,8 @@ describe('A2 organization selection migration draft', () => {
     expect(semanticRehearsal).toContain("P1C organization selection did not prune expired contexts");
     expect(semanticRehearsal).toContain("P1C RLS exposed an organization outside the selected context");
     expect(semanticRehearsal).toContain("P1C RLS did not isolate every staff table to the selected organization");
-    expect(semanticRehearsal).toContain("P1C allowed an operator insert outside the selected organization");
+    expect(semanticRehearsal).toContain("P1C allowed an operator to bypass lifecycle RPCs with direct update");
+    expect(semanticRehearsal).toContain("P1C allowed an operator to bypass lifecycle RPCs with direct insert");
     expect(semanticRehearsal).toContain("P1C allowed a facilitator insert");
     expect(semanticRehearsal).toContain('P1C rollback did not restore legacy org_of_uid execution privileges');
     expect(semanticRehearsal).toContain('\\set expect_staff_grants on');

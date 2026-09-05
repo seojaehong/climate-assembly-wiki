@@ -15,6 +15,9 @@ function note(teamId: string, ordinal: number, content: string): Note {
     tableNo: null,
     subgroup: '1분과',
     ordinal,
+    submissionId: null,
+    submissionUpdatedAt: null,
+    itemId: null,
     content,
     rationale: null,
   };

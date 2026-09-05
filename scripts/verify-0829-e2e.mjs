@@ -30,7 +30,7 @@ import { dirname, resolve } from 'node:path';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-/** 조 코드 = MMDD + 조 순번. seed-0829-lib.mjs의 규칙과 같아야 한다. */
+/** 8.29 당시 배포된 legacy 코드 fixture. 9.12 이후 운영 코드 생성 규칙이 아니다. */
 const TEAMS = Array.from({ length: 15 }, (_, i) => {
   const ordinal = i + 1;
   return {

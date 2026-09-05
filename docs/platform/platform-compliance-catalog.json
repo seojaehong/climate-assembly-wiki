@@ -49,6 +49,38 @@
       "publicRelease": "never"
     },
     {
+      "id": "workshop-event-access",
+      "title": "현장 접근 토큰·멱등 요청 감사",
+      "deploymentState": "dormant_draft",
+      "tables": [
+        "workshop_join_exchange_attempt",
+        "workshop_request_ledger",
+        "workshop_audit_event"
+      ],
+      "storageLocations": ["managed_supabase_database"],
+      "purpose": "현장 접속코드 교환, 기기 제한, 요청 재생 방지와 운영 조작 이력을 관리",
+      "dataSubjects": ["participant", "staff"],
+      "dataClasses": ["pseudonymous_participation", "security_secret", "audit_metadata", "operational_state"],
+      "ingress": ["join_code_exchange", "moderator_operation", "hq_operation"],
+      "internalUses": ["authorization", "replay_protection", "incident_response"],
+      "egress": ["restricted_audit_export"],
+      "publicRelease": "never"
+    },
+    {
+      "id": "canvas-round-lifecycle-audit",
+      "title": "Canvas 투표 라운드 생명주기 감사",
+      "deploymentState": "dormant_draft",
+      "tables": ["platform_canvas_round_event"],
+      "storageLocations": ["managed_supabase_database"],
+      "purpose": "기관 운영자가 생성·시작·마감한 Canvas 투표의 대상 회차, 조작자, 요청 식별자와 상태 전이를 변경 불가 감사 이력으로 보존",
+      "dataSubjects": ["staff"],
+      "dataClasses": ["staff_identity", "audit_metadata", "operational_state"],
+      "ingress": ["authorized_canvas_round_operation"],
+      "internalUses": ["security_audit", "incident_response", "accountability"],
+      "egress": ["restricted_audit_export"],
+      "publicRelease": "never"
+    },
+    {
       "id": "deliberation-content",
       "title": "숙의 제출 원문과 변경 이력",
       "deploymentState": "live",
@@ -125,6 +157,20 @@
       "internalUses": ["issue_analysis", "human_review"],
       "egress": ["public_result_page", "restricted_review_export"],
       "publicRelease": "human_review_only"
+    },
+    {
+      "id": "result-implementation-audit",
+      "title": "공개 결과 이행 변경 이력",
+      "deploymentState": "dormant_draft",
+      "tables": ["result_implementation_event"],
+      "storageLocations": ["managed_supabase_database"],
+      "purpose": "검수된 공개 결과의 이행 상태 변경 근거와 조작자를 보존",
+      "dataSubjects": ["staff"],
+      "dataClasses": ["staff_identity", "public_result", "audit_metadata", "operational_state"],
+      "ingress": ["staff_implementation_review"],
+      "internalUses": ["human_review", "accountability"],
+      "egress": ["restricted_review_export"],
+      "publicRelease": "never"
     },
     {
       "id": "resilience-export",

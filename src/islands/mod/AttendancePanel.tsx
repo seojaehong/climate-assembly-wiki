@@ -9,10 +9,16 @@ import {
   unlockTeamAttendanceByCode,
   type AttendanceRosterRow,
 } from '../../lib/attendance';
+import { CURRENT_SESSION_SLUG } from '../../lib/hq-submissions';
 import {
   applyAttendanceAction, attendanceSummary, classifyAttendanceError, formatCheckTime,
+  mergeAttendanceRosterSnapshot,
   type AttendanceAction,
 } from './attendance-logic';
+import {
+  createResourceRequestCoordinator,
+  type ResourceRequestPriority,
+} from './resource-request-coordinator';
 
 /** ISO 문자열을 datetime-local 입력이 받는 로컬 시각 문자열로 바꾼다. */
 function toLocalInputValue(iso: string): string {
@@ -43,7 +49,8 @@ function AttendanceGuide() {
   const [open, setOpen] = useState(() => {
     try {
       return sessionStorage.getItem('climate_vote_attendance_guide_collapsed') !== '1';
-    } catch {
+    } catch (error) {
+      console.warn('[attendance guide] preference storage unavailable', error);
       return true;
     }
   });
@@ -52,8 +59,8 @@ function AttendanceGuide() {
     setOpen(next);
     try {
       sessionStorage.setItem('climate_vote_attendance_guide_collapsed', next ? '0' : '1');
-    } catch {
-      /* 저장 못 해도 토글 자체는 된다 */
+    } catch (error) {
+      console.warn('[attendance guide] preference storage unavailable', error);
     }
   };
 
@@ -70,7 +77,10 @@ function AttendanceGuide() {
           <span className="block text-[19px] font-extrabold text-[#1F4E79]">출석 체크 사용법</span>
           <span className="block text-[14px] text-[#5A6B73]">처음 쓰신다면 한 번 읽어 주세요</span>
         </span>
-        <span className="text-[20px] text-[#5A6B73]" aria-hidden="true">{open ? '▾' : '▸'}</span>
+        <span
+          className={`h-3 w-3 shrink-0 border-b-2 border-r-2 border-[#5A6B73] transition-transform ${open ? 'rotate-45 -translate-y-0.5' : '-rotate-45 -translate-x-0.5'}`}
+          aria-hidden="true"
+        />
       </button>
       {open ? (
         <ol className="px-5 pb-5 space-y-3">
@@ -95,21 +105,37 @@ export default function AttendancePanel({
   teamId,
   teamName,
   joinCode,
+  accessToken,
 }: {
   teamId: string;
   teamName: string;
-  joinCode: string | null;
+  /** 예전 출석 토큰 발급 경로. 신규 /mod 세션은 accessToken을 바로 쓴다. */
+  joinCode?: string | null;
+  /** 조 세션의 불투명 토큰. 있으면 code unlock·sessionStorage 경로를 건너뛴다. */
+  accessToken?: string | null;
 }) {
   const tokenKey = `attendance_team_token:${teamId}`;
-  const [token, setToken] = useState<string | null>(() =>
-    typeof sessionStorage === 'undefined' ? null : sessionStorage.getItem(tokenKey),
-  );
+  const externalAccessToken = accessToken?.trim() || null;
+  const [storedToken, setStoredToken] = useState<string | null>(() => {
+    if (externalAccessToken || typeof sessionStorage === 'undefined') return null;
+    try {
+      return sessionStorage.getItem(tokenKey);
+    } catch (error) {
+      console.error('[attendance] failed to read legacy token', error);
+      return null;
+    }
+  });
+  const token = externalAccessToken ?? storedToken;
   const [rows, setRows] = useState<AttendanceRosterRow[]>([]);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [finalizeNotice, setFinalizeNotice] = useState<{
+    kind: 'success' | 'error';
+    message: string;
+  } | null>(null);
   const [timeEdit, setTimeEdit] = useState<{ row: AttendanceRosterRow; action: 'late' | 'early_leave' } | null>(null);
   const [timeValue, setTimeValue] = useState(localDateTimeNow);
   const [memberEdit, setMemberEdit] = useState<AttendanceRosterRow | null>(null);
@@ -117,34 +143,65 @@ export default function AttendancePanel({
   const [memberName, setMemberName] = useState('');
   // 지금 서버 응답을 기다리는 행. 전역 busy로 목록 전체를 얼리면 다음 사람을 못 찍는다.
   const [pendingRows, setPendingRows] = useState<Record<string, true>>({});
+  const pendingRowsRef = useRef<Record<string, true>>({});
+  const rosterMutationCountRef = useRef(0);
+  const rosterRefreshCoordinatorRef = useRef(createResourceRequestCoordinator());
 
-  const load = useCallback(async () => {
-    if (!token) return;
+  const load = useCallback(async (
+    priority: ResourceRequestPriority = 'manual',
+  ) => {
+    if (!token) return null;
+    if (priority === 'background' && rosterMutationCountRef.current > 0) return null;
+    const coordinator = rosterRefreshCoordinatorRef.current;
+    const ticket = coordinator.begin(`attendance:${teamId}`, priority);
+    if (!ticket) return null;
     try {
-      const next = await fetchAttendanceRoster(token);
-      setRows(next);
+      const next = await fetchAttendanceRoster(token, CURRENT_SESSION_SLUG);
+      if (!coordinator.isCurrent(ticket)) return null;
+      const pendingIds = new Set(Object.keys(pendingRowsRef.current));
+      setRows((current) => mergeAttendanceRosterSnapshot(current, next, pendingIds));
       setMessage(null);
       setLoadError(null);
+      return next;
     } catch (error) {
+      if (!coordinator.isCurrent(ticket)) return null;
       console.error('[attendance] team roster load failed', error);
       if (classifyAttendanceError(error) === 'transient') {
         // 네트워크 순단·5xx: 토큰과 기존 명단을 그대로 두고 15초 뒤 자동 재시도한다.
         setLoadError('연결이 잠시 끊겼습니다. 출석부는 그대로 유지됩니다. 15초마다 자동으로 다시 연결하니 그대로 계속 체크하세요.');
-        return;
+        return null;
       }
-      sessionStorage.removeItem(tokenKey);
-      setToken(null);
+      if (externalAccessToken) {
+        setRows([]);
+        setLoadError(null);
+        setMessage('조 세션이 만료되었습니다. 조에서 나간 뒤 다시 입장해 주세요.');
+        return null;
+      }
+      try {
+        sessionStorage.removeItem(tokenKey);
+      } catch (storageError) {
+        console.error('[attendance] failed to clear legacy token', storageError);
+      }
+      setStoredToken(null);
       setRows([]);
       setLoadError(null);
       setMessage('출석부 연결이 만료되었습니다. 아래 버튼으로 다시 열어 주세요.');
+      return null;
+    } finally {
+      coordinator.finish(ticket);
     }
-  }, [token, tokenKey]);
+  }, [externalAccessToken, teamId, token, tokenKey]);
 
   useEffect(() => {
-    void load();
+    const coordinator = rosterRefreshCoordinatorRef.current;
+    coordinator.invalidate();
+    void load('background');
     if (!token) return;
-    const interval = setInterval(() => void load(), 15_000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => void load('background'), 15_000);
+    return () => {
+      clearInterval(interval);
+      coordinator.invalidate();
+    };
   }, [load, token]);
 
   const activeRows = rows.filter((row) => row.active);
@@ -162,7 +219,7 @@ export default function AttendancePanel({
    * 추가 입력이 없다 — 이 화면에 도달하면 자동으로 호출된다.
    */
   const unlock = useCallback(async () => {
-    if (!joinCode) return;
+    if (externalAccessToken || !joinCode) return;
     setBusy(true);
     try {
       const nextToken = await unlockTeamAttendanceByCode(joinCode);
@@ -170,8 +227,12 @@ export default function AttendancePanel({
         setMessage('출석부를 열지 못했습니다. 조 코드를 확인하고 다시 시도해 주세요.');
         return;
       }
-      sessionStorage.setItem(tokenKey, nextToken);
-      setToken(nextToken);
+      try {
+        sessionStorage.setItem(tokenKey, nextToken);
+      } catch (storageError) {
+        console.error('[attendance] failed to persist legacy token', storageError);
+      }
+      setStoredToken(nextToken);
       setMessage(null);
     } catch (error) {
       console.error('[attendance] team unlock failed', error);
@@ -179,16 +240,34 @@ export default function AttendancePanel({
     } finally {
       setBusy(false);
     }
-  }, [joinCode, tokenKey]);
+  }, [externalAccessToken, joinCode, tokenKey]);
 
   // 토큰이 없으면(첫 진입 또는 만료) 조 코드로 한 번 자동 개방한다.
   // 실패 시에는 재시도 버튼으로 넘겨 무한 재시도를 만들지 않는다.
   const autoUnlockTried = useRef(false);
   useEffect(() => {
-    if (token || !joinCode || autoUnlockTried.current) return;
+    if (externalAccessToken || token || !joinCode || autoUnlockTried.current) return;
     autoUnlockTried.current = true;
     void unlock();
-  }, [joinCode, token, unlock]);
+  }, [externalAccessToken, joinCode, token, unlock]);
+
+  const beginRosterMutation = () => {
+    rosterMutationCountRef.current += 1;
+    rosterRefreshCoordinatorRef.current.invalidate();
+  };
+
+  const finishRosterMutation = () => {
+    rosterRefreshCoordinatorRef.current.invalidate();
+    rosterMutationCountRef.current = Math.max(0, rosterMutationCountRef.current - 1);
+  };
+
+  const updatePendingRow = (assignmentId: string, pending: boolean) => {
+    const next = { ...pendingRowsRef.current };
+    if (pending) next[assignmentId] = true;
+    else delete next[assignmentId];
+    pendingRowsRef.current = next;
+    setPendingRows(next);
+  };
 
   /**
    * 탭한 즉시 화면을 바꾸고 서버에는 뒤이어 보낸다.
@@ -203,23 +282,21 @@ export default function AttendancePanel({
     if (!token || pendingRows[row.assignment_id]) return;
     const at = occurredAt ?? new Date().toISOString();
     const before = row;
+    updatePendingRow(row.assignment_id, true);
+    beginRosterMutation();
     setRows((current) =>
       current.map((r) => (r.assignment_id === row.assignment_id ? applyAttendanceAction(r, action, at) : r)),
     );
-    setPendingRows((current) => ({ ...current, [row.assignment_id]: true }));
     setMessage(null);
     try {
-      await setAttendance(token, row.assignment_id, action, at);
+      await setAttendance(token, CURRENT_SESSION_SLUG, row.assignment_id, action, at);
     } catch (error) {
       console.error('[attendance] status update failed', error);
       setRows((current) => current.map((r) => (r.assignment_id === before.assignment_id ? before : r)));
       setMessage(`${before.member_name} 님 저장에 실패했습니다. 다시 눌러 주세요.`);
     } finally {
-      setPendingRows((current) => {
-        const next = { ...current };
-        delete next[row.assignment_id];
-        return next;
-      });
+      updatePendingRow(row.assignment_id, false);
+      finishRosterMutation();
     }
   };
 
@@ -232,8 +309,9 @@ export default function AttendancePanel({
   const saveMember = async () => {
     if (!token || !memberId.trim() || !memberName.trim()) return;
     setBusy(true);
+    beginRosterMutation();
     try {
-      await saveRosterMember(token, {
+      await saveRosterMember(token, CURRENT_SESSION_SLUG, {
         assignmentId: memberEdit?.assignment_id,
         officialId: memberId.trim(),
         name: memberName.trim(),
@@ -242,12 +320,13 @@ export default function AttendancePanel({
       setMemberEdit(null);
       setMemberId('');
       setMemberName('');
-      await load();
+      await load('manual');
       setMessage('명단을 저장했습니다.');
     } catch (error) {
       console.error('[attendance] member save failed', error);
       setMessage('명단을 저장하지 못했습니다. ID 중복 여부를 확인해 주세요.');
     } finally {
+      finishRosterMutation();
       setBusy(false);
     }
   };
@@ -301,17 +380,23 @@ export default function AttendancePanel({
         {/* 캡션을 뺀다. 버튼이 **무엇을 안 하는지**(「잠그지 않습니다」) 설명하는 문구는
             안심시키는 대신 「그럼 뭘 하는데?」를 새로 만든다 — 현장에서 그 질문이 계속
             나왔다. 설명은 사용법 안내에만 두고, 화면에는 버튼만 남긴다. */}
-        <button
-          type="button"
-          className="min-h-11 rounded-lg border border-[#9CB7C8] bg-white px-3 text-[13px] font-bold text-[#1F4E79]"
-          onClick={() => {
-            sessionStorage.removeItem(tokenKey);
-            setToken(null);
-            setRows([]);
-          }}
-        >
-          출석부 닫기
-        </button>
+        {!externalAccessToken ? (
+          <button
+            type="button"
+            className="min-h-11 rounded-lg border border-[#9CB7C8] bg-white px-3 text-[13px] font-bold text-[#1F4E79]"
+            onClick={() => {
+              try {
+                sessionStorage.removeItem(tokenKey);
+              } catch (error) {
+                console.error('[attendance] failed to close legacy roster', error);
+              }
+              setStoredToken(null);
+              setRows([]);
+            }}
+          >
+            출석부 닫기
+          </button>
+        ) : null}
       </div>
 
       <div className="p-4 sm:p-6 space-y-4">
@@ -341,15 +426,17 @@ export default function AttendancePanel({
             onClick={async () => {
               if (!token) return;
               setBusy(true);
+              beginRosterMutation();
               try {
-                const count = await bulkPresent(token, selected);
+                const count = await bulkPresent(token, CURRENT_SESSION_SLUG, selected);
                 setSelected([]);
-                await load();
+                await load('manual');
                 setMessage(`${count}명을 출석 처리했습니다.`);
               } catch (error) {
                 console.error('[attendance] bulk present failed', error);
                 setMessage('일괄 출석 처리에 실패했습니다.');
               } finally {
+                finishRosterMutation();
                 setBusy(false);
               }
             }}
@@ -383,6 +470,19 @@ export default function AttendancePanel({
         ) : null}
 
         {message ? <div className="rounded-lg bg-[#F1F7FA] px-3 py-2 text-[14px] font-semibold text-[#135C73]" role="status">{message}</div> : null}
+
+        {finalizeNotice ? (
+          <div
+            className={`rounded-xl border-2 px-4 py-3 text-[15px] font-bold ${
+              finalizeNotice.kind === 'error'
+                ? 'border-[#DC2626] bg-[#FFF1F0] text-[#991B1B]'
+                : 'border-[#4F9D3A] bg-[#E3F1E6] text-[#24591D]'
+            }`}
+            role={finalizeNotice.kind === 'error' ? 'alert' : 'status'}
+          >
+            {finalizeNotice.message}
+          </div>
+        ) : null}
 
         <div className="rounded-xl border border-[#DCE7EE] p-3">
           <div className="grid sm:grid-cols-[130px_1fr_auto] gap-2">
@@ -425,8 +525,8 @@ export default function AttendancePanel({
                 <span className="rounded-full bg-[#EEF4F8] px-3 py-1 text-[13px] font-bold text-[#1F4E79]">{statusLabel(row)}</span>
               </div>
               <div className="mt-2 flex flex-wrap gap-2 pl-7">
-                <button type="button" onClick={() => void runAction(row, 'present')} disabled={rowPending} className="min-h-11 rounded-lg bg-[#4F9D3A] px-4 text-[15px] font-bold text-white active:scale-95 transition-transform duration-75 disabled:opacity-45">출석</button>
-                <button type="button" onClick={() => void runAction(row, 'late')} disabled={rowPending} className="min-h-11 rounded-lg bg-[#F5A623] px-4 text-[15px] font-bold text-white active:scale-95 transition-transform duration-75 disabled:opacity-45">지각</button>
+                <button type="button" onClick={() => void runAction(row, 'present')} disabled={rowPending} className="min-h-11 rounded-lg bg-[#2F6F25] px-4 text-[15px] font-bold text-white active:scale-95 transition-transform duration-75 disabled:opacity-45">출석</button>
+                <button type="button" onClick={() => void runAction(row, 'late')} disabled={rowPending} className="min-h-11 rounded-lg bg-[#8A4F08] px-4 text-[15px] font-bold text-white active:scale-95 transition-transform duration-75 disabled:opacity-45">지각</button>
                 <button type="button" onClick={() => void runAction(row, 'absent')} disabled={rowPending} className="min-h-11 rounded-lg bg-[#DC2626] px-4 text-[15px] font-bold text-white active:scale-95 transition-transform duration-75 disabled:opacity-45">결석</button>
                 <button type="button" onClick={() => void runAction(row, 'early_leave')} disabled={rowPending} className="min-h-11 rounded-lg bg-[#2E75B6] px-4 text-[15px] font-bold text-white active:scale-95 transition-transform duration-75 disabled:opacity-45">조퇴</button>
                 {/* 「미확인」 — 잘못 누른 체크를 **체크 안 한 처음 상태로** 되돌린다.
@@ -498,7 +598,7 @@ export default function AttendancePanel({
                       }}
                       className="min-h-12 rounded-lg border border-[#9CB7C8] px-3"
                     />
-                    <button type="button" onClick={() => void saveTimeAction()} className="min-h-12 rounded-lg bg-[#23B2C3] px-4 font-bold text-white active:scale-95 transition-transform duration-75">저장</button>
+                    <button type="button" onClick={() => void saveTimeAction()} className="min-h-12 rounded-lg bg-[#135C73] px-4 font-bold text-white active:scale-95 transition-transform duration-75">저장</button>
                   </div>
                 </div>
               ) : null}
@@ -524,11 +624,40 @@ export default function AttendancePanel({
           onClick={async () => {
             if (!token || !window.confirm(`미확인 ${summary.unconfirmed}명을 결석 처리할까요?`)) return;
             setBusy(true);
+            setFinalizeNotice(null);
+            beginRosterMutation();
             try {
-              const count = await finalizeAbsent(token);
-              await load();
-              setMessage(`${count}명을 결석 처리했습니다.`);
+              const count = await finalizeAbsent(token, CURRENT_SESSION_SLUG);
+              const confirmedRows = await load('manual');
+              if (confirmedRows) {
+                const confirmed = attendanceSummary(confirmedRows.filter((row) => row.active));
+                setFinalizeNotice({
+                  kind: 'success',
+                  message: `${count}명 결석 처리 응답을 받고 출석부를 다시 확인했습니다. 현재 결석 ${confirmed.absent}명 · 미확인 ${confirmed.unconfirmed}명입니다.`,
+                });
+              } else {
+                setFinalizeNotice({
+                  kind: 'error',
+                  message: `${count}명 결석 처리 응답은 받았지만 출석부 재확인에 실패했습니다. 「지금 다시 시도」로 현재 인원을 확인해 주세요.`,
+                });
+              }
+            } catch (error) {
+              console.error('[attendance] finalize absent outcome is uncertain', error);
+              const confirmedRows = await load('manual');
+              if (confirmedRows) {
+                const confirmed = attendanceSummary(confirmedRows.filter((row) => row.active));
+                setFinalizeNotice({
+                  kind: 'error',
+                  message: `결석 처리 응답을 확인하지 못해 출석부를 강제로 다시 조회했습니다. 현재 결석 ${confirmed.absent}명 · 미확인 ${confirmed.unconfirmed}명입니다.`,
+                });
+              } else {
+                setFinalizeNotice({
+                  kind: 'error',
+                  message: '결석 처리 결과와 출석부 재조회를 모두 확인하지 못했습니다. 연결을 확인한 뒤 「지금 다시 시도」를 눌러 현재 인원을 확인해 주세요.',
+                });
+              }
             } finally {
+              finishRosterMutation();
               setBusy(false);
             }
           }}

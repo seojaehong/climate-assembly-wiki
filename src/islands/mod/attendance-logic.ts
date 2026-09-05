@@ -147,6 +147,29 @@ export function applyAttendanceAction<T extends AttendanceStateFields>(
 }
 
 /**
+ * Applies a server roster snapshot without replacing rows that still have an
+ * optimistic mutation in flight. A pending row missing from the snapshot is
+ * retained as well, because an older response must not make a person vanish.
+ */
+export function mergeAttendanceRosterSnapshot<T extends { assignment_id: string }>(
+  current: readonly T[],
+  incoming: readonly T[],
+  pendingAssignmentIds: ReadonlySet<string>,
+): T[] {
+  const currentById = new Map(current.map((row) => [row.assignment_id, row]));
+  const seen = new Set<string>();
+  const merged = incoming.map((row) => {
+    seen.add(row.assignment_id);
+    if (!pendingAssignmentIds.has(row.assignment_id)) return row;
+    return currentById.get(row.assignment_id) ?? row;
+  });
+  for (const row of current) {
+    if (pendingAssignmentIds.has(row.assignment_id) && !seen.has(row.assignment_id)) merged.push(row);
+  }
+  return merged;
+}
+
+/**
  * 행에 붙는 입실·퇴실 시각 표기. `오후 3:52` 형태.
  *
  * `toLocaleTimeString`을 쓰지 않는다 — 환경마다 '오후 3:52:00'·'3:52 PM'으로 갈린다.

@@ -5,7 +5,6 @@ import {
   buildPublicResultUrl,
   buildAttachedPublication,
   parsePublicResultToken,
-  readStoredHqToken,
   runExclusivePublicationOperation,
   validatePublishInput,
   verifyPublishedResult,
@@ -36,6 +35,7 @@ interface Publication {
 interface Props {
   scope: ScopeLevel | null;
   scopeId: string | null;
+  sessionId: string | null;
 }
 
 export function CopyAnnouncement({ copied }: { copied: boolean }) {
@@ -59,15 +59,7 @@ function formatPublishedAt(iso: string): string {
   return date.toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-function initialHqToken(): string {
-  return readStoredHqToken(
-    () => (typeof window === 'undefined' ? null : window.sessionStorage),
-    (storageError) => console.error('Failed to read stored HQ token', storageError),
-  );
-}
-
-export default function PublishConsole({ scope, scopeId }: Props) {
-  const [hqToken, setHqToken] = useState(initialHqToken);
+export default function PublishConsole({ scope, scopeId, sessionId }: Props) {
   const [title, setTitle] = useState('');
   const [existingResultInput, setExistingResultInput] = useState('');
   const [publication, setPublication] = useState<Publication | null>(null);
@@ -83,7 +75,7 @@ export default function PublishConsole({ scope, scopeId }: Props) {
     setNotice(null);
     setCopied(false);
 
-    const validation = validatePublishInput({ hqToken, title, scope, scopeId });
+    const validation = validatePublishInput({ sessionId, title, scope, scopeId });
     if (!validation.ok) {
       setError(validation.error);
       return;
@@ -92,7 +84,7 @@ export default function PublishConsole({ scope, scopeId }: Props) {
     try {
       await runExclusivePublicationOperation(operationLock, async () => {
         const input = validation.value;
-        const published = await resultPublish(input.hqToken, input.scope, input.scopeId, input.title);
+        const published = await resultPublish(input.sessionId, input.scope, input.scopeId, input.title);
         if (published.notice || !published.data) {
           setError(published.notice ?? '발행 응답을 확인하지 못했습니다.');
           return;
@@ -138,9 +130,8 @@ export default function PublishConsole({ scope, scopeId }: Props) {
   const unpublish = async () => {
     const resultId = publication?.id;
     if (busy || operationLock.current || !publication || !resultId) return;
-    const token = hqToken.trim();
-    if (!token) {
-      setError('공개 해제에도 HQ 인증 토큰이 필요합니다.');
+    if (!sessionId) {
+      setError('선택한 범위에 연결된 회차가 없어 공개를 해제할 수 없습니다.');
       return;
     }
 
@@ -149,7 +140,7 @@ export default function PublishConsole({ scope, scopeId }: Props) {
     setCopied(false);
     try {
       await runExclusivePublicationOperation(operationLock, async () => {
-        const unpublished = await resultUnpublish(token, resultId);
+        const unpublished = await resultUnpublish(sessionId, resultId);
         if (unpublished.notice || !unpublished.data) {
           setError(unpublished.notice ?? '공개 해제 응답을 확인하지 못했습니다.');
           return;
@@ -236,22 +227,16 @@ export default function PublishConsole({ scope, scopeId }: Props) {
       </p>
 
       <section aria-label="공개 설정" style={{ border: `2px solid ${LINE}`, borderRadius: 16, background: '#fff', padding: 20 }}>
+        {!sessionId ? (
+          <p role="alert" style={{ color: RED, fontWeight: 700, margin: '0 0 14px' }}>
+            이 범위에 연결된 회차가 없습니다. 먼저 회차를 준비하거나 좌측 트리에서 다른 범위를 선택하세요.
+          </p>
+        ) : (
+          <p style={{ color: MUTED, fontSize: 13, margin: '0 0 14px' }}>
+            로그인된 운영자 권한과 연결 회차를 기준으로 발행합니다.
+          </p>
+        )}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14 }}>
-          <label>
-            <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: NAVY, marginBottom: 5 }}>HQ 인증 토큰</span>
-            <input
-              type="password"
-              autoComplete="off"
-              disabled={busy}
-              value={hqToken}
-              onChange={(event) => setHqToken(event.target.value)}
-              placeholder="HQ 로그인 후 발급된 토큰"
-              style={inputStyle}
-            />
-            <small style={{ display: 'block', color: MUTED, fontSize: 12, lineHeight: 1.5, marginTop: 5 }}>
-              현재 브라우저의 /hq 세션 토큰을 자동으로 불러옵니다. 없거나 만료된 경우에만 직접 입력하세요.
-            </small>
-          </label>
           <label>
             <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: NAVY, marginBottom: 5 }}>공개 결과 제목</span>
             <input
@@ -272,8 +257,8 @@ export default function PublishConsole({ scope, scopeId }: Props) {
         <button
           type="button"
           onClick={publish}
-          disabled={busy || !scope || !scopeId}
-          style={{ border: 0, borderRadius: 10, background: busy || !scope || !scopeId ? '#AABBC5' : NAVY, color: '#fff', padding: '11px 18px', fontSize: 15, fontWeight: 800, cursor: busy ? 'wait' : 'pointer' }}
+          disabled={busy || !scope || !scopeId || !sessionId}
+          style={{ border: 0, borderRadius: 10, background: busy || !scope || !scopeId || !sessionId ? '#AABBC5' : NAVY, color: '#fff', padding: '11px 18px', fontSize: 15, fontWeight: 800, cursor: busy ? 'wait' : 'pointer' }}
         >
           {busy ? '처리 중…' : publication ? '최신 검수 결과로 재발행' : '검수 결과 발행'}
         </button>
@@ -330,9 +315,10 @@ export default function PublishConsole({ scope, scopeId }: Props) {
             ) : null}
           </div>
         </section>
-        {publication.verified ? (
+        {publication.verified && sessionId ? (
           <ImplementationConsole
-            hqToken={hqToken}
+            key={publication.token}
+            sessionId={sessionId}
             resultToken={publication.token}
             resultBody={publication.body}
             onVerified={(body) => setPublication((current) => current ? { ...current, body } : current)}

@@ -3,6 +3,7 @@ import {
   answeredCount,
   getLocalSubmit,
   isComplete,
+  isLocalSubmitStoragePersistent,
   parseBallotUrl,
   recordLocalSubmit,
   refreshNoticeMessage,
@@ -11,6 +12,13 @@ import {
   subgroupVoteBadge,
 } from './ballot-logic';
 import type { Ballot, BallotItem } from '../../lib/ballot';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import {
+  BALLOT_EVIDENCE_BOUNDARY,
+  ballotResponseCountLabel,
+  LoadErrorScreen,
+} from './BallotCard';
 
 function item(over: Partial<BallotItem> = {}): BallotItem {
   return {
@@ -33,9 +41,9 @@ const openBallot: Ballot = {
 };
 
 describe('subgroupVoteBadge — /b 헤더 분과 뱃지(S4)', () => {
-  it('분과 한정 투표면 「N분과 투표」', () => {
-    expect(subgroupVoteBadge('1분과')).toBe('1분과 투표');
-    expect(subgroupVoteBadge(' 2분과 ')).toBe('2분과 투표');
+  it('분과 한정 의견조사면 「N분과 의견조사」', () => {
+    expect(subgroupVoteBadge('1분과')).toBe('1분과 의견조사');
+    expect(subgroupVoteBadge(' 2분과 ')).toBe('2분과 의견조사');
   });
 
   it('전체 투표(null)·S4 미적용 DB(키 없음=undefined)는 null — 표시 없음', () => {
@@ -155,6 +163,18 @@ describe('로컬 제출 기록 (localStorage cv_ballot_<id>)', () => {
     expect(store.has('cv_ballot_b1')).toBe(true);
     expect(getLocalSubmit('b2')).toBeNull();
   });
+
+  it('저장소 접근이 차단돼도 메모리 폴백으로 제출 흐름을 유지한다', () => {
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: () => { throw new DOMException('blocked', 'SecurityError'); },
+      setItem: () => { throw new DOMException('blocked', 'SecurityError'); },
+    };
+    const now = new Date('2026-09-12T01:02:03.000Z');
+
+    expect(() => recordLocalSubmit('blocked-storage-ballot', now)).not.toThrow();
+    expect(getLocalSubmit('blocked-storage-ballot')).toBe(now.toISOString());
+    expect(isLocalSubmitStoragePersistent()).toBe(false);
+  });
 });
 
 describe('resolveBallotScreen — 화면 상태 전이', () => {
@@ -192,5 +212,41 @@ describe('refreshNoticeMessage', () => {
   it('closed/published면 null (화면 전환이 담당)', () => {
     expect(refreshNoticeMessage({ ...openBallot, status: 'closed' })).toBeNull();
     expect(refreshNoticeMessage({ ...openBallot, status: 'published' })).toBeNull();
+  });
+});
+
+describe('BallotCard load failure UX', () => {
+  it('shows a retry action instead of mislabelling a network failure as an invalid QR', () => {
+    const html = renderToStaticMarkup(createElement(LoadErrorScreen, {
+      title: '투표 화면에 연결하지 못했습니다',
+      body: '네트워크를 확인하고 다시 시도해 주세요.',
+      onRetry: () => undefined,
+      retrying: false,
+    }));
+
+    expect(html).toContain('투표 화면에 연결하지 못했습니다');
+    expect(html).toContain('다시 불러오기');
+    expect(html).not.toContain('QR을 다시 스캔');
+  });
+
+  it('announces retry progress and disables duplicate retry clicks', () => {
+    const html = renderToStaticMarkup(createElement(LoadErrorScreen, {
+      title: '공개 결과에 연결하지 못했습니다',
+      body: '네트워크를 확인하고 다시 시도해 주세요.',
+      onRetry: () => undefined,
+      retrying: true,
+    }));
+
+    expect(html).toContain('disabled=""');
+    expect(html).toContain('다시 불러오는 중…');
+  });
+});
+
+describe('공개 ballot 증거 경계', () => {
+  it('기기 단위 비구속 의견조사임을 명시하고 사람 수로 오인시키지 않는다', () => {
+    expect(BALLOT_EVIDENCE_BOUNDARY).toContain('기기 식별값');
+    expect(BALLOT_EVIDENCE_BOUNDARY).toContain('비구속 현장 의견조사');
+    expect(BALLOT_EVIDENCE_BOUNDARY).toContain('공식 의사결정');
+    expect(ballotResponseCountLabel(3)).toBe('기기 응답 3건');
   });
 });

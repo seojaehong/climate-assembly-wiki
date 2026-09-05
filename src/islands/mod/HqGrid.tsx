@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   fetchHqTeams,
-  fetchTeamRounds,
-  fetchVoteCounts,
-  fetchVotesForRounds,
-  subscribeHqUpdates,
+  fetchHqRounds,
+  fetchHqVoteCounts,
+  fetchHqVotesForRounds,
   tallyVotes,
   type HqTeam,
   type Round,
   type Vote,
 } from '../../lib/mod-console';
 import { fetchHqAttendanceSummaries, type HqAttendanceSummary } from '../../lib/attendance';
+import { CURRENT_SESSION_SLUG } from '../../lib/hq-submissions';
 import { subgroupFilterOptions } from '../../lib/team-order';
 import HqAttendanceAdmin from './HqAttendanceAdmin';
+import { classifyHqAuthorizationError } from './hq-gate-logic';
 import {
   teamCell,
   hqConnectionState,
@@ -54,10 +55,17 @@ const STALE_AFTER_MS = 65000;
 const VOTE_FETCH_CHUNK = 10;
 
 /** 라운드를 나눠 표를 받아 하나의 맵으로 합친다. 한 조각이라도 실패하면 전체가 실패한다(부분 집계 금지). */
-async function fetchVotesInChunks(roundIds: string[]): Promise<Record<string, Vote[]>> {
+async function fetchVotesInChunks(
+  token: string,
+  sessionSlug: string,
+  roundIds: string[],
+): Promise<Record<string, Vote[]>> {
   const merged: Record<string, Vote[]> = {};
   for (let index = 0; index < roundIds.length; index += VOTE_FETCH_CHUNK) {
-    Object.assign(merged, await fetchVotesForRounds(roundIds.slice(index, index + VOTE_FETCH_CHUNK)));
+    Object.assign(
+      merged,
+      await fetchHqVotesForRounds(token, sessionSlug, roundIds.slice(index, index + VOTE_FETCH_CHUNK)),
+    );
   }
   return merged;
 }
@@ -711,7 +719,13 @@ function TeamComparisonPanel({
 }
 
 /** /hq 본부용 15조 읽기전용 현황 그리드. */
-export default function HqGrid() {
+export default function HqGrid({
+  token,
+  onAuthorizationExpired,
+}: {
+  token: string;
+  onAuthorizationExpired: () => void;
+}) {
   // 기본은 송출 모드(false). SSR/hydration 시점에 대형 스크린으로 조작 UI가 새지 않게 한다.
   const [opsMode] = useState(() =>
     typeof window === 'undefined' ? false : isOpsMode(window.location.search),
@@ -757,12 +771,15 @@ export default function HqGrid() {
     setRefreshing(true);
     try {
       const [nextTeams, nextRounds, attendanceSummaries] = await Promise.all([
-        fetchHqTeams(),
-        fetchTeamRounds(),
-        fetchHqAttendanceSummaries(),
+        fetchHqTeams(token, CURRENT_SESSION_SLUG),
+        fetchHqRounds(token, CURRENT_SESSION_SLUG),
+        fetchHqAttendanceSummaries(token, CURRENT_SESSION_SLUG),
       ]);
       const ids = relevantRoundIds(nextTeams, nextRounds);
-      const [counts, nextVotesByRound] = await Promise.all([fetchVoteCounts(ids), fetchVotesForRounds(ids)]);
+      const [counts, nextVotesByRound] = await Promise.all([
+        fetchHqVoteCounts(token, CURRENT_SESSION_SLUG, ids),
+        fetchHqVotesForRounds(token, CURRENT_SESSION_SLUG, ids),
+      ]);
       const completedAt = new Date();
       setTeams(nextTeams);
       setRounds(nextRounds);
@@ -772,22 +789,26 @@ export default function HqGrid() {
       setUpdatedAt(completedAt);
       setNowMs(completedAt.getTime());
       setRefreshError(null);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('[HQ] refresh failed', error);
+      if (classifyHqAuthorizationError(error) === 'expired') {
+        onAuthorizationExpired();
+        return;
+      }
       setRefreshError('조 현황을 갱신하지 못했습니다.');
     } finally {
       loadingRef.current = false;
       setRefreshing(false);
     }
-  }, []);
+  }, [onAuthorizationExpired, token]);
 
   useEffect(() => {
     void refresh();
-    const unsubscribe = subscribeHqUpdates(() => void refresh());
+    // P2a closes broad anonymous Realtime table reads. The scoped 30-second
+    // poll and the visible refresh control remain the authoritative update path.
     const interval = setInterval(() => void refresh(), POLL_MS);
     const clock = setInterval(() => setNowMs(Date.now()), 5000);
     return () => {
-      unsubscribe();
       clearInterval(interval);
       clearInterval(clock);
     };
@@ -835,7 +856,7 @@ export default function HqGrid() {
     const ids = sequenceRoundKey.split(',');
     let cancelled = false;
     setSequenceState('loading');
-    fetchVotesForRounds(ids)
+    fetchHqVotesForRounds(token, CURRENT_SESSION_SLUG, ids)
       .then((votesByRoundId) => {
         if (cancelled) return;
         setSequenceCounts(
@@ -843,14 +864,18 @@ export default function HqGrid() {
         );
         setSequenceState('loaded');
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         console.error('[HQ] round view counts failed', error);
+        if (classifyHqAuthorizationError(error) === 'expired') {
+          if (!cancelled) onAuthorizationExpired();
+          return;
+        }
         if (!cancelled) setSequenceState('failed');
       });
     return () => {
       cancelled = true;
     };
-  }, [lastRefreshMs, sequenceReloadKey, sequenceRoundKey]);
+  }, [lastRefreshMs, onAuthorizationExpired, sequenceReloadKey, sequenceRoundKey, token]);
 
   // 카드에 그릴 값. '현재'와 N차가 같은 함수를 지나므로 두 경로가 서로 어긋날 수 없다.
   const cardCells = useMemo(
@@ -910,20 +935,24 @@ export default function HqGrid() {
     }
     let cancelled = false;
     setHistoryState('loading');
-    fetchVotesForRounds(ids)
+    fetchHqVotesForRounds(token, CURRENT_SESSION_SLUG, ids)
       .then((next) => {
         if (cancelled) return;
         setHistoryVotesByRound(next);
         setHistoryState('loaded');
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         console.error('[HQ] round history votes failed', error);
+        if (classifyHqAuthorizationError(error) === 'expired') {
+          if (!cancelled) onAuthorizationExpired();
+          return;
+        }
         if (!cancelled) setHistoryState('failed');
       });
     return () => {
       cancelled = true;
     };
-  }, [historyRoundKey, historyReloadKey, selectedTeamId]);
+  }, [historyRoundKey, historyReloadKey, onAuthorizationExpired, selectedTeamId, token]);
 
   // 다른 조를 열면 회차 선택은 기본값(현재 라운드)으로 돌아간다.
   // historyState도 함께 되돌린다 — 안 그러면 A조에서 조회에 실패한 뒤 B조를 열 때
@@ -973,7 +1002,7 @@ export default function HqGrid() {
     exportingRef.current = true;
     setExportState({ ...IDLE_EXPORT, running: true });
     try {
-      const votesByRoundId = await fetchVotesInChunks(exportRoundIds);
+      const votesByRoundId = await fetchVotesInChunks(token, CURRENT_SESSION_SLUG, exportRoundIds);
       const jobs = resultExportJobs(teams, rounds, votesByRoundId, formatClosedClock);
       if (jobs.length === 0) {
         setExportState({ ...IDLE_EXPORT, error: '내려받을 투표 결과가 없습니다.' });
@@ -1018,13 +1047,17 @@ export default function HqGrid() {
             ? `${entries.length}장을 내려받았습니다.`
             : `${entries.length}장을 내려받았습니다. ${failedCount}장은 만들지 못했습니다.`,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('[HQ] export failed', error);
+      if (classifyHqAuthorizationError(error) === 'expired') {
+        onAuthorizationExpired();
+        return;
+      }
       setExportState({ ...IDLE_EXPORT, error: '결과를 내려받지 못했습니다. 연결을 확인한 뒤 다시 눌러 주세요.' });
     } finally {
       exportingRef.current = false;
     }
-  }, [exportRoundIds, rounds, teams]);
+  }, [exportRoundIds, onAuthorizationExpired, rounds, teams, token]);
 
   const exitCompareMode = useCallback(() => {
     setCompareMode(false);
@@ -1370,7 +1403,11 @@ export default function HqGrid() {
 
       {opsMode ? (
         <div className="mt-6">
-          <HqAttendanceAdmin teams={teams} />
+          <HqAttendanceAdmin
+            teams={teams}
+            token={token}
+            onAuthorizationExpired={onAuthorizationExpired}
+          />
         </div>
       ) : null}
 

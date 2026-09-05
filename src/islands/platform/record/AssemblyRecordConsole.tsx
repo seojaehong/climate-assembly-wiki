@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { issueItems, type IssueItemsResult, type PlatformResult } from '../../../lib/platform';
 import type { ScopePathContext, SessionTopicGroup } from '../platform-nav-logic';
 import { buildRecordView, type RecordView } from './record-console-logic';
@@ -6,27 +6,22 @@ import { completeRecordLoad, RecordResults } from './RecordConsole';
 
 const NAVY = '#1F4E79';
 const TEAL = '#135C73';
-const INK = '#1F2933';
 const MUTED = '#5A6B73';
 const LINE = '#6B7D88';
 const PANEL = '#F1F7FA';
 
-type IssueItemsLoader = (code: string, topicId: string) => Promise<PlatformResult<IssueItemsResult>>;
+type IssueItemsLoader = (sessionId: string, topicId: string) => Promise<PlatformResult<IssueItemsResult>>;
 
 export async function loadAssemblyRecords(
-  codes: Readonly<Record<string, string>>,
   groups: readonly SessionTopicGroup[],
   context: ScopePathContext = {},
   loader: IssueItemsLoader = issueItems,
 ): Promise<PlatformResult<RecordView>> {
-  const missingCode = groups.find((group) => group.topics.length > 0 && !codes[group.id]?.trim());
-  if (missingCode) return { data: null, notice: `${missingCode.label}의 조 참여 코드를 입력하세요.` };
-
   const targets = groups.flatMap((group) => group.topics.map((topic) => ({ group, topic })));
   const responses = await Promise.all(targets.map(async ({ group, topic }) => ({
     group,
     topic,
-    response: await loader(codes[group.id].trim(), topic.id),
+    response: await loader(group.id, topic.id),
   })));
   const topicResults = [];
   for (const { group, topic, response } of responses) {
@@ -54,23 +49,39 @@ export default function AssemblyRecordConsole({
   groups: readonly SessionTopicGroup[];
   context?: ScopePathContext;
 }) {
-  const [codes, setCodes] = useState<Record<string, string>>({});
   const [view, setView] = useState<RecordView | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const requestGeneration = useRef(0);
+  const groupsRef = useRef(groups);
+  const contextRef = useRef(context);
+  groupsRef.current = groups;
+  contextRef.current = context;
   const scopeKey = groups.map((group) => `${group.id}:${group.topics.map((topic) => topic.id).join(',')}`).join('|');
   const activeGroups = groups.filter((group) => group.topics.length > 0);
   const topicCount = activeGroups.reduce((total, group) => total + group.topics.length, 0);
 
+  const load = useCallback(async (): Promise<void> => {
+    if (groupsRef.current.every((group) => group.topics.length === 0)) return;
+    const generation = requestGeneration.current + 1;
+    requestGeneration.current = generation;
+    await completeRecordLoad(
+      () => loadAssemblyRecords(groupsRef.current, contextRef.current),
+      setBusy,
+      setView,
+      setNotice,
+      () => requestGeneration.current === generation,
+    );
+  }, []);
+
   useEffect(() => {
     requestGeneration.current += 1;
-    setCodes({});
     setView(null);
     setNotice(null);
     setBusy(false);
+    void load();
     return () => { requestGeneration.current += 1; };
-  }, [scopeKey]);
+  }, [load, scopeKey]);
 
   if (groups.length === 0) {
     return (
@@ -88,25 +99,6 @@ export default function AssemblyRecordConsole({
     );
   }
 
-  const load = async (event: React.SubmitEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const missing = activeGroups.find((group) => !codes[group.id]?.trim());
-    if (missing) {
-      setNotice(`${missing.label}의 조 참여 코드를 입력하세요.`);
-      return;
-    }
-    const generation = requestGeneration.current + 1;
-    requestGeneration.current = generation;
-    await completeRecordLoad(
-      () => loadAssemblyRecords(codes, groups, context),
-      setBusy,
-      setView,
-      setNotice,
-      () => requestGeneration.current === generation,
-    );
-    if (requestGeneration.current === generation) setCodes({});
-  };
-
   return (
     <div style={{ display: 'grid', gap: 18 }}>
       <header>
@@ -117,41 +109,18 @@ export default function AssemblyRecordConsole({
         </p>
       </header>
 
-      <form aria-label="공론화 기록 불러오기" aria-busy={busy} onSubmit={load} style={{ border: `2px solid ${LINE}`, borderRadius: 16, background: PANEL, padding: 18 }}>
-        <fieldset disabled={busy} style={{ border: 0, margin: 0, padding: 0 }}>
-          <legend style={{ color: NAVY, fontSize: 15, fontWeight: 800, padding: 0, marginBottom: 10 }}>회차별 조 참여 코드</legend>
-          <div style={{ display: 'grid', gap: 12 }}>
-            {activeGroups.map((group) => {
-              const inputId = `assembly-record-code-${group.id}`;
-              return (
-                <div key={group.id}>
-                  <label htmlFor={inputId} style={{ display: 'block', color: NAVY, fontSize: 14, fontWeight: 800, marginBottom: 5 }}>{group.label} 참여 코드</label>
-                  <input
-                    id={inputId}
-                    type="password"
-                    value={codes[group.id] ?? ''}
-                    onChange={(event) => setCodes((current) => ({ ...current, [group.id]: event.target.value }))}
-                    autoComplete="off"
-                    aria-describedby="assembly-record-code-help"
-                    style={{ width: '100%', maxWidth: 420, height: 44, boxSizing: 'border-box', border: `2px solid ${LINE}`, borderRadius: 10, padding: '0 12px', color: INK, background: '#fff', fontSize: 14 }}
-                  />
-                  <span style={{ display: 'block', color: MUTED, fontSize: 12, marginTop: 4 }}>{group.topics.length}개 주제 조회</span>
-                </div>
-              );
-            })}
-          </div>
-        </fieldset>
-        <p id="assembly-record-code-help" style={{ color: MUTED, fontSize: 12, margin: '10px 0' }}>
-          코드는 각 회차의 조회 권한 확인에만 사용하며 브라우저 저장소에 보관하지 않습니다.
+      <section aria-label="공론화 기록 동기화" aria-busy={busy} style={{ border: `2px solid ${LINE}`, borderRadius: 16, background: PANEL, padding: 18 }}>
+        <p style={{ color: MUTED, fontSize: 13, margin: '0 0 10px' }}>
+          로그인된 운영자 권한으로 각 회차의 {topicCount}개 주제를 자동 동기화합니다.
         </p>
-        <button type="submit" disabled={busy} style={{ minHeight: 44, border: `2px solid ${TEAL}`, borderRadius: 10, background: busy ? '#CBD5DC' : TEAL, color: '#fff', padding: '8px 18px', fontSize: 14, fontWeight: 800, cursor: busy ? 'default' : 'pointer' }}>
-          {busy ? '불러오는 중…' : '공론화 기록 불러오기'}
+        <button type="button" onClick={() => { void load(); }} disabled={busy} style={{ minHeight: 44, border: `2px solid ${TEAL}`, borderRadius: 10, background: busy ? '#CBD5DC' : TEAL, color: '#fff', padding: '8px 18px', fontSize: 14, fontWeight: 800, cursor: busy ? 'default' : 'pointer' }}>
+          {busy ? '불러오는 중…' : '공론화 기록 새로고침'}
         </button>
         {notice ? <p role="alert" style={{ color: '#B91C1C', fontSize: 14, fontWeight: 700, margin: '10px 0 0' }}>{notice}</p> : null}
-      </form>
+      </section>
 
       {view ? <RecordResults view={view} /> : (
-        <p role="status" aria-live="polite" style={{ color: MUTED, margin: 0 }}>회차별 코드를 입력하면 공론화 전체 기록이 표시됩니다.</p>
+        <p role="status" aria-live="polite" style={{ color: MUTED, margin: 0 }}>{busy ? '공론화 전체 기록을 안전하게 불러오는 중입니다.' : '공론화 전체 기록을 자동으로 불러옵니다.'}</p>
       )}
     </div>
   );

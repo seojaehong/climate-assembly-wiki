@@ -4,6 +4,10 @@ import {
   DRAFT_KEY_PREFIX,
   DRAFT_TTL_MS,
   createDraftStorage,
+  legacyDraftMigrationDecision,
+  listLegacyDraftRecoveries,
+  migrateLegacyDraft,
+  preserveLegacyDraftRecovery,
   readDraft,
   staleKeys,
   writeDraft,
@@ -31,6 +35,78 @@ function fakeStorage(init: Record<string, string> = {}): StorageLike & { dump():
   };
 }
 
+describe('legacy join-code draft migration', () => {
+  const sourceKey = 'climate_vote_draft:091201:topic-1';
+  const targetKey = 'climate_vote_draft:team-1:topic-1';
+  const draft = (savedAtMs: number, baseVersion: number | null, content: string) =>
+    writeDraft([row({ content })], '2026-09-05T00:00:00Z', savedAtMs, baseVersion);
+
+  it('moves a lone legacy draft and verifies the target before deleting the source', () => {
+    const raw = draft(NOW, 3, 'legacy text');
+    const storage = fakeStorage({ [sourceKey]: raw });
+
+    expect(migrateLegacyDraft(storage, sourceKey, targetKey)).toBe('move');
+    expect(storage.getItem(targetKey)).toBe(raw);
+    expect(storage.getItem(sourceKey)).toBeNull();
+  });
+
+  it('removes only an exact duplicate with the same time, version and content', () => {
+    const raw = draft(NOW, 3, 'same text');
+    const storage = fakeStorage({ [sourceKey]: raw, [targetKey]: raw });
+
+    expect(legacyDraftMigrationDecision(raw, raw)).toBe('duplicate');
+    expect(migrateLegacyDraft(storage, sourceKey, targetKey)).toBe('duplicate');
+    expect(storage.getItem(sourceKey)).toBeNull();
+  });
+
+  it.each([
+    ['saved time', draft(NOW - 1, 3, 'text'), draft(NOW, 3, 'text')],
+    ['base version', draft(NOW, 2, 'text'), draft(NOW, 3, 'text')],
+    ['content', draft(NOW, 3, 'legacy text'), draft(NOW, 3, 'team text')],
+  ])('preserves both divergent drafts when %s differs', (_label, source, target) => {
+    const storage = fakeStorage({ [sourceKey]: source, [targetKey]: target });
+
+    expect(migrateLegacyDraft(storage, sourceKey, targetKey)).toBe('conflict');
+    expect(storage.getItem(sourceKey)).toBe(source);
+    expect(storage.getItem(targetKey)).toBe(target);
+  });
+
+  it('preserves an ambiguous malformed source beside an existing target', () => {
+    const target = draft(NOW, 3, 'team text');
+    const storage = fakeStorage({ [sourceKey]: '{broken', [targetKey]: target });
+
+    expect(migrateLegacyDraft(storage, sourceKey, targetKey)).toBe('conflict');
+    expect(storage.getItem(sourceKey)).toBe('{broken');
+    expect(storage.getItem(targetKey)).toBe(target);
+  });
+
+  it('copies a conflict to a verified join-code-free team/topic recovery record', () => {
+    const storage = fakeStorage();
+    const raw = draft(NOW, 3, 'legacy text');
+
+    const recovered = preserveLegacyDraftRecovery(storage, 'team-1', 'topic-1', raw, NOW + 10);
+    const recoveryKey = Object.keys(storage.dump()).find((key) => key.startsWith('climate_vote_draft_recovery:'));
+
+    expect(recovered).toMatchObject({ teamId: 'team-1', topicId: 'topic-1', draftRaw: raw });
+    expect(recoveryKey).toBeDefined();
+    expect(recoveryKey).not.toContain('091201');
+    expect(storage.getItem(recoveryKey ?? '')).not.toContain('091201');
+    expect(listLegacyDraftRecoveries(storage, 'team-1')).toEqual([recovered]);
+  });
+
+  it('deduplicates an exact recovery and allocates a second slot for divergent content', () => {
+    const storage = fakeStorage();
+    const first = draft(NOW, 3, 'first');
+    const second = draft(NOW + 1, 4, 'second');
+
+    preserveLegacyDraftRecovery(storage, 'team-1', 'topic-1', first, NOW + 10);
+    preserveLegacyDraftRecovery(storage, 'team-1', 'topic-1', first, NOW + 20);
+    preserveLegacyDraftRecovery(storage, 'team-1', 'topic-1', second, NOW + 20);
+
+    expect(listLegacyDraftRecoveries(storage, 'team-1').map((record) => record.draftRaw)).toEqual([first, second]);
+  });
+});
+
 describe('readDraft — 봉투 읽기', () => {
   it('없는 값·깨진 JSON 은 null', () => {
     expect(readDraft(null, NOW)).toBeNull();
@@ -45,6 +121,7 @@ describe('readDraft — 봉투 읽기', () => {
       rows: [row()],
       savedAtMs: NOW,
       baseUpdatedAt: '2026-08-31T10:00:00Z',
+      baseVersion: null,
     });
   });
 
@@ -61,6 +138,7 @@ describe('readDraft — 봉투 읽기', () => {
       rows: [{ name: '가', content: '내용', rationale: '근거' }],
       savedAtMs: 0,
       baseUpdatedAt: null,
+      baseVersion: null,
     });
   });
 
@@ -89,6 +167,11 @@ describe('readDraft — 봉투 읽기', () => {
   it('baseUpdatedAt 이 문자열이 아니면 null 로 눕힌다', () => {
     const raw = JSON.stringify({ v: 1, rows: [row()], savedAtMs: NOW, baseUpdatedAt: 12 });
     expect(readDraft(raw, NOW)?.baseUpdatedAt).toBeNull();
+  });
+
+  it('초안이 딛고 선 OCC 버전을 왕복 보존한다', () => {
+    const raw = writeDraft([row()], '2026-08-31T10:00:00Z', NOW, 7);
+    expect(readDraft(raw, NOW)?.baseVersion).toBe(7);
   });
 });
 

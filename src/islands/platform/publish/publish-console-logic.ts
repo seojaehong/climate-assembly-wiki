@@ -1,10 +1,5 @@
 import type { ScopeLevel } from '../platform-nav-logic';
 import type { ResultPageView } from '../../../lib/platform';
-import { HQ_TOKEN_KEY, isValidHqToken } from '../../mod/hq-gate-logic';
-
-export interface TokenStorage {
-  getItem(key: string): string | null;
-}
 
 export interface PublicationOperationLock {
   current: boolean;
@@ -31,31 +26,15 @@ export async function runExclusivePublicationOperation<T>(
   }
 }
 
-/** Reads the active HQ token and reports storage access failures without exposing the token. */
-export function readStoredHqToken(
-  getStorage: () => TokenStorage | null | undefined,
-  onError: (error: unknown) => void,
-): string {
-  try {
-    const storage = getStorage();
-    if (!storage) return '';
-    const saved = storage.getItem(HQ_TOKEN_KEY);
-    return isValidHqToken(saved) ? saved : '';
-  } catch (storageError) {
-    onError(storageError);
-    return '';
-  }
-}
-
 export interface PublishInput {
-  hqToken: string;
+  sessionId: string | null;
   title: string;
   scope: ScopeLevel | null;
   scopeId: string | null;
 }
 
 export interface ValidPublishInput {
-  hqToken: string;
+  sessionId: string;
   title: string;
   scope: ScopeLevel;
   scopeId: string;
@@ -67,8 +46,8 @@ export type PublishInputValidation =
 
 /** Validates operator input and route scope before calling the publish RPC. */
 export function validatePublishInput(input: PublishInput): PublishInputValidation {
-  const hqToken = input.hqToken.trim();
-  if (!hqToken) return { ok: false, value: null, error: 'HQ 인증 토큰을 입력하세요.' };
+  const sessionId = input.sessionId?.trim() ?? '';
+  if (!sessionId) return { ok: false, value: null, error: '선택한 범위에 연결된 회차가 없습니다.' };
 
   const title = input.title.trim();
   if (!title) return { ok: false, value: null, error: '공개 결과 제목을 입력하세요.' };
@@ -80,7 +59,7 @@ export function validatePublishInput(input: PublishInput): PublishInputValidatio
 
   return {
     ok: true,
-    value: { hqToken, title, scope: input.scope, scopeId },
+    value: { sessionId, title, scope: input.scope, scopeId },
     error: null,
   };
 }

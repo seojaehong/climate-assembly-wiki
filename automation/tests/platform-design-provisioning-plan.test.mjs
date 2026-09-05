@@ -1395,7 +1395,8 @@ test('keeps the plan scripts and shared design contract in Linux CI', () => {
     'node platform-design-provisioning-plan.mjs --verify',
   );
   expect(workflow).toContain("- 'src/islands/platform/design/**'");
-  expect(workflow).toContain('src/islands/platform/design/design-console-logic.test.ts');
+  expect(workflow).toContain('Run complete root Vitest suite');
+  expect(workflow).toContain('npm exec vitest -- run');
   expect(source).not.toContain('@supabase/supabase-js');
   expect(source).not.toContain('createClient(');
   expect(source).not.toContain('executeDesignProvisioningPlan');

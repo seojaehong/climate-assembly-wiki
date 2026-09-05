@@ -108,10 +108,17 @@ export function OntologyExportPanel({
 
       {/* 명령을 줄바꿈시키지 않는다 — 하이픈에서 접히면 `--snapshot` 이 `- -snapshot` 으로 읽혀
           그대로 복사한 사람이 틀린 명령을 친다. 좁으면 가로로 스크롤한다. */}
-      <p className="mt-2 text-[14px] leading-[1.6] text-[#8FA3AD]">받은 파일로 검수 계획을 만드는 다음 걸음:</p>
-      <code className="mt-1 block overflow-x-auto whitespace-nowrap rounded bg-[#F1F5F8] px-2 py-1 text-[13px] text-[#5A6B73]">
-        {ONTOLOGY_EXPORT_NEXT_STEP}
-      </code>
+      <p className="mt-2 text-[14px] leading-[1.6] text-[#526975]">받은 파일로 검수 계획을 만드는 다음 걸음:</p>
+      <div
+        tabIndex={0}
+        role="region"
+        aria-label="온톨로지 검수 계획 생성 명령어. 좌우 방향키로 전체 내용을 확인할 수 있습니다."
+        className="mt-1 overflow-x-auto rounded bg-[#F1F5F8] px-2 py-1 focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79]"
+      >
+        <code className="block whitespace-nowrap text-[13px] text-[#5A6B73]">
+          {ONTOLOGY_EXPORT_NEXT_STEP}
+        </code>
+      </div>
     </section>
   );
 }

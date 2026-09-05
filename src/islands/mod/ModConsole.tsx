@@ -1,20 +1,32 @@
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import {
   isValidJoinCode,
   tallyVotes,
-  joinTeam,
   createPoll,
   setPollStatus,
-  fetchVotes,
+  fetchTeamVotes,
   fetchActiveRound,
   fetchTeamRounds,
-  fetchVoteCounts,
-  subscribeRound,
+  fetchTeamVoteCounts,
   proxyVote,
   type Round,
+  type Team,
   type Vote,
 } from '../../lib/mod-console';
+import type { WorkshopAuthorization } from '../../lib/deliberation';
+import {
+  clearWorkshopSession,
+  deviceLabel,
+  exchangeWorkshopCode,
+  getOrCreateWorkshopDeviceId,
+  readWorkshopSession,
+  revokeWorkshopSession,
+  resumeWorkshopSession,
+  storeWorkshopSession,
+  type WorkshopSession,
+  type WorkshopTeam,
+} from '../../lib/workshop-access';
 import { fetchRoundEligibleCount } from '../../lib/attendance';
 import {
   modReducer,
@@ -24,6 +36,19 @@ import {
   participationBase,
   REOPEN_WINDOW_MS,
   joinCodeFromSearch,
+  proxyVotePayload,
+  toggleProxyVoteChoice,
+  beginVoteRefresh,
+  canUseFinalVoteSnapshot,
+  completeVoteRefresh,
+  EMPTY_VOTE_REFRESH_META,
+  failVoteRefresh,
+  getOrCreateRoundStatusIntent,
+  isDefinitiveRoundStatusFailure,
+  roundStatusRecoveryDecision,
+  roundUpdatedAtMs,
+  type RoundStatusIntent,
+  type VoteRefreshMeta,
 } from './mod-state';
 import { roundSequence, teamRoundHistory, type TeamRoundHistoryItem } from './round-sequence';
 import { renderResultSvg, type ResultImageInput } from './result-image';
@@ -33,11 +58,142 @@ import BallotPanel from './BallotPanel';
 import SubmissionPanel from './SubmissionPanel';
 import DeadlineBanner from './DeadlineBanner';
 import { tableNoLabel } from './table-no';
-import { MOD_TABS, MOD_TAB_KEY, normalizeTabId, tabById, type ModTabId } from './mod-tabs';
+import { topicAnchorId } from './submission-guide';
+import { MOD_TABS, MOD_TAB_KEY, normalizeTabId, tabAfterKey, tabById, type ModTabId } from './mod-tabs';
+import {
+  EMPTY_WORKSHOP_WORK_SUMMARY,
+  useWorkshopSessionState,
+  type WorkshopSessionController,
+  type WorkshopWorkSummary,
+} from './workshop-session-state';
 import Timer from './Timer';
+import {
+  listLegacyDraftRecoveries,
+  migrateLegacyDraft,
+  preserveLegacyDraftRecovery,
+  type LegacyDraftRecoveryRecord,
+} from './submission-draft-store';
+import { useModalDialog } from './use-modal-dialog';
+import { createSafeBrowserStorage } from '../../lib/safe-browser-storage';
+import {
+  createResourceRequestCoordinator,
+  type ResourceRequestPriority,
+} from './resource-request-coordinator';
 
-const CODE_KEY = 'mod_code';
 const OPTION_COLORS = ['#23B2C3', '#2E75B6', '#4F9D3A', '#F5A623', '#135C73', '#1F4E79'];
+
+function workshopTeamToTeam(team: WorkshopTeam): Team {
+  return {
+    id: team.id,
+    name: team.name,
+    subgroup: team.subgroup,
+    capacity: team.capacity,
+    table_no: team.table_no,
+  };
+}
+
+/** Remove reusable join credentials from browser storage while preserving safe draft content. */
+function migrateLegacyWorkshopStorage(storage: Storage, joinCode: string, teamId: string): number {
+  const draftPrefix = `climate_vote_draft:${joinCode}:`;
+  const queuePrefix = `climate_vote_queue:${joinCode}:`;
+  let conflicts = 0;
+  try {
+    const keys = Array.from({ length: storage.length }, (_, index) => storage.key(index))
+      .filter((key): key is string => key !== null);
+    for (const key of keys) {
+      if (key.startsWith(draftPrefix)) {
+        const topicId = key.slice(draftPrefix.length);
+        const target = `climate_vote_draft:${teamId}:${topicId}`;
+        if (migrateLegacyDraft(storage, key, target) === 'conflict') {
+          conflicts += 1;
+          const sourceRaw = storage.getItem(key);
+          if (sourceRaw !== null) {
+            try {
+              preserveLegacyDraftRecovery(storage, teamId, topicId, sourceRaw, Date.now());
+            } catch (error) {
+              // The original key remains untouched. Report the failed recovery
+              // copy so the operator does not mistake preservation for access.
+              console.error('[workshop access] legacy draft recovery copy failed', error);
+            }
+          }
+        }
+      } else if (key.startsWith(queuePrefix)) {
+        // v1 queue payloads contain the join code and have no atomic baseVersion. The migrated
+        // draft above still preserves the user's text, so an unsafe automatic resend is discarded.
+        storage.removeItem(key);
+      }
+    }
+  } catch (error) {
+    console.error('[workshop access] legacy draft migration failed', error);
+    conflicts += 1;
+  }
+  return conflicts;
+}
+
+const workshopLocalStorage = createSafeBrowserStorage('localStorage');
+const workshopSessionStorage = createSafeBrowserStorage('sessionStorage');
+
+function legacyRecoveriesForTeam(teamId: string): LegacyDraftRecoveryRecord[] {
+  const combined = [
+    ...listLegacyDraftRecoveries(workshopLocalStorage, teamId),
+    ...listLegacyDraftRecoveries(workshopSessionStorage, teamId),
+  ];
+  const seen = new Set<string>();
+  return combined.filter((record) => {
+    const identity = `${record.topicId}\u0000${record.draftRaw}`;
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
+  });
+}
+
+type AddressJoinCredential = { present: boolean; code: string | null };
+
+export type StoredSessionResumeErrorKind = 'definitive' | 'retryable';
+
+const DEFINITIVE_STORED_SESSION_ERRORS = [
+  /^workshop authorization required$/i,
+  /^workshop authorization expired or revoked$/i,
+  /^team authorization required$/i,
+  /^team authorization scope mismatch$/i,
+  /^(?:invalid|expired|revoked) (?:workshop )?(?:authorization|token)$/i,
+  /^(?:workshop )?(?:authorization|token) (?:is )?(?:invalid|expired|revoked)$/i,
+] as const;
+
+function storedSessionResumeErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message.trim();
+  if (typeof error !== 'object' || error === null) return '';
+  try {
+    const message = Reflect.get(error, 'message');
+    return typeof message === 'string' ? message.trim() : '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * A stored bearer is removed only when the token-scoped RPC explicitly says it
+ * can no longer authorize this team. Network, gateway, parse, and unknown
+ * failures stay retryable because the server may never have answered.
+ */
+export function classifyStoredSessionResumeError(error: unknown): StoredSessionResumeErrorKind {
+  const message = storedSessionResumeErrorMessage(error);
+  return DEFINITIVE_STORED_SESSION_ERRORS.some((pattern) => pattern.test(message))
+    ? 'definitive'
+    : 'retryable';
+}
+
+function takeJoinCodeFromAddress(): AddressJoinCredential {
+  const code = joinCodeFromSearch(window.location.search);
+  const url = new URL(window.location.href);
+  const carriedCredential = url.searchParams.has('code') || url.searchParams.has('c');
+  if (carriedCredential) {
+    url.searchParams.delete('code');
+    url.searchParams.delete('c');
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  }
+  return { present: carriedCredential, code };
+}
 
 // ============================================================
 // 작은 UI 조각 — 목업 확정 톤(하얀 바탕, 헤어라인, 트래킹, mono eyebrow)
@@ -56,7 +212,7 @@ function Eyebrow({ children, className = '' }: { children: React.ReactNode; clas
 
 function Logo() {
   return (
-    <div className="w-12 h-12 rounded-2xl bg-[#23B2C3] grid place-items-center text-white font-extrabold text-2xl shrink-0">
+    <div className="w-12 h-12 rounded-2xl bg-[#135C73] grid place-items-center text-white font-extrabold text-2xl shrink-0">
       M
     </div>
   );
@@ -68,10 +224,14 @@ function Logo() {
 
 function JoinScreen({
   onJoin,
+  onRetryStoredSession,
+  storedSessionRetryAvailable,
   error,
   busy,
 }: {
   onJoin: (code: string) => void;
+  onRetryStoredSession: () => void;
+  storedSessionRetryAvailable: boolean;
   error: string | null;
   busy: boolean;
 }) {
@@ -84,8 +244,9 @@ function JoinScreen({
   }, []);
 
   const submit = () => {
-    if (isValidJoinCode(digits)) onJoin(digits);
+    if (!busy && isValidJoinCode(digits)) onJoin(digits);
   };
+  const joinCodeError = Boolean(error) && !storedSessionRetryAvailable;
 
   const cells = Array.from({ length: 6 }, (_, i) => digits[i] ?? '');
 
@@ -103,12 +264,12 @@ function JoinScreen({
           >
             조 접속코드를 입력하세요
           </h1>
-          <p className="text-[#5A6B73] text-[16px] mb-9">
+          <p id="join-code-help" className="text-[#5A6B73] text-[16px] mb-9">
             운영진이 배부한 <b className="text-[#1F2933]">6자리 숫자</b>를 입력합니다.
           </p>
 
           <div
-            className="flex justify-center gap-2 sm:gap-3 mb-3 max-w-full cursor-text"
+            className="flex justify-center gap-2 sm:gap-3 mb-3 max-w-full cursor-text rounded-2xl focus-within:outline-4 focus-within:outline-offset-4 focus-within:outline-[#1F4E79]"
             role="group"
             aria-label="접속코드 6자리"
             onClick={() => inputRef.current?.focus()}
@@ -119,7 +280,7 @@ function JoinScreen({
                 <div
                   key={i}
                   className={`w-12 h-16 sm:w-14 sm:h-[72px] rounded-2xl border grid place-items-center text-[44px] font-extrabold tr-num ${
-                    error
+                     joinCodeError
                       ? 'border-2 border-[#DC2626] bg-[#FEF2F2] text-[#DC2626]'
                       : isActive
                         ? 'border-2 border-[#23B2C3] bg-[#F1F7FA] text-[#1F4E79]'
@@ -141,20 +302,19 @@ function JoinScreen({
             pattern="[0-9]*"
             maxLength={6}
             value={digits}
+            disabled={busy}
             aria-label="조 접속코드 6자리 입력"
+            aria-invalid={joinCodeError}
+            aria-describedby={joinCodeError ? 'join-code-help join-code-error' : 'join-code-help'}
+            aria-errormessage={joinCodeError ? 'join-code-error' : undefined}
             className="sr-only"
             autoFocus
             onFocus={() => setFocused(true)}
-            onBlur={() => {
-              setFocused(false);
-              setTimeout(() => {
-                if (document.activeElement === document.body) inputRef.current?.focus();
-              }, 50);
-            }}
+            onBlur={() => setFocused(false)}
             onChange={(e) => {
               const v = e.target.value.replace(/\D/g, '').slice(0, 6);
               setDigits(v);
-              if (v.length === 6 && isValidJoinCode(v)) onJoin(v);
+              if (!busy && v.length === 6 && isValidJoinCode(v)) onJoin(v);
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') submit();
@@ -162,21 +322,41 @@ function JoinScreen({
           />
 
           {error ? (
-            <div className="flex items-center gap-2 text-[#B91C1C] text-[16px] font-semibold mb-8 bg-[#FEF2F2] border border-[#DC2626]/30 rounded-xl px-4 py-2.5">
-              <span aria-hidden="true">⛔</span>
+            <div
+              id="join-code-error"
+              role="alert"
+              className={`flex items-center gap-2 text-[16px] font-semibold rounded-xl px-4 py-2.5 ${
+                storedSessionRetryAvailable
+                  ? 'mb-3 border-2 border-[#F5A623] bg-[#FFF4D6] text-[#6B4B00]'
+                  : 'mb-8 border border-[#DC2626]/30 bg-[#FEF2F2] text-[#B91C1C]'
+              }`}
+            >
+              <span aria-hidden="true">{storedSessionRetryAvailable ? '↻' : '⛔'}</span>
               <span>{error}</span>
             </div>
           ) : (
             <Eyebrow className="text-[#5A6B73] mb-9">Numeric keypad</Eyebrow>
           )}
 
+          {storedSessionRetryAvailable ? (
+            <button
+              type="button"
+              onClick={onRetryStoredSession}
+              disabled={busy}
+              aria-describedby="join-code-error"
+              className="mb-5 min-h-14 w-full rounded-2xl border-2 border-[#1F4E79] bg-white px-4 text-[18px] font-bold text-[#1F4E79] disabled:opacity-50 focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]"
+            >
+              {busy ? '저장된 연결 확인 중…' : '저장된 연결 다시 확인'}
+            </button>
+          ) : null}
+
           <button
             type="button"
             onClick={submit}
             disabled={!isValidJoinCode(digits) || busy}
-            className="w-full h-16 rounded-2xl bg-[#23B2C3] text-white text-[22px] font-bold shadow-sm active:scale-[.99] transition disabled:opacity-40"
+            className="w-full h-16 rounded-2xl bg-[#135C73] text-white text-[22px] font-bold shadow-sm active:scale-[.99] transition disabled:opacity-40 focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79]"
           >
-            {busy ? '입장 중…' : error ? '다시 입장' : '입장'}
+            {busy ? '입장 중…' : joinCodeError ? '다시 입장' : '입장'}
           </button>
           <p className="text-[14px] text-[#5A6B73] mt-5">코드를 모르면 운영 데스크에 문의하세요.</p>
           <a
@@ -261,10 +441,12 @@ function SaveResultImageButton({ input, className }: { input: ResultImageInput; 
 function PastRoundDetail({
   item,
   teamName,
+  access,
   onClose,
 }: {
   item: TeamRoundHistoryItem;
   teamName: string;
+  access: WorkshopAuthorization;
   onClose: () => void;
 }) {
   const [votes, setVotes] = useState<Vote[] | null>(null);
@@ -274,7 +456,7 @@ function PastRoundDetail({
     let cancelled = false;
     setVotes(null);
     setFailed(false);
-    fetchVotes(item.id)
+    fetchTeamVotes(access, item.id)
       .then((v) => {
         if (!cancelled) setVotes(v);
       })
@@ -284,7 +466,7 @@ function PastRoundDetail({
     return () => {
       cancelled = true;
     };
-  }, [item.id]);
+  }, [access, item.id]);
 
   const tally = votes ? tallyVotes(item.round, votes) : null;
   // options가 없는 라운드(SCALE)도 집계는 나오므로 보기 목록이 아니라 집계 키를 기준으로 줄을 만든다.
@@ -379,7 +561,15 @@ function PastRoundDetail({
  * 우리 조의 지난 투표 목록. 라운드가 하나도 없으면 아무것도 렌더하지 않는다
  * (첫 투표 전 홈 화면에 빈 카드를 띄우지 않기 위해서다).
  */
-function PastRoundsCard({ teamId, teamName }: { teamId: string; teamName: string }) {
+function PastRoundsCard({
+  teamId,
+  teamName,
+  access,
+}: {
+  teamId: string;
+  teamName: string;
+  access: WorkshopAuthorization;
+}) {
   const [items, setItems] = useState<TeamRoundHistoryItem[]>([]);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -390,12 +580,17 @@ function PastRoundsCard({ teamId, teamName }: { teamId: string; teamName: string
     let cancelled = false;
     (async () => {
       try {
-        const all = await fetchTeamRounds();
+        const all = await fetchTeamRounds(access);
         const mine = all.filter((r) => r.team_id === teamId);
         // 표수는 라운드당 요청 1건이고 하나라도 실패하면 전부 throw한다 —
         // 목록 자체를 잃지 않도록 여기서 격리하고, 실패하면 표수만 '—'로 둔다.
         const counts =
-          mine.length > 0 ? await fetchVoteCounts(mine.map((r) => r.id)).catch(() => ({})) : {};
+          mine.length > 0
+            ? await fetchTeamVoteCounts(access, mine.map((r) => r.id)).catch((error: unknown) => {
+                console.warn('[moderator history] vote counts unavailable', error);
+                return {};
+              })
+            : {};
         if (cancelled) return;
         setItems(teamRoundHistory(teamId, mine, counts));
         setLoadFailed(false);
@@ -406,7 +601,7 @@ function PastRoundsCard({ teamId, teamName }: { teamId: string; teamName: string
     return () => {
       cancelled = true;
     };
-  }, [teamId, reloadKey]);
+  }, [access, teamId, reloadKey]);
 
   // 라운드가 없고 오류도 없으면 목록 영역을 통째로 렌더하지 않는다.
   if (items.length === 0 && !loadFailed) return null;
@@ -453,7 +648,7 @@ function PastRoundsCard({ teamId, teamName }: { teamId: string; teamName: string
                 {item.status === 'closed' ? (
                   <span>마감 {formatClock(item.closedAt)}</span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#23B2C3] px-2.5 py-0.5 text-[14px] font-bold text-white">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#135C73] px-2.5 py-0.5 text-[14px] font-bold text-white">
                     <span className="w-2 h-2 rounded-full bg-white animate-pulse" aria-hidden="true" />
                     진행 중
                   </span>
@@ -468,7 +663,7 @@ function PastRoundsCard({ teamId, teamName }: { teamId: string; teamName: string
       </div>
 
       {selected ? (
-        <PastRoundDetail item={selected} teamName={teamName} onClose={() => setSelected(null)} />
+        <PastRoundDetail item={selected} teamName={teamName} access={access} onClose={() => setSelected(null)} />
       ) : null}
     </section>
   );
@@ -478,12 +673,133 @@ function PastRoundsCard({ teamId, teamName }: { teamId: string; teamName: string
 // State 02 — 홈 (투표 만들기)  * 타이머 카드는 Task 5 placeholder
 // ============================================================
 
+function formatSyncClock(atMs: number | null): string {
+  if (atMs === null) return '아직 없음';
+  return new Date(atMs).toLocaleTimeString('ko-KR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
+/** 꼭지·연결·작성 상태를 탭 밖 한 줄에서 함께 보여 주는 현장 상태 레일. */
+function WorkshopStatusRail({
+  session,
+  work,
+  onJumpToNewTopic,
+}: {
+  session: WorkshopSessionController;
+  work: WorkshopWorkSummary;
+  onJumpToNewTopic: () => void;
+}) {
+  const connectionLabel = session.syncing && session.lastSyncedAtMs === null
+    ? '연결 확인 중'
+    : session.connection === 'online'
+      ? '연결됨'
+      : session.connection === 'offline'
+        ? '오프라인 · 연결 대기'
+        : session.connection === 'retrying'
+          ? session.syncing ? '다시 연결 중' : '연결 재시도 중'
+          : '연결 확인 전';
+  const connectionTone =
+    session.connection === 'online'
+      ? 'border-[#4F9D3A]/40 bg-[#EAF5E6] text-[#2F6322]'
+      : session.connection === 'offline' || session.connection === 'retrying'
+        ? 'border-[#F5A623] bg-[#FFF4D6] text-[#6B4B00]'
+        : 'border-[#C4D8E4] bg-white text-[#5A6B73]';
+  const counters = [
+    { testId: 'workshop-work-unsaved', label: '미저장', value: work.unsaved, warn: work.unsaved > 0 },
+    { testId: 'workshop-work-queued', label: '전송 대기', value: work.queued, warn: work.queued > 0 },
+    { testId: 'workshop-work-conflict', label: '충돌', value: work.conflicts, warn: work.conflicts > 0 },
+    { testId: 'workshop-work-saving', label: '저장 중', value: work.saving, warn: false },
+    { testId: 'workshop-work-failed', label: '실패', value: work.failed, warn: work.failed > 0 },
+  ] as const;
+
+  return (
+    <section
+      data-testid="workshop-status-rail"
+      aria-label="조 작업 상태"
+      className="mb-3 rounded-2xl border border-[#C4D8E4] bg-white px-3 py-3 shadow-sm"
+    >
+      <div
+        className="flex items-center gap-2 overflow-x-auto pb-1 whitespace-nowrap focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79]"
+        role="region"
+        tabIndex={0}
+        aria-label="조 작업 상태 가로 목록"
+      >
+        <span
+          data-testid="workshop-sync-status"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className={`inline-flex min-h-11 shrink-0 items-center rounded-xl border px-3 text-[15px] font-extrabold ${connectionTone}`}
+        >
+          <span className="mr-2 h-2.5 w-2.5 shrink-0 rounded-full bg-current" aria-hidden="true" />
+          {connectionLabel}
+        </span>
+        <span
+          data-testid="workshop-last-synced"
+          className="inline-flex min-h-11 shrink-0 items-center rounded-xl border border-[#DCE7EE] bg-[#F5F8FB] px-3 text-[14px] font-semibold text-[#5A6B73] tr-num"
+        >
+          마지막 확인 {formatSyncClock(session.lastSyncedAtMs)}
+        </span>
+        {counters.map((counter) => (
+          <span
+            key={counter.testId}
+            data-testid={counter.testId}
+            className={`inline-flex min-h-11 shrink-0 items-center rounded-xl border px-3 text-[14px] font-bold tr-num ${
+              counter.warn
+                ? 'border-[#B5651D] bg-[#FFF4D6] text-[#6B4B00]'
+                : 'border-[#DCE7EE] bg-white text-[#5A6B73]'
+            }`}
+          >
+            {counter.label} {counter.value}
+          </span>
+        ))}
+        {(session.connection === 'retrying' || session.connection === 'offline') && (
+          <button
+            type="button"
+            onClick={session.refresh}
+            className="min-h-11 shrink-0 rounded-xl border-2 border-[#1F4E79] bg-white px-3 text-[14px] font-bold text-[#1F4E79] focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]"
+          >
+            지금 다시 연결
+          </button>
+        )}
+      </div>
+
+      {session.newTopicAnnouncement ? (
+        <div
+          data-testid="workshop-new-topic-alert"
+          className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border-2 border-[#23B2C3] bg-[#EAF8FA] px-4 py-3 text-[#135C73]"
+        >
+          <span
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            className="min-w-[220px] flex-1 text-[17px] font-extrabold"
+          >
+            {session.newTopicAnnouncement} 작성 중인 위치는 그대로 유지했습니다.
+          </span>
+          <button
+            type="button"
+            data-testid="workshop-new-topic-jump"
+            onClick={onJumpToNewTopic}
+            className="min-h-11 rounded-xl bg-[#135C73] px-4 text-[16px] font-bold text-white focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]"
+          >
+            새 꼭지로 이동
+          </button>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function HomeScreen({
   teamId,
   teamName,
   tableNo,
   subgroup,
-  code,
+  access,
   onCreatePoll,
   creating,
   onExit,
@@ -491,9 +807,9 @@ function HomeScreen({
   teamId: string;
   teamName: string;
   tableNo?: string | null;
-  /** mod_join team.subgroup — BallotPanel의 분과 한정 투표 옵션에 쓴다. */
+  /** 토큰 교환 응답의 team.subgroup — BallotPanel의 분과 한정 투표 옵션에 쓴다. */
   subgroup?: string | null;
-  code: string | null;
+  access: WorkshopAuthorization | null;
   onCreatePoll: (input: { title: string; type: 'RADIO' | 'CHECKBOX'; options: string[] }) => void;
   creating: boolean;
   onExit?: () => void;
@@ -501,14 +817,15 @@ function HomeScreen({
   // 탭 — 8.29는 조별 산출물이 본 과업이라 그것이 기본이다(mod-tabs.ts).
   // 새로고침해도 보던 탭에 머물도록 sessionStorage에 남긴다.
   const [tab, setTab] = useState<ModTabId>(() =>
-    normalizeTabId(typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(MOD_TAB_KEY) : null)
+    normalizeTabId(workshopSessionStorage.getItem(MOD_TAB_KEY))
   );
+  const sessionState = useWorkshopSessionState({ access });
   const selectTab = (next: ModTabId) => {
     setTab(next);
     try {
-      sessionStorage.setItem(MOD_TAB_KEY, next);
-    } catch {
-      /* 시크릿 모드 등 저장 불가 — 탭 전환 자체는 계속된다. */
+      workshopSessionStorage.setItem(MOD_TAB_KEY, next);
+    } catch (error) {
+      console.warn('[moderator tabs] preference storage unavailable', error);
     }
   };
 
@@ -519,7 +836,32 @@ function HomeScreen({
    *   아무도 글을 고칠 수 없으므로 그 값이 여전히 사실이고, 지우면 마감 3분 전에
    *   「저장 안 한 내용이 있습니다」가 조용히 사라진다.
    */
-  const [unsavedTopicIds, setUnsavedTopicIds] = useState<string[]>([]);
+  const [workSummary, setWorkSummary] = useState<WorkshopWorkSummary>(() => ({
+    ...EMPTY_WORKSHOP_WORK_SUMMARY,
+    unsavedTopicIds: [],
+  }));
+  const [pendingTopicJump, setPendingTopicJump] = useState<string | null>(null);
+
+  const jumpToNewTopic = () => {
+    const topicId = sessionState.newTopicIds[0];
+    if (!topicId) return;
+    selectTab('submission');
+    setPendingTopicJump(topicId);
+    sessionState.clearNewTopicAnnouncement();
+  };
+
+  // 자동 폴링은 입력 위치를 건드리지 않는다. 이 이동은 새 꼭지 알림의 버튼을 사용자가
+  // 직접 눌렀을 때만 예약되며, 탭 패널이 그려진 다음 제목으로 초점을 옮긴다.
+  useEffect(() => {
+    if (tab !== 'submission' || !pendingTopicJump) return;
+    const frame = requestAnimationFrame(() => {
+      const target = document.getElementById(topicAnchorId(pendingTopicJump));
+      target?.focus({ preventScroll: true });
+      target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setPendingTopicJump(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [pendingTopicJump, sessionState.topics, tab]);
 
   const [title, setTitle] = useState('');
   const [type, setType] = useState<'RADIO' | 'CHECKBOX'>('RADIO');
@@ -532,7 +874,8 @@ function HomeScreen({
     setOptions((prev) => (prev.length > 2 ? prev.filter((_, idx) => idx !== i) : prev));
 
   const trimmed = options.map((o) => o.trim()).filter(Boolean);
-  const canOpen = title.trim().length > 0 && trimmed.length >= 2;
+  const hasDuplicateOptions = new Set(trimmed).size !== trimmed.length;
+  const canOpen = title.trim().length > 0 && trimmed.length >= 2 && !hasDuplicateOptions;
 
   return (
     <div className="min-h-screen bg-[#F5F8FB]">
@@ -544,10 +887,36 @@ function HomeScreen({
           (`mod-tabs.ts:24-28`) `timer` 탭 안에 두면 8.29처럼 아무도 보지 않는다(설계 B-D2).
           마감이 안 걸려 있으면 스스로 아무것도 그리지 않는다.
         */}
-        <DeadlineBanner code={code} unsavedTopicIds={unsavedTopicIds} />
+        <div className="sticky top-0 z-30 -mx-2 bg-[#F5F8FB]/95 px-2 pt-2 backdrop-blur-sm print:hidden">
+          <WorkshopStatusRail
+            session={sessionState}
+            work={workSummary}
+            onJumpToNewTopic={jumpToNewTopic}
+          />
+          <DeadlineBanner
+            topics={sessionState.topics}
+            serverClockOffsetMs={sessionState.serverClockOffsetMs}
+            unsavedTopicIds={workSummary.unsavedTopicIds}
+          />
+        </div>
         <ModTabBar active={tab} onSelect={selectTab} />
 
-        <div className={tab === 'vote' ? 'grid lg:grid-cols-2 gap-6' : 'grid gap-6'}>
+        {MOD_TABS.filter((item) => item.id !== tab).map((item) => (
+          <div
+            key={item.id}
+            id={`mod-panel-${item.id}`}
+            role="tabpanel"
+            aria-labelledby={`mod-tab-${item.id}`}
+            hidden
+          />
+        ))}
+        <div
+          id={`mod-panel-${tab}`}
+          role="tabpanel"
+          aria-labelledby={`mod-tab-${tab}`}
+          tabIndex={0}
+          className={tab === 'vote' ? 'grid lg:grid-cols-2 gap-6' : 'grid gap-6'}
+        >
           {tab === 'vote' && (
           /* 투표 만들기 카드 */
           <section className="rounded-2xl border border-[#DCE7EE] bg-white overflow-hidden shadow-sm">
@@ -569,7 +938,7 @@ function HomeScreen({
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="예: 우리 조가 가장 중요하게 볼 의제는?"
-                  className="w-full min-w-0 h-14 rounded-xl border border-[#C4D8E4] focus:border-[#23B2C3] px-4 text-[18px] text-[#1F2933] outline-none"
+                  className="w-full min-w-0 h-14 rounded-xl border border-[#C4D8E4] focus:border-[#23B2C3] px-4 text-[18px] text-[#1F2933] outline-none focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79]"
                 />
               </div>
 
@@ -581,14 +950,14 @@ function HomeScreen({
                   <button
                     type="button"
                     onClick={() => setType('RADIO')}
-                    className={`px-6 h-12 text-[17px] font-bold ${type === 'RADIO' ? 'bg-[#23B2C3] text-white' : 'bg-white text-[#5A6B73]'}`}
+                    className={`px-6 h-12 text-[17px] font-bold ${type === 'RADIO' ? 'bg-[#135C73] text-white' : 'bg-white text-[#5A6B73]'}`}
                   >
                     단일선택
                   </button>
                   <button
                     type="button"
                     onClick={() => setType('CHECKBOX')}
-                    className={`px-6 h-12 text-[17px] font-semibold ${type === 'CHECKBOX' ? 'bg-[#23B2C3] text-white' : 'bg-white text-[#5A6B73]'}`}
+                    className={`px-6 h-12 text-[17px] font-semibold ${type === 'CHECKBOX' ? 'bg-[#135C73] text-white' : 'bg-white text-[#5A6B73]'}`}
                   >
                     복수선택
                   </button>
@@ -609,7 +978,7 @@ function HomeScreen({
                         type="text"
                         value={opt}
                         onChange={(e) => setOption(i, e.target.value)}
-                        className="min-w-0 flex-1 h-[52px] rounded-xl border border-[#C4D8E4] focus:border-[#23B2C3] px-3 sm:px-4 text-[18px] text-[#1F2933] outline-none"
+                        className="min-w-0 flex-1 h-[52px] rounded-xl border border-[#C4D8E4] focus:border-[#23B2C3] px-3 sm:px-4 text-[18px] text-[#1F2933] outline-none focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79]"
                       />
                       <button
                         type="button"
@@ -631,13 +1000,18 @@ function HomeScreen({
                 >
                   <span className="text-2xl leading-none">＋</span> 보기 추가
                 </button>
+                {hasDuplicateOptions ? (
+                  <p className="mt-3 rounded-xl border border-[#DC2626]/30 bg-[#FEF2F2] px-4 py-3 text-[15px] font-bold text-[#B91C1C]" role="alert">
+                    같은 보기가 두 번 들어갔습니다. 중복된 보기를 다르게 수정해 주세요.
+                  </p>
+                ) : null}
               </div>
 
               <button
                 type="button"
                 disabled={!canOpen || creating}
                 onClick={() => onCreatePoll({ title: title.trim(), type, options: trimmed })}
-                className="w-full h-16 rounded-2xl bg-[#23B2C3] text-white text-[22px] font-bold shadow-sm active:scale-[.99] transition mt-2 disabled:opacity-40"
+                className="w-full h-16 rounded-2xl bg-[#135C73] text-white text-[22px] font-bold shadow-sm active:scale-[.99] transition mt-2 disabled:opacity-40"
               >
                 {creating ? '여는 중…' : '투표 열기'}
               </button>
@@ -645,20 +1019,27 @@ function HomeScreen({
           </section>
           )}
 
-          {tab === 'timer' && <Timer code={code} teamName={teamName} />}
+          {tab === 'timer' && <Timer access={access} teamName={teamName} />}
           {tab === 'attendance' && (
-            <AttendancePanel teamId={teamId} teamName={teamName} joinCode={code} />
+            <AttendancePanel teamId={teamId} teamName={teamName} accessToken={access?.accessToken} />
           )}
-          {tab === 'vote' && <BallotPanel code={code} subgroup={subgroup ?? null} />}
+          {tab === 'vote' && <BallotPanel access={access} subgroup={subgroup ?? null} />}
           {tab === 'submission' && (
             <SubmissionPanel
-              code={code}
+              access={access}
+              storageScope={teamId}
               teamLabel={teamName}
               tableNo={tableNo}
-              onUnsavedTopicsChange={setUnsavedTopicIds}
+              topics={sessionState.topics}
+              topicsFailed={
+                sessionState.topics === null &&
+                (sessionState.connection === 'retrying' || sessionState.connection === 'offline')
+              }
+              onRetryTopics={sessionState.refresh}
+              onWorkSummaryChange={setWorkSummary}
             />
           )}
-          {tab === 'vote' && <PastRoundsCard teamId={teamId} teamName={teamName} />}
+          {tab === 'vote' && access && <PastRoundsCard teamId={teamId} teamName={teamName} access={access} />}
         </div>
       </div>
     </div>
@@ -670,6 +1051,15 @@ function HomeScreen({
  * 조 모더레이터가 노트북 앞에서 장갑 낀 손으로도 누를 수 있도록 높이 56px·18px 글자를 쓴다.
  */
 function ModTabBar({ active, onSelect }: { active: ModTabId; onSelect: (id: ModTabId) => void }) {
+  const tabRefs = useRef<Partial<Record<ModTabId, HTMLButtonElement>>>({});
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, current: ModTabId) => {
+    const next = tabAfterKey(current, event.key);
+    if (!next) return;
+    event.preventDefault();
+    onSelect(next);
+    tabRefs.current[next]?.focus();
+  };
+
   return (
     <div className="mb-8">
       <div
@@ -684,11 +1074,18 @@ function ModTabBar({ active, onSelect }: { active: ModTabId; onSelect: (id: ModT
               key={tab.id}
               type="button"
               role="tab"
+              id={`mod-tab-${tab.id}`}
+              aria-controls={`mod-panel-${tab.id}`}
               aria-selected={selected}
+              tabIndex={selected ? 0 : -1}
+              ref={(element) => {
+                tabRefs.current[tab.id] = element ?? undefined;
+              }}
               onClick={() => onSelect(tab.id)}
-              className={`flex-1 min-w-[120px] h-14 px-4 rounded-xl text-[18px] font-bold transition active:scale-[.99] ${
+              onKeyDown={(event) => handleKeyDown(event, tab.id)}
+              className={`flex-1 min-w-[120px] h-14 px-4 rounded-xl text-[18px] font-bold transition active:scale-[.99] focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79] ${
                 selected
-                  ? 'bg-[#23B2C3] text-white shadow-sm'
+                  ? 'bg-[#135C73] text-white shadow-sm'
                   : 'bg-transparent text-[#5A6B73] hover:bg-[#F1F7FA]'
               }`}
             >
@@ -715,7 +1112,7 @@ function TopBar({
   return (
     <div className="flex items-center justify-between px-6 py-4 border-b border-[#DCE7EE] bg-[#F1F7FA]">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-[#23B2C3] grid place-items-center text-white font-bold">M</div>
+        <div className="w-10 h-10 rounded-xl bg-[#135C73] grid place-items-center text-white font-bold">M</div>
         {live ? (
           <span className="flex items-center gap-2 text-[#135C73] font-bold text-[16px]">
             <span className="w-3 h-3 rounded-full bg-[#23B2C3] animate-pulse" />
@@ -731,7 +1128,7 @@ function TopBar({
           <button
             type="button"
             onClick={onExit}
-            className="h-10 rounded-lg border border-[#C4D8E4] bg-white px-3 text-[14px] font-bold text-[#5A6B73]"
+            className="min-h-11 rounded-lg border border-[#C4D8E4] bg-white px-3 text-[14px] font-bold text-[#5A6B73] focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79]"
           >
             나가기
           </button>
@@ -761,6 +1158,52 @@ function TeamBadge({ name, tableNo, live }: { name: string; tableNo?: string | n
   );
 }
 
+function VoteRefreshNotice({
+  meta,
+  final,
+  onRetry,
+}: {
+  meta: VoteRefreshMeta;
+  final: boolean;
+  onRetry: () => void;
+}) {
+  const lastSuccess = meta.lastSuccessAt == null ? null : formatSyncClock(meta.lastSuccessAt);
+  if (final && meta.finalVerificationStatus === 'pending') {
+    return (
+      <div
+        className="mb-4 rounded-xl border-2 border-[#1F4E79]/30 bg-[#F1F7FA] px-4 py-3 text-[15px] font-extrabold text-[#1F4E79]"
+        role="status"
+        aria-live="polite"
+      >
+        마감 후 최종 집계를 확인 중입니다. 확인이 끝날 때까지 결과 확대·이미지 저장을 잠시 기다려 주세요.
+      </div>
+    );
+  }
+  if (!meta.failed && meta.finalVerificationStatus !== 'failed') {
+    return (
+      <p className="mb-4 text-[13px] font-semibold text-[#5A6B73]" role="status">
+        {meta.busy ? '집계 확인 중…' : lastSuccess ? `마지막 집계 확인 ${lastSuccess}` : '첫 집계를 확인 중입니다.'}
+      </p>
+    );
+  }
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border-2 border-[#DC2626] bg-[#FEF2F2] px-4 py-3" role="alert">
+      <p className="min-w-[220px] flex-1 text-[15px] font-extrabold leading-relaxed text-[#B91C1C]">
+        {final ? '마감 후 최종 집계를 검증하지 못했습니다.' : '집계 연결이 끊겼습니다.'}{' '}
+        {lastSuccess ? `${lastSuccess}에 확인한 마지막 값이며, 확정 결과로 사용하면 안 됩니다.` : '아직 서버에서 확인된 집계가 없습니다.'}
+      </p>
+      <button
+        type="button"
+        onClick={onRetry}
+        disabled={meta.busy}
+        className="min-h-11 rounded-xl border-2 border-[#B91C1C] bg-white px-4 text-[14px] font-extrabold text-[#B91C1C] disabled:opacity-50"
+      >
+        {meta.busy ? '다시 확인 중…' : '집계 다시 확인'}
+      </button>
+    </div>
+  );
+}
+
 // ============================================================
 // State 03 — 투표 진행 (QR + 실시간 집계)
 // ============================================================
@@ -768,58 +1211,82 @@ function TeamBadge({ name, tableNo, live }: { name: string; tableNo?: string | n
 function PollingScreen({
   teamName,
   tableNo,
-  code,
+  access,
   capacity,
   round,
   votes,
   onClose,
   closing,
   restoreNotice,
+  voteRefreshMeta,
+  onRetryVotes,
   onExit,
 }: {
   teamName: string;
   tableNo?: string | null;
-  code: string | null;
+  access: WorkshopAuthorization | null;
   capacity: number;
   round: Round;
   votes: Vote[];
   onClose: () => void;
   closing: boolean;
   restoreNotice?: boolean;
+  voteRefreshMeta: VoteRefreshMeta;
+  onRetryVotes: () => void;
   onExit?: () => void;
 }) {
   const [qr, setQr] = useState<string | null>(null);
   const [eligibleCount, setEligibleCount] = useState<number | null>(null);
+  const eligibleRefreshCoordinator = useRef(createResourceRequestCoordinator());
   // 마감 확인 다이얼로그 — 열린 시점의 수치를 스냅샷해 5초 폴링에 숫자가 흔들리지 않게 한다.
   const [confirmClose, setConfirmClose] = useState<{ voted: number; base: number } | null>(null);
+  const closeDialogRef = useModalDialog<HTMLDivElement>(
+    confirmClose !== null,
+    () => setConfirmClose(null),
+  );
   const participantUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/v?r=${round.id}`;
   const participantUrlDisplay = participantUrl.replace(/^https?:\/\//, '');
 
   useEffect(() => {
     QRCode.toDataURL(participantUrl, { width: 480, margin: 1 })
       .then(setQr)
-      .catch(() => setQr(null));
+      .catch((error: unknown) => {
+        console.error('[moderator poll] QR generation failed', error);
+        setQr(null);
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round.id]);
 
   useEffect(() => {
+    if (!access) {
+      console.error('[attendance] eligible count unavailable without workshop authorization');
+      setEligibleCount(null);
+      return;
+    }
     let cancelled = false;
-    const refreshEligible = () => {
-      fetchRoundEligibleCount(round.id)
-        .then((count) => {
-          if (!cancelled) setEligibleCount(count);
-        })
-        .catch((error) => {
+    const coordinator = eligibleRefreshCoordinator.current;
+    const refreshEligible = async (priority: ResourceRequestPriority) => {
+      const ticket = coordinator.begin(`eligible:${round.id}`, priority);
+      if (!ticket) return;
+      try {
+        const count = await fetchRoundEligibleCount(access.accessToken, round.id);
+        if (!cancelled && coordinator.isCurrent(ticket)) setEligibleCount(count);
+      } catch (error: unknown) {
+        if (coordinator.isCurrent(ticket)) {
           console.error('[attendance] eligible count refresh failed', error);
-        });
+        }
+      } finally {
+        coordinator.finish(ticket);
+      }
     };
-    refreshEligible();
-    const interval = setInterval(refreshEligible, 5000);
+    void refreshEligible('background');
+    const interval = setInterval(() => void refreshEligible('background'), 5000);
     return () => {
       cancelled = true;
       clearInterval(interval);
+      coordinator.invalidate();
     };
-  }, [round.id]);
+  }, [access, round.id]);
 
   const tally = tallyVotes(round, votes);
   const options = round.options ?? [];
@@ -835,6 +1302,7 @@ function PollingScreen({
             <span aria-hidden="true">↻</span> 진행 중인 투표를 불러왔습니다.
           </div>
         ) : null}
+        <VoteRefreshNotice meta={voteRefreshMeta} final={false} onRetry={onRetryVotes} />
         <div className="mb-6">
           <Eyebrow className="text-[#5A6B73] mb-1.5">질문</Eyebrow>
           <h2 className="text-[26px] font-extrabold text-[#1F4E79] leading-snug" style={{ letterSpacing: '-.022em' }}>
@@ -918,7 +1386,7 @@ function PollingScreen({
               >
                 <span aria-hidden="true">⛔</span> {closing ? '마감 중…' : '투표 마감'}
               </button>
-              {code ? <ProxyVoteControl code={code} round={round} /> : null}
+              {access ? <ProxyVoteControl access={access} round={round} /> : null}
             </div>
           </div>
         </div>
@@ -926,13 +1394,20 @@ function PollingScreen({
 
       {confirmClose ? (
         <div className="fixed inset-0 z-40 bg-[#1F4E79]/55 backdrop-blur-[1px] flex items-center justify-center p-5">
-          <div className="w-full max-w-md bg-white rounded-2xl border border-[#DCE7EE] overflow-hidden">
+          <div
+            ref={closeDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mod-close-poll-title"
+            tabIndex={-1}
+            className="w-full max-w-md bg-white rounded-2xl border border-[#DCE7EE] overflow-hidden"
+          >
             <div className="px-6 pt-6 pb-5 text-center">
               <div className="w-14 h-14 mx-auto rounded-2xl bg-[#DC2626]/12 border border-[#DC2626]/40 grid place-items-center text-3xl mb-4" aria-hidden="true">
                 ⛔
               </div>
               <Eyebrow className="text-[#B91C1C] mb-2">Confirm</Eyebrow>
-              <h4 className="text-[22px] font-extrabold text-[#1F4E79] leading-snug mb-3" style={{ letterSpacing: '-.01em' }}>
+              <h4 id="mod-close-poll-title" className="text-[22px] font-extrabold text-[#1F4E79] leading-snug mb-3" style={{ letterSpacing: '-.01em' }}>
                 투표를 마감할까요?
               </h4>
               <p className="text-[19px] font-bold text-[#1F2933] leading-relaxed tr-num">
@@ -945,6 +1420,7 @@ function PollingScreen({
             <div className="grid grid-cols-2 gap-3 p-5 pt-0">
               <button
                 type="button"
+                data-dialog-initial-focus
                 onClick={() => setConfirmClose(null)}
                 className="h-[56px] rounded-2xl border border-[#C4D8E4] bg-white text-[#1F4E79] text-[19px] font-bold"
               >
@@ -973,12 +1449,18 @@ function PollingScreen({
 // 대리 입력 — 보기+매수 선택 → 확인 다이얼로그 → proxyVote
 // ============================================================
 
-function ProxyVoteControl({ code, round }: { code: string; round: Round }) {
+function ProxyVoteControl({ access, round }: { access: WorkshopAuthorization; round: Round }) {
   const [step, setStep] = useState<'closed' | 'pick' | 'confirm'>('closed');
   const [choice, setChoice] = useState<string>(round.options?.[0] ?? '');
+  const [checkboxChoices, setCheckboxChoices] = useState<string[]>([]);
   const [n, setN] = useState(1);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const requestIdRef = useRef<string | null>(null);
+  const pickDialogRef = useModalDialog<HTMLDivElement>(step === 'pick', () => setStep('closed'));
+  const confirmDialogRef = useModalDialog<HTMLDivElement>(step === 'confirm', () => {
+    if (!busy) setStep('pick');
+  });
 
   useEffect(() => {
     if (!toast) return;
@@ -987,26 +1469,52 @@ function ProxyVoteControl({ code, round }: { code: string; round: Round }) {
   }, [toast]);
 
   const openPicker = () => {
+    requestIdRef.current = null;
     setChoice(round.options?.[0] ?? '');
+    setCheckboxChoices([]);
     setN(1);
     setStep('pick');
   };
 
+  const selectSingleChoice = (nextChoice: string) => {
+    if (nextChoice === choice) return;
+    requestIdRef.current = null;
+    setChoice(nextChoice);
+  };
+
+  const toggleCheckboxChoice = (option: string) => {
+    requestIdRef.current = null;
+    setCheckboxChoices((current) => toggleProxyVoteChoice(current, option));
+  };
+
+  const changeVoteCount = (delta: number) => {
+    const nextCount = Math.min(5, Math.max(1, n + delta));
+    if (nextCount === n) return;
+    requestIdRef.current = null;
+    setN(nextCount);
+  };
+
   const confirmProxy = async () => {
+    const requestId = requestIdRef.current ?? crypto.randomUUID();
+    requestIdRef.current = requestId;
+    const payload = proxyVotePayload(round.type, choice, checkboxChoices);
     setBusy(true);
     try {
-      await proxyVote(code, round.id, choice, n);
-      setToast(`대리 ${n}표 입력됨`);
+      await proxyVote(access, round.id, payload, n, requestId);
+      requestIdRef.current = null;
+      setToast(round.type === 'CHECKBOX' ? `대리 ${n}명분 입력됨` : `대리 ${n}표 입력됨`);
       setStep('closed');
-    } catch {
-      setToast('대리 입력 실패 — 다시 시도해 주세요');
-      setStep('closed');
+    } catch (error) {
+      console.error('Proxy vote failed', error);
+      setToast('대리 입력 실패 — 같은 요청으로 다시 시도해 주세요');
     } finally {
       setBusy(false);
     }
   };
 
   const options = round.options ?? [];
+  const hasChoice = round.type === 'CHECKBOX' ? checkboxChoices.length > 0 : Boolean(choice);
+  const choiceSummary = round.type === 'CHECKBOX' ? checkboxChoices.join(', ') : choice;
 
   return (
     <>
@@ -1029,28 +1537,63 @@ function ProxyVoteControl({ code, round }: { code: string; round: Round }) {
 
       {step === 'pick' ? (
         <div className="fixed inset-0 z-40 bg-[#1F4E79]/55 backdrop-blur-[1px] flex items-center justify-center p-5">
-          <div className="w-full max-w-md bg-white rounded-2xl border border-[#DCE7EE] overflow-hidden">
+          <div
+            ref={pickDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mod-proxy-pick-title"
+            tabIndex={-1}
+            className="w-full max-w-md bg-white rounded-2xl border border-[#DCE7EE] overflow-hidden"
+          >
             <div className="px-6 pt-6 pb-5">
               <Eyebrow className="text-[#5A6B73] mb-2">대리 입력</Eyebrow>
-              <h4 className="text-[22px] font-extrabold text-[#1F4E79] leading-snug mb-4" style={{ letterSpacing: '-.01em' }}>
+              <h4 id="mod-proxy-pick-title" className="text-[22px] font-extrabold text-[#1F4E79] leading-snug mb-4" style={{ letterSpacing: '-.01em' }}>
                 누구에게 몇 표를 넣을까요?
               </h4>
 
               <Eyebrow className="text-[#5A6B73] mb-2">보기</Eyebrow>
-              <div className="grid grid-cols-1 gap-2 mb-5">
-                {options.map((opt) => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => setChoice(opt)}
-                    className={`h-14 rounded-xl border text-[18px] font-bold px-4 text-left ${
-                      choice === opt ? 'border-[#23B2C3] bg-[#23B2C3]/8 text-[#1F4E79]' : 'border-[#C4D8E4] text-[#1F2933]'
-                    }`}
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
+              {round.type === 'CHECKBOX' ? (
+                <fieldset className="grid grid-cols-1 gap-2 mb-5" aria-describedby="mod-proxy-checkbox-help">
+                  <legend className="sr-only">대리 투표 보기 복수 선택</legend>
+                  <p id="mod-proxy-checkbox-help" className="mb-1 text-[14px] font-semibold text-[#5A6B73]">
+                    복수 선택 투표입니다. 참가자가 고른 보기를 모두 체크하세요.
+                  </p>
+                  {options.map((opt) => (
+                    <label
+                      key={opt}
+                      className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border px-4 text-[18px] font-bold ${
+                        checkboxChoices.includes(opt)
+                          ? 'border-[#23B2C3] bg-[#23B2C3]/8 text-[#1F4E79]'
+                          : 'border-[#C4D8E4] text-[#1F2933]'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checkboxChoices.includes(opt)}
+                        onChange={() => toggleCheckboxChoice(opt)}
+                        className="h-5 w-5 shrink-0 accent-[#135C73]"
+                      />
+                      <span>{opt}</span>
+                    </label>
+                  ))}
+                </fieldset>
+              ) : (
+                <div className="grid grid-cols-1 gap-2 mb-5">
+                  {options.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      aria-pressed={choice === opt}
+                      onClick={() => selectSingleChoice(opt)}
+                      className={`h-14 rounded-xl border text-[18px] font-bold px-4 text-left ${
+                        choice === opt ? 'border-[#23B2C3] bg-[#23B2C3]/8 text-[#1F4E79]' : 'border-[#C4D8E4] text-[#1F2933]'
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <Eyebrow className="text-[#5A6B73] mb-2">매수 (1~5)</Eyebrow>
               <div className="flex items-center gap-3 mb-1">
@@ -1058,7 +1601,7 @@ function ProxyVoteControl({ code, round }: { code: string; round: Round }) {
                   <button
                     type="button"
                     aria-label="매수 감소"
-                    onClick={() => setN((v) => Math.max(1, v - 1))}
+                    onClick={() => changeVoteCount(-1)}
                     className="w-14 h-16 text-3xl text-[#5A6B73] bg-[#F1F7FA]"
                   >
                     −
@@ -1067,7 +1610,7 @@ function ProxyVoteControl({ code, round }: { code: string; round: Round }) {
                   <button
                     type="button"
                     aria-label="매수 증가"
-                    onClick={() => setN((v) => Math.min(5, v + 1))}
+                    onClick={() => changeVoteCount(1)}
                     className="w-14 h-16 text-3xl text-[#5A6B73] bg-[#F1F7FA]"
                   >
                     ＋
@@ -1079,6 +1622,7 @@ function ProxyVoteControl({ code, round }: { code: string; round: Round }) {
             <div className="grid grid-cols-2 gap-3 p-5 pt-2">
               <button
                 type="button"
+                data-dialog-initial-focus
                 onClick={() => setStep('closed')}
                 className="h-14 rounded-2xl border border-[#C4D8E4] bg-white text-[#1F4E79] text-[19px] font-bold"
               >
@@ -1086,7 +1630,7 @@ function ProxyVoteControl({ code, round }: { code: string; round: Round }) {
               </button>
               <button
                 type="button"
-                disabled={!choice}
+                disabled={!hasChoice}
                 onClick={() => setStep('confirm')}
                 className="h-14 rounded-2xl bg-[#1F4E79] text-white text-[19px] font-bold disabled:opacity-40"
               >
@@ -1099,25 +1643,45 @@ function ProxyVoteControl({ code, round }: { code: string; round: Round }) {
 
       {step === 'confirm' ? (
         <div className="fixed inset-0 z-40 bg-[#1F4E79]/55 backdrop-blur-[1px] flex items-center justify-center p-5">
-          <div className="w-full max-w-md bg-white rounded-2xl border border-[#DCE7EE] overflow-hidden">
+          <div
+            ref={confirmDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mod-proxy-confirm-title"
+            tabIndex={-1}
+            className="w-full max-w-md bg-white rounded-2xl border border-[#DCE7EE] overflow-hidden"
+          >
             <div className="px-6 pt-6 pb-5 text-center">
               <div className="w-14 h-14 mx-auto rounded-2xl bg-[#F5A623]/15 border border-[#F5A623]/40 grid place-items-center text-3xl mb-4" aria-hidden="true">
                 🗳️
               </div>
               <Eyebrow className="text-[#B5651D] mb-2">Confirm</Eyebrow>
-              <h4 className="text-[22px] font-extrabold text-[#1F4E79] leading-snug mb-3" style={{ letterSpacing: '-.01em' }}>
+              <h4 id="mod-proxy-confirm-title" className="text-[22px] font-extrabold text-[#1F4E79] leading-snug mb-3" style={{ letterSpacing: '-.01em' }}>
                 대리 입력을 진행할까요?
               </h4>
               <p className="text-[17px] text-[#1F2933] leading-relaxed">
-                무기명 투표에 <b className="text-[#1F4E79]">{choice}</b>
-                <b className="text-[#1F4E79] tr-num"> {n}표</b>를 대리 입력합니다.
+                {round.type === 'CHECKBOX' ? (
+                  <>
+                    무기명 복수 선택 투표에서 <b className="text-[#1F4E79]">{choiceSummary}</b>을(를)
+                    <b className="text-[#1F4E79] tr-num"> {n}명분</b> 대리 입력합니다.
+                  </>
+                ) : (
+                  <>
+                    무기명 투표에 <b className="text-[#1F4E79]">{choiceSummary}</b>
+                    <b className="text-[#1F4E79] tr-num"> {n}표</b>를 대리 입력합니다.
+                  </>
+                )}
               </p>
               <p className="text-[14px] text-[#5A6B73] mt-3">확정 후에는 되돌릴 수 없습니다. 참가자 수를 다시 확인하세요.</p>
             </div>
             <div className="grid grid-cols-2 gap-3 p-5 pt-0">
               <button
                 type="button"
-                onClick={() => setStep('closed')}
+                data-dialog-initial-focus
+                onClick={() => {
+                  requestIdRef.current = null;
+                  setStep('closed');
+                }}
                 disabled={busy}
                 className="h-[56px] rounded-2xl border border-[#C4D8E4] bg-white text-[#1F4E79] text-[19px] font-bold disabled:opacity-50"
               >
@@ -1154,6 +1718,8 @@ function ResultsScreen({
   onReopen,
   closedAt,
   reopening,
+  voteRefreshMeta,
+  onRetryVotes,
   onExit,
 }: {
   teamName: string;
@@ -1167,9 +1733,12 @@ function ResultsScreen({
   onReopen: () => void;
   closedAt: number | null;
   reopening: boolean;
+  voteRefreshMeta: VoteRefreshMeta;
+  onRetryVotes: () => void;
   onExit?: () => void;
 }) {
   const tally = tallyVotes(round, votes);
+  const finalSnapshotVerified = canUseFinalVoteSnapshot(voteRefreshMeta);
   const ranked = (round.options ?? [])
     .map((opt) => ({ opt, count: tally.byOption[opt] ?? 0 }))
     .sort((a, b) => b.count - a.count);
@@ -1200,10 +1769,16 @@ function ResultsScreen({
       <TopBar right={<TeamBadge name={teamName} tableNo={tableNo} />} onExit={onExit} />
 
       <div className="max-w-2xl mx-auto p-6 sm:p-8">
+        <VoteRefreshNotice meta={voteRefreshMeta} final onRetry={onRetryVotes} />
         <div className="bg-white rounded-3xl border border-[#DCE7EE] overflow-hidden shadow-sm">
           <div className="px-6 py-4 border-b border-[#DCE7EE] bg-[#1F4E79] text-white flex items-center justify-between">
             <span className="flex items-center gap-2 text-[16px] font-bold">
-              <span aria-hidden="true">✔</span> 투표 마감됨 · 결과 확정
+              <span aria-hidden="true">✔</span>{' '}
+              {voteRefreshMeta.finalVerificationStatus === 'verified'
+                ? '투표 마감됨 · 결과 확정'
+                : voteRefreshMeta.finalVerificationStatus === 'failed'
+                  ? '투표 마감됨 · 집계 확인 필요'
+                  : '투표 마감됨 · 최종 집계 확인 중'}
             </span>
             <span className="text-[15px] font-semibold bg-white/15 rounded-full px-3 py-1 tr-num">
               총 {tally.total}표
@@ -1221,7 +1796,7 @@ function ResultsScreen({
                 >
                   <span
                     className={`w-9 h-9 rounded-lg grid place-items-center font-bold ${
-                      i === 0 ? 'bg-[#23B2C3] text-white' : 'bg-[#F1F7FA] text-[#1F4E79]'
+                      i === 0 ? 'bg-[#135C73] text-white' : 'bg-[#F1F7FA] text-[#1F4E79]'
                     }`}
                   >
                     {i + 1}위
@@ -1239,7 +1814,8 @@ function ResultsScreen({
             <button
               type="button"
               onClick={onEnterFullscreen}
-              className="w-full h-16 mt-2 rounded-2xl bg-[#23B2C3] text-white text-[20px] font-bold shadow-sm flex items-center justify-center gap-2"
+              disabled={!finalSnapshotVerified}
+              className="w-full h-16 mt-2 rounded-2xl bg-[#135C73] text-white text-[20px] font-bold shadow-sm flex items-center justify-center gap-2 disabled:opacity-40"
             >
               <span aria-hidden="true">🖥️</span> 결과 크게 보기
             </button>
@@ -1263,10 +1839,16 @@ function ResultsScreen({
             ) : null}
 
             {/* '다시 열기'(60초) 아래에 둔다 — 되돌리기가 시간에 쫓기는 버튼이라 위로 밀지 않는다. */}
-            <SaveResultImageButton
-              input={imageInput}
-              className="w-full h-16 rounded-2xl border-2 border-[#1F4E79] bg-white text-[#1F4E79] text-[20px] font-bold flex items-center justify-center gap-2"
-            />
+            {finalSnapshotVerified ? (
+              <SaveResultImageButton
+                input={imageInput}
+                className="w-full h-16 rounded-2xl border-2 border-[#1F4E79] bg-white text-[#1F4E79] text-[20px] font-bold flex items-center justify-center gap-2"
+              />
+            ) : (
+              <p className="rounded-xl border border-[#DC2626]/30 bg-[#FEF2F2] px-4 py-3 text-center text-[14px] font-bold text-[#B91C1C]">
+                최종 집계 재확인 전에는 결과 이미지를 저장할 수 없습니다.
+              </p>
+            )}
 
             {/*
               '다시 열기' 요청이 날아가 있는 동안은 잠근다. 그 사이 '새 투표'를 누르면
@@ -1377,7 +1959,7 @@ function FullscreenResults({
 
       <div className="flex items-center justify-between mt-6 pt-5 border-t border-[#DCE7EE]">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-[#23B2C3] grid place-items-center text-white font-bold text-lg">M</div>
+          <div className="w-9 h-9 rounded-lg bg-[#135C73] grid place-items-center text-white font-bold text-lg">M</div>
           <span className="text-[clamp(16px,1.6vw,22px)] font-bold text-[#1F4E79]">기후시민회의 · {teamName}</span>
         </div>
         <Eyebrow className="text-[#5A6B73]">climate-assembly.org</Eyebrow>
@@ -1393,18 +1975,77 @@ function FullscreenResults({
 export default function ModConsole() {
   const [state, dispatch] = useReducer(modReducer, initialModState);
   const [joinBusy, setJoinBusy] = useState(false);
+  const [restoringSession, setRestoringSession] = useState(true);
+  const [restoreAttempt, setRestoreAttempt] = useState(0);
+  const [storedResumeRetryAvailable, setStoredResumeRetryAvailable] = useState(false);
+  const [workshopSession, setWorkshopSession] = useState<WorkshopSession | null>(null);
   const [creating, setCreating] = useState(false);
   const [closing, setClosing] = useState(false);
   const [reopening, setReopening] = useState(false);
   const [closedAt, setClosedAt] = useState<number | null>(null);
   const [votes, setVotes] = useState<Vote[]>([]);
+  const [voteRefreshMeta, setVoteRefreshMeta] = useState<VoteRefreshMeta>(EMPTY_VOTE_REFRESH_META);
+  const voteRefreshCoordinatorRef = useRef(createResourceRequestCoordinator());
   const [fullscreen, setFullscreen] = useState(false);
   const [restoreNotice, setRestoreNotice] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [nonPersistentMode, setNonPersistentMode] = useState(
+    () => !workshopLocalStorage.isPersistent(),
+  );
+  const [legacyDraftConflicts, setLegacyDraftConflicts] = useState(0);
+  const [legacyDraftRecoveries, setLegacyDraftRecoveries] = useState<LegacyDraftRecoveryRecord[]>([]);
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+  const [exitBusy, setExitBusy] = useState(false);
+  const [exitError, setExitError] = useState<string | null>(null);
+  const exitLockRef = useRef(false);
+  const exitDialogRef = useModalDialog<HTMLDivElement>(
+    exitConfirmOpen,
+    () => { if (!exitLockRef.current) setExitConfirmOpen(false); },
+  );
+  const createPollIntentRef = useRef<{ fingerprint: string; requestId: string } | null>(null);
+  const roundStatusIntentRef = useRef<RoundStatusIntent | null>(null);
   // 회차는 **라운드 id와 함께** 들고 있는다. 숫자만 두면 다음 라운드의 조회가 실패했을 때
   // 앞 라운드의 회차가 그대로 남아 2차 결과가 '1차'로 저장된다(조용히 틀린 기록물이 된다).
   const [resultsSequence, setResultsSequence] = useState<{ roundId: string; sequence: number } | null>(null);
-  const codeRef = useRef<string | null>(null);
+  const authorization = useMemo<WorkshopAuthorization | null>(
+    () => (workshopSession ? { accessToken: workshopSession.accessToken } : null),
+    [workshopSession?.accessToken],
+  );
+  const authorizationRef = useRef<WorkshopAuthorization | null>(authorization);
+  authorizationRef.current = authorization;
+
+  const refreshVoteSnapshot = useCallback(async (
+    roundId: string,
+    priority: ResourceRequestPriority,
+  ): Promise<boolean> => {
+    const access = authorizationRef.current;
+    if (!access) return false;
+    const coordinator = voteRefreshCoordinatorRef.current;
+    const ticket = coordinator.begin(`round:${roundId}`, priority);
+    if (!ticket) return false;
+    const finalVerification = priority === 'final';
+    setVoteRefreshMeta((current) => beginVoteRefresh(current, priority));
+    try {
+      const nextVotes = await fetchTeamVotes(access, roundId);
+      if (!coordinator.isCurrent(ticket)) return false;
+      setVotes(nextVotes);
+      setVoteRefreshMeta((current) => completeVoteRefresh(current, priority, Date.now()));
+      return true;
+    } catch (error: unknown) {
+      console.error(
+        finalVerification
+          ? '[moderator results] final vote verification failed'
+          : '[moderator poll] live vote refresh failed',
+        error,
+      );
+      if (coordinator.isCurrent(ticket)) {
+        setVoteRefreshMeta((current) => failVoteRefresh(current, priority));
+      }
+      return false;
+    } finally {
+      coordinator.finish(ticket);
+    }
+  }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -1412,78 +2053,143 @@ export default function ModConsole() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  // 자동 입장은 **주소에 실린 조별 딥링크(`/mod?code=082901`)로만** 한다.
-  //
-  // 예전에는 sessionStorage에 코드를 남겨 새로고침·뒤로가기에도 재입장시켰다. 편의였지만
-  // 코드를 넣지 않은 사람이 그 탭에서 앞 조의 산출물에 그대로 닿는다 — /mod-help에 들렀다
-  // 돌아오기만 해도 그랬다. 조 코드는 그 조의 자료를 여는 열쇠이므로 편의보다 앞선다.
-  // 새로고침 복구는 딥링크가 대신한다(주소에 ?code=가 남아 있으면 다시 들어간다).
+  // 딥링크 코드는 한 번만 기기 세션으로 교환한다. URL에서는 요청을
+  // 보내기 전에 즉시 제거하고, 새로고침은 저장된 불투명 토큰을 재검증해 복원한다.
   useEffect(() => {
-    const fromLink =
-      typeof window !== 'undefined' ? joinCodeFromSearch(window.location.search) : null;
-    if (!fromLink || !isValidJoinCode(fromLink)) return;
-    codeRef.current = fromLink;
-    joinTeam(fromLink)
-      .then(async (team) => {
-        if (!team) return;
-        // 진행 중인 라운드가 있으면 함께 복원해 polling 화면(QR + 실시간 집계)으로 재진입한다.
-        const round = await fetchActiveRound(team.id).catch(() => null);
-        if (round) setVotes([]);
-        dispatch({ type: 'RESTORE_TEAM', team, round });
-      })
-      // RPC/네트워크 오류(일시 장애)에는 저장 코드를 지우지 않는다 — 다음 새로고침에서 재시도.
-      // 무효/재발급된 코드는 위의 team===null 분기에서만 제거된다.
-      .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // 라운드 실시간 구독 + 5초 폴백 폴링
-  useEffect(() => {
-    if (state.screen !== 'polling' || !state.round) return;
-    const roundId = state.round.id;
     let cancelled = false;
+    const fromAddress = takeJoinCodeFromAddress();
 
-    const refresh = () => {
-      fetchVotes(roundId)
-        .then((v) => {
-          if (!cancelled) setVotes(v);
-        })
-        .catch(() => {});
+    const restore = async () => {
+      try {
+        let session: WorkshopSession | null = null;
+        let migrationConflicts = 0;
+        if (fromAddress.present) {
+          setStoredResumeRetryAvailable(false);
+          if (!fromAddress.code || !isValidJoinCode(fromAddress.code)) {
+            clearWorkshopSession(workshopLocalStorage);
+            setWorkshopSession(null);
+            dispatch({
+              type: 'JOIN_FAILURE',
+              message: '링크의 접속코드 형식이 올바르지 않습니다. 6자리 조 코드를 입력해 주세요.',
+            });
+            return;
+          }
+          const deviceId = getOrCreateWorkshopDeviceId(workshopLocalStorage);
+          session = await exchangeWorkshopCode(fromAddress.code, deviceId, deviceLabel(navigator.userAgent));
+          migrationConflicts = migrateLegacyWorkshopStorage(workshopLocalStorage, fromAddress.code, session.team.id)
+            + migrateLegacyWorkshopStorage(workshopSessionStorage, fromAddress.code, session.team.id);
+        } else {
+          const stored = readWorkshopSession(workshopLocalStorage);
+          if (!stored) {
+            setStoredResumeRetryAvailable(false);
+            return;
+          }
+          session = await resumeWorkshopSession(stored.accessToken);
+        }
+        if (cancelled || !session) return;
+        setStoredResumeRetryAvailable(false);
+        const recoveries = legacyRecoveriesForTeam(session.team.id);
+        setLegacyDraftRecoveries(recoveries);
+        setLegacyDraftConflicts(Math.max(migrationConflicts, recoveries.length));
+        storeWorkshopSession(workshopLocalStorage, session);
+        setNonPersistentMode(!workshopLocalStorage.isPersistent());
+        setWorkshopSession(session);
+        const team = workshopTeamToTeam(session.team);
+        const round = await fetchActiveRound({ accessToken: session.accessToken }).catch((error: unknown) => {
+          console.warn('[workshop access] active round restore failed', error);
+          return null;
+        });
+        if (cancelled) return;
+        if (round) {
+          voteRefreshCoordinatorRef.current.invalidate();
+          setVotes([]);
+          setVoteRefreshMeta(EMPTY_VOTE_REFRESH_META);
+        }
+        dispatch({ type: 'RESTORE_TEAM', team, round });
+      } catch (error: unknown) {
+        const failureKind = fromAddress.present
+          ? 'definitive'
+          : classifyStoredSessionResumeError(error);
+        console.error(
+          fromAddress.present
+            ? '[workshop access] deep-link code exchange failed'
+            : '[workshop access] stored session resume failed',
+          { failureKind },
+          error,
+        );
+        if (!cancelled) {
+          setNonPersistentMode(!workshopLocalStorage.isPersistent());
+          setWorkshopSession(null);
+          if (fromAddress.present || failureKind === 'definitive') {
+            clearWorkshopSession(workshopLocalStorage);
+            setStoredResumeRetryAvailable(false);
+            dispatch({
+              type: 'JOIN_FAILURE',
+              message: fromAddress.present
+                ? '접속코드를 확인하거나 다른 기기의 접속을 종료한 뒤 다시 시도해 주세요.'
+                : '저장된 조 연결이 만료되었거나 종료되었습니다. 조 코드로 다시 입장해 주세요.',
+            });
+          } else {
+            setStoredResumeRetryAvailable(true);
+            dispatch({
+              type: 'JOIN_FAILURE',
+              message: '연결을 확인하지 못했습니다. 저장된 조 연결과 작성 중인 내용은 그대로 보관했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.',
+            });
+          }
+        }
+      } finally {
+        if (!cancelled) setRestoringSession(false);
+      }
     };
-    refresh();
-
-    const unsubscribe = subscribeRound(roundId, refresh);
-    const interval = setInterval(refresh, 5000);
-
+    void restore();
     return () => {
       cancelled = true;
-      unsubscribe();
+    };
+  }, [restoreAttempt]);
+
+  const retryStoredSession = () => {
+    setStoredResumeRetryAvailable(false);
+    setRestoringSession(true);
+    setRestoreAttempt((attempt) => attempt + 1);
+  };
+
+  // P2a closes broad anonymous Realtime reads. Token-scoped 5-second polling
+  // remains the authoritative live tally path.
+  useEffect(() => {
+    const access = authorizationRef.current;
+    if (state.screen !== 'polling' || !state.round || !access) return;
+    const roundId = state.round.id;
+    void refreshVoteSnapshot(roundId, 'background');
+    const interval = setInterval(() => { void refreshVoteSnapshot(roundId, 'background'); }, 5000);
+    return () => {
       clearInterval(interval);
     };
-  }, [state.screen, state.round]);
+  }, [refreshVoteSnapshot, state.screen, state.round]);
 
   // results 화면에서도 최종 표를 한 번 더 가져온다(마감 직전 마지막 표 반영)
   useEffect(() => {
-    if (state.screen !== 'results' || !state.round) return;
-    fetchVotes(state.round.id)
-      .then(setVotes)
-      .catch(() => {});
-  }, [state.screen, state.round]);
+    const access = authorizationRef.current;
+    if (state.screen !== 'results' || !state.round || !access) return;
+    void refreshVoteSnapshot(state.round.id, 'final');
+  }, [refreshVoteSnapshot, state.screen, state.round]);
 
   // 결과 화면에 들어오면 이 라운드가 이 조의 몇 차인지 도출한다(이미지 저장의 회차 표기용).
   // 실패하면 그대로 둔다 — 회차 없이 저장될 뿐, 저장 자체를 막지 않는다.
   useEffect(() => {
-    if (state.screen !== 'results' || !state.round || !state.team) return;
+    const access = authorizationRef.current;
+    if (state.screen !== 'results' || !state.round || !state.team || !access) return;
     const teamId = state.team.id;
     const roundId = state.round.id;
     let cancelled = false;
-    fetchTeamRounds()
+    fetchTeamRounds(access)
       .then((rounds) => {
         if (!cancelled) {
           setResultsSequence({ roundId, sequence: roundSequence(teamId, rounds).get(roundId) ?? 0 });
         }
       })
-      .catch(() => {});
+      .catch((error: unknown) => {
+        console.warn('[moderator results] round sequence unavailable', error);
+      });
     return () => {
       cancelled = true;
     };
@@ -1498,42 +2204,138 @@ export default function ModConsole() {
   }, []);
 
   const handleJoin = async (code: string) => {
+    setStoredResumeRetryAvailable(false);
     setJoinBusy(true);
     try {
-      const team = await joinTeam(code);
-      if (team) {
-        codeRef.current = code;
-        dispatch({ type: 'JOIN_SUCCESS', team });
-      } else {
-        dispatch({ type: 'JOIN_FAILURE', message: '존재하지 않는 접속코드입니다. 다시 확인해 주세요.' });
-      }
-    } catch {
-      // joinTeam이 throw하는 경우는 RPC/네트워크 오류(코드 자체 오류가 아님) —
-      // "코드가 틀렸습니다" 대신 연결 문제임을 명확히 안내한다.
-      dispatch({ type: 'JOIN_FAILURE', message: '연결에 실패했습니다 — 네트워크(와이파이)를 확인해 주세요.' });
+      const deviceId = getOrCreateWorkshopDeviceId(workshopLocalStorage);
+      const session = await exchangeWorkshopCode(code, deviceId, deviceLabel(navigator.userAgent));
+      const conflicts = migrateLegacyWorkshopStorage(workshopLocalStorage, code, session.team.id)
+        + migrateLegacyWorkshopStorage(workshopSessionStorage, code, session.team.id);
+      const recoveries = legacyRecoveriesForTeam(session.team.id);
+      setLegacyDraftRecoveries(recoveries);
+      setLegacyDraftConflicts(Math.max(conflicts, recoveries.length));
+      storeWorkshopSession(workshopLocalStorage, session);
+      setNonPersistentMode(!workshopLocalStorage.isPersistent());
+      setWorkshopSession(session);
+      dispatch({ type: 'JOIN_SUCCESS', team: workshopTeamToTeam(session.team) });
+    } catch (error) {
+      console.error('[workshop access] code exchange failed', error);
+      const message = error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null && 'message' in error
+          ? String(error.message)
+          : String(error);
+      dispatch({
+        type: 'JOIN_FAILURE',
+        message: /two active devices/i.test(message)
+          ? '이 조는 이미 두 대의 기기에서 접속 중입니다. 본부에 기기 해제를 요청해 주세요.'
+          : /invalid|response is invalid|not found/i.test(message)
+            ? '존재하지 않는 접속코드입니다. 다시 확인해 주세요.'
+            : '연결에 실패했습니다 — 네트워크(와이파이)를 확인해 주세요.',
+      });
     } finally {
       setJoinBusy(false);
     }
   };
 
+  /**
+   * Resolve an interrupted or rejected transition through the token-scoped read path.
+   * Preserve the intent only when the server still exposes the exact expected snapshot.
+   */
+  const restoreRoundAfterStatusFailure = async (
+    access: WorkshopAuthorization,
+    roundId: string,
+    intent: RoundStatusIntent,
+    failure: unknown,
+  ): Promise<void> => {
+    const definitiveFailure = isDefinitiveRoundStatusFailure(failure);
+    let latest: Round | null = null;
+    try {
+      const rounds = await fetchTeamRounds(access);
+      latest = rounds.find((round) => round.id === roundId) ?? null;
+    } catch (reloadError: unknown) {
+      console.error('[moderator poll] status recovery reload failed', reloadError);
+      if (authorizationRef.current?.accessToken !== access.accessToken) return;
+      if (definitiveFailure) roundStatusIntentRef.current = null;
+      setToast(definitiveFailure
+        ? '상태 변경이 거부됐고 최신 상태도 확인하지 못했습니다. 네트워크를 확인한 뒤 다시 불러와 주세요.'
+        : '응답이 끊겨 서버 상태를 확인하지 못했습니다. 다시 누르면 같은 요청으로 안전하게 확인합니다.');
+      return;
+    }
+
+    if (authorizationRef.current?.accessToken !== access.accessToken) return;
+    if (!latest || (latest.status !== 'active' && latest.status !== 'closed')) {
+      roundStatusIntentRef.current = null;
+      setToast('이 투표의 최신 상태를 확인하지 못했습니다. 조 화면을 다시 불러와 주세요.');
+      return;
+    }
+
+    const recovery = roundStatusRecoveryDecision(latest, intent, definitiveFailure);
+    if (recovery.clearIntent) {
+      roundStatusIntentRef.current = null;
+    }
+
+    voteRefreshCoordinatorRef.current.invalidate();
+    if (latest.status === 'closed') {
+      setRestoreNotice(false);
+      setClosedAt(roundUpdatedAtMs(latest));
+      setVoteRefreshMeta((current) => beginVoteRefresh(current, 'final'));
+      dispatch({ type: 'CLOSE_POLL', round: latest });
+    } else if (state.team) {
+      setClosedAt(null);
+      setVoteRefreshMeta((current) => ({
+        ...current,
+        failed: false,
+        finalVerificationStatus: 'not-required',
+        busy: false,
+      }));
+      dispatch({ type: 'RESTORE_TEAM', team: state.team, round: latest });
+    }
+
+    if (recovery.reachedTarget) {
+      setToast(intent.status === 'closed'
+        ? '서버의 마감 상태를 확인해 결과 화면으로 복원했습니다.'
+        : '서버의 진행 상태를 확인해 투표 화면으로 복원했습니다.');
+    } else if (definitiveFailure) {
+      setToast('다른 기기의 변경 또는 운영 시간 제한을 확인했습니다. 서버의 최신 상태로 화면을 맞췄습니다.');
+    } else if (!recovery.unchangedExpectedSnapshot) {
+      setToast('다른 기기에서 이 투표 상태를 바꾼 이력을 확인했습니다. 최신 상태로 화면을 맞췄습니다.');
+    } else {
+      setToast('서버 상태에는 아직 변경이 없습니다. 다시 누르면 같은 요청으로 안전하게 재시도합니다.');
+    }
+  };
+
   const handleCreatePoll = async (input: { title: string; type: 'RADIO' | 'CHECKBOX'; options: string[] }) => {
-    const code = codeRef.current;
-    if (!code || !state.team) return;
+    const access = authorizationRef.current;
+    if (!access || !state.team) return;
+    const fingerprint = JSON.stringify(input);
+    if (createPollIntentRef.current?.fingerprint !== fingerprint) {
+      createPollIntentRef.current = { fingerprint, requestId: crypto.randomUUID() };
+    }
+    const requestId = createPollIntentRef.current.requestId;
     setCreating(true);
     try {
       // 방어적 이중 클릭/새로고침 경합 대비 — 이미 진행 중인 라운드가 있으면 새로 만들지 않고 복원한다.
-      const active = await fetchActiveRound(state.team.id).catch(() => null);
+      const active = await fetchActiveRound(access);
       if (active) {
+        createPollIntentRef.current = null;
+        roundStatusIntentRef.current = null;
         setRestoreNotice(true);
+        voteRefreshCoordinatorRef.current.invalidate();
         setVotes([]);
+        setVoteRefreshMeta(EMPTY_VOTE_REFRESH_META);
         dispatch({ type: 'RESTORE_TEAM', team: state.team, round: active });
         return;
       }
-      const round = await createPoll(code, input);
-      const opened = await setPollStatus(code, round.id, 'active');
+      const round = await createPoll(access, input, requestId);
+      createPollIntentRef.current = null;
+      roundStatusIntentRef.current = null;
+      voteRefreshCoordinatorRef.current.invalidate();
       setVotes([]);
-      dispatch({ type: 'CREATE_POLL_SUCCESS', round: opened });
-    } catch {
+      setVoteRefreshMeta(EMPTY_VOTE_REFRESH_META);
+      dispatch({ type: 'CREATE_POLL_SUCCESS', round });
+    } catch (error) {
+      console.error('[moderator poll] create failed', error);
       // 개설 실패 — 홈에 머무름(재시도 가능), 단 무슨 일이 일어났는지는 토스트로 알린다.
       setToast('투표 열기에 실패했습니다 — 네트워크를 확인하고 다시 시도해 주세요.');
     } finally {
@@ -1542,17 +2344,38 @@ export default function ModConsole() {
   };
 
   const handleClosePoll = async () => {
-    const code = codeRef.current;
-    if (!code || !state.round) return;
+    const access = authorizationRef.current;
+    if (!access || !state.round) return;
+    const roundId = state.round.id;
+    const intent = getOrCreateRoundStatusIntent(
+      roundStatusIntentRef.current,
+      roundId,
+      'active',
+      'closed',
+      state.round.updated_at ?? null,
+    );
+    roundStatusIntentRef.current = intent;
     setClosing(true);
     try {
-      const closed = await setPollStatus(code, state.round.id, 'closed');
+      const closed = await setPollStatus(
+        access,
+        roundId,
+        intent.expectedStatus,
+        intent.status,
+        intent.idempotencyKey,
+      );
+      if (authorizationRef.current?.accessToken !== access.accessToken) return;
+      roundStatusIntentRef.current = null;
+      voteRefreshCoordinatorRef.current.invalidate();
       setRestoreNotice(false);
-      setClosedAt(Date.now());
+      setClosedAt(roundUpdatedAtMs(closed));
+      // The last live-poll snapshot is provisional. Only the post-close fetch
+      // may unlock projection and export for this round.
+      setVoteRefreshMeta((current) => beginVoteRefresh(current, 'final'));
       dispatch({ type: 'CLOSE_POLL', round: closed });
-    } catch {
-      // 마감 실패 — 진행 화면에 머무름, 토스트로 재시도를 안내한다.
-      setToast('투표 마감에 실패했습니다 — 다시 시도해 주세요.');
+    } catch (error: unknown) {
+      console.error('[moderator poll] close failed', error);
+      await restoreRoundAfterStatusFailure(access, roundId, intent, error);
     } finally {
       setClosing(false);
     }
@@ -1561,57 +2384,138 @@ export default function ModConsole() {
   // 마감을 잘못 눌렀을 때의 되돌리기 — 라운드를 active로 되돌리고 진행 화면으로 복귀한다.
   // 마감은 표를 보관(archive)하지 않으므로 기존 표는 그대로 남는다.
   const handleReopenPoll = async () => {
-    const code = codeRef.current;
-    if (!code || !state.round) return;
+    const access = authorizationRef.current;
+    if (!access || !state.round) return;
+    const roundId = state.round.id;
+    const intent = getOrCreateRoundStatusIntent(
+      roundStatusIntentRef.current,
+      roundId,
+      'closed',
+      'active',
+      state.round.updated_at ?? null,
+    );
+    roundStatusIntentRef.current = intent;
     setReopening(true);
     try {
-      const reopened = await setPollStatus(code, state.round.id, 'active');
+      const reopened = await setPollStatus(
+        access,
+        roundId,
+        intent.expectedStatus,
+        intent.status,
+        intent.idempotencyKey,
+      );
+      if (authorizationRef.current?.accessToken !== access.accessToken) return;
+      roundStatusIntentRef.current = null;
+      voteRefreshCoordinatorRef.current.invalidate();
       setClosedAt(null);
+      setVoteRefreshMeta((current) => ({
+        ...current,
+        failed: false,
+        finalVerificationStatus: 'not-required',
+        busy: false,
+      }));
       dispatch({ type: 'REOPEN_POLL', round: reopened });
-    } catch {
-      setToast('다시 열기에 실패했습니다 — 네트워크를 확인하고 다시 시도해 주세요.');
+    } catch (error: unknown) {
+      console.error('[moderator poll] reopen failed', error);
+      await restoreRoundAfterStatusFailure(access, roundId, intent, error);
     } finally {
       setReopening(false);
     }
   };
 
-  /**
-   * 조 나가기 — 저장된 코드를 지우고 코드 입력 화면으로 되돌린다.
-   *
-   * 코드는 sessionStorage에 남아 같은 탭이면 새로고침·뒤로가기에도 유지된다(조가 실수로
-   * 새로고침해도 다시 안 치게 하려는 것). 그러나 나가는 길이 없으면 노트북을 넘겼을 때
-   * 다음 사람이 그대로 들어간다. 주소의 ?code= 도 함께 지운다 — 남겨두면 새로고침하는
-   * 순간 딥링크가 다시 입장시킨다.
-   */
+  /** 조 나가기 — 서버 bearer를 먼저 폐기하고 코드 입력 화면으로 되돌린다. */
   const handleExit = () => {
-    if (!window.confirm('조에서 나갑니다. 다시 들어오려면 조 코드가 필요합니다.')) return;
+    setExitError(null);
+    setExitConfirmOpen(true);
+  };
+
+  const confirmExit = async () => {
+    if (exitLockRef.current) return;
+    exitLockRef.current = true;
+    setExitBusy(true);
+    setExitError(null);
+    const exitToken = authorizationRef.current?.accessToken ?? null;
+    if (exitToken) {
+      try {
+        await revokeWorkshopSession(exitToken);
+      } catch (error: unknown) {
+        console.error('[workshop access] server logout failed', error);
+        if (classifyStoredSessionResumeError(error) !== 'definitive') {
+          setExitError('서버에서 이 기기의 조 연결을 종료하지 못했습니다. 연결을 확인한 뒤 다시 시도해 주세요.');
+          exitLockRef.current = false;
+          setExitBusy(false);
+          return;
+        }
+      }
+      if (authorizationRef.current?.accessToken !== exitToken) {
+        setExitError('로그아웃 중 조 연결이 바뀌었습니다. 현재 연결 상태를 확인해 주세요.');
+        exitLockRef.current = false;
+        setExitBusy(false);
+        return;
+      }
+    }
+
     try {
-      sessionStorage.removeItem(CODE_KEY);
-      sessionStorage.removeItem(MOD_TAB_KEY);
-    } catch {
-      /* 저장 불가 환경 — 아래 상태 초기화는 그대로 진행된다 */
+      workshopSessionStorage.removeItem(MOD_TAB_KEY);
+    } catch (error) {
+      console.error('[workshop access] failed to clear tab preference', error);
     }
-    codeRef.current = null;
-    if (typeof window !== 'undefined' && window.location.search) {
-      window.history.replaceState(null, '', window.location.pathname);
-    }
+    const localSessionCleared = clearWorkshopSession(workshopLocalStorage);
+    setNonPersistentMode(!workshopLocalStorage.isPersistent());
+    authorizationRef.current = null;
+    createPollIntentRef.current = null;
+    roundStatusIntentRef.current = null;
+    setWorkshopSession(null);
     setVotes([]);
+    voteRefreshCoordinatorRef.current.invalidate();
+    setVoteRefreshMeta(EMPTY_VOTE_REFRESH_META);
     setClosedAt(null);
+    setLegacyDraftConflicts(0);
+    setLegacyDraftRecoveries([]);
     dispatch({ type: 'LOGOUT' });
+    setExitConfirmOpen(false);
+    setExitBusy(false);
+    exitLockRef.current = false;
+    if (!localSessionCleared) {
+      setToast('서버 연결은 종료했지만 브라우저 정보를 지우지 못했습니다. 이 탭을 닫아 주세요.');
+    }
+  };
+
+  const downloadLegacyDraftRecoveries = () => {
+    const teamId = state.team?.id;
+    if (!teamId || legacyDraftRecoveries.length === 0) {
+      setToast('내려받을 충돌 초안 복구본이 없습니다.');
+      return;
+    }
+    try {
+      const payload = {
+        format: 'climate-vote-legacy-draft-recovery-v1',
+        exportedAt: new Date().toISOString(),
+        teamId,
+        drafts: legacyDraftRecoveries,
+      };
+      downloadBlob(
+        new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' }),
+        `climate-vote-draft-recovery-${teamId.slice(0, 8)}.json`,
+      );
+      setToast(`충돌 초안 복구본 ${legacyDraftRecoveries.length}개를 내려받았습니다.`);
+    } catch (error) {
+      console.error('[workshop access] legacy draft recovery download failed', error);
+      setToast('충돌 초안 복구본을 내려받지 못했습니다. 다시 시도해 주세요.');
+    }
   };
 
   const enterFullscreen = () => {
     // 풀스크린 진입 시 1회 재조회 — 마감 직전(가드 적용 이전) 도착한 표까지 반영한다.
-    if (state.round) {
-      fetchVotes(state.round.id)
-        .then(setVotes)
-        .catch(() => {});
+    const access = authorizationRef.current;
+    if (state.round && access) {
+      void refreshVoteSnapshot(state.round.id, 'manual');
     }
     setFullscreen(true);
     const el = document.documentElement;
     if (el.requestFullscreen) {
-      el.requestFullscreen().catch(() => {
-        /* 전체화면 API 미지원/거부 — 일반 풀뷰포트 오버레이로 폴백 */
+      el.requestFullscreen().catch((error: unknown) => {
+        console.warn('[moderator fullscreen] native fullscreen unavailable; using overlay', error);
       });
     }
   };
@@ -1619,12 +2523,14 @@ export default function ModConsole() {
   const exitFullscreen = () => {
     setFullscreen(false);
     if (document.fullscreenElement && document.exitFullscreen) {
-      document.exitFullscreen().catch(() => {});
+      document.exitFullscreen().catch((error: unknown) => {
+        console.warn('[moderator fullscreen] native fullscreen exit failed', error);
+      });
     }
   };
 
   const teamName = state.team?.name ?? '';
-  // mod_join이 team 행을 통째로 돌려주므로 별도 조회가 없다. 값이 없으면 배지가 알아서 비운다.
+  // 토큰 교환 응답에 안전한 팀 필드가 들어 있어 별도 조회가 없다. 값이 없으면 배지가 알아서 비운다.
   const tableNo = state.team?.table_no ?? null;
 
   let screenEl: React.ReactNode;
@@ -1637,7 +2543,7 @@ export default function ModConsole() {
         teamName={teamName}
         tableNo={tableNo}
         subgroup={state.team?.subgroup ?? null}
-        code={codeRef.current}
+        access={authorization}
         onCreatePoll={handleCreatePoll}
         creating={creating}
       />
@@ -1648,13 +2554,15 @@ export default function ModConsole() {
         onExit={handleExit}
         teamName={teamName}
         tableNo={tableNo}
-        code={codeRef.current}
+        access={authorization}
         capacity={state.team?.capacity ?? 0}
         round={state.round}
         votes={votes}
         onClose={handleClosePoll}
         closing={closing}
         restoreNotice={restoreNotice}
+        voteRefreshMeta={voteRefreshMeta}
+        onRetryVotes={() => void refreshVoteSnapshot(state.round?.id ?? '', 'manual')}
       />
     );
   } else if (state.screen === 'results' && state.round && fullscreen) {
@@ -1669,25 +2577,112 @@ export default function ModConsole() {
         round={state.round}
         votes={votes}
         onNewPoll={() => {
+          roundStatusIntentRef.current = null;
           setClosedAt(null);
+          voteRefreshCoordinatorRef.current.invalidate();
+          setVoteRefreshMeta(EMPTY_VOTE_REFRESH_META);
           dispatch({ type: 'NEW_POLL' });
         }}
         onEnterFullscreen={enterFullscreen}
         onReopen={handleReopenPoll}
         closedAt={closedAt}
         reopening={reopening}
+        voteRefreshMeta={voteRefreshMeta}
+        onRetryVotes={() => void refreshVoteSnapshot(state.round?.id ?? '', 'final')}
       />
     );
   } else {
-    screenEl = <JoinScreen onJoin={handleJoin} error={state.joinError} busy={joinBusy} />;
+    screenEl = (
+      <JoinScreen
+        onJoin={handleJoin}
+        onRetryStoredSession={retryStoredSession}
+        storedSessionRetryAvailable={storedResumeRetryAvailable}
+        error={state.joinError}
+        busy={joinBusy || restoringSession}
+      />
+    );
   }
 
   return (
     <>
       {screenEl}
+      {nonPersistentMode ? (
+        <div
+          role="alert"
+          className="fixed left-4 right-4 top-4 z-[70] mx-auto max-w-3xl rounded-xl border-2 border-[#B5651D] bg-[#FFF4D6] px-4 py-3 text-center text-[14px] font-extrabold text-[#6B4B00] shadow-lg"
+        >
+          브라우저 저장소를 사용할 수 없어 연결 정보가 이 페이지 메모리에만 유지됩니다. 새로고침하면 조 코드로 다시 입장해야 합니다.
+        </div>
+      ) : null}
+      {legacyDraftConflicts > 0 ? (
+        <div
+          role="alert"
+          className="fixed bottom-20 left-4 right-4 z-[70] mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-3 rounded-xl border-2 border-[#DC2626] bg-[#FEF2F2] px-4 py-3 text-center text-[14px] font-extrabold text-[#B91C1C] shadow-lg"
+        >
+          <span className="min-w-[220px] flex-1">
+            이전 코드 초안과 현재 조 초안이 달라 원본을 덮어쓰지 않고 보존했습니다.
+            {legacyDraftRecoveries.length > 0
+              ? ` 조 코드가 들어 있지 않은 복구본 ${legacyDraftRecoveries.length}개를 내려받아 내용을 확인할 수 있습니다.`
+              : ' 안전한 복구본을 만들지 못했으므로 이 페이지를 닫지 말고 지원 담당자에게 알려 주세요.'}
+          </span>
+          {legacyDraftRecoveries.length > 0 ? (
+            <button
+              type="button"
+              onClick={downloadLegacyDraftRecoveries}
+              className="min-h-11 rounded-lg border-2 border-[#B91C1C] bg-white px-4 text-[#B91C1C]"
+            >
+              충돌 초안 복구본 내려받기
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {toast ? (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#1F4E79] text-white text-[16px] font-bold rounded-full px-5 py-3 shadow-lg">
           {toast}
+        </div>
+      ) : null}
+      {exitConfirmOpen ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#1F4E79]/55 p-5 backdrop-blur-[1px]">
+          <div
+            ref={exitDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mod-exit-dialog-title"
+            tabIndex={-1}
+            className="w-full max-w-md rounded-2xl border border-[#DCE7EE] bg-white p-6 shadow-xl"
+          >
+            <h2 id="mod-exit-dialog-title" className="text-[22px] font-extrabold text-[#1F4E79]">
+              조에서 나갈까요?
+            </h2>
+            <p className="mt-3 text-[16px] leading-relaxed text-[#5A6B73]">
+              서버에서 이 기기의 조 연결을 종료한 뒤 브라우저 정보를 지웁니다. 다시 들어오려면 조 코드가 필요합니다.
+            </p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                data-dialog-initial-focus
+                onClick={() => setExitConfirmOpen(false)}
+                disabled={exitBusy}
+                className="min-h-14 rounded-xl border border-[#C4D8E4] bg-white text-[18px] font-bold text-[#1F4E79]"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmExit()}
+                disabled={exitBusy}
+                aria-busy={exitBusy}
+                className="min-h-14 rounded-xl bg-[#B91C1C] text-[18px] font-bold text-white"
+              >
+                {exitBusy ? '서버 연결 종료 중…' : '조에서 나가기'}
+              </button>
+            </div>
+            {exitError ? (
+              <p role="alert" className="mt-4 rounded-xl bg-[#FDECEC] px-4 py-3 text-[15px] font-semibold text-[#B91C1C]">
+                {exitError}
+              </p>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </>

@@ -13,11 +13,22 @@ import type { EditorRow } from './submission-panel-logic';
  * ★ 시계는 전부 인자로 받는다(이 디렉터리 관례). 모듈 안에서 `Date.now()` 를 부르지 않는다.
  */
 
-/** 초안 키 접두사. `climate_vote_draft:${code}:${topicId}` 꼴이다. */
+/** 초안 키 접두사. `climate_vote_draft:${teamId}:${topicId}` 꼴이다. */
 export const DRAFT_KEY_PREFIX = 'climate_vote_draft:';
+export const DRAFT_RECOVERY_KEY_PREFIX = 'climate_vote_draft_recovery:';
 
 /** 초안 유효기간 기본값 = 72시간. 회차가 지난 초안이 되살아나는 사고를 막는다. */
 export const DRAFT_TTL_MS = 72 * 60 * 60 * 1000;
+
+// Storage can fail on every keystroke in private/managed browsers. Report each tier/operation once
+// per page, then continue through the documented local -> session -> memory fallback without
+// flooding the console or exposing draft contents.
+const reportedStorageFailures = new Set<string>();
+function reportStorageFailureOnce(context: string, error: unknown): void {
+  if (reportedStorageFailures.has(context)) return;
+  reportedStorageFailures.add(context);
+  console.warn(`[submission draft storage] ${context}; using the next safe fallback`, error);
+}
 
 /**
  * 보관된 초안 하나.
@@ -31,6 +42,8 @@ export type DraftEnvelope = {
   /** 초안을 보관한 시각(로컬 시계). 옛 모양에서 승격한 것은 0이며 만료로 보지 않는다. */
   savedAtMs: number;
   baseUpdatedAt: string | null;
+  /** Token OCC generation. null means a legacy draft that predates version tracking. */
+  baseVersion: number | null;
 };
 
 /**
@@ -70,13 +83,14 @@ function parseEnvelope(raw: string | null): DraftEnvelope | null {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
-  } catch {
+  } catch (error) {
+    reportStorageFailureOnce('malformed cached draft discarded', error);
     return null; // 깨진 값 — 서버 내용으로 연다
   }
   // 옛 모양 승격
   if (Array.isArray(parsed)) {
     const rows = normalizeRows(parsed);
-    return rows ? { v: 1, rows, savedAtMs: 0, baseUpdatedAt: null } : null;
+    return rows ? { v: 1, rows, savedAtMs: 0, baseUpdatedAt: null, baseVersion: null } : null;
   }
   if (typeof parsed !== 'object' || parsed === null) return null;
   const env = parsed as Partial<DraftEnvelope>;
@@ -94,7 +108,142 @@ function parseEnvelope(raw: string | null): DraftEnvelope | null {
     rows,
     savedAtMs,
     baseUpdatedAt: typeof env.baseUpdatedAt === 'string' ? env.baseUpdatedAt : null,
+    baseVersion:
+      typeof env.baseVersion === 'number' && Number.isSafeInteger(env.baseVersion) && env.baseVersion >= 0
+        ? env.baseVersion
+        : null,
   };
+}
+
+export type LegacyDraftMigrationDecision = 'missing' | 'move' | 'duplicate' | 'conflict';
+
+export type LegacyDraftRecoveryRecord = {
+  v: 1;
+  teamId: string;
+  topicId: string;
+  recoveredAtMs: number;
+  /** Original draft bytes. The legacy join code and source key are never copied. */
+  draftRaw: string;
+};
+
+function parseRecoveryRecord(raw: string | null): LegacyDraftRecoveryRecord | null {
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) return null;
+    const candidate = parsed as Partial<LegacyDraftRecoveryRecord>;
+    if (candidate.v !== 1 || typeof candidate.teamId !== 'string' || !candidate.teamId
+        || typeof candidate.topicId !== 'string' || !candidate.topicId
+        || typeof candidate.recoveredAtMs !== 'number' || !Number.isFinite(candidate.recoveredAtMs)
+        || typeof candidate.draftRaw !== 'string') return null;
+    return {
+      v: 1,
+      teamId: candidate.teamId,
+      topicId: candidate.topicId,
+      recoveredAtMs: candidate.recoveredAtMs,
+      draftRaw: candidate.draftRaw,
+    };
+  } catch (error) {
+    reportStorageFailureOnce('malformed recovery copy preserved but not listed', error);
+    return null;
+  }
+}
+
+/**
+ * Copy an ambiguous legacy draft to a join-code-free recovery slot. Repeated
+ * migrations reuse an identical slot; divergent drafts always get separate
+ * slots and are never overwritten.
+ */
+export function preserveLegacyDraftRecovery(
+  storage: Pick<Storage, 'length' | 'key' | 'getItem' | 'setItem'>,
+  teamId: string,
+  topicId: string,
+  draftRaw: string,
+  nowMs: number,
+): LegacyDraftRecoveryRecord {
+  const prefix = `${DRAFT_RECOVERY_KEY_PREFIX}${teamId}:`;
+  const existingKeys = Array.from({ length: storage.length }, (_, index) => storage.key(index))
+    .filter((key): key is string => key !== null && key.startsWith(prefix));
+  for (const key of existingKeys) {
+    const existing = parseRecoveryRecord(storage.getItem(key));
+    if (existing?.teamId === teamId && existing.topicId === topicId && existing.draftRaw === draftRaw) {
+      return existing;
+    }
+  }
+
+  const record: LegacyDraftRecoveryRecord = { v: 1, teamId, topicId, recoveredAtMs: nowMs, draftRaw };
+  const serialized = JSON.stringify(record);
+  let suffix = 1;
+  let recoveryKey = `${prefix}${nowMs}-${suffix}`;
+  while (storage.getItem(recoveryKey) !== null) {
+    suffix += 1;
+    recoveryKey = `${prefix}${nowMs}-${suffix}`;
+  }
+  storage.setItem(recoveryKey, serialized);
+  if (storage.getItem(recoveryKey) !== serialized) {
+    throw new Error('Legacy draft recovery copy could not be verified.');
+  }
+  return record;
+}
+
+/** List recoveries for one team without exposing the old join-code source key. */
+export function listLegacyDraftRecoveries(
+  storage: Pick<Storage, 'length' | 'key' | 'getItem'>,
+  teamId: string,
+): LegacyDraftRecoveryRecord[] {
+  const prefix = `${DRAFT_RECOVERY_KEY_PREFIX}${teamId}:`;
+  const records: LegacyDraftRecoveryRecord[] = [];
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index);
+    if (!key?.startsWith(prefix)) continue;
+    const record = parseRecoveryRecord(storage.getItem(key));
+    if (record?.teamId === teamId) records.push(record);
+  }
+  return records.sort((left, right) => left.recoveredAtMs - right.recoveredAtMs);
+}
+
+function sameDraftContent(left: DraftEnvelope, right: DraftEnvelope): boolean {
+  return JSON.stringify(left.rows) === JSON.stringify(right.rows);
+}
+
+/**
+ * Decide whether a join-code draft can be removed after moving to a team id.
+ * A timestamp or version alone never wins: if any recovery-relevant field
+ * differs, both copies remain available for an explicit human choice.
+ */
+export function legacyDraftMigrationDecision(
+  sourceRaw: string | null,
+  targetRaw: string | null,
+): LegacyDraftMigrationDecision {
+  if (sourceRaw === null) return 'missing';
+  if (targetRaw === null) return 'move';
+  const source = parseEnvelope(sourceRaw);
+  const target = parseEnvelope(targetRaw);
+  if (!source || !target) return 'conflict';
+  return source.savedAtMs === target.savedAtMs
+    && source.baseVersion === target.baseVersion
+    && source.baseUpdatedAt === target.baseUpdatedAt
+    && sameDraftContent(source, target)
+    ? 'duplicate'
+    : 'conflict';
+}
+
+/** Move one legacy draft, deleting its source only after an exact verified copy. */
+export function migrateLegacyDraft(
+  storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>,
+  sourceKey: string,
+  targetKey: string,
+): LegacyDraftMigrationDecision {
+  const sourceRaw = storage.getItem(sourceKey);
+  const decision = legacyDraftMigrationDecision(sourceRaw, storage.getItem(targetKey));
+  if (decision === 'move' && sourceRaw !== null) {
+    storage.setItem(targetKey, sourceRaw);
+    if (storage.getItem(targetKey) !== sourceRaw) return 'conflict';
+    storage.removeItem(sourceKey);
+  } else if (decision === 'duplicate') {
+    storage.removeItem(sourceKey);
+  }
+  return decision;
 }
 
 /**
@@ -124,8 +273,9 @@ export function writeDraft(
   rows: EditorRow[],
   baseUpdatedAt: string | null,
   nowMs: number,
+  baseVersion: number | null = null,
 ): string {
-  const env: DraftEnvelope = { v: 1, rows, savedAtMs: nowMs, baseUpdatedAt };
+  const env: DraftEnvelope = { v: 1, rows, savedAtMs: nowMs, baseUpdatedAt, baseVersion };
   return JSON.stringify(env);
 }
 
@@ -147,7 +297,8 @@ export function staleKeys(
     let raw: string | null;
     try {
       raw = readRaw(key);
-    } catch {
+    } catch (error) {
+      reportStorageFailureOnce('stale-key read failed', error);
       continue;
     }
     const env = parseEnvelope(raw);
@@ -199,7 +350,8 @@ function defaultCandidates(): Candidate[] {
 function resolve(candidate: Candidate): StorageLike | null {
   try {
     return candidate.get() ?? null;
-  } catch {
+  } catch (error) {
+    reportStorageFailureOnce(`${candidate.name} access failed`, error);
     return null;
   }
 }
@@ -223,8 +375,8 @@ export function createDraftStorage(candidates: Candidate[] = defaultCandidates()
       if (!store) continue;
       try {
         store.removeItem(key);
-      } catch {
-        // 못 지우면 그냥 넘어간다
+      } catch (error) {
+        reportStorageFailureOnce(`${candidate.name} cleanup failed`, error);
       }
     }
   };
@@ -237,8 +389,8 @@ export function createDraftStorage(candidates: Candidate[] = defaultCandidates()
         try {
           const value = store.getItem(key);
           if (value !== null) return value;
-        } catch {
-          // 이 계층은 못 읽는다 — 다음으로
+        } catch (error) {
+          reportStorageFailureOnce(`${candidate.name} read failed`, error);
         }
       }
       return memory.get(key) ?? null;
@@ -257,8 +409,8 @@ export function createDraftStorage(candidates: Candidate[] = defaultCandidates()
           dropElsewhere(candidates.filter((c) => c !== candidate), key);
           memory.delete(key);
           return;
-        } catch {
-          // 용량 초과·접근 차단 — 다음 계층으로 내려간다
+        } catch (error) {
+          reportStorageFailureOnce(`${candidate.name} write failed`, error);
         }
       }
       memory.set(key, value);
@@ -272,8 +424,8 @@ export function createDraftStorage(candidates: Candidate[] = defaultCandidates()
         if (!store) continue;
         try {
           store.removeItem(key);
-        } catch {
-          // 못 지우면 그냥 넘어간다 — 던지지 않는다
+        } catch (error) {
+          reportStorageFailureOnce(`${candidate.name} removal failed`, error);
         }
       }
       memory.delete(key);
@@ -289,8 +441,8 @@ export function createDraftStorage(candidates: Candidate[] = defaultCandidates()
             const key = store.key(i);
             if (key !== null) out.add(key);
           }
-        } catch {
-          // 못 훑는 계층은 건너뛴다
+        } catch (error) {
+          reportStorageFailureOnce(`${candidate.name} key scan failed`, error);
         }
       }
       for (const key of memory.keys()) out.add(key);

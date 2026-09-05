@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "rehearsalId": "0912-13-field-rehearsal",
+  "generatedAt": null,
+  "elapsedMs": null,
+  "sourceCommit": null,
+  "sourceTreeClean": null,
+  "target": {
+    "baseUrl": null,
+    "route": "/mod?code=[redacted]"
+  },
+  "fixture": "automation/fixtures/0912-rehearsal.json",
+  "fixtureSha256": null,
+  "fixtureIdentity": {
+    "schemaVersion": 1,
+    "fixtureId": "0912-field-rehearsal-v1",
+    "classification": "synthetic-no-pii-no-secrets"
+  },
+  "observedConfiguration": {
+    "fixtureId": "0912-field-rehearsal-v1",
+    "session": {
+      "id": null,
+      "slug": null,
+      "title": null
+    },
+    "team": {
+      "id": null,
+      "name": null,
+      "tableNo": null
+    },
+    "topics": [],
+    "rpcAllowlist": {
+      "read": [],
+      "mutation": [],
+      "legacyRejected": []
+    },
+    "flow": {
+      "initialVisibleTopicOrdinal": null,
+      "nextVisibleTopicOrdinal": null,
+      "initialDeadlineOffsetMinutes": null,
+      "warningDeadlineOffsetMinutes": null
+    }
+  },
+  "status": "not_run",
+  "summary": {
+    "checkCount": 0,
+    "passCount": 0,
+    "failCount": 0
+  },
+  "safety": {
+    "liveNetworkRequestCount": 0,
+    "liveDatabaseMutationCount": 0,
+    "capabilityValuesLeakedToDraftQueueOrEvidence": null,
+    "capabilityLeakScan": {
+      "draftQueueEntryCount": null,
+      "draftQueueMatchCount": null,
+      "evidenceMatchCount": null
+    }
+  },
+  "networkContract": {
+    "codeRemovedBeforeExchange": null,
+    "workshopSessionPersisted": null,
+    "codeExchangeCount": 0,
+    "tokenResumeCount": 0,
+    "legacyJoinCodeRpcCount": 0,
+    "tokenContractViolationCount": 0,
+    "unexpectedRpcRequestCount": 0,
+    "unexpectedRpcNames": [],
+    "fixtureMutationRequestCount": null,
+    "escapedExternalRequestCount": 0,
+    "escapedExternalOrigins": [],
+    "queueSchemaVersion": 2,
+    "occRequestCount": 0,
+    "webSocket": {
+      "stubbed": null,
+      "stubConnectionAttemptCount": 0,
+      "actualNetworkConnectionCount": 0,
+      "blockedExternalConnectionAttemptCount": 0,
+      "blockedExternalOrigins": []
+    }
+  },
+  "checks": [],
+  "findings": [],
+  "screenshots": null
+}

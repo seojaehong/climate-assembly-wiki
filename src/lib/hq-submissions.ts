@@ -4,7 +4,7 @@ import { getSupabase } from './supabase';
  * 본부(HQ) 조별 산출물 취합 데이터 레이어 — 20260827_s7의 hq_submissions RPC를 감싼다.
  *
  * 조 콘솔의 submission_* RPC가 조 코드 capability인 것과 달리, 이쪽은 본부 토큰
- * (attendance_hq_unlock 발급, scope='hq')을 쓴다. 조 15개 × 꼭지 3개를 한 번에 읽는다.
+ * (attendance_hq_unlock_named 발급, scope='hq')을 쓴다. 조별 꼭지를 한 번에 읽는다.
  * 손유지 타입이므로 마이그레이션을 고치면 여기부터 맞출 것.
  */
 
@@ -27,9 +27,13 @@ export type HqSubmissionRow = {
   /** 재오픈 호출에 필요하다. 아직 제출물이 없는 조는 null. */
   submission_id: string | null;
   submission_status: 'draft' | 'final' | 'reopened' | 'archived' | null;
+  /** Generation from v3. Optional only for network-free legacy preview fixtures. */
+  submission_version?: number | null;
   submission_updated_at: string | null;
   /** 최종 제출 시각. 잠기지 않았으면 null. */
   submission_finalized_at: string | null;
+  /** Stable live item identity from v3. Optional only for legacy preview fixtures. */
+  item_id?: string | null;
   /** 아직 한 줄도 안 쓴 조는 item_* 가 전부 null인 빈 행으로 온다. */
   item_ordinal: number | null;
   item_kind: 'core' | 'extra' | null;
@@ -69,32 +73,12 @@ export async function fetchHqSubmissions(
   // PGRST202로 죽는다. 이 저장소의 RPC는 전부 climate_vote 스키마에 있다(deliberation.ts와 같다).
   const { data, error } = await client()
     .schema('climate_vote')
-    .rpc('hq_submissions', {
+    .rpc('hq_submissions_v3', {
       p_token: token,
       p_session_slug: sessionSlug,
     });
   if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
   return (data ?? []) as HqSubmissionRow[];
-}
-
-/**
- * 조가 저장하는 즉시 본부 화면이 따라오도록 구독한다.
- * submission_item(줄 추가·수정)과 submission(최종 제출·재오픈) 둘 다 본다.
- */
-export function subscribeHqSubmissions(onChange: () => void): () => void {
-  const sb = client();
-  const channel = sb
-    .channel('hq:submissions')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'climate_vote', table: 'submission_item' },
-      onChange
-    )
-    .on('postgres_changes', { event: '*', schema: 'climate_vote', table: 'submission' }, onChange)
-    .subscribe();
-  return () => {
-    sb.removeChannel(channel);
-  };
 }
 
 /**
@@ -105,13 +89,15 @@ export function subscribeHqSubmissions(onChange: () => void): () => void {
  */
 export async function reopenSubmission(
   token: string,
+  sessionSlug: string,
   submissionId: string,
   reason: string
 ): Promise<void> {
   const { error } = await client()
     .schema('climate_vote')
-    .rpc('submission_reopen', {
+    .rpc('submission_reopen_v2', {
       p_token: token,
+      p_session_slug: sessionSlug,
       p_submission_id: submissionId,
       p_reason: reason,
     });
@@ -143,7 +129,7 @@ export async function fetchHqSubmissionHistory(
 ): Promise<HqHistoryRow[]> {
   const { data, error } = await client()
     .schema('climate_vote')
-    .rpc('hq_submission_history', { p_token: token, p_session_slug: sessionSlug });
+    .rpc('hq_submission_history_v2', { p_token: token, p_session_slug: sessionSlug });
   if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
   return (data ?? []) as HqHistoryRow[];
 }
@@ -157,12 +143,66 @@ export async function fetchHqSubmissionHistory(
  */
 export type SubmissionCategory = 'common' | 'difference' | 'conflict' | 'question';
 
+type HqAssignmentConflict = {
+  status: 'conflict';
+  submission_id: string;
+  current_submission_updated_at: string | null;
+  current_event_id: number | null;
+};
+
+export type HqCategoryAssignmentResult =
+  | HqAssignmentConflict
+  | {
+      status: 'applied';
+      submission_id: string;
+      item_ordinal: number;
+      source_item_id: string;
+      submission_updated_at: string;
+      event_id: number;
+      category: SubmissionCategory | null;
+    };
+
+export type HqKindAssignmentResult =
+  | HqAssignmentConflict
+  | {
+      status: 'applied';
+      submission_id: string;
+      item_ordinal: number;
+      source_item_id: string;
+      submission_updated_at: string;
+      event_id: number;
+      kind: string | null;
+    };
+
+function mutationResultRecord(data: unknown): Record<string, unknown> {
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+    throw new Error('HQ mutation RPC returned an invalid response');
+  }
+  const record = data as Record<string, unknown>;
+  if (record.status !== 'applied' && record.status !== 'conflict') {
+    throw new Error('HQ mutation RPC returned an unknown status');
+  }
+  return record;
+}
+
+function parseCategoryAssignmentResult(data: unknown): HqCategoryAssignmentResult {
+  return mutationResultRecord(data) as HqCategoryAssignmentResult;
+}
+
+function parseKindAssignmentResult(data: unknown): HqKindAssignmentResult {
+  return mutationResultRecord(data) as HqKindAssignmentResult;
+}
+
 /** hq_submission_categories 한 행 — 항목별 **마지막** 배정. category가 null이면 해제된 것이다. */
 export type HqCategoryRow = {
   topic_id: string;
   team_id: string;
   submission_id: string;
   item_ordinal: number;
+  /** append-only assignment event identity used for compare-and-set writes. */
+  event_id: number;
+  /** Item UUID that was live when this assignment event was written. */
+  source_item_id: string;
   /** null = 배정 해제. 앞 배정이 되살아나지 않도록 서버가 해제 사건도 그대로 내려준다. */
   category: SubmissionCategory | null;
   actor_label: string;
@@ -188,19 +228,30 @@ export function categoryNoteId(row: Pick<HqCategoryRow, 'topic_id' | 'team_id' |
  */
 export async function assignSubmissionCategory(
   token: string,
-  submissionId: string,
-  itemOrdinal: number,
-  category: SubmissionCategory | null
-): Promise<void> {
-  const { error } = await client()
+  sessionSlug: string,
+  input: {
+    submissionId: string;
+    itemOrdinal: number;
+    category: SubmissionCategory | null;
+    expectedSubmissionUpdatedAt: string;
+    expectedEventId: number | null;
+    idempotencyKey: string;
+  }
+): Promise<HqCategoryAssignmentResult> {
+  const { data, error } = await client()
     .schema('climate_vote')
-    .rpc('hq_submission_category_assign', {
+    .rpc('hq_submission_category_assign_v3', {
       p_token: token,
-      p_submission_id: submissionId,
-      p_item_ordinal: itemOrdinal,
-      p_category: category,
+      p_session_slug: sessionSlug,
+      p_submission_id: input.submissionId,
+      p_item_ordinal: input.itemOrdinal,
+      p_category: input.category,
+      p_expected_submission_updated_at: input.expectedSubmissionUpdatedAt,
+      p_expected_event_id: input.expectedEventId,
+      p_idempotency_key: input.idempotencyKey,
     });
   if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
+  return parseCategoryAssignmentResult(data);
 }
 
 /** 세션 전체의 현재 배정을 읽는다. 총괄모더레이터 3인이 같은 것을 보게 하는 경로다. */
@@ -210,7 +261,7 @@ export async function fetchHqSubmissionCategories(
 ): Promise<HqCategoryRow[]> {
   const { data, error } = await client()
     .schema('climate_vote')
-    .rpc('hq_submission_categories', { p_token: token, p_session_slug: sessionSlug });
+    .rpc('hq_submission_categories_v3', { p_token: token, p_session_slug: sessionSlug });
   if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
   return (data ?? []) as HqCategoryRow[];
 }
@@ -223,6 +274,8 @@ export type HqKindRow = {
   team_id: string;
   submission_id: string;
   item_ordinal: number;
+  event_id: number;
+  source_item_id: string;
   kind: string | null;
   actor_label: string;
   assigned_at: string;
@@ -231,19 +284,30 @@ export type HqKindRow = {
 /** 종류를 붙이거나(kind) 해제한다(null). */
 export async function assignSubmissionKind(
   token: string,
-  submissionId: string,
-  itemOrdinal: number,
-  kind: string | null
-): Promise<void> {
-  const { error } = await client()
+  sessionSlug: string,
+  input: {
+    submissionId: string;
+    itemOrdinal: number;
+    kind: string | null;
+    expectedSubmissionUpdatedAt: string;
+    expectedEventId: number | null;
+    idempotencyKey: string;
+  }
+): Promise<HqKindAssignmentResult> {
+  const { data, error } = await client()
     .schema('climate_vote')
-    .rpc('hq_submission_kind_assign', {
+    .rpc('hq_submission_kind_assign_v3', {
       p_token: token,
-      p_submission_id: submissionId,
-      p_item_ordinal: itemOrdinal,
-      p_kind: kind,
+      p_session_slug: sessionSlug,
+      p_submission_id: input.submissionId,
+      p_item_ordinal: input.itemOrdinal,
+      p_kind: input.kind,
+      p_expected_submission_updated_at: input.expectedSubmissionUpdatedAt,
+      p_expected_event_id: input.expectedEventId,
+      p_idempotency_key: input.idempotencyKey,
     });
   if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
+  return parseKindAssignmentResult(data);
 }
 
 export async function fetchSubmissionKinds(
@@ -252,7 +316,7 @@ export async function fetchSubmissionKinds(
 ): Promise<HqKindRow[]> {
   const { data, error } = await client()
     .schema('climate_vote')
-    .rpc('hq_submission_kinds', { p_token: token, p_session_slug: sessionSlug });
+    .rpc('hq_submission_kinds_v3', { p_token: token, p_session_slug: sessionSlug });
   if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
   return (data ?? []) as HqKindRow[];
 }
@@ -284,7 +348,7 @@ export async function fetchHqTopicDeadlines(
 ): Promise<HqTopicDeadlineRow[] | null> {
   const { data, error } = await client()
     .schema('climate_vote')
-    .rpc('hq_topic_deadlines', { p_token: token, p_session_slug: sessionSlug });
+    .rpc('hq_topic_deadlines_v2', { p_token: token, p_session_slug: sessionSlug });
   if (error) {
     // PGRST202 = PostgREST 스키마 캐시에 함수가 없음, 42883 = Postgres undefined_function.
     if (error.code === 'PGRST202' || error.code === '42883') return null;
@@ -296,10 +360,19 @@ export async function fetchHqTopicDeadlines(
 /** 전체 비우기 확인 문구. 화면과 DB 함수가 **같은 문자열**을 봐야 한다. */
 export const CLEAR_CONFIRM_PHRASE = '전체 비우기';
 
-export type ClearResult = {
-  cleared_items: number;
-  cleared_submissions: number;
-};
+export type HqExpectedSubmission = { id: string; version: number };
+
+export type ClearResult =
+  | {
+      status: 'applied';
+      cleared_items: number;
+      cleared_submissions: number;
+    }
+  | {
+      status: 'conflict';
+      current_submissions: HqExpectedSubmission[];
+      expected_submissions: HqExpectedSubmission[];
+    };
 
 /**
  * 조별 산출물 전체 비우기 — 8.29 오전 연습 값을 오후 본 숙의 전에 치운다.
@@ -312,16 +385,23 @@ export type ClearResult = {
  */
 export async function clearAllSubmissions(
   token: string,
-  confirmPhrase: string,
-  sessionSlug: string
+  sessionSlug: string,
+  input: {
+    confirmPhrase: string;
+    expectedSubmissions: HqExpectedSubmission[];
+    idempotencyKey: string;
+  }
 ): Promise<ClearResult> {
   const { data, error } = await client()
     .schema('climate_vote')
-    .rpc('hq_clear_submissions', {
+    .rpc('hq_clear_submissions_v3', {
       p_token: token,
       p_session_slug: sessionSlug,
-      p_confirm: confirmPhrase,
+      p_confirm: input.confirmPhrase,
+      p_expected_submissions: input.expectedSubmissions,
+      p_idempotency_key: input.idempotencyKey,
     });
   if (error) throw new Error(`${error.code ?? 'rpc'}: ${error.message ?? '알 수 없는 오류'}`);
-  return data as ClearResult;
+  const record = mutationResultRecord(data);
+  return record as ClearResult;
 }

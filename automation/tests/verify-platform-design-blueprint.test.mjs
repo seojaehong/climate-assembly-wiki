@@ -113,8 +113,8 @@ describe('validateDownloadedAccessPlan', () => {
 describe('isDatabaseMutationRequest', () => {
   it('allows fixture read RPCs but blocks REST mutations', () => {
     expect(isDatabaseMutationRequest('POST', '/rest/v1/rpc/my_orgs')).toBe(false);
-    expect(isDatabaseMutationRequest('POST', '/rest/v1/rpc/readiness_check')).toBe(false);
-    expect(isDatabaseMutationRequest('DELETE', '/rest/v1/rpc/readiness_check')).toBe(true);
+    expect(isDatabaseMutationRequest('POST', '/rest/v1/rpc/platform_readiness_check_v2')).toBe(false);
+    expect(isDatabaseMutationRequest('DELETE', '/rest/v1/rpc/platform_readiness_check_v2')).toBe(true);
     expect(isDatabaseMutationRequest('GET', '/rest/v1/assembly')).toBe(false);
     expect(isDatabaseMutationRequest('POST', '/rest/v1/assembly')).toBe(true);
     expect(isDatabaseMutationRequest('PATCH', '/rest/v1/session')).toBe(true);

@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { HQ_TOKEN_KEY } from '../../mod/hq-gate-logic';
 import {
   buildPublicationScopeKey,
   buildPublicResultUrl,
   buildAttachedPublication,
   parsePublicResultToken,
-  readStoredHqToken,
   runExclusivePublicationOperation,
   validatePublishInput,
   verifyPublishedResult,
@@ -61,45 +59,17 @@ describe('runExclusivePublicationOperation', () => {
   });
 });
 
-describe('readStoredHqToken', () => {
-  it('동일 브라우저의 HQ 세션 저장소에서 유효한 토큰을 복원한다', () => {
-    const requestedKeys: string[] = [];
-    const storage = {
-      getItem(key: string) {
-        requestedKeys.push(key);
-        return 'hq-session-token';
-      },
-    };
-
-    expect(readStoredHqToken(() => storage, () => undefined)).toBe('hq-session-token');
-    expect(requestedKeys).toEqual([HQ_TOKEN_KEY]);
-    expect(readStoredHqToken(() => ({ getItem: () => '   ' }), () => undefined)).toBe('');
-    expect(readStoredHqToken(() => null, () => undefined)).toBe('');
-  });
-
-  it('storage getter 또는 getItem 실패를 기록하고 빈 토큰으로 대체한다', () => {
-    const errors: unknown[] = [];
-    const recordError = (error: unknown) => errors.push(error);
-    const getterError = new DOMException('Storage blocked', 'SecurityError');
-    const itemError = new DOMException('Storage read blocked', 'SecurityError');
-
-    expect(readStoredHqToken(() => { throw getterError; }, recordError)).toBe('');
-    expect(readStoredHqToken(() => ({ getItem: () => { throw itemError; } }), recordError)).toBe('');
-    expect(errors).toEqual([getterError, itemError]);
-  });
-});
-
 describe('validatePublishInput', () => {
-  it('HQ 토큰·제목·스코프가 모두 유효해야 공개 요청을 허용한다', () => {
+  it('staff session id·제목·스코프가 모두 유효해야 공개 요청을 허용한다', () => {
     expect(validatePublishInput({
-      hqToken: '  hq-session-token  ',
+      sessionId: '  session-1  ',
       title: '  2026 기후시민회의 결과  ',
       scope: 'topic',
       scopeId: 'topic-1',
     })).toEqual({
       ok: true,
       value: {
-        hqToken: 'hq-session-token',
+        sessionId: 'session-1',
         title: '2026 기후시민회의 결과',
         scope: 'topic',
         scopeId: 'topic-1',
@@ -107,11 +77,11 @@ describe('validatePublishInput', () => {
       error: null,
     });
 
-    expect(validatePublishInput({ hqToken: '', title: '결과', scope: 'topic', scopeId: 'topic-1' }).error)
-      .toContain('HQ');
-    expect(validatePublishInput({ hqToken: 'token', title: '   ', scope: 'topic', scopeId: 'topic-1' }).error)
+    expect(validatePublishInput({ sessionId: null, title: '결과', scope: 'topic', scopeId: 'topic-1' }).error)
+      .toContain('회차');
+    expect(validatePublishInput({ sessionId: 'session-1', title: '   ', scope: 'topic', scopeId: 'topic-1' }).error)
       .toContain('제목');
-    expect(validatePublishInput({ hqToken: 'token', title: '결과', scope: null, scopeId: null }).error)
+    expect(validatePublishInput({ sessionId: 'session-1', title: '결과', scope: null, scopeId: null }).error)
       .toContain('스코프');
   });
 });

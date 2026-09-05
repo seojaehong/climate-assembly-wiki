@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Emergency reissue for leaked codes: update one team with a random exception to the MMDD rule.
-// Usage: node scripts/rotate-join-code.mjs "1분과 1조" [--dry-run|--print-sql]
+// Emergency reissue for a leaked code: update one team with a new cryptographic six-digit code.
+// Usage: node scripts/rotate-join-code.mjs "1분과 1조" (--dry-run|--print-sql)
 import { randomInt } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import {
@@ -11,110 +11,40 @@ import {
 
 const cliRandomInt = () => randomInt(100000, 1000000);
 
-function checkEnvOrExit() {
-  const missing = [];
-  if (!process.env.SUPABASE_URL) missing.push('SUPABASE_URL');
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missing.push('SUPABASE_SERVICE_ROLE_KEY');
-  if (missing.length > 0) {
-    console.error(`환경변수 누락: ${missing.join(', ')} — .env 또는 셸 환경에 설정 후 다시 실행하세요.`);
-    process.exit(1);
-  }
-}
-
 function parseArgs(argv) {
   const args = argv.slice(2);
-  const dryRun = args.includes('--dry-run');
-  const printSql = args.includes('--print-sql');
-  const teamName = args.find((a) => !a.startsWith('--'));
-  return { teamName, dryRun, printSql };
+  const allowedModes = new Set(['--dry-run', '--print-sql']);
+  const modes = args.filter((arg) => allowedModes.has(arg));
+  const unknownFlags = args.filter((arg) => arg.startsWith('--') && !allowedModes.has(arg));
+  const names = args.filter((arg) => !arg.startsWith('--'));
+  if (unknownFlags.length > 0 || modes.length !== 1 || names.length !== 1) {
+    return { valid: false, teamName: null, mode: null, unknownFlags };
+  }
+  return { valid: true, teamName: names[0], mode: modes[0], unknownFlags: [] };
 }
 
 async function runDryRun(teamName) {
-  const [newCode] = genUniqueCodes(1, [], cliRandomInt);
   console.log('[DRY RUN] no DB connection made. Planned operation:');
   console.log('');
   console.log(`session slug: ${SESSION_SLUG}`);
   console.log(`team:         ${teamName}`);
-  console.log(`old code:     <unknown until DB lookup>`);
-  console.log(`new code:     ${newCode}`);
+  console.log('old code:     ******');
+  console.log('new code:     ****** (generated only with --print-sql)');
   console.log('');
-  console.log('(live run requires SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY env vars)');
-}
-
-async function runLive(teamName) {
-  checkEnvOrExit();
-  // ★ Node 20 에서 supabase-js 가 WebSocket 을 못 찾아 죽는다 — createClient 앞에서 막는다.
-  await import('./lib/node-ws-shim.mjs');
-  const { createClient } = await import('@supabase/supabase-js');
-  const client = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  ).schema('climate_vote');
-
-  const { data: session, error: sessionErr } = await client
-    .from('session')
-    .select('id')
-    .eq('slug', SESSION_SLUG)
-    .single();
-  if (sessionErr) {
-    console.error(`session lookup failed (slug=${SESSION_SLUG}):`, sessionErr.message);
-    process.exit(1);
-  }
-
-  const { data: team, error: teamErr } = await client
-    .from('team')
-    .select('id, name, join_code')
-    .eq('session_id', session.id)
-    .eq('name', teamName)
-    .single();
-  if (teamErr) {
-    console.error(`team lookup failed (name=${teamName}):`, teamErr.message);
-    process.exit(1);
-  }
-
-  const oldCode = team.join_code;
-  let updated = null;
-  let lastErr = null;
-  for (let attempt = 0; attempt < 5 && !updated; attempt++) {
-    const [newCode] = genUniqueCodes(1, [String(oldCode)], cliRandomInt);
-    const { data, error } = await client
-      .from('team')
-      .update({ join_code: newCode })
-      .eq('id', team.id)
-      .select()
-      .single();
-    if (!error) {
-      updated = data;
-    } else if (error.code === '23505') {
-      lastErr = error;
-      continue;
-    } else {
-      console.error('join_code update failed:', error.message);
-      process.exit(1);
-    }
-  }
-  if (!updated) {
-    console.error('join_code update failed after retries:', lastErr?.message);
-    process.exit(1);
-  }
-
-  console.log(`team:     ${team.name}`);
-  console.log(`old code: ${oldCode}`);
-  console.log(`new code: ${updated.join_code}`);
+  console.log('(적용은 --print-sql 출력물을 별도 승인한 뒤 SQL Editor에서 실행합니다.)');
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const { teamName, dryRun, printSql } = parseArgs(process.argv);
-  if (!teamName) {
-    console.error('사용: node scripts/rotate-join-code.mjs "<조이름>" [--dry-run|--print-sql]');
-    process.exit(1);
-  }
-  if (printSql) {
+  const { valid, teamName, mode, unknownFlags } = parseArgs(process.argv);
+  if (!valid || !teamName || !mode) {
+    const detail = unknownFlags.length > 0 ? ` 알 수 없는 인자: ${unknownFlags.join(', ')}` : '';
+    console.error(`사용: node scripts/rotate-join-code.mjs "<조이름>" (--dry-run|--print-sql).${detail}`);
+    console.error('직접 live 쓰기 경로는 비활성화되어 있습니다.');
+    process.exitCode = 2;
+  } else if (mode === '--print-sql') {
     const [newCode] = genUniqueCodes(1, [], cliRandomInt);
     console.log(formatJoinCodeRotationSql(teamName, newCode));
-  } else if (dryRun) {
-    await runDryRun(teamName);
   } else {
-    await runLive(teamName);
+    await runDryRun(teamName);
   }
 }

@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   fetchHqSubmissions,
+  assignSubmissionCategory,
+  categoryNoteId,
+  fetchHqSubmissionCategories,
   fetchHqSubmissionHistory,
   reopenSubmission,
-  subscribeHqSubmissions,
   type HqHistoryRow,
   type HqSubmissionRow,
   CURRENT_SESSION_SLUG,
@@ -29,6 +31,7 @@ import {
 } from '../../lib/hq-submissions';
 import {
   buildBoards,
+  buildHqClearSnapshot,
   flattenNotes,
   filterNotes,
   silentTeams,
@@ -37,6 +40,11 @@ import {
   groupBySubgroup,
   subgroupsOf,
   filterBoardBySubgroup,
+  hqAssignmentConflictMessage,
+  hqLiveItemIdentityMap,
+  isHqAssignmentContinuationCurrent,
+  resolveHqAssignmentIntent,
+  type HqAssignmentIntent,
   type Note,
   type TeamColumn,
   type TopicBoard,
@@ -49,7 +57,10 @@ import {
   planDeadline,
   serverDeadlineMap,
 } from './hq-deadline-logic';
-import { topicSetDeadline } from '../../lib/deliberation';
+import {
+  setWorkshopDeadline,
+  WorkshopHqDeadlineConflictError,
+} from '../../lib/workshop-hq';
 import { orderNotesBySimilarity, similarPairs, type SimilarPair } from './note-similarity';
 import {
   teamPairOverlaps,
@@ -62,8 +73,10 @@ import { firstFocusTeamId, focusPosition, focusedTeam, stepTeam } from './presen
 import { pairKey, togglePair, marksByNote, checkedPairCount } from './pair-marks';
 import {
   emptyCategoryState,
+  assignCategory,
   preservationInvariant,
   toggleCategory,
+  unassignCategory,
   type CategoryState,
   type FourCategory,
 } from './four-category';
@@ -93,9 +106,11 @@ import {
 } from './ontology-export';
 import { OntologyExportPanel } from './OntologyExportPanel';
 import {
+  assignKind,
   emptyKindState,
   kindPreservation,
   toggleKind,
+  unassignKind,
   type KindState,
   type OntologyKind,
 } from './ontology-kind';
@@ -104,17 +119,19 @@ import {
   OntologyKindButtons,
   OntologyKindCounter,
 } from './OntologyKindPanel';
+import { useModalDialog } from './use-modal-dialog';
+import { classifyHqAuthorizationError } from './hq-gate-logic';
 
 /**
  * 본부 조별 산출물 취합 보드.
  *
- * 조가 /mod에서 저장하는 즉시 Realtime으로 따라온다. 조가 쓴 한 줄을 포스트잇 한 장으로
+ * 조가 /mod에서 저장하면 세션 범위 RPC를 5초마다 다시 읽어 따라온다. 조가 쓴 한 줄을 포스트잇 한 장으로
  * 두고, 색은 조마다 고정해(noteColor) 벽에 붙인 것과 같은 방식으로 읽히게 한다.
  * 「조별」은 어느 조가 무엇을 냈는지, 「모아보기」는 내용만 죽 훑을 때 쓴다.
  *
  * 읽기 전용이다 — 본부가 조의 글을 고치는 경로는 만들지 않았다(조의 산출물이므로).
  *
- * `fixtureRows`를 주면 Supabase를 아예 부르지 않는다(폴링·구독도 안 건다).
+ * `fixtureRows`를 주면 Supabase를 아예 부르지 않는다(폴링도 안 건다).
  * /hq는 본부 비밀번호 게이트라 자동 검증이 불가해, 미리보기 라우트
  * /ko/moderator/insights/submission-lab 이 픽스처로 같은 화면을 띄워 브라우저 검증에 쓴다.
  */
@@ -122,13 +139,37 @@ import {
 /**
  * 폴링 주기.
  *
- * ⚠️ Realtime을 보조 수단으로 본다. submission·submission_item은 anon SELECT 정책이 없고
- * (읽기는 RPC로만 — 조끼리 서로 못 보게 한 설계다) Supabase의 postgres_changes는 RLS를
- * 따르므로, anon 구독자에게 변경 이벤트가 오지 않을 수 있다. 그것을 고치겠다고 anon SELECT를
- * 열면 닫아둔 조 간 열람 경로가 도로 열린다 — 그래서 폴링을 실질 갱신 수단으로 둔다.
+ * submission·submission_item은 anon SELECT 정책이 없고 읽기는 범위가 검증된 RPC로만 한다.
+ * HQ bearer는 Supabase Auth JWT가 아니므로 broad Realtime 구독에 권한을 전달할 수 없다.
+ * 그것을 고치겠다고 anon SELECT를 열면 닫아둔 조 간 열람 경로가 도로 열린다.
+ * 따라서 이 명시적 RPC 폴링이 유일한 갱신 수단이다.
  * 45행 규모라 5초 폴링이 부담되지 않는다.
  */
 const POLL_MS = 5_000;
+const TOPIC_PANEL_ID = 'hq-topic-panel';
+
+function topicDomSuffix(topicId: string): string {
+  return topicId.replace(/[^A-Za-z0-9_-]/g, '-');
+}
+
+function topicTabId(topicId: string): string {
+  return `hq-topic-tab-${topicDomSuffix(topicId)}`;
+}
+
+type AssignmentIdentity = {
+  eventId: number;
+  sourceItemId: string;
+};
+
+type AssignmentOperation = {
+  sequence: number;
+  sourceItemId: string;
+};
+
+type AssignmentFailure<T extends string> = {
+  message: string;
+  retry: { desired: T | null; fingerprint: string } | null;
+};
 
 /**
  * 어떤 모양으로 오든 사람이 읽을 수 있는 한 줄로 만든다(코드가 있으면 함께 남긴다).
@@ -180,8 +221,14 @@ function Postit({
   representative,
   category,
   onCategory,
+  categoryBusy,
+  categoryError,
+  onCategoryRetry,
   kind,
   onKind,
+  kindBusy,
+  kindError,
+  onKindRetry,
 }: {
   note: Note;
   showTeam: boolean;
@@ -191,12 +238,18 @@ function Postit({
   /** L3 — 이 카드에 얹힌 **잠정** 범주. 없으면 미배정이고, 미배정도 화면에 그대로 남는다. */
   category?: FourCategory | null;
   onCategory?: (noteId: string, category: FourCategory) => void;
+  categoryBusy?: boolean;
+  categoryError?: string | null;
+  onCategoryRetry?: (noteId: string) => void;
   /**
    * US-013 — 이 카드에 얹힌 **잠정** 온톨로지 종류. 「온톨로지」 관점을 켰을 때만 넘어온다.
    * 관점을 끄면 이름표도 버튼도 사라지지만 붙여둔 종류는 보드 상태에 그대로 남는다.
    */
   kind?: OntologyKind | null;
   onKind?: (noteId: string, kind: OntologyKind) => void;
+  kindBusy?: boolean;
+  kindError?: string | null;
+  onKindRetry?: (noteId: string) => void;
 }) {
   return (
     <article
@@ -239,11 +292,49 @@ function Postit({
         </p>
       ) : null}
       {onCategory ? (
-        <CategoryButtons noteId={note.id} current={category ?? null} onToggle={onCategory} />
+        <CategoryButtons noteId={note.id} current={category ?? null} onToggle={onCategory} disabled={categoryBusy} />
+      ) : null}
+      {categoryError ? (
+        <div role="alert" className="mt-2 rounded-lg border border-[#DC2626] bg-[#FEF2F2] px-3 py-2 text-[13px] font-bold text-[#B91C1C]">
+          <p>{categoryError}</p>
+          {onCategoryRetry ? (
+            <button
+              type="button"
+              onClick={() => onCategoryRetry(note.id)}
+              disabled={categoryBusy}
+              className="mt-2 min-h-11 rounded-lg border-2 border-[#B91C1C] bg-white px-3 disabled:opacity-50"
+            >
+              {categoryBusy ? '다시 저장 중…' : '범주 저장 다시 시도'}
+            </button>
+          ) : null}
+        </div>
       ) : null}
       {/* 관점을 켜야만 넘어온다 — 끄면 버튼이 사라지고 카드는 원래 모습으로 돌아온다. */}
       {onKind ? (
-        <OntologyKindButtons noteId={note.id} current={kind ?? null} onToggle={onKind} />
+        <OntologyKindButtons
+          noteId={note.id}
+          current={kind ?? null}
+          onToggle={onKind}
+          disabled={kindBusy}
+        />
+      ) : null}
+      {kindError ? (
+        <div
+          role="alert"
+          className="mt-2 rounded-lg border border-[#DC2626] bg-[#FEF2F2] px-3 py-2 text-[13px] font-bold text-[#B91C1C]"
+        >
+          <p>{kindError}</p>
+          {onKindRetry ? (
+            <button
+              type="button"
+              onClick={() => onKindRetry(note.id)}
+              disabled={kindBusy}
+              className="mt-2 min-h-11 rounded-lg border-2 border-[#B91C1C] bg-white px-3 disabled:opacity-50"
+            >
+              {kindBusy ? '다시 저장 중…' : '종류 저장 다시 시도'}
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </article>
   );
@@ -314,7 +405,7 @@ function TeamOverlapPanel({
     >
       <header className="flex flex-wrap items-center gap-3">
         <h3 className="text-[20px] font-extrabold text-[#1F4E79]">
-          조 사이 겹침 <span className="tr-num text-[#23B2C3]">{overlaps.length}</span>쌍
+          조 사이 겹침 <span className="tr-num text-[#0F6B78]">{overlaps.length}</span>쌍
         </h3>
         <button
           type="button"
@@ -336,7 +427,7 @@ function TeamOverlapPanel({
           <div>
             <h4 className="mb-2 text-[16px] font-extrabold text-[#5A6B73]">같은 이야기를 하는 조</h4>
             {overlaps.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-[#C4D8E4] px-4 py-5 text-[16px] text-[#8FA3AD]">
+              <p className="rounded-xl border border-dashed border-[#C4D8E4] px-4 py-5 text-[16px] text-[#526975]">
                 아직 겹치는 조가 없습니다. 조가 더 쓰면 여기에 모입니다.
               </p>
             ) : (
@@ -347,7 +438,7 @@ function TeamOverlapPanel({
                     className="rounded-xl border border-[#DCE7EE] px-4 py-3"
                   >
                     <p className="flex flex-wrap items-baseline gap-2 text-[18px] font-extrabold text-[#1F2933]">
-                      {row.aTeamName} <span className="text-[#23B2C3]">↔</span> {row.bTeamName}
+                      {row.aTeamName} <span className="text-[#0F6B78]">↔</span> {row.bTeamName}
                       <span className="ml-2 text-[16px] font-bold text-[#5A6B73]">
                         비슷한 쌍 <span className="tr-num text-[#1F4E79]">{row.pairCount}</span>
                       </span>
@@ -369,7 +460,7 @@ function TeamOverlapPanel({
               이 조만 말한 것 — 아직 아무도 같은 말을 하지 않았습니다
             </h4>
             {soloTeams.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-[#C4D8E4] px-4 py-5 text-[16px] text-[#8FA3AD]">
+              <p className="rounded-xl border border-dashed border-[#C4D8E4] px-4 py-5 text-[16px] text-[#526975]">
                 없습니다.
               </p>
             ) : (
@@ -417,7 +508,7 @@ function SimilarPairsPanel({
     >
       <header className="flex flex-wrap items-center gap-3">
         <h3 className="text-[20px] font-extrabold text-[#1F4E79]">
-          닮은 짝 <span className="tr-num text-[#23B2C3]">{pairs.length}</span>쌍
+          닮은 짝 <span className="tr-num text-[#0F6B78]">{pairs.length}</span>쌍
         </h3>
         {marked > 0 ? (
           <span data-testid="pair-checked-count" className="text-[16px] font-bold text-[#5A6B73]">
@@ -463,7 +554,7 @@ function SimilarPairsPanel({
                     <span className="text-[15px] font-extrabold text-[#1F4E79] tr-num">
                       닮은 짝 {index + 1}
                     </span>
-                    <span className="text-[14px] font-bold text-[#8FA3AD] tr-num">
+                    <span className="text-[14px] font-bold text-[#526975] tr-num">
                       참고 점수 {pair.score.toFixed(2)}
                     </span>
                     <span className="text-[14px] text-[#5A6B73]">
@@ -519,13 +610,24 @@ function SimilarPairsPanel({
 export default function HqSubmissionBoard({
   token,
   fixtureRows,
+  onAuthorizationExpired,
 }: {
   token?: string;
   /** 주면 네트워크를 쓰지 않는 미리보기 모드. 본부 화면(/hq)은 이 값을 주지 않는다. */
   fixtureRows?: HqSubmissionRow[];
+  /** 서버가 bearer 폐기/만료를 확정했을 때만 로그인 게이트로 복귀시킨다. */
+  onAuthorizationExpired?: () => void;
 }) {
   const [rows, setRows] = useState<HqSubmissionRow[] | null>(fixtureRows ?? null);
   const [failed, setFailed] = useState<string | null>(null);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [operationError, setOperationError] = useState<string | null>(null);
+  const rowsLoadedRef = useRef(fixtureRows !== undefined);
+  const loadInFlightRef = useRef<Promise<void> | null>(null);
+  const boardLoadEpochRef = useRef(0);
+  const liveItemIdentityRef = useRef<Map<string, string>>(
+    hqLiveItemIdentityMap(fixtureRows ?? []),
+  );
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const [grouped, setGrouped] = useState(true);
   const [query, setQuery] = useState('');
@@ -536,8 +638,16 @@ export default function HqSubmissionBoard({
   // AI 가 미리 채우지 않는다 — 처음엔 비어 있고 사람이 눌러야 표시가 생긴다.
   const [checkedPairs, setCheckedPairs] = useState<Set<string>>(() => new Set());
   // L3 — 카드 id → **잠정** 범주. 카드는 제자리에 두고 이름표만 얹으므로 배정이 카드를 지울 수 없다.
-  // 아직 서버에 붙이지 않는다(US-007 마이그레이션이 미적용이라 지금 부르면 RPC 404 로 죽는다).
+  // 서버의 append-only 배정 이력을 되읽고, 변경 시 같은 RPC에 저장한다.
   const [catState, setCatState] = useState<CategoryState>(() => emptyCategoryState());
+  const [categoryLoadError, setCategoryLoadError] = useState<string | null>(null);
+  const [categoryBusy, setCategoryBusy] = useState<Set<string>>(() => new Set());
+  const categoryBusyRef = useRef<Set<string>>(new Set());
+  const categoryRefreshSequenceRef = useRef(0);
+  const categoryIdentityRef = useRef<Map<string, AssignmentIdentity>>(new Map());
+  const categoryIntentRef = useRef<Map<string, HqAssignmentIntent>>(new Map());
+  const categoryOperationRef = useRef<Map<string, AssignmentOperation>>(new Map());
+  const [categoryErrors, setCategoryErrors] = useState<Record<string, AssignmentFailure<FourCategory>>>({});
   // L4 — 대표 지목 **이력만** 상태로 든다. 묶음(groups)은 체크된 짝에서 매번 파생하고,
   // 「현재 대표」는 이력의 마지막 사건에서 파생한다. 맞아야 하는 저장소가 하나뿐이라 어긋날 수가 없다.
   const [repHistory, setRepHistory] = useState<readonly RepresentativePickEntry[]>([]);
@@ -548,7 +658,17 @@ export default function HqSubmissionBoard({
   // 카드 id → **잠정** 종류. 처음엔 비어 있다 — AI 가 미리 정하지 않는다(US-013 AC).
   // 관점을 껐다 켜도 이 맵은 그대로다(붙인 것이 보기 전환으로 사라지면 안 된다).
   const [kindState, setKindState] = useState<KindState>(() => emptyKindState());
+  const [kindLoadError, setKindLoadError] = useState<string | null>(null);
+  const [kindBusy, setKindBusy] = useState<Set<string>>(() => new Set());
+  const kindBusyRef = useRef<Set<string>>(new Set());
+  const kindWriteEpochRef = useRef(0);
+  const kindIdentityRef = useRef<Map<string, AssignmentIdentity>>(new Map());
+  const kindIntentRef = useRef<Map<string, HqAssignmentIntent>>(new Map());
+  const kindOperationRef = useRef<Map<string, AssignmentOperation>>(new Map());
+  const assignmentOperationSequenceRef = useRef(0);
+  const [kindErrors, setKindErrors] = useState<Record<string, AssignmentFailure<OntologyKind>>>({});
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
   const [refreshedAt, setRefreshedAt] = useState<Date | null>(null);
   // 분과 필터 — 회의자료가 정한 구조화 단위가 분과다(총괄모더레이터 3인 × 5개 조).
   const [subgroup, setSubgroup] = useState<string | null>(null);
@@ -583,37 +703,230 @@ export default function HqSubmissionBoard({
   const [deadlineError, setDeadlineError] = useState<{ topicId: string; message: string } | null>(
     null
   );
+  const deadlineRequestIdsRef = useRef<Map<string, string>>(new Map());
+  const [deadlineRefresh, setDeadlineRefresh] = useState<{
+    busy: boolean;
+    stale: boolean;
+    lastSuccessAt: number | null;
+    error: string | null;
+  }>({ busy: false, stale: false, lastSuccessAt: null, error: null });
+  const deadlineRefreshSequenceRef = useRef(0);
+  const assignmentViewEpochRef = useRef(0);
+  const handleRpcAuthorizationError = useCallback((error: unknown): boolean => {
+    if (classifyHqAuthorizationError(error) !== 'expired') return false;
+    onAuthorizationExpired?.();
+    return true;
+  }, [onAuthorizationExpired]);
+  const reopenDialogRef = useModalDialog<HTMLDivElement>(reopening !== null, () => {
+    if (!reopenBusy) setReopening(null);
+  });
+
+  useEffect(() => {
+    assignmentViewEpochRef.current += 1;
+    return () => {
+      assignmentViewEpochRef.current += 1;
+    };
+  }, [token, activeTopic, fixtureRows]);
+
+  useEffect(() => {
+    // A new bearer must never inherit optimistic state or an in-flight operation
+    // from the previous HQ session. Operation markers keep late finally blocks
+    // from clearing a newer request for the same card.
+    categoryRefreshSequenceRef.current += 1;
+    kindWriteEpochRef.current += 1;
+    boardLoadEpochRef.current += 1;
+    loadInFlightRef.current = null;
+    categoryOperationRef.current.clear();
+    kindOperationRef.current.clear();
+    categoryBusyRef.current = new Set();
+    kindBusyRef.current = new Set();
+    categoryIdentityRef.current.clear();
+    kindIdentityRef.current.clear();
+    categoryIntentRef.current.clear();
+    kindIntentRef.current.clear();
+    liveItemIdentityRef.current = hqLiveItemIdentityMap(fixtureRows ?? []);
+    setCategoryBusy(new Set());
+    setKindBusy(new Set());
+    setCatState(emptyCategoryState());
+    setKindState(emptyKindState());
+    setCategoryLoadError(null);
+    setKindLoadError(null);
+    setCategoryErrors({});
+    setKindErrors({});
+    setOperationError(null);
+    setFailed(null);
+    setRefreshError(null);
+    setRows(fixtureRows ?? null);
+    rowsLoadedRef.current = fixtureRows !== undefined;
+  }, [token, fixtureRows]);
 
   const load = useCallback(async () => {
     if (!token) return;
-    try {
-      const next = await fetchHqSubmissions(token, CURRENT_SESSION_SLUG);
-      setRows(next);
-      setFailed(null);
-      setRefreshedAt(new Date());
-      // 서버에 남은 종류 배정을 화면 상태로 되살린다. 없으면 조용히 넘어간다
-      // (s12 미적용 환경에서도 보드 자체는 떠야 한다).
+    if (loadInFlightRef.current) return loadInFlightRef.current;
+    const boardLoadEpoch = boardLoadEpochRef.current;
+    const task = (async () => {
       try {
-        const kinds = await fetchSubmissionKinds(token, CURRENT_SESSION_SLUG);
-        setKindState((prev) => {
-          const merged = new Map(prev);
+        const next = await fetchHqSubmissions(token, CURRENT_SESSION_SLUG);
+        if (boardLoadEpoch !== boardLoadEpochRef.current) return;
+        const liveItemIdentities = hqLiveItemIdentityMap(next);
+        liveItemIdentityRef.current = liveItemIdentities;
+        setCatState((current) => new Map([...current].filter(([noteId]) => {
+          const operationSource = categoryOperationRef.current.get(noteId)?.sourceItemId;
+          const assignedSource = categoryIdentityRef.current.get(noteId)?.sourceItemId;
+          return (operationSource ?? assignedSource) === liveItemIdentities.get(noteId);
+        })));
+        categoryIdentityRef.current = new Map(
+          [...categoryIdentityRef.current].filter(
+            ([noteId, identity]) => identity.sourceItemId === liveItemIdentities.get(noteId),
+          ),
+        );
+        setKindState((current) => new Map([...current].filter(([noteId]) => {
+          const operationSource = kindOperationRef.current.get(noteId)?.sourceItemId;
+          const assignedSource = kindIdentityRef.current.get(noteId)?.sourceItemId;
+          return (operationSource ?? assignedSource) === liveItemIdentities.get(noteId);
+        })));
+        kindIdentityRef.current = new Map(
+          [...kindIdentityRef.current].filter(
+            ([noteId, identity]) => identity.sourceItemId === liveItemIdentities.get(noteId),
+          ),
+        );
+        setRows(next);
+        rowsLoadedRef.current = true;
+        setFailed(null);
+        setRefreshError(null);
+        setRefreshedAt(new Date());
+        // 서버에 남은 종류 배정을 화면 상태로 되살린다. 없으면 조용히 넘어간다
+        // (s12 미적용 환경에서도 보드 자체는 떠야 한다).
+        const readEpoch = kindWriteEpochRef.current;
+        try {
+          const kinds = await fetchSubmissionKinds(token, CURRENT_SESSION_SLUG);
+          if (
+            boardLoadEpoch !== boardLoadEpochRef.current ||
+            readEpoch !== kindWriteEpochRef.current
+          ) return;
+          const serverIdentities = new Map<string, AssignmentIdentity>();
+          const serverState = new Map<string, OntologyKind>();
           for (const row of kinds) {
             const id = `${row.topic_id}:${row.team_id}:${row.item_ordinal}`;
-            if (row.kind) merged.set(id, row.kind as OntologyKind);
-            else merged.delete(id);
+            if (liveItemIdentities.get(id) !== row.source_item_id) continue;
+            serverIdentities.set(id, {
+              eventId: row.event_id,
+              sourceItemId: row.source_item_id,
+            });
+            if (row.kind) serverState.set(id, row.kind as OntologyKind);
           }
-          return merged;
-        });
-      } catch (kindError) {
-        console.warn('[HQ submissions] 종류 배정을 불러오지 못했습니다', kindError);
+          setKindState((current) => {
+            const merged = new Map(serverState);
+            // A read during an optimistic write must not overwrite that row.
+            for (const noteId of kindBusyRef.current) {
+              const operation = kindOperationRef.current.get(noteId);
+              if (operation?.sourceItemId !== liveItemIdentities.get(noteId)) continue;
+              const optimistic = current.get(noteId);
+              if (optimistic) merged.set(noteId, optimistic);
+              else merged.delete(noteId);
+            }
+            return merged;
+          });
+          const nextIdentities = new Map(serverIdentities);
+          for (const noteId of kindBusyRef.current) {
+            const operation = kindOperationRef.current.get(noteId);
+            if (operation?.sourceItemId !== liveItemIdentities.get(noteId)) continue;
+            const pendingIdentity = kindIdentityRef.current.get(noteId);
+            if (pendingIdentity) nextIdentities.set(noteId, pendingIdentity);
+            else nextIdentities.delete(noteId);
+          }
+          kindIdentityRef.current = nextIdentities;
+          setKindLoadError(null);
+        } catch (kindError) {
+          if (
+            boardLoadEpoch !== boardLoadEpochRef.current ||
+            readEpoch !== kindWriteEpochRef.current
+          ) return;
+          console.warn('[HQ submissions] 종류 배정을 불러오지 못했습니다', kindError);
+          if (handleRpcAuthorizationError(kindError)) return;
+          setKindLoadError('저장된 종류 배정을 다시 읽지 못했습니다. 마지막 정상 표시를 유지합니다.');
+        }
+      } catch (error: unknown) {
+        if (boardLoadEpoch !== boardLoadEpochRef.current) return;
+        // Supabase 오류는 Error 인스턴스가 아니라 평범한 객체다 — instanceof만 보면
+        // 진짜 원인이 통째로 사라지고 「불러오지 못했습니다」만 남아 진단이 불가능해진다.
+        console.error('[HQ submissions] load failed', error);
+        if (handleRpcAuthorizationError(error)) return;
+        const message = describeError(error);
+        if (rowsLoadedRef.current) {
+          setRefreshError(`새 제출물을 확인하지 못했습니다. 마지막 정상 화면을 유지합니다. ${message}`);
+        } else {
+          setFailed(message);
+        }
       }
-    } catch (error) {
-      // Supabase 오류는 Error 인스턴스가 아니라 평범한 객체다 — instanceof만 보면
-      // 진짜 원인이 통째로 사라지고 「불러오지 못했습니다」만 남아 진단이 불가능해진다.
-      console.error('[HQ submissions] load failed', error);
-      setFailed(describeError(error));
+    })();
+    loadInFlightRef.current = task;
+    try {
+      await task;
+    } finally {
+      if (loadInFlightRef.current === task) loadInFlightRef.current = null;
     }
-  }, [token]);
+  }, [handleRpcAuthorizationError, token]);
+
+  const loadCategories = useCallback(async () => {
+    if (!token) return;
+    const sequence = categoryRefreshSequenceRef.current + 1;
+    categoryRefreshSequenceRef.current = sequence;
+    try {
+      const pendingBoardLoad = loadInFlightRef.current;
+      if (pendingBoardLoad) await pendingBoardLoad;
+      if (categoryRefreshSequenceRef.current !== sequence) return;
+      const saved = await fetchHqSubmissionCategories(token, CURRENT_SESSION_SLUG);
+      if (categoryRefreshSequenceRef.current !== sequence) return;
+      const liveItemIdentities = liveItemIdentityRef.current;
+      const serverState = new Map<string, FourCategory>();
+      const serverIdentities = new Map<string, AssignmentIdentity>();
+      for (const row of saved) {
+        const noteId = categoryNoteId(row);
+        if (liveItemIdentities.get(noteId) !== row.source_item_id) continue;
+        serverIdentities.set(noteId, {
+          eventId: row.event_id,
+          sourceItemId: row.source_item_id,
+        });
+        if (row.category) serverState.set(noteId, row.category);
+      }
+      setCatState((current) => {
+        const next = new Map(serverState);
+        for (const noteId of categoryBusyRef.current) {
+          const operation = categoryOperationRef.current.get(noteId);
+          if (operation?.sourceItemId !== liveItemIdentities.get(noteId)) continue;
+          const optimistic = current.get(noteId);
+          if (optimistic) next.set(noteId, optimistic);
+          else next.delete(noteId);
+        }
+        return next;
+      });
+      const nextIdentities = new Map(serverIdentities);
+      for (const noteId of categoryBusyRef.current) {
+        const operation = categoryOperationRef.current.get(noteId);
+        if (operation?.sourceItemId !== liveItemIdentities.get(noteId)) continue;
+        const pendingIdentity = categoryIdentityRef.current.get(noteId);
+        if (pendingIdentity) nextIdentities.set(noteId, pendingIdentity);
+        else nextIdentities.delete(noteId);
+      }
+      categoryIdentityRef.current = nextIdentities;
+      setCategoryLoadError(null);
+    } catch (error: unknown) {
+      if (categoryRefreshSequenceRef.current !== sequence) return;
+      console.error('[HQ submissions] category reload failed', error);
+      if (handleRpcAuthorizationError(error)) return;
+      setCategoryLoadError('저장된 범주 배정을 불러오지 못했습니다. 현재 표시는 최신 상태가 아닐 수 있습니다.');
+    }
+  }, [handleRpcAuthorizationError, token]);
+
+  const reloadAssignmentBoard = useCallback(async () => {
+    // Join a poll that was already in flight, then start one authoritative read
+    // after the mutation response. Otherwise a pre-write poll could masquerade
+    // as the required post-write refresh.
+    const pendingBoardLoad = loadInFlightRef.current;
+    if (pendingBoardLoad) await pendingBoardLoad;
+    await Promise.all([load(), loadCategories()]);
+  }, [load, loadCategories]);
 
   /**
    * 서버의 현재 마감을 읽어 온다(s19).
@@ -624,18 +937,37 @@ export default function HqSubmissionBoard({
    */
   const loadDeadlines = useCallback(async () => {
     if (!token) return;
+    const sequence = deadlineRefreshSequenceRef.current + 1;
+    deadlineRefreshSequenceRef.current = sequence;
+    setDeadlineRefresh((current) => ({ ...current, busy: true }));
     try {
       const rows = await fetchHqTopicDeadlines(token, CURRENT_SESSION_SLUG);
+      if (deadlineRefreshSequenceRef.current !== sequence) return;
       if (rows === null) {
         // s19 미적용 — 「마감 없음」이 아니라 「모름」이다. 화면은 s19 이전 표시로 퇴화한다.
         console.warn('[HQ submissions] s19 미적용 — 서버의 현재 마감을 읽을 수 없습니다');
+        setDeadlineRefresh((current) => ({
+          ...current,
+          busy: false,
+          stale: true,
+          error: '서버가 마감 되읽기를 지원하지 않아 현재 마감 상태를 확인할 수 없습니다.',
+        }));
         return;
       }
       setDeadlineServer(serverDeadlineMap(rows));
-    } catch (error) {
+      setDeadlineRefresh({ busy: false, stale: false, lastSuccessAt: Date.now(), error: null });
+    } catch (error: unknown) {
       console.warn('[HQ submissions] 서버의 현재 마감을 읽지 못했습니다', error);
+      if (deadlineRefreshSequenceRef.current !== sequence) return;
+      if (handleRpcAuthorizationError(error)) return;
+      setDeadlineRefresh((current) => ({
+        ...current,
+        busy: false,
+        stale: true,
+        error: '마감 정보를 다시 읽지 못했습니다. 마지막 정상 확인 값을 유지합니다.',
+      }));
     }
-  }, [token]);
+  }, [handleRpcAuthorizationError, token]);
 
   useEffect(() => {
     // 미리보기 모드 — fetch·구독·폴링 어느 것도 걸지 않는다(네트워크 없이 열려야 한다).
@@ -644,20 +976,26 @@ export default function HqSubmissionBoard({
       return;
     }
     void load();
+    void loadCategories();
     void loadDeadlines();
-    const stop = subscribeHqSubmissions(() => {
-      void load();
-    });
+    // HQ bearers are scoped RPC capabilities, not Supabase Auth JWTs. Broad
+    // postgres_changes subscriptions to the protected submission tables cannot
+    // authorize with this token, so explicit scoped polling is the sole source.
     const timer = setInterval(() => {
       void load();
+      // 범주 변경은 여러 HQ 기기에서 일어나며 broad realtime 이벤트에 의존하지 않는다.
+      void loadCategories();
       // 마감은 본부 3인이 각자 걸 수 있다 — 남이 건 값도 따라와야 「내가 뭘 걸었나」가 맞는다.
       void loadDeadlines();
     }, POLL_MS);
     return () => {
-      stop();
       clearInterval(timer);
+      boardLoadEpochRef.current += 1;
+      loadInFlightRef.current = null;
+      categoryRefreshSequenceRef.current += 1;
+      deadlineRefreshSequenceRef.current += 1;
     };
-  }, [load, loadDeadlines, fixtureRows]);
+  }, [load, loadCategories, loadDeadlines, fixtureRows]);
 
   useEffect(() => {
     if (!copied) return;
@@ -666,6 +1004,28 @@ export default function HqSubmissionBoard({
   }, [copied]);
 
   const boards = useMemo(() => buildBoards(rows ?? []), [rows]);
+  const clearSnapshot = useMemo(() => (rows ? buildHqClearSnapshot(rows) : null), [rows]);
+  const onTopicTabKeyDown = useCallback((
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    currentIndex: number,
+  ) => {
+    if (boards.length === 0) return;
+    let nextIndex: number | null = null;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      nextIndex = (currentIndex + 1) % boards.length;
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      nextIndex = (currentIndex - 1 + boards.length) % boards.length;
+    } else if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = boards.length - 1;
+    }
+    if (nextIndex === null) return;
+    const nextTopic = boards[nextIndex];
+    event.preventDefault();
+    setActiveTopic(nextTopic.topicId);
+    requestAnimationFrame(() => document.getElementById(topicTabId(nextTopic.topicId))?.focus());
+  }, [boards]);
 
   // 첫 로드 뒤 첫 꼭지를 연다. 이미 고른 꼭지가 사라지면(주제 마감 등) 다시 첫 꼭지로.
   useEffect(() => {
@@ -723,9 +1083,185 @@ export default function HqSubmissionBoard({
   const toggleCheckedPair = useCallback((key: string) => {
     setCheckedPairs((prev) => togglePair(prev, key));
   }, []);
+  const persistNoteCategory = useCallback(async (
+    noteId: string,
+    desired: FourCategory | null,
+    retryFingerprint?: string,
+  ) => {
+    if (categoryBusyRef.current.has(noteId)) return;
+    if (!token && !fixtureRows) {
+      setCategoryErrors((current) => ({
+        ...current,
+        [noteId]: {
+          message: '본부 연결 토큰이 없어 범주를 저장할 수 없습니다. 다시 로그인해 주세요.',
+          retry: null,
+        },
+      }));
+      return;
+    }
+    const previous = catState.get(noteId) ?? null;
+    const applyValue = (state: CategoryState, value: FourCategory | null): CategoryState =>
+      value ? assignCategory(state, noteId, value) : unassignCategory(state, noteId);
+    setCatState((current) => applyValue(current, desired));
+    setCategoryErrors((current) => {
+      const next = { ...current };
+      delete next[noteId];
+      return next;
+    });
+    if (!token) return; // fixtureRows preview keeps changes in-memory only.
+    const note = wholeBoard?.teams
+      .flatMap((candidate) => candidate.notes)
+      .find((candidate) => candidate.id === noteId);
+    if (!note?.submissionId || !note.submissionUpdatedAt || !note.itemId) {
+      setCatState((current) => applyValue(current, previous));
+      setCategoryErrors((current) => ({
+        ...current,
+        [noteId]: {
+          message: '이 카드의 서버 항목을 찾지 못했습니다. 보드를 다시 확인해 주세요.',
+          retry: null,
+        },
+      }));
+      return;
+    }
+
+    const expectedEventId = categoryIdentityRef.current.get(noteId)?.eventId ?? null;
+    const intent = resolveHqAssignmentIntent(categoryIntentRef.current.get(noteId), {
+      assignmentKind: 'category',
+      sessionSlug: CURRENT_SESSION_SLUG,
+      submissionId: note.submissionId,
+      itemOrdinal: note.ordinal,
+      sourceItemId: note.itemId,
+      desired,
+      expectedSubmissionUpdatedAt: note.submissionUpdatedAt,
+      expectedEventId,
+    });
+    if (retryFingerprint !== undefined && intent.fingerprint !== retryFingerprint) {
+      categoryIntentRef.current.delete(noteId);
+      setCatState((current) => applyValue(current, previous));
+      const message = '카드가 변경되어 이전 저장 요청을 다시 적용하지 않았습니다. 최신 카드에서 다시 지정해 주세요.';
+      setCategoryErrors((current) => ({
+        ...current,
+        [noteId]: { message, retry: null },
+      }));
+      setOperationError(message);
+      return;
+    }
+    categoryIntentRef.current.set(noteId, intent);
+    const viewEpoch = assignmentViewEpochRef.current;
+    const operationSequence = assignmentOperationSequenceRef.current + 1;
+    assignmentOperationSequenceRef.current = operationSequence;
+    categoryOperationRef.current.set(noteId, {
+      sequence: operationSequence,
+      sourceItemId: note.itemId,
+    });
+
+    // Invalidate category reads started before this write. A late stale response
+    // must not replace the optimistic value after the busy flag is released.
+    categoryRefreshSequenceRef.current += 1;
+    categoryBusyRef.current = new Set(categoryBusyRef.current).add(noteId);
+    setCategoryBusy(new Set(categoryBusyRef.current));
+    const isCurrentOperation = () => isHqAssignmentContinuationCurrent(
+      categoryOperationRef.current.get(noteId)?.sequence,
+      operationSequence,
+      assignmentViewEpochRef.current,
+      viewEpoch,
+    );
+    let busyReleased = false;
+    const releaseBusy = () => {
+      if (busyReleased) return;
+      busyReleased = true;
+      if (categoryOperationRef.current.get(noteId)?.sequence !== operationSequence) return;
+      const nextBusy = new Set(categoryBusyRef.current);
+      nextBusy.delete(noteId);
+      categoryBusyRef.current = nextBusy;
+      setCategoryBusy(new Set(nextBusy));
+    };
+    const retireOperation = () => {
+      if (categoryOperationRef.current.get(noteId)?.sequence === operationSequence) {
+        categoryOperationRef.current.delete(noteId);
+      }
+    };
+    let mutationAnswered = false;
+    try {
+      const result = await assignSubmissionCategory(token, CURRENT_SESSION_SLUG, {
+        submissionId: note.submissionId,
+        itemOrdinal: note.ordinal,
+        category: desired,
+        expectedSubmissionUpdatedAt: note.submissionUpdatedAt,
+        expectedEventId,
+        idempotencyKey: intent.idempotencyKey,
+      });
+      mutationAnswered = true;
+      if (!isCurrentOperation()) return;
+      categoryIntentRef.current.delete(noteId);
+      if (result.status === 'conflict' || result.source_item_id !== note.itemId) {
+        const message = result.status === 'conflict'
+          ? hqAssignmentConflictMessage({
+              assignmentKind: 'category',
+              expectedSubmissionUpdatedAt: note.submissionUpdatedAt,
+              currentSubmissionUpdatedAt: result.current_submission_updated_at,
+              expectedEventId,
+              currentEventId: result.current_event_id,
+            })
+          : '원문이 변경됨. 최신 보드를 확인한 뒤 최신 카드에서 다시 지정해 주세요.';
+        setCatState((current) => applyValue(current, previous));
+        releaseBusy();
+        if (!isCurrentOperation()) return;
+        await reloadAssignmentBoard();
+        if (!isCurrentOperation()) return;
+        setCategoryErrors((current) => ({
+          ...current,
+          [noteId]: { message, retry: null },
+        }));
+        setOperationError(message);
+        return;
+      }
+      categoryIdentityRef.current.set(noteId, {
+        eventId: result.event_id,
+        sourceItemId: result.source_item_id,
+      });
+      releaseBusy();
+      if (!isCurrentOperation()) return;
+      await reloadAssignmentBoard();
+      if (!isCurrentOperation()) return;
+    } catch (error: unknown) {
+      console.error('[HQ submissions] category assign failed', error);
+      if (handleRpcAuthorizationError(error)) return;
+      if (!isCurrentOperation()) return;
+      if (mutationAnswered) {
+        const message = '저장 결과는 처리되었지만 최신 보드를 다시 읽지 못했습니다. 보드를 다시 연결해 확인해 주세요.';
+        setCategoryErrors((current) => ({
+          ...current,
+          [noteId]: { message, retry: null },
+        }));
+        setOperationError(message);
+        return;
+      }
+      setCatState((current) => applyValue(current, previous));
+      setCategoryErrors((current) => ({
+        ...current,
+        [noteId]: {
+          message: `범주를 저장하지 못해 이전 값으로 되돌렸습니다. ${describeError(error)}`,
+          retry: { desired, fingerprint: intent.fingerprint },
+        },
+      }));
+    } finally {
+      releaseBusy();
+      retireOperation();
+    }
+  }, [catState, fixtureRows, handleRpcAuthorizationError, reloadAssignmentBoard, token, wholeBoard]);
+
   const toggleNoteCategory = useCallback((noteId: string, category: FourCategory) => {
-    setCatState((prev) => toggleCategory(prev, noteId, category));
-  }, []);
+    const desired = toggleCategory(catState, noteId, category).get(noteId) ?? null;
+    void persistNoteCategory(noteId, desired);
+  }, [catState, persistNoteCategory]);
+
+  const retryNoteCategory = useCallback((noteId: string) => {
+    const failure = categoryErrors[noteId];
+    if (failure?.retry) {
+      void persistNoteCategory(noteId, failure.retry.desired, failure.retry.fingerprint);
+    }
+  }, [categoryErrors, persistNoteCategory]);
   /**
    * 카드에 종류를 붙였다 뗀다. 화면을 먼저 바꾸고 서버에 보낸다
    * (누를 때마다 기다리게 하지 않는다).
@@ -742,24 +1278,206 @@ export default function HqSubmissionBoard({
    * 🔴 `board` 가 아니라 `wholeBoard` 에서 카드를 찾는다. board 는 분과 필터가 걸린
    * 보드라, 분과를 좁혀 놓고 붙인 배정이 조용히 누락됐다.
    */
-  const toggleNoteKind = useCallback(
-    (noteId: string, kind: OntologyKind) => {
-      const next = toggleKind(kindState, noteId, kind);
-      setKindState(next);
-      if (!token) return;
-      // 카드 id는 `topic:team:ordinal` 이고, 저장에 필요한 것은 제출물 id와 항목 순번이다.
-      const team = wholeBoard?.teams.find((t) => t.notes.some((n) => n.id === noteId));
-      const note = team?.notes.find((n) => n.id === noteId);
-      if (!team?.submissionId || !note) return;
-      void assignSubmissionKind(token, team.submissionId, note.ordinal, next.get(noteId) ?? null).catch(
-        (error) => {
-          console.error('[HQ submissions] kind assign failed', error);
-          setFailed(describeError(error));
-        }
-      );
-    },
-    [kindState, token, wholeBoard]
-  );
+  const persistNoteKind = useCallback(async (
+    noteId: string,
+    desired: OntologyKind | null,
+    retryFingerprint?: string,
+  ) => {
+    if (kindBusyRef.current.has(noteId)) return;
+    if (!token && !fixtureRows) {
+      setKindErrors((current) => ({
+        ...current,
+        [noteId]: {
+          message: '본부 연결 토큰이 없어 종류를 저장할 수 없습니다. 다시 로그인해 주세요.',
+          retry: null,
+        },
+      }));
+      return;
+    }
+    const previous = kindState.get(noteId) ?? null;
+    setKindState((current) => desired ? assignKind(current, noteId, desired) : unassignKind(current, noteId));
+    const nextBusy = new Set(kindBusyRef.current);
+    nextBusy.add(noteId);
+    kindBusyRef.current = nextBusy;
+    setKindBusy(new Set(nextBusy));
+    setKindErrors((current) => {
+      const next = { ...current };
+      delete next[noteId];
+      return next;
+    });
+
+    // Fixture mode intentionally remains local-only.
+    if (!token) {
+      const finished = new Set(kindBusyRef.current);
+      finished.delete(noteId);
+      kindBusyRef.current = finished;
+      setKindBusy(new Set(finished));
+      return;
+    }
+
+    const note = wholeBoard?.teams
+      .flatMap((candidate) => candidate.notes)
+      .find((candidate) => candidate.id === noteId);
+    if (!note?.submissionId || !note.submissionUpdatedAt || !note.itemId) {
+      setKindState((current) => previous
+        ? assignKind(current, noteId, previous)
+        : unassignKind(current, noteId));
+      const finished = new Set(kindBusyRef.current);
+      finished.delete(noteId);
+      kindBusyRef.current = finished;
+      setKindBusy(new Set(finished));
+      setKindErrors((current) => ({
+        ...current,
+        [noteId]: {
+          message: '저장할 제출물 정보를 찾지 못했습니다. 보드를 다시 불러온 뒤 시도해 주세요.',
+          retry: null,
+        },
+      }));
+      return;
+    }
+    const expectedEventId = kindIdentityRef.current.get(noteId)?.eventId ?? null;
+    const intent = resolveHqAssignmentIntent(kindIntentRef.current.get(noteId), {
+      assignmentKind: 'kind',
+      sessionSlug: CURRENT_SESSION_SLUG,
+      submissionId: note.submissionId,
+      itemOrdinal: note.ordinal,
+      sourceItemId: note.itemId,
+      desired,
+      expectedSubmissionUpdatedAt: note.submissionUpdatedAt,
+      expectedEventId,
+    });
+    if (retryFingerprint !== undefined && intent.fingerprint !== retryFingerprint) {
+      kindIntentRef.current.delete(noteId);
+      setKindState((current) => previous
+        ? assignKind(current, noteId, previous)
+        : unassignKind(current, noteId));
+      const finished = new Set(kindBusyRef.current);
+      finished.delete(noteId);
+      kindBusyRef.current = finished;
+      setKindBusy(new Set(finished));
+      const message = '카드가 변경되어 이전 저장 요청을 다시 적용하지 않았습니다. 최신 카드에서 다시 지정해 주세요.';
+      setKindErrors((current) => ({
+        ...current,
+        [noteId]: { message, retry: null },
+      }));
+      setOperationError(message);
+      return;
+    }
+    kindIntentRef.current.set(noteId, intent);
+    kindWriteEpochRef.current += 1;
+    const viewEpoch = assignmentViewEpochRef.current;
+    const operationSequence = assignmentOperationSequenceRef.current + 1;
+    assignmentOperationSequenceRef.current = operationSequence;
+    kindOperationRef.current.set(noteId, {
+      sequence: operationSequence,
+      sourceItemId: note.itemId,
+    });
+    const isCurrentOperation = () => isHqAssignmentContinuationCurrent(
+      kindOperationRef.current.get(noteId)?.sequence,
+      operationSequence,
+      assignmentViewEpochRef.current,
+      viewEpoch,
+    );
+    let busyReleased = false;
+    const releaseBusy = () => {
+      if (busyReleased) return;
+      busyReleased = true;
+      if (kindOperationRef.current.get(noteId)?.sequence !== operationSequence) return;
+      const finished = new Set(kindBusyRef.current);
+      finished.delete(noteId);
+      kindBusyRef.current = finished;
+      setKindBusy(new Set(finished));
+    };
+    const retireOperation = () => {
+      if (kindOperationRef.current.get(noteId)?.sequence === operationSequence) {
+        kindOperationRef.current.delete(noteId);
+      }
+    };
+    let mutationAnswered = false;
+    try {
+      const result = await assignSubmissionKind(token, CURRENT_SESSION_SLUG, {
+        submissionId: note.submissionId,
+        itemOrdinal: note.ordinal,
+        kind: desired,
+        expectedSubmissionUpdatedAt: note.submissionUpdatedAt,
+        expectedEventId,
+        idempotencyKey: intent.idempotencyKey,
+      });
+      mutationAnswered = true;
+      if (!isCurrentOperation()) return;
+      kindIntentRef.current.delete(noteId);
+      if (result.status === 'conflict' || result.source_item_id !== note.itemId) {
+        const message = result.status === 'conflict'
+          ? hqAssignmentConflictMessage({
+              assignmentKind: 'kind',
+              expectedSubmissionUpdatedAt: note.submissionUpdatedAt,
+              currentSubmissionUpdatedAt: result.current_submission_updated_at,
+              expectedEventId,
+              currentEventId: result.current_event_id,
+            })
+          : '원문이 변경됨. 최신 보드를 확인한 뒤 최신 카드에서 다시 지정해 주세요.';
+        setKindState((current) => previous ? assignKind(current, noteId, previous) : unassignKind(current, noteId));
+        releaseBusy();
+        if (!isCurrentOperation()) return;
+        await reloadAssignmentBoard();
+        if (!isCurrentOperation()) return;
+        setKindErrors((current) => ({
+          ...current,
+          [noteId]: { message, retry: null },
+        }));
+        setOperationError(message);
+        return;
+      }
+      kindIdentityRef.current.set(noteId, {
+        eventId: result.event_id,
+        sourceItemId: result.source_item_id,
+      });
+      releaseBusy();
+      if (!isCurrentOperation()) return;
+      await reloadAssignmentBoard();
+      if (!isCurrentOperation()) return;
+    } catch (error: unknown) {
+      console.error('[HQ submissions] kind assign failed', error);
+      if (handleRpcAuthorizationError(error)) return;
+      if (!isCurrentOperation()) return;
+      if (mutationAnswered) {
+        const message = '저장 결과는 처리되었지만 최신 보드를 다시 읽지 못했습니다. 보드를 다시 연결해 확인해 주세요.';
+        setKindErrors((current) => ({
+          ...current,
+          [noteId]: { message, retry: null },
+        }));
+        setOperationError(message);
+        return;
+      }
+      setKindState((current) => previous ? assignKind(current, noteId, previous) : unassignKind(current, noteId));
+      setKindErrors((current) => ({
+        ...current,
+        [noteId]: {
+          message: `종류를 저장하지 못해 이전 값으로 되돌렸습니다. ${describeError(error)}`,
+          retry: { desired, fingerprint: intent.fingerprint },
+        },
+      }));
+    } finally {
+      // Invalidate reads that began before or during this write.
+      if (kindOperationRef.current.get(noteId)?.sequence === operationSequence) {
+        kindWriteEpochRef.current += 1;
+      }
+      releaseBusy();
+      retireOperation();
+    }
+  }, [fixtureRows, handleRpcAuthorizationError, kindState, reloadAssignmentBoard, token, wholeBoard]);
+
+  const toggleNoteKind = useCallback((noteId: string, kind: OntologyKind) => {
+    const desired = toggleKind(kindState, noteId, kind).get(noteId) ?? null;
+    void persistNoteKind(noteId, desired);
+  }, [kindState, persistNoteKind]);
+
+  const retryNoteKind = useCallback((noteId: string) => {
+    const failure = kindErrors[noteId];
+    if (failure?.retry) {
+      void persistNoteKind(noteId, failure.retry.desired, failure.retry.fingerprint);
+    }
+  }, [kindErrors, persistNoteKind]);
   // L4 — 묶음 = 사람이 ✓ 한 닮은 짝 하나(카드 두 장). **짝을 합쳐 큰 묶음을 만들지 않는다** —
   // 합치는 순간 그게 회의자료가 금지한 「조별 결과 임의 통합」이다.
   const repGroups = useMemo(
@@ -894,10 +1612,11 @@ export default function HqSubmissionBoard({
           reportFileName(report, 'txt')
         );
       }
+      setOperationError(null);
       setDownloadOpen(false);
     } catch (error) {
       console.error('[HQ submissions] download failed', error);
-      setFailed(describeError(error));
+      setOperationError(`파일을 만들지 못했습니다. ${describeError(error)}`);
     } finally {
       setDownloading(false);
     }
@@ -907,14 +1626,16 @@ export default function HqSubmissionBoard({
     if (!reopening || !token) return;
     setReopenBusy(true);
     try {
-      await reopenSubmission(token, reopening.submissionId, reopenReason.trim());
+      await reopenSubmission(token, CURRENT_SESSION_SLUG, reopening.submissionId, reopenReason.trim());
+      setOperationError(null);
       setReopening(null);
       setReopenReason('');
       await load();
       if (historyOpen) await loadHistory();
     } catch (error) {
       console.error('[HQ submissions] reopen failed', error);
-      setFailed(describeError(error));
+      if (handleRpcAuthorizationError(error)) return;
+      setOperationError(`제출물을 다시 열지 못했습니다. ${describeError(error)}`);
     } finally {
       setReopenBusy(false);
     }
@@ -924,10 +1645,12 @@ export default function HqSubmissionBoard({
     if (!token) return;
     try {
       setHistory(await fetchHqSubmissionHistory(token, CURRENT_SESSION_SLUG));
+      setOperationError(null);
     } catch (error) {
       console.error('[HQ submissions] history failed', error);
+      if (handleRpcAuthorizationError(error)) return;
       setHistory([]);
-      setFailed(describeError(error));
+      setOperationError(`이력을 불러오지 못했습니다. ${describeError(error)}`);
     }
   };
 
@@ -948,8 +1671,20 @@ export default function HqSubmissionBoard({
     }
     setDeadlineBusy(true);
     setDeadlineError(null);
+    const expectedDeadlineAt = deadlineServer?.[topicId] ?? null;
+    const intentKey = `deadline:${topicId}:${expectedDeadlineAt ?? 'none'}:${plan.deadlineAt ?? 'none'}`;
+    const requestId = deadlineRequestIdsRef.current.get(intentKey) ?? crypto.randomUUID();
+    deadlineRequestIdsRef.current.set(intentKey, requestId);
     try {
-      await topicSetDeadline(token, topicId, plan.deadlineAt);
+      await setWorkshopDeadline(
+        token,
+        CURRENT_SESSION_SLUG,
+        topicId,
+        expectedDeadlineAt,
+        plan.deadlineAt,
+        requestId,
+      );
+      deadlineRequestIdsRef.current.delete(intentKey);
       setDeadlineApplied((prev) => ({ ...prev, [topicId]: plan.deadlineAt }));
       // 서버가 받아 준 값이므로 되읽기 맵도 같이 옮긴다 — 다음 폴링까지 옛 값이 남지 않게.
       // ★ 아직 한 번도 못 읽었으면(null) **만들지 않는다.** 「모름」을 「서버에서 읽었다」로
@@ -959,7 +1694,17 @@ export default function HqSubmissionBoard({
       void loadDeadlines();
     } catch (error) {
       console.error('[HQ submissions] deadline failed', error);
-      setDeadlineError({ topicId, message: deadlineFailureMessage(mode, error) });
+      if (handleRpcAuthorizationError(error)) return;
+      if (error instanceof WorkshopHqDeadlineConflictError) {
+        setDeadlineError({
+          topicId,
+          message: '다른 운영자가 마감을 먼저 바꿨습니다. 최신 값을 다시 불러왔으니 확인 후 다시 시도해 주세요.',
+        });
+        await loadDeadlines();
+      } else {
+        setDeadlineError({ topicId, message: deadlineFailureMessage(mode, error) });
+        await loadDeadlines();
+      }
     } finally {
       setDeadlineBusy(false);
     }
@@ -967,11 +1712,13 @@ export default function HqSubmissionBoard({
 
   const copyBoard = async () => {
     if (!board) return;
+    setCopyError(null);
     try {
       await navigator.clipboard.writeText(boardToText(board));
       setCopied(true);
-    } catch {
-      /* 클립보드 거부(권한·비보안 컨텍스트) — 조용히 넘긴다. */
+    } catch (error) {
+      console.warn('[HQ submissions] clipboard copy failed', error);
+      setCopyError('클립보드에 복사하지 못했습니다. 브라우저 권한을 확인해 주세요.');
     }
   };
 
@@ -1071,7 +1818,7 @@ export default function HqSubmissionBoard({
       <div className="min-h-screen bg-white p-6 sm:p-10">
         <header className="mb-8 flex flex-wrap items-baseline gap-4 border-b-4 border-[#1F4E79] pb-4">
           <h1 className="text-[44px] font-extrabold leading-none text-[#1F4E79]">{activeSubgroup}</h1>
-          <p className="text-[30px] font-bold text-[#23B2C3]">{board.prompt}</p>
+          <p className="text-[30px] font-bold text-[#0F6B78]">{board.prompt}</p>
           <p className="ml-auto text-[22px] font-bold text-[#5A6B73] tr-num">
             {board.teamsWithNotes}/{board.teams.length}개 조 · {board.totalNotes}건
           </p>
@@ -1137,7 +1884,7 @@ export default function HqSubmissionBoard({
                 {position.at} / {position.total}
               </span>
             ) : null}
-            <span className="ml-auto text-[16px] font-bold text-[#8FA3AD]">
+            <span className="ml-auto text-[16px] font-bold text-[#526975]">
               ← → 키로도 넘길 수 있습니다
             </span>
           </div>
@@ -1174,7 +1921,7 @@ export default function HqSubmissionBoard({
                     ) : null;
                   })()}
                   <span
-                    className="font-extrabold text-[#23B2C3] tr-num"
+                    className="font-extrabold text-[#0F6B78] tr-num"
                     style={{ fontSize: `${Math.round(scale.teamName * 0.8)}px` }}
                   >
                     {team.notes.length}
@@ -1182,7 +1929,7 @@ export default function HqSubmissionBoard({
                 </span>
               </h2>
               {team.notes.length === 0 ? (
-                <p className="rounded-xl border-2 border-dashed border-[#C4D8E4] px-4 py-10 text-center text-[24px] text-[#8FA3AD]">
+                <p className="rounded-xl border-2 border-dashed border-[#C4D8E4] px-4 py-10 text-center text-[24px] text-[#526975]">
                   아직 없음
                 </p>
               ) : (
@@ -1273,7 +2020,7 @@ export default function HqSubmissionBoard({
           ))}
         </div>
 
-        <p className="mt-10 text-center text-[18px] text-[#8FA3AD]">
+        <p className="mt-10 text-center text-[18px] text-[#526975]">
           조가 저장하는 대로 자동으로 따라옵니다 · 이 화면에서는 고칠 수 없습니다
         </p>
       </div>
@@ -1286,15 +2033,19 @@ export default function HqSubmissionBoard({
     <div className="mx-auto max-w-[1600px] p-4 sm:p-6">
       {/* 꼭지 선택 */}
       <div role="tablist" aria-label="꼭지" className="mb-4 flex flex-wrap gap-2">
-        {boards.map((item) => {
+        {boards.map((item, index) => {
           const selected = item.topicId === board.topicId;
           return (
             <button
               key={item.topicId}
+              id={topicTabId(item.topicId)}
               type="button"
               role="tab"
               aria-selected={selected}
+              aria-controls={TOPIC_PANEL_ID}
+              tabIndex={selected ? 0 : -1}
               onClick={() => setActiveTopic(item.topicId)}
+              onKeyDown={(event) => onTopicTabKeyDown(event, index)}
               className={`h-14 rounded-xl px-5 text-[18px] font-bold transition ${
                 selected
                   ? 'bg-[#1F4E79] text-white shadow-sm'
@@ -1302,13 +2053,20 @@ export default function HqSubmissionBoard({
               }`}
             >
               {item.prompt}
-              <span className={`ml-2 text-[15px] font-extrabold ${selected ? 'text-white/80' : 'text-[#23B2C3]'}`}>
+              <span className={`ml-2 text-[15px] font-extrabold ${selected ? 'text-white' : 'text-[#0F6B78]'}`}>
                 {item.totalNotes}
               </span>
             </button>
           );
         })}
       </div>
+
+      <div
+        id={TOPIC_PANEL_ID}
+        role="tabpanel"
+        aria-labelledby={topicTabId(board.topicId)}
+        tabIndex={0}
+      >
 
       {/* US-011 마감시각 — 고른 꼭지 하나에 건다. 본부 토큰이 있을 때만 낸다
           (미리보기 라우트는 토큰을 안 주므로 이 줄이 아예 안 그려진다).
@@ -1362,9 +2120,39 @@ export default function HqSubmissionBoard({
           </span>
           {/* 마감은 잠금이 아니고, 조 화면 배너는 30초마다 꼭지를 다시 읽는다.
               이 두 가지를 모르면 「안 걸렸다」로 오해해 같은 시각을 반복해서 건다. */}
-          <span className="basis-full text-[14px] text-[#8FA3AD]">
+          <span className="basis-full text-[14px] text-[#526975]">
             조 화면 배너에 최대 30초 뒤 뜹니다 · 마감이 지나도 조는 계속 저장할 수 있습니다
           </span>
+          {deadlineRefresh.stale || deadlineRefresh.error ? (
+            <div
+              role="alert"
+              data-testid="hq-deadline-refresh-error"
+              className="basis-full flex flex-wrap items-center gap-3 rounded-lg border-2 border-[#DC2626] bg-[#FEF2F2] px-4 py-3 text-[#B91C1C]"
+            >
+              <p className="min-w-[220px] flex-1 text-[14px] font-extrabold leading-relaxed">
+                {deadlineRefresh.error}{' '}
+                {deadlineRefresh.lastSuccessAt === null
+                  ? '아직 서버에서 확인된 마감 정보가 없습니다.'
+                  : `마지막 정상 확인 ${new Date(deadlineRefresh.lastSuccessAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}.`}
+              </p>
+              <button
+                type="button"
+                onClick={() => void loadDeadlines()}
+                disabled={deadlineRefresh.busy}
+                className="min-h-11 rounded-lg border-2 border-[#B91C1C] bg-white px-3 text-[14px] font-extrabold disabled:opacity-50"
+              >
+                {deadlineRefresh.busy ? '마감 다시 확인 중…' : '마감 다시 확인'}
+              </button>
+            </div>
+          ) : (
+            <span role="status" data-testid="hq-deadline-refresh-status" className="basis-full text-[13px] font-semibold text-[#526975]">
+              {deadlineRefresh.busy
+                ? '마감 정보 확인 중…'
+                : deadlineRefresh.lastSuccessAt === null
+                  ? '마감 정보를 처음 확인하는 중입니다.'
+                  : `마감 정보 정상 확인 ${new Date(deadlineRefresh.lastSuccessAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`}
+            </span>
+          )}
           {deadlineError && deadlineError.topicId === board.topicId ? (
             <p
               role="alert"
@@ -1386,7 +2174,7 @@ export default function HqSubmissionBoard({
             onClick={() => setSubgroup(null)}
             className={`h-12 rounded-xl px-4 text-[16px] font-bold transition ${
               activeSubgroup === null
-                ? 'bg-[#23B2C3] text-white'
+                ? 'bg-[#0F6B78] text-white'
                 : 'border border-[#C4D8E4] bg-white text-[#5A6B73]'
             }`}
           >
@@ -1401,14 +2189,14 @@ export default function HqSubmissionBoard({
                   onClick={() => setSubgroup(block.subgroup)}
                   className={`h-12 rounded-xl px-4 text-[16px] font-bold transition ${
                     activeSubgroup === block.subgroup
-                      ? 'bg-[#23B2C3] text-white'
+                      ? 'bg-[#0F6B78] text-white'
                       : 'border border-[#C4D8E4] bg-white text-[#5A6B73]'
                   }`}
                 >
                   {block.subgroup}
                   <span
                     className={`ml-2 text-[14px] font-extrabold tr-num ${
-                      activeSubgroup === block.subgroup ? 'text-white/85' : 'text-[#23B2C3]'
+                      activeSubgroup === block.subgroup ? 'text-white' : 'text-[#0F6B78]'
                     }`}
                   >
                     {block.teamsWithNotes}/{block.teams.length}
@@ -1438,7 +2226,7 @@ export default function HqSubmissionBoard({
               type="button"
               aria-pressed={grouped}
               onClick={() => setGrouped(true)}
-              className={`h-12 px-4 text-[16px] font-bold ${grouped ? 'bg-[#23B2C3] text-white' : 'bg-white text-[#5A6B73]'}`}
+              className={`h-12 px-4 text-[16px] font-bold ${grouped ? 'bg-[#0F6B78] text-white' : 'bg-white text-[#5A6B73]'}`}
             >
               조별
             </button>
@@ -1446,7 +2234,7 @@ export default function HqSubmissionBoard({
               type="button"
               aria-pressed={!grouped}
               onClick={() => setGrouped(false)}
-              className={`h-12 px-4 text-[16px] font-bold ${!grouped ? 'bg-[#23B2C3] text-white' : 'bg-white text-[#5A6B73]'}`}
+              className={`h-12 px-4 text-[16px] font-bold ${!grouped ? 'bg-[#0F6B78] text-white' : 'bg-white text-[#5A6B73]'}`}
             >
               모아보기
             </button>
@@ -1455,7 +2243,7 @@ export default function HqSubmissionBoard({
             <>
               {/* L1 정렬 — 배치만 바꾼다. 조별 순서가 기본.
                   「조별」(보기 방식)과 「조별 순서」(정렬)가 나란히 붙어 헷갈리므로 라벨을 둔다. */}
-              <Eyebrow className="ml-1 text-[#8FA3AD]">정렬</Eyebrow>
+              <Eyebrow className="ml-1 text-[#526975]">정렬</Eyebrow>
               <div role="group" aria-label="정렬" className="flex overflow-hidden rounded-xl border border-[#C4D8E4]">
                 <button
                   type="button"
@@ -1554,7 +2342,7 @@ export default function HqSubmissionBoard({
             </button>
             {downloadOpen ? (
               <div className="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-[#DCE7EE] bg-white p-2 shadow-lg">
-                <p className="px-2 py-1 text-[13px] text-[#8FA3AD]">
+                <p className="px-2 py-1 text-[13px] text-[#526975]">
                   지금 보고 있는 범위를 그대로 냅니다
                 </p>
                 <button
@@ -1615,7 +2403,42 @@ export default function HqSubmissionBoard({
             {copied ? '복사됨' : '텍스트로 복사'}
           </button>
         </div>
+        {copyError ? <p role="alert" className="mt-2 text-[14px] font-bold text-[#A62828]">{copyError}</p> : null}
       </div>
+
+      {operationError ? (
+        <div
+          role="alert"
+          className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border-2 border-[#DC2626] bg-[#FEF2F2] px-4 py-3 text-[#B91C1C]"
+        >
+          <p className="min-w-[220px] flex-1 text-[15px] font-extrabold">{operationError}</p>
+          <button
+            type="button"
+            onClick={() => setOperationError(null)}
+            className="min-h-11 rounded-lg border-2 border-[#B91C1C] bg-white px-3 text-[14px] font-extrabold"
+          >
+            알림 닫기
+          </button>
+        </div>
+      ) : null}
+      {refreshError ? (
+        <div
+          role="alert"
+          className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border-2 border-[#B5651D] bg-[#FFF4D6] px-4 py-3 text-[#6B4B00]"
+        >
+          <p className="min-w-[220px] flex-1 text-[15px] font-extrabold">
+            {refreshError}
+            {refreshedAt ? ` 마지막 정상 확인 ${refreshedAt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}.` : ''}
+          </p>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="min-h-11 rounded-lg border-2 border-[#6B4B00] bg-white px-3 text-[14px] font-extrabold"
+          >
+            지금 다시 연결
+          </button>
+        </div>
+      ) : null}
 
       {historyOpen ? (
         <section className="mb-5 rounded-2xl border border-[#DCE7EE] bg-white p-4">
@@ -1640,7 +2463,7 @@ export default function HqSubmissionBoard({
             <div className="max-h-[420px] overflow-y-auto">
               <table className="w-full text-left text-[15px]">
                 <thead className="sticky top-0 bg-white">
-                  <tr className="text-[13px] font-bold uppercase text-[#8FA3AD]">
+                  <tr className="text-[13px] font-bold uppercase text-[#526975]">
                     <th className="py-2 pr-3">시각</th>
                     <th className="py-2 pr-3">조</th>
                     <th className="py-2 pr-3">꼭지</th>
@@ -1676,6 +2499,33 @@ export default function HqSubmissionBoard({
       ) : null}
 
       {/* L3 — 보존 카운터는 **접히지 않고 두 보기 모두에서 항상** 보인다. 「모으지 않았다」의 증명이다. */}
+      {categoryLoadError ? (
+        <div role="alert" className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border-2 border-[#DC2626] bg-[#FEF2F2] px-4 py-3 text-[#B91C1C]">
+          <p className="min-w-[220px] flex-1 text-[15px] font-extrabold">{categoryLoadError}</p>
+          <button
+            type="button"
+            onClick={() => void loadCategories()}
+            className="min-h-11 rounded-lg border-2 border-[#B91C1C] bg-white px-3 text-[14px] font-extrabold"
+          >
+            범주 다시 불러오기
+          </button>
+        </div>
+      ) : null}
+      {kindLoadError && ontologyView ? (
+        <div
+          role="alert"
+          className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border-2 border-[#B5651D] bg-[#FFF4D6] px-4 py-3 text-[#6B4B00]"
+        >
+          <p className="min-w-[220px] flex-1 text-[15px] font-extrabold">{kindLoadError}</p>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="min-h-11 rounded-lg border-2 border-[#6B4B00] bg-white px-3 text-[14px] font-extrabold"
+          >
+            종류 다시 확인
+          </button>
+        </div>
+      ) : null}
       <PreservationCounter report={preservation} />
       {/* US-013 — 관점을 켠 동안에만 뜬다. 이름표가 안 보이는데 「미지정 N장」만 떠 있으면
           무엇이 미지정인지 확인할 길이 없어 사람이 카운터를 못 믿는다. */}
@@ -1706,7 +2556,7 @@ export default function HqSubmissionBoard({
               <header className="mb-3 flex flex-wrap items-baseline gap-3">
                 <h3 className="text-[22px] font-extrabold text-[#1F4E79]">{block.subgroup}</h3>
                 <span className="text-[16px] font-bold text-[#5A6B73]">
-                  <span className="text-[#23B2C3] tr-num">{block.teamsWithNotes}</span>/
+                  <span className="text-[#0F6B78] tr-num">{block.teamsWithNotes}</span>/
                   <span className="tr-num">{block.teams.length}</span>개 조 제출 ·{' '}
                   <span className="text-[#1F4E79] tr-num">{block.totalNotes}</span>건
                 </span>
@@ -1719,12 +2569,12 @@ export default function HqSubmissionBoard({
                 {team.tableNo ? (
                   <span className="text-[14px] font-bold text-[#5A6B73]">{team.tableNo}번 테이블</span>
                 ) : null}
-                <span className="ml-auto text-[16px] font-extrabold text-[#23B2C3] tr-num">
+                <span className="ml-auto text-[16px] font-extrabold text-[#0F6B78] tr-num">
                   {team.notes.length}
                 </span>
                 <StatusChip status={team.status} />
               </header>
-              <p className="mb-3 text-[13px] text-[#8FA3AD] tr-num">
+              <p className="mb-3 text-[13px] text-[#526975] tr-num">
                 저장 {clock(team.updatedAt)}
                 {team.finalizedAt ? ` · 제출 ${clock(team.finalizedAt)}` : ''}
               </p>
@@ -1738,13 +2588,13 @@ export default function HqSubmissionBoard({
                       teamName: team.teamName,
                     });
                   }}
-                  className="mb-3 h-11 w-full rounded-xl border-2 border-[#B5651D] bg-white text-[15px] font-bold text-[#B5651D]"
+                  className="mb-3 h-11 w-full rounded-xl border-2 border-[#8A4512] bg-white text-[15px] font-bold text-[#8A4512]"
                 >
                   다시 열기
                 </button>
               ) : null}
               {team.notes.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-[#C4D8E4] px-3 py-6 text-center text-[15px] text-[#8FA3AD]">
+                <p className="rounded-xl border border-dashed border-[#C4D8E4] px-3 py-6 text-center text-[15px] text-[#526975]">
                   아직 없음
                 </p>
               ) : (
@@ -1758,8 +2608,14 @@ export default function HqSubmissionBoard({
                       representative={repMarks.get(note.id)}
                       category={catState.get(note.id) ?? null}
                       onCategory={toggleNoteCategory}
+                      categoryBusy={categoryBusy.has(note.id)}
+                      categoryError={categoryErrors[note.id]?.message ?? null}
+                      onCategoryRetry={categoryErrors[note.id]?.retry ? retryNoteCategory : undefined}
                       kind={ontologyView ? (kindState.get(note.id) ?? null) : null}
                       onKind={ontologyView ? toggleNoteKind : undefined}
+                      kindBusy={kindBusy.has(note.id)}
+                      kindError={kindErrors[note.id]?.message ?? null}
+                      onKindRetry={kindErrors[note.id]?.retry ? retryNoteKind : undefined}
                     />
                   ))}
                 </div>
@@ -1807,8 +2663,14 @@ export default function HqSubmissionBoard({
                   representative={repMarks.get(note.id)}
                   category={catState.get(note.id) ?? null}
                   onCategory={toggleNoteCategory}
+                  categoryBusy={categoryBusy.has(note.id)}
+                  categoryError={categoryErrors[note.id]?.message ?? null}
+                  onCategoryRetry={categoryErrors[note.id]?.retry ? retryNoteCategory : undefined}
                   kind={ontologyView ? (kindState.get(note.id) ?? null) : null}
                   onKind={ontologyView ? toggleNoteKind : undefined}
+                  kindBusy={kindBusy.has(note.id)}
+                  kindError={kindErrors[note.id]?.message ?? null}
+                  onKindRetry={kindErrors[note.id]?.retry ? retryNoteKind : undefined}
                 />
               ))
             )}
@@ -1818,8 +2680,15 @@ export default function HqSubmissionBoard({
 
       {reopening ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1F4E79]/55 p-5">
-          <div className="w-full max-w-md rounded-2xl border border-[#DCE7EE] bg-white p-6">
-            <h4 className="text-[21px] font-extrabold text-[#1F4E79]">
+          <div
+            ref={reopenDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="hq-reopen-dialog-title"
+            tabIndex={-1}
+            className="w-full max-w-md rounded-2xl border border-[#DCE7EE] bg-white p-6"
+          >
+            <h4 id="hq-reopen-dialog-title" className="text-[21px] font-extrabold text-[#1F4E79]">
               {reopening.teamName} 다시 열기
             </h4>
             <p className="mt-2 text-[15px] leading-[1.6] text-[#5A6B73]">
@@ -1838,6 +2707,7 @@ export default function HqSubmissionBoard({
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button
                 type="button"
+                data-dialog-initial-focus
                 onClick={() => setReopening(null)}
                 className="h-12 rounded-xl border border-[#C4D8E4] bg-white text-[17px] font-bold text-[#1F4E79]"
               >
@@ -1847,7 +2717,7 @@ export default function HqSubmissionBoard({
                 type="button"
                 disabled={reopenReason.trim().length < 2 || reopenBusy}
                 onClick={() => void doReopen()}
-                className="h-12 rounded-xl bg-[#B5651D] text-[17px] font-bold text-white disabled:opacity-40"
+                className="h-12 rounded-xl bg-[#8A4512] text-[17px] font-bold text-white disabled:opacity-40"
               >
                 {reopenBusy ? '여는 중…' : '다시 열기'}
               </button>
@@ -1855,6 +2725,7 @@ export default function HqSubmissionBoard({
           </div>
         </div>
       ) : null}
+      </div>
 
       {/* 인쇄 문서는 **버튼을 누르기 전부터 DOM에 있어야 한다.** 눌러야 만들어지게 두면
           Ctrl+P·브라우저 인쇄 메뉴로 찍을 때 드러낼 것이 없어 백지가 나간다.
@@ -1868,13 +2739,12 @@ export default function HqSubmissionBoard({
       {token ? (
         <ClearAllPanel
           token={token}
-          onCleared={() => {
-            void load();
-          }}
+          expectedSubmissions={clearSnapshot}
+          onRefresh={reloadAssignmentBoard}
         />
       ) : null}
 
-      <p className="mt-6 text-[14px] text-[#8FA3AD]">
+      <p className="mt-6 text-[14px] text-[#526975]">
         {fixtureRows
           ? '미리보기 — 고정 픽스처를 읽습니다(갱신 없음)'
           : '조가 저장하는 대로 자동 갱신됩니다 (5초)'}

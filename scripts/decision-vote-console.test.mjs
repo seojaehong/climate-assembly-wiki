@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
+import { classifyVoteRpcResponse } from './loadtest-mod-console.mjs';
 
 const readText = (path) => readFileSync(path, 'utf8');
 const readJson = (path) => JSON.parse(readText(path));
@@ -93,13 +94,45 @@ describe('0704 conditional vote console', () => {
     expect(supabasePage).toContain('공개 재투표 없음');
   });
 
-  test('Supabase voting form prevents public revotes by name and device', () => {
+  test('public voting forms use the scoped RPC boundary and one canonical device id', () => {
     const voteForm = readText('public/v/vote-form.js');
+    const fallback = readText('public/v/index.html');
+    const canonicalPage = readText('src/pages/v.astro');
 
-    expect(voteForm).toContain('이미 같은 성함으로 응답이 접수되었습니다');
-    expect(voteForm).toContain('uniq_votes_round_voter_name');
-    expect(voteForm).toContain('uniq_votes_round_client');
+    expect(voteForm).toContain("sbRpc('public_round_get_v2'");
+    expect(voteForm).toContain("sbRpc('public_round_cast_v2'");
+    expect(voteForm).toContain("sbRpc('public_round_votes_v2'");
+    expect(voteForm).toContain("localStorage.getItem('cv_device') || localStorage.getItem('climate_vote_client_id')");
+    expect(voteForm).toContain("localStorage.removeItem('climate_vote_client_id')");
+    expect(voteForm).toContain("console.error('vote device persistence unavailable', error)");
+    expect(voteForm).toContain('memoryClientId = uuid4()');
+    expect(voteForm).toContain('data-storage-notice');
+    expect(voteForm).toContain('중복 응답 방지가 유지되지 않을 수 있습니다');
+    expect(voteForm).toContain("window.location.replace(`/v?round=${encodeURIComponent(pathRoundId)}`)");
+    expect(voteForm).toContain("document.querySelectorAll('.voter-section').forEach(section => section.remove())");
+    expect((voteForm.match(/makeNativeChoiceInput\(input, label\);/g) ?? [])).toHaveLength(2);
+    expect(voteForm).not.toContain('voterName');
+    expect(voteForm).not.toContain('voterRole');
     expect(voteForm).toContain('이 기기에서는 이미 응답하셨습니다');
+    expect(voteForm).toContain("if (type === 'TEXT')");
+    expect(voteForm).toContain('자유서술 원문은 공개 결과 화면에 표시하지 않습니다.');
+    expect(voteForm).toContain('if (val.length > 2000)');
+    expect(fallback).toContain("window.VOTE_ROUND_ID = roundId");
+    expect(fallback).toContain('/v/vote-form.js');
+    expect(fallback).toContain('maxlength="2000"');
+    expect(fallback).toContain('aria-describedby="textInputHelp"');
+    expect(fallback).not.toContain('sbGet(');
+    expect(fallback).not.toContain('sbPost(');
+    expect(fallback).not.toContain('innerHTML');
+    expect(canonicalPage).not.toContain('maximum-scale=1');
+  });
+
+  test('loadtest distinguishes accepted, duplicate, and closed public RPC results', () => {
+    expect(classifyVoteRpcResponse({ ok: true, data: 'ok' })).toBe('ok');
+    expect(classifyVoteRpcResponse({ ok: true, data: 'duplicate' })).toBe('duplicate');
+    expect(classifyVoteRpcResponse({ ok: true, data: 'closed' })).toBe('closed');
+    expect(classifyVoteRpcResponse({ ok: false, data: null })).toBe('request_error');
+    expect(() => classifyVoteRpcResponse({ ok: true, data: 'unknown' })).toThrow('unexpected public vote RPC result');
   });
 
   test('admin and field manual enlarge every QR instead of opening tiny thumbnails', () => {

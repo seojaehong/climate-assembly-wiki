@@ -10,11 +10,10 @@
  *   그래서 진짜 `/hq` 를 열되 ① 본부 토큰을 sessionStorage 에 심고 ② `rest/v1` 을 전부
  *   가로채 지어낸 응답만 준다. 운영 DB 로 나가는 요청은 0건이다.
  *
- * ★★ Realtime 웹소켓은 `context.route` 가 못 막는다
- *   `HqSubmissionBoard` 는 `fixtureRows` 가 없으면 `subscribeHqSubmissions()` 로 운영
- *   Supabase 에 **웹소켓을 연다**. Playwright 의 HTTP 라우팅은 여기에 안 걸리므로,
- *   `window.WebSocket` 을 통째로 무동작 스텁으로 바꿔 실제 연결을 0으로 만든다.
- *   US-010 의 `/mod` 스크립트는 ModConsole 이 구독을 안 걸어 이 함정을 안 만났다.
+ * ★★ 운영 화면은 scoped RPC 폴링만 사용한다
+ *   HQ bearer는 Supabase Auth JWT가 아니므로 보호된 제출 표의 broad Realtime 구독에는
+ *   권한을 전달할 수 없다. `HqSubmissionBoard`는 세션 범위 RPC 폴링만 사용한다.
+ *   WebSocket 스텁은 미래 회귀가 실제 외부 연결을 만들지 못하게 하는 안전망으로 남긴다.
  *
  * 무엇을 보나 — 타입체크·단위시험으로는 판정되지 않는 것들
  *   ① `datetime-local`(시간대 없는 로컬 벽시계) → `timestamptz` ISO 변환이 실제로 맞는가

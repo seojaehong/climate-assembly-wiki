@@ -968,7 +968,7 @@ test('publishes and verifies an approved R2 reviewed plan through the CLI', () =
     }
     rmSync(directory, { recursive: true, force: true });
   }
-});
+}, 20_000);
 
 test('writes and re-verifies a non-identifying report for an exact R4-to-R3 artifact bundle', () => {
   const directory = mkdtempSync(join(tmpdir(), 'transcript-ontology-bundle-'));

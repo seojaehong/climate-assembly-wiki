@@ -6,10 +6,9 @@ import type { SubmissionItemInput } from '../../lib/deliberation';
  * 8.29에 조가 글을 못 올린 세 번째 구멍이 「저장이 한 번 실패하면 그걸로 끝」이었다.
  * 실패한 저장을 큐에 얹어 두고 연결이 돌아오면 자동으로 다시 보낸다(A-D4).
  *
- * ★ 다만 `submission_save` 는 items 전체 교체 = last-write-wins 다. 늦게 도착한 큐가
- *   그 사이 남이 저장한 최신본을 조용히 지울 수 있다. 그래서 보내기 전에 서버
- *   `updated_at` 을 큐의 `baseUpdatedAt` 과 대조한다(A-D5). **병합은 하지 않고,
- *   조용히 덮어쓰지도 않는다** — 다르면 조에게 묻는다.
+ * ★ `submission_save_v3` 의 서버 버전 비교가 최종 방어선이다. 큐는 최초
+ *   저장 시점의 `baseVersion`과 `requestId`를 그대로 보존해 재전송한다.
+ *   서버가 conflict를 돌려주면 **자동 덮어쓰기나 병합을 하지 않고** 조에게 묻는다.
  *
  * 설계 정본: `docs/02-design/features/submission-resilience-0912.design.md` §1.3.
  * 배선(마운트 확인·online 리스너·백오프 타이머)은 US-005 의 `SubmissionPanel.tsx` 몫이다.
@@ -20,24 +19,27 @@ import type { SubmissionItemInput } from '../../lib/deliberation';
 
 /** 큐 키 접두사. 초안(`climate_vote_draft:`)과 겹치지 않게 갈라 둔다. */
 export const QUEUE_KEY_PREFIX = 'climate_vote_queue:';
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+let malformedQueueReported = false;
 
 /**
  * 큐 키. **꼭지당 1건만** 산다 — 같은 꼭지에 새 실패가 오면 덮어쓴다.
  * 최신 것이 조의 의도이고, 큐가 쌓이면 전송 순서 문제가 생긴다.
  */
-export function queueKey(code: string, topicId: string): string {
-  return `${QUEUE_KEY_PREFIX}${code}:${topicId}`;
+export function queueKey(storageScope: string, topicId: string): string {
+  return `${QUEUE_KEY_PREFIX}${storageScope}:${topicId}`;
 }
 
 /** 재전송을 기다리는 저장 한 건. */
 export type QueuedSave = {
-  v: 1;
-  code: string;
+  v: 2;
   topicId: string;
   /** `toSaveItems(rows)` 결과 그대로. 큐에서 다시 만들지 않는다. */
   items: SubmissionItemInput[];
-  /** 이 저장이 딛고 선 서버 `updated_at`. 초안 봉투(`DraftEnvelope`)에 실려 오는 값이다. */
-  baseUpdatedAt: string | null;
+  /** 이 저장이 딛고 선 서버 generation. */
+  baseVersion: number;
+  /** 동일 저장의 재전송을 서버가 한 번만 처리하도록 하는 멱등성 키. */
+  requestId: string;
   queuedAtMs: number;
   /** 지금까지 실제로 보내 본 횟수. 오프라인이라 건너뛴 것은 세지 않는다. */
   attempts: number;
@@ -75,12 +77,8 @@ export function shouldAttempt(q: QueuedSave, nowMs: number, online: boolean): bo
 }
 
 /**
- * 보내도 되는가. 서버 `updated_at` 이 내가 딛고 선 값과 **같을 때만** 보낸다.
- *
- * `submission_get` 은 제출물이 아직 없으면 `updated_at` 을 아예 안 실어 보낸다
- * (`SubmissionGetResult.updated_at` 이 optional). undefined 와 null 을 같게 다뤄
- * 「양쪽 다 없음 = 내가 읽은 뒤에 아무도 저장하지 않았다」를 `send` 로 판정한다 —
- * 오프라인에서 처음 쓴 조가 연결되자마자 막히는 일이 없어야 한다.
+ * 예전 `updated_at` 사전 조회 방식의 하위 호환 순수 함수.
+ * 신규 토큰 경로는 TOCTOU 간격이 없는 서버 `expectedVersion` 비교를 쓴다.
  */
 export function conflictVerdict(
   serverUpdatedAt: string | null | undefined,
@@ -91,21 +89,21 @@ export function conflictVerdict(
 
 /** 큐 한 건 만들기. 첫 시도 시각은 `nextBackoffMs(1)` 뒤다. */
 export function makeQueuedSave(input: {
-  code: string;
   topicId: string;
   items: SubmissionItemInput[];
-  baseUpdatedAt: string | null;
+  baseVersion: number;
+  requestId: string;
   nowMs: number;
   /** 이미 몇 번 실패한 건인가. 재적재 시 이어 센다. 기본 1(첫 실패). */
   attempts?: number;
 }): QueuedSave {
   const attempts = input.attempts ?? 1;
   return {
-    v: 1,
-    code: input.code,
+    v: 2,
     topicId: input.topicId,
     items: input.items,
-    baseUpdatedAt: input.baseUpdatedAt,
+    baseVersion: input.baseVersion,
+    requestId: input.requestId,
     queuedAtMs: input.nowMs,
     attempts,
     nextAttemptAtMs: input.nowMs + nextBackoffMs(attempts),
@@ -123,7 +121,8 @@ function isItem(value: unknown): value is SubmissionItemInput {
   const item = value as Partial<SubmissionItemInput>;
   return (
     typeof item.ordinal === 'number' &&
-    Number.isFinite(item.ordinal) &&
+    Number.isSafeInteger(item.ordinal) &&
+    item.ordinal > 0 &&
     (item.kind === 'core' || item.kind === 'extra') &&
     typeof item.content === 'string' &&
     (item.rationale === null || typeof item.rationale === 'string')
@@ -145,25 +144,29 @@ export function readQueue(raw: string | null): QueuedSave | null {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
-  } catch {
+  } catch (error) {
+    if (!malformedQueueReported) {
+      malformedQueueReported = true;
+      console.warn('[submission queue] malformed cached queue discarded; draft content is retained', error);
+    }
     return null;
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
   const q = parsed as Partial<QueuedSave>;
-  if (q.v !== 1) return null;
-  if (typeof q.code !== 'string' || q.code.length === 0) return null;
+  if (q.v !== 2) return null;
   if (typeof q.topicId !== 'string' || q.topicId.length === 0) return null;
   if (!Array.isArray(q.items) || !q.items.every(isItem)) return null;
+  if (typeof q.baseVersion !== 'number' || !Number.isSafeInteger(q.baseVersion) || q.baseVersion < 0) return null;
+  if (typeof q.requestId !== 'string' || !UUID_PATTERN.test(q.requestId)) return null;
   if (typeof q.queuedAtMs !== 'number' || !Number.isFinite(q.queuedAtMs)) return null;
-  if (typeof q.attempts !== 'number' || !Number.isFinite(q.attempts)) return null;
+  if (typeof q.attempts !== 'number' || !Number.isSafeInteger(q.attempts) || q.attempts < 1) return null;
   if (typeof q.nextAttemptAtMs !== 'number' || !Number.isFinite(q.nextAttemptAtMs)) return null;
-  if (q.baseUpdatedAt !== null && typeof q.baseUpdatedAt !== 'string') return null;
   return {
-    v: 1,
-    code: q.code,
+    v: 2,
     topicId: q.topicId,
     items: q.items,
-    baseUpdatedAt: q.baseUpdatedAt,
+    baseVersion: q.baseVersion,
+    requestId: q.requestId,
     queuedAtMs: q.queuedAtMs,
     attempts: q.attempts,
     nextAttemptAtMs: q.nextAttemptAtMs,

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// test(mod-console): 300명 동시 부하 검증 — climate_vote.votes REST INSERT 부하 테스트.
+// test(mod-console): public_round_cast_v2를 통한 300명 동시 부하 검증.
 //
 // 배경/제약 (2026-07-24 라이브 실행 전 조사에서 확인, 브리프 원안과 다름 — 근거는 아래):
 //   - climate_vote.rounds는 anon INSERT 정책이 없다(admin_write ALL만 존재, admin_users 체크).
@@ -21,7 +21,7 @@
 //
 // 사용법:
 //   node scripts/loadtest-mod-console.mjs vote [--rounds-file <path>] [--per-round N] [--run-id <id>]
-//   node scripts/loadtest-mod-console.mjs setup --join-code <code> --count 15 [--title-prefix LOADTEST]
+//   WORKSHOP_ACCESS_TOKEN=<token> node scripts/loadtest-mod-console.mjs setup --count 15 [--title-prefix LOADTEST]
 //   node scripts/loadtest-mod-console.mjs cleanup [--rounds-file <path>]
 //
 // ── 2026-07-24 라이브 실행 결과 (기록) ──────────────────────────────────────────
@@ -44,7 +44,7 @@
 //   (300 부하테스트 표 + 사전 스모크테스트 1표, 모두 archived). 전 라운드 status=closed 확인.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import https from 'node:https';
@@ -82,7 +82,8 @@ function loadSupabaseConfig() {
     console.error('PUBLIC_SUPABASE_URL / PUBLIC_SUPABASE_ANON_KEY 를 찾을 수 없습니다 (wiki/.env 또는 환경변수).');
     process.exit(1);
   }
-  return { url, anonKey, serviceRoleKey };
+  const workshopAccessToken = process.env.WORKSHOP_ACCESS_TOKEN;
+  return { url, anonKey, serviceRoleKey, workshopAccessToken };
 }
 
 function parseArgs(argv) {
@@ -134,12 +135,14 @@ function postJson(urlStr, headers, bodyObj) {
         res.on('end', () => {
           const elapsedMs = performance.now() - started;
           const ok = res.statusCode >= 200 && res.statusCode < 300;
-          resolve({
-            ok,
-            status: res.statusCode,
-            elapsedMs,
-            body: ok ? null : Buffer.concat(chunks).toString('utf8').slice(0, 300),
-          });
+          const rawBody = Buffer.concat(chunks).toString('utf8');
+          let data = null;
+          try { data = rawBody ? JSON.parse(rawBody) : null; }
+          catch (error) {
+            if (ok) console.error(`RPC JSON 응답 해석 실패: ${error.message}`);
+          }
+          resolve({ ok, status: res.statusCode, elapsedMs, data,
+            body: ok ? null : rawBody.slice(0, 300) });
         });
       }
     );
@@ -156,6 +159,12 @@ function percentile(sortedArr, p) {
   if (sortedArr.length === 0) return NaN;
   const idx = Math.min(sortedArr.length - 1, Math.ceil((p / 100) * sortedArr.length) - 1);
   return sortedArr[Math.max(0, idx)];
+}
+
+function classifyVoteRpcResponse(result) {
+  if (!result.ok) return 'request_error';
+  if (result.data === 'ok' || result.data === 'duplicate' || result.data === 'closed') return result.data;
+  throw new Error(`unexpected public vote RPC result: ${JSON.stringify(result.data)}`);
 }
 
 function loadRoundIds(roundsFilePath) {
@@ -190,9 +199,8 @@ async function runVote(args) {
     apikey: anonKey,
     Authorization: `Bearer ${anonKey}`,
     'Content-Profile': 'climate_vote',
-    Prefer: 'return=minimal',
   };
-  const endpoint = `${url.replace(/\/$/, '')}/rest/v1/votes`;
+  const endpoint = `${url.replace(/\/$/, '')}/rest/v1/rpc/public_round_cast_v2`;
 
   // 5초 창 안에 무작위 지터로 흩뿌려 발사 (동시성 시뮬레이션 — 완전 동시 0ms는 비현실적)
   const tasks = [];
@@ -206,7 +214,18 @@ async function runVote(args) {
       tasks.push(
         new Promise((resolve) => {
           setTimeout(async () => {
-            const result = await postJson(endpoint, headers, { round_id: roundId, choice, client_id: clientId });
+            const result = await postJson(endpoint, headers, {
+              p_round_id: roundId,
+              p_choice: choice,
+              p_client_id: clientId,
+            });
+            try {
+              result.voteStatus = classifyVoteRpcResponse(result);
+            } catch (error) {
+              console.error('public vote RPC semantic check failed', error);
+              result.voteStatus = 'unexpected';
+            }
+            result.ok = result.ok && result.voteStatus === 'ok';
             resolve(result);
           }, jitterMs);
         })
@@ -220,6 +239,10 @@ async function runVote(args) {
 
   const ok = results.filter((r) => r.ok);
   const failed = results.filter((r) => !r.ok);
+  const duplicate = results.filter((r) => r.voteStatus === 'duplicate');
+  const closed = results.filter((r) => r.voteStatus === 'closed');
+  const unexpected = results.filter((r) => r.status >= 200 && r.status < 300
+    && !['ok', 'duplicate', 'closed'].includes(r.voteStatus));
   const latencies = ok.map((r) => r.elapsedMs).sort((a, b) => a - b);
 
   const p50 = percentile(latencies, 50);
@@ -229,6 +252,7 @@ async function runVote(args) {
   console.log('');
   console.log(`실제 발사 창(전체 완료까지): ${windowMs.toFixed(0)}ms`);
   console.log(`성공: ${ok.length} / ${total}  실패: ${failed.length}`);
+  console.log(`RPC 결과: ok=${ok.length} duplicate=${duplicate.length} closed=${closed.length} unexpected=${unexpected.length}`);
   console.log(`p50: ${p50.toFixed(1)}ms  p95: ${p95.toFixed(1)}ms  max: ${max.toFixed(1)}ms`);
   console.log(`에러율: ${((failed.length / total) * 100).toFixed(2)}%`);
 
@@ -246,22 +270,17 @@ async function runVote(args) {
   process.exitCode = pass ? 0 : 1;
 }
 
-// ── setup phase: mod_create_round RPC 경유(anon EXECUTE 부여됨) — 유일하게 anon 키만으로
-//    가능한 라운드 생성 경로. 지정한 join_code 팀이 status='active' 여야 성공한다. ────────
+// ── setup phase: workshop token-scoped v3 create RPC only. ────────────────────
 async function runSetup(args) {
-  const { url, anonKey } = loadSupabaseConfig();
-  const joinCode = args['join-code'];
+  const { url, anonKey, workshopAccessToken } = loadSupabaseConfig();
   const count = Number(args.count || 15);
   const titlePrefix = args['title-prefix'] || 'LOADTEST';
-  if (!joinCode) {
-    console.error('--join-code 가 필요합니다 (활성 상태인 테스트 팀의 6자리 코드).');
-    console.error('참고: rounds 테이블은 anon INSERT 정책이 없다(admin_write만 존재).');
-    console.error('  라운드 생성은 mod_create_round(p_code, ...) RPC(anon EXECUTE 부여됨) 경유로만 가능하며,');
-    console.error('  해당 join_code의 팀이 status=active 여야 한다. 팀 활성화는 서비스 롤/MCP 권한이 필요.');
+  if (!workshopAccessToken) {
+    console.error('WORKSHOP_ACCESS_TOKEN 환경변수가 필요합니다. 토큰을 명령행 인자로 전달하지 마세요.');
     process.exit(1);
   }
 
-  const endpoint = `${url.replace(/\/$/, '')}/rest/v1/rpc/mod_create_round`;
+  const rpcBase = `${url.replace(/\/$/, '')}/rest/v1/rpc`;
   const headers = {
     apikey: anonKey,
     Authorization: `Bearer ${anonKey}`,
@@ -271,20 +290,26 @@ async function runSetup(args) {
 
   const created = [];
   for (let i = 1; i <= count; i++) {
-    const result = await postJson(endpoint, headers, {
-      p_code: joinCode,
+    const result = await postJson(`${rpcBase}/mod_create_round_v3`, headers, {
+      p_token: workshopAccessToken,
       p_title: `${titlePrefix} r${i}`,
       p_type: 'RADIO',
       p_options: ['A', 'B'],
+      p_idempotency_key: randomUUID(),
     });
-    if (!result.ok) {
+    const roundId = result.data && typeof result.data.id === 'string' ? result.data.id : null;
+    if (!result.ok || !roundId || result.data?.status !== 'active') {
       console.error(`라운드 ${i} 생성 실패: status=${result.status} body=${result.body}`);
       process.exit(1);
     }
-    console.log(`라운드 ${i} 생성 완료`);
-    created.push(result);
+    // mod_create_round_v3 creates an active round. A redundant active -> active
+    // status call would violate the v3 transition contract (only close/reopen).
+    console.log(`라운드 ${i} 생성·활성 상태 확인 완료`);
+    created.push(roundId);
   }
-  console.log(`${count}개 라운드 생성 완료. id는 mod_create_round 응답(return=representation)에서 확인하세요.`);
+  const roundsPath = args['rounds-file'] || join(__dirname, 'loadtest-rounds.json');
+  writeFileSync(roundsPath, `${JSON.stringify(created, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
+  console.log(`${count}개 라운드 생성 완료. 비밀이 없는 id 목록: ${roundsPath}`);
 }
 
 // ── cleanup phase: cv_archive_round는 EXECUTE가 authenticated/service_role에만 부여되어
@@ -365,4 +390,4 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   await main();
 }
 
-export { parseEnvFile, loadSupabaseConfig, parseArgs, percentile, loadRoundIds, randomUUID };
+export { parseEnvFile, loadSupabaseConfig, parseArgs, percentile, loadRoundIds, classifyVoteRpcResponse, randomUUID };

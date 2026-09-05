@@ -13,7 +13,7 @@ export const HQ_TOKEN_KEY = 'climate_vote_hq_attendance_token';
 /** 로그인 바에 표시할 운영자명 보관 키(게이트 전용 — 출석 관리는 이 키를 읽지 않는다). */
 export const HQ_ACTOR_KEY = 'climate_vote_hq_gate_actor';
 
-/** 서버측 attendance_hq_unlock RPC의 rate limit 정책(5회 실패 → 15분 잠금)과 맞춘 안내 상수. */
+/** 서버측 named HQ unlock의 rate-limit 정책과 맞춘 안내 상수. */
 export const HQ_UNLOCK_MAX_ATTEMPTS = 5;
 export const HQ_UNLOCK_LOCK_MINUTES = 15;
 
@@ -39,4 +39,25 @@ export function gateFailureMessage(kind: GateFailure): string {
 /** 운영자 표시 이름 정규화 — 앞뒤 공백 제거. 빈 문자열이면 입력 누락으로 취급한다. */
 export function normalizeActorLabel(value: string): string {
   return value.trim();
+}
+
+export type HqAuthorizationErrorKind = 'expired' | 'transient';
+
+/**
+ * Decide whether an HQ RPC proved that the locally cached bearer is unusable.
+ *
+ * The bearer is deliberately retained for transport failures, 5xx responses,
+ * missing migrations, and ACL mistakes. Clearing it for those failures would
+ * turn a recoverable venue-network problem into a forced login. Conversely,
+ * the exact server authorization messages below can only be produced after an
+ * RPC has rejected the bearer or its bound operator/session.
+ */
+export function classifyHqAuthorizationError(error: unknown): HqAuthorizationErrorKind {
+  if (error == null || typeof error !== 'object') return 'transient';
+  const source = error as { message?: unknown };
+  if (typeof source.message !== 'string') return 'transient';
+  const message = source.message.trim();
+  return /^(?:[A-Z0-9]+:\s*)?(?:workshop authorization (?:required|expired or revoked)|active named HQ authorization required|HQ authorization (?:required|session mismatch)|attendance authorization (?:required|expired|session mismatch))$/i.test(message)
+    ? 'expired'
+    : 'transient';
 }

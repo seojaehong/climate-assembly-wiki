@@ -3,15 +3,14 @@
 // ## 다음 회차를 추가하는 법 — 이 파일 말고는 고치지 않는다
 // 1. 아래 SESSION_ROSTERS에 항목 하나를 추가한다.
 //      '<MMDD>-<이름>': { date: 'YYYY-MM-DD', teams: [{ name, subgroup, ordinal }, ...] }
-//    - slug는 반드시 date의 MMDD로 시작해야 한다. 접속코드는 date에서, 세션 조회는 slug에서
-//      나오므로 둘이 어긋나면 코드와 세션이 다른 날을 가리킨다.
-//    - ordinal은 그 세션 전체 조 순번이고 접속코드 뒷 두 자리가 된다(MMDD + NN).
-//      위치에서 유도하지 않고 손으로 적는다 — 앞에 조를 끼워 넣어도 이미 인쇄해서
-//      나눠 준 코드가 밀리면 안 되기 때문이다.
+//    - slug는 운영자가 행사일을 즉시 대조할 수 있도록 date의 MMDD로 시작한다.
+//    - ordinal은 그 세션 전체 조의 고정 정렬 순서다. 접속코드는 ordinal과 무관하게
+//      보안 난수원으로 별도 생성한다. 위치에서 유도하지 않고 손으로 적어 조를 끼워 넣어도
+//      화면·명찰·배부표의 기존 순서가 밀리지 않게 한다.
 //    - inheritTenancyFrom(선택)은 org_id·assembly_id를 물려받을 **기존 세션의 slug**다.
 //      아래 「테넌시 상속」 참조. 새 회차에는 사실상 필수다.
 // 2. ACTIVE_SESSION_SLUG를 그 slug로 바꾼다.
-// 3. `node scripts/seed-0829-teams.mjs --dry-run` 으로 코드표를 눈으로 확인한다.
+// 3. `node scripts/seed-0829-teams.mjs --dry-run` 으로 조 목록과 마스킹된 코드표를 확인한다.
 //
 // 예) 기획 A조·B조가 참여하는 회차는 15개 조 뒤에 ordinal 16·17로 두 줄만 더 적으면 된다.
 //     (숙의참여단만 오는 회차에는 등록하지 않는다.)
@@ -56,7 +55,7 @@ export const SESSION_ROSTERS = Object.freeze({
   // (기획참여단 제외 → 기획 A·B조를 두지 않는다).
   //
   // ★ 조 편성은 「바뀐다」는 언급만 있고 확정값을 받지 못했다. 그래서 8.29와 같은
-  //   3분과 × 5조 = 15조 **구조**로 연다. 여기 적는 것은 조의 이름·분과·순번(=접속코드)이지
+  //   3분과 × 5조 = 15조 **구조**로 연다. 여기 적는 것은 조의 이름·분과·정렬 순번이지
   //   누가 몇 조인지가 아니다 — 조원 배정은 assembly_member·team_assignment라는 다른 층이고
   //   이 파일이 다루지 않는다. 사무국이 조 편성을 확정해 주면 그때 이 목록만 고친다.
   '0912-deliberation': Object.freeze({
@@ -91,6 +90,12 @@ function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+const SESSION_SLUG_PATTERN = /^\d{4}-[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+function hasControlCharacters(value) {
+  return /[\u0000-\u001f\u007f]/.test(value);
+}
+
 /**
  * 세션 정의 하나를 검증해 정규화된 형태로 돌려준다. 등록 여부와 무관한 순수 함수 —
  * 다음 회차 정의를 활성화하지 않고도 이 함수로 확인할 수 있다.
@@ -102,6 +107,11 @@ function isNonEmptyString(value) {
 export function normalizeSessionRoster(slug, definition) {
   if (!isNonEmptyString(slug)) {
     throw new Error('normalizeSessionRoster: slug가 비어 있습니다 — 세션 슬러그를 문자열로 주세요.');
+  }
+  if (!SESSION_SLUG_PATTERN.test(slug)) {
+    throw new Error(
+      `normalizeSessionRoster: 슬러그 "${slug}"는 MMDD로 시작하고 소문자 영문·숫자·하이픈만 써야 합니다.`
+    );
   }
   if (!definition || typeof definition !== 'object') {
     throw new Error(`normalizeSessionRoster: "${slug}" 정의가 객체가 아닙니다 — { date, teams } 형태로 적으세요.`);
@@ -117,7 +127,7 @@ export function normalizeSessionRoster(slug, definition) {
   if (!slug.startsWith(mmdd)) {
     throw new Error(
       `normalizeSessionRoster: 슬러그 "${slug}"가 행사일 ${definition.date}의 MMDD(${mmdd})로 시작하지 않습니다 — ` +
-        '접속코드는 날짜에서, 세션 조회는 슬러그에서 나오므로 둘이 어긋나면 안 됩니다.'
+        '현장 배부표와 세션 조회에서 같은 회차임을 즉시 확인할 수 있도록 날짜 표기를 맞추세요.'
     );
   }
 
@@ -134,6 +144,11 @@ export function normalizeSessionRoster(slug, definition) {
       throw new Error(
         `normalizeSessionRoster: "${slug}"의 inheritTenancyFrom이 자기 자신입니다 — ` +
           '아직 없는 세션에서 org_id를 읽는 시드가 됩니다.'
+      );
+    }
+    if (!SESSION_SLUG_PATTERN.test(inheritTenancyFrom)) {
+      throw new Error(
+        `normalizeSessionRoster: "${slug}"의 inheritTenancyFrom 형식이 안전하지 않습니다.`
       );
     }
   }
@@ -156,10 +171,13 @@ export function normalizeSessionRoster(slug, definition) {
     if (!isNonEmptyString(team.subgroup)) {
       throw new Error(`normalizeSessionRoster: ${where}(${team.name})의 subgroup이 비어 있습니다.`);
     }
+    if (hasControlCharacters(team.name) || hasControlCharacters(team.subgroup)) {
+      throw new Error(`normalizeSessionRoster: ${where}의 name/subgroup에 제어 문자를 쓸 수 없습니다.`);
+    }
     if (!Number.isInteger(team.ordinal) || team.ordinal < 1 || team.ordinal > 99) {
       throw new Error(
         `normalizeSessionRoster: ${where}(${team.name})의 ordinal은 1..99 정수여야 합니다 ` +
-          `(받은 값: ${team.ordinal}). 접속코드 뒷 두 자리가 이 값입니다.`
+          `(받은 값: ${team.ordinal}). 화면·명찰·배부표에서 사용할 고정 정렬 순서입니다.`
       );
     }
     if (seenNames.has(team.name)) {
@@ -168,7 +186,7 @@ export function normalizeSessionRoster(slug, definition) {
     if (seenOrdinals.has(team.ordinal)) {
       throw new Error(
         `normalizeSessionRoster: "${slug}"에 ordinal ${team.ordinal}이 두 번 있습니다 — ` +
-          '같은 접속코드가 두 조에 발급됩니다.'
+          '조 정렬 순서는 세션 안에서 고유해야 합니다.'
       );
     }
     seenNames.add(team.name);

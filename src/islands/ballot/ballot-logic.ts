@@ -1,4 +1,5 @@
 import type { Ballot, BallotItem } from '../../lib/ballot';
+import { createSafeBrowserStorage } from '../../lib/safe-browser-storage';
 
 /** URL 쿼리에서 ballot 토큰(`?t=...`)을 파싱한다. 없거나 공백뿐이면 null. */
 export function parseBallotUrl(search: string): { token: string } | null {
@@ -42,12 +43,12 @@ export function scaleLabels(scale: number): string[] {
 }
 
 /**
- * /b 참여자 헤더의 분과 뱃지 문구. subgroup 있으면 '1분과 투표', 없으면 null(표시 없음).
+ * /b 참여자 헤더의 분과 뱃지 문구. subgroup 있으면 '1분과 의견조사', 없으면 null(표시 없음).
  * S4 미적용 DB에서는 subgroup 키 자체가 없다(undefined) — 그때도 null이라 기존 화면 그대로다.
  */
 export function subgroupVoteBadge(subgroup: string | null | undefined): string | null {
   const s = subgroup?.trim();
-  return s ? `${s} 투표` : null;
+  return s ? `${s} 의견조사` : null;
 }
 
 /** 유효 범위(1..scale) 안의 답변인지. */
@@ -77,16 +78,21 @@ function localSubmitKey(ballotId: string): string {
   return `cv_ballot_${ballotId}`;
 }
 
+const localSubmitStorage = createSafeBrowserStorage('localStorage');
+
+/** Whether the local completion marker will survive a page reload. */
+export function isLocalSubmitStoragePersistent(): boolean {
+  return localSubmitStorage.isPersistent();
+}
+
 /** 이 디바이스의 제출 기록(ISO 시각). 없으면 null. SSR(localStorage 없음)은 null. */
 export function getLocalSubmit(ballotId: string): string | null {
-  if (typeof localStorage === 'undefined') return null;
-  return localStorage.getItem(localSubmitKey(ballotId));
+  return localSubmitStorage.getItem(localSubmitKey(ballotId));
 }
 
 /** 제출 완료를 기록한다(ISO 시각). SSR에서는 no-op. */
 export function recordLocalSubmit(ballotId: string, now: Date = new Date()): void {
-  if (typeof localStorage === 'undefined') return;
-  localStorage.setItem(localSubmitKey(ballotId), now.toISOString());
+  localSubmitStorage.setItem(localSubmitKey(ballotId), now.toISOString());
 }
 
 // ── 화면 상태 전이 ──────────────────────────────────────────────────

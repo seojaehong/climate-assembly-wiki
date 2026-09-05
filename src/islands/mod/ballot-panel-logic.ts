@@ -141,6 +141,41 @@ export function validateBallotForm(title: string, items: BallotFormItem[]): Ball
   };
 }
 
+export type BallotCreateIntent = { fingerprint: string; requestId: string };
+
+export type CanonicalBallotCreatePayload = {
+  title: string;
+  instructions: string | null;
+  items: BallotItemInput[];
+  subgroup: string | null;
+};
+
+/** Bind retry identity to the exact normalized server payload. */
+export function ballotCreateFingerprint(payload: CanonicalBallotCreatePayload): string {
+  return JSON.stringify({
+    title: payload.title.trim(),
+    instructions: payload.instructions?.trim() || null,
+    items: payload.items.map((item) => ({
+      ordinal: item.ordinal,
+      statement: item.statement.trim(),
+      scale: item.scale,
+      required: item.required,
+    })),
+    subgroup: payload.subgroup?.trim() || null,
+  });
+}
+
+export function ballotCreateIntent(
+  current: BallotCreateIntent | null,
+  payload: CanonicalBallotCreatePayload,
+  createUuid: () => string,
+): BallotCreateIntent {
+  const fingerprint = ballotCreateFingerprint(payload);
+  return current?.fingerprint === fingerprint
+    ? current
+    : { fingerprint, requestId: createUuid() };
+}
+
 // ── 분과 스코프(S4) 라벨 ─────────────────────────────────────
 // subgroup은 null(=세션 전체)일 수도, S4 미적용 DB라 키 자체가 없을 수도(undefined) 있다.
 // 두 경우 모두 '전체'로 간주한다 — 코드가 DB보다 먼저 배포돼도 표시가 깨지지 않는다.

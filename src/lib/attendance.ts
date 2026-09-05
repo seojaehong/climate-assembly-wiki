@@ -63,21 +63,12 @@ export async function unlockTeamAttendanceByCode(joinCode: string): Promise<stri
   return typeof data === 'string' ? data : null;
 }
 
-export async function unlockHqAttendance(password: string, actorLabel: string): Promise<string | null> {
-  const { data, error } = await client().schema('climate_vote').rpc('attendance_hq_unlock', {
-    p_password: password,
-    p_actor_label: actorLabel,
-  });
-  if (error) throw error;
-  return typeof data === 'string' ? data : null;
-}
-
 /**
  * 본부 운영자별 로그인 — 그 사람의 비밀번호를 알아야 그 사람 이름의 토큰이 나온다.
  *
- * 공유 비밀번호(unlockHqAttendance)로는 아무나 남의 이름을 댈 수 있었다. 재오픈 사유와
- * 4범주 배정 기록에 진짜 행위자가 남으려면 이름이 증명돼야 한다.
- * 개인 비밀번호가 아직 없는 사람을 위해 호출부는 실패 시 공유 경로로 넘어간다.
+ * 공유 비밀번호로는 아무나 남의 이름을 댈 수 있었다. 재오픈 사유와 4범주 배정 기록에
+ * 실제 행위자가 남으려면 이름이 개인 비밀번호로 증명돼야 한다. 운영 클라이언트는
+ * 개인 로그인이 실패했을 때 공유 경로로 자동 전환하지 않는다.
  */
 export async function unlockHqNamed(operator: string, password: string): Promise<string | null> {
   const { data, error } = await client().schema('climate_vote').rpc('attendance_hq_unlock_named', {
@@ -86,25 +77,6 @@ export async function unlockHqNamed(operator: string, password: string): Promise
   });
   if (error) throw error;
   return typeof data === 'string' ? data : null;
-}
-
-/** 로그인 화면 이름 목록. 비밀번호는 이 표에 없다. */
-export type HqOperator = {
-  name: string;
-  default_subgroup: string | null;
-  /** 임시 비밀번호를 아직 안 바꾼 사람. 로그인 뒤 안내를 띄운다. */
-  must_change_password?: boolean;
-};
-
-export async function fetchHqOperators(): Promise<HqOperator[]> {
-  const { data, error } = await client()
-    .schema('climate_vote')
-    .from('hq_operator')
-    .select('name, default_subgroup, must_change_password')
-    .eq('active', true)
-    .order('name');
-  if (error) throw error;
-  return (data ?? []) as HqOperator[];
 }
 
 /**
@@ -119,34 +91,66 @@ export async function changeHqPassword(
   currentPassword: string,
   newPassword: string
 ): Promise<void> {
-  const { error } = await client().schema('climate_vote').rpc('hq_change_password', {
+  const { data, error } = await client().schema('climate_vote').rpc('hq_change_password', {
     p_token: token,
     p_current_password: currentPassword,
     p_new_password: newPassword,
   });
   if (error) throw new Error(error.message ?? '비밀번호를 바꾸지 못했습니다');
+  const result = data as { changed?: unknown; error?: unknown } | null;
+  if (result?.changed === true) return;
+  if (result?.error === 'current_password_incorrect') {
+    throw new Error('현재 비밀번호가 맞지 않습니다. 다시 확인해 주세요.');
+  }
+  if (result?.error === 'rate_limited') {
+    throw new Error('시도가 많아 잠겼습니다. 15분 뒤에 다시 해 주세요.');
+  }
+  throw new Error('비밀번호를 바꾸지 못했습니다. 다시 시도해 주세요.');
 }
 
-export async function fetchAttendanceRoster(token: string): Promise<AttendanceRosterRow[]> {
-  const { data, error } = await client().schema('climate_vote').rpc('attendance_roster', { p_token: token });
+/** Revoke the exact HQ bearer on the server before clearing local state. */
+export async function revokeHqSession(token: string): Promise<void> {
+  const { data, error } = await client().schema('climate_vote').rpc('workshop_hq_logout_v2', {
+    p_token: token,
+  });
+  if (error) throw new Error(error.message ?? '서버 로그아웃을 완료하지 못했습니다');
+  if (data !== true) throw new Error('서버 로그아웃을 완료하지 못했습니다');
+}
+
+export async function fetchAttendanceRoster(
+  token: string,
+  sessionSlug: string,
+): Promise<AttendanceRosterRow[]> {
+  const { data, error } = await client().schema('climate_vote').rpc('attendance_roster_v2', {
+    p_token: token,
+    p_session_slug: sessionSlug,
+  });
   if (error) throw error;
   return (data ?? []) as AttendanceRosterRow[];
 }
 
-export async function fetchHqAttendanceSummaries(): Promise<HqAttendanceSummary[]> {
-  const { data, error } = await client().schema('climate_vote').rpc('attendance_hq_summary');
+export async function fetchHqAttendanceSummaries(
+  token: string,
+  sessionSlug: string,
+): Promise<HqAttendanceSummary[]> {
+  const { data, error } = await client().schema('climate_vote').rpc('attendance_hq_summary_v2', {
+    p_token: token,
+    p_session_slug: sessionSlug,
+  });
   if (error) throw error;
   return (data ?? []) as HqAttendanceSummary[];
 }
 
 export async function setAttendance(
   token: string,
+  sessionSlug: string,
   assignmentId: string,
   action: AttendanceAction,
   occurredAt = new Date().toISOString(),
 ): Promise<void> {
-  const { error } = await client().schema('climate_vote').rpc('attendance_set', {
+  const { error } = await client().schema('climate_vote').rpc('attendance_set_v2', {
     p_token: token,
+    p_session_slug: sessionSlug,
     p_assignment_id: assignmentId,
     p_action: action,
     p_occurred_at: occurredAt,
@@ -154,18 +158,24 @@ export async function setAttendance(
   if (error) throw error;
 }
 
-export async function bulkPresent(token: string, assignmentIds: string[]): Promise<number> {
-  const { data, error } = await client().schema('climate_vote').rpc('attendance_bulk_present', {
+export async function bulkPresent(
+  token: string,
+  sessionSlug: string,
+  assignmentIds: string[],
+): Promise<number> {
+  const { data, error } = await client().schema('climate_vote').rpc('attendance_bulk_present_v2', {
     p_token: token,
+    p_session_slug: sessionSlug,
     p_assignment_ids: assignmentIds,
   });
   if (error) throw error;
   return Number(data ?? 0);
 }
 
-export async function finalizeAbsent(token: string): Promise<number> {
-  const { data, error } = await client().schema('climate_vote').rpc('attendance_finalize_absent', {
+export async function finalizeAbsent(token: string, sessionSlug: string): Promise<number> {
+  const { data, error } = await client().schema('climate_vote').rpc('attendance_finalize_absent_v2', {
     p_token: token,
+    p_session_slug: sessionSlug,
   });
   if (error) throw error;
   return Number(data ?? 0);
@@ -173,6 +183,7 @@ export async function finalizeAbsent(token: string): Promise<number> {
 
 export async function saveRosterMember(
   token: string,
+  sessionSlug: string,
   input: {
     assignmentId?: string | null;
     officialId: string;
@@ -181,8 +192,9 @@ export async function saveRosterMember(
     active: boolean;
   },
 ): Promise<string> {
-  const { data, error } = await client().schema('climate_vote').rpc('attendance_member_save', {
+  const { data, error } = await client().schema('climate_vote').rpc('attendance_member_save_v2', {
     p_token: token,
+    p_session_slug: sessionSlug,
     p_assignment_id: input.assignmentId ?? null,
     p_official_id: input.officialId,
     p_name: input.name,
@@ -193,18 +205,29 @@ export async function saveRosterMember(
   return String(data);
 }
 
-export async function fetchAttendanceAudit(token: string, limit = 200): Promise<AttendanceAuditRow[]> {
-  const { data, error } = await client().schema('climate_vote').rpc('attendance_hq_audit', {
+export async function fetchAttendanceAudit(
+  token: string,
+  sessionSlug: string,
+  limit = 200,
+): Promise<AttendanceAuditRow[]> {
+  const { data, error } = await client().schema('climate_vote').rpc('attendance_hq_audit_v2', {
     p_token: token,
+    p_session_slug: sessionSlug,
     p_limit: limit,
   });
   if (error) throw error;
   return (data ?? []) as AttendanceAuditRow[];
 }
 
-export async function setTeamAttendancePin(token: string, teamId: string, pin: string): Promise<void> {
-  const { error } = await client().schema('climate_vote').rpc('attendance_hq_set_team_pin', {
+export async function setTeamAttendancePin(
+  token: string,
+  sessionSlug: string,
+  teamId: string,
+  pin: string,
+): Promise<void> {
+  const { error } = await client().schema('climate_vote').rpc('attendance_hq_set_team_pin_v2', {
     p_token: token,
+    p_session_slug: sessionSlug,
     p_team_id: teamId,
     p_pin: pin,
   });
@@ -217,17 +240,24 @@ export async function setTeamAttendancePin(token: string, teamId: string, pin: s
  * RPC는 scope='hq' 토큰만 받는다 — 조 모더레이터가 자기 조 번호를 바꾸면 좌석표와 어긋나기 때문이다.
  * 20자를 넘기면 'table number too long' 예외가 난다(TABLE_NO_MAX_LENGTH).
  */
-export async function setTeamTableNo(token: string, teamId: string, tableNo: string | null): Promise<void> {
-  const { error } = await client().schema('climate_vote').rpc('attendance_hq_set_table_no', {
+export async function setTeamTableNo(
+  token: string,
+  sessionSlug: string,
+  teamId: string,
+  tableNo: string | null,
+): Promise<void> {
+  const { error } = await client().schema('climate_vote').rpc('attendance_hq_set_table_no_v2', {
     p_token: token,
+    p_session_slug: sessionSlug,
     p_team_id: teamId,
     p_table_no: tableNo,
   });
   if (error) throw error;
 }
 
-export async function fetchRoundEligibleCount(roundId: string): Promise<number> {
-  const { data, error } = await client().schema('climate_vote').rpc('attendance_round_eligible_count', {
+export async function fetchRoundEligibleCount(token: string, roundId: string): Promise<number> {
+  const { data, error } = await client().schema('climate_vote').rpc('attendance_round_eligible_count_v2', {
+    p_token: token,
     p_round_id: roundId,
   });
   if (error) throw error;

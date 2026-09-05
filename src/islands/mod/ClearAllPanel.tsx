@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CLEAR_CONFIRM_PHRASE, clearAllSubmissions,
   CURRENT_SESSION_SLUG,
+  type HqExpectedSubmission,
 } from '../../lib/hq-submissions';
+import { resolveHqClearIntent, type HqAssignmentIntent } from './hq-submission-board-logic';
 
 /**
  * 조별 산출물 전체 비우기 — 8.29 오전 연습 값을 오후 본 숙의 전에 치운다.
@@ -19,31 +21,83 @@ import { CLEAR_CONFIRM_PHRASE, clearAllSubmissions,
  * 색은 경고색을 쓰되 다른 버튼과 모양을 확실히 다르게 한다. 행사장에서 손이 미끄러져
  * 눌리는 자리에 두지 않는다는 뜻이다.
  */
-export default function ClearAllPanel({ token, onCleared }: { token: string; onCleared: () => void }) {
+export default function ClearAllPanel({
+  token,
+  expectedSubmissions,
+  onRefresh,
+}: {
+  token: string;
+  expectedSubmissions: HqExpectedSubmission[] | null;
+  onRefresh: () => Promise<void>;
+}) {
   const [open, setOpen] = useState(false);
   const [phrase, setPhrase] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
+  const intentRef = useRef<HqAssignmentIntent | undefined>(undefined);
+  const credentialEpochRef = useRef(0);
 
-  const armed = phrase.trim() === CLEAR_CONFIRM_PHRASE;
+  useEffect(() => {
+    credentialEpochRef.current += 1;
+    intentRef.current = undefined;
+    setOpen(false);
+    setPhrase('');
+    setBusy(false);
+    setMessage(null);
+    setFailed(null);
+    return () => {
+      credentialEpochRef.current += 1;
+    };
+  }, [token]);
+
+  const armed = phrase.trim() === CLEAR_CONFIRM_PHRASE && expectedSubmissions !== null;
 
   const run = async () => {
     if (!armed || busy) return;
     setBusy(true);
     setFailed(null);
     setMessage(null);
+    if (!expectedSubmissions) {
+      setFailed('현재 제출물 세대를 확인하지 못해 비우기를 중단했습니다. 보드를 다시 불러와 주세요.');
+      setBusy(false);
+      return;
+    }
+    const intent = resolveHqClearIntent(
+      intentRef.current,
+      CURRENT_SESSION_SLUG,
+      expectedSubmissions,
+    );
+    intentRef.current = intent;
+    const credentialEpoch = credentialEpochRef.current;
     try {
-      const result = await clearAllSubmissions(token, phrase.trim(), CURRENT_SESSION_SLUG);
+      const result = await clearAllSubmissions(token, CURRENT_SESSION_SLUG, {
+        confirmPhrase: phrase.trim(),
+        expectedSubmissions,
+        idempotencyKey: intent.idempotencyKey,
+      });
+      if (credentialEpochRef.current !== credentialEpoch) return;
+      intentRef.current = undefined;
+      if (result.status === 'conflict') {
+        setPhrase('');
+        await onRefresh();
+        if (credentialEpochRef.current !== credentialEpoch) return;
+        setFailed(
+          '제출물이 변경되어 아무것도 비우지 않았습니다. 최신 목록을 확인한 뒤 확인 문구를 다시 입력해 주세요.',
+        );
+        return;
+      }
+      setPhrase('');
+      await onRefresh();
+      if (credentialEpochRef.current !== credentialEpoch) return;
       setMessage(
         `${result.cleared_items}건을 비웠습니다. 지운 문장은 보관돼 있어 필요하면 되살릴 수 있습니다.`,
       );
-      setPhrase('');
-      onCleared();
-    } catch (error) {
+    } catch (error: unknown) {
+      if (credentialEpochRef.current !== credentialEpoch) return;
       setFailed(error instanceof Error ? error.message : '비우지 못했습니다.');
     } finally {
-      setBusy(false);
+      if (credentialEpochRef.current === credentialEpoch) setBusy(false);
     }
   };
 
@@ -82,6 +136,16 @@ export default function ClearAllPanel({ token, onCleared }: { token: string; onC
             지운 문장은 보관됩니다 — 실수로 눌렀다면 되살릴 수 있습니다. 다만 되살리려면 개발자가
             직접 손을 대야 하므로, 정말 지울 때만 진행하세요.
           </p>
+          {expectedSubmissions === null ? (
+            <p role="alert" className="mt-3 rounded-lg bg-[#FFF4D6] px-3 py-2 text-[15px] font-bold text-[#6B4B00]">
+              현재 제출물 세대를 확인하지 못해 비우기를 잠갔습니다. 위의 「지금 다시 연결」로 보드를
+              갱신해 주세요.
+            </p>
+          ) : (
+            <p className="mt-3 text-[14px] font-bold text-[#526975]">
+              현재 확인된 제출물 {expectedSubmissions.length}개가 모두 그대로일 때만 실행됩니다.
+            </p>
+          )}
 
           <label className="mt-4 block text-[15px] font-bold text-[#334E5C]">
             지우려면 「{CLEAR_CONFIRM_PHRASE}」라고 그대로 입력하세요

@@ -264,7 +264,8 @@ test('keeps the CLI scripts and browser contract in the Linux test workflow', ()
     'node platform-access-provisioning-plan.mjs --verify',
   );
   expect(workflow).toContain("- 'src/islands/platform/access/**'");
-  expect(workflow).toContain('src/islands/platform/access/access-plan-logic.test.ts');
+  expect(workflow).toContain('Run complete root Vitest suite');
+  expect(workflow).toContain('npm exec vitest -- run');
   expect(Object.keys(packageJson.scripts).some((name) => /apply.*access|access.*apply/.test(name))).toBe(false);
   expect(source).not.toContain('@supabase/supabase-js');
   expect(source).not.toContain('createClient(');

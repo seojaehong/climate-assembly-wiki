@@ -30,14 +30,13 @@ function result(topicId: string): IssueItemsResult {
 }
 
 describe('loadAssemblyRecords', () => {
-  it('각 회차 코드로 기록을 병렬 조회하고 원문 출처를 보존한다', async () => {
-    const loader = vi.fn(async (_code: string, topicId: string): Promise<PlatformResult<IssueItemsResult>> => ({
+  it('각 회차 id로 기록을 병렬 조회하고 원문 출처를 보존한다', async () => {
+    const loader = vi.fn(async (_sessionId: string, topicId: string): Promise<PlatformResult<IssueItemsResult>> => ({
       data: result(topicId),
       notice: null,
     }));
 
     const loaded = await loadAssemblyRecords(
-      { 'session-1': 'code-one', 'session-2': 'code-two' },
       groups,
       {
         org: { id: 'org-1', label: '한국갈등해결센터' },
@@ -46,7 +45,7 @@ describe('loadAssemblyRecords', () => {
       loader,
     );
 
-    expect(loader.mock.calls).toEqual([['code-one', 'topic-1'], ['code-two', 'topic-2']]);
+    expect(loader.mock.calls).toEqual([['session-1', 'topic-1'], ['session-2', 'topic-2']]);
     expect(loaded.notice).toBeNull();
     expect(loaded.data?.context).toEqual({
       org: { id: 'org-1', label: '한국갈등해결센터' },
@@ -76,26 +75,28 @@ describe('loadAssemblyRecords', () => {
     ]);
   });
 
-  it('주제가 있는 회차의 코드가 빠지면 조회를 시작하지 않는다', async () => {
+  it('주제가 없는 회차는 조회를 시작하지 않는다', async () => {
     const loader = vi.fn(async (): Promise<PlatformResult<IssueItemsResult>> => ({
       data: result('topic-1'),
       notice: null,
     }));
 
-    const loaded = await loadAssemblyRecords({ 'session-1': 'code-one' }, groups, {}, loader);
+    const loaded = await loadAssemblyRecords([
+      { id: 'session-empty', label: '빈 회차', topics: [] },
+    ], {}, loader);
 
-    expect(loaded).toEqual({ data: null, notice: '제2차 회의의 조 참여 코드를 입력하세요.' });
+    expect(loaded.data?.stats.itemCount).toBe(0);
+    expect(loaded.notice).toBeNull();
     expect(loader).not.toHaveBeenCalled();
   });
 
   it('한 주제라도 실패하면 불완전한 공론화 기록을 노출하지 않는다', async () => {
-    const loader = vi.fn(async (_code: string, topicId: string): Promise<PlatformResult<IssueItemsResult>> =>
+    const loader = vi.fn(async (_sessionId: string, topicId: string): Promise<PlatformResult<IssueItemsResult>> =>
       topicId === 'topic-2'
-        ? { data: null, notice: '참여 코드 범위를 확인하세요.' }
+        ? { data: null, notice: '운영자 권한 범위를 확인하세요.' }
         : { data: result(topicId), notice: null });
 
     const loaded = await loadAssemblyRecords(
-      { 'session-1': 'code-one', 'session-2': 'code-two' },
       groups,
       {},
       loader,
@@ -103,7 +104,7 @@ describe('loadAssemblyRecords', () => {
 
     expect(loaded).toEqual({
       data: null,
-      notice: '제2차 회의 · 수송 부문: 참여 코드 범위를 확인하세요.',
+      notice: '제2차 회의 · 수송 부문: 운영자 권한 범위를 확인하세요.',
     });
   });
 
@@ -111,7 +112,6 @@ describe('loadAssemblyRecords', () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     try {
       const loaded = await loadAssemblyRecords(
-        { 'session-1': 'code-one' },
         [groups[0]],
         {},
         async () => ({ data: null, notice: null }),
@@ -133,30 +133,29 @@ describe('loadAssemblyRecords', () => {
 });
 
 describe('AssemblyRecordConsole', () => {
-  it('회차별 비영구 코드 입력과 공론화 기록 로드 전 상태를 제공한다', () => {
+  it('로그인된 회차별 자동 동기화와 공론화 기록 로드 전 상태를 제공한다', () => {
     const html = renderToStaticMarkup(createElement(AssemblyRecordConsole, { groups }));
 
     expect(html).toContain('이 공론화의 조별 기록');
     expect(html).toContain('2개 회차 · 2개 주제');
-    expect(html).toContain('aria-label="공론화 기록 불러오기"');
-    expect(html).toContain('제1차 회의 참여 코드');
-    expect(html).toContain('제2차 회의 참여 코드');
-    expect(html.match(/type="password"/g)).toHaveLength(2);
-    expect(html).toContain('브라우저 저장소에 보관하지 않습니다.');
-    expect(html).toContain('회차별 코드를 입력하면 공론화 전체 기록이 표시됩니다.');
+    expect(html).toContain('aria-label="공론화 기록 동기화"');
+    expect(html).toContain('공론화 기록 새로고침');
+    expect(html).toContain('운영자 권한');
+    expect(html).not.toContain('type="password"');
+    expect(html).not.toContain('참여 코드');
     expect(html).not.toMatch(/border:(?:1|1\.5)px/);
   });
 
-  it('스코프 변경과 요청 완료 시 코드를 제거하고 stale 응답을 차단한다', () => {
+  it('스코프 변경 시 자동 재조회하고 stale 응답을 차단한다', () => {
     const source = readFileSync(new URL('./AssemblyRecordConsole.tsx', import.meta.url), 'utf8');
 
-    expect(source).toContain('setCodes({});');
+    expect(source).toContain('void load();');
     expect(source).toContain('const generation = requestGeneration.current + 1;');
     expect(source).toContain('requestGeneration.current = generation;');
     expect(source).toContain('() => requestGeneration.current === generation');
     expect(source).toContain('return () => { requestGeneration.current += 1; };');
-    expect(source).not.toContain('sessionStorage');
-    expect(source).not.toContain('localStorage');
+    expect(source).not.toContain('type="password"');
+    expect(source).not.toContain('join_code');
   });
 
   it('회차 또는 주제가 없으면 구분된 빈 상태를 제공한다', () => {

@@ -1,13 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   submissionFinalize,
   submissionGet,
   submissionSave,
   submissionReopenByTeam,
-  topicList,
+  SubmissionVersionConflictError,
   type SubmissionGetResult,
+  type SubmissionSaveResult,
   type SubmissionStatus,
   type Topic,
+  type WorkshopAccess,
+  type WorkshopAuthorization,
 } from '../../lib/deliberation';
 import {
   FINALIZE_CONFIRM_MESSAGE,
@@ -24,7 +27,7 @@ import {
   moveRow,
   nameOnlyRowIndexes,
   overlongRowIndexes,
-  pickRestoredRows,
+  restoredDraftDecision,
   removeRow,
   rowsFromItems,
   sameSavePayload,
@@ -44,7 +47,6 @@ import {
   writeDraft,
 } from './submission-draft-store';
 import {
-  conflictVerdict,
   makeQueuedSave,
   queueKey,
   readQueue,
@@ -79,6 +81,11 @@ import PrintableReport from './PrintableReport';
 import type { SubmissionReport } from './submission-report';
 import { buildBoards } from './hq-submission-board-logic';
 import type { HqSubmissionRow } from '../../lib/hq-submissions';
+import {
+  summarizeTopicWork,
+  type TopicWorkState,
+  type WorkshopWorkSummary,
+} from './workshop-session-state';
 
 /**
  * 조별 산출물 — 그날의 꼭지를 **한 화면에 모두 펼친다.**
@@ -116,7 +123,25 @@ type LoadedSubmission = {
   status: SubmissionStatus | null;
   updatedAt: string | null;
   finalizedAt: string | null;
+  version: number;
 };
+
+type SubmissionConflict = {
+  serverRows: EditorRow[];
+  serverVersion: number;
+  serverUpdatedAt: string | null;
+};
+
+export function conflictFromSaveError(
+  error: unknown,
+): SubmissionConflict | null {
+  if (!(error instanceof SubmissionVersionConflictError)) return null;
+  return {
+    serverRows: rowsFromItems(error.currentItems),
+    serverVersion: error.currentVersion,
+    serverUpdatedAt: error.currentUpdatedAt,
+  };
+}
 
 /**
  * 인쇄 문서를 다시 만들라는 신호.
@@ -218,7 +243,7 @@ function StaleBundleBanner() {
       <button
         type="button"
         onClick={reload}
-        className="h-12 shrink-0 rounded-xl bg-[#B5651D] px-5 text-[17px] font-bold text-white"
+        className="h-12 shrink-0 rounded-xl bg-[#8A4F08] px-5 text-[17px] font-bold text-white"
       >
         새로고침
       </button>
@@ -226,20 +251,21 @@ function StaleBundleBanner() {
   );
 }
 
-/** 꼭지 번호 뱃지 — ①②③. 4개를 넘으면 숫자로 떨어진다. */
-const ORDINAL_MARKS = ['①', '②', '③', '④', '⑤', '⑥'];
-function ordinalMark(n: number): string {
-  return ORDINAL_MARKS[n - 1] ?? String(n);
-}
-
 /** 꼭지 하나 = 구역 하나. 편집·저장·최종 제출을 스스로 갖는다. */
 function TopicSection({
-  code,
+  access,
+  fixtureMode = false,
+  storageScope,
   topic,
   fixtureSubmission,
   onUnsavedChange,
+  onWorkStateChange,
 }: {
-  code: string;
+  access: WorkshopAccess | null;
+  /** 명시적인 무네트워크 미리보기 경로. */
+  fixtureMode?: boolean;
+  /** 저장소 키에만 쓰는 비식별 조 scope(team.id). */
+  storageScope: string;
   topic: Topic;
   /** 주면 `submission_get` 을 부르지 않는다 — 픽스처 라우트 전용(HqSubmissionBoard 의 fixtureRows 와 같은 관례). */
   fixtureSubmission?: SubmissionGetResult;
@@ -250,8 +276,14 @@ function TopicSection({
    *   서버와 내용이 같은 초안까지 「미저장」이 되어 배지와 배너가 다른 말을 한다.
    */
   onUnsavedChange?: (topicId: string, unsaved: boolean) => void;
+  /** 상태 레일이 꼭지별 저장 상태를 합쳐 보여 주는 통로. */
+  onWorkStateChange?: (topicId: string, state: TopicWorkState) => void;
 }) {
   const [loaded, setLoaded] = useState<LoadedSubmission | null>(null);
+  /** 현재 편집본이 딛고 선 서버 OCC 버전. */
+  const [editBaseVersion, setEditBaseVersion] = useState(0);
+  /** 버전 필드가 없던 예전 초안의 충돌 감지를 위한 하위 호환 기준. */
+  const [editBaseUpdatedAt, setEditBaseUpdatedAt] = useState<string | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [rows, setRows] = useState<EditorRow[]>([emptyRow()]);
   const [baseline, setBaseline] = useState<EditorRow[]>([emptyRow()]);
@@ -260,6 +292,7 @@ function TopicSection({
   const [finalizing, setFinalizing] = useState(false);
   const [confirmFinalize, setConfirmFinalize] = useState(false);
   const [reopening, setReopening] = useState(false);
+  const [operationFailed, setOperationFailed] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   /** 「이대로 두겠다」고 조가 답한 긴 칸 조합. 새 덩어리가 생기면 다시 묻는다. */
   const [longNoticeAnswered, setLongNoticeAnswered] = useState<string | null>(null);
@@ -271,13 +304,18 @@ function TopicSection({
    * 재전송 직전에 **서버가 더 새것**으로 밝혀진 상태. 보내지 않고 조에게 묻는다(A-D5).
    * 병합도 하지 않고 조용히 덮어쓰지도 않는다 — 어느 쪽이든 남의 글이 사라진다.
    */
-  const [conflict, setConflict] = useState<{ serverRows: EditorRow[] } | null>(null);
+  const [conflict, setConflict] = useState<SubmissionConflict | null>(null);
   const [showServerRows, setShowServerRows] = useState(false);
+  const [manualMerge, setManualMerge] = useState(false);
   /**
    * 재전송이 겹치지 않게 하는 자물쇠. 불리언이 아니라 **시각**을 넣는다 —
    * 요청이 영영 안 끝나면 불리언 자물쇠는 박힌 채 남아 큐가 영원히 멈춘다.
    */
   const attemptingSinceRef = useRef<number | null>(null);
+  const finalizeDialogRef = useRef<HTMLDivElement>(null);
+  const finalizeTriggerRef = useRef<HTMLButtonElement>(null);
+  const finalizeTitleId = useId();
+  const finalizeDescriptionId = useId();
   /**
    * 워커가 「지금 화면」을 봐야 할 때만 쓴다. 워커 이펙트를 `rows` 로 다시 태우면
    * 조가 한 글자 칠 때마다 백오프 타이머가 처음부터 다시 걸린다.
@@ -309,9 +347,9 @@ function TopicSection({
     return () => clearInterval(t);
   }, [dirtySinceMs]);
   // 미저장 입력 임시 보관함 — 조·꼭지마다 따로 둔다.
-  const draftKey = `climate_vote_draft:${code}:${topic.id}`;
+  const draftKey = `climate_vote_draft:${storageScope}:${topic.id}`;
   // 저장 실패분 재전송 큐 — 같은 보관함(local→session→메모리)에 접두사만 갈라 둔다.
-  const qKey = queueKey(code, topic.id);
+  const qKey = queueKey(storageScope, topic.id);
   const badge = submissionBadge(loaded?.status ?? null);
   // ★ 위 `badge` 는 잠금(최종 제출) 배지다. 이것은 **저장 상태** 배지로 별개다.
   const saveStatus = draftStatusLabel(
@@ -328,6 +366,9 @@ function TopicSection({
   );
   const topicOpen = topic.status === 'open';
   const editable = loaded != null && isEditable(loaded.status) && topicOpen;
+  // A save/finalize request captures a complete replacement payload. Keep the editor read-only
+  // while it is in flight so a successful response can never erase a later keystroke.
+  const editorWritable = editable && !saving && !finalizing && !reopening && !confirmFinalize;
 
   // ── 한 칸에 여러 사람 말이 든 것 같을 때 (2차 방어선) ────────────
   // 1차(붙여넣기 분해)가 옛 번들·드래그앤드롭으로 새어도 여기서 한 번 더 잡힌다.
@@ -339,6 +380,7 @@ function TopicSection({
     editable && overlong.length > 0 && longNoticeAnswered !== longSignature;
 
   const handleSplitLong = () => {
+    if (!editorWritable) return;
     const out = splitOverlongRows(rows);
     if (!out.applied) {
       setToast(
@@ -363,6 +405,7 @@ function TopicSection({
   const showNameNotice = editable && nameOnly.length > 0 && nameNoticeAnswered !== nameSignature;
 
   const handleLiftNames = () => {
+    if (!editorWritable) return;
     const out = liftNameOnlyRows(rows);
     if (!out.applied) {
       setNameNoticeAnswered(nameSignature);
@@ -379,31 +422,102 @@ function TopicSection({
     return () => clearTimeout(t);
   }, [toast]);
 
+  // 최종 제출은 파괴적 잠금 동작이다. 열리면 안전한 첫 버튼으로 이동하고, Tab을
+  // 다이얼로그 안에 가두며, Escape/닫기 뒤에는 열었던 버튼으로 돌아간다.
+  useEffect(() => {
+    if (!confirmFinalize) return;
+    const dialog = finalizeDialogRef.current;
+    if (!dialog) return;
+    const previousFocus = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : finalizeTriggerRef.current;
+    const focusable = () =>
+      Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not([disabled])'));
+    focusable()[0]?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setConfirmFinalize(false);
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const buttons = focusable();
+      if (buttons.length === 0) return;
+      const currentIndex = buttons.indexOf(document.activeElement as HTMLButtonElement);
+      if (event.shiftKey && currentIndex <= 0) {
+        event.preventDefault();
+        buttons[buttons.length - 1].focus();
+      } else if (!event.shiftKey && currentIndex === buttons.length - 1) {
+        event.preventDefault();
+        buttons[0].focus();
+      }
+    };
+    dialog.addEventListener('keydown', onKeyDown);
+    return () => {
+      dialog.removeEventListener('keydown', onKeyDown);
+      previousFocus?.focus();
+    };
+  }, [confirmFinalize]);
+
   const loadSubmission = useCallback(async () => {
     try {
-      const result = fixtureSubmission ?? (await submissionGet(code, topic.id));
+      let result: SubmissionGetResult;
+      if (fixtureMode) {
+        result = fixtureSubmission ?? { status: null, version: 0, items: [] };
+      } else {
+        if (!access) throw new Error('Workshop authorization is unavailable');
+        result = await submissionGet(access, topic.id);
+      }
       const nextRows = rowsFromItems(result.items ?? []);
       setLoaded({
         status: result.status ?? null,
         updatedAt: result.updated_at ?? null,
         finalizedAt: result.finalized_at ?? null,
+        version: result.version ?? 0,
       });
       setBaseline(nextRows);
       setSavedAt(result.updated_at ?? null);
       setLoadFailed(false);
+      setOperationFailed(false);
       // 탭을 옮겼다 왔을 때 저장 안 한 글을 되살린다. 서버 내용을 기준선으로 두고,
       // 보관분이 그와 다를 때만 화면에 올린다(저장을 마친 뒤엔 같아지므로 안 뜬다).
-      let restored: EditorRow[] | null = null;
+      const currentVersion = result.version ?? 0;
+      let restored: ReturnType<typeof restoredDraftDecision> = null;
       try {
-        restored = pickRestoredRows(draftStore.getItem(draftKey), nextRows);
-      } catch {
-        /* 보관함을 못 읽는 브라우저 — 서버 내용으로 연다 */
+        const rawDraft = draftStore.getItem(draftKey);
+        restored = restoredDraftDecision(
+          rawDraft,
+          nextRows,
+          currentVersion,
+          result.updated_at ?? null,
+        );
+      } catch (error) {
+        console.error('[submission draft] failed to restore local draft', error);
       }
-      setRows(restored ?? nextRows);
-    } catch {
+      if (restored) {
+        setEditBaseVersion(restored.expectedVersion);
+        setEditBaseUpdatedAt(restored.baseUpdatedAt);
+        setRows(restored.rows);
+        if (restored.conflictsWithServer) {
+          setConflict({
+            serverRows: nextRows,
+            serverVersion: currentVersion,
+            serverUpdatedAt: result.updated_at ?? null,
+          });
+          setShowServerRows(true);
+          setManualMerge(false);
+        }
+      } else {
+        setEditBaseVersion(currentVersion);
+        setEditBaseUpdatedAt(result.updated_at ?? null);
+        setRows(nextRows);
+      }
+    } catch (error) {
+      console.warn('[submission] load failed; preserving the current editor state', error);
       setLoadFailed(true);
     }
-  }, [code, topic.id, draftKey, fixtureSubmission]);
+  }, [access, topic.id, draftKey, fixtureMode, fixtureSubmission]);
 
   useEffect(() => {
     void loadSubmission();
@@ -415,9 +529,9 @@ function TopicSection({
     if (loaded == null) return;
     // ★ 딛고 선 서버 updated_at 을 함께 넣는다 — 재전송 큐(US-004·005)가
     //   「내가 읽은 뒤에 남이 저장했는가」를 이 값으로 판정한다.
-    if (dirty) draftStore.setItem(draftKey, writeDraft(rows, loaded.updatedAt, Date.now()));
+    if (dirty) draftStore.setItem(draftKey, writeDraft(rows, editBaseUpdatedAt, Date.now(), editBaseVersion));
     else draftStore.removeItem(draftKey);
-  }, [rows, dirty, loaded, draftKey]);
+  }, [rows, dirty, loaded, draftKey, editBaseUpdatedAt, editBaseVersion]);
 
   // 마감 배너(탭 바깥)가 볼 수 있게 미저장 사실을 위로 올린다.
   // ★ 「저장 안 함」과 「재전송 대기」를 **같은 사실**로 묶는다 — 둘 다 서버에 아직
@@ -426,6 +540,25 @@ function TopicSection({
   useEffect(() => {
     onUnsavedChange?.(topic.id, unsavedForBanner);
   }, [onUnsavedChange, topic.id, unsavedForBanner]);
+  useEffect(() => {
+    onWorkStateChange?.(topic.id, {
+      unsaved: unsavedForBanner,
+      queued: queued != null,
+      conflict: conflict != null,
+      saving: saving || finalizing,
+      failed: loadFailed || operationFailed,
+    });
+  }, [
+    conflict,
+    finalizing,
+    loadFailed,
+    onWorkStateChange,
+    operationFailed,
+    queued,
+    saving,
+    topic.id,
+    unsavedForBanner,
+  ]);
 
   // 저장 전 이탈(새로고침·탭 닫기) confirm — 자동 저장이 없으므로 이 방어선이 유일하다.
   // 구역마다 걸어 두면 어느 꼭지에 미저장분이 있어도 잡힌다.
@@ -463,6 +596,7 @@ function TopicSection({
     setQueued(null);
     setConflict(null);
     setShowServerRows(false);
+    setManualMerge(false);
   }, [qKey]);
 
   const dropDraft = useCallback(() => {
@@ -474,34 +608,122 @@ function TopicSection({
     clearQueue();
   }, [draftKey, clearQueue]);
 
+  /**
+   * Accept a successful save as the new OCC baseline before doing a follow-up fetch.
+   *
+   * The fetch can fail even though the write succeeded. More importantly, a queued request can
+   * finish after the user has continued typing. In that case we keep the current rows on screen,
+   * rewrite their draft against the newly accepted server version, and deliberately skip reload.
+   */
+  const settleAcceptedSave = useCallback((
+    items: ReturnType<typeof toSaveItems>,
+    result: SubmissionSaveResult,
+    fallbackBaseVersion: number,
+  ): { hasNewerRows: boolean; version: number } => {
+    const acceptedRows = rowsFromItems(items);
+    const acceptedAt = result.updated_at ?? new Date().toISOString();
+    const version = result.version ?? (fallbackBaseVersion + 1);
+    const currentRows = rowsRef.current;
+    const hasNewerRows = !sameSavePayload(currentRows, items);
+
+    setBaseline(acceptedRows);
+    setSavedAt(acceptedAt);
+    setEditBaseVersion(version);
+    setEditBaseUpdatedAt(acceptedAt);
+    setLoaded((current) => current ? {
+      ...current,
+      status: result.status,
+      updatedAt: acceptedAt,
+      version,
+    } : current);
+    setLoadFailed(false);
+
+    if (hasNewerRows) {
+      clearQueue();
+      draftStore.setItem(
+        draftKey,
+        writeDraft(currentRows, acceptedAt, Date.now(), version),
+      );
+    } else {
+      dropDraft();
+    }
+    return { hasNewerRows, version };
+  }, [clearQueue, draftKey, dropDraft]);
+
+  /** Lab route only: mirror a completed write in component state without touching Supabase. */
+  const applyFixtureSubmission = (
+    items: ReturnType<typeof toSaveItems>,
+    status: LoadedSubmission['status'],
+  ): number => {
+    const nextRows = rowsFromItems(items);
+    const now = new Date().toISOString();
+    const version = Math.max(editBaseVersion, loaded?.version ?? 0) + 1;
+    dropDraft();
+    setRows(nextRows);
+    setBaseline(nextRows);
+    setSavedAt(now);
+    setEditBaseVersion(version);
+    setEditBaseUpdatedAt(now);
+    setLoaded({ status, updatedAt: now, finalizedAt: status === 'final' ? now : null, version });
+    return version;
+  };
+
   const handleSave = async () => {
-    if (!editable) return;
+    if (!editorWritable || !loaded || savingRef.current) return;
+    const items = toSaveItems(rows);
+    if (fixtureMode) {
+      setSaving(true);
+      applyFixtureSubmission(items, loaded.status === 'reopened' ? 'reopened' : 'draft');
+      setToast('미리보기에서 저장 상태를 확인했습니다. 운영 DB에는 전송하지 않았습니다.');
+      setSaving(false);
+      return;
+    }
+    if (!access) return;
+    const requestId = crypto.randomUUID();
     setSaving(true);
+    setOperationFailed(false);
     try {
       // ★ 반환값을 버리지 않는다 — 서버가 줄을 나눴는지, 상한 때문에 나누기를 포기했는지가
       //   여기에만 실려 온다(마이그레이션 s15). 버리면 조는 칸이 왜 늘었는지 모른다.
-      const result = await submissionSave(code, topic.id, toSaveItems(rows));
-      dropDraft();
-      setToast(saveOutcomeMessage(result));
-      await loadSubmission();
+      const result = await submissionSave(access, topic.id, items, {
+        expectedVersion: editBaseVersion,
+        idempotencyKey: requestId,
+      });
+      const settled = settleAcceptedSave(items, result, editBaseVersion);
+      setToast(settled.hasNewerRows
+        ? '누르기 전 내용은 저장했고, 그 뒤에 쓴 내용은 미저장으로 남겨 두었습니다.'
+        : saveOutcomeMessage(result));
+      if (!settled.hasNewerRows) await loadSubmission();
       announceSubmissionChanged();
     } catch (error) {
+      console.warn('[submission] save failed', error);
+      const nextConflict = conflictFromSaveError(error);
+      if (nextConflict) {
+        draftStore.removeItem(qKey);
+        setQueued(null);
+        setConflict(nextConflict);
+        setShowServerRows(true);
+        setManualMerge(false);
+        setOperationFailed(false);
+        setToast('다른 기기에서 먼저 저장했습니다. 두 내용을 확인해 주세요.');
+        return;
+      }
       // ★ 다시 보내면 될 실패(네트워크 계열)만 큐로 간다. 잠긴 꼭지·마감된 꼭지는
       //   몇 번을 보내도 같은 결과라, 큐에 넣으면 300초마다 영원히 두드리는 소음이 된다.
       const kind = saveFailureKind(error);
       if (kind === 'network' && loaded != null) {
         const q = makeQueuedSave({
-          code,
           topicId: topic.id,
-          items: toSaveItems(rows),
-          // 딛고 선 서버 시각. 재전송 직전에 이 값으로 「그사이 남이 저장했는가」를 본다.
-          baseUpdatedAt: loaded.updatedAt,
+          items,
+          baseVersion: editBaseVersion,
+          requestId,
           nowMs: Date.now(),
         });
         draftStore.setItem(qKey, writeQueue(q));
         setQueued(q);
         setConflict(null);
       }
+      setOperationFailed(kind !== 'network');
       setToast(saveFailureMessage(kind));
     } finally {
       setSaving(false);
@@ -511,16 +733,15 @@ function TopicSection({
   /**
    * 재전송 한 번 — 설계 §1.3 의 절차를 그대로 따른다.
    *
-   * 1. `submissionGet` 으로 지금 서버 `updated_at` 을 읽는다
-   * 2. 큐의 `baseUpdatedAt` 과 같을 때만 보낸다
-   * 3. 다르면 **보내지 않고** 조에게 묻는다(충돌)
-   * 4. `submissionGet` 자체가 실패하면 아무것도 안 보내고 다음 백오프로 넘긴다
+   * 큐에 보존한 `baseVersion`·`requestId`를 그대로 `submission_save_v3`에 보낸다.
+   * 서버의 원자적 버전 비교가 conflict를 돌려주면 자동 전송을 멈추고 조에게 묻는다.
    *
    * `force` 는 「연결이 돌아왔다」·「지금 다시 시도」처럼 **새 정보가 생긴 순간**에만 준다.
    * 그때까지의 백오프는 「연결이 없다」는 추정 위에 잡힌 것이라 더 기다릴 이유가 없다.
    */
   const attempt = useCallback(
     async (q: QueuedSave, force: boolean) => {
+      if (fixtureMode || !access) return;
       const now = Date.now();
       const online = typeof navigator === 'undefined' ? true : navigator.onLine !== false;
       if (!online) return; // 오프라인이면 시도 자체를 건너뛴다 — 실패 횟수를 낭비하지 않는다
@@ -535,26 +756,33 @@ function TopicSection({
       // 보내는 동안은 저장·최종 제출 버튼을 잠근다 — 조가 그 틈에 새 내용을 저장하면
       // 뒤늦게 도착한 큐가 그걸 덮는다(같은 사고의 반대 방향).
       setSaving(true);
+      setOperationFailed(false);
       try {
-        const server = await submissionGet(q.code, q.topicId);
-        if (conflictVerdict(server.updated_at, q.baseUpdatedAt) === 'conflict') {
-          setConflict({ serverRows: rowsFromItems(server.items ?? []) });
+        const result = await submissionSave(access, q.topicId, q.items, {
+          expectedVersion: q.baseVersion,
+          idempotencyKey: q.requestId,
+        });
+        const settled = settleAcceptedSave(q.items, result, q.baseVersion);
+        if (!settled.hasNewerRows) await loadSubmission();
+        announceSubmissionChanged();
+        setToast(settled.hasNewerRows
+          ? '대기하던 내용은 저장했고, 그 뒤에 쓴 내용은 미저장으로 남겨 두었습니다.'
+          : '연결이 돌아와 자동으로 저장했습니다.');
+      } catch (error) {
+        console.warn('[submission queue] retry failed', error);
+        const nextConflict = conflictFromSaveError(error);
+        if (nextConflict) {
+          setConflict(nextConflict);
+          setShowServerRows(true);
+          setManualMerge(false);
+          setOperationFailed(false);
           return;
         }
-        await submissionSave(q.code, q.topicId, q.items);
-        // ★ 순서는 큐 삭제 → dropDraft() → loadSubmission() 다(2026-08-30 실화면 버그).
-        //   다만 **오프라인 동안 조가 더 썼으면 초안을 버리지 않는다.** 그때 초안은
-        //   낡은 사본이 아니라 큐보다 새 글이고, 버리면 화면에서도 저장소에서도 사라진다.
-        if (sameSavePayload(rowsRef.current, q.items)) dropDraft();
-        else clearQueue();
-        await loadSubmission();
-        announceSubmissionChanged();
-        setToast('연결이 돌아와 자동으로 저장했습니다.');
-      } catch (error) {
         const kind = saveFailureKind(error);
         if (kind !== 'network') {
           // 잠겼거나 마감됐다 — 다시 보내도 같은 결과다. 큐를 놓고 조에게 알린다.
           clearQueue();
+          setOperationFailed(true);
           setToast(saveFailureMessage(kind));
           return;
         }
@@ -566,40 +794,108 @@ function TopicSection({
         setSaving(false);
       }
     },
-    [qKey, dropDraft, clearQueue, loadSubmission],
+    [access, fixtureMode, qKey, clearQueue, loadSubmission, settleAcceptedSave],
   );
 
-  /**
-   * 충돌 상태에서 조가 「내 내용으로 덮어쓰기」를 골랐다.
-   *
-   * 보내는 것은 **큐에 실린 내용**이다(조가 그걸 보고 골랐다). 화면에서 다시 만들면
-   * 고른 것과 다른 게 나간다.
-   */
-  const handleOverwrite = async () => {
-    const q = queued;
-    if (!q) return;
+  const saveConflictResolution = async (
+    items: ReturnType<typeof toSaveItems>,
+    successMessage: string,
+  ) => {
+    if (!conflict) return;
+    if (fixtureMode) {
+      applyFixtureSubmission(items, loaded?.status === 'reopened' ? 'reopened' : 'draft');
+      setToast(`${successMessage} 운영 DB에는 전송하지 않았습니다.`);
+      return;
+    }
+    if (!access) return;
+    const retryRequestId = crypto.randomUUID();
     setSaving(true);
+    setOperationFailed(false);
     try {
-      await submissionSave(q.code, q.topicId, q.items);
-      if (sameSavePayload(rowsRef.current, q.items)) dropDraft();
-      else clearQueue();
-      await loadSubmission();
+      const result = await submissionSave(access, topic.id, items, {
+        expectedVersion: conflict.serverVersion,
+        idempotencyKey: retryRequestId,
+        force: true,
+      });
+      const settled = settleAcceptedSave(items, result, conflict.serverVersion);
+      if (!settled.hasNewerRows) await loadSubmission();
       announceSubmissionChanged();
-      setToast('내 내용으로 저장했습니다.');
+      setToast(settled.hasNewerRows
+        ? `${successMessage} 그 뒤에 쓴 내용은 미저장으로 남겨 두었습니다.`
+        : successMessage);
     } catch (error) {
+      console.warn('[submission conflict] selected resolution failed', error);
+      const nextConflict = conflictFromSaveError(error);
+      if (nextConflict) {
+        // force 저장도 서버가 확인한 version에 대한 CAS다. 선택 뒤 다른 기기가 먼저
+        // 저장했다면 최신 서버본으로 대화상자를 갱신하고 다시 판단하게 한다.
+        setConflict(nextConflict);
+        setShowServerRows(true);
+        setManualMerge(false);
+        setOperationFailed(false);
+        setToast('선택 내용을 저장하는 사이 다른 변경이 반영됐습니다. 최신 서버본을 다시 확인해 주세요.');
+        return;
+      }
       const kind = saveFailureKind(error);
-      if (kind !== 'network') clearQueue();
+      if (kind === 'network') {
+        // The explicit overwrite may or may not have reached the server. Retry non-forced with a
+        // fresh request id: unchanged state saves, while any completed/racing write becomes a
+        // visible conflict instead of being overwritten automatically.
+        const q = makeQueuedSave({
+          topicId: topic.id,
+          items,
+          baseVersion: conflict.serverVersion,
+          requestId: crypto.randomUUID(),
+          nowMs: Date.now(),
+        });
+        draftStore.setItem(qKey, writeQueue(q));
+        setQueued(q);
+        setConflict(null);
+      } else {
+        clearQueue();
+      }
+      setOperationFailed(kind !== 'network');
       setToast(saveFailureMessage(kind));
     } finally {
       setSaving(false);
     }
   };
 
+  /** 충돌을 확인한 사용자가 명시적으로 선택할 때만 내 시도분을 강제 저장한다. */
+  const handleOverwrite = async () => {
+    if (!conflict) return;
+    await saveConflictResolution(toSaveItems(rowsRef.current), '내 내용으로 저장했습니다.');
+  };
+
+  /** 서버본을 정본으로 고르면 내 초안·큐를 지우고 화면도 같이 맞춘다. */
+  const handleKeepServer = async () => {
+    if (!conflict) return;
+    const serverRows = conflict.serverRows;
+    dropDraft();
+    setRows(serverRows);
+    setBaseline(serverRows);
+    setSavedAt(conflict.serverUpdatedAt);
+    setEditBaseVersion(conflict.serverVersion);
+    setEditBaseUpdatedAt(conflict.serverUpdatedAt);
+    setLoaded((current) => current ? {
+      ...current,
+      version: conflict.serverVersion,
+      updatedAt: conflict.serverUpdatedAt,
+    } : current);
+    setToast('서버에 있던 내용을 유지했습니다.');
+    await loadSubmission();
+  };
+
+  const handleManualMergeSave = async () => {
+    await saveConflictResolution(toSaveItems(rowsRef.current), '병합한 내용으로 저장했습니다.');
+  };
+
   // 마운트 시 큐 확인 — 탭을 닫았다 다시 연 조는 여기서 대기 중인 건을 되찾는다.
   useEffect(() => {
-    setQueued(readQueue(draftStore.getItem(qKey)));
-    setConflict(null);
-    setShowServerRows(false);
+    const raw = draftStore.getItem(qKey);
+    const restored = readQueue(raw);
+    if (raw && !restored) draftStore.removeItem(qKey);
+    setQueued(restored);
   }, [qKey]);
 
   /**
@@ -609,7 +905,7 @@ function TopicSection({
    * 충돌 중에는 돌지 않는다 — 조가 고르기 전에는 보낼 것이 없다.
    */
   useEffect(() => {
-    if (!queued || conflict) return;
+    if (fixtureMode || !loaded || !queued || conflict) return;
     const timer = setTimeout(
       () => void attempt(queued, false),
       Math.max(0, queued.nextAttemptAtMs - Date.now()),
@@ -620,7 +916,7 @@ function TopicSection({
       clearTimeout(timer);
       window.removeEventListener('online', onOnline);
     };
-  }, [queued, conflict, attempt]);
+  }, [fixtureMode, loaded, queued, conflict, attempt]);
 
   /**
    * 다시 열기 — 본부 승인 없이 조가 직접 푼다. 기록은 남는다(actor_scope='team').
@@ -628,13 +924,23 @@ function TopicSection({
    */
   const handleReopen = async () => {
     if (!window.confirm('최종 제출을 취소하고 다시 고칠 수 있게 합니다. 내용은 그대로 남습니다.')) return;
+    if (fixtureMode) {
+      const currentItems = toSaveItems(rowsRef.current);
+      applyFixtureSubmission(currentItems, 'reopened');
+      setToast('미리보기에서 다시 열었습니다. 운영 DB에는 전송하지 않았습니다.');
+      return;
+    }
+    if (!access) return;
     setReopening(true);
+    setOperationFailed(false);
     try {
-      await submissionReopenByTeam(code, topic.id);
+      await submissionReopenByTeam(access, topic.id);
       setToast('다시 열었습니다. 이어서 고치고 저장하세요.');
       await loadSubmission();
       announceSubmissionChanged();
     } catch (error) {
+      console.error('[submission] reopen failed', error);
+      setOperationFailed(true);
       setToast(error instanceof Error ? error.message : '다시 열지 못했습니다.');
     } finally {
       setReopening(false);
@@ -646,12 +952,30 @@ function TopicSection({
    * 서버에 남은 옛 항목이 잠겨 화면과 다른 내용이 최종본이 된다.
    */
   const handleFinalize = async () => {
-    if (!editable) return;
+    if (!editable || !loaded || savingRef.current) return;
+    const items = toSaveItems(rows);
+    if (fixtureMode) {
+      setFinalizing(true);
+      applyFixtureSubmission(items, 'final');
+      setToast('미리보기에서 최종 제출 상태를 확인했습니다. 운영 DB에는 전송하지 않았습니다.');
+      setFinalizing(false);
+      return;
+    }
+    if (!access) return;
     setFinalizing(true);
+    setOperationFailed(false);
     try {
-      const result = await submissionSave(code, topic.id, toSaveItems(rows));
-      dropDraft();
-      await submissionFinalize(code, topic.id);
+      const result = await submissionSave(access, topic.id, items, {
+        expectedVersion: editBaseVersion,
+        idempotencyKey: crypto.randomUUID(),
+      });
+      const settled = settleAcceptedSave(items, result, editBaseVersion);
+      if (settled.hasNewerRows) {
+        setToast('저장하는 동안 내용이 바뀌어 최종 제출을 멈췄습니다. 새 내용을 확인한 뒤 다시 제출해 주세요.');
+        announceSubmissionChanged();
+        return;
+      }
+      await submissionFinalize(access, topic.id, settled.version);
       // 나누지 못한 채 잠겼다면 그 사실이 「제출 완료」보다 먼저 알려져야 한다 —
       // 잠긴 뒤에는 「다시 열기」를 눌러야 고칠 수 있다.
       setToast(
@@ -661,8 +985,25 @@ function TopicSection({
       );
       await loadSubmission();
       announceSubmissionChanged();
-    } catch {
-      setToast('최종 제출에 실패했습니다 — 네트워크를 확인하고 다시 시도해 주세요.');
+    } catch (error) {
+      console.warn('[submission] finalize failed', error);
+      const nextConflict = conflictFromSaveError(error);
+      if (nextConflict) {
+        setConflict(nextConflict);
+        setShowServerRows(true);
+        setManualMerge(false);
+        setOperationFailed(false);
+        setToast('다른 기기의 저장이 먼저 반영돼 최종 제출을 멈췄습니다.');
+      } else {
+        const kind = saveFailureKind(error);
+        setOperationFailed(true);
+        setToast(kind === 'network'
+          ? '최종 제출에 실패했습니다 — 네트워크를 확인하고 다시 시도해 주세요.'
+          : saveFailureMessage(kind));
+        // The finalize request may have reached the server even when its response was lost.
+        // Reconcile before letting the user retry so an already-final submission is visible.
+        await loadSubmission();
+      }
     } finally {
       setFinalizing(false);
     }
@@ -671,14 +1012,17 @@ function TopicSection({
   return (
     <section
       id={topicAnchorId(topic.id)}
-      className="rounded-2xl border border-[#DCE7EE] bg-white overflow-hidden scroll-mt-4"
+      data-workshop-editor-topic={topic.id}
+      tabIndex={-1}
+      aria-labelledby={`${topicAnchorId(topic.id)}-title`}
+      className="rounded-2xl border border-[#DCE7EE] bg-white overflow-hidden scroll-mt-48 focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79]"
     >
       <header className="px-5 py-4 bg-[#4F9D3A]/8 border-b border-[#DCE7EE]">
         <div className="flex items-baseline gap-2">
-          <span className="text-[22px] font-extrabold text-[#4F9D3A]" aria-hidden="true">
-            {ordinalMark(topic.ordinal)}
+          <span className="text-[22px] font-extrabold text-[#2F6F25]" aria-hidden="true">
+            {topic.ordinal}
           </span>
-          <h4 className="text-[21px] font-extrabold text-[#1F4E79] break-words" style={{ letterSpacing: '-.01em' }}>
+          <h4 id={`${topicAnchorId(topic.id)}-title`} className="text-[21px] font-extrabold text-[#1F4E79] break-words" style={{ letterSpacing: '-.01em' }}>
             {topic.prompt}
           </h4>
           {topic.status === 'closed' ? (
@@ -707,9 +1051,6 @@ function TopicSection({
                     : 'border-[#B22A2A] bg-[#FDECEC] text-[#8B1F1F]'
             }`}
           >
-            <span aria-hidden="true">
-              {saveStatus.tone === 'ok' ? '●' : saveStatus.tone === 'busy' ? '⟳' : '!'}
-            </span>
             <span>{saveStatus.label}</span>
           </p>
         ) : null}
@@ -777,7 +1118,7 @@ function TopicSection({
             {/* 저장 실패분 — 대기 중이거나, 서버가 더 새것이라 조에게 묻는 중이거나.
                 ★ 어느 쪽이든 **글은 이 기기에 남아 있다**는 말을 먼저 한다. 8.29에 조가
                   가장 불안해한 것이 「지금 내 글이 어디 있느냐」였다. */}
-            {queued && conflict ? (
+            {conflict ? (
               <div
                 role="alert"
                 className="rounded-xl border-2 border-[#B22A2A] bg-[#FDECEC] px-4 py-3"
@@ -786,9 +1127,17 @@ function TopicSection({
                   다른 기기에서 이 꼭지를 먼저 저장했습니다.
                 </p>
                 <p className="mt-1 text-[15px] font-semibold text-[#8B1F1F]">
-                  대기 중이던 내 내용은 아직 보내지 않았습니다 — 어느 쪽으로 할지 골라 주세요.
+                  내 내용으로 서버본을 자동으로 덮어쓰지 않았습니다. 아래 세 가지 중 하나를 골라 주세요.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleKeepServer()}
+                    disabled={saving}
+                    className="h-12 rounded-xl border-2 border-[#B22A2A] bg-white px-5 text-[16px] font-bold text-[#B22A2A] disabled:opacity-40"
+                  >
+                    서버본 유지
+                  </button>
                   <button
                     type="button"
                     onClick={() => void handleOverwrite()}
@@ -799,10 +1148,13 @@ function TopicSection({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowServerRows((v) => !v)}
+                    onClick={() => {
+                      setManualMerge(true);
+                      setShowServerRows(true);
+                    }}
                     className="h-12 rounded-xl border-2 border-[#B22A2A] bg-white px-5 text-[16px] font-bold text-[#B22A2A]"
                   >
-                    {showServerRows ? '서버 내용 접기' : '서버 내용 보기'}
+                    수동 병합
                   </button>
                 </div>
                 {showServerRows ? (
@@ -825,8 +1177,18 @@ function TopicSection({
                       ))}
                     </ol>
                     <p className="text-[14px] font-semibold text-[#5A6B73]">
-                      보기 전용입니다. 필요한 문장을 위 칸에 옮겨 적고 저장하면 양쪽이 다 남습니다.
+                      보기 전용입니다. 필요한 문장을 위 편집 칸에 옮겨 병합한 뒤 아래 버튼으로 저장하세요.
                     </p>
+                    {manualMerge ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleManualMergeSave()}
+                        disabled={saving}
+                        className="min-h-12 w-full rounded-xl bg-[#1F4E79] px-5 text-[16px] font-bold text-white disabled:opacity-40"
+                      >
+                        {saving ? '저장 중…' : '병합한 내용 저장'}
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -865,24 +1227,25 @@ function TopicSection({
                         <button
                           type="button"
                           onClick={() => setRows((prev) => moveRow(prev, index, -1))}
-                          disabled={index === 0}
+                          disabled={!editorWritable || index === 0}
                           aria-label={`${topic.prompt} ${index + 1}번 위로`}
-                          className="w-10 h-10 rounded-lg border border-[#DCE7EE] text-[#5A6B73] text-lg grid place-items-center disabled:opacity-30"
+                          className="w-11 h-11 rounded-lg border border-[#DCE7EE] text-[#5A6B73] text-lg grid place-items-center disabled:opacity-30 focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79]"
                         >
                           ↑
                         </button>
                         <button
                           type="button"
                           onClick={() => setRows((prev) => moveRow(prev, index, 1))}
-                          disabled={index === rows.length - 1}
+                          disabled={!editorWritable || index === rows.length - 1}
                           aria-label={`${topic.prompt} ${index + 1}번 아래로`}
-                          className="w-10 h-10 rounded-lg border border-[#DCE7EE] text-[#5A6B73] text-lg grid place-items-center disabled:opacity-30"
+                          className="w-11 h-11 rounded-lg border border-[#DCE7EE] text-[#5A6B73] text-lg grid place-items-center disabled:opacity-30 focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79]"
                         >
                           ↓
                         </button>
                         <button
                           type="button"
                           onClick={() => {
+                            if (!editorWritable) return;
                             // 빈 줄은 그냥 지운다. 쓴 게 있을 때만 한 번 묻는다.
                             if (
                               row.content.trim().length > 0 &&
@@ -892,8 +1255,9 @@ function TopicSection({
                             }
                             setRows((prev) => removeRow(prev, index));
                           }}
+                          disabled={!editorWritable}
                           aria-label={`${topic.prompt} ${index + 1}번 삭제`}
-                          className="w-10 h-10 rounded-lg border border-[#DCE7EE] text-[#5A6B73] text-xl grid place-items-center"
+                          className="w-11 h-11 rounded-lg border border-[#DCE7EE] text-[#5A6B73] text-xl grid place-items-center focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79]"
                         >
                           ×
                         </button>
@@ -909,7 +1273,7 @@ function TopicSection({
                     <input
                       type="text"
                       value={row.name}
-                      readOnly={!editable}
+                      readOnly={!editorWritable}
                       onChange={(e) =>
                         setRows((prev) =>
                           prev.map((r, i) => (i === index ? { ...r, name: e.target.value.slice(0, 20) } : r)),
@@ -918,14 +1282,14 @@ function TopicSection({
                       aria-label={`${topic.prompt} ${index + 1}번 말한 사람`}
                       placeholder="이름"
                       className={`h-[46px] w-full shrink-0 rounded-xl border px-3 text-[17px] font-bold outline-none sm:w-[132px] ${
-                        editable
-                          ? 'border-[#C4D8E4] focus:border-[#4F9D3A] text-[#1F4E79]'
+                        editorWritable
+                          ? 'border-[#C4D8E4] focus:border-[#4F9D3A] focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79] text-[#1F4E79]'
                           : 'border-[#DCE7EE] bg-[#F5F8FB] text-[#5A6B73]'
                       }`}
                     />
                   <textarea
                     value={row.content}
-                    readOnly={!editable}
+                    readOnly={!editorWritable}
                     onChange={(e) =>
                       setRows((prev) => prev.map((r, i) => (i === index ? { ...r, content: e.target.value } : r)))
                     }
@@ -934,7 +1298,7 @@ function TopicSection({
                        들어가면 문장 열 개가 1건이 되어 발표 카드도 겹침 판정도 무너진다.
                        한 줄짜리는 손대지 않는다(기본 붙여넣기 유지). */
                     onPaste={(e) => {
-                      if (!editable) return;
+                      if (!editorWritable) return;
                       const text = e.clipboardData.getData('text/plain');
                       const split = splitPastedRows(rows, index, text);
                       if (split.dropped > 0 && !split.applied) {
@@ -954,8 +1318,8 @@ function TopicSection({
                     rows={2}
                     placeholder="여기에 적습니다"
                     className={`w-full min-w-0 flex-1 rounded-xl border px-3 py-2.5 text-[17px] outline-none resize-y ${
-                      editable
-                        ? 'border-[#C4D8E4] focus:border-[#4F9D3A] text-[#1F2933]'
+                      editorWritable
+                        ? 'border-[#C4D8E4] focus:border-[#4F9D3A] focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79] text-[#1F2933]'
                         : 'border-[#DCE7EE] bg-[#F5F8FB] text-[#5A6B73]'
                     }`}
                   />
@@ -988,7 +1352,8 @@ function TopicSection({
                     <button
                       type="button"
                       onClick={handleLiftNames}
-                      className="h-12 rounded-xl bg-[#B5651D] px-5 text-[16px] font-bold text-white"
+                      disabled={!editorWritable}
+                      className="h-12 rounded-xl bg-[#8A4F08] px-5 text-[16px] font-bold text-white disabled:opacity-40"
                     >
                       이름 칸으로 옮기기
                     </button>
@@ -1023,7 +1388,8 @@ function TopicSection({
                     <button
                       type="button"
                       onClick={handleSplitLong}
-                      className="h-12 rounded-xl bg-[#B5651D] px-5 text-[16px] font-bold text-white"
+                      disabled={!editorWritable}
+                      className="h-12 rounded-xl bg-[#8A4F08] px-5 text-[16px] font-bold text-white disabled:opacity-40"
                     >
                       줄 단위로 나누기
                     </button>
@@ -1044,7 +1410,7 @@ function TopicSection({
                 <button
                   type="button"
                   onClick={() => setRows((prev) => addRow(prev))}
-                  disabled={rows.length >= MAX_SUBMISSION_ROWS}
+                  disabled={!editorWritable || rows.length >= MAX_SUBMISSION_ROWS}
                   className="w-full h-[52px] rounded-xl border border-dashed border-[#4F9D3A] text-[#2F6322] text-[18px] font-bold flex items-center justify-center gap-2 disabled:opacity-30"
                 >
                   <span className="text-2xl leading-none">＋</span> 한 줄 더
@@ -1059,16 +1425,17 @@ function TopicSection({
                   <button
                     type="button"
                     onClick={() => void handleSave()}
-                    disabled={saving || finalizing || !dirty}
+                    disabled={saving || finalizing || !dirty || conflict != null}
                     className="h-14 rounded-2xl border-2 border-[#4F9D3A] bg-white text-[#2F6322] text-[18px] font-bold disabled:opacity-40"
                   >
                     {saving ? '저장 중…' : '저장'}
                   </button>
                   <button
+                    ref={finalizeTriggerRef}
                     type="button"
                     onClick={() => setConfirmFinalize(true)}
-                    disabled={saving || finalizing || !canFinalize(rows, loaded.status)}
-                    className="h-14 rounded-2xl bg-[#1F4E79] text-white text-[18px] font-bold shadow-sm disabled:opacity-40"
+                    disabled={saving || finalizing || conflict != null || !canFinalize(rows, loaded.status)}
+                    className="h-14 rounded-2xl bg-[#1F4E79] text-white text-[18px] font-bold shadow-sm disabled:opacity-40 focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]"
                   >
                     {finalizing ? '제출 중…' : '최종 제출'}
                   </button>
@@ -1088,7 +1455,14 @@ function TopicSection({
 
       {confirmFinalize ? (
         <div className="fixed inset-0 z-40 bg-[#1F4E79]/55 backdrop-blur-[1px] flex items-center justify-center p-5">
-          <div className="w-full max-w-md bg-white rounded-2xl border border-[#DCE7EE] overflow-hidden">
+          <div
+            ref={finalizeDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={finalizeTitleId}
+            aria-describedby={finalizeDescriptionId}
+            className="w-full max-w-md bg-white rounded-2xl border border-[#DCE7EE] overflow-hidden shadow-2xl"
+          >
             <div className="px-6 pt-6 pb-5 text-center">
               <div
                 className="w-14 h-14 mx-auto rounded-2xl bg-[#1F4E79]/10 border border-[#1F4E79]/30 grid place-items-center text-3xl mb-4"
@@ -1098,6 +1472,7 @@ function TopicSection({
               </div>
               <Eyebrow className="text-[#1F4E79] mb-2">Confirm</Eyebrow>
               <h4
+                id={finalizeTitleId}
                 className="text-[22px] font-extrabold text-[#1F4E79] leading-snug mb-1"
                 style={{ letterSpacing: '-.01em' }}
               >
@@ -1106,7 +1481,7 @@ function TopicSection({
               <p className="text-[16px] font-bold text-[#4F9D3A] mb-3 break-words">{topic.prompt}</p>
               {/* ★ 문구는 상수 하나에서만 나온다. 여기에 문자열을 다시 적으면 상수를
                   검사하는 테스트가 화면에 안 나가는 것을 재게 된다(예전에 그랬다). */}
-              <p className="text-[18px] font-bold text-[#1F2933] leading-relaxed">
+              <p id={finalizeDescriptionId} className="text-[18px] font-bold text-[#1F2933] leading-relaxed">
                 {FINALIZE_CONFIRM_MESSAGE}
               </p>
               <p className="text-[15px] text-[#5A6B73] mt-3 tr-num">
@@ -1117,7 +1492,7 @@ function TopicSection({
               <button
                 type="button"
                 onClick={() => setConfirmFinalize(false)}
-                className="h-[56px] rounded-2xl border border-[#C4D8E4] bg-white text-[#1F4E79] text-[19px] font-bold"
+                className="h-[56px] rounded-2xl border border-[#C4D8E4] bg-white text-[#1F4E79] text-[19px] font-bold focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79]"
               >
                 더 다듬기
               </button>
@@ -1127,7 +1502,7 @@ function TopicSection({
                   setConfirmFinalize(false);
                   void handleFinalize();
                 }}
-                className="h-[56px] rounded-2xl bg-[#1F4E79] text-white text-[19px] font-bold shadow-sm"
+                className="h-[56px] rounded-2xl bg-[#1F4E79] text-white text-[19px] font-bold shadow-sm focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]"
               >
                 최종 제출
               </button>
@@ -1153,7 +1528,8 @@ function SubmissionGuide() {
   const [open, setOpen] = useState(() => {
     try {
       return sessionStorage.getItem('climate_vote_guide_collapsed') !== '1';
-    } catch {
+    } catch (error) {
+      console.warn('[submission guide] preference storage unavailable', error);
       return true;
     }
   });
@@ -1162,8 +1538,8 @@ function SubmissionGuide() {
     setOpen(next);
     try {
       sessionStorage.setItem('climate_vote_guide_collapsed', next ? '0' : '1');
-    } catch {
-      /* 저장 못 해도 토글 자체는 된다 */
+    } catch (error) {
+      console.warn('[submission guide] preference storage unavailable', error);
     }
   };
 
@@ -1180,7 +1556,10 @@ function SubmissionGuide() {
           <span className="block text-[19px] font-extrabold text-[#1F4E79]">작성 안내</span>
           <span className="block text-[14px] text-[#5A6B73]">시작 전에 한 번 읽어 주세요</span>
         </span>
-        <span className="text-[20px] text-[#5A6B73]" aria-hidden="true">{open ? '▾' : '▸'}</span>
+        <span
+          className={`h-3 w-3 shrink-0 border-b-2 border-r-2 border-[#5A6B73] transition-transform ${open ? 'rotate-45 -translate-y-0.5' : '-rotate-45 -translate-x-0.5'}`}
+          aria-hidden="true"
+        />
       </button>
       {open ? (
         <ol className="px-5 pb-5 space-y-3">
@@ -1202,9 +1581,11 @@ function SubmissionGuide() {
 }
 
 /** 꼭지 바로가기 — 세 구역이 세로로 길어 위아래로 오갈 일이 잦다. */
-function TopicJump({ topics }: { topics: Topic[] }) {
+function TopicJump({ topics }: { topics: readonly Topic[] }) {
   const jump = (topicId: string) => {
-    document.getElementById(topicAnchorId(topicId))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const target = document.getElementById(topicAnchorId(topicId));
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   return (
     <nav aria-label="꼭지 바로가기" className="flex flex-wrap gap-2">
@@ -1213,9 +1594,9 @@ function TopicJump({ topics }: { topics: Topic[] }) {
           key={topic.id}
           type="button"
           onClick={() => jump(topic.id)}
-          className="h-12 rounded-xl border border-[#C4D8E4] bg-white px-4 text-[16px] font-bold text-[#1F4E79] active:scale-[.99] transition"
+          className="h-12 rounded-xl border border-[#C4D8E4] bg-white px-4 text-[16px] font-bold text-[#1F4E79] active:scale-[.99] transition focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79]"
         >
-          <span className="text-[#4F9D3A] mr-1.5" aria-hidden="true">{ordinalMark(topic.ordinal)}</span>
+          <span className="mr-1.5 text-[#2F6F25]" aria-hidden="true">{topic.ordinal}.</span>
           {topic.prompt}
         </button>
       ))}
@@ -1233,17 +1614,22 @@ function TopicJump({ topics }: { topics: Topic[] }) {
  * 본부 보드와 같은 행 모양(HqSubmissionRow)으로 바꾼 뒤 같은 빌더에 넣는다.
  */
 function TeamDownload({
-  code,
+  access,
+  fixtureMode = false,
+  teamId,
   teamLabel,
   tableNo,
   topics,
   fixtureSubmissions,
 }: {
-  code: string;
+  access: WorkshopAccess | null;
+  /** Lab route only. When true, collect exclusively from fixtureSubmissions. */
+  fixtureMode?: boolean;
+  teamId: string;
   teamLabel: string;
   /** 현장 좌석 번호 — 내려받은 표의 「테이블」 칸에 들어간다. */
   tableNo?: string | null;
-  topics: Topic[];
+  topics: readonly Topic[];
   /**
    * 꼭지 id → 픽스처 제출물. 주면 `submission_get` 을 부르지 않는다.
    *
@@ -1266,19 +1652,26 @@ function TeamDownload({
   const collect = async (): Promise<HqSubmissionRow[]> => {
     const rows: HqSubmissionRow[] = [];
     for (const topic of topics) {
-      const got = fixtureSubmissions?.[topic.id] ?? (await submissionGet(code, topic.id));
+      let got: SubmissionGetResult;
+      if (fixtureMode) {
+        got = fixtureSubmissions?.[topic.id] ?? { status: null, version: 0, items: [] };
+      } else {
+        if (!access) throw new Error('Workshop authorization is unavailable');
+        got = await submissionGet(access, topic.id);
+      }
       const items = got?.items ?? [];
       const base = {
         topic_id: topic.id,
         topic_ordinal: topic.ordinal,
         topic_prompt: topic.prompt,
         topic_status: topic.status,
-        team_id: code,
+        team_id: teamId,
         team_name: teamLabel,
         team_subgroup: null,
         table_no: tableNo ?? null,
         submission_id: null,
         submission_status: got?.status ?? null,
+        submission_version: got?.version ?? null,
         submission_updated_at: got?.updated_at ?? null,
         submission_finalized_at: got?.finalized_at ?? null,
       } as const;
@@ -1324,9 +1717,9 @@ function TeamDownload({
     } catch (caught) {
       console.error('[조 산출물 인쇄] 문서 준비 실패', caught);
     }
-    // collect 는 topics·code 에만 기대므로 의존성을 그 둘로 좁힌다.
+    // collect 는 topics·access·teamId 에만 기대므로 의존성을 그 셋으로 좁힌다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, teamLabel, topics, fixtureSubmissions]);
+  }, [access, fixtureMode, teamId, teamLabel, topics, fixtureSubmissions]);
 
   // 인쇄 문서는 **버튼을 누르기 전부터 DOM에 있어야 한다.**
   // 눌러야 만들어지게 두면 Ctrl+P·브라우저 인쇄 메뉴로 찍을 때 드러낼 것이 없어
@@ -1497,18 +1890,33 @@ function TeamDownload({
 }
 
 export default function SubmissionPanel({
-  code,
+  access,
+  storageScope,
   teamLabel,
   tableNo,
+  topics: sessionTopics,
+  topicsFailed = false,
+  onRetryTopics,
   fixtureTopics,
   fixtureSubmissions,
+  fixtureMode = false,
   onUnsavedTopicsChange,
+  onWorkSummaryChange,
 }: {
-  code: string | null;
+  /** 실제 조 화면은 기기 세션의 불투명 토큰만 받는다. */
+  access?: WorkshopAuthorization | null;
+  /** 초안·큐 키에 쓰는 team.id. 접속코드·토큰을 넣지 않는다. */
+  storageScope?: string;
   /** 내려받은 문서에 찍을 조 이름. 없으면 「우리 조」. */
   teamLabel?: string;
   /** 현장 좌석 번호. 내려받은 표의 「테이블」 칸에 들어간다. */
   tableNo?: string | null;
+  /** HomeScreen의 단일 세션 상태에서 받은 꼭지 목록. 이 패널은 topic_list를 호출하지 않는다. */
+  topics?: readonly Topic[] | null;
+  /** 최초 목록을 아직 한 번도 받지 못한 채 재시도 중인가. */
+  topicsFailed?: boolean;
+  /** 공통 세션 상태를 즉시 다시 읽는 버튼 동작. */
+  onRetryTopics?: () => void;
   /**
    * 픽스처 꼭지 목록. 주면 `topic_list` 를 부르지 않는다.
    *
@@ -1519,52 +1927,47 @@ export default function SubmissionPanel({
   fixtureTopics?: Topic[];
   /** 꼭지 id → 픽스처 제출물. 주면 그 꼭지는 `submission_get` 을 부르지 않는다. */
   fixtureSubmissions?: Record<string, SubmissionGetResult>;
+  /** Lab route 전용 무네트워크 모드. fixture data가 있어도 이 값 없이는 live 대체로 쓰지 않는다. */
+  fixtureMode?: boolean;
   /**
    * 저장 안 한 내용이 있는 꼭지 id 목록. 마감 배너(`DeadlineBanner`)가 받아 쓴다.
    *
    * 배너는 탭 **바깥**에 있어 이 패널의 형제다. 그래서 사실을 아는 쪽(여기)이 위로 올린다.
    */
   onUnsavedTopicsChange?: (topicIds: string[]) => void;
+  /** 상단 상태 레일에 전달할 꼭지별 작업 요약. */
+  onWorkSummaryChange?: (summary: WorkshopWorkSummary) => void;
 }) {
-  const [topics, setTopics] = useState<Topic[] | null>(null);
-  const [topicsFailed, setTopicsFailed] = useState(false);
+  const topics = fixtureMode ? (fixtureTopics ?? []) : (sessionTopics ?? null);
+  const activeStorageScope = storageScope ?? (fixtureMode ? 'fixture' : null);
   // 열어 둔 화면이 옛 코드인가 — 8.29 통짜 6건의 유력 원인이다. 조가 입력하는 화면이라
   // 여기(작성 탭)에 띄운다. 다른 탭에도 띄우려면 ModConsole 로 올려야 한다(이번 범위 밖).
   const staleBundle = useStaleBundle();
 
-  const loadTopics = useCallback(async () => {
-    if (!code) return;
-    if (fixtureTopics) {
-      setTopics(fixtureTopics);
-      setTopicsFailed(false);
-      return;
-    }
-    try {
-      setTopics(await topicList(code));
-      setTopicsFailed(false);
-    } catch {
-      setTopicsFailed(true);
-    }
-  }, [code, fixtureTopics]);
-
-  useEffect(() => {
-    void loadTopics();
-  }, [loadTopics]);
-
-  // 꼭지별 미저장 → 하나의 목록으로 모아 위로 올린다(마감 배너용).
-  // ★ 같은 값이면 상태를 안 바꾼다 — 안 그러면 자식의 알림 → 부모 리렌더 → 자식 알림이 돈다.
-  const [unsavedMap, setUnsavedMap] = useState<Record<string, boolean>>({});
-  const handleUnsavedChange = useCallback((topicId: string, unsaved: boolean) => {
-    setUnsavedMap((prev) => (Boolean(prev[topicId]) === unsaved ? prev : { ...prev, [topicId]: unsaved }));
+  // 꼭지 편집기들이 아는 사실을 한 맵으로 모은다. 패널이 숨겨져도 HomeScreen은 마지막
+  // 요약을 유지하므로 다른 탭에서도 미저장·대기·충돌 상태가 사라지지 않는다.
+  const [workByTopic, setWorkByTopic] = useState<Record<string, TopicWorkState>>({});
+  const handleWorkStateChange = useCallback((topicId: string, next: TopicWorkState) => {
+    setWorkByTopic((current) => {
+      const previous = current[topicId];
+      if (
+        previous &&
+        previous.unsaved === next.unsaved &&
+        previous.queued === next.queued &&
+        previous.conflict === next.conflict &&
+        previous.saving === next.saving &&
+        previous.failed === next.failed
+      ) {
+        return current;
+      }
+      return { ...current, [topicId]: next };
+    });
   }, []);
-  // 배열은 매번 새로 만들어지므로 **정렬한 문자열**을 의존성으로 쓴다(참조 비교로는 매 렌더마다 알린다).
-  const unsavedKey = Object.keys(unsavedMap)
-    .filter((id) => unsavedMap[id])
-    .sort()
-    .join(' ');
+  const workSummary = useMemo(() => summarizeTopicWork(workByTopic), [workByTopic]);
   useEffect(() => {
-    onUnsavedTopicsChange?.(unsavedKey ? unsavedKey.split(' ') : []);
-  }, [unsavedKey, onUnsavedTopicsChange]);
+    onUnsavedTopicsChange?.(workSummary.unsavedTopicIds);
+    onWorkSummaryChange?.(workSummary);
+  }, [onUnsavedTopicsChange, onWorkSummaryChange, workSummary]);
 
   // 지난 회차 초안 청소 — 패널이 처음 뜰 때 한 번. `localStorage` 로 올라가면서
   // 초안이 기기에 눌러앉게 됐으므로, 유효기간(72h)이 지난 것은 여기서 버린다.
@@ -1576,7 +1979,7 @@ export default function SubmissionPanel({
     }
   }, []);
 
-  if (!code) {
+  if ((!fixtureMode && !access) || !activeStorageScope) {
     return <p className="text-[16px] text-[#5A6B73]">조 접속 후에 사용할 수 있습니다.</p>;
   }
 
@@ -1588,7 +1991,7 @@ export default function SubmissionPanel({
         </span>
         <button
           type="button"
-          onClick={() => void loadTopics()}
+          onClick={onRetryTopics}
           className="min-h-11 rounded-lg border-2 border-[#B5651D] px-4 text-[15px] font-bold text-[#B5651D]"
         >
           지금 다시 시도
@@ -1611,7 +2014,7 @@ export default function SubmissionPanel({
           <p className="text-[17px] font-bold text-[#1F4E79]">작성 화면 준비 중입니다.</p>
           <button
             type="button"
-            onClick={() => void loadTopics()}
+            onClick={onRetryTopics}
             className="mt-4 min-h-12 rounded-xl border border-[#C4D8E4] bg-white px-5 text-[16px] font-bold text-[#1F4E79]"
           >
             새로고침
@@ -1629,14 +2032,18 @@ export default function SubmissionPanel({
       {topics.map((topic) => (
         <TopicSection
           key={topic.id}
-          code={code}
+          access={access ?? null}
+          fixtureMode={fixtureMode}
+          storageScope={activeStorageScope}
           topic={topic}
           fixtureSubmission={fixtureSubmissions?.[topic.id]}
-          onUnsavedChange={handleUnsavedChange}
+          onWorkStateChange={handleWorkStateChange}
         />
       ))}
       <TeamDownload
-        code={code}
+        access={access ?? null}
+        fixtureMode={fixtureMode}
+        teamId={activeStorageScope}
         teamLabel={teamLabel ?? '우리 조'}
         tableNo={tableNo}
         topics={topics}

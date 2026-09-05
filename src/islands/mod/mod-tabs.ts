@@ -47,3 +47,21 @@ export function normalizeTabId(value: unknown): ModTabId {
 export function tabById(id: ModTabId): ModTab {
   return MOD_TABS.find((tab) => tab.id === id) ?? MOD_TABS[0];
 }
+
+/** WAI-ARIA tabs pattern: arrows wrap, Home/End jump, other keys stay untouched. */
+export function tabAfterKey(active: ModTabId, key: string): ModTabId | null {
+  if (key === 'Home') return MOD_TABS[0].id;
+  if (key === 'End') return MOD_TABS[MOD_TABS.length - 1].id;
+
+  const direction =
+    key === 'ArrowRight' || key === 'ArrowDown'
+      ? 1
+      : key === 'ArrowLeft' || key === 'ArrowUp'
+        ? -1
+        : 0;
+  if (direction === 0) return null;
+
+  const index = MOD_TABS.findIndex((tab) => tab.id === active);
+  const next = (index + direction + MOD_TABS.length) % MOD_TABS.length;
+  return MOD_TABS[next].id;
+}

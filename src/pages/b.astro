@@ -5,7 +5,7 @@ import BallotCard from '../islands/ballot/BallotCard';
 <!doctype html>
 <html lang="ko" class="light" data-theme="light"><head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="robots" content="noindex,nofollow" />
   <meta name="color-scheme" content="light" />
   <title>기후시민회의 다의제 투표 [/b]</title>
@@ -14,5 +14,13 @@ import BallotCard from '../islands/ballot/BallotCard';
     .tr-num { letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
   </style>
 </head><body>
-  <BallotCard client:only="react" />
+  <a
+    href="#public-ballot-content"
+    class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:text-[#1F4E79] focus:shadow-lg"
+  >
+    다의제 투표 본문 바로가기
+  </a>
+  <main id="public-ballot-content" tabindex="-1">
+    <BallotCard client:only="react" />
+  </main>
 </body></html>

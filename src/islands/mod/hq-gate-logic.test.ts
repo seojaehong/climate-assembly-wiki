@@ -4,6 +4,7 @@ import {
   HQ_TOKEN_KEY,
   HQ_UNLOCK_LOCK_MINUTES,
   HQ_UNLOCK_MAX_ATTEMPTS,
+  classifyHqAuthorizationError,
   gateFailureMessage,
   isValidHqToken,
   normalizeActorLabel,
@@ -54,7 +55,7 @@ describe('gateFailureMessage', () => {
     expect(gateFailureMessage('missing-input')).not.toBe(gateFailureMessage('request-failed'));
   });
 
-  it('잠금 정책 상수는 attendance_hq_unlock RPC 정책과 일치한다', () => {
+  it('잠금 정책 상수는 named HQ unlock 정책과 일치한다', () => {
     expect(HQ_UNLOCK_MAX_ATTEMPTS).toBe(5);
     expect(HQ_UNLOCK_LOCK_MINUTES).toBe(15);
   });
@@ -67,5 +68,51 @@ describe('normalizeActorLabel', () => {
 
   it('공백만 있는 입력은 빈 문자열(입력 누락)이 된다', () => {
     expect(normalizeActorLabel('   ')).toBe('');
+  });
+});
+
+describe('classifyHqAuthorizationError', () => {
+  it('확정적인 HQ bearer 만료/폐기 응답만 expired로 분류한다', () => {
+    expect(classifyHqAuthorizationError({ message: 'workshop authorization expired or revoked' }))
+      .toBe('expired');
+    expect(classifyHqAuthorizationError(new Error('P0001: workshop authorization expired or revoked')))
+      .toBe('expired');
+    expect(classifyHqAuthorizationError(new Error('active named HQ authorization required')))
+      .toBe('expired');
+    expect(classifyHqAuthorizationError(new Error('P0001: HQ authorization session mismatch')))
+      .toBe('expired');
+    expect(classifyHqAuthorizationError({ message: 'attendance authorization expired' }))
+      .toBe('expired');
+  });
+
+  it('HQ 용도로 사용할 수 없음이 확정된 scope/required 응답도 expired로 분류한다', () => {
+    expect(classifyHqAuthorizationError(new Error('HQ authorization required'))).toBe('expired');
+    expect(classifyHqAuthorizationError(new Error('workshop authorization required'))).toBe('expired');
+    expect(classifyHqAuthorizationError(new Error('attendance authorization required'))).toBe('expired');
+  });
+
+  it('네트워크·timeout·5xx·ACL·함수 미적용·알 수 없는 오류에는 토큰을 보존한다', () => {
+    const transientErrors: unknown[] = [
+      new Error('Failed to fetch'),
+      new Error('request timeout'),
+      new Error('PGRST202: Could not find the function'),
+      { code: '42501', message: 'permission denied for function workshop_hq_status' },
+      { status: 403, message: 'Forbidden' },
+      { status: 503, message: 'Service unavailable' },
+      'workshop authorization expired or revoked',
+      null,
+    ];
+    for (const error of transientErrors) {
+      expect(classifyHqAuthorizationError(error)).toBe('transient');
+    }
+  });
+
+  it('문구 일부가 우연히 포함된 업무 오류를 만료로 오인하지 않는다', () => {
+    expect(classifyHqAuthorizationError(
+      new Error('audit note says workshop authorization expired or revoked yesterday'),
+    )).toBe('transient');
+    expect(classifyHqAuthorizationError(
+      new Error('P0001: active named HQ authorization required for export review'),
+    )).toBe('transient');
   });
 });

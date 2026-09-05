@@ -1,20 +1,20 @@
 -- s20 적용 후 읽기 전용 검증 — supabase/migrations/20260902_s20_open_0912_topics.sql
 --
 -- 무엇을 확인하나
---   C1  세션 `0912-deliberation` 이 있다 (선행 = 0912_개통_세션조.sql)
+--   C1  세션 `0912-deliberation` 이 있다 (선행 = 검토·승인된 session/team seed)
 --   C2  그 세션의 discussion_topic 이 **정확히 6행**이고 ordinal 이 1~6 빠짐없이 있다
 --   C3  block 배치가 큐시트대로다 — 1·2·3=pm(9/12 오후·저녁) · 4·5=am · 6=pm(9/13)
 --       ★ block 은 'am'|'pm' 뿐이라 날짜를 못 담는다. 그래서 C4 가 guidance 안의
 --         「9/12(토) 1일차」·「9/13(일) 2일차」를 따로 센다
 --   C4  prompt 6개가 큐시트 결과물 칸과 **글자 그대로** 같고, guidance 가 해당 일차·시각을 담는다
 --   C5  status 가 스키마가 허용하는 값 안에 있다.
---       ★ **open 인지 draft 인지는 검사하지 않는다.** 이 값은 행사 당일 꼭지_열기.sql 이
+--       ★ **open 인지 draft 인지는 검사하지 않는다.** 이 값은 행사 당일 본부 감사 RPC가
 --         하나씩 바꾸는 것이라, 특정 값으로 못박으면 행사 중에 이 검증이 거짓 실패한다
 --   C6  ★ **8.29 무접촉** — `0829-deliberation` 의 꼭지가 s6 문안 그대로 3건 open 이다
 --       (s6 가 ①배경·문제 인식 ②바라는 변화(기대 효과) ③의제와 관련된 질문 을 open 으로 고정했고
 --        s6 자신의 게이트가 `v_open <> 3` 으로 이를 보증한다)
---   C7  조 15개(`091201`~`091215`)가 이 세션에 붙어 있다 — 꼭지를 열었을 때
---       topic_list 가 실제로 도달할 경로가 있는지 본다
+--   C7  활성 조 15개와 서로 다른 6자리 접속코드가 이 세션에 붙어 있다. 보안 migration 뒤
+--       코드는 무작위로 교체되므로 과거의 날짜+순번 값 자체를 정답으로 고정하지 않는다
 --
 -- 이 파일은 DB 객체·데이터를 바꾸지 않는다. 세션 임시표 하나만 쓴다.
 -- 마지막에 통과/전체 개수를 N/N 으로 찍고, 하나라도 실패하면 예외로 멈춘다.
@@ -58,7 +58,7 @@ declare
 begin
   -- C1
   select id into v_session from climate_vote.session where slug = '0912-deliberation';
-  insert into s20_check values (1, '세션 0912-deliberation 이 있다(선행 0912_개통_세션조.sql)',
+  insert into s20_check values (1, '세션 0912-deliberation 이 있다(선행: 검토된 session/team seed)',
     v_session is not null, coalesce(v_session::text, '(세션 없음 — 시드 미적용)'));
 
   if v_session is null then
@@ -66,7 +66,7 @@ begin
     insert into s20_check values (3, 'block = pm,pm,pm,am,am,pm', false, '세션 없음');
     insert into s20_check values (4, 'prompt 6개 큐시트 일치 · guidance 에 일차·시각', false, '세션 없음');
     insert into s20_check values (5, 'status 가 허용 값 안에 있다', false, '세션 없음');
-    insert into s20_check values (7, '조 15개(091201~091215)가 이 세션에 붙어 있다', false, '세션 없음');
+    insert into s20_check values (7, '활성 조 15개와 고유한 6자리 접속코드가 이 세션에 붙어 있다', false, '세션 없음');
   else
     -- C2
     select count(*) into v_rows
@@ -125,10 +125,14 @@ begin
     select count(*) into v_n
       from climate_vote.team t
      where t.session_id = v_session
-       and t.join_code between '091201' and '091215'
        and t.status = 'active';
-    insert into s20_check values (7, '조 15개(091201~091215, active)가 이 세션에 붙어 있다',
-      v_n = 15, format('%s개', v_n));
+    select count(distinct t.join_code) into v_bad
+      from climate_vote.team t
+     where t.session_id = v_session
+       and t.status = 'active'
+       and t.join_code ~ '^[0-9]{6}$';
+    insert into s20_check values (7, '활성 조 15개와 고유한 6자리 접속코드가 이 세션에 붙어 있다',
+      v_n = 15 and v_bad = 15, format('활성 조 %s개 · 고유 6자리 코드 %s개', v_n, v_bad));
   end if;
 
   -- C6 ★ 8.29 무접촉 — s6 문안 3건이 open 그대로인가
