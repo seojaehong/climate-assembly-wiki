@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "rehearsalId": "0912-13-field-rehearsal",
-  "generatedAt": "2026-09-05T13:59:48.024Z",
-  "elapsedMs": 18615,
-  "sourceCommit": "9743aaa50393cba5bc9764beb00b61837df5a52d",
+  "generatedAt": "2026-09-05T19:25:40.453Z",
+  "elapsedMs": 21360,
+  "sourceCommit": "484bf4425fb7136f98bfbaa6e1a6f8fe3bbbe63d",
   "sourceTreeClean": true,
   "target": {
     "baseUrl": "http://127.0.0.1:4331",
@@ -160,7 +160,7 @@
       "title": "순차 꼭지 개방 — 기존 작업 맥락 보존",
       "status": "pass",
       "expected": "꼭지②와 알림만 추가되고 꼭지① 입력·포커스·스크롤은 그대로다",
-      "observed": "꼭지 1→2개 · 입력 4줄 유지 · 포커스 유지 · 스크롤 변화 0px · \"새 꼭지②가 열렸습니다. 작성 중인 위치는 그대로 유지했습니다. 새 꼭지로 이동\""
+      "observed": "꼭지 1→2개 · 입력 4줄 유지 · 포커스 유지 · 스크롤 변화 2px · \"새 꼭지②가 열렸습니다. 작성 중인 위치는 그대로 유지했습니다. 새 꼭지로 이동\""
     },
     {
       "id": "2",
@@ -188,21 +188,21 @@
       "title": "온라인 복귀 — 큐 자동 재전송",
       "status": "pass",
       "expected": "재접속한 탭이 스스로 큐를 비우고 배지가 「저장됨」으로 돌아온다",
-      "observed": "1.6초 만에 큐 비움 · requestId/baseVersion 동일 · 서버 v1 5줄 · 배지 \"저장됨 · 09:00\""
+      "observed": "1.3초 만에 큐 비움 · requestId/baseVersion 동일 · 서버 v1 5줄 · 배지 \"저장됨 · 09:00\""
     },
     {
       "id": "6",
       "title": "마감 임박 — 배너 warn + 저장 안내",
       "status": "pass",
       "expected": "warn(주황) 구간으로 가고 미저장이 있으면 저장 안내가 함께 뜬다",
-      "observed": "1.2초 만에 새 마감 반영+warn · 잔여 01:59 · \"지금 저장하세요. 저장하지 않은 내용이 있습니다.\""
+      "observed": "1.3초 만에 새 마감 반영+warn · 잔여 01:59 · \"지금 저장하세요. 저장하지 않은 내용이 있습니다.\""
     },
     {
       "id": "7",
       "title": "내려받기 — 「전부 받기 (.zip)」 한 번",
       "status": "pass",
       "expected": "ZIP 하나가 떨어지고 안에 워드·엑셀·줄글 3개 · 저장한 줄이 그대로 담긴다",
-      "observed": "기후시민회의_조별산출물_합성1조_20260905-2259.zip · 11636B · 3개(docx/csv/txt) · 저장분 5줄 담김 · 미저장 1줄 제외"
+      "observed": "기후시민회의_조별산출물_합성1조_20260906-0425.zip · 11631B · 3개(docx/csv/txt) · 저장분 5줄 담김 · 미저장 1줄 제외"
     },
     {
       "id": "8",

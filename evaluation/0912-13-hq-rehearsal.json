@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "rehearsalId": "0912-13-hq-v3-browser-rehearsal",
-  "generatedAt": "2026-09-05T13:57:12.497Z",
-  "elapsedMs": 2702,
-  "sourceCommit": "9743aaa50393cba5bc9764beb00b61837df5a52d",
+  "generatedAt": "2026-09-05T19:25:44.676Z",
+  "elapsedMs": 2708,
+  "sourceCommit": "484bf4425fb7136f98bfbaa6e1a6f8fe3bbbe63d",
   "sourceTreeClean": true,
   "status": "pass",
   "target": {
@@ -11,7 +11,7 @@
     "route": "/hq?ops=1"
   },
   "fixture": "automation/fixtures/0912-hq-rehearsal.json",
-  "fixtureSha256": "d18e8f2ab911eab29b92c3bfe22701d946b7f5885a4a067910b6fca4d0f5d3d9",
+  "fixtureSha256": "b38e086b8d262ebe1a7900f06cdb5319ce68f3ca4836bfd8bd9dcff2f1299aaf",
   "fixtureIdentity": {
     "schemaVersion": 1,
     "fixtureId": "0912-hq-v3-rehearsal-v1",
@@ -24,19 +24,19 @@
     "statement": "브라우저 합성 fixture는 요청 형식과 사용자에게 보이는 복구 흐름만 검증하며 DB 권한, 동시성 또는 수명주기의 증거가 아닙니다."
   },
   "summary": {
-    "checkCount": 7,
-    "passCount": 7,
+    "checkCount": 8,
+    "passCount": 8,
     "failCount": 0
   },
   "safety": {
     "allSupabaseHttpIntercepted": true,
-    "interceptedSupabaseHttpRequestCount": 25,
+    "interceptedSupabaseHttpRequestCount": 26,
     "forwardedSupabaseHttpRequestCount": 0,
     "blockedUnexpectedSupabaseHttpRequestCount": 0,
     "blockedUnexpectedSupabaseRpcNames": [],
     "blockedExternalHttpRequestCount": 0,
     "fixtureReadRequestCount": 18,
-    "fixtureMutationRequestCount": 7,
+    "fixtureMutationRequestCount": 8,
     "productionDatabaseMutationCount": 0,
     "contractViolationCount": 0,
     "contractViolations": [],
@@ -53,7 +53,8 @@
     "injected": true,
     "actorLabel": "합성 운영자",
     "capabilitySource": "runtime-generated",
-    "capabilityPersistedAfterLogoutFailure": true
+    "capabilityPersistedAfterLogoutFailure": true,
+    "capabilityClearedAfterLogoutSuccess": true
   },
   "rpcContracts": {
     "hq_submission_category_assign_v3": {
@@ -120,7 +121,7 @@
       "requestFields": [
         "p_token"
       ],
-      "successResponse": "null",
+      "successResponse": "true",
       "failureKeepsLocalCapability": true
     }
   },
@@ -134,7 +135,7 @@
       "hq_submissions_v3": 5,
       "hq_topic_deadlines_v2": 1,
       "workshop_hq_devices": 1,
-      "workshop_hq_logout_v2": 1,
+      "workshop_hq_logout_v2": 2,
       "workshop_hq_status": 1
     },
     "categoryRetry": {
@@ -151,7 +152,8 @@
     },
     "staleConflictReloaded": true,
     "exactSetClearConflictPreservedRows": true,
-    "logoutFailurePreservedCapability": true
+    "logoutFailurePreservedCapability": true,
+    "logoutSuccessClearedCapability": true
   },
   "checks": [
     {
@@ -259,14 +261,28 @@
       }
     },
     {
+      "id": "logout-success-clears-capability",
+      "label": "서버가 true로 폐기를 확인한 뒤에만 본부 토큰을 지운다",
+      "status": "pass",
+      "observed": {
+        "requestCount": 2,
+        "response": {
+          "httpStatus": 200,
+          "value": true
+        },
+        "localCapabilityCleared": true,
+        "actorCleared": true
+      }
+    },
+    {
       "id": "deny-by-default-network",
       "label": "Supabase HTTP와 WebSocket을 deny-by-default로 격리해 운영 DB mutation 0을 유지한다",
       "status": "pass",
       "observed": {
-        "interceptedSupabaseHttpRequestCount": 25,
+        "interceptedSupabaseHttpRequestCount": 26,
         "forwardedSupabaseHttpRequestCount": 0,
         "blockedUnexpectedSupabaseHttpRequestCount": 0,
-        "fixtureMutationRequestCount": 7,
+        "fixtureMutationRequestCount": 8,
         "productionDatabaseMutationCount": 0,
         "webSocketAttemptCount": 0,
         "actualWebSocketConnectionCount": 0

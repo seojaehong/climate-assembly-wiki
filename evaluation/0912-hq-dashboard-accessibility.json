@@ -1,13 +1,13 @@
 {
   "schemaVersion": 5,
-  "generatedAt": "2026-09-05T13:57:09.476Z",
-  "sourceCommit": "9743aaa50393cba5bc9764beb00b61837df5a52d",
+  "generatedAt": "2026-09-05T19:29:33.583Z",
+  "sourceCommit": "484bf4425fb7136f98bfbaa6e1a6f8fe3bbbe63d",
   "sourceTreeClean": true,
   "evidenceClassification": "release-evidence",
   "releaseEvidence": true,
   "targetRevision": {
     "status": "verified",
-    "sourceCommit": "9743aaa50393cba5bc9764beb00b61837df5a52d"
+    "sourceCommit": "484bf4425fb7136f98bfbaa6e1a6f8fe3bbbe63d"
   },
   "baseUrl": "http://127.0.0.1:4331",
   "standard": "WCAG 2.2 AA automated subset + skip-link focus + keyboard focus order and appearance + responsive overflow",
