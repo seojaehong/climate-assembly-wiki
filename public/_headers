@@ -37,3 +37,7 @@
 
 /pagefind/*
   Cache-Control: public, max-age=31536000, immutable
+
+/m-7k2p9qv4x8wd/*
+  X-Robots-Tag: noindex, nofollow, noarchive
+  Cache-Control: no-cache

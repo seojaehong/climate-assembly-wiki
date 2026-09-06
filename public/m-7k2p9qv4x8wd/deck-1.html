@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>숙의 지도 · 장표 · 의제1</title>
+<style>
+:root{color-scheme:dark;}
+html,body{margin:0;padding:0;background:#0B1220;color:#F4F7FB;
+  font-family:'Pretendard','Noto Sans KR','Malgun Gothic','맑은 고딕',sans-serif;
+  -webkit-font-smoothing:antialiased;overflow:hidden;}
+body{font-size:24px;}
+.fallback{display:none;padding:40px 64px;font-size:32px;line-height:1.5;
+  background:#1A2537;color:#F4F7FB;}
+.fallback p{margin:0 0 18px 0;}
+.fallback p:last-child{margin:0;}
+
+/* impress.js 가 오지 않았거나 이 브라우저에서 돌지 않을 때.
+   안내문을 띄우고 단계를 위에서 아래로 읽게 되돌린다. */
+html.no-impress,html.no-impress body{overflow:auto;}
+html.no-impress .fallback{display:block;}
+html.no-impress .step{opacity:1;margin:48px auto;}
+html.no-impress #bar{display:none;}
+
+#impress{position:relative;}
+.step{position:relative;box-sizing:border-box;
+  width:1860px;padding:54px 64px;border-radius:22px;
+  background:#1A2537;border:6px solid #0B1220;
+  opacity:.14;transition:opacity .5s ease;
+  font-size:28px;line-height:1.34;font-weight:700;}
+.step.active{opacity:1;}
+.step.plain{background:#0B1220;border-color:#0B1220;}
+
+.kicker{font-size:36px;color:#CFDCEC;margin:0 0 16px 0;}
+.title{font-size:64px;color:#F4F7FB;margin:0 0 28px 0;font-weight:800;}
+.label{font-size:44px;color:#F4F7FB;margin:0 0 16px 0;font-weight:800;}
+.hero{font-size:112px;font-weight:800;line-height:1;}
+.hero-s{font-size:88px;font-weight:800;line-height:1;}
+.body{font-size:28px;color:#F4F7FB;}
+.note{font-size:24px;color:#CFDCEC;}
+
+.cols{display:flex;gap:28px;align-items:stretch;}
+.col{flex:1 1 0;background:#0B1220;border-radius:14px;padding:28px;
+  border-left:14px solid #FFC24A;}
+.col.t1{border-left-color:#FFC24A;}
+.col.t2{border-left-color:#6FD6F5;}
+.col.t3{border-left-color:#8FE9AE;}
+.col .hero{margin:16px 0;}
+.col p{margin:0 0 16px 0;}
+.t1 .hero,.t1 .hero-s,.t1 .accent{color:#FFC24A;}
+.t2 .hero,.t2 .hero-s,.t2 .accent{color:#6FD6F5;}
+.t3 .hero,.t3 .hero-s,.t3 .accent{color:#8FE9AE;}
+
+.tag{display:inline-block;padding:10px 16px;border-radius:8px;
+  font-size:24px;font-weight:800;color:#0B1220;background:#FFC24A;}
+.t1 .tag{background:#FFC24A;} .t2 .tag{background:#6FD6F5;}
+.t3 .tag{background:#8FE9AE;}
+
+.rows{display:flex;flex-direction:column;gap:16px;margin-top:28px;}
+.row{display:flex;gap:28px;align-items:baseline;background:#0B1220;
+  border-radius:14px;padding:16px 28px;}
+.row .num{font-size:44px;font-weight:800;min-width:96px;}
+.row .txt{font-size:28px;color:#F4F7FB;}
+
+.quote{background:#0B1220;border-left:14px solid #FFC24A;border-radius:14px;
+  padding:28px;margin-top:28px;}
+.t1 .quote{border-left-color:#FFC24A;} .t2 .quote{border-left-color:#6FD6F5;}
+.t3 .quote{border-left-color:#8FE9AE;}
+.quote .body{margin:0 0 16px 0;}
+.quote .note{margin:0;}
+
+.stat{display:flex;gap:48px;align-items:flex-end;margin-top:28px;}
+.stat .unit{font-size:36px;color:#CFDCEC;padding-bottom:16px;}
+
+.bigline{display:flex;gap:28px;justify-content:center;align-items:center;
+  flex-wrap:wrap;margin-top:28px;}
+.bigline .one{font-size:64px;font-weight:800;padding:16px 28px;
+  border-radius:14px;color:#0B1220;}
+
+.nn{display:none;}
+html[data-names="off"] .nm{display:none;}
+html[data-names="off"] .nn{display:inline;}
+.links{display:flex;gap:16px;margin-top:28px;}
+.links a{font-size:28px;font-weight:800;color:#0B1220;background:#FFC24A;
+  padding:10px 28px;border-radius:14px;text-decoration:none;}
+.t2 .links a{background:#6FD6F5;} .t3 .links a{background:#8FE9AE;}
+
+#bar{position:fixed;left:0;right:0;bottom:0;z-index:20;
+  display:flex;justify-content:space-between;align-items:center;
+  padding:14px 28px;background:#0B1220;border-top:6px solid #1A2537;}
+#bar .where{font-size:28px;font-weight:800;color:#F4F7FB;}
+#bar .count{font-size:28px;font-weight:800;color:#CFDCEC;}
+#bar .keys{font-size:24px;font-weight:700;color:#CFDCEC;}
+</style>
+</head>
+<body>
+<div class="fallback"><p>줌·팬 캔버스를 그리는 impress.js 를 불러오지 못했습니다. 바깥 연결이 막혔거나 파일이 바뀐 경우입니다.</p><p>단계 이동 없이 11단계를 위에서 아래로 모두 싣습니다. 마우스나 방향키로 내려 읽습니다.</p></div>
+<div id="impress" data-width="1920" data-height="1080" data-max-scale="2" data-min-scale="0" data-perspective="0" data-transition-duration="700">
+<div id="overview" class="step lv-overview plain"
+     data-x="0" data-y="-6000" data-scale="9"
+     data-kind="overview" data-dwell="30" data-sub="0">
+<p class="kicker">제5차 조별 산출물에서 뽑은 숙의 지도</p>
+<h1 class="title">의제1 기업 온실가스 감축 · 시민 발언 235건</h1>
+<div class="cols">
+<div class="col t1">
+<p class="label accent">의제1 기업 온실가스 감축</p>
+<p class="hero">235</p>
+<p class="note">시민 발언 · 5개 조</p>
+<p class="body">문제 인식 122 · 바라는 변화 111 · 질문 2</p>
+</div>
+</div>
+</div>
+<div id="topic-1" class="step lv-topic t1"
+     data-x="0" data-y="0" data-scale="4"
+     data-kind="topic" data-dwell="25" data-sub="1">
+<p class="kicker">의제1</p>
+<h1 class="title accent">기업 온실가스 감축</h1>
+<div class="stat">
+<span class="hero">4</span><span class="unit">범주</span>
+<span class="hero-s">235</span><span class="unit">시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">1</span><span class="txt">정책 일관성</span></div>
+<div class="row"><span class="num accent">2</span><span class="txt">중소기업·공급망</span></div>
+<div class="row"><span class="num accent">3</span><span class="txt">탄소가격·배출권</span></div>
+<div class="row"><span class="num accent">4</span><span class="txt">성과의 가시화</span></div>
+</div>
+</div>
+<div id="pg-1-1" class="step lv-cluster t1"
+     data-x="-6300" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="1">
+<p class="kicker">의제1 · 범주 1 · 배경·문제 인식</p>
+<h1 class="title">정책 일관성</h1>
+<div class="stat">
+<span class="hero">15</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 5조</span></div>
+<div class="row"><span class="num accent">배경</span><span class="txt">문제 인식을 적은 조 · 1·2·3·5조</span></div>
+</div>
+<div class="quote">
+<p class="body">(1) 정책의 일관성이 없음. (2) 친중소, 중견기업 정책이 따로 없는 것에 대한 문제가 있음.</p>
+<p class="note">2조 3명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">기업의 입장에서는 본인들의 이윤을 포기해 가면서 재생에너지를 사용하고 비용 올려야 하는 부담이 있는 건 맞다. 유럽은 가장 환경적인 정책들을 우선시하다보니까 지금 우리 입장에서는 부담을 느낄 수 있다. 우리가…</p>
+<p class="note">1조 2명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-1" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-1" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-1-1" class="step lv-detail t1"
+     data-x="-6300" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="1">
+<p class="kicker">의제1 · 정책 일관성 · 기대 효과</p>
+<h1 class="title accent">정책 일관성과 전담 거버넌스</h1>
+<p class="label">바라는 변화 발언 3건 · 문제 인식 12건</p>
+<div class="quote">
+<p class="body">대한민국 정부의 환경정책을 일관적으로 펴고 국제기준에 맞게 정해놓는다면</p>
+<p class="note">2조 3명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">환경 기준에 맞췄기 때문에 온실가스 감축에 효과적임</p>
+<p class="note">2조 3명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-1" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-1" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-1-2" class="step lv-cluster t1"
+     data-x="-2100" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="1">
+<p class="kicker">의제1 · 범주 2 · 배경·문제 인식</p>
+<h1 class="title">중소기업·공급망</h1>
+<div class="stat">
+<span class="hero">21</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 4조 · 5조</span></div>
+<div class="row"><span class="num accent">배경</span><span class="txt">문제 인식을 적은 조 · 1·2·3·4·5조</span></div>
+</div>
+<div class="quote">
+<p class="body">업효율성 (비용으로 간주) 주주가치제고 (눈치) - 중소기업의 인력 및 자원부족 - (대기업은 탄소감축을 위한 인적 및 시스템을 가추고 있기에 협력업체와 공급망 업체에 관련 지식과 인프라를 제공하는 원바운드 체계구축</p>
+<p class="note">4조 3명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">탄소감축의 현실. 친환경 고열설비나 재생에너지로 해야하는데 초기 투자 비용이 너무 부담이 됨. 비용적 여력이 없음. 초기 투자의비용의 문제를 어떻게 해야할지가 문제된다고 생각함.</p>
+<p class="note">2조 4명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-2" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-2" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-1-2" class="step lv-detail t1"
+     data-x="-2100" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="1">
+<p class="kicker">의제1 · 중소기업·공급망 · 기대 효과</p>
+<h1 class="title accent">친환경 산업 육성과 중소기업 지원</h1>
+<p class="label">바라는 변화 발언 5건 · 문제 인식 16건</p>
+<div class="quote">
+<p class="body">친환경에 기업이 아이디어를 국가나 공공기관에서 개입하여 지분 참여하는 정책이 이루어지면 빠르게 이루어지고 국가 예산확보에 도움이 될 것이다.</p>
+<p class="note">4조 3명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">기후변화 및 탄소절감 관련 산업 부흥 (탄소경감 기술 및 환경 컨설팅) &gt; 산업계의 패러다임 변화</p>
+<p class="note">2조 4명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-2" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-2" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-1-3" class="step lv-cluster t1"
+     data-x="2100" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="1">
+<p class="kicker">의제1 · 범주 3 · 배경·문제 인식</p>
+<h1 class="title">탄소가격·배출권</h1>
+<div class="stat">
+<span class="hero">16</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 4조 · 5조</span></div>
+<div class="row"><span class="num accent">배경</span><span class="txt">문제 인식을 적은 조 · 1·2·3·4·5조</span></div>
+</div>
+<div class="quote">
+<p class="body">우리가 인도보다 기술력은 좋지만 규제를 안 하는 거다. 감리하다보면 친환경 인증을 다 본다. 그래서 녹색 인증이라는 걸 준다. 다 지키면 용적률을 준다. 20층을 지을 수 있는데 25층까지 지을 수 있게 해준다.</p>
+<p class="note">1조 2명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">(1) 돈이 안되니까, 돈이 많이 들어서. 자본주의 사회에서 제일 중요한건 돈이라고 생각하기 때문에 세제지원을 해주는 것이 필요함. 결론적으로 유인책이 부족함.</p>
+<p class="note">2조 2명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-3" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-3" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-1-3" class="step lv-detail t1"
+     data-x="2100" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="1">
+<p class="kicker">의제1 · 탄소가격·배출권 · 기대 효과</p>
+<h1 class="title accent">규제·탄소가격 강화</h1>
+<p class="label">바라는 변화 발언 3건 · 문제 인식 13건</p>
+<div class="quote">
+<p class="body">정책 방향성, 기업 가산세 등 기업 과태료적인 부분이 확실해지고 정책의 일관성이 유지되면 기업의 아이디어는 풍부해지고, 가격은 착해져 친환경 제품으로 가는 기업들이 자동으로 많아질 것 같음. 친환경 제품을 만드는…</p>
+<p class="note">3조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">탄소배출많은 기업들의 전략요금상향, 자체 전력생산시설부족</p>
+<p class="note">4조 3명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-3" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-3" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-1-4" class="step lv-cluster t1"
+     data-x="6300" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="1">
+<p class="kicker">의제1 · 범주 4 · 배경·문제 인식</p>
+<h1 class="title">성과의 가시화</h1>
+<div class="stat">
+<span class="hero">16</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 4조 · 5조</span></div>
+<div class="row"><span class="num accent">배경</span><span class="txt">문제 인식을 적은 조 · 1·2·3·4·5조</span></div>
+</div>
+<div class="quote">
+<p class="body">그런것들을 측정할 수 있는 사이트가 있음. 홍보, 법적인 의무, 영세기업에도 적용이 되는지 여부 등을 파악해야함.</p>
+<p class="note">2조 3명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">기업이 아무리 친환경 제품을 만들어도 소비자들이 차이를 알아차리지 못하는 게 문제라고 생각한다.</p>
+<p class="note">1조 4명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-4" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-4" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-1-4" class="step lv-detail t1"
+     data-x="6300" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="1">
+<p class="kicker">의제1 · 성과의 가시화 · 기대 효과</p>
+<h1 class="title accent">저탄소 인증·정보공개와 신뢰</h1>
+<p class="label">바라는 변화 발언 6건 · 문제 인식 10건</p>
+<div class="quote">
+<p class="body">이제 친환경적으로 믿고 살 수 있는 사회가 되는 거다. 언젠가는 그런 시대가 왔으면 하다. 이런 게 피부로 느껴질 수 있는 변화가 있으면 좋겠다.</p>
+<p class="note">1조 4명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">저탄소를 하려면 모든 물건에 인증마크가 있으면 좋겠음. 포장도 줄이고, 기업이 많이 (탄소감축)노력하고, 탄소가 많이 줄어들기 바람.</p>
+<p class="note">3조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-4" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-4" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ending" class="step lv-ending plain"
+     data-x="0" data-y="12000" data-scale="12"
+     data-kind="ending" data-dwell="45" data-sub="0">
+<p class="kicker">제5차 조별 산출물 · 사람이 판정한 표에서 조립</p>
+<h1 class="title">시민 발언 235건 · 범주 4개</h1>
+<div class="bigline">
+<span class="one" style="background:#FFC24A">의제1 기업 온실가스 감축</span>
+</div>
+</div>
+</div>
+<div id="bar"><span class="where">전체 조망</span><span class="keys">← →</span><span class="count">1 / 11</span></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/impress.js/0.5.3/impress.min.js" integrity="sha512-HXq2vkPUe8naYLkedRvWDYhRwxVrXijlPC/kFTEvPG/Ra7GfIQMzwjVKZiarAjm6bU3qjYpJ49dza/qIqVkPZg==" crossorigin="anonymous" onerror="document.documentElement.className+=' no-impress'"></script>
+<script>
+var WHERE = ["전체 조망", "의제1 기업 온실가스 감축", "의제1 기업 온실가스 감축 · 정책 일관성", "의제1 기업 온실가스 감축 · 기대 효과 · 정책 일관성과 전담 거버넌스", "의제1 기업 온실가스 감축 · 중소기업·공급망", "의제1 기업 온실가스 감축 · 기대 효과 · 친환경 산업 육성과 중소기업 지원", "의제1 기업 온실가스 감축 · 탄소가격·배출권", "의제1 기업 온실가스 감축 · 기대 효과 · 규제·탄소가격 강화", "의제1 기업 온실가스 감축 · 성과의 가시화", "의제1 기업 온실가스 감축 · 기대 효과 · 저탄소 인증·정보공개와 신뢰", "마무리"];
+(function(){
+  var root = document.documentElement;
+  function degrade(){
+    if (root.className.indexOf('no-impress') < 0) {
+      root.className += ' no-impress';
+    }
+  }
+  // impress.js 가 왔는지, 이 브라우저에서 도는지를 먼저 본다.
+  if (root.className.indexOf('no-impress') >= 0) { return; }
+  if (typeof impress !== 'function') { degrade(); return; }
+  if (document.body.className.indexOf('impress-not-supported') >= 0) {
+    degrade(); return;
+  }
+  try {
+    impress().init();
+  } catch (err) {
+    degrade(); return;
+  }
+  var bar = document.getElementById('bar');
+  var whereEl = bar.querySelector('.where');
+  var countEl = bar.querySelector('.count');
+  var ids = [].map.call(document.querySelectorAll('#impress .step'),
+                        function(el){ return el.id; });
+  document.addEventListener('impress:stepenter', function(e){
+    var i = ids.indexOf(e.target.id);
+    if (i < 0) { return; }
+    whereEl.textContent = WHERE[i];
+    countEl.textContent = (i + 1) + ' / ' + ids.length;
+  });
+  
+})();
+</script>
+</body>
+</html>
