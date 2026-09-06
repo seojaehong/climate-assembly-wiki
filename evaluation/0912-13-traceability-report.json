@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "reportId": "0912-13-traceability-verification",
-  "generatedAt": "2026-09-05T19:20:13.975Z",
-  "sourceCommit": "484bf4425fb7136f98bfbaa6e1a6f8fe3bbbe63d",
+  "generatedAt": "2026-09-06T06:23:28.951Z",
+  "sourceCommit": "d595f7be68a2c7df36a1094d989b1644dbc45cb1",
   "sourceTreeClean": true,
   "status": "pass",
   "safety": {
@@ -10,9 +10,9 @@
     "networkRequestCount": 0
   },
   "summary": {
-    "requirementCount": 14,
-    "checkCount": 14,
-    "passCount": 14,
+    "requirementCount": 15,
+    "checkCount": 15,
+    "passCount": 15,
     "failCount": 0
   },
   "checks": [
@@ -20,14 +20,14 @@
       "id": "manifest-schema",
       "status": "pass",
       "evidence": {
-        "requirementCount": 14
+        "requirementCount": 15
       }
     },
     {
       "id": "requirement-links",
       "status": "pass",
       "evidence": {
-        "linkCount": 162
+        "linkCount": 178
       }
     },
     {
@@ -35,7 +35,7 @@
       "status": "pass",
       "evidence": {
         "gateCount": 35,
-        "requirementCount": 14,
+        "requirementCount": 15,
         "rolloutStepCount": 14
       }
     },
@@ -58,11 +58,23 @@
       }
     },
     {
+      "id": "canonical-plan-contract",
+      "status": "pass",
+      "evidence": {
+        "contractId": "0912-13-adr-final-v1",
+        "canonicalSource": true,
+        "stageCount": 8,
+        "pendingPmDecisionCount": 8,
+        "productionTopicActivationBlocked": true,
+        "frozenArtifactCount": 2
+      }
+    },
+    {
       "id": "synthetic-fixture",
       "status": "pass",
       "evidence": {
         "fixtureId": "0912-field-rehearsal-v1",
-        "topicCount": 6,
+        "topicCount": 8,
         "rolloutSteps": 14
       }
     },
