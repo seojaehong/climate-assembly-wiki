@@ -33,3 +33,6 @@ Disallow: /agenda-vote-0704/
 # /workshop-graph-3d/, /regulation-graph/, /live-graph/는 redirect stub만 유지
 
 Sitemap: https://climate-assembly-wiki.pages.dev/sitemap-index.xml
+
+# 2026-09-07 숙의 지도(접속 암호 필요)
+Disallow: /m-7k2p9qv4x8wd/
