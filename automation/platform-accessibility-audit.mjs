@@ -355,7 +355,7 @@ export async function prepareAuthenticatedPlatform({ context, page, topics, hand
           { key: 'topics_open', pass: true, detail: '1개 주제 open' },
           { key: 'teams_active', pass: true, detail: '1개 조 active' },
           { key: 'roster_loaded', pass: true, detail: '12명 배정' },
-          { key: 'submissions', pass: true, detail: '1/1 최종 제출' },
+          { key: 'submissions', pass: true, detail: '1/1 제출 완료' },
         ],
       });
     }

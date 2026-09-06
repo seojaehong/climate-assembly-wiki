@@ -107,7 +107,7 @@ function submissionStatusLabel(status: SubmissionStatus | null): string {
     case 'draft':
       return '작성 중';
     case 'final':
-      return '최종 제출';
+      return '제출 완료';
     case 'reopened':
       return '재작성 중';
     case 'archived':

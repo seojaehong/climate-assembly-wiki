@@ -229,7 +229,7 @@ try {
     await saveButton(page, 1).click();
     await page.waitForTimeout(1_200);
     must((await readKey(page, QUEUE1)) === null, '★ finalized 를 큐에 넣었다 — 영원히 두드린다');
-    const toast = page.getByText('이미 최종 제출된 상태입니다', { exact: false });
+    const toast = page.getByText('이미 제출 완료된 상태입니다', { exact: false });
     must(await toast.count(), 'finalized 안내가 안 떴다');
     return `큐 0건 · 기존 토스트 유지`;
   });

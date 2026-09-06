@@ -147,7 +147,7 @@ describe('isDirty — 저장 전 이탈 방어의 판정 기준', () => {
 
 describe('submissionBadge — 상태 배지', () => {
   it('final은 잠금 배지', () => {
-    expect(submissionBadge('final')).toEqual({ label: '최종 제출됨 · 잠금', tone: 'locked' });
+    expect(submissionBadge('final')).toEqual({ label: '제출 완료 · 잠금', tone: 'locked' });
   });
 
   it('reopened는 재오픈 배지', () => {
@@ -162,7 +162,8 @@ describe('submissionBadge — 상태 배지', () => {
 
 describe('확인 문구', () => {
   // 조 자체 재오픈(34b96da) 이후로 「본부만 연다」는 거짓이 됐다. 되살아나지 않게 못박는다.
-  it('최종 제출 confirm은 조가 직접 다시 열 수 있음을 알린다', () => {
+  it('조별 초안 제출 confirm은 조가 직접 다시 열 수 있음을 알린다', () => {
+    expect(FINALIZE_CONFIRM_MESSAGE).toContain('조별 초안');
     expect(FINALIZE_CONFIRM_MESSAGE).toContain('다시 열기');
     expect(FINALIZE_CONFIRM_MESSAGE).not.toContain('본부');
   });

@@ -135,7 +135,7 @@ describe('reportToMarkdown — 계층과 라벨', () => {
 
   it('조 이름 칸에 테이블 번호·상태 라벨이 함께 온다', () => {
     expect(md).toContain('1분과 1조 (3번 테이블) — 작성 중');
-    expect(md).toContain('1분과 2조 — 최종 제출');
+    expect(md).toContain('1분과 2조 — 제출 완료');
   });
 
   it('표 머리와 구분줄이 꼭지마다 붙는다', () => {

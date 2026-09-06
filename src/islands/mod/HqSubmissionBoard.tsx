@@ -344,7 +344,7 @@ function StatusChip({ status }: { status: TopicBoard['teams'][number]['status'] 
   if (status === 'final') {
     return (
       <span className="rounded-full bg-[#1F4E79] px-2 py-[2px] text-[12px] font-bold text-white">
-        최종 제출 · 잠금
+        제출 완료 · 잠금
       </span>
     );
   }
@@ -2483,7 +2483,7 @@ export default function HqSubmissionBoard({
                       <td className="py-2 pr-3 whitespace-nowrap text-[#5A6B73]">{row.topic_prompt}</td>
                       <td className="py-2 pr-3 whitespace-nowrap font-bold">
                         {row.kind === 'finalize'
-                          ? '최종 제출'
+                          ? '제출 완료'
                           : row.kind === 'reopen'
                             ? '다시 열기'
                             : '저장으로 교체됨'}
@@ -2692,7 +2692,7 @@ export default function HqSubmissionBoard({
               {reopening.teamName} 다시 열기
             </h4>
             <p className="mt-2 text-[15px] leading-[1.6] text-[#5A6B73]">
-              최종 제출을 되돌려 조가 다시 고칠 수 있게 합니다. 사유는 기록으로 남습니다.
+              제출 완료 상태를 되돌려 조가 다시 고칠 수 있게 합니다. 사유는 기록으로 남습니다.
             </p>
             <label className="mt-4 block text-[15px] font-bold text-[#1F2933]">
               사유

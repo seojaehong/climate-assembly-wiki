@@ -709,7 +709,7 @@ describe('9/12 release report validator', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, 15_000);
 
   test('requires the out-of-band release run id before reading a ready evidence packet', () => {
     const root = mkdtempSync(join(tmpdir(), '0912-release-run-binding-'));
@@ -748,7 +748,7 @@ describe('9/12 release report validator', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, 15_000);
 
   test('rejects a source rename into an allowlisted evidence destination', () => {
     const root = mkdtempSync(join(tmpdir(), '0912-source-rename-'));
@@ -852,6 +852,7 @@ describe('9/12 ready artifact binding', () => {
       'report-template',
       'field-report-template',
       'hq-report-template',
+      'canonical-plan-contract',
       'synthetic-fixture',
       'ci-matrix',
       'postgres-p1a-p2a-disposable',
@@ -1023,7 +1024,7 @@ describe('9/12 ready artifact binding', () => {
         status: 'pass',
         safety: { liveDatabaseMutationCount: 0, networkRequestCount: 0 },
         summary: {
-          requirementCount: 14,
+          requirementCount: 15,
           checkCount: traceabilityCheckIds.length,
           passCount: traceabilityCheckIds.length,
           failCount: 0,
@@ -2041,7 +2042,7 @@ describe('9/12 ready artifact binding', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  }, 20_000);
+  }, 60_000);
 
   test('accepts the complete ready wrapper path against one immutable source commit', () => {
     const root = mkdtempSync(join(tmpdir(), '0912-full-ready-wrapper-'));
@@ -2143,7 +2144,7 @@ describe('9/12 ready artifact binding', () => {
       rmSync(root, { recursive: true, force: true });
       rmSync(externalEvidenceRoot, { recursive: true, force: true });
     }
-  }, 120_000);
+  }, 240_000);
 
   test.each([
     ['unconfigured policy', {

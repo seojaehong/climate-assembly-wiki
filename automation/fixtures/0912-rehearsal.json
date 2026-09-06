@@ -256,54 +256,80 @@
     {
       "id": "09120000-0000-4000-8000-000000000201",
       "ordinal": 1,
+      "planStageId": "category-review",
       "block": "am",
-      "prompt": "합성 꼭지 1",
-      "guidance": "리허설 입력 보존 확인",
+      "prompt": "숙의 주제·범주 확인 및 보완안",
+      "guidance": "2026-09-12 13:45 · 제5차 회의 결과를 바탕으로 범주를 확인하고 보완할 내용을 기록한다.",
       "status": "open",
       "deadlineAt": "2026-09-12T03:00:00.000Z"
     },
     {
       "id": "09120000-0000-4000-8000-000000000202",
       "ordinal": 2,
+      "planStageId": "background-problem",
       "block": "am",
-      "prompt": "합성 꼭지 2",
-      "guidance": "순차 개방 확인",
+      "prompt": "권고별 배경·문제점",
+      "guidance": "2026-09-12 14:45 · 범주별 배경과 해결해야 할 문제점을 출처 표현을 보존해 정리한다.",
       "status": "draft",
       "deadlineAt": null
     },
     {
       "id": "09120000-0000-4000-8000-000000000203",
       "ordinal": 3,
+      "planStageId": "expected-effect",
       "block": "am",
-      "prompt": "합성 꼭지 3",
-      "guidance": "순차 개방 확인",
+      "prompt": "권고별 기대효과",
+      "guidance": "2026-09-12 16:15 · 권고가 시행될 때 기대하는 변화를 기록한다.",
       "status": "draft",
       "deadlineAt": null
     },
     {
       "id": "09120000-0000-4000-8000-000000000204",
       "ordinal": 4,
-      "block": "pm",
-      "prompt": "합성 꼭지 4",
-      "guidance": "순차 개방 확인",
+      "planStageId": "recommendation-statement",
+      "block": "am",
+      "prompt": "권고문 한 문장",
+      "guidance": "2026-09-12 17:00 · 범주별 권고 내용을 한 문장 초안으로 작성한다.",
       "status": "draft",
       "deadlineAt": null
     },
     {
       "id": "09120000-0000-4000-8000-000000000205",
       "ordinal": 5,
+      "planStageId": "detailed-policy",
       "block": "pm",
-      "prompt": "합성 꼭지 5",
-      "guidance": "순차 개방 확인",
+      "prompt": "세부 정책제안",
+      "guidance": "2026-09-13 09:10 · 두 구간에 걸쳐 권고별 세부 정책제안을 작성한다.",
       "status": "draft",
       "deadlineAt": null
     },
     {
       "id": "09120000-0000-4000-8000-000000000206",
       "ordinal": 6,
+      "planStageId": "policy-package",
       "block": "pm",
-      "prompt": "합성 꼭지 6",
-      "guidance": "순차 개방 확인",
+      "prompt": "정책제안 정리·일정·대표 제목·기타 의견",
+      "guidance": "2026-09-13 13:00 · 정책제안, 추진 일정, 대표 제목과 기타 의견을 하나의 초안 묶음으로 정리한다.",
+      "status": "draft",
+      "deadlineAt": null
+    },
+    {
+      "id": "09120000-0000-4000-8000-000000000207",
+      "ordinal": 7,
+      "planStageId": "docent-principles",
+      "block": "pm",
+      "prompt": "5개 원칙 확인·기타 의견·반대 의견",
+      "guidance": "2026-09-13 14:30 · 도슨트 방식의 4회 검토 후 5개 원칙과 기타·반대 의견을 기록한다.",
+      "status": "draft",
+      "deadlineAt": null
+    },
+    {
+      "id": "09120000-0000-4000-8000-000000000208",
+      "ordinal": 8,
+      "planStageId": "duplicate-share",
+      "block": "pm",
+      "prompt": "중복 유형·대표 제목·제8차 이관 메모",
+      "guidance": "2026-09-13 15:45 · 중복 유형 A·B·C·D, 대표 제목과 미완성 초안의 제8차 이관 메모를 남긴다.",
       "status": "draft",
       "deadlineAt": null
     }

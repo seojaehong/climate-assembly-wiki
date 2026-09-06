@@ -391,7 +391,7 @@ describe('/mod opaque session and OCC wiring', () => {
     expect(submissionSource).toContain('sameSavePayload(currentRows, items)');
     expect(submissionSource).toContain('writeDraft(currentRows, acceptedAt, Date.now(), version)');
     expect(submissionSource).toContain('if (!settled.hasNewerRows) await loadSubmission()');
-    expect(submissionSource).toContain('최종 제출을 멈췄습니다');
+    expect(submissionSource).toContain('제출을 멈췄습니다');
     expect(submissionSource).toContain('readOnly={!editorWritable}');
   });
 

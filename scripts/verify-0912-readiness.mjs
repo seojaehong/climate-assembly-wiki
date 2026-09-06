@@ -1,9 +1,11 @@
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const REQUIRED_0912_REQUIREMENTS = Object.freeze([
+  'PLAN-CANONICAL-ALIGNMENT',
   'AUTH-2DEVICE',
   'AUTH-TOKEN-ONLY',
   'SYNC-SESSION-STATE',
@@ -18,6 +20,42 @@ export const REQUIRED_0912_REQUIREMENTS = Object.freeze([
   'OPS-ZERO-LIVE-MUTATION',
   'OPS-BACKUP-RESTORE-STOP',
   'CI-COMPLETE-MATRIX',
+]);
+
+export const REQUIRED_0912_PLAN_STAGE_IDS = Object.freeze([
+  'category-review',
+  'background-problem',
+  'expected-effect',
+  'recommendation-statement',
+  'detailed-policy',
+  'policy-package',
+  'docent-principles',
+  'duplicate-share',
+]);
+
+const CANONICAL_PLAN_CONTRACT_ID = '0912-13-adr-final-v1';
+const CANONICAL_PLAN_SOURCE_FILE = '0. 기후시민회의 제6-7차 회의 추진계획안-ADR수정.hwpx';
+const CANONICAL_PLAN_SOURCE_SHA256 = '00952e23145bb41953abd2da6414656ed502204b4a9758f1e8e6de3ae6099c67';
+const CANONICAL_PLAN_TEXT_SHA256 = 'e35ca9de8778ef8a797f40c47c827f0d7f7b0d20a00665240a62eff789188591';
+const REQUIRED_0912_PM_DECISION_IDS = Object.freeze([
+  'recommendation-count',
+  'day1-share-audience',
+  'removed-procedures',
+  'duplicate-abcd',
+  'no-vote-round8',
+  'record-source-of-truth',
+  'roster-staffing',
+  'schedule-artifact-conflicts',
+]);
+const REQUIRED_0912_FROZEN_ARTIFACTS = Object.freeze([
+  Object.freeze({
+    path: 'supabase/migrations/20260902_s20_open_0912_topics.sql',
+    sha256: 'd6d619126170e7c8853cfb11f72be34907230880a39ce303dff77ec27579d7a2',
+  }),
+  Object.freeze({
+    path: 'supabase/verify/20260902_s20_open_0912_topics.sql',
+    sha256: '929628337b2e0cabbebe350d6996076e33e234885a2783eff788ec228289d166',
+  }),
 ]);
 
 export const REQUIRED_0912_CRITICAL_GATES = Object.freeze([
@@ -116,6 +154,7 @@ export function verify0912Readiness({
   fieldReportTemplatePath = 'evaluation/0912-13-field-rehearsal.template.json',
   hqReportTemplatePath = 'evaluation/0912-13-hq-rehearsal.template.json',
   rehearsalFixturePath = 'automation/fixtures/0912-rehearsal.json',
+  planContractPath = 'docs/operations/0912-13-plan-contract.json',
   generatedAt = new Date(),
   sourceReader,
   sourceCommit: sourceCommitOverride,
@@ -283,6 +322,124 @@ export function verify0912Readiness({
       path: hqReportTemplatePath,
       rehearsalId: hqTemplate.rehearsalId,
       productionDatabaseMutationCount: 0,
+    };
+  });
+
+  record('canonical-plan-contract', () => {
+    const contract = readJson(planContractPath, readSourceText);
+    const fixture = readJson(rehearsalFixturePath, readSourceText);
+    if (contract.schemaVersion !== 1
+      || contract.contractId !== CANONICAL_PLAN_CONTRACT_ID
+      || contract.source?.canonical !== true
+      || contract.source?.fileName !== CANONICAL_PLAN_SOURCE_FILE
+      || contract.source?.sha256 !== CANONICAL_PLAN_SOURCE_SHA256
+      || contract.source?.extractedTextSha256 !== CANONICAL_PLAN_TEXT_SHA256) {
+      throw new Error('정본 HWPX 식별자·해시 또는 계획 계약 버전이 다릅니다.');
+    }
+    if (contract.participantCount !== 162 || contract.artifactState !== '조별 권고안 초안') {
+      throw new Error('정본 참가자 수 또는 산출물 상태가 다릅니다.');
+    }
+    const expectedDays = [
+      ['2026-09-12', '11:00', '13:45', '20:00'],
+      ['2026-09-13', '08:00', '09:00', '17:00'],
+    ];
+    const actualDays = (contract.days ?? []).map((day) => [
+      day.date,
+      day.programStartKst,
+      day.deliberationStartKst,
+      day.programEndKst,
+    ]);
+    if (JSON.stringify(actualDays) !== JSON.stringify(expectedDays)) {
+      throw new Error('정본의 9월 12~13일 공식 운영 시간이 다릅니다.');
+    }
+    const stages = contract.stages ?? [];
+    const stageIds = stages.map((stage) => stage.id);
+    if (JSON.stringify(stageIds) !== JSON.stringify(REQUIRED_0912_PLAN_STAGE_IDS)
+      || stages.some((stage, index) => stage.ordinal !== index + 1
+        || typeof stage.day !== 'string'
+        || typeof stage.startKst !== 'string'
+        || typeof stage.endKst !== 'string'
+        || typeof stage.title !== 'string'
+        || typeof stage.guidance !== 'string')) {
+      throw new Error('정본 계획의 8개 단계 ID·순서·시각·문구가 다릅니다.');
+    }
+    const topics = fixture.topics ?? [];
+    if (topics.length !== stages.length || topics.some((topic, index) => {
+      const stage = stages[index];
+      return topic.ordinal !== stage.ordinal
+        || topic.planStageId !== stage.id
+        || topic.prompt !== stage.title
+        || !String(topic.guidance ?? '').includes(stage.day)
+        || !String(topic.guidance ?? '').includes(stage.startKst);
+    })) {
+      throw new Error('리허설 꼭지가 정본 계획의 8개 단계와 다릅니다.');
+    }
+    const pmDecisions = contract.pmDecisions ?? [];
+    const pendingPmDecisionCount = pmDecisions.filter((decision) => decision.status === 'pending').length;
+    const pmDecisionIds = pmDecisions.map((decision) => decision.id);
+    if (JSON.stringify(pmDecisionIds) !== JSON.stringify(REQUIRED_0912_PM_DECISION_IDS)
+      || new Set(pmDecisionIds).size !== pmDecisions.length
+      || pmDecisions.some((decision) => !['pending', 'confirmed'].includes(decision.status))) {
+      throw new Error('PM 결정 gate 8건의 ID 또는 상태가 올바르지 않습니다.');
+    }
+    if (contract.digitalRecordMode?.workingMode !== 'physical-card-primary-digital-mirror'
+      || contract.releaseGuard?.productionTopicActivationBlocked !== true
+      || contract.releaseGuard?.databaseChangeApplied !== false
+      || contract.releaseGuard?.explicitApprovalRequired !== true) {
+      throw new Error('PM 확인 전 디지털 미러·운영 DB 개통 차단 경계가 열렸습니다.');
+    }
+    const frozenArtifacts = contract.releaseGuard?.frozenArtifacts ?? [];
+    if (JSON.stringify(frozenArtifacts) !== JSON.stringify(REQUIRED_0912_FROZEN_ARTIFACTS)) {
+      throw new Error('차단할 기존 s20 파일 경로·해시 집합이 정본과 다릅니다.');
+    }
+    for (const artifact of frozenArtifacts) {
+      const actualSha256 = createHash('sha256').update(readSourceText(artifact.path), 'utf8').digest('hex');
+      if (actualSha256 !== artifact.sha256) {
+        throw new Error(`차단된 기존 s20 파일이 승인 없이 변경됐습니다: ${artifact.path}`);
+      }
+    }
+    for (const path of [
+      'src/islands/mod/mod-tabs.ts',
+      'src/islands/mod/submission-guide.ts',
+      'src/islands/mod/SubmissionPanel.tsx',
+    ]) {
+      const content = readSourceText(path);
+      const legacy = (contract.releaseGuard?.forbiddenLegacyParticipantCopy ?? [])
+        .filter((copy) => content.includes(copy));
+      if (legacy.length > 0) throw new Error(`${path}에 과거 참가자 안내가 남았습니다: ${legacy.join('|')}`);
+    }
+    inspectRequiredText(readSourceText, 'automation/workshop-schedule.yml', [
+      planContractPath,
+      'participant_count: 162',
+      'artifact_state: 조별 권고안 초안',
+    ]);
+    inspectRequiredText(readSourceText, 'content/ko/session/2026-09-12-deliberation-workshop-a.md', [
+      CANONICAL_PLAN_CONTRACT_ID,
+      '숙의참여단 162명',
+      stages[0].title,
+      stages[3].title,
+    ]);
+    inspectRequiredText(readSourceText, 'content/ko/session/2026-09-13-deliberation-workshop-b.md', [
+      CANONICAL_PLAN_CONTRACT_ID,
+      '숙의참여단 162명',
+      stages[4].title,
+      '중복 유형',
+    ]);
+    inspectRequiredText(readSourceText, 'docs/operations/0912-13-runbook.md', [
+      CANONICAL_PLAN_CONTRACT_ID,
+      CANONICAL_PLAN_SOURCE_SHA256,
+      '현장 카드 정본·디지털 미러',
+      'PM 결정 8건',
+      '적용 금지·동결',
+      ...stages.map((stage) => stage.title),
+    ]);
+    return {
+      contractId: contract.contractId,
+      canonicalSource: contract.source.canonical,
+      stageCount: stages.length,
+      pendingPmDecisionCount,
+      productionTopicActivationBlocked: contract.releaseGuard.productionTopicActivationBlocked,
+      frozenArtifactCount: frozenArtifacts.length,
     };
   });
 

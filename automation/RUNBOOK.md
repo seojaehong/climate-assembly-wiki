@@ -8,11 +8,11 @@
 | --- | --- | --- | --- |
 | 2026-07-04 | 7월_행사 | 09:00 ~ 18:00 | 2 |
 | 2026-08-29 | 2차_의제선정 | 09:00 ~ 18:00 | 3 |
-| 2026-09-12 | 6차_분과권고안의결_경주합숙1일차 | 09:00 ~ 21:00 | 6 (행사 전 확인) |
-| 2026-09-13 | 7차_분과권고안의결_경주합숙2일차 | 09:00 ~ 18:00 | 7 (행사 전 확인) |
+| 2026-09-12 | 6차_권고안초안작성_경주합숙1일차 | 자동화 09:00 ~ 21:00 · 공식 11:00 ~ 20:00 | 6 (행사 전 확인) |
+| 2026-09-13 | 7차_권고안초안작성_경주합숙2일차 | 자동화 09:00 ~ 18:00 · 공식 08:00 ~ 17:00 | 7 (행사 전 확인) |
 | 2026-10-17 | 8차_전체법정의결 | 09:00 ~ 18:00 | 8 (행사 전 확인) |
 
-신규 워크숍 추가 시: `automation/workshop-schedule.yml`의 `workshops:` 배열에 날짜순 row를 추가하고 고유한 이름·`supabase_round_id`를 확인한 뒤 capture·snapshot·finalize workflow의 정적 cron을 함께 추가해 PR로 머지한다. capture·snapshot은 GitHub Actions가 지원하는 5분 간격을 사용하며 각 시점이 별도 증거이므로 concurrency coalescing을 사용하지 않는다. automation 테스트는 정본 일정에서 파생한 세 workflow cron과 scheduled finalize의 실제 `WORKSHOP` 전달이 정확히 일치하는지 검사한다. cron에는 연도가 없으므로 scheduled finalize는 해당 정본 일자의 KST 당일 또는 종료 직후 다음 날에만 실행하고, 다른 연도 재발화는 건너뛴다.
+9월 12~13일의 계획 정본은 `docs/operations/0912-13-plan-contract.json`(`0912-13-adr-final-v1`)이다. 자동화 창은 준비·정리 여유를 포함하므로 공식 프로그램 시간과 다르며, 산출물 상태는 `조별 권고안 초안`이다. 신규 워크숍 추가 시: `automation/workshop-schedule.yml`의 `workshops:` 배열에 날짜순 row를 추가하고 고유한 이름·`supabase_round_id`를 확인한 뒤 capture·snapshot·finalize workflow의 정적 cron을 함께 추가해 PR로 머지한다. capture·snapshot은 GitHub Actions가 지원하는 5분 간격을 사용하며 각 시점이 별도 증거이므로 concurrency coalescing을 사용하지 않는다. automation 테스트는 정본 일정에서 파생한 세 workflow cron과 scheduled finalize의 실제 `WORKSHOP` 전달이 정확히 일치하는지 검사한다. cron에는 연도가 없으므로 scheduled finalize는 해당 정본 일자의 KST 당일 또는 종료 직후 다음 날에만 실행하고, 다른 연도 재발화는 건너뛴다.
 
 ## D-30 — Secrets 등록 (GitHub repo Settings → Secrets and variables → Actions)
 

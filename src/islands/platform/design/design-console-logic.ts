@@ -474,7 +474,7 @@ const CHECK_LABELS: Readonly<Record<string, string>> = {
   topics_open: '공개 주제',
   teams_active: '활성 조',
   roster_loaded: '참여자 배정',
-  submissions: '최종 제출 현황',
+  submissions: '제출 완료 현황',
 };
 
 function toCheckView(check: ReadinessResult['checks'][number]): DesignCheckView {

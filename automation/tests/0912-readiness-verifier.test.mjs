@@ -7,6 +7,7 @@ import { describe, expect, test } from 'vitest';
 import {
   REQUIRED_0912_APPROVAL_GATES,
   REQUIRED_0912_CRITICAL_GATES,
+  REQUIRED_0912_PLAN_STAGE_IDS,
   REQUIRED_0912_REQUIREMENTS,
   parse0912ReadinessCliArgs,
   verify0912Readiness,
@@ -24,6 +25,55 @@ describe('9/12 readiness traceability verifier', () => {
     expect(report.summary.requirementCount).toBe(REQUIRED_0912_REQUIREMENTS.length);
     expect(report.summary.failCount).toBe(0);
     expect(report.safety).toEqual({ liveDatabaseMutationCount: 0, networkRequestCount: 0 });
+    expect(REQUIRED_0912_REQUIREMENTS).toContain('PLAN-CANONICAL-ALIGNMENT');
+    expect(report.checks.find((check) => check.id === 'canonical-plan-contract')?.evidence)
+      .toMatchObject({
+        contractId: '0912-13-adr-final-v1',
+        canonicalSource: true,
+        stageCount: REQUIRED_0912_PLAN_STAGE_IDS.length,
+        productionTopicActivationBlocked: true,
+      });
+  });
+
+  test('fails closed when the canonical HWPX identity is changed', () => {
+    const contractPath = 'docs/operations/0912-13-plan-contract.json';
+    const sourceCommit = 'a'.repeat(40);
+    const report = verify0912Readiness({
+      root: projectRoot,
+      sourceReader: (relativePath) => {
+        const source = readFileSync(resolve(projectRoot, relativePath));
+        if (relativePath !== contractPath) return source;
+        const contract = JSON.parse(source.toString('utf8'));
+        contract.source.sha256 = '0'.repeat(64);
+        return Buffer.from(JSON.stringify(contract), 'utf8');
+      },
+      sourceCommit,
+      sourceTreeClean: true,
+    });
+
+    expect(report.status).toBe('fail');
+    expect(report.errors.join('\n')).toContain('canonical-plan-contract');
+    expect(report.errors.join('\n')).toContain('정본 HWPX');
+  });
+
+  test('fails closed when the rehearsal topics drift from the eight plan stages', () => {
+    const fixturePath = 'automation/fixtures/0912-rehearsal.json';
+    const report = verify0912Readiness({
+      root: projectRoot,
+      sourceReader: (relativePath) => {
+        const source = readFileSync(resolve(projectRoot, relativePath));
+        if (relativePath !== fixturePath) return source;
+        const fixture = JSON.parse(source.toString('utf8'));
+        fixture.topics[0].prompt = '다른 진행 단계';
+        return Buffer.from(JSON.stringify(fixture), 'utf8');
+      },
+      sourceCommit: 'a'.repeat(40),
+      sourceTreeClean: true,
+    });
+
+    expect(report.status).toBe('fail');
+    expect(report.errors.join('\n')).toContain('canonical-plan-contract');
+    expect(report.errors.join('\n')).toContain('리허설 꼭지');
   });
 
   test('recomputes traceability from an immutable source reader independently of evidence files', () => {

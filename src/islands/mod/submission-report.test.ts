@@ -73,7 +73,7 @@ describe('buildSubmissionReport', () => {
 
   it('carries 최종 제출 status onto the team', () => {
     const one = report.topics[0].subgroups[0].teams.find((t) => t.teamName === '1분과 2조');
-    expect(one?.statusLabel).toBe('최종 제출');
+    expect(one?.statusLabel).toBe('제출 완료');
   });
 
   // 순서를 바꾸거나 합치지 않는다 — 조가 쓴 그대로.

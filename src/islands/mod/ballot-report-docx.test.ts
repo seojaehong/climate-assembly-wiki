@@ -186,7 +186,7 @@ describe('buildBallotReportModel', () => {
     });
     expect(model.topics).not.toBeNull();
     expect(model.topics![0].heading).toBe('우리 지역 에너지 전환의 우선 과제는?');
-    expect(model.topics![0].statusLabel).toBe('최종 제출');
+    expect(model.topics![0].statusLabel).toBe('제출 완료');
     expect(model.topics![0].rows).toEqual([
       { kindLabel: '핵심', content: '태양광 보급 확대', rationale: '설치 여력이 크다' },
       { kindLabel: '보충', content: '단열 개보수', rationale: '—' },

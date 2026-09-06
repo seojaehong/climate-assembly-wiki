@@ -453,7 +453,7 @@ describe('buildDesignView', () => {
           { key: 'topics_open', pass: true, detail: '2개 주제 open' },
           { key: 'teams_active', pass: false, detail: '0개 조 active' },
           { key: 'roster_loaded', pass: true, detail: '12명 배정' },
-          { key: 'submissions', pass: true, detail: '3/4 최종 제출' },
+          { key: 'submissions', pass: true, detail: '3/4 제출 완료' },
         ],
       },
     }]);
@@ -464,7 +464,7 @@ describe('buildDesignView', () => {
       expect.objectContaining({ label: '공개 주제', kind: 'gate', statusLabel: '통과' }),
       expect.objectContaining({ label: '활성 조', kind: 'gate', statusLabel: '확인 필요' }),
       expect.objectContaining({ label: '참여자 배정', kind: 'gate', statusLabel: '통과' }),
-      expect.objectContaining({ label: '최종 제출 현황', kind: 'informational', statusLabel: '정보' }),
+      expect.objectContaining({ label: '제출 완료 현황', kind: 'informational', statusLabel: '정보' }),
     ]);
   });
 

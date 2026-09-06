@@ -17,18 +17,24 @@ describe('SUBMISSION_GUIDE', () => {
     expect(all).toContain('합의되지 않은');
   });
 
-  it('keeps the 개수 제한 없음 rule', () => {
+  it('defers the recommendation count to the current facilitation instruction', () => {
     const all = SUBMISSION_GUIDE.map((i) => `${i.title} ${i.body}`).join(' ');
-    expect(all).toContain('개수 제한이 없습니다');
+    expect(all).toContain('현재 열린 단계');
+    expect(all).toContain('진행 안내');
+    expect(all).not.toContain('개수 제한이 없습니다');
   });
 
   // 잠긴다는 것과 「조가 직접 다시 연다」는 것이 함께 있어야 한다. 조 자체 재오픈(34b96da)
   // 이후로 「본부만 연다」는 거짓이므로, 그 문장이 되살아나면 실패한다.
-  it('warns that 최종 제출 locks — 그리고 조가 직접 다시 연다', () => {
+  it('describes a draft submission that locks — 그리고 조가 직접 다시 연다', () => {
     const all = SUBMISSION_GUIDE.map((i) => `${i.title} ${i.body}`).join(' ');
+    expect(all).toContain('조별 초안');
     expect(all).toContain('잠기');
     expect(all).toContain('다시 열기');
     expect(all).not.toContain('본부만');
+    expect(all).not.toContain('최종 제출');
+    expect(all).not.toContain('오늘은 해결책을 정하는 날이 아닙니다');
+    expect(all).not.toContain('세 꼭지');
   });
 
   // 안내에 적힌 상한이 실제 저장 상한과 어긋나면 조가 30줄에서 막히고도 이유를 모른다.

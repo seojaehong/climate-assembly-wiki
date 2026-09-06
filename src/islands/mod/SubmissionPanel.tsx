@@ -923,7 +923,7 @@ function TopicSection({
    * 행사 중 본부를 부르게 하면 그 조가 몇 분씩 멈춘다.
    */
   const handleReopen = async () => {
-    if (!window.confirm('최종 제출을 취소하고 다시 고칠 수 있게 합니다. 내용은 그대로 남습니다.')) return;
+    if (!window.confirm('제출 완료 상태를 취소하고 다시 고칠 수 있게 합니다. 내용은 그대로 남습니다.')) return;
     if (fixtureMode) {
       const currentItems = toSaveItems(rowsRef.current);
       applyFixtureSubmission(currentItems, 'reopened');
@@ -957,7 +957,7 @@ function TopicSection({
     if (fixtureMode) {
       setFinalizing(true);
       applyFixtureSubmission(items, 'final');
-      setToast('미리보기에서 최종 제출 상태를 확인했습니다. 운영 DB에는 전송하지 않았습니다.');
+      setToast('미리보기에서 제출 완료 상태를 확인했습니다. 운영 DB에는 전송하지 않았습니다.');
       setFinalizing(false);
       return;
     }
@@ -971,7 +971,7 @@ function TopicSection({
       });
       const settled = settleAcceptedSave(items, result, editBaseVersion);
       if (settled.hasNewerRows) {
-        setToast('저장하는 동안 내용이 바뀌어 최종 제출을 멈췄습니다. 새 내용을 확인한 뒤 다시 제출해 주세요.');
+        setToast('저장하는 동안 내용이 바뀌어 제출을 멈췄습니다. 새 내용을 확인한 뒤 다시 제출해 주세요.');
         announceSubmissionChanged();
         return;
       }
@@ -980,8 +980,8 @@ function TopicSection({
       // 잠긴 뒤에는 「다시 열기」를 눌러야 고칠 수 있다.
       setToast(
         result?.split_skipped_over_cap
-          ? `최종 제출되었습니다. 다만 줄이 ${MAX_SUBMISSION_ROWS}개를 넘어 나누지 못했습니다 — 나누려면 「다시 열기」를 눌러 주세요.`
-          : '최종 제출되었습니다.',
+          ? `조별 초안이 제출되었습니다. 다만 줄이 ${MAX_SUBMISSION_ROWS}개를 넘어 나누지 못했습니다 — 나누려면 「다시 열기」를 눌러 주세요.`
+          : '조별 초안이 제출되었습니다.',
       );
       await loadSubmission();
       announceSubmissionChanged();
@@ -993,12 +993,12 @@ function TopicSection({
         setShowServerRows(true);
         setManualMerge(false);
         setOperationFailed(false);
-        setToast('다른 기기의 저장이 먼저 반영돼 최종 제출을 멈췄습니다.');
+        setToast('다른 기기의 저장이 먼저 반영돼 제출을 멈췄습니다.');
       } else {
         const kind = saveFailureKind(error);
         setOperationFailed(true);
         setToast(kind === 'network'
-          ? '최종 제출에 실패했습니다 — 네트워크를 확인하고 다시 시도해 주세요.'
+          ? '조별 초안 제출에 실패했습니다 — 네트워크를 확인하고 다시 시도해 주세요.'
           : saveFailureMessage(kind));
         // The finalize request may have reached the server even when its response was lost.
         // Reconcile before letting the user retry so an already-final submission is visible.
@@ -1327,7 +1327,7 @@ function TopicSection({
                   {/* 「근거 (선택)」 칸은 2026-08-28 통화에서 없애기로 정리됐다.
                       원인·배경을 별도 칸으로 두면 「써야 하나 말아야 하나·어떻게 써야 하나」가
                       또 하나 늘고, 범주를 늘리면 그 자체로 시끄러워진다는 판단이었다.
-                      필요한 내용은 세 꼭지 본문에 함께 적는다.
+                      필요한 내용은 현재 열린 단계의 본문에 함께 적는다.
                       ★ DB 열(submission_item.rationale)과 내보내기 처리는 그대로 둔다 —
                       화면에서만 뺀다. 되살릴 일이 생기면 이 블록만 복구하면 된다. */}
                 </div>
@@ -1437,7 +1437,7 @@ function TopicSection({
                     disabled={saving || finalizing || conflict != null || !canFinalize(rows, loaded.status)}
                     className="h-14 rounded-2xl bg-[#1F4E79] text-white text-[18px] font-bold shadow-sm disabled:opacity-40 focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]"
                   >
-                    {finalizing ? '제출 중…' : '최종 제출'}
+                    {finalizing ? '제출 중…' : '조별 초안 제출'}
                   </button>
                 </div>
                 <p className="text-[14px] text-[#5A6B73] text-center tr-num">
@@ -1476,7 +1476,7 @@ function TopicSection({
                 className="text-[22px] font-extrabold text-[#1F4E79] leading-snug mb-1"
                 style={{ letterSpacing: '-.01em' }}
               >
-                최종 제출할까요?
+                조별 초안을 제출할까요?
               </h4>
               <p className="text-[16px] font-bold text-[#4F9D3A] mb-3 break-words">{topic.prompt}</p>
               {/* ★ 문구는 상수 하나에서만 나온다. 여기에 문자열을 다시 적으면 상수를
@@ -1504,7 +1504,7 @@ function TopicSection({
                 }}
                 className="h-[56px] rounded-2xl bg-[#1F4E79] text-white text-[19px] font-bold shadow-sm focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]"
               >
-                최종 제출
+                조별 초안 제출
               </button>
             </div>
           </div>

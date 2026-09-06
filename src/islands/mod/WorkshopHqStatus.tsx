@@ -169,7 +169,7 @@ export default function WorkshopHqStatus({
                 ['열린 꼭지', `${status.topic_open}개`],
                 ['마친 꼭지', `${status.topic_closed}개`],
                 ['작성 중 제출', `${status.submissions_draft}건`],
-                ['최종 제출', `${status.submissions_final}건`],
+                ['제출 완료', `${status.submissions_final}건`],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-xl bg-[#1F4E79] p-3 text-white">
                   <div className="text-[13px] font-semibold text-[#DCE7EE]">{label}</div>

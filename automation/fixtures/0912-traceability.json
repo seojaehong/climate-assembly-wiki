@@ -3,6 +3,32 @@
   "manifestId": "0912-13-readiness-traceability",
   "requirements": [
     {
+      "id": "PLAN-CANONICAL-ALIGNMENT",
+      "statement": "ADR 수정 HWPX의 해시, 162명, 8개 진행 단계, 조별 권고안 초안 상태를 화면·공개 일정·리허설·런북에 동일하게 반영하고 PM 결정과 DB 적용은 승인 gate가 닫힌 상태로 유지한다.",
+      "implementationFiles": [
+        "docs/operations/0912-13-plan-contract.json",
+        "src/islands/mod/mod-tabs.ts",
+        "src/islands/mod/submission-guide.ts",
+        "src/islands/mod/SubmissionPanel.tsx",
+        "automation/workshop-schedule.yml",
+        "automation/fixtures/0912-rehearsal.json",
+        "content/ko/session/2026-09-12-deliberation-workshop-a.md",
+        "content/ko/session/2026-09-13-deliberation-workshop-b.md",
+        "docs/operations/0912-13-runbook.md"
+      ],
+      "testFiles": [
+        "automation/tests/0912-readiness-verifier.test.mjs",
+        "automation/tests/schedule.test.mjs",
+        "src/islands/mod/mod-tabs.test.ts",
+        "src/islands/mod/submission-guide.test.ts",
+        "src/islands/mod/submission-panel-logic.test.ts"
+      ],
+      "evidenceFiles": [
+        "evaluation/0912-13-readiness-report.template.json",
+        "evaluation/2026-09-06_0912-13-confirmed-plan-gap-review.md"
+      ]
+    },
+    {
       "id": "AUTH-2DEVICE",
       "statement": "한 조는 동시에 두 기기까지만 활성화하고 세 번째 기기는 명시적으로 거부한다.",
       "implementationFiles": [

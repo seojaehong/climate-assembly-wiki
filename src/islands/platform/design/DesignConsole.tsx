@@ -145,7 +145,7 @@ export function DesignResults({ view }: { view: DesignView }) {
           </div>
         </section>
       ))}
-      <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>최종 제출 현황은 운영 정보이며 준비 완료 판정에는 포함되지 않습니다.</p>
+      <p style={{ color: MUTED, fontSize: 13, margin: 0 }}>제출 완료 현황은 운영 정보이며 준비 완료 판정에는 포함되지 않습니다.</p>
     </div>
   );
 }

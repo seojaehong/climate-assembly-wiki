@@ -15,17 +15,29 @@ workshops:
     start_kst: "09:00"
     end_kst: "18:00"
     supabase_round_id: 3
-  # 경주 합숙 2일 (6차·7차 분과권고안 의결) — ★ supabase_round_id 행사 전 확인
+  # 경주 합숙 2일 (6차·7차 권고안 초안 작성) — 자동화 창과 공식 프로그램 시간을 분리한다.
   - date: 2026-09-12
-    name: 6차_분과권고안의결_경주합숙1일차
+    name: 6차_권고안초안작성_경주합숙1일차
     start_kst: "09:00"
     end_kst: "21:00"
+    program_start_kst: "11:00"
+    deliberation_start_kst: "13:45"
+    program_end_kst: "20:00"
+    participant_count: 162
+    artifact_state: 조별 권고안 초안
+    plan_contract: docs/operations/0912-13-plan-contract.json
     snapshot_until_kst: "2026-09-13T09:00:00+09:00"
     supabase_round_id: 6  # ★ 행사 전 실제 round_id 확인 필요
   - date: 2026-09-13
-    name: 7차_분과권고안의결_경주합숙2일차
+    name: 7차_권고안초안작성_경주합숙2일차
     start_kst: "09:00"
     end_kst: "18:00"
+    program_start_kst: "08:00"
+    deliberation_start_kst: "09:00"
+    program_end_kst: "17:00"
+    participant_count: 162
+    artifact_state: 조별 권고안 초안
+    plan_contract: docs/operations/0912-13-plan-contract.json
     supabase_round_id: 7  # ★ 행사 전 실제 round_id 확인 필요
   # 전체 법정 의결일 (기후위기대응법 §19의2④ — 가장 중요한 감사 대상)
   - date: 2026-10-17

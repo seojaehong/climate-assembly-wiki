@@ -122,6 +122,10 @@ const MAX_OPERATOR_BINDING_TOTAL_BYTES = 32 * 1024 * 1024;
 const MAX_PUBLIC_KEY_FILE_BYTES = 64 * 1024;
 const MAX_BACKUP_ARCHIVE_BYTES = 128 * 1024 * 1024;
 const REQUIREMENT_SIGNED_DEPENDENCIES = Object.freeze({
+  'PLAN-CANONICAL-ALIGNMENT': Object.freeze({
+    gates: Object.freeze(['traceability-report', 's20-topics-production-approval', 'roster-canonical-review']),
+    controls: Object.freeze([]),
+  }),
   'AUTH-2DEVICE': Object.freeze({
     gates: Object.freeze([
       'named-hq-operators-ready',
@@ -243,6 +247,7 @@ const TRACEABILITY_CHECK_IDS = Object.freeze([
   'report-template',
   'field-report-template',
   'hq-report-template',
+  'canonical-plan-contract',
   'synthetic-fixture',
   'ci-matrix',
   'postgres-p1a-p2a-disposable',
@@ -1721,7 +1726,7 @@ export function hasPassingTraceabilityEvidence(payload) {
     && payload.safety.liveDatabaseMutationCount === 0
     && payload.safety.networkRequestCount === 0
     && hasExactKeys(payload.summary, ['requirementCount', 'checkCount', 'passCount', 'failCount'])
-    && payload.summary.requirementCount === 14
+    && payload.summary.requirementCount === 15
     && payload.summary.checkCount === TRACEABILITY_CHECK_IDS.length
     && payload.summary.passCount === TRACEABILITY_CHECK_IDS.length
     && payload.summary.failCount === 0

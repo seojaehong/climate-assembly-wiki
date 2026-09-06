@@ -94,17 +94,44 @@ test('keeps the overnight snapshot window active between the two Gyeongju worksh
   const schedulePath = fileURLToPath(new URL('../workshop-schedule.yml', import.meta.url));
   const loaded = await loadSchedule(schedulePath);
   const firstDay = loaded.workshops.find(
-    (workshop) => workshop.name === '6차_분과권고안의결_경주합숙1일차',
+    (workshop) => workshop.name === '6차_권고안초안작성_경주합숙1일차',
   );
 
   expect(snapshotCronForWorkshop(firstDay)).toBe('*/5 * 12 9 *');
   expect(findActiveWorkshop(loaded, new Date('2026-09-12T14:00:00Z'))).toBeNull();
   expect(findActiveSnapshotWorkshop(loaded, new Date('2026-09-12T14:00:00Z'))?.name)
-    .toBe('6차_분과권고안의결_경주합숙1일차');
+    .toBe('6차_권고안초안작성_경주합숙1일차');
   expect(findActiveSnapshotWorkshop(loaded, new Date('2026-09-12T23:55:00Z'))?.name)
-    .toBe('6차_분과권고안의결_경주합숙1일차');
+    .toBe('6차_권고안초안작성_경주합숙1일차');
   expect(findActiveSnapshotWorkshop(loaded, new Date('2026-09-13T00:00:00Z'))?.name)
-    .toBe('7차_분과권고안의결_경주합숙2일차');
+    .toBe('7차_권고안초안작성_경주합숙2일차');
+});
+
+test('binds the Gyeongju automation windows to the canonical plan metadata', async () => {
+  const schedulePath = fileURLToPath(new URL('../workshop-schedule.yml', import.meta.url));
+  const loaded = await loadSchedule(schedulePath);
+  const firstDay = loaded.workshops.find(
+    (workshop) => workshop.name === '6차_권고안초안작성_경주합숙1일차',
+  );
+  const secondDay = loaded.workshops.find(
+    (workshop) => workshop.name === '7차_권고안초안작성_경주합숙2일차',
+  );
+
+  expect(firstDay).toMatchObject({
+    plan_contract: 'docs/operations/0912-13-plan-contract.json',
+    participant_count: 162,
+    program_start_kst: '11:00',
+    program_end_kst: '20:00',
+    artifact_state: '조별 권고안 초안',
+  });
+  expect(secondDay).toMatchObject({
+    plan_contract: 'docs/operations/0912-13-plan-contract.json',
+    participant_count: 162,
+    program_start_kst: '08:00',
+    deliberation_start_kst: '09:00',
+    program_end_kst: '17:00',
+    artifact_state: '조별 권고안 초안',
+  });
 });
 
 test('rejects an extended snapshot window that cannot be represented by one UTC cron row', () => {
@@ -178,25 +205,25 @@ test('rejects incomplete, duplicate, and unordered canonical workshop rows', () 
 // 법정 의결일 커버리지 검증 — 9/12·9/13·10/17이 findActiveWorkshop에서 active 반환되는지 확인
 const legalSchedule = {
   workshops: [
-    { date: '2026-09-12', name: '6차_분과권고안의결_경주합숙1일차', start_kst: '09:00', end_kst: '21:00' },
-    { date: '2026-09-13', name: '7차_분과권고안의결_경주합숙2일차', start_kst: '09:00', end_kst: '18:00' },
+    { date: '2026-09-12', name: '6차_권고안초안작성_경주합숙1일차', start_kst: '09:00', end_kst: '21:00' },
+    { date: '2026-09-13', name: '7차_권고안초안작성_경주합숙2일차', start_kst: '09:00', end_kst: '18:00' },
     { date: '2026-10-17', name: '8차_전체법정의결', start_kst: '09:00', end_kst: '18:00' },
   ]
 };
 
 test('findActiveWorkshop matches 9/12 (6차 경주 1일차) KST 14:00', () => {
   const now = new Date('2026-09-12T05:00:00Z'); // KST 14:00
-  expect(findActiveWorkshop(legalSchedule, now)?.name).toBe('6차_분과권고안의결_경주합숙1일차');
+  expect(findActiveWorkshop(legalSchedule, now)?.name).toBe('6차_권고안초안작성_경주합숙1일차');
 });
 
 test('findActiveWorkshop matches 9/12 late (end_kst 21:00) KST 20:30', () => {
   const now = new Date('2026-09-12T11:30:00Z'); // KST 20:30
-  expect(findActiveWorkshop(legalSchedule, now)?.name).toBe('6차_분과권고안의결_경주합숙1일차');
+  expect(findActiveWorkshop(legalSchedule, now)?.name).toBe('6차_권고안초안작성_경주합숙1일차');
 });
 
 test('findActiveWorkshop matches 9/13 (7차 경주 2일차) KST 14:00', () => {
   const now = new Date('2026-09-13T05:00:00Z'); // KST 14:00
-  expect(findActiveWorkshop(legalSchedule, now)?.name).toBe('7차_분과권고안의결_경주합숙2일차');
+  expect(findActiveWorkshop(legalSchedule, now)?.name).toBe('7차_권고안초안작성_경주합숙2일차');
 });
 
 test('findActiveWorkshop matches 10/17 (8차 전체 법정 의결) KST 14:00', () => {

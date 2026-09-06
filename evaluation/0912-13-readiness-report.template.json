@@ -73,6 +73,7 @@
     ]
   },
   "requirements": [
+    { "id": "PLAN-CANONICAL-ALIGNMENT", "status": "not_run", "evidence": [] },
     { "id": "AUTH-2DEVICE", "status": "not_run", "evidence": [] },
     { "id": "AUTH-TOKEN-ONLY", "status": "not_run", "evidence": [] },
     { "id": "SYNC-SESSION-STATE", "status": "not_run", "evidence": [] },
@@ -102,7 +103,8 @@
   "blockers": [
     "모든 criticalGates가 pass가 되기 전에는 행사 개통 승인으로 사용하지 않는다.",
     "배포 endpoint가 외부 forwarding header를 신뢰 가능한 source로 덮어쓴다는 직접 probe 또는 edge-only 접속코드 교환 경로가 없으면 개통하지 않는다.",
-    "15개 조 명단과 개인 HQ 운영자 계정 확인, 승인 commit과 배포 revision 대조, 당일 routine ACL inventory가 끝나지 않으면 개통하지 않는다.",
+    "162명 PM 승인 명단의 분과·조 배치와 개인 HQ 운영자 계정 확인, 승인 commit과 배포 revision 대조, 당일 routine ACL inventory가 끝나지 않으면 개통하지 않는다.",
+    "PM 결정 8건과 승인된 8단계 교정 SQL이 준비되고 사용자가 DB 변경을 별도 승인하기 전에는 기존 s20 주제를 적용하지 않는다.",
     "실제 보조기술 평가, 행사 노트북과 현장 네트워크 리허설, 새 백업의 격리 복원 대조는 합성 자동화로 대체하지 않는다.",
     "공식 표결로 사용할 경우 현재의 공개 기기 식별 방식 대신 강한 1회용 ballot capability를 별도로 승인·구현·검증한다."
   ]

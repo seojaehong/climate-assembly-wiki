@@ -463,12 +463,12 @@ check('★ 조 안내문(mod-help/team)의 인용 문구가 화면에 실제로 
   const logic = readFileSync(LOGIC, 'utf8');
   const guide = readFileSync(resolve(HERE, '../src/islands/mod/submission-guide.ts'), 'utf8');
   // JSX 는 「＋ 한 줄 더」처럼 한 문장을 태그로 쪼개 놓는다 — 태그를 걷고 공백을 줄여 맞춘다.
-  const flatten = (t) => t.replace(/<[^>]*>/g, '').replace(/[{}]/g, '').replace(/s+/g, ' ');
+  const flatten = (t) => t.replace(/<[^>]*>/g, '').replace(/[{}]/g, '').replace(/\s+/g, ' ');
   const screen = flatten(panel) + flatten(logic) + flatten(guide);
   /** 안내문이 「이렇게 보인다」고 적은 화면 문구 — 하나라도 화면에 없으면 안내가 거짓이 된다. */
   const QUOTED = [
     '＋ 한 줄 더',
-    '최종 제출됨 · 잠금',
+    '제출 완료 · 잠금',
     '재오픈됨 · 다시 편집 가능',
     '다시 열기',
     '더 다듬기',
@@ -479,7 +479,7 @@ check('★ 조 안내문(mod-help/team)의 인용 문구가 화면에 실제로 
     '저장하지 않은 변경이 있습니다',
     '이름만 있는 줄',
     '이름 칸으로 옮기기',
-    '최종 제출하면 잠깁니다. 잘못 눌렀다면 「다시 열기」로 바로 풀 수 있습니다.',
+    '조별 초안을 제출하면 이 단계가 잠깁니다. 고칠 내용이 생기면 「다시 열기」로 바로 풀 수 있습니다.',
     '지금 화면의 내용',
   ];
   const helpFlat = flatten(help);

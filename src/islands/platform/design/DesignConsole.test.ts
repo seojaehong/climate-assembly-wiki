@@ -20,7 +20,7 @@ const readiness: ReadinessResult = {
     { key: 'topics_open', pass: true, detail: '2개 주제 open' },
     { key: 'teams_active', pass: true, detail: '3개 조 active' },
     { key: 'roster_loaded', pass: true, detail: '18명 배정' },
-    { key: 'submissions', pass: true, detail: '5/6 최종 제출' },
+    { key: 'submissions', pass: true, detail: '5/6 제출 완료' },
   ],
 };
 
@@ -60,7 +60,7 @@ describe('DesignResults', () => {
     expect(html).toContain('제1차 회의');
     expect(html).toContain('준비 완료');
     expect(html).toContain('공개 주제');
-    expect(html).toContain('최종 제출 현황');
+    expect(html).toContain('제출 완료 현황');
     expect(html).toContain('운영 정보이며 준비 완료 판정에는 포함되지 않습니다.');
     expect(html).toContain('<caption');
     expect(html).toContain('scope="col"');

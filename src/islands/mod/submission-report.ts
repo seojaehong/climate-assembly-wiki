@@ -78,7 +78,7 @@ export function formatStamp(d: Date): string {
 }
 
 function statusLabel(status: TeamColumn['status']): string {
-  if (status === 'final') return '최종 제출';
+  if (status === 'final') return '제출 완료';
   if (status === 'reopened') return '재오픈됨';
   // 빈 칸으로 두면 표에서 「값이 없다」와 「아직 쓰는 중이다」가 구분되지 않는다.
   return '작성 중';

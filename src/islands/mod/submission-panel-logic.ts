@@ -38,7 +38,7 @@ export const MAX_SUBMISSION_ROWS = 200;
  * ★ 「최종 제출할까요?」는 모달 제목이 따로 말하므로 본문에서 뺀다.
  */
 export const FINALIZE_CONFIRM_MESSAGE =
-  '최종 제출하면 잠깁니다. 잘못 눌렀다면 「다시 열기」로 바로 풀 수 있습니다.';
+  '조별 초안을 제출하면 이 단계가 잠깁니다. 고칠 내용이 생기면 「다시 열기」로 바로 풀 수 있습니다.';
 
 // LEAVE_CONFIRM_MESSAGE 는 없앴다. 저장 전 이탈은 `beforeunload` 로 막는데, 최신
 // 브라우저는 **사이트가 준 문구를 절대 보여 주지 않는다**(제 문구를 쓴다). 즉 그 상수는
@@ -227,7 +227,7 @@ export type SubmissionBadge = { label: string; tone: 'locked' | 'reopened' | 'dr
 
 /** 상태 배지. draft/없음은 배지 없이 두고, 잠금·재오픈만 눈에 띄게 표시한다. */
 export function submissionBadge(status: SubmissionStatus | null): SubmissionBadge {
-  if (status === 'final') return { label: '최종 제출됨 · 잠금', tone: 'locked' };
+  if (status === 'final') return { label: '제출 완료 · 잠금', tone: 'locked' };
   if (status === 'reopened') return { label: '재오픈됨 · 다시 편집 가능', tone: 'reopened' };
   return null;
 }
@@ -594,7 +594,7 @@ export function saveOutcomeMessage(result: SubmissionSaveOutcome | null | undefi
   if (split > 0) {
     return `한 칸에 여러 줄이 있어 저장하면서 나눴습니다 — 칸이 ${split}개 늘었습니다.`;
   }
-  return '저장되었습니다. 최종 제출 전까지 계속 고칠 수 있습니다.';
+  return '저장되었습니다. 조별 초안을 제출하기 전까지 계속 고칠 수 있습니다.';
 }
 
 // ── 저장 실패의 갈래 ───────────────────────────────────────────
@@ -647,7 +647,7 @@ export function saveFailureKind(error: unknown): SaveFailureKind {
 /** 갈래별 안내 문장. 화면 세 곳(즉시 저장·재전송·최종 제출)이 같은 말을 쓰게 한다. */
 export function saveFailureMessage(kind: SaveFailureKind): string {
   if (kind === 'finalized') {
-    return '이미 최종 제출된 상태입니다 — 「다시 열기」를 누르면 조가 직접 풀 수 있습니다.';
+    return '이미 제출 완료된 상태입니다 — 「다시 열기」를 누르면 조가 직접 풀 수 있습니다.';
   }
   if (kind === 'closed') return '이 꼭지는 마감되어 저장할 수 없습니다.';
   if (kind === 'authorization') {
