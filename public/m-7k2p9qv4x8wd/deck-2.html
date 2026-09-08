@@ -25,7 +25,7 @@ html.no-impress #bar{display:none;}
 
 #impress{position:relative;}
 .step{position:relative;box-sizing:border-box;
-  width:1860px;padding:54px 64px;border-radius:22px;
+  width:1860px;padding:44px 64px 180px;border-radius:22px;
   background:#1A2537;border:6px solid #0B1220;
   opacity:.14;transition:opacity .5s ease;
   font-size:28px;line-height:1.34;font-weight:700;}
@@ -34,6 +34,7 @@ html.no-impress #bar{display:none;}
 
 .kicker{font-size:36px;color:#CFDCEC;margin:0 0 16px 0;}
 .title{font-size:64px;color:#F4F7FB;margin:0 0 28px 0;font-weight:800;}
+.title-s{font-size:48px;line-height:1.25;color:#F4F7FB;margin:0 0 28px 0;font-weight:800;}
 .label{font-size:44px;color:#F4F7FB;margin:0 0 16px 0;font-weight:800;}
 .hero{font-size:112px;font-weight:800;line-height:1;}
 .hero-s{font-size:88px;font-weight:800;line-height:1;}
@@ -58,17 +59,30 @@ html.no-impress #bar{display:none;}
 .t3 .tag{background:#8FE9AE;}
 
 .rows{display:flex;flex-direction:column;gap:16px;margin-top:28px;}
+/* 범주가 열을 넘으면 두 단으로 — 세로가 아니라 가로를 쓴다 */
+.rows.grid2{display:grid;grid-template-columns:repeat(3,1fr);column-gap:28px;
+  row-gap:10px;}
+/* 스무 줄짜리 목록은 줄 안쪽 여백도 한 급 줄인다 — 글자 크기는 그대로 둔다 */
+.rows.grid2 .row{padding:10px 28px;}
+/* 「우려·전망」 셋은 기대 효과가 아니다 — 목록에서 갈라 보인다.
+   테두리·안쪽 여백을 주면 줄이 두 줄이 되어 의제 장이 화면 위로 넘친다
+   (실측 7~12px). 글자만으로 가른다. */
+.worry{margin-left:16px;font-size:24px;font-weight:800;color:#CFDCEC;}
 .row{display:flex;gap:28px;align-items:baseline;background:#0B1220;
   border-radius:14px;padding:16px 28px;}
 .row .num{font-size:44px;font-weight:800;min-width:96px;}
 .row .txt{font-size:28px;color:#F4F7FB;}
 
 .quote{background:#0B1220;border-left:14px solid #FFC24A;border-radius:14px;
-  padding:28px;margin-top:28px;}
+  padding:16px 28px;margin-top:16px;}
 .t1 .quote{border-left-color:#FFC24A;} .t2 .quote{border-left-color:#6FD6F5;}
 .t3 .quote{border-left-color:#8FE9AE;}
 .quote .body{margin:0 0 16px 0;}
 .quote .note{margin:0;}
+
+/* 배경 근거가 없는 여섯 덩어리 — 인용 자리를 비우고 그 사실을 적는다. 지어내지 않는다. */
+.empty{font-size:28px;color:#CFDCEC;background:#0B1220;border-radius:14px;
+  border-left:14px dashed #CFDCEC;padding:28px;margin-top:16px;}
 
 .stat{display:flex;gap:48px;align-items:flex-end;margin-top:28px;}
 .stat .unit{font-size:36px;color:#CFDCEC;padding-bottom:16px;}
@@ -88,14 +102,14 @@ html[data-names="off"] .nn{display:inline;}
 
 #bar{position:fixed;left:0;right:0;bottom:0;z-index:20;
   display:flex;justify-content:space-between;align-items:center;
-  padding:14px 28px;background:#0B1220;border-top:6px solid #1A2537;}
-#bar .where{font-size:28px;font-weight:800;color:#F4F7FB;}
-#bar .count{font-size:28px;font-weight:800;color:#CFDCEC;}
+  padding:9px 28px;background:#0B1220;border-top:4px solid #1A2537;}
+#bar .where{font-size:26px;font-weight:800;color:#F4F7FB;}
+#bar .count{font-size:26px;font-weight:800;color:#CFDCEC;}
 #bar .keys{font-size:24px;font-weight:700;color:#CFDCEC;}
 </style>
 </head>
 <body>
-<div class="fallback"><p>줌·팬 캔버스를 그리는 impress.js 를 불러오지 못했습니다. 바깥 연결이 막혔거나 파일이 바뀐 경우입니다.</p><p>단계 이동 없이 11단계를 위에서 아래로 모두 싣습니다. 마우스나 방향키로 내려 읽습니다.</p></div>
+<div class="fallback"><p>줌·팬 캔버스를 그리는 impress.js 를 불러오지 못했습니다. 바깥 연결이 막혔거나 파일이 바뀐 경우입니다.</p><p>단계 이동 없이 35단계를 위에서 아래로 모두 싣습니다. 마우스나 방향키로 내려 읽습니다.</p></div>
 <div id="impress" data-width="1920" data-height="1080" data-max-scale="2" data-min-scale="0" data-perspective="0" data-transition-duration="700">
 <div id="overview" class="step lv-overview plain"
      data-x="0" data-y="-6000" data-scale="9"
@@ -117,120 +131,94 @@ html[data-names="off"] .nn{display:inline;}
 <p class="kicker">의제2</p>
 <h1 class="title accent">자원순환</h1>
 <div class="stat">
-<span class="hero">4</span><span class="unit">범주</span>
+<span class="hero-s">16</span><span class="unit">범주</span>
 <span class="hero-s">188</span><span class="unit">시민 발언</span>
 </div>
-<div class="rows">
-<div class="row"><span class="num accent">1</span><span class="txt">제품 설계</span></div>
-<div class="row"><span class="num accent">2</span><span class="txt">분리배출 신뢰</span></div>
-<div class="row"><span class="num accent">3</span><span class="txt">다회용 전환</span></div>
-<div class="row"><span class="num accent">4</span><span class="txt">생산자 책임·비용</span></div>
+<div class="rows grid2">
+<div class="row"><span class="num accent">1</span><span class="txt">나눔·중고·공유로 덜 사기</span></div>
+<div class="row"><span class="num accent">2</span><span class="txt">일회용 없이도 불편 없는 일상</span></div>
+<div class="row"><span class="num accent">3</span><span class="txt">시민 인식과 교육의 정착</span></div>
+<div class="row"><span class="num accent">4</span><span class="txt">먹거리는 가까운 데서 — 짧은 유통</span></div>
+<div class="row"><span class="num accent">5</span><span class="txt">친환경이 가장 싼 선택</span></div>
+<div class="row"><span class="num accent">6</span><span class="txt">생산·유통의 순환 설계</span></div>
+<div class="row"><span class="num accent">7</span><span class="txt">재생원료 시장과 경제성</span></div>
+<div class="row"><span class="num accent">8</span><span class="txt">수리해 오래 쓰는 제품</span></div>
+<div class="row"><span class="num accent">9</span><span class="txt">자원순환 신산업과 일자리</span></div>
+<div class="row"><span class="num accent">10</span><span class="txt">음식물의 퇴비·비료 자원화</span></div>
+<div class="row"><span class="num accent">11</span><span class="txt">대기·수질 개선과 건강</span></div>
+<div class="row"><span class="num accent">12</span><span class="txt">도시 청결과 총량 감소</span></div>
+<div class="row"><span class="num accent">13</span><span class="txt">시민의 부담 증가와 갈등의 예상 <span class="worry">우려</span></span></div>
+<div class="row"><span class="num accent">14</span><span class="txt">실천에 대한 경제적 보상</span></div>
+<div class="row"><span class="num accent">15</span><span class="txt">국제 기후정의와 국가 위상</span></div>
+<div class="row"><span class="num accent">16</span><span class="txt">해양 생태계와 미세플라스틱</span></div>
 </div>
 </div>
 <div id="pg-2-1" class="step lv-cluster t2"
-     data-x="-6300" data-y="3400" data-scale="2"
+     data-x="-31500" data-y="3400" data-scale="2"
      data-kind="cluster" data-dwell="20" data-sub="2">
 <p class="kicker">의제2 · 범주 1 · 배경·문제 인식</p>
-<h1 class="title">제품 설계</h1>
+<h1 class="title">나눔·중고·공유로 덜 사기</h1>
 <div class="stat">
-<span class="hero">10</span><span class="unit">이 범주에 붙은 시민 발언</span>
+<span class="hero-s">17</span><span class="unit">이 범주에 붙은 시민 발언</span>
 </div>
 <div class="rows">
-<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 4조 · 5조</span></div>
-<div class="row"><span class="num accent">배경</span><span class="txt">문제 인식을 적은 조 · 1·2·5조</span></div>
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 4조 · 5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">유행에 따른 조기 폐기와 저가·과시 소비 문화, 폭염을 피해 마트에서 신상품을 사던 태도, 아껴 쓰면 궁색하게 보는 분위기.</span></div>
 </div>
 <div class="quote">
-<p class="body">EU에서는 명품 업체에 과잉 재고의 소각, 매립을 규제한다고 한다. 우리나라는 제품 생산 업체에 환경오염과 과생산 부분에 대해 규제하는 법률이나 제도가 없다.</p>
-<p class="note">2조 5명 · 꼭지1 배경·문제 인식</p>
+<p class="body">기업의 이윤 추구로 인한 소비 조장 문화와 쉽게 사고 고장 나면 버리는 시스템으로 인해 자원순환과 절약 실천이 저해되고 (…)</p>
+<p class="note">3조 1명 · 꼭지1 배경·문제 인식</p>
 </div>
 <div class="quote">
-<p class="body">일회용품 가격이 너무 싸다는 것에 공감한다. 생산자 측에 대한 제재가 더 필요한 것 같다. 즉, 생산자 측에 대한 제재가 없는 것이 문제인 것 같다.</p>
-<p class="note">5조 2명 · 꼭지1 배경·문제 인식</p>
+<p class="body">빠르게 달라지는 유행에 따라 물건에 대한 사람들의 가치 인식이 빠르게 변하여 오래쓸 수 있는 물건도 빨리 버려지기 때문에 문제이다.</p>
+<p class="note">1조 2명 · 꼭지1 배경·문제 인식</p>
 </div>
 <div class="links"><a href="prezi.html#/PG-2-1" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-1" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
 </div>
 <div id="ef-2-1" class="step lv-detail t2"
-     data-x="-6300" data-y="6200" data-scale="1"
+     data-x="-31500" data-y="6200" data-scale="1"
      data-kind="detail" data-dwell="35" data-sub="2">
-<p class="kicker">의제2 · 제품 설계 · 기대 효과</p>
-<h1 class="title accent">생산·유통의 순환 설계</h1>
-<p class="label">바라는 변화 발언 3건 · 문제 인식 7건</p>
+<p class="kicker">의제2 · 나눔·중고·공유로 덜 사기 · 기대 효과</p>
+<h1 class="title-s accent">이웃끼리 나누고 물려 쓰는 일이 흔해져, 새로 사지 않아도 아쉽지 않은 생활이 된다</h1>
+<p class="label">바라는 변화 발언 9건 · 문제 인식 8건</p>
 <div class="quote">
-<p class="body">정책적 지원을 통해 기술 혁신으로 기존 일회용품의 편리함과 친환경이라는 두 가지 가치를 모두 만족하는 대체재가 널리 공급된다.</p>
-<p class="note">2조 5명 · 꼭지2 바라는 변화(기대 효과)</p>
+<p class="body">음식을 비롯한 일상 자원을 서로 나누고 함께 쓰는 친환경 공유 경제가 사회 전반에 자연스러운 일상으로 정착된다.</p>
+<p class="note">2조 4명 · 꼭지2 바라는 변화(기대 효과)</p>
 </div>
 <div class="quote">
-<p class="body">유통 매장 허가나 입점 기준에 친환경 제품 취급이 자연스럽게 반영된다.</p>
-<p class="note">2조 5명 · 꼭지2 바라는 변화(기대 효과)</p>
+<p class="body">동네와 아파트 단지 안에서 작아진 어린이 옷을 이웃끼리 편하게 물려주고 바꿔 입는 중고 의류 교환 문화가 된다.</p>
+<p class="note">2조 4명 · 꼭지2 바라는 변화(기대 효과)</p>
 </div>
 <div class="links"><a href="prezi.html#/PG-2-1" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-1" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
 </div>
 <div id="pg-2-2" class="step lv-cluster t2"
-     data-x="-2100" data-y="3400" data-scale="2"
+     data-x="-27300" data-y="3400" data-scale="2"
      data-kind="cluster" data-dwell="20" data-sub="2">
 <p class="kicker">의제2 · 범주 2 · 배경·문제 인식</p>
-<h1 class="title">분리배출 신뢰</h1>
+<h1 class="title">일회용 없이도 불편 없는 일상</h1>
 <div class="stat">
-<span class="hero">11</span><span class="unit">이 범주에 붙은 시민 발언</span>
-</div>
-<div class="rows">
-<div class="row"><span class="num accent">조</span><span class="txt">2조 · 3조 · 4조 · 5조</span></div>
-<div class="row"><span class="num accent">배경</span><span class="txt">문제 인식을 적은 조 · 2·3·4·5조</span></div>
-</div>
-<div class="quote">
-<p class="body">아이스박스나 비닐류 등 재활용품 분리배출· 선별 기준이 지자체마다 제각각 달라 현장의 혼란과 선별 비용을 가중시키고 있다. 국가 차원의 표준화된 기준이 필요하다.</p>
-<p class="note">2조 2명 · 꼭지1 배경·문제 인식</p>
-</div>
-<div class="quote">
-<p class="body">복합 재질 혼합으로 인한 분리수거의 높은 난이도와 모호한 분류 체계, 그리고 편의성과 이윤 추구 속에서 지속적인 장기 정책과 정부 개입이 부족함을 확인하였다.</p>
-<p class="note">3조 2명 · 꼭지1 배경·문제 인식</p>
-</div>
-<div class="links"><a href="prezi.html#/PG-2-2" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-2" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
-</div>
-<div id="ef-2-2" class="step lv-detail t2"
-     data-x="-2100" data-y="6200" data-scale="1"
-     data-kind="detail" data-dwell="35" data-sub="2">
-<p class="kicker">의제2 · 분리배출 신뢰 · 기대 효과</p>
-<h1 class="title accent">분리배출 부담 없는 수거</h1>
-<p class="label">바라는 변화 발언 2건 · 문제 인식 9건</p>
-<div class="quote">
-<p class="body">알기 쉬운 분리배출 체계가 정착되어 시민 편의가 증진되고, 대한민국이 글로벌 기후환경 대응 문화를 선도하는 상태가 된다.</p>
-<p class="note">3조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
-</div>
-<div class="quote">
-<p class="body">분리수거라는 노동과 고민이 사라진 삶 (재사용 용기와 유기물 폐기물로만 분류된 쓰레기통) 재사용 용기 : 스마트 분류함에서 용기의 재질분석을 통한 자동 분류</p>
-<p class="note">4조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
-</div>
-<div class="links"><a href="prezi.html#/PG-2-2" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-2" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
-</div>
-<div id="pg-2-3" class="step lv-cluster t2"
-     data-x="2100" data-y="3400" data-scale="2"
-     data-kind="cluster" data-dwell="20" data-sub="2">
-<p class="kicker">의제2 · 범주 3 · 배경·문제 인식</p>
-<h1 class="title">다회용 전환</h1>
-<div class="stat">
-<span class="hero">18</span><span class="unit">이 범주에 붙은 시민 발언</span>
+<span class="hero-s">19</span><span class="unit">이 범주에 붙은 시민 발언</span>
 </div>
 <div class="rows">
 <div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 4조 · 5조</span></div>
-<div class="row"><span class="num accent">배경</span><span class="txt">문제 인식을 적은 조 · 1·2·4·5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">배달·매장 일회용품의 편리함과 낮은 가격, 1인가구 증가, 다회용기 지참·재생용기 선택폭과 공유 텀블러 정책의 부재.</span></div>
 </div>
 <div class="quote">
-<p class="body">음식매점내에서 음식을 먹을 때에는 일회용품을 필요하지 않은 데도 많이 사용하고 있음. 예를 들어 햄버거 포장지는 매장 외에선 필요할수 있기만 매장내에서는 굳이 필요하지 않다고 생각한다</p>
+<p class="body">음식매점내에서 음식을 먹을 때에는 일회용품을 필요하지 않은 데도 많이 사용하고 있음. 예를 들어 햄버거 포장지는 매장 외에선 (…)</p>
 <p class="note">1조 2명 · 꼭지1 배경·문제 인식</p>
 </div>
 <div class="quote">
 <p class="body">일회용품이 주는 편리함과 1인 가구 증가 등 사회 구조와 연관되어 있다고 생각, 개인이 불편함을 감수하는 것.</p>
-<p class="note">5조 3명 · 꼭지1 배경·문제 인식</p>
+<p class="note">5조 4명 · 꼭지1 배경·문제 인식</p>
 </div>
-<div class="links"><a href="prezi.html#/PG-2-3" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-3" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+<div class="links"><a href="prezi.html#/PG-2-2" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-2" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
 </div>
-<div id="ef-2-3" class="step lv-detail t2"
-     data-x="2100" data-y="6200" data-scale="1"
+<div id="ef-2-2" class="step lv-detail t2"
+     data-x="-27300" data-y="6200" data-scale="1"
      data-kind="detail" data-dwell="35" data-sub="2">
-<p class="kicker">의제2 · 다회용 전환 · 기대 효과</p>
-<h1 class="title accent">일회용 없이도 불편 없는 일상</h1>
-<p class="label">바라는 변화 발언 8건 · 문제 인식 10건</p>
+<p class="kicker">의제2 · 일회용 없이도 불편 없는 일상 · 기대 효과</p>
+<h1 class="title-s accent">일회용품을 쓰지 않는 것이 당연하고 자연스러운 일상이 된다</h1>
+<p class="label">바라는 변화 발언 8건 · 문제 인식 11건</p>
 <div class="quote">
 <p class="body">일회용품을 사용하지 않아도 불편하지 않은 사회 - 카페, 배달 음식에서 다회용기가 기본 - 제품들도 처음부터 오래 쓸 수 있는 리유저블 형태로 개발, 생산 - 최소화 된 포장</p>
 <p class="note">4조 6명 · 꼭지2 바라는 변화(기대 효과)</p>
@@ -239,60 +227,538 @@ html[data-names="off"] .nn{display:inline;}
 <p class="body">다회용기 순환 체계 구축으로 개인이 별도의 불편을 감수하지 않고도 재사용과 재활용이 자연스럽게 실천되며, 친환경 신산업과 일자리가 형성된 상태가 된다.</p>
 <p class="note">3조 1명 · 꼭지2 바라는 변화(기대 효과)</p>
 </div>
+<div class="links"><a href="prezi.html#/PG-2-2" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-2" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-2-3" class="step lv-cluster t2"
+     data-x="-23100" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="2">
+<p class="kicker">의제2 · 범주 3 · 배경·문제 인식</p>
+<h1 class="title">시민 인식과 교육의 정착</h1>
+<div class="stat">
+<span class="hero-s">33</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 4조 · 5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">기후위기 심각성 미인지, 교육의 부족과 난이도, 알아도 실천되지 않는 효능감 부재, 잘못된 배출 행태·분리배출 미이행, 홍보·정보 공개 부족과 소비를 조장하는 문화.</span></div>
+</div>
+<div class="quote">
+<p class="body">일회용품, 음식물 쓰레기, 일상생활 쓰레기뿐만 아니라 빠르게 버려지는 의류 쓰레기 문제에 대해 사회 전반이 그 심각성을 (…)</p>
+<p class="note">2조 4명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">쓰레기와 낭비가 비용이라는 인식이 부족한 소비 행태와, 기업의 이윤 추구를 제어할 정부의 강력한 법적 규제 및 환경 관련 (…)</p>
+<p class="note">3조 4명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-3" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-3" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-2-3" class="step lv-detail t2"
+     data-x="-23100" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="2">
+<p class="kicker">의제2 · 시민 인식과 교육의 정착 · 기대 효과</p>
+<h1 class="title-s accent">배우고 이야기 나누는 일이 일상이 되어, 작은 불편을 기꺼이 감수하는 실천이 몸에 밴다</h1>
+<p class="label">바라는 변화 발언 6건 · 문제 인식 27건</p>
+<div class="quote">
+<p class="body">간편식보다 친환경 음식을 선호하게 됨. 과소비를 줄이고 편리성보다 실용성과 환경을 생각하는 의식개선과 실천하는 생활. 경제발전보다 친환경적인 환경을 만드는 사회.</p>
+<p class="note">4조 4명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">시민들의 자발적 재사용 실천과 소비의식 개선으로 과대포장이 사회적으로 용인되지 않으며, 기업의 친환경 생산 부담이 완화된 상태가 된다.</p>
+<p class="note">3조 4명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
 <div class="links"><a href="prezi.html#/PG-2-3" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-3" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
 </div>
 <div id="pg-2-4" class="step lv-cluster t2"
-     data-x="6300" data-y="3400" data-scale="2"
+     data-x="-18900" data-y="3400" data-scale="2"
      data-kind="cluster" data-dwell="20" data-sub="2">
 <p class="kicker">의제2 · 범주 4 · 배경·문제 인식</p>
-<h1 class="title">생산자 책임·비용</h1>
+<h1 class="title">먹거리는 가까운 데서 — 짧은 유통</h1>
 <div class="stat">
-<span class="hero">14</span><span class="unit">이 범주에 붙은 시민 발언</span>
+<span class="hero-s">7</span><span class="unit">이 범주에 붙은 시민 발언</span>
 </div>
 <div class="rows">
-<div class="row"><span class="num accent">조</span><span class="txt">2조 · 3조 · 4조 · 5조</span></div>
-<div class="row"><span class="num accent">배경</span><span class="txt">문제 인식을 적은 조 · 2·3·5조</span></div>
+<div class="row"><span class="num accent">조</span><span class="txt">2조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">원거리 유통으로 보관 기간이 길어져 보존재와 과도한 포장재를 쓰게 되는 구조.</span></div>
 </div>
 <div class="quote">
-<p class="body">저렴하고 편리한 일회용품의 경제성이 환경적 선택을 가로막고 있으며, 개인의 노력만으로는 한계가 있어 가격 정책 및 기업 생산 규제가 미비함을 확인하였다.</p>
-<p class="note">3조 1명 · 꼭지1 배경·문제 인식</p>
-</div>
-<div class="quote">
-<p class="body">일회용품을 쓰지 않거나 친환경 소재(빨대, 식기 등)를 도입하려는 소상공인과 기업의 비용 부담을 덜어줄 보조금 제도가 부족하다.</p>
-<p class="note">2조 5명 · 꼭지1 배경·문제 인식</p>
+<p class="body">음식물 재료가 멀리서 들여오다 보니 유통과 보관 기간이 길어져 불필요한 보존재와 과도한 포장재를 사용하고 있다.</p>
+<p class="note">2조 3명 · 꼭지1 배경·문제 인식</p>
 </div>
 <div class="links"><a href="prezi.html#/PG-2-4" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-4" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
 </div>
 <div id="ef-2-4" class="step lv-detail t2"
-     data-x="6300" data-y="6200" data-scale="1"
+     data-x="-18900" data-y="6200" data-scale="1"
      data-kind="detail" data-dwell="35" data-sub="2">
-<p class="kicker">의제2 · 생산자 책임·비용 · 기대 효과</p>
-<h1 class="title accent">친환경이 가장 싼 선택</h1>
-<p class="label">바라는 변화 발언 5건 · 문제 인식 9건</p>
+<p class="kicker">의제2 · 먹거리는 가까운 데서 — 짧은 유통 · 기대 효과</p>
+<h1 class="title-s accent">밥상에 오르기까지의 거리가 짧아져, 포장재와 긴 유통이 사라진다</h1>
+<p class="label">바라는 변화 발언 6건 · 문제 인식 1건</p>
 <div class="quote">
-<p class="body">다이소나 무인점포 등 누구나 쉽게 찾는 생활 매장 어디서나 친환경 제품을 손쉽게 만나고 살 수 있는 접근성이 보장된 시스템이 된다.</p>
-<p class="note">2조 5명 · 꼭지2 바라는 변화(기대 효과)</p>
+<p class="body">아파트 단지 안에서 시민 누구나 &#x27;나만의 텃밭&#x27;을 만든다. 농약 생산으로 인한 온실가스 배출을 줄이고, 일상에서 자연스럽게 친환경·무농약 재배 방식을 적극 실천하고 소비하게 된다.</p>
+<p class="note">2조 3명 · 꼭지2 바라는 변화(기대 효과)</p>
 </div>
 <div class="quote">
-<p class="body">환경 관리와 쓰레기 처리 비용이 제품 가격에 정상적으로 반영되어, 모두가 정당한 비용을 공정하게 분담하는 사회가 된다.</p>
-<p class="note">2조 5명 · 꼭지2 바라는 변화(기대 효과)</p>
+<p class="body">산지에서 생산한 먹거리를 인근에서 바로 소비하는 로컬푸드 문화가 당연한 사회로 유통과 납품 거리가 짧아져 과도한 포장재를 사용하지 않게 된다.</p>
+<p class="note">2조 3명 · 꼭지2 바라는 변화(기대 효과)</p>
 </div>
 <div class="links"><a href="prezi.html#/PG-2-4" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-4" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-2-5" class="step lv-cluster t2"
+     data-x="-14700" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="2">
+<p class="kicker">의제2 · 범주 5 · 배경·문제 인식</p>
+<h1 class="title">친환경이 가장 싼 선택</h1>
+<div class="stat">
+<span class="hero-s">21</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">2조 · 3조 · 4조 · 5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">환경세 미반영에 따른 화석연료·일회용품의 저가와 높은 접근성, 친환경 원자재의 비싼 가격, 보조금·과세·정부 규제의 부재.</span></div>
+</div>
+<div class="quote">
+<p class="body">시민들이 수년간 분리수거를 (…) 않는다면, 현행 분리수거 제도와 자원순환 비용 구조 자체에 근본적인 한계와 비효율이 있는 것이다.</p>
+<p class="note">2조 5명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">저렴하고 편리한 일회용품의 경제성이 환경적 선택을 가로막고 있으며, 개인의 노력만으로는 한계가 있어 가격 정책 및 기업 생산 (…)</p>
+<p class="note">3조 1명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-5" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-5" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-2-5" class="step lv-detail t2"
+     data-x="-14700" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="2">
+<p class="kicker">의제2 · 친환경이 가장 싼 선택 · 기대 효과</p>
+<h1 class="title-s accent">처리 비용이 값에 반영되어, 친환경이 가장 싼 선택이 되고 사회가 쓰는 돈도 줄어든다</h1>
+<p class="label">바라는 변화 발언 10건 · 문제 인식 11건</p>
+<div class="quote">
+<p class="body">업사이클링, 리사이클링 등을 통해 에너지 비용 절약이 기대된다. 일회용품이나 모듈화 등을 통해 생활비용 자체가 절감될 것이다. 불편한 생활이 늘어날 것이다(부정적).</p>
+<p class="note">5조 8명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">쓰레기 매립 소각 및 이에 행정적 낭비 예산 감소가 기대된다. 탄소중립 가속화가 기대된다. 친환경 기술 발전을 국가 차원에서 가능해질 것이다.</p>
+<p class="note">5조 8명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-5" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-5" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-2-6" class="step lv-cluster t2"
+     data-x="-10500" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="2">
+<p class="kicker">의제2 · 범주 6 · 배경·문제 인식</p>
+<h1 class="title">생산·유통의 순환 설계</h1>
+<div class="stat">
+<span class="hero-s">22</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 4조 · 5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">용기 규격·재질 미통일, 재활용 가능·불가 플라스틱의 혼용 생산, 생산자 규제 법률의 부재.</span></div>
+</div>
+<div class="quote">
+<p class="body">아이스박스나 비닐류 등 재활용품 분리배출· 선별 기준이 지자체마다 제각각 달라 현장의 혼란과 선별 비용을 가중시키고 있다. (…)</p>
+<p class="note">2조 6명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">EU에서는 명품 업체에 과잉 재고의 소각, 매립을 규제한다고 한다. 우리나라는 제품 생산 업체에 환경오염과 과생산 부분에 (…)</p>
+<p class="note">2조 6명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-6" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-6" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-2-6" class="step lv-detail t2"
+     data-x="-10500" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="2">
+<p class="kicker">의제2 · 생산·유통의 순환 설계 · 기대 효과</p>
+<h1 class="title-s accent">처음부터 다시 쓰게 만들어져, 분리배출이라는 노동과 고민이 사라진다</h1>
+<p class="label">바라는 변화 발언 5건 · 문제 인식 17건</p>
+<div class="quote">
+<p class="body">정책적 지원을 통해 기술 혁신으로 기존 일회용품의 편리함과 친환경이라는 두 가지 가치를 모두 만족하는 대체재가 널리 공급된다.</p>
+<p class="note">2조 6명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">알기 쉬운 분리배출 체계가 정착되어 시민 편의가 증진되고, 대한민국이 글로벌 기후환경 대응 문화를 선도하는 상태가 된다.</p>
+<p class="note">3조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-6" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-6" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-2-7" class="step lv-cluster t2"
+     data-x="-6300" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="2">
+<p class="kicker">의제2 · 범주 7 · 배경·문제 인식</p>
+<h1 class="title">재생원료 시장과 경제성</h1>
+<div class="stat">
+<span class="hero-s">8</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">3조 · 4조 · 5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">낮은 재활용률과 생분해 소재의 비경제성, 재생업의 유지 불가 구조와 보조·규격 규제·기업 우대의 부재.</span></div>
+</div>
+<div class="quote">
+<p class="body">플라스틱 용기 제작 원료에 따른 기업 우대사항 부재 / 소주병을 녹여서 다시 만드는 것보다 세척 비용 저렴_반용기 보증금 (…)</p>
+<p class="note">4조 3명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">쓰레기 발생을 억제하고 재생원료를 사용하는 체계가 부족하며, 친환경 원자재의 비싼 가격과 재활용의 낮은 경제성, 개인의 책임 (…)</p>
+<p class="note">3조 2명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-7" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-7" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-2-7" class="step lv-detail t2"
+     data-x="-6300" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="2">
+<p class="kicker">의제2 · 재생원료 시장과 경제성 · 기대 효과</p>
+<h1 class="title-s accent">버려지던 것이 다시 원료로 팔려, 재활용이 손해 보지 않고 굴러가는 일이 된다</h1>
+<p class="label">바라는 변화 발언 3건 · 문제 인식 5건</p>
+<div class="quote">
+<p class="body">생수 구입이 없는. 수돗물을 (…) 수 있는 그래서 일회용 플라스틱이 줄이는 실천이 생활화 온라인 쇼핑이 늘어나다보니 포장지가 종이로 변화 재활용에 앞장선다 친환경 플라스틱 설계로 재생원료가 된다</p>
+<p class="note">4조 3명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">친환경 원료·제품 생산 및 재활용의 경제성이 확보되어 대기·수자원 환경이 개선되고, 기후위기 극복과 건강한 공동체 의식 속에 삶의 질이 높아진 상태가 된다.</p>
+<p class="note">3조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-7" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-7" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-2-8" class="step lv-cluster t2"
+     data-x="-2100" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="2">
+<p class="kicker">의제2 · 범주 8 · 배경·문제 인식</p>
+<h1 class="title">수리해 오래 쓰는 제품</h1>
+<div class="stat">
+<span class="hero-s">8</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">2조 · 4조 · 5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">부품 수급 곤란과 빠른 단종, 부분 수리를 막는 초기 생산 설계와 잦은 규격 변경, 고쳐 쓰는 방법에 대한 정보 부재.</span></div>
+</div>
+<div class="quote">
+<p class="body">애플이라는 회사가 문제라고 생각하는데, 약한 디스플레이로 수리를 자주 해야하는데 고장난 부품만 바꾸면 되는 것인데 일부 (…)</p>
+<p class="note">5조 3명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">일회용품으로 단 한 번 쓰고 바로 버리는 구조가 아닌, 2번 쓰기와 같은 단계적 재사용이 가능한 재질과 시스템이 없다.</p>
+<p class="note">2조 2명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-8" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-8" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-2-8" class="step lv-detail t2"
+     data-x="-2100" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="2">
+<p class="kicker">의제2 · 수리해 오래 쓰는 제품 · 기대 효과</p>
+<h1 class="title-s accent">오래된 물건도 특별한 지식 없이 고쳐 쓸 수 있어, 새로 사는 일이 드물어진다</h1>
+<p class="label">바라는 변화 발언 3건 · 문제 인식 5건</p>
+<div class="quote">
+<p class="body">우리 동네는 쓰레기 배출이 한 달에 한 번만 온다. 동네 주변에 잔디와 연못과 들짐승 다람쥐, 백조 등이 함께 살고 있다. 가전제품은 기본 10년 무상 20년 사용 어린아이들이 행복하다.</p>
+<p class="note">4조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">가정에서부터 음식물 쓰레기와 불필요한 가전제품 소비를 줄이는, 덜 사고, 오래 쓰고, 다시 쓰는 선순환 소비 문화의 자원순환이 이루어진다.</p>
+<p class="note">2조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-8" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-8" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-2-9" class="step lv-cluster t2"
+     data-x="2100" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="2">
+<p class="kicker">의제2 · 범주 9 · 배경·문제 인식</p>
+<h1 class="title">자원순환 신산업과 일자리</h1>
+<div class="stat">
+<span class="hero-s">9</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">2조 · 3조 · 5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">친환경 대체 에너지 개발 지원책의 부재, 에코·리사이클 기업의 낮은 기술개발 수준과 초기 투자 부족.</span></div>
+</div>
+<div class="quote">
+<p class="body">자원재활용센터 근로자의 노동 환경을 개선하는데 재정이 턱없이 부족하다. 종량제 봉투 판매 수익이나 캠페인 예산이 적절하게 (…)</p>
+<p class="note">2조 2명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">동의한다. 그러나 영영 (…) 지금까지 기술 개발이 없어서 그런 것이고, 기술에 대한 또 시작에 대한 투자가 필요할 것 같다.</p>
+<p class="note">5조 5명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-9" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-9" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-2-9" class="step lv-detail t2"
+     data-x="2100" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="2">
+<p class="kicker">의제2 · 자원순환 신산업과 일자리 · 기대 효과</p>
+<h1 class="title-s accent">자원을 되살리는 새 시장이 열려, 청년들이 뛰어드는 일자리가 늘어난다</h1>
+<p class="label">바라는 변화 발언 5건 · 문제 인식 4건</p>
+<div class="quote">
+<p class="body">개인의 효율적인 분리배출·재사용과 환경 관심도가 일상화되고, 수자원 보전과 환경공학 일자리 창출을 통해 환경오염이 대폭 줄어든 상태가 된다.</p>
+<p class="note">3조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">탄소포집·재생에너지·재활용 등 신산업과 기술 발전이 활성화된 친환경 생태계가 구축되고, 타인을 배려하는 성숙한 문화가 정착된 상태가 된다.</p>
+<p class="note">3조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-9" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-9" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-2-10" class="step lv-cluster t2"
+     data-x="6300" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="2">
+<p class="kicker">의제2 · 범주 10 · 배경·문제 인식</p>
+<h1 class="title">음식물의 퇴비·비료 자원화</h1>
+<div class="stat">
+<span class="hero-s">6</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">2조 · 3조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">음식물의 미생물 발효·퇴비 연계 부족, 단지 차원 공용 처리시설 부족, 음식물 배출 체계의 비효율.</span></div>
+</div>
+<div class="quote">
+<p class="body">음식물 쓰레기 배출 체계의 비효율성과 비닐봉투 낭비, 그리고 기후위기를 남의 일로 여기거나 번거로워하는 낮은 시민의식과 홍보 (…)</p>
+<p class="note">3조 1명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">음식물쓰레기가 버려져 환경을 오염시키고 있으나, 이를 미생물로 발효하여 퇴비로 재활용하는 연계가 부족하다.</p>
+<p class="note">2조 2명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-10" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-10" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-2-10" class="step lv-detail t2"
+     data-x="6300" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="2">
+<p class="kicker">의제2 · 음식물의 퇴비·비료 자원화 · 기대 효과</p>
+<h1 class="title-s accent">집집마다 애쓰지 않아도 단지에서 음식물이 처리되고, 그 음식물이 비료가 되어 농사에 쓰인다</h1>
+<p class="label">바라는 변화 발언 3건 · 문제 인식 3건</p>
+<div class="quote">
+<p class="body">건축법 등 관련 법령이 정비되어 일정 규모 이상의 공동주택 신축 시 친환경 음식물 자원순환 시스템 설치가 의무화된 친환경 건물이 보편화된다.</p>
+<p class="note">2조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">개별 가정이 애쓰지 않아도 아파트 단지 차원에서 입주민이 비용을 분담해 공용 음식물 퇴비화 · 자원화하는 설비를 갖추게 된다.</p>
+<p class="note">2조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-10" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-10" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-2-11" class="step lv-cluster t2"
+     data-x="10500" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="2">
+<p class="kicker">의제2 · 범주 11 · 배경·문제 인식</p>
+<h1 class="title">대기·수질 개선과 건강</h1>
+<div class="stat">
+<span class="hero-s">10</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 3조 · 4조 · 5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">플라스틱을 소각·연료화하는 과정에서 오염물질이 대기로 방출되는 문제.</span></div>
+</div>
+<div class="quote">
+<p class="body">플라스틱 재활용이 어려워 소각하거나 에너지 연료로 태우는 경우가 많은데 그렇게 되면 각종 오염물질이 대기중에 방출되서 환경을 오염시킴</p>
+<p class="note">1조 3명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">플라스틱의 양도 많은데 소각할 때 나오는 이산화탄소는 더욱 많이나와서 이산화탄소가 너무 많이 나온다.</p>
+<p class="note">1조 3명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-11" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-11" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-2-11" class="step lv-detail t2"
+     data-x="10500" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="2">
+<p class="kicker">의제2 · 대기·수질 개선과 건강 · 기대 효과</p>
+<h1 class="title-s accent">태우는 쓰레기가 줄어 물과 공기가 깨끗해지고, 마스크 없이 숨 쉬며 몸도 건강해진다</h1>
+<p class="label">바라는 변화 발언 6건 · 문제 인식 4건</p>
+<div class="quote">
+<p class="body">미세먼지 마스크를 착용하지 않아도 안심하고 숨 쉴 수 있는 깨끗한 대기환경이 조성되고, 순환경제를 통해 전 세대가 쾌적한 삶을 누리는 상태가 된다.</p>
+<p class="note">3조 1명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">폐기물 소각으로 인한 이산화탄소 감소로 인하여 기후 이상 완화 및 온열질환 환자 감소가 (…) 자원 순환 기술 연구에서 이어지는 기술 발전으로 인한 국가와 기업의 경쟁력이 상승할 것이다.</p>
+<p class="note">5조 4명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-11" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-11" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-2-12" class="step lv-cluster t2"
+     data-x="14700" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="2">
+<p class="kicker">의제2 · 범주 12 · 배경·문제 인식</p>
+<h1 class="title">도시 청결과 총량 감소</h1>
+<div class="stat">
+<span class="hero-s">7</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">쓰레기통 부족과 길거리 투기, 가정에서 나오는 부산물의 절대량, 배달 포장 쓰레기의 과다.</span></div>
+</div>
+<div class="quote">
+<p class="body">가정에서 아무리 열심히 세척하고 분리 배출을 실천해도 일상에서 나오는 쓰레기 부산물 자체가 너무 많다.</p>
+<p class="note">2조 1명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">분리수거보다, 엄청난 양의 쓰레기가 문제다. 강력한 규제가 되지 못하고 있는 정책이 문제이다.</p>
+<p class="note">5조 4명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-12" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-12" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-2-12" class="step lv-detail t2"
+     data-x="14700" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="2">
+<p class="kicker">의제2 · 도시 청결과 총량 감소 · 기대 효과</p>
+<h1 class="title-s accent">버려지는 양 자체가 줄어 거리가 깨끗해지고, 그 깨끗함 덕에 함부로 버리지 않게 된다</h1>
+<p class="label">바라는 변화 발언 2건 · 문제 인식 5건</p>
+<div class="quote">
+<p class="body">일반쓰레기 배출량 감소가 기대된다. 소비 과정의 고리닫기가 가능해져 사회 내 이윤 창출 구조 자체의 변화가 기대된다. 탈성장 사회로의 전환이 기대된다.</p>
+<p class="note">5조 4명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">과대포장과 쓰레기 배출이 줄어들어 도시 환경 전반이 청결하게 유지되고, 거리의 청결함이 쓰레기 투기를 스스로 억제하는 깨끗한 사회가 된다.</p>
+<p class="note">3조 1명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-12" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-12" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-2-13" class="step lv-cluster t2"
+     data-x="18900" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="2">
+<p class="kicker">의제2 · 범주 13 · 배경·문제 인식</p>
+<h1 class="title">시민의 부담 증가와 갈등의 예상</h1>
+<div class="stat">
+<span class="hero-s">6</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">2조 · 4조 · 5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">친환경 전환 비용의 소비자 전가 위험과 공정 분담 장치의 부재, 규제를 개인 자유 침해로 보는 시각.</span></div>
+</div>
+<div class="quote">
+<p class="body">정부의 시스템이 명확하게 구체화되었으면 좋겠고, 기업의 가격 인상 여부가 아니라 어느 정도는 규제하고 일부는 자유롭게 참여할 (…)</p>
+<p class="note">5조 3명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">친환경 전환에 드는 비용이 결국 음식값 인상 등으로 이어져 소비자에게 일방적으로 전가될 위험에 대해 공정하게 분담할 제도적 (…)</p>
+<p class="note">2조 1명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-13" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-13" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-2-13" class="step lv-detail t2"
+     data-x="18900" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="2">
+<p class="kicker">의제2 · 시민의 부담 증가와 갈등의 예상 · 기대 효과</p>
+<h1 class="title-s accent">친환경으로 바꾸는 부담이 개인에게 돌아와, 일상에서 불편한 일이 많아질 것으로 우려된다</h1>
+<p class="label">바라는 변화 발언 1건 · 문제 인식 5건</p>
+<div class="quote">
+<p class="body">개인의 생활에 불편해지는 게 많아질 것이다.</p>
+<p class="note">5조 3명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-13" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-13" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-2-14" class="step lv-cluster t2"
+     data-x="23100" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="2">
+<p class="kicker">의제2 · 범주 14 · 배경·문제 인식</p>
+<h1 class="title">실천에 대한 경제적 보상</h1>
+<div class="stat">
+<span class="hero-s">4</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">2조 · 5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">불편을 감수하게 할 인센티브·포인트 제도의 부족, 개인에 대한 혜택·보상의 부재.</span></div>
+</div>
+<div class="quote">
+<p class="body">에어컨 사용이나 일회용품 소비 등 조금의 불편함도 참지 않고 &#x27;무조건적인 편리함&#x27;만을 찾는 일상 소비 방식이 문제다. (…)</p>
+<p class="note">2조 2명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">(일회용품 대신 장바구니를 사용할 때 포인트 적립을 해주는 방안을 제시) 개인에 대한 혜택 및 보상이 없는 것이 문제이다.</p>
+<p class="note">5조 1명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-14" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-14" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-2-14" class="step lv-detail t2"
+     data-x="23100" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="2">
+<p class="kicker">의제2 · 실천에 대한 경제적 보상 · 기대 효과</p>
+<h1 class="title-s accent">덜 쓰고 되돌린 만큼 돌아오는 것이 있어, 스스로 친환경을 고르는 사람이 늘어난다</h1>
+<p class="label">바라는 변화 발언 2건 · 문제 인식 2건</p>
+<div class="quote">
+<p class="body">플라스틱 대신 대체재를 선택할 때마다 확실한 포인트나 보상이 주어져 시민들이 자발적·적극적으로 친환경 소비를 실천하는 사회가 된다.</p>
+<p class="note">2조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">텀블러 페이백, 투명 페트병 모바일 포인트 환급 등 시민의 절약과 실천에 대해 실질적인 경제적 보상이 이루어지는 사회가 된다.</p>
+<p class="note">2조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-14" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-14" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-2-15" class="step lv-cluster t2"
+     data-x="27300" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="2">
+<p class="kicker">의제2 · 범주 15 · 배경·문제 인식</p>
+<h1 class="title">국제 기후정의와 국가 위상</h1>
+<div class="stat">
+<span class="hero-s">3</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 4조 · 5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">패스트패션 소비가 빈민국 생태계를 위협하고 있다는 인식.</span></div>
+</div>
+<div class="quote">
+<p class="body">한 철 장사하는 옷팔이들과 하울을 즐기는 소비자들 (패스트 패션)이 빈민국의 생태계를 위협하고 있다.</p>
+<p class="note">4조 1명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-15" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-15" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-2-15" class="step lv-detail t2"
+     data-x="27300" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="2">
+<p class="kicker">의제2 · 국제 기후정의와 국가 위상 · 기대 효과</p>
+<h1 class="title-s accent">쓰레기 줄이는 방법을 나라들이 서로 나눠 지구가 덜 더러워지고, 우리는 그 일에 앞선 나라가 된다</h1>
+<p class="label">바라는 변화 발언 2건 · 문제 인식 1건</p>
+<div class="quote">
+<p class="body">국제사회 및 세계의 변화는 어떻게 달라질까요? ■ 국제사회나 세계사회가 어떻게 달라질까? ○○○국제사회에서도 소각되거나 매립되는 폐기물을 최소화해서하나의 프로젝트로만들수도 있을 것이다.</p>
+<p class="note">1조 1명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">과대포장 억제 시 포장에 쓰이는 자원을 다방면 활용 가능하게 될 것이다. 국제사회에서의 입지 분야 확보가 가능하게 될 (…) 친환경 분야 관련 일자리 창출로 실업률이 낮아질 것이 기대된다.</p>
+<p class="note">5조 1명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-15" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-15" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-2-16" class="step lv-cluster t2"
+     data-x="31500" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="2">
+<p class="kicker">의제2 · 범주 16 · 배경·문제 인식</p>
+<h1 class="title">해양 생태계와 미세플라스틱</h1>
+<div class="stat">
+<span class="hero-s">4</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 3조 · 5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">의류폐기물의 소각·매립에 따른 환경오염, 저가 합성섬유 의류의 무분별한 소비와 재활용 불가.</span></div>
+</div>
+<div class="quote">
+<p class="body">저가 합성섬유 의류의 무분별한 소비 및 폐기 행태와 탄소 배출 과정 및 환경 영향에 대한 시민들의 상세한 인식 부족을 확인하였다.</p>
+<p class="note">3조 2명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">사람들이 버리는 옷들로 인해 의류폐기물이 발생하고 그 의류폐기물이 소각 매립되어 환경오염을 일으킨다.</p>
+<p class="note">1조 1명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-16" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-16" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-2-16" class="step lv-detail t2"
+     data-x="31500" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="2">
+<p class="kicker">의제2 · 해양 생태계와 미세플라스틱 · 기대 효과</p>
+<h1 class="title-s accent">생활 쓰레기와 미세플라스틱이 크게 줄고, 그 피해를 다른 나라가 대신 떠안는 일도 사라진다</h1>
+<p class="label">바라는 변화 발언 1건 · 문제 인식 3건</p>
+<div class="quote">
+<p class="body">생활 쓰레기와 미세플라스틱 배출이 획기적으로 감축되고, 친환경 포장 기준 정착과 글로벌 기후 불평등이 완화된 상태가 된다.</p>
+<p class="note">3조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-2-16" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-2-16" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
 </div>
 <div id="ending" class="step lv-ending plain"
      data-x="0" data-y="12000" data-scale="12"
      data-kind="ending" data-dwell="45" data-sub="0">
 <p class="kicker">제5차 조별 산출물 · 사람이 판정한 표에서 조립</p>
-<h1 class="title">시민 발언 188건 · 범주 4개</h1>
+<h1 class="title">시민 발언 188건 · 범주 16개</h1>
 <div class="bigline">
 <span class="one" style="background:#6FD6F5">의제2 자원순환</span>
 </div>
 </div>
 </div>
-<div id="bar"><span class="where">전체 조망</span><span class="keys">← →</span><span class="count">1 / 11</span></div>
+<div id="bar"><span class="where">전체 조망</span><span class="keys">← →</span><span class="count">1 / 35</span></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/impress.js/0.5.3/impress.min.js" integrity="sha512-HXq2vkPUe8naYLkedRvWDYhRwxVrXijlPC/kFTEvPG/Ra7GfIQMzwjVKZiarAjm6bU3qjYpJ49dza/qIqVkPZg==" crossorigin="anonymous" onerror="document.documentElement.className+=' no-impress'"></script>
 <script>
-var WHERE = ["전체 조망", "의제2 자원순환", "의제2 자원순환 · 제품 설계", "의제2 자원순환 · 기대 효과 · 생산·유통의 순환 설계", "의제2 자원순환 · 분리배출 신뢰", "의제2 자원순환 · 기대 효과 · 분리배출 부담 없는 수거", "의제2 자원순환 · 다회용 전환", "의제2 자원순환 · 기대 효과 · 일회용 없이도 불편 없는 일상", "의제2 자원순환 · 생산자 책임·비용", "의제2 자원순환 · 기대 효과 · 친환경이 가장 싼 선택", "마무리"];
+var WHERE = ["전체 조망", "의제2 자원순환", "의제2 자원순환 · 나눔·중고·공유로 덜 사기", "의제2 자원순환 · 나눔·중고·공유로 덜 사기 · 기대 효과", "의제2 자원순환 · 일회용 없이도 불편 없는 일상", "의제2 자원순환 · 일회용 없이도 불편 없는 일상 · 기대 효과", "의제2 자원순환 · 시민 인식과 교육의 정착", "의제2 자원순환 · 시민 인식과 교육의 정착 · 기대 효과", "의제2 자원순환 · 먹거리는 가까운 데서 — 짧은 유통", "의제2 자원순환 · 먹거리는 가까운 데서 — 짧은 유통 · 기대 효과", "의제2 자원순환 · 친환경이 가장 싼 선택", "의제2 자원순환 · 친환경이 가장 싼 선택 · 기대 효과", "의제2 자원순환 · 생산·유통의 순환 설계", "의제2 자원순환 · 생산·유통의 순환 설계 · 기대 효과", "의제2 자원순환 · 재생원료 시장과 경제성", "의제2 자원순환 · 재생원료 시장과 경제성 · 기대 효과", "의제2 자원순환 · 수리해 오래 쓰는 제품", "의제2 자원순환 · 수리해 오래 쓰는 제품 · 기대 효과", "의제2 자원순환 · 자원순환 신산업과 일자리", "의제2 자원순환 · 자원순환 신산업과 일자리 · 기대 효과", "의제2 자원순환 · 음식물의 퇴비·비료 자원화", "의제2 자원순환 · 음식물의 퇴비·비료 자원화 · 기대 효과", "의제2 자원순환 · 대기·수질 개선과 건강", "의제2 자원순환 · 대기·수질 개선과 건강 · 기대 효과", "의제2 자원순환 · 도시 청결과 총량 감소", "의제2 자원순환 · 도시 청결과 총량 감소 · 기대 효과", "의제2 자원순환 · 시민의 부담 증가와 갈등의 예상", "의제2 자원순환 · 시민의 부담 증가와 갈등의 예상 · 기대 효과", "의제2 자원순환 · 실천에 대한 경제적 보상", "의제2 자원순환 · 실천에 대한 경제적 보상 · 기대 효과", "의제2 자원순환 · 국제 기후정의와 국가 위상", "의제2 자원순환 · 국제 기후정의와 국가 위상 · 기대 효과", "의제2 자원순환 · 해양 생태계와 미세플라스틱", "의제2 자원순환 · 해양 생태계와 미세플라스틱 · 기대 효과", "마무리"];
 (function(){
   var root = document.documentElement;
   function degrade(){

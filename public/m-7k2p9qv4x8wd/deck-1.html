@@ -25,7 +25,7 @@ html.no-impress #bar{display:none;}
 
 #impress{position:relative;}
 .step{position:relative;box-sizing:border-box;
-  width:1860px;padding:54px 64px;border-radius:22px;
+  width:1860px;padding:44px 64px 180px;border-radius:22px;
   background:#1A2537;border:6px solid #0B1220;
   opacity:.14;transition:opacity .5s ease;
   font-size:28px;line-height:1.34;font-weight:700;}
@@ -34,6 +34,7 @@ html.no-impress #bar{display:none;}
 
 .kicker{font-size:36px;color:#CFDCEC;margin:0 0 16px 0;}
 .title{font-size:64px;color:#F4F7FB;margin:0 0 28px 0;font-weight:800;}
+.title-s{font-size:48px;line-height:1.25;color:#F4F7FB;margin:0 0 28px 0;font-weight:800;}
 .label{font-size:44px;color:#F4F7FB;margin:0 0 16px 0;font-weight:800;}
 .hero{font-size:112px;font-weight:800;line-height:1;}
 .hero-s{font-size:88px;font-weight:800;line-height:1;}
@@ -58,17 +59,30 @@ html.no-impress #bar{display:none;}
 .t3 .tag{background:#8FE9AE;}
 
 .rows{display:flex;flex-direction:column;gap:16px;margin-top:28px;}
+/* 범주가 열을 넘으면 두 단으로 — 세로가 아니라 가로를 쓴다 */
+.rows.grid2{display:grid;grid-template-columns:repeat(3,1fr);column-gap:28px;
+  row-gap:10px;}
+/* 스무 줄짜리 목록은 줄 안쪽 여백도 한 급 줄인다 — 글자 크기는 그대로 둔다 */
+.rows.grid2 .row{padding:10px 28px;}
+/* 「우려·전망」 셋은 기대 효과가 아니다 — 목록에서 갈라 보인다.
+   테두리·안쪽 여백을 주면 줄이 두 줄이 되어 의제 장이 화면 위로 넘친다
+   (실측 7~12px). 글자만으로 가른다. */
+.worry{margin-left:16px;font-size:24px;font-weight:800;color:#CFDCEC;}
 .row{display:flex;gap:28px;align-items:baseline;background:#0B1220;
   border-radius:14px;padding:16px 28px;}
 .row .num{font-size:44px;font-weight:800;min-width:96px;}
 .row .txt{font-size:28px;color:#F4F7FB;}
 
 .quote{background:#0B1220;border-left:14px solid #FFC24A;border-radius:14px;
-  padding:28px;margin-top:28px;}
+  padding:16px 28px;margin-top:16px;}
 .t1 .quote{border-left-color:#FFC24A;} .t2 .quote{border-left-color:#6FD6F5;}
 .t3 .quote{border-left-color:#8FE9AE;}
 .quote .body{margin:0 0 16px 0;}
 .quote .note{margin:0;}
+
+/* 배경 근거가 없는 여섯 덩어리 — 인용 자리를 비우고 그 사실을 적는다. 지어내지 않는다. */
+.empty{font-size:28px;color:#CFDCEC;background:#0B1220;border-radius:14px;
+  border-left:14px dashed #CFDCEC;padding:28px;margin-top:16px;}
 
 .stat{display:flex;gap:48px;align-items:flex-end;margin-top:28px;}
 .stat .unit{font-size:36px;color:#CFDCEC;padding-bottom:16px;}
@@ -88,14 +102,14 @@ html[data-names="off"] .nn{display:inline;}
 
 #bar{position:fixed;left:0;right:0;bottom:0;z-index:20;
   display:flex;justify-content:space-between;align-items:center;
-  padding:14px 28px;background:#0B1220;border-top:6px solid #1A2537;}
-#bar .where{font-size:28px;font-weight:800;color:#F4F7FB;}
-#bar .count{font-size:28px;font-weight:800;color:#CFDCEC;}
+  padding:9px 28px;background:#0B1220;border-top:4px solid #1A2537;}
+#bar .where{font-size:26px;font-weight:800;color:#F4F7FB;}
+#bar .count{font-size:26px;font-weight:800;color:#CFDCEC;}
 #bar .keys{font-size:24px;font-weight:700;color:#CFDCEC;}
 </style>
 </head>
 <body>
-<div class="fallback"><p>줌·팬 캔버스를 그리는 impress.js 를 불러오지 못했습니다. 바깥 연결이 막혔거나 파일이 바뀐 경우입니다.</p><p>단계 이동 없이 11단계를 위에서 아래로 모두 싣습니다. 마우스나 방향키로 내려 읽습니다.</p></div>
+<div class="fallback"><p>줌·팬 캔버스를 그리는 impress.js 를 불러오지 못했습니다. 바깥 연결이 막혔거나 파일이 바뀐 경우입니다.</p><p>단계 이동 없이 41단계를 위에서 아래로 모두 싣습니다. 마우스나 방향키로 내려 읽습니다.</p></div>
 <div id="impress" data-width="1920" data-height="1080" data-max-scale="2" data-min-scale="0" data-perspective="0" data-transition-duration="700">
 <div id="overview" class="step lv-overview plain"
      data-x="0" data-y="-6000" data-scale="9"
@@ -117,44 +131,461 @@ html[data-names="off"] .nn{display:inline;}
 <p class="kicker">의제1</p>
 <h1 class="title accent">기업 온실가스 감축</h1>
 <div class="stat">
-<span class="hero">4</span><span class="unit">범주</span>
+<span class="hero-s">19</span><span class="unit">범주</span>
 <span class="hero-s">235</span><span class="unit">시민 발언</span>
 </div>
-<div class="rows">
-<div class="row"><span class="num accent">1</span><span class="txt">정책 일관성</span></div>
-<div class="row"><span class="num accent">2</span><span class="txt">중소기업·공급망</span></div>
-<div class="row"><span class="num accent">3</span><span class="txt">탄소가격·배출권</span></div>
-<div class="row"><span class="num accent">4</span><span class="txt">성과의 가시화</span></div>
+<div class="rows grid2">
+<div class="row"><span class="num accent">1</span><span class="txt">포장 축소·다회용과 순환경제</span></div>
+<div class="row"><span class="num accent">2</span><span class="txt">기업 책임의식과 브랜드 가치</span></div>
+<div class="row"><span class="num accent">3</span><span class="txt">대기질 개선과 기후재해 완화</span></div>
+<div class="row"><span class="num accent">4</span><span class="txt">저탄소 인증·정보공개와 신뢰</span></div>
+<div class="row"><span class="num accent">5</span><span class="txt">ESG·RE100 달성과 수출</span></div>
+<div class="row"><span class="num accent">6</span><span class="txt">저탄소 기술개발과 공정 혁신</span></div>
+<div class="row"><span class="num accent">7</span><span class="txt">친환경 산업 육성과 중소기업</span></div>
+<div class="row"><span class="num accent">8</span><span class="txt">재생에너지 발전·저장 인프라</span></div>
+<div class="row"><span class="num accent">9</span><span class="txt">전환 부담의 공정 분담</span></div>
+<div class="row"><span class="num accent">10</span><span class="txt">생활물가와 사회 대응비용 안정</span></div>
+<div class="row"><span class="num accent">11</span><span class="txt">건강 증진과 의료비 절감</span></div>
+<div class="row"><span class="num accent">12</span><span class="txt">정책 일관성과 전담 거버넌스</span></div>
+<div class="row"><span class="num accent">13</span><span class="txt">친환경 건자재와 주거환경</span></div>
+<div class="row"><span class="num accent">14</span><span class="txt">규제·탄소가격</span></div>
+<div class="row"><span class="num accent">15</span><span class="txt">저탄소 제품의 가격 경쟁력</span></div>
+<div class="row"><span class="num accent">16</span><span class="txt">전기·냉난방 등 에너지비 경감</span></div>
+<div class="row"><span class="num accent">17</span><span class="txt">수송 전기화와 전력시장 개방</span></div>
+<div class="row"><span class="num accent">18</span><span class="txt">지역별 요금 차등과 지역 환원</span></div>
+<div class="row"><span class="num accent">19</span><span class="txt">탄소포집·신소재 개발</span></div>
 </div>
 </div>
 <div id="pg-1-1" class="step lv-cluster t1"
-     data-x="-6300" data-y="3400" data-scale="2"
+     data-x="-37800" data-y="3400" data-scale="2"
      data-kind="cluster" data-dwell="20" data-sub="1">
 <p class="kicker">의제1 · 범주 1 · 배경·문제 인식</p>
-<h1 class="title">정책 일관성</h1>
+<h1 class="title">포장 축소·다회용과 순환경제</h1>
 <div class="stat">
-<span class="hero">15</span><span class="unit">이 범주에 붙은 시민 발언</span>
+<span class="hero-s">18</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 4조 · 5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">분리배출을 해도 시민에게 돌아오는 이득 없음, 가구 폐기 스티커 부담, 재활용품 제조 자체의 모순, 과대포장 문화, EU 포장재 규제와 아시아 공동 규제 필요, 패트병 포장지 제거의 (…)</span></div>
+</div>
+<div class="quote">
+<p class="body">EU국가는 판매 시 포장재가 친환경이어야 함. (즉 규제되어있음) 이렇게 여러국가가 규제하는 만큼, 아시아도 다같이 모여서 (…)</p>
+<p class="note">2조 3명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">우리가 재활용을 잘 하는데, 재활용이 되면 누군가 이익을 볼 텐데, 분리수거 하는 우리의 입장에서는 이득을 보는 게 없다. (…)</p>
+<p class="note">1조 3명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-1" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-1" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-1-1" class="step lv-detail t1"
+     data-x="-37800" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="1">
+<p class="kicker">의제1 · 포장 축소·다회용과 순환경제 · 기대 효과</p>
+<h1 class="title-s accent">포장이 단일 재질과 다회용기로 바뀌어, 소비자가 부담 없이 주문하고 쓸 수 있게 된다</h1>
+<p class="label">바라는 변화 발언 10건 · 문제 인식 8건</p>
+<div class="quote">
+<p class="body">기업의 변화를 위해서는 산업변화를 위해서 온실가스 배출을 줄이는 방안을 재사 용을 늘리고 도로 연동제도가 필요하다.</p>
+<p class="note">4조 3명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">포장 재질이 간소화되고, 재활용 가능한 단일재질을 사용하고 있어 분리배출 용이.</p>
+<p class="note">2조 3명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-1" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-1" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-1-2" class="step lv-cluster t1"
+     data-x="-33600" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="1">
+<p class="kicker">의제1 · 범주 2 · 배경·문제 인식</p>
+<h1 class="title">기업 책임의식과 브랜드 가치</h1>
+<div class="stat">
+<span class="hero-s">22</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 4조 · 5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">감축 안 할 때 비용이 더 크다는 문제 미수용, 재벌 규제에 대한 반발과 마인드, 자본주의의 최대이윤 추구, 책임의 무게가 가벼움, 자발적 감축 인식 부족, 비용·이윤 우선, 수익의 사회 (…)</span></div>
+</div>
+<div class="quote">
+<p class="body">자본주의 사회이다보니 기업은 (…) 성장을 하기를 기업도, 국가도 계속 성장을 추구하기 때문에 어쩔 수 없이 그렇게 되는 것 같다.</p>
+<p class="note">1조 8명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">(1) 에어컨 없이도 쾌적한 유럽 VS 덥고 습한 동남아시아: 환경과 경제가 양립할 수 없을것이라 생각이 됨. (2) 기업의 (…)</p>
+<p class="note">2조 4명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-2" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-2" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-1-2" class="step lv-detail t1"
+     data-x="-33600" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="1">
+<p class="kicker">의제1 · 기업 책임의식과 브랜드 가치 · 기대 효과</p>
+<h1 class="title-s accent">친환경 제품을 만드는 기업이 욕먹지 않고 돈도 잘 벌어, 사회에 돌려주는 일이 당연해진다</h1>
+<p class="label">바라는 변화 발언 8건 · 문제 인식 14건</p>
+<div class="quote">
+<p class="body">기업의 사회적 책임 의무 강화 (…) 가체 제고를 통한 경쟁력 제고 &gt; 인센티브, 사회적 공감력 제고, 브랜드 이미지가 올라감으로써 소비자가 많이 사주어 결국 기업의 경쟁력 역시 올라갈 것이다.</p>
+<p class="note">2조 4명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">기부를 했을 때 기분이 좋아지듯이 기업 입장에서도 기부하는 기업, 기부하는 나라 이런 식으로. 좋은 일을 하니 나라도 발전이 될 것이고. 이런 것도 좋을 것 같다.</p>
+<p class="note">1조 8명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-2" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-2" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-1-3" class="step lv-cluster t1"
+     data-x="-29400" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="1">
+<p class="kicker">의제1 · 범주 3 · 배경·문제 인식</p>
+<h1 class="title">대기질 개선과 기후재해 완화</h1>
+<div class="stat">
+<span class="hero-s">11</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 4조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">이산화탄소 감축 필요, 조림사업 필요, 산업혁명 이후 1.2도 상승과 해수면 상승</span></div>
+</div>
+<div class="quote">
+<p class="body">이번에 유럽에서 폭염이 (…) 에어컨은 탄소 배출이 많은데, 이런 어쩔 수 없는 상황으로 탄소 배출이 많아질 수 있을 것 같다.</p>
+<p class="note">1조 4명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">산업혁명 이후에 지금 지구 온도가 1.2도가 올라갔다고 한다. 열에너지가 땅덩어리에 다 있다는 것이다. 용머리해안에도 (…)</p>
+<p class="note">1조 4명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-3" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-3" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-1-3" class="step lv-detail t1"
+     data-x="-29400" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="1">
+<p class="kicker">의제1 · 대기질 개선과 기후재해 완화 · 기대 효과</p>
+<h1 class="title-s accent">미세먼지가 걷혀 하늘의 별이 다시 보이고, 네 계절이 제자리를 찾는다</h1>
+<p class="label">바라는 변화 발언 7건 · 문제 인식 4건</p>
+<div class="quote">
+<p class="body">과거에 서울의 공기가 좋지 않았는데, 몇 년 후 개선이 되기도 했었다. 서울에 있는 기업이 탄소 배출이나 이런 게 적어지게 되면 대기질이 좋아져서 우리 국민 건강에 도움이 되지 않을까 싶다.</p>
+<p class="note">1조 4명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">하늘에서 별 본 적이 오래됐다. 저 어릴 적에는 별이 잘 보였다. 앞으로 기후변화가 좋은 방향으로 돼서 옛날처럼 별을 잘 볼 수 있었으면 좋겠다.</p>
+<p class="note">1조 4명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-3" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-3" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-1-4" class="step lv-cluster t1"
+     data-x="-25200" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="1">
+<p class="kicker">의제1 · 범주 4 · 배경·문제 인식</p>
+<h1 class="title">저탄소 인증·정보공개와 신뢰</h1>
+<div class="stat">
+<span class="hero-s">24</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 4조 · 5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">친환경 표시의 진위를 확인할 수 없음, 구매 기여가 피부에 안 와닿음, 소비자가 차이를 알아채지 못함, 친환경마크가 소비로 이어지지 않음, 중소기업의 배출량 자기인식·측정 부재 (…)</span></div>
+</div>
+<div class="quote">
+<p class="body">기업의 피부에 와닿지 않으니까... 소비자의 의식이 부족해서 소비자들이 계속 쓰니까 그 제품을 기업도 계속 만드는 거다.</p>
+<p class="note">1조 5명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">유해성분에 대한 표시가 확실하게 이루어지지 않는 것이 문제다. 탄소저배출 제품을 촉진하지 않는 제도가 없는 것이 문제다.</p>
+<p class="note">5조 3명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-4" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-4" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-1-4" class="step lv-detail t1"
+     data-x="-25200" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="1">
+<p class="kicker">의제1 · 저탄소 인증·정보공개와 신뢰 · 기대 효과</p>
+<h1 class="title-s accent">무엇이 친환경인지 소비자가 확인할 수 있어, 믿고 사는 사회가 된다</h1>
+<p class="label">바라는 변화 발언 8건 · 문제 인식 16건</p>
+<div class="quote">
+<p class="body">이제 친환경적으로 믿고 살 수 있는 사회가 되는 거다. 언젠가는 그런 시대가 왔으면 하다. 이런 게 피부로 느껴질 수 있는 변화가 있으면 좋겠다.</p>
+<p class="note">1조 5명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">저탄소를 하려면 모든 물건에 인증마크가 있으면 좋겠음. 포장도 줄이고, 기업이 많이 (탄소감축)노력하고, 탄소가 많이 줄어들기 바람.</p>
+<p class="note">3조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-4" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-4" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-1-5" class="step lv-cluster t1"
+     data-x="-21000" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="1">
+<p class="kicker">의제1 · 범주 5 · 배경·문제 인식</p>
+<h1 class="title">ESG·RE100 달성과 수출</h1>
+<div class="stat">
+<span class="hero-s">8</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 4조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">유럽의 수입 규제·관세 장벽, 제조업 수출국으로서의 이중 부담과 룰 결정권 부재, 수입·수출 간 친환경 기준 갭에 대한 제도 부재</span></div>
+</div>
+<div class="quote">
+<p class="body">우리나라 내에서만 기업들에게 강제한다거나 권고하는 문제로 끝나면 이건 큰 문제는 아니겠지만 재생에너지를 쓰지 않는식으로 (…)</p>
+<p class="note">1조 2명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">국내기업의 입장에서는 다소 (…) 회사인데, 환경적인 고민까지 같이 해야하라고 하면 두 개를 둘다 가져가기가 힘들 것으로 생각됨.</p>
+<p class="note">2조 3명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-5" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-5" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-1-5" class="step lv-detail t1"
+     data-x="-21000" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="1">
+<p class="kicker">의제1 · ESG·RE100 달성과 수출 · 기대 효과</p>
+<h1 class="title-s accent">우리 기업이 해외 ESG 기준을 갖춰 수출이 늘고, 친환경 기업에 투자가 몰린다</h1>
+<p class="label">바라는 변화 발언 6건 · 문제 인식 2건</p>
+<div class="quote">
+<p class="body">상장된 회사들이 ESG를 활성화하면 ESG 추종 펀드로 투자가 확대되고 자본 확충으로 주가 상승되어 신기술에 투자가 가능.</p>
+<p class="note">3조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">기술력 개발해서 인정받으면 지원도 해주고 수출 규제 완화시켜주고 세금 혜택도 주면 좋을 것 같다고 생각을 한다.</p>
+<p class="note">1조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-5" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-5" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-1-6" class="step lv-cluster t1"
+     data-x="-16800" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="1">
+<p class="kicker">의제1 · 범주 6 · 배경·문제 인식</p>
+<h1 class="title">저탄소 기술개발과 공정 혁신</h1>
+<div class="stat">
+<span class="hero-s">6</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 4조</span></div>
+</div>
+<p class="empty">제5차에서 이 방향의 배경·문제 인식 발언은 나오지 않았습니다.</p>
+<div class="links"><a href="prezi.html#/PG-1-6" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-6" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-1-6" class="step lv-detail t1"
+     data-x="-16800" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="1">
+<p class="kicker">의제1 · 저탄소 기술개발과 공정 혁신 · 기대 효과</p>
+<h1 class="title-s accent">덜 오염시키고 덜 버리는 기술로 물건을 만들어, 사람과 환경을 살리는 산업이 된다</h1>
+<p class="label">바라는 변화 발언 6건 · 문제 인식 0건</p>
+<div class="quote">
+<p class="body">신기술이 사람과 환경을 살리고 더 나은 미래를 만드는데 사용되길 바람. 일자리를 빼앗기 보다 사람과 기술이 함께 발전하는 방향으로 사용되길 바람.</p>
+<p class="note">3조 1명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">계속 만들고 사용하면서 새로운 것을 재생에너지 재생자원이 덜 버려지는 세상이 되어야 한다고 생각한다. 기술발전 혁신 (재생에너지 효율적 사용)</p>
+<p class="note">4조 1명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-6" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-6" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-1-7" class="step lv-cluster t1"
+     data-x="-12600" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="1">
+<p class="kicker">의제1 · 범주 7 · 배경·문제 인식</p>
+<h1 class="title">친환경 산업 육성과 중소기업</h1>
+<div class="stat">
+<span class="hero-s">23</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 4조 · 5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">지원의 규모·경로가 모호함, 재정 취약 업체의 설비 설치 불가, 대·중소 파트너십과 학습 체계 필요, 재생에너지 전환 시 단가 상승, 친환경 비즈니스 모델·교육·해외사례 수입 지원, 노력 (…)</span></div>
+</div>
+<div class="quote">
+<p class="body">업효율성 (비용으로 간주) 주주가치제고 (눈치) - 중소기업의 인력 및 자원부족 - (대기업은 탄소감축을 위한 인적 및 (…)</p>
+<p class="note">4조 4명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">탄소감축의 현실. 친환경 고열설비나 재생에너지로 해야하는데 (…) 초기 투자의비용의 문제를 어떻게 해야할지가 문제된다고 생각함.</p>
+<p class="note">2조 4명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-7" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-7" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-1-7" class="step lv-detail t1"
+     data-x="-12600" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="1">
+<p class="kicker">의제1 · 친환경 산업 육성과 중소기업 · 기대 효과</p>
+<h1 class="title-s accent">재정이 약한 기업도 전환 비용을 감당할 수 있게 되고, 친환경 산업의 일자리가 늘어난다</h1>
+<p class="label">바라는 변화 발언 5건 · 문제 인식 18건</p>
+<div class="quote">
+<p class="body">친환경에 기업이 아이디어를 국가나 공공기관에서 개입하여 지분 참여하는 정책이 이루어지면 빠르게 이루어지고 국가 예산확보에 도움이 될 것이다.</p>
+<p class="note">4조 4명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">기후변화 및 탄소절감 관련 산업 부흥 (탄소경감 기술 및 환경 컨설팅) &gt; 산업계의 패러다임 변화</p>
+<p class="note">2조 4명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-7" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-7" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-1-8" class="step lv-cluster t1"
+     data-x="-8400" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="1">
+<p class="kicker">의제1 · 범주 8 · 배경·문제 인식</p>
+<h1 class="title">재생에너지 발전·저장 인프라</h1>
+<div class="stat">
+<span class="hero-s">9</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 3조 · 4조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">아파트 태양광·전기발생 필름 법제화 부재, 친환경에너지 전환의 현실적 난도, 태양광 확대와 건물 에너지 전환 필요, 인프라 부족</span></div>
+</div>
+<div class="quote">
+<p class="body">기업이 탄소 배출 감축이 활성화 되어야 함. 태양광 발전을 확대해서 석탄 가스 감축, CO2 감축, 온실가스 감축, 건물에서 (…)</p>
+<p class="note">3조 1명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">우리는 아파트 공화국이다. (…) 발전시켜야 되고 그렇지만, 우리가 아파트를 지을 때 이런 식으로 법안화가 되면 좋을 것 같다.</p>
+<p class="note">1조 2명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-8" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-8" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-1-8" class="step lv-detail t1"
+     data-x="-8400" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="1">
+<p class="kicker">의제1 · 재생에너지 발전·저장 인프라 · 기대 효과</p>
+<h1 class="title-s accent">재생에너지 발전소와 저장 설비가 곳곳에 늘어, 기업이 그 전기를 가져다 쓰게 된다</h1>
+<p class="label">바라는 변화 발언 5건 · 문제 인식 4건</p>
+<div class="quote">
+<p class="body">*정책 제안* 용산역에서는 계단을 밟고 내려가면 에너지가 저축이 된다. 이런 에너지들을 친환경 기업에 주는 것이 어떤가 싶다.</p>
+<p class="note">1조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">재생에너지든 뭐든 에너지를 모아둘 데가 필요하다. 전기를 모아둔 데는 없다. 에너지 저장장치가 없다. 태양열을 계속 받아서 (…) *정책 제안* 국가 정책에서 입안해서 그런 조건을 걸면 된다.</p>
+<p class="note">1조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-8" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-8" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-1-9" class="step lv-cluster t1"
+     data-x="-4200" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="1">
+<p class="kicker">의제1 · 범주 9 · 배경·문제 인식</p>
+<h1 class="title">전환 부담의 공정 분담</h1>
+<div class="stat">
+<span class="hero-s">7</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 4조 · 5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">투자하면 이윤이 주는 구조에서 나누는 체계 필요, 비용은 소비자가 지불하고 이익은 사업주가 취함</span></div>
+</div>
+<div class="quote">
+<p class="body">탄소제로를 위한 비용이 수반된다고 했는데 사실 기후위기로 인한 재앙을 막는 이득에 비하면 매우 작은 비용이라고 생각한다. (…)</p>
+<p class="note">5조 1명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="quote">
+<p class="body">기업에서 적용하기 힘든 이유로는 항상 계속해서 반복되는 게 돈, 경제적인 측면 때문이라고 생각한다. 그렇게 투자를 하면 (…)</p>
+<p class="note">1조 4명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-9" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-9" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-1-9" class="step lv-detail t1"
+     data-x="-4200" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="1">
+<p class="kicker">의제1 · 전환 부담의 공정 분담 · 기대 효과</p>
+<h1 class="title-s accent">전환 비용이 한쪽에 몰리지 않고 나뉘어, 월급 그대로인 사람도 감당할 수 있게 된다</h1>
+<p class="label">바라는 변화 발언 5건 · 문제 인식 2건</p>
+<div class="quote">
+<p class="body">제품의 가격이 오른다거나, 우리의 월급은 그대로인데... 이런 걸 우리만 감수해야 하는 세상은 되지 않았으면 되지 않았으면 좋겠다.</p>
+<p class="note">1조 4명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">결국 기업이 탄소감축을 해야 하는 이유는 기후위기가 심해졌기 (…) 탄소 감축을 하게 됐을 때 피해 보고 있는 다른 모든 산업들이 다시 정상적으로 행복하게 삶을 영위할 수 있게 됐음 좋겠다.</p>
+<p class="note">1조 4명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-9" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-9" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-1-10" class="step lv-cluster t1"
+     data-x="0" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="1">
+<p class="kicker">의제1 · 범주 10 · 배경·문제 인식</p>
+<h1 class="title">생활물가와 사회 대응비용 안정</h1>
+<div class="stat">
+<span class="hero-s">6</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 4조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">조치를 구체화하면 물가가 오름</span></div>
+</div>
+<div class="quote">
+<p class="body">인식을 하는데, 구체화하려하면 물가가 오르고, 뭔가 조치를 하려하면 가격을 올려야되고,, 변화는 되고 있다. 그들도 다 (…)</p>
+<p class="note">1조 2명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-10" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-10" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-1-10" class="step lv-detail t1"
+     data-x="0" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="1">
+<p class="kicker">의제1 · 생활물가와 사회 대응비용 안정 · 기대 효과</p>
+<h1 class="title-s accent">기후 탓에 오르내리던 먹거리 값이 잡히고, 세금과 기후 대응에 드는 돈이 줄어든다</h1>
+<p class="label">바라는 변화 발언 5건 · 문제 인식 1건</p>
+<div class="quote">
+<p class="body">특히 자동차의 경우 전기차가 있고 하이브리드차가 있고 한데, 친환경 자동차 관련 혜택을 준다면 기업에서는 많이 팔아서 좋고, 우리는 좋은 가격으로 차를 살 수 있어서 좋을 거다.</p>
+<p class="note">1조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">탄소 감축을 기업들이 이루고 나면 국민들의 세금 부담 등도 줄어들 것 같다.</p>
+<p class="note">1조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-10" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-10" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-1-11" class="step lv-cluster t1"
+     data-x="4200" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="1">
+<p class="kicker">의제1 · 범주 11 · 배경·문제 인식</p>
+<h1 class="title">건강 증진과 의료비 절감</h1>
+<div class="stat">
+<span class="hero-s">6</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">친환경보다 건강으로 직결시키면 소비가 움직임</span></div>
+</div>
+<div class="quote">
+<p class="body">건강에 좋은 걸로 포장한다면 먹을 것 같다. 친환경이라고만 하면 느낌이 안 오니까 건강으로 직결 시키는 것도 방법이다.</p>
+<p class="note">1조 3명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-11" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-11" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-1-11" class="step lv-detail t1"
+     data-x="4200" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="1">
+<p class="kicker">의제1 · 건강 증진과 의료비 절감 · 기대 효과</p>
+<h1 class="title-s accent">탄소를 줄인 만큼 질병에 덜 노출되어, 오래 건강하게 살고 의료비도 덜 쓰게 된다</h1>
+<p class="label">바라는 변화 발언 5건 · 문제 인식 1건</p>
+<div class="quote">
+<p class="body">기업이 탄소배출을 줄여서 사회를 건강하게 했을 때 첫째 인간이 건강해질 것 같다. 건강보험료를 적게 낼 수 있을 것 같다.</p>
+<p class="note">1조 3명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">바라보는 관점으로는 기대수명이 늘어날 것 같다. 그럼 굉장히 기쁠 것 같다.</p>
+<p class="note">1조 3명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-11" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-11" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-1-12" class="step lv-cluster t1"
+     data-x="8400" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="1">
+<p class="kicker">의제1 · 범주 12 · 배경·문제 인식</p>
+<h1 class="title">정책 일관성과 전담 거버넌스</h1>
+<div class="stat">
+<span class="hero-s">16</span><span class="unit">이 범주에 붙은 시민 발언</span>
 </div>
 <div class="rows">
 <div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 5조</span></div>
-<div class="row"><span class="num accent">배경</span><span class="txt">문제 인식을 적은 조 · 1·2·3·5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">촘촘한 규제·가이드라인 부재, 법 개정 지연, 정권 교체 시 목표 단절, 시민 의식과 정책 반영의 연결 부재, 정권 무관 중심축과 인센티브 차등, 정권 교체 시 사업 단절, CVID급 고정 (…)</span></div>
+</div>
+<div class="quote">
+<p class="body">현실적인 부분에서 여러 문제점이 역시 발생함.  (…) 법의 사각지대에서도 많이 발생하게 됨.</p>
+<p class="note">2조 3명 · 꼭지1 배경·문제 인식</p>
 </div>
 <div class="quote">
 <p class="body">(1) 정책의 일관성이 없음. (2) 친중소, 중견기업 정책이 따로 없는 것에 대한 문제가 있음.</p>
 <p class="note">2조 3명 · 꼭지1 배경·문제 인식</p>
 </div>
-<div class="quote">
-<p class="body">기업의 입장에서는 본인들의 이윤을 포기해 가면서 재생에너지를 사용하고 비용 올려야 하는 부담이 있는 건 맞다. 유럽은 가장 환경적인 정책들을 우선시하다보니까 지금 우리 입장에서는 부담을 느낄 수 있다. 우리가…</p>
-<p class="note">1조 2명 · 꼭지1 배경·문제 인식</p>
+<div class="links"><a href="prezi.html#/PG-1-12" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-12" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
 </div>
-<div class="links"><a href="prezi.html#/PG-1-1" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-1" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
-</div>
-<div id="ef-1-1" class="step lv-detail t1"
-     data-x="-6300" data-y="6200" data-scale="1"
+<div id="ef-1-12" class="step lv-detail t1"
+     data-x="8400" data-y="6200" data-scale="1"
      data-kind="detail" data-dwell="35" data-sub="1">
-<p class="kicker">의제1 · 정책 일관성 · 기대 효과</p>
-<h1 class="title accent">정책 일관성과 전담 거버넌스</h1>
-<p class="label">바라는 변화 발언 3건 · 문제 인식 12건</p>
+<p class="kicker">의제1 · 정책 일관성과 전담 거버넌스 · 기대 효과</p>
+<h1 class="title-s accent">정권이 바뀌어도 환경정책이 이어져, 기업이 투자 시점을 스스로 정할 수 있게 된다</h1>
+<p class="label">바라는 변화 발언 3건 · 문제 인식 13건</p>
 <div class="quote">
 <p class="body">대한민국 정부의 환경정책을 일관적으로 펴고 국제기준에 맞게 정해놓는다면</p>
 <p class="note">2조 3명 · 꼭지2 바라는 변화(기대 효과)</p>
@@ -163,136 +594,267 @@ html[data-names="off"] .nn{display:inline;}
 <p class="body">환경 기준에 맞췄기 때문에 온실가스 감축에 효과적임</p>
 <p class="note">2조 3명 · 꼭지2 바라는 변화(기대 효과)</p>
 </div>
-<div class="links"><a href="prezi.html#/PG-1-1" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-1" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+<div class="links"><a href="prezi.html#/PG-1-12" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-12" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
 </div>
-<div id="pg-1-2" class="step lv-cluster t1"
-     data-x="-2100" data-y="3400" data-scale="2"
+<div id="pg-1-13" class="step lv-cluster t1"
+     data-x="12600" data-y="3400" data-scale="2"
      data-kind="cluster" data-dwell="20" data-sub="1">
-<p class="kicker">의제1 · 범주 2 · 배경·문제 인식</p>
-<h1 class="title">중소기업·공급망</h1>
+<p class="kicker">의제1 · 범주 13 · 배경·문제 인식</p>
+<h1 class="title">친환경 건자재와 주거환경</h1>
 <div class="stat">
-<span class="hero">21</span><span class="unit">이 범주에 붙은 시민 발언</span>
+<span class="hero-s">6</span><span class="unit">이 범주에 붙은 시민 발언</span>
 </div>
 <div class="rows">
-<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 4조 · 5조</span></div>
-<div class="row"><span class="num accent">배경</span><span class="txt">문제 인식을 적은 조 · 1·2·3·4·5조</span></div>
+<div class="row"><span class="num accent">조</span><span class="txt">1조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">국내 시멘트가 산업폐기물 소각으로 제조됨, 아파트 건설 시 식재 요구</span></div>
 </div>
 <div class="quote">
-<p class="body">업효율성 (비용으로 간주) 주주가치제고 (눈치) - 중소기업의 인력 및 자원부족 - (대기업은 탄소감축을 위한 인적 및 시스템을 가추고 있기에 협력업체와 공급망 업체에 관련 지식과 인프라를 제공하는 원바운드 체계구축</p>
-<p class="note">4조 3명 · 꼭지1 배경·문제 인식</p>
+<p class="body">친환경 시멘트의 현실을 알아보자면, 대한민국 시멘트는 친환경과 상관이 없다. 산업폐기물을 태워서 만드는 게 시멘트다. 저의 (…)</p>
+<p class="note">1조 5명 · 꼭지1 배경·문제 인식</p>
 </div>
 <div class="quote">
-<p class="body">탄소감축의 현실. 친환경 고열설비나 재생에너지로 해야하는데 초기 투자 비용이 너무 부담이 됨. 비용적 여력이 없음. 초기 투자의비용의 문제를 어떻게 해야할지가 문제된다고 생각함.</p>
-<p class="note">2조 4명 · 꼭지1 배경·문제 인식</p>
+<p class="body">아파트 짓는 기업에서는 주변에 나무를 심도록 하는 등..</p>
+<p class="note">1조 5명 · 꼭지1 배경·문제 인식</p>
 </div>
-<div class="links"><a href="prezi.html#/PG-1-2" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-2" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+<div class="links"><a href="prezi.html#/PG-1-13" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-13" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
 </div>
-<div id="ef-1-2" class="step lv-detail t1"
-     data-x="-2100" data-y="6200" data-scale="1"
+<div id="ef-1-13" class="step lv-detail t1"
+     data-x="12600" data-y="6200" data-scale="1"
      data-kind="detail" data-dwell="35" data-sub="1">
-<p class="kicker">의제1 · 중소기업·공급망 · 기대 효과</p>
-<h1 class="title accent">친환경 산업 육성과 중소기업 지원</h1>
-<p class="label">바라는 변화 발언 5건 · 문제 인식 16건</p>
+<p class="kicker">의제1 · 친환경 건자재와 주거환경 · 기대 효과</p>
+<h1 class="title-s accent">시멘트를 비롯한 건축 자재가 바뀌어, 새로 지은 집에 들어가도 아토피를 걱정하지 않게 된다</h1>
+<p class="label">바라는 변화 발언 4건 · 문제 인식 2건</p>
 <div class="quote">
-<p class="body">친환경에 기업이 아이디어를 국가나 공공기관에서 개입하여 지분 참여하는 정책이 이루어지면 빠르게 이루어지고 국가 예산확보에 도움이 될 것이다.</p>
-<p class="note">4조 3명 · 꼭지2 바라는 변화(기대 효과)</p>
+<p class="body">친환경 아파트를 건설을 했는데 시공 문제로 인해서 아토피가 걸렸다고 하면 손해배상이 국가한테도 할 수 있을까 싶다.</p>
+<p class="note">1조 5명 · 꼭지2 바라는 변화(기대 효과)</p>
 </div>
 <div class="quote">
-<p class="body">기후변화 및 탄소절감 관련 산업 부흥 (탄소경감 기술 및 환경 컨설팅) &gt; 산업계의 패러다임 변화</p>
-<p class="note">2조 4명 · 꼭지2 바라는 변화(기대 효과)</p>
+<p class="body">시멘트만이 아닌 다른 건축 자재도 봐야 한다. 도배의 경우에도 본드를 뭐를 쓰느냐에 따라서도 달라질 수 있다.</p>
+<p class="note">1조 5명 · 꼭지2 바라는 변화(기대 효과)</p>
 </div>
-<div class="links"><a href="prezi.html#/PG-1-2" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-2" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+<div class="links"><a href="prezi.html#/PG-1-13" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-13" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
 </div>
-<div id="pg-1-3" class="step lv-cluster t1"
-     data-x="2100" data-y="3400" data-scale="2"
+<div id="pg-1-14" class="step lv-cluster t1"
+     data-x="16800" data-y="3400" data-scale="2"
      data-kind="cluster" data-dwell="20" data-sub="1">
-<p class="kicker">의제1 · 범주 3 · 배경·문제 인식</p>
-<h1 class="title">탄소가격·배출권</h1>
+<p class="kicker">의제1 · 범주 14 · 배경·문제 인식</p>
+<h1 class="title">규제·탄소가격</h1>
 <div class="stat">
-<span class="hero">16</span><span class="unit">이 범주에 붙은 시민 발언</span>
+<span class="hero-s">18</span><span class="unit">이 범주에 붙은 시민 발언</span>
 </div>
 <div class="rows">
 <div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 4조 · 5조</span></div>
-<div class="row"><span class="num accent">배경</span><span class="txt">문제 인식을 적은 조 · 1·2·3·4·5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">배출권 헐값 공급으로 아낄 유인 없음, 규제 미시행(인증·용적률 인센티브 사례), 경제적 유인 부족, 배출권 구매로 감축을 갈음·법률화 부재, 세제지원과 유인책 부족, 인센티브보다 과태료가 (…)</span></div>
 </div>
 <div class="quote">
-<p class="body">우리가 인도보다 기술력은 좋지만 규제를 안 하는 거다. 감리하다보면 친환경 인증을 다 본다. 그래서 녹색 인증이라는 걸 준다. 다 지키면 용적률을 준다. 20층을 지을 수 있는데 25층까지 지을 수 있게 해준다.</p>
+<p class="body">우리가 인도보다 기술력은 좋지만 규제를 안 하는 거다. 감리하다보면 친환경 인증을 다 본다. 그래서 녹색 인증이라는 걸 (…)</p>
 <p class="note">1조 2명 · 꼭지1 배경·문제 인식</p>
 </div>
 <div class="quote">
-<p class="body">(1) 돈이 안되니까, 돈이 많이 들어서. 자본주의 사회에서 제일 중요한건 돈이라고 생각하기 때문에 세제지원을 해주는 것이 필요함. 결론적으로 유인책이 부족함.</p>
-<p class="note">2조 2명 · 꼭지1 배경·문제 인식</p>
+<p class="body">(1) 돈이 안되니까, 돈이 많이 들어서. 자본주의 사회에서 제일 중요한건 돈이라고 생각하기 때문에 세제지원을 해주는 것이 (…)</p>
+<p class="note">2조 3명 · 꼭지1 배경·문제 인식</p>
 </div>
-<div class="links"><a href="prezi.html#/PG-1-3" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-3" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+<div class="links"><a href="prezi.html#/PG-1-14" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-14" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
 </div>
-<div id="ef-1-3" class="step lv-detail t1"
-     data-x="2100" data-y="6200" data-scale="1"
+<div id="ef-1-14" class="step lv-detail t1"
+     data-x="16800" data-y="6200" data-scale="1"
      data-kind="detail" data-dwell="35" data-sub="1">
-<p class="kicker">의제1 · 탄소가격·배출권 · 기대 효과</p>
-<h1 class="title accent">규제·탄소가격 강화</h1>
-<p class="label">바라는 변화 발언 3건 · 문제 인식 13건</p>
+<p class="kicker">의제1 · 규제·탄소가격 · 기대 효과</p>
+<h1 class="title-s accent">배출에 값이 매겨져, 친환경 제품으로 가는 기업이 저절로 많아진다</h1>
+<p class="label">바라는 변화 발언 3건 · 문제 인식 15건</p>
 <div class="quote">
-<p class="body">정책 방향성, 기업 가산세 등 기업 과태료적인 부분이 확실해지고 정책의 일관성이 유지되면 기업의 아이디어는 풍부해지고, 가격은 착해져 친환경 제품으로 가는 기업들이 자동으로 많아질 것 같음. 친환경 제품을 만드는…</p>
+<p class="body">정책 방향성, 기업 가산세 등 기업 과태료적인 부분이 확실해지고 정책의 일관성이 유지되면 기업의 아이디어는 풍부해지고, 가격은 착해져 친환경 제품으로 가는 기업들이 자동으로 많아질 것 (…)</p>
 <p class="note">3조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
 </div>
 <div class="quote">
 <p class="body">탄소배출많은 기업들의 전략요금상향, 자체 전력생산시설부족</p>
 <p class="note">4조 3명 · 꼭지2 바라는 변화(기대 효과)</p>
 </div>
-<div class="links"><a href="prezi.html#/PG-1-3" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-3" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+<div class="links"><a href="prezi.html#/PG-1-14" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-14" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
 </div>
-<div id="pg-1-4" class="step lv-cluster t1"
-     data-x="6300" data-y="3400" data-scale="2"
+<div id="pg-1-15" class="step lv-cluster t1"
+     data-x="21000" data-y="3400" data-scale="2"
      data-kind="cluster" data-dwell="20" data-sub="1">
-<p class="kicker">의제1 · 범주 4 · 배경·문제 인식</p>
-<h1 class="title">성과의 가시화</h1>
+<p class="kicker">의제1 · 범주 15 · 배경·문제 인식</p>
+<h1 class="title">저탄소 제품의 가격 경쟁력</h1>
 <div class="stat">
-<span class="hero">16</span><span class="unit">이 범주에 붙은 시민 발언</span>
+<span class="hero-s">8</span><span class="unit">이 범주에 붙은 시민 발언</span>
 </div>
 <div class="rows">
-<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 4조 · 5조</span></div>
-<div class="row"><span class="num accent">배경</span><span class="txt">문제 인식을 적은 조 · 1·2·3·4·5조</span></div>
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조 · 3조 · 5조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">친환경 제품이 보편적으로 비싸 가격을 낮춰야 함, 설비교체 투자가 제품 가격 인상과 가격경쟁력 하락으로 연결</span></div>
 </div>
 <div class="quote">
-<p class="body">그런것들을 측정할 수 있는 사이트가 있음. 홍보, 법적인 의무, 영세기업에도 적용이 되는지 여부 등을 파악해야함.</p>
-<p class="note">2조 3명 · 꼭지1 배경·문제 인식</p>
+<p class="body">친환경적이라는 게 나오면 보편적으로 가격이 비싸다. 좋은 제품을 사는 것도 (…) 가격을 낮출 수 있는 걸 찾아야 할 것 같다.</p>
+<p class="note">1조 2명 · 꼭지1 배경·문제 인식</p>
 </div>
 <div class="quote">
-<p class="body">기업이 아무리 친환경 제품을 만들어도 소비자들이 차이를 알아차리지 못하는 게 문제라고 생각한다.</p>
-<p class="note">1조 4명 · 꼭지1 배경·문제 인식</p>
+<p class="body">탄소감축을 위한 설비교체 투자 등은 제품 가격의 인상으로 이어져 가격 경쟁력이 약해지고 기업 경쟁력이 감소된다.</p>
+<p class="note">2조 2명 · 꼭지1 배경·문제 인식</p>
 </div>
-<div class="links"><a href="prezi.html#/PG-1-4" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-4" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+<div class="links"><a href="prezi.html#/PG-1-15" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-15" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
 </div>
-<div id="ef-1-4" class="step lv-detail t1"
-     data-x="6300" data-y="6200" data-scale="1"
+<div id="ef-1-15" class="step lv-detail t1"
+     data-x="21000" data-y="6200" data-scale="1"
      data-kind="detail" data-dwell="35" data-sub="1">
-<p class="kicker">의제1 · 성과의 가시화 · 기대 효과</p>
-<h1 class="title accent">저탄소 인증·정보공개와 신뢰</h1>
-<p class="label">바라는 변화 발언 6건 · 문제 인식 10건</p>
+<p class="kicker">의제1 · 저탄소 제품의 가격 경쟁력 · 기대 효과</p>
+<h1 class="title-s accent">친환경 제품 값이 일반 제품만큼 내려가, 값을 보고 골라도 저탄소 제품을 사게 된다</h1>
+<p class="label">바라는 변화 발언 4건 · 문제 인식 4건</p>
 <div class="quote">
-<p class="body">이제 친환경적으로 믿고 살 수 있는 사회가 되는 거다. 언젠가는 그런 시대가 왔으면 하다. 이런 게 피부로 느껴질 수 있는 변화가 있으면 좋겠다.</p>
-<p class="note">1조 4명 · 꼭지2 바라는 변화(기대 효과)</p>
+<p class="body">친환경 관련 제품을 생산하고 제품 가격을 보장하되, 친환경 제품과 일반제품의 가격이 동일하면 친환경 제품의 (퀄리티 있는)디자인을 개발해 높은 가격이라도 가치 소유욕구를 자극해 판매가 (…)</p>
+<p class="note">3조 3명 · 꼭지2 바라는 변화(기대 효과)</p>
 </div>
 <div class="quote">
-<p class="body">저탄소를 하려면 모든 물건에 인증마크가 있으면 좋겠음. 포장도 줄이고, 기업이 많이 (탄소감축)노력하고, 탄소가 많이 줄어들기 바람.</p>
-<p class="note">3조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+<p class="body">소비자는 저렴한 가격에 친환경 제품을 구매하게 되어서 저탄소 제품이 많이 보이고 기업과 소비자가 환경 문제에 기여하길 바람.</p>
+<p class="note">3조 3명 · 꼭지2 바라는 변화(기대 효과)</p>
 </div>
-<div class="links"><a href="prezi.html#/PG-1-4" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-4" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+<div class="links"><a href="prezi.html#/PG-1-15" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-15" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-1-16" class="step lv-cluster t1"
+     data-x="25200" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="1">
+<p class="kicker">의제1 · 범주 16 · 배경·문제 인식</p>
+<h1 class="title">전기·냉난방 등 에너지비 경감</h1>
+<div class="stat">
+<span class="hero-s">3</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">1조 · 2조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">공장 전기요금이 가정보다 싸 과소비를 유발</span></div>
+</div>
+<div class="quote">
+<p class="body">공장에서 쓰는 전기와 우리가 가정에서 쓰는 전기가 다르다. 공장이 더 싸니까 펑펑 쓴다.</p>
+<p class="note">1조 2명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-16" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-16" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-1-16" class="step lv-detail t1"
+     data-x="25200" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="1">
+<p class="kicker">의제1 · 전기·냉난방 등 에너지비 경감 · 기대 효과</p>
+<h1 class="title-s accent">사는 집에서 전기를 직접 만들어 관리비가 내려가고, 냉난방을 비용 걱정 없이 쓰게 된다</h1>
+<p class="label">바라는 변화 발언 2건 · 문제 인식 1건</p>
+<div class="quote">
+<p class="body">아파트 자체 내에서 필름으로 전기를 생산하고 하면 관리비가 얼마나 낮아질까. 이런 기적을 생각했었다. 기분이 너무 좋을 것 같다. 기업이 탄소를 감축하면 환경이 좋아질 것 같다. 좋아진다는 (…)</p>
+<p class="note">1조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">냉난방, 비용 걱정 안하고 사용 가능.</p>
+<p class="note">2조 1명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-16" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-16" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-1-17" class="step lv-cluster t1"
+     data-x="29400" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="1">
+<p class="kicker">의제1 · 범주 17 · 배경·문제 인식</p>
+<h1 class="title">수송 전기화와 전력시장 개방</h1>
+<div class="stat">
+<span class="hero-s">3</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">2조 · 4조</span></div>
+</div>
+<div class="quote">
+<p class="body">해외에 비해 우리나라 대형 수송수단이 전기수송 수단이 없다.</p>
+<p class="note">4조 1명 · 꼭지2 안에 함께 적힌 문제 서술</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-17" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-17" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-1-17" class="step lv-detail t1"
+     data-x="29400" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="1">
+<p class="kicker">의제1 · 수송 전기화와 전력시장 개방 · 기대 효과</p>
+<h1 class="title-s accent">전기차가 안전하고 값싸져 큰 수송수단까지 전기로 다니고, 전기를 누구나 사고팔 수 있게 된다</h1>
+<p class="label">바라는 변화 발언 3건 · 문제 인식 1건(바라는 변화 칸)</p>
+<div class="quote">
+<p class="body">전기차의 안전성도 보장이 되고 배터리 가격 저렴, 별도로 분리 교체 충전 가능</p>
+<p class="note">2조 1명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">기업의 전력시장 개방 민간시장에서 전력을 생산하고 사고 팔수 있도록,</p>
+<p class="note">4조 1명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-17" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-17" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-1-18" class="step lv-cluster t1"
+     data-x="33600" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="1">
+<p class="kicker">의제1 · 범주 18 · 배경·문제 인식</p>
+<h1 class="title">지역별 요금 차등과 지역 환원</h1>
+<div class="stat">
+<span class="hero-s">3</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">2조 · 3조 · 4조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">지역별 전력 가용량 차이로 전기로 전환이 막힘, 지역별 차등 전기료 필요</span></div>
+</div>
+<div class="quote">
+<p class="body">철강 산업에서 용광로를 쓰는데 (…) 경영을 안해도, 결국 탄소 감축에 돈이 드니까 주가 상승에 기업의 이득이 없어서 안하는 것임.</p>
+<p class="note">3조 1명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-18" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-18" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-1-18" class="step lv-detail t1"
+     data-x="33600" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="1">
+<p class="kicker">의제1 · 지역별 요금 차등과 지역 환원 · 기대 효과</p>
+<h1 class="title-s accent">지역에 맞는 시설이 들어서고, 전기를 만드는 지역은 그만큼 싼 요금을 돌려받게 된다</h1>
+<p class="label">바라는 변화 발언 2건 · 문제 인식 1건</p>
+<div class="quote">
+<p class="body">지역별 전기료차등제가 실현될 것이라고 생각한다.</p>
+<p class="note">4조 1명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="quote">
+<p class="body">지역 특성 맞춤형 시설</p>
+<p class="note">2조 1명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-18" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-18" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="pg-1-19" class="step lv-cluster t1"
+     data-x="37800" data-y="3400" data-scale="2"
+     data-kind="cluster" data-dwell="20" data-sub="1">
+<p class="kicker">의제1 · 범주 19 · 배경·문제 인식</p>
+<h1 class="title">탄소포집·신소재 개발</h1>
+<div class="stat">
+<span class="hero-s">2</span><span class="unit">이 범주에 붙은 시민 발언</span>
+</div>
+<div class="rows">
+<div class="row"><span class="num accent">조</span><span class="txt">2조</span></div>
+<div class="row"><span class="num accent">요지</span><span class="txt">탄소포집 기술의 개발·적용·재사용 방법 연구 필요</span></div>
+</div>
+<div class="quote">
+<p class="body">(1) 탄소중립을 위한 기업의 비용을 정부가 일관된 정책으로 지원해주어야 할 수 있도록 기업의 인식점검과 교육 필요. (2) (…)</p>
+<p class="note">2조 2명 · 꼭지1 배경·문제 인식</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-19" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-19" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
+</div>
+<div id="ef-1-19" class="step lv-detail t1"
+     data-x="37800" data-y="6200" data-scale="1"
+     data-kind="detail" data-dwell="35" data-sub="1">
+<p class="kicker">의제1 · 탄소포집·신소재 개발 · 기대 효과</p>
+<h1 class="title-s accent">탄소를 붙잡아 다시 쓰는 기술을 연구할 사람이 길러져, 그 기술이 실제로 쓰인다</h1>
+<p class="label">바라는 변화 발언 1건 · 문제 인식 1건</p>
+<div class="quote">
+<p class="body">탄소포집 기술개발을 연구하는 인재 양성</p>
+<p class="note">2조 2명 · 꼭지2 바라는 변화(기대 효과)</p>
+</div>
+<div class="links"><a href="prezi.html#/PG-1-19" target="_blank" rel="noopener">발언 전체 펼치기 ↗</a><a href="graph.html?open=PG-1-19" target="_blank" rel="noopener">관계 그래프 ↗</a></div>
 </div>
 <div id="ending" class="step lv-ending plain"
      data-x="0" data-y="12000" data-scale="12"
      data-kind="ending" data-dwell="45" data-sub="0">
 <p class="kicker">제5차 조별 산출물 · 사람이 판정한 표에서 조립</p>
-<h1 class="title">시민 발언 235건 · 범주 4개</h1>
+<h1 class="title">시민 발언 235건 · 범주 19개</h1>
 <div class="bigline">
 <span class="one" style="background:#FFC24A">의제1 기업 온실가스 감축</span>
 </div>
 </div>
 </div>
-<div id="bar"><span class="where">전체 조망</span><span class="keys">← →</span><span class="count">1 / 11</span></div>
+<div id="bar"><span class="where">전체 조망</span><span class="keys">← →</span><span class="count">1 / 41</span></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/impress.js/0.5.3/impress.min.js" integrity="sha512-HXq2vkPUe8naYLkedRvWDYhRwxVrXijlPC/kFTEvPG/Ra7GfIQMzwjVKZiarAjm6bU3qjYpJ49dza/qIqVkPZg==" crossorigin="anonymous" onerror="document.documentElement.className+=' no-impress'"></script>
 <script>
-var WHERE = ["전체 조망", "의제1 기업 온실가스 감축", "의제1 기업 온실가스 감축 · 정책 일관성", "의제1 기업 온실가스 감축 · 기대 효과 · 정책 일관성과 전담 거버넌스", "의제1 기업 온실가스 감축 · 중소기업·공급망", "의제1 기업 온실가스 감축 · 기대 효과 · 친환경 산업 육성과 중소기업 지원", "의제1 기업 온실가스 감축 · 탄소가격·배출권", "의제1 기업 온실가스 감축 · 기대 효과 · 규제·탄소가격 강화", "의제1 기업 온실가스 감축 · 성과의 가시화", "의제1 기업 온실가스 감축 · 기대 효과 · 저탄소 인증·정보공개와 신뢰", "마무리"];
+var WHERE = ["전체 조망", "의제1 기업 온실가스 감축", "의제1 기업 온실가스 감축 · 포장 축소·다회용과 순환경제", "의제1 기업 온실가스 감축 · 포장 축소·다회용과 순환경제 · 기대 효과", "의제1 기업 온실가스 감축 · 기업 책임의식과 브랜드 가치", "의제1 기업 온실가스 감축 · 기업 책임의식과 브랜드 가치 · 기대 효과", "의제1 기업 온실가스 감축 · 대기질 개선과 기후재해 완화", "의제1 기업 온실가스 감축 · 대기질 개선과 기후재해 완화 · 기대 효과", "의제1 기업 온실가스 감축 · 저탄소 인증·정보공개와 신뢰", "의제1 기업 온실가스 감축 · 저탄소 인증·정보공개와 신뢰 · 기대 효과", "의제1 기업 온실가스 감축 · ESG·RE100 달성과 수출", "의제1 기업 온실가스 감축 · ESG·RE100 달성과 수출 · 기대 효과", "의제1 기업 온실가스 감축 · 저탄소 기술개발과 공정 혁신", "의제1 기업 온실가스 감축 · 저탄소 기술개발과 공정 혁신 · 기대 효과", "의제1 기업 온실가스 감축 · 친환경 산업 육성과 중소기업", "의제1 기업 온실가스 감축 · 친환경 산업 육성과 중소기업 · 기대 효과", "의제1 기업 온실가스 감축 · 재생에너지 발전·저장 인프라", "의제1 기업 온실가스 감축 · 재생에너지 발전·저장 인프라 · 기대 효과", "의제1 기업 온실가스 감축 · 전환 부담의 공정 분담", "의제1 기업 온실가스 감축 · 전환 부담의 공정 분담 · 기대 효과", "의제1 기업 온실가스 감축 · 생활물가와 사회 대응비용 안정", "의제1 기업 온실가스 감축 · 생활물가와 사회 대응비용 안정 · 기대 효과", "의제1 기업 온실가스 감축 · 건강 증진과 의료비 절감", "의제1 기업 온실가스 감축 · 건강 증진과 의료비 절감 · 기대 효과", "의제1 기업 온실가스 감축 · 정책 일관성과 전담 거버넌스", "의제1 기업 온실가스 감축 · 정책 일관성과 전담 거버넌스 · 기대 효과", "의제1 기업 온실가스 감축 · 친환경 건자재와 주거환경", "의제1 기업 온실가스 감축 · 친환경 건자재와 주거환경 · 기대 효과", "의제1 기업 온실가스 감축 · 규제·탄소가격", "의제1 기업 온실가스 감축 · 규제·탄소가격 · 기대 효과", "의제1 기업 온실가스 감축 · 저탄소 제품의 가격 경쟁력", "의제1 기업 온실가스 감축 · 저탄소 제품의 가격 경쟁력 · 기대 효과", "의제1 기업 온실가스 감축 · 전기·냉난방 등 에너지비 경감", "의제1 기업 온실가스 감축 · 전기·냉난방 등 에너지비 경감 · 기대 효과", "의제1 기업 온실가스 감축 · 수송 전기화와 전력시장 개방", "의제1 기업 온실가스 감축 · 수송 전기화와 전력시장 개방 · 기대 효과", "의제1 기업 온실가스 감축 · 지역별 요금 차등과 지역 환원", "의제1 기업 온실가스 감축 · 지역별 요금 차등과 지역 환원 · 기대 효과", "의제1 기업 온실가스 감축 · 탄소포집·신소재 개발", "의제1 기업 온실가스 감축 · 탄소포집·신소재 개발 · 기대 효과", "마무리"];
 (function(){
   var root = document.documentElement;
   function degrade(){
