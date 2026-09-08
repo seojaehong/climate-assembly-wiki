@@ -60,7 +60,7 @@ begin
      and e.subgroup = t.subgroup
    where t.session_id = v_session_id
      and t.status = 'active'
-     and t.capacity = 12
+     and t.capacity > 0
      and t.join_code ~ '^[0-9]{6}$';
 
   if v_team_count <> 15 or v_roster_count <> 15 then
