@@ -41,12 +41,14 @@ fi
 # SHA-256 manifest. This makes a dirty-tree development pass reproducible;
 # release evidence additionally refuses any dirty target before Docker starts.
 target_files=(
+  "supabase/migrations/20260908_s21_correct_0912_topics.sql"
   "supabase/migrations/platform_p1a_0912_event_access.sql"
   "supabase/migrations/platform_p2a_0912_token_only_activation.sql"
   "supabase/rollbacks/platform_p1_BEFORE.sql"
   "supabase/rollbacks/platform_p1a_0912_event_access_BEFORE.sql"
   "supabase/rollbacks/platform_p2a_0912_token_only_activation_BEFORE.sql"
   "supabase/verify/platform_p1a_0912_event_access.sql"
+  "supabase/verify/20260908_s21_correct_0912_topics.sql"
   "supabase/verify/platform_p2a_0912_token_only_activation.sql"
   "supabase/verify/platform_p2a_0912_token_only_activation_rollback.sql"
   "supabase/verify/design_provisioning_post_apply.sql"
@@ -182,6 +184,8 @@ docker cp supabase/rollbacks/platform_p1_BEFORE.sql \
 docker cp supabase/rollbacks/platform_p1a_0912_event_access_BEFORE.sql \
   "${container}:/tmp/platform_p1a_0912_event_access_BEFORE.sql"
 docker cp supabase/verify/00_prelude.sql "${container}:/tmp/00_prelude.sql"
+docker cp supabase/verify/20260908_s21_correct_0912_topics.sql \
+  "${container}:/tmp/20260908_s21_correct_0912_topics.verify.sql"
 docker cp supabase/verify/driver_pass1.sql "${container}:/tmp/driver_pass1.sql"
 docker cp supabase/verify/platform_p1a_0912_event_access.sql \
   "${container}:/tmp/platform_p1a_0912_event_access.verify.sql"
@@ -727,6 +731,13 @@ seed_sql_path=""
 docker exec "$container" psql -U postgres -d verify \
   -v ON_ERROR_STOP=1 -f /tmp/0912-seed-cli-generated.sql >/dev/null
 
+docker exec "$container" psql -U postgres -d verify \
+  -v ON_ERROR_STOP=1 -f /tmp/20260827_s6_open_0829_topics.sql >/dev/null
+docker exec "$container" psql -U postgres -d verify \
+  -v ON_ERROR_STOP=1 -f /tmp/20260908_s21_correct_0912_topics.sql >/dev/null
+docker exec "$container" psql -U postgres -d verify \
+  -v ON_ERROR_STOP=1 -f /tmp/20260908_s21_correct_0912_topics.verify.sql >/dev/null
+
 seed_success="$(docker exec "$container" psql -U postgres -d verify -Atq -v ON_ERROR_STOP=1 -c \
   "select case when
       (select count(*) from climate_vote.session where slug='0912-deliberation'
@@ -759,7 +770,7 @@ seed_code_digest_after="$(docker exec "$container" psql -U postgres -d verify -A
   "select md5(string_agg(t.join_code,',' order by t.name)) from climate_vote.team t
     join climate_vote.session s on s.id=t.session_id where s.slug='0912-deliberation';")"
 test "$seed_code_digest_before" = "$seed_code_digest_after"
-echo "seed_cli_sql=syntax-and-success-pass partial_tenancy=fail-closed capability_values_logged=0"
+echo "seed_cli_sql=syntax-and-success-pass corrected_topics=8/8-pass partial_tenancy=fail-closed capability_values_logged=0"
 
 generated_at="$("$node_bin" -p 'new Date().toISOString()')"
 elapsed_seconds=$((SECONDS - started_seconds))
@@ -768,7 +779,7 @@ if [[ "$target_manifest_after" != "$target_manifest" ]]; then
   echo "verification refused: a manifest target changed during execution" >&2
   exit 1
 fi
-report="$(printf '{"schemaVersion":1,"reportId":"0912-p1a-p2a-postgres-verification","generatedAt":"%s","sourceCommit":"%s","sourceTreeClean":%s,"releaseMode":%s,"status":"pass","database":"disposable-postgres-16","checkFunctionBodies":true,"staticContractVerification":"passed","migrationOrderVerification":"passed","behaviorVerification":"passed","concurrentJoinRateLimitVerification":"passed","concurrentTeamDeviceLimitVerification":"passed","concurrentActiveRoundCreationVerification":"passed","concurrentSharedHqThrottleVerification":"passed","concurrentNamedPasswordRecoveryVerification":"passed","ballotCloseRaceVerification":"passed","rollbackWithoutActivity":"passed","rollbackWithActivity":"refused","canvasScopeRollbackGuardVerification":"passed","tokenOnlyActivationVerification":"passed","legacyPermissionNegativeVerification":"passed","legacyCrossSessionDeadlineNegativeVerification":"passed","predictableJoinCodeExclusionVerification":"passed","postP4LegacyNegativeVerification":"passed","p3ReadOnlyPostApplyVerification":"passed","p4ReadOnlyPostApplyVerification":"passed","p4LegacyHistoryPreservationVerification":"passed","p4BehaviorVerification":"passed","activationRollbackGuardVerification":"passed","activationRollbackExerciseVerification":"passed","activationReapplyVerification":"passed","seedCliSqlSyntaxAndSuccessVerification":"passed","seedCliPartialTenancyFailClosedVerification":"passed","seedCliCapabilityValuesLogged":0,"seedCliHostTemporaryFileMode":"%s","seedCliHostTemporaryFileRemovedBeforeExecution":true,"seedCliContainerCopyRemovedWithCreatedContainer":true,"targetManifestCount":%d,"targetManifestSha256":"%s","targetManifestVerifiedAtCompletion":true,"targetManifest":%s,"safety":{"productionDatabaseConnectionCount":0,"productionMutationCount":0},"elapsedSeconds":%d}' \
+report="$(printf '{"schemaVersion":1,"reportId":"0912-p1a-p2a-postgres-verification","generatedAt":"%s","sourceCommit":"%s","sourceTreeClean":%s,"releaseMode":%s,"status":"pass","database":"disposable-postgres-16","checkFunctionBodies":true,"staticContractVerification":"passed","migrationOrderVerification":"passed","behaviorVerification":"passed","concurrentJoinRateLimitVerification":"passed","concurrentTeamDeviceLimitVerification":"passed","concurrentActiveRoundCreationVerification":"passed","concurrentSharedHqThrottleVerification":"passed","concurrentNamedPasswordRecoveryVerification":"passed","ballotCloseRaceVerification":"passed","rollbackWithoutActivity":"passed","rollbackWithActivity":"refused","canvasScopeRollbackGuardVerification":"passed","tokenOnlyActivationVerification":"passed","legacyPermissionNegativeVerification":"passed","legacyCrossSessionDeadlineNegativeVerification":"passed","predictableJoinCodeExclusionVerification":"passed","postP4LegacyNegativeVerification":"passed","p3ReadOnlyPostApplyVerification":"passed","p4ReadOnlyPostApplyVerification":"passed","p4LegacyHistoryPreservationVerification":"passed","p4BehaviorVerification":"passed","activationRollbackGuardVerification":"passed","activationRollbackExerciseVerification":"passed","activationReapplyVerification":"passed","seedCliSqlSyntaxAndSuccessVerification":"passed","correctedTopicPlanVerification":"passed","seedCliPartialTenancyFailClosedVerification":"passed","seedCliCapabilityValuesLogged":0,"seedCliHostTemporaryFileMode":"%s","seedCliHostTemporaryFileRemovedBeforeExecution":true,"seedCliContainerCopyRemovedWithCreatedContainer":true,"targetManifestCount":%d,"targetManifestSha256":"%s","targetManifestVerifiedAtCompletion":true,"targetManifest":%s,"safety":{"productionDatabaseConnectionCount":0,"productionMutationCount":0},"elapsedSeconds":%d}' \
   "$generated_at" "$source_commit" "$source_tree_clean" "$release_mode" "$seed_sql_mode" \
   "$target_manifest_count" "$target_manifest_sha256" "$target_manifest" "$elapsed_seconds")"
 echo "$report"

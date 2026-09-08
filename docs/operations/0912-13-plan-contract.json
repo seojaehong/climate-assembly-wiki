@@ -117,7 +117,17 @@
     "productionTopicActivationBlocked": true,
     "databaseChangeApplied": false,
     "explicitApprovalRequired": true,
-    "blockedReason": "PM 결정값과 승인된 교정 SQL이 모두 준비되기 전에는 기존 s20 주제를 운영 DB에 적용하지 않는다.",
+    "blockedReason": "8단계 교정 SQL과 verifier는 준비됐지만 운영 적용·검증이 끝나기 전에는 주제 활성화를 완료로 보지 않는다.",
+    "approvedReplacementArtifacts": [
+      {
+        "path": "supabase/migrations/20260908_s21_correct_0912_topics.sql",
+        "sha256": "59d78bb228213803890e1479b09ec60e3ee52dc3e1d0beff05ffa3823439aaa3"
+      },
+      {
+        "path": "supabase/verify/20260908_s21_correct_0912_topics.sql",
+        "sha256": "40e1ca53153526bd47a252dfca1c10ae1793eaa61de904dac5aa15780036252d"
+      }
+    ],
     "frozenArtifacts": [
       {
         "path": "supabase/migrations/20260902_s20_open_0912_topics.sql",
