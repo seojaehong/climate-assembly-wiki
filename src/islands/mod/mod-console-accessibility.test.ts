@@ -285,7 +285,7 @@ describe('one shared workshop snapshot', () => {
     expect(sessionSource).toContain('preserveEditorScrollAfterTopicInsertion()');
     expect(sessionSource).toContain("active.closest('[data-workshop-editor-topic]')");
     expect(sessionSource).toContain('document.activeElement !== active');
-    expect(sessionSource).toContain('window.scrollTo(scrollX, scrollY)');
+    expect(sessionSource).toContain('window.scrollTo(scrollX, window.scrollY + viewportDelta)');
     expect(submissionSource).toContain('data-workshop-editor-topic={topic.id}');
   });
 });

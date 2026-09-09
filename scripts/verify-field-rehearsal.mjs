@@ -947,6 +947,7 @@ try {
         await new Promise((resolveFrame) => requestAnimationFrame(() => requestAnimationFrame(resolveFrame)));
         return window.scrollY;
       }, scrollBefore);
+      const editorTopBeforeInsertion = await firstBox.evaluate((element) => element.getBoundingClientRect().top);
 
       server.topics = [
         ...server.topics,
@@ -961,22 +962,24 @@ try {
       const alert = page.locator('[data-testid="workshop-new-topic-alert"]');
       await alert.waitFor({ state: 'visible', timeout: 5_000 });
       const afterValues = await values(page, 1);
-      const contextState = await firstBox.evaluate((element, expectedScroll) => ({
-        expectedScroll,
+      const contextState = await firstBox.evaluate((element, expected) => ({
+        expectedScroll: expected.scrollY,
         focused: document.activeElement === element,
         scrollY: window.scrollY,
-        scrollDelta: Math.abs(window.scrollY - expectedScroll),
-      }), scrollBeforeInsertion);
+        scrollDelta: Math.abs(window.scrollY - expected.scrollY),
+        editorTop: element.getBoundingClientRect().top,
+        editorTopDelta: Math.abs(element.getBoundingClientRect().top - expected.editorTop),
+      }), { scrollY: scrollBeforeInsertion, editorTop: editorTopBeforeInsertion });
       await page.screenshot({ path: `${SHOTS}/rehearsal-1b-after.png` });
       must(JSON.stringify(afterValues) === JSON.stringify(beforeValues), '꼭지① 입력값이 바뀌었다');
       must(contextState.focused, '새 꼭지가 열리며 기존 입력 포커스가 이동했다');
       must(
-        contextState.scrollDelta <= 2,
-        `스크롤이 ${contextState.expectedScroll}px→${contextState.scrollY}px (${contextState.scrollDelta}px) 이동했다`,
+        contextState.editorTopDelta <= 2,
+        `편집 위치가 화면에서 ${editorTopBeforeInsertion}px→${contextState.editorTop}px (${contextState.editorTopDelta}px) 이동했다`,
       );
       const alertText = (await alert.innerText()).replace(/\s+/g, ' ').trim();
       must(alertText.includes('새 꼭지'), `새 꼭지 알림이 "${alertText}"다`);
-      return `꼭지 1→2개 · 입력 ${afterValues.length}줄 유지 · 포커스 유지 · 스크롤 변화 ${contextState.scrollDelta}px · "${alertText}"`;
+      return `꼭지 1→2개 · 입력 ${afterValues.length}줄 유지 · 포커스 유지 · 화면상 편집 위치 변화 ${contextState.editorTopDelta}px · 스크롤 보정 ${contextState.scrollDelta}px · "${alertText}"`;
     },
   );
 

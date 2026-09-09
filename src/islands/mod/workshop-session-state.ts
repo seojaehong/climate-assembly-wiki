@@ -108,7 +108,7 @@ export function preserveEditorScrollAfterTopicInsertion(): EditorScrollRestorati
   }
 
   const scrollX = window.scrollX;
-  const scrollY = window.scrollY;
+  const viewportTop = active.getBoundingClientRect().top;
   let cancelled = false;
   let settleFrame: number | null = null;
   let framesRemaining = EDITOR_SCROLL_SETTLE_FRAMES;
@@ -134,8 +134,9 @@ export function preserveEditorScrollAfterTopicInsertion(): EditorScrollRestorati
   }
   function restoreAfterCommit() {
     if (cancelled || document.activeElement !== active) return;
-    if (window.scrollX !== scrollX || window.scrollY !== scrollY) {
-      window.scrollTo(scrollX, scrollY);
+    const viewportDelta = active.getBoundingClientRect().top - viewportTop;
+    if (window.scrollX !== scrollX || Math.abs(viewportDelta) > 0.5) {
+      window.scrollTo(scrollX, window.scrollY + viewportDelta);
     }
   }
   function settle() {
