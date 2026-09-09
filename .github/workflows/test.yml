@@ -312,6 +312,7 @@ jobs:
             -f /tmp/platform_p1b_backfill.sql >/dev/null
           pre_migration_report="$(docker exec "$container" psql -U postgres -d verify \
             -v ON_ERROR_STOP=1 -Atq -f /tmp/design_provisioning_preflight.sql)"
+          printf '%s\n' "$pre_migration_report"
           grep -q '"status": "migration_ready"' <<<"$pre_migration_report"
           grep -q '"readyForAdditiveMigration": true' <<<"$pre_migration_report"
           grep -q '"readyForActivation": false' <<<"$pre_migration_report"
@@ -321,6 +322,7 @@ jobs:
             -f /tmp/platform_p3_design_provisioning.sql >/dev/null
           pre_mapping_report="$(docker exec "$container" psql -U postgres -d verify \
             -v ON_ERROR_STOP=1 -Atq -f /tmp/design_provisioning_preflight.sql)"
+          printf '%s\n' "$pre_mapping_report"
           grep -q '"status": "migration_ready"' <<<"$pre_mapping_report"
           grep -q '"teamOrdinalPresent": true' <<<"$pre_mapping_report"
           grep -q '"teamOrdinalNullCount": 1' <<<"$pre_mapping_report"
@@ -328,6 +330,7 @@ jobs:
             -v a4_throwaway_fixture=on -f /tmp/design_provisioning_preflight_mapping_fixture.sql >/dev/null
           activation_report="$(docker exec "$container" psql -U postgres -d verify \
             -v ON_ERROR_STOP=1 -Atq -f /tmp/design_provisioning_preflight.sql)"
+          printf '%s\n' "$activation_report"
           grep -q '"status": "activation_ready"' <<<"$activation_report"
           grep -q '"readyForActivation": true' <<<"$activation_report"
           grep -q '"requiresApprovedBackfill": false' <<<"$activation_report"
