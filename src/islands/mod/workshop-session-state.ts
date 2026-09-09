@@ -102,13 +102,14 @@ export function preserveEditorScrollAfterTopicInsertion(): EditorScrollRestorati
   if (!(active instanceof HTMLElement) || !active.closest('[data-workshop-editor-topic]')) {
     return { restoreAfterCommit: noop, cancel: noop };
   }
+  const editor = active;
   const inputType = active instanceof HTMLInputElement ? active.type : null;
   if (!isTextEditingControl(active.tagName, inputType, active.isContentEditable)) {
     return { restoreAfterCommit: noop, cancel: noop };
   }
 
   const scrollX = window.scrollX;
-  const viewportTop = active.getBoundingClientRect().top;
+  const viewportTop = editor.getBoundingClientRect().top;
   let cancelled = false;
   let settleFrame: number | null = null;
   let framesRemaining = EDITOR_SCROLL_SETTLE_FRAMES;
@@ -133,8 +134,8 @@ export function preserveEditorScrollAfterTopicInsertion(): EditorScrollRestorati
     if (event.key === 'PageUp' || event.key === 'PageDown') cancel();
   }
   function restoreAfterCommit() {
-    if (cancelled || document.activeElement !== active) return;
-    const viewportDelta = active.getBoundingClientRect().top - viewportTop;
+    if (cancelled || document.activeElement !== editor) return;
+    const viewportDelta = editor.getBoundingClientRect().top - viewportTop;
     if (window.scrollX !== scrollX || Math.abs(viewportDelta) > 0.5) {
       window.scrollTo(scrollX, window.scrollY + viewportDelta);
     }
