@@ -133,6 +133,40 @@ def attending_rows(rows: Iterable[RosterRow]) -> list[RosterRow]:
     ]
 
 
+def read_excluded_official_ids(path: Path) -> list[str]:
+    """Read one official ID per UTF-8 line without accepting ambiguous CSV input."""
+    excluded_ids = [
+        line.strip()
+        for line in path.read_text(encoding="utf-8-sig").splitlines()
+        if line.strip()
+    ]
+    if not excluded_ids:
+        raise ValueError("excluded official ID file is empty")
+    if any("," in official_id or "\t" in official_id for official_id in excluded_ids):
+        raise ValueError("excluded official ID file must contain one ID per line")
+    if len(set(excluded_ids)) != len(excluded_ids):
+        raise ValueError("duplicate excluded official ID")
+    return excluded_ids
+
+
+def exclude_rows_by_official_id(
+    rows: Iterable[RosterRow], excluded_ids: Iterable[str]
+) -> list[RosterRow]:
+    """Exclude an explicitly approved ID set and reject unknown or duplicate IDs."""
+    selected_rows = list(rows)
+    requested = list(excluded_ids)
+    if len(set(requested)) != len(requested):
+        raise ValueError("duplicate excluded official ID")
+    available = {row.official_id for row in selected_rows}
+    unknown = sorted(set(requested) - available)
+    if unknown:
+        raise ValueError(
+            f"excluded official ID not found in selected roster: {', '.join(unknown)}"
+        )
+    excluded = set(requested)
+    return [row for row in selected_rows if row.official_id not in excluded]
+
+
 def group_counts(rows: Iterable[RosterRow]) -> dict[str, int]:
     return dict(Counter(row.team_name for row in rows))
 
@@ -305,6 +339,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--report", type=Path, default=Path("evaluation/report.json"))
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--attendance-only", action="store_true")
+    parser.add_argument(
+        "--exclude-official-ids-file",
+        type=Path,
+        help="UTF-8 text file containing one approved official ID per line",
+    )
     parser.add_argument("--expected-count", type=int)
     parser.add_argument("--print-sql", action="store_true")
     parser.add_argument("--sql-output", type=Path)
@@ -317,6 +356,11 @@ def main() -> int:
         raise ValueError("choose --dry-run, --print-sql, or --sql-output")
     source_rows = parse_roster(args.file, args.expected_hash)
     rows = attending_rows(source_rows) if args.attendance_only else source_rows
+    if args.exclude_official_ids_file is not None:
+        rows = exclude_rows_by_official_id(
+            rows,
+            read_excluded_official_ids(args.exclude_official_ids_file),
+        )
     expected_count = args.expected_count if args.expected_count is not None else EXPECTED_TOTAL
     if len(rows) != expected_count:
         raise ValueError(f"expected {expected_count} selected roster rows, got {len(rows)}")

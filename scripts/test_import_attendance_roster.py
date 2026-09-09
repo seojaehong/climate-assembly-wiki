@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -93,6 +94,38 @@ class AttendanceRosterParserTest(unittest.TestCase):
         filtered = module.attending_rows(rows)
 
         self.assertEqual([row.official_id for row in filtered], ["1", "2", "3"])
+
+    def test_approved_official_ids_can_be_excluded_exactly(self) -> None:
+        module = load_module()
+        rows = [
+            module.RosterRow("1", "참석자1", "1분과 1조", "참석"),
+            module.RosterRow("2", "참석자2", "1분과 1조", "참석"),
+            module.RosterRow("3", "참석자3", "1분과 1조", "참석"),
+        ]
+
+        filtered = module.exclude_rows_by_official_id(rows, ["2"])
+
+        self.assertEqual([row.official_id for row in filtered], ["1", "3"])
+
+    def test_unknown_or_duplicate_excluded_ids_are_rejected(self) -> None:
+        module = load_module()
+        rows = [module.RosterRow("1", "참석자", "1분과 1조", "참석")]
+
+        with self.assertRaisesRegex(ValueError, "not found"):
+            module.exclude_rows_by_official_id(rows, ["2"])
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            module.exclude_rows_by_official_id(rows, ["1", "1"])
+
+    def test_excluded_id_file_requires_one_unique_id_per_line(self) -> None:
+        module = load_module()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "excluded.txt"
+            path.write_text("1001\n1002\n", encoding="utf-8")
+            self.assertEqual(module.read_excluded_official_ids(path), ["1001", "1002"])
+
+            path.write_text("1001,1002\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "one ID per line"):
+                module.read_excluded_official_ids(path)
 
     def test_dropped_members_are_gone(self) -> None:
         """2.0에서 빠진 드롭 3인이 남아 있으면 정족수가 틀어진다."""

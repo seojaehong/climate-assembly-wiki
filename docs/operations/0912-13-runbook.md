@@ -26,6 +26,7 @@
 - PM 확인 전 작업 기준은 `현장 카드 정본·디지털 미러`다. 둘이 다르면 현장 카드를 보존하고 디지털 값을 자동 덮어쓰지 않으며, 기록 담당이 차이를 인계한다.
 - 기존 `supabase/migrations/20260902_s20_open_0912_topics.sql`과 대응 verifier는 과거 6개 주제를 담고 있으므로 **적용 금지·동결** 상태다. 교정본은 `supabase/migrations/20260908_s21_correct_0912_topics.sql`과 대응 verifier이며, 8단계 계획 계약·15개 조·8/29 보존을 일회용 PostgreSQL에서 검증했다. 승인된 운영 DB에도 새 8단계 문구를 적용하고 재조회했다.
 - 새 참석현황 명부는 숙의 181명 중 152명을 참석으로 표시해 계획안의 147명과 5명 차이가 있다. 최종 9/12 배정은 이 차이를 확인한 뒤 적용한다.
+- 147명으로 확정될 경우 한글 원본을 편집하지 않는다. 승인된 제외 대상 공식 ID 5개를 저장소 밖 UTF-8 파일에 한 줄씩 두고 `scripts/import-attendance-roster.py --attendance-only --exclude-official-ids-file <비공개-ID파일> --expected-count 147`로 검증·SQL 생성한다. 중복 ID, 명부에 없는 ID, 최종 인원 불일치는 모두 SQL 생성 전에 실패한다. 152명 전원이 정본으로 확정되면 제외 파일 없이 `--attendance-only --expected-count 152`를 사용한다.
 - 예전 초안의 `5개 원칙`, `반대 의견`, `중복 유형 A·B·C·D`는 새 정본에 없으므로 현장 입력 항목으로 사용하지 않는다.
 
 | 순서 | 공식 시각 | 디지털 미러 체크포인트 |
