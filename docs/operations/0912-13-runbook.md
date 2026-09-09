@@ -218,6 +218,8 @@ P4 전후 snapshot은 서로 다른 쿼리를 쓰지 않는다. 승인된 운영
 
 순서가 어긋났거나 기대 건수가 다르면 즉시 중단한다. 검증된 핵심 migration 순서는 `P1 → seed/s21 → P1a → P2 → P1b/P1c → P2a → P3 → P4`다. 여기서 `s21`은 8단계 교정본이며 기존 6단계 s20은 계속 동결한다. 현장 절차는 `session-rosters 정본 확인(읽기) → P1 적용 이력·checksum 확인 및 미적용 시 승인·적용 → atomic seed/sync SQL 별도 승인·적용 → s21 별도 승인·적용 → P1a 승인·검증 → 4인자 HQ rotate 선교체 → P2 및 P1b/P1c 승인·검증 → maintenance token/staff client 배포 → P2a 별도 승인·원자 cutover → positive/legacy negative 검증 → P3 별도 승인·검증 → P4 별도 승인·검증 → post-P4 legacy negative 재검증 → 최종 상태` 순서를 바꾸지 않는다. 앞선 승인은 뒤 단계 승인을 포함하지 않으며, 사용자의 명시적 운영 승인 전에 어느 DB 단계도 적용하거나 코드를 교체하지 않는다.
 
+구형 검증 기록에 남은 `P1 → seed/s20 → P1a → P2 → P1b/P1c → P2a → P3 → P4`는 과거 6단계 파일을 식별하는 동결 표식일 뿐 실행 순서가 아니다. 운영 실행은 바로 위의 `seed/s21` 순서만 따른다.
+
 `--dry-run`은 코드 칸을 `******`로 가려 구조만 보여 준다. 반면 `--print-seed-sql`과 `--print-sync-sql`의 출력 전체는 접속코드가 든 **비밀 SQL packet**이다. 이 packet을 일반 terminal 출력, shell transcript, CI log, Git, `evaluation/` 증거에 남기지 않는다. 승인된 비밀 scratch에서 검토·적용한 뒤 조직의 비밀 폐기 절차를 따른다.
 
 구형 개별 코드 helper인 `scripts/rotate-join-code.mjs`도 direct Supabase write 경로가 없고, 정확히 하나의 조 이름과 `--dry-run` 또는 `--print-sql` 중 하나가 없으면 종료코드 `2`로 중단한다. 정상 운영은 감사 기록이 남는 HQ RPC를 우선하며, `--print-sql` 출력이 꼭 필요한 비상 상황에도 별도 승인과 위 비밀 scratch·폐기 규칙을 그대로 적용한다.
