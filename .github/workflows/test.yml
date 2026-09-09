@@ -334,8 +334,13 @@ jobs:
           grep -q '"status": "activation_ready"' <<<"$activation_report"
           grep -q '"readyForActivation": true' <<<"$activation_report"
           grep -q '"requiresApprovedBackfill": false' <<<"$activation_report"
-          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
-            -f /tmp/design_provisioning_post_apply.sql >/dev/null
+          a4_post_apply_log="$RUNNER_TEMP/a4-post-apply.log"
+          if ! docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -f /tmp/design_provisioning_post_apply.sql \
+            >"$a4_post_apply_log" 2>&1; then
+            cat "$a4_post_apply_log"
+            exit 1
+          fi
           if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -c "begin; create or replace function climate_vote.platform_sha256_hex(p_value text) returns text language sql immutable strict set search_path = pg_catalog, extensions as 'select repeat(''0'', 64)';" \
             -f /tmp/design_provisioning_post_apply.sql \
