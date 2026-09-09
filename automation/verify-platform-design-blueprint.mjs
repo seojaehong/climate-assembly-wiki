@@ -52,6 +52,7 @@ function reviewList(topicId) {
       archived_at: null,
       linked_item_count: 1,
       consensus_denominator: 1,
+      snapshot_hash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     }] : [],
     unclassified_count: 0,
     reviewed_count: 0,
@@ -340,6 +341,7 @@ export async function verifyPlatformSessionIsolation({ browser, origin, timeoutM
   const browserErrors = [];
   const fixtureFailures = [];
   const logoutRequests = [];
+  const hqLogoutRequests = [];
   page.on('pageerror', (error) => browserErrors.push(error.message));
   page.on('response', (response) => {
     if (response.url().includes(FIXTURE_SUPABASE_ORIGIN) && response.status() >= 400) {
@@ -358,6 +360,11 @@ export async function verifyPlatformSessionIsolation({ browser, origin, timeoutM
       page,
       topics: REVIEW_TOPICS,
       handleRequest: async ({ route, path, request }) => {
+        if (path === '/rest/v1/rpc/workshop_hq_logout_v2') {
+          hqLogoutRequests.push(request.postDataJSON());
+          await fulfillJson(route, true);
+          return true;
+        }
         if (path !== '/auth/v1/logout') return false;
         logoutRequests.push({ method: request.method(), path });
         await fulfillJson(route, {});
@@ -375,13 +382,16 @@ export async function verifyPlatformSessionIsolation({ browser, origin, timeoutM
     await page.getByRole('button', { name: '검수 경합 주제 A', exact: true }).click();
     await page.getByRole('button', { name: '공개', exact: true }).click();
     await page.waitForURL((url) => url.pathname === PUBLISH_CONSOLE_ROUTE, { timeout: timeoutMs });
-    const storedCredentialLoaded = await page.getByLabel('HQ 인증 토큰').inputValue() === 'previous-user-sensitive-token';
+    const storedCredentialsSeeded = await page.evaluate(() => (
+      sessionStorage.getItem('climate_vote_hq_attendance_token') === 'previous-user-sensitive-token'
+      && sessionStorage.getItem('climate_vote_hq_gate_actor') === 'previous-user-actor'
+    ));
     await page.getByLabel('공개 결과 제목').fill('이전 사용자 공개 초안');
     await page.getByRole('button', { name: '로그아웃', exact: true }).click();
     await page.getByRole('form', { name: '운영진 로그인' }).waitFor({ timeout: timeoutMs });
 
     const rootRouteRestored = new URL(page.url()).pathname.replace(/\/+$/, '') === '/platform';
-    const priorCredentialRemoved = await page.getByLabel('HQ 인증 토큰').count() === 0;
+    const priorCredentialRemoved = await page.getByText('previous-user-sensitive-token', { exact: false }).count() === 0;
     const priorDraftRemoved = await page.getByLabel('공개 결과 제목').count() === 0;
     const priorTreeRemoved = await page.getByRole('button', { name: '접근성 감사 공론화', exact: true }).count() === 0;
     const priorConsoleRemoved = await page.getByRole('heading', { name: '검수 결과 발행', exact: true }).count() === 0;
@@ -391,10 +401,13 @@ export async function verifyPlatformSessionIsolation({ browser, origin, timeoutM
       && sessionStorage.getItem('climate_vote_platform_org_context') === null
     ));
 
-    if (!storedCredentialLoaded) throw new Error('Platform session isolation fixture did not load the stored credential');
+    if (!storedCredentialsSeeded) throw new Error('Platform session isolation fixture did not seed the stored credentials');
     if (!rootRouteRestored) throw new Error('Platform sign-out retained the prior user route scope');
     if (!priorCredentialRemoved || !priorDraftRemoved || !priorTreeRemoved || !priorConsoleRemoved || !storedCredentialsRemoved) {
       throw new Error('Platform sign-out retained prior user shell state');
+    }
+    if (hqLogoutRequests.length !== 1 || hqLogoutRequests[0]?.p_token !== 'previous-user-sensitive-token') {
+      throw new Error('Platform sign-out did not revoke the stored HQ credential exactly once');
     }
     if (logoutRequests.length !== 1) throw new Error('Platform sign-out did not issue exactly one auth request');
     if (browserErrors.length > 0) throw new Error('Platform session isolation verification observed a browser error');
@@ -403,13 +416,14 @@ export async function verifyPlatformSessionIsolation({ browser, origin, timeoutM
     return {
       path: PUBLISH_CONSOLE_ROUTE,
       fixture: 'ci-platform-session-isolation-fixture-v1',
-      storedCredentialLoaded,
+      storedCredentialsSeeded,
       rootRouteRestored,
       priorCredentialRemoved,
       priorDraftRemoved,
       priorTreeRemoved,
       priorConsoleRemoved,
       storedCredentialsRemoved,
+      hqLogoutRequestCount: hqLogoutRequests.length,
       logoutRequestCount: logoutRequests.length,
       browserPageErrorCount: browserErrors.length,
       fixtureFailureCount: fixtureFailures.length,
@@ -541,17 +555,18 @@ export async function verifyReviewConsoleRace({ browser, origin, timeoutMs = 60_
       page,
       topics: REVIEW_TOPICS,
       handleRequest: async ({ route, path, request }) => {
-        if (path === '/rest/v1/rpc/issue_list' || path === '/rest/v1/rpc/issue_items') {
+        if (path === '/rest/v1/rpc/platform_issue_list_v2' || path === '/rest/v1/rpc/platform_issue_items_v2') {
           const body = request.postDataJSON();
           const topicId = typeof body?.p_topic_id === 'string' ? body.p_topic_id : '';
-          await fulfillJson(route, path.endsWith('issue_list') ? reviewList(topicId) : reviewItems(topicId));
+          await fulfillJson(route, path.endsWith('platform_issue_list_v2') ? reviewList(topicId) : reviewItems(topicId));
           return true;
         }
-        if (path === '/rest/v1/rpc/issue_review') {
+        if (path === '/rest/v1/rpc/platform_issue_review_v3') {
           reviewRequests.push(request.postDataJSON());
           await reviewGate;
           await fulfillJson(route, {
             id: '00000000-0000-4000-8000-000000000101',
+            status: 'applied',
             review_status: 'reviewed',
           });
           return true;
@@ -570,9 +585,6 @@ export async function verifyReviewConsoleRace({ browser, origin, timeoutMs = 60_
     await page.getByRole('button', { name: '검수', exact: true }).click();
     await page.waitForURL((url) => url.pathname === REVIEW_CONSOLE_ROUTE, { timeout: timeoutMs });
     await page.getByRole('heading', { name: /쟁점 검수/ }).waitFor({ timeout: timeoutMs });
-    const joinCode = page.getByLabel('조 참여 코드(join_code)');
-    await joinCode.fill(' RACE01 ');
-    await page.getByRole('button', { name: '불러오기', exact: true }).click();
     const issueChoice = page.getByRole('button', { name: /지연 검수 대상 쟁점/ });
     await issueChoice.waitFor({ timeout: timeoutMs });
     await issueChoice.click();
@@ -582,37 +594,38 @@ export async function verifyReviewConsoleRace({ browser, origin, timeoutMs = 60_
       button.click();
     });
     await page.waitForTimeout(100);
-    if (!await joinCode.isDisabled()) {
+    if (!await reviewButton.isDisabled()) {
       throw new Error(`Review mutation did not enter the busy state: ${observedRpcPaths.join(', ')}`);
     }
     await page.waitForFunction(() => window.location.pathname.includes('/review'), undefined, { timeout: timeoutMs });
+    const secondaryLoad = page.waitForResponse((candidate) => {
+      if (new URL(candidate.url()).pathname !== '/rest/v1/rpc/platform_issue_list_v2') return false;
+      return candidate.request().postDataJSON()?.p_topic_id === FIXTURE_IDS.topicSecondary;
+    }, { timeout: timeoutMs });
     await page.getByRole('button', { name: '검수 경합 주제 B', exact: true }).click();
     const secondaryPath = `/t/${FIXTURE_IDS.topicSecondary}/review`;
     await page.waitForURL((url) => url.pathname.endsWith(secondaryPath), { timeout: timeoutMs });
-    await joinCode.waitFor({ state: 'visible', timeout: timeoutMs });
-    await page.waitForFunction(() => {
-      const input = document.querySelector('input#review-join-code');
-      return input instanceof HTMLInputElement && !input.disabled && input.value === '';
-    }, undefined, { timeout: timeoutMs });
+    await secondaryLoad;
+    await page.waitForFunction(() => !document.body.textContent?.includes('지연 검수 대상 쟁점'), undefined, { timeout: timeoutMs });
     const topicResetBeforeRelease = true;
     const reviewResponse = page.waitForResponse((candidate) => (
-      new URL(candidate.url()).pathname === '/rest/v1/rpc/issue_review'
+      new URL(candidate.url()).pathname === '/rest/v1/rpc/platform_issue_review_v3'
     ), { timeout: timeoutMs });
     releaseReview();
     await reviewResponse;
     await page.waitForTimeout(50);
     const staleCompletionIgnored = await page.getByText('검수 완료로 확정했습니다.', { exact: true }).count() === 0
       && await page.getByText('지연 검수 대상 쟁점', { exact: true }).count() === 0
-      && await joinCode.isEnabled()
-      && await joinCode.inputValue() === '';
+      && await page.getByRole('button', { name: '검수 데이터 새로고침', exact: true }).isEnabled();
     const duplicateWriteBlocked = reviewRequests.length === 1;
-    const requestBoundToLoadedCode = reviewRequests[0]?.p_code === 'RACE01'
-      && reviewRequests[0]?.p_issue_id === '00000000-0000-4000-8000-000000000101';
+    const requestBoundToLoadedScope = reviewRequests[0]?.p_session_id === FIXTURE_IDS.session
+      && reviewRequests[0]?.p_issue_id === '00000000-0000-4000-8000-000000000101'
+      && reviewRequests[0]?.p_expected_snapshot_hash === 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
     if (!topicResetBeforeRelease) throw new Error('Review topic change did not reset the in-flight mutation state');
     if (!staleCompletionIgnored) throw new Error('A stale review mutation changed the current topic UI');
     if (!duplicateWriteBlocked) throw new Error('Review console sent a duplicate mutation request');
-    if (!requestBoundToLoadedCode) throw new Error('Review mutation was not bound to the loaded join code and issue');
+    if (!requestBoundToLoadedScope) throw new Error('Review mutation was not bound to the selected session, issue, and snapshot');
     if (browserErrors.length > 0) throw new Error('Review console verification observed a browser error');
     if (fixtureFailures.length > 0) throw new Error('Review console verification observed an unexpected fixture request');
 
@@ -622,7 +635,7 @@ export async function verifyReviewConsoleRace({ browser, origin, timeoutMs = 60_
       topicResetBeforeRelease,
       staleCompletionIgnored,
       duplicateWriteBlocked,
-      requestBoundToLoadedCode,
+      requestBoundToLoadedScope,
       reviewMutationRequestCount: reviewRequests.length,
       browserPageErrorCount: browserErrors.length,
       fixtureFailureCount: fixtureFailures.length,
@@ -663,7 +676,7 @@ export async function verifyPublishConsoleLock({ browser, origin, timeoutMs = 60
       context,
       page,
       handleRequest: async ({ route, path, request }) => {
-        if (path === '/rest/v1/rpc/result_publish') {
+        if (path === '/rest/v1/rpc/platform_result_publish_v2') {
           publishRequests.push(request.postDataJSON());
           await publishGate;
           published = true;
@@ -675,7 +688,7 @@ export async function verifyPublishConsoleLock({ browser, origin, timeoutMs = 60
           });
           return true;
         }
-        if (path === '/rest/v1/rpc/result_unpublish') {
+        if (path === '/rest/v1/rpc/platform_result_unpublish_v2') {
           unpublishRequests.push(request.postDataJSON());
           await unpublishGate;
           published = false;
@@ -717,7 +730,7 @@ export async function verifyPublishConsoleLock({ browser, origin, timeoutMs = 60
           } : null);
           return true;
         }
-        if (path === '/rest/v1/rpc/result_implementation_upsert') {
+        if (path === '/rest/v1/rpc/platform_result_implementation_upsert_v3') {
           implementationRequests.push(request.postDataJSON());
           await fulfillJson(route, null);
           return true;
@@ -736,7 +749,6 @@ export async function verifyPublishConsoleLock({ browser, origin, timeoutMs = 60
     await page.getByRole('button', { name: '공개', exact: true }).click();
     await page.waitForURL((url) => url.pathname === PUBLISH_CONSOLE_ROUTE, { timeout: timeoutMs });
     await page.getByRole('heading', { name: '검수 결과 발행' }).waitFor({ timeout: timeoutMs });
-    await page.getByLabel('HQ 인증 토큰').fill('fixture-hq-token');
     await page.getByLabel('공개 결과 제목').fill('검수 경합 공개 결과');
     const publishButton = page.getByRole('button', { name: '검수 결과 발행', exact: true });
     await publishButton.evaluate((button) => {
@@ -744,8 +756,7 @@ export async function verifyPublishConsoleLock({ browser, origin, timeoutMs = 60
       button.click();
     });
     await page.waitForTimeout(100);
-    const publishBusyLocked = await page.getByLabel('HQ 인증 토큰').isDisabled()
-      && await page.getByLabel('공개 결과 제목').isDisabled();
+    const publishBusyLocked = await page.getByLabel('공개 결과 제목').isDisabled();
     const duplicatePublishBlocked = publishRequests.length === 1;
     releasePublish();
     await page.getByRole('status').filter({ hasText: '공개 완료·재조회 검증 완료' }).waitFor({ timeout: timeoutMs });
@@ -771,8 +782,7 @@ export async function verifyPublishConsoleLock({ browser, origin, timeoutMs = 60
       button.click();
     });
     await page.waitForTimeout(100);
-    const existingResultBusyLocked = await existingResultInput.isDisabled()
-      && await page.getByLabel('HQ 인증 토큰').isDisabled();
+    const existingResultBusyLocked = await existingResultInput.isDisabled();
     const duplicateExistingResultBlocked = existingResultRequests.length === 1;
     releaseExistingResult();
     await page.getByRole('status').filter({ hasText: '기존 공개 결과를 현재 스코프에 연결하고 재조회 검증했습니다.' }).waitFor({ timeout: timeoutMs });
